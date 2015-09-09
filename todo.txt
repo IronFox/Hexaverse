@@ -1,0 +1,168 @@
+
+------------- not done ------------- 
+...requested...
+
+ambient restocking (and repairing?) of support vehicles. //restocking no longer an issue
+
+
+...next...
+
+ragnarök beam visualization
+
+spy-satellite
+
+research concept, stations, states. AI? viruses?
+
+revise 'Toggle Sky Grid' button graphic
+
+send entity id with server messages so user can click on the message to focus on them
+
+revise terrain clipping control (expose more options (up and down))
+
+why do towers fire simultaneously?	//do they?
+
+
+
+
+...later...
+
+
+better scoring
+fuel transporter vehicle // no longer required
+foundation (and road) building should block required cells
+
+let foundation blocks (and granite) explode into stone first // maybe later
+
+
+
+server async logging // doesn't seem necessary for now
+
+
+client-sided structure count doesn't seem to update if destroying a faction ends game. disconnecting and re-connecting fixes it. works fine if game does not end
+
+
+hover beam	//elevator
+
+loading screen	//doesn't seem necessary just yet
+
+granite-digging turret
+
+
+virus infection and propagation (possibly from nexus ports - possibly same effect as emp)
+
+nexus tower	(defensive tower surrounding each nexus port)
+caves for nexus
+
+
+encryption
+
+async data sending from the server
+
+accelerate pathfinding, by parallelization and creation of a second coarse grid
+
+
+
+round delay visualization on attack vectors
+
+
+vertical turret rotation
+
+water simulation
+vehicle upgrade facilities
+multi-planet
+
+vertical sensors (vertical sensor corridor structures, postponed)
+
+
+
+
+remote server control, including local starting
+
+
+
+
+
+
+
+
+------------- done (newest first) -------------
+
+vehicles need self-destruction button
+implement type-number restrictions
+keep vehicle plant enable button enabled even if nothing enqueued and notify user that the queue is empty
+cost estimation should include likely foundation construction
+put central ground block where edge blocks are generated
+make server load from its own directory
+chat
+progress bar showing round markers
+let vehicles build foundation blocks rather than earth
+confirmation dialogues when doing unusual things (building a mine where no resources exist, or demolishing a structure)
+day-night-cycle
+doubled health
+ambient hostiles
+configurable planets
+see hostile (yours?) entities through the ground
+auto-surveyors
+emp weapons
+expose hostile initiative
+right click to attack hostiles implicitly
+flipped uv on icons to prevent camera rotation
+repair vehicle
+granite
+path finding on client data
+hostile contact list
+vehicle plant construction progress bar
+atmosphere
+balance tower costs vs tank costs (possibly increase build speed of terraformer+increase tower cost)
+fix shadows near horizon
+munition usage
+munition factory, storage, and transport
+armor turret
+tank base (with tracks instead of hovering)
+implement nexus port game winning logic
+implement game winning logic
+introduce faction death detector
+auto-complexes (working complexes being assembled automatically during startup, for ai mostly) - simplified but working
+introduce closed games
+introduce round timer
+nexus port	(indestructible building to connect to in order to win the game)
+cost visualization of build commands
+better protocol compression
+world save-feature
+(persistent) tokens to recover from lost connections or server shutdowns
+pull foundations down to ground (currently using earth)
+server-sided check of block placement/removal outside range of vehicle
+documentation
+ui elements
+server logs
+radar turret
+Halved natural resource yield from 10 units per bar to 5
+Disallowed resource transfer to/from structures of different ownership
+Hide objects no longer hides shadows.
+terraformer automove when done
+some UI elements done
+resource visualization moved to above water surface
+towers preserve their foundations 
+geometrical sensor spheres around entities
+defense towers
+terrain sensory
+
+turrets on buildings	 (done)
+	fog of war doesn't update properly when turret created/destroyed	(fixed)
+	turret auto-targets even if trajectory not possible	(fixed)
+	turret auto-targets anything in range, even what its owner does not know of	(fixed)
+	offline client visibility must still be accessible for turrets to work without user	(fixed)
+	
+resource sensory
+	resource notification protocol
+	server sided resource discovery tracking
+	resource sensor turret
+
+
+sensors
+	sensor range of vehicles	(done)
+	server sided sensory plus visibility notifications (done)
+	sensor propagation and visualization (mostly done, lacks geometrical spheres around entities)
+	
+correct entity explosion locations (done)
+		

@@ -1,0 +1,125 @@
+#ifndef objectTurretBaseH
+#define objectTurretBaseH
+
+#include <container/queue.h>
+#include <container/hashtable.h>
+#include "../sphereGrid.h"
+#include "components.h"
+
+
+namespace Objects
+{
+
+	//class Faction;
+	//typedef std::shared_ptr<Faction>	PFaction;
+	//typedef std::weak_ptr<Faction>		WFaction;
+
+	//typedef PFaction		OwnerParameter;
+
+
+
+	#ifdef HAS_WINDOW
+		/**
+		Used to cache and render the paraboloid above a turret base
+		*/
+		class ParaboloidBuffer
+		{
+			TVec3<> lastCenter;
+			float lastRange = 0.f;
+			float lastExp = 0.f;
+			TMatrix4<> matrix;
+			DX11::InstructionBlock32	attackInstruction;
+
+
+		public:
+			void			Render(const Grid::LCellIdI&cell, float zOffset, float flatRange, float explosionRadius, const float4&color);
+
+		};
+	#endif
+
+	class TurretBase 
+	{
+		class AreaHelper
+		{
+		public:
+			Queue<Grid::LCellIdI>	queue;
+			GenericHashSet<Grid::LCellIdI,Grid::LCellIdI>	visited;
+
+			bool				operator>>(Grid::LCellIdI&next)
+			{
+				return queue >> next;
+			}
+
+			void				operator<<(const Grid::LCellIdI&next)
+			{
+				if (!visited.SetNew(next))
+					return;
+				queue << next;
+			}
+
+			void				Clear()
+			{
+				queue.Clear();
+				visited.Clear();
+			}
+
+		};
+
+
+	public:
+		static bool				CheckArea(const OwnerParameter&myFaction, const Grid::LCellIdI&, float explosionRadius);
+
+		Component::Turret*		turret;
+		#ifdef CLIENT
+			float				turretAngleX, turretAngleY;
+		#endif
+									
+
+		#ifdef HAS_WINDOW
+			ParaboloidBuffer	paraboloidBuffer;
+		#endif
+
+
+		/**/					TurretBase(Component::Turret*turret):turret(turret)
+		#ifdef CLIENT
+												,turretAngleX(0), turretAngleY(0)
+		#endif
+								{}
+		virtual					~TurretBase()	{}
+
+
+		virtual float			GetAttackActionLeft() const=0;
+
+		int						GetAttacksPerRound() const	{return turret->attacksPerRound;}
+		int						GetDamagePotentialPerRound() const {return GetAttacksPerRound() * turret->damageLevel;}
+		float					GetAttackInitiative()const	{return turret->initiative * GetAttackActionLeft();}
+		int						CountPossibleAttacks() const {return GetAttacksPerRound() * GetAttackActionLeft();}
+		virtual bool			NextTaskIsAttack() const = 0;
+		virtual float			GetFlatAttackRange() const = 0;
+		virtual bool			HasAmmoForShot() const = 0;
+		
+		/**
+		Determines whether or not the local turret base can hit a given location.
+		Provides the precise aiming target if hitting is possible only through explosion radius extension.
+		@param source Attacking turret location
+		@param destIn Original destination location
+		@param destOut Final destination location. If the given location lies within the local attack range, destOut will match destIn.
+			Otherwise a close approximation will be given that is still in range but will hit the target through the explosion radius
+		@return true if an applicable destination was found, false otherwise
+		*/
+		bool					ExtCanHit(const OwnerParameter&myFaction, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&destIn, Grid::LCellIdI&destOut)	const;
+
+
+
+
+		#ifndef CLIENT
+			virtual void		Attack(float&currentTime) = 0;
+			virtual bool		FillAttackQueue() = 0;
+
+		#endif
+	};
+
+	typedef std::shared_ptr<TurretBase>	PTurretBase;
+}
+
+#endif

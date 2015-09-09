@@ -1,0 +1,81 @@
+#ifndef objectTypesH
+#define objectTypesH
+
+#include <memory>
+#include <general/enumeration.h>
+
+
+namespace Objects
+{
+
+
+
+
+
+	#define DECLARE_POINTER_CLASS(T)	class T; typedef std::shared_ptr<T> P##T; typedef std::weak_ptr<T>	W##T; typedef std::shared_ptr<const T> PConst##T;
+
+	DECLARE_POINTER_CLASS(HangarStructure)
+	DECLARE_POINTER_CLASS(MobileEntityProducer)
+	DECLARE_POINTER_CLASS(SkyLinkStructure)
+
+	DECLARE_POINTER_CLASS(BaseEntity)
+		DECLARE_POINTER_CLASS(WorldEntity)
+			DECLARE_POINTER_CLASS(Structure)
+				DECLARE_POINTER_CLASS(Connector)
+				DECLARE_POINTER_CLASS(Tower)
+				DECLARE_POINTER_CLASS(WorkingStructure)
+					DECLARE_POINTER_CLASS(SkyPort)
+					DECLARE_POINTER_CLASS(VehiclePlant)
+					DECLARE_POINTER_CLASS(VehicleStore)
+					DECLARE_POINTER_CLASS(Mine)
+					DECLARE_POINTER_CLASS(NexusPort)
+					DECLARE_POINTER_CLASS(Generator)
+					DECLARE_POINTER_CLASS(MunitionFactory)
+					DECLARE_POINTER_CLASS(MunitionStorage)
+
+			DECLARE_POINTER_CLASS(MobileEntity)
+				DECLARE_POINTER_CLASS(Satellite)
+					DECLARE_POINTER_CLASS(SkyHub)
+					DECLARE_POINTER_CLASS(SkyGuardian)
+					DECLARE_POINTER_CLASS(Ragnarok)
+				DECLARE_POINTER_CLASS(Vehicle)
+
+	namespace Component
+	{
+		class Base;
+		class Turret;
+		class VehicleBase;
+	}
+	DECLARE_POINTER_CLASS(TurretBase);
+	//typedef std::shared_ptr<Base>	PVehicleComponent;
+
+	DECLARE_POINTER_CLASS(Faction);
+
+	typedef PFaction		OwnerParameter;
+
+
+	CONSTRUCT_ENUMERATION6(RemovalType,
+		Vanished,
+		BeingReplaced,
+		ControlledExplosion,
+		UncontrolledExplosion,
+		EnteredStorage,
+		DestroyedInStorage
+	);
+
+	class Compound;
+
+
+
+	CONSTRUCT_ENUMERATION5(MobilePlacementResult,
+		PlacementOkay,
+		PlacementOkayFellDown,
+		PlacementFailedObstructed,		//!< Something possibly temporary is in the way
+		PlacementFailedHarmfulOrBlocked,	//!< Either moving there would hurt or something permanently blocking is in the way
+		EnteredStructure
+	);
+
+}
+
+
+#endif

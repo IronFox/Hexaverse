@@ -1,0 +1,2249 @@
+#include <global_root.h>
+#include "ui.h"
+#include "dialog.h"
+#include "network.h"
+#include "tutorial.h"
+
+
+#ifdef HAS_WINDOW
+	#include "../DX11/texture_font.h"
+	#include "surfaceRenderer.h"
+
+	extern Engine::Display<Engine::DirectX11>	display;
+	extern Engine::Textout<Engine::DX11::TextureFont>	textout;
+
+	namespace UI 
+	{
+
+		namespace DX11 = Engine::DX11; //!< Shortcut
+
+
+
+		void	ShowSession()
+		{
+			if (Dialog::IsModal())
+			{
+				if (Dialog::ShowingFactions())
+					Dialog::CloseAllModal();
+				return;
+			}
+
+			Buffer0<Dialog::Faction>	factions;
+			for (const auto&factionIn : Objects::Faction::allKnown)
+			//Network::factionMap.VisitAllValues([&factions](const Objects::OwnerParameter&factionIn)
+			{
+				Dialog::Faction&factionOut = factions.Append();
+				factionOut.name = factionIn->GetName();
+				factionOut.online = factionIn->online;
+				factionOut.requestedNewRound = factionIn->requestedNewRound;
+			};
+			//);
+
+			Dialog::ShowFactions(factions);
+		}
+
+
+		void	RefreshSessionView()
+		{
+			if (Dialog::ShowingFactions())
+			{
+				Dialog::CloseAllModal();
+				ShowSession();
+			}
+
+		}
+
+
+
+		void	IconItem::LoadTexture(const String&name)
+		{
+			Image image;
+			Magic::LoadFromFile(image,"resources/icons/"+name+".png");
+			texture.Load(image);
+		}
+		
+		void IconItem::RenderIcon(float size/*=0.05f*/)
+		{
+			iconColor.Update(float4(color*0.75f + 0.25f,size));
+			iconShader.quickSlots.first() = texture;
+			display.RenderVertices(iconShader,0,1);
+		}
+
+
+
+
+
+		void	Gauge::Set(int current, int max, int changePerRound, int localCurrent, int localChange, bool enabled)
+		{
+
+			//max = std::max(10.f,max);
+			if (current == this->current && max == this->max && changePerRound == this->changePerRound
+				&& localCurrent == this->localCurrent && localChange == this->localChange && enabled == this->enabled)
+				return;
+			top0 = std::max(current,current+changePerRound);
+			top1 = std::max(max,top0);
+			top = std::max(abs(current+localChange), top1);
+			this->current = current;
+			this->max = max;
+			this->changePerRound = changePerRound;
+			this->localCurrent = localCurrent;
+			this->localChange = localChange;
+			this->enabled = enabled;
+			ftop = std::max(1,top);
+			hScale = height / float(ftop);
+			#ifndef NO_HIBERNATION
+				if (isTraffic)
+				{
+					hScale *= 1.5f;
+					float toRed = std::min(float(current+changePerRound)/float(max),1.f);
+					Vec::HSL2RGB(float3(0.5f - 0.5f * toRed,toRed*0.5f,1.f - toRed*0.5f),color);
+				}
+			#endif
+			changed = true;
+		}
+
+
+
+
+		/*static*/ void Gauge::StaticCreate()
+		{
+			shader.shader.LoadFromFile("shaders/gauge.hlsl","vsMain", "psMain");
+			shader.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			shader.binding.Append("NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			shader.binding.Append("COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
+			shader.UpdateLayout();
+			shader.SetTriangles();
+
+			//iconShader.shader.LoadFromFile("shaders/gaugeIcon.hlsl","vsMain", "psMain");
+			//
+			//iconShader.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			//shader.binding.Append("NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			//shader.binding.Append("COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
+			//shader.UpdateLayout();
+			//shader.SetTriangles();
+
+			//iconCenter.Create(float4(0));
+			iconColor.Create(float4(0));
+
+			iconShader.quickSlots.SetSize(1);
+
+			DX11::Shader::Binding bindings[] =
+			{
+				DX11::Shader::Binding(0,"Texture"),
+				DX11::Shader::SamplerBinding(true,Engine::TextureFilter::Trilinear,1,"Sampler"),
+//				DX11::Shader::Binding(iconCenter,"Center"),
+				DX11::Shader::Binding(iconColor,"Color"),
+			};
+
+			count_t numSet = DX11::Shader::macroDefinitions.Count();
+			//DX11::Shader::RedefineMacro(DX11::Shader::Macro("ICON_SIZE",0.1f));
+			iconShader.shader.LoadFromFile("shaders/gaugeIcon.hlsl","vsMain", "gsMain", "psMain",bindings, ARRAYSIZE(bindings));
+
+			DX11::Shader::macroDefinitions.Truncate(numSet);
+			iconShader.UpdateLayout();
+			iconShader.SetPoints();
+
+		}
+
+		/*static*/ void Gauge::StaticDestroy()
+		{
+			shader.Clear();
+			iconShader.Clear();
+			iconColor.Clear();
+			//foreach (gauges,g)
+			//	g->texture.Clear();
+
+		}
+
+
+		void	Gauge::UpdateTextProjection(const Engine::Aspect<>&camera)
+		{
+			//camera.Project(base + float3(0,0,float(top) / ftop * height * 1.1f),projectedTop);
+			camera.ProjectToRegion(base + float3(-0.0125f * log(std::max(1,current))/log(10.f),0.f,0.f) ,projectedBottom);
+			//projectedBottom.x -= 0.0125f * log(std::max(1,current))/log(10.f);
+			camera.ProjectToRegion(base + float3(0,0,float(current + changePerRound) * hScale),projectedDelta);
+			camera.ProjectToRegion(base + float3(0,0,float(max) * hScale),projectedMax);
+			camera.ProjectToRegion(base + float3(0,0,float(std::max(max, current+changePerRound)) * hScale),projectedTop);
+		}
+
+		void	Gauge::Render(BYTE target)
+		{
+			if (changed)
+			{
+				Construct();
+			}
+			TMatrix4<> system = Matrix<>::eye4;
+			system.w.xyz = base;
+			system.z.xyz *= hScale;
+			#ifndef NO_HIBERNATION
+				if (isTraffic)
+				{
+					system.x.xyz *= 0.75f;
+					system.y.xyz *= 0.75f;
+				}
+			#endif
+
+			system.x.xyz *= 1.5f;
+			system.y.xyz *= 1.5f;
+
+			display.SetObjectMatrix(system);
+
+			display.Render(instruction[target]);
+
+
+			//display.SetObjectMatrix()
+			//if (!target)
+			//{
+			//	textout.pushState();
+			//	textout.setScale(0.2,0.2);
+			//	display.SetRasterizer(true,false);
+			//	textout.locate(0,0,1);
+			//	textout.color(1,1,1);
+			//	textout << "test";
+			//	textout.popState();
+
+			//}
+
+		}
+
+
+		void	Gauge::RenderListText(int y)
+		{
+			textout.pushState();
+			//textout.locate(projectedTop);
+			textout.locate(-1.f + 0.01f,-1.f + textout.getScaledHeight()*1.2f*(y+5));
+
+			//textout.SetLine(-1);
+			textout << myTag;
+			
+			
+			textout.color(color * 0.5f + float3(0.5f));
+			if (changePerRound > 0)
+				textout << "+"<<changePerRound;
+			else
+				if (changePerRound < 0)
+				{
+					textout.color(1,0.6,0.5);
+					textout <<changePerRound;
+				}
+			if (max > 0)
+			{
+				textout.scale(1.2f,1.2f);
+				textout << ' '<<current;
+				textout.scale(0.6f,0.6f);
+				textout <<'/'<<max;
+			}
+			//textout << max;
+			textout.popState();
+
+
+		}
+
+		void	Gauge::RenderText()
+		{
+			//textout.setScale(0.2,0.2);	//leave it
+			//display.SetRasterizer(true,false);
+			{
+				textout.pushState();
+				textout.color(color * 0.5f + float3(0.5f));
+				textout.locate(projectedBottom);
+				textout.SetLine(-1);
+				textout << current << nl;
+				textout.popState();
+			}
+			if (max)
+			{
+				textout.pushState();
+				textout.locate(projectedMax);
+				textout.scale(0.6f,0.6f);
+				textout.SetLine(-1);
+				textout << max;
+				textout.popState();
+			}
+
+			if (changePerRound != 0)
+			{
+				textout.pushState();
+				textout.locate(projectedDelta.xy);
+				textout.scale(0.8f,0.8f);
+				textout.SetLine(-1);
+				if (changePerRound > 0)
+				{
+					textout.color(color);
+					textout << '+';
+				}
+				else
+					textout.color(1,0.6,0.5);
+				textout << changePerRound;
+				textout.popState();
+			}
+			
+			{
+				textout.pushState();
+				//textout.locate(projectedTop);
+				textout.scale(0.6f,0.6f);
+				textout.locate(projectedTop.x,projectedTop.y + textout.getScaledHeight()*2.5f);
+
+				//textout.SetLine(-1);
+				textout << myTag;
+				//textout << max;
+				textout.popState();
+			}
+			
+			//RenderIcon(projectedTop);
+		}
+
+
+		void	Gauge::ConstructPart(float radius, float lower, float upper, const float4&lowerColor, const float4&upperColor, Objects::Geometry&geo)
+		{
+			for (int i = 0; i < 6; i++)
+			{
+				float a = float(i)/6.f * 2.f * M_PIF;
+				float b = float(i+1)/6.f * 2.f * M_PIF;
+				float ab = (a + b)/2.f;
+
+				geo.SetVertexOffsetToCurrent();
+
+				float3 normal(cos(ab),-sin(ab),0);
+				float2 av(cos(a),-sin(a));
+				av *= radius;
+				float2 bv(cos(b),-sin(b));
+				bv *= radius;
+
+				float3	na = float3(bv,0),//  normal,
+						nb = float3(av,0);//	normal;
+
+				geo.MakeVertex(float3(av,lower),na,lowerColor);
+				geo.MakeVertex(float3(bv,lower),nb,lowerColor);
+				geo.MakeVertex(float3(bv,upper),nb,upperColor);
+				geo.MakeVertex(float3(av,upper),na,upperColor);
+
+				geo.MakeQuadInv(0,1,2,3);
+			}
+			
+			geo.SetVertexOffsetToCurrent();
+
+			for (int i = 0; i < 6; i++)
+			{
+				float a = float(i)/6.f * 2.f * M_PIF;
+				geo.MakeVertex(float3(cos(a) * radius,-sin(a) * radius,upper),float3(0,0,1),upperColor);
+			}
+			for (int i = 2; i < 6; i++)
+				geo.MakeTriangleInv(0,i-1,i);
+		}
+
+		void	Gauge::Construct()
+		{
+			changed = false;
+
+			geo[0].Clear();
+			geo[1].Clear();
+			for (int i = 0; i < 6; i++)
+			{
+				float a = float(i)/6.f * 2.f * M_PIF;
+				geo[0].MakeVertex(float3(cos(a),-sin(a),0),float3(0,0,-1),color);
+			}
+			for (int i = 2; i < 6; i++)
+				geo[0].MakeTriangle(0,i-1,i);
+
+			//float cap = std::min(max,current + std::max(0.f,changePerRound));
+			//float h = cap / max * height;
+
+			if (changePerRound >= 0)
+			{
+				if (localCurrent > 0)
+				{
+					ConstructPart(1.f,0,localCurrent,float4(1,0,0,0.95f),geo[0]);
+					ConstructPart(1.f,localCurrent,current,float4(color,0.95f),geo[0]);
+				}
+				else
+					ConstructPart(1.f,0,current,float4(color,0.95f),geo[0]);
+				if (changePerRound > 0)
+				{
+					int top = current + std::max(0,changePerRound - (enabled ? localChange : 0));
+					//int top1 = std::min(max,top);
+					ConstructPart(0.8f,current,top,float4(color,0.f),float4(color,0.6f),geo[0]);
+
+					//if (top != top1)
+						//ConstructPart(0.8f,top1,top,float4(color,0.f),float4(color,0.6f),geo[0]);
+				}
+			}
+			else
+			{
+				if (localCurrent > 0)
+				{
+					int step = std::min(localCurrent,std::max(0,(current+changePerRound)));
+					ConstructPart(1.f,0,step,float4(1,0,0,0.95f),geo[0]);
+
+					ConstructPart(1.f,step,std::max(0,(current+changePerRound)) ,float4(color,0.95f),geo[0]);
+				}
+				else
+				{
+					ConstructPart(1.f,0,std::max(0,(current+changePerRound)) ,float4(color,0.95f),geo[0]);
+				}
+				ConstructPart(1.f,std::max(0,(current+changePerRound)),current,float4((color + float3(1,0.5,0.5))/1.5f,0.95f),geo[0]);
+			}
+
+			if (localChange != 0)
+			{
+				float t = current+changePerRound;
+				if (localChange > 0)
+				{
+					if (enabled)
+						ConstructPart(0.6f,t- localChange,t,float4(1,0,0,0.f),float4(1,0,0,0.6f),geo[0]);
+					else
+						ConstructPart(0.6f,t,t + localChange,float4(1,0.5f,0,0.f),float4(1,0.5f,0,0.6f),geo[0]);
+				}
+				else
+					if (enabled)
+						ConstructPart(0.6f,t,t-localChange,float4(1,0,0,0.6f),float4(1,0,0,0.f),geo[0]);
+					else
+						ConstructPart(0.6f,t+localChange,t,float4(1,0.5f,0,0.6f),float4(1,0.5f,0,0.f),geo[0]);
+					//ConstructPart(0.8f,current,top1,float4(color,0.f),float4(color,0.6f),geo[0]);
+			}
+
+			ConstructPart(1.f,0,max,float4(float3(1),0.25),geo[1]);
+
+
+
+
+			for (BYTE k = 0; k < 2; k++)
+			{
+				instruction[k].SetBase(shader);
+				instruction[k].vbo.CreateFromStructs(geo[k].GetLOD(0).vertices);
+				instruction[k].ibo.Create(geo[k].GetLOD(0).indices);
+			}
+		};
+
+
+
+		/*static*/ const float Gauge::height = 10.f;
+
+		/*static*/ DX11::BaseInstructionBlock	Gauge::shader,IconItem::iconShader;
+		/*static*/ DX11::ObjectBuffer<float4>	/*IconItem::iconCenter,*/IconItem::iconColor;
+
+		Array<Gauge>	gauges;
+		#ifndef NO_HIBERNATION
+			Gauge		trafficGauge;
+		#endif
+		IconItem		timeResource;
+
+		Engine::VectorCamera<>	barProjectionCamera;
+		Engine::OrthographicAspect<> textoutCamera;
+		bool			resourcesAsList = false;
+
+
+
+		namespace HexGrid
+		{
+
+			index_t								hostileOffset = 0,
+												friendlyOffset = 0;
+			//static const count_t ContactListWidth = 10;
+			count_t					currentContactListWidth = 10;
+
+
+
+
+			bool		Group::InitSelection()
+			{
+				if (currentSelection == InvalidIndex)
+				{
+					currentSelection = entries.indexOf(Objects::selectedEntity);
+					if (currentSelection == InvalidIndex)
+					{
+						float distance = std::numeric_limits<float>::max();
+						
+						index_t at = 0;
+						for (const auto&entry : entries)
+						{
+							float d = Vec::quadraticDistance(entry->system.w.xyz,Camera::scene.location);
+							if (d < distance)
+							{
+								distance = d;
+								currentSelection = at;
+							}
+							at++;
+						}
+					}
+					return true;
+				}
+				return false;
+
+			}
+
+			void		Group::UpdateSignificance()
+			{
+				const Objects::PWorldEntity&e = entries.first();
+				significance = e->GetConstructionCost();
+
+
+
+				Objects::PTurretBase b = e->GetTurretBase();
+				if (b && b->turret->CanAttack())
+				{
+					significance *= 3.f;
+				}
+				if (e->IsVehicle())
+					significance *= 10.f;
+				if (e->health <= 0)
+				{
+					if (e->isMine)
+						significance *= 15.f / (1.f + sqr(e->health));
+					else
+						significance *= 0.8f;
+				}
+				UINT32 crc = CRC32::getChecksum(e->GetTypeName().c_str());
+				Random random(crc);
+				significance *= random.getFloat(0.95f,1.07f);
+			}
+
+
+
+
+
+
+
+			/*virtual override*/ void	VehicleFocusCommand::CompileLabel(const Objects::PWorldEntity&,Label&outResult)
+			{
+				outResult << name;
+				if (target->isMine)
+					outResult << "Owner: me";
+				else
+					outResult << "Owner: "+target->owner->GetName();
+				if (target->health > 0)
+				{
+					if (target->IsIndestructible())
+						outResult << " Indestructible";
+					else
+						outResult << String(" Health: " +String( target->health) + "/" + String(target->GetMaxHealth()));
+					if (target->IsHibernating())
+						outResult << " Hibernating";
+				}
+				else
+				{
+					outResult << " Ghost created " + String(-target->health) + " round(s) ago";
+				}
+
+				//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
+				if (target->turret->CanAttack())
+					outResult << "Offensive ("+String(target->GetAttacksPerRound())+"x"+String(target->turret->damageLevel)+")";
+				if (target->empDamageLevel)
+					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
+
+				outResult.MarkBriefEnd();
+				target->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice | Objects::WorldEntity::DescIncludeUnitCount);
+
+			}
+
+			/*virtual override*/ void	SatelliteFocusCommand::CompileLabel(const Objects::PWorldEntity&,Label&outResult)
+			{
+				outResult << name;
+				if (target->isMine)
+					outResult << "Owner: me";
+				else
+					outResult << "Owner: "+target->owner->GetName();
+				if (target->health > 0)
+				{
+					if (target->IsIndestructible())
+						outResult << " Indestructible";
+					else
+						outResult << String(" Health: " +String( target->health) + "/" + String(target->GetMaxHealth()));
+					if (target->IsHibernating())
+						outResult << " Hibernating";
+				}
+				else
+				{
+					outResult << " Ghost created " + String(-target->health) + " round(s) ago";
+				}
+
+				//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
+				if (target->CanAttack())
+				{
+					Objects::Component::Turret* turret = target->turret;
+					outResult << "Offensive ("+String(turret->attacksPerRound)+"x"+String(turret->damageLevel)+")";
+				}
+				if (target->empDamageLevel)
+					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
+
+				outResult.MarkBriefEnd();
+				target->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice | Objects::WorldEntity::DescIncludeFuelDemandModifier | Objects::WorldEntity::DescIncludeUnitCount);
+			}
+
+			/*virtual override*/ void	StructureFocusCommand::CompileLabel(const Objects::PWorldEntity&,Label&outResult)
+			{
+				//Objects::PStructure target = structure;
+				Objects::PTurretBase target = structure->GetTurretBase();
+				outResult << name;
+				if (structure->isMine)
+					outResult << "Owner: me";
+				else
+					outResult << "Owner: "+structure->owner->GetName();
+				if (structure->health > 0)
+				{
+					if (structure->IsIndestructible())
+						outResult << " Indestructible";
+					else
+						outResult << String(" Health: " +String( structure->health) + "/" + String(structure->GetMaxHealth()));
+					if (structure->IsWorkingStructure() &&  To<Objects::WorkingStructure>::Cast(structure)->IsHibernating())
+						outResult << " Hibernating";
+				}
+				else
+				{
+					outResult << " Ghost created " + String(-structure->health) + " round(s) ago";
+				}
+
+				if (target && target->turret->CanAttack())
+					outResult << "Offensive ("+String(target->GetAttacksPerRound())+"x"+String(target->turret->damageLevel)+")";
+				if (structure->empDamageLevel)
+					outResult << "EMP-Damage detected ("+String(structure->empDamageLevel)+")";
+
+				outResult.MarkBriefEnd();
+				structure->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice | Objects::WorldEntity::DescIncludeUnitCount);
+
+			}
+
+
+
+
+
+			/**/				GroupFocusCommand::GroupFocusCommand(PGroup&group):
+				group(group),
+				//vcommand(coords,group->entries[group->currentSelection]->IsVehicle() 
+				//			? To<Objects::Vehicle>::Cast(group->entries[group->currentSelection]) : Objects::PVehicle()),
+				//scommand(coords,group->entries[group->currentSelection]->IsStructure() 
+				//			? To<Objects::Structure>::Cast(group->entries[group->currentSelection]) : Objects::PStructure()),
+				Super(int2(), group->name+" ("+String(group->entries.Count())+")",
+									std::bind(&GroupFocusCommand::OnExecute,group,std::placeholders::_1),
+									Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
+									Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>)
+				//that's no constructor. that's a spacestation
+			{
+				RasterizeImage();
+				
+			}
+
+			/*virtual override*/ void	GroupFocusCommand::RasterizeImage()
+			{
+				const float4&background = group->entries.first()->isMine ? friendlyBackgroundColor : hostileBackgroundColor;
+				if (group->entries.first()->IsVehicle())
+				{
+					Objects::VehicleCommand::UpdateTexture(*this,To<Objects::Vehicle>::Cast(group->entries.first()),false,background);
+				}
+				else
+				{
+					if (group->entries.first()->IsStructure())
+					{
+						Objects::StructureCommand::UpdateTexture(*this,To<Objects::Structure>::Cast(group->entries.first()),false,background);
+					}
+					elif (group->entries.first()->IsSatellite())
+						Objects::SatelliteCommand::UpdateTexture(*this,To<Objects::Satellite>::Cast(group->entries.first()),false,background);
+
+				}
+			}
+
+
+			/*static*/ void				GroupFocusCommand::OnExecute(PGroup const&group, Objects::PWorldEntity const&_e)	//must be static because it may move before being executed
+			{
+				if (!group->InitSelection() || group->entries[group->currentSelection] == Objects::selectedEntity)
+					group->currentSelection = (group->currentSelection+1) % group->entries.Count();
+				//Objects::PStructure target = To<Objects::Structure>::Cast(t);
+				Objects::PWorldEntity e = group->entries[group->currentSelection];
+				//if (e->IsVehicle())
+				//	VehicleFocusCommand::OnExecute(To<Objects::Vehicle>::Cast(e),_e);
+				//if (e->IsStructure())
+				//	StructureFocusCommand::OnExecute(To<Objects::Structure>::Cast(e),_e);
+
+				Camera::TranslateTo(e->system.w.xyz);
+				if (e->isMine && e->health > 0)
+					Objects::Select(e,Network::ControlEnabled());
+			}
+
+
+			/*virtual override*/ void	GroupFocusCommand::CompileLabel(const Objects::PWorldEntity&,Label&outResult)
+			{
+				//group->InitSelection();
+
+				Objects::PWorldEntity proto = group->GetPrototype();
+				Objects::PWorldEntity instance = group->entries.first();
+					
+				outResult << name;
+				if (instance->isMine)
+					outResult << "Owner: me";
+				else
+					outResult << "Owner: "+instance->owner->GetName();
+				if (instance->health > 0)
+				{
+					//if (e->IsIndestructible())
+					//	outResult << " Indestructible";
+					//else
+					//	outResult << String(" Health: " +String( e->health) + "/" + String(e->GetMaxHealth()));
+				}
+				else
+				{
+					outResult << " Ghost";
+				}
+
+				#ifndef NO_HIBERNATION
+					if (instance->ToHibernating()->IsHibernating())
+						outResult << " Hibernating";
+				#endif
+
+
+				//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
+				Objects::PTurretBase b = proto->GetTurretBase();
+				if (b && b->turret->CanAttack())
+					outResult << "Offensive ("+String(b->GetAttacksPerRound())+"x"+String(b->turret->damageLevel)+")";
+//					if (target->empDamageLevel)
+//					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
+
+				outResult.MarkBriefEnd();
+				Objects::OwnerParameter old = proto->owner;
+				proto->owner = group->entries.first()->owner;	//crude, but either it's set already, or this is a global prototype in which case ownership don't matter
+				proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice | Objects::WorldEntity::DescIncludeUnitCount);
+				proto->owner = old;
+
+				//if (e->IsVehicle())
+				//{
+				//	VehicleFocusCommand vcommand(coords,To<Objects::Vehicle>::Cast(e));
+				//	vcommand.CompileLabel(outResult);
+				//	return;
+				//}
+				//if (e->IsStructure())
+				//{
+				//	StructureFocusCommand scommand(coords,To<Objects::Structure>::Cast(e));
+				//	scommand.CompileLabel(outResult);
+				//	return;
+				//}
+				//outResult << "Unsupported entity: "+e->GetName();
+			}
+
+
+			//Buffer0<VehicleFocusCommand>		vehicleCommands;
+			//Buffer0<StructureFocusCommand>		structureCommands;
+			Buffer0<GroupFocusCommand>			groupFocusCommands;
+			VehicleFocusCommand					selectedVehicleFocus;
+			StructureFocusCommand				selectedStructureFocus;
+			SatelliteFocusCommand				selectedSatelliteFocus;
+
+			std::shared_ptr<ArrowCommand>		leftCommand,rightCommand,
+												friendlyLeftCommand,friendlyRightCommand;
+			std::shared_ptr<TutorialCommand>	tutorialCommand;
+			Buffer0<Objects::PWorldEntity>			hostileScope;
+
+
+		}
+
+
+
+		namespace HexGrid
+		{
+
+
+			void		GridCell::Update(const Engine::Aspect<>&aspect)
+			{
+				float2 center = ToFloatCoords();
+				float2 topRight = center + float2(CellSize*0.9f),
+						bottomLeft = center - float2(CellSize*0.9f);
+				float3 topRightP,bottomLeftP;
+				aspect.Project(float3(topRight,0),topRightP);
+				aspect.Project(float3(bottomLeft,0),bottomLeftP);
+
+				projectedRect.x.min = bottomLeftP.x * 0.5f + 0.5f;
+				projectedRect.x.max = topRightP.x * 0.5f + 0.5f;
+				projectedRect.y.min = bottomLeftP.y * 0.5f + 0.5f;
+				projectedRect.y.max = topRightP.y * 0.5f + 0.5f;
+			}
+			float2		GridCell::ToFloatCoords() const
+			{
+				int2 cellCoords = command->coords;
+				if (!flipX && !flipY)
+					cellCoords += int2(5,1);
+				float x;
+				if (flipX)
+					x = (-1+2.f * display.pixelAspect()) - stepX *2 * cellCoords.x - float(1 - (cellCoords.y % 2)) * stepX;
+				else
+					x = -1.f + stepX *2 * cellCoords.x + float(1 - (cellCoords.y % 2)) * stepX;
+				float2	rs(x, -1.f + stepY * cellCoords.y);
+				if (flipY)
+					rs.y = -rs.y;
+				return rs;
+			}
+
+			/*static*/ void GridCell::Radial(float cellIndex, TVec2<>&rs)
+			{
+				float a = cellIndex / 6.0f * M_PIF * 2.0f;
+				rs.x = -sin(a);
+				rs.y = cos(a);
+			}
+
+			bool		GridCell::Contains(const TVec2<>&p) const
+			{
+				if (!projectedRect.Contains(p))
+					return false;
+
+				TVec2<> relative;
+				projectedRect.Relativate(p,relative);
+				relative = relative * 2.f - 1.f;
+				TVec2<> prev;
+				Radial(0,prev);
+				for (int i = 0; i < 6; i++)
+				{
+					TVec2<> next;
+					Radial((i+1)%6,next);
+					TVec2<> change,sb;
+					Vec::sub(next,prev,change);
+					swp(change.x,change.y);
+					change.x = -change.x;
+					Vec::sub(relative,prev,sb);
+					float dt = Vec::dot(change,sb);
+					if (dt < 0)
+						return false;
+
+					prev = next;
+				}
+				return true;
+			}
+
+			Buffer<GridCell>			guiCells;
+
+
+			void	DeleteAllCellsOfType(GridCell::type_t t)
+			{
+				for (index_t i = 0; i < guiCells.Count(); i++)
+					if (guiCells[i].type == t)
+					{
+						guiCells.Erase(i);
+						i--;
+					}
+			}
+
+
+
+			DX11::BaseInstructionBlock	instruction;
+			DX11::ObjectBuffer<float4>	center,color;
+			Engine::OrthographicAspect<> camera;
+			Buffer0<Group>	friendlyGroups,hostileGroups;
+
+
+
+			void						Configure(const Objects::PWorldEntity&e);
+
+			void						Create()
+			{
+				center.Create(float4());
+				color.Create(float4(1));
+
+				instruction.quickSlots.SetSize(1);
+
+				DX11::Shader::Binding bindings[] =
+				{
+					DX11::Shader::Binding(0,"Texture"),
+					DX11::Shader::SamplerBinding(true,Engine::TextureFilter::Trilinear,1,"Sampler"),
+					DX11::Shader::Binding(center,"Center"),
+					DX11::Shader::Binding(color,"VisualCode"),
+				};
+
+				count_t numSet = DX11::Shader::macroDefinitions.Count();
+				DX11::Shader::RedefineMacro(DX11::Shader::Macro("CELL_SIZE",CellSize*0.9f));
+				instruction.shader.LoadFromFile("shaders/hexUI.hlsl","vsMain", "gsMain", "psMain",bindings, ARRAYSIZE(bindings));
+
+				DX11::Shader::macroDefinitions.Truncate(numSet);
+				instruction.UpdateLayout();
+				instruction.SetPoints();
+
+				camera.UpdateProjection(-1,-1,-1+2.f * display.pixelAspect(),1,-1,1);
+				camera.depthTest = Engine::NoDepthTest;
+
+
+				leftCommand.reset(new ArrowCommand(true));
+				leftCommand->coords = ContactListOffset;
+				rightCommand.reset(new ArrowCommand(false));
+				rightCommand->coords = ContactListOffset + int2(currentContactListWidth+1,0);
+				friendlyLeftCommand.reset(new ArrowCommand(true, true));
+				friendlyLeftCommand->coords = FriendlyListOffset;
+				friendlyRightCommand.reset(new ArrowCommand(false, true));
+				friendlyRightCommand->coords = FriendlyListOffset + int2(currentContactListWidth+1,0);
+				tutorialCommand.reset(new TutorialCommand());
+				tutorialCommand->coords = int2(1);
+
+				Configure(Objects::selectedEntity);	//very likely not set
+
+			}
+
+
+			bool		hasFocusButton = false;
+
+
+			void						OnWindowResize()
+			{
+				barProjectionCamera.region.x.max = 0.9f;
+				//1.f / display.pixelAspect();
+
+				camera.UpdateProjection(-1,-1,-1+2.f * display.pixelAspect(),1,-1,1);
+				foreach (guiCells,cell)
+					cell->Update(camera);
+				RefreshContacts();
+				if (hasFocusButton)
+				{
+					selectedVehicleFocus.coords = GetFocusLocation();
+					selectedStructureFocus.coords = GetFocusLocation();
+					selectedSatelliteFocus.coords = GetFocusLocation();
+				}
+			}
+
+			void						Destroy()
+			{
+				center.Clear();
+				color.Clear();
+				instruction.Clear();
+				guiCells.Clear();
+				groupFocusCommands.Clear();
+				//vehicleCommands.Clear();
+				//structureCommands.Clear();
+				leftCommand.reset();
+				rightCommand.reset();
+				tutorialCommand.reset();
+				friendlyGroups.Clear();
+				hostileGroups.Clear();
+
+				selectedVehicleFocus = VehicleFocusCommand();
+				selectedStructureFocus = StructureFocusCommand();
+				selectedSatelliteFocus = SatelliteFocusCommand();
+			}
+
+			bool	HandleClick()
+			{
+				foreach (guiCells,c)
+				{
+					if (c->command->texture.IsNotEmpty())
+					{
+						if (c->Contains(Engine::mouse.location.windowRelative))
+						{
+							if (c->command->isEnabled)
+							{
+								c->command->Execute();
+								Objects::UpdateChoices(Network::ControlEnabled());
+								Tutorial::ShowMessage(c->command->name);
+								Configure(Objects::selectedEntity);
+							}
+							return true;
+						}
+					}
+				}
+				return false;
+			}
+
+			GridCell*		hoveringOver = nullptr;
+			Objects::BaseCommand::Label	hoveringText;
+			float			hoveringWidth = 0;
+			bool			hoveringBrief = true;
+
+			/*
+				Renders in viewport -1 to +1
+			*/
+			void						Render()
+			{
+				//static int2 lastMouse;
+
+
+				static float stationaryCounter = 0;
+				static int2 refPos;
+
+				if (!Vec::similar(refPos, Engine::mouse.location.absolute,10))
+				{
+					stationaryCounter = 0;
+					refPos = Engine::mouse.location.absolute;
+				}
+				else
+					stationaryCounter += Engine::timing.delta;
+
+				bool stationary = stationaryCounter > 0.25f;
+				bool extStationary = stationaryCounter > 1.5f;
+
+				camera.UpdateProjection2(-1,-1,-1+2.f * display.pixelAspect(),1,-1,1);
+				display.pick(camera);
+
+				display.SetRasterizer(true,false);
+				display.SetDepthTest(false,false);
+				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+
+				GridCell*lastHovering = hoveringOver;
+				hoveringOver = nullptr;
+				//Array<String>	hoveringText;
+
+				foreach (guiCells,c)
+				{
+					if (c->command->texture.IsNotEmpty())
+					{
+						//c->command->DbgRefresh();
+						//display.SetRasterizer(true,false);
+						//display.SetDepthTest(false,false);
+						//display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+						//display.pick(camera);
+
+
+						float2 world = c->ToFloatCoords();
+						float3 at;
+						camera.Project(float3(world,0),at);
+						at.xy = at.xy*0.5f + 0.5f;
+						auto&cmd = *c->command;
+
+						float4 code;
+					
+						{
+							if (!Dialog::IsModal() && c->Contains(Engine::mouse.location.windowRelative))
+							{
+								code.r = 1.f;
+								if (stationary)
+								{
+									hoveringOver = c;
+							
+								}
+							}
+							
+								//color.Update(float4(1.f, 0.5f, 0.5f, 1.f));
+							//else
+								if (cmd.permaActive)
+									code.y = 1.f;
+									//color.Update(float4(0, 0, 1.f, 1.f));
+								//else
+									//color.Update(float4(1, 1, 1.f, 1.f));
+						}
+
+						if (!cmd.isEnabled)
+						{
+						//	code.xy = float2(0);
+							code.z = 0.5f;
+						}
+							//color.Update(float4(1,1,1,0.5));
+						color.Update(code);
+
+						center.Update(float4(world,0,1));
+						instruction.quickSlots.first() = c->command->texture;
+						display.RenderVertices(instruction,0,1);
+					}
+					else
+						FATAL__("command texture is empty: "+c->command->name);
+
+				}
+
+				if (lastHovering != hoveringOver)
+				{
+					lastHovering = hoveringOver;
+					hoveringText.Clear();
+					if (hoveringOver)
+						hoveringOver->command->CompileLabel(Objects::selectedEntity, hoveringText);
+					hoveringText.briefEndAt = std::min(hoveringText.briefEndAt,hoveringText.lines.Count());
+					hoveringWidth = 0;
+					hoveringBrief = true;
+				}
+				else
+				{	bool wasBefore = hoveringBrief;
+					hoveringBrief = !extStationary;
+					if (wasBefore != hoveringBrief)
+						hoveringWidth = 0;
+				}
+
+				if (hoveringOver)
+				{
+					//tooltips
+					display.pick(UI::textoutCamera);
+
+					textout.pushState();
+					float2 base = Engine::mouse.location.windowRelative * 2.f - 1.f;
+					textout.scale(2.5f,2.5f);
+
+					SurfaceRenderer::SetColor(float4(0,0,0,0.9f));
+					if (hoveringWidth == 0)
+					{
+						if (hoveringBrief)
+						{
+							for (index_t i = 0; i < hoveringText.briefEndAt; i++)
+								hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(hoveringText.lines[i]));
+						}
+						else
+							foreach (hoveringText.lines,t)
+								hoveringWidth = std::max(hoveringWidth, textout.getScaledWidth(*t));
+					}
+				
+					count_t lineCount = hoveringBrief ? hoveringText.briefEndAt : hoveringText.lines.Count();
+					float h = textout.getScaledHeight()*(lineCount-1);
+					Rect<> r;
+
+					if (hoveringOver->flipX)
+					{
+						if (hoveringOver->flipY)
+						{
+							textout.locate(base - float2(hoveringWidth,textout.getScaledHeight()));
+							r = Rect<>(base -float2(hoveringWidth,textout.getScaledHeight() + h+textout.getScaledHeight()),base + float2(0,-textout.getScaledHeight()*0.8f));
+						}
+						else
+						{
+							textout.locate(base + float2(-hoveringWidth,h + textout.getScaledHeight()));
+							r = Rect<>(base-float2(hoveringWidth,0) ,base + float2(0,h + textout.getScaledHeight()*1.2f));
+						}
+					}
+					else
+					{
+						base.x = std::min(base.x,1.f - hoveringWidth);
+
+						if (hoveringOver->flipY)
+						{
+							textout.locate(base - float2(0,textout.getScaledHeight()));
+							r = Rect<>(base -float2(0,textout.getScaledHeight() + h+textout.getScaledHeight()),base + float2(hoveringWidth,-textout.getScaledHeight()*0.8f));
+						}
+						else
+						{
+							textout.locate(base + float2(0,h + textout.getScaledHeight()));
+							r = Rect<>(base ,base + float2(hoveringWidth,h + textout.getScaledHeight()*1.2f));
+						}
+					}
+
+					r.x.min = r.x.min * 0.5f + 0.5f;
+					r.x.max = r.x.max * 0.5f + 0.5f;
+					r.y.min = r.y.min * 0.5f + 0.5f;
+					r.y.max = r.y.max * 0.5f + 0.5f;
+					//Rect<>r(0,0,1,1);
+
+					SurfaceRenderer::Rasterize(r);
+					SurfaceRenderer::Flush();
+
+					textout.color(1,1,1);
+					for (index_t i = 0; i < lineCount; i++)
+						textout << hoveringText.lines[i] << nl;
+					textout.popState();
+				}
+
+
+
+
+
+				//static Engine::Aspect<> aspect;
+				//aspect.depthTest = Engine::VisualEnum::NoDepthTest;
+				//display.pick(aspect);
+				//SurfaceRenderer::SetColor(float4(1,0,0,0.4));
+				//foreach (activeCells,c)
+				//{
+				//	if (c->command->texture.IsNotEmpty())
+				//	{
+				//		SurfaceRenderer::Rasterize(c->projectedRect);
+				//	}
+				//}
+				//SurfaceRenderer::Flush();
+
+			}
+
+
+			int2 at;
+			void	VisitCommand(Objects::BaseCommand&cmd)
+			{
+				GridCell&cell = guiCells.Append();
+				cell.type = GridCell::EntityCommand;
+				cell.command = &cmd;
+				cell.Update(camera);
+			}
+
+
+
+
+			void					RefreshContacts()
+			{
+				currentContactListWidth = std::max(1, int((display.pixelAspect()-0.67f)*15));
+				if (rightCommand)
+					rightCommand->coords.x = int(ContactListOffset.x + 1+currentContactListWidth);
+				DeleteAllCellsOfType(GridCell::ContactListEntry);
+				DeleteAllCellsOfType(GridCell::ContactListLeft);
+				DeleteAllCellsOfType(GridCell::ContactListRight);
+				DeleteAllCellsOfType(GridCell::OwnedListEntry);
+				DeleteAllCellsOfType(GridCell::OwnedListLeft);
+				DeleteAllCellsOfType(GridCell::OwnedListRight);
+
+				{
+					static StringTable<Buffer0<Objects::PWorldEntity>,Swap>	hostileCollection, friendlyCollection;
+					hostileCollection.Clear(); friendlyCollection.Clear();
+
+
+					Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
+					{
+						String key = e->GetTypeName() + "|" + e->owner->GetName();
+						if (e->health <= 0)
+							key += "|ghost";
+						#ifndef NO_HIBERNATION
+							if (e->ToHibernating()->IsHibernating())
+								key += "|hibernating";
+						#endif
+
+						if (e->isMine)
+						{
+							friendlyCollection.Set(key).Append(e);
+						}
+						else
+							hostileCollection.Set(key).Append(e);
+					});
+					friendlyGroups.Clear();
+					friendlyCollection.VisitAllValues([](Buffer0<Objects::PWorldEntity>&entries)
+					{
+						Group&group = friendlyGroups.Append();
+						group.name = entries.first()->GetTypeName();
+						group.entries.adoptData(entries);
+						group.UpdateSignificance();
+					});
+					hostileGroups.Clear();
+					hostileCollection.VisitAllValues([](Buffer0<Objects::PWorldEntity>&entries)
+					{
+						Group&group = hostileGroups.Append();
+						group.name = entries.first()->GetTypeName();
+						group.entries.adoptData(entries);
+						group.UpdateSignificance();
+					});
+					hostileCollection.Clear(); friendlyCollection.Clear();
+
+
+					ByOperator::QuickSort(friendlyGroups);
+					ByOperator::QuickSort(hostileGroups);
+
+				}
+				
+
+
+				#ifdef HAS_WINDOW
+					if (hostileGroups.IsNotEmpty())
+						Tutorial::ShowMessage("Hostile Contacts");
+				#endif
+
+				bool friendlyMoreRight, hostileMoreRight;
+				{
+					Buffer0<Group>&groups = hostileGroups;
+					index_t newOffset = hostileOffset;
+
+					count_t scopeWidth = groups.Count();
+
+					if (newOffset > 0 && newOffset + currentContactListWidth > scopeWidth)
+					{
+						if (scopeWidth >= currentContactListWidth)
+							newOffset = scopeWidth - currentContactListWidth;
+						else
+							newOffset = 0;
+					}
+					if (newOffset > 0)
+						groups.Erase(0,newOffset);
+					hostileMoreRight = groups.Count() > currentContactListWidth;
+					groups.Truncate(currentContactListWidth);
+					hostileOffset = newOffset;
+				}
+				{
+					Buffer0<Group>&groups = friendlyGroups;
+					index_t newOffset = friendlyOffset;
+
+					count_t scopeWidth = groups.Count();
+
+					if (newOffset > 0 && newOffset + currentContactListWidth > scopeWidth)
+					{
+						if (scopeWidth >= currentContactListWidth)
+							newOffset = scopeWidth - currentContactListWidth;
+						else
+							newOffset = 0;
+					}
+					if (newOffset > 0)
+						groups.Erase(0,newOffset);
+					friendlyMoreRight = groups.Count() > currentContactListWidth;
+					groups.Truncate(currentContactListWidth);
+					friendlyOffset = newOffset;
+				}
+				
+				if (hostileOffset > 0)
+				{
+					GridCell&cell = guiCells.Append();
+					cell.type = GridCell::ContactListLeft;
+					cell.command = leftCommand.get();
+					cell.flipY = true;
+					cell.Update(camera);
+				}
+				if (friendlyOffset > 0)
+				{
+					GridCell&cell = guiCells.Append();
+					cell.type = GridCell::OwnedListLeft;
+					cell.command = friendlyLeftCommand.get();
+					cell.flipY = true;
+					cell.Update(camera);
+				}
+				if (hostileMoreRight)
+				{
+					GridCell&cell = guiCells.Append();
+					cell.type = GridCell::ContactListRight;
+					rightCommand->coords = ContactListOffset + int2(currentContactListWidth+1,0);
+					cell.command = rightCommand.get();
+					cell.flipY = true;
+					cell.Update(camera);
+				}
+				if (friendlyMoreRight)
+				{
+					GridCell&cell = guiCells.Append();
+					cell.type = GridCell::OwnedListRight;
+					friendlyRightCommand->coords = FriendlyListOffset + int2(currentContactListWidth+1,0);
+				//friendlyLeftCommand.reset(new ArrowCommand(FriendlyListOffset, true, true));
+				//friendlyRightCommand.reset(new ArrowCommand(FriendlyListOffset + int2(currentContactListWidth+1,0), false, true));
+
+					cell.command = friendlyRightCommand.get();
+					cell.flipY = true;
+					cell.Update(camera);
+				}
+
+				groupFocusCommands.SetSize(hostileGroups.Count() + friendlyGroups.Count(),false);
+				index_t counter = 0;
+				for (auto&g : hostileGroups)
+				{
+					PGroup group(new Group());
+					group->swap(g);
+					groupFocusCommands.Append(GroupFocusCommand(group));
+					
+
+					GridCell&cell = guiCells.Append();
+					cell.type = GridCell::ContactListEntry;
+					cell.command = groupFocusCommands + counter;
+					cell.command->coords = ContactListOffset + int2(counter+1,0);
+					cell.flipY = true;
+					cell.Update(camera);
+
+					counter++;
+				}
+				counter = 0;
+				for (auto&g : friendlyGroups)
+				{
+					PGroup group(new Group());
+					group->swap(g);
+					groupFocusCommands.Append(GroupFocusCommand(group));
+
+					GridCell&cell = guiCells.Append();
+					cell.type = GridCell::OwnedListEntry;
+					cell.command = groupFocusCommands + counter + hostileGroups.Count();
+					cell.command->coords = FriendlyListOffset + int2(counter+1,0);
+					cell.flipY = true;
+					cell.Update(camera);
+
+					counter++;
+				}
+
+				RefreshTutorials();
+				//display.SetDepthTest(false,false);
+				//display.SetRasterizer(true,false);
+			}
+
+			void			RefreshTutorials()
+			{
+				if (!tutorialCommand)
+					return;
+				DeleteAllCellsOfType(GridCell::Tutorial);
+				GridCell&cell = guiCells.Append();
+				cell.type = GridCell::Tutorial;
+				cell.command = tutorialCommand.get();
+				cell.flipX = true;
+				cell.Update(camera);
+				tutorialCommand->Refresh(Network::ControlEnabled());
+			}
+
+			void					Configure(const Objects::PWorldEntity&e)
+			{
+				DeleteAllCellsOfType(GridCell::EntityCommand);
+
+				at = int2(5,1);
+				foreach (Objects::globalCommands,cmd)
+					VisitCommand(*cmd);
+				Next();
+				Next();
+
+				if (e)
+				{
+					hasFocusButton = true;
+					e->VisitAllCommands(VisitCommand);
+					if (e->IsVehicle())
+					{
+						Objects::PVehicle v = To<Objects::Vehicle>::Cast(e);
+						selectedStructureFocus = StructureFocusCommand();
+						selectedSatelliteFocus = SatelliteFocusCommand();
+						selectedVehicleFocus = VehicleFocusCommand(v);
+						selectedVehicleFocus.coords = GetFocusLocation();
+
+						selectedVehicleFocus.Refresh(true);//Network::ControlEnabled());
+						selectedVehicleFocus.UpdateTexture(v,false,v->isMine ? friendlyBackgroundColor : hostileBackgroundColor);
+
+						GridCell&cell = guiCells.Append();
+						cell.type = GridCell::EntityCommand;
+						cell.command = &selectedVehicleFocus;
+						cell.flipY = true;
+						cell.flipX = true;
+						cell.Update(camera);
+					}
+					else
+					{
+						if (e->IsStructure())
+						{
+							selectedVehicleFocus = VehicleFocusCommand();
+							selectedSatelliteFocus = SatelliteFocusCommand();
+							Objects::PStructure s = To<Objects::Structure>::Cast(e);
+							selectedStructureFocus = StructureFocusCommand(s);
+							selectedStructureFocus.coords = GetFocusLocation();
+							selectedStructureFocus.Refresh(true);//Network::ControlEnabled());
+							selectedStructureFocus.UpdateTexture(s,false,s->isMine ? friendlyBackgroundColor : hostileBackgroundColor);
+
+							GridCell&cell = guiCells.Append();
+							cell.type = GridCell::EntityCommand;
+							cell.command = &selectedStructureFocus;
+							cell.flipY = true;
+							cell.flipX = true;
+							cell.Update(camera);
+						}
+						else
+							if (e->IsSatellite())
+							{
+								Objects::PSatellite s = To<Objects::Satellite>::Cast(e);
+								selectedVehicleFocus = VehicleFocusCommand();
+								selectedStructureFocus = StructureFocusCommand();
+
+								selectedSatelliteFocus = SatelliteFocusCommand(s);
+								selectedSatelliteFocus.coords = GetFocusLocation();
+								selectedSatelliteFocus.Refresh(true);//Network::ControlEnabled());
+								selectedSatelliteFocus.UpdateTexture(s,false,s->isMine ? friendlyBackgroundColor : hostileBackgroundColor);
+
+								GridCell&cell = guiCells.Append();
+								cell.type = GridCell::EntityCommand;
+								cell.command = &selectedSatelliteFocus;
+								cell.flipY = true;
+								cell.flipX = true;
+								cell.Update(camera);
+							}
+							else
+								FATAL__("Unexpected entity type "+e->GetName());
+					}
+
+					selectedVehicleFocus.coords = GetFocusLocation();	//must do this due to offset applied automatically
+					selectedStructureFocus.coords = GetFocusLocation();
+
+				}
+				else
+				{
+					hasFocusButton = false;
+					selectedVehicleFocus = VehicleFocusCommand();
+					selectedStructureFocus = StructureFocusCommand();
+				}
+
+
+
+				RefreshContacts();
+
+			}
+		}
+
+
+
+
+
+
+		void Create()
+		{
+			HexGrid::Create();
+			Gauge::StaticCreate();
+
+			//camera.location = float3(0,-100,0);
+			barProjectionCamera.retraction = float3(0,0,-120);
+			barProjectionCamera.direction = float3(0,-1,0.3).Normalized();
+			barProjectionCamera.upAxis = float3(0,0,1);
+			barProjectionCamera.UpdateView();
+			barProjectionCamera.UpdateProjection2(1.f,0.1f,1000,35.f);
+			barProjectionCamera.depthTest = Engine::NoDepthTest;
+			barProjectionCamera.region.x.max = 1.f / display.pixelAspect();
+
+			textoutCamera.UpdateProjection(-1,-1,1,1,-1,1);
+			textoutCamera.depthTest = Engine::NoDepthTest;
+
+
+
+			static const float stepX = (0.5f + 1.f) * 2.2f * 1.2f HIB(/1.2f);
+			static const float stepY = 0.86602540378443864676372317075294f * 2.2f;
+//			const float3 base(-38,0,-36);
+			const float3 base(-33,0,-36);
+			Random random(1024);
+
+			gauges.SetSize(Objects::ResourceVector::NumEntries);
+			#ifndef NO_HIBERNATION
+				trafficGauge.isTraffic = true;
+			#endif
+
+			for (index_t i = 0; i < gauges.Count(); i++)
+			{
+				Gauge&g = gauges[i];
+				g.base.x = float(i HIB(+2)) * (stepX );
+				g.base.y = (1.f - float(i%2)) * stepY;
+				g.base += base;
+				g.LoadTexture(Objects::Resource::Reinterpret(i));
+				//test.Construct();
+			}
+			#ifndef NO_HIBERNATION
+			{
+				Gauge&g = trafficGauge;
+				g.base.x = 0;
+				g.base.y = stepY;
+				g.base += base;
+
+				g.IconItem::LoadTexture("Traffic");
+				g.myTag = Objects::TrafficResourceTag();
+				g.color = float3(0.1,1,1);
+			}
+			#endif
+
+
+			timeResource.color = float3(1);
+			timeResource.LoadTexture("time");
+
+
+
+			gauges[Objects::Resource::Energy].color = float3(0.2,0.4,1);
+			gauges[Objects::Resource::Fuel].color = float3(0.4,1,0.2);
+			gauges[Objects::Resource::Minerals].color = float3(0.7,0.7,0.7);
+			#ifndef NO_MUNITION
+				gauges[Objects::Resource::Munitions].color = float3(1,0.4,0.2);
+			#endif
+			gauges[Objects::Resource::Uranium].color = float3(1,1,0.1);
+			gauges[Objects::Resource::Uranium].alternatingColor = float3(0.1,0.1,0.1);
+			gauges[Objects::Resource::Uranium].usesAlternatingColors = true;
+		}
+
+
+		static bool showExtraGauges = false;
+
+		#ifndef NO_HIBERNATION
+
+	
+			void	UpdateTraffic(int traffic)
+			{
+				showExtraGauges = true;
+				int gain = Objects::uplinkTraffic - Objects::onlineUplinkTraffic;
+
+
+				if (Objects::onlineUplinkTraffic*2 > Network::uplinkBandwidth)
+					Tutorial::ShowMessage("Uplink Traffic");
+
+
+				trafficGauge.Set(Objects::onlineUplinkTraffic,Network::uplinkBandwidth,gain,traffic,0,true);
+			}
+		#endif
+
+		void	UpdateTraffic()
+		{
+			if (Objects::selectedEntity)
+			{
+				#ifndef NO_HIBERNATION
+				UpdateTraffic(
+					Objects::selectedEntity->GetUplinkTraffic()
+					);
+				#else
+					showExtraGauges = true;
+
+				#endif
+			}
+			else
+				HideExtraGauges();
+		}
+
+		void	HideExtraGauges()
+		{
+			showExtraGauges = false;
+			#ifndef NO_HIBERNATION
+				int gain = Objects::uplinkTraffic - Objects::onlineUplinkTraffic;
+
+
+				if (Objects::onlineUplinkTraffic*2 > Network::uplinkBandwidth)
+					Tutorial::ShowMessage("Uplink Traffic");
+
+				trafficGauge.Set(Objects::onlineUplinkTraffic,Network::uplinkBandwidth,gain,0,0,true);
+			#endif
+		}
+
+		void	Update( TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change)
+		{
+			#ifndef NO_HIBERNATION
+				UpdateTraffic(traffic);
+			#else
+				showExtraGauges = true;
+			#endif
+			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
+				gauges[i].Set(current.level[i],max.level[i],change.level[i],0,0,true);
+
+		}
+
+		void	Update( TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max)
+		{
+			#ifndef NO_HIBERNATION
+				UpdateTraffic(traffic);
+			#else
+				showExtraGauges = true;
+			#endif
+			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
+				gauges[i].Set(current.level[i],max.level[i],0,0,0,true);
+
+		}
+
+		void	Update( TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change,
+						const Objects::ResourceVector&localCurrent/*, const Objects::ResourceVector&localChange, bool isEnabled*/)
+		{
+			#ifndef NO_HIBERNATION
+				UpdateTraffic(traffic);
+			#else
+				showExtraGauges = true;
+			#endif
+			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
+	//			resources[i].Set(current.level[i],max.level[i],change.level[i],localCurrent.level[i],localChange.level[i],isEnabled);
+				gauges[i].Set(current.level[i],max.level[i],change.level[i],localCurrent.level[i],0,true);
+		}
+
+		void	Render()
+		{
+			HexGrid::Render();
+			//if (!Objects::selectedEntity)
+			//{
+			//	return;
+			//}
+			display.StoreRendererState();
+			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+			display.SetRasterizer(true,true);
+			display.SetDepthTest(false,false);
+
+
+			if (resourcesAsList)
+			{
+				display.pick(textoutCamera);
+					textout.pushState();
+					textout.scale(2.5f,2.5f);
+					float lineHeight = textout.getScaledHeight()*1.2f;
+					SurfaceRenderer::SetColor(float4(0,0,0,0.6f));
+					float w = 0.2f / display.pixelAspect();
+					//textout.locate(-1.f + 0.01f,-1.f + textout.getScaledHeight()*1.2f*(y+6));
+					Rect<> t(0,lineHeight*2.f,w,lineHeight*0.5f*11.5f);
+					SurfaceRenderer::Rasterize(
+						float2(t.x.min,t.y.min),float4(0,0,0,0.8f),
+						float2(t.x.max,t.y.min),float4(0,0,0,0.2f),
+						float2(t.x.max,t.y.max),float4(0,0,0,0.2f),
+						float2(t.x.min,t.y.max),float4(0,0,0,0.8f)
+					);
+					SurfaceRenderer::Flush();
+					//textout.scale(4.f,4.f);
+					//textout.color(1,1,1);
+
+					#ifndef NO_HIBERNATION
+						trafficGauge.RenderListText(0);	//bottom
+					#endif
+					if (showExtraGauges)
+					{
+						index_t at = 2;
+						foreach (gauges,res)
+						{
+							res->RenderListText((int)(at++));
+						}
+					}
+
+					textout.popState();
+			}
+			else
+			{
+
+				barProjectionCamera.region.x.max = 1.f / display.pixelAspect();
+				//(sin(Engine::timing.now)*0.5f+0.5f) + 0.5f;
+
+				display.pick(barProjectionCamera);
+
+
+
+				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+
+				#ifndef NO_HIBERNATION
+					trafficGauge.Render(0);
+				#endif
+				if (showExtraGauges)
+				{
+					for (index_t i = 0; i < gauges.Count(); i+=2)
+						gauges[i].Render(0);
+					for (index_t i = 1; i < gauges.Count(); i+=2)
+						gauges[i].Render(0);
+				}
+
+				display.SetBlendMode(Engine::BlendMode::FlareBlend);
+				#ifndef NO_HIBERNATION
+					trafficGauge.Render(1);
+				#endif
+
+				if (showExtraGauges)
+				{
+					for (index_t i = 0; i < gauges.Count(); i+=2)
+						gauges[i].Render(1);
+					for (index_t i = 1; i < gauges.Count(); i+=2)
+						gauges[i].Render(1);
+				}
+
+
+				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+
+				#ifndef NO_HIBERNATION
+					trafficGauge.UpdateTextProjection(barProjectionCamera);
+				#endif
+				if (showExtraGauges)
+					foreach (gauges,res)
+					{
+						res->UpdateTextProjection(barProjectionCamera);
+					}
+
+				display.pick(textoutCamera);
+					textout.pushState();
+					textout.scale(4.f,4.f);
+					textout.color(1,1,1);
+
+					#ifndef NO_HIBERNATION
+						trafficGauge.RenderText();
+					#endif
+					if (showExtraGauges)
+						foreach (gauges,res)
+						{
+							res->RenderText();
+						}
+
+					textout.popState();
+			
+
+
+			}
+
+			display.RestoreRendererState();
+
+		}
+
+
+
+		void Destroy()
+		{
+			HexGrid::Destroy();
+			Gauge::StaticDestroy();
+			gauges.Clear();
+			#ifndef NO_HIBERNATION
+				trafficGauge.Destroy();
+			#endif
+			timeResource.texture.Clear();
+
+
+		}
+
+
+
+
+
+
+
+	}
+
+
+	namespace StatePanel
+	{
+		//0.0135f;
+
+		float		OnTag(const float3&at, char tagChar, float scaleX, float scaleY)
+		{
+	//		float2 at = float2(textout.state.left+0.015,textout.state.top - textout.getScaledHeight() * (float(textout.state.line)-0.5f));
+
+			index_t i = tagChar - tagOffset;
+	//		float2 p = at.xy;
+			if (i < Objects::Resource::NumberOfPossibilities/* UI::gauges.Count()*/)
+			{
+				UI::gauges[i].RenderIcon(tagIconSize /** scaleX*/);
+			}
+			else
+			{
+				if (i - Objects::Resource::NumberOfPossibilities == 0)
+					UI::timeResource.RenderIcon(tagIconSize);
+				#ifndef NO_HIBERNATION
+					else
+						UI::trafficGauge.RenderIcon(tagIconSize);
+				#endif
+			}
+			return tagIconSize * scaleX;
+			//;*2.f/display.pixelAspect();
+		}
+
+
+		void		Render(const Objects::WorldEntity&e)
+		{
+			textout.pushState();
+			float3 color (1);
+			#ifndef NO_HIBERNATION
+				const Objects::Hibernating*h = e.ToHibernating();
+			#endif
+			textout.color(color);
+			
+
+
+			float len = 300.f / display.clientWidth();
+			//if (len == 0)
+				//len = textout.scaledWidth("012345678901234567890123456789012345");
+			textout.locate(1.f - len,0.95f);
+			const String&name= e.GetNiceName();
+			if (name.length() < 20)
+				textout << name <<nl;
+			else
+			{
+				index_t split = name.indexOf('\'');
+				if (split == 0)
+					split = name.indexOf(' ');
+				textout << name.subStringRef(0,split-1) << nl;
+				textout << ' '<<name.subStringRef((int)split-1) << nl;
+				
+				#ifdef _DEBUG
+					textout << ' '<<e.GetName()<<nl;
+
+				#endif
+
+			}
+
+			#ifdef _DEBUG
+				textout << " Location: "<<e.location.ToString()<<nl;
+				textout << " x: "<<e.system.x.xyz<<nl;
+				textout << " y: "<<e.system.y.xyz<<nl;
+				textout << " z: "<<e.system.z.xyz<<nl;
+				textout << " w: "<<e.system.w.xyz<<nl;
+				TVec3<> wz = e.system.w.xyz;
+				Vec::normalize(wz);
+				textout << " w1: "<<wz<<nl;
+			#endif
+
+			textout << " Owner: "<<e.owner->GetName();
+			if (e.isMine)
+				textout<<" (me)";
+			textout << nl;
+			textout << " Scanning-Range: "<<e.GetScanningRange() << nl;
+			#ifndef NO_HIBERNATION
+				textout << " "<<Objects::TrafficResourceTag()  <<e.GetUplinkTraffic() << nl;
+				if (h)
+					textout << " "<<Objects::TrafficResourceTag()  << "Priority: "<<h->GetUplinkPriority()<<nl;
+			#endif
+
+			if (e.health > 0)
+			{
+				if (e.IsIndestructible())
+					textout << " Indestructible" << nl;
+				else
+					textout << " Health: " << e.health << "/" << e.GetMaxHealth() << nl;
+			}
+			else
+			{
+				textout.Tint(1, 0.8, 0.75);
+				textout << " Ghost created " << -e.health << " round(s) ago" << nl;
+				textout.color(color);
+			}
+			#ifndef NO_HIBERNATION
+				if (h->IsHibernating())
+				{
+					color = float3(0.5f);
+					textout.color(0.6,1,1);
+					textout << " Hibernating" << nl;
+					textout.color(color);
+				}
+			#endif
+			if (e.empDamageLevel)
+			{
+				textout.Tint(1,0.8,0.75);
+				textout << " EMP-Damage detected: "<< e.empDamageLevel<<nl;
+				textout.color(color);
+			}
+
+
+			if (e.IsMobile())
+			{
+				const Objects::MobileEntity*v = (const Objects::MobileEntity*)(&e);
+
+				//if (!v->storedIn.expired())
+					//textout << " Stored in: "<<v->storedIn.lock()->GetName()<<nl;	//probably never happens
+				if (e.IsVehicle())
+				{
+					const Objects::Vehicle*veh = (const Objects::Vehicle*)(&e);
+					textout << " Turret-Overweight: "<<std::max(0,veh->turret->weight - veh->base->carryingCapacity) << nl;
+					textout << " Movement Initiative: "<<(int)v->GetMovementInitiative()<<"/"<<(int)veh->base->initiative<<nl;
+				}
+				elif (e.IsSatellite())
+				{
+					Objects::Satellite*sat = (Objects::Satellite*)(&e);
+					int demand = sat->GetFuelConsumptionPerRound();
+					if (!sat->RequiresFuel())
+						demand = 0;
+					textout << " Fuel-Consumption: "<<(char)(tagOffset+Objects::Resource::Fuel)<<demand;
+					if (demand > 0)
+						textout <<'+'<<sat->GetExtraFuelDemand();
+						
+					textout<<nl;
+				}
+				textout << " Attack Initiative: "<<(int)v->GetAttackInitiative()<<"/"<<(int)v->turret->initiative<<nl;
+				textout << " Speed: "<<v->GetMovementStepsPerRound() << nl;
+				if (v->turret->CanAttack())
+				{
+					//textout << " Range: "<<v->GetAttackRange() << nl;
+					//textout << " Damage: "<<v->turret->damageLevel << nl;
+					//textout << " Ammo-Usage: "<<v->turret->ammoNeedPerShot<<nl;
+					textout << " Hrz. Range: "<<v->GetFlatAttackRange();
+					textout << '+'<<v->turret->explosionRadius<< nl;
+					textout << " Damage: "<<v->turret->damageLevel << nl;
+					if (v->turret->ammoNeedPerShot > 0)
+						textout << " "<<(char)(tagOffset+v->turret->ammoType)<<"Ammo-Usage: "<<v->turret->ammoNeedPerShot<<nl;
+
+				}
+				if (v->turret->CanAttack())
+				{
+					textout << " Attacks left: "<<int(v->CountPossibleAttacks())<<"/"<<v->GetAttacksPerRound();
+					textout << nl;
+					if (v->turret->ignoresVehicleMotion)
+						textout << "  (ignores movement)"<<nl;
+				}
+				if (v->turret->constructionSpeed)
+					textout << " Converts "<<Objects::ResourceTag(Objects::Resource::Minerals)<<v->GetConstructionSpeed()<<" per round"<<nl;
+
+				textout << " Tasks:" << nl;
+				if (v->myTasks.IsEmpty())
+				{
+					if (v->unstable)
+						textout << "  Operation done. Relocate to complete" << nl;
+					else
+						textout << "  idle"<<nl;
+				}
+				else
+				{
+					textout.Tint(0.75,0.8,1);
+					foreach (v->myTasks,t)
+					{
+						textout << "  * "<<t->name;
+						if (t->IsMode(Objects::CursorMode::AttackMode) && t->foci.Count() > 1)
+							textout << " (x"<<t->foci.Count()<<')';
+						if (t->job && t->job->roundsToJobCompletion)
+						{
+							textout << " ("<<t->job->roundsToJobCompletion<<" round"<<(t->job->roundsToJobCompletion != 1 ? "s)" : ")") << nl;
+						}
+						else
+							textout << nl;
+					}
+					textout.color(color);
+				}
+				#ifndef CONNECTOR_LESS
+					const Objects::ResourceVector max = v->GetMaxStorageCapacity();
+					bool any = false;
+					for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+						if (max.level[i] > 0)
+							any = true;
+					if (any)
+					{
+
+						textout << "Resources in storage:" << nl;
+						for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+							if (max.level[i] > 0)
+							{
+
+		//						textout << "  "<<Objects::Resource::Reinterpret(i).ToString()<<": "<<v->currentStorage.level[i]<<"/"<<max.level[i]<<nl;
+								textout << "  "<<(char)(tagOffset+i)<<" "<<v->currentStorage.level[i]<<"/"<<max.level[i]<<nl;
+								//textout << "        : "<<v->currentStorage.level[i]<<"/"<<max.level[i]<<nl;
+							}
+					}
+				#endif
+			}
+
+			if (e.IsStructure())
+			{
+				const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&e);
+				if (t)
+				{
+					textout << " Attack Initiative: "<<(int)t->turret->initiative<<nl;
+					if (t->turret->CanAttack())
+					{
+						const Objects::Tower*v = t;	//rename
+						textout << " Hrz. Range: "<<v->GetFlatAttackRange();
+						textout << '+'<<v->turret->explosionRadius<< nl;
+						textout << " Damage: "<<v->turret->damageLevel << nl;
+						textout << " "<<(char)(tagOffset+v->turret->ammoType)<<"Ammo-Usage: "<<v->turret->ammoNeedPerShot<<nl;
+					}
+					if (t->GetAttacksPerRound() > 0)
+						textout << " Attacks left: "<<int(t->CountPossibleAttacks())<<"/"<<t->GetAttacksPerRound() << nl;
+					//textout << " Tasks:" << nl;
+
+					//textout << "Resources in storage:" << nl;
+					//const Objects::ResourceVector max = t->GetMaxStorageCapacity();
+					//for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+					//	if (max.level[i] > 0)
+					//		textout << "  "<<Objects::Resource::Reinterpret(i).ToString()<<": "<<t->storage.level[i]<<"/"<<max.level[i]<<nl;
+		
+				}
+
+
+				const Objects::VehicleStore*st = dynamic_cast<const Objects::VehicleStore*>(&e);
+				if (st)
+				{
+					textout << " Max Vehicles per Store: "<<Objects::VehicleStore::MaxVehiclesPerStore<<nl;
+
+
+					if (st->park)
+					{
+						textout << " Vehicles stored in park ("<<st->park->vehiclesStored<<"/"<<st->GetParkVehicleCapacity()<<"):"<<nl;
+
+
+						textout.PushColorState();
+
+						textout.Tint(0.8f,0.9f,1.1f);
+						count_t cnt = 0;
+
+						{
+							const Objects::VehicleStore *other = st;
+							for (const auto&v : other->localStore)
+							{
+								if (++cnt > 10)
+								{
+									textout << "..."<<nl;
+									break;
+								}
+								textout << "  "<<v.vehicle->GetNiceName() <<" (local)"<< nl;
+							}
+						}
+
+						textout.Tint(0.9f,0.9f,0.9f);
+
+						for (const auto&_s : st->park->members)
+						{
+							Objects::PVehicleStore other = _s.lock();
+							if (other.get() == st)
+								continue;
+							for (const auto&v : other->localStore)
+							{
+								if (++cnt > 10)
+								{
+									textout << "..."<<nl;
+									break;
+								}
+								textout << "  "<<v.vehicle->GetNiceName() << nl;
+							}
+							if (cnt > 10)
+								break;
+						}
+						textout.PopColorState();
+					}
+					else
+					{
+						textout << " Vehicles stored ("<<st->localStore.Count()<<"/"<<Objects::VehicleStore::MaxVehiclesPerStore<<"):"<<nl;
+						for (const auto&v : st->localStore)
+							textout << "  "<<v.vehicle->GetNiceName() << nl;
+					}
+				}
+
+
+				const Objects::Structure*s = (const Objects::Structure*)(&e);
+				
+				textout.color(1,1,1);
+
+				#if defined _DEBUG && !defined CONNECTOR_LESS
+					textout << " Compound ID: "<<s->compoundID << nl;
+				#endif
+				const Objects::Compound*net = nullptr;
+				if (s->health > 0)
+				{
+					const Objects::Compound&network = s->GetCompound();
+					net = &network;
+					textout << " Compound status:" << nl;
+					if (!network.stable)
+					{
+						textout.PushColorState();
+						if (e.isMine)
+							textout.Tint(1, 0.2, 0.2);
+
+						textout << "  UNSTABLE";
+						if (!e.isMine)
+							textout << " (?)";
+						textout << nl;
+						textout.PopColorState();
+					}
+					textout << "  Resource consumption:" << nl;
+					textout << "    (demand/supply)" << nl;
+					for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+					{
+						textout.PushColorState();
+						if (e.isMine && network.total.demand.level[i] > network.total.supply.level[i])
+							textout.Tint(1, 0.2, 0.2);
+						textout << "   " << (char)(tagOffset+i) << " " << network.total.demand.level[i] << "/" << network.total.supply.level[i] << nl;
+						textout.PopColorState();
+					}
+					textout << "  Resource storage:" << nl;
+					for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+					{
+						if (network.total.storageMax.level[i] > 0)
+							textout << "   " << (char)(tagOffset+i) << " " << network.total.storage.level[i] << "/" << network.total.storageMax.level[i] << nl;
+					}
+				}
+				else
+				{
+					//textout << " Ghost created in round "<<
+				}
+
+				{
+					const Objects::MobileEntityProducer*ps = e.CastToProducer();
+					if (ps)
+					{
+						//const Objects::VehiclePlant*ps = (const Objects::VehiclePlant*)(&e);
+						bool active = true;
+						if (e.IsWorkingStructure())
+						{
+							active = ((const Objects::WorkingStructure*)(&e))->IsEnabled();
+						}
+						
+						if (ps->queue.IsNotEmpty())
+						{
+							textout << "  producing "<<ps->queue.first().name<<nl;
+							if (!active)
+								textout << "   completion (when enabled) in "<<Objects::TimeResourceTag() <<ps->productionRoundsLeft<<nl;
+							else
+								textout << "   completion in "<<Objects::TimeResourceTag() <<ps->productionRoundsLeft<<nl;
+						}
+
+					}
+					else
+					{
+
+
+					}
+				}
+
+				if (e.IsWorkingStructure())
+				{
+					const Objects::WorkingStructure*ws = (const Objects::WorkingStructure*)(&e);
+					textout << nl << " Structure status:"<<nl;
+					if (ws->IsHibernating())
+						textout << "  Hibernating" << nl;
+					textout.color(color);
+
+					if (ws->AwaitsUserInteraction())
+						textout << "  Awaiting user input" << nl;
+					else
+						textout << (ws->IsEnabled() ? "  Enabled" : "  Disabled") << nl;
+				
+
+
+					{
+						const Objects::Mine*ms = dynamic_cast<const Objects::Mine*>(&e);
+						if (ms)
+						{
+							if (ms->IsLinkedToCore())
+								textout << "  Linked to Core" << nl;
+							else
+							{
+								if (e.isMine)
+									textout.Tint(1,0.5,0.4);
+								textout << "  Disconnected from Core";
+								if (!e.isMine)
+									textout << " (?)";
+								textout << nl;
+
+								textout.color(color);
+							}
+						}
+						else
+						{
+							const Objects::NexusPort*np = dynamic_cast<const Objects::NexusPort*>(&e);
+							if (np)
+							{
+								if (np->isMine)
+								{
+									if (np->resistence)
+										textout << "  Remaining resistence: "<<np->resistence << nl;
+									else
+										textout << "  Captured"<< nl;
+								}
+							}
+						}
+					}
+					Objects::ResourceVector	delta,storage,storageMax;
+					ws->GetResourceVector(delta,storage,storageMax);
+
+					bool any = false;
+					for (index_t i = 0; i < delta.NumEntries; i++)
+						if (delta.level[i] < 0)
+							any = true;
+					const bool isEnabled = ws->IsEnabled();
+					if (any)
+					{
+						textout << " Consumes";
+						if (!isEnabled)
+							textout << " (if enabled)";
+						textout <<':'<<nl;
+						if (!isEnabled)
+							textout << "    (demand/compound supply)" << nl;
+					
+
+						for (index_t i = 0; i < delta.NumEntries; i++)
+							if (delta.level[i] < 0)
+							{
+								//textout << "  "<<Objects::Resource::Reinterpret(i).ToString()<<": "<<-delta.level[i];
+								if (isEnabled)
+									textout << "  "<<(char)(tagOffset+i)<<" "<<-delta.level[i];
+								else
+								{
+									if (net && delta.level[i] + net->total.balance.level[i] < 0)
+										textout.Tint(1,0.6,0.5);
+									textout << "  "<<(char)(tagOffset+i)<<" "<<-delta.level[i];
+								
+									if (net)
+									{
+										textout << " / " << net->total.balance.level[i];
+										if (net->total.storage.level[i])
+											textout << " (" << net->total.storage.level[i] << " stored)";
+									}
+									//textout << nl;
+									textout.color(color);
+
+								}
+								textout << nl;
+							}
+					}
+					any = false;
+					for (index_t i = 0; i < delta.NumEntries; i++)
+						if (delta.level[i] > 0)
+							any = true;
+					if (any)
+					{
+						//textout << " Produces:"<<nl;
+						textout << " Produces";
+						bool isEnabled = ws->IsEnabled();
+						if (!isEnabled)
+							textout << " (if enabled)";
+						textout <<':'<<nl;
+
+						for (index_t i = 0; i < delta.NumEntries; i++)
+							if (delta.level[i] > 0)
+								textout << "  "<<(char)(tagOffset+i)<<" "<<delta.level[i]<<nl;
+					}
+					any = false;
+					for (index_t i = 0; i < delta.NumEntries; i++)
+						if (storageMax.level[i] > 0)
+							any = true;
+					if (any)
+					{
+						textout << " Storage:"<<nl;
+						for (index_t i = 0; i < delta.NumEntries; i++)
+							if (storageMax.level[i] > 0)
+								textout << "  "<<(char)(tagOffset+i)<<" "<<storage.level[i]<<"/"<<storageMax.level[i]<<nl;
+					}
+				}
+
+
+	
+			}
+
+
+			//textout.getActiveFont()->EndTagMode();
+
+
+
+			textout.popState();
+	
+		}
+
+
+
+	}
+#endif

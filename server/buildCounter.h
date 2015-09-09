@@ -1,0 +1,2 @@
+#define BUILD_COUNTER 1
+#define BUILD_COUNTER_STR "1"

@@ -1,0 +1,177 @@
+#ifdef HAS_WINDOW
+#ifndef objectRenderingH
+#define objectRenderingH
+
+#include "../../client/ExtRenderer/DirectX11.h"
+#include "../sphereGrid.h"
+#include "turretBase.h"
+#include <engine/display.h>
+
+
+
+#define CASCADING_SHADOW
+
+namespace Objects
+{
+	namespace DX11 = Engine::DX11;
+
+	extern bool					resourceView, 
+								showFriendlyRanges,
+								showHostileRanges,
+								objectView;
+
+
+	extern DX11::ObjectBuffer<float4>	keyColor, overallTint;
+	extern DX11::BaseInstructionBlock	stdVehicleShader,
+										seeThroughShader,
+										pathShader,
+										jobShader,
+										paraboloidShader,
+										skyPortBeam,
+										arrowInstruction;
+	extern DX11::StreamVBO				arrowBuffer;
+	extern DX11::VBO					sphereVBO[4];
+	extern DX11::IBO32					sphereIBO[4], attackIBO;
+	//extern DX11::InstructionBlock32		rangeInstruction[4];
+
+	extern DX11::InstructionBlock32		cordon,
+										foundation,
+										userInteractionNotifier,
+										gatheringPoint;
+	//extern DX11::Texture				hexGrid;
+
+	static const count_t NumCascades = 2;
+
+	#ifdef CASCADING_SHADOW
+		extern DX11::FBO						shadowMap[NumCascades];
+		extern Engine::OrthographicAspect<>		shadowCamera[NumCascades];
+		extern DX11::ObjectBuffer<TMatrix4<> >	shadowMatrix[NumCascades];
+	#else
+		extern DX11::FBO						shadowMap;
+		extern Engine::OrthographicAspect<>		shadowCamera;
+		extern DX11::ObjectBuffer<TMatrix4<> >	shadowMatrix;
+	#endif
+	extern DX11::BaseInstructionBlock		shadowInstruction;
+
+
+	inline	int DetermineLODInstruction(float radius)
+	{
+		//outerDistance = std::max(0.f,outerDistance);
+		float d = log(1.f + std::max(0.f,radius)*20);
+		return clamp((int)d,0,3);
+	}
+
+	
+	namespace GeometryImage
+	{
+		void			BeginRendering(const float4&tone, float cameraDistanceFactor = 1.f);
+		DX11::Texture	EndRendering();
+	}
+
+
+	namespace Renderer
+	{
+		extern Buffer0<PTurretBase>		animatedTurrets;
+
+		/**
+		Creates/loads all commonly used rendering resources (shaders, for the most part)
+		*/
+		void	Create();
+		void	Destroy();	//!< Frees all commonly used rendering resources
+		
+
+
+		void	AdvanceTurretAnimations();
+
+
+
+		void	RenderBeam(const TVec3<>&base, float height, float width, const float4&bottomColor, const TVec4<>&topColor);
+		void	RenderBeam(const TVec3<>&base, float height, float width);
+		void	SetBeamColor(const float4&bottomColor, const TVec4<>&topColor);
+
+
+
+
+		void	Render(Structure&s, const float3&activeColor, const float3&inactiveColor, float light);
+		void	Render(Structure&s, const float3&activeColorMine, const float3&activeColorTheirs);
+
+		void	Render(Satellite&s, const float3&activeColor, const float3&inactiveColor, float light);
+
+		void	RenderSimple(Structure&s, bool includeFoundation = false);
+		void	RenderSimple(Satellite&s);
+		void	RenderSimpleIdentity(Satellite&s);
+
+
+		/**
+		Renders all parts of a vehicle component. Called automatically where needed.
+		Modifies (and does not reset) object matrix
+		@param x Horizontal rotation angle of first and second parts
+		@param y Vertical rotation angle of second part
+		@param h Vertical offset from the specified system
+		@param system Vehicle system
+		@param comp Component to render
+		*/
+		void	RenderComponent(TMatrix4<> system, float h, const Component::Base&comp, float x, float y);
+		void	RenderScaledComponent(TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y);
+
+		/**
+		Renders both components (base/turret) of a vehicle. No extra calls beyond RenderComnponent()
+		*/
+		void	RenderSimple(const Vehicle&v);
+
+		/**
+		Renders the specified vehicle
+		@param v Vehicle to render
+		@param activeColorMine Key color to use if the vehicle is owned by the player
+		@param activeColorTheirs Key color to use if the vehicle is not owned by the player
+		@param light Light level around the vehicle in [0,1]
+		*/
+		void	Render(const Vehicle&v, const float3&activeColorMine, const float3&activeColorTheirs, float light);
+
+
+
+		/**
+		Main rendering function, which renders all visible (and non-translucent) objects in the scene.
+		Also clears the entity waste (if any)
+		Has no effect (except clearing the waste), if @a objectView is false
+		*/
+		void	RenderScene();
+
+
+		/**
+		Renders any progress bars atop objects.
+		Has no effect, if @a objectView is false
+		*/
+		void	RenderProgressBars();
+
+		/**
+		Renders translucent scene components (excluding progress bars).
+		Has no effect, if @a objectView is false
+		*/
+		void	RenderTranslucent();
+
+		#ifdef CASCADING_SHADOW
+			/**
+			Updates @a shadowMap, using the current configuration of @a shadowCamera
+			*/
+			void	RenderShadows(index_t cascade);
+			void	RenderShadows(DX11::FBO&shadowMap, Engine::OrthographicAspect<>&shadowCamera, DX11::ObjectBuffer<TMatrix4<> >&shadowMatrix);
+
+		#else
+			void	RenderShadows();
+		#endif
+
+		void		EndShadowRendering();
+
+
+		void	RenderRangeSphere(const TVec3<>&center, float radius, const float4&color);
+		void	RenderRangeCylinder(const TVec3<>&direction, float bottomRadius, float topRadius, float bottom, float top, const float4&color);
+		void	RenderRange(const Grid::LCellIdI&location, float zOffset, const PTurretBase&base, float opacity);
+
+	}
+
+}
+
+
+#endif
+#endif

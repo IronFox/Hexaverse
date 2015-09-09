@@ -1,0 +1,287 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\shared">
+      <UniqueIdentifier>{30d54f10-4401-4dbc-a438-c16a78d1d0a0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\shared\objects">
+      <UniqueIdentifier>{fa6473cc-c7b1-41d0-b8aa-0034d0b1cc46}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\client\version.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tests.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="aiProcess.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="remoteControl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="state.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="networkChannels.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="udpBroadcast.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\commands.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\cursorMode.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\entity.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\faction.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\geometry.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\gridAndChoices.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\interface.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\jobs.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\prototypes.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\rendering.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\resource.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\structure.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\systems.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\turretBase.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\vehicle.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\visualChoices.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\visualCommands.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\visualSelection.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\types.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="serverLogEvent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\hibernating.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\cast.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\grid.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\logEvent.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\noise.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\protocol.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\sphereGrid.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\stringTable.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\uniqueID.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\niceName.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\satellite.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\mobileEntity.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\hangarStructure.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\components.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\sphereGridHelper.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\mobileEntityProducer.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\structureCompound.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\config.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="server.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="aiProcess.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="remoteControl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="state.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="networkChannels.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="udpBroadcast.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="logEvent.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\cursorMode.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\entity.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\faction.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\geometry.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\gridAndChoices.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\jobs.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\prototypes.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\rendering.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\resource.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\structure.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\systems.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\turretBase.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\vehicle.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\visualChoices.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\visualCommands.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\visualSelection.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\hibernating.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\noise.cpp">
+      <Filter>Source Files\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\sphereGrid.cpp">
+      <Filter>Source Files\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects.cpp">
+      <Filter>Source Files\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\grid.cpp">
+      <Filter>Source Files\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\niceName.cpp">
+      <Filter>Source Files\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\mobileEntity.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\satellite.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\components.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\mobileEntityProducer.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\structureCompound.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\shared\multi_serializable.inc.h">
+      <Filter>Header Files</Filter>
+    </None>
+  </ItemGroup>
+</Project>

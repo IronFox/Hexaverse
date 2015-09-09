@@ -1,0 +1,439 @@
+#ifndef objectEntityH
+#define objectEntityH
+
+#include "../uniqueID.h"
+#include "../sphereGrid.h"
+
+#include "turretBase.h"
+#include "types.h"
+#include "hibernating.h"
+
+
+#ifdef HAS_WINDOW
+	#include "visualCommands.h"
+#endif
+
+struct SharedPtrHash
+{
+	template <typename T>
+	static hash_t	hash(const std::shared_ptr<T>&ptr)
+	{
+		return (hash_t)ptr.get();
+	}
+
+};
+
+
+namespace Objects
+{
+
+	static const float timeEpsilon = 0.01f;	//time in seconds between subsequent events such that they are sorted correctly on the client
+	typedef SharedPtrHash	OwnerHash;
+
+	extern GenericHashTable<TUniqueID,PWorldEntity,TUniqueID,Strategy::POD,Strategy::Swap>	idMap;
+
+
+	#ifdef HAS_WINDOW
+
+
+		float	GetLowLighting(const Grid::LCellIdI&location);
+
+
+	#endif
+
+
+	/**
+	Root-class for all entity-like objects.
+	Every derivative of this class inherits a globally unique identifier, and a world-location (including matrix).
+	Derivatives must provide type name method overrides.
+	BaseEntity's may or may not be consistent/persistent to all players
+	*/
+	class BaseEntity 
+	{
+	protected:
+
+		/**/						BaseEntity(const Grid::LCellIdI&at) : location(at), system(Matrix<>::eye4), inverse(Matrix<>::eye4)
+		{
+			#ifndef CLIENT
+			{
+				//if (isSatellite)
+				//	ASSERT_GREATER__(location.height,Grid::CellStack::TopHeight);
+				//else
+				//	ASSERT_IS_CONSTRAINED__(location.height, Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight);
+
+				id.Generate();
+			}
+			#endif
+
+		}
+
+		#ifdef CLIENT
+			String					cachedNiceName;
+
+		#endif
+
+		struct TEmpty{};
+		/**/						BaseEntity(TEmpty) : location(Grid::LCellIdI::Invalid), system(Matrix<>::eye4), inverse(Matrix<>::eye4)
+		{
+			id = TUniqueID::Empty();
+		}
+	public:
+		/**
+		Cell location of the local entity. Structures may be destroyed, but they do not move. Vehicles may move.
+		Some entity types may not use this variable (so far all do, even markers)
+		*/
+		Grid::LCellIdI				location;
+
+
+		/**
+		Globally unique id of this entity
+		*/
+		TUniqueID					id;
+
+
+		TMatrix4<>					system;		//!< system matrix. Structures: affecting @a localizableShape . If @a localizableShape is NULL then this matrix has no effect
+		TMatrix4<>					inverse;	//!< inverse of system
+
+
+
+		/**
+		Assembles a name composed of the parent management class name and the local instance id
+		*/
+		String						GetName() const;
+
+		#ifdef CLIENT
+
+
+			void					UpdateNiceName();
+			/**
+			Similar to GetName() but tries to avoid hash numbers by using word combinations (duplicates may occur)
+			*/
+			const String&			GetNiceName() const;
+		#else
+			String					GetNiceName() const;
+		#endif
+		/**
+		Retrieves the type name of the local instance
+		*/
+		virtual String				GetTypeName() const = 0;
+		/**
+		Same as GetTypeName() except, that a ConstName enumeration value is returned
+		Remember that these name indices may change during version updates and can therefore
+		NOT be used for disk IO.
+		*/
+		virtual ConstName			GetCTypeName() const = 0;
+
+	
+	
+	};
+
+
+	
+	/**
+	World entity base class.
+	Everything that consistently resides in the scene such that it can be seen by its owner,
+	and others in scanning range derives from WorldEntity
+
+	*/
+	class WorldEntity : public BaseEntity, public std::enable_shared_from_this<WorldEntity>
+	{
+	protected:
+		/**/						WorldEntity(const OwnerParameter&owner, const Grid::LCellIdI&at) : BaseEntity(at), owner(owner),unstable(false), health(-1)
+		{
+			#ifndef CLIENT
+			{
+				ResetAllChange();
+			}
+			#endif
+		}
+
+		#ifdef HAS_WINDOW
+			bool					TestIntersection(const Geometry&geo, const TVec3<>&b, const TVec3<>&d, float & distance) const;
+		#endif
+
+	public:
+		virtual						~WorldEntity();
+
+		#ifdef HAS_WINDOW
+			typedef Objects::EntityCommand	Command;
+			typedef Objects::FEntityCommandVisitor	FCommandVisitor;
+		#endif
+
+		/**
+		Reference to the owner of this entity
+		*/
+		OwnerParameter				owner;
+
+		bool						isInserted = false,	//tracks if the local entity has been inserted into the scene
+									isInsertedIntoGrid = false;//tracks if the local entity has been inserted into the grid
+
+		#ifdef CLIENT
+			bool					isMine;
+			int						ignoreThreatRounds = 0;	//used by ai to ignore threat level if the ai assumes it can win
+		#endif
+
+		int							health;
+		int							empDamageLevel = 0;	//!< Number of rounds that scanners are disabled due to emp-damage. Also affects extend of damage
+
+		bool						unstable;	//!< Indicates that something is wrong with the consumption vector of the local network. Or the vehicle state is unstable. Again, DO NOT CHANGE.
+
+		#ifndef CLIENT
+			enum changeType_t
+			{
+				Unchanged = 0x0,
+				HealthChanged = 0x1,
+				PositionChanged = 0x2,
+				ActionChanged = 0x4,
+				TasksChanged = 0x8,
+				StorageChanged = 0x10,
+				EnableChanged = 0x20,
+				EMPDamageChanged = 0x40,
+				AutomationChanged = 0x80,
+				NexusControlChanged = 0x100,
+				CanEnableChanged = 0x200,
+				HibernationChanged = 0x400,
+				OrbitalConnectionChanged = 0x800,
+			};
+			float					changeTimer;	//Earliest change time. Reduced if an earlier even occurs
+			UINT32					changeFlags;	//Everything that has changed since the last reset (usually once per server-frame)
+
+
+
+			void					ResetAllChange()
+			{
+				changeFlags = 0;
+				changeTimer = -std::numeric_limits<float>::max();
+			}
+
+			void					RegisterChange(changeType_t type, float timeAt)
+			{
+				changeFlags |= type;
+				changeTimer = std::max(changeTimer,timeAt);
+			}
+			void					SignalChange(changeType_t type, float timeAt)	{RegisterChange(type,timeAt);}
+
+
+			Buffer0<PWorldEntity>	seenBy,
+									seeing;
+			
+
+
+			virtual void			SetupSystem()=0;	//used to setup the matrices once after creation
+		#endif
+		virtual bool				CanSee(const PWorldEntity&other)	const;
+		virtual bool				CanSee(const TVec3<>&center, float radius)	const;
+
+
+		/**
+		Used for visualization: active entities have bright, pulsing key colors, dull dark colors otherwise.
+		*/
+		virtual bool				IsActive() const {return true;}
+
+		/**
+		Retrieves the maximum possible health level
+		*/
+		virtual int					GetMaxHealth() const {return std::max(1,GetConstructionCost()/5);}
+
+		virtual int					GetConstructionCost() const = 0;	//!< Retrieves the minerals required to construct a new instance of this structure
+
+		/**
+		Queries the entity height in layers. Most entities have height=1
+		*/
+		virtual int					GetHeight() const {return 1;}
+		/**
+		Queries if the local entity is broad (one lowres-cell wide), as opposed to just one highres-cell wide.
+		Connectors are not broad, everything else (ATM) is broad.
+		*/
+		virtual bool				IsBroad() const {return true;}
+
+		#ifndef NO_HIBERNATION
+			/**
+			Queries the bandwidth required for the local entity.
+			Loosly evaluates the amount of attention a player must give to this type.
+			Connectors are the least attention-grabbing type, which return 1
+			*/
+			virtual int					GetUplinkTraffic() const = 0;
+
+			virtual const Hibernating*	ToHibernating() const {return nullptr;}
+		#else
+			bool					IsHibernating() const {return false;}
+		#endif
+
+
+		/**
+		Spawns a new instance of the local type at the specified location. The method is called on a location that has previously passed CheckPlacement()
+		*/
+		virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) = 0;
+
+
+		/**
+		Signals that the local entity will be removed. Overrides of this method should always call the respective base method
+		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
+		*/
+		virtual void				OnDestroy(float atTime)	{};	
+
+		virtual void				OnConstructionFinished(float atTime);	//! Signals that construction has finished and all neighbors are known (if structure). For vehicles this method is called when it enters the scene
+
+		/**
+		Called exactly once on the prototype instance only, once instantiation of all prototype objects is completed (other prototypes may be references, but might not be set up yet).
+		*/
+		virtual void				PrototypeSetup()	{};
+
+		#ifdef HAS_WINDOW
+			/**
+			Called once on the prototype instance only, prior to PrototypeSetup().
+			Static geometry should be loaded here so that it is available for commands linked during PrototypeSetup()
+			*/
+			virtual void			PrototypeLoadGeometry() {};
+		#endif
+
+		virtual float				GetMaxScanningRange() const	{return 2.f;};	//returns the effective scanning range of the local entity
+		float						GetScanningRange() const;
+		float						EMPModify(float raw, float min) const;
+		
+		virtual PTurretBase			GetTurretBase(float &zOffset) { zOffset = 0; return PTurretBase();}
+		inline PTurretBase			GetTurretBase() { float dummy; return GetTurretBase(dummy);}
+		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { zOffset = 0; return PConstTurretBase();}
+		inline PConstTurretBase		GetTurretBase() const { float dummy; return GetTurretBase(dummy);}
+
+		TurretTrajectory			TraceTrajectory(const Grid::WorldData&world, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell) const;
+		TurretTrajectory			TraceTrajectory(const Grid::WorldData&world, const Grid::LCellIdI&dest, TVec3<>&impactAt) const;
+		TurretTrajectory			TraceTrajectoryFrom(const Grid::WorldData&world, const Grid::LCellIdI&source, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell) const;
+		TurretTrajectory			TraceTrajectoryFrom(const Grid::WorldData&world, const Grid::LCellIdI&source, const Grid::LCellIdI&dest, TVec3<>&impactAt) const;
+		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TVec3<>&dest) const;
+		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const Grid::LCellIdI&dest) const;
+		bool						CanHit(const TVec3<>&dest) const;
+		bool						CanHit(const Grid::LCellIdI&dest) const;
+		/**
+		Like CanHit() but includes exposion radius to some extend
+		*/
+		bool						CanHitSomehow(const TVec3<>&dest) const;
+		bool						CanHitSomehow(const Grid::LCellIdI&dest) const;
+
+		virtual bool				AwaitsUserInteraction() const {return false;}
+
+
+		//various type check methods. technically, a dynamic cast into the respective structure would be sufficient but i am led to believe that these are faster
+		virtual bool				IsWorkingStructure() const {return false;}
+		virtual bool				IsMobile() const {return false;}
+		virtual bool				IsVehicle() const {return false;}
+		virtual bool				IsSatellite() const {return false;}
+		virtual bool				IsStructure() const {return false;}
+		virtual bool				IsVehiclePlant() const {return false;}
+
+
+		virtual bool				IsIndestructible() const	{return false;};
+
+		#ifdef HAS_WINDOW
+			virtual void			OnSelect()	{};
+			virtual void			OnDeselect(){};
+			//these are performance optimizations. Some visualizations may behave unexpectedly if they are not
+			//overidden by classes implementing MobileEntityProducer
+			//dynamic cast is not suitable for high frequency queries:
+			//http://stackoverflow.com/questions/9959315/why-virtual-function-call-is-faster-than-dynamic-cast
+			virtual const MobileEntityProducer*CastToProducer() const {return nullptr;}
+		#endif
+
+
+
+		inline void					TakeDamage(int damageLevel)
+		{
+			health -= damageLevel;
+		}
+
+
+		void					RegisterSensory(float&atTime);
+		void					UnregisterSensory(float&atTime, bool isFinal);
+		#ifdef HAS_WINDOW
+			virtual void		RegisterWorldSensory();
+			virtual void		UnregisterWorldSensory();
+			virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to);
+		#endif
+
+		#ifndef CLIENT
+			virtual void		RegisterFactionSensory(float atTime);
+			virtual void		UnregisterFactionSensory(float atTime);
+			virtual void		MoveFactionSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float atTime);
+		#endif
+
+
+
+		#ifdef CLIENT
+			#ifdef HAS_WINDOW
+				enum descFlag_t
+				{
+					DescIncludeName = 0x1,
+					DescIncludePrice = 0x2,
+					DescIncludeCurrentHealth = 0x4,
+					DescIncludeMaxHealth = 0x8,
+					DescIncludeFuelDemandModifier = 0x10,	//!< effective only for satellites
+					DescIncludeUnitCount = 0x20,
+				};
+				//old: includeName, includePrice
+				/**
+				Stores a description of the local type in the specified label
+				@param[out] label Label to store the description in
+				@param deskFlags Combination of descFlag_t to fine-tune the generation process
+				*/
+				virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags);
+
+				/**
+				Appends deployment count in the form " Deployed: cnt/max", if any limit is set.
+				Otherwise nothing will be appended.
+				*/
+				void				AppendDeploymentCount(BaseCommand::Label&outResult, const OwnerParameter&overrideOwner)	const;
+
+
+				virtual void		VisitAllCommands(FCommandVisitor visitor) {};
+				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const=0;
+			#endif
+	
+			/**
+			Tests ray-intersection with the local structure
+			*/
+			void					UpdateEMPDamage(int damageLevel, bool isCreated=true);
+		#else
+
+			void					HandleEMPDamage(int damageLevel, float&atTime)
+			{
+				int newDamage = std::max(empDamageLevel,damageLevel);
+				if (newDamage == empDamageLevel)
+					return;
+				UnregisterSensory(atTime,false);
+				empDamageLevel = newDamage;
+				RegisterChange(EMPDamageChanged,atTime);
+				RegisterSensory(atTime);
+			}
+			void					HealEMPDamage(float&atTime)
+			{
+				if (empDamageLevel > 0)
+				{
+					UnregisterSensory(atTime,false);
+					empDamageLevel--;
+					RegisterChange(EMPDamageChanged,atTime);
+					RegisterSensory(atTime);
+				}
+			}
+
+		private:
+			static void				MapVisibilityBetween(const PWorldEntity&, const PWorldEntity&, float&atTime);
+
+		#endif
+
+
+	};
+
+
+	#ifdef CLIENT
+		extern Buffer0<PWorldEntity>		waste;
+	#endif
+
+
+	PWorldEntity							GetEntity(const TUniqueID&id);
+
+}
+
+
+
+#endif
+

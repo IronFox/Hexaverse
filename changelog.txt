@@ -1,0 +1,249 @@
+v0.3.1		[Aug 30 2015]
+	Disabled hibernation system
+	Moved planet types from server/server.ini to server/config/planets/*.ini
+	Introduced table in server.ini that allows to declare the maximum number of units per type
+	Introduced 'Build Bridge to' command for Terraformers
+	VehiclePlants no longer have grayed out buttons but rather tell the user what needs to be done to continue
+	VehiclePlants now have the first base selected by default (thanks to Christian)
+
+v0.3.0		[Aug 25 2015]
+	Added satellite grid and view
+	Implemented initial satellite fuel logic
+	Added SkyPort as construction platform and fuel supplier to connected SkyHubs
+	Added SkyHub as sky counter part of SkyPort, and fuel supplier to other (non-connected) satellites
+	Removed munition resource type, MunitionFactory, and MunitionStorage
+	Added SkyGuardian as orbital defense platform
+	Added Ragnarök doomsday satellite
+
+v0.2.15		[Jul 13 2015]
+	Added resource display mode that shows numbers only (no bars). This mode can be enabled/disabled in game.ini or by pressing the R key
+	Added magma planet type
+	Improved lava coloring
+	Colored water green where affected by area-emp
+
+v0.2.14		[Jun 20 2015]
+	Experimental connector-less mode
+	Defensive towers no longer provide munition storage capacity (use munition storage facilities)
+	Vehicles no longer provide storage for anything but pull resources from the player compound
+	Construction jobs with insufficient resources are delayed now, instead of aborted
+	Implemented experimental resource normalization and clustering
+
+v0.2.13		[Jun 14 2015]
+	Range modifier for cat vehicles now also affects scanning range, if the respective turret can not attack
+	Introduced uplink traffic system to limit active units
+	Spawning a new terraformer while survival countdown is in place will now instantly clear the countdown
+	Introduced vehicle stores to store unused vehicles. Stored vehicles do not generate uplink traffic
+	Important log events now stay longer on screen
+	Replaced hexadecimal output of unique ids with adjective+noun combinations
+
+v0.2.12		[May 7 2015]
+	Introduced catamaran base, which has a firing range bonus of 1, and moves very fast, but requires water to move on
+	Reduced health level of heavy base and cat base to 12 (was 16)
+	Introduced missile turret, which shoots straight, has an explosion radius of 1, and a base max range of 8
+	Missile turret is now the only tower turret
+	Remove height malus from artillery
+	Doubled starting resources
+	Mines can be limited now
+
+v0.2.11		[May 3 2015]
+	Colored certain important log messages
+	Included busy-message in the tab-window for users that have not yet requested a new round
+	The tab key now also closes the tab-window
+	Implemented chat messages (using the T key)
+	Trying to enable a structure with insufficient compound resources will now be refused, rather than disabling other structures
+	Increased starting terraformers to two, when starting with bases
+	Increased heavy base construction speed multiplier to x2 (was x1). A heavy former will thus construct twice as fast as a hoverformer
+	Changed health multipliers of turrets to float, which are now x1.5 for artillery and x2 for cannon (were 2 and 3, respectively)
+	Increased client-timeout tolerance for server delay to 10 seconds (was 5)
+	Attack range is now reduced by 0.125 for every height level above median
+	Implemented cost estimation for sequence vehicle commands (e.g. build connectors to...)
+	Vehicle plants have optional gathering points now (select vehicle plant and click right mouse to direct)
+	Heavy terraformers can build roads (build road to...) across lakes now
+	Added confirmation when dropping vehicle tasks that have started and consumed resources
+	Surveyors are heavily repelled by faction-owned ghosts now
+	Redesigned contact bar
+	Increased base radar range by 2 (to 14)
+	Increased base EMP range by 1 (to 17)
+	Progress bars are visible through everything now (experimental)
+
+v0.2.10		[Apr 26 2015]
+	Added various tutorial messages, accessible through a light bulb button bottom right of the screen
+	Attack ranges can now be visualized for all friendly/hostile entities
+	EMP damage now also affects attack ranges and movement speed
+	EMP explosion radius increased
+	Increased EMP duration from 3 rounds to 5. It's now actually usable
+	Using the space key to iterate through units now also includes disabled mines and offensive vehicles that could hit a hostile
+	User names are now stored separately, queried during first run, and treated by the server as consistent information
+	Pressing the TAB key now opens an overview over all known factions
+
+v0.2.9		[Apr 16 2015]
+	Added always-day mode configurable in game.ini
+	Using the space key to iterate through units now skips vehicles that cannot build
+	Being attacked from outside the scanning range now produces partially randomized trajectories rather than none at all
+	Queueing new vehicles in a plant that have no valid spawning location will issue a warning
+	Changed attack method to closer approximation of physical trajectories. Very experimental
+	Camera auto-orbit no longer drops to lowest if no ground
+	
+v0.2.8		[Apr 6 2015]
+	Reverted back to high resolution terrain
+	Integrated foundations into geometries; removed terrain-foundation construction option
+	Replaced most string parameters in protocol with constant codes, thus reducing traffic
+	Buildings can now be placed next to one another, even if diverging in height
+	Removed most terrain constraints of buildings
+	Mines now provide minimal storage for minerals
+	Added wall buildings commands
+	Block buildings now puts concrete blocks rather than earth
+	Fully working bases are given to the nexus faction now, unless disabled
+	AI units are constructed rather than spawned. Dismantling a Nexus station stops vehicle production even if control over the Nexus Port is lost
+	Nexus Ports generate resources now
+	Reduced artillery and cannon ranges
+	Increased general entity scanning range from 1 to 2
+	Increased tower range bonus from 20% to 30%
+	Reduced nexus ports to 3, on isolated corners only
+	Vehicles stop in their motion now, if otherwise entering new contact's firing range
+	Visual attack range sphere now includes explosion range
+	Resource transfer now works across one layer of height difference (as opposed to 0 before)
+	Heavy bases can now fall up to two layers of height difference without taking damage
+	Attempting to construct anything that is not a mine or connector on a location with known natural resources will now require confirmation
+	Added visual notches to progress bars to show progression per round
+
+v0.2.7		[Apr 1 2015]
+	Introduced console-only client for AI
+	Doubled health of all vehicles/structures
+	Added sun rotation (and color)
+	Reduced terrain resolution to match coarse object grid (experimental)
+	As a result: increased explosion radius of artillery
+	Removed documentation pdf until I have time to thoroughly update or replace it with tutorials 
+	Added confirmation dialogs
+
+v0.2.6		[Mar 21 2015]
+	Structures no longer enter unstable mode if complex resource vectors are unstable. Instead, buildings are disabled in order of least impact
+	Impact of disabling nexus ports is considered highest, but even nexus ports will be disabled at some point
+	Increased visual contrast between enabled and disabled working structures
+	Renamed "Tank" to "Cannon"
+	Auto-firing vehicles and structures now attempt to use their explosion radius as a range extension
+	Improved hints/help. Now using icons to represent resource types
+	AI will spawn vehicles now if approaching nexus port with a constructor
+
+v0.2.5		[Mar 16 2015]
+	Added dampening and frequency values to extended core and mountain height calculation
+	Added snow height value
+	Added persistent marker support, automatically placed hostile contact markers, and ghost markers for lost vehicles.
+	Added some automated server tests
+	Added Nexus AI. Weighting still needs adjustment
+	Further adjusted planet configuration to allow ice planet type (which is default atm)
+
+v0.2.4		[Mar 1 2015]
+	Implemented see-through for vehicles beneath (or otherwise occluded by) terrain
+	The atmosphere is volumetric now
+	Added planet configurations
+
+v0.2.3		[Feb 22 2015]
+	Artillery can blast holes into the ground now
+	Added Uranium resource type, and storage
+	Added EMP-turret which uses 50 units of uranium to reduce the scanning range of targets for three rounds
+	Servers with incompatible versions are now shown during client start. Connection is forbidden, however
+	Surveyors can optionally be automated to search for minerals on their own
+	Increased contrast of resource visualization
+	Resource coverage can be configured via server.ini now
+	Updated server configuration file format
+	Offensive towers now pull ammo from their respective network, if local storage insufficient
+	Terrain clipping has increased radius now, and also clips water
+	
+v0.2.2		[Feb 15 2015]
+	The OpenAL installer is called automatically now, when needed
+	Space-button now also selects vehicle plants that require user interaction
+	Vehicle plants now show progress bars
+	Detected hostile objects are now shown in a horizontal bar near the top of the screen. Clicking on either will focus the camera on it
+	An icon image is shown near the selected object, which can be used to focus the camera on the currently selected object
+	Path finding is done in client-space now, plotting paths based on what the client knows, not what the server does
+	Vehicle translation (not exclusively vertical movement) can no longer result in vehicle destruction, if the vehicle can remain where it was; rather, motion is undone
+	When not playing with startup-bases, additional terraformers will be spawned, but no mineral container
+	The last disconnecting player will now pause the round timer until a new round is again started
+	Added mechanic turret for vehicles to repair damaged vehicles/structures. It cannot repair itself
+	Servers now allow configuring the number of rounds between automatic saves
+	
+v0.2.1		[Feb 12 2015]
+	Reduced network overhead by removing redundant notifications
+	Doubled building mineral costs
+	Doubled terraformer construction speed
+	Heavy base vehicles can now move anywhere short of over water, but at significantly reduced movement speed
+	Laptops using Nvidia Optimus should now automatically use the high-performance Nvidia card to render the game
+	Reduced resource coverage
+	New factions start at slightly randomized locations now
+	Updated resource visualization
+	Added broad blinking notifier shape, if buildings require user interaction
+	Added progress bars above vehicles to indicate construction progress and health
+	Implemented simple atmospheric glow
+
+v0.2.0		[Feb 8 2015]
+	Entering closed beta phase
+	Introduced armored turret type to provide more armor and flexibility at the expense of firing range, and power.
+	Introdcued heavy vehicle foundation to provide more armor and carrying capacity at the expense of movement speed and movement flexibility
+	Reduced event density on screen
+	Introduced munition factory, storage, and transporter
+	Vehicles can now transfer to and from other vehicles
+	Offensive objects now require ammunition to attack
+	Vehicles and towers now spawn with full ammunition
+
+v0.1.9		[Feb 5 2015]
+	Smoothed transition between shadow cascades
+	Introduced game goals
+	Introduced NexusPort building type as potential game goal
+	Introduced optional round timer and closed-game mode
+	Introduced optional base-requirement, and start-up bases
+	Introduced game winning logic, which declares a winner when all but one participant die in a closed game, or 7/12 nexus ports have been conquered
+	Reduced network overhead
+	Structures now show what resources they require and what they generate in the top right screen section
+	Mines now show their natural resource yield and whether or not a connection to the core is present
+	Client-sided mines no longer try to detect core connections or natural resource yield from client perspective, but are told by the server
+	Resources are visualized as one now (fuel=green, minerals=orange/white)
+	The space button now selects the next idle vehicle/vehicle plant
+	Selecting and focussing entities now smoothly moves the camera
+
+v0.1.8		[Feb 1 2015]
+	Implemented world saving and loading
+	Reduced network overhead
+	Added more information to button tool-tips
+	Roads and single-block foundations beneath connectors are pulled all the way to the ground now
+	Rewrote info.txt into documentation.pdf, now including pictures
+
+v0.1.7		[Jan 9 2015]
+	Updated UI to provide commands as icon-buttons
+	Servers now provide extensive logging
+
+v0.1.6		[Jan 1 2015]
+	Halved natural resource yield from 10 units per bar to 5
+	Introduced radar turret type
+
+v0.1.5		[Jan 1 2015]
+	Added resource visualization of selected entity
+	Now visualizing hostile vehicles and structures in red (instead of black)
+	Increased contrast of actually visible terrain portions
+	Moved resource-visualization above water surface
+	Added sand blocks near water surfaces
+	Terraformers now automatically move when a construction is finished that requires movement, and no job is left in the queue.
+	'Hide Objects' no longer hides shadows.
+	Updated info.txt
+
+v0.1.4		[Dec 26 2014]
+	Added multi-lod range visualizations in red (firing range) and yellow (scanning range)
+	Increased movement speed of all vehicles
+
+v0.1.3
+	Added turrets, and auto targeting/firing.
+	Reduced explosion radius of standard artillery
+	Added terrain sensory/discovery
+
+v0.1.2
+	Adjusted viewing distances and firing ranges
+	Introduced resource scanner turret type
+	Changed server to spawn resource scanner vehicle in addition to tank and terraformer
+	Implemented resource discovery
+
+v0.1.1
+	Added changelog
+	Added fog of war, and visibility checks for vehicles and structures
+	Added explosion animation when demolishing structures
+	
+	

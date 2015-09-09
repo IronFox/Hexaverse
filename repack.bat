@@ -1,0 +1,30 @@
+set zip="C:\Program Files\7-Zip\7z.exe"
+set rs1="game.7z"
+set rs=%rs1%
+del %rs1% /Q
+:: %zip% a %rs1% "documentation.pdf"
+%zip% a %rs1% "changelog.txt"
+
+%zip% a %rs% "client/game.ini"
+%zip% a %rs% "client/client.exe"
+%zip% a %rs% "client/client_console.exe"
+%zip% a %rs% "client/shaders/compiled/*"
+%zip% a %rs% "client/Font/font.*"
+%zip% a %rs% "client/Font/compiled/*"
+%zip% a %rs% "client/objects/*.cgs"
+%zip% a %rs% "client/resources/*.wav"
+%zip% a %rs% "client/resources/*.png"
+%zip% a %rs% "client/resources/nice/*.txt"
+%zip% a %rs% "client/resources/icons/*.png"
+%zip% a %rs% "client/resources/tutorial/*.png"
+%zip% a %rs% "client/resources/tutorial/*.jpg"
+%zip% a %rs% "client/resources/tutorial/*.xml"
+%zip% a %rs% "client/oalinst.exe"
+%zip% a %rs% "client/dxwebsetup.exe"
+%zip% a %rs% "client/OpenAL32.dll"
+%zip% a %rs% "client/D3DCompiler_43.dll"
+
+
+%zip% a %rs% "server/server.exe"
+%zip% a %rs% "server/config/planets/*.ini"
+%zip% a %rs% "server/config/server.ini"

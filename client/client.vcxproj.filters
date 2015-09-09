@@ -1,0 +1,474 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\shaders">
+      <UniqueIdentifier>{5c7ecc56-6b89-4343-99df-4db6a8915ace}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\shared">
+      <UniqueIdentifier>{b7c04759-2570-45c0-969e-823879d79089}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\components">
+      <UniqueIdentifier>{855d8012-9aed-40af-9a79-454a92d6d2c6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\shared\objects">
+      <UniqueIdentifier>{5b8360aa-515b-457b-8caf-a5c05d28f5cb}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="client.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ExtRenderer\DirectX11.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DX11\texture_font.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\multi_serializable.inc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="version.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\visualCommands.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\vehicle.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\entity.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\turretBase.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\geometry.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\logEvent.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\resource.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\systems.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\structure.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\jobs.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\prototypes.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\interface.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\visualChoices.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\gridAndChoices.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\rendering.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\faction.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\cursorMode.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\visualSelection.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\types.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\hibernating.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="components\network.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="components\animation.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="components\explosions.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="components\ui.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="components\cameraControl.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="components\runtimeConfig.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="components\world.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\sphereGrid.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="components\dialog.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="components\lineRenderer.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="components\progressBar.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="components\surfaceRenderer.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="components\tutorial.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="components\guiElements.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="components\ai.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\grid.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\noise.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\uniqueID.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\stringTable.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="components\atmosphere.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\protocol.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\niceName.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\hangarStructure.h">
+      <Filter>Source Files\components</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\satellite.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\components.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\sphereGridHelper.h">
+      <Filter>Source Files\shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\mobileEntity.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\mobileEntityProducer.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\objects\structureCompound.h">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="client.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="clientMain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ExtRenderer\DirectX11.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DX11\texture_font.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\visualCommands.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\entity.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\geometry.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\systems.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\vehicle.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\prototypes.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\structure.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\resource.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\visualChoices.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\gridAndChoices.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\rendering.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\faction.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\jobs.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\turretBase.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\cursorMode.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\visualSelection.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\hibernating.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects.cpp">
+      <Filter>Source Files\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\sphereGrid.cpp">
+      <Filter>Source Files\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="components\animation.cpp">
+      <Filter>Source Files\components</Filter>
+    </ClCompile>
+    <ClCompile Include="components\explosions.cpp">
+      <Filter>Source Files\components</Filter>
+    </ClCompile>
+    <ClCompile Include="components\ui.cpp">
+      <Filter>Source Files\components</Filter>
+    </ClCompile>
+    <ClCompile Include="components\cameraControl.cpp">
+      <Filter>Source Files\components</Filter>
+    </ClCompile>
+    <ClCompile Include="components\runtimeConfig.cpp">
+      <Filter>Source Files\components</Filter>
+    </ClCompile>
+    <ClCompile Include="components\world.cpp">
+      <Filter>Source Files\components</Filter>
+    </ClCompile>
+    <ClCompile Include="components\network.cpp">
+      <Filter>Source Files\components</Filter>
+    </ClCompile>
+    <ClCompile Include="components\dialog.cpp">
+      <Filter>Source Files\components</Filter>
+    </ClCompile>
+    <ClCompile Include="components\lineRenderer.cpp">
+      <Filter>Source Files\components</Filter>
+    </ClCompile>
+    <ClCompile Include="components\progressBar.cpp">
+      <Filter>Source Files\components</Filter>
+    </ClCompile>
+    <ClCompile Include="components\surfaceRenderer.cpp">
+      <Filter>Source Files\components</Filter>
+    </ClCompile>
+    <ClCompile Include="components\tutorial.cpp">
+      <Filter>Source Files\components</Filter>
+    </ClCompile>
+    <ClCompile Include="components\guiElements.cpp">
+      <Filter>Source Files\components</Filter>
+    </ClCompile>
+    <ClCompile Include="components\ai.cpp">
+      <Filter>Source Files\components</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\grid.cpp">
+      <Filter>Source Files\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\noise.cpp">
+      <Filter>Source Files\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="components\atmosphere.cpp">
+      <Filter>Source Files\components</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\niceName.cpp">
+      <Filter>Source Files\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\satellite.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\components.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\mobileEntity.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\mobileEntityProducer.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\objects\structureCompound.cpp">
+      <Filter>Source Files\shared\objects</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="client.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="small.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="client.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\shadow.hlsli">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\common.inc.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\gridResourceVisualization.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\gridTerrain.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\gridTerrainEdge.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\gridTerrainOverlay.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\gridTerrainOverlayShadow.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\gridTerrainShadow.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\gridTerrainWater.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\lines.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\objectShadow.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\plainColor.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\sphereBlock.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\sphereGrid.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\structureShape.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\triangles.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\vehicleJob.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\vehiclePath.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\vehicleShape.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\projectilePath.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\explosionRing.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\explosionParticle.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\hexUI.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\atmosphere.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\vehicleSeeThrough.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\gaugeIcon.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="Font\shader.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\entityProgressBar.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\attackParaboloid.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\guiImageField.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\gauge.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\skyPortBeam.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\orbitalGrid.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\translucentCylinder.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+    <None Include="shaders\transparentSphereGrid.hlsl">
+      <Filter>Source Files\shaders</Filter>
+    </None>
+  </ItemGroup>
+</Project>

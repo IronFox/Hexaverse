@@ -1,0 +1,106 @@
+<tutorial>
+	<!-- Please do not alter this file. At least make a backup before you do -->
+	<message name='Show Resources' image='resources.png'>
+		Resources are shown as vertical bars atop the terrain.
+		Visualized are %FUEL%(fuel), %MINERALS%(minerals), and %URANIUM%(uranium).
+		The height of the respective bar indicates how much of this resource type can be harvested per round, once a mine is constructed atop it.
+		Dark flat discs indicate that there are no resources here. If nothing is rendered atop a cell then its resources are yet unknown.
+		Resources are identical independent of height, and serve different purposes. %FUEL% is consumed by generators to produce %ENERGY%, %MINERALS% is converted into structures, vehicles, and munition, and %URANIUM% is required for EMP-attacks.
+	</message>
+	<message name='Show Ranges' image='Show Ranges.png'>
+		%PRODUCT_NAME% uses paraboloid trajectories to compute the maximum attack range.
+		This range (including explosion radius) is visualized as red umbrellas atop selected offensive vehicles and towers.
+		Alternatively, the command 'Show Ranges' can be used to visualize the attack ranges of all vehicles and structures, both friendly and hostile.
+		Note that only KNOWN attack ranges are shown. A hostile entity outside your scanning range can not be shown as the client does not know it exists.
+	</message>
+	<message name='Clip Terrain' image='Clip Terrain.png'>
+		Clipping the terrain allows to view tunnels and caves beneath the surface by visually removing the ground above.
+		Hidden terrain is shown in black.
+		Scroll the camera to horizontally move the clip-section around the planet.
+		By selecting a vehicle or structure, or by pressing page up or page down, the depth of the clip-area can be changed.
+		Use the 'Clip Terrain' button to toggle terrain clipping.
+	</message>
+	<message name='Welcome' image='game.png'>
+		Welcome to %PRODUCT_NAME%, the planetary strategy game.
+		Excavate caves, build stairs into orbit, or just expand around the globe.
+		Survive if you can.
+	</message>
+	<message name='Servers' image='servers.png'>
+		Your first task is to connect to a server. Click on any listed server to attempt connection.
+		You can create your own by executing 'server/server.exe'.
+		Edit 'server/server.ini' to customize your server.
+	</message>
+	<message name='Radar' image='radar.png'>
+		Radar turrets provide the largest sensor range of all vehicle and structure turrets. Their range is shown in yellow.
+		They are your eyes in %PRODUCT_NAME%. What they cannot see, You cannot see.
+		They can be placed independently, but provide no defense mechanisms of their own. You should place defense towers (e.g. missile towers) or vehicles in the vicinity to prevent hostile forces from destroying your radar. Radar units are particularly rewarding targets as their destruction can render a faction incapable of defending itself.
+	</message>
+	<message name='Terraformer' image='terraformer.png'>
+		Terraformers can construct every building type in the game, assuming they have enough %MINERALS%(minerals) in their storage.
+		They can also dig tunnels, build roads, walls, or chains of connectors. This makes them The most versatile and valuable vehicle in %PRODUCT_NAME%.
+		Do not risk them lightly.
+		If they run out of %MINERALS%, they can restock from every owned structure, connector, or even vehicle in the vicinity.
+	</message>
+	<message name='Surveyor' image='surveyor.png'>
+		Surveyors detect natural resources within their scanning range. They are thus important in the initial phase of the game. They can be automated to search for resources on their own. While they are trying to be smart about it, their low scanning range inherently renders them prone to run into hostile attack ranges without noticing.
+	</message>
+	<message name='Move To' image='moveto.png'>
+		By right-clicking anywhere on the terrain with a vehicle selected, a new way-point can be added to the end of the vehicle's task list.
+		The vehicle will attempt to reach this point as quickly as possible from the last issued way-point (or its current location if none exist yet).
+		Note that pathfinding may fail if the destination is too far away, or cannot be reached by the selected vehicle due to other constraints.
+		Any issued motion will be executed as possible once the next round is computed. Prior to that you can undo a command by clicking on the respective vehicle's Undo or Abort buttons.
+	</message>
+	<message name='End Round' image='endround.png'>
+		%PRODUCT_NAME% is round based. Or rather, 'phase' based.
+		Chances are, you are (or just were) in the command phase, which allows you to issue commands to units you own. While you do this, all other players will do the same.
+		Once you are done you should click the 'End Round' button so that the server can process the next round. Only if all players have requested a new round, this process can start. A round timer may also be active which will eventually force this to happen.
+		During round processing, Attacks Happen First, Then planned movements. If your vehicle is destroyed during attack phase, it will never get to run away.
+	</message>
+	<message name='Interaction' image='interaction.png'>
+		One of your buildings requires interaction (visualized by the blinking ring). Interacting with a vehicle plant will generate a number of possibilities to choose from. Selecting any of them will allow the respective building to continue operation.
+		You can quickly walk through all of your units that require attention by pressing the space-key.
+	</message>
+	<message name='Hostile Ghosts' image='hostileGhost.png'>
+		Hostile ghosts (shown in translucent red) are created whenever radar contact is abruptly lost due to radar motion or destruction.
+		They visualize the last known position of a hostile unit, and can be used for strategic planning.
+		Hostile ghosts are preserved until their last known location is again visible, they are detected in some other location, or an explosion occurred in their vicinity.
+	</message>
+	<message name='Friendly Ghosts' image='friendlyGhost.png'>
+		Friendly ghosts-or 'tomb stones'-(shown in translucent black) are created whenever a unit you own is destroyed.
+		They naturally disappear after 10 rounds, or if you construct a new building in their place.
+	</message>
+	<message name='Hostile Contacts' image='contacts.png'>
+		Hostile contacts are visualized near the top of the window. Clicking on any of them will scroll the camera to view the respective contact.
+	</message>
+	<message name='Mine' image='mine.png'>
+		Mines serve a crucial role in providing your compound with resources. Mines require %ENERGY%(energy) to operate, and provide whatever resources are available at the respective location.
+		You should directly or indirectly connect them with a Generator.
+	</message>
+	<message name='Generator' image='generator.jpg'>
+		Generators serve a crucial role in providing your structure networks with %ENERGY%(energy), while consuming %FUEL%(fuel). Mines-as well as most other buildings-require %ENERGY% to operate.
+		You should directly or indirectly connect them with a Mine that provides %FUEL%.
+	</message>
+	<message name='Vehicle Plant' image='vehiclePlant.png'>
+		Vehicle Plants allow the manufacturing of vehicles. To operate they require %ENERGY%(energy) and %MINERALS%(minerals).
+		To issue a production job first select a turret from the top row, then a base from the bottom row, and then click on 'Construct Selected' button.
+		Once production is done free space is required to deploy the finished vehicle. When constructing this building make sure that enough space exists. Important: Some vehicles cannot be deployed on water.
+	</message>
+	<message name='Attack' image='attack.png'>
+		Attacking a destination can be done by right-clicking at a hostile unit or explicitly by using the 'Attack' button. When doing so, a red shape indicates the reachable area. Note that this area is smaller than the geometric attack umbrella because it does not include the explosion radius.
+		Also note that some locations colored in red may not actually be reachable, if there is no unobstructed trajectory to that destination. In this case intermediate explosions may occur.
+	</message>
+	<message name='Areas' image='areas.png'>
+		The planetary display attempts to distinguish three primary areas:
+		1: Undiscovered terrain
+		2: Discovered and currently visible terrain
+		3: Discovered but currently out of range
+		Everything you are not currently observing (everything not in 2) may change without you knowing. Half the trick of winning %PRODUCT_NAME% is knowing what you don't know.
+	</message>
+	<message name='Uplink Traffic' image='uplinkTraffic.jpg'>
+		All active units generate control traffic to the governing entity (that's you).
+		The server may impose a maximum uplink bandwidth. Once exhausted, units will enter hibernation depending on their uplink priority.
+		Units in hibernation cannot be controlled in any way, and do not generate uplink traffic. Lower uplink priorities cause units to shut off sooner.
+		The current total uplink traffic is shown in the bottom left of the window.
+		To avoid hibernation deadlock, try to limit the number of uplink-heavy buildings, and store unused vehicles in vehicle stores.
+	</message>
+</tutorial>
