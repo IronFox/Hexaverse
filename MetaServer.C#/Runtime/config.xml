@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config server_mode="game">
+	<repositories>
+		<svn>C:\Program Files\TortoiseSVN\bin\svn.exe</svn>
+		<git>C:\Program Files (x86)\Git\bin\git.exe</git>
+	</repositories>
+</config>

@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<world>
+  <avatar id="18" account_id="2" x="1.256842" y="-0.4574726" z="51.7" dir_x="0.9256161" dir_y="0.1620874" dir_z="-0.3419979" third_person_distance="11" />
+  <account id="2" name="IronFox" password="REMOVED_PASSWORD_HASH" avatar_id="18" />
+  <file id="29" name="local/primary_icon" filename="images/up.png" mime_type="image/x-png" crc32="1006540991" is_user_file="false" />
+</world>

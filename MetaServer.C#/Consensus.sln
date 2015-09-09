@@ -1,0 +1,26 @@
+
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Consensus", "Consensus.csproj", "{B4EFA900-A028-432F-ABAA-605E489BF54A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTests", "UnitTests\UnitTests.csproj", "{903A9A70-9298-457E-A3C4-E0A731E0C97A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B4EFA900-A028-432F-ABAA-605E489BF54A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B4EFA900-A028-432F-ABAA-605E489BF54A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B4EFA900-A028-432F-ABAA-605E489BF54A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B4EFA900-A028-432F-ABAA-605E489BF54A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{903A9A70-9298-457E-A3C4-E0A731E0C97A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{903A9A70-9298-457E-A3C4-E0A731E0C97A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{903A9A70-9298-457E-A3C4-E0A731E0C97A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{903A9A70-9298-457E-A3C4-E0A731E0C97A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
