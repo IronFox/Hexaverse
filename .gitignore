@@ -1,6 +1,7 @@
 *.suo
-/MetaServer.C#/bin/Debug
-/MetaServer.C#/obj/Debug
-/MetaServer.C#/Probe/bin/Debug
-/MetaServer.C#/Probe/obj/Debug
-/MetaServer.C#/UnitTests/obj/Debug
+/MetaServer.C#/bin/
+/MetaServer.C#/obj/
+/MetaServer.C#/Probe/bin/
+/MetaServer.C#/Probe/obj/
+/MetaServer.C#/UnitTests/obj/
+/MetaServer.C#/UnitTests/bin/
