@@ -46,24 +46,16 @@
     <Compile Include="IO\ClientGate.cs" />
     <Compile Include="IO\CRC32.cs" />
     <Compile Include="IO\TimeServer.cs" />
-    <Compile Include="IO\ViewServer.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Reporting\ReportProvider.cs" />
     <Compile Include="StorageItem\Account.cs" />
-    <Compile Include="StorageItem\Avatar.cs" />
     <Compile Include="Container\ByteBuffer.cs" />
     <Compile Include="IO\Client.cs" />
     <Compile Include="Container\DataQueue.cs" />
-    <Compile Include="StorageItem\Bridge.cs" />
-    <Compile Include="StorageItem\FileObject.cs" />
     <Compile Include="Container\BoundingVolumeHierarchy.cs" />
     <Compile Include="IO\LoadingStage.cs" />
-    <Compile Include="StorageItem\Structure.cs" />
-    <Compile Include="StorageItem\Surface.cs" />
-    <Compile Include="Container\IDMap.cs" />
     <Compile Include="Math\Matrix.cs" />
     <Compile Include="Math\Matrix3.cs" />
-    <Compile Include="StorageItem\Platform.cs" />
-    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Math\Rect.cs" />
     <Compile Include="Math\Resolution.cs" />
@@ -73,11 +65,13 @@
     <Compile Include="Math\Vec2.cs" />
     <Compile Include="Math\Vec3.cs" />
     <Compile Include="Math\Vec4.cs" />
-    <Compile Include="Container\SyncList.cs" />
-    <Compile Include="StorageItem\World.cs" />
+    <Compile Include="StorageItem\Continuum.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="ThirdParty\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

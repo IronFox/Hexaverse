@@ -1,4 +1,4 @@
-﻿//#define USE_SSL
+﻿#define USE_SSL
 
 
 using System;
@@ -241,7 +241,7 @@ namespace Consensus
     {
         private TcpClient tcpClient;
         private static List<Client> allClients = new List<Client>();
-        private Thread threadHandle,updateThreadHandle,updateStructureThreadHandle;
+        private Thread threadHandle;
         //private NetworkStream stream;
         #if !USE_SSL
             private Socket socket;
@@ -249,9 +249,7 @@ namespace Consensus
         public ByteBuffer Buffer = new ByteBuffer(1024);
         const int SafePacketSize = 64000000;
         public Account Account = null;
-        public AvatarInstance ActiveAvatar = null;
         private byte currentSerial = 0, currentStructureSerial = 0;
-        public byte[] PasswordSalt { get; private set; }
         private static RNGCryptoServiceProvider provider = new RNGCryptoServiceProvider();
         //private long lastFrameSent;
 
@@ -265,7 +263,6 @@ namespace Consensus
             private SslStream sslStream;
         #endif
 
-        public List<Structure> LookupBuffer = new List<Structure>();
 
 
 
@@ -315,6 +312,120 @@ namespace Consensus
 
         private static X509Certificate2 _certificate;
 
+		static DirectoryInfo GetTemporaryDirectory()
+		{
+			string tempDirectory;
+			do
+			{
+				tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+			}
+			while (Directory.Exists(tempDirectory));
+			return Directory.CreateDirectory(tempDirectory);
+		}
+
+
+		static bool Execute(string cmd, string arguments, out string result)
+		{
+			Console.WriteLine(cmd + arguments);
+			Process p = new Process();
+			p.StartInfo.UseShellExecute = false;
+			p.StartInfo.RedirectStandardOutput = true;
+			//p.StartInfo.CreateNoWindow = true;
+			p.StartInfo.FileName = cmd;
+			p.StartInfo.Arguments = arguments;
+			if (!p.Start())
+			{
+				result = "Process start failed";
+				return false;
+			}
+			result = p.StandardOutput.ReadToEnd();
+			p.WaitForExit();		
+			return p.ExitCode == 0;
+		}
+
+		static void OpenSSL(string command)
+		{
+			string ossl = @"C:\OpenSSL-Win32\bin\openssl";
+			Environment.SetEnvironmentVariable("OPENSSL_CONF", ossl+".cfg");
+									//set OPENSSL_CONF=c:\OpenSSL-Win32\bin\openssl.cfg   
+
+			string output;
+			bool rc = Execute(ossl, command, out output);
+			Debug.Assert(rc, output);
+
+		}
+
+		public static X509Certificate2 MakeCertificate(string owner, int numberOfValidDays=365)
+		{
+			DirectoryInfo outDir = GetTemporaryDirectory();
+
+			RandomNumberGenerator rng = new RNGCryptoServiceProvider();
+			byte[] binary = new byte[32];
+			rng.GetBytes(binary);
+			string pass = System.Convert.ToBase64String(binary);
+
+			string cfgPath = Path.Combine(outDir.FullName,"cfg");
+
+			using (StreamWriter cfg = new StreamWriter(cfgPath))
+			{
+				
+				cfg.OutLine("[ req ]");
+				cfg.OutLine("default_bits           = 2048");
+				cfg.OutLine("default_keyfile        = keyfile.pem");
+				cfg.OutLine("distinguished_name     = req_distinguished_name");
+				cfg.OutLine("attributes             = req_attributes");
+				cfg.OutLine("prompt                 = no");
+				cfg.OutLine("output_password        = " + pass);
+				cfg.OutLine("[ req_distinguished_name ]");
+				cfg.OutLine("C                      = DE");
+				cfg.OutLine("ST                     = []");
+				cfg.OutLine("L                      = []");
+				cfg.OutLine("O                      = []");
+				cfg.OutLine("OU                     = []");
+				cfg.OutLine("CN                     = " + owner);
+				cfg.OutLine("emailAddress           = []");
+				cfg.OutLine("[ req_attributes ]");
+				cfg.OutLine("challengePassword      = []");
+
+			}
+
+
+
+
+
+
+
+			string keyPath = Path.Combine(outDir.FullName,"temp.key");
+			string csrPath = Path.Combine(outDir.FullName,"temp.csr");
+			string crtPath = Path.Combine(outDir.FullName,"temp.crt");
+			string pfxPath = Path.Combine(outDir.FullName,"temp.pfx");
+
+
+			string passPath = Path.Combine(outDir.FullName,"pass");
+			StreamWriter writer = new StreamWriter(passPath);
+			writer.Write(pass);
+			writer.Close();
+
+			File.Copy(passPath,passPath+"2");
+
+
+			OpenSSL("genpkey -des3 -algorithm RSA -out " + keyPath + " -outform PEM -pkeyopt rsa_keygen_bits:2048 -pass file:" + passPath);
+			OpenSSL("req -new -key "+keyPath+" -passin file:"+passPath+" -out "+csrPath +" -config "+cfgPath);
+			OpenSSL("x509 -req -days "+numberOfValidDays.ToString()+" -in "+csrPath+" -passin file:"+passPath+" -signkey "+keyPath+" -out "+crtPath);
+			OpenSSL("pkcs12 -export -out "+pfxPath+" -passout pass: -inkey "+keyPath+" -passin file:"+passPath+" -in "+crtPath);
+//			OpenSSL("pkcs12 -export -out " + pfxPath + " -passout file:" + passPath + "2 -inkey " + keyPath + " -passin file:" + passPath + " -in " + crtPath);
+
+			byte[] pfx = File.ReadAllBytes(pfxPath);
+
+			Directory.Delete(outDir.FullName,true);
+
+			//outPass = pass;
+			//data = pfx;
+            return new X509Certificate2(pfx);
+		}
+
+
+
         public static void InitCertificate()
         {
             //certificate generated using http://blog.pluralsight.com/2012/02/13/selfcert-create-a-self-signed-certificate-interactively-gui-or-programmatically-in-net/
@@ -332,10 +443,29 @@ namespace Consensus
             Debug.Assert(verified);
         }
 
+		private static bool ValidateClientCertificate(
+				  object sender,
+				  X509Certificate certificate,
+				  X509Chain chain,
+				  SslPolicyErrors sslPolicyErrors)
+		{
+			//if (sslPolicyErrors == SslPolicyErrors.None || sslPolicyErrors == SslPolicyErrors.RemoteCertificateChainErrors)
+				return true;
+
+			//Console.WriteLine("Certificate error: {0}", sslPolicyErrors);
+
+			// Do not allow this client to communicate with unauthenticated servers. 
+			//return false;
+		}
+
         private Client(TcpClient TCPClient)
         {
             tcpClient = TCPClient;
             tcpClient.NoDelay = true;
+		}
+
+		public bool Start()
+		{
             //stream = tcpClient.GetStream();
             #if !USE_SSL
                 socket = tcpClient.Client;
@@ -350,27 +480,76 @@ namespace Consensus
             GateKey = GateKey.Substring(0, GateKey.LastIndexOf(':'));
 
 
-            PasswordSalt = new byte[64];
-            provider.GetBytes(PasswordSalt);
 
 
             #if USE_SSL
-                sslStream = new SslStream(tcpClient.GetStream(), false, null, null, EncryptionPolicy.RequireEncryption);
-                sslStream.AuthenticateAsServer(_certificate);
-                Program.Log(this, Significance.Common, "SSL Authentication concluded: " + sslStream.CipherAlgorithm.ToString()+", strength "+sslStream.CipherStrength);
-            #endif
-            Interface.Out.Channel.PasswordSalt.SendTo(this, PasswordSalt);
+				sslStream = new SslStream(tcpClient.GetStream(), false, new RemoteCertificateValidationCallback (ValidateClientCertificate), null, EncryptionPolicy.RequireEncryption);
+                sslStream.AuthenticateAsServer(_certificate,true,System.Security.Authentication.SslProtocols.Ssl3,false);
+				if (!sslStream.IsEncrypted)
+				{ 
+					sslStream.Close();
+					tcpClient.Close();
+					tcpClient = null;
+					sslStream = null;
+					return false;
+				}
+			#endif
+            //Interface.Out.Channel.PasswordSalt.SendTo(this, PasswordSalt);
             
             threadHandle = new Thread(new ThreadStart(this.ThreadMain));
             threadHandle.Start();
+			return true;
         }
 
-        public static void AddNew(TcpClient TCPClient)
+
+
+		public bool Authenticate(string accountName, string accountUUID)
+		{
+			if (sslStream.IsMutuallyAuthenticated)
+			{
+				Program.Log(this, Significance.Important, "SSL Authentication concluded: " + sslStream.CipherAlgorithm.ToString() + ", strength " + sslStream.CipherStrength);
+				Account acc = Account.Collection.GetValue(sslStream.RemoteCertificate.GetCertHashString());
+				if (acc != null && acc.Name == accountName && acc.UUID == accountUUID)
+				{
+					if (acc.IsLoggedIn)
+					{
+						Client cl = acc.LoggedInFrom;
+						if (cl != null)
+							cl.ForceDisconnect();
+					}
+					Account = acc;
+					Account.Activate(this);
+					Program.Log(this, Significance.Unusual, "Logged in as: " + Account.ToString());
+					return true;
+				}
+				else
+				{
+					if (acc == null)
+						Program.Log(this, Significance.ClientFatal, "Client certificate not recognized: " + sslStream.RemoteCertificate.GetCertHashString());
+					else
+					{
+						Program.Log(this, Significance.ClientFatal, "Client certificate recognized but identity mismatch");
+					}
+					ForceDisconnect();
+					return false;
+				}
+			}
+			Program.Log(this, Significance.ClientFatal, "Client certificate not provided");
+			ForceDisconnect();
+			return false;
+		}
+
+
+        public static bool AddNew(TcpClient TCPClient)
         {
+			Client cl = new Client(TCPClient);
+			if (!cl.Start())
+				return false;
             lock (allClients)
             {
-                allClients.Add(new Client(TCPClient));
+                allClients.Add(cl);
             }
+			return true;
         }
 
 
@@ -391,10 +570,15 @@ namespace Consensus
 
         public void Transfer(ByteBuffer data)
         {
+            #if USE_SSL
+				if (sslStream == null)
+					return;
+			#else
             if (socket == null)
             {
                 return; //probably closing down
             }
+			#endif
             try
             {
                 #if USE_SSL
@@ -433,74 +617,11 @@ namespace Consensus
         public string RemoteEnd { get; private set; }
         public string GateKey { get; private set; }
 
-        private void UpdateThreadMain()
-        {
-            Program.Log(this,Significance.Low, "Starting write thread");
-            StateFrame frame = new StateFrame();
-            //ByteBuffer last = null;
-            ByteBuffer current = new ByteBuffer(1024);
-
-            frame.BuildFullFrame(current,nextSerial());
-            Transfer(current);
-            updateReceivedEvent.WaitOne();
-            byte serial = nextSerial();
-
-            while (tcpClient != null)
-            {
-                frame.BuildDeltaFrame(current, serial);
-                if (current.Length > 0)
-                {
-                    //lastFrameSent = Time.NetTime();
-                    Transfer(current);
-                    updateReceivedEvent.WaitOne();
-                    serial = nextSerial();
-                }
-                else
-                    Thread.Sleep(50);
-            }
-
-            Program.Log(this, Significance.Low, "Ending write thread");
-        }
-
-        private void UpdateStructureThreadMain()
-        {
-            Program.Log(this, Significance.Low, "Starting structure write thread");
-            StructureStateFrame frame = new StructureStateFrame();
-            //ByteBuffer last = null;
-            ByteBuffer current = new ByteBuffer(1024);
-
-            frame.BuildFullFrame(current, nextStructureSerial());
-            Transfer(current);
-            structureUpdateReceivedEvent.WaitOne();
-            byte serial = nextStructureSerial();
-
-            while (tcpClient != null)
-            {
-                frame.BuildDeltaFrame(current, serial);
-                if (current.Length > 0)
-                {
-                    //lastFrameSent = Time.NetTime();
-                    Transfer(current);
-                    structureUpdateReceivedEvent.WaitOne();
-                    serial = nextStructureSerial();
-                }
-                else
-                    Thread.Sleep(50);
-            }
-
-            Program.Log(this, Significance.Low, "Ending structure write thread");
-        }
-
 
         private void close()
         {
             lock (this)
             {
-                if (ActiveAvatar != null)
-                {
-                    ActiveAvatar.Deactivate();
-                    ActiveAvatar = null;
-                }
                 if (tcpClient != null)
                 {
                     #if USE_SSL
@@ -675,34 +796,8 @@ namespace Consensus
         {
             close();
             threadHandle.Join();
-            if (updateThreadHandle != null)
-                updateThreadHandle.Join();
-            if (updateStructureThreadHandle != null)
-                updateStructureThreadHandle.Join();
         }
 
-        internal void StartUpdateThread()
-        {
-            if (updateThreadHandle != null)
-            {
-                Debug.Fail("Update thread of local client already running");
-                return;
-            }
-            updateThreadHandle = new Thread(new ThreadStart(this.UpdateThreadMain));
-            updateThreadHandle.Start();
-            updateStructureThreadHandle = new Thread(new ThreadStart(this.UpdateStructureThreadMain));
-            updateStructureThreadHandle.Start();
-        }
-
-        internal bool IsListeningToChannel(UInt32 channelID)
-        {
-            lock (this)
-            {
-                if (Account == null)
-                    return false;
-                return Account.IsListeningToChannel(channelID);
-            }
-        }
 
 
 
