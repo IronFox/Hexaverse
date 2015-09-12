@@ -1,0 +1,6 @@
+*.suo
+/MetaServer.C#/bin/Debug
+/MetaServer.C#/obj/Debug
+/MetaServer.C#/Probe/bin/Debug
+/MetaServer.C#/Probe/obj/Debug
+/MetaServer.C#/UnitTests/obj/Debug
