@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-using Prisma;
+using Consensus;
 using System.Diagnostics;
 
 namespace UnitTests

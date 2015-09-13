@@ -200,7 +200,7 @@ namespace Consensus
     {
         private static System.Text.ASCIIEncoding encoder = new System.Text.ASCIIEncoding();
 
-        public const int ServicePort = (int)Interface.Port.Logger;
+        public const int ServicePort = (int)Protocol.Port.Logger;
 
         public Queue<string> history = new Queue<string>();
 

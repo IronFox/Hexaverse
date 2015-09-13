@@ -23,28 +23,6 @@ namespace Consensus
     {
 
 
-        public enum ChannelID
-        {
-			Authenticate,	//c2s: Authenticate
-			Authenticated,	//s2c: <signal>
-			NewAccount,		//s2c: NewAccount
-
-
-            Count		//must remain last
-	    };
-
-        public enum Protocol
-        {
-            Version = 10	//must be incremented whenever the type of data being transfered along any of the above channels changes.
-        }
-
-        public enum Port
-        {
-            Main = 12874,
-            Logger = 12879,
-            Time = 12880,
-        }
-
 
         public static class InOut
         {
@@ -62,51 +40,24 @@ namespace Consensus
             {
             }
         }
+		//using AccountDetails = Protocol.Interface.AccountDetails;
         public static class Out
         {
 
             public static class Struct
             {
-				public struct NewAccount
-				{
-					public	string	AccountName,
-									UUID;
-					public byte[]	Certificate;
-				}
+	
+				//public struct PropagatedFriendRequest
+				//{
+				//	public Account Source;
+				//	public string Message;
 
-
-
-				public struct Account
-				{
-					public Account(Consensus.Account ac)
-					{}
-
-				}
-
-                public struct AccountName
-                {
-                    public UInt32 ID;
-                    public string Name;
-                }
-
-                public struct PropagatedClientMessage
-                {
-                    public Account Source;
-                    public UInt32 ChannelID;    //targeted channel ID, or (special usage) targeted avatar if private message. If zero, this is an authentic message, if not zero, then this is an echo
-                    public string Message;
-                }
-
-                public struct PropagatedFriendRequest
-                {
-                    public Account Source;
-                    public string Message;
-
-                    public PropagatedFriendRequest(Consensus.Account source, string message)
-                    {
-                        Source = new Account(source);
-                        Message = message;
-                    }
-                }
+				//	public PropagatedFriendRequest(Consensus.Account source, string message)
+				//	{
+				//		Source = new Account(source);
+				//		Message = message;
+				//	}
+				//}
 
                 public struct SystemMessage
                 {
@@ -118,8 +69,8 @@ namespace Consensus
             }
             public static class Channel
             {
-				public static OutChannel<Struct.NewAccount> NewAccount = new OutChannel<Struct.NewAccount>(ChannelID.NewAccount);
-				public static SignalChannel Authenticated = new SignalChannel(ChannelID.Authenticated);
+				public static Protocol.OutChannel<Protocol.Interface.NewAccount> NewAccount = new Protocol.OutChannel<Protocol.Interface.NewAccount>(Protocol.ChannelID.NewAccount);
+				public static Protocol.OutChannel<Protocol.Interface.AccountDetails> Authenticated = new Protocol.OutChannel<Protocol.Interface.AccountDetails>(Protocol.ChannelID.Authenticated);
 
 //                public static OutChannel<Struct.SystemMessage> SystemMessage = new OutChannel<Struct.SystemMessage>(ChannelID.SystemMessage);
                 //public static OutChannel<Struct.PropagatedClientMessage> ClientMessage = new OutChannel<Struct.PropagatedClientMessage>(ChannelID.ClientMessage);
@@ -170,7 +121,8 @@ namespace Consensus
 
             public static void Register()
             {
-				ChannelMap.Register<Struct.Authenticate>(ChannelID.Authenticate, Event.Authenticate);
+				Protocol.ChannelMap.Register<UInt32>(Protocol.ChannelID.Hello, Event.Hello,false);
+				Protocol.ChannelMap.Register<string>(Protocol.ChannelID.NewAccount, Event.NewAccount,false);
 //                ChannelMap.Register<Struct.FileChunkRequest>(ChannelID.FileChunkRequest, Event.FileChunkRequest);
   //              ChannelMap.Register<Struct.FriendRequest>(ChannelID.FriendRequest, Event.FriendRequest);
     //            ChannelMap.Register<UInt32>(ChannelID.FriendAccept, Event.FriendAccept);
@@ -179,12 +131,9 @@ namespace Consensus
             }
             public class Struct
             {
-				public struct Authenticate
+				public struct NewAccount
 				{
 					public string AccountName;
-					public string AccountUUID;
-					public bool WantsNewAccount;
-					public UInt32 ProtocolVersion;
 				}
 
 
@@ -212,45 +161,52 @@ namespace Consensus
                                             structureCreationGate = new ClientGate(5),
                                             structureDestructionGate = new ClientGate(5),
                                             structureBoardGate = new ClientGate(1);
-                private const UInt16 protocolVersion = (UInt16)Protocol.Version;
-                private const UInt32 expectedVersion = (UInt32)ChannelID.Count << 16 | protocolVersion;
 
                 public static object GetGlobalChangeAnchor() { return globalChange; }
 
 
 
-				public static void Authenticate(Client client, Struct.Authenticate auth)
+				public static void Hello(Protocol.Client _client, UInt32 protocolVersion)
 				{
+					Client client = (Client)_client;
 					loginGate.Pass(client);
-					if (auth.ProtocolVersion != expectedVersion)
+					if (protocolVersion != Protocol.Version.Combined)
 					{
-						GeneralError(client,"Version mismatch. Expected version "+VersionToString(expectedVersion)+" but got "+VersionToString(auth.ProtocolVersion)+" from client");
+						GeneralError(client, "Version mismatch. Expected version " + VersionToString(Protocol.Version.Combined) + " but got " + VersionToString(protocolVersion) + " from client");
 						client.ForceDisconnect();
 						return;
 					}
-					if (auth.WantsNewAccount)
+					client.VersionMatched = true;
+
+					if (client.Account != null)
 					{
-						accountCreationGate.Pass(client);
+						Out.Channel.Authenticated.SendTo(client, new Protocol.Interface.AccountDetails(client.Account));
+					}
+				}
+
+				public static void NewAccount(Protocol.Client _client, string accName)
+				{
+					Client client = (Client)_client;
+					if (!client.VersionMatched)
+					{
+						GeneralError(client, "Version not specified. Disconnecting client");
+						client.ForceDisconnect();
+						return;
+					}
+					accountCreationGate.Pass(client);
 						
-						//byte[] data;
-						X509Certificate2 cert = Client.MakeCertificate("hexaverse."+auth.AccountName);
-						Account acc2 = Account.Create(auth.AccountName,cert.GetCertHashString());
+					//byte[] data;
+					Guid guid = Guid.NewGuid();
+					X509Certificate2 cert = Client.MakeCertificate("hexaverse."+guid.ToString());
+					Account acc2 = Account.Create(accName, cert.GetCertHashString(),guid);
 
-						Out.Struct.NewAccount acc = new Out.Struct.NewAccount() { AccountName = auth.AccountName, Certificate = cert.Export(X509ContentType.Pfx),UUID = acc2.UUID };
+					Protocol.Interface.NewAccount nacc = new Protocol.Interface.NewAccount() { Details = new Protocol.Interface.AccountDetails(acc2), Certificate = cert.Export(X509ContentType.Pfx) };
 
-						Out.Channel.NewAccount.SendTo(client, acc);
+					Out.Channel.NewAccount.SendTo(client, nacc);
 
-
-					}
-					else
-					{ 
-						if (client.Authenticate(auth.AccountName,auth.AccountUUID))
-						{
-							Out.Channel.Authenticated.SendTo(client);
-
-						}
-					}
-
+					client.Account = acc2;
+					Out.Channel.Authenticated.SendTo(client, nacc.Details);
+					Program.Log(client, Significance.Common, "Logged in as: " + acc2.ToString());
 
 				}
 
@@ -804,8 +760,8 @@ namespace Consensus
 
     class Program
     {
-        public const int Port = (int)Interface.Port.Main,
-                        TimeServerPort = (int)Interface.Port.Time;
+        public const int Port = (int)Protocol.Port.Main,
+						TimeServerPort = (int)Protocol.Port.Time;
 
         static TcpListener  listener;
         static Thread listenThread;
@@ -864,7 +820,7 @@ namespace Consensus
                 Account ac = origin.Account;
                 if (ac != null)
                 {
-                    fileLine += "\t" + ac.UUID + "\t" + ac.Name;
+                    fileLine += "\t" + ac.GUID + "\t" + ac.Name;
 
                     {
                         fileLine += "\t" + "\t" + "\t";

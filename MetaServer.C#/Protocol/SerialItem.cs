@@ -5,7 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Consensus
+namespace Protocol
 {
     /// <summary>
     /// Item class to use overloading to quickly serialize and deserialize complex structures and arrays

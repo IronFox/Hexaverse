@@ -16,299 +16,95 @@ using System.Security.Cryptography;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Net;
+using Protocol;
 
 namespace Consensus
 {
+	public static partial class Extensions
+	{
+		public static void SendToAll(this Protocol.ChannelSender sender, UInt32 channelID, Protocol.ByteBuffer buffer, Object item)
+		{
+			sender.Processor.SerializePacket(channelID, item, buffer);
+
+			Client.VisitAll(client =>
+			{
+				if (client.Account != null)
+					client.Transfer(buffer);
+			});
+			buffer.Clear();
+		}
+		public static void SendToAll(this Protocol.ChannelSender sender, UInt32 channelID, Protocol.ByteBuffer buffer, Object item, Func<Client, bool> filter)
+		{
+			sender.Processor.SerializePacket(channelID, item, buffer);
+
+			Client.VisitAll(client =>
+			{
+				if (client.Account != null && filter(client))
+					client.Transfer(buffer);
+			});
+			buffer.Clear();
+		}
+
+		public static void Broadcast<T>(this Protocol.OutChannel<T> channel, Protocol.ByteBuffer useBuffer, T item)
+		{
+			channel.SendToAll((UInt32)channel.ChannelID, useBuffer, item);
+		}
+		public static void Broadcast<T>(this Protocol.OutChannel<T> channel, Protocol.ByteBuffer useBuffer, T item, Func<Client, bool> filter)
+		{
+			channel.SendToAll((UInt32)channel.ChannelID, useBuffer, item, filter);
+		}
+
+		public static void Broadcast(this Protocol.SignalChannel channel, Protocol.ByteBuffer useBuffer)
+		{
+			useBuffer.Clear();
+			useBuffer.AppendU32((UInt32)channel.ChannelID);
+			useBuffer.AppendU32(0);
+			Client.VisitAll(client =>
+			{
+				if (client.Account != null)
+					client.Transfer(useBuffer);
+			});
+		}
+	}
 
 
 
 
-    abstract class ChannelHandler
+
+
+
+
+    public class Client : Protocol.Client
     {
-        private SerialInterface processor;
-        public bool LoggedInOnly{get; private set;}
-
-
-        virtual protected void OnReceive(Client sender, Object received) { throw new Exception("Expected signal but received object on channel "+ChannelID); }
-        virtual protected void OnReceiveSignal(Client sender) { throw new Exception("Expected object but received signal on channel " + ChannelID); }
-
-        public Interface.ChannelID ChannelID{get; private set;}
-
-        public ChannelHandler(Interface.ChannelID myChannel, Type Serializable, bool loggedInOnly)
-        {
-            LoggedInOnly = loggedInOnly;
-            ChannelID = myChannel;
-            if (Serializable != typeof(void))
-                processor = SerialInterface.Build(Serializable);
-        }
-
-
-        public void Handle(Client client, byte[] data, int dataSize)
-        {
-            if (dataSize == 0)
-            {
-                OnReceiveSignal(client);
-                return;
-            }
-            if (processor == null)
-                throw new Exception("Expected signal but received object on channel " + ChannelID);
-            Object item = processor.Deserialize(data, dataSize);
-            OnReceive(client, item);
-        }
-    }
-
-
-
-    class GenericChannelHandler<T> : ChannelHandler
-    {
-        private Action<Client,T> handler;
-
-        override protected void OnReceive(Client sender, Object received)
-        {
-            handler(sender, (T)received);
-        }
-
-        public GenericChannelHandler(Interface.ChannelID id, Action<Client, T> action, bool loggedInOnly): base(id,typeof(T),loggedInOnly)
-        {
-            handler = action;
-        }
-
-
-    };
-
-    class SignalHandler : ChannelHandler
-    {
-        private Action<Client> handler;
-        override protected void OnReceiveSignal(Client sender)
-        {
-            handler(sender);
-        }
-        public SignalHandler(Interface.ChannelID id, Action<Client> action, bool loggedInOnly)
-            : base(id, typeof(void), loggedInOnly)
-        {
-            handler = action;
-        }
-    }
-
-
-
-    public class ChannelSender
-    {
-        private SerialInterface processor;
-
-        public ChannelSender(Type t)
-        {
-            processor = SerialInterface.Build(t);
-        }
-
-
-        public SerialInterface SerialInterface { get { return processor; } }
-
-        public void SendTo(UInt32 channelID, ByteBuffer buffer, Client client, Object item)
-        {
-            processor.SerializePacket(channelID, item, buffer);
-
-            client.Transfer(buffer);
-            buffer.Clear();
-        }
-        public void SendToAll(UInt32 channelID, ByteBuffer buffer, Object item)
-        {
-            processor.SerializePacket(channelID, item, buffer);
-
-            Client.VisitAll(client =>
-            {
-                if (client.Account != null)
-                    client.Transfer(buffer);
-            });
-            buffer.Clear();
-        }
-        public void SendToAll(UInt32 channelID, ByteBuffer buffer, Object item, Func<Client, bool> filter)
-        {
-            processor.SerializePacket(channelID, item, buffer);
-
-            Client.VisitAll(client =>
-            {
-                if (client.Account != null && filter(client))
-                    client.Transfer(buffer);
-            });
-            buffer.Clear();
-        }
-
-
-    }
-
-
-
-
-    public class OutChannel<T> : ChannelSender
-    {
-        private UInt32    channelID;
-        public OutChannel(Interface.ChannelID channelID)
-            : base(typeof(T))
-        { this.channelID = (UInt32)channelID; }
-        public void SendTo(Client client, T item)
-        {
-            base.SendTo((UInt32)channelID, client.Buffer, client, item);
-        }
-        public void SendTo(ByteBuffer useBuffer, Client client, T item)
-        {
-            base.SendTo((UInt32)channelID, useBuffer, client, item);
-        }
-        public void Broadcast(ByteBuffer useBuffer, T item)
-        {
-            base.SendToAll((UInt32)channelID, useBuffer, item);
-        }
-        public void Broadcast(ByteBuffer useBuffer, T item, Func<Client,bool> filter)
-        {
-            base.SendToAll((UInt32)channelID, useBuffer, item, filter);
-        }
-
-        public UInt32 ChannelID { get { return channelID; } }
-    };
-
-    public class SignalChannel
-    {
-        private UInt32 channelID;
-        public SignalChannel(Interface.ChannelID channelID)
-        { this.channelID = (UInt32)channelID; }
-        public void SendTo(Client client)
-        {
-            SendTo(client.Buffer,client);
-        }
-        public void SendTo(ByteBuffer useBuffer, Client client)
-        {
-            useBuffer.Clear();
-            useBuffer.AppendU32((UInt32)channelID);
-            useBuffer.AppendU32(0);
-            client.Transfer(useBuffer);
-        }
-        public void Broadcast(ByteBuffer useBuffer)
-        {
-            useBuffer.Clear();
-            useBuffer.AppendU32((UInt32)channelID);
-            useBuffer.AppendU32(0);
-            Client.VisitAll(client =>
-            {
-                if (client.Account != null)
-                    client.Transfer(useBuffer);
-            });
-        }
-
-        public UInt32 ChannelID { get { return channelID; } }
-    };
-
-    class StaticSender<T>
-    {
-        private static ChannelSender sender = new ChannelSender(typeof(T));
-
-        public static void SendTo(Interface.ChannelID channelID, Client client, ByteBuffer buffer,  T item)
-        {
-            sender.SendTo((UInt32)channelID, buffer, client, item);
-        }
-    }
-
-
-
-    class ChannelMap
-    {
-        private static ConcurrentDictionary<Interface.ChannelID, ChannelHandler> channels = new ConcurrentDictionary<Interface.ChannelID, ChannelHandler>();
-
-        public static ChannelHandler LookUp(Interface.ChannelID channelID)
-        {
-            if (!channels.ContainsKey(channelID))
-                return null;
-            return channels[channelID];
-        }
-
-        public static void Register<T>(Interface.ChannelID channelID, Action<Client, T> OnReceive, bool requireLogIn = true)
-        {
-            ChannelHandler channel = new GenericChannelHandler<T>(channelID, OnReceive, requireLogIn);
-            channels[channelID] = channel;
-        }
-
-        public static void RegisterSignal(Interface.ChannelID channelID, Action<Client> onReceive, bool requireLogIn = true)
-        {
-            ChannelHandler channel = new SignalHandler(channelID, onReceive, requireLogIn);
-            channels[channelID] = channel;
-        }
-    }
-
-
-
-
-
-    public class Client
-    {
-        private TcpClient tcpClient;
         private static List<Client> allClients = new List<Client>();
-        private Thread threadHandle;
         //private NetworkStream stream;
         #if !USE_SSL
             private Socket socket;
         #endif
-        public ByteBuffer Buffer = new ByteBuffer(1024);
-        const int SafePacketSize = 64000000;
         public Account Account = null;
-        private byte currentSerial = 0, currentStructureSerial = 0;
-        private static RNGCryptoServiceProvider provider = new RNGCryptoServiceProvider();
+       private static RNGCryptoServiceProvider provider = new RNGCryptoServiceProvider();
         //private long lastFrameSent;
 
-        private ManualResetEvent updateReceivedEvent = new ManualResetEvent(true),
-                                structureUpdateReceivedEvent = new ManualResetEvent(true);
+		//private ManualResetEvent updateReceivedEvent = new ManualResetEvent(true),
+		//						structureUpdateReceivedEvent = new ManualResetEvent(true);
 
-        public ConcurrentDictionary<UInt16, bool> HasContract = new ConcurrentDictionary<UInt16, bool>();
-
-
-        #if USE_SSL
-            private SslStream sslStream;
-        #endif
+        //public ConcurrentDictionary<UInt16, bool> HasContract = new ConcurrentDictionary<UInt16, bool>();
 
 
 
+			protected override void OnClose()
+			{
+				base.OnClose();
+				if (!Program.ShuttingDown)  //won't be able to lock this after all but joining, causing a deadlock
+				{
+					Account = null;
+					lock (allClients)
+					{
+						allClients.Remove(this);
+					}
+				}
+			}
 
-
-        private byte nextSerial()
-        {
-            lock (this)
-            {
-                currentSerial++;
-                updateReceivedEvent.Reset();
-                //Console.Out.WriteLine("locked " + currentSerial);
-                return currentSerial;
-            }
-        }
-
-        private byte nextStructureSerial()
-        {
-            lock (this)
-            {
-                currentStructureSerial++;
-                structureUpdateReceivedEvent.Reset();
-                //Console.Out.WriteLine("locked " + currentSerial);
-                return currentStructureSerial;
-            }
-        }
-        
-
-        public void SignalUpdateConfirmation(byte value)
-        {
-            lock (this)
-            {
-                //Console.Out.WriteLine("unlocked" + value);
-                //Debug.Assert(value == currentSerial); //lets ignore this for now
-                updateReceivedEvent.Set();
-            }
-        }
-
-        public void SignalStructureUpdateConfirmation(byte value)
-        {
-            lock (this)
-            {
-                //Console.Out.WriteLine("unlocked" + value);
-                //Debug.Assert(value == currentSerial); //lets ignore this for now
-                structureUpdateReceivedEvent.Set();
-            }
-        }
 
         private static X509Certificate2 _certificate;
 
@@ -421,7 +217,7 @@ namespace Consensus
 
 			//outPass = pass;
 			//data = pfx;
-            return new X509Certificate2(pfx);
+			return new X509Certificate2(pfx,"", X509KeyStorageFlags.Exportable);
 		}
 
 
@@ -458,11 +254,11 @@ namespace Consensus
 			//return false;
 		}
 
-        private Client(TcpClient TCPClient)
-        {
-            tcpClient = TCPClient;
-            tcpClient.NoDelay = true;
-		}
+		private Client(TcpClient TCPClient)
+			: base(TCPClient)
+        {}
+
+
 
 		public bool Start()
 		{
@@ -472,7 +268,7 @@ namespace Consensus
                 socket.NoDelay = true;
                 RemoteEnd = socket.RemoteEndPoint.ToString();
             #else
-                        RemoteEnd = tcpClient.Client.RemoteEndPoint.ToString();
+                        RemoteEnd = TcpClient.Client.RemoteEndPoint.ToString();
             #endif
             //SocketAddress addr = socket.RemoteEndPoint.Serialize();
             //Console.WriteLine(addr.Size);
@@ -483,60 +279,73 @@ namespace Consensus
 
 
             #if USE_SSL
-				sslStream = new SslStream(tcpClient.GetStream(), false, new RemoteCertificateValidationCallback (ValidateClientCertificate), null, EncryptionPolicy.RequireEncryption);
+				SslStream sslStream = new SslStream(TcpClient.GetStream(), false, new RemoteCertificateValidationCallback (ValidateClientCertificate), null, EncryptionPolicy.RequireEncryption);
                 sslStream.AuthenticateAsServer(_certificate,true,System.Security.Authentication.SslProtocols.Ssl3,false);
 				if (!sslStream.IsEncrypted)
 				{ 
 					sslStream.Close();
-					tcpClient.Close();
-					tcpClient = null;
-					sslStream = null;
+					base.Close();
 					return false;
 				}
+
+				if (sslStream.IsMutuallyAuthenticated)
+				{
+					Program.Log(this, Significance.Low, "SSL Authentication concluded: " + sslStream.CipherAlgorithm.ToString() + ", strength " + sslStream.CipherStrength);
+					Account acc = Account.Collection.GetValue(sslStream.RemoteCertificate.GetCertHashString());
+					if (acc != null)
+					{
+						Account = acc;
+						Program.Log(this, Significance.Common, "Logged in as: " + Account.ToString());
+						return true;
+					}
+					else
+					{
+						//if (acc == null)
+						//	Program.Log(this, Significance.ClientFatal, "Client certificate not recognized: " + sslStream.RemoteCertificate.GetCertHashString());
+						//else
+						//{
+						//	Program.Log(this, Significance.ClientFatal, "Client certificate recognized but identity mismatch");
+						//}
+						//ForceDisconnect();
+						//return false;
+					}
+				}
+
+
 			#endif
             //Interface.Out.Channel.PasswordSalt.SendTo(this, PasswordSalt);
-            
-            threadHandle = new Thread(new ThreadStart(this.ThreadMain));
-            threadHandle.Start();
+
+			Program.Log(this, Significance.Common, "Client connected");
+
+			base.Start(sslStream);        
 			return true;
         }
 
 
-
-		public bool Authenticate(string accountName, string accountUUID)
+		protected override void OnReadThreadExit()
 		{
-			if (sslStream.IsMutuallyAuthenticated)
+			base.OnReadThreadExit();
+			Program.Log(this, Significance.Low, "Ending read thread");
+			Program.Log(this, Significance.Common, "Client connection lost or closed");
+		}
+
+
+		protected override void OnAbnormalException(Exception e)
+		{
+			base.OnAbnormalException(e);
+			Program.Log(this, Significance.ClientFatal, e.Message);
+//			Program.ReportUnexpected(this, ex);   //so report it
+
+		}
+
+	
+
+		protected override bool IsAuthenticated
+		{
+			get
 			{
-				Program.Log(this, Significance.Important, "SSL Authentication concluded: " + sslStream.CipherAlgorithm.ToString() + ", strength " + sslStream.CipherStrength);
-				Account acc = Account.Collection.GetValue(sslStream.RemoteCertificate.GetCertHashString());
-				if (acc != null && acc.Name == accountName && acc.UUID == accountUUID)
-				{
-					if (acc.IsLoggedIn)
-					{
-						Client cl = acc.LoggedInFrom;
-						if (cl != null)
-							cl.ForceDisconnect();
-					}
-					Account = acc;
-					Account.Activate(this);
-					Program.Log(this, Significance.Unusual, "Logged in as: " + Account.ToString());
-					return true;
-				}
-				else
-				{
-					if (acc == null)
-						Program.Log(this, Significance.ClientFatal, "Client certificate not recognized: " + sslStream.RemoteCertificate.GetCertHashString());
-					else
-					{
-						Program.Log(this, Significance.ClientFatal, "Client certificate recognized but identity mismatch");
-					}
-					ForceDisconnect();
-					return false;
-				}
+				return Account != null;
 			}
-			Program.Log(this, Significance.ClientFatal, "Client certificate not provided");
-			ForceDisconnect();
-			return false;
 		}
 
 
@@ -568,46 +377,6 @@ namespace Consensus
             stream.WriteByte((byte)((v >> 24) & 0xFF));
         }
 
-        public void Transfer(ByteBuffer data)
-        {
-            #if USE_SSL
-				if (sslStream == null)
-					return;
-			#else
-            if (socket == null)
-            {
-                return; //probably closing down
-            }
-			#endif
-            try
-            {
-                #if USE_SSL
-                    lock (sslStream)
-                    {
-                        sslStream.Write(data.GetArray(), 0, data.Length);
-                        sslStream.Flush();
-                        return;
-                    }
-                #else
-                    lock (socket)
-                    {
-                        socket.Send(data.GetArray(), data.Length, SocketFlags.None);
-                        return;
-                    }
-                #endif
-            }
-            catch (IOException)
-            { }
-            catch (SocketException)
-            { }
-            catch (ObjectDisposedException)
-            { }
-            catch (Exception ex)
-            {
-                Program.ReportUnexpected(this, ex);
-            }
-            close();
-        }
 
         //public void Send<T>(Interface.ChannelID channelID, T obj)
         //{
@@ -618,122 +387,6 @@ namespace Consensus
         public string GateKey { get; private set; }
 
 
-        private void close()
-        {
-            lock (this)
-            {
-                if (tcpClient != null)
-                {
-                    #if USE_SSL
-                        sslStream.Close();
-                        sslStream = null;
-                    #endif
-                    tcpClient.Close();
-                    tcpClient = null;
-                    #if !USE_SSL
-                        socket.Close();
-                        socket = null;
-                    #endif
-                    if (!Program.ShuttingDown)  //won't be able to lock this after all but joining, causing a deadlock
-                    {
-                        if (Account != null)
-                        {
-                            Account.Deactivate();
-                            Account = null;
-                        }
-                        lock (allClients)
-                        {
-                            allClients.Remove(this);
-                        }
-                    }
-                }
-            }
-            updateReceivedEvent.Set();
-        }
-
-        private void ThreadMain()
-        {
-            Program.Log(this, Significance.Common, "Client connected");
-
-            UInt32 channel = 0, packetSize = 0;
-            ChannelHandler handler = null;
-
-            bool readingHeader = true;
-
-            try
-            {
-                byte[]  buffer = new byte[tcpClient.ReceiveBufferSize],
-                        decodeBuffer = new byte[tcpClient.ReceiveBufferSize];
-                DataQueue queue = new DataQueue(tcpClient.ReceiveBufferSize);
-
-                while (tcpClient != null)
-                {
-                    #if USE_SSL
-                        int read = sslStream.Read(buffer, 0, tcpClient.ReceiveBufferSize);
-                    #else
-                        int read = socket.Receive(buffer);
-                    #endif
-                    queue.Append(buffer, read);
-
-                    if (readingHeader)
-                    {
-                        if (queue.Length >= 8)
-                        {
-                            channel = queue.PopUInt32();
-                            packetSize = queue.PopUInt32();
-                            readingHeader = false;
-                            if (packetSize > SafePacketSize)
-                            {
-                                Program.Log(this, Significance.ClientFatal, "Received unsafe packet size (" + packetSize + ") on channel " + channel);
-                                close();
-                                continue;
-                            }
-                            handler = ChannelMap.LookUp((Interface.ChannelID)channel);
-                            if (handler == null)
-                            {
-                                Program.Log(this, Significance.ClientFatal, "Received packet on unexpected channel " + channel);
-                                close();
-                                continue;
-                            }
-                            if (handler.LoggedInOnly && Account == null)
-                            {
-                                Program.Log(this, Significance.ClientFatal, "Received packet on channel " + (Interface.ChannelID)channel + ", which is reserved for authenticated in clients");
-                                close();
-                                continue;
-                            }
-                        }
-                    }
-
-                    if (!readingHeader)
-                        if (queue.Length >= packetSize)
-                        {
-                            if (decodeBuffer.Length < packetSize)
-                                decodeBuffer = new byte[packetSize];
-                            queue.PopData(decodeBuffer, (int)packetSize);
-                            handler.Handle(this, decodeBuffer, (int)packetSize);
-                            readingHeader = true;
-                            handler = null;
-                        }
-                }
-            }
-            catch (ObjectDisposedException ) //socket has been closed
-            { }
-            catch (SocketException ) //probably safe, tpp
-            { }
-            catch (BlockException exception)
-            {
-                Program.Log(this, Significance.ClientFatal, exception.Message);
-            }
-            catch (IOException ) //this is fired if the ssl connection is terminated
-            {}
-            catch (Exception ex)    //should not happen
-            {
-                Program.ReportUnexpected(this, ex);   //so report it
-            }
-            Program.Log(this,Significance.Low, "Ending read thread");
-            Program.Log(this,Significance.Common,"Client connection lost or closed");
-            close();
-        }
 
 
        // public System.Net.EndPoint EndPoint { get { return socket.RemoteEndPoint; } }
@@ -756,9 +409,6 @@ namespace Consensus
             return client.ToString();
         }
 
-        private long localReferenceTime;
-        private UInt32 remoteReferenceTime;
-        private bool hasRemoteReferenceTime = false;
 
 #if false
         public UInt32 ProcessTimeStamp(UInt32 stamp)
@@ -792,14 +442,11 @@ namespace Consensus
             ForceDisconnect();
         }
 
-        public void ForceDisconnect()
-        {
-            close();
-            threadHandle.Join();
-        }
 
 
 
 
-    }
+
+		public bool VersionMatched = false;
+	}
 }

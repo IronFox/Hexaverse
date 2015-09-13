@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 
 
-using Prisma;
-using Element = Prisma.BoundingVolumeHierarchy<int>.Entry;
+using Consensus;
+using Element = Consensus.BoundingVolumeHierarchy<int>.Entry;
 
 namespace UnitTests
 {
@@ -15,7 +15,7 @@ namespace UnitTests
 
         private static Random random = new Random();
 
-        private static Prisma.Box randomBox()
+        private static Consensus.Box randomBox()
         {
             float centerX = (float)random.NextDouble() * 2.0f - 1.0f;
             float centerY = (float)random.NextDouble() * 2.0f - 1.0f;
@@ -23,11 +23,11 @@ namespace UnitTests
             float extX = (float)random.NextDouble() * 0.25f + 0.1f;
             float extY = (float)random.NextDouble() * 0.25f + 0.1f;
             float extZ = (float)random.NextDouble() * 0.25f + 0.1f;
-            return new Prisma.Box
+            return new Consensus.Box
             {
-                x = new Prisma.Range(centerX - extX, centerX + extX),
-                y = new Prisma.Range(centerY - extY, centerY + extY),
-                z = new Prisma.Range(centerZ - extZ, centerZ + extZ)
+                x = new Consensus.Range(centerX - extX, centerX + extX),
+                y = new Consensus.Range(centerY - extY, centerY + extY),
+                z = new Consensus.Range(centerZ - extZ, centerZ + extZ)
             };
         }
 
@@ -45,7 +45,7 @@ namespace UnitTests
                 List<Element> elements = new List<Element>();
                 for (int i = 0; i < (1<<(iteration+1)); i++)
                     elements.Add(randomElement());
-                Prisma.BoundingVolumeHierarchy<int> tree = new Prisma.BoundingVolumeHierarchy<int>();
+                Consensus.BoundingVolumeHierarchy<int> tree = new Consensus.BoundingVolumeHierarchy<int>();
 
                 tree.Insert(elements);
                 //tree.ForceReconstruction(true);

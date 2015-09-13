@@ -359,3 +359,19 @@
 12.09.2015 15:15:52	Important	127.0.0.1:10636						enc: True
 12.09.2015 15:15:52	Important	127.0.0.1:10636						auth: True
 12.09.2015 15:15:52	Unusual	127.0.0.1:10636						Client certificate not recognized: C7FAA88EAB057A4D118964B5880F36E3183754E8
+13.09.2015 20:24:48	Important							Initialization phase completed. Awaiting clients.
+13.09.2015 20:24:51	ClientFatal	127.0.0.1:5642						Received packet on channel Hello, which is reserved for authenticated clients
+13.09.2015 20:25:17	Important							Initialization phase completed. Awaiting clients.
+13.09.2015 20:25:19	ClientFatal	127.0.0.1:5648						Received packet on channel NewAccount, which is reserved for authenticated clients
+13.09.2015 20:25:30	Important							Initialization phase completed. Awaiting clients.
+13.09.2015 20:25:33	ClientFatal	127.0.0.1:5652						Key not valid for use in specified state.
+
+13.09.2015 20:26:28	ClientFatal	127.0.0.1:5690						Key not valid for use in specified state.
+
+13.09.2015 20:26:36	ClientFatal	127.0.0.1:5691						Client is temporarily blocked
+13.09.2015 20:26:49	Important							Initialization phase completed. Awaiting clients.
+13.09.2015 20:26:55	ClientFatal	127.0.0.1:5695						Key not valid for use in specified state.
+
+13.09.2015 20:28:57	Important							Initialization phase completed. Awaiting clients.
+13.09.2015 20:46:50	Important							Initialization phase completed. Awaiting clients.
+13.09.2015 20:51:10	Important							Initialization phase completed. Awaiting clients.

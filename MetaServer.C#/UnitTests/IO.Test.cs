@@ -1,9 +1,9 @@
 ﻿using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-using Prisma.IO;
+using Consensus.IO;
 
-using CRC32 = Prisma.IO.CRC32;
+using CRC32 = Consensus.IO.CRC32;
 using System.Diagnostics;
 using System.Collections.Generic;
 

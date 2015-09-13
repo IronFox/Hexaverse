@@ -32,6 +32,8 @@
 			this.host = new System.Windows.Forms.TextBox();
 			this.connect = new System.Windows.Forms.Button();
 			this.logOut = new System.Windows.Forms.TextBox();
+			this.userName = new System.Windows.Forms.TextBox();
+			this.label2 = new System.Windows.Forms.Label();
 			this.SuspendLayout();
 			// 
 			// label1
@@ -47,18 +49,18 @@
 			// 
 			this.host.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.host.Location = new System.Drawing.Point(42, 8);
+			this.host.Location = new System.Drawing.Point(68, 8);
 			this.host.Name = "host";
-			this.host.Size = new System.Drawing.Size(434, 20);
+			this.host.Size = new System.Drawing.Size(408, 20);
 			this.host.TabIndex = 1;
 			this.host.Text = "localhost:12874";
 			// 
 			// connect
 			// 
 			this.connect.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.connect.Location = new System.Drawing.Point(482, 0);
+			this.connect.Location = new System.Drawing.Point(482, 8);
 			this.connect.Name = "connect";
-			this.connect.Size = new System.Drawing.Size(246, 36);
+			this.connect.Size = new System.Drawing.Size(246, 46);
 			this.connect.TabIndex = 2;
 			this.connect.Text = "Connect";
 			this.connect.UseVisualStyleBackColor = true;
@@ -69,18 +71,39 @@
 			this.logOut.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.logOut.Location = new System.Drawing.Point(12, 42);
+			this.logOut.Location = new System.Drawing.Point(12, 60);
 			this.logOut.Multiline = true;
 			this.logOut.Name = "logOut";
 			this.logOut.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-			this.logOut.Size = new System.Drawing.Size(706, 262);
+			this.logOut.Size = new System.Drawing.Size(706, 244);
 			this.logOut.TabIndex = 3;
+			// 
+			// userName
+			// 
+			this.userName.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.userName.Location = new System.Drawing.Point(68, 34);
+			this.userName.Name = "userName";
+			this.userName.Size = new System.Drawing.Size(408, 20);
+			this.userName.TabIndex = 4;
+			this.userName.Text = "Generic";
+			// 
+			// label2
+			// 
+			this.label2.AutoSize = true;
+			this.label2.Location = new System.Drawing.Point(9, 34);
+			this.label2.Name = "label2";
+			this.label2.Size = new System.Drawing.Size(53, 13);
+			this.label2.TabIndex = 5;
+			this.label2.Text = "username";
 			// 
 			// Form1
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(730, 316);
+			this.Controls.Add(this.label2);
+			this.Controls.Add(this.userName);
 			this.Controls.Add(this.logOut);
 			this.Controls.Add(this.connect);
 			this.Controls.Add(this.host);
@@ -98,6 +121,8 @@
 		private System.Windows.Forms.TextBox host;
 		private System.Windows.Forms.Button connect;
 		private System.Windows.Forms.TextBox logOut;
+		private System.Windows.Forms.TextBox userName;
+		private System.Windows.Forms.Label label2;
 	}
 }
 

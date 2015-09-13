@@ -12,16 +12,13 @@ namespace Consensus
     /// <summary>
     /// User account structure
     /// </summary>
-    public class Account
+    public class Account : Protocol.Account
     {
         public static ConcurrentDictionary<string,Account> Collection = new ConcurrentDictionary<string,Account>();
         
         public string CertificateHash { get; private set; }
-		public string Name { get; private set; }
-		public string UUID {  get ; private set; }
 
 
-        private Client loggedInFrom = null;
 
         //public List<Account> Friends = new List<Account>();
         //public ConcurrentDictionary<UInt32, string> OpenFriendRequests = new ConcurrentDictionary<UInt32, string>();
@@ -42,18 +39,24 @@ namespace Consensus
             return hex.Replace("-", "");
         }
 
-        public Account(string name, string certificateHash)
+        private Account(string name, string certificateHash)
         {
             Name = name;
 			CertificateHash = certificateHash;
-			UUID = System.Guid.NewGuid().ToString();
+			GUID = System.Guid.NewGuid();
         }
+		private Account(string name, string certificateHash, Guid guid)
+		{
+			Name = name;
+			CertificateHash = certificateHash;
+			GUID = guid;
+		}
 
         public Account(XElement xaccount)
         {
             Name = xaccount.GetString("name");
 			CertificateHash = xaccount.GetString("certificateHash");
-			UUID = xaccount.GetString("uuid");
+			GUID = Guid.Parse(xaccount.GetString("guid"));
 
 			//XElement xrequests = xaccount.Element("friend_requests");
 			//if (xrequests != null)
@@ -79,15 +82,9 @@ namespace Consensus
 
 
 
-        /// <summary>
-        /// Attempts to create a new account with the specified name and password
-        /// </summary>
-        /// <param name="name">Name of the account to create. Must be unique.</param>
-        /// <param name="password">Password associated with the new account. Must not be null.</param>
-        /// <returns>Reference to the new account or null, if an account with the specified name already exists</returns>
-        public static Account Create(string name,string certificateHash)
+        public static Account Create(string name,string certificateHash, Guid guid)
         {
-			Account account = new Account(name, certificateHash);
+			Account account = new Account(name, certificateHash, guid);
             if (Collection.TryAdd(certificateHash, account))
             {
                 Continuum.Save();
@@ -96,35 +93,7 @@ namespace Consensus
             return null;
         }
 
-        public bool IsLoggedIn { get { return loggedInFrom != null; }}
-        public Client LoggedInFrom { get { return loggedInFrom; } }
-
-        public void Activate(Client client)
-        {
-            loggedInFrom = client;
-        }
-        public void Deactivate()
-        {
-            lock (this)
-            {
-                Program.Log(loggedInFrom, Significance.Low, "Deactivated " + ToString());
-				//foreach (Account friend in Friends)
-				//{
-				//	lock (friend)
-				//	{
-				//		if (friend.loggedInFrom != null)
-				//		{
-				//			try
-				//			{
-				//				Interface.Out.Channel.FriendOffline.SendTo(loggedInFrom.Buffer, friend.loggedInFrom, ID.Value); //log off
-				//			}
-				//			catch { }
-				//		}
-				//	}
-				//}
-                loggedInFrom = null;
-            }
-        }
+  
 
 
         public static void Load(XElement data)
@@ -140,7 +109,7 @@ namespace Consensus
                 XElement xaccount = new XElement("account");
                 xaccount.Set("name", Name);
                 xaccount.Set("certificateHash", CertificateHash);
-				xaccount.Set("uuid", UUID);
+				xaccount.Set("guid", GUID.ToString());
 				
 				//if (!OpenFriendRequests.IsEmpty)
 				//{
@@ -205,7 +174,7 @@ namespace Consensus
 
         public override string ToString()
         {
-            return ("Account('"+Name+"'/"+UUID+")");
+            return ("Account('"+Name+"'/"+GUID+")");
         }
 
         private static char ToHex(byte b)

@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
-namespace Consensus
+namespace Protocol
 {
     public class ByteBuffer
     {
