@@ -1,0 +1,38 @@
+hexaverse modulation:
+
+
+sovereignity (control set of planets, gain ownership of core planets)
+
+terrain imprints for owned planets:
+	layered modifications (terrain subset that alter the terrain based on other modifications)
+		adaptation logic (translate or reshape alteration based on base)?
+		sequences
+	whole planet, triangular, or corner-based? volumetric equations?
+
+	stackable planet-generator code?
+	
+	special management buildings that must/may be build on home planet to reflect universe expansion?
+	
+	
+automation arena:
+	define set of planets, each faction given minimal setup, tasked to maximize dominated area
+	observation:
+		read-only clients: observe all, cannot control units.
+		competition clients: sensor-observation, can control units.
+		how to keep separate?
+		delay observation by n rounds?
+		delay until end of match?
+		distributed match recording?
+	control:
+		ai-routines per unit?
+		unit-cooperation/-communication network?
+		git version control on ai-script?
+		script-languages?
+		feed ai back into regular game?
+		terrain-shaping units (e.g. a special terraformer that can only be tasked to build a specific shape)
+		
+	players vs ai-systems in one world?
+		cooperation?
+		
+	
+		

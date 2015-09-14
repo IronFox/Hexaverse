@@ -7,6 +7,8 @@ resources are invisible
 build wall: Obstruction detected. Resolution: clearing upper terrain.
 	->Unable to continue 'clear upper terrain' (Focus height (2) expected one above vehicle height (0)).
 	:there was an obstruction one layer further up, but not immediately relevant
+entering full screen often does not set window location to top-left screen edge properly first time.
+
 
 ...requested...
 
