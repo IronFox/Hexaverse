@@ -4,7 +4,9 @@
 ...urgent bugs...
 server crashes when trying to spawn unit from producer with unit limit reached
 resources are invisible 
-Unable to continue 'clear upper terrain' (Focus height (2) expected one above vehicle height (0)).
+build wall: Obstruction detected. Resolution: clearing upper terrain.
+	->Unable to continue 'clear upper terrain' (Focus height (2) expected one above vehicle height (0)).
+	:there was an obstruction one layer further up, but not immediately relevant
 
 ...requested...
 
