@@ -1,5 +1,11 @@
 
 ------------- not done ------------- 
+
+...urgent bugs...
+server crashes when trying to spawn unit from producer with unit limit reached
+resources are invisible 
+Unable to continue 'clear upper terrain' (Focus height (2) expected one above vehicle height (0)).
+
 ...requested...
 
 ambient restocking (and repairing?) of support vehicles. //restocking no longer an issue
