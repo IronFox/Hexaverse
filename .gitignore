@@ -6,3 +6,7 @@ obj/
 client/Debug/
 client/.projects/
 client/Hexaverse.sln
+client/Font/compiled/
+client/shaders/compiled/
+*.cgs
+client/config/
