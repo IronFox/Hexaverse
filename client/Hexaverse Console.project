@@ -1,0 +1,9 @@
+<project type="Application:Console" stackSize="4000000">
+	<source path="../shared" />
+	<source path="./">
+		<exclude dir="Debug"/>
+		<exclude dir="x64"/>
+	</source>
+	<macro name="CLIENT"/>
+	<referenceProject name="DeltaWorks" includePath="true" />
+</project>

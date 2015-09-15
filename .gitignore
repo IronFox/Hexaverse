@@ -3,3 +3,6 @@ bin/
 obj/
 *.opensdf
 *.sdf
+client/Debug/
+client/.projects/
+client/Hexaverse.sln

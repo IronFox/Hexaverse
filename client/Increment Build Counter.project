@@ -1,0 +1,3 @@
+<project type="StaticLibrary">
+	<command>..\shared\BuildCounter.exe buildCounter.h</command>
+</project>

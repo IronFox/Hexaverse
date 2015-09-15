@@ -1,0 +1,5 @@
+<solution language="C++">
+	<project name="Hexaverse" primary="true" />
+	<project name="Hexaverse Console" />
+	<project name="Increment Build Counter" />
+</solution>
