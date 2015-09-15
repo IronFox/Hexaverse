@@ -36,3 +36,7 @@ automation arena:
 		
 	
 		
+role separation:
+	ai programming
+	expansion
+	world creation
