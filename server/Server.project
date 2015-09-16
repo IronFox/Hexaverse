@@ -1,0 +1,5 @@
+<project type="Application:Console">
+	<source path="../shared" />
+	<source path="./" />
+	<referenceProject name="DeltaWorks" includePath="true" />
+</project>

@@ -10,3 +10,7 @@ client/Font/compiled/
 client/shaders/compiled/
 *.cgs
 client/config/
+/client/*.sln
+*.exp
+server/.projects/
+*.sln
