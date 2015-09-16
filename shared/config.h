@@ -72,4 +72,11 @@ Define in the project settings, not here.
 */
 
 
+/* CELL_LIFE
+Set 1 to enable cell life simulation.
+Set 0 to disable
+*/
+#define CELL_LIFE	1
+
+
 #endif

@@ -1047,6 +1047,9 @@ namespace Grid
 
 	#endif
 
+	
+	Array<THighToLowCell>	highToLowMap;
+
 	void				Create0(const TPlanetConfig&config, WorldDiscovery discovery)
 	{
 		#ifdef HAS_WINDOW
@@ -1088,6 +1091,17 @@ namespace Grid
 
 		high.Create(false);
 		low.Create(true);
+
+		highToLowMap.SetSize(HighSetup::GridType::CellCount);
+		for (UINT32 i = 0; i < LowSetup::GridType::CellCount; i++)
+		{
+			UINT32 higher = low.grid.GetCell(i).higherEquivalent;
+			highToLowMap[higher].Include(i);
+			const auto&n = high.grid.GetCell(higher).neighborhood;
+			for (BYTE k = 0; k < n.numNeighbors; k++)
+				highToLowMap[n.neighborID[k]].Include(i);
+		}
+
 
 		foreach(high.cells, cell)
 			SetW(*cell, -1.f);

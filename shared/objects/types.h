@@ -3,16 +3,12 @@
 
 #include <memory>
 #include <general/enumeration.h>
+#include "../typeDecl.h"
 
 
 namespace Objects
 {
 
-
-
-
-
-	#define DECLARE_POINTER_CLASS(T)	class T; typedef std::shared_ptr<T> P##T; typedef std::weak_ptr<T>	W##T; typedef std::shared_ptr<const T> PConst##T;
 
 	DECLARE_POINTER_CLASS(HangarStructure)
 	DECLARE_POINTER_CLASS(MobileEntityProducer)

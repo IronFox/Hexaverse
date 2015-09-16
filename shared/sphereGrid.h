@@ -112,66 +112,58 @@ namespace Grid
 		static const int	TopHeight = HalfRange-1,
 							BottomHeight = -HalfRange;
 
+		#define MAKE_NAMED_DELTA(TYPE_NAME,VALUE_NAME)\
+			struct TYPE_NAME\
+			{\
+				BYTE		VALUE_NAME;\
+				bool		operator!=(const TYPE_NAME&other) const\
+				{\
+					return VALUE_NAME != other.VALUE_NAME;\
+				}\
+				bool		operator==(const TYPE_NAME&other) const\
+				{\
+					return VALUE_NAME == other.VALUE_NAME;\
+				}\
+				bool		IsSet() const {return VALUE_NAME != 0;}\
+			};\
+			static_assert(sizeof(TYPE_NAME) == 1, "Struct-alignment out of whack");
 
-		struct TTypeDelta
-		{
-			BYTE		newType;	//0 = Bedrock = no change. Bedrock cannot be applied to normal cells
 
-			bool		operator!=(const TTypeDelta&other) const
-			{
-				return newType != other.newType;
-			}
-			bool		operator==(const TTypeDelta&other) const
-			{
-				return newType == other.newType;
-			}
-			bool		IsSet() const {return newType != 0;}
-		};
 
-		struct TStructCountDelta
-		{
-			BYTE		newStructureCounter;	//structure counter. 0 = no change, otherwise effective = newStructureCounter-1
+		MAKE_NAMED_DELTA (TTypeDelta,newType);	//0 = Bedrock = no change. Bedrock cannot be applied to normal cells
+		MAKE_NAMED_DELTA (TStructCountDelta,newStructureCounter);//structure counter. 0 = no change, otherwise effective = newStructureCounter-1
 
-			bool		operator!=(const TStructCountDelta&other) const
-			{
-				return newStructureCounter != other.newStructureCounter;
-			}
-			bool		operator==(const TStructCountDelta&other) const
-			{
-				return newStructureCounter == other.newStructureCounter;
-			}
+		#if CELL_LIFE
+			MAKE_NAMED_DELTA (TCellFactionDelta, newCellFaction);//0 = no change, otherwise effective = newCellFaction-1
+		#endif
 
-			bool		IsSet() const {return newStructureCounter!= 0;}
-		};
-		static_assert(sizeof(TTypeDelta) == 1, "Struct-alignment out of whack");
-		static_assert(sizeof(TStructCountDelta) == 1, "Struct-alignment out of whack");
 
 		#pragma pack(push)
 		#pragma pack(1)
-		struct TTypeDeltaBlock
-		{
-			UINT32				repitition;
-			TTypeDelta			value;
-			bool		operator!=(const TTypeDeltaBlock&other) const
+		template <typename T>
+			struct TDeltaBlock
 			{
-				return repitition != other.repitition || value != other.value;
-			}
-		};
-		struct TStructCountDeltaBlock
-		{
-			UINT32				repitition;
-			TStructCountDelta	value;
-			bool		operator!=(const TStructCountDeltaBlock&other) const
-			{
-				return repitition != other.repitition || value != other.value;
-			}
-		};
+				UINT32				repitition;
+				T					value;
+				bool		operator!=(const TDeltaBlock<T>&other) const
+				{
+					return repitition != other.repitition || value != other.value;
+				}
+			};
+		typedef TDeltaBlock<TTypeDelta>	TTypeDeltaBlock;
+		typedef TDeltaBlock<TStructCountDelta>	TStructCountDeltaBlock;
+		static_assert(sizeof(TTypeDeltaBlock) == 5, "Struct-alignment out of whack");
+		static_assert(sizeof(TStructCountDeltaBlock) == 5, "Struct-alignment out of whack");
+
+		#if CELL_LIFE
+			typedef TDeltaBlock<TCellFactionDelta>	TCellFactionDeltaBlock;
+		#endif
 		#pragma pack(pop)
 
 		class CompactCell
 		{
 		public:
-			CONSTRUCT_ENUMERATION12(Content,
+			CONSTRUCT_ENUMERATION13(Content,
 				Unknown,
 				Granite,
 				Earth,
@@ -182,19 +174,24 @@ namespace Grid
 				Foundation,
 				Road,
 				Lava,
+				LiveCell,
 				Water,
 				Clear
 			)
 
 
-			BYTE	content;
-			BYTE	structureCounter;	//number of structures (density) that occupy this block
+			#if CELL_LIFE
+				BYTE	cellFaction = 0;
+			#endif
+
+			BYTE	content = Content::Clear;
+			BYTE	structureCounter = 0;	//number of structures (density) that occupy this block
 			#ifdef HAS_WINDOW
 				short	visible;	//indicates levels of visibility. should not fall below 0. might make it unsigned when i am convinced it works. values >= 1 indicate this cell is visible
 			#endif
 
-			/**/	CompactCell() :content(Content::Clear), structureCounter(0) {}
-			/**/	CompactCell(Content t) :content(t), structureCounter(0)	{}
+			/**/	CompactCell() {}
+			/**/	CompactCell(Content t) :content(t)	{}
 
 
 			#ifdef HAS_WINDOW
@@ -206,34 +203,73 @@ namespace Grid
 			#endif
 
 
-			void	GetDeltaFrom(const CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout)	const
-			{
-				tout.newType = content != other.content ? content : 0;
-				sout.newStructureCounter = structureCounter != other.structureCounter ? structureCounter + 1 : 0;
-			}
-			void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout) const
-			{
-				GetDeltaFrom(other,tout,sout);
-				other = *this;
-			}
+			#if CELL_LIFE
+				void	GetDeltaFrom(const CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout, TCellFactionDelta&fout, bool&foutValid)	const
+				{
+					tout.newType = content != other.content ? content : 0;
+					sout.newStructureCounter = structureCounter != other.structureCounter ? structureCounter + 1 : 0;
+					fout.newCellFaction = cellFaction != other.cellFaction ? cellFaction + 1 : 0;
+					foutValid = content == Content::LiveCell;
+				}
+				void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout, TCellFactionDelta&fout, bool&foutValid) const
+				{
+					GetDeltaFrom(other,tout,sout, fout, foutValid);
+					other = *this;
+				}
+
+				bool	ApplyDelta(const TTypeDelta&tdelta, const TStructCountDelta&sdelta, const TCellFactionDelta&fdelta)
+				{
+					if (tdelta.newType == 0 && sdelta.newStructureCounter == 0)
+						return false;
+					if (tdelta.newType)
+					{
+						content = tdelta.newType;
+						DBG_ASSERT_LESS__(content,Content::NumberOfPossibilities);
+					}
+					if (sdelta.newStructureCounter)
+					{
+						structureCounter = sdelta.newStructureCounter-1;
+						DBG_ASSERT_LESS__(structureCounter,3);
+					}
+					if (fdelta.newCellFaction && content == Content::LiveCell)
+					{
+						cellFaction = fdelta.newCellFaction-1;
+					}
+					return true;
+				}
+				
+
+			#else
+
+				void	GetDeltaFrom(const CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout)	const
+				{
+					tout.newType = content != other.content ? content : 0;
+					sout.newStructureCounter = structureCounter != other.structureCounter ? structureCounter + 1 : 0;
+				}
+				void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout) const
+				{
+					GetDeltaFrom(other,tout,sout);
+					other = *this;
+				}
 
 
-			bool	ApplyDelta(const TTypeDelta&tdelta, const TStructCountDelta&sdelta)
-			{
-				if (tdelta.newType == 0 && sdelta.newStructureCounter == 0)
-					return false;
-				if (tdelta.newType)
+				bool	ApplyDelta(const TTypeDelta&tdelta, const TStructCountDelta&sdelta)
 				{
-					content = tdelta.newType;
-					DBG_ASSERT_LESS__(content,Content::NumberOfPossibilities);
+					if (tdelta.newType == 0 && sdelta.newStructureCounter == 0)
+						return false;
+					if (tdelta.newType)
+					{
+						content = tdelta.newType;
+						DBG_ASSERT_LESS__(content,Content::NumberOfPossibilities);
+					}
+					if (sdelta.newStructureCounter)
+					{
+						structureCounter = sdelta.newStructureCounter-1;
+						DBG_ASSERT_LESS__(structureCounter,3);
+					}
+					return true;
 				}
-				if (sdelta.newStructureCounter)
-				{
-					structureCounter = sdelta.newStructureCounter-1;
-					DBG_ASSERT_LESS__(structureCounter,3);
-				}
-				return true;
-			}
+			#endif
 			bool	ApplyDelta(const TTypeDelta&tdelta)
 			{
 				if (tdelta.newType)
@@ -304,6 +340,16 @@ namespace Grid
 			bool	IsClearOrWaterIgnoreStructure() const
 			{
 				return (content == Content::Clear || content == Content::Water);
+			}
+
+
+			static bool IsDead(BYTE cnt)
+			{
+				return cnt < Content::LiveCell;
+			}
+			static bool IsAlive(BYTE cnt)
+			{
+				return cnt == Content::LiveCell;
 			}
 			static bool IsSolid(BYTE cnt)
 			{
@@ -1485,6 +1531,25 @@ namespace Grid
 
 	extern HighSetup		high;
 	extern LowSetup			low;
+
+
+	struct THighToLowCell
+	{
+		static const UINT32 Empty = 0xFFFFFFFF;
+		UINT32				lowCells[2] = {Empty,Empty};
+
+		void				Include(UINT32 cell)
+		{
+			lowCells[lowCells[0] != Empty] = cell;
+		}
+
+	};
+
+	extern Array<THighToLowCell>	highToLowMap;
+	
+
+
+
 
 	//extern DX11::ObjectBuffer<float4>	terrainColor;
 

@@ -1150,12 +1150,25 @@ namespace Protocol
 	//NETA(x)
 	typedef NetArray<Grid::CellStack::TTypeDeltaBlock,4000000>	TypeDeltaArray;
 	typedef NetArray<Grid::CellStack::TStructCountDeltaBlock,4000000>	StructCountDeltaArray;
-	NETSTRUCT4(WorldDelta
-		, Timestamp, timestamp
-		, NET(BYTE), family
-		, TypeDeltaArray, data0
-		, StructCountDeltaArray, data1
-	)
+
+	#if CELL_LIFE
+		typedef NetArray<Grid::CellStack::TCellFactionDeltaBlock,4000000>	CellFactionDeltaArray;
+		NETSTRUCT5(WorldDelta
+			, Timestamp, timestamp
+			, NET(BYTE), family
+			, TypeDeltaArray, data0
+			, StructCountDeltaArray, data1
+			, CellFactionDeltaArray, data2
+		)
+
+	#else
+		NETSTRUCT4(WorldDelta
+			, Timestamp, timestamp
+			, NET(BYTE), family
+			, TypeDeltaArray, data0
+			, StructCountDeltaArray, data1
+		)
+	#endif
 
 
 	NETSTRUCT6(EntityState

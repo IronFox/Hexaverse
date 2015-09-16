@@ -624,11 +624,19 @@ namespace State
 			Array<Grid::CellStack::TTypeDelta> tdts(length * Grid::CellStack::Range);
 			Array<Grid::CellStack::TStructCountDelta> sdts(length * Grid::CellStack::Range);
 			//delta.data.SetSize(length * Grid::CellStack::Range);
+			#if CELL_LIFE
+				Array<Grid::CellStack::TCellFactionDelta> fdts(length * Grid::CellStack::Range);
+				Array<bool> fdtsValid(length * Grid::CellStack::Range);
+			#else
+				int fdts = 0,
+					fdtsValid = 0;
+			#endif
 
 			if (faction)
 				faction->families[familyID].Reset();
 			
-			Concurrency::parallel_for(index_t(0),length*Grid::CellStack::Range,[&tdts,&sdts,length,offset,empty,deltaType,faction](index_t i)
+			Concurrency::parallel_for(index_t(0),length*Grid::CellStack::Range,
+			[&tdts,&sdts,&fdts,&fdtsValid,length,offset,empty,deltaType,faction](index_t i)
 			{
 				//index_t stackId = offset + (i / Grid::CellStack::Range);
 				//index_t layer = i % Grid::CellStack::Range;
@@ -641,7 +649,14 @@ namespace State
 						auto&cell =  faction->cellStack[stackID].volumeCell[layer];
 						bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
 						if (canSee)
-							Grid::actualWorld.cellStack[stackID].volumeCell[layer].GetDeltaFromAndUpdate(faction->currentState.cellStack[stackID].volumeCell[layer],tdts[i],sdts[i]);
+						{
+							Grid::actualWorld.cellStack[stackID].volumeCell[layer].
+							#if CELL_LIFE
+								GetDeltaFromAndUpdate(faction->currentState.cellStack[stackID].volumeCell[layer],tdts[i],sdts[i],fdts[i],fdtsValid[i]);
+							#else
+								GetDeltaFromAndUpdate(faction->currentState.cellStack[stackID].volumeCell[layer],tdts[i],sdts[i]);
+							#endif
+						}
 						else
 						{
 							sdts[i].newStructureCounter = 0;
@@ -655,7 +670,11 @@ namespace State
 						auto&cell =  faction->cellStack[stackID].volumeCell[layer];
 						bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
 						const Grid::CellStack::Cell& source = canSee ? Grid::actualWorld.cellStack[stackID].volumeCell[layer] : Grid::initialWorld.cellStack[stackID].volumeCell[layer];
-						source.GetDeltaFrom(empty,tdts[i],sdts[i]);
+						#if CELL_LIFE
+							source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
+						#else
+							source.GetDeltaFrom(empty,tdts[i],sdts[i]);
+						#endif
 						faction->currentState.cellStack[stackID].volumeCell[layer] = source;
 						cell.temporarilyVisible = false;
 					}
@@ -663,19 +682,31 @@ namespace State
 					case FactionCopy:
 					{
 						const Grid::CellStack::Cell& source = faction->currentState.cellStack[stackID].volumeCell[layer];
-						source.GetDeltaFrom(empty,tdts[i],sdts[i]);
+						#if CELL_LIFE
+							source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
+						#else
+							source.GetDeltaFrom(empty,tdts[i],sdts[i]);
+						#endif
 					}
 					break;
 					case GlobalCopy:
 					{
 						const Grid::CellStack::Cell& source = Grid::actualWorld.cellStack[stackID].volumeCell[layer];
-						source.GetDeltaFrom(empty,tdts[i],sdts[i]);
+						#if CELL_LIFE
+							source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
+						#else
+							source.GetDeltaFrom(empty,tdts[i],sdts[i]);
+						#endif
 					}
 					break;
 					case GlobalInitialCopy:
 					{
 						const Grid::CellStack::Cell& source = Grid::initialWorld.cellStack[stackID].volumeCell[layer];
-						source.GetDeltaFrom(empty,tdts[i],sdts[i]);
+						#if CELL_LIFE
+							source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
+						#else
+							source.GetDeltaFrom(empty,tdts[i],sdts[i]);
+						#endif
 					}
 					break;
 				}
@@ -685,6 +716,21 @@ namespace State
 			//static_assert(sizeof(Protocol::TDeltaBlock) == sizeof(UINT32) + sizeof(Grid::CellStack::TCellDelta), "Struct-alignment out of whack");
 
 			Compress(tdts,delta.data0, /*deltaType == FactionCopy || */deltaType == GlobalCopy/* || deltaType == GlobalInitialCopy*/);
+			#if CELL_LIFE
+				{
+					BYTE lastSet = 0;
+					for (index_t i = 0; i < fdts.Count(); i++)
+					{
+						if (!fdtsValid[i])
+							fdts[i].newCellFaction = lastSet;
+						else
+							lastSet = fdts[i].newCellFaction;
+					}
+					Compress(fdts,delta.data2);
+				}
+
+			#endif
+
 			if (includeStructCountDelta)
 			{
 				Compress(sdts,delta.data1);
