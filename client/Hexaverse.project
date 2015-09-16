@@ -1,4 +1,0 @@
-<project manifest="DeclareDPIAware.manifest" type="Application:Windows">
-	<clone name="Hexaverse Console" />
-	<macro name="HAS_WINDOW"/>
-</project>

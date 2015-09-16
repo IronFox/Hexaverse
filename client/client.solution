@@ -1,0 +1,5 @@
+<solution language="C++">
+	<project name="Visual Client" primary="true" />
+	<project name="Console Client" />
+	<project name="Increment Build Counter" />
+</solution>

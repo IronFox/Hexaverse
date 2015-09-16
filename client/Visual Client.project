@@ -1,0 +1,5 @@
+<project type="Application:Windows">
+	<clone name="Console Client" />
+	<manifest>DeclareDPIAware.manifest</manifest>
+	<macro name="HAS_WINDOW"/>
+</project>
