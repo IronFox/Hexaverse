@@ -133,8 +133,8 @@ namespace Grid
 		MAKE_NAMED_DELTA (TTypeDelta,newType);	//0 = Bedrock = no change. Bedrock cannot be applied to normal cells
 		MAKE_NAMED_DELTA (TStructCountDelta,newStructureCounter);//structure counter. 0 = no change, otherwise effective = newStructureCounter-1
 
-		#if CELL_LIFE
-			MAKE_NAMED_DELTA (TCellFactionDelta, newCellFaction);//0 = no change, otherwise effective = newCellFaction-1
+		#if TECHNITES
+			MAKE_NAMED_DELTA (TTechniteFactionDelta, newTechniteFaction);//0 = no change, otherwise effective = newTechniteFaction-1
 		#endif
 
 
@@ -155,8 +155,8 @@ namespace Grid
 		static_assert(sizeof(TTypeDeltaBlock) == 5, "Struct-alignment out of whack");
 		static_assert(sizeof(TStructCountDeltaBlock) == 5, "Struct-alignment out of whack");
 
-		#if CELL_LIFE
-			typedef TDeltaBlock<TCellFactionDelta>	TCellFactionDeltaBlock;
+		#if TECHNITES
+			typedef TDeltaBlock<TTechniteFactionDelta>	TTechniteFactionDeltaBlock;
 		#endif
 		#pragma pack(pop)
 
@@ -174,14 +174,14 @@ namespace Grid
 				Foundation,
 				Road,
 				Lava,
-				LiveCell,
+				Technite,
 				Water,
 				Clear
 			)
 
 
-			#if CELL_LIFE
-				BYTE	cellFaction = 0;
+			#if TECHNITES
+				BYTE	techniteFaction = 0;
 			#endif
 
 			BYTE	content = Content::Clear;
@@ -203,21 +203,21 @@ namespace Grid
 			#endif
 
 
-			#if CELL_LIFE
-				void	GetDeltaFrom(const CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout, TCellFactionDelta&fout, bool&foutValid)	const
+			#if TECHNITES
+				void	GetDeltaFrom(const CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout, TTechniteFactionDelta&fout, bool&foutValid)	const
 				{
 					tout.newType = content != other.content ? content : 0;
 					sout.newStructureCounter = structureCounter != other.structureCounter ? structureCounter + 1 : 0;
-					fout.newCellFaction = cellFaction != other.cellFaction ? cellFaction + 1 : 0;
-					foutValid = content == Content::LiveCell;
+					fout.newTechniteFaction = techniteFaction != other.techniteFaction ? techniteFaction + 1 : 0;
+					foutValid = content == Content::Technite;
 				}
-				void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout, TCellFactionDelta&fout, bool&foutValid) const
+				void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout, TTechniteFactionDelta&fout, bool&foutValid) const
 				{
 					GetDeltaFrom(other,tout,sout, fout, foutValid);
 					other = *this;
 				}
 
-				bool	ApplyDelta(const TTypeDelta&tdelta, const TStructCountDelta&sdelta, const TCellFactionDelta&fdelta)
+				bool	ApplyDelta(const TTypeDelta&tdelta, const TStructCountDelta&sdelta, const TTechniteFactionDelta&fdelta)
 				{
 					if (tdelta.newType == 0 && sdelta.newStructureCounter == 0)
 						return false;
@@ -231,9 +231,9 @@ namespace Grid
 						structureCounter = sdelta.newStructureCounter-1;
 						DBG_ASSERT_LESS__(structureCounter,3);
 					}
-					if (fdelta.newCellFaction && content == Content::LiveCell)
+					if (fdelta.newTechniteFaction && content == Content::Technite)
 					{
-						cellFaction = fdelta.newCellFaction-1;
+						techniteFaction = fdelta.newTechniteFaction-1;
 					}
 					return true;
 				}
@@ -345,11 +345,11 @@ namespace Grid
 
 			static bool IsDead(BYTE cnt)
 			{
-				return cnt < Content::LiveCell;
+				return cnt < Content::Technite;
 			}
 			static bool IsAlive(BYTE cnt)
 			{
-				return cnt == Content::LiveCell;
+				return cnt == Content::Technite;
 			}
 			static bool IsSolid(BYTE cnt)
 			{

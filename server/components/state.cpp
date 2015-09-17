@@ -624,8 +624,8 @@ namespace State
 			Array<Grid::CellStack::TTypeDelta> tdts(length * Grid::CellStack::Range);
 			Array<Grid::CellStack::TStructCountDelta> sdts(length * Grid::CellStack::Range);
 			//delta.data.SetSize(length * Grid::CellStack::Range);
-			#if CELL_LIFE
-				Array<Grid::CellStack::TCellFactionDelta> fdts(length * Grid::CellStack::Range);
+			#if TECHNITES
+				Array<Grid::CellStack::TTechniteFactionDelta> fdts(length * Grid::CellStack::Range);
 				Array<bool> fdtsValid(length * Grid::CellStack::Range);
 			#else
 				int fdts = 0,
@@ -651,7 +651,7 @@ namespace State
 						if (canSee)
 						{
 							Grid::actualWorld.cellStack[stackID].volumeCell[layer].
-							#if CELL_LIFE
+							#if TECHNITES
 								GetDeltaFromAndUpdate(faction->currentState.cellStack[stackID].volumeCell[layer],tdts[i],sdts[i],fdts[i],fdtsValid[i]);
 							#else
 								GetDeltaFromAndUpdate(faction->currentState.cellStack[stackID].volumeCell[layer],tdts[i],sdts[i]);
@@ -670,7 +670,7 @@ namespace State
 						auto&cell =  faction->cellStack[stackID].volumeCell[layer];
 						bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
 						const Grid::CellStack::Cell& source = canSee ? Grid::actualWorld.cellStack[stackID].volumeCell[layer] : Grid::initialWorld.cellStack[stackID].volumeCell[layer];
-						#if CELL_LIFE
+						#if TECHNITES
 							source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
 						#else
 							source.GetDeltaFrom(empty,tdts[i],sdts[i]);
@@ -682,7 +682,7 @@ namespace State
 					case FactionCopy:
 					{
 						const Grid::CellStack::Cell& source = faction->currentState.cellStack[stackID].volumeCell[layer];
-						#if CELL_LIFE
+						#if TECHNITES
 							source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
 						#else
 							source.GetDeltaFrom(empty,tdts[i],sdts[i]);
@@ -692,7 +692,7 @@ namespace State
 					case GlobalCopy:
 					{
 						const Grid::CellStack::Cell& source = Grid::actualWorld.cellStack[stackID].volumeCell[layer];
-						#if CELL_LIFE
+						#if TECHNITES
 							source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
 						#else
 							source.GetDeltaFrom(empty,tdts[i],sdts[i]);
@@ -702,7 +702,7 @@ namespace State
 					case GlobalInitialCopy:
 					{
 						const Grid::CellStack::Cell& source = Grid::initialWorld.cellStack[stackID].volumeCell[layer];
-						#if CELL_LIFE
+						#if TECHNITES
 							source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
 						#else
 							source.GetDeltaFrom(empty,tdts[i],sdts[i]);
@@ -716,15 +716,15 @@ namespace State
 			//static_assert(sizeof(Protocol::TDeltaBlock) == sizeof(UINT32) + sizeof(Grid::CellStack::TCellDelta), "Struct-alignment out of whack");
 
 			Compress(tdts,delta.data0, /*deltaType == FactionCopy || */deltaType == GlobalCopy/* || deltaType == GlobalInitialCopy*/);
-			#if CELL_LIFE
+			#if TECHNITES
 				{
 					BYTE lastSet = 0;
 					for (index_t i = 0; i < fdts.Count(); i++)
 					{
 						if (!fdtsValid[i])
-							fdts[i].newCellFaction = lastSet;
+							fdts[i].newTechniteFaction = lastSet;
 						else
-							lastSet = fdts[i].newCellFaction;
+							lastSet = fdts[i].newTechniteFaction;
 					}
 					Compress(fdts,delta.data2);
 				}

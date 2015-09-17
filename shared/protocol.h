@@ -1151,14 +1151,14 @@ namespace Protocol
 	typedef NetArray<Grid::CellStack::TTypeDeltaBlock,4000000>	TypeDeltaArray;
 	typedef NetArray<Grid::CellStack::TStructCountDeltaBlock,4000000>	StructCountDeltaArray;
 
-	#if CELL_LIFE
-		typedef NetArray<Grid::CellStack::TCellFactionDeltaBlock,4000000>	CellFactionDeltaArray;
+	#if TECHNITES
+		typedef NetArray<Grid::CellStack::TTechniteFactionDeltaBlock,4000000>	TechniteFactionDeltaArray;
 		NETSTRUCT5(WorldDelta
 			, Timestamp, timestamp
 			, NET(BYTE), family
 			, TypeDeltaArray, data0
 			, StructCountDeltaArray, data1
-			, CellFactionDeltaArray, data2
+			, TechniteFactionDeltaArray, data2
 		)
 
 	#else
