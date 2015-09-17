@@ -9,7 +9,7 @@
 namespace CellLife
 {
 
-	bool	LiveCell::DecodeAbsoluteTarget(Grid::HCellIdI & outTarget) const
+	bool	Technite::DecodeAbsoluteTarget(Grid::HCellIdI & outTarget) const
 	{
 		TTarget target;
 		target.Decompress(compressedTarget);
@@ -28,9 +28,9 @@ namespace CellLife
 	}
 
 
-	CellFaction::ExecResult			CellFaction::ExecuteTask(LiveCell&cell)
+	CellFaction::ExecResult			CellFaction::ExecuteTask(Technite&cell)
 	{
-		if (cell.nextTask == LiveCell::Task::None)
+		if (cell.nextTask == Technite::Task::None)
 			return ExecResult::NothingToDo;
 		Grid::HCellIdI target;
 		if (!cell.DecodeAbsoluteTarget(target))
@@ -57,7 +57,7 @@ namespace CellLife
 
 		switch (cell.nextTask)
 		{
-			case LiveCell::Task::GrowTo:
+			case Technite::Task::GrowTo:
 			{
 				if (cell.attributes.energy < 5 && cell.attributes.food < 5)
 					return ExecResult::CellConditionNotSuitable;
@@ -66,7 +66,7 @@ namespace CellLife
 				cell.attributes.food -= 5;
 			}
 			break;
-			case LiveCell::Task::EatMoveTo:
+			case Technite::Task::EatMoveTo:
 			{
 				BYTE prev = targetCell.content;
 				Grid::actualWorld.cellStack[target.stackID].MakeLocalHole(target.height);
@@ -79,7 +79,7 @@ namespace CellLife
 				}
 			}
 			break;
-			case LiveCell::Task::TransferEnergyTo:
+			case Technite::Task::TransferEnergyTo:
 			{
 				index_t targetIndex;
 				if (cellMap.Query(target,targetIndex))

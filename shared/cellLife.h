@@ -16,7 +16,7 @@ namespace CellLife
 
 
 
-	class LiveCell
+	class Technite
 	{
 	public:
 		Grid::HCellIdI	location;
@@ -79,7 +79,7 @@ namespace CellLife
 
 		Grid::WorldData	knownWorld;
 
-		Buffer<LiveCell>	cells;
+		Buffer<Technite>	cells;
 		GenericHashTable<Grid::HCellIdI,index_t>	cellMap;
 		BYTE			gridID;				//!< Identifier in the grid. 255/0xFF is invalid. Up to 254 different cell factions on one planet.
 		TUniqueID		globalID;
@@ -94,7 +94,7 @@ namespace CellLife
 			Success
 		};
 
-		ExecResult		ExecuteTask(LiveCell&cell);
+		ExecResult		ExecuteTask(Technite&cell);
 
 		void			SplitCell(const Grid::HCellIdI&cellID, const Grid::HCellIdI&newCellLocation, const LiveCell::Attributes&transfer);
 			
