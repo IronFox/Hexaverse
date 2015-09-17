@@ -5,7 +5,7 @@
 #include <memory>
 #include <container/buffer.h>
 
-#include "../shared/protocol.h"
+#include "../../shared/protocol.h"
 
 namespace Test
 {

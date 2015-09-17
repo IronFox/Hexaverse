@@ -1,7 +1,7 @@
 #ifndef serverNetworkChannelsH
 #define serverNetworkChannelsH
 
-#include "../shared/protocol.h"
+#include "../../shared/protocol.h"
 #include "state.h"
 
 namespace Receiver

@@ -4,7 +4,7 @@
 #include "serverLogEvent.h"
 #include "aiProcess.h"
 #include <io/file_system.h>
-#include "../client/version.h"
+#include "../../client/version.h"
 
 extern TUniqueID	serverID;
 
