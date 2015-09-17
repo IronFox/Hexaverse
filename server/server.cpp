@@ -1,7 +1,7 @@
 // server.cpp : Defines the entry point for the console application.
 //
 
-#include "stdafx.h"
+#include "./components/stdafx.h"
 
 #include "../shared/grid.h"
 #include "../shared/objects.h"
@@ -15,13 +15,13 @@
 #include <io/file_system.h>
 #include <io/riff_handler.h>
 #include <io/config.h>
-#include "tests.h"
-#include "aiProcess.h"
-#include "remoteControl.h"
-#include "serverLogEvent.h"
-#include "udpBroadcast.h"
-#include "state.h"
-#include "networkChannels.h"
+#include "components/tests.h"
+#include "components/aiProcess.h"
+#include "components/remoteControl.h"
+#include "components/serverLogEvent.h"
+#include "components/udpBroadcast.h"
+#include "components/state.h"
+#include "components/networkChannels.h"
 
 
 UINT32 globalVersionOfCurrentFile = 0;	//file version being loaded right now

@@ -3,8 +3,8 @@
 
 #include <global_string.h>
 #include <net/tcp.h>
-#include "../shared/protocol.h"
-#include "../shared/objects.h"
+#include "../../shared/protocol.h"
+#include "../../shared/objects.h"
 
 
 

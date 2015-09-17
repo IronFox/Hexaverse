@@ -1,7 +1,7 @@
 #ifndef serverLogEventH
 #define serverLogEventH
 
-#include "../shared/protocol.h"
+#include "../../shared/protocol.h"
 
 
 extern bool		inTestMode /*= false*/;
