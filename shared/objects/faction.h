@@ -186,63 +186,9 @@ namespace Objects
 			static PFaction				nexus;
 
 
-			struct CellStack
-			{
-				struct Cell
-				{
-					short	visibility;
-					bool	oldVisible,temporarilyVisible;
+			Grid::WorldData			currentState;
+			Grid::VisibilityState	visibility;
 
-
-					bool	Changed(bool reset)
-					{
-						bool visible = temporarilyVisible || visibility > 0;
-						bool before = oldVisible;
-						if (reset)
-							oldVisible = visibility > 0;	//dont include temp here
-						return visible != before;
-					}
-
-					void	AlterVisibility(short change)
-					{
-						visibility += change;
-						if (change >= 0)
-						{
-							temporarilyVisible = true;
-						}
-					}
-				};
-				Cell	volumeCell[Grid::CellStack::Range];
-
-
-				/**/	CellStack()
-				{
-					memset(volumeCell,0,sizeof(volumeCell));
-				}
-			};
-
-			Array<bool >		resourcesDiscovered;//discovers all resources (for now)
-
-
-			Array<CellStack>	cellStack;
-			Grid::WorldData		currentState;
-
-			struct FamilyState
-			{
-				float			lastChange;
-				bool			coverageChanged,changed;
-
-				/**/			FamilyState():lastChange(0),coverageChanged(false),changed(false)
-				{}
-				void			Reset()
-				{
-					lastChange = 0;
-					coverageChanged = false;
-					changed = false;
-				}
-
-			};
-			FamilyState			families[BaseGrid::NumFamilies];
 			//FamilyState			global;
 
 			count_t				nexusControl,
@@ -268,15 +214,13 @@ namespace Objects
 
 			GenericHashSet<PWorldEntity, SharedPtrHash>	canSee;
 
-			/**/		Faction(const String&name=""):cellStack(Grid::HighSetup::GridType::CellCount),name(name)
+			/**/		Faction(const String&name=""):name(name)
 			{
 				nexusControl = acquiringNexusControl = 0;
 				deathInRounds = 0;
 
 				accessToken.Generate();
 				id.Generate();
-				resourcesDiscovered.SetSize(Grid::Resource::NumEntries);
-				resourcesDiscovered.Fill(false);
 			}
 
 			/**

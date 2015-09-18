@@ -553,9 +553,26 @@ namespace Grid
 		}
 	}
 
+	#if TECHNITES
+	bool			CellStack::SetLocalTechniteFaction(int h, BYTE factionID)
+	{
+		UINT uh = ToLayer(h);
+		if (uh < Range)
+		{
+			if (volumeCell[uh].techniteFaction != factionID)
+			{
+				volumeCell[uh].techniteFaction = factionID;
+
+				return true;
+			}
+		}
+		return false;
+	}
+	#endif
+
 	bool			CellStack::MakeLocalHole(int h)
 	{
-		UINT uh = unsigned(h + (Range >> 1));
+		UINT uh = ToLayer(h);
 		if (uh < Range)
 		{
 			if (volumeCell[uh].content != Content::Clear)
@@ -581,7 +598,7 @@ namespace Grid
 
 	bool			CellStack::LocalOverwrite(int h, Cell::Content type)
 	{
-		UINT uh = unsigned(h + (Range >> 1));
+		UINT uh = ToLayer(h);
 		if (uh < Range)
 		{
 			if (volumeCell[uh].content != type)
@@ -3831,6 +3848,110 @@ namespace Grid
 	{
 		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(id.height);
 	}
+
+
+	void				VisibilityState::ChangeSensory(const Grid::HCellIdI&center, float t, short changeBy)
+	{
+		bool familyChanged[BaseGrid::NumFamilies] = { false };
+
+		int bottom = std::max(Grid::CellStack::BottomHeight, center.height - 1);
+		int top = std::min(Grid::CellStack::TopHeight, center.height + 1);
+
+
+		const auto&c = high.grid.GetCell(center.stackID);
+		{
+			auto&stack = cellStack[center.stackID];
+			for (int h = bottom; h <= top; h++)
+				stack.volumeCell[h].AlterVisibility(changeBy);
+		}
+
+		familyChanged[c.family] = true;
+		for (int k = 0; k < c.neighborhood.numNeighbors; k++)
+		{
+			familyChanged[high.grid.GetCell(c.neighborhood.neighborID[k]).family] = true;
+
+			auto&stack = cellStack[c.neighborhood.neighborID[k]];
+			for (int h = bottom; h <= top; h++)
+				stack.volumeCell[h].AlterVisibility(changeBy);
+		}
+
+		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
+			if (familyChanged[i])
+				families[i].changed = true;
+
+	}
+
+	void				VisibilityState::ChangeSensory(const LCellIdI&center, float radius, float t, short changeBy)
+	{
+		bool familyChanged[BaseGrid::NumFamilies] = { false };
+		Grid::TemplateHelper::ChangeSensory(Grid::ToWorld(center), radius, changeBy, cellStack.pointer(), familyChanged);
+		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
+			if (familyChanged[i])
+				families[i].changed = true;
+	}
+	void				VisibilityState::ChangeSensory(const SkySensorState&state, float t, short changeBy)
+	{
+		bool familyChanged[BaseGrid::NumFamilies] = { false };
+		Grid::TemplateHelper::ChangeSensorCoverage(state, changeBy, cellStack.pointer(), familyChanged);
+		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
+			if (familyChanged[i])
+				families[i].changed = true;
+	}
+
+	void				VisibilityState::RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t)
+	{
+		bool familyChanged[BaseGrid::NumFamilies] = { false };
+		const float3 c3 = Grid::high.cells[center.stackID].centerVertex.xyz * Grid::ToRadiusf(0.5f + center.height);
+
+		Grid::TemplateHelper::ChangeSensory(c3, radius, 0, cellStack.pointer(), familyChanged);
+		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
+			if (familyChanged[i])
+				families[i].changed = true;
+	}
+
+
+
+	void VisibilityState::FlushAllData()
+	{
+		resourcesDiscovered.Fill(false);
+		for (index_t i = 0; i < ARRAYSIZE(families); i++)
+			families[i].Reset();
+
+	}
+
+	void		VisibilityState::CheckChanges(float t)
+	{
+		for (BYTE f = 0; f < BaseGrid::NumFamilies; f++)
+		{
+			if (families[f].changed)
+			{
+				families[f].changed = false;
+				const index_t offset = Grid::high.grid.GetFamilyOffset(f);
+				const count_t range = Grid::high.grid.CountFamilyMembers(f);
+				bool anyChanged = false;
+				Concurrency::parallel_for(offset, offset + range, [this, &anyChanged](index_t i)
+				{
+					for (unsigned j = 0; j < Grid::CellStack::Range; j++)
+					{
+						CellStack::Cell&cell1 = cellStack[i].volumeCell[j];
+						if (cell1.Changed(true))
+							anyChanged = true;
+					}
+				});
+				if (anyChanged)
+				{
+					families[f].coverageChanged = true;
+					families[f].lastChange = t;
+				}
+	}
+			}
+
+		}
+
+
+
+
+
 
 	#ifdef CLIENT
 		void		UpdateResourceMap(ConstName resourceName,const ArrayData<TCellResourceCoverage>&data)

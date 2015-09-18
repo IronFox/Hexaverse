@@ -1809,7 +1809,7 @@ int main( int argc, const char* argv[])
 
 				BYTE numChanged = 0;
 				for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
-					if (faction->families[family].coverageChanged)
+					if (faction->visibility.families[family].coverageChanged)
 						numChanged++;
 
 				if (numChanged)
@@ -1817,10 +1817,10 @@ int main( int argc, const char* argv[])
 					anythingChanged = true;
 					BYTE at = 0;
 					for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
-						if (faction->families[family].coverageChanged)
+						if (faction->visibility.families[family].coverageChanged)
 						{
 							at++;
-							State::GenerateWorldDelta(faction,delta,family,State::phase == Protocol::Phase::CommandPhase,at == numChanged,State::ProgressiveUpdate);
+							State::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,State::phase == Protocol::Phase::CommandPhase,at == numChanged,State::ProgressiveUpdate);
 							Channels::updateWorld.SendTo((*cl)->peer.lock(),delta);
 						}
 				}

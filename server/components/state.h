@@ -194,7 +194,7 @@ namespace State
 
 	/**
 	Generates a world delta for storage/client notification
-	@param faction Reference to the respective client faction (must be set if deltaType is ProgressiveInit, ProgressiveUpdate, or FactionCopy)
+	//@param faction Reference to the respective client faction (must be set if deltaType is ProgressiveInit, ProgressiveUpdate, or FactionCopy)
 	@param[out] delta Resulting delta
 	@param familyID Index of the grid family that the delta should be computed of
 	@param rightNow Indicates that the enclosed timestamp should be flagged as 'rightNow', as opposed to using the grid timestamp
@@ -202,7 +202,8 @@ namespace State
 	@param deltaType Type of delta to compute (see delta_type_t for details)
 	@param includeStructCountDelta Indicates that the result should also contain a struct count delta to the known struct count
 	*/
-	void			GenerateWorldDelta(const Objects::PFaction&faction, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, delta_type_t deltaType, bool includeStructCountDelta=true);
+//	void			GenerateWorldDelta(const Objects::PFaction&faction, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, delta_type_t deltaType, bool includeStructCountDelta=true);
+	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, delta_type_t deltaType, bool includeStructCountDelta=true);
 
 	/**
 	Signals that a terrain family has changed, and the specified faction should be updated and notified where necessary
