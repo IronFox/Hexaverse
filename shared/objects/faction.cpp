@@ -492,21 +492,12 @@ namespace Objects
 
 		void		Faction::ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short change)
 		{
-			bool familyChanged[BaseGrid::NumFamilies] = {false};
-			Grid::TemplateHelper::ChangeSensory(Grid::ToWorld(center),radius,change,cellStack.pointer(),familyChanged);
-			for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-				if (familyChanged[i])
-					families[i].changed = true;
+			visibility.ChangeSensory(center, radius, t, change);
 		}
 
 		void		Faction::ChangeSensory(const Grid::SkySensorState&state, float t, short change)
 		{
-
-			bool familyChanged[BaseGrid::NumFamilies] = {false};
-			Grid::TemplateHelper::ChangeSensorCoverage(state,change,cellStack.pointer(),familyChanged);
-			for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-				if (familyChanged[i])
-					families[i].changed = true;
+			visibility.ChangeSensory(state, t, change);
 		}
 
 		void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float t)
@@ -565,10 +556,8 @@ namespace Objects
 			#endif
 
 			currentState.FlushAllData();
+			visibility.FlushAllData();
 
-			resourcesDiscovered.Fill(false);
-			for (index_t i = 0; i < ARRAYSIZE(families); i++)
-				families[i].Reset();
 		}
 
 
@@ -587,31 +576,7 @@ namespace Objects
 
 		void		Faction::CheckChanges(float t)
 		{
-			for (BYTE f = 0; f < BaseGrid::NumFamilies; f++)
-			{
-				if (families[f].changed)
-				{
-					families[f].changed = false;
-					const index_t offset = Grid::high.grid.GetFamilyOffset(f);
-					const count_t range = Grid::high.grid.CountFamilyMembers(f);
-					bool anyChanged = false;
-					Concurrency::parallel_for(offset,offset+range,[this,&anyChanged](index_t i)
-					{
-						for (unsigned j = 0; j < Grid::CellStack::Range; j++)
-						{
-							CellStack::Cell&cell1 = cellStack[i].volumeCell[j];
-							if (cell1.Changed(true))
-								anyChanged = true;
-						}
-					});
-					if (anyChanged)
-					{
-						families[f].coverageChanged = true;
-						families[f].lastChange = t;
-					}
-				}
-			}
-
+			visibility.CheckChanges(t);
 		}
 
 
@@ -672,13 +637,8 @@ namespace Objects
 
 		void		Faction::RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t)
 		{
-			bool familyChanged[BaseGrid::NumFamilies] = {false};
-			const float3 c3 = Grid::high.cells[center.stackID].centerVertex.xyz * Grid::ToRadiusf(0.5f + center.height);
+			visibility.RegisterExplosionCrater(center, radius, t);
 
-			Grid::TemplateHelper::ChangeSensory(c3,radius,0,cellStack.pointer(),familyChanged);
-			for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-				if (familyChanged[i])
-					families[i].changed = true;
 
 		}
 

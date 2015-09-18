@@ -306,7 +306,8 @@ namespace Receiver
 		delta.timestamp.rightNow = true;
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
-			State::GenerateWorldDelta(client->faction, delta,k,true,k+1 == BaseGrid::NumFamilies,newFaction ? State::ProgressiveInit : State::FactionCopy);
+			State::GenerateWorldDelta(client->faction ? &client->faction->visibility : nullptr,  client->faction ? &client->faction->currentState : nullptr,
+									delta,k,true,k+1 == BaseGrid::NumFamilies,newFaction ? State::ProgressiveInit : State::FactionCopy);
 
 			Channels::updateWorld.SendTo(peer,delta);
 		}
@@ -444,7 +445,7 @@ namespace Receiver
 				Grid::Resource::Require("Minerals").coverage[location.stackID] = stackHeight;
 				foreach (Objects::Faction::all, _f)
 				{
-					_f->lock()->resourcesDiscovered[location.stackID] = false;
+					_f->lock()->visibility.resourcesDiscovered[location.stackID] = false;
 				}
 
 				Grid::LCellIdI at0 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[0],h);
@@ -568,7 +569,7 @@ namespace Receiver
 
 			static Buffer0<UINT32>	final;
 			final.Clear();
-			auto&discovered = client->faction->resourcesDiscovered;
+			auto&discovered = client->faction->visibility.resourcesDiscovered;
 			for (index_t i = 0; i < discovered.Count(); i++)
 			{
 				if (discovered[i])

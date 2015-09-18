@@ -469,6 +469,9 @@ namespace Grid
 		#endif
 
 		bool			MakeLocalHole(int h);
+		#if TECHNITES
+			bool		SetLocalTechniteFaction(int h, BYTE factionID);
+		#endif
 
 		bool			LocalOverwrite(int h, Cell::Content type);
 
@@ -1850,6 +1853,84 @@ namespace Grid
 			coverageMap.Clear();
 			groundPenetration = 0;
 		}
+	};
+
+	class VisibilityState
+	{
+	public:
+		struct CellStack
+		{
+			struct Cell
+			{
+				short	visibility;
+				bool	oldVisible, temporarilyVisible;
+
+
+				bool	Changed(bool reset)
+				{
+					bool visible = temporarilyVisible || visibility > 0;
+					bool before = oldVisible;
+					if (reset)
+						oldVisible = visibility > 0;	//dont include temp here
+					return visible != before;
+				}
+
+				void	AlterVisibility(short change)
+				{
+					visibility += change;
+					if (change >= 0)
+					{
+						temporarilyVisible = true;
+					}
+				}
+			};
+			Cell	volumeCell[Grid::CellStack::Range];
+
+			/**/	CellStack()
+			{
+				memset(volumeCell, 0, sizeof(volumeCell));
+			}
+		};
+
+		struct FamilyState
+		{
+			float			lastChange;
+			bool			coverageChanged, changed;
+
+			/**/			FamilyState() :lastChange(0), coverageChanged(false), changed(false)
+			{}
+			void			Reset()
+			{
+				lastChange = 0;
+				coverageChanged = false;
+				changed = false;
+			}
+
+		};
+		FamilyState			families[BaseGrid::NumFamilies];
+
+		Array<bool >		resourcesDiscovered;//discovers all resources (for now)
+
+
+		Array<CellStack>	cellStack;
+
+
+		/**/				VisibilityState():cellStack(Grid::HighSetup::GridType::CellCount)
+		{
+			resourcesDiscovered.SetSize(Grid::Resource::NumEntries);
+			resourcesDiscovered.Fill(false);
+		}
+		/**
+		Affects the cell and its immediate neighbors only
+		*/
+		void				ChangeSensory(const Grid::HCellIdI&center, float t, short changeBy);
+		void				ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short changeBy);
+		void				ChangeSensory(const Grid::SkySensorState&state, float t, short changeBy);
+		void				RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);
+
+		void				FlushAllData();
+		void				CheckChanges(float t);
+
 	};
 
 

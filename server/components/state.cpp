@@ -64,9 +64,9 @@ namespace State
 			
 		foreach (coverage,cov)
 		{
-			if (faction->resourcesDiscovered[*cov])
+			if (faction->visibility.resourcesDiscovered[*cov])
 				continue;
-			faction->resourcesDiscovered[*cov] = true;
+			faction->visibility.resourcesDiscovered[*cov] = true;
 			final << *cov;
 		}
 
@@ -608,13 +608,14 @@ namespace State
 		}
 
 
-	void			GenerateWorldDelta(const Objects::PFaction&faction, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, delta_type_t deltaType, bool includeStructCountDelta/*=true*/)
+//	void			GenerateWorldDelta(const Objects::PFaction&faction, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, delta_type_t deltaType, bool includeStructCountDelta/*=true*/)
+	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, delta_type_t deltaType, bool includeStructCountDelta/*=true*/)
 	{
 	
 			const index_t offset = Grid::high.grid.GetFamilyOffset(familyID);
 			const count_t length = Grid::high.grid.CountFamilyMembers(familyID);
 
-			delta.timestamp.atTime = std::max(Grid::high.family[familyID].outdatedAt,faction?faction->families[familyID].lastChange : 0.f);
+			delta.timestamp.atTime = std::max(Grid::high.family[familyID].outdatedAt,vs?vs->families[familyID].lastChange : 0.f);
 			delta.timestamp.rightNow = rightNow;
 			delta.family = familyID;
 			if (last)
@@ -632,11 +633,11 @@ namespace State
 					fdtsValid = 0;
 			#endif
 
-			if (faction)
-				faction->families[familyID].Reset();
+			if (vs)
+				vs->families[familyID].Reset();
 			
 			Concurrency::parallel_for(index_t(0),length*Grid::CellStack::Range,
-			[&tdts,&sdts,&fdts,&fdtsValid,length,offset,empty,deltaType,faction](index_t i)
+			[&tdts,&sdts,&fdts,&fdtsValid,length,offset,empty,deltaType,vs,ws](index_t i)
 			{
 				//index_t stackId = offset + (i / Grid::CellStack::Range);
 				//index_t layer = i % Grid::CellStack::Range;
@@ -646,15 +647,15 @@ namespace State
 				{
 					case ProgressiveUpdate:
 					{
-						auto&cell =  faction->cellStack[stackID].volumeCell[layer];
+						auto&cell =  vs->cellStack[stackID].volumeCell[layer];
 						bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
 						if (canSee)
 						{
 							Grid::actualWorld.cellStack[stackID].volumeCell[layer].
 							#if TECHNITES
-								GetDeltaFromAndUpdate(faction->currentState.cellStack[stackID].volumeCell[layer],tdts[i],sdts[i],fdts[i],fdtsValid[i]);
+								GetDeltaFromAndUpdate(ws->cellStack[stackID].volumeCell[layer],tdts[i],sdts[i],fdts[i],fdtsValid[i]);
 							#else
-								GetDeltaFromAndUpdate(faction->currentState.cellStack[stackID].volumeCell[layer],tdts[i],sdts[i]);
+								GetDeltaFromAndUpdate(ws->cellStack[stackID].volumeCell[layer],tdts[i],sdts[i]);
 							#endif
 						}
 						else
@@ -667,7 +668,7 @@ namespace State
 					break;
 					case ProgressiveInit:
 					{
-						auto&cell =  faction->cellStack[stackID].volumeCell[layer];
+						auto&cell =  vs->cellStack[stackID].volumeCell[layer];
 						bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
 						const Grid::CellStack::Cell& source = canSee ? Grid::actualWorld.cellStack[stackID].volumeCell[layer] : Grid::initialWorld.cellStack[stackID].volumeCell[layer];
 						#if TECHNITES
@@ -675,13 +676,13 @@ namespace State
 						#else
 							source.GetDeltaFrom(empty,tdts[i],sdts[i]);
 						#endif
-						faction->currentState.cellStack[stackID].volumeCell[layer] = source;
+						ws->cellStack[stackID].volumeCell[layer] = source;
 						cell.temporarilyVisible = false;
 					}
 					break;
 					case FactionCopy:
 					{
-						const Grid::CellStack::Cell& source = faction->currentState.cellStack[stackID].volumeCell[layer];
+						const Grid::CellStack::Cell& source = ws->cellStack[stackID].volumeCell[layer];
 						#if TECHNITES
 							source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
 						#else
@@ -744,7 +745,7 @@ namespace State
 	void						SignalFamilyChangeToFaction(const Objects::PFaction&faction,BYTE familyId, bool last, bool rightNow)
 	{
 		static Protocol::WorldDelta	delta;
-		GenerateWorldDelta(faction,delta,familyId,rightNow,last,ProgressiveUpdate);
+		GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,familyId,rightNow,last,ProgressiveUpdate);
 
 		PClient client;
 		if (playerMap.Query(faction,client))
@@ -779,7 +780,7 @@ namespace State
 			deltas.SetSize(BaseGrid::NumFamilies);
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 			{
-				GenerateWorldDelta(Objects::PFaction(), deltas[k], k, true, k+1==BaseGrid::NumFamilies, GlobalCopy, false);
+				GenerateWorldDelta(nullptr,nullptr, deltas[k], k, true, k+1==BaseGrid::NumFamilies, GlobalCopy, false);
 			}
 		}
 		else
@@ -787,7 +788,7 @@ namespace State
 			Protocol::WorldDelta delta;
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 			{
-				GenerateWorldDelta(Objects::PFaction(), delta, k, true, k+1==BaseGrid::NumFamilies, GlobalCopy, false);
+				GenerateWorldDelta(nullptr, nullptr, delta, k, true, k+1==BaseGrid::NumFamilies, GlobalCopy, false);
 				ASSERT__(delta.data0 == deltas[k].data0);
 				ASSERT__(delta.data1 == deltas[k].data1);
 				ASSERT__(delta.data1.IsEmpty());
@@ -1933,15 +1934,15 @@ void	State::Load(const String&filename)
 								const UINT32*indices = (const UINT32*)compressed->pointer();
 								const count_t numIndices = compressed->size() / sizeof(UINT32);
 								for (UINT32 i = 0; i < numIndices; i++)
-									faction->resourcesDiscovered[indices[i]] = true;
+									faction->visibility.resourcesDiscovered[indices[i]] = true;
 							}
 							else
 							{
 								Riff::Chunk*raw = list->FindFirst(RID::resourcesDiscoveredFull);
 								if (raw)
 								{
-									ASSERT_EQUAL__(raw->size(),faction->resourcesDiscovered.GetContentSize());
-									memcpy(faction->resourcesDiscovered.pointer(),raw->pointer(),raw->size());
+									ASSERT_EQUAL__(raw->size(),faction->visibility.resourcesDiscovered.GetContentSize());
+									memcpy(faction->visibility.resourcesDiscovered.pointer(),raw->pointer(),raw->size());
 								}
 							}
 						}
@@ -2069,7 +2070,7 @@ void	State::Save( const String&name)
 	{
 		TCP::Serial<Protocol::WorldDelta>	delta;
 		delta.Ref().timestamp.rightNow = true;
-		State::GenerateWorldDelta(Objects::PFaction(), delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,State::GlobalCopy,false);
+		State::GenerateWorldDelta(nullptr, nullptr, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,State::GlobalCopy,false);
 		//delta.Ref().timestamp.atTime = 0;
 		//delta.Ref().data1.Clear();
 		//delta.Seal();
@@ -2080,7 +2081,7 @@ void	State::Save( const String&name)
 	{
 		TCP::Serial<Protocol::WorldDelta>	delta,delta2;
 		delta.Ref().timestamp.rightNow = true;
-		State::GenerateWorldDelta(Objects::PFaction(), delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,State::GlobalInitialCopy,false);
+		State::GenerateWorldDelta(nullptr, nullptr, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,State::GlobalInitialCopy,false);
 
 		SerializeToChunk(delta.Ref().data0,initialWorld->AppendBlock(RID::worldTypeChunk));
 		//initialWorld->AppendBlock(RID::worldChunk)->SetData(delta.Get());
@@ -2146,7 +2147,7 @@ void	State::Save( const String&name)
 		{
 			TCP::Serial<Protocol::WorldDelta>	delta;
 			delta.Ref().timestamp.rightNow = true;
-			State::GenerateWorldDelta(faction, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,State::FactionCopy);
+			State::GenerateWorldDelta(&faction->visibility,&faction->currentState, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,State::FactionCopy);
 			delta.Ref().timestamp.atTime = 0;
 
 			//delta.Seal();
@@ -2162,18 +2163,18 @@ void	State::Save( const String&name)
 		static Buffer0<UINT32>	final;
 		final.Clear();
 
-		for (index_t i = 0; i < faction->resourcesDiscovered.Count(); i++)
+		for (index_t i = 0; i < faction->visibility.resourcesDiscovered.Count(); i++)
 		{
-			if (faction->resourcesDiscovered[i])
+			if (faction->visibility.resourcesDiscovered[i])
 				final << (UINT32)i;
 		}
 
 		if (final.IsNotEmpty())
 		{
-			if (final.Count()*4 < faction->resourcesDiscovered.Count())
+			if (final.Count()*4 < faction->visibility.resourcesDiscovered.Count())
 				factionSection->AppendBlock(RID::resourcesDiscoveredCompressed)->SetData(final.pointer(),final.Count()*4);	//resource discovered - compressed
 			else
-				factionSection->AppendBlock(RID::resourcesDiscoveredFull)->SetData(faction->resourcesDiscovered);	//resource discovered - full
+				factionSection->AppendBlock(RID::resourcesDiscoveredFull)->SetData(faction->visibility.resourcesDiscovered);	//resource discovered - full
 		}
 
 
