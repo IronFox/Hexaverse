@@ -643,9 +643,7 @@ namespace State
 						auto&cell =  vs->cellStack[stackID].volumeCell[layer];
 						bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
 						if (canSee)
-							GetDeltaFromAndUpdate(faction->currentState.cellStack[stackID].volumeCell[layer],tdts[i],sdts[i]);
-						}
-
+							Grid::actualWorld.cellStack[stackID].volumeCell[layer].GetDeltaFromAndUpdate(ws->cellStack[stackID].volumeCell[layer], tdts[i], sdts[i]);
 						else
 						{
 							sdts[i].newStructureCounter = 0;
