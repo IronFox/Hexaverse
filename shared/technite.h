@@ -19,7 +19,6 @@ namespace Technites
 	class Technite
 	{
 	public:
-		Grid::HCellIdI	location;
 
 		static const BYTE	MoveEnergyCost = 1,
 							EatEnergyCost = 1,
@@ -36,6 +35,36 @@ namespace Technites
 
 			/**/		Resources() {}
 			/**/		Resources(BYTE energy, BYTE matter) :energy(energy), matter(matter) {}
+
+
+
+			Resources	operator/(int div) const
+			{
+				return Resources(energy / div, matter / div);
+
+			}
+
+			void		operator+=(const Resources&by)
+			{
+				Increase(energy, by.energy);
+				Increase(matter, by.matter);
+			}
+
+			bool		operator-=(const Resources&by)
+			{
+				if (matter < by.matter || energy < by.energy)
+					return false;
+				matter -= by.matter;
+				energy -= by.energy;
+				return true;
+			}
+
+
+			static void Increase(BYTE&local, BYTE by)
+			{
+				local = (BYTE)std::min<int>((int)local + (int)by, 255);
+			}
+
 		}				resources;
 
 
@@ -49,6 +78,19 @@ namespace Technites
 			GrowTo,
 			TransferEnergyTo,
 			TransferMatterTo,
+		};
+
+		enum class TaskResult : BYTE
+		{
+			NothingToDo,
+			BadCommand,
+			CannotEatThis,
+			CannotStandThere,
+			TechniteLacksResources,
+			NoTechniteAtDestination,
+			MoreWorkNeeded,
+			Again,
+			Success
 		};
 
 		struct TTarget
@@ -76,57 +118,104 @@ namespace Technites
 
 
 		Task			nextTask = Task::None;
+		TaskResult		taskResult = TaskResult::Again;
 		BYTE			compressedTarget;
+		std::atomic<bool>	isDead = false;
+		Grid::HCellIdI	location;
+
+
+		/**/			Technite() {}
+		/**/			Technite(const Technite&other) :nextTask(other.nextTask), taskResult(other.taskResult), 
+							compressedTarget(other.compressedTarget),location(other.location),
+							isDead((bool)other.isDead)
+		{}
+
+
 
 	};
 
+	class AtomicGrid
+	{
+	public:
+		struct CellStack
+		{
+			struct Cell
+			{
+				std::atomic<BYTE>	content;
+			};
+			Cell	volumeCell[Grid::CellStack::Range];
+
+			/**/	CellStack()
+			{
+				memset(volumeCell, 0, sizeof(volumeCell));
+			}
+		};
+		Array<CellStack>	cellStack;
+
+		volatile bool		familiesChanged[BaseGrid::NumFamilies];
+
+
+
+		/**/				AtomicGrid() : cellStack(Grid::HighSetup::GridType::CellCount)
+		{}
+		void				Import(const Grid::WorldData&data);
+		void				ExportChanged(Grid::WorldData&outData);
+		void				SignalStackChange(UINT32 stackID);
+	};
 
 
 	class Faction
 	{
 	public:
 
-		Grid::WorldData	knownWorld;
+		Grid::WorldData			knownWorld;
+		Grid::VisibilityState	visibleWorld;
+		static AtomicGrid		atomicGrid;
 
-		Buffer<Technite>	cells;
-		GenericHashTable<Grid::HCellIdI,index_t>	cellMap;
-		BYTE			gridID;				//!< Identifier in the grid. 255/0xFF is invalid. Up to 254 different cell factions on one planet.
-		TUniqueID		globalID;
-
-
-		enum class ExecResult
-		{
-			NothingToDo,
-			BadCommand,
-			CannotEatThis,
-			CannotStandThere,
-			TechniteLacksResources,
-			NoTechniteAtDestination,
-			MoreWorkNeeded,
-			Success
-		};
+		Buffer<Technite>		technites;
+		GenericHashTable<Grid::HCellIdI,index_t, Grid::HCellIdI>	techniteMap;
+		BYTE					gridID;				//!< Identifier in the grid. 255/0xFF is invalid. Up to 254 different cell factions on one planet.
+		TUniqueID				globalID;
 
 
-		void					Process();
+		static Buffer0<PFaction>all;
 
 
+		void					Process(float t);
+
+		static void				Begin();
+		static bool				ProcessNext(float t);
+
+		typedef Technite::TaskResult	ExecResult;
 	private:
-		ExecResult				GrowTo(Technite&technite, const Grid::HCellIdI&target, const Grid::CellStack::Cell&targetCell);
-		ExecResult				MoveTo(Technite&technite, const Grid::HCellIdI&target, const Grid::CellStack::Cell&targetCell);
-		ExecResult				Eat(Technite&technite, const Grid::HCellIdI&target, const Grid::CellStack::Cell&targetCell);
+		ExecResult				GrowTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration);
+		ExecResult				MoveTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration);
+		ExecResult				Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration);
 
 
 		Technite::Resources		EatEntitiesIn(const Grid::HCellIdI&target);
-		Technite::Resources		EatTechnite(const Grid::HCellIdI&target);
+		Technite::Resources		EatTechnite(const Grid::HCellIdI&target, bool factionIsActive);
 		void					SpawnNewTechnite(const Grid::HCellIdI&target);
-		void					MoveTechnite(Technite&technite, const Grid::HCellIdI&target);
+		bool					MoveTechnite(Technite&technite, const Grid::HCellIdI&target);
 		bool					ReduceResources(Technite&technite, const Technite::Resources&by);
 		void					IncreaseResources(Technite&technite, const Technite::Resources&by);
+		void					IncreaseRemoteResources(Technite&technite, const Technite::Resources&by);
 		Grid::Content			DegradeMatter(const Grid::HCellIdI&target, Technite::Resources&outYield);
 		Technite*				GetOwnTechnite(const Grid::HCellIdI&location);
 
 		PFaction				GetFactionOf(BYTE gridFactionID);
-		ExecResult				ExecuteTask(Technite&cell);
+		ExecResult				ExecuteTask(Technite&cell, index_t iteration);
+		void					CheckState(Technite&technite);
+
+
+
+		Grid::Content			GetLastContent(const Grid::HCellIdI&cellID);
+
+
+		static WorkPipe<Grid::HCellIdI>	newTechnites;
+		static WorkPipe<Grid::HCellIdI> moveInstructions;
+		static WorkPipe<std::pair<Grid::HCellIdI,Technite::Resources> > increaseResources;
+		bool					anyDied;
 	};
 
 
