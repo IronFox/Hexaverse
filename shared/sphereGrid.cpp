@@ -553,22 +553,6 @@ namespace Grid
 		}
 	}
 
-	#if TECHNITES
-	bool			CellStack::SetLocalTechniteFaction(int h, BYTE factionID)
-	{
-		UINT uh = ToLayer(h);
-		if (uh < Range)
-		{
-			if (volumeCell[uh].techniteFaction != factionID)
-			{
-				volumeCell[uh].techniteFaction = factionID;
-
-				return true;
-			}
-		}
-		return false;
-	}
-	#endif
 
 	bool			CellStack::MakeLocalHole(int h)
 	{

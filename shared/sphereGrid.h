@@ -423,9 +423,6 @@ namespace Grid
 		#endif
 
 		bool			MakeLocalHole(int h);
-		#if TECHNITES
-			bool		SetLocalTechniteFaction(int h, BYTE factionID);
-		#endif
 
 		bool			LocalOverwrite(int h, Cell::Content type);
 
