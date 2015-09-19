@@ -1539,7 +1539,12 @@ namespace Grid
 	struct THighToLowCell
 	{
 		static const UINT32 Empty = 0xFFFFFFFF;
-		UINT32				lowCells[2] = {Empty,Empty};
+		UINT32				lowCells[2];
+
+		/**/				THighToLowCell()
+		{
+			lowCells[0] = lowCells[1] = Empty;
+		}
 
 		void				Include(UINT32 cell)
 		{
