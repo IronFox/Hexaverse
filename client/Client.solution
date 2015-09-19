@@ -1,4 +1,4 @@
-<solution language="C++">
+<solution language="C++" domain="Hexaverse">
 	<project name="Visual Client" primary="true" />
 	<project name="Console Client" />
 	<project name="Increment Build Counter" />
