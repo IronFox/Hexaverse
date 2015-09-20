@@ -3598,7 +3598,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 
 		if (!Tokenizer::tokenize(cmd, cfg, tokenList))
 		{
-			throw Program::ParameterFault("Configuration syntax violation: Unable to parse parameter line (missing closing quotes perhaps?)");
+			throw Program::ParameterFault("Configuration syntax violation: Unable to parse parameter line '"+cmd+"' (missing closing quotes perhaps?)");
 		}
 
 		String parameterName;

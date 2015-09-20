@@ -1,11 +1,13 @@
 #include <global_root.h>
 #include "animation.h"
 #include "network.h"
-#include "explosions.h"
 #include "ui.h"
 #include "world.h"
 #include "runtimeConfig.h"
 #include "ai.h"
+#ifdef HAS_WINDOW
+	#include "explosions.h"
+#endif
 
 
 void			SignalMarkerDeletion(TUniqueID markerID);
