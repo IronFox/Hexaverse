@@ -2735,6 +2735,10 @@ namespace Objects
 			{
 				auto c = choice;
 				PMobileEntity v = p->CompleteProduction();
+				if (!v)
+				{
+					return false;
+				}
 				MobilePlacementResult result = v->PlaceExactlyAt(c,0,0,false,false);
 				if (Failed(result))
 				{

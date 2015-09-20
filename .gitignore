@@ -16,3 +16,4 @@ server/.projects/
 *.sln
 client/.projector/
 server/.projector/
+server/saves/

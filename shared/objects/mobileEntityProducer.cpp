@@ -132,7 +132,10 @@ namespace Objects
 			GetChoices(*parent,production,CursorMode::Idle,movementChoices,showArrow,hasArrowCellTarget,arrowFrom,arrowFromCell);
 
 			if (movementChoices.IsEmpty())
+			{
+				LogEvent(EventType::EntityProcessFailed,parent,"Failed to automatically spawn finished unit. Is something blocking deployment?");
 				return PMobileEntity();
+			}
 
 			PMobileEntity v = CompleteProduction();
 			static Random random;
@@ -172,10 +175,6 @@ namespace Objects
 					LogEvent(EventType::MinorEntityProcess,parent,"Auto-spawning satellite");
 					Objects::PMobileEntity e = SpawnFinishedProductionAnywhere();
 
-					if (!e)
-					{
-						LogEvent(EventType::EntityProcessFailed,parent,"Failed to spawn finished satellite. Is something blocking deployment?");
-					}
 
 					return;
 				}
@@ -209,8 +208,8 @@ namespace Objects
 							v->PlotCourse(gatheringPoint.current);
 						}
 					}
-					else
-						LogEvent(EventType::EntityProcessFailed,parent,"Failed to automatically spawn finished entity. Is something blocking deployment?");
+//					else
+	//					LogEvent(EventType::EntityProcessFailed,parent,"Failed to automatically spawn finished entity. Is something blocking deployment?");
 				}
 			}
 
