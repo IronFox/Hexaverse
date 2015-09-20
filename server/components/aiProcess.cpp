@@ -43,7 +43,7 @@ namespace AIProcess
 			char parameterBuffer[32768];
 			String	path,
 					workingDirectory = "..\\client\\";
-			path = "..\\client\\client_console.exe";
+			path = "..\\client\\Console Client " PLATFORM_STR ".exe";
 			//#ifdef _DEBUG
 			//	path = "..\\client\\Debug\\client.exe";
 			//#else
@@ -51,7 +51,9 @@ namespace AIProcess
 			//#endif
 
 
-			sprintf_s(parameterBuffer,"client.exe aiAccessToken='%s' udpListen=false serverURL=localhost",accessToken.ToFullString().c_str());
+//			String executable = 
+
+			sprintf_s(parameterBuffer,"\"Console Client " PLATFORM_STR ".exe\" aiAccessToken='%s' udpListen=false serverURL=localhost",accessToken.ToFullString().c_str());
 
 
 			STARTUPINFOA	infoIn;
