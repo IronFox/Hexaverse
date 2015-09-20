@@ -2,4 +2,23 @@
 	<clone name="Console Client" />
 	<manifest>DeclareDPIAware.manifest</manifest>
 	<macro name="HAS_WINDOW"/>
+	<includeLibrary name="OpenAL 1.1 SDK">
+		<rootRegistryHint>HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Creative Labs\OpenAL 1.1 Software Development Kit\3.05\InstallDir</rootRegistryHint>
+		<rootRegistryHint>HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Creative Labs\OpenAL 1.1 Software Development Kit\3.03\InstallDir</rootRegistryHint>
+		<include>./include</include>
+		<linkDirectory if_platform="Win32">./libs/Win32</linkDirectory>
+		<linkDirectory if_platform="x64">./libs/Win64</linkDirectory>
+		<link>OpenAL32.lib</link>
+	</includeLibrary>
+	<includeLibrary name="Microsoft DirectX SDK (June 2010)">
+		<rootRegistryHint>HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\DirectX\Microsoft DirectX SDK (June 2010)\InstallPath</rootRegistryHint>
+		<include>./Include</include>
+		<linkDirectory if_platform="Win32">./Lib/x86</linkDirectory>
+		<linkDirectory if_platform="x64">./Lib/x64</linkDirectory>
+		<link>d3d11.lib</link>
+		<link>d3dcompiler.lib</link>
+	</includeLibrary>
+	
+	
+	
 </project>
