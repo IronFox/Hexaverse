@@ -411,7 +411,7 @@ namespace State
 			state.flags.value |= Protocol::VehicleFlags::Hibernating;
 
 		Describe(state.entityState,v,owned,timestamp,changeFlags);
-		state.entityState.unstable = owned && (v.myTasks.IsEmpty() && v.completeOnMove);
+		state.entityState.unstable = owned && ((v.myTasks.IsEmpty() && v.completeOnMove) || v.AwaitsUserInteraction());
 	}
 
 	void	Describe(Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
