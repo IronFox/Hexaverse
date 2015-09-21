@@ -6,8 +6,8 @@ del %rs1% /Q
 %zip% a %rs1% "changelog.txt"
 
 %zip% a %rs% "client/game.ini"
-%zip% a %rs% "client/Visual Client *.exe"
-%zip% a %rs% "client/Console Client *.exe"
+%zip% a %rs% "client/Visual Client*.exe"
+%zip% a %rs% "client/Console Client*.exe"
 %zip% a %rs% "client/shaders/compiled/*"
 %zip% a %rs% "client/Font/font.*"
 %zip% a %rs% "client/Font/compiled/*"
@@ -25,6 +25,6 @@ del %rs1% /Q
 %zip% a %rs% "client/D3DCompiler_43.dll"
 
 
-%zip% a %rs% "server/Server *.exe"
+%zip% a %rs% "server/Server*.exe"
 %zip% a %rs% "server/config/planets/*.ini"
 %zip% a %rs% "server/config/server.ini"
