@@ -635,7 +635,7 @@ namespace Test
 			for (index_t j = offset; j < offset + range; j++)
 			{
 				int stored = Grid::high.grid.GetCell(j).family;
-				ASSERT_EQUAL1__(family, stored, j);
+				ASSERT_EQUAL2__(family, stored, j, offset);
 			}
 		}
 
