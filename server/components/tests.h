@@ -96,6 +96,14 @@ namespace Test
 		virtual void	Run(Random&random)	override;
 
 	};
+	class HighGridFamilies : public Test
+	{
+	public:
+		/**/		HighGridFamilies() : Test("HighGridFamilies")
+		{}
+		virtual void	Run(Random&random) override;
+
+	};
 	
 }
 

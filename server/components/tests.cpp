@@ -626,6 +626,31 @@ namespace Test
 	}
 
 
+	/*virtual override*/ void	HighGridFamilies::Run(Random&random)
+	{
+		for (int family = 0; family < BaseGrid::NumFamilies; family++)
+		{
+			index_t offset = Grid::high.grid.GetFamilyOffset(family);
+			count_t range = Grid::high.grid.CountFamilyMembers(family);
+			for (index_t j = offset; j < offset + range; j++)
+			{
+				int stored = Grid::high.grid.GetCell(j).family;
+				ASSERT_EQUAL1__(family, stored, j);
+			}
+		}
+
+		for (index_t i = 0; i < Grid::HighSetup::GridType::CellCount; i++)
+		{
+			int stored = Grid::high.grid.GetCell(i).family;
+			index_t offset = Grid::high.grid.GetFamilyOffset(stored);
+			count_t range = Grid::high.grid.CountFamilyMembers(stored);
+			ASSERT_GREATER_OR_EQUAL__(i, offset);
+			ASSERT_LESS2__(i, offset + range, offset, range);
+		}
+
+	}
+
+
 	/*static*/ void		Bin2Str::Check(const CryptographicID&original)
 	{
 		String asString = original.ToFullString();
