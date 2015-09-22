@@ -313,10 +313,12 @@ namespace Grid
 			#endif
 
 
-			static float3	typeColor[Content::NumberOfPossibilities];
-			static float	typeStructureFactor[Content::NumberOfPossibilities];
-			static bool		typeColorMixes[Content::NumberOfPossibilities];
-			static int		typeStrength[Content::NumberOfPossibilities];
+			static const count_t TypeCount = 13;
+
+			static float3	typeColor[TypeCount];
+			static float	typeStructureFactor[TypeCount];
+			static bool		typeColorMixes[TypeCount];
+			static int		typeStrength[TypeCount];
 
 
 			#ifdef HAS_WINDOW
@@ -470,7 +472,16 @@ namespace Grid
 
 		bool			MakeLocalHole(int h);
 		#if TECHNITES
+			/**
+			Updates only the faction setting of the specified volume cell.
+			The local content is not altered
+			*/
 			bool		SetLocalTechniteFaction(int h, BYTE factionID);
+			/**
+			Updates both content and technite faction
+			*/
+			bool		SetLocalToTechniteContent(int h, BYTE factionID);
+
 		#endif
 
 		bool			LocalOverwrite(int h, Cell::Content type);
