@@ -427,7 +427,7 @@ template <unsigned Exponent>
 				index_t at = (i - 12 - 30 * CellsPerEdge);
 				index_t side = at / BaseMap::vertices;
 				index_t onSide = at % BaseMap::vertices;
-				index_t sideSet = side * 2 + (onSide > (BaseMap::vertices >> 1) ? 1 : 0);
+				index_t sideSet = side * 2 + (onSide >= (BaseMap::vertices >> 1) ? 1 : 0);
 				cellField[i].family = (BYTE)(1 + sideSet);
 			}
 			DBG_ASSERT__(cellField[i].family <= 40);
