@@ -265,34 +265,44 @@ namespace Technites
 
 		typedef Technite::TaskResult	ExecResult;
 	private:
+		struct WorkerData
+		{
+			Buffer<Grid::HCellIdI>	newTechnites;
+			Buffer<Grid::HCellIdI> moveInstructions;
+			Buffer<std::pair<Grid::HCellIdI, Technite::Resources> > increaseResources;
+		};
+
+
 		/**/					Faction() {};
 
-		ExecResult				GrowTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration);
-		ExecResult				MoveTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration);
-		ExecResult				Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration);
+		ExecResult				GrowTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);
+		ExecResult				MoveTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);
+		ExecResult				Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);
 
 
 		Technite::Resources		EatEntitiesIn(const Grid::HCellIdI&target, bool&cantEatThis);
 		Technite::Resources		EatTechnite(const Grid::HCellIdI&target, bool factionIsActive);
-		void					SpawnNewTechnite(const Grid::HCellIdI&target);
-		bool					MoveTechnite(Technite&technite, const Grid::HCellIdI&target);
+		void					SpawnNewTechnite(const Grid::HCellIdI&target, WorkerData&data);
+		bool					MoveTechnite(Technite&technite, const Grid::HCellIdI&target, WorkerData&data);
 		bool					ReduceResources(Technite&technite, const Technite::Resources&by);
 		void					IncreaseResources(Technite&technite, const Technite::Resources&by);
-		void					IncreaseRemoteResources(Technite&technite, const Technite::Resources&by);
+		void					IncreaseRemoteResources(Technite&technite, const Technite::Resources&by, WorkerData&data);
 		Grid::Content			DegradeMatter(const Grid::HCellIdI&target, Technite::Resources&outYield);
 		Technite*				GetOwnTechnite(const Grid::HCellIdI&location);
 
 		PFaction				GetFactionOf(BYTE gridFactionID);
-		ExecResult				ExecuteTask(Technite&cell, index_t iteration);
+		ExecResult				ExecuteTask(Technite&cell, index_t iteration, WorkerData&data);
 		void					CheckState(Technite&technite);
 
 
 		Grid::Content			GetLastContent(const Grid::HCellIdI&cellID);
 
 
-		static WorkPipe<Grid::HCellIdI>	newTechnites;
-		static WorkPipe<Grid::HCellIdI> moveInstructions;
-		static WorkPipe<std::pair<Grid::HCellIdI,Technite::Resources> > increaseResources;
+
+
+		//static WorkPipe<Grid::HCellIdI>	newTechnites;
+		//static WorkPipe<Grid::HCellIdI> moveInstructions;
+		//static WorkPipe<std::pair<Grid::HCellIdI,Technite::Resources> > increaseResources;
 		bool					anyDied;
 	};
 

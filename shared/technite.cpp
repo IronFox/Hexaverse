@@ -7,6 +7,7 @@
 #include "objects/gridAndChoices.h"
 #include "objects/structure.h"
 #include "objects/vehicle.h"
+#include <general/thread_system.h>
 
 namespace Technites
 {
@@ -18,9 +19,9 @@ namespace Technites
 
 	/*static*/ Buffer0<PFaction>Faction::all;
 	/*static*/ AtomicGrid Faction::atomicGrid;
-	/*static*/ WorkPipe<Grid::HCellIdI>	Faction::newTechnites;
-	/*static*/ WorkPipe<Grid::HCellIdI> Faction::moveInstructions;
-	/*static*/ WorkPipe<std::pair<Grid::HCellIdI, Technite::Resources> > Faction::increaseResources;
+	///*static*/ WorkPipe<Grid::HCellIdI>	Faction::newTechnites;
+	///*static*/ WorkPipe<Grid::HCellIdI> Faction::moveInstructions;
+	///*static*/ WorkPipe<std::pair<Grid::HCellIdI, Technite::Resources> > Faction::increaseResources;
 	/*static*/ PFaction			Faction::gridIDMap[0xFF];
 
 
@@ -289,9 +290,9 @@ namespace Technites
 
 
 
-	Faction::ExecResult			Faction::GrowTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration)
+	Faction::ExecResult			Faction::GrowTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data)
 	{
-		ExecResult rs = Eat(technite, target, iteration);
+		ExecResult rs = Eat(technite, target, iteration,data);
 		
 		if (rs != ExecResult::Success)
 			return rs;
@@ -306,14 +307,14 @@ namespace Technites
 		}
 		
 
-		SpawnNewTechnite(target);
+		SpawnNewTechnite(target,data);
 		
 		return ExecResult::Success;
 	}
 
-	Faction::ExecResult			Faction::MoveTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration)
+	Faction::ExecResult			Faction::MoveTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data)
 	{
-		ExecResult rs = Eat(technite, target, iteration);
+		ExecResult rs = Eat(technite, target, iteration,data);
 		
 		if (rs != ExecResult::Success)
 			return rs;
@@ -325,7 +326,7 @@ namespace Technites
 		}
 		
 
-		if (!MoveTechnite(technite, target))
+		if (!MoveTechnite(technite, target,data))
 		{
 			
 			IncreaseResources(technite, Technite::MoveCost);
@@ -494,7 +495,7 @@ namespace Technites
 	}
 
 
-	Faction::ExecResult			Faction::Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration)
+	Faction::ExecResult			Faction::Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data)
 	{
 		
 		switch (GetLastContent(target))
@@ -561,7 +562,7 @@ namespace Technites
 		
 	}
 
-	Technite::TaskResult			Faction::ExecuteTask(Technite&technite, index_t iteration)
+	Technite::TaskResult			Faction::ExecuteTask(Technite&technite, index_t iteration, WorkerData&data)
 	{
 		if (technite.isDead)
 			return Technite::TaskResult::NothingToDo;
@@ -577,9 +578,9 @@ namespace Technites
 		switch (technite.nextTask)
 		{
 		case Technite::Task::GrowTo:
-			return GrowTo(technite, target, iteration);
+			return GrowTo(technite, target, iteration,data);
 		case Technite::Task::EatMoveTo:
-			return MoveTo(technite, target, iteration);
+			return MoveTo(technite, target, iteration, data);
 		case Technite::Task::TransferEnergyTo:
 		{
 			if (iteration < 3)
@@ -589,7 +590,7 @@ namespace Technites
 				return Technite::TaskResult::NoTechniteAtDestination;
 			if (!ReduceResources(technite, Technite::EnergyPackage))
 				return Technite::TaskResult::TechniteLacksResources;
-			IncreaseRemoteResources(*other, Technite::EnergyPackage);
+			IncreaseRemoteResources(*other, Technite::EnergyPackage, data);
 			return Technite::TaskResult::Success;
 		}
 		case Technite::Task::TransferMatterTo:
@@ -601,12 +602,14 @@ namespace Technites
 				return Technite::TaskResult::NoTechniteAtDestination;
 			if (!ReduceResources(technite, Technite::MatterPackage))
 				return Technite::TaskResult::TechniteLacksResources;
-			IncreaseRemoteResources(*other, Technite::MatterPackage);
+			IncreaseRemoteResources(*other, Technite::MatterPackage, data);
 			return Technite::TaskResult::Success;
 		}
 		}
 		return Technite::TaskResult::NothingToDo;
 	}
+
+	//ParallelLoop	loop();
 
 
 	void		Faction::Process(float t)
@@ -619,16 +622,24 @@ namespace Technites
 			technites[i].taskResult = Technite::TaskResult::Again;
 		});
 		
+		count_t numWorkers = ParallelLoop::global_instance.getWorkerCount();
+		static Array<WorkerData>	workerData;
+		workerData.SetSize(numWorkers);
+
 
 		for (index_t iteration = 0; ; iteration++)
 		{
 			volatile bool anyAgain = false;
-			Concurrency::parallel_for(index_t(0), technites.Count(), [this, &anyAgain, iteration](index_t i)
+
+
+
+
+			parallelFor(technites.Count(), 64, [this, &anyAgain, iteration](index_t i, index_t workerIndex)
 			{
 				Technite&tec = technites[i];
 				if (tec.isDead || tec.taskResult != Technite::TaskResult::Again)
 					return;
-				Technite::TaskResult rc = tec.taskResult = ExecuteTask(tec, iteration);
+				Technite::TaskResult rc = tec.taskResult = ExecuteTask(tec, iteration, workerData[workerIndex]);
 				if (rc != Technite::TaskResult::MoreWorkNeeded)
 				{
 					
@@ -664,57 +675,62 @@ namespace Technites
 			newField.Clear();
 		}
 		
-
-		newTechnites.SignalRead();
-		for (const auto&loc : newTechnites)
+		foreach(workerData, data)
 		{
-			if (techniteMap.IsSet(loc))
-				continue;
+			for (const auto&loc : data->newTechnites)
+			{
+				if (techniteMap.IsSet(loc))
+					continue;
 
-			index_t at = technites.Count();
-			Technite tech;
-			tech.location = loc;
+				index_t at = technites.Count();
+				Technite tech;
+				tech.location = loc;
 
-			Grid::actualWorld.cellStack[tech.location.stackID].SetLocalTechniteFaction(tech.location.height, this->gridID);
-			UINT32 layer = Grid::CellStack::ToLayer(tech.location.height);
-			ASSERT_LESS__(layer, Grid::CellStack::Range);
-			atomicGrid.cellStack[tech.location.stackID].volumeCell[layer].content = Grid::Content::Technite;
-			atomicGrid.SignalStackChange(tech.location.stackID);
-			technites.Append(tech).isDead = false;
+				Grid::actualWorld.cellStack[tech.location.stackID].SetLocalTechniteFaction(tech.location.height, this->gridID);
+				UINT32 layer = Grid::CellStack::ToLayer(tech.location.height);
+				ASSERT_LESS__(layer, Grid::CellStack::Range);
+				atomicGrid.cellStack[tech.location.stackID].volumeCell[layer].content = Grid::Content::Technite;
+				atomicGrid.SignalStackChange(tech.location.stackID);
+				technites.Append(tech).isDead = false;
 
-			techniteMap.Set(tech.location,at);
-			visibleWorld.ChangeSensory(tech.location, t, 1);
+				techniteMap.Set(tech.location, at);
+				visibleWorld.ChangeSensory(tech.location, t, 1);
+			}
+			data->newTechnites.Clear();
 		}
-		newTechnites.ExitRead();
 
 		
-		increaseResources.SignalRead();
-		for (const auto&inc : increaseResources)
+		foreach(workerData, data)
 		{
-			index_t at;
-			ASSERT1__(techniteMap.Query(inc.first, at), inc.first.ToString());
-			Technite&tec = technites[at];
-			tec.resources += inc.second;
+			for (const auto&inc : data->increaseResources)
+			{
+				index_t at;
+				ASSERT1__(techniteMap.Query(inc.first, at), inc.first.ToString());
+				Technite&tec = technites[at];
+				tec.resources += inc.second;
+			}
+			data->increaseResources.Clear();
 		}
 
-		increaseResources.ExitRead();
-
+		foreach(workerData, data)
+		{
+			for (const auto&loc : data->moveInstructions)
+			{
+				index_t at;
+				ASSERT1__(techniteMap.Query(loc, at), loc.ToString());
+				Technite&tec = technites[at];
+				techniteMap.Unset(loc);
+				ASSERT1__(techniteMap.SetNew(tec.location, at), tec.location.ToString());
+			}
+			data->moveInstructions.Clear();
+		}
 		
-		moveInstructions.SignalRead();
-		for (const auto&loc : moveInstructions)
-		{
-			index_t at;
-			ASSERT1__(techniteMap.Query(loc, at),loc.ToString());
-			Technite&tec = technites[at];
-			techniteMap.Unset(loc);
-			ASSERT1__(techniteMap.SetNew(tec.location, at), tec.location.ToString());
-		}
-		moveInstructions.ExitRead();
+		
 		
 	}
 
 
-	bool			Faction::MoveTechnite(Technite&technite, const Grid::HCellIdI&target)
+	bool			Faction::MoveTechnite(Technite&technite, const Grid::HCellIdI&target, WorkerData&data)
 	{
 		UINT32 fromLayer = Grid::CellStack::ToLayer(technite.location.height),
 			toLayer = Grid::CellStack::ToLayer(target.height);
@@ -734,7 +750,7 @@ namespace Technites
 		Grid::actualWorld.cellStack[target.stackID].volumeCell[toLayer].techniteFaction = this->gridID;
 		fromCell.content = Grid::Content::Clear;
 		atomicGrid.SignalStackChange(technite.location.stackID);
-		moveInstructions << technite.location;//old location
+		data.moveInstructions << technite.location;//old location
 		technite.location = target;
 		return true;
 	}
@@ -750,9 +766,9 @@ namespace Technites
 		return rs;
 	}
 
-	void			Faction::SpawnNewTechnite(const Grid::HCellIdI&target)
+	void			Faction::SpawnNewTechnite(const Grid::HCellIdI&target, WorkerData&data)
 	{
-		newTechnites << target;
+		data.newTechnites << target;
 	}
 
 	void			Faction::IncreaseResources(Technite&technite, const Technite::Resources&by)
@@ -765,9 +781,9 @@ namespace Technites
 		return technite.resources -= by;
 	}
 
-	void			Faction::IncreaseRemoteResources(Technite&technite, const Technite::Resources&by)
+	void			Faction::IncreaseRemoteResources(Technite&technite, const Technite::Resources&by, WorkerData&data)
 	{
-		increaseResources << std::make_pair(technite.location, by);
+		data.increaseResources << std::make_pair(technite.location, by);
 	}
 
 
