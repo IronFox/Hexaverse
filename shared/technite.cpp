@@ -355,12 +355,12 @@ namespace Technites
 		index_t family;
 		UINT32 heightRemainder;
 		index_t clusterIndex = MapCluster(Grid::HCellIdU(location.stackID, layer), family, heightRemainder);
-		ASSERT_LESS__(heightRemainder, SectionLayers);
-		ASSERT_LESS__(clusterIndex, ARRAYSIZE(cluster));
+		//ASSERT_LESS__(heightRemainder, SectionLayers);
+		//ASSERT_LESS__(clusterIndex, ARRAYSIZE(cluster));
 		outCluster = cluster + clusterIndex;
 		count_t range = Grid::high.grid.CountFamilyMembers((BYTE)family);
 		index_t inner = (location.stackID - Grid::high.grid.GetFamilyOffset((BYTE)family));
-		ASSERT_LESS__(inner, range);
+		//ASSERT_LESS__(inner, range);
 		if (initIfEmpty && outCluster->volumeCells.IsEmpty())
 		{
 			outCluster->volumeCells.SetSize(range * SectionLayers);
@@ -375,14 +375,14 @@ namespace Technites
 		index_t family;
 		UINT32 heightRemainder;
 		index_t clusterIndex = MapCluster(Grid::HCellIdU(location.stackID, layer), family,heightRemainder);
-		ASSERT_LESS__(heightRemainder, SectionLayers);
-		ASSERT_LESS__(clusterIndex, ARRAYSIZE(cluster));
+		//ASSERT_LESS__(heightRemainder, SectionLayers);
+		//ASSERT_LESS__(clusterIndex, ARRAYSIZE(cluster));
 		outCluster = cluster + clusterIndex;
-		const count_t numFamilies = BaseGrid::NumFamilies;
+		//const count_t numFamilies = BaseGrid::NumFamilies;
 		index_t inner = (location.stackID - Grid::high.grid.GetFamilyOffset((BYTE)family));
 		count_t range = Grid::high.grid.CountFamilyMembers((BYTE)family);
-		ASSERT_EQUAL__(family, Grid::high.grid.GetCell(location.stackID).family, family);
-		ASSERT_LESS__(inner, range);
+		//ASSERT_EQUAL__(family, Grid::high.grid.GetCell(location.stackID).family);
+		//ASSERT_LESS__(inner, range);
 		return inner + range * heightRemainder;
 	}
 
