@@ -674,6 +674,9 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 	application_shutting_down = true;	//prevent certain operations in Close()
 	ErrMessage(message);
+	std::cerr << message << std::endl;
+	char confirm[0x100];
+	std::cin.getline(confirm,sizeof(confirm));
 
 
 
