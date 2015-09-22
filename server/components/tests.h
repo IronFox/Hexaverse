@@ -107,6 +107,17 @@ namespace Test
 		virtual void	Run(Random&random) override;
 
 	};
+
+	class BroadTechniteMap : public Test
+	{
+	public:
+		/**/		BroadTechniteMap() : Test("BroadTechniteMap")
+		{}
+		virtual void	Run(Random&random)	override;
+
+	};
+
+
 	class HighGridFamilies : public Test
 	{
 	public:

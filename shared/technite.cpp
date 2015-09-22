@@ -198,12 +198,19 @@ namespace Technites
 
 	Grid::Content			Faction::GetLastContent(const Grid::HCellIdI&cellID)
 	{
-		return Grid::Content::Reinterpret(atomicGrid.cellStack[cellID.stackID].volumeCell[Grid::CellStack::ToLayer(cellID.height)].content);
+		UINT32 layer = Grid::CellStack::ToLayer(cellID.height);
+		ASSERT_LESS__(layer, Grid::CellStack::Range);
+		
+		auto rs = Grid::Content::Reinterpret(atomicGrid.cellStack[cellID.stackID].volumeCell[layer].content);
+		
+		return rs;
 	}
 	Grid::Content			Faction::DegradeMatter(const Grid::HCellIdI&target, Technite::Resources&outYield)
 	{
 		outYield = Technite::Resources();
-		AtomicGrid::CellStack::Cell&cell = atomicGrid.cellStack[target.stackID].volumeCell[Grid::CellStack::ToLayer(target.height)];
+		UINT32 layer = Grid::CellStack::ToLayer(target.height);
+		ASSERT_LESS__(layer, Grid::CellStack::Range);
+		AtomicGrid::CellStack::Cell&cell = atomicGrid.cellStack[target.stackID].volumeCell[layer];
 		for (;;)
 		{
 
@@ -285,39 +292,172 @@ namespace Technites
 	Faction::ExecResult			Faction::GrowTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration)
 	{
 		ExecResult rs = Eat(technite, target, iteration);
+		
 		if (rs != ExecResult::Success)
 			return rs;
 
 		if (iteration < 2)
 			return ExecResult::Again;
 
+		
 		if (!ReduceResources(technite, Technite::SplitCost))
 		{
 			return ExecResult::TechniteLacksResources;
 		}
+		
 
 		SpawnNewTechnite(target);
+		
 		return ExecResult::Success;
 	}
 
 	Faction::ExecResult			Faction::MoveTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration)
 	{
 		ExecResult rs = Eat(technite, target, iteration);
+		
 		if (rs != ExecResult::Success)
 			return rs;
 
+		
 		if (!ReduceResources(technite, Technite::MoveCost))
 		{
 			return ExecResult::TechniteLacksResources;
 		}
+		
 
 		if (!MoveTechnite(technite, target))
 		{
+			
 			IncreaseResources(technite, Technite::MoveCost);
 			return ExecResult::CannotStandThere;
 
 		}
+		
 		return ExecResult::Success;
+	}
+
+
+	index_t					BroadTechniteMap::MapCluster(const Grid::HCellIdI&loc, index_t&outFamily, UINT32&heightRemainder) const
+	{
+		return MapCluster(Grid::HCellIdU(loc.stackID, Grid::CellStack::ToLayer(loc.height)),outFamily,heightRemainder);
+	}
+	index_t					BroadTechniteMap::MapCluster(const Grid::HCellIdU&loc, index_t&outFamily, UINT32&heightRemainder) const
+	{
+		outFamily = Grid::high.grid.GetCell(loc.stackID).family;
+		heightRemainder = loc.layer % SectionLayers;
+		return outFamily * HeightSections
+			+ loc.layer / SectionLayers;
+	}
+
+	index_t					BroadTechniteMap::Map(const Grid::HCellIdI&location, Cluster*&outCluster, bool initIfEmpty)
+	{
+		UINT32 layer = Grid::CellStack::ToLayer(location.height);
+		index_t family;
+		UINT32 heightRemainder;
+		index_t clusterIndex = MapCluster(Grid::HCellIdU(location.stackID, layer), family, heightRemainder);
+		ASSERT_LESS__(heightRemainder, SectionLayers);
+		ASSERT_LESS__(clusterIndex, ARRAYSIZE(cluster));
+		outCluster = cluster + clusterIndex;
+		count_t range = Grid::high.grid.CountFamilyMembers((BYTE)family);
+		index_t inner = (location.stackID - Grid::high.grid.GetFamilyOffset((BYTE)family));
+		ASSERT_LESS__(inner, range);
+		if (initIfEmpty && outCluster->volumeCells.IsEmpty())
+		{
+			outCluster->volumeCells.SetSize(range * SectionLayers);
+			outCluster->volumeCells.Fill(Empty);
+		}
+		return inner + range * heightRemainder;
+	}
+
+	index_t					BroadTechniteMap::Map(const Grid::HCellIdI&location, const Cluster*&outCluster) const
+	{
+		UINT32 layer = Grid::CellStack::ToLayer(location.height);
+		index_t family;
+		UINT32 heightRemainder;
+		index_t clusterIndex = MapCluster(Grid::HCellIdU(location.stackID, layer), family,heightRemainder);
+		ASSERT_LESS__(heightRemainder, SectionLayers);
+		ASSERT_LESS__(clusterIndex, ARRAYSIZE(cluster));
+		outCluster = cluster + clusterIndex;
+		const count_t numFamilies = BaseGrid::NumFamilies;
+		index_t inner = (location.stackID - Grid::high.grid.GetFamilyOffset((BYTE)family));
+		count_t range = Grid::high.grid.CountFamilyMembers((BYTE)family);
+		ASSERT_EQUAL__(family, Grid::high.grid.GetCell(location.stackID).family, family);
+		ASSERT_LESS__(inner, range);
+		return inner + range * heightRemainder;
+	}
+
+	void					BroadTechniteMap::Unset(const Grid::HCellIdI& id)
+	{
+		Cluster*cluster;
+		index_t inner = Map(id, cluster,false);
+		if (cluster->numEntries == 0)
+			return;
+		if (cluster->volumeCells[inner] != Empty)
+		{
+			cluster->volumeCells[inner] = Empty;
+			cluster->numEntries--;
+			totalEntries--;
+		}
+	}
+
+	void					BroadTechniteMap::Set(const Grid::HCellIdI&id, index_t to)
+	{
+		Cluster*cluster;
+		index_t inner = Map(id, cluster,true);
+		if (cluster->volumeCells[inner] == Empty)
+		{
+			cluster->numEntries++;
+			totalEntries++;
+		}
+		cluster->volumeCells[inner] = (UINT32)to;
+	}
+
+	bool					BroadTechniteMap::Query(const Grid::HCellIdI&id, index_t&out) const
+	{
+		const Cluster*cluster;
+		index_t inner = Map(id, cluster);
+		if (cluster->numEntries == 0)
+		{
+			out = InvalidIndex;
+			return false;
+		}
+		UINT32 v = cluster->volumeCells[inner];
+		if (v == Empty)
+		{
+			out = InvalidIndex;
+			return false;
+		}
+		out = (index_t)v;
+		return true;
+	}
+
+	bool					BroadTechniteMap::IsSet(const Grid::HCellIdI&id) const
+	{
+		const Cluster*cluster;
+		index_t inner = Map(id, cluster);
+		if (cluster->numEntries == 0)
+			return false;
+		UINT32 v = cluster->volumeCells[inner];
+		return v != Empty;
+	}
+
+	bool					BroadTechniteMap::SetNew(const Grid::HCellIdI&id, index_t to)
+	{
+		Cluster*cluster;
+		index_t inner = Map(id, cluster, true);
+		UINT32&v = cluster->volumeCells[inner];
+		if (v != Empty)
+			return false;
+		cluster->numEntries++;
+		totalEntries++;
+		v = (UINT32)to;
+		return true;
+	}
+
+
+	count_t					BroadTechniteMap::Count() const
+	{
+		return totalEntries;
 	}
 
 	Technite::Resources		Faction::EatTechnite(const Grid::HCellIdI&target, bool factionIsActive)
@@ -327,32 +467,28 @@ namespace Technites
 			index_t at;
 			if (!this->techniteMap.Query(target, at))
 			{
-				atomicGrid.cellStack[target.stackID].volumeCell[Grid::CellStack::ToLayer(target.height)].content = Grid::Content::Clear;
+				UINT32 layer = Grid::CellStack::ToLayer(target.height);
+				ASSERT_LESS__(layer, Grid::CellStack::Range);
+				atomicGrid.cellStack[target.stackID].volumeCell[layer].content = Grid::Content::Clear;
 				atomicGrid.SignalStackChange(target.stackID);
 				return Technite::Resources();	//never been there. weird, but whatever
 			}
-			if (at >= technites.Count())
-			{
-				Array<Grid::HCellIdI>	keys;
-				Array<index_t>	values;
-				techniteMap.exportKeys(keys);
-				techniteMap.exportTo(values);
-				foreach(values, val)
-					ASSERT_LESS__(*val, technites.Count());
-				FATAL__("weeeird");
-
-			}
-//			ASSERT_LESS__(at, technites.Count());
+			
+			ASSERT_LESS__(at, technites.Count());
 			Technite&tech = technites[at];
-			bool cmp = false;
-			if (tech.isDead.compare_exchange_strong(cmp, true))
+			if (tech.isDead.Set(false, true))
 			{
+				
 				if (factionIsActive)
 					anyDied = true;
-				atomicGrid.cellStack[target.stackID].volumeCell[Grid::CellStack::ToLayer(target.height)].content = Grid::Content::Clear;
+				UINT32 layer = Grid::CellStack::ToLayer(target.height);
+				ASSERT_LESS__(layer, Grid::CellStack::Range);
+				atomicGrid.cellStack[target.stackID].volumeCell[layer].content = Grid::Content::Clear;
 				atomicGrid.SignalStackChange(target.stackID);
+				
 				return technites[at].resources / 2;
 			}
+			
 			return Technite::Resources();
 		}
 	}
@@ -360,34 +496,46 @@ namespace Technites
 
 	Faction::ExecResult			Faction::Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration)
 	{
+		
 		switch (GetLastContent(target))
 		{
 		case Grid::Content::Clear:	//clear never changes. Once it's empty, it's empty
 		{
 			bool cantEatThis;
 			IncreaseResources(technite, EatEntitiesIn(target,cantEatThis));	//this will be hard to make thread-safe
+			
 			return cantEatThis ? ExecResult::CannotEatThis : ExecResult::Success;
 		}
 		case Grid::Content::Technite:
 		{
 			if (iteration < 1)
 				return ExecResult::Again;
+			
 			BYTE faction = Grid::actualWorld.cellStack[target.stackID].GetCellI(target.height).techniteFaction;	//this should be thread-safe with only one faction being parallely active at any given time
+			
 			PFaction f = GetFactionOf(faction);
+			
 			Technite::Resources resources = f->EatTechnite(target, f.get() == this);	//if technite has been eaten in the meantime EatTechnite will return empty resources
+			
 			IncreaseResources(technite, resources);
+			
 		}
 		return ExecResult::Success;
 		case Grid::Content::Lava:
+			
 			return ExecResult::CannotEatThis;
 		}
 		if (!ReduceResources(technite, Technite::EatCost))
 		{
+			
 			return ExecResult::TechniteLacksResources;
 		}
 		Technite::Resources	resources;
+		
 		Grid::Content newContent = DegradeMatter(target, resources);	//DegradeMatter must be atomic on the specified cell
+		
 		IncreaseResources(technite, resources);
+		
 		return newContent == Grid::Content::Clear ? ExecResult::Success : ExecResult::MoreWorkNeeded;
 	}
 
@@ -400,13 +548,17 @@ namespace Technites
 		//	anyDied = true;
 		//	return;
 		//}
+		
 		Grid::Content content = GetLastContent(technite.location);
 		if (content != Grid::Content::Technite
 			|| Grid::actualWorld.cellStack[technite.location.stackID].GetCellI(technite.location.height).techniteFaction != this->gridID)
 		{
+			
 			technite.isDead = true;	//world could have changed by other influences (like explosions)
 			anyDied = true;
+			
 		}
+		
 	}
 
 	Technite::TaskResult			Faction::ExecuteTask(Technite&technite, index_t iteration)
@@ -460,11 +612,13 @@ namespace Technites
 	void		Faction::Process(float t)
 	{
 		anyDied = false;
+		
 		Concurrency::parallel_for(index_t(0), technites.Count(), [this](index_t i)
 		{
 			CheckState(technites[i]);
 			technites[i].taskResult = Technite::TaskResult::Again;
 		});
+		
 
 		for (index_t iteration = 0; ; iteration++)
 		{
@@ -487,11 +641,12 @@ namespace Technites
 			if (!anyAgain)
 				break;
 		}
+		
 
 		if (anyDied)
 		{
 			static Buffer<Technite>	newField;
-			techniteMap.Clear();
+			//techniteMap.Clear();
 			for (const auto&tec : technites)
 				if (!tec.isDead)
 				{
@@ -502,12 +657,13 @@ namespace Technites
 				else
 				{
 					visibleWorld.ChangeSensory(tec.location, t, -1);
-					//techniteMap.Unset(tec.location);
+					techniteMap.Unset(tec.location);
 				}
 
 			newField.swap(technites);
 			newField.Clear();
 		}
+		
 
 		newTechnites.SignalRead();
 		for (const auto&loc : newTechnites)
@@ -520,15 +676,18 @@ namespace Technites
 			tech.location = loc;
 
 			Grid::actualWorld.cellStack[tech.location.stackID].SetLocalTechniteFaction(tech.location.height, this->gridID);
-			atomicGrid.cellStack[tech.location.stackID].volumeCell[Grid::CellStack::ToLayer(tech.location.height)].content = Grid::Content::Technite;
+			UINT32 layer = Grid::CellStack::ToLayer(tech.location.height);
+			ASSERT_LESS__(layer, Grid::CellStack::Range);
+			atomicGrid.cellStack[tech.location.stackID].volumeCell[layer].content = Grid::Content::Technite;
 			atomicGrid.SignalStackChange(tech.location.stackID);
 			technites.Append(tech).isDead = false;
 
-			techniteMap.Set(tech.location);
+			techniteMap.Set(tech.location,at);
 			visibleWorld.ChangeSensory(tech.location, t, 1);
 		}
 		newTechnites.ExitRead();
 
+		
 		increaseResources.SignalRead();
 		for (const auto&inc : increaseResources)
 		{
@@ -540,6 +699,7 @@ namespace Technites
 
 		increaseResources.ExitRead();
 
+		
 		moveInstructions.SignalRead();
 		for (const auto&loc : moveInstructions)
 		{
@@ -550,6 +710,7 @@ namespace Technites
 			ASSERT1__(techniteMap.SetNew(tec.location, at), tec.location.ToString());
 		}
 		moveInstructions.ExitRead();
+		
 	}
 
 
@@ -557,6 +718,9 @@ namespace Technites
 	{
 		UINT32 fromLayer = Grid::CellStack::ToLayer(technite.location.height),
 			toLayer = Grid::CellStack::ToLayer(target.height);
+		ASSERT_LESS__(fromLayer, Grid::CellStack::Range);
+		ASSERT_LESS__(toLayer, Grid::CellStack::Range);
+
 		AtomicGrid::CellStack::Cell&fromCell = atomicGrid.cellStack[technite.location.stackID].volumeCell[fromLayer];
 		AtomicGrid::CellStack::Cell&toCell = atomicGrid.cellStack[target.stackID].volumeCell[toLayer];
 

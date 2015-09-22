@@ -677,7 +677,50 @@ namespace Test
 		}
 	}
 
-	void TechniteRandom::Run(Random & random)
+
+	/*virtual override*/ void	BroadTechniteMap::Run(Random&random)
+	{
+		Technites::BroadTechniteMap map;
+
+		Buffer<Grid::HCellIdI>	set;
+
+		for (index_t i = 0; i < 100; i++)
+		{
+			for (index_t j = 0; j < 10000; j++)
+			{
+				Grid::HCellIdI cell;
+				while (true)
+				{
+					cell = Grid::HCellIdI(random.getIndex(Grid::HighSetup::GridType::CellCount - 1), random.get(Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight));
+					bool existing = set.Contains(cell);
+					bool tested = map.IsSet(cell);
+					if (existing != tested)
+					{
+						map.IsSet(cell);
+
+					}
+					ASSERT_EQUAL__(existing, tested);
+					if (!existing)
+						break;
+				}
+				map.Set(cell, set.Count());
+				set << cell;
+			}
+
+			ASSERT_EQUAL__(map.Count(), set.Count());
+			for (index_t i = 0; i < set.Count(); i++)
+			{
+				ASSERT__(map.IsSet(set[i]));
+				map.Unset(set[i]);
+				ASSERT_EQUAL__(map.Count(), set.Count() - i-1);
+			}
+			set.Clear();
+			ASSERT_EQUAL__(map.Count(), 0);
+		}
+	}
+
+
+	/*virtual override*/ void TechniteRandom::Run(Random & random)
 	{
 		Technites::PFaction faction = Technites::Faction::Create();
 
@@ -692,7 +735,7 @@ namespace Test
 		
 		for (int i = 0; i < 100; i++)
 		{
-			foreach(faction->technites, t)
+			foreach (faction->technites,t)
 			{
 				t->resources = t->SplitCost;
 				t->resources += t->MoveCost;
@@ -701,10 +744,13 @@ namespace Test
 				ASSERT__(t->taskResult != Technites::Technite::TaskResult::BadCommand);
 				t->nextTask = Technites::Technite::Task::GrowTo;
 				Technites::Technite::TTarget target;
-				target.heightDelta = random.get(-1, 1);
+				do
+				{
+					target.heightDelta = random.get(-1, 1);
+				} while (t->location.height + target.heightDelta < Grid::CellStack::BottomHeight || t->location.height + target.heightDelta > Grid::CellStack::TopHeight);
 				target.neighborIndex = random.get(Grid::high.grid.GetCell(t->location.stackID).neighborhood.numNeighbors-1);
 				t->compressedTarget = target.Compress();
-			}
+			};
 
 			Technites::Faction::Begin();
 			while (Technites::Faction::ProcessNext(0.f));

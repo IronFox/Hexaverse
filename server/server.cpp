@@ -1377,13 +1377,14 @@ int main( int argc, const char* argv[])
 
 		{
 			Test::Run(Test::HighGridFamilies());
+			Test::Run(Test::BroadTechniteMap());
+			Test::Run(Test::TechniteRandom());
 			Test::Run(Test::AutoTargeting());
 			Test::Run(Test::Bin2Str());
 			Test::Run(Test::Serialization());
 			Test::Run(Test::VehiclePlant());
 			Test::Run(Test::SkyPort());
 			Test::Run(Test::StorageUnits());
-			Test::Run(Test::TechniteRandom());
 		}
 		std::cout << "Tests completed. Press enter to quit" << std::endl;
 		char c;

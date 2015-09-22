@@ -15,6 +15,30 @@ namespace Technites
 
 
 
+	struct AtomicBool
+	{
+		volatile char	value;
+
+		/**/	AtomicBool(bool v = false) :value(v) {}
+
+		bool	Set(bool expectedCurrent, bool setToIfMatch)
+		{
+			return _InterlockedCompareExchange8(&value, setToIfMatch, expectedCurrent) == (char)expectedCurrent;
+		}
+
+		operator bool() const { return value != 0; }
+
+		void operator=(bool b)
+		{
+			value = b;
+		}
+
+
+	};
+
+	static_assert(sizeof(AtomicBool) == 1, "Struct alignment out of wack");
+
+
 
 	class Technite
 	{
@@ -120,7 +144,7 @@ namespace Technites
 		Task			nextTask = Task::None;
 		TaskResult		taskResult = TaskResult::Again;
 		BYTE			compressedTarget=0;
-		std::atomic<bool>	isDead = false;
+		AtomicBool		isDead = false;
 		Grid::HCellIdI	location;
 
 
@@ -129,9 +153,9 @@ namespace Technites
 							compressedTarget(other.compressedTarget),location(other.location),
 							isDead((bool)other.isDead)
 		{
-			bool current = other.isDead;
-			bool n = other.isDead;
-			ASSERT__(isDead.compare_exchange_strong(current, n));
+			//bool current = other.isDead;
+			//bool n = other.isDead;
+			ASSERT__(isDead.Set(other.isDead, other.isDead));
 			
 		}
 
@@ -169,6 +193,40 @@ namespace Technites
 	};
 
 
+	class BroadTechniteMap
+	{
+	private:
+		static const count_t HeightSections = 4;
+		static const count_t SectionLayers = Grid::CellStack::Range / HeightSections;
+		static const count_t ClusterCount = BaseGrid::NumFamilies * HeightSections;	//four height domains each
+
+		struct Cluster
+		{
+			Array<UINT32>		volumeCells;
+			count_t				numEntries = 0;
+		};
+
+		count_t					totalEntries = 0;
+		Cluster					cluster[ClusterCount];
+
+		index_t					Map(const Grid::HCellIdI&, const Cluster*&outCluster) const;
+		index_t					Map(const Grid::HCellIdI&, Cluster*&outCluster, bool initIfEmpty);
+		index_t					MapCluster(const Grid::HCellIdI&loc, index_t&outFamily, UINT32&heightRemainder) const;
+		index_t					MapCluster(const Grid::HCellIdU&loc, index_t&outFamily, UINT32&heightRemainder) const;
+
+		static const UINT32	Empty = 0xFFFFFFFF;
+	public:
+		/**/					BroadTechniteMap() {}
+
+		void					Unset(const Grid::HCellIdI& id);
+		void					Set(const Grid::HCellIdI&id, index_t to);
+		bool					Query(const Grid::HCellIdI&id, index_t&out) const;
+		bool					IsSet(const Grid::HCellIdI&id) const;
+		bool					SetNew(const Grid::HCellIdI&id, index_t to);
+		count_t					Count() const;
+	};
+
+
 	class Faction : public std::enable_shared_from_this<Faction>
 	{
 	public:
@@ -178,7 +236,10 @@ namespace Technites
 		static AtomicGrid		atomicGrid;
 
 		Buffer<Technite>		technites;
-		GenericHashTable<Grid::HCellIdI,index_t, Grid::HCellIdI>	techniteMap;
+		//GenericHashTable<Grid::HCellIdI,index_t, Grid::HCellIdI>	techniteMap;
+
+		BroadTechniteMap		techniteMap;
+
 		BYTE					gridID;				//!< Identifier in the grid. 255/0xFF is invalid. Up to 254 different cell factions on one planet.
 		TUniqueID				globalID;
 
@@ -224,7 +285,6 @@ namespace Technites
 		PFaction				GetFactionOf(BYTE gridFactionID);
 		ExecResult				ExecuteTask(Technite&cell, index_t iteration);
 		void					CheckState(Technite&technite);
-
 
 
 		Grid::Content			GetLastContent(const Grid::HCellIdI&cellID);
