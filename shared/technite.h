@@ -179,6 +179,7 @@ namespace Technites
 
 
 		static Buffer0<PFaction>all;
+		static PFaction			gridMap[0xFF];
 
 
 		void					Process(float t);
@@ -193,7 +194,7 @@ namespace Technites
 		ExecResult				Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration);
 
 
-		Technite::Resources		EatEntitiesIn(const Grid::HCellIdI&target);
+		Technite::Resources		EatEntitiesIn(const Grid::HCellIdI&target, bool&cantEatThis);
 		Technite::Resources		EatTechnite(const Grid::HCellIdI&target, bool factionIsActive);
 		void					SpawnNewTechnite(const Grid::HCellIdI&target);
 		bool					MoveTechnite(Technite&technite, const Grid::HCellIdI&target);

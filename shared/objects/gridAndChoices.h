@@ -62,6 +62,8 @@ namespace Objects
 	extern Array<PVehicle>			vehicleGrid;
 	extern Array<PStructure>		structureGrid;
 
+	index_t					CellToGridIndex(const Grid::LCellIdI&location);
+
 
 
 	PVehicle		GetVehicle(const Grid::LCellIdI&cellID);
@@ -69,6 +71,8 @@ namespace Objects
 	PWorldEntity	GetEntity(const Grid::LCellIdI&cellID);
 	PSatellite		GetSatellite(UINT32 flatCellID);
 	PMobileEntity	GetMobileEntity(const Grid::LCellIdI&cellID);
+
+
 
 
 	void			InjectIntoNeighborhood(const PStructure&s, float atTime);

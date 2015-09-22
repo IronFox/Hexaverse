@@ -4,7 +4,9 @@
 #if TECHNITES
 
 #include "technite.h"
-
+#include "objects/gridAndChoices.h"
+#include "objects/structure.h"
+#include "objects/vehicle.h"
 
 namespace Technites
 {
@@ -19,6 +21,18 @@ namespace Technites
 	/*static*/ WorkPipe<Grid::HCellIdI>	Faction::newTechnites;
 	/*static*/ WorkPipe<Grid::HCellIdI> Faction::moveInstructions;
 	/*static*/ WorkPipe<std::pair<Grid::HCellIdI, Technite::Resources> > Faction::increaseResources;
+	/*static*/ PFaction			Faction::gridMap[0xFF];
+
+
+	struct TEaten
+	{
+		std::atomic<bool>	structureEaten = false,
+							mobileEaten = false;
+	};
+
+	Array<TEaten>			eatenGrid(Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range);
+
+
 
 
 	static index_t atFaction = 0;
@@ -29,6 +43,26 @@ namespace Technites
 
 		atomicGrid.Import(Grid::actualWorld);
 	}
+
+
+	static bool CheckIsEaten(const Objects::PMobileEntity&m)
+	{
+		auto&cell = eatenGrid[Objects::CellToGridIndex(m->location)];
+		if (!cell.mobileEaten)
+			return false;
+		cell.mobileEaten = false;
+		return true;
+	}
+
+	static bool CheckIsEaten(const Objects::PStructure&s)
+	{
+		auto&cell = eatenGrid[Objects::CellToGridIndex(s->location)];
+		if (!cell.structureEaten)
+			return false;
+		cell.structureEaten = false;
+		return true;
+	}
+
 	/*static*/ bool				Faction::ProcessNext(float t)
 	{
 		if (atFaction < all.Count())
@@ -40,10 +74,77 @@ namespace Technites
 		if (atFaction >= all.Count())
 		{
 			atomicGrid.ExportChanged(Grid::actualWorld);
+
+			static Buffer0<Objects::PWorldEntity>	toKill;
+			for (const auto&mobile : Objects::vehicles)
+			{
+				if (CheckIsEaten(mobile))
+					toKill << mobile;
+			}
+			for (const auto&structure : Objects::structures)
+			{
+				if (CheckIsEaten(structure))
+					toKill << structure;
+			}
+
+			for (const auto&e : toKill)
+				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,t,true);
+			toKill.Clear();
+
 			return false;
 		}
 		return true;
 	}
+
+
+	/*static*/ PFaction Faction::GetFactionOf(BYTE factionID)
+	{
+		return gridMap[factionID];
+	}
+
+	Technite::Resources		Faction::EatEntitiesIn(const Grid::HCellIdI&target, bool&cantEatThis)
+	{
+		cantEatThis = false;
+		Objects::PWorldEntity	all[4];
+		int count = 0;
+		const auto mapping = Grid::highToLowMap[target.stackID];
+		Objects::PWorldEntity entity;
+		for (int k = 0; k < 2; k++)
+			if (mapping.lowCells[k] != Grid::THighToLowCell::Empty)
+			{
+				Grid::LCellIdI at(mapping.lowCells[k],target.height);
+				TEaten&eaten = eatenGrid[Objects::CellToGridIndex(at)];
+				entity = Objects::GetMobileEntity(at);
+				bool ref;
+				ref = false;
+				if (entity)
+					if (!entity->IsIndestructible())
+					{
+						if (eaten.mobileEaten.compare_exchange_strong(ref,true))
+							all[count++] = entity;
+					}
+					else
+						cantEatThis = true;
+				entity = Objects::GetStructure(at);
+				ref = false;
+				if (entity)
+					if (!entity->IsIndestructible())
+					{
+						if (eaten.structureEaten.compare_exchange_strong(ref,true))
+							all[count++] = entity;
+					}
+					else
+						cantEatThis = true;
+			}
+
+		if (count == 0)
+			return Technite::Resources();
+		Technite::Resources result;
+		for (int i = 0; i < count; i++)
+			result.matter += std::max(1,all[i]->GetConstructionCost()/2);
+		return result;
+	}
+
 
 
 	void				AtomicGrid::Import(const Grid::WorldData&data)
@@ -243,8 +344,11 @@ namespace Technites
 		switch (GetLastContent(target))
 		{
 		case Grid::Content::Clear:	//clear never changes. Once it's empty, it's empty
-			IncreaseResources(technite, EatEntitiesIn(target));	//this will be hard to make thread-safe
-			return ExecResult::Success;
+		{
+			bool cantEatThis;
+			IncreaseResources(technite, EatEntitiesIn(target,cantEatThis));	//this will be hard to make thread-safe
+			return cantEatThis ? ExecResult::CannotEatThis : ExecResult::Success;
+		}
 		case Grid::Content::Technite:
 		{
 			if (iteration < 1)
