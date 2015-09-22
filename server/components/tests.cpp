@@ -683,6 +683,7 @@ namespace Test
 		Technites::BroadTechniteMap map;
 
 		Buffer<Grid::HCellIdI>	set;
+		GenericHashSet<Grid::HCellIdI, Grid::HCellIdI> hashset;
 
 		for (index_t i = 0; i < 100; i++)
 		{
@@ -692,7 +693,7 @@ namespace Test
 				while (true)
 				{
 					cell = Grid::HCellIdI(random.getIndex(Grid::HighSetup::GridType::CellCount - 1), random.get(Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight));
-					bool existing = set.Contains(cell);
+					bool existing = hashset.IsSet(cell);
 					bool tested = map.IsSet(cell);
 					if (existing != tested)
 					{
@@ -705,6 +706,7 @@ namespace Test
 				}
 				map.Set(cell, set.Count());
 				set << cell;
+				hashset.Set(cell);
 			}
 
 			ASSERT_EQUAL__(map.Count(), set.Count());
@@ -715,6 +717,7 @@ namespace Test
 				ASSERT_EQUAL__(map.Count(), set.Count() - i-1);
 			}
 			set.Clear();
+			hashset.Clear();
 			ASSERT_EQUAL__(map.Count(), 0);
 		}
 	}
