@@ -119,7 +119,7 @@ namespace Technites
 
 		Task			nextTask = Task::None;
 		TaskResult		taskResult = TaskResult::Again;
-		BYTE			compressedTarget;
+		BYTE			compressedTarget=0;
 		std::atomic<bool>	isDead = false;
 		Grid::HCellIdI	location;
 
@@ -128,7 +128,12 @@ namespace Technites
 		/**/			Technite(const Technite&other) :nextTask(other.nextTask), taskResult(other.taskResult), 
 							compressedTarget(other.compressedTarget),location(other.location),
 							isDead((bool)other.isDead)
-		{}
+		{
+			bool current = other.isDead;
+			bool n = other.isDead;
+			ASSERT__(isDead.compare_exchange_strong(current, n));
+			
+		}
 
 
 
@@ -159,12 +164,12 @@ namespace Technites
 		/**/				AtomicGrid() : cellStack(Grid::HighSetup::GridType::CellCount)
 		{}
 		void				Import(const Grid::WorldData&data);
-		void				ExportChanged(Grid::WorldData&outData);
+		void				ExportChanged(Grid::WorldData&outData, float t);
 		void				SignalStackChange(UINT32 stackID);
 	};
 
 
-	class Faction
+	class Faction : public std::enable_shared_from_this<Faction>
 	{
 	public:
 
@@ -179,16 +184,28 @@ namespace Technites
 
 
 		static Buffer0<PFaction>all;
-		static PFaction			gridMap[0xFF];
+		static PFaction			gridIDMap[0xFF];
 
+
+		static PFaction			Create();
+
+		void					Destroy(float t);
 
 		void					Process(float t);
+
+
+		index_t					CreateSingleTechnite(const Grid::HCellIdI&, float t);
 
 		static void				Begin();
 		static bool				ProcessNext(float t);
 
+		static bool				ValidTechniteLocation(const Grid::HCellIdI&location);
+		static bool				ValidTechniteLocation(BYTE groundContent, BYTE targetContent, BYTE targetStructureLevel);
+
 		typedef Technite::TaskResult	ExecResult;
 	private:
+		/**/					Faction() {};
+
 		ExecResult				GrowTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration);
 		ExecResult				MoveTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration);
 		ExecResult				Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration);

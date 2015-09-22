@@ -21,7 +21,7 @@ namespace Technites
 	/*static*/ WorkPipe<Grid::HCellIdI>	Faction::newTechnites;
 	/*static*/ WorkPipe<Grid::HCellIdI> Faction::moveInstructions;
 	/*static*/ WorkPipe<std::pair<Grid::HCellIdI, Technite::Resources> > Faction::increaseResources;
-	/*static*/ PFaction			Faction::gridMap[0xFF];
+	/*static*/ PFaction			Faction::gridIDMap[0xFF];
 
 
 	struct TEaten
@@ -73,7 +73,7 @@ namespace Technites
 
 		if (atFaction >= all.Count())
 		{
-			atomicGrid.ExportChanged(Grid::actualWorld);
+			atomicGrid.ExportChanged(Grid::actualWorld, t);
 
 			static Buffer0<Objects::PWorldEntity>	toKill;
 			for (const auto&mobile : Objects::vehicles)
@@ -99,7 +99,7 @@ namespace Technites
 
 	/*static*/ PFaction Faction::GetFactionOf(BYTE factionID)
 	{
-		return gridMap[factionID];
+		return gridIDMap[factionID];
 	}
 
 	Technite::Resources		Faction::EatEntitiesIn(const Grid::HCellIdI&target, bool&cantEatThis)
@@ -156,7 +156,8 @@ namespace Technites
 
 			for (UINT32 l = 0; l < Grid::CellStack::Range; l++)
 			{
-				to.volumeCell[l].content = from.volumeCell[l].content;
+				BYTE fc = from.volumeCell[l].content;
+				to.volumeCell[l].content = fc;
 			}
 		}
 		for (index_t i = 0; i < ARRAYSIZE(familiesChanged); i++)
@@ -168,12 +169,17 @@ namespace Technites
 		familiesChanged[Grid::high.grid.GetCell(stackID).family] = true;
 	}
 
-	void				AtomicGrid::ExportChanged(Grid::WorldData&outData)
+	void				AtomicGrid::ExportChanged(Grid::WorldData&outData, float t)
 	{
 		for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
 		{
 			if (!familiesChanged[family])
 				continue;
+
+			Grid::low.family[family].SetOutdated(t);
+			Grid::high.family[family].SetOutdated(t);
+
+
 			index_t offset = Grid::high.grid.GetFamilyOffset(family);
 			count_t len = Grid::high.grid.CountFamilyMembers(family);
 			for (index_t i = offset; i < offset + len; i++)
@@ -325,8 +331,21 @@ namespace Technites
 				atomicGrid.SignalStackChange(target.stackID);
 				return Technite::Resources();	//never been there. weird, but whatever
 			}
+			if (at >= technites.Count())
+			{
+				Array<Grid::HCellIdI>	keys;
+				Array<index_t>	values;
+				techniteMap.exportKeys(keys);
+				techniteMap.exportTo(values);
+				foreach(values, val)
+					ASSERT_LESS__(*val, technites.Count());
+				FATAL__("weeeird");
+
+			}
+//			ASSERT_LESS__(at, technites.Count());
+			Technite&tech = technites[at];
 			bool cmp = false;
-			if (technites[at].isDead.compare_exchange_strong(cmp, true))
+			if (tech.isDead.compare_exchange_strong(cmp, true))
 			{
 				if (factionIsActive)
 					anyDied = true;
@@ -374,16 +393,16 @@ namespace Technites
 
 	void							Faction::CheckState(Technite&technite)
 	{
-		Grid::HCellIdI target;
-		if (!technite.DecodeAbsoluteTarget(target))
-		{
-			technite.isDead = true;
-			anyDied = true;
-			return;
-		}
-		Grid::Content content = GetLastContent(target);
+		//Grid::HCellIdI target;
+		//if (!technite.DecodeAbsoluteTarget(target))
+		//{
+		//	technite.isDead = true;
+		//	anyDied = true;
+		//	return;
+		//}
+		Grid::Content content = GetLastContent(technite.location);
 		if (content != Grid::Content::Technite
-			|| Grid::actualWorld.cellStack[target.stackID].GetCellI(target.height).techniteFaction != this->gridID)
+			|| Grid::actualWorld.cellStack[technite.location.stackID].GetCellI(technite.location.height).techniteFaction != this->gridID)
 		{
 			technite.isDead = true;	//world could have changed by other influences (like explosions)
 			anyDied = true;
@@ -458,9 +477,11 @@ namespace Technites
 				Technite::TaskResult rc = tec.taskResult = ExecuteTask(tec, iteration);
 				if (rc != Technite::TaskResult::MoreWorkNeeded)
 				{
-					tec.nextTask = Technite::Task::None;
+					
 					if (rc == ExecResult::Again)
 						anyAgain = true;
+					else
+						tec.nextTask = Technite::Task::None;
 				}
 			});
 			if (!anyAgain)
@@ -470,6 +491,7 @@ namespace Technites
 		if (anyDied)
 		{
 			static Buffer<Technite>	newField;
+			techniteMap.Clear();
 			for (const auto&tec : technites)
 				if (!tec.isDead)
 				{
@@ -480,7 +502,7 @@ namespace Technites
 				else
 				{
 					visibleWorld.ChangeSensory(tec.location, t, -1);
-					techniteMap.Unset(tec.location);
+					//techniteMap.Unset(tec.location);
 				}
 
 			newField.swap(technites);
@@ -595,6 +617,90 @@ namespace Technites
 
 
 	}
+
+
+	/*static*/ PFaction			Faction::Create()
+	{
+		for (index_t i = 0; i < ARRAYSIZE(gridIDMap); i++)
+			if (!gridIDMap[i])
+			{
+				PFaction faction(new Faction());
+				faction->gridID = (BYTE)i;
+				gridIDMap[i] = faction;
+				Faction::all.Append(faction);
+				faction->globalID.Generate();
+				faction->knownWorld = Grid::initialWorld;
+				return faction;
+			}
+		return PFaction();
+	}
+
+	void Faction::Destroy(float t)
+	{
+		gridIDMap[gridID].reset();
+		all.FindAndErase(shared_from_this());
+		bool familyChanged[BaseGrid::NumFamilies] = { false };
+		foreach(this->technites, t)
+		{
+			Grid::actualWorld.cellStack[t->location.stackID].MakeLocalHole(t->location.height);
+			familyChanged[Grid::high.grid.GetCell(t->location.stackID).family] = true;
+		}
+		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
+			if (familyChanged[i])
+			{
+				Grid::low.family[i].SetOutdated(0);
+				Grid::high.family[i].SetOutdated(0);
+			}
+	}
+
+
+
+	/*static*/ bool Faction::ValidTechniteLocation(const Grid::HCellIdI&location)
+	{
+		const Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
+		const Grid::CellStack::Cell&self = stack.GetCellI(location.height);
+		const Grid::CellStack::Cell&ground = stack.GetCellI(location.height-1);
+		return ValidTechniteLocation(ground.content, self.content, self.structureCounter);
+	}
+
+	/*static*/ bool Faction::ValidTechniteLocation(BYTE groundContent, BYTE targetContent, BYTE targetStructureLevel)
+	{
+		return		//!Grid::CellStack::Cell::IsLiquid(groundContent) 
+					//&& groundContent != Grid::Content::Clear 
+					
+					targetContent == Grid::Content::Clear 
+					&& targetStructureLevel == 0;
+	}
+
+
+	index_t					Faction::CreateSingleTechnite(const Grid::HCellIdI&location, float t)
+	{
+		if (location.height < Grid::CellStack::BottomHeight || location.height > Grid::CellStack::TopHeight)
+			return InvalidIndex;
+
+		if (techniteMap.IsSet(location))
+			return InvalidIndex;
+		if (!ValidTechniteLocation(location))
+			return InvalidIndex;
+
+		index_t at = technites.Count();
+		Technite&tech = technites.Append();
+		techniteMap.Set(location, at);
+		tech.location = location;
+
+		Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
+		ASSERT__(stack.SetLocalToTechniteContent(location.height, this->gridID));
+
+		index_t family = Grid::high.grid.GetCell(location.stackID).family;
+
+		Grid::low.family[family].SetOutdated(t);
+		Grid::high.family[family].SetOutdated(t);
+
+
+		return at;
+	}
+
+
 
 
 
