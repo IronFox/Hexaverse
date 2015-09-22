@@ -96,6 +96,17 @@ namespace Test
 		virtual void	Run(Random&random)	override;
 
 	};
+
+
+	class TechniteRandom : public Test
+	{
+	public:
+		/**/			TechniteRandom(): Test("Technite Random")
+		{}
+
+		virtual void	Run(Random&random) override;
+
+	};
 	
 }
 

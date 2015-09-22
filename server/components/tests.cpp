@@ -1,6 +1,6 @@
 #include <global_root.h>
 #include "tests.h"
-
+#include "../../shared/technite.h"
 
 
 
@@ -650,6 +650,47 @@ namespace Test
 		{
 			FATAL__(e.what());
 		}
+	}
+
+	void TechniteRandom::Run(Random & random)
+	{
+		Technites::PFaction faction = Technites::Faction::Create();
+
+		index_t at;
+		do
+		{
+			Grid::HCellIdI root(random.getIndex(Grid::HighSetup::GridType::CellCount - 1), 0);
+			root.height = Grid::actualWorld.cellStack[root.stackID].FindMostApplicableGround(Grid::CellStack::BottomHeight, true);
+			at = faction->CreateSingleTechnite(root, 0.f);
+		}
+		while (at == InvalidIndex);
+		
+		for (int i = 0; i < 100; i++)
+		{
+			foreach(faction->technites, t)
+			{
+				t->resources = t->SplitCost;
+				t->resources += t->MoveCost;
+				t->resources += t->EatCost;
+
+				ASSERT__(t->taskResult != Technites::Technite::TaskResult::BadCommand);
+				t->nextTask = Technites::Technite::Task::GrowTo;
+				Technites::Technite::TTarget target;
+				target.heightDelta = random.get(-1, 1);
+				target.neighborIndex = random.get(Grid::high.grid.GetCell(t->location.stackID).neighborhood.numNeighbors-1);
+				t->compressedTarget = target.Compress();
+			}
+
+			Technites::Faction::Begin();
+			while (Technites::Faction::ProcessNext(0.f));
+
+			std::cout << "    Finished technite iteration. Now owning " << faction->technites.Count() << " technite(s)" << std::endl;
+		}
+
+
+
+		faction->Destroy(0.f);
+
 	}
 
 }
