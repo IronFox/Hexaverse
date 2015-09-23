@@ -34,15 +34,49 @@ namespace Technites
 	Array<TEaten>			eatenGrid(Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range);
 
 
+	static Random random;
+
+	struct FactionRandomizer
+	{
+		PFaction			target;
+		unsigned			sortWeight;
+
+		bool				operator>(const FactionRandomizer&other) const
+		{
+			return sortWeight > other.sortWeight;
+		}
+		bool				operator<(const FactionRandomizer&other) const
+		{
+			return sortWeight < other.sortWeight;
+		}
+
+		void				Set(const PFaction&f)
+		{
+			target = f;
+			sortWeight = random.get();
+		}
+
+	};
 
 
 	static index_t atFaction = 0;
+	static Array<FactionRandomizer>	processingOrder;
 
-	/*static*/ void				Faction::Begin()
+
+	/*static*/ void				BeginProcessing()
 	{
 		atFaction = 0;
 
-		atomicGrid.Import(Grid::actualWorld);
+		Faction::atomicGrid.Import(Grid::actualWorld);
+
+
+
+		processingOrder.SetSize(Faction::all.Count());
+
+		for (index_t i = 0; i < Faction::all.Count(); i++)
+			processingOrder[i].Set(Faction::all[i]);
+
+		std::sort(processingOrder.begin(),processingOrder.end());
 	}
 
 
@@ -64,17 +98,17 @@ namespace Technites
 		return true;
 	}
 
-	/*static*/ bool				Faction::ProcessNext(float t)
+	/*static*/ bool				ProcessNext(float t)
 	{
-		if (atFaction < all.Count())
+		if (atFaction < processingOrder.Count())
 		{
-			all[atFaction]->Process(t);
+			processingOrder[atFaction].target->Process(t);
 			atFaction++;
 		}
 
-		if (atFaction >= all.Count())
+		if (atFaction >= processingOrder.Count())
 		{
-			atomicGrid.ExportChanged(Grid::actualWorld, t);
+			Faction::atomicGrid.ExportChanged(Grid::actualWorld, t);
 
 			static Buffer0<Objects::PWorldEntity>	toKill;
 			for (const auto&mobile : Objects::vehicles)

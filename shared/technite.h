@@ -143,7 +143,8 @@ namespace Technites
 
 		Task			nextTask = Task::None;
 		TaskResult		taskResult = TaskResult::Again;
-		BYTE			compressedTarget=0;
+		BYTE			compressedTarget=0,
+						age = 0;
 		AtomicBool		isDead = false;
 		Grid::HCellIdI	location;
 
@@ -227,6 +228,11 @@ namespace Technites
 	};
 
 
+	void						BeginProcessing();
+	bool						ProcessNext(float t);
+
+
+
 	class Faction : public std::enable_shared_from_this<Faction>
 	{
 	public:
@@ -257,14 +263,15 @@ namespace Technites
 
 		index_t					CreateSingleTechnite(const Grid::HCellIdI&, float t);
 
-		static void				Begin();
-		static bool				ProcessNext(float t);
 
 		static bool				ValidTechniteLocation(const Grid::HCellIdI&location);
 		static bool				ValidTechniteLocation(BYTE groundContent, BYTE targetContent, BYTE targetStructureLevel);
 
 		typedef Technite::TaskResult	ExecResult;
 	private:
+		friend void BeginProcessing();
+		friend bool ProcessNext(float);
+
 		struct WorkerData
 		{
 			Buffer<Grid::HCellIdI>	newTechnites;
