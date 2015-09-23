@@ -175,8 +175,8 @@ namespace Technites
 
 		bool			DecodeAbsoluteTarget(Grid::HCellIdI&target) const;
 
-		Task			nextTask;
-		TaskResult		taskResult;
+		Task			nextTask = Task::None;
+		TaskResult		taskResult = TaskResult::Again;
 		Grid::HCellIdI	location;
 
 		BYTE			compressedTarget = 0,
