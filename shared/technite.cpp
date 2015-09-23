@@ -266,6 +266,10 @@ namespace Technites
 
 	Grid::Content			Faction::GetLastContent(const Grid::HCellIdI&cellID)
 	{
+		if (cellID.height < Grid::CellStack::BottomHeight)
+			return Grid::Content::Reinterpret(Grid::CellStack::bottom.content);
+		if (cellID.height > Grid::CellStack::TopHeight)
+			return Grid::Content::Clear;
 		UINT32 layer = Grid::CellStack::ToLayer(cellID.height);
 		DBG_ASSERT_LESS__(layer, Grid::CellStack::Range);
 		
@@ -617,6 +621,27 @@ namespace Technites
 			}
 		}
 
+		bool cannotStandHereDies = false;
+
+		if (!Technite::HeldBy(GetLastContent(technite.location - 1)))
+		{
+			const auto&n = Grid::high.grid.GetCell(technite.location.stackID).neighborhood;
+			bool anyGood = false;
+			for (int k = 0; k < n.numNeighbors; k++)
+			{
+				if (Technite::HeldBy(GetLastContent(Grid::HCellIdI(n.neighborID[k], technite.location.height)))
+					&&
+					Technite::HeldBy(GetLastContent(Grid::HCellIdI(n.neighborID[k], technite.location.height - 1)))
+					)
+				{
+					anyGood = true;
+					break;
+				}
+			}
+			cannotStandHereDies = !anyGood;
+
+		}
+
 
 
 
@@ -638,7 +663,9 @@ namespace Technites
 
 		if (content != Grid::Content::Technite
 			|| Grid::actualWorld.cellStack[technite.location.stackID].GetCellI(technite.location.height).techniteFaction != this->gridID
-			|| state.ttl == 0)
+			|| state.ttl == 0
+			|| cannotStandHereDies
+			)
 		{
 			//std::cout << "Technite died at " << technite.location.ToString() << std::endl;
 

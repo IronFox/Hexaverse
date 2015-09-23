@@ -58,6 +58,11 @@ namespace Technites
 		static const BYTE	ChangeTypeTo[NumGroundTypes];
 
 
+		static bool			HeldBy(Grid::Content content)
+		{
+			return content != Grid::Content::Clear && content != Grid::Content::Water && content != Grid::Content::Lava;
+		}
+
 		struct Resources
 		{
 			BYTE		energy = 0,
