@@ -782,6 +782,103 @@ namespace Test
 
 	}
 
+	/*virtual override*/ void	TechniteEatingOrder::Run(Random&random)
+	{
+
+#ifdef _DEBUG
+		for (int i = 0; i < 20; i++)
+#else
+		for (int i = 0; i < 100; i++)
+#endif
+		{
+			Technites::PFaction a = Technites::Faction::Create(),
+				b = Technites::Faction::Create();
+			index_t at;
+			do
+			{
+				Grid::HCellIdI root(random.getIndex(Grid::HighSetup::GridType::CellCount - 1), 0);
+				root.height = Grid::actualWorld.cellStack[root.stackID].FindMostApplicableGround(Grid::CellStack::BottomHeight, true);
+				at = a->CreateSingleTechnite(root, 0.f);
+			} while (at == InvalidIndex);
+
+			index_t at2;
+			const auto&n = Grid::high.grid.GetCell(a->technites.first().location.stackID).neighborhood;
+			at2 = b->CreateSingleTechnite(Grid::HCellIdI(n.neighborID[0],a->technites.first().location.height), 0.f);
+			if (at2 == InvalidIndex)
+			{
+				//std::cout << "can't place second. skipping round" << std::endl;
+
+				a->Destroy(0.f);
+				b->Destroy(0.f);
+				continue;
+			}
+
+			Technites::Technite&ta = a->technites.first();
+			Technites::Technite&tb = b->technites.first();
+			Technites::Technite::TTarget targetA,targetB;
+			targetA.heightDelta = 0;
+			targetA.neighborIndex = 0; //picked first one up top
+			ta.compressedTarget = targetA.Compress();
+
+
+			const auto&n2 = Grid::high.grid.GetCell(tb.location.stackID).neighborhood;
+			int found = -1;
+			for (int k = 0; k < n2.numNeighbors; k++)
+				if (n2.neighborID[k] == ta.location.stackID)
+				{
+					found = k;
+					break;
+				}
+			ASSERT__(found != -1);
+			targetB.heightDelta = 0;
+			targetB.neighborIndex = (BYTE)found;
+			tb.compressedTarget = targetB.Compress();
+
+
+			int energyA = random.get(10, 20),
+				energyB = random.get(10, 20);
+
+			ta.resources.energy = energyA;
+			tb.resources.energy = energyB;
+
+			//std::cout << "begin processing" << std::endl;
+			//std::cout << " " << (int)a->gridID << " (level " << energyA << ") vs " << (int)b->gridID << " (level " << energyB << ")" << std::endl;
+			while (a->technites.IsNotEmpty() && b->technites.IsNotEmpty())
+			{
+				ta.nextTask = Technites::Technite::Task::EatMoveTo;
+				tb.nextTask = Technites::Technite::Task::EatMoveTo;
+
+				ASSERT__(ta.taskResult != Technites::Technite::TaskResult::BadCommand);
+				ASSERT__(tb.taskResult != Technites::Technite::TaskResult::BadCommand);
+
+				Technites::BeginProcessing();
+				while (Technites::ProcessNext(0.f))
+				{};
+
+			}
+			if (energyA > energyB)
+			{
+				ASSERT__(b->technites.IsEmpty());
+			}
+			elif(energyA < energyB)
+			{
+				ASSERT__(a->technites.IsEmpty());
+			}
+
+
+			a->Destroy(0.f);
+			b->Destroy(0.f);
+
+			std::cout << "    Finished round" << std::endl;
+		}
+
+
+
+
+
+	}
+
+
 	/*virtual override*/ void TechniteLight::Run(Random & random)
 	{
 		Technites::PFaction faction = Technites::Faction::Create();

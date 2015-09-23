@@ -312,14 +312,13 @@ namespace Technites
 
 		void					Destroy(float t);
 
-		void					Process(float t);
 
 
 		index_t					CreateSingleTechnite(const Grid::HCellIdI&, float t);
 
 
 		static bool				ValidTechniteLocation(const Grid::HCellIdI&location);
-		static bool				ValidTechniteLocation(BYTE groundContent, BYTE targetContent, BYTE targetStructureLevel);
+		static bool				ValidGlobalTechniteLocation(const Grid::HCellIdI&location);
 
 		typedef Technite::TaskResult	ExecResult;
 	private:
@@ -342,7 +341,7 @@ namespace Technites
 
 
 		Technite::Resources		EatEntitiesIn(const Grid::HCellIdI&target, bool&cantEatThis);
-		Technite::Resources		EatTechnite(const Grid::HCellIdI&target, bool factionIsActive);
+		Technite::Resources		EatTechnite(Technite&local, const Grid::HCellIdI&target, bool factionIsActive);
 		bool					SpawnNewTechnite(const Grid::HCellIdI&target, WorkerData&data);
 		bool					MoveTechnite(Technite&technite, const Grid::HCellIdI&target, WorkerData&data);
 		bool					ReduceResources(Technite&technite, const Technite::Resources&by);
@@ -354,12 +353,22 @@ namespace Technites
 		PFaction				GetFactionOf(BYTE gridFactionID);
 		ExecResult				ExecuteTask(Technite&cell, index_t iteration, WorkerData&data);
 		void					CheckState(Technite&technite);
+		void					ProcessLighting(Technite&technite);
 
 
-		Grid::Content			GetLastContent(const Grid::HCellIdI&cellID);
-		Grid::Content			GetLastContent(const Grid::HCellIdU&cellID);
+		/**
+		Queries the currently stored atomic content of the world grid in its background copy (must be called during processing)
+		*/
+		static Grid::Content	GetLastContent(const Grid::HCellIdI&cellID);
+		static Grid::Content	GetLastContent(const Grid::HCellIdU&cellID);
 
+		/**
+		Queries the currently stored non-atomic content of the world grid in its global state (should not be called during processing)
+		*/
+		static Grid::Content	GetGlobalGridContent(const Grid::HCellIdI&cellID);
 
+		void					Process(float t);
+		void					ProcessLighting();
 
 
 		//static WorkPipe<Grid::HCellIdI>	newTechnites;

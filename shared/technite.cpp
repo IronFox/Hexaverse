@@ -107,7 +107,11 @@ namespace Technites
 		processingOrder.SetSize(Faction::all.Count());
 
 		for (index_t i = 0; i < Faction::all.Count(); i++)
-			processingOrder[i].Set(Faction::all[i]);
+		{
+			PFaction f = Faction::all[i];
+			processingOrder[i].Set(f);
+			f->ProcessLighting();
+		}
 
 		std::sort(processingOrder.begin(),processingOrder.end());
 	}
@@ -264,7 +268,21 @@ namespace Technites
 	}
 
 
-	Grid::Content			Faction::GetLastContent(const Grid::HCellIdI&cellID)
+	/*static*/ Grid::Content	Faction::GetGlobalGridContent(const Grid::HCellIdI&cellID)
+	{
+		if (cellID.height < Grid::CellStack::BottomHeight)
+			return Grid::Content::Reinterpret(Grid::CellStack::bottom.content);
+		if (cellID.height > Grid::CellStack::TopHeight)
+			return Grid::Content::Clear;
+		UINT32 layer = Grid::CellStack::ToLayer(cellID.height);
+		DBG_ASSERT_LESS__(layer, Grid::CellStack::Range);
+
+		return Grid::Content::Reinterpret(Grid::actualWorld.cellStack[cellID.stackID].volumeCell[layer].content);
+
+	}
+
+
+	/*static*/Grid::Content			Faction::GetLastContent(const Grid::HCellIdI&cellID)
 	{
 		if (cellID.height < Grid::CellStack::BottomHeight)
 			return Grid::Content::Reinterpret(Grid::CellStack::bottom.content);
@@ -516,7 +534,7 @@ namespace Technites
 		return totalEntries;
 	}
 
-	Technite::Resources		Faction::EatTechnite(const Grid::HCellIdI&target, bool factionIsActive)
+	Technite::Resources		Faction::EatTechnite(Technite&local, const Grid::HCellIdI&target, bool factionIsActive)
 	{
 		//	if (!factionIsActive)
 		{
@@ -535,13 +553,37 @@ namespace Technites
 
 			ASSERT_LESS__(at, technites.Count());
 			Technite&tech = technites[at];
-			//std::cout << "Eating technite at " << tech.location.ToString() << std::endl;
+
+			if (!factionIsActive)
+			{
+				//eating someone else's technites causes a battle
+				if (local.resources.energy >= tech.resources.energy)
+				{
+					//std::cout << local.location.ToString() << " eating remote technite (i have "<<(int)local.resources.energy<<", other has "<<(int)tech.resources.energy<<") " << tech.location.ToString() << std::endl;
+					local.resources.energy -= tech.resources.energy;
+					//all good tho
+				}
+				else
+				{
+					//fail
+					tech.resources.energy -= local.resources.energy;
+					local.resources.energy = 0;
+					//std::cout << local.location.ToString() << " failed eating remote technite (i have " << (int)local.resources.energy << ", other has " << (int)tech.resources.energy << ") " << tech.location.ToString() << ". remote energy decreased to " << (int)tech.resources.energy << std::endl;
+					return Technite::Resources();
+				}
+
+			}
+
 
 			if (tech.isDead.Set(false, true))
 			{
-				
+				//std::cout << local.location.ToString() << " killing off remote technite " << tech.location.ToString() << std::endl;
+
 				if (factionIsActive)
+				{
+					//std::cout << "setting flag" << std::endl;
 					anyDied = true;
+				}
 				UINT32 layer = Grid::CellStack::ToLayer(target.height);
 				ASSERT_LESS__(layer, Grid::CellStack::Range);
 				atomicGrid.cellStack[target.stackID].volumeCell[layer].content = Grid::Content::Clear;
@@ -578,7 +620,7 @@ namespace Technites
 			
 			PFaction f = GetFactionOf(faction);
 			
-			Technite::Resources resources = f->EatTechnite(target, f.get() == this);	//if technite has been eaten in the meantime EatTechnite will return empty resources
+			Technite::Resources resources = f->EatTechnite(technite,target, f.get() == this);	//if technite has been eaten in the meantime EatTechnite will return empty resources
 			
 			IncreaseResources(technite, resources);
 			
@@ -602,13 +644,11 @@ namespace Technites
 		return newContent == Grid::Content::Clear ? ExecResult::Success : ExecResult::MoreWorkNeeded;
 	}
 
-	void							Faction::CheckState(Technite&technite)
-	{
 
-		
+	void					Faction::ProcessLighting(Technite&technite)
+	{
 		bool lit = true;
-		
-		Grid::Content content = GetLastContent(technite.location);
+
 
 		unsigned layer = Grid::CellStack::ToLayer(technite.location.height + 1);
 		for (; layer < Grid::CellStack::Range; layer++)
@@ -621,26 +661,22 @@ namespace Technites
 			}
 		}
 
-		bool cannotStandHereDies = false;
+		Technite::TState state = technite.DecodeState();
+		state.lit = lit;
+		technite.compressedState = state.Compress();
 
-		if (!Technite::HeldBy(GetLastContent(technite.location - 1)))
+		if (lit)
 		{
-			const auto&n = Grid::high.grid.GetCell(technite.location.stackID).neighborhood;
-			bool anyGood = false;
-			for (int k = 0; k < n.numNeighbors; k++)
-			{
-				if (Technite::HeldBy(GetLastContent(Grid::HCellIdI(n.neighborID[k], technite.location.height)))
-					&&
-					Technite::HeldBy(GetLastContent(Grid::HCellIdI(n.neighborID[k], technite.location.height - 1)))
-					)
-				{
-					anyGood = true;
-					break;
-				}
-			}
-			cannotStandHereDies = !anyGood;
-
+			Technite::Resources::Increase(technite.resources.energy, technite.GetLightEnergyYield());
 		}
+	}
+
+	void							Faction::CheckState(Technite&technite)
+	{
+
+		bool cannotStandHereDies = !ValidTechniteLocation(technite.location);
+
+		Grid::Content content = GetLastContent(technite.location);
 
 
 
@@ -654,12 +690,7 @@ namespace Technites
 		}
 		else
 			state.ttl = 0;
-		state.lit = lit;
 		technite.compressedState = state.Compress();
-		if (lit)
-		{
-			Technite::Resources::Increase(technite.resources.energy, technite.GetLightEnergyYield());
-		}
 
 		if (content != Grid::Content::Technite
 			|| Grid::actualWorld.cellStack[technite.location.stackID].GetCellI(technite.location.height).techniteFaction != this->gridID
@@ -668,7 +699,9 @@ namespace Technites
 			)
 		{
 			//std::cout << "Technite died at " << technite.location.ToString() << std::endl;
-
+			//std::cout << " Cannot stand here: " << (cannotStandHereDies ? "true" : "false") << std::endl;
+			//std::cout << " Technite content lost: " << (content != Grid::Content::Technite ? "true" : "false") << std::endl;
+			//std::cout << " TTL exhausted: " << (state.ttl == 0 ? "true" : "false") << std::endl;
 			technite.isDead = true;	//world could have changed by other influences (like explosions)
 			anyDied = true;
 			
@@ -726,9 +759,19 @@ namespace Technites
 	//ParallelLoop	loop();
 
 
+	void		Faction::ProcessLighting()
+	{
+		Concurrency::parallel_for(index_t(0), technites.Count(), [this](index_t i)
+		{
+			ProcessLighting(technites[i]);
+		});
+	}
+
 	void		Faction::Process(float t)
 	{
 		anyDied = false;
+
+		//std::cout << "processing faction " << (int)gridID << std::endl;
 		
 		Concurrency::parallel_for(index_t(0), technites.Count(), [this](index_t i)
 		{
@@ -770,6 +813,8 @@ namespace Technites
 
 		if (anyDied)
 		{
+			//std::cout << "some died" << std::endl;
+
 			static Buffer<Technite>	newField;
 			//techniteMap.Clear();
 			for (const auto&tec : technites)
@@ -981,19 +1026,46 @@ namespace Technites
 
 	/*static*/ bool Faction::ValidTechniteLocation(const Grid::HCellIdI&location)
 	{
-		const Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
-		const Grid::CellStack::Cell&self = stack.GetCellI(location.height);
-		const Grid::CellStack::Cell&ground = stack.GetCellI(location.height-1);
-		return ValidTechniteLocation(ground.content, self.content, self.structureCounter);
+		if (!Technite::HeldBy(GetLastContent(location - 1)))
+		{
+			const auto&n = Grid::high.grid.GetCell(location.stackID).neighborhood;
+			bool anyGood = false;
+			for (int k = 0; k < n.numNeighbors; k++)
+			{
+				if (Technite::HeldBy(GetLastContent(Grid::HCellIdI(n.neighborID[k], location.height)))
+					&&
+					Technite::HeldBy(GetLastContent(Grid::HCellIdI(n.neighborID[k], location.height - 1)))
+					)
+				{
+					anyGood = true;
+					break;
+				}
+			}
+			return anyGood;
+		}
+		return true;
 	}
 
-	/*static*/ bool Faction::ValidTechniteLocation(BYTE groundContent, BYTE targetContent, BYTE targetStructureLevel)
+	/*static*/ bool Faction::ValidGlobalTechniteLocation(const Grid::HCellIdI&location)
 	{
-		return		//!Grid::CellStack::Cell::IsLiquid(groundContent) 
-					//&& groundContent != Grid::Content::Clear 
-					
-					targetContent == Grid::Content::Clear 
-					&& targetStructureLevel == 0;
+		if (!Technite::HeldBy(GetGlobalGridContent(location - 1)))
+		{
+			const auto&n = Grid::high.grid.GetCell(location.stackID).neighborhood;
+			bool anyGood = false;
+			for (int k = 0; k < n.numNeighbors; k++)
+			{
+				if (Technite::HeldBy(GetGlobalGridContent(Grid::HCellIdI(n.neighborID[k], location.height)))
+					&&
+					Technite::HeldBy(GetGlobalGridContent(Grid::HCellIdI(n.neighborID[k], location.height - 1)))
+					)
+				{
+					anyGood = true;
+					break;
+				}
+			}
+			return anyGood;
+		}
+		return true;
 	}
 
 
@@ -1004,7 +1076,10 @@ namespace Technites
 
 		if (techniteMap.IsSet(location))
 			return InvalidIndex;
-		if (!ValidTechniteLocation(location))
+		if (!ValidGlobalTechniteLocation(location))
+			return InvalidIndex;
+		Grid::Content content = GetGlobalGridContent(location);
+		if (content != Grid::Content::Clear && content != Grid::Content::Water)
 			return InvalidIndex;
 
 		index_t at = technites.Count();

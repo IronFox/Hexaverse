@@ -116,7 +116,15 @@ namespace Test
 		{}
 
 		virtual void	Run(Random&random) override;
+	};
 
+	class TechniteEatingOrder : public Test
+	{
+	public:
+		/**/			TechniteEatingOrder() : Test("Technite Eating Order")
+		{}
+
+		virtual void	Run(Random&random) override;
 	};
 
 	class BroadTechniteMap : public Test
