@@ -736,7 +736,11 @@ namespace Test
 		}
 		while (at == InvalidIndex);
 		
+#ifdef _DEBUG
 		for (int i = 0; i < 100; i++)
+#else
+		for (int i = 0; i < 1000; i++)
+#endif
 		{
 			if (faction->technites.IsEmpty())
 			{
