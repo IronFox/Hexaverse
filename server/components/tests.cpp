@@ -755,10 +755,10 @@ namespace Test
 				t->compressedTarget = target.Compress();
 			};
 
-			Technites::Faction::Begin();
-			while (Technites::Faction::ProcessNext(0.f));
+			Technites::BeginProcessing();
+			while (Technites::ProcessNext(0.f));
 
-			std::cout << "    Finished technite iteration. Now owning " << faction->technites.Count() << " technite(s)" << std::endl;
+			std::cout << "    Finished technite iteration. Now controlling " << faction->technites.Count() << " technite(s)" << std::endl;
 		}
 
 
