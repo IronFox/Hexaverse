@@ -24,6 +24,39 @@ namespace Technites
 	///*static*/ WorkPipe<std::pair<Grid::HCellIdI, Technite::Resources> > Faction::increaseResources;
 	/*static*/ PFaction			Faction::gridIDMap[0xFF];
 
+	/*static*/ const BYTE	Technite::MatterYield[NumGroundTypes] =
+	{
+		0,	//Unknown
+		10,	//Granite
+		1,	//Earth
+		2,	//Grass
+		7,	//Rock
+		3,	//Sand
+		0,	//Snow
+		10,	//Foundation
+		5,	//Road
+		0,	//Lava
+		0,	//Technite
+		0,	//Water
+		0,	//Clear
+	};
+	/*static*/ const BYTE	Technite::ChangeTypeTo[NumGroundTypes] =
+	{
+		Grid::Content::Unknown,	//Unknown
+		Grid::Content::Rock,	//Granite
+		Grid::Content::Clear,	//Earth
+		Grid::Content::Earth,	//Grass
+		Grid::Content::Earth,	//Rock
+		Grid::Content::Earth,	//Sand
+		Grid::Content::Clear,	//Snow
+		Grid::Content::Rock,	//Foundation
+		Grid::Content::Rock,	//Road
+		Grid::Content::Lava,	//Lava
+		Grid::Content::Technite,	//Technite
+		Grid::Content::Water,	//Water
+		Grid::Content::Clear,	//Clear
+	};
+
 
 	struct TEaten
 	{
@@ -234,11 +267,13 @@ namespace Technites
 	Grid::Content			Faction::GetLastContent(const Grid::HCellIdI&cellID)
 	{
 		UINT32 layer = Grid::CellStack::ToLayer(cellID.height);
-		ASSERT_LESS__(layer, Grid::CellStack::Range);
+		DBG_ASSERT_LESS__(layer, Grid::CellStack::Range);
 		
-		auto rs = Grid::Content::Reinterpret(atomicGrid.cellStack[cellID.stackID].volumeCell[layer].content);
-		
-		return rs;
+		return Grid::Content::Reinterpret(atomicGrid.cellStack[cellID.stackID].volumeCell[layer].content);
+	}
+	Grid::Content			Faction::GetLastContent(const Grid::HCellIdU&cellID)
+	{
+		return Grid::Content::Reinterpret(atomicGrid.cellStack[cellID.stackID].volumeCell[cellID.layer].content);
 	}
 	Grid::Content			Faction::DegradeMatter(const Grid::HCellIdI&target, Technite::Resources&outYield)
 	{
@@ -251,47 +286,12 @@ namespace Technites
 
 			BYTE current = cell.content;
 			BYTE matterYield = 0;
-			BYTE set = current;
+			BYTE set = Technite::ChangeTypeTo[current];
 
-			switch (current)
-			{
-			case Grid::Content::Clear:
-			case Grid::Content::Water:
-				return Grid::Content::Reinterpret(current);
-			case Grid::Content::Earth:
-				set = Grid::Content::Clear;
-				matterYield = 1;
-				break;
-			case Grid::Content::Foundation:
-				set = Grid::Content::Rock;
-				matterYield = 10;
-				break;
-			case Grid::Content::Granite:
-				set = Grid::Content::Rock;
-				matterYield = 10;
-				break;
-			case Grid::Content::Grass:
-				set = Grid::Content::Earth;
-				matterYield = 2;
-				break;
-			case Grid::Content::Road:
-				set = Grid::Content::Rock;
-				matterYield = 5;
-				break;
-			case Grid::Content::Rock:
-				set = Grid::Content::Earth;
-				matterYield = 7;
-				break;
-			case Grid::Content::Sand:
-				set = Grid::Content::Earth;
-				matterYield = 3;
-				break;
-			case Grid::Content::Snow:
-				set = Grid::Content::Clear;
-				break;
-			default:
-				return Grid::Content::Reinterpret(current);
-			}
+			matterYield = Technite::MatterYield[current];
+
+			if (set == current)
+				return Grid::Content::Reinterpret(set);
 
 			if (cell.content.compare_exchange_weak(current, set))
 			{
@@ -341,7 +341,13 @@ namespace Technites
 		}
 		
 
-		SpawnNewTechnite(target,data);
+		if (!SpawnNewTechnite(target, data))
+		{
+			//this actually can happen if the local faction recently spawned a new technite there, 
+			//which is registered in the grid but not in the faction yet, so it cannot be eaten
+			IncreaseResources(technite, Technite::SplitCost);
+			return ExecResult::CannotStandThere;
+		}
 		
 		return ExecResult::Success;
 	}
@@ -354,6 +360,9 @@ namespace Technites
 			return rs;
 
 		
+		if (iteration < 3)
+			return ExecResult::Again;
+
 		if (!ReduceResources(technite, Technite::MoveCost))
 		{
 			return ExecResult::TechniteLacksResources;
@@ -426,13 +435,21 @@ namespace Technites
 		Cluster*cluster;
 		index_t inner = Map(id, cluster,false);
 		if (cluster->numEntries == 0)
+		{
+			FATAL__("Failed to unset " + id.ToString());
 			return;
+		}
 		if (cluster->volumeCells[inner] != Empty)
 		{
 			cluster->volumeCells[inner] = Empty;
 			cluster->numEntries--;
 			totalEntries--;
 		}
+		else
+		{
+			FATAL__("Failed to unset " + id.ToString());
+		}
+
 	}
 
 	void					BroadTechniteMap::Set(const Grid::HCellIdI&id, index_t to)
@@ -502,15 +519,20 @@ namespace Technites
 			index_t at;
 			if (!this->techniteMap.Query(target, at))
 			{
-				UINT32 layer = Grid::CellStack::ToLayer(target.height);
-				ASSERT_LESS__(layer, Grid::CellStack::Range);
-				atomicGrid.cellStack[target.stackID].volumeCell[layer].content = Grid::Content::Clear;
-				atomicGrid.SignalStackChange(target.stackID);
+				//freshly created technite, most likely
+				ASSERT__(factionIsActive);
+				//UINT32 layer = Grid::CellStack::ToLayer(target.height);
+				//ASSERT_LESS__(layer, Grid::CellStack::Range);
+				//atomicGrid.cellStack[target.stackID].volumeCell[layer].content = Grid::Content::Clear;
+				//atomicGrid.SignalStackChange(target.stackID);
 				return Technite::Resources();	//never been there. weird, but whatever
 			}
 			
+
 			ASSERT_LESS__(at, technites.Count());
 			Technite&tech = technites[at];
+			//std::cout << "Eating technite at " << tech.location.ToString() << std::endl;
+
 			if (tech.isDead.Set(false, true))
 			{
 				
@@ -557,7 +579,7 @@ namespace Technites
 			IncreaseResources(technite, resources);
 			
 		}
-		return ExecResult::Success;
+		return GetLastContent(target) == Grid::Content::Clear ? ExecResult::Success : ExecResult::CannotEatThis;
 		case Grid::Content::Lava:
 			
 			return ExecResult::CannotEatThis;
@@ -578,19 +600,48 @@ namespace Technites
 
 	void							Faction::CheckState(Technite&technite)
 	{
-		//Grid::HCellIdI target;
-		//if (!technite.DecodeAbsoluteTarget(target))
-		//{
-		//	technite.isDead = true;
-		//	anyDied = true;
-		//	return;
-		//}
+
+		
+		bool lit = true;
 		
 		Grid::Content content = GetLastContent(technite.location);
-		if (content != Grid::Content::Technite
-			|| Grid::actualWorld.cellStack[technite.location.stackID].GetCellI(technite.location.height).techniteFaction != this->gridID)
+
+		unsigned layer = Grid::CellStack::ToLayer(technite.location.height + 1);
+		for (; layer < Grid::CellStack::Range; layer++)
 		{
-			
+			Grid::Content top = GetLastContent(Grid::HCellIdU(technite.location.stackID, layer));
+			if (top != Grid::Content::Clear)
+			{
+				lit = false;
+				break;
+			}
+		}
+
+
+
+
+		Technite::TState state;
+		state.Decompress(technite.compressedState);
+		BYTE cost = technite.GetLifeCost();
+		if (state.ttl > cost)
+		{
+			state.ttl -= cost;
+		}
+		else
+			state.ttl = 0;
+		state.lit = lit;
+		technite.compressedState = state.Compress();
+		if (lit)
+		{
+			Technite::Resources::Increase(technite.resources.energy, technite.GetLightEnergyYield());
+		}
+
+		if (content != Grid::Content::Technite
+			|| Grid::actualWorld.cellStack[technite.location.stackID].GetCellI(technite.location.height).techniteFaction != this->gridID
+			|| state.ttl == 0)
+		{
+			//std::cout << "Technite died at " << technite.location.ToString() << std::endl;
+
 			technite.isDead = true;	//world could have changed by other influences (like explosions)
 			anyDied = true;
 			
@@ -619,7 +670,7 @@ namespace Technites
 			return MoveTo(technite, target, iteration, data);
 		case Technite::Task::TransferEnergyTo:
 		{
-			if (iteration < 3)
+			if (iteration < 4)
 				return ExecResult::Again;
 			Technite*other = GetOwnTechnite(target);
 			if (!other)
@@ -631,7 +682,7 @@ namespace Technites
 		}
 		case Technite::Task::TransferMatterTo:
 		{
-			if (iteration < 3)
+			if (iteration < 4)
 				return ExecResult::Again;
 			Technite*other = GetOwnTechnite(target);
 			if (!other)
@@ -709,7 +760,9 @@ namespace Technites
 
 			newField.swap(technites);
 			newField.Clear();
+			ASSERT_EQUAL__(technites.Count(), techniteMap.Count());
 		}
+
 		
 		foreach(workerData, data)
 		{
@@ -722,17 +775,14 @@ namespace Technites
 				Technite tech;
 				tech.location = loc;
 
-				Grid::actualWorld.cellStack[tech.location.stackID].SetLocalTechniteFaction(tech.location.height, this->gridID);
-				UINT32 layer = Grid::CellStack::ToLayer(tech.location.height);
-				ASSERT_LESS__(layer, Grid::CellStack::Range);
-				atomicGrid.cellStack[tech.location.stackID].volumeCell[layer].content = Grid::Content::Technite;
-				atomicGrid.SignalStackChange(tech.location.stackID);
+				//Grid::actualWorld.cellStack[tech.location.stackID].SetLocalTechniteFaction(tech.location.height, this->gridID);
 				technites.Append(tech).isDead = false;
 
 				techniteMap.Set(tech.location, at);
 				visibleWorld.ChangeSensory(tech.location, t, 1);
 			}
 			data->newTechnites.Clear();
+			ASSERT_EQUAL__(technites.Count(), techniteMap.Count());
 		}
 
 		
@@ -753,12 +803,26 @@ namespace Technites
 			for (const auto&loc : data->moveInstructions)
 			{
 				index_t at;
-				ASSERT1__(techniteMap.Query(loc, at), loc.ToString());
+				ASSERT1__(techniteMap.Query(loc.first, at), loc.first.ToString());
 				Technite&tec = technites[at];
-				techniteMap.Unset(loc);
-				ASSERT1__(techniteMap.SetNew(tec.location, at), tec.location.ToString());
+				ASSERT__(tec.location == loc.first);
+				if (techniteMap.SetNew(loc.second, at))
+				{
+					tec.location = loc.second;
+					techniteMap.Unset(loc.first);
+				}
+				else
+				{
+					//this case actually should never happen. so fatal, for now
+					FATAL__("Cannot move to reserved location " + loc.second.ToString()+" some other local technite is there");
+					index_t other;
+					ASSERT__(techniteMap.Query(loc.second, other));
+					Technite&otec = technites[other];
+					tec.taskResult = Technite::TaskResult::CannotStandThere;
+				}
 			}
 			data->moveInstructions.Clear();
+			ASSERT_EQUAL__(technites.Count(), techniteMap.Count());
 		}
 		
 		
@@ -786,8 +850,8 @@ namespace Technites
 		Grid::actualWorld.cellStack[target.stackID].volumeCell[toLayer].techniteFaction = this->gridID;
 		fromCell.content = Grid::Content::Clear;
 		atomicGrid.SignalStackChange(technite.location.stackID);
-		data.moveInstructions << technite.location;//old location
-		technite.location = target;
+		data.moveInstructions << std::make_pair(technite.location,target);
+		//std::cout << "Moving technite from " << technite.location.ToString() << " to " << target.ToString() << std::endl;
 		return true;
 	}
 
@@ -802,9 +866,26 @@ namespace Technites
 		return rs;
 	}
 
-	void			Faction::SpawnNewTechnite(const Grid::HCellIdI&target, WorkerData&data)
+	bool			Faction::SpawnNewTechnite(const Grid::HCellIdI&target, WorkerData&data)
 	{
+		UINT32 toLayer = Grid::CellStack::ToLayer(target.height);
+		ASSERT_LESS__(toLayer, Grid::CellStack::Range);
+
+		AtomicGrid::CellStack::Cell&toCell = atomicGrid.cellStack[target.stackID].volumeCell[toLayer];
+
+		BYTE expect0 = Grid::Content::Clear;
+		BYTE expect1 = Grid::Content::Water;
+		if (!toCell.content.compare_exchange_strong(expect0, Grid::Content::Technite)
+			&&
+			!toCell.content.compare_exchange_strong(expect1, Grid::Content::Technite))
+			return false;
+		atomicGrid.SignalStackChange(target.stackID);
+		Grid::actualWorld.cellStack[target.stackID].volumeCell[toLayer].techniteFaction = this->gridID;
+
+		//std::cout << "Creating technite at " << target.ToString() << std::endl;
+
 		data.newTechnites << target;
+		return true;
 	}
 
 	void			Faction::IncreaseResources(Technite&technite, const Technite::Resources&by)

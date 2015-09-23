@@ -1380,6 +1380,7 @@ int main( int argc, const char* argv[])
 
 		{
 			Test::Run(Test::HighGridFamilies());
+			Test::Run(Test::TechniteLight());
 			Test::Run(Test::BroadTechniteMap());
 			Test::Run(Test::TechniteRandom());
 			Test::Run(Test::AutoTargeting());

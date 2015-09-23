@@ -39,7 +39,7 @@ namespace Technites
 	static_assert(sizeof(AtomicBool) == 1, "Struct alignment out of wack");
 
 
-
+	ALIGN4
 	class Technite
 	{
 	public:
@@ -50,6 +50,13 @@ namespace Technites
 							SplitMatterCost = 5,
 							EnergyPackageSize = 5,
 							MatterPackageSize = 5;
+
+		static const count_t NumGroundTypes = 13;
+		static_assert(NumGroundTypes == Grid::Content::NumberOfPossibilities, "Count mismatch. Adjust array size");
+
+		static const BYTE	MatterYield[NumGroundTypes];
+		static const BYTE	ChangeTypeTo[NumGroundTypes];
+
 
 		struct Resources
 		{
@@ -102,6 +109,8 @@ namespace Technites
 			GrowTo,
 			TransferEnergyTo,
 			TransferMatterTo,
+
+			Count
 		};
 
 		enum class TaskResult : BYTE
@@ -137,32 +146,72 @@ namespace Technites
 			}
 		};
 
+		struct TState
+		{
+			bool		lit;
+			count_t		ttl;
+
+			/**/		TState() {}
+			/**/		TState(bool lit, count_t ttl) : lit(lit), ttl(ttl) {}
+			/**/		TState(BYTE compressed) { Decompress(compressed); }
+
+			BYTE		Compress() const
+			{
+				return (BYTE)((ttl & 0x7F) | (lit ? 0x80 : 0x0));
+			}
+
+			void		Decompress(BYTE compressed)
+			{
+				lit = (compressed & 0x80) != 0;
+				ttl = (compressed & 0x7f);
+			}
+		};
+
 
 		bool			DecodeAbsoluteTarget(Grid::HCellIdI&target) const;
 
-
-		Task			nextTask = Task::None;
-		TaskResult		taskResult = TaskResult::Again;
-		BYTE			compressedTarget=0,
-						age = 0;
-		AtomicBool		isDead = false;
+		Task			nextTask;
+		TaskResult		taskResult;
 		Grid::HCellIdI	location;
+
+		BYTE			compressedTarget = 0,
+						compressedState = TState(false,64).Compress();
+		AtomicBool		isDead = false;
 
 
 		/**/			Technite() {}
-		/**/			Technite(const Technite&other) :nextTask(other.nextTask), taskResult(other.taskResult), 
-							compressedTarget(other.compressedTarget),location(other.location),
-							isDead((bool)other.isDead)
+
+
+		TState			DecodeState() const { return TState(compressedState); }
+
+		BYTE			GetLifeCost() const
 		{
-			//bool current = other.isDead;
-			//bool n = other.isDead;
-			ASSERT__(isDead.Set(other.isDead, other.isDead));
-			
+			return GetLifeCostAtHeight(location.height);
+		}
+
+		static BYTE		GetLifeCostAtHeight(int height)
+		{
+			return (BYTE)std::max(height, 0);
 		}
 
 
+		BYTE			GetLightEnergyYield() const
+		{
+			return GetLightEnergyYieldAtHeight(location.height);
+		}
+
+		static BYTE		GetLightEnergyYieldAtHeight(int height)
+		{
+			UINT32 layer = Grid::CellStack::ToLayer(height);
+			return (BYTE) (layer * layer / Grid::CellStack::Range/4) + 1;
+				//(BYTE)std::max(height, 0)+1;
+		}
 
 	};
+
+	//sstatic const size_t Size = sizeof(Technite);
+
+	static_assert(sizeof(Technite) == 8 + sizeof(Grid::HCellIdI),"Packing error");
 
 	class AtomicGrid
 	{
@@ -275,7 +324,7 @@ namespace Technites
 		struct WorkerData
 		{
 			Buffer<Grid::HCellIdI>	newTechnites;
-			Buffer<Grid::HCellIdI> moveInstructions;
+			Buffer<std::pair<Grid::HCellIdI, Grid::HCellIdI> > moveInstructions;
 			Buffer<std::pair<Grid::HCellIdI, Technite::Resources> > increaseResources;
 		};
 
@@ -289,7 +338,7 @@ namespace Technites
 
 		Technite::Resources		EatEntitiesIn(const Grid::HCellIdI&target, bool&cantEatThis);
 		Technite::Resources		EatTechnite(const Grid::HCellIdI&target, bool factionIsActive);
-		void					SpawnNewTechnite(const Grid::HCellIdI&target, WorkerData&data);
+		bool					SpawnNewTechnite(const Grid::HCellIdI&target, WorkerData&data);
 		bool					MoveTechnite(Technite&technite, const Grid::HCellIdI&target, WorkerData&data);
 		bool					ReduceResources(Technite&technite, const Technite::Resources&by);
 		void					IncreaseResources(Technite&technite, const Technite::Resources&by);
@@ -303,6 +352,7 @@ namespace Technites
 
 
 		Grid::Content			GetLastContent(const Grid::HCellIdI&cellID);
+		Grid::Content			GetLastContent(const Grid::HCellIdU&cellID);
 
 
 

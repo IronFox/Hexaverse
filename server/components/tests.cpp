@@ -745,7 +745,7 @@ namespace Test
 				t->resources += t->EatCost;
 
 				ASSERT__(t->taskResult != Technites::Technite::TaskResult::BadCommand);
-				t->nextTask = Technites::Technite::Task::GrowTo;
+				t->nextTask = (Technites::Technite::Task)random.get((int)Technites::Technite::Task::Count - 1);
 				Technites::Technite::TTarget target;
 				do
 				{
@@ -761,6 +761,42 @@ namespace Test
 			std::cout << "    Finished technite iteration. Now controlling " << faction->technites.Count() << " technite(s)" << std::endl;
 		}
 
+
+
+		faction->Destroy(0.f);
+
+	}
+
+	/*virtual override*/ void TechniteLight::Run(Random & random)
+	{
+		Technites::PFaction faction = Technites::Faction::Create();
+
+		index_t at;
+		do
+		{
+			Grid::HCellIdI root(random.getIndex(Grid::HighSetup::GridType::CellCount - 1), 0);
+			root.height = Grid::actualWorld.cellStack[root.stackID].FindMostApplicableGround(Grid::CellStack::BottomHeight, true);
+			at = faction->CreateSingleTechnite(root, 0.f);
+		} while (at == InvalidIndex);
+
+		count_t ttl0 = faction->technites.first().DecodeState().ttl;
+		index_t iteration = 0;
+		while (faction->technites.IsNotEmpty())
+		{
+			const Technites::Technite&tech = faction->technites.first();
+			if (iteration > 0)
+				ASSERT__(tech.DecodeState().lit);
+			BYTE expectedEnergy = (BYTE)std::min<count_t>(0xFF, iteration * (count_t)tech.GetLightEnergyYield());
+			count_t expectedTTL = ttl0 - iteration * tech.GetLifeCost();
+			ASSERT_EQUAL__(expectedEnergy, tech.resources.energy);
+			ASSERT_EQUAL__(expectedTTL, tech.DecodeState().ttl);
+
+			iteration++;
+
+			Technites::BeginProcessing();
+			while (Technites::ProcessNext(0.f));
+		}
+		ASSERT__(iteration > 1);
 
 
 		faction->Destroy(0.f);
