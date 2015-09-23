@@ -521,7 +521,9 @@ namespace Technites
 				atomicGrid.cellStack[target.stackID].volumeCell[layer].content = Grid::Content::Clear;
 				atomicGrid.SignalStackChange(target.stackID);
 				
-				return technites[at].resources / 2;
+				const Technite::Resources&source = tech.resources;
+
+				return Technite::Resources(source.energy/4, source.energy / 2);
 			}
 			
 			return Technite::Resources();
