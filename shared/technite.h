@@ -9,6 +9,8 @@
 #include "typeDecl.h"
 #include "uniqueID.h"
 
+#include "objects/faction.h"
+
 namespace Technites
 {
 	DECLARE_POINTER_CLASS(Faction);
@@ -287,12 +289,12 @@ namespace Technites
 
 
 
-	class Faction : public std::enable_shared_from_this<Faction>
+	class Faction : public Objects::Faction
 	{
+		typedef Objects::Faction	Super;
 	public:
-
-		Grid::WorldData			knownWorld;
-		Grid::VisibilityState	visibleWorld;
+//		Grid::WorldData			knownWorld;
+	//	Grid::VisibilityState	visibleWorld;
 		static AtomicGrid		atomicGrid;
 
 		Buffer<Technite>		technites;
@@ -301,14 +303,14 @@ namespace Technites
 		BroadTechniteMap		techniteMap;
 
 		BYTE					gridID;				//!< Identifier in the grid. 255/0xFF is invalid. Up to 254 different cell factions on one planet.
-		TUniqueID				globalID;
 
 
-		static Buffer0<PFaction>all;
+		static Buffer0<PFaction>allTechniteFactions;
 		static PFaction			gridIDMap[0xFF];
 
 
-		static PFaction			Create();
+		static PFaction			Create(const String&name = "", bool copyInitialWorld = false);
+		static PFaction			CreateFromFile(BYTE gridID, const String&name="", bool copyInitialWorld = false);
 
 		void					Destroy(float t);
 
@@ -319,6 +321,9 @@ namespace Technites
 
 		static bool				ValidTechniteLocation(const Grid::HCellIdI&location);
 		static bool				ValidGlobalTechniteLocation(const Grid::HCellIdI&location);
+
+		virtual bool			IsTechniteFaction() const override { return true; }
+
 
 		typedef Technite::TaskResult	ExecResult;
 	private:
@@ -333,7 +338,7 @@ namespace Technites
 		};
 
 
-		/**/					Faction() {};
+		/**/					Faction(const String&name=""):Super(name) {};
 
 		ExecResult				GrowTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);
 		ExecResult				MoveTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);

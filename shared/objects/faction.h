@@ -296,6 +296,13 @@ namespace Objects
 
 			static void	Kill(const PFaction&);
 		#endif
+
+
+		#if TECHNITES
+			virtual bool	IsTechniteFaction() const { return false; }
+
+		#endif
+
 	};
 
 		//extern Buffer0<POwner>	owners;

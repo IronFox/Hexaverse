@@ -17,7 +17,7 @@ namespace Technites
 		Technite::EnergyPackage = Resources(EnergyPackageSize, 0),
 		Technite::MatterPackage = Resources(0, MatterPackageSize);
 
-	/*static*/ Buffer0<PFaction>Faction::all;
+	/*static*/ Buffer0<PFaction>Faction::allTechniteFactions;
 	/*static*/ AtomicGrid Faction::atomicGrid;
 	///*static*/ WorkPipe<Grid::HCellIdI>	Faction::newTechnites;
 	///*static*/ WorkPipe<Grid::HCellIdI> Faction::moveInstructions;
@@ -104,11 +104,11 @@ namespace Technites
 
 
 
-		processingOrder.SetSize(Faction::all.Count());
+		processingOrder.SetSize(Faction::allTechniteFactions.Count());
 
-		for (index_t i = 0; i < Faction::all.Count(); i++)
+		for (index_t i = 0; i < Faction::allTechniteFactions.Count(); i++)
 		{
-			PFaction f = Faction::all[i];
+			PFaction f = Faction::allTechniteFactions[i];
 			processingOrder[i].Set(f);
 			f->ProcessLighting();
 		}
@@ -826,7 +826,7 @@ namespace Technites
 				}
 				else
 				{
-					visibleWorld.ChangeSensory(tec.location, t, -1);
+					visibility.ChangeSensory(tec.location, t, -1);
 					techniteMap.Unset(tec.location);
 				}
 
@@ -851,7 +851,7 @@ namespace Technites
 				technites.Append(tech).isDead = false;
 
 				techniteMap.Set(tech.location, at);
-				visibleWorld.ChangeSensory(tech.location, t, 1);
+				visibility.ChangeSensory(tech.location, t, 1);
 			}
 			data->newTechnites.Clear();
 			ASSERT_EQUAL__(technites.Count(), techniteMap.Count());
@@ -988,18 +988,27 @@ namespace Technites
 	}
 
 
-	/*static*/ PFaction			Faction::Create()
+	/*static*/ PFaction			Faction::CreateFromFile(BYTE gridID, const String&name /*= ""*/, bool copyInitialWorld/* = false*/)
+	{
+		ASSERT__(gridID != 0xFF);
+		PFaction faction(new Faction(name));
+		faction->gridID = gridID;
+		gridIDMap[gridID] = faction;
+		Faction::allTechniteFactions.Append(faction);
+		Super::all.Append(faction);
+		if (copyInitialWorld)
+			faction->currentState = Grid::initialWorld;
+		else
+			faction->currentState.FlushAllData();
+		return faction;
+	}
+
+	/*static*/ PFaction			Faction::Create(const String&name/* = ""*/, bool copyInitialWorld/* = false*/)
 	{
 		for (index_t i = 0; i < ARRAYSIZE(gridIDMap); i++)
 			if (!gridIDMap[i])
 			{
-				PFaction faction(new Faction());
-				faction->gridID = (BYTE)i;
-				gridIDMap[i] = faction;
-				Faction::all.Append(faction);
-				faction->globalID.Generate();
-				faction->knownWorld = Grid::initialWorld;
-				return faction;
+				return CreateFromFile((BYTE)i,name,copyInitialWorld);
 			}
 		return PFaction();
 	}
@@ -1007,7 +1016,16 @@ namespace Technites
 	void Faction::Destroy(float t)
 	{
 		gridIDMap[gridID].reset();
-		all.FindAndErase(shared_from_this());
+		foreach(Super::all, f)
+		{
+			if (f->lock().get() == this)
+			{
+				Super::all.erase(f);
+				break;
+			}
+		}
+		allTechniteFactions.FindAndErase(shared_from_this());
+		//all.FindAndErase(To<Faction>::Cast( shared_from_this() ) );
 		bool familyChanged[BaseGrid::NumFamilies] = { false };
 		foreach(this->technites, t)
 		{

@@ -5,6 +5,7 @@
 #include "aiProcess.h"
 #include <io/file_system.h>
 #include "../../client/version.h"
+#include "../../shared/technite.h"
 
 extern TUniqueID	serverID;
 
@@ -918,6 +919,7 @@ namespace State
 								factionAccessToken("ACTK"),
 								factionWorldTypeChunk("WTCK"),
 								factionWorldCounterChunk("WCCK"),
+								factionWorldTechniteFactionChunk("WTFC"),
 								factionMarkers("MARK"),
 								worldTypeChunk(" WTC"),
 								worldCounterChunk(" WCC"),
@@ -939,7 +941,9 @@ namespace State
 								doomsdayWeapons("DODW"),
 								exposeActionLeftToHostileFactions("EAHF"),
 								empDamageLevel("EMPD"),
-								worldConfig("WCFG")
+								worldConfig("WCFG"),
+								techniteFactionGridID("TFGI"),
+								technites("TECH")
 								;
 
 
@@ -959,6 +963,28 @@ namespace State
 		inline static void GetPOD(Riff::Chunk*parent, const Riff::TID&id, T&resultOut)
 		{
 			GetBinary(parent,id,&resultOut,sizeof(T));
+		}
+	
+	template <typename T>
+		inline static void GetPODs(Riff::Chunk*parent, const Riff::TID&id, ArrayData<T>&resultOut)
+		{
+			Riff::Chunk*chk = parent->FindFirst(id);
+			ASSERT_NOT_NULL1__(chk, id.ToString());
+			ASSERT__(chk->IsMultipleOf(sizeof(T)));
+			count_t numElements = chk->size() / sizeof(T);
+			resultOut.SetSize(numElements);
+			chk->Get(resultOut.pointer());
+		}
+
+	template <typename T>
+		inline static void GetPODs(Riff::Chunk*parent, const Riff::TID&id, BasicBuffer<T>&resultOut)
+		{
+			Riff::Chunk*chk = parent->FindFirst(id);
+			ASSERT_NOT_NULL1__(chk, id.ToString());
+			ASSERT__(chk->IsMultipleOf(sizeof(T)));
+			count_t numElements = chk->size() / sizeof(T);
+			resultOut.SetSize(numElements,true);
+			chk->Get(resultOut.pointer());
 		}
 
 	inline static bool GetOptionalBinary(Riff::Chunk*parent, const Riff::TID&id, void*resultOut, size_t size)
@@ -1779,6 +1805,9 @@ void	State::Load(const String&filename)
 							//Protocol::WorldDelta delta;
 							Protocol::TypeDeltaArray	typeArray;
 							Protocol::StructCountDeltaArray countArray;
+							#if TECHNITES
+								Protocol::TechniteFactionDeltaArray techniteArray;
+							#endif
 
 							Riff::Chunk*child;
 							BYTE atFamily = 0;
@@ -1790,7 +1819,11 @@ void	State::Load(const String&filename)
 									{
 										ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
 										ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
-										Grid::actualWorld.ApplyFamilyDelta(atFamily,typeArray,countArray,false,true);
+										#if TECHNITES
+											Grid::actualWorld.ApplyFamilyDelta(atFamily, typeArray, countArray, techniteArray, false, true);
+										#else
+											Grid::actualWorld.ApplyFamilyDelta(atFamily,typeArray,countArray, false, true);
+										#endif
 
 										atFamily++;
 									}
@@ -1814,6 +1847,9 @@ void	State::Load(const String&filename)
 						{
 							Protocol::TypeDeltaArray	typeArray;
 							Protocol::StructCountDeltaArray countArray;
+							#if TECHNITES
+								Protocol::TechniteFactionDeltaArray techniteArray;
+							#endif
 							Riff::Chunk*child;
 							BYTE atFamily = 0;
 							if (child = list->First())
@@ -1822,8 +1858,11 @@ void	State::Load(const String&filename)
 									if (child->IsID(RID::worldTypeChunk))
 									{
 										ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
-										Grid::initialWorld.ApplyFamilyDelta(atFamily,typeArray,countArray,true,false);
-
+										#if TECHNITES
+											Grid::initialWorld.ApplyFamilyDelta(atFamily, typeArray, countArray, techniteArray, true, false);
+										#else
+											Grid::initialWorld.ApplyFamilyDelta(atFamily,typeArray,countArray,true,false);
+										#endif
 										atFamily++;
 									}
 									else
@@ -1860,13 +1899,33 @@ void	State::Load(const String&filename)
 							}
 							else
 							{
-								faction.reset(new Objects::Faction());
-								Objects::Faction::all << faction;
 
-								faction->currentState.FlushAllData();
+								#if TECHNITES
+									BYTE id;
+									if (GetOptionalPOD(list, RID::techniteFactionGridID, id, (BYTE)0xFF))
+									{
+										Technites::PFaction tfaction = Technites::Faction::CreateFromFile((BYTE)id);
+										faction = tfaction;
+										GetPODs(list, RID::technites, tfaction->technites);
+										for (index_t i = 0; i < tfaction->technites.Count(); i++)
+										{
+											const Technites::Technite&t = tfaction->technites[i];
+											tfaction->techniteMap.Set(t.location, i);
+											Grid::actualWorld.cellStack[t.location.stackID].SetLocalTechniteFaction(t.location.height, tfaction->gridID);
+										}
+									}
+									else
+								#endif
+								{
+									faction.reset(new Objects::Faction());
+									Objects::Faction::all << faction;
+									faction->currentState.FlushAllData();
+								}
 								//foreach (faction->currentState,stat)
 								//	stat->ZeroInit();
 							}
+
+
 							GetPOD(list,RID::factionID,faction->id);
 							GetPOD(list,RID::factionAccessToken,faction->accessToken);
 
@@ -1900,6 +1959,9 @@ void	State::Load(const String&filename)
 
 							Protocol::TypeDeltaArray	typeArray;
 							Protocol::StructCountDeltaArray countArray;
+							#if TECHNITES
+								Protocol::TechniteFactionDeltaArray techniteFactionArray;
+							#endif
 							//Riff::Chunk*child;
 							BYTE atFamily = 0;
 
@@ -1914,11 +1976,21 @@ void	State::Load(const String&filename)
 									{
 										ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
 									}
+									#if TECHNITES
+										elif(child->IsID(RID::factionWorldTechniteFactionChunk))
+										{
+											ASSERT__(DeserializeFromMemory(techniteFactionArray, child->pointer(), child->size(), false));
+										}
+									#endif
 									elif (child->IsID(RID::factionWorldCounterChunk))
 									{
 										ASSERT__(DeserializeFromMemory(countArray,child->pointer(),child->size(),false));
 										ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
-										faction->currentState.ApplyFamilyDelta(atFamily,typeArray,countArray,false,false);
+										#if TECHNITES
+											faction->currentState.ApplyFamilyDelta(atFamily,typeArray,countArray,techniteFactionArray, false,false);
+										#else
+											faction->currentState.ApplyFamilyDelta(atFamily,typeArray,countArray,false,false);
+										#endif
 
 										atFamily++;
 									}
@@ -2130,6 +2202,18 @@ void	State::Save( const String&name)
 			factionSection->AppendBlock(RID::nexusTag);
 		}
 
+		#if TECHNITES
+			if (faction->IsTechniteFaction())
+			{
+				Technites::PFaction tfaction = To<Technites::Faction>::Cast(faction);
+
+				factionSection->AppendBlock(RID::techniteFactionGridID)->SetPODData(tfaction->gridID);
+				factionSection->AppendBlock(RID::technites,tfaction->technites.pointer(),tfaction->technites.GetContentSize());
+			}
+		#endif
+
+
+
 		factionSection->AppendBlock(RID::factionID)->SetPODData(faction->id);	//faction id
 		factionSection->AppendBlock(RID::factionName)->SetData(faction->name.c_str(),faction->name.length());
 
@@ -2152,6 +2236,9 @@ void	State::Save( const String&name)
 
 			//delta.Seal();
 			SerializeToChunk(delta.Ref().data0, factionSection->AppendBlock(RID::factionWorldTypeChunk));
+			#if TECHNITES
+				SerializeToChunk(delta.Ref().data2, factionSection->AppendBlock(RID::factionWorldTechniteFactionChunk));
+			#endif
 			SerializeToChunk(delta.Ref().data1, factionSection->AppendBlock(RID::factionWorldCounterChunk));
 										//factionWorldTypeChunk("WTCK"),
 										//factionWorldCounterChunk("WCCK"),

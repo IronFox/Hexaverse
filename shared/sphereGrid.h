@@ -290,6 +290,17 @@ namespace Grid
 				}
 				return false;
 			}
+			#if TECHNITES
+				bool	ApplyDelta(const TTechniteFactionDelta&tdelta)
+				{
+					if (tdelta.newTechniteFaction)
+					{
+						techniteFaction = tdelta.newTechniteFaction -1;
+						return true;
+					}
+					return false;
+				}
+			#endif
 		};
 
 		class Cell : public CompactCell
@@ -1986,9 +1997,14 @@ namespace Grid
 				cellStack[i].ResetStructureCounters();
 			}
 		}
-		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, const Array<CellStack::TStructCountDelta>&data1, bool initialization);
-		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, bool initialization, bool actualWorld);
-		//void					ApplyFamilyDelta(Array<CellStack>&stacks, BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, bool initialization);
+
+		#if TECHNITES
+			void				ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, const Array<CellStack::TStructCountDelta>&data1, const Array<CellStack::TTechniteFactionDelta>&data2, bool initialization);
+			void				ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, const Array<CellStack::TTechniteFactionDeltaBlock>&data2, bool initialization, bool actualWorld);
+		#else
+			void				ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, const Array<CellStack::TStructCountDelta>&data1, bool initialization);
+			void				ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, bool initialization, bool actualWorld);
+		#endif
 
 		/**
 			Signals that the fine geometry in and on the edge of the specified cell has changed.

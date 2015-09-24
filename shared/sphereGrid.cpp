@@ -3442,8 +3442,11 @@ namespace Grid
 	}
 
 
-
+#if TECHNITES
+	void	WorldData::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, const Array<CellStack::TTechniteFactionDeltaBlock>&data2, bool initialization, bool actualWorld)
+#else
 	void	WorldData::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, bool initialization, bool actualWorld)
+#endif
 	{
 		ASSERT_LESS__(family, BaseGrid::NumFamilies);
 		const index_t offset = high.grid.GetFamilyOffset(family);
@@ -3511,8 +3514,35 @@ namespace Grid
 				}
 			}
 			ASSERT_EQUAL__(at, range* CellStack::Range);
-			
 		}
+
+		#if TECHNITES
+			if (data2.IsNotEmpty())
+			{
+				index_t at = 0;
+
+				foreach (data2,block)
+				{
+					for (index_t i = 0; i < block->repitition; i++)
+					{
+						index_t stackIndex = (at % range) + offset;
+						index_t layer = at / range;
+
+						CellStack&stack = cellStack[stackIndex];
+
+						if (stack.volumeCell[layer].ApplyDelta(block->value))
+						{
+							anyChanged = true;
+						}
+				
+						at++;
+					}
+				}
+				ASSERT_EQUAL__(at, range* CellStack::Range);
+			}
+
+		#endif
+
 		#ifdef CLIENT
 			ASSERT__(actualWorld);	//client only knows one world
 		#endif
@@ -3618,7 +3648,11 @@ namespace Grid
 	}
 */
 
-	void	WorldData::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, const Array<CellStack::TStructCountDelta>&data1, bool initialization)
+	#if TECHNITES
+		void	WorldData::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, const Array<CellStack::TStructCountDelta>&data1, const Array<CellStack::TTechniteFactionDelta>&data2, bool initialization)
+	#else
+		void	WorldData::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, const Array<CellStack::TStructCountDelta>&data1, bool initialization)
+	#endif
 	{
 		const index_t offset = high.grid.GetFamilyOffset(family);
 		const count_t range = high.grid.CountFamilyMembers(family);
@@ -3687,6 +3721,34 @@ namespace Grid
 			}
 			ASSERT_CONCLUSION(data1,delta);
 		}
+		#if TECHNITES
+			{
+				const CellStack::TTechniteFactionDelta*delta = data2.pointer();
+				for (index_t i = 0; i < range; i++)
+				{
+					CellStack&stack = cellStack[i+offset];
+					bool anyChanged = false;
+					for (index_t j = 0; j < CellStack::Range; j++)
+					{
+						if (stack.volumeCell[j].ApplyDelta(*delta))
+						{
+							anyChanged = true;
+						}
+						delta ++;
+					}
+					if (anyChanged)
+					{
+						#ifdef HAS_WINDOW
+							changed << i + offset;
+						#endif
+					}
+				}
+				ASSERT_CONCLUSION(data2,delta);
+			}
+
+		#endif
+
+
 		high.family[family].SetOutdated(0);
 		low.family[family].SetOutdated(0);
 
