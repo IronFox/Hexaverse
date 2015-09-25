@@ -40,7 +40,12 @@ namespace Channels
 	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::IdentifyUser>								identifyUserRecv(Receiver::IdentifyUser);
 	TCP::Channel<Package::NetString<256>, 1, Protocol::ChannelID::ChatMessage>						chatMessage(Receiver::ChatMessage);
 
-	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>				clientFactionResponse;
+	#if TECHNITES
+		TCP::Channel<Protocol::TechniteInstructions, 1, Protocol::ChannelID::TechniteInstructions>	techniteInstructions(Receiver::TechniteInstructions);
+	#endif
+
+
+	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
 	TCP::ObjectSender<Protocol::WorldDelta,Protocol::ChannelID::WorldDelta>							updateWorld;
 	TCP::ObjectSender<Protocol::NewMobileEntity,Protocol::ChannelID::NewMobileEntity>				newMobileEntity;
@@ -79,6 +84,27 @@ namespace Channels
 
 
 
+
+void SendTechniteStateTo(const Technites::PFaction&tf, TCP::Peer&peer)
+{
+	static Buffer<Technites::Technite::TCompactState> states;
+				
+	states.Clear();
+	foreach (tf->technites,tech)
+		tech->ExportState(states.Append());
+
+	count_t chunks = (states.Count() / Protocol::MaxTechnitesPerChunk);
+	if (states.Count() % Protocol::MaxTechnitesPerChunk)
+		chunks++;
+	Protocol::TechniteChunk chunk;
+	chunk.first = true;
+	for (index_t i = 0; i < chunks; i++)
+	{
+		chunk.first = i == 0;
+		chunk.technites.AssignSection(states,i * Protocol::MaxTechnitesPerChunk);
+		Channels::techniteChunk.SendTo(peer,chunk);
+	}
+}
 
 
 
@@ -148,7 +174,33 @@ namespace Receiver
 		dest.id = source.id;
 		dest.location = source.location;
 	}
+	
+	bool	CheckCommandMode(TCP::Peer&peer);
 
+
+	#if TECHNITES
+	void	TechniteInstructions(Protocol::TechniteInstructions&instructions, TCP::Peer&peer)
+	{
+		if (!peer.attachment)
+			return;
+		//const Protocol::ClientFactionRequest&p = _p;
+		State::PClient client = To<State::Client>::Cast(peer.attachment);
+		if (!client->faction || !client->faction->IsTechniteFaction())
+			return;
+		if (!CheckCommandMode(peer))
+			return;
+		Technites::PFaction faction = To<Technites::Faction>::Cast(client->faction);
+		if (instructions.offset + instructions.instructions.Count() > faction->technites.Count())
+		{
+			LogEvent(EventType::UnexpectedBehavior, peer, "Received invalid technite instruction range");
+			peer.Disconnect();
+			return;
+		}
+
+		for (index_t i = 0; i < instructions.instructions.Count(); i++)
+			faction->technites[instructions.offset+i].Set(instructions.instructions[i]);
+	}
+	#endif
 
 
 	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
@@ -610,24 +662,7 @@ namespace Receiver
 			if (client->faction->IsTechniteFaction())
 			{
 				Technites::PFaction tf = To<Technites::Faction>::Cast(client->faction);
-
-				static Buffer<Technites::Technite::TCompactState> states;
-				
-				states.Clear();
-				foreach (tf->technites,tech)
-					tech->ExportState(states.Append());
-
-				count_t chunks = (states.Count() / Protocol::MaxTechnitesPerChunk);
-				if (states.Count() % Protocol::MaxTechnitesPerChunk)
-					chunks++;
-				Protocol::TechniteChunk chunk;
-				chunk.first = true;
-				for (index_t i = 0; i < chunks; i++)
-				{
-					chunk.first = i == 0;
-					chunk.technites.AssignSection(states,i * Protocol::MaxTechnitesPerChunk);
-					Channels::techniteChunk.SendTo(peer,chunk);
-				}
+				SendTechniteStateTo(tf,peer);
 			}
 
 		#endif

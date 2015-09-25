@@ -147,7 +147,7 @@ namespace Technites
 		};
 
 
-		static const Resources SplitCost, MoveCost, EatCost, EnergyPackage, MatterPackage;
+		static const Resources SplitCost, MoveCost, EatCost;// EnergyPackage, MatterPackage;
 
 
 		enum class Task : BYTE
@@ -250,7 +250,7 @@ namespace Technites
 		};	//8 bytes
 
 
-		struct TClientInstruction
+		struct TCompactInstruction
 		{
 			//CompressedLocation	location;	//4 bytes
 			Task				nextTask;	//1 byte
@@ -276,6 +276,12 @@ namespace Technites
 		/**/				Technite() {}
 
 
+		void				Set(const TCompactInstruction&instruction)
+		{
+			nextTask = instruction.nextTask;
+			taskParameter = instruction.taskParameter;
+			target = instruction.taskTarget;
+		}
 
 		void				ExportState(TCompactState&outState) const
 		{
@@ -311,12 +317,12 @@ namespace Technites
 	};
 
 	static_assert(sizeof(Technite::TCompactState) == 8,"Packing error");
-	static_assert(sizeof(Technite::TClientInstruction) == 3,"Packing error");
+	static_assert(sizeof(Technite::TCompactInstruction) == 3,"Packing error");
 
 	static const size_t ResourceSize = sizeof(Technite::Resources);
 	static const size_t LocationSize = sizeof(Technite::CompressedLocation);
 	static const size_t TechniteSize = sizeof(Technite);
-	static const size_t ClientInstructionSize = sizeof(Technite::TClientInstruction);
+	static const size_t ClientInstructionSize = sizeof(Technite::TCompactInstruction);
 
 	static_assert(ResourceSize == 2,"Packing error");
 	static_assert(LocationSize == 4,"Packing error");
@@ -393,8 +399,9 @@ namespace Technites
 	};
 
 
-	void						BeginProcessing();
-	bool						ProcessNext(float t);
+	void						BeginProcessing(float t0);
+	bool						ProcessNext();
+	float						GetAnimationTime();
 
 
 
@@ -437,8 +444,8 @@ namespace Technites
 
 		typedef Technite::TaskResult	ExecResult;
 	private:
-		friend void BeginProcessing();
-		friend bool ProcessNext(float);
+		friend void BeginProcessing(float);
+		friend bool ProcessNext();
 
 		struct WorkerData
 		{

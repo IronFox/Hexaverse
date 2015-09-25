@@ -553,6 +553,9 @@ namespace State
 		server.InstallChannel(Channels::changeMyName);
 		server.InstallChannel(Channels::identifyUserRecv);
 		server.InstallChannel(Channels::chatMessage);
+		#if TECHNITES
+			server.InstallChannel(Channels::techniteInstructions);
+		#endif
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,1);
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,1);

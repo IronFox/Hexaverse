@@ -1033,6 +1033,35 @@ void LogConfig(const String&msg)
 }
 
 
+float GetBaseAnimationLength()
+{
+	float animationLength = 0.f;
+	Objects::ForeachMobileEntityIncludingStored([&animationLength](const Objects::PMobileEntity&m)
+	{
+		animationLength = std::max(m->timeAt,animationLength);
+	});
+	return animationLength;
+}
+
+
+void SwitchToAnimationPhase(float animationLength)
+{
+	#ifndef NO_HIBERNATION
+		State::UpdateHibernation();
+	#endif
+
+	State::PerformNewRoundLogic(animationLength);
+	Objects::ResetTowerAttackAction(animationLength);
+	Objects::CheckSatelliteSupplyAndSensory(animationLength,State::terrainChanged);
+	State::terrainChanged = false;
+	Objects::ProcessStructures1(animationLength);//clears overproduction: must be called after CheckSatelliteSupply()
+
+	State::effectiveAnimationLength = std::min(10.f,animationLength);
+	State::ChangePhase(Protocol::Phase::AnimationPhase,std::max(1.f,animationLength / 10.f));
+
+}
+
+
 int main( int argc, const char* argv[])
 {
 
@@ -1677,26 +1706,35 @@ int main( int argc, const char* argv[])
 			case Protocol::Phase::MovementPhase:
 				if (!Objects::ProcessVehicleMotion())
 				{
-					#ifndef NO_HIBERNATION
-						State::UpdateHibernation();
+					#if TECHNITES
+						State::ChangePhase(Protocol::Phase::TechnitePhase);
+						Technites::BeginProcessing(GetBaseAnimationLength());
+					#else
+						SwitchToAnimationPhase(GetBaseAnimationLength());
 					#endif
-
-					float animationLength = 0.f;
-					Objects::ForeachMobileEntityIncludingStored([&animationLength](const Objects::PMobileEntity&m)
-					{
-						animationLength = std::max(m->timeAt,animationLength);
-					});
-					State::PerformNewRoundLogic(animationLength);
-					Objects::ResetTowerAttackAction(animationLength);
-					Objects::CheckSatelliteSupplyAndSensory(animationLength,State::terrainChanged);
-					State::terrainChanged = false;
-					Objects::ProcessStructures1(animationLength);//clears overproduction: must be called after CheckSatelliteSupply()
-
-					State::effectiveAnimationLength = std::min(10.f,animationLength);
-					State::ChangePhase(Protocol::Phase::AnimationPhase,std::max(1.f,animationLength / 10.f));
 				}
 				anythingChanged = true;
 			break;
+			#if TECHNITES
+				case Protocol::Phase::TechnitePhase:
+				{
+					if (!Technites::ProcessNext())
+					{
+						SwitchToAnimationPhase(Technites::GetAnimationTime());
+
+						for (const auto&tf : Technites::Faction::allTechniteFactions)
+						{
+							State::PClient client;
+							if (!State::playerMap.query(tf,client))
+								continue;
+							TCP::PPeer peer = client->peer.lock();
+							if (peer)
+								SendTechniteStateTo(tf,*peer);
+						}
+					}
+				}
+				break;
+			#endif
 			case Protocol::Phase::AnimationPhase:
 				if (timer.GetSecondsSince(State::lastPhaseChange) >= State::effectiveAnimationLength+0.5f)
 				{

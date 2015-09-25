@@ -26,7 +26,9 @@ namespace Receiver
 	void	ChangeMyName(Package::NetString<32>&, TCP::Peer&peer);
 	void	IdentifyUser(NET(TUniqueID)&, TCP::Peer&peer);
 	void	ChatMessage(Package::NetString<256>&, TCP::Peer&peer);
-
+	#if TECHNITES
+	void	TechniteInstructions(Protocol::TechniteInstructions&instructions, TCP::Peer&peer);
+	#endif
 
 
 	/**
@@ -91,7 +93,11 @@ namespace Channels
 	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::IdentifyUser>							identifyUserRecv;
 	extern TCP::Channel<Package::NetString<256>, 1, Protocol::ChannelID::ChatMessage>					chatMessage;
 
-	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
+	#if TECHNITES
+		extern TCP::Channel<Protocol::TechniteInstructions, 1, Protocol::ChannelID::TechniteInstructions>	techniteInstructions;
+	#endif
+
+	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>		clientFactionResponse;
 	extern TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>	markerCreationFailedLimitReached;
 	extern TCP::ObjectSender<Protocol::WorldDelta,Protocol::ChannelID::WorldDelta>						updateWorld;
 	extern TCP::ObjectSender<Protocol::NewMobileEntity,Protocol::ChannelID::NewMobileEntity>			newMobileEntity;
@@ -126,6 +132,7 @@ namespace Channels
 
 }
 
+void SendTechniteStateTo(const Technites::PFaction&tf, TCP::Peer&peer);
 
 
 

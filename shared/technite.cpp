@@ -13,9 +13,9 @@ namespace Technites
 {
 	/*static*/ const Technite::Resources	Technite::SplitCost = Resources(SplitEnergyCost, SplitMatterCost),
 		Technite::MoveCost = Resources(MoveEnergyCost, 0),
-		Technite::EatCost = Resources(EatEnergyCost, 0),
-		Technite::EnergyPackage = Resources(EnergyPackageSize, 0),
-		Technite::MatterPackage = Resources(0, MatterPackageSize);
+		Technite::EatCost = Resources(EatEnergyCost, 0);
+		//Technite::EnergyPackage = Resources(EnergyPackageSize, 0),
+		//Technite::MatterPackage = Resources(0, MatterPackageSize);
 
 	/*static*/ Buffer0<PFaction>Faction::allTechniteFactions;
 	/*static*/ AtomicGrid Faction::atomicGrid;
@@ -95,9 +95,17 @@ namespace Technites
 	static index_t atFaction = 0;
 	static Array<FactionRandomizer>	processingOrder;
 
+	static float animationTime;
 
-	/*static*/ void				BeginProcessing()
+
+	float			GetAnimationTime()
 	{
+		return animationTime;
+	}
+
+	void				BeginProcessing(float t0)
+	{
+		animationTime = t0;
 		atFaction = 0;
 
 		Faction::atomicGrid.Import(Grid::actualWorld);
@@ -135,17 +143,19 @@ namespace Technites
 		return true;
 	}
 
-	/*static*/ bool				ProcessNext(float t)
+	/*static*/ bool				ProcessNext()
 	{
 		if (atFaction < processingOrder.Count())
 		{
-			processingOrder[atFaction].target->Process(t);
+			processingOrder[atFaction].target->Process(animationTime);
 			atFaction++;
+
+			animationTime += 0.0001f;
 		}
 
 		if (atFaction >= processingOrder.Count())
 		{
-			Faction::atomicGrid.ExportChanged(Grid::actualWorld, t);
+			Faction::atomicGrid.ExportChanged(Grid::actualWorld, animationTime);
 
 			static Buffer0<Objects::PWorldEntity>	toKill;
 			for (const auto&mobile : Objects::vehicles)
@@ -160,7 +170,7 @@ namespace Technites
 			}
 
 			for (const auto&e : toKill)
-				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,t,true);
+				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,animationTime,true);
 			toKill.Clear();
 
 			return false;
@@ -761,9 +771,10 @@ namespace Technites
 			Technite*other = GetOwnTechnite(target);
 			if (!other)
 				return Technite::TaskResult::NoTechniteAtDestination;
-			if (!ReduceResources(technite, Technite::EnergyPackage))
+			Technite::Resources	transfer(technite.taskParameter,0);
+			if (!ReduceResources(technite,transfer ))
 				return Technite::TaskResult::TechniteLacksResources;
-			IncreaseRemoteResources(*other, Technite::EnergyPackage, data);
+			IncreaseRemoteResources(*other, transfer, data);
 			return Technite::TaskResult::Success;
 		}
 		case Technite::Task::TransferMatterTo:
@@ -773,9 +784,10 @@ namespace Technites
 			Technite*other = GetOwnTechnite(target);
 			if (!other)
 				return Technite::TaskResult::NoTechniteAtDestination;
-			if (!ReduceResources(technite, Technite::MatterPackage))
+			Technite::Resources	transfer(0,technite.taskParameter);
+			if (!ReduceResources(technite, transfer))
 				return Technite::TaskResult::TechniteLacksResources;
-			IncreaseRemoteResources(*other, Technite::MatterPackage, data);
+			IncreaseRemoteResources(*other, transfer, data);
 			return Technite::TaskResult::Success;
 		}
 		}

@@ -772,10 +772,11 @@ namespace Test
 				Technites::Technite::CompressedTarget target(random.get(Grid::high.grid.GetCell(loc.stackID).neighborhood.numNeighbors-1), hDelta);
 
 				t->target = target;
+				t->taskParameter = (BYTE)random.get(0,255);
 			};
 
-			Technites::BeginProcessing();
-			while (Technites::ProcessNext(0.f));
+			Technites::BeginProcessing(0);
+			while (Technites::ProcessNext());
 
 			std::cout << "    Finished technite iteration. Now controlling " << faction->technites.Count() << " technite(s)" << std::endl;
 		}
@@ -852,8 +853,8 @@ namespace Test
 				ASSERT__(ta.taskResult != Technites::Technite::TaskResult::BadCommand);
 				ASSERT__(tb.taskResult != Technites::Technite::TaskResult::BadCommand);
 
-				Technites::BeginProcessing();
-				while (Technites::ProcessNext(0.f))
+				Technites::BeginProcessing(0);
+				while (Technites::ProcessNext())
 				{};
 
 			}
@@ -906,8 +907,8 @@ namespace Test
 
 			iteration++;
 
-			Technites::BeginProcessing();
-			while (Technites::ProcessNext(0.f));
+			Technites::BeginProcessing(0);
+			while (Technites::ProcessNext());
 		}
 //		ASSERT__(iteration > 1);
 

@@ -1596,12 +1596,18 @@ namespace Protocol
 	#if TECHNITES
 		static const count_t	MaxTechnitesPerChunk=10000;
 		typedef SmartPODReferenceField<Technites::Technite::TCompactState,MaxTechnitesPerChunk>	TechniteField;
+		typedef SmartPODReferenceField<Technites::Technite::TCompactInstruction,MaxTechnitesPerChunk>	TechniteInstructionField;
 
 
 		NETSTRUCT2(TechniteChunk
 			, NET(bool), first
 			, TechniteField, technites
 			);
+
+		NETSTRUCT2(TechniteInstructions
+			, NET(UINT32), offset
+			, TechniteInstructionField, instructions
+		);
 
 	#endif
 
@@ -1756,8 +1762,11 @@ namespace Protocol
 	)
 
 
-
-	CONSTRUCT_ENUMERATION6(Phase, CommandPhase,StructurePhase,AttackPhase,MovementPhase,AnimationPhase, EndOfGame);
+	#if TECHNITES
+		CONSTRUCT_ENUMERATION7(Phase, CommandPhase,StructurePhase,AttackPhase,MovementPhase,TechnitePhase,AnimationPhase, EndOfGame);
+	#else
+		CONSTRUCT_ENUMERATION6(Phase, CommandPhase,StructurePhase,AttackPhase,MovementPhase,AnimationPhase, EndOfGame);
+	#endif
 
 	NETSTRUCT3(PhaseChange
 		, NET(Phase), newPhase
@@ -1924,7 +1933,8 @@ namespace Protocol
 			ChatMessage,		// c2s: NetString<256>
 
 
-			TechniteChunk,		// s2c: TechniteChunk
+			TechniteChunk,				// s2c: TechniteChunk
+			TechniteInstructions,	// c2s: TechniteInstructions
 
 
 			//remote control channels (these require user level 2+)
