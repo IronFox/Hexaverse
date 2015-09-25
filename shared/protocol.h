@@ -1848,6 +1848,13 @@ namespace Protocol
 		, Package::NetString<32>, name
 	)
 
+	NETSTRUCT2(FactionID
+		, NET(TUniqueID), id
+		, NET(BYTE), techniteGridID
+	)
+
+
+
 	typedef std::pair<UINT16,UINT16>	TUnitLimit;
 
 	typedef NETA(TUnitLimit)	UnitLimits;
@@ -1873,7 +1880,7 @@ namespace Protocol
 
 			SetClientState,		//c2s: ClientState -> s2c: Result
 			ClientFaction,		//c2s: ClientFactionRequest -> s2c: ClientFactionResponse
-			SetFactionID,		//s2c: NET(TUniqueID)
+			SetFactionID,		//s2c: FactionID
 
 			WorldDelta,			//s2c : WorldDelta
 

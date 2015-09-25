@@ -7,6 +7,7 @@
 #include "objects/gridAndChoices.h"
 #include "objects/structure.h"
 #include "objects/vehicle.h"
+#include "sphereGridHelper.h"
 #include <general/thread_system.h>
 
 namespace Technites
@@ -92,91 +93,92 @@ namespace Technites
 	};
 
 
-	static index_t atFaction = 0;
-	static Array<FactionRandomizer>	processingOrder;
+	#ifndef CLIENT
+		static index_t atFaction = 0;
+		static Array<FactionRandomizer>	processingOrder;
 
-	static float animationTime;
-
-
-	float			GetAnimationTime()
-	{
-		return animationTime;
-	}
-
-	void				BeginProcessing(float t0)
-	{
-		animationTime = t0;
-		atFaction = 0;
-
-		Faction::atomicGrid.Import(Grid::actualWorld);
+		static float animationTime;
 
 
-
-		processingOrder.SetSize(Faction::allTechniteFactions.Count());
-
-		for (index_t i = 0; i < Faction::allTechniteFactions.Count(); i++)
+		float			GetAnimationTime()
 		{
-			PFaction f = Faction::allTechniteFactions[i];
-			processingOrder[i].Set(f);
-			f->ProcessLighting();
+			return animationTime;
 		}
 
-		std::sort(processingOrder.begin(),processingOrder.end());
-	}
-
-
-	static bool CheckIsEaten(const Objects::PMobileEntity&m)
-	{
-		auto&cell = eatenGrid[Objects::CellToGridIndex(m->location)];
-		if (!cell.mobileEaten)
-			return false;
-		cell.mobileEaten = false;
-		return true;
-	}
-
-	static bool CheckIsEaten(const Objects::PStructure&s)
-	{
-		auto&cell = eatenGrid[Objects::CellToGridIndex(s->location)];
-		if (!cell.structureEaten)
-			return false;
-		cell.structureEaten = false;
-		return true;
-	}
-
-	/*static*/ bool				ProcessNext()
-	{
-		if (atFaction < processingOrder.Count())
+		void				BeginProcessing(float t0)
 		{
-			processingOrder[atFaction].target->Process(animationTime);
-			atFaction++;
+			animationTime = t0;
+			atFaction = 0;
 
-			animationTime += 0.0001f;
-		}
+			Faction::atomicGrid.Import(Grid::actualWorld);
 
-		if (atFaction >= processingOrder.Count())
-		{
-			Faction::atomicGrid.ExportChanged(Grid::actualWorld, animationTime);
 
-			static Buffer0<Objects::PWorldEntity>	toKill;
-			for (const auto&mobile : Objects::vehicles)
+
+			processingOrder.SetSize(Faction::allTechniteFactions.Count());
+
+			for (index_t i = 0; i < Faction::allTechniteFactions.Count(); i++)
 			{
-				if (CheckIsEaten(mobile))
-					toKill << mobile;
-			}
-			for (const auto&structure : Objects::structures)
-			{
-				if (CheckIsEaten(structure))
-					toKill << structure;
+				PFaction f = Faction::allTechniteFactions[i];
+				processingOrder[i].Set(f);
+				f->ProcessLighting();
 			}
 
-			for (const auto&e : toKill)
-				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,animationTime,true);
-			toKill.Clear();
-
-			return false;
+			std::sort(processingOrder.begin(),processingOrder.end());
 		}
-		return true;
-	}
+
+		static bool CheckIsEaten(const Objects::PMobileEntity&m)
+		{
+			auto&cell = eatenGrid[Objects::CellToGridIndex(m->location)];
+			if (!cell.mobileEaten)
+				return false;
+			cell.mobileEaten = false;
+			return true;
+		}
+
+		static bool CheckIsEaten(const Objects::PStructure&s)
+		{
+			auto&cell = eatenGrid[Objects::CellToGridIndex(s->location)];
+			if (!cell.structureEaten)
+				return false;
+			cell.structureEaten = false;
+			return true;
+		}
+
+		/*static*/ bool				ProcessNext()
+		{
+			if (atFaction < processingOrder.Count())
+			{
+				processingOrder[atFaction].target->Process(animationTime);
+				atFaction++;
+
+				animationTime += 0.0001f;
+			}
+
+			if (atFaction >= processingOrder.Count())
+			{
+				Faction::atomicGrid.ExportChanged(Grid::actualWorld, animationTime);
+
+				static Buffer0<Objects::PWorldEntity>	toKill;
+				for (const auto&mobile : Objects::vehicles)
+				{
+					if (CheckIsEaten(mobile))
+						toKill << mobile;
+				}
+				for (const auto&structure : Objects::structures)
+				{
+					if (CheckIsEaten(structure))
+						toKill << structure;
+				}
+
+				for (const auto&e : toKill)
+					Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,animationTime,true);
+				toKill.Clear();
+
+				return false;
+			}
+			return true;
+		}
+	#endif
 
 
 	/*static*/ PFaction Faction::GetFactionOf(BYTE factionID)
@@ -638,6 +640,55 @@ namespace Technites
 	}
 
 
+	#ifdef CLIENT
+
+		#if defined HAS_WINDOW
+		void				Faction::ChangeVision(const Grid::HCellIdU&center, short change)
+		{
+			bool familyChanged[BaseGrid::NumFamilies] = { false };
+
+			Grid::TemplateHelper::ChangeSensory(center, change, Grid::actualWorld.cellStack.pointer(), familyChanged);
+
+			for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
+				if (familyChanged[i])
+					Grid::high.family[i].SetOutdated(0.f);
+		}
+		#endif
+
+		void				Faction::ClearTechnites()
+		{
+			if (isMine)
+			{
+				#ifdef HAS_WINDOW
+					foreach (technites,t)
+						ChangeVision(t->location.GetU(),-1);
+				#endif
+			}
+
+			technites.Clear();
+			techniteMap.Clear();
+		}
+
+		void				Faction::AppendTechnites(const ArrayData<Technite::TCompactState>&techs)
+		{
+			foreach (techs,t)
+			{
+				index_t at = technites.Count();
+				Technite&nt = technites.Append();
+				nt.ImportState(*t);
+				techniteMap.Set(nt.location.GetU(),at);
+				#ifdef HAS_WINDOW
+					if (isMine)
+						ChangeVision(nt.location.GetU(),+1);
+				#endif
+			}
+		}
+
+
+
+	#endif
+
+
 	Faction::ExecResult			Faction::Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data)
 	{
 		
@@ -796,6 +847,7 @@ namespace Technites
 
 	//ParallelLoop	loop();
 
+	#ifndef CLIENT
 
 	void		Faction::ProcessLighting()
 	{
@@ -941,6 +993,8 @@ namespace Technites
 		
 	}
 
+	#endif
+
 
 	bool			Faction::MoveTechnite(Technite&technite, const Grid::HCellIdI&target, WorkerData&data)
 	{
@@ -1029,27 +1083,31 @@ namespace Technites
 	}
 
 
-	/*static*/ PFaction			Faction::CreateFromFile(BYTE gridID, const String&name /*= ""*/, bool copyInitialWorld/* = false*/)
+	/*static*/ PFaction			Faction::CreateFromFile(BYTE gridID, bool copyInitialWorld/* = false*/)
 	{
 		ASSERT__(gridID != 0xFF);
-		PFaction faction(new Faction(name));
+		PFaction faction(new Faction());
 		faction->gridID = gridID;
 		gridIDMap[gridID] = faction;
 		Faction::allTechniteFactions.Append(faction);
-		Super::all.Append(faction);
-		if (copyInitialWorld)
-			faction->currentState = Grid::initialWorld;
-		else
-			faction->currentState.FlushAllData();
+		#ifdef CLIENT
+			Super::allKnown.Append(faction);
+		#else
+			Super::all.Append(faction);
+			if (copyInitialWorld)
+				faction->currentState = Grid::initialWorld;
+			else
+				faction->currentState.FlushAllData();
+		#endif
 		return faction;
 	}
 
-	/*static*/ PFaction			Faction::Create(const String&name/* = ""*/, bool copyInitialWorld/* = false*/)
+	/*static*/ PFaction			Faction::Create(bool copyInitialWorld/* = false*/)
 	{
 		for (index_t i = 0; i < ARRAYSIZE(gridIDMap); i++)
 			if (!gridIDMap[i])
 			{
-				return CreateFromFile((BYTE)i,name,copyInitialWorld);
+				return CreateFromFile((BYTE)i,copyInitialWorld);
 			}
 		return PFaction();
 	}
@@ -1076,14 +1134,18 @@ namespace Technites
 
 	void Faction::Destroy(float t)
 	{
-		foreach(Super::all, f)
-		{
-			if (f->lock().get() == this)
+		#ifdef CLIENT
+			allKnown.FindAndErase(shared_from_this());
+		#else
+			foreach(Super::all, f)
 			{
-				Super::all.erase(f);
-				break;
+				if (f->lock().get() == this)
+				{
+					Super::all.erase(f);
+					break;
+				}
 			}
-		}
+		#endif
 		OnKill();
 	}
 

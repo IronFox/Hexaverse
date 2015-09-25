@@ -1720,7 +1720,6 @@ int main( int argc, const char* argv[])
 				{
 					if (!Technites::ProcessNext())
 					{
-						SwitchToAnimationPhase(Technites::GetAnimationTime());
 
 						for (const auto&tf : Technites::Faction::allTechniteFactions)
 						{
@@ -1731,6 +1730,8 @@ int main( int argc, const char* argv[])
 							if (peer)
 								SendTechniteStateTo(tf,*peer);
 						}
+
+						SwitchToAnimationPhase(Technites::GetAnimationTime());
 					}
 				}
 				break;

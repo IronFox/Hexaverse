@@ -27,6 +27,9 @@ namespace Network
 	#ifdef HAS_WINDOW
 		bool		amLocated=false;
 	#endif
+	#if TECHNITES
+		bool		amTechniteFaction = false;
+	#endif
 
 	TUniqueID		myID,serverID,worldID;
 	CryptographicID	activeToken;
@@ -50,17 +53,39 @@ namespace Network
 
 
 
-	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
+	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, BYTE techniteFactionIfNew /*= 0xFF*/)
 	{
 		{
 			Objects::OwnerParameter*rs = factionMap.QueryPointer(id);
 			if (rs)
+			{
+				#if TECHNITES
+					if (techniteFactionIfNew != 0xFF)
+					{
+						ASSERT__((*rs)->IsTechniteFaction());
+						Technites::PFaction tf = To<Technites::Faction>::Cast(*rs);
+						ASSERT_EQUAL__(tf->gridID,techniteFactionIfNew);
+					}
+					else
+						ASSERT__(!(*rs)->IsTechniteFaction());
+				#endif
 				return *rs;
+			}
 		}
-		Objects::OwnerParameter rs(new Objects::Faction());
+		Objects::OwnerParameter  rs;
+		#if TECHNITES
+			if (techniteFactionIfNew != 0xFF)
+			{
+				rs = Technites::Faction::CreateFromFile(techniteFactionIfNew);
+			}
+			else
+		#endif
+		{
+			rs.reset(new Objects::Faction());
+			Objects::Faction::allKnown << rs;
+		}
 		rs->id = id;
 		factionMap.Set(id,rs);
-		Objects::Faction::allKnown << rs;
 		return rs;
 	}
 
@@ -225,6 +250,22 @@ namespace Network
 	{
 		bool			eventsLocked = true;
 
+		#if TECHNITES
+			void	TechniteChunk(Protocol::TechniteChunk&chunk)
+			{
+	//			if (chunk.first)
+				{
+					if (amTechniteFaction)
+					{
+						ASSERT__(myFaction->IsTechniteFaction());
+						Technites::PFaction tf = To<Technites::Faction>::Cast(myFaction);
+						if (chunk.first)
+							tf->ClearTechnites();
+						tf->AppendTechnites(chunk.technites);
+					}
+				}
+			}
+		#endif
 
 		void	OnClientStateResponse(Protocol::Result&response)
 		{
@@ -255,7 +296,11 @@ namespace Network
 			{
 				BYTE family = delta.family & 0x7F;
 				bool last = (delta.family & 0x80) != 0;
-				Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,delta.data1,false,true);
+				#if TECHNITES
+					Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,delta.data1,delta.data2, false,true);
+				#else
+					Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,delta.data1,false,true);
+				#endif
 
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = last;
@@ -421,7 +466,7 @@ namespace Network
 
 
 
-		void	ClientReady(Protocol::ClientReady&cr)
+		void	ClientFactionResponse(Protocol::ClientFactionResponse&cr)
 		{
 			ASSERT__(!eventsLocked);
 
@@ -433,7 +478,10 @@ namespace Network
 			#endif
 
 
-			amReady = cr.isReady;
+			amReady = cr.startFactionTypes != 0;
+			#if TECHNITES
+				amTechniteFaction = (cr.startFactionTypes & Protocol::FactionType::TechniteFaction) != 0;
+			#endif
 			if (amReady)
 			{
 				activeToken = cr.factionToken;
@@ -447,13 +495,20 @@ namespace Network
 			}
 		}
 
-		void	SetFactionID(NET(TUniqueID)&id)
+		void	SetFactionID(Protocol::FactionID&id)
 		{
 			ASSERT__(!eventsLocked);
 
 			haveId = true;
-			myID = id;
-			myFaction = ResolveFaction(myID);
+			myID = id.id;
+			myFaction = ResolveFaction(myID,id.techniteGridID);
+			#if TECHNITES
+				ASSERT_EQUAL__(id.techniteGridID != 0xFF, amTechniteFaction);
+				if (amTechniteFaction)
+				{
+					ASSERT__(myFaction->IsTechniteFaction());
+				}
+			#endif
 			myIDString = myID.ToString();
 			myFaction->isMine = true;
 		}
@@ -647,6 +702,8 @@ namespace Network
 	{
 		TCP::Channel<Protocol::ControlMessage,0,Protocol::ChannelID::ControlMessage>				controlMessage(Receiver::ControlMessage);
 
+		TCP::Channel<Protocol::ClientFactionResponse,0,Protocol::ChannelID::ClientFaction>			clientFactionResponse(Receiver::ClientFactionResponse);
+
 		TCP::Channel<Protocol::Result,0,Protocol::ChannelID::SetClientState>						clientStateUpdateResponse(Receiver::OnClientStateResponse);
 		TCP::Channel<Protocol::WorldDelta,0,Protocol::ChannelID::WorldDelta>						worldData(Receiver::OnWorldDelta);
 		TCP::Channel<Protocol::NewMobileEntity,0,Protocol::ChannelID::NewMobileEntity>				newMobileEntity(Receiver::OnNewMobileEntity);
@@ -654,8 +711,7 @@ namespace Network
 		TCP::Channel<Protocol::StructureConstruction,0,Protocol::ChannelID::InstantiateStructure>	newStructure(Receiver::OnNewStructure);
 		TCP::Channel<Protocol::StructureState,0,Protocol::ChannelID::UpdateStructure>				structureStateUpdate(Receiver::OnStructureState);
 		TCP::Channel<Protocol::DestroyEntity,0,Protocol::ChannelID::DestroyEntity>					destroyEntity(Receiver::DestroyEntity);
-		TCP::Channel<Protocol::ClientReady,0,Protocol::ChannelID::ClientReady>						clientReady(Receiver::ClientReady);
-		TCP::Channel<NET(TUniqueID),0,Protocol::ChannelID::SetFactionID>							setFactionID(Receiver::SetFactionID);
+		TCP::Channel<Protocol::FactionID,0,Protocol::ChannelID::SetFactionID>						setFactionID(Receiver::SetFactionID);
 
 		TCP::Channel<Protocol::PhaseChange,0,Protocol::ChannelID::PhaseChange>						phaseChange(Receiver::PhaseChange);
 		TCP::Channel<Protocol::MobileEntityMotion,0,Protocol::ChannelID::MobileEntityMotion>		mobileEntityMotion(Receiver::MobileEntityMotion);
@@ -678,7 +734,10 @@ namespace Network
 		TCP::Channel<NET(INT32), 0, Protocol::ChannelID::UplinkBandwidth>							uplinkBandwidth(Receiver::UplinkBandwidth);
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
 
+		TCP::Channel<Protocol::TechniteChunk, 0, Protocol::ChannelID::TechniteChunk>				techniteChunk(Receiver::TechniteChunk);
 
+
+		TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
 		TCP::ObjectSender<Protocol::ClientState,Protocol::ChannelID::SetClientState>				clientStateSender;
 		TCP::ObjectSender<Protocol::EntityDirectCommand, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
@@ -708,7 +767,7 @@ namespace Network
 
 	String			chosenNickname;
 	Timer::Time		lastPong = timer.Now();
-
+	UINT32			chosenFactionTypes = Protocol::FactionType::RegularFaction;
 
 	void		OnEvent(TCP::event_t ev, TCP::Peer&)
 	{
@@ -731,8 +790,8 @@ namespace Network
 				LogEvent(EventType::SessionRelated, nullptr, "Connection established to "+client.ToString());
 				Channels::clientStateSender.SendTo(client,state);
 
-				Protocol::ClientReady ready;
-				ready.isReady = true;
+				Protocol::ClientFactionRequest ready;
+				ready.startFactionTypes = chosenFactionTypes;
 				if (RuntimeConfig::aiMode)
 				{
 					ready.factionToken = RuntimeConfig::aiAccessToken;
@@ -754,7 +813,7 @@ namespace Network
 				}
 
 
-				Channels::clientReady.SendTo(client,ready);
+				Channels::clientFactionRequest.SendTo(client,ready);
 				lastPong = timer.Now();
 			}
 			break;
@@ -830,7 +889,7 @@ namespace Network
 		client.InstallChannel(Channels::structureStateUpdate);
 		client.InstallChannel(Channels::destroyEntity);
 		client.InstallChannel(Channels::controlMessage);
-		client.InstallChannel(Channels::clientReady);
+		client.InstallChannel(Channels::clientFactionResponse);
 		client.InstallChannel(Channels::setFactionID);
 
 		client.InstallChannel(Channels::phaseChange);
@@ -853,6 +912,8 @@ namespace Network
 		client.InstallChannel(Channels::lockEmpZones);
 		client.InstallChannel(Channels::uplinkBandwidth);
 		client.InstallChannel(Channels::unitLimits);
+
+		client.InstallChannel(Channels::techniteChunk);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 

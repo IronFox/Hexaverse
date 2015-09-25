@@ -19,6 +19,11 @@ namespace Network
 	extern bool			amReady,
 						haveId,
 						amOnline;
+
+	#if TECHNITES
+		extern bool		amTechniteFaction;
+	#endif
+
 	#ifdef HAS_WINDOW
 		extern bool		amLocated;
 	#endif
@@ -45,7 +50,7 @@ namespace Network
 	static const char*accessFilename = "config/worldAccess.m32";
 
 
-	Objects::OwnerParameter ResolveFaction(const TUniqueID&id);
+	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, BYTE techniteFactionIfNew = 0xFF);
 
 	void SaveWorldAccessTokens();
 
@@ -92,9 +97,9 @@ namespace Network
 		void	DestroyEntity(Protocol::DestroyEntity&de);
 		void	ControlMessage(Protocol::ControlMessage&msg);
 
-		void	ClientReady(Protocol::ClientReady&cr);
+		void	ClientFactionRequest(Protocol::ClientFactionRequest&cr);
 
-		void	SetFactionID(NET(TUniqueID)&id);
+		void	SetFactionID(Protocol::FactionID&id);
 		void	PhaseChange(Protocol::PhaseChange&c);
 		void	VehicleMotion(Protocol::MobileEntityMotion&m);
 		void	AttackTrajectory(Protocol::AttackTrajectory&a);
@@ -133,8 +138,8 @@ namespace Network
 		extern TCP::Channel<Protocol::StructureConstruction,0,Protocol::ChannelID::InstantiateStructure>newStructure;
 		extern TCP::Channel<Protocol::StructureState,0,Protocol::ChannelID::UpdateStructure>			structureStateUpdate;
 		extern TCP::Channel<Protocol::DestroyEntity,0,Protocol::ChannelID::DestroyEntity>				destroyEntity;
-		extern TCP::Channel<Protocol::ClientReady,0,Protocol::ChannelID::ClientReady>					clientReady;
-		extern TCP::Channel<NET(TUniqueID),0,Protocol::ChannelID::SetFactionID>							setFactionID;
+		extern TCP::Channel<Protocol::ClientFactionResponse,0,Protocol::ChannelID::ClientFaction>		clientFactionResponse;
+		extern TCP::Channel<Protocol::FactionID,0,Protocol::ChannelID::SetFactionID>					setFactionID;
 
 		extern TCP::Channel<Protocol::PhaseChange,0,Protocol::ChannelID::PhaseChange>					phaseChange;
 		extern TCP::Channel<Protocol::MobileEntityMotion,0,Protocol::ChannelID::MobileEntityMotion>		mobileEntityMotion;
@@ -156,7 +161,9 @@ namespace Network
 		extern TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>							lockEmpZones;
 		extern TCP::Channel<NET(int32_t), 0, Protocol::ChannelID::UplinkBandwidth>						uplinkBandwidth;
 
+		extern TCP::Channel<Protocol::TechniteChunk, 0, Protocol::ChannelID::TechniteChunk>				techniteChunk;
 
+		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		extern TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
 		extern TCP::ObjectSender<Protocol::ClientState,Protocol::ChannelID::SetClientState>					clientStateSender;
 		extern TCP::ObjectSender<Protocol::EntityDirectCommand, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;

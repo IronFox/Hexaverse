@@ -229,13 +229,18 @@ namespace Objects
 			*/
 			void		FlushData();
 
+			virtual bool	SurvivesByOtherMeans() const	{return false;}
+
 			/**
 			Checks if the local faction satisfies survival conditions
 			*/
 			bool		CanLive() const
 			{
-				return hasMineralGeneratorCycle
-					&& (hasVehicleProductionCycle || hasTerraformer);
+				return SurvivesByOtherMeans() ||
+					(
+							hasMineralGeneratorCycle
+						&& (hasVehicleProductionCycle || hasTerraformer)
+					);
 			}
 
 

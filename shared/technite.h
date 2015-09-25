@@ -291,6 +291,14 @@ namespace Technites
 			outState.state = state;
 		}
 
+		void				ImportState(const TCompactState&inState)
+		{
+			location = inState.location;
+			resources = inState.resources;
+			taskResult = inState.lastResult;
+			state = inState.state;
+		}
+
 		BYTE				GetLifeCost() const
 		{
 			return GetLifeCostAtHeight(location.GetHeight());
@@ -369,6 +377,7 @@ namespace Technites
 		{
 			Array<UINT32>		volumeCells;
 			count_t				numEntries = 0;
+			void				Clear()	{if (volumeCells.IsNotEmpty()) volumeCells.Fill(Empty); numEntries = 0;}
 		};
 
 		count_t					totalEntries = 0;
@@ -396,6 +405,7 @@ namespace Technites
 		bool					SetNew(const Grid::HCellIdI&id, index_t to);
 		bool					SetNew(const Grid::HCellIdU&id, index_t to);
 		count_t					Count() const;
+		void					Clear()		{for (index_t i = 0; i < ClusterCount; i++)	cluster[i].Clear();}
 	};
 
 
@@ -425,8 +435,8 @@ namespace Technites
 		static PFaction			gridIDMap[0xFF];
 
 
-		static PFaction			Create(const String&name = "", bool copyInitialWorld = false);
-		static PFaction			CreateFromFile(BYTE gridID, const String&name="", bool copyInitialWorld = false);
+		static PFaction			Create(bool copyInitialWorld = false);
+		static PFaction			CreateFromFile(BYTE gridID, bool copyInitialWorld = false);
 
 		void					Destroy(float t);
 
@@ -440,6 +450,14 @@ namespace Technites
 
 		virtual bool			IsTechniteFaction() const override { return true; }
 		virtual void			OnKill() override;
+
+		#ifndef CLIENT
+			virtual bool		SurvivesByOtherMeans()const	override {return technites.IsNotEmpty();}
+		#else
+			void				ClearTechnites();
+			void				AppendTechnites(const ArrayData<Technite::TCompactState>&techs);
+
+		#endif
 
 
 		typedef Technite::TaskResult	ExecResult;
@@ -455,7 +473,12 @@ namespace Technites
 		};
 
 
-		/**/					Faction(const String&name=""):Super(name) {};
+		/**/					Faction():Super() {};
+
+		#if defined CLIENT && defined HAS_WINDOW
+			void				ChangeVision(const Grid::HCellIdU&center, short change);
+		#endif
+
 
 		ExecResult				GrowTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);
 		ExecResult				MoveTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);
@@ -489,8 +512,10 @@ namespace Technites
 		*/
 		static Grid::Content	GetGlobalGridContent(const Grid::HCellIdI&cellID);
 
-		void					Process(float t);
-		void					ProcessLighting();
+		#ifndef CLIENT
+			void				Process(float t);
+			void				ProcessLighting();
+		#endif
 
 
 		//static WorkPipe<Grid::HCellIdI>	newTechnites;

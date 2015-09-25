@@ -58,7 +58,7 @@ namespace Channels
 	TCP::ObjectSender<Protocol::StructureState,Protocol::ChannelID::UpdateStructure>				setStructureState;
 	TCP::ObjectSender<Protocol::DestroyEntity,Protocol::ChannelID::DestroyEntity>					destroyEntity;
 	TCP::ObjectSender<Protocol::ControlMessage,Protocol::ChannelID::ControlMessage>					controlMessage;
-	TCP::ObjectSender<NET(TUniqueID),Protocol::ChannelID::SetFactionID>								setFactionID;
+	TCP::ObjectSender<Protocol::FactionID,Protocol::ChannelID::SetFactionID>						setFactionID;
 	TCP::ObjectSender<Protocol::PhaseChange,Protocol::ChannelID::PhaseChange>						phaseChange;
 	TCP::ObjectSender<Protocol::ResourceUpdate,Protocol::ChannelID::ResourceUpdate>					resourceUpdate;
 	TCP::ObjectSender<Protocol::GameProgress,Protocol::ChannelID::GameProgress>						gameProgress;
@@ -371,7 +371,14 @@ namespace Receiver
 		//response.planetConfig = State::persistentPlanetInfo;
 
 		Channels::clientFactionResponse.SendTo(client->peer.lock(),response);
-		Channels::setFactionID.SendTo(client->peer.lock(),client->faction->id);
+		Protocol::FactionID outFactionID(client->faction->id,0xFF);
+		#if TECHNITES
+			if (client->faction->IsTechniteFaction())
+			{
+				outFactionID.techniteGridID = To<Technites::Faction>::Cast(client->faction)->gridID;
+			}
+		#endif
+		Channels::setFactionID.SendTo(client->peer.lock(),outFactionID);
 
 		//CHEAT_SHOW_ALL_RESOURCES
 
