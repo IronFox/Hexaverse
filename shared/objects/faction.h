@@ -148,6 +148,7 @@ namespace Objects
 		bool		online = false;
 		#ifdef CLIENT
 			bool	requestedNewRound = false;
+			bool	isMine = false;
 		#endif
 
 		#ifdef CONNECTOR_LESS
