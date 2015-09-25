@@ -328,19 +328,21 @@ namespace Technites
 
 	bool	Technite::DecodeAbsoluteTarget(Grid::HCellIdI & outTarget) const
 	{
-		TTarget target;
-		target.Decompress(compressedTarget);
-		if (target.heightDelta < -1 || target.heightDelta > 1)
+		const int heightDelta = target.GetHeightDelta();
+		const UINT32 nIndex = target.GetNeighborIndex();
+
+		if (heightDelta < -1 || heightDelta > 1)
 			return false;
-		if (location.stackID >= Grid::high.grid.CellCount)
+		Grid::HCellIdI loc = location.GetI();
+		if (loc.stackID >= Grid::high.grid.CellCount)
 			return false;
-		if (location.height < Grid::CellStack::BottomHeight || location.height > Grid::CellStack::TopHeight)
+		if (loc.height < Grid::CellStack::BottomHeight || loc.height > Grid::CellStack::TopHeight)
 			return false;
-		const auto&n = Grid::high.grid.GetCell(location.stackID).neighborhood;
-		if (target.neighborIndex >= n.numNeighbors)
+		const auto&n = Grid::high.grid.GetCell(loc.stackID).neighborhood;
+		if (nIndex >= n.numNeighbors)
 			return false;
 		//ASSERT_LESS__(target.neighborIndex,n.numNeighbors);
-		outTarget = Grid::HCellIdI(n.neighborID[target.neighborIndex], location.height + target.heightDelta);
+		outTarget = Grid::HCellIdI(n.neighborID[nIndex], loc.height + heightDelta);
 		return outTarget.height >= Grid::CellStack::BottomHeight && outTarget.height <= Grid::CellStack::TopHeight;
 	}
 
@@ -417,10 +419,13 @@ namespace Technites
 
 	index_t					BroadTechniteMap::Map(const Grid::HCellIdI&location, Cluster*&outCluster, bool initIfEmpty)
 	{
-		UINT32 layer = Grid::CellStack::ToLayer(location.height);
+		return Map(Grid::HCellIdU(location.stackID,Grid::CellStack::ToLayer(location.height)),outCluster,initIfEmpty);
+	}
+	index_t					BroadTechniteMap::Map(const Grid::HCellIdU&location, Cluster*&outCluster, bool initIfEmpty)
+	{
 		index_t family;
 		UINT32 heightRemainder;
-		index_t clusterIndex = MapCluster(Grid::HCellIdU(location.stackID, layer), family, heightRemainder);
+		index_t clusterIndex = MapCluster(location, family, heightRemainder);
 		//ASSERT_LESS__(heightRemainder, SectionLayers);
 		//ASSERT_LESS__(clusterIndex, ARRAYSIZE(cluster));
 		outCluster = cluster + clusterIndex;
@@ -437,10 +442,14 @@ namespace Technites
 
 	index_t					BroadTechniteMap::Map(const Grid::HCellIdI&location, const Cluster*&outCluster) const
 	{
-		UINT32 layer = Grid::CellStack::ToLayer(location.height);
+		return Map(Grid::HCellIdU(location.stackID,Grid::CellStack::ToLayer(location.height)),outCluster);
+	}
+	index_t					BroadTechniteMap::Map(const Grid::HCellIdU&location, const Cluster*&outCluster) const
+	{
+		//UINT32 layer = Grid::CellStack::ToLayer(location.height);
 		index_t family;
 		UINT32 heightRemainder;
-		index_t clusterIndex = MapCluster(Grid::HCellIdU(location.stackID, layer), family,heightRemainder);
+		index_t clusterIndex = MapCluster(location, family,heightRemainder);
 		//ASSERT_LESS__(heightRemainder, SectionLayers);
 		//ASSERT_LESS__(clusterIndex, ARRAYSIZE(cluster));
 		outCluster = cluster + clusterIndex;
@@ -452,7 +461,7 @@ namespace Technites
 		return inner + range * heightRemainder;
 	}
 
-	void					BroadTechniteMap::Unset(const Grid::HCellIdI& id)
+	void					BroadTechniteMap::Unset(const Grid::HCellIdU& id)
 	{
 		Cluster*cluster;
 		index_t inner = Map(id, cluster,false);
@@ -473,8 +482,16 @@ namespace Technites
 		}
 
 	}
+	void					BroadTechniteMap::Unset(const Grid::HCellIdI& id)
+	{
+		Unset(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)));
+	}
 
 	void					BroadTechniteMap::Set(const Grid::HCellIdI&id, index_t to)
+	{
+		Set(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)),to);
+	}
+	void					BroadTechniteMap::Set(const Grid::HCellIdU&id, index_t to)
 	{
 		Cluster*cluster;
 		index_t inner = Map(id, cluster,true);
@@ -487,6 +504,10 @@ namespace Technites
 	}
 
 	bool					BroadTechniteMap::Query(const Grid::HCellIdI&id, index_t&out) const
+	{
+		return Query(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)),out);
+	}
+	bool					BroadTechniteMap::Query(const Grid::HCellIdU&id, index_t&out) const
 	{
 		const Cluster*cluster;
 		index_t inner = Map(id, cluster);
@@ -507,6 +528,10 @@ namespace Technites
 
 	bool					BroadTechniteMap::IsSet(const Grid::HCellIdI&id) const
 	{
+		return IsSet(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)));
+	}
+	bool					BroadTechniteMap::IsSet(const Grid::HCellIdU&id) const
+	{
 		const Cluster*cluster;
 		index_t inner = Map(id, cluster);
 		if (cluster->numEntries == 0)
@@ -516,6 +541,10 @@ namespace Technites
 	}
 
 	bool					BroadTechniteMap::SetNew(const Grid::HCellIdI&id, index_t to)
+	{
+		return SetNew(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)),to);
+	}
+	bool					BroadTechniteMap::SetNew(const Grid::HCellIdU&id, index_t to)
 	{
 		Cluster*cluster;
 		index_t inner = Map(id, cluster, true);
@@ -650,20 +679,18 @@ namespace Technites
 		bool lit = true;
 
 
-		unsigned layer = Grid::CellStack::ToLayer(technite.location.height + 1);
+		unsigned layer = technite.location.GetLayer()+1;
+		//Grid::CellStack::ToLayer(technite.location.height + 1);
 		for (; layer < Grid::CellStack::Range; layer++)
 		{
-			Grid::Content top = GetLastContent(Grid::HCellIdU(technite.location.stackID, layer));
+			Grid::Content top = GetLastContent(Grid::HCellIdU(technite.location.GetStackID(), layer));
 			if (top != Grid::Content::Clear)
 			{
 				lit = false;
 				break;
 			}
 		}
-
-		Technite::TState state = technite.DecodeState();
-		state.lit = lit;
-		technite.compressedState = state.Compress();
+		technite.state.SetLit(lit);
 
 		if (lit)
 		{
@@ -674,27 +701,26 @@ namespace Technites
 	void							Faction::CheckState(Technite&technite)
 	{
 
-		bool cannotStandHereDies = !ValidTechniteLocation(technite.location);
+		const Grid::HCellIdI loc = technite.location.GetI();
+		bool cannotStandHereDies = !ValidTechniteLocation(loc);
 
-		Grid::Content content = GetLastContent(technite.location);
+		Grid::Content content = GetLastContent(loc);
 
 
+		BYTE ttl = technite.state.GetTTL();
 
-
-		Technite::TState state;
-		state.Decompress(technite.compressedState);
-		BYTE cost = technite.GetLifeCost();
-		if (state.ttl > cost)
+		BYTE cost = technite.GetLifeCostAtHeight(loc.height);
+		if (ttl > cost)
 		{
-			state.ttl -= cost;
+			ttl -= cost;
 		}
 		else
-			state.ttl = 0;
-		technite.compressedState = state.Compress();
+			ttl = 0;
+		technite.state.SetTTL(ttl);
 
 		if (content != Grid::Content::Technite
-			|| Grid::actualWorld.cellStack[technite.location.stackID].GetCellI(technite.location.height).techniteFaction != this->gridID
-			|| state.ttl == 0
+			|| Grid::actualWorld.cellStack[loc.stackID].GetCellI(loc.height).techniteFaction != this->gridID
+			|| ttl == 0
 			|| cannotStandHereDies
 			)
 		{
@@ -818,18 +844,20 @@ namespace Technites
 			static Buffer<Technite>	newField;
 			//techniteMap.Clear();
 			for (const auto&tec : technites)
+			{
+				Grid::HCellIdU loc = tec.location.GetU();	
 				if (!tec.isDead)
 				{
 					index_t at = newField.Count();
 					newField.Append(tec);
-					techniteMap.Set(tec.location, at);
+					techniteMap.Set(loc, at);
 				}
 				else
 				{
-					visibility.ChangeSensory(tec.location, t, -1);
-					techniteMap.Unset(tec.location);
+					visibility.ChangeSensory(loc, t, -1);
+					techniteMap.Unset(loc);
 				}
-
+			}
 			newField.swap(technites);
 			newField.Clear();
 			ASSERT_EQUAL__(technites.Count(), techniteMap.Count());
@@ -850,8 +878,8 @@ namespace Technites
 				//Grid::actualWorld.cellStack[tech.location.stackID].SetLocalTechniteFaction(tech.location.height, this->gridID);
 				technites.Append(tech).isDead = false;
 
-				techniteMap.Set(tech.location, at);
-				visibility.ChangeSensory(tech.location, t, 1);
+				techniteMap.Set(loc, at);
+				visibility.ChangeSensory(loc, t, 1);
 			}
 			data->newTechnites.Clear();
 			ASSERT_EQUAL__(technites.Count(), techniteMap.Count());
@@ -877,7 +905,7 @@ namespace Technites
 				index_t at;
 				ASSERT1__(techniteMap.Query(loc.first, at), loc.first.ToString());
 				Technite&tec = technites[at];
-				ASSERT__(tec.location == loc.first);
+				ASSERT__(tec.location.GetU() == loc.first);
 				if (techniteMap.SetNew(loc.second, at))
 				{
 					tec.location = loc.second;
@@ -904,12 +932,13 @@ namespace Technites
 
 	bool			Faction::MoveTechnite(Technite&technite, const Grid::HCellIdI&target, WorkerData&data)
 	{
-		UINT32 fromLayer = Grid::CellStack::ToLayer(technite.location.height),
+		UINT32 fromLayer = technite.location.GetLayer(),
 			toLayer = Grid::CellStack::ToLayer(target.height);
 		ASSERT_LESS__(fromLayer, Grid::CellStack::Range);
 		ASSERT_LESS__(toLayer, Grid::CellStack::Range);
+		UINT32 fromStack = technite.location.GetStackID();
 
-		AtomicGrid::CellStack::Cell&fromCell = atomicGrid.cellStack[technite.location.stackID].volumeCell[fromLayer];
+		AtomicGrid::CellStack::Cell&fromCell = atomicGrid.cellStack[fromStack].volumeCell[fromLayer];
 		AtomicGrid::CellStack::Cell&toCell = atomicGrid.cellStack[target.stackID].volumeCell[toLayer];
 
 		BYTE expect0 = Grid::Content::Clear;
@@ -921,8 +950,8 @@ namespace Technites
 		atomicGrid.SignalStackChange(target.stackID);
 		Grid::actualWorld.cellStack[target.stackID].volumeCell[toLayer].techniteFaction = this->gridID;
 		fromCell.content = Grid::Content::Clear;
-		atomicGrid.SignalStackChange(technite.location.stackID);
-		data.moveInstructions << std::make_pair(technite.location,target);
+		atomicGrid.SignalStackChange(fromStack);
+		data.moveInstructions << std::make_pair(technite.location.GetU(),Grid::HCellIdU(target.stackID,toLayer));
 		//std::cout << "Moving technite from " << technite.location.ToString() << " to " << target.ToString() << std::endl;
 		return true;
 	}
@@ -956,7 +985,7 @@ namespace Technites
 
 		//std::cout << "Creating technite at " << target.ToString() << std::endl;
 
-		data.newTechnites << target;
+		data.newTechnites << Grid::HCellIdU(target.stackID,toLayer);
 		return true;
 	}
 
@@ -972,7 +1001,7 @@ namespace Technites
 
 	void			Faction::IncreaseRemoteResources(Technite&technite, const Technite::Resources&by, WorkerData&data)
 	{
-		data.increaseResources << std::make_pair(technite.location, by);
+		data.increaseResources << std::make_pair(technite.location.GetU(), by);
 	}
 
 
@@ -1013,9 +1042,28 @@ namespace Technites
 		return PFaction();
 	}
 
-	void Faction::Destroy(float t)
+
+	/*virtual override*/ void			Faction::OnKill()
 	{
 		gridIDMap[gridID].reset();
+		allTechniteFactions.FindAndErase(shared_from_this());
+		bool familyChanged[BaseGrid::NumFamilies] = { false };
+		foreach(this->technites, t)
+		{
+			UINT32 stackID = t->location.GetStackID();
+			Grid::actualWorld.cellStack[stackID].MakeLocalHole(t->location.GetHeight());
+			familyChanged[Grid::high.grid.GetCell(stackID).family] = true;
+		}
+		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
+			if (familyChanged[i])
+			{
+				Grid::low.family[i].SetOutdated(0);
+				Grid::high.family[i].SetOutdated(0);
+			}
+	}
+
+	void Faction::Destroy(float t)
+	{
 		foreach(Super::all, f)
 		{
 			if (f->lock().get() == this)
@@ -1024,20 +1072,7 @@ namespace Technites
 				break;
 			}
 		}
-		allTechniteFactions.FindAndErase(shared_from_this());
-		//all.FindAndErase(To<Faction>::Cast( shared_from_this() ) );
-		bool familyChanged[BaseGrid::NumFamilies] = { false };
-		foreach(this->technites, t)
-		{
-			Grid::actualWorld.cellStack[t->location.stackID].MakeLocalHole(t->location.height);
-			familyChanged[Grid::high.grid.GetCell(t->location.stackID).family] = true;
-		}
-		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
-			if (familyChanged[i])
-			{
-				Grid::low.family[i].SetOutdated(0);
-				Grid::high.family[i].SetOutdated(0);
-			}
+		OnKill();
 	}
 
 

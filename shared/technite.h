@@ -41,7 +41,7 @@ namespace Technites
 	static_assert(sizeof(AtomicBool) == 1, "Struct alignment out of wack");
 
 
-	ALIGN4
+	//ALIGN4
 	class Technite
 	{
 	public:
@@ -64,6 +64,47 @@ namespace Technites
 		{
 			return content != Grid::Content::Clear && content != Grid::Content::Water && content != Grid::Content::Lava;
 		}
+
+		class CompressedLocation
+		{
+		private:
+			UINT32		data;
+			static_assert(Grid::HighSetup::GridType::CellCount < 0x1000000, "Number of grid possibilities exceeds compression capacity");
+			static_assert(Grid::CellStack::Range < 0x100, "Number of grid layers exceeds compression capacity");
+		public:
+			Grid::HCellIdI	GetI()	const
+			{
+				return Grid::HCellIdI(data >> 8, GetHeight());
+			}
+			Grid::HCellIdU	GetU()	const
+			{
+				return Grid::HCellIdU(data >> 8, GetLayer());
+			}
+
+			int			GetHeight() const
+			{
+				return Grid::CellStack::ToHeight(GetLayer());
+			}
+
+			UINT		GetLayer() const
+			{
+				return data & 0xFF;
+			}
+			UINT32		GetStackID() const
+			{
+				return data >> 8;
+			}
+
+			void		operator=(const Grid::HCellIdI&cellID)
+			{
+				data = (cellID.stackID << 8) | Grid::CellStack::ToLayer(cellID.height);
+			}
+
+			void		operator=(const Grid::HCellIdU&cellID)
+			{
+				data = (cellID.stackID << 8) | cellID.layer;
+			}
+		};
 
 		struct Resources
 		{
@@ -103,7 +144,7 @@ namespace Technites
 				local = (BYTE)std::min<int>((int)local + (int)by, 255);
 			}
 
-		}				resources;
+		};
 
 
 		static const Resources SplitCost, MoveCost, EatCost, EnergyPackage, MatterPackage;
@@ -133,67 +174,120 @@ namespace Technites
 			Success
 		};
 
-		struct TTarget
+		class CompressedTarget
 		{
-			unsigned	neighborIndex;
-			int			heightDelta;
+		private:
+			BYTE		data = 0;
+		public:
 
-
-			BYTE		Compress()	const
+			/**/		CompressedTarget()	{}
+			/**/		CompressedTarget(BYTE neighborIndex, int heightDelta)
 			{
-				BYTE base = (BYTE)neighborIndex;
-				base |= (BYTE)((heightDelta+1) << 3);
-				return base;
+				Set(neighborIndex, heightDelta);
 			}
 
-			void		Decompress(BYTE compressed)
+			unsigned	GetNeighborIndex() const
 			{
-				neighborIndex = (compressed&0x7);
-				heightDelta = ((int)(compressed >> 3)) -1;
+				return data&0x7;
+			}
+			int			GetHeightDelta() const
+			{
+				return ((int)(data >> 3)) -1;
+			}
+
+			void		Set(BYTE neighborIndex, int heightDelta)
+			{
+				data = neighborIndex | (BYTE)((heightDelta+1) << 3);
 			}
 		};
 
-		struct TState
+		class CompressedState
 		{
-			bool		lit;
-			count_t		ttl;
-
-			/**/		TState() {}
-			/**/		TState(bool lit, count_t ttl) : lit(lit), ttl(ttl) {}
-			/**/		TState(BYTE compressed) { Decompress(compressed); }
-
-			BYTE		Compress() const
+		private:
+			BYTE		data = 0;
+		public:
+			/**/		CompressedState(){}
+			/**/		CompressedState(bool lit, BYTE ttl)
 			{
-				return (BYTE)((ttl & 0x7F) | (lit ? 0x80 : 0x0));
+				Set(lit,ttl);
 			}
 
-			void		Decompress(BYTE compressed)
+			bool		IsLit() const
 			{
-				lit = (compressed & 0x80) != 0;
-				ttl = (compressed & 0x7f);
+				return (data & 0x80) != 0;
+			}
+			BYTE		GetTTL() const
+			{
+				return (data & 0x7f);
+			}
+
+			void		SetLit(bool b)
+			{
+				if (b)
+					data |= 0x80;
+				else
+					data &= ~0x80;
+			}
+
+			void		SetTTL(BYTE ttl)
+			{
+				data &= 0x80;
+				data |= (ttl & 0x7f);
+			}
+
+			void		Set(bool lit, BYTE ttl)
+			{
+				data = (BYTE)((ttl & 0x7F) | (lit ? 0x80 : 0x0));
 			}
 		};
 
-
-		bool			DecodeAbsoluteTarget(Grid::HCellIdI&target) const;
-
-		Task			nextTask = Task::None;
-		TaskResult		taskResult = TaskResult::Again;
-		Grid::HCellIdI	location;
-
-		BYTE			compressedTarget = 0,
-						compressedState = TState(false,64).Compress();
-		AtomicBool		isDead = false;
-
-
-		/**/			Technite() {}
-
-
-		TState			DecodeState() const { return TState(compressedState); }
-
-		BYTE			GetLifeCost() const
+		struct TCompactState
 		{
-			return GetLifeCostAtHeight(location.height);
+			CompressedLocation	location;	//4 bytes
+			Resources		resources;		//2 bytes
+			TaskResult		lastResult;		//1 byte
+			CompressedState	state;			//1 byte
+		};	//8 bytes
+
+
+		struct TClientInstruction
+		{
+			//CompressedLocation	location;	//4 bytes
+			Task				nextTask;	//1 byte
+			CompressedTarget	taskTarget;	//1 byte
+			BYTE				taskParameter;	//1 byte
+		};
+
+
+
+
+		bool				DecodeAbsoluteTarget(Grid::HCellIdI&target) const;
+
+		Resources			resources;							// 2
+		Task				nextTask = Task::None;				// 1
+		TaskResult			taskResult = TaskResult::Again;		// 1
+		CompressedLocation	location;							// 4
+		CompressedState		state = CompressedState(false,64);	// 1
+		CompressedTarget	target;								// 1
+		AtomicBool			isDead = false;						// 1
+		BYTE				taskParameter = 0;					// 1
+
+
+		/**/				Technite() {}
+
+
+
+		void				ExportState(TCompactState&outState) const
+		{
+			outState.location = location;
+			outState.resources = resources;
+			outState.lastResult = taskResult;
+			outState.state = state;
+		}
+
+		BYTE				GetLifeCost() const
+		{
+			return GetLifeCostAtHeight(location.GetHeight());
 		}
 
 		static BYTE		GetLifeCostAtHeight(int height)
@@ -204,7 +298,7 @@ namespace Technites
 
 		BYTE			GetLightEnergyYield() const
 		{
-			return GetLightEnergyYieldAtHeight(location.height);
+			return GetLightEnergyYieldAtHeight(location.GetHeight());
 		}
 
 		static BYTE		GetLightEnergyYieldAtHeight(int height)
@@ -216,9 +310,17 @@ namespace Technites
 
 	};
 
-	//sstatic const size_t Size = sizeof(Technite);
+	static_assert(sizeof(Technite::TCompactState) == 8,"Packing error");
+	static_assert(sizeof(Technite::TClientInstruction) == 3,"Packing error");
 
-	static_assert(sizeof(Technite) == 8 + sizeof(Grid::HCellIdI),"Packing error");
+	static const size_t ResourceSize = sizeof(Technite::Resources);
+	static const size_t LocationSize = sizeof(Technite::CompressedLocation);
+	static const size_t TechniteSize = sizeof(Technite);
+	static const size_t ClientInstructionSize = sizeof(Technite::TClientInstruction);
+
+	static_assert(ResourceSize == 2,"Packing error");
+	static_assert(LocationSize == 4,"Packing error");
+	static_assert(TechniteSize == 12,"Packing error");
 
 	class AtomicGrid
 	{
@@ -268,6 +370,8 @@ namespace Technites
 
 		index_t					Map(const Grid::HCellIdI&, const Cluster*&outCluster) const;
 		index_t					Map(const Grid::HCellIdI&, Cluster*&outCluster, bool initIfEmpty);
+		index_t					Map(const Grid::HCellIdU&, const Cluster*&outCluster) const;
+		index_t					Map(const Grid::HCellIdU&, Cluster*&outCluster, bool initIfEmpty);
 		index_t					MapCluster(const Grid::HCellIdI&loc, index_t&outFamily, UINT32&heightRemainder) const;
 		index_t					MapCluster(const Grid::HCellIdU&loc, index_t&outFamily, UINT32&heightRemainder) const;
 
@@ -276,10 +380,15 @@ namespace Technites
 		/**/					BroadTechniteMap() {}
 
 		void					Unset(const Grid::HCellIdI& id);
+		void					Unset(const Grid::HCellIdU& id);
 		void					Set(const Grid::HCellIdI&id, index_t to);
+		void					Set(const Grid::HCellIdU&id, index_t to);
 		bool					Query(const Grid::HCellIdI&id, index_t&out) const;
+		bool					Query(const Grid::HCellIdU&id, index_t&out) const;
 		bool					IsSet(const Grid::HCellIdI&id) const;
+		bool					IsSet(const Grid::HCellIdU&id) const;
 		bool					SetNew(const Grid::HCellIdI&id, index_t to);
+		bool					SetNew(const Grid::HCellIdU&id, index_t to);
 		count_t					Count() const;
 	};
 
@@ -323,6 +432,7 @@ namespace Technites
 		static bool				ValidGlobalTechniteLocation(const Grid::HCellIdI&location);
 
 		virtual bool			IsTechniteFaction() const override { return true; }
+		virtual void			OnKill() override;
 
 
 		typedef Technite::TaskResult	ExecResult;
@@ -332,9 +442,9 @@ namespace Technites
 
 		struct WorkerData
 		{
-			Buffer<Grid::HCellIdI>	newTechnites;
-			Buffer<std::pair<Grid::HCellIdI, Grid::HCellIdI> > moveInstructions;
-			Buffer<std::pair<Grid::HCellIdI, Technite::Resources> > increaseResources;
+			Buffer<Grid::HCellIdU>	newTechnites;
+			Buffer<std::pair<Grid::HCellIdU, Grid::HCellIdU> > moveInstructions;
+			Buffer<std::pair<Grid::HCellIdU, Technite::Resources> > increaseResources;
 		};
 
 

@@ -543,7 +543,7 @@ namespace State
 		server.InstallChannel(Channels::constructionAbort);
 		server.InstallChannel(Channels::constructionBegin);
 		server.InstallChannel(Channels::enableStructure);
-		server.InstallChannel(Channels::clientReady);
+		server.InstallChannel(Channels::clientFactionRequest);
 		server.InstallChannel(Channels::removeEntity);
 		server.InstallChannel(Channels::restoreCoreLink);
 		server.InstallChannel(Channels::automate);
@@ -1910,8 +1910,9 @@ void	State::Load(const String&filename)
 										for (index_t i = 0; i < tfaction->technites.Count(); i++)
 										{
 											const Technites::Technite&t = tfaction->technites[i];
-											tfaction->techniteMap.Set(t.location, i);
-											Grid::actualWorld.cellStack[t.location.stackID].SetLocalTechniteFaction(t.location.height, tfaction->gridID);
+											Grid::HCellIdU loc = t.location.GetU();
+											tfaction->techniteMap.Set(loc, i);
+											Grid::actualWorld.cellStack[loc.stackID].SetLocalTechniteFaction(t.location.GetHeight(), tfaction->gridID);
 										}
 									}
 									else
@@ -2719,11 +2720,11 @@ namespace State
 
 								if (client)
 								{
-									Protocol::ClientReady cr;
+									Protocol::ClientFactionResponse cr;
 									cr.factionToken.value.Generate();
-									cr.isReady = false;
+									cr.startFactionTypes = 0;
 									cr.planetConfig = State::persistentPlanetInfo;
-									Channels::clientReady.SendTo(client->peer.lock(),cr);
+									Channels::clientFactionResponse.SendTo(client->peer.lock(),cr);
 								}
 
 								Objects::Faction::Kill(faction);

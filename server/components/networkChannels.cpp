@@ -2,6 +2,7 @@
 #include "networkChannels.h"
 #include "state.h"
 #include "serverLogEvent.h"
+#include "../../shared/technite.h"
 
 extern Random		random;
 
@@ -27,8 +28,8 @@ namespace Channels
 	TCP::Channel<Protocol::ConstructionAbort, 1, Protocol::ChannelID::ConstructionAbort>			constructionAbort(Receiver::ConstructionAbort);
 	TCP::Channel<Protocol::ConstructionBegin, 1, Protocol::ChannelID::ConstructionBegin>			constructionBegin(Receiver::ConstructionBegin);
 	TCP::Channel<Protocol::EnableStructure, 1, Protocol::ChannelID::EnableStructure>				enableStructure(Receiver::EnableStructure);
-	TCP::Channel<Protocol::ClientReady, 1, Protocol::ChannelID::ClientReady>						clientReady(Receiver::ClientReady);
-	
+	TCP::Channel<Protocol::ClientFactionRequest, 1, Protocol::ChannelID::ClientFaction>				clientFactionRequest(Receiver::ClientFaction);
+
 	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::RestoreCoreLink>							restoreCoreLink(Receiver::RestoreCoreLink);
 	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::RemoveEntity>								removeEntity(Receiver::RemoveEntity);
 	TCP::Channel<Protocol::Automate, 1, Protocol::ChannelID::Automate>								automate(Receiver::Automate);
@@ -39,6 +40,7 @@ namespace Channels
 	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::IdentifyUser>								identifyUserRecv(Receiver::IdentifyUser);
 	TCP::Channel<Package::NetString<256>, 1, Protocol::ChannelID::ChatMessage>						chatMessage(Receiver::ChatMessage);
 
+	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>				clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
 	TCP::ObjectSender<Protocol::WorldDelta,Protocol::ChannelID::WorldDelta>							updateWorld;
 	TCP::ObjectSender<Protocol::NewMobileEntity,Protocol::ChannelID::NewMobileEntity>				newMobileEntity;
@@ -67,6 +69,9 @@ namespace Channels
 	#endif
 
 	TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>							unitLimits;
+	#if TECHNITES
+		TCP::ObjectSender<Protocol::TechniteChunk, Protocol::ChannelID::TechniteChunk>				techniteChunk;
+	#endif
 
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
 
@@ -146,19 +151,25 @@ namespace Receiver
 
 
 
-	void	ClientReady(Protocol::ClientReady&p, TCP::Peer&peer)
+	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
 			return;
+		//const Protocol::ClientFactionRequest&p = _p;
 		State::PClient client = To<State::Client>::Cast(peer.attachment);
+		Protocol::ClientFactionResponse response;
+		response.startFactionTypes = _p.startFactionTypes;
+		response.factionToken = _p.factionToken;
+		response.planetConfig = State::persistentPlanetInfo;
 
-		if (!p.isReady)
+		if (!response.startFactionTypes)
 		{
 			if (State::activePlayers.FindAndErase(client))
 			{
 				State::playerMap.Unset(client->faction);
 				client->faction.reset();
-				Channels::clientReady.SendTo(client->peer.lock(), p);
+
+				Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 			}
 			return;
 		}
@@ -167,8 +178,8 @@ namespace Receiver
 		{
 			//disconnecting client. no new faction
 			LogEvent(EventType::SessionRelated, peer, "Cannot connect ("+String(State::phase.ToString())+") right now. Disconnecting");
-			p.isReady = false;
-			Channels::clientReady.SendTo(client->peer.lock(), p);
+			response.startFactionTypes = 0;
+			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 			client->peer.lock()->Disconnect();
 			return;
 		}
@@ -182,7 +193,7 @@ namespace Receiver
 
 		bool newFaction = false;
 
-		if (State::Config::enableNexusAI && Objects::Faction::nexus->accessToken == p.factionToken && (peer.ToString() == "localhost" || peer.ToString() == "127.0.0.1"))
+		if (State::Config::enableNexusAI && Objects::Faction::nexus->accessToken == response.factionToken && (peer.ToString() == "localhost" || peer.ToString() == "127.0.0.1"))
 		{
 			LogEvent(EventType::SessionRelated, peer, "Access to nexus faction permitted.");
 			faction = Objects::Faction::nexus;
@@ -190,13 +201,13 @@ namespace Receiver
 		#ifdef _DEBUG
 			if (faction
 				|| (Objects::Faction::all.IsNotEmpty() && (faction = Objects::Faction::all.first().lock()))
-				|| State::tokenMap.Query(p.factionToken,faction))
+				|| State::tokenMap.Query(response.factionToken,faction))
 		#else
 			if (faction || State::tokenMap.Query(p.factionToken,faction))
 		#endif
 		{
 			#ifdef _DEBUG
-				p.factionToken = faction->accessToken;
+				response.factionToken = faction->accessToken;
 			#endif
 			State::PClient other;
 			if (State::playerMap.Query(faction,other))
@@ -207,8 +218,8 @@ namespace Receiver
 				{
 					//disconnecting client. no new faction
 					LogEvent(EventType::SessionRelated, peer, "Disconnecting AI client.");
-					p.isReady = false;
-					Channels::clientReady.SendTo(client->peer.lock(), p);
+					response.startFactionTypes = 0;
+					Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 					client->peer.lock()->Disconnect();
 					return;
 				}
@@ -230,15 +241,15 @@ namespace Receiver
 		}
 		else
 		{
-			if (p.factionToken.value.IsSet())
+			if (response.factionToken.value.IsSet())
 			{
-				LogEvent(EventType::SessionRelated,peer,"Provided token not recognized: "+p.factionToken.value.ToString());
+				LogEvent(EventType::SessionRelated,peer,"Provided token not recognized: "+response.factionToken.value.ToString());
 
 				if (State::Config::closedGame && State::roundNumber > 0)
 				{
 					foreach (Objects::Faction::all,f)
 					{
-						ASSERT__(f->lock()->accessToken != p.factionToken);
+						ASSERT__(f->lock()->accessToken != response.factionToken);
 						LogEvent(EventType::Debug,peer,"Known token: "+f->lock()->accessToken.ToString());
 					}
 				}
@@ -247,7 +258,7 @@ namespace Receiver
 			else
 			{
 				LogEvent(EventType::SessionRelated,peer,"No faction token provided");
-				p.factionToken.value.Generate();
+				response.factionToken.value.Generate();
 			}
 			newFaction = true;
 		}
@@ -263,23 +274,39 @@ namespace Receiver
 		{
 			if (State::Config::closedGame && State::roundNumber > 0)
 			{
-				p.isReady = false;
-				
-				Channels::clientReady.SendTo(peer,p);
+				response.startFactionTypes = 0;
+				Channels::clientFactionResponse.SendTo(peer,response);
 				LogEvent(EventType::SessionRelated,peer,"Game is closed. User does not have any valid access token. Join-request rejected.");
 				return;
 			}
 			//p.factionToken.value.Generate();	let's keep it even if it's unknown
-			client->faction.reset(new Objects::Faction());
+			#if TECHNITES
+				if (response.startFactionTypes & Protocol::FactionType::TechniteFaction)
+				{
+					Technites::PFaction tfaction = Technites::Faction::Create();
+					client->faction = tfaction;
+					if (!client->faction)
+					{
+						response.startFactionTypes = 0;
+						Channels::clientFactionResponse.SendTo(peer, response);
+						LogEvent(EventType::SessionRelated, peer, "Cannot create any more technite factions on this server.");
+						return;
+					}
+				}
+				else
+			#endif
+				{
+					client->faction.reset(new Objects::Faction());
+					Objects::Faction::all << client->faction;
+				}
 			faction = client->faction;
-			Objects::Faction::all << client->faction;
 
 
 			
 			LogEvent(EventType::SessionRelated,peer,"Created new faction.");
 
-			client->faction->accessToken = p.factionToken;
-			State::tokenMap.Set(p.factionToken,client->faction);
+			client->faction->accessToken = response.factionToken;
+			State::tokenMap.Set(response.factionToken,client->faction);
 		}
 		else
 		{
@@ -289,9 +316,9 @@ namespace Receiver
 		State::playerMap.Set(client->faction,client);
 		client->wantNewRound = false;
 
-		p.planetConfig = State::persistentPlanetInfo;
+		//response.planetConfig = State::persistentPlanetInfo;
 
-		Channels::clientReady.SendTo(client->peer.lock(),p);
+		Channels::clientFactionResponse.SendTo(client->peer.lock(),response);
 		Channels::setFactionID.SendTo(client->peer.lock(),client->faction->id);
 
 		//CHEAT_SHOW_ALL_RESOURCES
@@ -353,7 +380,8 @@ namespace Receiver
 
 
 			const float r = Grid::ToRadius(0);
-			for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
+			//avoid 12 corner cells: make sure all candidates have 6 neighbors
+			for (index_t i = 12; i < Grid::LowSetup::GridType::CellCount; i++)
 			{
 				if (State::Config::goal == State::Config::Goal::EMPConquerNexus)
 				{
@@ -434,64 +462,82 @@ namespace Receiver
 			}
 
 
-			if (State::Config::startBases)
+			const auto&n = Grid::low.grid.GetCell(best).neighborhood;
+			if (response.startFactionTypes & Protocol::FactionType::RegularFaction)
 			{
-				Grid::LCellIdI location(best,0);	//first 12 are corner cells
-				int h = Objects::FindApplicableGround(location,true);
-				location.height = h;
-				static const int want = 20;
-				static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);
-				Grid::Resource::Require("Fuel").coverage[location.stackID] = stackHeight;
-				Grid::Resource::Require("Minerals").coverage[location.stackID] = stackHeight;
-				foreach (Objects::Faction::all, _f)
+				if (State::Config::startBases)
 				{
-					_f->lock()->visibility.resourcesDiscovered[location.stackID] = false;
+					Grid::LCellIdI location(best,0);	//first 12 are corner cells
+					int h = Objects::FindApplicableGround(location,true);
+					location.height = h;
+					static const int want = 20;
+					static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);
+					Grid::Resource::Require("Fuel").coverage[location.stackID] = stackHeight;
+					Grid::Resource::Require("Minerals").coverage[location.stackID] = stackHeight;
+					foreach (Objects::Faction::all, _f)
+					{
+						_f->lock()->visibility.resourcesDiscovered[location.stackID] = false;
+					}
+
+					Grid::LCellIdI at0 = Grid::LCellIdI(n.neighborID[0],h);
+					Grid::LCellIdI at1 = Grid::LCellIdI(n.neighborID[1],h);
+					Grid::LCellIdI at2 = Grid::LCellIdI(n.neighborID[2],h);
+					Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],h);
+					Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],h);
+
+					Objects::PMine mine = To<Objects::Mine>::Cast(
+						Objects::Mine::globalPrototype->CreateNewInstance(client->faction,location,0));
+					mine->CorrectTerrain(false,0,true);
+					Objects::InsertConstructed(mine,0);
+					mine->SetEnabledOverride(true);
+				
+					Objects::PGenerator generator = To<Objects::Generator>::Cast(
+						Objects::Generator::globalPrototype->CreateNewInstance(client->faction,at1,0));
+					generator->CorrectTerrain(false,0,true);
+					Objects::InsertConstructed(generator,0);
+					generator->SetEnabledOverride(true);
+				
+					std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
+						Objects::MineralContainer::globalPrototype->CreateNewInstance(client->faction,at2,0));
+					container->CorrectTerrain(false,0,true);
+					Objects::InsertConstructed(container,0);
+					Objects::RefreshCompoundCoverage(0);
+
+
+					Objects::SpawnVehicle(client->faction,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
+					Objects::SpawnVehicle(client->faction,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
+					Objects::SpawnVehicle(client->faction,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,0);
+
 				}
-
-				Grid::LCellIdI at0 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[0],h);
-				Grid::LCellIdI at1 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[1],h);
-				Grid::LCellIdI at2 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[2],h);
-				Grid::LCellIdI at3 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[3],h);
-				Grid::LCellIdI at4 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[4],h);
-
-				Objects::PMine mine = To<Objects::Mine>::Cast(
-					Objects::Mine::globalPrototype->CreateNewInstance(client->faction,location,0));
-				mine->CorrectTerrain(false,0,true);
-				Objects::InsertConstructed(mine,0);
-				mine->SetEnabledOverride(true);
-				
-				Objects::PGenerator generator = To<Objects::Generator>::Cast(
-					Objects::Generator::globalPrototype->CreateNewInstance(client->faction,at1,0));
-				generator->CorrectTerrain(false,0,true);
-				Objects::InsertConstructed(generator,0);
-				generator->SetEnabledOverride(true);
-				
-				std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
-					Objects::MineralContainer::globalPrototype->CreateNewInstance(client->faction,at2,0));
-				container->CorrectTerrain(false,0,true);
-				Objects::InsertConstructed(container,0);
-				Objects::RefreshCompoundCoverage(0);
-
-
-				Objects::SpawnVehicle(client->faction,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-				Objects::SpawnVehicle(client->faction,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-				Objects::SpawnVehicle(client->faction,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,0);
-
+				else
+				{
+					Objects::SpawnVehicle(client->faction,Grid::LCellIdI((UINT32)best,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
+					Grid::LCellIdI at0 = Grid::LCellIdI(n.neighborID[0],0);
+					Grid::LCellIdI at1 = Grid::LCellIdI(n.neighborID[1],0);
+					Grid::LCellIdI at2 = Grid::LCellIdI(n.neighborID[2],0);
+					Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],0);
+					Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],0);
+					Objects::SpawnVehicle(client->faction, at0, Objects::Component::hoverbase, Objects::Component::artillery, true, 0);
+					Objects::SpawnVehicle(client->faction, at1, Objects::Component::hoverbase, Objects::Component::radar, true, 0);
+					Objects::SpawnVehicle(client->faction, at2, Objects::Component::hoverbase, Objects::Component::terraformer, true, 0);
+					Objects::SpawnVehicle(client->faction, at3, Objects::Component::hoverbase, Objects::Component::resourceScanner, true, 0);
+					Objects::SpawnVehicle(client->faction, at4, Objects::Component::hoverbase, Objects::Component::terraformer, true, 0);
+				}
 			}
-			else
-			{
-				Objects::SpawnVehicle(client->faction,Grid::LCellIdI((UINT32)best,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-				Grid::LCellIdI at0 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[0],0);
-				Grid::LCellIdI at1 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[1],0);
-				Objects::SpawnVehicle(client->faction,at1,Objects::Component::hoverbase, Objects::Component::radar,true,0);
-				Grid::LCellIdI at2 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[2],0);
-				Grid::LCellIdI at3 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[3],0);
-				Objects::SpawnVehicle(client->faction,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,0);
-				Grid::LCellIdI at4 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[4],0);
-				Objects::SpawnVehicle(client->faction,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-				Objects::SpawnVehicle(client->faction,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-				Objects::SpawnVehicle(client->faction,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,0);
-			}
+			#if TECHNITES
+				if (response.startFactionTypes & Protocol::FactionType::TechniteFaction)
+				{
+					//Grid::LCellIdI at5 = Grid::LCellIdI(n.neighborID[5], 0);
+					UINT32 finer = Grid::low.grid.GetCell(n.neighborID[5]).higherEquivalent;
+					int h = Grid::actualWorld.cellStack[finer].FindMostApplicableGround(0,false);
+					ASSERT__(h != Objects::badHeight);
+					h--;
+					ASSERT__(client->faction->IsTechniteFaction());
+					Technites::PFaction tf = To<Technites::Faction>::Cast(client->faction);
+					tf->CreateSingleTechnite(Grid::HCellIdI(finer,h),0.f);
+				}
+			#endif
+
 		}
 		else
 		{
@@ -556,8 +602,36 @@ namespace Receiver
 					Channels::newMobileEntity.SendTo(peer,st);
 				}
 			}
-
 		}
+
+
+		#if TECHNITES
+
+			if (client->faction->IsTechniteFaction())
+			{
+				Technites::PFaction tf = To<Technites::Faction>::Cast(client->faction);
+
+				static Buffer<Technites::Technite::TCompactState> states;
+				
+				states.Clear();
+				foreach (tf->technites,tech)
+					tech->ExportState(states.Append());
+
+				count_t chunks = (states.Count() / Protocol::MaxTechnitesPerChunk);
+				if (states.Count() % Protocol::MaxTechnitesPerChunk)
+					chunks++;
+				Protocol::TechniteChunk chunk;
+				chunk.first = true;
+				for (index_t i = 0; i < chunks; i++)
+				{
+					chunk.first = i == 0;
+					chunk.technites.AssignSection(states,i * Protocol::MaxTechnitesPerChunk);
+					Channels::techniteChunk.SendTo(peer,chunk);
+				}
+			}
+
+		#endif
+
 
 
 		#ifndef CHEAT_SHOW_ALL_RESOURCES

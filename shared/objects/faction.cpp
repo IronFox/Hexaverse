@@ -1226,6 +1226,7 @@ namespace Objects
 
 		/*static*/ void	Faction::Kill(const PFaction&f)
 		{
+			f->OnKill();
 			LogEvent(EventType::Debug,nullptr, "Erasing faction "+f->id.ToString());
 			static Buffer0<PWorldEntity>	toDelete;
 			for (index_t i = 0; i < f->structures.Count(); i++)

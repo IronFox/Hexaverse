@@ -761,13 +761,17 @@ namespace Test
 
 				ASSERT__(t->taskResult != Technites::Technite::TaskResult::BadCommand);
 				t->nextTask = (Technites::Technite::Task)random.get((int)Technites::Technite::Task::Count - 1);
-				Technites::Technite::TTarget target;
+				int hDelta;
+				Grid::HCellIdI loc = t->location.GetI();
 				do
 				{
-					target.heightDelta = random.get(-1, 1);
-				} while (t->location.height + target.heightDelta < Grid::CellStack::BottomHeight || t->location.height + target.heightDelta > Grid::CellStack::TopHeight);
-				target.neighborIndex = random.get(Grid::high.grid.GetCell(t->location.stackID).neighborhood.numNeighbors-1);
-				t->compressedTarget = target.Compress();
+					hDelta = random.get(-1, 1);
+				} while (loc.height + hDelta < Grid::CellStack::BottomHeight || loc.height + hDelta > Grid::CellStack::TopHeight);
+
+				
+				Technites::Technite::CompressedTarget target(random.get(Grid::high.grid.GetCell(loc.stackID).neighborhood.numNeighbors-1), hDelta);
+
+				t->target = target;
 			};
 
 			Technites::BeginProcessing();
@@ -802,8 +806,8 @@ namespace Test
 			} while (at == InvalidIndex);
 
 			index_t at2;
-			const auto&n = Grid::high.grid.GetCell(a->technites.first().location.stackID).neighborhood;
-			at2 = b->CreateSingleTechnite(Grid::HCellIdI(n.neighborID[0],a->technites.first().location.height), 0.f);
+			const auto&n = Grid::high.grid.GetCell(a->technites.first().location.GetStackID()).neighborhood;
+			at2 = b->CreateSingleTechnite(Grid::HCellIdI(n.neighborID[0],a->technites.first().location.GetHeight()), 0.f);
 			if (at2 == InvalidIndex)
 			{
 				//std::cout << "can't place second. skipping round" << std::endl;
@@ -815,24 +819,21 @@ namespace Test
 
 			Technites::Technite&ta = a->technites.first();
 			Technites::Technite&tb = b->technites.first();
-			Technites::Technite::TTarget targetA,targetB;
-			targetA.heightDelta = 0;
-			targetA.neighborIndex = 0; //picked first one up top
-			ta.compressedTarget = targetA.Compress();
+			Technites::Technite::CompressedTarget targetA(0,0);
+			ta.target = targetA;
 
 
-			const auto&n2 = Grid::high.grid.GetCell(tb.location.stackID).neighborhood;
+			const auto&n2 = Grid::high.grid.GetCell(tb.location.GetStackID()).neighborhood;
 			int found = -1;
 			for (int k = 0; k < n2.numNeighbors; k++)
-				if (n2.neighborID[k] == ta.location.stackID)
+				if (n2.neighborID[k] == ta.location.GetStackID())
 				{
 					found = k;
 					break;
 				}
 			ASSERT__(found != -1);
-			targetB.heightDelta = 0;
-			targetB.neighborIndex = (BYTE)found;
-			tb.compressedTarget = targetB.Compress();
+			Technites::Technite::CompressedTarget targetB((BYTE)found,0);
+			tb.target = targetB;
 
 
 			int energyA = random.get(10, 20),
@@ -891,17 +892,17 @@ namespace Test
 			at = faction->CreateSingleTechnite(root, 0.f);
 		} while (at == InvalidIndex);
 
-		count_t ttl0 = faction->technites.first().DecodeState().ttl;
+		BYTE ttl0 = faction->technites.first().state.GetTTL();
 		index_t iteration = 0;
 		while (faction->technites.IsNotEmpty())
 		{
 			const Technites::Technite&tech = faction->technites.first();
 			if (iteration > 0)
-				ASSERT__(tech.DecodeState().lit);
+				ASSERT__(tech.state.IsLit());
 			BYTE expectedEnergy = (BYTE)std::min<count_t>(0xFF, iteration * (count_t)tech.GetLightEnergyYield());
-			count_t expectedTTL = ttl0 - iteration * tech.GetLifeCost();
+			BYTE expectedTTL = (BYTE)(ttl0 - iteration * tech.GetLifeCost());
 			ASSERT_EQUAL__(expectedEnergy, tech.resources.energy);
-			ASSERT_EQUAL__(expectedTTL, tech.DecodeState().ttl);
+			ASSERT_EQUAL__(expectedTTL, tech.state.GetTTL());
 
 			iteration++;
 

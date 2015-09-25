@@ -302,6 +302,7 @@ namespace Objects
 			virtual bool	IsTechniteFaction() const { return false; }
 
 		#endif
+		virtual void	OnKill() {};
 
 	};
 

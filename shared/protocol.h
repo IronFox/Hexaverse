@@ -8,6 +8,7 @@
 #include "grid.h"
 #include "objects.h"
 #include "stringTable.h"
+#include "technite.h"
 
 
 #pragma comment(lib,"ws2_32.lib")
@@ -1528,6 +1529,82 @@ namespace Protocol
 
 
 
+	template <typename T, count_t MaxElementCount>
+		class SmartPODReferenceField : public NetArray<T,MaxElementCount>
+		{
+			typedef NetArray<T,MaxElementCount>	Super;
+		private:
+			const T*		sourceField=nullptr;
+			count_t			sourceCount=0;
+			bool			hasAssignedSource = false;
+
+			void			_Assign(const T*field, count_t maxCount, index_t offset)
+			{
+				sourceField = field + offset;
+				if (maxCount > offset)
+					sourceCount = std::min(maxCount - offset,MaxElementCount);
+				else
+					sourceCount = 0;
+				hasAssignedSource = true;
+			}
+
+		public:
+			template <typename Strategy>
+				void		AssignSection(const BasicBuffer<T,Strategy>&field, index_t offset = 0)
+				{
+					_Assign(field.pointer(),field.Count(),offset);
+				}
+			void			AssignSection(const ArrayData<T>&field, index_t offset = 0)
+			{
+				_Assign(field.pointer(),field.Count(),offset);
+			}
+
+			virtual	bool			HasFixedSize() const	override
+			{
+				return false;
+			}
+
+			virtual	serial_size_t	GetSerialSize(bool exportSize) const	override
+			{
+				if (hasAssignedSource)
+				{
+					serial_size_t memberSize = (serial_size_t)(sizeof(T)*sourceCount);
+					if (exportSize)
+						memberSize += GetSerialSizeOfSize(sourceCount);
+					return memberSize;
+				}
+				return Super::GetSerialSize(exportSize);
+			}
+			virtual	bool		Serialize(IWriteStream&outStream, bool exportSize) const	override
+			{
+				if (hasAssignedSource)
+				{
+					if (exportSize && !outStream.WriteSize(sourceCount))
+						return false;
+					return outStream.WritePrimitives(sourceField,sourceCount);
+				}
+				return Super::Serialize(outStream,exportSize);
+			}
+			virtual	bool		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override
+			{
+				hasAssignedSource = false;
+				return Super::Deserialize(inStream,fixedSize);
+			}
+		};
+
+
+	#if TECHNITES
+		static const count_t	MaxTechnitesPerChunk=10000;
+		typedef SmartPODReferenceField<Technites::Technite::TCompactState,MaxTechnitesPerChunk>	TechniteField;
+
+
+		NETSTRUCT2(TechniteChunk
+			, NET(bool), first
+			, TechniteField, technites
+			);
+
+	#endif
+
 
 	NETSTRUCT5(MobileState
 		, EntityState, entityState
@@ -1697,11 +1774,29 @@ namespace Protocol
 		, NETA(TResourceCell), cells
 	)
 
-	NETSTRUCT3(ClientReady
-		, NET(bool), isReady
+
+	struct FactionType
+	{
+		enum flag_t
+		{
+			RegularFaction = 0x1,
+			TechniteFaction = 0x2,	//can be combined
+		};
+	};
+
+
+	NETSTRUCT3(ClientFactionResponse
+		, NET(UINT32), startFactionTypes
 		, NET(CryptographicID), factionToken
 		, NET(Grid::TSharedPlanetConfig), planetConfig
 	)
+
+	NETSTRUCT2(ClientFactionRequest
+		, NET(UINT32), startFactionTypes
+		, NET(CryptographicID), factionToken
+	)
+
+
 	NETSTRUCT4(GameProgress
 		, Package::NetString<256>, status
 		, Package::NetString<256>, warning
@@ -1752,6 +1847,9 @@ namespace Protocol
 
 	namespace ChannelID
 	{
+		//c2s: client to server
+		//s2c: server to client
+
 		enum id_t
 		{
 			Unused,
@@ -1765,7 +1863,7 @@ namespace Protocol
 			PhaseChange,		//s2c: PhaseChange
 
 			SetClientState,		//c2s: ClientState -> s2c: Result
-			ClientReady,		//c2s: ClientReady -> s2c: ClientReady
+			ClientFaction,		//c2s: ClientFactionRequest -> s2c: ClientFactionResponse
 			SetFactionID,		//s2c: NET(TUniqueID)
 
 			WorldDelta,			//s2c : WorldDelta
@@ -1824,6 +1922,10 @@ namespace Protocol
 			UnitLimits,			// s2c : UnitLimits
 
 			ChatMessage,		// c2s: NetString<256>
+
+
+			TechniteChunk,		// s2c: TechniteChunk
+
 
 			//remote control channels (these require user level 2+)
 			RC_UpdateWorld,				//c2s: Grid::TExtendedPlanetConfig
