@@ -28,6 +28,31 @@ namespace Grid
 
 
 
+		template <typename Stack>
+		void		ChangeSensory(const Grid::HCellIdU&center, short changeBy, Stack*cellStack, bool*familyChanged)
+		{
+			unsigned bottom = center.layer > 0 ? center.layer - 1 : 0;
+			unsigned top = std::min(Grid::CellStack::Range-1, center.layer + 1);
+
+
+			const auto&c = high.grid.GetCell(center.stackID);
+			{
+				auto&stack = cellStack[center.stackID];
+				for (unsigned h = bottom; h <= top; h++)
+					stack.volumeCell[h].AlterVisibility(changeBy);
+			}
+
+			familyChanged[c.family] = true;
+			for (int k = 0; k < c.neighborhood.numNeighbors; k++)
+			{
+				familyChanged[high.grid.GetCell(c.neighborhood.neighborID[k]).family] = true;
+
+				auto&stack = cellStack[c.neighborhood.neighborID[k]];
+				for (unsigned h = bottom; h <= top; h++)
+					stack.volumeCell[h].AlterVisibility(changeBy);
+			}
+
+		}
 		
 		template <typename Stack>
 		void		ChangeSensory(const TVec3<>&worldCenter, float radius, short change, Stack*cellStack, bool*familyChanged)

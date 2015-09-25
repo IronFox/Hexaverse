@@ -3838,26 +3838,7 @@ namespace Grid
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = { false };
 
-		unsigned bottom = center.layer > 0 ? center.layer - 1 : 0;
-		unsigned top = std::min(Grid::CellStack::Range-1, center.layer + 1);
-
-
-		const auto&c = high.grid.GetCell(center.stackID);
-		{
-			auto&stack = cellStack[center.stackID];
-			for (unsigned h = bottom; h <= top; h++)
-				stack.volumeCell[h].AlterVisibility(changeBy);
-		}
-
-		familyChanged[c.family] = true;
-		for (int k = 0; k < c.neighborhood.numNeighbors; k++)
-		{
-			familyChanged[high.grid.GetCell(c.neighborhood.neighborID[k]).family] = true;
-
-			auto&stack = cellStack[c.neighborhood.neighborID[k]];
-			for (unsigned h = bottom; h <= top; h++)
-				stack.volumeCell[h].AlterVisibility(changeBy);
-		}
+		Grid::TemplateHelper::ChangeSensory(center, changeBy, cellStack.pointer(), familyChanged);
 
 		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
 			if (familyChanged[i])
