@@ -455,6 +455,7 @@ namespace Network
 			myID = id;
 			myFaction = ResolveFaction(myID);
 			myIDString = myID.ToString();
+			myFaction->isMine = true;
 		}
 
 		void	PhaseChange(Protocol::PhaseChange&c);
