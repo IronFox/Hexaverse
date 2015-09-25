@@ -3957,18 +3957,18 @@ namespace Grid
 	}
 
 
-	void				VisibilityState::ChangeSensory(const Grid::HCellIdI&center, float t, short changeBy)
+	void				VisibilityState::ChangeSensory(const Grid::HCellIdU&center, float t, short changeBy)
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = { false };
 
-		int bottom = std::max(Grid::CellStack::BottomHeight, center.height - 1);
-		int top = std::min(Grid::CellStack::TopHeight, center.height + 1);
+		unsigned bottom = center.layer > 0 ? center.layer - 1 : 0;
+		unsigned top = std::min(Grid::CellStack::Range-1, center.layer + 1);
 
 
 		const auto&c = high.grid.GetCell(center.stackID);
 		{
 			auto&stack = cellStack[center.stackID];
-			for (int h = bottom; h <= top; h++)
+			for (unsigned h = bottom; h <= top; h++)
 				stack.volumeCell[h].AlterVisibility(changeBy);
 		}
 
@@ -3978,14 +3978,13 @@ namespace Grid
 			familyChanged[high.grid.GetCell(c.neighborhood.neighborID[k]).family] = true;
 
 			auto&stack = cellStack[c.neighborhood.neighborID[k]];
-			for (int h = bottom; h <= top; h++)
+			for (unsigned h = bottom; h <= top; h++)
 				stack.volumeCell[h].AlterVisibility(changeBy);
 		}
 
 		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
 			if (familyChanged[i])
 				families[i].changed = true;
-
 	}
 
 	void				VisibilityState::ChangeSensory(const LCellIdI&center, float radius, float t, short changeBy)
