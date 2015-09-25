@@ -197,6 +197,21 @@ namespace Receiver
 	}
 
 
+	static Protocol::IdentifyUser Identify(const Objects::PFaction&f)
+	{
+		Protocol::IdentifyUser user;
+		user.id = f->id;
+		user.name = f->name;
+		if (f->IsTechniteFaction())
+		{
+			user.techniteGridFactionID = To<Technites::Faction>::Cast(f)->gridID;
+		}
+		else
+			user.techniteGridFactionID = 0xFF;
+		return user;
+	}
+
+
 	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
@@ -580,10 +595,11 @@ namespace Receiver
 				UINT32 finer = Grid::low.grid.GetCell(n.neighborID[5]).higherEquivalent;
 				int h = Grid::actualWorld.cellStack[finer].FindMostApplicableGround(0,false);
 				ASSERT__(h != Objects::badHeight);
-				h--;
+				//h--;
 				ASSERT__(client->faction->IsTechniteFaction());
 				Technites::PFaction tf = To<Technites::Faction>::Cast(client->faction);
-				tf->CreateSingleTechnite(Grid::HCellIdI(finer,h),0.f);
+				index_t id = tf->CreateSingleTechnite(Grid::HCellIdI(finer,h),0.f);
+				ASSERT__(id != InvalidIndex);
 			}
 
 		}
@@ -716,7 +732,7 @@ namespace Receiver
 		//probably optional later on
 		{
 			//broadcast name and state
-			Channels::identifyUser.SendTo(State::server,Protocol::IdentifyUser(client->faction->id,client->state.playerName));
+			Channels::identifyUser.SendTo(State::server,Identify(client->faction));
 			Channels::factionOnline.SendTo(State::server,client->faction->id);
 
 		}
@@ -728,7 +744,7 @@ namespace Receiver
 			Objects::PFaction f = weak.lock();
 			if (f && f != client->faction)
 			{
-				Channels::identifyUser.SendTo(peer,Protocol::IdentifyUser(f->id,f->name));
+				Channels::identifyUser.SendTo(peer,Identify(f));
 				if (f->online)
 				{
 					Channels::factionOnline.SendTo(peer,f->id);
@@ -742,7 +758,7 @@ namespace Receiver
 			Objects::PFaction f = Objects::Faction::nexus;
 			if (f && f != client->faction)
 			{
-				Channels::identifyUser.SendTo(peer,Protocol::IdentifyUser(f->id,f->name));
+				Channels::identifyUser.SendTo(peer,Identify(f));
 				if (f->online)
 				{
 					Channels::factionOnline.SendTo(peer,f->id);

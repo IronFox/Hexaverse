@@ -988,7 +988,8 @@ namespace Technites
 			ASSERT_EQUAL__(technites.Count(), techniteMap.Count());
 		}
 		
-		
+		visibility.CheckChanges(t);
+
 		
 	}
 
@@ -1221,6 +1222,10 @@ namespace Technites
 		Grid::low.family[family].SetOutdated(t);
 		Grid::high.family[family].SetOutdated(t);
 
+		#ifndef CLIENT
+			visibility.ChangeSensory(tech.location.GetU(), t, 1);
+			visibility.CheckChanges(t);
+		#endif
 
 		return at;
 	}

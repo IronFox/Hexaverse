@@ -4014,10 +4014,10 @@ namespace Grid
 					families[f].coverageChanged = true;
 					families[f].lastChange = t;
 				}
-	}
 			}
-
 		}
+
+	}
 
 
 

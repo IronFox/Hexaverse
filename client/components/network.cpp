@@ -63,8 +63,8 @@ namespace Network
 					Technites::PFaction tf = To<Technites::Faction>::Cast(*rs);
 					ASSERT_EQUAL__(tf->gridID,techniteFactionIfNew);
 				}
-				else
-					ASSERT__(!(*rs)->IsTechniteFaction());
+				//else
+				//	ASSERT__(!(*rs)->IsTechniteFaction());
 				return *rs;
 			}
 		}
@@ -255,6 +255,14 @@ namespace Network
 					if (chunk.first)
 						tf->ClearTechnites();
 					tf->AppendTechnites(chunk.technites);
+
+					if (tf->isMine && !amLocated)
+					{
+						amLocated = true;
+						const Technites::Technite&tec = tf->technites.first();
+						Camera::TranslateTo(Grid::ToWorld(tec.location.GetI()));
+					}
+
 				}
 			}
 		}
@@ -751,7 +759,7 @@ namespace Network
 
 	String			chosenNickname;
 	Timer::Time		lastPong = timer.Now();
-	UINT32			chosenFactionTypes = Protocol::FactionType::RegularFaction;
+	UINT32			chosenFactionTypes = Protocol::FactionType::TechniteFaction;
 
 	void		OnEvent(TCP::event_t ev, TCP::Peer&)
 	{
@@ -1217,7 +1225,7 @@ void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
 
 void	Network::Receiver::IdentifyUser(Protocol::IdentifyUser&id)
 {
-	Objects::OwnerParameter faction = Network::ResolveFaction(id.id);
+	Objects::OwnerParameter faction = Network::ResolveFaction(id.id, id.techniteGridFactionID);
 	faction->name = id.name;
 	#ifdef HAS_WINDOW
 		UI::RefreshSessionView();

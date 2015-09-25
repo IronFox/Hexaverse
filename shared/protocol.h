@@ -1823,8 +1823,9 @@ namespace Protocol
 		, NET(UINT32), newRoundNumber
 	)
 
-	NETSTRUCT2(IdentifyUser
+	NETSTRUCT3(IdentifyUser
 		, NET(TUniqueID), id
+		, NET(BYTE), techniteGridFactionID
 		, Package::NetString<32>, name
 	)
 
