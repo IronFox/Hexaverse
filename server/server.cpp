@@ -1706,36 +1706,30 @@ int main( int argc, const char* argv[])
 			case Protocol::Phase::MovementPhase:
 				if (!Objects::ProcessVehicleMotion())
 				{
-					#if TECHNITES
-						State::ChangePhase(Protocol::Phase::TechnitePhase);
-						Technites::BeginProcessing(GetBaseAnimationLength());
-					#else
-						SwitchToAnimationPhase(GetBaseAnimationLength());
-					#endif
+					State::ChangePhase(Protocol::Phase::TechnitePhase);
+					Technites::BeginProcessing(GetBaseAnimationLength());
 				}
 				anythingChanged = true;
 			break;
-			#if TECHNITES
-				case Protocol::Phase::TechnitePhase:
+			case Protocol::Phase::TechnitePhase:
+			{
+				if (!Technites::ProcessNext())
 				{
-					if (!Technites::ProcessNext())
+
+					for (const auto&tf : Technites::Faction::allTechniteFactions)
 					{
-
-						for (const auto&tf : Technites::Faction::allTechniteFactions)
-						{
-							State::PClient client;
-							if (!State::playerMap.query(tf,client))
-								continue;
-							TCP::PPeer peer = client->peer.lock();
-							if (peer)
-								SendTechniteStateTo(tf,*peer);
-						}
-
-						SwitchToAnimationPhase(Technites::GetAnimationTime());
+						State::PClient client;
+						if (!State::playerMap.query(tf,client))
+							continue;
+						TCP::PPeer peer = client->peer.lock();
+						if (peer)
+							SendTechniteStateTo(tf,*peer);
 					}
+
+					SwitchToAnimationPhase(Technites::GetAnimationTime());
 				}
-				break;
-			#endif
+			}
+			break;
 			case Protocol::Phase::AnimationPhase:
 				if (timer.GetSecondsSince(State::lastPhaseChange) >= State::effectiveAnimationLength+0.5f)
 				{

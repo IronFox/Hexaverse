@@ -3,8 +3,6 @@
 
 #include "config.h"
 
-#if TECHNITES
-
 #include "sphereGrid.h"
 #include "typeDecl.h"
 #include "uniqueID.h"
@@ -543,11 +541,3 @@ namespace Technites
 
 
 
-
-
-
-
-
-
-
-#endif

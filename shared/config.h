@@ -72,11 +72,5 @@ Define in the project settings, not here.
 */
 
 
-/* TECHNITES
-Set 1 to enable cell life simulation.
-Set 0 to disable
-*/
-#define TECHNITES	1
-
 
 #endif

@@ -553,9 +553,7 @@ namespace State
 		server.InstallChannel(Channels::changeMyName);
 		server.InstallChannel(Channels::identifyUserRecv);
 		server.InstallChannel(Channels::chatMessage);
-		#if TECHNITES
-			server.InstallChannel(Channels::techniteInstructions);
-		#endif
+		server.InstallChannel(Channels::techniteInstructions);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,1);
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,1);
@@ -629,13 +627,8 @@ namespace State
 			Array<Grid::CellStack::TTypeDelta> tdts(length * Grid::CellStack::Range);
 			Array<Grid::CellStack::TStructCountDelta> sdts(length * Grid::CellStack::Range);
 			//delta.data.SetSize(length * Grid::CellStack::Range);
-			#if TECHNITES
-				Array<Grid::CellStack::TTechniteFactionDelta> fdts(length * Grid::CellStack::Range);
-				Array<bool> fdtsValid(length * Grid::CellStack::Range);
-			#else
-				int fdts = 0,
-					fdtsValid = 0;
-			#endif
+			Array<Grid::CellStack::TTechniteFactionDelta> fdts(length * Grid::CellStack::Range);
+			Array<bool> fdtsValid(length * Grid::CellStack::Range);
 
 			if (vs)
 				vs->families[familyID].Reset();
@@ -656,11 +649,7 @@ namespace State
 						if (canSee)
 						{
 							Grid::actualWorld.cellStack[stackID].volumeCell[layer].
-							#if TECHNITES
-								GetDeltaFromAndUpdate(ws->cellStack[stackID].volumeCell[layer],tdts[i],sdts[i],fdts[i],fdtsValid[i]);
-							#else
-								GetDeltaFromAndUpdate(ws->cellStack[stackID].volumeCell[layer],tdts[i],sdts[i]);
-							#endif
+							GetDeltaFromAndUpdate(ws->cellStack[stackID].volumeCell[layer],tdts[i],sdts[i],fdts[i],fdtsValid[i]);
 						}
 						else
 						{
@@ -675,11 +664,7 @@ namespace State
 						auto&cell =  vs->cellStack[stackID].volumeCell[layer];
 						bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
 						const Grid::CellStack::Cell& source = canSee ? Grid::actualWorld.cellStack[stackID].volumeCell[layer] : Grid::initialWorld.cellStack[stackID].volumeCell[layer];
-						#if TECHNITES
-							source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
-						#else
-							source.GetDeltaFrom(empty,tdts[i],sdts[i]);
-						#endif
+						source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
 						ws->cellStack[stackID].volumeCell[layer] = source;
 						cell.temporarilyVisible = false;
 					}
@@ -687,31 +672,19 @@ namespace State
 					case FactionCopy:
 					{
 						const Grid::CellStack::Cell& source = ws->cellStack[stackID].volumeCell[layer];
-						#if TECHNITES
-							source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
-						#else
-							source.GetDeltaFrom(empty,tdts[i],sdts[i]);
-						#endif
+						source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
 					}
 					break;
 					case GlobalCopy:
 					{
 						const Grid::CellStack::Cell& source = Grid::actualWorld.cellStack[stackID].volumeCell[layer];
-						#if TECHNITES
-							source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
-						#else
-							source.GetDeltaFrom(empty,tdts[i],sdts[i]);
-						#endif
+						source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
 					}
 					break;
 					case GlobalInitialCopy:
 					{
 						const Grid::CellStack::Cell& source = Grid::initialWorld.cellStack[stackID].volumeCell[layer];
-						#if TECHNITES
-							source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
-						#else
-							source.GetDeltaFrom(empty,tdts[i],sdts[i]);
-						#endif
+						source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
 					}
 					break;
 				}
@@ -721,20 +694,17 @@ namespace State
 			//static_assert(sizeof(Protocol::TDeltaBlock) == sizeof(UINT32) + sizeof(Grid::CellStack::TCellDelta), "Struct-alignment out of whack");
 
 			Compress(tdts,delta.data0, /*deltaType == FactionCopy || */deltaType == GlobalCopy/* || deltaType == GlobalInitialCopy*/);
-			#if TECHNITES
+			{
+				BYTE lastSet = 0;
+				for (index_t i = 0; i < fdts.Count(); i++)
 				{
-					BYTE lastSet = 0;
-					for (index_t i = 0; i < fdts.Count(); i++)
-					{
-						if (!fdtsValid[i])
-							fdts[i].newTechniteFaction = lastSet;
-						else
-							lastSet = fdts[i].newTechniteFaction;
-					}
-					Compress(fdts,delta.data2);
+					if (!fdtsValid[i])
+						fdts[i].newTechniteFaction = lastSet;
+					else
+						lastSet = fdts[i].newTechniteFaction;
 				}
-
-			#endif
+				Compress(fdts,delta.data2);
+			}
 
 			if (includeStructCountDelta)
 			{
@@ -1808,9 +1778,7 @@ void	State::Load(const String&filename)
 							//Protocol::WorldDelta delta;
 							Protocol::TypeDeltaArray	typeArray;
 							Protocol::StructCountDeltaArray countArray;
-							#if TECHNITES
-								Protocol::TechniteFactionDeltaArray techniteArray;
-							#endif
+							Protocol::TechniteFactionDeltaArray techniteArray;
 
 							Riff::Chunk*child;
 							BYTE atFamily = 0;
@@ -1822,11 +1790,7 @@ void	State::Load(const String&filename)
 									{
 										ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
 										ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
-										#if TECHNITES
-											Grid::actualWorld.ApplyFamilyDelta(atFamily, typeArray, countArray, techniteArray, false, true);
-										#else
-											Grid::actualWorld.ApplyFamilyDelta(atFamily,typeArray,countArray, false, true);
-										#endif
+										Grid::actualWorld.ApplyFamilyDelta(atFamily, typeArray, countArray, techniteArray, false, true);
 
 										atFamily++;
 									}
@@ -1850,9 +1814,7 @@ void	State::Load(const String&filename)
 						{
 							Protocol::TypeDeltaArray	typeArray;
 							Protocol::StructCountDeltaArray countArray;
-							#if TECHNITES
-								Protocol::TechniteFactionDeltaArray techniteArray;
-							#endif
+							Protocol::TechniteFactionDeltaArray techniteArray;
 							Riff::Chunk*child;
 							BYTE atFamily = 0;
 							if (child = list->First())
@@ -1861,11 +1823,7 @@ void	State::Load(const String&filename)
 									if (child->IsID(RID::worldTypeChunk))
 									{
 										ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
-										#if TECHNITES
-											Grid::initialWorld.ApplyFamilyDelta(atFamily, typeArray, countArray, techniteArray, true, false);
-										#else
-											Grid::initialWorld.ApplyFamilyDelta(atFamily,typeArray,countArray,true,false);
-										#endif
+										Grid::initialWorld.ApplyFamilyDelta(atFamily, typeArray, countArray, techniteArray, true, false);
 										atFamily++;
 									}
 									else
@@ -1903,23 +1861,21 @@ void	State::Load(const String&filename)
 							else
 							{
 
-								#if TECHNITES
-									BYTE id;
-									if (GetOptionalPOD(list, RID::techniteFactionGridID, id, (BYTE)0xFF))
+								BYTE id;
+								if (GetOptionalPOD(list, RID::techniteFactionGridID, id, (BYTE)0xFF))
+								{
+									Technites::PFaction tfaction = Technites::Faction::CreateFromFile((BYTE)id);
+									faction = tfaction;
+									GetPODs(list, RID::technites, tfaction->technites);
+									for (index_t i = 0; i < tfaction->technites.Count(); i++)
 									{
-										Technites::PFaction tfaction = Technites::Faction::CreateFromFile((BYTE)id);
-										faction = tfaction;
-										GetPODs(list, RID::technites, tfaction->technites);
-										for (index_t i = 0; i < tfaction->technites.Count(); i++)
-										{
-											const Technites::Technite&t = tfaction->technites[i];
-											Grid::HCellIdU loc = t.location.GetU();
-											tfaction->techniteMap.Set(loc, i);
-											Grid::actualWorld.cellStack[loc.stackID].SetLocalTechniteFaction(t.location.GetHeight(), tfaction->gridID);
-										}
+										const Technites::Technite&t = tfaction->technites[i];
+										Grid::HCellIdU loc = t.location.GetU();
+										tfaction->techniteMap.Set(loc, i);
+										Grid::actualWorld.cellStack[loc.stackID].SetLocalTechniteFaction(t.location.GetHeight(), tfaction->gridID);
 									}
-									else
-								#endif
+								}
+								else
 								{
 									faction.reset(new Objects::Faction());
 									Objects::Faction::all << faction;
@@ -1963,9 +1919,7 @@ void	State::Load(const String&filename)
 
 							Protocol::TypeDeltaArray	typeArray;
 							Protocol::StructCountDeltaArray countArray;
-							#if TECHNITES
-								Protocol::TechniteFactionDeltaArray techniteFactionArray;
-							#endif
+							Protocol::TechniteFactionDeltaArray techniteFactionArray;
 							//Riff::Chunk*child;
 							BYTE atFamily = 0;
 
@@ -1980,21 +1934,15 @@ void	State::Load(const String&filename)
 									{
 										ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
 									}
-									#if TECHNITES
-										elif(child->IsID(RID::factionWorldTechniteFactionChunk))
-										{
-											ASSERT__(DeserializeFromMemory(techniteFactionArray, child->pointer(), child->size(), false));
-										}
-									#endif
+									elif(child->IsID(RID::factionWorldTechniteFactionChunk))
+									{
+										ASSERT__(DeserializeFromMemory(techniteFactionArray, child->pointer(), child->size(), false));
+									}
 									elif (child->IsID(RID::factionWorldCounterChunk))
 									{
 										ASSERT__(DeserializeFromMemory(countArray,child->pointer(),child->size(),false));
 										ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
-										#if TECHNITES
-											faction->currentState.ApplyFamilyDelta(atFamily,typeArray,countArray,techniteFactionArray, false,false);
-										#else
-											faction->currentState.ApplyFamilyDelta(atFamily,typeArray,countArray,false,false);
-										#endif
+										faction->currentState.ApplyFamilyDelta(atFamily,typeArray,countArray,techniteFactionArray, false,false);
 
 										atFamily++;
 									}
@@ -2206,15 +2154,13 @@ void	State::Save( const String&name)
 			factionSection->AppendBlock(RID::nexusTag);
 		}
 
-		#if TECHNITES
-			if (faction->IsTechniteFaction())
-			{
-				Technites::PFaction tfaction = To<Technites::Faction>::Cast(faction);
+		if (faction->IsTechniteFaction())
+		{
+			Technites::PFaction tfaction = To<Technites::Faction>::Cast(faction);
 
-				factionSection->AppendBlock(RID::techniteFactionGridID)->SetPODData(tfaction->gridID);
-				factionSection->AppendBlock(RID::technites,tfaction->technites.pointer(),tfaction->technites.GetContentSize());
-			}
-		#endif
+			factionSection->AppendBlock(RID::techniteFactionGridID)->SetPODData(tfaction->gridID);
+			factionSection->AppendBlock(RID::technites,tfaction->technites.pointer(),tfaction->technites.GetContentSize());
+		}
 
 
 
@@ -2240,9 +2186,7 @@ void	State::Save( const String&name)
 
 			//delta.Seal();
 			SerializeToChunk(delta.Ref().data0, factionSection->AppendBlock(RID::factionWorldTypeChunk));
-			#if TECHNITES
-				SerializeToChunk(delta.Ref().data2, factionSection->AppendBlock(RID::factionWorldTechniteFactionChunk));
-			#endif
+			SerializeToChunk(delta.Ref().data2, factionSection->AppendBlock(RID::factionWorldTechniteFactionChunk));
 			SerializeToChunk(delta.Ref().data1, factionSection->AppendBlock(RID::factionWorldCounterChunk));
 										//factionWorldTypeChunk("WTCK"),
 										//factionWorldCounterChunk("WCCK"),

@@ -132,10 +132,7 @@ namespace Grid
 
 		MAKE_NAMED_DELTA (TTypeDelta,newType);	//0 = Bedrock = no change. Bedrock cannot be applied to normal cells
 		MAKE_NAMED_DELTA (TStructCountDelta,newStructureCounter);//structure counter. 0 = no change, otherwise effective = newStructureCounter-1
-
-		#if TECHNITES
-			MAKE_NAMED_DELTA (TTechniteFactionDelta, newTechniteFaction);//0 = no change, otherwise effective = newTechniteFaction-1
-		#endif
+		MAKE_NAMED_DELTA (TTechniteFactionDelta, newTechniteFaction);//0 = no change, otherwise effective = newTechniteFaction-1
 
 
 		#pragma pack(push)
@@ -155,9 +152,7 @@ namespace Grid
 		static_assert(sizeof(TTypeDeltaBlock) == 5, "Struct-alignment out of whack");
 		static_assert(sizeof(TStructCountDeltaBlock) == 5, "Struct-alignment out of whack");
 
-		#if TECHNITES
-			typedef TDeltaBlock<TTechniteFactionDelta>	TTechniteFactionDeltaBlock;
-		#endif
+		typedef TDeltaBlock<TTechniteFactionDelta>	TTechniteFactionDeltaBlock;
 		#pragma pack(pop)
 
 		class CompactCell
@@ -180,10 +175,7 @@ namespace Grid
 			)
 
 
-			#if TECHNITES
-				BYTE	techniteFaction = 0;
-			#endif
-
+			BYTE	techniteFaction = 0;
 			BYTE	content = Content::Clear;
 			BYTE	structureCounter = 0;	//number of structures (density) that occupy this block
 			#ifdef HAS_WINDOW
@@ -203,73 +195,40 @@ namespace Grid
 			#endif
 
 
-			#if TECHNITES
-				void	GetDeltaFrom(const CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout, TTechniteFactionDelta&fout, bool&foutValid)	const
-				{
-					tout.newType = content != other.content ? content : 0;
-					sout.newStructureCounter = structureCounter != other.structureCounter ? structureCounter + 1 : 0;
-					fout.newTechniteFaction = techniteFaction != other.techniteFaction ? techniteFaction + 1 : 0;
-					foutValid = content == Content::Technite;
-				}
-				void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout, TTechniteFactionDelta&fout, bool&foutValid) const
-				{
-					GetDeltaFrom(other,tout,sout, fout, foutValid);
-					other = *this;
-				}
+			void	GetDeltaFrom(const CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout, TTechniteFactionDelta&fout, bool&foutValid)	const
+			{
+				tout.newType = content != other.content ? content : 0;
+				sout.newStructureCounter = structureCounter != other.structureCounter ? structureCounter + 1 : 0;
+				fout.newTechniteFaction = techniteFaction != other.techniteFaction ? techniteFaction + 1 : 0;
+				foutValid = content == Content::Technite;
+			}
+			void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout, TTechniteFactionDelta&fout, bool&foutValid) const
+			{
+				GetDeltaFrom(other,tout,sout, fout, foutValid);
+				other = *this;
+			}
 
-				bool	ApplyDelta(const TTypeDelta&tdelta, const TStructCountDelta&sdelta, const TTechniteFactionDelta&fdelta)
+			bool	ApplyDelta(const TTypeDelta&tdelta, const TStructCountDelta&sdelta, const TTechniteFactionDelta&fdelta)
+			{
+				if (tdelta.newType == 0 && sdelta.newStructureCounter == 0)
+					return false;
+				if (tdelta.newType)
 				{
-					if (tdelta.newType == 0 && sdelta.newStructureCounter == 0)
-						return false;
-					if (tdelta.newType)
-					{
-						content = tdelta.newType;
-						DBG_ASSERT_LESS__(content,Content::NumberOfPossibilities);
-					}
-					if (sdelta.newStructureCounter)
-					{
-						structureCounter = sdelta.newStructureCounter-1;
-						DBG_ASSERT_LESS__(structureCounter,3);
-					}
-					if (fdelta.newTechniteFaction && content == Content::Technite)
-					{
-						techniteFaction = fdelta.newTechniteFaction-1;
-					}
-					return true;
+					content = tdelta.newType;
+					DBG_ASSERT_LESS__(content,Content::NumberOfPossibilities);
 				}
+				if (sdelta.newStructureCounter)
+				{
+					structureCounter = sdelta.newStructureCounter-1;
+					DBG_ASSERT_LESS__(structureCounter,3);
+				}
+				if (fdelta.newTechniteFaction && content == Content::Technite)
+				{
+					techniteFaction = fdelta.newTechniteFaction-1;
+				}
+				return true;
+			}
 				
-
-			#else
-
-				void	GetDeltaFrom(const CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout)	const
-				{
-					tout.newType = content != other.content ? content : 0;
-					sout.newStructureCounter = structureCounter != other.structureCounter ? structureCounter + 1 : 0;
-				}
-				void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout) const
-				{
-					GetDeltaFrom(other,tout,sout);
-					other = *this;
-				}
-
-
-				bool	ApplyDelta(const TTypeDelta&tdelta, const TStructCountDelta&sdelta)
-				{
-					if (tdelta.newType == 0 && sdelta.newStructureCounter == 0)
-						return false;
-					if (tdelta.newType)
-					{
-						content = tdelta.newType;
-						DBG_ASSERT_LESS__(content,Content::NumberOfPossibilities);
-					}
-					if (sdelta.newStructureCounter)
-					{
-						structureCounter = sdelta.newStructureCounter-1;
-						DBG_ASSERT_LESS__(structureCounter,3);
-					}
-					return true;
-				}
-			#endif
 			bool	ApplyDelta(const TTypeDelta&tdelta)
 			{
 				if (tdelta.newType)
@@ -290,17 +249,15 @@ namespace Grid
 				}
 				return false;
 			}
-			#if TECHNITES
-				bool	ApplyDelta(const TTechniteFactionDelta&tdelta)
+			bool	ApplyDelta(const TTechniteFactionDelta&tdelta)
+			{
+				if (tdelta.newTechniteFaction)
 				{
-					if (tdelta.newTechniteFaction)
-					{
-						techniteFaction = tdelta.newTechniteFaction -1;
-						return true;
-					}
-					return false;
+					techniteFaction = tdelta.newTechniteFaction -1;
+					return true;
 				}
-			#endif
+				return false;
+			}
 		};
 
 		class Cell : public CompactCell
@@ -482,18 +439,15 @@ namespace Grid
 		#endif
 
 		bool			MakeLocalHole(int h);
-		#if TECHNITES
-			/**
-			Updates only the faction setting of the specified volume cell.
-			The local content is not altered
-			*/
-			bool		SetLocalTechniteFaction(int h, BYTE factionID);
-			/**
-			Updates both content and technite faction
-			*/
-			bool		SetLocalToTechniteContent(int h, BYTE factionID);
-
-		#endif
+		/**
+		Updates only the faction setting of the specified volume cell.
+		The local content is not altered
+		*/
+		bool			SetLocalTechniteFaction(int h, BYTE factionID);
+		/**
+		Updates both content and technite faction
+		*/
+		bool			SetLocalToTechniteContent(int h, BYTE factionID);
 
 		bool			LocalOverwrite(int h, Cell::Content type);
 
@@ -1998,13 +1952,8 @@ namespace Grid
 			}
 		}
 
-		#if TECHNITES
-			void				ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, const Array<CellStack::TStructCountDelta>&data1, const Array<CellStack::TTechniteFactionDelta>&data2, bool initialization);
-			void				ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, const Array<CellStack::TTechniteFactionDeltaBlock>&data2, bool initialization, bool actualWorld);
-		#else
-			void				ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, const Array<CellStack::TStructCountDelta>&data1, bool initialization);
-			void				ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, bool initialization, bool actualWorld);
-		#endif
+		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, const Array<CellStack::TStructCountDelta>&data1, const Array<CellStack::TTechniteFactionDelta>&data2, bool initialization);
+		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, const Array<CellStack::TTechniteFactionDeltaBlock>&data2, bool initialization, bool actualWorld);
 
 		/**
 			Signals that the fine geometry in and on the edge of the specified cell has changed.

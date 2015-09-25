@@ -18,11 +18,9 @@ namespace Network
 
 	extern bool			amReady,
 						haveId,
-						amOnline;
+						amOnline,
+						amTechniteFaction;
 
-	#if TECHNITES
-		extern bool		amTechniteFaction;
-	#endif
 
 	#ifdef HAS_WINDOW
 		extern bool		amLocated;

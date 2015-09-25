@@ -36,12 +36,7 @@
 	#define NAME_APPEND1
 #endif
 
-#if TECHNITES
-	#define NAME_APPEND2	"t"
-#else
-	#define NAME_APPEND2
-#endif
-
+#define NAME_APPEND2	"t"
 
 #define SERVER_NAME		PRODUCT_NAME" v"PRODUCT_VERSION NAME_APPEND0 NAME_APPEND1 NAME_APPEND2
 
@@ -1162,24 +1157,15 @@ namespace Protocol
 	typedef NetArray<Grid::CellStack::TTypeDeltaBlock,4000000>	TypeDeltaArray;
 	typedef NetArray<Grid::CellStack::TStructCountDeltaBlock,4000000>	StructCountDeltaArray;
 
-	#if TECHNITES
-		typedef NetArray<Grid::CellStack::TTechniteFactionDeltaBlock,4000000>	TechniteFactionDeltaArray;
-		NETSTRUCT5(WorldDelta
-			, Timestamp, timestamp
-			, NET(BYTE), family
-			, TypeDeltaArray, data0
-			, StructCountDeltaArray, data1
-			, TechniteFactionDeltaArray, data2
-		)
+	typedef NetArray<Grid::CellStack::TTechniteFactionDeltaBlock,4000000>	TechniteFactionDeltaArray;
+	NETSTRUCT5(WorldDelta
+		, Timestamp, timestamp
+		, NET(BYTE), family
+		, TypeDeltaArray, data0
+		, StructCountDeltaArray, data1
+		, TechniteFactionDeltaArray, data2
+	)
 
-	#else
-		NETSTRUCT4(WorldDelta
-			, Timestamp, timestamp
-			, NET(BYTE), family
-			, TypeDeltaArray, data0
-			, StructCountDeltaArray, data1
-		)
-	#endif
 
 
 	NETSTRUCT6(EntityState
@@ -1593,23 +1579,21 @@ namespace Protocol
 		};
 
 
-	#if TECHNITES
-		static const count_t	MaxTechnitesPerChunk=10000;
-		typedef SmartPODReferenceField<Technites::Technite::TCompactState,MaxTechnitesPerChunk>	TechniteField;
-		typedef SmartPODReferenceField<Technites::Technite::TCompactInstruction,MaxTechnitesPerChunk>	TechniteInstructionField;
+	static const count_t	MaxTechnitesPerChunk=10000;
+	typedef SmartPODReferenceField<Technites::Technite::TCompactState,MaxTechnitesPerChunk>	TechniteField;
+	typedef SmartPODReferenceField<Technites::Technite::TCompactInstruction,MaxTechnitesPerChunk>	TechniteInstructionField;
 
 
-		NETSTRUCT2(TechniteChunk
-			, NET(bool), first
-			, TechniteField, technites
-			);
-
-		NETSTRUCT2(TechniteInstructions
-			, NET(UINT32), offset
-			, TechniteInstructionField, instructions
+	NETSTRUCT2(TechniteChunk
+		, NET(bool), first
+		, TechniteField, technites
 		);
 
-	#endif
+	NETSTRUCT2(TechniteInstructions
+		, NET(UINT32), offset
+		, TechniteInstructionField, instructions
+	);
+
 
 
 	NETSTRUCT5(MobileState
@@ -1762,11 +1746,7 @@ namespace Protocol
 	)
 
 
-	#if TECHNITES
-		CONSTRUCT_ENUMERATION7(Phase, CommandPhase,StructurePhase,AttackPhase,MovementPhase,TechnitePhase,AnimationPhase, EndOfGame);
-	#else
-		CONSTRUCT_ENUMERATION6(Phase, CommandPhase,StructurePhase,AttackPhase,MovementPhase,AnimationPhase, EndOfGame);
-	#endif
+	CONSTRUCT_ENUMERATION7(Phase, CommandPhase,StructurePhase,AttackPhase,MovementPhase,TechnitePhase,AnimationPhase, EndOfGame);
 
 	NETSTRUCT3(PhaseChange
 		, NET(Phase), newPhase

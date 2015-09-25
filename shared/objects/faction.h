@@ -304,10 +304,7 @@ namespace Objects
 		#endif
 
 
-		#if TECHNITES
-			virtual bool	IsTechniteFaction() const { return false; }
-
-		#endif
+		virtual bool	IsTechniteFaction() const { return false; }
 		virtual void	OnKill() {};
 
 	};

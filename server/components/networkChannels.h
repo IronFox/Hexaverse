@@ -26,9 +26,7 @@ namespace Receiver
 	void	ChangeMyName(Package::NetString<32>&, TCP::Peer&peer);
 	void	IdentifyUser(NET(TUniqueID)&, TCP::Peer&peer);
 	void	ChatMessage(Package::NetString<256>&, TCP::Peer&peer);
-	#if TECHNITES
 	void	TechniteInstructions(Protocol::TechniteInstructions&instructions, TCP::Peer&peer);
-	#endif
 
 
 	/**
@@ -93,9 +91,7 @@ namespace Channels
 	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::IdentifyUser>							identifyUserRecv;
 	extern TCP::Channel<Package::NetString<256>, 1, Protocol::ChannelID::ChatMessage>					chatMessage;
 
-	#if TECHNITES
-		extern TCP::Channel<Protocol::TechniteInstructions, 1, Protocol::ChannelID::TechniteInstructions>	techniteInstructions;
-	#endif
+	extern TCP::Channel<Protocol::TechniteInstructions, 1, Protocol::ChannelID::TechniteInstructions>	techniteInstructions;
 
 	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>		clientFactionResponse;
 	extern TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>	markerCreationFailedLimitReached;
@@ -124,9 +120,7 @@ namespace Channels
 		extern TCP::ObjectSender<NET(UINT32), Protocol::ChannelID::UplinkBandwidth>						uplinkBandwidth;
 	#endif
 	extern TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>						unitLimits;
-	#if TECHNITES
-		extern TCP::ObjectSender<Protocol::TechniteChunk, Protocol::ChannelID::TechniteChunk>			techniteChunk;
-	#endif
+	extern TCP::ObjectSender<Protocol::TechniteChunk, Protocol::ChannelID::TechniteChunk>				techniteChunk;
 
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
 

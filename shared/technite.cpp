@@ -1,7 +1,6 @@
 #include <global_root.h>
 #include "config.h"
 
-#if TECHNITES
 
 #include "technite.h"
 #include "objects/gridAndChoices.h"
@@ -1235,4 +1234,3 @@ namespace Technites
 }
 
 
-#endif

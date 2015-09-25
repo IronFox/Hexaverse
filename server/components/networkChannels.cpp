@@ -40,9 +40,7 @@ namespace Channels
 	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::IdentifyUser>								identifyUserRecv(Receiver::IdentifyUser);
 	TCP::Channel<Package::NetString<256>, 1, Protocol::ChannelID::ChatMessage>						chatMessage(Receiver::ChatMessage);
 
-	#if TECHNITES
-		TCP::Channel<Protocol::TechniteInstructions, 1, Protocol::ChannelID::TechniteInstructions>	techniteInstructions(Receiver::TechniteInstructions);
-	#endif
+	TCP::Channel<Protocol::TechniteInstructions, 1, Protocol::ChannelID::TechniteInstructions>		techniteInstructions(Receiver::TechniteInstructions);
 
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
@@ -74,9 +72,7 @@ namespace Channels
 	#endif
 
 	TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>							unitLimits;
-	#if TECHNITES
-		TCP::ObjectSender<Protocol::TechniteChunk, Protocol::ChannelID::TechniteChunk>				techniteChunk;
-	#endif
+	TCP::ObjectSender<Protocol::TechniteChunk, Protocol::ChannelID::TechniteChunk>					techniteChunk;
 
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
 
@@ -178,7 +174,6 @@ namespace Receiver
 	bool	CheckCommandMode(TCP::Peer&peer);
 
 
-	#if TECHNITES
 	void	TechniteInstructions(Protocol::TechniteInstructions&instructions, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
@@ -200,7 +195,6 @@ namespace Receiver
 		for (index_t i = 0; i < instructions.instructions.Count(); i++)
 			faction->technites[instructions.offset+i].Set(instructions.instructions[i]);
 	}
-	#endif
 
 
 	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
@@ -332,7 +326,6 @@ namespace Receiver
 				return;
 			}
 			//p.factionToken.value.Generate();	let's keep it even if it's unknown
-			#if TECHNITES
 				if (response.startFactionTypes & Protocol::FactionType::TechniteFaction)
 				{
 					Technites::PFaction tfaction = Technites::Faction::Create();
@@ -346,7 +339,6 @@ namespace Receiver
 					}
 				}
 				else
-			#endif
 				{
 					client->faction.reset(new Objects::Faction());
 					Objects::Faction::all << client->faction;
@@ -372,12 +364,11 @@ namespace Receiver
 
 		Channels::clientFactionResponse.SendTo(client->peer.lock(),response);
 		Protocol::FactionID outFactionID(client->faction->id,0xFF);
-		#if TECHNITES
-			if (client->faction->IsTechniteFaction())
-			{
-				outFactionID.techniteGridID = To<Technites::Faction>::Cast(client->faction)->gridID;
-			}
-		#endif
+		if (client->faction->IsTechniteFaction())
+		{
+			outFactionID.techniteGridID = To<Technites::Faction>::Cast(client->faction)->gridID;
+		}
+
 		Channels::setFactionID.SendTo(client->peer.lock(),outFactionID);
 
 		//CHEAT_SHOW_ALL_RESOURCES
@@ -583,19 +574,17 @@ namespace Receiver
 					Objects::SpawnVehicle(client->faction, at4, Objects::Component::hoverbase, Objects::Component::terraformer, true, 0);
 				}
 			}
-			#if TECHNITES
-				if (response.startFactionTypes & Protocol::FactionType::TechniteFaction)
-				{
-					//Grid::LCellIdI at5 = Grid::LCellIdI(n.neighborID[5], 0);
-					UINT32 finer = Grid::low.grid.GetCell(n.neighborID[5]).higherEquivalent;
-					int h = Grid::actualWorld.cellStack[finer].FindMostApplicableGround(0,false);
-					ASSERT__(h != Objects::badHeight);
-					h--;
-					ASSERT__(client->faction->IsTechniteFaction());
-					Technites::PFaction tf = To<Technites::Faction>::Cast(client->faction);
-					tf->CreateSingleTechnite(Grid::HCellIdI(finer,h),0.f);
-				}
-			#endif
+			if (response.startFactionTypes & Protocol::FactionType::TechniteFaction)
+			{
+				//Grid::LCellIdI at5 = Grid::LCellIdI(n.neighborID[5], 0);
+				UINT32 finer = Grid::low.grid.GetCell(n.neighborID[5]).higherEquivalent;
+				int h = Grid::actualWorld.cellStack[finer].FindMostApplicableGround(0,false);
+				ASSERT__(h != Objects::badHeight);
+				h--;
+				ASSERT__(client->faction->IsTechniteFaction());
+				Technites::PFaction tf = To<Technites::Faction>::Cast(client->faction);
+				tf->CreateSingleTechnite(Grid::HCellIdI(finer,h),0.f);
+			}
 
 		}
 		else
@@ -664,15 +653,11 @@ namespace Receiver
 		}
 
 
-		#if TECHNITES
-
-			if (client->faction->IsTechniteFaction())
-			{
-				Technites::PFaction tf = To<Technites::Faction>::Cast(client->faction);
-				SendTechniteStateTo(tf,peer);
-			}
-
-		#endif
+		if (client->faction->IsTechniteFaction())
+		{
+			Technites::PFaction tf = To<Technites::Faction>::Cast(client->faction);
+			SendTechniteStateTo(tf,peer);
+		}
 
 
 

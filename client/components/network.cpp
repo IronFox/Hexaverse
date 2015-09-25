@@ -27,9 +27,7 @@ namespace Network
 	#ifdef HAS_WINDOW
 		bool		amLocated=false;
 	#endif
-	#if TECHNITES
-		bool		amTechniteFaction = false;
-	#endif
+	bool			amTechniteFaction = false;
 
 	TUniqueID		myID,serverID,worldID;
 	CryptographicID	activeToken;
@@ -59,27 +57,23 @@ namespace Network
 			Objects::OwnerParameter*rs = factionMap.QueryPointer(id);
 			if (rs)
 			{
-				#if TECHNITES
-					if (techniteFactionIfNew != 0xFF)
-					{
-						ASSERT__((*rs)->IsTechniteFaction());
-						Technites::PFaction tf = To<Technites::Faction>::Cast(*rs);
-						ASSERT_EQUAL__(tf->gridID,techniteFactionIfNew);
-					}
-					else
-						ASSERT__(!(*rs)->IsTechniteFaction());
-				#endif
+				if (techniteFactionIfNew != 0xFF)
+				{
+					ASSERT__((*rs)->IsTechniteFaction());
+					Technites::PFaction tf = To<Technites::Faction>::Cast(*rs);
+					ASSERT_EQUAL__(tf->gridID,techniteFactionIfNew);
+				}
+				else
+					ASSERT__(!(*rs)->IsTechniteFaction());
 				return *rs;
 			}
 		}
 		Objects::OwnerParameter  rs;
-		#if TECHNITES
-			if (techniteFactionIfNew != 0xFF)
-			{
-				rs = Technites::Faction::CreateFromFile(techniteFactionIfNew);
-			}
-			else
-		#endif
+		if (techniteFactionIfNew != 0xFF)
+		{
+			rs = Technites::Faction::CreateFromFile(techniteFactionIfNew);
+		}
+		else
 		{
 			rs.reset(new Objects::Faction());
 			Objects::Faction::allKnown << rs;
@@ -250,22 +244,20 @@ namespace Network
 	{
 		bool			eventsLocked = true;
 
-		#if TECHNITES
-			void	TechniteChunk(Protocol::TechniteChunk&chunk)
+		void	TechniteChunk(Protocol::TechniteChunk&chunk)
+		{
+//			if (chunk.first)
 			{
-	//			if (chunk.first)
+				if (amTechniteFaction)
 				{
-					if (amTechniteFaction)
-					{
-						ASSERT__(myFaction->IsTechniteFaction());
-						Technites::PFaction tf = To<Technites::Faction>::Cast(myFaction);
-						if (chunk.first)
-							tf->ClearTechnites();
-						tf->AppendTechnites(chunk.technites);
-					}
+					ASSERT__(myFaction->IsTechniteFaction());
+					Technites::PFaction tf = To<Technites::Faction>::Cast(myFaction);
+					if (chunk.first)
+						tf->ClearTechnites();
+					tf->AppendTechnites(chunk.technites);
 				}
 			}
-		#endif
+		}
 
 		void	OnClientStateResponse(Protocol::Result&response)
 		{
@@ -296,11 +288,7 @@ namespace Network
 			{
 				BYTE family = delta.family & 0x7F;
 				bool last = (delta.family & 0x80) != 0;
-				#if TECHNITES
-					Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,delta.data1,delta.data2, false,true);
-				#else
-					Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,delta.data1,false,true);
-				#endif
+				Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,delta.data1,delta.data2, false,true);
 
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = last;
@@ -479,9 +467,7 @@ namespace Network
 
 
 			amReady = cr.startFactionTypes != 0;
-			#if TECHNITES
-				amTechniteFaction = (cr.startFactionTypes & Protocol::FactionType::TechniteFaction) != 0;
-			#endif
+			amTechniteFaction = (cr.startFactionTypes & Protocol::FactionType::TechniteFaction) != 0;
 			if (amReady)
 			{
 				activeToken = cr.factionToken;
@@ -502,13 +488,11 @@ namespace Network
 			haveId = true;
 			myID = id.id;
 			myFaction = ResolveFaction(myID,id.techniteGridID);
-			#if TECHNITES
-				ASSERT_EQUAL__(id.techniteGridID != 0xFF, amTechniteFaction);
-				if (amTechniteFaction)
-				{
-					ASSERT__(myFaction->IsTechniteFaction());
-				}
-			#endif
+			ASSERT_EQUAL__(id.techniteGridID != 0xFF, amTechniteFaction);
+			if (amTechniteFaction)
+			{
+				ASSERT__(myFaction->IsTechniteFaction());
+			}
 			myIDString = myID.ToString();
 			myFaction->isMine = true;
 		}
