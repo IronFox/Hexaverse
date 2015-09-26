@@ -37,7 +37,7 @@ namespace Consensus
                         }
                         catch (Exception e)
                         {
-                            Program.ReportUnexpected(null,e,Significance.Unusual);
+							Program.ReportUnexpected(null, e, Logging.Significance.Unusual);
                         }
                     }
                 }
@@ -83,7 +83,7 @@ namespace Consensus
                 return false;
             }
 
-            Program.Log(null, Significance.Common, Account.Collection.Count + " Account(s) loaded.");
+			Program.Log(null, Logging.Significance.Common, Account.Collection.Count + " Account(s) loaded.");
 
             return !Program.ShuttingDown;   //fatal reported otherwise
         }

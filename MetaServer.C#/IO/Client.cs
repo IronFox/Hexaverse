@@ -290,12 +290,12 @@ namespace Consensus
 
 				if (sslStream.IsMutuallyAuthenticated)
 				{
-					Program.Log(this, Significance.Low, "SSL Authentication concluded: " + sslStream.CipherAlgorithm.ToString() + ", strength " + sslStream.CipherStrength);
+					Program.Log(this, Logging.Significance.Low, "SSL Authentication concluded: " + sslStream.CipherAlgorithm.ToString() + ", strength " + sslStream.CipherStrength);
 					Account acc = Account.Collection.GetValue(sslStream.RemoteCertificate.GetCertHashString());
 					if (acc != null)
 					{
 						Account = acc;
-						Program.Log(this, Significance.Common, "Logged in as: " + Account.ToString());
+						Program.Log(this, Logging.Significance.Common, "Logged in as: " + Account.ToString());
 						return true;
 					}
 					else
@@ -315,7 +315,7 @@ namespace Consensus
 			#endif
             //Interface.Out.Channel.PasswordSalt.SendTo(this, PasswordSalt);
 
-			Program.Log(this, Significance.Common, "Client connected");
+				Program.Log(this, Logging.Significance.Common, "Client connected");
 
 			base.Start(sslStream);        
 			return true;
@@ -325,15 +325,15 @@ namespace Consensus
 		protected override void OnReadThreadExit()
 		{
 			base.OnReadThreadExit();
-			Program.Log(this, Significance.Low, "Ending read thread");
-			Program.Log(this, Significance.Common, "Client connection lost or closed");
+			Program.Log(this, Logging.Significance.Low, "Ending read thread");
+			Program.Log(this, Logging.Significance.Common, "Client connection lost or closed");
 		}
 
 
 		protected override void OnAbnormalException(Exception e)
 		{
 			base.OnAbnormalException(e);
-			Program.Log(this, Significance.ClientFatal, e.Message);
+			Program.Log(this, Logging.Significance.ClientFatal, e.Message);
 //			Program.ReportUnexpected(this, ex);   //so report it
 
 		}
