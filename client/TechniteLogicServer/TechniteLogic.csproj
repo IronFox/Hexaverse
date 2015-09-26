@@ -7,10 +7,11 @@
     <ProjectGuid>{AE0700C4-D48E-47E9-84C1-C4EF172B85F5}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>TechniteLogicServer</RootNamespace>
+    <RootNamespace>TechniteLogic</RootNamespace>
     <AssemblyName>TechniteLogicServer</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -41,11 +42,26 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Client.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\MetaServer.C#\Logging\Logging.csproj">
+      <Project>{9cf5c4dc-7a7f-47e0-a945-0e8eb46071cf}</Project>
+      <Name>Logging</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\MetaServer.C#\Math3D\Math3D.csproj">
+      <Project>{10085537-a210-4828-9c90-b23f7bacd0a4}</Project>
+      <Name>Math3D</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\MetaServer.C#\Protocol\Protocol.csproj">
+      <Project>{b9f262af-b3c7-44a8-a095-cf84f5b6c009}</Project>
+      <Name>Protocol</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
