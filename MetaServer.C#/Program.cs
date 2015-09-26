@@ -854,7 +854,7 @@ namespace Consensus
 
                 }
             }
-			Logging.Out.Close();
+			Logging.Out.EndService();
 		}
 
         static void onCancel(object sender, ConsoleCancelEventArgs e)
@@ -907,7 +907,7 @@ namespace Consensus
 //            TimeServer.Start(TimeServerPort);
 //            ViewServer.Start(ViewServerPort);
 
-			Logging.Out.Start();
+			Logging.Out.StartService();
 
             System.Threading.Thread.Sleep(100);
 

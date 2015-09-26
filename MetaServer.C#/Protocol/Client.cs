@@ -45,12 +45,18 @@ namespace Protocol
 		{
 			ioStream = tcpClient.GetStream();
 
+			Debug.Assert(!RequireSSL);
 			threadHandle = new Thread(new ThreadStart(this.ThreadMain));
 			threadHandle.Start();
 			
-			Debug.Assert(!RequireSSL);
 		}
+		protected void StartNoSSLSelf()
+		{
+			ioStream = tcpClient.GetStream();
 
+			Debug.Assert(!RequireSSL);
+			ThreadMain();
+		}
 
 		private void ThreadMain()
 		{
