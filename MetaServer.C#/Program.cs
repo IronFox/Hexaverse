@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using Consensus;
+using Math3D;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Security.Cryptography.X509Certificates;
@@ -1142,23 +1142,23 @@ namespace Consensus
         {
             return Convert.ToFloat(element.Attribute(key).Value);
         }
-        public static Vec3 GetVec3(this XElement element, string key)
+		public static Math3D.Vec3 GetVec3(this XElement element, string key)
         {
             string val = element.Attribute(key).Value;
             string[] elements = val.Split(new char[] { ',' });
             if (elements.Length != 3)
                 throw new Exception("Expected 3 elements while parsing xml element '" + key + "' (value is '"+val+"'), but got "+elements.Length);
-            return new Vec3(Convert.ToFloat(elements[0].Trim()),
+			return new Math3D.Vec3(Convert.ToFloat(elements[0].Trim()),
                             Convert.ToFloat(elements[1].Trim()),
                             Convert.ToFloat(elements[2].Trim()));
         }
-        public static Vec4 GetVec4(this XElement element, string key)
+		public static Math3D.Vec4 GetVec4(this XElement element, string key)
         {
             string val = element.Attribute(key).Value;
             string[] elements = val.Split(new char[] { ',' });
             if (elements.Length != 4)
                 throw new Exception("Expected 4 elements while parsing xml element '" + key + "' (value is '" + val + "'), but got " + elements.Length);
-            return new Vec4(Convert.ToFloat(elements[0].Trim()),
+			return new Math3D.Vec4(Convert.ToFloat(elements[0].Trim()),
                             Convert.ToFloat(elements[1].Trim()),
                             Convert.ToFloat(elements[2].Trim()),
                             Convert.ToFloat(elements[3].Trim())
@@ -1208,14 +1208,7 @@ namespace Consensus
 
 
 
-        public static bool SimilarTo(this float value, float otherValue)
-        {
-            return Math.Abs(value - otherValue) <= 1e-6f;
-        }
-        public static bool SimilarTo(this float value, float otherValue, float maxError)
-        {
-            return Math.Abs(value - otherValue) <= maxError;
-        }
+
 
 
 		public static void OutLine(this StreamWriter writer, string line)

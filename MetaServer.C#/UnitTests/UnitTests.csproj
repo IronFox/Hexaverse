@@ -65,6 +65,10 @@
       <Project>{b4efa900-a028-432f-abaa-605e489bf54a}</Project>
       <Name>Consensus</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Math3D\Math3D.csproj">
+      <Project>{10085537-a210-4828-9c90-b23f7bacd0a4}</Project>
+      <Name>Math3D</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Service References\" />

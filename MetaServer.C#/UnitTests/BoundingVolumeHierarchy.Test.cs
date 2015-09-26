@@ -5,7 +5,7 @@ using System.Diagnostics;
 
 
 using Consensus;
-using Element = Consensus.BoundingVolumeHierarchy<int>.Entry;
+using Element = Math3D.BoundingVolumeHierarchy<int>.Entry;
 
 namespace UnitTests
 {
@@ -15,7 +15,7 @@ namespace UnitTests
 
         private static Random random = new Random();
 
-        private static Consensus.Box randomBox()
+        private static Math3D.Box randomBox()
         {
             float centerX = (float)random.NextDouble() * 2.0f - 1.0f;
             float centerY = (float)random.NextDouble() * 2.0f - 1.0f;
@@ -23,11 +23,11 @@ namespace UnitTests
             float extX = (float)random.NextDouble() * 0.25f + 0.1f;
             float extY = (float)random.NextDouble() * 0.25f + 0.1f;
             float extZ = (float)random.NextDouble() * 0.25f + 0.1f;
-            return new Consensus.Box
+            return new Math3D.Box
             {
-                x = new Consensus.Range(centerX - extX, centerX + extX),
-                y = new Consensus.Range(centerY - extY, centerY + extY),
-                z = new Consensus.Range(centerZ - extZ, centerZ + extZ)
+                x = new Math3D.Range(centerX - extX, centerX + extX),
+                y = new Math3D.Range(centerY - extY, centerY + extY),
+                z = new Math3D.Range(centerZ - extZ, centerZ + extZ)
             };
         }
 
@@ -45,9 +45,10 @@ namespace UnitTests
                 List<Element> elements = new List<Element>();
                 for (int i = 0; i < (1<<(iteration+1)); i++)
                     elements.Add(randomElement());
-                Consensus.BoundingVolumeHierarchy<int> tree = new Consensus.BoundingVolumeHierarchy<int>();
+                Math3D.BoundingVolumeHierarchy<int> tree = new Math3D.BoundingVolumeHierarchy<int>();
+				LoadingStage.OnExit += () => tree.RebuildIfNeeded();
 
-                tree.Insert(elements);
+                tree.RuntimeInsert(elements);
                 //tree.ForceReconstruction(true);
 
                 int overcast = 0;
@@ -59,7 +60,7 @@ namespace UnitTests
                     lookupResult.Clear();
                     int numChecks;
 
-                    Vec3 sampleAt = new Vec3(random.NextIn(el.BoundingBox.x), random.NextIn(el.BoundingBox.y),random.NextIn(el.BoundingBox.z));
+					Math3D.Vec3 sampleAt = new Math3D.Vec3(random.NextIn(el.BoundingBox.x), random.NextIn(el.BoundingBox.y), random.NextIn(el.BoundingBox.z));
                     Assert.IsTrue(el.BoundingBox.Contains(sampleAt));
 
 
