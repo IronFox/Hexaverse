@@ -5,54 +5,36 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Logging;
 
 namespace TechniteLogic
 {
 	internal class Client : Protocol.Client
 	{
 
-		private static List<Client>	all = new List<Client>();
-		private static List<Client> dump = new List<Client>();
-		//private static Mutex allLock = new Mutex();
+		public Client():base(new TcpClient(),false)
+		{ }
+	
 
-		private Client(TcpClient client):base(client,false)
-		{}
-
-
-		public static void AddNew(TcpClient client)
+		protected override void OnClose()
 		{
-			Client cl = new Client(client);
-			cl.StartNoSSL();
-			Monitor.Enter(all);
-				all.Add(cl);
-			Monitor.Exit(all);
+			Out.Log(Significance.ProgramFatal, "Connection lost to host. Exiting");
+			Program.ShutDown(0);
 		}
 
-		protected virtual override void OnClose()
+		public void Connect(ushort port)
 		{
-			if (Monitor.TryEnter(all))
-			{
-				all.Remove(this);
-				Monitor.Exit(all);
+			try
+			{ 
+				TcpClient.Connect("localhost",port);
+				StartNoSSLSelf();
 			}
-			else
-				lock(dump)
-					dump.Add(this);
+			catch (Exception ex)
+			{
+				Out.Log(Significance.ProgramFatal,"Unable to connect to service host on port "+port+": "+ex.ToString());
+				Program.ShutDown(-1);
+			}
 		}
 
-
-		public static void VisitAll(Action<Client> visitor)
-		{
-			Monitor.Enter(all);
-				foreach (var cl in all)
-					visitor(cl);
-				lock(dump)
-				{
-					foreach (Client cl in dump)
-						all.Remove(cl);
-					dump.Clear();
-				}
-			Monitor.Exit(all);
-		}
 	}
 }
