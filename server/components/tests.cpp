@@ -847,8 +847,8 @@ namespace Test
 			//std::cout << " " << (int)a->gridID << " (level " << energyA << ") vs " << (int)b->gridID << " (level " << energyB << ")" << std::endl;
 			while (a->technites.IsNotEmpty() && b->technites.IsNotEmpty())
 			{
-				ta.nextTask = Technites::Technite::Task::EatMoveTo;
-				tb.nextTask = Technites::Technite::Task::EatMoveTo;
+				ta.nextTask = Technites::Technite::Task::EatSurroundingCell;
+				tb.nextTask = Technites::Technite::Task::EatSurroundingCell;
 
 				ASSERT__(ta.taskResult != Technites::Technite::TaskResult::BadCommand);
 				ASSERT__(tb.taskResult != Technites::Technite::TaskResult::BadCommand);

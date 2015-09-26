@@ -39,7 +39,6 @@ namespace Technites
 	static_assert(sizeof(AtomicBool) == 1, "Struct alignment out of wack");
 
 
-	//ALIGN4
 	class Technite
 	{
 	public:
@@ -151,7 +150,7 @@ namespace Technites
 		enum class Task : BYTE
 		{
 			None,
-			EatMoveTo,
+			EatSurroundingCell,
 			GrowTo,
 			TransferEnergyTo,
 			TransferMatterTo,
@@ -466,7 +465,7 @@ namespace Technites
 		struct WorkerData
 		{
 			Buffer<Grid::HCellIdU>	newTechnites;
-			Buffer<std::pair<Grid::HCellIdU, Grid::HCellIdU> > moveInstructions;
+			//Buffer<std::pair<Grid::HCellIdU, Grid::HCellIdU> > moveInstructions;
 			Buffer<std::pair<Grid::HCellIdU, Technite::Resources> > increaseResources;
 		};
 
@@ -479,14 +478,14 @@ namespace Technites
 
 
 		ExecResult				GrowTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);
-		ExecResult				MoveTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);
+		//ExecResult				MoveTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);
 		ExecResult				Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);
 
 
 		Technite::Resources		EatEntitiesIn(const Grid::HCellIdI&target, bool&cantEatThis);
 		Technite::Resources		EatTechnite(Technite&local, const Grid::HCellIdI&target, bool factionIsActive);
 		bool					SpawnNewTechnite(const Grid::HCellIdI&target, WorkerData&data);
-		bool					MoveTechnite(Technite&technite, const Grid::HCellIdI&target, WorkerData&data);
+		//bool					MoveTechnite(Technite&technite, const Grid::HCellIdI&target, WorkerData&data);
 		bool					ReduceResources(Technite&technite, const Technite::Resources&by);
 		void					IncreaseResources(Technite&technite, const Technite::Resources&by);
 		void					IncreaseRemoteResources(Technite&technite, const Technite::Resources&by, WorkerData&data);

@@ -386,7 +386,7 @@ namespace Technites
 		
 		return ExecResult::Success;
 	}
-
+/*
 	Faction::ExecResult			Faction::MoveTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data)
 	{
 		ExecResult rs = Eat(technite, target, iteration,data);
@@ -414,7 +414,7 @@ namespace Technites
 		
 		return ExecResult::Success;
 	}
-
+*/
 
 	index_t					BroadTechniteMap::MapCluster(const Grid::HCellIdI&loc, index_t&outFamily, UINT32&heightRemainder) const
 	{
@@ -812,8 +812,8 @@ namespace Technites
 		{
 		case Technite::Task::GrowTo:
 			return GrowTo(technite, target, iteration,data);
-		case Technite::Task::EatMoveTo:
-			return MoveTo(technite, target, iteration, data);
+		case Technite::Task::EatSurroundingCell:
+			return Eat(technite, target, iteration, data);
 		case Technite::Task::TransferEnergyTo:
 		{
 			if (iteration < 4)
@@ -961,32 +961,32 @@ namespace Technites
 			data->increaseResources.Clear();
 		}
 
-		foreach(workerData, data)
-		{
-			for (const auto&loc : data->moveInstructions)
-			{
-				index_t at;
-				ASSERT1__(techniteMap.Query(loc.first, at), loc.first.ToString());
-				Technite&tec = technites[at];
-				ASSERT__(tec.location.GetU() == loc.first);
-				if (techniteMap.SetNew(loc.second, at))
-				{
-					tec.location = loc.second;
-					techniteMap.Unset(loc.first);
-				}
-				else
-				{
-					//this case actually should never happen. so fatal, for now
-					FATAL__("Cannot move to reserved location " + loc.second.ToString()+" some other local technite is there");
-					index_t other;
-					ASSERT__(techniteMap.Query(loc.second, other));
-					Technite&otec = technites[other];
-					tec.taskResult = Technite::TaskResult::CannotStandThere;
-				}
-			}
-			data->moveInstructions.Clear();
-			ASSERT_EQUAL__(technites.Count(), techniteMap.Count());
-		}
+		//foreach(workerData, data)
+		//{
+		//	for (const auto&loc : data->moveInstructions)
+		//	{
+		//		index_t at;
+		//		ASSERT1__(techniteMap.Query(loc.first, at), loc.first.ToString());
+		//		Technite&tec = technites[at];
+		//		ASSERT__(tec.location.GetU() == loc.first);
+		//		if (techniteMap.SetNew(loc.second, at))
+		//		{
+		//			tec.location = loc.second;
+		//			techniteMap.Unset(loc.first);
+		//		}
+		//		else
+		//		{
+		//			//this case actually should never happen. so fatal, for now
+		//			FATAL__("Cannot move to reserved location " + loc.second.ToString()+" some other local technite is there");
+		//			index_t other;
+		//			ASSERT__(techniteMap.Query(loc.second, other));
+		//			Technite&otec = technites[other];
+		//			tec.taskResult = Technite::TaskResult::CannotStandThere;
+		//		}
+		//	}
+		//	data->moveInstructions.Clear();
+		//	ASSERT_EQUAL__(technites.Count(), techniteMap.Count());
+		//}
 		
 		visibility.CheckChanges(t);
 
@@ -996,31 +996,31 @@ namespace Technites
 	#endif
 
 
-	bool			Faction::MoveTechnite(Technite&technite, const Grid::HCellIdI&target, WorkerData&data)
-	{
-		UINT32 fromLayer = technite.location.GetLayer(),
-			toLayer = Grid::CellStack::ToLayer(target.height);
-		ASSERT_LESS__(fromLayer, Grid::CellStack::Range);
-		ASSERT_LESS__(toLayer, Grid::CellStack::Range);
-		UINT32 fromStack = technite.location.GetStackID();
+	//bool			Faction::MoveTechnite(Technite&technite, const Grid::HCellIdI&target, WorkerData&data)
+	//{
+	//	UINT32 fromLayer = technite.location.GetLayer(),
+	//		toLayer = Grid::CellStack::ToLayer(target.height);
+	//	ASSERT_LESS__(fromLayer, Grid::CellStack::Range);
+	//	ASSERT_LESS__(toLayer, Grid::CellStack::Range);
+	//	UINT32 fromStack = technite.location.GetStackID();
 
-		AtomicGrid::CellStack::Cell&fromCell = atomicGrid.cellStack[fromStack].volumeCell[fromLayer];
-		AtomicGrid::CellStack::Cell&toCell = atomicGrid.cellStack[target.stackID].volumeCell[toLayer];
+	//	AtomicGrid::CellStack::Cell&fromCell = atomicGrid.cellStack[fromStack].volumeCell[fromLayer];
+	//	AtomicGrid::CellStack::Cell&toCell = atomicGrid.cellStack[target.stackID].volumeCell[toLayer];
 
-		BYTE expect0 = Grid::Content::Clear;
-		BYTE expect1 = Grid::Content::Water;
-		if (!toCell.content.compare_exchange_strong(expect0, Grid::Content::Technite)
-			&&
-			!toCell.content.compare_exchange_strong(expect1, Grid::Content::Technite))
-			return false;
-		atomicGrid.SignalStackChange(target.stackID);
-		Grid::actualWorld.cellStack[target.stackID].volumeCell[toLayer].techniteFaction = this->gridID;
-		fromCell.content = Grid::Content::Clear;
-		atomicGrid.SignalStackChange(fromStack);
-		data.moveInstructions << std::make_pair(technite.location.GetU(),Grid::HCellIdU(target.stackID,toLayer));
-		//std::cout << "Moving technite from " << technite.location.ToString() << " to " << target.ToString() << std::endl;
-		return true;
-	}
+	//	BYTE expect0 = Grid::Content::Clear;
+	//	BYTE expect1 = Grid::Content::Water;
+	//	if (!toCell.content.compare_exchange_strong(expect0, Grid::Content::Technite)
+	//		&&
+	//		!toCell.content.compare_exchange_strong(expect1, Grid::Content::Technite))
+	//		return false;
+	//	atomicGrid.SignalStackChange(target.stackID);
+	//	Grid::actualWorld.cellStack[target.stackID].volumeCell[toLayer].techniteFaction = this->gridID;
+	//	fromCell.content = Grid::Content::Clear;
+	//	atomicGrid.SignalStackChange(fromStack);
+	//	data.moveInstructions << std::make_pair(technite.location.GetU(),Grid::HCellIdU(target.stackID,toLayer));
+	//	//std::cout << "Moving technite from " << technite.location.ToString() << " to " << target.ToString() << std::endl;
+	//	return true;
+	//}
 
 	Technite* Faction::GetOwnTechnite(const Grid::HCellIdI&target)
 	{
