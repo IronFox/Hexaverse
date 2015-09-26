@@ -255,7 +255,7 @@ namespace Consensus
 		}
 
 		private Client(TcpClient TCPClient)
-			: base(TCPClient)
+			: base(TCPClient,true)
         {}
 
 
@@ -317,7 +317,7 @@ namespace Consensus
 
 				Program.Log(this, Logging.Significance.Common, "Client connected");
 
-			base.Start(sslStream);        
+			base.StartSSL(sslStream);
 			return true;
         }
 
