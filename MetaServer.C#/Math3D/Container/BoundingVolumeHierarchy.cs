@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 
 
-namespace Consensus
+namespace Math3D
 {
     /// <summary>
     /// Binary bounding volume hierarchy.
@@ -16,10 +16,7 @@ namespace Consensus
     {
         private bool isLocked = false;
 
-        public BoundingVolumeHierarchy()
-        {
-            LoadingStage.OnExit += () => this.RebuildIfNeeded();
-        }
+
 
         /// <summary>
         /// Tuple that contains both an element and its current bounding box.
@@ -86,7 +83,7 @@ namespace Consensus
 
         private List<Entry> _allItems = new List<Entry>();
 
-        private void RebuildIfNeeded()
+        public void RebuildIfNeeded()
         {
             lock (this)
             {
@@ -96,43 +93,70 @@ namespace Consensus
         }
 
 
-        public void Insert(T element, Box space)
+        public void RuntimeInsert(T element, Box space)
         {
             lock(_allItems)
             {
                 _allItems.Add(new Entry(element, space));
-                if (LoadingStage.IsLoading || isLocked)
+                if (isLocked)
                     _root = null;
                 else
                     ForceReconstruction();
             }
         }
+		public void LoadInsert(T element, Box space)
+		{
+			lock (_allItems)
+			{
+				_allItems.Add(new Entry(element, space));
+				_root = null;
+			}
+		}
 
-        public void Insert(IEnumerable<Entry> entries)
+        public void RuntimeInsert(IEnumerable<Entry> entries)
         {
             lock (_allItems)
             {
                 _allItems.AddRange(entries);
-                if (LoadingStage.IsLoading || isLocked)
+                if (isLocked)
                     _root = null;
                 else
                     ForceReconstruction();
             }
         }
-        public void Remove(T element)
+		public void LoadInsert(IEnumerable<Entry> entries)
+		{
+			lock (_allItems)
+			{
+				_allItems.AddRange(entries);
+				_root = null;
+			}
+		}
+		public void RuntimeRemove(T element)
         {
             lock(_allItems)
                 for (int i = 0; i < _allItems.Count; i++)
                     if (object.ReferenceEquals(_allItems[i].Element,element))
                     {
                         _allItems.RemoveAt(i);
-                        if (LoadingStage.IsLoading || isLocked)
+                        if (isLocked)
                             _root = null;
                         else
                             ForceReconstruction();
                         return;
                     }
         }
+		public void LoadRemove(T element)
+		{
+			lock (_allItems)
+				for (int i = 0; i < _allItems.Count; i++)
+					if (object.ReferenceEquals(_allItems[i].Element, element))
+					{
+						_allItems.RemoveAt(i);
+						_root = null;
+						return;
+					}
+		}
 
         private class Bucket
         {
@@ -566,6 +590,11 @@ namespace Consensus
                 _root = null;
             }
         }
+
+		public void Invalidate()
+		{
+			_root = null;
+		}
 
         public void LockReconstruction()
         {
