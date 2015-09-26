@@ -16,6 +16,10 @@ namespace Protocol
 		Authenticated,	//s2c: AccountDetails
 		NewAccount,		//c2s->s2c: string->NewAccount
 
+		//channels for technite control communication
+		TechniteStateChunk,		//s2c: TechniteStateChunk
+		InstructTechnites,		//s2c: <signal>
+		TechniteInstructionChunk, //c2s: TechniteInstructionChunk
 
         Count		//must remain last
 	};
@@ -57,6 +61,44 @@ namespace Protocol
 		{
 			public AccountDetails Details;
 			public byte[] Certificate;
+		}
+
+		public struct TechniteResources
+		{
+			public byte					Energy,
+										Matter;
+				
+
+		}
+
+		public struct TechniteState
+		{
+			public UInt32				Location;
+			public TechniteResources	Resources;
+			public byte					TaskResult,
+										State;
+
+		}
+
+		public struct TechniteStateChunk
+		{
+			public bool					IsFirst;
+			public TechniteState[]		States;
+
+		}
+
+		public struct TechniteInstruction
+		{
+			public byte	NextTask,
+						TaskTarget,
+						TaskParameter;
+		}
+
+		public struct TechniteInstructionChunk
+		{
+			public const int MaxPerChunk = 10000;
+			public UInt32	Offset;
+			public TechniteInstruction[] Instructions;
 		}
 
 	}
