@@ -568,158 +568,10 @@ namespace State
 	}
 
 
-
-
-	template <typename T0, typename T1>
-		void Compress(const Array<T0>&dts, Array<T1>&dest)
-		{
-			static Buffer<T1>	blocks;
-			blocks.Clear();
-			foreach(dts,dt)
-			{
-				if (blocks.IsEmpty() || blocks.last().value != *dt)
-				{
-					auto&b = blocks.Append();
-					b.value = *dt;
-					b.repitition = 1;
-				}
-				else
-					blocks.last().repitition++;
-			}
-			blocks.CopyToArray(dest);
-		}
-	template <typename T0, typename T1>
-		void Compress(const Array<T0>&dts, Array<T1>&dest, bool assertNotNull)
-		{
-			static Buffer<T1>	blocks;
-			blocks.Clear();
-			foreach(dts,dt)
-			{
-				if (assertNotNull)
-					ASSERT__(dt->IsSet());
-				if (blocks.IsEmpty() || blocks.last().value != *dt)
-				{
-					auto&b = blocks.Append();
-					b.value = *dt;
-					b.repitition = 1;
-				}
-				else
-					blocks.last().repitition++;
-			}
-			blocks.CopyToArray(dest);
-		}
-
-
-//	void			GenerateWorldDelta(const Objects::PFaction&faction, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, delta_type_t deltaType, bool includeStructCountDelta/*=true*/)
-	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, delta_type_t deltaType, bool includeStructCountDelta/*=true*/)
-	{
-	
-			const index_t offset = Grid::high.grid.GetFamilyOffset(familyID);
-			const count_t length = Grid::high.grid.CountFamilyMembers(familyID);
-
-			delta.timestamp.atTime = std::max(Grid::high.family[familyID].outdatedAt,vs?vs->families[familyID].lastChange : 0.f);
-			delta.timestamp.rightNow = rightNow;
-			delta.family = familyID;
-			if (last)
-				delta.family.value |= 0x80;
-
-			const Grid::CellStack::Cell empty(Grid::Content::Reinterpret(0),0);
-			Array<Grid::CellStack::TTypeDelta> tdts(length * Grid::CellStack::Range);
-			Array<Grid::CellStack::TStructCountDelta> sdts(length * Grid::CellStack::Range);
-			//delta.data.SetSize(length * Grid::CellStack::Range);
-			Array<Grid::CellStack::TTechniteFactionDelta> fdts(length * Grid::CellStack::Range);
-			Array<bool> fdtsValid(length * Grid::CellStack::Range);
-
-			if (vs)
-				vs->families[familyID].Reset();
-			
-			Concurrency::parallel_for(index_t(0),length*Grid::CellStack::Range,
-			[&tdts,&sdts,&fdts,&fdtsValid,length,offset,empty,deltaType,vs,ws](index_t i)
-			{
-				//index_t stackId = offset + (i / Grid::CellStack::Range);
-				//index_t layer = i % Grid::CellStack::Range;
-				index_t stackID = offset + (i % length);
-				index_t layer = i / length;
-				switch (deltaType)
-				{
-					case ProgressiveUpdate:
-					{
-						auto&cell =  vs->cellStack[stackID].volumeCell[layer];
-						bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
-						if (canSee)
-						{
-							Grid::actualWorld.cellStack[stackID].volumeCell[layer].
-							GetDeltaFromAndUpdate(ws->cellStack[stackID].volumeCell[layer],tdts[i],sdts[i],fdts[i],fdtsValid[i]);
-						}
-						else
-						{
-							sdts[i].newStructureCounter = 0;
-							tdts[i].newType = 0;
-						}
-						cell.temporarilyVisible = false;
-					}
-					break;
-					case ProgressiveInit:
-					{
-						auto&cell =  vs->cellStack[stackID].volumeCell[layer];
-						bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
-						const Grid::CellStack::Cell& source = canSee ? Grid::actualWorld.cellStack[stackID].volumeCell[layer] : Grid::initialWorld.cellStack[stackID].volumeCell[layer];
-						source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
-						ws->cellStack[stackID].volumeCell[layer] = source;
-						cell.temporarilyVisible = false;
-					}
-					break;
-					case FactionCopy:
-					{
-						const Grid::CellStack::Cell& source = ws->cellStack[stackID].volumeCell[layer];
-						source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
-					}
-					break;
-					case GlobalCopy:
-					{
-						const Grid::CellStack::Cell& source = Grid::actualWorld.cellStack[stackID].volumeCell[layer];
-						source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
-					}
-					break;
-					case GlobalInitialCopy:
-					{
-						const Grid::CellStack::Cell& source = Grid::initialWorld.cellStack[stackID].volumeCell[layer];
-						source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
-					}
-					break;
-				}
-			});
-
-			//static_assert(A == B, "Struct-alignment out of whack");
-			//static_assert(sizeof(Protocol::TDeltaBlock) == sizeof(UINT32) + sizeof(Grid::CellStack::TCellDelta), "Struct-alignment out of whack");
-
-			Compress(tdts,delta.data0, /*deltaType == FactionCopy || */deltaType == GlobalCopy/* || deltaType == GlobalInitialCopy*/);
-			{
-				BYTE lastSet = 0;
-				for (index_t i = 0; i < fdts.Count(); i++)
-				{
-					if (!fdtsValid[i])
-						fdts[i].newTechniteFaction = lastSet;
-					else
-						lastSet = fdts[i].newTechniteFaction;
-				}
-				Compress(fdts,delta.data2);
-			}
-
-			if (includeStructCountDelta)
-			{
-				Compress(sdts,delta.data1);
-				float ratio = float(delta.data0.GetContentSize() + delta.data1.GetContentSize()) / float(tdts.GetContentSize() + sdts.GetContentSize());
-				//LogEvent(EventType::Debug, nullptr,"Compression ratio: "+String(ratio));
-			}
-			else
-				delta.data1.Clear();
-	}
-
 	void						SignalFamilyChangeToFaction(const Objects::PFaction&faction,BYTE familyId, bool last, bool rightNow)
 	{
 		static Protocol::WorldDelta	delta;
-		GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,familyId,rightNow,last,ProgressiveUpdate);
+		GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,familyId,rightNow,last,Protocol::WorldDeltaType::ProgressiveUpdate);
 
 		PClient client;
 		if (playerMap.Query(faction,client))
@@ -746,6 +598,7 @@ namespace State
 
 	void DebugCheckWorld(bool restart)
 	{
+		FATAL__("when is this called?");
 		static Array<Protocol::WorldDelta>	deltas;
 		if (restart)
 			deltas.Clear();
@@ -754,7 +607,7 @@ namespace State
 			deltas.SetSize(BaseGrid::NumFamilies);
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 			{
-				GenerateWorldDelta(nullptr,nullptr, deltas[k], k, true, k+1==BaseGrid::NumFamilies, GlobalCopy, false);
+				GenerateWorldDelta(nullptr,nullptr, deltas[k], k, true, k+1==BaseGrid::NumFamilies, Protocol::WorldDeltaType::GlobalCopy, false);
 			}
 		}
 		else
@@ -762,7 +615,7 @@ namespace State
 			Protocol::WorldDelta delta;
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 			{
-				GenerateWorldDelta(nullptr, nullptr, delta, k, true, k+1==BaseGrid::NumFamilies, GlobalCopy, false);
+				GenerateWorldDelta(nullptr, nullptr, delta, k, true, k+1==BaseGrid::NumFamilies, Protocol::WorldDeltaType::GlobalCopy, false);
 				ASSERT__(delta.data0 == deltas[k].data0);
 				ASSERT__(delta.data1 == deltas[k].data1);
 				ASSERT__(delta.data1.IsEmpty());
@@ -2094,7 +1947,7 @@ void	State::Save( const String&name)
 	{
 		TCP::Serial<Protocol::WorldDelta>	delta;
 		delta.Ref().timestamp.rightNow = true;
-		State::GenerateWorldDelta(nullptr, nullptr, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,State::GlobalCopy,false);
+		Protocol::GenerateWorldDelta(nullptr, nullptr, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::GlobalCopy,false);
 		//delta.Ref().timestamp.atTime = 0;
 		//delta.Ref().data1.Clear();
 		//delta.Seal();
@@ -2105,7 +1958,7 @@ void	State::Save( const String&name)
 	{
 		TCP::Serial<Protocol::WorldDelta>	delta,delta2;
 		delta.Ref().timestamp.rightNow = true;
-		State::GenerateWorldDelta(nullptr, nullptr, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,State::GlobalInitialCopy,false);
+		Protocol::GenerateWorldDelta(nullptr, nullptr, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::GlobalInitialCopy,false);
 
 		SerializeToChunk(delta.Ref().data0,initialWorld->AppendBlock(RID::worldTypeChunk));
 		//initialWorld->AppendBlock(RID::worldChunk)->SetData(delta.Get());
@@ -2181,7 +2034,7 @@ void	State::Save( const String&name)
 		{
 			TCP::Serial<Protocol::WorldDelta>	delta;
 			delta.Ref().timestamp.rightNow = true;
-			State::GenerateWorldDelta(&faction->visibility,&faction->currentState, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,State::FactionCopy);
+			Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::FactionCopy);
 			delta.Ref().timestamp.atTime = 0;
 
 			//delta.Seal();

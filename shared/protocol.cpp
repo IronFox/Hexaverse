@@ -1,0 +1,155 @@
+#include <global_root.h>
+#include "protocol.h"
+
+namespace Protocol
+{
+
+	template <typename T0, typename T1>
+		static void Compress(const Array<T0>&dts, Array<T1>&dest)
+		{
+			static Buffer<T1>	blocks;
+			blocks.Clear();
+			foreach(dts,dt)
+			{
+				if (blocks.IsEmpty() || blocks.last().value != *dt)
+				{
+					auto&b = blocks.Append();
+					b.value = *dt;
+					b.repitition = 1;
+				}
+				else
+					blocks.last().repitition++;
+			}
+			blocks.CopyToArray(dest);
+		}
+	template <typename T0, typename T1>
+		static void Compress(const Array<T0>&dts, Array<T1>&dest, bool assertNotNull)
+		{
+			static Buffer<T1>	blocks;
+			blocks.Clear();
+			foreach(dts,dt)
+			{
+				if (assertNotNull)
+					ASSERT__(dt->IsSet());
+				if (blocks.IsEmpty() || blocks.last().value != *dt)
+				{
+					auto&b = blocks.Append();
+					b.value = *dt;
+					b.repitition = 1;
+				}
+				else
+					blocks.last().repitition++;
+			}
+			blocks.CopyToArray(dest);
+		}
+
+
+	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType, bool includeStructCountDelta/*=true*/)
+	{
+	
+			const index_t offset = Grid::high.grid.GetFamilyOffset(familyID);
+			const count_t length = Grid::high.grid.CountFamilyMembers(familyID);
+
+			delta.timestamp.atTime = std::max(Grid::high.family[familyID].outdatedAt,vs?vs->families[familyID].lastChange : 0.f);
+			delta.timestamp.rightNow = rightNow;
+			delta.family = familyID;
+			if (last)
+				delta.family.value |= 0x80;
+
+			const Grid::CellStack::Cell empty(Grid::Content::Reinterpret(0),0);
+			Array<Grid::CellStack::TTypeDelta> tdts(length * Grid::CellStack::Range);
+			Array<Grid::CellStack::TStructCountDelta> sdts(length * Grid::CellStack::Range);
+			//delta.data.SetSize(length * Grid::CellStack::Range);
+			Array<Grid::CellStack::TTechniteFactionDelta> fdts(length * Grid::CellStack::Range);
+			Array<bool> fdtsValid(length * Grid::CellStack::Range);
+
+			if (vs)
+				vs->families[familyID].Reset();
+			
+			Concurrency::parallel_for(index_t(0),length*Grid::CellStack::Range,
+			[&tdts,&sdts,&fdts,&fdtsValid,length,offset,empty,deltaType,vs,ws](index_t i)
+			{
+				//index_t stackId = offset + (i / Grid::CellStack::Range);
+				//index_t layer = i % Grid::CellStack::Range;
+				index_t stackID = offset + (i % length);
+				index_t layer = i / length;
+				switch (deltaType)
+				{
+					case WorldDeltaType::ProgressiveUpdate:
+					{
+						auto&cell =  vs->cellStack[stackID].volumeCell[layer];
+						bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
+						if (canSee)
+						{
+							Grid::actualWorld.cellStack[stackID].volumeCell[layer].
+							GetDeltaFromAndUpdate(ws->cellStack[stackID].volumeCell[layer],tdts[i],sdts[i],fdts[i],fdtsValid[i]);
+						}
+						else
+						{
+							sdts[i].newStructureCounter = 0;
+							tdts[i].newType = 0;
+						}
+						cell.temporarilyVisible = false;
+					}
+					break;
+					case WorldDeltaType::ProgressiveInit:
+					{
+						auto&cell =  vs->cellStack[stackID].volumeCell[layer];
+						bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
+						const Grid::CellStack::Cell& source = canSee ? Grid::actualWorld.cellStack[stackID].volumeCell[layer] : Grid::initialWorld.cellStack[stackID].volumeCell[layer];
+						source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
+						ws->cellStack[stackID].volumeCell[layer] = source;
+						cell.temporarilyVisible = false;
+					}
+					break;
+					case WorldDeltaType::FactionCopy:
+					{
+						const Grid::CellStack::Cell& source = ws->cellStack[stackID].volumeCell[layer];
+						source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
+					}
+					break;
+					case WorldDeltaType::GlobalCopy:
+					{
+						const Grid::CellStack::Cell& source = Grid::actualWorld.cellStack[stackID].volumeCell[layer];
+						source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
+					}
+					break;
+					case WorldDeltaType::GlobalInitialCopy:
+					{
+						const Grid::CellStack::Cell& source = Grid::initialWorld.cellStack[stackID].volumeCell[layer];
+						source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
+					}
+					break;
+				}
+			});
+
+			//static_assert(A == B, "Struct-alignment out of whack");
+			//static_assert(sizeof(Protocol::TDeltaBlock) == sizeof(UINT32) + sizeof(Grid::CellStack::TCellDelta), "Struct-alignment out of whack");
+
+			Compress(tdts,delta.data0, /*deltaType == FactionCopy || */deltaType == WorldDeltaType::GlobalCopy/* || deltaType == GlobalInitialCopy*/);
+			{
+				BYTE lastSet = 0;
+				for (index_t i = 0; i < fdts.Count(); i++)
+				{
+					if (!fdtsValid[i])
+						fdts[i].newTechniteFaction = lastSet;
+					else
+						lastSet = fdts[i].newTechniteFaction;
+				}
+				Compress(fdts,delta.data2);
+			}
+
+			if (includeStructCountDelta)
+			{
+				Compress(sdts,delta.data1);
+				float ratio = float(delta.data0.GetContentSize() + delta.data1.GetContentSize()) / float(tdts.GetContentSize() + sdts.GetContentSize());
+				//LogEvent(EventType::Debug, nullptr,"Compression ratio: "+String(ratio));
+			}
+			else
+				delta.data1.Clear();
+	}
+
+}	
+
+
+
