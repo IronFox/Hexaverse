@@ -15,6 +15,8 @@ namespace Protocol
         protected SerialItem(Type type)
         {
             VariableType = type;
+			HasFixedSize = HasConstantSize(type);
+			FixedSize = HasFixedSize ? GetConstantSize(type) : -1;
         }
 
 
@@ -53,8 +55,8 @@ namespace Protocol
                 return condensed ? (SerialItem)new TInt64.Array.Condensed() : (SerialItem)new TInt64.Array.Embedded();
             if (typeof(UInt64) == type)
                 return condensed ? (SerialItem)new TUInt64.Array.Condensed() : (SerialItem)new TUInt64.Array.Embedded();
-
-            return new ComplexArray(t0);
+			
+            return new ComplexArray(t0, condensed);
         }
         private static SerialItem CompileField(Type type, bool condensed)
         {
@@ -170,8 +172,11 @@ namespace Protocol
                 return false;
             if (t == typeof(string))
                 return false;
-            if (t.IsArray && !t.GetElementType().IsPrimitive)
-                return true;
+			if (t.IsArray)
+			{
+				return !HasConstantSize(t.GetElementType());
+                //return true;
+			}
 
             System.Reflection.FieldInfo[] fields = t.GetFields(System.Reflection.BindingFlags.FlattenHierarchy | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
 
@@ -302,15 +307,17 @@ namespace Protocol
         /// in the local packet.
         /// </summary>
         public int CondensedOffsetFromEnd { get; private set; }
+		public bool HasFixedSize { get; private set; }
+		public int FixedSize { get; private set; }
 
-        /// <summary>
-        /// Attempts to deserialize the content of the local variable from a byte array
-        /// </summary>
-        /// <param name="data">Binary data array that contains the entire package</param>
-        /// <param name="offset">Reference to the current offset in that array. Must be incremented whenever data is read from the stream</param>
-        /// <param name="data_size">Total remaining data size. This value should be decremented by CondensedOffsetFromEnd prior to calling this method</param>
-        /// <returns>New deserialized object (may be primitive, class, or array of primitives/classes)</returns>
-        public abstract Object Deserialize(byte[] data, ref int offset, int data_size);
+		/// <summary>
+		/// Attempts to deserialize the content of the local variable from a byte array
+		/// </summary>
+		/// <param name="data">Binary data array that contains the entire package</param>
+		/// <param name="offset">Reference to the current offset in that array. Must be incremented whenever data is read from the stream</param>
+		/// <param name="data_size">Total remaining data size. This value should be decremented by CondensedOffsetFromEnd prior to calling this method</param>
+		/// <returns>New deserialized object (may be primitive, class, or array of primitives/classes)</returns>
+		public abstract Object Deserialize(byte[] data, ref int offset, int data_size);
         /// <summary>
         /// Serializes the content of the local variable to a byte buffer
         /// </summary>
@@ -410,18 +417,29 @@ namespace Protocol
         public class ComplexArray : SerialItem
         {
             SerialItem element;
+			bool condensed;
 
-            public ComplexArray(Type t)
+            public ComplexArray(Type t, bool condensed)
                 : base(t)
             {
                 element = Compile(t.GetElementType(), false, 0);
+				this.condensed = condensed && element.HasFixedSize;
             }
 
 
             public override Object Deserialize(byte[] data, ref int offset, int data_size)
             {
-                int length = ReadSize(data, ref offset, data_size);
-                RequireBytes(length, data_size - offset);   //at least one byte per element.
+				int length;
+				if (condensed)
+				{
+					int available = data_size - this.CondensedOffsetFromEnd - offset;
+					length = available / element.FixedSize;
+				}
+				else
+				{
+					length = ReadSize(data, ref offset, data_size);
+					RequireBytes(length, data_size - offset);   //at least one byte per element.
+				}
 				//if (element.VariableType.IsByRef)
 				//{
 				//	Object[] result = new Object[length];
@@ -441,7 +459,8 @@ namespace Protocol
             public override void Serialize(Object item, ByteBuffer stream)
             {
                 Array field = (Array)item;
-                stream.WriteSize(field.Length);
+				if (!condensed)
+					stream.WriteSize(field.Length);
                 for (int i = 0; i < field.Length; i++)
                     element.Serialize(field.GetValue(i), stream);
             }
