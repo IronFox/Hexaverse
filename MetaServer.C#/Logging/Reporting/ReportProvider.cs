@@ -7,9 +7,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
 
-namespace Consensus
+namespace Logging
 {
-
     public abstract class ReportProvider
     {
         protected class Client
@@ -59,7 +58,7 @@ namespace Consensus
                     byte[] job;
                     if (!writeQueue.TryDequeue(out job))
                     {
-                        Program.ReportUnexpected(null, new Exception("Unable to dequeue job"), Significance.Unusual);
+						Out.Log("", "", "", Significance.Unusual, "Unable to dequeue job");
                         continue;
                     }
                     if (job == null)
@@ -120,11 +119,18 @@ namespace Consensus
 
         protected virtual void OnClientConnect(Client client)    {}
 
+		private static volatile bool ended = false;
+
+		internal static void End()
+		{
+			ended = true;
+		}
+
 
         private void Listen()
         {
-            Program.Log(null, Significance.Low, "Starting service listening thread on " + listener.LocalEndpoint.ToString());
-            while (!Program.ShuttingDown)
+            Out.Log(Significance.Low, "Starting service listening thread on " + listener.LocalEndpoint.ToString());
+            while (!ended)
             {
                 try
                 {
@@ -132,19 +138,19 @@ namespace Consensus
                 }
                 catch (InvalidOperationException ex)
                 {
-                    if (!Program.ShuttingDown)
-                        Program.ReportFatal(null, ex);
+                    if (!ended)
+                        Out.Log(Significance.ProgramFatal,ex.ToString());
                     return;
                 }
                 catch (SocketException ex)
                 {
-                    if (!Program.ShuttingDown)
-                        Program.ReportFatal(null, ex);
-                    return;
+                    if (!ended)
+						Out.Log(Significance.ProgramFatal, ex.ToString());
+					return;
                 }
                 catch (Exception ex)
                 {
-                    Program.ReportUnexpected(null, ex, Significance.Unusual);
+					Out.Log(Significance.Unusual, ex.ToString());
                     return;
                 }
             }

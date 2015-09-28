@@ -5,7 +5,7 @@ using System.Text;
 
 
 
-namespace Consensus
+namespace Math3D
 {
     public struct TVec3<T>
     {
