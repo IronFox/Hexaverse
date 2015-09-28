@@ -37,7 +37,7 @@ namespace TechniteLogic
 			//Logging.Out.StartService();	//if multiple instances are started, the binding to a fixed ip is bad, so no service
 
 
-			if (args.Length < 3)
+			if (args.Length < 2)
 			{
 				Console.Error.WriteLine("Missing parameters. Use 'exe [port] [secret]'. Exiting");
 				ShutDown(-1);
@@ -46,14 +46,14 @@ namespace TechniteLogic
 
 			ushort serverPort;
 
-			if (!ushort.TryParse(args[1], out serverPort))
+			if (!ushort.TryParse(args[0], out serverPort))
 			{
-				Console.Error.WriteLine("Unable to parse parameter '"+args[1]+"' to port number. Exiting");
+				Console.Error.WriteLine("Unable to parse parameter '"+args[0]+"' to port number. Exiting");
 				ShutDown(-1);
 				return;
 			}
 
-			string secret = args[2];
+			string secret = args[1];
 			if (secret.Length != 64)
 			{
 				Console.Error.WriteLine("Secret is of incompatible length. Expected 64 characters, received "+secret.Length+". Exiting");

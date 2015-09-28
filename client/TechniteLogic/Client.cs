@@ -25,6 +25,7 @@ namespace TechniteLogic
 
 		protected override void OnReadThreadStart()
 		{
+			Out.Log(Significance.Common, "Connected. Authenticating...");
 			Interface.authenticate.SendTo(this, authenticationString);
 
 		}
@@ -34,6 +35,13 @@ namespace TechniteLogic
 			Out.Log(Significance.ProgramFatal, "Connection lost to host. Exiting");
 			Program.ShutDown(0);
 		}
+
+		protected override void OnAbnormalException(Exception e)
+		{
+			Out.Log(Significance.ClientFatal, e.ToString());
+		}
+
+		
 
 		public void Connect(ushort port)
 		{

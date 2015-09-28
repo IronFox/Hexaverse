@@ -155,12 +155,18 @@ namespace TechniteLogic
 		{
 			public CellStack[] cellStack = new CellStack[Graph.Nodes.Length];
 
+			public WorldData()
+			{
+				for (int i = 0; i < cellStack.Length; i++)
+					cellStack[i] = new CellStack();
+			}
 
 
 			private void ApplyDeltaField(Interface.Struct.GridDelta delta, Interface.Struct.GridDeltaBlock[] blocks, Action<CellStack, uint, byte> action)
 			{
-				if (delta.contentBlocks.Length != 0)
+				if (blocks.Length != 0)
 				{
+					Out.Log(Significance.Low, "  Applying " + blocks.Length + " blocks...");
 					uint at = 0;
 					foreach (var block in blocks)
 					{
