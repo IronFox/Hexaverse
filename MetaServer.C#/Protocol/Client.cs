@@ -36,9 +36,10 @@ namespace Protocol
 				throw new Exception("Client.Start(): Must be encrypted at this point");
 			ioStream = stream;
 
+			Debug.Assert(RequireSSL);
+			OnReadThreadStart();
 			threadHandle = new Thread(new ThreadStart(this.ThreadMain));
 			threadHandle.Start();
-			Debug.Assert(RequireSSL);
 		}
 
 		protected void StartNoSSL()
@@ -56,6 +57,7 @@ namespace Protocol
 			ioStream = tcpClient.GetStream();
 
 			Debug.Assert(!RequireSSL);
+			OnReadThreadStart();
 			ThreadMain();
 		}
 

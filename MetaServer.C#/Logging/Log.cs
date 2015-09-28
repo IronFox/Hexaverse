@@ -44,7 +44,7 @@ namespace Logging
 
 			{
 				fileLine += "\t" + "\t" + "\t";
-				printLine = System.String.Format("[{1}]<{0}> {2}({3}): {4}", significance, DateTime.Now, clientName, accountName, message);
+				printLine = System.String.Format("[{1}]<{0}> {2}({3}): {4}", significance, DateTime.Now.ToShortTimeString(), clientName, accountName, message);
 			}
 
 			fileLine += "\t" + message;
