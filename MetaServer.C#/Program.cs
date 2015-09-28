@@ -22,6 +22,22 @@ namespace Consensus
     namespace Interface
     {
 
+		enum ChannelID
+		{
+			Hello,
+			NewAccount,
+            Authenticated,
+
+			Count
+
+		}
+
+
+		public static class Version
+		{
+			public const UInt32 Combined = (UInt32)ChannelID.Count | (10<<16);
+		}
+
 
 
         public static class InOut
@@ -69,8 +85,8 @@ namespace Consensus
             }
             public static class Channel
             {
-				public static Protocol.OutChannel<Protocol.Interface.NewAccount> NewAccount = new Protocol.OutChannel<Protocol.Interface.NewAccount>(Protocol.ChannelID.NewAccount);
-				public static Protocol.OutChannel<Protocol.Interface.AccountDetails> Authenticated = new Protocol.OutChannel<Protocol.Interface.AccountDetails>(Protocol.ChannelID.Authenticated);
+				public static Protocol.OutChannel<Protocol.Interface.NewAccount> NewAccount = new Protocol.OutChannel<Protocol.Interface.NewAccount>((uint)ChannelID.NewAccount);
+				public static Protocol.OutChannel<Protocol.Interface.AccountDetails> Authenticated = new Protocol.OutChannel<Protocol.Interface.AccountDetails>((uint)ChannelID.Authenticated);
 
 //                public static OutChannel<Struct.SystemMessage> SystemMessage = new OutChannel<Struct.SystemMessage>(ChannelID.SystemMessage);
                 //public static OutChannel<Struct.PropagatedClientMessage> ClientMessage = new OutChannel<Struct.PropagatedClientMessage>(ChannelID.ClientMessage);
@@ -121,8 +137,8 @@ namespace Consensus
 
             public static void Register()
             {
-				Protocol.ChannelMap.Register<UInt32>(Protocol.ChannelID.Hello, Event.Hello,false);
-				Protocol.ChannelMap.Register<string>(Protocol.ChannelID.NewAccount, Event.NewAccount,false);
+				Protocol.ChannelMap.Register<UInt32>((uint)ChannelID.Hello, Event.Hello,false);
+				Protocol.ChannelMap.Register<string>((uint)ChannelID.NewAccount, Event.NewAccount,false);
 //                ChannelMap.Register<Struct.FileChunkRequest>(ChannelID.FileChunkRequest, Event.FileChunkRequest);
   //              ChannelMap.Register<Struct.FriendRequest>(ChannelID.FriendRequest, Event.FriendRequest);
     //            ChannelMap.Register<UInt32>(ChannelID.FriendAccept, Event.FriendAccept);
@@ -170,9 +186,9 @@ namespace Consensus
 				{
 					Client client = (Client)_client;
 					loginGate.Pass(client);
-					if (protocolVersion != Protocol.Version.Combined)
+					if (protocolVersion != Version.Combined)
 					{
-						GeneralError(client, "Version mismatch. Expected version " + VersionToString(Protocol.Version.Combined) + " but got " + VersionToString(protocolVersion) + " from client");
+						GeneralError(client, "Version mismatch. Expected version " + VersionToString(Version.Combined) + " but got " + VersionToString(protocolVersion) + " from client");
 						client.ForceDisconnect();
 						return;
 					}
@@ -200,12 +216,12 @@ namespace Consensus
 					X509Certificate2 cert = Client.MakeCertificate("hexaverse."+guid.ToString());
 					Account acc2 = Account.Create(accName, cert.GetCertHashString(),guid);
 
-					Protocol.Interface.NewAccount nacc = new Protocol.Interface.NewAccount() { Details = new Protocol.Interface.AccountDetails(acc2), Certificate = cert.Export(X509ContentType.Pfx) };
+					Protocol.Interface.NewAccount nacc = new Protocol.Interface.NewAccount() { details = new Protocol.Interface.AccountDetails(acc2), certificate = cert.Export(X509ContentType.Pfx) };
 
 					Out.Channel.NewAccount.SendTo(client, nacc);
 
 					client.Account = acc2;
-					Out.Channel.Authenticated.SendTo(client, nacc.Details);
+					Out.Channel.Authenticated.SendTo(client, nacc.details);
 					Program.Log(client, Logging.Significance.Common, "Logged in as: " + acc2.ToString());
 
 				}
