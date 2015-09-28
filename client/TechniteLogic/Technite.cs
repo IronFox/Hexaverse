@@ -35,19 +35,11 @@ namespace TechniteLogic
 				this.data = data;
 			}
 
-			public	Grid.HCellIdI	GetI()
-			{
-				return new Grid.HCellIdI(data >> 8, GetHeight());
-			}
 			public	Grid.HCellIdU	GetU()
 			{
 				return new Grid.HCellIdU(data >> 8, GetLayer());
 			}
 
-			public	int			GetHeight()
-			{
-				return Grid.CellStack.ToHeight(GetLayer());
-			}
 
 			public uint		GetLayer()
 			{
@@ -59,10 +51,6 @@ namespace TechniteLogic
 				return data >> 8;
 			}
 
-			public static implicit operator CompressedLocation(Grid.HCellIdI cellID)
-			{
-				return new CompressedLocation((cellID.StackID << 8) | Grid.CellStack.ToLayer(cellID.Height));
-			}
 
 			public static implicit operator CompressedLocation(Grid.HCellIdU cellID)
 			{
@@ -83,9 +71,9 @@ namespace TechniteLogic
 			}
 
 
-			public static implicit operator Resources(Protocol.Interface.TechniteResources res)
+			public static implicit operator Resources(Interface.Struct.TechniteResources res)
 			{
-				return new Resources(res.Energy,res.Matter);
+				return new Resources(res.energy,res.matter);
 			}
 
 			public static Resources	operator/(Resources res, int div)
@@ -255,14 +243,14 @@ namespace TechniteLogic
 			Location = loc;
 		}
 
-		private void				ImportState(Protocol.Interface.TechniteState state)
+		private void				ImportState(Interface.Struct.TechniteState state)
 		{
 			nextTask = Task.None;
 			taskParameter = 0;
 			lastResources = resources;
-			resources = state.Resources;
-			taskResult = (TaskResult)state.TaskResult;
-			this.state = new CompressedState(state.State).Decoded;
+			resources = state.resources;
+			taskResult = (TaskResult)state.taskResult;
+			this.state = new CompressedState(state.state).Decoded;
 			exists = true;
 		}
 
@@ -275,6 +263,8 @@ namespace TechniteLogic
 		public static IEnumerable<Technite> All { get { return all; } }
 		public static int Count { get {  return all.Count; } }
 
+		public static byte MyFactionGridID { get; internal set; }
+
 		public static void Reset()
 		{
 			check.Clear();
@@ -286,9 +276,9 @@ namespace TechniteLogic
 			all.Clear();
 		}
 
-		public static void CreateOrUpdate(Protocol.Interface.TechniteState state)
+		public static void CreateOrUpdate(Interface.Struct.TechniteState state)
 		{
-			Grid.HCellIdU loc = new CompressedLocation(state.Location).GetU();
+			Grid.HCellIdU loc = new CompressedLocation(state.location).GetU();
 			Technite tech;
 			if (map.TryGetValue(loc, out tech))
 			{
@@ -315,13 +305,13 @@ namespace TechniteLogic
 		}
 
 
-		internal Protocol.Interface.TechniteInstruction ExportInstruction()
+		internal Interface.Struct.TechniteInstruction ExportInstruction()
 		{
-			return new Protocol.Interface.TechniteInstruction()
+			return new Interface.Struct.TechniteInstruction()
 			{
-				NextTask = (byte)this.nextTask,
-				TaskParameter = this.taskParameter,
-				TaskTarget = new CompressedTarget(this.taskTarget).Data
+				nextTask = (byte)this.nextTask,
+				taskParameter = this.taskParameter,
+				taskTarget = new CompressedTarget(this.taskTarget).Data
 			};
 		}
 	}

@@ -4,27 +4,110 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Math3D;
+using Protocol;
 
 namespace TechniteLogic
 {
 	public static class Interface
 	{
 
-		public static Protocol.OutChannel<Protocol.Interface.TechniteInstructionChunk> techniteInstructionChunk = new Protocol.OutChannel<Protocol.Interface.TechniteInstructionChunk>(Protocol.ChannelID.TechniteInstructionChunk);
+		public static Protocol.OutChannel<Struct.TechniteInstructionChunk> techniteInstructionChunk = new Protocol.OutChannel<Struct.TechniteInstructionChunk>(Protocol.ChannelID.TechniteInstructionChunk);
 
 	    public static void Register()
         {
-			Protocol.ChannelMap.Register<Protocol.Interface.TechniteStateChunk>(Protocol.ChannelID.TechniteStateChunk, Event.TechniteStateChunk);
-			//Protocol.ChannelMap.Register<string>(Protocol.ChannelID.NewAccount, Event.NewAccount,false);
-			Protocol.ChannelMap.RegisterSignal(Protocol.ChannelID.InstructTechnites,Event.InstructTechnites);
+			ChannelMap.Register<Struct.TechniteStateChunk>(ChannelID.TechniteStateChunk, Event.TechniteStateChunk);
+			ChannelMap.RegisterSignal(ChannelID.InstructTechnites,Event.InstructTechnites);
+			ChannelMap.Register<Struct.SessionBegin>(ChannelID.SessionBegin, Event.SessionBegin);
+			ChannelMap.Register<Struct.NodeChunk>(ChannelID.NodeChunk, Event.NodeChunk);
 		}
 
 
 		public class Struct
 		{
-		
-		}
-		public static class Event
+
+			public struct TechniteResources
+			{
+				public byte energy,
+											matter;
+
+
+			}
+
+			public struct TechniteState
+			{
+				public UInt32 location;
+				public TechniteResources resources;
+				public byte taskResult,
+											state;
+
+			}
+
+			public struct TechniteStateChunk
+			{
+				public bool isFirst;
+				public TechniteState[] states;
+
+			}
+
+			public struct TechniteInstruction
+			{
+				public byte nextTask,
+							taskTarget,
+							taskParameter;
+			}
+
+			public struct TechniteInstructionChunk
+			{
+				public const int MaxPerChunk = 10000;
+				public UInt32 offset;
+				public TechniteInstruction[] instructions;
+			}
+
+
+			public struct GridDeltaBlock
+			{
+				public byte value;
+				public UInt32 repitition;
+			}
+
+			public struct GridDelta
+			{
+				public int nodeOffset,
+							nodeCount;
+				public GridDeltaBlock[] contentBlocks,
+										structureCountBlocks,
+										techniteFactionBlocks;
+
+			}
+
+			public struct GridNode
+            {
+                public uint[] neighbors;
+                public Vec3 stackBase;
+                public Vec3 stackDirection;
+            }
+
+			public struct GridConfig
+			{
+				public float heightPerLayer;
+				public int numLayersPerStack;
+			}
+
+			public struct NodeChunk
+			{
+				public bool isLast;
+				public GridNode[] nodes;
+			}
+
+			public struct SessionBegin
+			{
+				public GridConfig grid;
+				public byte myFactionGridID;
+			}
+        }
+
+        public static class Event
 		{
 
 			public static void InstructTechnites(Protocol.Client cl)
@@ -33,23 +116,23 @@ namespace TechniteLogic
 				Logic.ProcessTechnites();
 
 				int numTechnites = Technite.Count;
-				int numChunks = numTechnites / Protocol.Interface.TechniteInstructionChunk.MaxPerChunk;
-				if ((numTechnites % Protocol.Interface.TechniteInstructionChunk.MaxPerChunk)!= 0)
+				int numChunks = numTechnites / Struct.TechniteInstructionChunk.MaxPerChunk;
+				if ((numTechnites % Struct.TechniteInstructionChunk.MaxPerChunk)!= 0)
 					numChunks++;
 
 				var e = Technite.All.GetEnumerator();
 				int offset = 0;
 				for (int i = 0; i < numChunks; i++)
 				{
-					int chunkSize = Math.Min(Protocol.Interface.TechniteInstructionChunk.MaxPerChunk, numTechnites - offset);
+					int chunkSize = Math.Min(Struct.TechniteInstructionChunk.MaxPerChunk, numTechnites - offset);
 
-					Protocol.Interface.TechniteInstructionChunk chunk = new Protocol.Interface.TechniteInstructionChunk();
-					chunk.Offset = (uint)offset;
-					chunk.Instructions = new Protocol.Interface.TechniteInstruction[chunkSize];
+					Struct.TechniteInstructionChunk chunk = new Struct.TechniteInstructionChunk();
+					chunk.offset = (uint)offset;
+					chunk.instructions = new Struct.TechniteInstruction[chunkSize];
 					for (int j = 0; j < chunkSize; j++)
 					{
 						Technite t = e.Current;
-						chunk.Instructions[j] = t.ExportInstruction();
+						chunk.instructions[j] = t.ExportInstruction();
 						bool success = e.MoveNext();
 						Debug.Assert(success || (i+1 == numChunks && j+1== chunkSize));
 					}
@@ -60,13 +143,24 @@ namespace TechniteLogic
 				}
 			}
 
-			public static void TechniteStateChunk(Protocol.Client cl, Protocol.Interface.TechniteStateChunk chunk)
+			public static void TechniteStateChunk(Protocol.Client cl, Struct.TechniteStateChunk chunk)
 			{
-				if (chunk.IsFirst)
+				if (chunk.isFirst)
 					Technite.Reset();
-				foreach (var state in chunk.States)
+				foreach (var state in chunk.states)
 					Technite.CreateOrUpdate(state);
 
+			}
+
+			internal static void NodeChunk(Protocol.Client cl, Struct.NodeChunk nodeChunk)
+			{
+				Grid.Graph.AddChunk(nodeChunk);
+			}
+
+			internal static void SessionBegin(Protocol.Client cl, Struct.SessionBegin sessionBegin)
+			{
+				Grid.BeginSession(sessionBegin.grid.heightPerLayer, sessionBegin.grid.numLayersPerStack);
+				Technite.MyFactionGridID = sessionBegin.myFactionGridID;
 			}
 		}
 	}

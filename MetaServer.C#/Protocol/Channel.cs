@@ -21,7 +21,10 @@ namespace Protocol
 		InstructTechnites,		//s2c: <signal>
 		TechniteInstructionChunk, //c2s: TechniteInstructionChunk
 
-        Count		//must remain last
+		SessionBegin,
+		NodeChunk,
+
+		Count     //must remain last
 	};
 
     public enum Protocol
@@ -39,7 +42,6 @@ namespace Protocol
 
 	public static class Version
 	{
-     //           private const UInt16 protocolVersion = (UInt16)Protocol.Protocol.Version;
 		public const UInt32 Combined = ((UInt32)ChannelID.Count << 16) | (UInt16)Protocol.Version;
 	}
 
@@ -48,57 +50,19 @@ namespace Protocol
 	{
 		public struct AccountDetails
 		{
-			public string AccountName;
-			public byte[] GUID;
+			public string accountName;
+			public byte[] guid;
 
 			public AccountDetails(Account acc)
 			{
-				AccountName = acc.Name;
-				GUID = acc.GUID.ToByteArray();
+				accountName = acc.Name;
+				guid = acc.GUID.ToByteArray();
 			}
 		}
 		public struct NewAccount
 		{
-			public AccountDetails Details;
-			public byte[] Certificate;
-		}
-
-		public struct TechniteResources
-		{
-			public byte					Energy,
-										Matter;
-				
-
-		}
-
-		public struct TechniteState
-		{
-			public UInt32				Location;
-			public TechniteResources	Resources;
-			public byte					TaskResult,
-										State;
-
-		}
-
-		public struct TechniteStateChunk
-		{
-			public bool					IsFirst;
-			public TechniteState[]		States;
-
-		}
-
-		public struct TechniteInstruction
-		{
-			public byte	NextTask,
-						TaskTarget,
-						TaskParameter;
-		}
-
-		public struct TechniteInstructionChunk
-		{
-			public const int MaxPerChunk = 10000;
-			public UInt32	Offset;
-			public TechniteInstruction[] Instructions;
+			public AccountDetails details;
+			public byte[] certificate;
 		}
 
 	}
