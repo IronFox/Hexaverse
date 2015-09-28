@@ -178,9 +178,9 @@ public:
 		return stdMemHash(id.bytes,sizeof(id.bytes));
 	}
 
-	String		ToString() const
+	String		ToString(count_t numBytes=4) const
 	{
-		return Bin2Str::Convert(bytes,/*sizeof(bytes)*/4);
+		return Bin2Str::Convert(bytes,/*sizeof(bytes)*/numBytes);
 	}
 
 	String		ToFullString() const
