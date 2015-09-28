@@ -46,6 +46,7 @@ namespace Protocol
 			ioStream = tcpClient.GetStream();
 
 			Debug.Assert(!RequireSSL);
+			OnReadThreadStart();
 			threadHandle = new Thread(new ThreadStart(this.ThreadMain));
 			threadHandle.Start();
 			
@@ -133,6 +134,8 @@ namespace Protocol
 		protected virtual void OnAbnormalException(Exception e)
 		{ }
 
+		protected virtual void OnReadThreadStart()
+		{ }
 
 		protected virtual void OnReadThreadExit()
 		{ }
