@@ -10,27 +10,6 @@ namespace Protocol
 
    
 
-    public enum ChannelID
-    {
-		Hello,			//c2s: protocol version: UINT32
-		Authenticated,	//s2c: AccountDetails
-		NewAccount,		//c2s->s2c: string->NewAccount
-
-		//channels for technite control communication
-		TechniteStateChunk,		//s2c: TechniteStateChunk
-		InstructTechnites,		//s2c: <signal>
-		TechniteInstructionChunk, //c2s: TechniteInstructionChunk
-
-		SessionBegin,   //s2c: SessionBegin
-		NodeChunk,		//s2c: NodeChunk
-
-		Count     //must remain last
-	};
-
-    public enum Protocol
-    {
-        Version = 10	//must be incremented whenever the type of data being transfered along any of the above channels changes.
-    }
 
     public enum Port
     {
@@ -40,10 +19,6 @@ namespace Protocol
     }
 
 
-	public static class Version
-	{
-		public const UInt32 Combined = ((UInt32)ChannelID.Count << 16) | (UInt16)Protocol.Version;
-	}
 
 
 	namespace Interface
@@ -81,9 +56,9 @@ namespace Protocol
 		virtual protected void OnReceive(Client sender, Object received) { throw new Exception("Expected signal but received object on channel " + ChannelID); }
 		virtual protected void OnReceiveSignal(Client sender) { throw new Exception("Expected object but received signal on channel " + ChannelID); }
 
-		public ChannelID ChannelID { get; private set; }
+		public uint ChannelID { get; private set; }
 
-		public ChannelHandler(ChannelID myChannel, Type Serializable, bool loggedInOnly)
+		public ChannelHandler(uint myChannel, Type Serializable, bool loggedInOnly)
 		{
 			LoggedInOnly = loggedInOnly;
 			ChannelID = myChannel;
@@ -117,7 +92,7 @@ namespace Protocol
 			handler(sender, (T)received);
 		}
 
-		public GenericChannelHandler(ChannelID id, Action<Client, T> action, bool loggedInOnly)
+		public GenericChannelHandler(uint id, Action<Client, T> action, bool loggedInOnly)
 			: base(id, typeof(T), loggedInOnly)
 		{
 			handler = action;
@@ -133,7 +108,7 @@ namespace Protocol
 		{
 			handler(sender);
 		}
-		public SignalHandler(ChannelID id, Action<Client> action, bool loggedInOnly)
+		public SignalHandler(uint id, Action<Client> action, bool loggedInOnly)
 			: base(id, typeof(void), loggedInOnly)
 		{
 			handler = action;
@@ -172,7 +147,7 @@ namespace Protocol
 	public class OutChannel<T> : ChannelSender
 	{
 		private UInt32 channelID;
-		public OutChannel(ChannelID channelID)
+		public OutChannel(uint channelID)
 			: base(typeof(T))
 		{ this.channelID = (UInt32)channelID; }
 		public void SendTo(Client client, T item)
@@ -191,7 +166,7 @@ namespace Protocol
 	public class SignalChannel
 	{
 		private UInt32 channelID;
-		public SignalChannel(ChannelID channelID)
+		public SignalChannel(uint channelID)
 		{ this.channelID = (UInt32)channelID; }
 		public void SendTo(Client client)
 		{
@@ -213,7 +188,7 @@ namespace Protocol
 	{
 		private static ChannelSender sender = new ChannelSender(typeof(T));
 
-		public static void SendTo(ChannelID channelID, Client client, ByteBuffer buffer, T item)
+		public static void SendTo(uint channelID, Client client, ByteBuffer buffer, T item)
 		{
 			sender.SendTo((UInt32)channelID, buffer, client, item);
 		}
@@ -223,22 +198,22 @@ namespace Protocol
 
 	public static class ChannelMap
 	{
-		private static ConcurrentDictionary<ChannelID, ChannelHandler> channels = new ConcurrentDictionary<ChannelID, ChannelHandler>();
+		private static ConcurrentDictionary<uint, ChannelHandler> channels = new ConcurrentDictionary<uint, ChannelHandler>();
 
-		public static ChannelHandler LookUp(ChannelID channelID)
+		public static ChannelHandler LookUp(uint channelID)
 		{
 			if (!channels.ContainsKey(channelID))
 				return null;
 			return channels[channelID];
 		}
 
-		public static void Register<T>(ChannelID channelID, Action<Client, T> OnReceive, bool requireLogIn = true)
+		public static void Register<T>(uint channelID, Action<Client, T> OnReceive, bool requireLogIn = true)
 		{
 			ChannelHandler channel = new GenericChannelHandler<T>(channelID, OnReceive, requireLogIn);
 			channels[channelID] = channel;
 		}
 
-		public static void RegisterSignal(ChannelID channelID, Action<Client> onReceive, bool requireLogIn = true)
+		public static void RegisterSignal(uint channelID, Action<Client> onReceive, bool requireLogIn = true)
 		{
 			ChannelHandler channel = new SignalHandler(channelID, onReceive, requireLogIn);
 			channels[channelID] = channel;

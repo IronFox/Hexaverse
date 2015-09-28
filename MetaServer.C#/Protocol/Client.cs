@@ -87,14 +87,14 @@ namespace Protocol
 							{
 								throw new Exception("Received unsafe packet size (" + packetSize + ") on channel " + channel);
 							}
-							handler = ChannelMap.LookUp((ChannelID)channel);
+							handler = ChannelMap.LookUp(channel);
 							if (handler == null)
 							{
 								throw new Exception("Received packet on unexpected channel " + channel);
 							}
 							if (handler.LoggedInOnly && !IsAuthenticated)
 							{
-								throw new Exception("Received packet on channel " + (ChannelID)channel + ", which is reserved for authenticated clients");
+								throw new Exception("Received packet on channel " + channel + ", which is reserved for authenticated clients");
 							}
 						}
 					}
