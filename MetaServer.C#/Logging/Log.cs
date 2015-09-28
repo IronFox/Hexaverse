@@ -52,7 +52,7 @@ namespace Logging
 			if (logger != null)
 				logger.SendEvent(fileLine);
 
-			if (significance >= Significance.Unusual)
+			//if (significance >= Significance.Unusual)
 			{
 				lock (logLock)
 					System.IO.File.AppendAllText("execution.log", fileLine + "\n");
