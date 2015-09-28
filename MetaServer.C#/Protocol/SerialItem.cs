@@ -34,34 +34,34 @@ namespace Protocol
         }
 
 
-        private static SerialItem CompileArray(Type t0, bool condensed)
+        private static SerialItem CompileArray(Type t0, bool derived)
         {
             Type type = t0.GetElementType();
             if (typeof(byte) == type)
-                return condensed ? (SerialItem)new Byte.Array.Condensed() : (SerialItem)new Byte.Array.Embedded();
+                return derived ? (SerialItem)new Byte.Array.Derived() : (SerialItem)new Byte.Array.Embedded();
             if (typeof(bool) == type)
-                return condensed ? (SerialItem)new Bool.Array.Condensed() : (SerialItem)new Bool.Array.Embedded();
+                return derived ? (SerialItem)new Bool.Array.Derived() : (SerialItem)new Bool.Array.Embedded();
             if (typeof(char) == type)
-                return condensed ? (SerialItem)new Char.Array.Condensed() : (SerialItem)new Char.Array.Embedded();
+                return derived ? (SerialItem)new Char.Array.Derived() : (SerialItem)new Char.Array.Embedded();
             if (typeof(Int16) == type)
-                return condensed ? (SerialItem)new TInt16.Array.Condensed() : (SerialItem)new TInt16.Array.Embedded();
+                return derived ? (SerialItem)new TInt16.Array.Derived() : (SerialItem)new TInt16.Array.Embedded();
             if (typeof(UInt16) == type)
-                return condensed ? (SerialItem)new TUInt16.Array.Condensed() : (SerialItem)new TUInt16.Array.Embedded();
+                return derived ? (SerialItem)new TUInt16.Array.Derived() : (SerialItem)new TUInt16.Array.Embedded();
             if (typeof(Int32) == type)
-                return condensed ? (SerialItem)new TInt32.Array.Condensed() : (SerialItem)new TInt32.Array.Embedded();
+                return derived ? (SerialItem)new TInt32.Array.Derived() : (SerialItem)new TInt32.Array.Embedded();
             if (typeof(UInt32) == type)
-                return condensed ? (SerialItem)new TUInt32.Array.Condensed() : (SerialItem)new TUInt32.Array.Embedded();
+                return derived ? (SerialItem)new TUInt32.Array.Derived() : (SerialItem)new TUInt32.Array.Embedded();
             if (typeof(Int64) == type)
-                return condensed ? (SerialItem)new TInt64.Array.Condensed() : (SerialItem)new TInt64.Array.Embedded();
+                return derived ? (SerialItem)new TInt64.Array.Derived() : (SerialItem)new TInt64.Array.Embedded();
             if (typeof(UInt64) == type)
-                return condensed ? (SerialItem)new TUInt64.Array.Condensed() : (SerialItem)new TUInt64.Array.Embedded();
+                return derived ? (SerialItem)new TUInt64.Array.Derived() : (SerialItem)new TUInt64.Array.Embedded();
 			
-            return new ComplexArray(t0, condensed);
+            return new ComplexArray(t0, derived);
         }
-        private static SerialItem CompileField(Type type, bool condensed)
+        private static SerialItem CompileField(Type type, bool derived)
         {
             if (type.IsArray)
-                return CompileArray(type, condensed);
+                return CompileArray(type, derived);
             if (type.IsEnum)
                 return new Enum(type);
             if (typeof(byte) == type)
@@ -87,53 +87,53 @@ namespace Protocol
             if (typeof(double) == type)
                 return new Double();
             if (typeof(string) == type)
-                return condensed ? (SerialItem)new String.Condensed() : (SerialItem)new String.Embedded();
+                return derived ? (SerialItem)new String.Derived() : (SerialItem)new String.Embedded();
 
             if (type.IsPrimitive)
                 throw new Exception("Unpextected type for compilation: " + type);
-            return new Complex(type,condensed);
+            return new Complex(type,derived);
         }
 
-        /// <summary>
-        /// Creates a new SerialItem for the specified type
-        /// </summary>
-        /// <param name="type">Type to create the serial-item for</param>
-        /// <param name="condensed">True, if contextual size information should be used to derive dynamic content size (specify false, to always read and write dynamic content length to/from the stream)</param>
-        /// <param name="offsetFromEnd">Value to write to SerialItem.CondensedOffsetFromEnd</param>
-        /// <returns>New serial item that sattisfies the specified type constraints</returns>
-        public static SerialItem Compile(Type type, bool condensed, int offsetFromEnd)
+		/// <summary>
+		/// Creates a new SerialItem for the specified type
+		/// </summary>
+		/// <param name="type">Type to create the serial-item for</param>
+		/// <param name="derived">True, if contextual size information should be used to derive dynamic content size (specify false, to always read and write dynamic content length to/from the stream)</param>
+		/// <param name="offsetFromEnd">Value to write to SerialItem.DerivedOffsetFromEnd</param>
+		/// <returns>New serial item that sattisfies the specified type constraints</returns>
+		public static SerialItem Compile(Type type, bool derived, int offsetFromEnd)
         {
-            SerialItem result = CompileField(type, condensed);
-            result.CondensedOffsetFromEnd = offsetFromEnd;
+            SerialItem result = CompileField(type, derived);
+            result.DerivedOffsetFromEnd = offsetFromEnd;
             return result;
         }
 
-        private static bool CompileCondensed(System.Reflection.FieldInfo[] fields, SerialItem[] result)
+        private static bool CompileDerived(System.Reflection.FieldInfo[] fields, SerialItem[] result)
         {
-            int numCondensed = 0;
-            int condensedAt = 0;
+            int numDerived = 0;
+            int derivedAt = 0;
             for (int i = 0; i < fields.Length; i++)
             {
                 Type t = fields[i].FieldType;
-                if (BreaksCondensation(t))
+                if (BreaksDerivation(t))
                     return false;
-                if (CanUtilizeCondensation(t))
+                if (CanUtilizeDerivation(t))
                 {
-                    numCondensed++;
-                    condensedAt = i;
+                    numDerived++;
+                    derivedAt = i;
                 }
             }
-            if (numCondensed != 1)
+            if (numDerived != 1)
                 return false;
 
-            int condensationOffset = 0;
-            for (int i = condensedAt + 1; i < fields.Length; i++)
-                condensationOffset += GetConstantSize(fields[i].FieldType);
+            int derivationOffset = 0;
+            for (int i = derivedAt + 1; i < fields.Length; i++)
+                derivationOffset += GetConstantSize(fields[i].FieldType);
             for (int i = 0; i < fields.Length; i++)
             {
                 Type t = fields[i].FieldType;
-                if (condensedAt == i)
-                    result[i] = Compile(t, true, condensationOffset);
+                if (derivedAt == i)
+                    result[i] = Compile(t, true, derivationOffset);
                 else
                     result[i] = Compile(t, false, 0);
             }
@@ -143,7 +143,7 @@ namespace Protocol
 
         /// <summary>
         /// Auto-compiles a whole set of SerialItem derivates depending on the configuration of fields
-        /// For up to three fields, the method will attempt to find a condensed composition. If no such could be identified,
+        /// For up to three fields, the method will attempt to find a derived composition. If no such could be identified,
         /// or if more than three fields are provided, embedded overloads are used to all types.
         /// </summary>
         /// <param name="fields">Field composition to find a serial item solution for</param>
@@ -153,7 +153,7 @@ namespace Protocol
             SerialItem[] result = new SerialItem[fields.Length];
             if (fields.Length <= 3)
             {
-                if (CompileCondensed(fields, result))
+                if (CompileDerived(fields, result))
                     return result;
             }
             for (int i = 0; i < result.Length; i++)
@@ -162,11 +162,11 @@ namespace Protocol
         }
 
         /// <summary>
-        /// Identifies whether the specified type completely prevents condensation
+        /// Identifies whether the specified type completely prevents derivation
         /// </summary>
         /// <param name="t"></param>
         /// <returns></returns>
-        public static bool BreaksCondensation(Type t)
+        public static bool BreaksDerivation(Type t)
         {
             if (t.IsPrimitive)
                 return false;
@@ -181,28 +181,28 @@ namespace Protocol
             System.Reflection.FieldInfo[] fields = t.GetFields(System.Reflection.BindingFlags.FlattenHierarchy | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
 
 
-            int numCondensed = 0;
+            int numDerived = 0;
             for (int i = 0; i < fields.Length; i++)
             {
                 Type subT = fields[i].FieldType;
-                if (BreaksCondensation(subT))
+                if (BreaksDerivation(subT))
                     return true;
-                if (CanUtilizeCondensation(subT))
+                if (CanUtilizeDerivation(subT))
                 {
-                    numCondensed++;
+                    numDerived++;
                 }
             }
             if (fields.Length <= 3)
-                return numCondensed > 1;
-            return numCondensed > 0;
+                return numDerived > 1;
+            return numDerived > 0;
         }
 
         /// <summary>
-        /// Identifies whether the specified type could at all use condensation
+        /// Identifies whether the specified type could at all use derivation
         /// </summary>
         /// <param name="t"></param>
         /// <returns></returns>
-        public static bool CanUtilizeCondensation(Type t)
+        public static bool CanUtilizeDerivation(Type t)
         {
             if (t.IsPrimitive)
                 return false;
@@ -216,18 +216,18 @@ namespace Protocol
             if (fields.Length > 3)
                 return false;
 
-            int numCondensed = 0;
+            int numDerived = 0;
             for (int i = 0; i < fields.Length; i++)
             {
                 Type subT = fields[i].FieldType;
-                if (BreaksCondensation(subT))
+                if (BreaksDerivation(subT))
                     return false;
-                if (CanUtilizeCondensation(subT))
+                if (CanUtilizeDerivation(subT))
                 {
-                    numCondensed++;
+                    numDerived++;
                 }
             }
-            return numCondensed == 1;
+            return numDerived == 1;
         }
         private static bool HasConstantSize(Type t)
         {
@@ -302,11 +302,11 @@ namespace Protocol
         /// </summary>
         public Type VariableType { get; protected set; }
         /// <summary>
-        /// Non-0 only for condensed serial items. Describes by how much the packet size must be decremeneted to derive the
-        /// size of any dynamic content. Basically, for condensed types this is the size of any following constant sized elements
+        /// Non-0 only for derived serial items. Describes by how much the packet size must be decremeneted to derive the
+        /// size of any dynamic content. Basically, for derived types this is the size of any following constant sized elements
         /// in the local packet.
         /// </summary>
-        public int CondensedOffsetFromEnd { get; private set; }
+        public int DerivedOffsetFromEnd { get; private set; }
 		public bool HasFixedSize { get; private set; }
 		public int FixedSize { get; private set; }
 
@@ -315,7 +315,7 @@ namespace Protocol
 		/// </summary>
 		/// <param name="data">Binary data array that contains the entire package</param>
 		/// <param name="offset">Reference to the current offset in that array. Must be incremented whenever data is read from the stream</param>
-		/// <param name="data_size">Total remaining data size. This value should be decremented by CondensedOffsetFromEnd prior to calling this method</param>
+		/// <param name="data_size">Total remaining data size. This value should be decremented by DerivationOffsetFromEnd prior to calling this method</param>
 		/// <returns>New deserialized object (may be primitive, class, or array of primitives/classes)</returns>
 		public abstract Object Deserialize(byte[] data, ref int offset, int data_size);
         /// <summary>
@@ -379,14 +379,14 @@ namespace Protocol
 
 
 
-            public Complex(Type t, bool condensed)
+            public Complex(Type t, bool derived)
                 : base(t)
             {
                 List<System.Reflection.FieldInfo> info = new List<System.Reflection.FieldInfo>();
                 buildInto(ref info, t);
                 fields = info.ToArray();
                 items = new SerialItem[fields.Length];
-                if (!condensed || !CompileCondensed(fields, items))
+                if (!derived || !CompileDerived(fields, items))
                 {
                     for (int i = 0; i < items.Length; i++)
                         items[i] = Compile(fields[i].FieldType, false, 0);
@@ -417,22 +417,22 @@ namespace Protocol
         public class ComplexArray : SerialItem
         {
             SerialItem element;
-			bool condensed;
+			bool derived;
 
-            public ComplexArray(Type t, bool condensed)
+            public ComplexArray(Type t, bool derived)
                 : base(t)
             {
                 element = Compile(t.GetElementType(), false, 0);
-				this.condensed = condensed && element.HasFixedSize;
+				this.derived = derived && element.HasFixedSize;
             }
 
 
             public override Object Deserialize(byte[] data, ref int offset, int data_size)
             {
 				int length;
-				if (condensed)
+				if (derived)
 				{
-					int available = data_size - this.CondensedOffsetFromEnd - offset;
+					int available = data_size - this.DerivedOffsetFromEnd - offset;
 					length = available / element.FixedSize;
 				}
 				else
@@ -459,7 +459,7 @@ namespace Protocol
             public override void Serialize(Object item, ByteBuffer stream)
             {
                 Array field = (Array)item;
-				if (!condensed)
+				if (!derived)
 					stream.WriteSize(field.Length);
                 for (int i = 0; i < field.Length; i++)
                     element.Serialize(field.GetValue(i), stream);
@@ -507,9 +507,9 @@ namespace Protocol
                         stream.Append(field, 0, field.Length);
                     }
                 }
-                public class Condensed : SerialItem
+                public class Derived : SerialItem
                 {
-                    public Condensed()
+                    public Derived()
                         : base(typeof(byte[]))
                     { }
 
@@ -634,9 +634,9 @@ namespace Protocol
                         }
                     }
                 }
-                public class Condensed : SerialItem
+                public class Derived : SerialItem
                 {
-                    public Condensed()
+                    public Derived()
                         : base(typeof(bool[]))
                     { }
 
@@ -707,9 +707,9 @@ namespace Protocol
                         }
                     }
                 }
-                public class Condensed : SerialItem
+                public class Derived : SerialItem
                 {
-                    public Condensed()
+                    public Derived()
                         : base(typeof(char[]))
                     { }
 
@@ -784,9 +784,9 @@ namespace Protocol
                         }
                     }
                 }
-                public class Condensed : SerialItem
+                public class Derived : SerialItem
                 {
-                    public Condensed()
+                    public Derived()
                         : base(typeof(Int16[]))
                     { }
 
@@ -864,9 +864,9 @@ namespace Protocol
                         }
                     }
                 }
-                public class Condensed : SerialItem
+                public class Derived : SerialItem
                 {
-                    public Condensed()
+                    public Derived()
                         : base(typeof(UInt16[]))
                     { }
 
@@ -944,9 +944,9 @@ namespace Protocol
                         }
                     }
                 }
-                public class Condensed : SerialItem
+                public class Derived : SerialItem
                 {
-                    public Condensed()
+                    public Derived()
                         : base(typeof(Int32[]))
                     { }
 
@@ -1026,9 +1026,9 @@ namespace Protocol
                         }
                     }
                 }
-                public class Condensed : SerialItem
+                public class Derived : SerialItem
                 {
-                    public Condensed()
+                    public Derived()
                         : base(typeof(UInt32[]))
                     { }
 
@@ -1115,9 +1115,9 @@ namespace Protocol
                         }
                     }
                 }
-                public class Condensed : SerialItem
+                public class Derived : SerialItem
                 {
-                    public Condensed()
+                    public Derived()
                         : base(typeof(Int64[]))
                     { }
 
@@ -1222,9 +1222,9 @@ namespace Protocol
                         }
                     }
                 }
-                public class Condensed : SerialItem
+                public class Derived : SerialItem
                 {
-                    public Condensed()
+                    public Derived()
                         : base(typeof(UInt64[]))
                     { }
 
@@ -1318,9 +1318,9 @@ namespace Protocol
                         }
                     }
                 }
-                public class Condensed : SerialItem
+                public class Derived : SerialItem
                 {
-                    public Condensed()
+                    public Derived()
                         : base(typeof(float[]))
                     { }
 
@@ -1415,9 +1415,9 @@ namespace Protocol
                         }
                     }
                 }
-                public class Condensed : SerialItem
+                public class Derived : SerialItem
                 {
-                    public Condensed()
+                    public Derived()
                         : base(typeof(double[]))
                     { }
 
@@ -1505,7 +1505,7 @@ namespace Protocol
                     return;
                 }
             }
-            public class Condensed : Primitive<string>
+            public class Derived : Primitive<string>
             {
                 public override Object Deserialize(byte[] data, ref int offset, int data_size)
                 {
@@ -1557,7 +1557,7 @@ namespace Protocol
             if (isArray)
             {
                 items = new SerialItem[1];
-                items[0] = SerialItem.Compile(serializable, SerialItem.CanUtilizeCondensation(serializable), 0);
+                items[0] = SerialItem.Compile(serializable, SerialItem.CanUtilizeDerivation(serializable), 0);
             }
             else
             {
@@ -1599,7 +1599,7 @@ namespace Protocol
                 item = Activator.CreateInstance(serializable);
 				for (int i = 0; i < items.Length; i++)
 					//fields[i].SetValueDirect(items[i].VariableType.ref, null);
-					fields[i].SetValue(item, items[i].Deserialize(data, ref offset, dataSize - items[i].CondensedOffsetFromEnd));
+					fields[i].SetValue(item, items[i].Deserialize(data, ref offset, dataSize - items[i].DerivedOffsetFromEnd));
             }
             if (offset != dataSize)
                 throw new Exception("Streaming exception: Unable to deserialize " + serializable.ToString() + ". Expected an object of size " + offset + " bytes, but remote end sent " + dataSize + " bytes");
