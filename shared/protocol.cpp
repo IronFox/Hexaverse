@@ -29,8 +29,10 @@ namespace Protocol
 			blocks.Clear();
 			foreach(dts,dt)
 			{
-				if (assertNotNull)
-					ASSERT__(dt->IsSet());
+				#ifndef CLIENT
+					if (assertNotNull)
+						ASSERT__(dt->IsSet());
+				#endif
 				if (blocks.IsEmpty() || blocks.last().value != *dt)
 				{
 					auto&b = blocks.Append();
