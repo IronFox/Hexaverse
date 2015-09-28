@@ -422,10 +422,20 @@ namespace Protocol
             {
                 int length = ReadSize(data, ref offset, data_size);
                 RequireBytes(length, data_size - offset);   //at least one byte per element.
-                Object[] result = new Object[length];
-                for (int i = 0; i < length; i++)
-                    result[i] = element.Deserialize(data, ref offset, data_size);
-                return result;
+				//if (element.VariableType.IsByRef)
+				//{
+				//	Object[] result = new Object[length];
+				//	for (int i = 0; i < length; i++)
+				//		result[i] = element.Deserialize(data, ref offset, data_size);
+				//	return result;
+				//}
+				//else
+				{
+					Array ar = Array.CreateInstance(element.VariableType, length);
+					for (int i = 0; i < length; i++)
+						ar.SetValue(element.Deserialize(data, ref offset, data_size), i);
+					return ar;
+				}
             }
 
             public override void Serialize(Object item, ByteBuffer stream)
@@ -1568,8 +1578,9 @@ namespace Protocol
             else
             {
                 item = Activator.CreateInstance(serializable);
-                for (int i = 0; i < items.Length; i++)
-                    fields[i].SetValue(item, items[i].Deserialize(data, ref offset, dataSize - items[i].CondensedOffsetFromEnd));
+				for (int i = 0; i < items.Length; i++)
+					//fields[i].SetValueDirect(items[i].VariableType.ref, null);
+					fields[i].SetValue(item, items[i].Deserialize(data, ref offset, dataSize - items[i].CondensedOffsetFromEnd));
             }
             if (offset != dataSize)
                 throw new Exception("Streaming exception: Unable to deserialize " + serializable.ToString() + ". Expected an object of size " + offset + " bytes, but remote end sent " + dataSize + " bytes");
