@@ -1845,13 +1845,35 @@ namespace Protocol
 	
 	}
 
+	struct WorldDeltaType
+	{
+		enum delta_type_t
+		{
+			/** *ProgressiveInit*
+			Works on the assumption that the receiving faction client starts from an empty terrain.
+			Initiates the client state to the current world state where visible, and initial world state where not.
+			This type should only be used on completely new factions.
+			*/
+			ProgressiveInit,	
+			ProgressiveUpdate,	//!< Works on the assumption that the recepient has a previous state, which should also be updated if visible
+			FactionCopy,		//!< Creates a copy of the faction state, assuming the recepient knows only an empty terrain. Does not update anything
+			GlobalCopy,			//!< Creates a copy of the actual world state, assuming the recepient knows only an empty terrain. Does not update anything
+			GlobalInitialCopy,	//!< Creates a copy of the initial world state, assuming the recepient knows only an empty terrain. Does not update anything
+		};
+	};
 
-	//	char		gameName[64];
-	//	UINT16		numClients,
-	//				numPlayers;
-	//	UINT32		roundNumber;
-	//	BYTE		serverMode;
-	//};
+	/**
+	Generates a world delta for storage/client notification
+	//@param faction Reference to the respective client faction (must be set if deltaType is ProgressiveInit, ProgressiveUpdate, or FactionCopy)
+	@param[out] delta Resulting delta
+	@param familyID Index of the grid family that the delta should be computed of
+	@param rightNow Indicates that the enclosed timestamp should be flagged as 'rightNow', as opposed to using the grid timestamp
+	@param last Indicates that the result should include the 'last'-flag, which means no deltas will follow this one for the current sequence
+	@param deltaType Type of delta to compute (see delta_type_t for details)
+	@param includeStructCountDelta Indicates that the result should also contain a struct count delta to the known struct count
+	*/
+	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType, bool includeStructCountDelta=true);
+
 }
 
 
