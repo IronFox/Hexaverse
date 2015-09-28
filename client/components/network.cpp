@@ -294,14 +294,15 @@ namespace Network
 			}
 			else
 			{
-				BYTE family = delta.family & 0x7F;
-				bool last = (delta.family & 0x80) != 0;
+				BYTE family = delta.familyAndLastFlag & 0x7F;
+				bool last = (delta.familyAndLastFlag & 0x80) != 0;
 				Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,delta.data1,delta.data2, false,true);
 
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = last;
 				#endif
 			}
+
 		}
 
 

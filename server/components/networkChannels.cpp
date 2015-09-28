@@ -398,8 +398,8 @@ namespace Receiver
 		delta.timestamp.rightNow = true;
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
-			State::GenerateWorldDelta(client->faction ? &client->faction->visibility : nullptr,  client->faction ? &client->faction->currentState : nullptr,
-									delta,k,true,k+1 == BaseGrid::NumFamilies,newFaction ? State::ProgressiveInit : State::FactionCopy);
+			Protocol::GenerateWorldDelta(client->faction ? &client->faction->visibility : nullptr,  client->faction ? &client->faction->currentState : nullptr,
+									delta,k,true,k+1 == BaseGrid::NumFamilies,newFaction ? Protocol::WorldDeltaType::ProgressiveInit : Protocol::WorldDeltaType::FactionCopy);
 
 			Channels::updateWorld.SendTo(peer,delta);
 		}

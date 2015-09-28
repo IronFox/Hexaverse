@@ -1861,7 +1861,7 @@ int main( int argc, const char* argv[])
 						if (faction->visibility.families[family].coverageChanged)
 						{
 							at++;
-							State::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,State::phase == Protocol::Phase::CommandPhase,at == numChanged,State::ProgressiveUpdate);
+							Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,State::phase == Protocol::Phase::CommandPhase,at == numChanged,Protocol::WorldDeltaType::ProgressiveUpdate);
 							Channels::updateWorld.SendTo((*cl)->peer.lock(),delta);
 						}
 				}

@@ -1067,7 +1067,7 @@ namespace Animation
 			{
 				foreach (*worldDelta,block)
 				{
-					BYTE family = block->family & 0x7F;
+					BYTE family = block->familyAndLastFlag & 0x7F;
 					//bool last = (block->family & 0x80) != 0;
 					Grid::actualWorld.ApplyFamilyDelta(family,block->data0,block->data1,block->data2, false,true);
 				}
