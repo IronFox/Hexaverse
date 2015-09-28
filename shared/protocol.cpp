@@ -52,9 +52,9 @@ namespace Protocol
 
 			delta.timestamp.atTime = std::max(Grid::high.family[familyID].outdatedAt,vs?vs->families[familyID].lastChange : 0.f);
 			delta.timestamp.rightNow = rightNow;
-			delta.family = familyID;
+			delta.familyAndLastFlag = familyID;
 			if (last)
-				delta.family.value |= 0x80;
+				delta.familyAndLastFlag.value |= 0x80;
 
 			const Grid::CellStack::Cell empty(Grid::Content::Reinterpret(0),0);
 			Array<Grid::CellStack::TTypeDelta> tdts(length * Grid::CellStack::Range);
@@ -75,33 +75,41 @@ namespace Protocol
 				index_t layer = i / length;
 				switch (deltaType)
 				{
-					case WorldDeltaType::ProgressiveUpdate:
-					{
-						auto&cell =  vs->cellStack[stackID].volumeCell[layer];
-						bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
-						if (canSee)
+					#ifndef CLIENT
+						case WorldDeltaType::ProgressiveUpdate:
 						{
-							Grid::actualWorld.cellStack[stackID].volumeCell[layer].
-							GetDeltaFromAndUpdate(ws->cellStack[stackID].volumeCell[layer],tdts[i],sdts[i],fdts[i],fdtsValid[i]);
+							auto&cell =  vs->cellStack[stackID].volumeCell[layer];
+							bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
+							if (canSee)
+							{
+								Grid::actualWorld.cellStack[stackID].volumeCell[layer].
+								GetDeltaFromAndUpdate(ws->cellStack[stackID].volumeCell[layer],tdts[i],sdts[i],fdts[i],fdtsValid[i]);
+							}
+							else
+							{
+								sdts[i].newStructureCounter = 0;
+								tdts[i].newType = 0;
+							}
+							cell.temporarilyVisible = false;
 						}
-						else
+						break;
+						case WorldDeltaType::ProgressiveInit:
 						{
-							sdts[i].newStructureCounter = 0;
-							tdts[i].newType = 0;
+							auto&cell =  vs->cellStack[stackID].volumeCell[layer];
+							bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
+							const Grid::CellStack::Cell& source = canSee ? Grid::actualWorld.cellStack[stackID].volumeCell[layer] : Grid::initialWorld.cellStack[stackID].volumeCell[layer];
+							source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
+							ws->cellStack[stackID].volumeCell[layer] = source;
+							cell.temporarilyVisible = false;
 						}
-						cell.temporarilyVisible = false;
-					}
-					break;
-					case WorldDeltaType::ProgressiveInit:
-					{
-						auto&cell =  vs->cellStack[stackID].volumeCell[layer];
-						bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
-						const Grid::CellStack::Cell& source = canSee ? Grid::actualWorld.cellStack[stackID].volumeCell[layer] : Grid::initialWorld.cellStack[stackID].volumeCell[layer];
-						source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
-						ws->cellStack[stackID].volumeCell[layer] = source;
-						cell.temporarilyVisible = false;
-					}
-					break;
+						break;
+						case WorldDeltaType::GlobalInitialCopy:
+						{
+							const Grid::CellStack::Cell& source = Grid::initialWorld.cellStack[stackID].volumeCell[layer];
+							source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
+						}
+						break;
+					#endif
 					case WorldDeltaType::FactionCopy:
 					{
 						const Grid::CellStack::Cell& source = ws->cellStack[stackID].volumeCell[layer];
@@ -111,12 +119,6 @@ namespace Protocol
 					case WorldDeltaType::GlobalCopy:
 					{
 						const Grid::CellStack::Cell& source = Grid::actualWorld.cellStack[stackID].volumeCell[layer];
-						source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
-					}
-					break;
-					case WorldDeltaType::GlobalInitialCopy:
-					{
-						const Grid::CellStack::Cell& source = Grid::initialWorld.cellStack[stackID].volumeCell[layer];
 						source.GetDeltaFrom(empty,tdts[i],sdts[i],fdts[i],fdtsValid[i]);
 					}
 					break;
