@@ -26,6 +26,7 @@
 
 #include "../shared/sphereGrid.h"
 #include "../shared/objects.h"
+#include "TechniteLogic/techniteProtocol.h"
 
 #ifdef HAS_WINDOW
 	#include "components/explosions.h"

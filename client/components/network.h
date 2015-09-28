@@ -161,6 +161,8 @@ namespace Network
 
 		extern TCP::Channel<Protocol::TechniteChunk, 0, Protocol::ChannelID::TechniteChunk>				techniteChunk;
 
+		extern TCP::ObjectSender<Protocol::TechniteInstructions, Protocol::ChannelID::TechniteInstructions>	techniteInstructions;
+
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		extern TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
 		extern TCP::ObjectSender<Protocol::ClientState,Protocol::ChannelID::SetClientState>					clientStateSender;

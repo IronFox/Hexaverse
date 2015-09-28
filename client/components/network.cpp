@@ -255,14 +255,14 @@ namespace Network
 					if (chunk.first)
 						tf->ClearTechnites();
 					tf->AppendTechnites(chunk.technites);
-
+					#ifdef HAS_WINDOW
 					if (tf->isMine && !amLocated)
 					{
 						amLocated = true;
 						const Technites::Technite&tec = tf->technites.first();
 						Camera::TranslateTo(Grid::ToWorld(tec.location.GetI()));
 					}
-
+					#endif
 				}
 			}
 		}
@@ -727,6 +727,8 @@ namespace Network
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
 
 		TCP::Channel<Protocol::TechniteChunk, 0, Protocol::ChannelID::TechniteChunk>				techniteChunk(Receiver::TechniteChunk);
+
+		TCP::ObjectSender<Protocol::TechniteInstructions, Protocol::ChannelID::TechniteInstructions>	techniteInstructions;
 
 
 		TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
