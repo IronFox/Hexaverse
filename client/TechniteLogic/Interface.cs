@@ -6,21 +6,39 @@ using System.Text;
 using System.Threading.Tasks;
 using Math3D;
 using Protocol;
+using Logging;
 
 namespace TechniteLogic
 {
 	public static class Interface
 	{
+		public enum ChannelID
+		{
+			Unused,
+			Authenticate,			//c2s: key-string
+			TechniteStateChunk,     //s2c: TechniteStateChunk
+			InstructTechnites,      //s2c: <signal>
+			TechniteInstructionChunk, //c2s: TechniteInstructionChunk
 
-		public static Protocol.OutChannel<Struct.TechniteInstructionChunk> techniteInstructionChunk = new Protocol.OutChannel<Struct.TechniteInstructionChunk>(Protocol.ChannelID.TechniteInstructionChunk);
+			NodeChunk,      //s2c: NodeChunk - completed before SessionBegin is sent
+			GridConfig,		//s2c: GridConfig
+			GridDelta,		//s2c: GridDelta
+
+			Count     //must remain last
+		};
+
+
+		public static OutChannel<Struct.TechniteInstructionChunk> techniteInstructionChunk = new Protocol.OutChannel<Struct.TechniteInstructionChunk>((uint)ChannelID.TechniteInstructionChunk);
+		public static OutChannel<string> authenticate = new OutChannel<string>((uint)ChannelID.Authenticate);
 
 	    public static void Register()
         {
-			ChannelMap.Register<Struct.TechniteStateChunk>(ChannelID.TechniteStateChunk, Event.TechniteStateChunk);
-			ChannelMap.RegisterSignal(ChannelID.InstructTechnites,Event.InstructTechnites);
-			ChannelMap.Register<Struct.SessionBegin>(ChannelID.SessionBegin, Event.SessionBegin);
-			ChannelMap.Register<Struct.NodeChunk>(ChannelID.NodeChunk, Event.NodeChunk);
-		}
+			ChannelMap.Register<Struct.TechniteStateChunk>((uint)ChannelID.TechniteStateChunk, Event.TechniteStateChunk);
+			ChannelMap.RegisterSignal((uint)ChannelID.InstructTechnites,Event.InstructTechnites);
+			ChannelMap.Register<Struct.GridConfig>((uint)ChannelID.GridConfig, Event.GridConfig);
+			ChannelMap.Register<Struct.NodeChunk>((uint)ChannelID.NodeChunk, Event.NodeChunk);
+			ChannelMap.Register<Struct.GridDelta>((uint)ChannelID.GridDelta, Event.GridDelta);
+        }
 
 
 		public class Struct
@@ -100,11 +118,11 @@ namespace TechniteLogic
 				public GridNode[] nodes;
 			}
 
-			public struct SessionBegin
-			{
-				public GridConfig grid;
-				public byte myFactionGridID;
-			}
+			//public struct SessionBegin
+			//{
+			//	public GridConfig grid;
+			//	public byte myFactionGridID;
+			//}
         }
 
         public static class Event
@@ -145,6 +163,7 @@ namespace TechniteLogic
 
 			public static void TechniteStateChunk(Protocol.Client cl, Struct.TechniteStateChunk chunk)
 			{
+				Out.Log(Significance.Common, "Received technite state chunk containing "+chunk.states.Length+" technites");
 				if (chunk.isFirst)
 					Technite.Reset();
 				foreach (var state in chunk.states)
@@ -152,15 +171,19 @@ namespace TechniteLogic
 
 			}
 
+			internal static void GridDelta(Protocol.Client cl, Struct.GridDelta gridDelta)
+			{
+				Grid.ApplyDelta(gridDelta);
+			}
+
 			internal static void NodeChunk(Protocol.Client cl, Struct.NodeChunk nodeChunk)
 			{
 				Grid.Graph.AddChunk(nodeChunk);
 			}
 
-			internal static void SessionBegin(Protocol.Client cl, Struct.SessionBegin sessionBegin)
+			internal static void GridConfig(Protocol.Client cl, Struct.GridConfig gridConfig)
 			{
-				Grid.BeginSession(sessionBegin.grid.heightPerLayer, sessionBegin.grid.numLayersPerStack);
-				Technite.MyFactionGridID = sessionBegin.myFactionGridID;
+				Grid.BeginSession(gridConfig.heightPerLayer, gridConfig.numLayersPerStack);
 			}
 		}
 	}

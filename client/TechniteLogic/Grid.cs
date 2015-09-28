@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Math3D;
 using System.Diagnostics;
+using Logging;
 
 namespace TechniteLogic
 {
@@ -62,27 +63,32 @@ namespace TechniteLogic
                 return Nodes[loc.StackID].GetLocation(loc.Layer);
             }
 
-			private static List<Node> nodeBuffer = new List<Node>();
+			private static List<Node> nodeBuffer;
 
 
 			public static void AddChunk(Interface.Struct.NodeChunk chunk)
 			{
-				for (int i = 0; i < chunk.nodes.Length; i++)
+				Debug.Assert(World == null);
+				Out.Log(Significance.Common, "Received node-chunk, containing "+chunk.nodes.Length+" nodes");
+				if (nodeBuffer == null)
+					nodeBuffer = new List<Node>();
+                for (int i = 0; i < chunk.nodes.Length; i++)
 					nodeBuffer.Add(chunk.nodes[i]);
 				if (chunk.isLast)
 				{
+					Out.Log(Significance.Common, "Received last node-chunk. Completing graph");
 					Nodes = nodeBuffer.ToArray();
 					nodeBuffer = null;
 				}
 			}
 
-			public static void Setup(Interface.Struct.GridNode[] nodes)
-			{
-				Debug.Assert(Nodes == null);
-				Nodes = new Node[nodes.Length];
-				for (int i = 0; i < nodes.Length; i++)
-					Nodes[i] = nodes[i];
-			}
+			//public static void Setup(Interface.Struct.GridNode[] nodes)
+			//{
+			//	Debug.Assert(Nodes == null);
+			//	Nodes = new Node[nodes.Length];
+			//	for (int i = 0; i < nodes.Length; i++)
+			//		Nodes[i] = nodes[i];
+			//}
 		}
 
 
@@ -101,10 +107,12 @@ namespace TechniteLogic
 			private static bool isSetUp = false;
 			public static void Setup(float heightPerLayer, int numLayersPerStack)
 			{
+				Debug.Assert(World==null);
 				Debug.Assert(!isSetUp);
 				isSetUp = true;
 				HeightPerLayer = heightPerLayer;
 				LayersPerStack = numLayersPerStack;
+				Out.Log(Significance.Common, "CellStack.Setup: height per layer="+heightPerLayer+", layers per stack="+numLayersPerStack);
             }
 
 
@@ -143,23 +151,23 @@ namespace TechniteLogic
 			}
 		}
 
-		public class Volume
+		public class WorldData
 		{
 			public CellStack[] cellStack = new CellStack[Graph.Nodes.Length];
 
 
 
-			private void ApplyDeltaField(Interface.Struct.GridDelta delta, Interface.Struct.GridDeltaBlock[] blocks, Action<CellStack, int, byte> action)
+			private void ApplyDeltaField(Interface.Struct.GridDelta delta, Interface.Struct.GridDeltaBlock[] blocks, Action<CellStack, uint, byte> action)
 			{
 				if (delta.contentBlocks.Length != 0)
 				{
-					int at = 0;
+					uint at = 0;
 					foreach (var block in blocks)
 					{
 						for (int i = 0; i < block.repitition; i++)
 						{
-							int stackIndex = (at % delta.nodeCount) + delta.nodeOffset;
-							int layer = at / delta.nodeCount;
+							uint stackIndex = (at % delta.nodeCount) + delta.nodeOffset;
+							uint layer = at / delta.nodeCount;
 
 							CellStack stack = cellStack[stackIndex];
 							action(stack, layer, block.value);
@@ -175,12 +183,30 @@ namespace TechniteLogic
 			public void ApplyDelta(Interface.Struct.GridDelta delta)
 			{
 				Debug.Assert(delta.nodeOffset + delta.nodeCount <= Graph.Nodes.Length);
+				Out.Log(Significance.Common, "Applying world delta at range "+delta.nodeOffset+"..."+(delta.nodeOffset+delta.nodeCount));
 
 				ApplyDeltaField(delta, delta.contentBlocks, (stack, layer, value) => stack.volumeCell[layer].ApplyContentDelta(value));
 				ApplyDeltaField(delta, delta.structureCountBlocks, (stack, layer, value) => stack.volumeCell[layer].ApplyStructureDelta(value));
 				ApplyDeltaField(delta, delta.techniteFactionBlocks, (stack, layer, value) => stack.volumeCell[layer].ApplyTechniteDelta(value));
 			}
 
+		}
+
+
+		/// <summary>
+		/// Global world state. Must be set non-null by the time technite logic is evaluated
+		/// </summary>
+		public static WorldData World { get; private set; }
+
+
+		public static void ApplyDelta(Interface.Struct.GridDelta delta)
+		{
+			if (World == null)
+			{
+				Out.Log(Significance.Common,"Creating world");
+				World = new WorldData();
+			}
+			World.ApplyDelta(delta);
 		}
 
 

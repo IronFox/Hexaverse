@@ -37,9 +37,9 @@ namespace TechniteLogic
 			//Logging.Out.StartService();	//if multiple instances are started, the binding to a fixed ip is bad, so no service
 
 
-			if (args.Length < 2)
+			if (args.Length < 3)
 			{
-				Console.Error.WriteLine("Missing port parameter. Exiting");
+				Console.Error.WriteLine("Missing parameters. Use 'exe [port] [secret]'. Exiting");
 				ShutDown(-1);
 				return;
 			}
@@ -53,7 +53,17 @@ namespace TechniteLogic
 				return;
 			}
 
-			Client client = new Client();
+			string secret = args[2];
+			if (secret.Length != 64)
+			{
+				Console.Error.WriteLine("Secret is of incompatible length. Expected 64 characters, received "+secret.Length+". Exiting");
+				ShutDown(-1);
+				return;
+			}
+
+			Interface.Register();
+
+			Client client = new Client(secret);
 			System.Threading.Thread.Sleep(100);
 			Out.Log(Logging.Significance.Important, "Connecting to server on port "+serverPort);
 			client.Connect(serverPort);
