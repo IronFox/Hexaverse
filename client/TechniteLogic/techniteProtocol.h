@@ -24,23 +24,24 @@
 
 namespace TechniteProtocol
 {
-	NETSTRUCT2(TechniteResources
-		,NET(BYTE), energy
-		,NET(BYTE), matter
-	);
+	//NETSTRUCT2(TechniteResources
+	//	,NET(BYTE), energy
+	//	,NET(BYTE), matter
+	//);
 
-	NETSTRUCT4(TechniteState
-		, NET(UINT32), location
-		, TechniteResources, resources
-		, NET(BYTE), taskResult
-		, NET(BYTE), state
-	);
+	//NETSTRUCT4(TechniteState
+	//	, NET(UINT32), location
+	//	, TechniteResources, resources
+	//	, NET(BYTE), taskResult
+	//	, NET(BYTE), state
+	//);
 
 
-	NETSTRUCT2(TechniteStateChunk
-		, NET(bool), isFirst
-		, NETA(TechniteState), states	//max 32768
-	);
+	//byte-wise identical to Protocol::TechniteChunk
+	//NETSTRUCT2(TechniteStateChunk
+	//	, NET(bool), isFirst
+	//	, NETA(TechniteState), states	//max 32768
+	//);
 
 
 	//NETSTRUCT3(TechniteInstruction

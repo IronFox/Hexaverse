@@ -27,6 +27,7 @@
 #include "../shared/sphereGrid.h"
 #include "../shared/objects.h"
 #include "TechniteLogic/techniteProtocol.h"
+#include "components/techniteLogicLink.h"
 
 #ifdef HAS_WINDOW
 	#include "components/explosions.h"
@@ -1931,6 +1932,7 @@ bool loop()
 
 
 	Network::Update();
+	TechniteLogicLink::ProcessEvents();
 
 
 	Animation::Update();
@@ -3898,7 +3900,7 @@ int main( int argc, const char* argv[])
 		#endif
 
 
-
+		TechniteLogicLink::Destroy();
 
 		Network::Shutdown();
 

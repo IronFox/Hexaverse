@@ -11,13 +11,35 @@ namespace TechniteLogicLink
 	{
 	public:
 		String			secret;
-
+		//index_t			techniteGenerationIndex = InvalidIndex;
 	};
 
 	typedef std::shared_ptr<PeerAttachment>	PPeerAttachment;
 	static TCP::Server		logicServer;
+	static Buffer<Technites::Technite::TCompactState>	recordedHistory;	//all technite states received since last flush
 
 
+
+	static void SendWorldDataTo(TCP::Peer&peer)
+	{
+		LogEvent(EventType::SessionRelated,nullptr,peer.ToString()+ ": Technite logic: Sending world data to client");
+		Protocol::WorldDelta delta;
+		TechniteProtocol::GridDelta outDelta;
+		for (int i = 0; i < BaseGrid::NumFamilies; i++)
+		{
+			count_t range = Grid::high.grid.CountFamilyMembers(i);
+			index_t offset = Grid::high.grid.GetFamilyOffset(i);
+
+			Protocol::GenerateWorldDelta(nullptr,&Grid::actualWorld,delta,(BYTE)i,true,false,Protocol::WorldDeltaType::GlobalCopy);
+
+			outDelta.nodeCount = (UINT32)range;
+			outDelta.nodeOffset = (UINT32)offset;
+			outDelta.data0.adoptData(delta.data0);
+			outDelta.data1.adoptData(delta.data1);
+			outDelta.data2.adoptData(delta.data2);
+			Channels::gridDelta.SendTo(peer,outDelta);
+		}
+	}
 	static void SendWorld(TCP::Peer&peer)
 	{
 		LogEvent(EventType::SessionRelated,nullptr,peer.ToString()+ ": Technite logic: Sending grid layout to client");
@@ -46,7 +68,15 @@ namespace TechniteLogicLink
 		cfg.numLayersPerStack = Grid::CellStack::Range;
 		Channels::gridConfig.SendTo(peer,cfg);
 
-		LogEvent(EventType::SessionRelated,nullptr,peer.ToString()+ ": Technite logic: Sending initial world delta to client");
+		SendWorldDataTo(peer);
+	}
+
+
+	void		SignalTerrainReset()
+	{
+		if (!logicServer.HasAnyClients())
+			return;
+		LogEvent(EventType::SessionRelated,nullptr,"Technite logic: Sending world data to all client");
 		Protocol::WorldDelta delta;
 		TechniteProtocol::GridDelta outDelta;
 		for (int i = 0; i < BaseGrid::NumFamilies; i++)
@@ -61,8 +91,21 @@ namespace TechniteLogicLink
 			outDelta.data0.adoptData(delta.data0);
 			outDelta.data1.adoptData(delta.data1);
 			outDelta.data2.adoptData(delta.data2);
-			Channels::gridDelta.SendTo(peer,outDelta);
+
+			logicServer.VisitAllPeers([&outDelta](const TCP::PPeer&peer)
+			{
+				if (peer->userLevel > 0)
+					Channels::gridDelta.SendTo(peer,outDelta);
+			});
 		}
+		recordedHistory.Clear();
+		Protocol::TechniteChunk chunk;
+		chunk.first = true;
+		logicServer.VisitAllPeers([&chunk](const TCP::PPeer&peer)
+		{
+			if (peer->userLevel > 0)
+				Channels::techniteStateChunk.SendTo(peer,chunk);
+		});
 	}
 
 
@@ -85,9 +128,35 @@ namespace TechniteLogicLink
 				return;
 			}
 			LogEvent(EventType::SessionRelated,nullptr,peer.ToString()+": Authenticated.");
-			peer.userLevel = 1;
 
 			SendWorld(peer);
+
+			//if (Network::amTechniteFaction)
+			{
+				//Technites::PFaction tf = To<Technites::Faction>::Cast(Network::myFaction);
+
+				Protocol::TechniteChunk chunk;
+				chunk.first = true;
+
+				count_t numChunks = recordedHistory.Count() / Protocol::MaxTechnitesPerChunk;
+				if (recordedHistory.Count() % Protocol::MaxTechnitesPerChunk)
+					numChunks++;
+				index_t offset = 0;
+				for (index_t i = 0; i < numChunks; i++)
+				{
+					chunk.first = i == 0;
+					count_t numTechs = std::min(Protocol::MaxTechnitesPerChunk,recordedHistory.Count() - offset);
+					chunk.technites.SetSize(numTechs);
+					chunk.technites.copyFrom(recordedHistory+offset,numTechs);
+
+					Channels::techniteStateChunk.SendTo(peer,chunk);
+
+					offset += numTechs;
+				}
+
+
+			}
+			peer.userLevel = 1;
 		}
 	}
 
@@ -101,7 +170,7 @@ namespace TechniteLogicLink
 					TechniteProtocol::ChannelID::Authenticate>						authenticate(Receiver::Authenticate);
 		TCP::Channel<Protocol::TechniteInstructions,1,
 					TechniteProtocol::ChannelID::TechniteInstructionChunk>			techniteInstructionChunk(Receiver::TechniteInstructionChunk);
-		TCP::ObjectSender<TechniteProtocol::TechniteStateChunk,
+		TCP::ObjectSender<Protocol::TechniteChunk,
 					TechniteProtocol::ChannelID::TechniteStateChunk>				techniteStateChunk;
 		TCP::ObjectSender<TechniteProtocol::GridConfig,
 					TechniteProtocol::ChannelID::GridConfig>						gridConfig;
@@ -115,6 +184,8 @@ namespace TechniteLogicLink
 
 	static MonitoredProcess	logicProcess;
 	static String			lastSecret;
+
+	//static index_t			techniteGenerationIndex = 0;
 
 
 	static void Init(TCP::Peer&peer)
@@ -161,30 +232,59 @@ namespace TechniteLogicLink
 
 	void		Create()
 	{
-		logicServer.InstallChannel(Channels::techniteInstructionChunk);
-
-		logicServer.SetAsync(false);	//can't be async because of world grid. damn
-		logicServer.onEvent = OnEvent;
-		logicServer.onSignal = OnSignal;
-
-		if (!logicServer.StartService(0,&myPort))
+		static bool setup = false;
+		if (!setup)
 		{
-			FATAL__(logicServer.GetError(false));
+			setup = true;
+
+			logicServer.InstallChannel(Channels::techniteInstructionChunk);
+			logicServer.InstallChannel(Channels::authenticate);
+
+			logicServer.SetAsync(false);	//can't be async because of world grid. damn
+			logicServer.onEvent = OnEvent;
+			logicServer.onSignal = OnSignal;
 		}
 
-		CryptographicID id;
-		id.Generate();
+		if (!logicServer.IsOnline())
+		{
+			if (!logicServer.StartService(0,&myPort))
+			{
+				FATAL__(logicServer.GetError(false));
+			}
 
-		lastSecret = id.ToString(32);	//32 bytes => 64 characters. actually the full id
+			CryptographicID id;
+			id.Generate();
 
-		if (!logicProcess.Start(FileSystem::GetWorkingDirectory(),"TechniteLogic/Run.exe",String(myPort)+" "+lastSecret))
+			lastSecret = id.ToString(32);	//32 bytes => 64 characters. actually the full id
+		}
+
+		if (!logicProcess.Start(FileSystem::GetWorkingDirectory(),"TechniteLogic/Client.exe",String(myPort)+" "+lastSecret))
 		{
 			FATAL__("Failed to launch technite logic");
 		}
 	}
 
+
+
+	void		Forward(Protocol::TechniteChunk&chunk)
+	{
+		if (chunk.first)
+			recordedHistory.Clear();
+		recordedHistory.Append(chunk.technites);
+		logicServer.VisitAllPeers([&chunk](const TCP::PPeer&peer)
+		{
+			if (peer->userLevel > 0)
+			{
+				Channels::techniteStateChunk.SendTo(peer,chunk);
+			}
+		});
+	}
+
+
 	void		SendDelta(Protocol::WorldDelta&delta)
 	{
+		if (!logicServer.HasAnyClients())
+			return;
 		TCP::Serial<TechniteProtocol::GridDelta>	serial;
 		TechniteProtocol::GridDelta&outDelta = serial.Ref();
 		BYTE family = delta.familyAndLastFlag & 0x7F;
@@ -217,6 +317,8 @@ namespace TechniteLogicLink
 
 	void		ProcessEvents()
 	{
+		if (!logicServer.IsOnline())
+			return;
 		logicServer.Resolve();
 		logicProcess.Check();
 	}

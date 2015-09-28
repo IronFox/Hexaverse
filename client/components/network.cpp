@@ -264,6 +264,8 @@ namespace Network
 					}
 					#endif
 				}
+
+				TechniteLogicLink::Forward(chunk);
 			}
 		}
 
@@ -488,6 +490,14 @@ namespace Network
 					accessMap.Set(worldID,activeToken);
 					SaveWorldAccessTokens();
 				}
+
+				if (amTechniteFaction)
+					TechniteLogicLink::Create();
+				else
+					TechniteLogicLink::Destroy();
+					
+
+
 			}
 		}
 
@@ -853,7 +863,7 @@ namespace Network
 					Camera::Reset();
 					amLocated = false;
 				#endif
-
+				TechniteLogicLink::SignalTerrainReset();
 
 				if (RuntimeConfig::aiMode && RuntimeConfig::serverURL.IsNotEmpty())
 					application_shutting_down = true;

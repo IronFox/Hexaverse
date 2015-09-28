@@ -11,7 +11,7 @@ namespace TechniteLogicLink
 					TechniteProtocol::ChannelID::Authenticate>						authenticate;
 		extern TCP::Channel<Protocol::TechniteInstructions,1,
 					TechniteProtocol::ChannelID::TechniteInstructionChunk>			techniteInstructionChunk;
-		extern TCP::ObjectSender<TechniteProtocol::TechniteStateChunk,
+		extern TCP::ObjectSender<Protocol::TechniteChunk,
 					TechniteProtocol::ChannelID::TechniteStateChunk>				techniteStateChunk;
 		extern TCP::ObjectSender<TechniteProtocol::GridConfig,
 					TechniteProtocol::ChannelID::GridConfig>						gridConfig;
@@ -25,6 +25,8 @@ namespace TechniteLogicLink
 
 
 	void		SendDelta(Protocol::WorldDelta&delta);
+	void		Forward(Protocol::TechniteChunk&chunk);
+	void		SignalTerrainReset();
 	void		Create();
 	void		Destroy();
 
