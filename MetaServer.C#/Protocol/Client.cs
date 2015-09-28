@@ -79,40 +79,44 @@ namespace Protocol
 					int read = ioStream.Read(buffer, 0, tcpClient.ReceiveBufferSize);
 					queue.Append(buffer, read);
 
-					if (readingHeader)
+					do
 					{
-						if (queue.Length >= 8)
+						if (readingHeader)
 						{
-							channel = queue.PopUInt32();
-							packetSize = queue.PopUInt32();
-							readingHeader = false;
-							if (packetSize > SafePacketSize)
+							if (queue.Length >= 8)
 							{
-								throw new Exception("Received unsafe packet size (" + packetSize + ") on channel " + channel);
-							}
-							handler = ChannelMap.LookUp(channel);
-							if (handler == null)
-							{
-								throw new Exception("Received packet on unexpected channel " + channel);
-							}
-							if (handler.LoggedInOnly && !IsAuthenticated)
-							{
-								throw new Exception("Received packet on channel " + channel + ", which is reserved for authenticated clients");
+								channel = queue.PopUInt32();
+								packetSize = queue.PopUInt32();
+								readingHeader = false;
+								if (packetSize > SafePacketSize)
+								{
+									throw new Exception("Received unsafe packet size (" + packetSize + ") on channel " + channel);
+								}
+								handler = ChannelMap.LookUp(channel);
+								if (handler == null)
+								{
+									throw new Exception("Received packet on unexpected channel " + channel);
+								}
+								if (handler.LoggedInOnly && !IsAuthenticated)
+								{
+									throw new Exception("Received packet on channel " + channel + ", which is reserved for authenticated clients");
+								}
 							}
 						}
-					}
 
-					if (!readingHeader)
-						if (queue.Length >= packetSize)
-						{
-							if (decodeBuffer.Length < packetSize)
-								decodeBuffer = new byte[packetSize];
-							queue.PopData(decodeBuffer, (int)packetSize);
-							handler.Handle(this, decodeBuffer, (int)packetSize);
-							readingHeader = true;
-							handler = null;
-						}
-				}
+						if (!readingHeader)
+							if (queue.Length >= packetSize)
+							{
+								if (decodeBuffer.Length < packetSize)
+									decodeBuffer = new byte[packetSize];
+								queue.PopData(decodeBuffer, (int)packetSize);
+								handler.Handle(this, decodeBuffer, (int)packetSize);
+								readingHeader = true;
+								handler = null;
+							}
+					}
+					while (readingHeader && queue.Length >= 8);
+                }
 			}
 			catch (ObjectDisposedException) //socket has been closed
 			{ }
