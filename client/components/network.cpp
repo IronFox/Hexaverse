@@ -9,7 +9,7 @@
 #include "tutorial.h"
 #include "dialog.h"
 #include "ai.h"
-
+#include "techniteLogicLink.h"
 
 
 
@@ -276,6 +276,7 @@ namespace Network
 
 		void	OnWorldDelta(Protocol::WorldDelta&delta)
 		{
+			TechniteLogicLink::SendDelta(delta);
 			ASSERT__(!eventsLocked);
 			if (!delta.timestamp.rightNow)
 			{

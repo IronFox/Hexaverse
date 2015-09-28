@@ -79,10 +79,10 @@ namespace TechniteProtocol
 		, NETA(GridNode), nodes
 	);
 
-	NETSTRUCT2(SessionBegin
-		, GridConfig, grid
-		, NET(BYTE), myFactionGridID
-	);
+	//NETSTRUCT2(SessionBegin
+	//	, GridConfig, grid
+	//	, NET(BYTE), myFactionGridID
+	//);
 
 
 
@@ -95,17 +95,15 @@ namespace TechniteProtocol
 
 		enum id_t
 		{
-			Hello,			//c2s: protocol version: UINT32
-			Authenticated,	//s2c: AccountDetails
-			NewAccount,		//c2s->s2c: string->NewAccount
-
-			//channels for technite control communication
-			TechniteStateChunk,		//s2c: TechniteStateChunk
-			InstructTechnites,		//s2c: <signal>
+			Unused,
+			Authenticate,			//c2s: key-string
+			TechniteStateChunk,     //s2c: TechniteStateChunk
+			InstructTechnites,      //s2c: <signal>
 			TechniteInstructionChunk, //c2s: TechniteInstructionChunk
 
-			SessionBegin,   //s2c: SessionBegin
-			NodeChunk,		//s2c: NodeChunk
+			NodeChunk,      //s2c: NodeChunk - completed before SessionBegin is sent
+			GridConfig,		//s2c: GridConfig
+			GridDelta,		//s2c: GridDelta
 
 			Count     //must remain last
 		};
