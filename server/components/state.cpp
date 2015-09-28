@@ -615,11 +615,12 @@ namespace State
 			Protocol::WorldDelta delta;
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 			{
-				GenerateWorldDelta(nullptr, nullptr, delta, k, true, k+1==BaseGrid::NumFamilies, Protocol::WorldDeltaType::GlobalCopy, false);
+				bool isLast = k+1==BaseGrid::NumFamilies;
+				GenerateWorldDelta(nullptr, nullptr, delta, k, true, isLast, Protocol::WorldDeltaType::GlobalCopy, false);
 				ASSERT__(delta.data0 == deltas[k].data0);
 				ASSERT__(delta.data1 == deltas[k].data1);
 				ASSERT__(delta.data1.IsEmpty());
-				ASSERT__(delta.family == deltas[k].family);
+				ASSERT__(delta.familyAndLastFlag == deltas[k].familyAndLastFlag);
 				ASSERT__(delta.timestamp.atTime == deltas[k].timestamp.atTime);
 
 			}

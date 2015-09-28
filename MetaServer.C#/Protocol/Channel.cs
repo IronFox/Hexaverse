@@ -8,15 +8,15 @@ using System.Threading.Tasks;
 namespace Protocol
 {
 
-   
 
 
-    public enum Port
-    {
-        Main = 12874,
-        Logger = 12879,
-        Time = 12880,
-    }
+
+	public enum Port
+	{
+		Main = 12874,
+		Logger = 12879,
+		Time = 12880,
+	}
 
 
 
@@ -42,7 +42,7 @@ namespace Protocol
 
 	}
 
-	
+
 
 
 
@@ -121,7 +121,7 @@ namespace Protocol
 	{
 		private SerialInterface processor;
 
-		public SerialInterface Processor { get { return processor;} }
+		public SerialInterface Processor { get { return processor; } }
 
 		public ChannelSender(Type t)
 		{

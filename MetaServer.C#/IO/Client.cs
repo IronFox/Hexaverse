@@ -74,39 +74,39 @@ namespace Consensus
 
 
 
-    public class Client : Protocol.Client
-    {
-        private static List<Client> allClients = new List<Client>();
-        //private NetworkStream stream;
-        #if !USE_SSL
+	public class Client : Protocol.Client
+	{
+		private static List<Client> allClients = new List<Client>();
+		//private NetworkStream stream;
+#if !USE_SSL
             private Socket socket;
-        #endif
-        public Account Account = null;
-       private static RNGCryptoServiceProvider provider = new RNGCryptoServiceProvider();
-        //private long lastFrameSent;
+#endif
+		public Account Account = null;
+		private static RNGCryptoServiceProvider provider = new RNGCryptoServiceProvider();
+		//private long lastFrameSent;
 
 		//private ManualResetEvent updateReceivedEvent = new ManualResetEvent(true),
 		//						structureUpdateReceivedEvent = new ManualResetEvent(true);
 
-        //public ConcurrentDictionary<UInt16, bool> HasContract = new ConcurrentDictionary<UInt16, bool>();
+		//public ConcurrentDictionary<UInt16, bool> HasContract = new ConcurrentDictionary<UInt16, bool>();
 
 
 
-			protected override void OnClose()
+		protected override void OnClose()
+		{
+			base.OnClose();
+			if (!Program.ShuttingDown)  //won't be able to lock this after all but joining, causing a deadlock
 			{
-				base.OnClose();
-				if (!Program.ShuttingDown)  //won't be able to lock this after all but joining, causing a deadlock
+				Account = null;
+				lock (allClients)
 				{
-					Account = null;
-					lock (allClients)
-					{
-						allClients.Remove(this);
-					}
+					allClients.Remove(this);
 				}
 			}
+		}
 
 
-        private static X509Certificate2 _certificate;
+		private static X509Certificate2 _certificate;
 
 		static DirectoryInfo GetTemporaryDirectory()
 		{
@@ -135,15 +135,15 @@ namespace Consensus
 				return false;
 			}
 			result = p.StandardOutput.ReadToEnd();
-			p.WaitForExit();		
+			p.WaitForExit();
 			return p.ExitCode == 0;
 		}
 
 		static void OpenSSL(string command)
 		{
 			string ossl = @"C:\OpenSSL-Win32\bin\openssl";
-			Environment.SetEnvironmentVariable("OPENSSL_CONF", ossl+".cfg");
-									//set OPENSSL_CONF=c:\OpenSSL-Win32\bin\openssl.cfg   
+			Environment.SetEnvironmentVariable("OPENSSL_CONF", ossl + ".cfg");
+			//set OPENSSL_CONF=c:\OpenSSL-Win32\bin\openssl.cfg   
 
 			string output;
 			bool rc = Execute(ossl, command, out output);
@@ -151,7 +151,7 @@ namespace Consensus
 
 		}
 
-		public static X509Certificate2 MakeCertificate(string owner, int numberOfValidDays=365)
+		public static X509Certificate2 MakeCertificate(string owner, int numberOfValidDays = 365)
 		{
 			DirectoryInfo outDir = GetTemporaryDirectory();
 
@@ -160,11 +160,11 @@ namespace Consensus
 			rng.GetBytes(binary);
 			string pass = System.Convert.ToBase64String(binary);
 
-			string cfgPath = Path.Combine(outDir.FullName,"cfg");
+			string cfgPath = Path.Combine(outDir.FullName, "cfg");
 
 			using (StreamWriter cfg = new StreamWriter(cfgPath))
 			{
-				
+
 				cfg.OutLine("[ req ]");
 				cfg.OutLine("default_bits           = 2048");
 				cfg.OutLine("default_keyfile        = keyfile.pem");
@@ -191,53 +191,53 @@ namespace Consensus
 
 
 
-			string keyPath = Path.Combine(outDir.FullName,"temp.key");
-			string csrPath = Path.Combine(outDir.FullName,"temp.csr");
-			string crtPath = Path.Combine(outDir.FullName,"temp.crt");
-			string pfxPath = Path.Combine(outDir.FullName,"temp.pfx");
+			string keyPath = Path.Combine(outDir.FullName, "temp.key");
+			string csrPath = Path.Combine(outDir.FullName, "temp.csr");
+			string crtPath = Path.Combine(outDir.FullName, "temp.crt");
+			string pfxPath = Path.Combine(outDir.FullName, "temp.pfx");
 
 
-			string passPath = Path.Combine(outDir.FullName,"pass");
+			string passPath = Path.Combine(outDir.FullName, "pass");
 			StreamWriter writer = new StreamWriter(passPath);
 			writer.Write(pass);
 			writer.Close();
 
-			File.Copy(passPath,passPath+"2");
+			File.Copy(passPath, passPath + "2");
 
 
 			OpenSSL("genpkey -des3 -algorithm RSA -out " + keyPath + " -outform PEM -pkeyopt rsa_keygen_bits:2048 -pass file:" + passPath);
-			OpenSSL("req -new -key "+keyPath+" -passin file:"+passPath+" -out "+csrPath +" -config "+cfgPath);
-			OpenSSL("x509 -req -days "+numberOfValidDays.ToString()+" -in "+csrPath+" -passin file:"+passPath+" -signkey "+keyPath+" -out "+crtPath);
-			OpenSSL("pkcs12 -export -out "+pfxPath+" -passout pass: -inkey "+keyPath+" -passin file:"+passPath+" -in "+crtPath);
-//			OpenSSL("pkcs12 -export -out " + pfxPath + " -passout file:" + passPath + "2 -inkey " + keyPath + " -passin file:" + passPath + " -in " + crtPath);
+			OpenSSL("req -new -key " + keyPath + " -passin file:" + passPath + " -out " + csrPath + " -config " + cfgPath);
+			OpenSSL("x509 -req -days " + numberOfValidDays.ToString() + " -in " + csrPath + " -passin file:" + passPath + " -signkey " + keyPath + " -out " + crtPath);
+			OpenSSL("pkcs12 -export -out " + pfxPath + " -passout pass: -inkey " + keyPath + " -passin file:" + passPath + " -in " + crtPath);
+			//			OpenSSL("pkcs12 -export -out " + pfxPath + " -passout file:" + passPath + "2 -inkey " + keyPath + " -passin file:" + passPath + " -in " + crtPath);
 
 			byte[] pfx = File.ReadAllBytes(pfxPath);
 
-			Directory.Delete(outDir.FullName,true);
+			Directory.Delete(outDir.FullName, true);
 
 			//outPass = pass;
 			//data = pfx;
-			return new X509Certificate2(pfx,"", X509KeyStorageFlags.Exportable);
+			return new X509Certificate2(pfx, "", X509KeyStorageFlags.Exportable);
 		}
 
 
 
-        public static void InitCertificate()
-        {
-            //certificate generated using http://blog.pluralsight.com/2012/02/13/selfcert-create-a-self-signed-certificate-interactively-gui-or-programmatically-in-net/
-            //code taken from http://stackoverflow.com/questions/8539516/pfx-self-signed-x509-certificate-with-password-secure
-            byte[] pfx = File.ReadAllBytes("certificate.pfx");
-            _certificate = new X509Certificate2(pfx, "REMOVED_PASSWORD");
-            byte[] publicBytes = _certificate.RawData;
+		public static void InitCertificate()
+		{
+			//certificate generated using http://blog.pluralsight.com/2012/02/13/selfcert-create-a-self-signed-certificate-interactively-gui-or-programmatically-in-net/
+			//code taken from http://stackoverflow.com/questions/8539516/pfx-self-signed-x509-certificate-with-password-secure
+			byte[] pfx = File.ReadAllBytes("certificate.pfx");
+			_certificate = new X509Certificate2(pfx, "REMOVED_PASSWORD");
+			byte[] publicBytes = _certificate.RawData;
 
-            RSACryptoServiceProvider rsa = (RSACryptoServiceProvider)_certificate.PrivateKey;
-            byte[] signedData = rsa.SignData(new System.Text.UTF8Encoding().GetBytes("Test"), new SHA1CryptoServiceProvider());
+			RSACryptoServiceProvider rsa = (RSACryptoServiceProvider)_certificate.PrivateKey;
+			byte[] signedData = rsa.SignData(new System.Text.UTF8Encoding().GetBytes("Test"), new SHA1CryptoServiceProvider());
 
-            RSACryptoServiceProvider rsa2 = (RSACryptoServiceProvider)new X509Certificate2(publicBytes).PublicKey.Key;
+			RSACryptoServiceProvider rsa2 = (RSACryptoServiceProvider)new X509Certificate2(publicBytes).PublicKey.Key;
 
-            bool verified = rsa2.VerifyData(new System.Text.UTF8Encoding().GetBytes("Test"), new SHA1CryptoServiceProvider(), signedData);
-            Debug.Assert(verified);
-        }
+			bool verified = rsa2.VerifyData(new System.Text.UTF8Encoding().GetBytes("Test"), new SHA1CryptoServiceProvider(), signedData);
+			Debug.Assert(verified);
+		}
 
 		private static bool ValidateClientCertificate(
 				  object sender,
@@ -246,7 +246,7 @@ namespace Consensus
 				  SslPolicyErrors sslPolicyErrors)
 		{
 			//if (sslPolicyErrors == SslPolicyErrors.None || sslPolicyErrors == SslPolicyErrors.RemoteCertificateChainErrors)
-				return true;
+			return true;
 
 			//Console.WriteLine("Certificate error: {0}", sslPolicyErrors);
 
@@ -255,71 +255,71 @@ namespace Consensus
 		}
 
 		private Client(TcpClient TCPClient)
-			: base(TCPClient,true)
-        {}
+			: base(TCPClient, true)
+		{ }
 
 
 
 		public bool Start()
 		{
-            //stream = tcpClient.GetStream();
-            #if !USE_SSL
+			//stream = tcpClient.GetStream();
+#if !USE_SSL
                 socket = tcpClient.Client;
                 socket.NoDelay = true;
                 RemoteEnd = socket.RemoteEndPoint.ToString();
-            #else
-                        RemoteEnd = TcpClient.Client.RemoteEndPoint.ToString();
-            #endif
-            //SocketAddress addr = socket.RemoteEndPoint.Serialize();
-            //Console.WriteLine(addr.Size);
-            GateKey = RemoteEnd;
-            GateKey = GateKey.Substring(0, GateKey.LastIndexOf(':'));
+#else
+			RemoteEnd = TcpClient.Client.RemoteEndPoint.ToString();
+#endif
+			//SocketAddress addr = socket.RemoteEndPoint.Serialize();
+			//Console.WriteLine(addr.Size);
+			GateKey = RemoteEnd;
+			GateKey = GateKey.Substring(0, GateKey.LastIndexOf(':'));
 
 
 
 
-            #if USE_SSL
-				SslStream sslStream = new SslStream(TcpClient.GetStream(), false, new RemoteCertificateValidationCallback (ValidateClientCertificate), null, EncryptionPolicy.RequireEncryption);
-                sslStream.AuthenticateAsServer(_certificate,true,System.Security.Authentication.SslProtocols.Ssl3,false);
-				if (!sslStream.IsEncrypted)
-				{ 
-					sslStream.Close();
-					base.Close();
-					return false;
-				}
+#if USE_SSL
+			SslStream sslStream = new SslStream(TcpClient.GetStream(), false, new RemoteCertificateValidationCallback(ValidateClientCertificate), null, EncryptionPolicy.RequireEncryption);
+			sslStream.AuthenticateAsServer(_certificate, true, System.Security.Authentication.SslProtocols.Ssl3, false);
+			if (!sslStream.IsEncrypted)
+			{
+				sslStream.Close();
+				base.Close();
+				return false;
+			}
 
-				if (sslStream.IsMutuallyAuthenticated)
+			if (sslStream.IsMutuallyAuthenticated)
+			{
+				Program.Log(this, Logging.Significance.Low, "SSL Authentication concluded: " + sslStream.CipherAlgorithm.ToString() + ", strength " + sslStream.CipherStrength);
+				Account acc = Account.Collection.GetValue(sslStream.RemoteCertificate.GetCertHashString());
+				if (acc != null)
 				{
-					Program.Log(this, Logging.Significance.Low, "SSL Authentication concluded: " + sslStream.CipherAlgorithm.ToString() + ", strength " + sslStream.CipherStrength);
-					Account acc = Account.Collection.GetValue(sslStream.RemoteCertificate.GetCertHashString());
-					if (acc != null)
-					{
-						Account = acc;
-						Program.Log(this, Logging.Significance.Common, "Logged in as: " + Account.ToString());
-						return true;
-					}
-					else
-					{
-						//if (acc == null)
-						//	Program.Log(this, Significance.ClientFatal, "Client certificate not recognized: " + sslStream.RemoteCertificate.GetCertHashString());
-						//else
-						//{
-						//	Program.Log(this, Significance.ClientFatal, "Client certificate recognized but identity mismatch");
-						//}
-						//ForceDisconnect();
-						//return false;
-					}
+					Account = acc;
+					Program.Log(this, Logging.Significance.Common, "Logged in as: " + Account.ToString());
+					return true;
 				}
+				else
+				{
+					//if (acc == null)
+					//	Program.Log(this, Significance.ClientFatal, "Client certificate not recognized: " + sslStream.RemoteCertificate.GetCertHashString());
+					//else
+					//{
+					//	Program.Log(this, Significance.ClientFatal, "Client certificate recognized but identity mismatch");
+					//}
+					//ForceDisconnect();
+					//return false;
+				}
+			}
 
 
-			#endif
-            //Interface.Out.Channel.PasswordSalt.SendTo(this, PasswordSalt);
+#endif
+			//Interface.Out.Channel.PasswordSalt.SendTo(this, PasswordSalt);
 
-				Program.Log(this, Logging.Significance.Common, "Client connected");
+			Program.Log(this, Logging.Significance.Common, "Client connected");
 
 			base.StartSSL(sslStream);
 			return true;
-        }
+		}
 
 
 		protected override void OnReadThreadExit()
@@ -334,11 +334,11 @@ namespace Consensus
 		{
 			base.OnAbnormalException(e);
 			Program.Log(this, Logging.Significance.ClientFatal, e.Message);
-//			Program.ReportUnexpected(this, ex);   //so report it
+			//			Program.ReportUnexpected(this, ex);   //so report it
 
 		}
 
-	
+
 
 		protected override bool IsAuthenticated
 		{
@@ -349,65 +349,65 @@ namespace Consensus
 		}
 
 
-        public static bool AddNew(TcpClient TCPClient)
-        {
+		public static bool AddNew(TcpClient TCPClient)
+		{
 			Client cl = new Client(TCPClient);
 			if (!cl.Start())
 				return false;
-            lock (allClients)
-            {
-                allClients.Add(cl);
-            }
+			lock (allClients)
+			{
+				allClients.Add(cl);
+			}
 			return true;
-        }
+		}
 
 
-        public static void VisitAll(Action<Client> action)
-        {
-            lock (allClients)
-                foreach (var client in allClients)
-                    action(client);
-        }
+		public static void VisitAll(Action<Client> action)
+		{
+			lock (allClients)
+				foreach (var client in allClients)
+					action(client);
+		}
 
-        private static void ToStream(UInt32 v, Stream stream)
-        {
-            stream.WriteByte((byte)(v & 0xFF));
-            stream.WriteByte((byte)((v >> 8) & 0xFF));
-            stream.WriteByte((byte)((v >> 16) & 0xFF));
-            stream.WriteByte((byte)((v >> 24) & 0xFF));
-        }
-
-
-        //public void Send<T>(Interface.ChannelID channelID, T obj)
-        //{
-        //    StaticSender<T>.SendTo(channelID, Stream, Buffer, obj);
-        //}
-
-        public string RemoteEnd { get; private set; }
-        public string GateKey { get; private set; }
+		private static void ToStream(UInt32 v, Stream stream)
+		{
+			stream.WriteByte((byte)(v & 0xFF));
+			stream.WriteByte((byte)((v >> 8) & 0xFF));
+			stream.WriteByte((byte)((v >> 16) & 0xFF));
+			stream.WriteByte((byte)((v >> 24) & 0xFF));
+		}
 
 
+		//public void Send<T>(Interface.ChannelID channelID, T obj)
+		//{
+		//    StaticSender<T>.SendTo(channelID, Stream, Buffer, obj);
+		//}
+
+		public string RemoteEnd { get; private set; }
+		public string GateKey { get; private set; }
 
 
-       // public System.Net.EndPoint EndPoint { get { return socket.RemoteEndPoint; } }
 
-        public override string ToString()
-        {
-            return RemoteEnd;
-            //if (tcpClient != null)
-            //    try
-            //    {
-            //        return tcpClient.Client.RemoteEndPoint.ToString();
-            //    }
-            //    catch
-            //    { }
-            //return "?";
-        }
 
-        static public implicit operator string(Client client)
-        {
-            return client.ToString();
-        }
+		// public System.Net.EndPoint EndPoint { get { return socket.RemoteEndPoint; } }
+
+		public override string ToString()
+		{
+			return RemoteEnd;
+			//if (tcpClient != null)
+			//    try
+			//    {
+			//        return tcpClient.Client.RemoteEndPoint.ToString();
+			//    }
+			//    catch
+			//    { }
+			//return "?";
+		}
+
+		static public implicit operator string (Client client)
+		{
+			return client.ToString();
+		}
 
 
 #if false
@@ -436,11 +436,11 @@ namespace Consensus
             return result;
         }
 #endif
-        internal void ShutDown()
-        {
-            Debug.Assert(Program.ShuttingDown);
-            ForceDisconnect();
-        }
+		internal void ShutDown()
+		{
+			Debug.Assert(Program.ShuttingDown);
+			ForceDisconnect();
+		}
 
 
 

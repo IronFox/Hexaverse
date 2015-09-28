@@ -16,8 +16,8 @@ namespace Logging
 		ProgramFatal
 	}
 
-    public static class Out
-    {
+	public static class Out
+	{
 
 
 		static Logger logger;
@@ -28,7 +28,7 @@ namespace Logging
 
 		public static void Log(Significance significance, String message)
 		{
-			Log("","","", significance,message);
+			Log("", "", "", significance, message);
 
 		}
 

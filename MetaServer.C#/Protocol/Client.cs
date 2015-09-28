@@ -18,7 +18,7 @@ namespace Protocol
 
 		private TcpClient tcpClient;
 		private Stream ioStream;
-		
+
 
 		const int SafePacketSize = 64000000;
 
@@ -27,8 +27,8 @@ namespace Protocol
 
 		private Thread threadHandle;
 
-		protected TcpClient TcpClient { get { return tcpClient;} }
-		
+		protected TcpClient TcpClient { get { return tcpClient; } }
+
 
 		protected void StartSSL(SslStream stream)
 		{
@@ -49,7 +49,7 @@ namespace Protocol
 			OnReadThreadStart();
 			threadHandle = new Thread(new ThreadStart(this.ThreadMain));
 			threadHandle.Start();
-			
+
 		}
 		protected void StartNoSSLSelf()
 		{
@@ -74,7 +74,7 @@ namespace Protocol
 
 				while (tcpClient != null)
 				{
-                    int read = ioStream.Read(buffer, 0, tcpClient.ReceiveBufferSize);
+					int read = ioStream.Read(buffer, 0, tcpClient.ReceiveBufferSize);
 					queue.Append(buffer, read);
 
 					if (readingHeader)
@@ -157,46 +157,46 @@ namespace Protocol
 
 		}
 
-        protected void Close()
-        {
-            lock (this)
-            {
-                if (tcpClient != null)
-                {
+		protected void Close()
+		{
+			lock (this)
+			{
+				if (tcpClient != null)
+				{
 					ioStream.Close();
 					ioStream = null;
-                    tcpClient.Close();
-                    tcpClient = null;
+					tcpClient.Close();
+					tcpClient = null;
 					OnClose();
-                }
-            }
-        }
+				}
+			}
+		}
 
-        public void Transfer(ByteBuffer data)
-        {
+		public void Transfer(ByteBuffer data)
+		{
 			if (ioStream == null)
 				return;
-            try
-            {
+			try
+			{
 				lock (ioStream)
-                {
+				{
 					ioStream.Write(data.GetArray(), 0, data.Length);
 					ioStream.Flush();
-                    return;
-                }
-            }
-            catch (IOException)
-            { }
-            catch (SocketException)
-            { }
-            catch (ObjectDisposedException)
-            { }
-            catch (Exception ex)
-            {
+					return;
+				}
+			}
+			catch (IOException)
+			{ }
+			catch (SocketException)
+			{ }
+			catch (ObjectDisposedException)
+			{ }
+			catch (Exception ex)
+			{
 				OnAbnormalException(ex);
-            }
-            Close();
-        }
+			}
+			Close();
+		}
 
 
 		protected void Join()
