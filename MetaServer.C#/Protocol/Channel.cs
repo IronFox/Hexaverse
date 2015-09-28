@@ -21,8 +21,8 @@ namespace Protocol
 		InstructTechnites,		//s2c: <signal>
 		TechniteInstructionChunk, //c2s: TechniteInstructionChunk
 
-		SessionBegin,
-		NodeChunk,
+		SessionBegin,   //s2c: SessionBegin
+		NodeChunk,		//s2c: NodeChunk
 
 		Count     //must remain last
 	};

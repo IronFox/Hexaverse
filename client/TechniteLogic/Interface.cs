@@ -29,7 +29,7 @@ namespace TechniteLogic
 			public struct TechniteResources
 			{
 				public byte energy,
-											matter;
+							matter;
 
 
 			}
@@ -39,7 +39,7 @@ namespace TechniteLogic
 				public UInt32 location;
 				public TechniteResources resources;
 				public byte taskResult,
-											state;
+							state;
 
 			}
 
@@ -67,14 +67,14 @@ namespace TechniteLogic
 
 			public struct GridDeltaBlock
 			{
-				public byte value;
 				public UInt32 repitition;
+				public byte value;
 			}
 
 			public struct GridDelta
 			{
-				public int nodeOffset,
-							nodeCount;
+				public UInt32 nodeOffset,
+								nodeCount;
 				public GridDeltaBlock[] contentBlocks,
 										structureCountBlocks,
 										techniteFactionBlocks;
@@ -83,7 +83,7 @@ namespace TechniteLogic
 
 			public struct GridNode
             {
-                public uint[] neighbors;
+                public UInt32[] neighbors;
                 public Vec3 stackBase;
                 public Vec3 stackDirection;
             }
