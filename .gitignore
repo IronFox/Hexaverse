@@ -16,3 +16,4 @@ server/.projector/
 server/saves/
 game.7z
 client/TechniteLogic/*.config
+client/TechniteLogic/*.manifest
