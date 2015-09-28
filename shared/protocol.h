@@ -82,8 +82,8 @@ namespace Protocol
 
 
 
-	#define NET(NATIVE_TYPE)	Package::Native<NATIVE_TYPE>
-	#define NETA(TYPE)	NetArray<TYPE,32768>
+	#define NET(NATIVE_TYPE)	::Package::Native<NATIVE_TYPE>
+	#define NETA(TYPE)	::Protocol::NetArray<TYPE,32768>
 
 
 	template<typename T, size_t MaxSize>
@@ -551,7 +551,7 @@ namespace Protocol
 		};
 
 	#define NETSTRUCT8(NAME,  T0, NAME0, T1, NAME1, T2, NAME2, T3, NAME3, T4, NAME4, T5, NAME5, T6, NAME6, T7, NAME7)	\
-		class NAME : public MultiSerializable8<T0,T1,T2,T3,T4,T5,T6,T7>\
+		class NAME : public ::Protocol::MultiSerializable8<T0,T1,T2,T3,T4,T5,T6,T7>\
 		{\
 		public:\
 			typedef MultiSerializable8<T0,T1,T2,T3,T4,T5,T6,T7>	Super;\
@@ -591,7 +591,7 @@ namespace Protocol
 		};
 
 	#define NETSTRUCT11(NAME,  T0, NAME0, T1, NAME1, T2, NAME2, T3, NAME3, T4, NAME4, T5, NAME5, T6, NAME6, T7, NAME7,T8, NAME8,T9, NAME9,T10, NAME10)	\
-		class NAME : public MultiSerializable11<T0,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>\
+		class NAME : public ::Protocol::MultiSerializable11<T0,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>\
 		{\
 		public:\
 			typedef MultiSerializable11<T0,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10>	Super;\
@@ -613,7 +613,7 @@ namespace Protocol
 		};
 
 	#define NETSTRUCT12(NAME,  T0, NAME0, T1, NAME1, T2, NAME2, T3, NAME3, T4, NAME4, T5, NAME5, T6, NAME6, T7, NAME7,T8, NAME8,T9, NAME9,T10, NAME10,T11, NAME11)	\
-		class NAME : public MultiSerializable12<T0,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11>\
+		class NAME : public ::Protocol::MultiSerializable12<T0,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11>\
 		{\
 		public:\
 			typedef MultiSerializable12<T0,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11>	Super;\
@@ -636,7 +636,7 @@ namespace Protocol
 		};
 
 	#define NETSTRUCT9(NAME,  T0, NAME0, T1, NAME1, T2, NAME2, T3, NAME3, T4, NAME4, T5, NAME5, T6, NAME6, T7, NAME7,T8, NAME8)	\
-		class NAME : public MultiSerializable9<T0,T1,T2,T3,T4,T5,T6,T7,T8>\
+		class NAME : public ::Protocol::MultiSerializable9<T0,T1,T2,T3,T4,T5,T6,T7,T8>\
 		{\
 		public:\
 			typedef MultiSerializable9<T0,T1,T2,T3,T4,T5,T6,T7,T8>	Super;\
@@ -657,7 +657,7 @@ namespace Protocol
 			
 
 	#define NETSTRUCT13(NAME,  T0, NAME0, T1, NAME1, T2, NAME2, T3, NAME3, T4, NAME4, T5, NAME5, T6, NAME6, T7, NAME7,T8, NAME8,T9, NAME9,T10, NAME10,T11, NAME11,T12, NAME12)	\
-		class NAME : public MultiSerializable13<T0,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12>\
+		class NAME : public ::Protocol::MultiSerializable13<T0,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12>\
 		{\
 		public:\
 			typedef MultiSerializable13<T0,T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12>	Super;\
