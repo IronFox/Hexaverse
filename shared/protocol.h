@@ -1152,7 +1152,7 @@ namespace Protocol
 	typedef NetArray<Grid::CellStack::TStructCountDeltaBlock,4000000>	StructCountDeltaArray;
 	NETSTRUCT4(WorldDelta
 		, Timestamp, timestamp
-		, NET(BYTE), family
+		, NET(BYTE), familyAndLastFlag	//flag stored in 0x80, family mask is 0x7f
 		, TypeDeltaArray, data0
 		, StructCountDeltaArray, data1
 	)
