@@ -19,14 +19,14 @@ namespace Consensus
 
 
 
-    namespace Interface
-    {
+	namespace Interface
+	{
 
 		enum ChannelID
 		{
 			Hello,
 			NewAccount,
-            Authenticated,
+			Authenticated,
 
 			Count
 
@@ -35,34 +35,34 @@ namespace Consensus
 
 		public static class Version
 		{
-			public const UInt32 Combined = (UInt32)ChannelID.Count | (10<<16);
+			public const UInt32 Combined = (UInt32)ChannelID.Count | (10 << 16);
 		}
 
 
 
-        public static class InOut
-        {
+		public static class InOut
+		{
 
-            public static TVec3<Int16> EncodeDirection(Vec3 v)
-            {
-                return new TVec3<Int16>((Int16)(v.x * 32767.0f), (Int16)(v.y * 32767.0f), (Int16)(v.z * 32767.0f));
-            }
-            public static Vec3 DecodeDirection(TVec3<Int16> v)
-            {
-                return new Vec3((float)v.x / 32767.0f, (float)v.y / 32767.0f, (float)v.z / 32767.0f);
-            }
+			public static TVec3<Int16> EncodeDirection(Vec3 v)
+			{
+				return new TVec3<Int16>((Int16)(v.x * 32767.0f), (Int16)(v.y * 32767.0f), (Int16)(v.z * 32767.0f));
+			}
+			public static Vec3 DecodeDirection(TVec3<Int16> v)
+			{
+				return new Vec3((float)v.x / 32767.0f, (float)v.y / 32767.0f, (float)v.z / 32767.0f);
+			}
 
-            public static class Struct
-            {
-            }
-        }
+			public static class Struct
+			{
+			}
+		}
 		//using AccountDetails = Protocol.Interface.AccountDetails;
-        public static class Out
-        {
+		public static class Out
+		{
 
-            public static class Struct
-            {
-	
+			public static class Struct
+			{
+
 				//public struct PropagatedFriendRequest
 				//{
 				//	public Account Source;
@@ -75,110 +75,110 @@ namespace Consensus
 				//	}
 				//}
 
-                public struct SystemMessage
-                {
-                 //   public SystemMessageType Type;
-                    public string Message;
-                }
+				public struct SystemMessage
+				{
+					//   public SystemMessageType Type;
+					public string Message;
+				}
 
 
-            }
-            public static class Channel
-            {
+			}
+			public static class Channel
+			{
 				public static Protocol.OutChannel<Protocol.Interface.NewAccount> NewAccount = new Protocol.OutChannel<Protocol.Interface.NewAccount>((uint)ChannelID.NewAccount);
 				public static Protocol.OutChannel<Protocol.Interface.AccountDetails> Authenticated = new Protocol.OutChannel<Protocol.Interface.AccountDetails>((uint)ChannelID.Authenticated);
 
-//                public static OutChannel<Struct.SystemMessage> SystemMessage = new OutChannel<Struct.SystemMessage>(ChannelID.SystemMessage);
-                //public static OutChannel<Struct.PropagatedClientMessage> ClientMessage = new OutChannel<Struct.PropagatedClientMessage>(ChannelID.ClientMessage);
-            }
+				//                public static OutChannel<Struct.SystemMessage> SystemMessage = new OutChannel<Struct.SystemMessage>(ChannelID.SystemMessage);
+				//public static OutChannel<Struct.PropagatedClientMessage> ClientMessage = new OutChannel<Struct.PropagatedClientMessage>(ChannelID.ClientMessage);
+			}
 
-        }
-
-
-        public static class In
-        {
-
-            public static bool NameContainsInvalidCharacters(string name)
-            {
-                if (name.Length == 0)
-                    return true;
-                if (!Char.IsLetter(name[0]))
-                    return true;
-                foreach (char c in name)
-                {
-                    if (!Char.IsLetterOrDigit(c))
-                        return true;
-                }
-                return false;
-            }
-
-            public static bool NameIsInvalid(string name, out string errorMessage)
-            {
-                if (name.Length < 3)
-                {
-                    errorMessage = "The specified name is too short. Three characters minimum.";
-                    return true;
-                }
-                if (name.Length > 32)
-                {
-                    errorMessage = "The specified name is too long. 32 characters maximum.";
-                    return true;
-                }
-                if (NameContainsInvalidCharacters(name))
-                {
-                    errorMessage = "The specified name contains invalid characters.";
-                    return true;
-                }
-                errorMessage = "";
-                return false;
-            }
+		}
 
 
+		public static class In
+		{
 
-            public static void Register()
-            {
-				Protocol.ChannelMap.Register<UInt32>((uint)ChannelID.Hello, Event.Hello,false);
-				Protocol.ChannelMap.Register<string>((uint)ChannelID.NewAccount, Event.NewAccount,false);
-//                ChannelMap.Register<Struct.FileChunkRequest>(ChannelID.FileChunkRequest, Event.FileChunkRequest);
-  //              ChannelMap.Register<Struct.FriendRequest>(ChannelID.FriendRequest, Event.FriendRequest);
-    //            ChannelMap.Register<UInt32>(ChannelID.FriendAccept, Event.FriendAccept);
-	//            ChannelMap.Register<UInt32>(ChannelID.FriendDeny, Event.FriendDeny);
-	//            ChannelMap.Register<UInt32>(ChannelID.FriendRemove, Event.FriendRemove);
-            }
-            public class Struct
-            {
+			public static bool NameContainsInvalidCharacters(string name)
+			{
+				if (name.Length == 0)
+					return true;
+				if (!Char.IsLetter(name[0]))
+					return true;
+				foreach (char c in name)
+				{
+					if (!Char.IsLetterOrDigit(c))
+						return true;
+				}
+				return false;
+			}
+
+			public static bool NameIsInvalid(string name, out string errorMessage)
+			{
+				if (name.Length < 3)
+				{
+					errorMessage = "The specified name is too short. Three characters minimum.";
+					return true;
+				}
+				if (name.Length > 32)
+				{
+					errorMessage = "The specified name is too long. 32 characters maximum.";
+					return true;
+				}
+				if (NameContainsInvalidCharacters(name))
+				{
+					errorMessage = "The specified name contains invalid characters.";
+					return true;
+				}
+				errorMessage = "";
+				return false;
+			}
+
+
+
+			public static void Register()
+			{
+				Protocol.ChannelMap.Register<UInt32>((uint)ChannelID.Hello, Event.Hello, false);
+				Protocol.ChannelMap.Register<string>((uint)ChannelID.NewAccount, Event.NewAccount, false);
+				//                ChannelMap.Register<Struct.FileChunkRequest>(ChannelID.FileChunkRequest, Event.FileChunkRequest);
+				//              ChannelMap.Register<Struct.FriendRequest>(ChannelID.FriendRequest, Event.FriendRequest);
+				//            ChannelMap.Register<UInt32>(ChannelID.FriendAccept, Event.FriendAccept);
+				//            ChannelMap.Register<UInt32>(ChannelID.FriendDeny, Event.FriendDeny);
+				//            ChannelMap.Register<UInt32>(ChannelID.FriendRemove, Event.FriendRemove);
+			}
+			public class Struct
+			{
 				public struct NewAccount
 				{
 					public string AccountName;
 				}
 
 
-                public struct ClientMessage
-                {
-                    public UInt32   Target;
-                    public string   Message;
-                }
-                public struct FriendRequest
-                {
-                    public UInt32 TargetAvatar;
-                    public string Message;
-                }
-    	    }
-            public static class Event
-            {
-                private static object globalChange = new object();
-                private static ClientGate loginGate = new ClientGate(3),
-                                            accountCreationGate = new ClientGate(10),
-                                            avatarCreationGate = new ClientGate(1),
-                                            incarnationGate = new ClientGate(0.05f),    //people can click fast
-                                            selectAvatarGate = new ClientGate(2),
-                                            messageGate = new ClientGate(0.25f),
-                                            friendRequestGate = new ClientGate(1),
-                                            structureCreationGate = new ClientGate(5),
-                                            structureDestructionGate = new ClientGate(5),
-                                            structureBoardGate = new ClientGate(1);
+				public struct ClientMessage
+				{
+					public UInt32 Target;
+					public string Message;
+				}
+				public struct FriendRequest
+				{
+					public UInt32 TargetAvatar;
+					public string Message;
+				}
+			}
+			public static class Event
+			{
+				private static object globalChange = new object();
+				private static ClientGate loginGate = new ClientGate(3),
+											accountCreationGate = new ClientGate(10),
+											avatarCreationGate = new ClientGate(1),
+											incarnationGate = new ClientGate(0.05f),    //people can click fast
+											selectAvatarGate = new ClientGate(2),
+											messageGate = new ClientGate(0.25f),
+											friendRequestGate = new ClientGate(1),
+											structureCreationGate = new ClientGate(5),
+											structureDestructionGate = new ClientGate(5),
+											structureBoardGate = new ClientGate(1);
 
-                public static object GetGlobalChangeAnchor() { return globalChange; }
+				public static object GetGlobalChangeAnchor() { return globalChange; }
 
 
 
@@ -210,11 +210,11 @@ namespace Consensus
 						return;
 					}
 					accountCreationGate.Pass(client);
-						
+
 					//byte[] data;
 					Guid guid = Guid.NewGuid();
-					X509Certificate2 cert = Client.MakeCertificate("hexaverse."+guid.ToString());
-					Account acc2 = Account.Create(accName, cert.GetCertHashString(),guid);
+					X509Certificate2 cert = Client.MakeCertificate("hexaverse." + guid.ToString());
+					Account acc2 = Account.Create(accName, cert.GetCertHashString(), guid);
 
 					Protocol.Interface.NewAccount nacc = new Protocol.Interface.NewAccount() { details = new Protocol.Interface.AccountDetails(acc2), certificate = cert.Export(X509ContentType.Pfx) };
 
@@ -226,13 +226,13 @@ namespace Consensus
 
 				}
 
-                private static void GeneralError(Client client, string error)
-                {
-//                    Out.Channel.SystemMessage.SendTo(client, new Out.Struct.SystemMessage() { Type = SystemMessageType.ErrorMessage, Message = error });
-                    Program.LogServiceDenial(client, error);
-                }
+				private static void GeneralError(Client client, string error)
+				{
+					//                    Out.Channel.SystemMessage.SendTo(client, new Out.Struct.SystemMessage() { Type = SystemMessageType.ErrorMessage, Message = error });
+					Program.LogServiceDenial(client, error);
+				}
 
-//                private static SerialInterface contractSerializer = SerialInterface.Build(typeof(Structure.Contract.Baked));
+				//                private static SerialInterface contractSerializer = SerialInterface.Build(typeof(Structure.Contract.Baked));
 
 				//private static void SendStructureToAll(Structure structure)
 				//{
@@ -261,10 +261,10 @@ namespace Consensus
 				//}
 
 
-                private static string VersionToString(uint version)
-                {
-                    return Convert.ToString(version & 0xFFFF) + ":" + Convert.ToString(version >> 16);
-                }
+				private static string VersionToString(uint version)
+				{
+					return Convert.ToString(version & 0xFFFF) + ":" + Convert.ToString(version >> 16);
+				}
 
 
 
@@ -408,7 +408,7 @@ namespace Consensus
 
 				//			if (incarnate != null)
 				//			{
-                            
+
 				//				client.Account.SwitchTo(incarnate);
 				//				client.ActiveAvatar = incarnate;
 
@@ -426,7 +426,7 @@ namespace Consensus
 				//		Debug.Assert(client.Account == client.ActiveAvatar.Owner);
 				//}
 
-                //private static object avatarLock = new object();
+				//private static object avatarLock = new object();
 
 				//public static void OpenChannel(Client client, UInt32 channelID)
 				//{
@@ -451,7 +451,7 @@ namespace Consensus
 				//		Program.Log(client, Significance.Common, "Closed channel " + channelID);
 				//	}
 				//}
-                
+
 
 				//public static void ClientMessage(Client client, Struct.ClientMessage message)
 				//{
@@ -725,63 +725,63 @@ namespace Consensus
 				//	World.TrySave();
 				//}
 
-            }
-        }
-    }
+			}
+		}
+	}
 
 
 
 
-    static class Convert
-    {
-        public static CultureInfo culture = new CultureInfo("en-US");
+	static class Convert
+	{
+		public static CultureInfo culture = new CultureInfo("en-US");
 
-        public static float ToFloat(string str)
-        {
-            return System.Convert.ToSingle(str, culture);
-        }
-        public static uint ToUInt32(string str)
-        {
-            return System.Convert.ToUInt32(str, culture);
-        }
-        public static int ToInt32(string str)
-        {
-            return System.Convert.ToInt32(str, culture);
-        }
-        public static string ToString(float v)
-        {
-            return v.ToString(culture);
-        }
-        public static string ToString(int v)
-        {
-            return v.ToString(culture);
-        }
-        public static string ToString(uint v)
-        {
-            return v.ToString(culture);
-        }
-    }
-
-
+		public static float ToFloat(string str)
+		{
+			return System.Convert.ToSingle(str, culture);
+		}
+		public static uint ToUInt32(string str)
+		{
+			return System.Convert.ToUInt32(str, culture);
+		}
+		public static int ToInt32(string str)
+		{
+			return System.Convert.ToInt32(str, culture);
+		}
+		public static string ToString(float v)
+		{
+			return v.ToString(culture);
+		}
+		public static string ToString(int v)
+		{
+			return v.ToString(culture);
+		}
+		public static string ToString(uint v)
+		{
+			return v.ToString(culture);
+		}
+	}
 
 
-    class Program
-    {
-        public const int Port = (int)Protocol.Port.Main,
+
+
+	class Program
+	{
+		public const int Port = (int)Protocol.Port.Main,
 						TimeServerPort = (int)Protocol.Port.Time;
 
-        static TcpListener  listener;
-        static Thread listenThread;
-        
-        public static volatile bool ShuttingDown = false;
+		static TcpListener listener;
+		static Thread listenThread;
+
+		public static volatile bool ShuttingDown = false;
 
 
-        public static void ShutDown()
-        {
-            ShuttingDown = true;
-            if (listener != null)
-                listener.Stop();
-        }
+		public static void ShutDown()
+		{
+			ShuttingDown = true;
+			if (listener != null)
+				listener.Stop();
+		}
 
 
 		public static void ReportUnexpected(Client origin, Exception ex, Logging.Significance significance = Logging.Significance.ClientFatal)
@@ -817,72 +817,72 @@ namespace Consensus
 				errorMessage += " (with parameter='" + additionalParameter + "')";
 			Log(requester, Logging.Significance.Unusual, errorMessage);
 		}
-        static void Listen()
-        {
-            // Is someone trying to call us? Well answer!
+		static void Listen()
+		{
+			// Is someone trying to call us? Well answer!
 			Log(null, Logging.Significance.Low, "Starting listening thread on " + listener.LocalEndpoint.ToString());
-            while (!ShuttingDown)
-            {
-                try
-                {
-                    Client.AddNew(listener.AcceptTcpClient());
-                }
-                catch (InvalidOperationException ex)
-                {
-                    if (!ShuttingDown)
+			while (!ShuttingDown)
+			{
+				try
+				{
+					Client.AddNew(listener.AcceptTcpClient());
+				}
+				catch (InvalidOperationException ex)
+				{
+					if (!ShuttingDown)
 						ReportFatal(null, ex);
-                }
-                catch (SocketException ex)
-                {
-                    if (!ShuttingDown)
+				}
+				catch (SocketException ex)
+				{
+					if (!ShuttingDown)
 						ReportFatal(null, ex);
-                }
-                catch (Exception ex)
-                {
+				}
+				catch (Exception ex)
+				{
 					ReportUnexpected(null, ex, Logging.Significance.Unusual);
-                }
-            }
+				}
+			}
 			Log(null, Logging.Significance.Important, "Closing down listening thread");
-        }
-
-        private static volatile bool didEnd = false;
-
-        static void end()
-        {
-            listenThread.Join();
-            TimeServer.End();
-
-            
-            lock (listenThread)
-            {
-                if (!didEnd)
-                {
-                    didEnd = true;
-                    Debug.Assert(ShuttingDown); //this should really be implied
-                    ShuttingDown = true;
-
-                    Client.VisitAll(client =>
-                    {
-                        client.ShutDown();
-                    });
-
-                    Continuum.Save();
-
-                }
-            }
-			Logging.Out.Close();
 		}
 
-        static void onCancel(object sender, ConsoleCancelEventArgs e)
-        {
-            ShutDown();
-            end();
-        }
+		private static volatile bool didEnd = false;
+
+		static void end()
+		{
+			listenThread.Join();
+			TimeServer.End();
+
+
+			lock (listenThread)
+			{
+				if (!didEnd)
+				{
+					didEnd = true;
+					Debug.Assert(ShuttingDown); //this should really be implied
+					ShuttingDown = true;
+
+					Client.VisitAll(client =>
+					{
+						client.ShutDown();
+					});
+
+					Continuum.Save();
+
+				}
+			}
+			Logging.Out.EndService();
+		}
+
+		static void onCancel(object sender, ConsoleCancelEventArgs e)
+		{
+			ShutDown();
+			end();
+		}
 
 
 
-        static void Main(string[] args)
-        {
+		static void Main(string[] args)
+		{
 			//string pass;
 			//var cert = Client.GenSelfSignedCert("me",out pass);
 
@@ -890,50 +890,50 @@ namespace Consensus
 
 
 
-            if (System.IO.Directory.Exists("./Runtime"))
-                System.IO.Directory.SetCurrentDirectory("./Runtime");
-            else
-                System.IO.Directory.SetCurrentDirectory("../../Runtime");   //drop down from build-directory
+			if (System.IO.Directory.Exists("./Runtime"))
+				System.IO.Directory.SetCurrentDirectory("./Runtime");
+			else
+				System.IO.Directory.SetCurrentDirectory("../../Runtime");   //drop down from build-directory
 
 
-            Console.CancelKeyPress += new ConsoleCancelEventHandler(onCancel);
+			Console.CancelKeyPress += new ConsoleCancelEventHandler(onCancel);
 
-            {
-                XElement xconfig = XElement.Load("config.xml");
+			{
+				XElement xconfig = XElement.Load("config.xml");
 
-                string smode = xconfig.GetString("server_mode");
-            }
-            
-
-
-            Interface.In.Register();
-
-            //if (!World.Load())
-              //  return;
-
-            Client.InitCertificate();
+				string smode = xconfig.GetString("server_mode");
+			}
 
 
-            listener = new TcpListener(System.Net.IPAddress.Any, Port); //IPv4
-            listener.Start();
 
-            listenThread = new Thread(new ThreadStart(Listen));
-            listenThread.Start();
+			Interface.In.Register();
 
-//            TimeServer.Start(TimeServerPort);
-//            ViewServer.Start(ViewServerPort);
+			//if (!World.Load())
+			//  return;
 
-			Logging.Out.Start();
-
-            System.Threading.Thread.Sleep(100);
-
-            //World.Save();
-
-            Log(null, Logging.Significance.Important, "Initialization phase completed. Awaiting clients.");
+			Client.InitCertificate();
 
 
-            end();
-        }
+			listener = new TcpListener(System.Net.IPAddress.Any, Port); //IPv4
+			listener.Start();
+
+			listenThread = new Thread(new ThreadStart(Listen));
+			listenThread.Start();
+
+			//            TimeServer.Start(TimeServerPort);
+			//            ViewServer.Start(ViewServerPort);
+
+			Logging.Out.StartService();
+
+			System.Threading.Thread.Sleep(100);
+
+			//World.Save();
+
+			Log(null, Logging.Significance.Important, "Initialization phase completed. Awaiting clients.");
+
+
+			end();
+		}
 #if false
         static void LinqExample()
         {
@@ -989,18 +989,18 @@ namespace Consensus
         public class MyNumberDictionary : Dictionary<int, Tuple<int, int, string>>
         {
         }
-		#endif
+#endif
 
-        internal static void DebugCheckGoodSystem(Matrix4 system)
-        {
-            //#if DEBUG           
-            //    Vec3 z = Vec.Cross(system.x.xyz, system.y.xyz);
-            //    Debug.Assert(z.z > 0.0f);
-            //#endif
-        }
-    }
-    public static class MyExtensions
-    {
+		internal static void DebugCheckGoodSystem(Matrix4 system)
+		{
+			//#if DEBUG           
+			//    Vec3 z = Vec.Cross(system.x.xyz, system.y.xyz);
+			//    Debug.Assert(z.z > 0.0f);
+			//#endif
+		}
+	}
+	public static class MyExtensions
+	{
 		public static void VisitAllElements<K, V>(this ConcurrentDictionary<K, V> dict, Action<V> op)
 		{
 			foreach (var entry in dict)
@@ -1008,160 +1008,160 @@ namespace Consensus
 
 		}
 
-		public static V GetValue<K,V>(this ConcurrentDictionary<K,V> dict, K key) where V : class
+		public static V GetValue<K, V>(this ConcurrentDictionary<K, V> dict, K key) where V : class
 		{
 			V rs;
-			if (dict.TryGetValue(key,out rs))
+			if (dict.TryGetValue(key, out rs))
 				return rs;
 			return null;
 		}
 
 
-        public static bool Unset<K, V>(this ConcurrentDictionary<K, V> dict, K key)
-        {
-            V dummy;
-            return dict.TryRemove(key, out dummy);
-        }
+		public static bool Unset<K, V>(this ConcurrentDictionary<K, V> dict, K key)
+		{
+			V dummy;
+			return dict.TryRemove(key, out dummy);
+		}
 
-        public static IEnumerable<K> GetKeys<K, V>(this ConcurrentDictionary<K, V> dict)
-        {
-            foreach (var pair in dict)
-                yield return pair.Key;
-        }
-        public static IEnumerable<V> GetValues<K, V>(this ConcurrentDictionary<K, V> dict)
-        {
-            foreach (var pair in dict)
-                yield return pair.Value;
-        }
+		public static IEnumerable<K> GetKeys<K, V>(this ConcurrentDictionary<K, V> dict)
+		{
+			foreach (var pair in dict)
+				yield return pair.Key;
+		}
+		public static IEnumerable<V> GetValues<K, V>(this ConcurrentDictionary<K, V> dict)
+		{
+			foreach (var pair in dict)
+				yield return pair.Value;
+		}
 
-        public static float NextFloat(this Random random)
-        {
-            return (float)random.NextDouble();
-        }
+		public static float NextFloat(this Random random)
+		{
+			return (float)random.NextDouble();
+		}
 
-        public static float NextIn(this Random random, Range range)
-        {
-            return range.Min + range.Extend * random.NextFloat();
-        }
+		public static float NextIn(this Random random, Range range)
+		{
+			return range.Min + range.Extend * random.NextFloat();
+		}
 
 
-        public static void SetUInt32(this byte[] array, int address, UInt32 v)
-        {
-            Debug.Assert(address + 4 <= array.Length);
+		public static void SetUInt32(this byte[] array, int address, UInt32 v)
+		{
+			Debug.Assert(address + 4 <= array.Length);
 
-            array[address] = (byte)(v & 0xFF);
-            array[address+1] = (byte)((v >> 8) & 0xFF);
-            array[address+2] = (byte)((v >> 16) & 0xFF);
-            array[address+3] = (byte)((v >> 24) & 0xFF);
-        }
-        public static UInt32 GetUInt32(this byte[] array, int address)
-        {
-            Debug.Assert(address + 4 <= array.Length);
+			array[address] = (byte)(v & 0xFF);
+			array[address + 1] = (byte)((v >> 8) & 0xFF);
+			array[address + 2] = (byte)((v >> 16) & 0xFF);
+			array[address + 3] = (byte)((v >> 24) & 0xFF);
+		}
+		public static UInt32 GetUInt32(this byte[] array, int address)
+		{
+			Debug.Assert(address + 4 <= array.Length);
 
-            return (UInt32)array[address]
-                    |
-                    (((UInt32)array[address + 1]) << 8)
-                    |
-                    (((UInt32)array[address + 2]) << 16)
-                    |
-                    (((UInt32)array[address + 3]) << 24);
-        }
-        public static void Set(this XElement element, string key, bool v)
-        {
-            element.SetAttributeValue(key, v ? "true" : "false");
-        }
-        public static void Set(this XElement element, string key, string v)
-        {
-            element.SetAttributeValue(key, v);
-        }
-        public static void Set(this XElement element, string key, float v)
-        {
-            element.SetAttributeValue(key, Convert.ToString(v));
-        }
-        public static void Set(this XElement element, string key, Vec3 v)
-        {
-            element.SetAttributeValue(key, Convert.ToString(v.x)+","+Convert.ToString(v.y)+","+Convert.ToString(v.z));
-        }
-        public static void Set(this XElement element, string key, Vec4 v)
-        {
-            element.SetAttributeValue(key, Convert.ToString(v.x) + "," + Convert.ToString(v.y) + "," + Convert.ToString(v.z) + "," + Convert.ToString(v.w));
-        }
+			return (UInt32)array[address]
+					|
+					(((UInt32)array[address + 1]) << 8)
+					|
+					(((UInt32)array[address + 2]) << 16)
+					|
+					(((UInt32)array[address + 3]) << 24);
+		}
+		public static void Set(this XElement element, string key, bool v)
+		{
+			element.SetAttributeValue(key, v ? "true" : "false");
+		}
+		public static void Set(this XElement element, string key, string v)
+		{
+			element.SetAttributeValue(key, v);
+		}
+		public static void Set(this XElement element, string key, float v)
+		{
+			element.SetAttributeValue(key, Convert.ToString(v));
+		}
+		public static void Set(this XElement element, string key, Vec3 v)
+		{
+			element.SetAttributeValue(key, Convert.ToString(v.x) + "," + Convert.ToString(v.y) + "," + Convert.ToString(v.z));
+		}
+		public static void Set(this XElement element, string key, Vec4 v)
+		{
+			element.SetAttributeValue(key, Convert.ToString(v.x) + "," + Convert.ToString(v.y) + "," + Convert.ToString(v.z) + "," + Convert.ToString(v.w));
+		}
 
-        public static void Set(this XElement element, string key, int v)
-        {
-            element.SetAttributeValue(key, Convert.ToString(v));
-        }
-        public static void Set(this XElement element, string key, uint v)
-        {
-            element.SetAttributeValue(key, Convert.ToString(v));
-        }
+		public static void Set(this XElement element, string key, int v)
+		{
+			element.SetAttributeValue(key, Convert.ToString(v));
+		}
+		public static void Set(this XElement element, string key, uint v)
+		{
+			element.SetAttributeValue(key, Convert.ToString(v));
+		}
 
-        public static float GetFloat(this XElement element, string key)
-        {
-            return Convert.ToFloat(element.Attribute(key).Value);
-        }
+		public static float GetFloat(this XElement element, string key)
+		{
+			return Convert.ToFloat(element.Attribute(key).Value);
+		}
 		public static Math3D.Vec3 GetVec3(this XElement element, string key)
-        {
-            string val = element.Attribute(key).Value;
-            string[] elements = val.Split(new char[] { ',' });
-            if (elements.Length != 3)
-                throw new Exception("Expected 3 elements while parsing xml element '" + key + "' (value is '"+val+"'), but got "+elements.Length);
+		{
+			string val = element.Attribute(key).Value;
+			string[] elements = val.Split(new char[] { ',' });
+			if (elements.Length != 3)
+				throw new Exception("Expected 3 elements while parsing xml element '" + key + "' (value is '" + val + "'), but got " + elements.Length);
 			return new Math3D.Vec3(Convert.ToFloat(elements[0].Trim()),
-                            Convert.ToFloat(elements[1].Trim()),
-                            Convert.ToFloat(elements[2].Trim()));
-        }
+							Convert.ToFloat(elements[1].Trim()),
+							Convert.ToFloat(elements[2].Trim()));
+		}
 		public static Math3D.Vec4 GetVec4(this XElement element, string key)
-        {
-            string val = element.Attribute(key).Value;
-            string[] elements = val.Split(new char[] { ',' });
-            if (elements.Length != 4)
-                throw new Exception("Expected 4 elements while parsing xml element '" + key + "' (value is '" + val + "'), but got " + elements.Length);
+		{
+			string val = element.Attribute(key).Value;
+			string[] elements = val.Split(new char[] { ',' });
+			if (elements.Length != 4)
+				throw new Exception("Expected 4 elements while parsing xml element '" + key + "' (value is '" + val + "'), but got " + elements.Length);
 			return new Math3D.Vec4(Convert.ToFloat(elements[0].Trim()),
-                            Convert.ToFloat(elements[1].Trim()),
-                            Convert.ToFloat(elements[2].Trim()),
-                            Convert.ToFloat(elements[3].Trim())
-                            );
-        }
+							Convert.ToFloat(elements[1].Trim()),
+							Convert.ToFloat(elements[2].Trim()),
+							Convert.ToFloat(elements[3].Trim())
+							);
+		}
 
-        public static Int32 GetInt32(this XElement element, string key)
-        {
-            return Convert.ToInt32(element.Attribute(key).Value);
-        }
-        public static bool GetBool(this XElement element, string key)
-        {
-            string value = element.Attribute(key).Value.ToLower();
-            if (value == "true")
-                return true;
-            if (value == "false")
-                return false;
-            throw new Exception("Failed to decode '" + value + "' to bool");
-        }
-        public static UInt32 GetUInt32(this XElement element, string key)
-        {
-            return Convert.ToUInt32(element.Attribute(key).Value);
-        }
-        public static bool TryGetUInt32(this XElement element, string key, out UInt32 value)
-        {
-            XAttribute attrib = element.Attribute(key);
-            if (attrib == null)
-            {
-                value = 0;
-                return false;
-            }
-            value = Convert.ToUInt32(attrib.Value);
-            return true;
-        }
-        public static string GetString(this XElement element, string key)
-        {
-            return element.Attribute(key).Value;
-        }
-        public static string GetOptionalString(this XElement element, string key)
-        {
-            var attrib = element.Attribute(key);
-            if (attrib == null)
-                return "";
-            return attrib.Value;
-        }
+		public static Int32 GetInt32(this XElement element, string key)
+		{
+			return Convert.ToInt32(element.Attribute(key).Value);
+		}
+		public static bool GetBool(this XElement element, string key)
+		{
+			string value = element.Attribute(key).Value.ToLower();
+			if (value == "true")
+				return true;
+			if (value == "false")
+				return false;
+			throw new Exception("Failed to decode '" + value + "' to bool");
+		}
+		public static UInt32 GetUInt32(this XElement element, string key)
+		{
+			return Convert.ToUInt32(element.Attribute(key).Value);
+		}
+		public static bool TryGetUInt32(this XElement element, string key, out UInt32 value)
+		{
+			XAttribute attrib = element.Attribute(key);
+			if (attrib == null)
+			{
+				value = 0;
+				return false;
+			}
+			value = Convert.ToUInt32(attrib.Value);
+			return true;
+		}
+		public static string GetString(this XElement element, string key)
+		{
+			return element.Attribute(key).Value;
+		}
+		public static string GetOptionalString(this XElement element, string key)
+		{
+			var attrib = element.Attribute(key);
+			if (attrib == null)
+				return "";
+			return attrib.Value;
+		}
 
 
 
@@ -1171,8 +1171,8 @@ namespace Consensus
 
 		public static void OutLine(this StreamWriter writer, string line)
 		{
-			writer.Write(line+"\n");
+			writer.Write(line + "\n");
 		}
 
-    }
+	}
 }

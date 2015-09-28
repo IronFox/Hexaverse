@@ -8,15 +8,15 @@ using System.Threading.Tasks;
 namespace Protocol
 {
 
-   
 
 
-    public enum Port
-    {
-        Main = 12874,
-        Logger = 12879,
-        Time = 12880,
-    }
+
+	public enum Port
+	{
+		Main = 12874,
+		Logger = 12879,
+		Time = 12880,
+	}
 
 
 
@@ -25,24 +25,24 @@ namespace Protocol
 	{
 		public struct AccountDetails
 		{
-			public string AccountName;
-			public byte[] GUID;
+			public string accountName;
+			public byte[] guid;
 
 			public AccountDetails(Account acc)
 			{
-				AccountName = acc.Name;
-				GUID = acc.GUID.ToByteArray();
+				accountName = acc.Name;
+				guid = acc.GUID.ToByteArray();
 			}
 		}
 		public struct NewAccount
 		{
-			public AccountDetails Details;
-			public byte[] Certificate;
+			public AccountDetails details;
+			public byte[] certificate;
 		}
 
 	}
 
-	
+
 
 
 
@@ -121,7 +121,7 @@ namespace Protocol
 	{
 		private SerialInterface processor;
 
-		public SerialInterface Processor { get { return processor;} }
+		public SerialInterface Processor { get { return processor; } }
 
 		public ChannelSender(Type t)
 		{

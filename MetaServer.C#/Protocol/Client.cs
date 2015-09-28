@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Security;
@@ -16,31 +17,47 @@ namespace Protocol
 		public ByteBuffer Buffer = new ByteBuffer(256);
 
 		private TcpClient tcpClient;
-        private SslStream sslStream;
+		private Stream ioStream;
+
 
 		const int SafePacketSize = 64000000;
+
+		public readonly bool RequireSSL;
 
 
 		private Thread threadHandle;
 
-		protected TcpClient TcpClient { get { return tcpClient;} }
-		
+		protected TcpClient TcpClient { get { return tcpClient; } }
 
-		protected void Start(SslStream stream)
+
+		protected void StartSSL(SslStream stream)
 		{
 			if (!stream.IsEncrypted)
 				throw new Exception("Client.Start(): Must be encrypted at this point");
-			sslStream = stream;
+			ioStream = stream;
 
+			threadHandle = new Thread(new ThreadStart(this.ThreadMain));
+			threadHandle.Start();
 			Debug.Assert(RequireSSL);
+		}
+
+		protected void StartNoSSL()
+		{
+			ioStream = tcpClient.GetStream();
+
+			Debug.Assert(!RequireSSL);
 			OnReadThreadStart();
 			threadHandle = new Thread(new ThreadStart(this.ThreadMain));
 			threadHandle.Start();
-		}
 
-			OnReadThreadStart();
 		}
+		protected void StartNoSSLSelf()
+		{
+			ioStream = tcpClient.GetStream();
 
+			Debug.Assert(!RequireSSL);
+			ThreadMain();
+		}
 
 		private void ThreadMain()
 		{
@@ -57,7 +74,7 @@ namespace Protocol
 
 				while (tcpClient != null)
 				{
-                    int read = sslStream.Read(buffer, 0, tcpClient.ReceiveBufferSize);
+					int read = ioStream.Read(buffer, 0, tcpClient.ReceiveBufferSize);
 					queue.Append(buffer, read);
 
 					if (readingHeader)
@@ -123,12 +140,13 @@ namespace Protocol
 		protected virtual void OnReadThreadExit()
 		{ }
 
-		protected virtual bool IsAuthenticated { get { return false; } }
+		protected virtual bool IsAuthenticated { get { return true; } }
 
 
 
-		protected Client(TcpClient TCPClient)
+		protected Client(TcpClient TCPClient, bool requireSSL)
 		{
+			RequireSSL = requireSSL;
 			tcpClient = TCPClient;
 			tcpClient.NoDelay = true;
 		}
@@ -139,46 +157,47 @@ namespace Protocol
 
 		}
 
-        protected void Close()
-        {
-            lock (this)
-            {
-                if (tcpClient != null)
-                {
-                    sslStream.Close();
-                    sslStream = null;
-                    tcpClient.Close();
-                    tcpClient = null;
+		protected void Close()
+		{
+			lock (this)
+			{
+				if (tcpClient != null)
+				{
+					ioStream.Close();
+					ioStream = null;
+					tcpClient.Close();
+					tcpClient = null;
 					OnClose();
-                }
-            }
-        }
+				}
+			}
+		}
 
-        public void Transfer(ByteBuffer data)
-        {
-			if (sslStream == null)
+		public void Transfer(ByteBuffer data)
+		{
+			if (ioStream == null)
 				return;
-            try
-            {
-                lock (sslStream)
-                {
-                    sslStream.Write(data.GetArray(), 0, data.Length);
-                    sslStream.Flush();
-                    return;
-                }
-            }
-            catch (IOException)
-            { }
-            catch (SocketException)
-            { }
-            catch (ObjectDisposedException)
-            { }
-            catch (Exception ex)
-            {
+			try
+			{
+				lock (ioStream)
+				{
+					ioStream.Write(data.GetArray(), 0, data.Length);
+					ioStream.Flush();
+					return;
+				}
+			}
+			catch (IOException)
+			{ }
+			catch (SocketException)
+			{ }
+			catch (ObjectDisposedException)
+			{ }
+			catch (Exception ex)
+			{
 				OnAbnormalException(ex);
-            }
-            Close();
-        }
+			}
+			Close();
+		}
+
 
 		protected void Join()
 		{

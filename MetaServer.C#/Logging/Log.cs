@@ -16,11 +16,11 @@ namespace Logging
 		ProgramFatal
 	}
 
-    public static class Out
-    {
+	public static class Out
+	{
 
 
-		static Logger logger = new Logger();
+		static Logger logger;
 
 
 
@@ -28,7 +28,7 @@ namespace Logging
 
 		public static void Log(Significance significance, String message)
 		{
-			Log("","","", significance,message);
+			Log("", "", "", significance, message);
 
 		}
 
@@ -49,7 +49,8 @@ namespace Logging
 
 			fileLine += "\t" + message;
 
-			logger.SendEvent(fileLine);
+			if (logger != null)
+				logger.SendEvent(fileLine);
 
 			if (significance >= Significance.Unusual)
 			{
@@ -59,12 +60,13 @@ namespace Logging
 			}
 		}
 
-		public static void Start()
+		public static void StartService()
 		{
+			logger = new Logger();
 			logger.Start();
 		}
 
-		public static void Close()
+		public static void EndService()
 		{
 			ReportProvider.End();
 			foreach (ReportProvider p in ReportProvider.All)
