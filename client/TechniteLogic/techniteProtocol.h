@@ -70,10 +70,12 @@ namespace TechniteProtocol
 		, NET(TVec3<>), stackDirection
 	);
 
-	NETSTRUCT2(GridConfig
+	NETSTRUCT3(GridConfig
 		, NET(float), heightPerLayer
 		, NET(int), numLayersPerStack
+		, NETA(BYTE), matterYieldByContentType
 	);
+
 
 	NETSTRUCT2(NodeChunk
 		, NET(bool), isLast

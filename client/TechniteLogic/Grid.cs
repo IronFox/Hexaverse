@@ -30,38 +30,39 @@ namespace TechniteLogic
 		}
 
 
+
 		public static class Graph
 		{
 			public struct Node
 			{
-                public readonly uint[] Neighbors;
-                public readonly Vec3 StackBase;
-                public readonly Vec3 StackDirection;
+				public readonly uint[] Neighbors;
+				public readonly Vec3 StackBase;
+				public readonly Vec3 StackDirection;
 
-                public Node(uint[] neighbors, Vec3 stackBase, Vec3 stackDirection)
-                {
-                    Neighbors = neighbors;
-                    StackBase = stackBase;
-                    StackDirection = stackDirection;
-                }
+				public Node(uint[] neighbors, Vec3 stackBase, Vec3 stackDirection)
+				{
+					Neighbors = neighbors;
+					StackBase = stackBase;
+					StackDirection = stackDirection;
+				}
 
 				public static implicit operator Node(Interface.Struct.GridNode node)
 				{
 					return new Node(node.neighbors, node.stackBase, node.stackDirection);
 				}
 
-                public Vec3 GetLocation(uint layerIndex)
-                {
-                    return StackBase + StackDirection * (CellStack.HeightPerLayer * layerIndex);
-                }
+				public Vec3 GetLocation(uint layerIndex)
+				{
+					return StackBase + StackDirection * (CellStack.HeightPerLayer * layerIndex);
+				}
 			}
 
-			public static Node[]	Nodes { get; private set;}
+			public static Node[] Nodes { get; private set; }
 
-            public static Vec3 GetLocation(HCellIdU loc)
-            {
-                return Nodes[loc.StackID].GetLocation(loc.Layer);
-            }
+			public static Vec3 GetLocation(HCellIdU loc)
+			{
+				return Nodes[loc.StackID].GetLocation(loc.Layer);
+			}
 
 			private static List<Node> nodeBuffer;
 
@@ -72,7 +73,7 @@ namespace TechniteLogic
 				//Out.Log(Significance.Common, "Received node-chunk, containing "+chunk.nodes.Length+" nodes");
 				if (nodeBuffer == null)
 					nodeBuffer = new List<Node>();
-                for (int i = 0; i < chunk.nodes.Length; i++)
+				for (int i = 0; i < chunk.nodes.Length; i++)
 					nodeBuffer.Add(chunk.nodes[i]);
 				if (chunk.isLast)
 				{
@@ -91,6 +92,17 @@ namespace TechniteLogic
 			//}
 		}
 
+		internal static bool IsSolid(Content content)
+		{
+			return content == Content.Earth 
+				|| content == Content.Foundation 
+				|| content == Content.Granite 
+				|| content == Content.Grass 
+				|| content == Content.Road 
+				|| content == Content.Rock 
+				|| content == Content.Snow 
+				|| content == Content.Technite;
+		}
 
 		public class CellStack
 		{
@@ -115,6 +127,13 @@ namespace TechniteLogic
 				Out.Log(Significance.Common, "CellStack.Setup: height per layer="+heightPerLayer+", layers per stack="+numLayersPerStack);
             }
 
+			internal bool IsShaded(uint layer)
+			{
+				for (uint l = layer + 1; l < LayersPerStack; l++)
+					if (volumeCell[l].content != Content.Clear)
+						return true;
+				return false;
+			}
 
 			public Cell[] volumeCell = new Cell[LayersPerStack];
 

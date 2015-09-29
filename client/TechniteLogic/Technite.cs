@@ -15,6 +15,10 @@ namespace TechniteLogic
 							EnergyPackageSize = 5,
 							MatterPackageSize = 5;
 
+
+		public static byte[] MatterYield = new byte[Enum.GetValues(typeof(Grid.Content)).Length];
+
+
 		//static const BYTE	MatterYield[NumGroundTypes];
 		//static const BYTE	ChangeTypeTo[NumGroundTypes];
 
@@ -100,6 +104,15 @@ namespace TechniteLogic
 				Energy -= by.Energy;
 				return true;
 			}
+
+			public static bool operator>=(Resources a, Resources b)
+			{
+				return a.Energy >= b.Energy && a.Matter >= b.Matter;
+			}
+			public static bool operator <=(Resources a, Resources b)
+			{
+				return a.Energy <= b.Energy && a.Matter <= b.Matter;
+			}
 		};
 
 
@@ -139,7 +152,7 @@ namespace TechniteLogic
 			{ 
 				get
 				{ 
-					return new RelativeTarget(){neighborIndex = GetNeighborIndex(), heightDelta = GetHeightDelta() };
+					return new RelativeTarget(GetNeighborIndex(), GetHeightDelta());
 				}
 			}
 
@@ -149,7 +162,7 @@ namespace TechniteLogic
 			}
 			public		CompressedTarget(RelativeTarget target)
 			{
-				Data = (byte)((byte)target.neighborIndex | (byte)((target.heightDelta + 1) << 3));
+				Data = (byte)((byte)target.NeighborIndex | (byte)((target.HeightDelta + 1) << 3));
 			}
 
 			public uint	GetNeighborIndex()
@@ -204,9 +217,46 @@ namespace TechniteLogic
 
 		public struct RelativeTarget
 		{
-			public uint neighborIndex;
-			public int heightDelta;
-		}
+			public readonly uint NeighborIndex;
+			public readonly int HeightDelta;
+
+			public RelativeTarget(uint neighborIndex, int heightDelta)
+			{
+				if (neighborIndex >= 0xFF && neighborIndex != uint.MaxValue)
+					throw new ArgumentOutOfRangeException("RelativeTarget expects the neighbor index to be passed as first parameter. Maximum degree is 255, but passed parameter is "+neighborIndex);
+				if (neighborIndex == uint.MaxValue && heightDelta != 0)
+					throw new ArgumentException("If neighbor index is uint.MaxValue, height delta must be set to 0");
+				if (heightDelta > 1 || heightDelta < -1)
+					throw new ArgumentOutOfRangeException("RelativeTarget expects a relative height delta to be passed as second parameter. This value must be in the range [-1,+1], but given value is " + heightDelta);
+				NeighborIndex = neighborIndex;
+				HeightDelta = heightDelta;
+			}
+
+			public override bool Equals(object obj)
+			{
+				return (obj is RelativeTarget) && ((RelativeTarget)obj) == this;
+			}
+
+			public static bool operator ==(RelativeTarget a, RelativeTarget b)
+			{
+				return a.HeightDelta == b.HeightDelta && a.NeighborIndex == b.NeighborIndex;
+			}
+			public static bool operator !=(RelativeTarget a, RelativeTarget b)
+			{
+				return a.HeightDelta != b.HeightDelta || a.NeighborIndex != b.NeighborIndex;
+			}
+
+			public override int GetHashCode()
+			{
+				int hash = 17;
+				hash += NeighborIndex.GetHashCode();
+				hash *= 31;
+				hash += HeightDelta.GetHashCode();
+				return hash;
+			}
+
+			public static readonly RelativeTarget Invalid = new RelativeTarget(uint.MaxValue, 0);
+        }
 
 
 
@@ -245,13 +295,16 @@ namespace TechniteLogic
 
 		private void				ImportState(Interface.Struct.TechniteState state)
 		{
-			nextTask = Task.None;
+
 			taskParameter = 0;
 			lastResources = resources;
 			resources = state.resources;
 			taskResult = (TaskResult)state.taskResult;
 			this.state = new CompressedState(state.state).Decoded;
 			exists = true;
+			if (taskResult != TaskResult.MoreWorkNeeded)
+				nextTask = Task.None;
+
 		}
 
 
@@ -262,6 +315,9 @@ namespace TechniteLogic
 
 		public static IEnumerable<Technite> All { get { return all; } }
 		public static int Count { get {  return all.Count; } }
+
+		public bool CanSplit { get { return CurrentResources >= SplitCost;  } }
+		public bool CanEat { get { return CurrentResources >= EatCost; } }
 
 		public static byte MyFactionGridID { get; internal set; }
 

@@ -110,6 +110,7 @@ namespace TechniteLogic
 			{
 				public float heightPerLayer;
 				public int numLayersPerStack;
+				public byte[] matterYieldByContentType;
 			}
 
 			public struct NodeChunk
@@ -185,7 +186,10 @@ namespace TechniteLogic
 			internal static void GridConfig(Protocol.Client cl, Struct.GridConfig gridConfig)
 			{
 				Grid.BeginSession(gridConfig.heightPerLayer, gridConfig.numLayersPerStack);
-			}
+				Debug.Assert(Technite.MatterYield.Length == gridConfig.matterYieldByContentType.Length);
+
+				Technite.MatterYield = gridConfig.matterYieldByContentType;
+            }
 		}
 	}
 }
