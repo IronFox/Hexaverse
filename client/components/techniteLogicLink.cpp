@@ -66,6 +66,10 @@ namespace TechniteLogicLink
 		TechniteProtocol::GridConfig cfg;
 		cfg.heightPerLayer = Grid::SingleLayerHeight;
 		cfg.numLayersPerStack = Grid::CellStack::Range;
+		cfg.matterYieldByContentType.SetSize(Grid::Content::NumberOfPossibilities);
+		static_assert(Grid::Content::NumberOfPossibilities == ARRAYSIZE(Technites::Technite::MatterYield),"Field size mismatch");
+		for (index_t i = 0; i < Grid::Content::NumberOfPossibilities; i++)
+			cfg.matterYieldByContentType[i] = Technites::Technite::MatterYield[i];
 		Channels::gridConfig.SendTo(peer,cfg);
 
 		SendWorldDataTo(peer);
