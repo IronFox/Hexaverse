@@ -192,6 +192,9 @@ namespace Receiver
 			return;
 		}
 
+		LogEvent(EventType::TechniteLogic,nullptr,"Receiving technite instruction chunk, containing "+String(instructions.instructions.Count())+" technites, starting from "+String(instructions.offset));
+
+
 		for (index_t i = 0; i < instructions.instructions.Count(); i++)
 			faction->technites[instructions.offset+i].Set(instructions.instructions[i]);
 	}

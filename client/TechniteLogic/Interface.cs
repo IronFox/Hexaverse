@@ -138,6 +138,7 @@ namespace TechniteLogic
 				if ((numTechnites % Struct.TechniteInstructionChunk.MaxPerChunk)!= 0)
 					numChunks++;
 
+				Out.Log(Significance.Common, "Sending "+numChunks+" technite data response chunks");
 				var e = Technite.All.GetEnumerator();
 				int offset = 0;
 				for (int i = 0; i < numChunks; i++)

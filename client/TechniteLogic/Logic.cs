@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Logging;
 
 namespace TechniteLogic
 {
@@ -11,7 +12,7 @@ namespace TechniteLogic
 
 		public static void ProcessTechnites()
 		{
-
+			Out.Log(Significance.Common, "ProcessTechnites()");
 		}
 	}
 }
