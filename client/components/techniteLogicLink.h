@@ -24,13 +24,42 @@ namespace TechniteLogicLink
 
 
 
+	/**
+	Sends a world delta chunk to all connected technite logic clients
+	@param delta World delta chunk. Contained data will be modified briefly, but reverted before the function returns.
+	*/
 	void		SendDelta(Protocol::WorldDelta&delta);
+	/**
+	Forwards a technite chunk to all connected technite logic clients.
+	Contained technites will be buffered for future logic connection attempts
+	*/
 	void		Forward(Protocol::TechniteChunk&chunk);
+	/**
+	Signals that the world has been reset, and any leftover technite states should be flushed.
+	*/
 	void		SignalTerrainReset();
+
+	/**
+	Sends a logic execution command to all connected technite logic clients
+	*/
+	void		ExecuteLogic();
+
+	/**
+	Starts the technite logic link. Nothing happens if the system is already active.
+	*/
 	void		Create();
+
+	/**
+	Stops technite logic link. Nothing happens if the system is already down.
+	*/
 	void		Destroy();
 
+	/**
+	Processes link network events, and checks the logic process.
+	Must be called frequently, ideally once per frame.
+	*/
 	void		ProcessEvents();
+
 
 }
 

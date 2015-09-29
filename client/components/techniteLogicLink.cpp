@@ -109,11 +109,22 @@ namespace TechniteLogicLink
 	}
 
 
+	void		ExecuteLogic()
+	{
+		logicServer.VisitAllPeers([](const TCP::PPeer&peer)
+		{
+			if (peer->userLevel > 0)
+				peer->SendSignal(TechniteProtocol::ChannelID::InstructTechnites);
+		});
+	}
+
+
 	namespace Receiver
 	{
 		void TechniteInstructionChunk(Protocol::TechniteInstructions&chunk)
 		{
 			//re-route to server as is
+			LogEvent(EventType::TechniteLogic,nullptr,"Forwarding technite instruction chunk to server, containing "+String(chunk.instructions.Count())+" technites, starting from "+String(chunk.offset));
 			Network::Channels::techniteInstructions.SendTo(Network::client,chunk);
 		}
 
@@ -247,6 +258,7 @@ namespace TechniteLogicLink
 
 		if (!logicServer.IsOnline())
 		{
+			logicProcess.Terminate();
 			if (!logicServer.StartService(0,&myPort))
 			{
 				FATAL__(logicServer.GetError(false));
@@ -258,7 +270,7 @@ namespace TechniteLogicLink
 			lastSecret = id.ToString(32);	//32 bytes => 64 characters. actually the full id
 		}
 
-		if (!logicProcess.Start(FileSystem::GetWorkingDirectory(),"TechniteLogic/Client.exe",String(myPort)+" "+lastSecret))
+		if (!logicProcess.IsStarted() && !logicProcess.Start(FileSystem::GetWorkingDirectory(),"TechniteLogic/Client.exe",String(myPort)+" "+lastSecret))
 		{
 			FATAL__("Failed to launch technite logic");
 		}

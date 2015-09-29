@@ -1188,6 +1188,11 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		};//);
 		Dialog::SignalSituationChange();
 	#endif
+	if (serverPhase == Protocol::Phase::CommandPhase)
+	{
+		if (amTechniteFaction)
+			TechniteLogicLink::ExecuteLogic();
+	}
 }
 
 

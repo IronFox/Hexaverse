@@ -4,7 +4,7 @@
 #include <general/enumeration.h>
 #include <global_string.h>
 
-CONSTRUCT_ENUMERATION17(EventType, 
+CONSTRUCT_ENUMERATION18(EventType, 
 						Fatal,
 						UnexpectedBehavior,
 						Debug,
@@ -21,7 +21,8 @@ CONSTRUCT_ENUMERATION17(EventType,
 						CompoundProcess,	//notifications about a complex network
 						OperationAborted,	//notifies that an operation was aborted (unplanned)
 						CommandRejected,	//notifies that a specific command was rejected
-						ChatMessage
+						ChatMessage,
+						TechniteLogic
 						)
 
 
