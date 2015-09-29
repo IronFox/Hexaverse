@@ -69,7 +69,7 @@ namespace TechniteLogic
 			public static void AddChunk(Interface.Struct.NodeChunk chunk)
 			{
 				Debug.Assert(World == null);
-				Out.Log(Significance.Common, "Received node-chunk, containing "+chunk.nodes.Length+" nodes");
+				//Out.Log(Significance.Common, "Received node-chunk, containing "+chunk.nodes.Length+" nodes");
 				if (nodeBuffer == null)
 					nodeBuffer = new List<Node>();
                 for (int i = 0; i < chunk.nodes.Length; i++)
@@ -166,7 +166,7 @@ namespace TechniteLogic
 			{
 				if (blocks.Length != 0)
 				{
-					Out.Log(Significance.Low, "  Applying " + blocks.Length + " blocks...");
+					//Out.Log(Significance.Low, "  Applying " + blocks.Length + " blocks...");
 					uint at = 0;
 					foreach (var block in blocks)
 					{
