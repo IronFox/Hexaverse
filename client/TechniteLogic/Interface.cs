@@ -149,10 +149,10 @@ namespace TechniteLogic
 					chunk.instructions = new Struct.TechniteInstruction[chunkSize];
 					for (int j = 0; j < chunkSize; j++)
 					{
-						Technite t = e.Current;
-						chunk.instructions[j] = t.ExportInstruction();
 						bool success = e.MoveNext();
-						Debug.Assert(success || (i+1 == numChunks && j+1== chunkSize));
+						Debug.Assert(success);
+                        Technite t = e.Current;
+						chunk.instructions[j] = t.ExportInstruction();
 					}
 
 					techniteInstructionChunk.SendTo(cl,chunk);
