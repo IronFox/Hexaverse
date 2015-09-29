@@ -12,7 +12,14 @@ namespace Protocol
     /// </summary>
     abstract class SerialItem
     {
-        protected SerialItem(Type type)
+		public const int MaxRandomArrayLength = 1000;
+
+		public static int RandomArrayLength(Random random)
+		{
+			return random.Next(100) < 30 ? 0 : random.Next(MaxRandomArrayLength);
+		}
+
+		protected SerialItem(Type type)
         {
             VariableType = type;
 			HasFixedSize = HasConstantSize(type);
@@ -20,7 +27,21 @@ namespace Protocol
         }
 
 
-        private static void buildInto(ref List<System.Reflection.FieldInfo> info, Type t)
+		private static void AssertLengthMatch(string variableName, Array afield, Array bfield, Type element)
+		{
+			if (afield.Length != bfield.Length)
+				throw new Exception(variableName+": "+element+" array length mismatch (" + afield.Length + "!=" + bfield.Length + ")");
+		}
+
+		private static void AssertPrimitiveArrayMatch<T>(string variableName, T[] afield, T[] bfield) where T: struct, IEquatable<T>
+		{
+			AssertLengthMatch(variableName, afield, bfield, typeof(T));
+			for (int i = 0; i < afield.Length; i++)
+				if (!afield[i].Equals(bfield[i]))
+					throw new Exception(variableName+"["+i+"/"+afield.Length+"]: "+typeof(T).Name+" " +afield[i]+" != "+bfield[i]);
+		}
+
+		private static void buildInto(ref List<System.Reflection.FieldInfo> info, Type t)
         {
             if (t.BaseType != null)
                 buildInto(ref info, t.BaseType);
@@ -56,7 +77,7 @@ namespace Protocol
             if (typeof(UInt64) == type)
                 return derived ? (SerialItem)new TUInt64.Array.Derived() : (SerialItem)new TUInt64.Array.Embedded();
 			
-            return new ComplexArray(t0, derived);
+            return derived ? (SerialItem)new Complex.Array.Derived(t0) : (SerialItem)new Complex.Array.Embedded(t0);
         }
         private static SerialItem CompileField(Type type, bool derived)
         {
@@ -238,7 +259,9 @@ namespace Protocol
             if (t == typeof(string))
                 return false;
             System.Reflection.FieldInfo[] fields = t.GetFields(System.Reflection.BindingFlags.FlattenHierarchy | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-            Debug.Assert(fields.Length > 0);
+			if (fields.Length == 0)
+				throw new Exception("Struct with no fields detected: "+t.Name);
+//			Debug.Assert(fields.Length > 0);
             foreach (var field in fields)
                 if (!HasConstantSize(field.FieldType))
                     return false;
@@ -288,7 +311,8 @@ namespace Protocol
             }
             Debug.Assert(HasConstantSize(type));
             System.Reflection.FieldInfo[] fields = type.GetFields(System.Reflection.BindingFlags.FlattenHierarchy | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-            Debug.Assert(fields.Length > 0);
+			if (fields.Length == 0)
+				throw new Exception("Struct with no fields detected: "+type.Name);
             size = 0;
             foreach (var field in fields)
                 size += GetConstantSize(field.FieldType);
@@ -324,6 +348,19 @@ namespace Protocol
         /// <param name="item">Object to serialize</param>
         /// <param name="stream">Byte stream to serialize into</param>
         public abstract void Serialize(Object item, ByteBuffer stream);
+
+		/// <summary>
+		/// Creates a new random object
+		/// </summary>
+		/// <param name="random">Random source</param>
+		/// <returns></returns>
+		public abstract object CreateRandom(Random random);
+		/// <summary>
+		/// Checks whether or not the two objects are bitwise equal. Throws an exception if some elements are not equal
+		/// </summary>
+		/// <param name="a"></param>
+		/// <param name="b"></param>
+		public abstract void AssertBitwiseEqual(string variableName, object a, object b);
 
         protected void RequireBytes(int bytes, int remaining)
         {
@@ -366,105 +403,150 @@ namespace Protocol
             }
         }
 
-        /// <summary>
-        /// Complex variable that contains fields of its own
-        /// </summary>
-        public class Complex : SerialItem
-        {
-            SerialItem[] items;
-            System.Reflection.FieldInfo[] fields;
-            //System.Reflection.ConstructorInfo constructor;
+		/// <summary>
+		/// Complex variable that contains fields of its own
+		/// </summary>
+		public class Complex : SerialItem
+		{
+			SerialItem[] items;
+			System.Reflection.FieldInfo[] fields;
+			//System.Reflection.ConstructorInfo constructor;
 
 
 
 
 
-            public Complex(Type t, bool derived)
-                : base(t)
-            {
-                List<System.Reflection.FieldInfo> info = new List<System.Reflection.FieldInfo>();
-                buildInto(ref info, t);
-                fields = info.ToArray();
-                items = new SerialItem[fields.Length];
-                if (!derived || !CompileDerived(fields, items))
-                {
-                    for (int i = 0; i < items.Length; i++)
-                        items[i] = Compile(fields[i].FieldType, false, 0);
-                }
-                //var test = t.GetConstructors();
-                //constructor = t.GetConstructor(Type.EmptyTypes);
-                //Debug.Assert(constructor != null);
-            }
-            public override Object Deserialize(byte[] data, ref int offset, int data_size)
-            {
-                Object result = Activator.CreateInstance(VariableType);
-                    //constructor.Invoke(null);
-                for (int i = 0; i < items.Length; i++)
-                    fields[i].SetValue(result, items[i].Deserialize(data, ref offset, data_size));
-                return result;
-            }
-
-            public override void Serialize(Object item, ByteBuffer stream)
-            {
-                for (int i = 0; i < items.Length; i++)
-                    items[i].Serialize(fields[i].GetValue(item), stream);
-            }
-        }
-
-        /// <summary>
-        /// Array of objects. This also accounts for arrays of strings.
-        /// </summary>
-        public class ComplexArray : SerialItem
-        {
-            SerialItem element;
-			bool derived;
-
-            public ComplexArray(Type t, bool derived)
-                : base(t)
-            {
-                element = Compile(t.GetElementType(), false, 0);
-				this.derived = derived && element.HasFixedSize;
-            }
-
-
-            public override Object Deserialize(byte[] data, ref int offset, int data_size)
-            {
-				int length;
-				if (derived)
+			public Complex(Type t, bool derived)
+				: base(t)
+			{
+				List<System.Reflection.FieldInfo> info = new List<System.Reflection.FieldInfo>();
+				buildInto(ref info, t);
+				fields = info.ToArray();
+				items = new SerialItem[fields.Length];
+				if (!derived || !CompileDerived(fields, items))
 				{
-					int available = data_size - this.DerivedOffsetFromEnd - offset;
-					length = available / element.FixedSize;
+					for (int i = 0; i < items.Length; i++)
+						items[i] = Compile(fields[i].FieldType, false, 0);
 				}
-				else
-				{
-					length = ReadSize(data, ref offset, data_size);
-					RequireBytes(length, data_size - offset);   //at least one byte per element.
-				}
-				//if (element.VariableType.IsByRef)
-				//{
-				//	Object[] result = new Object[length];
-				//	for (int i = 0; i < length; i++)
-				//		result[i] = element.Deserialize(data, ref offset, data_size);
-				//	return result;
-				//}
-				//else
-				{
-					Array ar = Array.CreateInstance(element.VariableType, length);
-					for (int i = 0; i < length; i++)
-						ar.SetValue(element.Deserialize(data, ref offset, data_size), i);
-					return ar;
-				}
-            }
+				//var test = t.GetConstructors();
+				//constructor = t.GetConstructor(Type.EmptyTypes);
+				//Debug.Assert(constructor != null);
+			}
+			public override Object Deserialize(byte[] data, ref int offset, int data_size)
+			{
+				Object result = Activator.CreateInstance(VariableType);
+				//constructor.Invoke(null);
+				for (int i = 0; i < items.Length; i++)
+					fields[i].SetValue(result, items[i].Deserialize(data, ref offset, data_size - items[i].DerivedOffsetFromEnd));
+				return result;
+			}
 
-            public override void Serialize(Object item, ByteBuffer stream)
-            {
-                Array field = (Array)item;
-				if (!derived)
-					stream.WriteSize(field.Length);
-                for (int i = 0; i < field.Length; i++)
-                    element.Serialize(field.GetValue(i), stream);
-            }
-        }
+			public override void Serialize(Object item, ByteBuffer stream)
+			{
+				for (int i = 0; i < items.Length; i++)
+					items[i].Serialize(fields[i].GetValue(item), stream);
+			}
+
+			public override object CreateRandom(Random random)
+			{
+				Object result = Activator.CreateInstance(VariableType);
+				for (int i = 0; i < items.Length; i++)
+					fields[i].SetValue(result, items[i].CreateRandom(random));
+				return result;
+			}
+
+			public override void AssertBitwiseEqual(string variableName, object a, object b)
+			{
+				for (int i = 0; i < items.Length; i++)
+					items[i].AssertBitwiseEqual(variableName+"."+fields[i].Name, fields[i].GetValue(a), fields[i].GetValue(b));
+			}
+
+			public class Array
+			{
+				public abstract class Base : SerialItem
+				{
+					protected SerialItem element;
+
+					protected Base(Type t) : base(t)
+					{
+						element = Compile(t.GetElementType(), false, 0);
+					}
+					public override object CreateRandom(Random random)
+					{
+						int length = RandomArrayLength(random);
+						System.Array ar = System.Array.CreateInstance(element.VariableType, length);
+						for (int i = 0; i < length; i++)
+							ar.SetValue(element.CreateRandom(random), i);
+						return ar;
+					}
+
+					public override void AssertBitwiseEqual(string variableName, object a, object b)
+					{
+						System.Array afield = (System.Array)a;
+						System.Array bfield = (System.Array)b;
+						AssertLengthMatch(variableName,afield, bfield, element.VariableType);
+						for (int i = 0; i < afield.Length; i++)
+							element.AssertBitwiseEqual(variableName+"["+i+"/"+afield.Length+"]", afield.GetValue(i), bfield.GetValue(i));
+					}
+				}
+				public class Embedded : Base
+				{
+
+					public Embedded(Type t)
+		                : base(t)
+				    {}
+
+
+					public override Object Deserialize(byte[] data, ref int offset, int data_size)
+					{
+						int length;
+						length = ReadSize(data, ref offset, data_size);
+						RequireBytes(length, data_size - offset);   //at least one byte per element.
+						System.Array ar = System.Array.CreateInstance(element.VariableType, length);
+						for (int i = 0; i < length; i++)
+							ar.SetValue(element.Deserialize(data, ref offset, data_size), i);
+						return ar;
+					}
+
+					public override void Serialize(Object item, ByteBuffer stream)
+					{
+						System.Array field = (System.Array)item;
+						stream.WriteSize(field.Length);
+						for (int i = 0; i < field.Length; i++)
+							element.Serialize(field.GetValue(i), stream);
+					}
+				}
+
+				public class Derived : Base
+				{
+
+					public Derived(Type t)
+						: base(t)
+					{ }
+
+
+					public override Object Deserialize(byte[] data, ref int offset, int data_size)
+					{
+						int length;
+						int available = data_size - offset;
+						length = available / element.FixedSize;
+
+						System.Array ar = System.Array.CreateInstance(element.VariableType, length);
+						for (int i = 0; i < length; i++)
+							ar.SetValue(element.Deserialize(data, ref offset, data_size), i);
+						return ar;
+					}
+
+					public override void Serialize(Object item, ByteBuffer stream)
+					{
+						System.Array field = (System.Array)item;
+						for (int i = 0; i < field.Length; i++)
+							element.Serialize(field.GetValue(i), stream);
+					}
+				}
+
+			}
+		}
 
 
         /// <summary>
@@ -474,7 +556,17 @@ namespace Protocol
         abstract public class Primitive<T> : SerialItem
         {
             protected Primitive() : base(typeof(T)) { }
-        }
+
+			public override void AssertBitwiseEqual(string variableName, object a, object b)
+			{
+				//T ta = (T)a;
+				//T tb = (T)b;
+				if (!a.Equals(b))
+				{
+					throw new Exception(variableName+": "+a + "!=" + b + " (" + typeof(T) + ")");
+				}
+			}
+		}
 
         /// <summary>
         /// Byte-typed SerialItem
@@ -483,7 +575,27 @@ namespace Protocol
         {
             public class Array
             {
-                public class Embedded : SerialItem
+				public abstract class Base : SerialItem
+				{
+					protected Base(Type t) : base(t)
+					{ }
+					public override void AssertBitwiseEqual(string variableName, object a, object b)
+					{
+						byte[] afield = (byte[])a;
+						byte[] bfield = (byte[])b;
+						AssertPrimitiveArrayMatch(variableName, afield, bfield);
+					}
+
+					public override object CreateRandom(Random random)
+					{
+						int length = RandomArrayLength(random);
+						byte[] result = new byte[length];
+						random.NextBytes(result);
+						return result;
+					}
+				}
+
+                public class Embedded : Base
                 {
                     public Embedded()
                         : base(typeof(byte[]))
@@ -507,7 +619,7 @@ namespace Protocol
                         stream.Append(field, 0, field.Length);
                     }
                 }
-                public class Derived : SerialItem
+                public class Derived : Base
                 {
                     public Derived()
                         : base(typeof(byte[]))
@@ -540,7 +652,12 @@ namespace Protocol
             {
                 stream.Append((byte)item);
             }
-        }
+
+			public override object CreateRandom(Random random)
+			{
+				return (byte)random.Next(256);
+			}
+		}
 
         public class Enum : SerialItem
         {
@@ -600,13 +717,50 @@ namespace Protocol
 
                 }
             }
-        }
+
+			public override void AssertBitwiseEqual(string variableName, object a, object b)
+			{
+				//System.Enum ea = (System.Enum)a;
+				//System.Enum eb = (System.Enum)b;
+				if (!a.Equals(b))
+				{
+					throw new Exception(variableName+": "+a + "!=" + b + " (" + VariableType + ")");
+				}
+			}
+
+			public override object CreateRandom(Random random)
+			{
+				int[] values = (int[])this.VariableType.GetEnumValues();
+				return System.Enum.ToObject(VariableType, values[random.Next(values.Length)]);
+            }
+		}
 
         public class Bool : Primitive<bool>
         {
             public class Array
             {
-                public class Embedded : SerialItem
+				public abstract class Base : SerialItem
+				{
+					protected Base(Type t) : base(t)
+					{ }
+					public override void AssertBitwiseEqual(string variableName, object a, object b)
+					{
+						bool[] afield = (bool[])a;
+						bool[] bfield = (bool[])b;
+						AssertPrimitiveArrayMatch(variableName, afield, bfield);
+					}
+
+					public override object CreateRandom(Random random)
+					{
+						int length = RandomArrayLength(random);
+						bool[] result = new bool[length];
+						for (int i = 0; i < length; i++)
+							result[i] = random.Next(100) >= 50;
+						return result;
+					}
+				}
+
+				public class Embedded : Base
                 {
                     public Embedded()
                         : base(typeof(bool[]))
@@ -634,7 +788,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : SerialItem
+                public class Derived : Base
                 {
                     public Derived()
                         : base(typeof(bool[]))
@@ -673,13 +827,46 @@ namespace Protocol
             {
                 stream.Append((byte)((bool)item ? 1 : 0));
             }
-        }
+			public override object CreateRandom(Random random)
+			{
+				return random.Next(100) >= 50;
+			}
+		}
 
-        public class Char : Primitive<char>
+		public class Char : Primitive<char>
         {
-            public class Array
+			protected const string alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRTSTUVWXYZ0123456789!@#$%^&*()_+=-]}[{'\"\\|/.,<>?äöüÄÖÜß";
+
+			public static char Rand(Random random)
+			{
+				return alphabet[random.Next(alphabet.Length)];
+            }
+
+			public class Array
             {
-                public class Embedded : SerialItem
+				public abstract class Base : SerialItem
+				{
+
+					protected Base(Type t) : base(t)
+					{ }
+					public override void AssertBitwiseEqual(string variableName, object a, object b)
+					{
+						char[] afield = (char[])a;
+						char[] bfield = (char[])b;
+						AssertPrimitiveArrayMatch(variableName, afield, bfield);
+					}
+
+					public override object CreateRandom(Random random)
+					{
+						int length = RandomArrayLength(random);
+						char[] result = new char[length];
+						for (int i = 0; i < length; i++)
+							result[i] = Rand(random);
+						return result;
+					}
+				}
+
+				public class Embedded : Base
                 {
                     public Embedded()
                         : base(typeof(char[]))
@@ -707,7 +894,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : SerialItem
+                public class Derived : Base
                 {
                     public Derived()
                         : base(typeof(char[]))
@@ -746,14 +933,41 @@ namespace Protocol
             {
                 stream.Append((byte)((char)item));
             }
-        }
+			public override object CreateRandom(Random random)
+			{
+				return Rand(random);
+			}
+
+		}
 
 
-        public class TInt16 : Primitive<Int16>
+		public class TInt16 : Primitive<Int16>
         {
             public class Array
             {
-                public class Embedded : SerialItem
+				public abstract class Base : SerialItem
+				{
+
+					protected Base(Type t) : base(t)
+					{ }
+					public override void AssertBitwiseEqual(string variableName, object a, object b)
+					{
+						Int16[] afield = (Int16[])a;
+						Int16[] bfield = (Int16[])b;
+						AssertPrimitiveArrayMatch(variableName, afield, bfield);
+					}
+
+					public override object CreateRandom(Random random)
+					{
+						int length = RandomArrayLength(random);
+						Int16[] result = new Int16[length];
+						for (int i = 0; i < length; i++)
+							result[i] = Rand(random);
+						return result;
+					}
+				}
+
+				public class Embedded : Base
                 {
                     public Embedded()
                         : base(typeof(Int16[]))
@@ -784,7 +998,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : SerialItem
+                public class Derived : Base
                 {
                     public Derived()
                         : base(typeof(Int16[]))
@@ -828,12 +1042,44 @@ namespace Protocol
                 stream.Append((byte)(v & 0xFF),
                                 (byte)((v >> 8) & 0xFF));
             }
-        }
-        public class TUInt16 : Primitive<UInt16>
+
+			protected static Int16 Rand(Random random)
+			{
+				return (Int16)random.Next(Int16.MinValue, (int)Int16.MaxValue + 1);
+			}
+			public override object CreateRandom(Random random)
+			{
+				return Rand(random);
+			}
+
+		}
+		public class TUInt16 : Primitive<UInt16>
         {
             public class Array
             {
-                public class Embedded : SerialItem
+				public abstract class Base : SerialItem
+				{
+
+					protected Base(Type t) : base(t)
+					{ }
+					public override void AssertBitwiseEqual(string variableName, object a, object b)
+					{
+						UInt16[] afield = (UInt16[])a;
+						UInt16[] bfield = (UInt16[])b;
+						AssertPrimitiveArrayMatch(variableName, afield, bfield);
+					}
+
+					public override object CreateRandom(Random random)
+					{
+						int length = RandomArrayLength(random);
+						UInt16[] result = new UInt16[length];
+						for (int i = 0; i < length; i++)
+							result[i] = Rand(random);
+						return result;
+					}
+				}
+
+				public class Embedded : Base
                 {
                     public Embedded()
                         : base(typeof(UInt16[]))
@@ -864,7 +1110,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : SerialItem
+                public class Derived : Base
                 {
                     public Derived()
                         : base(typeof(UInt16[]))
@@ -908,12 +1154,44 @@ namespace Protocol
                 stream.Append((byte)(v & 0xFF),
                                 (byte)((v >> 8) & 0xFF));
             }
-        }
-        public class TInt32 : Primitive<Int32>
+			protected static UInt16 Rand(Random random)
+			{
+				return (UInt16)random.Next((int)UInt16.MaxValue + 1);
+			}
+			public override object CreateRandom(Random random)
+			{
+				return Rand(random);
+			}
+
+		}
+		public class TInt32 : Primitive<Int32>
         {
             public class Array
             {
-                public class Embedded : SerialItem
+				public abstract class Base : SerialItem
+				{
+
+					protected Base(Type t) : base(t)
+					{ }
+					public override void AssertBitwiseEqual(string variableName, object a, object b)
+					{
+						Int32[] afield = (Int32[])a;
+						Int32[] bfield = (Int32[])b;
+						AssertPrimitiveArrayMatch(variableName, afield, bfield);
+					}
+
+					public override object CreateRandom(Random random)
+					{
+						int length = RandomArrayLength(random);
+						Int32[] result = new Int32[length];
+						for (int i = 0; i < length; i++)
+							result[i] = Rand(random);
+						return result;
+					}
+				}
+
+
+				public class Embedded : Base
                 {
                     public Embedded()
                         : base(typeof(Int32[]))
@@ -944,7 +1222,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : SerialItem
+                public class Derived : Base
                 {
                     public Derived()
                         : base(typeof(Int32[]))
@@ -990,12 +1268,42 @@ namespace Protocol
                                 (byte)((v >> 16) & 0xFF),
                                 (byte)((v >> 24) & 0xFF));
             }
-        }
-        public class TUInt32 : Primitive<UInt32>
+			protected static Int32 Rand(Random random)
+			{
+				return (Int32)random.Next(Int32.MinValue,Int32.MaxValue);
+			}
+			public override object CreateRandom(Random random)
+			{
+				return Rand(random);
+			}
+
+		}
+		public class TUInt32 : Primitive<UInt32>
         {
             public class Array
             {
-                public class Embedded : SerialItem
+				public abstract class Base : SerialItem
+				{
+
+					protected Base(Type t) : base(t)
+					{ }
+					public override void AssertBitwiseEqual(string variableName, object a, object b)
+					{
+						UInt32[] afield = (UInt32[])a;
+						UInt32[] bfield = (UInt32[])b;
+						AssertPrimitiveArrayMatch(variableName, afield, bfield);
+					}
+
+					public override object CreateRandom(Random random)
+					{
+						int length = RandomArrayLength(random);
+						UInt32[] result = new UInt32[length];
+						for (int i = 0; i < length; i++)
+							result[i] = Rand(random);
+						return result;
+					}
+				}
+				public class Embedded : Base
                 {
                     public Embedded()
                         : base(typeof(UInt32[]))
@@ -1026,8 +1334,8 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : SerialItem
-                {
+                public class Derived : Base
+				{
                     public Derived()
                         : base(typeof(UInt32[]))
                     { }
@@ -1070,12 +1378,42 @@ namespace Protocol
                 stream.AppendU32(v);
                 return;
             }
-        }
-        public class TInt64 : Primitive<Int64>
+			protected static UInt32 Rand(Random random)
+			{
+				return (UInt32)(random.NextDouble()*(double)UInt32.MaxValue);
+			}
+			public override object CreateRandom(Random random)
+			{
+				return Rand(random);
+			}
+
+		}
+		public class TInt64 : Primitive<Int64>
         {
             public class Array
             {
-                public class Embedded : SerialItem
+				public abstract class Base : SerialItem
+				{
+					protected Base(Type t) : base(t)
+					{ }
+					public override void AssertBitwiseEqual(string variableName, object a, object b)
+					{
+						Int64[] afield = (Int64[])a;
+						Int64[] bfield = (Int64[])b;
+						AssertPrimitiveArrayMatch(variableName, afield, bfield);
+					}
+
+					public override object CreateRandom(Random random)
+					{
+						int length = RandomArrayLength(random);
+						Int64[] result = new Int64[length];
+						for (int i = 0; i < length; i++)
+							result[i] = Rand(random);
+						return result;
+					}
+				}
+
+				public class Embedded : Base
                 {
                     public Embedded()
                         : base(typeof(Int64[]))
@@ -1115,8 +1453,8 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : SerialItem
-                {
+                public class Derived : Base
+				{
                     public Derived()
                         : base(typeof(Int64[]))
                     { }
@@ -1177,12 +1515,41 @@ namespace Protocol
                                 (byte)((v >> 56) & 0xFF)
                                 );
             }
-        }
-        public class TUInt64 : Primitive<UInt64>
+			protected static Int64 Rand(Random random)
+			{
+				return (Int64)(random.NextDouble() * (double)(UInt64.MaxValue) + (double)Int64.MinValue);
+			}
+			public override object CreateRandom(Random random)
+			{
+				return Rand(random);
+			}
+		}
+		public class TUInt64 : Primitive<UInt64>
         {
             public class Array
             {
-                public class Embedded : SerialItem
+				public abstract class Base : SerialItem
+				{
+					protected Base(Type t) : base(t)
+					{ }
+					public override void AssertBitwiseEqual(string variableName, object a, object b)
+					{
+						UInt64[] afield = (UInt64[])a;
+						UInt64[] bfield = (UInt64[])b;
+						AssertPrimitiveArrayMatch(variableName, afield, bfield);
+					}
+
+					public override object CreateRandom(Random random)
+					{
+						int length = RandomArrayLength(random);
+						UInt64[] result = new UInt64[length];
+						for (int i = 0; i < length; i++)
+							result[i] = Rand(random);
+						return result;
+					}
+				}
+
+				public class Embedded : Base
                 {
                     public Embedded()
                         : base(typeof(UInt64[]))
@@ -1222,7 +1589,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : SerialItem
+                public class Derived : Base
                 {
                     public Derived()
                         : base(typeof(UInt64[]))
@@ -1269,8 +1636,17 @@ namespace Protocol
                 UInt64 v = (UInt64)item;
                 stream.AppendU64(v);
             }
-        }
-        public class Float : Primitive<float>
+			protected static UInt64 Rand(Random random)
+			{
+				return (UInt64)(random.NextDouble() * (double)UInt64.MaxValue);
+			}
+			public override object CreateRandom(Random random)
+			{
+				return Rand(random);
+			}
+
+		}
+		public class Float : Primitive<float>
         {
             [StructLayout(LayoutKind.Explicit)]
             struct BitCast
@@ -1285,7 +1661,28 @@ namespace Protocol
 
             public class Array
             {
-                public class Embedded : SerialItem
+				public abstract class Base : SerialItem
+				{
+					protected Base(Type t) : base(t)
+					{ }
+					public override void AssertBitwiseEqual(string variableName, object a, object b)
+					{
+						float[] afield = (float[])a;
+						float[] bfield = (float[])b;
+						AssertPrimitiveArrayMatch(variableName, afield, bfield);
+					}
+
+					public override object CreateRandom(Random random)
+					{
+						int length = RandomArrayLength(random);
+						float[] result = new float[length];
+						for (int i = 0; i < length; i++)
+							result[i] = Rand(random);
+						return result;
+					}
+				}
+
+				public class Embedded : Base
                 {
                     public Embedded()
                         : base(typeof(float[]))
@@ -1318,7 +1715,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : SerialItem
+                public class Derived : Base
                 {
                     public Derived()
                         : base(typeof(float[]))
@@ -1365,9 +1762,29 @@ namespace Protocol
                 stream.AppendU32(cast.IntValue);
                 return;
             }
-        }
 
-        public class Double : Primitive<double>
+			protected static float Rand(Random random)
+			{
+				if (random.Next(100) < 10)
+					return 0f;
+				if (random.Next(100) < 5)
+					return 1f;
+				if (random.Next(100) < 5)
+					return -1f;
+				if (random.Next(100) < 2)
+					return float.PositiveInfinity;
+				if (random.Next(100) < 2)
+					return float.NegativeInfinity;
+				return (float)random.NextDouble() * 1000f - 500f;
+			}
+			public override object CreateRandom(Random random)
+			{
+				return Rand(random);
+			}
+
+		}
+
+		public class Double : Primitive<double>
         {
             [StructLayout(LayoutKind.Explicit)]
             struct BitCast
@@ -1382,7 +1799,27 @@ namespace Protocol
 
             public class Array
             {
-                public class Embedded : SerialItem
+				public abstract class Base : SerialItem
+				{
+					protected Base(Type t) : base(t)
+					{ }
+					public override void AssertBitwiseEqual(string variableName, object a, object b)
+					{
+						double[] afield = (double[])a;
+						double[] bfield = (double[])b;
+						AssertPrimitiveArrayMatch(variableName, afield, bfield);
+					}
+
+					public override object CreateRandom(Random random)
+					{
+						int length = RandomArrayLength(random);
+						double[] result = new double[length];
+						for (int i = 0; i < length; i++)
+							result[i] = Rand(random);
+						return result;
+					}
+				}
+				public class Embedded : Base
                 {
                     public Embedded()
                         : base(typeof(double[]))
@@ -1415,7 +1852,7 @@ namespace Protocol
                         }
                     }
                 }
-                public class Derived : SerialItem
+                public class Derived : Base
                 {
                     public Derived()
                         : base(typeof(double[]))
@@ -1462,12 +1899,54 @@ namespace Protocol
                 stream.AppendU64(cast.IntValue);
                 return;
             }
-        }
- 
 
-        public class String
+			protected static double Rand(Random random)
+			{
+				if (random.Next(100) < 10)
+					return 0.0;
+				if (random.Next(100) < 5)
+					return 1.0;
+				if (random.Next(100) < 5)
+					return -1.0;
+				if (random.Next(100) < 2)
+					return double.PositiveInfinity;
+				if (random.Next(100) < 2)
+					return double.NegativeInfinity;
+				return random.NextDouble() * 1000.0 - 500.0;
+			}
+			public override object CreateRandom(Random random)
+			{
+				return Rand(random);
+			}
+
+		}
+
+
+		public class String
         {
-            public class Embedded : Primitive<string>
+			public abstract class Base : Primitive<string>
+			{
+
+				public override void AssertBitwiseEqual(string variableName, object a, object b)
+				{
+					string ca = (string)a;
+					string cb = (string)b;
+					if (ca != cb)
+					{
+						throw new Exception(variableName+": '"+ca+"' != '"+cb+"'");
+					}
+				}
+				public override object CreateRandom(Random random)
+				{
+					int len = RandomArrayLength(random);
+					char[] field = new char[len];
+					for (int i = 0; i < len; i++)
+						field[i] = Char.Rand(random);
+					return new string(field);
+				}
+			}
+
+			public class Embedded : Base
             {
                 public override Object Deserialize(byte[] data, ref int offset, int data_size)
                 {
@@ -1505,8 +1984,8 @@ namespace Protocol
                     return;
                 }
             }
-            public class Derived : Primitive<string>
-            {
+            public class Derived : Base
+			{
                 public override Object Deserialize(byte[] data, ref int offset, int data_size)
                 {
                     int length = data_size - offset;
@@ -1584,8 +2063,37 @@ namespace Protocol
             return result;
         }
 
+		public object CreateRandom(Random random)
+		{
+			object item;
 
-        public Object Deserialize(byte[] data, int dataSize)
+			if (isArray || isPrimitive)
+				item = items[0].CreateRandom(random);
+			else
+			{
+				item = Activator.CreateInstance(serializable);
+				for (int i = 0; i < items.Length; i++)
+					fields[i].SetValue(item, items[i].CreateRandom(random));
+			}
+			return item;
+		}
+
+		public void AssertBitwiseEqual(object a, object b)
+		{
+			if (isArray || isPrimitive)
+				items[0].AssertBitwiseEqual("",a, b);
+			else
+			{
+				for (int i = 0; i < items.Length; i++)
+					items[i].AssertBitwiseEqual(fields[i].Name, fields[i].GetValue(a), fields[i].GetValue(b));
+					//fields[i].SetValue(item, items[i].CreateRandom(random));
+			}
+
+
+		}
+
+
+		public Object Deserialize(byte[] data, int dataSize)
         {
             Debug.Assert(dataSize <= data.Length);
 
