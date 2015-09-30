@@ -4,6 +4,8 @@
 #include "../../shared/monitoredProcess.h"
 #include <io/file_system.h>
 
+extern void	SignalRoundEnd();
+
 namespace TechniteLogicLink
 {
 
@@ -147,6 +149,15 @@ namespace TechniteLogicLink
 			//re-route to server as is
 			LogEvent(EventType::TechniteLogic,nullptr,"Forwarding technite instruction chunk to server, containing "+String(chunk.instructions.Count())+" technites, starting from "+String(chunk.offset));
 			Network::Channels::techniteInstructions.SendTo(Network::client,chunk);
+			if (chunk.offset + chunk.instructions.Count() == recordedHistory.Count())
+			{
+				LogEvent(EventType::TechniteLogic,nullptr,"All technites instructed");
+				
+				if (Network::chosenFactionTypes == Protocol::FactionType::TechniteFaction)	//nothing else
+				{
+					SignalRoundEnd();
+				}
+			}
 		}
 
 		void Authenticate(Package::NetString<64>&secret, TCP::Peer&peer)

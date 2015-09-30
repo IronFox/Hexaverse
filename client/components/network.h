@@ -35,6 +35,8 @@ namespace Network
 	extern GenericHashTable<TUniqueID,Objects::OwnerParameter,TUniqueID>	factionMap;
 
 
+	extern UINT32			chosenFactionTypes;
+
 	extern UINT32			roundNumber;
 					//dbgRoundNumber = 0xFFFFFFFF;
 	extern Protocol::GameProgress	gameProgress;
