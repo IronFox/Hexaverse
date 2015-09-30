@@ -176,6 +176,7 @@ namespace Technites
 		private:
 			BYTE		data = 0;
 		public:
+			static const BYTE SelfNeighbor = 0xF;
 
 			/**/		CompressedTarget()	{}
 			/**/		CompressedTarget(BYTE neighborIndex, int heightDelta)
@@ -185,16 +186,16 @@ namespace Technites
 
 			unsigned	GetNeighborIndex() const
 			{
-				return data&0x7;
+				return data&0xF;
 			}
 			int			GetHeightDelta() const
 			{
-				return ((int)(data >> 3)) -1;
+				return ((int)(data >> 4)) -1;
 			}
 
 			void		Set(BYTE neighborIndex, int heightDelta)
 			{
-				data = neighborIndex | (BYTE)((heightDelta+1) << 3);
+				data = neighborIndex | (BYTE)((heightDelta+1) << 4);
 			}
 		};
 
@@ -508,6 +509,7 @@ namespace Technites
 		Queries the currently stored non-atomic content of the world grid in its global state (should not be called during processing)
 		*/
 		static Grid::Content	GetGlobalGridContent(const Grid::HCellIdI&cellID);
+		static Grid::Content	GetGlobalGridContent(const Grid::HCellIdU&cellID);
 
 		#ifndef CLIENT
 			void				Process(float t);

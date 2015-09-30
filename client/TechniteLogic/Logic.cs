@@ -12,7 +12,7 @@ namespace TechniteLogic
 
 		private static Technite.RelativeTarget EvaluateChoices(Grid.HCellID location, Func<Technite.RelativeTarget,Grid.HCellID, Grid.CellStack,int> f)
 		{
-			Out.Log(Significance.Low, "Observing neighborhood of " + location);
+	//		Out.Log(Significance.Low, "Observing neighborhood of " + location);
             Technite.RelativeTarget rs = Technite.RelativeTarget.Invalid;
             int quality = -1;
 			uint[] choices = Grid.Graph.Nodes[location.StackID].Neighbors;
@@ -27,7 +27,29 @@ namespace TechniteLogic
 						continue;
 					Grid.HCellID cellLocation = new Grid.HCellID(choice, layer);
 					Technite.RelativeTarget target = new Technite.RelativeTarget(i, h);
-					Out.Log(Significance.Low, "Observing cell "+cellLocation+" ("+target+") with content="+stack.volumeCell[layer].content);
+//					Out.Log(Significance.Low, "Observing cell "+cellLocation+" ("+target+") with content="+stack.volumeCell[layer].content);
+
+					int q = f(target, cellLocation, stack);
+					if (q > quality)
+					{
+						quality = q;
+						rs = target;
+					}
+				}
+			}
+			{
+				uint choice = location.StackID;
+				Grid.CellStack stack = Grid.World.CellStacks[choice];
+				for (int h = -1; h <= 1; h++)
+				{
+					if (h == 0)
+						continue;
+					int layer = (location.Layer + h);
+					if (layer < 0 || layer >= Grid.CellStack.LayersPerStack)
+						continue;
+					Grid.HCellID cellLocation = new Grid.HCellID(choice, layer);
+					Technite.RelativeTarget target = new Technite.RelativeTarget(Technite.RelativeTarget.SelfNeighbor, h);
+//					Out.Log(Significance.Low, "Observing cell " + cellLocation + " (" + target + ") with content=" + stack.volumeCell[layer].content);
 
 					int q = f(target, cellLocation, stack);
 					if (q > quality)
@@ -38,6 +60,50 @@ namespace TechniteLogic
 				}
 			}
 			return rs;
+		}
+
+		private static Technite.RelativeTarget GetLitOrUpperTechnite(Grid.HCellID location)
+		{
+			return EvaluateChoices(location, (relative, cell, stack) =>
+			{
+				Grid.Content content = stack.volumeCell[cell.Layer].content;
+				if (content != Grid.Content.Technite)
+					return -1;
+				Technite other = Technite.Find(cell);
+				if (other == null)
+				{
+					Out.Log(Significance.Unusual, "Located neighboring technite in "+cell+", but cannot find reference to class instance");
+					return -1;
+				}
+				int rs = 0;
+				if (other.Status.lit)
+					rs++;
+				rs += relative.HeightDelta;
+				return rs;
+			}
+			);
+		}
+
+		private static Technite.RelativeTarget GetUnlitOrLowerTechnite(Grid.HCellID location)
+		{
+			return EvaluateChoices(location, (relative, cell, stack) =>
+			{
+				Grid.Content content = stack.volumeCell[cell.Layer].content;
+				if (content != Grid.Content.Technite)
+					return -1;
+				Technite other = Technite.Find(cell);
+				if (other == null)
+				{
+					Out.Log(Significance.Unusual, "Located neighboring technite in " + cell + ", but cannot find reference to class instance");
+					return -1;
+				}
+				int rs = 1;
+				if (other.Status.lit)
+					rs--;
+				rs -= relative.HeightDelta;
+				return rs;
+			}
+			);
 		}
 
 		private static Technite.RelativeTarget GetBestFoodChoice(Grid.HCellID location)
@@ -67,7 +133,7 @@ namespace TechniteLogic
 					int bonus = 0;
 					if (Grid.IsSolid(ground))
 						bonus += 3;
-					return relative.HeightDelta + 1;
+					return relative.HeightDelta + 1 + bonus;
 				}
 				return -1;
 			}
@@ -103,7 +169,7 @@ namespace TechniteLogic
 						continue;
 					}
 				}
-				//try digging horizontally
+				bool tryTransfer = false;
 				if (t.CanSplit)
 				{
 					Technite.RelativeTarget target = GetClearNeighbor(t.Location);
@@ -112,7 +178,10 @@ namespace TechniteLogic
 						t.SetNextTask(Technite.Task.GrowTo, target);
 					}
 					else
+					{
 						Out.Log(Significance.Unusual, "Unable to find adequate splitting destination");
+						tryTransfer = true;
+					}
 				}
 				else
 					if (t.CanEat)
@@ -123,22 +192,45 @@ namespace TechniteLogic
 							t.SetNextTask(Technite.Task.EatSurroundingCell, target);
 						}
 						else
+						{
 							Out.Log(Significance.Unusual, "Unable to find adequate eating destination");
+							tryTransfer = true;
+						}
 					}
 				else
 				{
 					Out.Log(Significance.Unusual, "Insufficient resources to do anything");
+					tryTransfer = t.CurrentResources != Technite.Resources.Zero;
+				}
 
-					//Technite.Resources res = t.CurrentResources;
-					//if (!res.Empty)
-					//{
-					//	if (res.Energy > res.Matter)
-					//	{
+				if (tryTransfer)
+				{
+					Technite.RelativeTarget target = Technite.RelativeTarget.Invalid;
+					Technite.Task task;
+                    if (t.CurrentResources.Matter > t.CurrentResources.Energy)
+					{
+						Out.Log(Significance.Low, "Trying to transfer matter");
+						task = Technite.Task.TransferMatterTo;
+						target = GetLitOrUpperTechnite(t.Location);
+					}
+					else
+					{
+						Out.Log(Significance.Low, "Trying to transfer energy");
+						task = Technite.Task.TransferEnergyTo;
+						target = GetUnlitOrLowerTechnite(t.Location);
+
+					}
+					if (target != Technite.RelativeTarget.Invalid)
+					{
+						t.SetNextTask(task, target);
+					}
+					else
+					{
+						Out.Log(Significance.Unusual, "Unable to find adequate transfer target");
+						tryTransfer = true;
+					}
 
 
-					//	}
-
-					//}
 				}
 
 

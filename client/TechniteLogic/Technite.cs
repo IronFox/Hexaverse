@@ -67,7 +67,7 @@ namespace TechniteLogic
 		{
 			public byte		Energy,
 							Matter;
-
+			internal static readonly Resources Zero = new Resources(0,0);
 
 			public 			Resources(int energy, int matter)
 			{
@@ -143,6 +143,13 @@ namespace TechniteLogic
 			}
 		};
 
+		internal static Technite Find(Grid.HCellID location)
+		{
+			Technite rs;
+			if (map.TryGetValue(location, out rs))
+				return rs;
+			return null;
+		}
 
 		public static readonly Resources	SplitCost = new Resources(SplitEnergyCost,SplitMatterCost), 
 												EatCost = new Resources(EatEnergyCost,0);
@@ -175,6 +182,7 @@ namespace TechniteLogic
 		public struct CompressedTarget
 		{
 			public readonly byte Data;
+			public static uint SelfNeighbor = 0xF;
 
 			public RelativeTarget Decoded
 			{ 
@@ -190,16 +198,16 @@ namespace TechniteLogic
 			}
 			public		CompressedTarget(RelativeTarget target)
 			{
-				Data = (byte)((byte)target.NeighborIndex | (byte)((target.HeightDelta + 1) << 3));
+				Data = (byte)((byte)target.NeighborIndex | (byte)((target.HeightDelta + 1) << 4));
 			}
 
 			public uint	GetNeighborIndex()
 			{
-				return (uint)(Data & 0x7);
+				return (uint)(Data & 0xF);
 			}
 			public int			GetHeightDelta()
 			{
-				return (((int)(Data >> 3)) - 1);
+				return (((int)(Data >> 4)) - 1);
 			}
 
 		}
@@ -249,15 +257,24 @@ namespace TechniteLogic
 
 		}
 
+
+		/// <summary>
+		/// Cell descriptor relative to a given cell. Some relative targets may be valid only from specific cells.
+		/// </summary>
 		public struct RelativeTarget
 		{
 			public readonly uint NeighborIndex;
 			public readonly int HeightDelta;
 
+			/// <summary>
+			/// Neighbor index to be used when addressing own stack index. If used in combination with a height delta value of 0, the target describes the local cell itself
+			/// </summary>
+			public static uint SelfNeighbor = CompressedTarget.SelfNeighbor;
+
 			public RelativeTarget(uint neighborIndex, int heightDelta)
 			{
-				if (neighborIndex >= 0xFF && neighborIndex != uint.MaxValue)
-					throw new ArgumentOutOfRangeException("RelativeTarget expects the neighbor index to be passed as first parameter. Maximum degree is 255, but passed parameter is "+neighborIndex);
+				if (neighborIndex > 0xF && neighborIndex != uint.MaxValue)
+					throw new ArgumentOutOfRangeException("RelativeTarget expects the neighbor index to be passed as first parameter. Maximum degree is 15, but passed parameter is "+neighborIndex);
 				if (neighborIndex == uint.MaxValue && heightDelta != 0)
 					throw new ArgumentException("If neighbor index is uint.MaxValue, height delta must be set to 0");
 				if (heightDelta > 1 || heightDelta < -1)
@@ -291,15 +308,22 @@ namespace TechniteLogic
 
 			public override string ToString()
 			{
+				if (NeighborIndex == SelfNeighbor)
+				{
+					return "<> |" + HeightDelta;
+                }
 				return "->" + NeighborIndex + " |" + HeightDelta;
 			}
 
 			public static Grid.HCellID operator+(Grid.HCellID cell, RelativeTarget t)
 			{
+				if (t.NeighborIndex == SelfNeighbor)
+					return new Grid.HCellID(cell.StackID, cell.Layer + t.HeightDelta);
 				return new Grid.HCellID(Grid.Graph.Nodes[cell.StackID].Neighbors[t.NeighborIndex], cell.Layer + t.HeightDelta);
 			}
 
 			public static readonly RelativeTarget Invalid = new RelativeTarget(uint.MaxValue, 0);
+			public static readonly RelativeTarget Empty = new RelativeTarget(SelfNeighbor, 0);
         }
 
 
@@ -319,6 +343,9 @@ namespace TechniteLogic
 
 		State				state;
 		bool				exists = false;
+
+
+		public State		Status {  get { return state;  } }
 
 
 		public override string ToString()

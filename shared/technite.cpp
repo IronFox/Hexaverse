@@ -289,7 +289,13 @@ namespace Technites
 		DBG_ASSERT_LESS__(layer, Grid::CellStack::Range);
 
 		return Grid::Content::Reinterpret(Grid::actualWorld.cellStack[cellID.stackID].volumeCell[layer].content);
+	}
 
+	/*static*/ Grid::Content	Faction::GetGlobalGridContent(const Grid::HCellIdU&cellID)
+	{
+		if (cellID.layer >= Grid::CellStack::Range)
+			return Grid::Content::Clear;
+		return Grid::Content::Reinterpret(Grid::actualWorld.cellStack[cellID.stackID].volumeCell[cellID.layer].content);
 	}
 
 
@@ -349,11 +355,19 @@ namespace Technites
 			return false;
 		if (loc.height < Grid::CellStack::BottomHeight || loc.height > Grid::CellStack::TopHeight)
 			return false;
-		const auto&n = Grid::high.grid.GetCell(loc.stackID).neighborhood;
-		if (nIndex >= n.numNeighbors)
-			return false;
-		//ASSERT_LESS__(target.neighborIndex,n.numNeighbors);
-		outTarget = Grid::HCellIdI(n.neighborID[nIndex], loc.height + heightDelta);
+		if (nIndex == CompressedTarget::SelfNeighbor)
+		{
+			outTarget = Grid::HCellIdI(loc.stackID, loc.height + heightDelta);
+		}
+		else
+		{
+			const auto&n = Grid::high.grid.GetCell(loc.stackID).neighborhood;
+			if (nIndex >= n.numNeighbors)
+			{
+				return false;
+			}
+			outTarget = Grid::HCellIdI(n.neighborID[nIndex], loc.height + heightDelta);
+		}
 		return outTarget.height >= Grid::CellStack::BottomHeight && outTarget.height <= Grid::CellStack::TopHeight;
 	}
 
@@ -747,7 +761,7 @@ namespace Technites
 		//Grid::CellStack::ToLayer(technite.location.height + 1);
 		for (; layer < Grid::CellStack::Range; layer++)
 		{
-			Grid::Content top = GetLastContent(Grid::HCellIdU(technite.location.GetStackID(), layer));
+			Grid::Content top = GetGlobalGridContent(Grid::HCellIdU(technite.location.GetStackID(), layer));
 			if (top != Grid::Content::Clear && top != Grid::Content::Water)
 			{
 				lit = false;
@@ -943,7 +957,9 @@ namespace Technites
 				tech.location = loc;
 
 				//Grid::actualWorld.cellStack[tech.location.stackID].SetLocalTechniteFaction(tech.location.height, this->gridID);
-				technites.Append(tech).isDead = false;
+				Technite&t1 = technites.Append(tech);
+				ProcessLighting(t1);
+
 
 				techniteMap.Set(loc, at);
 				visibility.ChangeSensory(loc, t, 1);
@@ -1217,6 +1233,7 @@ namespace Technites
 		Technite&tech = technites.Append();
 		techniteMap.Set(location, at);
 		tech.location = location;
+		ProcessLighting(tech);
 
 		Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
 		ASSERT__(stack.SetLocalToTechniteContent(location.height, this->gridID));
