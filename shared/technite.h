@@ -44,7 +44,8 @@ namespace Technites
 	public:
 
 		static const BYTE	MoveEnergyCost = 1,
-							EatEnergyCost = 1,
+							ConsumeEnergyCost = 2,
+							GnawAtEnergyCost = 1,
 							SplitEnergyCost = 5,
 							SplitMatterCost = 5,
 							EnergyPackageSize = 5,
@@ -144,13 +145,14 @@ namespace Technites
 		};
 
 
-		static const Resources SplitCost, MoveCost, EatCost;// EnergyPackage, MatterPackage;
+		static const Resources SplitCost, MoveCost, ConsumeCost, GnawAtCost;// EnergyPackage, MatterPackage;
 
 
 		enum class Task : BYTE
 		{
 			None,
-			EatSurroundingCell,
+			ConsumeSurroundingCell,
+			GnawAtSurroundingCell,
 			GrowTo,
 			TransferEnergyTo,
 			TransferMatterTo,
@@ -163,6 +165,7 @@ namespace Technites
 			NothingToDo,
 			BadCommand,
 			CannotEatThis,
+			CannotGnawAtThis,
 			CannotStandThere,
 			TechniteLacksResources,
 			NoTechniteAtDestination,
@@ -480,7 +483,7 @@ namespace Technites
 
 		ExecResult				GrowTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);
 		//ExecResult				MoveTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);
-		ExecResult				Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);
+		ExecResult				Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data, bool destroy);
 
 
 		Technite::Resources		EatEntitiesIn(const Grid::HCellIdI&target, bool&cantEatThis);
@@ -490,7 +493,7 @@ namespace Technites
 		bool					ReduceResources(Technite&technite, const Technite::Resources&by);
 		void					IncreaseResources(Technite&technite, const Technite::Resources&by);
 		void					IncreaseRemoteResources(Technite&technite, const Technite::Resources&by, WorkerData&data);
-		Grid::Content			DegradeMatter(const Grid::HCellIdI&target, Technite::Resources&outYield);
+		Grid::Content			DegradeMatter(const Grid::HCellIdI&target, Technite::Resources&outYield, bool destroy);
 		Technite*				GetOwnTechnite(const Grid::HCellIdI&location);
 
 		PFaction				GetFactionOf(BYTE gridFactionID);

@@ -13,7 +13,8 @@ namespace Technites
 {
 	/*static*/ const Technite::Resources	Technite::SplitCost = Resources(SplitEnergyCost, SplitMatterCost),
 		Technite::MoveCost = Resources(MoveEnergyCost, 0),
-		Technite::EatCost = Resources(EatEnergyCost, 0);
+		Technite::GnawAtCost = Resources(GnawAtEnergyCost, 0),
+		Technite::ConsumeCost = Resources(ConsumeEnergyCost, 0);
 		//Technite::EnergyPackage = Resources(EnergyPackageSize, 0),
 		//Technite::MatterPackage = Resources(0, MatterPackageSize);
 
@@ -314,7 +315,7 @@ namespace Technites
 	{
 		return Grid::Content::Reinterpret(atomicGrid.cellStack[cellID.stackID].volumeCell[cellID.layer].content);
 	}
-	Grid::Content			Faction::DegradeMatter(const Grid::HCellIdI&target, Technite::Resources&outYield)
+	Grid::Content			Faction::DegradeMatter(const Grid::HCellIdI&target, Technite::Resources&outYield, bool destroy)
 	{
 		outYield = Technite::Resources();
 		UINT32 layer = Grid::CellStack::ToLayer(target.height);
@@ -331,6 +332,12 @@ namespace Technites
 
 			if (set == current)
 				return Grid::Content::Reinterpret(set);
+
+			if (!destroy)
+			{
+				outYield = Technite::Resources::Resources(0, matterYield/2);
+				return Grid::Content::Reinterpret(current);
+			}
 
 			if (cell.content.compare_exchange_weak(current, set))
 			{
@@ -375,7 +382,7 @@ namespace Technites
 
 	Faction::ExecResult			Faction::GrowTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data)
 	{
-		ExecResult rs = Eat(technite, target, iteration,data);
+		ExecResult rs = Eat(technite, target, iteration,data, true);
 		
 		if (rs != ExecResult::Success)
 			return rs;
@@ -702,7 +709,7 @@ namespace Technites
 	#endif
 
 
-	Faction::ExecResult			Faction::Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data)
+	Faction::ExecResult			Faction::Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data, bool destroy)
 	{
 		
 		switch (GetLastContent(target))
@@ -721,6 +728,8 @@ namespace Technites
 			}
 			case Grid::Content::Technite:
 			{
+				if (!destroy)
+					return ExecResult::CannotGnawAtThis;
 				if (iteration < 1)
 					return ExecResult::Again;
 			
@@ -737,18 +746,17 @@ namespace Technites
 			case Grid::Content::Lava:
 				return ExecResult::CannotEatThis;
 		}
-		if (!ReduceResources(technite, Technite::EatCost))
+		if (!ReduceResources(technite, destroy ? Technite::ConsumeCost : Technite::GnawAtCost))
 		{
-			
 			return ExecResult::TechniteLacksResources;
 		}
 		Technite::Resources	resources;
 		
-		Grid::Content newContent = DegradeMatter(target, resources);	//DegradeMatter must be atomic on the specified cell
+		Grid::Content newContent = DegradeMatter(target, resources,destroy);	//DegradeMatter must be atomic on the specified cell
 		
 		IncreaseResources(technite, resources);
 		
-		return newContent == Grid::Content::Clear ? ExecResult::Success : ExecResult::MoreWorkNeeded;
+		return newContent == Grid::Content::Clear || !destroy ? ExecResult::Success : ExecResult::MoreWorkNeeded;
 	}
 
 
@@ -830,8 +838,9 @@ namespace Technites
 		{
 		case Technite::Task::GrowTo:
 			return GrowTo(technite, target, iteration,data);
-		case Technite::Task::EatSurroundingCell:
-			return Eat(technite, target, iteration, data);
+		case Technite::Task::ConsumeSurroundingCell:
+		case Technite::Task::GnawAtSurroundingCell:
+			return Eat(technite, target, iteration, data, technite.nextTask == Technite::Task::ConsumeSurroundingCell);
 		case Technite::Task::TransferEnergyTo:
 		{
 			if (iteration < 4)
@@ -937,6 +946,10 @@ namespace Technites
 				{
 					visibility.ChangeSensory(loc, t, -1);
 					techniteMap.Unset(loc);
+
+					//must change terrain here. for now: to earth
+					atomicGrid.cellStack[loc.stackID].volumeCell[loc.layer].content = Grid::Content::Earth;
+					atomicGrid.SignalStackChange(loc.stackID);
 				}
 			}
 			newField.swap(technites);

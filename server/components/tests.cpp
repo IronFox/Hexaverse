@@ -757,7 +757,7 @@ namespace Test
 			{
 				t->resources = t->SplitCost;
 				t->resources += t->MoveCost;
-				t->resources += t->EatCost;
+				t->resources += t->ConsumeCost;
 
 				ASSERT__(t->taskResult != Technites::Technite::TaskResult::BadCommand);
 				t->nextTask = (Technites::Technite::Task)random.get((int)Technites::Technite::Task::Count - 1);
@@ -847,8 +847,8 @@ namespace Test
 			//std::cout << " " << (int)a->gridID << " (level " << energyA << ") vs " << (int)b->gridID << " (level " << energyB << ")" << std::endl;
 			while (a->technites.IsNotEmpty() && b->technites.IsNotEmpty())
 			{
-				ta.nextTask = Technites::Technite::Task::EatSurroundingCell;
-				tb.nextTask = Technites::Technite::Task::EatSurroundingCell;
+				ta.nextTask = Technites::Technite::Task::ConsumeSurroundingCell;
+				tb.nextTask = Technites::Technite::Task::ConsumeSurroundingCell;
 
 				ASSERT__(ta.taskResult != Technites::Technite::TaskResult::BadCommand);
 				ASSERT__(tb.taskResult != Technites::Technite::TaskResult::BadCommand);

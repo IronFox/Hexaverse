@@ -10,7 +10,8 @@ namespace TechniteLogic
 	class Technite
 	{
 
-		public static byte	EatEnergyCost = 1,
+		public static byte	ConsumeEnergyCost = 2,
+							GnatAtEnergyCost = 1,
 							SplitEnergyCost = 5,
 							SplitMatterCost = 5,
 							EnergyPackageSize = 5,
@@ -152,13 +153,15 @@ namespace TechniteLogic
 		}
 
 		public static readonly Resources	SplitCost = new Resources(SplitEnergyCost,SplitMatterCost), 
-												EatCost = new Resources(EatEnergyCost,0);
+												ConsumeCost = new Resources(ConsumeEnergyCost, 0),
+												GnawAtCost = new Resources(GnatAtEnergyCost, 0);
 
 
 		public enum Task
 		{
 			None,
-			EatSurroundingCell,
+			ConsumeSurroundingCell,
+			GnawAtSurroundingCell,
 			GrowTo,
 			TransferEnergyTo,
 			TransferMatterTo,
@@ -171,7 +174,8 @@ namespace TechniteLogic
 			NothingToDo,
 			BadCommand,
 			CannotEatThis,
-			CannotStandThere,
+			CannotGnawAtThis,
+            CannotStandThere,
 			TechniteLacksResources,
 			NoTechniteAtDestination,
 			MoreWorkNeeded,
@@ -399,7 +403,8 @@ namespace TechniteLogic
 		public static int Count { get {  return all.Count; } }
 
 		public bool CanSplit { get { return CurrentResources >= SplitCost;  } }
-		public bool CanEat { get { return CurrentResources >= EatCost; } }
+		public bool CanConsume { get { return CurrentResources >= ConsumeCost; } }
+		public bool CanGnawAt { get { return CurrentResources >= GnawAtCost; } }
 
 		public static byte MyFactionGridID { get; internal set; }
 		public Task LastTask { get { return nextTask; } }

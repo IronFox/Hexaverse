@@ -120,20 +120,23 @@ namespace TechniteLogic
 			}
 			);
 		}
-		private static Technite.RelativeTarget GetClearNeighbor(Grid.HCellID location)
+		private static Technite.RelativeTarget GetSplitTarget(Grid.HCellID location)
 		{
 			return EvaluateChoices(location, (relative, cell, stack) =>
 			{
 				Grid.Content content = stack.volumeCell[cell.Layer].content;
+				int rs = 5;
 				if (content != Grid.Content.Clear && content != Grid.Content.Water)
-					return -1;
+					rs -= 2;
+				if (cell.Layer + 1 < Grid.CellStack.LayersPerStack && stack.volumeCell[cell.Layer + 1].content == Grid.Content.Technite)
+					return -1;	//probably a bad idea to split here
 				Grid.Content ground = cell.Layer <= 0 ? Grid.World.CoreContent : stack.volumeCell[cell.Layer - 1].content;
                 if (Grid.IsTheoreticallySolid(ground))
 				{
 					int bonus = 0;
 					if (Grid.IsSolid(ground))
 						bonus += 3;
-					return relative.HeightDelta + 1 + bonus;
+					return relative.HeightDelta + 1 + bonus + rs;
 				}
 				return -1;
 			}
@@ -156,8 +159,8 @@ namespace TechniteLogic
 					bool skip = false;
 					switch (t.LastTask)
 					{
-						case Technite.Task.EatSurroundingCell:
-							skip = t.CanEat;
+						case Technite.Task.ConsumeSurroundingCell:
+							skip = t.CanConsume;
 							break;
 						case Technite.Task.GrowTo:
 							skip = t.CanSplit;
@@ -172,7 +175,7 @@ namespace TechniteLogic
 				bool tryTransfer = false;
 				if (t.CanSplit)
 				{
-					Technite.RelativeTarget target = GetClearNeighbor(t.Location);
+					Technite.RelativeTarget target = GetSplitTarget(t.Location);
 					if (target != Technite.RelativeTarget.Invalid)
 					{
 						t.SetNextTask(Technite.Task.GrowTo, target);
@@ -184,12 +187,12 @@ namespace TechniteLogic
 					}
 				}
 				else
-					if (t.CanEat)
+					if (t.CanGnawAt)
 					{
 						Technite.RelativeTarget target = GetBestFoodChoice(t.Location);
 						if (target != Technite.RelativeTarget.Invalid)
 						{
-							t.SetNextTask(Technite.Task.EatSurroundingCell, target);
+							t.SetNextTask(Technite.Task.GnawAtSurroundingCell, target);
 						}
 						else
 						{
