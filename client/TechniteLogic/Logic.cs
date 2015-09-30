@@ -179,7 +179,7 @@ namespace TechniteLogic
 
 			foreach (Technite t in Technite.All)
 			{
-				Out.Log(Significance.Low, "Processing "+t);
+				//Out.Log(Significance.Low, "Processing "+t);
 
 
 				if (t.LastTaskResult == Technite.TaskResult.MoreWorkNeeded)
@@ -196,7 +196,7 @@ namespace TechniteLogic
 					}
 					if (skip)
 					{
-						Out.Log(Significance.Common, "Still busy doing last job ("+t.LastTask+"). Allowing technite to continue");
+						//Out.Log(Significance.Common, "Still busy doing last job ("+t.LastTask+"). Allowing technite to continue");
 						continue;
 					}
 				}
@@ -210,7 +210,7 @@ namespace TechniteLogic
 					}
 					else
 					{
-						Out.Log(Significance.Unusual, "Unable to find adequate splitting destination");
+						//Out.Log(Significance.Unusual, "Unable to find adequate splitting destination");
 						tryTransfer = true;
 					}
 				}
@@ -224,13 +224,13 @@ namespace TechniteLogic
 						}
 						else
 						{
-							Out.Log(Significance.Unusual, "Unable to find adequate eating destination");
+							//Out.Log(Significance.Unusual, "Unable to find adequate eating destination");
 							tryTransfer = true;
 						}
 					}
 				else
 				{
-					Out.Log(Significance.Unusual, "Insufficient resources to do anything");
+					//Out.Log(Significance.Unusual, "Insufficient resources to do anything");
 					tryTransfer = t.CurrentResources != Technite.Resources.Zero;
 				}
 
@@ -240,13 +240,13 @@ namespace TechniteLogic
 					Technite.Task task;
                     if (t.CurrentResources.Matter > t.CurrentResources.Energy)
 					{
-						Out.Log(Significance.Low, "Trying to transfer matter");
+						//Out.Log(Significance.Low, "Trying to transfer matter");
 						task = Technite.Task.TransferMatterTo;
 						target = GetLitOrUpperTechnite(t.Location);
 					}
 					else
 					{
-						Out.Log(Significance.Low, "Trying to transfer energy");
+						//Out.Log(Significance.Low, "Trying to transfer energy");
 						task = Technite.Task.TransferEnergyTo;
 						target = GetUnlitOrLowerTechnite(t.Location);
 
@@ -257,7 +257,7 @@ namespace TechniteLogic
 					}
 					else
 					{
-						Out.Log(Significance.Unusual, "Unable to find adequate transfer target");
+						//Out.Log(Significance.Unusual, "Unable to find adequate transfer target");
 						tryTransfer = true;
 					}
 

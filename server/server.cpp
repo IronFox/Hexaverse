@@ -1062,6 +1062,28 @@ void SwitchToAnimationPhase(float animationLength)
 }
 
 
+void CheckSendTerrain()
+{
+	
+	BYTE changed = 0;
+	for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+	{
+		if (Grid::high.family[k].normal.outdated)
+			changed ++;
+	}
+	if (changed)
+	{
+		BYTE counter=0;
+		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+		{
+			if (Grid::high.family[k].normal.outdated)
+				State::SignalFamilyChange(k,++counter == changed,false);
+		}
+		State::terrainChanged = true;
+	}
+
+}
+
 int main( int argc, const char* argv[])
 {
 
@@ -1715,6 +1737,7 @@ int main( int argc, const char* argv[])
 			{
 				if (!Technites::ProcessNext())
 				{
+					CheckSendTerrain();
 
 					for (const auto&tf : Technites::Faction::allTechniteFactions)
 					{
@@ -1753,24 +1776,8 @@ int main( int argc, const char* argv[])
 
 
 
+		CheckSendTerrain();
 
-
-	
-		BYTE changed = 0,counter=0;
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			if (Grid::high.family[k].normal.outdated)
-				changed ++;
-		}
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			if (Grid::high.family[k].normal.outdated)
-				State::SignalFamilyChange(k,++counter == changed,false);
-		}
-		if (changed)
-		{
-			State::terrainChanged = true;
-		}
 
 		Objects::ForeachMobileEntityIncludingStored([&anythingChanged](const Objects::PMobileEntity&_v)
 		{

@@ -369,7 +369,7 @@ namespace TechniteLogic
 				return;
 			}
 			Grid.Content content = Grid.World.CellStacks[absoluteTarget.StackID].volumeCell[absoluteTarget.Layer].content;
-			Out.Log(Significance.Low, "Setting next technite task to "+t+", "+target+", "+parameter+" (target cell is "+content+")");
+			//Out.Log(Significance.Low, "Setting next technite task to "+t+", "+target+", "+parameter+" (target cell is "+content+")");
 			nextTask = t;
 			taskParameter = parameter;
 			taskTarget = target;
@@ -424,6 +424,13 @@ namespace TechniteLogic
 		public static void CreateOrUpdate(Interface.Struct.TechniteState state)
 		{
 			Grid.HCellID loc = new CompressedLocation(state.location).GetU();
+
+			Grid.Content cellContent = Grid.World.CellStacks[loc.StackID].volumeCell[loc.Layer].content;
+			if (cellContent != Grid.Content.Technite)
+			{
+				Out.Log(Significance.Unusual, "Expected technite content in cell " + loc + ", but found " + cellContent);
+			}
+
 			Technite tech;
 			if (map.TryGetValue(loc, out tech))
 			{
@@ -448,14 +455,14 @@ namespace TechniteLogic
 			}
 			check.Clear();
 
-			foreach (Technite t in all)
-			{
-				Grid.Content cellContent = Grid.World.CellStacks[t.Location.StackID].volumeCell[t.Location.Layer].content;
-                if (cellContent != Grid.Content.Technite)
-				{
-					Out.Log(Significance.Unusual, "Expected technite content in cell "+t.Location+", but found "+cellContent);
-				}
-			}
+			//foreach (Technite t in all)
+			//{
+			//	Grid.Content cellContent = Grid.World.CellStacks[t.Location.StackID].volumeCell[t.Location.Layer].content;
+   //             if (cellContent != Grid.Content.Technite)
+			//	{
+			//		Out.Log(Significance.Unusual, "Expected technite content in cell "+t.Location+", but found "+cellContent);
+			//	}
+			//}
 
 			int badCount = 0;
 			foreach (Grid.CellStack stack in Grid.World.CellStacks)
