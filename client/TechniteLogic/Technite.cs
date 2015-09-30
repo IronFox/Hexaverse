@@ -165,6 +165,7 @@ namespace TechniteLogic
 			GrowTo,
 			TransferEnergyTo,
 			TransferMatterTo,
+			SelfTransformToType,
 
 			Count
 		};

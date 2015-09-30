@@ -156,6 +156,7 @@ namespace Technites
 			GrowTo,
 			TransferEnergyTo,
 			TransferMatterTo,
+			SelfTransformToType,
 
 			Count
 		};

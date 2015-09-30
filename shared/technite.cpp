@@ -836,6 +836,16 @@ namespace Technites
 
 		switch (technite.nextTask)
 		{
+			case Technite::Task::SelfTransformToType:
+			{
+				if (technite.taskParameter >= ARRAYSIZE(Technite::MatterYield) || Technite::MatterYield[technite.taskParameter] == 0)
+					return Technite::TaskResult::BadCommand;
+				if (technite.resources.matter < Technite::MatterYield[technite.taskParameter])
+					return Technite::TaskResult::TechniteLacksResources;
+				technite.isDead = true;
+				return Technite::TaskResult::Success;
+			}
+			break;
 		case Technite::Task::GrowTo:
 			return GrowTo(technite, target, iteration,data);
 		case Technite::Task::ConsumeSurroundingCell:
@@ -913,9 +923,8 @@ namespace Technites
 				if (tec.isDead || tec.taskResult != Technite::TaskResult::Again)
 					return;
 				Technite::TaskResult rc = tec.taskResult = ExecuteTask(tec, iteration, workerData[workerIndex]);
-				if (rc != Technite::TaskResult::MoreWorkNeeded)
+				if (rc != Technite::TaskResult::MoreWorkNeeded && !tec.isDead)
 				{
-					
 					if (rc == ExecResult::Again)
 						anyAgain = true;
 					else
@@ -947,8 +956,10 @@ namespace Technites
 					visibility.ChangeSensory(loc, t, -1);
 					techniteMap.Unset(loc);
 
-					//must change terrain here. for now: to earth
-					atomicGrid.cellStack[loc.stackID].volumeCell[loc.layer].content = Grid::Content::Earth;
+					BYTE changeTo = Grid::Content::Clear;
+					if (tec.nextTask == Technite::Task::SelfTransformToType && tec.taskResult == Technite::TaskResult::Success)
+						changeTo = tec.taskParameter;
+					atomicGrid.cellStack[loc.stackID].volumeCell[loc.layer].content = changeTo;
 					atomicGrid.SignalStackChange(loc.stackID);
 				}
 			}
