@@ -26,7 +26,10 @@ namespace TechniteLogic
 			Lava,
 			Technite,
 			Water,
-			Clear
+			Clear,
+
+
+			Undefined //client-only. used for debugging
 		}
 
 
@@ -51,7 +54,7 @@ namespace TechniteLogic
 					return new Node(node.neighbors, node.stackBase, node.stackDirection);
 				}
 
-				public Vec3 GetLocation(uint layerIndex)
+				public Vec3 GetLocation(int layerIndex)
 				{
 					return StackBase + StackDirection * (CellStack.HeightPerLayer * layerIndex);
 				}
@@ -59,7 +62,7 @@ namespace TechniteLogic
 
 			public static Node[] Nodes { get; private set; }
 
-			public static Vec3 GetLocation(HCellIdU loc)
+			public static Vec3 GetLocation(HCellID loc)
 			{
 				return Nodes[loc.StackID].GetLocation(loc.Layer);
 			}
@@ -69,7 +72,6 @@ namespace TechniteLogic
 
 			public static void AddChunk(Interface.Struct.NodeChunk chunk)
 			{
-				Debug.Assert(World == null);
 				//Out.Log(Significance.Common, "Received node-chunk, containing "+chunk.nodes.Length+" nodes");
 				if (nodeBuffer == null)
 					nodeBuffer = new List<Node>();
@@ -92,6 +94,12 @@ namespace TechniteLogic
 			//}
 		}
 
+		/// <summary>
+		/// Checks whether or not a block is solid.
+		/// If true, then it can definitely support a technite, even if it stands free otherwise
+		/// </summary>
+		/// <param name="content"></param>
+		/// <returns></returns>
 		internal static bool IsSolid(Content content)
 		{
 			return content == Content.Earth 
@@ -99,9 +107,25 @@ namespace TechniteLogic
 				|| content == Content.Granite 
 				|| content == Content.Grass 
 				|| content == Content.Road 
-				|| content == Content.Rock 
+				|| content == Content.Rock
+				|| content == Content.Sand
 				|| content == Content.Snow 
-				|| content == Content.Technite;
+				;
+		}
+		/// <summary>
+		/// Checks whether a technite can (theoretically) stand on this block.
+		/// Currently Content.Unknown and Content.Technite are classified as theoretical.
+		/// Technites should spawn atop theoretically solid blocks only, if they absolutely have to,
+		/// or other geometry can hold them
+		/// </summary>
+		/// <param name="content"></param>
+		/// <returns></returns>
+		internal static bool IsTheoreticallySolid(Content content)
+		{
+			return IsSolid(content)
+				|| content == Content.Unknown
+				|| content == Content.Technite
+				;
 		}
 
 		public class CellStack
@@ -117,9 +141,10 @@ namespace TechniteLogic
 			}
 
 			private static bool isSetUp = false;
+
+
 			public static void Setup(float heightPerLayer, int numLayersPerStack)
 			{
-				Debug.Assert(World==null);
 				Debug.Assert(!isSetUp);
 				isSetUp = true;
 				HeightPerLayer = heightPerLayer;
@@ -141,7 +166,7 @@ namespace TechniteLogic
 			public CellStack()
 			{
 				for (int i = 0; i < volumeCell.Length; i++)
-					volumeCell[i] = new Cell() { content = Content.Clear, structureCount = 0, techniteFactionID = 0 };
+					volumeCell[i] = new Cell() { content = Content.Undefined, structureCount = 0, techniteFactionID = 0 };
 			}
 
             public struct Cell
@@ -150,10 +175,11 @@ namespace TechniteLogic
 				public byte structureCount;
 				public byte techniteFactionID;
 
+
 				internal void ApplyContentDelta(byte value)
 				{
-					if (value != 0)
-						content = (Content)(value - 1);
+					if (value != 0 || content == Content.Undefined)
+						content = (Content)(value);
 				}
 
 				internal void ApplyStructureDelta(byte value)
@@ -170,18 +196,28 @@ namespace TechniteLogic
 			}
 		}
 
-		public class WorldData
+		public static class World
 		{
-			public CellStack[] cellStack = new CellStack[Graph.Nodes.Length];
 
-			public WorldData()
+			public static void Create()
 			{
-				for (int i = 0; i < cellStack.Length; i++)
-					cellStack[i] = new CellStack();
+				if (CellStacks == null)
+				{
+					CellStacks = new CellStack[Graph.Nodes.Length];
+					for (int i = 0; i < CellStacks.Length; i++)
+						CellStacks[i] = new CellStack();
+				}
 			}
 
+			public static CellStack[] CellStacks
+			{
+				get; private set;
+			}
 
-			private void ApplyDeltaField(Interface.Struct.GridDelta delta, Interface.Struct.GridDeltaBlock[] blocks, Action<CellStack, uint, byte> action)
+			public static Content CoreContent { get; private set; }
+
+
+			private static void ApplyDeltaField(Interface.Struct.GridDelta delta, Interface.Struct.GridDeltaBlock[] blocks, Action<CellStack, uint, byte> action)
 			{
 				if (blocks.Length != 0)
 				{
@@ -194,7 +230,7 @@ namespace TechniteLogic
 							uint stackIndex = (at % delta.nodeCount) + delta.nodeOffset;
 							uint layer = at / delta.nodeCount;
 
-							CellStack stack = cellStack[stackIndex];
+							CellStack stack = CellStacks[stackIndex];
 							action(stack, layer, block.value);
 
 							at++;
@@ -205,57 +241,66 @@ namespace TechniteLogic
 			}
 
 
-			public void ApplyDelta(Interface.Struct.GridDelta delta)
+			public static void ApplyDelta(Interface.Struct.GridDelta delta)
 			{
-				Debug.Assert(delta.nodeOffset + delta.nodeCount <= Graph.Nodes.Length);
-				Out.Log(Significance.Common, "Applying world delta at range "+delta.nodeOffset+"..."+(delta.nodeOffset+delta.nodeCount));
+				if (CellStacks == null)
+				{
+					Out.Log(Significance.ProgramFatal, "World not initialized. Cannot apply delta.");
+					return;
+				}
+				if (delta.nodeOffset + delta.nodeCount > Graph.Nodes.Length)
+				{
+					Out.Log(Significance.ProgramFatal, "Invalid node range for world delta: ["+delta.nodeOffset+","+(delta.nodeOffset+delta.nodeCount)+") /"+ Graph.Nodes.Length);
+					return;
+				}
+				Out.Log(Significance.Common, "Applying world delta at range "+delta.nodeOffset+"..."+(delta.nodeOffset+delta.nodeCount)+ " /"+Graph.Nodes.Length);
+
 
 				ApplyDeltaField(delta, delta.contentBlocks, (stack, layer, value) => stack.volumeCell[layer].ApplyContentDelta(value));
 				ApplyDeltaField(delta, delta.structureCountBlocks, (stack, layer, value) => stack.volumeCell[layer].ApplyStructureDelta(value));
 				ApplyDeltaField(delta, delta.techniteFactionBlocks, (stack, layer, value) => stack.volumeCell[layer].ApplyTechniteDelta(value));
+
 			}
 
+			internal static void Setup(Content coreContent)
+			{
+				CoreContent = coreContent;
+				Out.Log(Significance.Common, "Set world core content to "+CoreContent);
+			}
 		}
 
-
-		/// <summary>
-		/// Global world state. Must be set non-null by the time technite logic is evaluated
-		/// </summary>
-		public static WorldData World { get; private set; }
-
+		
 
 		public static void ApplyDelta(Interface.Struct.GridDelta delta)
 		{
-			if (World == null)
-			{
-				Out.Log(Significance.Common,"Creating world");
-				World = new WorldData();
-			}
+			World.Create();
 			World.ApplyDelta(delta);
 		}
 
 
 		/// <summary>
-		/// High-resolution volume cell identifier using unsigned integers to describe the layer (0..Range-1) this cell resides on
+		/// Volume cell identifier using (unsigned) integers to describe the layer (0..CellStack.LayersPerStack-1) this cell resides on
 		/// </summary>
-		public struct HCellIdU
+		public struct HCellID
 		{
 			public readonly uint StackID;
-			public readonly uint Layer;
 
-			public static readonly HCellIdU Invalid = new HCellIdU(uint.MaxValue,uint.MaxValue);
+			/// <summary>
+			/// Residual layer of this cell in the range [0,CellStack.LayersPerStack)
+			/// Theoretically, a uint would be more appropriate. Practically applying relative targets causes too many weird cases with uint.
+			/// </summary>
+			public readonly int Layer;
 
-			public HCellIdU(uint stackID, uint layer)
+			public static readonly HCellID Invalid = new HCellID(uint.MaxValue,int.MaxValue);
+
+			public HCellID(uint stackID, int layer)
 			{
 				StackID = stackID;
 				Layer = layer;
 			}
 
-			private HCellIdU(uint stackID, int height)
-			{
-				StackID = 0xffffffff;
-				Layer = 0;
-			}
+
+			public bool IsValid {  get { return StackID < Graph.Nodes.Length && Layer >= 0 && Layer < CellStack.LayersPerStack; } }
 
 			public override int GetHashCode()
 			{
@@ -268,19 +313,24 @@ namespace TechniteLogic
 
 			public override bool Equals(object obj)
 			{
-				if (!(obj is HCellIdU))
+				if (!(obj is HCellID))
 					return false;
-				return ((HCellIdU)obj) == this;
+				return ((HCellID)obj) == this;
 			}
 
-			public static bool operator==(HCellIdU a, HCellIdU b)
+			public static bool operator==(HCellID a, HCellID b)
 			{
 				return a.StackID == b.StackID && a.Layer == b.Layer;
 			}
 
-			public static bool operator !=(HCellIdU a, HCellIdU b)
+			public static bool operator !=(HCellID a, HCellID b)
 			{
 				return a.StackID != b.StackID || a.Layer != b.Layer;
+			}
+
+			public override string ToString()
+			{
+				return StackID + "[" + Layer + "]";
 			}
 		}
 

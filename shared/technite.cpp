@@ -693,31 +693,35 @@ namespace Technites
 		
 		switch (GetLastContent(target))
 		{
-		case Grid::Content::Clear:	//clear never changes. Once it's empty, it's empty
-		{
-			bool cantEatThis;
-			IncreaseResources(technite, EatEntitiesIn(target,cantEatThis));	//this will be hard to make thread-safe
+			case Grid::Content::Water:	//water does not block, nor yield anything
+			{
+				return ExecResult::Success;
+			}
+			break;
+			case Grid::Content::Clear:	//clear never changes. Once it's empty, it's empty
+			{
+				bool cantEatThis;
+				IncreaseResources(technite, EatEntitiesIn(target,cantEatThis));	//this will be hard to make thread-safe
 			
-			return cantEatThis ? ExecResult::CannotEatThis : ExecResult::Success;
-		}
-		case Grid::Content::Technite:
-		{
-			if (iteration < 1)
-				return ExecResult::Again;
+				return cantEatThis ? ExecResult::CannotEatThis : ExecResult::Success;
+			}
+			case Grid::Content::Technite:
+			{
+				if (iteration < 1)
+					return ExecResult::Again;
 			
-			BYTE faction = Grid::actualWorld.cellStack[target.stackID].GetCellI(target.height).techniteFaction;	//this should be thread-safe with only one faction being parallely active at any given time
+				BYTE faction = Grid::actualWorld.cellStack[target.stackID].GetCellI(target.height).techniteFaction;	//this should be thread-safe with only one faction being parallely active at any given time
 			
-			PFaction f = GetFactionOf(faction);
+				PFaction f = GetFactionOf(faction);
 			
-			Technite::Resources resources = f->EatTechnite(technite,target, f.get() == this);	//if technite has been eaten in the meantime EatTechnite will return empty resources
+				Technite::Resources resources = f->EatTechnite(technite,target, f.get() == this);	//if technite has been eaten in the meantime EatTechnite will return empty resources
 			
-			IncreaseResources(technite, resources);
+				IncreaseResources(technite, resources);
 			
-		}
-		return GetLastContent(target) == Grid::Content::Clear ? ExecResult::Success : ExecResult::CannotEatThis;
-		case Grid::Content::Lava:
-			
-			return ExecResult::CannotEatThis;
+			}
+			return GetLastContent(target) == Grid::Content::Clear ? ExecResult::Success : ExecResult::CannotEatThis;
+			case Grid::Content::Lava:
+				return ExecResult::CannotEatThis;
 		}
 		if (!ReduceResources(technite, Technite::EatCost))
 		{
@@ -744,7 +748,7 @@ namespace Technites
 		for (; layer < Grid::CellStack::Range; layer++)
 		{
 			Grid::Content top = GetLastContent(Grid::HCellIdU(technite.location.GetStackID(), layer));
-			if (top != Grid::Content::Clear)
+			if (top != Grid::Content::Clear && top != Grid::Content::Water)
 			{
 				lit = false;
 				break;

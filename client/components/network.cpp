@@ -470,7 +470,10 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 
-			Grid::CellStack::bottom.content = Grid::Content::Reinterpret(cr.planetConfig.value.innerCoreType);
+			Grid::Content coreContent = Grid::Content::Reinterpret(cr.planetConfig.value.innerCoreType);
+			Grid::CellStack::bottom.content = coreContent;
+			if (amTechniteFaction)
+				TechniteLogicLink::SetWorldInfo(coreContent);
 			#ifdef HAS_WINDOW
 				Grid::CellStack::bottom.visible = 1;
 				Grid::UpdateAtmosphere(cr.planetConfig.value.atmosphereColor);

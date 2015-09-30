@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Logging;
 
 namespace TechniteLogic
 {
@@ -16,7 +17,7 @@ namespace TechniteLogic
 							MatterPackageSize = 5;
 
 
-		public static byte[] MatterYield = new byte[Enum.GetValues(typeof(Grid.Content)).Length];
+		public static byte[] MatterYield = new byte[Enum.GetValues(typeof(Grid.Content)).Length - 1];//discounting Undefined
 
 
 		//static const BYTE	MatterYield[NumGroundTypes];
@@ -39,9 +40,9 @@ namespace TechniteLogic
 				this.data = data;
 			}
 
-			public	Grid.HCellIdU	GetU()
+			public	Grid.HCellID	GetU()
 			{
-				return new Grid.HCellIdU(data >> 8, GetLayer());
+				return new Grid.HCellID(data >> 8, (int)GetLayer());
 			}
 
 
@@ -56,9 +57,9 @@ namespace TechniteLogic
 			}
 
 
-			public static implicit operator CompressedLocation(Grid.HCellIdU cellID)
+			public static implicit operator CompressedLocation(Grid.HCellID cellID)
 			{
-				return new CompressedLocation((cellID.StackID << 8) | cellID.Layer );
+				return new CompressedLocation((cellID.StackID << 8) | (uint)cellID.Layer );
 			}
 		}
 
@@ -112,6 +113,33 @@ namespace TechniteLogic
 			public static bool operator <=(Resources a, Resources b)
 			{
 				return a.Energy <= b.Energy && a.Matter <= b.Matter;
+			}
+
+			public static bool operator==(Resources a, Resources b)
+			{
+				return a.Energy == b.Energy && a.Matter == b.Matter;
+			}
+			public static bool operator !=(Resources a, Resources b)
+			{
+				return a.Energy != b.Energy || a.Matter != b.Matter;
+			}
+
+			public override int GetHashCode()
+			{
+				int h = Energy.GetHashCode();
+				h *= 257;
+				h += Matter.GetHashCode();
+				return h;
+			}
+
+			public override bool Equals(object obj)
+			{
+				return obj is Resources && ((Resources)obj == this);
+			}
+
+			public override string ToString()
+			{
+				return "Energy=" + Energy + ", Matter=" + Matter;
 			}
 		};
 
@@ -213,6 +241,12 @@ namespace TechniteLogic
 		{
 			public bool lit;
 			public byte ttl;
+
+			public override string ToString()
+			{
+				return "TTL=" + ttl + ", Lit=" + lit;
+			}
+
 		}
 
 		public struct RelativeTarget
@@ -255,6 +289,16 @@ namespace TechniteLogic
 				return hash;
 			}
 
+			public override string ToString()
+			{
+				return "->" + NeighborIndex + " |" + HeightDelta;
+			}
+
+			public static Grid.HCellID operator+(Grid.HCellID cell, RelativeTarget t)
+			{
+				return new Grid.HCellID(Grid.Graph.Nodes[cell.StackID].Neighbors[t.NeighborIndex], cell.Layer + t.HeightDelta);
+			}
+
 			public static readonly RelativeTarget Invalid = new RelativeTarget(uint.MaxValue, 0);
         }
 
@@ -263,7 +307,7 @@ namespace TechniteLogic
 		Resources			resources, lastResources;
 		TaskResult			taskResult = TaskResult.NothingToDo;
 		
-		public readonly Grid.HCellIdU	Location;
+		public readonly Grid.HCellID	Location;
 		public Resources CurrentResources { get { return resources; } }
 		public Resources LastResources { get { return lastResources; } }
 		public TaskResult LastTaskResult { get { return taskResult; } }
@@ -277,18 +321,29 @@ namespace TechniteLogic
 		bool				exists = false;
 
 
-
+		public override string ToString()
+		{
+			return Location + " (" + state + ") {" + resources + "}";
+		}
 
 
 
 		public void SetNextTask(Task t, RelativeTarget target, byte parameter = 0)
 		{
+			Grid.HCellID absoluteTarget = Location + target;
+			if (!absoluteTarget.IsValid)
+			{
+				Out.Log(Significance.Unusual, Location+": Trying to set invalid relative target "+target+". Ignoring command");
+				return;
+			}
+			Grid.Content content = Grid.World.CellStacks[absoluteTarget.StackID].volumeCell[absoluteTarget.Layer].content;
+			Out.Log(Significance.Low, "Setting next technite task to "+t+", "+target+", "+parameter+" (target cell is "+content+")");
 			nextTask = t;
 			taskParameter = parameter;
 			taskTarget = target;
 		}
 
-		private /**/				Technite(Grid.HCellIdU loc)
+		private /**/				Technite(Grid.HCellID loc)
 		{
 			Location = loc;
 		}
@@ -309,7 +364,7 @@ namespace TechniteLogic
 
 
 
-		private static Dictionary<Grid.HCellIdU,Technite>	map = new Dictionary<Grid.HCellIdU,Technite>();
+		private static Dictionary<Grid.HCellID,Technite>	map = new Dictionary<Grid.HCellID,Technite>();
 
 		private static List<Technite>	all = new List<Technite>(), check = new List<Technite>();
 
@@ -320,6 +375,7 @@ namespace TechniteLogic
 		public bool CanEat { get { return CurrentResources >= EatCost; } }
 
 		public static byte MyFactionGridID { get; internal set; }
+		public Task LastTask { get { return nextTask; } }
 
 		public static void Reset()
 		{
@@ -334,7 +390,7 @@ namespace TechniteLogic
 
 		public static void CreateOrUpdate(Interface.Struct.TechniteState state)
 		{
-			Grid.HCellIdU loc = new CompressedLocation(state.location).GetU();
+			Grid.HCellID loc = new CompressedLocation(state.location).GetU();
 			Technite tech;
 			if (map.TryGetValue(loc, out tech))
 			{
@@ -358,6 +414,32 @@ namespace TechniteLogic
 				}
 			}
 			check.Clear();
+
+			foreach (Technite t in all)
+			{
+				Grid.Content cellContent = Grid.World.CellStacks[t.Location.StackID].volumeCell[t.Location.Layer].content;
+                if (cellContent != Grid.Content.Technite)
+				{
+					Out.Log(Significance.Unusual, "Expected technite content in cell "+t.Location+", but found "+cellContent);
+				}
+			}
+
+			int badCount = 0;
+			foreach (Grid.CellStack stack in Grid.World.CellStacks)
+			{
+				foreach (Grid.CellStack.Cell cell in stack.volumeCell)
+				{
+					if (cell.content == Grid.Content.Undefined)
+					{
+						badCount++;
+
+					}
+
+				}
+
+			}
+			if (badCount > 0)
+				Out.Log(Significance.Unusual, "Found terrain holes in "+badCount+"/"+(Grid.World.CellStacks.Length*Grid.CellStack.LayersPerStack)+" locations");
 		}
 
 

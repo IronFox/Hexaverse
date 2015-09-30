@@ -19,7 +19,8 @@ namespace TechniteLogicLink
 					TechniteProtocol::ChannelID::NodeChunk>							nodeChunk;
 		extern TCP::ObjectSender<TechniteProtocol::GridDelta,
 					TechniteProtocol::ChannelID::GridDelta>							gridDelta;
-
+		extern TCP::ObjectSender<TechniteProtocol::WorldInfo,
+					TechniteProtocol::ChannelID::WorldInfo>							worldInfo;
 	}
 
 
@@ -60,6 +61,8 @@ namespace TechniteLogicLink
 	*/
 	void		ProcessEvents();
 
+
+	void		SetWorldInfo(Grid::Content coreContent);
 
 }
 

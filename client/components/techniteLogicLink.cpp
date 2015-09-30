@@ -18,6 +18,19 @@ namespace TechniteLogicLink
 	static TCP::Server		logicServer;
 	static Buffer<Technites::Technite::TCompactState>	recordedHistory;	//all technite states received since last flush
 
+	TechniteProtocol::WorldInfo lastWorldInfo = TechniteProtocol::WorldInfo(0);
+
+	void		SetWorldInfo(Grid::Content coreContent)
+	{
+		lastWorldInfo = TechniteProtocol::WorldInfo(  coreContent );
+		logicServer.VisitAllPeers([](const TCP::PPeer&peer)
+		{
+			if (peer->userLevel > 0)
+				Channels::worldInfo.SendTo(*peer,lastWorldInfo);
+		});
+		
+	}
+
 
 
 	static void SendWorldDataTo(TCP::Peer&peer)
@@ -71,6 +84,10 @@ namespace TechniteLogicLink
 		for (index_t i = 0; i < Grid::Content::NumberOfPossibilities; i++)
 			cfg.matterYieldByContentType[i] = Technites::Technite::MatterYield[i];
 		Channels::gridConfig.SendTo(peer,cfg);
+
+		if (lastWorldInfo != 0)
+			Channels::worldInfo.SendTo(peer,lastWorldInfo);
+
 
 		SendWorldDataTo(peer);
 	}
@@ -193,6 +210,8 @@ namespace TechniteLogicLink
 					TechniteProtocol::ChannelID::NodeChunk>							nodeChunk;
 		TCP::ObjectSender<TechniteProtocol::GridDelta,
 					TechniteProtocol::ChannelID::GridDelta>							gridDelta;
+		TCP::ObjectSender<TechniteProtocol::WorldInfo,
+					TechniteProtocol::ChannelID::WorldInfo>							worldInfo;
 
 	}
 

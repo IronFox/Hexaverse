@@ -87,8 +87,7 @@ namespace TechniteProtocol
 	//	, NET(BYTE), myFactionGridID
 	//);
 
-
-
+	typedef NET(BYTE)	WorldInfo;	//coreContent
 
 
 	namespace ChannelID
@@ -107,6 +106,7 @@ namespace TechniteProtocol
 			NodeChunk,      //s2c: NodeChunk - completed before SessionBegin is sent
 			GridConfig,		//s2c: GridConfig
 			GridDelta,		//s2c: GridDelta
+			WorldInfo,		//s2c: WorldInfo
 
 			Count     //must remain last
 		};

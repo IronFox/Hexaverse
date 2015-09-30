@@ -22,7 +22,8 @@ namespace TechniteLogic
 
 			NodeChunk,      //s2c: NodeChunk - completed before SessionBegin is sent
 			GridConfig,		//s2c: GridConfig
-			GridDelta,		//s2c: GridDelta
+			GridDelta,      //s2c: GridDelta
+			WorldInfo,		//s2c: WorldInfo
 
 			Count     //must remain last
 		};
@@ -38,6 +39,7 @@ namespace TechniteLogic
 			ChannelMap.Register<Struct.GridConfig>((uint)ChannelID.GridConfig, Event.GridConfig);
 			ChannelMap.Register<Struct.NodeChunk>((uint)ChannelID.NodeChunk, Event.NodeChunk);
 			ChannelMap.Register<Struct.GridDelta>((uint)ChannelID.GridDelta, Event.GridDelta);
+			ChannelMap.Register<Struct.WorldInfo>((uint)ChannelID.WorldInfo, Event.WorldInfo);
         }
 
 
@@ -50,6 +52,11 @@ namespace TechniteLogic
 							matter;
 
 
+			}
+
+			public struct WorldInfo
+			{
+				public byte coreContent;
 			}
 
 			public struct TechniteState
@@ -186,10 +193,20 @@ namespace TechniteLogic
 			internal static void GridConfig(Protocol.Client cl, Struct.GridConfig gridConfig)
 			{
 				Grid.BeginSession(gridConfig.heightPerLayer, gridConfig.numLayersPerStack);
-				Debug.Assert(Technite.MatterYield.Length == gridConfig.matterYieldByContentType.Length);
+				if (Technite.MatterYield.Length != gridConfig.matterYieldByContentType.Length)
+				{
+					Out.Log(Significance.ProgramFatal, "Received matter yield vector (" + gridConfig.matterYieldByContentType.Length + ") does not match number of supported content types (" + Technite.MatterYield.Length + ").");
+					return;
+				}
 
 				Technite.MatterYield = gridConfig.matterYieldByContentType;
             }
+
+			internal static void WorldInfo(Protocol.Client cl, Struct.WorldInfo worldInfo)
+			{
+				Grid.World.Setup((Grid.Content)worldInfo.coreContent);
+
+			}
 		}
 	}
 }
