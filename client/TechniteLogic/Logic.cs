@@ -9,12 +9,16 @@ namespace TechniteLogic
 {
 	public class Logic
 	{
+		static List<KeyValuePair<int, Technite.RelativeTarget>> options = new List<KeyValuePair<int, Technite.RelativeTarget>>();
+
+		static Random random = new Random();
 
 		private static Technite.RelativeTarget EvaluateChoices(Grid.HCellID location, Func<Technite.RelativeTarget,Grid.HCellID, Grid.CellStack,int> f)
 		{
-	//		Out.Log(Significance.Low, "Observing neighborhood of " + location);
-            Technite.RelativeTarget rs = Technite.RelativeTarget.Invalid;
-            int quality = -1;
+			options.Clear();
+			int total = 0;
+            //Technite.RelativeTarget rs = Technite.RelativeTarget.Invalid;
+            //int quality = -1;
 			uint[] choices = Grid.Graph.Nodes[location.StackID].Neighbors;
 			for (uint i = 0; i < choices.Length; i++)
 			{
@@ -30,10 +34,10 @@ namespace TechniteLogic
 //					Out.Log(Significance.Low, "Observing cell "+cellLocation+" ("+target+") with content="+stack.volumeCell[layer].content);
 
 					int q = f(target, cellLocation, stack);
-					if (q > quality)
+					if (q > -1)
 					{
-						quality = q;
-						rs = target;
+						total += q + 1;
+						options.Add(new KeyValuePair<int, Technite.RelativeTarget>(q + 1, target));
 					}
 				}
 			}
@@ -52,14 +56,24 @@ namespace TechniteLogic
 //					Out.Log(Significance.Low, "Observing cell " + cellLocation + " (" + target + ") with content=" + stack.volumeCell[layer].content);
 
 					int q = f(target, cellLocation, stack);
-					if (q > quality)
+					if (q > -1)
 					{
-						quality = q;
-						rs = target;
+						total += q + 1;
+						options.Add(new KeyValuePair<int, Technite.RelativeTarget>(q + 1, target));
 					}
 				}
 			}
-			return rs;
+			if (total == 0)
+				return Technite.RelativeTarget.Invalid;
+			int c = random.Next(total);
+			foreach (var o in options)
+			{
+				if (c < o.Key)
+					return o.Value;
+				c -= o.Key;
+			}
+			Out.Log(Significance.ProgramFatal, "Logic error");
+			return Technite.RelativeTarget.Invalid;
 		}
 
 		private static Technite.RelativeTarget GetLitOrUpperTechnite(Grid.HCellID location)
@@ -125,19 +139,33 @@ namespace TechniteLogic
 			return EvaluateChoices(location, (relative, cell, stack) =>
 			{
 				Grid.Content content = stack.volumeCell[cell.Layer].content;
-				int rs = 5;
+				int rs = 100;
 				if (content != Grid.Content.Clear && content != Grid.Content.Water)
-					rs -= 2;
+					rs -= 90;
 				if (cell.Layer + 1 < Grid.CellStack.LayersPerStack && stack.volumeCell[cell.Layer + 1].content == Grid.Content.Technite)
-					return -1;	//probably a bad idea to split here
+					return -1;  //probably a bad idea to split beneath technite
+
+
 				Grid.Content ground = cell.Layer <= 0 ? Grid.World.CoreContent : stack.volumeCell[cell.Layer - 1].content;
                 if (Grid.IsTheoreticallySolid(ground))
 				{
 					int bonus = 0;
 					if (Grid.IsSolid(ground))
-						bonus += 3;
+						bonus += 30;
 					return relative.HeightDelta + 1 + bonus + rs;
 				}
+				var n = Grid.Graph.Nodes[cell.StackID].Neighbors;
+				bool anySolid = false;
+				foreach (var n0 in n)
+					if (Grid.IsSolid(Grid.World.CellStacks[n0].volumeCell[cell.Layer].content))
+					{
+						anySolid = true;
+						break;
+					}
+				if (anySolid)
+				{
+					return relative.HeightDelta + 30 + rs;
+                }
 				return -1;
 			}
 			);
