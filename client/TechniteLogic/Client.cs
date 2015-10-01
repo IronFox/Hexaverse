@@ -12,21 +12,14 @@ namespace TechniteLogic
 	internal class Client : Protocol.Client
 	{
 
-		private string authenticationString;
-		/// <summary>
-		/// Creates a new Client instance to communicate with a technite hosting server
-		/// </summary>
-		/// <param name="authenticationString">Secret to authenticate the local client</param>
-        public Client(string authenticationString):base(new TcpClient(),false)
+		public Client() : base(new TcpClient(), false)
 		{
-			this.authenticationString = authenticationString;
 		}
-
 
 		protected override void OnReadThreadStart()
 		{
 			Out.Log(Significance.Common, "Connected. Authenticating...");
-			Interface.authenticate.SendTo(this, authenticationString);
+			Interface.ready.SendTo(this);
 
 		}
 

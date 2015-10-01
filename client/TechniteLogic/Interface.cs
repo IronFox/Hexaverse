@@ -15,7 +15,7 @@ namespace TechniteLogic
 		public enum ChannelID
 		{
 			Unused,
-			Authenticate,			//c2s: key-string
+			Ready,					//c2s: <signal>
 			TechniteStateChunk,     //s2c: TechniteStateChunk
 			InstructTechnites,      //s2c: <signal>
 			TechniteInstructionChunk, //c2s: TechniteInstructionChunk
@@ -25,14 +25,17 @@ namespace TechniteLogic
 			GridDelta,      //s2c: GridDelta
 			WorldInfo,		//s2c: WorldInfo
 
+			RequestNextRound, //c2s: <signal>
+
 			Count     //must remain last
 		};
 
 
 		public static OutChannel<Struct.TechniteInstructionChunk> techniteInstructionChunk = new Protocol.OutChannel<Struct.TechniteInstructionChunk>((uint)ChannelID.TechniteInstructionChunk);
-		public static OutChannel<string> authenticate = new OutChannel<string>((uint)ChannelID.Authenticate);
+		public static SignalChannel ready = new SignalChannel((uint)ChannelID.Ready);
+		public static SignalChannel requestNextRound = new SignalChannel((uint)ChannelID.RequestNextRound);
 
-	    public static void Register()
+		public static void Register()
         {
 			ChannelMap.Register<Struct.TechniteStateChunk>((uint)ChannelID.TechniteStateChunk, Event.TechniteStateChunk);
 			ChannelMap.RegisterSignal((uint)ChannelID.InstructTechnites,Event.InstructTechnites);

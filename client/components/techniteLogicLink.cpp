@@ -4,16 +4,27 @@
 #include "../../shared/monitoredProcess.h"
 #include <io/file_system.h>
 
+#include "dialog.h"
+
 extern void	SignalRoundEnd();
 
 namespace TechniteLogicLink
 {
+	String autoStartClientPath="TechniteLogic/Client.exe";
+	bool autoStartClient=true;
+	
+	UINT16 initialServerPortNumber = 0,
+			actualServerPortNumber = 0;
+
+	static const String DialogName = "TechniteFactionLink";
+
+	Dialog::WDialog		connectionNotification;
+	count_t numClients = 0;
+
 
 	class PeerAttachment : public TCP::Client::Attachment
 	{
 	public:
-		String			secret;
-		//index_t			techniteGenerationIndex = InvalidIndex;
 	};
 
 	typedef std::shared_ptr<PeerAttachment>	PPeerAttachment;
@@ -155,22 +166,14 @@ namespace TechniteLogicLink
 				
 				if (Network::chosenFactionTypes == Protocol::FactionType::TechniteFaction)	//nothing else
 				{
-					SignalRoundEnd();
+					//SignalRoundEnd();
 				}
 			}
 		}
 
-		void Authenticate(Package::NetString<64>&secret, TCP::Peer&peer)
+		void Ready(TCP::Peer&peer)
 		{
-			PPeerAttachment attachment = To<PeerAttachment>::DynamicCast(peer.attachment);
-
-			if (!attachment || attachment->secret != secret)
-			{
-				LogEvent(EventType::UnexpectedBehavior,nullptr,peer.ToString()+ ": Client secret does not match local secret. Closing connection.");
-				peer.Disconnect();
-				return;
-			}
-			LogEvent(EventType::SessionRelated,nullptr,peer.ToString()+": Authenticated.");
+			LogEvent(EventType::TechniteLogic,nullptr,peer.ToString()+": Ready");
 
 			SendWorld(peer);
 
@@ -184,6 +187,7 @@ namespace TechniteLogicLink
 				count_t numChunks = recordedHistory.Count() / Protocol::MaxTechnitesPerChunk;
 				if (recordedHistory.Count() % Protocol::MaxTechnitesPerChunk)
 					numChunks++;
+				LogEvent(EventType::TechniteLogic,nullptr,"Sending "+String(numChunks)+" technite state chunks to logic client");
 				index_t offset = 0;
 				for (index_t i = 0; i < numChunks; i++)
 				{
@@ -192,6 +196,7 @@ namespace TechniteLogicLink
 					chunk.technites.SetSize(numTechs);
 					chunk.technites.copyFrom(recordedHistory+offset,numTechs);
 
+					LogEvent(EventType::TechniteLogic,nullptr," Sending chunk containing "+String(numTechs)+" technites, starting from "+String(offset)+", flagged as first="+String(chunk.first));
 					Channels::techniteStateChunk.SendTo(peer,chunk);
 
 					offset += numTechs;
@@ -199,8 +204,21 @@ namespace TechniteLogicLink
 
 
 			}
+			LogEvent(EventType::TechniteLogic,nullptr," Elevating user level");
 			peer.userLevel = 1;
+
+			numClients ++;
+
+			if (!connectionNotification.expired())
+			{
+				Dialog::RemoveDialog(connectionNotification.lock());
+				ASSERT__(connectionNotification.expired());
+				connectionNotification.reset();
+
+			}
 		}
+
+		
 	}
 
 
@@ -209,8 +227,8 @@ namespace TechniteLogicLink
 
 	namespace Channels
 	{
-		TCP::Channel<Package::NetString<64>,0,
-					TechniteProtocol::ChannelID::Authenticate>						authenticate(Receiver::Authenticate);
+		//TCP::Channel<Package::NetString<64>,0,
+		//			TechniteProtocol::ChannelID::Authenticate>						authenticate(Receiver::Authenticate);
 		TCP::Channel<Protocol::TechniteInstructions,1,
 					TechniteProtocol::ChannelID::TechniteInstructionChunk>			techniteInstructionChunk(Receiver::TechniteInstructionChunk);
 		TCP::ObjectSender<Protocol::TechniteChunk,
@@ -228,7 +246,6 @@ namespace TechniteLogicLink
 
 
 	static MonitoredProcess	logicProcess;
-	static String			lastSecret;
 
 	//static index_t			techniteGenerationIndex = 0;
 
@@ -236,13 +253,11 @@ namespace TechniteLogicLink
 	static void Init(TCP::Peer&peer)
 	{
 		PPeerAttachment attachment(new PeerAttachment());
-		attachment->secret = lastSecret;
-		//lastSecret = "";
 
 		peer.attachment = attachment;
 	}
 
-
+	void RefreshUserNotification();
 
 	void		OnEvent(TCP::event_t ev, TCP::Peer&peer)
 	{
@@ -262,6 +277,14 @@ namespace TechniteLogicLink
 			case TCP::Event::ConnectionLost:
 			case TCP::Event::ConnectionClosed:
 			{
+				if (peer.userLevel > 0)
+				{
+					numClients--;
+					if (numClients == 0 && !autoStartClient)
+					{
+						RefreshUserNotification();
+					}
+				}
 				LogEvent(EventType::SessionRelated, nullptr, "TechniteLogic: Peer connection lost: "+peer.ToString());
 			}
 			break;
@@ -270,10 +293,18 @@ namespace TechniteLogicLink
 
 	static void		OnSignal(UINT32 signal, TCP::Peer&origin)
 	{
+		switch (signal)
+		{
+			case TechniteProtocol::ChannelID::Ready:
+				Receiver::Ready(origin);
+			break;
+			case TechniteProtocol::ChannelID::RequestNextRound:
+				SignalRoundEnd();
+			break;
+		}
 		//none supported for now
 	}
 
-	UINT16 myPort;
 
 	void		Create()
 	{
@@ -283,7 +314,9 @@ namespace TechniteLogicLink
 			setup = true;
 
 			logicServer.InstallChannel(Channels::techniteInstructionChunk);
-			logicServer.InstallChannel(Channels::authenticate);
+//			logicServer.InstallChannel(Channels::authenticate);
+			logicServer.OpenSignalChannel(TechniteProtocol::ChannelID::Ready,0);
+			logicServer.OpenSignalChannel(TechniteProtocol::ChannelID::RequestNextRound,1);
 
 			logicServer.SetAsync(false);	//can't be async because of world grid. damn
 			logicServer.onEvent = OnEvent;
@@ -293,21 +326,52 @@ namespace TechniteLogicLink
 		if (!logicServer.IsOnline())
 		{
 			logicProcess.Terminate();
-			if (!logicServer.StartService(0,&myPort))
+			if (!logicServer.StartService(initialServerPortNumber,true,&actualServerPortNumber))
 			{
 				FATAL__(logicServer.GetError(false));
 			}
-
-			CryptographicID id;
-			id.Generate();
-
-			lastSecret = id.ToString(32);	//32 bytes => 64 characters. actually the full id
 		}
 
-		if (!logicProcess.IsStarted() && !logicProcess.Start(FileSystem::GetWorkingDirectory(),"TechniteLogic/Client.exe",String(myPort)+" "+lastSecret))
+		if (autoStartClient)
 		{
-			FATAL__("Failed to launch technite logic");
+			if (!logicProcess.IsStarted() && !logicProcess.Start(FileSystem::GetWorkingDirectory(),autoStartClientPath,String(actualServerPortNumber)))
+				FATAL__("Failed to launch technite logic");
 		}
+
+		RefreshUserNotification();
+	}
+
+	void 	RefreshUserNotification()
+	{
+		if (AwaitsClient())
+		{
+			if (!connectionNotification.expired() && initialServerPortNumber == 0)
+			{
+				Dialog::RemoveDialog(connectionNotification.lock());
+				ASSERT__(connectionNotification.expired());
+				connectionNotification.reset();
+			}
+
+			if (connectionNotification.expired())
+				connectionNotification = Dialog::PermanentMessage("Technite logic link active, no logic clients connected. Please connect logic client on port "+String(actualServerPortNumber)+" to continue",[]()->Dialog::CheckResult
+				{
+					return AwaitsClient() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;
+				});
+			else
+				Dialog::SignalSituationChange();
+		}
+		else
+			if (!connectionNotification.expired())
+			{
+				Dialog::RemoveDialog(connectionNotification.lock());
+				ASSERT__(connectionNotification.expired());
+				connectionNotification.reset();
+			}
+	}
+
+	bool		AwaitsClient()
+	{
+		return !autoStartClient && logicServer.IsOnline() && !logicServer.HasAnyClients();
 	}
 
 
@@ -374,6 +438,7 @@ namespace TechniteLogicLink
 	{
 		logicServer.EndService();
 		logicProcess.Terminate();
+		numClients = 0;
 	}
 
 

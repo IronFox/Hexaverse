@@ -7,8 +7,8 @@ namespace TechniteLogicLink
 {
 	namespace Channels
 	{
-		extern TCP::Channel<Package::NetString<64>,0,
-					TechniteProtocol::ChannelID::Authenticate>						authenticate;
+		//extern TCP::Channel<Package::NetString<64>,0,
+		//			TechniteProtocol::ChannelID::Authenticate>						authenticate;
 		extern TCP::Channel<Protocol::TechniteInstructions,1,
 					TechniteProtocol::ChannelID::TechniteInstructionChunk>			techniteInstructionChunk;
 		extern TCP::ObjectSender<Protocol::TechniteChunk,
@@ -63,6 +63,18 @@ namespace TechniteLogicLink
 
 
 	void		SetWorldInfo(Grid::Content coreContent);
+
+
+	/**
+	Checks whether or not the local link expects a client to connect
+	*/
+	bool		AwaitsClient();
+
+
+	extern String autoStartClientPath; //="TechniteLogic/Client.exe"
+	extern bool autoStartClient; //=true
+	extern UINT16 initialServerPortNumber, //=0
+					actualServerPortNumber;
 
 }
 

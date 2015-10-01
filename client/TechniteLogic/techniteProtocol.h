@@ -98,7 +98,7 @@ namespace TechniteProtocol
 		enum id_t
 		{
 			Unused,
-			Authenticate,			//c2s: key-string
+			Ready,					//c2s: <signal>
 			TechniteStateChunk,     //s2c: TechniteStateChunk
 			InstructTechnites,      //s2c: <signal>
 			TechniteInstructionChunk, //c2s: TechniteInstructionChunk
@@ -107,6 +107,8 @@ namespace TechniteProtocol
 			GridConfig,		//s2c: GridConfig
 			GridDelta,		//s2c: GridDelta
 			WorldInfo,		//s2c: WorldInfo
+
+			RequestNextRound, //c2s: <signal>
 
 			Count     //must remain last
 		};

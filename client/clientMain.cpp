@@ -3689,6 +3689,17 @@ int main( int argc, const char* argv[])
 			Configuration	config;
 			config.LoadFromFile("game.ini");
 
+			{
+				TechniteLogicLink::autoStartClientPath = config.RequireString("technites/autoStartClientPath");
+				TechniteLogicLink::autoStartClient = config.RequireBool("technites/autoStartClient");
+				bool fixedServerPort = config.RequireBool("technites/fixedServerPort");
+				unsigned rawPortNumber = config.RequireUnsigned("technites/fixedServerPortNumber");
+				TechniteLogicLink::initialServerPortNumber = (UINT16)(fixedServerPort ? rawPortNumber : 0);
+			}
+
+
+
+
 			#ifdef HAS_WINDOW
 				Config::Context::Attribute * attrib = config.GetAttrib("runtime/capFPS");
 				if (attrib && !attrib->value.equalsIgnoreCase("off"))
