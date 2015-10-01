@@ -90,7 +90,7 @@ namespace GUIElements
 
 
 
-	void				Area::Render(bool lit)
+	void				Area::BaseRender(bool lit)
 	{
 		RenderArea(rect,lit,false);
 	}
@@ -233,7 +233,7 @@ namespace GUIElements
 	}
 
 
-	void			Input::Render(bool enabled, bool sensitiveToMouse /*= true*/, bool renderRect /*=true*/)
+	/*virtual override*/ void			Input::Render()
 	{
 		core = rect;
 		textout.pushState();
@@ -298,20 +298,20 @@ namespace GUIElements
 
 
 
-	void			TextField::Render(bool enabled, bool sensitiveToMouse /*= true*/, bool renderRect /*=true*/)
+	/*virtual override*/ void			TextField::Render()
 	{
 		UpdateIfNecessary();
 	
 		textout.pushState();
 		textout.scale(textZoom*zoom,textZoom*zoom);
 
-		bool hovering = !sensitiveToMouse || (enabled && ContainsMouse());
+		bool hovering = !Super::sensitiveToMouse || (enabled && ContainsMouse());
 	
 		
 
 		if (renderRect)
 		{
-			Super::Render(hovering);
+			Super::BaseRender(hovering);
 		}
 		//textout.locate(rect.x.min + rect.x.GetExtend()*0.05f,rect.y.max - textout.getScaledHeight()*1.5f);
 		//float lineHeight = textout.getScaledHeight();
@@ -328,7 +328,7 @@ namespace GUIElements
 		textout.popState();
 	}
 
-	void			ImageField::Render(bool enabled, bool sensitiveToMouse /*= true*/)
+	/*virtual override*/ void			Image::Render()
 	{
 		if (texture.IsEmpty())
 			return;
@@ -400,12 +400,12 @@ namespace GUIElements
 		display.RenderVertices(texturedQuad);
 	}
 
-	bool			Field::ContainsMouse() const
+	bool			Component::ContainsMouse() const
 	{
 		return rect.Contains(Engine::mouse.location.windowRelative);
 	}
 
-	void			Field::MoveTopTo(float h)
+	void			Component::MoveTopTo(float h)
 	{
 		float delta = h - rect.y.max;
 		rect.y.Translate(delta);

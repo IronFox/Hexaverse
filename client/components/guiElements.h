@@ -13,63 +13,85 @@ namespace GUIElements
 
 	namespace DX11 = Engine::DX11;
 
-	class Field
+	class Component
 	{
 	public:
 		Rect<>			rect;
-	
-		void			adoptData(Field&other)
+		bool			enabled = true;
+
+		void			adoptData(Component&other)
 		{
 			rect = other.rect;
+			enabled = other.enabled;
 		}
+
+
 
 		bool			ContainsMouse() const;
 		void			MoveTopTo(float h);
 
-	
+		virtual void	Activate() {};
+		virtual void	Deactivate() {};
+		virtual void	Check() {};
+		virtual void	HandleClick() {};
+		virtual bool	UpdateIfNecessary()	{return false;}
+		virtual void	UpdateNow() {};
+		virtual void	Render() {};
 	};
 
+	typedef std::shared_ptr<Component> PComponent;
 
-	class ImageField : public Field
+
+	class Image : public Component
 	{
-		typedef Field	Super;
+		typedef Component	Super;
 	public:
 		DX11::Texture	texture;
+		bool			sensitiveToMouse = false;
 
-		void			adoptData(ImageField&other)
+
+		void			adoptData(Image&other)
 		{
 			Super::adoptData(other);
+			sensitiveToMouse = other.sensitiveToMouse;
 			texture.swap(other.texture);
-		
 		}
 
-		void			Render(bool enabled, bool sensitiveToMouse = true);
-
-	
+		virtual void	Render() override;
 	};
+	typedef std::shared_ptr<Image> PImage;
 
-	class Area : public Field
+
+
+
+	class Area : public Component
 	{
 	private:
 		//Buffer0<float3>	hexCenters;
 		//DX11::BaseInstructionBlock	instruction;
 		//static DX11::BaseInstructionBlock	shader;
+	protected:
+		void			BaseRender(bool lit);
 	public:
-		typedef Field	Super;
+		typedef Component	Super;
 
 		index_t			sizeVersion = InvalidIndex;
+		bool			sensitiveToMouse = true;
+		bool			renderRect = true;
 
-		void			UpdateNow();
-		void			Render(bool lit);
+		virtual void	UpdateNow() override;
 
 		//static void		StaticCreate();
 		//static void		StaticDestroy();
 
 		void			adoptData(Area&other)
 		{
+			sensitiveToMouse = other.sensitiveToMouse;
+			renderRect = other.renderRect;
 			sizeVersion = other.sizeVersion;
 			Super::adoptData(other);
 		}
+		virtual void	Render() override	{BaseRender(false);}
 	};
 
 	class Input : public Area
@@ -96,8 +118,13 @@ namespace GUIElements
 		String			GetInput();
 		void			SetCurrent(const String&);
 
-		bool			UpdateIfNecessary();
-		void			Render(bool enabled, bool sensitiveToMouse = true, bool renderRect =true);
+		virtual void	Activate() override {ActivateInput();}
+		virtual void	Deactivate() override {DeactivateInput();}
+
+
+		virtual bool	UpdateIfNecessary() override;
+
+		virtual void	Render() override;
 
 		void			SetAllowed(const String&);
 
@@ -110,6 +137,7 @@ namespace GUIElements
 			Super::adoptData(other);
 		}
 	};
+	typedef std::shared_ptr<Input>	PInput;
 
 	class TextField : public Area
 	{
@@ -150,10 +178,69 @@ namespace GUIElements
 		}
 
 
-		bool			UpdateIfNecessary();
-		void			Render(bool enabled, bool sensitiveToMouse = true, bool renderRect =true);
-	};
+		virtual bool	UpdateIfNecessary() override;
 
+		virtual void	Render() override;
+	};
+	typedef std::shared_ptr<TextField>	PTextField;
+
+
+	class Button : public TextField
+	{
+		typedef TextField	Super;
+
+		std::function<void()>	onPress;
+		std::function<bool()>	check;
+
+		String					baseLabel;
+	public:
+
+		void			adoptData(Button&other)
+		{
+			Super::adoptData(other);
+			onPress.swap(other.onPress);
+			baseLabel.adoptData(other.baseLabel);
+		}
+
+		void			SetText(const String&string)
+		{
+			baseLabel = string;
+			Check();
+		}
+
+
+		void			SetOnPress(const std::function<void()>&event)
+		{
+			onPress = event;
+		}
+
+		void			SetCheck(const std::function<bool()>&check)
+		{
+			this->check = check;
+			Check();
+		}
+
+		virtual void	Check() override
+		{
+			String set = baseLabel;
+			if (check && !check())
+			{
+				enabled = false;
+				set += " (not right now)";
+			}
+			else
+				enabled = true;
+
+			Super::SetText(set);
+		}
+
+		virtual	void			HandleClick() override
+		{
+			if (enabled && onPress && ContainsMouse())
+				onPress();
+		}
+	};
+	typedef std::shared_ptr<Button>	PButton;
 
 
 	
