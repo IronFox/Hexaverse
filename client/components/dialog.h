@@ -22,6 +22,92 @@ namespace Dialog
 	typedef std::function<void(const String&)>	PFetchInput;
 
 
+	class Dialog : public std::enable_shared_from_this<Dialog>
+	{
+	public:
+		//CONSTRUCT_ENUMERATION5(Type, Confirmation, Message, TutorialMessage, StringQuery,FactionList);
+
+		//Type					type;
+
+		Buffer0<GUIElements::PComponent>	components;
+		GUIElements::PButton	confirmButton;
+		GUIElements::PInput		userInput;
+		GUIElements::PTextField	textField;
+		GUIElements::PImage		image;
+
+		String					key;
+
+
+		PCheckState			check;
+		POnConfirm			onConfirm;
+		PCheckInput			checkInput;
+		PFetchInput			fetchInput;
+		bool				isTutorial = false;
+
+		Rect<>				totalSize;
+
+		std::function<void(Dialog&)>	reLayout;
+
+		bool				isActive = false;
+
+
+		void		Activate()
+		{
+			foreach (components,c)
+				(*c)->Activate();
+			Refresh();
+			isActive = true;
+		}
+		void		Deactivate()
+		{
+			foreach (components,c)
+				(*c)->Deactivate();
+			isActive = false;
+		}
+
+		void		Refresh();
+
+
+		bool		SignalChange()
+		{
+			if (check)
+			{
+				CheckResult rs = check();
+				if (rs == CheckResult::Abort)
+					return false;
+			}
+			foreach (components,c)
+				(*c)->Check();
+			return true;
+		}
+
+
+		void		Render()
+		{
+			bool anyChanged = false;
+			foreach (components,c)
+				if ((*c)->UpdateIfNecessary())
+					anyChanged = true;
+			if (anyChanged)
+				reLayout(*this);
+
+			GUIElements::Darken(Rect<>(0,0,1,1),0.7f);
+			GUIElements::Darken(totalSize);
+
+			foreach (components,c)
+				(*c)->Render();
+		}
+
+		void		HandleClick();
+		void		Confirm(bool bySpace);
+
+		void		DumpMe();
+	};
+
+	typedef std::shared_ptr<Dialog>	PDialog;
+	typedef std::weak_ptr<Dialog>	WDialog;
+
+
 	struct Faction
 	{
 		String	name;
@@ -37,27 +123,35 @@ namespace Dialog
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs
 	*/
-	void	Confirm(const String&query, const POnConfirm&onConfirm, const PCheckState&check);
+	WDialog	Confirm(const String&query, const POnConfirm&onConfirm, const PCheckState&check);
+
+	/**
+	Creates a new modal dialog that has no buttons and will remain until the check fails
+	*/
+	WDialog	PermanentMessage(const String&message, const PCheckState&check);
 
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs that simply shows a message
 	*/
-	void	ShowMessage(const String&msg);
+	WDialog	ShowMessage(const String&msg);
 
 
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs that attempts to read a string from the user
 	*/
-	void	Query(const String&query, const String&initial, const String&allowChars, const PCheckInput&, const PFetchInput&);
+	WDialog	Query(const String&query, const String&initial, const String&allowChars, const PCheckInput&, const PFetchInput&);
 
 	/**
 	Queues a tutorial message. Allows hiding all following tutorials
 	*/
-	void	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName = "", const Rect<>&screenReference = Rect<>::Invalid);
-	void	RemoveTutorial(const String&key);
+	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName = "", const Rect<>&screenReference = Rect<>::Invalid);
+	bool	RemoveTutorial(const String&key);
+	bool	RemoveTutorial(const PDialog&dialog);
+
+	bool	RemoveDialog(const PDialog&dialog);
 
 
-	void	ShowFactions(const Buffer0<Faction>&factions);
+	WDialog	ShowFactions(const Buffer0<Faction>&factions);
 
 	bool	ShowingFactions();
 
