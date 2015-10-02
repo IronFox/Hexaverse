@@ -55,7 +55,7 @@ namespace Technites
 		static_assert(NumGroundTypes == Grid::Content::NumberOfPossibilities, "Count mismatch. Adjust array size");
 
 		static const BYTE	MatterYield[NumGroundTypes];
-		static const BYTE	ChangeTypeTo[NumGroundTypes];
+		static const BYTE	DegradeTo[NumGroundTypes];
 
 
 		static bool			HeldBy(Grid::Content content)

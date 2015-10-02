@@ -41,7 +41,7 @@ namespace Technites
 		0,	//Water
 		0,	//Clear
 	};
-	/*static*/ const BYTE	Technite::ChangeTypeTo[NumGroundTypes] =
+	/*static*/ const BYTE	Technite::DegradeTo[NumGroundTypes] =
 	{
 		Grid::Content::Unknown,	//Unknown
 		Grid::Content::Rock,	//Granite
@@ -326,7 +326,7 @@ namespace Technites
 
 			BYTE current = cell.content;
 			BYTE matterYield = 0;
-			BYTE set = Technite::ChangeTypeTo[current];
+			BYTE set = Technite::DegradeTo[current];
 
 			matterYield = Technite::MatterYield[current];
 
