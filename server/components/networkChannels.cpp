@@ -378,7 +378,6 @@ namespace Receiver
 		State::playerMap.Set(client->faction,client);
 		client->wantNewRound = false;
 
-		//response.planetConfig = State::persistentPlanetInfo;
 
 		Channels::clientFactionResponse.SendTo(client->peer.lock(),response);
 		Protocol::FactionID outFactionID(client->faction->id,0xFF);
@@ -1767,6 +1766,7 @@ namespace Receiver
 					client->lastPing = timer.Now();
 				}
 				peer.SendSignal(Protocol::ChannelID::Pong);
+			//	LogEvent(EventType::ChatMessage,"pong");
 			break;
 		}
 	}

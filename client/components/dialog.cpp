@@ -199,8 +199,9 @@ namespace Dialog
 		//};
 	
 
-		
-		Buffer0<PDialog,Swap>	modalDialogs;
+		//GUIElements::PComponent	mouseComponent;	//component that caught the last mouse down event
+		Buffer0<GUIElements::PWindow,Swap>	visibleWindows;
+		Buffer0<PDialog,Swap>	visibleDialogs;//subset of visibleWindows, not necessarily the top-most one(s)
 		Queue<PDialog,Swap>		pendingTutorials;
 		PDialog					factionDialog;
 		bool		showTutorials = true;
@@ -240,10 +241,11 @@ namespace Dialog
 
 		PDialog	NewModalDialog(UINT32 componentFlags, const String&confirmWord, bool isTutorial)
 		{
-			if (modalDialogs.IsNotEmpty())
-				modalDialogs.last()->Deactivate();
+			if (visibleWindows.IsNotEmpty())
+				visibleWindows.last()->Deactivate();
 			PDialog dialog(new Dialog());
-			modalDialogs<<dialog;
+			visibleWindows << dialog;
+			visibleDialogs << dialog;
 			Configure(dialog,componentFlags,confirmWord, isTutorial);
 			dialog->Activate();
 			return dialog;
@@ -253,34 +255,76 @@ namespace Dialog
 		{
 			dialog->isTutorial = isTutorial;
 
-			GUIElements::PComponent	common(new GUIElements::Area());
-			GUIElements::PTextField textField(new GUIElements::TextField);
-			textField->rect.Set(0.25f,0.25f,0.75f,0.75f);
+			dialog->anchorConfig.Left().Set(0.25f);
+			dialog->anchorConfig.Right().Set(0.25f);
 			
+			//GUIElements::PComponent	common(new GUIElements::Area());
+			GUIElements::PLabel textField(new GUIElements::Label());
+			textField->anchorConfig.Left().Set(0.f);
+			textField->anchorConfig.Right().Set(0.f);
+			textField->anchorConfig.Top().Set(0.f);
+			//height controlled by content
+
 			GUIElements::PButton confirmButton;
 			GUIElements::PButton cancelButton;
 			GUIElements::PInput	inputField;
 			GUIElements::PImage	imageField;
+
+
+			if (componentFlags & ComponentFlags::Input)
+			{
+				inputField.reset(new GUIElements::Input());
+				inputField->anchorConfig.Left().Set(0.f);
+				inputField->anchorConfig.Right().Set(0.f);
+				inputField->anchorConfig.Top().Set(textField,0.025f);
+			}
+
 			if (componentFlags & ComponentFlags::ConfirmButton)
 			{
 				confirmButton.reset(new GUIElements::Button());
-				confirmButton->rect.Set(0.25f,0.25f,0.75f,0.75f);
+				confirmButton->anchorConfig.Left().Set(0.f);
+				confirmButton->anchorConfig.Right().Set(0.f);
+				confirmButton->anchorConfig.Top().Set(inputField,0.025f);	//will abort if inputField is empty
+				confirmButton->anchorConfig.Top().Set(textField,0.025f);	//let's try if setting both works
+				//confirmButton->anchorConfig.Top().Set(imageField,0.025f);	//let's try if setting both works
 			}
 			if (componentFlags & ComponentFlags::CancelButton)
 			{
 				cancelButton.reset(new GUIElements::Button());
-				cancelButton->rect.Set(0.55f,0.25f,0.75f,0.75f);
+
+				if (confirmButton)
+					confirmButton->anchorConfig.Right().Set(0.5f);
+				cancelButton->anchorConfig.Left().Set(0.5f);
+				cancelButton->anchorConfig.Right().Set(0.f);
+				cancelButton->anchorConfig.Top().Set(inputField,0.025f);	//will abort if inputField is empty
+				cancelButton->anchorConfig.Top().Set(textField,0.025f);		//let's try if setting both works
+				//cancelButton->anchorConfig.Top().Set(imageField,0.025f);	//let's try if setting both works
+
 			}
-			if (componentFlags & ComponentFlags::Input)
-				inputField.reset(new GUIElements::Input());
+
+
 			if (componentFlags & ComponentFlags::Image)
 			{
 				imageField.reset(new GUIElements::Image());
 				
-				textField->rect.Set(0.405f,0.25f,0.75f,0.75f);
-				imageField->rect.Set(0.25f,0.25f,0.4f,0.75f);
+
+				textField->anchorConfig.Left().Set(0.405f);
+				imageField->anchorConfig.Left().Set(0.f);
+				imageField->anchorConfig.Right().Set(0.6f);
+				imageField->anchorConfig.Top().Set(0.05f);
+				if (confirmButton)
+				{
+					imageField->autoSetHeight = false;
+					imageField->anchorConfig.Bottom().Set(confirmButton,0.05f);
+					//imageField->autoSetWidth = true;
+				}
+	//			imageField->SetLocation(Rect<>(0,1,0.25,0.75f));
+				//textField->rect.Set(0.405f,0.25f,0.75f,0.75f);
+				//imageField->rect.Set(0.25f,0.25f,0.4f,0.75f);
 				textField->alignCenter = false;
 			}
+
+
 			
 			//{
 			//	case ModalDialogType::Confirmation:
@@ -313,7 +357,6 @@ namespace Dialog
 			dialog->textField = textField;
 			dialog->image = imageField;
 
-			dialog->components << common;
 			
 			dialog->components << textField;
 			if (confirmButton)
@@ -325,13 +368,9 @@ namespace Dialog
 			if (inputField)
 				dialog->components  << inputField;
 
-			if (textField)
-			{
-				textField->sensitiveToMouse = false;
-				textField->renderRect = false;
-			}
 			if (confirmButton)
 			{
+
 				confirmButton->SetText(confirmWord);
 				Dialog*d = dialog.get();
 				confirmButton->SetCheck([d, inputField]()->bool
@@ -355,78 +394,75 @@ namespace Dialog
 
 					//confirmButton->SetOnPress
 
-			dialog->reLayout = [common,textField,confirmButton,cancelButton,inputField,imageField](Dialog&dialog)
-			{
-				//chicken-egg-dance
-				if (confirmButton)
-					confirmButton->MoveTopTo(textField->rect.y.min - 0.025f);
-				if (cancelButton)
-					cancelButton->MoveTopTo(textField->rect.y.min - 0.025f);
+			//dialog->reLayout = [textField,confirmButton,cancelButton,inputField,imageField](Dialog&dialog)
+			//{
+			//	//chicken-egg-dance
+			//	if (confirmButton)
+			//		confirmButton->MoveTopTo(textField->rect.y.min - 0.025f);
+			//	if (cancelButton)
+			//		cancelButton->MoveTopTo(textField->rect.y.min - 0.025f);
 
 
-				dialog.totalSize = textField->rect;
-				for (const auto&c : dialog.components)
-					if (c != textField && c != common && c != imageField)
-						dialog.totalSize.Include(c->rect);
+			//	dialog.totalSize = textField->rect;
+			//	for (const auto&c : dialog.components)
+			//		if (c != textField && c != imageField)
+			//			dialog.totalSize.Include(c->rect);
 
-				//float center = totalSize.y.center();
-				float top = 0.5f + dialog.totalSize.y.GetExtend()/2.f;
-				textField->MoveTopTo(top);
+			//	//float center = totalSize.y.center();
+			//	float top = 0.5f + dialog.totalSize.y.GetExtend()/2.f;
+			//	textField->MoveTopTo(top);
 
-				if (inputField)
-				{
-					inputField->MoveTopTo(textField->rect.y.min - 0.025f);
+			//	if (inputField)
+			//	{
+			//		inputField->MoveTopTo(textField->rect.y.min - 0.025f);
 
-					if (confirmButton)
-						confirmButton->MoveTopTo(inputField->rect.y.min - 0.025f);
-					if (cancelButton)
-						cancelButton->MoveTopTo(inputField->rect.y.min - 0.025f);
-				}
-				else
-				{
-					if (confirmButton)
-						confirmButton->MoveTopTo(textField->rect.y.min - 0.025f);
-					if (cancelButton)
-						cancelButton->MoveTopTo(textField->rect.y.min - 0.025f);
-				}
+			//		if (confirmButton)
+			//			confirmButton->MoveTopTo(inputField->rect.y.min - 0.025f);
+			//		if (cancelButton)
+			//			cancelButton->MoveTopTo(inputField->rect.y.min - 0.025f);
+			//	}
+			//	else
+			//	{
+			//		if (confirmButton)
+			//			confirmButton->MoveTopTo(textField->rect.y.min - 0.025f);
+			//		if (cancelButton)
+			//			cancelButton->MoveTopTo(textField->rect.y.min - 0.025f);
+			//	}
 
-				dialog.totalSize = textField->rect;
-				for (const auto&c : dialog.components)
-					if (c != textField && c != common && c != imageField)
-						dialog.totalSize.Include(c->rect);
+			//	dialog.totalSize = textField->rect;
+			//	for (const auto&c : dialog.components)
+			//		if (c != textField && c != imageField)
+			//			dialog.totalSize.Include(c->rect);
 
-				dialog.totalSize.Expand(0.015f);
+			//	dialog.totalSize.Expand(0.015f);
 
-				if (imageField)
-					imageField->rect.y = textField->rect.y;
+			//	if (imageField)
+			//		imageField->rect.y = textField->rect.y;
 
-				Rect<> r = textField->rect;
-				if (imageField)
-					r.Include(imageField->rect);
-				if (inputField)
-					r.Include(inputField->rect);
-				common->rect = r;
+			//	Rect<> r = textField->rect;
+			//	if (imageField)
+			//		r.Include(imageField->rect);
+			//	if (inputField)
+			//		r.Include(inputField->rect);
+			//	dialog->Set
+			//	common->rect = r;
 
-				foreach (dialog.components,c)
-					(*c)->UpdateNow();
-			};
+			//	dialog.UpdateHeight();
+			//	//foreach (dialog.components,c)
+			//	//	(*c)->UpdateHeight();
+			//};
 
-			dialog->reLayout(*dialog);
+			dialog->ReLayout();
 
 			//rs.type = type;
 		}
 
 	}
-	void		Dialog::Refresh()
-	{
-		foreach (components, c)
-			(*c)->Check();
-	}
 
 
 	void		Dialog::DumpMe()
 	{
-		reLayout.swap(std::function<void(Dialog&)>());
+//		reLayout.swap(std::function<void(Dialog&)>());
 		components.Clear();
 		confirmButton.reset();
 		userInput.reset();
@@ -434,9 +470,10 @@ namespace Dialog
 		image.reset();
 
 		Deactivate();
-		Detail::modalDialogs.FindAndErase(shared_from_this());
-		if (Detail::modalDialogs.IsNotEmpty())
-			Detail::modalDialogs.last()->Activate();
+		Detail::visibleWindows.FindAndErase(shared_from_this());
+		Detail::visibleDialogs.FindAndErase(shared_from_this());
+		if (Detail::visibleWindows.IsNotEmpty())
+			Detail::visibleWindows.last()->Activate();
 	}
 
 	void		Dialog::Confirm(bool bySpace)
@@ -460,22 +497,12 @@ namespace Dialog
 			DumpMe();
 		}
 
-		if (isTutorial && Detail::pendingTutorials.IsNotEmpty() && Detail::modalDialogs.IsEmpty())
+		if (isTutorial && Detail::pendingTutorials.IsNotEmpty() && Detail::visibleWindows.IsEmpty())
 		{
-			Detail::modalDialogs << Detail::pendingTutorials.Peek();
-			Detail::modalDialogs.last()->Activate();
+			Detail::visibleDialogs << Detail::pendingTutorials.Peek();
+			Detail::visibleWindows << Detail::pendingTutorials.Peek();
+			Detail::visibleWindows.last()->Activate();
 			Detail::pendingTutorials.EraseFront();
-		}
-	}
-
-
-	void		Dialog::HandleClick()
-	{
-		foreach (components,c)
-		{
-			(*c)->HandleClick();
-			if (components.IsEmpty())	//self-destructed
-				return;
 		}
 	}
 
@@ -484,8 +511,8 @@ namespace Dialog
 	{
 		void OnInput()
 		{
-			if (modalDialogs.IsNotEmpty())
-				modalDialogs.last()->Refresh();
+			if (visibleWindows.IsNotEmpty())
+				visibleWindows.last()->DetectEnabledState();
 		}
 		void OnDone()
 		{
@@ -496,12 +523,15 @@ namespace Dialog
 
 	bool	ConfirmCurrent(bool bySpace)
 	{
-		if (Detail::modalDialogs.IsEmpty())
+		if (Detail::visibleWindows.IsEmpty())
 			return false;
-		Detail::modalDialogs.last()->Confirm(bySpace);
-		return true;
-
-
+		PDialog d = To<Dialog>::DynamicCast(Detail::visibleWindows.last());
+		if (d)
+		{
+			d->Confirm(bySpace);
+			return true;
+		}
+		return false;
 	}
 
 
@@ -517,7 +547,7 @@ namespace Dialog
 	{
 		if (Detail::pendingTutorials.IsNotEmpty())
 		{
-			Detail::modalDialogs << Detail::pendingTutorials.Peek();
+			Detail::visibleWindows << Detail::pendingTutorials.Peek();
 			Detail::pendingTutorials.EraseFront();
 		}
 	
@@ -527,9 +557,6 @@ namespace Dialog
 
 	WDialog	Query(const String&query, const String&initial, const String&allowChars, const PCheckInput&check, const PFetchInput&fetch)
 	{
-		textout.pushState();
-		textout.setScale(1.f,1.f);
-
 		GUIElements::Input::onChange = Detail::OnInput;
 		GUIElements::Input::onDone = Detail::OnDone;
 
@@ -544,10 +571,6 @@ namespace Dialog
 
 		d->userInput->SetCurrent(initial);
 		d->userInput->SetAllowed(allowChars);
-
-		d->reLayout(*d);
-
-		textout.popState();
 		return d;
 	}
 
@@ -572,14 +595,52 @@ namespace Dialog
 	}
 
 
+	
+	bool	Hide(const GUIElements::PWindow&window)
+	{
+		index_t index = Detail::visibleWindows.GetIndexOf(window);
+		if (index == InvalidIndex)
+			return false;
+
+		Detail::visibleWindows.Erase(index);
+
+		PDialog d = To<Dialog>::DynamicCast(window);
+		if (d)
+			Detail::visibleDialogs.FindAndErase(d);
+
+		if (index == Detail::visibleWindows.Count())
+		{
+			window->Deactivate();
+			if (Detail::visibleDialogs.IsNotEmpty())
+				Detail::visibleDialogs.last()->Activate();
+		}
+
+		return true;
+
+	}
+
+	bool	IsVisible(const GUIElements::PWindow&window)
+	{
+		return Detail::visibleWindows.Contains(window);
+	}
+
+	void	Show(const GUIElements::PWindow&window)
+	{
+		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.last() == window)
+			return;
+		Detail::visibleWindows.FindAndErase(window);
+		if (Detail::visibleWindows.IsNotEmpty())
+			Detail::visibleWindows.last()->Deactivate();
+		Detail::visibleWindows << window;
+		window->Activate();
+	}
+
+
 
 	WDialog	ShowFactions(const Buffer0<Faction>&factions)
 	{
 		if (Detail::factionDialog)
 			RemoveDialog(Detail::factionDialog);
-
-		textout.pushState();
-		textout.setScale(1.f,1.f);
 
 
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton, "Close", false);
@@ -596,9 +657,8 @@ namespace Dialog
 		d->textField->SetText( list );
 		d->textField->alignCenter = false;
 		d->textField->zoom = 0.9f;
-		d->reLayout(*d);
+		d->ReLayout();
 
-		textout.popState();
 		return d;
 	}
 
@@ -648,18 +708,19 @@ namespace Dialog
 	{
 		if (!dialog)
 			return false;
-		index_t at = Detail::modalDialogs.GetIndexOf(dialog);
+		index_t at = Detail::visibleWindows.GetIndexOf(dialog);
 		if (at == InvalidIndex)
 			return false;
-		if (at == Detail::modalDialogs.Count()-1)
+		Detail::visibleDialogs.FindAndErase(dialog);
+		if (at == Detail::visibleWindows.Count()-1)
 		{
 			dialog->Deactivate();
-			Detail::modalDialogs.EraseLast();
-			if (Detail::modalDialogs.IsNotEmpty())
-				Detail::modalDialogs.last()->Activate();
+			Detail::visibleWindows.EraseLast();
+			if (Detail::visibleWindows.IsNotEmpty())
+				Detail::visibleWindows.last()->Activate();
 		}
 		else
-			Detail::modalDialogs.Erase(at);
+			Detail::visibleWindows.Erase(at);
 		return true;
 	}
 
@@ -670,10 +731,8 @@ namespace Dialog
 		static StringTable<DX11::Texture,Strategy::Swap>	textureMap;
 
 
-		textout.pushState();
-		textout.setScale(1.f,1.f);
 
-		PDialog&d = /*Detail::modalDialogs.IsEmpty() ? Detail::modalDialogs.Append() : */Detail::pendingTutorials.Push();
+		PDialog&d = /*Detail::visibleWindows.IsEmpty() ? Detail::visibleWindows.Append() : */Detail::pendingTutorials.Push();
 		d.reset(new Dialog());
 
 
@@ -710,23 +769,43 @@ namespace Dialog
 		d->key = key;
 		//d.cancelButton.SetText( "Skip Tutorial" );
 
-		textout.popState();
 		OnTutorialsChanged();
 
-		d->reLayout(*d);
+		d->ReLayout();
 		return d;
 	}
 
-
-	bool	HandleClick()
+	bool	HandleMouseDown()
 	{
-		if (Detail::modalDialogs.IsNotEmpty())
+		if (Detail::visibleWindows.IsNotEmpty())
 		{
-			Detail::modalDialogs.last()->HandleClick();
+			GUIElements::mousePressedComponent = Detail::visibleWindows.last()->HandleMouseDown();
 			return true;
 		}
+		GUIElements::mousePressedComponent.reset();
 		return false;
 	}
+
+	void	HandleMouseUp()
+	{
+		if (GUIElements::mousePressedComponent)
+		{
+			GUIElements::mousePressedComponent->SignalMouseUp();
+			GUIElements::mousePressedComponent.reset();
+		}
+
+	}
+
+
+	//bool	HandleClick()
+	//{
+	//	if (Detail::visibleWindows.IsNotEmpty())
+	//	{
+	//		Detail::visibleWindows.last()->HandleClick();
+	//		return true;
+	//	}
+	//	return false;
+	//}
 
 
 	
@@ -739,16 +818,19 @@ namespace Dialog
 	*/
 	void	SignalSituationChange()
 	{
-		for (index_t i = 0; i < Detail::modalDialogs.Count(); i++)
+		for (index_t i = 0; i < Detail::visibleDialogs.Count(); i++)
 		{
-			if (!Detail::modalDialogs[i]->SignalChange())
+			if (!Detail::visibleDialogs[i]->SignalChange())
 			{
-				Detail::modalDialogs.Erase(i);
+				Detail::visibleWindows.FindAndErase(Detail::visibleDialogs[i]);
+				Detail::visibleDialogs.Erase(i);
 				i--;
 				continue;
 			}
-
 		}
+
+		foreach (Detail::visibleWindows,w)
+			(*w)->DetectEnabledState();
 	}
 
 
@@ -767,8 +849,6 @@ namespace Dialog
 		if (ck == CheckResult::Abort)
 			return PDialog();
 
-		textout.pushState();
-		textout.setScale(1.f,1.f);
 
 
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton| Detail::ComponentFlags::CancelButton, "Confirm", false);
@@ -777,8 +857,7 @@ namespace Dialog
 		d->onConfirm = onConfirm;
 		d->textField->SetText( query );
 
-		d->reLayout(*d);
-		textout.popState();
+		d->ReLayout();
 		return d;
 	}
 
@@ -788,8 +867,6 @@ namespace Dialog
 		if (ck == CheckResult::Abort)
 			return PDialog();
 
-		textout.pushState();
-		textout.setScale(1.f,1.f);
 
 
 		PDialog d = Detail::NewModalDialog(0, "", false);
@@ -797,8 +874,7 @@ namespace Dialog
 		d->check = check;
 		d->textField->SetText( message );
 
-		d->reLayout(*d);
-		textout.popState();
+		d->ReLayout();
 		return d;
 	}
 
@@ -808,16 +884,13 @@ namespace Dialog
 	*/
 	WDialog	ShowMessage(const String&msg)
 	{
-		textout.pushState();
-		textout.setScale(1.f,1.f);
 
 
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton, "Got it", false);
 
 		d->textField->SetText( msg );
 
-		d->reLayout(*d);
-		textout.popState();
+		d->ReLayout();
 
 		return d;
 	}
@@ -828,17 +901,18 @@ namespace Dialog
 	*/
 	bool	IsModal()
 	{
-		return Detail::modalDialogs.IsNotEmpty();
+		return Detail::visibleWindows.IsNotEmpty();
 	}
 
-	/**
-	Closes all modal dialogs
-	*/
-	void	CloseAllModal()
+	bool	CloseAllModal()
 	{
-		if (Detail::modalDialogs.IsNotEmpty())
-			Detail::modalDialogs.last()->Deactivate();
-		Detail::modalDialogs.Clear();
+		if (Detail::visibleWindows.IsNotEmpty())
+		{
+			Detail::visibleWindows.last()->Deactivate();
+			Detail::visibleWindows.Clear();
+			return true;
+		}
+		return false;
 	}
 
 
@@ -846,7 +920,7 @@ namespace Dialog
 
 	void	Render()
 	{
-		foreach (Detail::modalDialogs,d)
+		foreach (Detail::visibleWindows,d)
 		{
 			(*d)->Render();
 		}
@@ -862,7 +936,7 @@ namespace Dialog
 
 	void	Destroy()
 	{
-		Detail::modalDialogs.Clear();
+		Detail::visibleWindows.Clear();
 		Detail::pendingTutorials.Clear();
 		GUIElements::Destroy();
 	

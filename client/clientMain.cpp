@@ -74,6 +74,11 @@ extern "C"
 
 	Engine::Display<Engine::DirectX11>	display;
 	Engine::Textout<DX11::TextureFont>	textout;
+
+
+	GUIElements::PWindow		mainMenu,
+								createFactionMenu;
+
 #endif
 
 
@@ -2505,7 +2510,7 @@ bool loop()
 
 			textout.color(1,1,1);
 			textout.locate(0,1);
-			textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::amReady ? "ready" : "not ready")<< nl;
+			textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFaction ? "logged in" : "not logged in")<< nl;
 			textout << "My name: '"<<Network::chosenNickname<<"'"<<nl;
 			if (Network::amOnline)
 			{
@@ -2678,7 +2683,7 @@ void Select()
 {
 	Tutorial::lastDelayingEvent = timer.Now();
 
-	if (Dialog::HandleClick() || UI::HandleClick())
+	if (Dialog::HandleMouseDown() || UI::HandleClick())
 		return;
 	if (Rect<>(0.f,0.97f,0.1f,1.f).Contains(Engine::mouse.location.windowRelative))
 	{
@@ -3296,18 +3301,53 @@ void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_even
 
 	void	AbortMode()
 	{
-		Objects::DisableModes(Network::ControlEnabled());
-		Dialog::CloseAllModal();
+		if (Dialog::CloseAllModal())
+		{
+			QueryNicknameIfEmpty();
+			return;
+		}
+		if (Objects::DisableModes(Network::ControlEnabled()))
+			return;
+
+		if (!Dialog::IsVisible(mainMenu))
+		{
+			mainMenu->DetectEnabledState();
+			Dialog::Show(mainMenu);
+		}
+		else
+			Dialog::Hide(mainMenu);
 
 
-		if (IsFullScreen())
-			SetFullScreen(false);
+		//if (IsFullScreen())
+		//	SetFullScreen(false);
 
-		QueryNicknameIfEmpty();
 
 
 	}
 
+	#ifdef HAS_WINDOW
+		void	ReallyStartNewFaction()
+		{
+			if (Network::haveFaction)
+				Network::AbandonCurrentFaction();
+
+			//technite menu goes here
+
+			//Network::StartNewFaction();
+		}
+		void	StartNewFaction()
+		{
+			if (Network::haveFaction)
+			{
+				Dialog::Confirm("You already are in control of a faction. If you start a new faction, your previous one will be abandoned. This process cannot be reversed. Continue?",
+							ReallyStartNewFaction,
+							[](){return Network::client.IsConnected() && Network::haveFaction ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
+			}
+			else
+				ReallyStartNewFaction();
+
+		}
+	#endif
 
 	void ToggleResourceView()
 	{
@@ -3809,7 +3849,7 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::T,[](){}, QueryAndSendChatMessage);
 			Engine::input.bind(Key::R,ToggleResourceView);
 
-			Engine::input.bind(Key::MouseButton0, Select);
+			Engine::input.bind(Key::MouseButton0, Select, Dialog::HandleMouseUp);
 			Engine::input.bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag);
 
 			Engine::input.bind(Key::F3, SaveScreenshot);
@@ -3861,6 +3901,17 @@ int main( int argc, const char* argv[])
 
 
 		#ifdef HAS_WINDOW
+
+			mainMenu.reset(new GUIElements::Window());
+			mainMenu->SetCenteredWidth(0.25f,false);
+			mainMenu->AnchorBelowPrevious(new GUIElements::Button("Disconnect",[](){Dialog::Hide(mainMenu); Network::client.Disconnect();},[](){return Network::client.IsConnected();}),0.f,0.f);
+			mainMenu->AnchorBelowPrevious(new GUIElements::Button("Start new faction",[](){Dialog::Hide(mainMenu); StartNewFaction();},[](){return Network::client.IsConnected();}),0.f);
+			mainMenu->AnchorBelowPrevious(new GUIElements::Button("Quit to Desktop",[](){application_shutting_down = true;}),0.f);
+			mainMenu->fillBackground = false;
+			//mainMenu->autoHeightSpacing = 0.015f;
+			mainMenu->FullAutoLayout();
+
+
 
 			if (RuntimeConfig::FromFile::alwaysDay)
 			{

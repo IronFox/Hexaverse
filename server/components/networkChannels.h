@@ -79,7 +79,7 @@ namespace Channels
 	extern TCP::Channel<Protocol::ConstructionAbort, 1, Protocol::ChannelID::ConstructionAbort>			constructionAbort;
 	extern TCP::Channel<Protocol::ConstructionBegin, 1, Protocol::ChannelID::ConstructionBegin>			constructionBegin;
 	extern TCP::Channel<Protocol::EnableStructure, 1, Protocol::ChannelID::EnableStructure>				enableStructure;
-	extern TCP::Channel<Protocol::ClientFactionRequest, 1, Protocol::ChannelID::ClientFaction>				clientFactionRequest;
+	extern TCP::Channel<Protocol::ClientFactionRequest, 1, Protocol::ChannelID::ClientFaction>			clientFactionRequest;
 	
 	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::RestoreCoreLink>						restoreCoreLink;
 	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::RemoveEntity>							removeEntity;

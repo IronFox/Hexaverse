@@ -23,7 +23,7 @@ void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird
 
 namespace Network
 {
-	bool			amReady = false,haveId = false,amOnline=false;
+	bool			haveFaction = false,haveId = false,amOnline=false;
 	#ifdef HAS_WINDOW
 		bool		amLocated=false;
 	#endif
@@ -48,7 +48,6 @@ namespace Network
 					roundTimer = 0;
 	Timer::Time		phaseStarted;
 	bool			newRoundRequested = false;
-
 
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, BYTE techniteFactionIfNew /*= 0xFF*/)
@@ -481,9 +480,9 @@ namespace Network
 			#endif
 
 
-			amReady = cr.startFactionTypes != 0;
+			haveFaction = cr.startFactionTypes != 0;
 			amTechniteFaction = (cr.startFactionTypes & Protocol::FactionType::TechniteFaction) != 0;
-			if (amReady)
+			if (haveFaction)
 			{
 				activeToken = cr.factionToken;
 				activeTokenString = activeToken.ToString();
@@ -501,6 +500,37 @@ namespace Network
 					
 
 
+			}
+			else
+			{
+				LogEvent(EventType::SessionRelated, nullptr, "Server response: Faction void.");
+				haveFaction = false;
+				Objects::FlushAllData();
+				Network::gameProgress.gameOver = true;
+				Network::gameProgress.gameWon = false;
+				Network::gameProgress.status = "Faction not set";
+				Network::gameProgress.warning = "";
+				Network::newRoundRequested = false;
+				Network::factionMap.Clear();
+				Objects::Faction::allKnown.Clear();
+
+				Network::myFaction.reset();
+				Animation::primitives.Clear();
+				Animation::actives.Clear();
+				Animation::activeTrajectory.Clear();
+				Animation::atTime = 0;
+
+
+				#ifdef HAS_WINDOW
+					amLocated = false;
+				#endif
+
+
+				if (RuntimeConfig::aiMode && RuntimeConfig::serverURL.IsNotEmpty())
+					application_shutting_down = true;
+				#ifdef HAS_WINDOW
+					QueryNicknameIfEmpty();
+				#endif
 			}
 		}
 
@@ -778,6 +808,20 @@ namespace Network
 	Timer::Time		lastPong = timer.Now();
 	UINT32			chosenFactionTypes = Protocol::FactionType::TechniteFaction;
 
+
+	void			AbandonCurrentFaction()
+	{
+		if (haveFaction && client.IsConnected())
+		{
+			Protocol::ClientFactionRequest ready;
+			ready.startFactionTypes = 0;
+			ready.factionToken.value = CryptographicID();
+			LogEvent(EventType::SessionRelated, nullptr, "Abandoning current faction");
+			Channels::clientFactionRequest.SendTo(client,ready);
+		}
+	}
+
+
 	void		OnEvent(TCP::event_t ev, TCP::Peer&)
 	{
 		switch (ev)
@@ -836,7 +880,7 @@ namespace Network
 			{
 				LogEvent(EventType::SessionRelated, nullptr, "Connection lost");
 				amOnline = false;
-				amReady = false;
+				haveFaction = false;
 				//dbgRoundNumber = 0xFFFFFFFF;
 				Objects::FlushAllData();
 				Network::gameProgress.gameOver = false;

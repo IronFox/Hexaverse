@@ -16,7 +16,7 @@ namespace Network
 	bool						ControlEnabled();
 
 
-	extern bool			amReady,
+	extern bool			haveFaction,
 						haveId,
 						amOnline,
 						amTechniteFaction;
@@ -56,6 +56,8 @@ namespace Network
 
 	void LoadWorldAccessTokens();
 
+	void AbandonCurrentFaction();
+
 	
 	namespace ServerDiscovery
 	{
@@ -76,7 +78,7 @@ namespace Network
 
 	namespace Receiver
 	{
-		extern bool			eventsLocked/* = true*/;
+		extern bool			eventsLocked/* = true*/;	//purely for debugging purposes. If set no events should be pouring in from the server. When the connection is lost, this is set to true, and no evenst should be triggered until a new connection is established
 
 
 		void	OnClientStateResponse(Protocol::Result&response);
