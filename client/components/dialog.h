@@ -22,17 +22,17 @@ namespace Dialog
 	typedef std::function<void(const String&)>	PFetchInput;
 
 
-	class Dialog : public std::enable_shared_from_this<Dialog>
+	class Dialog : public GUIElements::Window,  public std::enable_shared_from_this<Dialog>
 	{
+		typedef GUIElements::Window	Super;
 	public:
 		//CONSTRUCT_ENUMERATION5(Type, Confirmation, Message, TutorialMessage, StringQuery,FactionList);
 
 		//Type					type;
 
-		Buffer0<GUIElements::PComponent>	components;
 		GUIElements::PButton	confirmButton;
 		GUIElements::PInput		userInput;
-		GUIElements::PTextField	textField;
+		GUIElements::PLabel		textField;
 		GUIElements::PImage		image;
 
 		String					key;
@@ -46,26 +46,23 @@ namespace Dialog
 
 		Rect<>				totalSize;
 
-		std::function<void(Dialog&)>	reLayout;
+		//std::function<void(Dialog&)>	reLayout;
 
 		bool				isActive = false;
 
 
 		void		Activate()
 		{
-			foreach (components,c)
-				(*c)->Activate();
-			Refresh();
+			Super::Activate();
+			Super::DetectEnabledState();
 			isActive = true;
 		}
 		void		Deactivate()
 		{
-			foreach (components,c)
-				(*c)->Deactivate();
+			Super::Deactivate();
 			isActive = false;
 		}
 
-		void		Refresh();
 
 
 		bool		SignalChange()
@@ -76,29 +73,16 @@ namespace Dialog
 				if (rs == CheckResult::Abort)
 					return false;
 			}
-			foreach (components,c)
-				(*c)->Check();
+			Super::DetectEnabledState();
 			return true;
 		}
 
-
-		void		Render()
+		void		ReLayout()
 		{
-			bool anyChanged = false;
-			foreach (components,c)
-				if ((*c)->UpdateIfNecessary())
-					anyChanged = true;
-			if (anyChanged)
-				reLayout(*this);
-
-			GUIElements::Darken(Rect<>(0,0,1,1),0.7f);
-			GUIElements::Darken(totalSize);
-
-			foreach (components,c)
-				(*c)->Render();
+			Super::FullAutoLayout();
 		}
 
-		void		HandleClick();
+
 		void		Confirm(bool bySpace);
 
 		void		DumpMe();

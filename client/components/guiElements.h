@@ -13,33 +13,98 @@ namespace GUIElements
 
 	namespace DX11 = Engine::DX11;
 
+
+	class Component;
+	typedef std::shared_ptr<Component> PComponent;
+	typedef std::weak_ptr<Component> WComponent;
+
+
+	
+
+
+
+	template <typename T>
+		class Axial
+		{
+		public:
+			T			min = T(),
+						center = T(),
+						max = T();
+		};
+
+	template <typename T>
+		class Axial2
+		{
+		public:
+			Axial<T>	axis[2];
+
+			T&			Top() {return axis[1].max;}
+			T&			Bottom() {return axis[1].min;}
+			T&			Left() {return axis[0].min;}
+			T&			Right() {return axis[0].max;}
+		};
+
+
+
+	struct TAnchor
+	{
+		bool			isActive = false;
+		float			distanceFromReference = 0.f;	//!< Distance to position extreme from closest reference. If no references are set, uses context edge instead.
+		bool			distanceIsPercent = true;	//Indicates that the value stored in @a distanceFromReference should be multiplied with the context extend
+		Buffer0<WComponent>	references;			//!< Zero or more reference components. If none are set, the respective context extreme is used. If more than one are set, the closest is used
+
+		void			Set(const PComponent&c, float distance)
+		{
+			if (!c)
+				return;
+			isActive = true;
+			distanceFromReference = distance;
+			references.Append(c);
+		}
+		void			Set(float distance)
+		{
+			isActive = true;
+			distanceFromReference = distance;
+		}
+	};
+
+
 	class Component
 	{
-	public:
+	private:
+		bool			LayoutAxis(int axis, const Rect<>&context);
+	protected:
+		static void		Darken(const Rect<>&rect, float alpha=0.9f, bool flush=false);
+		static void		RenderArea(const Rect<>&rect, bool lit, bool flip);
+
 		Rect<>			rect;
+	public:
 		bool			enabled = true;
 
-		void			adoptData(Component&other)
-		{
-			rect = other.rect;
-			enabled = other.enabled;
-		}
+		Axial2<TAnchor>	anchorConfig;
 
-
+		static bool		Set(float&ref, float to);
+		static bool		SetCenter(TFloatRange<>&ref, float to);
 
 		bool			ContainsMouse() const;
 		void			MoveTopTo(float h);
 
 		virtual void	Activate() {};
 		virtual void	Deactivate() {};
-		virtual void	Check() {};
-		virtual void	HandleClick() {};
-		virtual bool	UpdateIfNecessary()	{return false;}
-		virtual void	UpdateNow() {};
+		virtual void	DetectEnabledState() {};
+		virtual bool	HandleClick() {return false;}
+		virtual bool	UpdateHeightIfNecessary()	{return false;}
+		virtual bool	UpdateHeight() {return false;}
 		virtual void	Render() {};
+		virtual bool	AutoLayout(const Rect<>&context);
+		virtual void	Translate(const float2&delta)	{rect.Translate(delta);}
+		virtual void	SetLocation(const Rect<>&loc) {rect = loc;}
+
+		bool			FullAutoLayout(const Rect<>&context);
+
+		const Rect<>&	GetLocation() const {return rect;}
 	};
 
-	typedef std::shared_ptr<Component> PComponent;
 
 
 	class Image : public Component
@@ -48,16 +113,12 @@ namespace GUIElements
 	public:
 		DX11::Texture	texture;
 		bool			sensitiveToMouse = false;
-
-
-		void			adoptData(Image&other)
-		{
-			Super::adoptData(other);
-			sensitiveToMouse = other.sensitiveToMouse;
-			texture.swap(other.texture);
-		}
+		bool			autoSetHeight = true;
 
 		virtual void	Render() override;
+		virtual bool	HandleClick() override {return ContainsMouse();}
+		virtual bool	UpdateHeight() override;
+
 	};
 	typedef std::shared_ptr<Image> PImage;
 
@@ -67,29 +128,27 @@ namespace GUIElements
 	class Area : public Component
 	{
 	private:
-		//Buffer0<float3>	hexCenters;
-		//DX11::BaseInstructionBlock	instruction;
-		//static DX11::BaseInstructionBlock	shader;
+		index_t			sizeVersion = InvalidIndex;
 	protected:
 		void			BaseRender(bool lit);
 	public:
 		typedef Component	Super;
 
-		index_t			sizeVersion = InvalidIndex;
 		bool			sensitiveToMouse = true;
-		bool			renderRect = true;
+		bool			fillBackground = true;
 
-		virtual void	UpdateNow() override;
+		virtual bool	UpdateHeight() override;
+		virtual bool	UpdateHeightIfNecessary() override;
 
-		//static void		StaticCreate();
-		//static void		StaticDestroy();
+		virtual bool	AutoLayout(const Rect<>&context) override {InvalidateSize(); return Super::AutoLayout(context); }
 
-		void			adoptData(Area&other)
+		virtual bool	HandleClick() override {return fillBackground && ContainsMouse();}
+		virtual void	SetLocation(const Rect<>&loc) {Super::SetLocation(loc); InvalidateSize();}
+
+
+		void			InvalidateSize()
 		{
-			sensitiveToMouse = other.sensitiveToMouse;
-			renderRect = other.renderRect;
-			sizeVersion = other.sizeVersion;
-			Super::adoptData(other);
+			sizeVersion = InvalidIndex;
 		}
 		virtual void	Render() override	{BaseRender(false);}
 	};
@@ -120,22 +179,12 @@ namespace GUIElements
 
 		virtual void	Activate() override {ActivateInput();}
 		virtual void	Deactivate() override {DeactivateInput();}
+		virtual bool	UpdateHeight() override;
 
-
-		virtual bool	UpdateIfNecessary() override;
 
 		virtual void	Render() override;
 
 		void			SetAllowed(const String&);
-
-		void			adoptData(Input&other)
-		{
-			isActive = other.isActive;
-			backup.adoptData(other.backup);
-			core = other.core;
-			allowed.adoptData(other.allowed);
-			Super::adoptData(other);
-		}
 	};
 	typedef std::shared_ptr<Input>	PInput;
 
@@ -151,39 +200,42 @@ namespace GUIElements
 		bool			alignCenter = true;
 		float			zoom = 1.f;
 
-
-		void			adoptData(TextField&other)
-		{
-			rawText.adoptData(other.rawText);
-			wrappedText.adoptData(other.wrappedText);
-			Super::adoptData(other);
-			alignCenter= other.alignCenter;
-			zoom = other.zoom;
-		}
-
 		void			SetText(const String&string)
 		{
 			if (rawText.GetLength() == 1 && rawText.first() == string)
 				return;
 			rawText.SetSize(1);
 			rawText.first() = string;
-			sizeVersion = InvalidIndex;
+			Super::InvalidateSize();
 		}
 		void			SetText(const Array<String>&string)
 		{
 			if (rawText == string)
 				return;
 			rawText = string;
-			sizeVersion = InvalidIndex;
+			Super::InvalidateSize();
 		}
 
 
-		virtual bool	UpdateIfNecessary() override;
+		virtual bool	UpdateHeight() override;
 
 		virtual void	Render() override;
 	};
 	typedef std::shared_ptr<TextField>	PTextField;
 
+
+	class Label : public TextField
+	{
+		typedef TextField	Super;
+
+	public:
+		/**/			Label()
+		{
+			Super::sensitiveToMouse = false;
+			Super::fillBackground = false;
+		}
+	};
+	typedef std::shared_ptr<Label>	PLabel;
 
 	class Button : public TextField
 	{
@@ -193,19 +245,13 @@ namespace GUIElements
 		std::function<bool()>	check;
 
 		String					baseLabel;
+
+		TextField::SetText;
 	public:
-
-		void			adoptData(Button&other)
-		{
-			Super::adoptData(other);
-			onPress.swap(other.onPress);
-			baseLabel.adoptData(other.baseLabel);
-		}
-
 		void			SetText(const String&string)
 		{
 			baseLabel = string;
-			Check();
+			DetectEnabledState();
 		}
 
 
@@ -217,10 +263,10 @@ namespace GUIElements
 		void			SetCheck(const std::function<bool()>&check)
 		{
 			this->check = check;
-			Check();
+			DetectEnabledState();
 		}
 
-		virtual void	Check() override
+		virtual void	DetectEnabledState() override
 		{
 			String set = baseLabel;
 			if (check && !check())
@@ -234,17 +280,137 @@ namespace GUIElements
 			Super::SetText(set);
 		}
 
-		virtual	void			HandleClick() override
+		virtual	bool			HandleClick() override
 		{
-			if (enabled && onPress && ContainsMouse())
-				onPress();
+			if (ContainsMouse())
+			{
+				if (enabled && onPress)
+				{
+					onPress();
+				}
+				return true;
+			}
+			return false;
 		}
 	};
 	typedef std::shared_ptr<Button>	PButton;
 
+	class Panel : public Area
+	{
+		typedef Area Super;
+	public:
+		Buffer0<PComponent>	components;
+		bool			autoHeight = false;
+		float			autoHeightSpacing = 0.f;//0.015f;
+
+		virtual void	DetectEnabledState() override {foreach (components,c) (*c)->DetectEnabledState(); Super::DetectEnabledState();};
+
+		
+		virtual void	Activate() override {foreach (components,c) (*c)->Activate(); Super::Activate();}
+		virtual void	Deactivate() override {foreach (components,c) (*c)->Deactivate(); Super::Deactivate();}
+		virtual bool	HandleClick() override {for (index_t i = components.Count()-1; i < components.Count(); --i) if (components[i]->HandleClick()) return true; return Super::HandleClick();}
+		virtual bool	UpdateHeight() override;
+		virtual void	Render() override;
+		virtual bool	AutoLayout(const Rect<>&context) override {bool rs = Super::AutoLayout(context); foreach (components,c) rs |= (*c)->AutoLayout(this->rect); return rs;}
+		virtual void	Translate(const float2&delta)	{Super::Translate(delta); foreach (components,c) (*c)->Translate(delta);}
+
+
+	};
+
+
+	class Window : public Panel
+	{
+		typedef Panel Super;
+
+		void				UpdateOuterRect()
+		{
+			outerRect= rect;
+			outerRect.Expand(0.015f);
+		}
+		Rect<>				outerRect = Rect<>(0,0,1,1);
+		bool				nestedCall = false;
+
+	public:
+		Rect<>				context = Rect<>(0,0,1,1);
+		bool				autoCenter = true;
+
+		/**/				Window()
+		{
+			Super::autoHeight = true;
+		}
+
+		virtual bool		AutoLayout(const Rect<>&context) override
+		{
+			if (Super::AutoLayout(context))
+			{
+				if (autoCenter)
+				{
+					float2 delta = context.center() - rect.center();
+					if (!Vec::similar(delta,Vector2<>::zero))
+						Super::Translate(delta);
+				}
+				UpdateOuterRect();
+				return true;
+			}
+			return false;
+		}
+
+		virtual bool		UpdateHeight() override
+		{
+			if (Super::UpdateHeight())
+			{
+				if (autoCenter)
+				{
+					float2 delta = context.center() - rect.center();
+					if (!Vec::similar(delta,Vector2<>::zero))
+						Super::Translate(delta);
+				}
+				UpdateOuterRect();
+				return true;
+			}
+			return false;
+		}
+
+		virtual void		Render() override
+		{
+			bool anyChanged = Super::UpdateHeightIfNecessary();
+			if (anyChanged)
+				FullAutoLayout();
+			Darken(context,0.7f);
+			Darken(outerRect);
+			Darken(rect);
+			Super::Render();
+		}
+
+		bool			FullAutoLayout()
+		{
+			return Super::FullAutoLayout(context);
+		}
+
+
+		virtual bool	UpdateHeightIfNecessary() override
+		{
+				
+			if (Super::UpdateHeightIfNecessary())
+			{
+				if (!nestedCall)
+				{
+					nestedCall= true;
+					FullAutoLayout();	
+					nestedCall = false;
+				}
+				return true;
+			}
+			return false;
+
+		}
+
+
+	};
+
+
 
 	
-	void				Darken(const Rect<>&rect, float alpha=0.9f, bool flush=false);
 	
 
 

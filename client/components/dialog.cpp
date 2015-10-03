@@ -253,34 +253,75 @@ namespace Dialog
 		{
 			dialog->isTutorial = isTutorial;
 
-			GUIElements::PComponent	common(new GUIElements::Area());
-			GUIElements::PTextField textField(new GUIElements::TextField);
-			textField->rect.Set(0.25f,0.25f,0.75f,0.75f);
+			dialog->anchorConfig.Left().Set(0.25f);
+			dialog->anchorConfig.Right().Set(0.25f);
 			
+			//GUIElements::PComponent	common(new GUIElements::Area());
+			GUIElements::PLabel textField(new GUIElements::Label());
+			textField->anchorConfig.Left().Set(0.f);
+			textField->anchorConfig.Right().Set(0.f);
+			textField->anchorConfig.Top().Set(0.f);
+			//height controlled by content
+
 			GUIElements::PButton confirmButton;
 			GUIElements::PButton cancelButton;
 			GUIElements::PInput	inputField;
 			GUIElements::PImage	imageField;
+
+
+			if (componentFlags & ComponentFlags::Input)
+			{
+				inputField.reset(new GUIElements::Input());
+				inputField->anchorConfig.Left().Set(0.f);
+				inputField->anchorConfig.Right().Set(0.f);
+				inputField->anchorConfig.Top().Set(textField,0.025f);
+			}
+
 			if (componentFlags & ComponentFlags::ConfirmButton)
 			{
 				confirmButton.reset(new GUIElements::Button());
-				confirmButton->rect.Set(0.25f,0.25f,0.75f,0.75f);
+				confirmButton->anchorConfig.Left().Set(0.f);
+				confirmButton->anchorConfig.Right().Set(0.f);
+				confirmButton->anchorConfig.Top().Set(inputField,0.025f);	//will abort if inputField is empty
+				confirmButton->anchorConfig.Top().Set(textField,0.025f);	//let's try if setting both works
+				//confirmButton->anchorConfig.Top().Set(imageField,0.025f);	//let's try if setting both works
 			}
 			if (componentFlags & ComponentFlags::CancelButton)
 			{
 				cancelButton.reset(new GUIElements::Button());
-				cancelButton->rect.Set(0.55f,0.25f,0.75f,0.75f);
+
+				if (confirmButton)
+					confirmButton->anchorConfig.Right().Set(0.55f);
+				cancelButton->anchorConfig.Left().Set(0.55f);
+				cancelButton->anchorConfig.Top().Set(inputField,0.025f);	//will abort if inputField is empty
+				cancelButton->anchorConfig.Top().Set(textField,0.025f);		//let's try if setting both works
+				//cancelButton->anchorConfig.Top().Set(imageField,0.025f);	//let's try if setting both works
+
 			}
-			if (componentFlags & ComponentFlags::Input)
-				inputField.reset(new GUIElements::Input());
+
+
 			if (componentFlags & ComponentFlags::Image)
 			{
 				imageField.reset(new GUIElements::Image());
 				
-				textField->rect.Set(0.405f,0.25f,0.75f,0.75f);
-				imageField->rect.Set(0.25f,0.25f,0.4f,0.75f);
+
+				textField->anchorConfig.Left().Set(0.405f);
+				imageField->anchorConfig.Left().Set(0.f);
+				imageField->anchorConfig.Right().Set(0.6f);
+				imageField->anchorConfig.Top().Set(0.05f);
+				if (confirmButton)
+				{
+					imageField->autoSetHeight = false;
+					imageField->anchorConfig.Bottom().Set(confirmButton,0.05f);
+					//imageField->autoSetWidth = true;
+				}
+	//			imageField->SetLocation(Rect<>(0,1,0.25,0.75f));
+				//textField->rect.Set(0.405f,0.25f,0.75f,0.75f);
+				//imageField->rect.Set(0.25f,0.25f,0.4f,0.75f);
 				textField->alignCenter = false;
 			}
+
+
 			
 			//{
 			//	case ModalDialogType::Confirmation:
@@ -313,7 +354,6 @@ namespace Dialog
 			dialog->textField = textField;
 			dialog->image = imageField;
 
-			dialog->components << common;
 			
 			dialog->components << textField;
 			if (confirmButton)
@@ -325,13 +365,9 @@ namespace Dialog
 			if (inputField)
 				dialog->components  << inputField;
 
-			if (textField)
-			{
-				textField->sensitiveToMouse = false;
-				textField->renderRect = false;
-			}
 			if (confirmButton)
 			{
+
 				confirmButton->SetText(confirmWord);
 				Dialog*d = dialog.get();
 				confirmButton->SetCheck([d, inputField]()->bool
@@ -355,78 +391,75 @@ namespace Dialog
 
 					//confirmButton->SetOnPress
 
-			dialog->reLayout = [common,textField,confirmButton,cancelButton,inputField,imageField](Dialog&dialog)
-			{
-				//chicken-egg-dance
-				if (confirmButton)
-					confirmButton->MoveTopTo(textField->rect.y.min - 0.025f);
-				if (cancelButton)
-					cancelButton->MoveTopTo(textField->rect.y.min - 0.025f);
+			//dialog->reLayout = [textField,confirmButton,cancelButton,inputField,imageField](Dialog&dialog)
+			//{
+			//	//chicken-egg-dance
+			//	if (confirmButton)
+			//		confirmButton->MoveTopTo(textField->rect.y.min - 0.025f);
+			//	if (cancelButton)
+			//		cancelButton->MoveTopTo(textField->rect.y.min - 0.025f);
 
 
-				dialog.totalSize = textField->rect;
-				for (const auto&c : dialog.components)
-					if (c != textField && c != common && c != imageField)
-						dialog.totalSize.Include(c->rect);
+			//	dialog.totalSize = textField->rect;
+			//	for (const auto&c : dialog.components)
+			//		if (c != textField && c != imageField)
+			//			dialog.totalSize.Include(c->rect);
 
-				//float center = totalSize.y.center();
-				float top = 0.5f + dialog.totalSize.y.GetExtend()/2.f;
-				textField->MoveTopTo(top);
+			//	//float center = totalSize.y.center();
+			//	float top = 0.5f + dialog.totalSize.y.GetExtend()/2.f;
+			//	textField->MoveTopTo(top);
 
-				if (inputField)
-				{
-					inputField->MoveTopTo(textField->rect.y.min - 0.025f);
+			//	if (inputField)
+			//	{
+			//		inputField->MoveTopTo(textField->rect.y.min - 0.025f);
 
-					if (confirmButton)
-						confirmButton->MoveTopTo(inputField->rect.y.min - 0.025f);
-					if (cancelButton)
-						cancelButton->MoveTopTo(inputField->rect.y.min - 0.025f);
-				}
-				else
-				{
-					if (confirmButton)
-						confirmButton->MoveTopTo(textField->rect.y.min - 0.025f);
-					if (cancelButton)
-						cancelButton->MoveTopTo(textField->rect.y.min - 0.025f);
-				}
+			//		if (confirmButton)
+			//			confirmButton->MoveTopTo(inputField->rect.y.min - 0.025f);
+			//		if (cancelButton)
+			//			cancelButton->MoveTopTo(inputField->rect.y.min - 0.025f);
+			//	}
+			//	else
+			//	{
+			//		if (confirmButton)
+			//			confirmButton->MoveTopTo(textField->rect.y.min - 0.025f);
+			//		if (cancelButton)
+			//			cancelButton->MoveTopTo(textField->rect.y.min - 0.025f);
+			//	}
 
-				dialog.totalSize = textField->rect;
-				for (const auto&c : dialog.components)
-					if (c != textField && c != common && c != imageField)
-						dialog.totalSize.Include(c->rect);
+			//	dialog.totalSize = textField->rect;
+			//	for (const auto&c : dialog.components)
+			//		if (c != textField && c != imageField)
+			//			dialog.totalSize.Include(c->rect);
 
-				dialog.totalSize.Expand(0.015f);
+			//	dialog.totalSize.Expand(0.015f);
 
-				if (imageField)
-					imageField->rect.y = textField->rect.y;
+			//	if (imageField)
+			//		imageField->rect.y = textField->rect.y;
 
-				Rect<> r = textField->rect;
-				if (imageField)
-					r.Include(imageField->rect);
-				if (inputField)
-					r.Include(inputField->rect);
-				common->rect = r;
+			//	Rect<> r = textField->rect;
+			//	if (imageField)
+			//		r.Include(imageField->rect);
+			//	if (inputField)
+			//		r.Include(inputField->rect);
+			//	dialog->Set
+			//	common->rect = r;
 
-				foreach (dialog.components,c)
-					(*c)->UpdateNow();
-			};
+			//	dialog.UpdateHeight();
+			//	//foreach (dialog.components,c)
+			//	//	(*c)->UpdateHeight();
+			//};
 
-			dialog->reLayout(*dialog);
+			dialog->ReLayout();
 
 			//rs.type = type;
 		}
 
 	}
-	void		Dialog::Refresh()
-	{
-		foreach (components, c)
-			(*c)->Check();
-	}
 
 
 	void		Dialog::DumpMe()
 	{
-		reLayout.swap(std::function<void(Dialog&)>());
+//		reLayout.swap(std::function<void(Dialog&)>());
 		components.Clear();
 		confirmButton.reset();
 		userInput.reset();
@@ -469,23 +502,12 @@ namespace Dialog
 	}
 
 
-	void		Dialog::HandleClick()
-	{
-		foreach (components,c)
-		{
-			(*c)->HandleClick();
-			if (components.IsEmpty())	//self-destructed
-				return;
-		}
-	}
-
-
 	namespace Detail
 	{
 		void OnInput()
 		{
 			if (modalDialogs.IsNotEmpty())
-				modalDialogs.last()->Refresh();
+				modalDialogs.last()->DetectEnabledState();
 		}
 		void OnDone()
 		{
@@ -545,7 +567,7 @@ namespace Dialog
 		d->userInput->SetCurrent(initial);
 		d->userInput->SetAllowed(allowChars);
 
-		d->reLayout(*d);
+		//d->ReLayout();
 
 		textout.popState();
 		return d;
@@ -596,7 +618,7 @@ namespace Dialog
 		d->textField->SetText( list );
 		d->textField->alignCenter = false;
 		d->textField->zoom = 0.9f;
-		d->reLayout(*d);
+		d->ReLayout();
 
 		textout.popState();
 		return d;
@@ -713,7 +735,7 @@ namespace Dialog
 		textout.popState();
 		OnTutorialsChanged();
 
-		d->reLayout(*d);
+		d->ReLayout();
 		return d;
 	}
 
@@ -777,7 +799,7 @@ namespace Dialog
 		d->onConfirm = onConfirm;
 		d->textField->SetText( query );
 
-		d->reLayout(*d);
+		d->ReLayout();
 		textout.popState();
 		return d;
 	}
@@ -797,7 +819,7 @@ namespace Dialog
 		d->check = check;
 		d->textField->SetText( message );
 
-		d->reLayout(*d);
+		d->ReLayout();
 		textout.popState();
 		return d;
 	}
@@ -816,7 +838,7 @@ namespace Dialog
 
 		d->textField->SetText( msg );
 
-		d->reLayout(*d);
+		d->ReLayout();
 		textout.popState();
 
 		return d;
