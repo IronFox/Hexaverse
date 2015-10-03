@@ -27,7 +27,7 @@ namespace Channels
 	TCP::Channel<Protocol::ConstructionAbort, 1, Protocol::ChannelID::ConstructionAbort>			constructionAbort(Receiver::ConstructionAbort);
 	TCP::Channel<Protocol::ConstructionBegin, 1, Protocol::ChannelID::ConstructionBegin>			constructionBegin(Receiver::ConstructionBegin);
 	TCP::Channel<Protocol::EnableStructure, 1, Protocol::ChannelID::EnableStructure>				enableStructure(Receiver::EnableStructure);
-	TCP::Channel<Protocol::ClientReady, 1, Protocol::ChannelID::ClientReady>						clientReady(Receiver::ClientReady);
+	TCP::Channel<Protocol::ClientFactionRequest, 1, Protocol::ChannelID::ClientFaction>				clientFactionRequest(Receiver::ClientFaction);
 	
 	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::RestoreCoreLink>							restoreCoreLink(Receiver::RestoreCoreLink);
 	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::RemoveEntity>								removeEntity(Receiver::RemoveEntity);
@@ -39,6 +39,7 @@ namespace Channels
 	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::IdentifyUser>								identifyUserRecv(Receiver::IdentifyUser);
 	TCP::Channel<Package::NetString<256>, 1, Protocol::ChannelID::ChatMessage>						chatMessage(Receiver::ChatMessage);
 
+	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
 	TCP::ObjectSender<Protocol::WorldDelta,Protocol::ChannelID::WorldDelta>							updateWorld;
 	TCP::ObjectSender<Protocol::NewMobileEntity,Protocol::ChannelID::NewMobileEntity>				newMobileEntity;
@@ -146,19 +147,24 @@ namespace Receiver
 
 
 
-	void	ClientReady(Protocol::ClientReady&p, TCP::Peer&peer)
+	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
 			return;
 		State::PClient client = To<State::Client>::Cast(peer.attachment);
+		Protocol::ClientFactionResponse response;
+		response.startFactionTypes = _p.startFactionTypes;
+		response.factionToken = _p.factionToken;
+		response.planetConfig = State::persistentPlanetInfo;
 
-		if (!p.isReady)
+		if (!response.startFactionTypes)
 		{
 			if (State::activePlayers.FindAndErase(client))
 			{
 				State::playerMap.Unset(client->faction);
 				client->faction.reset();
-				Channels::clientReady.SendTo(client->peer.lock(), p);
+
+				Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 			}
 			return;
 		}
@@ -167,8 +173,8 @@ namespace Receiver
 		{
 			//disconnecting client. no new faction
 			LogEvent(EventType::SessionRelated, peer, "Cannot connect ("+String(State::phase.ToString())+") right now. Disconnecting");
-			p.isReady = false;
-			Channels::clientReady.SendTo(client->peer.lock(), p);
+			response.startFactionTypes = 0;
+			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 			client->peer.lock()->Disconnect();
 			return;
 		}
@@ -182,7 +188,7 @@ namespace Receiver
 
 		bool newFaction = false;
 
-		if (State::Config::enableNexusAI && Objects::Faction::nexus->accessToken == p.factionToken && (peer.ToString() == "localhost" || peer.ToString() == "127.0.0.1"))
+		if (State::Config::enableNexusAI && Objects::Faction::nexus->accessToken == response.factionToken && (peer.ToString() == "localhost" || peer.ToString() == "127.0.0.1"))
 		{
 			LogEvent(EventType::SessionRelated, peer, "Access to nexus faction permitted.");
 			faction = Objects::Faction::nexus;
@@ -190,13 +196,13 @@ namespace Receiver
 		#ifdef _DEBUG
 			if (faction
 				|| (Objects::Faction::all.IsNotEmpty() && (faction = Objects::Faction::all.first().lock()))
-				|| State::tokenMap.Query(p.factionToken,faction))
+				|| State::tokenMap.Query(response.factionToken,faction))
 		#else
 			if (faction || State::tokenMap.Query(p.factionToken,faction))
 		#endif
 		{
 			#ifdef _DEBUG
-				p.factionToken = faction->accessToken;
+				response.factionToken = faction->accessToken;
 			#endif
 			State::PClient other;
 			if (State::playerMap.Query(faction,other))
@@ -207,8 +213,8 @@ namespace Receiver
 				{
 					//disconnecting client. no new faction
 					LogEvent(EventType::SessionRelated, peer, "Disconnecting AI client.");
-					p.isReady = false;
-					Channels::clientReady.SendTo(client->peer.lock(), p);
+					response.startFactionTypes = 0;
+					Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 					client->peer.lock()->Disconnect();
 					return;
 				}
@@ -230,15 +236,15 @@ namespace Receiver
 		}
 		else
 		{
-			if (p.factionToken.value.IsSet())
+				if (response.factionToken.value.IsSet())
 			{
-				LogEvent(EventType::SessionRelated,peer,"Provided token not recognized: "+p.factionToken.value.ToString());
+				LogEvent(EventType::SessionRelated,peer,"Provided token not recognized: "+response.factionToken.value.ToString());
 
 				if (State::Config::closedGame && State::roundNumber > 0)
 				{
 					foreach (Objects::Faction::all,f)
 					{
-						ASSERT__(f->lock()->accessToken != p.factionToken);
+						ASSERT__(f->lock()->accessToken != response.factionToken);
 						LogEvent(EventType::Debug,peer,"Known token: "+f->lock()->accessToken.ToString());
 					}
 				}
@@ -247,7 +253,7 @@ namespace Receiver
 			else
 			{
 				LogEvent(EventType::SessionRelated,peer,"No faction token provided");
-				p.factionToken.value.Generate();
+				response.factionToken.value.Generate();
 			}
 			newFaction = true;
 		}
@@ -263,9 +269,8 @@ namespace Receiver
 		{
 			if (State::Config::closedGame && State::roundNumber > 0)
 			{
-				p.isReady = false;
-				
-				Channels::clientReady.SendTo(peer,p);
+				response.startFactionTypes = 0;
+				Channels::clientFactionResponse.SendTo(peer,response);
 				LogEvent(EventType::SessionRelated,peer,"Game is closed. User does not have any valid access token. Join-request rejected.");
 				return;
 			}
@@ -278,8 +283,8 @@ namespace Receiver
 			
 			LogEvent(EventType::SessionRelated,peer,"Created new faction.");
 
-			client->faction->accessToken = p.factionToken;
-			State::tokenMap.Set(p.factionToken,client->faction);
+			client->faction->accessToken = response.factionToken;
+			State::tokenMap.Set(response.factionToken,client->faction);
 		}
 		else
 		{
@@ -289,9 +294,8 @@ namespace Receiver
 		State::playerMap.Set(client->faction,client);
 		client->wantNewRound = false;
 
-		p.planetConfig = State::persistentPlanetInfo;
 
-		Channels::clientReady.SendTo(client->peer.lock(),p);
+		Channels::clientFactionResponse.SendTo(client->peer.lock(),response);
 		Channels::setFactionID.SendTo(client->peer.lock(),client->faction->id);
 
 		//CHEAT_SHOW_ALL_RESOURCES
@@ -1647,6 +1651,7 @@ namespace Receiver
 					client->lastPing = timer.Now();
 				}
 				peer.SendSignal(Protocol::ChannelID::Pong);
+			//	LogEvent(EventType::ChatMessage,"pong");
 			break;
 		}
 	}

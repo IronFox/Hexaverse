@@ -16,7 +16,7 @@ namespace Receiver
 	void	ConstructionAbort(Protocol::ConstructionAbort&ca, TCP::Peer&peer);
 	void	ConstructionBegin(Protocol::ConstructionBegin&cb, TCP::Peer&peer);
 	void	EnableStructure(Protocol::EnableStructure&es, TCP::Peer&peer);
-	void	ClientReady(Protocol::ClientReady&, TCP::Peer&peer);
+	void	ClientFaction(Protocol::ClientFactionRequest&, TCP::Peer&peer);
 	void	RestoreCoreLink(NET(TUniqueID)&uuid, TCP::Peer&peer);
 	void	RemoveEntity(NET(TUniqueID)&uuid, TCP::Peer&peer);
 	void	Automate(Protocol::Automate&, TCP::Peer&peer);
@@ -79,7 +79,7 @@ namespace Channels
 	extern TCP::Channel<Protocol::ConstructionAbort, 1, Protocol::ChannelID::ConstructionAbort>			constructionAbort;
 	extern TCP::Channel<Protocol::ConstructionBegin, 1, Protocol::ChannelID::ConstructionBegin>			constructionBegin;
 	extern TCP::Channel<Protocol::EnableStructure, 1, Protocol::ChannelID::EnableStructure>				enableStructure;
-	extern TCP::Channel<Protocol::ClientReady, 1, Protocol::ChannelID::ClientReady>						clientReady;
+	extern TCP::Channel<Protocol::ClientFactionRequest, 1, Protocol::ChannelID::ClientFaction>			clientFactionRequest;
 	
 	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::RestoreCoreLink>						restoreCoreLink;
 	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::RemoveEntity>							removeEntity;
@@ -91,6 +91,7 @@ namespace Channels
 	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::IdentifyUser>							identifyUserRecv;
 	extern TCP::Channel<Package::NetString<256>, 1, Protocol::ChannelID::ChatMessage>					chatMessage;
 
+	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>		clientFactionResponse;
 	extern TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>	markerCreationFailedLimitReached;
 	extern TCP::ObjectSender<Protocol::WorldDelta,Protocol::ChannelID::WorldDelta>						updateWorld;
 	extern TCP::ObjectSender<Protocol::NewMobileEntity,Protocol::ChannelID::NewMobileEntity>			newMobileEntity;

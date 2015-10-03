@@ -16,7 +16,7 @@ namespace Network
 	bool						ControlEnabled();
 
 
-	extern bool			amReady,
+	extern bool			haveFaction,
 						haveId,
 						amOnline;
 	#ifdef HAS_WINDOW
@@ -31,6 +31,8 @@ namespace Network
 	extern GenericHashTable<TUniqueID,CryptographicID,TUniqueID>	accessMap;
 	extern GenericHashTable<TUniqueID,Objects::OwnerParameter,TUniqueID>	factionMap;
 
+
+	extern UINT32			chosenFactionTypes;
 
 	extern UINT32			roundNumber;
 					//dbgRoundNumber = 0xFFFFFFFF;
@@ -50,6 +52,8 @@ namespace Network
 	void SaveWorldAccessTokens();
 
 	void LoadWorldAccessTokens();
+
+	void AbandonCurrentFaction();
 
 	
 	namespace ServerDiscovery
@@ -71,7 +75,7 @@ namespace Network
 
 	namespace Receiver
 	{
-		extern bool			eventsLocked/* = true*/;
+		extern bool			eventsLocked/* = true*/;	//purely for debugging purposes. If set no events should be pouring in from the server. When the connection is lost, this is set to true, and no evenst should be triggered until a new connection is established
 
 
 		void	OnClientStateResponse(Protocol::Result&response);
@@ -92,7 +96,7 @@ namespace Network
 		void	DestroyEntity(Protocol::DestroyEntity&de);
 		void	ControlMessage(Protocol::ControlMessage&msg);
 
-		void	ClientReady(Protocol::ClientReady&cr);
+		void	ClientFactionRequest(Protocol::ClientFactionRequest&cr);
 
 		void	SetFactionID(NET(TUniqueID)&id);
 		void	PhaseChange(Protocol::PhaseChange&c);
@@ -133,7 +137,7 @@ namespace Network
 		extern TCP::Channel<Protocol::StructureConstruction,0,Protocol::ChannelID::InstantiateStructure>newStructure;
 		extern TCP::Channel<Protocol::StructureState,0,Protocol::ChannelID::UpdateStructure>			structureStateUpdate;
 		extern TCP::Channel<Protocol::DestroyEntity,0,Protocol::ChannelID::DestroyEntity>				destroyEntity;
-		extern TCP::Channel<Protocol::ClientReady,0,Protocol::ChannelID::ClientReady>					clientReady;
+		extern TCP::Channel<Protocol::ClientFactionResponse,0,Protocol::ChannelID::ClientFaction>		clientFactionResponse;
 		extern TCP::Channel<NET(TUniqueID),0,Protocol::ChannelID::SetFactionID>							setFactionID;
 
 		extern TCP::Channel<Protocol::PhaseChange,0,Protocol::ChannelID::PhaseChange>					phaseChange;
@@ -157,6 +161,7 @@ namespace Network
 		extern TCP::Channel<NET(int32_t), 0, Protocol::ChannelID::UplinkBandwidth>						uplinkBandwidth;
 
 
+		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		extern TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
 		extern TCP::ObjectSender<Protocol::ClientState,Protocol::ChannelID::SetClientState>					clientStateSender;
 		extern TCP::ObjectSender<Protocol::EntityDirectCommand, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;

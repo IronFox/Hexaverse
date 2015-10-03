@@ -23,7 +23,7 @@ void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird
 
 namespace Network
 {
-	bool			amReady = false,haveId = false,amOnline=false;
+	bool			haveFaction = false,haveId = false,amOnline=false;
 	#ifdef HAS_WINDOW
 		bool		amLocated=false;
 	#endif
@@ -47,7 +47,6 @@ namespace Network
 					roundTimer = 0;
 	Timer::Time		phaseStarted;
 	bool			newRoundRequested = false;
-
 
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
@@ -422,11 +421,12 @@ namespace Network
 
 
 
-		void	ClientReady(Protocol::ClientReady&cr)
+		void	ClientFactionResponse(Protocol::ClientFactionResponse&cr)
 		{
 			ASSERT__(!eventsLocked);
 
-			Grid::CellStack::bottom.content = Grid::Content::Reinterpret(cr.planetConfig.value.innerCoreType);
+			Grid::Content coreContent = Grid::Content::Reinterpret(cr.planetConfig.value.innerCoreType);
+			Grid::CellStack::bottom.content = coreContent;
 			#ifdef HAS_WINDOW
 				Grid::CellStack::bottom.visible = 1;
 				Grid::UpdateAtmosphere(cr.planetConfig.value.atmosphereColor);
@@ -434,8 +434,8 @@ namespace Network
 			#endif
 
 
-			amReady = cr.isReady;
-			if (amReady)
+			haveFaction = cr.startFactionTypes != 0;
+			if (haveFaction)
 			{
 				activeToken = cr.factionToken;
 				activeTokenString = activeToken.ToString();
@@ -445,6 +445,37 @@ namespace Network
 					accessMap.Set(worldID,activeToken);
 					SaveWorldAccessTokens();
 				}
+			}
+			else
+			{
+				LogEvent(EventType::SessionRelated, nullptr, "Server response: Faction void.");
+				haveFaction = false;
+				Objects::FlushAllData();
+				Network::gameProgress.gameOver = true;
+				Network::gameProgress.gameWon = false;
+				Network::gameProgress.status = "Faction not set";
+				Network::gameProgress.warning = "";
+				Network::newRoundRequested = false;
+				Network::factionMap.Clear();
+				Objects::Faction::allKnown.Clear();
+
+				Network::myFaction.reset();
+				Animation::primitives.Clear();
+				Animation::actives.Clear();
+				Animation::activeTrajectory.Clear();
+				Animation::atTime = 0;
+
+
+				#ifdef HAS_WINDOW
+					amLocated = false;
+				#endif
+
+
+				if (RuntimeConfig::aiMode && RuntimeConfig::serverURL.IsNotEmpty())
+					application_shutting_down = true;
+				#ifdef HAS_WINDOW
+					QueryNicknameIfEmpty();
+				#endif
 			}
 		}
 
@@ -648,6 +679,8 @@ namespace Network
 	{
 		TCP::Channel<Protocol::ControlMessage,0,Protocol::ChannelID::ControlMessage>				controlMessage(Receiver::ControlMessage);
 
+		TCP::Channel<Protocol::ClientFactionResponse,0,Protocol::ChannelID::ClientFaction>			clientFactionResponse(Receiver::ClientFactionResponse);
+
 		TCP::Channel<Protocol::Result,0,Protocol::ChannelID::SetClientState>						clientStateUpdateResponse(Receiver::OnClientStateResponse);
 		TCP::Channel<Protocol::WorldDelta,0,Protocol::ChannelID::WorldDelta>						worldData(Receiver::OnWorldDelta);
 		TCP::Channel<Protocol::NewMobileEntity,0,Protocol::ChannelID::NewMobileEntity>				newMobileEntity(Receiver::OnNewMobileEntity);
@@ -655,7 +688,6 @@ namespace Network
 		TCP::Channel<Protocol::StructureConstruction,0,Protocol::ChannelID::InstantiateStructure>	newStructure(Receiver::OnNewStructure);
 		TCP::Channel<Protocol::StructureState,0,Protocol::ChannelID::UpdateStructure>				structureStateUpdate(Receiver::OnStructureState);
 		TCP::Channel<Protocol::DestroyEntity,0,Protocol::ChannelID::DestroyEntity>					destroyEntity(Receiver::DestroyEntity);
-		TCP::Channel<Protocol::ClientReady,0,Protocol::ChannelID::ClientReady>						clientReady(Receiver::ClientReady);
 		TCP::Channel<NET(TUniqueID),0,Protocol::ChannelID::SetFactionID>							setFactionID(Receiver::SetFactionID);
 
 		TCP::Channel<Protocol::PhaseChange,0,Protocol::ChannelID::PhaseChange>						phaseChange(Receiver::PhaseChange);
@@ -680,6 +712,8 @@ namespace Network
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
 
 
+
+		TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
 		TCP::ObjectSender<Protocol::ClientState,Protocol::ChannelID::SetClientState>				clientStateSender;
 		TCP::ObjectSender<Protocol::EntityDirectCommand, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
@@ -709,6 +743,21 @@ namespace Network
 
 	String			chosenNickname;
 	Timer::Time		lastPong = timer.Now();
+	UINT32			chosenFactionTypes = Protocol::FactionType::RegularFaction;
+
+
+
+	void			AbandonCurrentFaction()
+	{
+		if (haveFaction && client.IsConnected())
+		{
+			Protocol::ClientFactionRequest ready;
+			ready.startFactionTypes = 0;
+			ready.factionToken.value = CryptographicID();
+			LogEvent(EventType::SessionRelated, nullptr, "Abandoning current faction");
+			Channels::clientFactionRequest.SendTo(client,ready);
+		}
+	}
 
 
 	void		OnEvent(TCP::event_t ev, TCP::Peer&)
@@ -732,8 +781,8 @@ namespace Network
 				LogEvent(EventType::SessionRelated, nullptr, "Connection established to "+client.ToString());
 				Channels::clientStateSender.SendTo(client,state);
 
-				Protocol::ClientReady ready;
-				ready.isReady = true;
+				Protocol::ClientFactionRequest ready;
+				ready.startFactionTypes = chosenFactionTypes;
 				if (RuntimeConfig::aiMode)
 				{
 					ready.factionToken = RuntimeConfig::aiAccessToken;
@@ -755,7 +804,7 @@ namespace Network
 				}
 
 
-				Channels::clientReady.SendTo(client,ready);
+				Channels::clientFactionRequest.SendTo(client,ready);
 				lastPong = timer.Now();
 			}
 			break;
@@ -769,7 +818,7 @@ namespace Network
 			{
 				LogEvent(EventType::SessionRelated, nullptr, "Connection lost");
 				amOnline = false;
-				amReady = false;
+				haveFaction = false;
 				//dbgRoundNumber = 0xFFFFFFFF;
 				Objects::FlushAllData();
 				Network::gameProgress.gameOver = false;
@@ -831,7 +880,7 @@ namespace Network
 		client.InstallChannel(Channels::structureStateUpdate);
 		client.InstallChannel(Channels::destroyEntity);
 		client.InstallChannel(Channels::controlMessage);
-		client.InstallChannel(Channels::clientReady);
+		client.InstallChannel(Channels::clientFactionResponse);
 		client.InstallChannel(Channels::setFactionID);
 
 		client.InstallChannel(Channels::phaseChange);

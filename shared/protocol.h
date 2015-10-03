@@ -1674,11 +1674,27 @@ namespace Protocol
 		, NETA(TResourceCell), cells
 	)
 
-	NETSTRUCT3(ClientReady
-		, NET(bool), isReady
+
+	struct FactionType
+	{
+		enum flag_t
+		{
+			RegularFaction = 0x1,
+		};
+	};
+
+
+	NETSTRUCT3(ClientFactionResponse
+		, NET(UINT32), startFactionTypes
 		, NET(CryptographicID), factionToken
 		, NET(Grid::TSharedPlanetConfig), planetConfig
 	)
+
+	NETSTRUCT2(ClientFactionRequest
+		, NET(UINT32), startFactionTypes
+		, NET(CryptographicID), factionToken
+	)
+
 	NETSTRUCT4(GameProgress
 		, Package::NetString<256>, status
 		, Package::NetString<256>, warning
@@ -1742,7 +1758,7 @@ namespace Protocol
 			PhaseChange,		//s2c: PhaseChange
 
 			SetClientState,		//c2s: ClientState -> s2c: Result
-			ClientReady,		//c2s: ClientReady -> s2c: ClientReady
+			ClientFaction,		//c2s: ClientFactionRequest -> s2c: ClientFactionResponse
 			SetFactionID,		//s2c: NET(TUniqueID)
 
 			WorldDelta,			//s2c : WorldDelta

@@ -1062,14 +1062,15 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 
-		void			DisableModes(bool controlEnabled)
+		bool			DisableModes(bool controlEnabled)
 		{
 			if (activeCursorMode == CursorMode::Idle)
-				return;
+				return false;
 			buildCandidates.Clear();
 			removeCandidates.Clear();
 			activeCursorMode = CursorMode::Idle;
 			UpdateChoices(controlEnabled);
+			return true;
 		}
 
 

@@ -141,8 +141,9 @@ namespace Objects
 		Resets the cursor mode to idle.
 		Updates choices and commands if necessary.
 		@param controlEnabled Pass true if player controls are currently enabled (not disabled due to wrong phase, or open modal dialogs)
+		@return true, if any modes were disabled
 		*/
-		void			DisableModes(bool controlEnabled);
+		bool			DisableModes(bool controlEnabled);
 	#endif
 
 
