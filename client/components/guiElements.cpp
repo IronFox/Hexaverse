@@ -476,7 +476,7 @@ namespace GUIElements
 			ASSERT__(!anchor.min.isActive);
 			ASSERT__(!anchor.max.isActive);
 			const TAnchor&anc = anchor.center;
-			const float dist = anc.distanceIsPercent ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
+			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
 			if (anc.references.IsNotEmpty())
 			{
 				float avg = 0.f;
@@ -513,7 +513,7 @@ namespace GUIElements
 		{
 			const TAnchor&anc = anchor.min;
 
-			const float dist = anc.distanceIsPercent ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
+			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
 
 			if (anc.references.IsNotEmpty())
 			{
@@ -533,7 +533,7 @@ namespace GUIElements
 		{
 			const TAnchor&anc = anchor.max;
 
-			const float dist = anc.distanceIsPercent ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
+			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
 
 			if (anc.references.IsNotEmpty())
 			{
@@ -558,6 +558,20 @@ namespace GUIElements
 
 		return rs;
 	}
+
+	void			Component::SetCenteredAbsoluteWidth(float w)
+	{
+		anchorConfig.Left().Set(w*0.25f,false);
+		anchorConfig.Right().Set(w*0.25f,false);
+
+	}
+	void			Component::SetCenteredRelativeWidth(float w)
+	{
+		anchorConfig.Left().Set(w*0.25f);
+		anchorConfig.Right().Set(w*0.25f);
+	}
+
+
 
 
 	/*static*/ bool		Component::Set(float&ref, float to)

@@ -50,7 +50,7 @@ namespace GUIElements
 	{
 		bool			isActive = false;
 		float			distanceFromReference = 0.f;	//!< Distance to position extreme from closest reference. If no references are set, uses context edge instead.
-		bool			distanceIsPercent = true;	//Indicates that the value stored in @a distanceFromReference should be multiplied with the context extend
+		bool			distanceIsRelative = true;	//Indicates that the value stored in @a distanceFromReference should be multiplied with the context extend
 		Buffer0<WComponent>	references;			//!< Zero or more reference components. If none are set, the respective context extreme is used. If more than one are set, the closest is used
 
 		void			Set(const PComponent&c, float distance)
@@ -61,11 +61,13 @@ namespace GUIElements
 			distanceFromReference = distance;
 			references.Append(c);
 		}
-		void			Set(float distance)
+		void			Set(float distance, bool relative=true)
 		{
 			isActive = true;
 			distanceFromReference = distance;
+			distanceIsRelative = relative;
 		}
+
 	};
 
 
@@ -101,6 +103,9 @@ namespace GUIElements
 		virtual void	SetLocation(const Rect<>&loc) {rect = loc;}
 
 		bool			FullAutoLayout(const Rect<>&context);
+
+		void			SetCenteredAbsoluteWidth(float w);
+		void			SetCenteredRelativeWidth(float w);
 
 		const Rect<>&	GetLocation() const {return rect;}
 	};
@@ -407,6 +412,8 @@ namespace GUIElements
 
 
 	};
+
+	typedef std::shared_ptr<Window>	PWindow;
 
 
 

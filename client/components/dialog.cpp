@@ -549,9 +549,6 @@ namespace Dialog
 
 	WDialog	Query(const String&query, const String&initial, const String&allowChars, const PCheckInput&check, const PFetchInput&fetch)
 	{
-		textout.pushState();
-		textout.setScale(1.f,1.f);
-
 		GUIElements::Input::onChange = Detail::OnInput;
 		GUIElements::Input::onDone = Detail::OnDone;
 
@@ -566,10 +563,6 @@ namespace Dialog
 
 		d->userInput->SetCurrent(initial);
 		d->userInput->SetAllowed(allowChars);
-
-		//d->ReLayout();
-
-		textout.popState();
 		return d;
 	}
 
@@ -600,9 +593,6 @@ namespace Dialog
 		if (Detail::factionDialog)
 			RemoveDialog(Detail::factionDialog);
 
-		textout.pushState();
-		textout.setScale(1.f,1.f);
-
 
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton, "Close", false);
 
@@ -620,7 +610,6 @@ namespace Dialog
 		d->textField->zoom = 0.9f;
 		d->ReLayout();
 
-		textout.popState();
 		return d;
 	}
 
@@ -692,8 +681,6 @@ namespace Dialog
 		static StringTable<DX11::Texture,Strategy::Swap>	textureMap;
 
 
-		textout.pushState();
-		textout.setScale(1.f,1.f);
 
 		PDialog&d = /*Detail::modalDialogs.IsEmpty() ? Detail::modalDialogs.Append() : */Detail::pendingTutorials.Push();
 		d.reset(new Dialog());
@@ -732,7 +719,6 @@ namespace Dialog
 		d->key = key;
 		//d.cancelButton.SetText( "Skip Tutorial" );
 
-		textout.popState();
 		OnTutorialsChanged();
 
 		d->ReLayout();
@@ -789,8 +775,6 @@ namespace Dialog
 		if (ck == CheckResult::Abort)
 			return PDialog();
 
-		textout.pushState();
-		textout.setScale(1.f,1.f);
 
 
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton| Detail::ComponentFlags::CancelButton, "Confirm", false);
@@ -800,7 +784,6 @@ namespace Dialog
 		d->textField->SetText( query );
 
 		d->ReLayout();
-		textout.popState();
 		return d;
 	}
 
@@ -810,8 +793,6 @@ namespace Dialog
 		if (ck == CheckResult::Abort)
 			return PDialog();
 
-		textout.pushState();
-		textout.setScale(1.f,1.f);
 
 
 		PDialog d = Detail::NewModalDialog(0, "", false);
@@ -820,7 +801,6 @@ namespace Dialog
 		d->textField->SetText( message );
 
 		d->ReLayout();
-		textout.popState();
 		return d;
 	}
 
@@ -830,8 +810,6 @@ namespace Dialog
 	*/
 	WDialog	ShowMessage(const String&msg)
 	{
-		textout.pushState();
-		textout.setScale(1.f,1.f);
 
 
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton, "Got it", false);
@@ -839,7 +817,6 @@ namespace Dialog
 		d->textField->SetText( msg );
 
 		d->ReLayout();
-		textout.popState();
 
 		return d;
 	}
