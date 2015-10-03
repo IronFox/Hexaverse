@@ -199,8 +199,9 @@ namespace Dialog
 		//};
 	
 
-		
-		Buffer0<PDialog,Swap>	modalDialogs;
+		//GUIElements::PComponent	mouseComponent;	//component that caught the last mouse down event
+		Buffer0<GUIElements::PWindow,Swap>	visibleWindows;
+		Buffer0<PDialog,Swap>	visibleDialogs;//subset of visibleWindows, not necessarily the top-most one(s)
 		Queue<PDialog,Swap>		pendingTutorials;
 		PDialog					factionDialog;
 		bool		showTutorials = true;
@@ -240,10 +241,11 @@ namespace Dialog
 
 		PDialog	NewModalDialog(UINT32 componentFlags, const String&confirmWord, bool isTutorial)
 		{
-			if (modalDialogs.IsNotEmpty())
-				modalDialogs.last()->Deactivate();
+			if (visibleWindows.IsNotEmpty())
+				visibleWindows.last()->Deactivate();
 			PDialog dialog(new Dialog());
-			modalDialogs<<dialog;
+			visibleWindows << dialog;
+			visibleDialogs << dialog;
 			Configure(dialog,componentFlags,confirmWord, isTutorial);
 			dialog->Activate();
 			return dialog;
@@ -291,8 +293,9 @@ namespace Dialog
 				cancelButton.reset(new GUIElements::Button());
 
 				if (confirmButton)
-					confirmButton->anchorConfig.Right().Set(0.55f);
-				cancelButton->anchorConfig.Left().Set(0.55f);
+					confirmButton->anchorConfig.Right().Set(0.5f);
+				cancelButton->anchorConfig.Left().Set(0.5f);
+				cancelButton->anchorConfig.Right().Set(0.f);
 				cancelButton->anchorConfig.Top().Set(inputField,0.025f);	//will abort if inputField is empty
 				cancelButton->anchorConfig.Top().Set(textField,0.025f);		//let's try if setting both works
 				//cancelButton->anchorConfig.Top().Set(imageField,0.025f);	//let's try if setting both works
@@ -467,9 +470,10 @@ namespace Dialog
 		image.reset();
 
 		Deactivate();
-		Detail::modalDialogs.FindAndErase(shared_from_this());
-		if (Detail::modalDialogs.IsNotEmpty())
-			Detail::modalDialogs.last()->Activate();
+		Detail::visibleWindows.FindAndErase(shared_from_this());
+		Detail::visibleDialogs.FindAndErase(shared_from_this());
+		if (Detail::visibleWindows.IsNotEmpty())
+			Detail::visibleWindows.last()->Activate();
 	}
 
 	void		Dialog::Confirm(bool bySpace)
@@ -493,10 +497,11 @@ namespace Dialog
 			DumpMe();
 		}
 
-		if (isTutorial && Detail::pendingTutorials.IsNotEmpty() && Detail::modalDialogs.IsEmpty())
+		if (isTutorial && Detail::pendingTutorials.IsNotEmpty() && Detail::visibleWindows.IsEmpty())
 		{
-			Detail::modalDialogs << Detail::pendingTutorials.Peek();
-			Detail::modalDialogs.last()->Activate();
+			Detail::visibleDialogs << Detail::pendingTutorials.Peek();
+			Detail::visibleWindows << Detail::pendingTutorials.Peek();
+			Detail::visibleWindows.last()->Activate();
 			Detail::pendingTutorials.EraseFront();
 		}
 	}
@@ -506,8 +511,8 @@ namespace Dialog
 	{
 		void OnInput()
 		{
-			if (modalDialogs.IsNotEmpty())
-				modalDialogs.last()->DetectEnabledState();
+			if (visibleWindows.IsNotEmpty())
+				visibleWindows.last()->DetectEnabledState();
 		}
 		void OnDone()
 		{
@@ -518,12 +523,15 @@ namespace Dialog
 
 	bool	ConfirmCurrent(bool bySpace)
 	{
-		if (Detail::modalDialogs.IsEmpty())
+		if (Detail::visibleWindows.IsEmpty())
 			return false;
-		Detail::modalDialogs.last()->Confirm(bySpace);
-		return true;
-
-
+		PDialog d = To<Dialog>::DynamicCast(Detail::visibleWindows.last());
+		if (d)
+		{
+			d->Confirm(bySpace);
+			return true;
+		}
+		return false;
 	}
 
 
@@ -539,7 +547,7 @@ namespace Dialog
 	{
 		if (Detail::pendingTutorials.IsNotEmpty())
 		{
-			Detail::modalDialogs << Detail::pendingTutorials.Peek();
+			Detail::visibleWindows << Detail::pendingTutorials.Peek();
 			Detail::pendingTutorials.EraseFront();
 		}
 	
@@ -584,6 +592,47 @@ namespace Dialog
 		};
 
 		return words[random.getIndex(ARRAYSIZE(words)-1)];
+	}
+
+
+	
+	bool	Hide(const GUIElements::PWindow&window)
+	{
+		index_t index = Detail::visibleWindows.GetIndexOf(window);
+		if (index == InvalidIndex)
+			return false;
+
+		Detail::visibleWindows.Erase(index);
+
+		PDialog d = To<Dialog>::DynamicCast(window);
+		if (d)
+			Detail::visibleDialogs.FindAndErase(d);
+
+		if (index == Detail::visibleWindows.Count())
+		{
+			window->Deactivate();
+			if (Detail::visibleDialogs.IsNotEmpty())
+				Detail::visibleDialogs.last()->Activate();
+		}
+
+		return true;
+
+	}
+
+	bool	IsVisible(const GUIElements::PWindow&window)
+	{
+		return Detail::visibleWindows.Contains(window);
+	}
+
+	void	Show(const GUIElements::PWindow&window)
+	{
+		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.last() == window)
+			return;
+		Detail::visibleWindows.FindAndErase(window);
+		if (Detail::visibleWindows.IsNotEmpty())
+			Detail::visibleWindows.last()->Deactivate();
+		Detail::visibleWindows << window;
+		window->Activate();
 	}
 
 
@@ -659,18 +708,19 @@ namespace Dialog
 	{
 		if (!dialog)
 			return false;
-		index_t at = Detail::modalDialogs.GetIndexOf(dialog);
+		index_t at = Detail::visibleWindows.GetIndexOf(dialog);
 		if (at == InvalidIndex)
 			return false;
-		if (at == Detail::modalDialogs.Count()-1)
+		Detail::visibleDialogs.FindAndErase(dialog);
+		if (at == Detail::visibleWindows.Count()-1)
 		{
 			dialog->Deactivate();
-			Detail::modalDialogs.EraseLast();
-			if (Detail::modalDialogs.IsNotEmpty())
-				Detail::modalDialogs.last()->Activate();
+			Detail::visibleWindows.EraseLast();
+			if (Detail::visibleWindows.IsNotEmpty())
+				Detail::visibleWindows.last()->Activate();
 		}
 		else
-			Detail::modalDialogs.Erase(at);
+			Detail::visibleWindows.Erase(at);
 		return true;
 	}
 
@@ -682,7 +732,7 @@ namespace Dialog
 
 
 
-		PDialog&d = /*Detail::modalDialogs.IsEmpty() ? Detail::modalDialogs.Append() : */Detail::pendingTutorials.Push();
+		PDialog&d = /*Detail::visibleWindows.IsEmpty() ? Detail::visibleWindows.Append() : */Detail::pendingTutorials.Push();
 		d.reset(new Dialog());
 
 
@@ -725,16 +775,37 @@ namespace Dialog
 		return d;
 	}
 
-
-	bool	HandleClick()
+	bool	HandleMouseDown()
 	{
-		if (Detail::modalDialogs.IsNotEmpty())
+		if (Detail::visibleWindows.IsNotEmpty())
 		{
-			Detail::modalDialogs.last()->HandleClick();
+			GUIElements::mousePressedComponent = Detail::visibleWindows.last()->HandleMouseDown();
 			return true;
 		}
+		GUIElements::mousePressedComponent.reset();
 		return false;
 	}
+
+	void	HandleMouseUp()
+	{
+		if (GUIElements::mousePressedComponent)
+		{
+			GUIElements::mousePressedComponent->SignalMouseUp();
+			GUIElements::mousePressedComponent.reset();
+		}
+
+	}
+
+
+	//bool	HandleClick()
+	//{
+	//	if (Detail::visibleWindows.IsNotEmpty())
+	//	{
+	//		Detail::visibleWindows.last()->HandleClick();
+	//		return true;
+	//	}
+	//	return false;
+	//}
 
 
 	
@@ -747,16 +818,19 @@ namespace Dialog
 	*/
 	void	SignalSituationChange()
 	{
-		for (index_t i = 0; i < Detail::modalDialogs.Count(); i++)
+		for (index_t i = 0; i < Detail::visibleDialogs.Count(); i++)
 		{
-			if (!Detail::modalDialogs[i]->SignalChange())
+			if (!Detail::visibleDialogs[i]->SignalChange())
 			{
-				Detail::modalDialogs.Erase(i);
+				Detail::visibleWindows.FindAndErase(Detail::visibleDialogs[i]);
+				Detail::visibleDialogs.Erase(i);
 				i--;
 				continue;
 			}
-
 		}
+
+		foreach (Detail::visibleWindows,w)
+			(*w)->DetectEnabledState();
 	}
 
 
@@ -827,17 +901,18 @@ namespace Dialog
 	*/
 	bool	IsModal()
 	{
-		return Detail::modalDialogs.IsNotEmpty();
+		return Detail::visibleWindows.IsNotEmpty();
 	}
 
-	/**
-	Closes all modal dialogs
-	*/
-	void	CloseAllModal()
+	bool	CloseAllModal()
 	{
-		if (Detail::modalDialogs.IsNotEmpty())
-			Detail::modalDialogs.last()->Deactivate();
-		Detail::modalDialogs.Clear();
+		if (Detail::visibleWindows.IsNotEmpty())
+		{
+			Detail::visibleWindows.last()->Deactivate();
+			Detail::visibleWindows.Clear();
+			return true;
+		}
+		return false;
 	}
 
 
@@ -845,7 +920,7 @@ namespace Dialog
 
 	void	Render()
 	{
-		foreach (Detail::modalDialogs,d)
+		foreach (Detail::visibleWindows,d)
 		{
 			(*d)->Render();
 		}
@@ -861,7 +936,7 @@ namespace Dialog
 
 	void	Destroy()
 	{
-		Detail::modalDialogs.Clear();
+		Detail::visibleWindows.Clear();
 		Detail::pendingTutorials.Clear();
 		GUIElements::Destroy();
 	

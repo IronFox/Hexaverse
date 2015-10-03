@@ -22,7 +22,7 @@ namespace Dialog
 	typedef std::function<void(const String&)>	PFetchInput;
 
 
-	class Dialog : public GUIElements::Window,  public std::enable_shared_from_this<Dialog>
+	class Dialog : public GUIElements::Window
 	{
 		typedef GUIElements::Window	Super;
 	public:
@@ -133,6 +133,10 @@ namespace Dialog
 	bool	RemoveTutorial(const PDialog&dialog);
 
 	bool	RemoveDialog(const PDialog&dialog);
+	
+	bool	Hide(const GUIElements::PWindow&window);
+	bool	IsVisible(const GUIElements::PWindow&window);
+	void	Show(const GUIElements::PWindow&window);
 
 
 	WDialog	ShowFactions(const Buffer0<Faction>&factions);
@@ -152,8 +156,9 @@ namespace Dialog
 
 	/**
 	Closes all modal dialogs
+	@return true, if any modal dialogs were closed
 	*/
-	void	CloseAllModal();
+	bool	CloseAllModal();
 
 	/**
 	Confirms the current top-most modal dialog, if possible and existing
@@ -163,7 +168,9 @@ namespace Dialog
 
 	void	Render();
 
-	bool	HandleClick();
+	//bool	HandleClick();
+	bool	HandleMouseDown();
+	void	HandleMouseUp();
 
 
 	void	Create();
