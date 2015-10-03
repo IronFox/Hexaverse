@@ -20,6 +20,7 @@ namespace GUIElements
 {
 	index_t windowResolutionVersion = 0;
 
+	PComponent	mousePressedComponent;
 
 
 	/*virtual override*/ void	Panel::Render()
@@ -59,7 +60,12 @@ namespace GUIElements
 		if (flip)
 			std::swap(low,high);
 
-		SurfaceRenderer::Rasterize(float2(rect.x.min,rect.y.min), float4(1,1,1,low), float2(rect.x.max,rect.y.min),float4(1,1,1,low), float2(rect.x.max,rect.y.max), float4(1,1,1,high), float2(rect.x.min,rect.y.max),float4(1,1,1,high));
+		low = sqrt(low);
+		float4 lowColor(low,low,low,low);
+		high = sqrt(high);
+		float4 highColor(high,high,high,high);
+
+		SurfaceRenderer::Rasterize(float2(rect.x.min,rect.y.min), lowColor, float2(rect.x.max,rect.y.min),lowColor, float2(rect.x.max,rect.y.max), highColor, float2(rect.x.min,rect.y.max),highColor);
 		SurfaceRenderer::Flush();
 	}
 	
@@ -126,10 +132,34 @@ namespace GUIElements
 
 
 
-
-	void				Area::BaseRender(bool lit)
+	/*virtual override*/ PComponent	Panel::HandleMouseDown()
 	{
-		RenderArea(rect,lit,false);
+		for (index_t i = components.Count()-1; i < components.Count(); --i)
+		{
+			PComponent c = components[i]->HandleMouseDown();
+			if (c)
+				return c;
+		}
+		return Super::HandleMouseDown();
+	}
+
+
+	void			Panel::AnchorBelowPrevious(const PComponent&newComponent, float distanceFromSides /*= 0.015f*/,  float distanceToPrevious/* = 0.015f*/, bool distanceIsRelative/*=false*/)
+	{
+		if (components.IsNotEmpty())
+			newComponent->anchorConfig.Top().Set(components.last(), distanceToPrevious,distanceIsRelative);
+		else
+			newComponent->anchorConfig.Top().Set(distanceToPrevious,distanceIsRelative);
+		
+		newComponent->anchorConfig.Left().Set(distanceFromSides,distanceIsRelative);
+		newComponent->anchorConfig.Right().Set(distanceFromSides,distanceIsRelative);
+		components.Append(newComponent);
+	}
+
+
+	void				Area::BaseRender(bool lit, bool flipped)
+	{
+		RenderArea(rect,lit,flipped);
 	}
 
 	static const float CellSize = 0.01f;
@@ -140,6 +170,14 @@ namespace GUIElements
 		
 		return Super::UpdateHeight();
 	}
+
+	/*virtual override*/ bool			Panel::DetectEnabledState()
+	{
+		bool change = Super::DetectEnabledState();
+		foreach (components,c)
+			change |= (*c)->DetectEnabledState();
+		return change;
+	};
 
 	//DX11::BaseInstructionBlock	Area::shader;
 
@@ -306,17 +344,23 @@ namespace GUIElements
 	{
 		UpdateHeightIfNecessary();
 	
-		textout.pushState();
-		textout.scale(textZoom*zoom,textZoom*zoom);
-
-		bool hovering = !Super::sensitiveToMouse || (enabled && ContainsMouse());
 	
 		
+		bool hovering = !Super::sensitiveToMouse || (enabled && ContainsMouse());
 
 		if (fillBackground)
 		{
-			Super::BaseRender(hovering);
+			Super::BaseRender(hovering,false);
 		}
+		RenderText(hovering);
+	}
+
+	void TextField::RenderText(bool lit)
+	{
+		textout.pushState();
+		textout.scale(textZoom*zoom,textZoom*zoom);
+
+		//bool hovering = !Super::sensitiveToMouse || (enabled && ContainsMouse());
 
 		SurfaceRenderer::Flush();
 
@@ -324,7 +368,7 @@ namespace GUIElements
 		//float lineHeight = textout.getScaledHeight();
 		float top = rect.y.max;
 		if (enabled)
-			textout.color(hovering ? float4(1) : float4(0.75,0.75,0.75,1));
+			textout.color(lit ? float4(1) : float4(0.75,0.75,0.75,1));
 		else
 			textout.color(float4(0.5,0.5,0.5,1));
 		for (index_t i = 0; i < wrappedText.Count(); i++)
@@ -559,18 +603,12 @@ namespace GUIElements
 		return rs;
 	}
 
-	void			Component::SetCenteredAbsoluteWidth(float w)
+	void			Component::SetCenteredWidth(float w, bool relative)
 	{
-		anchorConfig.Left().Set(w*0.25f,false);
-		anchorConfig.Right().Set(w*0.25f,false);
-
+		float extra = 1.f - w;
+		anchorConfig.Left().Set(extra*0.5f,relative);
+		anchorConfig.Right().Set(extra*0.5f,relative);
 	}
-	void			Component::SetCenteredRelativeWidth(float w)
-	{
-		anchorConfig.Left().Set(w*0.25f);
-		anchorConfig.Right().Set(w*0.25f);
-	}
-
 
 
 

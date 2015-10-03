@@ -53,13 +53,14 @@ namespace GUIElements
 		bool			distanceIsRelative = true;	//Indicates that the value stored in @a distanceFromReference should be multiplied with the context extend
 		Buffer0<WComponent>	references;			//!< Zero or more reference components. If none are set, the respective context extreme is used. If more than one are set, the closest is used
 
-		void			Set(const PComponent&c, float distance)
+		void			Set(const PComponent&c, float distance, bool relative=true)
 		{
 			if (!c)
 				return;
 			isActive = true;
 			distanceFromReference = distance;
 			references.Append(c);
+			distanceIsRelative = relative;
 		}
 		void			Set(float distance, bool relative=true)
 		{
@@ -71,7 +72,9 @@ namespace GUIElements
 	};
 
 
-	class Component
+	extern PComponent	mousePressedComponent;	//component that caught the last mouse down event
+
+	class Component : public std::enable_shared_from_this<Component>
 	{
 	private:
 		bool			LayoutAxis(int axis, const Rect<>&context);
@@ -93,8 +96,9 @@ namespace GUIElements
 
 		virtual void	Activate() {};
 		virtual void	Deactivate() {};
-		virtual void	DetectEnabledState() {};
-		virtual bool	HandleClick() {return false;}
+		virtual bool	DetectEnabledState() {return false;}
+		virtual PComponent	HandleMouseDown() {return PComponent();}
+		virtual void	SignalMouseUp()	{}
 		virtual bool	UpdateHeightIfNecessary()	{return false;}
 		virtual bool	UpdateHeight() {return false;}
 		virtual void	Render() {};
@@ -104,8 +108,7 @@ namespace GUIElements
 
 		bool			FullAutoLayout(const Rect<>&context);
 
-		void			SetCenteredAbsoluteWidth(float w);
-		void			SetCenteredRelativeWidth(float w);
+		void			SetCenteredWidth(float w, bool relative);
 
 		const Rect<>&	GetLocation() const {return rect;}
 	};
@@ -121,7 +124,7 @@ namespace GUIElements
 		bool			autoSetHeight = true;
 
 		virtual void	Render() override;
-		virtual bool	HandleClick() override {return ContainsMouse();}
+		//virtual bool	HandleClick() override {return ContainsMouse();}
 		virtual bool	UpdateHeight() override;
 
 	};
@@ -135,7 +138,7 @@ namespace GUIElements
 	private:
 		index_t			sizeVersion = InvalidIndex;
 	protected:
-		void			BaseRender(bool lit);
+		void			BaseRender(bool lit, bool flipped);
 	public:
 		typedef Component	Super;
 
@@ -147,7 +150,7 @@ namespace GUIElements
 
 		virtual bool	AutoLayout(const Rect<>&context) override {InvalidateSize(); return Super::AutoLayout(context); }
 
-		virtual bool	HandleClick() override {return fillBackground && ContainsMouse();}
+		//virtual bool	HandleClick() override {return fillBackground && ContainsMouse();}
 		virtual void	SetLocation(const Rect<>&loc) {Super::SetLocation(loc); InvalidateSize();}
 
 
@@ -155,7 +158,7 @@ namespace GUIElements
 		{
 			sizeVersion = InvalidIndex;
 		}
-		virtual void	Render() override	{BaseRender(false);}
+		virtual void	Render() override	{if (fillBackground) BaseRender(false,false);}
 	};
 
 	class Input : public Area
@@ -199,6 +202,8 @@ namespace GUIElements
 		Array<String>	rawText;
 		Buffer0<String>	wrappedText;
 		Array<float2>	lineAt;
+	protected:
+		void			RenderText(bool lit);
 	public:
 		typedef Area	Super;
 
@@ -250,9 +255,25 @@ namespace GUIElements
 		std::function<bool()>	check;
 
 		String					baseLabel;
-
+		bool					active = false;
 		TextField::SetText;
 	public:
+		/**/			Button()
+		{
+			SetText("[-]");
+		}
+
+		/**/			Button(const String&text, std::function<void()> onPress = std::function<void()>(), std::function<bool()> check = std::function<bool()>() )
+		{
+			this->onPress = onPress;
+			this->check = check;
+			SetText(text);
+		}
+
+		virtual void	Activate() override {active = true;}
+		virtual void	Deactivate() override {active = false;}
+
+
 		void			SetText(const String&string)
 		{
 			baseLabel = string;
@@ -271,8 +292,9 @@ namespace GUIElements
 			DetectEnabledState();
 		}
 
-		virtual void	DetectEnabledState() override
+		virtual bool	DetectEnabledState() override
 		{
+			bool oldEnabled = enabled;
 			String set = baseLabel;
 			if (check && !check())
 			{
@@ -283,9 +305,26 @@ namespace GUIElements
 				enabled = true;
 
 			Super::SetText(set);
+			return enabled != oldEnabled;
 		}
 
-		virtual	bool			HandleClick() override
+		virtual void Render()
+		{
+			bool lit = active && enabled && ContainsMouse();
+			Super::BaseRender(lit,lit && mousePressedComponent.get() == this);
+			Super::RenderText(lit);
+		}
+
+		virtual PComponent	HandleMouseDown() override
+		{
+			if (ContainsMouse())
+			{
+				return shared_from_this();
+			}
+			return PComponent();
+		}
+
+		virtual	void			SignalMouseUp() override
 		{
 			if (ContainsMouse())
 			{
@@ -293,9 +332,7 @@ namespace GUIElements
 				{
 					onPress();
 				}
-				return true;
 			}
-			return false;
 		}
 	};
 	typedef std::shared_ptr<Button>	PButton;
@@ -308,17 +345,21 @@ namespace GUIElements
 		bool			autoHeight = false;
 		float			autoHeightSpacing = 0.f;//0.015f;
 
-		virtual void	DetectEnabledState() override {foreach (components,c) (*c)->DetectEnabledState(); Super::DetectEnabledState();};
-
+		virtual bool	DetectEnabledState() override;
 		
 		virtual void	Activate() override {foreach (components,c) (*c)->Activate(); Super::Activate();}
 		virtual void	Deactivate() override {foreach (components,c) (*c)->Deactivate(); Super::Deactivate();}
-		virtual bool	HandleClick() override {for (index_t i = components.Count()-1; i < components.Count(); --i) if (components[i]->HandleClick()) return true; return Super::HandleClick();}
+		//virtual bool	HandleClick() override {for (index_t i = components.Count()-1; i < components.Count(); --i) if (components[i]->HandleClick()) return true; return Super::HandleClick();}
 		virtual bool	UpdateHeight() override;
 		virtual void	Render() override;
 		virtual bool	AutoLayout(const Rect<>&context) override {bool rs = Super::AutoLayout(context); foreach (components,c) rs |= (*c)->AutoLayout(this->rect); return rs;}
 		virtual void	Translate(const float2&delta)	{Super::Translate(delta); foreach (components,c) (*c)->Translate(delta);}
 
+		virtual PComponent	HandleMouseDown() override;
+
+
+		void			AnchorBelowPrevious(Component*newComponent, float distanceFromSides = 0.015f, float distanceToPrevious = 0.015f, bool distanceIsRelative=false)	{AnchorBelowPrevious(PComponent(newComponent),distanceFromSides,distanceToPrevious,distanceIsRelative);}
+		void			AnchorBelowPrevious(const PComponent&newComponent, float distanceFromSides = 0.015f,  float distanceToPrevious = 0.015f, bool distanceIsRelative=false);
 
 	};
 
@@ -383,7 +424,7 @@ namespace GUIElements
 				FullAutoLayout();
 			Darken(context,0.7f);
 			Darken(outerRect);
-			Darken(rect);
+			//Darken(rect);
 			Super::Render();
 		}
 
@@ -391,6 +432,17 @@ namespace GUIElements
 		{
 			return Super::FullAutoLayout(context);
 		}
+
+		virtual bool	DetectEnabledState() override
+		{
+			if (Super::DetectEnabledState())
+			{
+				FullAutoLayout();
+				return true;
+			}
+			return false;
+		}
+
 
 
 		virtual bool	UpdateHeightIfNecessary() override
