@@ -24,11 +24,22 @@ namespace GUIElements
 	PComponent	mousePressedComponent;
 
 
+	void			TAnchor::SetAllOf(const PPanel&p, float distance, bool relative/*=true*/)
+	{
+		if (!p || p->components.IsEmpty())
+			return;
+		isActive = true;
+		distanceFromReference = distance;
+		foreach (p->components,c)
+			references.Append(*c);
+		distanceIsRelative = relative;
+	}
+
+
 	/*virtual override*/ void	Panel::Render()
 	{
 		Super::Render(); 
-		foreach (components,c) 
-			(*c)->Render();
+		RenderChildren();
 	}
 
 
@@ -99,8 +110,7 @@ namespace GUIElements
 	}
 
 
-	static const float extraSpacing = 0.75f,
-						textZoom = 1.5f;
+	static const float textZoom = 1.5f;
 
 	bool			Area::UpdateHeightIfNecessary()
 	{
@@ -247,7 +257,7 @@ namespace GUIElements
 	void			Input::SetAllowed(const String&allowed)
 	{
 		this->allowed = allowed;
-		if (isActive)
+		if (Super::IsActive())
 			Engine::keyboard.filter(allowed.c_str());
 	}
 
@@ -266,7 +276,6 @@ namespace GUIElements
 		if (onChange)
 			Engine::keyboard.onCharHandled = OnCharHandled;
 		Engine::keyboard.read = true;
-		isActive = true;
 
 	}
 	void			Input::DeactivateInput()
@@ -275,7 +284,6 @@ namespace GUIElements
 		Engine::input.popProfile();
 		Engine::keyboard.read = false;
 		Engine::keyboard.onCharHandled =  NULL;
-		isActive = false;
 	}
 
 	String			Input::GetInput()
@@ -358,13 +366,13 @@ namespace GUIElements
 	
 	
 		
-		bool hovering = !Super::sensitiveToMouse || (enabled && ContainsMouse());
+		bool lit = IsLit();
 
 		if (fillBackground)
 		{
-			Super::BaseRender(hovering,false);
+			Super::BaseRender(lit,false);
 		}
-		RenderText(hovering);
+		RenderText(lit);
 	}
 
 	void TextField::RenderText(bool lit)
@@ -379,10 +387,13 @@ namespace GUIElements
 		//textout.locate(rect.x.min + rect.x.GetExtend()*0.05f,rect.y.max - textout.getScaledHeight()*1.5f);
 		//float lineHeight = textout.getScaledHeight();
 		float top = rect.y.max;
-		if (enabled)
-			textout.color(lit ? float4(1) : float4(0.75,0.75,0.75,1));
+		float4 baseColor;
+		if (IsEnabled())
+			baseColor = (lit ? float4(1) : float4(0.75,0.75,0.75,1));
 		else
-			textout.color(float4(0.5,0.5,0.5,1));
+			baseColor = float4(0.5,0.5,0.5,1);
+
+		textout.color(baseColor & this->color);
 		for (index_t i = 0; i < wrappedText.Count(); i++)
 		{
 			textout.locate(lineAt[i].x,lineAt[i].y+top);
@@ -415,7 +426,7 @@ namespace GUIElements
 		if (texture.IsEmpty())
 			return;
 
-		bool hovering = !sensitiveToMouse || (enabled && ContainsMouse());
+		bool lit = IsLit();
 	
 		static DX11::BaseInstructionBlock	texturedQuad;
 		if (texturedQuad.quickSlots.IsEmpty())
@@ -496,7 +507,7 @@ namespace GUIElements
 	bool			Component::FullAutoLayout(const Rect<>&context)
 	{
 		count_t numRounds = 0;
-		bool rs = false;
+		bool rs = UpdateHeight();
 		for (;;)
 		{
 			if (!AutoLayout(context))

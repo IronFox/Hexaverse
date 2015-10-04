@@ -477,13 +477,17 @@ namespace Network
 					accessMap.Set(worldID,activeToken);
 					SaveWorldAccessTokens();
 				}
-				Dialog::Hide(Dialog::loginMenu);
+				#ifdef HAS_WINDOW
+					Dialog::Hide(Dialog::loginMenu);
+				#endif
 			}
 			else
 			{
 				LogEvent(EventType::SessionRelated, nullptr, "Server response: Faction void.");
 				FlushFaction(true);
-				Dialog::Show(Dialog::loginMenu);
+				#ifdef HAS_WINDOW
+					Dialog::Show(Dialog::loginMenu);
+				#endif
 			}
 		}
 
@@ -765,7 +769,9 @@ namespace Network
 			LogEvent(EventType::SessionRelated, nullptr, "Abandoning current faction");
 			Channels::clientFactionRequest.SendTo(client,ready);
 
-			Dialog::Show(Dialog::loginMenu);
+			#ifdef HAS_WINDOW
+				Dialog::Show(Dialog::loginMenu);
+			#endif
 		}
 	}
 
@@ -832,13 +838,19 @@ namespace Network
 				lastPong = timer.Now();
 
 
-				Dialog::Show(Dialog::loginMenu);
+				#ifdef HAS_WINDOW
+					Dialog::Show(Dialog::loginMenu);
+					Dialog::CheckServersAreShown(false);
+				#endif
+
 			}
 			break;
 			case TCP::Event::ConnectionFailed:
 			{
 				LogEvent(EventType::SessionRelated, nullptr, "Connection attempt failed");
-				Dialog::SignalSituationChange();
+				#ifdef HAS_WINDOW
+					Dialog::SignalSituationChange();
+				#endif
 			}
 			break;
 			case TCP::Event::ConnectionLost:
@@ -862,9 +874,11 @@ namespace Network
 
 				Receiver::eventsLocked = true;
 
-				Dialog::Hide(Dialog::loginMenu);
-
-				Dialog::SignalSituationChange();
+				#ifdef HAS_WINDOW
+					Dialog::Hide(Dialog::loginMenu);
+					Dialog::CheckServersAreShown(true);
+					Dialog::SignalSituationChange();
+				#endif
 
 			}
 			break;
@@ -877,8 +891,12 @@ namespace Network
 		{
 			case Protocol::ChannelID::Pong:
 				lastPong = timer.Now();
-				Dialog::SignalSituationChange();
-				LogEvent(EventType::Debug,nullptr,"Got pong from server");
+				#ifdef HAS_WINDOW
+					Dialog::SignalSituationChange();
+				#endif
+				#ifdef _DEBUG
+					LogEvent(EventType::Debug,nullptr,"Got pong from server");
+				#endif
 			break;
 		}
 	}

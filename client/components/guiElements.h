@@ -7,6 +7,7 @@
 
 #include <memory>
 #include "../ExtRenderer/DirectX11.h"
+#include "../../shared/typeDecl.h"
 
 namespace GUIElements
 {
@@ -14,11 +15,15 @@ namespace GUIElements
 	namespace DX11 = Engine::DX11;
 
 
-	class Component;
-	typedef std::shared_ptr<Component> PComponent;
-	typedef std::weak_ptr<Component> WComponent;
-
-
+	DECLARE_POINTER_CLASS(Component);
+		DECLARE_POINTER_CLASS(TextField);
+			DECLARE_POINTER_CLASS(Label);
+			DECLARE_POINTER_CLASS(Button);
+		DECLARE_POINTER_CLASS(Input);
+		DECLARE_POINTER_CLASS(Image);
+		DECLARE_POINTER_CLASS(Panel);
+			DECLARE_POINTER_CLASS(ButtonPanel);
+			DECLARE_POINTER_CLASS(Window);
 	
 
 
@@ -69,6 +74,8 @@ namespace GUIElements
 			distanceIsRelative = relative;
 		}
 
+		void			SetAllOf(const PPanel&, float distance, bool relative=true);
+
 	};
 
 
@@ -77,25 +84,40 @@ namespace GUIElements
 	class Component : public std::enable_shared_from_this<Component>
 	{
 	private:
+		bool			enabled = true;
+		bool			parentIsLit = true,
+						parentIsEnabled = true;
+		bool			active = false;
+
+
 		bool			LayoutAxis(int axis, const Rect<>&context);
 	protected:
 		static void		Darken(const Rect<>&rect, float alpha=0.9f, bool flush=false);
+
 		static void		RenderArea(const Rect<>&rect, bool lit, bool flip);
+
+		virtual bool	ClientIsLit() const {return true;}
 
 		Rect<>			rect;
 	public:
-		bool			enabled = true;
-
 		Axial2<TAnchor>	anchorConfig;
 
 		static bool		Set(float&ref, float to);
 		static bool		SetCenter(TFloatRange<>&ref, float to);
 
+		bool			IsEnabled() const {return enabled && parentIsEnabled;}
+		bool			IsLit() const {return ClientIsLit() && parentIsLit;}
+		bool			IsActive() const {return active;}
+
+		bool			SetEnabled(bool newEnabled)	{ if (newEnabled != enabled) {enabled = newEnabled; PropagateParentState(parentIsEnabled,parentIsLit); return parentIsEnabled; } return false;  }
+
 		bool			ContainsMouse() const;
 		void			MoveTopTo(float h);
 
-		virtual void	Activate() {};
-		virtual void	Deactivate() {};
+		virtual void	PropagateParentState(bool enabled, bool lit)	{parentIsLit = lit; parentIsEnabled = enabled;}
+
+		virtual void	Activate() {active = true;}
+		virtual void	Deactivate() {active = false;}
 		virtual bool	DetectEnabledState() {return false;}
 		virtual PComponent	HandleMouseDown() {return PComponent();}
 		virtual void	SignalMouseUp()	{}
@@ -105,6 +127,7 @@ namespace GUIElements
 		virtual bool	AutoLayout(const Rect<>&context);
 		virtual void	Translate(const float2&delta)	{rect.Translate(delta);}
 		virtual void	SetLocation(const Rect<>&loc) {rect = loc;}
+		virtual bool	HasComponent(const PComponent&c) const {return c.get() == this;}
 
 		bool			FullAutoLayout(const Rect<>&context);
 
@@ -120,7 +143,6 @@ namespace GUIElements
 		typedef Component	Super;
 	public:
 		DX11::Texture	texture;
-		bool			sensitiveToMouse = false;
 		bool			autoSetHeight = true;
 
 		virtual void	Render() override;
@@ -128,8 +150,6 @@ namespace GUIElements
 		virtual bool	UpdateHeight() override;
 
 	};
-	typedef std::shared_ptr<Image> PImage;
-
 
 
 
@@ -142,7 +162,6 @@ namespace GUIElements
 	public:
 		typedef Component	Super;
 
-		bool			sensitiveToMouse = true;
 		bool			fillBackground = true;
 
 		virtual bool	UpdateHeight() override;
@@ -167,7 +186,6 @@ namespace GUIElements
 		String			backup;
 		Rect<>			core;
 		String			allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_- ";
-		bool			isActive = false;
 
 		static void		OnCharHandled(char)
 		{
@@ -185,8 +203,8 @@ namespace GUIElements
 		String			GetInput();
 		void			SetCurrent(const String&);
 
-		virtual void	Activate() override {ActivateInput();}
-		virtual void	Deactivate() override {DeactivateInput();}
+		virtual void	Activate() override {ActivateInput(); Super::Activate();}
+		virtual void	Deactivate() override {DeactivateInput(); Super::Deactivate();}
 		virtual bool	UpdateHeight() override;
 
 
@@ -194,7 +212,6 @@ namespace GUIElements
 
 		void			SetAllowed(const String&);
 	};
-	typedef std::shared_ptr<Input>	PInput;
 
 	class TextField : public Area
 	{
@@ -202,6 +219,7 @@ namespace GUIElements
 		Array<String>	rawText;
 		Buffer0<String>	wrappedText;
 		Array<float2>	lineAt;
+		float4			color = float4(1,1,1,1);
 	protected:
 		void			RenderText(bool lit);
 	public:
@@ -209,6 +227,11 @@ namespace GUIElements
 
 		bool			alignCenter = true;
 		float			zoom = 1.f;
+		
+		float			extraSpacing = 0.75f;	//!< Vertical extra spacing in multiples of line-height
+
+		void			SetColor(const float4&color)	{this->color = color;}
+		void			SetColor(float r, float g, float b, float a = 1.f)	{this->color = float4(r,g,b,a);}
 
 		void			SetText(const String&string)
 		{
@@ -231,7 +254,6 @@ namespace GUIElements
 
 		virtual void	Render() override;
 	};
-	typedef std::shared_ptr<TextField>	PTextField;
 
 
 	class Label : public TextField
@@ -241,11 +263,9 @@ namespace GUIElements
 	public:
 		/**/			Label()
 		{
-			Super::sensitiveToMouse = false;
 			Super::fillBackground = false;
 		}
 	};
-	typedef std::shared_ptr<Label>	PLabel;
 
 	class Button : public TextField
 	{
@@ -255,8 +275,11 @@ namespace GUIElements
 		std::function<bool()>	check;
 
 		String					baseLabel;
-		bool					active = false;
 		TextField::SetText;
+
+	protected:
+		virtual bool	ClientIsLit() const override {return IsActive() && IsEnabled() && ContainsMouse();}
+
 	public:
 		/**/			Button()
 		{
@@ -270,8 +293,6 @@ namespace GUIElements
 			SetText(text);
 		}
 
-		virtual void	Activate() override {active = true;}
-		virtual void	Deactivate() override {active = false;}
 
 
 		void			SetText(const String&string)
@@ -294,30 +315,31 @@ namespace GUIElements
 
 		virtual bool	DetectEnabledState() override
 		{
-			bool oldEnabled = enabled;
 			String set = baseLabel;
+			bool changed =false;
 			if (check && !check())
 			{
-				enabled = false;
-				set += " (not right now)";
+				
+				//set += " (not right now)";
+				changed = SetEnabled(false);
 			}
 			else
-				enabled = true;
+				changed = SetEnabled(true);
 
 			Super::SetText(set);
-			return enabled != oldEnabled;
+			return changed;
 		}
 
 		virtual void Render()
 		{
-			bool lit = active && enabled && ContainsMouse();
+			bool lit = IsLit();
 			Super::BaseRender(lit,lit && mousePressedComponent.get() == this);
 			Super::RenderText(lit);
 		}
 
 		virtual PComponent	HandleMouseDown() override
 		{
-			if (ContainsMouse())
+			if (IsEnabled() && ContainsMouse())
 			{
 				return shared_from_this();
 			}
@@ -328,18 +350,31 @@ namespace GUIElements
 		{
 			if (ContainsMouse())
 			{
-				if (enabled && onPress)
+				if (IsEnabled() && onPress)
 				{
 					onPress();
 				}
 			}
 		}
 	};
-	typedef std::shared_ptr<Button>	PButton;
 
 	class Panel : public Area
 	{
 		typedef Area Super;
+
+	protected:
+		void			PropagateStateToChildren()
+		{
+			bool sublit = IsLit();
+			bool subEnabled = IsEnabled();
+			foreach (components,c)
+				(*c)->PropagateParentState(subEnabled, sublit);
+		}
+		void			RenderChildren()
+		{
+			foreach (components,c) 
+				(*c)->Render();
+		}
 	public:
 		Buffer0<PComponent>	components;
 		bool			autoHeight = false;
@@ -349,20 +384,126 @@ namespace GUIElements
 		
 		virtual void	Activate() override {foreach (components,c) (*c)->Activate(); Super::Activate();}
 		virtual void	Deactivate() override {foreach (components,c) (*c)->Deactivate(); Super::Deactivate();}
-		//virtual bool	HandleClick() override {for (index_t i = components.Count()-1; i < components.Count(); --i) if (components[i]->HandleClick()) return true; return Super::HandleClick();}
 		virtual bool	UpdateHeight() override;
 		virtual void	Render() override;
 		virtual bool	AutoLayout(const Rect<>&context) override {bool rs = Super::AutoLayout(context); foreach (components,c) rs |= (*c)->AutoLayout(this->rect); return rs;}
 		virtual void	Translate(const float2&delta)	{Super::Translate(delta); foreach (components,c) (*c)->Translate(delta);}
 
+		virtual bool	HasComponent(const PComponent&c) const override {if (c.get() == this) return true; foreach (components, c2) if ((*c2)->HasComponent(c)) return true; return false;}
 		virtual PComponent	HandleMouseDown() override;
+
+
+		virtual void	PropagateParentState(bool enabled, bool lit)	override
+		{
+			Super::PropagateParentState(enabled, lit);  
+			PropagateStateToChildren();
+		}
 
 
 		void			AnchorBelowPrevious(Component*newComponent, float distanceFromSides = 0.015f, float distanceToPrevious = 0.015f, bool distanceIsRelative=false)	{AnchorBelowPrevious(PComponent(newComponent),distanceFromSides,distanceToPrevious,distanceIsRelative);}
 		void			AnchorBelowPrevious(const PComponent&newComponent, float distanceFromSides = 0.015f,  float distanceToPrevious = 0.015f, bool distanceIsRelative=false);
 
 	};
-	typedef std::shared_ptr<Panel>	PPanel;
+
+	class ButtonPanel : public Panel
+	{
+		typedef Panel	Super;
+
+		std::function<void()>	onPress;
+		std::function<bool()>	check;
+
+		bool					active = false;
+		bool					lastLit = false;
+
+	protected:
+		virtual bool	ClientIsLit() const override {return active && IsEnabled() && ContainsMouse();}
+
+	public:
+		virtual void	Activate() override
+		{
+			active = true;
+			foreach (components,c) (*c)->Activate();
+			Super::Activate();
+		}
+		virtual void	Deactivate() override
+		{
+			active = false;
+			foreach (components,c) (*c)->Deactivate();
+			Super::Deactivate();
+		}
+
+
+
+		void			SetOnPress(const std::function<void()>&event)
+		{
+			onPress = event;
+		}
+
+		void			SetCheck(const std::function<bool()>&check)
+		{
+			this->check = check;
+			DetectEnabledState();
+		}
+
+		virtual bool	DetectEnabledState() override
+		{
+			bool changed = false;
+			if (check && !check())
+			{
+				changed |= SetEnabled(false);
+			}
+			else
+				changed |= SetEnabled(true);
+			//if (changed)
+			//	Super::PropagateStateToChildren();	//implicitly done
+			return Super::DetectEnabledState() || changed;
+		}
+
+
+
+		virtual void Render()
+		{
+			bool lit = IsLit();
+			Super::BaseRender(lit,lit && mousePressedComponent.get() == this);
+			if (lastLit != lit)
+			{
+				lastLit = lit;
+				Super::PropagateStateToChildren();
+			}
+			Super::RenderChildren();
+		}
+
+		virtual PComponent	HandleMouseDown() override
+		{
+			if (IsEnabled() && ContainsMouse())
+			{
+				for (index_t i = components.Count()-1; i < components.Count(); --i)
+				{
+					PComponent c = components[i]->HandleMouseDown();
+					if (c)
+						return c;
+				}
+				return shared_from_this();
+			}
+			return PComponent();
+		}
+
+		virtual	void			SignalMouseUp() override
+		{
+			if (ContainsMouse())
+			{
+				if (IsEnabled() && onPress)
+				{
+					onPress();
+				}
+			}
+		}
+
+
+
+	};
+
+	
 
 	class Window : public Panel
 	{
@@ -380,6 +521,8 @@ namespace GUIElements
 		Rect<>				context = Rect<>(0,0,1,1);
 		bool				autoCenter = true;
 		bool				canBeImplicitlyClosed = true;	//!< Indicates that this window can be closed by events such as the Escape being pressed
+		bool				isModal = true;
+
 
 		/**/				Window()
 		{
@@ -423,7 +566,8 @@ namespace GUIElements
 			bool anyChanged = Super::UpdateHeightIfNecessary();
 			if (anyChanged)
 				FullAutoLayout();
-			Darken(context,0.7f);
+			if (isModal)
+				Darken(context,0.7f);
 			Darken(outerRect);
 			//Darken(rect);
 			Super::Render();
@@ -431,6 +575,7 @@ namespace GUIElements
 
 		bool			FullAutoLayout()
 		{
+			PropagateParentState(true,true);
 			return Super::FullAutoLayout(context);
 		}
 
@@ -465,10 +610,6 @@ namespace GUIElements
 
 
 	};
-
-	typedef std::shared_ptr<Window>	PWindow;
-
-
 
 	
 	

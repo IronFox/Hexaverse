@@ -1655,7 +1655,9 @@ namespace Receiver
 					client->lastPing = timer.Now();
 				}
 				peer.SendSignal(Protocol::ChannelID::Pong);
-				LogEvent(EventType::Debug,"pong");
+				#ifdef _DEBUG
+					LogEvent(EventType::Debug,"pong");
+				#endif
 			break;
 		}
 	}

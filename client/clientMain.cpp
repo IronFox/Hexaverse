@@ -74,8 +74,7 @@ extern "C"
 	Engine::Textout<DX11::TextureFont>	textout;
 
 
-	Dialog::PMenu		mainMenu,
-						createFactionMenu;
+	Dialog::PMenu		mainMenu;
 
 #endif
 
@@ -1444,111 +1443,111 @@ public:
 };
 
 typedef std::shared_ptr<Component>	PComponent;
-
-class Label : public Component
-{
-public:
-	enum orientation_t
-	{
-		ExpandLeft, ExpandRight, ExpandCenter
-
-	};
-
-
-	String					text;
-	float4					color;
-	float					fontScale;
-	//orientation_t			orientation;
-
-
-	/**/					Label(float2 topLeft, orientation_t orientation, const String&msg, float fontScale, float4 color=float4(1)):text(msg),color(color),fontScale(fontScale)//,orientation(orientation)
-	{
-		
-		#ifdef HAS_WINDOW
-			textout.pushState();
-
-			textout.scale(fontScale,fontScale);
-			switch (orientation)
-			{
-				case ExpandRight:
-					location.x.min = topLeft.x;
-					location.y.max = topLeft.y;
-					location.x.max = location.x.min + textout.getScaledWidth(text);
-					location.y.min = location.y.max - textout.getScaledHeight();
-				break;
-				case ExpandLeft:
-					location.x.min = topLeft.x - textout.getScaledWidth(text);
-					location.y.max = topLeft.y;
-					location.x.max = topLeft.x;
-					location.y.min = location.y.max - textout.getScaledHeight();
-				break;
-				case ExpandCenter:
-				{
-					float w = textout.getScaledWidth(text);
-					location.x.min = topLeft.x - w/2.f;
-					location.y.max = topLeft.y;
-					location.x.max = topLeft.x + w/2.f;
-					location.y.min = location.y.max - textout.getScaledHeight();
-				}
-				break;
-			}
-			textout.popState();
-		#endif
-	}
-
-	virtual void			Render()
-	{
-		#ifdef HAS_WINDOW
-			textout.pushState();
-			textout.color(color);
-			textout.locate(location.x.min,location.y.min);
-			textout.scale(fontScale,fontScale);
-			textout << text;
-			textout.popState();
-		#endif
-	}
-
-};
-
-
-class Slider : public Component
-{
-public:
-	const int				min,max;
-	int						current;
-
-	/**/					Slider(const Rect<>&location, int min, int max):min(min),max(max),current(0)
-	{
-		this->location = location;
-	}
-
-
-	virtual bool			HandleClick()	{return false;};
-	virtual void			Render() override
-	{
-		#ifdef HAS_WINDOW
-			TVec2<> edges[6];
-			static const float chamfer = 0.04f;
-			float aspect = display.pixelAspect();
-			edges[0] = float2(location.x.min,location.y.max);
-			edges[1] = edges[0];
-			edges[0].x += chamfer;
-			edges[1].y -= chamfer * aspect;
-
-			edges[2] = float2(location.x.min,location.y.min);
-
-			edges[3] = float2(location.x.max,location.y.min);
-			edges[4] = edges[3];
-			edges[3].x -= chamfer;
-			edges[4].y += chamfer * aspect;
-
-			edges[5] = float2(location.x.max,location.y.max);	
-	
-			SurfaceRenderer::SetColor(float4());
-			SurfaceRenderer::RasterizeConvexPolygon(edges,ARRAYSIZE(edges));
-		#endif
-	}
-};
+//
+//class Label : public Component
+//{
+//public:
+//	enum orientation_t
+//	{
+//		ExpandLeft, ExpandRight, ExpandCenter
+//
+//	};
+//
+//
+//	String					text;
+//	float4					color;
+//	float					fontScale;
+//	//orientation_t			orientation;
+//
+//
+//	/**/					Label(float2 topLeft, orientation_t orientation, const String&msg, float fontScale, float4 color=float4(1)):text(msg),color(color),fontScale(fontScale)//,orientation(orientation)
+//	{
+//		
+//		#ifdef HAS_WINDOW
+//			textout.pushState();
+//
+//			textout.scale(fontScale,fontScale);
+//			switch (orientation)
+//			{
+//				case ExpandRight:
+//					location.x.min = topLeft.x;
+//					location.y.max = topLeft.y;
+//					location.x.max = location.x.min + textout.getScaledWidth(text);
+//					location.y.min = location.y.max - textout.getScaledHeight();
+//				break;
+//				case ExpandLeft:
+//					location.x.min = topLeft.x - textout.getScaledWidth(text);
+//					location.y.max = topLeft.y;
+//					location.x.max = topLeft.x;
+//					location.y.min = location.y.max - textout.getScaledHeight();
+//				break;
+//				case ExpandCenter:
+//				{
+//					float w = textout.getScaledWidth(text);
+//					location.x.min = topLeft.x - w/2.f;
+//					location.y.max = topLeft.y;
+//					location.x.max = topLeft.x + w/2.f;
+//					location.y.min = location.y.max - textout.getScaledHeight();
+//				}
+//				break;
+//			}
+//			textout.popState();
+//		#endif
+//	}
+//
+//	virtual void			Render()
+//	{
+//		#ifdef HAS_WINDOW
+//			textout.pushState();
+//			textout.color(color);
+//			textout.locate(location.x.min,location.y.min);
+//			textout.scale(fontScale,fontScale);
+//			textout << text;
+//			textout.popState();
+//		#endif
+//	}
+//
+//};
+//
+//
+//class Slider : public Component
+//{
+//public:
+//	const int				min,max;
+//	int						current;
+//
+//	/**/					Slider(const Rect<>&location, int min, int max):min(min),max(max),current(0)
+//	{
+//		this->location = location;
+//	}
+//
+//
+//	virtual bool			HandleClick()	{return false;};
+//	virtual void			Render() override
+//	{
+//		#ifdef HAS_WINDOW
+//			TVec2<> edges[6];
+//			static const float chamfer = 0.04f;
+//			float aspect = display.pixelAspect();
+//			edges[0] = float2(location.x.min,location.y.max);
+//			edges[1] = edges[0];
+//			edges[0].x += chamfer;
+//			edges[1].y -= chamfer * aspect;
+//
+//			edges[2] = float2(location.x.min,location.y.min);
+//
+//			edges[3] = float2(location.x.max,location.y.min);
+//			edges[4] = edges[3];
+//			edges[3].x -= chamfer;
+//			edges[4].y += chamfer * aspect;
+//
+//			edges[5] = float2(location.x.max,location.y.max);	
+//	
+//			SurfaceRenderer::SetColor(float4());
+//			SurfaceRenderer::RasterizeConvexPolygon(edges,ARRAYSIZE(edges));
+//		#endif
+//	}
+//};
 
 
 void FillMarker(Protocol::Marker&marker, const Objects::PWorldEntity&e, Protocol::MarkerReferenceEntity&outE)
@@ -1661,6 +1660,231 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 
 #ifdef HAS_WINDOW
+
+	static const float VisualTabWidth = 0.3f;
+
+	GUIElements::PLabel	MakeTabLabel(const String&text, float zoom)
+	{
+		using namespace GUIElements;
+		PLabel label (new GUIElements::Label());
+		label->alignCenter = false;
+		label->SetLocation(Rect<>(0,0,VisualTabWidth,0.f));
+		label->anchorConfig.Top().Set(0.01f);
+		label->anchorConfig.Left().Set(0.01f);
+		label->SetText(text);
+		label->zoom = zoom;
+		label->extraSpacing = 0;
+		return label;
+	};
+
+
+	void	AddTab(const GUIElements::PPanel&context, const String&name, float verticalSpacing = 0.f, bool verticalSpacingIsRelative = false)
+	{
+		using namespace GUIElements;
+		PLabel label=MakeTabLabel(name,1.1f);
+		label->anchorConfig.Top().Set(verticalSpacing,verticalSpacingIsRelative);
+		if (context->components.IsNotEmpty())
+			label->anchorConfig.Left().Set(context->components.last(),0.f);
+		else
+			label->anchorConfig.Left().Set(0.f);
+		context->components.Append(label);
+	}
+
+	void	AddTab(const String&name)
+	{
+		AddTab(Dialog::serverChoice,name);
+	}
+
+
+	GUIElements::PButtonPanel ConstructPanel(Network::ServerInfo&info)
+	{
+		using namespace GUIElements;
+		if (info.buttonPanel)
+		{
+			info.buttonPanel->components.Clear();
+		}
+		else
+		{
+			info.buttonPanel.reset(new ButtonPanel());
+			info.buttonPanel->anchorConfig.Left().Set(0.f);
+			info.buttonPanel->anchorConfig.Right().Set(0.f);
+			info.buttonPanel->autoHeight = true;
+			bool versionMatch = info.rightVersion;
+			info.buttonPanel->SetCheck([versionMatch]()
+			{
+				return versionMatch && !Network::client.IsAttemptingToConnect();
+			});
+
+			TUniqueID id = info.id;
+			info.buttonPanel->SetOnPress([id]()
+			{
+				Network::ServerInfo*info = nullptr;
+				foreach (Network::servers,srv)
+				{
+					if (srv->id == id)
+					{
+						info = srv;
+						break;
+					}
+				}
+				if (!info)
+					return;
+				index_t best = 0;
+				float bestPing = info->urls.first().second;
+				for (index_t i = 1; i < info->urls.Count(); i++)
+					if (info->urls[i].second < bestPing)
+					{
+						bestPing = info->urls[i].second;
+						best = i;
+					}
+				info->selected = true;
+
+				Network::serverID = info->id;
+				Network::serverIDString = Network::serverID.ToNiceString();
+				Network::worldID = info->info.worldID;
+				Network::worldIDString = Network::worldID.ToNiceString();
+				Network::client.ConnectAsync(info->urls[best].first + ":"+String(SERVICE_PORT));
+			});
+
+		}
+
+
+		PButtonPanel p = info.buttonPanel;
+
+		if (!info.headLine)
+		{
+			String text;
+			float4 color(1,1,1,1);
+			if (info.rightVersion)
+			{
+				text = " "+info.info.hostInfo.value.hostID.ToNiceString()+"/"+info.info.worldID.value.ToNiceString();
+				if (info.haveToken)
+					text += " (continue)";
+			}
+			else
+			{
+				color = float4(1,0.5,0.5,1);
+				text = " "+info.info.hostInfo.value.hostID.ToNiceString();
+				text += " (Version Mismatch)";
+			}
+			PLabel headLine = MakeTabLabel(text,1.1f);
+			headLine->SetColor(color);
+			headLine->anchorConfig.Top().Set(0.01f,false);
+			info.headLine = headLine;
+		}
+
+		p->components << info.headLine;
+
+
+
+		{
+			AddTab(p,String(info.info.numPlayers) + "/" + String(info.info.numClients),0.01f,false);
+			AddTab(p,String(info.info.roundNumber),0.01f,false);
+		}
+
+
+		//0.7f * 1.5f = ~1
+		//color set to 70% opacity
+		bool first = true;
+		foreach (info.urls,url)
+		{
+			PLabel label = MakeTabLabel(url->first+ " (ping "+String((int)ceil(url->second*1000))+')',0.7f);
+			label->SetColor(float4(1,1,1,0.7f));
+			label->anchorConfig.Left().Set(0.05f);
+			if (first)
+			{
+				first = false;
+				label->anchorConfig.Top().SetAllOf(p,0.f);
+			}
+			else
+			{
+				label->anchorConfig.Top().Set(p->components.last(),0.f,false);
+			}
+			p->components << label;
+		}
+
+		if (!info.rightVersion)
+		{
+			PLabel label = MakeTabLabel("Server identifies as '"+String(info.info.hostInfo.value.version)+'\'',0.7f);
+			label->SetColor(1,0.5,0.5,0.7f);
+			label->anchorConfig.Top().Set(p->components.last(),0.005f,false);
+			p->components << label;
+					
+			label = MakeTabLabel("Client expected '" SERVER_NAME "\'",0.7f);
+			label->SetColor(1,0.5,0.5,0.7f);
+			label->anchorConfig.Top().Set(p->components.last(),0.005f,false);
+			p->components << label;
+		}
+
+		p->autoHeightSpacing = 0.01f;
+		
+		return p;
+	}
+
+	void	UpdateServerChoice()
+	{
+		using namespace GUIElements;
+		
+		if (Dialog::serverChoice->HasComponent(mousePressedComponent))
+			return;	//can't activate right now
+			
+
+		const bool isActive = Dialog::serverChoice->IsActive();
+		if (isActive)
+			Dialog::serverChoice->Deactivate();
+		Dialog::serverChoice->components.Clear();
+
+		Dialog::serverChoice->fillBackground = false;
+		Dialog::serverChoice->isModal = false;
+		Dialog::serverChoice->autoCenter = false;
+		Dialog::serverChoice->anchorConfig.Top().Set(0.1f);
+
+
+		AddTab("HostID/WorldID");
+		AddTab("Players/Clients");
+		AddTab("Round Number");
+
+		bool attemptingConnection = Network::client.IsAttemptingToConnect();
+
+
+		for (index_t i = 0; i < Network::servers.Count(); i++)
+		{
+			auto&info = Network::servers[i];
+
+			PButtonPanel p = ConstructPanel(info);
+
+			p->anchorConfig.Top().references.Clear();
+			if (i == 0)
+			{
+				p->anchorConfig.Top().SetAllOf(Dialog::serverChoice,0.015f,false);
+			}
+			else
+				p->anchorConfig.Top().Set(Dialog::serverChoice->components.last(),0.015f,false);
+			Dialog::serverChoice->components << p;
+		}
+
+
+		if (Network::servers.IsEmpty())
+		{
+			PButtonPanel p(new ButtonPanel());
+			p->anchorConfig.Top().SetAllOf(Dialog::serverChoice,0.025f,false);
+
+			PLabel label = MakeTabLabel(" No Servers Found",0.7f);
+			label->anchorConfig.Left().Set(0.1f,false);
+			label->SetColor(1,1,1,0.7f);
+			p->components << label;
+
+			Dialog::serverChoice->components << p;
+		};
+
+		Dialog::serverChoice->FullAutoLayout();
+		if (isActive)
+			Dialog::serverChoice->Activate();
+
+		
+		Dialog::CheckServersAreShown(!Network::client.IsConnected());
+	}
+
 
 	void	SignalUserMessage(const String&message)
 	{
@@ -1875,9 +2099,11 @@ void	OnAppear(const Objects::PWorldEntity&e)
 	#endif
 #endif
 
+
+
+
+
 static Timer::Time	capTime = timer.Now();
-
-
 
 bool loop()
 {
@@ -2228,203 +2454,13 @@ bool loop()
 			{
 				static Timer::Time	lastCheck = timer.Now();
 
-				SurfaceRenderer::SetColor(float4(0,0,0,0.9f));
-				SurfaceRenderer::Rasterize(Rect<>(0.1f,0.1f,0.9f,0.9f));
-				SurfaceRenderer::Flush();
-
-				textout.pushState();
-				textout.scale(1.5f,1.5f);
-				float h = textout.getScaledHeight()*2.f;
-				float height = 0.9f;
-
-				//height -= textout.getScaledHeight();
-				textout.locate(0.1f,height);
-				textout << "HostID/WorldID";
-				textout.locate(0.4f,height);
-				textout << "Players/Clients";
-				textout.locate(0.7f,height);
-				textout << "Round Number";
-			
-				bool attemptingConnection = Network::client.IsAttemptingToConnect();
-
-
-				for (index_t i = 0; i < Network::servers.Count(); i++)
+				Timer::Time now = timer.Now();
+				if (!Dialog::serverChoice || timer.ToSeconds(now - lastCheck) > 1.f)
 				{
-					auto&info = Network::servers[i];
-					bool isEnabled = info.rightVersion;
-					float h1 = height - textout.getScaledHeight() * 1.5f;
-					float h0 = h1 - textout.getScaledHeight()*2.f - (info.urls.Count() + (isEnabled ? 0 : 2))* textout.getScaledHeight() * 0.7f * 1.2f;
-					info.top = h1;
-					info.bottom = h0;
-
-
-					bool hovering = !Dialog::IsModal() && info.selected && isEnabled;
-					if (!attemptingConnection && isEnabled)
-						hovering = RuntimeConfig::serverURL.IsEmpty() && Engine::mouse.location.windowRelative.x > 0.1f && Engine::mouse.location.windowRelative.x < 0.9f && Engine::mouse.location.windowRelative.y > info.bottom &&Engine::mouse.location.windowRelative.y < info.top;
-
-					float low = /*hovering ? 0.5f : */0.3;
-					float high = hovering ? 0.8f : 0.6;
-
-					SurfaceRenderer::Rasterize(float2(0.1f,h0), float4(1,1,1,low), float2(0.9f,h0),float4(1,1,1,low), float2(0.9f,h1), float4(1,1,1,high), float2(0.1f,h1),float4(1,1,1,high));
-					SurfaceRenderer::Flush();
-
-
-
-					height -= textout.getScaledHeight()*2.f;
-
-					textout.locate(0.1f,height);
-					if (info.headLine.text.IsEmpty())
-					{
-						if (isEnabled)
-						{
-							info.headLine.text = " "+info.info.hostInfo.value.hostID.ToNiceString()+"/"+info.info.worldID.value.ToNiceString();
-							if (info.haveToken)
-								info.headLine.text += " (continue)";
-						}
-						else
-						{
-							info.headLine.color = float4(1,0.5,0.5,1);
-							info.headLine.text = " "+info.info.hostInfo.value.hostID.ToNiceString();
-							info.headLine.text += " (Version Mismatch)";
-						}
-						info.headLine.visualLength = textout.getScaledWidth(info.headLine.text) * (float)display.clientWidth();
-					}
-					{
-						static const float Space = 0.4f - 0.1f;
-						float visualSpace = Space * (float)display.clientWidth();
-						textout.PushColorState();
-						textout.color(info.headLine.color);
-						if (visualSpace >= info.headLine.visualLength)
-							textout << info.headLine.text;
-						else
-						{
-							StringRef line = info.headLine.text.ref();
-							float dotLength = textout.getScaledWidth("...",3);
-							line.DropLastChar();
-							while (textout.getScaledWidth(line) + dotLength > Space)
-								if (!line.DropLastChar())
-									break;
-							textout << line << "...";
-						}
-						textout.PopColorState();
-					}
-
-
-					//if (isEnabled)
-					//{
-					//	textout << " "<<info.info.hostInfo.value.hostID.ToNiceString()<<"/"<<info.info.worldID.value.ToNiceString();
-					//	if (info.haveToken)
-					//		textout << " (continue)";
-					//}
-					//else
-					//{
-					//	textout.color(1,0.5,0.5);
-					//	textout << " "<<info.info.hostInfo.value.hostID.ToNiceString();
-					//	textout << " (Version Mismatch)";
-					//	//. Server is "<<info.info.hostInfo.value.version<<"; Client expected "<<SERVER_NAME
-					//	textout.color(1,1,1);
-
-					//}
-					//textout << attempt.url;
-					//textout.locate(0.3f,height);
-					//textout << (attempt.hasContact ? "Connected" : "No Response");
-					//textout.locate(0.5f,height);
-					//if (attempt.hasInfo && attempt.rightVersion)
-					{
-						//textout << info.info.hostInfo.value.hostID.ToString();
-						textout.locate(0.4f,height);
-						textout << info.info.numPlayers << "/" << info.info.numClients;
-						textout.locate(0.7f,height);
-						textout << info.info.roundNumber;
-					}
-					//else
-						//textout << (attempt.hasInfo ? "Incompatible Version" : "No Information");
-
-
-					height -= textout.getScaledHeight()*1.2f;
-
-
-					textout.pushState();
-					textout.scale(0.7f,0.7f);
-
-
-					textout.color(1,1,1,0.7f);
-					foreach (info.urls,url)
-					{
-						textout.locate(0.12f,height);
-						textout << url->first;
-						//textout.locate(0.2f,height);
-						textout << " (ping "<<(int)ceil(url->second*1000)<<')';
-						height -= textout.getScaledHeight()*1.2f;
-					}
-
-					if (!isEnabled)
-					{
-						textout.color(1,0.5,0.5,0.7f);
-						textout.locate(0.12f,height);
-						textout << "Server identifies as '"<<info.info.hostInfo.value.version<<'\'';
-						height -= textout.getScaledHeight()*1.2f;
-					
-
-						textout.locate(0.12f,height);
-						textout << "Client expected '"<<SERVER_NAME<<'\'';
-						height -= textout.getScaledHeight()*1.2f;
-
-					}
-
-
-					textout.color(1,1,1);
-
-					textout.popState();
-
-				};
-
-				if (Network::servers.IsEmpty())
-				{
-					//auto&info = Network::servers[i];
-					height -= textout.getScaledHeight();
-					float h1 = height - textout.getScaledHeight() * 0.5f;
-					float h0 = h1 - textout.getScaledHeight()*2.f /*- textout.getScaledHeight() * 0.7f * 1.2f*/;
-					//info.top = h1;
-					//info.bottom = h0;
-
-
-					bool hovering = false;//info.selected;
-
-					float low = /*hovering ? 0.5f : */0.3;
-					float high = hovering ? 0.8f : 0.6;
-
-					SurfaceRenderer::Rasterize(float2(0.1f,h0), float4(1,1,1,low), float2(0.9f,h0),float4(1,1,1,low), float2(0.9f,h1), float4(1,1,1,high), float2(0.1f,h1),float4(1,1,1,high));
-					SurfaceRenderer::Flush();
-
-
-
-					height -= textout.getScaledHeight()*1.f;
-
-					textout.locate(0.1f,height);
-			
-
-					textout.pushState();
-					textout.scale(0.7f,0.7f);
-					textout.color(1,1,1,0.7f);
-					textout << " No Servers Found";
-
-				
-					textout.color(1,1,1);
-
-					textout.popState();
-
-				};
-
-				textout.popState();
-	/*
-				if (timer.GetSecondsSince(lastCheck) > 0.1f)
-				{
-
-
+					lastCheck = now;
+					UpdateServerChoice();
 				}
-			*/
-		
+
 		
 		
 			}
@@ -2695,41 +2731,41 @@ void Select()
 	//	TransferPanel::HandleClick();
 	//	return;
 	//}
-	if (!Network::client.IsConnected())
-	{
-		if (Engine::mouse.location.windowRelative.x < 0.1f || Engine::mouse.location.windowRelative.x > 0.9f)
-			return;
-		if (Network::client.IsAttemptingToConnect())
-			return;
-		if (RuntimeConfig::serverURL.IsNotEmpty())
-			return;
-		foreach (Network::servers,srv)
-		{
-			if (srv->rightVersion && srv->bottom < Engine::mouse.location.windowRelative.y && srv->top > Engine::mouse.location.windowRelative.y)
-			{
-				index_t best = 0;
-				float bestPing = srv->urls.first().second;
-				for (index_t i = 1; i < srv->urls.Count(); i++)
-					if (srv->urls[i].second < bestPing)
-					{
-						bestPing = srv->urls[i].second;
-						best = i;
-					}
-				srv->selected = true;
+	//if (!Network::client.IsConnected())
+	//{
+	//	if (Engine::mouse.location.windowRelative.x < 0.1f || Engine::mouse.location.windowRelative.x > 0.9f)
+	//		return;
+	//	if (Network::client.IsAttemptingToConnect())
+	//		return;
+	//	if (RuntimeConfig::serverURL.IsNotEmpty())
+	//		return;
+	//	foreach (Network::servers,srv)
+	//	{
+	//		if (srv->rightVersion && srv->bottom < Engine::mouse.location.windowRelative.y && srv->top > Engine::mouse.location.windowRelative.y)
+	//		{
+	//			index_t best = 0;
+	//			float bestPing = srv->urls.first().second;
+	//			for (index_t i = 1; i < srv->urls.Count(); i++)
+	//				if (srv->urls[i].second < bestPing)
+	//				{
+	//					bestPing = srv->urls[i].second;
+	//					best = i;
+	//				}
+	//			srv->selected = true;
 
-				Network::serverID = srv->id;
-				Network::serverIDString = Network::serverID.ToNiceString();
-				Network::worldID = srv->info.worldID;
-				Network::worldIDString = Network::worldID.ToNiceString();
-				Network::client.ConnectAsync(srv->urls[best].first + ":"+String(SERVICE_PORT));
-				return;
-			}
+	//			Network::serverID = srv->id;
+	//			Network::serverIDString = Network::serverID.ToNiceString();
+	//			Network::worldID = srv->info.worldID;
+	//			Network::worldIDString = Network::worldID.ToNiceString();
+	//			Network::client.ConnectAsync(srv->urls[best].first + ":"+String(SERVICE_PORT));
+	//			return;
+	//		}
 
-		}
+	//	}
 
 
-		return;
-	}
+	//	return;
+	//}
 
 	
 
@@ -3883,13 +3919,28 @@ int main( int argc, const char* argv[])
 
 			mainMenu.reset(new Dialog::Menu(0.25f));
 			mainMenu->AddCommand("Change Nickname",QueryNickname);
-			mainMenu->AddCommand("Abandon faction",[]()
-			{
-				Dialog::Confirm("Your current faction will be abandoned. Its access key will be preserved until you create a new faction in this world. Please confirm.",
-							Network::AbandonCurrentFaction,
-							[](){return Network::client.IsConnected() && Network::haveFaction ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
-			},[](){return Network::amOnline && Network::haveFaction;});
-			mainMenu->AddCommand("Disconnect",[](){Network::client.Disconnect();},[](){return Network::client.IsConnected();});
+			mainMenu->AddCommand("Abandon faction",
+				[]()
+				{
+					Dialog::Confirm("Your current faction will be abandoned. Its access key will be preserved until you create a new faction in this world. Please confirm.",
+								Network::AbandonCurrentFaction,
+								[](){return Network::client.IsConnected() && Network::haveFaction ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
+				},
+				[](){return Network::amOnline && Network::haveFaction;});
+			mainMenu->AddCommand("Disconnect",
+				[]()
+				{
+					Dialog::Confirm("You will be disconnected from the server and returned to the server selection screen.",
+						[]()
+						{ 
+							Network::client.Disconnect();
+						},
+						[]()
+						{
+							return Network::client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;
+						});
+				},
+				[](){return Network::client.IsConnected();});
 			mainMenu->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
 			mainMenu->FullAutoLayout();
 

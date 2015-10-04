@@ -141,7 +141,15 @@ namespace Dialog
 	
 	bool	Hide(const GUIElements::PWindow&window);
 	bool	IsVisible(const GUIElements::PWindow&window);
+
+	/**
+	Makes sure the specified window is visible. Raises the window if it's not top-most
+	*/
 	void	Show(const GUIElements::PWindow&window);
+	/**
+	Makes sure the specified window is visible. Lowers it to the bottom of the window stack if it's not there already
+	*/
+	void	ShowBottom(const GUIElements::PWindow&window);
 
 
 	WDialog	ShowFactions(const Buffer0<Faction>&factions);
@@ -176,6 +184,9 @@ namespace Dialog
 	//bool	HandleClick();
 	bool	HandleMouseDown();
 	void	HandleMouseUp();
+
+
+	void	CheckServersAreShown(bool doShow);
 
 
 	void	Create();
@@ -215,9 +226,12 @@ namespace Dialog
 	};
 	typedef std::shared_ptr<Menu>	PMenu;
 
+	
 
 
 	extern PMenu				loginMenu;
+	extern GUIElements::PWindow	serverChoice;
+
 
 }
 

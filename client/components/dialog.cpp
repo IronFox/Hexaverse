@@ -93,7 +93,7 @@ namespace Dialog
 				inputField.reset(new GUIElements::Input());
 				inputField->anchorConfig.Left().Set(0.f);
 				inputField->anchorConfig.Right().Set(0.f);
-				inputField->anchorConfig.Top().Set(textField,0.025f);
+				inputField->anchorConfig.Top().Set(textField,0.f);//0.025f);
 				textPanel->components.Append (inputField);
 			}
 
@@ -131,7 +131,7 @@ namespace Dialog
 				if (confirmButton)
 				{
 					imageField->autoSetHeight = false;
-					imageField->anchorConfig.Bottom().Set(confirmButton,0.05f);
+					imageField->anchorConfig.Bottom().Set(confirmButton,0.03f,false);
 					//imageField->autoSetWidth = true;
 				}
 	//			imageField->SetLocation(Rect<>(0,1,0.25,0.75f));
@@ -295,7 +295,7 @@ namespace Dialog
 
 	void		Dialog::Confirm(bool bySpace)
 	{
-		if (confirmButton && !confirmButton->enabled)
+		if (confirmButton && !confirmButton->IsEnabled())
 			return;
 
 		bool tut = isTutorial;
@@ -362,9 +362,7 @@ namespace Dialog
 	{
 		if (Detail::pendingTutorials.IsNotEmpty())
 		{
-			Detail::visibleDialogs << Detail::pendingTutorials.Peek();
-			Detail::visibleWindows << Detail::pendingTutorials.Peek();
-			Detail::visibleWindows.last()->Activate();
+			Show(Detail::pendingTutorials.Peek());
 			Detail::pendingTutorials.EraseFront();
 		}
 	
@@ -389,6 +387,8 @@ namespace Dialog
 
 		d->userInput->SetCurrent(initial);
 		d->userInput->SetAllowed(allowChars);
+
+		d->ReLayout();
 		return d;
 	}
 
@@ -449,11 +449,44 @@ namespace Dialog
 	{
 		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.last() == window)
 			return;
+		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.first() == window)
+		//	return;
 		Detail::visibleWindows.FindAndErase(window);
 		if (Detail::visibleWindows.IsNotEmpty())
 			Detail::visibleWindows.last()->Deactivate();
 		Detail::visibleWindows << window;
 		window->Activate();
+		PDialog d = To<Dialog>::DynamicCast(window);
+		if (d)
+			Detail::visibleDialogs << d;
+
+
+		SignalSituationChange();
+
+	}
+
+
+
+	void	ShowBottom(const GUIElements::PWindow&window)
+	{
+		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.first() == window)
+			return;
+		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.first() == window)
+		//	return;
+
+		index_t at = Detail::visibleWindows.GetIndexOf(window);
+		if (at != InvalidIndex)
+		{
+			if (at+1 == Detail::visibleWindows.Count())	//ist last
+			{
+				window->Deactivate();
+				Detail::visibleWindows.fromEnd(1)->Activate();
+			}
+			Detail::visibleWindows.Erase(at);
+		} 
+		Detail::visibleWindows.Insert(0,window);
+		if (Detail::visibleWindows.Count() == 1)
+			window->Activate();
 
 		SignalSituationChange();
 
@@ -601,10 +634,12 @@ namespace Dialog
 
 	bool	HandleMouseDown()
 	{
-		if (Detail::visibleWindows.IsNotEmpty())
+		for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
 		{
-			GUIElements::mousePressedComponent = Detail::visibleWindows.last()->HandleMouseDown();
-			return true;
+			GUIElements::PWindow w = Detail::visibleWindows[i];
+			GUIElements::mousePressedComponent = w->HandleMouseDown();
+			if (GUIElements::mousePressedComponent || w->isModal)
+				return true;
 		}
 		GUIElements::mousePressedComponent.reset();
 		return false;
@@ -725,7 +760,10 @@ namespace Dialog
 	*/
 	bool	IsModal()
 	{
-		return Detail::visibleWindows.IsNotEmpty();
+		foreach (Detail::visibleWindows,w)
+			if ((*w)->isModal)
+				return true;
+		return false;
 	}
 
 	bool	CloseAllModal()
@@ -779,6 +817,7 @@ namespace Dialog
 
 
 	PMenu				loginMenu;
+	GUIElements::PWindow	serverChoice;
 
 
 	void	Create()
@@ -788,10 +827,25 @@ namespace Dialog
 
 
 		loginMenu.reset(new Menu(0.25f));
-
 		loginMenu->canBeImplicitlyClosed = false;	//once visible, must explicitly close
 
+		serverChoice.reset(new GUIElements::Window());
+		serverChoice->SetCenteredWidth(0.9f,false);
+		serverChoice->canBeImplicitlyClosed = false;
 
+
+	}
+
+
+	void	CheckServersAreShown(bool doShow)
+	{
+
+		if (doShow)
+		{
+			ShowBottom(serverChoice);
+		}
+		else
+			Hide(serverChoice);
 	}
 
 

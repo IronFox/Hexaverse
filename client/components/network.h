@@ -2,6 +2,7 @@
 #define networkComponentH
 
 #include "../../shared/protocol.h"
+#include "guiElements.h"
 
 /**
 All network-related aspects. Multiple additions to this namespace exist.
@@ -205,7 +206,7 @@ namespace Network
 	{
 	public:
 		String					text;
-		float					visualLength;
+		//float					visualLength;
 		float4					color = Vector4<>::one;
 		
 
@@ -213,6 +214,7 @@ namespace Network
 		{
 			text.swap(other.text);
 			swp(color,other.color);
+			//swp(visualLength,other.visualLength);
 		}
 
 	};
@@ -227,13 +229,16 @@ namespace Network
 		
 		Buffer0<std::pair<String, float> >			urls;
 		
-		float					top, bottom;
+		//float					top, bottom;
 		bool					selected, haveToken;
 
-		Label					headLine;	//game/server ids, optionally (continue)
+		#ifdef HAS_WINDOW
+			GUIElements::PLabel		headLine;	//game/server ids, optionally (continue)
+			GUIElements::PButtonPanel	buttonPanel;
+		#endif
 
 
-		/**/					ServerInfo() :top(0), bottom(0), selected(false), haveToken(false)	{}
+		/**/					ServerInfo() :/*top(0), bottom(0),*/ selected(false), haveToken(false)	{}
 
 		bool					HasURL(const String&url) const
 		{
@@ -247,14 +252,17 @@ namespace Network
 		{
 			swp(id,other.id);
 			swp(info,other.info);
-			swp(top,other.top);
-			swp(bottom,other.bottom);
+			//swp(top,other.top);
+			//swp(bottom,other.bottom);
 			swp(selected,other.selected);
 			urls.swap(other.urls);
 			swp(haveToken,other.haveToken);
 			swp(rightVersion,other.rightVersion);
+			#ifdef HAS_WINDOW
+				buttonPanel.swap(other.buttonPanel);
+				headLine.swap(other.headLine);
+			#endif
 
-			headLine.swap(other.headLine);
 		}
 	};
 
