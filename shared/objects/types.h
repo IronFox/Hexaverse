@@ -5,7 +5,6 @@
 #include <general/enumeration.h>
 #include "../typeDecl.h"
 
-
 namespace Objects
 {
 

@@ -510,9 +510,9 @@ namespace State
 	void InvalidOperation(TCP::Peer&peer)
 	{
 		PClient client = To<Client>::Cast(peer.attachment);
+		Logging::WriteEvent(EventType::UnexpectedBehavior, "Invalid operation performed",&peer,nullptr);
 		if (client)
 		{
-			Logging::WriteEvent(EventType::UnexpectedBehavior, "Invalid operation performed",&peer,nullptr);
 			clients.FindAndErase(client);
 			activePlayers.FindAndErase(client);
 			if (client->faction)

@@ -27,186 +27,11 @@ namespace Dialog
 	namespace Detail
 	{
 
-		
-
-		//class ModalDialog
-		//{
-		//public:
-		//	CONSTRUCT_ENUMERATION5(Type, Confirmation, Message, TutorialMessage, StringQuery,FactionList);
-
-
-		//	Type					type;
-
-		//	GUIElements::TextField	textField,
-		//							confirmButton,
-		//							cancelButton;
-		//	GUIElements::Input		inputField;
-		//	GUIElements::ImageField	imageField;
-		//	GUIElements::Area		common;
-		//	String					key;
-
-
-		//	PCheckState			check;
-		//	POnConfirm			confirm;
-		//	PCheckInput			checkInput;
-		//	PFetchInput			fetchInput;
-
-		//	Rect<>				totalSize;
-		//	bool				canConfirmNow = true;
-
-
-		//	void		adoptData(ModalDialog&other)
-		//	{
-		//		key.adoptData(other.key);
-		//		imageField.adoptData(other.imageField);
-		//		textField.adoptData(other.textField);
-		//		confirmButton.adoptData(other.confirmButton);
-		//		cancelButton.adoptData(other.cancelButton);
-		//		inputField.adoptData(other.inputField);
-		//		common.adoptData(other.common);
-		//		check.swap(other.check);
-		//		confirm.swap(other.confirm);
-		//		checkInput.swap(other.checkInput);
-		//		fetchInput.swap(other.fetchInput);
-		//		canConfirmNow = other.canConfirmNow;
-		//		totalSize = other.totalSize;
-		//		type = other.type;
-		//	}
-
-		//	void		Activate()
-		//	{
-		//		if (HasInput())
-		//			inputField.ActivateInput();
-		//		Refresh();
-		//	}
-		//	void		Deactivate()
-		//	{
-		//		if (HasInput())
-		//			inputField.DeactivateInput();
-		//	}
-
-		//	void		Refresh();
-
-
-		//	bool		SignalChange()
-		//	{
-		//		if (type == Type::Confirmation)
-		//		{
-		//			CheckResult rs = check();
-		//			if (rs == CheckResult::Abort)
-		//				return false;
-		//			canConfirmNow = rs == CheckResult::OkayContinue;
-		//			confirmButton.SetText( rs == CheckResult::OkayContinue ? "Confirm" : "Confirm (not right now)");
-		//		}
-		//		return true;
-		//	}
-
-		//	bool		HasCancelButton()	const
-		//	{
-		//		return type == Type::Confirmation;// || type == Type::Message;
-		//	}
-
-		//	bool		HasInput() const
-		//	{
-		//		return type == Type::StringQuery;
-		//	}
-
-
-		//	void		Render()
-		//	{
-		//		if (textField.UpdateIfNecessary()
-		//			|	//binary to evaluate all three
-		//			confirmButton.UpdateIfNecessary()
-		//			|
-		//			cancelButton.UpdateIfNecessary()
-		//			|
-		//			inputField.UpdateIfNecessary()
-		//			)
-		//		{
-		//			//chicken-egg-dance
-		//			confirmButton.MoveTopTo(textField.rect.y.min - 0.025f);
-		//			cancelButton.MoveTopTo(textField.rect.y.min - 0.025f);
-
-		//			totalSize = textField.rect;
-		//			totalSize.Include(confirmButton.rect);
-		//			
-		//			if (HasCancelButton())
-		//				totalSize.Include(cancelButton.rect);
-		//			if (HasInput())
-		//				totalSize.Include(inputField.rect);
-
-		//			//float center = totalSize.y.center();
-		//			float top = 0.5f + totalSize.y.GetExtend()/2.f;
-		//			textField.MoveTopTo(top);
-
-		//			if (HasInput())
-		//			{
-		//				inputField.MoveTopTo(textField.rect.y.min - 0.025f);
-
-		//				confirmButton.MoveTopTo(inputField.rect.y.min - 0.025f);
-		//				if (HasCancelButton())
-		//					cancelButton.MoveTopTo(inputField.rect.y.min - 0.025f);
-		//			}
-		//			else
-		//			{
-		//				confirmButton.MoveTopTo(textField.rect.y.min - 0.025f);
-		//				if (HasCancelButton())
-		//					cancelButton.MoveTopTo(textField.rect.y.min - 0.025f);
-		//			}
-
-		//			totalSize = textField.rect;
-		//			totalSize.Include(confirmButton.rect);
-		//			if (HasCancelButton())
-		//				totalSize.Include(cancelButton.rect);
-		//			if (HasInput())
-		//				totalSize.Include(inputField.rect);
-
-		//			totalSize.Expand(0.015f);
-
-		//			imageField.rect.y = textField.rect.y;
-
-		//			Rect<> r = textField.rect;
-		//			if (imageField.texture.IsNotEmpty())
-		//				r.Include(imageField.rect);
-		//			if (HasInput())
-		//				r.Include(inputField.rect);
-		//			common.rect = r;
-
-		//			cancelButton.UpdateNow();
-		//			confirmButton.UpdateNow();
-		//			common.UpdateNow();
-		//		}
-		//		GUIElements::Darken(Rect<>(0,0,1,1),0.7f);
-		//		GUIElements::Darken(totalSize);
-
-
-		//		common.Render(true);
-
-		//		textField.Render(true,false,false);
-
-		//		imageField.Render(true,false);
-		//		confirmButton.Render(canConfirmNow);
-		//		if (HasCancelButton())
-		//			cancelButton.Render(true);
-		//		if (HasInput())
-		//			inputField.Render(true);
-		//	}
-
-		//	void		HandleClick();
-		//	void		Confirm(bool bySpace);
-
-		//	void		DumpMe();
-		//};
-	
-
-		//GUIElements::PComponent	mouseComponent;	//component that caught the last mouse down event
 		Buffer0<GUIElements::PWindow,Swap>	visibleWindows;
 		Buffer0<PDialog,Swap>	visibleDialogs;//subset of visibleWindows, not necessarily the top-most one(s)
 		Queue<PDialog,Swap>		pendingTutorials;
 		PDialog					factionDialog;
 		bool		showTutorials = true;
-	
-		//CONSTRUCT_ENUMERATION5(ModalDialogType, Confirmation, Message, TutorialMessage, StringQuery,FactionList);
 
 		struct ComponentFlags
 		{
@@ -219,23 +44,7 @@ namespace Dialog
 			};
 		};
 
-		//String ButtonName(ModalDialogType t)
-		//{
-		//	switch (t)
-		//	{
-		//		case ModalDialogType::Confirmation:
-		//			return "Confirm";
-		//		case ModalDialogType::FactionList:
-		//			return "Close";
-		//		case ModalDialogType::Message:
-		//		case ModalDialogType::TutorialMessage:
-		//			return "Got it";
-		//		case ModalDialogType::StringQuery:
-		//			return "OK";
 
-		//	}
-		//	return "Confirm";
-		//}
 
 		void Configure(PDialog dialog, UINT32 componentFlags, const String&confirmWord, bool isTutorial);
 
@@ -258,11 +67,19 @@ namespace Dialog
 			dialog->anchorConfig.Left().Set(0.25f);
 			dialog->anchorConfig.Right().Set(0.25f);
 			
+			dialog->fillBackground = false;
 			//GUIElements::PComponent	common(new GUIElements::Area());
+
+			GUIElements::PPanel	textPanel(new GUIElements::Panel());
 			GUIElements::PLabel textField(new GUIElements::Label());
+			textPanel->components.Append(textField);
 			textField->anchorConfig.Left().Set(0.f);
 			textField->anchorConfig.Right().Set(0.f);
 			textField->anchorConfig.Top().Set(0.f);
+			textPanel->anchorConfig = textField->anchorConfig;
+			textPanel->autoHeight = true;
+			dialog->components << textPanel;
+			
 			//height controlled by content
 
 			GUIElements::PButton confirmButton;
@@ -276,7 +93,8 @@ namespace Dialog
 				inputField.reset(new GUIElements::Input());
 				inputField->anchorConfig.Left().Set(0.f);
 				inputField->anchorConfig.Right().Set(0.f);
-				inputField->anchorConfig.Top().Set(textField,0.025f);
+				inputField->anchorConfig.Top().Set(textField,0.f);//0.025f);
+				textPanel->components.Append (inputField);
 			}
 
 			if (componentFlags & ComponentFlags::ConfirmButton)
@@ -284,21 +102,19 @@ namespace Dialog
 				confirmButton.reset(new GUIElements::Button());
 				confirmButton->anchorConfig.Left().Set(0.f);
 				confirmButton->anchorConfig.Right().Set(0.f);
-				confirmButton->anchorConfig.Top().Set(inputField,0.025f);	//will abort if inputField is empty
-				confirmButton->anchorConfig.Top().Set(textField,0.025f);	//let's try if setting both works
-				//confirmButton->anchorConfig.Top().Set(imageField,0.025f);	//let's try if setting both works
+				confirmButton->anchorConfig.Top().Set(textPanel,0.015f,false);
+				dialog->components << confirmButton;
 			}
 			if (componentFlags & ComponentFlags::CancelButton)
 			{
 				cancelButton.reset(new GUIElements::Button());
 
 				if (confirmButton)
-					confirmButton->anchorConfig.Right().Set(0.5f);
-				cancelButton->anchorConfig.Left().Set(0.5f);
+					confirmButton->anchorConfig.Right().Set(0.505f);
+				cancelButton->anchorConfig.Left().Set(0.505f);
 				cancelButton->anchorConfig.Right().Set(0.f);
-				cancelButton->anchorConfig.Top().Set(inputField,0.025f);	//will abort if inputField is empty
-				cancelButton->anchorConfig.Top().Set(textField,0.025f);		//let's try if setting both works
-				//cancelButton->anchorConfig.Top().Set(imageField,0.025f);	//let's try if setting both works
+				cancelButton->anchorConfig.Top().Set(textPanel,0.015f,false);
+				dialog->components << cancelButton;
 
 			}
 
@@ -315,13 +131,14 @@ namespace Dialog
 				if (confirmButton)
 				{
 					imageField->autoSetHeight = false;
-					imageField->anchorConfig.Bottom().Set(confirmButton,0.05f);
+					imageField->anchorConfig.Bottom().Set(confirmButton,0.03f,false);
 					//imageField->autoSetWidth = true;
 				}
 	//			imageField->SetLocation(Rect<>(0,1,0.25,0.75f));
 				//textField->rect.Set(0.405f,0.25f,0.75f,0.75f);
 				//imageField->rect.Set(0.25f,0.25f,0.4f,0.75f);
 				textField->alignCenter = false;
+				textPanel->components << imageField;
 			}
 
 
@@ -358,7 +175,7 @@ namespace Dialog
 			dialog->image = imageField;
 
 			
-			dialog->components << textField;
+		/*	dialog->components << textField;
 			if (confirmButton)
 				dialog->components << confirmButton;
 			if (cancelButton)
@@ -367,7 +184,7 @@ namespace Dialog
 				dialog->components  << imageField;
 			if (inputField)
 				dialog->components  << inputField;
-
+*/
 			if (confirmButton)
 			{
 
@@ -478,15 +295,16 @@ namespace Dialog
 
 	void		Dialog::Confirm(bool bySpace)
 	{
-		if (confirmButton && !confirmButton->enabled)
+		if (confirmButton && !confirmButton->IsEnabled())
 			return;
 
+		bool tut = isTutorial;
 		if (!fetchInput)
 		{
 			if (onConfirm)
 				onConfirm();
 			DumpMe();
-			if (isTutorial)
+			if (tut)
 				OnTutorialsChanged();
 		}
 		else
@@ -497,12 +315,9 @@ namespace Dialog
 			DumpMe();
 		}
 
-		if (isTutorial && Detail::pendingTutorials.IsNotEmpty() && Detail::visibleWindows.IsEmpty())
+		if (tut && Detail::pendingTutorials.IsNotEmpty() && Detail::visibleWindows.IsEmpty())
 		{
-			Detail::visibleDialogs << Detail::pendingTutorials.Peek();
-			Detail::visibleWindows << Detail::pendingTutorials.Peek();
-			Detail::visibleWindows.last()->Activate();
-			Detail::pendingTutorials.EraseFront();
+			ShowNextTutorial();
 		}
 	}
 
@@ -547,7 +362,7 @@ namespace Dialog
 	{
 		if (Detail::pendingTutorials.IsNotEmpty())
 		{
-			Detail::visibleWindows << Detail::pendingTutorials.Peek();
+			Show(Detail::pendingTutorials.Peek());
 			Detail::pendingTutorials.EraseFront();
 		}
 	
@@ -561,9 +376,10 @@ namespace Dialog
 		GUIElements::Input::onDone = Detail::OnDone;
 
 
-		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton | Detail::ComponentFlags::CancelButton, "OK", false);
+		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton | Detail::ComponentFlags::CancelButton | Detail::ComponentFlags::Input, "OK", false);
 		d->textField->SetText(query);
 
+		ASSERT__(!d->isTutorial);
 
 
 		d->fetchInput = fetch;
@@ -571,6 +387,8 @@ namespace Dialog
 
 		d->userInput->SetCurrent(initial);
 		d->userInput->SetAllowed(allowChars);
+
+		d->ReLayout();
 		return d;
 	}
 
@@ -615,6 +433,9 @@ namespace Dialog
 				Detail::visibleDialogs.last()->Activate();
 		}
 
+
+		SignalSituationChange();
+
 		return true;
 
 	}
@@ -628,11 +449,47 @@ namespace Dialog
 	{
 		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.last() == window)
 			return;
+		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.first() == window)
+		//	return;
 		Detail::visibleWindows.FindAndErase(window);
 		if (Detail::visibleWindows.IsNotEmpty())
 			Detail::visibleWindows.last()->Deactivate();
 		Detail::visibleWindows << window;
 		window->Activate();
+		PDialog d = To<Dialog>::DynamicCast(window);
+		if (d)
+			Detail::visibleDialogs << d;
+
+
+		SignalSituationChange();
+
+	}
+
+
+
+	void	ShowBottom(const GUIElements::PWindow&window)
+	{
+		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.first() == window)
+			return;
+		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.first() == window)
+		//	return;
+
+		index_t at = Detail::visibleWindows.GetIndexOf(window);
+		if (at != InvalidIndex)
+		{
+			if (at+1 == Detail::visibleWindows.Count())	//ist last
+			{
+				window->Deactivate();
+				Detail::visibleWindows.fromEnd(1)->Activate();
+			}
+			Detail::visibleWindows.Erase(at);
+		} 
+		Detail::visibleWindows.Insert(0,window);
+		if (Detail::visibleWindows.Count() == 1)
+			window->Activate();
+
+		SignalSituationChange();
+
 	}
 
 
@@ -777,10 +634,12 @@ namespace Dialog
 
 	bool	HandleMouseDown()
 	{
-		if (Detail::visibleWindows.IsNotEmpty())
+		for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
 		{
-			GUIElements::mousePressedComponent = Detail::visibleWindows.last()->HandleMouseDown();
-			return true;
+			GUIElements::PWindow w = Detail::visibleWindows[i];
+			GUIElements::mousePressedComponent = w->HandleMouseDown();
+			if (GUIElements::mousePressedComponent || w->isModal)
+				return true;
 		}
 		GUIElements::mousePressedComponent.reset();
 		return false;
@@ -901,15 +760,45 @@ namespace Dialog
 	*/
 	bool	IsModal()
 	{
-		return Detail::visibleWindows.IsNotEmpty();
+		foreach (Detail::visibleWindows,w)
+			if ((*w)->isModal)
+				return true;
+		return false;
 	}
 
 	bool	CloseAllModal()
 	{
 		if (Detail::visibleWindows.IsNotEmpty())
 		{
-			Detail::visibleWindows.last()->Deactivate();
-			Detail::visibleWindows.Clear();
+			bool anyNonClosable = false;
+			foreach (Detail::visibleWindows,w)
+				if (!(*w)->canBeImplicitlyClosed)
+				{
+					anyNonClosable = true;
+					break;
+				}
+
+			if (anyNonClosable)
+			{
+				bool rs = false;
+				for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
+				{
+					GUIElements::PWindow w = Detail::visibleWindows[i];
+					if (w->canBeImplicitlyClosed)
+					{
+						Hide(w);
+						i--;
+						rs = true;
+					}
+				}
+				return rs;
+			}
+			else
+			{
+				Detail::visibleWindows.last()->Deactivate();
+				Detail::visibleWindows.Clear();
+				Detail::visibleDialogs.Clear();
+			}
 			return true;
 		}
 		return false;
@@ -927,19 +816,45 @@ namespace Dialog
 	}
 
 
+	PMenu				loginMenu;
+	GUIElements::PWindow	serverChoice;
+
+
 	void	Create()
 	{
 		Detail::showTutorials = !FileSystem::IsFile("config/tutorialsDisabled.mark");
 		GUIElements::Create();
+
+
+		loginMenu.reset(new Menu(0.25f));
+		loginMenu->canBeImplicitlyClosed = false;	//once visible, must explicitly close
+
+		serverChoice.reset(new GUIElements::Window());
+		serverChoice->SetCenteredWidth(0.9f,false);
+		serverChoice->canBeImplicitlyClosed = false;
+
+
+	}
+
+
+	void	CheckServersAreShown(bool doShow)
+	{
+
+		if (doShow)
+		{
+			ShowBottom(serverChoice);
+		}
+		else
+			Hide(serverChoice);
 	}
 
 
 	void	Destroy()
 	{
+		loginMenu.reset();
 		Detail::visibleWindows.Clear();
 		Detail::pendingTutorials.Clear();
 		GUIElements::Destroy();
-	
 	}
 
 	bool	ShowingFactions()

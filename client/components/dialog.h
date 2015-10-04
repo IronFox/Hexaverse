@@ -7,6 +7,7 @@
 #include <functional>
 #include <global_string.h>
 #include "guiElements.h"
+#include "../../shared/cast.h"
 
 namespace Dialog
 {
@@ -20,6 +21,10 @@ namespace Dialog
 	typedef std::function<CheckResult()>	PCheckState;
 	typedef std::function<bool(const String&)>	PCheckInput;
 	typedef std::function<void(const String&)>	PFetchInput;
+
+
+
+
 
 
 	class Dialog : public GUIElements::Window
@@ -136,7 +141,15 @@ namespace Dialog
 	
 	bool	Hide(const GUIElements::PWindow&window);
 	bool	IsVisible(const GUIElements::PWindow&window);
+
+	/**
+	Makes sure the specified window is visible. Raises the window if it's not top-most
+	*/
 	void	Show(const GUIElements::PWindow&window);
+	/**
+	Makes sure the specified window is visible. Lowers it to the bottom of the window stack if it's not there already
+	*/
+	void	ShowBottom(const GUIElements::PWindow&window);
 
 
 	WDialog	ShowFactions(const Buffer0<Faction>&factions);
@@ -173,11 +186,51 @@ namespace Dialog
 	void	HandleMouseUp();
 
 
+	void	CheckServersAreShown(bool doShow);
+
+
 	void	Create();
 	void	Destroy();
 
 
 
+
+
+	class Menu : public GUIElements::Window
+	{
+		typedef GUIElements::Window	Super;
+	public:
+		/**/				Menu(float initialAbsoulteWidth)
+		{
+			Super::SetCenteredWidth(initialAbsoulteWidth,false);
+			Super::fillBackground = false;
+		}
+
+
+		GUIElements::PButton				AddCommand(const String&name, const std::function<void()>&execute, const std::function<bool()>&check = std::function<bool()>(), bool autoHide=true)
+		{
+			GUIElements::PButton button(new GUIElements::Button(name,
+				[execute,this,autoHide]()
+				{
+					execute();
+					if (autoHide)
+						Hide(To<GUIElements::Window>::Cast(this->shared_from_this()));
+				},
+				check
+			));
+			Super::AnchorBelowPrevious(button,0.f,Super::components.IsEmpty() ? 0.f : 0.015f);
+			return button;
+		}
+
+
+	};
+	typedef std::shared_ptr<Menu>	PMenu;
+
+	
+
+
+	extern PMenu				loginMenu;
+	extern GUIElements::PWindow	serverChoice;
 
 
 }

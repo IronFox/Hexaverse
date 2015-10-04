@@ -237,6 +237,38 @@ namespace Network
 	}
 
 
+	static void		FlushFaction(bool alsoFlushWorld)
+	{
+		haveFaction = false;
+		//dbgRoundNumber = 0xFFFFFFFF;
+		Objects::FlushAllData();
+		Network::gameProgress.gameOver = false;
+		Network::gameProgress.gameWon = false;
+		Network::gameProgress.status = "";
+		Network::gameProgress.warning = "";
+		Network::newRoundRequested = false;
+		Network::factionMap.Clear();
+		Objects::Faction::allKnown.Clear();
+
+		Network::myFaction.reset();
+		Animation::primitives.Clear();
+		Animation::actives.Clear();
+		Animation::activeTrajectory.Clear();
+		Animation::atTime = 0;
+
+		if (alsoFlushWorld)
+		{
+			Grid::FlushAllData();
+			Grid::empZonesLocked = 0;
+			Grid::empZonesUnlocked = ~Grid::empZonesLocked;
+		}
+
+		#ifdef HAS_WINDOW
+			amLocated = false;
+			if (alsoFlushWorld)
+				Camera::Reset();
+		#endif
+	}
 
 
 	namespace Receiver
@@ -492,6 +524,9 @@ namespace Network
 					accessMap.Set(worldID,activeToken);
 					SaveWorldAccessTokens();
 				}
+				#ifdef HAS_WINDOW
+					Dialog::Hide(Dialog::loginMenu);
+				#endif
 
 				if (amTechniteFaction)
 					TechniteLogicLink::Create();
@@ -504,32 +539,9 @@ namespace Network
 			else
 			{
 				LogEvent(EventType::SessionRelated, nullptr, "Server response: Faction void.");
-				haveFaction = false;
-				Objects::FlushAllData();
-				Network::gameProgress.gameOver = true;
-				Network::gameProgress.gameWon = false;
-				Network::gameProgress.status = "Faction not set";
-				Network::gameProgress.warning = "";
-				Network::newRoundRequested = false;
-				Network::factionMap.Clear();
-				Objects::Faction::allKnown.Clear();
-
-				Network::myFaction.reset();
-				Animation::primitives.Clear();
-				Animation::actives.Clear();
-				Animation::activeTrajectory.Clear();
-				Animation::atTime = 0;
-
-
+				FlushFaction(true);
 				#ifdef HAS_WINDOW
-					amLocated = false;
-				#endif
-
-
-				if (RuntimeConfig::aiMode && RuntimeConfig::serverURL.IsNotEmpty())
-					application_shutting_down = true;
-				#ifdef HAS_WINDOW
-					QueryNicknameIfEmpty();
+					Dialog::Show(Dialog::loginMenu);
 				#endif
 			}
 		}
@@ -818,8 +830,46 @@ namespace Network
 			ready.factionToken.value = CryptographicID();
 			LogEvent(EventType::SessionRelated, nullptr, "Abandoning current faction");
 			Channels::clientFactionRequest.SendTo(client,ready);
+
+			#ifdef HAS_WINDOW
+				Dialog::Show(Dialog::loginMenu);
+			#endif
 		}
 	}
+
+	bool		HaveFactionKeyForCurrentWorld()
+	{
+		return client.IsConnected() && accessMap.IsSet(worldID);
+	}
+
+	void		AttemptFactionLogin(bool forceNewFaction)
+	{
+		Protocol::ClientFactionRequest ready;
+		ready.startFactionTypes = chosenFactionTypes;
+		if (RuntimeConfig::aiMode)
+		{
+			ready.factionToken = RuntimeConfig::aiAccessToken;
+			LogEvent(EventType::SessionRelated, nullptr, "Attempting to log in to " + worldID.ToString() + " as AI using token: " + ready.factionToken.value.ToString());
+		}
+		elif (!forceNewFaction && accessMap.Query(worldID, ready.factionToken.value))
+		{
+			LogEvent(EventType::SessionRelated,nullptr,"Attempting to use existing access token of world "+worldID.ToString()+": "+ready.factionToken.value.ToString());
+		}
+		else
+		{
+						
+			if (forceNewFaction)
+				LogEvent(EventType::SessionRelated, nullptr, "Forcing new faction in world " + worldID.ToString());
+			else
+				LogEvent(EventType::SessionRelated, nullptr, "No access token found for world " + worldID.ToString()+". Creating new faction");
+
+			ready.factionToken.value = CryptographicID();
+		}
+
+
+		Channels::clientFactionRequest.SendTo(client,ready);
+	}
+
 
 
 	void		OnEvent(TCP::event_t ev, TCP::Peer&)
@@ -830,49 +880,39 @@ namespace Network
 			{
 				Receiver::eventsLocked = false;
 
+
 				#ifdef HAS_WINDOW
 					Tutorial::HideMessage("Servers");
 					Tutorial::lastDelayingEvent = timer.Now();
 				#endif
 
-				Protocol::ClientState state;
-				state.playerName = RuntimeConfig::aiMode ? "<NexusAI>" : chosenNickname;
-				state.state = 0U;
 				amOnline = true;
 
 				LogEvent(EventType::SessionRelated, nullptr, "Connection established to "+client.ToString());
-				Channels::clientStateSender.SendTo(client,state);
+				
+				Protocol::ClientState state;
+				state.playerName = RuntimeConfig::aiMode ? "<NexusAI>" : chosenNickname;
+				state.state = 0U;
+				Channels::clientStateSender.SendTo(client,state);	//elevate client state
 
-				Protocol::ClientFactionRequest ready;
-				ready.startFactionTypes = chosenFactionTypes;
 				if (RuntimeConfig::aiMode)
-				{
-					ready.factionToken = RuntimeConfig::aiAccessToken;
-				}
-				if (RuntimeConfig::aiMode)
-				{
-					LogEvent(EventType::SessionRelated, nullptr, "Attempting to log in to " + worldID.ToString() + " as AI using token: " + ready.factionToken.value.ToString());
-				}
-				elif (accessMap.Query(worldID, ready.factionToken.value))
-				{
-					LogEvent(EventType::SessionRelated,nullptr,"Attempting to use existing access token of world "+worldID.ToString()+": "+ready.factionToken.value.ToString());
-				}
-				else
-				{
-						
-					LogEvent(EventType::SessionRelated, nullptr, "No access token found for world " + worldID.ToString());
-					ready.factionToken.value = CryptographicID();
-						//Generate();
-				}
-
-
-				Channels::clientFactionRequest.SendTo(client,ready);
+					AttemptFactionLogin(false);
 				lastPong = timer.Now();
+
+
+				#ifdef HAS_WINDOW
+					Dialog::Show(Dialog::loginMenu);
+					Dialog::CheckServersAreShown(false);
+				#endif
+
 			}
 			break;
 			case TCP::Event::ConnectionFailed:
 			{
 				LogEvent(EventType::SessionRelated, nullptr, "Connection attempt failed");
+				#ifdef HAS_WINDOW
+					Dialog::SignalSituationChange();
+				#endif
 			}
 			break;
 			case TCP::Event::ConnectionLost:
@@ -880,36 +920,13 @@ namespace Network
 			{
 				LogEvent(EventType::SessionRelated, nullptr, "Connection lost");
 				amOnline = false;
-				haveFaction = false;
-				//dbgRoundNumber = 0xFFFFFFFF;
-				Objects::FlushAllData();
-				Network::gameProgress.gameOver = false;
-				Network::gameProgress.gameWon = false;
-				Network::gameProgress.status = "";
-				Network::gameProgress.warning = "";
-				Network::newRoundRequested = false;
-				Network::factionMap.Clear();
-				Objects::Faction::allKnown.Clear();
 
-				Network::myFaction.reset();
-				Animation::primitives.Clear();
-				Animation::actives.Clear();
-				Animation::activeTrajectory.Clear();
-				Animation::atTime = 0;
-				Grid::FlushAllData();
-				Grid::empZonesLocked = 0;
-				Grid::empZonesUnlocked = ~Grid::empZonesLocked;
-
+				FlushFaction(true);
 				#ifdef HAS_WINDOW
 					Dialog::CloseAllModal();
 				#endif
 
-				Receiver::eventsLocked = true;
 
-				#ifdef HAS_WINDOW
-					Camera::Reset();
-					amLocated = false;
-				#endif
 				TechniteLogicLink::SignalTerrainReset();
 
 				if (RuntimeConfig::aiMode && RuntimeConfig::serverURL.IsNotEmpty())
@@ -917,6 +934,15 @@ namespace Network
 				#ifdef HAS_WINDOW
 					QueryNicknameIfEmpty();
 				#endif
+
+				Receiver::eventsLocked = true;
+
+				#ifdef HAS_WINDOW
+					Dialog::Hide(Dialog::loginMenu);
+					Dialog::CheckServersAreShown(true);
+					Dialog::SignalSituationChange();
+				#endif
+
 			}
 			break;
 		}
@@ -928,6 +954,12 @@ namespace Network
 		{
 			case Protocol::ChannelID::Pong:
 				lastPong = timer.Now();
+				#ifdef HAS_WINDOW
+					Dialog::SignalSituationChange();
+				#endif
+				#ifdef _DEBUG
+					LogEvent(EventType::Debug,nullptr,"Got pong from server");
+				#endif
 			break;
 		}
 	}
@@ -1101,7 +1133,10 @@ namespace Network
 					client.Disconnect();
 				}
 				else
+				{
 					client.SendSignal(Protocol::ChannelID::Ping);
+					LogEvent(EventType::Debug,nullptr,"ping");
+				}
 			}
 
 		}
