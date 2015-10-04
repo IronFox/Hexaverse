@@ -74,8 +74,8 @@ extern "C"
 	Engine::Textout<DX11::TextureFont>	textout;
 
 
-	GUIElements::PWindow		mainMenu,
-								createFactionMenu;
+	Dialog::PMenu		mainMenu,
+						createFactionMenu;
 
 #endif
 
@@ -3308,18 +3308,11 @@ void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_even
 
 		if (!Dialog::IsVisible(mainMenu))
 		{
-			mainMenu->DetectEnabledState();
 			Dialog::Show(mainMenu);
 		}
 		else
 			Dialog::Hide(mainMenu);
-
-
-		//if (IsFullScreen())
-		//	SetFullScreen(false);
-
-
-
+		Dialog::SignalSituationChange();
 	}
 
 	#ifdef HAS_WINDOW
@@ -3888,15 +3881,45 @@ int main( int argc, const char* argv[])
 
 		#ifdef HAS_WINDOW
 
-			mainMenu.reset(new GUIElements::Window());
-			mainMenu->SetCenteredWidth(0.25f,false);
-			mainMenu->AnchorBelowPrevious(new GUIElements::Button("Disconnect",[](){Dialog::Hide(mainMenu); Network::client.Disconnect();},[](){return Network::client.IsConnected();}),0.f,0.f);
-			mainMenu->AnchorBelowPrevious(new GUIElements::Button("Start new faction",[](){Dialog::Hide(mainMenu); StartNewFaction();},[](){return Network::client.IsConnected();}),0.f);
-			mainMenu->AnchorBelowPrevious(new GUIElements::Button("Quit to Desktop",[](){application_shutting_down = true;}),0.f);
-			mainMenu->fillBackground = false;
-			//mainMenu->autoHeightSpacing = 0.015f;
+			mainMenu.reset(new Dialog::Menu(0.25f));
+			mainMenu->AddCommand("Change Nickname",QueryNickname);
+			mainMenu->AddCommand("Abandon faction",[]()
+			{
+				Dialog::Confirm("Your current faction will be abandoned. Its access key will be preserved until you create a new faction in this world. Please confirm.",
+							Network::AbandonCurrentFaction,
+							[](){return Network::client.IsConnected() && Network::haveFaction ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
+			},[](){return Network::amOnline && Network::haveFaction;});
+			mainMenu->AddCommand("Disconnect",[](){Network::client.Disconnect();},[](){return Network::client.IsConnected();});
+			mainMenu->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
 			mainMenu->FullAutoLayout();
 
+			Dialog::loginMenu->AddCommand("Continue existing faction",[](){Network::AttemptFactionLogin(false);},[](){return Network::amOnline && !Network::haveFaction && Network::HaveFactionKeyForCurrentWorld() && Network::serverPhase == Protocol::Phase::CommandPhase;});
+			Dialog::loginMenu->AddCommand("Create new faction",
+			[]()
+			{
+				if (Network::HaveFactionKeyForCurrentWorld())
+				{
+					Dialog::Confirm("A faction key is known for this world ("+Network::worldIDString+"). If you create a new faction, this key will be lost, and control of your old faction will irreversible be abandoned. Please confirm.",
+					[](){
+						Network::AttemptFactionLogin(true);
+						Dialog::Hide(Dialog::loginMenu);
+					},[]()
+					{
+						if (!Network::amOnline || Network::haveFaction)
+							return Dialog::CheckResult::Abort;
+						if (Network::serverPhase != Protocol::Phase::CommandPhase)
+							return Dialog::CheckResult::OkayNotRightNow;
+						return Dialog::CheckResult::OkayContinue;
+					});
+				}
+				else
+				{
+					Network::AttemptFactionLogin(true);
+					Dialog::Hide(Dialog::loginMenu);
+				}
+			},[](){return Network::amOnline && !Network::haveFaction && Network::serverPhase == Protocol::Phase::CommandPhase;},false);
+
+			
 
 
 			if (RuntimeConfig::FromFile::alwaysDay)

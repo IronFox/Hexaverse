@@ -54,6 +54,8 @@ namespace Network
 	void LoadWorldAccessTokens();
 
 	void AbandonCurrentFaction();
+	bool HaveFactionKeyForCurrentWorld();
+	void AttemptFactionLogin(bool forceNewFaction);
 
 	
 	namespace ServerDiscovery

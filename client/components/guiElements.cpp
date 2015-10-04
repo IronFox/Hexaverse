@@ -7,6 +7,7 @@
 #include "../DX11/texture_font.h"
 #include <container/buffer.h>
 #include "surfaceRenderer.h"
+#include "lineRenderer.h"
 #include <engine/aspect.h>
 #include "../../shared/objects.h"
 
@@ -55,18 +56,29 @@ namespace GUIElements
 
 	/*static*/ void				Component::RenderArea(const Rect<>&rect, bool lit, bool flip)
 	{
-		float low = /*hovering ? 0.5f : */0.3;
-		float high = lit ? 0.8f : 0.6;
+		float low = 0.55f;  //0.3;
+		float high = lit ? 0.89f : 0.77f;   //0.8f : 0.6;
 		if (flip)
 			std::swap(low,high);
 
-		low = sqrt(low);
+		//low = sqrt(low);
 		float4 lowColor(low,low,low,low);
-		high = sqrt(high);
+		//high = sqrt(high);
 		float4 highColor(high,high,high,high);
 
 		SurfaceRenderer::Rasterize(float2(rect.x.min,rect.y.min), lowColor, float2(rect.x.max,rect.y.min),lowColor, float2(rect.x.max,rect.y.max), highColor, float2(rect.x.min,rect.y.max),highColor);
 		SurfaceRenderer::Flush();
+		
+
+		float4 lineLowColor(1,1,1,low*low);
+		float4 lineHighColor(1,1,1,high*high);
+	
+
+		LineRenderer::Rasterize(float3(rect.x.min,rect.y.min,0.f), lineLowColor, float3(rect.x.max,rect.y.min,0.f),lineLowColor);
+		LineRenderer::Rasterize(float3(rect.x.max,rect.y.max,0.f), lineHighColor, float3(rect.x.min,rect.y.max,0.f),lineHighColor);
+		LineRenderer::Rasterize(float3(rect.x.max,rect.y.min,0.f),lineLowColor, float3(rect.x.max,rect.y.max,0.f), lineHighColor);
+		LineRenderer::Rasterize(float3(rect.x.min,rect.y.max,0.f),lineHighColor, float3(rect.x.min,rect.y.min,0.f), lineLowColor);
+		LineRenderer::Flush();
 	}
 	
 

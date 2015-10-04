@@ -362,7 +362,7 @@ namespace GUIElements
 		void			AnchorBelowPrevious(const PComponent&newComponent, float distanceFromSides = 0.015f,  float distanceToPrevious = 0.015f, bool distanceIsRelative=false);
 
 	};
-
+	typedef std::shared_ptr<Panel>	PPanel;
 
 	class Window : public Panel
 	{
@@ -379,6 +379,7 @@ namespace GUIElements
 	public:
 		Rect<>				context = Rect<>(0,0,1,1);
 		bool				autoCenter = true;
+		bool				canBeImplicitlyClosed = true;	//!< Indicates that this window can be closed by events such as the Escape being pressed
 
 		/**/				Window()
 		{

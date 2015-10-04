@@ -7,6 +7,7 @@
 #include <functional>
 #include <global_string.h>
 #include "guiElements.h"
+#include "../../shared/cast.h"
 
 namespace Dialog
 {
@@ -20,6 +21,10 @@ namespace Dialog
 	typedef std::function<CheckResult()>	PCheckState;
 	typedef std::function<bool(const String&)>	PCheckInput;
 	typedef std::function<void(const String&)>	PFetchInput;
+
+
+
+
 
 
 	class Dialog : public GUIElements::Window
@@ -179,6 +184,40 @@ namespace Dialog
 
 
 
+
+	class Menu : public GUIElements::Window
+	{
+		typedef GUIElements::Window	Super;
+	public:
+		/**/				Menu(float initialAbsoulteWidth)
+		{
+			Super::SetCenteredWidth(initialAbsoulteWidth,false);
+			Super::fillBackground = false;
+		}
+
+
+		GUIElements::PButton				AddCommand(const String&name, const std::function<void()>&execute, const std::function<bool()>&check = std::function<bool()>(), bool autoHide=true)
+		{
+			GUIElements::PButton button(new GUIElements::Button(name,
+				[execute,this,autoHide]()
+				{
+					execute();
+					if (autoHide)
+						Hide(To<GUIElements::Window>::Cast(this->shared_from_this()));
+				},
+				check
+			));
+			Super::AnchorBelowPrevious(button,0.f,Super::components.IsEmpty() ? 0.f : 0.015f);
+			return button;
+		}
+
+
+	};
+	typedef std::shared_ptr<Menu>	PMenu;
+
+
+
+	extern PMenu				loginMenu;
 
 }
 

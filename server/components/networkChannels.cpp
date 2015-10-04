@@ -161,6 +161,7 @@ namespace Receiver
 		{
 			if (State::activePlayers.FindAndErase(client))
 			{
+				LogEvent(EventType::SessionRelated,peer,"Abandoning faction");
 				State::playerMap.Unset(client->faction);
 				client->faction.reset();
 
@@ -926,11 +927,14 @@ namespace Receiver
 		}
 		State::PClient cl = To<State::Client>::Cast(peer.attachment);
 		cl->state.playerName = name;
-		Protocol::IdentifyUser userID;
-		userID.id = cl->faction->id;
-		userID.name = name;
-		Channels::identifyUser.SendTo(State::server,userID);
-		LogEvent(EventType::SessionRelated, peer, "User renamed to '"+name+"'");
+		if (cl->faction)
+		{
+			Protocol::IdentifyUser userID;
+			userID.id = cl->faction->id;
+			userID.name = name;
+			Channels::identifyUser.SendTo(State::server,userID);
+			LogEvent(EventType::SessionRelated, peer, "User renamed to '"+name+"'");
+		}
 	}
 
 	void	TouchMarker(Protocol::TouchedMarker&m, TCP::Peer&peer)
