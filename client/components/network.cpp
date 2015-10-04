@@ -1037,7 +1037,10 @@ namespace Network
 					client.Disconnect();
 				}
 				else
+				{
 					client.SendSignal(Protocol::ChannelID::Ping);
+					LogEvent(EventType::Debug,nullptr,"ping");
+				}
 			}
 
 		}
