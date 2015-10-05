@@ -200,10 +200,18 @@ namespace Dialog
 	{
 		typedef GUIElements::Window	Super;
 	public:
-		/**/				Menu(float initialAbsoulteWidth)
+		/**/				Menu(float initialAbsoulteWidth, const String&title)
 		{
 			Super::SetCenteredWidth(initialAbsoulteWidth,false);
 			Super::fillBackground = false;
+
+			if (title.IsNotEmpty())
+			{
+				GUIElements::PLabel label(new GUIElements::Label());
+				label->SetText(title);
+				label->extraSpacing = 0.1f;
+				Super::AnchorBelowPrevious(label,0.015f,0.f);
+			}
 		}
 
 

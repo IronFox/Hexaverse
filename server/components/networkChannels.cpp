@@ -337,6 +337,14 @@ namespace Receiver
 
 		if (newFaction)
 		{
+			if (response.startFactionTypes == Protocol::FactionType::ContinueOnly)
+			{
+				response.startFactionTypes = 0;
+				Channels::clientFactionResponse.SendTo(peer,response);
+				LogEvent(EventType::SessionRelated,peer,"Client chose to continue faction. No faction found that can be continued. Join-request rejected.");
+				return;
+			}
+
 			if (State::Config::closedGame && State::roundNumber > 0)
 			{
 				response.startFactionTypes = 0;

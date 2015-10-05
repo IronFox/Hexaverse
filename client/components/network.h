@@ -36,8 +36,6 @@ namespace Network
 	extern GenericHashTable<TUniqueID,Objects::OwnerParameter,TUniqueID>	factionMap;
 
 
-	extern UINT32			chosenFactionTypes;
-
 	extern UINT32			roundNumber;
 					//dbgRoundNumber = 0xFFFFFFFF;
 	extern Protocol::GameProgress	gameProgress;
@@ -59,7 +57,7 @@ namespace Network
 
 	void AbandonCurrentFaction();
 	bool HaveFactionKeyForCurrentWorld();
-	void AttemptFactionLogin(bool forceNewFaction);
+	void AttemptFactionLogin(bool forceNewFaction, UINT32 factionTypes);
 
 	
 	namespace ServerDiscovery
