@@ -20,6 +20,7 @@ namespace Network
 	extern bool			haveFaction,
 						haveId,
 						amOnline,
+						amRegularFaction,	//can be set together with amTechniteFaction
 						amTechniteFaction;
 
 

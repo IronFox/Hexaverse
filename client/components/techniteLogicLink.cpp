@@ -164,8 +164,9 @@ namespace TechniteLogicLink
 			{
 				LogEvent(EventType::TechniteLogic,nullptr,"All technites instructed");
 				
-				if (Network::chosenFactionTypes == Protocol::FactionType::TechniteFaction)	//nothing else
+				if (Network::amTechniteFaction && !Network::amRegularFaction)
 				{
+					//auto-new-round, if set. Not sure if this should be set
 					//SignalRoundEnd();
 				}
 			}

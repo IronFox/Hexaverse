@@ -27,7 +27,8 @@ namespace Network
 	#ifdef HAS_WINDOW
 		bool		amLocated=false;
 	#endif
-	bool			amTechniteFaction = false;
+	bool			amTechniteFaction = false,
+					amRegularFaction = false;
 
 	TUniqueID		myID,serverID,worldID;
 	CryptographicID	activeToken;
@@ -268,6 +269,9 @@ namespace Network
 			if (alsoFlushWorld)
 				Camera::Reset();
 		#endif
+
+		amTechniteFaction = false;
+		amRegularFaction = false;
 	}
 
 
@@ -514,6 +518,7 @@ namespace Network
 
 			haveFaction = cr.startFactionTypes != 0;
 			amTechniteFaction = (cr.startFactionTypes & Protocol::FactionType::TechniteFaction) != 0;
+			amRegularFaction =  (cr.startFactionTypes & Protocol::FactionType::RegularFaction) != 0;
 			if (haveFaction)
 			{
 				activeToken = cr.factionToken;

@@ -4008,7 +4008,9 @@ int main( int argc, const char* argv[])
 			mainMenu->FullAutoLayout();
 
 			Dialog::loginMenu->AddCommand("Continue existing faction",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},[](){return Network::amOnline && !Network::haveFaction && Network::HaveFactionKeyForCurrentWorld() && Network::serverPhase == Protocol::Phase::CommandPhase;});
-			AddFactionCreationChoice("Create new faction",Protocol::FactionType::RegularFaction);
+			AddFactionCreationChoice("Create new regular faction",Protocol::FactionType::RegularFaction);
+			AddFactionCreationChoice("Create new Technite faction",Protocol::FactionType::TechniteFaction);
+			AddFactionCreationChoice("Create new hybrid regular/Technite faction",Protocol::FactionType::TechniteFaction | Protocol::FactionType::RegularFaction);
 
 			
 
