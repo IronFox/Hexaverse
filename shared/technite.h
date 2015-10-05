@@ -308,7 +308,7 @@ namespace Technites
 
 		static BYTE		GetLifeCostAtHeight(int height)
 		{
-			return (BYTE)std::max(height, 0);
+			return (BYTE)std::max(height, 1);
 		}
 
 
