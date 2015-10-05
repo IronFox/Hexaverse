@@ -339,6 +339,8 @@ void	SignalRoundEnd()
 	void	SetFullScreen(bool isFull)
 	{
 		static RECT stored;
+		static bool hasAnyStored = false;
+		static bool storedIsMaximized = false;
 		if (isFull == IsFullScreen())
 			return;
 		Resolution screen = display.getScreenSize();
@@ -347,7 +349,10 @@ void	SignalRoundEnd()
 			//is fullscreen => restore
 
 			display.resizeWindow(screen.width,screen.height,Engine::DisplayConfig::ResizableBorder);
-			display.locateWindow(stored);
+			if (hasAnyStored)
+				display.locateWindow(stored);
+			if (storedIsMaximized)
+				display.Maximize();
 
 			::SetWindowPos(Engine::context.getWindow(),       // handle to window
 				HWND_NOTOPMOST,  // placement-order handle
@@ -362,9 +367,17 @@ void	SignalRoundEnd()
 		else
 		{
 			//is not fullscreen => enter fullscreen
-			stored = display.windowLocation();
+			if (!display.IsMaximized())
+			{
+				stored = display.windowLocation();
+				hasAnyStored = true;
+				storedIsMaximized = false;
+			}
+			else
+				storedIsMaximized = true;//leave stored as is
 			display.locateWindow(0,0,screen.width,screen.height);
 			display.resizeWindow(screen.width,screen.height,Engine::DisplayConfig::NoBorder);
+			display.locateWindow(0,0,screen.width,screen.height);
 
 
 			::SetWindowPos(Engine::context.getWindow(),       // handle to window
