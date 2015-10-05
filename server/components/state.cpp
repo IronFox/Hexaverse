@@ -2422,6 +2422,8 @@ namespace State
 				}
 			}
 
+			Objects::RefreshCompoundCoverageIfNeeded(atTime);
+
 			Objects::ForeachCompound([](Objects::Compound&c)
 			{
 				bool hasFuelMine = false,
