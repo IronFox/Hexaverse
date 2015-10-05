@@ -755,8 +755,7 @@ namespace Network
 
 	String			chosenNickname;
 	Timer::Time		lastPong = timer.Now();
-	UINT32			chosenFactionTypes = Protocol::FactionType::RegularFaction;
-
+	
 
 
 	void			AbandonCurrentFaction()
@@ -780,10 +779,10 @@ namespace Network
 		return client.IsConnected() && accessMap.IsSet(worldID);
 	}
 
-	void		AttemptFactionLogin(bool forceNewFaction)
+	void		AttemptFactionLogin(bool forceNewFaction, UINT32 factionTypes)
 	{
 		Protocol::ClientFactionRequest ready;
-		ready.startFactionTypes = chosenFactionTypes;
+		ready.startFactionTypes = factionTypes;
 		if (RuntimeConfig::aiMode)
 		{
 			ready.factionToken = RuntimeConfig::aiAccessToken;
@@ -834,7 +833,7 @@ namespace Network
 				Channels::clientStateSender.SendTo(client,state);	//elevate client state
 
 				if (RuntimeConfig::aiMode)
-					AttemptFactionLogin(false);
+					AttemptFactionLogin(false,Protocol::FactionType::RegularFaction);
 				lastPong = timer.Now();
 
 

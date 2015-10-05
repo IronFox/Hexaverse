@@ -1679,6 +1679,7 @@ namespace Protocol
 	{
 		enum flag_t
 		{
+			ContinueOnly = 0xFFFFFFFF,
 			RegularFaction = 0x1,
 		};
 	};

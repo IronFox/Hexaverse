@@ -3632,6 +3632,41 @@ void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_even
 
 #endif
 
+
+#ifdef HAS_WINDOW
+	void AddFactionCreationChoice(const String&line, UINT32 typeFlags)
+	{
+		Dialog::loginMenu->AddCommand(line,
+		[typeFlags]()
+		{
+			if (Network::HaveFactionKeyForCurrentWorld())
+			{
+				Dialog::Confirm("A faction key is known for this world ("+Network::worldIDString+"). If you create a new faction, this key will be lost, and control of your old faction will irreversible be abandoned. Please confirm.",
+				[typeFlags](){
+					Network::AttemptFactionLogin(true,typeFlags);
+					Dialog::Hide(Dialog::loginMenu);
+				},[]()
+				{
+					if (!Network::amOnline || Network::haveFaction)
+						return Dialog::CheckResult::Abort;
+					if (Network::serverPhase != Protocol::Phase::CommandPhase)
+						return Dialog::CheckResult::OkayNotRightNow;
+					return Dialog::CheckResult::OkayContinue;
+				});
+			}
+			else
+			{
+				Network::AttemptFactionLogin(true,typeFlags);
+				Dialog::Hide(Dialog::loginMenu);
+			}
+		},[](){return Network::amOnline && !Network::haveFaction && Network::serverPhase == Protocol::Phase::CommandPhase;},false);
+
+
+	}
+
+#endif
+
+
 void ParseKeyValue(const String&key, const String&value)
 {
 	try
@@ -3660,6 +3695,7 @@ void ParseKeyValue(const String&key, const String&value)
 	}
 
 }
+
 
 bool ConfigureClient(const wchar_t*commandLine)
 {
@@ -3957,31 +3993,8 @@ int main( int argc, const char* argv[])
 			mainMenu->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
 			mainMenu->FullAutoLayout();
 
-			Dialog::loginMenu->AddCommand("Continue existing faction",[](){Network::AttemptFactionLogin(false);},[](){return Network::amOnline && !Network::haveFaction && Network::HaveFactionKeyForCurrentWorld() && Network::serverPhase == Protocol::Phase::CommandPhase;});
-			Dialog::loginMenu->AddCommand("Create new faction",
-			[]()
-			{
-				if (Network::HaveFactionKeyForCurrentWorld())
-				{
-					Dialog::Confirm("A faction key is known for this world ("+Network::worldIDString+"). If you create a new faction, this key will be lost, and control of your old faction will irreversible be abandoned. Please confirm.",
-					[](){
-						Network::AttemptFactionLogin(true);
-						Dialog::Hide(Dialog::loginMenu);
-					},[]()
-					{
-						if (!Network::amOnline || Network::haveFaction)
-							return Dialog::CheckResult::Abort;
-						if (Network::serverPhase != Protocol::Phase::CommandPhase)
-							return Dialog::CheckResult::OkayNotRightNow;
-						return Dialog::CheckResult::OkayContinue;
-					});
-				}
-				else
-				{
-					Network::AttemptFactionLogin(true);
-					Dialog::Hide(Dialog::loginMenu);
-				}
-			},[](){return Network::amOnline && !Network::haveFaction && Network::serverPhase == Protocol::Phase::CommandPhase;},false);
+			Dialog::loginMenu->AddCommand("Continue existing faction",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},[](){return Network::amOnline && !Network::haveFaction && Network::HaveFactionKeyForCurrentWorld() && Network::serverPhase == Protocol::Phase::CommandPhase;});
+			AddFactionCreationChoice("Create new faction",Protocol::FactionType::RegularFaction);
 
 			
 
