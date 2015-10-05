@@ -1551,7 +1551,13 @@ namespace Receiver
 			LogEvent(EventType::SessionRelated,peer,client->ToString()+" joined the session");
 
 			
+			Protocol::PhaseChange	ph;
+			ph.newPhase = State::phase;
+			ph.roundNumber = (UINT32)State::roundNumber;
+			ph.timeFactor = -1;
 
+
+			Channels::phaseChange.SendTo(peer,ph);
 
 
 			/*
