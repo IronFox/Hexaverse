@@ -826,7 +826,7 @@ namespace Dialog
 		GUIElements::Create();
 
 
-		loginMenu.reset(new Menu(0.25f));
+		loginMenu.reset(new Menu(0.25f,"Login"));
 		loginMenu->canBeImplicitlyClosed = false;	//once visible, must explicitly close
 
 		serverChoice.reset(new GUIElements::Window());

@@ -3930,7 +3930,7 @@ int main( int argc, const char* argv[])
 
 		#ifdef HAS_WINDOW
 
-			mainMenu.reset(new Dialog::Menu(0.25f));
+			mainMenu.reset(new Dialog::Menu(0.25f,"Main"));
 			mainMenu->AddCommand("Change Nickname",QueryNickname);
 			mainMenu->AddCommand("Abandon faction",
 				[]()
