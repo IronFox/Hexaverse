@@ -206,7 +206,7 @@ namespace Objects
 			int fallingHeight = 0;
 			while (location.height-fallingHeight > -Grid::CellStack::HalfRange 
 					&& Grid::actualWorld.LowCellIsClear(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1))
-					&& NoVehicleHere(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1)))
+					&& NoVehicleHereExcept(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1),this))
 				fallingHeight ++;
 			//if (fallingHeight > 0)
 			{
