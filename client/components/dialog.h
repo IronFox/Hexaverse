@@ -88,7 +88,12 @@ namespace Dialog
 		}
 
 
-		void		Confirm(bool bySpace);
+		/**
+		Issues a confirmation event on the local dialog.
+		The state of the dialog is checked before handler functions may be called, and the dialog removed automatically.
+		@return true, if the dialog did or would close (condition not met), false if it is not designed to be confirmed (lacks string-handler function and confirm button)
+		*/
+		bool		Confirm(bool bySpace);
 
 		void		DumpMe();
 	};
@@ -175,7 +180,7 @@ namespace Dialog
 
 	/**
 	Confirms the current top-most modal dialog, if possible and existing
-	@return true if a modal dialog exists, false otherwise. Response does not reveal whether or not the dialog was closed
+	@return true if a dialog is top-most, and it can be confirmed, false otherwise. Response does not reveal whether or not the dialog was closed, but whether or not the event should be propagated somewhere else
 	*/
 	bool	ConfirmCurrent(bool bySpace);
 
