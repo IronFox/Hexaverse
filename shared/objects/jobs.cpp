@@ -94,7 +94,8 @@ namespace Objects
 						return rs;
 					ASSERT__(rs != ContinueJob);
 					if (movesToFocusWhenDone)
-						v.PlaceExactlyAt(focus,0,0);
+						if (v.PlaceExactlyAt(focus,0,0) == MobilePlacementResult::PlacementFailedMobileDestroyed)
+							return BaseJob::TerminalFailureVehicleDestroyed;
 			
 				}
 				else
@@ -151,7 +152,8 @@ namespace Objects
 			SignalClusterAndNeighborsChange(focus,v.timeAt);
 			if (Grid::actualWorld.LowCellIsClear(focus))
 			{
-				v.PlaceExactlyAt(focus,Times::Dig,v.timeAt);
+				if (v.PlaceExactlyAt(focus,Times::Dig,v.timeAt) == MobilePlacementResult::PlacementFailedMobileDestroyed)
+					return BaseJob::TerminalFailureVehicleDestroyed;
 			}
 			return JobDone;
 			//v.timeAt += Times::Dig;
@@ -838,9 +840,14 @@ namespace Objects
 			//}
 			//v.timeAt += Times::Dig;
 			SignalClusterAndNeighborsChange(target,v.timeAt-Times::Dig,&v);
-			if (!Succeeded(v.PlaceExactlyAt(target, Times::Dig,v.timeAt))
-				&& !Succeeded(v.PlaceExactlyAt(v.location,0,v.timeAt)))
+			MobilePlacementResult rc = v.PlaceExactlyAt(target, Times::Dig,v.timeAt);
+			if (!Succeeded(rc))
+			{
+				if (rc == MobilePlacementResult::PlacementFailedMobileDestroyed)
 					return TerminalFailureVehicleDestroyed;
+				if (!Succeeded(v.PlaceExactlyAt(v.location,0,v.timeAt)))
+					return TerminalFailureVehicleDestroyed;
+			}
 					//or else it falls, breaking the task list. HOWEVER: must be done AFTER signalling neighbors because they must have a chance to fill the hole again.
 			return JobDone;
 		}
