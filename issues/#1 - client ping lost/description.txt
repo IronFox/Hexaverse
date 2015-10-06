@@ -1,0 +1,16 @@
+description:
+
+[technite branch]
+
+1) connection is established, extensive faction progress, round 35
+2) server is stopped in debug session, recompiled, and restarted with a fresh session, and an empty world
+3) server is listed in client window, connection attempt is made
+4) connection is recognized by server, client displays login options
+5) client receives '>Client connected' message from server.
+6) user:technite hybrid faction is requested.
+7) server does not receive login message, pings, or any other logged event. does not create a faction, or send world
+8) client log shows login attempt and several pings being 'sent', disconnects after 15 seconds
+9) reconnecting manually starts at 4, repeats cycle.
+10) restarting the client forced recompilation, did not reproduce the issue. problem is not considered solved
+
+event does not seem to occur on master branch, despite several attempts to reproduce
