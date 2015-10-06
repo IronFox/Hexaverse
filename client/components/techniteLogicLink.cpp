@@ -440,6 +440,7 @@ namespace TechniteLogicLink
 		logicServer.EndService();
 		logicProcess.Terminate();
 		numClients = 0;
+		recordedHistory.Clear();
 	}
 
 

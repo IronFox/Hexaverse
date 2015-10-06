@@ -392,6 +392,19 @@ namespace Receiver
 		State::playerMap.Set(client->faction,client);
 		client->wantNewRound = false;
 
+		if ((response.startFactionTypes & Protocol::FactionType::TechniteFaction) && !client->faction->IsTechniteFaction())
+		{
+			response.startFactionTypes = (response.startFactionTypes & ~Protocol::FactionType::TechniteFaction) | Protocol::FactionType::RegularFaction;
+		}
+		else
+			if (client->faction->IsTechniteFaction() && !(response.startFactionTypes & Protocol::FactionType::TechniteFaction))
+			{
+				response.startFactionTypes = response.startFactionTypes | Protocol::FactionType::TechniteFaction;
+				if (client->faction->allMobiles.IsEmpty() && client->faction->structures.IsEmpty() && !newFaction)
+				{
+					response.startFactionTypes = response.startFactionTypes & ~Protocol::FactionType::RegularFaction;
+				}
+			}
 
 		Channels::clientFactionResponse.SendTo(client->peer.lock(),response);
 		Protocol::FactionID outFactionID(client->faction->id,0xFF);

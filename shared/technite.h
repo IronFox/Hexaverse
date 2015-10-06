@@ -171,7 +171,7 @@ namespace Technites
 			TechniteLacksResources,
 			NoTechniteAtDestination,
 			MoreWorkNeeded,
-			OperationWindowPassed,
+			OperationWindowMissed,
 			Again,
 			Success
 		};

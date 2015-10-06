@@ -396,7 +396,7 @@ namespace Technites
 		if (iteration < 2)
 			return ExecResult::Again;
 		if (iteration > 2)
-			return ExecResult::OperationWindowPassed;
+			return ExecResult::OperationWindowMissed;
 
 		
 		if (!ReduceResources(technite, Technite::SplitCost))
@@ -605,6 +605,11 @@ namespace Technites
 
 	Technite::Resources		Faction::EatTechnite(Technite&local, const Grid::HCellIdU&target, bool factionIsActive)
 	{
+		//this seems to fix the 'terrain content mismatch' issue, but it should not occur
+		return Technite::Resources();//experiment
+
+
+
 		//	if (!factionIsActive)
 		{
 			index_t at;
@@ -740,7 +745,7 @@ namespace Technites
 				if (iteration < 1)
 					return ExecResult::Again;
 				if (iteration > 1)
-					return ExecResult::OperationWindowPassed;
+					return ExecResult::OperationWindowMissed;
 			
 				BYTE faction = Grid::actualWorld.cellStack[target.stackID].GetCellU(target.layer).techniteFaction;	//this should be thread-safe with only one faction being parallely active at any given time
 			
@@ -756,7 +761,7 @@ namespace Technites
 				return ExecResult::CannotEatThis;
 		}
 		if (iteration > 0)
-			return ExecResult::OperationWindowPassed;
+			return ExecResult::OperationWindowMissed;
 
 		if (!ReduceResources(technite, destroy ? Technite::ConsumeCost : Technite::GnawAtCost))
 		{
@@ -981,22 +986,28 @@ namespace Technites
 		}
 
 		count_t deathByBadSupport = 0,
-				deathByLostContent = 0;
+				deathByLostContent = 0,
+				totalNew = 0;
 		foreach(workerData, data)
 		{
+			totalNew += data->newTechnites.Count();
 			for (const auto&loc : data->newTechnites)
 			{
 				if (techniteMap.IsSet(loc))
 					continue;
-				if (!ValidTechniteLocation(loc))
-				{
-					deathByBadSupport++;
-					continue;
-				}
 
 				if (GetLastContent(loc) != Grid::Content::Technite)
 				{
 					deathByLostContent ++;
+					continue;
+				}
+
+				if (!ValidTechniteLocation(loc))
+				{
+					atomicGrid.cellStack[loc.stackID].volumeCell[loc.layer].content = Grid::Content::Clear;
+					atomicGrid.SignalStackChange(loc.stackID);
+					
+					deathByBadSupport++;
 					continue;
 				}
 
@@ -1017,9 +1028,9 @@ namespace Technites
 		}
 
 		if (deathByBadSupport)
-			LogEvent(EventType::TechniteLogic,nullptr,this->GetLogName()+": Lost "+String(deathByBadSupport)+" new technite(s) due to lack of terrain support");
+			LogEvent(EventType::TechniteLogic,nullptr,this->GetLogName()+": Lost "+String(deathByBadSupport)+"/"+String(totalNew)+" new technite(s) due to lack of terrain support");
 		if (deathByLostContent)
-			LogEvent(EventType::TechniteLogic,nullptr,this->GetLogName()+": Lost "+String(deathByLostContent)+" new technite(s) due to terrain content mismatch");
+			LogEvent(EventType::TechniteLogic,nullptr,this->GetLogName()+": Lost "+String(deathByLostContent)+"/"+String(totalNew)+" new technite(s) due to terrain content mismatch");
 
 
 		
@@ -1125,6 +1136,7 @@ namespace Technites
 			&&
 			!toCell.content.compare_exchange_strong(expect1, Grid::Content::Technite))
 			return false;
+		ASSERT1__(toCell.content==Grid::Content::Technite,toCell.content);
 		atomicGrid.SignalStackChange(target.stackID);
 		Grid::actualWorld.cellStack[target.stackID].volumeCell[toLayer].techniteFaction = this->gridID;
 
