@@ -189,6 +189,8 @@ namespace Objects
 				/**/					BuildWallUp(MobileEntity&v,Autocomplete jobAutoCompletion, bool movesToFocusWhenDone) : BaseJob(BuildWallMineralCosts,v,true,jobAutoCompletion, movesToFocusWhenDone)
 				{}
 
+				virtual Grid::LCellIdI	FocusToBuildLocation(const Grid::LCellIdI&focus) const {return focus-1;}
+
 				static bool				ConnectTo(BYTE content)
 				{
 					return Grid::CellStack::Cell::typeStrength[content] >= 4;	//grass strength
@@ -220,6 +222,9 @@ namespace Objects
 
 			class BuildHorizontalWall : public BuildWallUp
 			{
+			protected:
+				virtual Grid::LCellIdI	FocusToBuildLocation(const Grid::LCellIdI&focus) const override {return focus;}
+
 			public:
 				typedef BuildWallUp		Super;
 				

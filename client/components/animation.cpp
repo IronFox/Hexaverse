@@ -148,7 +148,9 @@ namespace Animation
 
 	//	static Buffer<Objects::MapNode>	nodes;
 		static Objects::ReachabilityMapper mapper(false);
+		Objects::Component::VehicleBase::canStandOnUnknown = false;
 		mapper.Map(v.get(),v->location,AI::BlockTest);
+		Objects::Component::VehicleBase::canStandOnUnknown = true;
 
 
 		float closestDistance = std::numeric_limits<float>::max();

@@ -280,23 +280,28 @@ namespace Dialog
 	void		Dialog::DumpMe()
 	{
 //		reLayout.swap(std::function<void(Dialog&)>());
+		bool active = Super::IsActive();
+		if (active)
+			Deactivate();
+
 		components.Clear();
 		confirmButton.reset();
 		userInput.reset();
 		textField.reset();
 		image.reset();
 
-		Deactivate();
 		Detail::visibleWindows.FindAndErase(shared_from_this());
 		Detail::visibleDialogs.FindAndErase(shared_from_this());
-		if (Detail::visibleWindows.IsNotEmpty())
+		if (active && Detail::visibleWindows.IsNotEmpty())
 			Detail::visibleWindows.last()->Activate();
 	}
 
-	void		Dialog::Confirm(bool bySpace)
+	bool		Dialog::Confirm(bool bySpace)
 	{
+		if (!confirmButton && !fetchInput)
+			return false;	//some dialogs do not have close-options, and do not respond to confirmations
 		if (confirmButton && !confirmButton->IsEnabled())
-			return;
+			return true;	//would, if it could
 
 		bool tut = isTutorial;
 		if (!fetchInput)
@@ -310,7 +315,7 @@ namespace Dialog
 		else
 		{
 			if (bySpace)
-				return;
+				return true;
 			fetchInput(userInput->GetInput());
 			DumpMe();
 		}
@@ -319,6 +324,7 @@ namespace Dialog
 		{
 			ShowNextTutorial();
 		}
+		return true;
 	}
 
 
@@ -343,8 +349,8 @@ namespace Dialog
 		PDialog d = To<Dialog>::DynamicCast(Detail::visibleWindows.last());
 		if (d)
 		{
-			d->Confirm(bySpace);
-			return true;
+			return d->Confirm(bySpace);
+			//return true;
 		}
 		return false;
 	}
@@ -729,6 +735,7 @@ namespace Dialog
 
 
 		PDialog d = Detail::NewModalDialog(0, "", false);
+		d->canBeImplicitlyClosed = false;
 
 		d->check = check;
 		d->textField->SetText( message );

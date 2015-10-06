@@ -1541,17 +1541,20 @@ namespace Grid
 	}
 
 
-	void	WorldData::GetStrengthRange(const LCellIdI&cell, Content&outWeakest, Content&outStrongest) const
+
+	bool	WorldData::GetStrengthRange(const LCellIdI&cell, Content&outWeakest, Content&outStrongest) const
 	{
 		#ifdef HYBRID_GRID
 			index_t finer = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
 			const auto&c = Grid::high.grid.GetCell(finer);
 			outStrongest = outWeakest = Content::Reinterpret((cellStack[finer].GetCellI(cell.height).content));
 			int s0 = CellStack::Cell::typeStrength[outStrongest];
+			bool anyUnknown = false;
 			TFloatRange<int> strength = FloatRange<int>(s0,s0);
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 			{
 				Content t = Content::Reinterpret(cellStack[c.neighborhood.neighborID[j]].GetCellI(cell.height).content);
+				anyUnknown |= t == Content::Unknown;
 				int strength2 = CellStack::Cell::typeStrength[t];
 				if (strength2 < strength.min)
 				{
@@ -1564,9 +1567,11 @@ namespace Grid
 					outStrongest = t;
 				}
 			}
+			return anyUnknown;
 		#else
-			const auto&c = Grid::high.grid.GetCell(cell.stackID);
+			//const auto&c = Grid::high.grid.GetCell(cell.stackID);
 			outStrongest = outWeakest = Content::Reinterpret((cellStack[cell.stackID].GetCellI(cell.height).content));
+			return outWeakest == Content::Unknown;
 		#endif
 	}
 
@@ -4118,8 +4123,8 @@ namespace Grid
 		Math::Box<> test;
 		const TVec3<> worldCenter = ToWorld(center);
 		test.SetCenter(worldCenter,radius);
-
-		Concurrency::parallel_for(index_t(0),LowSetup::GridType::CellCount,[this,worldCenter,radius,change](index_t i)
+		float r2 = radius*radius;
+		Concurrency::parallel_for(index_t(0),LowSetup::GridType::CellCount,[this,worldCenter,r2,change](index_t i)
 		{
 			//bool anyChanged = false;
 			bool anyVisible = false;
@@ -4127,8 +4132,8 @@ namespace Grid
 
 			bool wasIn = false;
 			TVec3<> localCenter = low.cells[i].centerVertex.xyz * orbit;
-
-			if (Vec::quadraticDistance(localCenter,worldCenter) <= sqr(radius))
+			float dist2 = Vec::quadraticDistance(localCenter,worldCenter);
+			if (dist2 <= r2)
 			{
 				cells[i].visible += change;
 				DBG_ASSERT_GREATER_OR_EQUAL__(cells[i].visible,0);

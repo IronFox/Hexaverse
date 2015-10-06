@@ -2,13 +2,8 @@
 ------------- not done ------------- 
 
 ...urgent bugs...
-server crashes when trying to spawn unit from producer with unit limit reached
-resources are invisible 
-build wall: Obstruction detected. Resolution: clearing upper terrain.
-	->Unable to continue 'clear upper terrain' (Focus height (2) expected one above vehicle height (0)).
-	:there was an obstruction one layer further up, but not immediately relevant
-entering full screen often does not set window location to top-left screen edge properly first time.
 
+flickering of terrain
 
 ...requested...
 
@@ -66,7 +61,6 @@ caves for nexus
 
 encryption
 
-async data sending from the server
 
 accelerate pathfinding, by parallelization and creation of a second coarse grid
 
@@ -85,7 +79,6 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 
 
-
 remote server control, including local starting
 
 
@@ -97,6 +90,13 @@ remote server control, including local starting
 
 ------------- done (newest first) -------------
 
+resources are invisible 
+build wall: Obstruction detected. Resolution: clearing upper terrain.
+	->Unable to continue 'clear upper terrain' (Focus height (2) expected one above vehicle height (0)).
+	:there was an obstruction one layer further up, but not immediately relevant
+entering full screen often does not set window location to top-left screen edge properly first time.
+server crashes when trying to spawn unit from producer with unit limit reached
+async data sending from the server
 vehicles need self-destruction button
 implement type-number restrictions
 keep vehicle plant enable button enabled even if nothing enqueued and notify user that the queue is empty

@@ -329,6 +329,13 @@ namespace Objects
 
 			bool							CanClimb(int inclination) const { if (inclination < 0) return inclination >= minClimbDown; return inclination <= maxClimbUp;}
 
+			/**
+			Global flag that states whether or not any base should be able to stand on unknown blocks.
+			Usually this is fine, but for AI-units this can prove fatal.
+			Make sure this variable is only ever temporarily false
+			*/
+			static bool						canStandOnUnknown	/*=true*/;
+
 			bool							CanStandOn(const Grid::WorldData&world, const Grid::LCellIdI&, bool ignoreWater, bool doFloat);
 
 			#ifdef HAS_WINDOW

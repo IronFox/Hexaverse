@@ -130,6 +130,7 @@ namespace Objects
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
 
 	bool			NoVehicleHere(const Grid::LCellIdI&cellID);
+	bool			NoVehicleHereExcept(const Grid::LCellIdI&cellID, const Vehicle*);
 	bool			NoSatelliteHere(const UINT32 cellID);
 
 	void			RemoveVehicleFromGrid(const PVehicle&v,const Grid::LCellIdI&location);

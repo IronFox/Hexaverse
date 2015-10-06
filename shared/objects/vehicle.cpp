@@ -206,7 +206,7 @@ namespace Objects
 			int fallingHeight = 0;
 			while (location.height-fallingHeight > -Grid::CellStack::HalfRange 
 					&& Grid::actualWorld.LowCellIsClear(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1))
-					&& NoVehicleHere(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1)))
+					&& NoVehicleHereExcept(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1),this))
 				fallingHeight ++;
 			//if (fallingHeight > 0)
 			{
@@ -236,10 +236,11 @@ namespace Objects
 							SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,timeAt,timeCost);
 
 						timeAt += timeCost;
+						InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
 						//RemoveFromGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 					}
 					LogEvent(EventType::CommandRejected,this, "Unable to relocate here. Vehicle destroyed.");
-					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,timeAt,false,true);
+//					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,timeAt,false,true);
 
 					if (failIsFatal)
 					{
@@ -247,7 +248,7 @@ namespace Objects
 						FATAL__("Critical abort");
 					}
 
-					return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
+					return MobilePlacementResult::PlacementFailedMobileDestroyed;
 				}
 
 			}

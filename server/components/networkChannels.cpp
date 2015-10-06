@@ -1301,7 +1301,7 @@ namespace Receiver
 			break;
 			case ConstName::Job_BuildWallUp:
 			{
-				Grid::LCellIdI target = v->GetLastPointOfOrigin()+1;
+				Grid::LCellIdI target = v->GetLastPointOfOrigin()+1;	//has moveToFocusWhenDone, focus must be set to where vehicle will move
 				if (target.height+1 >= Grid::CellStack::HalfRange)
 				{
 					LogEvent(EventType::CommandRejected,peer,e,"Cannot build wall on top layer");

@@ -333,7 +333,8 @@ namespace GUIElements
 		virtual void Render()
 		{
 			bool lit = IsLit();
-			Super::BaseRender(lit,lit && mousePressedComponent.get() == this);
+			bool flipped = mousePressedComponent.get() == this;
+			Super::BaseRender(lit && !flipped,lit && flipped);
 			Super::RenderText(lit);
 		}
 
@@ -464,7 +465,8 @@ namespace GUIElements
 		virtual void Render()
 		{
 			bool lit = IsLit();
-			Super::BaseRender(lit,lit && mousePressedComponent.get() == this);
+			bool flipped = mousePressedComponent.get() == this;
+			Super::BaseRender(lit && !flipped,lit && flipped);
 			if (lastLit != lit)
 			{
 				lastLit = lit;
