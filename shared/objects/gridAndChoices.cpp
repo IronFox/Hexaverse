@@ -569,6 +569,12 @@ namespace Objects
 
 
 
+	index_t					CellToGridIndex(const Grid::LCellIdU&location)
+	{
+		index_t rs = location.layer * Grid::LowSetup::GridType::CellCount + location.stackID;
+		ASSERT_LESS__(rs,vehicleGrid.GetLength());
+		return rs;
+	}
 
 	index_t					CellToGridIndex(const Grid::LCellIdI&location)
 	{
@@ -666,9 +672,19 @@ namespace Objects
 		{
 			return grid[CellToGridIndex(location)];
 		}
+	template <typename T>
+		T					QueryGrid(const Array<T>&grid, const Grid::LCellIdU&location)
+		{
+			return grid[CellToGridIndex(location)];
+		}
 
 
 	PStructure GetStructure(const Grid::LCellIdI&stackID)
+	{
+		return QueryGrid(structureGrid,stackID);
+	}
+
+	PStructure GetStructure(const Grid::LCellIdU&stackID)
 	{
 		return QueryGrid(structureGrid,stackID);
 	}
@@ -684,6 +700,13 @@ namespace Objects
 			return QueryGrid(vehicleGrid,cellID);
 		return GetSatellite(cellID.stackID);
 	}
+	PMobileEntity GetMobileEntity(const Grid::LCellIdU&cellID)
+	{
+		if (cellID.layer < Grid::CellStack::Range)
+			return QueryGrid(vehicleGrid,cellID);
+		return GetSatellite(cellID.stackID);
+	}
+
 
 	PSatellite		GetSatellite(UINT32 flatCellID)
 	{
