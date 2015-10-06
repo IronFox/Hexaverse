@@ -250,6 +250,8 @@ namespace Objects
 
 		/*virtual override*/ BaseJob::begin_t			BuildWallUp::BeginHere(MobileEntity&v, const Grid::LCellIdI&focus, bool hasToMoveFirst)
 		{
+			//focus is one ABOVE vehicle location!
+
 			if (hasToMoveFirst)
 			{
 				LogEvent(EventType::CommandRejected,&v, GetName()+": Would have to move first. But cannot move");
@@ -257,24 +259,41 @@ namespace Objects
 			}
 
 			const auto&stack = Grid::actualWorld.cellStack[Grid::low.grid.GetCell(focus.stackID).higherEquivalent];
-			if (stack.GetCellI(v.location.height-1).IsClearOrWater() && focus+1 == v.location)
+			if (stack.GetCellI(v.location.height-1).IsClearOrWater() && focus == v.location+1)
 			{
 				//focus --;
 				Grid::LCellIdI f2 = focus;
 				f2--;
-				v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),&focus);
+				v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),&f2);
 				return Delayed;
 			}
 
-			if (!Grid::actualWorld.LowCellIsClear(focus+1))
+			if (movesToFocusWhenDone && !Grid::actualWorld.LowCellIsClear(focus))
 			{
-				if (!Grid::actualWorld.LowCellHasStructure(focus+1))
+				if (!Grid::actualWorld.LowCellHasStructure(focus))
 				{
 					LogEvent(EventType::EntityProcess,&v,GetName()+": Obstruction detected. Resolution: clearing upper terrain.");
-					PVehicleJob job(new ClearAbove(v));
-					Grid::LCellIdI up = focus+1;
-					v.RegisterNewFrontJob("", job,&up);
-					return Delayed;
+					PVehicleJob job;
+					if (focus == v.location + 1)
+					{
+						job.reset(new ClearAbove(v));
+					}
+					//else
+					//{
+					//	if (focus.height == v.location.height)
+					//		job.reset(new DigHorizontal(v));
+					//}
+					Grid::LCellIdI up = focus;
+					if (job)
+					{
+						v.RegisterNewFrontJob("", job,&up);
+						return Delayed;
+					}
+					else
+					{
+						LogEvent(EventType::EntityProcess,&v,GetName()+": Obstruction detected. Focus cell is not above or horizontal to vehicle. Cannot remove. Aborting.");
+						return CannotStartAbort;
+					}
 				}
 				else
 				{
@@ -288,9 +307,9 @@ namespace Objects
 		
 		/*virtual override*/ bool			BuildWallUp::CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)
 		{
-			if (!Grid::actualWorld.LowCellIsClear(focus+1))
+			if (this->movesToFocusWhenDone && !Grid::actualWorld.LowCellIsClear(focus))
 			{
-				outError = "Cannot build wall here: "+(focus+1).ToString()+" is not empty";
+				outError = "Cannot build wall here: "+(focus).ToString()+" is not empty";
 				return false;
 			}
 			return true;
@@ -299,9 +318,7 @@ namespace Objects
 
 		/*virtual	override*/ BaseJob::continue_t	BuildWallUp::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{
-			Grid::LCellIdI target = focus;
-			if (this->movesToFocusWhenDone)
-				target--;
+			Grid::LCellIdI target = FocusToBuildLocation(focus);
 
 			bool rebuild[BaseGrid::NumFamilies] = { false };
 
