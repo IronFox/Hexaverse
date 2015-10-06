@@ -184,7 +184,7 @@ namespace Objects
 
 		/*virtual override*/ void	Satellite::MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to)
 		{
-			if (from.stackID != to.stackID)
+			if (from != to)
 			{
 				Grid::visibleOrbitGrid.ChangeSensory(from,GetScanningRange(),-1);
 				Grid::visibleOrbitGrid.ChangeSensory(to,GetScanningRange(),+1);
