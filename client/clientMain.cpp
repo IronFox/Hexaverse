@@ -2374,6 +2374,8 @@ bool loop()
 			if (Objects::resourceView)
 				World::RenderResources(frustum);
 
+			Objects::Renderer::RenderTranslucentBeams();
+
 			World::RenderOverlay(frustum);
 
 			World::RenderBuildBlocks();

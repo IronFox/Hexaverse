@@ -1244,108 +1244,6 @@ namespace Objects
 			}
 		}
 
-		display.SetDepthTest(true,false);
-
-		display.SetBlendMode(Engine::BlendMode::Add);
-
-		foreach (satellites,_s)
-		{
-			const PSatellite&sat = *_s;
-			TVec3<> color;
-			if (sat->isMine)
-			{
-				color= float3(0.5,0.6,1.0);
-			}
-			else
-			{
-				color= float3(1.0,0.6,0.5);
-			}
-			SetBeamColor(float4(color,0.25),
-						float4(color,0.25));
-			const float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
-			{
-				//display.SetBlendMode(Engine::BlendMode::Add);
-				RenderBeam(sat->system.w.xyz,-(Grid::ToRadius(sat->location.height) 
-								- bottom) /
-								Grid::SingleLayerHeight,
-								0.1f
-								);
-			}
-			bool first = true;
-			for (const auto&t : sat->myTasks)
-			{
-				if (t.ContainsMovement())
-				{
-					if (first)
-					{
-					//	display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-						SetBeamColor(float4(color,0.5f),
-									float4(color,0.5f));
-						first = false;
-					}
-					for (const auto&waypoint : t.foci)
-					{
-						RenderBeam(Grid::ToWorld(waypoint),-(Grid::ToRadius(waypoint.height) 
-										- bottom) /
-										Grid::SingleLayerHeight,
-										0.05f);
-					}
-
-				}
-			}
-		}
-
-
-		foreach(skyLinks, _s)
-		{
-			const PSkyLinkStructure&link = _s->first;
-			const PWorkingStructure&ws = _s->second;
-			{
-				bool render = false;
-				int h1;
-				if (link->connectedToHub)
-				{
-					render = true;
-
-					beamBottomColor.Update(float4(0.5,0.6,1.0,2.5));
-					beamTopColor.Update(float4(0.5,0.6,1.0,2.5));
-					h1 = link->connectedToHub->location.height;
-
-				}
-				else
-				{
-					if (ws->IsSkyPort())
-					{
-						PSkyPort port = To<SkyPort>::Cast(ws);
-						if (ws->IsEnabled() && port->queue.IsNotEmpty() && port->queue.first().IsSatellite())
-						{
-							render = true;
-							beamBottomColor.Update(float4(0.5,0.6,1.0,2.5));
-							beamTopColor.Update(float4(0.5,0.6,1.0,0));
-							h1 = Satellite::BaseResidenceHeight;
-						}
-					}
-				}
-				if (render)
-				{
-					TMatrix4<> sys = ws->system;
-					Vec::cross(sys.z.xyz,sys.w.xyz - Camera::scene.GetAbsoluteLocation(),sys.x.xyz);
-					Vec::normalize0(sys.x.xyz);
-					Vec::cross(sys.x.xyz,sys.z.xyz,sys.y.xyz);
-					Vec::normalize0(sys.y.xyz);
-					sys.y.xyz *= 0.27f;
-					sys.x.xyz *= 0.27f;
-					//ShowMessage(Vec::length(sys.z.xyz));
-					sys.z.xyz *= (Grid::ToRadius(h1) 
-									- Grid::ToRadius(ws->location.height)) /
-									Grid::SingleLayerHeight;
-					
-					display.SetObjectMatrix(sys);
-					display.LazyRenderVertices(skyPortBeam);
-				}
-			}
-
-		}
 		display.SetDepthTest(false,false);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
@@ -1515,6 +1413,119 @@ namespace Objects
 		display.SetRasterizer(true,true);
 		display.SetDepthTest(true,true);
 
+	}
+
+	void	Renderer::RenderTranslucentBeams()
+	{
+	/*	if (!objectView)
+			return;
+	*/	
+
+		display.SetRasterizer(true,false);	//some shafts are flipped, but culling makes no sense anyways
+		display.SetDepthTest(true,false);
+		display.SetBlendMode(Engine::BlendMode::Add);
+
+		foreach (satellites,_s)
+		{
+			const PSatellite&sat = *_s;
+			TVec3<> color;
+			if (sat->isMine)
+			{
+				color= float3(0.5,0.6,1.0);
+			}
+			else
+			{
+				color= float3(1.0,0.6,0.5);
+			}
+			SetBeamColor(float4(color,0.25),
+						float4(color,0.25));
+			const float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
+			{
+				//display.SetBlendMode(Engine::BlendMode::Add);
+				RenderBeam(sat->system.w.xyz,-(Grid::ToRadius(sat->location.height) 
+								- bottom) /
+								Grid::SingleLayerHeight,
+								0.1f
+								);
+			}
+			bool first = true;
+			for (const auto&t : sat->myTasks)
+			{
+				if (t.ContainsMovement())
+				{
+					if (first)
+					{
+					//	display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+						SetBeamColor(float4(color,0.5f),
+									float4(color,0.5f));
+						first = false;
+					}
+					for (const auto&waypoint : t.foci)
+					{
+						RenderBeam(Grid::ToWorld(waypoint),-(Grid::ToRadius(waypoint.height) 
+										- bottom) /
+										Grid::SingleLayerHeight,
+										0.05f);
+					}
+
+				}
+			}
+		}
+
+
+		foreach(skyLinks, _s)
+		{
+			const PSkyLinkStructure&link = _s->first;
+			const PWorkingStructure&ws = _s->second;
+			{
+				bool render = false;
+				int h1;
+				if (link->connectedToHub)
+				{
+					render = true;
+
+					beamBottomColor.Update(float4(0.5,0.6,1.0,2.5));
+					beamTopColor.Update(float4(0.5,0.6,1.0,2.5));
+					h1 = link->connectedToHub->location.height;
+
+				}
+				else
+				{
+					if (ws->IsSkyPort())
+					{
+						PSkyPort port = To<SkyPort>::Cast(ws);
+						if (ws->IsEnabled() && port->queue.IsNotEmpty() && port->queue.first().IsSatellite())
+						{
+							render = true;
+							beamBottomColor.Update(float4(0.5,0.6,1.0,2.5));
+							beamTopColor.Update(float4(0.5,0.6,1.0,0));
+							h1 = Satellite::BaseResidenceHeight;
+						}
+					}
+				}
+				if (render)
+				{
+					TMatrix4<> sys = ws->system;
+					Vec::cross(sys.z.xyz,sys.w.xyz - Camera::scene.GetAbsoluteLocation(),sys.x.xyz);
+					Vec::normalize0(sys.x.xyz);
+					Vec::cross(sys.x.xyz,sys.z.xyz,sys.y.xyz);
+					Vec::normalize0(sys.y.xyz);
+					sys.y.xyz *= 0.27f;
+					sys.x.xyz *= 0.27f;
+					//ShowMessage(Vec::length(sys.z.xyz));
+					sys.z.xyz *= (Grid::ToRadius(h1) 
+									- Grid::ToRadius(ws->location.height)) /
+									Grid::SingleLayerHeight;
+					
+					display.SetObjectMatrix(sys);
+					display.LazyRenderVertices(skyPortBeam);
+				}
+			}
+
+		}
+		display.SetDepthTest(true,true);
+		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+		display.SetRasterizer(true,true);
 	}
 
 	static void _RenderShadow(const DX11::InstructionBlock32&instruction)

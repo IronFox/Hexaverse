@@ -150,6 +150,13 @@ namespace Objects
 		*/
 		void	RenderTranslucent();
 
+		/**
+		Renders light shafts for satellites.
+		*/
+		void	RenderTranslucentBeams();
+
+
+
 		#ifdef CASCADING_SHADOW
 			/**
 			Updates @a shadowMap, using the current configuration of @a shadowCamera
