@@ -201,7 +201,7 @@ public:
 
 		static hash_t	hash(const CellIdI&cell)
 		{
-			return (hash_t)(cell.stackID*27+cell.height);
+			return (hash_t)(cell.stackID*31+cell.height);
 		}
 	private:
 		/**/	CellIdI(index_t stackID, UINT layer) {}
@@ -216,7 +216,19 @@ public:
 		bool	operator==(const CellIdU&other)const { return stackID == other.stackID && layer == other.layer; }
 		bool	operator!=(const CellIdU&other)const { return stackID != other.stackID || layer != other.layer; }
 
+		CellIdU	operator+(int heightDelta) const { return CellIdU(stackID, LayerSum(layer,heightDelta)); }
+		CellIdU	operator-(int heightDelta) const { return CellIdU(stackID, LayerSum(layer,-heightDelta)); }
+		void	operator++(int)	{layer ++ ;}
+		void	operator--(int) {ASSERT_GREATER__(layer,0); layer --;}
+
+		static UINT32 LayerSum(UINT32 base, int delta)	{if (delta >= 0) return base + delta; ASSERT_GREATER__(base,(UINT32)-delta); return base + delta;}
+
 		String	ToString() const {return String(stackID)+ "["+String(layer)+"]";}
+
+		static hash_t	hash(const CellIdU&cell)
+		{
+			return (hash_t)(cell.stackID*31+cell.layer);
+		}
 
 		static const CellIdU	Invalid;
 

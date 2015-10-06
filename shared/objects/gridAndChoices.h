@@ -63,14 +63,17 @@ namespace Objects
 	extern Array<PStructure>		structureGrid;
 
 	index_t					CellToGridIndex(const Grid::LCellIdI&location);
+	index_t					CellToGridIndex(const Grid::LCellIdU&location);
 
 
 
 	PVehicle		GetVehicle(const Grid::LCellIdI&cellID);
 	PStructure		GetStructure(const Grid::LCellIdI&cellID);
+	PStructure		GetStructure(const Grid::LCellIdU&cellID);
 	PWorldEntity	GetEntity(const Grid::LCellIdI&cellID);
 	PSatellite		GetSatellite(UINT32 flatCellID);
 	PMobileEntity	GetMobileEntity(const Grid::LCellIdI&cellID);
+	PMobileEntity	GetMobileEntity(const Grid::LCellIdU&cellID);
 
 
 
