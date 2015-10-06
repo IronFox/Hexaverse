@@ -735,6 +735,7 @@ namespace Dialog
 
 
 		PDialog d = Detail::NewModalDialog(0, "", false);
+		d->canBeImplicitlyClosed = false;
 
 		d->check = check;
 		d->textField->SetText( message );
