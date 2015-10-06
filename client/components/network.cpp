@@ -932,7 +932,8 @@ namespace Network
 				#endif
 
 
-				TechniteLogicLink::SignalTerrainReset();
+				//TechniteLogicLink::SignalTerrainReset();
+				TechniteLogicLink::Destroy();
 
 				if (RuntimeConfig::aiMode && RuntimeConfig::serverURL.IsNotEmpty())
 					application_shutting_down = true;
