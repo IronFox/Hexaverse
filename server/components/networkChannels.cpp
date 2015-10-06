@@ -196,8 +196,13 @@ namespace Receiver
 		}
 		#ifdef _DEBUG
 			if (faction
-				|| (Objects::Faction::all.IsNotEmpty() && (faction = Objects::Faction::all.first().lock()))
-				|| State::tokenMap.Query(response.factionToken,faction))
+				|| State::tokenMap.Query(response.factionToken,faction)
+				|| (
+						response.startFactionTypes != Protocol::FactionType::ContinueOnly 
+						&& Objects::Faction::all.IsNotEmpty()
+						&& (faction = Objects::Faction::all.first().lock())
+					)
+				)
 		#else
 			if (faction || State::tokenMap.Query(p.factionToken,faction))
 		#endif
