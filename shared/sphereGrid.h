@@ -447,7 +447,8 @@ namespace Grid
 		/**
 		Updates both content and technite faction
 		*/
-		bool			SetLocalToTechniteContent(int h, BYTE factionID);
+		bool			SetLocalToTechniteContentI(int h, BYTE factionID);
+		bool			SetLocalToTechniteContentU(UINT32 layer, BYTE factionID);
 
 		bool			LocalOverwrite(int h, Cell::Content type);
 

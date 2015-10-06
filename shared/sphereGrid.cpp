@@ -577,9 +577,14 @@ namespace Grid
 		}
 		return false;
 	}
-	bool			CellStack::SetLocalToTechniteContent(int h, BYTE factionID)
+	bool			CellStack::SetLocalToTechniteContentI(int h, BYTE factionID)
 	{
 		UINT uh = ToLayer(h);
+		return SetLocalToTechniteContentU(uh,factionID);
+	}
+
+	bool			CellStack::SetLocalToTechniteContentU(UINT32 uh, BYTE factionID)
+	{
 		if (uh < Range)
 		{
 			bool rs = false;

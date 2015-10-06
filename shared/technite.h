@@ -171,6 +171,7 @@ namespace Technites
 			TechniteLacksResources,
 			NoTechniteAtDestination,
 			MoreWorkNeeded,
+			OperationWindowPassed,
 			Again,
 			Success
 		};
@@ -263,7 +264,7 @@ namespace Technites
 
 
 
-		bool				DecodeAbsoluteTarget(Grid::HCellIdI&target) const;
+		bool				DecodeAbsoluteTarget(Grid::HCellIdU&target) const;
 
 		Resources			resources;							// 2
 		Task				nextTask = Task::None;				// 1
@@ -385,27 +386,27 @@ namespace Technites
 		count_t					totalEntries = 0;
 		Cluster					cluster[ClusterCount];
 
-		index_t					Map(const Grid::HCellIdI&, const Cluster*&outCluster) const;
-		index_t					Map(const Grid::HCellIdI&, Cluster*&outCluster, bool initIfEmpty);
 		index_t					Map(const Grid::HCellIdU&, const Cluster*&outCluster) const;
 		index_t					Map(const Grid::HCellIdU&, Cluster*&outCluster, bool initIfEmpty);
-		index_t					MapCluster(const Grid::HCellIdI&loc, index_t&outFamily, UINT32&heightRemainder) const;
+		//index_t					Map(const Grid::HCellIdU&, const Cluster*&outCluster) const;
+		//index_t					Map(const Grid::HCellIdU&, Cluster*&outCluster, bool initIfEmpty);
+		//index_t					MapCluster(const Grid::HCellIdU&loc, index_t&outFamily, UINT32&heightRemainder) const;
 		index_t					MapCluster(const Grid::HCellIdU&loc, index_t&outFamily, UINT32&heightRemainder) const;
 
 		static const UINT32	Empty = 0xFFFFFFFF;
 	public:
 		/**/					BroadTechniteMap() {}
 
-		void					Unset(const Grid::HCellIdI& id);
 		void					Unset(const Grid::HCellIdU& id);
-		void					Set(const Grid::HCellIdI&id, index_t to);
+		//void					Unset(const Grid::HCellIdU& id);
 		void					Set(const Grid::HCellIdU&id, index_t to);
-		bool					Query(const Grid::HCellIdI&id, index_t&out) const;
+		//void					Set(const Grid::HCellIdU&id, index_t to);
 		bool					Query(const Grid::HCellIdU&id, index_t&out) const;
-		bool					IsSet(const Grid::HCellIdI&id) const;
+		//bool					Query(const Grid::HCellIdU&id, index_t&out) const;
 		bool					IsSet(const Grid::HCellIdU&id) const;
-		bool					SetNew(const Grid::HCellIdI&id, index_t to);
+		//bool					IsSet(const Grid::HCellIdU&id) const;
 		bool					SetNew(const Grid::HCellIdU&id, index_t to);
+		//bool					SetNew(const Grid::HCellIdU&id, index_t to);
 		count_t					Count() const;
 		void					Clear()		{for (index_t i = 0; i < ClusterCount; i++)	cluster[i].Clear();}
 	};
@@ -426,7 +427,7 @@ namespace Technites
 		static AtomicGrid		atomicGrid;
 
 		Buffer<Technite>		technites;
-		//GenericHashTable<Grid::HCellIdI,index_t, Grid::HCellIdI>	techniteMap;
+		//GenericHashTable<Grid::HCellIdU,index_t, Grid::HCellIdU>	techniteMap;
 
 		BroadTechniteMap		techniteMap;
 
@@ -444,11 +445,11 @@ namespace Technites
 
 
 
-		index_t					CreateSingleTechnite(const Grid::HCellIdI&, float t);
+		index_t					CreateSingleTechnite(const Grid::HCellIdU&, float t);
 
 
-		static bool				ValidTechniteLocation(const Grid::HCellIdI&location);
-		static bool				ValidGlobalTechniteLocation(const Grid::HCellIdI&location);
+		static bool				ValidTechniteLocation(const Grid::HCellIdU&location);
+		static bool				ValidGlobalTechniteLocation(const Grid::HCellIdU&location);
 
 		virtual bool			IsTechniteFaction() const override { return true; }
 		virtual void			OnKill() override;
@@ -482,20 +483,20 @@ namespace Technites
 		#endif
 
 
-		ExecResult				GrowTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);
-		//ExecResult				MoveTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data);
-		ExecResult				Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data, bool destroy);
+		ExecResult				GrowTo(Technite&technite, const Grid::HCellIdU&target, index_t iteration, WorkerData&data);
+		//ExecResult				MoveTo(Technite&technite, const Grid::HCellIdU&target, index_t iteration, WorkerData&data);
+		ExecResult				Eat(Technite&technite, const Grid::HCellIdU&target, index_t iteration, WorkerData&data, bool destroy);
 
 
-		Technite::Resources		EatEntitiesIn(const Grid::HCellIdI&target, bool&cantEatThis);
-		Technite::Resources		EatTechnite(Technite&local, const Grid::HCellIdI&target, bool factionIsActive);
-		bool					SpawnNewTechnite(const Grid::HCellIdI&target, WorkerData&data);
-		//bool					MoveTechnite(Technite&technite, const Grid::HCellIdI&target, WorkerData&data);
+		Technite::Resources		EatEntitiesIn(const Grid::HCellIdU&target, bool&cantEatThis);
+		Technite::Resources		EatTechnite(Technite&local, const Grid::HCellIdU&target, bool factionIsActive);
+		bool					SpawnNewTechnite(const Grid::HCellIdU&target, WorkerData&data);
+		//bool					MoveTechnite(Technite&technite, const Grid::HCellIdU&target, WorkerData&data);
 		bool					ReduceResources(Technite&technite, const Technite::Resources&by);
 		void					IncreaseResources(Technite&technite, const Technite::Resources&by);
 		void					IncreaseRemoteResources(Technite&technite, const Technite::Resources&by, WorkerData&data);
-		Grid::Content			DegradeMatter(const Grid::HCellIdI&target, Technite::Resources&outYield, bool destroy);
-		Technite*				GetOwnTechnite(const Grid::HCellIdI&location);
+		Grid::Content			DegradeMatter(const Grid::HCellIdU&target, Technite::Resources&outYield, bool destroy);
+		Technite*				GetOwnTechnite(const Grid::HCellIdU&location);
 
 		PFaction				GetFactionOf(BYTE gridFactionID);
 		ExecResult				ExecuteTask(Technite&cell, index_t iteration, WorkerData&data);
@@ -506,14 +507,14 @@ namespace Technites
 		/**
 		Queries the currently stored atomic content of the world grid in its background copy (must be called during processing)
 		*/
-		static Grid::Content	GetLastContent(const Grid::HCellIdI&cellID);
 		static Grid::Content	GetLastContent(const Grid::HCellIdU&cellID);
+		//static Grid::Content	GetLastContent(const Grid::HCellIdU&cellID);
 
 		/**
 		Queries the currently stored non-atomic content of the world grid in its global state (should not be called during processing)
 		*/
-		static Grid::Content	GetGlobalGridContent(const Grid::HCellIdI&cellID);
 		static Grid::Content	GetGlobalGridContent(const Grid::HCellIdU&cellID);
+		//static Grid::Content	GetGlobalGridContent(const Grid::HCellIdU&cellID);
 
 		#ifndef CLIENT
 			void				Process(float t);
@@ -521,9 +522,9 @@ namespace Technites
 		#endif
 
 
-		//static WorkPipe<Grid::HCellIdI>	newTechnites;
-		//static WorkPipe<Grid::HCellIdI> moveInstructions;
-		//static WorkPipe<std::pair<Grid::HCellIdI,Technite::Resources> > increaseResources;
+		//static WorkPipe<Grid::HCellIdU>	newTechnites;
+		//static WorkPipe<Grid::HCellIdU> moveInstructions;
+		//static WorkPipe<std::pair<Grid::HCellIdU,Technite::Resources> > increaseResources;
 		bool					anyDied;
 	};
 

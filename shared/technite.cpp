@@ -20,9 +20,9 @@ namespace Technites
 
 	/*static*/ Buffer0<PFaction>Faction::allTechniteFactions;
 	/*static*/ AtomicGrid Faction::atomicGrid;
-	///*static*/ WorkPipe<Grid::HCellIdI>	Faction::newTechnites;
-	///*static*/ WorkPipe<Grid::HCellIdI> Faction::moveInstructions;
-	///*static*/ WorkPipe<std::pair<Grid::HCellIdI, Technite::Resources> > Faction::increaseResources;
+	///*static*/ WorkPipe<Grid::HCellIdU>	Faction::newTechnites;
+	///*static*/ WorkPipe<Grid::HCellIdU> Faction::moveInstructions;
+	///*static*/ WorkPipe<std::pair<Grid::HCellIdU, Technite::Resources> > Faction::increaseResources;
 	/*static*/ PFaction			Faction::gridIDMap[0xFF];
 
 	/*static*/ const BYTE	Technite::MatterYield[NumGroundTypes] =
@@ -186,7 +186,7 @@ namespace Technites
 		return gridIDMap[factionID];
 	}
 
-	Technite::Resources		Faction::EatEntitiesIn(const Grid::HCellIdI&target, bool&cantEatThis)
+	Technite::Resources		Faction::EatEntitiesIn(const Grid::HCellIdU&target, bool&cantEatThis)
 	{
 		cantEatThis = false;
 		Objects::PWorldEntity	all[4];
@@ -196,7 +196,7 @@ namespace Technites
 		for (int k = 0; k < 2; k++)
 			if (mapping.lowCells[k] != Grid::THighToLowCell::Empty)
 			{
-				Grid::LCellIdI at(mapping.lowCells[k],target.height);
+				Grid::LCellIdU at(mapping.lowCells[k],target.layer);
 				TEaten&eaten = eatenGrid[Objects::CellToGridIndex(at)];
 				entity = Objects::GetMobileEntity(at);
 				bool ref;
@@ -280,17 +280,17 @@ namespace Technites
 	}
 
 
-	/*static*/ Grid::Content	Faction::GetGlobalGridContent(const Grid::HCellIdI&cellID)
-	{
-		if (cellID.height < Grid::CellStack::BottomHeight)
-			return Grid::Content::Reinterpret(Grid::CellStack::bottom.content);
-		if (cellID.height > Grid::CellStack::TopHeight)
-			return Grid::Content::Clear;
-		UINT32 layer = Grid::CellStack::ToLayer(cellID.height);
-		DBG_ASSERT_LESS__(layer, Grid::CellStack::Range);
+	///*static*/ Grid::Content	Faction::GetGlobalGridContent(const Grid::HCellIdU&cellID)
+	//{
+	//	if (cellID.height < Grid::CellStack::BottomHeight)
+	//		return Grid::Content::Reinterpret(Grid::CellStack::bottom.content);
+	//	if (cellID.height > Grid::CellStack::TopHeight)
+	//		return Grid::Content::Clear;
+	//	UINT32 layer = Grid::CellStack::ToLayer(cellID.height);
+	//	DBG_ASSERT_LESS__(layer, Grid::CellStack::Range);
 
-		return Grid::Content::Reinterpret(Grid::actualWorld.cellStack[cellID.stackID].volumeCell[layer].content);
-	}
+	//	return Grid::Content::Reinterpret(Grid::actualWorld.cellStack[cellID.stackID].volumeCell[layer].content);
+	//}
 
 	/*static*/ Grid::Content	Faction::GetGlobalGridContent(const Grid::HCellIdU&cellID)
 	{
@@ -300,25 +300,26 @@ namespace Technites
 	}
 
 
-	/*static*/Grid::Content			Faction::GetLastContent(const Grid::HCellIdI&cellID)
-	{
-		if (cellID.height < Grid::CellStack::BottomHeight)
-			return Grid::Content::Reinterpret(Grid::CellStack::bottom.content);
-		if (cellID.height > Grid::CellStack::TopHeight)
-			return Grid::Content::Clear;
-		UINT32 layer = Grid::CellStack::ToLayer(cellID.height);
-		DBG_ASSERT_LESS__(layer, Grid::CellStack::Range);
-		
-		return Grid::Content::Reinterpret(atomicGrid.cellStack[cellID.stackID].volumeCell[layer].content);
-	}
+	///*static*/Grid::Content			Faction::GetLastContent(const Grid::HCellIdU&cellID)
+	//{
+	//	if (cellID.height < Grid::CellStack::BottomHeight)
+	//		return Grid::Content::Reinterpret(Grid::CellStack::bottom.content);
+	//	if (cellID.height > Grid::CellStack::TopHeight)
+	//		return Grid::Content::Clear;
+	//	UINT32 layer = Grid::CellStack::ToLayer(cellID.height);
+	//	DBG_ASSERT_LESS__(layer, Grid::CellStack::Range);
+	//	
+	//	return Grid::Content::Reinterpret(atomicGrid.cellStack[cellID.stackID].volumeCell[layer].content);
+	//}
+
 	Grid::Content			Faction::GetLastContent(const Grid::HCellIdU&cellID)
 	{
 		return Grid::Content::Reinterpret(atomicGrid.cellStack[cellID.stackID].volumeCell[cellID.layer].content);
 	}
-	Grid::Content			Faction::DegradeMatter(const Grid::HCellIdI&target, Technite::Resources&outYield, bool destroy)
+	Grid::Content			Faction::DegradeMatter(const Grid::HCellIdU&target, Technite::Resources&outYield, bool destroy)
 	{
 		outYield = Technite::Resources();
-		UINT32 layer = Grid::CellStack::ToLayer(target.height);
+		const UINT32 layer = target.layer;
 		ASSERT_LESS__(layer, Grid::CellStack::Range);
 		AtomicGrid::CellStack::Cell&cell = atomicGrid.cellStack[target.stackID].volumeCell[layer];
 		for (;;)
@@ -350,21 +351,26 @@ namespace Technites
 	}
 
 
-	bool	Technite::DecodeAbsoluteTarget(Grid::HCellIdI & outTarget) const
+	bool	Technite::DecodeAbsoluteTarget(Grid::HCellIdU & outTarget) const
 	{
 		const int heightDelta = target.GetHeightDelta();
 		const UINT32 nIndex = target.GetNeighborIndex();
 
 		if (heightDelta < -1 || heightDelta > 1)
 			return false;
-		Grid::HCellIdI loc = location.GetI();
+		Grid::HCellIdU loc = location.GetU();
 		if (loc.stackID >= Grid::high.grid.CellCount)
 			return false;
-		if (loc.height < Grid::CellStack::BottomHeight || loc.height > Grid::CellStack::TopHeight)
+		if (loc.layer >= Grid::CellStack::Range)
 			return false;
+		if (loc.layer == 0 && heightDelta < 0)
+			return false;
+		if (loc.layer+heightDelta >= Grid::CellStack::Range)
+			return false;
+
 		if (nIndex == CompressedTarget::SelfNeighbor)
 		{
-			outTarget = Grid::HCellIdI(loc.stackID, loc.height + heightDelta);
+			outTarget = Grid::HCellIdU(loc.stackID, loc.layer + heightDelta);
 		}
 		else
 		{
@@ -373,14 +379,14 @@ namespace Technites
 			{
 				return false;
 			}
-			outTarget = Grid::HCellIdI(n.neighborID[nIndex], loc.height + heightDelta);
+			outTarget = Grid::HCellIdU(n.neighborID[nIndex], loc.layer + heightDelta);
 		}
-		return outTarget.height >= Grid::CellStack::BottomHeight && outTarget.height <= Grid::CellStack::TopHeight;
+		return outTarget.layer < Grid::CellStack::Range;
 	}
 
 
 
-	Faction::ExecResult			Faction::GrowTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data)
+	Faction::ExecResult			Faction::GrowTo(Technite&technite, const Grid::HCellIdU&target, index_t iteration, WorkerData&data)
 	{
 		ExecResult rs = Eat(technite, target, iteration,data, true);
 		
@@ -389,6 +395,8 @@ namespace Technites
 
 		if (iteration < 2)
 			return ExecResult::Again;
+		if (iteration > 2)
+			return ExecResult::OperationWindowPassed;
 
 		
 		if (!ReduceResources(technite, Technite::SplitCost))
@@ -408,7 +416,7 @@ namespace Technites
 		return ExecResult::Success;
 	}
 /*
-	Faction::ExecResult			Faction::MoveTo(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data)
+	Faction::ExecResult			Faction::MoveTo(Technite&technite, const Grid::HCellIdU&target, index_t iteration, WorkerData&data)
 	{
 		ExecResult rs = Eat(technite, target, iteration,data);
 		
@@ -437,10 +445,10 @@ namespace Technites
 	}
 */
 
-	index_t					BroadTechniteMap::MapCluster(const Grid::HCellIdI&loc, index_t&outFamily, UINT32&heightRemainder) const
-	{
-		return MapCluster(Grid::HCellIdU(loc.stackID, Grid::CellStack::ToLayer(loc.height)),outFamily,heightRemainder);
-	}
+	//index_t					BroadTechniteMap::MapCluster(const Grid::HCellIdU&loc, index_t&outFamily, UINT32&heightRemainder) const
+	//{
+	//	return MapCluster(Grid::HCellIdU(loc.stackID, Grid::CellStack::ToLayer(loc.height)),outFamily,heightRemainder);
+	//}
 	index_t					BroadTechniteMap::MapCluster(const Grid::HCellIdU&loc, index_t&outFamily, UINT32&heightRemainder) const
 	{
 		outFamily = Grid::high.grid.GetCell(loc.stackID).family;
@@ -449,10 +457,10 @@ namespace Technites
 			+ loc.layer / SectionLayers;
 	}
 
-	index_t					BroadTechniteMap::Map(const Grid::HCellIdI&location, Cluster*&outCluster, bool initIfEmpty)
-	{
-		return Map(Grid::HCellIdU(location.stackID,Grid::CellStack::ToLayer(location.height)),outCluster,initIfEmpty);
-	}
+	//index_t					BroadTechniteMap::Map(const Grid::HCellIdU&location, Cluster*&outCluster, bool initIfEmpty)
+	//{
+	//	return Map(Grid::HCellIdU(location.stackID,Grid::CellStack::ToLayer(location.height)),outCluster,initIfEmpty);
+	//}
 	index_t					BroadTechniteMap::Map(const Grid::HCellIdU&location, Cluster*&outCluster, bool initIfEmpty)
 	{
 		index_t family;
@@ -472,10 +480,10 @@ namespace Technites
 		return inner + range * heightRemainder;
 	}
 
-	index_t					BroadTechniteMap::Map(const Grid::HCellIdI&location, const Cluster*&outCluster) const
-	{
-		return Map(Grid::HCellIdU(location.stackID,Grid::CellStack::ToLayer(location.height)),outCluster);
-	}
+	//index_t					BroadTechniteMap::Map(const Grid::HCellIdU&location, const Cluster*&outCluster) const
+	//{
+	//	return Map(Grid::HCellIdU(location.stackID,Grid::CellStack::ToLayer(location.height)),outCluster);
+	//}
 	index_t					BroadTechniteMap::Map(const Grid::HCellIdU&location, const Cluster*&outCluster) const
 	{
 		//UINT32 layer = Grid::CellStack::ToLayer(location.height);
@@ -514,15 +522,15 @@ namespace Technites
 		}
 
 	}
-	void					BroadTechniteMap::Unset(const Grid::HCellIdI& id)
-	{
-		Unset(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)));
-	}
+	//void					BroadTechniteMap::Unset(const Grid::HCellIdU& id)
+	//{
+	//	Unset(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)));
+	//}
 
-	void					BroadTechniteMap::Set(const Grid::HCellIdI&id, index_t to)
-	{
-		Set(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)),to);
-	}
+	//void					BroadTechniteMap::Set(const Grid::HCellIdU&id, index_t to)
+	//{
+	//	Set(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)),to);
+	//}
 	void					BroadTechniteMap::Set(const Grid::HCellIdU&id, index_t to)
 	{
 		Cluster*cluster;
@@ -535,10 +543,10 @@ namespace Technites
 		cluster->volumeCells[inner] = (UINT32)to;
 	}
 
-	bool					BroadTechniteMap::Query(const Grid::HCellIdI&id, index_t&out) const
-	{
-		return Query(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)),out);
-	}
+	//bool					BroadTechniteMap::Query(const Grid::HCellIdU&id, index_t&out) const
+	//{
+	//	return Query(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)),out);
+	//}
 	bool					BroadTechniteMap::Query(const Grid::HCellIdU&id, index_t&out) const
 	{
 		const Cluster*cluster;
@@ -558,10 +566,10 @@ namespace Technites
 		return true;
 	}
 
-	bool					BroadTechniteMap::IsSet(const Grid::HCellIdI&id) const
-	{
-		return IsSet(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)));
-	}
+	//bool					BroadTechniteMap::IsSet(const Grid::HCellIdU&id) const
+	//{
+	//	return IsSet(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)));
+	//}
 	bool					BroadTechniteMap::IsSet(const Grid::HCellIdU&id) const
 	{
 		const Cluster*cluster;
@@ -572,10 +580,10 @@ namespace Technites
 		return v != Empty;
 	}
 
-	bool					BroadTechniteMap::SetNew(const Grid::HCellIdI&id, index_t to)
-	{
-		return SetNew(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)),to);
-	}
+	//bool					BroadTechniteMap::SetNew(const Grid::HCellIdU&id, index_t to)
+	//{
+	//	return SetNew(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)),to);
+	//}
 	bool					BroadTechniteMap::SetNew(const Grid::HCellIdU&id, index_t to)
 	{
 		Cluster*cluster;
@@ -595,7 +603,7 @@ namespace Technites
 		return totalEntries;
 	}
 
-	Technite::Resources		Faction::EatTechnite(Technite&local, const Grid::HCellIdI&target, bool factionIsActive)
+	Technite::Resources		Faction::EatTechnite(Technite&local, const Grid::HCellIdU&target, bool factionIsActive)
 	{
 		//	if (!factionIsActive)
 		{
@@ -645,7 +653,7 @@ namespace Technites
 					//std::cout << "setting flag" << std::endl;
 					anyDied = true;
 				}
-				UINT32 layer = Grid::CellStack::ToLayer(target.height);
+				const UINT32 layer = target.layer;
 				ASSERT_LESS__(layer, Grid::CellStack::Range);
 				atomicGrid.cellStack[target.stackID].volumeCell[layer].content = Grid::Content::Clear;
 				atomicGrid.SignalStackChange(target.stackID);
@@ -709,9 +717,8 @@ namespace Technites
 	#endif
 
 
-	Faction::ExecResult			Faction::Eat(Technite&technite, const Grid::HCellIdI&target, index_t iteration, WorkerData&data, bool destroy)
+	Faction::ExecResult			Faction::Eat(Technite&technite, const Grid::HCellIdU&target, index_t iteration, WorkerData&data, bool destroy)
 	{
-		
 		switch (GetLastContent(target))
 		{
 			case Grid::Content::Water:	//water does not block, nor yield anything
@@ -732,8 +739,10 @@ namespace Technites
 					return ExecResult::CannotGnawAtThis;
 				if (iteration < 1)
 					return ExecResult::Again;
+				if (iteration > 1)
+					return ExecResult::OperationWindowPassed;
 			
-				BYTE faction = Grid::actualWorld.cellStack[target.stackID].GetCellI(target.height).techniteFaction;	//this should be thread-safe with only one faction being parallely active at any given time
+				BYTE faction = Grid::actualWorld.cellStack[target.stackID].GetCellU(target.layer).techniteFaction;	//this should be thread-safe with only one faction being parallely active at any given time
 			
 				PFaction f = GetFactionOf(faction);
 			
@@ -746,6 +755,9 @@ namespace Technites
 			case Grid::Content::Lava:
 				return ExecResult::CannotEatThis;
 		}
+		if (iteration > 0)
+			return ExecResult::OperationWindowPassed;
+
 		if (!ReduceResources(technite, destroy ? Technite::ConsumeCost : Technite::GnawAtCost))
 		{
 			return ExecResult::TechniteLacksResources;
@@ -787,7 +799,7 @@ namespace Technites
 	void							Faction::CheckState(Technite&technite)
 	{
 
-		const Grid::HCellIdI loc = technite.location.GetI();
+		const Grid::HCellIdU loc = technite.location.GetU();
 		bool cannotStandHereDies = !ValidTechniteLocation(loc);
 
 		Grid::Content content = GetLastContent(loc);
@@ -795,7 +807,7 @@ namespace Technites
 
 		BYTE ttl = technite.state.GetTTL();
 
-		BYTE cost = technite.GetLifeCostAtHeight(loc.height);
+		BYTE cost = technite.GetLifeCostAtHeight(Grid::CellStack::ToHeight( loc.layer ));
 		if (ttl > cost)
 		{
 			ttl -= cost;
@@ -805,7 +817,7 @@ namespace Technites
 		technite.state.SetTTL(ttl);
 
 		if (content != Grid::Content::Technite
-			|| Grid::actualWorld.cellStack[loc.stackID].GetCellI(loc.height).techniteFaction != this->gridID
+			|| Grid::actualWorld.cellStack[loc.stackID].GetCellU(loc.layer).techniteFaction != this->gridID
 			|| ttl == 0
 			|| cannotStandHereDies
 			)
@@ -825,7 +837,7 @@ namespace Technites
 	{
 		if (technite.isDead)
 			return Technite::TaskResult::NothingToDo;
-		Grid::HCellIdI target;
+		Grid::HCellIdU target;
 		if (!technite.DecodeAbsoluteTarget(target))
 			return Technite::TaskResult::BadCommand;
 		//		const auto&targetCell = Grid::actualWorld.cellStack[target.stackID].GetCellI(target.height);
@@ -968,13 +980,25 @@ namespace Technites
 			ASSERT_EQUAL__(technites.Count(), techniteMap.Count());
 		}
 
-		
+		count_t deathByBadSupport = 0,
+				deathByLostContent = 0;
 		foreach(workerData, data)
 		{
 			for (const auto&loc : data->newTechnites)
 			{
 				if (techniteMap.IsSet(loc))
 					continue;
+				if (!ValidTechniteLocation(loc))
+				{
+					deathByBadSupport++;
+					continue;
+				}
+
+				if (GetLastContent(loc) != Grid::Content::Technite)
+				{
+					deathByLostContent ++;
+					continue;
+				}
 
 				index_t at = technites.Count();
 				Technite tech;
@@ -991,6 +1015,12 @@ namespace Technites
 			data->newTechnites.Clear();
 			ASSERT_EQUAL__(technites.Count(), techniteMap.Count());
 		}
+
+		if (deathByBadSupport)
+			LogEvent(EventType::TechniteLogic,nullptr,this->GetLogName()+": Lost "+String(deathByBadSupport)+" new technite(s) due to lack of terrain support");
+		if (deathByLostContent)
+			LogEvent(EventType::TechniteLogic,nullptr,this->GetLogName()+": Lost "+String(deathByLostContent)+" new technite(s) due to terrain content mismatch");
+
 
 		
 		foreach(workerData, data)
@@ -1040,7 +1070,7 @@ namespace Technites
 	#endif
 
 
-	//bool			Faction::MoveTechnite(Technite&technite, const Grid::HCellIdI&target, WorkerData&data)
+	//bool			Faction::MoveTechnite(Technite&technite, const Grid::HCellIdU&target, WorkerData&data)
 	//{
 	//	UINT32 fromLayer = technite.location.GetLayer(),
 	//		toLayer = Grid::CellStack::ToLayer(target.height);
@@ -1066,7 +1096,7 @@ namespace Technites
 	//	return true;
 	//}
 
-	Technite* Faction::GetOwnTechnite(const Grid::HCellIdI&target)
+	Technite* Faction::GetOwnTechnite(const Grid::HCellIdU&target)
 	{
 		index_t at;
 		if (!techniteMap.Query(target, at))
@@ -1077,10 +1107,15 @@ namespace Technites
 		return rs;
 	}
 
-	bool			Faction::SpawnNewTechnite(const Grid::HCellIdI&target, WorkerData&data)
+	bool			Faction::SpawnNewTechnite(const Grid::HCellIdU&target, WorkerData&data)
 	{
-		UINT32 toLayer = Grid::CellStack::ToLayer(target.height);
+		const UINT32 toLayer = target.layer;
 		ASSERT_LESS__(toLayer, Grid::CellStack::Range);
+
+		if (!ValidTechniteLocation(target))
+		{
+			return false;
+		}
 
 		AtomicGrid::CellStack::Cell&toCell = atomicGrid.cellStack[target.stackID].volumeCell[toLayer];
 
@@ -1195,17 +1230,21 @@ namespace Technites
 
 
 
-	/*static*/ bool Faction::ValidTechniteLocation(const Grid::HCellIdI&location)
+	/*static*/ bool Faction::ValidTechniteLocation(const Grid::HCellIdU&location)
 	{
+		if (location.layer == 0)
+		{
+			return Technite::HeldBy(Grid::Content::Reinterpret(Grid::CellStack::bottom.content));
+		}
 		if (!Technite::HeldBy(GetLastContent(location - 1)))
 		{
 			const auto&n = Grid::high.grid.GetCell(location.stackID).neighborhood;
 			bool anyGood = false;
 			for (int k = 0; k < n.numNeighbors; k++)
 			{
-				if (Technite::HeldBy(GetLastContent(Grid::HCellIdI(n.neighborID[k], location.height)))
+				if (Technite::HeldBy(GetLastContent(Grid::HCellIdU(n.neighborID[k], location.layer)))
 					&&
-					Technite::HeldBy(GetLastContent(Grid::HCellIdI(n.neighborID[k], location.height - 1)))
+					Technite::HeldBy(GetLastContent(Grid::HCellIdU(n.neighborID[k], location.layer - 1)))
 					)
 				{
 					anyGood = true;
@@ -1217,17 +1256,21 @@ namespace Technites
 		return true;
 	}
 
-	/*static*/ bool Faction::ValidGlobalTechniteLocation(const Grid::HCellIdI&location)
+	/*static*/ bool Faction::ValidGlobalTechniteLocation(const Grid::HCellIdU&location)
 	{
+		if (location.layer == 0)
+		{
+			return Technite::HeldBy(Grid::Content::Reinterpret(Grid::CellStack::bottom.content));
+		}
 		if (!Technite::HeldBy(GetGlobalGridContent(location - 1)))
 		{
 			const auto&n = Grid::high.grid.GetCell(location.stackID).neighborhood;
 			bool anyGood = false;
 			for (int k = 0; k < n.numNeighbors; k++)
 			{
-				if (Technite::HeldBy(GetGlobalGridContent(Grid::HCellIdI(n.neighborID[k], location.height)))
+				if (Technite::HeldBy(GetGlobalGridContent(Grid::HCellIdU(n.neighborID[k], location.layer)))
 					&&
-					Technite::HeldBy(GetGlobalGridContent(Grid::HCellIdI(n.neighborID[k], location.height - 1)))
+					Technite::HeldBy(GetGlobalGridContent(Grid::HCellIdU(n.neighborID[k], location.layer - 1)))
 					)
 				{
 					anyGood = true;
@@ -1240,9 +1283,9 @@ namespace Technites
 	}
 
 
-	index_t					Faction::CreateSingleTechnite(const Grid::HCellIdI&location, float t)
+	index_t					Faction::CreateSingleTechnite(const Grid::HCellIdU&location, float t)
 	{
-		if (location.height < Grid::CellStack::BottomHeight || location.height > Grid::CellStack::TopHeight)
+		if (location.layer >= Grid::CellStack::Range)
 			return InvalidIndex;
 
 		if (techniteMap.IsSet(location))
@@ -1260,7 +1303,7 @@ namespace Technites
 		ProcessLighting(tech);
 
 		Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
-		ASSERT__(stack.SetLocalToTechniteContent(location.height, this->gridID));
+		ASSERT__(stack.SetLocalToTechniteContentU(location.layer, this->gridID));
 
 		index_t family = Grid::high.grid.GetCell(location.stackID).family;
 

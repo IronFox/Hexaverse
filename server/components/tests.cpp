@@ -682,17 +682,17 @@ namespace Test
 	{
 		Technites::BroadTechniteMap map;
 
-		Buffer<Grid::HCellIdI>	set;
-		GenericHashSet<Grid::HCellIdI, Grid::HCellIdI> hashset;
+		Buffer<Grid::HCellIdU>	set;
+		GenericHashSet<Grid::HCellIdU, Grid::HCellIdU> hashset;
 
 		for (index_t i = 0; i < 100; i++)
 		{
 			for (index_t j = 0; j < 10000; j++)
 			{
-				Grid::HCellIdI cell;
+				Grid::HCellIdU cell;
 				while (true)
 				{
-					cell = Grid::HCellIdI(random.getIndex(Grid::HighSetup::GridType::CellCount - 1), random.get(Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight));
+					cell = Grid::HCellIdU(random.getIndex(Grid::HighSetup::GridType::CellCount - 1), (UINT32)random.get(Grid::CellStack::Range-1));
 					bool existing = hashset.IsSet(cell);
 					bool tested = map.IsSet(cell);
 					if (existing != tested)
@@ -730,8 +730,8 @@ namespace Test
 		index_t at;
 		do
 		{
-			Grid::HCellIdI root(random.getIndex(Grid::HighSetup::GridType::CellCount - 1), 0);
-			root.height = Grid::actualWorld.cellStack[root.stackID].FindMostApplicableGround(Grid::CellStack::BottomHeight, true);
+			Grid::HCellIdU root(random.getIndex(Grid::HighSetup::GridType::CellCount - 1), (UINT32)0);
+			root.layer = Grid::CellStack::ToLayer( Grid::actualWorld.cellStack[root.stackID].FindMostApplicableGround(Grid::CellStack::BottomHeight, true) );
 			at = faction->CreateSingleTechnite(root, 0.f);
 		}
 		while (at == InvalidIndex);
@@ -746,8 +746,8 @@ namespace Test
 			{
 				do
 				{
-					Grid::HCellIdI root(random.getIndex(Grid::HighSetup::GridType::CellCount - 1), 0);
-					root.height = Grid::actualWorld.cellStack[root.stackID].FindMostApplicableGround(Grid::CellStack::BottomHeight, true);
+					Grid::HCellIdU root(random.getIndex(Grid::HighSetup::GridType::CellCount - 1), 0U);
+					root.layer = Grid::CellStack::ToLayer( Grid::actualWorld.cellStack[root.stackID].FindMostApplicableGround(Grid::CellStack::BottomHeight, true) );
 					at = faction->CreateSingleTechnite(root, 0.f);
 				} while (at == InvalidIndex);
 
@@ -801,14 +801,14 @@ namespace Test
 			index_t at;
 			do
 			{
-				Grid::HCellIdI root(random.getIndex(Grid::HighSetup::GridType::CellCount - 1), 0);
-				root.height = Grid::actualWorld.cellStack[root.stackID].FindMostApplicableGround(Grid::CellStack::BottomHeight, true);
+				Grid::HCellIdU root(random.getIndex(Grid::HighSetup::GridType::CellCount - 1), 0U);
+				root.layer = Grid::CellStack::ToLayer( Grid::actualWorld.cellStack[root.stackID].FindMostApplicableGround(Grid::CellStack::BottomHeight, true) );
 				at = a->CreateSingleTechnite(root, 0.f);
 			} while (at == InvalidIndex);
 
 			index_t at2;
 			const auto&n = Grid::high.grid.GetCell(a->technites.first().location.GetStackID()).neighborhood;
-			at2 = b->CreateSingleTechnite(Grid::HCellIdI(n.neighborID[0],a->technites.first().location.GetHeight()), 0.f);
+			at2 = b->CreateSingleTechnite(Grid::HCellIdU(n.neighborID[0],a->technites.first().location.GetLayer()), 0.f);
 			if (at2 == InvalidIndex)
 			{
 				//std::cout << "can't place second. skipping round" << std::endl;
@@ -888,8 +888,8 @@ namespace Test
 		index_t at;
 		do
 		{
-			Grid::HCellIdI root(random.getIndex(Grid::HighSetup::GridType::CellCount - 1), 0);
-			root.height = Grid::actualWorld.cellStack[root.stackID].FindMostApplicableGround(Grid::CellStack::BottomHeight, true);
+			Grid::HCellIdU root(random.getIndex(Grid::HighSetup::GridType::CellCount - 1), 0U);
+			root.layer = Grid::CellStack::ToLayer( Grid::actualWorld.cellStack[root.stackID].FindMostApplicableGround(Grid::CellStack::BottomHeight, true) );
 			at = faction->CreateSingleTechnite(root, 0.f);
 		} while (at == InvalidIndex);
 

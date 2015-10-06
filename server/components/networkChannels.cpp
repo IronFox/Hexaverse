@@ -609,7 +609,7 @@ namespace Receiver
 				//h--;
 				ASSERT__(client->faction->IsTechniteFaction());
 				Technites::PFaction tf = To<Technites::Faction>::Cast(client->faction);
-				index_t id = tf->CreateSingleTechnite(Grid::HCellIdI(finer,h),0.f);
+				index_t id = tf->CreateSingleTechnite(Grid::HCellIdU(finer,Grid::CellStack::ToLayer( h ) ),0.f);
 				ASSERT__(id != InvalidIndex);
 			}
 
