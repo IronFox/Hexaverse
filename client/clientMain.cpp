@@ -2371,17 +2371,15 @@ bool loop()
 
 			Objects::Renderer::RenderTranslucent();
 
+			if (Objects::resourceView)
+				World::RenderResources(frustum);
+
 			World::RenderOverlay(frustum);
 
 			World::RenderBuildBlocks();
 
 			Explosions::Render(Camera::scene);
 
-			if (Objects::resourceView)
-			{
-				World::RenderResources(frustum);
-			//display.SetDepthTest(true,true);
-			}
 
 
 
