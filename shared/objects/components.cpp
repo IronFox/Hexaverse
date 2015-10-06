@@ -1892,13 +1892,20 @@ namespace Objects
 
 		#endif
 
+
+		/*static*/ bool					VehicleBase::canStandOnUnknown=true;
+
 		bool							VehicleBase::CanStandOn(const Grid::WorldData&world, const Grid::LCellIdI&cell, bool ignoreWater, bool doFloat)
 		{
 			if (requirements == Requirement::None)
 				return true;
 
 			Grid::Content weakest,strongest;
-			world.GetStrengthRange(cell,weakest,strongest);
+			bool anyUnknown = world.GetStrengthRange(cell,weakest,strongest);
+
+			if (!canStandOnUnknown && anyUnknown)
+				return false;
+
 	//								moveOnWater
 
 			//if (t == Grid::Content::Clear)

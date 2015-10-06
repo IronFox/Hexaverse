@@ -1884,7 +1884,11 @@ namespace Grid
 		bool					LowCellIsClearOrWater(const LCellIdI&cell)const;
 		bool					LowCellHasStructure(const LCellIdI&cell)const;
 		bool					LowCellIsClearIgnoreStructure(const LCellIdI&cell)const;
-		void					GetStrengthRange(const LCellIdI&cell, Content&outWeakest, Content&outStrongest) const;
+		/**
+		Determines the weakest and strongest content types found in the specified low-resolution cell
+		@return true, if any Content::Unknown blocks were encountered, false otherwise
+		*/
+		bool					GetStrengthRange(const LCellIdI&cell, Content&outWeakest, Content&outStrongest) const;
 
 		bool					IsRoad(const LCellIdI&, bool ignoreClearCellsOnEdge) const;
 

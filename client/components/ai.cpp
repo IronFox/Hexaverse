@@ -406,6 +406,9 @@ namespace AI
 		currentCanIgnoreThreat = (v->turret->CanAttack() || random.getFloat() < 0.5f) && !v->turret->dealsEMPDamage;
 		//currentIsOverconfident = v->overconfident;
 		EstimateThreatFromAll(v->system.w.xyz,true, currentCanIgnoreThreat,currentThreat);	//determine base threat based on ghosts
+
+		Objects::Component::VehicleBase::canStandOnUnknown = false;
+
 		mapper.Map(v.get(), v->location, BlockTest, referenceSpeed);
 		if (mapper.result.IsEmpty())
 		{
@@ -414,6 +417,7 @@ namespace AI
 			mapper.Map(v.get(), v->location, BlockTest, referenceSpeed);
 		}
 
+		Objects::Component::VehicleBase::canStandOnUnknown = true;
 
 		{
 			foreach (mapper.result,n)
