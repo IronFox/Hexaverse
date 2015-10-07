@@ -100,6 +100,10 @@ namespace Logging
 				return;
 		}
 
+		static SpinLock lock;
+
+		lock.lock();
+
 		static bool headerWritten = false;
 		if (!headerWritten)
 		{
@@ -162,6 +166,7 @@ namespace Logging
 			Flush();
 			//logFile.flush();
 		}
+		lock.unlock();
 	}
 
 

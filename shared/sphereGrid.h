@@ -1839,6 +1839,8 @@ namespace Grid
 
 	class VisibilityState
 	{
+	private:
+		count_t		lockLevel = 0;
 	public:
 		struct CellStack
 		{
@@ -1869,6 +1871,11 @@ namespace Grid
 			Cell	volumeCell[Grid::CellStack::Range];
 
 			/**/	CellStack()
+			{
+				memset(volumeCell, 0, sizeof(volumeCell));
+			}
+
+			void	Reset()
 			{
 				memset(volumeCell, 0, sizeof(volumeCell));
 			}
@@ -1910,7 +1917,27 @@ namespace Grid
 		void				ChangeSensory(const Grid::SkySensorState&state, float t, short changeBy);
 		void				RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);
 
-		void				FlushAllData();
+		/**
+		Completelye resets the internal state
+		@param includeResources Also flush resource coverage knowledge. If set false, only terrain visibility is reset
+		*/
+		void				FlushAllData(bool includeResources=true);
+		/**
+		Prevents all calls to CheckChanges() until UnlockChangeChecking() is called.
+		Supports nested calls up to depth 16
+		*/
+		void				LockChangeChecking()	{ASSERT_LESS__(lockLevel,16);lockLevel++; }
+		/**
+		Unlocks calls to CheckChanges(). Calls CheckChanges() automatically, if the lock level falls back to zero
+		*/
+		void				UnlockChangeChecking(float t)	{ASSERT_GREATER__(lockLevel,0); if (--lockLevel == 0) CheckChanges(t);}
+
+		/**
+		Processes all families for which FamilyState::changed is true, and detects if the visible terrain
+		coverage actually changed. If so, the respective value FamilyState::coverageChange is set true,
+		and FamilyState::lastChange is set to the specified parameter t.
+		Finally, FamilyState::changed is set false for all families.
+		*/
 		void				CheckChanges(float t);
 
 	};
