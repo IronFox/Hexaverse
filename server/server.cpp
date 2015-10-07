@@ -1033,6 +1033,36 @@ void LogConfig(const String&msg)
 }
 
 
+bool	CheckCoverageSendTerrain(const Objects::PFaction&faction,const TCP::PPeer&peer)
+{
+	static Protocol::WorldDelta	delta;
+
+	BYTE numChanged = 0;
+	for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
+		if (faction->visibility.families[family].coverageChanged)
+			numChanged++;
+
+	if (numChanged)
+	{
+		BYTE at = 0;
+		for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
+			if (faction->visibility.families[family].coverageChanged)
+			{
+				faction->visibility.families[family].coverageChanged = false;
+				at++;
+				Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,State::phase == Protocol::Phase::CommandPhase,at == numChanged,Protocol::WorldDeltaType::ProgressiveUpdate);
+				Channels::updateWorld.SendTo(peer,delta);
+			}
+		return true;
+	}
+	return false;
+}
+
+bool ApplyCoverageChange(const Objects::PFaction&faction)
+{
+	return CheckCoverageSendTerrain(faction,TCP::PPeer());
+}
+
 int main( int argc, const char* argv[])
 {
 
@@ -1808,26 +1838,10 @@ int main( int argc, const char* argv[])
 		{
 			//if ((*cl)->faction->global.coverageChanged)
 			{
-				static Protocol::WorldDelta	delta;
 				const Objects::PFaction&faction = (*cl)->faction;
 
-				BYTE numChanged = 0;
-				for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
-					if (faction->visibility.families[family].coverageChanged)
-						numChanged++;
-
-				if (numChanged)
-				{
+				if (CheckCoverageSendTerrain(faction,(*cl)->peer.lock()))
 					anythingChanged = true;
-					BYTE at = 0;
-					for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
-						if (faction->visibility.families[family].coverageChanged)
-						{
-							at++;
-							Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,State::phase == Protocol::Phase::CommandPhase,at == numChanged,Protocol::WorldDeltaType::ProgressiveUpdate);
-							Channels::updateWorld.SendTo((*cl)->peer.lock(),delta);
-						}
-				}
 			}
 		}
 

@@ -3880,11 +3880,14 @@ namespace Grid
 
 
 
-	void VisibilityState::FlushAllData()
+	void VisibilityState::FlushAllData(bool includeResources/*=true*/)
 	{
-		resourcesDiscovered.Fill(false);
+		if (includeResources)
+			resourcesDiscovered.Fill(false);
 		for (index_t i = 0; i < ARRAYSIZE(families); i++)
 			families[i].Reset();
+		foreach (cellStack,stack)
+			stack->Reset();
 
 	}
 
