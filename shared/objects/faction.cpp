@@ -396,7 +396,7 @@ namespace Objects
 			PMobileEntity v = To<MobileEntity>::DynamicCast(e);
 			ASSERT1__(v,e->GetName());
 			ASSERT1__(!v->storedIn.expired(),e->GetName());
-			allMobiles << v;
+			storedMobiles << v;
 			if (v->IsSatellite())
 			{
 				PSatellite sat = To<Satellite>::Cast(v);
