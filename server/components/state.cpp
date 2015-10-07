@@ -238,6 +238,8 @@ namespace State
 		Objects::VerifyVisibilityNetwork();
 		Objects::CheckMobileEntitySanity();
 		Objects::VerifyGrid();
+
+		Technites::VerifyGrid();
 	}
 
 

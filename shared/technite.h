@@ -330,6 +330,9 @@ namespace Technites
 				//(BYTE)std::max(height, 0)+1;
 		}
 
+
+		void			RegisterFactionSensory(Grid::VisibilityState&, float t) const;
+
 	};
 
 	static_assert(sizeof(Technite::TCompactState) == 8,"Packing error");
@@ -421,6 +424,9 @@ namespace Technites
 	bool						ProcessNext();
 	float						GetAnimationTime();
 
+	#ifndef CLIENT
+		void					VerifyGrid();
+	#endif
 
 
 	class Faction : public Objects::Faction
@@ -477,6 +483,7 @@ namespace Technites
 
 		struct WorkerData
 		{
+			#ifdef _DEBUG
 			struct LoggedEvent
 			{
 				CONSTRUCT_ENUMERATION8(Type, EatTechnite,EatCellContent, DegradeMatter, TransferMatter, TransferEnergy, SelfTransform, SpawnTechnite, GrowTo);
@@ -497,6 +504,8 @@ namespace Technites
 
 
 			Buffer<LoggedEvent>		events;
+			#endif
+
 
 			Buffer<Grid::HCellIdU>	newTechnites;
 			//Buffer<std::pair<Grid::HCellIdU, Grid::HCellIdU> > moveInstructions;
@@ -529,7 +538,6 @@ namespace Technites
 		void					CheckState(Technite&technite);
 		void					ProcessLighting(Technite&technite);
 
-		void					LogLocation(const Grid::HCellIdU&loc);
 
 		/**
 		Queries the currently stored atomic content of the world grid in its background copy (must be called during processing)
@@ -546,8 +554,15 @@ namespace Technites
 		#ifndef CLIENT
 			void				Process(float t);
 			void				ProcessLighting();
+			#ifdef _DEBUG
+				static void		VerifyAtomicGrid();
+				static bool		VerifyAtomicIsVisibleAndMatches(const Objects::PFaction&f, const Grid::HCellIdU&cellID, const Grid::HCellIdU&techniteIn);
+			#endif
 		#endif
 
+		#ifdef _DEBUG
+			static void			ReportLocation(const Grid::HCellIdU&loc);
+		#endif
 
 		static Array<WorkerData>	workerData;
 
