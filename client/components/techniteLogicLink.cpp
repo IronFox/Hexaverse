@@ -286,7 +286,7 @@ namespace TechniteLogicLink
 						RefreshUserNotification();
 					}
 				}
-				LogEvent(EventType::SessionRelated, nullptr, "TechniteLogic: Peer connection lost: "+peer.ToString());
+				LogEvent(EventType::SessionRelated, nullptr, "TechniteLogic: Peer connection lost");
 			}
 			break;
 		}
