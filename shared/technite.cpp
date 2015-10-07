@@ -316,8 +316,9 @@ namespace Technites
 	{
 		return Grid::Content::Reinterpret(atomicGrid.cellStack[cellID.stackID].volumeCell[cellID.layer].content);
 	}
-	Grid::Content			Faction::DegradeMatter(const Grid::HCellIdU&target, Technite::Resources&outYield, bool destroy)
+	Grid::Content			Faction::DegradeMatter(const Grid::HCellIdU&source, const Grid::HCellIdU&target, WorkerData&data, index_t iteration, Technite::Resources&outYield, bool destroy)
 	{
+
 		outYield = Technite::Resources();
 		const UINT32 layer = target.layer;
 		ASSERT_LESS__(layer, Grid::CellStack::Range);
@@ -331,11 +332,25 @@ namespace Technites
 
 			matterYield = Technite::MatterYield[current];
 
+			WorkerData::LoggedEvent&ev = data.events.Append();
+			ev.source = source;
+			ev.target = target;
+			ev.type = WorkerData::LoggedEvent::Type::DegradeMatter;
+			ev.iteration = iteration;
+			ev.destructive = destroy;
+			ev.from = Grid::Content::Reinterpret(current);
+			ev.to = Grid::Content::Reinterpret(set);
+
+
 			if (set == current)
+			{
+				ev.result = "Success, intended type present";
 				return Grid::Content::Reinterpret(set);
+			}
 
 			if (!destroy)
 			{
+				ev.result = "Success, non-destructive";
 				outYield = Technite::Resources::Resources(0, matterYield/2);
 				return Grid::Content::Reinterpret(current);
 			}
@@ -343,10 +358,12 @@ namespace Technites
 			if (cell.content.compare_exchange_weak(current, set))
 			{
 				atomicGrid.SignalStackChange(target.stackID);
+				ev.result = "Success, matter degraded";
 
 				outYield = Technite::Resources::Resources(0, matterYield);
 				return Grid::Content::Reinterpret(set);
 			}
+			ev.result = "Failed, atomic exchange failed";
 		}
 	}
 
@@ -390,22 +407,42 @@ namespace Technites
 	{
 		ExecResult rs = Eat(technite, target, iteration,data, true);
 		
+		WorkerData::LoggedEvent&ev = data.events.Append();
+		ev.target = target;
+		ev.source = technite.location.GetU();
+		ev.type = WorkerData::LoggedEvent::Type::GrowTo;
+		ev.iteration = iteration;
+		ev.destructive = true;
+		ev.from = GetLastContent(target);
+		ev.to = Grid::Content::Technite;
+
 		if (rs != ExecResult::Success)
+		{
+			ev.result = "Failed, could not eat content";
 			return rs;
+		}
 
 		if (iteration < 2)
+		{
+			ev.result = "Failed, iteration too low";
 			return ExecResult::Again;
+		}
 		if (iteration > 2)
+		{
+			ev.result = "Failed, iteration too high";
 			return ExecResult::OperationWindowMissed;
+		}
 
 		
 		if (!ReduceResources(technite, Technite::SplitCost))
 		{
+			ev.result = "Failed, insufficient resources";
 			return ExecResult::TechniteLacksResources;
 		}
 		
+		ev.result = "Possibly successful, spawning new technite...";
 
-		if (!SpawnNewTechnite(target, data))
+		if (!SpawnNewTechnite(technite.location.GetU(), target, data, iteration))
 		{
 			//this actually can happen if the local faction recently spawned a new technite there, 
 			//which is registered in the grid but not in the faction yet, so it cannot be eaten
@@ -603,11 +640,19 @@ namespace Technites
 		return totalEntries;
 	}
 
-	Technite::Resources		Faction::EatTechnite(Technite&local, const Grid::HCellIdU&target, bool factionIsActive)
+	Technite::Resources		Faction::EatTechnite(Technite&local, const Grid::HCellIdU&target, index_t iteration, WorkerData&data, bool factionIsActive)
 	{
 		//this seems to fix the 'terrain content mismatch' issue, but it should not occur
-		return Technite::Resources();//experiment
+		//return Technite::Resources();//experiment
 
+		WorkerData::LoggedEvent&ev = data.events.Append();
+		ev.target = target;
+		ev.source = local.location.GetU();
+		ev.type = WorkerData::LoggedEvent::Type::EatTechnite;
+		ev.from = GetLastContent(target);
+		ev.to = Grid::Content::Clear;
+		ev.iteration = iteration;
+		ev.targetingOwnTechniteFaction = factionIsActive;
 
 
 		//	if (!factionIsActive)
@@ -617,6 +662,10 @@ namespace Technites
 			{
 				//freshly created technite, most likely
 				ASSERT__(factionIsActive);
+
+				ev.result = "Failed, technite unknown";
+
+
 				//UINT32 layer = Grid::CellStack::ToLayer(target.height);
 				//ASSERT_LESS__(layer, Grid::CellStack::Range);
 				//atomicGrid.cellStack[target.stackID].volumeCell[layer].content = Grid::Content::Clear;
@@ -636,6 +685,7 @@ namespace Technites
 					//std::cout << local.location.ToString() << " eating remote technite (i have "<<(int)local.resources.energy<<", other has "<<(int)tech.resources.energy<<") " << tech.location.ToString() << std::endl;
 					local.resources.energy -= tech.resources.energy;
 					//all good tho
+					ev.result = "Success, enough energy to eat hostile technite";
 				}
 				else
 				{
@@ -643,6 +693,9 @@ namespace Technites
 					tech.resources.energy -= local.resources.energy;
 					local.resources.energy = 0;
 					//std::cout << local.location.ToString() << " failed eating remote technite (i have " << (int)local.resources.energy << ", other has " << (int)tech.resources.energy << ") " << tech.location.ToString() << ". remote energy decreased to " << (int)tech.resources.energy << std::endl;
+
+					ev.result = "Failed, insufficient energy to eat hostile technite";
+					
 					return Technite::Resources();
 				}
 
@@ -660,13 +713,27 @@ namespace Technites
 				}
 				const UINT32 layer = target.layer;
 				ASSERT_LESS__(layer, Grid::CellStack::Range);
+
+				BYTE expect0 = Grid::Content::Technite;
+
+				bool changed = atomicGrid.cellStack[target.stackID].volumeCell[layer].content.compare_exchange_strong(expect0, Grid::Content::Technite);
+				if (!changed)
+				{
+					ev.result = "Error: Targeted technite died, but grid content lost in transition";
+					return Technite::Resources();
+				}
+
+
 				atomicGrid.cellStack[target.stackID].volumeCell[layer].content = Grid::Content::Clear;
 				atomicGrid.SignalStackChange(target.stackID);
 				
 				const Technite::Resources&source = tech.resources;
+				ev.result = "Success, targeted technite is now dead";
 
 				return Technite::Resources(source.energy/4, source.energy / 2);
 			}
+			ev.result = "Failed, targeted technite is already dead";
+
 			
 			return Technite::Resources();
 		}
@@ -724,10 +791,20 @@ namespace Technites
 
 	Faction::ExecResult			Faction::Eat(Technite&technite, const Grid::HCellIdU&target, index_t iteration, WorkerData&data, bool destroy)
 	{
+		WorkerData::LoggedEvent&ev = data.events.Append();
+		ev.target = target;
+		ev.source = technite.location.GetU();
+		ev.type = WorkerData::LoggedEvent::Type::EatCellContent;
+		ev.from = GetLastContent(target);
+		ev.to = Grid::Content::Clear;
+		ev.iteration = iteration;
+		ev.destructive = destroy;
+
 		switch (GetLastContent(target))
 		{
 			case Grid::Content::Water:	//water does not block, nor yield anything
 			{
+				ev.result = "Success, targeted cell contains water";
 				return ExecResult::Success;
 			}
 			break;
@@ -735,41 +812,62 @@ namespace Technites
 			{
 				bool cantEatThis;
 				IncreaseResources(technite, EatEntitiesIn(target,cantEatThis));	//this will be hard to make thread-safe
+
+				ev.result = cantEatThis? "Failed, cell clear, can't eat contained entities" : "Success, targeted cell is clear";
 			
 				return cantEatThis ? ExecResult::CannotEatThis : ExecResult::Success;
 			}
 			case Grid::Content::Technite:
 			{
 				if (!destroy)
+				{
+					ev.result = "Failed, non-destructive, can't eat technites this way";
 					return ExecResult::CannotGnawAtThis;
+				}
 				if (iteration < 1)
+				{
+					ev.result = "Failed, iteration too low to eat technite";
 					return ExecResult::Again;
+				}
 				if (iteration > 1)
+				{
+					ev.result = "Failed, iteration too high to eat technite";
 					return ExecResult::OperationWindowMissed;
+				}
 			
 				BYTE faction = Grid::actualWorld.cellStack[target.stackID].GetCellU(target.layer).techniteFaction;	//this should be thread-safe with only one faction being parallely active at any given time
 			
+				ev.result = "Possibly successful, eating technite";
 				PFaction f = GetFactionOf(faction);
 			
-				Technite::Resources resources = f->EatTechnite(technite,target, f.get() == this);	//if technite has been eaten in the meantime EatTechnite will return empty resources
+				Technite::Resources resources = f->EatTechnite(technite,target, iteration,data, f.get() == this);	//if technite has been eaten in the meantime EatTechnite will return empty resources
 			
 				IncreaseResources(technite, resources);
 			
 			}
 			return GetLastContent(target) == Grid::Content::Clear ? ExecResult::Success : ExecResult::CannotEatThis;
 			case Grid::Content::Lava:
+			{
+				ev.result = "Failed, cannot eat lava";
 				return ExecResult::CannotEatThis;
+			}
 		}
 		if (iteration > 0)
+		{
+			ev.result = "Failed, cannot eat regular block after iteration 0";
 			return ExecResult::OperationWindowMissed;
+		}
 
 		if (!ReduceResources(technite, destroy ? Technite::ConsumeCost : Technite::GnawAtCost))
 		{
+			ev.result = "Failed, insufficient resources to eat regular cell";
 			return ExecResult::TechniteLacksResources;
 		}
 		Technite::Resources	resources;
 		
-		Grid::Content newContent = DegradeMatter(target, resources,destroy);	//DegradeMatter must be atomic on the specified cell
+		ev.result = "Possibly successful, degrading matter";
+
+		Grid::Content newContent = DegradeMatter(technite.location.GetU(), target, data, iteration, resources,destroy);	//DegradeMatter must be atomic on the specified cell
 		
 		IncreaseResources(technite, resources);
 		
@@ -855,12 +953,49 @@ namespace Technites
 		{
 			case Technite::Task::SelfTransformToType:
 			{
-				if (technite.taskParameter >= ARRAYSIZE(Technite::MatterYield) || Technite::MatterYield[technite.taskParameter] == 0)
-					return Technite::TaskResult::BadCommand;
-				if (technite.resources.matter < Technite::MatterYield[technite.taskParameter])
-					return Technite::TaskResult::TechniteLacksResources;
-				technite.isDead = true;
-				return Technite::TaskResult::Success;
+				const Grid::HCellIdU target = technite.location.GetU();
+
+				WorkerData::LoggedEvent&ev = data.events.Append();
+				ev.target = target;
+				ev.source = ev.target;
+				ev.type = WorkerData::LoggedEvent::Type::SelfTransform;
+				ev.from = GetLastContent(target);
+				ev.to = Grid::Content::Reinterpret(technite.taskParameter);
+				ev.iteration = iteration;
+				ev.targetingOwnTechniteFaction = true;
+
+				ASSERT_EQUAL__(iteration,0);
+
+				bool expected = true;
+				if (technite.isDead.Set(expected,true))
+				{
+					if (technite.taskParameter >= ARRAYSIZE(Technite::MatterYield) || Technite::MatterYield[technite.taskParameter] == 0)
+					{
+						ev.result = "Failed, bad target type #"+String(technite.taskParameter);
+						return Technite::TaskResult::BadCommand;
+					}
+					if (technite.resources.matter < Technite::MatterYield[technite.taskParameter])
+					{
+						ev.result = "Failed, not enough resources to change into desired type";
+						return Technite::TaskResult::TechniteLacksResources;
+					}
+					BYTE expect = Grid::Content::Technite;
+					
+					if (atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content.compare_exchange_strong(expect,technite.taskParameter))
+					{
+						atomicGrid.SignalStackChange(target.stackID);
+						ev.result = "Success";
+					}
+					else
+					{
+						//this should not happen. transformation will happen in iteration 0, eating technites is not allowed during iteration 0
+						ev.result = "Failed, unable to set cell type to new type";
+					}
+
+					return Technite::TaskResult::Success;	//dead either way, no need to report this
+				}
+				ev.result = "Failed, technite is already dead";
+				return Technite::TaskResult::NoTechniteAtDestination;
 			}
 			break;
 		case Technite::Task::GrowTo:
@@ -870,27 +1005,64 @@ namespace Technites
 			return Eat(technite, target, iteration, data, technite.nextTask == Technite::Task::ConsumeSurroundingCell);
 		case Technite::Task::TransferEnergyTo:
 		{
+			WorkerData::LoggedEvent&ev = data.events.Append();
+			ev.target = target;
+			ev.source = technite.location.GetU();
+			ev.type = WorkerData::LoggedEvent::Type::TransferEnergy;
+			ev.from = GetLastContent(target);
+			ev.to = ev.from;
+			ev.iteration = iteration;
+			ev.targetingOwnTechniteFaction = true;
+
+
 			if (iteration < 4)
+			{
+				ev.result = "Failed, iteration too low";
 				return ExecResult::Again;
+			}
 			Technite*other = GetOwnTechnite(target);
 			if (!other)
+			{
+				ev.result = "Failed, cannot locate technite object";
 				return Technite::TaskResult::NoTechniteAtDestination;
+			}
 			Technite::Resources	transfer(technite.taskParameter,0);
 			if (!ReduceResources(technite,transfer ))
+			{
+				ev.result = "Failed, insufficient resources to transfer "+transfer.ToString();
 				return Technite::TaskResult::TechniteLacksResources;
+			}
 			IncreaseRemoteResources(*other, transfer, data);
 			return Technite::TaskResult::Success;
 		}
 		case Technite::Task::TransferMatterTo:
 		{
+			WorkerData::LoggedEvent&ev = data.events.Append();
+			ev.target = target;
+			ev.source = technite.location.GetU();
+			ev.type = WorkerData::LoggedEvent::Type::TransferMatter;
+			ev.from = GetLastContent(target);
+			ev.to = ev.from;
+			ev.iteration = iteration;
+			ev.targetingOwnTechniteFaction = true;
+
 			if (iteration < 4)
+			{
+				ev.result = "Failed, iteration too low";
 				return ExecResult::Again;
+			}
 			Technite*other = GetOwnTechnite(target);
 			if (!other)
+			{
+				ev.result = "Failed, cannot locate technite object";
 				return Technite::TaskResult::NoTechniteAtDestination;
+			}
 			Technite::Resources	transfer(0,technite.taskParameter);
 			if (!ReduceResources(technite, transfer))
+			{
+				ev.result = "Failed, insufficient resources to transfer "+transfer.ToString();
 				return Technite::TaskResult::TechniteLacksResources;
+			}
 			IncreaseRemoteResources(*other, transfer, data);
 			return Technite::TaskResult::Success;
 		}
@@ -926,8 +1098,8 @@ namespace Technites
 		static Array<WorkerData>	workerData;
 		workerData.SetSize(numWorkers);
 
-
-		for (index_t iteration = 0; ; iteration++)
+		index_t iteration = 0;
+		for (; ; )
 		{
 			volatile bool anyAgain = false;
 
@@ -948,6 +1120,7 @@ namespace Technites
 						tec.nextTask = Technite::Task::None;
 				}
 			});
+			iteration++;
 			if (!anyAgain)
 				break;
 		}
@@ -973,11 +1146,7 @@ namespace Technites
 					visibility.ChangeSensory(loc, t, -1);
 					techniteMap.Unset(loc);
 
-					BYTE changeTo = Grid::Content::Clear;
-					if (tec.nextTask == Technite::Task::SelfTransformToType && tec.taskResult == Technite::TaskResult::Success)
-						changeTo = tec.taskParameter;
-					atomicGrid.cellStack[loc.stackID].volumeCell[loc.layer].content = changeTo;
-					atomicGrid.SignalStackChange(loc.stackID);
+					//BYTE changeTo = Grid::Content::Clear;
 				}
 			}
 			newField.swap(technites);
@@ -988,6 +1157,8 @@ namespace Technites
 		count_t deathByBadSupport = 0,
 				deathByLostContent = 0,
 				totalNew = 0;
+
+		bool firstLog = true;
 		foreach(workerData, data)
 		{
 			totalNew += data->newTechnites.Count();
@@ -998,6 +1169,39 @@ namespace Technites
 
 				if (GetLastContent(loc) != Grid::Content::Technite)
 				{
+					if (firstLog)
+					{
+						firstLog = false;
+
+						LogEvent(EventType::TechniteLogic,nullptr,"Lost content of new technite at location "+loc.ToString()+", reporting changes...");
+
+						static Buffer<WorkerData::LoggedEvent>	events;
+						events.Clear();
+						foreach (workerData, data2)
+							foreach (data2->events,ev)
+								if (ev->target == loc)
+								{
+									events << *ev;
+									events.last().workerIndex = (index_t)(data2-workerData.pointer());
+								}
+						std::sort(events.begin(),events.end());
+
+						foreach (events, ev) 
+							LogEvent(EventType::TechniteLogic,nullptr,
+								String(ev->stamp)
+								+ ": "+String(ev->type.ToString()).subString(0,5)
+								+", it="+String(ev->iteration)
+								+", worker="+String(ev->workerIndex)
+								+", source="+String(ev->source.ToString())
+								+", destruct="+String(ev->destructive)
+								+", myfact="+String(ev->targetingOwnTechniteFaction)
+								+", type0="+String(ev->from.ToString())
+								+", type1="+String(ev->to.ToString())
+								+", result='"+ev->result+"'"
+								);
+					}		
+
+
 					deathByLostContent ++;
 					continue;
 				}
@@ -1044,6 +1248,12 @@ namespace Technites
 				tec.resources += inc.second;
 			}
 			data->increaseResources.Clear();
+		}
+
+		foreach(workerData, data)
+		{
+			data->events.Clear();
+		
 		}
 
 		//foreach(workerData, data)
@@ -1118,13 +1328,24 @@ namespace Technites
 		return rs;
 	}
 
-	bool			Faction::SpawnNewTechnite(const Grid::HCellIdU&target, WorkerData&data)
+	bool			Faction::SpawnNewTechnite(const Grid::HCellIdU&source, const Grid::HCellIdU&target, WorkerData&data, index_t iteration)
 	{
 		const UINT32 toLayer = target.layer;
 		ASSERT_LESS__(toLayer, Grid::CellStack::Range);
 
+		WorkerData::LoggedEvent&ev = data.events.Append();
+		ev.target = target;
+		ev.source = source;
+		ev.type = WorkerData::LoggedEvent::Type::SpawnTechnite;
+		ev.iteration = iteration;
+		ev.destructive = false;
+		ev.from = GetLastContent(target);
+		ev.to = Grid::Content::Technite;
+
+
 		if (!ValidTechniteLocation(target))
 		{
+			ev.result = "Failed, invalid location for technite";
 			return false;
 		}
 
@@ -1135,8 +1356,13 @@ namespace Technites
 		if (!toCell.content.compare_exchange_strong(expect0, Grid::Content::Technite)
 			&&
 			!toCell.content.compare_exchange_strong(expect1, Grid::Content::Technite))
+		{
+			ev.result = "Failed, unable to atomically change grid type to technite";
 			return false;
+		}
 		ASSERT1__(toCell.content==Grid::Content::Technite,toCell.content);
+		ev.to = GetLastContent(target);
+		ev.result = "Success, technite created, appending new technite to field";
 		atomicGrid.SignalStackChange(target.stackID);
 		Grid::actualWorld.cellStack[target.stackID].volumeCell[toLayer].techniteFaction = this->gridID;
 

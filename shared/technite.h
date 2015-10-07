@@ -136,6 +136,11 @@ namespace Technites
 				return true;
 			}
 
+			String		ToString() const
+			{
+				return "Energy="+String(energy)+", Matter="+String(matter);
+			}
+
 
 			static void Increase(BYTE&local, BYTE by)
 			{
@@ -470,6 +475,27 @@ namespace Technites
 
 		struct WorkerData
 		{
+			struct LoggedEvent
+			{
+				CONSTRUCT_ENUMERATION8(Type, EatTechnite,EatCellContent, DegradeMatter, TransferMatter, TransferEnergy, SelfTransform, SpawnTechnite, GrowTo);
+
+				Type			type;
+				index_t			workerIndex;
+				Grid::HCellIdU	source, target;
+				Grid::Content	from,to;
+				bool			targetingOwnTechniteFaction,destructive;
+				String			result;
+				index_t			iteration;
+
+				Timer::Time		stamp = timer.Now();
+
+				bool			operator<(const LoggedEvent&other) const {return stamp < other.stamp;}
+				bool			operator>(const LoggedEvent&other) const {return stamp > other.stamp;}
+			};
+
+
+			Buffer<LoggedEvent>		events;
+
 			Buffer<Grid::HCellIdU>	newTechnites;
 			//Buffer<std::pair<Grid::HCellIdU, Grid::HCellIdU> > moveInstructions;
 			Buffer<std::pair<Grid::HCellIdU, Technite::Resources> > increaseResources;
@@ -489,13 +515,13 @@ namespace Technites
 
 
 		Technite::Resources		EatEntitiesIn(const Grid::HCellIdU&target, bool&cantEatThis);
-		Technite::Resources		EatTechnite(Technite&local, const Grid::HCellIdU&target, bool factionIsActive);
-		bool					SpawnNewTechnite(const Grid::HCellIdU&target, WorkerData&data);
+		Technite::Resources		EatTechnite(Technite&local, const Grid::HCellIdU&target, index_t iteration, WorkerData&data, bool factionIsActive);
+		bool					SpawnNewTechnite(const Grid::HCellIdU&source, const Grid::HCellIdU&target, WorkerData&data, index_t iteration);
 		//bool					MoveTechnite(Technite&technite, const Grid::HCellIdU&target, WorkerData&data);
 		bool					ReduceResources(Technite&technite, const Technite::Resources&by);
 		void					IncreaseResources(Technite&technite, const Technite::Resources&by);
 		void					IncreaseRemoteResources(Technite&technite, const Technite::Resources&by, WorkerData&data);
-		Grid::Content			DegradeMatter(const Grid::HCellIdU&target, Technite::Resources&outYield, bool destroy);
+		Grid::Content			DegradeMatter(const Grid::HCellIdU&source, const Grid::HCellIdU&target, WorkerData&data, index_t iteration, Technite::Resources&outYield, bool destroy);
 		Technite*				GetOwnTechnite(const Grid::HCellIdU&location);
 
 		PFaction				GetFactionOf(BYTE gridFactionID);
