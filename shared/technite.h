@@ -467,6 +467,8 @@ namespace Technites
 
 		#endif
 
+		static PFaction			GetFactionOf(BYTE gridFactionID);
+		Technite*				GetOwnTechnite(const Grid::HCellIdU&location);
 
 		typedef Technite::TaskResult	ExecResult;
 	private:
@@ -522,13 +524,12 @@ namespace Technites
 		void					IncreaseResources(Technite&technite, const Technite::Resources&by);
 		void					IncreaseRemoteResources(Technite&technite, const Technite::Resources&by, WorkerData&data);
 		Grid::Content			DegradeMatter(const Grid::HCellIdU&source, const Grid::HCellIdU&target, WorkerData&data, index_t iteration, Technite::Resources&outYield, bool destroy);
-		Technite*				GetOwnTechnite(const Grid::HCellIdU&location);
 
-		PFaction				GetFactionOf(BYTE gridFactionID);
 		ExecResult				ExecuteTask(Technite&cell, index_t iteration, WorkerData&data);
 		void					CheckState(Technite&technite);
 		void					ProcessLighting(Technite&technite);
 
+		void					LogLocation(const Grid::HCellIdU&loc);
 
 		/**
 		Queries the currently stored atomic content of the world grid in its background copy (must be called during processing)
@@ -547,6 +548,8 @@ namespace Technites
 			void				ProcessLighting();
 		#endif
 
+
+		static Array<WorkerData>	workerData;
 
 		//static WorkPipe<Grid::HCellIdU>	newTechnites;
 		//static WorkPipe<Grid::HCellIdU> moveInstructions;

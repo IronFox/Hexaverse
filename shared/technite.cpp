@@ -18,6 +18,9 @@ namespace Technites
 		//Technite::EnergyPackage = Resources(EnergyPackageSize, 0),
 		//Technite::MatterPackage = Resources(0, MatterPackageSize);
 
+
+	/*static*/ Array<Faction::WorkerData>	Faction::workerData;
+
 	/*static*/ Buffer0<PFaction>Faction::allTechniteFactions;
 	/*static*/ AtomicGrid Faction::atomicGrid;
 	///*static*/ WorkPipe<Grid::HCellIdU>	Faction::newTechnites;
@@ -274,6 +277,25 @@ namespace Technites
 				for (UINT32 l = 0; l < Grid::CellStack::Range; l++)
 				{
 					to.volumeCell[l].content = from.volumeCell[l].content;
+
+					if (to.volumeCell[l].content == Grid::Content::Technite)
+					{
+						PFaction f = Faction::GetFactionOf(to.volumeCell[l].techniteFaction);
+						const Grid::HCellIdU loc(i,l);
+						if (!f)
+						{
+							LogEvent(EventType::TechniteLogic,nullptr,"Found homeless technite in "+loc.ToString()+", clearing cell");
+							to.volumeCell[l].content = Grid::Content::Clear;
+							continue;
+						}
+						Technite*t = f->GetOwnTechnite(loc);
+						if (!t)
+						{
+							LogEvent(EventType::TechniteLogic,nullptr,"Found abandoned technite of faction "+f->GetLogName()+" in "+loc.ToString()+", clearing cell");
+							to.volumeCell[l].content = Grid::Content::Clear;
+							continue;
+						}
+					}
 				}
 			}
 		}
@@ -1082,6 +1104,35 @@ namespace Technites
 		});
 	}
 
+	void		Faction::LogLocation(const Grid::HCellIdU&loc)
+	{
+		static Buffer<WorkerData::LoggedEvent>	events;
+		events.Clear();
+		foreach (workerData, data2)
+			foreach (data2->events,ev)
+				if (ev->target == loc)
+				{
+					events << *ev;
+					events.last().workerIndex = (index_t)(data2-workerData.pointer());
+				}
+		std::sort(events.begin(),events.end());
+
+		foreach (events, ev) 
+			LogEvent(EventType::TechniteLogic,nullptr,
+				String(ev->stamp)
+				+ ": "+String(ev->type.ToString()).subString(0,5)
+				+", it="+String(ev->iteration)
+				+", worker="+String(ev->workerIndex)
+				+", source="+String(ev->source.ToString())
+				+", destruct="+String(ev->destructive)
+				+", myfact="+String(ev->targetingOwnTechniteFaction)
+				+", type0="+String(ev->from.ToString())
+				+", type1="+String(ev->to.ToString())
+				+", result='"+ev->result+"'"
+				);
+
+	}
+
 	void		Faction::Process(float t)
 	{
 		anyDied = false;
@@ -1093,9 +1144,38 @@ namespace Technites
 			CheckState(technites[i]);
 			technites[i].taskResult = Technite::TaskResult::Again;
 		});
+
+		if (anyDied)
+		{
+			static Buffer<Technite>	newField;
+			//techniteMap.Clear();
+			for (const auto&tec : technites)
+			{
+				Grid::HCellIdU loc = tec.location.GetU();	
+				if (!tec.isDead)
+				{
+					index_t at = newField.Count();
+					newField.Append(tec);
+					techniteMap.Set(loc, at);
+				}
+				else
+				{
+					visibility.ChangeSensory(loc, t, -1);
+					techniteMap.Unset(loc);
+					atomicGrid.cellStack[loc.stackID].volumeCell[loc.layer].content = Grid::Content::Clear;
+					atomicGrid.SignalStackChange(loc.stackID);
+				}
+			}
+			newField.swap(technites);
+			newField.Clear();
+			ASSERT_EQUAL__(technites.Count(), techniteMap.Count());
+			anyDied = false;
+		}
+
+
+
 		
 		count_t numWorkers = ParallelLoop::global_instance.getWorkerCount();
-		static Array<WorkerData>	workerData;
 		workerData.SetSize(numWorkers);
 
 		index_t iteration = 0;
@@ -1146,6 +1226,33 @@ namespace Technites
 					visibility.ChangeSensory(loc, t, -1);
 					techniteMap.Unset(loc);
 
+
+					if (GetLastContent(loc) == Grid::Content::Technite)
+					{
+						Technite*t2 = GetOwnTechnite(loc);
+						if (!t2)
+						{
+							bool found = false;
+							foreach(workerData, data)
+							{
+								if (data->newTechnites.Contains(loc))
+								{
+									found = true;
+									break;
+								}
+							}
+							if (!found)
+							{
+								LogEvent(EventType::TechniteLogic,nullptr,"Error: leftover technite found in cell "+loc.ToString());
+								LogLocation(loc);
+
+								atomicGrid.cellStack[loc.stackID].volumeCell[loc.layer].content = Grid::Content::Clear;
+								atomicGrid.SignalStackChange(loc.stackID);
+							}
+						}
+					}
+
+
 					//BYTE changeTo = Grid::Content::Clear;
 				}
 			}
@@ -1175,30 +1282,7 @@ namespace Technites
 
 						LogEvent(EventType::TechniteLogic,nullptr,"Lost content of new technite at location "+loc.ToString()+", reporting changes...");
 
-						static Buffer<WorkerData::LoggedEvent>	events;
-						events.Clear();
-						foreach (workerData, data2)
-							foreach (data2->events,ev)
-								if (ev->target == loc)
-								{
-									events << *ev;
-									events.last().workerIndex = (index_t)(data2-workerData.pointer());
-								}
-						std::sort(events.begin(),events.end());
-
-						foreach (events, ev) 
-							LogEvent(EventType::TechniteLogic,nullptr,
-								String(ev->stamp)
-								+ ": "+String(ev->type.ToString()).subString(0,5)
-								+", it="+String(ev->iteration)
-								+", worker="+String(ev->workerIndex)
-								+", source="+String(ev->source.ToString())
-								+", destruct="+String(ev->destructive)
-								+", myfact="+String(ev->targetingOwnTechniteFaction)
-								+", type0="+String(ev->from.ToString())
-								+", type1="+String(ev->to.ToString())
-								+", result='"+ev->result+"'"
-								);
+						LogLocation(loc);
 					}		
 
 
