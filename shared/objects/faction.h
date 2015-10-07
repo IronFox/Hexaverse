@@ -177,8 +177,8 @@ namespace Objects
 			static Buffer0<PFaction>	allKnown;
 		#else
 			CryptographicID	accessToken;
-			Buffer0<WMobileEntity>		allMobiles,
-										storedMobiles;
+			Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
+										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
 			Buffer0<WSatellite>			satellites;
 			Buffer0<WSkyHub>			skyHubs;	//overlaps with satellites
 			Buffer0<WStructure>			structures;
