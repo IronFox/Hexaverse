@@ -11,6 +11,11 @@
 	#include "../client/ExtRenderer/DirectX11.h"
 #endif
 
+namespace Technites
+{
+	class Technite;
+	class Faction;
+};
 
 
 static const float WorldScale = 40.f;
@@ -298,6 +303,7 @@ namespace Grid
 			#endif
 			void	SetToIfSolid(Content cnt)	{if (IsSolid()) content = cnt;}
 			bool	IsWater() const { return content == Content::Water; }
+			bool	IsTechnite() const {return content == Content::Technite; }
 			//bool	WaterSurfaceBelow() const { return content == Content::Clear; }
 			bool	IsOccupied() const
 			{
@@ -336,6 +342,7 @@ namespace Grid
 				return IsSolid(content);
 				//return content < Content::Water;
 			}
+			bool	IsSolidDead() const	{return IsDead(content);}
 			int		GetStrength() const
 			{
 				return typeStrength[content];
@@ -363,7 +370,7 @@ namespace Grid
 			BYTE			lowestOpenCell,
 							highestOpaqueCell,
 							lightingChangedTo;
-			TIntRange<BYTE>	waterRange;
+			TIntRange<BYTE>	waterRange,techniteRange;
 		#endif
 
 
@@ -373,7 +380,7 @@ namespace Grid
 
 		#ifdef HAS_WINDOW
 		bool			HasWater() const { return waterRange.IsNotEmpty(); }
-
+		bool			HasTechnites() const { return techniteRange.IsNotEmpty(); }
 
 		void			DebugCheckRange()
 		{
@@ -388,11 +395,16 @@ namespace Grid
 		{
 			waterRange.start = 0xFF;
 			waterRange.end = 0x0;
+			techniteRange = waterRange;
 			lowestOpenCell = 0xFF;
 			highestOpaqueCell = 0;
 			for (unsigned i = 0; i < Range; i++)
 				if (volumeCell[i].IsSolid())
+				{
 					highestOpaqueCell = (BYTE)i;
+					if (volumeCell[i].IsTechnite())
+						techniteRange.Include(i);
+				}
 				else
 				{
 					lowestOpenCell = std::min(lowestOpenCell, (BYTE)i);
@@ -511,7 +523,8 @@ namespace Grid
 			
 			extern DX11::BaseInstructionBlock terrainBase, terrainSphereBase, 
 											terrainParaboloidBase, terrainShadowBase, 
-											waterBase, overlayBase, overlayShadowBase, resourceBase;// , terrainEdgeBase;
+											waterBase, overlayBase, overlayShadowBase, resourceBase
+											,techniteBase, techniteShadowBase;// , terrainEdgeBase;
 		}
 		struct TerrainVertex
 		{
@@ -555,6 +568,24 @@ namespace Grid
 			/**/		WaterVertex()	{};
 			/**/		WaterVertex(const float4&vtx, float h, const float3&n,float light, int emp) : vertex(vtx.xyz*h, vtx.w), normal(n),light((float(emp) + 0.05f + light*0.9f) * 0.25f ){}
 		};
+
+
+		struct TechniteVertex
+		{
+			float3		vertex;
+			sbyte4		normal;
+			sbyte4		directionXYZ_factor;
+			byte4		colorRGB_lightLevel;
+
+			/**/		TechniteVertex()	{}
+			/**/		TechniteVertex(const float3&vtx, float h, const float3&normal, const float3&direction, const float3&color, float light) : vertex(vtx),normal(normal*127.f,0),colorRGB_lightLevel(color*255.f,light*255.f)
+			{
+				float dirLen = direction.length();
+				directionXYZ_factor.xyz = sbyte3(dirLen > 0.f ? direction / dirLen * 255.f : sbyte3());
+				directionXYZ_factor.w = clamp(dirLen,0,255.f);
+			}
+		};
+		static_assert(sizeof(TechniteVertex) == 12+4+4+4, "Check struct alignment");
 	
 
 		template <typename Vtx>
@@ -613,6 +644,19 @@ namespace Grid
 				shadowInstruction = instruction = DX11::InstructionBlock32();
 			}
 		};
+
+		struct TTechniteHull : public THull<TechniteVertex>
+		{
+			typedef THull<TechniteVertex>	Super;
+			DX11::InstructionBlock32	instruction,shadowInstruction;
+
+			void						Destroy()
+			{
+				Super::Clear();
+				shadowInstruction = instruction = DX11::InstructionBlock32();
+			}
+		};
+
 		/**
 		Stack-stored mesh container with constant capacity
 		*/
@@ -807,6 +851,7 @@ namespace Grid
 				TOverlayHull			overlay;	//!< high-resolution overhanging terrain overlay, transparent
 				TWaterHull				water;		//!< high-resolution overhanging terrain water, transparent, shaded
 				TResourceHull			resources;	//!< low-resolution resource visualization. Similar to @a overlay, but uses different shader
+				TTechniteHull			technites;	//!< high-resolution technite mesh, textured, animated, opaque, shaded
 			#endif 
 			Box<>						boundingBox;
 			Sphere<>					boundingSphere;
@@ -822,6 +867,7 @@ namespace Grid
 					overlay.Destroy();
 					water.Destroy();
 					resources.Destroy();
+					technites.Destroy();
 				#endif
 			}
 		};
@@ -935,6 +981,61 @@ namespace Grid
 			void	CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const TFloatRange<>&range,
 										const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack, bool empThis);
 		};
+
+
+		class TechniteCompiler
+		{
+		public:
+			static const count_t BatchSize = 16;	//the bigger, the less parallelism, but the less the overhead during locking (since more work per locking)
+
+			StaticMesh<TechniteVertex,BatchSize * CellStack::Range * (7 + 7 + 4 * 6),BatchSize * CellStack::Range * 3 * (7 * 2 + 2 * 7)>	solidMesh;
+		
+
+			const CellStack * stacks;
+			const BaseGrid::TCell*  gridCells;
+			const BaseGrid::TNetCell*  netCells;
+//			FClipHeight	clipHeight;	//technites are not clipped for the moment, maybe never
+			bool	wasEmpty;
+			float	cornerLightLevel[6];
+
+
+			void	Setup(const CellStack *stacks,const BaseGrid::TCell*cells, const BaseGrid::TNetCell*netCells/*,FClipHeight clipHeight*/)
+			{
+				solidMesh.Reset();
+				this->stacks = stacks;
+				this->netCells = netCells;
+				this->gridCells = cells;
+			//	this->clipHeight = clipHeight;
+				wasEmpty = true;
+			}
+
+
+			//float4	GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const;
+			//float4	GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const;
+			//static void ApplyEMP(float intensity,TVec3<>&rs);
+			//static bool FlagsAffectedByEMP(UINT16 cornerFlags) {return !(cornerFlags & empZonesUnlocked);}
+			//static bool AffectedByEMP(index_t stackIndex);
+
+			struct TechInfo
+			{
+				float3		velocity, color;
+				bool		empty = true;
+
+				/**/		TechInfo()	{};
+				/**/		TechInfo(const Technites::Faction*f, const Technites::Technite*t);
+				/**/		TechInfo(const CellStack&stack, UINT stackIndex, UINT layer);
+				/**/		TechInfo(const CellStack*stacks, UINT stackIndex, UINT layer)	{*this = TechInfo(stacks[stackIndex],stackIndex,layer);};
+			};
+
+
+			void	Compile(const index_t offset, const index_t end, THull<TechniteVertex>&techniteHull, SpinLock&lock);
+			void	CompileLayer(const UINT layer, const TechInfo&lowerT, const TechInfo&thisT, const TechInfo&upperT, const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighborhood, const CellStack&stack);
+			void	CompileCap(const UINT layer, const TechInfo&thisT, const TFloatRange<>&range,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack);
+			void	CompileDownCap(const UINT layer,const TechInfo&upperT, const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack);
+			void	CompileFaceToNeighbor(const int j, const UINT layer, const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,float newCornerLightLevel[6], 
+											const TechInfo&lowerT, const TechInfo&thisT, const TFloatRange<>&range);
+		};
+
 
 	#endif
 
@@ -1217,6 +1318,19 @@ namespace Grid
 			}
 
 
+			void		CompileTechnites(const Array<CellStack>&stacks, THull<TechniteVertex>&cover, index_t offset, count_t count)
+			{
+				const index_t end = offset + count;
+				SpinLock lock;
+				Concurrency::parallel_for(offset, end, WaterCompiler::BatchSize,[this, end,&lock, &cover, &stacks](index_t i)	//looks good - at least in release
+				{
+					BYTE data[sizeof(TechniteCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...
+					TechniteCompiler&compiler = *(TechniteCompiler*)data;
+					compiler.Setup(stacks.pointer(),grid.GetCells(),this->cells.pointer());
+					compiler.Compile(i,end,cover,lock);
+				});
+			}
+
 
 
 
@@ -1233,18 +1347,26 @@ namespace Grid
 				dat.terrain.Clear();
 				dat.overlay.Clear();
 				dat.water.Clear();
-				Compile(stacks, dat.terrain, dat.overlay, grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight);
-				CompileWater(stacks, dat.water, grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight);
+				dat.technites.Clear();
+				const index_t offset = grid.GetFamilyOffset(family);
+				const count_t members = grid.CountFamilyMembers(family);
+				Compile(stacks, dat.terrain, dat.overlay, offset, members, clipHeight);
+				CompileWater(stacks, dat.water, offset, members, clipHeight);
+				CompileTechnites(stacks, dat.technites, offset,members);
 
 				Box<> box = Box<>::Invalid();
 
 				foreach(dat.terrain.vertices, vtx)
 					box.Include(vtx->vertex.xyz);
+				foreach(dat.technites.vertices, vtx)
+					box.Include(vtx->vertex);
 				dat.boundingBox = box;
 				dat.boundingSphere.center = box.GetCenter();
 				dat.boundingSphere.radius = 0.f;
 				foreach(dat.terrain.vertices, vtx)
 					dat.boundingSphere.IncludeSquare(vtx->vertex.xyz);
+				foreach(dat.technites.vertices, vtx)
+					dat.boundingSphere.IncludeSquare(vtx->vertex);
 				dat.boundingSphere.radius = sqrt(dat.boundingSphere.radius);
 
 
@@ -1258,6 +1380,9 @@ namespace Grid
 					(DX11::BaseInstructionBlock&)dat.overlay.instruction = Instruction::overlayBase;
 					(DX11::BaseInstructionBlock&)dat.overlay.shadowInstruction = Instruction::overlayShadowBase;
 					(DX11::BaseInstructionBlock&)dat.water.instruction = Instruction::waterBase;
+
+					(DX11::BaseInstructionBlock&)dat.technites.instruction = Instruction::techniteBase;
+					(DX11::BaseInstructionBlock&)dat.technites.shadowInstruction = Instruction::techniteShadowBase;
 				}
 
 
@@ -1275,6 +1400,9 @@ namespace Grid
 				dat.overlay.shadowInstruction.ibo = dat.overlay.instruction.ibo;
 				dat.water.instruction.vbo.CreateFromStructs(dat.water.vertices);
 				dat.water.instruction.ibo.Create(dat.water.indices);
+				dat.technites.instruction.vbo.CreateFromStructs(dat.technites.vertices);
+				dat.technites.instruction.ibo.Create(dat.technites.indices);
+
 			}
 
 			void		BakeResourceInstruction(BYTE family, FClipHeight clipHeight,const Resource*resources, count_t numResources)

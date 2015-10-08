@@ -270,6 +270,7 @@ namespace Technites
 
 
 		bool				DecodeAbsoluteTarget(Grid::HCellIdU&target) const;
+		bool				DecodeAbsoluteTarget(Grid::HCellIdU&myLocation, Grid::HCellIdU&target) const;
 
 		Resources			resources;							// 2
 		Task				nextTask = Task::None;				// 1
@@ -283,6 +284,8 @@ namespace Technites
 
 		/**/				Technite() {}
 
+
+		void				CompileVelocity(TVec3<>&outVelocity) const;
 
 		void				Set(const TCompactInstruction&instruction)
 		{
@@ -438,7 +441,8 @@ namespace Technites
 		static AtomicGrid		atomicGrid;
 
 		Buffer<Technite>		technites;
-		//GenericHashTable<Grid::HCellIdU,index_t, Grid::HCellIdU>	techniteMap;
+
+		float3					color = float3(1,0,0);	//!< Color of technites in the world grid. Unique, red for testing purposes
 
 		BroadTechniteMap		techniteMap;
 
@@ -454,7 +458,7 @@ namespace Technites
 
 		void					Destroy(float t);
 
-
+		void					GetTechniteDirection(UINT32 stackIndex, UINT32 layer, TVec3<>&outDirection)	const;
 
 		index_t					CreateSingleTechnite(const Grid::HCellIdU&, float t);
 

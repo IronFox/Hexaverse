@@ -1729,6 +1729,7 @@ void	State::Load(const String&filename)
 										Grid::HCellIdU loc = t.location.GetU();
 										tfaction->techniteMap.Set(loc, i);
 										Grid::actualWorld.cellStack[loc.stackID].SetLocalTechniteFaction(t.location.GetHeight(), tfaction->gridID);
+										t.RegisterFactionSensory(tfaction->visibility,0.f);
 									}
 								}
 								else

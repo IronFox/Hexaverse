@@ -196,6 +196,42 @@ namespace Technites
 	#endif
 
 
+	void				Technite::CompileVelocity(TVec3<>&outVelocity) const
+	{
+		Grid::HCellIdU dest,loc;
+		if (!DecodeAbsoluteTarget(loc,dest))
+		{
+			Vec::clear(outVelocity);
+			return;
+		}
+		if (loc == dest)
+		{
+			Vec::clear(outVelocity);
+			return;
+		}
+
+		outVelocity = Grid::ToWorld(dest) - Grid::ToWorld(loc);
+		switch (nextTask)
+		{
+			case Task::ConsumeSurroundingCell:
+				outVelocity *= 80.f;
+			break;
+			case Task::GnawAtSurroundingCell:
+				outVelocity *= 30.f;
+			break;
+			case Task::GrowTo:
+				outVelocity *= 120.f;
+			break;
+			case Task::TransferEnergyTo:
+			case Task::TransferMatterTo:
+				outVelocity *= 60.f;
+			break;
+		}
+
+	}
+
+
+
 	/*static*/ PFaction Faction::GetFactionOf(BYTE factionID)
 	{
 		return gridIDMap[factionID];
@@ -415,12 +451,19 @@ namespace Technites
 
 	bool	Technite::DecodeAbsoluteTarget(Grid::HCellIdU & outTarget) const
 	{
+		Grid::HCellIdU loc;
+		return DecodeAbsoluteTarget(loc, outTarget);
+	}
+
+
+	bool	Technite::DecodeAbsoluteTarget(Grid::HCellIdU & loc, Grid::HCellIdU & outTarget) const
+	{
 		const int heightDelta = target.GetHeightDelta();
 		const UINT32 nIndex = target.GetNeighborIndex();
 
 		if (heightDelta < -1 || heightDelta > 1)
 			return false;
-		Grid::HCellIdU loc = location.GetU();
+		loc = location.GetU();
 		if (loc.stackID >= Grid::high.grid.CellCount)
 			return false;
 		if (loc.layer >= Grid::CellStack::Range)

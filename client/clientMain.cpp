@@ -2102,6 +2102,8 @@ void	OnAppear(const Objects::PWorldEntity&e)
 				display.Render(dat.terrain.shadowInstruction);
 			if (dat.overlay.shadowInstruction.shader.IsSet())
 				display.Render(dat.overlay.shadowInstruction);
+			if (dat.technites.shadowInstruction.shader.IsSet())
+				display.Render(dat.technites.shadowInstruction);
 		}
 	}
 

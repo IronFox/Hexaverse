@@ -8,7 +8,7 @@
 #include "objects.h"
 #include "logEvent.h"
 #include "sphereGridHelper.h"
-
+#include "technite.h"
 
 
 #ifdef HAS_WINDOW
@@ -187,7 +187,7 @@ namespace Grid
 			const Cell&cell = this->volumeCell[layer - 1],
 				&upper = this->volumeCell[layer];
 			float light = upper.GetLightLevel();
-			if (!cell.IsSolid() || upper.IsSolid())
+			if (!cell.IsSolidDead() || upper.IsSolidDead())
 			{
 				sumBrightnessTo += light * 1.3f;
 				outContent = Content::Clear;
@@ -228,7 +228,7 @@ namespace Grid
 			const Cell&cell = this->volumeCell[layer - 1],
 				&upper = this->volumeCell[layer];
 			float light = cell.GetLightLevel();
-			if (cell.IsSolid() || !upper.IsSolid())
+			if (cell.IsSolidDead() || !upper.IsSolidDead())
 			{
 				sumBrightnessTo += light * 1.3f;
 				outContent = Content::Clear;
@@ -280,7 +280,8 @@ namespace Grid
 										orbitGridBase,
 									 terrainShadowBase, 
 									 waterBase, overlayBase, 
-									 overlayShadowBase, resourceBase;// , terrainEdgeBase;
+									 overlayShadowBase, resourceBase
+									 ,techniteBase, techniteShadowBase;// , terrainEdgeBase;
 
 			DX11::ObjectBuffer<float4>	ParaboloidDirection_Height,SphereDef,SphereColor;
 			DX11::ObjectBuffer<float4>	ParaboloidColor_FlatRadius;
@@ -536,6 +537,7 @@ namespace Grid
 			lowestOpenCell = (BYTE)Range;
 			highestOpaqueCell = (BYTE)Range-1;
 			waterRange = IntRange<BYTE>(0,0);
+			techniteRange = IntRange<BYTE>(0,0);
 		#endif
 		for (UINT i = 0; i < Range; i++)
 		{
@@ -803,6 +805,36 @@ namespace Grid
 					DX11::BaseInstructionBlock&base = Instruction::overlayShadowBase;
 					base.shader.LoadFromFile("shaders/gridTerrainOverlayShadow.hlsl", "vsMain", "psMain"/*, bindings, ARRAYSIZE(bindings)*/);
 					base.binding = binding;
+					base.UpdateLayout();
+					base.SetTriangles();
+				}
+			}
+			{
+				DX11::VertexDescription desc;
+
+				/*
+					float3		vertex;
+					sbyte4		normal;
+					sbyte4		directionXYZ_factor;
+					byte4		colorRGB_lightLevel;
+				*/
+				desc.Append("POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT);
+				desc.Append("NORMAL",0,DXGI_FORMAT_R8G8B8A8_SNORM);
+				desc.Append("DirectionXYZ_Factor",0,DXGI_FORMAT_R8G8B8A8_SNORM);
+				desc.Append("COLOR",0,DXGI_FORMAT_R8G8B8A8_UNORM);
+
+				{
+					DX11::BaseInstructionBlock&base = Instruction::techniteBase;
+					base.shader.LoadFromFile("shaders/gridTechnites.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+					base.binding = desc;
+					base.UpdateLayout();
+					base.SetTriangles();
+				}
+
+				{
+					DX11::BaseInstructionBlock&base = Instruction::techniteShadowBase;
+					base.shader.LoadFromFile("shaders/gridTechniteShadow.hlsl", "vsMain", "psMain"/*, bindings.pointer(), bindings.Count()*/);
+					base.binding = desc;
 					base.UpdateLayout();
 					base.SetTriangles();
 				}
@@ -1871,7 +1903,7 @@ namespace Grid
 				const UINT32 n0 = neighbors.neighborID[j];
 				const UINT32 n1 = neighbors.neighborID[(j + 1) % cell.numCorners];
 				const UINT32 n2 = neighbors.neighborID[(j + 2) % cell.numCorners];
-				bool anyOpen = !stacks[n0].GetCellU(ih + 1).IsSolid() || !stacks[n1].GetCellU(ih + 1).IsSolid();
+				bool anyOpen = !stacks[n0].GetCellU(ih + 1).IsSolidDead() || !stacks[n1].GetCellU(ih + 1).IsSolidDead();
 
 				coverMesh << OverlayVertex(cell.cornerVertex[j], h, anyOpen ? 0.45f : 0.f);
 
@@ -2069,7 +2101,7 @@ namespace Grid
 			const UINT32 n1 = neighbors.neighborID[(j + 1) % cell.numCorners];
 			const UINT32 n2 = neighbors.neighborID[(j + 2) % cell.numCorners];
 			const CellStack&sn = stacks[n1];
-			const bool filled = sn.GetCellU(ih).IsSolid();
+			const bool filled = sn.GetCellU(ih).IsSolidDead();
 			//bool wasEmpty = false;
 			const bool ncutoff = IsClipped(clipHeight, n1, ir);
 			{
@@ -2138,12 +2170,12 @@ namespace Grid
 
 			
 
-			if (!thisCell.IsSolid())
+			if (!thisCell.IsSolidDead())
 			{
 				wasEmpty = true;
 				//for (int j = 0; j < cell.numCorners; j++)
 					//cornerColor[j] = float4(1);
-				const bool capped = nextCell.IsSolid();
+				const bool capped = nextCell.IsSolidDead();
 				if (capped
 				
 					)
@@ -2169,10 +2201,10 @@ namespace Grid
 
 				TVec3<> baseColor = thisCell.GetBaseColor();
 				ApplyEMP(FlagsAffectedByEMP( cell.cornerFlags), baseColor);
-				TVec3<> nextColor = nextCell.IsSolid() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
+				TVec3<> nextColor = nextCell.IsSolidDead() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
 				ApplyEMP(FlagsAffectedByEMP( cell.cornerFlags), nextColor);
 
-				const bool capped = nextCell.IsSolid();
+				const bool capped = nextCell.IsSolidDead();
 				if (!capped
 					|| ir+1 >= clipH
 					)
@@ -2275,8 +2307,8 @@ namespace Grid
 				solidMesh.SetOffset();
 
 				const TVec3<> baseColor = thisCell.GetBaseColor();
-				const TVec3<> nextColor = nextCell.IsSolid() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
-				const bool capped = nextCell.IsSolid();
+				const TVec3<> nextColor = nextCell.IsSolidDead() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
+				const bool capped = nextCell.IsSolidDead();
 				if (!capped
 					)
 				{
@@ -2301,6 +2333,8 @@ namespace Grid
 
 				UINT32 begin = stack.lowestOpenCell ? (UINT32)stack.lowestOpenCell - 1 : 0;
 				begin = std::min(begin, CellStack::ToLayer(clipHeight(i)-1));
+				if (stack.techniteRange.IsNotEmpty())
+					begin = std::min(begin, stack.techniteRange.start > 0 ? stack.techniteRange.start-1 : 0U);
 				//while (begin > 0 && clipped(i, begin))
 					//begin--;
 				UINT32 end = (UINT32)stack.highestOpaqueCell + 1;
@@ -2312,6 +2346,8 @@ namespace Grid
 					UINT32 n = neighbors.neighborID[j];
 					const ::Grid::CellStack&stack = stacks[n];
 					UINT32 _begin = stack.lowestOpenCell ? (UINT32)stack.lowestOpenCell - 1 : 0;
+					if (stack.techniteRange.IsNotEmpty())
+						_begin = std::min(_begin, stack.techniteRange.start > 0 ? stack.techniteRange.start-1 : 0U);
 					_begin = std::min(_begin, CellStack::ToLayer(clipHeight(n)-1));
 					//while (_begin > 0 && clipped(n, _begin))
 					//	_begin--;
@@ -2321,7 +2357,6 @@ namespace Grid
 
 				}
 				wasEmpty = true;
-
 				const int clipH = clipHeight(i);
 				end = std::min(end, CellStack::ToLayer(clipH));
 				if (begin == 0 || CellStack::bottom.content == Content::Clear)
@@ -2708,6 +2743,352 @@ namespace Grid
 			}
 		}
 
+
+
+
+
+		//float4	TechniteCompiler::GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const
+		//{
+		//	float4 rs = stacks[stackIndex].GetMixColorU(ih,oppositeContent, brightness, outContent);
+		//	return rs;
+		//}
+
+		//float4	TechniteCompiler::GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const
+		//{
+		//	float4 rs = stacks[stackIndex].GetDownMixColorU(ih, oppositeContent, brightness, outContent);
+		//	return rs;
+		//}
+
+
+
+		///*static*/ bool TechniteCompiler::AffectedByEMP(index_t stackIndex)
+		//{
+		//	return FlagsAffectedByEMP(Grid::high.cells[stackIndex].cornerFlags);
+		//}
+
+		///*static*/ void TechniteCompiler::ApplyEMP(float intensity,TVec3<>&rs)
+		//{
+		//	TerrainCompiler::ApplyEMP(intensity,rs);
+		//}
+
+
+		void	TechniteCompiler::CompileCap(const UINT layer, const TechInfo&thisT, const TFloatRange<>&range,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack)
+		{
+			float light = stack.volumeCell[layer].GetLightLevel();
+	
+			
+			solidMesh << TechniteVertex(cell.centerVertex.xyz, range.max, cell.centerVertex.xyz, thisT.velocity,thisT.color,light*1.3f);
+			for (int j = 0; j < cell.numCorners; j++)
+			{
+				{
+					float brightness = light;
+					{
+						index_t n1 = neighbors.neighborID[(j + 1) % cell.numCorners];
+						index_t n2 = neighbors.neighborID[j];
+						brightness += stacks[n1].volumeCell[layer].GetLightLevel();
+						brightness += stacks[n2].volumeCell[layer].GetLightLevel();
+
+
+						brightness /= 3;
+						brightness *= 1.3f;
+					}
+
+					solidMesh << TechniteVertex(cell.cornerVertex[j].xyz, range.max, cell.cornerVertex[j].xyz, thisT.velocity,thisT.color,brightness);
+				}
+				solidMesh << 0 << 1 + (UINT16)j << 1 + (UINT16)(j + 1) % cell.numCorners;
+			}	
+		}
+
+	
+		void	TechniteCompiler::CompileDownCap(const UINT layer,const TechInfo&upperT, const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack)
+		{
+			float h = ToRadius(CellStack::ToHeight( layer + 1 ) );
+			solidMesh.SetOffset();
+//			Content centerType;
+			
+			//TVec4<> color0 = stack.GetDownColorU(ih, Content::Clear, mixes0,centerType);
+			//float emp0 = FlagsAffectedByEMP(cell.cornerFlags);
+			float light = stack.volumeCell[layer].GetLightLevel();
+			{
+				float3 c0 = upperT.color;
+				//ApplyEMP(emp0,c0.rgb);
+				solidMesh << TechniteVertex(cell.centerVertex.xyz, h, -cell.centerVertex.xyz, upperT.velocity, upperT.color, light * 1.3f);
+			}
+			for (int j = 0; j < cell.numCorners; j++)
+			{
+				{
+					float brightness = light;
+	//				float4 color(color0.rgb, 1.f);
+//					float emp = emp0;
+					{
+						//if (!mixes0)
+						//	color *= 4.f; //mild bleeding
+	//					Content c0,c1;
+						index_t n1 = neighbors.neighborID[(j + 1) % cell.numCorners];
+						index_t n2 = neighbors.neighborID[j];
+						brightness += stacks[n1].volumeCell[layer].GetLightLevel();
+						brightness += stacks[n2].volumeCell[layer].GetLightLevel();
+
+						//color += GetDownMixColorU(n1,ih + 1, centerType,brightness,c0);
+						//color += GetDownMixColorU(n2,ih + 1, centerType,brightness,c1);
+						//emp += AffectedByEMP(n1);
+						//emp += AffectedByEMP(n2);
+						//color.rgb /= color.a;
+						brightness /= 3;
+						//emp /= 3;
+						brightness *= 1.3f;
+						//color.rgb *= brightness / color.a;
+						//brightness /= color.a;
+					}
+					//ApplyEMP(emp,color.rgb);
+					solidMesh << TechniteVertex(cell.cornerVertex[j].xyz, h, -cell.cornerVertex[j].xyz, upperT.velocity,upperT.color,brightness);
+				}
+				solidMesh << 0 << 1 + (UINT16)(j + 1) % cell.numCorners << 1 + (UINT16)j;
+			}	
+		}
+
+		void	TechniteCompiler::CompileFaceToNeighbor(const int j, const UINT layer, const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,float newCornerLightLevel[6], 
+											const TechInfo&lowerT, const TechInfo&thisT, const TFloatRange<>&range )
+		{
+			const UINT32 n0 = neighbors.neighborID[j];
+			const UINT32 n1 = neighbors.neighborID[(j + 1) % cell.numCorners];
+			const UINT32 n2 = neighbors.neighborID[(j + 2) % cell.numCorners];
+			const CellStack&sn = stacks[n1];
+
+			const TechInfo tn(sn,n1,layer);
+
+			const bool filled = !tn.empty;
+			//bool wasEmpty = false;
+			//const bool ncutoff = IsClipped(clipHeight, n1, ir);
+			{
+				float	light1 = newCornerLightLevel[j],
+						light2 = newCornerLightLevel[(j + 1) % cell.numCorners],
+						lowerLight1 = wasEmpty ? newCornerLightLevel[j] : cornerLightLevel[j],
+						lowerLight2 = wasEmpty ? newCornerLightLevel[(j + 1) % cell.numCorners] : cornerLightLevel[(j + 1) % cell.numCorners];
+
+				if (tn.empty)
+				{
+					TVec3<> normal;
+					const auto&v1 = cell.cornerVertex[(j + 1) % cell.numCorners];
+					const auto&v0 = cell.cornerVertex[j];
+					Vec::cross(v0.xyz, v0.xyz - v1.xyz, normal);
+					Vec::normalize(normal);
+					solidMesh.SetOffset();
+					solidMesh <<  TechniteVertex(v0.xyz, range.max, normal, thisT.velocity, thisT.color, light1);
+					solidMesh <<  TechniteVertex(v0.xyz, range.min, normal, thisT.velocity, thisT.color, lowerLight1);
+					solidMesh <<  TechniteVertex(v1.xyz, range.min, normal, thisT.velocity, thisT.color, lowerLight2);
+					solidMesh <<  TechniteVertex(v1.xyz, range.max, normal, thisT.velocity, thisT.color, light2);
+					solidMesh << 0 << 1 << 2 << 0 << 2 << 3;
+				}
+			}
+	
+		}
+
+		//static float inline Brighten(float lightLevel)	//disabled
+		//{
+		//	return lightLevel;
+	
+		//}
+
+
+		void	TechniteCompiler::CompileLayer(const UINT layer, const TechInfo&lowerT, const TechInfo&thisT, const TechInfo&upperT, const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighborhood, const CellStack&stack)
+		{
+			const int ir = CellStack::ToHeight(layer);
+
+			////if (IsClipped(clipHeight, i, ir))
+			//	//break;
+
+			//const CellStack::Cell&lastCell = stack.GetCellI(ir - 1);
+			//const CellStack::Cell&thisCell = stack.volumeCell[ih];
+			//const CellStack::Cell&nextCell = stack.GetCellU(ih + 1);
+
+
+
+			
+
+			if (thisT.empty)
+			{
+				wasEmpty = true;
+				const bool capped = !upperT.empty;
+				if (capped
+				
+					)
+				{
+					CompileDownCap(layer,upperT,cell,neighborhood,stack);
+				}
+				return;
+			}
+
+			const TFloatRange<> range = FloatRange(
+				ToRadius(ir),
+				ToRadius(ir + 1));
+			{
+				//float b = smoothstep(0.9, 1, range.max / WorldScale)*0.9f + 0.1f;
+				static const float delta = 0.1f;
+
+				solidMesh.SetOffset();
+
+//				TVec3<> baseColor = thisT.color;
+				if (upperT.empty)
+				{
+					CompileCap(layer+1,thisT,range,cell,neighborhood,stack);
+				}
+
+				float newCornerLightLevel[6];
+
+				{
+					const TVec3<>&color = thisT.color;
+					//thisCell.Mixes() ? nextColor : baseColor;
+					for (int j = 0; j < cell.numCorners; j++)
+					{
+						const UINT32 n0 = neighborhood.neighborID[j];
+						const UINT32 n1 = neighborhood.neighborID[(j + 1) % cell.numCorners];
+						//const CellStack&sn = stacks[n1];
+						{
+							//TechInfo	tn0(HCellIdU(n0,layer)),
+							//			tn1(HCellIdU(n1,layer));
+							
+							newCornerLightLevel[j] = (
+														stacks[n1].GetCellU(layer).GetLightLevel() + stacks[n1].GetCellU(layer + 1).GetLightLevel()
+														+stacks[n0].GetCellU(layer).GetLightLevel() + stacks[n0].GetCellU(layer + 1).GetLightLevel()
+													) / 4.f;
+						}
+					}
+				}
+				for (int j = 0; j < cell.numCorners; j++)
+				{
+					CompileFaceToNeighbor(j,layer,cell,neighborhood,newCornerLightLevel,lowerT,thisT,range);
+				}
+				for (int j = 0; j < cell.numCorners; j++)
+					cornerLightLevel[j] = newCornerLightLevel[j];
+				wasEmpty = false;
+			}
+		
+		}
+
+		TechniteCompiler::TechInfo::TechInfo(const Technites::Faction*f, const Technites::Technite*t) : color(f ? f->color : float3()) , empty(f != nullptr)
+		{
+			if (t)
+				t->CompileVelocity(velocity);
+		}
+
+		TechniteCompiler::TechInfo::TechInfo(const CellStack&stack, UINT stackIndex, UINT layer)
+		{
+			if (layer >= CellStack::Range)
+			{
+				return;
+			}
+			const CellStack::Cell&vc = stack.volumeCell[layer];
+			bool isTechnite = vc.content == Content::Technite;
+			BYTE factionID = vc.techniteFaction;
+			Technites::Technite*t = nullptr;
+			Technites::Faction*f = nullptr;
+			if (isTechnite)
+			{
+				Technites::PFaction faction = Technites::Faction::GetFactionOf(factionID);
+				DBG_ASSERT__(faction);
+				if (faction)
+				{
+					f = faction.get();
+					Grid::HCellIdU	loc(stackIndex,layer);
+					t = faction->GetOwnTechnite(loc);
+					if (!t)
+					{
+						//DBG_ASSERT1__(vc.visible==0,loc.ToString());
+					}
+				}
+			}
+			*this = TechInfo(f,t);
+		}
+
+
+
+	
+
+		void	TechniteCompiler::Compile(const index_t offset, const index_t end, THull<TechniteVertex>&techniteHull, SpinLock&lock)
+		{
+			for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
+			{
+				const ::Grid::CellStack&stack = stacks[i];
+				const auto&neighbors = gridCells[i].neighborhood;
+				const auto&cell = netCells[i];
+
+
+
+				UINT32 begin = stack.lowestOpenCell ? (UINT32)stack.lowestOpenCell - 1 : 0;
+				//begin = std::min(begin, CellStack::ToLayer(clipHeight(i)-1));
+				//while (begin > 0 && clipped(i, begin))
+					//begin--;
+				UINT32 end = (UINT32)stack.highestOpaqueCell + 1;
+
+				//TVec4<> cornerColor[6];
+
+				for (int j = 0; j < cell.numCorners; j++)
+				{
+					UINT32 n = neighbors.neighborID[j];
+					const ::Grid::CellStack&stack = stacks[n];
+					UINT32 _begin = stack.lowestOpenCell ? (UINT32)stack.lowestOpenCell - 1 : 0;
+					//_begin = std::min(_begin, CellStack::ToLayer(clipHeight(n)-1));
+					//while (_begin > 0 && clipped(n, _begin))
+					//	_begin--;
+					UINT32 _end = (UINT32)stack.highestOpaqueCell + 1;
+					begin = std::min(begin, _begin);
+					end = std::max(end, _end);
+
+				}
+				wasEmpty = true;
+
+				//const int clipH = clipHeight(i);
+				//end = std::min(end, CellStack::ToLayer(clipH));
+				//if (begin == 0 || CellStack::bottom.content == Content::Clear)
+				//	CompileBottomLayer(stack,cell,neighbors);
+				if (end >= CellStack::Range)
+					begin = std::min(begin,end - 1);
+				//Technites::Technite*prev = nullptr;
+				TechInfo	prev,current(stack,i,begin);
+				for (UINT layer = begin; layer < end; layer++)
+				{
+					TechInfo next (stack,i,layer+1);
+
+					CompileLayer(layer,prev,current,next,cell,neighbors,stack);
+
+					prev = current;
+					current = next;
+				}
+			}
+
+			if (solidMesh.IsNotEmpty())
+			{
+				lock.lock();
+				if (solidMesh.IsNotEmpty())
+				{
+					solidMesh.AppendTo(techniteHull);
+				}
+				lock.unlock();
+			}
+		
+		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	#endif
 		static Resource::coverage_t	GetResourceCoverage(const TVec3<>&seed, const TVec3<>&center0,float rarity,Resource::coverage_t maxYield)
 		{
@@ -2758,7 +3139,7 @@ namespace Grid
 				if (fineStack.waterRange.IsValid())
 					layer = std::max<UINT>(fineStack.waterRange.end-1, layer);
 				layer = std::min(layer, CellStack::ToLayer(clipHeight(fine)-1));
-				while (layer > 0 && !fineStack.volumeCell[layer].IsSolid() && !fineStack.volumeCell[layer].IsWater())
+				while (layer > 0 && !fineStack.volumeCell[layer].IsSolidDead() && !fineStack.volumeCell[layer].IsWater())
 					layer--;
 				bool structureCenter = false;
 				while (layer+1 < CellStack::Range && (fineStack.volumeCell[layer+1].structureCounter > 0 /*|| fineStack.volumeCell[layer].structureCounter > 0*/))
