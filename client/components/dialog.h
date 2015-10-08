@@ -89,11 +89,14 @@ namespace Dialog
 
 
 		/**
+		@return true, if the dialog will close (if conditions are met), false if it is not designed to be confirmed (lacks string-handler function and confirm button)
+		*/
+		bool		CanBeConfirmed(bool bySpace) const;
+		/**
 		Issues a confirmation event on the local dialog.
 		The state of the dialog is checked before handler functions may be called, and the dialog removed automatically.
-		@return true, if the dialog did or would close (condition not met), false if it is not designed to be confirmed (lacks string-handler function and confirm button)
 		*/
-		bool		Confirm(bool bySpace);
+		void		Confirm(bool bySpace);
 
 		void		DumpMe();
 	};

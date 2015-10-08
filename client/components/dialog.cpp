@@ -296,12 +296,23 @@ namespace Dialog
 			Detail::visibleWindows.last()->Activate();
 	}
 
-	bool		Dialog::Confirm(bool bySpace)
+	bool		Dialog::CanBeConfirmed(bool bySpace)	const
 	{
 		if (!confirmButton && !fetchInput)
 			return false;	//some dialogs do not have close-options, and do not respond to confirmations
+
+		if (fetchInput && bySpace)
+			return false;
+
+		return true;
+	}
+
+	void		Dialog::Confirm(bool bySpace)
+	{
+		if (!confirmButton && !fetchInput)
+			return;
 		if (confirmButton && !confirmButton->IsEnabled())
-			return true;	//would, if it could
+			return;	//would, if it could
 
 		bool tut = isTutorial;
 		if (!fetchInput)
@@ -315,7 +326,7 @@ namespace Dialog
 		else
 		{
 			if (bySpace)
-				return true;
+				return;
 			fetchInput(userInput->GetInput());
 			DumpMe();
 		}
@@ -324,7 +335,7 @@ namespace Dialog
 		{
 			ShowNextTutorial();
 		}
-		return true;
+		return;
 	}
 
 
@@ -347,10 +358,10 @@ namespace Dialog
 		if (Detail::visibleWindows.IsEmpty())
 			return false;
 		PDialog d = To<Dialog>::DynamicCast(Detail::visibleWindows.last());
-		if (d)
+		if (d && d->CanBeConfirmed(bySpace))
 		{
-			return d->Confirm(bySpace);
-			//return true;
+			d->Confirm(bySpace);
+			return true;
 		}
 		return false;
 	}
