@@ -1022,7 +1022,7 @@ namespace Grid
 				bool		empty = true;
 
 				/**/		TechInfo()	{};
-				/**/		TechInfo(const Technites::Faction*f, const Technites::Technite*t);
+				/**/		TechInfo(const Technites::Faction*f, const Technites::Technite*t, bool isSet);
 				/**/		TechInfo(const CellStack&stack, UINT stackIndex, UINT layer);
 				/**/		TechInfo(const CellStack*stacks, UINT stackIndex, UINT layer)	{*this = TechInfo(stacks[stackIndex],stackIndex,layer);};
 			};

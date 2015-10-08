@@ -2966,7 +2966,7 @@ namespace Grid
 		
 		}
 
-		TechniteCompiler::TechInfo::TechInfo(const Technites::Faction*f, const Technites::Technite*t) : color(f ? f->color : float3()) , empty(f != nullptr)
+		TechniteCompiler::TechInfo::TechInfo(const Technites::Faction*f, const Technites::Technite*t, bool isSet) : color(f ? f->color : float3(0.5f)) , empty(!isSet)
 		{
 			if (t)
 				t->CompileVelocity(velocity);
@@ -2998,7 +2998,7 @@ namespace Grid
 					}
 				}
 			}
-			*this = TechInfo(f,t);
+			*this = TechInfo(f,t,isTechnite);
 		}
 
 
