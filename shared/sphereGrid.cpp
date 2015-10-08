@@ -2777,7 +2777,7 @@ namespace Grid
 			float light = stack.volumeCell[layer].GetLightLevel();
 	
 			
-			solidMesh << TechniteVertex(cell.centerVertex.xyz, range.max, cell.centerVertex.xyz, thisT.velocity,thisT.color,light*1.3f);
+			solidMesh << TechniteVertex(cell.centerVertex.xyz, range.max, cell.centerVertex.xyz, light*1.3f, thisT);
 			for (int j = 0; j < cell.numCorners; j++)
 			{
 				{
@@ -2793,7 +2793,7 @@ namespace Grid
 						brightness *= 1.3f;
 					}
 
-					solidMesh << TechniteVertex(cell.cornerVertex[j].xyz, range.max, cell.cornerVertex[j].xyz, thisT.velocity,thisT.color,brightness);
+					solidMesh << TechniteVertex(cell.cornerVertex[j].xyz, range.max, cell.cornerVertex[j].xyz, brightness, thisT);
 				}
 				solidMesh << 0 << 1 + (UINT16)j << 1 + (UINT16)(j + 1) % cell.numCorners;
 			}	
@@ -2812,7 +2812,7 @@ namespace Grid
 			{
 				float3 c0 = upperT.color;
 				//ApplyEMP(emp0,c0.rgb);
-				solidMesh << TechniteVertex(cell.centerVertex.xyz, h, -cell.centerVertex.xyz, upperT.velocity, upperT.color, light * 1.3f);
+				solidMesh << TechniteVertex(cell.centerVertex.xyz, h, -cell.centerVertex.xyz, light * 1.3f, upperT);
 			}
 			for (int j = 0; j < cell.numCorners; j++)
 			{
@@ -2841,7 +2841,7 @@ namespace Grid
 						//brightness /= color.a;
 					}
 					//ApplyEMP(emp,color.rgb);
-					solidMesh << TechniteVertex(cell.cornerVertex[j].xyz, h, -cell.cornerVertex[j].xyz, upperT.velocity,upperT.color,brightness);
+					solidMesh << TechniteVertex(cell.cornerVertex[j].xyz, h, -cell.cornerVertex[j].xyz, brightness, upperT);
 				}
 				solidMesh << 0 << 1 + (UINT16)(j + 1) % cell.numCorners << 1 + (UINT16)j;
 			}	
@@ -2874,10 +2874,10 @@ namespace Grid
 					Vec::cross(v0.xyz, v0.xyz - v1.xyz, normal);
 					Vec::normalize(normal);
 					solidMesh.SetOffset();
-					solidMesh <<  TechniteVertex(v0.xyz, range.max, normal, thisT.velocity, thisT.color, light1);
-					solidMesh <<  TechniteVertex(v0.xyz, range.min, normal, thisT.velocity, thisT.color, lowerLight1);
-					solidMesh <<  TechniteVertex(v1.xyz, range.min, normal, thisT.velocity, thisT.color, lowerLight2);
-					solidMesh <<  TechniteVertex(v1.xyz, range.max, normal, thisT.velocity, thisT.color, light2);
+					solidMesh <<  TechniteVertex(v0.xyz, range.max, normal, light1, thisT);
+					solidMesh <<  TechniteVertex(v0.xyz, range.min, normal, lowerLight1, thisT);
+					solidMesh <<  TechniteVertex(v1.xyz, range.min, normal, lowerLight2, thisT);
+					solidMesh <<  TechniteVertex(v1.xyz, range.max, normal, light2, thisT);
 					solidMesh << 0 << 1 << 2 << 0 << 2 << 3;
 				}
 			}
@@ -2966,13 +2966,13 @@ namespace Grid
 		
 		}
 
-		TechniteCompiler::TechInfo::TechInfo(const Technites::Faction*f, const Technites::Technite*t, bool isSet) : color(f ? f->color : float3(0.5f)) , empty(!isSet)
+		TechInfo::TechInfo(const Technites::Faction*f, const Technites::Technite*t, bool isSet) : color(f ? f->color : float3(0.5f)) , empty(!isSet)
 		{
 			if (t)
-				t->CompileVelocity(velocity);
+				t->CompileTendency(direction,activity,color);
 		}
 
-		TechniteCompiler::TechInfo::TechInfo(const CellStack&stack, UINT stackIndex, UINT layer)
+		TechInfo::TechInfo(const CellStack&stack, UINT stackIndex, UINT layer)
 		{
 			if (layer >= CellStack::Range)
 			{
@@ -4313,6 +4313,14 @@ namespace Grid
 
 
 	#ifdef HYBRID_GRID
+		void	GetWorldDelta(const HCellIdU&a, const HCellIdU&b, TVec3<>&outDelta)
+		{
+			TVec3<> worldA,worldB;
+			Vec::mult(high.cells[a.stackID].centerVertex.xyz,Grid::ToRadius(CellStack::ToHeight(a.layer)),worldA);
+			Vec::mult(high.cells[b.stackID].centerVertex.xyz,Grid::ToRadius(CellStack::ToHeight(b.layer)),worldB);
+			Vec::sub(worldA,worldB,outDelta);
+		}
+
 		TVec3<> ToWorld(const HCellIdU&id)
 		{
 			return high.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(CellStack::ToHeight(id.layer));

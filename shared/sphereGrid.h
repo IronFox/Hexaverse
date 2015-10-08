@@ -506,6 +506,23 @@ namespace Grid
 	#endif
 
 	#ifdef HAS_WINDOW
+
+		/**
+		Technite rendering info structure. Contains all information necessary during geometry compilation
+		*/
+		struct TechInfo
+		{
+			float3		direction, color;
+			float		activity;
+			bool		empty = true;
+
+			/**/		TechInfo()	{};
+			/**/		TechInfo(const Technites::Faction*f, const Technites::Technite*t, bool isSet);
+			/**/		TechInfo(const CellStack&stack, UINT stackIndex, UINT layer);
+			/**/		TechInfo(const CellStack*stacks, UINT stackIndex, UINT layer)	{*this = TechInfo(stacks[stackIndex],stackIndex,layer);};
+		};
+
+
 		namespace Instruction
 		{	
 			enum displayMode_t
@@ -572,17 +589,19 @@ namespace Grid
 
 		struct TechniteVertex
 		{
-			float3		vertex;
-			sbyte4		normal;
-			sbyte4		directionXYZ_factor;
-			byte4		colorRGB_lightLevel;
+			TVec3<>		vertex;
+			TVec4<signed char>	normal,directionXYZ_factor;
+			TVec4<unsigned char>	colorRGB_lightLevel;
 
 			/**/		TechniteVertex()	{}
-			/**/		TechniteVertex(const float3&vtx, float h, const float3&normal, const float3&direction, const float3&color, float light) : vertex(vtx),normal(normal*127.f,0),colorRGB_lightLevel(color*255.f,light*255.f)
+			/**/		TechniteVertex(const float3&vtx, float h, const float3&normal, float light, const TechInfo&info) 
 			{
-				float dirLen = direction.length();
-				directionXYZ_factor.xyz = sbyte3(dirLen > 0.f ? direction / dirLen * 255.f : sbyte3());
-				directionXYZ_factor.w = clamp(dirLen,0,255.f);
+				Vec::mult(vtx,h,vertex);
+				Vec::mult(normal,127.f,this->normal.xyz);
+				Vec::mult(info.color,255.f,this->colorRGB_lightLevel.rgb);
+				this->colorRGB_lightLevel.a = (BYTE)clamp(light*255.f,0,255);
+				Vec::mult(info.direction,127.f,directionXYZ_factor.xyz);
+				directionXYZ_factor.w = clamp(info.activity,-128,127);
 			}
 		};
 		static_assert(sizeof(TechniteVertex) == 12+4+4+4, "Check struct alignment");
@@ -1016,16 +1035,6 @@ namespace Grid
 			//static bool FlagsAffectedByEMP(UINT16 cornerFlags) {return !(cornerFlags & empZonesUnlocked);}
 			//static bool AffectedByEMP(index_t stackIndex);
 
-			struct TechInfo
-			{
-				float3		velocity, color;
-				bool		empty = true;
-
-				/**/		TechInfo()	{};
-				/**/		TechInfo(const Technites::Faction*f, const Technites::Technite*t, bool isSet);
-				/**/		TechInfo(const CellStack&stack, UINT stackIndex, UINT layer);
-				/**/		TechInfo(const CellStack*stacks, UINT stackIndex, UINT layer)	{*this = TechInfo(stacks[stackIndex],stackIndex,layer);};
-			};
 
 
 			void	Compile(const index_t offset, const index_t end, THull<TechniteVertex>&techniteHull, SpinLock&lock);
@@ -1921,6 +1930,7 @@ namespace Grid
 	TVec3<> ToWorld(const HCellIdI&);
 	TVec3<> ToWorld(const LCellIdU&);
 	TVec3<> ToWorld(const LCellIdI&);
+	void	GetWorldDelta(const HCellIdU&a, const HCellIdU&b, TVec3<>&outDelta);
 
 
 	#pragma pack(push)

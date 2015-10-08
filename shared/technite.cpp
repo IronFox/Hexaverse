@@ -196,37 +196,44 @@ namespace Technites
 	#endif
 
 
-	void				Technite::CompileVelocity(TVec3<>&outVelocity) const
+	void				Technite::CompileTendency(TVec3<>&outDirection, float&outMagnitude, TVec3<>&inOutColor) const
 	{
 		Grid::HCellIdU dest,loc;
 		if (!DecodeAbsoluteTarget(loc,dest))
 		{
-			Vec::clear(outVelocity);
+			Vec::clear(outDirection);
+			outMagnitude = 0;
 			return;
 		}
 		if (loc == dest)
 		{
-			Vec::clear(outVelocity);
-			return;
+			Vec::clear(outDirection);
 		}
-
-		outVelocity = Grid::ToWorld(dest) - Grid::ToWorld(loc);
+		else
+		{
+			Grid::GetWorldDelta(dest,loc,outDirection);
+		}
+		outMagnitude = 1;
 		switch (nextTask)
 		{
 			case Task::ConsumeSurroundingCell:
-				outVelocity *= 80.f;
+				outMagnitude = 80.f;
 			break;
 			case Task::GnawAtSurroundingCell:
-				outVelocity *= 30.f;
+				outMagnitude = 30.f;
 			break;
 			case Task::GrowTo:
-				outVelocity *= 120.f;
+				outMagnitude = 120.f;
 			break;
 			case Task::TransferEnergyTo:
 			case Task::TransferMatterTo:
-				outVelocity *= 60.f;
+				outMagnitude = 60.f;
+			break;
+			case Task::SelfTransformToType:
+				outMagnitude = 127;
 			break;
 		}
+		//inOutColor *= 
 
 	}
 

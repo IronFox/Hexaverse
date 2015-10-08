@@ -285,7 +285,7 @@ namespace Technites
 		/**/				Technite() {}
 
 
-		void				CompileVelocity(TVec3<>&outVelocity) const;
+		void				CompileTendency(TVec3<>&outDirection, float&outMagnitude, TVec3<>&inOutColor) const;
 
 		void				Set(const TCompactInstruction&instruction)
 		{

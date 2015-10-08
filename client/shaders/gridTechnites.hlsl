@@ -127,6 +127,7 @@ static const float3 BlueAmbient = float3(0.6,0.65,1.0) * MaxAmbient;
 
 float4 psMain(V2P input) : SV_TARGET
 {
+	//return (float4)1.0;
 	//float3 tone;
 	float diffuse = input.diffuse;
 	float light = diffuse > 0 ? Shade(input.world) : 0.0;
