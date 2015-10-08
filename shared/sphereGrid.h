@@ -809,6 +809,7 @@ namespace Grid
 				TResourceHull			resources;	//!< low-resolution resource visualization. Similar to @a overlay, but uses different shader
 			#endif 
 			Box<>						boundingBox;
+			Sphere<>					boundingSphere;
 			bool						outdated,resourceOutdated;
 
 			/**/						TData() :outdated(true),resourceOutdated(true)
@@ -1240,6 +1241,12 @@ namespace Grid
 				foreach(dat.terrain.vertices, vtx)
 					box.Include(vtx->vertex.xyz);
 				dat.boundingBox = box;
+				dat.boundingSphere.center = box.GetCenter();
+				dat.boundingSphere.radius = 0.f;
+				foreach(dat.terrain.vertices, vtx)
+					dat.boundingSphere.IncludeSquare(vtx->vertex.xyz);
+				dat.boundingSphere.radius = sqrt(dat.boundingSphere.radius);
+
 
 				if (dat.terrain.instruction[0].shader.IsEmpty())
 				{
@@ -1284,6 +1291,12 @@ namespace Grid
 				foreach(dat.resources.vertices, vtx)
 					box.Include(vtx->vertex.xyz);
 				dat.boundingBox = box;
+				dat.boundingSphere.center = box.GetCenter();
+				dat.boundingSphere.radius = 0.f;
+				foreach(dat.resources.vertices, vtx)
+					dat.boundingSphere.IncludeSquare(vtx->vertex.xyz);
+				dat.boundingSphere.radius = sqrt(dat.boundingSphere.radius);
+
 
 				if (dat.resources.instruction.shader.IsEmpty())
 				{

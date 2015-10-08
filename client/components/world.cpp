@@ -17,7 +17,7 @@ namespace World
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			Grid::TFamily::TData&dat = Grid::high.family[k].normal;
-			if (frustum.IsVisible(dat.boundingBox))
+			if (frustum.IsVisible(dat.boundingSphere))
 				display.Render(dat.terrain.instruction[Grid::Instruction::displayMode]);
 		}
 	}
@@ -27,7 +27,7 @@ namespace World
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			Grid::TFamily::TData&dat = Grid::high.family[k].normal;
-			if (frustum.IsVisible(dat.boundingBox))
+			if (frustum.IsVisible(dat.boundingSphere))
 				display.Render(dat.water.instruction);
 		}
 	}
@@ -37,7 +37,7 @@ namespace World
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			Grid::TFamily::TData&dat = Grid::high.family[k].normal;
-			if (frustum.IsVisible(dat.boundingBox))
+			if (frustum.IsVisible(dat.boundingSphere))
 				display.Render(dat.overlay.instruction);
 		}
 	}
@@ -49,7 +49,7 @@ namespace World
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			Grid::TFamily::TData&dat = Grid::low.family[k].normal;
-			if (frustum.IsVisible(dat.boundingBox))
+			if (frustum.IsVisible(dat.boundingSphere))
 				display.Render(dat.resources.instruction);
 		}
 
