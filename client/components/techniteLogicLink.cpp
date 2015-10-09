@@ -21,6 +21,8 @@ namespace TechniteLogicLink
 	Dialog::WDialog		connectionNotification;
 	count_t numClients = 0;
 
+	static bool executed = false, haveAllTechnites = true;
+
 
 	class PeerAttachment : public TCP::Client::Attachment
 	{
@@ -108,6 +110,7 @@ namespace TechniteLogicLink
 
 	void		SignalTerrainReset()
 	{
+		executed = false;
 		if (!logicServer.HasAnyClients())
 			return;
 		LogEvent(EventType::SessionRelated,nullptr,"Technite logic: Sending world data to all client");
@@ -134,7 +137,7 @@ namespace TechniteLogicLink
 		}
 		recordedHistory.Clear();
 		Protocol::TechniteChunk chunk;
-		chunk.first = true;
+		chunk.flags = Protocol::TechniteChunkFlags::IsFirst | Protocol::TechniteChunkFlags::IsLast;
 		logicServer.VisitAllPeers([&chunk](const TCP::PPeer&peer)
 		{
 			if (peer->userLevel > 0)
@@ -145,6 +148,7 @@ namespace TechniteLogicLink
 
 	void		ExecuteLogic()
 	{
+		executed = true;
 		logicServer.VisitAllPeers([](const TCP::PPeer&peer)
 		{
 			if (peer->userLevel > 0)
@@ -200,7 +204,7 @@ namespace TechniteLogicLink
 				//Technites::PFaction tf = To<Technites::Faction>::Cast(Network::myFaction);
 
 				Protocol::TechniteChunk chunk;
-				chunk.first = true;
+				//chunk.first = true;
 
 				count_t numChunks = recordedHistory.Count() / Protocol::MaxTechnitesPerChunk;
 				if (recordedHistory.Count() % Protocol::MaxTechnitesPerChunk)
@@ -209,12 +213,16 @@ namespace TechniteLogicLink
 				index_t offset = 0;
 				for (index_t i = 0; i < numChunks; i++)
 				{
-					chunk.first = i == 0;
+					chunk.flags = 0;
+					if (i == 0)
+						chunk.flags.value |= Protocol::TechniteChunkFlags::IsFirst;
+					if (i+1 == numChunks && haveAllTechnites)
+						chunk.flags.value |= Protocol::TechniteChunkFlags::IsLast;
 					count_t numTechs = std::min(Protocol::MaxTechnitesPerChunk,recordedHistory.Count() - offset);
 					chunk.technites.SetSize(numTechs);
 					chunk.technites.copyFrom(recordedHistory+offset,numTechs);
 
-					LogEvent(EventType::TechniteLogic,nullptr," Sending chunk containing "+String(numTechs)+" technites, starting from "+String(offset)+", flagged as first="+String(chunk.first));
+					LogEvent(EventType::TechniteLogic,nullptr," Sending chunk containing "+String(numTechs)+" technites, starting from "+String(offset)+", flagged as ="+String(chunk.flags));
 					Channels::techniteStateChunk.SendTo(peer,chunk);
 
 					offset += numTechs;
@@ -234,6 +242,10 @@ namespace TechniteLogicLink
 				connectionNotification.reset();
 
 			}
+
+			if (haveAllTechnites && executed)
+				ExecuteLogic();
+
 		}
 
 		
@@ -396,7 +408,9 @@ namespace TechniteLogicLink
 
 	void		Forward(Protocol::TechniteChunk&chunk)
 	{
-		if (chunk.first)
+		executed = false;
+		haveAllTechnites = false;
+		if (chunk.flags & Protocol::TechniteChunkFlags::IsFirst)
 			recordedHistory.Clear();
 		recordedHistory.Append(chunk.technites);
 		logicServer.VisitAllPeers([&chunk](const TCP::PPeer&peer)
@@ -406,6 +420,12 @@ namespace TechniteLogicLink
 				Channels::techniteStateChunk.SendTo(peer,chunk);
 			}
 		});
+		if ((chunk.flags & Protocol::TechniteChunkFlags::IsLast))
+		{
+			haveAllTechnites = true;
+			if (executed)
+				ExecuteLogic();
+		}
 	}
 
 

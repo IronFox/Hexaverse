@@ -287,7 +287,7 @@ namespace Network
 				{
 					ASSERT__(myFaction->IsTechniteFaction());
 					Technites::PFaction tf = To<Technites::Faction>::Cast(myFaction);
-					if (chunk.first)
+					if (chunk.flags & Protocol::TechniteChunkFlags::IsFirst)
 						tf->ClearTechnites();
 					tf->AppendTechnites(chunk.technites);
 					#ifdef HAS_WINDOW

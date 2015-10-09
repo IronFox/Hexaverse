@@ -93,10 +93,13 @@ void SendTechniteStateTo(const Technites::PFaction&tf, TCP::Peer&peer)
 	if (states.Count() % Protocol::MaxTechnitesPerChunk)
 		chunks++;
 	Protocol::TechniteChunk chunk;
-	chunk.first = true;
 	for (index_t i = 0; i < chunks; i++)
 	{
-		chunk.first = i == 0;
+		chunk.flags = 0;
+		if (i == 0)
+			chunk.flags.value |= Protocol::TechniteChunkFlags::IsFirst;
+		if (i+1 == chunks)
+			chunk.flags.value |= Protocol::TechniteChunkFlags::IsLast;
 		chunk.technites.AssignSection(states,i * Protocol::MaxTechnitesPerChunk);
 		Channels::techniteChunk.SendTo(peer,chunk);
 	}

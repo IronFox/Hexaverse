@@ -1584,8 +1584,17 @@ namespace Protocol
 	typedef SmartPODReferenceField<Technites::Technite::TCompactInstruction,MaxTechnitesPerChunk>	TechniteInstructionField;
 
 
+	namespace TechniteChunkFlags
+	{
+		enum flag_t
+		{
+			IsFirst = 0x1,
+			IsLast = 0x2
+		};
+	};
+
 	NETSTRUCT2(TechniteChunk
-		, NET(bool), first
+		, NET(UINT8), flags
 		, TechniteField, technites
 		);
 
