@@ -513,7 +513,7 @@ namespace Grid
 		struct TechInfo
 		{
 			float3		direction, color;
-			float		activity;
+			float		activity = 0.f;
 			bool		empty = true;
 
 			/**/		TechInfo()	{};
@@ -542,6 +542,7 @@ namespace Grid
 											terrainParaboloidBase, terrainShadowBase, 
 											waterBase, overlayBase, overlayShadowBase, resourceBase
 											,techniteBase, techniteShadowBase;// , terrainEdgeBase;
+			extern DX11::Texture			techniteTexture;
 		}
 		struct TerrainVertex
 		{

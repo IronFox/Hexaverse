@@ -26,6 +26,10 @@
 	};
 #endif
 
+Texture2D <float4> Texture;
+SamplerState TextureSampler;
+
+
 cbuffer Time
 {
 	float	Time;
@@ -47,8 +51,9 @@ struct V2P
 	float4 position : SV_POSITION;
 	float3 world : World;
 	float3 normal : Normal;
-	float blueShift : StructureBlueshift;
+	float3 animatedNoise_blueShift_pulseShift : StructureBlueshift;
 	float4 colorRGB_lightLevel : COLOR;
+	float4 directionXYZ_factor : DirectionXYZ_Factor;
 	//float3 glowColor : GlowColor;
 	float diffuse : Diffuse;
 	float4 atmosphere : Atmosphere;
@@ -75,6 +80,7 @@ void vsMain(A2V input, out V2P output)
 	output.world = input.position;
 	output.position = TransformAndProject(output.world);
 	output.colorRGB_lightLevel = input.colorRGB_lightLevel;
+	output.directionXYZ_factor = input.directionXYZ_factor;
 
 	//glow:
 	float3 seed = 
@@ -98,12 +104,15 @@ void vsMain(A2V input, out V2P output)
 	//comb = 1.0 - sqr(1.0 - comb
 
 	//output.glowColor *= comb*1.6+0.4;//sqr(comb+1.0);
-
+	output.animatedNoise_blueShift_pulseShift.x = comb;
 
 	output.colorRGB_lightLevel.rgb *= SunColor.rgb;
 
+	output.animatedNoise_blueShift_pulseShift.z = comb;
+	//input.directionXYZ_factor.x + input.directionXYZ_factor.y + input.directionXYZ_factor.z + input.directionXYZ_factor.w;
+
 	output.diffuse = max(0.0, dot(input.normal.xyz, Sun.xyz));
-	output.blueShift = smoothstep(-0.4,0.3, -dot(normalize(output.world),Sun.xyz));
+	output.animatedNoise_blueShift_pulseShift.y = smoothstep(-0.4,0.3, -dot(normalize(output.world),Sun.xyz));
 	output.atmosphere = CalculatePositionFog(output.world);
 
 	#ifdef PARABOLOID_DISPLAY
@@ -125,6 +134,27 @@ void vsMain(A2V input, out V2P output)
 static const float MaxAmbient = 0.45;
 static const float3 BlueAmbient = float3(0.6,0.65,1.0) * MaxAmbient;
 
+
+static const float2x2 rotate45 = float2x2(0.70711,0.70711,-0.70711,0.70711);
+
+float2 Rotate45(float2 v)
+{
+	return mul(rotate45,v);	
+}
+
+
+float3 Sample(float2 uv, float weight)
+{
+	uv *= 0.1;
+	weight = smoothstep(0.5,0.8,abs(weight));
+	float3 original = Texture.Sample(TextureSampler, uv + 0.015 * Time).rgb;
+	float3 modded = lerp(original,(float3)1.0,1.0-weight);
+	original = Texture.Sample(TextureSampler, Rotate45(-uv + 0.5 + 0.01 * Time)).rgb;
+	weight *= 0.5;
+	float3 modded2 = lerp(original,(float3)1.0,1.0-weight);
+	return modded * modded2;
+}
+
 float4 psMain(V2P input) : SV_TARGET
 {
 	//return (float4)1.0;
@@ -132,11 +162,27 @@ float4 psMain(V2P input) : SV_TARGET
 	float diffuse = input.diffuse;
 	float light = diffuse > 0 ? Shade(input.world) : 0.0;
 
-	float3 baseAmbient = lerp((float3)MaxAmbient,BlueAmbient,input.blueShift);
+	float3 baseAmbient = lerp((float3)MaxAmbient,BlueAmbient,input.animatedNoise_blueShift_pulseShift.y);
 	float3 baseDiffuse = (float3)1.0 - baseAmbient;
 
-	float4 rs = float4(/*tone **/ input.colorRGB_lightLevel.rgb * ((baseDiffuse*diffuse *light + baseAmbient) * (0.25 + 0.75 * input.colorRGB_lightLevel.a)), 1.0);
+	float3 sampleAt = input.world + input.directionXYZ_factor.xyz * input.directionXYZ_factor.w * Time*0.5;
 
+	float3 color = input.colorRGB_lightLevel.rgb;
+	float3 tex = (float3)1.0;
+	tex *= Sample(sampleAt.xy,input.normal.z);
+	tex *= Sample(sampleAt.xz,input.normal.y);
+	tex *= Sample(sampleAt.yz,input.normal.x);
+
+
+
+	color *= 0.65 + (1.0-tex) * 0.6;
+	//color-=0.2;
+	color *= 0.9;
+	color += 0.2 * input.animatedNoise_blueShift_pulseShift.x;
+	color += (sin(Time*2.0* input.directionXYZ_factor.w +input.animatedNoise_blueShift_pulseShift.z)*0.5+0.5) * input.directionXYZ_factor.w * 0.2;
+	//color += 0.2 * (1.0 - tex);
+
+	float4 rs = float4(/*tone **/ color * ((baseDiffuse*diffuse *light + baseAmbient) * (0.25 + 0.75 * input.colorRGB_lightLevel.a)), 1.0);
 
 
 	

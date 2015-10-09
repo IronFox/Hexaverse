@@ -289,6 +289,8 @@ namespace Grid
 			DX11::ObjectBuffer<VecN<float,8> > atmosphereConfig;
 			DX11::ObjectBuffer<float4> sunDirection,sunColor;
 
+			DX11::Texture			techniteTexture;
+
 
 
 		}
@@ -823,6 +825,9 @@ namespace Grid
 				desc.Append("DirectionXYZ_Factor",0,DXGI_FORMAT_R8G8B8A8_SNORM);
 				desc.Append("COLOR",0,DXGI_FORMAT_R8G8B8A8_UNORM);
 
+				bindings.Append(DX11::Shader::Binding(Instruction::techniteTexture,"Texture"));
+				bindings.Append(DX11::Shader::SamplerBinding(false,Engine::TextureFilter::Trilinear,16,"TextureSampler"));
+
 				{
 					DX11::BaseInstructionBlock&base = Instruction::techniteBase;
 					base.shader.LoadFromFile("shaders/gridTechnites.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
@@ -838,6 +843,8 @@ namespace Grid
 					base.UpdateLayout();
 					base.SetTriangles();
 				}
+				bindings.EraseLast();
+				bindings.EraseLast();
 			}
 
 			{
@@ -1159,6 +1166,11 @@ namespace Grid
 
 
 			lineTex.Load(img, true);
+
+
+			Magic::LoadFromFile(img, "resources/technite.png");
+			Instruction::techniteTexture.Load(img);
+
 			//blockConfig.Create(TMatrix4<>());
 
 			DX11::Shader::Binding bindings[] =
@@ -1298,6 +1310,7 @@ namespace Grid
 			Instruction::sunDirection.Clear();
 			Instruction::sunColor.Clear();
 
+			Instruction::techniteTexture.Clear();
 			lineTex.Clear();
 			gridShader.Clear();
 			transparentGridShader.Clear();
@@ -2966,7 +2979,7 @@ namespace Grid
 		
 		}
 
-		TechInfo::TechInfo(const Technites::Faction*f, const Technites::Technite*t, bool isSet) : color(f ? f->color : float3(0.5f)) , empty(!isSet)
+		TechInfo::TechInfo(const Technites::Faction*f, const Technites::Technite*t, bool isSet) : color(f&&t ? f->color : float3(0.5f)) , empty(!isSet)
 		{
 			if (t)
 				t->CompileTendency(direction,activity,color);
@@ -2986,7 +2999,7 @@ namespace Grid
 			if (isTechnite)
 			{
 				Technites::PFaction faction = Technites::Faction::GetFactionOf(factionID);
-				DBG_ASSERT__(faction);
+				//DBG_ASSERT__(faction);
 				if (faction)
 				{
 					f = faction.get();

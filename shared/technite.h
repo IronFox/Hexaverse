@@ -442,7 +442,7 @@ namespace Technites
 
 		Buffer<Technite>		technites;
 
-		float3					color = float3(1,0,0);	//!< Color of technites in the world grid. Unique, red for testing purposes
+		float3					color = float3(0.2,0.3,0.9);	//!< Color of technites in the world grid. Unique, red for testing purposes
 
 		BroadTechniteMap		techniteMap;
 

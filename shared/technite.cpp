@@ -233,7 +233,12 @@ namespace Technites
 				outMagnitude = 127;
 			break;
 		}
-		//inOutColor *= 
+		int totalResources = (int)resources.matter + (int)resources.energy;
+		float brightness = 0.5f + (float)resources.energy/64.f;
+		float green = 1.f + (float)resources.matter/64.f;
+		inOutColor.r = clamp(inOutColor.r * brightness,0,1);
+		inOutColor.g = clamp(inOutColor.g * brightness * green,0,1);
+		inOutColor.b = clamp(inOutColor.b * brightness,0,1);
 
 	}
 
