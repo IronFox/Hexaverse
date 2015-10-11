@@ -179,11 +179,12 @@ float4 psMain(V2P input) : SV_TARGET
 	//color-=0.2;
 	color *= 0.9;
 	color += 0.2 * input.animatedNoise_blueShift_pulseShift.x;
-	color += (sin(Time*2.0* input.directionXYZ_factor.w +input.animatedNoise_blueShift_pulseShift.z)*0.5+0.5) * input.directionXYZ_factor.w * 0.2;
+	color += (sin(Time*4.0* input.directionXYZ_factor.w +input.animatedNoise_blueShift_pulseShift.z)*0.5+0.5) * input.directionXYZ_factor.w * 0.2;
 	//color += 0.2 * (1.0 - tex);
 
 	float4 rs = float4(/*tone **/ color * ((baseDiffuse*diffuse *light + baseAmbient) * (0.25 + 0.75 * input.colorRGB_lightLevel.a)), 1.0);
 
+	rs.rgb = lerp(rs.rgb,color.rgb,0.25);
 
 	
 	#if defined(SPHERE_DISPLAY) || defined(PARABOLOID_DISPLAY)
