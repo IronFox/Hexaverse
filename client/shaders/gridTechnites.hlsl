@@ -145,7 +145,7 @@ float2 Rotate45(float2 v)
 
 float3 Sample(float2 uv, float weight)
 {
-	uv *= 0.1;
+	uv *= 0.3;
 	weight = smoothstep(0.5,0.8,abs(weight));
 	float3 original = Texture.Sample(TextureSampler, uv + 0.015 * Time).rgb;
 	float3 modded = lerp(original,(float3)1.0,1.0-weight);
@@ -175,7 +175,8 @@ float4 psMain(V2P input) : SV_TARGET
 
 
 
-	color *= 0.65 + (1.0-tex) * 0.6;
+	color *= 0.75 + (1.0-tex) * 0.45;
+	color *= 1.5;
 	//color-=0.2;
 	color *= 0.9;
 	color += 0.2 * input.animatedNoise_blueShift_pulseShift.x;
