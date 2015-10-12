@@ -95,9 +95,23 @@ namespace TechniteLogicLink
 		cfg.heightPerLayer = Grid::SingleLayerHeight;
 		cfg.numLayersPerStack = Grid::CellStack::Range;
 		cfg.matterYieldByContentType.SetSize(Grid::Content::NumberOfPossibilities);
+		cfg.matterDegradationTable.SetSize(Grid::Content::NumberOfPossibilities);
+		cfg.energyYieldAtLayer.SetSize(Grid::CellStack::Range);
+		cfg.ttlCostAtLayer.SetSize(Grid::CellStack::Range);
 		static_assert(Grid::Content::NumberOfPossibilities == ARRAYSIZE(Technites::Technite::MatterYield),"Field size mismatch");
 		for (index_t i = 0; i < Grid::Content::NumberOfPossibilities; i++)
+		{
 			cfg.matterYieldByContentType[i] = Technites::Technite::MatterYield[i];
+			cfg.matterDegradationTable[i] = Technites::Technite::DegradeTo[i];
+		}
+		for (index_t layer = 0; layer < Grid::CellStack::Range; layer++)
+		{
+			int h = Grid::CellStack::ToHeight(layer);
+			cfg.energyYieldAtLayer[layer] = Technites::Technite::GetLightEnergyYieldAtHeight(h);
+			cfg.ttlCostAtLayer[layer] = Technites::Technite::GetLifeCostAtHeight(h);
+		}
+
+
 		Channels::gridConfig.SendTo(peer,cfg);
 
 		if (lastWorldInfo != 0)
@@ -214,7 +228,7 @@ namespace TechniteLogicLink
 
 		static String CompileProtocolString()
 		{
-			return "Aquinas v1.0." + String(TechniteProtocol::ChannelID::Count);
+			return "Aquinas v1.1." + String(TechniteProtocol::ChannelID::Count);
 		}
 
 
@@ -223,7 +237,7 @@ namespace TechniteLogicLink
 			String expect = CompileProtocolString();
 			if (version != expect)
 			{
-				String msg = "Ready: Version mismatch (expected '"+expect+"', but got '"+version+"'";
+				String msg = "Ready: Version mismatch (server uses '"+expect+"', client sent '"+version+"'";
 				LogEvent(EventType::TechniteLogic,nullptr,msg);
 				msg = msg.subString(0,256);
 				Channels::error.SendTo(peer,msg);
