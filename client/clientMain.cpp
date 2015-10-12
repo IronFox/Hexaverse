@@ -2284,7 +2284,8 @@ bool loop()
 
 
 		{
-			Atmosphere::Render(Grid::ToRadius(-Grid::CellStack::HalfRange),Grid::ToRadius(Grid::CellStack::HalfRange-1), Camera::scene.GetAbsoluteLocation());
+			//Atmosphere::Render(Grid::ToRadius(-Grid::CellStack::HalfRange),Grid::ToRadius(Grid::CellStack::HalfRange-1), Camera::scene.GetAbsoluteLocation());
+			Atmosphere::Render(Camera::scene);
 			World::RecompileIfNecessary();
 			if (Grid::SeeThrough::IsEnabled() /*&& !Objects::selectedEntity*/)
 				Grid::SeeThrough::Update(Grid::SeeThrough::IsEnabled(), Grid::SeeThrough::LocateCamera());
@@ -2653,7 +2654,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 #ifdef HAS_WINDOW
 
-	void	onWindowResize(const Resolution&, bool,bool)
+	void	onWindowResize(const Resolution&, UINT32)
 	{
 		Camera::scene.UpdateProjection2(display.pixelAspect(),0.1f,1000.f);
 	//	textout.setScale(1.f/display.clientWidth(),1.f/display.clientHeight());

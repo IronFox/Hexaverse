@@ -21,7 +21,13 @@ struct V2P
 
 void vsMain(A2V input, out V2P output)
 {
-	output.world = mul(ObjectMatrix,float4(input.position,0.0,1.0)).xyz;
+	float4 pos = float4(input.position,0.5,1.0);
+	float4 world = mul(ObjectMatrix,pos);
+	
+	output.world = world.xyz / world.w;
+
+
+	//output.world = mul(ObjectMatrix,float4(input.position,0.0,1.0)).xyz;
 	output.position = TransformAndProject(output.world);
 }
 
