@@ -2649,7 +2649,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 #ifdef HAS_WINDOW
 
-	void	onWindowResize(const Resolution&, bool,bool)
+	void	onWindowResize(const Resolution&, UINT32)
 	{
 		Camera::scene.UpdateProjection2(display.pixelAspect(),0.1f,1000.f);
 	//	textout.setScale(1.f/display.clientWidth(),1.f/display.clientHeight());
