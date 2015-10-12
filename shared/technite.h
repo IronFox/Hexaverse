@@ -419,7 +419,8 @@ namespace Technites
 		bool					SetNew(const Grid::HCellIdU&id, index_t to);
 		//bool					SetNew(const Grid::HCellIdU&id, index_t to);
 		count_t					Count() const;
-		void					Clear()		{for (index_t i = 0; i < ClusterCount; i++)	cluster[i].Clear();}
+		count_t					ThoroughCount() const;
+		void					Clear()		{for (index_t i = 0; i < ClusterCount; i++)	cluster[i].Clear(); totalEntries = 0;}
 	};
 
 
@@ -479,6 +480,8 @@ namespace Technites
 
 		static PFaction			GetFactionOf(BYTE gridFactionID);
 		Technite*				GetOwnTechnite(const Grid::HCellIdU&location);
+
+		void					VerifyIntegrity();
 
 		typedef Technite::TaskResult	ExecResult;
 	private:

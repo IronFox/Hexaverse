@@ -132,14 +132,15 @@ namespace Protocol
 
 			Compress(tdts,delta.data0, /*deltaType == FactionCopy || */deltaType == WorldDeltaType::GlobalCopy/* || deltaType == GlobalInitialCopy*/);
 			{
-				BYTE lastSet = 0;
-				for (index_t i = 0; i < fdts.Count(); i++)
-				{
-					if (!fdtsValid[i])
-						fdts[i].newTechniteFaction = lastSet;
-					else
-						lastSet = fdts[i].newTechniteFaction;
-				}
+				//BYTE lastSet = 0;
+				//for (index_t i = 0; i < fdts.Count(); i++)
+				//{
+				//	if (!fdtsValid[i])
+				//		fdts[i].newTechniteFaction = lastSet;
+				//	else
+				//		lastSet = fdts[i].newTechniteFaction;
+
+				//}
 				Compress(fdts,delta.data2);
 			}
 

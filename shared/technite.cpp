@@ -189,6 +189,10 @@ namespace Technites
 					Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,animationTime,true);
 				toKill.Clear();
 
+				foreach (Faction::allTechniteFactions,tf)
+					(*tf)->VerifyIntegrity();
+
+
 				return false;
 			}
 			return true;
@@ -752,6 +756,16 @@ namespace Technites
 		return totalEntries;
 	}
 
+	count_t					BroadTechniteMap::ThoroughCount() const
+	{
+		count_t rs = 0;
+		for (index_t i = 0; i < ClusterCount; i++)
+			rs += cluster[i].numEntries;
+		ASSERT_EQUAL__(rs,totalEntries);
+		return rs;
+	}
+
+
 	Technite::Resources		Faction::EatTechnite(Technite&local, const Grid::HCellIdU&target, index_t iteration, WorkerData&data, bool factionIsActive)
 	{
 		//this seems to fix the 'terrain content mismatch' issue, but it should not occur
@@ -1204,26 +1218,55 @@ namespace Technites
 
 			technites.Clear();
 			techniteMap.Clear();
+			ASSERT_EQUAL__(techniteMap.ThoroughCount(),technites.Count());
+
 		}
 
 		void				Faction::AppendTechnites(const ArrayData<Technite::TCompactState>&techs)
 		{
+			ASSERT_EQUAL__(techniteMap.Count(),technites.Count());
+			
 			foreach (techs,t)
 			{
 				index_t at = technites.Count();
 				Technite&nt = technites.Append();
 				nt.ImportState(*t);
 				techniteMap.Set(nt.location.GetU(),at);
+
+				index_t test;
+				bool success = techniteMap.Query(nt.location.GetU(),test);
+				ASSERT__(success);
+				ASSERT_EQUAL__(test,at);
 				#ifdef HAS_WINDOW
 					if (isMine)
 						ChangeVision(nt.location.GetU(),+1);
 				#endif
 			}
+			ASSERT_EQUAL__(techniteMap.ThoroughCount(),technites.Count());
 		}
 
 
 
+
 	#endif
+
+	void					Faction::VerifyIntegrity()
+	{
+		foreach (technites,t)
+		{
+			Grid::HCellIdU loc = t->location.GetU();
+			index_t at = t - technites.begin();
+			index_t test;
+			bool success = techniteMap.Query(loc,test);
+			ASSERT__(success);
+			ASSERT_EQUAL__(test,at);
+			ASSERT_EQUAL__(Grid::actualWorld.cellStack[loc.stackID].volumeCell[loc.layer].content, Grid::Content::Technite);
+			ASSERT_EQUAL__(Grid::actualWorld.cellStack[loc.stackID].volumeCell[loc.layer].techniteFaction, this->gridID);
+		}
+
+
+	}
+
 
 
 	Faction::ExecResult			Faction::Eat(Technite&technite, const Grid::HCellIdU&target, index_t iteration, WorkerData&data, bool destroy)
@@ -1775,6 +1818,7 @@ namespace Technites
 				Technite&t1 = technites.Append(tech);
 				ProcessLighting(t1);
 
+				DBG_ASSERT_EQUAL__(Grid::actualWorld.cellStack[loc.stackID].volumeCell[loc.layer].techniteFaction,this->gridID);
 
 				techniteMap.Set(loc, at);
 				visibility.ChangeSensory(loc, t, 1);

@@ -297,6 +297,10 @@ namespace Network
 						const Technites::Technite&tec = tf->technites.first();
 						Camera::TranslateTo(Grid::ToWorld(tec.location.GetI()));
 					}
+					if (chunk.flags & Protocol::TechniteChunkFlags::IsLast)
+					{
+						LogEvent(EventType::TechniteLogic,nullptr,"Received a total of "+String(tf->technites.Count())+" technite state(s)");
+					}
 					#endif
 				}
 
@@ -1279,7 +1283,12 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	if (serverPhase == Protocol::Phase::CommandPhase)
 	{
 		if (amTechniteFaction)
+		{
+			Technites::PFaction tf = To<Technites::Faction>::Cast(myFaction);
+			tf->VerifyIntegrity();
+
 			TechniteLogicLink::ExecuteLogic();
+		}
 	}
 }
 

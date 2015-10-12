@@ -227,7 +227,7 @@ namespace Grid
 					structureCounter = sdelta.newStructureCounter-1;
 					DBG_ASSERT_LESS__(structureCounter,3);
 				}
-				if (fdelta.newTechniteFaction && content == Content::Technite)
+				if (fdelta.newTechniteFaction/* && content == Content::Technite*/)
 				{
 					techniteFaction = fdelta.newTechniteFaction-1;
 				}
