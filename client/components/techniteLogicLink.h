@@ -11,6 +11,9 @@ namespace TechniteLogicLink
 		//			TechniteProtocol::ChannelID::Authenticate>						authenticate;
 		extern TCP::Channel<Protocol::TechniteInstructions,1,
 					TechniteProtocol::ChannelID::TechniteInstructionChunk>			techniteInstructionChunk;
+		extern TCP::Channel<TechniteProtocol::TechniteColorChunk,1,
+					TechniteProtocol::ChannelID::TechniteColorChunk>				techniteColorChunk;
+
 		extern TCP::ObjectSender<Protocol::TechniteChunk,
 					TechniteProtocol::ChannelID::TechniteStateChunk>				techniteStateChunk;
 		extern TCP::ObjectSender<TechniteProtocol::GridConfig,
@@ -21,6 +24,8 @@ namespace TechniteLogicLink
 					TechniteProtocol::ChannelID::GridDelta>							gridDelta;
 		extern TCP::ObjectSender<TechniteProtocol::WorldInfo,
 					TechniteProtocol::ChannelID::WorldInfo>							worldInfo;
+		extern TCP::ObjectSender<Package::NetString<256>,
+					TechniteProtocol::ChannelID::Error>								error;
 	}
 
 

@@ -200,6 +200,7 @@ namespace Technites
 	#endif
 
 
+	#ifdef CLIENT
 	void				Technite::CompileTendency(TVec3<>&outDirection, float&outMagnitude, TVec3<>&inOutColor) const
 	{
 		Grid::HCellIdU dest,loc;
@@ -237,20 +238,48 @@ namespace Technites
 				outMagnitude = 127;
 			break;
 		}
-		int totalResources = (int)resources.matter + (int)resources.energy;
-		float brightness = 0.5f + (float)resources.energy/64.f;
-		float green = 1.f + (float)resources.matter/64.f;
-		inOutColor.r = clamp(inOutColor.r * brightness,0,1);
-		inOutColor.g = clamp(inOutColor.g * brightness * green,0,1);
-		inOutColor.b = clamp(inOutColor.b * brightness,0,1);
-
+		if (usesColor)
+			inOutColor = float3(color)/255.f;
+		else
+		{
+			int totalResources = (int)resources.matter + (int)resources.energy;
+			float brightness = 0.5f + (float)resources.energy/64.f;
+			float green = 1.f + (float)resources.matter/64.f;
+			inOutColor.r = clamp(inOutColor.r * brightness,0,1);
+			inOutColor.g = clamp(inOutColor.g * brightness * green,0,1);
+			inOutColor.b = clamp(inOutColor.b * brightness,0,1);
+		}
 	}
+
+	#endif
 
 
 
 	/*static*/ PFaction Faction::GetFactionOf(BYTE factionID)
 	{
 		return gridIDMap[factionID];
+	}
+
+	bool					Faction::AnyEntitiesIn(const Grid::HCellIdU&target)
+	{
+		const auto mapping = Grid::highToLowMap[target.stackID];
+		Objects::PWorldEntity entity;
+		for (int k = 0; k < 2; k++)
+			if (mapping.lowCells[k] != Grid::THighToLowCell::Empty)
+			{
+				Grid::LCellIdU at(mapping.lowCells[k],target.layer);
+				TEaten&eaten = eatenGrid[Objects::CellToGridIndex(at)];
+				entity = Objects::GetMobileEntity(at);
+				bool ref;
+				ref = false;
+				if (entity && !eaten.mobileEaten)
+					return true;
+				entity = Objects::GetStructure(at);
+				ref = false;
+				if (entity && !eaten.mobileEaten)
+					return true;
+			}
+		return false;
 	}
 
 	Technite::Resources		Faction::EatEntitiesIn(const Grid::HCellIdU&target, bool&cantEatThis)
@@ -1193,6 +1222,15 @@ namespace Technites
 
 	#ifdef CLIENT
 
+		void					Faction::SetTechniteColor(index_t techniteIndex, const TVec3<BYTE>&color)
+		{
+			Technite&t = technites[techniteIndex];
+			t.color = color;
+			t.usesColor = true;
+			Grid::high.family[Grid::high.grid.GetCell(t.location.GetStackID()).family].SetOutdated(0.f);
+		}
+
+
 		#if defined HAS_WINDOW
 		void				Faction::ChangeVision(const Grid::HCellIdU&center, short change)
 		{
@@ -1260,12 +1298,16 @@ namespace Technites
 			bool success = techniteMap.Query(loc,test);
 			ASSERT__(success);
 			ASSERT_EQUAL__(test,at);
-			ASSERT_EQUAL__(Grid::actualWorld.cellStack[loc.stackID].volumeCell[loc.layer].content, Grid::Content::Technite);
-			ASSERT_EQUAL__(Grid::actualWorld.cellStack[loc.stackID].volumeCell[loc.layer].techniteFaction, this->gridID);
+			const auto&vcell = Grid::actualWorld.cellStack[loc.stackID].volumeCell[loc.layer];
+			ASSERT_EQUAL__(vcell.content, Grid::Content::Technite);
+			ASSERT_EQUAL__(vcell.techniteFaction, this->gridID);
 		}
 
 
 	}
+
+
+
 
 
 
@@ -1294,14 +1336,29 @@ namespace Technites
 			break;
 			case Grid::Content::Clear:	//clear never changes. Once it's empty, it's empty
 			{
-				bool cantEatThis;
-				IncreaseResources(technite, EatEntitiesIn(target,cantEatThis));	//this will be hard to make thread-safe
+				if (destroy)
+				{
+					bool cantEatThis;
+					IncreaseResources(technite, EatEntitiesIn(target,cantEatThis));	//this will be hard to make thread-safe
 
-				#ifdef _DEBUG
-					ev.result = cantEatThis? "Failed, cell clear, can't eat contained entities" : "Success, targeted cell is clear";
-				#endif
+					#ifdef _DEBUG
+						ev.result = cantEatThis? "Failed, cell clear, can't eat contained entities" : "Success, targeted cell is clear";
+					#endif
 			
-				return cantEatThis ? ExecResult::CannotEatThis : ExecResult::Success;
+					return cantEatThis ? ExecResult::CannotEatThis : ExecResult::Success;
+				}
+				else
+				{
+					if (AnyEntitiesIn(target))
+					{
+						#ifdef _DEBUG
+							ev.result = "Failed, cell clear but contains entities. Operation is non-destructive";
+						#endif
+
+						return ExecResult::CannotGnawAtThis;
+					}
+					return ExecResult::NothingToDo;
+				}
 			}
 			case Grid::Content::Technite:
 			{
@@ -1512,92 +1569,92 @@ namespace Technites
 				return Technite::TaskResult::NoTechniteAtDestination;
 			}
 			break;
-		case Technite::Task::GrowTo:
-			return GrowTo(technite, target, iteration,data);
-		case Technite::Task::ConsumeSurroundingCell:
-		case Technite::Task::GnawAtSurroundingCell:
-			return Eat(technite, target, iteration, data, technite.nextTask == Technite::Task::ConsumeSurroundingCell);
-		case Technite::Task::TransferEnergyTo:
-		{
-			#ifdef _DEBUG
-				WorkerData::LoggedEvent&ev = data.events.Append();
-				ev.target = target;
-				ev.source = technite.location.GetU();
-				ev.type = WorkerData::LoggedEvent::Type::TransferEnergy;
-				ev.from = GetLastContent(target);
-				ev.to = ev.from;
-				ev.iteration = iteration;
-				ev.targetingOwnTechniteFaction = true;
-			#endif
+			case Technite::Task::GrowTo:
+				return GrowTo(technite, target, iteration,data);
+			case Technite::Task::ConsumeSurroundingCell:
+			case Technite::Task::GnawAtSurroundingCell:
+				return Eat(technite, target, iteration, data, technite.nextTask == Technite::Task::ConsumeSurroundingCell);
+			case Technite::Task::TransferEnergyTo:
+			{
+				#ifdef _DEBUG
+					WorkerData::LoggedEvent&ev = data.events.Append();
+					ev.target = target;
+					ev.source = technite.location.GetU();
+					ev.type = WorkerData::LoggedEvent::Type::TransferEnergy;
+					ev.from = GetLastContent(target);
+					ev.to = ev.from;
+					ev.iteration = iteration;
+					ev.targetingOwnTechniteFaction = true;
+				#endif
 
 
-			if (iteration < 4)
+				if (iteration < 4)
+				{
+					#ifdef _DEBUG
+						ev.result = "Failed, iteration too low";
+					#endif
+					return ExecResult::Again;
+				}
+				Technite*other = GetOwnTechnite(target);
+				if (!other)
+				{
+					#ifdef _DEBUG
+						ev.result = "Failed, cannot locate technite object";
+					#endif
+					return Technite::TaskResult::NoTechniteAtDestination;
+				}
+				Technite::Resources	transfer(technite.taskParameter,0);
+				if (!ReduceResources(technite,transfer ))
+				{
+					#ifdef _DEBUG
+						ev.result = "Failed, insufficient resources to transfer "+transfer.ToString();
+					#endif
+					return Technite::TaskResult::TechniteLacksResources;
+				}
+				IncreaseRemoteResources(*other, transfer, data);
+				return Technite::TaskResult::Success;
+			}
+			case Technite::Task::TransferMatterTo:
 			{
 				#ifdef _DEBUG
-					ev.result = "Failed, iteration too low";
+					WorkerData::LoggedEvent&ev = data.events.Append();
+					ev.target = target;
+					ev.source = technite.location.GetU();
+					ev.type = WorkerData::LoggedEvent::Type::TransferMatter;
+					ev.from = GetLastContent(target);
+					ev.to = ev.from;
+					ev.iteration = iteration;
+					ev.targetingOwnTechniteFaction = true;
 				#endif
-				return ExecResult::Again;
-			}
-			Technite*other = GetOwnTechnite(target);
-			if (!other)
-			{
-				#ifdef _DEBUG
-					ev.result = "Failed, cannot locate technite object";
-				#endif
-				return Technite::TaskResult::NoTechniteAtDestination;
-			}
-			Technite::Resources	transfer(technite.taskParameter,0);
-			if (!ReduceResources(technite,transfer ))
-			{
-				#ifdef _DEBUG
-					ev.result = "Failed, insufficient resources to transfer "+transfer.ToString();
-				#endif
-				return Technite::TaskResult::TechniteLacksResources;
-			}
-			IncreaseRemoteResources(*other, transfer, data);
-			return Technite::TaskResult::Success;
-		}
-		case Technite::Task::TransferMatterTo:
-		{
-			#ifdef _DEBUG
-				WorkerData::LoggedEvent&ev = data.events.Append();
-				ev.target = target;
-				ev.source = technite.location.GetU();
-				ev.type = WorkerData::LoggedEvent::Type::TransferMatter;
-				ev.from = GetLastContent(target);
-				ev.to = ev.from;
-				ev.iteration = iteration;
-				ev.targetingOwnTechniteFaction = true;
-			#endif
 
-			if (iteration < 4)
-			{
-				#ifdef _DEBUG
-					ev.result = "Failed, iteration too low";
-				#endif
-				return ExecResult::Again;
+				if (iteration < 4)
+				{
+					#ifdef _DEBUG
+						ev.result = "Failed, iteration too low";
+					#endif
+					return ExecResult::Again;
+				}
+				Technite*other = GetOwnTechnite(target);
+				if (!other)
+				{
+					#ifdef _DEBUG
+						ev.result = "Failed, cannot locate technite object";
+					#endif
+					return Technite::TaskResult::NoTechniteAtDestination;
+				}
+				Technite::Resources	transfer(0,technite.taskParameter);
+				if (!ReduceResources(technite, transfer))
+				{
+					#ifdef _DEBUG
+						ev.result = "Failed, insufficient resources to transfer "+transfer.ToString();
+					#endif
+					return Technite::TaskResult::TechniteLacksResources;
+				}
+				IncreaseRemoteResources(*other, transfer, data);
+				return Technite::TaskResult::Success;
 			}
-			Technite*other = GetOwnTechnite(target);
-			if (!other)
-			{
-				#ifdef _DEBUG
-					ev.result = "Failed, cannot locate technite object";
-				#endif
-				return Technite::TaskResult::NoTechniteAtDestination;
-			}
-			Technite::Resources	transfer(0,technite.taskParameter);
-			if (!ReduceResources(technite, transfer))
-			{
-				#ifdef _DEBUG
-					ev.result = "Failed, insufficient resources to transfer "+transfer.ToString();
-				#endif
-				return Technite::TaskResult::TechniteLacksResources;
-			}
-			IncreaseRemoteResources(*other, transfer, data);
-			return Technite::TaskResult::Success;
 		}
-		}
-		return Technite::TaskResult::NothingToDo;
+		return Technite::TaskResult::BadCommand;
 	}
 
 	//ParallelLoop	loop();

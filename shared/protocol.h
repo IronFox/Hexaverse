@@ -112,8 +112,16 @@ namespace Protocol
 					if (!IsISerializable(data))
 						size = (count_t)(fixedSize/sizeof(T));
 					else
-						if (!inStream.ReadSize(size))
-							return false;
+					{
+						size_t fixedElementSize = GetFixedSize(&Super::testElement);
+						if (fixedElementSize != 0)
+						{
+							size = (count_t)(fixedSize/fixedElementSize);
+						}
+						else
+							if (!inStream.ReadSize(size))
+								return false;
+					}
 						//FATAL__("trying to Deserialize an array containing serializable objects from a fixed size stream data section not including any element count");
 				}
 				if (size > MaxSize)

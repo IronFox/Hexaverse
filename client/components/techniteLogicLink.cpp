@@ -193,8 +193,42 @@ namespace TechniteLogicLink
 			}
 		}
 
-		void Ready(TCP::Peer&peer)
+
+		void TechniteColorChunk(TechniteProtocol::TechniteColorChunk&colorChunk)
 		{
+			if (!Network::amTechniteFaction)
+				return;
+
+		//	colorChunk.Deserialize(test);
+
+
+			Technites::PFaction tf = To<Technites::Faction>::Cast(Network::myFaction);
+			foreach (colorChunk.colors,c)
+				if (c->index >= tf->technites.Count())
+					return;
+				else
+					tf->SetTechniteColor(c->index,c->color);
+
+
+		}
+
+		static String CompileProtocolString()
+		{
+			return "Aquinas v1.0." + String(TechniteProtocol::ChannelID::Count);
+		}
+
+
+		void Ready(Package::NetString<256>&version, TCP::Peer&peer)
+		{
+			String expect = CompileProtocolString();
+			if (version != expect)
+			{
+				String msg = "Ready: Version mismatch (expected '"+expect+"', but got '"+version+"'";
+				LogEvent(EventType::TechniteLogic,nullptr,msg);
+				msg = msg.subString(0,256);
+				Channels::error.SendTo(peer,msg);
+				return;
+			}
 			LogEvent(EventType::TechniteLogic,nullptr,peer.ToString()+": Ready");
 
 			SendWorld(peer);
@@ -261,6 +295,13 @@ namespace TechniteLogicLink
 		//			TechniteProtocol::ChannelID::Authenticate>						authenticate(Receiver::Authenticate);
 		TCP::Channel<Protocol::TechniteInstructions,1,
 					TechniteProtocol::ChannelID::TechniteInstructionChunk>			techniteInstructionChunk(Receiver::TechniteInstructionChunk);
+		TCP::Channel<Package::NetString<256>,0,
+					TechniteProtocol::ChannelID::Ready>								ready(Receiver::Ready);
+		TCP::Channel<TechniteProtocol::TechniteColorChunk,1,
+					TechniteProtocol::ChannelID::TechniteColorChunk>				techniteColorChunk(Receiver::TechniteColorChunk);
+
+
+
 		TCP::ObjectSender<Protocol::TechniteChunk,
 					TechniteProtocol::ChannelID::TechniteStateChunk>				techniteStateChunk;
 		TCP::ObjectSender<TechniteProtocol::GridConfig,
@@ -271,6 +312,8 @@ namespace TechniteLogicLink
 					TechniteProtocol::ChannelID::GridDelta>							gridDelta;
 		TCP::ObjectSender<TechniteProtocol::WorldInfo,
 					TechniteProtocol::ChannelID::WorldInfo>							worldInfo;
+		TCP::ObjectSender<Package::NetString<256>,
+					TechniteProtocol::ChannelID::Error>								error;
 
 	}
 
@@ -325,9 +368,6 @@ namespace TechniteLogicLink
 	{
 		switch (signal)
 		{
-			case TechniteProtocol::ChannelID::Ready:
-				Receiver::Ready(origin);
-			break;
 			case TechniteProtocol::ChannelID::RequestNextRound:
 				SignalRoundEnd();
 			break;
@@ -344,8 +384,8 @@ namespace TechniteLogicLink
 			setup = true;
 
 			logicServer.InstallChannel(Channels::techniteInstructionChunk);
-//			logicServer.InstallChannel(Channels::authenticate);
-			logicServer.OpenSignalChannel(TechniteProtocol::ChannelID::Ready,0);
+			logicServer.InstallChannel(Channels::ready);
+			logicServer.InstallChannel(Channels::techniteColorChunk);
 			logicServer.OpenSignalChannel(TechniteProtocol::ChannelID::RequestNextRound,1);
 
 			logicServer.SetAsync(false);	//can't be async because of world grid. damn

@@ -281,11 +281,18 @@ namespace Technites
 		AtomicBool			isDead = false;						// 1
 		BYTE				taskParameter = 0;					// 1
 
+		#ifdef CLIENT
+			TVec3<BYTE>		color;
+			bool			usesColor = false;
+		#endif
+
 
 		/**/				Technite() {}
 
 
-		void				CompileTendency(TVec3<>&outDirection, float&outMagnitude, TVec3<>&inOutColor) const;
+		#ifdef CLIENT
+			void			CompileTendency(TVec3<>&outDirection, float&outMagnitude, TVec3<>&inOutColor) const;
+		#endif
 
 		void				Set(const TCompactInstruction&instruction)
 		{
@@ -348,7 +355,11 @@ namespace Technites
 
 	static_assert(ResourceSize == 2,"Packing error");
 	static_assert(LocationSize == 4,"Packing error");
-	static_assert(TechniteSize == 12,"Packing error");
+	#ifndef CLIENT
+		static_assert(TechniteSize == 12,"Packing error");
+	#else
+		static_assert(TechniteSize == 16,"Packing error");	//+color
+	#endif
 
 	class AtomicGrid
 	{
@@ -475,11 +486,13 @@ namespace Technites
 		#else
 			void				ClearTechnites();
 			void				AppendTechnites(const ArrayData<Technite::TCompactState>&techs);
+			void				SetTechniteColor(index_t techniteIndex, const TVec3<BYTE>&color);
 
 		#endif
 
 		static PFaction			GetFactionOf(BYTE gridFactionID);
 		Technite*				GetOwnTechnite(const Grid::HCellIdU&location);
+
 
 		void					VerifyIntegrity();
 
@@ -530,8 +543,7 @@ namespace Technites
 		ExecResult				GrowTo(Technite&technite, const Grid::HCellIdU&target, index_t iteration, WorkerData&data);
 		//ExecResult				MoveTo(Technite&technite, const Grid::HCellIdU&target, index_t iteration, WorkerData&data);
 		ExecResult				Eat(Technite&technite, const Grid::HCellIdU&target, index_t iteration, WorkerData&data, bool destroy);
-
-
+		bool					AnyEntitiesIn(const Grid::HCellIdU&target);
 		Technite::Resources		EatEntitiesIn(const Grid::HCellIdU&target, bool&cantEatThis);
 		Technite::Resources		EatTechnite(Technite&local, const Grid::HCellIdU&target, index_t iteration, WorkerData&data, bool factionIsActive);
 		bool					SpawnNewTechnite(const Grid::HCellIdU&source, const Grid::HCellIdU&target, WorkerData&data, index_t iteration);

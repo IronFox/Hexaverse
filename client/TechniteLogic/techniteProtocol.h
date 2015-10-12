@@ -82,6 +82,22 @@ namespace TechniteProtocol
 		, NETA(GridNode), nodes
 	);
 
+	NETSTRUCT2(TechniteColor
+		, NET(UINT32), index
+		, NET(TVec3<BYTE>), color
+	);
+
+	NETSTRUCT2(TechniteColorChunk
+		, NET(UINT32), offset
+		, NETA(TechniteColor), colors
+	);
+//	static_assert(sizeof(TechniteColor)==7,"Struct alignment issue?");
+
+	static_assert(sizeof(TVec3<BYTE>)==3,"Struct alignment issue?");
+
+
+
+
 	//NETSTRUCT2(SessionBegin
 	//	, GridConfig, grid
 	//	, NET(BYTE), myFactionGridID
@@ -98,17 +114,20 @@ namespace TechniteProtocol
 		enum id_t
 		{
 			Unused,
-			Ready,					//c2s: <signal>
+			Ready,					//c2s: String: protocol version+name
+			Error,					//s2c: String: message
 			TechniteStateChunk,     //s2c: TechniteStateChunk
 			InstructTechnites,      //s2c: <signal>
 			TechniteInstructionChunk, //c2s: TechniteInstructionChunk
 
 			NodeChunk,      //s2c: NodeChunk - completed before SessionBegin is sent
 			GridConfig,		//s2c: GridConfig
-			GridDelta,		//s2c: GridDelta
+			GridDelta,      //s2c: GridDelta
 			WorldInfo,		//s2c: WorldInfo
 
 			RequestNextRound, //c2s: <signal>
+
+			TechniteColorChunk, //c2s: TechniteColorChunk
 
 			Count     //must remain last
 		};
