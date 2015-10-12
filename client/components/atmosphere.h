@@ -1,13 +1,16 @@
 #ifndef atmosphereH
 #define atmosphereH
 
-#include <math/vclasses.h>
 
 #ifdef HAS_WINDOW
 
+#include <math/vclasses.h>
+#include <engine/aspect.h>
+
+
 namespace Atmosphere
 {
-	void		Render(float lowerPlanetRadius,float upperPlanetRadius, const TVec3<>&cameraPosition);
+	void		Render(const Engine::Aspect<>&mainCamera);
 
 	void		Create();
 	void		Destroy();
