@@ -91,6 +91,8 @@ namespace Protocol
 							{
 								sdts[i].newStructureCounter = 0;
 								tdts[i].newType = 0;
+								fdts[i].newTechniteFaction = 0;
+								fdtsValid[i] = false;
 							}
 							cell.temporarilyVisible = false;
 						}
