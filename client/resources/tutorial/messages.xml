@@ -1,5 +1,15 @@
 <tutorial>
 	<!-- Please do not alter this file. At least make a backup before you do -->
+	<message name='Welcome' image='game.png'>
+		Welcome to %PRODUCT_NAME%, the planetary strategy game.
+		Excavate caves, build stairs into orbit, or just expand around the globe.
+		Survive if you can.
+	</message>
+	<message name='Servers' image='servers.jpg'>
+		Your first task is to connect to a server. Click on any listed server to attempt connection.
+		You can create your own by executing 'server/server.exe'.
+		Edit 'server/config/server.ini' to customize your server.
+	</message>
 	<message name='Show Resources' image='resources.png'>
 		Resources are shown as vertical bars atop the terrain.
 		Visualized are %FUEL%(fuel), %MINERALS%(minerals), and %URANIUM%(uranium).
@@ -19,16 +29,6 @@
 		Scroll the camera to horizontally move the clip-section around the planet.
 		By selecting a vehicle or structure, or by pressing page up or page down, the depth of the clip-area can be changed.
 		Use the 'Clip Terrain' button to toggle terrain clipping.
-	</message>
-	<message name='Welcome' image='game.png'>
-		Welcome to %PRODUCT_NAME%, the planetary strategy game.
-		Excavate caves, build stairs into orbit, or just expand around the globe.
-		Survive if you can.
-	</message>
-	<message name='Servers' image='servers.png'>
-		Your first task is to connect to a server. Click on any listed server to attempt connection.
-		You can create your own by executing 'server/server.exe'.
-		Edit 'server/server.ini' to customize your server.
 	</message>
 	<message name='Radar' image='radar.png'>
 		Radar turrets provide the largest sensor range of all vehicle and structure turrets. Their range is shown in yellow.
