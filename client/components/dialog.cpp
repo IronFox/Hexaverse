@@ -471,7 +471,12 @@ namespace Dialog
 	void	Show(const GUIElements::PWindow&window)
 	{
 		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.last() == window)
+		{
+			DBG_ASSERT__(window->IsActive());
+			if (!window->IsActive())
+				window->Activate();
 			return;
+		}
 		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.first() == window)
 		//	return;
 		Detail::visibleWindows.FindAndErase(window);
@@ -493,7 +498,15 @@ namespace Dialog
 	void	ShowBottom(const GUIElements::PWindow&window)
 	{
 		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.first() == window)
+		{
+			if (Detail::visibleDialogs.Count() == 1)
+			{
+				DBG_ASSERT__(window->IsActive());
+				if (!window->IsActive())
+					window->Activate();
+			}
 			return;
+		}
 		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.first() == window)
 		//	return;
 
