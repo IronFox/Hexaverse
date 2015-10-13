@@ -499,7 +499,7 @@ namespace Dialog
 	{
 		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.first() == window)
 		{
-			if (Detail::visibleDialogs.Count() == 1)
+			if (Detail::visibleWindows.Count() == 1)
 			{
 				DBG_ASSERT__(window->IsActive());
 				if (!window->IsActive())
