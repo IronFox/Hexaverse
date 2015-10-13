@@ -274,7 +274,7 @@ void	SaveHosts()
 			
 			
 
-			PLabel label = MakeTabLabel("Unable to connect to '"+*failed+"'",0.7f);
+			PLabel label = MakeTabLabel("Still trying to query '"+*failed+"'...",0.7f);
 //			label->anchorConfig.Left().Set(0.1f,false);
 			label->SetColor(1,0.75f,0.75f,0.9f);
 			label->anchorConfig.Top().Set(0.01f,GUIElements::TAnchor::RelativeToScreen);
@@ -314,6 +314,23 @@ void	SaveHosts()
 			Dialog::serverChoice->components << p;
 		}
 
+
+		if (Network::servers.IsEmpty())
+		{
+			PButtonPanel p(new ButtonPanel());
+			p->anchorConfig.Top().SetAllOf(Dialog::serverChoice,0.025f,GUIElements::TAnchor::RelativeToScreen);
+
+			PLabel label = MakeTabLabel(" No Servers Found",0.7f);
+			label->anchorConfig.Left().Set(0.1f,GUIElements::TAnchor::RelativeToScreen);
+			label->SetColor(1,1,1,0.7f);
+			p->components << label;
+			p->autoHeight = true;
+			p->autoHeightSpacing *= 4.f;
+
+			Dialog::serverChoice->components << p;
+		};
+
+
 		{
 			PButton b(new Button("Add new host...",[]()
 			{
@@ -332,19 +349,6 @@ void	SaveHosts()
 			Dialog::serverChoice->components << b;
 		}
 		
-
-		if (Network::servers.IsEmpty())
-		{
-			PButtonPanel p(new ButtonPanel());
-			p->anchorConfig.Top().SetAllOf(Dialog::serverChoice,0.025f,GUIElements::TAnchor::RelativeToScreen);
-
-			PLabel label = MakeTabLabel(" No Servers Found",0.7f);
-			label->anchorConfig.Left().Set(0.1f,GUIElements::TAnchor::RelativeToScreen);
-			label->SetColor(1,1,1,0.7f);
-			p->components << label;
-
-			Dialog::serverChoice->components << p;
-		};
 
 		Dialog::serverChoice->FullAutoLayout();
 		if (isActive)
