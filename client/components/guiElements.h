@@ -385,6 +385,7 @@ namespace GUIElements
 		{
 			if (ContainsMouse())
 			{
+				DetectEnabledState();
 				if (IsEnabled() && onPress)
 				{
 					onPress();
@@ -532,6 +533,7 @@ namespace GUIElements
 		{
 			if (ContainsMouse())
 			{
+				DetectEnabledState();
 				if (IsEnabled() && onPress)
 				{
 					onPress();
