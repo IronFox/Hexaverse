@@ -306,8 +306,8 @@ namespace GUIElements
 		std::function<void()>	onPress;
 		std::function<bool()>	check;
 
-		String					baseLabel;
-		TextField::SetText;
+		//String					baseLabel;
+//		TextField::SetText;
 
 	protected:
 		virtual bool	ClientIsLit() const override {return IsActive() && IsEnabled() && ContainsMouse();}
@@ -323,15 +323,16 @@ namespace GUIElements
 			this->onPress = onPress;
 			this->check = check;
 			SetText(text);
+			SetIdealWidth();
 		}
 
 
 
-		void			SetText(const String&string)
-		{
-			baseLabel = string;
-			DetectEnabledState();
-		}
+		//void			SetText(const String&string)
+		//{
+		//	baseLabel = string;
+		//	DetectEnabledState();
+		//}
 
 
 		void			SetOnPress(const std::function<void()>&event)
@@ -347,7 +348,7 @@ namespace GUIElements
 
 		virtual bool	DetectEnabledState() override
 		{
-			String set = baseLabel;
+			//String set = baseLabel;
 			bool changed =false;
 			if (check && !check())
 			{
@@ -358,7 +359,7 @@ namespace GUIElements
 			else
 				changed = SetEnabled(true);
 
-			Super::SetText(set);
+			//Super::SetText(set);
 			return changed;
 		}
 
@@ -372,6 +373,7 @@ namespace GUIElements
 
 		virtual PComponent	HandleMouseDown() override
 		{
+			DetectEnabledState();
 			if (IsEnabled() && ContainsMouse())
 			{
 				return shared_from_this();
@@ -512,6 +514,7 @@ namespace GUIElements
 
 		virtual PComponent	HandleMouseDown() override
 		{
+			DetectEnabledState();
 			if (IsEnabled() && ContainsMouse())
 			{
 				for (index_t i = components.Count()-1; i < components.Count(); --i)
