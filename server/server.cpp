@@ -1409,6 +1409,7 @@ int main( int argc, const char* argv[])
 		std::cout << "Running tests..." << std::endl;
 
 		{
+			Test::Run(Test::ServerClient());
 			Test::Run(Test::HighGridFamilies());
 			Test::Run(Test::AutoTargeting());
 			Test::Run(Test::Bin2Str());

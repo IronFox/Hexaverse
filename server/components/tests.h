@@ -30,6 +30,24 @@ namespace Test
 	void Run(Test&test);
 
 
+	class ServerClient : public Test
+	{
+	private:
+		TCP::Server server;
+		TCP::Client client;
+		TCP::Channel<String,0,0>	messageChannel;
+		bool			quit = false;
+
+		static ServerClient	*executingInstance;
+
+		static void		OnMessage(String&msg, TCP::Peer&peer);
+
+	public:
+		/**/			ServerClient() : Test("Server-Client"),messageChannel(OnMessage)
+		{}
+
+		virtual void	Run(Random&random) override;
+	};
 
 	class Serialization : public Test
 	{
