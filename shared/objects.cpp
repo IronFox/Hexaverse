@@ -537,7 +537,10 @@ namespace Objects
 			globalCommands.Append(GlobalCommand(int2(0,0),"End Round", [](int){SignalRoundEnd();}, [](int, bool controlEnabled)->bool {return controlEnabled;},&CommonCmd::AlwaysFalse<int>));
 
 
-			globalCommands.Append(GlobalCommand(int2(1,0),"Clip Terrain", &GlobalCmd::ToggleSeeThrough, &CommonCmd::AlwaysEnabled<int>, &GlobalCmd::SeeThroughIsActive));
+			globalCommands.Append(GlobalCommand(int2(1,2),"Clip Terrain", &GlobalCmd::ToggleSeeThrough, &CommonCmd::AlwaysEnabled<int>, &GlobalCmd::SeeThroughIsActive));
+			globalCommands.Append(GlobalCommand(int2(2,2),"Clip-View Down", &GlobalCmd::SeeThroughDown, &GlobalCmd::SeeThroughIsActive2, &CommonCmd::AlwaysFalse<int>));
+			globalCommands.Append(GlobalCommand(int2(3,2),"Clip-View Up", &GlobalCmd::SeeThroughUp, &GlobalCmd::SeeThroughIsActive2, &CommonCmd::AlwaysFalse<int>));
+
 			globalCommands.Append(GlobalCommand(int2(2,0),"Hide Objects", &GlobalCmd::ToggleObjectView, &CommonCmd::AlwaysEnabled<int>, &GlobalCmd::ObjectsAreHidden));
 
 
