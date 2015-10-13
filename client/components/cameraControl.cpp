@@ -202,7 +202,7 @@ namespace Camera
 
 
 		Objects::globalCommands.Append(
-			Objects::GlobalCommand(int2(1,2),"Toggle Sky Grid", 
+			Objects::GlobalCommand(int2(1,0),"Show Sky Grid", 
 			&Cmd::ToggleSkyGrid, &Objects::CommonCmd::AlwaysEnabled<int>, &Cmd::SkyGridIsEnabled));
 	}
 

@@ -59,6 +59,7 @@
 #include "components/runtimeConfig.h"
 #include "components/world.h"
 #include "components/atmosphere.h"
+#include "components/guiHostList.h"
 
 /**
 The following DWORD causes Nvidia Optimus to select the high performance GPU.
@@ -1676,229 +1677,6 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 #ifdef HAS_WINDOW
 
-	static const float VisualTabWidth = 0.3f;
-
-	GUIElements::PLabel	MakeTabLabel(const String&text, float zoom)
-	{
-		using namespace GUIElements;
-		PLabel label (new GUIElements::Label());
-		label->alignCenter = false;
-		label->SetLocation(Rect<>(0,0,VisualTabWidth,0.f));
-		label->anchorConfig.Top().Set(0.01f);
-		label->anchorConfig.Left().Set(0.01f);
-		label->SetText(text);
-		label->zoom = zoom;
-		label->extraSpacing = 0;
-		return label;
-	};
-
-
-	void	AddTab(const GUIElements::PPanel&context, const String&name, float verticalSpacing = 0.f, bool verticalSpacingIsRelative = false)
-	{
-		using namespace GUIElements;
-		PLabel label=MakeTabLabel(name,1.1f);
-		label->anchorConfig.Top().Set(verticalSpacing,verticalSpacingIsRelative);
-		if (context->components.IsNotEmpty())
-			label->anchorConfig.Left().Set(context->components.last(),0.f);
-		else
-			label->anchorConfig.Left().Set(0.f);
-		context->components.Append(label);
-	}
-
-	void	AddTab(const String&name)
-	{
-		AddTab(Dialog::serverChoice,name);
-	}
-
-
-	GUIElements::PButtonPanel ConstructPanel(Network::ServerInfo&info)
-	{
-		using namespace GUIElements;
-		if (info.buttonPanel)
-		{
-			info.buttonPanel->components.Clear();
-		}
-		else
-		{
-			info.buttonPanel.reset(new ButtonPanel());
-			info.buttonPanel->anchorConfig.Left().Set(0.f);
-			info.buttonPanel->anchorConfig.Right().Set(0.f);
-			info.buttonPanel->autoHeight = true;
-			bool versionMatch = info.rightVersion;
-			info.buttonPanel->SetCheck([versionMatch]()
-			{
-				return versionMatch && !Network::client.IsAttemptingToConnect();
-			});
-
-			TUniqueID id = info.id;
-			info.buttonPanel->SetOnPress([id]()
-			{
-				Network::ServerInfo*info = nullptr;
-				foreach (Network::servers,srv)
-				{
-					if (srv->id == id)
-					{
-						info = srv;
-						break;
-					}
-				}
-				if (!info)
-					return;
-				index_t best = 0;
-				float bestPing = info->urls.first().second;
-				for (index_t i = 1; i < info->urls.Count(); i++)
-					if (info->urls[i].second < bestPing)
-					{
-						bestPing = info->urls[i].second;
-						best = i;
-					}
-				info->selected = true;
-
-				Network::serverID = info->id;
-				Network::serverIDString = Network::serverID.ToNiceString();
-				Network::worldID = info->info.worldID;
-				Network::worldIDString = Network::worldID.ToNiceString();
-				Network::client.ConnectAsync(info->urls[best].first + ":"+String(SERVICE_PORT));
-			});
-
-		}
-
-
-		PButtonPanel p = info.buttonPanel;
-
-		if (!info.headLine)
-		{
-			String text;
-			float4 color(1,1,1,1);
-			if (info.rightVersion)
-			{
-				text = " "+info.info.hostInfo.value.hostID.ToNiceString()+"/"+info.info.worldID.value.ToNiceString();
-				if (info.haveToken)
-					text += " (continue)";
-			}
-			else
-			{
-				color = float4(1,0.5,0.5,1);
-				text = " "+info.info.hostInfo.value.hostID.ToNiceString();
-				text += " (Version Mismatch)";
-			}
-			PLabel headLine = MakeTabLabel(text,1.1f);
-			headLine->SetColor(color);
-			headLine->anchorConfig.Top().Set(0.01f,false);
-			info.headLine = headLine;
-		}
-
-		p->components << info.headLine;
-
-
-
-		{
-			AddTab(p,String(info.info.numPlayers) + "/" + String(info.info.numClients),0.01f,false);
-			AddTab(p,String(info.info.roundNumber),0.01f,false);
-		}
-
-
-		//0.7f * 1.5f = ~1
-		//color set to 70% opacity
-		bool first = true;
-		foreach (info.urls,url)
-		{
-			PLabel label = MakeTabLabel(url->first+ " (ping "+String((int)ceil(url->second*1000))+')',0.7f);
-			label->SetColor(float4(1,1,1,0.7f));
-			label->anchorConfig.Left().Set(0.05f);
-			if (first)
-			{
-				first = false;
-				label->anchorConfig.Top().SetAllOf(p,0.f);
-			}
-			else
-			{
-				label->anchorConfig.Top().Set(p->components.last(),0.f,false);
-			}
-			p->components << label;
-		}
-
-		if (!info.rightVersion)
-		{
-			PLabel label = MakeTabLabel("Server identifies as '"+String(info.info.hostInfo.value.version)+'\'',0.7f);
-			label->SetColor(1,0.5,0.5,0.7f);
-			label->anchorConfig.Top().Set(p->components.last(),0.005f,false);
-			p->components << label;
-					
-			label = MakeTabLabel("Client expected '" SERVER_NAME "\'",0.7f);
-			label->SetColor(1,0.5,0.5,0.7f);
-			label->anchorConfig.Top().Set(p->components.last(),0.005f,false);
-			p->components << label;
-		}
-
-		p->autoHeightSpacing = 0.01f;
-		
-		return p;
-	}
-
-	void	UpdateServerChoice()
-	{
-		using namespace GUIElements;
-		
-		if (Dialog::serverChoice->HasComponent(mousePressedComponent))
-			return;	//can't activate right now
-			
-
-		const bool isActive = Dialog::serverChoice->IsActive();
-		if (isActive)
-			Dialog::serverChoice->Deactivate();
-		Dialog::serverChoice->components.Clear();
-
-		Dialog::serverChoice->fillBackground = false;
-		Dialog::serverChoice->isModal = false;
-		Dialog::serverChoice->autoCenter = false;
-		Dialog::serverChoice->anchorConfig.Top().Set(0.1f);
-
-
-		AddTab("HostID/WorldID");
-		AddTab("Players/Clients");
-		AddTab("Round Number");
-
-		bool attemptingConnection = Network::client.IsAttemptingToConnect();
-
-
-		for (index_t i = 0; i < Network::servers.Count(); i++)
-		{
-			auto&info = Network::servers[i];
-
-			PButtonPanel p = ConstructPanel(info);
-
-			p->anchorConfig.Top().references.Clear();
-			if (i == 0)
-			{
-				p->anchorConfig.Top().SetAllOf(Dialog::serverChoice,0.015f,false);
-			}
-			else
-				p->anchorConfig.Top().Set(Dialog::serverChoice->components.last(),0.015f,false);
-			Dialog::serverChoice->components << p;
-		}
-
-
-		if (Network::servers.IsEmpty())
-		{
-			PButtonPanel p(new ButtonPanel());
-			p->anchorConfig.Top().SetAllOf(Dialog::serverChoice,0.025f,false);
-
-			PLabel label = MakeTabLabel(" No Servers Found",0.7f);
-			label->anchorConfig.Left().Set(0.1f,false);
-			label->SetColor(1,1,1,0.7f);
-			p->components << label;
-
-			Dialog::serverChoice->components << p;
-		};
-
-		Dialog::serverChoice->FullAutoLayout();
-		if (isActive)
-			Dialog::serverChoice->Activate();
-
-		
-		Dialog::CheckServersAreShown(!Network::client.IsConnected());
-	}
 
 
 	void	SignalUserMessage(const String&message)
@@ -2198,7 +1976,7 @@ bool loop()
 		if (!Dialog::IsModal())
 		{
 			{
-				if (Engine::mouse.buttons.right_down)
+				if (Engine::mouse.buttons.right_down || Engine::mouse.buttons.middle_down)
 				{
 					Camera::AbortTargetedTranslation();
 					if (!rightMouseDragged)
@@ -3198,9 +2976,13 @@ void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_even
 		rightMouseDragFrom = Engine::mouse.location.absolute;
 	}
 
+	template <bool AlsoControlsUnits>
 	void EndCameraDrag()
 	{
 		Tutorial::lastDelayingEvent = timer.Now();
+
+		if (!AlsoControlsUnits)
+			return;
 
 		if (timer.GetSecondsSince(rightMouseDragBegun) < 0.2f && !rightMouseDragged)
 		{
@@ -3766,7 +3548,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 	}
 	if (RuntimeConfig::serverURL.IsNotEmpty())
 	{
-		Network::ServerDiscovery::RegisterNewHost(RuntimeConfig::serverURL, false);
+		Network::ServerDiscovery::RegisterNewHost(RuntimeConfig::serverURL, false,true);
 	}
 
 	eventLog.Create(RuntimeConfig::aiMode ? "AI.log": PRODUCT_NAME".log",true);
@@ -3830,25 +3612,11 @@ int main( int argc, const char* argv[])
 				display.config.vertical_sync = config.GetInt("runtime/vsync");
 				display.config.vertical_sync = display.config.vertical_sync > 0 ? 1 : 0;
 				display.config.fsaa_samples = config.GetInt("runtime/fsaa",4);
-			#endif
 
-//			Network::chosenNickname = config.GetString("player/nickname","Nameless");
-
-			index_t hostCounter = 0;
-			String host;
-			while (config.QueryString("server/host"+String(hostCounter),host))
-			{
-				hostCounter++;
-				if (host.IsEmpty())
-					continue;
-				Network::ServerDiscovery::RegisterNewHost(host,false);
-			}
-
-			#ifdef HAS_WINDOW
 				UI::resourcesAsList = config.GetBool("runtime/resourcesAsList",false);
 			#endif
-
 		}
+		LoadHosts();
 
 
 		applicationStart = timer.Now();
@@ -3931,7 +3699,8 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::R,ToggleResourceView);
 
 			Engine::input.bind(Key::MouseButton0, Select, Dialog::HandleMouseUp);
-			Engine::input.bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag);
+			Engine::input.bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
+			Engine::input.bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
 
 			Engine::input.bind(Key::F3, SaveScreenshot);
 
@@ -4034,7 +3803,8 @@ int main( int argc, const char* argv[])
 					Objects::TextoutResourceTagOffset,(char)(Objects::TextoutResourceTagOffset+(char)Objects::Resource::NumberOfPossibilities + 2));
 			Tutorial::Create();
 
-			Tutorial::ShowMessage("Welcome");
+			Tutorial::ShowMessage("Welcome",true);
+			Tutorial::ShowMessage("Tutorials");
 			Tutorial::ShowMessage("Servers");
 
 

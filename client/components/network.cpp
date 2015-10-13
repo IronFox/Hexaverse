@@ -141,9 +141,10 @@ namespace Network
 		public:
 			TCP::Client		client;
 			String			url;
-			bool			hasContact,hasInfo,rightVersion = false;
+			bool			hasContact,hasInfo,rightVersion = false, autoAttempt = false;
 			Protocol::ServerInfo	lastInfo;
 			float			lastPing;
+			volatile bool	doQuit = false;
 			//Semaphore		sem;
 
 			/**/			HostContactAttempt():/*sem(0),*/hasContact(false),hasInfo(false),lastPing(0)	{}
@@ -159,12 +160,12 @@ namespace Network
 				client.InstallChannel(serverInfoChannel);
 				client.InstallChannel(pingChannel);
 
-				while (!application_shutting_down)
+				while (!application_shutting_down && !doQuit)
 				{
 					hasContact = false;
 					lastPing = 0;
 					hasInfo = false;
-					while (!application_shutting_down)
+					while (!application_shutting_down && !doQuit)
 					{
 						if (client.Connect(url + ":"+String(INFO_PORT)))
 						{
@@ -172,8 +173,10 @@ namespace Network
 						}
 						Sleep(1000);
 					}
+					if (doQuit)
+						return;
 					hasContact = true;
-					while (!application_shutting_down && client.IsConnected())
+					while (!doQuit && !application_shutting_down && client.IsConnected())
 					{
 						pingChannel.SendTo(client,timer.Now());
 						Sleep(200);
@@ -192,7 +195,64 @@ namespace Network
 		};
 		typedef std::shared_ptr<HostContactAttempt>	PHostContactAttempt;
 
-		Buffer0<PHostContactAttempt>	attempts;
+		Buffer0<PHostContactAttempt>	attempts,waste;
+
+		void	ListFailedAttempts(Buffer0<String,Adopt>&outList)
+		{
+			outList.Clear();
+			foreach (attempts,a)
+			{
+				if (!(*a)->autoAttempt && !(*a)->hasContact)
+					outList << (*a)->url;
+			}
+
+		}
+
+		void	ListNonAutoAttempts(Buffer0<String>&outList)
+		{
+			outList.Clear();
+			foreach (attempts,a)
+			{
+				if (!(*a)->autoAttempt)
+					outList << (*a)->url;
+			}
+		}
+
+
+		bool	TryRemoveHost(const String&url)
+		{
+			if (client.IsAttemptingToConnect() || client.IsConnected())
+				return false;
+			foreach (attempts,a)
+			{
+				if ((*a)->url == url)
+				{
+					(*a)->doQuit = true;
+					waste << *a;
+					attempts.erase(a);
+					Dialog::SignalSituationChange();
+					return true;
+				}
+			}
+			return false;
+		}
+
+
+		bool	ListeningButCantConnectTo(const String&url)
+		{
+			if (client.IsAttemptingToConnect() || client.IsConnected())
+				return false;
+			foreach (attempts,a)
+			{
+				if ((*a)->url == url)
+				{
+					return !(*a)->hasContact || !(*a)->rightVersion;
+				}
+
+			}
+			return false;
+
+		}
 
 		void OnServerInfo(Protocol::ServerInfo&info, TCP::Peer&peer)
 		{
@@ -224,14 +284,19 @@ namespace Network
 		}
 
 
-		void	RegisterNewHost(const String&host, bool probablyRightVersion)
+		bool	RegisterNewHost(const String&host, bool probablyRightVersion, bool automaticallyDiscovered)
 		{
+			foreach (attempts,a)
+				if ((*a)->url == host)
+					return false;	//already there
 			PHostContactAttempt&attempt = attempts.Append();
 			attempt.reset(new HostContactAttempt());
 			attempt->url = host;
 			attempt->rightVersion = probablyRightVersion;
+			attempt->autoAttempt = automaticallyDiscovered;
 			
 			attempt->start();
+			return true;
 		}
 
 
@@ -1107,7 +1172,7 @@ namespace Network
 						if (!found)
 						{
 
-							ServerDiscovery::RegisterNewHost(url, !strcmp(packet.version, SERVER_NAME));
+							ServerDiscovery::RegisterNewHost(url, !strcmp(packet.version, SERVER_NAME),true);
 
 							//if (!client.isActive())
 							//{

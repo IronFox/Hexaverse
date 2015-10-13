@@ -14,3 +14,13 @@ description:
 10) restarting the client forced recompilation, did not reproduce the issue. problem is not considered solved
 
 event does not seem to occur on master branch, despite several attempts to reproduce
+
+
+update 13.10.2015
+
+Most of this issue has been resolved by fixing some rare synchronization scenarios involving the writer.connectionLost variable.
+The problem continues to manifest at times. So far server restart is no longer required, but client may need several attempts before successfully logging in.
+Unclear whether this is the client-sided writer.connectionLost variable, or the server somehow discarding client connection before properly starting to listen for messages.
+The server has shown some abnormalities discarding clients in various weird synchronization scenarios, causing unknown exceptions in the TCP::Peer destructor.
+The destructor has since been evacuated, and the same code moved into a new Peer::Dissolve() function, which adds vastly more exception tolerance.
+Seems as if the problem is client sided writer.connectionLost and can manifest during the very first connection attempt.

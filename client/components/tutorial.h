@@ -8,7 +8,7 @@
 
 namespace Tutorial
 {
-	void	ShowMessage(const String&name);
+	void	ShowMessage(const String&name, bool forceOpenNow=false);
 	void	HideMessage(const String&name);
 
 	void	Create();
