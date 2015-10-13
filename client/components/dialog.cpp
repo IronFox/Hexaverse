@@ -409,6 +409,8 @@ namespace Dialog
 		d->userInput->SetCurrent(initial);
 		d->userInput->SetAllowed(allowChars);
 
+		d->confirmButton->DetectEnabledState();
+
 		d->ReLayout();
 		return d;
 	}
