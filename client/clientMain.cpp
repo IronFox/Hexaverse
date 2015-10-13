@@ -1835,6 +1835,18 @@ void	OnAppear(const Objects::PWorldEntity&e)
 	}
 
 
+	static const String allowedHostChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-.:";
+
+	bool CheckHostName(const String&url)
+	{
+		if (url.IsEmpty())
+			return false;
+
+		//could add more here. if i knew what
+
+		return true;
+	}
+
 
 	/**
 	Completely rebuilds the entire GUI related to server connection choices.
@@ -1939,6 +1951,23 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 
 			Dialog::serverChoice->components << p;
+		}
+
+		{
+			PButton b(new Button("Add new host...",[]()
+			{
+				Dialog::Query("Enter a new host address to attempt connection to.","",allowedHostChars,CheckHostName,
+				[](const String&url)
+				{
+					Network::ServerDiscovery::RegisterNewHost(url,false,false);
+				});
+			
+			}));
+			b->anchorConfig.Top().SetLastOf(Dialog::serverChoice,0.025f,GUIElements::TAnchor::RelativeToScreen);
+			b->anchorConfig.Left().Set(0.f);
+			b->LockIdealWidth();
+
+			Dialog::serverChoice->components << b;
 		}
 		
 
