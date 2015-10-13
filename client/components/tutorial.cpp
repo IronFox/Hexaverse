@@ -37,7 +37,7 @@ namespace Tutorial
 		StringTable<Message,Strategy::Swap>	messages;
 	}
 
-	void	ShowMessage(const String&name)
+	void	ShowMessage(const String&name, bool forceOpenNow/*=false*/)
 	{
 		Detail::Message*msg = Detail::messages.QueryPointer(name);
 		if (!msg)
@@ -47,8 +47,9 @@ namespace Tutorial
 		msg->shown = true;
 		Detail::memory << name << nl;
 		Detail::memory.flush();
-
 		Dialog::EnqueueTutorial(name,msg->lines,msg->image);
+		if (forceOpenNow)
+			Dialog::ShowNextTutorial();
 	}
 
 	void	HideMessage(const String&name)

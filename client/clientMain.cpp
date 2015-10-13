@@ -4016,7 +4016,7 @@ int main( int argc, const char* argv[])
 					Objects::TextoutResourceTagOffset,(char)(Objects::TextoutResourceTagOffset+(char)Objects::Resource::NumberOfPossibilities + 2));
 			Tutorial::Create();
 
-			Tutorial::ShowMessage("Welcome");
+			Tutorial::ShowMessage("Welcome",true);
 			Tutorial::ShowMessage("Servers");
 
 
