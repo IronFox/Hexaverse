@@ -1971,7 +1971,7 @@ bool loop()
 		if (!Dialog::IsModal())
 		{
 			{
-				if (Engine::mouse.buttons.right_down)
+				if (Engine::mouse.buttons.right_down || Engine::mouse.buttons.middle_down)
 				{
 					Camera::AbortTargetedTranslation();
 					if (!rightMouseDragged)
@@ -2971,9 +2971,13 @@ void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_even
 		rightMouseDragFrom = Engine::mouse.location.absolute;
 	}
 
+	template <bool AlsoControlsUnits>
 	void EndCameraDrag()
 	{
 		Tutorial::lastDelayingEvent = timer.Now();
+
+		if (!AlsoControlsUnits)
+			return;
 
 		if (timer.GetSecondsSince(rightMouseDragBegun) < 0.2f && !rightMouseDragged)
 		{
@@ -3679,7 +3683,8 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::R,ToggleResourceView);
 
 			Engine::input.bind(Key::MouseButton0, Select, Dialog::HandleMouseUp);
-			Engine::input.bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag);
+			Engine::input.bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
+			Engine::input.bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
 
 			Engine::input.bind(Key::F3, SaveScreenshot);
 
@@ -3781,6 +3786,7 @@ int main( int argc, const char* argv[])
 			Tutorial::Create();
 
 			Tutorial::ShowMessage("Welcome",true);
+			Tutorial::ShowMessage("Tutorials");
 			Tutorial::ShowMessage("Servers");
 
 
