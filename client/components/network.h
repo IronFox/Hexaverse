@@ -59,7 +59,8 @@ namespace Network
 	
 	namespace ServerDiscovery
 	{
-
+		bool	ListeningButCantConnectTo(const String&url);
+		void	TryRemoveHost(const String&url);
 
 		void OnServerInfo(Protocol::ServerInfo&info, TCP::Peer&peer);
 		void OnPing(Protocol::Ping&ping, TCP::Peer&peer);
@@ -67,9 +68,9 @@ namespace Network
 		extern TCP::Channel<Protocol::ServerInfo,0,Protocol::InfoChannel::ServerInfo>	serverInfoChannel;
 		extern TCP::Channel<Protocol::Ping,0,Protocol::InfoChannel::Ping>	pingChannel;
 
+		void	ListFailedAttempts(Buffer0<String,Adopt>&outList);
 
-
-		void	RegisterNewHost(const String&host, bool probablyRightVersion);
+		void	RegisterNewHost(const String&host, bool probablyRightVersion, bool automaticallyDiscovered);
 
 	}
 

@@ -59,37 +59,48 @@ namespace GUIElements
 			Fixed,
 			Auto
 		};
+
+		enum distanceType_t
+		{
+			RelativeToParentComponent,
+			RelativeToScreen,
+			AbsolutePixels,
+		};
 		type_t			type;
 
 		float			distanceFromReference = 0.f;	//!< Distance to position extreme from closest reference. If no references are set, uses context edge instead.
-		bool			distanceIsRelative = true;	//Indicates that the value stored in @a distanceFromReference should be multiplied with the context extend
+		distanceType_t		distanceType = RelativeToParentComponent;	
 		Buffer0<WComponent>	references;			//!< Zero or more reference components. If none are set, the respective context extreme is used. If more than one are set, the closest is used
 
-		void			Set(const PComponent&c, float distance, bool relative=true)
+		void			Set(const PComponent&c, float distance, distanceType_t dtype=RelativeToParentComponent)
 		{
 			if (!c)
 				return;
 			type = Fixed;
 			distanceFromReference = distance;
 			references.Append(c);
-			distanceIsRelative = relative;
+			distanceType = dtype;
 		}
-		void			Set(float distance, bool relative=true)
+		void			Set(float distance, distanceType_t dtype=RelativeToParentComponent)
 		{
 			type = Fixed;
 			distanceFromReference = distance;
-			distanceIsRelative = relative;
+			distanceType = dtype;
 		}
 		void			SetAuto()
 		{
 			type = Auto;
 		}
 
-		void			SetAllOf(const PPanel&, float distance, bool relative=true);
+		void			SetAllOf(const PPanel&, float distance, distanceType_t dtype=RelativeToParentComponent);
+		void			SetLastOf(const PPanel&, float distance, distanceType_t dtype=RelativeToParentComponent);
 
 		bool			IsFixed() const {return type == Fixed;}
 		bool			IsAuto() const {return type == Auto;}
 		bool			IsInactive() const {return type == Disabled;}
+
+
+		float			ToScreenDistance(float parentSize, bool isHorizontal) const;
 	};
 
 
@@ -145,7 +156,7 @@ namespace GUIElements
 
 		bool			FullAutoLayout(const Rect<>&context);
 
-		void			SetCenteredWidth(float w, bool relative);
+		void			SetCenteredWidth(float w, TAnchor::distanceType_t type);
 
 		const Rect<>&	GetLocation() const {return rect;}
 	};
@@ -235,6 +246,9 @@ namespace GUIElements
 		Array<float2>	lineAt;
 		float4			color = float4(1,1,1,1);
 		float			textHeight = 1.f;
+		bool			widthLockedToIdeal=false;
+
+		bool			UpdateIdealWidth();
 	protected:
 		void			RenderText(bool lit);
 	public:
@@ -263,6 +277,9 @@ namespace GUIElements
 			rawText = string;
 			Super::InvalidateSize();
 		}
+
+		void			SetIdealWidth();
+		void			LockIdealWidth(bool doLock=true)	{widthLockedToIdeal = doLock; if (doLock) SetIdealWidth();}
 
 
 		virtual bool	UpdateHeight() override;
@@ -416,8 +433,11 @@ namespace GUIElements
 		}
 
 
-		void			AnchorBelowPrevious(Component*newComponent, float distanceFromSides = 0.015f, float distanceToPrevious = 0.015f, bool distanceIsRelative=false)	{AnchorBelowPrevious(PComponent(newComponent),distanceFromSides,distanceToPrevious,distanceIsRelative);}
-		void			AnchorBelowPrevious(const PComponent&newComponent, float distanceFromSides = 0.015f,  float distanceToPrevious = 0.015f, bool distanceIsRelative=false);
+		void			AnchorBelowPrevious(Component*newComponent, float distanceFromSides = 0.015f, float distanceToPrevious = 0.015f, TAnchor::distanceType_t distanceType=TAnchor::RelativeToScreen)
+		{
+			AnchorBelowPrevious(PComponent(newComponent),distanceFromSides,distanceToPrevious,distanceType);
+		}
+		void			AnchorBelowPrevious(const PComponent&newComponent, float distanceFromSides = 0.015f,  float distanceToPrevious = 0.015f, TAnchor::distanceType_t distanceType=TAnchor::RelativeToScreen);
 
 	};
 

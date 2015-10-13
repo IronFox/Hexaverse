@@ -210,7 +210,7 @@ namespace Dialog
 	public:
 		/**/				Menu(float initialAbsoulteWidth, const String&title)
 		{
-			Super::SetCenteredWidth(initialAbsoulteWidth,false);
+			Super::SetCenteredWidth(initialAbsoulteWidth,GUIElements::TAnchor::RelativeToScreen);
 			Super::fillBackground = false;
 
 			if (title.IsNotEmpty())

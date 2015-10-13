@@ -24,7 +24,7 @@ namespace GUIElements
 	PComponent	mousePressedComponent;
 
 
-	void			TAnchor::SetAllOf(const PPanel&p, float distance, bool relative/*=true*/)
+	void			TAnchor::SetAllOf(const PPanel&p, float distance, distanceType_t dtype/*=RelativeToParentComponent*/)
 	{
 		if (!p || p->components.IsEmpty())
 			return;
@@ -32,7 +32,36 @@ namespace GUIElements
 		distanceFromReference = distance;
 		foreach (p->components,c)
 			references.Append(*c);
-		distanceIsRelative = relative;
+		distanceType = dtype;
+	}
+
+	void			TAnchor::SetLastOf(const PPanel&p, float distance, distanceType_t dtype/*=RelativeToParentComponent*/)
+	{
+		if (!p || p->components.IsEmpty())
+			return;
+		type = Fixed;
+		distanceFromReference = distance;
+		if (p->components.IsNotEmpty())
+			references.Append(p->components.last());
+		distanceType = dtype;
+	}
+
+
+	float			TAnchor::ToScreenDistance(float parentSize, bool isHorizontal) const
+	{
+		switch (distanceType)
+		{
+			case RelativeToParentComponent:
+				return distanceFromReference * parentSize;
+
+			case RelativeToScreen:
+				return distanceFromReference;
+			case AbsolutePixels:
+				return distanceFromReference / float(isHorizontal ? display.clientWidth() : display.clientHeight());
+		}
+		FATAL__("Unexpected distance type");
+		return 0.f;
+
 	}
 
 
@@ -65,8 +94,8 @@ namespace GUIElements
 						if (bottom.references.IsEmpty() && top.type == TAnchor::Disabled)
 						{
 							float dist = bottom.distanceFromReference;
-							if (!bottom.distanceIsRelative)
-								lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.extend() - dist);
+							if (bottom.distanceType != TAnchor::RelativeToParentComponent)
+								lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.extend() - bottom.ToScreenDistance(0.f,false));
 						}
 					break;
 					case TAnchor::Auto:
@@ -152,15 +181,15 @@ namespace GUIElements
 	}
 
 
-	void			Panel::AnchorBelowPrevious(const PComponent&newComponent, float distanceFromSides /*= 0.015f*/,  float distanceToPrevious/* = 0.015f*/, bool distanceIsRelative/*=false*/)
+	void			Panel::AnchorBelowPrevious(const PComponent&newComponent, float distanceFromSides /*= 0.015f*/,  float distanceToPrevious/* = 0.015f*/, TAnchor::distanceType_t distanceType/*=TAnchor::RelativeToScreen*/)
 	{
 		if (components.IsNotEmpty())
-			newComponent->anchorConfig.Top().Set(components.last(), distanceToPrevious,distanceIsRelative);
+			newComponent->anchorConfig.Top().Set(components.last(), distanceToPrevious,distanceType);
 		else
-			newComponent->anchorConfig.Top().Set(distanceToPrevious,distanceIsRelative);
+			newComponent->anchorConfig.Top().Set(distanceToPrevious,distanceType);
 		
-		newComponent->anchorConfig.Left().Set(distanceFromSides,distanceIsRelative);
-		newComponent->anchorConfig.Right().Set(distanceFromSides,distanceIsRelative);
+		newComponent->anchorConfig.Left().Set(distanceFromSides,distanceType);
+		newComponent->anchorConfig.Right().Set(distanceFromSides,distanceType);
 		components.Append(newComponent);
 	}
 
@@ -345,9 +374,42 @@ namespace GUIElements
 	}
 
 
+	bool			TextField::UpdateIdealWidth()
+	{
+		textout.pushState();
+		textout.scale(textZoom*zoom,textZoom*zoom);
+		float w = 0.f;
+
+		foreach (rawText,t)
+		{
+			float w1 = 0.f;
+			foreach (*t,c)
+				w1 += CharWidth(*c);
+			w = std::max(w,w1);
+		}
+
+		bool changed = Set(rect.x.max, rect.x.min + w / 0.85f);
+
+		textout.popState();
+		return changed;
+	}
+
+	void			TextField::SetIdealWidth()
+	{
+
+		if (UpdateIdealWidth())
+			InvalidateSize();
+	}
+
+
+
 
 	bool		TextField::UpdateHeight()
 	{
+		bool changed = false;
+		if (widthLockedToIdeal)
+			changed = UpdateIdealWidth();
+
 		textout.pushState();
 		textout.scale(textZoom*zoom,textZoom*zoom);
 
@@ -373,7 +435,7 @@ namespace GUIElements
 		}
 		textHeight = textout.getScaledHeight() * (float(wrappedText.Count()) + extraSpacing*2.f);
 
-		bool changed = Set(this->rect.y.min,rect.y.max - textHeight);
+		changed |= Set(this->rect.y.min,rect.y.max - textHeight);
 
 		textout.popState();
 		return Super::UpdateHeight() || changed;
@@ -652,7 +714,7 @@ namespace GUIElements
 		{
 			const TAnchor&anc = anchor.min;
 
-			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
+			const float dist = anc.ToScreenDistance(context.axis[axis].extend(),axis==0);
 
 			if (anc.references.IsNotEmpty())
 			{
@@ -672,7 +734,8 @@ namespace GUIElements
 		{
 			const TAnchor&anc = anchor.max;
 
-			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
+			const float dist = anc.ToScreenDistance(context.axis[axis].extend(),axis==0);
+//			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
 
 			if (anc.references.IsNotEmpty())
 			{
@@ -698,11 +761,13 @@ namespace GUIElements
 		return rs;
 	}
 
-	void			Component::SetCenteredWidth(float w, bool relative)
+	void			Component::SetCenteredWidth(float w, TAnchor::distanceType_t type)
 	{
 		float extra = 1.f - w;
-		anchorConfig.Left().Set(extra*0.5f,relative);
-		anchorConfig.Right().Set(extra*0.5f,relative);
+		if (type == TAnchor::AbsolutePixels)
+			extra = float(display.clientWidth()) - w;
+		anchorConfig.Left().Set(extra*0.5f,type);
+		anchorConfig.Right().Set(extra*0.5f,type);
 	}
 
 

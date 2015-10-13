@@ -102,7 +102,7 @@ namespace Dialog
 				confirmButton.reset(new GUIElements::Button());
 				confirmButton->anchorConfig.Left().Set(0.f);
 				confirmButton->anchorConfig.Right().Set(0.f);
-				confirmButton->anchorConfig.Top().Set(textPanel,0.015f,false);
+				confirmButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
 				dialog->components << confirmButton;
 			}
 			if (componentFlags & ComponentFlags::CancelButton)
@@ -113,7 +113,7 @@ namespace Dialog
 					confirmButton->anchorConfig.Right().Set(0.505f);
 				cancelButton->anchorConfig.Left().Set(0.505f);
 				cancelButton->anchorConfig.Right().Set(0.f);
-				cancelButton->anchorConfig.Top().Set(textPanel,0.015f,false);
+				cancelButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
 				dialog->components << cancelButton;
 
 			}
@@ -852,7 +852,7 @@ namespace Dialog
 		loginMenu->canBeImplicitlyClosed = false;	//once visible, must explicitly close
 
 		serverChoice.reset(new GUIElements::Window());
-		serverChoice->SetCenteredWidth(0.9f,false);
+		serverChoice->SetCenteredWidth(0.9f,GUIElements::TAnchor::RelativeToScreen);
 		serverChoice->canBeImplicitlyClosed = false;
 
 
