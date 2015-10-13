@@ -285,6 +285,14 @@ namespace GUIElements
 		Engine::input.bind(Key::Backspace,[](){Engine::keyboard.dropLastCharacter(); if (onChange) onChange();});
 		Engine::input.bind(Key::Return,onDone);
 		Engine::input.bind(Key::Enter,onDone);
+		Engine::input.bindCtrl(Key::V,[](){
+			char buffer[0x100];
+			memset(buffer,0,sizeof(buffer));
+			if (System::getFromClipboardIfText(Engine::context.getWindow(),buffer,sizeof(buffer)-1))
+			{
+				Engine::keyboard.FilterAppend(buffer);	
+			}
+		});
 
 		Engine::keyboard.fillInput(backup);
 		Engine::keyboard.filter(allowed.c_str());
