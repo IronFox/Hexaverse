@@ -452,8 +452,8 @@ namespace Dialog
 		if (index == Detail::visibleWindows.Count())
 		{
 			window->Deactivate();
-			if (Detail::visibleDialogs.IsNotEmpty())
-				Detail::visibleDialogs.last()->Activate();
+			if (Detail::visibleWindows.IsNotEmpty())
+				Detail::visibleWindows.last()->Activate();
 		}
 
 
