@@ -28,8 +28,7 @@ namespace GUIElements
 	{
 		if (!p || p->components.IsEmpty())
 			return;
-		isEnabled = true;
-		disabledByComponent = false;
+		type = Fixed;
 		distanceFromReference = distance;
 		foreach (p->components,c)
 			references.Append(*c);
@@ -55,9 +54,28 @@ namespace GUIElements
 			float lowest = std::numeric_limits<float>::max();
 			foreach (components,c)
 			{
-				if ((*c)->anchorConfig.Bottom().IsActive())
-					continue;
-				lowest = std::min(lowest, (*c)->GetLocation().y.min);
+				const auto&bottom = (*c)->anchorConfig.Bottom();
+				const auto&top = (*c)->anchorConfig.Top();
+				switch (bottom.type)
+				{
+					case TAnchor::Disabled:
+						lowest = std::min(lowest, (*c)->GetLocation().y.min);
+					break;
+					case TAnchor::Fixed:
+						if (bottom.references.IsEmpty() && top.type == TAnchor::Disabled)
+						{
+							float dist = bottom.distanceFromReference;
+							if (!bottom.distanceIsRelative)
+								lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.extend() - dist);
+						}
+					break;
+					case TAnchor::Auto:
+						if (top.type == TAnchor::Auto)
+						{
+							lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.extend());
+						}
+					break;
+				}
 			}
 			rs |= Set(rect.y.min,lowest - autoHeightSpacing);
 		}
@@ -355,37 +373,7 @@ namespace GUIElements
 		}
 		textHeight = textout.getScaledHeight() * (float(wrappedText.Count()) + extraSpacing*2.f);
 
-		bool changed = false;
-		if (anchorConfig.Top().isEnabled && anchorConfig.Bottom().isEnabled)
-		{
-			if (rect.GetHeigth() >= textHeight)
-			{
-				changed = anchorConfig.Bottom().disabledByComponent;
-				if (changed && anchorsFixed)
-					changed = false;
-				else
-				{
-					anchorConfig.Bottom().disabledByComponent = false;
-					anchorsFixed = true;
-				}
-			}
-			else
-			{
-				changed = !anchorConfig.Bottom().disabledByComponent;
-				if (changed && anchorsFixed)
-					changed = false;
-				else
-				{
-					anchorsFixed = true;
-					anchorConfig.Bottom().disabledByComponent = true;
-				}
-			}
-
-			if (!anchorConfig.Bottom().IsActive())
-				changed |= Set(this->rect.y.min,rect.y.max - textHeight);
-		}
-		else
-			changed |= Set(this->rect.y.min,rect.y.max - textHeight);
+		bool changed = Set(this->rect.y.min,rect.y.max - textHeight);
 
 		textout.popState();
 		return Super::UpdateHeight() || changed;
@@ -410,7 +398,6 @@ namespace GUIElements
 
 	void TextField::RenderText(bool lit)
 	{
-		anchorsFixed = false;
 		textout.pushState();
 		textout.scale(textZoom*zoom,textZoom*zoom);
 
@@ -422,11 +409,6 @@ namespace GUIElements
 		//float lineHeight = textout.getScaledHeight();
 		float top = rect.y.max;
 
-		if (anchorConfig.Top().IsActive() && anchorConfig.Bottom().IsActive())
-		{
-			top = rect.y.center() + textHeight/2.f;
-
-		}
 
 		float4 baseColor;
 		if (IsEnabled())
@@ -586,45 +568,87 @@ namespace GUIElements
 		TFloatRange<>&a = rect.axis[axis];
 
 		bool rs = false;
-		if (anchor.center.IsActive())
+		//if (anchor.center.IsActive())
+		//{
+		//	ASSERT__(!anchor.min.IsActive());
+		//	ASSERT__(!anchor.max.IsActive());
+		//	const TAnchor&anc = anchor.center;
+		//	const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
+		//	if (anc.references.IsNotEmpty())
+		//	{
+		//		float avg = 0.f;
+		//		count_t cnt = 0;
+		//		foreach (anc.references,ref0)
+		//		{
+		//			PComponent ref = ref0->lock();
+		//			if (ref)
+		//			{
+		//				avg += ref->GetLocation().axis[axis].center();
+		//				cnt++;
+		//			}
+		//		}
+		//		if (cnt > 0)
+		//		{
+		//			avg /= cnt;
+		//			rs |= SetCenter(a, avg + dist);
+		//		}
+		//	}
+		//	else
+		//		rs |= SetCenter(a, context.axis[axis].center() + dist);
+
+		//	return rs;
+		//}
+
+		if (anchor.min.IsInactive() && anchor.max.IsInactive())
+			return false;
+		if (anchor.min.IsAuto() && anchor.max.IsAuto())
 		{
-			ASSERT__(!anchor.min.IsActive());
-			ASSERT__(!anchor.max.IsActive());
-			const TAnchor&anc = anchor.center;
-			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
-			if (anc.references.IsNotEmpty())
 			{
-				float avg = 0.f;
-				count_t cnt = 0;
-				foreach (anc.references,ref0)
+				const TAnchor&anc = anchor.min;
+
+				if (anc.references.IsNotEmpty())
 				{
-					PComponent ref = ref0->lock();
-					if (ref)
-					{
-						avg += ref->GetLocation().axis[axis].center();
-						cnt++;
-					}
-				}
-				if (cnt > 0)
-				{
-					avg /= cnt;
-					rs |= SetCenter(a, avg + dist);
+					FATAL__("Auto not applicable on set references");
+					return false;
+					//float highest = -std::numeric_limits<float>::max();
+					//foreach (anc.references,ref0)
+					//{
+					//	PComponent ref = ref0->lock();
+					//	highest = std::max(highest,ref->GetLocation().axis[axis].max);
+					//}
+					//if (highest == -std::numeric_limits<float>::max())
+					//	return false;
+					//bottom = highest;
 				}
 			}
-			else
-				rs |= SetCenter(a, context.axis[axis].center() + dist);
+			{
+				const TAnchor&anc = anchor.max;
 
-			return rs;
+				if (anc.references.IsNotEmpty())
+				{
+					FATAL__("Auto not applicable on set references");
+					return false;
+				}
+			}
+			const TFloatRange<>&ctx = context.axis[axis];
+			float ext = a.GetExtend();
+			float center = ctx.GetCenter();
+			float top = std::min(ctx.max,center + ext*0.5f);
+			bool changed = Set(a.max,top);
+			a.min = a.max - ext;
+			return changed;
 		}
 
-		if (!anchor.min.IsActive() && !anchor.max.IsActive())
+		if (anchor.min.IsAuto() || anchor.max.IsAuto())
+		{
+			FATAL__("Both top and bottom anchors must be set to auto");
 			return false;
-
+		}
 
 
 		float extend = a.GetExtend();
 
-		if (anchor.min.IsActive())
+		if (anchor.min.IsFixed())
 		{
 			const TAnchor&anc = anchor.min;
 
@@ -644,7 +668,7 @@ namespace GUIElements
 			else
 				rs |= Set(a.min, context.axis[axis].min + dist);
 		}
-		if (anchor.max.IsActive())
+		if (anchor.max.IsFixed())
 		{
 			const TAnchor&anc = anchor.max;
 
@@ -667,7 +691,7 @@ namespace GUIElements
 		else
 			rs |= Set(a.max,a.min + extend);
 
-		if (!anchor.min.IsActive())
+		if (!anchor.min.IsFixed())
 			rs |= Set(a.min,a.max - extend);
 
 
