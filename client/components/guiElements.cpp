@@ -28,7 +28,8 @@ namespace GUIElements
 	{
 		if (!p || p->components.IsEmpty())
 			return;
-		isActive = true;
+		isEnabled = true;
+		disabledByComponent = false;
 		distanceFromReference = distance;
 		foreach (p->components,c)
 			references.Append(*c);
@@ -54,7 +55,7 @@ namespace GUIElements
 			float lowest = std::numeric_limits<float>::max();
 			foreach (components,c)
 			{
-				if ((*c)->anchorConfig.Bottom().isActive)
+				if ((*c)->anchorConfig.Bottom().IsActive())
 					continue;
 				lowest = std::min(lowest, (*c)->GetLocation().y.min);
 			}
@@ -117,39 +118,6 @@ namespace GUIElements
 		if (this->sizeVersion == windowResolutionVersion)
 			return false;
 		return UpdateHeight();
-	}
-
-
-	bool		TextField::UpdateHeight()
-	{
-		textout.pushState();
-		textout.scale(textZoom*zoom,textZoom*zoom);
-
-		wrappedText.Clear();
-		Array<String>	wrapped;
-		for (const String&raw : rawText)
-		{
-			wrapf(raw,rect.width()*0.9f,CharWidth,wrapped);
-			wrappedText.MoveAppend(wrapped);
-		}
-		lineAt.SetSize(wrappedText.Count());
-		float lineHeight = textout.getScaledHeight();
-		float y = -lineHeight*(extraSpacing);
-		for (index_t i = 0; i < lineAt.Count(); i++)
-		{
-			lineAt[i] =
-				float2(
-					alignCenter ? 
-						rect.x.center() - textout.getScaledWidth(wrappedText[i])*0.5f
-						:
-						rect.x.min,
-				y - lineHeight * (i));
-		}
-		float newMin = this->rect.y.max - textout.getScaledHeight() * (float(wrappedText.Count()) + extraSpacing*2.f);
-		bool same = Math::similar(newMin,this->rect.y.min);
-		this->rect.y.min = newMin;
-		textout.popState();
-		return Super::UpdateHeight() || !same;
 	}
 
 
@@ -360,6 +328,71 @@ namespace GUIElements
 
 
 
+	bool		TextField::UpdateHeight()
+	{
+		textout.pushState();
+		textout.scale(textZoom*zoom,textZoom*zoom);
+
+		wrappedText.Clear();
+		Array<String>	wrapped;
+		for (const String&raw : rawText)
+		{
+			wrapf(raw,rect.width()*0.9f,CharWidth,wrapped);
+			wrappedText.MoveAppend(wrapped);
+		}
+		lineAt.SetSize(wrappedText.Count());
+		float lineHeight = textout.getScaledHeight();
+		float y = -lineHeight*(extraSpacing);
+		for (index_t i = 0; i < lineAt.Count(); i++)
+		{
+			lineAt[i] =
+				float2(
+					alignCenter ? 
+						rect.x.center() - textout.getScaledWidth(wrappedText[i])*0.5f
+						:
+						rect.x.min,
+				y - lineHeight * (i));
+		}
+		textHeight = textout.getScaledHeight() * (float(wrappedText.Count()) + extraSpacing*2.f);
+
+		bool changed = false;
+		if (anchorConfig.Top().isEnabled && anchorConfig.Bottom().isEnabled)
+		{
+			if (rect.GetHeigth() >= textHeight)
+			{
+				changed = anchorConfig.Bottom().disabledByComponent;
+				if (changed && anchorsFixed)
+					changed = false;
+				else
+				{
+					anchorConfig.Bottom().disabledByComponent = false;
+					anchorsFixed = true;
+				}
+			}
+			else
+			{
+				changed = !anchorConfig.Bottom().disabledByComponent;
+				if (changed && anchorsFixed)
+					changed = false;
+				else
+				{
+					anchorsFixed = true;
+					anchorConfig.Bottom().disabledByComponent = true;
+				}
+			}
+
+			if (!anchorConfig.Bottom().IsActive())
+				changed |= Set(this->rect.y.min,rect.y.max - textHeight);
+		}
+		else
+			changed |= Set(this->rect.y.min,rect.y.max - textHeight);
+
+		textout.popState();
+		return Super::UpdateHeight() || changed;
+	}
+
+
+
 	/*virtual override*/ void			TextField::Render()
 	{
 		UpdateHeightIfNecessary();
@@ -377,6 +410,7 @@ namespace GUIElements
 
 	void TextField::RenderText(bool lit)
 	{
+		anchorsFixed = false;
 		textout.pushState();
 		textout.scale(textZoom*zoom,textZoom*zoom);
 
@@ -387,6 +421,13 @@ namespace GUIElements
 		//textout.locate(rect.x.min + rect.x.GetExtend()*0.05f,rect.y.max - textout.getScaledHeight()*1.5f);
 		//float lineHeight = textout.getScaledHeight();
 		float top = rect.y.max;
+
+		if (anchorConfig.Top().IsActive() && anchorConfig.Bottom().IsActive())
+		{
+			top = rect.y.center() + textHeight/2.f;
+
+		}
+
 		float4 baseColor;
 		if (IsEnabled())
 			baseColor = (lit ? float4(1) : float4(0.75,0.75,0.75,1));
@@ -406,10 +447,17 @@ namespace GUIElements
 	{
 		if (texture.IsEmpty() || !autoSetHeight)
 			return Super::UpdateHeight();
+
 		Resolution3D res = texture.GetResolution();
 		float2 resf = float2(res.width,res.height);
 
+		float wantHeight = resf.y / float(display.clientHeight());
+
+
+
+
 		float2 size = float2(rect.x.extend(),rect.y.extend());
+		size.y = wantHeight;
 		float2 pixelDim = size & float2(display.clientWidth(),display.clientHeight());
 		float aspect = pixelDim.x / pixelDim.y;
 		float wantAspect = resf.x / resf.y;
@@ -538,10 +586,10 @@ namespace GUIElements
 		TFloatRange<>&a = rect.axis[axis];
 
 		bool rs = false;
-		if (anchor.center.isActive)
+		if (anchor.center.IsActive())
 		{
-			ASSERT__(!anchor.min.isActive);
-			ASSERT__(!anchor.max.isActive);
+			ASSERT__(!anchor.min.IsActive());
+			ASSERT__(!anchor.max.IsActive());
 			const TAnchor&anc = anchor.center;
 			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
 			if (anc.references.IsNotEmpty())
@@ -569,14 +617,14 @@ namespace GUIElements
 			return rs;
 		}
 
-		if (!anchor.min.isActive && !anchor.max.isActive)
+		if (!anchor.min.IsActive() && !anchor.max.IsActive())
 			return false;
 
 
 
 		float extend = a.GetExtend();
 
-		if (anchor.min.isActive)
+		if (anchor.min.IsActive())
 		{
 			const TAnchor&anc = anchor.min;
 
@@ -596,7 +644,7 @@ namespace GUIElements
 			else
 				rs |= Set(a.min, context.axis[axis].min + dist);
 		}
-		if (anchor.max.isActive)
+		if (anchor.max.IsActive())
 		{
 			const TAnchor&anc = anchor.max;
 
@@ -619,7 +667,7 @@ namespace GUIElements
 		else
 			rs |= Set(a.max,a.min + extend);
 
-		if (!anchor.min.isActive)
+		if (!anchor.min.IsActive())
 			rs |= Set(a.min,a.max - extend);
 
 

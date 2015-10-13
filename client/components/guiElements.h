@@ -53,7 +53,7 @@ namespace GUIElements
 
 	struct TAnchor
 	{
-		bool			isActive = false;
+		bool			isEnabled = false, disabledByComponent=false;
 		float			distanceFromReference = 0.f;	//!< Distance to position extreme from closest reference. If no references are set, uses context edge instead.
 		bool			distanceIsRelative = true;	//Indicates that the value stored in @a distanceFromReference should be multiplied with the context extend
 		Buffer0<WComponent>	references;			//!< Zero or more reference components. If none are set, the respective context extreme is used. If more than one are set, the closest is used
@@ -62,20 +62,21 @@ namespace GUIElements
 		{
 			if (!c)
 				return;
-			isActive = true;
+			isEnabled = true;
 			distanceFromReference = distance;
 			references.Append(c);
 			distanceIsRelative = relative;
 		}
 		void			Set(float distance, bool relative=true)
 		{
-			isActive = true;
+			isEnabled = true;
 			distanceFromReference = distance;
 			distanceIsRelative = relative;
 		}
 
 		void			SetAllOf(const PPanel&, float distance, bool relative=true);
 
+		bool			IsActive() const {return isEnabled && !disabledByComponent;}
 	};
 
 
@@ -220,6 +221,8 @@ namespace GUIElements
 		Buffer0<String>	wrappedText;
 		Array<float2>	lineAt;
 		float4			color = float4(1,1,1,1);
+		float			textHeight = 1.f;
+		bool			anchorsFixed = false;
 	protected:
 		void			RenderText(bool lit);
 	public:
