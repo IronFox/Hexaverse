@@ -5,11 +5,33 @@
 		Excavate caves, build stairs into orbit, or just expand around the globe.
 		Survive if you can.
 	</message>
+	<message name='Tutorials' image='tutorials.jpg'>
+		These tutorial messages try to help you take your first steps in the game. Each message will show up only once, and never bother you again.
+		These first messages showed up automatically. Subsequent messages will show only if you press the message button in the lower right corner of the game window.
+		If this button becomes active it means a new tutorial message has been added to explain something related to what you just selected or did.
+	</message>
 	<message name='Servers' image='servers.jpg'>
 		Your first task is to connect to a server. Click on any listed server to attempt connection.
-		All servers detected on your local area network will be listed automatically.
+		All servers detected on your local area network are listed automatically.
 		Remote servers can be added by pressing the 'Add new host...' button. Added servers are persistenly stored and polled periodically until a connection can be established.
 		You can create your own server by executing the provided 'server/server.exe' executable. Edit 'server/config/server.ini' to customize your server.
+	</message>
+	<message name='Areas' image='areas.png'>
+		What you are seeing now is the planet you are trying to conquer.
+		The planetary display attempts to distinguish three primary areas:
+		1: Undiscovered terrain
+		2: Discovered and currently visible terrain
+		3: Discovered but currently out of range
+		Everything you are not currently observing (everything not in 2) may change without you knowing. Half the trick of winning %PRODUCT_NAME% is knowing what you don't know.
+	</message>
+	<message name='Controls'>
+		Basic controls:
+		Use ASDW to rotate the camera around your current focus point.
+		Holding the right or middle button while dragging the mouse allows you to rotate the focus point around the planet.
+		The up and down arrow keys, as well as the mouse wheel can be used to zoom in or out.
+		Left clicking selects things, but you probably already knew that.
+		Right clicking moves selected units.
+		Also: the space key is your friend! It will quickly iterate through all units that require immediate attention.
 	</message>
 	<message name='Show Resources' image='resources.png'>
 		Resources are shown as vertical bars atop the terrain.
@@ -39,7 +61,7 @@
 	<message name='Terraformer' image='terraformer.png'>
 		<!--Terraformers can construct every building type in the game, assuming they have enough %MINERALS%(minerals) in their storage.-->
 		Terraformers can construct every building type in the game, assuming they have sufficient supply of %MINERALS%(minerals).
-		They can also dig tunnels, build roads, walls, or chains of connectors. This makes them The most versatile and valuable vehicle in %PRODUCT_NAME%.
+		They can also dig tunnels, build roads, or walls. This makes them The most versatile and valuable vehicle in %PRODUCT_NAME%.
 		Do not risk them lightly.
 		If they have insufficient supply of %MINERALS%, the active command will be halted until enough resources are again available.
 		<!--If they run out of %MINERALS%, they can restock from every owned structure, connector, or even vehicle in the vicinity.-->
@@ -53,7 +75,7 @@
 		Note that pathfinding may fail if the destination is too far away, or cannot be reached by the selected vehicle due to other constraints.
 		Any issued motion will be executed as possible once the next round is computed. Prior to that you can undo a command by clicking on the respective vehicle's Undo or Abort buttons.
 	</message>
-	<message name='End Round' image='endround.png'>
+	<message name='End Round' image='End Round.png'>
 		%PRODUCT_NAME% is round based. Or rather, 'phase' based.
 		Chances are, you are (or just were) in the command phase, which allows you to issue commands to units you own. While you do this, all other players will do the same.
 		Once you are done you should click the 'End Round' button so that the server can process the next round. Only if all players have requested a new round, this process can start. A round timer may also be active which will eventually force this to happen.
@@ -77,11 +99,13 @@
 	</message>
 	<message name='Mine' image='mine.png'>
 		Mines serve a crucial role in providing your compound with resources. Mines require %ENERGY%(energy) to operate, and provide whatever resources are available at the respective location.
-		You should directly or indirectly connect them with a Generator.
+		In connector-less mode, resources are magically transferred by invisible elves, so you need not worry about building connectors. But you will need Generators to provide the necessary %ENERGY%
+		<!--You should directly or indirectly connect them with a Generator.-->
 	</message>
 	<message name='Generator' image='generator.jpg'>
 		Generators serve a crucial role in providing your structure networks with %ENERGY%(energy), while consuming %FUEL%(fuel). Mines-as well as most other buildings-require %ENERGY% to operate.
-		You should directly or indirectly connect them with a Mine that provides %FUEL%.
+		In connector-less mode, resources are magically transferred by invisible elves, so you need not worry about building connectors. But you will need Mines to provide the necessary %FUEL%
+		<!--You should directly or indirectly connect them with a Mine that provides %FUEL%.-->
 	</message>
 	<message name='Vehicle Plant' image='vehiclePlant.png'>
 		Vehicle Plants allow the manufacturing of vehicles. To operate they require %ENERGY%(energy) and %MINERALS%(minerals).
@@ -91,13 +115,6 @@
 	<message name='Attack' image='attack.png'>
 		Attacking a destination can be done by right-clicking at a hostile unit or explicitly by using the 'Attack' button. When doing so, a red shape indicates the reachable area. Note that this area is smaller than the geometric attack umbrella because it does not include the explosion radius.
 		Also note that some locations colored in red may not actually be reachable, if there is no unobstructed trajectory to that destination. In this case intermediate explosions may occur.
-	</message>
-	<message name='Areas' image='areas.png'>
-		The planetary display attempts to distinguish three primary areas:
-		1: Undiscovered terrain
-		2: Discovered and currently visible terrain
-		3: Discovered but currently out of range
-		Everything you are not currently observing (everything not in 2) may change without you knowing. Half the trick of winning %PRODUCT_NAME% is knowing what you don't know.
 	</message>
 	<message name='Uplink Traffic' image='uplinkTraffic.jpg'>
 		All active units generate control traffic to the governing entity (that's you).

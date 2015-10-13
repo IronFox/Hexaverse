@@ -203,7 +203,10 @@ namespace World
 					if (dat.outdated)
 					{
 						if (Network::client.IsConnected())
+						{
 							Tutorial::ShowMessage("Areas");
+							Tutorial::ShowMessage("Controls");
+						}
 
 						dat.outdated = false;
 
