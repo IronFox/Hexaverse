@@ -331,7 +331,8 @@ namespace Dialog
 			DumpMe();
 		}
 
-		if (tut && Detail::pendingTutorials.IsNotEmpty() && Detail::visibleWindows.IsEmpty())
+		if (tut && Detail::pendingTutorials.IsNotEmpty() && !IsModal())
+		//Detail::visibleDialogs.IsEmpty())
 		{
 			ShowNextTutorial();
 		}
