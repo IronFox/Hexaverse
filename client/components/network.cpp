@@ -188,10 +188,21 @@ namespace Network
 
 		}
 
-		void	TryRemoveHost(const String&url)
+		void	ListNonAutoAttempts(Buffer0<String>&outList)
+		{
+			outList.Clear();
+			foreach (attempts,a)
+			{
+				if (!(*a)->autoAttempt)
+					outList << (*a)->url;
+			}
+		}
+
+
+		bool	TryRemoveHost(const String&url)
 		{
 			if (client.IsAttemptingToConnect() || client.IsConnected())
-				return;
+				return false;
 			foreach (attempts,a)
 			{
 				if ((*a)->url == url)
@@ -200,9 +211,10 @@ namespace Network
 					waste << *a;
 					attempts.erase(a);
 					Dialog::SignalSituationChange();
-					return;
+					return true;
 				}
 			}
+			return false;
 		}
 
 
@@ -252,11 +264,11 @@ namespace Network
 		}
 
 
-		void	RegisterNewHost(const String&host, bool probablyRightVersion, bool automaticallyDiscovered)
+		bool	RegisterNewHost(const String&host, bool probablyRightVersion, bool automaticallyDiscovered)
 		{
 			foreach (attempts,a)
 				if ((*a)->url == host)
-					return;	//already there
+					return false;	//already there
 			PHostContactAttempt&attempt = attempts.Append();
 			attempt.reset(new HostContactAttempt());
 			attempt->url = host;
@@ -264,6 +276,7 @@ namespace Network
 			attempt->autoAttempt = automaticallyDiscovered;
 			
 			attempt->start();
+			return true;
 		}
 
 
