@@ -29,6 +29,75 @@ namespace Test
 	}
 
 
+
+
+	/*static*/ ServerClient	*ServerClient::executingInstance = nullptr;
+
+	/*static*/ void		ServerClient::OnMessage(String&msg, TCP::Peer&peer)
+	{
+		const bool isClient = &peer == &executingInstance->client;
+		if (isClient)
+			executingInstance->messageChannel.SendTo(peer,msg);
+		else
+			executingInstance->quit = true;
+	}
+
+
+	/*virtual override*/ void	ServerClient::Run(Random&random)
+	{
+
+		executingInstance = this;
+
+		client.InstallChannel(messageChannel);
+		server.InstallChannel(messageChannel);
+
+		server.SetAsync(false);
+		client.SetAsync(false);
+
+		for (index_t i = 0; i < 50; i++)
+		{
+			std::cout << " starting test iteration "<<i<<"/"<<10<<std::endl;
+			quit = false;
+			USHORT port;
+			ASSERT__(server.StartService(0,true,&port));
+
+			ASSERT__(client.Connect("localhost:"+String(port)));
+
+			ASSERT__(messageChannel.SendTo(client,"hello"));
+
+			Timer::Time t0 = timer.Now();
+			for (;;)
+			{
+				server.Resolve();
+				client.Resolve();
+
+
+				if (!client.IsAttemptingToConnect() && !client.IsConnected())
+				{
+					FATAL__("connection lost");
+				}
+
+				if (quit)
+					break;
+
+				float sec = timer.GetSecondsSince(t0);
+				if (sec > 10)
+				{
+					FATAL__("Transmission failed for "+String(sec)+" seconds");
+				}
+				Sleep(100);
+			}
+
+			client.Disconnect();
+			server.EndService();
+
+		}
+
+
+
+	}
+
+
 	/*virtual override*/ void	Serialization::Run(Random&random)
 	{
 		for (index_t i = 0; i < 3000; i++)

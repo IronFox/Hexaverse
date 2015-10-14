@@ -442,6 +442,18 @@ namespace Objects
 
 
 	
+	void	GlobalCmd::SeeThroughUp(int)
+	{
+		if (Grid::SeeThrough::GetFocusPoint().height < Grid::CellStack::HalfRange)
+			Grid::SeeThrough::Update(true, Grid::SeeThrough::LocateCamera() + 1);
+	}
+	void	GlobalCmd::SeeThroughDown(int)
+	{
+		if (Grid::SeeThrough::GetFocusPoint().height > -Grid::CellStack::HalfRange)
+			Grid::SeeThrough::Update(true, Grid::SeeThrough::LocateCamera()-1);
+	}
+
+
 	void	GlobalCmd::ToggleSeeThrough(int)
 	{
 		if (selectedEntity)
@@ -462,6 +474,11 @@ namespace Objects
 	{
 		return Grid::SeeThrough::IsEnabled();
 	}
+	bool	GlobalCmd::SeeThroughIsActive2(int, bool)
+	{
+		return Grid::SeeThrough::IsEnabled();
+	}
+
 
 
 	void	GlobalCmd::ToggleObjectView(int)

@@ -24,15 +24,44 @@ namespace GUIElements
 	PComponent	mousePressedComponent;
 
 
-	void			TAnchor::SetAllOf(const PPanel&p, float distance, bool relative/*=true*/)
+	void			TAnchor::SetAllOf(const PPanel&p, float distance, distanceType_t dtype/*=RelativeToParentComponent*/)
 	{
 		if (!p || p->components.IsEmpty())
 			return;
-		isActive = true;
+		type = Fixed;
 		distanceFromReference = distance;
 		foreach (p->components,c)
 			references.Append(*c);
-		distanceIsRelative = relative;
+		distanceType = dtype;
+	}
+
+	void			TAnchor::SetLastOf(const PPanel&p, float distance, distanceType_t dtype/*=RelativeToParentComponent*/)
+	{
+		if (!p || p->components.IsEmpty())
+			return;
+		type = Fixed;
+		distanceFromReference = distance;
+		if (p->components.IsNotEmpty())
+			references.Append(p->components.last());
+		distanceType = dtype;
+	}
+
+
+	float			TAnchor::ToScreenDistance(float parentSize, bool isHorizontal) const
+	{
+		switch (distanceType)
+		{
+			case RelativeToParentComponent:
+				return distanceFromReference * parentSize;
+
+			case RelativeToScreen:
+				return distanceFromReference;
+			case AbsolutePixels:
+				return distanceFromReference / float(isHorizontal ? display.clientWidth() : display.clientHeight());
+		}
+		FATAL__("Unexpected distance type");
+		return 0.f;
+
 	}
 
 
@@ -54,9 +83,28 @@ namespace GUIElements
 			float lowest = std::numeric_limits<float>::max();
 			foreach (components,c)
 			{
-				if ((*c)->anchorConfig.Bottom().isActive)
-					continue;
-				lowest = std::min(lowest, (*c)->GetLocation().y.min);
+				const auto&bottom = (*c)->anchorConfig.Bottom();
+				const auto&top = (*c)->anchorConfig.Top();
+				switch (bottom.type)
+				{
+					case TAnchor::Disabled:
+						lowest = std::min(lowest, (*c)->GetLocation().y.min);
+					break;
+					case TAnchor::Fixed:
+						if (bottom.references.IsEmpty() && top.type == TAnchor::Disabled)
+						{
+							float dist = bottom.distanceFromReference;
+							if (bottom.distanceType != TAnchor::RelativeToParentComponent)
+								lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.extend() - bottom.ToScreenDistance(0.f,false));
+						}
+					break;
+					case TAnchor::Auto:
+						if (top.type == TAnchor::Auto)
+						{
+							lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.extend());
+						}
+					break;
+				}
 			}
 			rs |= Set(rect.y.min,lowest - autoHeightSpacing);
 		}
@@ -120,39 +168,6 @@ namespace GUIElements
 	}
 
 
-	bool		TextField::UpdateHeight()
-	{
-		textout.pushState();
-		textout.scale(textZoom*zoom,textZoom*zoom);
-
-		wrappedText.Clear();
-		Array<String>	wrapped;
-		for (const String&raw : rawText)
-		{
-			wrapf(raw,rect.width()*0.9f,CharWidth,wrapped);
-			wrappedText.MoveAppend(wrapped);
-		}
-		lineAt.SetSize(wrappedText.Count());
-		float lineHeight = textout.getScaledHeight();
-		float y = -lineHeight*(extraSpacing);
-		for (index_t i = 0; i < lineAt.Count(); i++)
-		{
-			lineAt[i] =
-				float2(
-					alignCenter ? 
-						rect.x.center() - textout.getScaledWidth(wrappedText[i])*0.5f
-						:
-						rect.x.min,
-				y - lineHeight * (i));
-		}
-		float newMin = this->rect.y.max - textout.getScaledHeight() * (float(wrappedText.Count()) + extraSpacing*2.f);
-		bool same = Math::similar(newMin,this->rect.y.min);
-		this->rect.y.min = newMin;
-		textout.popState();
-		return Super::UpdateHeight() || !same;
-	}
-
-
 
 	/*virtual override*/ PComponent	Panel::HandleMouseDown()
 	{
@@ -166,15 +181,15 @@ namespace GUIElements
 	}
 
 
-	void			Panel::AnchorBelowPrevious(const PComponent&newComponent, float distanceFromSides /*= 0.015f*/,  float distanceToPrevious/* = 0.015f*/, bool distanceIsRelative/*=false*/)
+	void			Panel::AnchorBelowPrevious(const PComponent&newComponent, float distanceFromSides /*= 0.015f*/,  float distanceToPrevious/* = 0.015f*/, TAnchor::distanceType_t distanceType/*=TAnchor::RelativeToScreen*/)
 	{
 		if (components.IsNotEmpty())
-			newComponent->anchorConfig.Top().Set(components.last(), distanceToPrevious,distanceIsRelative);
+			newComponent->anchorConfig.Top().Set(components.last(), distanceToPrevious,distanceType);
 		else
-			newComponent->anchorConfig.Top().Set(distanceToPrevious,distanceIsRelative);
+			newComponent->anchorConfig.Top().Set(distanceToPrevious,distanceType);
 		
-		newComponent->anchorConfig.Left().Set(distanceFromSides,distanceIsRelative);
-		newComponent->anchorConfig.Right().Set(distanceFromSides,distanceIsRelative);
+		newComponent->anchorConfig.Left().Set(distanceFromSides,distanceType);
+		newComponent->anchorConfig.Right().Set(distanceFromSides,distanceType);
 		components.Append(newComponent);
 	}
 
@@ -270,6 +285,14 @@ namespace GUIElements
 		Engine::input.bind(Key::Backspace,[](){Engine::keyboard.dropLastCharacter(); if (onChange) onChange();});
 		Engine::input.bind(Key::Return,onDone);
 		Engine::input.bind(Key::Enter,onDone);
+		Engine::input.bindCtrl(Key::V,[](){
+			char buffer[0x100];
+			memset(buffer,0,sizeof(buffer));
+			if (System::getFromClipboardIfText(Engine::context.getWindow(),buffer,sizeof(buffer)-1))
+			{
+				Engine::keyboard.FilterAppend(buffer);	
+			}
+		});
 
 		Engine::keyboard.fillInput(backup);
 		Engine::keyboard.filter(allowed.c_str());
@@ -359,6 +382,74 @@ namespace GUIElements
 	}
 
 
+	bool			TextField::UpdateIdealWidth()
+	{
+		textout.pushState();
+		textout.scale(textZoom*zoom,textZoom*zoom);
+		float w = 0.f;
+
+		foreach (rawText,t)
+		{
+			float w1 = 0.f;
+			foreach (*t,c)
+				w1 += CharWidth(*c);
+			w = std::max(w,w1);
+		}
+
+		bool changed = Set(rect.x.max, rect.x.min + w / 0.85f);
+
+		textout.popState();
+		return changed;
+	}
+
+	void			TextField::SetIdealWidth()
+	{
+
+		if (UpdateIdealWidth())
+			InvalidateSize();
+	}
+
+
+
+
+	bool		TextField::UpdateHeight()
+	{
+		bool changed = false;
+		if (widthLockedToIdeal)
+			changed = UpdateIdealWidth();
+
+		textout.pushState();
+		textout.scale(textZoom*zoom,textZoom*zoom);
+
+		wrappedText.Clear();
+		Array<String>	wrapped;
+		for (const String&raw : rawText)
+		{
+			wrapf(raw,rect.width()*0.9f,CharWidth,wrapped);
+			wrappedText.MoveAppend(wrapped);
+		}
+		lineAt.SetSize(wrappedText.Count());
+		float lineHeight = textout.getScaledHeight();
+		float y = -lineHeight*(extraSpacing);
+		for (index_t i = 0; i < lineAt.Count(); i++)
+		{
+			lineAt[i] =
+				float2(
+					alignCenter ? 
+						rect.x.center() - textout.getScaledWidth(wrappedText[i])*0.5f
+						:
+						rect.x.min,
+				y - lineHeight * (i));
+		}
+		textHeight = textout.getScaledHeight() * (float(wrappedText.Count()) + extraSpacing*2.f);
+
+		changed |= Set(this->rect.y.min,rect.y.max - textHeight);
+
+		textout.popState();
+		return Super::UpdateHeight() || changed;
+	}
+
+
 
 	/*virtual override*/ void			TextField::Render()
 	{
@@ -387,6 +478,8 @@ namespace GUIElements
 		//textout.locate(rect.x.min + rect.x.GetExtend()*0.05f,rect.y.max - textout.getScaledHeight()*1.5f);
 		//float lineHeight = textout.getScaledHeight();
 		float top = rect.y.max;
+
+
 		float4 baseColor;
 		if (IsEnabled())
 			baseColor = (lit ? float4(1) : float4(0.75,0.75,0.75,1));
@@ -406,10 +499,17 @@ namespace GUIElements
 	{
 		if (texture.IsEmpty() || !autoSetHeight)
 			return Super::UpdateHeight();
+
 		Resolution3D res = texture.GetResolution();
 		float2 resf = float2(res.width,res.height);
 
+		float wantHeight = resf.y / float(display.clientHeight());
+
+
+
+
 		float2 size = float2(rect.x.extend(),rect.y.extend());
+		size.y = wantHeight;
 		float2 pixelDim = size & float2(display.clientWidth(),display.clientHeight());
 		float aspect = pixelDim.x / pixelDim.y;
 		float wantAspect = resf.x / resf.y;
@@ -538,49 +638,91 @@ namespace GUIElements
 		TFloatRange<>&a = rect.axis[axis];
 
 		bool rs = false;
-		if (anchor.center.isActive)
+		//if (anchor.center.IsActive())
+		//{
+		//	ASSERT__(!anchor.min.IsActive());
+		//	ASSERT__(!anchor.max.IsActive());
+		//	const TAnchor&anc = anchor.center;
+		//	const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
+		//	if (anc.references.IsNotEmpty())
+		//	{
+		//		float avg = 0.f;
+		//		count_t cnt = 0;
+		//		foreach (anc.references,ref0)
+		//		{
+		//			PComponent ref = ref0->lock();
+		//			if (ref)
+		//			{
+		//				avg += ref->GetLocation().axis[axis].center();
+		//				cnt++;
+		//			}
+		//		}
+		//		if (cnt > 0)
+		//		{
+		//			avg /= cnt;
+		//			rs |= SetCenter(a, avg + dist);
+		//		}
+		//	}
+		//	else
+		//		rs |= SetCenter(a, context.axis[axis].center() + dist);
+
+		//	return rs;
+		//}
+
+		if (anchor.min.IsInactive() && anchor.max.IsInactive())
+			return false;
+		if (anchor.min.IsAuto() && anchor.max.IsAuto())
 		{
-			ASSERT__(!anchor.min.isActive);
-			ASSERT__(!anchor.max.isActive);
-			const TAnchor&anc = anchor.center;
-			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
-			if (anc.references.IsNotEmpty())
 			{
-				float avg = 0.f;
-				count_t cnt = 0;
-				foreach (anc.references,ref0)
+				const TAnchor&anc = anchor.min;
+
+				if (anc.references.IsNotEmpty())
 				{
-					PComponent ref = ref0->lock();
-					if (ref)
-					{
-						avg += ref->GetLocation().axis[axis].center();
-						cnt++;
-					}
-				}
-				if (cnt > 0)
-				{
-					avg /= cnt;
-					rs |= SetCenter(a, avg + dist);
+					FATAL__("Auto not applicable on set references");
+					return false;
+					//float highest = -std::numeric_limits<float>::max();
+					//foreach (anc.references,ref0)
+					//{
+					//	PComponent ref = ref0->lock();
+					//	highest = std::max(highest,ref->GetLocation().axis[axis].max);
+					//}
+					//if (highest == -std::numeric_limits<float>::max())
+					//	return false;
+					//bottom = highest;
 				}
 			}
-			else
-				rs |= SetCenter(a, context.axis[axis].center() + dist);
+			{
+				const TAnchor&anc = anchor.max;
 
-			return rs;
+				if (anc.references.IsNotEmpty())
+				{
+					FATAL__("Auto not applicable on set references");
+					return false;
+				}
+			}
+			const TFloatRange<>&ctx = context.axis[axis];
+			float ext = a.GetExtend();
+			float center = ctx.GetCenter();
+			float top = std::min(ctx.max,center + ext*0.5f);
+			bool changed = Set(a.max,top);
+			a.min = a.max - ext;
+			return changed;
 		}
 
-		if (!anchor.min.isActive && !anchor.max.isActive)
+		if (anchor.min.IsAuto() || anchor.max.IsAuto())
+		{
+			FATAL__("Both top and bottom anchors must be set to auto");
 			return false;
-
+		}
 
 
 		float extend = a.GetExtend();
 
-		if (anchor.min.isActive)
+		if (anchor.min.IsFixed())
 		{
 			const TAnchor&anc = anchor.min;
 
-			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
+			const float dist = anc.ToScreenDistance(context.axis[axis].extend(),axis==0);
 
 			if (anc.references.IsNotEmpty())
 			{
@@ -596,11 +738,12 @@ namespace GUIElements
 			else
 				rs |= Set(a.min, context.axis[axis].min + dist);
 		}
-		if (anchor.max.isActive)
+		if (anchor.max.IsFixed())
 		{
 			const TAnchor&anc = anchor.max;
 
-			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
+			const float dist = anc.ToScreenDistance(context.axis[axis].extend(),axis==0);
+//			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
 
 			if (anc.references.IsNotEmpty())
 			{
@@ -619,18 +762,20 @@ namespace GUIElements
 		else
 			rs |= Set(a.max,a.min + extend);
 
-		if (!anchor.min.isActive)
+		if (!anchor.min.IsFixed())
 			rs |= Set(a.min,a.max - extend);
 
 
 		return rs;
 	}
 
-	void			Component::SetCenteredWidth(float w, bool relative)
+	void			Component::SetCenteredWidth(float w, TAnchor::distanceType_t type)
 	{
 		float extra = 1.f - w;
-		anchorConfig.Left().Set(extra*0.5f,relative);
-		anchorConfig.Right().Set(extra*0.5f,relative);
+		if (type == TAnchor::AbsolutePixels)
+			extra = float(display.clientWidth()) - w;
+		anchorConfig.Left().Set(extra*0.5f,type);
+		anchorConfig.Right().Set(extra*0.5f,type);
 	}
 
 

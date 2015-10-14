@@ -102,7 +102,7 @@ namespace Dialog
 				confirmButton.reset(new GUIElements::Button());
 				confirmButton->anchorConfig.Left().Set(0.f);
 				confirmButton->anchorConfig.Right().Set(0.f);
-				confirmButton->anchorConfig.Top().Set(textPanel,0.015f,false);
+				confirmButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
 				dialog->components << confirmButton;
 			}
 			if (componentFlags & ComponentFlags::CancelButton)
@@ -113,7 +113,7 @@ namespace Dialog
 					confirmButton->anchorConfig.Right().Set(0.505f);
 				cancelButton->anchorConfig.Left().Set(0.505f);
 				cancelButton->anchorConfig.Right().Set(0.f);
-				cancelButton->anchorConfig.Top().Set(textPanel,0.015f,false);
+				cancelButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
 				dialog->components << cancelButton;
 
 			}
@@ -130,10 +130,13 @@ namespace Dialog
 				imageField->anchorConfig.Top().Set(0.05f);
 				if (confirmButton)
 				{
-					imageField->autoSetHeight = false;
-					imageField->anchorConfig.Bottom().Set(confirmButton,0.03f,false);
-					//imageField->autoSetWidth = true;
+					//imageField->autoSetHeight = false;
+					//imageField->anchorConfig.Bottom().Set(confirmButton,0.03f,false);
+					imageField->autoSetHeight = true;
 				}
+				textField->anchorConfig.Bottom().SetAuto();
+				textField->anchorConfig.Top().SetAuto();
+				//textField->anchorConfig.axis[1].center.Set(imageField,0.f);
 	//			imageField->SetLocation(Rect<>(0,1,0.25,0.75f));
 				//textField->rect.Set(0.405f,0.25f,0.75f,0.75f);
 				//imageField->rect.Set(0.25f,0.25f,0.4f,0.75f);
@@ -331,7 +334,8 @@ namespace Dialog
 			DumpMe();
 		}
 
-		if (tut && Detail::pendingTutorials.IsNotEmpty() && Detail::visibleWindows.IsEmpty())
+		if (tut && Detail::pendingTutorials.IsNotEmpty() && !IsModal())
+		//Detail::visibleDialogs.IsEmpty())
 		{
 			ShowNextTutorial();
 		}
@@ -405,6 +409,8 @@ namespace Dialog
 		d->userInput->SetCurrent(initial);
 		d->userInput->SetAllowed(allowChars);
 
+		d->confirmButton->DetectEnabledState();
+
 		d->ReLayout();
 		return d;
 	}
@@ -446,8 +452,8 @@ namespace Dialog
 		if (index == Detail::visibleWindows.Count())
 		{
 			window->Deactivate();
-			if (Detail::visibleDialogs.IsNotEmpty())
-				Detail::visibleDialogs.last()->Activate();
+			if (Detail::visibleWindows.IsNotEmpty())
+				Detail::visibleWindows.last()->Activate();
 		}
 
 
@@ -465,7 +471,12 @@ namespace Dialog
 	void	Show(const GUIElements::PWindow&window)
 	{
 		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.last() == window)
+		{
+			DBG_ASSERT__(window->IsActive());
+			if (!window->IsActive())
+				window->Activate();
 			return;
+		}
 		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.first() == window)
 		//	return;
 		Detail::visibleWindows.FindAndErase(window);
@@ -487,7 +498,15 @@ namespace Dialog
 	void	ShowBottom(const GUIElements::PWindow&window)
 	{
 		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.first() == window)
+		{
+			if (Detail::visibleWindows.Count() == 1)
+			{
+				DBG_ASSERT__(window->IsActive());
+				if (!window->IsActive())
+					window->Activate();
+			}
 			return;
+		}
 		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.first() == window)
 		//	return;
 
@@ -848,7 +867,7 @@ namespace Dialog
 		loginMenu->canBeImplicitlyClosed = false;	//once visible, must explicitly close
 
 		serverChoice.reset(new GUIElements::Window());
-		serverChoice->SetCenteredWidth(0.9f,false);
+		serverChoice->SetCenteredWidth(0.9f,GUIElements::TAnchor::RelativeToScreen);
 		serverChoice->canBeImplicitlyClosed = false;
 
 

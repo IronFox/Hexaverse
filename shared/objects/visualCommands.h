@@ -397,7 +397,10 @@ namespace Objects
 	namespace GlobalCmd
 	{
 		void	ToggleSeeThrough(int);
+		void	SeeThroughUp(int);
+		void	SeeThroughDown(int);
 		bool	SeeThroughIsActive(int);
+		bool	SeeThroughIsActive2(int,bool);
 		void	ToggleObjectView(int);
 		bool	ObjectsAreHidden(int);
 
