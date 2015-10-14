@@ -59,6 +59,8 @@
 #include "components/atmosphere.h"
 #include "components/guiHostList.h"
 
+#include "resource.h"
+
 /**
 The following DWORD causes Nvidia Optimus to select the high performance GPU.
 Don't change the name, value, or dllexport-declaration ("C", so it shows up as that name in the export and not some mangled thing)
@@ -3642,7 +3644,9 @@ int main( int argc, const char* argv[])
 				#ifdef _DEBUG
 					" (DEBUG)"
 				#endif
-				,Resolution(1280,800),onWindowResize);
+				,Resolution(1280,800),onWindowResize
+				,Engine::DisplayConfig::Icon(IDI_CLIENT)
+				 );
 
 			display.ScanShaderHeader("shaders");
 
