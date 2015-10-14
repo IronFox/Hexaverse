@@ -204,7 +204,7 @@ namespace Receiver
 					)
 				)
 		#else
-			if (faction || State::tokenMap.Query(p.factionToken,faction))
+			if (faction || State::tokenMap.Query(response.factionToken,faction))
 		#endif
 		{
 			#ifdef _DEBUG
