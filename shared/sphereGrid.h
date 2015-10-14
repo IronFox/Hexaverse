@@ -361,7 +361,9 @@ namespace Grid
 				UINT	GetIncreasedSubmergence() const;
 				float	GetStructureFactor() const	{ return typeStructureFactor[content]; }
 				float3	GetBaseColor() const;
+
 			#endif
+			static void	ToneInvisibleCellColor(TVec3<>&color);
 		};
 
 		Cell			volumeCell[Range];		//All contained cells
@@ -517,7 +519,7 @@ namespace Grid
 			bool		empty = true;
 
 			/**/		TechInfo()	{};
-			/**/		TechInfo(const Technites::Faction*f, const Technites::Technite*t, bool isSet);
+			/**/		TechInfo(const Technites::Faction*f, const Technites::Technite*t, BYTE tfactionID, bool isSet, bool isVisible);
 			/**/		TechInfo(const CellStack&stack, index_t stackIndex, UINT layer);
 			/**/		TechInfo(const CellStack*stacks, index_t stackIndex, UINT layer)	{*this = TechInfo(stacks[stackIndex],stackIndex,layer);};
 		};

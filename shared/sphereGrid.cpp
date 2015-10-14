@@ -1964,6 +1964,23 @@ namespace Grid
 		}
 
 
+		/*static*/ void	CellStack::Cell::ToneInvisibleCellColor(TVec3<>&color)
+		{
+			if (color.r < 0)
+			{
+				color.r = -(1.f - (1.f + color.r) / 4.f);
+				color.g = -(1.f - (1.f + color.g) / 4.f);
+				color.b = -(1.f - (1.f + color.b) / 4.f);
+			}
+			else
+			{
+				color.r = 1.f - (1.f - color.r) / 4.f;
+				color.g = 1.f - (1.f - color.g) / 4.f;
+				color.b = 1.f - (1.f - color.b) / 4.f;
+			}
+
+		}
+
 
 		float3	CellStack::Cell::GetBaseColor() const
 		{
@@ -1978,19 +1995,8 @@ namespace Grid
 			#ifndef DEBUG_HIDE_SENSORY
 				if (visible <= 0)
 				{
+					ToneInvisibleCellColor(color);
 					//float avg = (color.r + color.g + color.b) / 3.f * 0.5f + 0.5f;
-					if (color.r < 0)
-					{
-						color.r = -(1.f - (1.f + color.r) / 4.f);
-						color.g = -(1.f - (1.f + color.g) / 4.f);
-						color.b = -(1.f - (1.f + color.b) / 4.f);
-					}
-					else
-					{
-						color.r = 1.f - (1.f - color.r) / 4.f;
-						color.g = 1.f - (1.f - color.g) / 4.f;
-						color.b = 1.f - (1.f - color.b) / 4.f;
-					}
 					//color.r = (color.r + typeColor[0].r*2) / 3.f;
 					//color.g = (color.g + typeColor[0].g*2) / 3.f;
 					//color.b = (color.b + typeColor[0].b*2) / 3.f;
@@ -2979,10 +2985,13 @@ namespace Grid
 		
 		}
 
-		TechInfo::TechInfo(const Technites::Faction*f, const Technites::Technite*t, bool isSet) : color(f&&t ? f->color : float3(0.5f)) , empty(!isSet)
+		TechInfo::TechInfo(const Technites::Faction*f, const Technites::Technite*t, BYTE tfactionID, bool isSet, bool isVisible) : color(Technites::Technite::factionColor[tfactionID]) , empty(!isSet)
 		{
 			if (t)
 				t->CompileTendency(direction,activity,color);
+			if (isSet && !isVisible)
+				CellStack::Cell::ToneInvisibleCellColor(color);
+
 		}
 
 		TechInfo::TechInfo(const CellStack&stack, index_t stackIndex, UINT layer)
@@ -3011,7 +3020,7 @@ namespace Grid
 					}
 				}
 			}
-			*this = TechInfo(f,t,isTechnite);
+			*this = TechInfo(f,t,factionID,isTechnite,vc.visible > 0);
 		}
 
 

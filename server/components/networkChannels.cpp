@@ -73,6 +73,7 @@ namespace Channels
 
 	TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>							unitLimits;
 	TCP::ObjectSender<Protocol::TechniteChunk, Protocol::ChannelID::TechniteChunk>					techniteChunk;
+	TCP::ObjectSender<Protocol::TechniteColors, Protocol::ChannelID::TechniteColors>				techniteColors;
 
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
 
@@ -342,7 +343,7 @@ namespace Receiver
 				client->SendProgressUpdate(true);
 			}
 		}
-
+		bool colorsSent = false;
 		if (newFaction)
 		{
 			if (response.startFactionTypes == Protocol::FactionType::ContinueOnly)
@@ -372,6 +373,15 @@ namespace Receiver
 						LogEvent(EventType::SessionRelated, peer, "Cannot create any more technite factions on this server.");
 						return;
 					}
+
+					Protocol::TechniteColors	colorVector;
+					colorVector.SetSize(0xFF);
+					for (index_t i = 0; i < 0xFF; i++)
+					{
+						colorVector[i] = byte3( Technites::Technite::factionColor[i]*255.f );
+					}
+					Channels::techniteColors.SendTo(State::server,colorVector,1);
+					colorsSent = true;
 				}
 				else
 				{
@@ -391,6 +401,18 @@ namespace Receiver
 		{
 
 		}
+
+		if (!colorsSent)
+		{
+			Protocol::TechniteColors	colorVector;
+			colorVector.SetSize(0xFF);
+			for (index_t i = 0; i < 0xFF; i++)
+			{
+				colorVector[i] = byte3( Technites::Technite::factionColor[i]*255.f );
+			}
+			Channels::techniteColors.SendTo(peer,colorVector,1);
+		}
+
 		State::activePlayers << client;
 		State::playerMap.Set(client->faction,client);
 		client->wantNewRound = false;

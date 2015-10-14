@@ -56,6 +56,7 @@ namespace Technites
 
 		static const BYTE	MatterYield[NumGroundTypes];
 		static const BYTE	DegradeTo[NumGroundTypes];
+		static float3		factionColor[0xFF];
 
 
 		static bool			HeldBy(Grid::Content content)
@@ -454,7 +455,9 @@ namespace Technites
 
 		Buffer<Technite>		technites;
 
-		float3					color = float3(0.2,0.3,0.9);	//!< Color of technites in the world grid. Unique, red for testing purposes
+		#ifndef CLIENT
+			float3					color;// = float3(0.2,0.3,0.9);
+		#endif
 
 		BroadTechniteMap		techniteMap;
 
@@ -466,7 +469,7 @@ namespace Technites
 
 
 		static PFaction			Create(bool copyInitialWorld = false);
-		static PFaction			CreateFromFile(BYTE gridID, bool copyInitialWorld = false);
+		static PFaction			CreateFromFile(const TUniqueID&id, BYTE gridID, bool copyInitialWorld = false);
 
 		void					Destroy(float t);
 
@@ -558,6 +561,7 @@ namespace Technites
 		void					ProcessLighting(Technite&technite);
 
 
+
 		/**
 		Queries the currently stored atomic content of the world grid in its background copy (must be called during processing)
 		*/
@@ -571,6 +575,7 @@ namespace Technites
 		//static Grid::Content	GetGlobalGridContent(const Grid::HCellIdU&cellID);
 
 		#ifndef CLIENT
+			static float3		ToColor(const TUniqueID&id);
 			void				Process(float t);
 			void				ProcessLighting();
 			#ifdef _DEBUG

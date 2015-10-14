@@ -1704,6 +1704,9 @@ void	State::Load(const String&filename)
 						{
 							Objects::PFaction faction;
 							
+							TUniqueID factionID;
+							GetPOD(list,RID::factionID,factionID);
+
 							bool isNexus = false;
 							if (list->FindFirst(RID::nexusTag))
 							{
@@ -1712,6 +1715,7 @@ void	State::Load(const String&filename)
 								nexusFound = true;
 								faction = Objects::Faction::nexus;
 								faction->FlushData();
+								faction->id = factionID;
 								LogEvent(EventType::SessionRelated,"Loading nexus faction");
 							}
 							else
@@ -1720,7 +1724,7 @@ void	State::Load(const String&filename)
 								BYTE id;
 								if (GetOptionalPOD(list, RID::techniteFactionGridID, id, (BYTE)0xFF))
 								{
-									Technites::PFaction tfaction = Technites::Faction::CreateFromFile((BYTE)id);
+									Technites::PFaction tfaction = Technites::Faction::CreateFromFile(factionID, (BYTE)id);
 									faction = tfaction;
 									GetPODs(list, RID::technites, tfaction->technites);
 									for (index_t i = 0; i < tfaction->technites.Count(); i++)
@@ -1737,13 +1741,13 @@ void	State::Load(const String&filename)
 									faction.reset(new Objects::Faction());
 									Objects::Faction::all << faction;
 									faction->currentState.FlushAllData();
+									faction->id = factionID;
 								}
 								//foreach (faction->currentState,stat)
 								//	stat->ZeroInit();
 							}
 
 
-							GetPOD(list,RID::factionID,faction->id);
 							GetPOD(list,RID::factionAccessToken,faction->accessToken);
 
 							Riff::Chunk*nameChunk = list->FindFirst(RID::factionName);

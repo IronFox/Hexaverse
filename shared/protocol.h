@@ -1611,7 +1611,8 @@ namespace Protocol
 		, TechniteInstructionField, instructions
 	);
 
-
+	typedef NetArray<TVec3<BYTE>,0xFF>	TechniteColors;
+	static_assert(sizeof(TVec3<BYTE>)==3,"Size expectations not met");
 
 	NETSTRUCT5(MobileState
 		, EntityState, entityState
@@ -1941,6 +1942,7 @@ namespace Protocol
 
 			TechniteChunk,				// s2c: TechniteChunk
 			TechniteInstructions,	// c2s: TechniteInstructions
+			TechniteColors,			//s2c: TechniteColors
 
 
 			//remote control channels (these require user level 2+)

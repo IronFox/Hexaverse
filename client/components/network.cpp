@@ -71,14 +71,14 @@ namespace Network
 		Objects::OwnerParameter  rs;
 		if (techniteFactionIfNew != 0xFF)
 		{
-			rs = Technites::Faction::CreateFromFile(techniteFactionIfNew);
+			rs = Technites::Faction::CreateFromFile(id,techniteFactionIfNew);
 		}
 		else
 		{
 			rs.reset(new Objects::Faction());
 			Objects::Faction::allKnown << rs;
+			rs->id = id;
 		}
-		rs->id = id;
 		factionMap.Set(id,rs);
 		return rs;
 	}
@@ -345,6 +345,19 @@ namespace Network
 	namespace Receiver
 	{
 		bool			eventsLocked = true;
+
+		void	TechniteColors(Protocol::TechniteColors&colors)
+		{
+			ASSERT_EQUAL__(colors.Count(),0xFF);
+			for (index_t i = 0; i < 0xFF; i++)
+			{
+				Technites::Technite::factionColor[i] = float3(colors[i])/255.f;
+			}
+
+			//technically we would now have to invalidate the entire world grid
+			//but server behavior dictates it sends a new color vector prior to the creation
+			//of a new technite faction only. we get this vector before the first technite is spawned
+		}
 
 		void	TechniteChunk(Protocol::TechniteChunk&chunk)
 		{
@@ -860,6 +873,7 @@ namespace Network
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
 
 		TCP::Channel<Protocol::TechniteChunk, 0, Protocol::ChannelID::TechniteChunk>				techniteChunk(Receiver::TechniteChunk);
+		TCP::Channel<Protocol::TechniteColors, 0, Protocol::ChannelID::TechniteColors>				techniteColors(Receiver::TechniteColors);
 
 		TCP::ObjectSender<Protocol::TechniteInstructions, Protocol::ChannelID::TechniteInstructions>	techniteInstructions;
 
@@ -1076,6 +1090,7 @@ namespace Network
 		client.InstallChannel(Channels::unitLimits);
 
 		client.InstallChannel(Channels::techniteChunk);
+		client.InstallChannel(Channels::techniteColors);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 
