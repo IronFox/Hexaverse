@@ -18,7 +18,9 @@ namespace TechniteLogicLink
 
 	static const String DialogName = "TechniteFactionLink";
 
-	Dialog::WDialog		connectionNotification;
+	#ifdef HAS_WINDOW
+		Dialog::WDialog		connectionNotification;
+	#endif
 	count_t numClients = 0;
 
 	static bool executed = false, haveAllTechnites = true;
@@ -104,7 +106,7 @@ namespace TechniteLogicLink
 			cfg.matterYieldByContentType[i] = Technites::Technite::MatterYield[i];
 			cfg.matterDegradationTable[i] = Technites::Technite::DegradeTo[i];
 		}
-		for (index_t layer = 0; layer < Grid::CellStack::Range; layer++)
+		for (UINT32 layer = 0; layer < Grid::CellStack::Range; layer++)
 		{
 			int h = Grid::CellStack::ToHeight(layer);
 			cfg.energyYieldAtLayer[layer] = Technites::Technite::GetLightEnergyYieldAtHeight(h);
@@ -283,13 +285,14 @@ namespace TechniteLogicLink
 
 			numClients ++;
 
+			#ifdef HAS_WINDOW
 			if (!connectionNotification.expired())
 			{
 				Dialog::RemoveDialog(connectionNotification.lock());
 				ASSERT__(connectionNotification.expired());
 				connectionNotification.reset();
-
 			}
+			#endif
 
 			if (haveAllTechnites && executed)
 				ExecuteLogic();
@@ -344,7 +347,9 @@ namespace TechniteLogicLink
 		peer.attachment = attachment;
 	}
 
+	#ifdef HAS_WINDOW
 	void RefreshUserNotification();
+	#endif
 
 	void		OnEvent(TCP::event_t ev, TCP::Peer&peer)
 	{
@@ -367,10 +372,12 @@ namespace TechniteLogicLink
 				if (peer.userLevel > 0)
 				{
 					numClients--;
-					if (numClients == 0 && !autoStartClient)
-					{
-						RefreshUserNotification();
-					}
+					#ifdef HAS_WINDOW
+						if (numClients == 0 && !autoStartClient)
+						{
+							RefreshUserNotification();
+						}
+					#endif
 				}
 				LogEvent(EventType::SessionRelated, nullptr, "TechniteLogic: Peer connection lost");
 			}
@@ -422,9 +429,12 @@ namespace TechniteLogicLink
 				FATAL__("Failed to launch technite logic");
 		}
 
-		RefreshUserNotification();
+		#ifdef HAS_WINDOW
+			RefreshUserNotification();
+		#endif
 	}
 
+	#ifdef HAS_WINDOW
 	void 	RefreshUserNotification()
 	{
 		if (AwaitsClient())
@@ -452,6 +462,7 @@ namespace TechniteLogicLink
 				connectionNotification.reset();
 			}
 	}
+	#endif
 
 	bool		AwaitsClient()
 	{
