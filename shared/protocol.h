@@ -113,7 +113,7 @@ namespace Protocol
 						size = (count_t)(fixedSize/sizeof(T));
 					else
 					{
-						size_t fixedElementSize = GetFixedSize(&Super::testElement);
+						size_t fixedElementSize = FixedSizeSerializable<T>::GetSize();
 						if (fixedElementSize != 0)
 						{
 							size = (count_t)(fixedSize/fixedElementSize);
