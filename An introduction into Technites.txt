@@ -1,11 +1,11 @@
 This build of Hexaverse supports Technites. Technites are tiny immobile creatures that are controlled by programs that the user writes.
 A Technite has exactly the size of a terrain block, and to normal players behaves a lot like an ordinary terrain block that the player can build on, drive over, dig through, or blow up.
-The differences become apparent when the owning player starts giving them commands. Each Technite can execute exactly one command per round (possibly several in the future, but for now it's only one).
+The differences become apparent when the owning player starts assigning commands. Each Technite can execute exactly one command per round (possibly several in the future, but for now it's only one).
 Then Technites mostly eat and replicate. Yes, they can eat player vehicles, and buildings, too. They could eat player satellites but you won't see a Technite in orbit.
 
 
 1) Size and constraints of Technites
-Technites occupy each exactly one high-resolution terrain block. If there is a Technite in a block, there is nothing else.
+Technites occupy each exactly one high-resolution terrain block. If there is a Technite in a block, then there is nothing else there.
 They look slighlty different, and inherit the color of their owning faction, but for the most part they are just like rock to non-Technites.
 Blowing up terrain blocks that contain Technites kills those Technites instantly.
 
@@ -16,15 +16,23 @@ Currently, the maximum possible age of a Technite is 64 rounds.
 A Technite can do nothing to extend this lifespan, but it can replicate, distributed stored resources, or self-destruct before that happens.
 
 
-2) Horizon
-Technites can see and manipulate everything at most one volume cell away. Additionaly sensor mechanisms may be implemented in the future, but aren't so far.
-The faction as a whole has access to all the information at least one Technite sees, as well as everything that was once seen (although that will not update unless you go there again).
+2) Factions
+Like ordinary player units, technites belong to a faction. When a player first connects to a Hexaverse server, they may chose to create a regular, technite or hybrid faction.
+Regular factions follow the standard Hexaverse game logic, and not be able to control technites of their own.
+Conversely, creating a technite faction allows the observation and programmatic control of technites, but little else.
+Hybrid factions will spawn both players units, and a single technite of the same faction, and expect both a technite logic client (see 6) and player attention to be present.
+Currently, technites will profit from the increased visibility resulting from player unit sensor strength, but will not be able to distinguish player buildings from hostile ones (see 3).
+
+
+3) Horizon
+Technites can see and manipulate everything at most one volume cell away. Additional sensor mechanisms may be implemented in the future, but aren't thus far.
+The faction, as a whole, has access to all the terrain information that at least one Technite sees, as well as everything that was once seen (although that may be outdated).
+Technites can see other Technites in neighboring cells, as well as their faction.
 Currently, Technites can see that a structure (building) exists in a neighboring cell, but they cannot distinguish ownership or type.
 They can not see vehicles at all. This will change in the near future.
-Technites can see other Technites in neighboring cells, as well as their faction.
 
 
-3) Resources
+4) Resources
 Technites store/require two types of resources: energy and matter. They provide storage for at most 255 units of each.
 Most operations consume energy. The only two activities that also consumes matter are replication and building/self-destruction to a certain terrain type.
 Consumed resources are taken from the executing Technite's storage. If insufficient resources are available the respective task fails.
@@ -39,13 +47,13 @@ If gnawing is chosen, the targeted terrain block is not altered, and a portion o
 Matter can also be harvested by eating other Technites, or player installations/vehicles.
 
 
-4) Technite warfare
+5) Technite warfare
 Technite factions can fight each other by means of eating, if they so chose.
 If two neighboring Technites attempt to eat each other, the one with the highest amount of stored energy wins, but it loses the amount, the lesser had in store.
 In order for warfare to work, supply lines need to be established that transfer energy and matter to the front.
 
 
-5) Controlling Technites
+6) Controlling Technites
 Technites are visualized by the game client, but cannot be controlled through the client.
 If the controlled faction provides Technites, the client will function as a Technite logic server, that expects a Technite logic client to connect.
 A C# prototype implementation can be cloned from here:
@@ -59,3 +67,4 @@ The central function you will want to modify is TechniteLogic.Logic.ProcessTechn
 It is called automatically when appropriate, and expects instructions (and possibly colors) to be set for each Technite. It has access to the entire known world grid, and all Technites.
 You may assign instructions (and/or colors) in any order. Omitted Technites commonly won't do anything during the next round.
 A sole exception being commands that did not finish in one round (e.g. consuming hard terrain materials).
+Note that coloring technites only affects the used Hexaverse client display. Hostile factions will not be able the colors assigned to technites by the logic client.
