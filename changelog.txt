@@ -1,3 +1,6 @@
+v0.3.2		[Oct 14 2015]
+	Improved GUI system, tutorial messages, and general application stability.
+
 v0.3.1		[Aug 30 2015]
 	Disabled hibernation system
 	Moved planet types from server/server.ini to server/config/planets/*.ini
