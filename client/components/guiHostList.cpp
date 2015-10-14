@@ -4,7 +4,7 @@
 #include "network.h"
 #include "dialog.h"
 #include "../version.h"
-
+#include <io/string_file.h>
 
 void LoadHosts()
 {
