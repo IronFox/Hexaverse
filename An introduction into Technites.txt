@@ -1,0 +1,61 @@
+This build of Hexaverse supports Technites. Technites are tiny immobile creatures that are controlled by programs that the user writes.
+A Technite has exactly the size of a terrain block, and to normal players behaves a lot like an ordinary terrain block that the player can build on, drive over, dig through, or blow up.
+The differences become apparent when the owning player starts giving them commands. Each Technite can execute exactly one command per round (possibly several in the future, but for now it's only one).
+Then Technites mostly eat and replicate. Yes, they can eat player vehicles, and buildings, too. They could eat player satellites but you won't see a Technite in orbit.
+
+
+1) Size and constraints of Technites
+Technites occupy each exactly one high-resolution terrain block. If there is a Technite in a block, there is nothing else.
+They look slighlty different, and inherit the color of their owning faction, but for the most part they are just like rock to non-Technites.
+Blowing up terrain blocks that contain Technites kills those Technites instantly.
+
+Technites are immobile. They can eat, destroy, build, replicate, and transfer resources, but once they are spawned, they can never again move until they die.
+
+Technites are not immortal. Depending on the height of their occupied cell, they degrade slower or faster.
+Currently, the maximum possible age of a Technite is 64 rounds.
+A Technite can do nothing to extend this lifespan, but it can replicate, distributed stored resources, or self-destruct before that happens.
+
+
+2) Horizon
+Technites can see and manipulate everything at most one volume cell away. Additionaly sensor mechanisms may be implemented in the future, but aren't so far.
+The faction as a whole has access to all the information at least one Technite sees, as well as everything that was once seen (although that will not update unless you go there again).
+Currently, Technites can see that a structure (building) exists in a neighboring cell, but they cannot distinguish ownership or type.
+They can not see vehicles at all. This will change in the near future.
+Technites can see other Technites in neighboring cells, as well as their faction.
+
+
+3) Resources
+Technites store/require two types of resources: energy and matter. They provide storage for at most 255 units of each.
+Most operations consume energy. The only two activities that also consumes matter are replication and building/self-destruction to a certain terrain type.
+Consumed resources are taken from the executing Technite's storage. If insufficient resources are available the respective task fails.
+
+Energy is harvested by simply being somewhere non-shaded.
+If no other terrain blocks (including Technites) reside above a given Technite, then it will receive a certain amount of energy each round relating to the height it resides in.
+The higher a Technite, the more energy it will receive per round, but the sooner it will die.
+
+Matter is harvested by consuming or gnawing at surrounding terrain blocks.
+If consumption is chosen, the targeted terrain block is degraded until nothing remains, and the full amount of resources awarded to the respective Technite.
+If gnawing is chosen, the targeted terrain block is not altered, and a portion of the respective resources are awarded to the Technite.
+Matter can also be harvested by eating other Technites, or player installations/vehicles.
+
+
+4) Technite warfare
+Technite factions can fight each other by means of eating, if they so chose.
+If two neighboring Technites attempt to eat each other, the one with the highest amount of stored energy wins, but it loses the amount, the lesser had in store.
+In order for warfare to work, supply lines need to be established that transfer energy and matter to the front.
+
+
+5) Controlling Technites
+Technites are visualized by the game client, but cannot be controlled through the client.
+If the controlled faction provides Technites, the client will function as a Technite logic server, that expects a Technite logic client to connect.
+A C# prototype implementation can be cloned from here:
+https://github.com/SystemSoftware/TechniteLogic
+In order to work with the client, Visual Studio is strongly recommended.
+By default the Hexaverse client will start a logic server on port 30000. You can change this port in the client/game.ini file.
+The default logic client expects a port as the first runtime parameter.
+Setting 30000 as command line argument in the Debug config of the TechniteLogic project in Visual Studio will automatically and continuously attempt connection to the correct port.
+You can modify/recompile the logic client while Hexaverse is running. You can also restart the Hexaverse client without having to restart your logic client. At least, if all goes well.
+The central function you will want to modify is TechniteLogic.Logic.ProcessTechnites() found in Logic.cs.
+It is called automatically when appropriate, and expects instructions (and possibly colors) to be set for each Technite. It has access to the entire known world grid, and all Technites.
+You may assign instructions (and/or colors) in any order. Omitted Technites commonly won't do anything during the next round.
+A sole exception being commands that did not finish in one round (e.g. consuming hard terrain materials).
