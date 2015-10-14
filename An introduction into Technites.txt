@@ -1,7 +1,7 @@
-This build of Hexaverse supports Technites. Technites are tiny immobile creatures that are controlled by programs that the user writes.
-A Technite has exactly the size of a terrain block, and to normal players behaves a lot like an ordinary terrain block that the player can build on, drive over, dig through, or blow up.
+This build of Hexaverse supports Technites. Technites are tiny immobile creatures that are controlled by programs written by the user (yes, that is you, if you so choose).
+A Technite has exactly the size of a single terrain block, and to normal players also behaves a lot like an ordinary terrain block that the player can build on, drive over, dig through, or blow up.
 The differences become apparent when the owning player starts assigning commands. Each Technite can execute exactly one command per round (possibly several in the future, but for now it's only one).
-Then Technites mostly eat and replicate. Yes, they can eat player vehicles, and buildings, too. They could eat player satellites but you won't see a Technite in orbit.
+Then Technites mostly eat and replicate. They can eat player vehicles, and buildings, too. They could eat player satellites but you won't see a Technite in orbit.
 
 
 1) Size and constraints of Technites
@@ -61,10 +61,10 @@ https://github.com/SystemSoftware/TechniteLogic
 In order to work with the client, Visual Studio is strongly recommended.
 By default the Hexaverse client will start a logic server on port 30000. You can change this port in the client/game.ini file.
 The default logic client expects a port as the first runtime parameter.
-Setting 30000 as command line argument in the Debug config of the TechniteLogic project in Visual Studio will automatically and continuously attempt connection to the correct port.
+Setting 30000 as command line argument in the Debug config of the TechniteLogic project in Visual Studio will cause the client to automatically and continuously attempt connection to the correct port.
 You can modify/recompile the logic client while Hexaverse is running. You can also restart the Hexaverse client without having to restart your logic client. At least, if all goes well.
 The central function you will want to modify is TechniteLogic.Logic.ProcessTechnites() found in Logic.cs.
-It is called automatically when appropriate, and expects instructions (and possibly colors) to be set for each Technite. It has access to the entire known world grid, and all Technites.
+It is called automatically when appropriate, and expects instructions (and possibly colors) to be set for each Technite. It has access to the entire known world grid, and all Technites of your faction.
 You may assign instructions (and/or colors) in any order. Omitted Technites commonly won't do anything during the next round.
 A sole exception being commands that did not finish in one round (e.g. consuming hard terrain materials).
-Note that coloring technites only affects the used Hexaverse client display. Hostile factions will not be able the colors assigned to technites by the logic client.
+Note that coloring technites only affects the used Hexaverse client display. Hostile factions will not be able to see the colors assigned to technites by your logic client.
