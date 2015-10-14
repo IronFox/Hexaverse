@@ -1,9 +1,10 @@
-set zip="C:\Program Files\7-Zip\7z.exe"
+set zip="7z.exe"
 set rs1="game.7z"
 set rs=%rs1%
 del %rs1% /Q
 :: %zip% a %rs1% "documentation.pdf"
 %zip% a %rs1% "changelog.txt"
+%zip% a %rs1% "An introduction into Technites.txt"
 
 %zip% a %rs% "client/game.ini"
 %zip% a %rs% "client/Visual Client*.exe"
