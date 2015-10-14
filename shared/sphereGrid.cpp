@@ -2985,7 +2985,7 @@ namespace Grid
 				t->CompileTendency(direction,activity,color);
 		}
 
-		TechInfo::TechInfo(const CellStack&stack, UINT stackIndex, UINT layer)
+		TechInfo::TechInfo(const CellStack&stack, index_t stackIndex, UINT layer)
 		{
 			if (layer >= CellStack::Range)
 			{

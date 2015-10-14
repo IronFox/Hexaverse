@@ -518,8 +518,8 @@ namespace Grid
 
 			/**/		TechInfo()	{};
 			/**/		TechInfo(const Technites::Faction*f, const Technites::Technite*t, bool isSet);
-			/**/		TechInfo(const CellStack&stack, UINT stackIndex, UINT layer);
-			/**/		TechInfo(const CellStack*stacks, UINT stackIndex, UINT layer)	{*this = TechInfo(stacks[stackIndex],stackIndex,layer);};
+			/**/		TechInfo(const CellStack&stack, index_t stackIndex, UINT layer);
+			/**/		TechInfo(const CellStack*stacks, index_t stackIndex, UINT layer)	{*this = TechInfo(stacks[stackIndex],stackIndex,layer);};
 		};
 
 

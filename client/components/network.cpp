@@ -230,7 +230,9 @@ namespace Network
 					(*a)->doQuit = true;
 					waste << *a;
 					attempts.erase(a);
-					Dialog::SignalSituationChange();
+					#ifdef HAS_WINDOW
+						Dialog::SignalSituationChange();
+					#endif
 					return true;
 				}
 			}

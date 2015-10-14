@@ -1564,7 +1564,7 @@ namespace Protocol
 				{
 					serial_size_t memberSize = (serial_size_t)(sizeof(T)*sourceCount);
 					if (exportSize)
-						memberSize += GetSerialSizeOfSize(sourceCount);
+						memberSize += GetSerialSizeOfSize((serial_size_t)sourceCount);
 					return memberSize;
 				}
 				return Super::GetSerialSize(exportSize);
@@ -1573,7 +1573,7 @@ namespace Protocol
 			{
 				if (hasAssignedSource)
 				{
-					if (exportSize && !outStream.WriteSize(sourceCount))
+					if (exportSize && !outStream.WriteSize((serial_size_t)sourceCount))
 						return false;
 					return outStream.WritePrimitives(sourceField,sourceCount);
 				}
