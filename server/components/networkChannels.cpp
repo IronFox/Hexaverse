@@ -448,15 +448,6 @@ namespace Receiver
 		#endif
 	
 
-		Protocol::WorldDelta	delta;
-		delta.timestamp.rightNow = true;
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			Protocol::GenerateWorldDelta(client->faction ? &client->faction->visibility : nullptr,  client->faction ? &client->faction->currentState : nullptr,
-									delta,k,true,k+1 == BaseGrid::NumFamilies,newFaction ? Protocol::WorldDeltaType::ProgressiveInit : Protocol::WorldDeltaType::FactionCopy);
-
-			Channels::updateWorld.SendTo(peer,delta);
-		}
 
 		foreach(client->faction->markers, m)
 		{
@@ -767,6 +758,15 @@ namespace Receiver
 				}
 			}
 
+		}
+		Protocol::WorldDelta	delta;
+		delta.timestamp.rightNow = true;
+		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+		{
+			Protocol::GenerateWorldDelta(client->faction ? &client->faction->visibility : nullptr,  client->faction ? &client->faction->currentState : nullptr,
+									delta,k,true,k+1 == BaseGrid::NumFamilies,newFaction ? Protocol::WorldDeltaType::ProgressiveInit : Protocol::WorldDeltaType::FactionCopy);
+
+			Channels::updateWorld.SendTo(peer,delta);
 		}
 
 		client->SendProgressUpdate(false);
