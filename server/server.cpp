@@ -1118,6 +1118,15 @@ int main( int argc, const char* argv[])
 	//}
 
 	onFatal = MyFatal;
+	TCP::onIgnoredException = [](const TCodeLocation&loc, const std::exception&ex)
+	{
+		LogEvent(EventType::Debug,"TCP exception: "+String(loc.ToString())+": "+ex.what());
+	};
+	TCP::onIgnoredArbitraryException = [](const TCodeLocation&loc)
+	{
+		LogEvent(EventType::Debug,"TCP exception (arbitrary): "+String(loc.ToString()));
+	};
+
 	SetConsoleCtrlHandler(MyHandlerRoutine,TRUE);
 
 	{
