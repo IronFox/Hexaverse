@@ -18,7 +18,7 @@ A Technite can do nothing to extend this lifespan, but it can replicate, distrib
 
 2) Factions
 Like ordinary player units, technites belong to a faction. When a player first connects to a Hexaverse server, they may chose to create a regular, technite or hybrid faction.
-Regular factions follow the standard Hexaverse game logic, and not be able to control technites of their own.
+Regular factions follow the standard Hexaverse game logic, and have no Technites of their own to control.
 Conversely, creating a technite faction allows the observation and programmatic control of technites, but little else.
 Hybrid factions will spawn both players units, and a single technite of the same faction, and expect both a technite logic client (see 6) and player attention to be present.
 Currently, technites will profit from the increased visibility resulting from player unit sensor strength, but will not be able to distinguish player buildings from hostile ones (see 3).
