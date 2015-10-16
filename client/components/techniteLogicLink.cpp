@@ -162,14 +162,11 @@ namespace TechniteLogicLink
 	}
 
 
-	void		ExecuteLogic()
+	void		ExecuteLogic(UINT32 roundNumber)
 	{
 		executed = true;
-		logicServer.VisitAllPeers([](const TCP::PPeer&peer)
-		{
-			if (peer->userLevel > 0)
-				peer->SendSignal(TechniteProtocol::ChannelID::InstructTechnites);
-		});
+		
+		Channels::instructTechnites.SendTo(logicServer,roundNumber,1);
 	}
 
 
@@ -295,7 +292,7 @@ namespace TechniteLogicLink
 			#endif
 
 			if (haveAllTechnites && executed)
-				ExecuteLogic();
+				ExecuteLogic(Network::roundNumber);
 
 		}
 
@@ -489,7 +486,7 @@ namespace TechniteLogicLink
 		{
 			haveAllTechnites = true;
 			if (executed)
-				ExecuteLogic();
+				ExecuteLogic(Network::roundNumber);
 		}
 	}
 

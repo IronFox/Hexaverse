@@ -1369,7 +1369,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			Technites::PFaction tf = To<Technites::Faction>::Cast(myFaction);
 			tf->VerifyIntegrity();
 
-			TechniteLogicLink::ExecuteLogic();
+			TechniteLogicLink::ExecuteLogic(roundNumber);
 		}
 	}
 }

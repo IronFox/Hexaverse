@@ -48,7 +48,7 @@ namespace TechniteLogicLink
 	/**
 	Sends a logic execution command to all connected technite logic clients
 	*/
-	void		ExecuteLogic();
+	void		ExecuteLogic(UINT32 roundNumber);
 
 	/**
 	Starts the technite logic link. Nothing happens if the system is already active.
