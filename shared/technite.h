@@ -71,6 +71,9 @@ namespace Technites
 			static_assert(Grid::HighSetup::GridType::CellCount < 0x1000000, "Number of grid possibilities exceeds compression capacity");
 			static_assert(Grid::CellStack::Range < 0x100, "Number of grid layers exceeds compression capacity");
 		public:
+
+			UINT32			GetData() const {return data;}
+
 			Grid::HCellIdI	GetI()	const
 			{
 				return Grid::HCellIdI(data >> 8, GetHeight());
