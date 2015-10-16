@@ -26,6 +26,17 @@ namespace TechniteLogicLink
 					TechniteProtocol::ChannelID::WorldInfo>							worldInfo;
 		extern TCP::ObjectSender<Package::NetString<256>,
 					TechniteProtocol::ChannelID::Error>								error;
+		extern TCP::ObjectSender<NET(UINT32),
+					TechniteProtocol::ChannelID::InstructTechnites>					instructTechnites;
+		extern TCP::ObjectSender<TechniteProtocol::GameObject,
+					TechniteProtocol::ChannelID::CreateGameObject>					createGameObject;
+		extern TCP::ObjectSender<TechniteProtocol::GameObjectID,
+					TechniteProtocol::ChannelID::RemoveGameObject>					removeGameObject;
+		extern TCP::ObjectSender<TechniteProtocol::ControlMarker,
+					TechniteProtocol::ChannelID::CreateControlMarker>				createControlMarker;
+		extern TCP::ObjectSender<NET(UINT32),
+					TechniteProtocol::ChannelID::RemoveControlMarker>				removeControlMarker;
+
 	}
 
 

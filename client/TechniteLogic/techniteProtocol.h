@@ -99,6 +99,39 @@ namespace TechniteProtocol
 	static_assert(sizeof(TVec3<BYTE>)==3,"Struct alignment issue?");
 
 
+	enum GameObjectType
+	{
+		Vehicle,
+		Building,
+		Satellite
+	};
+
+	NETSTRUCT3(GameObjectID
+		, NET(UINT32), location
+		, NET(bool), isGhost
+		, NET(BYTE), type
+		);
+
+	NETSTRUCT6(GameObject
+		, GameObjectID, id
+		, NET(UINT32), birthRound
+		, NET(BYTE), height
+		, NET(bool), isBroad
+		, Package::NetString<128>, className
+		, NET(bool), isMine
+		);
+
+	NETSTRUCT4(ControlMarker
+		, NET(UINT32), location
+		, NET(float), radius
+		, NET(BYTE), typeIndex
+		, NET(UINT32), birthRound
+		);
+
+
+			
+
+
 
 
 	//NETSTRUCT2(SessionBegin
@@ -120,13 +153,18 @@ namespace TechniteProtocol
 			Ready,					//c2s: String: protocol version+name
 			Error,					//s2c: String: message
 			TechniteStateChunk,     //s2c: TechniteStateChunk
-			InstructTechnites,      //s2c: <signal>
+			InstructTechnites,      //s2c: uint32: roundnumber
 			TechniteInstructionChunk, //c2s: TechniteInstructionChunk
 
 			NodeChunk,      //s2c: NodeChunk - completed before SessionBegin is sent
 			GridConfig,		//s2c: GridConfig
 			GridDelta,      //s2c: GridDelta
 			WorldInfo,		//s2c: WorldInfo
+
+			CreateControlMarker,	//s2c: ControlMarker
+			CreateGameObject,		//s2c: GameObject
+			RemoveControlMarker,	//s2c: UINT32 (compressed location)
+			RemoveGameObject,       //s2c: RemoveGameObject
 
 			RequestNextRound, //c2s: <signal>
 

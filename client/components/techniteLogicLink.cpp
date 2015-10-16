@@ -227,9 +227,34 @@ namespace TechniteLogicLink
 
 		static String CompileProtocolString()
 		{
-			return "Aquinas v1.1." + String(TechniteProtocol::ChannelID::Count);
+			return "Aquinas v1.2." + String(TechniteProtocol::ChannelID::Count);
 		}
 
+
+		static UINT32 EncodeLocation(const Grid::LCellIdI&location)
+		{
+			Technites::Technite::CompressedLocation loc;
+			loc = Grid::HCellIdU(Grid::low.grid.GetCell(location.stackID).higherEquivalent, 
+								Grid::CellStack::ToLayer(location.height));
+			return loc.GetData();
+		}
+		static void FillIn(const Objects::PWorldEntity&e, TechniteProtocol::GameObject&obj)
+		{
+			obj.birthRound = Network::roundNumber;	//too lazy
+			obj.height = (BYTE)e->GetHeight();
+			obj.id.location = EncodeLocation(e->location);
+			obj.isBroad = e->IsBroad();
+			obj.isMine = e->isMine;
+			obj.className = e->GetTypeName();
+			if (e->IsSatellite())
+				obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Satellite;
+			elif (e->IsVehicle())
+				obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Vehicle;
+			elif (e->IsStructure())
+				obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Building;
+			else
+				FATAL__("Cannot transfer object data to technite logic client. Unsupported type "+e->GetTypeName());
+		}
 
 		void Ready(Package::NetString<256>&version, TCP::Peer&peer)
 		{
@@ -274,9 +299,45 @@ namespace TechniteLogicLink
 
 					offset += numTechs;
 				}
-
-
 			}
+
+			{
+				Objects::ForeachWorldEntity([&peer](const Objects::PWorldEntity&e)
+				{
+					TechniteProtocol::GameObject obj;
+					FillIn(e,obj);
+					obj.id.isGhost = false;
+					Channels::createGameObject.SendTo(peer,obj);
+				});
+
+				for (const auto&m : Objects::Marker::all)
+				{
+					TechniteProtocol::GameObject obj;
+					obj.id.isGhost = true;
+					obj.birthRound = m.createdInRound;
+					if (m.mobileVisualization)
+						FillIn(m.mobileVisualization,obj);
+					elif (m.structureVisualization)
+						FillIn(m.structureVisualization,obj);
+					else
+					{
+						if (m.type == Objects::Marker::Type::ControlMarker)
+						{
+							TechniteProtocol::ControlMarker marker;
+							marker.birthRound = m.createdInRound;
+							marker.location = EncodeLocation(m.location);
+							marker.radius = 0.f;	//for now
+							marker.typeIndex = 0;	//for now
+
+							Channels::createControlMarker.SendTo(peer,marker);
+						}
+						continue;
+					}
+					Channels::createGameObject.SendTo(peer,obj);
+				};
+			}
+
+
 			LogEvent(EventType::TechniteLogic,nullptr," Elevating user level");
 			peer.userLevel = 1;
 
@@ -328,7 +389,18 @@ namespace TechniteLogicLink
 					TechniteProtocol::ChannelID::WorldInfo>							worldInfo;
 		TCP::ObjectSender<Package::NetString<256>,
 					TechniteProtocol::ChannelID::Error>								error;
+		TCP::ObjectSender<NET(UINT32),
+					TechniteProtocol::ChannelID::InstructTechnites>					instructTechnites;
 
+
+		TCP::ObjectSender<TechniteProtocol::GameObject,
+					TechniteProtocol::ChannelID::CreateGameObject>					createGameObject;
+		TCP::ObjectSender<TechniteProtocol::GameObjectID,
+					TechniteProtocol::ChannelID::RemoveGameObject>					removeGameObject;
+		TCP::ObjectSender<TechniteProtocol::ControlMarker,
+					TechniteProtocol::ChannelID::CreateControlMarker>				createControlMarker;
+		TCP::ObjectSender<NET(UINT32),
+					TechniteProtocol::ChannelID::RemoveControlMarker>				removeControlMarker;
 	}
 
 
