@@ -25,10 +25,11 @@ namespace Objects
 		#endif
 	{
 	public:
-		CONSTRUCT_ENUMERATION3(Type, 
+		CONSTRUCT_ENUMERATION4(Type, 
 			EntityDeath,		//friendly entity has died here. usually preserved for 2-5 rounds. AI may preserve them longer to establish statistics 
 			HostileContact,		//hostile entity was detected here when radar contact was lost. Usually preserved until radar contact is re-established
-			Visited				//marker used by AI to remember previously visited area. referenceEntity is either empty of the mobile that was memorized here
+			Visited,				//marker used by AI to remember previously visited area. referenceEntity is either empty of the mobile that was memorized here
+			ControlMarker
 			);
 
 		TUniqueID					referenceEntity = TUniqueID::Empty();	//!< Usage depends on type
@@ -72,9 +73,9 @@ namespace Objects
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Marker;}
 
 
-		static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
+		static_assert(Objects::Marker::Type::NumberOfPossibilities == 4, "Please adjust UtilizesReferenceEntity(Type)");
 		bool						UtilizesReferenceEntity() const { return UtilizesReferenceEntity(type); }
-		static bool					UtilizesReferenceEntity(Type type) { return type != Type::Visited; }
+		static bool					UtilizesReferenceEntity(Type type) { return type != Type::Visited && type != Type::ControlMarker; }
 
 		bool						operator==(const Marker&other) const
 		{ 

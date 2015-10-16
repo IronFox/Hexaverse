@@ -1827,8 +1827,8 @@ namespace Protocol
 		, NET(ConstName), type1
 	)
 
-	static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
-	typedef Selective3<MarkerReferenceEntity, MarkerReferenceEntity, NoData>	MarkerData;
+	static_assert(Objects::Marker::Type::NumberOfPossibilities == 4, "Please adjust marker logic (MarkerData)");
+	typedef Selective4<MarkerReferenceEntity, MarkerReferenceEntity, NoData, NoData>	MarkerData;
 
 	NETSTRUCT4(Marker
 		, NET(TUniqueID), id

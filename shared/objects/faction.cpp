@@ -916,6 +916,10 @@ namespace Objects
 					visitedSystems.last().age = m.age;
 					visitedSystemIDMap.Set(id,systemID);
 				}
+				elif (type == Type::ControlMarker)
+				{
+					//later
+				}
 				else
 					FATAL__("Not anticipating this");
 			}
@@ -969,6 +973,10 @@ namespace Objects
 								value--;
 						});
 					}
+				}
+				elif (m.type == Type::ControlMarker)
+				{
+					//later
 				}
 				else
 					FATAL__("Not anticipating this");	//assuming an error for now
