@@ -158,6 +158,7 @@ namespace Receiver
 
 	static void ConvertMarker(const Objects::Marker&source, Protocol::Marker&dest)
 	{
+		static_assert(Objects::Marker::Type::NumberOfPossibilities == 4,"Adapt below switch");
 		switch (source.type)
 		{
 			case 0:
@@ -168,6 +169,13 @@ namespace Receiver
 			break;
 			case 2:
 				dest.data.Set2();
+			break;
+			case 3:
+			{
+				Protocol::ControlMarker&m = dest.data.Set3();
+				m.radius = source.radius;
+				m.subType = source.subType;
+			}
 			break;
 		}
 		dest.createdInRound = source.createdInRound;
@@ -1027,7 +1035,7 @@ namespace Receiver
 					type = Objects::Marker::Type::Reinterpret(2);
 				else
 				{
-					Protocol::ControlMarker*mark = m.data.Get3();
+					const Protocol::ControlMarker*mark = m.data.Get3();
 					if (mark)
 					{
 						type = Objects::Marker::Type::Reinterpret(3);
