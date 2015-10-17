@@ -38,6 +38,9 @@ namespace Objects
 		Type						type;
 		UINT32						createdInRound=0;
 
+		float						radius = 0.f;	//currently effective only for ControlMarker
+		BYTE						subType = 0;	//currently effective only for ControlMarker
+
 		#ifdef CLIENT
 			UINT32					age = 0;	//age in rounds, updated during GetOutdated()
 		#endif
@@ -55,6 +58,8 @@ namespace Objects
 			memcpy(referencedType,other.referencedType,sizeof(referencedType));
 			type = other.type;
 			createdInRound = other.createdInRound;
+			radius = other.radius;
+			subType = other.subType;
 
 			#ifdef CLIENT
 				structureVisualization.swap(other.structureVisualization);
@@ -73,9 +78,13 @@ namespace Objects
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Marker;}
 
 
-		static_assert(Objects::Marker::Type::NumberOfPossibilities == 4, "Please adjust UtilizesReferenceEntity(Type)");
+		static_assert(Objects::Marker::Type::NumberOfPossibilities == 4, "Please adjust UtilizesReferenceEntity(Type), UtilizesRadius(Type), and UtilizesSubType(Type)");
 		bool						UtilizesReferenceEntity() const { return UtilizesReferenceEntity(type); }
 		static bool					UtilizesReferenceEntity(Type type) { return type != Type::Visited && type != Type::ControlMarker; }
+		bool						UtilizesRadius() const { return UtilizesRadius(type); }
+		static bool					UtilizesRadius(Type type) { return type == Type::ControlMarker; }
+		bool						UtilizesSubType() const { return UtilizesSubType(type); }
+		static bool					UtilizesSubType(Type type) { return type == Type::ControlMarker; }
 
 		bool						operator==(const Marker&other) const
 		{ 

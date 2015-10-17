@@ -1093,6 +1093,10 @@ namespace Objects
 //				size += sizeof(this->referencedType);
 				//this->referencedType.GetSerialSize(exportSize);
 			}
+			if (UtilizesRadius())
+				size += 4;
+			if (UtilizesSubType())
+				size ++;
 			return size;
 		}
 		/*virtual override*/	bool		Marker::Serialize(IWriteStream&outStream, bool exportSize) const
@@ -1108,8 +1112,14 @@ namespace Objects
 					return false;
 				String t0 = Convert(this->referencedType[0]);
 				String t1 = Convert(this->referencedType[1]);
-				return t0.Serialize(outStream,true) && t1.Serialize(outStream,true);
+				if (!t0.Serialize(outStream,true) || !t1.Serialize(outStream,true))
+					return false;
 			}
+			if (UtilizesRadius() && !outStream.WritePrimitive(radius))
+				return false;
+			if (UtilizesSubType() && !outStream.WritePrimitive(subType))
+				return false;
+
 			return true;
 		}
 		/*virtual override*/	bool		Marker::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
@@ -1136,6 +1146,12 @@ namespace Objects
 				referenceEntity = TUniqueID::Empty();
 				referencedType[0] = referencedType[1] = ConstName::Empty;
 			}
+
+			if (UtilizesRadius() && !inStream.ReadPrimitive(radius))
+				return false;
+			if (UtilizesSubType() && !inStream.ReadPrimitive(subType))
+				return false;
+
 			return true;
 		}
 

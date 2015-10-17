@@ -1827,8 +1827,13 @@ namespace Protocol
 		, NET(ConstName), type1
 	)
 
+	NETSTRUCT2(ControlMarker
+		, NET(float), radius
+		, NET(BYTE), subType
+	)
+
 	static_assert(Objects::Marker::Type::NumberOfPossibilities == 4, "Please adjust marker logic (MarkerData)");
-	typedef Selective4<MarkerReferenceEntity, MarkerReferenceEntity, NoData, NoData>	MarkerData;
+	typedef Selective4<MarkerReferenceEntity, MarkerReferenceEntity, NoData, ControlMarker>	MarkerData;
 
 	NETSTRUCT4(Marker
 		, NET(TUniqueID), id

@@ -1002,9 +1002,11 @@ namespace Receiver
 			return;
 		}
 		bool failed = false;
-		static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
+		static_assert(Objects::Marker::Type::NumberOfPossibilities == 4, "Please adjust marker logic");
 		const Protocol::MarkerReferenceEntity*e = m.data.Get0();
 		Objects::Marker::Type type;
+		float radius = 0.f;
+		BYTE subType = 0;
 		TUniqueID	refID = TUniqueID::Empty();
 		if (e)
 		{
@@ -1025,7 +1027,17 @@ namespace Receiver
 					type = Objects::Marker::Type::Reinterpret(2);
 				else
 				{
-					failed = true;
+					Protocol::ControlMarker*mark = m.data.Get3();
+					if (mark)
+					{
+						type = Objects::Marker::Type::Reinterpret(3);
+						radius = mark->radius;
+						subType = mark->subType;
+					}
+					else
+					{
+						failed = true;
+					}
 				}
 			}
 
@@ -1041,6 +1053,8 @@ namespace Receiver
 
 		marker.createdInRound = m.createdInRound;
 		marker.location = m.location;
+		marker.radius = radius;
+		marker.subType = subType;
 		if (marker.UtilizesReferenceEntity())
 			failed = !ConvertReferenceEntity(*e, marker);
 
