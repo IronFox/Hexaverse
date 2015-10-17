@@ -184,6 +184,27 @@ namespace Receiver
 		if (State::activePlayers.Contains(client))
 			return;
 
+		bool factionTypeNotSupported = true;
+
+		switch (response.startFactionTypes)
+		{
+			case Protocol::FactionType::ContinueOnly:
+				factionTypeNotSupported = false;
+			break;
+			case Protocol::FactionType::RegularFaction:
+				factionTypeNotSupported = !(State::Config::factionSupportFlags & Protocol::GameFlag::SupportRegularFactions);
+			break;
+		}
+
+
+		if (factionTypeNotSupported)
+		{
+			LogEvent(EventType::SessionRelated, peer, "Requested faction type is not supported");
+			response.startFactionTypes = 0;
+			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
+			client->peer.lock()->Disconnect();
+			return;
+		}
 
 		Objects::PFaction	faction;
 

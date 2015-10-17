@@ -94,6 +94,8 @@ namespace State
 		extern bool		saveWhenAllQuit/* = true*/;
 		//extern count_t	limitMinesTo/* = 100*/;
 
+		extern UINT32	factionSupportFlags;
+		static const UINT32 AllFactionSupportFlags = Protocol::GameFlag::SupportRegularFactions;
 		extern bool		enableNexusAI/* = false*/;
 		extern float	nexusThreatEstimationFactor/* = 1.f*/;
 		extern Array<Objects::Component::Turret*>	nexusVehicleTurrets;
@@ -109,6 +111,41 @@ namespace State
 			numZones = (numZones/3) + !!(numZones % 3);
 			return numZones;
 		}
+
+		inline void		CheckFactionSupportFlag(String&rs, UINT32 flag, const String&flagName)
+		{
+			if (factionSupportFlags & flag)
+			{
+				if (rs.IsEmpty())
+					rs = flagName;
+				else
+					rs += ", "+flagName;
+			}
+		}
+
+		inline String	FactionSupportFlagString()
+		{
+			String rs;
+			CheckFactionSupportFlag(rs,Protocol::GameFlag::SupportRegularFactions,"Regular");
+
+			return rs;
+		}
+
+		inline void		SetFactionSupportFlagString(const String&supp)
+		{
+			factionSupportFlags = 0;
+			Array<String>	segs;
+			explode(',',supp,segs);
+			foreach (segs,seg)
+			{
+				seg->trimThis();
+				if (*seg == "Regular")
+					factionSupportFlags |= Protocol::GameFlag::SupportRegularFactions;
+				else
+					FATAL__("Unsupported faction type for this build: '"+*seg+"'");
+			}
+		}
+
 
 
 		inline count_t	GetTargetNexusCount()
