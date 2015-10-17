@@ -99,7 +99,7 @@ namespace State
 		extern Array<Objects::Component::Turret*>	nexusVehicleTurrets;
 		extern Array<String>			nexusVehicleTurretNames;	//used during config loading, identical to nexusVehicleTurrets later
 		
-		CONSTRUCT_ENUMERATION3(Goal, None, ConquerNexus, EMPConquerNexus);
+		typedef Protocol::GameGoal	Goal;
 
 		extern Goal		goal;
 

@@ -29,6 +29,9 @@ namespace Network
 	#endif
 
 	TUniqueID		myID,serverID,worldID;
+	UINT32				gameFlags = 0;
+	Protocol::GameGoal	gameGoal;
+
 	CryptographicID	activeToken;
 	String			myIDString,serverIDString,worldIDString,activeTokenString;
 	Objects::OwnerParameter myFaction;
