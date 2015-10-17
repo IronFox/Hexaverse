@@ -95,7 +95,7 @@ namespace State
 		//extern count_t	limitMinesTo/* = 100*/;
 
 		extern UINT32	factionSupportFlags;
-		static const UINT32 AllFactionSupportFlags = Protocol::GameFlag::SupportRegularFactions;
+		static const UINT32 AllFactionSupportFlags = Protocol::GameFlag::SupportRegularFactions | Protocol::GameFlag::SupportTechniteFactions | Protocol::GameFlag::SupportHybridFactions;
 		extern bool		enableNexusAI/* = false*/;
 		extern float	nexusThreatEstimationFactor/* = 1.f*/;
 		extern Array<Objects::Component::Turret*>	nexusVehicleTurrets;
@@ -127,6 +127,8 @@ namespace State
 		{
 			String rs;
 			CheckFactionSupportFlag(rs,Protocol::GameFlag::SupportRegularFactions,"Regular");
+			CheckFactionSupportFlag(rs,Protocol::GameFlag::SupportTechniteFactions,"Technite");
+			CheckFactionSupportFlag(rs,Protocol::GameFlag::SupportHybridFactions,"Hybrid");
 
 			return rs;
 		}
@@ -141,6 +143,12 @@ namespace State
 				seg->trimThis();
 				if (*seg == "Regular")
 					factionSupportFlags |= Protocol::GameFlag::SupportRegularFactions;
+				else
+				if (*seg == "Technite")
+					factionSupportFlags |= Protocol::GameFlag::SupportTechniteFactions;
+				else
+				if (*seg == "Hybrid")
+					factionSupportFlags |= Protocol::GameFlag::SupportHybridFactions;
 				else
 					FATAL__("Unsupported faction type for this build: '"+*seg+"'");
 			}

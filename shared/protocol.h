@@ -1976,6 +1976,8 @@ namespace Protocol
 
 
 			SupportRegularFactions = 0x10,
+			SupportTechniteFactions = 0x20,
+			SupportHybridFactions = 0x40,
 
 
 		};

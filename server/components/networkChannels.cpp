@@ -267,6 +267,12 @@ namespace Receiver
 			case Protocol::FactionType::RegularFaction:
 				factionTypeNotSupported = !(State::Config::factionSupportFlags & Protocol::GameFlag::SupportRegularFactions);
 			break;
+			case Protocol::FactionType::TechniteFaction:
+				factionTypeNotSupported = !(State::Config::factionSupportFlags & Protocol::GameFlag::SupportTechniteFactions);
+			break;
+			case Protocol::FactionType::TechniteFaction | Protocol::FactionType::RegularFaction:
+				factionTypeNotSupported = !(State::Config::factionSupportFlags & Protocol::GameFlag::SupportHybridFactions);
+			break;
 		}
 
 
