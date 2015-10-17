@@ -234,7 +234,8 @@ namespace Network
 	{
 	public:
 		TUniqueID				id;
-		bool					rightVersion = false;
+		bool					rightVersion = false,
+								protocolIncompatible = false;
 		Protocol::ServerInfo	info;
 		
 		Buffer0<std::pair<String, float> >			urls;

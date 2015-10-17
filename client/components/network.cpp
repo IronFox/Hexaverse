@@ -121,16 +121,22 @@ namespace Network
 		public:
 			TCP::Client		client;
 			String			url;
-			bool			hasContact,hasInfo,rightVersion = false, autoAttempt = false;
+			bool			hasContact = false,
+							hasInfo = false,
+							rightVersion = false,
+							autoAttempt = false,
+							protocolIncompatible = false;
 			Protocol::ServerInfo	lastInfo;
 			float			lastPing;
 			volatile bool	doQuit = false;
 			//Semaphore		sem;
 
-			/**/			HostContactAttempt():/*sem(0),*/hasContact(false),hasInfo(false),lastPing(0)	{}
+			/**/			HostContactAttempt():/*sem(0),*/lastPing(0)	{}
 
 
 			static void		OnEvent(TCP::event_t ev, TCP::Peer&peer);
+
+			static void		OnDeserializationFailed(UINT32, TCP::Peer&peer);
 
 			void			ThreadMain() override
 			{
@@ -139,6 +145,7 @@ namespace Network
 				client.attachment = shared_from_this();
 				client.InstallChannel(serverInfoChannel);
 				client.InstallChannel(pingChannel);
+				client.onDeserializationFailed = OnDeserializationFailed;
 
 				while (!application_shutting_down && !doQuit)
 				{
@@ -228,7 +235,7 @@ namespace Network
 			{
 				if ((*a)->url == url)
 				{
-					return !(*a)->hasContact || !(*a)->rightVersion;
+					return !(*a)->hasContact || !(*a)->rightVersion || (*a)->protocolIncompatible;
 				}
 
 			}
@@ -244,6 +251,15 @@ namespace Network
 			me->hasInfo = true;
 			me->rightVersion = !strcmp(info.hostInfo.value.version, SERVER_NAME);
 		}
+
+
+		/*static*/ void		HostContactAttempt::OnDeserializationFailed(UINT32, TCP::Peer&peer)
+		{
+			PHostContactAttempt me = To<HostContactAttempt>::Cast(peer.attachment);
+			if (me)
+				me->protocolIncompatible = true;
+		}
+
 
 		void OnPing(Protocol::Ping&ping, TCP::Peer&peer)
 		{
@@ -1152,18 +1168,19 @@ namespace Network
 			foreach (ServerDiscovery::attempts,_a)
 			{
 				const auto&a = **_a;
-				if (a.hasInfo && a.hasContact)
+				if (a.hasContact && (a.hasInfo || a.protocolIncompatible))
 				{
 					index_t at;
 					if (!serverMap.query(a.lastInfo.hostInfo.value.hostID,at))
 					{
 						at = servers.Count();
 						servers.Append().info = a.lastInfo;
-						servers.last().haveToken = 	accessMap.IsSet(a.lastInfo.worldID);
-
-						servers.last().id = servers.last().info.hostInfo.value.hostID;
-						servers.last().rightVersion =  a.rightVersion;
-						serverMap.Set(a.lastInfo.hostInfo.value.hostID,at);
+						servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.worldID);
+						servers.last().protocolIncompatible = a.protocolIncompatible;
+						servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : servers.last().info.hostInfo.value.hostID;
+						servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
+						//if (!a.protocolIncompatible)
+						serverMap.Set(servers.last().id,at);
 						
 					}
 

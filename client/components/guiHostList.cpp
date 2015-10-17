@@ -136,9 +136,16 @@ void	SaveHosts()
 			}
 			else
 			{
-				color = float4(1,0.5,0.5,1);
-				text = " "+info.info.hostInfo.value.hostID.ToNiceString();
-				text += " (Version Mismatch)";
+				color = float4(1,0.4,0.4,0.8) * 1.3f;
+				if (info.protocolIncompatible)
+				{
+					text = " <Unknown> (Protocol Incompatible)";
+				}
+				else
+				{
+					text = " "+info.info.hostInfo.value.hostID.ToNiceString();
+					text += " (Version Mismatch)";
+				}
 			}
 			PLabel headLine = MakeTabLabel(text,1.1f);
 			headLine->SetColor(color);
@@ -176,7 +183,7 @@ void	SaveHosts()
 			p->components << label;
 		}
 
-		if (!info.rightVersion)
+		if (!info.rightVersion && !info.protocolIncompatible)
 		{
 			PLabel label = MakeTabLabel("Server identifies as '"+String(info.info.hostInfo.value.version)+'\'',0.7f);
 			label->SetColor(1,0.5,0.5,0.7f);
