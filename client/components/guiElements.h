@@ -93,6 +93,7 @@ namespace GUIElements
 		}
 
 		void			SetAllOf(const PPanel&, float distance, distanceType_t dtype=RelativeToParentComponent);
+		void			SetSomeOf(const PPanel&, float distance, const std::function<bool(const PComponent&)>&, distanceType_t dtype=RelativeToParentComponent);
 		void			SetLastOf(const PPanel&, float distance, distanceType_t dtype=RelativeToParentComponent);
 
 		bool			IsFixed() const {return type == Fixed;}

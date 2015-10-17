@@ -29,6 +29,8 @@ namespace Network
 	#endif
 
 	extern TUniqueID			myID,serverID,worldID;
+	extern UINT32				gameFlags;
+	extern Protocol::GameGoal	gameGoal;
 	extern CryptographicID		activeToken;
 	extern String				myIDString,serverIDString,worldIDString,activeTokenString;
 	extern Objects::OwnerParameter myFaction;
@@ -241,7 +243,8 @@ namespace Network
 	{
 	public:
 		TUniqueID				id;
-		bool					rightVersion = false;
+		bool					rightVersion = false,
+								protocolIncompatible = false;
 		Protocol::ServerInfo	info;
 		
 		Buffer0<std::pair<String, float> >			urls;

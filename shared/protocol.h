@@ -1965,13 +1965,36 @@ namespace Protocol
 	static_assert(sizeof(THostBroadcastPacket) == sizeof(TUniqueID) + 64, "Struct packing not appropriate for host broadcast packet");
 
 
-	NETSTRUCT6(ServerInfo
+	namespace GameFlag
+	{
+		enum flag_t
+		{
+			ClosedGame = 0x1,
+			BasesRequired = 0x2,
+			StartBases = 0x4,
+			NexusAI = 0x8,
+
+
+			SupportRegularFactions = 0x10,
+
+
+		};
+
+
+	}
+
+	CONSTRUCT_ENUMERATION3(GameGoal, None, ConquerNexus, EMPConquerNexus);
+
+
+	NETSTRUCT8(ServerInfo
 		, NET(THostBroadcastPacket), hostInfo
 		, NET(UINT16), numClients
 		, NET(UINT16), numPlayers
 		, NET(UINT32), roundNumber
 		, NET(TUniqueID), worldID	//used to manage factionTokens
 		, NET(BYTE), activePhase
+		, NET(UINT32), gameFlags
+		, NET(BYTE), gameGoal
 	)
 
 	typedef NET(UINT64)		Ping;

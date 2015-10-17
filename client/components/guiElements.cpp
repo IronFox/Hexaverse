@@ -23,6 +23,19 @@ namespace GUIElements
 
 	PComponent	mousePressedComponent;
 
+	void			TAnchor::SetSomeOf(const PPanel&p, float distance, const std::function<bool(const PComponent&)>&callback, distanceType_t dtype/*=RelativeToParentComponent*/)
+	{
+		if (!p || p->components.IsEmpty())
+			return;
+		type = Fixed;
+		distanceFromReference = distance;
+		foreach (p->components,c)
+			if (callback(*c))
+				references.Append(*c);
+		distanceType = dtype;
+
+	}
+
 
 	void			TAnchor::SetAllOf(const PPanel&p, float distance, distanceType_t dtype/*=RelativeToParentComponent*/)
 	{
