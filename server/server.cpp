@@ -644,8 +644,7 @@ namespace InformationProvider
 				if (State::Config::enableNexusAI)
 					info.gameFlags |= Protocol::GameFlag::NexusAI;
 
-
-				info.gameFlags |= Protocol::GameFlag::SupportRegularFactions;
+				info.gameFlags |= State::Config::factionSupportFlags;
 
 				infoSender.SendTo(server,info);
 			}
@@ -1268,6 +1267,7 @@ int main( int argc, const char* argv[])
 			{
 				LogEvent(EventType::ConfigRelated,"Unsupported goal '"+goalStr+"'");
 			}
+			State::Config::SetFactionSupportFlagString(config.Get("Game/supportedFactions"));
 			State::Config::startBases = config.GetBool("Game/startBases",false);
 			State::Config::basesRequired = config.GetBool("Game/basesRequired",false);
 			State::Config::exposeActionLeftToHostileFactions = config.GetBool("Game/exposeActionLeftToHostileFactions",true);
@@ -1613,9 +1613,14 @@ int main( int argc, const char* argv[])
 		LogConfig(" -Disabled");
 
 	LogConfig("This game is configured as follows:");
-	LogConfig(" -Uplink traffic per faction is limited to "+String(State::Config::uplinkBandwidth));
+	#ifndef NO_HIBERNATION
+		LogConfig(" -Uplink traffic per faction is limited to "+String(State::Config::uplinkBandwidth));
+	#endif
+
+	LogConfig(" -Factions: "+State::Config::FactionSupportFlagString());
+
 	if (State::Config::simulateLiquids)
-		LogConfig(" -Liquids: Simulated.");
+		LogConfig(" -Liquids: Expanding.");
 	else
 		LogConfig(" -Liquids: Static.");
 	switch (State::Config::goal)

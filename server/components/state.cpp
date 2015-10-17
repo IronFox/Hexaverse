@@ -124,6 +124,8 @@ namespace State
 		bool		saveWhenAllQuit = true;
 		//count_t		limitMinesTo = 100l;
 
+		UINT32		factionSupportFlags = AllFactionSupportFlags;
+
 		bool		enableNexusAI = false;
 		float		nexusThreatEstimationFactor = 1.f;
 		Array<Objects::Component::Turret*>	nexusVehicleTurrets;
@@ -771,6 +773,7 @@ namespace State
 								exposeActionLeftToHostileFactions("EAHF"),
 								empDamageLevel("EMPD"),
 								worldConfig("WCFG"),
+								factionSupportFlags("FSFL"),
 								techniteFactionGridID("TFGI"),
 								technites("TECH")
 								;
@@ -1573,6 +1576,9 @@ void	State::Load(const String&filename)
 							}
 							GetPOD(list,RID::worldConfig,State::persistentPlanetInfo);
 							Grid::CellStack::bottom.content = (BYTE)State::persistentPlanetInfo.innerCoreType;
+
+							GetOptionalPOD(list,RID::factionSupportFlags,State::Config::factionSupportFlags,State::Config::AllFactionSupportFlags);
+
 						}
 					break;
 					case ChunkName::ObjectGroup:
@@ -1937,6 +1943,7 @@ void	State::Save( const String&name)
 	general->AppendBlock("WDID")->SetPODData(worldID);
 	general->AppendBlock("RNDN")->SetPODData(roundNumber);
 	general->AppendBlock(RID::worldConfig)->SetPODData(State::persistentPlanetInfo);
+	general->AppendBlock(RID::factionSupportFlags)->SetPODData(State::Config::factionSupportFlags);
 	general->AppendBlock(RID::closedGame)->SetPODData(State::Config::closedGame);
 	general->AppendBlock(RID::nexusBases)->SetPODData(State::Config::NexusPorts::haveBases);
 	general->AppendBlock(RID::goal)->SetPODData((UINT16)State::Config::goal);
