@@ -87,6 +87,21 @@ namespace TechniteLogicLink
 	bool		AwaitsClient();
 
 
+	/**
+	Handler function for various entity-related messages received from the server.
+	Since technites do not have an animation phase, these are forwarded/stored as they come.
+	Nothing happens, if the local link is inactive
+	*/
+	void		Handle(const Protocol::DestroyEntity&);
+	void		Handle(const Protocol::NewMobileEntity&);	//!< @overload
+	void		Handle(const Protocol::MobileState&);	//!< @overload
+	void		Handle(const Protocol::StructureConstruction&);	//!< @overload
+	void		Handle(const Protocol::StructureState&);	//!< @overload
+
+	void		CreateMarker(const Objects::Marker&);
+	void		DestroyMarker(const TUniqueID&);
+
+
 	extern String autoStartClientPath; //="TechniteLogic/Client.exe"
 	extern bool autoStartClient; //=true
 	extern UINT16 initialServerPortNumber, //=0

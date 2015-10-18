@@ -452,7 +452,7 @@ namespace Network
 		void OnMobileState(Protocol::MobileState&vs)
 		{
 			ASSERT__(!eventsLocked);
-
+			TechniteLogicLink::Handle(vs);
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
 				Objects::PWorldEntity e =Objects::GetEntity(vs.entityState.id);
@@ -474,6 +474,7 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			ASSERT__(Network::haveId);
+			TechniteLogicLink::Handle(vc);
 
 			Objects::PMobileEntity v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,vc.state.entityState.timestamp.rightNow,Network::haveId && Network::myID == vc.owner);
 			if (vc.state.entityState.timestamp.rightNow)
@@ -505,6 +506,7 @@ namespace Network
 		void	OnNewStructure(Protocol::StructureConstruction&sc)
 		{
 			ASSERT__(!eventsLocked);
+			TechniteLogicLink::Handle(sc);
 
 			#ifdef HAS_WINDOW
 				if (Grid::actualWorld.lightingOutdated && World::allowRecompilation)
@@ -531,6 +533,7 @@ namespace Network
 		void OnStructureState(Protocol::StructureState&vs)
 		{
 			ASSERT__(!eventsLocked);
+			TechniteLogicLink::Handle(vs);
 
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
@@ -554,6 +557,7 @@ namespace Network
 		void DestroyEntity(Protocol::DestroyEntity&de)
 		{
 			ASSERT__(!eventsLocked);
+			TechniteLogicLink::Handle(de);
 
 			if (de.timestamp.rightNow && Animation::AllDone())
 			{
@@ -786,6 +790,8 @@ namespace Network
 
 		void	CreateMarker(Protocol::Marker&marker)
 		{
+			
+
 			TUniqueID	entityID = TUniqueID::Empty();
 			ConstName	entityType[2];
 			Objects::Marker::Type type;
@@ -815,6 +821,7 @@ namespace Network
 				}
 			}
 			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, entityType, std::max<int>(Network::roundNumber,marker.createdInRound));
+			TechniteLogicLink::CreateMarker(Objects::Marker::all.last());
 			#ifdef HAS_WINDOW
 				OnSelectionChange(true);
 			#endif
@@ -824,6 +831,7 @@ namespace Network
 
 		void	DestroyMarker(NET(TUniqueID)&mid)
 		{
+			TechniteLogicLink::DestroyMarker(mid);
 			Objects::Marker::Destroy(mid, ControlEnabled());
 			#ifdef HAS_WINDOW
 				OnSelectionChange(true);

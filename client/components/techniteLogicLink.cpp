@@ -12,6 +12,7 @@ namespace TechniteLogicLink
 {
 	String autoStartClientPath="TechniteLogic/Client.exe";
 	bool autoStartClient=true;
+	static bool isActive = false;
 	
 	UINT16 initialServerPortNumber = 0,
 			actualServerPortNumber = 0;
@@ -46,6 +47,194 @@ namespace TechniteLogicLink
 				Channels::worldInfo.SendTo(*peer,lastWorldInfo);
 		});
 		
+	}
+
+
+	static GenericHashTable<TUniqueID,TechniteProtocol::GameObject,TUniqueID,Copy,Swap>	gameObjects,storedGameObjects,ghostGameObjects;
+	static GenericHashTable<TUniqueID,TechniteProtocol::ControlMarker,TUniqueID>		controlMarkers;
+
+	static UINT32 EncodeLocation(const Grid::LCellIdI&location)
+	{
+		Technites::Technite::CompressedLocation loc;
+		loc = Grid::HCellIdU(Grid::low.grid.GetCell(location.stackID).higherEquivalent, 
+							Grid::CellStack::ToLayer(location.height));
+		return loc.GetData();
+	}
+
+
+
+	static void FillIn(const Objects::PWorldEntity&e, TechniteProtocol::GameObject&obj)
+	{
+		obj.birthRound = Network::roundNumber;	//too lazy
+		obj.height = (BYTE)e->GetHeight();
+		obj.id.location = EncodeLocation(e->location);
+		obj.isBroad = e->IsBroad();
+		obj.isMine = e->isMine;
+		obj.className = e->GetTypeName();
+		if (e->IsSatellite())
+			obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Satellite;
+		elif (e->IsVehicle())
+			obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Vehicle;
+		elif (e->IsStructure())
+			obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Building;
+		else
+			FATAL__("Cannot transfer object data to technite logic client. Unsupported type "+e->GetTypeName());
+	}
+
+
+
+	void		Handle(const Protocol::DestroyEntity&entity)
+	{
+		if (!isActive)
+			return;
+
+		TechniteProtocol::GameObject obj;
+		if (gameObjects.QueryAndUnSet(entity.id,obj))
+		{
+			Channels::removeGameObject.SendTo(logicServer,obj.id,1);
+		}
+		else
+		{
+			if (!storedGameObjects.Unset(entity.id))
+				LogEvent(EventType::InternalFault,nullptr,"TechniteLogicLink: Unable to destroy entity "+entity.id.value.ToString()+": Not known");
+		}
+	}
+
+
+	void		Handle(const Protocol::NewMobileEntity&mobile)
+	{
+		if (!isActive)
+			return;
+
+
+		const Protocol::MyMobileEntity*m = 
+			mobile.state.myMobileEntity.Get0();
+
+		TechniteProtocol::GameObject obj;
+		obj.birthRound = Network::roundNumber;
+		obj.id.location	= EncodeLocation(mobile.state.entityState.location);
+		obj.id.isGhost = false;
+		obj.isMine = mobile.owner == Network::myID;
+
+		
+		if (mobile.turretName != ConstName::Empty)
+		{
+			obj.height = 1;
+			obj.isBroad = true;
+			const Objects::Component::VehicleBase*b = Objects::Component::GetVehicleBaseByName(mobile.baseName);
+			const Objects::Component::Turret*t = Objects::Component::GetTurretByName(mobile.turretName);
+			ASSERT_NOT_NULL1__(b,(int)mobile.baseName.value);
+			ASSERT_NOT_NULL1__(t,(int)mobile.turretName.value);
+			obj.className = Objects::Vehicle::GetTypeName(b,t);
+			obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Vehicle;
+		}
+		else
+		{
+			Objects::PWorldEntity e = Objects::GetSatellitePrototypeByName(mobile.baseName);
+			ASSERT1__(e,(int)mobile.baseName.value);
+			obj.className = e->GetTypeName();
+			obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Satellite;
+			obj.height = e->GetHeight();
+			obj.isBroad = e->IsBroad();
+		}
+
+		if (m)
+		{
+			if (m->storedIn.Get0())
+			{
+				LogEvent(EventType::TechniteLogic,nullptr,"Registering new stored mobile entity '"+mobile.state.entityState.id.value.ToString()+"' at "+mobile.state.entityState.location.ToString());
+				storedGameObjects.Set(mobile.state.entityState.id,obj);
+				return;
+			}
+		}
+		LogEvent(EventType::TechniteLogic,nullptr,"Registering new mobile entity '"+mobile.state.entityState.id.value.ToString()+"' at "+mobile.state.entityState.location.ToString());
+		gameObjects.Set(mobile.state.entityState.id,obj);
+		Channels::createGameObject.SendTo(logicServer,obj,1);
+	}
+
+	void		Handle(const Protocol::EntityState&state)
+	{
+		if (state.location == Grid::LCellIdI::Invalid)
+			return;
+
+		TechniteProtocol::GameObject*obj = gameObjects.QueryPointer(state.id);
+		if (!obj)
+		{
+			FATAL__("Unable to find game object by id (for motion): "+state.id.value.ToString());
+			return;
+		}
+		LogEvent(EventType::TechniteLogic,nullptr,"Registering motion of entity '"+state.id.value.ToString()+"' to "+state.location.ToString());
+
+		Channels::removeGameObject.SendTo(logicServer,obj->id,1);
+		obj->id.location = EncodeLocation(state.location);
+		Channels::createGameObject.SendTo(logicServer,*obj,1);
+	}
+
+	void		Handle(const Protocol::MobileState&state)
+	{
+		if (!isActive)
+			return;
+		const Protocol::MyMobileEntity*m = state.myMobileEntity.Get0();
+
+		bool isStored = storedGameObjects.IsSet(state.entityState.id);
+		if (isStored && (m && m->storedIn.Get0()))
+			return;
+		if (isStored)
+		{
+			TechniteProtocol::GameObject obj;
+			storedGameObjects.QueryAndUnSet(state.entityState.id,obj);
+
+			if (state.entityState.location != Grid::LCellIdI::Invalid)
+			{
+				obj.id.location = EncodeLocation(state.entityState.location);
+			}
+			Channels::createGameObject.SendTo(logicServer,obj,1);
+
+			gameObjects.Set(state.entityState.id,obj);
+			LogEvent(EventType::TechniteLogic,nullptr,"Checked out entity '"+state.entityState.id.value.ToString()+"' to "+state.entityState.location.ToString());
+			return;
+		}
+		if (m && m->storedIn.Get0())
+		{
+			TechniteProtocol::GameObject obj;
+			ASSERT1__(gameObjects.QueryAndUnset(state.entityState.id,obj),state.entityState.id.value.ToString());
+			Channels::removeGameObject.SendTo(logicServer,obj.id,1);
+			storedGameObjects.Set(state.entityState.id,obj);
+			LogEvent(EventType::TechniteLogic,nullptr,"Checked in entity '"+state.entityState.id.value.ToString()+"' to "+state.entityState.location.ToString());
+			return;
+		}
+		Handle(state.entityState);
+	}
+
+	void		Handle(const Protocol::StructureConstruction&struc)
+	{
+		if (!isActive)
+			return;
+		LogEvent(EventType::TechniteLogic,nullptr,"Registering new structure entity '"+struc.state.entityState.id.value.ToString()+"' at "+struc.state.entityState.location.ToString());
+
+		TechniteProtocol::GameObject obj;
+		obj.birthRound = Network::roundNumber;
+		obj.id.location	= EncodeLocation(struc.state.entityState.location);
+		obj.isMine = struc.owner == Network::myID;
+
+		
+		Objects::PWorldEntity e = Objects::GetPrototypeByName(struc.typeName);
+		ASSERT1__(e,(int)struc.typeName.value);
+		obj.height = e->GetHeight();
+		obj.isBroad = e->IsBroad();
+		obj.className = e->GetTypeName();
+		obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Building;
+		obj.id.isGhost = false;
+
+		gameObjects.Set(struc.state.entityState.id,obj);
+		Channels::createGameObject.SendTo(logicServer,obj,1);
+	}
+
+	void		Handle(const Protocol::StructureState&state)
+	{
+		if (!isActive)
+			return;
+		Handle(state.entityState);
 	}
 
 
@@ -231,31 +420,6 @@ namespace TechniteLogicLink
 		}
 
 
-		static UINT32 EncodeLocation(const Grid::LCellIdI&location)
-		{
-			Technites::Technite::CompressedLocation loc;
-			loc = Grid::HCellIdU(Grid::low.grid.GetCell(location.stackID).higherEquivalent, 
-								Grid::CellStack::ToLayer(location.height));
-			return loc.GetData();
-		}
-		static void FillIn(const Objects::PWorldEntity&e, TechniteProtocol::GameObject&obj)
-		{
-			obj.birthRound = Network::roundNumber;	//too lazy
-			obj.height = (BYTE)e->GetHeight();
-			obj.id.location = EncodeLocation(e->location);
-			obj.isBroad = e->IsBroad();
-			obj.isMine = e->isMine;
-			obj.className = e->GetTypeName();
-			if (e->IsSatellite())
-				obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Satellite;
-			elif (e->IsVehicle())
-				obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Vehicle;
-			elif (e->IsStructure())
-				obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Building;
-			else
-				FATAL__("Cannot transfer object data to technite logic client. Unsupported type "+e->GetTypeName());
-		}
-
 		void Ready(Package::NetString<256>&version, TCP::Peer&peer)
 		{
 			String expect = CompileProtocolString();
@@ -302,39 +466,21 @@ namespace TechniteLogicLink
 			}
 
 			{
-				Objects::ForeachWorldEntity([&peer](const Objects::PWorldEntity&e)
+				gameObjects.VisitAllValues([&peer](const TechniteProtocol::GameObject&obj)
 				{
-					TechniteProtocol::GameObject obj;
-					FillIn(e,obj);
-					obj.id.isGhost = false;
 					Channels::createGameObject.SendTo(peer,obj);
+					DBG_ASSERT__(!obj.id.isGhost);
+				});
+				ghostGameObjects.VisitAllValues([&peer](const TechniteProtocol::GameObject&obj)
+				{
+					Channels::createGameObject.SendTo(peer,obj);
+					DBG_ASSERT__(obj.id.isGhost);
+				});
+				controlMarkers.VisitAllValues([&peer](const TechniteProtocol::ControlMarker&mrk)
+				{
+					Channels::createControlMarker.SendTo(peer,mrk);
 				});
 
-				for (const auto&m : Objects::Marker::all)
-				{
-					TechniteProtocol::GameObject obj;
-					obj.id.isGhost = true;
-					obj.birthRound = m.createdInRound;
-					if (m.mobileVisualization)
-						FillIn(m.mobileVisualization,obj);
-					elif (m.structureVisualization)
-						FillIn(m.structureVisualization,obj);
-					else
-					{
-						if (m.type == Objects::Marker::Type::ControlMarker)
-						{
-							TechniteProtocol::ControlMarker marker;
-							marker.birthRound = m.createdInRound;
-							marker.location = EncodeLocation(m.location);
-							marker.radius = 0.f;	//for now
-							marker.typeIndex = 0;	//for now
-
-							Channels::createControlMarker.SendTo(peer,marker);
-						}
-						continue;
-					}
-					Channels::createGameObject.SendTo(peer,obj);
-				};
 			}
 
 
@@ -468,6 +614,8 @@ namespace TechniteLogicLink
 
 	void		Create()
 	{
+		isActive = true;
+
 		static bool setup = false;
 		if (!setup)
 		{
@@ -532,6 +680,70 @@ namespace TechniteLogicLink
 			}
 	}
 	#endif
+
+
+	void		CreateMarker(const Objects::Marker&m)
+	{
+		if (!isActive)
+			return;
+
+		switch (m.type)
+		{
+			case Objects::Marker::Type::EntityDeath:
+			case Objects::Marker::Type::HostileContact:
+			{
+				TechniteProtocol::GameObject obj;
+				if (m.mobileVisualization)
+					FillIn(m.mobileVisualization,obj);
+				else
+					if (m.structureVisualization)
+						FillIn(m.structureVisualization,obj);
+					else
+						return;
+				LogEvent(EventType::TechniteLogic,nullptr,"Creating new ghost-marker for "+m.id.ToString());
+				obj.id.isGhost = true;
+				obj.birthRound = m.createdInRound;
+				ghostGameObjects.Set(m.id,obj);
+				Channels::createGameObject.SendTo(logicServer,obj,1);
+			}
+			break;
+			case Objects::Marker::Type::ControlMarker:
+			{
+				LogEvent(EventType::TechniteLogic,nullptr,"Creating new control-marker for "+m.id.ToString());
+				TechniteProtocol::ControlMarker mrk;
+				mrk.birthRound = m.createdInRound;
+				mrk.location = EncodeLocation(m.location);
+				mrk.radius = m.radius;
+				mrk.typeIndex = m.subType;
+				controlMarkers.Set(m.id,mrk);
+				Channels::createControlMarker.SendTo(logicServer,mrk,1);
+			}
+			break;
+		}
+	}
+
+	void		DestroyMarker(const TUniqueID&id)
+	{
+		if (!isActive)
+			return;
+
+		TechniteProtocol::GameObject obj;
+		if (ghostGameObjects.QueryAndUnSet(id,obj))
+		{
+			LogEvent(EventType::TechniteLogic,nullptr,"Removing ghost-marker for "+id.ToString());
+			Channels::removeGameObject.SendTo(logicServer,obj.id);
+			return;
+		}
+		TechniteProtocol::ControlMarker mrk;
+		if (controlMarkers.QueryAndUnSet(id,mrk))
+		{
+			LogEvent(EventType::TechniteLogic,nullptr,"Removing control-marker for "+id.ToString());
+			Channels::removeControlMarker.SendTo(logicServer,mrk.location);
+			return;
+		}
+	}
+
+
 
 	bool		AwaitsClient()
 	{
@@ -608,10 +820,15 @@ namespace TechniteLogicLink
 
 	void		Destroy()
 	{
+		isActive = false;
 		logicServer.EndService();
 		logicProcess.Terminate();
 		numClients = 0;
 		recordedHistory.Clear();
+		gameObjects.Clear();
+		storedGameObjects.Clear();
+		ghostGameObjects.Clear();
+		controlMarkers.Clear();
 	}
 
 
