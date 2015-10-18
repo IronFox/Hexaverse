@@ -1584,6 +1584,44 @@ namespace Grid
 
 							});
 						}
+
+						{
+							const auto*indices = dat.technites.indices.pointer();
+
+							Concurrency::parallel_for(index_t(0), dat.technites.indices.Count(), index_t(3) * HullTestBatch, [this, &lock, &distance, b, d, &rs, &dat, indices, &outNormal](index_t _i)
+								//for (index_t i = 0; i < hullIndices.Count(); i += 3)
+							{
+								float dist = distance;
+								bool any = false;
+								TVec3<> normal;
+								for (index_t i = _i; i < _i + HullTestBatch*3 && i < dat.technites.indices.Count(); i+=3)
+								{
+									if (Vec::dot(dat.technites.vertices[indices[i]].normal.xyz,d) > 0.f)
+										continue;
+									if (Obj::detectOpticalIntersection(
+										dat.technites.vertices[indices[i]].vertex,
+										dat.technites.vertices[indices[i + 1]].vertex,
+										dat.technites.vertices[indices[i + 2]].vertex,
+										b, d, dist))
+									{
+										any = true;
+										normal = float3(dat.technites.vertices[indices[i]].normal.xyz)/127.f;	//correct enough
+									}
+								}
+								if (any)
+								{
+									lock.lock();
+									if (dist < distance)
+									{
+										rs = true;
+										distance = dist;
+										outNormal = normal;	//correct enough
+									}
+									lock.unlock();
+								}
+
+							});
+						}
 					}
 				}
 				return rs;
@@ -2117,9 +2155,10 @@ namespace Grid
 		bool					LowCellIsClearIgnoreStructure(const LCellIdI&cell)const;
 		/**
 		Determines the weakest and strongest content types found in the specified low-resolution cell
+		@param includeUnknown Consider unknown blocks for outWeakest and outStrongest. If set false, outStrongest and outWeakest may still end up being unknown, if all are unknown
 		@return true, if any Content::Unknown blocks were encountered, false otherwise
 		*/
-		bool					GetStrengthRange(const LCellIdI&cell, Content&outWeakest, Content&outStrongest) const;
+		bool					GetStrengthRange(const LCellIdI&cell, Content&outWeakest, Content&outStrongest, bool includeUnknown) const;
 
 		bool					IsRoad(const LCellIdI&, bool ignoreClearCellsOnEdge) const;
 
