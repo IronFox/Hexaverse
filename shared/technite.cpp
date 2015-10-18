@@ -1737,6 +1737,9 @@ namespace Technites
 					techniteMap.Unset(loc);
 					atomicGrid.cellStack[loc.stackID].volumeCell[loc.layer].content = Grid::Content::Clear;
 					atomicGrid.SignalStackChange(loc.stackID);
+
+					const auto mapping = Grid::highToLowMap[loc.stackID];
+					Objects::SignalClusterAndNeighborsChange(Grid::LCellIdI(mapping.lowCells[0],Grid::CellStack::ToHeight(loc.layer)),t);
 				}
 			}
 			newField.swap(technites);
@@ -1798,6 +1801,10 @@ namespace Technites
 				{
 					visibility.ChangeSensory(loc, t, -1);
 					techniteMap.Unset(loc);
+
+					const auto mapping = Grid::highToLowMap[loc.stackID];
+					Objects::SignalClusterAndNeighborsChange(Grid::LCellIdI(mapping.lowCells[0],Grid::CellStack::ToHeight(loc.layer)),t);
+
 
 					#ifdef _DEBUG
 					if (GetLastContent(loc) == Grid::Content::Technite)
