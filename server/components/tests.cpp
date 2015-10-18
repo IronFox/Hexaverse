@@ -969,7 +969,7 @@ namespace Test
 			const Technites::Technite&tech = faction->technites.first();
 			if (iteration > 0)
 				ASSERT__(tech.state.IsLit());
-			BYTE expectedEnergy = (BYTE)std::min<count_t>(0xFF, iteration * (count_t)tech.GetLightEnergyYield());
+			BYTE expectedEnergy = (BYTE)std::min<count_t>(0xFF, (iteration+1) * (count_t)tech.GetLightEnergyYield());
 			BYTE expectedTTL = (BYTE)(ttl0 - iteration);
 			ASSERT_EQUAL__(expectedEnergy, tech.resources.energy);
 			ASSERT_EQUAL__(expectedTTL, tech.state.GetTTL());
