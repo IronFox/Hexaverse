@@ -320,16 +320,22 @@ void	SignalConstructTowerTurret(const TUniqueID&towerID,const Objects::Component
 #endif
 
 
+void	TransmitRoundEndRequest()
+{
+	Network::client.SendSignal(Protocol::ChannelID::RequestRoundEnd);
+	LogEvent(EventType::SessionRelated,nullptr,"Requested new round");
+}
+
 void	SignalRoundEnd()
 {
 	if (Network::ControlEnabled())
 	{
-		Network::client.SendSignal(Protocol::ChannelID::RequestRoundEnd);
 		Network::newRoundRequested = true;
 		#ifdef HAS_WINDOW
 			Objects::UpdateChoices(Network::ControlEnabled());
 		#endif
-		LogEvent(EventType::SessionRelated,nullptr,"Requested new round");
+		if (!Network::amTechniteFaction || TechniteLogicLink::LogicIsDone())
+			TransmitRoundEndRequest();
 	}
 }
 

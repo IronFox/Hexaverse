@@ -6,7 +6,7 @@
 
 #include "dialog.h"
 
-extern void	SignalRoundEnd();
+extern void	TransmitRoundEndRequest();
 
 namespace TechniteLogicLink
 {
@@ -24,7 +24,7 @@ namespace TechniteLogicLink
 	#endif
 	count_t numClients = 0;
 
-	static bool executed = false, haveAllTechnites = true;
+	static bool executed = false, haveAllTechnites = true, logicIsDone = false;
 
 
 	class PeerAttachment : public TCP::Client::Attachment
@@ -81,6 +81,8 @@ namespace TechniteLogicLink
 			FATAL__("Cannot transfer object data to technite logic client. Unsupported type "+e->GetTypeName());
 	}
 
+
+	bool		LogicIsDone()	{return logicIsDone;}
 
 
 	void		Handle(const Protocol::DestroyEntity&entity)
@@ -387,10 +389,12 @@ namespace TechniteLogicLink
 			{
 				LogEvent(EventType::TechniteLogic,nullptr,"All technites instructed");
 				
-				if (Network::amTechniteFaction && !Network::amRegularFaction)
+				logicIsDone = true;
+
+				if (Network::amTechniteFaction && (!Network::amRegularFaction || Network::newRoundRequested))
 				{
 					//auto-new-round, if set. Not sure if this should be set
-					//SignalRoundEnd();
+					TransmitRoundEndRequest();
 				}
 			}
 		}
@@ -605,7 +609,15 @@ namespace TechniteLogicLink
 		switch (signal)
 		{
 			case TechniteProtocol::ChannelID::RequestNextRound:
-				SignalRoundEnd();
+				if (isActive)
+				{
+					logicIsDone = true;
+					if (Network::amTechniteFaction && (!Network::amRegularFaction || Network::newRoundRequested))
+					{
+						//auto-new-round, if set. Not sure if this should be set
+						TransmitRoundEndRequest();
+					}
+				}
 			break;
 		}
 		//none supported for now
@@ -754,6 +766,7 @@ namespace TechniteLogicLink
 
 	void		Forward(Protocol::TechniteChunk&chunk)
 	{
+		logicIsDone = false;
 		executed = false;
 		haveAllTechnites = false;
 		if (chunk.flags & Protocol::TechniteChunkFlags::IsFirst)

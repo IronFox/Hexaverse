@@ -62,6 +62,11 @@ namespace TechniteLogicLink
 	void		ExecuteLogic(UINT32 roundNumber);
 
 	/**
+	Queries whether or not technite logic processing has completed this round
+	*/
+	bool		LogicIsDone();
+
+	/**
 	Starts the technite logic link. Nothing happens if the system is already active.
 	*/
 	void		Create();
