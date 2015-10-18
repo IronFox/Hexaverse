@@ -1,3 +1,12 @@
+v0.3.3		[Oct 18 2015]
+	Added game-object support for technites
+	Technite logic is now notified of current round number when tasked to process strategy
+	Decoupled player requesting new round and technite logic execution end. Only if both are set, a new round is requested
+	For technite-only factions, a new round is requested once the logic is done computing
+	Added option for the server to restrict the type of faction that can be newly created
+	The client will gray-out the respective buttons
+	Client will now also list servers for which it could not deserialize host information to indicate those are completely uncompativle
+
 v0.3.2		[Oct 14 2015]
 	Improved GUI system, tutorial messages, and general application stability.
 	Introduced technite system to server and client.
