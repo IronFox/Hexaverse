@@ -1901,7 +1901,7 @@ namespace Objects
 				return true;
 
 			Grid::Content weakest,strongest;
-			bool anyUnknown = world.GetStrengthRange(cell,weakest,strongest);
+			bool anyUnknown = world.GetStrengthRange(cell,weakest,strongest,canStandOnUnknown);
 
 			if (!canStandOnUnknown && anyUnknown)
 				return false;

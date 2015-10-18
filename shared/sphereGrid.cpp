@@ -1592,19 +1592,31 @@ namespace Grid
 
 
 
-	bool	WorldData::GetStrengthRange(const LCellIdI&cell, Content&outWeakest, Content&outStrongest) const
+	bool	WorldData::GetStrengthRange(const LCellIdI&cell, Content&outWeakest, Content&outStrongest, bool includeUnknown) const
 	{
 		#ifdef HYBRID_GRID
 			index_t finer = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
 			const auto&c = Grid::high.grid.GetCell(finer);
 			outStrongest = outWeakest = Content::Reinterpret((cellStack[finer].GetCellI(cell.height).content));
-			int s0 = CellStack::Cell::typeStrength[outStrongest];
 			bool anyUnknown = false;
+			int s0 = CellStack::Cell::typeStrength[outStrongest];
 			TFloatRange<int> strength = FloatRange<int>(s0,s0);
+			if (outStrongest == Content::Unknown)
+			{
+				anyUnknown = true;
+				if (!includeUnknown)
+					strength = MaxInvalidRange<int>();
+			}
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 			{
 				Content t = Content::Reinterpret(cellStack[c.neighborhood.neighborID[j]].GetCellI(cell.height).content);
 				anyUnknown |= t == Content::Unknown;
+				if (t == Content::Unknown)
+				{
+					anyUnknown = true;
+					if (!includeUnknown)
+						continue;
+				}
 				int strength2 = CellStack::Cell::typeStrength[t];
 				if (strength2 < strength.min)
 				{
