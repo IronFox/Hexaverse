@@ -3419,10 +3419,10 @@ void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_even
 
 
 #ifdef HAS_WINDOW
-	void AddFactionCreationChoice(const String&line, UINT32 typeFlags)
+	void AddFactionCreationChoice(const String&line, UINT32 typeFlags, UINT32 supportFactionFlag)
 	{
 		Dialog::loginMenu->AddCommand(line,
-		[typeFlags]()
+		[typeFlags,supportFactionFlag]()
 		{
 			if (Network::HaveFactionKeyForCurrentWorld())
 			{
@@ -3430,9 +3430,9 @@ void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_even
 				[typeFlags](){
 					Network::AttemptFactionLogin(true,typeFlags);
 					Dialog::Hide(Dialog::loginMenu);
-				},[]()
+				},[supportFactionFlag]()
 				{
-					if (!Network::amOnline || Network::haveFaction)
+					if (!Network::amOnline || Network::haveFaction || !(supportFactionFlag & Network::gameFlags))
 						return Dialog::CheckResult::Abort;
 					if (Network::serverPhase != Protocol::Phase::CommandPhase)
 						return Dialog::CheckResult::OkayNotRightNow;
@@ -3444,7 +3444,7 @@ void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_even
 				Network::AttemptFactionLogin(true,typeFlags);
 				Dialog::Hide(Dialog::loginMenu);
 			}
-		},[](){return Network::amOnline && !Network::haveFaction && Network::serverPhase == Protocol::Phase::CommandPhase;},false);
+		},[supportFactionFlag](){return Network::amOnline && !Network::haveFaction && (Network::gameFlags & supportFactionFlag) && Network::serverPhase == Protocol::Phase::CommandPhase;},false);
 
 
 	}
@@ -3768,7 +3768,7 @@ int main( int argc, const char* argv[])
 			mainMenu->FullAutoLayout();
 
 			Dialog::loginMenu->AddCommand("Continue existing faction",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},[](){return Network::amOnline && !Network::haveFaction && Network::HaveFactionKeyForCurrentWorld() && Network::serverPhase == Protocol::Phase::CommandPhase;});
-			AddFactionCreationChoice("Create new faction",Protocol::FactionType::RegularFaction);
+			AddFactionCreationChoice("Create new faction",Protocol::FactionType::RegularFaction, Protocol::GameFlag::SupportRegularFactions);
 
 			
 
