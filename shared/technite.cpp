@@ -299,7 +299,7 @@ namespace Technites
 				bool ref;
 				ref = false;
 				if (entity)
-					if (!entity->IsIndestructible())
+					if (!entity->IsIndestructible() && entity->owner.get() != this)
 					{
 						if (eaten.mobileEaten.compare_exchange_strong(ref,true))
 							all[count++] = entity;
@@ -309,7 +309,7 @@ namespace Technites
 				entity = Objects::GetStructure(at);
 				ref = false;
 				if (entity)
-					if (!entity->IsIndestructible())
+					if (!entity->IsIndestructible() && entity->owner.get() != this)
 					{
 						if (eaten.structureEaten.compare_exchange_strong(ref,true))
 							all[count++] = entity;
