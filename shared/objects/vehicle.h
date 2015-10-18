@@ -119,7 +119,7 @@ namespace Objects
 		//return abs(inclination) <= 1; }
 
 
-		static String			GetTypeName(Component::VehicleBase*base, Component::Turret*turret) {return base->shortName + turret->shortName;}
+		static String			GetTypeName(const Component::VehicleBase*base, const Component::Turret*turret) {return base->shortName + turret->shortName;}
 		
 
 
