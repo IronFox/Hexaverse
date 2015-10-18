@@ -173,7 +173,7 @@ namespace Receiver
 		if (State::phase != Protocol::Phase::CommandPhase && State::phase != Protocol::Phase::EndOfGame)
 		{
 			//disconnecting client. no new faction
-			LogEvent(EventType::SessionRelated, peer, "Cannot connect ("+String(State::phase.ToString())+") right now. Disconnecting");
+			LogEvent(EventType::CommandRejected, peer, "Cannot connect ("+String(State::phase.ToString())+") right now. Disconnecting");
 			response.startFactionTypes = 0;
 			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 			client->peer.lock()->Disconnect();
@@ -199,7 +199,7 @@ namespace Receiver
 
 		if (factionTypeNotSupported)
 		{
-			LogEvent(EventType::SessionRelated, peer, "Requested faction type is not supported");
+			LogEvent(EventType::CommandRejected, peer, "Requested faction type is not supported");
 			response.startFactionTypes = 0;
 			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 			client->peer.lock()->Disconnect();
