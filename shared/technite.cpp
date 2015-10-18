@@ -1300,8 +1300,14 @@ namespace Technites
 			ASSERT__(success);
 			ASSERT_EQUAL__(test,at);
 			const auto&vcell = Grid::actualWorld.cellStack[loc.stackID].volumeCell[loc.layer];
-			ASSERT_EQUAL__(vcell.content, Grid::Content::Technite);
-			ASSERT_EQUAL__(vcell.techniteFaction, this->gridID);
+			if (vcell.content == Grid::Content::Technite)
+			{
+				ASSERT_EQUAL__(vcell.techniteFaction, this->gridID);
+			}
+			else
+			{
+				LogEvent(EventType::InternalFault,nullptr,"Expected technite content type in cell "+t->location.GetU().ToString()+", but got "+Grid::Content::Reinterpret(vcell.content).ToString());
+			}
 		}
 
 
