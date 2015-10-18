@@ -165,7 +165,7 @@ void	SaveHosts()
 			float4 color(1,1,1,1);
 			if (info.rightVersion)
 			{
-				text = " "+info.info.hostInfo.value.hostID.ToNiceString()+"/"+info.info.worldID.value.ToNiceString();
+				text = " "+info.info.hostInfo.value.hostID.ToNiceString()+" / "+info.info.worldID.value.ToNiceString();
 				if (info.haveToken)
 					text += " (continue)";
 			}
@@ -178,8 +178,8 @@ void	SaveHosts()
 				}
 				else
 				{
-					text = " "+info.info.hostInfo.value.hostID.ToNiceString();
-					text += " (Version Mismatch)";
+					text = " "+info.info.hostInfo.value.hostID.ToNiceString()+" / "+info.info.worldID.value.ToNiceString();
+					text += "\n (Version Mismatch)";
 				}
 			}
 			PLabel headLine = MakeTabLabel(text,1.1f);
