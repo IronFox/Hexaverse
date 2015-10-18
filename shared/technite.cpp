@@ -1475,14 +1475,8 @@ namespace Technites
 
 
 		BYTE ttl = technite.state.GetTTL();
-
-		BYTE cost = technite.GetLifeCostAtHeight(Grid::CellStack::ToHeight( loc.layer ));
-		if (ttl > cost)
-		{
-			ttl -= cost;
-		}
-		else
-			ttl = 0;
+		if (ttl > 0)
+			ttl--;
 		technite.state.SetTTL(ttl);
 
 		if (content != Grid::Content::Technite
@@ -1884,6 +1878,7 @@ namespace Technites
 				index_t at = technites.Count();
 				Technite tech;
 				tech.location = loc;
+				tech.state =  Technite::CompressedState(false,Technite::GetInitialTTLAtLayer(loc.layer));
 
 				//Grid::actualWorld.cellStack[tech.location.stackID].SetLocalTechniteFaction(tech.location.height, this->gridID);
 				Technite&t1 = technites.Append(tech);

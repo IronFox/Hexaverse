@@ -75,7 +75,7 @@ namespace TechniteProtocol
 		, NET(int), numLayersPerStack
 		, NETA(BYTE), matterYieldByContentType
 		, NETA(BYTE), matterDegradationTable
-		, NETA(BYTE), ttlCostAtLayer
+		, NETA(BYTE), initialTTLAtLayer
 		, NETA(BYTE), energyYieldAtLayer
 	);
 

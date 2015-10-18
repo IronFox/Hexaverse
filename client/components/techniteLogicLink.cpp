@@ -308,7 +308,7 @@ namespace TechniteLogicLink
 		cfg.matterYieldByContentType.SetSize(Grid::Content::NumberOfPossibilities);
 		cfg.matterDegradationTable.SetSize(Grid::Content::NumberOfPossibilities);
 		cfg.energyYieldAtLayer.SetSize(Grid::CellStack::Range);
-		cfg.ttlCostAtLayer.SetSize(Grid::CellStack::Range);
+		cfg.initialTTLAtLayer.SetSize(Grid::CellStack::Range);
 		static_assert(Grid::Content::NumberOfPossibilities == ARRAYSIZE(Technites::Technite::MatterYield),"Field size mismatch");
 		for (index_t i = 0; i < Grid::Content::NumberOfPossibilities; i++)
 		{
@@ -319,7 +319,7 @@ namespace TechniteLogicLink
 		{
 			int h = Grid::CellStack::ToHeight(layer);
 			cfg.energyYieldAtLayer[layer] = Technites::Technite::GetLightEnergyYieldAtHeight(h);
-			cfg.ttlCostAtLayer[layer] = Technites::Technite::GetLifeCostAtHeight(h);
+			cfg.initialTTLAtLayer[layer] = Technites::Technite::GetInitialTTLAtLayer(layer);
 		}
 
 
@@ -438,7 +438,7 @@ namespace TechniteLogicLink
 
 		static String CompileProtocolString()
 		{
-			return "Aquinas v1.2." + String(TechniteProtocol::ChannelID::Count);
+			return "Aquinas v1.3." + String(TechniteProtocol::ChannelID::Count);
 		}
 
 

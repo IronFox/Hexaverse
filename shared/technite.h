@@ -321,14 +321,18 @@ namespace Technites
 			state = inState.state;
 		}
 
-		BYTE				GetLifeCost() const
+		BYTE				GetInitialTTL() const
 		{
-			return GetLifeCostAtHeight(location.GetHeight());
+			return GetInitialTTLAtHeight(location.GetHeight());
 		}
 
-		static BYTE		GetLifeCostAtHeight(int height)
+		static BYTE		GetInitialTTLAtHeight(int height)
 		{
-			return (BYTE)std::max(height, 1);
+			return GetInitialTTLAtLayer(Grid::CellStack::ToLayer(height));
+		}
+		static BYTE		GetInitialTTLAtLayer(UINT layer)
+		{
+			return (sqr(Grid::CellStack::Range) - sqr(layer)) / Grid::CellStack::Range * 2;
 		}
 
 
