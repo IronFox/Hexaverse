@@ -187,7 +187,18 @@ namespace Dialog
 	*/
 	bool	ConfirmCurrent(bool bySpace);
 
+	/**
+	Renders all visible windows/dialogs
+	*/
 	void	Render();
+
+	/**
+	Checks that the top-most window is active (if any), and all others are inactive (if any).
+	Will halt execution in Debug mode, and fix the issue in release mode.
+	*/
+	void	VerifyIntegrity(const TCodeLocation&);
+
+
 
 	//bool	HandleClick();
 	bool	HandleMouseDown();

@@ -11,6 +11,8 @@
 #include <image/converter/magic.h>
 #include <general/random.h>
 #include "../../shared/cast.h"
+#include "../../shared/logEvent.h"
+
 
 namespace DX11 = Engine::DX11; 
 
@@ -20,6 +22,7 @@ extern Engine::Display<Engine::DirectX11>	display;
 void	OnTutorialsChanged();
 
 Random random;
+
 
 
 namespace Dialog
@@ -280,6 +283,31 @@ namespace Dialog
 	}
 
 
+	void	VerifyIntegrity(const TCodeLocation&loc)
+	{
+		if (Detail::visibleWindows.IsEmpty())
+			return;
+
+
+		for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
+		{
+			bool shouldBeActive = (i+1 == Detail::visibleWindows.Count());
+			GUIElements::PWindow w = Detail::visibleWindows[i];
+			if (w->IsActive() != shouldBeActive)
+			{
+				String msg = String(loc.ToString())+ ": Activity mismatch for window "+String(i+1)+"/"+String(Detail::visibleWindows.Count())+" (active="+String(w->IsActive())+", should be "+String(shouldBeActive)+")";
+				LogEvent(EventType::InternalFault,nullptr,msg);
+				DBG_FATAL__(msg);
+				if (shouldBeActive)
+					w->Activate();
+				else
+					w->Deactivate();
+			}
+		}
+	}
+
+
+
 	void		Dialog::DumpMe()
 	{
 //		reLayout.swap(std::function<void(Dialog&)>());
@@ -297,6 +325,7 @@ namespace Dialog
 		Detail::visibleDialogs.FindAndErase(shared_from_this());
 		if (active && Detail::visibleWindows.IsNotEmpty())
 			Detail::visibleWindows.last()->Activate();
+		VerifyIntegrity(CLOCATION);
 	}
 
 	bool		Dialog::CanBeConfirmed(bool bySpace)	const
@@ -359,14 +388,17 @@ namespace Dialog
 
 	bool	ConfirmCurrent(bool bySpace)
 	{
+		VerifyIntegrity(CLOCATION);
 		if (Detail::visibleWindows.IsEmpty())
 			return false;
 		PDialog d = To<Dialog>::DynamicCast(Detail::visibleWindows.last());
 		if (d && d->CanBeConfirmed(bySpace))
 		{
 			d->Confirm(bySpace);
+			VerifyIntegrity(CLOCATION);
 			return true;
 		}
+		VerifyIntegrity(CLOCATION);
 		return false;
 	}
 
@@ -381,18 +413,22 @@ namespace Dialog
 	
 	void	ShowNextTutorial()
 	{
+		VerifyIntegrity(CLOCATION);
 		if (Detail::pendingTutorials.IsNotEmpty())
 		{
 			Show(Detail::pendingTutorials.Peek());
 			Detail::pendingTutorials.EraseFront();
+			VerifyIntegrity(CLOCATION);
 		}
 	
 		OnTutorialsChanged();
+		VerifyIntegrity(CLOCATION);
 	
 	}
 
 	WDialog	Query(const String&query, const String&initial, const String&allowChars, const PCheckInput&check, const PFetchInput&fetch)
 	{
+		VerifyIntegrity(CLOCATION);
 		GUIElements::Input::onChange = Detail::OnInput;
 		GUIElements::Input::onDone = Detail::OnDone;
 
@@ -412,6 +448,8 @@ namespace Dialog
 		d->confirmButton->DetectEnabledState();
 
 		d->ReLayout();
+		VerifyIntegrity(CLOCATION);
+
 		return d;
 	}
 
@@ -439,6 +477,7 @@ namespace Dialog
 	
 	bool	Hide(const GUIElements::PWindow&window)
 	{
+		VerifyIntegrity(CLOCATION);
 		index_t index = Detail::visibleWindows.GetIndexOf(window);
 		if (index == InvalidIndex)
 			return false;
@@ -456,6 +495,7 @@ namespace Dialog
 				Detail::visibleWindows.last()->Activate();
 		}
 
+		VerifyIntegrity(CLOCATION);
 
 		SignalSituationChange();
 
@@ -470,6 +510,7 @@ namespace Dialog
 
 	void	Show(const GUIElements::PWindow&window)
 	{
+		VerifyIntegrity(CLOCATION);
 		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.last() == window)
 		{
 			DBG_ASSERT__(window->IsActive());
@@ -488,6 +529,7 @@ namespace Dialog
 		if (d)
 			Detail::visibleDialogs << d;
 
+		VerifyIntegrity(CLOCATION);
 
 		SignalSituationChange();
 
@@ -497,6 +539,7 @@ namespace Dialog
 
 	void	ShowBottom(const GUIElements::PWindow&window)
 	{
+		VerifyIntegrity(CLOCATION);
 		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.first() == window)
 		{
 			if (Detail::visibleWindows.Count() == 1)
@@ -524,6 +567,7 @@ namespace Dialog
 		if (Detail::visibleWindows.Count() == 1)
 			window->Activate();
 
+		VerifyIntegrity(CLOCATION);
 		SignalSituationChange();
 
 	}
@@ -532,8 +576,12 @@ namespace Dialog
 
 	WDialog	ShowFactions(const Buffer0<Faction>&factions)
 	{
+		VerifyIntegrity(CLOCATION);
 		if (Detail::factionDialog)
+		{
 			RemoveDialog(Detail::factionDialog);
+			VerifyIntegrity(CLOCATION);
+		}
 
 
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton, "Close", false);
@@ -552,11 +600,13 @@ namespace Dialog
 		d->textField->zoom = 0.9f;
 		d->ReLayout();
 
+		VerifyIntegrity(CLOCATION);
 		return d;
 	}
 
 	bool	RemoveTutorial(const PDialog&dialog)
 	{
+		VerifyIntegrity(CLOCATION);
 		if (!dialog)
 			return false;
 
@@ -572,12 +622,14 @@ namespace Dialog
 			if ((*t) != dialog)
 				temp.Push(*t);
 		Detail::pendingTutorials.adoptData(temp);
+		VerifyIntegrity(CLOCATION);
 		return true;
 	}
 
 
 	bool	RemoveTutorial(const String&key)
 	{
+		VerifyIntegrity(CLOCATION);
 		bool found = false;
 		foreach (Detail::pendingTutorials,t)
 			if ((*t)->key == key)
@@ -593,12 +645,14 @@ namespace Dialog
 			if ((*t)->key != key)
 				temp.Push(*t);
 		Detail::pendingTutorials.adoptData(temp);
+		VerifyIntegrity(CLOCATION);
 
 		return true;
 	}
 
 	bool	RemoveDialog(const PDialog&dialog)
 	{
+		VerifyIntegrity(CLOCATION);
 		if (!dialog)
 			return false;
 		index_t at = Detail::visibleWindows.GetIndexOf(dialog);
@@ -614,11 +668,13 @@ namespace Dialog
 		}
 		else
 			Detail::visibleWindows.Erase(at);
+		VerifyIntegrity(CLOCATION);
 		return true;
 	}
 
 	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName /*= ""*/, const Rect<>&screenReference /*= Rect<>::Invalid*/)
 	{
+		VerifyIntegrity(CLOCATION);
 		if (!Detail::showTutorials)
 			return PDialog();
 		static StringTable<DX11::Texture,Strategy::Swap>	textureMap;
@@ -662,9 +718,12 @@ namespace Dialog
 		d->key = key;
 		//d.cancelButton.SetText( "Skip Tutorial" );
 
+		d->ReLayout();
+		VerifyIntegrity(CLOCATION);
+
 		OnTutorialsChanged();
 
-		d->ReLayout();
+		VerifyIntegrity(CLOCATION);
 		return d;
 	}
 
@@ -740,6 +799,7 @@ namespace Dialog
 	*/
 	WDialog	Confirm(const String&query, const POnConfirm&onConfirm, const PCheckState&check)
 	{
+		VerifyIntegrity(CLOCATION);
 		CheckResult ck = check();
 		if (ck == CheckResult::Abort)
 			return PDialog();
@@ -753,11 +813,13 @@ namespace Dialog
 		d->textField->SetText( query );
 
 		d->ReLayout();
+		VerifyIntegrity(CLOCATION);
 		return d;
 	}
 
 	WDialog	PermanentMessage(const String&message, const PCheckState&check)
 	{
+		VerifyIntegrity(CLOCATION);
 		CheckResult ck = check();
 		if (ck == CheckResult::Abort)
 			return PDialog();
@@ -771,6 +833,7 @@ namespace Dialog
 		d->textField->SetText( message );
 
 		d->ReLayout();
+		VerifyIntegrity(CLOCATION);
 		return d;
 	}
 
@@ -780,6 +843,7 @@ namespace Dialog
 	*/
 	WDialog	ShowMessage(const String&msg)
 	{
+		VerifyIntegrity(CLOCATION);
 
 
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton, "Got it", false);
@@ -788,6 +852,7 @@ namespace Dialog
 
 		d->ReLayout();
 
+		VerifyIntegrity(CLOCATION);
 		return d;
 	}
 
@@ -805,6 +870,7 @@ namespace Dialog
 
 	bool	CloseAllModal()
 	{
+		VerifyIntegrity(CLOCATION);
 		if (Detail::visibleWindows.IsNotEmpty())
 		{
 			bool anyNonClosable = false;
@@ -828,6 +894,7 @@ namespace Dialog
 						rs = true;
 					}
 				}
+				VerifyIntegrity(CLOCATION);
 				return rs;
 			}
 			else
@@ -836,8 +903,10 @@ namespace Dialog
 				Detail::visibleWindows.Clear();
 				Detail::visibleDialogs.Clear();
 			}
+			VerifyIntegrity(CLOCATION);
 			return true;
 		}
+		VerifyIntegrity(CLOCATION);
 		return false;
 	}
 
@@ -876,6 +945,7 @@ namespace Dialog
 
 	void	CheckServersAreShown(bool doShow)
 	{
+		VerifyIntegrity(CLOCATION);
 
 		if (doShow)
 		{
@@ -883,6 +953,7 @@ namespace Dialog
 		}
 		else
 			Hide(serverChoice);
+		VerifyIntegrity(CLOCATION);
 	}
 
 
