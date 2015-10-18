@@ -54,9 +54,10 @@ namespace Test
 		server.SetAsync(false);
 		client.SetAsync(false);
 
-		for (index_t i = 0; i < 50; i++)
+		const count_t NumIterations = 10;
+		for (index_t i = 0; i < NumIterations; i++)
 		{
-			std::cout << " starting test iteration "<<i<<"/"<<10<<std::endl;
+			std::cout << " starting test iteration "<<i<<"/"<<NumIterations<<std::endl;
 			quit = false;
 			USHORT port;
 			ASSERT__(server.StartService(0,true,&port));
