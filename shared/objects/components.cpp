@@ -1902,9 +1902,10 @@ namespace Objects
 
 			Grid::Content weakest,strongest;
 			bool anyUnknown = world.GetStrengthRange(cell,weakest,strongest,canStandOnUnknown);
-
-			if (!canStandOnUnknown && anyUnknown)
+			if (strongest == Grid::Content::Unknown && !canStandOnUnknown)
 				return false;
+			//if (!canStandOnUnknown && anyUnknown)
+			//	return false;
 
 	//								moveOnWater
 
@@ -1926,6 +1927,8 @@ namespace Objects
 					return false;	//lava
 				}
 				case Requirement::Water:
+					if (anyUnknown && !canStandOnUnknown)
+						return false;
 					//if (strongestStr > waterStrength)
 					//	return false;
 					//if (strongest == Grid::Content::Lava)

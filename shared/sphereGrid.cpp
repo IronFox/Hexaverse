@@ -1610,7 +1610,6 @@ namespace Grid
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 			{
 				Content t = Content::Reinterpret(cellStack[c.neighborhood.neighborID[j]].GetCellI(cell.height).content);
-				anyUnknown |= t == Content::Unknown;
 				if (t == Content::Unknown)
 				{
 					anyUnknown = true;

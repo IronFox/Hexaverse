@@ -161,40 +161,44 @@ namespace Animation
 		const bool*known = Grid::Resource::all.first().known;
 
 	
-		foreach(mapper.result,node)
+		for (int retries = 0; retries < 2; retries++)
 		{
-			if (known[node->cell.stackID])
-				continue;
-			if (node->movementCostsFromRoot < referenceSpeed)
-				continue;
+			foreach(mapper.result,node)
+			{
+				if (known[node->cell.stackID])
+					continue;
+				if (retries == 0 && node->movementCostsFromRoot < referenceSpeed)
+					continue;
 
-			float competition = 100.f;
-			float ally = 100.f;
-			float ghost = sqr(maxGhost);
-
-
-			if (!(Grid::low.cells[node->cell.stackID].cornerFlags & Grid::empZonesUnlocked))
-				continue;
+				float competition = 100.f;
+				float ally = 100.f;
+				float ghost = sqr(maxGhost);
 
 
-			bool canDo = EstimateThreatLevel(v,node->cell,competition,ally,ghost);
+				if (!(Grid::low.cells[node->cell.stackID].cornerFlags & Grid::empZonesUnlocked))
+					continue;
 
 
-			if (!competition || !canDo || !ghost)
-				continue;
-			const auto &n = Grid::low.grid.GetCell(node->cell.stackID).neighborhood;
-			int score = 0;
-			for (int i = 0; i < n.numNeighbors; i++)
-				if (!known[n.neighborID[i]])
-					score++;
-			float ghostFear = sqr(maxGhost) / ((ghost));
-			float dist = float(node->movementCostsFromRoot) * sqrt(ally) / sqrt(competition) / float(score+1) * ghostFear;
-			if (dist > closestDistance)
-				continue;
-			closestDistance = dist;
-			closest = node;
+				bool canDo = EstimateThreatLevel(v,node->cell,competition,ally,ghost);
+
+
+				if (!competition || !canDo || !ghost)
+					continue;
+				const auto &n = Grid::low.grid.GetCell(node->cell.stackID).neighborhood;
+				int score = 0;
+				for (int i = 0; i < n.numNeighbors; i++)
+					if (!known[n.neighborID[i]])
+						score++;
+				float ghostFear = sqr(maxGhost) / ((ghost));
+				float dist = float(node->movementCostsFromRoot) * sqrt(ally) / sqrt(competition) / float(score+1) * ghostFear;
+				if (dist > closestDistance)
+					continue;
+				closestDistance = dist;
+				closest = node;
+			}
+			if (closest)
+				break;
 		}
-
 		if (closest)
 		{
 			AI::IssuePath(v,mapper,closest);
