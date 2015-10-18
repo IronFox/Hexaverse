@@ -221,7 +221,7 @@ public:
 		void	operator++(int)	{layer ++ ;}
 		void	operator--(int) {ASSERT_GREATER__(layer,0); layer --;}
 
-		static UINT32 LayerSum(UINT32 base, int delta)	{if (delta >= 0) return base + delta; ASSERT_GREATER__(base,(UINT32)-delta); return base + delta;}
+		static UINT32 LayerSum(UINT32 base, int delta)	{if (delta >= 0) return base + delta; ASSERT_GREATER_OR_EQUAL__(base,(UINT32)-delta); return base + delta;}
 
 		String	ToString() const {return String(stackID)+ "["+String(layer)+"]";}
 
