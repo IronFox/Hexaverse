@@ -227,6 +227,133 @@ namespace Receiver
 	}
 
 
+	static index_t GetStartLocation()
+	{
+		index_t best = InvalidIndex;
+		float bestDist = 0;
+
+		Objects::Component::VehicleBase *testBase = &Objects::Component::hoverbase;
+
+		count_t numTries = 0;
+		while (best == InvalidIndex)
+		{
+			if (++numTries > 10)
+			{
+				return InvalidIndex;
+
+			}
+
+			const float r = Grid::ToRadius(0);
+			//avoid 12 corner cells: make sure all candidates have 6 neighbors
+			for (index_t i = 12; i < Grid::LowSetup::GridType::CellCount; i++)
+			{
+				if (State::Config::goal == State::Config::Goal::EMPConquerNexus)
+				{
+					if (!(State::unlockedEMPZones & Grid::low.grid.GetCell(i).cornerFlags))
+						continue;
+
+					const auto&n = Grid::low.grid.GetCell(i).neighborhood;
+					bool broken = false;
+					for (int k = 0; k < n.numNeighbors ; k++)
+					{
+						if (!(State::unlockedEMPZones & Grid::low.grid.GetCell(n.neighborID[k]).cornerFlags))
+						{
+							broken = true;
+							break;
+						}
+					}
+					if (broken)
+						continue;
+				}
+
+
+				const int h0 = Objects::FindApplicableGround(Grid::LCellIdI((UINT32)i,0),true);
+				if (h0 == Objects::badHeight || h0 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(Grid::actualWorld,Grid::LCellIdI((UINT32)i,h0-1),false,false))
+					continue;
+				{
+					const auto&n = Grid::low.grid.GetCell(i).neighborhood;
+					bool broken = false;
+					for (int k = 0; k < n.numNeighbors && !broken; k++)
+					{
+						const int h1 = Objects::FindApplicableGround(Grid::LCellIdI(n.neighborID[k],0),true);
+						if (h1 == Objects::badHeight || h1 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(Grid::actualWorld,Grid::LCellIdI(n.neighborID[k],h1-1),false,false))
+							broken = true;
+					}
+					if (broken)
+						continue;
+
+				}
+
+
+				float3 ref = Grid::low.cells[i].centerVertex.xyz;// * r;
+				float dist2 = std::numeric_limits<float>::max();
+				float ndist2 = std::numeric_limits<float>::max();
+				foreach (Objects::structures, s)
+				{
+					float d2 = Vec::quadraticDistance(Grid::low.cells[(*s)->location.stackID].centerVertex.xyz,ref);
+					if (!To<Objects::NexusPort>::DynamicCast(*s))
+					{
+						Objects::PTurretBase base = (*s)->GetTurretBase();
+						if (base)
+							d2 = sqr(sqrt(d2) - base->GetFlatAttackRange());	//fair enough here
+						dist2 = std::min(dist2, d2);
+					}
+					else
+					{
+						ndist2 = std::min(ndist2, d2);
+					}
+				}
+				foreach (Objects::vehicles, v)
+				{
+					float d2 = Vec::quadraticDistance(Grid::low.cells[(*v)->location.stackID].centerVertex.xyz,ref);
+					dist2 = std::min(dist2, d2);
+				}
+				if (/*Objects::structures.IsEmpty() &&*/ Objects::vehicles.IsEmpty())
+					dist2 = sqr(random.getFloat(1,2));
+				else
+					dist2 *= random.getFloat(0.9f,1.f / 0.9f);
+
+				if (dist2 > bestDist && ndist2 > 0.25f)	//actual
+				{
+					bestDist = dist2;
+					//nbestDist = ndist2;
+					best = i;
+
+					//if (Objects::structures.IsEmpty() && Objects::vehicles.IsEmpty())
+						//break;
+				}
+
+			}
+		}
+		return best;
+	}
+
+	static void UpdateEMPZones(count_t inc)
+	{
+		if (State::Config::goal == State::Config::Goal::EMPConquerNexus)
+		{
+			count_t numZones = Objects::Faction::all.Count()+inc;	//not counting nexus faction, but counting new faction(s)
+			numZones = (numZones/3) + !!(numZones % 3);
+
+			int unlocked = 0;
+			for (index_t i = 0; i < numZones; i++)
+			{
+				if (State::Config::NexusPorts::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
+				{
+					unlocked++;
+				}
+				unlocked++;
+			}
+				
+
+			State::unlockedEMPZones = ((1<<unlocked) - 1);
+			State::empZonesLocked = ((1 << 12)-1)  & ~State::unlockedEMPZones;
+
+			Channels::lockEmpZones.SendTo(State::server,State::empZonesLocked);
+		}
+	}
+
+
 	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
@@ -306,7 +433,7 @@ namespace Receiver
 			if (faction
 				|| State::tokenMap.Query(response.factionToken,faction)
 				|| (
-						response.startFactionTypes != Protocol::FactionType::ContinueOnly 
+						response.startFactionTypes == Protocol::FactionType::ContinueOnly 
 						&& Objects::Faction::all.IsNotEmpty()
 						&& (faction = Objects::Faction::all.first().lock())
 					)
@@ -379,13 +506,15 @@ namespace Receiver
 			}
 		}
 		bool colorsSent = false;
+
+		index_t startLocation = InvalidIndex;
 		if (newFaction)
 		{
 			if (response.startFactionTypes == Protocol::FactionType::ContinueOnly)
 			{
 				response.startFactionTypes = 0;
 				Channels::clientFactionResponse.SendTo(peer,response);
-				LogEvent(EventType::SessionRelated,peer,"Client chose to continue faction. No faction found that can be continued. Join-request rejected.");
+				LogEvent(EventType::CommandRejected,peer,"Client chose to continue faction. No faction found that can be continued. Join-request rejected.");
 				return;
 			}
 
@@ -393,7 +522,18 @@ namespace Receiver
 			{
 				response.startFactionTypes = 0;
 				Channels::clientFactionResponse.SendTo(peer,response);
-				LogEvent(EventType::SessionRelated,peer,"Game is closed. User does not have any valid access token. Join-request rejected.");
+				LogEvent(EventType::CommandRejected,peer,"Game is closed. User does not have any valid access token. Join-request rejected.");
+				return;
+			}
+
+			UpdateEMPZones(1);
+			startLocation = GetStartLocation();
+			if (startLocation == InvalidIndex)
+			{
+				UpdateEMPZones(0);
+				response.startFactionTypes = 0;
+				Channels::clientFactionResponse.SendTo(peer,response);
+				LogEvent(EventType::OperationAborted,peer,"Unable to find valid starting location for new faction.");
 				return;
 			}
 			//p.factionToken.value.Generate();	let's keep it even if it's unknown
@@ -494,141 +634,27 @@ namespace Receiver
 
 		if (newFaction)
 		{
-			index_t best = InvalidIndex;
-			float bestDist = 0;
-
-			Objects::Component::VehicleBase *testBase = &Objects::Component::hoverbase;
-
-			if (State::Config::goal == State::Config::Goal::EMPConquerNexus)
-			{
-				count_t numZones = Objects::Faction::all.Count();	//not counting nexus faction
-				numZones = (numZones/3) + !!(numZones % 3);
-
-				int unlocked = 0;
-				for (index_t i = 0; i < numZones; i++)
-				{
-					if (State::Config::NexusPorts::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
-					{
-						unlocked++;
-					}
-					unlocked++;
-				}
-				
-
-				State::unlockedEMPZones = ((1<<unlocked) - 1);
-				State::empZonesLocked = ((1 << 12)-1)  & ~State::unlockedEMPZones;
-
-				Channels::lockEmpZones.SendTo(State::server,State::empZonesLocked);
-
-			}
 
 
-
-			const float r = Grid::ToRadius(0);
-			//avoid 12 corner cells: make sure all candidates have 6 neighbors
-			for (index_t i = 12; i < Grid::LowSetup::GridType::CellCount; i++)
-			{
-				if (State::Config::goal == State::Config::Goal::EMPConquerNexus)
-				{
-					if (!(State::unlockedEMPZones & Grid::low.grid.GetCell(i).cornerFlags))
-						continue;
-
-					const auto&n = Grid::low.grid.GetCell(i).neighborhood;
-					bool broken = false;
-					for (int k = 0; k < n.numNeighbors ; k++)
-					{
-						if (!(State::unlockedEMPZones & Grid::low.grid.GetCell(n.neighborID[k]).cornerFlags))
-						{
-							broken = true;
-							break;
-						}
-					}
-					if (broken)
-						continue;
-				}
-
-
-				const int h0 = Objects::FindApplicableGround(Grid::LCellIdI((UINT32)i,0),true);
-				if (h0 == Objects::badHeight || h0 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(Grid::actualWorld,Grid::LCellIdI((UINT32)i,h0-1),false,false))
-					continue;
-				{
-					const auto&n = Grid::low.grid.GetCell(i).neighborhood;
-					bool broken = false;
-					for (int k = 0; k < n.numNeighbors && !broken; k++)
-					{
-						const int h1 = Objects::FindApplicableGround(Grid::LCellIdI(n.neighborID[k],0),true);
-						if (h1 == Objects::badHeight || h1 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(Grid::actualWorld,Grid::LCellIdI(n.neighborID[k],h1-1),false,false))
-							broken = true;
-					}
-					if (broken)
-						continue;
-
-				}
-
-
-				float3 ref = Grid::low.cells[i].centerVertex.xyz;// * r;
-				float dist2 = std::numeric_limits<float>::max();
-				float ndist2 = std::numeric_limits<float>::max();
-				foreach (Objects::structures, s)
-				{
-					float d2 = Vec::quadraticDistance(Grid::low.cells[(*s)->location.stackID].centerVertex.xyz,ref);
-					if (!To<Objects::NexusPort>::DynamicCast(*s))
-					{
-						Objects::PTurretBase base = (*s)->GetTurretBase();
-						if (base)
-							d2 = sqr(sqrt(d2) - base->GetFlatAttackRange());	//fair enough here
-						dist2 = std::min(dist2, d2);
-					}
-					else
-					{
-						ndist2 = std::min(ndist2, d2);
-					}
-				}
-				foreach (Objects::vehicles, v)
-				{
-					float d2 = Vec::quadraticDistance(Grid::low.cells[(*v)->location.stackID].centerVertex.xyz,ref);
-					dist2 = std::min(dist2, d2);
-				}
-				if (/*Objects::structures.IsEmpty() &&*/ Objects::vehicles.IsEmpty())
-					dist2 = sqr(random.getFloat(1,2));
-				else
-					dist2 *= random.getFloat(0.9f,1.f / 0.9f);
-
-				if (dist2 > bestDist && ndist2 > 0.25f)	//actual
-				{
-					bestDist = dist2;
-					//nbestDist = ndist2;
-					best = i;
-
-					//if (Objects::structures.IsEmpty() && Objects::vehicles.IsEmpty())
-						//break;
-				}
-
-			}
-
-
+			const auto&n = Grid::low.grid.GetCell(startLocation).neighborhood;
 			const auto&n = Grid::low.grid.GetCell(best).neighborhood;
-			if (response.startFactionTypes & Protocol::FactionType::RegularFaction)
+			if (State::Config::startBases && (response.startFactionTypes & Protocol::FactionType::RegularFaction)!=0)
 			{
-				if (State::Config::startBases)
+				Grid::LCellIdI location(startLocation,0);	//first 12 are corner cells
+				int h = Objects::FindApplicableGround(location,true);
+				location.height = h;
+				static const int want = 20;
+				static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);
+				Grid::Resource::Require("Fuel").coverage[location.stackID] = stackHeight;
+				Grid::Resource::Require("Minerals").coverage[location.stackID] = stackHeight;
+				foreach (Objects::Faction::all, _f)
 				{
-					Grid::LCellIdI location(best,0);	//first 12 are corner cells
-					int h = Objects::FindApplicableGround(location,true);
-					location.height = h;
-					static const int want = 20;
-					static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);
-					Grid::Resource::Require("Fuel").coverage[location.stackID] = stackHeight;
-					Grid::Resource::Require("Minerals").coverage[location.stackID] = stackHeight;
-					foreach (Objects::Faction::all, _f)
-					{
-						_f->lock()->visibility.resourcesDiscovered[location.stackID] = false;
-					}
 
-					Grid::LCellIdI at0 = Grid::LCellIdI(n.neighborID[0],h);
-					Grid::LCellIdI at1 = Grid::LCellIdI(n.neighborID[1],h);
-					Grid::LCellIdI at2 = Grid::LCellIdI(n.neighborID[2],h);
-					Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],h);
-					Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],h);
+				Grid::LCellIdI at0 = Grid::LCellIdI(n.neighborID[0],h);
+				Grid::LCellIdI at1 = Grid::LCellIdI(n.neighborID[1],h);
+				Grid::LCellIdI at2 = Grid::LCellIdI(n.neighborID[2],h);
+				Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],h);
+				Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],h);
 
 					Objects::PMine mine = To<Objects::Mine>::Cast(
 						Objects::Mine::globalPrototype->CreateNewInstance(client->faction,location,0));
