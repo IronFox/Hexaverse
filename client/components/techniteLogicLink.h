@@ -102,6 +102,7 @@ namespace TechniteLogicLink
 	void		Handle(const Protocol::MobileState&);	//!< @overload
 	void		Handle(const Protocol::StructureConstruction&);	//!< @overload
 	void		Handle(const Protocol::StructureState&);	//!< @overload
+	void		Handle(const Protocol::MobileEntityMotion&);	//!< @overload
 
 	void		CreateMarker(const Objects::Marker&);
 	void		DestroyMarker(const TUniqueID&);

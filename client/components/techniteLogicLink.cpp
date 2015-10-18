@@ -239,6 +239,24 @@ namespace TechniteLogicLink
 		Handle(state.entityState);
 	}
 
+	void		Handle(const Protocol::MobileEntityMotion&motion)
+	{
+		if (!isActive)
+			return;
+		TechniteProtocol::GameObject*obj = gameObjects.QueryPointer(motion.id);
+		if (!obj)
+		{
+			FATAL__("Unable to find game object by id (for animated motion): "+motion.id.value.ToString());
+			return;
+		}
+		LogEvent(EventType::TechniteLogic,nullptr,"Registering animated motion of entity '"+motion.id.value.ToString()+"' to "+motion.toLocation.ToString());
+
+		Channels::removeGameObject.SendTo(logicServer,obj->id,1);
+		obj->id.location = EncodeLocation(motion.toLocation);
+		Channels::createGameObject.SendTo(logicServer,*obj,1);
+	}
+
+
 
 
 	static void SendWorldDataTo(TCP::Peer&peer)

@@ -678,6 +678,7 @@ namespace Network
 		void	MobileEntityMotion(Protocol::MobileEntityMotion&m)
 		{
 			ASSERT__(!eventsLocked);
+			TechniteLogicLink::Handle(m);
 
 //			Objects::PWorldEntity e = Objects::GetEntity(m.id,true);
 	//		Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
