@@ -1,19 +1,23 @@
-This build of Hexaverse supports Technites. Technites are tiny immobile creatures that are controlled by programs written by the user (yes, that is you, if you so choose).
-A Technite has exactly the size of a single terrain block, and to normal players also behaves a lot like an ordinary terrain block that the player can build on, drive over, dig through, or blow up.
-The differences become apparent when the owning player starts assigning commands. Each Technite can execute exactly one command per round (possibly several in the future, but for now it's only one).
+This build of Hexaverse supports Technites. Technites are tiny immobile creatures that are controlled by programs written by the user (yes, people like you).
+A Technite has exactly the size of a single terrain block, and to normal players also behaves a lot like an ordinary terrain block.
+The differences become apparent only when the owning player starts assigning Technite commands.
+Each Technite can execute exactly one command per round (possibly several in the future, but for now it's only one).
 Then Technites mostly eat and replicate. They can eat player vehicles, and buildings, too. They could eat player satellites but you won't see a Technite in orbit.
 
 
 1) Size and constraints of Technites
 Technites occupy each exactly one high-resolution terrain block. If there is a Technite in a block, then there is nothing else there.
 They look slighlty different, and inherit the color of their owning faction, but for the most part they are just like rock to non-Technites.
+Like any other terrain type they can be built upon, dug through, driven over, or blown up with big explosions.
 Blowing up terrain blocks that contain Technites kills those Technites instantly.
 
-Technites are immobile. They can eat, destroy, build, replicate, and transfer resources, but once they are spawned, they can never again move until they die.
+Technites are immobile. They can eat, destroy, build, replicate, and transfer resources, but once they are spawned, they remain in that location until they die.
 
 Technites are not immortal. Depending on the height of their occupied cell, they degrade slower or faster.
 Currently, the maximum possible age of a Technite is 64 rounds.
-A Technite can do nothing to extend this lifespan, but it can replicate, distributed stored resources, or self-destruct before that happens.
+A Technite can do nothing to extend this lifespan, but it can replicate, distribute stored resources, or self-destruct before that happens.
+
+Technites can not eat units of their owning faction, but can accidentally destroy them, if the player placed a vehicle on dying technites, causing them to fall.
 
 
 2) Factions
@@ -21,15 +25,15 @@ Like ordinary player units, technites belong to a faction. When a player first c
 Regular factions follow the standard Hexaverse game logic, and have no Technites of their own to control.
 Conversely, creating a technite faction allows the observation and programmatic control of technites, but little else.
 Hybrid factions will spawn both players units, and a single technite of the same faction, and expect both a technite logic client (see 6) and player attention to be present.
-Currently, technites will profit from the increased visibility resulting from player unit sensor strength, but will not be able to distinguish player buildings from hostile ones (see 3).
+Technites will profit from the increased visibility resulting from player unit sensor strength, but it's up to the logic to make proper use of player unit placement.
 
 
 3) Horizon
 Technites can see and manipulate everything at most one volume cell away. Additional sensor mechanisms may be implemented in the future, but aren't thus far.
 The faction, as a whole, has access to all the terrain information that at least one Technite sees, as well as everything that was once seen (although that may be outdated).
 Technites can see other Technites in neighboring cells, as well as their faction.
-Currently, Technites can see that a structure (building) exists in a neighboring cell, but they cannot distinguish ownership or type.
-They can not see vehicles at all. This will change in the near future.
+Technites can also see any game object (vehicle, building, satellite) that is owned by the local player, as well as any unit he/she can see.
+Their current low sensor range makes it impossible to see player units on their own.
 
 
 4) Resources
