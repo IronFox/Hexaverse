@@ -637,24 +637,27 @@ namespace Receiver
 
 
 			const auto&n = Grid::low.grid.GetCell(startLocation).neighborhood;
-			const auto&n = Grid::low.grid.GetCell(best).neighborhood;
-			if (State::Config::startBases && (response.startFactionTypes & Protocol::FactionType::RegularFaction)!=0)
+			if ((response.startFactionTypes & Protocol::FactionType::RegularFaction)!=0)
 			{
-				Grid::LCellIdI location(startLocation,0);	//first 12 are corner cells
-				int h = Objects::FindApplicableGround(location,true);
-				location.height = h;
-				static const int want = 20;
-				static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);
-				Grid::Resource::Require("Fuel").coverage[location.stackID] = stackHeight;
-				Grid::Resource::Require("Minerals").coverage[location.stackID] = stackHeight;
-				foreach (Objects::Faction::all, _f)
+				if (State::Config::startBases)
 				{
+					Grid::LCellIdI location(startLocation,0);	//first 12 are corner cells
+					int h = Objects::FindApplicableGround(location,true);
+					location.height = h;
+					static const int want = 20;
+					static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);
+					Grid::Resource::Require("Fuel").coverage[location.stackID] = stackHeight;
+					Grid::Resource::Require("Minerals").coverage[location.stackID] = stackHeight;
+					foreach (Objects::Faction::all, _f)
+					{
+						_f->lock()->visibility.resourcesDiscovered[location.stackID] = false;
+					}
 
-				Grid::LCellIdI at0 = Grid::LCellIdI(n.neighborID[0],h);
-				Grid::LCellIdI at1 = Grid::LCellIdI(n.neighborID[1],h);
-				Grid::LCellIdI at2 = Grid::LCellIdI(n.neighborID[2],h);
-				Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],h);
-				Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],h);
+					Grid::LCellIdI at0 = Grid::LCellIdI(n.neighborID[0],h);
+					Grid::LCellIdI at1 = Grid::LCellIdI(n.neighborID[1],h);
+					Grid::LCellIdI at2 = Grid::LCellIdI(n.neighborID[2],h);
+					Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],h);
+					Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],h);
 
 					Objects::PMine mine = To<Objects::Mine>::Cast(
 						Objects::Mine::globalPrototype->CreateNewInstance(client->faction,location,0));
@@ -682,7 +685,7 @@ namespace Receiver
 				}
 				else
 				{
-					Objects::SpawnVehicle(client->faction,Grid::LCellIdI((UINT32)best,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
+					Objects::SpawnVehicle(client->faction,Grid::LCellIdI((UINT32)startLocation,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
 					Grid::LCellIdI at0 = Grid::LCellIdI(n.neighborID[0],0);
 					Grid::LCellIdI at1 = Grid::LCellIdI(n.neighborID[1],0);
 					Grid::LCellIdI at2 = Grid::LCellIdI(n.neighborID[2],0);
