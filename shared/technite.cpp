@@ -301,7 +301,7 @@ namespace Technites
 					entity = Objects::GetMobileEntity(at);
 					bool ref;
 					ref = false;
-					if (entity && (target.layer - layer) < entity->GetHeight())
+					if (entity && (target.layer - layer) < (UINT32)entity->GetHeight())
 						if (!entity->IsIndestructible() && entity->owner.get() != this)
 						{
 							if (eaten.mobileEaten.compare_exchange_strong(ref,true))
@@ -311,7 +311,7 @@ namespace Technites
 							cantEatThis = true;
 					entity = Objects::GetStructure(at);
 					ref = false;
-					if (entity && (target.layer - layer) < entity->GetHeight())
+					if (entity && (target.layer - layer) < (UINT32)entity->GetHeight())
 						if (!entity->IsIndestructible() && entity->owner.get() != this)
 						{
 							if (eaten.structureEaten.compare_exchange_strong(ref,true))
