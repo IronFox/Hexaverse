@@ -290,34 +290,37 @@ namespace Technites
 		int count = 0;
 		const auto mapping = Grid::highToLowMap[target.stackID];
 		Objects::PWorldEntity entity;
-		for (int k = 0; k < 2; k++)
-			if (mapping.lowCells[k] != Grid::THighToLowCell::Empty)
-			{
-				Grid::LCellIdU at(mapping.lowCells[k],target.layer);
-				TEaten&eaten = eatenGrid[Objects::CellToGridIndex(at)];
-				entity = Objects::GetMobileEntity(at);
-				bool ref;
-				ref = false;
-				if (entity)
-					if (!entity->IsIndestructible() && entity->owner.get() != this)
-					{
-						if (eaten.mobileEaten.compare_exchange_strong(ref,true))
-							all[count++] = entity;
-					}
-					else
-						cantEatThis = true;
-				entity = Objects::GetStructure(at);
-				ref = false;
-				if (entity)
-					if (!entity->IsIndestructible() && entity->owner.get() != this)
-					{
-						if (eaten.structureEaten.compare_exchange_strong(ref,true))
-							all[count++] = entity;
-					}
-					else
-						cantEatThis = true;
-			}
-
+		UINT32 lower = (UINT32)std::max(0,(int)target.layer-2);
+		for (UINT32 layer = lower; layer <= target.layer; layer++)
+		{
+			for (int k = 0; k < 2; k++)
+				if (mapping.lowCells[k] != Grid::THighToLowCell::Empty)
+				{
+					Grid::LCellIdU at(mapping.lowCells[k],layer);
+					TEaten&eaten = eatenGrid[Objects::CellToGridIndex(at)];
+					entity = Objects::GetMobileEntity(at);
+					bool ref;
+					ref = false;
+					if (entity && (target.layer - layer) < entity->GetHeight())
+						if (!entity->IsIndestructible() && entity->owner.get() != this)
+						{
+							if (eaten.mobileEaten.compare_exchange_strong(ref,true))
+								all[count++] = entity;
+						}
+						else
+							cantEatThis = true;
+					entity = Objects::GetStructure(at);
+					ref = false;
+					if (entity && (target.layer - layer) < entity->GetHeight())
+						if (!entity->IsIndestructible() && entity->owner.get() != this)
+						{
+							if (eaten.structureEaten.compare_exchange_strong(ref,true))
+								all[count++] = entity;
+						}
+						else
+							cantEatThis = true;
+				}
+		}
 		if (count == 0)
 			return Technite::Resources();
 		Technite::Resources result;
@@ -1848,18 +1851,23 @@ namespace Technites
 				if (techniteMap.IsSet(loc))
 					continue;
 
+				const auto mapping = Grid::highToLowMap[loc.stackID];
+				Objects::SignalClusterAndNeighborsChange(Grid::LCellIdI(mapping.lowCells[0],Grid::CellStack::ToHeight(loc.layer)),t);
+
+
 				if (GetLastContent(loc) != Grid::Content::Technite)
 				{
-					#ifdef _DEBUG
-						if (firstLog)
-						{
-							firstLog = false;
+					//this hasn't happened on its own for quite some time. Now this is most likelye due to grid changes caused by the signalling
+					//#ifdef _DEBUG
+					//	if (firstLog)
+					//	{
+					//		firstLog = false;
 
-							LogEvent(EventType::TechniteLogic,nullptr,"Lost content of new technite at location "+loc.ToString()+", reporting changes...");
+					//		LogEvent(EventType::TechniteLogic,nullptr,"Lost content of new technite at location "+loc.ToString()+", reporting changes...");
 
-							ReportLocation(loc);
-						}		
-					#endif
+					//		ReportLocation(loc);
+					//	}		
+					//#endif
 
 
 					deathByLostContent ++;
@@ -1888,6 +1896,8 @@ namespace Technites
 
 				techniteMap.Set(loc, at);
 				visibility.ChangeSensory(loc, t, 1);
+
+
 			}
 			data->newTechnites.Clear();
 			ASSERT_EQUAL__(technites.Count(), techniteMap.Count());
