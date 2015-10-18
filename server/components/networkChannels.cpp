@@ -147,243 +147,25 @@ namespace Receiver
 
 
 
-	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
+	static index_t GetStartLocation()
 	{
-		if (!peer.attachment)
-			return;
-		State::PClient client = To<State::Client>::Cast(peer.attachment);
-		Protocol::ClientFactionResponse response;
-		response.startFactionTypes = _p.startFactionTypes;
-		response.factionToken = _p.factionToken;
-		response.planetConfig = State::persistentPlanetInfo;
+		index_t best = InvalidIndex;
+		float bestDist = 0;
 
-		if (!response.startFactionTypes)
+		Objects::Component::VehicleBase *testBase = &Objects::Component::hoverbase;
+
+		count_t numTries = 0;
+		while (best == InvalidIndex)
 		{
-			if (State::activePlayers.FindAndErase(client))
+			if (++numTries > 10)
 			{
-				LogEvent(EventType::SessionRelated,peer,"Abandoning faction");
-				State::playerMap.Unset(client->faction);
-				client->faction.reset();
-
-				Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
-			}
-			return;
-		}
-
-		if (State::phase != Protocol::Phase::CommandPhase && State::phase != Protocol::Phase::EndOfGame)
-		{
-			//disconnecting client. no new faction
-			LogEvent(EventType::CommandRejected, peer, "Cannot connect ("+String(State::phase.ToString())+") right now. Disconnecting");
-			response.startFactionTypes = 0;
-			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
-			client->peer.lock()->Disconnect();
-			return;
-		}
-
-
-		if (State::activePlayers.Contains(client))
-			return;
-
-		bool factionTypeNotSupported = true;
-
-		switch (response.startFactionTypes)
-		{
-			case Protocol::FactionType::ContinueOnly:
-				factionTypeNotSupported = false;
-			break;
-			case Protocol::FactionType::RegularFaction:
-				factionTypeNotSupported = !(State::Config::factionSupportFlags & Protocol::GameFlag::SupportRegularFactions);
-			break;
-		}
-
-
-		if (factionTypeNotSupported)
-		{
-			LogEvent(EventType::CommandRejected, peer, "Requested faction type is not supported");
-			response.startFactionTypes = 0;
-			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
-			client->peer.lock()->Disconnect();
-			return;
-		}
-
-		Objects::PFaction	faction;
-
-		bool newFaction = false;
-
-		if (State::Config::enableNexusAI && Objects::Faction::nexus->accessToken == response.factionToken && (peer.ToString() == "localhost" || peer.ToString() == "127.0.0.1"))
-		{
-			LogEvent(EventType::SessionRelated, peer, "Access to nexus faction permitted.");
-			faction = Objects::Faction::nexus;
-		}
-		#ifdef _DEBUG
-			if (faction
-				|| State::tokenMap.Query(response.factionToken,faction)
-				|| (
-						response.startFactionTypes != Protocol::FactionType::ContinueOnly 
-						&& Objects::Faction::all.IsNotEmpty()
-						&& (faction = Objects::Faction::all.first().lock())
-					)
-				)
-		#else
-			if (faction || State::tokenMap.Query(response.factionToken,faction))
-		#endif
-		{
-			#ifdef _DEBUG
-				response.factionToken = faction->accessToken;
-			#endif
-			State::PClient other;
-			if (State::playerMap.Query(faction,other))
-			{
-				LogEvent(EventType::SessionRelated,peer,"Faction access token recognized, but faction is already being controlled. Disconnecting "+other->ToString());
-
-				if (faction == Objects::Faction::nexus)
-				{
-					//disconnecting client. no new faction
-					LogEvent(EventType::SessionRelated, peer, "Disconnecting AI client.");
-					response.startFactionTypes = 0;
-					Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
-					client->peer.lock()->Disconnect();
-					return;
-				}
-				other->peer.lock()->Disconnect();
-				State::playerMap.Unset(faction);
-				other->faction.reset();
-				client->faction = faction;
-				LogEvent(EventType::SessionRelated,peer,"Faction access token recognized.");
-
-
-//				p.factionToken.value.Generate();
-	//			newFaction = true;
-			}
-			else
-			{
-				client->faction = faction;
-				LogEvent(EventType::SessionRelated,peer,"Faction access token recognized.");
-			}
-		}
-		else
-		{
-			if (response.factionToken.value.IsSet())
-			{
-				LogEvent(EventType::SessionRelated,peer,"Provided token not recognized: "+response.factionToken.value.ToString());
-
-				if (State::Config::closedGame && State::roundNumber > 0)
-				{
-					foreach (Objects::Faction::all,f)
-					{
-						ASSERT__(f->lock()->accessToken != response.factionToken);
-						LogEvent(EventType::Debug,peer,"Known token: "+f->lock()->accessToken.ToString());
-					}
-				}
+				return InvalidIndex;
 
 			}
-			else
-			{
-				LogEvent(EventType::SessionRelated,peer,"No faction token provided");
-				response.factionToken.value.Generate();
-			}
-			newFaction = true;
-		}
-
-		if (State::phase == Protocol::Phase::EndOfGame)
-		{
-			{
-				client->SendProgressUpdate(true);
-			}
-		}
-
-		if (newFaction)
-		{
-			if (response.startFactionTypes == Protocol::FactionType::ContinueOnly)
-			{
-				response.startFactionTypes = 0;
-				Channels::clientFactionResponse.SendTo(peer,response);
-				LogEvent(EventType::SessionRelated,peer,"Client chose to continue faction. No faction found that can be continued. Join-request rejected.");
-				return;
-			}
-
-			if (State::Config::closedGame && State::roundNumber > 0)
-			{
-				response.startFactionTypes = 0;
-				Channels::clientFactionResponse.SendTo(peer,response);
-				LogEvent(EventType::SessionRelated,peer,"Game is closed. User does not have any valid access token. Join-request rejected.");
-				return;
-			}
-			//p.factionToken.value.Generate();	let's keep it even if it's unknown
-			client->faction.reset(new Objects::Faction());
-			faction = client->faction;
-			Objects::Faction::all << client->faction;
-
-
-			
-			LogEvent(EventType::SessionRelated,peer,"Created new faction.");
-
-			client->faction->accessToken = response.factionToken;
-			State::tokenMap.Set(response.factionToken,client->faction);
-		}
-		else
-		{
-
-		}
-		State::activePlayers << client;
-		State::playerMap.Set(client->faction,client);
-		client->wantNewRound = false;
-
-
-		Channels::clientFactionResponse.SendTo(client->peer.lock(),response);
-		Channels::setFactionID.SendTo(client->peer.lock(),client->faction->id);
-
-		//CHEAT_SHOW_ALL_RESOURCES
-
-		#ifdef CHEAT_SHOW_ALL_RESOURCES
-			faction->resourcesDiscovered.Fill(true);
-
-		#endif
-	
-
-
-		foreach(client->faction->markers, m)
-		{
-			Protocol::Marker	outMarker;
-			ConvertMarker(*m, outMarker);
-			Channels::createMarker.SendTo(peer, outMarker);
-		}
-
-
-		if (newFaction)
-		{
-			index_t best = InvalidIndex;
-			float bestDist = 0;
-
-			Objects::Component::VehicleBase *testBase = &Objects::Component::hoverbase;
-
-			if (State::Config::goal == State::Config::Goal::EMPConquerNexus)
-			{
-				count_t numZones = Objects::Faction::all.Count();	//not counting nexus faction
-				numZones = (numZones/3) + !!(numZones % 3);
-
-				int unlocked = 0;
-				for (index_t i = 0; i < numZones; i++)
-				{
-					if (State::Config::NexusPorts::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
-					{
-						unlocked++;
-					}
-					unlocked++;
-				}
-				
-
-				State::unlockedEMPZones = ((1<<unlocked) - 1);
-				State::empZonesLocked = ((1 << 12)-1)  & ~State::unlockedEMPZones;
-
-				Channels::lockEmpZones.SendTo(State::server,State::empZonesLocked);
-
-			}
-
-
 
 			const float r = Grid::ToRadius(0);
-			for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
+			//avoid 12 corner cells: make sure all candidates have 6 neighbors
+			for (index_t i = 12; i < Grid::LowSetup::GridType::CellCount; i++)
 			{
 				if (State::Config::goal == State::Config::Goal::EMPConquerNexus)
 				{
@@ -462,11 +244,260 @@ namespace Receiver
 				}
 
 			}
+		}
+		return best;
+	}
+
+	static void UpdateEMPZones(count_t inc)
+	{
+		if (State::Config::goal == State::Config::Goal::EMPConquerNexus)
+		{
+			count_t numZones = Objects::Faction::all.Count()+inc;	//not counting nexus faction, but counting new faction(s)
+			numZones = (numZones/3) + !!(numZones % 3);
+
+			int unlocked = 0;
+			for (index_t i = 0; i < numZones; i++)
+			{
+				if (State::Config::NexusPorts::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
+				{
+					unlocked++;
+				}
+				unlocked++;
+			}
+				
+
+			State::unlockedEMPZones = ((1<<unlocked) - 1);
+			State::empZonesLocked = ((1 << 12)-1)  & ~State::unlockedEMPZones;
+
+			Channels::lockEmpZones.SendTo(State::server,State::empZonesLocked);
+		}
+	}
 
 
+	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
+	{
+		if (!peer.attachment)
+			return;
+		State::PClient client = To<State::Client>::Cast(peer.attachment);
+		Protocol::ClientFactionResponse response;
+		response.startFactionTypes = _p.startFactionTypes;
+		response.factionToken = _p.factionToken;
+		response.planetConfig = State::persistentPlanetInfo;
+
+		if (!response.startFactionTypes)
+		{
+			if (State::activePlayers.FindAndErase(client))
+			{
+				LogEvent(EventType::SessionRelated,peer,"Abandoning faction");
+				State::playerMap.Unset(client->faction);
+				client->faction.reset();
+
+				Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
+			}
+			return;
+		}
+
+		if (State::phase != Protocol::Phase::CommandPhase && State::phase != Protocol::Phase::EndOfGame)
+		{
+			//disconnecting client. no new faction
+			LogEvent(EventType::CommandRejected, peer, "Cannot connect ("+String(State::phase.ToString())+") right now. Disconnecting");
+			response.startFactionTypes = 0;
+			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
+			client->peer.lock()->Disconnect();
+			return;
+		}
+
+
+		if (State::activePlayers.Contains(client))
+			return;
+
+		bool factionTypeNotSupported = true;
+
+		switch (response.startFactionTypes)
+		{
+			case Protocol::FactionType::ContinueOnly:
+				factionTypeNotSupported = false;
+			break;
+			case Protocol::FactionType::RegularFaction:
+				factionTypeNotSupported = !(State::Config::factionSupportFlags & Protocol::GameFlag::SupportRegularFactions);
+			break;
+		}
+
+
+		if (factionTypeNotSupported)
+		{
+			LogEvent(EventType::CommandRejected, peer, "Requested faction type is not supported");
+			response.startFactionTypes = 0;
+			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
+			client->peer.lock()->Disconnect();
+			return;
+		}
+
+		Objects::PFaction	faction;
+
+		bool newFaction = false;
+
+		if (State::Config::enableNexusAI && Objects::Faction::nexus->accessToken == response.factionToken && (peer.ToString() == "localhost" || peer.ToString() == "127.0.0.1"))
+		{
+			LogEvent(EventType::SessionRelated, peer, "Access to nexus faction permitted.");
+			faction = Objects::Faction::nexus;
+		}
+		#ifdef _DEBUG
+			if (faction
+				|| State::tokenMap.Query(response.factionToken,faction)
+				|| (
+						response.startFactionTypes == Protocol::FactionType::ContinueOnly 
+						&& Objects::Faction::all.IsNotEmpty()
+						&& (faction = Objects::Faction::all.first().lock())
+					)
+				)
+		#else
+			if (faction || State::tokenMap.Query(response.factionToken,faction))
+		#endif
+		{
+			#ifdef _DEBUG
+				response.factionToken = faction->accessToken;
+			#endif
+			State::PClient other;
+			if (State::playerMap.Query(faction,other))
+			{
+				LogEvent(EventType::SessionRelated,peer,"Faction access token recognized, but faction is already being controlled. Disconnecting "+other->ToString());
+
+				if (faction == Objects::Faction::nexus)
+				{
+					//disconnecting client. no new faction
+					LogEvent(EventType::SessionRelated, peer, "Disconnecting AI client.");
+					response.startFactionTypes = 0;
+					Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
+					client->peer.lock()->Disconnect();
+					return;
+				}
+				other->peer.lock()->Disconnect();
+				State::playerMap.Unset(faction);
+				other->faction.reset();
+				client->faction = faction;
+				LogEvent(EventType::SessionRelated,peer,"Faction access token recognized.");
+
+
+//				p.factionToken.value.Generate();
+	//			newFaction = true;
+			}
+			else
+			{
+				client->faction = faction;
+				LogEvent(EventType::SessionRelated,peer,"Faction access token recognized.");
+			}
+		}
+		else
+		{
+			if (response.factionToken.value.IsSet())
+			{
+				LogEvent(EventType::SessionRelated,peer,"Provided token not recognized: "+response.factionToken.value.ToString());
+
+				if (State::Config::closedGame && State::roundNumber > 0)
+				{
+					foreach (Objects::Faction::all,f)
+					{
+						ASSERT__(f->lock()->accessToken != response.factionToken);
+						LogEvent(EventType::Debug,peer,"Known token: "+f->lock()->accessToken.ToString());
+					}
+				}
+
+			}
+			else
+			{
+				LogEvent(EventType::SessionRelated,peer,"No faction token provided");
+				response.factionToken.value.Generate();
+			}
+			newFaction = true;
+		}
+
+		if (State::phase == Protocol::Phase::EndOfGame)
+		{
+			{
+				client->SendProgressUpdate(true);
+			}
+		}
+
+
+		index_t startLocation = InvalidIndex;
+		if (newFaction)
+		{
+			if (response.startFactionTypes == Protocol::FactionType::ContinueOnly)
+			{
+				response.startFactionTypes = 0;
+				Channels::clientFactionResponse.SendTo(peer,response);
+				LogEvent(EventType::CommandRejected,peer,"Client chose to continue faction. No faction found that can be continued. Join-request rejected.");
+				return;
+			}
+
+			if (State::Config::closedGame && State::roundNumber > 0)
+			{
+				response.startFactionTypes = 0;
+				Channels::clientFactionResponse.SendTo(peer,response);
+				LogEvent(EventType::CommandRejected,peer,"Game is closed. User does not have any valid access token. Join-request rejected.");
+				return;
+			}
+
+			UpdateEMPZones(1);
+			startLocation = GetStartLocation();
+			if (startLocation == InvalidIndex)
+			{
+				UpdateEMPZones(0);
+				response.startFactionTypes = 0;
+				Channels::clientFactionResponse.SendTo(peer,response);
+				LogEvent(EventType::OperationAborted,peer,"Unable to find valid starting location for new faction.");
+				return;
+			}
+			//p.factionToken.value.Generate();	let's keep it even if it's unknown
+			client->faction.reset(new Objects::Faction());
+			faction = client->faction;
+			Objects::Faction::all << client->faction;
+
+
+			
+			LogEvent(EventType::SessionRelated,peer,"Created new faction.");
+
+			client->faction->accessToken = response.factionToken;
+			State::tokenMap.Set(response.factionToken,client->faction);
+		}
+		else
+		{
+
+		}
+		State::activePlayers << client;
+		State::playerMap.Set(client->faction,client);
+		client->wantNewRound = false;
+
+
+		Channels::clientFactionResponse.SendTo(client->peer.lock(),response);
+		Channels::setFactionID.SendTo(client->peer.lock(),client->faction->id);
+
+		//CHEAT_SHOW_ALL_RESOURCES
+
+		#ifdef CHEAT_SHOW_ALL_RESOURCES
+			faction->resourcesDiscovered.Fill(true);
+
+		#endif
+	
+
+
+		foreach(client->faction->markers, m)
+		{
+			Protocol::Marker	outMarker;
+			ConvertMarker(*m, outMarker);
+			Channels::createMarker.SendTo(peer, outMarker);
+		}
+
+
+		if (newFaction)
+		{
+
+
+			const auto&n = Grid::low.grid.GetCell(startLocation).neighborhood;
 			if (State::Config::startBases)
 			{
-				Grid::LCellIdI location(best,0);	//first 12 are corner cells
+				Grid::LCellIdI location(startLocation,0);	//first 12 are corner cells
 				int h = Objects::FindApplicableGround(location,true);
 				location.height = h;
 				static const int want = 20;
@@ -478,11 +509,11 @@ namespace Receiver
 					_f->lock()->visibility.resourcesDiscovered[location.stackID] = false;
 				}
 
-				Grid::LCellIdI at0 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[0],h);
-				Grid::LCellIdI at1 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[1],h);
-				Grid::LCellIdI at2 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[2],h);
-				Grid::LCellIdI at3 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[3],h);
-				Grid::LCellIdI at4 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[4],h);
+				Grid::LCellIdI at0 = Grid::LCellIdI(n.neighborID[0],h);
+				Grid::LCellIdI at1 = Grid::LCellIdI(n.neighborID[1],h);
+				Grid::LCellIdI at2 = Grid::LCellIdI(n.neighborID[2],h);
+				Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],h);
+				Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],h);
 
 				Objects::PMine mine = To<Objects::Mine>::Cast(
 					Objects::Mine::globalPrototype->CreateNewInstance(client->faction,location,0));
@@ -510,14 +541,15 @@ namespace Receiver
 			}
 			else
 			{
-				Objects::SpawnVehicle(client->faction,Grid::LCellIdI((UINT32)best,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-				Grid::LCellIdI at0 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[0],0);
-				Grid::LCellIdI at1 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[1],0);
+				Grid::LCellIdI at0 = Grid::LCellIdI(n.neighborID[0],0);
+				Grid::LCellIdI at1 = Grid::LCellIdI(n.neighborID[1],0);
+				Grid::LCellIdI at2 = Grid::LCellIdI(n.neighborID[2],0);
+				Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],0);
+				Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],0);
+
+				Objects::SpawnVehicle(client->faction,Grid::LCellIdI((UINT32)startLocation,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
 				Objects::SpawnVehicle(client->faction,at1,Objects::Component::hoverbase, Objects::Component::radar,true,0);
-				Grid::LCellIdI at2 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[2],0);
-				Grid::LCellIdI at3 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[3],0);
 				Objects::SpawnVehicle(client->faction,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,0);
-				Grid::LCellIdI at4 = Grid::LCellIdI(Grid::low.grid.GetCell(best).neighborhood.neighborID[4],0);
 				Objects::SpawnVehicle(client->faction,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
 				Objects::SpawnVehicle(client->faction,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
 				Objects::SpawnVehicle(client->faction,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,0);
