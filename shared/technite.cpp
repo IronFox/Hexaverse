@@ -2047,7 +2047,7 @@ namespace Technites
 			faction->id = id;
 		faction->gridID = gridID;
 		#ifndef CLIENT
-			faction->color = ToColor(id);
+			faction->color = ToColor(faction->id);
 			Technite::factionColor[gridID] = faction->color;
 		#endif
 		gridIDMap[gridID] = faction;
