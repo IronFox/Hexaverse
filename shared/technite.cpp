@@ -920,7 +920,8 @@ namespace Technites
 		if (cell.visibility <= 0)
 			return false;
 		const auto&cell2 = f->currentState.cellStack[cellID.stackID].volumeCell[cellID.layer];
-		ASSERT_EQUAL__(cell2.content,Grid::actualWorld.cellStack[cellID.stackID].volumeCell[cellID.layer].content);	//this would be uber fatal
+		return cell2.content == Grid::actualWorld.cellStack[cellID.stackID].volumeCell[cellID.layer].content;
+		//ASSERT_EQUAL__(cell2.content,Grid::actualWorld.cellStack[cellID.stackID].volumeCell[cellID.layer].content);	//this would be uber fatal
 		return true;
 	}
 
@@ -1013,7 +1014,13 @@ namespace Technites
 			shouldBeTechniteCount += (*f)->technites.Count();
 
 		count_t gridTechniteCount = totalCounter - abandonedCounter;
-		ASSERT_EQUAL__(gridTechniteCount,shouldBeTechniteCount);
+		if (gridTechniteCount < shouldBeTechniteCount)
+		{
+			LogEvent(EventType::TechniteLogic,nullptr,"Encountered "+String(shouldBeTechniteCount-gridTechniteCount)+" technite ghost(s). Ignoring");
+			//ignore this case, won't last long anyways
+		}
+		else
+			ASSERT_EQUAL__(gridTechniteCount,shouldBeTechniteCount);
 
 		if (abandonedCounter > 0)
 		{
