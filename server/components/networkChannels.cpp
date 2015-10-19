@@ -703,13 +703,32 @@ namespace Receiver
 			{
 				//Grid::LCellIdI at5 = Grid::LCellIdI(n.neighborID[5], 0);
 				UINT32 finer = Grid::low.grid.GetCell(n.neighborID[5]).higherEquivalent;
-				int h = Grid::actualWorld.cellStack[finer].FindMostApplicableGround(0,false);
-				ASSERT__(h != Objects::badHeight);
+				UINT32 layer = Grid::CellStack::Range-1;
+				const Grid::CellStack&stack = Grid::actualWorld.cellStack[finer];
+				while (layer > 0 && stack.GetCellU(layer).IsClearOrWater())
+					layer--;
+				if (
+					(layer > 0 && !stack.GetCellU(layer-1).IsSolidDead())
+					||
+					(layer == 0 && !Grid::CellStack::bottom.IsSolidDead())
+					)
+				{
+					if (layer+1 < Grid::CellStack::Range)
+						layer++;
+				}
+				//int h = Grid::actualWorld.cellStack[finer].FindMostApplicableGround(0,false);
+				//ASSERT__(h != Objects::badHeight);
 				//h--;
 				ASSERT__(client->faction->IsTechniteFaction());
 				Technites::PFaction tf = To<Technites::Faction>::Cast(client->faction);
-				index_t id = tf->CreateSingleTechnite(Grid::HCellIdU(finer,Grid::CellStack::ToLayer( h ) ),0.f);
-				ASSERT__(id != InvalidIndex);
+				const Grid::HCellIdU	loc(finer,layer);
+				index_t id = tf->CreateSingleTechnite(loc,0.f);
+				if (id == InvalidIndex)
+				{
+					LogEvent(EventType::InternalFault,"Failed to create initial technite at "+loc.ToString()+".");
+					id = tf->CreateSingleTechnite(loc,0.f);
+				}
+				//DBG_ASSERT__(id != InvalidIndex);
 			}
 
 		}

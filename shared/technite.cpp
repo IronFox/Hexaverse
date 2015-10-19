@@ -2193,9 +2193,9 @@ namespace Technites
 			return InvalidIndex;
 		if (!ValidGlobalTechniteLocation(location))
 			return InvalidIndex;
-		Grid::Content content = GetGlobalGridContent(location);
-		if (content != Grid::Content::Clear && content != Grid::Content::Water)
-			return InvalidIndex;
+		//Grid::Content content = GetGlobalGridContent(location);
+		//if (content != Grid::Content::Clear && content != Grid::Content::Water)
+		//	return InvalidIndex;
 
 		index_t at = technites.Count();
 		Technite&tech = technites.Append();
