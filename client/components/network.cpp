@@ -43,7 +43,8 @@ namespace Network
 	GenericHashTable<TUniqueID,Objects::OwnerParameter,TUniqueID>	factionMap;
 
 
-	UINT32			roundNumber;
+	UINT32			roundNumber,
+					techniteSubRoundNumber;
 					//dbgRoundNumber = 0xFFFFFFFF;
 	Protocol::GameProgress	gameProgress;
 
@@ -662,6 +663,7 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 
+			TechniteLogicLink::StartSession(id.id,id.techniteGridID);
 			haveId = true;
 			myID = id.id;
 			myFaction = ResolveFaction(myID,id.techniteGridID);
@@ -1352,6 +1354,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	#endif
 	serverPhase = c.newPhase;
 	roundNumber = c.roundNumber;
+	techniteSubRoundNumber = c.techniteSubRoundNumber;
 	phaseStarted = timer.Now();
 	#ifdef HAS_WINDOW
 		Objects::UpdateChoices(ControlEnabled());
@@ -1391,14 +1394,14 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		};//);
 		Dialog::SignalSituationChange();
 	#endif
-	if (serverPhase == Protocol::Phase::CommandPhase)
+	if (serverPhase == Protocol::Phase::CommandPhase || serverPhase == Protocol::Phase::TechniteCommandPhase)
 	{
 		if (amTechniteFaction)
 		{
 			Technites::PFaction tf = To<Technites::Faction>::Cast(myFaction);
 			tf->VerifyIntegrity();
 
-			TechniteLogicLink::ExecuteLogic(roundNumber);
+			TechniteLogicLink::ExecuteLogic(roundNumber, techniteSubRoundNumber);
 		}
 	}
 }

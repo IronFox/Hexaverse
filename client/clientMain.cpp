@@ -2358,7 +2358,7 @@ bool loop()
 					textout << "Access ID: " << Network::activeTokenString<<nl;
 				#endif
 				textout << "Phase: "<<Network::serverPhase.ToString()<<nl;
-				textout << "Round Number: "<<Network::roundNumber<<nl;
+				textout << "Round Number: "<<Network::roundNumber<<"/"<<Network::techniteSubRoundNumber <<nl;
 				if (!Network::gameProgress.gameOver)
 				{
 					if (Network::gameProgress.status.IsNotEmpty())
@@ -3445,7 +3445,7 @@ void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_even
 				{
 					if (!Network::amOnline || Network::haveFaction || !(supportFactionFlag & Network::gameFlags))
 						return Dialog::CheckResult::Abort;
-					if (Network::serverPhase != Protocol::Phase::CommandPhase)
+					if (Network::serverPhase != Protocol::Phase::CommandPhase && Network::serverPhase != Protocol::Phase::TechniteCommandPhase)
 						return Dialog::CheckResult::OkayNotRightNow;
 					return Dialog::CheckResult::OkayContinue;
 				});
@@ -3455,7 +3455,13 @@ void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_even
 				Network::AttemptFactionLogin(true,typeFlags);
 				Dialog::Hide(Dialog::loginMenu);
 			}
-		},[supportFactionFlag](){return Network::amOnline && !Network::haveFaction && (Network::gameFlags & supportFactionFlag) && Network::serverPhase == Protocol::Phase::CommandPhase;},false);
+		},[supportFactionFlag]()
+		{
+			return Network::amOnline 
+					&& !Network::haveFaction 
+					&& (Network::gameFlags & supportFactionFlag) 
+					&& (Network::serverPhase == Protocol::Phase::CommandPhase || Network::serverPhase == Protocol::Phase::TechniteCommandPhase);
+		},false);
 
 
 	}

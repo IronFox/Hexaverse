@@ -184,6 +184,7 @@ namespace Receiver
 	}
 	
 	bool	CheckCommandMode(TCP::Peer&peer);
+	bool	CheckTechniteCommandMode(TCP::Peer&peer);
 
 
 	void	TechniteInstructions(Protocol::TechniteInstructions&instructions, TCP::Peer&peer)
@@ -194,7 +195,7 @@ namespace Receiver
 		State::PClient client = To<State::Client>::Cast(peer.attachment);
 		if (!client->faction || !client->faction->IsTechniteFaction())
 			return;
-		if (!CheckCommandMode(peer))
+		if (!CheckTechniteCommandMode(peer))
 			return;
 		Technites::PFaction faction = To<Technites::Faction>::Cast(client->faction);
 		if (instructions.offset + instructions.instructions.Count() > faction->technites.Count())
@@ -378,7 +379,7 @@ namespace Receiver
 			return;
 		}
 
-		if (State::phase != Protocol::Phase::CommandPhase && State::phase != Protocol::Phase::EndOfGame)
+		if (State::phase != Protocol::Phase::CommandPhase && State::phase != Protocol::Phase::TechniteCommandPhase && State::phase != Protocol::Phase::EndOfGame)
 		{
 			//disconnecting client. no new faction
 			LogEvent(EventType::CommandRejected, peer, "Cannot connect ("+String(State::phase.ToString())+") right now. Disconnecting");
@@ -960,6 +961,17 @@ namespace Receiver
 		LogEvent(EventType::CommandRejected ,peer,"Cannot issue commands in current phase ("+String(State::phase.ToString())+")");
 		return false;
 	}
+
+	bool	CheckTechniteCommandMode(TCP::Peer&peer)
+	{
+		if (State::phase == Protocol::Phase::CommandPhase || State::phase == Protocol::Phase::TechniteCommandPhase)
+		{
+			return true;
+		}
+		LogEvent(EventType::CommandRejected ,peer,"Cannot issue commands in current phase ("+String(State::phase.ToString())+")");
+		return false;
+	}
+
 
 	Objects::PWorldEntity	CheckCommandModeGetAccessibleEntity(const TUniqueID&eid, TCP::Peer&peer)
 	{
@@ -1889,7 +1901,9 @@ namespace Receiver
 				
 				//Objects::Tick();
 				State::PClient client = To<State::Client>::Cast(peer.attachment);
-				if (client && client->faction && State::phase == Protocol::Phase::CommandPhase)
+				if (client && client->faction && 
+					(State::phase == Protocol::Phase::CommandPhase || State::phase == Protocol::Phase::TechniteCommandPhase)
+					)
 				{
 					client->wantNewRound = true;
 					LogEvent(EventType::SessionRelated,peer,"Requested new round");

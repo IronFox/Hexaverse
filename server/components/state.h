@@ -67,7 +67,8 @@ namespace State
 	extern Buffer<PClient>	clients,activePlayers;
 	extern GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
 	extern GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
-	extern UINT32			roundNumber/*=0*/, lastSaveRound /*= 0*/,
+	extern UINT32			roundNumber/*=0*/, techniteSubRoundNumber/*=0*/,
+							lastSaveRound /*= 0*/,
 							empZonesLocked/* = 0 */, unlockedEMPZones /*= 0xFFFF*/;
 	extern Protocol::Phase	phase;
 	extern Objects::PFaction	winner;	//if set indicates game is over
@@ -83,7 +84,9 @@ namespace State
 		extern float	factionStartMineralValue;	//determined during loading
 
 
-		extern int		roundTimer/* = -1*/;
+		extern int		roundTimer/* = -1*/,
+						extraTechniteRoundTimer/* = -1*/;
+		extern UINT32	extraTechniteRounds/* = 0*/;
 		extern UINT32	uplinkBandwidth/* = 500*/;
 		extern bool		closedGame/* = false*/,
 						startBases/* = false*/,
@@ -191,6 +194,7 @@ namespace State
 	*/
 	void		RestartSession();
 
+	inline bool	InExtraTechniteRound()	{return State::techniteSubRoundNumber < State::Config::extraTechniteRounds;}
 
 
 

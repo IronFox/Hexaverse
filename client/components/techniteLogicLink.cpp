@@ -12,7 +12,9 @@ namespace TechniteLogicLink
 {
 	String autoStartClientPath="TechniteLogic/Client.exe";
 	bool autoStartClient=true;
-	static bool isActive = false;
+	static bool isActive = false,sessionStarted=false;
+	static TUniqueID	lastFactionID;
+	static BYTE lastTechniteGridID = 0;
 	
 	UINT16 initialServerPortNumber = 0,
 			actualServerPortNumber = 0;
@@ -38,15 +40,23 @@ namespace TechniteLogicLink
 
 	TechniteProtocol::WorldInfo lastWorldInfo = TechniteProtocol::WorldInfo(0);
 
+	void		StartSession(const TUniqueID&factionID, BYTE techniteGridID)
+	{
+		sessionStarted = true;
+		lastFactionID = factionID;
+		lastTechniteGridID = techniteGridID;
+		TechniteProtocol::BeginSession session;
+		session.factionID = factionID.ToString(TUniqueID::NumBytes);
+		session.techniteGridID = lastTechniteGridID;
+		session.roundNumber = Network::roundNumber;
+		session.techniteSubRoundNumber = Network::techniteSubRoundNumber;
+		Channels::beginSession.SendTo(logicServer,session,1);
+	}
+
 	void		SetWorldInfo(Grid::Content coreContent)
 	{
 		lastWorldInfo = TechniteProtocol::WorldInfo(  coreContent );
-		logicServer.VisitAllPeers([](const TCP::PPeer&peer)
-		{
-			if (peer->userLevel > 0)
-				Channels::worldInfo.SendTo(*peer,lastWorldInfo);
-		});
-		
+		Channels::worldInfo.SendTo(logicServer,lastWorldInfo,1);
 	}
 
 
@@ -330,6 +340,8 @@ namespace TechniteLogicLink
 
 
 		SendWorldDataTo(peer);
+
+
 	}
 
 
@@ -371,11 +383,13 @@ namespace TechniteLogicLink
 	}
 
 
-	void		ExecuteLogic(UINT32 roundNumber)
+	void		ExecuteLogic(UINT32 roundNumber,UINT32 techniteSubRoundNumber)
 	{
 		executed = true;
-		
-		Channels::instructTechnites.SendTo(logicServer,roundNumber,1);
+		TechniteProtocol::InstructTechnites tech;
+		tech.roundNumber = roundNumber;
+		tech.techniteSubRoundNumber = techniteSubRoundNumber;
+		Channels::instructTechnites.SendTo(logicServer,tech,1);
 	}
 
 
@@ -409,7 +423,7 @@ namespace TechniteLogicLink
 				
 				logicIsDone = true;
 
-				if (Network::amTechniteFaction && (!Network::amRegularFaction || Network::newRoundRequested))
+				if (Network::amTechniteFaction && (!Network::amRegularFaction || Network::newRoundRequested || Network::serverPhase == Protocol::Phase::TechniteCommandPhase))
 				{
 					//auto-new-round, if set. Not sure if this should be set
 					TransmitRoundEndRequest();
@@ -438,7 +452,7 @@ namespace TechniteLogicLink
 
 		static String CompileProtocolString()
 		{
-			return "Aquinas v1.3." + String(TechniteProtocol::ChannelID::Count);
+			return "Aquinas v1.4." + String(TechniteProtocol::ChannelID::Count);
 		}
 
 
@@ -447,8 +461,8 @@ namespace TechniteLogicLink
 			String expect = CompileProtocolString();
 			if (version != expect)
 			{
-				String msg = "Ready: Version mismatch (server uses '"+expect+"', client sent '"+version+"'";
-				LogEvent(EventType::TechniteLogic,nullptr,msg);
+				String msg = "TechniteLogic: Logic client version mismatch (server uses '"+expect+"', client sent '"+version+"')";
+				LogEvent(EventType::OperationAborted,nullptr,msg);
 				msg = msg.subString(0,256);
 				Channels::error.SendTo(peer,msg);
 				return;
@@ -520,8 +534,19 @@ namespace TechniteLogicLink
 			}
 			#endif
 
+			if (sessionStarted)
+			{
+				TechniteProtocol::BeginSession session;
+				session.factionID = lastFactionID.ToString(TUniqueID::NumBytes);
+				session.techniteGridID = lastTechniteGridID;
+				session.roundNumber = Network::roundNumber;
+				session.techniteSubRoundNumber = Network::techniteSubRoundNumber;
+				Channels::beginSession.SendTo(logicServer,session,1);
+			}
+
+
 			if (haveAllTechnites && executed)
-				ExecuteLogic(Network::roundNumber);
+				ExecuteLogic(Network::roundNumber, Network::techniteSubRoundNumber);
 
 		}
 
@@ -557,7 +582,7 @@ namespace TechniteLogicLink
 					TechniteProtocol::ChannelID::WorldInfo>							worldInfo;
 		TCP::ObjectSender<Package::NetString<256>,
 					TechniteProtocol::ChannelID::Error>								error;
-		TCP::ObjectSender<NET(UINT32),
+		TCP::ObjectSender<TechniteProtocol::InstructTechnites,
 					TechniteProtocol::ChannelID::InstructTechnites>					instructTechnites;
 
 
@@ -569,6 +594,9 @@ namespace TechniteLogicLink
 					TechniteProtocol::ChannelID::CreateControlMarker>				createControlMarker;
 		TCP::ObjectSender<NET(UINT32),
 					TechniteProtocol::ChannelID::RemoveControlMarker>				removeControlMarker;
+		TCP::ObjectSender<TechniteProtocol::BeginSession,
+					TechniteProtocol::ChannelID::BeginSession>						beginSession;
+
 	}
 
 
@@ -801,7 +829,7 @@ namespace TechniteLogicLink
 		{
 			haveAllTechnites = true;
 			if (executed)
-				ExecuteLogic(Network::roundNumber);
+				ExecuteLogic(Network::roundNumber, Network::techniteSubRoundNumber);
 		}
 	}
 
@@ -852,6 +880,7 @@ namespace TechniteLogicLink
 	void		Destroy()
 	{
 		isActive = false;
+		sessionStarted = false;
 		logicServer.EndService();
 		logicProcess.Terminate();
 		numClients = 0;

@@ -1764,11 +1764,21 @@ namespace Protocol
 	)
 
 
-	CONSTRUCT_ENUMERATION7(Phase, CommandPhase,StructurePhase,AttackPhase,MovementPhase,TechnitePhase,AnimationPhase, EndOfGame);
+	CONSTRUCT_ENUMERATION8(Phase, 
+		CommandPhase,
+		TechniteCommandPhase,
+		StructurePhase,
+		AttackPhase,
+		MovementPhase,
+		TechnitePhase,
+		AnimationPhase, 
+		EndOfGame
+		);
 
-	NETSTRUCT3(PhaseChange
+	NETSTRUCT4(PhaseChange
 		, NET(Phase), newPhase
 		, NET(UINT32), roundNumber
+		, NET(UINT32), techniteSubRoundNumber
 		, NET(float), timeFactor
 	)
 

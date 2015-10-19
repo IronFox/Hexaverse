@@ -96,7 +96,11 @@ namespace State
 	Buffer<PClient>	clients,activePlayers;
 	GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
 	GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
-	UINT32			roundNumber=0, lastSaveRound = 0, empZonesLocked = 0, unlockedEMPZones = 0xFFFF;
+	UINT32			roundNumber=0, 
+					techniteSubRoundNumber=0,
+					lastSaveRound = 0, 
+					empZonesLocked = 0,
+					unlockedEMPZones = 0xFFFF;
 	Protocol::Phase	phase;
 	Objects::PFaction	winner;	//if set indicates game is over
 	TUniqueID		worldID;
@@ -111,7 +115,10 @@ namespace State
 		float		factionStartMineralValue=1.f;	//determined during loading
 
 
-		int			roundTimer = -1;
+		int			roundTimer = -1,
+					extraTechniteRoundTimer = -1;
+		UINT32		extraTechniteRounds = 0;
+
 		UINT32		uplinkBandwidth = 500;
 
 		bool		closedGame = false,
@@ -162,6 +169,7 @@ namespace State
 		tokenMap.Clear();
 		terrainChanged = false;
 		roundNumber = 0;
+		techniteSubRoundNumber = 0;
 		lastSaveRound = 0;
 		empZonesLocked = 0;
 		unlockedEMPZones = 0xFFFF;
@@ -256,6 +264,7 @@ namespace State
 		Protocol::PhaseChange	ph;
 		ph.newPhase = to;
 		ph.roundNumber = (UINT32)roundNumber;
+		ph.techniteSubRoundNumber = (UINT32)techniteSubRoundNumber;
 		ph.timeFactor = timeWindow;
 		Channels::phaseChange.SendTo(server,ph);
 		phase = to;
@@ -775,7 +784,8 @@ namespace State
 								worldConfig("WCFG"),
 								factionSupportFlags("FSFL"),
 								techniteFactionGridID("TFGI"),
-								technites("TECH")
+								technites("TECH"),
+								extraTechniteRounds("EXTR")
 								;
 
 
@@ -1578,6 +1588,9 @@ void	State::Load(const String&filename)
 							Grid::CellStack::bottom.content = (BYTE)State::persistentPlanetInfo.innerCoreType;
 
 							GetOptionalPOD(list,RID::factionSupportFlags,State::Config::factionSupportFlags,State::Config::AllFactionSupportFlags);
+							#ifndef _DEBUG
+								GetOptionalPOD(list,RID::extraTechniteRounds,State::Config::extraTechniteRounds,State::Config::extraTechniteRounds);
+							#endif
 
 						}
 					break;
@@ -1944,6 +1957,7 @@ void	State::Save( const String&name)
 	general->AppendBlock("RNDN")->SetPODData(roundNumber);
 	general->AppendBlock(RID::worldConfig)->SetPODData(State::persistentPlanetInfo);
 	general->AppendBlock(RID::factionSupportFlags)->SetPODData(State::Config::factionSupportFlags);
+	general->AppendBlock(RID::extraTechniteRounds)->SetPODData(State::Config::extraTechniteRounds);
 	general->AppendBlock(RID::closedGame)->SetPODData(State::Config::closedGame);
 	general->AppendBlock(RID::nexusBases)->SetPODData(State::Config::NexusPorts::haveBases);
 	general->AppendBlock(RID::goal)->SetPODData((UINT16)State::Config::goal);

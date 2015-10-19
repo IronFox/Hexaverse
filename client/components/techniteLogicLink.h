@@ -26,7 +26,7 @@ namespace TechniteLogicLink
 					TechniteProtocol::ChannelID::WorldInfo>							worldInfo;
 		extern TCP::ObjectSender<Package::NetString<256>,
 					TechniteProtocol::ChannelID::Error>								error;
-		extern TCP::ObjectSender<NET(UINT32),
+		extern TCP::ObjectSender<TechniteProtocol::InstructTechnites,
 					TechniteProtocol::ChannelID::InstructTechnites>					instructTechnites;
 		extern TCP::ObjectSender<TechniteProtocol::GameObject,
 					TechniteProtocol::ChannelID::CreateGameObject>					createGameObject;
@@ -36,7 +36,8 @@ namespace TechniteLogicLink
 					TechniteProtocol::ChannelID::CreateControlMarker>				createControlMarker;
 		extern TCP::ObjectSender<NET(UINT32),
 					TechniteProtocol::ChannelID::RemoveControlMarker>				removeControlMarker;
-
+		extern TCP::ObjectSender<TechniteProtocol::BeginSession,
+					TechniteProtocol::ChannelID::BeginSession>						beginSession;
 	}
 
 
@@ -59,7 +60,7 @@ namespace TechniteLogicLink
 	/**
 	Sends a logic execution command to all connected technite logic clients
 	*/
-	void		ExecuteLogic(UINT32 roundNumber);
+	void		ExecuteLogic(UINT32 roundNumber, UINT32 techniteSubRoundNumber);
 
 	/**
 	Queries whether or not technite logic processing has completed this round
@@ -84,7 +85,7 @@ namespace TechniteLogicLink
 
 
 	void		SetWorldInfo(Grid::Content coreContent);
-
+	void		StartSession(const TUniqueID&factionID, BYTE techniteGridID);
 
 	/**
 	Checks whether or not the local link expects a client to connect

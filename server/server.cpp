@@ -1261,13 +1261,15 @@ int main( int argc, const char* argv[])
 			State::Config::simulateLiquids = config.GetBool("NonPersistentGameSettings/simulateLiquids",false);
 
 			State::Config::closedGame = config.GetBool("Game/closed",false);
-			State::Config::roundTimer = config.GetInt("Game/roundTimer",-1);
-			String goalStr = config.GetString("Game/goal","None");
+			State::Config::roundTimer = config.RequireInt("Game/roundTimer");
+			State::Config::extraTechniteRoundTimer = config.RequireInt("Game/extraTechniteRoundTimer");
+			String goalStr = config.RequireString("Game/goal");
 			if (!State::Config::goal.Decode(goalStr.c_str()))
 			{
 				LogEvent(EventType::ConfigRelated,"Unsupported goal '"+goalStr+"'");
 			}
-			State::Config::SetFactionSupportFlagString(config.Get("Game/supportedFactions"));
+			State::Config::SetFactionSupportFlagString(config.RequireString("Game/supportedFactions"));
+			State::Config::extraTechniteRounds = (UINT32)std::max(0,config.RequireInt("Game/extraTechniteRounds"));
 			State::Config::startBases = config.GetBool("Game/startBases",false);
 			State::Config::basesRequired = config.GetBool("Game/basesRequired",false);
 			State::Config::exposeActionLeftToHostileFactions = config.GetBool("Game/exposeActionLeftToHostileFactions",true);
@@ -1686,6 +1688,11 @@ int main( int argc, const char* argv[])
 	if (State::Config::saveWhenAllQuit)
 		LogConfig(" -Auto-saves will be created when all quit.");
 
+	LogConfig(" -Extra Technite Rounds: "+String(State::Config::extraTechniteRounds));
+	if (State::Config::extraTechniteRoundTimer > 0)
+		LogConfig(" -Extra Technite Round Timer: Extra technite rounds may last at most "+String(State::Config::extraTechniteRoundTimer)+" seconds.");
+	else
+		LogConfig(" -No Extra Technite Round Timer: Extra technite rounds end when all logic clients are done.");
 
 	//FATAL__("test");
 	if (State::Config::enableNexusAI)
@@ -1698,7 +1705,7 @@ int main( int argc, const char* argv[])
 
 	while (!application_shutting_down)
 	{
-		if (State::phase == Protocol::Phase::CommandPhase || State::phase == Protocol::Phase::AnimationPhase)
+		if (State::phase == Protocol::Phase::TechniteCommandPhase || State::phase == Protocol::Phase::CommandPhase || State::phase == Protocol::Phase::AnimationPhase)
 			Sleep(1);
 		State::server.Resolve();
 		if (State::Config::enableNexusAI)
@@ -1711,15 +1718,29 @@ int main( int argc, const char* argv[])
 
 		bool newRoundNow = false;
 
-		if (State::Config::roundTimer > 0 && !State::roundTimerPaused)
+		if (State::InExtraTechniteRound())
 		{
-			if (timer.GetSecondsSince(State::lastPhaseChange) - 0.5f > State::Config::roundTimer)//tolerance of a half second
+			if (State::Config::extraTechniteRoundTimer > 0 && !State::roundTimerPaused)
 			{
-				newRoundNow = true;
-				LogEvent(EventType::SessionRelated,"Round timeout reached. Forcing new round.");
+				if (timer.GetSecondsSince(State::lastPhaseChange) - 0.5f > State::Config::extraTechniteRoundTimer)//tolerance of a half second
+				{
+					newRoundNow = true;
+					LogEvent(EventType::SessionRelated,"Extra Technite round timeout reached. Forcing new round.");
+				}
+			}
+
+		}
+		else
+		{
+			if (State::Config::roundTimer > 0 && !State::roundTimerPaused)
+			{
+				if (timer.GetSecondsSince(State::lastPhaseChange) - 0.5f > State::Config::roundTimer)//tolerance of a half second
+				{
+					newRoundNow = true;
+					LogEvent(EventType::SessionRelated,"Round timeout reached. Forcing new round.");
+				}
 			}
 		}
-
 
 
 
@@ -1767,13 +1788,20 @@ int main( int argc, const char* argv[])
 				return (Grid::low.cells[e->location.stackID].cornerFlags & State::unlockedEMPZones) != 0;
 			});
 
-			ProcessAICoverage();
+			if (!State::InExtraTechniteRound())
+				ProcessAICoverage();
 
 
 			State::SimulateLiquidsIfEnabled();
 			//#endif
 
-			State::ChangePhase(Protocol::Phase::AttackPhase);
+			if (State::InExtraTechniteRound())
+			{
+				State::ChangePhase(Protocol::Phase::TechnitePhase);
+				Technites::BeginProcessing(0.f);
+			}
+			else
+				State::ChangePhase(Protocol::Phase::AttackPhase);
 		}
 
 		switch (State::phase)
@@ -1814,18 +1842,28 @@ int main( int argc, const char* argv[])
 			case Protocol::Phase::AnimationPhase:
 				if (timer.GetSecondsSince(State::lastPhaseChange) >= State::effectiveAnimationLength+0.5f)
 				{
-					State::roundNumber++;
 					if (State::activePlayers.IsNotEmpty())
 						State::roundTimerPaused = false;
+					if (State::InExtraTechniteRound())
+					{
+						State::techniteSubRoundNumber ++;
 
+						State::ChangePhase(Protocol::Phase::TechniteCommandPhase,State::Config::extraTechniteRoundTimer > 0 && !State::roundTimerPaused ? State::Config::extraTechniteRoundTimer : -1);
 
-					State::ChangePhase(Protocol::Phase::CommandPhase,State::Config::roundTimer > 0 && !State::roundTimerPaused ? State::Config::roundTimer : -1);
+					}
+					else
+					{
+						State::roundNumber++;
+						State::techniteSubRoundNumber = 0;
 
+						State::ChangePhase(Protocol::Phase::CommandPhase,State::Config::roundTimer > 0 && !State::roundTimerPaused ? State::Config::roundTimer : -1);
+					}
 
 
 				}
 				anythingChanged = true;
 			break;
+			case Protocol::Phase::TechniteCommandPhase:
 			case Protocol::Phase::CommandPhase:
 			break;
 		}

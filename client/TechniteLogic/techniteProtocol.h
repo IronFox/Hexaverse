@@ -129,7 +129,17 @@ namespace TechniteProtocol
 		);
 
 
-			
+	NETSTRUCT2(InstructTechnites
+		, NET(UINT32), roundNumber
+		, NET(UINT32), techniteSubRoundNumber
+		);
+
+	NETSTRUCT4(BeginSession
+		, String, factionID
+		, NET(BYTE), techniteGridID
+		, NET(UINT32), roundNumber
+		, NET(UINT32), techniteSubRoundNumber
+		);
 
 
 
@@ -153,13 +163,14 @@ namespace TechniteProtocol
 			Ready,					//c2s: String: protocol version+name
 			Error,					//s2c: String: message
 			TechniteStateChunk,     //s2c: TechniteStateChunk
-			InstructTechnites,      //s2c: uint32: roundnumber
+			InstructTechnites,      //s2c: InstructTechnites
 			TechniteInstructionChunk, //c2s: TechniteInstructionChunk
 
 			NodeChunk,      //s2c: NodeChunk - completed before SessionBegin is sent
 			GridConfig,		//s2c: GridConfig
 			GridDelta,      //s2c: GridDelta
 			WorldInfo,		//s2c: WorldInfo
+			BeginSession,	//s2c: BeginSession
 
 			CreateControlMarker,	//s2c: ControlMarker
 			CreateGameObject,		//s2c: GameObject
