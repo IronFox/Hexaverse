@@ -37,6 +37,15 @@ Random		random;
 #endif
 
 
+bool InExtraTechniteRound()
+{
+	if (!State::InExtraTechniteRound())
+		return false;
+
+	return State::techniteFactionsOnline > 0;
+
+}
+
 
 
 void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromStorage, float atTime)
@@ -1718,7 +1727,7 @@ int main( int argc, const char* argv[])
 
 		bool newRoundNow = false;
 
-		if (State::InExtraTechniteRound())
+		if (InExtraTechniteRound())
 		{
 			if (State::Config::extraTechniteRoundTimer > 0 && !State::roundTimerPaused)
 			{
@@ -1747,7 +1756,7 @@ int main( int argc, const char* argv[])
 
 		if (!newRoundNow)
 		{
-			count_t wantNewRound = 0;
+			count_t wantNewRound = 0,numTechniteFactions=0,numTechniteFactionsWantNewRound=0;
 			bool hasNexus = false;
 			foreach(State::activePlayers, p)
 			{
@@ -1762,8 +1771,21 @@ int main( int argc, const char* argv[])
 				//#endif
 				if ((*p)->wantNewRound)
 					wantNewRound++;
+				if ((*p)->faction->IsTechniteFaction())
+				{
+					numTechniteFactions++;
+					if ((*p)->wantNewRound)
+						numTechniteFactionsWantNewRound++;
+				}
 			}
-			newRoundNow = wantNewRound == State::activePlayers.Count() && wantNewRound > (hasNexus ? 1U : 0U);
+			if (State::InExtraTechniteRound() && numTechniteFactions > 0)
+			{
+				newRoundNow = numTechniteFactionsWantNewRound >= numTechniteFactions 
+							&& numTechniteFactionsWantNewRound > 0;
+			}
+			else
+				newRoundNow = wantNewRound >= State::activePlayers.Count() && wantNewRound > (hasNexus ? 1U : 0U);
+
 			if (newRoundNow)
 			{
 				LogEvent(EventType::SessionRelated,"All players have requested a new round. Commencing...");
@@ -1795,7 +1817,7 @@ int main( int argc, const char* argv[])
 			State::SimulateLiquidsIfEnabled();
 			//#endif
 
-			if (State::InExtraTechniteRound())
+			if (InExtraTechniteRound())
 			{
 				State::ChangePhase(Protocol::Phase::TechnitePhase);
 				Technites::BeginProcessing(0.f);
@@ -1844,7 +1866,7 @@ int main( int argc, const char* argv[])
 				{
 					if (State::activePlayers.IsNotEmpty())
 						State::roundTimerPaused = false;
-					if (State::InExtraTechniteRound())
+					if (InExtraTechniteRound())
 					{
 						State::techniteSubRoundNumber ++;
 

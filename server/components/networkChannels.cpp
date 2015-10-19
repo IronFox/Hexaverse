@@ -781,6 +781,9 @@ namespace Receiver
 
 		if (client->faction->IsTechniteFaction())
 		{
+			State::techniteFactionsOnline++;
+			LogEvent(EventType::SessionRelated,"Technite factions online: "+String(State::techniteFactionsOnline));
+
 			Technites::PFaction tf = To<Technites::Faction>::Cast(client->faction);
 			SendTechniteStateTo(tf,peer);
 		}
@@ -1860,6 +1863,16 @@ namespace Receiver
 					State::activePlayers.FindAndErase(client);
 					if (client->faction)
 					{
+						if (client->faction->IsTechniteFaction())
+						{
+							if (State::techniteFactionsOnline > 0)
+								State::techniteFactionsOnline--;
+							else
+							{
+								DBG_FATAL__("Faction counter error");
+							}
+							LogEvent(EventType::SessionRelated,"Technite faction gone offline. Remaining technite factions online: "+String(State::techniteFactionsOnline));
+						}
 						State::playerMap.Unset(client->faction);
 						Channels::factionOffline.SendTo(State::server,client->faction->id);
 						client->faction->online = false;

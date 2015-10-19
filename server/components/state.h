@@ -78,6 +78,7 @@ namespace State
 
 	extern Grid::TSharedPlanetConfig	persistentPlanetInfo;
 
+	extern count_t			techniteFactionsOnline;
 
 	namespace Config
 	{

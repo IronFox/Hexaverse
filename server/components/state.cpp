@@ -16,6 +16,8 @@ namespace State
 	TCP::Server		server;
 
 	bool						terrainChanged=false;
+	count_t						techniteFactionsOnline=0;
+
 
 	String						Client::ToString() const
 	{
@@ -166,6 +168,7 @@ namespace State
 		activePlayers.Clear();
 		playerMap.Clear();
 
+		techniteFactionsOnline = 0;
 		tokenMap.Clear();
 		terrainChanged = false;
 		roundNumber = 0;
