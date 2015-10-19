@@ -1414,6 +1414,8 @@ namespace Grid
 				dat.water.instruction.ibo.Create(dat.water.indices);
 				dat.technites.instruction.vbo.CreateFromStructs(dat.technites.vertices);
 				dat.technites.instruction.ibo.Create(dat.technites.indices);
+				dat.technites.shadowInstruction.vbo = dat.technites.instruction.vbo;
+				dat.technites.shadowInstruction.ibo = dat.technites.instruction.ibo;
 
 			}
 
