@@ -76,9 +76,14 @@ struct TUniqueID
 		return stdMemHash(id.bytes,sizeof(id.bytes));
 	}
 
-	String		ToString() const
+	//String		ToString() const
+	//{
+	//	return Bin2Str::Convert(bytes,/*sizeof(bytes)*/4);
+	//}
+
+	String		ToString(count_t numBytes=4) const
 	{
-		return Bin2Str::Convert(bytes,/*sizeof(bytes)*/4);
+		return Bin2Str::Convert(bytes,numBytes);
 	}
 
 	String		ToNiceString() const
