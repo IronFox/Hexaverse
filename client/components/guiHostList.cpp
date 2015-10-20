@@ -94,6 +94,10 @@ void	SaveHosts()
 			result += ", Nexus AI";
 		if (info.gameFlags & Protocol::GameFlag::SupportRegularFactions)
 			result += ", Regular";
+		if (info.gameFlags & Protocol::GameFlag::SupportTechniteFactions)
+			result += ", Technite";
+		if (info.gameFlags & Protocol::GameFlag::SupportHybridFactions)
+			result += ", Hybrid";
 
 		//String result = String("Goal: ")+Protocol::GameGoal::Reinterpret(info.gameGoal).ToString();
 		return result;
