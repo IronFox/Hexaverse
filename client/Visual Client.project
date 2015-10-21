@@ -6,6 +6,7 @@
 	<macro name="CLIENT"/>
 	<macro name="HAS_WINDOW"/>
 	<referenceProject name="DeltaWorks" />
+	<referenceProject name="mbedtls" />
 	
 	<manifest>DeclareDPIAware.manifest</manifest>
 	<includeLibrary name="OpenAL 1.1 SDK">
@@ -24,7 +25,6 @@
 		<link>d3d11.lib</link>
 		<link>d3dcompiler.lib</link>
 	</includeLibrary>
-	
 	
 	
 </project>
