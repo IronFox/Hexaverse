@@ -1,5 +1,11 @@
-<project type="Application:Windows">
-	<clone name="Console Client" />
+<project type="Application:Windows" stackSize="4000000">
+	<source path="../shared" />
+	<source path="./">
+		<exclude file="console.rc" />
+	</source>
+	<macro name="CLIENT"/>
+	<referenceProject name="DeltaWorks" />
+	
 	<manifest>DeclareDPIAware.manifest</manifest>
 	<macro name="HAS_WINDOW"/>
 	<includeLibrary name="OpenAL 1.1 SDK">

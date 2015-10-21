@@ -59,7 +59,7 @@
 #include "components/atmosphere.h"
 #include "components/guiHostList.h"
 
-#include "resource.h"
+#include "rc/Resource.h"
 
 /**
 The following DWORD causes Nvidia Optimus to select the high performance GPU.

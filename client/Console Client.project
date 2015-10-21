@@ -1,6 +1,8 @@
 <project type="Application:Console" stackSize="4000000">
 	<source path="../shared" />
-	<source path="./" />
+	<source path="./">
+		<exclude file="visual.rc" />
+	</source>
 	<macro name="CLIENT"/>
-	<referenceProject name="DeltaWorks" includePath="true" />
+	<referenceProject name="DeltaWorks" />
 </project>
