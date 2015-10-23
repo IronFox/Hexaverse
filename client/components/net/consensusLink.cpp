@@ -1,12 +1,8 @@
 #include <global_root.h>
 
-#include <mbedtls/net.h>
-#include <mbedtls/ssl.h>
-#include <mbedtls/entropy.h>
-#include <mbedtls/ctr_drbg.h>
-#include <mbedtls/debug.h>
-#include <mbedtls/error.h>
-#include <mbedtls/base64.h>
+
+#include "encryptionHelper.h"
+
 #include <net/tcp.h>
 
 #include "../../../shared/logEvent.h"
@@ -85,6 +81,17 @@ namespace ConsensusLink
 
 		TCP::Client		client;
 
+		Array<BYTE>		certificate,
+						certificateKey;
+		String			accountName;
+		TUniqueID		accountID;
+
+		mbedtls_x509_crt	loadedCertificate;
+		mbedtls_pk_context	loadedCertificateKey;
+		bool				certificateIsLoaded=false;
+
+
+
 
 		String	ErrorToString(int rc)
 		{
@@ -111,13 +118,16 @@ namespace ConsensusLink
 			mbedtls_ssl_config_free( &config );
 			mbedtls_ctr_drbg_free( &ctr_drbg );
 			mbedtls_entropy_free( &entropy );
+			mbedtls_x509_crt_free( &loadedCertificate );
+			mbedtls_pk_free(&loadedCertificateKey);
+
 		}
 
 
 		class SocketAccess : public TCP::SocketAccess
 		{
 		public:
-			mbedtls_x509_crt		certificate;
+			
 
 			mbedtls_net_context		context;
 			mbedtls_ssl_context		ssl;
@@ -132,6 +142,8 @@ namespace ConsensusLink
 			};
 			virtual void			SetSocket(SOCKET socket) override
 			{
+				LogEvent(EventType::SessionRelated,nullptr,"Creating socket");
+
 				isDestroyed = false;
 				//mbedtls_x509_crt_init(&certificate);
 				//mbedtls_pk_init(&certificateKey);
@@ -144,6 +156,8 @@ namespace ConsensusLink
 				if( ( ret = mbedtls_ssl_set_hostname( &ssl, "Consensus Host" ) ) != 0 )
 					throw IO::Network::GeneralFault( "mbedtls_ssl_set_hostname returned "+ErrorToString(ret));
 				mbedtls_ssl_set_bio( &ssl, &context, mbedtls_net_send, mbedtls_net_recv, NULL );
+
+
 				for (;;)
 				{
 					ret = mbedtls_ssl_handshake(&ssl);
@@ -170,11 +184,15 @@ namespace ConsensusLink
 			}
 			virtual void			CloseSocket() override
 			{
+				LogEvent(EventType::SessionRelated,nullptr,"Closing socket");
 				bool exp = false;
 				if (isDestroyed.compare_exchange_strong(exp,true))
 				{
+					SOCKET sock = (SOCKET)context.fd;
 					mbedtls_ssl_free( &ssl );
 					mbedtls_net_free( &context );
+					closesocket(sock);
+
 				}
 			}
 
@@ -204,6 +222,8 @@ namespace ConsensusLink
 						return sent;
 					at += sent;
 				}
+				LogEvent(EventType::SessionRelated,nullptr,"Sent "+String(dataSize)+" bytes");
+//				MBEDTLS_SSL_FLUSH_BUFFERS
 				return (int)dataSize;
 			}
 		};
@@ -219,8 +239,11 @@ namespace ConsensusLink
 			switch (event)
 			{
 				case TCP::Event::ConnectionEstablished:
-					Channels::hello.SendTo(client,Protocol::ProtocolVersion);
-					client.SendSignal(Protocol::ChannelID::RequestNewAccount);
+					ASSERT__(Channels::hello.SendTo(client,Protocol::ProtocolVersion));
+					LogEvent(EventType::SessionRelated,nullptr,"Sent hello");
+
+					if (!certificateIsLoaded)
+						client.SendSignal(Protocol::ChannelID::RequestNewAccount);
 				break;
 
 			}
@@ -246,6 +269,8 @@ namespace ConsensusLink
 			client.ConnectAsync(lastHost);
 		}
 
+		void	Authenticate();
+
 
 		void	Init(const String&host)
 		{
@@ -254,8 +279,10 @@ namespace ConsensusLink
 			mbedtls_entropy_init( &entropy );
 			//mbedtls_x509_crt_init( &cacert );
 			mbedtls_ctr_drbg_init( &ctr_drbg );
+			mbedtls_x509_crt_init( &loadedCertificate );
+			mbedtls_pk_init(&loadedCertificateKey);
 
-
+			
 			int ret;
 			if( ( ret = mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy,
                            nullptr,
@@ -300,67 +327,21 @@ namespace ConsensusLink
 
 		namespace Receiver
 		{
+			
 			void	CreatedNewAccount(Protocol::NewAccount&acc)
 			{
-				mbedtls_x509_crt cert;
-				mbedtls_x509_crt_init( &cert );
-
-				mbedtls_pk_context		certificateKey;
-				mbedtls_pk_init(&certificateKey);
-
-				
-				int rc = mbedtls_x509_crt_parse_der(&cert,acc.certificate.pointer(),acc.certificate.GetContentSize());
-				LogEvent(EventType::SessionRelated,nullptr,"Got certificate for new account "+acc.details.accountName+". mbedtls_x509_crt_parse returned "+ErrorToString(rc));
-
-
-				StringBuffer pemBuilder;
-				pemBuilder << "-----BEGIN RSA PRIVATE KEY-----";
-
-				Array<BYTE>	base64(acc.certificateKey.GetContentSize()*2);
-
-				//const BYTE*bytes = acc.certificateKey.pointer();
-				size_t written = 0;
-				rc = mbedtls_base64_encode( base64.pointer(), base64.GetContentSize(), &written, acc.certificateKey.pointer(), acc.certificateKey.GetContentSize() );
-
-				for (index_t i = 0; i < written; i++)
-				{
-					if (!(i%64))
-						pemBuilder << nl;
-
-					pemBuilder << (char)base64[i];
-				}
-				if (!(written % 64))
-					pemBuilder << nl;
-
-				pemBuilder << "-----END RSA PRIVATE KEY-----" << nl;
-
-				String pem = pemBuilder.ToStringRef();
-
-
-				
-				/*
-				-----BEGIN ENCRYPTED PRIVATE KEY-----
-MIIFDjBABgkqhkiG9w0BBQ0wMzAbBgkqhkiG9w0BBQwwDgQIS2qgprFqPxECAggA
-MBQGCCqGSIb3DQMHBAgD1kGN4ZslJgSCBMi1xk9jhlPxP3FyaMIUq8QmckXCs3Sa
-9g73NQbtqZwI+9X5OhpSg/2ALxlCCjbqvzgSu8gfFZ4yo+Xd8VucZDmDSpzZGDod
-A .... MANY LINES LIKE THAT .... .... MANY LINES LIKE THAT .... 
-X0R+meOaudPTBxoSgCCM51poFgaqt4l6VlTN4FRpj+c/WZeoMM/BVXO+nayuIMyH
-blK948UAda/bWVmZjXfY4Tztah0CuqlAldOQBzu8TwE7WDwo5S7lo5u0EXEoqCCq
-H0ga/iLNvWYexG7FHLRiq5hTj0g9mUPEbeTXuPtOkTEb/0ckVE2iZH9l7g5edmUZ
-GEs=
------END ENCRYPTED PRIVATE KEY-----
-				*/
-
-
-
-				rc = mbedtls_pk_parse_key(&certificateKey,(const unsigned char*)pem.c_str(),pem.length()+1,nullptr,0);
-				LogEvent(EventType::SessionRelated,nullptr,"Got private key. mbedtls_pk_parse_key returned "+ErrorToString(rc));
-
-
-				LogEvent(EventType::SessionRelated,nullptr,"Certificate is "+Bin2Str::Interpret(acc.certificate.pointer(),acc.certificate.GetContentSize()));
-
-				mbedtls_x509_crt_free(&cert);
-				mbedtls_pk_free(&certificateKey);
+				certificate.adoptData(acc.certificate);
+				certificateKey.adoptData(acc.certificateKey);
+				accountName.adoptData(acc.details.accountName);
+				ASSERT_EQUAL__(acc.details.guid.GetLength(),TUniqueID::NumBytes);
+				memcpy(accountID.bytes,acc.details.guid.pointer(),TUniqueID::NumBytes);
+				LogEvent(EventType::SessionRelated,nullptr,"Created new account "+accountName);
+				LogEvent(EventType::SessionRelated,nullptr,"Disconnecting client to try authenticating with new certificate");
+				client.Disconnect();
+				Authenticate();
+				ASSERT__(certificateIsLoaded);
+				//{
+				//}
 			}
 
 			void	Authenticated(Protocol::AccountDetails&acc)
@@ -378,12 +359,83 @@ GEs=
 
 
 
+		void	Authenticate()
+		{
+			int rc = mbedtls_x509_crt_parse_der(&loadedCertificate,certificate.pointer(),certificate.GetContentSize());
+			LogEvent(EventType::SessionRelated,nullptr,"Got certificate for new account "+accountName+". mbedtls_x509_crt_parse returned "+ErrorToString(rc));
+			if (rc != 0)
+			{
+				return;
+			}
+
+	        //pem_aes_decrypt( pem_iv, 24, buf, len, pwd, pwdlen );
+
+
+			Array<BYTE>	base64(certificateKey.GetContentSize()*2);
+
+			//const BYTE*bytes = acc.certificateKey.pointer();
+			size_t written = 0;
+			rc = mbedtls_base64_encode( base64.pointer(), base64.GetContentSize(), &written, certificateKey.pointer(), certificateKey.GetContentSize() );
+
+			StringBuffer pemBuilder;
+			pemBuilder << "-----BEGIN RSA PRIVATE KEY-----";
+			for (index_t i = 0; i < written; i++)
+			{
+				if (!(i%64))
+					pemBuilder << nl;
+
+				pemBuilder << (char)base64[i];
+			}
+			if (!(written % 64))
+				pemBuilder << nl;
+
+			pemBuilder << "-----END RSA PRIVATE KEY-----" << nl;
+			pemBuilder << '\0';	//mbedtls can be very stupid
+//				String pem = pemBuilder.ToStringRef();
+
+
+				
+			//theoretically could parse binary pem here, but mbedtls does not expose vital functions for that. i could expose them manually, or implement an adequate wrapper function in mbedtls,
+			//but for the sake of maintainability, and due to low performance loss because of one-time conversion overhead, it might be better to persistently use this detour instead
+			rc = mbedtls_pk_parse_key(&loadedCertificateKey,(const unsigned char*)pemBuilder.pointer(),pemBuilder.GetFillLevel(),nullptr,0);
+			LogEvent(EventType::SessionRelated,nullptr,"Got private key. mbedtls_pk_parse_key returned "+ErrorToString(rc));
+			if (rc != 0)
+			{
+				return;
+			}
+
+
+			LogEvent(EventType::SessionRelated,nullptr,"Certificate loaded: "+Bin2Str::Interpret(certificate.pointer(),certificate.GetContentSize()));
+
+
+			{
+				LogEvent(EventType::SessionRelated,nullptr,"Setting local certificate");
+				int ret = mbedtls_ssl_conf_own_cert(&config,&loadedCertificate,&loadedCertificateKey);
+				if (ret != 0)
+					throw IO::Network::GeneralFault( "mbedtls_ssl_conf_own_cert returned "+ErrorToString(ret));
+			}
+			
+
+			certificateIsLoaded = true;
+
+
+
+
+		}
+
+
+
 	}
 
 
 	void		Create(const String&host)
 	{
 		Detail::Init(host);
+
+
+
+
+
 
 	}
 	void		Destroy()
