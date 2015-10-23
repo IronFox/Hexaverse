@@ -280,7 +280,7 @@ namespace Consensus
 
 #if USE_SSL
 			SslStream sslStream = new SslStream(TcpClient.GetStream(), false, new RemoteCertificateValidationCallback(ValidateClientCertificate), null, EncryptionPolicy.RequireEncryption);
-			sslStream.AuthenticateAsServer(_certificate, true, System.Security.Authentication.SslProtocols.Ssl3, false);
+			sslStream.AuthenticateAsServer(_certificate, true, System.Security.Authentication.SslProtocols.Tls12, false);
 			if (!sslStream.IsEncrypted)
 			{
 				sslStream.Close();

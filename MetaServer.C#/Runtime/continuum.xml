@@ -1,6 +1,4 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <continuum>
-  <account name="Generic" certificateHash="73F26D2181E945D3ACCE3EB58691D157EC0AB15E" guid="64ce8a79-7cf3-4234-ab30-288d1fc5da4f" />
-  <account name="Generic" certificateHash="40D23F7B6FC0BFFECB0DBDCFE7B7EF9BBF85B7BF" guid="c5801352-4eee-4b9a-aa03-de229bd8912f" />
-  <account name="Generic" certificateHash="BF49FAE83034E2D09D6FAD6093BD9BBA85A78E8C" guid="304cf1cf-6894-485a-bcb6-d3e03bba855d" />
+  <account name="4d597a97-cb53-41e5-96c1-a96ddd06fbe5" certificateHash="06E4DF34453DE0C13BCA4D0EE7D4D0BFBEF599C0" guid="4d597a97-cb53-41e5-96c1-a96ddd06fbe5" />
 </continuum>

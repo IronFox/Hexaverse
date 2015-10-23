@@ -38,6 +38,7 @@ namespace Protocol
 		{
 			public AccountDetails details;
 			public byte[] certificate;
+			public byte[] certificateKey;
 		}
 
 	}

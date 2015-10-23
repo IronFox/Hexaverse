@@ -375,3 +375,628 @@
 13.09.2015 20:28:57	Important							Initialization phase completed. Awaiting clients.
 13.09.2015 20:46:50	Important							Initialization phase completed. Awaiting clients.
 13.09.2015 20:51:10	Important							Initialization phase completed. Awaiting clients.
+23.10.2015 12:12:10	Important							Initialization phase completed. Awaiting clients.
+23.10.2015 12:17:46	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:46	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:46	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:46	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:46	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:46	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:46	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:46	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:46	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:17:47	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:19:08	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:19:44	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:19:59	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:20:31	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:21:37	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:22:00	Unusual							System.Security.Authentication.AuthenticationException: A call to SSPI failed, see inner exception. ---> System.ComponentModel.Win32Exception: The function requested is not supported
+   --- End of inner exception stack trace ---
+   at System.Net.Security.SslState.StartSendAuthResetSignal(ProtocolToken message, AsyncProtocolRequest asyncRequest, Exception exception)
+   at System.Net.Security.SslState.StartSendBlob(Byte[] incoming, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessReceivedBlob(Byte[] buffer, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartSendBlob(Byte[] incoming, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessReceivedBlob(Byte[] buffer, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:23:46	Unusual							System.Security.Authentication.AuthenticationException: A call to SSPI failed, see inner exception. ---> System.ComponentModel.Win32Exception: The function requested is not supported
+   --- End of inner exception stack trace ---
+   at System.Net.Security.SslState.StartSendAuthResetSignal(ProtocolToken message, AsyncProtocolRequest asyncRequest, Exception exception)
+   at System.Net.Security.SslState.StartSendBlob(Byte[] incoming, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessReceivedBlob(Byte[] buffer, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartSendBlob(Byte[] incoming, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessReceivedBlob(Byte[] buffer, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:26:15	Unusual							System.IO.IOException: Authentication failed because the remote party has closed the transport stream.
+   at System.Net.Security.SslState.StartReadFrame(Byte[] buffer, Int32 readBytes, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartSendBlob(Byte[] incoming, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessReceivedBlob(Byte[] buffer, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:26:25	Unusual							System.Security.Authentication.AuthenticationException: A call to SSPI failed, see inner exception. ---> System.ComponentModel.Win32Exception: The function requested is not supported
+   --- End of inner exception stack trace ---
+   at System.Net.Security.SslState.StartSendAuthResetSignal(ProtocolToken message, AsyncProtocolRequest asyncRequest, Exception exception)
+   at System.Net.Security.SslState.StartSendBlob(Byte[] incoming, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessReceivedBlob(Byte[] buffer, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartSendBlob(Byte[] incoming, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessReceivedBlob(Byte[] buffer, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:27:48	Unusual							System.Security.Authentication.AuthenticationException: A call to SSPI failed, see inner exception. ---> System.ComponentModel.Win32Exception: The function requested is not supported
+   --- End of inner exception stack trace ---
+   at System.Net.Security.SslState.StartSendAuthResetSignal(ProtocolToken message, AsyncProtocolRequest asyncRequest, Exception exception)
+   at System.Net.Security.SslState.StartSendBlob(Byte[] incoming, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessReceivedBlob(Byte[] buffer, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartSendBlob(Byte[] incoming, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessReceivedBlob(Byte[] buffer, Int32 count, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.StartReceiveBlob(Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ForceAuthentication(Boolean receiveFirst, Byte[] buffer, AsyncProtocolRequest asyncRequest)
+   at System.Net.Security.SslState.ProcessAuthentication(LazyAsyncResult lazyResult)
+   at Consensus.Client.Start() in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 283
+   at Consensus.Client.AddNew(TcpClient TCPClient) in e:\projects\Hexaverse\MetaServer.C#\IO\Client.cs:line 355
+   at Consensus.Program.Listen() in e:\projects\Hexaverse\MetaServer.C#\Program.cs:line 360
+23.10.2015 12:29:28	Important							Initialization phase completed. Awaiting clients.
+23.10.2015 12:37:20	Important							Initialization phase completed. Awaiting clients.
+23.10.2015 13:26:27	Important							Initialization phase completed. Awaiting clients.
+23.10.2015 13:39:59	Important							Initialization phase completed. Awaiting clients.
+23.10.2015 14:27:26	Important							Initialization phase completed. Awaiting clients.

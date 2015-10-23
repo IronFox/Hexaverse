@@ -12,6 +12,7 @@ using Math3D;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Security.Cryptography.X509Certificates;
+using System.Security.Cryptography;
 
 namespace Consensus
 {
@@ -24,18 +25,23 @@ namespace Consensus
 
 		enum ChannelID
 		{
-			Hello,
-			NewAccount,
-			Authenticated,
+			Hello,				//c2s : UINT32 protocol version -> [if authenticated] s2c : (Authenticated)Protocol.Interface.AccountDetails
+			RequestNewAccount,	//c2s : <signal> : request new account creation -> s2c : (CreatedNewAccount)Protocol.Interface.NewAccount, s2c : (Authenticated)Protocol.Interface.AccountDetails
+			CreatedNewAccount,	//s2c : Protocol.Interface.NewAccount
+			Authenticated,		//s2c : Protocol.Interface.AccountDetails
+			SetAccountName,		//c2s : string -> [if valid] s2c : (Authenticated)Protocol.Interface.AccountDetails, [otherwise] s2c : (BadNickname)string
+			BadAccountName,		//s2c : string
 
 			Count
 
 		}
 
 
+
 		public static class Version
 		{
-			public const UInt32 Combined = (UInt32)ChannelID.Count | (10 << 16);
+			public const UInt32 ContentVersion = 11;
+			public const UInt32 Combined = (UInt32)ChannelID.Count | (ContentVersion << 16);
 		}
 
 
@@ -85,11 +91,10 @@ namespace Consensus
 			}
 			public static class Channel
 			{
-				public static Protocol.OutChannel<Protocol.Interface.NewAccount> NewAccount = new Protocol.OutChannel<Protocol.Interface.NewAccount>((uint)ChannelID.NewAccount);
 				public static Protocol.OutChannel<Protocol.Interface.AccountDetails> Authenticated = new Protocol.OutChannel<Protocol.Interface.AccountDetails>((uint)ChannelID.Authenticated);
+				public static Protocol.OutChannel<Protocol.Interface.NewAccount> NewAccount = new Protocol.OutChannel<Protocol.Interface.NewAccount>((uint)ChannelID.CreatedNewAccount);
+				public static Protocol.OutChannel<string> BadAccountName = new Protocol.OutChannel<string>((uint)ChannelID.BadAccountName);
 
-				//                public static OutChannel<Struct.SystemMessage> SystemMessage = new OutChannel<Struct.SystemMessage>(ChannelID.SystemMessage);
-				//public static OutChannel<Struct.PropagatedClientMessage> ClientMessage = new OutChannel<Struct.PropagatedClientMessage>(ChannelID.ClientMessage);
 			}
 
 		}
@@ -106,7 +111,7 @@ namespace Consensus
 					return true;
 				foreach (char c in name)
 				{
-					if (!Char.IsLetterOrDigit(c))
+					if (!Char.IsLetterOrDigit(c) && /*!Char.IsWhiteSpace(c)*/ c != ' ' && !Char.IsPunctuation(c))
 						return true;
 				}
 				return false;
@@ -137,8 +142,9 @@ namespace Consensus
 
 			public static void Register()
 			{
+				Protocol.ChannelMap.Register<string>((uint)ChannelID.SetAccountName, Event.SetAccountName);
 				Protocol.ChannelMap.Register<UInt32>((uint)ChannelID.Hello, Event.Hello, false);
-				Protocol.ChannelMap.Register<string>((uint)ChannelID.NewAccount, Event.NewAccount, false);
+				Protocol.ChannelMap.RegisterSignal((uint)ChannelID.RequestNewAccount, Event.RequestNewAccount, false);
 				//                ChannelMap.Register<Struct.FileChunkRequest>(ChannelID.FileChunkRequest, Event.FileChunkRequest);
 				//              ChannelMap.Register<Struct.FriendRequest>(ChannelID.FriendRequest, Event.FriendRequest);
 				//            ChannelMap.Register<UInt32>(ChannelID.FriendAccept, Event.FriendAccept);
@@ -147,10 +153,6 @@ namespace Consensus
 			}
 			public class Struct
 			{
-				public struct NewAccount
-				{
-					public string AccountName;
-				}
 
 
 				public struct ClientMessage
@@ -200,7 +202,67 @@ namespace Consensus
 					}
 				}
 
-				public static void NewAccount(Protocol.Client _client, string accName)
+
+				private static void EncodeLength(BinaryWriter stream, int length)
+				{
+					if (length < 0) throw new ArgumentOutOfRangeException("length", "Length must be non-negative");
+					if (length < 0x80)
+					{
+						// Short form
+						stream.Write((byte)length);
+					}
+					else
+					{
+						// Long form
+						var temp = length;
+						var bytesRequired = 0;
+						while (temp > 0)
+						{
+							temp >>= 8;
+							bytesRequired++;
+						}
+						stream.Write((byte)(bytesRequired | 0x80));
+						for (var i = bytesRequired - 1; i >= 0; i--)
+						{
+							stream.Write((byte)(length >> (8 * i) & 0xff));
+						}
+					}
+				}
+
+				private static void EncodeIntegerBigEndian(BinaryWriter stream, byte[] value, bool forceUnsigned = true)
+				{
+					stream.Write((byte)0x02); // INTEGER
+					var prefixZeros = 0;
+					for (var i = 0; i < value.Length; i++)
+					{
+						if (value[i] != 0) break;
+						prefixZeros++;
+					}
+					if (value.Length - prefixZeros == 0)
+					{
+						EncodeLength(stream, 1);
+						stream.Write((byte)0);
+					}
+					else
+					{
+						if (forceUnsigned && value[prefixZeros] > 0x7f)
+						{
+							// Add a prefix zero to force unsigned if the MSB is 1
+							EncodeLength(stream, value.Length - prefixZeros + 1);
+							stream.Write((byte)0);
+						}
+						else
+						{
+							EncodeLength(stream, value.Length - prefixZeros);
+						}
+						for (var i = prefixZeros; i < value.Length; i++)
+						{
+							stream.Write(value[i]);
+						}
+					}
+				}
+
+				public static void RequestNewAccount(Protocol.Client _client)
 				{
 					Client client = (Client)_client;
 					if (!client.VersionMatched)
@@ -214,12 +276,44 @@ namespace Consensus
 					//byte[] data;
 					Guid guid = Guid.NewGuid();
 					X509Certificate2 cert = Client.MakeCertificate("hexaverse." + guid.ToString());
-					Account acc2 = Account.Create(accName, cert.GetCertHashString(), guid);
+					Account acc2 = Account.Create(guid.ToString(), cert.GetCertHashString(), guid);
+					var rsaObj = (RSACryptoServiceProvider)cert.PrivateKey;
+					byte[] key;
 
-					Protocol.Interface.NewAccount nacc = new Protocol.Interface.NewAccount() { details = new Protocol.Interface.AccountDetails(acc2), certificate = cert.Export(X509ContentType.Pfx) };
+					var parameters = rsaObj.ExportParameters(true);
+					using (var stream = new MemoryStream())
+					{
+						var writer = new BinaryWriter(stream);
+						writer.Write((byte)0x30); // SEQUENCE
+						using (var innerStream = new MemoryStream())
+						{
+							var innerWriter = new BinaryWriter(innerStream);
+							EncodeIntegerBigEndian(innerWriter, new byte[] { 0x00 }); // Version
+							EncodeIntegerBigEndian(innerWriter, parameters.Modulus);
+							EncodeIntegerBigEndian(innerWriter, parameters.Exponent);
+							EncodeIntegerBigEndian(innerWriter, parameters.D);
+							EncodeIntegerBigEndian(innerWriter, parameters.P);
+							EncodeIntegerBigEndian(innerWriter, parameters.Q);
+							EncodeIntegerBigEndian(innerWriter, parameters.DP);
+							EncodeIntegerBigEndian(innerWriter, parameters.DQ);
+							EncodeIntegerBigEndian(innerWriter, parameters.InverseQ);
+							var length = (int)innerStream.Length;
+							EncodeLength(writer, length);
+							writer.Write(innerStream.GetBuffer(), 0, length);
+						}
+						key = new byte[(int)stream.Length];
+						Array.ConstrainedCopy(stream.GetBuffer(),0,key,0,key.Length);
+						//key = stream.GetBuffer();
+						//var base64 = Convert.ToBase64String(stream.GetBuffer(), 0, (int)stream.Length).ToCharArray();
+					}
+
+
+					//rsaObj.ExportParameters(true)
+//					var cspBlob = rsaObj.ExportCspBlob(true);
+
+					Protocol.Interface.NewAccount nacc = new Protocol.Interface.NewAccount() { details = new Protocol.Interface.AccountDetails(acc2), certificate = cert.Export(X509ContentType.Cert), certificateKey=key };
 
 					Out.Channel.NewAccount.SendTo(client, nacc);
-
 					client.Account = acc2;
 					Out.Channel.Authenticated.SendTo(client, nacc.details);
 					Program.Log(client, Logging.Significance.Common, "Logged in as: " + acc2.ToString());
@@ -232,34 +326,6 @@ namespace Consensus
 					Program.LogServiceDenial(client, error);
 				}
 
-				//                private static SerialInterface contractSerializer = SerialInterface.Build(typeof(Structure.Contract.Baked));
-
-				//private static void SendStructureToAll(Structure structure)
-				//{
-				//	lock (structure)
-				//	{
-				//		ByteBuffer contractBuffer = new ByteBuffer(1024),structureBuffer = new ByteBuffer(1024);
-				//		contractSerializer.SerializePacket(Out.Channel.StructureContract.ChannelID,structure.ActiveContract.BakedVersion,contractBuffer);
-				//		structureSerializer.SerializePacket(Out.Channel.StructureVisible.ChannelID,structure.Description,structureBuffer);
-
-
-				//		Client.VisitAll(client =>
-				//		{
-				//			lock (client.HasContract)
-				//			{
-				//				if (!client.HasContract.ContainsKey(structure.ActiveContract.Code))
-				//				{
-				//					client.Transfer(contractBuffer);
-				//					client.HasContract[structure.ActiveContract.Code] = true;
-
-				//					Program.Log(client, Significance.Low, "Client does not know contract #" + structure.ActiveContract.Code + ". Sending baked version");
-				//				}
-				//			}
-				//			client.Transfer(structureBuffer);
-				//		});
-				//	}
-				//}
-
 
 				private static string VersionToString(uint version)
 				{
@@ -268,463 +334,23 @@ namespace Consensus
 
 
 
-
-
-
-				//public static void Login(Client client, Struct.Login login)
-				//{
-				//	loginGate.Pass(client);
-				//	Console.Out.Write(VersionToString(login.Version));
-				//	Console.Out.WriteLine("/" + login.Name);
-				//	Out.Struct.LoginResponse response = new Out.Struct.LoginResponse();
-				//	response.AccountID = ID.Invalid.Value;
-				//	response.CurrentAvatarID = ID.Invalid.Value;
-				//	response.TimeStamp = (UInt64)NetTime.Query();
-				//	if (login.Version != expectedVersion)
-				//	{
-				//		response.Success = false;
-				//		response.Message = "Incompatible protocol version detected (" + VersionToString(login.Version) + "). Expected version " + VersionToString(expectedVersion) + ". Please update your client.";
-				//		Program.LogServiceDenial(client, response.Message, login.Name);
-				//		Out.Channel.LoginResponse.SendTo(client, response);
-				//		return;
-				//	}
-				//	if (client.Account != null)
-				//	{
-				//		response.AccountID = client.Account.ID.Value;
-				//		response.CurrentAvatarID = client.Account.ActiveAvatar.ID.Value;
-				//		response.Success = false;
-				//		response.Message = "You are already logged in.";
-				//		Program.LogServiceDenial(client, response.Message, login.Name);
-				//		Out.Channel.LoginResponse.SendTo(client, response);
-				//		return;
-				//	}
-
-				//	AvatarInstance incarnate = null;
-				//	if (login.CreateAccount)
-				//	{
-				//		accountCreationGate.Pass(client);
-				//		if (NameIsInvalid(login.Name, out response.Message))
-				//			response.Success = false;
-				//		else
-				//		{
-				//			Account account = Account.Create(login.Name, login.Password);
-				//			if (account == null)
-				//			{
-				//				response.Success = false;
-				//				response.Message = "The specified account name is already registered. Please check the name and try again.";
-				//				Program.LogServiceDenial(client, response.Message, login.Name);
-				//			}
-				//			else
-				//			{
-				//				incarnate = account.CreateAvatar(PrimaryPlatform.Singleton.SpawnAvatarPosition(), false);
-				//				Program.Log(client, Significance.Unusual, "New account " + account + " created.");
-				//				Out.Channel.AvatarAppeared.Broadcast(client.Buffer, new Out.Struct.AvatarAppearance(incarnate));
-
-				//				response.Success = true;
-				//				response.Message = "Welcome to the Consensus Network.";
-				//				client.Account = account;
-				//				client.Account.Activate(client);
-				//				response.AccountID = client.Account.ID.Value;
-				//				response.CurrentAvatarID = incarnate.ID.Value;
-				//				Program.Log(client, Significance.Common, "Avatar '" + login.Name + "'/" + incarnate.ID + " created at " + incarnate.System.Position + ("(spawned on primary platform)"));
-
-				//				World.TrySave();
-				//			}
-				//		}
-				//	}
-				//	else
-				//	{
-				//		Account account = Account.Collection.FindByName(login.Name);
-				//		if (account == null || !account.HashPassword(client.PasswordSalt).SequenceEqual(login.Password))
-				//		{
-				//			response.Success = false;
-				//			response.Message = "Incorrect username or password.\nPlease check your credentials and try again.";
-				//			Program.LogServiceDenial(client, response.Message, login.Name);
-				//		}
-				//		else
-				//		{
-				//			response.Success = true;
-				//			response.Message = "";
-				//			client.Account = account;
-				//			client.Account.Activate(client);
-				//			incarnate = account.ActiveAvatar;
-				//			Debug.Assert(incarnate != null);
-				//			response.AccountID = client.Account.ID.Value;
-				//			response.CurrentAvatarID = incarnate.ID.Value;
-				//		}
-				//	}
-				//	Out.Channel.LoginResponse.SendTo(client, response);
-
-				//	if (response.Success || client.Account != null)
-				//	{
-				//		lock (globalChange)
-				//		{
-				//			Program.Log(client, Significance.Common, "Authenticated");
-
-
-				//			Structure.Collection.VisitElements(structure =>
-				//			{
-				//				SendStructureTo(client, structure);
-				//			});
-
-				//			#if false
-				//				//debug structures:
-				//				PrimaryPlatform[] debugPlatforms = new PrimaryPlatform[3]{PrimaryPlatform.SpawnDebugPlatform(new Vec3(40,0,100),10),
-				//													PrimaryPlatform.SpawnDebugPlatform(new Vec3(40,40,100),10),
-				//													PrimaryPlatform.SpawnDebugPlatform(new Vec3(0,40,100),10)};
-				//				Bridge.Node[] debugNodes = new Bridge.Node[] { new Bridge.Node(new Vec3(0, 10, 100), new Vec3(0,1,0),new Vec2(2,0)),
-				//																new Bridge.Node(new Vec3(0, 30, 100), new Vec3(0,1,0),new Vec2(2,0))};
-				//				Bridge.Segment[] debugSegments = new Bridge.Segment[] { new Bridge.Segment(debugNodes[0],debugNodes[1])};
-				//				for (int i = 0; i < debugPlatforms.Length; i++)
-				//				{
-				//					var desc = debugPlatforms[i].Description;
-				//					desc.ID = (uint)(1000 + i);
-				//					SendStructureTo(client, debugPlatforms[i]);
-				//				}
-				//				for (int i = 0; i < debugNodes.Length; i++)
-				//				{
-				//					var desc = debugNodes[i].Description;
-				//					desc.ID = (uint)(1000 + i + debugPlatforms.Length);
-				//					SendStructureTo(client, debugNodes[i]);
-				//				}
-				//				for (int i = 0; i < debugSegments.Length; i++)
-				//				{
-				//					var desc = debugSegments[i].Description;
-				//					debugSegments[i].OverrideNodeIndices(1000 + i + debugPlatforms.Length, 1000 + i + debugPlatforms.Length + 1);
-				//					desc.ID = (uint)(1000 + i + debugPlatforms.Length + debugNodes.Length);
-				//					SendStructureTo(client, debugSegments[i]);
-				//				}
-				//			#endif //false
-
-
-
-				//			AvatarInstance.Collection.VisitElements(instance =>
-				//				{
-				//					Out.Channel.AvatarAppeared.SendTo(client, new Out.Struct.AvatarAppearance(instance));
-				//					Out.Channel.AvatarConditionChange.SendTo(client, new Out.Struct.AvatarConditionChange(instance));
-				//				});
-
-
-
-				//			if (incarnate != null)
-				//			{
-
-				//				client.Account.SwitchTo(incarnate);
-				//				client.ActiveAvatar = incarnate;
-
-				//				Out.Channel.AvatarConditionChange.Broadcast(client.Buffer, new Out.Struct.AvatarConditionChange(incarnate, AvatarCondition.Active));
-				//				InOut.Struct.AvatarState iresponse = new InOut.Struct.AvatarState(incarnate);
-				//				Out.Channel.Incarnate.SendTo(client, iresponse);
-				//			}
-
-
-				//			client.StartUpdateThread();
-				//		}
-				//	}
-				//	Debug.Assert((client.Account != null) == (client.ActiveAvatar != null));
-				//	if (client.Account != null)
-				//		Debug.Assert(client.Account == client.ActiveAvatar.Owner);
-				//}
-
-				//private static object avatarLock = new object();
-
-				//public static void OpenChannel(Client client, UInt32 channelID)
-				//{
-				//	lock (globalChange)
-				//	{
-				//		if (client.Account == null)
-				//		{
-				//			GeneralError(client, "Unable to open channel: You are not logged in");
-				//			return;
-				//		}
-				//		client.Account.OpenChannel(channelID);
-				//		Program.Log(client, Significance.Common, "Opened channel "+channelID);
-				//	}
-				//}
-				//public static void CloseChannel(Client client, UInt32 channelID)
-				//{
-				//	lock (globalChange)
-				//	{
-				//		if (client.Account == null)
-				//			return;
-				//		client.Account.CloseChannel(channelID);
-				//		Program.Log(client, Significance.Common, "Closed channel " + channelID);
-				//	}
-				//}
-
-
-				//public static void ClientMessage(Client client, Struct.ClientMessage message)
-				//{
-				//	messageGate.Pass(client);
-				//	lock (globalChange)
-				//	{
-				//		if (client.Account == null)
-				//		{
-				//			GeneralError(client, "Unable to relay message: you are not logged in");
-				//			return;
-				//		}
-				//		Out.Struct.PropagatedClientMessage response = new Out.Struct.PropagatedClientMessage() 
-				//		{
-				//			Type = message.Type,
-				//			Source = new Out.Struct.AccountAvatar(client.ActiveAvatar),
-				//			Message = message.Message,
-				//			ChannelID = 0
-				//		};
-
-				//		switch (message.Type)
-				//		{
-
-				//			case MessageType.ChannelMessage:
-				//				if (message.Target == ID.Invalid)
-				//				{
-				//					GeneralError(client, "Unable to relay message: 0 is not a valid channel ID");
-				//				}
-				//				else
-				//				{
-				//					response.ChannelID = message.Target;
-				//					Out.Channel.ClientMessage.Broadcast(client.Buffer, response, cl => cl.IsListeningToChannel(message.Target));
-				//					Program.Log(client, Significance.Common, "To channel " + message.Target + ": '" + message.Message + "'");
-				//				}
-				//			break;
-				//			case MessageType.WorldMessage:
-				//				Vec3 pos = client.ActiveAvatar.ActualPosition;
-
-				//				Out.Channel.ClientMessage.SerialInterface.SerializePacket(Out.Channel.ClientMessage.ChannelID, response, client.Buffer);
-				//				AvatarInstance.Collection.VisitElements(av =>
-				//				{
-				//					lock (av)
-				//					{
-				//						if (av.ControlledBy != null && Vec.Distance(av.ActualPosition, pos) < 50.0f)
-				//							av.ControlledBy.Transfer(client.Buffer);
-				//					}
-				//				});
-				//				Program.Log(client,Significance.Common,"To world (near "+pos+"): '"+message.Message+"'");
-				//			break;
-				//			case MessageType.PrivateMessage:
-				//				AvatarInstance target = AvatarInstance.Collection.Lookup(message.Target);
-				//				if (target == null)
-				//				{
-				//					GeneralError(client, "Unable to relay message: The specified target avatar does not exist.");
-				//					return;
-				//				}
-				//				if (target.ControlledBy == null)
-				//				{
-				//					GeneralError(client, "Unable to relay message: "+target.Owner.Name + " is currently offline.");
-				//					return;
-				//				}
-				//				Program.Log(client,Significance.Common,"To "+target+"("+target.Owner+"): '"+message.Message+"'");
-				//				Out.Channel.ClientMessage.SendTo(client.Buffer,target.ControlledBy, response);
-				//				response.ChannelID = message.Target;    //this is a confirmation
-				//				Out.Channel.ClientMessage.SendTo(client, response);//echo
-				//			break;
-				//			default:
-				//				throw new Exception("Unexpected message type encountered: " + message.Type);
-				//		}
-
-				//	}
-				//}
-
-
-				//public static void NameOfAccount(Client client, UInt32 id)
-				//{
-				//	if (client.Account == null)
-				//		return;
-				//	Account acc = Account.Collection.Lookup(id);
-				//	if (acc != null)
-				//	{
-				//		Out.Struct.AccountName name = new Out.Struct.AccountName{ID = id, Name = acc.Name};
-				//		Out.Channel.AccountName.SendTo(client, name);
-				//	}
-				//}
-
-
-				//public static void FriendRemove(Client client, UInt32 accountID)
-				//{
-				//	if (client.ActiveAvatar == null)
-				//	{
-				//		GeneralError(client, "You cannot alter friendship until you have selected an avatar");
-				//		return;
-				//	}
-				//	lock (globalChange)
-				//	{
-				//		Account localAccount = client.Account;
-				//		Account remoteAccount = Account.Collection.Lookup(accountID);
-				//		if (remoteAccount == null)
-				//		{
-				//			GeneralError(client, "Cannot remove friendship. The requested account (" + accountID + ") does not exist");
-				//			return;
-				//		}
-				//		lock (localAccount)
-				//		{
-				//			if (!localAccount.Friends.Contains(remoteAccount))
-				//			{
-				//				return;
-				//			}
-				//			lock (remoteAccount)
-				//			{
-				//				localAccount.Friends.Remove(remoteAccount);
-				//				remoteAccount.Friends.Remove(localAccount);
-				//			}
-				//		}
-				//		if (remoteAccount.IsLoggedIn)
-				//		{
-				//			try
-				//			{
-				//				Out.Channel.FriendRemove.SendTo(client.Buffer, remoteAccount.LoggedInFrom, localAccount.ID.Value);
-				//			}
-				//			catch { }
-				//		}
-				//		Out.Channel.FriendRemove.SendTo(client, remoteAccount.ID.Value);
-				//	}
-				//	World.TrySave();
-				//}
-
-				//public static void FriendAccept(Client client, UInt32 accountID)
-				//{
-				//	if (client.ActiveAvatar == null)
-				//	{
-				//		GeneralError(client, "You cannot accept or deny friendship until you have selected an avatar");
-				//		return;
-				//	}
-				//	Account local = client.Account;
-				//	if (!local.OpenFriendRequests.ContainsKey(accountID))
-				//	{
-				//		GeneralError(client, "Cannot accept friendship. The requested avatar (" + accountID + ") has not requested friendship with you");
-				//		return;
-				//	}
-				//	Account remote = Account.Collection.Lookup(accountID);
-				//	if (remote == null)
-				//	{
-				//		GeneralError(client, "Cannot accept friendship. The requested avatar (" + accountID + ") does not exist");
-				//		return;
-				//	}
-
-				//	lock (globalChange)
-				//	{
-				//		string dummy;
-				//		lock (local)
-				//			lock (remote) //global change lock should prevent deadlock here, but dual lock is required to prevent inconsistent world saving
-				//			{
-				//				int idummy;
-				//				local.FriendRequestDenyCounter.TryRemove(accountID, out idummy);
-				//				bool success = local.OpenFriendRequests.TryRemove(accountID, out dummy);
-				//				Debug.Assert(success);
-				//				if (!local.Friends.Contains(remote))
-				//					local.Friends.Add(remote);
-				//				else
-				//					Debug.Fail("Remote avatar is already registered as friend");
-
-				//				remote.FriendRequestDenyCounter.TryRemove(local.ID.Value, out idummy);
-				//				remote.OpenFriendRequests.TryRemove(local.ID.Value, out dummy);
-				//				if (!remote.Friends.Contains(local))
-				//					remote.Friends.Add(local);
-				//				else
-				//					Debug.Fail("Local avatar is already registered as friend on remote avatar");
-
-				//				Program.Log(client, Significance.Common, "Friendship accepted. Now friends with " + remote);
-				//			}
-				//		lock (remote)
-				//		{
-				//			if (remote.IsLoggedIn)
-				//			{
-				//				try
-				//				{
-				//					Out.Channel.FriendAccept.SendTo(client.Buffer, remote.LoggedInFrom, new Out.Struct.FriendAcceptNotify(client.ActiveAvatar, true));
-				//				}
-				//				catch { }
-				//				Out.Channel.FriendOnline.SendTo(client, accountID);
-				//			}
-				//			else
-				//				Out.Channel.FriendOffline.SendTo(client, accountID);
-				//		}
-				//	}
-				//	World.TrySave();
-				//}
-
-				//public static void FriendDeny(Client client, UInt32 accountID)
-				//{
-				//	if (client.ActiveAvatar == null)
-				//	{
-				//		GeneralError(client, "You cannot accept or deny friendship until you have selected an avatar");
-				//		return;
-				//	}
-				//	Account local = client.Account;
-				//	if (!local.OpenFriendRequests.ContainsKey(accountID))
-				//	{
-				//		Program.Log(client, Significance.Unusual, "Unrequested friend ship denied to avatar " + accountID);
-				//		return;
-				//	}
-
-				//	lock (globalChange)
-				//	{
-				//		string dummy;
-				//		lock (local)
-				//		{
-				//			bool success = local.OpenFriendRequests.TryRemove(accountID, out dummy);
-				//			Debug.Assert(success);
-				//			int counter;
-				//			if (!local.FriendRequestDenyCounter.TryGetValue(accountID, out counter))
-				//				counter = 0;
-				//			counter++;
-				//			local.FriendRequestDenyCounter[accountID] = counter;
-				//			Program.Log(client, Significance.Unusual, "Friendship denied. Deny counter with " + accountID + " increased to " + counter);
-
-				//		}
-				//	}
-				//	World.TrySave();
-				//}
-
-				//public static void FriendRequest(Client client, In.Struct.FriendRequest request)
-				//{
-				//	friendRequestGate.Pass(client);
-				//	if (client.ActiveAvatar == null)
-				//	{
-				//		GeneralError(client, "You cannot request friendship until you have selected an avatar");
-				//		return;
-				//	}
-				//	lock (globalChange)
-				//	{
-				//		Account remote = Account.Collection.Lookup(request.TargetAvatar);
-				//		Account local = client.Account;
-				//		if (remote == null)
-				//		{
-				//			GeneralError(client, "Cannot request friendship. The requested avatar ("+request.TargetAvatar+") does not exist");
-				//			return;
-				//		}
-				//		if (remote == local)
-				//		{
-				//			GeneralError(client, "You cannot request friendship with yourself");
-				//			return;
-				//		}
-				//		int counter;
-				//		if (remote.FriendRequestDenyCounter.TryGetValue(local.ID.Value, out counter) && counter >= 3)
-				//		{
-				//			//GeneralError(client, "You have been denied by "+av.ToString()+" three times. You cannot request any more often.");
-				//			//silent
-				//			return;
-				//		}
-				//		if (remote.Friends.Contains(local))
-				//		{
-				//			Out.Channel.FriendAccept.SendTo(client, new Out.Struct.FriendAcceptNotify(remote.ActiveAvatar, remote.IsLoggedIn));
-				//			Program.Log(client, Significance.Unusual, "Double friend request received for " + remote.ToString());
-				//			return;
-				//		}
-				//		Program.Log(client, Significance.Common, "Requesting friendship with " + remote);
-				//		remote.OpenFriendRequests[local.ID.Value] = request.Message;
-				//		if (remote.IsLoggedIn)
-				//		{
-				//			try
-				//			{
-				//				Out.Channel.FriendRequest.SendTo(client.Buffer, remote.LoggedInFrom, new Out.Struct.PropagatedFriendRequest(local.ActiveAvatar, request.Message));
-				//				return;
-				//			}
-				//			catch
-				//			{ }
-				//		}
-				//	}
-				//	World.TrySave();
-				//}
-
+				internal static void SetAccountName(Protocol.Client _client, string newNickName)
+				{
+					string error;
+					if (NameIsInvalid(newNickName, out error))
+					{
+						Out.Channel.BadAccountName.SendTo(_client,error);
+						return;
+					}
+					Client client = (Client)_client;
+					if (client.Account == null)
+					{
+						throw new InvalidOperationException("Account is null");
+					}
+					((Account)client.Account).ChangeName(newNickName);
+					Out.Channel.Authenticated.SendTo(client,new Protocol.Interface.AccountDetails(client.Account));
+					Program.Log(client, Logging.Significance.Common,"Changed account name to '"+newNickName+"'");
+				}
 			}
 		}
 	}
@@ -934,70 +560,8 @@ namespace Consensus
 
 			end();
 		}
-#if false
-        static void LinqExample()
-        {
-            var numbers = new[] { 1, 5, 3, 8, 9, 2, 6, 5, 2 };
-
-            var ascending = numbers.OrderBy(i => i);
-            var descending = numbers.OrderByDescending(i => i);
-
-            var largeNumbers = numbers.Where(i => i >= 5);
-            var distinctNumbers = numbers.Distinct();
-
-            var indexesOfLargeNumbers = numbers
-                .Select((i, index) => new { Number = i, Index = index })
-                .Where(i => i.Number >= 5)
-                .Select(i => i.Index);
-
-            var largeNumbers2 =
-                from n in numbers
-                where n >= 5
-                select n;
 
 
-            var sum = numbers.Sum();
-
-            var strings = new[] {
-                "Lorem",
-                "Ipsum",
-                "dolor",
-                "sit",
-                "amet",
-                "consectetuer",
-                "adipiscing",
-                "elit",
-            };
-            var firstLetters = strings.Select(s => s[0]);
-            var firstLetters2 = strings.FirstLetters();
-            var firstLetters3 = MyExtensions.FirstLetters(strings); // Dahin übersetzt es der Compiler.
-
-            var secondElement = strings.SecondElement();
-
-            var distinctLetters = strings.SelectMany(s => s).Distinct();
-
-            var distinctLetters2 = strings.SelectMany(s =>
-            {
-                // do something with s here
-                return s;
-            }).Distinct();
-
-            var numDict = new MyNumberDictionary();
-            numDict[0] = new Tuple<int, int, string>(2, 3, "Hallo");
-        }
-
-        public class MyNumberDictionary : Dictionary<int, Tuple<int, int, string>>
-        {
-        }
-#endif
-
-		internal static void DebugCheckGoodSystem(Matrix4 system)
-		{
-			//#if DEBUG           
-			//    Vec3 z = Vec.Cross(system.x.xyz, system.y.xyz);
-			//    Debug.Assert(z.z > 0.0f);
-			//#endif
-		}
 	}
 	public static class MyExtensions
 	{

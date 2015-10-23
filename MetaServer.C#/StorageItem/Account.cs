@@ -238,5 +238,11 @@ namespace Consensus
 
 
 
-    }
+
+		internal void ChangeName(string newNickName)
+		{
+			Debug.Assert(newNickName.Length <= 32);
+			this.Name = newNickName;
+		}
+	}
 }

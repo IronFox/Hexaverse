@@ -58,6 +58,7 @@
 #include "components/world.h"
 #include "components/atmosphere.h"
 #include "components/guiHostList.h"
+#include "components/net/consensusLink.h"
 
 #include "rc/Resource.h"
 
@@ -3557,13 +3558,6 @@ bool ConfigureClient(const wchar_t*commandLine)
 
 int main( int argc, const char* argv[])
 {
-	
-	
-
-
-
-
-
 	onFatal = MyFatal;
 	Vec::assertConsistency<float>();
 
@@ -3579,6 +3573,32 @@ int main( int argc, const char* argv[])
 	try
 	{
 		LogEvent(EventType::SessionRelated,nullptr,"Starting client v" PRODUCT_VERSION);
+
+
+
+		{
+			
+			//test
+
+			ConsensusLink::Create("localhost:12874");
+
+			for (;;)
+			{
+				Sleep(100);
+				ConsensusLink::Resolve();
+
+
+			}
+
+
+			return 0;
+		}
+
+
+
+
+
+
 		
 
 		NiceName::Load();

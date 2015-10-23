@@ -36,6 +36,44 @@ namespace Bin2Str
 		return (_ToByte(c0) << 4) | _ToByte(c1);
 	}
 
+	inline	bool			IsValidChar(char c)
+	{
+		switch (c)
+		{
+			case 'ä':
+			case 'ö':
+			case 'ü':
+			case 'Ä':
+			case 'Ö':
+			case 'Ü':
+			case 'ß':
+				return true;
+		}
+		bool result = isgraph((BYTE)c) || isspace((BYTE)c);
+
+
+		return result;
+	}
+
+
+	inline String Interpret(const void*data, size_t dataSize)
+	{
+		TStringLength len(dataSize);
+		String result(len);
+		char*out = result.mutablePointer();
+		const char*in = (const char*)data;
+		for (index_t i = 0; i < dataSize; i++)
+		{
+			if (IsValidChar(*in))
+				*out = *in;
+			else
+				*out = '.';
+			in++;
+			out++;
+		}
+		return result;
+	}
+
 	inline String Convert(const void*data, size_t dataSize)
 	{
 		String result(TStringLength(dataSize*2));
