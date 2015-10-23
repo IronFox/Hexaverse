@@ -49,7 +49,7 @@ namespace Bin2Str
 			case 'ß':
 				return true;
 		}
-		bool result = isgraph((BYTE)c) || isspace((BYTE)c);
+		bool result = isgraph((BYTE)c) || c == ' ' || c == '\t' || c == '\n';
 
 
 		return result;

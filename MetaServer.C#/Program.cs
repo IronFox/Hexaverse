@@ -203,6 +203,9 @@ namespace Consensus
 				}
 
 
+				//PEM binary encoding found here:
+				//http://stackoverflow.com/questions/23734792/c-sharp-export-private-public-rsa-key-from-rsacryptoserviceprovider-to-pem-strin
+
 				private static void EncodeLength(BinaryWriter stream, int length)
 				{
 					if (length < 0) throw new ArgumentOutOfRangeException("length", "Length must be non-negative");

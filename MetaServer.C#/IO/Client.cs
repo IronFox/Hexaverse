@@ -296,16 +296,15 @@ namespace Consensus
 				{
 					Account = acc;
 					Program.Log(this, Logging.Significance.Common, "Logged in as: " + Account.ToString());
-					return true;
 				}
 				else
 				{
-					//if (acc == null)
-					//	Program.Log(this, Significance.ClientFatal, "Client certificate not recognized: " + sslStream.RemoteCertificate.GetCertHashString());
-					//else
-					//{
-					//	Program.Log(this, Significance.ClientFatal, "Client certificate recognized but identity mismatch");
-					//}
+					if (acc == null)
+						Program.Log(this, Logging.Significance.Unusual, "Client certificate not recognized: " + sslStream.RemoteCertificate.GetCertHashString());
+					else
+					{
+						Program.Log(this, Logging.Significance.Unusual, "Client certificate recognized but identity mismatch");
+					}
 					//ForceDisconnect();
 					//return false;
 				}
