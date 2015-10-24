@@ -1,4 +1,4 @@
-﻿#define USE_SSL
+﻿//#define USE_SSL
 
 
 using System;
@@ -78,9 +78,6 @@ namespace Consensus
 	{
 		private static List<Client> allClients = new List<Client>();
 		//private NetworkStream stream;
-#if !USE_SSL
-            private Socket socket;
-#endif
 		public Account Account = null;
 		private static RNGCryptoServiceProvider provider = new RNGCryptoServiceProvider();
 		//private long lastFrameSent;
@@ -263,13 +260,7 @@ namespace Consensus
 		public bool Start()
 		{
 			//stream = tcpClient.GetStream();
-#if !USE_SSL
-                socket = tcpClient.Client;
-                socket.NoDelay = true;
-                RemoteEnd = socket.RemoteEndPoint.ToString();
-#else
 			RemoteEnd = TcpClient.Client.RemoteEndPoint.ToString();
-#endif
 			//SocketAddress addr = socket.RemoteEndPoint.Serialize();
 			//Console.WriteLine(addr.Size);
 			GateKey = RemoteEnd;
@@ -278,7 +269,6 @@ namespace Consensus
 
 
 
-#if USE_SSL
 			SslStream sslStream = new SslStream(TcpClient.GetStream(), false, new RemoteCertificateValidationCallback(ValidateClientCertificate), null, EncryptionPolicy.RequireEncryption);
 			sslStream.AuthenticateAsServer(_certificate, true, System.Security.Authentication.SslProtocols.Tls12, false);
 			if (!sslStream.IsEncrypted)
@@ -291,16 +281,17 @@ namespace Consensus
 			if (sslStream.IsMutuallyAuthenticated)
 			{
 				Program.Log(this, Logging.Significance.Low, "SSL Authentication concluded: " + sslStream.CipherAlgorithm.ToString() + ", strength " + sslStream.CipherStrength);
-				Account acc = Account.Collection.GetValue(sslStream.RemoteCertificate.GetCertHashString());
+				string certHash = sslStream.RemoteCertificate.GetCertHashString();
+				Account acc = Account.Collection.GetValue(certHash);
 				if (acc != null)
 				{
 					Account = acc;
-					Program.Log(this, Logging.Significance.Common, "Logged in as: " + Account.ToString());
+					Program.Log(this, Logging.Significance.Low, "Logged in as: " + Account.ToString());
 				}
 				else
 				{
 					if (acc == null)
-						Program.Log(this, Logging.Significance.Unusual, "Client certificate not recognized: " + sslStream.RemoteCertificate.GetCertHashString());
+						Program.Log(this, Logging.Significance.Unusual, "Client certificate not recognized: " + certHash);
 					else
 					{
 						Program.Log(this, Logging.Significance.Unusual, "Client certificate recognized but identity mismatch");
@@ -309,9 +300,9 @@ namespace Consensus
 					//return false;
 				}
 			}
+			else
+				Program.Log(this, Logging.Significance.Low, "New connection. Not mutually authenticated.");
 
-
-#endif
 			//Interface.Out.Channel.PasswordSalt.SendTo(this, PasswordSalt);
 
 			Program.Log(this, Logging.Significance.Common, "Client connected");

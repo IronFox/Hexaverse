@@ -25,10 +25,12 @@ namespace Consensus
 
 		enum ChannelID
 		{
-			Hello,				//c2s : UINT32 protocol version -> [if authenticated] s2c : (Authenticated)Protocol.Interface.AccountDetails
+			Hello,				//c2s : UINT32 protocol version -> [if authenticated] s2c : (Authenticated)Protocol.Interface.AccountDetails [if not authenticated] s2c : (NotAuthenticated) [if version incompatible] s2c : VersionMismatch
+			VersionMismatch,	//s2c : <signal>
 			RequestNewAccount,	//c2s : <signal> : request new account creation -> s2c : (CreatedNewAccount)Protocol.Interface.NewAccount, s2c : (Authenticated)Protocol.Interface.AccountDetails
 			CreatedNewAccount,	//s2c : Protocol.Interface.NewAccount
 			Authenticated,		//s2c : Protocol.Interface.AccountDetails
+			NotAuthenticated,	//s2c : <signal>
 			SetAccountName,		//c2s : string -> [if valid] s2c : (Authenticated)Protocol.Interface.AccountDetails, [otherwise] s2c : (BadNickname)string
 			BadAccountName,		//s2c : string
 
@@ -40,7 +42,7 @@ namespace Consensus
 
 		public static class Version
 		{
-			public const UInt32 ContentVersion = 11;
+			public const UInt32 ContentVersion = 12;
 			public const UInt32 Combined = (UInt32)ChannelID.Count | (ContentVersion << 16);
 		}
 
@@ -94,7 +96,8 @@ namespace Consensus
 				public static Protocol.OutChannel<Protocol.Interface.AccountDetails> Authenticated = new Protocol.OutChannel<Protocol.Interface.AccountDetails>((uint)ChannelID.Authenticated);
 				public static Protocol.OutChannel<Protocol.Interface.NewAccount> NewAccount = new Protocol.OutChannel<Protocol.Interface.NewAccount>((uint)ChannelID.CreatedNewAccount);
 				public static Protocol.OutChannel<string> BadAccountName = new Protocol.OutChannel<string>((uint)ChannelID.BadAccountName);
-
+				public static Protocol.SignalChannel VersionMismatch= new Protocol.SignalChannel((uint)ChannelID.VersionMismatch);
+				public static Protocol.SignalChannel NotAuthenticated = new Protocol.SignalChannel((uint)ChannelID.NotAuthenticated);
 			}
 
 		}
@@ -124,7 +127,7 @@ namespace Consensus
 					errorMessage = "The specified name is too short. Three characters minimum.";
 					return true;
 				}
-				if (name.Length > 32)
+				if (name.Length > Account.MaxNameLength)
 				{
 					errorMessage = "The specified name is too long. 32 characters maximum.";
 					return true;
@@ -191,14 +194,21 @@ namespace Consensus
 					if (protocolVersion != Version.Combined)
 					{
 						GeneralError(client, "Version mismatch. Expected version " + VersionToString(Version.Combined) + " but got " + VersionToString(protocolVersion) + " from client");
+						Out.Channel.VersionMismatch.SendTo(client);
+						Thread.Sleep(500);
 						client.ForceDisconnect();
 						return;
 					}
 					client.VersionMatched = true;
-
 					if (client.Account != null)
 					{
+						Program.Log(client,Logging.Significance.Low,"hello: sending authentication info");
 						Out.Channel.Authenticated.SendTo(client, new Protocol.Interface.AccountDetails(client.Account));
+					}
+					else
+					{
+						Program.Log(client,Logging.Significance.Low,"hello: signalling not authenticated");
+						Out.Channel.NotAuthenticated.SendTo(client);
 					}
 				}
 
@@ -279,7 +289,7 @@ namespace Consensus
 					//byte[] data;
 					Guid guid = Guid.NewGuid();
 					X509Certificate2 cert = Client.MakeCertificate("hexaverse." + guid.ToString());
-					Account acc2 = Account.Create(guid.ToString(), cert.GetCertHashString(), guid);
+					Account acc2 = Account.Create(guid.ToString().Substring(0,Account.MaxNameLength), cert.GetCertHashString(), guid);
 					var rsaObj = (RSACryptoServiceProvider)cert.PrivateKey;
 					byte[] key;
 

@@ -15,15 +15,12 @@ namespace Consensus
     public class Account : Protocol.Account
     {
         public static ConcurrentDictionary<string,Account> Collection = new ConcurrentDictionary<string,Account>();
+		public const int MaxNameLength = 32;
         
         public string CertificateHash { get; private set; }
 
 
 
-        //public List<Account> Friends = new List<Account>();
-        //public ConcurrentDictionary<UInt32, string> OpenFriendRequests = new ConcurrentDictionary<UInt32, string>();
-        //public ConcurrentDictionary<UInt32, int> FriendRequestDenyCounter = new ConcurrentDictionary<UInt32, int>();
-        //private List<UInt32> friendIDs;
 
         private static byte[] stringToByteArray(String hex)
         {
@@ -41,12 +38,16 @@ namespace Consensus
 
         private Account(string name, string certificateHash)
         {
+			Debug.Assert(name.Length <= MaxNameLength);
+
             Name = name;
 			CertificateHash = certificateHash;
 			GUID = System.Guid.NewGuid();
         }
 		private Account(string name, string certificateHash, Guid guid)
 		{
+			Debug.Assert(name.Length <= MaxNameLength);
+
 			Name = name;
 			CertificateHash = certificateHash;
 			GUID = guid;
@@ -241,7 +242,7 @@ namespace Consensus
 
 		internal void ChangeName(string newNickName)
 		{
-			Debug.Assert(newNickName.Length <= 32);
+			Debug.Assert(newNickName.Length <= MaxNameLength);
 			this.Name = newNickName;
 		}
 	}

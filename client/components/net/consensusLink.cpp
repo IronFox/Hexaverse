@@ -20,18 +20,21 @@ namespace ConsensusLink
 			{
 				enum ChannelID
 				{
-					Hello,				//c2s : UINT32 protocol version -> [if authenticated] s2c : (Authenticated)Protocol.Interface.AccountDetails
+					Hello,				//c2s : UINT32 protocol version -> [if authenticated] s2c : (Authenticated)Protocol.Interface.AccountDetails [if not authenticated] s2c : (NotAuthenticated) [if version incompatible] s2c : VersionMismatch
+					VersionMismatch,	//s2c : <signal>
 					RequestNewAccount,	//c2s : <signal> : request new account creation -> s2c : (CreatedNewAccount)Protocol.Interface.NewAccount, s2c : (Authenticated)Protocol.Interface.AccountDetails
 					CreatedNewAccount,	//s2c : Protocol.Interface.NewAccount
 					Authenticated,		//s2c : Protocol.Interface.AccountDetails
+					NotAuthenticated,	//s2c : <signal>
 					SetAccountName,		//c2s : string -> [if valid] s2c : (Authenticated)Protocol.Interface.AccountDetails, [otherwise] s2c : (BadNickname)string
 					BadAccountName,		//s2c : string
 
 					Count
+
 				};
 			}
 
-			static const UINT32 ContentVersion = 11;
+			static const UINT32 ContentVersion = 12;
 			static const UINT32 ProtocolVersion = (UINT32)ChannelID::Count | (ContentVersion << 16);
 
 
@@ -89,6 +92,8 @@ namespace ConsensusLink
 		mbedtls_x509_crt	loadedCertificate;
 		mbedtls_pk_context	loadedCertificateKey;
 		bool				certificateIsLoaded=false;
+		bool				created = false;
+		volatile bool		stopTrying = false;
 
 
 
@@ -114,13 +119,15 @@ namespace ConsensusLink
 
 		void	Destroy()
 		{
+			if (!created)
+				return;
 			client.Disconnect();
 			mbedtls_ssl_config_free( &config );
 			mbedtls_ctr_drbg_free( &ctr_drbg );
 			mbedtls_entropy_free( &entropy );
 			mbedtls_x509_crt_free( &loadedCertificate );
 			mbedtls_pk_free(&loadedCertificateKey);
-
+			created = false;
 		}
 
 
@@ -240,10 +247,6 @@ namespace ConsensusLink
 			{
 				case TCP::Event::ConnectionEstablished:
 					ASSERT__(Channels::hello.SendTo(client,Protocol::ProtocolVersion));
-					LogEvent(EventType::SessionRelated,nullptr,"Sent hello");
-
-					if (!certificateIsLoaded)
-						client.SendSignal(Protocol::ChannelID::RequestNewAccount);
 				break;
 
 			}
@@ -257,6 +260,18 @@ namespace ConsensusLink
 		void OnSignal(UINT32 channel, TCP::Peer&origin)
 		{
 			LogEvent(EventType::InternalFault,nullptr,"Consensus: "+origin.ToString()+": Signal on channel "+String(channel));
+			switch (channel)
+			{
+				case Protocol::ChannelID::NotAuthenticated:
+					client.SendSignal(Protocol::ChannelID::RequestNewAccount);
+					LogEvent(EventType::SessionRelated,nullptr,"Requested new account");
+				break;
+				case Protocol::ChannelID::VersionMismatch:
+					LogEvent(EventType::OperationAborted,nullptr,"Server signalled protocol version mismatch. Unable to connect to Consensus network");
+					stopTrying = true;
+				break;
+
+			}
 		}
 
 
@@ -274,6 +289,8 @@ namespace ConsensusLink
 
 		void	Init(const String&host)
 		{
+			if (created)
+				Destroy();
 			mbedtls_debug_set_threshold(1);
 			mbedtls_ssl_config_init( &config );
 			mbedtls_entropy_init( &entropy );
@@ -320,8 +337,11 @@ namespace ConsensusLink
 			client.InstallChannel(Channels::badAccountName);
 			client.InstallChannel(Channels::authenticated);
 
+			client.OpenSignalChannel(Protocol::ChannelID::VersionMismatch,0);
+			client.OpenSignalChannel(Protocol::ChannelID::NotAuthenticated,0);
 
 			lastHost = host;
+			created = true;
 			Reconnect();
 		}
 
@@ -431,12 +451,6 @@ namespace ConsensusLink
 	void		Create(const String&host)
 	{
 		Detail::Init(host);
-
-
-
-
-
-
 	}
 	void		Destroy()
 	{
@@ -445,7 +459,9 @@ namespace ConsensusLink
 	
 	void		Resolve()
 	{
-		if (!Detail::client.IsAttemptingToConnect() && !Detail::client.IsConnected() && timer.GetSecondsSince(Detail::lastConnectionAttempt) > 5.f)
+		if (!Detail::created)
+			return;
+		if (!Detail::stopTrying && !Detail::client.IsAttemptingToConnect() && !Detail::client.IsConnected() && timer.GetSecondsSince(Detail::lastConnectionAttempt) > 5.f)
 		{
 			Detail::Reconnect();
 		}
