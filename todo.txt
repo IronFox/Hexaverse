@@ -1,10 +1,6 @@
 
 ------------- not done ------------- 
 
-...urgent bugs...
-
-flickering of terrain
-
 ...requested...
 
 ambient restocking (and repairing?) of support vehicles. //restocking no longer an issue
@@ -18,11 +14,8 @@ spy-satellite
 
 research concept, stations, states. AI? viruses?
 
-revise 'Toggle Sky Grid' button graphic
-
 send entity id with server messages so user can click on the message to focus on them
 
-revise terrain clipping control (expose more options (up and down))
 
 why do towers fire simultaneously?	//do they?
 
@@ -90,6 +83,9 @@ remote server control, including local starting
 
 ------------- done (newest first) -------------
 
+revise terrain clipping control (expose more options (up and down))
+revise 'Toggle Sky Grid' button graphic
+flickering of terrain
 resources are invisible 
 build wall: Obstruction detected. Resolution: clearing upper terrain.
 	->Unable to continue 'clear upper terrain' (Focus height (2) expected one above vehicle height (0)).

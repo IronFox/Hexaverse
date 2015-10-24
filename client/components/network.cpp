@@ -1197,7 +1197,7 @@ namespace Network
 			{
 				sockaddr_storage from;
 				memset(&from, 0, sizeof(from));
-				int len = sizeof(from);
+				socklen_t len = (socklen_t)sizeof(from);
 				int bytes = recvfrom(broadcastListenSocket, (char*)&packet, sizeof(packet), 0, (sockaddr*)&from, &len);
 				if (bytes == sizeof(packet))
 				{
@@ -1205,7 +1205,7 @@ namespace Network
 					//if (!strcmp(packet.version, SERVER_NAME))	//connect anyways
 					{
 						bool found = false;
-						String url = TCP::ToString(from);
+						String url = TCP::ToString(from,len,false);
 						if (url == "127.0.0.1" || url == "::1")
 							url = "localhost";
 						foreach(ServerDiscovery::attempts, sv)

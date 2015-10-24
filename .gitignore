@@ -19,4 +19,5 @@ game.7z
 client/TechniteLogic/*.config
 client/TechniteLogic/*.manifest
 *.coverage
+*.odt#
 *.log

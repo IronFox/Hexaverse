@@ -1,0 +1,17 @@
+Hexaverse
+
+This is a game-prototype in beta state.
+Unless specified otherwise, all work done by Stefan Elsen, copyright (C) 2014-2015.
+
+
+
+Exceptions:
+Console icon used in console applications:
+http://findicons.com/icon/93659/guake?id=274746
+
+
+This project uses the following libaries and acknowledges their priceless contribution:
+libbzip2: http://www.bzip.org/
+libpng: http://www.libpng.org/
+mbedtls: http://tls.mbed.org/
+
