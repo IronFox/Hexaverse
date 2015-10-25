@@ -29,6 +29,7 @@
 
 #ifdef HAS_WINDOW
 	#include "components/explosions.h"
+	#include "components/net/consensusLink.h"
 #endif
 
 #include <geometry/bvh.h>
@@ -58,7 +59,6 @@
 #include "components/world.h"
 #include "components/atmosphere.h"
 #include "components/guiHostList.h"
-#include "components/net/consensusLink.h"
 
 #include "rc/Resource.h"
 
@@ -1955,6 +1955,9 @@ bool loop()
 
 
 	Network::Update();
+	#ifdef HAS_WINDOW
+		ConsensusLink::Resolve();
+	#endif
 
 
 	Animation::Update();
@@ -3576,31 +3579,6 @@ int main( int argc, const char* argv[])
 
 
 
-		{
-			
-			//test
-
-			ConsensusLink::Create("localhost:12874");
-
-			for (;;)
-			{
-				Sleep(100);
-				ConsensusLink::Resolve();
-
-
-			}
-
-
-			return 0;
-		}
-
-
-
-
-
-
-		
-
 		NiceName::Load();
 
 		Network::LoadWorldAccessTokens();
@@ -3621,6 +3599,9 @@ int main( int argc, const char* argv[])
 
 				UI::resourcesAsList = config.GetBool("runtime/resourcesAsList",false);
 			#endif
+
+			ConsensusLink::Configure(config.RequireString("consensus/host"),config.RequireBool("consensus/autoConnect"),config.RequireBool("consensus/askToEncryptPrivateKey"));
+
 		}
 		LoadHosts();
 
@@ -3750,6 +3731,7 @@ int main( int argc, const char* argv[])
 
 		#ifdef HAS_WINDOW
 			UI::Create();
+			ConsensusLink::Create();
 		#endif
 
 
@@ -3844,10 +3826,11 @@ int main( int argc, const char* argv[])
 
 
 
-
 		Network::Shutdown();
 
 		#ifdef HAS_WINDOW
+			ConsensusLink::Destroy();
+
 			ProgressBar::Destroy();
 			Dialog::Destroy();
 			Atmosphere::Destroy();

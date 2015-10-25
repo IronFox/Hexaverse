@@ -2,8 +2,11 @@
 
 
 #include "encryptionHelper.h"
+#include "../dialog.h"
+#include "../../version.h"
 
 #include <net/tcp.h>
+#include <io/file_system.h>
 
 #include "../../../shared/logEvent.h"
 #include "../../../shared/uniqueID.h"
@@ -76,24 +79,25 @@ namespace ConsensusLink
 
 
 
-		//mbedtls_net_context netContext;
-		mbedtls_ssl_config config;
-		mbedtls_entropy_context entropy;
-		mbedtls_ctr_drbg_context ctr_drbg;
-		//mbedtls_pk_info_t	pkInfo;
+		mbedtls_ssl_config			config;
+		mbedtls_entropy_context		entropy;
+		mbedtls_ctr_drbg_context	secureRandom;
+		mbedtls_x509_crt			loadedCertificate;
+		mbedtls_pk_context			loadedCertificateKey;
 
 		TCP::Client		client;
 
-		Array<BYTE>		certificate,
-						certificateKey;
-		String			accountName;
-		TUniqueID		accountID;
+		namespace Config
+		{
+			Array<BYTE>		certificate,
+							certificateKey;
+			String			accountName;
+			TUniqueID		accountID;
+		}
 
-		mbedtls_x509_crt	loadedCertificate;
-		mbedtls_pk_context	loadedCertificateKey;
-		bool				certificateIsLoaded=false;
+
 		bool				created = false;
-		volatile bool		stopTrying = false;
+		bool				connect = false;
 
 
 
@@ -117,13 +121,15 @@ namespace ConsensusLink
 			//fflush(  (FILE *) ctx  );
 		}
 
+		void Disconnect();
+
 		void	Destroy()
 		{
 			if (!created)
 				return;
-			client.Disconnect();
+			Disconnect();
 			mbedtls_ssl_config_free( &config );
-			mbedtls_ctr_drbg_free( &ctr_drbg );
+			mbedtls_ctr_drbg_free( &secureRandom );
 			mbedtls_entropy_free( &entropy );
 			mbedtls_x509_crt_free( &loadedCertificate );
 			mbedtls_pk_free(&loadedCertificateKey);
@@ -250,6 +256,7 @@ namespace ConsensusLink
 				break;
 
 			}
+			Dialog::SignalSituationChange();
 		}
 
 		void OnIgnorePackage(UINT32 channel,UINT32 size, TCP::Peer&origin)
@@ -264,44 +271,65 @@ namespace ConsensusLink
 			{
 				case Protocol::ChannelID::NotAuthenticated:
 					client.SendSignal(Protocol::ChannelID::RequestNewAccount);
-					LogEvent(EventType::SessionRelated,nullptr,"Requested new account");
+					LogEvent(EventType::SessionRelated,nullptr,"Not authenticated: Requested new account");
 				break;
 				case Protocol::ChannelID::VersionMismatch:
 					LogEvent(EventType::OperationAborted,nullptr,"Server signalled protocol version mismatch. Unable to connect to Consensus network");
-					stopTrying = true;
+					connect = false;
+					client.Disconnect();
 				break;
 
 			}
+			Dialog::SignalSituationChange();
 		}
 
 
 		Timer::Time	lastConnectionAttempt = timer.Now();
-		String		lastHost;
+
+		namespace Config
+		{
+			String		lastHost;
+			bool		connectOnCreate = false;
+			bool		askToEncryptPrivateKey = false;
+			FileSystem::Folder	certificateFolder;
+
+			void		SaveCertificate(const char*password)
+			{
+				//later
+
+			}
+		}
 
 		void	Reconnect()
 		{
+			connect = true;
 			lastConnectionAttempt = timer.Now();
-			client.ConnectAsync(lastHost);
+			client.ConnectAsync(Config::lastHost);
+		}
+		void	Disconnect()
+		{
+			client.Disconnect();
+			connect = false;
 		}
 
 		void	Authenticate();
 
 
-		void	Init(const String&host)
+		void	Create()
 		{
 			if (created)
 				Destroy();
+			connect = false;
 			mbedtls_debug_set_threshold(1);
 			mbedtls_ssl_config_init( &config );
 			mbedtls_entropy_init( &entropy );
-			//mbedtls_x509_crt_init( &cacert );
-			mbedtls_ctr_drbg_init( &ctr_drbg );
+			mbedtls_ctr_drbg_init( &secureRandom );
 			mbedtls_x509_crt_init( &loadedCertificate );
 			mbedtls_pk_init(&loadedCertificateKey);
 
 			
 			int ret;
-			if( ( ret = mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy,
+			if( ( ret = mbedtls_ctr_drbg_seed( &secureRandom, mbedtls_entropy_func, &entropy,
                            nullptr,
                            0 ) ) != 0 )
 			{
@@ -320,7 +348,7 @@ namespace ConsensusLink
 
 			mbedtls_ssl_conf_authmode( &config, MBEDTLS_SSL_VERIFY_NONE );
 
-			mbedtls_ssl_conf_rng( &config, mbedtls_ctr_drbg_random, &ctr_drbg );
+			mbedtls_ssl_conf_rng( &config, mbedtls_ctr_drbg_random, &secureRandom );
 			mbedtls_ssl_conf_dbg( &config, &Debug, nullptr );
 			
 
@@ -340,28 +368,69 @@ namespace ConsensusLink
 			client.OpenSignalChannel(Protocol::ChannelID::VersionMismatch,0);
 			client.OpenSignalChannel(Protocol::ChannelID::NotAuthenticated,0);
 
-			lastHost = host;
 			created = true;
-			Reconnect();
 		}
+
+	/*	void	Connect(const String&host)
+		{
+			Config::lastHost = host;
+			Reconnect();
+		}*/
 
 		namespace Receiver
 		{
 			
 			void	CreatedNewAccount(Protocol::NewAccount&acc)
 			{
-				certificate.adoptData(acc.certificate);
-				certificateKey.adoptData(acc.certificateKey);
-				accountName.adoptData(acc.details.accountName);
+				Config::certificate.adoptData(acc.certificate);
+				Config::certificateKey.adoptData(acc.certificateKey);
+				Config::accountName.adoptData(acc.details.accountName);
 				ASSERT_EQUAL__(acc.details.guid.GetLength(),TUniqueID::NumBytes);
-				memcpy(accountID.bytes,acc.details.guid.pointer(),TUniqueID::NumBytes);
-				LogEvent(EventType::SessionRelated,nullptr,"Created new account "+accountName);
+				memcpy(Config::accountID.bytes,acc.details.guid.pointer(),TUniqueID::NumBytes);
+
+				if (Config::certificateFolder.IsValidLocation())
+				{
+					if (!Config::askToEncryptPrivateKey)
+					{
+						Config::SaveCertificate(nullptr);
+					}
+					else
+					{
+						Array<BYTE>	certificateCopy = Config::certificate;
+						Dialog::AskYesNoHelp("The server sent a new account certificate for the Consensus network. Do you wish to encrypt the received private key using a password?",
+							"The certificate you just received is the key to your new account. It will be stored persistently in "+Config::certificateFolder.ToString()+".\n"
+							"Anyone with access to your files will be able to use it and log in with full control over your account. To prevent this from happening, using a password is recommended, but not required.\n"
+							"However, if you forget your password, then access to your account will be irreversably lost, same as if you had lost the certificate itself.\n"
+							"If you do set a password, you will be asked for this password every time you start " PRODUCT_NAME ". The password can be changed or removed later on.",
+							[certificateCopy](bool doEncrypt)
+							{
+								if (doEncrypt)
+								{
+									Dialog::QueryPassword("Please specify the password to use for account certificate encryption. It can be any length. Leave empty if you changed your mind, and don't want to encrypt your certificate.",
+									[](const char*password)
+									{
+										Config::SaveCertificate(password);
+									},
+									[certificateCopy]()->Dialog::CheckResult
+									{
+										return Config::certificate == certificateCopy ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;
+									});
+								}
+							},
+							[certificateCopy]()->Dialog::CheckResult
+							{
+								return Config::certificate == certificateCopy ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;
+							}
+						);
+
+					}
+				}
+
+
+				LogEvent(EventType::SessionRelated,nullptr,"Created new account "+Config::accountName);
 				LogEvent(EventType::SessionRelated,nullptr,"Disconnecting client to try authenticating with new certificate");
 				client.Disconnect();
 				Authenticate();
-				ASSERT__(certificateIsLoaded);
-				//{
-				//}
 			}
 
 			void	Authenticated(Protocol::AccountDetails&acc)
@@ -381,66 +450,47 @@ namespace ConsensusLink
 
 		void	Authenticate()
 		{
-			int rc = mbedtls_x509_crt_parse_der(&loadedCertificate,certificate.pointer(),certificate.GetContentSize());
-			LogEvent(EventType::SessionRelated,nullptr,"Got certificate for new account "+accountName+". mbedtls_x509_crt_parse returned "+ErrorToString(rc));
+			int rc = mbedtls_x509_crt_parse_der(&loadedCertificate,Config::certificate.pointer(),Config::certificate.GetContentSize());
 			if (rc != 0)
 			{
+				LogEvent(EventType::InternalFault,nullptr,"mbedtls_x509_crt_parse returned "+ErrorToString(rc));
+				LogEvent(EventType::InternalFault,nullptr,"Closing down consensus link");
+				Disconnect();
 				return;
 			}
 
-	        //pem_aes_decrypt( pem_iv, 24, buf, len, pwd, pwdlen );
-
-
-			Array<BYTE>	base64(certificateKey.GetContentSize()*2);
-
-			//const BYTE*bytes = acc.certificateKey.pointer();
-			size_t written = 0;
-			rc = mbedtls_base64_encode( base64.pointer(), base64.GetContentSize(), &written, certificateKey.pointer(), certificateKey.GetContentSize() );
+			String password = "hello world";
 
 			StringBuffer pemBuilder;
-			pemBuilder << "-----BEGIN RSA PRIVATE KEY-----";
-			for (index_t i = 0; i < written; i++)
-			{
-				if (!(i%64))
-					pemBuilder << nl;
-
-				pemBuilder << (char)base64[i];
-			}
-			if (!(written % 64))
-				pemBuilder << nl;
-
-			pemBuilder << "-----END RSA PRIVATE KEY-----" << nl;
-			pemBuilder << '\0';	//mbedtls can be very stupid
-//				String pem = pemBuilder.ToStringRef();
+			MakePEM(pemBuilder,Config::certificateKey,password.c_str(),&secureRandom);
 
 
 				
 			//theoretically could parse binary pem here, but mbedtls does not expose vital functions for that. i could expose them manually, or implement an adequate wrapper function in mbedtls,
 			//but for the sake of maintainability, and due to low performance loss because of one-time conversion overhead, it might be better to persistently use this detour instead
-			rc = mbedtls_pk_parse_key(&loadedCertificateKey,(const unsigned char*)pemBuilder.pointer(),pemBuilder.GetFillLevel(),nullptr,0);
-			LogEvent(EventType::SessionRelated,nullptr,"Got private key. mbedtls_pk_parse_key returned "+ErrorToString(rc));
+			rc = mbedtls_pk_parse_key(&loadedCertificateKey,(const unsigned char*)pemBuilder.pointer(),pemBuilder.GetFillLevel(),(const BYTE*)password.c_str(),password.length());
 			if (rc != 0)
 			{
+				LogEvent(EventType::InternalFault,nullptr,"mbedtls_pk_parse_key returned "+ErrorToString(rc));
+				LogEvent(EventType::InternalFault,nullptr,"Closing down consensus link");
+				Disconnect();
 				return;
 			}
 
 
-			LogEvent(EventType::SessionRelated,nullptr,"Certificate loaded: "+Bin2Str::Interpret(certificate.pointer(),certificate.GetContentSize()));
+			//LogEvent(EventType::SessionRelated,nullptr,"Certificate loaded: "+Bin2Str::Interpret(certificate.pointer(),certificate.GetContentSize()));
 
 
 			{
 				LogEvent(EventType::SessionRelated,nullptr,"Setting local certificate");
 				int ret = mbedtls_ssl_conf_own_cert(&config,&loadedCertificate,&loadedCertificateKey);
 				if (ret != 0)
-					throw IO::Network::GeneralFault( "mbedtls_ssl_conf_own_cert returned "+ErrorToString(ret));
+				{
+					LogEvent(EventType::InternalFault,nullptr,"mbedtls_ssl_conf_own_cert returned "+ErrorToString(ret));
+					LogEvent(EventType::InternalFault,nullptr,"Closing down consensus link");
+					Disconnect();
+				}
 			}
-			
-
-			certificateIsLoaded = true;
-
-
-
-
 		}
 
 
@@ -448,20 +498,51 @@ namespace ConsensusLink
 	}
 
 
-	void		Create(const String&host)
+	void		Create()
 	{
-		Detail::Init(host);
+		Detail::Create();
+		if (Detail::Config::connectOnCreate)
+		{
+			Detail::Reconnect();
+		}
 	}
+
+	bool	IsCreated()
+	{
+		return Detail::created;
+	}
+
+	void		ConnectNow()
+	{
+		if (Detail::created && !Detail::connect && !Detail::client.IsAttemptingToConnect() && !Detail::client.IsConnected())
+			Detail::Reconnect();
+	}
+
+	void		Disconnect()
+	{
+		Detail::Disconnect();
+	}
+
 	void		Destroy()
 	{
 		Detail::Destroy();
 	}
 	
+	bool		IsConnectingOrConnected()
+	{
+		return Detail::connect;
+	}
+
+	bool		StillTryingToConnect()
+	{
+		return Detail::created && Detail::connect && !Detail::client.IsConnected();
+	}
+
 	void		Resolve()
 	{
-		if (!Detail::created)
+		if (!Detail::connect)
 			return;
-		if (!Detail::stopTrying && !Detail::client.IsAttemptingToConnect() && !Detail::client.IsConnected() && timer.GetSecondsSince(Detail::lastConnectionAttempt) > 5.f)
+		if (!Detail::client.IsAttemptingToConnect() && !Detail::client.IsConnected() && timer.GetSecondsSince(Detail::lastConnectionAttempt) > 5.f)
 		{
 			Detail::Reconnect();
 		}
@@ -473,5 +554,24 @@ namespace ConsensusLink
 	{
 		return Detail::client.IsConnected();
 	}
+
+
+
+
+	void		Configure(const String&host, bool connectOnCreate, bool askToEncryptPrivateKey)
+	{
+		Detail::Config::lastHost = host;
+		Detail::Config::connectOnCreate = connectOnCreate;
+		Detail::Config::askToEncryptPrivateKey = askToEncryptPrivateKey;
+		Detail::Config::certificateFolder = FileSystem::Folder(FileSystem::CreateDirectory("./config/certificates/"+TCP::StripPort(host)));
+	}
+
+
+
+
+
+
+		
+
 
 }
