@@ -89,10 +89,10 @@ namespace Dialog
 			//height controlled by content
 
 			GUIElements::PButton confirmButton,cancelButton,noButton,helpButton;
-			Buffer0<GUIElements::PButton> buttons;
 			GUIElements::PInput	inputField;
 			GUIElements::PPasswordInput passwordInputField;
 			GUIElements::PImage	imageField;
+			Buffer0<std::pair<float,GUIElements::PButton> > buttons;
 
 
 			if (componentFlags & ComponentFlags::Input)
@@ -119,21 +119,21 @@ namespace Dialog
 				confirmButton->anchorConfig.Right().Set(0.f);
 				confirmButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
 				dialog->components << confirmButton;
-				buttons << confirmButton;
+				buttons << std::make_pair(1, confirmButton);
 			}
 			if (componentFlags & ComponentFlags::HelpButton)
 			{
-				helpButton.reset(new GUIElements::Button("Help"));
+				helpButton.reset(new GUIElements::Button("?"));
 				helpButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
 				dialog->components << helpButton;
-				buttons << helpButton;
+				buttons << std::make_pair(0.25f, helpButton);
 			}
 			if (componentFlags & ComponentFlags::NoButton)
 			{
 				noButton.reset(new GUIElements::Button("No"));
 				noButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
 				dialog->components << noButton;
-				buttons << noButton;
+				buttons << std::make_pair(1, noButton);
 			}
 			if (componentFlags & ComponentFlags::CancelButton)
 			{
@@ -145,16 +145,28 @@ namespace Dialog
 				cancelButton->anchorConfig.Right().Set(0.f);
 				cancelButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
 				dialog->components << cancelButton;
-				buttons << cancelButton;
+				buttons << std::make_pair(1, cancelButton);
 			}
 
-			float width = 1.f / float(buttons.Count());
-			for (index_t i = 0; i < buttons.Count(); i++)
 			{
-				buttons[i]->anchorConfig.Left().Set(float(i)*width + 0.005f);
-				buttons[i]->anchorConfig.Right().Set(float(buttons.Count()-1-i)*width + 0.005f);
+				float total = 0.f;
+				foreach (buttons,b)
+					total += b->first;
+				float width = 1.f / float(total);
+				float at = 0.f;
+				
+				for (index_t i = 0; i < buttons.Count(); i++)
+				{
+					buttons[i].second->anchorConfig.Left().Set(at*width + 0.005f*(i != 0));
+					at += buttons[i].first;
+				}
+				at = 0.f;
+				for (index_t i = buttons.Count()-1; i < buttons.Count(); i--)
+				{
+					buttons[i].second->anchorConfig.Right().Set(at*width + 0.005f*(i+1 != buttons.Count()));
+					at += buttons[i].first;
+				}
 			}
-
 
 
 			if (componentFlags & ComponentFlags::Image)
