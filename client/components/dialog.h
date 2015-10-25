@@ -18,9 +18,11 @@ namespace Dialog
 	);
 
 	typedef std::function<void()>	FOnConfirm;
+	typedef std::function<void(bool)>	PBoolOnConfirm;
 	typedef std::function<CheckResult()>	FCheckState;
 	typedef std::function<bool(const String&)>	FCheckInput;
 	typedef std::function<void(const String&)>	FFetchInput;
+	typedef std::function<void(const char*)>	FOnPassword;
 
 
 
@@ -35,8 +37,9 @@ namespace Dialog
 
 		//Type					type;
 
-		GUIElements::PButton	confirmButton;
+		GUIElements::PButton	confirmButton,noButton,helpButton;
 		GUIElements::PInput		userInput;
+		GUIElements::PPasswordInput	passwordInput;
 		GUIElements::PLabel		textField;
 		GUIElements::PImage		image;
 
@@ -44,9 +47,11 @@ namespace Dialog
 
 
 		FCheckState			check;
-		FOnConfirm			onConfirm;
+		FOnConfirm			onConfirm,
+							onNo;
 		FCheckInput			checkInput;
 		FFetchInput			fetchInput;
+		FOnPassword			onPassword;
 		bool				isTutorial = false;
 
 		Rect<>				totalSize;
@@ -122,6 +127,9 @@ namespace Dialog
 	*/
 	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check);
 
+	WDialog	AskYesNoHelp(const String&query, const String&help, const PBoolOnConfirm&onAnswer, const FCheckState&check);
+
+	WDialog	QueryPassword(const String&query, const FOnPassword&onPassword, const FCheckState&check);
 	/**
 	Creates a new modal dialog that has no buttons and will remain until the check fails
 	*/
@@ -131,6 +139,7 @@ namespace Dialog
 	Creates a new modal dialog on top of any other active modal dialogs that simply shows a message
 	*/
 	WDialog	ShowMessage(const String&msg);
+	WDialog	ShowMessage(const String&msg, const FCheckState&check);
 
 
 	/**
