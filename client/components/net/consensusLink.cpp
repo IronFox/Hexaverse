@@ -398,7 +398,7 @@ namespace ConsensusLink
 					{
 						Array<BYTE>	certificateCopy = Config::certificate;
 						Dialog::AskYesNoHelp("The server sent a new account certificate for the Consensus network. Do you wish to encrypt the received private key using a password?",
-							"The certificate you just received is the key to your new account. It will be stored persistently in "+Config::certificateFolder.ToString()+".\n"
+							"The certificate you just received is the key to your new account. It will be stored persistently in "+Config::certificateFolder.GetLocation()+".\n"
 							"Anyone with access to your files will be able to use it and log in with full control over your account. To prevent this from happening, using a password is recommended, but not required.\n"
 							"However, if you forget your password, then access to your account will be irreversably lost, same as if you had lost the certificate itself.\n"
 							"If you do set a password, you will be asked for this password every time you start " PRODUCT_NAME ". The password can be changed or removed later on.",
