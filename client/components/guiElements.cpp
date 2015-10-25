@@ -255,7 +255,7 @@ namespace GUIElements
 
 
 
-	bool			Input::UpdateHeight()
+	bool			BaseInput::UpdateHeight()
 	{
 		textout.pushState();
 			textout.scale(textZoom,textZoom);
@@ -268,16 +268,17 @@ namespace GUIElements
 		return Super::UpdateHeight() || !same;
 	}
 
-	/*static*/ std::function<void()>	Input::onChange;
-	/*static*/ std::function<void()>	Input::onDone;
+	/*static*/ std::function<void()>	BaseInput::onChange;
+	/*static*/ std::function<void()>	BaseInput::onDone;
 
 
 
 	void			Input::SetCurrent(const String&current)
 	{
-		backup = current;
-		if (Engine::keyboard.read)
-			Engine::keyboard.fillInput(current);
+		if (IsActive())
+			Engine::keyboard.FillInput(current);
+		else
+			backup.SetTo(current);
 	}
 
 	static Engine::InputProfile	profile;
@@ -286,16 +287,16 @@ namespace GUIElements
 	{
 		this->allowed = allowed;
 		if (Super::IsActive())
-			Engine::keyboard.filter(allowed.c_str());
+			Engine::keyboard.Filter(allowed.c_str());
 	}
 
-	void			Input::ActivateInput()
+	void			BaseInput::ActivateInput()
 	{
 		Engine::input.pushProfile();
 		profile = *Engine::input.currentProfile();
 		Engine::input.bindProfile(profile);
 		//Engine::input.resetKeys();
-		Engine::input.bind(Key::Backspace,[](){Engine::keyboard.dropLastCharacter(); if (onChange) onChange();});
+		Engine::input.bind(Key::Backspace,[](){Engine::keyboard.DropLastCharacter(); if (onChange) onChange();});
 		Engine::input.bind(Key::Return,onDone);
 		Engine::input.bind(Key::Enter,onDone);
 		Engine::input.bindCtrl(Key::V,[](){
@@ -307,16 +308,21 @@ namespace GUIElements
 			}
 		});
 
-		Engine::keyboard.fillInput(backup);
-		Engine::keyboard.filter(allowed.c_str());
+		const char*filter = GetAllowed();
+		if (filter)
+			Engine::keyboard.Filter(filter);
+		else
+			Engine::keyboard.ResetTranslation();
 		if (onChange)
-			Engine::keyboard.onCharHandled = OnCharHandled;
+			Engine::keyboard.onCharHandled = BaseInput::OnCharHandled;
 		Engine::keyboard.read = true;
-
+		Engine::keyboard.ImportBuffer(backup);
 	}
-	void			Input::DeactivateInput()
+
+
+	void			BaseInput::DeactivateInput()
 	{
-		backup = GetInput();
+		Engine::keyboard.ExportBuffer(backup);
 		Engine::input.popProfile();
 		Engine::keyboard.read = false;
 		Engine::keyboard.onCharHandled =  NULL;
@@ -324,11 +330,29 @@ namespace GUIElements
 
 	String			Input::GetInput()
 	{
-		return String(Engine::keyboard.getInput(),Engine::keyboard.getInputLen());
+		if (IsActive())
+			return String(Engine::keyboard.GetInput(),Engine::keyboard.GetInputLen());
+		return String(backup.GetCharacters(),backup.GetLength());
+	}
+
+	const char*		PasswordInput::GetInput()
+	{
+		if (IsActive())
+			return Engine::keyboard.GetInput();
+		return backup.GetCharacters();
+	}
+
+	void			PasswordInput::WipeInput()
+	{
+		if (IsActive())
+			Engine::keyboard.FlushInput();
+		backup.Wipe();
 	}
 
 
-	/*virtual override*/ void			Input::Render()
+
+
+	/*virtual override*/ void			BaseInput::Render()
 	{
 		core = rect;
 		textout.pushState();
@@ -339,8 +363,8 @@ namespace GUIElements
 		if (fillBackground)
 			RenderArea(core,false,true);
 
-		const char*input = Engine::keyboard.getInput();
-		size_t len = Engine::keyboard.getInputLen();
+		const char*input = IsActive() ? Engine::keyboard.GetInput() : backup.GetCharacters();
+		size_t len = IsActive() ? Engine::keyboard.GetInputLen() : backup.GetLength();
 
 		float visualLen = textout.getScaledWidth(input,len);
 

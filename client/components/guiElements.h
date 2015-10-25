@@ -4,6 +4,7 @@
 
 #include <global_string.h>
 #include <math/vclasses.h>
+#include <engine/interface/keyboard.h>
 
 #include <memory>
 #include "../ExtRenderer/DirectX11.h"
@@ -19,7 +20,9 @@ namespace GUIElements
 		DECLARE_POINTER_CLASS(TextField);
 			DECLARE_POINTER_CLASS(Label);
 			DECLARE_POINTER_CLASS(Button);
-		DECLARE_POINTER_CLASS(Input);
+		DECLARE_POINTER_CLASS(BaseInput);
+			DECLARE_POINTER_CLASS(Input);
+			DECLARE_POINTER_CLASS(PasswordInput);
 		DECLARE_POINTER_CLASS(Image);
 		DECLARE_POINTER_CLASS(Panel);
 			DECLARE_POINTER_CLASS(ButtonPanel);
@@ -206,37 +209,57 @@ namespace GUIElements
 		virtual void	Render() override	{if (fillBackground) BaseRender(false,false);}
 	};
 
-	class Input : public Area
+	class BaseInput : public Area
 	{
 		typedef Area	Super;
-		String			backup;
 		Rect<>			core;
-		String			allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_- ";
+
+	protected:
+
+		Engine::Keyboard::CharacterBuffer	backup;
 
 		static void		OnCharHandled(char)
 		{
 			if (onChange)
 				onChange();
 		}
+
+		virtual void	ActivateInput();
+		virtual void	DeactivateInput();
+		virtual const char*	GetAllowed() const {return nullptr;}
 	public:
 
 		static std::function<void()>	onChange;
 		static std::function<void()>	onDone;
 
-
-		void			ActivateInput();
-		void			DeactivateInput();
-		String			GetInput();
-		void			SetCurrent(const String&);
-
+		virtual void	Render() override;
+		virtual bool	UpdateHeight() override;
 		virtual void	Activate() override {ActivateInput(); Super::Activate();}
 		virtual void	Deactivate() override {DeactivateInput(); Super::Deactivate();}
-		virtual bool	UpdateHeight() override;
 
+	};
 
-		virtual void	Render() override;
+	class Input : public BaseInput
+	{
+		typedef BaseInput	Super;
+		String			allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_- ";
 
+	protected:
+		virtual const char*	GetAllowed() const override {return allowed.c_str();}
+	public:
+
+		String			GetInput();
+		void			SetCurrent(const String&);
 		void			SetAllowed(const String&);
+	};
+
+	class PasswordInput : public BaseInput
+	{
+		typedef BaseInput	Super;
+
+	public:
+		const char*		GetInput();
+		void			WipeInput();
 	};
 
 	class TextField : public Area
