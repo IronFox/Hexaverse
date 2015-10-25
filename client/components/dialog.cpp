@@ -44,6 +44,9 @@ namespace Dialog
 				CancelButton = 0x2,
 				Input = 0x4,
 				Image = 0x8,
+				NoButton = 0x10,
+				HelpButton = 0x20,
+				PasswordInput = 0x40,
 			};
 		};
 
@@ -85,9 +88,10 @@ namespace Dialog
 			
 			//height controlled by content
 
-			GUIElements::PButton confirmButton;
-			GUIElements::PButton cancelButton;
+			GUIElements::PButton confirmButton,cancelButton,noButton,helpButton;
+			Buffer0<GUIElements::PButton> buttons;
 			GUIElements::PInput	inputField;
+			GUIElements::PPasswordInput passwordInputField;
 			GUIElements::PImage	imageField;
 
 
@@ -99,27 +103,58 @@ namespace Dialog
 				inputField->anchorConfig.Top().Set(textField,0.f);//0.025f);
 				textPanel->components.Append (inputField);
 			}
+			if (componentFlags & ComponentFlags::PasswordInput)
+			{
+				passwordInputField.reset(new GUIElements::PasswordInput());
+				passwordInputField->anchorConfig.Left().Set(0.f);
+				passwordInputField->anchorConfig.Right().Set(0.f);
+				passwordInputField->anchorConfig.Top().Set(textField,0.f);//0.025f);
+				textPanel->components.Append (passwordInputField);
+			}
 
 			if (componentFlags & ComponentFlags::ConfirmButton)
 			{
-				confirmButton.reset(new GUIElements::Button());
+				confirmButton.reset(new GUIElements::Button(confirmWord));
 				confirmButton->anchorConfig.Left().Set(0.f);
 				confirmButton->anchorConfig.Right().Set(0.f);
 				confirmButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
 				dialog->components << confirmButton;
+				buttons << confirmButton;
+			}
+			if (componentFlags & ComponentFlags::HelpButton)
+			{
+				helpButton.reset(new GUIElements::Button("Help"));
+				helpButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
+				dialog->components << helpButton;
+				buttons << helpButton;
+			}
+			if (componentFlags & ComponentFlags::NoButton)
+			{
+				noButton.reset(new GUIElements::Button("No"));
+				noButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
+				dialog->components << noButton;
+				buttons << noButton;
 			}
 			if (componentFlags & ComponentFlags::CancelButton)
 			{
-				cancelButton.reset(new GUIElements::Button());
+				cancelButton.reset(new GUIElements::Button("Cancel"));
 
-				if (confirmButton)
-					confirmButton->anchorConfig.Right().Set(0.505f);
+				//if (confirmButton)
+				//	confirmButton->anchorConfig.Right().Set(0.505f);
 				cancelButton->anchorConfig.Left().Set(0.505f);
 				cancelButton->anchorConfig.Right().Set(0.f);
 				cancelButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
 				dialog->components << cancelButton;
-
+				buttons << cancelButton;
 			}
+
+			float width = 1.f / float(buttons.Count());
+			for (index_t i = 0; i < buttons.Count(); i++)
+			{
+				buttons[i]->anchorConfig.Left().Set(float(i)*width + 0.005f);
+				buttons[i]->anchorConfig.Right().Set(float(buttons.Count()-1-i)*width + 0.005f);
+			}
+
 
 
 			if (componentFlags & ComponentFlags::Image)
@@ -176,9 +211,12 @@ namespace Dialog
 			//	break;
 			//}
 			dialog->confirmButton = confirmButton;
+			dialog->helpButton = helpButton;
+			dialog->noButton = noButton;
 			dialog->userInput = inputField;
 			dialog->textField = textField;
 			dialog->image = imageField;
+			dialog->passwordInput = passwordInputField;
 
 			
 		/*	dialog->components << textField;
@@ -194,7 +232,7 @@ namespace Dialog
 			if (confirmButton)
 			{
 
-				confirmButton->SetText(confirmWord);
+//				confirmButton->SetText(confirmWord);
 				Dialog*d = dialog.get();
 				confirmButton->SetCheck([d, inputField]()->bool
 				{
@@ -211,7 +249,6 @@ namespace Dialog
 
 			if (cancelButton)
 			{
-				cancelButton->SetText("Cancel");
 				cancelButton->SetOnPress(std::bind(&Dialog::DumpMe,dialog.get()));
 			}
 
@@ -330,10 +367,10 @@ namespace Dialog
 
 	bool		Dialog::CanBeConfirmed(bool bySpace)	const
 	{
-		if (!confirmButton && !fetchInput)
+		if (!confirmButton && !fetchInput && !onPassword)
 			return false;	//some dialogs do not have close-options, and do not respond to confirmations
 
-		if (fetchInput && bySpace)
+		if ((fetchInput || onPassword) && bySpace)
 			return false;
 
 		return true;
@@ -341,13 +378,13 @@ namespace Dialog
 
 	void		Dialog::Confirm(bool bySpace)
 	{
-		if (!confirmButton && !fetchInput)
+		if (!confirmButton && !fetchInput && !onPassword)
 			return;
 		if (confirmButton && !confirmButton->IsEnabled())
 			return;	//would, if it could
 
 		bool tut = isTutorial;
-		if (!fetchInput)
+		if (!fetchInput && !onPassword)
 		{
 			if (onConfirm)
 				onConfirm();
@@ -359,7 +396,13 @@ namespace Dialog
 		{
 			if (bySpace)
 				return;
-			fetchInput(userInput->GetInput());
+			if (fetchInput)
+				fetchInput(userInput->GetInput());
+			if (onPassword)
+			{
+				fetchInput(passwordInput->GetInput());
+				passwordInput->WipeInput();
+			}
 			DumpMe();
 		}
 
@@ -424,6 +467,30 @@ namespace Dialog
 		OnTutorialsChanged();
 		VerifyIntegrity(CLOCATION);
 	
+	}
+
+	WDialog	QueryPassword(const String&query, const POnPassword&onPassword, const PCheckState&check)
+	{
+		VerifyIntegrity(CLOCATION);
+		GUIElements::Input::onChange = Detail::OnInput;
+		GUIElements::Input::onDone = Detail::OnDone;
+
+
+		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton | Detail::ComponentFlags::CancelButton | Detail::ComponentFlags::PasswordInput, "OK", false);
+		d->textField->SetText(query);
+
+		ASSERT__(!d->isTutorial);
+
+
+		d->onPassword = onPassword;
+		d->check = check;
+
+		d->confirmButton->DetectEnabledState();
+
+		d->ReLayout();
+		VerifyIntegrity(CLOCATION);
+
+		return d;
 	}
 
 	WDialog	Query(const String&query, const String&initial, const String&allowChars, const PCheckInput&check, const PFetchInput&fetch)
@@ -794,6 +861,26 @@ namespace Dialog
 		return (size_t)textout.getFont().getWidth(c);
 	}
 
+
+	WDialog	AskYesNoHelp(const String&query, const String&help, const PBoolOnConfirm&onAnswer, const PCheckState&check)
+	{
+		VerifyIntegrity(CLOCATION);
+		CheckResult ck = check();
+		if (ck == CheckResult::Abort)
+			return PDialog();
+
+		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton| Detail::ComponentFlags::NoButton|Detail::ComponentFlags::HelpButton, "Yes", false);
+
+		d->check = check;
+		d->onConfirm = [onAnswer](){onAnswer(true);};
+		d->onNo = [onAnswer](){onAnswer(false);};
+		d->textField->SetText( query );
+		d->helpButton->SetOnPress([help,check]() {ShowMessage(help,check);});
+		d->ReLayout();
+		VerifyIntegrity(CLOCATION);
+		return d;
+	}
+
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs
 	*/
@@ -838,10 +925,7 @@ namespace Dialog
 	}
 
 
-	/**
-	Creates a new modal dialog on top of any other active modal dialogs that simply shows a message
-	*/
-	WDialog	ShowMessage(const String&msg)
+	WDialog	ShowMessage(const String&msg, const PCheckState&check)
 	{
 		VerifyIntegrity(CLOCATION);
 
@@ -849,11 +933,22 @@ namespace Dialog
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton, "Got it", false);
 
 		d->textField->SetText( msg );
+		d->check = check;
 
 		d->ReLayout();
 
 		VerifyIntegrity(CLOCATION);
 		return d;
+
+
+	}
+
+	/**
+	Creates a new modal dialog on top of any other active modal dialogs that simply shows a message
+	*/
+	WDialog	ShowMessage(const String&msg)
+	{
+		return ShowMessage(msg,PCheckState());
 	}
 
 
