@@ -293,8 +293,16 @@ namespace GUIElements
 	void			BaseInput::ActivateInput()
 	{
 		Engine::input.pushProfile();
-		profile = *Engine::input.currentProfile();
+		//profile = *Engine::input.currentProfile();//this copies over a shitload of commands we don't want
+		//let's copy some over, however...
+		profile.key[Key::Escape] = Engine::input.currentProfile()->key[Key::Escape];
+		profile.key[Key::MouseButton0] = Engine::input.currentProfile()->key[Key::MouseButton0];
+		profile.key[Key::MouseButton1] = Engine::input.currentProfile()->key[Key::MouseButton1];
+		profile.key[Key::MouseButton2] = Engine::input.currentProfile()->key[Key::MouseButton2];
+		profile.key[Key::MouseButton3] = Engine::input.currentProfile()->key[Key::MouseButton3];
+		profile.key[Key::MouseButton4] = Engine::input.currentProfile()->key[Key::MouseButton4];
 		Engine::input.bindProfile(profile);
+		
 		//Engine::input.resetKeys();
 		Engine::input.bind(Key::Backspace,[](){Engine::keyboard.DropLastCharacter(); if (onChange) onChange();});
 		Engine::input.bind(Key::Return,onDone);
