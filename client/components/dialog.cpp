@@ -44,6 +44,9 @@ namespace Dialog
 				CancelButton = 0x2,
 				Input = 0x4,
 				Image = 0x8,
+				NoButton = 0x10,
+				HelpButton = 0x20,
+				PasswordInput = 0x40,
 			};
 		};
 
@@ -85,10 +88,11 @@ namespace Dialog
 			
 			//height controlled by content
 
-			GUIElements::PButton confirmButton;
-			GUIElements::PButton cancelButton;
+			GUIElements::PButton confirmButton,cancelButton,noButton,helpButton;
 			GUIElements::PInput	inputField;
+			GUIElements::PPasswordInput passwordInputField;
 			GUIElements::PImage	imageField;
+			Buffer0<std::pair<float,GUIElements::PButton> > buttons;
 
 
 			if (componentFlags & ComponentFlags::Input)
@@ -99,26 +103,69 @@ namespace Dialog
 				inputField->anchorConfig.Top().Set(textField,0.f);//0.025f);
 				textPanel->components.Append (inputField);
 			}
+			if (componentFlags & ComponentFlags::PasswordInput)
+			{
+				passwordInputField.reset(new GUIElements::PasswordInput());
+				passwordInputField->anchorConfig.Left().Set(0.f);
+				passwordInputField->anchorConfig.Right().Set(0.f);
+				passwordInputField->anchorConfig.Top().Set(textField,0.f);//0.025f);
+				textPanel->components.Append (passwordInputField);
+			}
 
 			if (componentFlags & ComponentFlags::ConfirmButton)
 			{
-				confirmButton.reset(new GUIElements::Button());
+				confirmButton.reset(new GUIElements::Button(confirmWord));
 				confirmButton->anchorConfig.Left().Set(0.f);
 				confirmButton->anchorConfig.Right().Set(0.f);
 				confirmButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
 				dialog->components << confirmButton;
+				buttons << std::make_pair(1, confirmButton);
+			}
+			if (componentFlags & ComponentFlags::HelpButton)
+			{
+				helpButton.reset(new GUIElements::Button("?"));
+				helpButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
+				dialog->components << helpButton;
+				buttons << std::make_pair(0.25f, helpButton);
+			}
+			if (componentFlags & ComponentFlags::NoButton)
+			{
+				noButton.reset(new GUIElements::Button("No"));
+				noButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
+				dialog->components << noButton;
+				buttons << std::make_pair(1, noButton);
 			}
 			if (componentFlags & ComponentFlags::CancelButton)
 			{
-				cancelButton.reset(new GUIElements::Button());
+				cancelButton.reset(new GUIElements::Button("Cancel"));
 
-				if (confirmButton)
-					confirmButton->anchorConfig.Right().Set(0.505f);
+				//if (confirmButton)
+				//	confirmButton->anchorConfig.Right().Set(0.505f);
 				cancelButton->anchorConfig.Left().Set(0.505f);
 				cancelButton->anchorConfig.Right().Set(0.f);
 				cancelButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
 				dialog->components << cancelButton;
+				buttons << std::make_pair(1, cancelButton);
+			}
 
+			{
+				float total = 0.f;
+				foreach (buttons,b)
+					total += b->first;
+				float width = 1.f / float(total);
+				float at = 0.f;
+				
+				for (index_t i = 0; i < buttons.Count(); i++)
+				{
+					buttons[i].second->anchorConfig.Left().Set(at*width + 0.005f*(i != 0));
+					at += buttons[i].first;
+				}
+				at = 0.f;
+				for (index_t i = buttons.Count()-1; i < buttons.Count(); i--)
+				{
+					buttons[i].second->anchorConfig.Right().Set(at*width + 0.005f*(i+1 != buttons.Count()));
+					at += buttons[i].first;
+				}
 			}
 
 
@@ -176,9 +223,12 @@ namespace Dialog
 			//	break;
 			//}
 			dialog->confirmButton = confirmButton;
+			dialog->helpButton = helpButton;
+			dialog->noButton = noButton;
 			dialog->userInput = inputField;
 			dialog->textField = textField;
 			dialog->image = imageField;
+			dialog->passwordInput = passwordInputField;
 
 			
 		/*	dialog->components << textField;
@@ -194,7 +244,7 @@ namespace Dialog
 			if (confirmButton)
 			{
 
-				confirmButton->SetText(confirmWord);
+//				confirmButton->SetText(confirmWord);
 				Dialog*d = dialog.get();
 				confirmButton->SetCheck([d, inputField]()->bool
 				{
@@ -211,7 +261,6 @@ namespace Dialog
 
 			if (cancelButton)
 			{
-				cancelButton->SetText("Cancel");
 				cancelButton->SetOnPress(std::bind(&Dialog::DumpMe,dialog.get()));
 			}
 
@@ -330,10 +379,10 @@ namespace Dialog
 
 	bool		Dialog::CanBeConfirmed(bool bySpace)	const
 	{
-		if (!confirmButton && !fetchInput)
+		if (!confirmButton && !fetchInput && !onPassword)
 			return false;	//some dialogs do not have close-options, and do not respond to confirmations
 
-		if (fetchInput && bySpace)
+		if ((fetchInput || onPassword) && bySpace)
 			return false;
 
 		return true;
@@ -341,13 +390,13 @@ namespace Dialog
 
 	void		Dialog::Confirm(bool bySpace)
 	{
-		if (!confirmButton && !fetchInput)
+		if (!confirmButton && !fetchInput && !onPassword)
 			return;
 		if (confirmButton && !confirmButton->IsEnabled())
 			return;	//would, if it could
 
 		bool tut = isTutorial;
-		if (!fetchInput)
+		if (!fetchInput && !onPassword)
 		{
 			if (onConfirm)
 				onConfirm();
@@ -359,7 +408,13 @@ namespace Dialog
 		{
 			if (bySpace)
 				return;
-			fetchInput(userInput->GetInput());
+			if (fetchInput)
+				fetchInput(userInput->GetInput());
+			if (onPassword)
+			{
+				fetchInput(passwordInput->GetInput());
+				passwordInput->WipeInput();
+			}
 			DumpMe();
 		}
 
@@ -426,7 +481,32 @@ namespace Dialog
 	
 	}
 
-	WDialog	Query(const String&query, const String&initial, const String&allowChars, const PCheckInput&check, const PFetchInput&fetch)
+	WDialog	QueryPassword(const String&query, const FOnPassword&onPassword, const FCheckState&check)
+	{
+		VerifyIntegrity(CLOCATION);
+		GUIElements::Input::onChange = Detail::OnInput;
+		GUIElements::Input::onDone = Detail::OnDone;
+
+
+		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton | Detail::ComponentFlags::CancelButton | Detail::ComponentFlags::PasswordInput, "OK", false);
+		d->textField->SetText(query);
+
+		ASSERT__(!d->isTutorial);
+
+
+		d->onPassword = onPassword;
+		d->check = check;
+
+		d->confirmButton->DetectEnabledState();
+
+		d->ReLayout();
+		VerifyIntegrity(CLOCATION);
+
+		return d;
+	}
+
+
+	WDialog	Query(const String&query, const String&initial, const String&allowChars, const FCheckInput&check, const FFetchInput&fetch)
 	{
 		VerifyIntegrity(CLOCATION);
 		GUIElements::Input::onChange = Detail::OnInput;
@@ -794,10 +874,30 @@ namespace Dialog
 		return (size_t)textout.getFont().getWidth(c);
 	}
 
+
+	WDialog	AskYesNoHelp(const String&query, const String&help, const FOnConfirmBool&onAnswer, const FCheckState&check)
+	{
+		VerifyIntegrity(CLOCATION);
+		CheckResult ck = check();
+		if (ck == CheckResult::Abort)
+			return PDialog();
+
+		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton| Detail::ComponentFlags::NoButton|Detail::ComponentFlags::HelpButton, "Yes", false);
+
+		d->check = check;
+		d->onConfirm = [onAnswer](){onAnswer(true);};
+		d->onNo = [onAnswer](){onAnswer(false);};
+		d->textField->SetText( query );
+		d->helpButton->SetOnPress([help,check]() {ShowMessage(help,check);});
+		d->ReLayout();
+		VerifyIntegrity(CLOCATION);
+		return d;
+	}
+
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs
 	*/
-	WDialog	Confirm(const String&query, const POnConfirm&onConfirm, const PCheckState&check)
+	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check)
 	{
 		VerifyIntegrity(CLOCATION);
 		CheckResult ck = check();
@@ -817,7 +917,7 @@ namespace Dialog
 		return d;
 	}
 
-	WDialog	PermanentMessage(const String&message, const PCheckState&check)
+	WDialog	PermanentMessage(const String&message, const FCheckState&check)
 	{
 		VerifyIntegrity(CLOCATION);
 		CheckResult ck = check();
@@ -838,10 +938,7 @@ namespace Dialog
 	}
 
 
-	/**
-	Creates a new modal dialog on top of any other active modal dialogs that simply shows a message
-	*/
-	WDialog	ShowMessage(const String&msg)
+	WDialog	ShowMessage(const String&msg, const FCheckState&check)
 	{
 		VerifyIntegrity(CLOCATION);
 
@@ -849,11 +946,22 @@ namespace Dialog
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton, "Got it", false);
 
 		d->textField->SetText( msg );
+		d->check = check;
 
 		d->ReLayout();
 
 		VerifyIntegrity(CLOCATION);
 		return d;
+
+
+	}
+
+	/**
+	Creates a new modal dialog on top of any other active modal dialogs that simply shows a message
+	*/
+	WDialog	ShowMessage(const String&msg)
+	{
+		return ShowMessage(msg,FCheckState());
 	}
 
 
