@@ -366,7 +366,9 @@ namespace GUIElements
 		const char*input = IsActive() ? Engine::keyboard.GetInput() : backup.GetCharacters();
 		size_t len = IsActive() ? Engine::keyboard.GetInputLen() : backup.GetLength();
 
-		float visualLen = textout.getScaledWidth(input,len);
+		static const char cursorChar = '<';
+		float cursorLen = textout.getScaledWidth(&cursorChar,1);
+		float visualLen = textout.getScaledWidth(input,len) + cursorLen;
 
 
 		SurfaceRenderer::Flush();
@@ -375,7 +377,7 @@ namespace GUIElements
 		textout.locate(core.x.min,core.y.max - textout.getScaledHeight() * 0.4f);
 
 
-		if (visualLen < rect.x.extend())
+		if (visualLen < core.x.extend())
 		{
 		//	textout.write(input,len);
 			textout << StringRef(input,len);
@@ -386,8 +388,8 @@ namespace GUIElements
 			{
 				input++;
 				len--;
-				visualLen = textout.getScaledWidth(input,len);
-				if (visualLen < rect.x.extend())
+				visualLen = textout.getScaledWidth(input,len) + cursorLen;
+				if (visualLen < core.x.extend())
 				{
 					textout << StringRef(input,len);
 					//textout.write(input,len);
@@ -396,7 +398,7 @@ namespace GUIElements
 			}
 		}
 		if (((UINT64)(Engine::timing.now*2.0))%2)
-			textout << '<';
+			textout << cursorChar;
 
 
 		textout.popState();
