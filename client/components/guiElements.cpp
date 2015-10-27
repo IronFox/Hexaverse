@@ -360,6 +360,35 @@ namespace GUIElements
 
 
 
+
+	/*virtual*/ StringRef BaseInput::GetText()
+	{
+		const char*input;
+		size_t len;
+		bool active = IsActive();
+		input = active ? Engine::keyboard.GetInput() : backup.GetCharacters();
+		len = active ? Engine::keyboard.GetInputLen() : backup.GetLength();
+		return StringRef(input,len);
+	}
+
+
+	/*static*/ StringBuffer	PasswordInput::placeholder;
+
+	/*virtual override*/ StringRef PasswordInput::GetText()
+	{
+		size_t len;
+		bool active = IsActive();
+		len = active ? Engine::keyboard.GetInputLen() : backup.GetLength();
+
+		while (placeholder.length() < len)
+		{
+//			placeholder << "********";
+			placeholder << "........";
+		}
+		return StringRef(placeholder.pointer(),len);
+	}
+
+
 	/*virtual override*/ void			BaseInput::Render()
 	{
 		core = rect;
@@ -371,12 +400,12 @@ namespace GUIElements
 		if (fillBackground)
 			RenderArea(core,false,true);
 
-		const char*input = IsActive() ? Engine::keyboard.GetInput() : backup.GetCharacters();
-		size_t len = IsActive() ? Engine::keyboard.GetInputLen() : backup.GetLength();
+		StringRef text = GetText();
+
 
 		static const char cursorChar = '<';
 		float cursorLen = textout.getScaledWidth(&cursorChar,1);
-		float visualLen = textout.getScaledWidth(input,len) + cursorLen;
+		float visualLen = textout.getScaledWidth(text) + cursorLen;
 
 
 		SurfaceRenderer::Flush();
@@ -388,18 +417,16 @@ namespace GUIElements
 		if (visualLen < core.x.extend())
 		{
 		//	textout.write(input,len);
-			textout << StringRef(input,len);
+			textout << text;
 		}
 		else
 		{
-			while (len > 1)
+			while (text.DropFirstChar())
 			{
-				input++;
-				len--;
-				visualLen = textout.getScaledWidth(input,len) + cursorLen;
+				visualLen = textout.getScaledWidth(text) + cursorLen;
 				if (visualLen < core.x.extend())
 				{
-					textout << StringRef(input,len);
+					textout << text;
 					//textout.write(input,len);
 					break;
 				}
