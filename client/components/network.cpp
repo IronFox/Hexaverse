@@ -1398,8 +1398,13 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	{
 		if (amTechniteFaction)
 		{
-			Technites::PFaction tf = To<Technites::Faction>::Cast(myFaction);
-			tf->VerifyIntegrity();
+			if (Animation::AllDone())
+			{
+				Technites::PFaction tf = To<Technites::Faction>::Cast(myFaction);
+				tf->VerifyIntegrity();
+			}
+			else
+				LogEvent(EventType::Debug,nullptr,"Animations not completely done. Cannot verify technite faction integrity. Assuming it is correct.");
 
 			TechniteLogicLink::ExecuteLogic(roundNumber, techniteSubRoundNumber);
 		}
