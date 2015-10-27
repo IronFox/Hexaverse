@@ -24,3 +24,5 @@ Unclear whether this is the client-sided writer.connectionLost variable, or the 
 The server has shown some abnormalities discarding clients in various weird synchronization scenarios, causing unknown exceptions in the TCP::Peer destructor.
 The destructor has since been evacuated, and the same code moved into a new Peer::Dissolve() function, which adds vastly more exception tolerance.
 Seems as if the problem is client sided writer.connectionLost and can manifest during the very first connection attempt.
+
+Various multithreading issues resolved, this issue is considered fixed until proven otherwise.
