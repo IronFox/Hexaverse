@@ -738,7 +738,9 @@ namespace State
 
 	namespace RID 	//RIFF id constants
 	{
-		static const Riff::TID	entity("ENTI"),
+		static const Riff::TID	fileVersion("VERS"),
+								worldContentTypeCount("WCTC"),
+								entity("ENTI"),
 								location("LOCA"),
 								vehicle("VEHC"),
 								vehiclePlant("SVPL"),				//also used for MobileEntityProducers in general for backwards-compatibility reasons
@@ -1499,7 +1501,7 @@ void	State::Load(const String&filename)
 	}
 	else
 	{
-		Riff::Chunk*vers = file.FindFirst("VERS");
+		Riff::Chunk*vers = file.FindFirst(RID::fileVersion);
 		if (!vers)
 		{
 			LogEvent(EventType::InternalFault,"Unable to read version number");
@@ -1534,6 +1536,13 @@ void	State::Load(const String&filename)
 						globalVersionOfCurrentFile = vid;
 			}
 
+		}
+		UINT32 contentTypeCount = 0;
+		GetOptionalPOD(&file,RID::worldContentTypeCount,contentTypeCount,(UINT32)12);
+		if (contentTypeCount != Grid::Content::NumberOfPossibilities)
+		{
+			LogEvent(EventType::InternalFault,"Grid content type count extracted from file is "+String(contentTypeCount)+". Local count is "+String(Grid::Content::NumberOfPossibilities));
+			failed = true;
 		}
 	}
 
@@ -1954,7 +1963,8 @@ void	State::Save( const String&name)
 
 	Riff::Container container;
 	UINT32 vid = fileVersion;
-	container.AppendBlock("VERS",&vid,sizeof(vid));
+	container.AppendBlock(RID::fileVersion,&vid,sizeof(vid));
+	container.AppendBlock(RID::worldContentTypeCount)->SetPODData((UINT32)Grid::Content::NumberOfPossibilities);
 	Riff::Chunk*general = CreateNamedList(container,ChunkName::WorldInfoGroup);
 	general->AppendBlock("WDID")->SetPODData(worldID);
 	general->AppendBlock("RNDN")->SetPODData(roundNumber);
