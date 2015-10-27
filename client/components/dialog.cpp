@@ -875,7 +875,7 @@ namespace Dialog
 	}
 
 
-	WDialog	AskYesNoHelp(const String&query, const String&help, const PBoolOnConfirm&onAnswer, const FCheckState&check)
+	WDialog	AskYesNoHelp(const String&query, const String&help, const FOnConfirmBool&onAnswer, const FCheckState&check)
 	{
 		VerifyIntegrity(CLOCATION);
 		CheckResult ck = check();

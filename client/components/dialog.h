@@ -18,7 +18,7 @@ namespace Dialog
 	);
 
 	typedef std::function<void()>	FOnConfirm;
-	typedef std::function<void(bool)>	PBoolOnConfirm;
+	typedef std::function<void(bool)>	FOnConfirmBool;
 	typedef std::function<CheckResult()>	FCheckState;
 	typedef std::function<bool(const String&)>	FCheckInput;
 	typedef std::function<void(const String&)>	FFetchInput;
@@ -127,7 +127,7 @@ namespace Dialog
 	*/
 	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check);
 
-	WDialog	AskYesNoHelp(const String&query, const String&help, const PBoolOnConfirm&onAnswer, const FCheckState&check);
+	WDialog	AskYesNoHelp(const String&query, const String&help, const FOnConfirmBool&onAnswer, const FCheckState&check);
 
 	WDialog	QueryPassword(const String&query, const FOnPassword&onPassword, const FCheckState&check);
 	/**
