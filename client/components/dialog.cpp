@@ -426,7 +426,7 @@ namespace Dialog
 	
 	}
 
-	WDialog	Query(const String&query, const String&initial, const String&allowChars, const PCheckInput&check, const PFetchInput&fetch)
+	WDialog	Query(const String&query, const String&initial, const String&allowChars, const FCheckInput&check, const FFetchInput&fetch)
 	{
 		VerifyIntegrity(CLOCATION);
 		GUIElements::Input::onChange = Detail::OnInput;
@@ -797,7 +797,7 @@ namespace Dialog
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs
 	*/
-	WDialog	Confirm(const String&query, const POnConfirm&onConfirm, const PCheckState&check)
+	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check)
 	{
 		VerifyIntegrity(CLOCATION);
 		CheckResult ck = check();
@@ -817,7 +817,7 @@ namespace Dialog
 		return d;
 	}
 
-	WDialog	PermanentMessage(const String&message, const PCheckState&check)
+	WDialog	PermanentMessage(const String&message, const FCheckState&check)
 	{
 		VerifyIntegrity(CLOCATION);
 		CheckResult ck = check();
