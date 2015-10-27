@@ -20,21 +20,21 @@
 #define BROADCAST_PORT		10243
 #define BROADCAST_FROM_PORT	10242
 //#define SERVER_NAME		PRODUCT_NAME" server v"PRODUCT_VERSION
+
 #ifdef CONNECTOR_LESS
-	#ifdef NO_MUNITION
-		#define SERVER_NAME		PRODUCT_NAME" v"PRODUCT_VERSION"cm"
-	#else
-		#define SERVER_NAME		PRODUCT_NAME" v"PRODUCT_VERSION"c"
-	#endif
+	#define NAME_APPEND0	"c"
 #else
-	#ifdef NO_MUNITION
-		#define SERVER_NAME		PRODUCT_NAME" v"PRODUCT_VERSION"m"
-	#else
-		#define SERVER_NAME		PRODUCT_NAME" v"PRODUCT_VERSION
-	#endif
+	#define NAME_APPEND0
+#endif
+
+#ifdef NO_MUNITION
+	#define NAME_APPEND1	"m"
+#else
+	#define NAME_APPEND1
 #endif
 
 
+#define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION NAME_APPEND0 NAME_APPEND1
 #include "objects/resource.h"
 
 namespace Protocol
