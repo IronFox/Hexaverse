@@ -2021,7 +2021,12 @@ void	State::Save( const String&name)
 	}
 
 
-
+	foreach (Technites::Faction::allTechniteFactions,_tf)
+	{
+		Technites::PFaction&tf = *_tf;
+		if (tf && tf->technites.IsNotEmpty())
+			allFactions.Set(tf);
+	}
 
 
 
