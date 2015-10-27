@@ -227,6 +227,7 @@ namespace GUIElements
 		virtual void	ActivateInput();
 		virtual void	DeactivateInput();
 		virtual const char*	GetAllowed() const {return nullptr;}
+		virtual StringRef GetText();
 	public:
 
 		static std::function<void()>	onChange;
@@ -256,7 +257,9 @@ namespace GUIElements
 	class PasswordInput : public BaseInput
 	{
 		typedef BaseInput	Super;
-
+		static StringBuffer	placeholder;
+	protected:
+		virtual StringRef GetText() override;
 	public:
 		const char*		GetInput();
 		void			WipeInput();

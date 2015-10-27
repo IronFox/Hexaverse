@@ -481,7 +481,7 @@ namespace Dialog
 	
 	}
 
-	WDialog	QueryPassword(const String&query, const POnPassword&onPassword, const PCheckState&check)
+	WDialog	QueryPassword(const String&query, const FOnPassword&onPassword, const FCheckState&check)
 	{
 		VerifyIntegrity(CLOCATION);
 		GUIElements::Input::onChange = Detail::OnInput;
@@ -505,7 +505,8 @@ namespace Dialog
 		return d;
 	}
 
-	WDialog	Query(const String&query, const String&initial, const String&allowChars, const PCheckInput&check, const PFetchInput&fetch)
+
+	WDialog	Query(const String&query, const String&initial, const String&allowChars, const FCheckInput&check, const FFetchInput&fetch)
 	{
 		VerifyIntegrity(CLOCATION);
 		GUIElements::Input::onChange = Detail::OnInput;
@@ -874,7 +875,7 @@ namespace Dialog
 	}
 
 
-	WDialog	AskYesNoHelp(const String&query, const String&help, const PBoolOnConfirm&onAnswer, const PCheckState&check)
+	WDialog	AskYesNoHelp(const String&query, const String&help, const FOnConfirmBool&onAnswer, const FCheckState&check)
 	{
 		VerifyIntegrity(CLOCATION);
 		CheckResult ck = check();
@@ -896,7 +897,7 @@ namespace Dialog
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs
 	*/
-	WDialog	Confirm(const String&query, const POnConfirm&onConfirm, const PCheckState&check)
+	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check)
 	{
 		VerifyIntegrity(CLOCATION);
 		CheckResult ck = check();
@@ -916,7 +917,7 @@ namespace Dialog
 		return d;
 	}
 
-	WDialog	PermanentMessage(const String&message, const PCheckState&check)
+	WDialog	PermanentMessage(const String&message, const FCheckState&check)
 	{
 		VerifyIntegrity(CLOCATION);
 		CheckResult ck = check();
@@ -937,7 +938,7 @@ namespace Dialog
 	}
 
 
-	WDialog	ShowMessage(const String&msg, const PCheckState&check)
+	WDialog	ShowMessage(const String&msg, const FCheckState&check)
 	{
 		VerifyIntegrity(CLOCATION);
 
@@ -960,7 +961,7 @@ namespace Dialog
 	*/
 	WDialog	ShowMessage(const String&msg)
 	{
-		return ShowMessage(msg,PCheckState());
+		return ShowMessage(msg,FCheckState());
 	}
 
 
