@@ -540,7 +540,7 @@ namespace State
 
 			peer.attachment.reset();
 		}
-		peer.Disconnect();
+		peer.DisconnectPeer();
 	}
 
 
