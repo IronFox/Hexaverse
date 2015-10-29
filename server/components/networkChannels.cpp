@@ -303,7 +303,7 @@ namespace Receiver
 			LogEvent(EventType::CommandRejected, peer, "Cannot connect ("+String(State::phase.ToString())+") right now. Disconnecting");
 			response.startFactionTypes = 0;
 			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
-			client->peer.lock()->Disconnect();
+			client->peer.lock()->DisconnectPeer();
 			return;
 		}
 
@@ -329,7 +329,7 @@ namespace Receiver
 			LogEvent(EventType::CommandRejected, peer, "Requested faction type is not supported");
 			response.startFactionTypes = 0;
 			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
-			client->peer.lock()->Disconnect();
+			client->peer.lock()->DisconnectPeer();
 			return;
 		}
 
@@ -369,10 +369,10 @@ namespace Receiver
 					LogEvent(EventType::SessionRelated, peer, "Disconnecting AI client.");
 					response.startFactionTypes = 0;
 					Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
-					client->peer.lock()->Disconnect();
+					client->peer.lock()->DisconnectPeer();
 					return;
 				}
-				other->peer.lock()->Disconnect();
+				other->peer.lock()->DisconnectPeer();
 				State::playerMap.Unset(faction);
 				other->faction.reset();
 				client->faction = faction;
