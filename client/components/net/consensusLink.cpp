@@ -190,8 +190,8 @@ namespace ConsensusLink
 					const void*const certData = cert->raw.p;
 					const size_t certSize = cert->raw.len;
 
-					String bin = Bin2Str::Interpret(certData,certSize);
-					LogEvent(EventType::SessionRelated,nullptr, "Consensus: Server certificate: "+bin);
+				//	String bin = Bin2Str::Interpret(certData,certSize);
+					//LogEvent(EventType::SessionRelated,nullptr, "Consensus: Server certificate: "+bin);
 				}
 
 			}
@@ -283,6 +283,9 @@ namespace ConsensusLink
 			Dialog::SignalSituationChange();
 		}
 
+		void	Reconnect();
+		void	Authenticate();
+
 
 		Timer::Time	lastConnectionAttempt = timer.Now();
 
@@ -307,7 +310,163 @@ namespace ConsensusLink
 
 				LogEvent(EventType::SessionRelated,nullptr,"File written: "+filename);
 				LogEvent(EventType::SessionRelated,nullptr,"Copied to: "+filename+"2");
+			}
 
+			bool		TryLoad(const String&filename, Array<BYTE>&out)
+			{
+				FILE*f = fopen(filename.c_str(),"rb");
+				if (!f)
+				{
+					LogEvent(EventType::InternalFault,nullptr,"Unable to load '"+filename+"'. File does not exist or is not accessible");
+					return false;
+				}
+				fseek(f,0,SEEK_END);
+				long len = ftell(f);
+				fseek(f,0,SEEK_SET);
+				SHA256::HashContainer loaded,computed;
+
+				size_t read;
+
+				read = fread(loaded.bytes,1,loaded.NumBytes,f);
+				if (read != loaded.NumBytes)
+				{
+					fclose(f);
+					LogEvent(EventType::InternalFault,nullptr,"Unable to read the first chunk of bytes from '"+filename+"'");
+					return false;
+				}
+
+
+				size_t size = ((size_t)len) - loaded.NumBytes;
+				out.SetSize(size);
+				read = fread(out.pointer(),1,size,f);
+				fclose(f);
+				if (read != size)
+				{
+					LogEvent(EventType::InternalFault,nullptr,"Unable to read the second chunk of bytes from '"+filename+"'");
+					return false;
+				}
+				SHA256::Hash(out.pointer(),size,computed);
+				if (computed != loaded)
+				{
+					LogEvent(EventType::InternalFault,nullptr,"Hash mismatch in '"+filename+"'");
+					return false;
+				}
+				return true;
+			}
+
+
+			bool		SecureRead(const String&filename, Array<BYTE>&out)
+			{
+				return TryLoad(filename,out) || TryLoad(filename+"2",out);
+
+
+			}
+
+			void		RestoreCertificate(const Array<BYTE>&cert, const SHA256::HashContainer&keyHash, const AES::InitializationVector&iv, const Array<BYTE>&innerKey, const String&host, const char*pwd)
+			{
+				if (!pwd || !pwd[0])
+				{
+					Reconnect();	//try without
+					return;
+				}
+				#ifdef _DEBUG
+					LogEvent(EventType::Debug,nullptr,"hash: '"+Bin2Str::Convert(keyHash.bytes,keyHash.NumBytes)+"'");
+					LogEvent(EventType::Debug,nullptr,"pwd: '"+String(pwd)+"'");
+					LogEvent(EventType::Debug,nullptr,"iv: '"+Bin2Str::Convert(iv.bytes,iv.NumBytes)+"'");
+					LogEvent(EventType::Debug,nullptr,"len: '"+String(innerKey.GetLength())+"'");
+					LogEvent(EventType::Debug,nullptr,"enc: '"+Bin2Str::Convert(innerKey.pointer(),innerKey.GetLength())+"'");
+				#endif
+
+				AES aes;
+				aes.SetIV(iv);
+				aes.SetPWD(pwd,strlen(pwd));
+				Array<BYTE> copy;
+				aes.Decrypt(innerKey,copy);
+				SHA256::HashContainer computed;
+				SHA256::Hash(copy.pointer(),copy.GetContentSize(),computed);
+					LogEvent(EventType::Debug,nullptr,"unenc: '"+Bin2Str::Convert(copy.pointer(),copy.GetLength())+"'");
+					LogEvent(EventType::Debug,nullptr,"computed hash: '"+Bin2Str::Convert(computed.bytes,computed.NumBytes)+"'");
+				if (computed != keyHash)
+				{
+					Dialog::QueryPassword("Incorrect password. The Consensus certificate key for '"+host+"' is encrypted. Please specify the password to decrypt",[cert,keyHash,iv,innerKey,host](const char*pwd)
+					{
+						RestoreCertificate(cert,keyHash,iv,innerKey,host,pwd);
+					},
+					[host]()->Dialog::CheckResult
+					{
+						return Config::lastHost == host && !client.IsAttemptingToConnect() && !client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;
+					}
+					);
+					return;
+				}
+				Config::certificate = cert;
+				Config::certificateKey.adoptData(copy);
+				Authenticate();
+				Reconnect();
+			}
+
+			void		RestoreCertificateAndConnect()
+			{
+				String keyFileName = (certificateFolder.GetLocation() + FOLDER_SLASH + "private.key");
+				String certFileName = (certificateFolder.GetLocation() + FOLDER_SLASH + "public.cert");
+
+				Array<BYTE>	cert,key;
+				if (!SecureRead(keyFileName,key) || !SecureRead(certFileName,cert))
+				{
+					Reconnect();
+					return;
+				}
+				ByteStream keyStream;
+				keyStream.Assign(key);
+				BYTE encrypted;
+				if (!(keyStream >> encrypted) || encrypted > 1)
+				{
+					LogEvent(EventType::InternalFault,nullptr,"Consensus RSA key: The key file uses some unknown format. Cannot continue with this");
+					return;
+				}
+				if (encrypted)
+				{
+					SHA256::HashContainer keyHash;
+					if (!(keyStream.Read(keyHash.bytes,keyHash.NumBytes)))
+					{
+						LogEvent(EventType::InternalFault,nullptr,"Consensus RSA key: IO fault reading hash chunk");
+						return;
+					}
+					AES::InitializationVector iv;
+					if (!(keyStream.Read(iv.bytes,iv.NumBytes)))
+					{
+						LogEvent(EventType::InternalFault,nullptr,"Consensus RSA key: IO fault reading initialization vector");
+						return;
+					}
+					Array<BYTE> innerKey(keyStream.GetRemainingBytes());
+					if (!(keyStream.Read(innerKey.pointer(),innerKey.GetContentSize())))
+					{
+						LogEvent(EventType::InternalFault,nullptr,"Consensus RSA key: IO fault reading encrypted RSA key");
+						return;
+					}
+					String host = Config::lastHost;
+					Dialog::QueryPassword("The Consensus certificate key for '"+lastHost+"' is encrypted. Please specify the password to decrypt",[cert,keyHash,iv,innerKey,host](const char*pwd)
+					{
+						RestoreCertificate(cert,keyHash,iv,innerKey,host,pwd);
+					},
+					[host]()->Dialog::CheckResult
+					{
+						return Config::lastHost == host && !client.IsAttemptingToConnect() && !client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;
+					}
+					);
+					AES::Wipe(innerKey.pointer(),innerKey.GetContentSize());
+					return;
+				}
+				Array<BYTE> innerKey(keyStream.GetRemainingBytes());
+				if (!(keyStream.Read(innerKey.pointer(),innerKey.GetContentSize())))
+				{
+					LogEvent(EventType::InternalFault,nullptr,"Consensus RSA key: IO fault reading un-encrypted RSA key");
+					return;
+				}
+				Config::certificate.adoptData(cert);
+				Config::certificateKey.adoptData(innerKey);
+				Authenticate();
+				Reconnect();
 			}
 
 			void		SaveCertificate(const char*password)
@@ -322,6 +481,8 @@ namespace ConsensusLink
 				{
 					payload << (BYTE)1;
 
+					AES::ExpandToCompatibleSize(Config::certificateKey);
+
 					SHA256::HashContainer hashed;
 					SHA256::Hash(Config::certificateKey.pointer(),Config::certificateKey.length(),hashed);
 					payload.Append(hashed.bytes,SHA256::HashContainer::NumBytes);
@@ -330,11 +491,20 @@ namespace ConsensusLink
 					AES	aes;
 					aes.RandomizeIV(&secureRandom);
 					aes.SetPWD(password,strlen(password));
-					
-					Array<BYTE> copy = Config::certificateKey;
-					aes.Encrypt(copy.pointer(),copy.GetContentSize());
-					payload.Append(copy.pointer(),copy.GetContentSize());
-					AES::Wipe(copy.pointer(),copy.GetContentSize());
+
+					#ifdef _DEBUG
+						LogEvent(EventType::Debug,nullptr,"hash: '"+Bin2Str::Convert(hashed.bytes,hashed.NumBytes)+"'");
+						LogEvent(EventType::Debug,nullptr,"pwd: '"+String(password)+"'");
+						LogEvent(EventType::Debug,nullptr,"iv: '"+Bin2Str::Convert(aes.GetIV().bytes,aes.GetIV().NumBytes)+"'");
+						LogEvent(EventType::Debug,nullptr,"len: '"+String(Config::certificateKey.GetLength())+"'");
+						LogEvent(EventType::Debug,nullptr,"unenc: '"+Bin2Str::Convert(Config::certificateKey.pointer(),Config::certificateKey.GetLength())+"'");
+					#endif
+					Array<BYTE> encrypted;
+					aes.Encrypt(Config::certificateKey, encrypted);
+					payload.Append(aes.GetIV().bytes,AES::InitializationVector::NumBytes);
+					payload.Append(encrypted.pointer(),encrypted.GetContentSize());
+					LogEvent(EventType::Debug,nullptr,"enc: '"+Bin2Str::Convert(encrypted.pointer(),encrypted.GetLength())+"'");
+					AES::Wipe(encrypted.pointer(),encrypted.GetContentSize());
 
 					//memcpy(payload.AppendRow(copy.length()),copy.pointer(),copy.length());
 					//payload << copy;
@@ -557,7 +727,8 @@ namespace ConsensusLink
 		Detail::Create();
 		if (Detail::Config::connectOnCreate)
 		{
-			Detail::Reconnect();
+			Detail::Config::RestoreCertificateAndConnect();
+//			Detail::Reconnect();
 		}
 	}
 
