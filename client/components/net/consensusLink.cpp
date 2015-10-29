@@ -248,7 +248,7 @@ namespace ConsensusLink
 
 		void OnEvent(TCP::event_t event, TCP::Peer&origin)
 		{
-			LogEvent(EventType::SessionRelated,nullptr,"Consensus: "+origin.ToString()+": "+TCP::event2str(event));
+			LogEvent(EventType::Debug,nullptr,"Consensus: "+origin.ToString()+": "+TCP::event2str(event));
 			switch (event)
 			{
 				case TCP::Event::ConnectionEstablished:
@@ -266,7 +266,7 @@ namespace ConsensusLink
 
 		void OnSignal(UINT32 channel, TCP::Peer&origin)
 		{
-			LogEvent(EventType::InternalFault,nullptr,"Consensus: "+origin.ToString()+": Signal on channel "+String(channel));
+			LogEvent(EventType::Debug,nullptr,"Consensus: "+origin.ToString()+": Signal on channel "+String(channel));
 			switch (channel)
 			{
 				case Protocol::ChannelID::NotAuthenticated:
@@ -293,10 +293,64 @@ namespace ConsensusLink
 			bool		askToEncryptPrivateKey = false;
 			FileSystem::Folder	certificateFolder;
 
+			void		SecureWrite(const String&filename, const void*data, size_t dataSize)
+			{
+				SHA256::HashContainer payloadHash;
+				SHA256::Hash(data,dataSize,payloadHash);
+
+				FileStream outStream;
+				outStream.OpenCreate(filename.c_str());
+				outStream.Write(payloadHash.bytes,payloadHash.NumBytes);
+				outStream.Write(data,dataSize);
+				outStream.Close();
+				FileSystem::Copy(filename,filename+"2",true);
+
+				LogEvent(EventType::SessionRelated,nullptr,"File written: "+filename);
+				LogEvent(EventType::SessionRelated,nullptr,"Copied to: "+filename+"2");
+
+			}
+
 			void		SaveCertificate(const char*password)
 			{
-				//later
+				//ultimately we will want to generate an encrypted PEM file here. but until someone actually asks for it, a binary custom format may be easier and safer in terms of bit consistency. pem has no hashing of any sort
 
+				Buffer0<BYTE,Engine::Keyboard::SecureStrategy>	payload;
+
+//				ByteStream payload;
+
+				if (password && password[0])
+				{
+					payload << (BYTE)1;
+
+					SHA256::HashContainer hashed;
+					SHA256::Hash(Config::certificateKey.pointer(),Config::certificateKey.length(),hashed);
+					payload.Append(hashed.bytes,SHA256::HashContainer::NumBytes);
+
+
+					AES	aes;
+					aes.RandomizeIV(&secureRandom);
+					aes.SetPWD(password,strlen(password));
+					
+					Array<BYTE> copy = Config::certificateKey;
+					aes.Encrypt(copy.pointer(),copy.GetContentSize());
+					payload.Append(copy.pointer(),copy.GetContentSize());
+					AES::Wipe(copy.pointer(),copy.GetContentSize());
+
+					//memcpy(payload.AppendRow(copy.length()),copy.pointer(),copy.length());
+					//payload << copy;
+				}
+				else
+				{
+					payload << (BYTE)0;
+					payload.Append(certificateKey.pointer(),certificateKey.GetContentSize());
+				}
+
+
+				String keyFileName = (certificateFolder.GetLocation() + FOLDER_SLASH + "private.key");
+				String certFileName = (certificateFolder.GetLocation() + FOLDER_SLASH + "public.cert");
+
+				SecureWrite(keyFileName,payload.pointer(),payload.GetContentSize());
+				SecureWrite(certFileName,certificate.pointer(),certificate.GetContentSize());
 			}
 		}
 
@@ -414,7 +468,7 @@ namespace ConsensusLink
 									[certificateCopy]()->Dialog::CheckResult
 									{
 										return Config::certificate == certificateCopy ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;
-									});
+									},true);
 								}
 							},
 							[certificateCopy]()->Dialog::CheckResult
