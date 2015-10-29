@@ -201,7 +201,7 @@ namespace Receiver
 		if (instructions.offset + instructions.instructions.Count() > faction->technites.Count())
 		{
 			LogEvent(EventType::UnexpectedBehavior, peer, "Received invalid technite instruction range");
-			peer.Disconnect();
+			peer.DisconnectPeer();
 			return;
 		}
 
