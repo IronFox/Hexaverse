@@ -81,7 +81,7 @@ namespace Encryption
 			//memcpy(iv,aes_iv,ARRAYSIZE(aes_iv));
 			int rc = mbedtls_aes_crypt_cbc( &aes_ctx, direction, dataSize,
 							tempIV.bytes, (const unsigned char*)data, (unsigned char*)data );
-			MakeZero(tempIV.bytes,InitializationVector::NumBytes);
+			Wipe(tempIV.bytes,InitializationVector::NumBytes);
 			ASSERT__(rc==0);
 			return;
 		}
@@ -92,7 +92,7 @@ namespace Encryption
 		memcpy(temp.pointer(),data,dataSize);
 		Crypt(temp.pointer(),tempSize,direction);
 		memcpy(data,temp.pointer(),dataSize);
-		MakeZero(temp.pointer(),temp.GetLength());
+		Wipe(temp.pointer(),temp.GetLength());
 	}
 
 
@@ -134,7 +134,7 @@ namespace Encryption
 			memcpy( aes_key, md5sum, aes_keylen_bytes );
 
 			mbedtls_md5_free( &md5_ctx );
-			MakeZero( md5sum, 16 );
+			Wipe( md5sum, 16 );
 			return;
 		}
 
@@ -156,7 +156,7 @@ namespace Encryption
 		memcpy( ((BYTE*)aes_key) + 16, md5sum, use_len );
 
 		mbedtls_md5_free( &md5_ctx );
-		MakeZero( md5sum, 16 );
+		Wipe( md5sum, 16 );
 	}
 
 }

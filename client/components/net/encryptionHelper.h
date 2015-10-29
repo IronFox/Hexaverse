@@ -39,17 +39,19 @@ namespace Encryption
 		int					lastDirection=-1;
 		InitializationVector	iv;
 
-		static void			MakeZero(void*ptr, size_t size)
+
+		void				MunchPWD(const void*pwd, size_t pwdlen, void*aes_key);
+		void				Crypt(void*data, size_t dataSize, int direction);
+
+	public:
+		static void			Wipe(void*ptr, size_t size)
 		{
 			volatile BYTE *p = (volatile BYTE*)ptr;
 			while ( size-- )
 				*p++ = 0;
 		}
 
-		void				MunchPWD(const void*pwd, size_t pwdlen, void*aes_key);
-		void				Crypt(void*data, size_t dataSize, int direction);
 
-	public:
 		/**/	AES(size_t internalKeyLenBytes=32):aes_keylen_bytes(internalKeyLenBytes)
 		{
 			mbedtls_aes_init( &aes_ctx );
@@ -58,7 +60,7 @@ namespace Encryption
 		virtual ~AES()
 		{
 			mbedtls_aes_free( &aes_ctx );
-			MakeZero( aes_key, ARRAYSIZE(aes_key) );
+			Wipe( aes_key, ARRAYSIZE(aes_key) );
 		}
 
 		void		Decrypt(void*data, size_t dataSize)
