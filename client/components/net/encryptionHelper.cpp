@@ -72,7 +72,7 @@ namespace Encryption
 
 	}
 
-	void				AES::Crypt(void*data, size_t dataSize, int direction)
+	void				AES::Crypt(const void*sourceData, void*destData, size_t dataSize, int direction)
 	{
 		if (!(dataSize%16))
 		{
@@ -80,19 +80,28 @@ namespace Encryption
 			//unsigned char		iv[ARRAYSIZE(aes_iv)];
 			//memcpy(iv,aes_iv,ARRAYSIZE(aes_iv));
 			int rc = mbedtls_aes_crypt_cbc( &aes_ctx, direction, dataSize,
-							tempIV.bytes, (const unsigned char*)data, (unsigned char*)data );
+							tempIV.bytes, (const unsigned char*)sourceData, (unsigned char*)destData );
 			Wipe(tempIV.bytes,InitializationVector::NumBytes);
 			ASSERT__(rc==0);
 			return;
 		}
-		size_t tempSize = ((dataSize/16)+1)*16;
-		ASSERT_GREATER__(tempSize,dataSize);
-		Array<BYTE>	temp(tempSize);
-		temp.Fill(0);
-		memcpy(temp.pointer(),data,dataSize);
-		Crypt(temp.pointer(),tempSize,direction);
-		memcpy(data,temp.pointer(),dataSize);
-		Wipe(temp.pointer(),temp.GetLength());
+		FATAL__("Cannot encrypt or decrypt data that is not in multiples of 16 bytes in size");
+		//size_t tempSize = ((dataSize/16)+1)*16;
+		//ASSERT_GREATER__(tempSize,dataSize);
+		//Array<BYTE>	temp(tempSize);
+		//temp.Fill(0);
+		//memcpy(temp.pointer(),data,dataSize);
+		//Crypt(temp.pointer(),tempSize,direction);
+		//memcpy(data,temp.pointer(),dataSize);
+		//Wipe(temp.pointer(),temp.GetLength());
+
+
+	}
+
+
+	void				AES::Crypt(void*data, size_t dataSize, int direction)
+	{
+		Crypt(data,data,dataSize,direction);
 	}
 
 

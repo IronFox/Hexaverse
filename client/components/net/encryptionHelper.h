@@ -42,6 +42,7 @@ namespace Encryption
 
 		void				MunchPWD(const void*pwd, size_t pwdlen, void*aes_key);
 		void				Crypt(void*data, size_t dataSize, int direction);
+		void				Crypt(const void*sourceData, void*destData, size_t dataSize, int direction);
 
 	public:
 		static void			Wipe(void*ptr, size_t size)
@@ -62,6 +63,60 @@ namespace Encryption
 			mbedtls_aes_free( &aes_ctx );
 			Wipe( aes_key, ARRAYSIZE(aes_key) );
 		}
+
+		static void		ExpandToCompatibleSize(Array<BYTE>&field)
+		{
+			if (!(field.GetContentSize()%16))
+				return;
+			count_t blocks = field.GetContentSize()/16 + 1;
+			field.resizePreserveContent(blocks * 16);
+		}
+
+		void		Decrypt(const Array<BYTE>&source, Array<BYTE>&dest)
+		{
+			ASSERT__(anyIV);
+			ASSERT__(pwdSet);
+			ASSERT__(!randomIV);
+			dest.SetSize(source.GetLength());
+			if (lastDirection != MBEDTLS_AES_DECRYPT)
+			{
+				mbedtls_aes_setkey_dec( &aes_ctx, aes_key, aes_keylen_bytes * 8 );
+				lastDirection = MBEDTLS_AES_DECRYPT;
+			}
+			Crypt(source.pointer(),dest.pointer(),dest.GetContentSize(),MBEDTLS_AES_DECRYPT);
+		}
+
+		void		Encrypt(const Array<BYTE>&source, Array<BYTE>&dest)
+		{
+			ASSERT__(anyIV);
+			ASSERT__(pwdSet);
+
+			if (!(source.GetContentSize()%16))
+			{
+				dest.SetSize(source.GetLength());
+				if (lastDirection != MBEDTLS_AES_ENCRYPT)
+				{
+					lastDirection = MBEDTLS_AES_ENCRYPT;
+					mbedtls_aes_setkey_enc( &aes_ctx, aes_key, aes_keylen_bytes * 8 );
+				}
+				Crypt(source.pointer(),dest.pointer(),dest.GetContentSize(),MBEDTLS_AES_ENCRYPT);
+				return;
+			}
+			size_t tempSize = ((source.GetContentSize()/16)+1)*16;
+			ASSERT_GREATER__(tempSize,source.GetContentSize());
+			Array<BYTE>	temp(tempSize);
+			temp.Fill(0);
+			temp.copyFrom(source.pointer(),source.GetLength());
+			dest.SetSize(tempSize);
+			if (lastDirection != MBEDTLS_AES_ENCRYPT)
+			{
+				lastDirection = MBEDTLS_AES_ENCRYPT;
+				mbedtls_aes_setkey_enc( &aes_ctx, aes_key, aes_keylen_bytes * 8 );
+			}
+			Crypt(temp.pointer(),dest.pointer(),dest.GetContentSize(),MBEDTLS_AES_ENCRYPT);
+			Wipe(temp.pointer(),temp.GetLength());
+		}
+
 
 		void		Decrypt(void*data, size_t dataSize)
 		{
