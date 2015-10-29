@@ -222,6 +222,7 @@ namespace Dialog
 			//	}
 			//	break;
 			//}
+			dialog->cancelButton = cancelButton;
 			dialog->confirmButton = confirmButton;
 			dialog->helpButton = helpButton;
 			dialog->noButton = noButton;
@@ -481,7 +482,7 @@ namespace Dialog
 	
 	}
 
-	WDialog	QueryPassword(const String&query, const FOnPassword&onPassword, const FCheckState&check)
+	WDialog	QueryPassword(const String&query, const FOnPassword&onPassword, const FCheckState&check, bool sendNullPasswordOnAbortByUser/*=false*/)
 	{
 		VerifyIntegrity(CLOCATION);
 		GUIElements::Input::onChange = Detail::OnInput;
@@ -493,11 +494,14 @@ namespace Dialog
 
 		ASSERT__(!d->isTutorial);
 
-
+		d->sendNullPasswordOnAbortByUser = sendNullPasswordOnAbortByUser;
 		d->onPassword = onPassword;
 		d->check = check;
 
 		d->confirmButton->DetectEnabledState();
+
+		if (sendNullPasswordOnAbortByUser)
+			d->cancelButton->SetOnPress([d](){d->onPassword(nullptr); d->DumpMe();});
 
 		d->ReLayout();
 		VerifyIntegrity(CLOCATION);
@@ -566,7 +570,13 @@ namespace Dialog
 
 		PDialog d = To<Dialog>::DynamicCast(window);
 		if (d)
+		{
+			if (d->onPassword && d->sendNullPasswordOnAbortByUser && (!d->check || d->check() == CheckResult::OkayContinue))
+			{
+				d->onPassword(nullptr);
+			}
 			Detail::visibleDialogs.FindAndErase(d);
+		}
 
 		if (index == Detail::visibleWindows.Count())
 		{
@@ -1007,6 +1017,15 @@ namespace Dialog
 			}
 			else
 			{
+				foreach (Detail::visibleDialogs,_d)
+				{
+					PDialog d = *_d;
+					if (d->onPassword && d->sendNullPasswordOnAbortByUser && (!d->check || d->check() == CheckResult::OkayContinue))
+					{
+						d->onPassword(nullptr);
+					}
+
+				}
 				Detail::visibleWindows.last()->Deactivate();
 				Detail::visibleWindows.Clear();
 				Detail::visibleDialogs.Clear();
