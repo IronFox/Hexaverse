@@ -37,7 +37,7 @@ namespace Dialog
 
 		//Type					type;
 
-		GUIElements::PButton	confirmButton,noButton,helpButton;
+		GUIElements::PButton	confirmButton,noButton,helpButton,cancelButton;
 		GUIElements::PInput		userInput;
 		GUIElements::PPasswordInput	passwordInput;
 		GUIElements::PLabel		textField;
@@ -52,7 +52,8 @@ namespace Dialog
 		FCheckInput			checkInput;
 		FFetchInput			fetchInput;
 		FOnPassword			onPassword;
-		bool				isTutorial = false;
+		bool				isTutorial = false,
+							sendNullPasswordOnAbortByUser = false;
 
 		Rect<>				totalSize;
 
@@ -129,7 +130,14 @@ namespace Dialog
 
 	WDialog	AskYesNoHelp(const String&query, const String&help, const FOnConfirmBool&onAnswer, const FCheckState&check);
 
-	WDialog	QueryPassword(const String&query, const FOnPassword&onPassword, const FCheckState&check);
+	/**
+	Show a new dialog that queries a password from the user
+	@param query Message to display, prompting the user to enter some password
+	@param onPassword Callback function to call once the user confirmed the input
+	@param check Check function to evaluate whether or not the dialog should be preserved
+	@param sendNullPasswordOnAbortByUser If set, pressing escape, or clicking the abort button will still call @a onPassword with nullptr as paramter
+	*/
+	WDialog	QueryPassword(const String&query, const FOnPassword&onPassword, const FCheckState&check, bool sendNullPasswordOnAbortByUser=false);
 	/**
 	Creates a new modal dialog that has no buttons and will remain until the check fails
 	*/
