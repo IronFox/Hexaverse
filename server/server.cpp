@@ -1891,7 +1891,7 @@ int main( int argc, const char* argv[])
 					if (peer)
 					{
 						LogEvent(EventType::SessionRelated,*peer,"Client ping timeout exceeded");
-						peer->Disconnect();
+						peer->DisconnectPeer();
 					}
 					else
 					{
