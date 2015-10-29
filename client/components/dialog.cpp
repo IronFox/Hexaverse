@@ -413,7 +413,7 @@ namespace Dialog
 				fetchInput(userInput->GetInput());
 			if (onPassword)
 			{
-				fetchInput(passwordInput->GetInput());
+				onPassword(passwordInput->GetInput());
 				passwordInput->WipeInput();
 			}
 			DumpMe();
