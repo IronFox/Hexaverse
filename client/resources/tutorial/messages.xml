@@ -38,7 +38,7 @@
 		Visualized are %FUEL%(fuel), %MINERALS%(minerals), and %URANIUM%(uranium).
 		The height of the respective bar indicates how much of this resource type can be harvested per round, once a mine is constructed atop it.
 		Dark flat discs indicate that there are no resources here. If nothing is rendered atop a cell then its resources are yet unknown.
-		Resources are identical independent of height, and serve different purposes. %FUEL% is consumed by generators to produce %ENERGY%, %MINERALS% is converted into structures, vehicles, and munition, and %URANIUM% is required for EMP-attacks.
+		Resources are identical independent of height, and serve different purposes. %FUEL% is consumed by generators to produce %ENERGY%, %MINERALS% is converted into structures, vehicles, and satellites, and %URANIUM% is required for EMP and Ragnarök attacks.
 	</message>
 	<message name='Show Ranges' image='Show Ranges.png'>
 		Depending on the selected turret type, %PRODUCT_NAME% uses spherical or paraboloid trajectories to compute the maximum attack range.
@@ -96,6 +96,25 @@
 	</message>
 	<message name='Hostile Contacts' image='contacts.png'>
 		Hostile contacts are visualized near the top of the window. Clicking on any of them will scroll the camera to view the respective contact.
+	</message>
+	<message name='Nexus Port'>
+		Nexus Ports serve multiple purposes. They are indestructible, and in most game modes owning and enabling them counts towards winning the game.
+		By building any structure next to them, they will change ownership to your faction. If all player structures in their neighborhood are lost, they switch back to the Nexus faction.
+		They also provide a significant quantity of resources per round, and can be used as a basis for Sky Hubs.
+	</message>
+	<message name='Sky Hub'>
+		Sky Hubs are your bridge into and out of orbit. They can build other satellites (including more Sky Hubs), as well as Sky Ports beneath them. Like other satellites, they require fuel to maintain their altitude.
+		They can be connected to a Sky Port or Nexus Port (visualized by an intense blue beam), in which case they will no longer need any fuel, and instead are able to provide fuel to other satellites nearby.
+		The further a satellite is from the next connected Sky Hub, the more fuel is lost in transit. 
+		Sky Hubs also serve as powerful sensors, capable of not only sensing distant objects in orbit, but also a portion of the terrain beneath them.
+	</message>
+	<message name='Sky Guardian'>
+		Sky Guardians are currently the only defensive object in orbit. Think of them as partially mobile defense towers. Similarly to towers, they can interrupt-attack moving satellites.
+	</message>
+	<message name='Ragnarök'>
+		Ragnarök is no joke. Slow and vulnerable in space, with a high fuel upkeep, and extreme amounts of uranium needs per shot, these satellites pack a serious punch.
+		A single shot can instantaneously vaporize dozens of hostile vehicles and/or structures (possibly including your own, if you are not careful), and blast huge holes into the ground.
+		Note that, depending on server settings, Ragnarök detonations may be made visible to all parties, even if they could not otherwise see the impact.
 	</message>
 	<message name='Mine' image='mine.png'>
 		Mines serve a crucial role in providing your compound with resources. Mines require %ENERGY%(energy) to operate, and provide whatever resources are available at the respective location.
