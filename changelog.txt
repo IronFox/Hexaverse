@@ -1,15 +1,14 @@
 v0.3.4		[Oct 19 2015]
-	Added server-setting to run multiple technite rounds per regular player round
-	Adjusted technite logic protocol to support these sub-rounds, as well as faction IDs
+	Added server-setting to run multiple technite rounds per regular player round.
+	Adjusted technite logic protocol to support these sub-rounds, as well as faction IDs.
 	
 v0.3.3		[Oct 18 2015]
 	Added game-object support for technites
-	Technite logic is now notified of current round number when tasked to process strategy
-	Decoupled player requesting new round and technite logic execution end. Only if both are set, a new round is requested
-	For technite-only factions, a new round is requested once the logic is done computing
-	Added option for the server to restrict the type of faction that can be newly created
-	The client will gray-out the respective buttons
-	Client will now also list servers for which it could not deserialize host information to indicate those are completely uncompativle
+	Technite logic is now notified of current round number when tasked to process strategy.
+	Decoupled player requesting new round and technite logic execution end. Only if both are set, a new round is requested.
+	For technite-only factions, a new round is requested once the logic is done computing.
+	Added option for the server to restrict the type of faction that can be newly created; the client will gray-out the respective buttons.
+	Client will now also list servers for which it could not deserialize host information to indicate those are completely uncompatible.
 
 v0.3.2		[Oct 14 2015]
 	Improved GUI system, tutorial messages, and general application stability.
