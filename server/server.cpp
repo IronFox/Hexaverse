@@ -1756,19 +1756,20 @@ int main( int argc, const char* argv[])
 
 		if (!newRoundNow)
 		{
-			count_t wantNewRound = 0,numTechniteFactions=0,numTechniteFactionsWantNewRound=0;
-			bool hasNexus = false;
+			count_t numFactions=0, wantNewRound = 0,
+					numTechniteFactions=0, numTechniteFactionsWantNewRound=0;
+			bool hasNexus = false,nexusWantsNewRound = false;
 			foreach(State::activePlayers, p)
 			{
-				//#ifndef _DEBUG
 				if ((*p)->faction == Objects::Faction::nexus)
 				{
 					ASSERT__(!hasNexus);
 					hasNexus = true;
-					//wantNewRound++;
-					//continue;
+					if ((*p)->wantNewRound)
+						nexusWantsNewRound = true;
+					continue;
 				}
-				//#endif
+				numFactions++;
 				if ((*p)->wantNewRound)
 					wantNewRound++;
 				if ((*p)->faction->IsTechniteFaction())
@@ -1781,10 +1782,14 @@ int main( int argc, const char* argv[])
 			if (State::InExtraTechniteRound() && numTechniteFactions > 0)
 			{
 				newRoundNow = numTechniteFactionsWantNewRound >= numTechniteFactions 
-							&& numTechniteFactionsWantNewRound > 0;
+							&& numTechniteFactionsWantNewRound > 0
+							;
 			}
 			else
-				newRoundNow = wantNewRound >= State::activePlayers.Count() && wantNewRound > (hasNexus ? 1U : 0U);
+				newRoundNow = wantNewRound >= numFactions
+							&& wantNewRound > 0
+							&& (!hasNexus || nexusWantsNewRound);
+				//wantNewRound > (hasNexus ? 1U : 0U);
 
 			if (newRoundNow)
 			{
