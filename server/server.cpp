@@ -1813,7 +1813,7 @@ int main( int argc, const char* argv[])
 				return (Grid::low.cells[e->location.stackID].cornerFlags & State::unlockedEMPZones) != 0;
 			});
 
-			if (!State::InExtraTechniteRound())
+			if (!InExtraTechniteRound())
 				ProcessAICoverage();
 
 
