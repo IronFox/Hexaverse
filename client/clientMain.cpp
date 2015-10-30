@@ -3767,7 +3767,16 @@ int main( int argc, const char* argv[])
 			mainMenu->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
 			mainMenu->FullAutoLayout();
 
-			Dialog::loginMenu->AddCommand("Continue existing faction",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},[](){return Network::amOnline && !Network::haveFaction && Network::HaveFactionKeyForCurrentWorld() && Network::serverPhase == Protocol::Phase::CommandPhase;});
+			Dialog::loginMenu->AddCommand("Continue existing faction",[](){Network::AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);},
+			[]()
+			{
+				return Network::amOnline && !Network::haveFaction 
+				#ifndef _DEBUG
+				&& Network::HaveFactionKeyForCurrentWorld() 
+				#endif
+				&& Network::serverPhase == Protocol::Phase::CommandPhase;
+			}
+			);
 			AddFactionCreationChoice("Create new faction",Protocol::FactionType::RegularFaction, Protocol::GameFlag::SupportRegularFactions);
 
 			
