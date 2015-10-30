@@ -1,5 +1,6 @@
 #include <global_root.h>
 #include "vehicle.h"
+#include "satellite.h"
 #include "rendering.h"
 #include "prototypes.h"
 #include "systems.h"
@@ -337,6 +338,8 @@ namespace Objects
 
 					foreach (vehicles,_v)
 						ProcessVisibilityOf(*_v,timeAt);
+					foreach (satellites,_s)
+						ProcessVisibilityOf(*_s,timeAt);	//satellites can look down
 					foreach (structures,v)
 					{
 						if (!ProcessVisibilityOfS(*v,timeAt))

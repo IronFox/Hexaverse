@@ -919,7 +919,7 @@ namespace Network
 				Channels::clientStateSender.SendTo(client,state);	//elevate client state
 
 				if (RuntimeConfig::aiMode)
-					AttemptFactionLogin(false,Protocol::FactionType::RegularFaction);
+					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);
 				lastPong = timer.Now();
 
 
