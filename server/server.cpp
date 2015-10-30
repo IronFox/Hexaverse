@@ -1789,8 +1789,6 @@ int main( int argc, const char* argv[])
 				newRoundNow = wantNewRound >= numFactions
 							&& wantNewRound > 0
 							&& (!hasNexus || nexusWantsNewRound);
-				//wantNewRound > (hasNexus ? 1U : 0U);
-
 			if (newRoundNow)
 			{
 				LogEvent(EventType::SessionRelated,"All players have requested a new round. Commencing...");
