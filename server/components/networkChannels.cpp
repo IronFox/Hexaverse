@@ -337,7 +337,7 @@ namespace Receiver
 
 		bool newFaction = false;
 
-		if (State::Config::enableNexusAI && Objects::Faction::nexus->accessToken == response.factionToken && (peer.ToString() == "localhost" || peer.ToString() == "127.0.0.1"))
+		if (State::Config::enableNexusAI && Objects::Faction::nexus->accessToken == response.factionToken && (peer.ToString(false) == "localhost"))
 		{
 			LogEvent(EventType::SessionRelated, peer, "Access to nexus faction permitted.");
 			faction = Objects::Faction::nexus;
