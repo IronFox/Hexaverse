@@ -87,6 +87,7 @@ namespace Objects
 
 		void	RenderBeam(const TVec3<>&base, float height, float width, const float4&bottomColor, const TVec4<>&topColor);
 		void	RenderBeam(const TVec3<>&base, float height, float width);
+		void	RenderPoleBeam(int pole, float width);
 		void	SetBeamColor(const float4&bottomColor, const TVec4<>&topColor);
 
 
@@ -151,7 +152,7 @@ namespace Objects
 		void	RenderTranslucent();
 
 		/**
-		Renders light shafts for satellites.
+		Renders light shafts for satellites, as well as less visible ones atop every significant world pole
 		*/
 		void	RenderTranslucentBeams();
 
