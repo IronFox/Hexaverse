@@ -2338,11 +2338,12 @@ bool loop()
 			textout.color(1,1,1);
 			textout.locate(0,1);
 			textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFaction ? "logged in" : "not logged in")<< nl;
-			textout << "My name: '"<<Network::chosenNickname<<"'"<<nl;
+			textout << "Hello "<<Network::chosenNickname<<nl;
 			if (Network::amOnline)
 			{
 				textout << "Server ID: " << Network::serverIDString<<nl;
 				textout << "World ID: " << Network::worldIDString<<nl;
+				textout << "Game Goal: "<<Objects::RuntimeConfig::gameGoal.ToString() << nl;
 				#ifdef _DEBUG
 					textout << "Access ID: " << Network::activeTokenString<<nl;
 				#endif
