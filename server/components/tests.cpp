@@ -934,6 +934,7 @@ namespace Test
 			}
 			elif(energyA < energyB)
 			{
+				//this triggers sometimes. i suspect the reason is due to different energy gain per round. BeginProcessing will also give more energy to each technite due to sun impact. But this is not required to be equal
 				ASSERT__(a->technites.IsEmpty());
 			}
 
