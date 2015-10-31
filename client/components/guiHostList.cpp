@@ -74,13 +74,13 @@ void	SaveHosts()
 		String result;
 		switch (info.gameGoal)
 		{
-			case Protocol::GameGoal::ConquerNexus:
+			case Objects::RuntimeConfig::GameGoal::ConquerNexus:
 				result="Conquer Nexus";
 			break;
-			case Protocol::GameGoal::EMPConquerNexus:
+			case Objects::RuntimeConfig::GameGoal::EMPConquerNexus:
 				result="Conquer Nexus, EMP-Zones";
 			break;
-			case Protocol::GameGoal::None:
+			case Objects::RuntimeConfig::GameGoal::None:
 				result="No Goal";
 			break;
 		}
@@ -150,7 +150,7 @@ void	SaveHosts()
 				Network::worldID = info->info.worldID;
 				Network::worldIDString = Network::worldID.ToNiceString();
 				Network::gameFlags = info->info.gameFlags;
-				Network::gameGoal = Protocol::GameGoal::Reinterpret(info->info.gameFlags);
+				Objects::RuntimeConfig::gameGoal = Objects::RuntimeConfig::GameGoal::Reinterpret(info->info.gameGoal);
 				Network::client.ConnectAsync(info->urls[best].first + ":"+String(SERVICE_PORT));
 			});
 

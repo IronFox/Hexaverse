@@ -21,6 +21,8 @@ namespace Objects
 	namespace RuntimeConfig
 	{
 		DoomsdayWeapons doomsdayWeapons;
+		GameGoal gameGoal;
+
 		bool hibernationSystemEnabled = false;
 
 
