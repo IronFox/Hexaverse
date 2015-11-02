@@ -1164,7 +1164,25 @@
 
 			void					RefreshContacts()
 			{
-				currentContactListWidth = std::max(1, int((display.pixelAspect()-0.67f)*15));
+				//this is off:
+				//currentContactListWidth = std::max(1, int((display.pixelAspect()-0.67f)*15));
+
+				const float viewPortRange = 2.f * display.pixelAspect();
+				const float screenRelativeRightPanel = 300.f / display.clientWidth();
+				const float inViewPortRange = screenRelativeRightPanel * viewPortRange;
+				const int hexOffset = 5;
+				const float leftOffset = stepX *2 * hexOffset + float(1 - (hexOffset % 2)) * stepX;
+				const float remainder = viewPortRange - inViewPortRange - leftOffset;
+				const int iconRange = std::max(3,(int)(remainder / stepX / 2));
+				currentContactListWidth = iconRange-2;
+
+
+				//camera.UpdateProjection2(-1,-1,-1+2.f * display.pixelAspect(),1,-1,1);
+				float len = 300.f / display.clientWidth();
+				textout.locate(1.f - len,0.95f);
+
+
+
 				if (rightCommand)
 					rightCommand->coords.x = int(ContactListOffset.x + 1+currentContactListWidth);
 				DeleteAllCellsOfType(GridCell::ContactListEntry);
