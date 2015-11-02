@@ -23,8 +23,10 @@ namespace Objects
 
 	namespace RuntimeConfig
 	{
+		CONSTRUCT_ENUMERATION3(GameGoal, None, ConquerNexus, EMPConquerNexus);
 		CONSTRUCT_ENUMERATION3(DoomsdayWeapons, Expose, Conceal, Disallow);
 		extern DoomsdayWeapons doomsdayWeapons;
+		extern GameGoal gameGoal;
 		extern bool hibernationSystemEnabled;
 
 		namespace UnitLimits

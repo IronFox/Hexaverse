@@ -141,7 +141,6 @@ namespace State
 		Array<String>			nexusVehicleTurretNames;	//used during config loading, identical to nexusVehicleTurrets later
 		
 
-		Goal		goal;
 		
 
 		namespace NexusPorts
@@ -1586,7 +1585,7 @@ void	State::Load(const String&filename)
 							GetOptionalPOD(list,RID::nexusBases,State::Config::NexusPorts::haveBases,false);
 							UINT16 goal;
 							GetPOD(list,RID::goal,goal);
-							State::Config::goal = State::Config::Goal::Reinterpret(goal);
+							Objects::RuntimeConfig::gameGoal = State::Config::Goal::Reinterpret(goal);
 							GetPOD(list,RID::startBases,State::Config::startBases);
 							GetPOD(list,RID::basesRequired,State::Config::basesRequired );
 							GetOptionalPOD(list,RID::newVehiclesHaveFullAmmo,Objects::newVehiclesHaveFullAmmo,true);
@@ -1895,7 +1894,7 @@ void	State::Load(const String&filename)
 
 
 
-	if (State::Config::goal == State::Config::Goal::EMPConquerNexus)
+	if (Objects::RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
 	{
 		count_t numZones = State::Config::CountAccessibleZones();
 
@@ -1973,7 +1972,7 @@ void	State::Save( const String&name)
 	general->AppendBlock(RID::extraTechniteRounds)->SetPODData(State::Config::extraTechniteRounds);
 	general->AppendBlock(RID::closedGame)->SetPODData(State::Config::closedGame);
 	general->AppendBlock(RID::nexusBases)->SetPODData(State::Config::NexusPorts::haveBases);
-	general->AppendBlock(RID::goal)->SetPODData((UINT16)State::Config::goal);
+	general->AppendBlock(RID::goal)->SetPODData((UINT16)Objects::RuntimeConfig::gameGoal);
 	if (State::Config::enableNexusAI)
 		general->AppendBlock(RID::nexusAI);
 	general->AppendBlock(RID::startBases)->SetPODData(State::Config::startBases);

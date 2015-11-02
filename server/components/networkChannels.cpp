@@ -248,7 +248,7 @@ namespace Receiver
 			//avoid 12 corner cells: make sure all candidates have 6 neighbors
 			for (index_t i = 12; i < Grid::LowSetup::GridType::CellCount; i++)
 			{
-				if (State::Config::goal == State::Config::Goal::EMPConquerNexus)
+				if (Objects::RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
 				{
 					if (!(State::unlockedEMPZones & Grid::low.grid.GetCell(i).cornerFlags))
 						continue;
@@ -331,7 +331,7 @@ namespace Receiver
 
 	static void UpdateEMPZones(count_t inc)
 	{
-		if (State::Config::goal == State::Config::Goal::EMPConquerNexus)
+		if (Objects::RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
 		{
 			count_t numZones = Objects::Faction::all.Count()+inc;	//not counting nexus faction, but counting new faction(s)
 			numZones = (numZones/3) + !!(numZones % 3);

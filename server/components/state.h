@@ -105,9 +105,8 @@ namespace State
 		extern Array<Objects::Component::Turret*>	nexusVehicleTurrets;
 		extern Array<String>			nexusVehicleTurretNames;	//used during config loading, identical to nexusVehicleTurrets later
 		
-		typedef Protocol::GameGoal	Goal;
+		typedef Objects::RuntimeConfig::GameGoal	Goal;
 
-		extern Goal		goal;
 
 		inline count_t	CountAccessibleZones()
 		{
@@ -162,7 +161,7 @@ namespace State
 
 		inline count_t	GetTargetNexusCount()
 		{
-			return goal == Goal::EMPConquerNexus ? std::min<count_t>(std::max<count_t>(2,CountAccessibleZones()),3) : 3;
+			return Objects::RuntimeConfig::gameGoal == Goal::EMPConquerNexus ? std::min<count_t>(std::max<count_t>(2,CountAccessibleZones()),3) : 3;
 			//goal == Goal::EMPConquerNexus ? 3 : 2;
 		}
 

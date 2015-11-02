@@ -1,0 +1,54 @@
+#include <global_root.h>
+#include "serverLogEvent.h"
+
+#include "networkChannels.h"
+
+namespace Logging
+{
+	void SendEntityEvent( TCP::Peer*toPeer,EventType type, const Objects::WorldEntity*e, const String&msg)
+	{
+		if (type == EventType::PerformanceMeasurement ||
+			type == EventType::Debug || type == EventType::MinorEntityProcess || !State::server.IsOnline())
+			return;
+		if (!toPeer && e)
+		{
+			State::PClient*cl = State::playerMap.QueryPointer(e->owner);
+			if (cl)
+				toPeer = (*cl)->peer.lock().get();
+			else
+				return;	//still private
+		}
+
+
+		Protocol::ControlMessage out;
+
+		if (e)
+			out.message = e->GetNiceName()+": "+msg;
+		else
+			out.message = msg;
+		out.type = (BYTE)type;
+
+		if (toPeer)
+		{
+			out.message = "[private] "+out.message;
+			Channels::controlMessage.SendTo(*toPeer,out);
+		}
+		else
+			Channels::controlMessage.SendTo(State::server,out);
+	}
+}
+
+void LogEvent(EventType t, TCP::Peer&peer, const String&msg)
+{
+	Logging::SendEntityEvent(&peer,t,nullptr,msg);
+
+	Logging::WriteEvent(t,msg,&peer,nullptr);
+}
+
+void LogEvent(EventType t, TCP::Peer&peer, const Objects::PWorldEntity&e, const String&msg)
+{
+	Logging::SendEntityEvent(&peer,t,e.get(),msg);
+	Logging::WriteEvent(t,msg,&peer,e.get());
+}
+
+

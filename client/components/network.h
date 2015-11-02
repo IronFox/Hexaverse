@@ -30,7 +30,6 @@ namespace Network
 
 	extern TUniqueID			myID,serverID,worldID;
 	extern UINT32				gameFlags;
-	extern Protocol::GameGoal	gameGoal;
 	extern CryptographicID		activeToken;
 	extern String				myIDString,serverIDString,worldIDString,activeTokenString;
 	extern Objects::OwnerParameter myFaction;

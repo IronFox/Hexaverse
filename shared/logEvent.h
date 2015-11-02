@@ -26,14 +26,49 @@ CONSTRUCT_ENUMERATION18(EventType,
 						)
 
 
+inline bool IsImportant(EventType t)
+{
+	switch (t)
+	{
+	case EventType::Fatal:
+	case EventType::UnexpectedBehavior:
+	case EventType::InternalFault:
+	case EventType::CommandRejected:
+		return true;
+	default:
+		return false;
+	};
+	
+}
+
 namespace Objects
 {
 	class WorldEntity;
 
 }
 
-void LogEvent(EventType, const Objects::WorldEntity*, const String&);
 
+
+
+
+
+extern bool		inTestMode /*= false*/;
+
+
+namespace Logging
+{
+	void	End();
+	void	Begin(const String&path);
+
+	String	TimeStamp(bool filename=false);
+}
+
+void		LogEvent(EventType, const Objects::WorldEntity*, const String&);
+
+inline void LogEvent(EventType type, const String&msg)
+{
+	::LogEvent(type,nullptr,msg);
+}
 
 
 
