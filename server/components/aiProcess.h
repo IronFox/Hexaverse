@@ -2,7 +2,6 @@
 #define aiProcessH
 
 #include "../../shared/uniqueID.h"
-#include "../../shared/monitoredProcess.h"
 
 namespace AIProcess
 {
