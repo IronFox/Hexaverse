@@ -248,7 +248,7 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 
-		void WorldEntity::AppendDeploymentCount(BaseCommand::Label&outResult, const OwnerParameter&overrideOwner)	const
+		String	WorldEntity::CompileDeploymentCount(const OwnerParameter&overrideOwner)	const
 		{
 			if (RuntimeConfig::UnitLimits::AnySet())
 			{
@@ -273,9 +273,16 @@ namespace Objects
 				else
 					FATAL__("Unexpected entity type: "+GetName());
 
-				outResult << " Deployed: "+String(cnt)+"/"+String(limit);
+				return " Deployed: "+String(cnt)+"/"+String(limit);
 
 			}
+			return "";
+		}
+
+		void WorldEntity::AppendDeploymentCount(BaseCommand::Label&outResult, const OwnerParameter&overrideOwner)	const
+		{
+			if (RuntimeConfig::UnitLimits::AnySet())
+				outResult << CompileDeploymentCount(overrideOwner);
 		}
 
 		void WorldEntity::DescribeType(BaseCommand::Label&outResult, UINT32 descFlags)

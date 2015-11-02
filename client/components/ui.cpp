@@ -508,7 +508,10 @@
 			{
 				outResult << name;
 				if (target->isMine)
+				{
 					outResult << "Owner: me";
+					target->AppendDeploymentCount(outResult, target->owner);
+				}
 				else
 					outResult << "Owner: "+target->owner->GetName();
 				if (target->health > 0)
@@ -532,7 +535,7 @@
 					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
 
 				outResult.MarkBriefEnd();
-				target->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice | Objects::WorldEntity::DescIncludeUnitCount);
+				target->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice/* | Objects::WorldEntity::DescIncludeUnitCount*/);
 
 			}
 
@@ -540,7 +543,10 @@
 			{
 				outResult << name;
 				if (target->isMine)
+				{
 					outResult << "Owner: me";
+					target->AppendDeploymentCount(outResult, target->owner);
+				}
 				else
 					outResult << "Owner: "+target->owner->GetName();
 				if (target->health > 0)
@@ -567,7 +573,7 @@
 					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
 
 				outResult.MarkBriefEnd();
-				target->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice | Objects::WorldEntity::DescIncludeFuelDemandModifier | Objects::WorldEntity::DescIncludeUnitCount);
+				target->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice | Objects::WorldEntity::DescIncludeFuelDemandModifier /*| Objects::WorldEntity::DescIncludeUnitCount*/);
 			}
 
 			/*virtual override*/ void	StructureFocusCommand::CompileLabel(const Objects::PWorldEntity&,Label&outResult)
@@ -576,7 +582,10 @@
 				Objects::PTurretBase target = structure->GetTurretBase();
 				outResult << name;
 				if (structure->isMine)
+				{
 					outResult << "Owner: me";
+					structure->AppendDeploymentCount(outResult, structure->owner);
+				}
 				else
 					outResult << "Owner: "+structure->owner->GetName();
 				if (structure->health > 0)
@@ -599,7 +608,7 @@
 					outResult << "EMP-Damage detected ("+String(structure->empDamageLevel)+")";
 
 				outResult.MarkBriefEnd();
-				structure->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice | Objects::WorldEntity::DescIncludeUnitCount);
+				structure->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice /*| Objects::WorldEntity::DescIncludeUnitCount*/);
 
 			}
 
@@ -669,7 +678,13 @@
 					
 				outResult << name;
 				if (instance->isMine)
-					outResult << "Owner: me";
+				{
+//					outResult << "Owner: me";
+					if (instance->health > 0)
+					{
+						proto->AppendDeploymentCount(outResult, group->entries.first()->owner);
+					}
+				}
 				else
 					outResult << "Owner: "+instance->owner->GetName();
 				if (instance->health > 0)
@@ -700,7 +715,7 @@
 				outResult.MarkBriefEnd();
 				Objects::OwnerParameter old = proto->owner;
 				proto->owner = group->entries.first()->owner;	//crude, but either it's set already, or this is a global prototype in which case ownership don't matter
-				proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice | Objects::WorldEntity::DescIncludeUnitCount);
+				proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice /*| Objects::WorldEntity::DescIncludeUnitCount*/);
 				proto->owner = old;
 
 				//if (e->IsVehicle())
@@ -1149,7 +1164,25 @@
 
 			void					RefreshContacts()
 			{
-				currentContactListWidth = std::max(1, int((display.pixelAspect()-0.67f)*15));
+				//this is off:
+				//currentContactListWidth = std::max(1, int((display.pixelAspect()-0.67f)*15));
+
+				const float viewPortRange = 2.f * display.pixelAspect();
+				const float screenRelativeRightPanel = 300.f / display.clientWidth();
+				const float inViewPortRange = screenRelativeRightPanel * viewPortRange;
+				const int hexOffset = 5;
+				const float leftOffset = stepX *2 * hexOffset + float(1 - (hexOffset % 2)) * stepX;
+				const float remainder = viewPortRange - inViewPortRange - leftOffset;
+				const int iconRange = std::max(3,(int)(remainder / stepX / 2));
+				currentContactListWidth = iconRange-2;
+
+
+				//camera.UpdateProjection2(-1,-1,-1+2.f * display.pixelAspect(),1,-1,1);
+				float len = 300.f / display.clientWidth();
+				textout.locate(1.f - len,0.95f);
+
+
+
 				if (rightCommand)
 					rightCommand->coords.x = int(ContactListOffset.x + 1+currentContactListWidth);
 				DeleteAllCellsOfType(GridCell::ContactListEntry);
@@ -1814,7 +1847,22 @@
 
 			textout << " Owner: "<<e.owner->GetName();
 			if (e.isMine)
+			{
 				textout<<" (me)";
+				static const Objects::WorldEntity *last=nullptr;
+				static String lastDeployed;
+				if (last != &e)
+				{
+					last = &e;
+					lastDeployed = e.CompileDeploymentCount(e.owner);
+				}
+				textout.PushColorState();
+				textout.color(0.6,0.7,1.f);
+				textout << nl << lastDeployed;
+
+				textout.PopColorState();
+
+			}
 			textout << nl;
 			textout << " Scanning-Range: "<<e.GetScanningRange() << nl;
 			#ifndef NO_HIBERNATION
