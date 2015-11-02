@@ -1,5 +1,6 @@
-v0.3.5
-	Implemented experimental game goal markers in the terrain to indicate where nexus ports and bases are located.
+v0.3.5		[Nov 2 2015]
+	Implemented experimental game goal markers in the terrain to indicate where nexus ports (blue) and AI bases (red) are located.
+	Regular explosions now dissipate when occuring within residual EMP field.
 
 v0.3.4		[Oct 19 2015]
 	Added server-setting to run multiple technite rounds per regular player round.
