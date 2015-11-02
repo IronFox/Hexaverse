@@ -1,7 +1,7 @@
 #include <global_root.h>
 #include "techniteLogicLink.h"
 #include "network.h"
-#include "../../shared/monitoredProcess.h"
+#include <general/monitoredProcess.h>
 #include <io/file_system.h>
 
 #include "dialog.h"
