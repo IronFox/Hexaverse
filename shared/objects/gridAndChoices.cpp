@@ -272,6 +272,13 @@ namespace Objects
 				LogEvent(EventType::CommandRejected,nullptr,"Unable to process doomsday explosion: disallowed");
 				return;
 			}
+
+			if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::EMPConquerNexus && Grid::AffectedByEMP(targetCell))
+			{
+				LogEvent(EventType::CommandRejected,nullptr,"Explosion dissipated due to EMP field in target area");
+				return;
+			}
+
 			SignalExplosion(attackFrom, traceTo, flightTime, 
 							center,explosionRadius,false,
 							doomsday,
