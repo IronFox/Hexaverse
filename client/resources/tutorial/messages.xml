@@ -126,7 +126,7 @@
 		In connector-less mode, resources are magically transferred by invisible elves, so you need not worry about building connectors. But you will need Mines to provide the necessary %FUEL%
 		<!--You should directly or indirectly connect them with a Mine that provides %FUEL%.-->
 	</message>
-	<message name='Vehicle Plant' image='vehiclePlant.png'>
+	<message name='Vehicle Plant' image='vehiclePlant.jpg'>
 		Vehicle Plants allow the manufacturing of vehicles. To operate they require %ENERGY%(energy) and %MINERALS%(minerals).
 		To issue a production job first select a turret from the top row, then a base from the bottom row, and then click on 'Construct Selected' button.
 		Once production is done free space is required to deploy the finished vehicle. When constructing this building make sure that enough space exists. Important: Some vehicles cannot be deployed on water.
