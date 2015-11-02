@@ -1449,40 +1449,6 @@ namespace Objects
 		display.SetDepthTest(true,false);
 		display.SetBlendMode(Engine::BlendMode::Add);
 
-		switch (RuntimeConfig::gameGoal)
-		{
-			case RuntimeConfig::GameGoal::EMPConquerNexus:
-				for (int i = 0; i < 12; i++)
-				{
-					TVec3<> color;
-					if (BaseGrid::IsIsolatedCorner(i))
-					{
-						color= float3(1.0,0.6,0.5);
-					}
-					else
-						color= float3(0.5,0.6,1.0);
-					SetBeamColor(float4(color,0.75),
-								float4(color,0.75));
-					RenderPoleBeam(i,0.2f);
-				}
-			break;
-			case RuntimeConfig::GameGoal::ConquerNexus:
-				for (int i = 0; i < 12; i++)
-				{
-					TVec3<> color;
-					if (BaseGrid::IsIsolatedCorner(i))
-					{
-						color= float3(1.0,0.6,0.5);
-					}
-					else
-						continue;
-					SetBeamColor(float4(color,0.75),
-								float4(color,0.75));
-					RenderPoleBeam(i,0.2f);
-				}
-			break;
-		}
-
 		foreach (satellites,_s)
 		{
 			const PSatellite&sat = *_s;
@@ -1530,11 +1496,16 @@ namespace Objects
 			}
 		}
 
+		bool nexusSet[12] = {false};
 
 		foreach(skyLinks, _s)
 		{
 			const PSkyLinkStructure&link = _s->first;
 			const PWorkingStructure&ws = _s->second;
+			if (ws->location.stackID < 12)
+				nexusSet[ws->location.stackID] = true;
+
+
 			{
 				bool render = false;
 				int h1;
@@ -1581,6 +1552,46 @@ namespace Objects
 			}
 
 		}
+
+		switch (RuntimeConfig::gameGoal)
+		{
+			case RuntimeConfig::GameGoal::EMPConquerNexus:
+				for (int i = 0; i < 12; i++)
+				{
+					if (nexusSet[i])
+						continue;
+					TVec3<> color;
+					if (BaseGrid::IsIsolatedCorner(i))
+					{
+						color= float3(1.0,0.6,0.5);
+					}
+					else
+						color= float3(0.5,0.6,1.0);
+					SetBeamColor(float4(color,0.75),
+								float4(color,0.75));
+					RenderPoleBeam(i,0.2f);
+				}
+			break;
+			case RuntimeConfig::GameGoal::ConquerNexus:
+				for (int i = 0; i < 12; i++)
+				{
+					if (nexusSet[i])
+						continue;
+					TVec3<> color;
+					if (BaseGrid::IsIsolatedCorner(i))
+					{
+						color= float3(1.0,0.6,0.5);
+					}
+					else
+						continue;
+					SetBeamColor(float4(color,0.75),
+								float4(color,0.75));
+					RenderPoleBeam(i,0.2f);
+				}
+			break;
+		}
+
+
 		display.SetDepthTest(true,true);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 		display.SetRasterizer(true,true);
