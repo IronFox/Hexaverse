@@ -272,6 +272,13 @@ namespace Objects
 				LogEvent(EventType::CommandRejected,nullptr,"Unable to process doomsday explosion: disallowed");
 				return;
 			}
+
+			if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::EMPConquerNexus && Grid::AffectedByEMP(targetCell))
+			{
+				LogEvent(EventType::CommandRejected,nullptr,"Explosion dissipated due to EMP field in target area");
+				return;
+			}
+
 			SignalExplosion(attackFrom, traceTo, flightTime, 
 							center,explosionRadius,false,
 							doomsday,
@@ -762,8 +769,11 @@ namespace Objects
 		choices.Clear();	
 		const auto&n = Grid::low.grid.GetCell(producer->location.stackID).neighborhood;
 
-		for (int j =  -producer->location.height + 1; j <= 1; j++)
+		for (int j =  -1; j <= 1 + producer->GetHeight(); j++)
 		{
+			int h = producer->location.height + j;
+			if (h < Grid::CellStack::BottomHeight || h > Grid::CellStack::TopHeight)
+				continue;
 			if (!production->CanClimb(j))
 				continue;
 			for (int i = 0; i < n.numNeighbors; i++)
