@@ -6,7 +6,6 @@
 
 extern bool		inTestMode /*= false*/;
 
-
 namespace Logging
 {
 	/**
@@ -18,24 +17,10 @@ namespace Logging
 	Sends an event to a peer
 	*/
 	void	SendEntityEvent(TCP::Peer*toPeer,EventType type, const Objects::WorldEntity*e, const String&msg);
-
-	void	End();
-	void	Begin(const String&path);
-
-	String	TimeStamp(bool filename=false);
-
-
 }
 
-void		LogEvent(EventType, const Objects::WorldEntity*, const String&);
 void		LogEvent(EventType t, TCP::Peer&p, const String&msg);
 void		LogEvent(EventType t, TCP::Peer&p, const Objects::PWorldEntity&e, const String&msg);
-
-inline void LogEvent(EventType type, const String&msg)
-{
-	::LogEvent(type,nullptr,msg);
-}
-
 
 
 

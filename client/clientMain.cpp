@@ -143,7 +143,7 @@ SpinLock	eventLock;
 	Buffer<VisualEvent,0,Adopt>	events;
 #endif
 
-LogFile	eventLog;
+//LogFile	eventLog;
 
 
 
@@ -333,6 +333,30 @@ void	SignalRoundEnd()
 }
 
 #ifdef HAS_WINDOW
+
+	void VisualLogEvent( EventType type,  const Objects::WorldEntity*e, const String&_event)
+	{
+		String event = _event, outEvent = _event;
+		if (e)
+		{
+			event = e->owner->GetName()+","+ e->GetNiceName()+": "+event;
+			outEvent = e->owner->GetLogName()+","+ e->GetName()+": "+event;
+		}
+		eventLock.lock();
+		if (type != EventType::Debug && type != EventType::PerformanceMeasurement && type != EventType::MinorEntityProcess)
+		{
+			#ifdef HAS_WINDOW
+				if (type == EventType::ChatMessage)
+					events << VisualEvent("",EventType::Debug);
+				events << VisualEvent(event,type);
+			#else
+				std::cout << event << std::endl;
+			#endif
+		}
+		eventLock.unlock();
+	}
+
+
 	bool	IsFullScreen()
 	{
 		Resolution screen = display.getScreenSize();
@@ -2342,11 +2366,12 @@ bool loop()
 			textout.color(1,1,1);
 			textout.locate(0,1);
 			textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFaction ? "logged in" : "not logged in")<< nl;
-			textout << "My name: '"<<Network::chosenNickname<<"'"<<nl;
+			textout << "Hello "<<Network::chosenNickname<<nl;
 			if (Network::amOnline)
 			{
 				textout << "Server ID: " << Network::serverIDString<<nl;
 				textout << "World ID: " << Network::worldIDString<<nl;
+				textout << "Game Goal: "<<Objects::RuntimeConfig::gameGoal.ToString() << nl;
 				#ifdef _DEBUG
 					textout << "Access ID: " << Network::activeTokenString<<nl;
 				#endif
@@ -2943,28 +2968,28 @@ String GenerateOreName(Random&random)
 
 }
 
-void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_event)
-{
-	String event = _event, outEvent = _event;
-	if (e)
-	{
-		event = e->owner->GetName()+","+ e->GetNiceName()+": "+event;
-		outEvent = e->owner->GetLogName()+","+ e->GetName()+": "+event;
-	}
-	eventLock.lock();
-	if (type != EventType::Debug && type != EventType::PerformanceMeasurement && type != EventType::MinorEntityProcess)
-	{
-		#ifdef HAS_WINDOW
-			if (type == EventType::ChatMessage)
-				events << VisualEvent("",EventType::Debug);
-			events << VisualEvent(event,type);
-		#else
-			std::cout << event << std::endl;
-		#endif
-	}
-	eventLog.Log(String(Network::roundNumber)+tab+ Network::serverPhase.ToString()   + tab + outEvent,true);
-	eventLock.unlock();
-}
+//void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_event)
+//{
+//	String event = _event, outEvent = _event;
+//	if (e)
+//	{
+//		event = e->owner->GetName()+","+ e->GetNiceName()+": "+event;
+//		outEvent = e->owner->GetLogName()+","+ e->GetName()+": "+event;
+//	}
+//	eventLock.lock();
+//	if (type != EventType::Debug && type != EventType::PerformanceMeasurement && type != EventType::MinorEntityProcess)
+//	{
+//		#ifdef HAS_WINDOW
+//			if (type == EventType::ChatMessage)
+//				events << VisualEvent("",EventType::Debug);
+//			events << VisualEvent(event,type);
+//		#else
+//			std::cout << event << std::endl;
+//		#endif
+//	}
+//	eventLog.Log(String(Network::roundNumber)+tab+ Network::serverPhase.ToString()   + tab + outEvent,true);
+//	eventLock.unlock();
+//}
 
 
 #ifdef HAS_WINDOW
@@ -3552,7 +3577,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 		Network::ServerDiscovery::RegisterNewHost(RuntimeConfig::serverURL, false,true);
 	}
 
-	eventLog.Create(RuntimeConfig::aiMode ? "AI.log": PRODUCT_NAME".log",true);
+	Logging::Begin(RuntimeConfig::aiMode ? "AI.log": PRODUCT_NAME".log");
 
 	//(PRODUCT_NAME".log",true,true)
 	return true;
@@ -3860,6 +3885,8 @@ int main( int argc, const char* argv[])
 		#ifdef HAS_WINDOW
 			display.destroy();
 		#endif
+
+		Logging::End();
 
 
 		TerminateProcess(GetCurrentProcess(),0);	//self-terminate

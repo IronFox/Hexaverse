@@ -363,7 +363,7 @@ void	SignalNexusControlChange(const Objects::PFaction&f)
 {
 	if (State::phase == Protocol::Phase::EndOfGame)
 		return;
-	if (State::Config::goal == State::Config::Goal::ConquerNexus || State::Config::goal == State::Config::Goal::EMPConquerNexus)
+	if (Objects::RuntimeConfig::gameGoal == State::Config::Goal::ConquerNexus || Objects::RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
 	{
 		if (f->nexusControl >= State::Config::GetTargetNexusCount())
 		{
@@ -633,7 +633,7 @@ namespace InformationProvider
 				info.numPlayers = (UINT16)State::activePlayers.Count();
 				info.roundNumber = (UINT32)State::roundNumber;
 				info.worldID = State::worldID;
-				info.gameGoal = (UINT32)State::Config::goal;
+				info.gameGoal = (UINT32)Objects::RuntimeConfig::gameGoal;
 				info.gameFlags = 0;
 				if (State::Config::closedGame)
 					info.gameFlags |= Protocol::GameFlag::ClosedGame;
@@ -1212,7 +1212,7 @@ int main( int argc, const char* argv[])
 			State::Config::closedGame = config.GetBool("Game/closed",false);
 			State::Config::roundTimer = config.GetInt("Game/roundTimer",-1);
 			String goalStr = config.GetString("Game/goal","None");
-			if (!State::Config::goal.Decode(goalStr.c_str()))
+			if (!Objects::RuntimeConfig::gameGoal.Decode(goalStr.c_str()))
 			{
 				LogEvent(EventType::ConfigRelated,"Unsupported goal '"+goalStr+"'");
 			}
@@ -1260,7 +1260,7 @@ int main( int argc, const char* argv[])
 				{
 					FATAL__("'AI/spawnTurrets' not defined or empty");
 				}
-				if (State::Config::goal != State::Config::Goal::EMPConquerNexus && State::Config::goal != State::Config::Goal::ConquerNexus && State::Config::enableNexusAI)
+				if (Objects::RuntimeConfig::gameGoal != State::Config::Goal::EMPConquerNexus && Objects::RuntimeConfig::gameGoal != State::Config::Goal::ConquerNexus && State::Config::enableNexusAI)
 				{
 					LogEvent(EventType::ConfigRelated,"Cannot enable Nexus AI unless goal=ConquerNexus or goal=EMPConquerNexus. Disabling AI");
 					State::Config::enableNexusAI = false;
@@ -1454,7 +1454,7 @@ int main( int argc, const char* argv[])
 
 
 
-	if (State::Config::goal == State::Config::Goal::EMPConquerNexus)
+	if (Objects::RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
 	{
 		LogEvent(EventType::SessionRelated, "Spawning Nexus Ports...");
 		for (int pole = 0; pole < 12; pole++)
@@ -1468,7 +1468,7 @@ int main( int argc, const char* argv[])
 	}
 
 
-	if (State::Config::goal == State::Config::Goal::ConquerNexus)
+	if (Objects::RuntimeConfig::gameGoal == State::Config::Goal::ConquerNexus)
 	{
 		LogEvent(EventType::SessionRelated, "Spawning Nexus Ports...");
 		
@@ -1568,7 +1568,7 @@ int main( int argc, const char* argv[])
 		LogConfig(" -Liquids: Expanding.");
 	else
 		LogConfig(" -Liquids: Static.");
-	switch (State::Config::goal)
+	switch (Objects::RuntimeConfig::gameGoal)
 	{
 		case State::Config::Goal::EMPConquerNexus:
 			LogConfig(" -Goal: Connect and enable 2+ Nexus Ports. Watch out for EMP fields.");

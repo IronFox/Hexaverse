@@ -1009,6 +1009,30 @@ namespace Objects
 		display.SetObjectMatrix(sys);
 		display.LazyRenderVertices(skyPortBeam);
 	}
+
+	void	Renderer::RenderPoleBeam(int pole, float width)
+	{
+		const TVec3<>&dir = Grid::low.cells[pole].cornerCenter;
+		TVec3<> base;
+		Vec::mult(dir,Grid::VerticalBase,base);
+		TMatrix4<> sys;
+		sys.w.xyz = base;
+		sys.z.xyz = dir;
+		Vec::cross(sys.z.xyz,sys.w.xyz - Camera::scene.GetAbsoluteLocation(),sys.x.xyz);
+		Vec::normalize0(sys.x.xyz);
+		Vec::cross(sys.x.xyz,sys.z.xyz,sys.y.xyz);
+		Vec::normalize0(sys.y.xyz);
+		Mat::resetBottomRow(sys);
+		sys.y.xyz *= width;
+		sys.x.xyz *= width;
+			//ShowMessage(Vec::length(sys.z.xyz));
+		sys.z.xyz *= Grid::SingleLayerHeight * Grid::CellStack::HalfRange * 2.f;
+					
+		display.SetObjectMatrix(sys);
+		display.LazyRenderVertices(skyPortBeam);
+		
+	}
+
 	void	Renderer::SetBeamColor(const float4&bottomColor, const TVec4<>&topColor)
 	{
 		beamBottomColor.Update(bottomColor);
@@ -1424,6 +1448,40 @@ namespace Objects
 		display.SetRasterizer(true,false);	//some shafts are flipped, but culling makes no sense anyways
 		display.SetDepthTest(true,false);
 		display.SetBlendMode(Engine::BlendMode::Add);
+
+		switch (RuntimeConfig::gameGoal)
+		{
+			case RuntimeConfig::GameGoal::EMPConquerNexus:
+				for (int i = 0; i < 12; i++)
+				{
+					TVec3<> color;
+					if (BaseGrid::IsIsolatedCorner(i))
+					{
+						color= float3(1.0,0.6,0.5);
+					}
+					else
+						color= float3(0.5,0.6,1.0);
+					SetBeamColor(float4(color,0.75),
+								float4(color,0.75));
+					RenderPoleBeam(i,0.2f);
+				}
+			break;
+			case RuntimeConfig::GameGoal::ConquerNexus:
+				for (int i = 0; i < 12; i++)
+				{
+					TVec3<> color;
+					if (BaseGrid::IsIsolatedCorner(i))
+					{
+						color= float3(1.0,0.6,0.5);
+					}
+					else
+						continue;
+					SetBeamColor(float4(color,0.75),
+								float4(color,0.75));
+					RenderPoleBeam(i,0.2f);
+				}
+			break;
+		}
 
 		foreach (satellites,_s)
 		{

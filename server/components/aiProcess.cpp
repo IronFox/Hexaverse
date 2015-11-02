@@ -3,8 +3,7 @@
 #include <global_string.h>
 #include "../../shared/uniqueID.h"
 #include <general/timer.h>
-
-#include "../../shared/monitoredProcess.h"
+#include <general/monitoredProcess.h>
 
 namespace AIProcess
 {

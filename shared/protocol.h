@@ -1865,7 +1865,6 @@ namespace Protocol
 
 	}
 
-	CONSTRUCT_ENUMERATION3(GameGoal, None, ConquerNexus, EMPConquerNexus);
 
 
 	NETSTRUCT8(ServerInfo
