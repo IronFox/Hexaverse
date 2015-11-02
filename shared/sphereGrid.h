@@ -1739,6 +1739,8 @@ namespace Grid
 	float	GetQuadraticGeometricDistance(const LCellIdI&a, const LCellIdI&b);
 
 
+	bool	AffectedByEMP(const HCellIdI&);
+
 	TVec3<> ToWorld(const HCellIdU&);
 	TVec3<> ToWorld(const HCellIdI&);
 	TVec3<> ToWorld(const LCellIdU&);

@@ -3849,6 +3849,13 @@ namespace Grid
 		return low.cells[id.stackID].centerVertex.xyz * Grid::ToRadius(id.height);
 	}
 
+	bool	AffectedByEMP(const HCellIdI&id)
+	{
+		return !(Grid::high.cells[id.stackID].cornerFlags & empZonesUnlocked);
+	}
+
+
+
 
 	void				VisibilityState::ChangeSensory(const Grid::HCellIdU&center, float t, short changeBy)
 	{
