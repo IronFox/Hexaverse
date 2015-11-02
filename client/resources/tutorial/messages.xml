@@ -38,7 +38,7 @@
 		Visualized are %FUEL%(fuel), %MINERALS%(minerals), and %URANIUM%(uranium).
 		The height of the respective bar indicates how much of this resource type can be harvested per round, once a mine is constructed atop it.
 		Dark flat discs indicate that there are no resources here. If nothing is rendered atop a cell then its resources are yet unknown.
-		Resources are identical independent of height, and serve different purposes. %FUEL% is consumed by generators to produce %ENERGY%, %MINERALS% is converted into structures, vehicles, and satellites, and %URANIUM% is required for EMP and RagnarÃ¶k attacks.
+		Resources are identical independent of height, and serve different purposes. %FUEL% is consumed by generators to produce %ENERGY%, %MINERALS% is converted into structures, vehicles, and satellites, and %URANIUM% is required for EMP and Ragnarök attacks.
 	</message>
 	<message name='Show Ranges' image='Show Ranges.png'>
 		Depending on the selected turret type, %PRODUCT_NAME% uses spherical or paraboloid trajectories to compute the maximum attack range.
@@ -81,8 +81,8 @@
 		Once you are done you should click the 'End Round' button so that the server can process the next round. Only if all players have requested a new round, this process can start. A round timer may also be active which will eventually force this to happen.
 		During round processing, Attacks Happen First, Then planned movements. If your vehicle is destroyed during attack phase, it will never get to run away.
 	</message>
-	<message name='Interaction' image='interaction.png'>
-		One of your buildings requires interaction (visualized by the blinking ring). Interacting with a vehicle plant will generate a number of possibilities to choose from. Selecting any of them will allow the respective building to continue operation.
+	<message name='Interaction' image='attention.jpg'>
+		One of your buildings requires attention (visualized by the blinking ring). Interacting with the respective game object will generate a number of possibilities to choose from. Selecting any of them will allow the respective object to resume its normal operation. Some objects (such as vehicle plants) will automatically shut off as a result, if their work-queue is empty.
 		You can quickly walk through all of your units that require attention by pressing the space-key.
 	</message>
 	<message name='Hostile Ghosts' image='hostileGhost.png'>
@@ -102,19 +102,19 @@
 		By building any structure next to them, they will change ownership to your faction. If all player structures in their neighborhood are lost, they switch back to the Nexus faction.
 		They also provide a significant quantity of resources per round, and can be used as a basis for Sky Hubs.
 	</message>
-	<message name='Sky Hub'>
+	<message name='Sky Hub' image='skyHub.jpg'>
 		Sky Hubs are your bridge into and out of orbit. They can build other satellites (including more Sky Hubs), as well as Sky Ports beneath them. Like other satellites, they require fuel to maintain their altitude.
-		They can be connected to a Sky Port or Nexus Port (visualized by an intense blue beam), in which case they will no longer need any fuel, and instead are able to provide fuel to other satellites nearby.
+		When hovering atop Sky Ports or Nexus Ports, a connection is established (visualized by an intense blue beam), in which case they will no longer require any fuel, and instead are able to provide fuel to other satellites nearby.
 		The further a satellite is from the next connected Sky Hub, the more fuel is lost in transit. 
 		Sky Hubs also serve as powerful sensors, capable of not only sensing distant objects in orbit, but also a portion of the terrain beneath them.
 	</message>
 	<message name='Sky Guardian'>
 		Sky Guardians are currently the only defensive object in orbit. Think of them as partially mobile defense towers. Similarly to towers, they can interrupt-attack moving satellites.
 	</message>
-	<message name='RagnarÃ¶k'>
-		RagnarÃ¶k is no joke. Slow and vulnerable in space, with a high fuel upkeep, and extreme amounts of uranium needs per shot, these satellites pack a serious punch.
+	<message name='Ragnarök' image='ragnarok.jpg'>
+		Ragnarök is no joke. Slow and vulnerable in space, with a high fuel upkeep, and extreme amounts of uranium needs per shot, these satellites pack a serious punch.
 		A single shot can instantaneously vaporize dozens of hostile vehicles and/or structures (possibly including your own, if you are not careful), and blast huge holes into the ground.
-		Note that, depending on server settings, RagnarÃ¶k detonations may be made visible to all parties, even if they could not otherwise see the impact.
+		Note that, depending on server settings, Ragnarök detonations may be made visible to all parties, even if they could not otherwise see the impact.
 	</message>
 	<message name='Mine' image='mine.png'>
 		Mines serve a crucial role in providing your compound with resources. Mines require %ENERGY%(energy) to operate, and provide whatever resources are available at the respective location.
@@ -127,9 +127,10 @@
 		<!--You should directly or indirectly connect them with a Mine that provides %FUEL%.-->
 	</message>
 	<message name='Vehicle Plant' image='vehiclePlant.jpg'>
-		Vehicle Plants allow the manufacturing of vehicles. To operate they require %ENERGY%(energy) and %MINERALS%(minerals).
-		To issue a production job first select a turret from the top row, then a base from the bottom row, and then click on 'Construct Selected' button.
-		Once production is done free space is required to deploy the finished vehicle. When constructing this building make sure that enough space exists. Important: Some vehicles cannot be deployed on water.
+		Vehicle Plants are responsible for producing all kinds of vehicles in %PRODUCT_NAME%. Once enabled, they consume a fixed amount of %ENERGY%(energy) and %MINERALS%(minerals) per round.
+		To enqueue a new production job, first select a turret from the top row and a base from the bottom row, and then click on the 'Construct Selected' button.
+		When constructing vehicle plants, make sure that there is enough space around it. Important: Some vehicles cannot be deployed on water, others can only be deployed on water.
+		You can set a gathering point by first selection a plant, and then pressing the right mouse button anywhere. New vehicles will attempt to reach this point upon completion.
 	</message>
 	<message name='Attack' image='attack.png'>
 		Attacking a destination can be done by right-clicking at a hostile unit or explicitly by using the 'Attack' button. When doing so, a red shape indicates the reachable area. Note that this area is smaller than the geometric attack umbrella because it does not include the explosion radius.
