@@ -382,6 +382,7 @@ namespace Objects
 				Otherwise nothing will be appended.
 				*/
 				void				AppendDeploymentCount(BaseCommand::Label&outResult, const OwnerParameter&overrideOwner)	const;
+				String				CompileDeploymentCount(const OwnerParameter&overrideOwner)	const;
 
 
 				virtual void		VisitAllCommands(FCommandVisitor visitor) {};
