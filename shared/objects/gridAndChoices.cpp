@@ -1163,6 +1163,12 @@ namespace Objects
 		
 		for (int h = 0; h < s->GetHeight(); h++)
 		{
+			int actualLayer = s->location.height+h;
+			if (actualLayer > Grid::CellStack::TopHeight)
+			{
+				ASSERT__(h > 0);
+				break;
+			}
 			existing = QueryGrid(structureGrid,s->location+h);
 			ASSERT4__(!existing,s->GetName(),s->location.ToString(),h,existing->GetName());
 		}
