@@ -3,7 +3,7 @@
 #include "network.h"
 #include "ui.h"
 #include "world.h"
-#include "runtimeConfig.h"
+#include "clientRuntimeConfig.h"
 #include "ai.h"
 #ifdef HAS_WINDOW
 	#include "explosions.h"
@@ -213,8 +213,8 @@ namespace Animation
 	*/
 	void UpdateAutomation(const TCodeLocation&loc)
 	{
-	//	ASSERT_NOT_EQUAL__(Network::roundNumber,Network::dbgRoundNumber);
-		//Network::dbgRoundNumber = Network::roundNumber;
+	//	ASSERT_NOT_EQUAL__(RuntimeConfig::roundNumber,Network::dbgRoundNumber);
+		//Network::dbgRoundNumber = RuntimeConfig::roundNumber;
 
 
 
@@ -333,7 +333,7 @@ namespace Animation
 								&& vs.entityState.location != Grid::LCellIdI::Invalid;
 		if (locationChanged)
 		{
-			if (Network::serverPhase == Protocol::Phase::AnimationPhase)
+			if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 			{
 				if (!insertIntoGridLater.IsSet(v->id))
 				{
@@ -826,7 +826,7 @@ namespace Animation
 					ExplodeEntity(allocatedTarget);
 				bool removed = false;
 				LogEvent(EventType::MinorEntityProcess,allocatedTarget.get(),  "Removing entity during animation at time "+String(this->time.min));
-				//if (Network::serverPhase == Protocol::Phase::AnimationPhase)
+				//if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 				{
 					Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
 					if (v)
@@ -1264,7 +1264,7 @@ namespace Animation
 	
 		if (!AllDone())
 		{
-			if ( Network::serverPhase == Protocol::Phase::AnimationPhase || Network::serverPhase == Protocol::Phase::CommandPhase)
+			if ( RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase || RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 			{
 				//allowWorldRecompilation = false;
 				#ifndef HAS_WINDOW
@@ -1396,7 +1396,7 @@ namespace Animation
 				});
 				Animation::insertIntoGridLater.Clear();
 
-				if (Network::serverPhase == Protocol::Phase::CommandPhase)
+				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 				{
 					Objects::RefreshSkyHubConnections();
 					UpdateAutomation(CLOCATION);

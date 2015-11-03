@@ -9,7 +9,7 @@
 #include "satellite.h"
 #include "vehicle.h"
 #include "../sphereGridHelper.h"
-
+#include "../runtimeConfig.h"
 
 namespace Objects
 {

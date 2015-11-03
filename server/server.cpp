@@ -9,6 +9,7 @@
 
 #include "../client/version.h"
 #include "../shared/protocol.h"
+#include "../shared/runtimeConfig.h"
 
 #include <remote/bz2/bz2.h>
 #include <io/string_file.h>
@@ -55,7 +56,7 @@ void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromSto
 		return;
 	const Objects::MobileEntity&v = *_v;
 
-	Protocol::Timestamp timestamp(State::phase == Protocol::Phase::CommandPhase,atTime);
+	Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,atTime);
 	if (!restoredFromStorage)
 	{
 		TCP::Serial<Protocol::NewMobileEntity>	w;
@@ -116,7 +117,7 @@ void	SignalNewStructure(const Objects::PStructure&s, float atTime)
 
 
 	TCP::Serial<Protocol::StructureConstruction>	w;
-	Protocol::Timestamp timestamp(State::phase == Protocol::Phase::CommandPhase,atTime);
+	Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,atTime);
 	State::Describe(w.Ref(),*s,true,timestamp);
 	//State::Describe(w2.Ref(),s,true,&parent);
 	w.Seal();
@@ -165,7 +166,7 @@ void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, cons
 		return;
 	//if (!client->ShowNew(e))
 		//return;	//already knows this
-	Protocol::Timestamp timestamp(State::phase == Protocol::Phase::CommandPhase,atTime);
+	Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,atTime);
 
 	Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
 	if (v)
@@ -202,7 +203,7 @@ void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float 
 	self.id = e->id;
 	self.type = t;
 	self.timestamp.atTime = atTime;
-	self.timestamp.rightNow = State::phase == Protocol::Phase::CommandPhase;
+	self.timestamp.rightNow = RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
 	others = self;
 	bool sendToOthers = true,sendToSelf = true;
 	switch (t)
@@ -270,7 +271,7 @@ void	SignalDisappearanceToHostileFaction(const Objects::OwnerParameter&target, c
 	de.id = e->id;
 	de.type = Objects::RemovalType::Vanished;
 	de.timestamp.atTime = atTime;
-	de.timestamp.rightNow = State::phase == Protocol::Phase::CommandPhase;
+	de.timestamp.rightNow = RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
 
 	//LogEvent(EventType::MinorEntityProcess,*client->peer.lock(),e,"Signalling disappearance");
 	LogEvent(EventType::MinorEntityProcess,*client->peer.lock(),e,"Signalling disappearance "+(de.timestamp.rightNow ? "(now)" : " at time="+String(atTime)));
@@ -370,13 +371,13 @@ void	SignalTurretRotation(const Objects::PWorldEntity&e, const TVec3<>&toWorld, 
 
 void	SignalNexusControlChange(const Objects::PFaction&f)
 {
-	if (State::phase == Protocol::Phase::EndOfGame)
+	if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		return;
-	if (Objects::RuntimeConfig::gameGoal == State::Config::Goal::ConquerNexus || Objects::RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
+	if (RuntimeConfig::gameGoal == State::Config::Goal::ConquerNexus || RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
 	{
 		if (f->nexusControl >= State::Config::GetTargetNexusCount())
 		{
-			State::ChangePhase(Protocol::Phase::EndOfGame);
+			State::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 			State::winner = f;
 
 			foreach (State::activePlayers,p)
@@ -527,7 +528,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 
 	static GenericHashSet<Objects::OwnerParameter,Objects::OwnerHash>	map;
 
-	bool allSee = isDoomsday && Objects::RuntimeConfig::doomsdayWeapons == Objects::RuntimeConfig::DoomsdayWeapons::Expose;
+	bool allSee = isDoomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose;
 
 	map.Clear();
 	if (allSee)
@@ -637,12 +638,12 @@ namespace InformationProvider
 			while (!application_shutting_down)
 			{
 				Sleep(1000);
-				info.activePhase = State::phase;
+				info.activePhase = RuntimeConfig::phase;
 				info.numClients = (UINT16)State::clients.Count();
 				info.numPlayers = (UINT16)State::activePlayers.Count();
-				info.roundNumber = (UINT32)State::roundNumber;
+				info.roundNumber = (UINT32)RuntimeConfig::roundNumber;
 				info.worldID = State::worldID;
-				info.gameGoal = (UINT32)Objects::RuntimeConfig::gameGoal;
+				info.gameGoal = (UINT32)RuntimeConfig::gameGoal;
 				info.gameFlags = 0;
 				if (State::Config::closedGame)
 					info.gameFlags |= Protocol::GameFlag::ClosedGame;
@@ -866,7 +867,7 @@ void ProcessAICoverage()
 			if (BaseGrid::IsIsolatedCorner(i) && (State::unlockedEMPZones & (1<<i)))
 			{
 				Objects::PNexusPort p = ports[i];
-				if (State::roundNumber - p->lastSpawnRound < 5 || p->owner != Objects::Faction::nexus)
+				if (RuntimeConfig::roundNumber - p->lastSpawnRound < 5 || p->owner != Objects::Faction::nexus)
 					continue;	//not allowed to spawn anything for the moment
 
 				float threatLevel = sqr(hostileNearNexus[i] )*State::Config::nexusThreatEstimationFactor
@@ -948,7 +949,7 @@ void ProcessAICoverage()
 				while (friendlyNearNexus[i] < threatLevel || (constructorNearNexus[i] > 0.2f && friendlyNearNexus[i] < State::Config::factionStartMineralValue + 20.f))
 				{
 					LogEvent(EventType::Debug, "Spawning nexus unit near " + p->GetName());
-					p->lastSpawnRound = State::roundNumber;
+					p->lastSpawnRound = RuntimeConfig::roundNumber;
 
 
 					Grid::LCellIdI location = Grid::LCellIdI::Invalid;
@@ -1078,7 +1079,7 @@ void SwitchToAnimationPhase(float animationLength)
 	Objects::ProcessStructures1(animationLength);//clears overproduction: must be called after CheckSatelliteSupply()
 
 	State::effectiveAnimationLength = std::min(10.f,animationLength);
-	State::ChangePhase(Protocol::Phase::AnimationPhase,std::max(1.f,animationLength / 10.f));
+	State::ChangePhase(RuntimeConfig::Phase::AnimationPhase,std::max(1.f,animationLength / 10.f));
 
 }
 
@@ -1122,7 +1123,7 @@ bool	CheckCoverageSendTerrain(const Objects::PFaction&faction,const TCP::PPeer&p
 			{
 				faction->visibility.families[family].coverageChanged = false;
 				at++;
-				Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,State::phase == Protocol::Phase::CommandPhase,at == numChanged,Protocol::WorldDeltaType::ProgressiveUpdate);
+				Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,at == numChanged,Protocol::WorldDeltaType::ProgressiveUpdate);
 				Channels::updateWorld.SendTo(peer,delta);
 			}
 		return true;
@@ -1273,7 +1274,7 @@ int main( int argc, const char* argv[])
 			State::Config::roundTimer = config.RequireInt("Game/roundTimer");
 			State::Config::extraTechniteRoundTimer = config.RequireInt("Game/extraTechniteRoundTimer");
 			String goalStr = config.RequireString("Game/goal");
-			if (!Objects::RuntimeConfig::gameGoal.Decode(goalStr.c_str()))
+			if (!RuntimeConfig::gameGoal.Decode(goalStr.c_str()))
 			{
 				LogEvent(EventType::ConfigRelated,"Unsupported goal '"+goalStr+"'");
 			}
@@ -1295,18 +1296,18 @@ int main( int argc, const char* argv[])
 			State::Config::saveWhenAllQuit = config.GetBool("AutoSaves/saveWhenAllQuit", true);
 
 			{
-				if (!Objects::RuntimeConfig::doomsdayWeapons.Decode(config.GetString("Game/doomsdayWeapons","").c_str()))
+				if (!RuntimeConfig::doomsdayWeapons.Decode(config.GetString("Game/doomsdayWeapons","").c_str()))
 				{
 					String allowed = "'";
-					for (index_t i = 0; i < Objects::RuntimeConfig::doomsdayWeapons.NumberOfPossibilities; i++)
+					for (index_t i = 0; i < RuntimeConfig::doomsdayWeapons.NumberOfPossibilities; i++)
 					{
 						if (i)
 							allowed+="', '";
-						allowed += Objects::RuntimeConfig::DoomsdayWeapons::Reinterpret(i).ToString();
+						allowed += RuntimeConfig::DoomsdayWeapons::Reinterpret(i).ToString();
 					}
 					allowed += "'";
-					Objects::RuntimeConfig::doomsdayWeapons = Objects::RuntimeConfig::DoomsdayWeapons();
-					LogEvent(EventType::ConfigRelated,"Doomsday configuration invalid. Defaulting to '"+String(Objects::RuntimeConfig::doomsdayWeapons.ToString())+"'. Allowed values are "+allowed);
+					RuntimeConfig::doomsdayWeapons = RuntimeConfig::DoomsdayWeapons();
+					LogEvent(EventType::ConfigRelated,"Doomsday configuration invalid. Defaulting to '"+String(RuntimeConfig::doomsdayWeapons.ToString())+"'. Allowed values are "+allowed);
 				}
 			}
 
@@ -1322,7 +1323,7 @@ int main( int argc, const char* argv[])
 				{
 					FATAL__("'AI/spawnTurrets' not defined or empty");
 				}
-				if (Objects::RuntimeConfig::gameGoal != State::Config::Goal::EMPConquerNexus && Objects::RuntimeConfig::gameGoal != State::Config::Goal::ConquerNexus && State::Config::enableNexusAI)
+				if (RuntimeConfig::gameGoal != State::Config::Goal::EMPConquerNexus && RuntimeConfig::gameGoal != State::Config::Goal::ConquerNexus && State::Config::enableNexusAI)
 				{
 					LogEvent(EventType::ConfigRelated,"Cannot enable Nexus AI unless goal=ConquerNexus or goal=EMPConquerNexus. Disabling AI");
 					State::Config::enableNexusAI = false;
@@ -1419,7 +1420,7 @@ int main( int argc, const char* argv[])
 
 			if (unitLimits)
 			{
-				Objects::RuntimeConfig::UnitLimits::Reset();
+				RuntimeConfig::UnitLimits::Reset();
 				{
 					Config::Context*structures = unitLimits->GetContext("Structures");
 					if (!structures)
@@ -1437,7 +1438,7 @@ int main( int argc, const char* argv[])
 
 								count = 0;
 							}
-							Objects::RuntimeConfig::UnitLimits::Set(p->GetCTypeName(),count);
+							RuntimeConfig::UnitLimits::Set(p->GetCTypeName(),count);
 						}
 					}
 				}
@@ -1458,7 +1459,7 @@ int main( int argc, const char* argv[])
 
 								count = 0;
 							}
-							Objects::RuntimeConfig::UnitLimits::Set(c->constName,count);
+							RuntimeConfig::UnitLimits::Set(c->constName,count);
 						}
 
 					}
@@ -1520,7 +1521,7 @@ int main( int argc, const char* argv[])
 
 
 
-	if (Objects::RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
+	if (RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
 	{
 		LogEvent(EventType::SessionRelated, "Spawning Nexus Ports...");
 		for (int pole = 0; pole < 12; pole++)
@@ -1534,7 +1535,7 @@ int main( int argc, const char* argv[])
 	}
 
 
-	if (Objects::RuntimeConfig::gameGoal == State::Config::Goal::ConquerNexus)
+	if (RuntimeConfig::gameGoal == State::Config::Goal::ConquerNexus)
 	{
 		LogEvent(EventType::SessionRelated, "Spawning Nexus Ports...");
 		
@@ -1634,7 +1635,7 @@ int main( int argc, const char* argv[])
 		LogConfig(" -Liquids: Expanding.");
 	else
 		LogConfig(" -Liquids: Static.");
-	switch (Objects::RuntimeConfig::gameGoal)
+	switch (RuntimeConfig::gameGoal)
 	{
 		case State::Config::Goal::EMPConquerNexus:
 			LogConfig(" -Goal: Connect and enable 2+ Nexus Ports. Watch out for EMP fields.");
@@ -1656,19 +1657,19 @@ int main( int argc, const char* argv[])
 	else
 		LogConfig(" -No Nexus-Bases: Nexus bases will not be created");
 
-	switch (Objects::RuntimeConfig::doomsdayWeapons)
+	switch (RuntimeConfig::doomsdayWeapons)
 	{
-		case Objects::RuntimeConfig::DoomsdayWeapons::Conceal:
+		case RuntimeConfig::DoomsdayWeapons::Conceal:
 			LogConfig(" -Doomsday weapons: Treated like normal weapons (must be in sensor range to see)");
 		break;
-		case Objects::RuntimeConfig::DoomsdayWeapons::Disallow:
+		case RuntimeConfig::DoomsdayWeapons::Disallow:
 			LogConfig(" -Doomsday weapons: Forbidden to fire (can still be built, however)");
 		break;
-		case Objects::RuntimeConfig::DoomsdayWeapons::Expose:
+		case RuntimeConfig::DoomsdayWeapons::Expose:
 			LogConfig(" -Doomsday weapons: Doomsday explosions are made visible to all factions");
 		break;
 		default:
-			LogConfig(" -Doomsday weapons: "+String(Objects::RuntimeConfig::doomsdayWeapons.ToString()));
+			LogConfig(" -Doomsday weapons: "+String(RuntimeConfig::doomsdayWeapons.ToString()));
 		break;
 	}
 
@@ -1714,14 +1715,14 @@ int main( int argc, const char* argv[])
 
 	while (!application_shutting_down)
 	{
-		if (State::phase == Protocol::Phase::TechniteCommandPhase || State::phase == Protocol::Phase::CommandPhase || State::phase == Protocol::Phase::AnimationPhase)
+		if (RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase || RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 			Sleep(1);
 		State::server.Resolve();
 		if (State::Config::enableNexusAI)
 			AIProcess::Check();
 
 
-		Protocol::Phase p0 = State::phase;
+		RuntimeConfig::Phase p0 = RuntimeConfig::phase;
 
 		bool anythingChanged = false;
 
@@ -1822,29 +1823,29 @@ int main( int argc, const char* argv[])
 
 			if (InExtraTechniteRound())
 			{
-				State::ChangePhase(Protocol::Phase::TechnitePhase);
+				State::ChangePhase(RuntimeConfig::Phase::TechnitePhase);
 				Technites::BeginProcessing(0.f);
 			}
 			else
-				State::ChangePhase(Protocol::Phase::AttackPhase);
+				State::ChangePhase(RuntimeConfig::Phase::AttackPhase);
 		}
 
-		switch (State::phase)
+		switch (RuntimeConfig::phase)
 		{
-			case Protocol::Phase::AttackPhase:
+			case RuntimeConfig::Phase::AttackPhase:
 				if (!Objects::ProcessNextVehicleAttack())
-					State::ChangePhase(Protocol::Phase::MovementPhase);
+					State::ChangePhase(RuntimeConfig::Phase::MovementPhase);
 				anythingChanged = true;
 			break;
-			case Protocol::Phase::MovementPhase:
+			case RuntimeConfig::Phase::MovementPhase:
 				if (!Objects::ProcessVehicleMotion())
 				{
-					State::ChangePhase(Protocol::Phase::TechnitePhase);
+					State::ChangePhase(RuntimeConfig::Phase::TechnitePhase);
 					Technites::BeginProcessing(GetBaseAnimationLength());
 				}
 				anythingChanged = true;
 			break;
-			case Protocol::Phase::TechnitePhase:
+			case RuntimeConfig::Phase::TechnitePhase:
 			{
 				if (!Technites::ProcessNext())
 				{
@@ -1864,32 +1865,32 @@ int main( int argc, const char* argv[])
 				}
 			}
 			break;
-			case Protocol::Phase::AnimationPhase:
+			case RuntimeConfig::Phase::AnimationPhase:
 				if (timer.GetSecondsSince(State::lastPhaseChange) >= State::effectiveAnimationLength+0.5f)
 				{
 					if (State::activePlayers.IsNotEmpty())
 						State::roundTimerPaused = false;
 					if (InExtraTechniteRound())
 					{
-						State::techniteSubRoundNumber ++;
+						RuntimeConfig::techniteSubRoundNumber ++;
 
-						State::ChangePhase(Protocol::Phase::TechniteCommandPhase,State::Config::extraTechniteRoundTimer > 0 && !State::roundTimerPaused ? State::Config::extraTechniteRoundTimer : -1);
+						State::ChangePhase(RuntimeConfig::Phase::TechniteCommandPhase,State::Config::extraTechniteRoundTimer > 0 && !State::roundTimerPaused ? State::Config::extraTechniteRoundTimer : -1);
 
 					}
 					else
 					{
-						State::roundNumber++;
-						State::techniteSubRoundNumber = 0;
+						RuntimeConfig::roundNumber++;
+						RuntimeConfig::techniteSubRoundNumber = 0;
 
-						State::ChangePhase(Protocol::Phase::CommandPhase,State::Config::roundTimer > 0 && !State::roundTimerPaused ? State::Config::roundTimer : -1);
+						State::ChangePhase(RuntimeConfig::Phase::CommandPhase,State::Config::roundTimer > 0 && !State::roundTimerPaused ? State::Config::roundTimer : -1);
 					}
 
 
 				}
 				anythingChanged = true;
 			break;
-			case Protocol::Phase::TechniteCommandPhase:
-			case Protocol::Phase::CommandPhase:
+			case RuntimeConfig::Phase::TechniteCommandPhase:
+			case RuntimeConfig::Phase::CommandPhase:
 			break;
 		}
 
@@ -1911,7 +1912,7 @@ int main( int argc, const char* argv[])
 				bool othersNeedToKnow = (v.changeFlags & State::NotifyOthers) != 0;
 
 				TCP::Serial<Protocol::MobileState>	w0,w1;
-				Protocol::Timestamp timestamp(State::phase == Protocol::Phase::CommandPhase,v.changeTimer);
+				Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,v.changeTimer);
 				State::Describe(w0.Ref(),v,false,timestamp,v.changeFlags);
 				State::Describe(w1.Ref(),v,true,timestamp,v.changeFlags);
 				w0.Seal();
@@ -1943,7 +1944,7 @@ int main( int argc, const char* argv[])
 				
 				bool othersNeedToKnow = (s.changeFlags & State::NotifyOthers) != 0;
 
-				Protocol::Timestamp timestamp(State::phase == Protocol::Phase::CommandPhase,s.changeTimer);
+				Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,s.changeTimer);
 
 				TCP::Serial<Protocol::StructureState>	w0,w1;
 				State::Describe(w0.Ref(),**_s,false,timestamp,s.changeFlags);
@@ -1982,7 +1983,7 @@ int main( int argc, const char* argv[])
 
 
 
-		if (!anythingChanged && State::phase == Protocol::Phase::CommandPhase && State::lastSaveRound != State::roundNumber && !(State::roundNumber%State::Config::saveEveryNRounds))
+		if (!anythingChanged && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && State::lastSaveRound != RuntimeConfig::roundNumber && !(RuntimeConfig::roundNumber%State::Config::saveEveryNRounds))
 		{
 			State::AutoSave();
 

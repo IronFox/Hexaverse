@@ -21,25 +21,6 @@ namespace Objects
 	static const count_t MaxProductionTasks = MaxStructureTasks;
 
 
-	namespace RuntimeConfig
-	{
-		CONSTRUCT_ENUMERATION3(GameGoal, None, ConquerNexus, EMPConquerNexus);
-		CONSTRUCT_ENUMERATION3(DoomsdayWeapons, Expose, Conceal, Disallow);
-		extern DoomsdayWeapons doomsdayWeapons;
-		extern GameGoal gameGoal;
-		extern bool hibernationSystemEnabled;
-
-		namespace UnitLimits
-		{
-			void		Reset();
-			bool		AnySet();
-			void		Set(ConstName, int);
-			count_t		Get(ConstName);
-			void		Export(Array<std::pair<UINT16,UINT16> >&);
-			void		Import(const Array<std::pair<UINT16,UINT16> >&);
-		}
-	}
-
 
 
 

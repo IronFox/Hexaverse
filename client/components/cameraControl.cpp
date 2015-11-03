@@ -7,7 +7,7 @@
 #include <engine/timing.h>
 
 #include "../../shared/sphereGrid.h"
-#include "runtimeConfig.h"
+#include "clientRuntimeConfig.h"
 
 #include "../../shared/objects.h"
 

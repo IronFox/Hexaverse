@@ -1,5 +1,5 @@
 #include <global_root.h>
-#include "runtimeConfig.h"
+#include "clientRuntimeConfig.h"
 #include "network.h"
 
 namespace RuntimeConfig

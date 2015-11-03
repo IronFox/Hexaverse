@@ -3,6 +3,7 @@
 #include "network.h"
 #include <general/monitoredProcess.h>
 #include <io/file_system.h>
+#include "../../shared/runtimeConfig.h"
 
 #include "dialog.h"
 
@@ -48,8 +49,8 @@ namespace TechniteLogicLink
 		TechniteProtocol::BeginSession session;
 		session.factionID = factionID.ToString(TUniqueID::NumBytes);
 		session.techniteGridID = lastTechniteGridID;
-		session.roundNumber = Network::roundNumber;
-		session.techniteSubRoundNumber = Network::techniteSubRoundNumber;
+		session.roundNumber = RuntimeConfig::roundNumber;
+		session.techniteSubRoundNumber = RuntimeConfig::techniteSubRoundNumber;
 		Channels::beginSession.SendTo(logicServer,session,1);
 	}
 
@@ -75,7 +76,7 @@ namespace TechniteLogicLink
 
 	static void FillIn(const Objects::PWorldEntity&e, TechniteProtocol::GameObject&obj)
 	{
-		obj.birthRound = Network::roundNumber;	//too lazy
+		obj.birthRound = RuntimeConfig::roundNumber;	//too lazy
 		obj.height = (BYTE)e->GetHeight();
 		obj.id.location = EncodeLocation(e->location);
 		obj.isBroad = e->IsBroad();
@@ -123,7 +124,7 @@ namespace TechniteLogicLink
 			mobile.state.myMobileEntity.Get0();
 
 		TechniteProtocol::GameObject obj;
-		obj.birthRound = Network::roundNumber;
+		obj.birthRound = RuntimeConfig::roundNumber;
 		obj.id.location	= EncodeLocation(mobile.state.entityState.location);
 		obj.id.isGhost = false;
 		obj.isMine = mobile.owner == Network::myID;
@@ -225,7 +226,7 @@ namespace TechniteLogicLink
 		LogEvent(EventType::TechniteLogic,nullptr,"Registering new structure entity '"+struc.state.entityState.id.value.ToString()+"' at "+struc.state.entityState.location.ToString());
 
 		TechniteProtocol::GameObject obj;
-		obj.birthRound = Network::roundNumber;
+		obj.birthRound = RuntimeConfig::roundNumber;
 		obj.id.location	= EncodeLocation(struc.state.entityState.location);
 		obj.isMine = struc.owner == Network::myID;
 
@@ -423,7 +424,7 @@ namespace TechniteLogicLink
 				
 				logicIsDone = true;
 
-				if (Network::amTechniteFaction && (!Network::amRegularFaction || Network::newRoundRequested || Network::serverPhase == Protocol::Phase::TechniteCommandPhase))
+				if (Network::amTechniteFaction && (!Network::amRegularFaction || Network::newRoundRequested || RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase))
 				{
 					//auto-new-round, if set. Not sure if this should be set
 					TransmitRoundEndRequest();
@@ -539,14 +540,14 @@ namespace TechniteLogicLink
 				TechniteProtocol::BeginSession session;
 				session.factionID = lastFactionID.ToString(TUniqueID::NumBytes);
 				session.techniteGridID = lastTechniteGridID;
-				session.roundNumber = Network::roundNumber;
-				session.techniteSubRoundNumber = Network::techniteSubRoundNumber;
+				session.roundNumber = RuntimeConfig::roundNumber;
+				session.techniteSubRoundNumber = RuntimeConfig::techniteSubRoundNumber;
 				Channels::beginSession.SendTo(logicServer,session,1);
 			}
 
 
 			if (haveAllTechnites && executed)
-				ExecuteLogic(Network::roundNumber, Network::techniteSubRoundNumber);
+				ExecuteLogic(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
 
 		}
 
@@ -829,7 +830,7 @@ namespace TechniteLogicLink
 		{
 			haveAllTechnites = true;
 			if (executed)
-				ExecuteLogic(Network::roundNumber, Network::techniteSubRoundNumber);
+				ExecuteLogic(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
 		}
 	}
 

@@ -2,6 +2,7 @@
 #define runtimeConfigComponentH
 
 #include "../../shared/uniqueID.h"
+#include "../../shared/runtimeConfig.h"
 
 namespace RuntimeConfig
 {

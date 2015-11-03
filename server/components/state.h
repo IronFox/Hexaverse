@@ -5,6 +5,7 @@
 #include <net/tcp.h>
 #include "../../shared/protocol.h"
 #include "../../shared/objects.h"
+#include "../../shared/runtimeConfig.h"
 
 
 
@@ -67,10 +68,8 @@ namespace State
 	extern Buffer<PClient>	clients,activePlayers;
 	extern GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
 	extern GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
-	extern UINT32			roundNumber/*=0*/, techniteSubRoundNumber/*=0*/,
-							lastSaveRound /*= 0*/,
+	extern UINT32			lastSaveRound /*= 0*/,
 							empZonesLocked/* = 0 */, unlockedEMPZones /*= 0xFFFF*/;
-	extern Protocol::Phase	phase;
 	extern Objects::PFaction	winner;	//if set indicates game is over
 	extern TUniqueID		worldID;
 	extern Timer::Time		lastPhaseChange /*= timer.Now()*/;
@@ -105,7 +104,7 @@ namespace State
 		extern Array<Objects::Component::Turret*>	nexusVehicleTurrets;
 		extern Array<String>			nexusVehicleTurretNames;	//used during config loading, identical to nexusVehicleTurrets later
 		
-		typedef Objects::RuntimeConfig::GameGoal	Goal;
+		typedef RuntimeConfig::GameGoal	Goal;
 
 
 		inline count_t	CountAccessibleZones()
@@ -161,8 +160,9 @@ namespace State
 
 		inline count_t	GetTargetNexusCount()
 		{
-			return Objects::RuntimeConfig::gameGoal == Goal::EMPConquerNexus ? std::min<count_t>(std::max<count_t>(2,CountAccessibleZones()),3) : 3;
-			//goal == Goal::EMPConquerNexus ? 3 : 2;
+			return RuntimeConfig::gameGoal == Goal::EMPConquerNexus 
+						? std::min<count_t>(std::max<count_t>(2,CountAccessibleZones()),3) 
+						: 2;	//should be 2 here, because in normal ConquerNexus mode, only nexus bases are spawned, whereas in EMP ConsquerNexus mode ports are spawned on all of the 12 poles
 		}
 
 		namespace NexusPorts
@@ -194,7 +194,7 @@ namespace State
 	*/
 	void		RestartSession();
 
-	inline bool	InExtraTechniteRound()	{return State::techniteSubRoundNumber < State::Config::extraTechniteRounds;}
+	inline bool	InExtraTechniteRound()	{return RuntimeConfig::techniteSubRoundNumber < State::Config::extraTechniteRounds;}
 
 
 
@@ -204,7 +204,7 @@ namespace State
 	@param to Phase to change to
 	@param timeWindow Change parameter. Usage depends on phase
 	*/
-	void		ChangePhase(Protocol::Phase to, float timeWindow = -1);
+	void		ChangePhase(RuntimeConfig::Phase to, float timeWindow = -1);
 	void		Describe(Protocol::MobileTask&task, const Objects::MobileEntity&v, const Grid::LCellIdI&origin, const Objects::MobileEntity::Task&t,index_t taskIndex);
 	void		Describe(Protocol::EntityState&state, const Objects::WorldEntity&e, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags);
 	void		Describe(Protocol::MobileState&state, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags);

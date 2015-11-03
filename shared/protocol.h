@@ -1774,7 +1774,7 @@ namespace Protocol
 		);
 
 	NETSTRUCT4(PhaseChange
-		, NET(Phase), newPhase
+		, NET(UINT8), newPhase
 		, NET(UINT32), roundNumber
 		, NET(UINT32), techniteSubRoundNumber
 		, NET(float), timeFactor

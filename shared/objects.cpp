@@ -11,8 +11,9 @@
 //#include <geometry/graph_mesh.h>
 #include <geometry/cgs.h>
 #include <geometry/converter/obj.h>
-#include "../shared/stringTable.h"
+#include "stringTable.h"
 #include "logEvent.h"
+#include "runtimeConfig.h"
 
 
 
