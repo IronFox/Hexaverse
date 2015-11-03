@@ -978,40 +978,28 @@ namespace Objects
 
 	Connector::Connector(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true)
 	{
-		#ifdef CLIENT
-			#ifdef HAS_WINDOW
-				Super::localizableShape = &shape;
-			#endif
+		#ifdef HYBRID_GRID
+			const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
 		#else
-
-		{
-			#ifdef HYBRID_GRID
-				const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-			#else
-				const UINT32 higher = location.cellID;
-			#endif
-			Grid::actualWorld.cellStack[higher].ChangeStructureCounterI(location.height,1);
-			//Grid::actualWorld.SignalChange(location);	//structure counter irrelevant
-		}
-		InvalidateTerrain(location,atTime);
+			const UINT32 higher = location.cellID;
 		#endif
+		Grid::actualWorld.cellStack[higher].ChangeStructureCounterI(location.height,1);
+		#ifdef HAS_WINDOW
+			Super::localizableShape = &shape;
+		#endif
+		InvalidateTerrain(location,atTime);
 	}
 
 	/*virtual override*/ void				Connector::OnDestroy(float atTime)
 	{
 		Super::OnDestroy(atTime);
-		#ifndef CLIENT
-		{
-			#ifdef HYBRID_GRID
-				const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-			#else
-				const UINT32 higher = location.cellID;
-			#endif
-			Grid::actualWorld.cellStack[higher].ChangeStructureCounterI(location.height,-1);
-			//Grid::actualWorld.SignalChange(location);	//structure counter irrelevant
-		}
-		InvalidateTerrain(location,atTime);
+		#ifdef HYBRID_GRID
+			const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+		#else
+			const UINT32 higher = location.cellID;
 		#endif
+		Grid::actualWorld.cellStack[higher].ChangeStructureCounterI(location.height,-1);
+		InvalidateTerrain(location,atTime);
 	}
 
 
@@ -1025,60 +1013,57 @@ namespace Objects
 
 
 
-	#ifndef CLIENT
-		/*static*/ void Structure::CommonRegisterBroadStructure(const Grid::LCellIdI&location, bool twoStoriesHigh, float atTime)
+	/*static*/ void Structure::CommonRegisterBroadStructure(const Grid::LCellIdI&location, bool twoStoriesHigh, float atTime)
+	{
 		{
-			{
-				#ifdef HYBRID_GRID
-					const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-					const auto&n = Grid::high.grid.GetCell(higher).neighborhood;
-					for (int j = 0; j < n.numNeighbors; j++)
-					{
-						Grid::CellStack&stack = Grid::actualWorld.cellStack[n.neighborID[j]];
-						stack.ChangeStructureCounterI(location.height,1);
-						if (twoStoriesHigh)
-							stack.ChangeStructureCounterI(location.height+1,1);
-					}
-					Grid::CellStack&stack = Grid::actualWorld.cellStack[higher];
-				#else
-					Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
-				#endif
-				if (twoStoriesHigh)
-					stack.ChangeStructureCounterI(location.height+1,2);
-				stack.ChangeStructureCounterI(location.height,2);
-				stack.ChangeStructureCounterI(location.height-1,2);
-			}
-			InvalidateTerrain(location,atTime);
-
+			#ifdef HYBRID_GRID
+				const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+				const auto&n = Grid::high.grid.GetCell(higher).neighborhood;
+				for (int j = 0; j < n.numNeighbors; j++)
+				{
+					Grid::CellStack&stack = Grid::actualWorld.cellStack[n.neighborID[j]];
+					stack.ChangeStructureCounterI(location.height,1);
+					if (twoStoriesHigh)
+						stack.ChangeStructureCounterI(location.height+1,1);
+				}
+				Grid::CellStack&stack = Grid::actualWorld.cellStack[higher];
+			#else
+				Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
+			#endif
+			if (twoStoriesHigh)
+				stack.ChangeStructureCounterI(location.height+1,2);
+			stack.ChangeStructureCounterI(location.height,2);
+			stack.ChangeStructureCounterI(location.height-1,2);
 		}
+		InvalidateTerrain(location,atTime);
+	}
 
-		/*static*/ void Structure::CommonUnregisterBroadStructure(const Grid::LCellIdI&location, bool twoStoriesHigh, float atTime)
+	/*static*/ void Structure::CommonUnregisterBroadStructure(const Grid::LCellIdI&location, bool twoStoriesHigh, float atTime)
+	{
 		{
-			{
-				#ifdef HYBRID_GRID
-					const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-					const auto&n = Grid::high.grid.GetCell(higher).neighborhood;
-					for (int j = 0; j < n.numNeighbors; j++)
-					{
-						Grid::CellStack&stack = Grid::actualWorld.cellStack[n.neighborID[j]];
-						stack.ChangeStructureCounterI(location.height,-1);
-						if (twoStoriesHigh)
-							stack.ChangeStructureCounterI(location.height+1,-1);
-					}
-					Grid::CellStack&stack = Grid::actualWorld.cellStack[higher];
-				#else
-					Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
-				#endif
+			#ifdef HYBRID_GRID
+				const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+				const auto&n = Grid::high.grid.GetCell(higher).neighborhood;
+				for (int j = 0; j < n.numNeighbors; j++)
+				{
+					Grid::CellStack&stack = Grid::actualWorld.cellStack[n.neighborID[j]];
+					stack.ChangeStructureCounterI(location.height,-1);
+					if (twoStoriesHigh)
+						stack.ChangeStructureCounterI(location.height+1,-1);
+				}
+				Grid::CellStack&stack = Grid::actualWorld.cellStack[higher];
+			#else
+				Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
+			#endif
 
-				if (twoStoriesHigh)
-					stack.ChangeStructureCounterI(location.height+1,-2);
-				stack.ChangeStructureCounterI(location.height,-2);
-				stack.ChangeStructureCounterI(location.height-1,-2);
-				//Grid::actualWorld.SignalChange(location);	//structure counter irrelevant
-			}
-			InvalidateTerrain(location,atTime);
+			if (twoStoriesHigh)
+				stack.ChangeStructureCounterI(location.height+1,-2);
+			stack.ChangeStructureCounterI(location.height,-2);
+			stack.ChangeStructureCounterI(location.height-1,-2);
+			//Grid::actualWorld.SignalChange(location);	//structure counter irrelevant
 		}
-	#endif
+		InvalidateTerrain(location,atTime);
+	}
 
 	/*static*/	Structure::placement_t	Structure::CommonCheckStructurePlacement(const Grid::LCellIdI&location, int height, bool isBroad)
 	{
@@ -1656,32 +1641,32 @@ namespace Objects
 	}
 
 
+	/*static*/ void Structure::InvalidateTerrain(const Grid::LCellIdI&location, float atTime)
+	{
+		bool changed[BaseGrid::NumFamilies] = {};
+		const auto&n = Grid::low.grid.GetCell(location.stackID).neighborhood;
+		for (int j = 0; j < n.numNeighbors; j++)
+		{
+			changed[Grid::low.grid.GetCell(n.neighborID[j]).family] = true;
+		}
+		changed[Grid::low.grid.GetCell(location.stackID).family] = true;
+		for (int i = 0; i < BaseGrid::NumFamilies; i++)
+			if (changed[i])
+			{
+				Grid::high.family[i].SetOutdated(atTime);
+				Grid::low.family[i].SetOutdated(atTime);
+			}
+		#ifdef CLIENT
+			Grid::actualWorld.SignalLightingChange(location);
+		#endif
+
+	}
+
 
 
 	#ifndef CLIENT
 
 	
-		/*static*/ void Structure::InvalidateTerrain(const Grid::LCellIdI&location, float atTime)
-		{
-			bool changed[BaseGrid::NumFamilies] = {};
-			const auto&n = Grid::low.grid.GetCell(location.stackID).neighborhood;
-			for (int j = 0; j < n.numNeighbors; j++)
-			{
-				changed[Grid::low.grid.GetCell(n.neighborID[j]).family] = true;
-			}
-			changed[Grid::low.grid.GetCell(location.stackID).family] = true;
-			for (int i = 0; i < BaseGrid::NumFamilies; i++)
-				if (changed[i])
-				{
-					Grid::high.family[i].SetOutdated(atTime);
-					Grid::low.family[i].SetOutdated(atTime);
-				}
-			#ifdef CLIENT
-				Grid::actualWorld.SignalLightingChange(location);
-			#endif
-
-		}
-
 		/*static*/	void Structure::CommonFixTerrain(const WorldEntity*e, const Grid::LCellIdI&location,  const Grid::Content foundationType, int height, bool signalChange, float atTime, bool deep, bool requireCentralBlock, bool broadFoundation)
 		{
 			#ifdef HYBRID_GRID
