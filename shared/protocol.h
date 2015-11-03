@@ -1762,16 +1762,6 @@ namespace Protocol
 	)
 
 
-	CONSTRUCT_ENUMERATION8(Phase, 
-		CommandPhase,
-		TechniteCommandPhase,
-		StructurePhase,
-		AttackPhase,
-		MovementPhase,
-		TechnitePhase,
-		AnimationPhase, 
-		EndOfGame
-		);
 
 	NETSTRUCT4(PhaseChange
 		, NET(UINT8), newPhase
