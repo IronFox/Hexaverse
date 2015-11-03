@@ -1,0 +1,44 @@
+		
+		
+	;these will be stored persistently in savegames eventually, but not until I determined they are good and need not change during a game
+	[Science]
+		[Mine]
+			state = 'researched'
+		[Vehicle_Plant]
+			dependencies = ''
+		[Vehicle_Store]
+			dependencies = 'Vehicle_Plant'
+		[Sky_Port]
+			state = 'researched'
+		[Generator]
+			state = 'researched'
+		[Fuel_Container]
+			dependencies = 'Mine'
+		[Mineral_Container]
+			dependencies = 'Mine'
+		[Uranium_Storage]
+			dependencies = 'Mineral_Container'
+		[Missile_Launcher_Tower]
+			dependencies = 'Missile_Launcher,Cannon_Tower'
+		[Cannon_Tower]
+			state = 'researched'
+		[Radar_Tower]
+			dependencies = 'Cannon_Tower'
+		[Missile_Launcher]
+			dependencies = 'Artillery'
+		[Artillery]
+			dependencies = 'Cannon'
+		[Cannon]
+			state = 'researched'
+		[Radar]
+			dependencies = 'Cannon'
+		[EMP]
+			dependencies = 'Artillery'
+		[Mechanic]
+			state = 'researched'
+		[Surveyor]
+			state = 'researched'
+		[Terraformer]
+			state = 'researched'
+		[Ragnarök]
+			dependencies = 'Sky_Guardian,EMP
