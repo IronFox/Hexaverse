@@ -167,7 +167,7 @@ namespace Receiver
 			//avoid 12 corner cells: make sure all candidates have 6 neighbors
 			for (index_t i = 12; i < Grid::LowSetup::GridType::CellCount; i++)
 			{
-				if (Objects::RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
+				if (RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
 				{
 					if (!(State::unlockedEMPZones & Grid::low.grid.GetCell(i).cornerFlags))
 						continue;
@@ -250,7 +250,7 @@ namespace Receiver
 
 	static void UpdateEMPZones(count_t inc)
 	{
-		if (Objects::RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
+		if (RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
 		{
 			count_t numZones = Objects::Faction::all.Count()+inc;	//not counting nexus faction, but counting new faction(s)
 			numZones = (numZones/3) + !!(numZones % 3);
@@ -297,10 +297,10 @@ namespace Receiver
 			return;
 		}
 
-		if (State::phase != Protocol::Phase::CommandPhase && State::phase != Protocol::Phase::EndOfGame)
+		if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
 		{
 			//disconnecting client. no new faction
-			LogEvent(EventType::CommandRejected, peer, "Cannot connect ("+String(State::phase.ToString())+") right now. Disconnecting");
+			LogEvent(EventType::CommandRejected, peer, "Cannot connect ("+String(RuntimeConfig::phase.ToString())+") right now. Disconnecting");
 			response.startFactionTypes = 0;
 			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 			client->peer.lock()->DisconnectPeer();
@@ -394,7 +394,7 @@ namespace Receiver
 			{
 				LogEvent(EventType::SessionRelated,peer,"Provided token not recognized: "+response.factionToken.value.ToString());
 
-				if (State::Config::closedGame && State::roundNumber > 0)
+				if (State::Config::closedGame && RuntimeConfig::roundNumber > 0)
 				{
 					foreach (Objects::Faction::all,f)
 					{
@@ -412,7 +412,7 @@ namespace Receiver
 			newFaction = true;
 		}
 
-		if (State::phase == Protocol::Phase::EndOfGame)
+		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		{
 			{
 				client->SendProgressUpdate(true);
@@ -431,7 +431,7 @@ namespace Receiver
 				return;
 			}
 
-			if (State::Config::closedGame && State::roundNumber > 0)
+			if (State::Config::closedGame && RuntimeConfig::roundNumber > 0)
 			{
 				response.startFactionTypes = 0;
 				Channels::clientFactionResponse.SendTo(peer,response);
@@ -673,8 +673,8 @@ namespace Receiver
 		
 
 		Protocol::PhaseChange	ph;
-		ph.newPhase = State::phase;
-		ph.roundNumber = (UINT32)State::roundNumber;
+		ph.newPhase = RuntimeConfig::phase;
+		ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
 		ph.timeFactor = -1;
 
 
@@ -728,7 +728,7 @@ namespace Receiver
 			Channels::uplinkBandwidth.SendTo(peer,State::Config::uplinkBandwidth);
 		#endif
 		Protocol::UnitLimits	limits;
-		Objects::RuntimeConfig::UnitLimits::Export(limits);
+		RuntimeConfig::UnitLimits::Export(limits);
 		Channels::unitLimits.SendTo(peer,limits);
 		
 		Channels::lockEmpZones.SendTo(peer,State::empZonesLocked);
@@ -789,11 +789,11 @@ namespace Receiver
 
 	bool	CheckCommandMode(TCP::Peer&peer)
 	{
-		if (State::phase == Protocol::Phase::CommandPhase)
+		if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 		{
 			return true;
 		}
-		LogEvent(EventType::CommandRejected ,peer,"Cannot issue commands in current phase ("+String(State::phase.ToString())+")");
+		LogEvent(EventType::CommandRejected ,peer,"Cannot issue commands in current phase ("+String(RuntimeConfig::phase.ToString())+")");
 		return false;
 	}
 
@@ -1610,8 +1610,8 @@ namespace Receiver
 
 			
 			Protocol::PhaseChange	ph;
-			ph.newPhase = State::phase;
-			ph.roundNumber = (UINT32)State::roundNumber;
+			ph.newPhase = RuntimeConfig::phase;
+			ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
 			ph.timeFactor = -1;
 
 
@@ -1711,7 +1711,7 @@ namespace Receiver
 				
 				//Objects::Tick();
 				State::PClient client = To<State::Client>::Cast(peer.attachment);
-				if (client && client->faction && State::phase == Protocol::Phase::CommandPhase)
+				if (client && client->faction && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 				{
 					client->wantNewRound = true;
 					LogEvent(EventType::SessionRelated,peer,"Requested new round");

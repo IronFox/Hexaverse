@@ -12,7 +12,7 @@
 #include "visualChoices.h"
 #include "visualSelection.h"
 #include "gridAndChoices.h"
-
+#include "../runtimeConfig.h"
 
 namespace Camera
 {

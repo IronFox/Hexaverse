@@ -5,6 +5,7 @@
 #include "dialog.h"
 #include "../version.h"
 #include <io/string_file.h>
+#include "../../shared/runtimeConfig.h"
 
 void LoadHosts()
 {
@@ -74,13 +75,13 @@ void	SaveHosts()
 		String result;
 		switch (info.gameGoal)
 		{
-			case Objects::RuntimeConfig::GameGoal::ConquerNexus:
+			case RuntimeConfig::GameGoal::ConquerNexus:
 				result="Conquer Nexus";
 			break;
-			case Objects::RuntimeConfig::GameGoal::EMPConquerNexus:
+			case RuntimeConfig::GameGoal::EMPConquerNexus:
 				result="Conquer Nexus, EMP-Zones";
 			break;
-			case Objects::RuntimeConfig::GameGoal::None:
+			case RuntimeConfig::GameGoal::None:
 				result="No Goal";
 			break;
 		}
@@ -150,7 +151,7 @@ void	SaveHosts()
 				Network::worldID = info->info.worldID;
 				Network::worldIDString = Network::worldID.ToNiceString();
 				Network::gameFlags = info->info.gameFlags;
-				Objects::RuntimeConfig::gameGoal = Objects::RuntimeConfig::GameGoal::Reinterpret(info->info.gameGoal);
+				RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info->info.gameGoal);
 				Network::client.ConnectAsync(info->urls[best].first + ":"+String(SERVICE_PORT));
 			});
 

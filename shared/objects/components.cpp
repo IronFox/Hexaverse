@@ -12,6 +12,7 @@
 #include "rendering.h"
 #include "satellite.h"
 #include "gridAndChoices.h"
+#include "../runtimeConfig.h"
 
 namespace Objects
 {

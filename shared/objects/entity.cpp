@@ -1,17 +1,19 @@
 #include <global_root.h>
 #include "entity.h"
 #include "turretBase.h"
+
 #ifdef HAS_WINDOW
 	#include "visualCommands.h"
-	#include "gridAndChoices.h"
+	#include "../runtimeConfig.h"
+	//#include "gridAndChoices.h"
 	#include "satellite.h"
 	#include "faction.h"
 #endif
 #ifndef CLIENT
 	#include "faction.h"
-	#include "structure.h"
 #endif
 #include "vehicle.h"
+#include "structure.h"
 
 
 namespace Objects
