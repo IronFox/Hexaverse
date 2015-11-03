@@ -8,6 +8,11 @@ ambient restocking (and repairing?) of support vehicles. //restocking no longer 
 
 ...next...
 
+Debug	2015 November 03. 19:27:36	49	CommandPhase							AI: Starting
+Debug	2015 November 03. 19:27:36	49	CommandPhase							AI: Not done processing
+Fatal	2015 November 03. 19:27:36	49	CommandPhase							Fatal exception in line 196 of client\clientMain.cpp::DirectTo() "[!RuntimeConfig::aiMode || !Network::newRoundRequested] evaluates to false"
+
+
 increase size of round timer countdown
 
 sometimes unit shadows (structure count) is transferred despite being invisible to a faction
