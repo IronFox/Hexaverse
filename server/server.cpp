@@ -80,7 +80,8 @@ void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromSto
 	{
 		LogEvent(EventType::SessionRelated,_v.get(),"Recognized as terraformer. Reevaluating survivial conditions");
 		v.owner->hasTerraformer = true;
-		bool canLive = v.owner->CanLive();
+		String whyNot;
+		bool canLive = v.owner->CanLive(whyNot);
 		
 		if (canLive)	//conditions changed
 		{
@@ -91,11 +92,12 @@ void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromSto
 				{
 					v.owner->deathInRounds = 0;
 					if (client)
-						client->SendProgressUpdate(false);
+						client->SendProgressUpdate(false,whyNot);
 				}
 			}
 		}
-
+		else
+			LogEvent(EventType::SessionRelated,_v.get(),"Nope: "+whyNot);
 	}
 
 
@@ -382,7 +384,7 @@ void	SignalNexusControlChange(const Objects::PFaction&f)
 
 			foreach (State::activePlayers,p)
 			{
-				(*p)->SendProgressUpdate(true);
+				(*p)->SendProgressUpdate(true,"<null>");
 			}
 		}
 		else
@@ -390,7 +392,10 @@ void	SignalNexusControlChange(const Objects::PFaction&f)
 			State::PClient client;
 			if (State::playerMap.Query(f,client))
 			{
-				client->SendProgressUpdate(false);
+				String why;
+				if (State::Config::basesRequired && f->deathInRounds > 0)
+					f->CanLive(why);
+				client->SendProgressUpdate(false,why);
 			}
 			return;
 		}
@@ -928,7 +933,9 @@ void ProcessAICoverage()
 								Objects::PVehiclePlant vplant = To<Objects::VehiclePlant>::DynamicCast(ws);
 								if (plant && vplant && plant->queue.IsEmpty())
 								{
-									Objects::Component::Turret* turret = State::Config::nexusVehicleTurrets[random.getIndex(State::Config::nexusVehicleTurrets.Count() - 1)];
+									index_t choice = random.getIndex(State::Config::nexusVehicleTurrets.Count() - 1);
+									ASSERT_LESS__(choice,State::Config::nexusVehicleTurrets.Count());
+									Objects::Component::Turret* turret = State::Config::nexusVehicleTurrets[choice];
 									Objects::PVehicle v = vplant->Enqueue(&Objects::Component::hoverbase,turret);
 									LogEvent(EventType::MinorEntityProcess,vplant.get(),"Enqueueing vehicle "+v->GetTypeName()+" production job due to high threat level");
 									EstimatePresence(*v,vplant->location,hostileNearNexus,constructorNearNexus,friendlyNearNexus);

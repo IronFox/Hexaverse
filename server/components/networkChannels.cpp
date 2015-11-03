@@ -505,7 +505,7 @@ namespace Receiver
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		{
 			{
-				client->SendProgressUpdate(true);
+				client->SendProgressUpdate(true,"<null>");
 			}
 		}
 		bool colorsSent = false;
@@ -868,7 +868,10 @@ namespace Receiver
 			Channels::updateWorld.SendTo(peer,delta);
 		}
 
-		client->SendProgressUpdate(false);
+		String why;
+		if (State::Config::basesRequired && faction->deathInRounds > 0)
+			faction->CanLive(why);
+		client->SendProgressUpdate(false,why);
 		
 
 		Protocol::PhaseChange	ph;

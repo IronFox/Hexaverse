@@ -651,23 +651,23 @@ namespace State
 			+ String(State::Config::GetTargetNexusCount());
 	}
 
-	static String FactionWarning(const Objects::PFaction&f)
+	static String FactionWarning(const Objects::PFaction&f, const String&warningReason)
 	{
 		if (!f)
 			return "Game Over";
 		if (State::Config::basesRequired && f->deathInRounds > 0)
-			return "Lack of base-functionality: Faction death in "+(f->deathInRounds > 1 ? String(f->deathInRounds)+" rounds" : "ONE round");
+			return warningReason+": Faction death in "+(f->deathInRounds > 1 ? String(f->deathInRounds)+" rounds" : "ONE round");
 		return "";
 	}
 
 
-	void Client::SendProgressUpdate(bool dead)
+	void Client::SendProgressUpdate(bool dead, const String&warningReason)
 	{
 		Protocol::GameProgress progress;
 		progress.gameOver = dead || RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;
 		progress.gameWon = State::winner == faction && !!State::winner;
 		progress.status = FactionStatus(faction);
-		progress.warning = dead ? "Game Over" : FactionWarning(faction);
+		progress.warning = dead ? "Game Over" : FactionWarning(faction,warningReason);
 		Channels::gameProgress.SendTo(peer.lock(),progress);
 	}
 
@@ -2456,8 +2456,11 @@ namespace State
 				Objects::PFaction faction = _f->lock();
 				if (faction)
 				{
-					faction->hasMineralGeneratorCycle = false;
-					faction->hasVehicleProductionCycle = false;
+					faction->hasFuelMine = false;
+					faction->hasMineralMine = false;
+					faction->hasMineralContainer = false;
+					faction->hasGenerator = false;
+					faction->hasVehiclePlant = false;
 					faction->hasTerraformer = false;
 				}
 			}
@@ -2501,14 +2504,12 @@ namespace State
 					if (To<Objects::VehiclePlant>::DynamicCast(s))
 						hasVehiclePlant = true;
 				}
-				if (hasFuelMine && hasMineralMine && hasMineralContainer && hasGenerator)
-				{
-					c.containedStructures.first().lock()->owner->hasMineralGeneratorCycle = true;
-				}
-				if (hasFuelMine && hasMineralMine && hasVehiclePlant && hasGenerator)
-				{
-					c.containedStructures.first().lock()->owner->hasVehicleProductionCycle = true;
-				}
+				Objects::PFaction f = c.containedStructures.first().lock()->owner;
+				f->hasFuelMine = hasFuelMine;
+				f->hasMineralMine = hasMineralMine;
+				f->hasMineralContainer = hasMineralContainer;
+				f->hasGenerator = hasGenerator;
+				f->hasVehiclePlant = hasVehiclePlant;
 			});
 
 			Objects::ForeachMobileEntityIncludingStored([](const Objects::PMobileEntity&v)
@@ -2524,7 +2525,8 @@ namespace State
 				Objects::PFaction faction = Objects::Faction::all[i].lock();
 				if (faction)
 				{
-					bool canLive = faction->CanLive();
+					String whyNot;
+					bool canLive = faction->CanLive(whyNot);
 
 					State::PClient client;
 
@@ -2538,7 +2540,7 @@ namespace State
 						{
 							faction->deathInRounds = 0;
 							if (client)
-								client->SendProgressUpdate(false);
+								client->SendProgressUpdate(false,whyNot);
 						}
 					}
 					else
@@ -2559,7 +2561,7 @@ namespace State
 								dead = true;
 								String name = client ? client->ToString() : "Faction "+faction->id.ToString();
 											
-								LogEvent(EventType::GameProgressRelated,name+" died");
+								LogEvent(EventType::GameProgressRelated,name+" died: "+whyNot);
 
 								if (client)
 								{
@@ -2599,7 +2601,7 @@ namespace State
 											//debugCheckProgress = true;
 											if (State::playerMap.Query(State::winner,client))
 											{
-												client->SendProgressUpdate(true);
+												client->SendProgressUpdate(true,whyNot);
 											}
 										}
 									}
@@ -2607,7 +2609,7 @@ namespace State
 							}
 						}
 						if (client)
-							client->SendProgressUpdate(dead);
+							client->SendProgressUpdate(dead,whyNot);
 					}
 				}
 			}

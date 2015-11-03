@@ -591,8 +591,70 @@ namespace Objects
 			return false;
 		}
 
+		bool		Faction::CanLive(String&whyNot) const
+		{
+			if (SurvivesByOtherMeans())
+				return true;
+
+			bool hasMineralGeneratorCycle = hasFuelMine && hasMineralMine && hasGenerator;
+			#ifndef CONNECTOR_LESS
+				if (!hasMineralContainer)
+					hasMineralGeneratorCycle = false;
+			#endif
+
+//				static Buffer0<String> missing;
+			if (!hasMineralGeneratorCycle)
+			{
+				whyNot = "";
+				if (!hasFuelMine)
+					whyNot += "Fuel Mine";
+				if (!hasMineralMine)
+				{
+					if (whyNot.IsNotEmpty())
+						whyNot += ", ";
+					whyNot += "Mineral Mine";
+				}
+
+				#ifndef CONNECTOR_LESS
+					if (!hasMineralContainer)
+					{
+						if (whyNot.IsNotEmpty())
+							whyNot += ", ";
+						whyNot += "Mineral Container";
+					}
+				#endif
+				if (!hasGenerator)
+				{
+					if (whyNot.IsNotEmpty())
+						whyNot += ", ";
+					whyNot += "Generator";
+				}
+
+
+
+				whyNot = "Lacking endless mineral production facility ("+whyNot+")";
+				return false;
+			}
+			if (hasTerraformer)
+				return true;
+			bool hasVehicleProductionCycle = hasFuelMine && hasMineralMine && hasVehiclePlant && hasGenerator;
+			if (!hasVehicleProductionCycle)
+			{
+				whyNot = "Vehicle Plant";
+				whyNot = "Lacking vehicle production facility ("+whyNot+")";
+
+				return false;
+			}
+
+			return true;
+		}
+
+
+
 		bool		Faction::CanSpawnType(const PWorldEntity&e, String&errorOut)	const
 		{
+			if (this == nexus.get())
+				return true;
 			if (e->IsMobile())
 			{
 				ConstName type = To<MobileEntity>::Cast(e)->turret->constName;
