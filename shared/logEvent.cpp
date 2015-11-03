@@ -9,11 +9,12 @@
 #include "logEvent.h"
 #include <net/tcp.h>
 
+#include "runtimeConfig.h"
+#include "./objects/faction.h"
+
 #ifndef CLIENT
 	#include "../server/components/state.h"
 	#include "../server/components/serverLogEvent.h"
-#else
-	#include "../client/components/network.h"
 #endif
 
 #ifdef HAS_WINDOW
@@ -161,17 +162,10 @@ namespace Logging
 			if (!inTestMode)
 				logFile << "Type" << tab << "Time" << tab << "Round"<<tab<< "Phase"<<tab<<  "ClientName"<<tab<<"IP"<<tab<<"EntityType"<<tab<<"EntityID"<<tab<<"OwnerID"<<tab<<"Location"<<tab<<"Message"<<nl;
 		}
-		#ifndef CLIENT
-			if (printToConsole)
-				console << '[' << String(State::roundNumber)<<"] ";
-			if (!inTestMode)
-				logFile << type.ToString() << tab << TimeStamp() << tab << String(State::roundNumber) << tab << State::phase.ToString();
-		#else
-			if (printToConsole)
-				console << '[' << String(Network::roundNumber)<<"] ";
-			if (!inTestMode)
-				logFile << type.ToString() << tab << TimeStamp() << tab << String(Network::roundNumber) << tab << Network::serverPhase.ToString();
-		#endif
+		if (printToConsole)
+			console << '[' << String(RuntimeConfig::roundNumber)<<"] ";
+		if (!inTestMode)
+			logFile << type.ToString() << tab << TimeStamp() << tab << String(RuntimeConfig::roundNumber) << tab << RuntimeConfig::phase.ToString();
 
 		if (peer)
 		{

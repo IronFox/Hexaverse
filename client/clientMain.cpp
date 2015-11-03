@@ -55,7 +55,7 @@
 #include "components/lineRenderer.h"
 #include "components/surfaceRenderer.h"
 #include "components/ai.h"
-#include "components/runtimeConfig.h"
+#include "components/clientRuntimeConfig.h"
 #include "components/world.h"
 #include "components/atmosphere.h"
 #include "components/guiHostList.h"
@@ -294,7 +294,7 @@ void	SignalRemoval(const Objects::PWorldEntity&entity)
 			Objects::PWorldEntity e = Objects::GetEntity(id);
 			if (!e || !e->isMine)
 				return Dialog::CheckResult::Abort;
-			if (Network::serverPhase != Protocol::Phase::CommandPhase)
+			if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
 				return Dialog::CheckResult::OkayNotRightNow;
 			return Dialog::CheckResult::OkayContinue;
 		}
@@ -465,7 +465,7 @@ void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName p
 						{
 							if (!Objects::GetEntity(id) || !Network::client.IsConnected())
 								return Dialog::CheckResult::Abort;
-							if (Network::serverPhase != Protocol::Phase::CommandPhase)
+							if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
 								return Dialog::CheckResult::OkayNotRightNow;
 							return Dialog::CheckResult::OkayContinue;
 						}
@@ -487,7 +487,7 @@ void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName p
 						{
 							if (!Objects::GetEntity(id) || !Network::client.IsConnected())
 								return Dialog::CheckResult::Abort;
-							if (Network::serverPhase != Protocol::Phase::CommandPhase)
+							if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
 								return Dialog::CheckResult::OkayNotRightNow;
 							return Dialog::CheckResult::OkayContinue;
 						}
@@ -535,7 +535,7 @@ void	SignalDropLastTask(const Objects::PWorldEntity&e)
 			{
 				if (!Network::client.IsConnected() || !Objects::GetEntity(id))
 					return Dialog::CheckResult::Abort;
-				if (Network::serverPhase != Protocol::Phase::CommandPhase || Network::newRoundRequested)
+				if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase || Network::newRoundRequested)
 					return Dialog::CheckResult::OkayNotRightNow;
 				return Dialog::CheckResult::OkayContinue;
 			});
@@ -571,7 +571,7 @@ void	SignalDropAllTasks(const Objects::PWorldEntity&e)
 			{
 				if (!Network::client.IsConnected() || !Objects::GetEntity(id))
 					return Dialog::CheckResult::Abort;
-				if (Network::serverPhase != Protocol::Phase::CommandPhase || Network::newRoundRequested)
+				if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase || Network::newRoundRequested)
 					return Dialog::CheckResult::OkayNotRightNow;
 				return Dialog::CheckResult::OkayContinue;
 			});
@@ -1617,7 +1617,7 @@ void							SignalMarkerDeletion(TUniqueID markerID)	//must be copy to prevent we
 
 void	SignalMarkerCreation(Protocol::Marker&marker)
 {
-	marker.createdInRound = Network::roundNumber;
+	marker.createdInRound = RuntimeConfig::roundNumber;
 	Network::Channels::createMarker.SendTo(Network::client, marker);
 	Network::Receiver::CreateMarker(marker);	//one-way
 }
@@ -1626,11 +1626,11 @@ void	SignalMarkerCreation(Protocol::Marker&marker)
 
 void	SignalMarkerTouch(Objects::Marker&marker)
 {
-	marker.createdInRound = Network::roundNumber;
-	marker.UpdateAge(Network::roundNumber);
+	marker.createdInRound = RuntimeConfig::roundNumber;
+	marker.UpdateAge(RuntimeConfig::roundNumber);
 	Protocol::TouchedMarker m;
 	m.id = marker.id;
-	m.newRoundNumber = Network::roundNumber;
+	m.newRoundNumber = RuntimeConfig::roundNumber;
 	Network::Channels::touchMarker.SendTo(Network::client,m);
 }
 
@@ -1944,7 +1944,7 @@ bool loop()
 				Tutorial::ShowMessage("Move To");
 				Tutorial::lastDelayingEvent = timer.Now();
 			}
-			if (!Tutorial::endRoundTutorialIssued && Network::client.IsConnected() && Network::serverPhase == Protocol::Phase::CommandPhase && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 10.f)
+			if (!Tutorial::endRoundTutorialIssued && Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 10.f)
 			{
 				Tutorial::endRoundTutorialIssued = true;
 				Tutorial::ShowMessage("End Round");
@@ -1968,7 +1968,7 @@ bool loop()
 			}
 		}
 		#endif
-		if (RuntimeConfig::aiMode && Network::serverPhase == Protocol::Phase::CommandPhase)
+		if (RuntimeConfig::aiMode && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 		{
 			if (Engine::context.isMinimized())
 				AI::Process(0.5f);
@@ -2371,12 +2371,12 @@ bool loop()
 			{
 				textout << "Server ID: " << Network::serverIDString<<nl;
 				textout << "World ID: " << Network::worldIDString<<nl;
-				textout << "Game Goal: "<<Objects::RuntimeConfig::gameGoal.ToString() << nl;
+				textout << "Game Goal: "<<RuntimeConfig::gameGoal.ToString() << nl;
 				#ifdef _DEBUG
 					textout << "Access ID: " << Network::activeTokenString<<nl;
 				#endif
-				textout << "Phase: "<<Network::serverPhase.ToString()<<nl;
-				textout << "Round Number: "<<Network::roundNumber<<nl;
+				textout << "Phase: "<<RuntimeConfig::phase.ToString()<<nl;
+				textout << "Round Number: "<<RuntimeConfig::roundNumber<<nl;
 				if (!Network::gameProgress.gameOver)
 				{
 					if (Network::gameProgress.status.IsNotEmpty())
@@ -2408,7 +2408,7 @@ bool loop()
 				if (Network::haveId)
 					textout << "My ID: "<<Network::myIDString<<nl;
 			#endif
-			if (Network::serverPhase == Protocol::Phase::CommandPhase && Network::roundTimer > 0)
+			if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::roundTimer > 0)
 			{
 				float remaining = std::max(Network::roundTimer - timer.GetSecondsSince(Network::phaseStarted),0.f);
 				textout << "Remaining seconds: "<<Round(remaining)<<nl;
@@ -2987,7 +2987,7 @@ String GenerateOreName(Random&random)
 //			std::cout << event << std::endl;
 //		#endif
 //	}
-//	eventLog.Log(String(Network::roundNumber)+tab+ Network::serverPhase.ToString()   + tab + outEvent,true);
+//	eventLog.Log(String(RuntimeConfig::roundNumber)+tab+ RuntimeConfig::phase.ToString()   + tab + outEvent,true);
 //	eventLock.unlock();
 //}
 
@@ -3463,7 +3463,7 @@ String GenerateOreName(Random&random)
 				{
 					if (!Network::amOnline || Network::haveFaction || !(supportFactionFlag & Network::gameFlags))
 						return Dialog::CheckResult::Abort;
-					if (Network::serverPhase != Protocol::Phase::CommandPhase)
+					if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
 						return Dialog::CheckResult::OkayNotRightNow;
 					return Dialog::CheckResult::OkayContinue;
 				});
@@ -3473,7 +3473,7 @@ String GenerateOreName(Random&random)
 				Network::AttemptFactionLogin(true,typeFlags);
 				Dialog::Hide(Dialog::loginMenu);
 			}
-		},[supportFactionFlag](){return Network::amOnline && !Network::haveFaction && (Network::gameFlags & supportFactionFlag) && Network::serverPhase == Protocol::Phase::CommandPhase;},false);
+		},[supportFactionFlag](){return Network::amOnline && !Network::haveFaction && (Network::gameFlags & supportFactionFlag) && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;},false);
 
 
 	}
@@ -3801,7 +3801,7 @@ int main( int argc, const char* argv[])
 				#ifndef _DEBUG
 				&& Network::HaveFactionKeyForCurrentWorld() 
 				#endif
-				&& Network::serverPhase == Protocol::Phase::CommandPhase;
+				&& RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
 			}
 			);
 			AddFactionCreationChoice("Create new faction",Protocol::FactionType::RegularFaction, Protocol::GameFlag::SupportRegularFactions);

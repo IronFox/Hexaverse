@@ -167,7 +167,7 @@ namespace Receiver
 			//avoid 12 corner cells: make sure all candidates have 6 neighbors
 			for (index_t i = 12; i < Grid::LowSetup::GridType::CellCount; i++)
 			{
-				if (Objects::RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
+				if (RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
 				{
 					if (!(State::unlockedEMPZones & Grid::low.grid.GetCell(i).cornerFlags))
 						continue;
@@ -250,7 +250,7 @@ namespace Receiver
 
 	static void UpdateEMPZones(count_t inc)
 	{
-		if (Objects::RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
+		if (RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
 		{
 			count_t numZones = Objects::Faction::all.Count()+inc;	//not counting nexus faction, but counting new faction(s)
 			numZones = (numZones/3) + !!(numZones % 3);
@@ -290,6 +290,7 @@ namespace Receiver
 			{
 				LogEvent(EventType::SessionRelated,peer,"Abandoning faction");
 				State::playerMap.Unset(client->faction);
+				client->faction->online = false;
 				client->faction.reset();
 
 				Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
@@ -297,10 +298,10 @@ namespace Receiver
 			return;
 		}
 
-		if (State::phase != Protocol::Phase::CommandPhase && State::phase != Protocol::Phase::EndOfGame)
+		if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
 		{
 			//disconnecting client. no new faction
-			LogEvent(EventType::CommandRejected, peer, "Cannot connect ("+String(State::phase.ToString())+") right now. Disconnecting");
+			LogEvent(EventType::CommandRejected, peer, "Cannot connect ("+String(RuntimeConfig::phase.ToString())+") right now. Disconnecting");
 			response.startFactionTypes = 0;
 			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 			client->peer.lock()->DisconnectPeer();
@@ -374,6 +375,7 @@ namespace Receiver
 				}
 				other->peer.lock()->DisconnectPeer();
 				State::playerMap.Unset(faction);
+				faction->online = false;
 				other->faction.reset();
 				client->faction = faction;
 				LogEvent(EventType::SessionRelated,peer,"Faction access token recognized.");
@@ -394,7 +396,7 @@ namespace Receiver
 			{
 				LogEvent(EventType::SessionRelated,peer,"Provided token not recognized: "+response.factionToken.value.ToString());
 
-				if (State::Config::closedGame && State::roundNumber > 0)
+				if (State::Config::closedGame && RuntimeConfig::roundNumber > 0)
 				{
 					foreach (Objects::Faction::all,f)
 					{
@@ -412,7 +414,7 @@ namespace Receiver
 			newFaction = true;
 		}
 
-		if (State::phase == Protocol::Phase::EndOfGame)
+		if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		{
 			{
 				client->SendProgressUpdate(true);
@@ -431,7 +433,7 @@ namespace Receiver
 				return;
 			}
 
-			if (State::Config::closedGame && State::roundNumber > 0)
+			if (State::Config::closedGame && RuntimeConfig::roundNumber > 0)
 			{
 				response.startFactionTypes = 0;
 				Channels::clientFactionResponse.SendTo(peer,response);
@@ -467,6 +469,7 @@ namespace Receiver
 		}
 		State::activePlayers << client;
 		State::playerMap.Set(client->faction,client);
+		client->faction->online = true;
 		client->wantNewRound = false;
 
 
@@ -563,6 +566,15 @@ namespace Receiver
 
 			client->faction->canSee.VisitAllKeys([&peer,client,timestamp](const Objects::PWorldEntity&e)
 			{
+				if (e->health <= 0)
+				{
+					//weird...? weirder...
+
+
+
+					return;
+				}
+
 				Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
 				if (s)
 				{
@@ -673,8 +685,8 @@ namespace Receiver
 		
 
 		Protocol::PhaseChange	ph;
-		ph.newPhase = State::phase;
-		ph.roundNumber = (UINT32)State::roundNumber;
+		ph.newPhase = RuntimeConfig::phase;
+		ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
 		ph.timeFactor = -1;
 
 
@@ -682,7 +694,7 @@ namespace Receiver
 
 
 		faction->name = client->state.playerName;
-		faction->online = true;
+		//faction->online = true;
 		//probably optional later on
 		{
 			//broadcast name and state
@@ -728,7 +740,7 @@ namespace Receiver
 			Channels::uplinkBandwidth.SendTo(peer,State::Config::uplinkBandwidth);
 		#endif
 		Protocol::UnitLimits	limits;
-		Objects::RuntimeConfig::UnitLimits::Export(limits);
+		RuntimeConfig::UnitLimits::Export(limits);
 		Channels::unitLimits.SendTo(peer,limits);
 		
 		Channels::lockEmpZones.SendTo(peer,State::empZonesLocked);
@@ -789,11 +801,11 @@ namespace Receiver
 
 	bool	CheckCommandMode(TCP::Peer&peer)
 	{
-		if (State::phase == Protocol::Phase::CommandPhase)
+		if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 		{
 			return true;
 		}
-		LogEvent(EventType::CommandRejected ,peer,"Cannot issue commands in current phase ("+String(State::phase.ToString())+")");
+		LogEvent(EventType::CommandRejected ,peer,"Cannot issue commands in current phase ("+String(RuntimeConfig::phase.ToString())+")");
 		return false;
 	}
 
@@ -1610,8 +1622,8 @@ namespace Receiver
 
 			
 			Protocol::PhaseChange	ph;
-			ph.newPhase = State::phase;
-			ph.roundNumber = (UINT32)State::roundNumber;
+			ph.newPhase = RuntimeConfig::phase;
+			ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
 			ph.timeFactor = -1;
 
 
@@ -1671,8 +1683,8 @@ namespace Receiver
 					if (client->faction)
 					{
 						State::playerMap.Unset(client->faction);
-						Channels::factionOffline.SendTo(State::server,client->faction->id);
 						client->faction->online = false;
+						Channels::factionOffline.SendTo(State::server,client->faction->id);
 					}
 
 					peer.attachment.reset();
@@ -1711,7 +1723,7 @@ namespace Receiver
 				
 				//Objects::Tick();
 				State::PClient client = To<State::Client>::Cast(peer.attachment);
-				if (client && client->faction && State::phase == Protocol::Phase::CommandPhase)
+				if (client && client->faction && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 				{
 					client->wantNewRound = true;
 					LogEvent(EventType::SessionRelated,peer,"Requested new round");

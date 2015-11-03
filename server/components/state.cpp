@@ -23,7 +23,7 @@ namespace State
 
 	bool		Client::CanSee(const Objects::PWorldEntity&e, float t)	const
 	{
-		return faction->CanSee(e,t);
+		return faction && faction->CanSee(e,t);
 	}
 
 
@@ -95,8 +95,7 @@ namespace State
 	Buffer<PClient>	clients,activePlayers;
 	GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
 	GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
-	UINT32			roundNumber=0, lastSaveRound = 0, empZonesLocked = 0, unlockedEMPZones = 0xFFFF;
-	Protocol::Phase	phase;
+	UINT32			lastSaveRound = 0, empZonesLocked = 0, unlockedEMPZones = 0xFFFF;
 	Objects::PFaction	winner;	//if set indicates game is over
 	TUniqueID		worldID;
 	Timer::Time		lastPhaseChange = timer.Now();
@@ -151,7 +150,7 @@ namespace State
 		//Sleep(500);
 		State::server.Shutdown();
 
-		Objects::RuntimeConfig::doomsdayWeapons = Objects::RuntimeConfig::DoomsdayWeapons();	//load default value
+		RuntimeConfig::doomsdayWeapons = RuntimeConfig::DoomsdayWeapons();	//load default value
 
 		clients.Clear();
 		activePlayers.Clear();
@@ -159,12 +158,12 @@ namespace State
 
 		tokenMap.Clear();
 		terrainChanged = false;
-		roundNumber = 0;
+		RuntimeConfig::roundNumber = 0;
 		lastSaveRound = 0;
 		empZonesLocked = 0;
 		unlockedEMPZones = 0xFFFF;
 		roundTimerPaused = true;
-		phase = Protocol::Phase::CommandPhase;
+		RuntimeConfig::phase = RuntimeConfig::Phase::CommandPhase;
 		worldID.Generate();
 		winner.reset();
 
@@ -246,19 +245,19 @@ namespace State
 
 	void DebugCheckWorld();
 
-	void	ChangePhase(Protocol::Phase to, float timeWindow/* = -1*/)
+	void	ChangePhase(RuntimeConfig::Phase to, float timeWindow/* = -1*/)
 	{
-		LogEvent(EventType::Debug,"Changing phase to "+String(to.ToString())+" with time window "+String(timeWindow));
+		LogEvent(EventType::Debug,"Changing RuntimeConfig::phase to "+String(to.ToString())+" with time window "+String(timeWindow));
 		Protocol::PhaseChange	ph;
 		ph.newPhase = to;
-		ph.roundNumber = (UINT32)roundNumber;
+		ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
 		ph.timeFactor = timeWindow;
 		Channels::phaseChange.SendTo(server,ph);
-		phase = to;
+		RuntimeConfig::phase = to;
 		lastPhaseChange = timer.Now();
 
 		#ifdef _DEBUG
-			if (to == Protocol::Phase::AnimationPhase)	//should have enough time during animation phase
+			if (to == RuntimeConfig::Phase::AnimationPhase)	//should have enough time during animation RuntimeConfig::phase
 			{
 				Objects::VerifyVisibilityNetwork();	 //seems stable
 				Objects::CheckMobileEntitySanity();
@@ -268,7 +267,7 @@ namespace State
 		#endif
 
 
-		//if (to == Protocol::Phase::CommandPhase)
+		//if (to == RuntimeConfig::Phase::CommandPhase)
 			//DebugCheckWorld();	//this assumes the world does not change. if it does, this will fail
 
 	}
@@ -653,7 +652,7 @@ namespace State
 	void Client::SendProgressUpdate(bool dead)
 	{
 		Protocol::GameProgress progress;
-		progress.gameOver = dead || State::phase == Protocol::Phase::EndOfGame;
+		progress.gameOver = dead || RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame;
 		progress.gameWon = State::winner == faction && !!State::winner;
 		progress.status = FactionStatus(faction);
 		progress.warning = dead ? "Game Over" : FactionWarning(faction);
@@ -669,7 +668,7 @@ namespace State
 		None = 0,
 		WorldInfoGroup = 1,
 			//WorldID,
-			//RoundNumber,
+			//RuntimeConfig::roundNumber,
 
 		ObjectGroup = WorldInfoGroup + 1024,
 			VehicleTaskSection,
@@ -1534,7 +1533,7 @@ void	State::Load(const String&filename)
 							ASSERT__(!worldInfoFound);
 							worldInfoFound = true;
 							GetPOD(list,"WDID",worldID);
-							GetPOD(list,"RNDN",roundNumber);
+							GetPOD(list,"RNDN",RuntimeConfig::roundNumber);
 
 
 							State::Config::enableNexusAI = list->FindFirst(RID::nexusAI) != nullptr;
@@ -1543,7 +1542,7 @@ void	State::Load(const String&filename)
 							GetOptionalPOD(list,RID::nexusBases,State::Config::NexusPorts::haveBases,false);
 							UINT16 goal;
 							GetPOD(list,RID::goal,goal);
-							Objects::RuntimeConfig::gameGoal = State::Config::Goal::Reinterpret(goal);
+							RuntimeConfig::gameGoal = State::Config::Goal::Reinterpret(goal);
 							GetPOD(list,RID::startBases,State::Config::startBases);
 							GetPOD(list,RID::basesRequired,State::Config::basesRequired );
 							GetOptionalPOD(list,RID::newVehiclesHaveFullAmmo,Objects::newVehiclesHaveFullAmmo,true);
@@ -1551,7 +1550,7 @@ void	State::Load(const String&filename)
 							{
 								UINT8 v;
 								GetOptionalPOD(list,RID::doomsdayWeapons,v,(UINT8)0);
-								Objects::RuntimeConfig::doomsdayWeapons.Load(v);
+								RuntimeConfig::doomsdayWeapons.Load(v);
 							}
 							GetPOD(list,RID::worldConfig,State::persistentPlanetInfo);
 							Grid::CellStack::bottom.content = (BYTE)State::persistentPlanetInfo.innerCoreType;
@@ -1813,13 +1812,13 @@ void	State::Load(const String&filename)
 		w->ResetAllChange();
 	});
 
-	lastSaveRound = roundNumber;
+	lastSaveRound = RuntimeConfig::roundNumber;
 	ASSERT__(worldInfoFound);
 	//ASSERT__(nexusFound);	if it has no units, it is not stored
 
 
 
-	if (Objects::RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
+	if (RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
 	{
 		count_t numZones = State::Config::CountAccessibleZones();
 
@@ -1839,7 +1838,7 @@ void	State::Load(const String&filename)
 	}
 
 
-	LogEvent(EventType::SessionRelated,"Restored world "+worldID.ToNiceString()+" in round "+String(roundNumber));
+	LogEvent(EventType::SessionRelated,"Restored world "+worldID.ToNiceString()+" in round "+String(RuntimeConfig::roundNumber));
 	State::RefreshWindowTitle();
 
 
@@ -1876,7 +1875,7 @@ void State::AutoSave()
 		Compare(a,b,stack);
 	#endif
 
-	State::lastSaveRound = State::roundNumber;
+	State::lastSaveRound = RuntimeConfig::roundNumber;
 }
 
 void	State::Save( const String&name)
@@ -1891,19 +1890,19 @@ void	State::Save( const String&name)
 	container.AppendBlock(RID::worldContentTypeCount)->SetPODData((UINT32)Grid::Content::NumberOfPossibilities);
 	Riff::Chunk*general = CreateNamedList(container,ChunkName::WorldInfoGroup);
 	general->AppendBlock("WDID")->SetPODData(worldID);
-	general->AppendBlock("RNDN")->SetPODData(roundNumber);
+	general->AppendBlock("RNDN")->SetPODData(RuntimeConfig::roundNumber);
 	general->AppendBlock(RID::worldConfig)->SetPODData(State::persistentPlanetInfo);
 	general->AppendBlock(RID::factionSupportFlags)->SetPODData(State::Config::factionSupportFlags);
 	general->AppendBlock(RID::closedGame)->SetPODData(State::Config::closedGame);
 	general->AppendBlock(RID::nexusBases)->SetPODData(State::Config::NexusPorts::haveBases);
-	general->AppendBlock(RID::goal)->SetPODData((UINT16)Objects::RuntimeConfig::gameGoal);
+	general->AppendBlock(RID::goal)->SetPODData((UINT16)RuntimeConfig::gameGoal);
 	if (State::Config::enableNexusAI)
 		general->AppendBlock(RID::nexusAI);
 	general->AppendBlock(RID::startBases)->SetPODData(State::Config::startBases);
 	general->AppendBlock(RID::basesRequired )->SetPODData(State::Config::basesRequired );
 	general->AppendBlock(RID::newVehiclesHaveFullAmmo)->SetPODData(Objects::newVehiclesHaveFullAmmo);
 	general->AppendBlock(RID::exposeActionLeftToHostileFactions )->SetPODData(State::Config::exposeActionLeftToHostileFactions );
-	general->AppendBlock(RID::doomsdayWeapons)->SetPODData((UINT8)Objects::RuntimeConfig::doomsdayWeapons);
+	general->AppendBlock(RID::doomsdayWeapons)->SetPODData((UINT8)RuntimeConfig::doomsdayWeapons);
 
 	GenericHashSet<Objects::PFaction,SharedPtrHash>	allFactions;
 
@@ -2488,6 +2487,7 @@ namespace State
 									State::activePlayers.FindAndErase(client);
 								State::tokenMap.Unset(faction->accessToken);
 								State::playerMap.Unset(faction);
+								faction->online = false;
 								if (client)
 									client->faction.reset();
 								i--;
@@ -2502,10 +2502,10 @@ namespace State
 									else
 									if (Objects::Faction::all.Count() == 1)
 									{
-										if (State::phase != Protocol::Phase::EndOfGame)
+										if (RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
 										{
 											LogEvent(EventType::SessionRelated,"Only one faction left. Declaring winner.");
-											State::ChangePhase(Protocol::Phase::EndOfGame);
+											State::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 											State::winner = Objects::Faction::all.first().lock();
 											State::PClient client;
 											//debugCheckProgress = true;

@@ -9,7 +9,6 @@ All network-related aspects. Multiple additions to this namespace exist.
 */
 namespace Network
 {
-	extern Protocol::Phase		serverPhase;
 
 	/**
 	Checks whether or not user-input is currently allowed
@@ -34,11 +33,8 @@ namespace Network
 	extern GenericHashTable<TUniqueID,Objects::OwnerParameter,TUniqueID>	factionMap;
 
 
-	extern UINT32			roundNumber;
-					//dbgRoundNumber = 0xFFFFFFFF;
 	extern Protocol::GameProgress	gameProgress;
 
-	extern Protocol::Phase	serverPhase;
 	extern float			animationTimeFactor,	//!< Speed factor applied to active animations. Updated when server issues next animation phase.
 							roundTimer;
 	extern Timer::Time		phaseStarted;

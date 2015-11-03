@@ -1,17 +1,19 @@
 #include <global_root.h>
 #include "entity.h"
 #include "turretBase.h"
+
 #ifdef HAS_WINDOW
 	#include "visualCommands.h"
-	#include "gridAndChoices.h"
+	#include "../runtimeConfig.h"
+	//#include "gridAndChoices.h"
 	#include "satellite.h"
 	#include "faction.h"
 #endif
 #ifndef CLIENT
 	#include "faction.h"
-	#include "structure.h"
 #endif
 #include "vehicle.h"
+#include "structure.h"
 
 
 namespace Objects
@@ -454,11 +456,25 @@ namespace Objects
 		#ifndef CLIENT
 			if (isFinal)
 			{
+
+
+
 				foreach (seenBy,s)
 				{
 					(*s)->owner->canSee.Unset(_this);
 					ASSERT__((*s)->seeing.FindAndErase(_this));
 				}
+
+				foreach (Faction::all,_f)
+				{
+					PFaction f= _f->lock();
+					if (f)
+					{
+						if (f->canSee.Unset(_this))
+							LogEvent(EventType::InternalFault,this,"Sensor removal should have been seen by "+f->GetLogName());
+					}
+				}
+
 			}
 			foreach (seeing,s)
 			{

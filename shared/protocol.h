@@ -1665,10 +1665,9 @@ namespace Protocol
 
 
 
-	CONSTRUCT_ENUMERATION6(Phase, CommandPhase,StructurePhase,AttackPhase,MovementPhase,AnimationPhase, EndOfGame);
 
 	NETSTRUCT3(PhaseChange
-		, NET(Phase), newPhase
+		, NET(UINT8), newPhase
 		, NET(UINT32), roundNumber
 		, NET(float), timeFactor
 	)

@@ -2,7 +2,7 @@
 #include "network.h"
 #include "../version.h"
 #include "animation.h"
-#include "runtimeConfig.h"
+#include "clientRuntimeConfig.h"
 #include "world.h"
 #include "cameraControl.h"
 #include "ui.h"
@@ -40,11 +40,8 @@ namespace Network
 	GenericHashTable<TUniqueID,Objects::OwnerParameter,TUniqueID>	factionMap;
 
 
-	UINT32			roundNumber;
-					//dbgRoundNumber = 0xFFFFFFFF;
 	Protocol::GameProgress	gameProgress;
 
-	Protocol::Phase	serverPhase;
 	float			animationTimeFactor = 1,
 					roundTimer = 0;
 	Timer::Time		phaseStarted;
@@ -731,7 +728,7 @@ namespace Network
 					type = Objects::Marker::Type::Reinterpret(2);
 				}
 			}
-			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, entityType, std::max<int>(Network::roundNumber,marker.createdInRound));
+			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, entityType, std::max<int>(RuntimeConfig::roundNumber,marker.createdInRound));
 			#ifdef HAS_WINDOW
 				OnSelectionChange(true);
 			#endif
@@ -755,7 +752,7 @@ namespace Network
 		void	UplinkBandwidth(NET(INT32)&v)
 		{
 			uplinkBandwidth = v;
-			Objects::RuntimeConfig::hibernationSystemEnabled = v > 0;
+			RuntimeConfig::hibernationSystemEnabled = v > 0;
 			#ifdef HAS_WINDOW
 				OnSelectionChange(true);
 			#endif
@@ -763,7 +760,7 @@ namespace Network
 
 		void	UnitLimits(Protocol::UnitLimits&limits)
 		{
-			Objects::RuntimeConfig::UnitLimits::Import(limits);
+			RuntimeConfig::UnitLimits::Import(limits);
 			#ifdef HAS_WINDOW
 				OnSelectionChange(true);
 			#endif
@@ -1205,7 +1202,7 @@ namespace Network
 
 	bool		ControlEnabled( )
 	{
-		return client.IsConnected() && serverPhase == Protocol::Phase::CommandPhase && Animation::AllDone() && !newRoundRequested;
+		return client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Animation::AllDone() && !newRoundRequested;
 	}
 
 
@@ -1220,7 +1217,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 
 	switch (c.newPhase.value)
 	{
-		case Protocol::Phase::AnimationPhase:
+		case RuntimeConfig::Phase::AnimationPhase:
 			if (RuntimeConfig::aiMode)
 				AI::vehicles.Clear();	//whichever is left, cannot be computed
 			Animation::atTime = 0.f;
@@ -1229,11 +1226,11 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			if (c.timeFactor > 0)
 				animationTimeFactor = c.timeFactor;
 		break;
-		case Protocol::Phase::CommandPhase:
+		case RuntimeConfig::Phase::CommandPhase:
 			newRoundRequested = false;
 			roundTimer = c.timeFactor;
-			roundNumber = c.roundNumber;
-			serverPhase = c.newPhase;
+			RuntimeConfig::roundNumber = c.roundNumber;
+			RuntimeConfig::phase.Load(c.newPhase);
 
 
 
@@ -1249,8 +1246,8 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	#ifdef HAS_WINDOW
 		Tutorial::lastDelayingEvent = timer.Now();
 	#endif
-	serverPhase = c.newPhase;
-	roundNumber = c.roundNumber;
+	RuntimeConfig::phase.Load(c.newPhase);
+	RuntimeConfig::roundNumber = c.roundNumber;
 	phaseStarted = timer.Now();
 	#ifdef HAS_WINDOW
 		Objects::UpdateChoices(ControlEnabled());
@@ -1259,14 +1256,14 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	UI::HexGrid::RefreshContacts();
 	//while (Objects::Network::records.IsNotEmpty() && timer.GetSecondsSince(Objects::Network::records.Peek().recorded) > 10)
 	//	Objects::Network::records.EraseFront();
-	LogEvent(EventType::MinorEntityProcess,nullptr,"Server phase changed to "+String(serverPhase.ToString())+" ("+String(c.timeFactor.value)+") @"+String(Animation::atTime));
-	if (serverPhase == Protocol::Phase::CommandPhase)
+	LogEvent(EventType::MinorEntityProcess,nullptr,"Server phase changed to "+String(RuntimeConfig::phase.ToString())+" ("+String(c.timeFactor.value)+") @"+String(Animation::atTime));
+	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 	{
 		Objects::CheckMobileEntitySanity();
 
 
 		static Buffer0<TUniqueID> outdated;
-		Objects::Marker::GetOutdated(outdated,roundNumber,RuntimeConfig::aiMode ? 100 : 10);
+		Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10);
 		foreach(outdated, o)
 		{
 			LogEvent(EventType::Debug,nullptr,"Deleting marker "+Objects::Marker::Find(*o)->GetName()+" since it's outdated");
@@ -1274,7 +1271,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			//Network::Channels::destroyMarker.SendTo(Network::client, *o);
 		}
 
-		LogEvent(EventType::SessionRelated, nullptr, "Begin round " + String(roundNumber));
+		LogEvent(EventType::SessionRelated, nullptr, "Begin round " + String(RuntimeConfig::roundNumber));
 
 		if (Animation::AllDone())
 		{
