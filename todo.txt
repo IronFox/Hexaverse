@@ -8,6 +8,25 @@ ambient restocking (and repairing?) of support vehicles. //restocking no longer 
 
 ...next...
 
+increase size of round timer countdown
+
+sometimes unit shadows (structure count) is transferred despite being invisible to a faction
+
+check nexus port ownership when loading game
+
+nexus port enabled counter is sometimes off when ownership changed
+
+server faction had vehicle in cansee that was dead
+
+
+MinorEntityProcess	2015 November 03. 14:44:07	16	AttackPhase							Server phase changed to AttackPhase (-1) @0
+Fatal	2015 November 03. 14:44:07	16	AttackPhase							Fatal exception in line 779 of components\network.cpp::Network::Receiver::ChangeEntityOwner() "[e] evaluates to false"
+
+
+favorize certain vehicle construction jobs
+
+struct count is somehow transferred out of range
+
 The GPU device instance has been suspended. Use GetDeviceRemovedReason to determine the appropriate action.
 (upon recovering from sleep). Might not be able to cleanly recover. Application should restart.
 
@@ -18,6 +37,9 @@ Forgetting a user host causes a crash (no connection was established).
 Satellite beam animation seed.
 
 
+limit scrolling range
+
+see what hostile former is building currently
 
 
 
