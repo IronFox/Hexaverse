@@ -197,8 +197,11 @@ namespace Objects
 
 			int					deathInRounds;	//remaining rounds to live if nothing changes. <= 0 means inactive
 
-			bool				hasMineralGeneratorCycle,	//transient values
-								hasVehicleProductionCycle,
+			bool				hasFuelMine,
+								hasMineralMine,
+								hasMineralContainer,
+								hasGenerator,
+								hasVehiclePlant,
 								hasTerraformer;
 
 			Buffer0<Marker,Strategy::Adopt>		markers;
@@ -232,13 +235,7 @@ namespace Objects
 			/**
 			Checks if the local faction satisfies survival conditions
 			*/
-			bool		CanLive() const
-			{
-				return hasMineralGeneratorCycle
-					&& (hasVehicleProductionCycle || hasTerraformer);
-			}
-
-
+			bool		CanLive(String&whyNot) const;
 			bool		CanSpawnType(const PWorldEntity&e, String&errorOut)	const;
 			bool		CanSpawnFromStorage(const PWorldEntity&e, String&errorOut)	const;
 			/**

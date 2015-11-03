@@ -53,7 +53,7 @@ namespace State
 		/**
 		Refreshes personal game progress information
 		*/
-		void				SendProgressUpdate(bool dead);
+		void				SendProgressUpdate(bool dead, const String&warningReason);
 
 		/**
 		Detects resource coverage changes within the specified sphere, and notifies the local faction client
