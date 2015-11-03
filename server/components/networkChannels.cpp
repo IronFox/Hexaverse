@@ -372,6 +372,7 @@ namespace Receiver
 			{
 				LogEvent(EventType::SessionRelated,peer,"Abandoning faction");
 				State::playerMap.Unset(client->faction);
+				client->faction->online = false;
 				client->faction.reset();
 
 				Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
@@ -462,6 +463,7 @@ namespace Receiver
 				}
 				other->peer.lock()->DisconnectPeer();
 				State::playerMap.Unset(faction);
+				faction->online = false;
 				other->faction.reset();
 				client->faction = faction;
 				LogEvent(EventType::SessionRelated,peer,"Faction access token recognized.");
@@ -591,6 +593,7 @@ namespace Receiver
 
 		State::activePlayers << client;
 		State::playerMap.Set(client->faction,client);
+		client->faction->online = true;
 		client->wantNewRound = false;
 
 		if ((response.startFactionTypes & Protocol::FactionType::TechniteFaction) && !client->faction->IsTechniteFaction())
@@ -869,7 +872,7 @@ namespace Receiver
 
 
 		faction->name = client->state.playerName;
-		faction->online = true;
+		//faction->online = true;
 		//probably optional later on
 		{
 			//broadcast name and state
@@ -1893,8 +1896,8 @@ namespace Receiver
 							LogEvent(EventType::SessionRelated,"Technite faction gone offline. Remaining technite factions online: "+String(State::techniteFactionsOnline));
 						}
 						State::playerMap.Unset(client->faction);
-						Channels::factionOffline.SendTo(State::server,client->faction->id);
 						client->faction->online = false;
+						Channels::factionOffline.SendTo(State::server,client->faction->id);
 					}
 
 					peer.attachment.reset();

@@ -26,7 +26,7 @@ namespace State
 
 	bool		Client::CanSee(const Objects::PWorldEntity&e, float t)	const
 	{
-		return faction->CanSee(e,t);
+		return faction && faction->CanSee(e,t);
 	}
 
 
@@ -2575,6 +2575,7 @@ namespace State
 									State::activePlayers.FindAndErase(client);
 								State::tokenMap.Unset(faction->accessToken);
 								State::playerMap.Unset(faction);
+								faction->online = false;
 								if (client)
 									client->faction.reset();
 								i--;
