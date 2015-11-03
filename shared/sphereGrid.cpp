@@ -3169,9 +3169,11 @@ namespace Grid
 				//const auto&n = highGridCells[fine].neighborhood;
 				UINT layer = actualWorld.cellStack[fine].highestOpaqueCell;
 				const auto&fineStack = actualWorld.cellStack[fine];
-				if (fineStack.waterRange.IsValid())
+				if (fineStack.waterRange.IsNotEmpty())
 					layer = std::max<UINT>(fineStack.waterRange.end-1, layer);
-				layer = std::min(layer, CellStack::ToLayer(clipHeight(fine)-1));
+				const int clipH = clipHeight(fine);
+				const UINT clipL = CellStack::ToLayer(clipH);
+				layer = std::min(layer, clipL-1);
 				while (layer > 0 && !fineStack.volumeCell[layer].IsSolidDead() && !fineStack.volumeCell[layer].IsWater())
 					layer--;
 				bool structureCenter = false;
