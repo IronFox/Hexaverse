@@ -8,6 +8,19 @@ ambient restocking (and repairing?) of support vehicles. //restocking no longer 
 
 ...next...
 
+The GPU device instance has been suspended. Use GetDeviceRemovedReason to determine the appropriate action.
+(upon recovering from sleep). Might not be able to cleanly recover. Application should restart.
+
+Better handling of crashes in release (should not cause windows popup).
+
+Forgetting a user host causes a crash (no connection was established).
+
+Satellite beam animation seed.
+
+
+
+
+
 ragnarök beam visualization
 
 spy-satellite
@@ -24,6 +37,7 @@ why do towers fire simultaneously?	//do they?
 
 ...later...
 
+better customization for goal specification. currently ConquerNexus and EMPConquerNexus have implied, rather specific characteristics that should be exposed as settings
 
 better scoring
 fuel transporter vehicle // no longer required
@@ -33,7 +47,7 @@ let foundation blocks (and granite) explode into stone first // maybe later
 
 
 
-server async logging // doesn't seem necessary for now
+server async logging // doesn't seem necessary for now. console now is async
 
 
 client-sided structure count doesn't seem to update if destroying a faction ends game. disconnecting and re-connecting fixes it. works fine if game does not end
