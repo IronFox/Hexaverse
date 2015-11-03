@@ -456,11 +456,25 @@ namespace Objects
 		#ifndef CLIENT
 			if (isFinal)
 			{
+
+
+
 				foreach (seenBy,s)
 				{
 					(*s)->owner->canSee.Unset(_this);
 					ASSERT__((*s)->seeing.FindAndErase(_this));
 				}
+
+				foreach (Faction::all,_f)
+				{
+					PFaction f= _f->lock();
+					if (f)
+					{
+						if (f->canSee.Unset(_this))
+							LogEvent(EventType::InternalFault,this,"Sensor removal should have been seen by "+f->GetLogName());
+					}
+				}
+
 			}
 			foreach (seeing,s)
 			{

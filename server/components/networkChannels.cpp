@@ -743,6 +743,15 @@ namespace Receiver
 
 			client->faction->canSee.VisitAllKeys([&peer,client,timestamp](const Objects::PWorldEntity&e)
 			{
+				if (e->health <= 0)
+				{
+					//weird...? weirder...
+
+
+
+					return;
+				}
+
 				Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
 				if (s)
 				{
