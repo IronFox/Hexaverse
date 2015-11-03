@@ -1094,7 +1094,7 @@ namespace Dialog
 
 	bool	ShowingFactions()
 	{
-		return !!Detail::factionDialog;
+		return IsVisible( Detail::factionDialog ) ;
 	}
 
 
