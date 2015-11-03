@@ -361,6 +361,17 @@ namespace Dialog
 	void		Dialog::DumpMe()
 	{
 //		reLayout.swap(std::function<void(Dialog&)>());
+		index_t dialogAt = InvalidIndex;
+		foreach (Detail::visibleWindows,_w)
+			if (_w->get() == this)
+			{
+				dialogAt = _w - Detail::visibleWindows.pointer();
+				break;
+			}
+		if (dialogAt == InvalidIndex)
+			return;	//already erased somewhere else
+
+
 		bool active = Super::IsActive();
 		if (active)
 			Deactivate();
@@ -371,7 +382,7 @@ namespace Dialog
 		textField.reset();
 		image.reset();
 
-		Detail::visibleWindows.FindAndErase(shared_from_this());
+		Detail::visibleWindows.Erase(dialogAt);
 		Detail::visibleDialogs.FindAndErase(shared_from_this());
 		if (active && Detail::visibleWindows.IsNotEmpty())
 			Detail::visibleWindows.last()->Activate();
@@ -395,7 +406,7 @@ namespace Dialog
 			return;
 		if (confirmButton && !confirmButton->IsEnabled())
 			return;	//would, if it could
-
+		VerifyIntegrity(CLOCATION);
 		bool tut = isTutorial;
 		if (!fetchInput && !onPassword)
 		{
@@ -414,7 +425,7 @@ namespace Dialog
 			if (onPassword)
 			{
 				onPassword(passwordInput->GetInput());
-				passwordInput->WipeInput();
+				//passwordInput->WipeInput();	//redundant, possibly dangerous. Once callback has been called, this might be dead
 			}
 			DumpMe();
 		}
@@ -862,16 +873,28 @@ namespace Dialog
 	*/
 	void	SignalSituationChange()
 	{
+		VerifyIntegrity(CLOCATION);
 		for (index_t i = 0; i < Detail::visibleDialogs.Count(); i++)
 		{
-			if (!Detail::visibleDialogs[i]->SignalChange())
+			const PDialog&d = Detail::visibleDialogs[i];
+			if (!d->SignalChange())
 			{
-				Detail::visibleWindows.FindAndErase(Detail::visibleDialogs[i]);
+				index_t at = Detail::visibleWindows.GetIndexOf(d);
+				if (at != InvalidIndex)
+				{
+					Detail::visibleWindows.Erase(at);
+					if (at == Detail::visibleWindows.Count())
+					{
+						d->Deactivate();
+						if (Detail::visibleWindows.IsNotEmpty())
+							Detail::visibleWindows.last()->Activate();
+					}
+				}
 				Detail::visibleDialogs.Erase(i);
 				i--;
-				continue;
 			}
 		}
+		VerifyIntegrity(CLOCATION);
 
 		foreach (Detail::visibleWindows,w)
 			(*w)->DetectEnabledState();

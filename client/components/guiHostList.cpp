@@ -266,7 +266,7 @@ void	SaveHosts()
 		
 		if (Dialog::serverChoice->HasComponent(mousePressedComponent))
 			return;	//can't activate right now
-			
+		Dialog::VerifyIntegrity(CLOCATION);
 
 		const bool isActive = Dialog::serverChoice->IsActive();
 		if (isActive)
