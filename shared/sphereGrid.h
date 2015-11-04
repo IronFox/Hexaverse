@@ -1520,7 +1520,7 @@ namespace Grid
 		static void				Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 cellID));
 		static void				Create(const String&name, ConstName cname, const float3&color, float p, coverage_t);
 		static void				Create(const String&name, ConstName cname, const float3&color, index_t);
-		static void				Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield);
+		//static void				Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield);
 		static Resource&		Require(const String&name);
 		static Resource&		Require(ConstName name);
 		static coverage_t		Sample(const String&resourceName, index_t cellID);
