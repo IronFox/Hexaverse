@@ -2403,11 +2403,22 @@ bool loop()
 			#ifdef _DEBUG
 				if (Network::haveId)
 					textout << "My ID: "<<Network::myIDString<<nl;
+				textout << -Camera::scene.retraction.z/WorldScale << nl;
 			#endif
 			if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::roundTimer > 0)
 			{
+				textout.pushState();
 				float remaining = std::max(Network::roundTimer - timer.GetSecondsSince(Network::phaseStarted),0.f);
-				textout << "Remaining seconds: "<<Round(remaining)<<nl;
+				textout << "Remaining seconds: "<<nl;
+				textout.scale(2.f,2.f);
+				if (remaining <= 10.f && !Network::newRoundRequested)
+				{
+					textout.scale(1.2f,1.2f);
+					bool blinkOn = ((timer.Now()/(timer.GetTicksPerSecond()/5))%2) != 0;
+					textout.color(1,0.2,0.2,blinkOn ? 0.5f : 1.f);
+				}
+				textout<<Round(remaining)<<nl;
+				textout.popState();
 			}
 
 
