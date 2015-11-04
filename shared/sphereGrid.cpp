@@ -122,7 +122,7 @@ namespace Grid
 
 	void			CellStack::ChangeStructureCounterI(int height, int by)
 	{
-		if (height >= -HalfRange && height < HalfRange)
+		if (height >= BottomHeight && height <= TopHeight)
 		{
 			volumeCell[height + HalfRange].structureCounter += by;
 		}
