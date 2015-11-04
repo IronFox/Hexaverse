@@ -120,15 +120,13 @@ namespace Grid
 	};
 
 
-	#ifndef CLIENT
-		void			CellStack::ChangeStructureCounterI(int height, int by)
+	void			CellStack::ChangeStructureCounterI(int height, int by)
+	{
+		if (height >= -HalfRange && height < HalfRange)
 		{
-			if (height >= -HalfRange && height < HalfRange)
-			{
-				volumeCell[height + HalfRange].structureCounter+= by;
-			}
+			volumeCell[height + HalfRange].structureCounter += by;
 		}
-	#endif
+	}
 
 	#ifdef HAS_WINDOW
 		float4			CellStack::GetColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const
@@ -3443,33 +3441,33 @@ namespace Grid
 			}
 			ASSERT_EQUAL__(at, range* CellStack::Range);
 		}
-		if (data1.IsNotEmpty())
-		{
-			index_t at = 0;
+		//if (data1.IsNotEmpty())
+		//{
+		//	index_t at = 0;
 
-			foreach (data1,block)
-			{
-				for (index_t i = 0; i < block->repitition; i++)
-				{
-					index_t stackIndex = (at % range) + offset;
-					index_t layer = at / range;
+		//	foreach (data1,block)
+		//	{
+		//		for (index_t i = 0; i < block->repitition; i++)
+		//		{
+		//			index_t stackIndex = (at % range) + offset;
+		//			index_t layer = at / range;
 
-					CellStack&stack = cellStack[stackIndex];
+		//			CellStack&stack = cellStack[stackIndex];
 
-					if (stack.volumeCell[layer].ApplyDelta(block->value))
-					{
-						anyChanged = true;
-						#ifdef HAS_WINDOW
-							stack.lightingChangedTo = std::max<BYTE>(stack.lightingChangedTo,(BYTE)(layer+1));
-						#endif
-					}
-				
-					at++;
-				}
-			}
-			ASSERT_EQUAL__(at, range* CellStack::Range);
-			
-		}
+		//			if (stack.volumeCell[layer].ApplyDelta(block->value))
+		//			{
+		//				anyChanged = true;
+		//				#ifdef HAS_WINDOW
+		//					stack.lightingChangedTo = std::max<BYTE>(stack.lightingChangedTo,(BYTE)(layer+1));
+		//				#endif
+		//			}
+		//		
+		//			at++;
+		//		}
+		//	}
+		//	ASSERT_EQUAL__(at, range* CellStack::Range);
+		//	
+		//}
 		#ifdef CLIENT
 			ASSERT__(actualWorld);	//client only knows one world
 		#endif
@@ -3617,33 +3615,33 @@ namespace Grid
 			}
 			ASSERT_CONCLUSION(data0,delta);
 		}
-		{
-			const CellStack::TStructCountDelta*delta = data1.pointer();
-			for (index_t i = 0; i < range; i++)
-			{
-				CellStack&stack = cellStack[i+offset];
-				bool anyChanged = false;
-				for (index_t j = 0; j < CellStack::Range; j++)
-				{
-					if (stack.volumeCell[j].ApplyDelta(*delta))
-					{
-						anyChanged = true;
-						#ifdef HAS_WINDOW
-							stack.lightingChangedTo = std::max<BYTE>(stack.lightingChangedTo,(BYTE)j+1);
-						#endif
-					}
-					delta ++;
-				}
-				if (anyChanged)
-				{
-					#ifdef HAS_WINDOW
-						stack.UpdateRange();
-						changed << i + offset;
-					#endif
-				}
-			}
-			ASSERT_CONCLUSION(data1,delta);
-		}
+		//{
+		//	const CellStack::TStructCountDelta*delta = data1.pointer();
+		//	for (index_t i = 0; i < range; i++)
+		//	{
+		//		CellStack&stack = cellStack[i+offset];
+		//		bool anyChanged = false;
+		//		for (index_t j = 0; j < CellStack::Range; j++)
+		//		{
+		//			if (stack.volumeCell[j].ApplyDelta(*delta))
+		//			{
+		//				anyChanged = true;
+		//				#ifdef HAS_WINDOW
+		//					stack.lightingChangedTo = std::max<BYTE>(stack.lightingChangedTo,(BYTE)j+1);
+		//				#endif
+		//			}
+		//			delta ++;
+		//		}
+		//		if (anyChanged)
+		//		{
+		//			#ifdef HAS_WINDOW
+		//				stack.UpdateRange();
+		//				changed << i + offset;
+		//			#endif
+		//		}
+		//	}
+		//	ASSERT_CONCLUSION(data1,delta);
+		//}
 		high.family[family].SetOutdated(0);
 		low.family[family].SetOutdated(0);
 

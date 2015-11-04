@@ -300,6 +300,19 @@ namespace Network
 	}
 
 
+
+	static void ApplyPlanetConfig(const Grid::TSharedPlanetConfig&config)
+	{
+		Grid::Content coreContent = Grid::Content::Reinterpret(config.innerCoreType);
+		Grid::CellStack::bottom.content = coreContent;
+		#ifdef HAS_WINDOW
+			Grid::CellStack::bottom.visible = 1;
+			Grid::UpdateAtmosphere(config.atmosphereColor);
+			Grid::UpdateSun(config.sunPlaneNormal_Speed,config.sunColor);
+		#endif
+	}
+
+
 	static void		FlushFaction(bool alsoFlushWorld)
 	{
 		haveFaction = false;
@@ -324,6 +337,8 @@ namespace Network
 			Grid::FlushAllData();
 			Grid::empZonesLocked = 0;
 			Grid::empZonesUnlocked = ~Grid::empZonesLocked;
+			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal();
+			ApplyPlanetConfig(Grid::TSharedPlanetConfig());
 		}
 
 		#ifdef HAS_WINDOW
@@ -535,17 +550,12 @@ namespace Network
 
 
 
+
 		void	ClientFactionResponse(Protocol::ClientFactionResponse&cr)
 		{
 			ASSERT__(!eventsLocked);
 
-			Grid::Content coreContent = Grid::Content::Reinterpret(cr.planetConfig.value.innerCoreType);
-			Grid::CellStack::bottom.content = coreContent;
-			#ifdef HAS_WINDOW
-				Grid::CellStack::bottom.visible = 1;
-				Grid::UpdateAtmosphere(cr.planetConfig.value.atmosphereColor);
-				Grid::UpdateSun(cr.planetConfig.value.sunPlaneNormal_Speed,cr.planetConfig.value.sunColor);
-			#endif
+			ApplyPlanetConfig(cr.planetConfig);
 
 
 			haveFaction = cr.startFactionTypes != 0;

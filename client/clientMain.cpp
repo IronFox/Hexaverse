@@ -192,7 +192,7 @@ void	DirectTo(const Objects::PWorldEntity&v, const Grid::LCellIdI&target, bool l
 {
 	const bool moveTo = mode == Objects::CursorMode::Idle && !leftClick;
 
-	ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
+	DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
 	Protocol::EntityDirectCommand	cmd;
 	cmd.id = v->id;
 	cmd.mode = mode;

@@ -67,13 +67,13 @@ namespace Objects
 
 		static count_t				CountOccurrences(const OwnerParameter&o,ConstName type);
 
+		static void					CommonRegisterBroadStructure(const Grid::LCellIdI&location, bool twoStoriesHigh, float atTime);
+		static void					CommonUnregisterBroadStructure(const Grid::LCellIdI&location, bool twoStoriesHigh, float atTime);
+		static void					InvalidateTerrain(const Grid::LCellIdI&location, float atTime);
 
 		#ifndef CLIENT
-			static void				CommonRegisterBroadStructure(const Grid::LCellIdI&location, bool twoStoriesHigh, float atTime);
-			static void				CommonUnregisterBroadStructure(const Grid::LCellIdI&location, bool twoStoriesHigh, float atTime);
 
 
-			static void				InvalidateTerrain(const Grid::LCellIdI&location, float atTime);
 			static void				CommonFixTerrain(const WorldEntity*e, const Grid::LCellIdI&location,  const Grid::Content foundationType, int height, bool signalChange, float atTime, bool deep, bool requireCentralFoundation, bool broadFoundation);
 			virtual void			CorrectTerrain(bool signalChange, float atTime, bool deep) = 0;
 
@@ -1470,8 +1470,8 @@ namespace Objects
 					Super::localizableShape = &shape;
 				#endif
 			#else
-				CommonRegisterBroadStructure(location,false,time);	//top shouldn't stop projectiles...
 			#endif
+			CommonRegisterBroadStructure(location,false,time);	//top shouldn't stop projectiles...
 		}
 
 		bool						WouldLikeToEnable() const override {return true;}
@@ -1480,9 +1480,7 @@ namespace Objects
 		virtual  void				OnDestroy(float atTime) override
 		{
 			Super::OnDestroy(atTime);
-			#ifndef CLIENT
-				CommonUnregisterBroadStructure(location,false,atTime);
-			#endif
+			CommonUnregisterBroadStructure(location,false,atTime);
 		}
 
 	public:
@@ -1807,18 +1805,15 @@ namespace Objects
 					Super::localizableShape = &shape;
 				#endif
 			#else
-				CommonRegisterBroadStructure(location,false,atTime);
 			#endif
-
-	}
+			CommonRegisterBroadStructure(location,false,atTime);
+		}
 
 	template <typename Derivative>
 		/*virtual override*/ void				CommonStructure<Derivative>::OnDestroy(float atTime)
 		{
 			Super::OnDestroy(atTime);
-			#ifndef CLIENT
-				CommonUnregisterBroadStructure(location,false,atTime);
-			#endif
+			CommonUnregisterBroadStructure(location,false,atTime);
 		}
 
 
