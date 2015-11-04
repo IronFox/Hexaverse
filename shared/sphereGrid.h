@@ -244,16 +244,16 @@ namespace Grid
 				}
 				return false;
 			}
-			bool	ApplyDelta(const TStructCountDelta&sdelta)
-			{
-				if (sdelta.newStructureCounter)
-				{
-					structureCounter = sdelta.newStructureCounter-1;
-					DBG_ASSERT_LESS__(structureCounter,3);
-					return true;
-				}
-				return false;
-			}
+			//bool	ApplyDelta(const TStructCountDelta&sdelta)
+			//{
+			//	if (sdelta.newStructureCounter)
+			//	{
+			//		structureCounter = sdelta.newStructureCounter-1;
+			//		DBG_ASSERT_LESS__(structureCounter,3);
+			//		return true;
+			//	}
+			//	return false;
+			//}
 			bool	ApplyDelta(const TTechniteFactionDelta&tdelta)
 			{
 				if (tdelta.newTechniteFaction)
@@ -426,9 +426,8 @@ namespace Grid
 			//float3			GetSelectiveColorU(unsigned layer, const float3&colorIfNonSolid, bool&mixes) const;
 			float4		GetMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, Cell::Content&outContent) const;
 			float4		GetDownMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, Cell::Content&outContent) const;
-		#else
-			void		ChangeStructureCounterI(int height, int by);
 		#endif
+		void			ChangeStructureCounterI(int height, int by);
 
 
 		//bool			PutLightStructureI(int height);
