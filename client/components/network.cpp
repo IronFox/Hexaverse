@@ -383,7 +383,7 @@ namespace Network
 			{
 				BYTE family = delta.familyAndLastFlag & 0x7F;
 				bool last = (delta.familyAndLastFlag & 0x80) != 0;
-				Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,delta.data1,false,true);
+				Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,false,true);
 
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = last;

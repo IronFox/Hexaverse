@@ -1049,7 +1049,7 @@ namespace Protocol
 
 
 	static_assert(sizeof(Grid::CellStack::TTypeDeltaBlock) == sizeof(UINT32) + sizeof(Grid::CellStack::TTypeDelta), "Struct alignment out of whack" );
-	static_assert(sizeof(Grid::CellStack::TStructCountDeltaBlock) == sizeof(UINT32) + sizeof(Grid::CellStack::TStructCountDelta), "Struct alignment out of whack" );
+//	static_assert(sizeof(Grid::CellStack::TStructCountDeltaBlock) == sizeof(UINT32) + sizeof(Grid::CellStack::TStructCountDelta), "Struct alignment out of whack" );
 
 
 
@@ -1157,12 +1157,10 @@ namespace Protocol
 
 	//NETA(x)
 	typedef NetArray<Grid::CellStack::TTypeDeltaBlock,4000000>	TypeDeltaArray;
-	typedef NetArray<Grid::CellStack::TStructCountDeltaBlock,4000000>	StructCountDeltaArray;
-	NETSTRUCT4(WorldDelta
+	NETSTRUCT3(WorldDelta
 		, Timestamp, timestamp
 		, NET(BYTE), familyAndLastFlag	//flag stored in 0x80, family mask is 0x7f
 		, TypeDeltaArray, data0
-		, StructCountDeltaArray, data1
 	)
 
 
@@ -1916,9 +1914,8 @@ namespace Protocol
 	@param rightNow Indicates that the enclosed timestamp should be flagged as 'rightNow', as opposed to using the grid timestamp
 	@param last Indicates that the result should include the 'last'-flag, which means no deltas will follow this one for the current sequence
 	@param deltaType Type of delta to compute (see delta_type_t for details)
-	@param includeStructCountDelta Indicates that the result should also contain a struct count delta to the known struct count
 	*/
-	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType, bool includeStructCountDelta=true);
+	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType);
 
 }
 

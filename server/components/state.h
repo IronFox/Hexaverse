@@ -14,7 +14,7 @@
 
 namespace State
 {
-	static const UINT32	fileVersion = 1039;
+	static const UINT32	SupportedFileVersion = 1040;
 
 	static const UINT32 NotifyOthers = Objects::WorldEntity::PositionChanged 
 										| Objects::WorldEntity::HealthChanged 

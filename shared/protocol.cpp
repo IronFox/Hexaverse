@@ -46,7 +46,7 @@ namespace Protocol
 		}
 
 
-	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType, bool includeStructCountDelta/*=true*/)
+	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType)
 	{
 	
 			const index_t offset = Grid::high.grid.GetFamilyOffset(familyID);
@@ -60,7 +60,6 @@ namespace Protocol
 
 			const Grid::CellStack::Cell empty(Grid::Content::Reinterpret(0),0);
 			Array<Grid::CellStack::TTypeDelta> tdts(length * Grid::CellStack::Range);
-			Array<Grid::CellStack::TStructCountDelta> sdts(length * Grid::CellStack::Range);
 			//Array<Grid::CellStack::TTechniteFactionDelta> fdts(length * Grid::CellStack::Range);
 			//Array<bool> fdtsValid(length * Grid::CellStack::Range);
 
@@ -68,7 +67,7 @@ namespace Protocol
 				vs->families[familyID].Reset();
 			
 			Concurrency::parallel_for(index_t(0),length*Grid::CellStack::Range,
-			[&tdts,&sdts,/*&fdts,&fdtsValid,*/length,offset,empty,deltaType,vs,ws](index_t i)
+			[&tdts,/*&fdts,&fdtsValid,*/length,offset,empty,deltaType,vs,ws](index_t i)
 			{
 				//index_t stackId = offset + (i / Grid::CellStack::Range);
 				//index_t layer = i % Grid::CellStack::Range;
@@ -84,11 +83,10 @@ namespace Protocol
 							if (canSee)
 							{
 								Grid::actualWorld.cellStack[stackID].volumeCell[layer].
-								GetDeltaFromAndUpdate(ws->cellStack[stackID].volumeCell[layer],tdts[i],sdts[i]/*,fdts[i],fdtsValid[i]*/);
+								GetDeltaFromAndUpdate(ws->cellStack[stackID].volumeCell[layer],tdts[i]/*,fdts[i],fdtsValid[i]*/);
 							}
 							else
 							{
-								sdts[i].newStructureCounter = 0;
 								tdts[i].newType = 0;
 							}
 							cell.temporarilyVisible = false;
@@ -99,7 +97,7 @@ namespace Protocol
 							auto&cell =  vs->cellStack[stackID].volumeCell[layer];
 							bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
 							const Grid::CellStack::Cell& source = canSee ? Grid::actualWorld.cellStack[stackID].volumeCell[layer] : Grid::initialWorld.cellStack[stackID].volumeCell[layer];
-							source.GetDeltaFrom(empty,tdts[i],sdts[i]/*,fdts[i],fdtsValid[i]*/);
+							source.GetDeltaFrom(empty,tdts[i]/*,fdts[i],fdtsValid[i]*/);
 							ws->cellStack[stackID].volumeCell[layer] = source;
 							cell.temporarilyVisible = false;
 						}
@@ -107,20 +105,20 @@ namespace Protocol
 						case WorldDeltaType::GlobalInitialCopy:
 						{
 							const Grid::CellStack::Cell& source = Grid::initialWorld.cellStack[stackID].volumeCell[layer];
-							source.GetDeltaFrom(empty,tdts[i],sdts[i]/*,fdts[i],fdtsValid[i]*/);
+							source.GetDeltaFrom(empty,tdts[i]/*,fdts[i],fdtsValid[i]*/);
 						}
 						break;
 					#endif
 					case WorldDeltaType::FactionCopy:
 					{
 						const Grid::CellStack::Cell& source = ws->cellStack[stackID].volumeCell[layer];
-						source.GetDeltaFrom(empty,tdts[i],sdts[i]/*,fdts[i],fdtsValid[i]*/);
+						source.GetDeltaFrom(empty,tdts[i]/*,fdts[i],fdtsValid[i]*/);
 					}
 					break;
 					case WorldDeltaType::GlobalCopy:
 					{
 						const Grid::CellStack::Cell& source = Grid::actualWorld.cellStack[stackID].volumeCell[layer];
-						source.GetDeltaFrom(empty,tdts[i],sdts[i]/*,fdts[i],fdtsValid[i]*/);
+						source.GetDeltaFrom(empty,tdts[i]/*,fdts[i],fdtsValid[i]*/);
 					}
 					break;
 				}
@@ -140,14 +138,6 @@ namespace Protocol
 			//	Compress(fdts,delta.data2);
 			//}
 
-			if (includeStructCountDelta)
-			{
-				Compress(sdts,delta.data1);
-				float ratio = float(delta.data0.GetContentSize() + delta.data1.GetContentSize()) / float(tdts.GetContentSize() + sdts.GetContentSize());
-				//LogEvent(EventType::Debug, nullptr,"Compression ratio: "+String(ratio));
-			}
-			else
-				delta.data1.Clear();
 	}
 
 }	

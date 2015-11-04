@@ -3398,7 +3398,7 @@ namespace Grid
 
 
 
-	void	WorldData::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, bool initialization, bool actualWorld)
+	void	WorldData::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld)
 	{
 		ASSERT_LESS__(family, BaseGrid::NumFamilies);
 		const index_t offset = high.grid.GetFamilyOffset(family);
@@ -3573,12 +3573,12 @@ namespace Grid
 	}
 */
 
-	void	WorldData::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, const Array<CellStack::TStructCountDelta>&data1, bool initialization)
+	void	WorldData::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, bool initialization)
 	{
 		const index_t offset = high.grid.GetFamilyOffset(family);
 		const count_t range = high.grid.CountFamilyMembers(family);
 		ASSERT_EQUAL__(data0.Count(), range * CellStack::Range);
-		ASSERT_EQUAL__(data1.Count(), range * CellStack::Range);
+		//ASSERT_EQUAL__(data1.Count(), range * CellStack::Range);
 
 		#ifdef HAS_WINDOW
 			Queue<index_t>	changed;

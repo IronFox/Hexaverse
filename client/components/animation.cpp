@@ -1075,7 +1075,7 @@ namespace Animation
 				{
 					BYTE family = block->familyAndLastFlag & 0x7F;
 					//bool last = (block->family & 0x80) != 0;
-					Grid::actualWorld.ApplyFamilyDelta(family,block->data0,block->data1,false,true);
+					Grid::actualWorld.ApplyFamilyDelta(family,block->data0,false,true);
 				}
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
