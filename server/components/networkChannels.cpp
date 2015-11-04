@@ -479,7 +479,7 @@ namespace Receiver
 		//CHEAT_SHOW_ALL_RESOURCES
 
 		#ifdef CHEAT_SHOW_ALL_RESOURCES
-			faction->resourcesDiscovered.Fill(true);
+			faction->visibility.resourcesDiscovered.Fill(true);
 
 		#endif
 	
