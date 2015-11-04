@@ -128,23 +128,7 @@ namespace Grid
 			bool		IsSet() const {return newType != 0;}
 		};
 
-		struct TStructCountDelta
-		{
-			BYTE		newStructureCounter;	//structure counter. 0 = no change, otherwise effective = newStructureCounter-1
-
-			bool		operator!=(const TStructCountDelta&other) const
-			{
-				return newStructureCounter != other.newStructureCounter;
-			}
-			bool		operator==(const TStructCountDelta&other) const
-			{
-				return newStructureCounter == other.newStructureCounter;
-			}
-
-			bool		IsSet() const {return newStructureCounter!= 0;}
-		};
 		static_assert(sizeof(TTypeDelta) == 1, "Struct-alignment out of whack");
-		static_assert(sizeof(TStructCountDelta) == 1, "Struct-alignment out of whack");
 
 		#pragma pack(push)
 		#pragma pack(1)
@@ -153,15 +137,6 @@ namespace Grid
 			UINT32				repitition;
 			TTypeDelta			value;
 			bool		operator!=(const TTypeDeltaBlock&other) const
-			{
-				return repitition != other.repitition || value != other.value;
-			}
-		};
-		struct TStructCountDeltaBlock
-		{
-			UINT32				repitition;
-			TStructCountDelta	value;
-			bool		operator!=(const TStructCountDeltaBlock&other) const
 			{
 				return repitition != other.repitition || value != other.value;
 			}
@@ -206,14 +181,13 @@ namespace Grid
 			#endif
 
 
-			void	GetDeltaFrom(const CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout)	const
+			void	GetDeltaFrom(const CompactCell&other, TTypeDelta&tout)	const
 			{
 				tout.newType = content != other.content ? content : 0;
-				sout.newStructureCounter = structureCounter != other.structureCounter ? structureCounter + 1 : 0;
 			}
-			void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout) const
+			void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout) const
 			{
-				GetDeltaFrom(other,tout,sout);
+				GetDeltaFrom(other,tout);
 				other = *this;
 			}
 
@@ -1546,7 +1520,7 @@ namespace Grid
 		static void				Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 cellID));
 		static void				Create(const String&name, ConstName cname, const float3&color, float p, coverage_t);
 		static void				Create(const String&name, ConstName cname, const float3&color, index_t);
-		static void				Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield);
+		//static void				Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield);
 		static Resource&		Require(const String&name);
 		static Resource&		Require(ConstName name);
 		static coverage_t		Sample(const String&resourceName, index_t cellID);
@@ -1948,8 +1922,8 @@ namespace Grid
 				cellStack[i].ResetStructureCounters();
 			}
 		}
-		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, const Array<CellStack::TStructCountDelta>&data1, bool initialization);
-		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, bool initialization, bool actualWorld);
+		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, bool initialization);
+		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld);
 		//void					ApplyFamilyDelta(Array<CellStack>&stacks, BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, bool initialization);
 
 		/**

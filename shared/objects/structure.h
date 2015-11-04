@@ -36,9 +36,23 @@ namespace Objects
 	*/
 	class Structure : public WorldEntity
 	{
+	private:
+		static void					ChangeBroadStructCount(const Grid::LCellIdI&location, int height, bool hasFoundation, int changeDirection, float atTime);
+		static void					ChangeNarrowStructCount(const Grid::LCellIdI&location, int height, bool hasFoundation, int changeDirection, float atTime);
+		static void					CommonRegisterBroadStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime);
+		static void					CommonUnregisterBroadStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime);
+		static void					CommonRegisterNarrowStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime);
+		static void					CommonUnregisterNarrowStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime);
+
 	protected:
-		typedef WorldEntity				Super;
-		/**/						Structure(const OwnerParameter&owner, const Grid::LCellIdI&at, bool buildSystem);
+		typedef WorldEntity			Super;
+		/**/						Structure():Super(OwnerParameter(),Grid::LCellIdI(0, 0))
+				#ifdef HAS_WINDOW
+					, localizableShape(nullptr)
+				#endif
+				{}
+
+		/**/						Structure(const OwnerParameter&owner, const Grid::LCellIdI&at, bool buildSystem, float time);
 
 
 
@@ -67,8 +81,7 @@ namespace Objects
 
 		static count_t				CountOccurrences(const OwnerParameter&o,ConstName type);
 
-		static void					CommonRegisterBroadStructure(const Grid::LCellIdI&location, bool twoStoriesHigh, float atTime);
-		static void					CommonUnregisterBroadStructure(const Grid::LCellIdI&location, bool twoStoriesHigh, float atTime);
+
 		static void					InvalidateTerrain(const Grid::LCellIdI&location, float atTime);
 
 		#ifndef CLIENT
@@ -285,6 +298,8 @@ namespace Objects
 	Template base class for structures that do not adhere to the WorkingStructure specification, but still
 	use some common logic (e.g. automatic localizableShape loading and so forth).
 	OtherStructure does, explicitly, not inherit WorkingStructure.
+	WorkingStructure provide mechanics to handle resource distribution, and structure enabling/disabling.
+	OtherStructure derivatives are expected to be always on.
 
 	@param Derivative Name of the class that inherits from this class
 	*/
@@ -293,9 +308,9 @@ namespace Objects
 		{
 			typedef Structure Super;
 		protected:
-		/**/						OtherStructure<Derivative>(const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem):Super(owner,location,buildSystem)
+		/**/						OtherStructure<Derivative>(const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime):Super(owner,location,buildSystem,atTime)
 									{}
-			/**/					OtherStructure<Derivative>() : Super(OwnerParameter(),Grid::LCellIdI(0, 0),false)
+			/**/					OtherStructure<Derivative>()
 			{ 
 				#ifdef HAS_WINDOW
 					Super::localizableShape = &shape;
@@ -612,8 +627,8 @@ namespace Objects
 		bool						isEnabled;
 
 	protected:
-		/**/						WorkingStructure() : Super(OwnerParameter(),Grid::LCellIdI(0, 0),false),isEnabled(false)	{ }	//global prototype
-		/**/						WorkingStructure(const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem) : Super(owner,location,buildSystem),isEnabled(false)
+		/**/						WorkingStructure() : isEnabled(false)	{ }	//global prototype
+		/**/						WorkingStructure(const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime) : Super(owner,location,buildSystem,atTime),isEnabled(false)
 		{};
 
 		#ifndef CLIENT
@@ -739,7 +754,7 @@ namespace Objects
 			typedef WorkingStructure	Super;
 		protected:
 			/**/						CommonStructure(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
-			/**/						CommonStructure() : Super(OwnerParameter(),Grid::LCellIdI(0, 0),false)
+			/**/						CommonStructure()
 			{
 				#ifdef HAS_WINDOW
 					Super::localizableShape = &shape;
@@ -960,9 +975,9 @@ namespace Objects
 		virtual bool				IsIndestructible() const	override {return true;};
 		virtual void				GetResourceVector(ResourceVector&v, ResourceVector&, ResourceVector&) const override
 		{
-			v.level[Resource::Minerals] = 50;
-			v.level[Resource::Fuel] = 60;
-			v.level[Resource::Uranium] = 20;
+			v.level[Resource::Minerals] = 50;	
+			v.level[Resource::Fuel] = 45;	//three generators are sufficient + 5*3 for guardians
+			v.level[Resource::Uranium] = 10;
 			v.level[Resource::Energy] = -EnergyConsumption;
 		}
 
@@ -1463,15 +1478,13 @@ namespace Objects
 				Super::localizableShape = &shape;
 			#endif
 		}
-		/**/						Tower(Component::Turret*turret, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) : Super(owner,location,true),TurretBase(turret)
+		/**/						Tower(Component::Turret*turret, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) : Super(owner,location,true,time),TurretBase(turret)
 		{
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
 					Super::localizableShape = &shape;
 				#endif
-			#else
 			#endif
-			CommonRegisterBroadStructure(location,false,time);	//top shouldn't stop projectiles...
 		}
 
 		bool						WouldLikeToEnable() const override {return true;}
@@ -1480,7 +1493,6 @@ namespace Objects
 		virtual  void				OnDestroy(float atTime) override
 		{
 			Super::OnDestroy(atTime);
-			CommonUnregisterBroadStructure(location,false,atTime);
 		}
 
 	public:
@@ -1798,22 +1810,19 @@ namespace Objects
 		}
 	
 	template <typename Derivative>
-		CommonStructure<Derivative>::CommonStructure(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true)
+		CommonStructure<Derivative>::CommonStructure(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true, atTime)
 		{
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
 					Super::localizableShape = &shape;
 				#endif
-			#else
 			#endif
-			CommonRegisterBroadStructure(location,false,atTime);
 		}
 
 	template <typename Derivative>
 		/*virtual override*/ void				CommonStructure<Derivative>::OnDestroy(float atTime)
 		{
 			Super::OnDestroy(atTime);
-			CommonUnregisterBroadStructure(location,false,atTime);
 		}
 
 

@@ -29,7 +29,7 @@ namespace Grid
 	UINT16				empZonesLocked = 0,
 						empZonesUnlocked = 0xFFFF;
 
-	static Resource::coverage_t	GetResourceCoverage(const TVec3<>&seed, const TVec3<>&center0,float rarity,Resource::coverage_t maxYield, float probabilityModifier);
+	//static Resource::coverage_t	GetResourceCoverage(const TVec3<>&seed, const TVec3<>&center0,float rarity,Resource::coverage_t maxYield, float probabilityModifier);
 	#ifndef NO_MUNITION
 		/*static*/ float			Resource::probability[Objects::Resource::NumberOfPossibilities] = {0.08f,0.08f,0,0,0.008f } ;
 		/*static*/ Resource::coverage_t		Resource::maximum[Objects::Resource::NumberOfPossibilities] = {12,12,0,0,6};
@@ -122,7 +122,7 @@ namespace Grid
 
 	void			CellStack::ChangeStructureCounterI(int height, int by)
 	{
-		if (height >= -HalfRange && height < HalfRange)
+		if (height >= BottomHeight && height <= TopHeight)
 		{
 			volumeCell[height + HalfRange].structureCounter += by;
 		}
@@ -2654,29 +2654,29 @@ namespace Grid
 		}
 
 	#endif
-		static Resource::coverage_t	GetResourceCoverage(const TVec3<>&seed, const TVec3<>&center0,float rarity,Resource::coverage_t maxYield)
-		{
-			TVec3<> center = center0 * 6.f;
-			float rs = 0;
+		//static Resource::coverage_t	GetResourceCoverage(const TVec3<>&seed, const TVec3<>&center0,float rarity,Resource::coverage_t maxYield)
+		//{
+		//	TVec3<> center = center0 * 6.f;
+		//	float rs = 0;
 
-			float strength = 1.f;
-			for (int i = 0; i < 5; i++)
-			{
-				center *= 2.f;
-				strength /= 2.f;
-				rs += (0.5f + 0.5f * noise.Get(seed.x + center.x, seed.y + center.y, seed.z + center.z)* 1.6f)*strength;
-			}
-			rs = clamp(rs,0,1);
-			//rs *= pow(1.1f,probabilityModifier);
-			//rs = pow(rs,1.f - 0.03f * probabilityModifier);
-			//rs = std::min(1.f, rs * 1.4f);	//dont know, dont care
+		//	float strength = 1.f;
+		//	for (int i = 0; i < 5; i++)
+		//	{
+		//		center *= 2.f;
+		//		strength /= 2.f;
+		//		rs += (0.5f + 0.5f * noise.Get(seed.x + center.x, seed.y + center.y, seed.z + center.z)* 1.6f)*strength;
+		//	}
+		//	rs = clamp(rs,0,1);
+		//	//rs *= pow(1.1f,probabilityModifier);
+		//	//rs = pow(rs,1.f - 0.03f * probabilityModifier);
+		//	//rs = std::min(1.f, rs * 1.4f);	//dont know, dont care
 
-			rs = /*sqr*/(std::max(0.f,rs-rarity) / (1.f - rarity)) * (0.75f + 0.25f * noise.Get(seed.y + center0.x, seed.z + center0.y, seed.x + center0.z));
-			int cv = (int)(rs * maxYield);
-			if (cv > 0)
-				cv = std::min<int>(maxYield,cv * 2);
-			return (Resource::coverage_t)cv;
-		}
+		//	rs = /*sqr*/(std::max(0.f,rs-rarity) / (1.f - rarity)) * (0.75f + 0.25f * noise.Get(seed.y + center0.x, seed.z + center0.y, seed.x + center0.z));
+		//	int cv = (int)(rs * maxYield);
+		//	if (cv > 0)
+		//		cv = std::min<int>(maxYield,cv * 20);	//was * 2
+		//	return (Resource::coverage_t)cv;
+		//}
 	#ifdef HAS_WINDOW
 	
 		void	ResourceCompiler::Compile(const index_t offset, const index_t end, THull<ResourceVertex>&coverHull, SpinLock&lock)
@@ -2930,22 +2930,22 @@ namespace Grid
 	}
 
 
-	/*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield)
-	{
-		// low.cells[i].centerVertex.xyz,
-		Resource&rc = Resource::all.Append();
-		rc.Name(name,cname,color);
-		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
-		{
-			#ifndef CLIENT
-				rc.coverage[i] = GetResourceCoverage(seed, low.cells[i].centerVertex.xyz,rarity,maxYield);
-			#else
-				rc.coverage[i] = 0;
-				rc.known[i] = false;
-			#endif
+	///*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield)
+	//{
+	//	// low.cells[i].centerVertex.xyz,
+	//	Resource&rc = Resource::all.Append();
+	//	rc.Name(name,cname,color);
+	//	for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
+	//	{
+	//		#ifndef CLIENT
+	//			rc.coverage[i] = GetResourceCoverage(seed, low.cells[i].centerVertex.xyz,rarity,maxYield);
+	//		#else
+	//			rc.coverage[i] = 0;
+	//			rc.known[i] = false;
+	//		#endif
 
-		}
-	}
+	//	}
+	//}
 
 	/*static*/ Resource::coverage_t		Resource::GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max)
 	{
@@ -3398,7 +3398,7 @@ namespace Grid
 
 
 
-	void	WorldData::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, bool initialization, bool actualWorld)
+	void	WorldData::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld)
 	{
 		ASSERT_LESS__(family, BaseGrid::NumFamilies);
 		const index_t offset = high.grid.GetFamilyOffset(family);
@@ -3573,12 +3573,12 @@ namespace Grid
 	}
 */
 
-	void	WorldData::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, const Array<CellStack::TStructCountDelta>&data1, bool initialization)
+	void	WorldData::ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, bool initialization)
 	{
 		const index_t offset = high.grid.GetFamilyOffset(family);
 		const count_t range = high.grid.CountFamilyMembers(family);
 		ASSERT_EQUAL__(data0.Count(), range * CellStack::Range);
-		ASSERT_EQUAL__(data1.Count(), range * CellStack::Range);
+		//ASSERT_EQUAL__(data1.Count(), range * CellStack::Range);
 
 		#ifdef HAS_WINDOW
 			Queue<index_t>	changed;
