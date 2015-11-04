@@ -2739,8 +2739,9 @@ namespace State
 									0));
 								generator->CorrectTerrain(false,0,true);
 								Objects::InsertConstructed(generator,0);
-								alwaysOn << generator;
 								generatorCount++;
+								if (generatorCount < 4)
+									alwaysOn << generator;	//only need three generators switched on
 							}
 						}
 

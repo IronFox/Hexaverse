@@ -975,9 +975,9 @@ namespace Objects
 		virtual bool				IsIndestructible() const	override {return true;};
 		virtual void				GetResourceVector(ResourceVector&v, ResourceVector&, ResourceVector&) const override
 		{
-			v.level[Resource::Minerals] = 50;
-			v.level[Resource::Fuel] = 60;
-			v.level[Resource::Uranium] = 20;
+			v.level[Resource::Minerals] = 50;	
+			v.level[Resource::Fuel] = 45;	//three generators are sufficient + 5*3 for guardians
+			v.level[Resource::Uranium] = 10;
 			v.level[Resource::Energy] = -EnergyConsumption;
 		}
 
