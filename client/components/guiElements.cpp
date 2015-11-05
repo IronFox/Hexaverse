@@ -23,6 +23,22 @@ namespace GUIElements
 
 	PComponent	mousePressedComponent;
 
+
+	static UINT ViewPortWidth()
+	{
+		return std::max(100U,display.clientWidth());
+	}
+	static UINT ViewPortHeight()
+	{
+		return std::max(100U,display.clientHeight());
+	}
+
+	static float2 ViewPortSizef()
+	{
+		return float2(ViewPortWidth(),ViewPortHeight());
+	}
+
+
 	void			TAnchor::SetSomeOf(const PPanel&p, float distance, const std::function<bool(const PComponent&)>&callback, distanceType_t dtype/*=RelativeToParentComponent*/)
 	{
 		if (!p || p->components.IsEmpty())
@@ -70,7 +86,7 @@ namespace GUIElements
 			case RelativeToScreen:
 				return distanceFromReference;
 			case AbsolutePixels:
-				return distanceFromReference / float(isHorizontal ? display.clientWidth() : display.clientHeight());
+				return distanceFromReference / float(isHorizontal ? ViewPortWidth() : ViewPortHeight());
 		}
 		FATAL__("Unexpected distance type");
 		return 0.f;
@@ -579,14 +595,14 @@ namespace GUIElements
 		Resolution3D res = texture.GetResolution();
 		float2 resf = float2(res.width,res.height);
 
-		float wantHeight = resf.y / float(display.clientHeight());
+		float wantHeight = resf.y / float(ViewPortHeight());
 
 
 
 
 		float2 size = float2(rect.x.extend(),rect.y.extend());
 		size.y = wantHeight;
-		float2 pixelDim = size & float2(display.clientWidth(),display.clientHeight());
+		float2 pixelDim = size & ViewPortSizef();
 		float aspect = pixelDim.x / pixelDim.y;
 		float wantAspect = resf.x / resf.y;
 		size.y *= (aspect/wantAspect);
@@ -644,7 +660,7 @@ namespace GUIElements
 		float2 resf = float2(res.width,res.height);
 
 		float2 size = float2(rect.x.extend(),rect.y.extend());
-		float2 pixelDim = size & float2(display.clientWidth(),display.clientHeight());
+		float2 pixelDim = size & ViewPortSizef();
 		float aspect = pixelDim.x / pixelDim.y;
 		float wantAspect = resf.x / resf.y;
 		if (aspect < wantAspect)
@@ -855,7 +871,7 @@ namespace GUIElements
 	{
 		float extra = 1.f - w;
 		if (type == TAnchor::AbsolutePixels)
-			extra = float(display.clientWidth()) - w;
+			extra = float(ViewPortWidth()) - w;
 		anchorConfig.Left().Set(extra*0.5f,type);
 		anchorConfig.Right().Set(extra*0.5f,type);
 	}
