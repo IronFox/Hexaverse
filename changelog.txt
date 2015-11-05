@@ -1,4 +1,4 @@
-v0.3.6
+v0.3.6		[Nov 5 2015]
 	Limited zooming range.
 	Increased size of round timer.
 	Now computing struct counts client-side, rather than transferring them.
