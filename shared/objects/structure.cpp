@@ -1715,7 +1715,7 @@ namespace Objects
 				Grid::high.family[i].SetOutdated(atTime);
 				Grid::low.family[i].SetOutdated(atTime);
 			}
-		#ifdef CLIENT
+		#ifdef HAS_WINDOW
 			Grid::actualWorld.SignalLightingChange(location);
 		#endif
 
