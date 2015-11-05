@@ -2403,6 +2403,8 @@ namespace State
 
 			Objects::ForeachCompound([](Objects::Compound&c)
 			{
+				if (c.containedStructures.IsEmpty())
+					return;	//pure technite factions don't have units. Also, depending on server settings, some factions might not either
 				bool hasFuelMine = false,
 					hasMineralMine = false,
 					hasMineralContainer = Objects::Mine::MineralStorage > 0,
