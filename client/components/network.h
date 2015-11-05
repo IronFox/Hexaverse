@@ -40,7 +40,6 @@ namespace Network
 	extern Timer::Time		phaseStarted;
 	extern bool				newRoundRequested;
 
-	static const char*accessFilename = "config/worldAccess.m32";
 
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id);

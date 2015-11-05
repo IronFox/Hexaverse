@@ -9,6 +9,14 @@ namespace RuntimeConfig
 	String serverURL;
 	bool udpListen = true;
 
+	String configPath = "client";
+
+	String ConfigDir()
+	{
+		if (aiMode)
+			return "./config/ai";
+		return "./config/player";
+	}
 
 
 

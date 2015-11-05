@@ -9,7 +9,7 @@
 #include "tutorial.h"
 #include "dialog.h"
 #include "ai.h"
-
+#include "clientRuntimeConfig.h"
 
 
 
@@ -62,10 +62,16 @@ namespace Network
 		return rs;
 	}
 
+
+	static String AccessFilename()
+	{
+		return RuntimeConfig::ConfigFile("worldAccess.m32");
+	}
+
 	void SaveWorldAccessTokens()
 	{
 		FileSystem::CreateDirectory("config");
-		FILE*f = fopen(accessFilename, "wb+");
+		FILE*f = fopen(AccessFilename().c_str(), "wb+");
 		if (!f)
 		{
 			LogEvent(EventType::InternalFault,nullptr,"Unable to write to world access map");
@@ -84,7 +90,7 @@ namespace Network
 
 	void LoadWorldAccessTokens()
 	{
-		FILE*f = fopen(accessFilename, "rb");
+		FILE*f = fopen(AccessFilename().c_str(), "rb");
 		if (!f)
 			return;
 

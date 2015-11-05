@@ -6,11 +6,12 @@
 #include "../version.h"
 #include <io/string_file.h>
 #include "../../shared/runtimeConfig.h"
+#include "clientRuntimeConfig.h"
 
 void LoadHosts()
 {
 	StringFile hosts;
-	if (hosts.open("./config/hosts.txt"))
+	if (hosts.open(RuntimeConfig::ConfigFile("hosts.txt")))
 	{
 		String host;
 		while (hosts >> host)
@@ -21,7 +22,7 @@ void LoadHosts()
 void	SaveHosts()
 {
 	StringFile hosts;
-	if (hosts.create("./config/hosts.txt"))
+	if (hosts.create(RuntimeConfig::ConfigFile("hosts.txt")))
 	{
 		static Buffer0<String>	 urls;
 		Network::ServerDiscovery::ListNonAutoAttempts(urls);

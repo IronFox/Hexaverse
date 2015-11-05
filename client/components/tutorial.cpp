@@ -7,6 +7,7 @@
 #include <container/hashtable.h>
 #include "../version.h"
 #include "../../shared/objects.h"
+#include "clientRuntimeConfig.h"
 
 namespace Tutorial
 {
@@ -90,8 +91,8 @@ namespace Tutorial
 
 		FileSystem::CreateDirectory("config");
 
-		#ifndef _DEBUG
-		if (Detail::memory.open("config/tutorialMemory.txt"))
+//		#ifndef _DEBUG
+		if (Detail::memory.open(RuntimeConfig::ConfigFile("tutorialMemory.txt")))
 		{
 			String line;
 			while (Detail::memory >> line)
@@ -103,11 +104,11 @@ namespace Tutorial
 			}
 		
 			Detail::memory.close();
-			Detail::memory.append("config/tutorialMemory.txt");
+			Detail::memory.append(RuntimeConfig::ConfigFile("tutorialMemory.txt"));
 		}
 		else
-		#endif
-			Detail::memory.create("config/tutorialMemory.txt");
+	//	#endif
+			Detail::memory.create(RuntimeConfig::ConfigFile("tutorialMemory.txt"));
 	
 	}
 
