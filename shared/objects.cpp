@@ -400,10 +400,10 @@ namespace Objects
 			#endif
 		#else
 
-			#ifdef _DEBUG
-				Faction::nexus->accessToken = CryptographicID();
-				LogEvent(EventType::SessionRelated, nullptr, "Debug: Set nexus access token to " + Faction::nexus->accessToken.ToString() + "...");
-			#endif
+			//#ifdef _DEBUG
+			//	Faction::nexus->accessToken = CryptographicID();
+			//	LogEvent(EventType::SessionRelated, nullptr, "Debug: Set nexus access token to " + Faction::nexus->accessToken.ToString() + "...");
+			//#endif
 
 			VehicleJob::BaseJob::allJobPrototypes
 				<< PVehicleJob(new VehicleJob::BuildRoad())
