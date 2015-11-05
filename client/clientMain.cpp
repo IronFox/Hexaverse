@@ -3837,7 +3837,7 @@ int main( int argc, const char* argv[])
 				#ifndef _DEBUG
 				&& Network::HaveFactionKeyForCurrentWorld() 
 				#endif
-				&& RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
+				&& (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase || RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase);
 			}
 			);
 			AddFactionCreationChoice("Create new regular faction",Protocol::FactionType::RegularFaction, Protocol::GameFlag::SupportRegularFactions);
