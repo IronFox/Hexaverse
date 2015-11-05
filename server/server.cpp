@@ -1772,7 +1772,7 @@ int main( int argc, const char* argv[])
 						numTechniteFactionsWantNewRound++;
 				}
 			}
-			if (State::InExtraTechniteRound() && numTechniteFactions > 0)
+			if (RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase)
 			{
 				newRoundNow = numTechniteFactionsWantNewRound >= numTechniteFactions 
 							&& numTechniteFactionsWantNewRound > 0
@@ -1862,9 +1862,9 @@ int main( int argc, const char* argv[])
 				{
 					if (State::activePlayers.IsNotEmpty())
 						State::roundTimerPaused = false;
+					RuntimeConfig::techniteSubRoundNumber ++;
 					if (InExtraTechniteRound())
 					{
-						RuntimeConfig::techniteSubRoundNumber ++;
 
 						State::ChangePhase(RuntimeConfig::Phase::TechniteCommandPhase,State::Config::extraTechniteRoundTimer > 0 && !State::roundTimerPaused ? State::Config::extraTechniteRoundTimer : -1);
 
