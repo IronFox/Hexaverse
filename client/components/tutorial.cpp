@@ -40,6 +40,8 @@ namespace Tutorial
 
 	void	ShowMessage(const String&name, bool forceOpenNow/*=false*/)
 	{
+		if (RuntimeConfig::aiMode)
+			return;
 		Detail::Message*msg = Detail::messages.QueryPointer(name);
 		if (!msg)
 			return;
