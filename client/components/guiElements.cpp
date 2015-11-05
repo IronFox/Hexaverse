@@ -701,6 +701,12 @@ namespace GUIElements
 			rs = true;
 			numRounds++;
 
+			#ifdef _DEBUG
+				if (numRounds > 900)
+					ShowMessage("Debug: GUI will crash shortly. Attach now and debug.");
+
+			#endif
+
 			if (numRounds > 1000)	//might be linear to the number of contained components, depending on order
 				FATAL__("Layout infinite loop detected");
 		}
