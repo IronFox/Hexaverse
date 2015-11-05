@@ -563,6 +563,10 @@ namespace Network
 
 			ApplyPlanetConfig(cr.planetConfig);
 
+			Network::gameFlags = cr.info.gameFlags;
+			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameGoal);
+
+
 
 			haveFaction = cr.startFactionTypes != 0;
 			if (haveFaction)
@@ -1190,7 +1194,7 @@ namespace Network
 					{
 						at = servers.Count();
 						servers.Append().info = a.lastInfo;
-						servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.worldID);
+						servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
 						servers.last().protocolIncompatible = a.protocolIncompatible;
 						servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : servers.last().info.hostInfo.value.hostID;
 						servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
@@ -1402,7 +1406,7 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 
 			Network::serverID = srv->id;
 			Network::serverIDString = Network::serverID.ToNiceString();
-			Network::worldID = srv->info.worldID;
+			Network::worldID = srv->info.gameInfo.worldID;
 			Network::worldIDString = Network::worldID.ToNiceString();
 			Network::client.ConnectAsync(srv->urls[best].first + ":" + String(SERVICE_PORT));
 

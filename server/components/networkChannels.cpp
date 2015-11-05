@@ -286,6 +286,8 @@ namespace Receiver
 		response.startFactionTypes = _p.startFactionTypes;
 		response.factionToken = _p.factionToken;
 		response.planetConfig = State::persistentPlanetInfo;
+		State::AssembleGameInfo(response.info);
+		//response.info = CompileWorldInfo();
 
 		if (!response.startFactionTypes)
 		{

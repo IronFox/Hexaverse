@@ -635,23 +635,7 @@ namespace InformationProvider
 			while (!application_shutting_down)
 			{
 				Sleep(1000);
-				info.activePhase = RuntimeConfig::phase;
-				info.numClients = (UINT16)State::clients.Count();
-				info.numPlayers = (UINT16)State::activePlayers.Count();
-				info.roundNumber = (UINT32)RuntimeConfig::roundNumber;
-				info.worldID = State::worldID;
-				info.gameGoal = (UINT32)RuntimeConfig::gameGoal;
-				info.gameFlags = 0;
-				if (State::Config::closedGame)
-					info.gameFlags |= Protocol::GameFlag::ClosedGame;
-				if (State::Config::basesRequired)
-					info.gameFlags |= Protocol::GameFlag::BasesRequired;
-				if (State::Config::startBases)
-					info.gameFlags |= Protocol::GameFlag::StartBases;
-				if (State::Config::enableNexusAI)
-					info.gameFlags |= Protocol::GameFlag::NexusAI;
-
-				info.gameFlags |= State::Config::factionSupportFlags;
+				State::AssembleGameInfo(info.gameInfo);
 
 				infoSender.SendTo(server,info);
 			}

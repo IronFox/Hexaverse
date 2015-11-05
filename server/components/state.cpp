@@ -238,7 +238,31 @@ namespace State
 		Objects::CheckMobileEntitySanity();
 		Objects::VerifyGrid();
 	}
+	
 
+
+
+
+	void	AssembleGameInfo(Protocol::GameInfo&info)
+	{
+		info.activePhase = RuntimeConfig::phase;
+		info.numFactionsOnline = (UINT16)State::activePlayers.Count();
+		info.numFactionsCreated = (UINT16)Objects::Faction::all.Count();
+		info.roundNumber = (UINT32)RuntimeConfig::roundNumber;
+		info.worldID = State::worldID;
+		info.gameGoal = (UINT32)RuntimeConfig::gameGoal;
+		info.gameFlags = 0;
+		if (State::Config::closedGame)
+			info.gameFlags |= Protocol::GameFlag::ClosedGame;
+		if (State::Config::basesRequired)
+			info.gameFlags |= Protocol::GameFlag::BasesRequired;
+		if (State::Config::startBases)
+			info.gameFlags |= Protocol::GameFlag::StartBases;
+		if (State::Config::enableNexusAI)
+			info.gameFlags |= Protocol::GameFlag::NexusAI;
+
+		info.gameFlags |= State::Config::factionSupportFlags;
+	}
 
 
 
