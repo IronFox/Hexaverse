@@ -3132,6 +3132,8 @@ String GenerateOreName(Random&random)
 
 	void	QueryNickname()
 	{
+		if (RuntimeConfig::aiMode)
+			return;
 		//if (Network::chosenNickname.IsEmpty())
 		{
 			static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-";
