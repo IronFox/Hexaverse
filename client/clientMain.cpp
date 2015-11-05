@@ -3823,11 +3823,14 @@ int main( int argc, const char* argv[])
 
 
 			Atmosphere::Create();
-			if (RuntimeConfig::aiMode)
-				ShowWindow(Engine::context.getWindow(),SW_MINIMIZE);
+			#if !defined HAS_WINDOW || !defined _DEBUG
+				if (RuntimeConfig::aiMode)
+					ShowWindow(Engine::context.getWindow(),SW_MINIMIZE);
+			#endif
 			textout.getActiveFont()->BeginTagMode(StatePanel::OnTag,StatePanel::TagWidth,
 					Objects::TextoutResourceTagOffset,(char)(Objects::TextoutResourceTagOffset+(char)Objects::Resource::NumberOfPossibilities + 2));
 			Tutorial::Create();
+
 
 			Tutorial::ShowMessage("Welcome",true);
 			Tutorial::ShowMessage("Tutorials");
