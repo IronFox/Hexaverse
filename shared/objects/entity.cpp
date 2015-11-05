@@ -340,6 +340,13 @@ namespace Objects
 		{
 			if (e == other || e->owner == other->owner)
 				return;
+			if (e->health <= 0)
+			{
+				LogEvent(EventType::InternalFault,e.get(),"Trying to call MapVisibilityBetween() on a dead entity.");
+				//this happens due to some rare cascading events where the destruction of some structure leads to the ownership change of a nexus port, which in turn redetects visibility,
+				// but the destroyed structure has not yet been removed from lists. moving OnDestroy down now but this fix remains until it does no longer occur
+				return;
+			}
 			if (e->CanSee(other))
 			{
 				//seeing:
