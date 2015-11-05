@@ -463,60 +463,6 @@ namespace Objects
 
 
 	
-	void	InjectIntoNeighborhood(const PStructure&s, float atTime)
-	{
-		TStructureNeighborhood	neighborhood;
-		GetNeighborhood(s->owner,s->ConnectsToDifferentOwnership(), s->location, neighborhood);
-
-		#ifdef HYBRID_GRID
-			const UINT32 high = Grid::low.grid.GetCell(s->location.stackID).higherEquivalent;
-			const auto&ng = Grid::high.grid.GetCell(high).neighborhood;
-		#endif
-
-		{
-		//String dbgStr;
-		//foreach (neighborhood,n)
-		//	dbgStr += ", "+ n->get()->GetName();
-		//LogEvent(EventType::Debug,nullptr, "Neighborhood of "+s->GetName()+"[owner "+s->owner.ToString()+"]@"+s->location.ToString()+": "+dbgStr);
-
-		//Structure&_s = *s;
-		}
-
-		foreach(neighborhood, n)
-		{
-			//foreach(connectedTo, c)
-			ASSERT__(abs(s->location.height - (*n)->location.height)<=1);
-
-			const PStructure&c = *n;
-			#ifdef HYBRID_GRID
-				const UINT32 high2 = Grid::low.grid.GetCell((c)->location.stackID).higherEquivalent;
-				const auto&n2 = Grid::high.grid.GetCell(high2).neighborhood;
-				UINT32 between = BaseGrid::RequireIntersection(ng, n2);
-			#else
-				UINT32 between = 0;
-			#endif
-			if (s->ConnectionPossibleTo(c, between) && c->ConnectionPossibleTo(s, between))
-			{
-				s->connectedTo << c;
-				c->connectedTo << s;
-				#ifdef HAS_WINDOW
-					s->changed = c->changed = Structure::anyChanged = true;
-				#endif
-				c->OnNewConnection(s, between, atTime);
-				s->OnNewConnection(c, between, atTime);
-				LogEvent(EventType::MinorEntityProcess,nullptr, "Connection established between "+s->GetName()+" and "+c->GetName());
-				#ifdef HAS_WINDOW
-					if (c->changed)
-						c->Recompile();
-				#endif
-
-			}
-		}
-		#ifdef HAS_WINDOW
-			s->Recompile();
-		#endif
-	}
-
 
 
 	index_t					CellToGridIndex(const Grid::LCellIdU&location)
@@ -1194,7 +1140,7 @@ namespace Objects
 
 		InsertIntoGrid(structureGrid,s->location,s);
 
-		InjectIntoNeighborhood(s,atTime);
+//		InjectIntoNeighborhood(s,atTime);
 
 		#ifdef CLIENT
 			RefreshCompoundCoverage(atTime);

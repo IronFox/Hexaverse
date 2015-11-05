@@ -264,6 +264,7 @@ namespace Objects
 		should be called by overriding implementations at some point.
 		*/
 		virtual void				OnDestroy(float atTime) override;
+		virtual void				OnConstructionFinished(float atTime) override;
 
 
 
@@ -949,7 +950,7 @@ namespace Objects
 			void					OnLoad();
 
 			virtual void			Tick(ResourceVector&) override;
-			virtual void			OnConstructionFinished(float atTime)	{SetEnabled(false,atTime,false);}
+			virtual void			OnConstructionFinished(float atTime)	{Super::OnConstructionFinished(atTime); SetEnabled(false,atTime,false);}
 		#else
 			#ifdef HAS_WINDOW
 				virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;

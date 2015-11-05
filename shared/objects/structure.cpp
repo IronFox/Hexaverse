@@ -270,6 +270,7 @@ namespace Objects
 
 		/*virtual override*/ void			Tower::OnConstructionFinished(float atTime)
 		{
+			Super::OnConstructionFinished(atTime);
 			ChangeStorage(*this,atTime,turret->ammoType,GetMaxStorageCapacity().level[turret->ammoType] - storage.level[turret->ammoType]);
 			//storage.level[Resource::Munitions] = GetMaxStorageCapacity().level[Resource::Munitions];
 			//LogEvent(EventType::MinorEntityProcess,this,"Munition storage changed to "+String(storage.level[Resource::Munitions]));
@@ -516,10 +517,6 @@ namespace Objects
 		{
 			UpdateAutomaticSystem();
 		}
-		if (IsBroad())
-			CommonRegisterBroadStructure(location,GetHeight(),HasFoundation(),time);
-		else
-			CommonRegisterNarrowStructure(location,GetHeight(),HasFoundation(),time);
 	}
 
 	void			Structure::UpdateAutomaticSystem()
@@ -645,14 +642,82 @@ namespace Objects
 	}
 
 
+	void Structure::OnConstructionFinished(float atTime)
+	{
+		Super::OnConstructionFinished(atTime);
+
+
+		if (IsBroad())
+			CommonRegisterBroadStructure(location,GetHeight(),HasFoundation(),atTime);
+		else
+			CommonRegisterNarrowStructure(location,GetHeight(),HasFoundation(),atTime);
+
+		TStructureNeighborhood	neighborhood;
+		GetNeighborhood(owner,ConnectsToDifferentOwnership(), location, neighborhood);
+
+		#ifdef HYBRID_GRID
+			const UINT32 high = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+			const auto&ng = Grid::high.grid.GetCell(high).neighborhood;
+		#endif
+
+		{
+		//String dbgStr;
+		//foreach (neighborhood,n)
+		//	dbgStr += ", "+ n->get()->GetName();
+		//LogEvent(EventType::Debug,nullptr, "Neighborhood of "+s->GetName()+"[owner "+s->owner.ToString()+"]@"+s->location.ToString()+": "+dbgStr);
+
+		//Structure&_s = *s;
+		}
+
+		PStructure _this = To<Structure>::Cast(shared_from_this());
+		foreach(neighborhood, n)
+		{
+			//foreach(connectedTo, c)
+			ASSERT__(abs(location.height - (*n)->location.height)<=1);
+
+			const PStructure&c = *n;
+			#ifdef HYBRID_GRID
+				const UINT32 high2 = Grid::low.grid.GetCell((c)->location.stackID).higherEquivalent;
+				const auto&n2 = Grid::high.grid.GetCell(high2).neighborhood;
+				UINT32 between = BaseGrid::RequireIntersection(ng, n2);
+			#else
+				UINT32 between = 0;
+			#endif
+			if (ConnectionPossibleTo(c, between) && c->ConnectionPossibleTo(_this, between))
+			{
+				connectedTo << c;
+				c->connectedTo << _this;
+				#ifdef HAS_WINDOW
+					changed = c->changed = Structure::anyChanged = true;
+				#endif
+				c->OnNewConnection(_this, between, atTime);
+				_this->OnNewConnection(c, between, atTime);
+				LogEvent(EventType::MinorEntityProcess,nullptr, "Connection established between "+GetName()+" and "+c->GetName());
+				#ifdef HAS_WINDOW
+					if (c->changed)
+						c->Recompile();
+				#endif
+
+			}
+		}
+		#ifdef HAS_WINDOW
+			Recompile();
+		#endif
+	}
+
+
+
+
 	/*virtual*/ void Structure::OnDestroy(float atTime)
 	{
 		Super::OnDestroy(atTime);
+		LogEvent(EventType::Debug,this,"Unregistering...");
 		if (IsBroad())
 			CommonUnregisterBroadStructure(location,GetHeight(),HasFoundation(),atTime);
 		else
 			CommonUnregisterNarrowStructure(location,GetHeight(),HasFoundation(),atTime);
 
+		LogEvent(EventType::Debug,this,"Disconnecting...");
 		DisconnectFromNeighborhood(atTime);
 
 		#ifdef HAS_WINDOW
@@ -1031,6 +1096,8 @@ namespace Objects
 
 	/*static*/ void Structure::ChangeBroadStructCount(const Grid::LCellIdI&location, int height, bool hasFoundation, int changeDirection, float atTime)
 	{
+		LogEvent(EventType::Debug,nullptr,"ChangeBroadStructCount("+location.ToString()+", height="+String(height)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection));
+
 		{
 			const int lowEdge = hasFoundation ? -1 : 0;
 			#ifdef HYBRID_GRID
