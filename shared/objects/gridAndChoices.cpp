@@ -1265,8 +1265,9 @@ namespace Objects
 		if (!move)
 		{
 			idMap.Unset(e->id);
-			e->health = -1;
-			e->OnDestroy(timestamp);
+			if (t != RemovalType::ChangingOwnership)	//preserve health if changing ownership
+				e->health = -1;
+			//e->OnDestroy(timestamp);	//moved destroy further down to prevent some cascading edge cases, which loop back into the destroyed entity
 		}
 		#ifdef HAS_WINDOW
 			PTurretBase b = e->GetTurretBase();
@@ -1330,11 +1331,7 @@ namespace Objects
 				#endif
 				if (v->IsVehicle() && !isRemovedFromGrid)
 				{
-					//#ifdef CLIENT
-					//	RemoveFromGrid(vehicleGrid,v->preAnimationLocation,v);
-					//#else
 					RemoveFromGrid(vehicleGrid,v->location,To<Objects::Vehicle>::Cast(v));
-//					#endif
 				}
 
 				if (t == RemovalType::DestroyedInStorage)
@@ -1368,6 +1365,11 @@ namespace Objects
 			}
 		#endif
 
+		if (!move)
+		{
+			LogEvent(EventType::Debug,e.get(),"OnDestroy()");
+			e->OnDestroy(timestamp);
+		}
 		#ifdef CLIENT
 			if (isStructure)
 				RefreshCompoundCoverage(timestamp);
