@@ -565,6 +565,7 @@ namespace Network
 
 			Network::gameFlags = cr.info.gameFlags;
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameGoal);
+			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);
 
 
 
