@@ -56,12 +56,11 @@ namespace TechniteProtocol
 	//	, NETA(TechniteInstruction), instructions	//actual max is 32768. Technite logic states 10000, which is fine, too
 	//);
 
-	NETSTRUCT5(GridDelta
+	NETSTRUCT4(GridDelta
 		, NET(UINT32), nodeOffset
 		, NET(UINT32), nodeCount
 		, ::Protocol::TypeDeltaArray, data0
-		, ::Protocol::StructCountDeltaArray, data1
-		, ::Protocol::TechniteFactionDeltaArray, data2
+		, ::Protocol::TechniteFactionDeltaArray, data1
 	);
 
 	NETSTRUCT3(GridNode

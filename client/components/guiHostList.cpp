@@ -6,11 +6,12 @@
 #include "../version.h"
 #include <io/string_file.h>
 #include "../../shared/runtimeConfig.h"
+#include "clientRuntimeConfig.h"
 
 void LoadHosts()
 {
 	StringFile hosts;
-	if (hosts.open("./config/hosts.txt"))
+	if (hosts.open(RuntimeConfig::ConfigFile("hosts.txt")))
 	{
 		String host;
 		while (hosts >> host)
@@ -21,7 +22,7 @@ void LoadHosts()
 void	SaveHosts()
 {
 	StringFile hosts;
-	if (hosts.create("./config/hosts.txt"))
+	if (hosts.create(RuntimeConfig::ConfigFile("hosts.txt")))
 	{
 		static Buffer0<String>	 urls;
 		Network::ServerDiscovery::ListNonAutoAttempts(urls);
@@ -73,7 +74,7 @@ void	SaveHosts()
 	static String CompileRules(const Protocol::ServerInfo&info)
 	{
 		String result;
-		switch (info.gameGoal)
+		switch (info.gameInfo.gameGoal)
 		{
 			case RuntimeConfig::GameGoal::ConquerNexus:
 				result="Conquer Nexus";
@@ -85,19 +86,19 @@ void	SaveHosts()
 				result="No Goal";
 			break;
 		}
-		if (info.gameFlags & Protocol::GameFlag::ClosedGame)
+		if (info.gameInfo.gameFlags & Protocol::GameFlag::ClosedGame)
 			result += ", Closed Game";
-		if (info.gameFlags & Protocol::GameFlag::BasesRequired)
+		if (info.gameInfo.gameFlags & Protocol::GameFlag::BasesRequired)
 			result += ", Require Bases";
-		if (info.gameFlags & Protocol::GameFlag::StartBases)
+		if (info.gameInfo.gameFlags & Protocol::GameFlag::StartBases)
 			result += ", Start Bases";
-		if (info.gameFlags & Protocol::GameFlag::NexusAI)
+		if (info.gameInfo.gameFlags & Protocol::GameFlag::NexusAI)
 			result += ", Nexus AI";
-		if (info.gameFlags & Protocol::GameFlag::SupportRegularFactions)
+		if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportRegularFactions)
 			result += ", Regular";
-		if (info.gameFlags & Protocol::GameFlag::SupportTechniteFactions)
+		if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportTechniteFactions)
 			result += ", Technite";
-		if (info.gameFlags & Protocol::GameFlag::SupportHybridFactions)
+		if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportHybridFactions)
 			result += ", Hybrid";
 
 		//String result = String("Goal: ")+Protocol::GameGoal::Reinterpret(info.gameGoal).ToString();
@@ -152,10 +153,10 @@ void	SaveHosts()
 
 				Network::serverID = info->id;
 				Network::serverIDString = Network::serverID.ToNiceString();
-				Network::worldID = info->info.worldID;
+				Network::worldID = info->info.gameInfo.worldID;
 				Network::worldIDString = Network::worldID.ToNiceString();
-				Network::gameFlags = info->info.gameFlags;
-				RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info->info.gameGoal);
+				Network::gameFlags = info->info.gameInfo.gameFlags;
+				RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info->info.gameInfo.gameGoal);
 				Network::client.ConnectAsync(info->urls[best].first + ":"+String(SERVICE_PORT));
 			});
 
@@ -170,7 +171,7 @@ void	SaveHosts()
 			float4 color(1,1,1,1);
 			if (info.rightVersion)
 			{
-				text = " "+info.info.hostInfo.value.hostID.ToNiceString()+" / "+info.info.worldID.value.ToNiceString();
+				text = " "+info.info.hostInfo.value.hostID.ToNiceString()+" / "+info.info.gameInfo.worldID.value.ToNiceString();
 				if (info.haveToken)
 					text += " (continue)";
 			}
@@ -183,7 +184,7 @@ void	SaveHosts()
 				}
 				else
 				{
-					text = " "+info.info.hostInfo.value.hostID.ToNiceString()+" / "+info.info.worldID.value.ToNiceString();
+					text = " "+info.info.hostInfo.value.hostID.ToNiceString()+" / "+info.info.gameInfo.worldID.value.ToNiceString();
 					text += "\n (Version Mismatch)";
 				}
 			}
@@ -198,8 +199,8 @@ void	SaveHosts()
 
 
 		{
-			AddTab(p,String(info.info.numPlayers)/* + "/" + String(info.info.numClients)*/,0.01f,GUIElements::TAnchor::RelativeToScreen);
-			AddTab(p,String(info.info.roundNumber),0.01f,GUIElements::TAnchor::RelativeToScreen);
+			AddTab(p,String(info.info.gameInfo.numFactionsOnline) + "/" + String(info.info.gameInfo.numFactionsCreated),0.01f,GUIElements::TAnchor::RelativeToScreen);
+			AddTab(p,String(info.info.gameInfo.roundNumber),0.01f,GUIElements::TAnchor::RelativeToScreen);
 			PLabel l = AddTab(p,CompileRules(info.info),0.01f,GUIElements::TAnchor::RelativeToScreen);
 			l->zoom *= 0.9f;
 
@@ -280,7 +281,7 @@ void	SaveHosts()
 
 
 		AddTab("HostID/WorldID");
-		AddTab("Factions");
+		AddTab("Factions online");
 		AddTab("Round Number");
 		AddTab("Rules");
 

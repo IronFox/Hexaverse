@@ -18,7 +18,11 @@ namespace AIProcess
 			char parameterBuffer[32768];
 			String	path,
 					workingDirectory = "..\\client\\";
-			path = "..\\client\\Console Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
+			#ifdef _DEBUG
+				path = "..\\client\\.projector\\Debug\\Visual Client.exe";
+			#else
+				path = "..\\client\\Console Client" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
+			#endif
 			//#ifdef _DEBUG
 			//	path = "..\\client\\Debug\\client.exe";
 			//#else

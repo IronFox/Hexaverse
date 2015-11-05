@@ -14,7 +14,7 @@
 
 namespace State
 {
-	static const UINT32	fileVersion = 1039;
+	static const UINT32	SupportedFileVersion = 1040;
 
 	static const UINT32 NotifyOthers = Objects::WorldEntity::PositionChanged 
 										| Objects::WorldEntity::HealthChanged 
@@ -25,6 +25,7 @@ namespace State
 
 	void	Save(const String&name);
 	void	Load(const String&name);
+	void	AssembleGameInfo(Protocol::GameInfo&info);
 
 	static const String	savFileExtension = "hsf";	//hexaverse save file
 	void	AutoSave();

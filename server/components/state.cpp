@@ -248,7 +248,31 @@ namespace State
 
 		Technites::VerifyGrid();
 	}
+	
 
+
+
+
+	void	AssembleGameInfo(Protocol::GameInfo&info)
+	{
+		info.activePhase = RuntimeConfig::phase;
+		info.numFactionsOnline = (UINT16)State::activePlayers.Count();
+		info.numFactionsCreated = (UINT16)Objects::Faction::all.Count();
+		info.roundNumber = (UINT32)RuntimeConfig::roundNumber;
+		info.worldID = State::worldID;
+		info.gameGoal = (UINT32)RuntimeConfig::gameGoal;
+		info.gameFlags = 0;
+		if (State::Config::closedGame)
+			info.gameFlags |= Protocol::GameFlag::ClosedGame;
+		if (State::Config::basesRequired)
+			info.gameFlags |= Protocol::GameFlag::BasesRequired;
+		if (State::Config::startBases)
+			info.gameFlags |= Protocol::GameFlag::StartBases;
+		if (State::Config::enableNexusAI)
+			info.gameFlags |= Protocol::GameFlag::NexusAI;
+
+		info.gameFlags |= State::Config::factionSupportFlags;
+	}
 
 
 
@@ -617,7 +641,7 @@ namespace State
 			deltas.SetSize(BaseGrid::NumFamilies);
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 			{
-				GenerateWorldDelta(nullptr,nullptr, deltas[k], k, true, k+1==BaseGrid::NumFamilies, Protocol::WorldDeltaType::GlobalCopy, false);
+				GenerateWorldDelta(nullptr,nullptr, deltas[k], k, true, k+1==BaseGrid::NumFamilies, Protocol::WorldDeltaType::GlobalCopy);
 			}
 		}
 		else
@@ -626,10 +650,8 @@ namespace State
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 			{
 				bool isLast = k+1==BaseGrid::NumFamilies;
-				GenerateWorldDelta(nullptr, nullptr, delta, k, true, isLast, Protocol::WorldDeltaType::GlobalCopy, false);
+				GenerateWorldDelta(nullptr, nullptr, delta, k, true, isLast, Protocol::WorldDeltaType::GlobalCopy);
 				ASSERT__(delta.data0 == deltas[k].data0);
-				ASSERT__(delta.data1 == deltas[k].data1);
-				ASSERT__(delta.data1.IsEmpty());
 				ASSERT__(delta.familyAndLastFlag == deltas[k].familyAndLastFlag);
 				ASSERT__(delta.timestamp.atTime == deltas[k].timestamp.atTime);
 
@@ -1521,9 +1543,9 @@ void	State::Load(const String&filename)
 					failed = true;
 				}
 				else
-					if (vid > fileVersion)
+					if (vid > SupportedFileVersion)
 					{
-						LogEvent(EventType::InternalFault,"Unsupported version: "+String(vid)+". Versions are supported up to "+String(fileVersion));
+						LogEvent(EventType::InternalFault,"Unsupported version: "+String(vid)+". Versions are supported up to "+String(SupportedFileVersion));
 						failed = true;
 					}
 					else
@@ -1658,7 +1680,6 @@ void	State::Load(const String&filename)
 						{
 							//Protocol::WorldDelta delta;
 							Protocol::TypeDeltaArray	typeArray;
-							Protocol::StructCountDeltaArray countArray;
 							Protocol::TechniteFactionDeltaArray techniteArray;
 
 							Riff::Chunk*child;
@@ -1671,7 +1692,7 @@ void	State::Load(const String&filename)
 									{
 										ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
 										ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
-										Grid::actualWorld.ApplyFamilyDelta(atFamily, typeArray, countArray, techniteArray, false, true);
+										Grid::actualWorld.ApplyFamilyDelta(atFamily, typeArray, techniteArray, false, true);
 
 										atFamily++;
 									}
@@ -1694,7 +1715,6 @@ void	State::Load(const String&filename)
 						if (round == 0)
 						{
 							Protocol::TypeDeltaArray	typeArray;
-							Protocol::StructCountDeltaArray countArray;
 							Protocol::TechniteFactionDeltaArray techniteArray;
 							Riff::Chunk*child;
 							BYTE atFamily = 0;
@@ -1704,7 +1724,7 @@ void	State::Load(const String&filename)
 									if (child->IsID(RID::worldTypeChunk))
 									{
 										ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
-										Grid::initialWorld.ApplyFamilyDelta(atFamily, typeArray, countArray, techniteArray, true, false);
+										Grid::initialWorld.ApplyFamilyDelta(atFamily, typeArray, techniteArray, true, false);
 										atFamily++;
 									}
 									else
@@ -1804,7 +1824,6 @@ void	State::Load(const String&filename)
 							Riff::Chunk*child;
 
 							Protocol::TypeDeltaArray	typeArray;
-							Protocol::StructCountDeltaArray countArray;
 							Protocol::TechniteFactionDeltaArray techniteFactionArray;
 							//Riff::Chunk*child;
 							BYTE atFamily = 0;
@@ -1823,15 +1842,19 @@ void	State::Load(const String&filename)
 									elif(child->IsID(RID::factionWorldTechniteFactionChunk))
 									{
 										ASSERT__(DeserializeFromMemory(techniteFactionArray, child->pointer(), child->size(), false));
-									}
-									elif (child->IsID(RID::factionWorldCounterChunk))
-									{
-										ASSERT__(DeserializeFromMemory(countArray,child->pointer(),child->size(),false));
 										ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
-										faction->currentState.ApplyFamilyDelta(atFamily,typeArray,countArray,techniteFactionArray, false,false);
+										faction->currentState.ApplyFamilyDelta(atFamily,typeArray,techniteFactionArray, false,false);
 
 										atFamily++;
 									}
+									//elif (child->IsID(RID::factionWorldCounterChunk))
+									//{
+									//	ASSERT__(DeserializeFromMemory(countArray,child->pointer(),child->size(),false));
+									//	ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
+									//	faction->currentState.ApplyFamilyDelta(atFamily,typeArray,countArray,false,false);
+
+									//	atFamily++;
+									//}
 								
 								}
 								while (child = list->Next());
@@ -1956,7 +1979,7 @@ void	State::Save( const String&name)
 	Timer::Time t0 = timer.Now();
 
 	Riff::Container container;
-	UINT32 vid = fileVersion;
+	UINT32 vid = SupportedFileVersion;
 	container.AppendBlock(RID::fileVersion,&vid,sizeof(vid));
 	container.AppendBlock(RID::worldContentTypeCount)->SetPODData((UINT32)Grid::Content::NumberOfPossibilities);
 	Riff::Chunk*general = CreateNamedList(container,ChunkName::WorldInfoGroup);
@@ -1983,7 +2006,7 @@ void	State::Save( const String&name)
 	{
 		TCP::Serial<Protocol::WorldDelta>	delta;
 		delta.Ref().timestamp.rightNow = true;
-		Protocol::GenerateWorldDelta(nullptr, nullptr, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::GlobalCopy,false);
+		Protocol::GenerateWorldDelta(nullptr, nullptr, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::GlobalCopy);
 		//delta.Ref().timestamp.atTime = 0;
 		//delta.Ref().data1.Clear();
 		//delta.Seal();
@@ -1994,7 +2017,7 @@ void	State::Save( const String&name)
 	{
 		TCP::Serial<Protocol::WorldDelta>	delta,delta2;
 		delta.Ref().timestamp.rightNow = true;
-		Protocol::GenerateWorldDelta(nullptr, nullptr, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::GlobalInitialCopy,false);
+		Protocol::GenerateWorldDelta(nullptr, nullptr, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::GlobalInitialCopy);
 
 		SerializeToChunk(delta.Ref().data0,initialWorld->AppendBlock(RID::worldTypeChunk));
 		//initialWorld->AppendBlock(RID::worldChunk)->SetData(delta.Get());
@@ -2080,8 +2103,8 @@ void	State::Save( const String&name)
 
 			//delta.Seal();
 			SerializeToChunk(delta.Ref().data0, factionSection->AppendBlock(RID::factionWorldTypeChunk));
-			SerializeToChunk(delta.Ref().data2, factionSection->AppendBlock(RID::factionWorldTechniteFactionChunk));
-			SerializeToChunk(delta.Ref().data1, factionSection->AppendBlock(RID::factionWorldCounterChunk));
+			SerializeToChunk(delta.Ref().data1, factionSection->AppendBlock(RID::factionWorldTechniteFactionChunk));
+			//SerializeToChunk(delta.Ref().data1, factionSection->AppendBlock(RID::factionWorldCounterChunk));
 										//factionWorldTypeChunk("WTCK"),
 										//factionWorldCounterChunk("WCCK"),
 
@@ -2829,8 +2852,9 @@ namespace State
 									0));
 								generator->CorrectTerrain(false,0,true);
 								Objects::InsertConstructed(generator,0);
-								alwaysOn << generator;
 								generatorCount++;
+								if (generatorCount < 4)
+									alwaysOn << generator;	//only need three generators switched on
 							}
 						}
 

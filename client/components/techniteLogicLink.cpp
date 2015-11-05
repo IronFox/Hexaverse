@@ -286,7 +286,6 @@ namespace TechniteLogicLink
 			outDelta.nodeOffset = (UINT32)offset;
 			outDelta.data0.adoptData(delta.data0);
 			outDelta.data1.adoptData(delta.data1);
-			outDelta.data2.adoptData(delta.data2);
 			Channels::gridDelta.SendTo(peer,outDelta);
 		}
 	}
@@ -365,7 +364,6 @@ namespace TechniteLogicLink
 			outDelta.nodeOffset = (UINT32)offset;
 			outDelta.data0.adoptData(delta.data0);
 			outDelta.data1.adoptData(delta.data1);
-			outDelta.data2.adoptData(delta.data2);
 
 			logicServer.VisitAllPeers([&outDelta](const TCP::PPeer&peer)
 			{
@@ -453,7 +451,7 @@ namespace TechniteLogicLink
 
 		static String CompileProtocolString()
 		{
-			return "Aquinas v1.4." + String(TechniteProtocol::ChannelID::Count);
+			return "Aquinas v1.5." + String(TechniteProtocol::ChannelID::Count);
 		}
 
 
@@ -850,7 +848,6 @@ namespace TechniteLogicLink
 		outDelta.nodeOffset = (UINT32)offset;
 		outDelta.data0.swap(delta.data0);
 		outDelta.data1.swap(delta.data1);
-		outDelta.data2.swap(delta.data2);
 
 		serial.Seal();
 
@@ -865,7 +862,6 @@ namespace TechniteLogicLink
 		//swap back:
 		outDelta.data0.swap(delta.data0);
 		outDelta.data1.swap(delta.data1);
-		outDelta.data2.swap(delta.data2);
 	}
 
 

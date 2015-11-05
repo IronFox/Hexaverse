@@ -10,6 +10,7 @@
 #include "dialog.h"
 #include "ai.h"
 #include "techniteLogicLink.h"
+#include "clientRuntimeConfig.h"
 
 
 
@@ -82,10 +83,16 @@ namespace Network
 		return rs;
 	}
 
+
+	static String AccessFilename()
+	{
+		return RuntimeConfig::ConfigFile("worldAccess.m32");
+	}
+
 	void SaveWorldAccessTokens()
 	{
 		FileSystem::CreateDirectory("config");
-		FILE*f = fopen(accessFilename, "wb+");
+		FILE*f = fopen(AccessFilename().c_str(), "wb+");
 		if (!f)
 		{
 			LogEvent(EventType::InternalFault,nullptr,"Unable to write to world access map");
@@ -104,7 +111,7 @@ namespace Network
 
 	void LoadWorldAccessTokens()
 	{
-		FILE*f = fopen(accessFilename, "rb");
+		FILE*f = fopen(AccessFilename().c_str(), "rb");
 		if (!f)
 			return;
 
@@ -330,6 +337,10 @@ namespace Network
 			Grid::UpdateAtmosphere(config.atmosphereColor);
 			Grid::UpdateSun(config.sunPlaneNormal_Speed,config.sunColor);
 		#endif
+
+		if (amTechniteFaction)
+			TechniteLogicLink::SetWorldInfo(coreContent);
+
 	}
 
 
@@ -448,7 +459,7 @@ namespace Network
 			{
 				BYTE family = delta.familyAndLastFlag & 0x7F;
 				bool last = (delta.familyAndLastFlag & 0x80) != 0;
-				Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,delta.data1,delta.data2, false,true);
+				Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,delta.data1,false,true);
 
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = last;
@@ -625,8 +636,10 @@ namespace Network
 			ASSERT__(!eventsLocked);
 
 			ApplyPlanetConfig(cr.planetConfig);
-			if (amTechniteFaction)
-				TechniteLogicLink::SetWorldInfo(coreContent);
+
+			Network::gameFlags = cr.info.gameFlags;
+			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameGoal);
+
 
 
 			haveFaction = cr.startFactionTypes != 0;
@@ -1285,7 +1298,7 @@ namespace Network
 					{
 						at = servers.Count();
 						servers.Append().info = a.lastInfo;
-						servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.worldID);
+						servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
 						servers.last().protocolIncompatible = a.protocolIncompatible;
 						servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : servers.last().info.hostInfo.value.hostID;
 						servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
@@ -1513,7 +1526,7 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 
 			Network::serverID = srv->id;
 			Network::serverIDString = Network::serverID.ToNiceString();
-			Network::worldID = srv->info.worldID;
+			Network::worldID = srv->info.gameInfo.worldID;
 			Network::worldIDString = Network::worldID.ToNiceString();
 			Network::client.ConnectAsync(srv->urls[best].first + ":" + String(SERVICE_PORT));
 

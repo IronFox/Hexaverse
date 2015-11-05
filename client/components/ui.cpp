@@ -1846,7 +1846,7 @@
 			#endif
 
 			textout << " Owner: "<<e.owner->GetName();
-			if (e.isMine)
+			if (e.isMine && e.health > 0)
 			{
 				textout<<" (me)";
 				static const Objects::WorldEntity *last=nullptr;

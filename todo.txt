@@ -8,20 +8,29 @@ ambient restocking (and repairing?) of support vehicles. //restocking no longer 
 
 ...next...
 
+increase resource yield height somehow
+
+select next contact when repeatedly clicking on hostile contact bar item does not move to next target. probably due to lack of selection. should probably just select
+
+abandoning a faction should alter the faction user name to indicate it is abandoned
+
+nexus units should not suffer emp damage (its satellites are crashing, since fuel is not provided), but factories should not enable if inside emp field
+
+
+
 Debug	2015 November 03. 19:27:36	49	CommandPhase							AI: Starting
 Debug	2015 November 03. 19:27:36	49	CommandPhase							AI: Not done processing
 Fatal	2015 November 03. 19:27:36	49	CommandPhase							Fatal exception in line 196 of client\clientMain.cpp::DirectTo() "[!RuntimeConfig::aiMode || !Network::newRoundRequested] evaluates to false"
 
 
-increase size of round timer countdown
 
-sometimes unit shadows (structure count) is transferred despite being invisible to a faction
 
 check nexus port ownership when loading game
 
 nexus port enabled counter is sometimes off when ownership changed
 
 server faction had vehicle in cansee that was dead
+server faction had vehicle in cansee that was in fact invisible
 
 
 MinorEntityProcess	2015 November 03. 14:44:07	16	AttackPhase							Server phase changed to AttackPhase (-1) @0
@@ -30,7 +39,6 @@ Fatal	2015 November 03. 14:44:07	16	AttackPhase							Fatal exception in line 77
 
 favorize certain vehicle construction jobs
 
-struct count is somehow transferred out of range
 
 The GPU device instance has been suspended. Use GetDeviceRemovedReason to determine the appropriate action.
 (upon recovering from sleep). Might not be able to cleanly recover. Application should restart.
@@ -42,7 +50,6 @@ Forgetting a user host causes a crash (no connection was established).
 Satellite beam animation seed.
 
 
-limit scrolling range
 
 see what hostile former is building currently
 
@@ -124,6 +131,9 @@ remote server control, including local starting
 
 ------------- done (newest first) -------------
 
+limit scrolling range
+fixed: sometimes unit shadows (structure count) is transferred despite being invisible to a faction/struct count is somehow transferred out of range
+increase size of round timer countdown
 revise terrain clipping control (expose more options (up and down))
 revise 'Toggle Sky Grid' button graphic
 flickering of terrain

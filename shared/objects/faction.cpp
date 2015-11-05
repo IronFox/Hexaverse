@@ -145,22 +145,30 @@ namespace Objects
 
 		void		ChangeOwnership( const PWorldEntity&e, const OwnerParameter&newOwner, float&atTime)
 		{
-			OwnerParameter oldOwner = e->owner;
-			if (oldOwner == newOwner)
+			if (e->owner == newOwner)
 				return;
 			LogEvent(EventType::GameProgressRelated,e.get(),"Changing ownership ('"+e->owner->GetName()+"' -> '"+newOwner->GetName()+"')");
 
-			//Remove(e,false,true,atTime,true,false,true);
-			//e->owner = newOwner;
-			//atTime += 0.025f;
-			//PVehicle v = To<Vehicle>::DynamicCast(e);
-			//if (v)
-			//	InsertConstructed(v,atTime);
-			//else
-			//	InsertConstructed(To<Structure>::DynamicCast(e),atTime,true);
-			//VerifyVisibilityNetwork();
+			OwnerParameter oldOwner = e->owner;
 
-			//return;
+
+
+
+
+			Remove(e,RemovalType::ChangingOwnership,atTime,true,false,true);
+			e->owner = newOwner;
+			atTime += 0.025f;
+			
+			if (e->IsMobile())
+				InsertConstructed(To<MobileEntity>::Cast(e),atTime,true,false);
+			else
+				if (e->IsStructure())
+					InsertConstructed(To<Structure>::Cast(e),atTime,true,false);
+				else
+					LogEvent(EventType::InternalFault,e.get(), "Unexpected entity type. Cannot change ownership");
+			VerifyVisibilityNetwork();
+
+			return;
 
 			e->owner->RegisterLoss(e);
 			SignalOwnershipChange(e,newOwner,atTime);
@@ -780,8 +788,8 @@ namespace Objects
 					#endif
 				}
 			#endif
-			if (s)
-				InjectIntoNeighborhood(s,0);
+			//if (s)
+			//	InjectIntoNeighborhood(s,0);
 
 			
 			if (s)	

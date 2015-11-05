@@ -59,9 +59,7 @@ namespace Objects
 	PMobileEntity	GetMobileEntity(const Grid::LCellIdU&cellID);
 
 
-
-
-	void			InjectIntoNeighborhood(const PStructure&s, float atTime);
+	//void			InjectIntoNeighborhood(const PStructure&s, float atTime);
 
 	void			GetNeighborhood( const OwnerParameter&referenceOwner, bool ignoreOwnership, const Grid::LCellIdI&cellID, TStructureNeighborhood&outNeighborhood);
 

@@ -49,13 +49,14 @@ namespace Objects
 	typedef PFaction		OwnerParameter;
 
 
-	CONSTRUCT_ENUMERATION6(RemovalType,
+	CONSTRUCT_ENUMERATION7(RemovalType,
 		Vanished,
 		BeingReplaced,
 		ControlledExplosion,
 		UncontrolledExplosion,
 		EnteredStorage,
-		DestroyedInStorage
+		DestroyedInStorage,
+		ChangingOwnership
 	);
 
 	class Compound;

@@ -11,6 +11,9 @@ namespace RuntimeConfig
 	extern String serverURL;
 	extern bool udpListen;
 
+	String		ConfigDir();
+
+	inline String ConfigFile(const String&base)	{return ConfigDir() + FOLDER_SLASH + base;}
 
 
 

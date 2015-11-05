@@ -12,7 +12,7 @@
 #include <general/random.h>
 #include "../../shared/cast.h"
 #include "../../shared/logEvent.h"
-
+#include "clientRuntimeConfig.h"
 
 namespace DX11 = Engine::DX11; 
 
@@ -1078,7 +1078,7 @@ namespace Dialog
 
 	void	Create()
 	{
-		Detail::showTutorials = !FileSystem::IsFile("config/tutorialsDisabled.mark");
+		Detail::showTutorials = !FileSystem::IsFile(RuntimeConfig::ConfigFile("tutorialsDisabled.mark"));
 		GUIElements::Create();
 
 

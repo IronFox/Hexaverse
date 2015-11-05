@@ -136,7 +136,6 @@ namespace Grid
 
 
 		MAKE_NAMED_DELTA (TTypeDelta,newType);	//0 = Bedrock = no change. Bedrock cannot be applied to normal cells
-		MAKE_NAMED_DELTA (TStructCountDelta,newStructureCounter);//structure counter. 0 = no change, otherwise effective = newStructureCounter-1
 		MAKE_NAMED_DELTA (TTechniteFactionDelta, newTechniteFaction);//0 = no change, otherwise effective = newTechniteFaction-1
 
 
@@ -153,9 +152,7 @@ namespace Grid
 				}
 			};
 		typedef TDeltaBlock<TTypeDelta>	TTypeDeltaBlock;
-		typedef TDeltaBlock<TStructCountDelta>	TStructCountDeltaBlock;
 		static_assert(sizeof(TTypeDeltaBlock) == 5, "Struct-alignment out of whack");
-		static_assert(sizeof(TStructCountDeltaBlock) == 5, "Struct-alignment out of whack");
 
 		typedef TDeltaBlock<TTechniteFactionDelta>	TTechniteFactionDeltaBlock;
 		#pragma pack(pop)
@@ -200,32 +197,26 @@ namespace Grid
 			#endif
 
 
-			void	GetDeltaFrom(const CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout, TTechniteFactionDelta&fout, bool&foutValid)	const
+			void	GetDeltaFrom(const CompactCell&other, TTypeDelta&tout, TTechniteFactionDelta&fout, bool&foutValid)	const
 			{
 				tout.newType = content != other.content ? content : 0;
-				sout.newStructureCounter = structureCounter != other.structureCounter ? structureCounter + 1 : 0;
 				fout.newTechniteFaction = techniteFaction != other.techniteFaction ? techniteFaction + 1 : 0;
 				foutValid = content == Content::Technite;
 			}
-			void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout, TStructCountDelta&sout, TTechniteFactionDelta&fout, bool&foutValid) const
+			void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout, TTechniteFactionDelta&fout, bool&foutValid) const
 			{
-				GetDeltaFrom(other,tout,sout, fout, foutValid);
+				GetDeltaFrom(other,tout,fout, foutValid);
 				other = *this;
 			}
 
-			bool	ApplyDelta(const TTypeDelta&tdelta, const TStructCountDelta&sdelta, const TTechniteFactionDelta&fdelta)
+			bool	ApplyDelta(const TTypeDelta&tdelta, const TTechniteFactionDelta&fdelta)
 			{
-				if (tdelta.newType == 0 && sdelta.newStructureCounter == 0)
+				if (tdelta.newType == 0 && fdelta.newTechniteFaction == 0)
 					return false;
 				if (tdelta.newType)
 				{
 					content = tdelta.newType;
 					DBG_ASSERT_LESS__(content,Content::NumberOfPossibilities);
-				}
-				if (sdelta.newStructureCounter)
-				{
-					structureCounter = sdelta.newStructureCounter-1;
-					DBG_ASSERT_LESS__(structureCounter,3);
 				}
 				if (fdelta.newTechniteFaction/* && content == Content::Technite*/)
 				{
@@ -1814,7 +1805,7 @@ namespace Grid
 		static void				Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 cellID));
 		static void				Create(const String&name, ConstName cname, const float3&color, float p, coverage_t);
 		static void				Create(const String&name, ConstName cname, const float3&color, index_t);
-		static void				Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield);
+		//static void				Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield);
 		static Resource&		Require(const String&name);
 		static Resource&		Require(ConstName name);
 		static coverage_t		Sample(const String&resourceName, index_t cellID);
@@ -2218,8 +2209,8 @@ namespace Grid
 			}
 		}
 
-		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, const Array<CellStack::TStructCountDelta>&data1, const Array<CellStack::TTechniteFactionDelta>&data2, bool initialization);
-		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, const Array<CellStack::TTechniteFactionDeltaBlock>&data2, bool initialization, bool actualWorld);
+		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, const Array<CellStack::TTechniteFactionDelta>&data1, bool initialization);
+		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TTechniteFactionDeltaBlock>&data1, bool initialization, bool actualWorld);
 
 		/**
 			Signals that the fine geometry in and on the edge of the specified cell has changed.

@@ -129,8 +129,11 @@ namespace Receiver
 		{
 			if (!Objects::GetPrototypeByName(dest.referencedType[0]))
 			{
-				LogEvent(EventType::CommandRejected, "Unknown structure type #" + String(int(dest.referencedType[0])));
-				return false;
+				if (!Objects::GetSatellitePrototypeByName(dest.referencedType[0]))
+				{
+					LogEvent(EventType::CommandRejected, "Unknown structure type #" + String(int(dest.referencedType[0])));
+					return false;
+				}
 			}
 			return true;
 		}
@@ -365,6 +368,8 @@ namespace Receiver
 		response.startFactionTypes = _p.startFactionTypes;
 		response.factionToken = _p.factionToken;
 		response.planetConfig = State::persistentPlanetInfo;
+		State::AssembleGameInfo(response.info);
+		//response.info = CompileWorldInfo();
 
 		if (!response.startFactionTypes)
 		{
@@ -622,7 +627,7 @@ namespace Receiver
 		//CHEAT_SHOW_ALL_RESOURCES
 
 		#ifdef CHEAT_SHOW_ALL_RESOURCES
-			faction->resourcesDiscovered.Fill(true);
+			faction->visibility.resourcesDiscovered.Fill(true);
 
 		#endif
 	

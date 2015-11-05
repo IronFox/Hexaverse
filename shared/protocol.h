@@ -1053,7 +1053,7 @@ namespace Protocol
 
 
 	static_assert(sizeof(Grid::CellStack::TTypeDeltaBlock) == sizeof(UINT32) + sizeof(Grid::CellStack::TTypeDelta), "Struct alignment out of whack" );
-	static_assert(sizeof(Grid::CellStack::TStructCountDeltaBlock) == sizeof(UINT32) + sizeof(Grid::CellStack::TStructCountDelta), "Struct alignment out of whack" );
+//	static_assert(sizeof(Grid::CellStack::TStructCountDeltaBlock) == sizeof(UINT32) + sizeof(Grid::CellStack::TStructCountDelta), "Struct alignment out of whack" );
 
 
 
@@ -1161,15 +1161,12 @@ namespace Protocol
 
 	//NETA(x)
 	typedef NetArray<Grid::CellStack::TTypeDeltaBlock,4000000>	TypeDeltaArray;
-	typedef NetArray<Grid::CellStack::TStructCountDeltaBlock,4000000>	StructCountDeltaArray;
-
 	typedef NetArray<Grid::CellStack::TTechniteFactionDeltaBlock,4000000>	TechniteFactionDeltaArray;
-	NETSTRUCT5(WorldDelta
+	NETSTRUCT4(WorldDelta
 		, Timestamp, timestamp
 		, NET(BYTE), familyAndLastFlag	//flag stored in 0x80, family mask is 0x7f
 		, TypeDeltaArray, data0
-		, StructCountDeltaArray, data1
-		, TechniteFactionDeltaArray, data2
+		, TechniteFactionDeltaArray, data1
 	)
 
 
@@ -1791,10 +1788,23 @@ namespace Protocol
 	};
 
 
-	NETSTRUCT3(ClientFactionResponse
+	NETSTRUCT7(GameInfo
+		, NET(UINT16), numFactionsOnline
+		, NET(UINT16), numFactionsCreated
+		, NET(UINT32), roundNumber
+		, NET(TUniqueID), worldID	//used to manage factionTokens
+		, NET(BYTE), activePhase
+		, NET(UINT32), gameFlags
+		, NET(BYTE), gameGoal
+	)
+
+
+
+	NETSTRUCT4(ClientFactionResponse
 		, NET(UINT32), startFactionTypes
 		, NET(CryptographicID), factionToken
 		, NET(Grid::TSharedPlanetConfig), planetConfig
+		, GameInfo, info
 	)
 
 	NETSTRUCT2(ClientFactionRequest
@@ -1990,17 +2000,12 @@ namespace Protocol
 
 
 
-	NETSTRUCT8(ServerInfo
-		, NET(THostBroadcastPacket), hostInfo
-		, NET(UINT16), numClients
-		, NET(UINT16), numPlayers
-		, NET(UINT32), roundNumber
-		, NET(TUniqueID), worldID	//used to manage factionTokens
-		, NET(BYTE), activePhase
-		, NET(UINT32), gameFlags
-		, NET(BYTE), gameGoal
-	)
 
+	NETSTRUCT2(ServerInfo
+		, NET(THostBroadcastPacket), hostInfo
+		, GameInfo, gameInfo
+	)
+	
 	typedef NET(UINT64)		Ping;
 
 	namespace InfoChannel
@@ -2040,9 +2045,8 @@ namespace Protocol
 	@param rightNow Indicates that the enclosed timestamp should be flagged as 'rightNow', as opposed to using the grid timestamp
 	@param last Indicates that the result should include the 'last'-flag, which means no deltas will follow this one for the current sequence
 	@param deltaType Type of delta to compute (see delta_type_t for details)
-	@param includeStructCountDelta Indicates that the result should also contain a struct count delta to the known struct count
 	*/
-	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType, bool includeStructCountDelta=true);
+	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType);
 
 }
 

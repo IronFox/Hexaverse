@@ -134,6 +134,9 @@ namespace Camera
 		return orbit;
 	}
 
+	static const float MinCameraRetraction = 0.05f * WorldScale;
+	static const float MaxCameraRetraction = 7.f * WorldScale;
+
 
 	void Event::WheelAction(short param)					//handler for the mouse wheel
 	{
@@ -141,6 +144,7 @@ namespace Camera
 		{
 			//negative is wheel down
 			scene.retraction.z /= pow(1.1f,param);
+			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 			scene.UpdateView();
 		}
 	}
@@ -149,12 +153,14 @@ namespace Camera
 	void Event::ZoomIn()
 	{
 		scene.retraction.z *= 0.95f;
+		scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 		scene.UpdateView();
 	}
 
 	void Event::ZoomOut()
 	{
 		scene.retraction.z /= 0.95f;
+		scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 		scene.UpdateView();
 	}
 
