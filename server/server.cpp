@@ -209,6 +209,7 @@ void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float 
 			//bleed into:
 		case Objects::RemovalType::BeingReplaced:
 		case Objects::RemovalType::Vanished:
+		case Objects::RemovalType::ChangingOwnership:
 			others.type = Objects::RemovalType::Vanished;
 		break;
 		case Objects::RemovalType::ControlledExplosion:
