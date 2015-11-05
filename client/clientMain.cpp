@@ -3136,6 +3136,8 @@ String GenerateOreName(Random&random)
 
 	void	QueryNickname()
 	{
+		if (RuntimeConfig::aiMode)
+			return;
 		//if (Network::chosenNickname.IsEmpty())
 		{
 			static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_-";
@@ -3151,7 +3153,7 @@ String GenerateOreName(Random&random)
 				{
 					StringFile userName;
 					FileSystem::CreateDirectory("config");
-					userName.create("config/userName.txt");
+					userName.create(RuntimeConfig::ConfigFile("userName.txt"));
 					userName << name;
 					Network::chosenNickname = name;
 					if (Network::client.IsConnected())
@@ -3600,6 +3602,7 @@ int main( int argc, const char* argv[])
 	onFatal = MyFatal;
 	Vec::assertConsistency<float>();
 
+	
 	#ifndef HAS_WINDOW
 		String cfg;
 		for (int i = 1; i < argc; i++)
@@ -3612,6 +3615,9 @@ int main( int argc, const char* argv[])
 	try
 	{
 		LogEvent(EventType::SessionRelated,nullptr,"Starting client v" PRODUCT_VERSION);
+
+		FileSystem::CreateDirectory(RuntimeConfig::ConfigDir());
+		
 
 
 
@@ -3676,6 +3682,7 @@ int main( int argc, const char* argv[])
 
 		#ifdef HAS_WINDOW
 			Engine::CreateDisplay(display,
+				RuntimeConfig::ConfigDir(),
 				RuntimeConfig::aiMode ? "AI":
 				PRODUCT_NAME
 				#ifdef _DEBUG
@@ -3830,11 +3837,14 @@ int main( int argc, const char* argv[])
 
 
 			Atmosphere::Create();
-			if (RuntimeConfig::aiMode)
-				ShowWindow(Engine::context.getWindow(),SW_MINIMIZE);
+			#if !defined HAS_WINDOW || !defined _DEBUG
+				if (RuntimeConfig::aiMode)
+					ShowWindow(Engine::context.getWindow(),SW_MINIMIZE);
+			#endif
 			textout.getActiveFont()->BeginTagMode(StatePanel::OnTag,StatePanel::TagWidth,
 					Objects::TextoutResourceTagOffset,(char)(Objects::TextoutResourceTagOffset+(char)Objects::Resource::NumberOfPossibilities + 2));
 			Tutorial::Create();
+
 
 			Tutorial::ShowMessage("Welcome",true);
 			Tutorial::ShowMessage("Tutorials");
@@ -3844,7 +3854,7 @@ int main( int argc, const char* argv[])
 			{
 				String name;
 				{
-					StringFile userName("config/userName.txt");
+					StringFile userName(RuntimeConfig::ConfigFile("userName.txt"));
 					if (userName.isActive())
 						userName >> name;
 				}

@@ -267,12 +267,19 @@ namespace Objects
 
 
 		/**
-		Signals that the local entity will be removed. Overrides of this method should always call the respective base method
+		Signals that the local entity is being removed. Overrides of this method should always call the respective base method
+		This method is called once the local entity has been unregistered from the object grid, entity lists, and faction.
+		Structures should handle compound disconnections and struct count decreases.
 		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
 		*/
 		virtual void				OnDestroy(float atTime)	{};	
 
-		virtual void				OnConstructionFinished(float atTime);	//! Signals that construction has finished and all neighbors are known (if structure). For vehicles this method is called when it enters the scene
+		/**
+		Signals that the local entity has been created.
+		Structures should handle compound disconnections and struct count decreases.
+		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
+		*/
+		virtual void				OnConstructionFinished(float atTime);
 
 		/**
 		Called exactly once on the prototype instance only, once instantiation of all prototype objects is completed (other prototypes may be references, but might not be set up yet).

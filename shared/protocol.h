@@ -1690,10 +1690,23 @@ namespace Protocol
 	};
 
 
-	NETSTRUCT3(ClientFactionResponse
+	NETSTRUCT7(GameInfo
+		, NET(UINT16), numFactionsOnline
+		, NET(UINT16), numFactionsCreated
+		, NET(UINT32), roundNumber
+		, NET(TUniqueID), worldID	//used to manage factionTokens
+		, NET(BYTE), activePhase
+		, NET(UINT32), gameFlags
+		, NET(BYTE), gameGoal
+	)
+
+
+
+	NETSTRUCT4(ClientFactionResponse
 		, NET(UINT32), startFactionTypes
 		, NET(CryptographicID), factionToken
 		, NET(Grid::TSharedPlanetConfig), planetConfig
+		, GameInfo, info
 	)
 
 	NETSTRUCT2(ClientFactionRequest
@@ -1864,17 +1877,12 @@ namespace Protocol
 
 
 
-	NETSTRUCT8(ServerInfo
-		, NET(THostBroadcastPacket), hostInfo
-		, NET(UINT16), numClients
-		, NET(UINT16), numPlayers
-		, NET(UINT32), roundNumber
-		, NET(TUniqueID), worldID	//used to manage factionTokens
-		, NET(BYTE), activePhase
-		, NET(UINT32), gameFlags
-		, NET(BYTE), gameGoal
-	)
 
+	NETSTRUCT2(ServerInfo
+		, NET(THostBroadcastPacket), hostInfo
+		, GameInfo, gameInfo
+	)
+	
 	typedef NET(UINT64)		Ping;
 
 	namespace InfoChannel
