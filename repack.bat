@@ -7,7 +7,7 @@ del %rs1% /Q
 %zip% a %rs1% "An introduction into Technites.txt"
 
 %zip% a %rs% "client/game.ini"
-%zip% a %rs% "client/Visual Client*.exe"
+%zip% a %rs% "client/Visual Client.exe"
 %zip% a %rs% "client/Console Client*.exe"
 %zip% a %rs% "client/shaders/compiled/*"
 %zip% a %rs% "client/Font/font.*"
@@ -24,6 +24,7 @@ del %rs1% /Q
 %zip% a %rs% "client/dxwebsetup.exe"
 %zip% a %rs% "client/OpenAL32.dll"
 %zip% a %rs% "client/D3DCompiler_43.dll"
+%zip% a %rs% "client/D3DCompiler_47.dll"
 
 
 %zip% a %rs% "server/Server*.exe"
