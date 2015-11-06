@@ -1878,28 +1878,27 @@ int main( int argc, const char* argv[])
 		}
 
 
-		#ifndef _DEBUG
+		//#ifndef _DEBUG
 			foreach (State::clients,cl)
 			{
-				if (timer.GetSecondsSince((*cl)->lastPing) > 30.f)
+				TCP::PPeer peer = (*cl)->peer.lock();
+				if (peer)
 				{
-					TCP::PPeer peer = (*cl)->peer.lock();
-					if (peer)
+					if (timer.GetSecondsSince(peer->GetLastPackageTime()) > 30.f)
 					{
-						LogEvent(EventType::SessionRelated,*peer,"Client ping timeout exceeded");
+						LogEvent(EventType::SessionRelated,*peer,"Client ping timeout (30 sec) exceeded. Disconnecting client");
 						peer->DisconnectPeer();
 					}
-					else
-					{
-						State::activePlayers.FindAndErase(*cl);
-						LogEvent(EventType::SessionRelated,nullptr,"Client ping timeout exceeded & disconnected: "+(*cl)->ToString());
-						State::clients.erase(cl);
-						break;	//loop breaks
-					}
+				}
+				else
+				{
+					LogEvent(EventType::SessionRelated,nullptr,"Peer lost: "+(*cl)->ToString());
+					State::HandleConnectionLoss(*cl);
+					break;	//loop breaks
 				}
 		
 			}
-		#endif
+		//#endif
 
 		UDPBroadCast::Update();
 		//break;

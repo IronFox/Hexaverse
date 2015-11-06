@@ -27,6 +27,19 @@ namespace State
 	}
 
 
+	void HandleConnectionLoss(const PClient&client)
+	{
+		State::clients.FindAndErase(client);
+		State::activePlayers.FindAndErase(client);
+		if (client->faction)
+		{
+			State::playerMap.Unset(client->faction);
+			client->faction->online = false;
+			Channels::factionOffline.SendTo(State::server,client->faction->id);
+		}
+	}
+
+
 
 
 	void		Client::UpdateResourceCoverage(const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
