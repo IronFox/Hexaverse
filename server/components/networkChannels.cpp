@@ -1898,24 +1898,7 @@ namespace Receiver
 				if (client)
 				{
 					LogEvent(EventType::SessionRelated,"Player disconnected: "+client->ToString());
-					State::clients.FindAndErase(client);
-					State::activePlayers.FindAndErase(client);
-					if (client->faction)
-					{
-						if (client->faction->IsTechniteFaction())
-						{
-							if (State::techniteFactionsOnline > 0)
-								State::techniteFactionsOnline--;
-							else
-							{
-								DBG_FATAL__("Faction counter error");
-							}
-							LogEvent(EventType::SessionRelated,"Technite faction gone offline. Remaining technite factions online: "+String(State::techniteFactionsOnline));
-						}
-						State::playerMap.Unset(client->faction);
-						client->faction->online = false;
-						Channels::factionOffline.SendTo(State::server,client->faction->id);
-					}
+					State::HandleConnectionLoss(client);
 
 					peer.attachment.reset();
 				}
@@ -1965,11 +1948,11 @@ namespace Receiver
 			}
 			break;
 			case Protocol::ChannelID::Ping:
-				if (peer.attachment)
-				{
-					State::PClient client = To<State::Client>::Cast(peer.attachment);
-					client->lastPing = timer.Now();
-				}
+				//if (peer.attachment)
+				//{
+				//	State::PClient client = To<State::Client>::Cast(peer.attachment);
+				//	client->lastPing = timer.Now();
+				//}
 				peer.SendSignal(Protocol::ChannelID::Pong);
 				#ifdef _DEBUG
 					LogEvent(EventType::Debug,"pong");

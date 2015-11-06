@@ -40,12 +40,12 @@ namespace State
 	public:
 		Protocol::ClientState		state;
 		std::weak_ptr<TCP::Peer>	peer;
-		Timer::Time					lastPing;
+		//Timer::Time					lastPing;
 		Objects::PFaction			faction;
 		bool						wantNewRound;
 
 		
-		/**/				Client():lastPing(timer.Now()),/*hasUnits(false),*/wantNewRound(false)
+		/**/				Client():/*lastPing(timer.Now()),*//*hasUnits(false),*/wantNewRound(false)
 		{}
 
 		String				ToString() const;
@@ -65,6 +65,8 @@ namespace State
 		void				UpdateResourceCoverage(const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp);
 	};
 
+
+	void	HandleConnectionLoss(const PClient&);
 
 	extern Buffer<PClient>	clients,activePlayers;
 	extern GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;

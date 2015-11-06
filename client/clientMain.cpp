@@ -2436,6 +2436,9 @@ bool loop()
 			textout.locate(0.0f,0.05f);
 			textout.color(1,1,1);
 			textout << "FPS: "<<1.f / Engine::timing.delta << nl;
+			#ifdef _DEBUG
+				textout << "last remote message: "<<timer.GetSecondsSince(Network::client.GetLastPackageTime());
+			#endif
 
 	
 

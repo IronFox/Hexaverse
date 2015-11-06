@@ -956,7 +956,7 @@ namespace Network
 	SOCKET			broadcastListenSocket = INVALID_SOCKET;
 
 	String			chosenNickname;
-	Timer::Time		lastPong = timer.Now();
+	//Timer::Time		lastPong = timer.Now();
 	
 
 
@@ -1036,7 +1036,7 @@ namespace Network
 
 				if (RuntimeConfig::aiMode)
 					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);
-				lastPong = timer.Now();
+				//lastPong = timer.Now();
 
 
 				#ifdef HAS_WINDOW
@@ -1093,7 +1093,7 @@ namespace Network
 		switch (signal)
 		{
 			case Protocol::ChannelID::Pong:
-				lastPong = timer.Now();
+				//lastPong = timer.Now();
 				#ifdef HAS_WINDOW
 					Dialog::SignalSituationChange();
 				#endif
@@ -1267,7 +1267,7 @@ namespace Network
 					#else
 						10.f;
 					#endif
-				float age = timer.ToSeconds(t - lastPong);
+				float age = timer.ToSeconds(t - client.GetLastPackageTime());
 				if (age > maxPong)
 				{
 					LogEvent(EventType::SessionRelated,nullptr,"Server has not responded for "+String(age)+"/"+String(maxPong)+" second(s). Disconnecting");
@@ -1276,7 +1276,9 @@ namespace Network
 				else
 				{
 					client.SendSignal(Protocol::ChannelID::Ping);
-					LogEvent(EventType::Debug,nullptr,"ping");
+					#ifdef _DEBUG
+						LogEvent(EventType::Debug,nullptr,"ping");
+					#endif
 				}
 			}
 

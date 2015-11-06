@@ -30,6 +30,31 @@ namespace State
 	}
 
 
+	void HandleConnectionLoss(const PClient&client)
+	{
+		State::clients.FindAndErase(client);
+		State::activePlayers.FindAndErase(client);
+		if (client->faction)
+		{
+
+			if (client->faction->IsTechniteFaction())
+			{
+				if (State::techniteFactionsOnline > 0)
+					State::techniteFactionsOnline--;
+				else
+				{
+					DBG_FATAL__("Faction counter error");
+				}
+				LogEvent(EventType::SessionRelated,"Technite faction gone offline. Remaining technite factions online: "+String(State::techniteFactionsOnline));
+			}
+
+			State::playerMap.Unset(client->faction);
+			client->faction->online = false;
+			Channels::factionOffline.SendTo(State::server,client->faction->id);
+		}
+	}
+
+
 
 
 	void		Client::UpdateResourceCoverage(const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
