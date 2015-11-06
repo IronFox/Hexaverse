@@ -196,7 +196,7 @@ namespace Network
 	extern SOCKET			broadcastListenSocket;
 
 	extern String			chosenNickname;
-	extern Timer::Time		lastPong;
+	//extern Timer::Time		lastPong;
 
 	extern INT32			uplinkBandwidth;
 
