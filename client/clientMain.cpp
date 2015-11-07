@@ -2285,7 +2285,7 @@ bool loop()
 
 
 			{
-				static const String line = "(C) Stefan Elsen; Closed Beta; v" PRODUCT_VERSION "; Compiled "+String(__TIMESTAMP__);
+				static const String line = "(C) Stefan Elsen; Open Beta; v" PRODUCT_VERSION "; Compiled "+String(__TIMESTAMP__);
 				//textout.locate(0.f,1.f - textout.getScaledHeight());
 				textout.pushState();
 				textout.scale(0.8f,0.8f);
