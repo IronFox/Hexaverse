@@ -12,7 +12,7 @@ namespace NiceName
 	#ifdef CLIENT
 		#define PRE_PATH
 	#else
-		#define PRE_PATH	"../client/"
+		#define PRE_PATH	L"../client/"
 	#endif
 
 
@@ -35,12 +35,12 @@ namespace NiceName
 		StringFile file;
 		String line;
 
-		ASSERT__(file.open(PRE_PATH"resources/nice/nouns.txt"));
+		ASSERT__(file.Open(PRE_PATH L"resources/nice/nouns.txt"));
 
 		while (file >> line)
 			nouns << MakeNice(line);
 
-		ASSERT__(file.open(PRE_PATH"resources/nice/adjectives.txt"));
+		ASSERT__(file.Open(PRE_PATH L"resources/nice/adjectives.txt"));
 
 		while (file >> line)
 			adjectives << MakeNiceAdjective(line);

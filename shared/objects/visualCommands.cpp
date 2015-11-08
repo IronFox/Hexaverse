@@ -21,7 +21,7 @@ namespace Objects
 
 	Buffer0<GlobalCommand>globalCommands;
 
-	/*static*/ StringTable<DX11::Texture>	BaseCommand::textureMap;
+	/*static*/ GenericHashTable<PathString, DX11::Texture>	BaseCommand::textureMap;
 
 
 	/*static*/ const int2 BaseCommand::coordOffset(1,0);
@@ -379,7 +379,7 @@ namespace Objects
 	{
 		String name2 = name;
 		name2.replace(' ','-');
-		String filename = "resources/icons/"+name2+".png";
+		PathString filename = PathString("resources/icons/"+name2+".png");
 		if (textureMap.query(filename,texture))
 			return;
 		try

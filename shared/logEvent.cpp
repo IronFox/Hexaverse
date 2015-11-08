@@ -91,7 +91,7 @@ namespace Logging
 	}
 
 
-	void	Begin(const String&path)
+	void	Begin(const PathString&path)
 	{
 		if (!outFile.Open(path))
 		{

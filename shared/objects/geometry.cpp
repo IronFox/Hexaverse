@@ -271,18 +271,18 @@ namespace Objects
 
 
 
-	void Geometry::LoadFromObj(const String&filename)
+	void Geometry::LoadFromObj(const PathString&filename)
 	{
 		Clear();
 		CGS::Geometry<>	geo;
-		String baseName = FileSystem::ExtractFileDirName(filename);
-		String cgsName = baseName + ".cgs";
-		if (!FileSystem::IsFile(cgsName) || FileSystem::GetModificationTime(cgsName) < FileSystem::GetModificationTime(filename) || !geo.loadFromFile(cgsName))
+		PathString baseName = FileSystem::ExtractFileDirName(filename);
+		PathString cgsName = baseName + ".cgs";
+		if (!FileSystem::IsFile(cgsName) || FileSystem::GetModificationTime(cgsName) < FileSystem::GetModificationTime(filename) || !geo.LoadFromFile(cgsName))
 		{
-			LogEvent(EventType::Notification ,nullptr, "Reconverting " + filename+"...");
+			LogEvent(EventType::Notification ,nullptr, "Reconverting " + String(filename)+"...");
 			Converter::obj_converter.positionObjects = false;
-			ASSERT1__(Converter::obj_converter.loadFromFile(geo, filename),filename);
-			geo.saveToFile(cgsName);
+			ASSERT1__(Converter::obj_converter.LoadFromFile(geo, filename),filename);
+			geo.SaveToFile(cgsName);
 		}
 		bool generateNormals = false;
 		foreach(geo.material_field, material)

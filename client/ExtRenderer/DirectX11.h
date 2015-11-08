@@ -152,9 +152,9 @@ namespace Engine
 				HRESULT __stdcall Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes);
 				HRESULT __stdcall Close(LPCVOID pData);
 
-				IncludeHandler(const ::String&relativeTo);
+				IncludeHandler(const ::PathString&relativeTo);
 			private:
-				::String path;
+				::PathString path;
 			};
 
 			struct Binding
@@ -280,8 +280,8 @@ namespace Engine
 			friend class DirectX11;
 
 			template<typename T>
-				void			Load(Stage<T>&stage, const String&filename, const String&functionName, const char*profile, std::function<HRESULT(const void*, SIZE_T, T**)> load, const Binding*b0, count_t numBindings0, const Binding*b1, count_t numBindings1, const D3D_SHADER_MACRO*macros);
-			void				_CompileBlob(Handle<ID3DBlob>&result, const String&filename, const String&functionName, const char*profile, const D3D_SHADER_MACRO*macros);
+				void			Load(Stage<T>&stage, const PathString&filename, const String&functionName, const char*profile, std::function<HRESULT(const void*, SIZE_T, T**)> load, const Binding*b0, count_t numBindings0, const Binding*b1, count_t numBindings1, const D3D_SHADER_MACRO*macros);
+			void				_CompileBlob(Handle<ID3DBlob>&result, const PathString&filename, const String&functionName, const char*profile, const D3D_SHADER_MACRO*macros, bool forceRecompilation = false);
 			/*static*/ UINT		_CompileStreamLayout(const Engine::VertexBinding&binding,D3D11_SO_DECLARATION_ENTRY*out, UINT descLen );
 
 		public:
@@ -308,11 +308,11 @@ namespace Engine
 			}
 			VertexLayout		BuildLayout(const VertexDescription&);
 
-			void				LoadFromFile(const String&filename, const String&vertexShaderName, const String&pixelShaderName, const Binding*b=NULL, count_t numBindings=0);
-			void				LoadFromFile(const String&filename, const String&vertexShaderName, const String&geometryShaderName, const String&pixelShaderName, const Binding*b=NULL, count_t numBindings=0);
-			void				LoadFromFiles(const String&baseFilename, const String&vertexShaderName, const String&pixelShaderName, const Binding*b=NULL, count_t numBindings=0);
-			void				LoadFromFiles(const String&baseFilename, const String&vertexShaderName, const String&geometryShaderName, const String&pixelShaderName, const Binding*b=NULL, count_t numBindings=0);
-			void				LoadGeometryStreamFromFile(const String&filename, const String&vertexShaderName, const String&geometryShaderName, const Array<StreamBinding>&outDefinition, const Binding*b=NULL, count_t numBindings=0);
+			void				LoadFromFile(const PathString&filename, const String&vertexShaderName, const String&pixelShaderName, const Binding*b=NULL, count_t numBindings=0);
+			void				LoadFromFile(const PathString&filename, const String&vertexShaderName, const String&geometryShaderName, const String&pixelShaderName, const Binding*b=NULL, count_t numBindings=0);
+			void				LoadFromFiles(const PathString&baseFilename, const String&vertexShaderName, const String&pixelShaderName, const Binding*b=NULL, count_t numBindings=0);
+			void				LoadFromFiles(const PathString&baseFilename, const String&vertexShaderName, const String&geometryShaderName, const String&pixelShaderName, const Binding*b=NULL, count_t numBindings=0);
+			void				LoadGeometryStreamFromFile(const PathString&filename, const String&vertexShaderName, const String&geometryShaderName, const Array<StreamBinding>&outDefinition, const Binding*b=NULL, count_t numBindings=0);
 
 			void				AppendBindings(const Binding*bindings, count_t numBindings)
 			{
@@ -1088,7 +1088,7 @@ namespace Engine
 		void						Capture(Image&target);
 
 
-		void						ScanShaderHeader(const String&path);
+		void						ScanShaderHeader(const PathString&path);
 
 		const Resolution&			GetResolution()	const	{return _currentResolution;}
 
@@ -1104,17 +1104,24 @@ namespace Engine
 
 
 	template<typename T>
-		void	DX11::Shader::Load(Stage<T>&stage, const String&filename, const String&functionName, const char*profile, std::function<HRESULT(const void*, SIZE_T, T**)> load, 
+		void	DX11::Shader::Load(Stage<T>&stage, const PathString&filename, const String&functionName, const char*profile, std::function<HRESULT(const void*, SIZE_T, T**)> load, 
 				const Binding*b0, count_t numBindings0, const Binding*b1, count_t numBindings1,
 				const D3D_SHADER_MACRO*macros)
 		{
 			_CompileBlob(stage.blob,filename,functionName,profile,macros);
+
+		
 			HRESULT hr = load(stage.blob->GetBufferPointer(),stage.blob->GetBufferSize(),stage.shaderHandle.Init());
 			if (hr != S_OK)
 			{
-				Clear();
-				DirectX11::globalInstance->ReportError(hr, CLOCATION);
-				throw Except::Renderer::ShaderRejected();
+				_CompileBlob(stage.blob,filename,functionName,profile,macros,true);
+				hr = load(stage.blob->GetBufferPointer(),stage.blob->GetBufferSize(),stage.shaderHandle.Init());
+				if (hr != S_OK)
+				{
+					DirectX11::globalInstance->ReportError(hr, CLOCATION);
+					Clear();
+					throw Except::Renderer::ShaderRejected();
+				}
 			}
 
 			hr = D3DReflect( stage.blob->GetBufferPointer(), stage.blob->GetBufferSize(), 

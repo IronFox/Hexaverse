@@ -1070,59 +1070,9 @@ bool ApplyCoverageChange(const Objects::PFaction&faction)
 
 int main( int argc, const char* argv[])
 {
-
-	//{
-	//	float range = 7.f;
-
-	//	float velocity = Objects::Turret::MaxRangeToVelocity(range);
-	//	std::cout << "velocity at "<<range<<" = "<<velocity << std::endl;
-	//	//float maxRange = Objects::Turret::VelocityToMaxRangeAtHeight(velocity,0);
-	//	float maxHeight = Objects::Turret::VelocityToMaxVerticalHeight( velocity);
-	//	std::cout << "max height = "<<maxHeight <<std::endl;
-
-
-	//	for (float x = 0; x <= 10.f; x++)
-	//	{
-	//		float h = Objects::Turret::MaxHeightAtHDistance(range,x);
-	//		std::cout << "height at "<<x<<" = "<<h<<std::endl;
-	//	}
-
-	//	for (float y = maxHeight-10; y <= maxHeight; y++)
-	//	{
-	//		float maxRange = Objects::Turret::VelocityToMaxRangeAtHeight(velocity,y);
-	//		std::cout << "range at "<<y<<" = "<<maxRange<<std::endl;
-	//		std::cout << "range2 at "<<y<<" = "<<Objects::Turret::MaxRangeAtHeight(range,y)<<std::endl;
-
-	//		for (float x = fmod(maxRange,1.f); x <= maxRange+1.f; x++)
-	//		{
-	//			Objects::Turret::TAngles angles = Objects::Turret::GetAngleForDistance(velocity,x,y);
-	//			float maxH = Objects::Turret::MaxHeightAtHDistance(range,x);
-	//			std::cout << " "<<x;
-	//			for (int i = 0; i < angles.numAngles; i++)
-	//				std::cout << " "<<(angles.idealAngle[i] * 180.f / M_PIF);
-	//			std::cout << " "<<(Objects::Turret::CanHit(range,x,y)?"hit": "no hit");
-	//			std::cout << " /y="<<(y <= maxH ?"hit": "no hit");
-	//			std::cout << std::endl;
-
-	//		}
-
-	//		
-
-	//	
-	//	
-	//	}
-	//	Buffer0<TVec4<> >	outSteps;
-	//	Objects::Turret::TraceTrajectory(velocity,float3(0,0,100),float3(6,0,100),outSteps);
-	//	for (auto step : outSteps)
-	//	{
-	//		std:: cout << "  "<<Vec::toString(step)<<std::endl;
-	//	}
-
-
-
-	//}
-
 	onFatal = MyFatal;
+	RuntimeConfig::InitConfigDir("server");
+
 	TCP::onIgnoredException = [](const TCodeLocation&loc, const std::exception&ex)
 	{
 		LogEvent(EventType::Debug,"TCP exception: "+String(loc.ToString())+": "+ex.what());
@@ -1173,10 +1123,9 @@ int main( int argc, const char* argv[])
 
 	if (!inTestMode)
 	{
-		ASSERT__(FileSystem::CreateDirectory("logs"));
-		Logging::Begin("logs/server_"+Logging::TimeStamp(true)+".log");
+		ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
+		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/server_"+Logging::TimeStamp(true)+".log")));
 		LogEvent(EventType::SessionRelated,nullptr,"Starting server v" PRODUCT_VERSION);
-
 	}
 
 
@@ -1194,11 +1143,20 @@ int main( int argc, const char* argv[])
 		Configuration	config;
 
 		#ifdef _DEBUG
-			const char*serverINI = "config/debug_server.ini";
+			const char*localServerINI = "config/debug_server.ini";
 		#else
-			const char*serverINI = "config/server.ini";
+			const char*localServerINI = "config/server.ini";
 		#endif
-		if (config.LoadFromFile(serverINI))
+
+		PathString clientServerINI = RuntimeConfig::ConfigFile(localServerINI);
+		if (!FileSystem::IsFile(clientServerINI))
+		{
+			FileSystem::CreateDirectory(FileSystem::ExtractFileDir(clientServerINI));
+			FileSystem::Copy(FileSystem::Folder().Find("./config/planets"),RuntimeConfig::ConfigFile("./config/planets"),false);
+			FileSystem::Copy(FileSystem::Folder().Find(localServerINI),clientServerINI,false);
+		}
+
+		if (config.LoadFromFile(clientServerINI))
 		{
 			State::Config::simulateLiquids = config.GetBool("NonPersistentGameSettings/simulateLiquids",false);
 
@@ -1299,8 +1257,9 @@ int main( int argc, const char* argv[])
 			}
 			{
 				Configuration planetConfig;
-				String path = "./config/planets/"+type+".ini";
-				if (planetConfig.LoadFromFile(path))
+				PathString path0 = PathString("./config/planets/"+type+".ini");
+				PathString path1 = RuntimeConfig::ConfigFile(path0);
+				if (planetConfig.LoadFromFile(path1) /*|| planetConfig.LoadFromFile(path0)*/)
 				{
 					atmosphereDensity = planetConfig.GetFloat("atmosphereDensity");
 					pconfig.innerCoreType = GetType<Grid::Content>(&planetConfig,"innerCoreType");
@@ -1315,13 +1274,13 @@ int main( int argc, const char* argv[])
 					pconfig.snowHeight = GetPrimitive<int>(&planetConfig, "Mountains/snowHeight");
 				}
 				else
-					FATAL__("Failed to load planet configuration: "+path+" ("+planetConfig.Report()+")");
+					FATAL__("Failed to load planet configuration: "+String(path1)+" ("+planetConfig.Report()+")");
 
 			}
 		}
 		else
 		{
-			LogEvent(EventType::InternalFault,"Unable to parse "+String(serverINI)+":\n"+config.Report());
+			LogEvent(EventType::InternalFault,"Unable to parse "+String(clientServerINI)+":\n"+config.Report());
 			LogEvent(EventType::SessionRelated,"Default configuration loaded");
 		}
 
@@ -1511,13 +1470,13 @@ int main( int argc, const char* argv[])
 	{
 		Logging::WriteEvent(EventType::SessionRelated,"Testing server.",nullptr,nullptr);
 
-		State::Save("test0."+State::savFileExtension);
-		State::Load("test0."+State::savFileExtension);
-		State::Save("test1."+State::savFileExtension);
+		State::Save(PathString("test0."+State::savFileExtension));
+		State::Load(PathString("test0."+State::savFileExtension));
+		State::Save(PathString("test1."+State::savFileExtension));
 
 		Riff::File a,b;
-		ASSERT__(a.Open(("test0."+State::savFileExtension).c_str()));
-		ASSERT__(b.Open(("test1."+State::savFileExtension).c_str()));
+		ASSERT__(a.Open(PathString("test0."+State::savFileExtension).c_str()));
+		ASSERT__(b.Open(PathString("test1."+State::savFileExtension).c_str()));
 		Buffer<Riff::TID>	stack;
 		State::Compare(a,b,stack);
 
@@ -1526,13 +1485,13 @@ int main( int argc, const char* argv[])
 
 	if (argc > 1)
 	{
-		String filename = argv[1];
+		PathString filename = argv[1];
 		if (FileSystem::IsFile(filename))
 		{
 			State::Load(filename);
 		}
 		else
-			Logging::WriteEvent(EventType::SessionRelated,"Specified file ("+filename+") does not exist. Skipping loading operation.",nullptr,nullptr);
+			Logging::WriteEvent(EventType::SessionRelated,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr);
 	}
 
 	Logging::WriteEvent(EventType::SessionRelated, "Preparation of world '" + State::worldID.ToString() + "' completed.", nullptr, nullptr);

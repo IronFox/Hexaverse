@@ -170,7 +170,11 @@ namespace GUIElements
 	class Image : public Component
 	{
 		typedef Component	Super;
+		static DX11::BaseInstructionBlock	texturedQuad;
 	public:
+		static void		StaticCreate();
+		static void		StaticDestroy();
+
 		DX11::Texture	texture;
 		bool			autoSetHeight = true;
 

@@ -72,7 +72,7 @@ namespace Engine
 		public:
 	                            TextureFont();
 		virtual                 ~TextureFont();
-			void				LoadFromFile(const String&filename, float scale=1.0f);	//!< Loads the local font configuration from the specified XML file.
+			void				LoadFromFile(const PathString&filename, float scale=1.0f);	//!< Loads the local font configuration from the specified XML file.
 
 	        float               getWidth(const char*str);				//!< Calculates the unscaled width of the specified string. For EveGLTextureFont this is identical to the length of the string. \param str String to determine the length of \return Unscaled length of the string
 	        float               getWidth(const char*str, size_t len);	//!< Calculates the unscaled width of the specified string. For EveGLTextureFont this is identical to the length of the string. \param str String to determine the length of \param len Number of characters to stop after \return Unscaled length of the string
