@@ -323,6 +323,10 @@ namespace Network
 	{
 		haveFaction = false;
 		//dbgRoundNumber = 0xFFFFFFFF;
+
+		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
+
+
 		Objects::FlushAllData();
 		Network::gameProgress.gameOver = false;
 		Network::gameProgress.gameWon = false;
