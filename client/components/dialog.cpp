@@ -800,7 +800,7 @@ namespace Dialog
 				try
 				{
 					Image image;
-					Magic::LoadFromFile(image,"resources/tutorial/"+imageName);
+					Magic::LoadFromFile(image,PathString("resources/tutorial/"+imageName));
 					setTexture.Load(image);
 					textureMap.Set(imageName,setTexture);
 				}

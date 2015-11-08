@@ -3,6 +3,12 @@
 
 #include <algorithm>
 //#include <general/undef.h>
+#include <io/file_system.h>
+
+#undef NEAR
+#define NEAR	//weeeird. but if i don't do this, the following include will explode
+#include <ShlObj.h>
+
 
 
 namespace RuntimeConfig
@@ -14,6 +20,41 @@ namespace RuntimeConfig
 	UINT32 roundNumber =0;
 	UINT32 techniteSubRoundNumber =0;
 	Phase	phase;
+
+	FileSystem::Folder base,actual;
+
+	PathString	ConfigFile(PathString base)
+	{
+		#if SYSTEM==WINDOWS
+			base.replace(L'/',L'\\');
+		#else
+			base.replace(L'\\',L'/');
+		#endif
+		FileSystem::File f;
+		if (!actual.Find(base,f,false))
+		{
+			FATAL__("Unable to reference file '"+String(base)+"' relative to '"+String(actual.GetLocation())+"'");
+		}
+		return f.GetLocation();
+		//GetLocation() + FOLDER_SLASH + base;
+	}
+
+	//PathString ConfigFile(const String&base)
+	//{
+	//	return actual.GetLocation() + FOLDER_SLASH + base;
+	//}
+
+	PathString		ConfigDir()	{return actual.GetLocation();}
+
+
+	void	InitConfigDir(const String&subDir)
+	{
+		wchar_t folder[MAX_PATH];
+		HRESULT hr = SHGetFolderPathW(0, CSIDL_MYDOCUMENTS, 0, 0, folder);
+		base = folder;
+		ASSERT1__(base.IsValidLocation(),base.GetLocation());
+		actual = base.CreateFolder(L"./My Games/Hexaverse/"+PathString(subDir));
+	}
 
 
 	namespace UnitLimits

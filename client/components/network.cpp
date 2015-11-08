@@ -84,7 +84,7 @@ namespace Network
 	}
 
 
-	static String AccessFilename()
+	static PathString AccessFilename()
 	{
 		return RuntimeConfig::ConfigFile("worldAccess.m32");
 	}
@@ -92,7 +92,7 @@ namespace Network
 	void SaveWorldAccessTokens()
 	{
 		FileSystem::CreateDirectory("config");
-		FILE*f = fopen(AccessFilename().c_str(), "wb+");
+		FILE*f = FOPEN(AccessFilename().c_str(), "wb+");
 		if (!f)
 		{
 			LogEvent(EventType::InternalFault,nullptr,"Unable to write to world access map");
@@ -111,7 +111,7 @@ namespace Network
 
 	void LoadWorldAccessTokens()
 	{
-		FILE*f = fopen(AccessFilename().c_str(), "rb");
+		FILE*f = FOPEN(AccessFilename().c_str(), "rb");
 		if (!f)
 			return;
 

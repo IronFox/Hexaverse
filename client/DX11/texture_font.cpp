@@ -29,21 +29,21 @@ namespace Engine
 			static bool			get(const XML::Node&node, const String&name, T&out)
 			{
 				String val;
-				return node.query(name,val) && convert(val.c_str(),out);
+				return node.Query(name,val) && convert(val.c_str(),out);
 			}
 
 	
 	
-		void				TextureFont::LoadFromFile(const String&filename, float scale_)
+		void				TextureFont::LoadFromFile(const PathString&filename, float scale_)
 		{
 			clear();
 
 			XML::Container	container;
-			container.loadFromFile(filename);
-			String root = FileSystem::ExtractFileDir(filename) + FOLDER_SLASH;
+			container.LoadFromFile(filename);
+			PathString root = FileSystem::ExtractFileDir(filename) + FOLDER_SLASH;
 
 
-			const XML::Node*xfont = container.find("font");
+			const XML::Node*xfont = container.Find("font");
 			if (!xfont)
 				throw IO::DriveAccess::FileFormatFault(globalString("XML font file lacks <font> tag"));
 
@@ -51,11 +51,11 @@ namespace Engine
 				throw IO::DriveAccess::FileFormatFault(globalString("XML <font> attribute lacks 'scale' parameter"));
 			scale*=scale_;
 			String imagefile;
-			if (!xfont->query("image",imagefile))
+			if (!xfont->Query("image",imagefile))
 				throw IO::DriveAccess::FileFormatFault(globalString("XML <font> attribute lacks 'image' parameter"));
 			
 			Image image;
-			Magic::loadFromFile(image,root + imagefile);
+			Magic::LoadFromFile(image,root + imagefile);
 			if (image.getChannels() == 4)
 				for (UINT32 x = 0; x < image.getWidth(); x++)
 					for (UINT32 y = 0; y < image.getHeight(); y++)
@@ -68,7 +68,7 @@ namespace Engine
 			pixelOffset = 0.5f * float2(1.f / image.width(), 1.f / image.height());
 
 			String shaderfile;
-			if (!xfont->query("shader",shaderfile))
+			if (!xfont->Query("shader",shaderfile))
 				throw IO::DriveAccess::FileFormatFault(globalString("XML <font> attribute lacks 'shader' parameter"));
 
 			colorBuffer.Create(float4());

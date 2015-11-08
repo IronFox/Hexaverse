@@ -3,6 +3,7 @@
 
 #include "stringTable.h"
 #include <general/enumeration.h>
+#include <global_string.h>
 
 
 namespace RuntimeConfig
@@ -37,6 +38,14 @@ namespace RuntimeConfig
 		void		Export(Array<std::pair<UINT16,UINT16> >&);
 		void		Import(const Array<std::pair<UINT16,UINT16> >&);
 	}
+
+
+//	PathString	ConfigFile(const String&base);
+	PathString	ConfigFile(PathString base);
+	void		InitConfigDir(const String&subDir);
+	PathString	ConfigDir();
+
+
 }
 
 

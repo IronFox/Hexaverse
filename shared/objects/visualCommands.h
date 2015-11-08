@@ -36,7 +36,7 @@ namespace Objects
 		virtual void	Execute() = 0;
 
 		#undef LoadIcon
-		static StringTable<DX11::Texture>	textureMap;
+		static GenericHashTable<PathString, DX11::Texture>	textureMap;
 
 		virtual void	RasterizeImage()	{}
 

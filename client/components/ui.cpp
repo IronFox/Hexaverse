@@ -58,7 +58,7 @@
 		void	IconItem::LoadTexture(const String&name)
 		{
 			Image image;
-			Magic::LoadFromFile(image,"resources/icons/"+name+".png");
+			Magic::LoadFromFile(image,PathString("resources/icons/"+name+".png"));
 			texture.Load(image);
 		}
 		

@@ -16,8 +16,8 @@ namespace AIProcess
 		void	Start()
 		{
 			char parameterBuffer[32768];
-			String	path,
-					workingDirectory = "..\\client\\";
+			PathString	path,
+						workingDirectory = "..\\client\\";
 			#ifdef _DEBUG
 				path = "..\\client\\.projector\\Debug\\Visual Client.exe";
 			#else

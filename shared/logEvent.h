@@ -58,7 +58,7 @@ extern bool		inTestMode /*= false*/;
 namespace Logging
 {
 	void	End();
-	void	Begin(const String&path);
+	void	Begin(const PathString&path);
 
 	String	TimeStamp(bool filename=false);
 }

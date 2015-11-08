@@ -23,8 +23,8 @@ namespace State
 										| Objects::WorldEntity::HibernationChanged;
 
 
-	void	Save(const String&name);
-	void	Load(const String&name);
+	void	Save(const PathString&name);
+	void	Load(const PathString&name);
 	void	AssembleGameInfo(Protocol::GameInfo&info);
 
 	static const String	savFileExtension = "hsf";	//hexaverse save file

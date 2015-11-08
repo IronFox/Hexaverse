@@ -49,7 +49,7 @@ namespace Tutorial
 			return;
 		msg->shown = true;
 		Detail::memory << name << nl;
-		Detail::memory.flush();
+		Detail::memory.Flush();
 		Dialog::EnqueueTutorial(name,msg->lines,msg->image);
 		if (forceOpenNow)
 			Dialog::ShowNextTutorial();
@@ -94,7 +94,7 @@ namespace Tutorial
 		FileSystem::CreateDirectory("config");
 
 //		#ifndef _DEBUG
-		if (Detail::memory.open(RuntimeConfig::ConfigFile("tutorialMemory.txt")))
+		if (Detail::memory.Open(RuntimeConfig::ConfigFile("tutorialMemory.txt")))
 		{
 			String line;
 			while (Detail::memory >> line)
@@ -105,12 +105,12 @@ namespace Tutorial
 			
 			}
 		
-			Detail::memory.close();
-			Detail::memory.append(RuntimeConfig::ConfigFile("tutorialMemory.txt"));
+			Detail::memory.Close();
+			Detail::memory.Append(RuntimeConfig::ConfigFile("tutorialMemory.txt"));
 		}
 		else
 	//	#endif
-			Detail::memory.create(RuntimeConfig::ConfigFile("tutorialMemory.txt"));
+			Detail::memory.Create(RuntimeConfig::ConfigFile("tutorialMemory.txt"));
 	
 	}
 

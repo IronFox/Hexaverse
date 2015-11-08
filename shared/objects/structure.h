@@ -1718,7 +1718,7 @@ namespace Objects
 				String name = GetTypeName();
 				name.set(0, Template::tolower(name.firstChar()));
 				name.replace(' ',"");
-				geometry.LoadFromObj("objects/"+name+".obj");
+				geometry.LoadFromObj(PathString("objects/"+name+".obj"));
 
 				if (shape.shader.IsEmpty())
 					(DX11::BaseInstructionBlock&)shape = standardLocalizableShader;
@@ -1736,7 +1736,7 @@ namespace Objects
 				String name = GetTypeName();
 				name.set(0, Template::tolower(name.firstChar()));
 				name.replace(' ',"");
-				geometry.LoadFromObj("objects/"+name+".obj");
+				geometry.LoadFromObj(PathString("objects/"+name+".obj"));
 
 				if (shape.shader.IsEmpty())
 					(DX11::BaseInstructionBlock&)shape = standardLocalizableShader;
@@ -1774,7 +1774,7 @@ namespace Objects
 			name.set(0, Template::tolower(name.firstChar()));
 			name.replace(' ',"");
 			#ifdef HAS_WINDOW
-				geometry.LoadFromObj("objects/"+name+".obj");
+				geometry.LoadFromObj(PathString("objects/"+name+".obj"));
 
 				if (shape.shader.IsEmpty())
 					(DX11::BaseInstructionBlock&)shape = standardLocalizableShader;
@@ -1801,7 +1801,7 @@ namespace Objects
 			name.set(0, Template::tolower(name.firstChar()));
 			name.replace(' ',"");
 			#ifdef HAS_WINDOW
-				geometry.LoadFromObj("objects/"+name+".obj");
+				geometry.LoadFromObj(PathString("objects/"+name+".obj"));
 
 				if (shape.shader.IsEmpty())
 					(DX11::BaseInstructionBlock&)shape = standardLocalizableShader;
