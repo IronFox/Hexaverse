@@ -53,6 +53,8 @@ namespace Network
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, BYTE techniteFactionIfNew /*= 0xFF*/)
 	{
+		LogEvent(EventType::Debug,"ResolveFaction("+id.ToString()+","+String(techniteFactionIfNew)+")");
+
 		{
 			Objects::OwnerParameter*rs = factionMap.QueryPointer(id);
 			if (rs)
@@ -691,6 +693,7 @@ namespace Network
 			TechniteLogicLink::StartSession(id.id,id.techniteGridID);
 			haveId = true;
 			myID = id.id;
+			LogEvent(EventType::Debug,"SetFactionID("+id.id.value.ToString()+","+String(id.techniteGridID)+")");
 			myFaction = ResolveFaction(myID,id.techniteGridID);
 			ASSERT_EQUAL__(id.techniteGridID != 0xFF, amTechniteFaction);
 			if (amTechniteFaction)
@@ -1491,6 +1494,8 @@ void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
 
 void	Network::Receiver::IdentifyUser(Protocol::IdentifyUser&id)
 {
+	LogEvent(EventType::Debug,nullptr,"Identify("+id.id.value.ToString()+", "+String(id.techniteGridFactionID)+")");
+
 	Objects::OwnerParameter faction = Network::ResolveFaction(id.id, id.techniteGridFactionID);
 	faction->name = id.name;
 	#ifdef HAS_WINDOW

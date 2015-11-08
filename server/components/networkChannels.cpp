@@ -227,6 +227,8 @@ namespace Receiver
 		}
 		else
 			user.techniteGridFactionID = 0xFF;
+		LogEvent(EventType::Debug,nullptr,"Identify("+user.id.value.ToString()+", "+String(user.techniteGridFactionID)+")");
+
 		return user;
 	}
 
@@ -620,8 +622,9 @@ namespace Receiver
 		if (client->faction->IsTechniteFaction())
 		{
 			outFactionID.techniteGridID = To<Technites::Faction>::Cast(client->faction)->gridID;
+			LogEvent(EventType::Debug,peer,"Is technite faction");
 		}
-
+		LogEvent(EventType::Debug,peer,"SetFactionID("+outFactionID.id.value.ToString()+", "+String(outFactionID.techniteGridID)+")");
 		Channels::setFactionID.SendTo(client->peer.lock(),outFactionID);
 
 		//CHEAT_SHOW_ALL_RESOURCES
@@ -1227,11 +1230,8 @@ namespace Receiver
 		cl->state.playerName = name;
 		if (cl->faction)
 		{
-			Protocol::IdentifyUser userID;
-			userID.id = cl->faction->id;
-			userID.name = name;
 			cl->faction->name = name;
-			Channels::identifyUser.SendTo(State::server,userID);
+			Channels::identifyUser.SendTo(State::server,Identify(cl->faction));
 			LogEvent(EventType::SessionRelated, peer, "User renamed to '"+name+"'");
 		}
 	}
