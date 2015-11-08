@@ -323,6 +323,10 @@ namespace Network
 	{
 		haveFaction = false;
 		//dbgRoundNumber = 0xFFFFFFFF;
+
+		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
+
+
 		Objects::FlushAllData();
 		Network::gameProgress.gameOver = false;
 		Network::gameProgress.gameWon = false;
@@ -580,6 +584,8 @@ namespace Network
 					accessMap.Set(worldID,activeToken);
 					SaveWorldAccessTokens();
 				}
+				Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
+
 				#ifdef HAS_WINDOW
 					Dialog::Hide(Dialog::loginMenu);
 				#endif
@@ -865,6 +871,8 @@ namespace Network
 	{
 		if (haveFaction && client.IsConnected())
 		{
+			Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname+" (abandoned)");
+
 			Protocol::ClientFactionRequest ready;
 			ready.startFactionTypes = 0;
 			ready.factionToken.value = CryptographicID();
@@ -932,6 +940,8 @@ namespace Network
 				
 				Protocol::ClientState state;
 				state.playerName = RuntimeConfig::aiMode ? "<NexusAI>" : chosenNickname;
+				if (RuntimeConfig::aiMode)
+					chosenNickname = state.playerName;
 				state.state = 0U;
 				Channels::clientStateSender.SendTo(client,state);	//elevate client state
 

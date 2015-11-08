@@ -144,7 +144,7 @@ namespace State
 				if (*seg == "Regular")
 					factionSupportFlags |= Protocol::GameFlag::SupportRegularFactions;
 				else
-					FATAL__("Unsupported faction type for this build: '"+*seg+"'");
+					LogEvent(EventType::ConfigRelated,nullptr,"Warning: Unsupported faction type for this build: '"+*seg+"'. Ignoring");
 			}
 		}
 

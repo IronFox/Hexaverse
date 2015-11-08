@@ -769,6 +769,26 @@ void EstimatePresence(Objects::WorldEntity&e, const Grid::LCellIdI&location, flo
 }
 
 
+
+static Objects::PNexusPort ClosestPort(const Objects::PWorldEntity&e, const Objects::PNexusPort cornerPorts[12])
+{
+	float d2 = std::numeric_limits<float>::max();
+	Objects::PNexusPort rs;
+	for (int i = 0; i < 12; i++)
+	{
+		if (!cornerPorts[i])
+			continue;
+		float nd2 = Vec::quadraticDistance(e->system.w.xyz,cornerPorts[i]->system.w.xyz);
+		if (nd2 < d2)
+		{
+			d2 = nd2;
+			rs = cornerPorts[i];
+		}
+	}
+	return rs;
+}
+
+
 void ProcessAICoverage()
 {
 	if (State::Config::enableNexusAI 
@@ -870,6 +890,8 @@ void ProcessAICoverage()
 							if (ws->ToHibernating()->IsHibernating())
 								continue;
 						#endif
+						if (Grid::AffectedByEMP(ws->location) || ClosestPort(ws,ports) != p)
+							continue;
 						if (ws->health < ws->GetMaxHealth())
 							friendlyNearNexus[i] -= ws->GetConstructionCost();
 						Objects::PMobileEntityProducer plant = To<Objects::MobileEntityProducer>::DynamicCast(ws);

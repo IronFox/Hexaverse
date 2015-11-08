@@ -656,15 +656,10 @@
 			{
 				if (!group->InitSelection() || group->entries[group->currentSelection] == Objects::selectedEntity)
 					group->currentSelection = (group->currentSelection+1) % group->entries.Count();
-				//Objects::PStructure target = To<Objects::Structure>::Cast(t);
 				Objects::PWorldEntity e = group->entries[group->currentSelection];
-				//if (e->IsVehicle())
-				//	VehicleFocusCommand::OnExecute(To<Objects::Vehicle>::Cast(e),_e);
-				//if (e->IsStructure())
-				//	StructureFocusCommand::OnExecute(To<Objects::Structure>::Cast(e),_e);
-
+	
 				Camera::TranslateTo(e->system.w.xyz);
-				if (e->isMine && e->health > 0)
+				//if (e->isMine && e->health > 0)
 					Objects::Select(e,Network::ControlEnabled());
 			}
 
