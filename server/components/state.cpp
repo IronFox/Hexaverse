@@ -2571,6 +2571,8 @@ namespace State
 
 		Objects::ForeachWorldEntity([&atTime](const Objects::PWorldEntity&e)
 		{
+			if (e->owner == Objects::Faction::nexus)
+				return;	//i know this is a hack, but i gotta do something to prevent nexus satellites from crashing.
 			if (!(Grid::low.cells[e->location.stackID].cornerFlags & State::unlockedEMPZones))
 			{
 				if (e->empDamageLevel < 10)
