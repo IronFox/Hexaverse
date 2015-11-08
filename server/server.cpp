@@ -785,6 +785,8 @@ static Objects::PNexusPort ClosestPort(const Objects::PWorldEntity&e, const Obje
 	Objects::PNexusPort rs;
 	for (int i = 0; i < 12; i++)
 	{
+		if (!cornerPorts[i])
+			continue;
 		float nd2 = Vec::quadraticDistance(e->system.w.xyz,cornerPorts[i]->system.w.xyz);
 		if (nd2 < d2)
 		{
