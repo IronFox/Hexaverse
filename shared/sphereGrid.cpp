@@ -4377,6 +4377,10 @@ namespace Grid
 	{
 		return !(Grid::high.cells[id.stackID].cornerFlags & empZonesUnlocked);
 	}
+	bool	AffectedByEMP(const LCellIdI&id)
+	{
+		return !(Grid::low.cells[id.stackID].cornerFlags & empZonesUnlocked);
+	}
 
 
 

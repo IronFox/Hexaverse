@@ -1998,6 +1998,7 @@ namespace Grid
 
 
 	bool	AffectedByEMP(const HCellIdI&);
+	bool	AffectedByEMP(const LCellIdI&);
 
 	TVec3<> ToWorld(const HCellIdU&);
 	TVec3<> ToWorld(const HCellIdI&);

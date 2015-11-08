@@ -1230,6 +1230,7 @@ namespace Receiver
 			Protocol::IdentifyUser userID;
 			userID.id = cl->faction->id;
 			userID.name = name;
+			cl->faction->name = name;
 			Channels::identifyUser.SendTo(State::server,userID);
 			LogEvent(EventType::SessionRelated, peer, "User renamed to '"+name+"'");
 		}

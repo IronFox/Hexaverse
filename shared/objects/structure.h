@@ -977,7 +977,7 @@ namespace Objects
 		virtual void				GetResourceVector(ResourceVector&v, ResourceVector&, ResourceVector&) const override
 		{
 			v.level[Resource::Minerals] = 50;	
-			v.level[Resource::Fuel] = 45;	//three generators are sufficient + 5*3 for guardians
+			v.level[Resource::Fuel] = 55;	
 			v.level[Resource::Uranium] = 10;
 			v.level[Resource::Energy] = -EnergyConsumption;
 		}

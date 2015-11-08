@@ -155,7 +155,7 @@ namespace State
 				if (*seg == "Hybrid")
 					factionSupportFlags |= Protocol::GameFlag::SupportHybridFactions;
 				else
-					FATAL__("Unsupported faction type for this build: '"+*seg+"'");
+					LogEvent(EventType::ConfigRelated,nullptr,"Warning: Unsupported faction type for this build: '"+*seg+"'. Ignoring");
 			}
 		}
 

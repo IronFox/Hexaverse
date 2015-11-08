@@ -7,6 +7,9 @@ v0.3.7		[Nov 8 2015]
 	Decreased scanning range of radar turrets (14->12).
 	Increased scanning range of surveyor and terraformers (3->4).
 	Slightly increased default terrain fuel and mineral yield.
+	Abandoning a faction will now append '(abandoned)' to the user name before quitting the faction. This name change is revoked if a connection is reestablished.
+	The nexus faction will now no longer suffer residual EMP damage on its units.
+	Fixed Nexus faction unit production. This must have been broken since abandoning connectors.
 	
 v0.3.6		[Nov 5 2015]
 	Limited zooming range.

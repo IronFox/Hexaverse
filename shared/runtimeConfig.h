@@ -11,15 +11,16 @@ namespace RuntimeConfig
 	CONSTRUCT_ENUMERATION3(GameGoal, None, ConquerNexus, EMPConquerNexus);
 	CONSTRUCT_ENUMERATION3(DoomsdayWeapons, Expose, Conceal, Disallow);
 
-	CONSTRUCT_ENUMERATION8(Phase, 
-		CommandPhase,
-		TechniteCommandPhase,
-		StructurePhase,
-		AttackPhase,
-		MovementPhase,
-		TechnitePhase,
-		AnimationPhase, 
-		EndOfGame
+	CONSTRUCT_ENUMERATION9(Phase, 
+							CommandPhase,
+							TechniteCommandPhase,
+							StructurePhase,
+							AttackPhase,
+							MovementPhase,
+							TechnitePhase,
+							AnimationPhase, 
+							EndOfGame,
+							Uninitialized
 		);
 
 	extern DoomsdayWeapons doomsdayWeapons;

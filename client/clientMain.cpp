@@ -3608,7 +3608,7 @@ bool ConfigureClient(const wchar_t*commandLine)
 
 
 	onFatal = MyFatal;
-	RuntimeConfig::InitConfigDir();
+	RuntimeConfig::ClientInit();
 
 	ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
 	Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/client_"+Logging::TimeStamp(true)+".log")));
