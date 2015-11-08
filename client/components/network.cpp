@@ -936,6 +936,8 @@ namespace Network
 				
 				Protocol::ClientState state;
 				state.playerName = RuntimeConfig::aiMode ? "<NexusAI>" : chosenNickname;
+				if (RuntimeConfig::aiMode)
+					chosenNickname = state.playerName;
 				state.state = 0U;
 				Channels::clientStateSender.SendTo(client,state);	//elevate client state
 
