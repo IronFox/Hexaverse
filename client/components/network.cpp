@@ -580,6 +580,8 @@ namespace Network
 					accessMap.Set(worldID,activeToken);
 					SaveWorldAccessTokens();
 				}
+				Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
+
 				#ifdef HAS_WINDOW
 					Dialog::Hide(Dialog::loginMenu);
 				#endif
@@ -865,6 +867,8 @@ namespace Network
 	{
 		if (haveFaction && client.IsConnected())
 		{
+			Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname+" (abandoned)");
+
 			Protocol::ClientFactionRequest ready;
 			ready.startFactionTypes = 0;
 			ready.factionToken.value = CryptographicID();
