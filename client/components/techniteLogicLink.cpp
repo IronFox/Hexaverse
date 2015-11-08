@@ -11,7 +11,7 @@ extern void	TransmitRoundEndRequest();
 
 namespace TechniteLogicLink
 {
-	String autoStartClientPath="TechniteLogic/Client.exe";
+	PathString autoStartClientPath="TechniteLogic/Client.exe";
 	bool autoStartClient=true;
 	static bool isActive = false,sessionStarted=false;
 	static TUniqueID	lastFactionID;
@@ -699,7 +699,7 @@ namespace TechniteLogicLink
 
 		if (autoStartClient)
 		{
-			if (!logicProcess.IsStarted() && !logicProcess.Start(FileSystem::GetWorkingDirectory(),autoStartClientPath,String(actualServerPortNumber)))
+			if (!logicProcess.IsStarted() && !logicProcess.Start(FileSystem::GetWorkingDirectory(),autoStartClientPath,PathString(actualServerPortNumber)))
 				FATAL__("Failed to launch technite logic");
 		}
 

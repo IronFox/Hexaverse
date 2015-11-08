@@ -109,7 +109,7 @@ namespace TechniteLogicLink
 	void		DestroyMarker(const TUniqueID&);
 
 
-	extern String autoStartClientPath; //="TechniteLogic/Client.exe"
+	extern PathString autoStartClientPath; //="TechniteLogic/Client.exe"
 	extern bool autoStartClient; //=true
 	extern UINT16 initialServerPortNumber, //=0
 					actualServerPortNumber;

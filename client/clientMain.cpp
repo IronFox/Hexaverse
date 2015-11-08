@@ -3657,7 +3657,7 @@ int main( int argc, const char* argv[])
 			}
 
 			{
-				TechniteLogicLink::autoStartClientPath = config.RequireString("technites/autoStartClientPath");
+				TechniteLogicLink::autoStartClientPath = PathString(config.RequireString("technites/autoStartClientPath"));
 				TechniteLogicLink::autoStartClient = config.RequireBool("technites/autoStartClient");
 				bool fixedServerPort = config.RequireBool("technites/fixedServerPort");
 				unsigned rawPortNumber = config.RequireUnsigned("technites/fixedServerPortNumber");
