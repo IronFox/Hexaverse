@@ -1,7 +1,10 @@
-v0.3.7		[Nov 7 2015]
+v0.3.7
 	Replaced outdated d3dcompiler_43.dll with d3dcompiler_47.dll. On systems running win8.1+ this is not necessary.
 	Reworked core TCP module to handle events outside critical region. This limits deadlock errors to actual deadlocks, and not event handling taking unusually long.
 	Removed x32 version of visual client to avoid having to ship d3dcompiler_47.dll for 32bit, too.
+	Moved user configuration, auto-savegames, and log file output to [My Documents/My Games/Hexaverse].
+	Client log file names now contain a timestamp, and are not overwritten, like server log files.
+	
 	
 v0.3.6		[Nov 5 2015]
 	Limited zooming range.
