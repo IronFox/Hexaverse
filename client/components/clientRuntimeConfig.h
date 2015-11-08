@@ -15,7 +15,7 @@ namespace RuntimeConfig
 
 
 
-	void					InitConfigDir();
+	void					ClientInit();
 
 
 	namespace FromFile
