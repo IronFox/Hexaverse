@@ -794,7 +794,7 @@ namespace Objects
 			#endif
 			component.constructionSpeed = 10;
 			component.healthMultiplier = 1;
-			component.scanningRange = 3;
+			component.scanningRange = 4;
 			component.uplinkTraffic = 30;
 			component.uplinkPriority = 200;	//fairly early
 
@@ -1313,7 +1313,7 @@ namespace Objects
 		
 			component.weight = 2;
 			component.healthMultiplier = 1;
-			component.scanningRange = 14;
+			component.scanningRange = 12;
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = 2.f;
 			component.uplinkTraffic = 10;
@@ -1347,7 +1347,7 @@ namespace Objects
 			component.weight = 1;
 			component.healthMultiplier = 1;
 			component.detectsResources = true;
-			component.scanningRange = 3;
+			component.scanningRange = 4;
 			component.uplinkPriority = 180;	//fairly early
 
 
