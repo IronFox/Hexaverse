@@ -2,6 +2,8 @@
 #include "clientRuntimeConfig.h"
 #include "network.h"
 
+
+
 namespace RuntimeConfig
 {
 	bool aiMode = false;
@@ -9,14 +11,12 @@ namespace RuntimeConfig
 	String serverURL;
 	bool udpListen = true;
 
-	String configPath = "client";
 
-	String ConfigDir()
+	void	InitConfigDir()
 	{
-		if (aiMode)
-			return "./config/ai";
-		return "./config/player";
+		InitConfigDir(aiMode ? "client/ai" : "client/player");
 	}
+
 
 
 

@@ -11,7 +11,7 @@
 void LoadHosts()
 {
 	StringFile hosts;
-	if (hosts.open(RuntimeConfig::ConfigFile("hosts.txt")))
+	if (hosts.Open(RuntimeConfig::ConfigFile("hosts.txt")))
 	{
 		String host;
 		while (hosts >> host)
@@ -22,13 +22,13 @@ void LoadHosts()
 void	SaveHosts()
 {
 	StringFile hosts;
-	if (hosts.create(RuntimeConfig::ConfigFile("hosts.txt")))
+	if (hosts.Create(RuntimeConfig::ConfigFile("hosts.txt")))
 	{
 		static Buffer0<String>	 urls;
 		Network::ServerDiscovery::ListNonAutoAttempts(urls);
 		foreach (urls,url)
 			hosts << *url << nl;
-		hosts.close();
+		hosts.Close();
 	}
 }
 

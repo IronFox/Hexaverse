@@ -1,6 +1,8 @@
 #ifndef runtimeConfigComponentH
 #define runtimeConfigComponentH
 
+#include <io/file_system.h>
+
 #include "../../shared/uniqueID.h"
 #include "../../shared/runtimeConfig.h"
 
@@ -11,10 +13,9 @@ namespace RuntimeConfig
 	extern String serverURL;
 	extern bool udpListen;
 
-	String		ConfigDir();
 
-	inline String ConfigFile(const String&base)	{return ConfigDir() + FOLDER_SLASH + base;}
 
+	void					InitConfigDir();
 
 
 	namespace FromFile

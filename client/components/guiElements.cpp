@@ -23,6 +23,7 @@ namespace GUIElements
 
 	PComponent	mousePressedComponent;
 
+	/*static*/ DX11::BaseInstructionBlock	Image::texturedQuad;
 
 	static UINT ViewPortWidth()
 	{
@@ -463,12 +464,57 @@ namespace GUIElements
 
 	void		Create()
 	{
+		Image::StaticCreate();
+	}
+
+	/*static*/ void Image::StaticDestroy()
+	{
+		texturedQuad.Clear();
+	}
+
+	/*static*/ void Image::StaticCreate()
+	{
+		if (texturedQuad.quickSlots.IsEmpty())
+		{
+			texturedQuad.quickSlots.SetSize(1);
+			Engine::VertexBinding vtx;
+			vtx.vertex.set(0,2);
+			vtx.normal.unset();
+			vtx.floats_per_vertex = 2;
+			texturedQuad.binding = vtx;
+
+			DX11::Shader::Binding bindings[] = {
+				DX11::Shader::Binding(0,"Texture"),
+				DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::Trilinear,1,"Sampler"),
+			};
+
+
+			texturedQuad.shader.LoadFromFile("shaders/guiImageField.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
+			texturedQuad.UpdateLayout();
+			texturedQuad.SetTriangles();
+
+
+			float2 vertices[6] = 
+			{
+				float2(0,0),
+				float2(1,0),
+				float2(1,1),
+				float2(0,0),
+				float2(1,1),
+				float2(0,1)
+			};
+
+			texturedQuad.vbo.CreateFromStructs(vertices,6);
+		}
+
+
 	//	Area::StaticCreate();
 	
 	}
 
 	void		Destroy()
 	{
+		Image::StaticDestroy();
 		//Area::StaticDestroy();
 	
 	}
@@ -620,40 +666,6 @@ namespace GUIElements
 
 		bool lit = IsLit();
 	
-		static DX11::BaseInstructionBlock	texturedQuad;
-		if (texturedQuad.quickSlots.IsEmpty())
-		{
-			texturedQuad.quickSlots.SetSize(1);
-			Engine::VertexBinding vtx;
-			vtx.vertex.set(0,2);
-			vtx.normal.unset();
-			vtx.floats_per_vertex = 2;
-			texturedQuad.binding = vtx;
-
-			DX11::Shader::Binding bindings[] = {
-				DX11::Shader::Binding(0,"Texture"),
-				DX11::Shader::SamplerBinding(true,Engine::VisualEnum::TextureFilter::Trilinear,1,"Sampler"),
-			};
-
-
-			texturedQuad.shader.LoadFromFile("shaders/guiImageField.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings) );
-			texturedQuad.UpdateLayout();
-			texturedQuad.SetTriangles();
-
-
-			float2 vertices[6] = 
-			{
-				float2(0,0),
-				float2(1,0),
-				float2(1,1),
-				float2(0,0),
-				float2(1,1),
-				float2(0,1)
-			};
-
-			texturedQuad.vbo.CreateFromStructs(vertices,6);
-		}
-
 		TMatrix4<> matrix = Matrix<>::eye4;
 		
 		Resolution3D res = texture.GetResolution();

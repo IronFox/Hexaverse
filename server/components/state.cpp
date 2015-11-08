@@ -1478,13 +1478,13 @@ namespace State
 	}
 }
 
-void	State::Load(const String&filename)
+void	State::Load(const PathString&filename)
 {
 	insertIntoHangar.Clear();
 
 	Riff::Container file;
 	bool failed = false;
-	String filenameName = "'"+FileSystem::ExtractFileNameExt(filename)+ "'";
+	String filenameName = "'"+String(FileSystem::ExtractFileNameExt(filename))+ "'";
 	if (!file.LoadFromFile(filename.c_str()))
 	{
 		LogEvent(EventType::InternalFault,"File not found");
@@ -1540,12 +1540,12 @@ void	State::Load(const String&filename)
 
 	if (failed)
 	{
-		LogEvent(EventType::InternalFault,"Unable to restore saved world state from '"+filename+"'.");
+		LogEvent(EventType::InternalFault,"Unable to restore saved world state from '"+String(filename)+"'.");
 		return;
 	}
 
 
-	LogEvent(EventType::SessionRelated,"Restoring saved world state from '"+filename+"'.");
+	LogEvent(EventType::SessionRelated,"Restoring saved world state from '"+String(filename)+"'.");
 	State::CloseSession();
 
 	bool nexusFound = false, worldInfoFound = false;
@@ -1889,13 +1889,13 @@ void State::RefreshWindowTitle()
 
 void State::AutoSave()
 {
-	String base = "saves/auto/snapshot";
+	PathString base = RuntimeConfig::ConfigFile("saves/auto/snapshot");
 	FileSystem::CreateDirectory(FileSystem::ExtractFileDir(base));
 	if (FileSystem::IsFile(base+"0."+savFileExtension))
 	{
 		FileSystem::UnlinkFile(base+"9."+savFileExtension);
 		for (int i = 8; i >= 0; i--)
-			FileSystem::MoveFile(base+String(i)+"."+savFileExtension,base+String(i+1)+"."+savFileExtension);
+			FileSystem::MoveFile(base+PathString(i)+'.'+savFileExtension,base+PathString(i+1)+'.'+savFileExtension);
 	}
 	State::Save(base+"0."+savFileExtension);
 
@@ -1913,7 +1913,7 @@ void State::AutoSave()
 	State::lastSaveRound = RuntimeConfig::roundNumber;
 }
 
-void	State::Save( const String&name)
+void	State::Save( const PathString&name)
 {
 	static_assert(sizeof(TUniqueID) == TUniqueID::NumBytes, "Alignment fault" );
 
@@ -2060,10 +2060,10 @@ void	State::Save( const String&name)
 
 	if (container.SaveToFile(name.c_str()))
 	{
-		LogEvent(EventType::SessionRelated,"World snapshot written to "+name+" in "+String(timer.GetSecondsSince(t0))+" seconds");
+		LogEvent(EventType::SessionRelated,"World snapshot written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
 	}
 	else
-		LogEvent(EventType::InternalFault,"Unable to write world to "+name);
+		LogEvent(EventType::InternalFault,"Unable to write world to "+String(name));
 	//Grid::SaveToFiles(name+".grid");
 	//Objects::SaveToFiles(name+".objects");
 

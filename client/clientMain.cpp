@@ -1084,15 +1084,15 @@ public:
 
 			FileSystem::CreateFolder("screenshots");
 			index_t counter = 0;
-			String filename = "screenshots/screenshot"+String(counter)+".png";
+			PathString filename = PathString("screenshots/screenshot"+String(counter)+".png");
 			while (FileSystem::IsFile(filename))
 			{
 				counter++;
-				filename = "screenshots/screenshot"+String(counter)+".png";
+				filename = PathString("screenshots/screenshot"+String(counter)+".png");
 			}
-			png.saveToFile(image,filename);
+			png.SaveToFile(image,filename);
 			active = false;
-			LogEvent(EventType::Notification, nullptr, "Screenshot written to "+filename);
+			LogEvent(EventType::Notification, nullptr, "Screenshot written to "+String(filename));
 		}
 	}
 
@@ -3152,7 +3152,7 @@ String GenerateOreName(Random&random)
 				{
 					StringFile userName;
 					FileSystem::CreateDirectory("config");
-					userName.create(RuntimeConfig::ConfigFile("userName.txt"));
+					userName.Create(RuntimeConfig::ConfigFile("userName.txt"));
 					userName << name;
 					Network::chosenNickname = name;
 					if (Network::client.IsConnected())
@@ -3589,7 +3589,12 @@ bool ConfigureClient(const wchar_t*commandLine)
 		Network::ServerDiscovery::RegisterNewHost(RuntimeConfig::serverURL, false,true);
 	}
 
-	Logging::Begin(RuntimeConfig::aiMode ? "AI.log": PRODUCT_NAME".log");
+
+	onFatal = MyFatal;
+	RuntimeConfig::InitConfigDir();
+
+	ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
+	Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/client_"+Logging::TimeStamp(true)+".log")));
 
 	//(PRODUCT_NAME".log",true,true)
 	return true;
@@ -3615,7 +3620,7 @@ int main( int argc, const char* argv[])
 	{
 		LogEvent(EventType::SessionRelated,nullptr,"Starting client v" PRODUCT_VERSION);
 
-		FileSystem::CreateDirectory(RuntimeConfig::ConfigDir());
+	//	FileSystem::CreateDirectory(RuntimeConfig::ConfigDir());
 		
 
 		NiceName::Load();
@@ -3624,7 +3629,15 @@ int main( int argc, const char* argv[])
 
 		{
 			Configuration	config;
-			config.LoadFromFile("game.ini");
+
+			PathString userConfigPath = RuntimeConfig::ConfigFile("game.ini");
+			if (!FileSystem::IsFile(userConfigPath))
+				FileSystem::CopyFile(PathString("./game.ini"),userConfigPath,false);
+			if (!config.LoadFromFile(userConfigPath))
+			{
+				LogEvent(EventType::ConfigRelated,nullptr,"Unable to load user configuration from '"+String(userConfigPath)+"': '"+config.Report()+"'. Attempting to load original config");
+				config.LoadFromFile("game.ini");
+			}
 
 			#ifdef HAS_WINDOW
 				Config::Context::Attribute * attrib = config.GetAttrib("runtime/capFPS");
@@ -3848,7 +3861,7 @@ int main( int argc, const char* argv[])
 				String name;
 				{
 					StringFile userName(RuntimeConfig::ConfigFile("userName.txt"));
-					if (userName.isActive())
+					if (userName.IsActive())
 						userName >> name;
 				}
 				if ( Package::NetString<32>::IsValid(name) 

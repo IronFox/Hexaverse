@@ -734,12 +734,12 @@ namespace Engine
 	}
 
 
-	void			DX11::Shader::LoadFromFile(const String&filename, const String&vertexShaderName, const String&pixelShaderName, const Binding*b/*=NULL*/, count_t numBindings/*=0*/)
+	void			DX11::Shader::LoadFromFile(const PathString&filename, const String&vertexShaderName, const String&pixelShaderName, const Binding*b/*=NULL*/, count_t numBindings/*=0*/)
 	{
 		LoadFromFile(filename,vertexShaderName,"",pixelShaderName,b,numBindings);
 	}
 
-	void			DX11::Shader::LoadFromFile(const String&filename, const String&vertexShaderName, const String&geometryShaderName, const String&pixelShaderName, const Binding*b/*=NULL*/, count_t numBindings/*=0*/)
+	void			DX11::Shader::LoadFromFile(const PathString&filename, const String&vertexShaderName, const String&geometryShaderName, const String&pixelShaderName, const Binding*b/*=NULL*/, count_t numBindings/*=0*/)
 	{
 		Clear();
 
@@ -774,7 +774,7 @@ namespace Engine
 			},base.pointer(),base.count(),b,numBindings,macros.pointer());
 	}
 
-	void			DX11::Shader::LoadGeometryStreamFromFile(const String&filename, const String&vertexShaderName, const String&geometryShaderName, const Array<StreamBinding>&outDefinition, const Binding*b/*=NULL*/, count_t numBindings/*=0*/)
+	void			DX11::Shader::LoadGeometryStreamFromFile(const PathString&filename, const String&vertexShaderName, const String&geometryShaderName, const Array<StreamBinding>&outDefinition, const Binding*b/*=NULL*/, count_t numBindings/*=0*/)
 	{
 		Clear();
 
@@ -820,12 +820,12 @@ namespace Engine
 	}
 
 
-	void			DX11::Shader::LoadFromFiles(const String&baseFilename, const String&vertexShaderName, const String&pixelShaderName, const Binding*b/*=NULL*/, count_t numBindings/*=0*/)
+	void			DX11::Shader::LoadFromFiles(const PathString&baseFilename, const String&vertexShaderName, const String&pixelShaderName, const Binding*b/*=NULL*/, count_t numBindings/*=0*/)
 	{
 		LoadFromFiles(baseFilename,vertexShaderName,"",pixelShaderName,b,numBindings);
 	}
 
-	void			DX11::Shader::LoadFromFiles(const String&baseFilename, const String&vertexShaderName, const String&geometryShaderName, const String&pixelShaderName, const Binding*b/*=NULL*/, count_t numBindings/*=0*/)
+	void			DX11::Shader::LoadFromFiles(const PathString&baseFilename, const String&vertexShaderName, const String&geometryShaderName, const String&pixelShaderName, const Binding*b/*=NULL*/, count_t numBindings/*=0*/)
 	{
 		Clear();
 
@@ -934,7 +934,7 @@ namespace Engine
 	}
 
 
-	DX11::Shader::IncludeHandler::IncludeHandler(const String&relativeTo)
+	DX11::Shader::IncludeHandler::IncludeHandler(const PathString&relativeTo)
 	{
 		path = FileSystem::ExtractFileDir(relativeTo);
 		if (relativeTo == path)	 //no slashes
@@ -953,13 +953,13 @@ namespace Engine
 		return 'a' + (v-10);
 	}
 
-	void DX11::Shader::_CompileBlob(Handle<ID3DBlob>&result, const String&filename, const String&functionName, const char*profile, const D3D_SHADER_MACRO*macros)
+	void DX11::Shader::_CompileBlob(Handle<ID3DBlob>&result, const PathString&filename, const String&functionName, const char*profile, const D3D_SHADER_MACRO*macros, bool forceRecompilation /*= false*/)
 	{
-		String compiledPath = FileSystem::ExtractFileDir(filename) + "/compiled/";
+		PathString compiledPath = FileSystem::ExtractFileDir(filename) + "/compiled/";
 		if (!FileSystem::IsDirectory(compiledPath))
 			FileSystem::CreateFolder(compiledPath);
 
-		String name = FileSystem::ExtractFileName(filename)+"."+functionName;
+		String name = String(FileSystem::ExtractFileName(filename))+"."+functionName;
 		//compiledPath += FileSystem::ExtractFileName(filename)+"."+functionName;
 		if (macros != NULL)
 		{
@@ -981,10 +981,10 @@ namespace Engine
 			compiledPath += _ToHex(container.bytes[i]&0xF);
 		}
 
-		if (!FileSystem::IsFile(compiledPath) || FileSystem::GetModificationTime(compiledPath)<FileSystem::GetModificationTime(filename) || (hasHeaderDates && FileSystem::GetModificationTime(compiledPath)<headerDate))
+		if (forceRecompilation || !FileSystem::IsFile(compiledPath) || FileSystem::GetModificationTime(compiledPath)<FileSystem::GetModificationTime(filename) || (hasHeaderDates && FileSystem::GetModificationTime(compiledPath)<headerDate))
 		{
 			Handle<ID3DBlob> errors;
-			FILE*f = fopen(filename.c_str(),"rb");
+			FILE*f = FOPEN(filename.c_str(),"rb");
 			if (!f)
 				throw Except::IO::DriveAccess::FileOpenFault("Unable to open '"+filename+"'");
 			fseek(f,0,SEEK_END);
@@ -996,7 +996,7 @@ namespace Engine
 
 			DX11::Shader::IncludeHandler inc(filename);
 			
-			HRESULT hr = D3DCompile(code.pointer(),code.length(),filename.c_str(),macros, &inc , functionName.c_str(), profile,  0, 0, result.Init(), errors.Init());
+			HRESULT hr = D3DCompile(code.pointer(),code.length(),String(FileSystem::ExtractFileNameExt(filename)).c_str(),macros, &inc , functionName.c_str(), profile,  0, 0, result.Init(), errors.Init());
 			if (errors)
 			{
 				String msg = String((const char*)errors->GetBufferPointer(),errors->GetBufferSize());
@@ -1007,12 +1007,12 @@ namespace Engine
 				DirectX11::globalInstance->ReportError(hr, CLOCATION);
 				throw Except::Renderer::ShaderRejected();
 			}
-			f = fopen(compiledPath.c_str(),"w+b");
+			f = FOPEN(compiledPath.c_str(),"wb");
 			fwrite(result->GetBufferPointer(),result->GetBufferSize(),1,f);
 			fclose(f);
 			return;
 		}
-		FILE*f = fopen(compiledPath.c_str(),"rb");
+		FILE*f = FOPEN(compiledPath.c_str(),"rb");
 		if (!f)
 			throw Except::IO::DriveAccess::FileOpenFault("Unable to open '"+compiledPath+"'");
 		fseek(f,0,SEEK_END);
@@ -1025,7 +1025,7 @@ namespace Engine
 
 	HRESULT __stdcall DX11::Shader::IncludeHandler::Open(D3D_INCLUDE_TYPE IncludeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes)
 	{
-		String filename;
+		PathString filename;
 		if(IncludeType == D3D_INCLUDE_LOCAL)
 		{
 			filename = path;
@@ -1043,7 +1043,7 @@ namespace Engine
 			*pBytes = 0;
 			return S_OK;
 		}
-		FILE*f = fopen(filename.c_str(),"rb");
+		FILE*f = FOPEN(filename.c_str(),"rb");
 		if (!f)
 		{
 			*ppData = NULL;
@@ -2923,7 +2923,7 @@ namespace Engine
 	}
 
 
-	void		DirectX11::ScanShaderHeader(const String&path)
+	void		DirectX11::ScanShaderHeader(const PathString&path)
 	{
 		FileSystem::Folder folder(path);
 		if (!folder.IsValidLocation())

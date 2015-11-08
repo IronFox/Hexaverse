@@ -237,7 +237,7 @@ namespace Objects
 			ASSERT__(out == currentLOD->indices.end());
 		}
 		
-		void LoadFromObj(const String&filename);
+		void LoadFromObj(const PathString&filename);
 
 		const Box<>&	GetBoundingBox()	const;
 	};

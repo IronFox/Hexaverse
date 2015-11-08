@@ -353,7 +353,7 @@ namespace Objects
 				String name = GetTypeName();
 				name.set(0, Template::tolower(name.firstChar()));
 				name.replace(' ',"");
-				geometry.LoadFromObj("objects/"+name+".obj");
+				geometry.LoadFromObj(PathString("objects/"+name+".obj"));
 				if (shape.shader.IsEmpty())
 					(DX11::BaseInstructionBlock&)shape = stdVehicleShader;
 				shape.vbo.CreateFromStructs(geometry.GetLOD(0).vertices);
