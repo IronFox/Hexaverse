@@ -572,10 +572,10 @@ namespace AI
 		}
 	}
 
-	void	SignalStart()
+	void	SignalStart(const String&because, const TCodeLocation&caller)
 	{
 		if (done)
-			LogEvent(EventType::Debug,nullptr,"AI: Starting");
+			LogEvent(EventType::Debug,nullptr,"AI: Starting ("+because+", by "+caller.ToString()+")");
 
 		done = false;
 

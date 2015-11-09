@@ -238,7 +238,10 @@ namespace Animation
 			}
 		}
 		if (RuntimeConfig::aiMode)
-			AI::SignalStart();
+		{
+			DBG_ASSERT__(!Network::newRoundRequested);
+			AI::SignalStart("UpdateAutomation",loc);
+		}
 	}
 
 
