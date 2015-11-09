@@ -24,7 +24,7 @@ void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird
 
 namespace Network
 {
-	bool			haveFaction = false,haveId = false,amOnline=false;
+	bool			haveFaction = false,haveId = false,amOnline=false,gameHasBegun=false;
 	#ifdef HAS_WINDOW
 		bool		amLocated=false;
 	#endif
@@ -50,6 +50,13 @@ namespace Network
 	Timer::Time		phaseStarted;
 	bool			newRoundRequested = false;
 
+
+	void			ConnectTo(const String&url)
+	{
+		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
+		gameHasBegun = false;
+		client.ConnectAsync(url);
+	}
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, BYTE techniteFactionIfNew /*= 0xFF*/)
 	{
@@ -351,8 +358,7 @@ namespace Network
 		haveFaction = false;
 		//dbgRoundNumber = 0xFFFFFFFF;
 
-		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
-
+		roundTimer = -1;
 
 		Objects::FlushAllData();
 		Network::gameProgress.gameOver = false;
@@ -873,6 +879,7 @@ namespace Network
 		void	FactionOnline(NET(TUniqueID)&);
 		void	FactionOffline(NET(TUniqueID)&);
 		void	FactionRequestedNewRound(NET(TUniqueID)&);
+		void	FactionContinuedNewRound(NET(TUniqueID)&);
 		void	LockEmpZones(NET(UINT16)&);
 		void	UplinkBandwidth(NET(INT32)&v)
 		{
@@ -926,6 +933,7 @@ namespace Network
 		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionOnline>							factionOnline(Receiver::FactionOnline);
 		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionOffline>						factionOffline(Receiver::FactionOffline);
 		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound(Receiver::FactionRequestedNewRound);
+		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionContinuedRound>					factionContinuedRound(Receiver::FactionContinuedRound);
 		TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>								lockEmpZones(Receiver::LockEmpZones);
 		TCP::Channel<NET(INT32), 0, Protocol::ChannelID::UplinkBandwidth>							uplinkBandwidth(Receiver::UplinkBandwidth);
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
@@ -1011,7 +1019,7 @@ namespace Network
 			if (forceNewFaction)
 				LogEvent(EventType::SessionRelated, nullptr, "Forcing new faction in world " + worldID.ToString());
 			else
-				LogEvent(EventType::SessionRelated, nullptr, "No access token found for world " + worldID.ToString()+". Creating new faction");
+				LogEvent(EventType::SessionRelated, nullptr, "No access token found for world " + worldID.ToString());
 
 			ready.factionToken.value = CryptographicID();
 		}
@@ -1105,6 +1113,15 @@ namespace Network
 	{
 		switch (signal)
 		{
+			case Protocol::ChannelID::BeginGame:
+				gameHasBegun = true;
+				LogEvent(EventType::SessionRelated,nullptr,"Game has begun");
+				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Animation::AllDone())
+				{
+					Objects::RefreshSkyHubConnections();
+					Animation::UpdateAutomation(CLOCATION);
+				}
+			break;
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();
 				#ifdef HAS_WINDOW
@@ -1146,6 +1163,7 @@ namespace Network
 		client.InstallChannel(Channels::factionOnline);
 		client.InstallChannel(Channels::factionOffline);
 		client.InstallChannel(Channels::factionRequestedNewRound);
+		client.InstallChannel(Channels::factionContinuedRound);
 
 		client.InstallChannel(Channels::lockEmpZones);
 		client.InstallChannel(Channels::uplinkBandwidth);
@@ -1155,6 +1173,7 @@ namespace Network
 		client.InstallChannel(Channels::techniteColors);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
+		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
 
 
 		client.SetAsync(false);
@@ -1414,7 +1433,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 
 		LogEvent(EventType::SessionRelated, nullptr, "Begin round " + String(RuntimeConfig::roundNumber));
 
-		if (Animation::AllDone())
+		if (gameHasBegun && Animation::AllDone())
 		{
 			Objects::RefreshSkyHubConnections();
 			Animation::UpdateAutomation(CLOCATION);
@@ -1425,6 +1444,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		//factionMap.VisitAllValues([](const Objects::PFaction&f)
 		{
 			f->requestedNewRound = false;
+			f->roundChangeNotifications = 0;
 		};//);
 		Dialog::SignalSituationChange();
 	#endif
@@ -1484,8 +1504,20 @@ void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
 {
 	Objects::OwnerParameter faction = Network::ResolveFaction(id);
 	faction->requestedNewRound = true;
+	faction->roundChangeNotifications++;
+	LogEvent(faction->roundChangeNotifications < 3 ? EventType::SessionRelated : EventType::Debug,nullptr,faction->GetName()+" is done thinking");
 	#ifdef HAS_WINDOW
-		LogEvent(EventType::SessionRelated,nullptr,faction->GetName()+" is done thinking");
+		UI::RefreshSessionView();
+	#endif
+}
+
+void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
+{
+	Objects::OwnerParameter faction = Network::ResolveFaction(id);
+	faction->requestedNewRound = false;
+	faction->roundChangeNotifications++;
+	LogEvent(faction->roundChangeNotifications < 3 ? EventType::SessionRelated : EventType::Debug,nullptr,faction->GetName()+" is thinking some more");
+	#ifdef HAS_WINDOW
 		UI::RefreshSessionView();
 	#endif
 }
@@ -1546,7 +1578,7 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 			Network::serverIDString = Network::serverID.ToNiceString();
 			Network::worldID = srv->info.gameInfo.worldID;
 			Network::worldIDString = Network::worldID.ToNiceString();
-			Network::client.ConnectAsync(srv->urls[best].first + ":" + String(SERVICE_PORT));
+			Network::ConnectTo(srv->urls[best].first + ":" + String(SERVICE_PORT));
 
 			lastAttempt = timer.Now();
 			delayCounter = 0;

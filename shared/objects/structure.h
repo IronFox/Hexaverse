@@ -266,7 +266,11 @@ namespace Objects
 		virtual void				OnDestroy(float atTime) override;
 		virtual void				OnConstructionFinished(float atTime) override;
 
-
+		/**
+		Height applied during struct count setting in the terrain. For most structures this equals the actual height.
+		Towers, however, need the top level struct-count-free or their trajectory calculations will fail
+		*/
+		virtual int					GetStructCountHeight() const {return GetHeight();}
 
 		/**
 		Erases all connection to other structures in the neighborhood. Since this may cause an inconsistent situation it is
@@ -1621,6 +1625,10 @@ namespace Objects
 				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
 			#endif
 		#endif
+
+		//structure overrides:
+		virtual int					GetStructCountHeight() const override {return std::max(1,GetHeight()-1);}
+
 
 		//turret base overrides:
 		virtual bool				NextTaskIsAttack() const override {return health > 0 && attackQueue.IsNotEmpty();}

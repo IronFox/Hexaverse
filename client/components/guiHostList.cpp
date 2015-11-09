@@ -157,7 +157,8 @@ void	SaveHosts()
 				Network::worldIDString = Network::worldID.ToNiceString();
 				Network::gameFlags = info->info.gameInfo.gameFlags;
 				RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info->info.gameInfo.gameGoal);
-				Network::client.ConnectAsync(info->urls[best].first + ":"+String(SERVICE_PORT));
+
+				Network::ConnectTo(info->urls[best].first + ":"+String(SERVICE_PORT));
 			});
 
 		}

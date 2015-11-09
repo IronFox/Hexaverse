@@ -320,6 +320,18 @@ void	SignalConstructTowerTurret(const TUniqueID&towerID,const Objects::Component
 #endif
 
 
+bool	HasSignalledRoundEnd()
+{
+	return Network::newRoundRequested;
+}
+
+bool	CanChangeRoundState()
+{
+	return Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
+}
+
+
+
 void	TransmitRoundEndRequest()
 {
 	Network::client.SendSignal(Protocol::ChannelID::RequestRoundEnd);
@@ -337,6 +349,17 @@ void	SignalRoundEnd()
 		if (!Network::amTechniteFaction || TechniteLogicLink::LogicIsDone())
 			TransmitRoundEndRequest();
 	}
+}
+
+void	SignalUndoRoundEnd()
+{
+	if (Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::newRoundRequested)
+	{
+		Network::client.SendSignal(Protocol::ChannelID::RequestContinueRound);
+		Network::newRoundRequested = false;
+		LogEvent(EventType::SessionRelated,nullptr,"Requested to continue new round");
+	}
+
 }
 
 #ifdef HAS_WINDOW

@@ -1396,7 +1396,7 @@ namespace Animation
 				});
 				Animation::insertIntoGridLater.Clear();
 
-				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
+				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::gameHasBegun)
 				{
 					Objects::RefreshSkyHubConnections();
 					UpdateAutomation(CLOCATION);

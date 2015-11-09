@@ -648,9 +648,9 @@ namespace Objects
 
 
 		if (IsBroad())
-			CommonRegisterBroadStructure(location,GetHeight(),HasFoundation(),atTime);
+			CommonRegisterBroadStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
 		else
-			CommonRegisterNarrowStructure(location,GetHeight(),HasFoundation(),atTime);
+			CommonRegisterNarrowStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
 
 		TStructureNeighborhood	neighborhood;
 		GetNeighborhood(owner,ConnectsToDifferentOwnership(), location, neighborhood);
@@ -713,9 +713,9 @@ namespace Objects
 		Super::OnDestroy(atTime);
 		LogEvent(EventType::Debug,this,"Unregistering...");
 		if (IsBroad())
-			CommonUnregisterBroadStructure(location,GetHeight(),HasFoundation(),atTime);
+			CommonUnregisterBroadStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
 		else
-			CommonUnregisterNarrowStructure(location,GetHeight(),HasFoundation(),atTime);
+			CommonUnregisterNarrowStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
 
 		LogEvent(EventType::Debug,this,"Disconnecting...");
 		DisconnectFromNeighborhood(atTime);
