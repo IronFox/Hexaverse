@@ -61,6 +61,7 @@ namespace Channels
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOnline>							factionOnline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOffline>							factionOffline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
+	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionContinuedRound>					factionContinuedRound;
 
 	TCP::ObjectSender<NET(UINT16), Protocol::ChannelID::LockEMPZones>								lockEmpZones;
 	#ifndef NO_HIBERNATION
@@ -1719,6 +1720,19 @@ namespace Receiver
 		{
 			case Protocol::ChannelID::Unused:
 				State::InvalidOperation(peer);
+			break;
+			case Protocol::ChannelID::RequestContinueRound:
+			{
+				
+				//Objects::Tick();
+				State::PClient client = To<State::Client>::Cast(peer.attachment);
+				if (client && client->faction && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
+				{
+					client->wantNewRound = false;
+					LogEvent(EventType::SessionRelated,peer,"Continued round");
+					Channels::factionContinuedRound.SendTo(State::server,client->faction->id);
+				}
+			}
 			break;
 			case Protocol::ChannelID::RequestRoundEnd:
 			{

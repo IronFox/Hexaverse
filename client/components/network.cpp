@@ -775,6 +775,7 @@ namespace Network
 		void	FactionOnline(NET(TUniqueID)&);
 		void	FactionOffline(NET(TUniqueID)&);
 		void	FactionRequestedNewRound(NET(TUniqueID)&);
+		void	FactionContinuedNewRound(NET(TUniqueID)&);
 		void	LockEmpZones(NET(UINT16)&);
 		void	UplinkBandwidth(NET(INT32)&v)
 		{
@@ -828,6 +829,7 @@ namespace Network
 		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionOnline>							factionOnline(Receiver::FactionOnline);
 		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionOffline>						factionOffline(Receiver::FactionOffline);
 		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound(Receiver::FactionRequestedNewRound);
+		TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionContinuedRound>					factionContinuedRound(Receiver::FactionContinuedRound);
 		TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>								lockEmpZones(Receiver::LockEmpZones);
 		TCP::Channel<NET(INT32), 0, Protocol::ChannelID::UplinkBandwidth>							uplinkBandwidth(Receiver::UplinkBandwidth);
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
@@ -1042,6 +1044,7 @@ namespace Network
 		client.InstallChannel(Channels::factionOnline);
 		client.InstallChannel(Channels::factionOffline);
 		client.InstallChannel(Channels::factionRequestedNewRound);
+		client.InstallChannel(Channels::factionContinuedRound);
 
 		client.InstallChannel(Channels::lockEmpZones);
 		client.InstallChannel(Channels::uplinkBandwidth);
@@ -1363,6 +1366,16 @@ void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
 	faction->requestedNewRound = true;
 	#ifdef HAS_WINDOW
 		LogEvent(EventType::SessionRelated,nullptr,faction->GetName()+" is done thinking");
+		UI::RefreshSessionView();
+	#endif
+}
+
+void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
+{
+	Objects::OwnerParameter faction = Network::ResolveFaction(id);
+	faction->requestedNewRound = false;
+	#ifdef HAS_WINDOW
+		LogEvent(EventType::SessionRelated,nullptr,faction->GetName()+" is thinking some more");
 		UI::RefreshSessionView();
 	#endif
 }

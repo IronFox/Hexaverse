@@ -591,6 +591,7 @@ namespace State
 		server.InstallChannel(Channels::chatMessage);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,1);
+		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,1);
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,1);
 		
 		server.onSignal = Receiver::OnSignal;

@@ -318,6 +318,18 @@ void	SignalConstructTowerTurret(const TUniqueID&towerID,const Objects::Component
 #endif
 
 
+bool	HasSignalledRoundEnd()
+{
+	return Network::newRoundRequested;
+}
+
+bool	CanChangeRoundState()
+{
+	return Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
+}
+
+
+
 void	SignalRoundEnd()
 {
 	if (Network::ControlEnabled())
@@ -329,6 +341,17 @@ void	SignalRoundEnd()
 		#endif
 		LogEvent(EventType::SessionRelated,nullptr,"Requested new round");
 	}
+}
+
+void	SignalUndoRoundEnd()
+{
+	if (Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::newRoundRequested)
+	{
+		Network::client.SendSignal(Protocol::ChannelID::RequestContinueRound);
+		Network::newRoundRequested = false;
+		LogEvent(EventType::SessionRelated,nullptr,"Requested to continue new round");
+	}
+
 }
 
 #ifdef HAS_WINDOW
