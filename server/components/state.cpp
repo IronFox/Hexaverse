@@ -260,7 +260,7 @@ namespace State
 	{
 		info.activePhase = RuntimeConfig::phase;
 		info.numFactionsOnline = (UINT16)State::activePlayers.Count();
-		info.numFactionsCreated = (UINT16)Objects::Faction::all.Count();
+		info.numFactionsCreated = (UINT16)Objects::Faction::all.Count() + (State::Config::enableNexusAI ? 1 : 0);
 		info.roundNumber = (UINT32)RuntimeConfig::roundNumber;
 		info.worldID = State::worldID;
 		info.gameGoal = (UINT32)RuntimeConfig::gameGoal;
