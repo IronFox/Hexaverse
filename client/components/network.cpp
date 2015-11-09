@@ -324,7 +324,6 @@ namespace Network
 		haveFaction = false;
 		//dbgRoundNumber = 0xFFFFFFFF;
 
-		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
 
 
 		Objects::FlushAllData();
@@ -911,7 +910,7 @@ namespace Network
 			if (forceNewFaction)
 				LogEvent(EventType::SessionRelated, nullptr, "Forcing new faction in world " + worldID.ToString());
 			else
-				LogEvent(EventType::SessionRelated, nullptr, "No access token found for world " + worldID.ToString()+". Creating new faction");
+				LogEvent(EventType::SessionRelated, nullptr, "No access token found for world " + worldID.ToString());
 
 			ready.factionToken.value = CryptographicID();
 		}
@@ -1434,6 +1433,7 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 			Network::serverIDString = Network::serverID.ToNiceString();
 			Network::worldID = srv->info.gameInfo.worldID;
 			Network::worldIDString = Network::worldID.ToNiceString();
+			RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
 			Network::client.ConnectAsync(srv->urls[best].first + ":" + String(SERVICE_PORT));
 
 			lastAttempt = timer.Now();
