@@ -36,6 +36,7 @@
 				factionOut.name = factionIn->GetName();
 				factionOut.online = factionIn->online;
 				factionOut.requestedNewRound = factionIn->requestedNewRound;
+				factionOut.factionReference = factionIn.get();
 			};
 			//);
 
