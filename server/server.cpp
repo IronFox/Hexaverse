@@ -1852,11 +1852,6 @@ int main( int argc, const char* argv[])
 
 
 
-		if (!anythingChanged && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && State::lastSaveRound != RuntimeConfig::roundNumber && !(RuntimeConfig::roundNumber%State::Config::saveEveryNRounds))
-		{
-			State::AutoSave();
-
-		}
 
 
 		//#ifndef _DEBUG

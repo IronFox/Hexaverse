@@ -304,6 +304,15 @@ namespace State
 		#endif
 
 
+		if (to == RuntimeConfig::Phase::AnimationPhase && !((RuntimeConfig::roundNumber+1)%State::Config::saveEveryNRounds))
+		{
+			RuntimeConfig::roundNumber++;	//is formally incremented at the beginning of the command phase
+			State::AutoSave();
+			RuntimeConfig::roundNumber--;
+		}
+
+
+
 		//if (to == RuntimeConfig::Phase::CommandPhase)
 			//DebugCheckWorld();	//this assumes the world does not change. if it does, this will fail
 
@@ -2061,7 +2070,8 @@ void	State::Save( const PathString&name)
 
 	if (container.SaveToFile(name.c_str()))
 	{
-		LogEvent(EventType::SessionRelated,"World snapshot written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
+		LogEvent(EventType::Debug,"World snapshot written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
+		LogEvent(EventType::SessionRelated,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
 	}
 	else
 		LogEvent(EventType::InternalFault,"Unable to write world to "+String(name));
