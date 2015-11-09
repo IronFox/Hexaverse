@@ -1,3 +1,9 @@
+v0.3.8
+	+Added option to undo round-end request.
+	+Auto-savegames are created at the beginning of the animation phase now.
+	-Fixed towers now firing due to self-obstruction.
+	
+
 v0.3.7		[Nov 8 2015]
 	Replaced outdated d3dcompiler_43.dll with d3dcompiler_47.dll. On systems running win8.1+ this is not necessary.
 	Reworked core TCP module to handle events outside critical region. This limits deadlock errors to actual deadlocks, and not event handling taking unusually long.
