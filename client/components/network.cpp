@@ -324,7 +324,7 @@ namespace Network
 		haveFaction = false;
 		//dbgRoundNumber = 0xFFFFFFFF;
 
-
+		roundTimer = -1;
 
 		Objects::FlushAllData();
 		Network::gameProgress.gameOver = false;
