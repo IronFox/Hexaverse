@@ -149,6 +149,7 @@ namespace Objects
 		#ifdef CLIENT
 			bool	requestedNewRound = false;
 			bool	isMine = false;
+			count_t	roundChangeNotifications=0;
 		#endif
 
 		#ifdef CONNECTOR_LESS

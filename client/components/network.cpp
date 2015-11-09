@@ -1319,6 +1319,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		//factionMap.VisitAllValues([](const Objects::PFaction&f)
 		{
 			f->requestedNewRound = false;
+			f->roundChangeNotifications = 0;
 		};//);
 		Dialog::SignalSituationChange();
 	#endif
@@ -1363,8 +1364,9 @@ void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
 {
 	Objects::OwnerParameter faction = Network::ResolveFaction(id);
 	faction->requestedNewRound = true;
+	faction->roundChangeNotifications++;
+	LogEvent(faction->roundChangeNotifications < 3 ? EventType::SessionRelated : EventType::Debug,nullptr,faction->GetName()+" is done thinking");
 	#ifdef HAS_WINDOW
-		LogEvent(EventType::SessionRelated,nullptr,faction->GetName()+" is done thinking");
 		UI::RefreshSessionView();
 	#endif
 }
@@ -1373,8 +1375,9 @@ void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 {
 	Objects::OwnerParameter faction = Network::ResolveFaction(id);
 	faction->requestedNewRound = false;
+	faction->roundChangeNotifications++;
+	LogEvent(faction->roundChangeNotifications < 3 ? EventType::SessionRelated : EventType::Debug,nullptr,faction->GetName()+" is thinking some more");
 	#ifdef HAS_WINDOW
-		LogEvent(EventType::SessionRelated,nullptr,faction->GetName()+" is thinking some more");
 		UI::RefreshSessionView();
 	#endif
 }

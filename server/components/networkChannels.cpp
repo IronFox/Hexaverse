@@ -1726,7 +1726,7 @@ namespace Receiver
 				
 				//Objects::Tick();
 				State::PClient client = To<State::Client>::Cast(peer.attachment);
-				if (client && client->faction && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
+				if (client && client->faction && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && client->wantNewRound)
 				{
 					client->wantNewRound = false;
 					LogEvent(EventType::SessionRelated,peer,"Continued round");
@@ -1739,7 +1739,7 @@ namespace Receiver
 				
 				//Objects::Tick();
 				State::PClient client = To<State::Client>::Cast(peer.attachment);
-				if (client && client->faction && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
+				if (client && client->faction && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && !client->wantNewRound)
 				{
 					client->wantNewRound = true;
 					LogEvent(EventType::SessionRelated,peer,"Requested new round");
