@@ -753,6 +753,8 @@ namespace Receiver
 		Channels::unitLimits.SendTo(peer,limits);
 		
 		Channels::lockEmpZones.SendTo(peer,State::empZonesLocked);
+
+		peer.SendSignal(Protocol::ChannelID::BeginGame);
 		
 	}
 

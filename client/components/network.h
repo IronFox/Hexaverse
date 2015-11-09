@@ -18,7 +18,8 @@ namespace Network
 
 	extern bool			haveFaction,
 						haveId,
-						amOnline;
+						amOnline,
+						gameHasBegun;
 	#ifdef HAS_WINDOW
 		extern bool		amLocated;
 	#endif
@@ -43,6 +44,7 @@ namespace Network
 
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id);
+	void					ConnectTo(const String&url);
 
 	void SaveWorldAccessTokens();
 

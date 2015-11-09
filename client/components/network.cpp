@@ -23,7 +23,7 @@ void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird
 
 namespace Network
 {
-	bool			haveFaction = false,haveId = false,amOnline=false;
+	bool			haveFaction = false,haveId = false,amOnline=false,gameHasBegun=false;
 	#ifdef HAS_WINDOW
 		bool		amLocated=false;
 	#endif
@@ -47,6 +47,13 @@ namespace Network
 	Timer::Time		phaseStarted;
 	bool			newRoundRequested = false;
 
+
+	void			ConnectTo(const String&url)
+	{
+		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
+		gameHasBegun = false;
+		client.ConnectAsync(url);
+	}
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
 	{
@@ -1002,6 +1009,15 @@ namespace Network
 	{
 		switch (signal)
 		{
+			case Protocol::ChannelID::BeginGame:
+				gameHasBegun = true;
+				LogEvent(EventType::SessionRelated,nullptr,"Game has begun");
+				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Animation::AllDone())
+				{
+					Objects::RefreshSkyHubConnections();
+					Animation::UpdateAutomation(CLOCATION);
+				}
+			break;
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();
 				#ifdef HAS_WINDOW
@@ -1050,6 +1066,7 @@ namespace Network
 		client.InstallChannel(Channels::unitLimits);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
+		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
 
 
 		client.SetAsync(false);
@@ -1308,7 +1325,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 
 		LogEvent(EventType::SessionRelated, nullptr, "Begin round " + String(RuntimeConfig::roundNumber));
 
-		if (Animation::AllDone())
+		if (gameHasBegun && Animation::AllDone())
 		{
 			Objects::RefreshSkyHubConnections();
 			Animation::UpdateAutomation(CLOCATION);
@@ -1436,8 +1453,7 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 			Network::serverIDString = Network::serverID.ToNiceString();
 			Network::worldID = srv->info.gameInfo.worldID;
 			Network::worldIDString = Network::worldID.ToNiceString();
-			RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
-			Network::client.ConnectAsync(srv->urls[best].first + ":" + String(SERVICE_PORT));
+			Network::ConnectTo(srv->urls[best].first + ":" + String(SERVICE_PORT));
 
 			lastAttempt = timer.Now();
 			delayCounter = 0;

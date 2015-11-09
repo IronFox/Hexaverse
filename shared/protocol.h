@@ -1775,6 +1775,7 @@ namespace Protocol
 			GameProgress,		//s2c: GameProgress
 
 			PhaseChange,		//s2c: PhaseChange
+			BeginGame,			//s2c: <signal> //indicates that the player faction is fully initialized and transferred, and the game should begin. Mostly important for AI, only
 
 			SetClientState,		//c2s: ClientState -> s2c: Result
 			ClientFaction,		//c2s: ClientFactionRequest -> s2c: ClientFactionResponse

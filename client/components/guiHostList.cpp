@@ -154,8 +154,7 @@ void	SaveHosts()
 				Network::gameFlags = info->info.gameInfo.gameFlags;
 				RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info->info.gameInfo.gameGoal);
 
-				RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
-				Network::client.ConnectAsync(info->urls[best].first + ":"+String(SERVICE_PORT));
+				Network::ConnectTo(info->urls[best].first + ":"+String(SERVICE_PORT));
 			});
 
 		}
