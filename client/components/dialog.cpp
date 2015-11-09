@@ -941,7 +941,12 @@ namespace Dialog
 		CheckResult ck = check();
 		if (ck == CheckResult::Abort)
 			return PDialog();
-
+		if (RuntimeConfig::aiMode)
+		{
+			if (ck == CheckResult::OkayContinue)
+				onConfirm();
+			return PDialog();
+		}
 
 
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton| Detail::ComponentFlags::CancelButton, "Confirm", false);
