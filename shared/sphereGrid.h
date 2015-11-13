@@ -2135,9 +2135,9 @@ namespace Grid
 			resourcesDiscovered.Fill(false);
 		}
 		/**
-		Affects the cell and its immediate neighbors only
+		Affects the cell, its immediate neighbors, and their neighbors only. May increment cells multiple times to accelerate computation
 		*/
-		void				ChangeSensory(const Grid::HCellIdU&center, float t, short changeBy);
+		void				ChangeTechniteSensory(const Grid::HCellIdU&center, float t, short changeBy);
 		void				ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short changeBy);
 		void				ChangeSensory(const Grid::SkySensorState&state, float t, short changeBy);
 		void				RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);

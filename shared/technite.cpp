@@ -1226,7 +1226,7 @@ namespace Technites
 
 	void			Technite::RegisterFactionSensory(Grid::VisibilityState&vis, float t) const
 	{
-		vis.ChangeSensory(location.GetU(), t, (short)1);
+		vis.ChangeTechniteSensory(location.GetU(), t, (short)1);
 		vis.CheckChanges(t);
 	}
 
@@ -1249,7 +1249,7 @@ namespace Technites
 		{
 			bool familyChanged[BaseGrid::NumFamilies] = { false };
 
-			Grid::TemplateHelper::ChangeSensory(center, change, Grid::actualWorld.cellStack.pointer(), familyChanged);
+			Grid::TemplateHelper::ChangeTechniteSensory(center, change, Grid::actualWorld.cellStack.pointer(), familyChanged);
 
 			for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
 				if (familyChanged[i])
@@ -1742,7 +1742,7 @@ namespace Technites
 				}
 				else
 				{
-					visibility.ChangeSensory(loc, t, -1);
+					visibility.ChangeTechniteSensory(loc, t, -1);
 					techniteMap.Unset(loc);
 					atomicGrid.cellStack[loc.stackID].volumeCell[loc.layer].content = Grid::Content::Clear;
 					atomicGrid.SignalStackChange(loc.stackID);
@@ -1808,7 +1808,7 @@ namespace Technites
 				}
 				else
 				{
-					visibility.ChangeSensory(loc, t, -1);
+					visibility.ChangeTechniteSensory(loc, t, -1);
 					techniteMap.Unset(loc);
 
 					const auto mapping = Grid::highToLowMap[loc.stackID];
@@ -1907,7 +1907,7 @@ namespace Technites
 				DBG_ASSERT_EQUAL__(Grid::actualWorld.cellStack[loc.stackID].volumeCell[loc.layer].techniteFaction,this->gridID);
 
 				techniteMap.Set(loc, at);
-				visibility.ChangeSensory(loc, t, 1);
+				visibility.ChangeTechniteSensory(loc, t, 1);
 
 
 			}
@@ -2217,7 +2217,7 @@ namespace Technites
 		Grid::high.family[family].SetOutdated(t);
 
 		#ifndef CLIENT
-			visibility.ChangeSensory(tech.location.GetU(), t, 1);
+			visibility.ChangeTechniteSensory(tech.location.GetU(), t, 1);
 			visibility.CheckChanges(t);
 		#endif
 

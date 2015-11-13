@@ -4385,11 +4385,11 @@ namespace Grid
 
 
 
-	void				VisibilityState::ChangeSensory(const Grid::HCellIdU&center, float t, short changeBy)
+	void				VisibilityState::ChangeTechniteSensory(const Grid::HCellIdU&center, float t, short changeBy)
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = { false };
 
-		Grid::TemplateHelper::ChangeSensory(center, changeBy, cellStack.pointer(), familyChanged);
+		Grid::TemplateHelper::ChangeTechniteSensory(center, changeBy, cellStack.pointer(), familyChanged);
 
 		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
 			if (familyChanged[i])

@@ -27,30 +27,48 @@ namespace Grid
 		}
 
 
-
+		/**
+		Affects the cell, its immediate neighbors, and their neighbors only. May increment/decrement cells multiple times to accelerate computation
+		*/
 		template <typename Stack>
-		void		ChangeSensory(const Grid::HCellIdU&center, short changeBy, Stack*cellStack, bool*familyChanged)
+		void		ChangeTechniteSensory(const Grid::HCellIdU&center, short changeBy, Stack*cellStack, bool*familyChanged)
 		{
-			unsigned bottom = center.layer > 0 ? center.layer - 1 : 0;
-			unsigned top = std::min(Grid::CellStack::Range-1, center.layer + 1);
+			unsigned bottom = center.layer > 1 ? center.layer - 2 : 0;
+			unsigned top = std::min(Grid::CellStack::Range-1, center.layer + 2);
 
 
 			const auto&c = high.grid.GetCell(center.stackID);
-			{
-				auto&stack = cellStack[center.stackID];
-				for (unsigned h = bottom; h <= top; h++)
-					stack.volumeCell[h].AlterVisibility(changeBy);
-			}
-
-			familyChanged[c.family] = true;
 			for (int k = 0; k < c.neighborhood.numNeighbors; k++)
 			{
-				familyChanged[high.grid.GetCell(c.neighborhood.neighborID[k]).family] = true;
+				const auto&c2 = high.grid.GetCell(c.neighborhood.neighborID[k]);
+				for (int j = 0; j < c2.neighborhood.numNeighbors; j++)
+				{
+					const UINT32 id = c2.neighborhood.neighborID[j];
+					const auto&c3 = high.grid.GetCell(id);
+					familyChanged[c3.family] = true;
 
-				auto&stack = cellStack[c.neighborhood.neighborID[k]];
-				for (unsigned h = bottom; h <= top; h++)
-					stack.volumeCell[h].AlterVisibility(changeBy);
+					auto&stack = cellStack[id];
+					for (unsigned h = bottom; h <= top; h++)
+						stack.volumeCell[h].AlterVisibility(changeBy);
+				}
 			}
+
+
+			//{
+			//	auto&stack = cellStack[center.stackID];
+			//	for (unsigned h = bottom; h <= top; h++)
+			//		stack.volumeCell[h].AlterVisibility(changeBy);
+			//}
+
+			//familyChanged[c.family] = true;
+			//for (int k = 0; k < c.neighborhood.numNeighbors; k++)
+			//{
+			//	familyChanged[high.grid.GetCell(c.neighborhood.neighborID[k]).family] = true;
+
+			//	auto&stack = cellStack[c.neighborhood.neighborID[k]];
+			//	for (unsigned h = bottom; h <= top; h++)
+			//		stack.volumeCell[h].AlterVisibility(changeBy);
+			//}
 
 		}
 		
