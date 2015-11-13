@@ -1240,6 +1240,9 @@ int main( int argc, const char* argv[])
 
 		if (config.LoadFromFile(clientServerINI))
 		{
+			Technites::limitTechniteLife = config.RequireBool("NonPersistentGameSettings/limitTechniteLife");
+
+
 			State::Config::simulateLiquids = config.GetBool("NonPersistentGameSettings/simulateLiquids",false);
 
 			State::Config::closedGame = config.GetBool("Game/closed",false);

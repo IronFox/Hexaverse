@@ -13,7 +13,7 @@ namespace Technites
 {
 	DECLARE_POINTER_CLASS(Faction);
 
-
+	extern bool limitTechniteLife;
 
 	struct AtomicBool
 	{

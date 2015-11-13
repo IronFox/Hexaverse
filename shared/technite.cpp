@@ -18,6 +18,8 @@ bool	ApplyCoverageChange(const Objects::PFaction&faction);
 
 namespace Technites
 {
+	bool limitTechniteLife = true;
+
 	/*static*/ const Technite::Resources	Technite::SplitCost = Resources(SplitEnergyCost, SplitMatterCost),
 		Technite::MoveCost = Resources(MoveEnergyCost, 0),
 		Technite::GnawAtCost = Resources(GnawAtEnergyCost, 0),
@@ -1485,9 +1487,12 @@ namespace Technites
 
 
 		BYTE ttl = technite.state.GetTTL();
-		if (ttl > 0)
-			ttl--;
-		technite.state.SetTTL(ttl);
+		if (limitTechniteLife)
+		{
+			if (ttl > 0)
+				ttl--;
+			technite.state.SetTTL(ttl);
+		}
 
 		if (content != Grid::Content::Technite
 			|| Grid::actualWorld.cellStack[loc.stackID].GetCellU(loc.layer).techniteFaction != this->gridID
