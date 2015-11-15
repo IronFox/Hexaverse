@@ -166,6 +166,7 @@ namespace Technites
 			TransferEnergyTo,
 			TransferMatterTo,
 			SelfTransformToType,
+			Scan,
 
 			Count
 		};
@@ -369,6 +370,9 @@ namespace Technites
 		static_assert(TechniteSize == 16,"Packing error");	//+color
 	#endif
 
+
+	typedef Sphere<>	TSensor;
+
 	class AtomicGrid
 	{
 	public:
@@ -461,6 +465,7 @@ namespace Technites
 		static AtomicGrid		atomicGrid;
 
 		Buffer<Technite>		technites;
+		Buffer0<TSensor>		sensors;
 
 		#ifndef CLIENT
 			float3					color;// = float3(0.2,0.3,0.9);
@@ -540,6 +545,7 @@ namespace Technites
 			Buffer<Grid::HCellIdU>	newTechnites;
 			//Buffer<std::pair<Grid::HCellIdU, Grid::HCellIdU> > moveInstructions;
 			Buffer<std::pair<Grid::HCellIdU, Technite::Resources> > increaseResources;
+			Buffer0<std::pair<Grid::HCellIdU, BYTE> >	addSensor;
 		};
 
 

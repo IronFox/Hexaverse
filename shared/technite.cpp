@@ -235,6 +235,7 @@ namespace Technites
 			break;
 			case Task::TransferEnergyTo:
 			case Task::TransferMatterTo:
+			case Task::Scan:
 				outMagnitude = 60.f;
 			break;
 			case Task::SelfTransformToType:
@@ -1669,6 +1670,18 @@ namespace Technites
 				IncreaseRemoteResources(*other, transfer, data);
 				return Technite::TaskResult::Success;
 			}
+			case Technite::Task::Scan:
+			{
+				Technite::Resources	useEnergy(0,technite.taskParameter);
+				if (!ReduceResources(technite, useEnergy))
+				{
+					return Technite::TaskResult::TechniteLacksResources;
+				}
+				data.addSensor.Append(std::make_pair (technite.location.GetU(),technite.taskParameter));
+
+
+				return Technite::TaskResult::Success;
+			}
 		}
 		return Technite::TaskResult::BadCommand;
 	}
@@ -1913,6 +1926,29 @@ namespace Technites
 			}
 			data->newTechnites.Clear();
 			ASSERT_EQUAL__(technites.Count(), techniteMap.Count());
+
+
+
+			for (const auto&loc : data->addSensor)
+			{
+				TSensor	sensor(Grid::ToWorld(loc.first),loc.second);
+				sensors.Append(sensor);
+				Objects::ForeachWorldEntity([sensor](const Objects::PWorldEntity&e)
+				{
+					if (sensor.Contains(e->system.w.xyz))
+					{
+						
+
+					}
+
+				}
+				);
+
+			}
+			data->addSensor.Clear();
+
+				//float radius = sqrt(float(technite.taskParameter));
+
 		}
 
 		if (deathByBadSupport)
