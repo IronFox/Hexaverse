@@ -232,15 +232,15 @@ namespace Objects
 	}
 
 
-	bool		WorldEntity::CanSee(const PWorldEntity&other) const
-	{
-		return Vec::quadraticDistance(system.w.xyz,other->system.w.xyz) <= sqr(GetScanningRange());
-	}
+	//bool		WorldEntity::CanSee(const PWorldEntity&other) const
+	//{
+	//	return Vec::quadraticDistance(system.w.xyz,other->system.w.xyz) <= sqr(GetScanningRange());
+	//}
 
-	bool		WorldEntity::CanSee(const TVec3<>&center, float radius)	const
-	{
-		return Vec::quadraticDistance(system.w.xyz,center) <= sqr(GetScanningRange()+radius);
-	}
+	//bool		WorldEntity::CanSee(const TVec3<>&center, float radius)	const
+	//{
+	//	return Vec::quadraticDistance(system.w.xyz,center) <= sqr(GetScanningRange()+radius);
+	//}
 
 
 
@@ -336,56 +336,56 @@ namespace Objects
 	#ifndef CLIENT
 
 
-		/*static*/ void WorldEntity::MapVisibilityBetween(const PWorldEntity&e, const PWorldEntity&other, float&atTime)
-		{
-			if (e == other || e->owner == other->owner)
-				return;
-			if (e->health <= 0)
-			{
-				LogEvent(EventType::InternalFault,e.get(),"Trying to call MapVisibilityBetween() on a dead entity.");
-				//this happens due to some rare cascading events where the destruction of some structure leads to the ownership change of a nexus port, which in turn redetects visibility,
-				// but the destroyed structure has not yet been removed from lists. moving OnDestroy down now but this fix remains until it does no longer occur
-				return;
-			}
-			if (e->CanSee(other))
-			{
-				//seeing:
-				/*bool seeingNewEntity = true;
-				foreach (other->seenBy,s)
-					if ((*s)->owner == e->owner)
-					{
-						seeingNewEntity = false;
-						break;
-					}*/
-				e->seeing << other;
-				other->seenBy << e;
-				//if (seeingNewEntity)
-				{
-					//SignalAppearanceToHostileFaction(e->owner,other,atTime);
-					e->owner->SignalAppearance(other,atTime);
-				}
-			}
+		///*static*/ void WorldEntity::MapVisibilityBetween(const PWorldEntity&e, const PWorldEntity&other, float&atTime)
+		//{
+		//	if (e == other || e->owner == other->owner)
+		//		return;
+		//	if (e->health <= 0)
+		//	{
+		//		LogEvent(EventType::InternalFault,e.get(),"Trying to call MapVisibilityBetween() on a dead entity.");
+		//		//this happens due to some rare cascading events where the destruction of some structure leads to the ownership change of a nexus port, which in turn redetects visibility,
+		//		// but the destroyed structure has not yet been removed from lists. moving OnDestroy down now but this fix remains until it does no longer occur
+		//		return;
+		//	}
+		//	if (e->CanSee(other))
+		//	{
+		//		//seeing:
+		//		/*bool seeingNewEntity = true;
+		//		foreach (other->seenBy,s)
+		//			if ((*s)->owner == e->owner)
+		//			{
+		//				seeingNewEntity = false;
+		//				break;
+		//			}*/
+		//		e->seeing << other;
+		//		other->seenBy << e;
+		//		//if (seeingNewEntity)
+		//		{
+		//			//SignalAppearanceToHostileFaction(e->owner,other,atTime);
+		//			e->owner->SignalAppearance(other,atTime);
+		//		}
+		//	}
 
-			if (other->CanSee(e))
-			{
-				//beeing seen:
-				//bool beingSeenByNewOwner = true;
-				//foreach (e->seenBy,s)
-				//	if ((*s)->owner == other->owner)
-				//	{
-				//		beingSeenByNewOwner = false;
-				//		break;
-				//	}
-				e->seenBy << other;
-				other->seeing << e;
-				//if (beingSeenByNewOwner)
-				{
-					//SignalAppearanceToHostileFaction(other->owner,e,atTime);
-					other->owner->SignalAppearance(e,atTime);
+		//	if (other->CanSee(e))
+		//	{
+		//		//beeing seen:
+		//		//bool beingSeenByNewOwner = true;
+		//		//foreach (e->seenBy,s)
+		//		//	if ((*s)->owner == other->owner)
+		//		//	{
+		//		//		beingSeenByNewOwner = false;
+		//		//		break;
+		//		//	}
+		//		e->seenBy << other;
+		//		other->seeing << e;
+		//		//if (beingSeenByNewOwner)
+		//		{
+		//			//SignalAppearanceToHostileFaction(other->owner,e,atTime);
+		//			other->owner->SignalAppearance(e,atTime);
 
-				}
-			}
-		}
+		//		}
+		//	}
+		//}
 
 
 	#endif
@@ -432,12 +432,12 @@ namespace Objects
 	void WorldEntity::RegisterSensory(float&atTime)
 	{
 		LogEvent(EventType::MinorEntityProcess,this,"Registering sensory ("+String(GetScanningRange())+")");
-		#ifndef CLIENT
-			ForeachWorldEntity([this,&atTime](const PWorldEntity&other)
-			{
-				MapVisibilityBetween(shared_from_this(),other,atTime);
-			});
-		#endif
+		//#ifndef CLIENT
+		//	ForeachWorldEntity([this,&atTime](const PWorldEntity&other)
+		//	{
+		//		MapVisibilityBetween(shared_from_this(),other,atTime);
+		//	});
+		//#endif
 
 		#ifdef CLIENT
 			#ifdef HAS_WINDOW
@@ -463,52 +463,55 @@ namespace Objects
 		#ifndef CLIENT
 			if (isFinal)
 			{
-
-
-
-				foreach (seenBy,s)
+				/*ForeachFaction([_this](const Objects::PFaction&f)
 				{
-					(*s)->owner->canSee.Unset(_this);
-					ASSERT__((*s)->seeing.FindAndErase(_this));
-				}
+					if (f->GridCanSee(_this))
+						f->canSee.Unset(_this);
+				});*/
 
-				foreach (Faction::all,_f)
-				{
-					PFaction f= _f->lock();
-					if (f)
-					{
-						if (f->canSee.Unset(_this))
-							LogEvent(EventType::InternalFault,this,"Sensor removal should have been seen by "+f->GetLogName());
-					}
-				}
 
+				//foreach (seenBy,s)
+				//{
+				//	(*s)->owner->canSee.Unset(_this);
+				//	ASSERT__((*s)->seeing.FindAndErase(_this));
+				//}
+
+				//foreach (Faction::all,_f)
+				//{
+				//	PFaction f= _f->lock();
+				//	if (f)
+				//	{
+				//		if (f->canSee.Unset(_this))
+				//			LogEvent(EventType::InternalFault,this,"Sensor removal should have been seen by "+f->GetLogName());
+				//	}
+				//}
 			}
-			foreach (seeing,s)
-			{
-				//SignalDisappearance(shared_from_this(),timestamp,false);
-				ASSERT__((*s)->seenBy.FindAndErase(_this));
-				PWorldEntity other = *s;
-				bool found = false;
-				foreach (other->seenBy,s2)
-				{
-					if ((*s2)->owner == owner)
-					{
-						found = true;
-						break;
-					}
-				}
-				if (!found)
-				{
-					PMobileEntity v = To<MobileEntity>::DynamicCast(other);
-					if (v)
-						atTime = std::max(atTime,v->timeAt);
-					owner->SignalDisappearance(other,atTime);
-				}
+			//foreach (seeing,s)
+			//{
+			//	//SignalDisappearance(shared_from_this(),timestamp,false);
+			//	ASSERT__((*s)->seenBy.FindAndErase(_this));
+			//	PWorldEntity other = *s;
+			//	bool found = false;
+			//	foreach (other->seenBy,s2)
+			//	{
+			//		if ((*s2)->owner == owner)
+			//		{
+			//			found = true;
+			//			break;
+			//		}
+			//	}
+			//	if (!found)
+			//	{
+			//		PMobileEntity v = To<MobileEntity>::DynamicCast(other);
+			//		if (v)
+			//			atTime = std::max(atTime,v->timeAt);
+			//		owner->SignalDisappearance(other,atTime);
+			//	}
 
-			}
-			if (isFinal)
-				seenBy.Clear(0);
-			seeing.Clear(0);
+			//}
+			//if (isFinal)
+			//	seenBy.Clear(0);
+			//seeing.Clear(0);
 		#endif
 
 		#ifdef CLIENT

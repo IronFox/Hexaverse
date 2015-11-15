@@ -213,15 +213,15 @@ namespace Objects
 			void					SignalChange(changeType_t type, float timeAt)	{RegisterChange(type,timeAt);}
 
 
-			Buffer0<PWorldEntity>	seenBy,
-									seeing;
+			//Buffer0<PWorldEntity>	seenBy,
+				//					seeing;
 			
 
 
 			virtual void			SetupSystem()=0;	//used to setup the matrices once after creation
 		#endif
-		virtual bool				CanSee(const PWorldEntity&other)	const;
-		virtual bool				CanSee(const TVec3<>&center, float radius)	const;
+		//virtual bool				CanSee(const PWorldEntity&other)	const;
+		//virtual bool				CanSee(const TVec3<>&center, float radius)	const;
 
 
 		/**
@@ -424,7 +424,7 @@ namespace Objects
 			}
 
 		private:
-			static void				MapVisibilityBetween(const PWorldEntity&, const PWorldEntity&, float&atTime);
+			//static void				MapVisibilityBetween(const PWorldEntity&, const PWorldEntity&, float&atTime);
 
 		#endif
 

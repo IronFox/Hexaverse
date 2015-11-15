@@ -99,49 +99,49 @@ namespace Objects
 		}
 
 
-		void MapVisibility2(const PWorldEntity&e, const PWorldEntity&other, const OwnerParameter&checkForOwner, float&atTime)
-		{
-			if (e == other || other->owner != checkForOwner)
-				return;
-			if (e->CanSee(other))
-			{
-				//seeing:
-				/*bool seeingNewEntity = true;
-				foreach (other->seenBy,s)
-					if ((*s)->owner == e->owner)
-					{
-						seeingNewEntity = false;
-						break;
-					}*/
-				e->seeing << other;
-				other->seenBy << e;
-				//if (seeingNewEntity)
-				{
-					//SignalAppearanceToHostileFaction(e->owner,other,atTime);
-					e->owner->SignalAppearance(other,atTime,false);
-				}
-			}
+		//void MapVisibility2(const PWorldEntity&e, const PWorldEntity&other, const OwnerParameter&checkForOwner, float&atTime)
+		//{
+		//	if (e == other || other->owner != checkForOwner)
+		//		return;
+		//	if (e->CanSee(other))
+		//	{
+		//		//seeing:
+		//		/*bool seeingNewEntity = true;
+		//		foreach (other->seenBy,s)
+		//			if ((*s)->owner == e->owner)
+		//			{
+		//				seeingNewEntity = false;
+		//				break;
+		//			}*/
+		//		e->seeing << other;
+		//		other->seenBy << e;
+		//		//if (seeingNewEntity)
+		//		{
+		//			//SignalAppearanceToHostileFaction(e->owner,other,atTime);
+		//			e->owner->SignalAppearance(other,atTime,false);
+		//		}
+		//	}
 
-			if (other->CanSee(e))
-			{
-				//beeing seen:
-				//bool beingSeenByNewOwner = true;
-				//foreach (e->seenBy,s)
-				//	if ((*s)->owner == other->owner)
-				//	{
-				//		beingSeenByNewOwner = false;
-				//		break;
-				//	}
-				e->seenBy << other;
-				other->seeing << e;
-				//if (beingSeenByNewOwner)
-				{
-					//SignalAppearanceToHostileFaction(other->owner,e,atTime);
-					other->owner->SignalAppearance(e,atTime,false);
+		//	if (other->CanSee(e))
+		//	{
+		//		//beeing seen:
+		//		//bool beingSeenByNewOwner = true;
+		//		//foreach (e->seenBy,s)
+		//		//	if ((*s)->owner == other->owner)
+		//		//	{
+		//		//		beingSeenByNewOwner = false;
+		//		//		break;
+		//		//	}
+		//		e->seenBy << other;
+		//		other->seeing << e;
+		//		//if (beingSeenByNewOwner)
+		//		{
+		//			//SignalAppearanceToHostileFaction(other->owner,e,atTime);
+		//			other->owner->SignalAppearance(e,atTime,false);
 
-				}
-			}
-		}
+		//		}
+		//	}
+		//}
 
 		void		ChangeOwnership( const PWorldEntity&e, const OwnerParameter&newOwner, float&atTime)
 		{
@@ -166,102 +166,7 @@ namespace Objects
 					InsertConstructed(To<Structure>::Cast(e),atTime,true,false);
 				else
 					LogEvent(EventType::InternalFault,e.get(), "Unexpected entity type. Cannot change ownership");
-			VerifyVisibilityNetwork();
-
-			return;
-
-			e->owner->RegisterLoss(e);
-			SignalOwnershipChange(e,newOwner,atTime);
-
-			newOwner->canSee.Unset(e);
-
-			{
-				bool found = false;
-				foreach (e->owner->allMobiles, _v)
-				{
-					PMobileEntity v = _v->lock();
-					DBG_ASSERT1__(v,e->owner->GetLogName());
-					if (v && v->CanSee(e))
-					{
-						found = true;
-						break;
-					}
-				}
-				if (!found)
-					foreach (e->owner->structures, _s)
-					{
-						PStructure s = _s->lock();
-						DBG_ASSERT1__(s,e->owner->GetLogName());
-						if (s && s->CanSee(e))
-						{
-							found = true;
-							break;
-						}
-					}
-
-
-				//foreach (e->seenBy,s2)
-				//{
-				//	if ((*s2)->owner == e->owner)	//this is always false, i think
-				//	{
-				//		found = true;
-				//		break;
-				//	}
-				//}
-				if (!found)
-					e->owner->SignalDisappearance(e,atTime,true);
-				else
-					e->owner->SignalAppearance(e,atTime,false);
-			}
-
-			for (index_t i = 0; i < e->seeing.Count(); i++)
-			{
-				PWorldEntity other = e->seeing[i];
-				if (other->owner != newOwner)
-				{
-					newOwner->SignalAppearance(other,atTime);
-
-
-					bool found = false;
-					foreach (other->seenBy,s2)
-					{
-						if ((*s2) != e && (*s2)->owner == e->owner)
-						{
-							found = true;
-							break;
-						}
-					}
-					if (!found)
-						e->owner->SignalDisappearance(other,atTime);
-
-
-					continue;
-				}
-				e->seeing.Erase(i); i--;
-				other->seenBy.FindAndErase(e);
-			}
-			for (index_t i = 0; i < e->seenBy.Count(); i++)
-			{
-				PWorldEntity other = e->seenBy[i];
-				if (other->owner != newOwner)
-					continue;
-				e->seenBy.Erase(i); i--;
-				other->seeing.FindAndErase(e);
-			}
-			e->owner = newOwner;
-			newOwner->RegisterGain(e);
-			foreach (structures,s)
-				MapVisibility2(e,*s,oldOwner, atTime);
-			foreach (vehicles,v)
-				MapVisibility2(e,*v,oldOwner, atTime);
-			foreach (satellites,v)
-				MapVisibility2(e,*v,oldOwner, atTime);
-
-
-			compoundCoverageChanged = true;
-			LogEvent(EventType::EntityProcess,e.get(),"Ownership changed");
-
-			VerifyVisibilityNetwork();
+			//VerifyVisibilityNetwork();
 
 		}
 
@@ -438,22 +343,65 @@ namespace Objects
 
 		}
 
+		bool Faction::GridCanSee(const Grid::HighSetup::TVolumeDescriptor&v) const
+		{
+			foreach (v.coverage,st)
+			{
+				DBG_ASSERT_LESS__(st->layerBegin,Grid::CellStack::Range);
+				DBG_ASSERT_LESS__(st->layerEnd,Grid::CellStack::Range);
+				DBG_ASSERT_LESS__(st->layerBegin,st->layerEnd);
+				const auto&stack = visibility.cellStack[st->stackID];
+				for (UINT32 layer = st->layerBegin; layer < st->layerEnd; layer++)
+				{
+					if (stack.volumeCell[layer].IsVisible())
+						return true;
+				}
+			}
+			return false;
+		}
 
-		bool		Faction::CanSee(const PWorldEntity&e, float t)	const
+
+		bool Faction::GridCanSee(const PWorldEntity&e) const
+		{
+			const UINT32 fine = Grid::low.grid.GetCell(e->location.stackID).higherEquivalent;
+			const auto&c = Grid::high.grid.GetCell(fine);
+			const UINT32 bottom = Grid::CellStack::ToLayer(e->location.height);
+			const int entityHeight =e->GetHeight();
+			const UINT32 end = std::min(Grid::CellStack::Range,bottom + (UINT32)entityHeight);
+			for (int k = 0; k < c.neighborhood.numNeighbors; k++)
+			{
+				const UINT32 fine2 = c.neighborhood.neighborID[k];
+				for (UINT32 layer = bottom; layer < end; layer++)
+					if (visibility.cellStack[fine2].volumeCell[layer].IsVisible())
+						return true;
+			}
+			return false;
+
+		}
+
+		bool		Faction::ExtCanSee(const PWorldEntity&e, float t)	const
 		{
 			if ( e->owner.get() == this )
 				return true;
-			if (!canSee.IsSet(e))
-				return false;
+			if (!seeing.IsSet(e) && !lostVisualAt.IsSet(e))
+			{
+				return GridCanSee(e);
+			}
 			float t0;
 			if (gainedVisualAt.Query(e,t0))
 				return t >= t0;
 			return true;
 		}
 
-		bool		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/)
+
+		void		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/)
 		{
-			if (canSee.SetNew(e))
+			SeeingReference&ref = seeing.Set(e);
+
+			ref.sightLevel ++;
+
+
+			if (ref.sightLevel == 1)
 			{
 
 				float t0;
@@ -473,15 +421,21 @@ namespace Objects
 
 				if (cascade)
 					SignalAppearanceToHostileFaction(shared_from_this(),e,t);
-				return true;
+			//	return true;
 			}
-			return false;
+			//return false;
 			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
 		}
 
 		void		Faction::SignalDisappearance(const PWorldEntity&e, float&t, bool force)
 		{
-			if (canSee.Unset(e) || force)
+			SeeingReference*ref = seeing.QueryPointer(e);
+
+			if (ref)
+				ref->sightLevel --;
+
+
+			if ((ref && !ref->sightLevel) || force)
 			{
 				float t0;
 				if (gainedVisualAt.QueryAndUnset(e,t0))
@@ -491,7 +445,7 @@ namespace Objects
 				if (v)
 					v->timeAt = std::max(v->timeAt,t);
 				ASSERT1__(lostVisualAt.SetNew(e,t),e->id.ToString());
-
+				seeing.Unset(e);
 				SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
 			}
 			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
@@ -795,6 +749,15 @@ namespace Objects
 
 
 	#endif
+
+
+	void			ForeachFaction(const std::function<void(const PFaction&)>&func)
+	{
+		func(Faction::nexus);
+		for (const WFaction&f : Faction::all)
+			func(f.lock());
+	}
+
 
 
 	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func)
@@ -1320,50 +1283,50 @@ namespace Objects
 		}
 
 
-		void		VerifyVisibilityNetwork(const PWorldEntity&e)
-		{
-			foreach (e->seeing,s)
-			{
-				ASSERT2__(vehicles.Contains(*s) || structures.Contains(*s) || satellites.Contains(*s), (e)->GetName(), (*s)->GetName());
-				ASSERT2__(e->CanSee(*s), (e)->GetName(), (*s)->GetName());
-				ASSERT2__((*s)->seenBy.Contains(e), (e)->GetName(), (*s)->GetName());
-			}
-			
-			foreach (e->seenBy,s)
-			{
-				ASSERT2__(vehicles.Contains(*s) || structures.Contains(*s) || satellites.Contains(*s), (e)->GetName(), (*s)->GetName());
-//					ASSERT__((*s)->CanSee(*v));	done in other pass
-				ASSERT2__((*s)->seeing.Contains(e), (e)->GetName(), (*s)->GetName());
-			}
-
-			ForeachWorldEntity([e](const PWorldEntity&w)
-			{
-				if (e->owner == (w)->owner)
-					return;
-				bool visible = e->CanSee(w);
-				if (visible)
-					ASSERT2__(e->seeing.Contains(w), (e)->GetName(), (w)->GetName());
-			}
-			);
-		}
-
-		void			VerifyVisibilityNetwork()
-		{
-			foreach (vehicles,v)
-			{
-				VerifyVisibilityNetwork(*v);
-
-			}
-			foreach (structures,s)
-			{
-				VerifyVisibilityNetwork(*s);
-			}
-			foreach (satellites,s)
-			{
-				VerifyVisibilityNetwork(*s);
-			}
-		}
-
+//		void		VerifyVisibilityNetwork(const PWorldEntity&e)
+//		{
+//			foreach (e->seeing,s)
+//			{
+//				ASSERT2__(vehicles.Contains(*s) || structures.Contains(*s) || satellites.Contains(*s), (e)->GetName(), (*s)->GetName());
+//				ASSERT2__(e->CanSee(*s), (e)->GetName(), (*s)->GetName());
+//				ASSERT2__((*s)->seenBy.Contains(e), (e)->GetName(), (*s)->GetName());
+//			}
+//			
+//			foreach (e->seenBy,s)
+//			{
+//				ASSERT2__(vehicles.Contains(*s) || structures.Contains(*s) || satellites.Contains(*s), (e)->GetName(), (*s)->GetName());
+////					ASSERT__((*s)->CanSee(*v));	done in other pass
+//				ASSERT2__((*s)->seeing.Contains(e), (e)->GetName(), (*s)->GetName());
+//			}
+//
+//			ForeachWorldEntity([e](const PWorldEntity&w)
+//			{
+//				if (e->owner == (w)->owner)
+//					return;
+//				bool visible = e->CanSee(w);
+//				if (visible)
+//					ASSERT2__(e->seeing.Contains(w), (e)->GetName(), (w)->GetName());
+//			}
+//			);
+//		}
+//
+//		void			VerifyVisibilityNetwork()
+//		{
+//			foreach (vehicles,v)
+//			{
+//				VerifyVisibilityNetwork(*v);
+//
+//			}
+//			foreach (structures,s)
+//			{
+//				VerifyVisibilityNetwork(*s);
+//			}
+//			foreach (satellites,s)
+//			{
+//				VerifyVisibilityNetwork(*s);
+//			}
+//		}
+//
 
 
 

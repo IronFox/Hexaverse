@@ -920,6 +920,25 @@ namespace Grid
 			}
 		};
 
+		struct TVolumeDescriptor
+		{
+			struct TStack
+			{
+				UINT32				stackID;	//high-resolution cell IDs
+				UINT32				layerBegin,layerEnd;	//layerEnd is one higher than actual limit
+			};
+
+			Buffer0<TStack>			coverage;
+			IndexTable<index_t>		coverageMap;	//maps hstackID to downToHeight
+
+			void					Clear()
+			{
+				coverage.Clear();
+				coverageMap.Clear();
+			}
+		};
+
+
 
 		/**/						Setup()
 		{
@@ -1132,6 +1151,40 @@ namespace Grid
 					return section->GetMax();
 
 			return -1.f;
+		}
+
+		void	SetSphereStack(TVolumeDescriptor&volume, const Sphere<>&sphere,UINT32 stackID)	const
+		{
+			if (volume.coverageMap.IsSet(stackID))
+				return;
+
+			const TVec3<>&dir = cells[stackID].cornerCenter;
+			TVec2<> distances;
+			TVec3<> bottom,top;
+			Vec::mult(dir,ToRadius(CellStack::BottomHeight),bottom);
+			Vec::mult(dir,ToRadius(CellStack::TopHeight),top);
+			if (!Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
+				return;
+
+			volume.coverageMap.SetNew(stackID, volume.coverage.Count());
+			
+			TVolumeDescriptor::TStack&st = volume.coverage.Append();
+			st.stackID = stackID;
+			st.layerBegin = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
+			st.layerEnd = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
+			const auto&n = grid.GetCell(stackID).neighborhood;
+			for (int i = 0; i < n.numNeighbors; i++)
+				SetSphereStack(volume,sphere,n.neighborID[i]);
+		}
+
+
+		void	GenerateVolume(const Sphere<>&sphere,TVolumeDescriptor&volume) const
+		{
+			volume.Clear();
+			UINT32 centerStack = Locate(sphere.center);
+			SetSphereStack(volume,sphere,centerStack);
+
+
 		}
 
 		#ifdef HAS_WINDOW
@@ -1752,6 +1805,9 @@ namespace Grid
 	#endif
 
 
+
+
+
 	class SkySensorState
 	{
 	public:
@@ -1805,6 +1861,11 @@ namespace Grid
 					{
 						temporarilyVisible = true;
 					}
+				}
+
+				bool	IsVisible() const
+				{
+					return visibility > 0 || temporarilyVisible;
 				}
 			};
 			Cell	volumeCell[Grid::CellStack::Range];

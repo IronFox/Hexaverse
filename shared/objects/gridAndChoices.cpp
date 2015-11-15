@@ -43,7 +43,7 @@ namespace Objects
 		{
 			PVehicle vh = GetVehicle(cellID);
 			return !vh || vh->owner == v 
-					|| !v->CanSee(vh,t)
+					|| !v->ExtCanSee(vh,t)
 			;
 		}
 
@@ -51,7 +51,7 @@ namespace Objects
 		{
 			PSatellite vh = GetSatellite(cellID);
 			return !vh || vh->owner == v 
-					|| !v->CanSee(vh,t)
+					|| !v->ExtCanSee(vh,t)
 			;
 		}
 		
@@ -165,7 +165,7 @@ namespace Objects
 			if (base.turret->ammoNeedPerShot > munitionStorage)
 				return false;
 			const Grid::WorldData&world = source.owner->currentState;
-			source.owner->canSee.VisitAllKeys([zOffset,&world, &source,sourceLocation,&base,&c2,&closest,&closestEntity](const PWorldEntity&e)
+			source.owner->seeing.VisitAllKeys([zOffset,&world, &source,sourceLocation,&base,&c2,&closest,&closestEntity](const PWorldEntity&e)
 			{
 //					&& turret->TraceTrajectory(location+1,target.location,trajectory,iat,ic)==Turret::ReachesTarget;		
 				
@@ -493,7 +493,7 @@ namespace Objects
 		PVehicle vh = GetVehicle(cellID);
 		return !vh || vh.get() == v 
 			#ifndef CLIENT
-				|| !v->owner->CanSee(vh,v->timeAt)
+				|| !v->owner->ExtCanSee(vh,v->timeAt)
 			#endif
 		;
 	}
@@ -507,7 +507,7 @@ namespace Objects
 		PSatellite vh = GetSatellite(stackID);
 		return !vh || vh.get() == v
 			#ifndef CLIENT
-				|| !v->owner->CanSee(vh,v->timeAt)
+				|| !v->owner->ExtCanSee(vh,v->timeAt)
 			#endif
 		;
 	}

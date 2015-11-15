@@ -233,14 +233,6 @@ void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float 
 				continue;
 			const Protocol::DestroyEntity&send = (*cl)->faction == e->owner ? self : others;
 			LogEvent(EventType::MinorEntityProcess,(*cl)->ToString()+" reported seeing removal of "+e->GetName()+" at time "+String(atTime) );
-			#ifdef _DEBUG
-				if ((*cl)->faction != e->owner)
-				{
-					Objects::PWorldEntity seeingThis = e->seenBy.first();
-
-					LogEvent(EventType::MinorEntityProcess," as seen by "+seeingThis->GetName() );
-				}
-			#endif
 
 
 			//(*cl)->Hide(e);
@@ -307,14 +299,6 @@ void	SignalMotion(const Objects::PMobileEntity&v, const Grid::LCellIdI&from,cons
 		if (peer && Receiver::CanSee(*cl,v,t0))
 		{
 			LogEvent(EventType::MinorEntityProcess,(*cl)->ToString()+" reported seeing motion of "+v->GetName()+" at time "+String(t0)+"+"+String(timeNeeded) );
-			#ifdef _DEBUG
-				if ((*cl)->faction != v->owner)
-				{
-					Objects::PWorldEntity seeingThis = v->seenBy.first();
-
-					LogEvent(EventType::MinorEntityProcess," as seen by "+seeingThis->GetName() );
-				}
-			#endif
 
 			Channels::mobileEntityMotion.SendTo(peer,motion);
 		}
@@ -523,24 +507,37 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 	explosion.timestamp.atTime = atTime;
 	explosion.timestamp.rightNow = false;
 
-	static GenericHashSet<Objects::OwnerParameter,Objects::OwnerHash>	map;
+	//static GenericHashSet<Objects::OwnerParameter,Objects::OwnerHash>	map;
+	static Buffer0<Objects::OwnerParameter>	canSee;
 
 	bool allSee = isDoomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose;
 
-	map.Clear();
+	canSee.Clear();
 	if (allSee)
 	{
 		//just set all. I'm lazy, and these are rare
 		foreach (Objects::Faction::all, f)
-			map.Set(f->lock());
-		map.Set(Objects::Faction::nexus);
+			canSee.Append(f->lock());
+		canSee.Append(Objects::Faction::nexus);
 	}
 	else
-		Objects::ForeachWorldEntity([center,explosionRadius](const Objects::PWorldEntity&e)
+	{
+		static Grid::HighSetup::TVolumeDescriptor volume;
+		Grid::high.GenerateVolume(Sphere<>(center,explosionRadius),volume);
+
+		Objects::ForeachFaction([](const Objects::PFaction&f)
 		{
-			if (!map.IsSet(e->owner) && e->CanSee(center,explosionRadius))
-				map.Set(e->owner);
+			if (f->GridCanSee(volume))
+			{
+				canSee.Append(f);
+			};
 		});
+	}
+		//Objects::ForeachWorldEntity([center,explosionRadius](const Objects::PWorldEntity&e)
+		//{
+		//	if (!map.IsSet(e->owner) && e->CanSee(center,explosionRadius))
+		//		map.Set(e->owner);
+		//});
 
 
 	Protocol::AttackTrajectory	roughAttack;
@@ -579,8 +576,8 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 		roughAttack.sourcePosition.value += mod;
 	}
 
-
-	map.VisitAllKeys([explosion,attackFrom,roughAttack, hasTrajectory](const Objects::OwnerParameter&p)
+	for (const Objects::OwnerParameter&p : canSee)
+	//map.VisitAllKeys([explosion,attackFrom,roughAttack, hasTrajectory](const Objects::OwnerParameter&p)
 	{
 		State::PClient client;
 		if (State::playerMap.Query(p,client))
@@ -588,7 +585,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 			TCP::PPeer peer = client->peer.lock();
 			if (peer)
 			{
-				if (!client->faction->CanSee(attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
+				if (!client->faction->ExtCanSee(attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
 					Channels::attackTrajectory.SendTo(peer,roughAttack);
 
 
@@ -599,7 +596,8 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 
 			}
 		}
-	});
+	}
+	//);
 }
 
 

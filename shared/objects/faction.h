@@ -217,7 +217,15 @@ namespace Objects
 				gainedVisualAt.Clear();
 			}
 
-			GenericHashSet<PWorldEntity, SharedPtrHash>	canSee;
+
+			struct SeeingReference
+			{
+				count_t			sightLevel=0;
+
+
+			};
+
+			GenericHashTable<PWorldEntity, SeeingReference, SharedPtrHash>	seeing;
 
 			/**/		Faction(const String&name=""):name(name)
 			{
@@ -263,9 +271,13 @@ namespace Objects
 			void		RegisterActiveMobileGain(const PWorldEntity&);
 			void		RegisterStoredMobileGain(const PWorldEntity&);
 
-			bool		CanSee(const PWorldEntity&e, float t)	const;
+			bool		ExtCanSee(const PWorldEntity&e, float t)	const;
 
-			bool		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true);
+			bool		GridCanSee(const PWorldEntity&e) const;
+			bool		GridCanSee(const Grid::HighSetup::TVolumeDescriptor&) const;
+
+
+			void		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true);
 			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false);
 
 			void		RegisterSensorCreation(const Grid::SkySensorState&state, float t);
@@ -307,7 +319,7 @@ namespace Objects
 		void	ChangeStorage(WorldEntity&e, float atTime, const ResourceVector&max, ResourceVector&storage, Resource res, int change);
 		void	ChangeStorage(WorkingStructure&ws, float atTime, Resource res, int change);
 		void	ChangeStorage(MobileEntity&v, float atTime, Resource res, int change);
-		void	MapVisibility2(const PWorldEntity&e, const PWorldEntity&other, const OwnerParameter&checkForOwner, float&atTime);
+		//void	MapVisibility2(const PWorldEntity&e, const PWorldEntity&other, const OwnerParameter&checkForOwner, float&atTime);
 		void	ChangeOwnership( const PWorldEntity&e, const OwnerParameter&newOwner, float&atTime);
 
 		/**
@@ -316,7 +328,7 @@ namespace Objects
 		not be called too frequently.
 		Verification failure leads to program termination.
 		*/
-		void	VerifyVisibilityNetwork();
+//		void	VerifyVisibilityNetwork();
 		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource res, int demand);
 		int		GetStorage(const MobileEntity&v, Resource res);
 
@@ -324,6 +336,10 @@ namespace Objects
 		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine);
 	#endif
 
+	/**
+	Iterates through all factions, including the nexus faction
+	*/
+	void			ForeachFaction(const std::function<void(const PFaction&)>&func);
 
 	/**
 	Iterates through all entities that are located in the world, including markers (markers on client only)

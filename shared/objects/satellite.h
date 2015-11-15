@@ -204,8 +204,8 @@ namespace Objects
 		virtual bool			IsSatellite() const override {return true;}
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = 0.f; return To<MobileEntity>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = 0.f; return To<const MobileEntity>::Cast(shared_from_this());}
-		virtual bool				CanSee(const PWorldEntity&other)	const override;
-		virtual bool				CanSee(const TVec3<>&center, float radius)	const override;
+		//virtual bool				CanSee(const PWorldEntity&other)	const override;
+		//virtual bool				CanSee(const TVec3<>&center, float radius)	const override;
 
 		#ifdef HAS_WINDOW
 			virtual void		DescribeType(BaseCommand::Label&outResult, UINT32 descFlags) override;
