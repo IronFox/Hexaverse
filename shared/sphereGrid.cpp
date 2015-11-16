@@ -3872,14 +3872,24 @@ namespace Grid
 				families[i].changed = true;
 	}
 
-	void				VisibilityState::ChangeSensory(const LCellIdI&center, float radius, float t, short changeBy)
+	void				VisibilityState::ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy)
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = { false };
-		Grid::TemplateHelper::ChangeSensory(Grid::ToWorld(center), radius, changeBy, cellStack.pointer(), familyChanged);
+		Grid::TemplateHelper::ChangeSensory(desc, changeBy, cellStack.pointer(), familyChanged);
 		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
 			if (familyChanged[i])
 				families[i].changed = true;
+
 	}
+
+	//void				VisibilityState::ChangeSensory(const LCellIdI&center, float radius, float t, short changeBy)
+	//{
+	//	bool familyChanged[BaseGrid::NumFamilies] = { false };
+	//	Grid::TemplateHelper::ChangeSensory(Grid::ToWorld(center), radius, changeBy, cellStack.pointer(), familyChanged);
+	//	for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
+	//		if (familyChanged[i])
+	//			families[i].changed = true;
+	//}
 	void				VisibilityState::ChangeSensory(const SkySensorState&state, float t, short changeBy)
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = { false };

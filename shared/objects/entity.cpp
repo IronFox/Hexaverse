@@ -11,6 +11,7 @@
 #endif
 #ifndef CLIENT
 	#include "faction.h"
+	#include "gridAndChoices.h"
 #endif
 #include "vehicle.h"
 #include "structure.h"
@@ -412,33 +413,11 @@ namespace Objects
 	#endif
 
 
-	#ifndef CLIENT
-		/*virtual*/ void		WorldEntity::RegisterFactionSensory(float atTime)
-		{
-			owner->RegisterSensorCreation(location,GetScanningRange(), atTime);
-		}
 
-		/*virtual*/ void		WorldEntity::UnregisterFactionSensory(float atTime)
-		{
-			owner->RegisterSensorRemoval(location,GetScanningRange(), atTime);
-		}
-		/*virtual*/ void		WorldEntity::MoveFactionSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float atTime)
-		{
-			owner->RegisterSensorMotion(from,to,GetScanningRange(), atTime);
-		}
-
-	#endif
-
-	void WorldEntity::RegisterSensory(float&atTime)
+	/*virtual override*/	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime)
 	{
-		LogEvent(EventType::MinorEntityProcess,this,"Registering sensory ("+String(GetScanningRange())+")");
-		//#ifndef CLIENT
-		//	ForeachWorldEntity([this,&atTime](const PWorldEntity&other)
-		//	{
-		//		MapVisibilityBetween(shared_from_this(),other,atTime);
-		//	});
-		//#endif
-
+		
+		LogEvent(EventType::MinorEntityProcess,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+")");
 		#ifdef CLIENT
 			#ifdef HAS_WINDOW
 				if (isMine)
@@ -451,67 +430,16 @@ namespace Objects
 			#endif
 
 		#else
-			RegisterFactionSensory(atTime);
+			owner->RegisterSensorCreation(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),atTime);
 		#endif
 	}
 
-	void					WorldEntity::UnregisterSensory(float&atTime, bool isFinal)
+	/*virtual override*/	void					WorldEntity::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime)
 	{
-		LogEvent(EventType::MinorEntityProcess,this,"Unregistering sensory ("+String(GetScanningRange())+") at time "+String(atTime));
+		LogEvent(EventType::MinorEntityProcess,this,"Unregistering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
 		
-		PWorldEntity _this = shared_from_this();
 		#ifndef CLIENT
-			if (isFinal)
-			{
-				/*ForeachFaction([_this](const Objects::PFaction&f)
-				{
-					if (f->GridCanSee(_this))
-						f->canSee.Unset(_this);
-				});*/
-
-
-				//foreach (seenBy,s)
-				//{
-				//	(*s)->owner->canSee.Unset(_this);
-				//	ASSERT__((*s)->seeing.FindAndErase(_this));
-				//}
-
-				//foreach (Faction::all,_f)
-				//{
-				//	PFaction f= _f->lock();
-				//	if (f)
-				//	{
-				//		if (f->canSee.Unset(_this))
-				//			LogEvent(EventType::InternalFault,this,"Sensor removal should have been seen by "+f->GetLogName());
-				//	}
-				//}
-			}
-			//foreach (seeing,s)
-			//{
-			//	//SignalDisappearance(shared_from_this(),timestamp,false);
-			//	ASSERT__((*s)->seenBy.FindAndErase(_this));
-			//	PWorldEntity other = *s;
-			//	bool found = false;
-			//	foreach (other->seenBy,s2)
-			//	{
-			//		if ((*s2)->owner == owner)
-			//		{
-			//			found = true;
-			//			break;
-			//		}
-			//	}
-			//	if (!found)
-			//	{
-			//		PMobileEntity v = To<MobileEntity>::DynamicCast(other);
-			//		if (v)
-			//			atTime = std::max(atTime,v->timeAt);
-			//		owner->SignalDisappearance(other,atTime);
-			//	}
-
-			//}
-			//if (isFinal)
-			//	seenBy.Clear(0);
-			//seeing.Clear(0);
+			owner->RegisterSensorRemoval(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),atTime);
 		#endif
 
 		#ifdef CLIENT
@@ -526,7 +454,6 @@ namespace Objects
 			#endif
 
 		#else
-			UnregisterFactionSensory(atTime);
 		#endif
 
 

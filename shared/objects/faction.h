@@ -137,7 +137,7 @@ namespace Objects
 	{
 	private:
 		#ifndef CLIENT
-			void		ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short changeBy);
+			void		ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy);
 			void		ChangeSensory(const Grid::SkySensorState&state, float t, short changeBy);
 //			void		ReplaceSensory(const Grid::SkySensorState&oldState, const Grid::SkySensorState&newState, float t, short changeBy);
 			void		CheckChanges(float t);
@@ -277,14 +277,14 @@ namespace Objects
 			bool		GridCanSee(const Grid::HighSetup::TVolumeDescriptor&) const;
 
 
-			void		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true);
+			void		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true);
 			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false);
 
-			void		RegisterSensorCreation(const Grid::SkySensorState&state, float t);
-			void		RegisterSensorRemoval(const Grid::SkySensorState&state, float t);
-			void		RegisterSensorCreation(const Grid::LCellIdI&center, float radius, float t);
-			void		RegisterSensorMotion(const Grid::LCellIdI&oldCenter, const Grid::LCellIdI&newCenter, float radius, float t);
-			void		RegisterSensorRemoval(const Grid::LCellIdI&center, float radius, float t);
+			void		RegisterSensorCreation(const Grid::SkySensorState&state, float&t);
+			void		RegisterSensorRemoval(const Grid::SkySensorState&state, float&t);
+			void		RegisterSensorCreation(const Sphere<>&, float&t);
+			void		RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float&t);
+			void		RegisterSensorRemoval(const Sphere<>&, float&t);
 
 			/**
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater

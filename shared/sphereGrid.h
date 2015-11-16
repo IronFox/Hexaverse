@@ -1913,7 +1913,8 @@ namespace Grid
 		Affects the cell and its immediate neighbors only
 		*/
 		void				ChangeSensory(const Grid::HCellIdU&center, float t, short changeBy);
-		void				ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short changeBy);
+//		void				ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short changeBy);
+		void				ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy);
 		void				ChangeSensory(const Grid::SkySensorState&state, float t, short changeBy);
 		void				RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);
 

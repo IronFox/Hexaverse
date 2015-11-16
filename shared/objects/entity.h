@@ -151,6 +151,8 @@ namespace Objects
 			bool					TestIntersection(const Geometry&geo, const TVec3<>&b, const TVec3<>&d, float & distance) const;
 		#endif
 
+	private:
+
 	public:
 		virtual						~WorldEntity();
 
@@ -348,20 +350,17 @@ namespace Objects
 			health -= damageLevel;
 		}
 
+		void					RegisterSensory(float&atTime) {RegisterSensory(location,atTime);}
+		void					UnregisterSensory(float&atTime)  {RegisterSensory(location,atTime);}
 
-		void					RegisterSensory(float&atTime);
-		void					UnregisterSensory(float&atTime, bool isFinal);
+		virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime);
+		virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime);
 		#ifdef HAS_WINDOW
-			virtual void		RegisterWorldSensory();
-			virtual void		UnregisterWorldSensory();
+			virtual void		RegisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
+			virtual void		UnregisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
 			virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to);
 		#endif
 
-		#ifndef CLIENT
-			virtual void		RegisterFactionSensory(float atTime);
-			virtual void		UnregisterFactionSensory(float atTime);
-			virtual void		MoveFactionSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float atTime);
-		#endif
 
 
 
@@ -407,7 +406,7 @@ namespace Objects
 				int newDamage = std::max(empDamageLevel,damageLevel);
 				if (newDamage == empDamageLevel)
 					return;
-				UnregisterSensory(atTime,false);
+				UnregisterSensory(atTime);
 				empDamageLevel = newDamage;
 				RegisterChange(EMPDamageChanged,atTime);
 				RegisterSensory(atTime);
@@ -416,7 +415,7 @@ namespace Objects
 			{
 				if (empDamageLevel > 0)
 				{
-					UnregisterSensory(atTime,false);
+					UnregisterSensory(atTime);
 					empDamageLevel--;
 					RegisterChange(EMPDamageChanged,atTime);
 					RegisterSensory(atTime);

@@ -394,11 +394,14 @@ namespace Objects
 		}
 
 
-		void		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/)
+		void		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/, bool stack/*=true*/)
 		{
 			SeeingReference&ref = seeing.Set(e);
 
-			ref.sightLevel ++;
+			if (ref.sightLevel == 0 || stack)
+				ref.sightLevel ++;
+			else
+				return;
 
 
 			if (ref.sightLevel == 1)
@@ -452,26 +455,92 @@ namespace Objects
 
 		}
 
-		void		Faction::ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short change)
+		void		Faction::ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy)
 		{
-			visibility.ChangeSensory(center, radius, t, change);
+			visibility.ChangeSensory(desc, t, changeBy);
 		}
+
+		//void		Faction::ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short change)
+		//{
+		//	visibility.ChangeSensory(center, radius, t, change);
+		//}
 
 		void		Faction::ChangeSensory(const Grid::SkySensorState&state, float t, short change)
 		{
 			visibility.ChangeSensory(state, t, change);
 		}
 
-		void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float t)
+
+		void		Faction::RegisterSensorCreation(const Sphere<>&sphere, float&t)
+		{
+			static Grid::HighSetup::TVolumeDescriptor	desc0;
+			Grid::high.GenerateVolume(sphere,desc0);
+			ChangeSensory(desc0,t,1);
+			CheckChanges(t);
+
+			static Grid::LowSetup::TVolumeDescriptor	desc;
+			Grid::low.GenerateVolume(Sphere<>(sphere.center,sphere.radius+1.f),desc);
+			foreach (desc.coverage,c)
+			{
+				UINT32 min = c->layerBegin;
+				if (min)
+					min--;
+				for (UINT l = min; l < c->layerEnd; l++)
+				{
+					PWorldEntity e = GetEntity(Grid::LCellIdI(c->stackID,Grid::CellStack::ToHeight(l)));
+					if (!e || e->owner.get() == this)
+						continue;
+					if (GridCanSee(e))
+					{
+						SignalAppearance(e,t,true,false);
+					}
+				}
+			}
+		}
+
+		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
+		void		Faction::RegisterSensorRemoval(const Sphere<>&sphere, float&t)
+		{
+			static Grid::HighSetup::TVolumeDescriptor	desc0;
+			Grid::high.GenerateVolume(sphere,desc0);
+			ChangeSensory(desc0,t,-1);
+			CheckChanges(t);
+
+			seeing.VisitAllKeys([this,&t](const PWorldEntity&other)
+			{
+				if (!GridCanSee(other))
+				{
+					SignalDisappearance(other,t);
+				}
+			});
+		}
+
+		void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float&t)
 		{
 			ChangeSensory(state,t,+1);
 			CheckChanges(t);
+
+
+			ForeachWorldEntity([this,&t](const PWorldEntity&other)
+			{
+				if (other->owner.get() == this)
+					return;
+				if (GridCanSee(other))
+					SignalAppearance(other,t,true,false);
+			});
 		}
-		void		Faction::RegisterSensorRemoval(const Grid::SkySensorState&state, float t)
+		void		Faction::RegisterSensorRemoval(const Grid::SkySensorState&state, float&t)
 		{
 			ChangeSensory(state,t,-1);
 			CheckChanges(t);
 
+			seeing.VisitAllKeys([this,&t](const PWorldEntity&other)
+			{
+				if (!GridCanSee(other))
+				{
+					SignalDisappearance(other,t);
+				}
+			});
 		}
 
 
@@ -664,23 +733,23 @@ namespace Objects
 		}
 
 
-		void		Faction::RegisterSensorCreation(const Grid::LCellIdI&center, float radius, float t)
-		{
-			ChangeSensory(center,radius,t,1);
-			CheckChanges(t);
+		//void		Faction::RegisterSensorCreation(const Grid::LCellIdI&center, float radius, float t)
+		//{
+		//	ChangeSensory(center,radius,t,1);
+		//	CheckChanges(t);
 
-		}
-		void		Faction::RegisterSensorMotion(const Grid::LCellIdI&oldCenter, const Grid::LCellIdI&newCenter, float radius, float t)
-		{
-			ChangeSensory(oldCenter,radius,t,-1);
-			ChangeSensory(newCenter,radius,t,1);
-			CheckChanges(t);
-		}
-		void		Faction::RegisterSensorRemoval(const Grid::LCellIdI&center, float radius, float t)
-		{
-			ChangeSensory(center,radius,t,-1);
-			CheckChanges(t);
-		}
+		//}
+		//void		Faction::RegisterSensorMotion(const Grid::LCellIdI&oldCenter, const Grid::LCellIdI&newCenter, float radius, float t)
+		//{
+		//	ChangeSensory(oldCenter,radius,t,-1);
+		//	ChangeSensory(newCenter,radius,t,1);
+		//	CheckChanges(t);
+		//}
+		//void		Faction::RegisterSensorRemoval(const Grid::LCellIdI&center, float radius, float t)
+		//{
+		//	ChangeSensory(center,radius,t,-1);
+		//	CheckChanges(t);
+		//}
 
 	#else
 		/*static*/ Buffer0<PFaction>			Faction::allKnown;

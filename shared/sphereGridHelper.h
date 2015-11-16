@@ -27,6 +27,25 @@ namespace Grid
 		}
 
 
+		template <typename Stack>
+		void		ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, short changeBy, Stack*cellStack, bool*familyChanged)
+		{
+			foreach (desc.coverage,c)
+			{
+				#ifdef _DEBUG
+					ASSERT_LESS__(c->stackID,HighSetup::Grid::NumCells);
+					ASSERT_LESS__(c->layerBegin,c->layerEnd);
+					ASSERT_LESS__(c->layerBegin,CellStack::Range);
+				#endif
+				auto&stack = cellStack[c->stackID];
+				familyChanged[high.grid.GetCell(c->stackID).family] = true;
+				for (UINT32 layer = c->layerBegin; layer < c->layerEnd; layer++)
+				{
+					stack.volumeCell[layer].AlterVisibility(changeBy);
+				}
+			}
+		}
+
 
 		template <typename Stack>
 		void		ChangeSensory(const Grid::HCellIdU&center, short changeBy, Stack*cellStack, bool*familyChanged)
