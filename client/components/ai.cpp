@@ -585,7 +585,7 @@ namespace AI
 			switch (m.type)
 			{
 				case Objects::Marker::Type::HostileContact:
-					if (m.age >= 10 && m.mobileVisualization)	//after 10 rounds, assume vehicle has moved
+					if (m.age >= 10 && m.visualization && m.visualization->IsMobile())	//after 10 rounds, assume vehicle has moved
 					{
 						LogEvent(EventType::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" since hostile vehicle markers are considered outdated after 10 rounds (age="+String(m.age)+")");
 						SignalMarkerDeletion(m.id);

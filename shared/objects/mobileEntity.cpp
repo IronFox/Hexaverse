@@ -876,18 +876,17 @@ namespace Objects
 				return;
 			#ifdef HAS_WINDOW
 				static Grid::HighSetup::TVolumeDescriptor desc;
+				float t = 0.f;
 				if (isMine)
 				{
-					Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(location),GetScanningRange()),desc);
-					UnregisterWorldSensory(desc);
+					UnregisterSensory(t);
 				}
 			#endif
 			location = toLocation;
 			#ifdef HAS_WINDOW
 				if (isMine)
 				{
-					Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(location),GetScanningRange()),desc);
-					RegisterWorldSensory(desc);
+					RegisterSensory(t);
 				}
 				#ifdef THOROUGLY_DEBUG_SENSORY
 					if (isMine)

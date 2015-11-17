@@ -72,27 +72,50 @@ namespace Objects
 	//}
 
 
-	#ifndef CLIENT
-		/*virtual override*/ void		Satellite::RegisterSensory(const Grid::LCellIdI&loc, float&atTime)
+	/*virtual override*/ void		Satellite::RegisterSensory(const Grid::LCellIdI&loc, float&atTime)
+	{
+		Super::RegisterSensory(loc,atTime);
+		#ifdef CLIENT
+			if (isMine)
+				Grid::visibleOrbitGrid.ChangeSensory(location,GetScanningRange(),+1);
+		#endif
+		if (turret->groundScanningRange > 0.f)
 		{
-			Super::RegisterSensory(loc,atTime);
-			if (turret->groundScanningRange > 0.f)
-			{
-				float range = EMPModify(turret->groundScanningRange,2);
-				Grid::actualWorld.MapSensorState(loc.stackID,range,loc.height,turret->groundScannerPenetration,skySensorState);
-				Grid::actualWorld.UpdateSensorState(skySensorState);
+			float range = EMPModify(turret->groundScanningRange,2);
+			Grid::actualWorld.MapSensorState(loc.stackID,range,loc.height,turret->groundScannerPenetration,skySensorState);
+			Grid::actualWorld.UpdateSensorState(skySensorState);
+			#ifdef CLIENT
+				if (isMine)
+				{
+					Grid::actualWorld.InsertSensorCoverage(skySensorState);
+				}
+			#else
 				owner->RegisterSensorCreation(skySensorState,atTime);
-			}
+			#endif
 		}
+	}
 
-		/*virtual override*/ void		Satellite::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime)
+	/*virtual override*/ void		Satellite::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime)
+	{
+		Super::UnregisterSensory(loc,atTime);
+		#ifdef CLIENT
+			if (isMine)
+				Grid::visibleOrbitGrid.ChangeSensory(location,GetScanningRange(),-1);
+		#endif
+		if (turret->groundScanningRange > 0.f)
 		{
-			Super::UnregisterSensory(loc,atTime);
-			if (turret->groundScanningRange > 0.f)
-			{
+			#ifdef CLIENT
+				if (isMine)
+				{
+					Grid::actualWorld.RemoveSensorCoverage(skySensorState);
+				}
+			#else
 				owner->RegisterSensorRemoval(skySensorState,atTime);
-			}
+			#endif
 		}
+	}
+
+	#ifndef CLIENT
 
 
 		bool					Satellite::RefreshGroundSensor(float&atTime)
@@ -166,27 +189,27 @@ namespace Objects
 		//	}
 		//}
 
-		/*virtual override*/ void	Satellite::MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to)
-		{
-			if (from != to)
-			{
-				Grid::visibleOrbitGrid.ChangeSensory(from,GetScanningRange(),-1);
-				Grid::visibleOrbitGrid.ChangeSensory(to,GetScanningRange(),+1);
+		///*virtual override*/ void	Satellite::MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to)
+		//{
+		//	if (from != to)
+		//	{
+		//		Grid::visibleOrbitGrid.ChangeSensory(from,GetScanningRange(),-1);
+		//		Grid::visibleOrbitGrid.ChangeSensory(to,GetScanningRange(),+1);
 
 
-				if (turret->groundScanningRange > 0.f)
-				{
-					Grid::actualWorld.RemoveSensorCoverage(skySensorState);
+		//		if (turret->groundScanningRange > 0.f)
+		//		{
+		//			Grid::actualWorld.RemoveSensorCoverage(skySensorState);
 
-					float range = EMPModify(turret->groundScanningRange,2);
-					Grid::actualWorld.MapSensorState(to.stackID,range,to.height,turret->groundScannerPenetration,skySensorState);
-					Grid::actualWorld.UpdateSensorState(skySensorState);
-					Grid::actualWorld.InsertSensorCoverage(skySensorState);
-				}
-			}
+		//			float range = EMPModify(turret->groundScanningRange,2);
+		//			Grid::actualWorld.MapSensorState(to.stackID,range,to.height,turret->groundScannerPenetration,skySensorState);
+		//			Grid::actualWorld.UpdateSensorState(skySensorState);
+		//			Grid::actualWorld.InsertSensorCoverage(skySensorState);
+		//		}
+		//	}
 
 
-		}
+		//}
 
 		#if 0
 

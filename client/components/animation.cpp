@@ -842,8 +842,12 @@ namespace Animation
 				#ifdef HAS_WINDOW
 				{
 					Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
-					if (v)
-						v->MoveWorldSensory(v->preAnimationLocation,v->location);
+					if (v && v->preAnimationLocation != v->location)
+					{
+						float t = 0.f;
+						v->UnregisterSensory(v->preAnimationLocation,t);
+						v->RegisterSensory(t);
+					}
 				}
 				#endif
 
@@ -986,9 +990,13 @@ namespace Animation
 				v->location = path->rawPath.last().first;
 				//Objects::InsertVehicleIntoGrid(v,v->location);	will be done later
 				#ifdef HAS_WINDOW
-					if (v->isMine)
+					if (v->isMine && v->preAnimationLocation != v->location)
 					{
-						v->MoveWorldSensory(v->preAnimationLocation,v->location);
+						float t = 0.f;
+						v->UnregisterSensory(v->preAnimationLocation,t);
+						v->RegisterSensory(t);
+
+						//v->MoveWorldSensory(v->preAnimationLocation,v->location);
 						//Grid::actualWorld.MoveSensor(v->preAnimationLocation,v->location,v->GetScanningRange());
 					}
 				#endif
