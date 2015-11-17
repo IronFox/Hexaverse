@@ -356,8 +356,8 @@ namespace Objects
 
 			bool				PerformNonAttack();
 		protected:
-			void				ProcessVisibilityOf(const PWorldEntity&e, float&t);
-			bool				ProcessVisibilityOfS(const PWorldEntity&e, float&t);
+			//void				ProcessVisibilityOf(const PWorldEntity&e, float&t);
+			//bool				ProcessVisibilityOfS(const PWorldEntity&e, float&t);
 		private:
 			bool				HandleNormalTask();
 		public:

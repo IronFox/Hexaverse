@@ -23,7 +23,7 @@ namespace State
 
 	bool		Client::CanSee(const Objects::PWorldEntity&e, float t)	const
 	{
-		return faction && faction->CanSee(e,t);
+		return faction && faction->ExtCanSee(e,t);
 	}
 
 
@@ -247,7 +247,7 @@ namespace State
 
 		ResetFactionStartMineralValue();
 
-		Objects::VerifyVisibilityNetwork();
+//		Objects::VerifyVisibilityNetwork();
 		Objects::CheckMobileEntitySanity();
 		Objects::VerifyGrid();
 	}
@@ -296,7 +296,7 @@ namespace State
 		#ifdef _DEBUG
 			if (to == RuntimeConfig::Phase::AnimationPhase)	//should have enough time during animation RuntimeConfig::phase
 			{
-				Objects::VerifyVisibilityNetwork();	 //seems stable
+				//Objects::VerifyVisibilityNetwork();	 //seems stable
 				Objects::CheckMobileEntitySanity();
 
 				Objects::VerifyGrid();

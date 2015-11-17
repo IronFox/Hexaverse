@@ -570,7 +570,7 @@ namespace Receiver
 			timestamp.rightNow = true;
 
 
-			client->faction->canSee.VisitAllKeys([&peer,client,timestamp](const Objects::PWorldEntity&e)
+			client->faction->seeing.VisitAllKeys([&peer,client,timestamp](const Objects::PWorldEntity&e)
 			{
 				if (e->health <= 0)
 				{

@@ -1146,9 +1146,9 @@ namespace Objects
 			RefreshCompoundCoverage(atTime);
 		#else
 			s->owner->structures << s;
-
-			if (To<Tower>::DynamicCast(s))
-				towers << To<Tower>::Cast(s);
+			PTower t = To<Tower>::DynamicCast(s);
+			if (t)
+				s->owner->towers << t;
 			if (!refreshNetworkNow)
 				compoundCoverageChanged = true;
 			else
@@ -1247,11 +1247,6 @@ namespace Objects
 				}
 			#endif
 
-			#ifndef CLIENT
-				PTower t = To<Tower>::DynamicCast(e);
-				if (t)
-					towers.FindAndErase(t);
-			#endif
 
 		}
 		else
@@ -1329,7 +1324,7 @@ namespace Objects
 				compoundCoverageChanged = true;
 		#endif
 		if (t != RemovalType::DestroyedInStorage)
-			e->UnregisterSensory(timestamp,true);
+			e->UnregisterSensory(timestamp);
 
 		e->isInserted = false;
 	}

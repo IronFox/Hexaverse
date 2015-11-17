@@ -56,8 +56,7 @@ namespace Objects
 			createdInRound = other.createdInRound;
 
 			#ifdef CLIENT
-				structureVisualization.swap(other.structureVisualization);
-				mobileVisualization.swap(other.mobileVisualization);
+				visualization.swap(other.visualization);
 			#endif
 			((BaseEntity&)*this) = other;
 		}
@@ -88,8 +87,9 @@ namespace Objects
 
 			void					UpdateAge(UINT32 roundNumber);
 
-			PStructure				structureVisualization;
-			PMobileEntity			mobileVisualization;
+			PWorldEntity			visualization;
+			//PStructure				structureVisualization;
+			//PMobileEntity			mobileVisualization;
 
 			struct TVisited
 			{
@@ -183,6 +183,8 @@ namespace Objects
 			Buffer0<WSatellite>			satellites;
 			Buffer0<WSkyHub>			skyHubs;	//overlaps with satellites
 			Buffer0<WStructure>			structures;
+
+			Buffer0<WTower>				towers;
 
 			static Buffer0<WFaction>	all;
 			static PFaction				nexus;

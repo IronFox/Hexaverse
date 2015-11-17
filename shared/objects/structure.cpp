@@ -295,8 +295,8 @@ namespace Objects
 
 			//float d2 = Grid::GetQuadraticGeometricDistance(location+1,target->location);
 
-			return		owner->canSee.IsSet(target)
-					&&	turret->CanAttack() 
+			return		//owner->canSee.IsSet(target)
+					/*&&	*/turret->CanAttack() 
 					&& timeAt <= entityTime 
 					&& CountPossibleAttacks() > 0 
 					&& ExtCanHit(owner,location,foundationHeight, target->location,outTarget)

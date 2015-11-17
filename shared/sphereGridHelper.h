@@ -33,8 +33,8 @@ namespace Grid
 			foreach (desc.coverage,c)
 			{
 				#ifdef _DEBUG
-					ASSERT_LESS__(c->stackID,HighSetup::Grid::NumCells);
-					ASSERT_LESS__(c->layerBegin,c->layerEnd);
+					ASSERT_LESS__(c->stackID,HighSetup::GridType::CellCount);
+					ASSERT_LESS_OR_EQUAL__(c->layerBegin,c->layerEnd);
 					ASSERT_LESS__(c->layerBegin,CellStack::Range);
 				#endif
 				auto&stack = cellStack[c->stackID];

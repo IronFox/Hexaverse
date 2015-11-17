@@ -209,17 +209,17 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			virtual void		DescribeType(BaseCommand::Label&outResult, UINT32 descFlags) override;
-			virtual void		RegisterWorldSensory() override;
-			virtual void		UnregisterWorldSensory() override;
-			virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to) override;
+			//virtual void		RegisterWorldSensory() override;
+			//virtual void		UnregisterWorldSensory() override;
+//			virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to) override;
 			virtual void		VisitAllCommands(FCommandVisitor visitor) override {turret->VisitAllCommands(visitor);};
 
 		#endif
 
-		#ifndef CLIENT
+		//#ifndef CLIENT
 			virtual void		RegisterSensory(const Grid::LCellIdI&loc, float&atTime) override;
 			virtual void		UnregisterSensory(const Grid::LCellIdI&loc, float&atTime) override;
-		#endif
+		//#endif
 
 		//MobileEntity overrides:
 		virtual void			TranslateLocationForExport() override

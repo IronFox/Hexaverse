@@ -4075,6 +4075,41 @@ namespace Grid
 		//ShowMessage(timer.GetSecondsSince(t0));
 	}
 
+	bool		WorldData::GridCanSeeAny(const HCellIdU&base, UINT height) const
+	{
+		const auto&stack = cellStack[base.stackID];
+		UINT end = std::min(base.layer + height,CellStack::Range);
+		for (UINT layer = base.layer; layer < end; layer++)
+			if (stack.volumeCell[layer].visible > 0)
+				return true;
+		return false;
+	}
+
+	bool		WorldData::GridCanSee(const LCellIdI&center, int height, bool broad) const
+	{
+		UINT32 fine = low.grid.GetCell(center.stackID).higherEquivalent;
+		UINT32 layer0 = CellStack::ToLayer(center.height);
+		if (GridCanSeeAny(HCellIdU(fine,layer0),(UINT)height))
+			return true;
+		if (!broad)
+			return false;
+		const auto&n = high.grid.GetCell(fine).neighborhood;
+		for (int i = 0; i < n.numNeighbors; i++)
+			if (GridCanSeeAny(HCellIdU(n.neighborID[i],layer0),(UINT)height))
+				return true;
+		return false;
+	}
+
+
+	void		WorldData::ChangeSensorCoverage(const HighSetup::TVolumeDescriptor&state, signed char change)
+	{
+		bool familyChanged[BaseGrid::NumFamilies] = {false};
+		TemplateHelper::ChangeSensory(state,change,cellStack.pointer(),familyChanged);
+		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
+			if (familyChanged[i])
+				Grid::high.family[i].SetOutdated(0);
+	}
+
 	void		WorldData::ChangeSensorCoverage(const SkySensorState&state, signed char change)
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = {false};
@@ -4158,6 +4193,16 @@ namespace Grid
 		#else
 			return true;
 		#endif
+	}
+
+	void				WorldData::InsertSensor(const HighSetup::TVolumeDescriptor&desc)
+	{
+		ChangeSensorCoverage(desc,1);
+	}
+
+	void				WorldData::RemoveSensor(const HighSetup::TVolumeDescriptor&desc)
+	{
+		ChangeSensorCoverage(desc,-1);
 	}
 
 	void		WorldData::InsertSensor(const LCellIdI&cell, float radius)

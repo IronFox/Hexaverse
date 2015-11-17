@@ -60,7 +60,7 @@ namespace Objects
 		float t=0.f;
 
 		if (isMine && isCreated)
-			UnregisterSensory(t,false);
+			UnregisterSensory(t);
 
 		empDamageLevel = damageLevel;
 
@@ -393,21 +393,17 @@ namespace Objects
 	
 
 	#ifdef HAS_WINDOW
-		/*virtual*/ void WorldEntity::RegisterWorldSensory()
+		/*virtual*/ void WorldEntity::RegisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&desc)
 		{
-			Grid::actualWorld.InsertSensor(location,GetScanningRange());
+			Grid::actualWorld.InsertSensor(desc);
 
 		}
 
-		/*virtual*/ void WorldEntity::UnregisterWorldSensory()
+		/*virtual*/ void WorldEntity::UnregisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&desc)
 		{
-			Grid::actualWorld.RemoveSensor(location,GetScanningRange());
+			Grid::actualWorld.RemoveSensor(desc);
 		}
 
-		/*virtual*/ void	WorldEntity::MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to)
-		{
-			Grid::actualWorld.MoveSensor(from,to,GetScanningRange());
-		}
 
 
 	#endif
@@ -422,7 +418,9 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				if (isMine)
 				{
-					RegisterWorldSensory();
+					Grid::HighSetup::TVolumeDescriptor desc;
+					Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
+					RegisterWorldSensory(desc);
 					#ifdef THOROUGLY_DEBUG_SENSORY
 						VerifySensory();
 					#endif
@@ -446,7 +444,9 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				if (isMine)
 				{
-					UnregisterWorldSensory();
+					Grid::HighSetup::TVolumeDescriptor desc;
+					Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
+					UnregisterWorldSensory(desc);
 					#ifdef THOROUGLY_DEBUG_SENSORY
 						VerifySensory();
 					#endif

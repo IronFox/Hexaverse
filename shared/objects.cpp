@@ -238,35 +238,37 @@ namespace Objects
 
 			}
 			);
-			foreach (towers,_t)
+			ForeachFaction([](const PFaction&f)
 			{
-				PTower t = *_t;
-				if (t->IsHibernating())
-					continue;
-				attackTime = 0;
-				t->BeginAttackPhase();
-				//t->BeginAttackPhase();
-				if (t->turret->CanAttack())
+				foreach (f->towers,_t)
 				{
-					if (t->attackQueue.IsEmpty() && !t->FillAttackQueue())
+					PTower t = _t->lock();
+					if (!t || t->IsHibernating())
 						continue;
-					if (!t->HasAmmoForShot(0))
+					attackTime = 0;
+					t->BeginAttackPhase();
+					//t->BeginAttackPhase();
+					if (t->turret->CanAttack())
 					{
-						LogEvent(EventType::CommandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
-						t->attackQueue.Clear();
-						t->RegisterChange(WorldEntity::TasksChanged,t->timeAt);
-						continue;
+						if (t->attackQueue.IsEmpty() && !t->FillAttackQueue())
+							continue;
+						if (!t->HasAmmoForShot(0))
+						{
+							LogEvent(EventType::CommandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
+							t->attackQueue.Clear();
+							t->RegisterChange(WorldEntity::TasksChanged,t->timeAt);
+							continue;
+						}
+
+
+						TAttackReference&ref = attackingEntities.Append();
+						ref.eref = t;
+						ref.tref = t;
+						//ref.initiative = v->GetAttackInitiative();
+						//ref.attacksLeft = v->CountPossibleAttacks();
 					}
-
-
-					TAttackReference&ref = attackingEntities.Append();
-					ref.eref = t;
-					ref.tref = t;
-					//ref.initiative = v->GetAttackInitiative();
-					//ref.attacksLeft = v->CountPossibleAttacks();
 				}
-			}
-
+			});
 
 
 		}
@@ -283,15 +285,18 @@ namespace Objects
 		
 		void			ResetTowerAttackAction(float atTime)
 		{
-			foreach (towers,t)
+			ForeachFaction([&atTime](const PFaction&f)
 			{
-				if ((*t)->attackActionLeft != 1.f)
+				foreach (f->towers,_t)
 				{
-					(*t)->attackActionLeft = 1.f;
-					(*t)->SignalChange(WorldEntity::ActionChanged,atTime);
+					PTower t = _t->lock();
+					if (t->attackActionLeft != 1.f)
+					{
+						t->attackActionLeft = 1.f;
+						t->SignalChange(WorldEntity::ActionChanged,atTime);
+					}
 				}
-			}
-
+			});
 		}
 
 
@@ -1128,7 +1133,6 @@ namespace Objects
 			waste.Clear();
 
 		#else
-			towers.Clear();
 			Faction::all.Clear();
 			Faction::nexus->online = false;
 		#endif

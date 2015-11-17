@@ -1661,9 +1661,6 @@ namespace Objects
 		extern Buffer0<TLinkReference>		skyLinks;	//also included in structures, but filtered for quicker access
 	#endif
 
-	#ifndef CLIENT
-		extern Buffer0<PTower>			towers;	//only used by server ... so far
-	#endif
 
 
 

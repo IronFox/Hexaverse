@@ -612,57 +612,57 @@ namespace Objects
 		}
 
 
-		void MobileEntity::ProcessVisibilityOf(const PWorldEntity&e, float&t)
-		{
-			if (e.get() == this || e->owner == owner)
-				return;
-			if (CanSee(e) && !seeing.Contains(e))
-			{
-				seeing << e;
-				(e)->seenBy << shared_from_this();
-				//SignalAppearanceToHostileFaction(owner,e,t);
-				owner->SignalAppearance(e,t);
-			}
-			if (e->CanSee(shared_from_this()) && !seenBy.Contains(e))
-			{
-				seenBy << e;
-				(e)->seeing << shared_from_this();
-				//SignalAppearanceToHostileFaction(e->owner,shared_from_this(),t);
-				e->owner->SignalAppearance(shared_from_this(),t);
-			}
+		//void MobileEntity::ProcessVisibilityOf(const PWorldEntity&e, float&t)
+		//{
+		//	if (e.get() == this || e->owner == owner)
+		//		return;
+		//	if (CanSee(e) && !seeing.Contains(e))
+		//	{
+		//		seeing << e;
+		//		(e)->seenBy << shared_from_this();
+		//		//SignalAppearanceToHostileFaction(owner,e,t);
+		//		owner->SignalAppearance(e,t);
+		//	}
+		//	if (e->CanSee(shared_from_this()) && !seenBy.Contains(e))
+		//	{
+		//		seenBy << e;
+		//		(e)->seeing << shared_from_this();
+		//		//SignalAppearanceToHostileFaction(e->owner,shared_from_this(),t);
+		//		e->owner->SignalAppearance(shared_from_this(),t);
+		//	}
 
 
-		}
+		//}
 
 
-		bool MobileEntity::ProcessVisibilityOfS(const PWorldEntity&e, float&t)
-		{
-			if (e.get() == this || e->owner == owner)
-				return true;
-			bool rs = true;
-			if (CanSee(e) && !seeing.Contains(e))
-			{
-				seeing << e;
-				(e)->seenBy << shared_from_this();
-				//SignalAppearanceToHostileFaction(owner,e,t);
-				
-				if (owner->SignalAppearance(e,t)
-					&& e->GetTurretBase() 
-					&& !owner->FindReferenceMarker(Marker::Type::HostileContact,e->id))
-				{
-					rs = false;
-				}
-			}
-			if (e->CanSee(shared_from_this()) && !seenBy.Contains(e))
-			{
-				seenBy << e;
-				(e)->seeing << shared_from_this();
-				//SignalAppearanceToHostileFaction(e->owner,shared_from_this(),t);
-				e->owner->SignalAppearance(shared_from_this(),t);
-			}
+		//bool MobileEntity::ProcessVisibilityOfS(const PWorldEntity&e, float&t)
+		//{
+		//	if (e.get() == this || e->owner == owner)
+		//		return true;
+		//	bool rs = true;
+		//	if (CanSee(e) && !seeing.Contains(e))
+		//	{
+		//		seeing << e;
+		//		(e)->seenBy << shared_from_this();
+		//		//SignalAppearanceToHostileFaction(owner,e,t);
+		//		
+		//		if (owner->SignalAppearance(e,t)
+		//			&& e->GetTurretBase() 
+		//			&& !owner->FindReferenceMarker(Marker::Type::HostileContact,e->id))
+		//		{
+		//			rs = false;
+		//		}
+		//	}
+		//	if (e->CanSee(shared_from_this()) && !seenBy.Contains(e))
+		//	{
+		//		seenBy << e;
+		//		(e)->seeing << shared_from_this();
+		//		//SignalAppearanceToHostileFaction(e->owner,shared_from_this(),t);
+		//		e->owner->SignalAppearance(shared_from_this(),t);
+		//	}
 
-			return rs;
-		}
+		//	return rs;
+		//}
 
 
 		void			MobileEntity::EraseFirstTask()
@@ -875,13 +875,20 @@ namespace Objects
 			if (toLocation == location)
 				return;
 			#ifdef HAS_WINDOW
+				static Grid::HighSetup::TVolumeDescriptor desc;
 				if (isMine)
-					UnregisterWorldSensory();
+				{
+					Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(location),GetScanningRange()),desc);
+					UnregisterWorldSensory(desc);
+				}
 			#endif
 			location = toLocation;
 			#ifdef HAS_WINDOW
 				if (isMine)
-					RegisterWorldSensory();
+				{
+					Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(location),GetScanningRange()),desc);
+					RegisterWorldSensory(desc);
+				}
 				#ifdef THOROUGLY_DEBUG_SENSORY
 					if (isMine)
 						VerifySensory();

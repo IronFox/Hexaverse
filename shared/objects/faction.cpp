@@ -206,17 +206,32 @@ namespace Objects
 
 		void		Faction::RegisterStructureLoss(const PWorldEntity&e)
 		{
+			bool found0 = false;
 			foreach (structures,_s)
 			{
 				if (_s->lock() == e)
 				{
 					structures.erase(_s);
-					return;
+					found0 = true;
+					break;
 				}
 			}
-			ASSERT1__(e->IsStructure(),e->GetName());
-			LogEvent(EventType::Fatal,e.get(),"Unable to register loss for faction "+GetLogName());
-			FATAL__("Unable to register loss of entity");
+			if (!found0)
+			{
+				ASSERT1__(e->IsStructure(),e->GetName());
+				LogEvent(EventType::Fatal,e.get(),"Unable to register loss for faction "+GetLogName());
+				FATAL__("Unable to register loss of entity");
+				return;
+			}
+			if (To<Tower>::DynamicCast(e))
+			{
+				foreach (towers,_t)
+					if (_t->lock() == e)
+					{
+						towers.erase(_t);
+						break;
+					}
+			}
 		}
 		void		Faction::RegisterActiveMobileLoss(const PWorldEntity&e)
 		{
@@ -289,6 +304,9 @@ namespace Objects
 			PStructure s = To<Structure>::DynamicCast(e);
 			ASSERT1__(s,e->GetName());
 			structures << s;
+			PTower t = To<Tower>::DynamicCast(s);
+			if (t)
+				towers << t;
 		}
 		void		Faction::RegisterActiveMobileGain(const PWorldEntity&e)
 		{
@@ -580,6 +598,7 @@ namespace Objects
 			skyHubs.Clear();
 			allMobiles.Clear();
 			structures.Clear();
+			towers.Clear();
 			storedMobiles.Clear();
 
 			#ifdef CONNECTOR_LESS
@@ -822,9 +841,14 @@ namespace Objects
 
 	void			ForeachFaction(const std::function<void(const PFaction&)>&func)
 	{
-		func(Faction::nexus);
-		for (const WFaction&f : Faction::all)
-			func(f.lock());
+		#ifdef CLIENT
+			foreach (Faction::allKnown,a)
+				func(*a);
+		#else
+			func(Faction::nexus);
+			for (const WFaction&f : Faction::all)
+				func(f.lock());
+		#endif
 	}
 
 
@@ -874,10 +898,8 @@ namespace Objects
 		{
 			age = currentRoundNumber - createdInRound;
 			ASSERT_LESS__(age,100000);	//overflow otherwise, 100000 seems a good limit
-			if (mobileVisualization)
-				mobileVisualization->health = -(int)(age);
-			elif(structureVisualization)
-				structureVisualization->health = -(int)(age);
+			if (visualization)
+				visualization->health = -(int)(age);
 			if (type == Type::Visited)
 			{
 				index_t at = visitedSystemIDMap.Require(id);
@@ -904,10 +926,10 @@ namespace Objects
 					break;
 					case Type::HostileContact:
 					{
-						TVec3<> center = Grid::ToWorld(m->location);
-						
-						bool seen = false;
-						foreach(structures, s)
+						//TVec3<> center = Grid::ToWorld(m->location);
+						//if ()
+						bool seen = m->visualization && Grid::actualWorld.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
+						/*foreach(structures, s)
 							if ((*s)->isMine && (*s)->CanSee(center, 0))
 							{
 								LogEvent(EventType::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
@@ -929,7 +951,7 @@ namespace Objects
 									LogEvent(EventType::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
 									seen = true;
 									break;
-								}
+								}*/
 						if (seen)
 							outOudated << m->id;
 					}
@@ -966,12 +988,12 @@ namespace Objects
 					Component::Turret* turret = Component::GetTurretByName(referenceType[1]);
 					ASSERT1__(base, referenceType);
 					ASSERT1__(turret, referenceType);
-					m.mobileVisualization.reset(new Vehicle(OwnerParameter(), location, base, turret));
-					m.mobileVisualization->id = referenceID;
-					m.mobileVisualization->UpdateSystem();
-					m.mobileVisualization->health = -(int)m.age;
-					m.mobileVisualization->isMine = type == Type::EntityDeath;
-					mobileGhosts << m.mobileVisualization;
+					m.visualization.reset(new Vehicle(OwnerParameter(), location, base, turret));
+					m.visualization->id = referenceID;
+					To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
+					m.visualization->health = -(int)m.age;
+					m.visualization->isMine = type == Type::EntityDeath;
+					mobileGhosts << To<MobileEntity>::Cast( m.visualization );
 				}
 				else
 				{
@@ -980,11 +1002,11 @@ namespace Objects
 					if (prototype)
 					{
 						ASSERT1__(prototype, referenceType);
-						m.structureVisualization = To<Structure>::Cast(prototype->CreateNewInstance(OwnerParameter(), location, 0));
-						m.structureVisualization->id = referenceID;
-						m.structureVisualization->health = -(int)m.age;
-						m.structureVisualization->isMine = type == Type::EntityDeath;
-						structureGhosts << m.structureVisualization;
+						m.visualization = To<Structure>::Cast(prototype->CreateNewInstance(OwnerParameter(), location, 0));
+						m.visualization->id = referenceID;
+						m.visualization->health = -(int)m.age;
+						m.visualization->isMine = type == Type::EntityDeath;
+						structureGhosts << To<Structure>::Cast(m.visualization);
 					}
 					else
 					{
@@ -992,12 +1014,12 @@ namespace Objects
 						if (prototype)
 						{
 							//satellite
-							m.mobileVisualization = To<MobileEntity>::Cast(prototype->CreateNewInstance(OwnerParameter(), location, 0.f));
-							m.mobileVisualization->id = referenceID;
-							m.mobileVisualization->UpdateSystem();
-							m.mobileVisualization->health = -(int)m.age;
-							m.mobileVisualization->isMine = type == Type::EntityDeath;
-							mobileGhosts << m.mobileVisualization;
+							m.visualization = To<MobileEntity>::Cast(prototype->CreateNewInstance(OwnerParameter(), location, 0.f));
+							m.visualization->id = referenceID;
+							To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
+							m.visualization->health = -(int)m.age;
+							m.visualization->isMine = type == Type::EntityDeath;
+							mobileGhosts << To<MobileEntity>::Cast( m.visualization);
 						}
 						//probably sattelite, but not gonna go there now
 
@@ -1030,28 +1052,23 @@ namespace Objects
 			if (m.UtilizesReferenceEntity())
 			{
 				ASSERT__(referenceIDMap.Unset(m.referenceEntity));
-				if (m.mobileVisualization)
+				if (m.visualization)
 				{
-					mobileGhosts.FindAndErase(m.mobileVisualization);
+					if (m.visualization->IsMobile())
+					{
+						mobileGhosts.FindAndErase(m.visualization);
+					}
+					elif(m.visualization->IsStructure())
+					{
+						structureGhosts.FindAndErase(m.visualization);
+					}
 					#ifdef HAS_WINDOW
-						if (selectedEntity == m.mobileVisualization)
+						if (selectedEntity == m.visualization)
 						{
 							Deselect(controlEnabled);
 						}
 					#endif
-
-					m.mobileVisualization.reset();
-				}
-				elif(m.structureVisualization)
-				{
-					structureGhosts.FindAndErase(m.structureVisualization);
-					#ifdef HAS_WINDOW
-						if (selectedEntity == m.structureVisualization)
-						{
-							Deselect(controlEnabled);
-						}
-					#endif
-					m.structureVisualization.reset();
+					m.visualization.reset();
 				}
 			}
 			else

@@ -142,29 +142,29 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void Satellite::RegisterWorldSensory()
-		{
-			Grid::visibleOrbitGrid.ChangeSensory(location,GetScanningRange(),+1);
+		///*virtual override*/ void Satellite::RegisterWorldSensory()
+		//{
+		//	Grid::visibleOrbitGrid.ChangeSensory(location,GetScanningRange(),+1);
 
-			if (turret->groundScanningRange > 0.f)
-			{
-				float range = EMPModify(turret->groundScanningRange,2);
-				Grid::actualWorld.MapSensorState(location.stackID,range,location.height,turret->groundScannerPenetration,skySensorState);
-				Grid::actualWorld.UpdateSensorState(skySensorState);
-				Grid::actualWorld.InsertSensorCoverage(skySensorState);
-			}
-		}
+		//	if (turret->groundScanningRange > 0.f)
+		//	{
+		//		float range = EMPModify(turret->groundScanningRange,2);
+		//		Grid::actualWorld.MapSensorState(location.stackID,range,location.height,turret->groundScannerPenetration,skySensorState);
+		//		Grid::actualWorld.UpdateSensorState(skySensorState);
+		//		Grid::actualWorld.InsertSensorCoverage(skySensorState);
+		//	}
+		//}
 
-		/*virtual override*/ void Satellite::UnregisterWorldSensory()
-		{
-			Grid::visibleOrbitGrid.ChangeSensory(location,GetScanningRange(),-1);
+		///*virtual override*/ void Satellite::UnregisterWorldSensory()
+		//{
+		//	Grid::visibleOrbitGrid.ChangeSensory(location,GetScanningRange(),-1);
 
 
-			if (turret->groundScanningRange > 0.f)
-			{
-				Grid::actualWorld.RemoveSensorCoverage(skySensorState);
-			}
-		}
+		//	if (turret->groundScanningRange > 0.f)
+		//	{
+		//		Grid::actualWorld.RemoveSensorCoverage(skySensorState);
+		//	}
+		//}
 
 		/*virtual override*/ void	Satellite::MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to)
 		{
@@ -684,56 +684,6 @@ namespace Objects
 					float oldTime = timeAt;
 					timeAt += timeCost;
 
-					//for (index_t i = 0; i < seeing.Count(); i++)
-					//{
-					//	const PWorldEntity&other = seeing[i];
-	
-					//	if (!CanSee(other))
-					//	{
-					//		ASSERT__(other->seenBy.FindAndErase(shared_from_this()));
-
-					//		bool found = false;
-					//		foreach (other->seenBy,s2)
-					//		{
-					//			if ((*s2)->owner == owner)
-					//			{
-					//				found = true;
-					//				break;
-					//			}
-					//		}
-					//		if (!found)
-					//		{
-					//			PMobileEntity v = To<MobileEntity>::DynamicCast(other);
-					//			if (v)
-					//				timeAt = std::max(timeAt, v->timeAt);
-					//			owner->SignalDisappearance(other,timeAt);
-					//		}
-
-					//		seeing.Erase(i--);
-					//	}
-					//}
-					//for (index_t i = 0; i < seenBy.Count(); i++)
-					//{
-					//	const PWorldEntity&other = seenBy[i];
-	
-					//	if (!other->CanSee(shared_from_this()))
-					//	{
-					//		ASSERT__(other->seeing.FindAndErase(shared_from_this()));
-					//		checkStillBeeingSeenBy.set(other->owner);
-					//		seenBy.Erase(i--);
-					//	}
-					//}
-
-			
-					//foreach (seenBy,s)
-					//	checkStillBeeingSeenBy.Unset((*s)->owner);
-
-				
-					//checkStillBeeingSeenBy.VisitAllKeys([this,timeCost](const OwnerParameter&id)
-					//{
-					//	//SignalDisappearanceToHostileFaction(id,shared_from_this(),timeAt+timeCost);
-					//	id->SignalDisappearance(shared_from_this(),timeAt);
-					//});
 					this->UnregisterSensory(old,timeAt);
 					this->RegisterSensory(location,timeAt);
 					owner->seeing.VisitAllKeys([this,&result](const PWorldEntity&e)
@@ -790,13 +740,13 @@ namespace Objects
 						}
 					});
 
-					if (result == MobilePlacementResult::PlacementFailedHarmfulOrBlocked)
-					{
-						this->UnregisterSensory(location,timeAt);
-						this->RegisterSensory(old,timeAt);
-						location = old;
-						return result;
-					}
+					//if (result == MobilePlacementResult::PlacementFailedHarmfulOrBlocked)
+					//{
+					//	this->UnregisterSensory(location,timeAt);
+					//	this->RegisterSensory(old,timeAt);
+					//	location = old;
+					//	return result;
+					//}
 		
 
 
