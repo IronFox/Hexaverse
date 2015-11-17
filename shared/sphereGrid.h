@@ -1198,7 +1198,7 @@ namespace Grid
 				if (!Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
 				{
 					st.layerBegin = st.layerEnd = 0;
-					return;
+					continue;
 				}
 			
 				st.layerBegin = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
