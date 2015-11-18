@@ -2476,7 +2476,7 @@ bool loop()
 void MyFatal(const FatalDescriptor&descriptor)
 {
 	String message = descriptor.ToString();
-	LogFile file("fatal.log",false);
+	LogFile file(RuntimeConfig::ConfigFile("fatal.log"),false);
 	
 	file.Log(message+"\n",true);
 	file.Close();
