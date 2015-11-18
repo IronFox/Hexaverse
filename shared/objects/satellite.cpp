@@ -72,9 +72,9 @@ namespace Objects
 	//}
 
 
-	/*virtual override*/ void		Satellite::RegisterSensory(const Grid::LCellIdI&loc, float&atTime)
+	/*virtual override*/ void		Satellite::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
 	{
-		Super::RegisterSensory(loc,atTime);
+		Super::RegisterSensory(loc,atTime,checkChangesNow);
 		#ifdef CLIENT
 			if (isMine)
 				Grid::visibleOrbitGrid.ChangeSensory(location,GetScanningRange(),+1);
@@ -90,14 +90,14 @@ namespace Objects
 					Grid::actualWorld.InsertSensorCoverage(skySensorState);
 				}
 			#else
-				owner->RegisterSensorCreation(skySensorState,atTime);
+				owner->RegisterSensorCreation(skySensorState,atTime,checkChangesNow);
 			#endif
 		}
 	}
 
-	/*virtual override*/ void		Satellite::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime)
+	/*virtual override*/ void		Satellite::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
 	{
-		Super::UnregisterSensory(loc,atTime);
+		Super::UnregisterSensory(loc,atTime,checkChangesNow);
 		#ifdef CLIENT
 			if (isMine)
 				Grid::visibleOrbitGrid.ChangeSensory(location,GetScanningRange(),-1);
@@ -110,7 +110,7 @@ namespace Objects
 					Grid::actualWorld.RemoveSensorCoverage(skySensorState);
 				}
 			#else
-				owner->RegisterSensorRemoval(skySensorState,atTime);
+				owner->RegisterSensorRemoval(skySensorState,atTime,checkChangesNow);
 			#endif
 		}
 	}
@@ -127,9 +127,9 @@ namespace Objects
 				{
 					LogEvent(EventType::MinorEntityProcess,this,"Ground-sensor change detected");
 
-					owner->RegisterSensorRemoval(state,atTime);
+					owner->RegisterSensorRemoval(state,atTime,false);
 					atTime += timeEpsilon;
-					owner->RegisterSensorCreation(skySensorState,atTime);
+					owner->RegisterSensorCreation(skySensorState,atTime,true);
 					atTime += timeEpsilon;
 					return true;
 				}

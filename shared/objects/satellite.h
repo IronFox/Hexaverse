@@ -217,8 +217,8 @@ namespace Objects
 		#endif
 
 		//#ifndef CLIENT
-			virtual void		RegisterSensory(const Grid::LCellIdI&loc, float&atTime) override;
-			virtual void		UnregisterSensory(const Grid::LCellIdI&loc, float&atTime) override;
+			virtual void		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true) override;
+			virtual void		UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true) override;
 		//#endif
 
 		//MobileEntity overrides:

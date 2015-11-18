@@ -350,11 +350,11 @@ namespace Objects
 			health -= damageLevel;
 		}
 
-		void					RegisterSensory(float&atTime) {RegisterSensory(location,atTime);}
-		void					UnregisterSensory(float&atTime)  {RegisterSensory(location,atTime);}
+		void					RegisterSensory(float&atTime, bool checkChangesNow=true) {RegisterSensory(location,atTime,checkChangesNow);}
+		void					UnregisterSensory(float&atTime, bool checkChangesNow=true)  {UnregisterSensory(location,atTime,checkChangesNow);}
 
-		virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime);
-		virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime);
+		virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true);
+		virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true);
 		#ifdef HAS_WINDOW
 			virtual void		RegisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
 			virtual void		UnregisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);

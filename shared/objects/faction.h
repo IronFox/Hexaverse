@@ -280,13 +280,13 @@ namespace Objects
 
 
 			void		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true);
-			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false);
+			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false, bool signalConnectedClient=true);
 
-			void		RegisterSensorCreation(const Grid::SkySensorState&state, float&t);
-			void		RegisterSensorRemoval(const Grid::SkySensorState&state, float&t);
-			void		RegisterSensorCreation(const Sphere<>&, float&t);
-			void		RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float&t);
-			void		RegisterSensorRemoval(const Sphere<>&, float&t);
+			void		RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow);
+			void		RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow);
+			void		RegisterSensorCreation(const Sphere<>&, float&t, bool checkChangesNow);
+			void		RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float&t, bool checkChangesNow);
+			void		RegisterSensorRemoval(const Sphere<>&, float&t, bool checkChangesNow);
 
 			/**
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater

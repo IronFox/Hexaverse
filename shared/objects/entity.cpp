@@ -410,7 +410,7 @@ namespace Objects
 
 
 
-	/*virtual override*/	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime)
+	/*virtual override*/	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
 	{
 		
 		LogEvent(EventType::MinorEntityProcess,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+")");
@@ -428,16 +428,16 @@ namespace Objects
 			#endif
 
 		#else
-			owner->RegisterSensorCreation(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),atTime);
+			owner->RegisterSensorCreation(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),atTime,checkChangesNow);
 		#endif
 	}
 
-	/*virtual override*/	void					WorldEntity::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime)
+	/*virtual override*/	void					WorldEntity::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
 	{
 		LogEvent(EventType::MinorEntityProcess,this,"Unregistering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
 		
 		#ifndef CLIENT
-			owner->RegisterSensorRemoval(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),atTime);
+			owner->RegisterSensorRemoval(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),atTime,checkChangesNow);
 		#endif
 
 		#ifdef CLIENT

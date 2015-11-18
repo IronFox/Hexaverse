@@ -3878,7 +3878,10 @@ namespace Grid
 		Grid::TemplateHelper::ChangeSensory(desc, changeBy, cellStack.pointer(), familyChanged);
 		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
 			if (familyChanged[i])
+			{
 				families[i].changed = true;
+				//families[i].lastChange
+			}
 
 	}
 
@@ -3947,10 +3950,10 @@ namespace Grid
 					families[f].coverageChanged = true;
 					families[f].lastChange = t;
 				}
-	}
 			}
-
 		}
+
+	}
 
 
 

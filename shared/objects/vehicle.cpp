@@ -466,7 +466,7 @@ namespace Objects
 					timeAt += timeCost;
 
 
-					this->UnregisterSensory(old,timeAt);
+					this->UnregisterSensory(old,timeAt,false);
 					this->RegisterSensory(location,timeAt);
 					owner->seeing.VisitAllKeys([this,&result](const PWorldEntity&e)
 					{

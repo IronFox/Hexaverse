@@ -1324,7 +1324,15 @@ namespace Objects
 				compoundCoverageChanged = true;
 		#endif
 		if (t != RemovalType::DestroyedInStorage)
+		{
 			e->UnregisterSensory(timestamp);
+			#ifndef CLIENT
+			ForeachFaction([e,&timestamp](const PFaction&f)
+			{
+				f->SignalDisappearance(e,timestamp,true,false);
+			});
+			#endif
+		}
 
 		e->isInserted = false;
 	}

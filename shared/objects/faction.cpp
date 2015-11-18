@@ -448,7 +448,7 @@ namespace Objects
 			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
 		}
 
-		void		Faction::SignalDisappearance(const PWorldEntity&e, float&t, bool force)
+		void		Faction::SignalDisappearance(const PWorldEntity&e, float&t, bool force, bool signalConnectedClient/*=true*/)
 		{
 			SeeingReference*ref = seeing.QueryPointer(e);
 
@@ -467,7 +467,8 @@ namespace Objects
 					v->timeAt = std::max(v->timeAt,t);
 				ASSERT1__(lostVisualAt.SetNew(e,t),e->id.ToString());
 				seeing.Unset(e);
-				SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
+				if (signalConnectedClient)
+					SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
 			}
 			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
 
@@ -489,12 +490,13 @@ namespace Objects
 		}
 
 
-		void		Faction::RegisterSensorCreation(const Sphere<>&sphere, float&t)
+		void		Faction::RegisterSensorCreation(const Sphere<>&sphere, float&t, bool checkChangesNow)
 		{
 			static Grid::HighSetup::TVolumeDescriptor	desc0;
 			Grid::high.GenerateVolume(sphere,desc0);
 			ChangeSensory(desc0,t,1);
-			CheckChanges(t);
+			if (checkChangesNow)
+				CheckChanges(t);
 
 			static Grid::LowSetup::TVolumeDescriptor	desc;
 			Grid::low.GenerateVolume(Sphere<>(sphere.center,sphere.radius+1.f),desc);
@@ -517,26 +519,33 @@ namespace Objects
 		}
 
 		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
-		void		Faction::RegisterSensorRemoval(const Sphere<>&sphere, float&t)
+		void		Faction::RegisterSensorRemoval(const Sphere<>&sphere, float&t, bool checkChangesNow)
 		{
 			static Grid::HighSetup::TVolumeDescriptor	desc0;
 			Grid::high.GenerateVolume(sphere,desc0);
 			ChangeSensory(desc0,t,-1);
-			CheckChanges(t);
-
-			seeing.VisitAllKeys([this,&t](const PWorldEntity&other)
+			if (checkChangesNow)
+				CheckChanges(t);
+			float escaped = sqr(sphere.radius+2);
+			static Array<PWorldEntity>	seen;
+			seeing.exportKeys(seen);
+			foreach (seen,s)
 			{
-				if (!GridCanSee(other))
+				float d2 = Vec::quadraticDistance(sphere.center,(*s)->system.w.xyz);
+				if (d2 > escaped)
+					continue;
+				if (!GridCanSee(*s))
 				{
-					SignalDisappearance(other,t);
+					SignalDisappearance(*s,t);
 				}
-			});
+			};
 		}
 
-		void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float&t)
+		void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow)
 		{
 			ChangeSensory(state,t,+1);
-			CheckChanges(t);
+			if (checkChangesNow)
+				CheckChanges(t);
 
 
 			ForeachWorldEntity([this,&t](const PWorldEntity&other)
@@ -547,18 +556,20 @@ namespace Objects
 					SignalAppearance(other,t,true,false);
 			});
 		}
-		void		Faction::RegisterSensorRemoval(const Grid::SkySensorState&state, float&t)
+		void		Faction::RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow)
 		{
 			ChangeSensory(state,t,-1);
-			CheckChanges(t);
+			if (checkChangesNow)
+				CheckChanges(t);
 
-			seeing.VisitAllKeys([this,&t](const PWorldEntity&other)
+			static Array<PWorldEntity>	seen;
+			foreach (seen,s)
 			{
-				if (!GridCanSee(other))
+				if (!GridCanSee(*s))
 				{
-					SignalDisappearance(other,t);
+					SignalDisappearance(*s,t);
 				}
-			});
+			};
 		}
 
 
