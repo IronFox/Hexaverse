@@ -438,6 +438,10 @@ namespace Objects
 			MobilePlacementResult result = MobilePlacementResult::PlacementOkay;
 			if (old != location)
 			{
+				if (fallingHeight > 0)
+				{
+					result = MobilePlacementResult::PlacementOkayFellDown;
+				}
 				if (isCreated)
 				{
 					RemoveVehicleFromGrid(To<Vehicle>::Cast(shared_from_this()),old);
@@ -449,141 +453,8 @@ namespace Objects
 						RegisterChange(WorldEntity::TasksChanged,timeAt);
 					}
 				}
-				if (fallingHeight > 0)
-				{
-					result = MobilePlacementResult::PlacementOkayFellDown;
-				}
-				this->UpdateSystem();
-				if (signalEvent)
-				{
 
-					//static GenericHashSet<OwnerParameter,OwnerHash>	checkStillBeeingSeenBy;
-					//static Buffer0<PWorldEntity> checkCanStillSee;
-					//checkCanStillSee.Clear();
-					//checkStillBeeingSeenBy.Clear();
-
-					float oldTime = timeAt;
-					timeAt += timeCost;
-
-
-					this->UnregisterSensory(old,timeAt,false);
-					this->RegisterSensory(location,timeAt);
-					owner->seeing.VisitAllKeys([this,&result](const PWorldEntity&e)
-					{
-						float zOffset;
-						PTurretBase b = e->GetTurretBase(zOffset);
-						if (!b)
-							return;
-						//PMobileEntity&m = To<MobileEntity>::Cast(e);
-						if (b->turret->CanAttack())
-						{
-							for (WMobileEntity w : owner->allMobiles)
-							{
-								PMobileEntity v2 = w.lock();
-								if (!v2 || !v2->IsVehicle())
-									continue;
-
-								for (index_t i = 0; i < v2->myTasks.Count(); i++)
-								{
-									const Task&task = v2->myTasks[i];
-									bool badTask = false;
-									if (task.type == Task::MoveTo)
-									{
-										for (const auto&node : task.path)
-										{
-											//TVec3<> world = Grid::ToWorld(node.cell);
-											//float zOffset;
-											//const auto&base = m->GetTurretBase(zOffset);
-											Grid::LCellIdI actual;
-											if (b->ExtCanHit(e->owner,e->location,zOffset,node.cell, actual))
-											{
-												badTask = true;
-												break;
-											}
-
-										}
-									}
-									if (badTask)
-									{
-										LogEvent(EventType::EntityProcess,v2.get(),"Dangerous movement into range of "+e->GetNiceName()+" detected. Dropping task(s).");
-										if (v2.get() == this)
-										{
-											ClearAllTasks(true,CLOCATION);
-											result = MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
-										}
-										else
-										{
-											while (v2->myTasks.Count() > i)
-												v2->myTasks.EraseBack();
-										}
-										break;
-									}
-
-								}
-							}
-						}
-					});
-
-
-		
-
-					if (timeCost > 0)
-					{
-						SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,oldTime,timeCost);
-					}
-					else
-					{
-						#ifndef CLIENT
-							LogEvent(EventType::MinorEntityProcess,this,"Time cost is "+String(timeCost)+". Warping vehicle at time "+String(oldTime));
-						#endif
-						RegisterChange(PositionChanged,oldTime);
-					}
-					//timeAt += timeCost;
-
-					bool doBreak = false;
-					ForeachFaction([this,&doBreak](const PFaction&f)
-					{
-						if (doBreak)
-							return;
-						if (f->towers.IsEmpty() || !f->ExtCanSee(shared_from_this(),timeAt))
-							return;
-						Grid::LCellIdI loc;
-						foreach (f->towers, _t)
-						{
-							PTower t = _t->lock();
-							if (t && t->WouldAttack(shared_from_this(),loc,timeAt))
-							{
-								if (t->AttackNext(loc,true))
-								{
-									LogEvent(EventType::EntityProcess,t.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
-
-									t->Attack(timeAt);
-									if (health <= 0)
-									{
-										doBreak = true;
-										return;
-									}
-										
-								}
-							}
-						}
-
-					});
-					if (doBreak)
-						return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
-
-					#ifndef CLIENT
-						LogEvent(EventType::MinorEntityProcess,this,"Motion completed");
-					#endif
-				}
-				else
-				{
-					timeAt += timeCost;
-					#ifndef CLIENT
-						LogEvent(EventType::MinorEntityProcess,this,"Silent motion completed");
-					#endif
-				}
-
+				Super::HandleMotion(result, signalEvent,old, timeCost);
 			}
 			#ifdef _DEBUG
 				ASSERT__(Failed(result) || hadTasks == HasTasks());

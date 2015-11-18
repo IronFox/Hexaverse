@@ -386,13 +386,21 @@ namespace Objects
 			const UINT32 bottom = Grid::CellStack::ToLayer(e->location.height);
 			const int entityHeight =e->GetHeight();
 			const UINT32 end = std::min(Grid::CellStack::Range,bottom + (UINT32)entityHeight);
-			for (int k = 0; k < c.neighborhood.numNeighbors; k++)
 			{
-				const UINT32 fine2 = c.neighborhood.neighborID[k];
+				const auto&stack = visibility.cellStack[fine];
+				//const UINT32 fine2 = c.neighborhood.neighborID[k];
 				for (UINT32 layer = bottom; layer < end; layer++)
-					if (visibility.cellStack[fine2].volumeCell[layer].IsVisible())
+					if (stack.volumeCell[layer].IsVisible())
 						return true;
 			}
+
+			//for (int k = 0; k < c.neighborhood.numNeighbors; k++)
+			//{
+			//	const UINT32 fine2 = c.neighborhood.neighborID[k];
+			//	for (UINT32 layer = bottom; layer < end; layer++)
+			//		if (visibility.cellStack[fine2].volumeCell[layer].IsVisible())
+			//			return true;
+			//}
 			return false;
 
 		}
@@ -412,19 +420,19 @@ namespace Objects
 		}
 
 
-		void		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/, bool stack/*=true*/)
+		void		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/, bool stack/*=true*/, index_t incStackBy/*=1*/)
 		{
 			SeeingReference&ref = seeing.Set(e);
 
 			if (ref.sightLevel == 0 || stack)
-				ref.sightLevel ++;
+				ref.sightLevel +=incStackBy;
 			else
 				return;
 
 
-			if (ref.sightLevel == 1)
+			if (ref.sightLevel == incStackBy)
 			{
-
+				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Gained visual");
 				float t0;
 				if (lostVisualAt.QueryAndUnset(e,t0))
 				{
@@ -458,6 +466,7 @@ namespace Objects
 
 			if ((ref && !ref->sightLevel) || force)
 			{
+				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Lost visual");
 				float t0;
 				if (gainedVisualAt.QueryAndUnset(e,t0))
 					t = std::max(t0,t);	//permissive. whatever. seriously
@@ -490,50 +499,113 @@ namespace Objects
 		}
 
 
-		void		Faction::RegisterSensorCreation(const Sphere<>&sphere, float&t, bool checkChangesNow)
+		count_t		Faction::CountSatelliteCoverage(const TVec3<>&center)	const
 		{
-			static Grid::HighSetup::TVolumeDescriptor	desc0;
-			Grid::high.GenerateVolume(sphere,desc0);
-			ChangeSensory(desc0,t,1);
-			if (checkChangesNow)
-				CheckChanges(t);
-
-			static Grid::LowSetup::TVolumeDescriptor	desc;
-			Grid::low.GenerateVolume(Sphere<>(sphere.center,sphere.radius+1.f),desc);
-			foreach (desc.coverage,c)
+			count_t rs = 0;
+			foreach (satellites,s)
 			{
-				UINT32 min = c->layerBegin;
-				if (min)
-					min--;
-				for (UINT l = min; l < c->layerEnd; l++)
+				PSatellite sat = s->lock();
+				if (sat && Sphere<>(sat->system.w.xyz,sat->GetScanningRange()).Contains(center))
+					rs++;
+			}
+			return rs;
+		}
+
+
+		void		Faction::CheckGridVisibility(const PWorldEntity&e,float&timeAt)
+		{
+			if (!e || e->owner.get() == this)
+				return;
+			if (seeing.IsSet(e))
+			{
+				if (e->IsSatellite())
 				{
-					PWorldEntity e = GetEntity(Grid::LCellIdI(c->stackID,Grid::CellStack::ToHeight(l)));
-					if (!e || e->owner.get() == this)
-						continue;
+					count_t cover = CountSatelliteCoverage(e->system.w.xyz);
+					if (cover == 0)
+						SignalDisappearance(e,timeAt,true);
+					else
+						seeing[e].sightLevel = cover;
+				}
+				else
+					if (!GridCanSee(e))
+					{
+						SignalDisappearance(e,timeAt);
+					}
+			}
+			else
+			{
+				if (e->IsSatellite())
+				{
+					count_t cover = CountSatelliteCoverage(e->system.w.xyz);
+					if (cover > 0)
+						SignalAppearance(e,timeAt,true,false,cover);
+				}
+				else
 					if (GridCanSee(e))
 					{
-						SignalAppearance(e,t,true,false);
+						SignalAppearance(e,timeAt,true,false);
+					}
+			}
+		}
+
+
+		void		Faction::RegisterSensorCreation(const Sphere<>&sphere, bool isSatellite, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+		{
+			if (!isSatellite)
+			{
+				static Grid::HighSetup::TVolumeDescriptor	desc0;
+				Grid::high.GenerateVolume(sphere,desc0);
+				ChangeSensory(desc0,t,1);
+				if (checkChangesNow)
+					CheckChanges(t);
+
+				static Grid::LowSetup::TVolumeDescriptor	desc;
+				Grid::low.GenerateVolume(Sphere<>(sphere.center,sphere.radius+1.f),desc);
+				foreach (desc.coverage,c)
+				{
+					UINT32 min = c->layerBegin;
+					if (min)
+						min--;
+					for (UINT l = min; l < c->layerEnd; l++)
+					{
+						PWorldEntity e = GetEntity(Grid::LCellIdI(c->stackID,Grid::CellStack::ToHeight(l)));
+						if (!e || e->owner.get() == this)
+							continue;
+						if (GridCanSee(e))
+						{
+							SignalAppearance(e,t,true,false);
+							if (newContacts)
+								newContacts->Append(e);
+						}
 					}
 				}
 			}
-			foreach (Objects::satellites,s)
+			else
 			{
-				PSatellite sat = *s;
-				if (sat->owner.get() != this && sphere.Contains(sat->system.w.xyz))
+				foreach (Objects::satellites,s)
 				{
-					SignalAppearance(sat,t,true,false);
+					PSatellite sat = *s;
+					if (sat->owner.get() != this && sphere.Contains(sat->system.w.xyz))
+					{
+						SignalAppearance(sat,t,true,false);
+						if (newContacts)
+							newContacts->Append(sat);
+					}
 				}
 			}
 		}
 
 		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
-		void		Faction::RegisterSensorRemoval(const Sphere<>&sphere, float&t, bool checkChangesNow)
+		void		Faction::RegisterSensorRemoval(const Sphere<>&sphere, bool isSatellite, float&t, bool checkChangesNow)
 		{
-			static Grid::HighSetup::TVolumeDescriptor	desc0;
-			Grid::high.GenerateVolume(sphere,desc0);
-			ChangeSensory(desc0,t,-1);
-			if (checkChangesNow)
-				CheckChanges(t);
+			if (!isSatellite)
+			{
+				static Grid::HighSetup::TVolumeDescriptor	desc0;
+				Grid::high.GenerateVolume(sphere,desc0);
+				ChangeSensory(desc0,t,-1);
+				if (checkChangesNow)
+					CheckChanges(t);
+			}
 			float escaped = sqr(sphere.radius+2);
 			static Array<PWorldEntity>	seen;
 			seeing.exportKeys(seen);
@@ -541,7 +613,7 @@ namespace Objects
 			{
 				
 				float d2 = Vec::quadraticDistance(sphere.center,(*s)->system.w.xyz);
-				if (d2 > escaped)
+				if (d2 > escaped || (*s)->IsSatellite() != isSatellite)
 					continue;
 				if ((*s)->IsSatellite())
 				{
@@ -559,19 +631,23 @@ namespace Objects
 			};
 		}
 
-		void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow)
+		void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 		{
 			ChangeSensory(state,t,+1);
 			if (checkChangesNow)
 				CheckChanges(t);
 
 
-			ForeachWorldEntity([this,&t](const PWorldEntity&other)
+			ForeachWorldEntity([this,&t,newContacts](const PWorldEntity&other)
 			{
 				if (other->owner.get() == this)
 					return;
 				if (GridCanSee(other))
+				{
 					SignalAppearance(other,t,true,false);
+					if (newContacts)
+						newContacts->Append(other);
+				}
 			});
 		}
 		void		Faction::RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow)

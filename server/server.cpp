@@ -161,9 +161,9 @@ void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, cons
 		//return;	//already knows this
 	Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,atTime);
 
-	Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
-	if (v)
+	if (e->IsMobile())
 	{
+		Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
 	//	TCP::Serial<Protocol::VehicleConstruction>	w;
 		TCP::Serial<Protocol::NewMobileEntity>	w;
 		State::Describe(w.Ref(),*v,false,timestamp,0xFFFFFFFF);
@@ -173,7 +173,7 @@ void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, cons
 	else
 	{
 		Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
-		ASSERT__(s);
+		ASSERT1__(s,e->GetName());
 		TCP::Serial<Protocol::StructureConstruction>	w;
 		State::Describe(w.Ref(),*s,false,timestamp);
 		w.Seal();

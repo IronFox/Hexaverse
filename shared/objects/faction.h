@@ -278,15 +278,18 @@ namespace Objects
 			bool		GridCanSee(const PWorldEntity&e) const;
 			bool		GridCanSee(const Grid::HighSetup::TVolumeDescriptor&) const;
 
+			void		CheckGridVisibility(const PWorldEntity&,float&timeAt);
 
-			void		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true);
+			void		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true, index_t incStackBy=1);
 			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false, bool signalConnectedClient=true);
 
-			void		RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow);
+			void		RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
 			void		RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow);
-			void		RegisterSensorCreation(const Sphere<>&, float&t, bool checkChangesNow);
-			void		RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float&t, bool checkChangesNow);
-			void		RegisterSensorRemoval(const Sphere<>&, float&t, bool checkChangesNow);
+			void		RegisterSensorCreation(const Sphere<>&, bool isSatellite, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
+			void		RegisterSensorMotion(const Sphere<>&from, bool isSatellite, const Sphere<>&to, float&t, bool checkChangesNow);
+			void		RegisterSensorRemoval(const Sphere<>&, bool isSatellite, float&t, bool checkChangesNow);
+
+			count_t		CountSatelliteCoverage(const TVec3<>&center)	const;
 
 			/**
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater

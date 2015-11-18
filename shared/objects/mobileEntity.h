@@ -43,6 +43,8 @@ namespace Objects
 			, public Hibernating
 		#endif
 	{
+	protected:
+		void		HandleMotion(MobilePlacementResult&rs, bool signalEvent, const Grid::LCellIdI&oldLocation, float timeCost);
 	public:
 		typedef CursorMode::mode_t	mode_t;
 

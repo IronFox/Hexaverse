@@ -72,9 +72,9 @@ namespace Objects
 	//}
 
 
-	/*virtual override*/ void		Satellite::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
+	/*virtual override*/ void		Satellite::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 	{
-		Super::RegisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0);
+		Super::RegisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0, newContacts);
 		#ifdef CLIENT
 			if (isMine)
 				Grid::visibleOrbitGrid.ChangeSensory(loc,GetScanningRange(),+1);
@@ -90,7 +90,7 @@ namespace Objects
 					Grid::actualWorld.InsertSensorCoverage(skySensorState);
 				}
 			#else
-				owner->RegisterSensorCreation(skySensorState,atTime,checkChangesNow);
+				owner->RegisterSensorCreation(skySensorState,atTime,checkChangesNow,newContacts);
 			#endif
 		}
 	}
@@ -127,9 +127,9 @@ namespace Objects
 				{
 					LogEvent(EventType::MinorEntityProcess,this,"Ground-sensor change detected");
 
-					owner->RegisterSensorRemoval(state,atTime,false);
+					owner->RegisterSensorCreation(skySensorState,atTime,false);
 					atTime += timeEpsilon;
-					owner->RegisterSensorCreation(skySensorState,atTime,true);
+					owner->RegisterSensorRemoval(state,atTime,true);
 					atTime += timeEpsilon;
 					return true;
 				}
@@ -696,6 +696,7 @@ namespace Objects
 						RegisterChange(WorldEntity::TasksChanged,timeAt);
 					}
 				}
+				Super::HandleMotion(result,signalEvent,old,timeCost);
 				this->UpdateSystem();
 				if (signalEvent)
 				{
