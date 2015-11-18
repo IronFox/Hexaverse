@@ -4208,27 +4208,27 @@ namespace Grid
 		ChangeSensorCoverage(desc,-1);
 	}
 
-	void		WorldData::InsertSensor(const LCellIdI&cell, float radius)
-	{
-		ChangeSensory(cell,radius,1);
-		#ifdef DEBUG_SENSORY
-			TSensor s;
-			s.center = cell;
-			s.radius = radius;
-			//ASSERT__(!sensors.Contains(s));	//this can fire falsely, if a vehicle is moved to the previous location of another vehicle (which hasn't updated yet)
-			sensors.Append(s);
-		#endif
-	}
-	void		WorldData::RemoveSensor(const LCellIdI&cell, float radius)
-	{
-		#ifdef DEBUG_SENSORY
-			TSensor s;
-			s.center = cell;
-			s.radius = radius;
-			ASSERT__(sensors.FindAndErase(s));	//this must always work, however
-		#endif
-		ChangeSensory(cell,radius,-1);
-	}
+	//void		WorldData::InsertSensor(const LCellIdI&cell, float radius)
+	//{
+	//	ChangeSensory(cell,radius,1);
+	//	#ifdef DEBUG_SENSORY
+	//		TSensor s;
+	//		s.center = cell;
+	//		s.radius = radius;
+	//		//ASSERT__(!sensors.Contains(s));	//this can fire falsely, if a vehicle is moved to the previous location of another vehicle (which hasn't updated yet)
+	//		sensors.Append(s);
+	//	#endif
+	//}
+	//void		WorldData::RemoveSensor(const LCellIdI&cell, float radius)
+	//{
+	//	#ifdef DEBUG_SENSORY
+	//		TSensor s;
+	//		s.center = cell;
+	//		s.radius = radius;
+	//		ASSERT__(sensors.FindAndErase(s));	//this must always work, however
+	//	#endif
+	//	ChangeSensory(cell,radius,-1);
+	//}
 
 	#endif
 

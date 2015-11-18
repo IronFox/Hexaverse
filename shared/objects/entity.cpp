@@ -409,6 +409,13 @@ namespace Objects
 	#endif
 
 
+	void					WorldEntity::MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow/*=true*/)
+	{
+		if (from == to)
+			return;
+		UnregisterSensory(from,atTime,false);
+		RegisterSensory(to,atTime,checkChangesNow);
+	}
 
 	/*virtual override*/	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
 	{

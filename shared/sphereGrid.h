@@ -2086,9 +2086,9 @@ namespace Grid
 			void				SignalLightingChange(const LCellIdI&cellID);
 			void				InsertSensor(const HighSetup::TVolumeDescriptor&desc);
 			void				RemoveSensor(const HighSetup::TVolumeDescriptor&desc);
-			void				InsertSensor(const LCellIdI&, float radius);
-			void				RemoveSensor(const LCellIdI&, float radius);
-			inline void			MoveSensor(const LCellIdI&from, const LCellIdI&to, float radius) {if (from == Grid::LCellIdI::Invalid || from == to) return; RemoveSensor(from,radius); InsertSensor(to,radius);}
+			//void				InsertSensor(const LCellIdI&, float radius);
+			//void				RemoveSensor(const LCellIdI&, float radius);
+			//inline void			MoveSensor(const LCellIdI&from, const LCellIdI&to, float radius) {if (from == Grid::LCellIdI::Invalid || from == to) return; RemoveSensor(from,radius); InsertSensor(to,radius);}
 
 			void				InsertSensorCoverage(const SkySensorState&);
 			void				RemoveSensorCoverage(const SkySensorState&);

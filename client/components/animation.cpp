@@ -981,7 +981,7 @@ namespace Animation
 		{
 			case  MovementStream:
 			{
-				//LogEvent(EventType::Debug, allocatedTarget.get() ,"Ending movement stream at "+String(Animation::atTime)+"/"+String(this->time.max));
+				LogEvent(EventType::Debug, allocatedTarget.get() ,"Ending movement stream at "+String(Animation::atTime)+"/"+String(this->time.max));
 
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				ASSERT__(v);
@@ -1385,27 +1385,36 @@ namespace Animation
 					{
 						//if ((*v)->preAnimationLocation != (*v)->location)
 							//Objects::RemoveVehicleFromGrid(*v,(*v)->preAnimationLocation);
-						if ((*v)->isMine)
+						if ((*v)->isMine && !Animation::insertIntoGridLater.IsSet((*v)->id))
 						{
-							Grid::actualWorld.MoveSensor((*v)->preAnimationLocation,(*v)->location,(*v)->GetScanningRange());
+							float t = 0.f;
+							(*v)->MoveSensory((*v)->preAnimationLocation,(*v)->location,t);
+//							Grid::actualWorld.MoveSensor((*v)->preAnimationLocation,(*v)->location,(*v)->GetScanningRange());
 						}
 					}
 				#endif
 
-				foreach (Objects::vehicles, v)
-				{
-					//if ((*v)->preAnimationLocation != (*v)->location)
-					//	Objects::InsertVehicleIntoGrid(*v, (*v)->location);
-					(*v)->preAnimationLocation = (*v)->location;
-				}
 
 				Animation::insertIntoGridLater.VisitAllKeys([](const TUniqueID&key)
 				{
 					Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(Objects::GetEntity(key));
-					if (v && v->IsVehicle())
-						Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(v),v->location);
+					if (v)
+					{
+						if (v->isMine)
+						{
+							float t = 0.f;
+							v->MoveSensory(v->preAnimationLocation,v->location,t);
+						}
+						if (v->IsVehicle())
+							Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(v),v->location);
+					}
 				});
 				Animation::insertIntoGridLater.Clear();
+
+				foreach (Objects::vehicles, v)
+					(*v)->preAnimationLocation = (*v)->location;
+				foreach (Objects::satellites, v)
+					(*v)->preAnimationLocation = (*v)->location;
 
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::gameHasBegun)
 				{

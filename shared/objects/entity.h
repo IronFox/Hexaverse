@@ -355,6 +355,7 @@ namespace Objects
 
 		virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true);
 		virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true);
+		void					MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow=true);
 		#ifdef HAS_WINDOW
 			virtual void		RegisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
 			virtual void		UnregisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);

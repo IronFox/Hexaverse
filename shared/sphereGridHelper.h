@@ -3,6 +3,13 @@
 
 #include "sphereGrid.h"
 
+#ifdef _DEBUG
+	#include <io/encryption.h>
+
+#endif
+
+
+
 namespace Grid
 {
 	namespace TemplateHelper
@@ -30,6 +37,15 @@ namespace Grid
 		template <typename Stack>
 		void		ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, short changeBy, Stack*cellStack, bool*familyChanged)
 		{
+			#ifdef _DEBUG
+			{
+				UINT32 crc = CRC32::getChecksum(desc.coverage.pointer(),desc.coverage.GetContentSize());
+				LogEvent(EventType::Debug,"Applying sensory change ("+String(changeBy)+"), using descriptor with "+String(desc.coverage.Count())+" stack(s), crc="+IntToHex((int)crc,8));	
+			}
+
+			#endif
+
+
 			foreach (desc.coverage,c)
 			{
 				#ifdef _DEBUG

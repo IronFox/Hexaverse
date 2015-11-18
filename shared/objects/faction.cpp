@@ -516,6 +516,14 @@ namespace Objects
 					}
 				}
 			}
+			foreach (Objects::satellites,s)
+			{
+				PSatellite sat = *s;
+				if (sat->owner.get() != this && sphere.Contains(sat->system.w.xyz))
+				{
+					SignalAppearance(sat,t,true,false);
+				}
+			}
 		}
 
 		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
@@ -531,13 +539,23 @@ namespace Objects
 			seeing.exportKeys(seen);
 			foreach (seen,s)
 			{
+				
 				float d2 = Vec::quadraticDistance(sphere.center,(*s)->system.w.xyz);
 				if (d2 > escaped)
 					continue;
-				if (!GridCanSee(*s))
+				if ((*s)->IsSatellite())
 				{
-					SignalDisappearance(*s,t);
+					PSatellite sat = To<Satellite>::Cast(*s);
+					if (sphere.Contains(sat->system.w.xyz))
+					{
+						SignalDisappearance(sat,t);
+					}
 				}
+				else
+					if (!GridCanSee(*s))
+					{
+						SignalDisappearance(*s,t);
+					}
 			};
 		}
 
@@ -799,15 +817,11 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				if (e->isMine)
 				{
-					if (!s)
-					{
-						if (e->IsMobile())
-							Grid::actualWorld.RemoveSensor(To<MobileEntity>::Cast(e)->preAnimationLocation,e->GetScanningRange());
-						else
-							Grid::actualWorld.RemoveSensor(e->location,e->GetScanningRange());
-					}
+					float t = 0.f;
+					if (!s && e->IsMobile())
+						e->UnregisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t,false);
 					else
-						Grid::actualWorld.RemoveSensor(e->location,e->GetScanningRange());
+						e->UnregisterSensory(t,false);
 					#ifdef THOROUGLY_DEBUG_SENSORY
 						VerifySensory();
 					#endif
@@ -824,15 +838,11 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				if (e->isMine)
 				{
-					if (!s)
-					{
-						if (e->IsMobile())
-							Grid::actualWorld.InsertSensor(To<MobileEntity>::Cast(e)->preAnimationLocation,e->GetScanningRange());
-						else
-							Grid::actualWorld.InsertSensor(e->location,e->GetScanningRange());
-					}
+					float t = 0.f;
+					if (!s && e->IsMobile())
+						e->RegisterSensory(To<MobileEntity>::Cast(e)->preAnimationLocation,t,false);
 					else
-						Grid::actualWorld.InsertSensor(e->location,e->GetScanningRange());
+						e->RegisterSensory(t,false);
 					#ifdef THOROUGLY_DEBUG_SENSORY
 						VerifySensory();
 					#endif

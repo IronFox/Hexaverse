@@ -874,6 +874,7 @@ namespace Objects
 		{
 			if (toLocation == location)
 				return;
+			LogEvent(EventType::MinorEntityProcess,this,"Relocating to "+toLocation.ToString()+" ("+String(updateSystem)+")");
 			#ifdef HAS_WINDOW
 				static Grid::HighSetup::TVolumeDescriptor desc;
 				float t = 0.f;
