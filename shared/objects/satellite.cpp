@@ -74,10 +74,10 @@ namespace Objects
 
 	/*virtual override*/ void		Satellite::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
 	{
-		Super::RegisterSensory(loc,atTime,checkChangesNow);
+		Super::RegisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0);
 		#ifdef CLIENT
 			if (isMine)
-				Grid::visibleOrbitGrid.ChangeSensory(location,GetScanningRange(),+1);
+				Grid::visibleOrbitGrid.ChangeSensory(loc,GetScanningRange(),+1);
 		#endif
 		if (turret->groundScanningRange > 0.f)
 		{
@@ -97,10 +97,10 @@ namespace Objects
 
 	/*virtual override*/ void		Satellite::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
 	{
-		Super::UnregisterSensory(loc,atTime,checkChangesNow);
+		Super::UnregisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0);
 		#ifdef CLIENT
 			if (isMine)
-				Grid::visibleOrbitGrid.ChangeSensory(location,GetScanningRange(),-1);
+				Grid::visibleOrbitGrid.ChangeSensory(loc,GetScanningRange(),-1);
 		#endif
 		if (turret->groundScanningRange > 0.f)
 		{
