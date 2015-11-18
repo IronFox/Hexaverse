@@ -392,7 +392,7 @@ namespace Objects
 							if (PlotCourse(ways[target],false))
 							{
 								hasTriedPlottingOnMoveAutoMotion = true;
-								LogEvent(EventType::EntityProcess,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
+								LogEvent(EventType::MinorEntityProcess,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
 								return false;	//retry
 							}
 						}
@@ -401,7 +401,7 @@ namespace Objects
 							if (PlotCourse(ways[i],false))
 							{
 								hasTriedPlottingOnMoveAutoMotion = true;
-								LogEvent(EventType::EntityProcess,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
+								LogEvent(EventType::MinorEntityProcess,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
 								return false;	//retry
 							}
 					}
