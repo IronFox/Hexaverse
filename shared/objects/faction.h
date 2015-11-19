@@ -273,7 +273,7 @@ namespace Objects
 			void		RegisterActiveMobileGain(const PWorldEntity&);
 			void		RegisterStoredMobileGain(const PWorldEntity&);
 
-			bool		ExtCanSee(const PWorldEntity&e, float t)	const;
+			bool		CanSee(const PWorldEntity&e, float t)	const;
 
 			bool		GridCanSee(const PWorldEntity&e) const;
 			bool		GridCanSee(const Grid::HighSetup::TVolumeDescriptor&) const;
@@ -290,6 +290,7 @@ namespace Objects
 			void		RegisterSensorRemoval(const Sphere<>&, bool isSatellite, float&t, bool checkChangesNow);
 
 			count_t		CountSatelliteCoverage(const TVec3<>&center)	const;
+			count_t		CountSatelliteCoverage(const Sphere<>&)	const;
 
 			/**
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater

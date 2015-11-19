@@ -23,7 +23,7 @@ namespace State
 
 	bool		Client::CanSee(const Objects::PWorldEntity&e, float t)	const
 	{
-		return faction && faction->ExtCanSee(e,t);
+		return faction && faction->CanSee(e,t);
 	}
 
 

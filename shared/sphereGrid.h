@@ -1775,9 +1775,9 @@ namespace Grid
 													(
 														(cell.height >= -CellStack::HalfRange && cell.height < CellStack::HalfRange)
 														||
-														(cell.height == satHeight)
+														(cell.height == satHeight || cell.height == satHeight+1)
 														||
-														(cell.height == decSatHeight)
+														(cell.height == decSatHeight || cell.height == decSatHeight+1)
 													)
 													;}
 	#ifdef HYBRID_GRID

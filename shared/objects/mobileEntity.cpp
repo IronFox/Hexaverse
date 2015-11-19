@@ -461,35 +461,61 @@ namespace Objects
 				}
 				//timeAt += timeCost;
 
+				const auto _this = shared_from_this();
 				bool doBreak = false;
-				ForeachFaction([this,&doBreak](const PFaction&f)
+				ForeachFaction([this,&doBreak,_this](const PFaction&f)
 				{
 					if (doBreak)
 						return;
 					f->CheckGridVisibility(shared_from_this(),timeAt);
-					if (f->towers.IsEmpty() || !f->ExtCanSee(shared_from_this(),timeAt))
+					if (!f->CanSee(_this,timeAt))
 						return;
 					Grid::LCellIdI loc;
-					foreach (f->towers, _t)
+					if (IsSatellite())
 					{
-						PTower t = _t->lock();
-						if (t && t->WouldAttack(shared_from_this(),loc,timeAt))
+						foreach (f->satellites, _s)
 						{
-							if (t->AttackNext(loc,true))
+							PSatellite s = _s->lock();
+							if (s && s->WouldAttack(_this,loc,timeAt))
 							{
-								LogEvent(EventType::EntityProcess,t.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
-
-								t->Attack(timeAt);
-								if (health <= 0)
+								if (s->AttackNext(loc,true))
 								{
-									doBreak = true;
-									return;
-								}
+									LogEvent(EventType::EntityProcess,s.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
+
+									s->Attack(timeAt);
+									if (health <= 0)
+									{
+										doBreak = true;
+										return;
+									}
 										
+								}
+							}
+						}
+
+					}
+					else
+					{
+						foreach (f->towers, _t)
+						{
+							PTower t = _t->lock();
+							if (t && t->WouldAttack(_this,loc,timeAt))
+							{
+								if (t->AttackNext(loc,true))
+								{
+									LogEvent(EventType::EntityProcess,t.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
+
+									t->Attack(timeAt);
+									if (health <= 0)
+									{
+										doBreak = true;
+										return;
+									}
+										
+								}
 							}
 						}
 					}
-
 				});
 				if (doBreak)
 				{

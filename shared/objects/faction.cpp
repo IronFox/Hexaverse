@@ -367,7 +367,7 @@ namespace Objects
 			{
 				DBG_ASSERT_LESS__(st->layerBegin,Grid::CellStack::Range);
 				DBG_ASSERT_LESS__(st->layerEnd,Grid::CellStack::Range);
-				DBG_ASSERT_LESS__(st->layerBegin,st->layerEnd);
+				DBG_ASSERT_LESS_OR_EQUAL__(st->layerBegin,st->layerEnd);
 				const auto&stack = visibility.cellStack[st->stackID];
 				for (UINT32 layer = st->layerBegin; layer < st->layerEnd; layer++)
 				{
@@ -405,13 +405,13 @@ namespace Objects
 
 		}
 
-		bool		Faction::ExtCanSee(const PWorldEntity&e, float t)	const
+		bool		Faction::CanSee(const PWorldEntity&e, float t)	const
 		{
 			if ( e->owner.get() == this )
 				return true;
 			if (!seeing.IsSet(e) && !lostVisualAt.IsSet(e))
 			{
-				return GridCanSee(e);
+				return false;
 			}
 			float t0;
 			if (gainedVisualAt.Query(e,t0))
@@ -425,7 +425,11 @@ namespace Objects
 			SeeingReference&ref = seeing.Set(e);
 
 			if (ref.sightLevel == 0 || stack)
+			{
 				ref.sightLevel +=incStackBy;
+				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Sight level increased to "+String(ref.sightLevel));
+
+			}
 			else
 				return;
 
@@ -461,8 +465,10 @@ namespace Objects
 			SeeingReference*ref = seeing.QueryPointer(e);
 
 			if (ref)
+			{
 				ref->sightLevel --;
-
+				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Sight level reduced to "+String(ref->sightLevel));
+			}
 
 			if ((ref && !ref->sightLevel) || force)
 			{
@@ -506,6 +512,18 @@ namespace Objects
 			{
 				PSatellite sat = s->lock();
 				if (sat && Sphere<>(sat->system.w.xyz,sat->GetScanningRange()).Contains(center))
+					rs++;
+			}
+			return rs;
+		}
+
+		count_t		Faction::CountSatelliteCoverage(const Sphere<>&sphere)	const
+		{
+			count_t rs = 0;
+			foreach (satellites,s)
+			{
+				PSatellite sat = s->lock();
+				if (sat && Sphere<>(sat->system.w.xyz,sat->GetScanningRange()).Intersects(sphere))
 					rs++;
 			}
 			return rs;
@@ -582,13 +600,16 @@ namespace Objects
 			}
 			else
 			{
+				//count_t coverage = CountSatelliteCoverage(sat->system.w.xyz);
+
 				foreach (Objects::satellites,s)
 				{
 					PSatellite sat = *s;
 					if (sat->owner.get() != this && sphere.Contains(sat->system.w.xyz))
 					{
-						SignalAppearance(sat,t,true,false);
-						if (newContacts)
+						bool wasSeeing = newContacts && seeing.IsSet(sat);
+						SignalAppearance(sat,t,true);
+						if (newContacts && !wasSeeing)
 							newContacts->Append(sat);
 					}
 				}
@@ -1103,6 +1124,7 @@ namespace Objects
 						m.visualization->id = referenceID;
 						m.visualization->health = -(int)m.age;
 						m.visualization->isMine = type == Type::EntityDeath;
+						m.visualization->UpdateNiceName();
 						structureGhosts << To<Structure>::Cast(m.visualization);
 					}
 					else
@@ -1116,6 +1138,7 @@ namespace Objects
 							To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
 							m.visualization->health = -(int)m.age;
 							m.visualization->isMine = type == Type::EntityDeath;
+							m.visualization->UpdateNiceName();
 							mobileGhosts << To<MobileEntity>::Cast( m.visualization);
 						}
 						//probably sattelite, but not gonna go there now

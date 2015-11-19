@@ -923,6 +923,8 @@ namespace Animation
 			{
 			//	allocatedTarget = Objects::GetEntity(targetEntityID);
 				//if (allocatedTarget)
+				LogEvent(EventType::Debug, allocatedTarget.get() ,"Starting attack ("+String(attackTrajectoryType.ToString())+",range="+String(attackRange)+",loc="+location.ToString()+") at "+String(Animation::atTime)+"/"+String(this->time.min));
+				
 				{
 					//Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
 					//Objects::PTower t = To<Objects::Tower>::DynamicCast(allocatedTarget);
@@ -943,13 +945,16 @@ namespace Animation
 					}*/
 					Grid::HCellIdI			attackTargetCell;	//not needed
 					//TVec3<>					attackTarget;	//not needed
-					Objects::Component::Turret::TraceTrajectory(attackTrajectoryType,Objects::Component::Turret::MaxRangeToVelocity(attackRange), attackerPosition,Grid::ToWorld(location),activeTrajectory);
+					Objects::Component::Turret::TraceTrajectory(attackTrajectoryType,attackRange, attackerPosition,Grid::ToWorld(location),activeTrajectory);
 					explosionRadius = attacker->explosionRadius;
 					projectileAt = 0.f;
 					projectileActive = true;
 
 					#ifdef HAS_WINDOW
 						trajectoryGeometry.Clear();
+						#ifdef _DEBUG
+							LogEvent(EventType::Debug, allocatedTarget.get() ,"Compiling trajectory with "+String(activeTrajectory.Count())+" steps, starting from "+Vec::toString(activeTrajectory.first())+", ending "+Vec::toString(activeTrajectory.last()));
+						#endif
 						maxProjectileProjection = Objects::Component::Turret::CompileTrajectory(activeTrajectory,false,trajectoryGeometry,0.5f);
 						trajectoryVisualization.vbo.CreateFromStructs(trajectoryGeometry.GetLOD(0).vertices);
 						trajectoryVisualization.ibo.Create(trajectoryGeometry.GetLOD(0).indices);
@@ -1006,6 +1011,7 @@ namespace Animation
 			}
 			break;
 			case Attack:
+				LogEvent(EventType::Debug, allocatedTarget.get() ,"Ending attack at "+String(Animation::atTime)+"/"+String(this->time.max));
 				projectileActive = false;
 				for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
 				{

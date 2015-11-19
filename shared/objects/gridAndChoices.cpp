@@ -43,7 +43,7 @@ namespace Objects
 		{
 			PVehicle vh = GetVehicle(cellID);
 			return !vh || vh->owner == v 
-					|| !v->ExtCanSee(vh,t)
+					|| !v->CanSee(vh,t)
 			;
 		}
 
@@ -51,7 +51,7 @@ namespace Objects
 		{
 			PSatellite vh = GetSatellite(cellID);
 			return !vh || vh->owner == v 
-					|| !v->ExtCanSee(vh,t)
+					|| !v->CanSee(vh,t)
 			;
 		}
 		
@@ -493,7 +493,7 @@ namespace Objects
 		PVehicle vh = GetVehicle(cellID);
 		return !vh || vh.get() == v 
 			#ifndef CLIENT
-				|| !v->owner->ExtCanSee(vh,v->timeAt)
+				|| !v->owner->CanSee(vh,v->timeAt)
 			#endif
 		;
 	}
@@ -507,7 +507,7 @@ namespace Objects
 		PSatellite vh = GetSatellite(stackID);
 		return !vh || vh.get() == v
 			#ifndef CLIENT
-				|| !v->owner->ExtCanSee(vh,v->timeAt)
+				|| !v->owner->CanSee(vh,v->timeAt)
 			#endif
 		;
 	}
@@ -1019,6 +1019,12 @@ namespace Objects
 					Renderer::animatedTurrets << b;
 			#endif
 			OnAppear(e);
+		#else
+			ForeachFaction([e,&atTime](const PFaction&f)
+			{
+				f->CheckGridVisibility(e,atTime);
+			});
+
 		#endif
 
 		e->isInserted = true;

@@ -715,7 +715,7 @@ namespace Objects
 			}
 			PWorldEntity e = GetEntity(focus);
 			
-			if (!e || !v.owner->ExtCanSee(e,v.timeAt) || e.get() == &v)
+			if (!e || !v.owner->CanSee(e,v.timeAt) || e.get() == &v)
 			{
 				outError = "Nothing in focus cell "+focus.ToString();
 				return false;
@@ -739,7 +739,7 @@ namespace Objects
 			if (!v.CanRepair())
 				return JobDone;
 			PWorldEntity target = GetEntity(focus);
-			if (!target || !v.owner->ExtCanSee(target,v.timeAt) || target.get() == &v)
+			if (!target || !v.owner->CanSee(target,v.timeAt) || target.get() == &v)
 			{
 				LogEvent(EventType::CommandRejected,&v,this->GetName()+ ": Nothing in focus cell "+focus.ToString());
 				return JobDone;

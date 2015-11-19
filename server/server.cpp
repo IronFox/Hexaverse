@@ -523,11 +523,12 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 	else
 	{
 		static Grid::HighSetup::TVolumeDescriptor volume;
-		Grid::high.GenerateVolume(Sphere<>(center,explosionRadius),volume);
+		Sphere<> explosionSphere(center,explosionRadius);
+		Grid::high.GenerateVolume(explosionSphere,volume);
 
-		Objects::ForeachFaction([](const Objects::PFaction&f)
+		Objects::ForeachFaction([explosionSphere](const Objects::PFaction&f)
 		{
-			if (f->GridCanSee(volume))
+			if (f->GridCanSee(volume) || f->CountSatelliteCoverage(explosionSphere))
 			{
 				canSee.Append(f);
 			};
@@ -585,7 +586,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 			TCP::PPeer peer = client->peer.lock();
 			if (peer)
 			{
-				if (!client->faction->ExtCanSee(attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
+				if (!client->faction->CanSee(attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
 					Channels::attackTrajectory.SendTo(peer,roughAttack);
 
 

@@ -275,7 +275,10 @@ namespace Objects
 		{
 			float d2 = Vec::quadraticDistance(source,dest);
 			if (d2 > sqr(range))
+			{
+				DBG_FATAL__("Trajectory out of range: "+String(sqrt(d2))+">="+String(range));
 				return;
+			}
 		
 
 			const float h0 = Vec::length(source);
