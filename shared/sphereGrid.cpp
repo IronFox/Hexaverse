@@ -48,8 +48,11 @@ namespace Grid
 
 
 
-	#ifdef HAS_WINDOW
+	#ifdef CLIENT
 		OrbitGrid	visibleOrbitGrid;
+	#endif
+
+	#ifdef HAS_WINDOW
 		/*static*/ const float4 WaterCompiler::waterColor = float4(0.5f, 0.6f, 1.f,0.6f);
 	#endif
 
@@ -532,6 +535,9 @@ namespace Grid
 			#ifdef HAS_WINDOW
 				volumeCell[i].intLightLevel = 0xFF;
 				volumeCell[i].submergence = 0;
+			#endif
+
+			#ifdef CLIENT
 				volumeCell[i].visible = 0;
 			#endif
 		}
@@ -545,7 +551,7 @@ namespace Grid
 		for (UINT i = 0; i < Range; i++)
 		{
 			volumeCell[i].structureCounter = 0;
-			#ifdef HAS_WINDOW
+			#ifdef CLIENT
 				volumeCell[i].visible = 0;
 			#endif
 		}
@@ -1386,7 +1392,7 @@ namespace Grid
 	}
 
 
-	#ifdef HAS_WINDOW
+	#ifdef CLIENT
 	
 		void				WorldData::InsertSensorCoverage(const SkySensorState&state)
 		{
@@ -3441,33 +3447,7 @@ namespace Grid
 			}
 			ASSERT_EQUAL__(at, range* CellStack::Range);
 		}
-		//if (data1.IsNotEmpty())
-		//{
-		//	index_t at = 0;
-
-		//	foreach (data1,block)
-		//	{
-		//		for (index_t i = 0; i < block->repitition; i++)
-		//		{
-		//			index_t stackIndex = (at % range) + offset;
-		//			index_t layer = at / range;
-
-		//			CellStack&stack = cellStack[stackIndex];
-
-		//			if (stack.volumeCell[layer].ApplyDelta(block->value))
-		//			{
-		//				anyChanged = true;
-		//				#ifdef HAS_WINDOW
-		//					stack.lightingChangedTo = std::max<BYTE>(stack.lightingChangedTo,(BYTE)(layer+1));
-		//				#endif
-		//			}
-		//		
-		//			at++;
-		//		}
-		//	}
-		//	ASSERT_EQUAL__(at, range* CellStack::Range);
-		//	
-		//}
+	
 		#ifdef CLIENT
 			ASSERT__(actualWorld);	//client only knows one world
 		#endif
@@ -3615,33 +3595,6 @@ namespace Grid
 			}
 			ASSERT_CONCLUSION(data0,delta);
 		}
-		//{
-		//	const CellStack::TStructCountDelta*delta = data1.pointer();
-		//	for (index_t i = 0; i < range; i++)
-		//	{
-		//		CellStack&stack = cellStack[i+offset];
-		//		bool anyChanged = false;
-		//		for (index_t j = 0; j < CellStack::Range; j++)
-		//		{
-		//			if (stack.volumeCell[j].ApplyDelta(*delta))
-		//			{
-		//				anyChanged = true;
-		//				#ifdef HAS_WINDOW
-		//					stack.lightingChangedTo = std::max<BYTE>(stack.lightingChangedTo,(BYTE)j+1);
-		//				#endif
-		//			}
-		//			delta ++;
-		//		}
-		//		if (anyChanged)
-		//		{
-		//			#ifdef HAS_WINDOW
-		//				stack.UpdateRange();
-		//				changed << i + offset;
-		//			#endif
-		//		}
-		//	}
-		//	ASSERT_CONCLUSION(data1,delta);
-		//}
 		high.family[family].SetOutdated(0);
 		low.family[family].SetOutdated(0);
 
@@ -3781,17 +3734,19 @@ namespace Grid
 			initialWorld.FlushAllData();
 		#endif
 			
-		#ifdef HAS_WINDOW
+		#ifdef CLIENT
 			visibleOrbitGrid.Clear();
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-			{
-				high.family[k].SetOutdated(0);
-				low.family[k].SetOutdated(0);
-			}
+			#ifdef HAS_WINDOW
+				for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+				{
+					high.family[k].SetOutdated(0);
+					low.family[k].SetOutdated(0);
+				}
+
+				UnsetParaboloidAndSphereDisplay();
+			#endif
 			foreach (Resource::all,res)
 				memset(res->known,false,sizeof(res->known));
-
-			UnsetParaboloidAndSphereDisplay();
 		#endif
 
 		#ifdef DEBUG_SENSORY
@@ -4043,7 +3998,10 @@ namespace Grid
 
 
 
+	#endif
 
+
+	#ifdef CLIENT
 
 
 	

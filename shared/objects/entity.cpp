@@ -392,7 +392,7 @@ namespace Objects
 	#endif
 	
 
-	#ifdef HAS_WINDOW
+	#ifdef CLIENT
 		/*virtual*/ void WorldEntity::RegisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&desc)
 		{
 			Grid::actualWorld.InsertSensor(desc);
@@ -403,9 +403,6 @@ namespace Objects
 		{
 			Grid::actualWorld.RemoveSensor(desc);
 		}
-
-
-
 	#endif
 
 
@@ -422,17 +419,15 @@ namespace Objects
 		
 		LogEvent(EventType::MinorEntityProcess,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+")");
 		#ifdef CLIENT
-			#ifdef HAS_WINDOW
-				if (isMine)
-				{
-					Grid::HighSetup::TVolumeDescriptor desc;
-					Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
-					RegisterWorldSensory(desc);
-					#ifdef THOROUGLY_DEBUG_SENSORY
-						VerifySensory();
-					#endif
-				}
-			#endif
+			if (isMine)
+			{
+				Grid::HighSetup::TVolumeDescriptor desc;
+				Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
+				RegisterWorldSensory(desc);
+				#ifdef THOROUGLY_DEBUG_SENSORY
+					VerifySensory();
+				#endif
+			}
 
 		#else
 			owner->RegisterSensorCreation(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),IsSatellite(), atTime,checkChangesNow, newContacts);
@@ -448,19 +443,15 @@ namespace Objects
 		#endif
 
 		#ifdef CLIENT
-			#ifdef HAS_WINDOW
-				if (isMine)
-				{
-					Grid::HighSetup::TVolumeDescriptor desc;
-					Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
-					UnregisterWorldSensory(desc);
-					#ifdef THOROUGLY_DEBUG_SENSORY
-						VerifySensory();
-					#endif
-				}
-			#endif
-
-		#else
+			if (isMine)
+			{
+				Grid::HighSetup::TVolumeDescriptor desc;
+				Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
+				UnregisterWorldSensory(desc);
+				#ifdef THOROUGLY_DEBUG_SENSORY
+					VerifySensory();
+				#endif
+			}
 		#endif
 
 

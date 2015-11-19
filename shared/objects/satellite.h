@@ -334,12 +334,6 @@ namespace Objects
 	template <typename Derivative>
 		/*virtual override*/	void			SatelliteTemplate<Derivative>::PrototypeSetup()
 		{
-			#ifdef HAS_WINDOW
-
-				//iconCommands.Append(IconCommand(int2(4,0), "Abort", &VehicleCmd::AbortOperation, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::AlwaysFalse<PWorldEntity const&>,NoCosts));
-				//iconCommands.Append(IconCommand(int2(4,1), "Undo", &VehicleCmd::UndoOperation, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::AlwaysFalse<PWorldEntity const&>,NoCosts));
-
-			#endif
 			turret = GetTurretType();
 
 		}

@@ -19,29 +19,6 @@
 
 namespace Objects
 {
-	#ifdef CLIENT
-
-		#ifdef HAS_WINDOW
-		#endif
-	#else
-		//Buffer0<POwner>			owners;
-
-
-
-	#endif
-
-
-
-
-
-
-//	static const float			vehicleScale = 0.01f * WorldScale;
-
-
-
-
-
-	//Buffer0<PStructureClass>	StructureClasss;
 
 	void RefreshSkyHubConnections()
 	{
@@ -397,11 +374,10 @@ namespace Objects
 	void					Create()
 	{
 		#ifdef CLIENT
+			Grid::visibleOrbitGrid.orbit = Grid::ToRadius(Satellite::BaseResidenceHeight);
+			Grid::visibleOrbitGrid.Clear();
 			#ifdef HAS_WINDOW
-				Grid::visibleOrbitGrid.orbit = Grid::ToRadius(Satellite::BaseResidenceHeight);
-				Grid::visibleOrbitGrid.Clear();
 				Renderer::Create();
-				
 			#endif
 		#else
 
@@ -1021,49 +997,6 @@ namespace Objects
 
 
 	#endif /*0*/
-
-
-
-
-	#ifdef HAS_WINDOW
-		void RefreshSeeThrough(int oldVehicleHeight, bool controlEnabled)
-		{
-			//if (selectedEntity)
-			//{
-			//	const Grid::LCellIdI&location = selectedEntity->location;
-			//	bool allClear = true;
-			//	const auto&n = Grid::low.grid.GetCell(location.cellID).neighborhood;
-			//	for (int i = location.height + 1; i < Grid::CellStack::HalfRange; i++)
-			//		if (!Grid::actualWorld.LowCellIsClear(Grid::LCellIdI( location.cellID, i)))
-			//		{
-			//			allClear = false;
-			//			break;
-			//		}
-			//		else
-			//		{
-			//			if (i - location.height > 3)
-			//			{
-			//				for (int j = 0; j < n.numNeighbors; j++)
-			//					if (!Grid::actualWorld.LowCellIsClear(Grid::LCellIdI(n.neighborID[j],i)))
-			//					{
-			//						allClear = false;
-			//						break;
-			//					}
-
-			//			}
-
-			//		}
-
-			//	#ifdef CLIENT
-			//		if (oldVehicleHeight != Grid::SeeThrough::GetFocusPoint().height && Grid::SeeThrough::IsEnabled() == !allClear)
-			//			Grid::SeeThrough::Update(!allClear, Grid::LCellIdI(location.cellID, Grid::SeeThrough::GetFocusPoint().height));
-			//		else
-			//			Grid::SeeThrough::Update(!allClear,location);
-			//	#endif
-			//	RefreshCommands(controlEnabled);
-			//}
-		}
-	#endif
 
 
 

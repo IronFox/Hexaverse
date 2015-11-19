@@ -1096,7 +1096,7 @@ namespace Objects
 
 	/*static*/ void Structure::ChangeBroadStructCount(const Grid::LCellIdI&location, int height, bool hasFoundation, int changeDirection, float atTime)
 	{
-		LogEvent(EventType::Debug,nullptr,"ChangeBroadStructCount("+location.ToString()+", height="+String(height)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection));
+		LogEvent(EventType::Debug,nullptr,"ChangeBroadStructCount("+location.ToString()+", height="+String(height)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
 
 		{
 			const int lowEdge = hasFoundation ? -1 : 0;
@@ -1715,7 +1715,7 @@ namespace Objects
 				Grid::high.family[i].SetOutdated(atTime);
 				Grid::low.family[i].SetOutdated(atTime);
 			}
-		#ifdef CLIENT
+		#ifdef HAS_WINDOW
 			Grid::actualWorld.SignalLightingChange(location);
 		#endif
 

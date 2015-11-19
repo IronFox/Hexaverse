@@ -2803,7 +2803,6 @@ void Select()
 				//else
 					//ShowMessage("nothing");
 			}
-			Objects::RefreshSeeThrough(oldVehicleHeight,Network::ControlEnabled());
 
 		}
 	}

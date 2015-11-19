@@ -911,7 +911,7 @@ namespace Objects
 		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine)
 		{
 			PStructure s = To<Structure>::DynamicCast(e);
-			#ifdef HAS_WINDOW
+			#ifdef CLIENT
 				if (e->isMine)
 				{
 					float t = 0.f;
@@ -932,7 +932,7 @@ namespace Objects
 			e->owner = newOwner;
 			e->isMine = isNowMine;
 
-			#ifdef HAS_WINDOW
+			#ifdef CLIENT
 				if (e->isMine)
 				{
 					float t = 0.f;

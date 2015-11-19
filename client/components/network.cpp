@@ -1331,13 +1331,12 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			Animation::UpdateAutomation(CLOCATION);
 		}
 	}
+	for (const auto&f : Objects::Faction::allKnown)
+	{
+		f->requestedNewRound = false;
+		f->roundChangeNotifications = 0;
+	};
 	#ifdef HAS_WINDOW
-		for (const auto&f : Objects::Faction::allKnown)
-		//factionMap.VisitAllValues([](const Objects::PFaction&f)
-		{
-			f->requestedNewRound = false;
-			f->roundChangeNotifications = 0;
-		};//);
 		Dialog::SignalSituationChange();
 	#endif
 }
@@ -1354,9 +1353,8 @@ void	Network::Receiver::LockEmpZones(NET(UINT16)&zones)
 			Grid::high.family[i].SetOutdated(0);
 			Grid::low.family[i].SetOutdated(0);
 		}
-
-		Grid::visibleOrbitGrid.Invalidate();
 	#endif
+	Grid::visibleOrbitGrid.Invalidate();
 	//SpaceGrid::Invalidate();
 }
 

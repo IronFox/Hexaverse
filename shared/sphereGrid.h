@@ -164,15 +164,15 @@ namespace Grid
 
 			BYTE	content;
 			BYTE	structureCounter;	//number of structures (density) that occupy this block
-			#ifdef HAS_WINDOW
-				short	visible;	//indicates levels of visibility. should not fall below 0. might make it unsigned when i am convinced it works. values >= 1 indicate this cell is visible
+			#ifdef CLIENT
+				short	visible=0;	//indicates levels of visibility. should not fall below 0. might make it unsigned when i am convinced it works. values >= 1 indicate this cell is visible
 			#endif
 
 			/**/	CompactCell() :content(Content::Clear), structureCounter(0) {}
 			/**/	CompactCell(Content t) :content(t), structureCounter(0)	{}
 
 
-			#ifdef HAS_WINDOW
+			#ifdef CLIENT
 				void	AlterVisibility(short change)
 				{
 					visible += change;
@@ -2084,27 +2084,22 @@ namespace Grid
 				void			SignalLightingChange(const HCellIdI&cellID);
 			#endif
 			void				SignalLightingChange(const LCellIdI&cellID);
-			void				InsertSensor(const HighSetup::TVolumeDescriptor&desc);
-			void				RemoveSensor(const HighSetup::TVolumeDescriptor&desc);
-			//void				InsertSensor(const LCellIdI&, float radius);
-			//void				RemoveSensor(const LCellIdI&, float radius);
-			//inline void			MoveSensor(const LCellIdI&from, const LCellIdI&to, float radius) {if (from == Grid::LCellIdI::Invalid || from == to) return; RemoveSensor(from,radius); InsertSensor(to,radius);}
-
-			void				InsertSensorCoverage(const SkySensorState&);
-			void				RemoveSensorCoverage(const SkySensorState&);
-
-			bool				HasSensor(const LCellIdI&, float radius) const;
-
-			bool				GridCanSee(const LCellIdI&, int height, bool broad) const;
-			bool				GridCanSeeAny(const HCellIdU&, UINT height) const;
-
-			private:
-				void			ChangeSensory(const LCellIdI&center, float radius, signed char change);
-				void			ChangeSensorCoverage(const SkySensorState&,signed char change);
-				void			ChangeSensorCoverage(const HighSetup::TVolumeDescriptor&state, signed char change);
 		#endif
-			
+		void					InsertSensor(const HighSetup::TVolumeDescriptor&desc);
+		void					RemoveSensor(const HighSetup::TVolumeDescriptor&desc);
 
+		void					InsertSensorCoverage(const SkySensorState&);
+		void					RemoveSensorCoverage(const SkySensorState&);
+
+		bool					HasSensor(const LCellIdI&, float radius) const;
+
+		bool					GridCanSee(const LCellIdI&, int height, bool broad) const;
+		bool					GridCanSeeAny(const HCellIdU&, UINT height) const;
+
+		private:
+			void				ChangeSensory(const LCellIdI&center, float radius, signed char change);
+			void				ChangeSensorCoverage(const SkySensorState&,signed char change);
+			void				ChangeSensorCoverage(const HighSetup::TVolumeDescriptor&state, signed char change);
 	};
 
 	extern WorldData			actualWorld;
@@ -2252,40 +2247,22 @@ namespace Grid
 	#endif
 
 
-	#ifdef HAS_WINDOW
-
-		class OrbitGrid
+	class OrbitGrid
+	{
+	public:
+		struct TCell
 		{
-		public:
-			struct TCell
-			{
-				short visible = 0;
+			short visible = 0;
 
 
-			};
+		};
 
 
-			TCell	cells[LowSetup::GridType::CellCount];
-			float	orbit = 1.f;
-
-			//struct TColorArea
-			//{
-			//	LCellIdI	center;
-			//	//int			fuelRadius;
-			//	bool		active = false;
-
-			//	bool		operator==(const TColorArea&other) const
-			//	{
-			//		if (active != other.active)
-			//			return false;
-			//		if (!active)
-			//			return true;
-			//		return fuelRadius == other.fuelRadius && center == other.center;
-			//	}
-
-			//}	colorArea;
+		TCell	cells[LowSetup::GridType::CellCount];
+		float	orbit = 1.f;
 
 
+		#ifdef HAS_WINDOW
 			struct Vertex
 			{
 				float4		vertex3_edge;
@@ -2298,35 +2275,38 @@ namespace Grid
 			};
 	
 			Array<Vertex>	vertices;
-			bool			valid = false;
 			DX11::InstructionBlock32	instruction;
-
 			void		ForceRecompileNow();
-			void		Invalidate() {valid = false;}
+			void		Render(const Engine::Frustum<>&);
+		#endif
+
+		bool			valid = false;
+		void			Invalidate() {valid = false;}
 
 			
-			/**/	OrbitGrid()
-			{
-				Clear();
-			}
+		/**/			OrbitGrid()
+		{
+			Clear();
+		}
 
-			void	ChangeSensory(const LCellIdI&center, float radius, signed char change);
+		void			ChangeSensory(const LCellIdI&center, float radius, signed char change);
 
-			void	Clear()
-			{
-				TCell clear;
-				for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
-					cells[i] = clear;
-				Invalidate();
-				//colorArea.active = false;
-			}
+		void			Clear()
+		{
+			TCell clear;
+			for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
+				cells[i] = clear;
+			Invalidate();
+			//colorArea.active = false;
+		}
 
-			void	Render(const Engine::Frustum<>&);
 
-			//void	Color(const LCellIdI&center, int fuelRadius);
-			//void	StripColor();
+		//void	Color(const LCellIdI&center, int fuelRadius);
+		//void	StripColor();
 
-		};
+	};
+
+	#ifdef CLIENT
 
 		extern OrbitGrid	visibleOrbitGrid;
 

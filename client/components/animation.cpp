@@ -489,7 +489,6 @@ namespace Animation
 			{
 				OnSelectionChange(true);
 				Objects::UpdateChoices(Network::ControlEnabled());
-				Objects::RefreshSeeThrough(oldHeight,Network::ControlEnabled());
 			}
 		#endif
 
@@ -839,17 +838,16 @@ namespace Animation
 						removed = true;	//is set anyway. placeVehicleLater indicates it is already removed
 					}
 				}
-				#ifdef HAS_WINDOW
+				if (allocatedTarget->IsMobile())
 				{
-					Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
-					if (v && v->preAnimationLocation != v->location)
+					Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(allocatedTarget);
+					if (v->preAnimationLocation != v->location)
 					{
 						float t = 0.f;
-						v->UnregisterSensory(v->preAnimationLocation,t);
-						v->RegisterSensory(t);
+						v->MoveSensory(v->preAnimationLocation,v->location, t);
+						//v->RegisterSensory(t);
 					}
 				}
-				#endif
 
 
 				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),0,Network::ControlEnabled(),removed);
@@ -871,10 +869,10 @@ namespace Animation
 				if (!insertIntoGridLater.IsSet(v->id))
 				{
 					ASSERT2__(v->preAnimationLocation == v->location ,v->preAnimationLocation.ToString(),v->location.ToString());
-					#ifdef HAS_WINDOW
-						if (v->isMine && v->IsVehicle())
-							ASSERT1__(Grid::actualWorld.HasSensor(v->location,v->GetScanningRange()),v->id.ToString());
-					#endif
+					//#ifdef HAS_WINDOW
+					//	if (v->isMine && v->IsVehicle())
+					//		ASSERT1__(Grid::actualWorld.HasSensor(v->location,v->GetScanningRange()),v->id.ToString());
+					//#endif
 					v->preAnimationLocation = v->location;
 					if (v->IsVehicle())
 						Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(v),v->location);
@@ -994,17 +992,14 @@ namespace Animation
 				//v->Relocate(path->rawPath.last().first,false);
 				v->location = path->rawPath.last().first;
 				//Objects::InsertVehicleIntoGrid(v,v->location);	will be done later
-				#ifdef HAS_WINDOW
-					if (v->isMine && v->preAnimationLocation != v->location)
-					{
-						float t = 0.f;
-						v->UnregisterSensory(v->preAnimationLocation,t);
-						v->RegisterSensory(t);
+				if (v->isMine && v->preAnimationLocation != v->location)
+				{
+					float t = 0.f;
+					v->MoveSensory(v->preAnimationLocation,v->location,t);
 
-						//v->MoveWorldSensory(v->preAnimationLocation,v->location);
-						//Grid::actualWorld.MoveSensor(v->preAnimationLocation,v->location,v->GetScanningRange());
-					}
-				#endif
+					//v->MoveWorldSensory(v->preAnimationLocation,v->location);
+					//Grid::actualWorld.MoveSensor(v->preAnimationLocation,v->location,v->GetScanningRange());
+				}
 				v->preAnimationLocation = v->location;
 				allocatedTarget.reset();	//for debugging purposes
 				//v->UpdateSystem();	//might bite me in the arse later
@@ -1386,19 +1381,17 @@ namespace Animation
 				#endif
 				Animation::atTime = 0;
 
-				#ifdef HAS_WINDOW
-					foreach (Objects::vehicles, v)
+				Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&e)
+				{
+					//if ((*v)->preAnimationLocation != (*v)->location)
+						//Objects::RemoveVehicleFromGrid(*v,(*v)->preAnimationLocation);
+					if (e->isMine && !Animation::insertIntoGridLater.IsSet(e->id))
 					{
-						//if ((*v)->preAnimationLocation != (*v)->location)
-							//Objects::RemoveVehicleFromGrid(*v,(*v)->preAnimationLocation);
-						if ((*v)->isMine && !Animation::insertIntoGridLater.IsSet((*v)->id))
-						{
-							float t = 0.f;
-							(*v)->MoveSensory((*v)->preAnimationLocation,(*v)->location,t);
+						float t = 0.f;
+						e->MoveSensory(e->preAnimationLocation,e->location,t);
 //							Grid::actualWorld.MoveSensor((*v)->preAnimationLocation,(*v)->location,(*v)->GetScanningRange());
-						}
 					}
-				#endif
+				});
 
 
 				Animation::insertIntoGridLater.VisitAllKeys([](const TUniqueID&key)

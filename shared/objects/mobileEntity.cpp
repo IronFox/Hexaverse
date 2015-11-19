@@ -1045,7 +1045,7 @@ namespace Objects
 			if (toLocation == location)
 				return;
 			LogEvent(EventType::MinorEntityProcess,this,"Relocating to "+toLocation.ToString()+" ("+String(updateSystem)+")");
-			#ifdef HAS_WINDOW
+			#ifdef CLIENT
 				static Grid::HighSetup::TVolumeDescriptor desc;
 				float t = 0.f;
 				if (isMine)
@@ -1054,7 +1054,7 @@ namespace Objects
 				}
 			#endif
 			location = toLocation;
-			#ifdef HAS_WINDOW
+			#ifdef CLIENT
 				if (isMine)
 				{
 					RegisterSensory(t);
