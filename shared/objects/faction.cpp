@@ -409,8 +409,11 @@ namespace Objects
 		{
 			if ( e->owner.get() == this )
 				return true;
-			if (!seeing.IsSet(e) && !lostVisualAt.IsSet(e))
+			if (!seeing.IsSet(e))
 			{
+				float t1;
+				if (lostVisualAt.Query(e,t1))
+					return t <= t1;
 				return false;
 			}
 			float t0;
@@ -442,18 +445,24 @@ namespace Objects
 				{
 					//ASSERT_LESS_OR_EQUAL__(t0,t)
 					//we probably have to accept this happens
-					t = std::max(t0,t) + 0.025f;
+					t = std::max(t0,t) + timeEpsilon;
 				}
-				//t += 0.025f;
 
 				PMobileEntity v= To<MobileEntity>::DynamicCast(e);
 				if (v)
-					v->timeAt = std::max(v->timeAt,t);
+					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
+				else
+					t += timeEpsilon;
 
 				ASSERT1__(gainedVisualAt.SetNew(e,t),e->id.ToString());
 
 				if (cascade)
 					SignalAppearanceToHostileFaction(shared_from_this(),e,t);
+
+				if (v)
+					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
+				else
+					t += timeEpsilon;
 			//	return true;
 			}
 			//return false;
@@ -472,18 +481,40 @@ namespace Objects
 
 			if ((ref && !ref->sightLevel) || force)
 			{
-				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Lost visual");
+				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Lost visual at time="+String(t));
+				if (ref && ref->sightLevel)
+				{
+					LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": WARNING: Visual loss was forced");
+				}
+
+
+
 				float t0;
 				if (gainedVisualAt.QueryAndUnset(e,t0))
+				{
 					t = std::max(t0,t);	//permissive. whatever. seriously
-				t += 0.025f;
+					LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Lost visual, time updated to "+String(t));
+				}
 				PMobileEntity v= To<MobileEntity>::DynamicCast(e);
+				//if (v)
+				//	t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
+				//else
+				//	t += timeEpsilon;
+				//	
 				if (v)
-					v->timeAt = std::max(v->timeAt,t);
-				ASSERT1__(lostVisualAt.SetNew(e,t),e->id.ToString());
+				{
+					t = v->timeAt = std::max(v->timeAt,t);
+					LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Lost visual, time updated to "+String(t));
+				}
+				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),e->id.ToString());
 				seeing.Unset(e);
 				if (signalConnectedClient)
 					SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
+
+				if (v)
+					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
+				else
+					t += timeEpsilon;
 			}
 			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
 
@@ -547,7 +578,7 @@ namespace Objects
 				else
 					if (!GridCanSee(e))
 					{
-						SignalDisappearance(e,timeAt);
+						SignalDisappearance(e,timeAt,true);
 					}
 			}
 			else

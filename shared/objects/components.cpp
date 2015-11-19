@@ -316,7 +316,10 @@ namespace Objects
 		{
 			Turret::TAngles angles = Turret::GetAngleForDistance(velocity,source,dest);
 			if (angles.numAngles == 0)
+			{
+				DBG_FATAL__("Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+Vec::toString(source)+", dest="+Vec::toString(dest));
 				return;
+			}
 		
 			float angle = angles.idealAngle[angles.numAngles-1];
 

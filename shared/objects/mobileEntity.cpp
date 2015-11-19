@@ -462,12 +462,16 @@ namespace Objects
 				//timeAt += timeCost;
 
 				const auto _this = shared_from_this();
+				ForeachFaction([this,_this](const PFaction&f)
+				{
+					f->CheckGridVisibility(_this,timeAt);
+				});
+
 				bool doBreak = false;
 				ForeachFaction([this,&doBreak,_this](const PFaction&f)
 				{
 					if (doBreak)
 						return;
-					f->CheckGridVisibility(shared_from_this(),timeAt);
 					if (!f->CanSee(_this,timeAt))
 						return;
 					Grid::LCellIdI loc;

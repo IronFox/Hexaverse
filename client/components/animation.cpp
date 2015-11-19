@@ -798,7 +798,7 @@ namespace Animation
 		{
 			case Construction:
 			{
-				LogEvent(EventType::MinorEntityProcess,allocatedTarget.get(),  "Placing structure entity during animation at time "+String(this->time.min));
+				LogEvent(EventType::MinorEntityProcess,allocatedTarget.get(),  "Placing structure entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
 				Objects::Place(To<Objects::Structure>::DynamicCast(allocatedTarget));
 				if (!allocatedTarget->isMine)
 					UI::HexGrid::RefreshContacts();
@@ -809,7 +809,7 @@ namespace Animation
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				if (v)
 				{
-					LogEvent(EventType::MinorEntityProcess,allocatedTarget.get(),  "Placing mobile entity during animation at time "+String(this->time.min));
+					LogEvent(EventType::MinorEntityProcess,allocatedTarget.get(),  "Placing mobile entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
 					//MoveSensor(v->preAnimationLocation,v->location,v->turret->scanningRange);
 					v->preAnimationLocation = v->location;
 					Objects::PlaceMobileEntity(v,false);
@@ -827,7 +827,7 @@ namespace Animation
 				if (explode)
 					ExplodeEntity(allocatedTarget);
 				bool removed = false;
-				LogEvent(EventType::MinorEntityProcess,allocatedTarget.get(),  "Removing entity during animation at time "+String(this->time.min));
+				LogEvent(EventType::MinorEntityProcess,allocatedTarget.get(),  "Removing entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
 				//if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 				{
 					Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
@@ -861,7 +861,7 @@ namespace Animation
 			case MovementStream:
 			{
 				allocatedTarget = Objects::GetEntity(targetEntityID);
-				LogEvent(EventType::Debug, allocatedTarget.get() ,"Starting movement stream at "+String(Animation::atTime)+"/"+String(this->time.min));
+				LogEvent(EventType::Debug, allocatedTarget.get() ,"Starting movement stream at "+String(Animation::atTime)+"/"+this->time.ToString());
 				ASSERT1__(allocatedTarget,targetEntityID.ToString());
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				ASSERT1__(v,allocatedTarget->GetName());
@@ -984,7 +984,7 @@ namespace Animation
 		{
 			case  MovementStream:
 			{
-				LogEvent(EventType::Debug, allocatedTarget.get() ,"Ending movement stream at "+String(Animation::atTime)+"/"+String(this->time.max));
+				LogEvent(EventType::Debug, allocatedTarget.get() ,"Ending movement stream at "+String(Animation::atTime)+"/"+this->time.ToString());
 
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				ASSERT__(v);
