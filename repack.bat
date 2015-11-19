@@ -1,4 +1,4 @@
-set zip="C:\Program Files\7-Zip\7z.exe"
+set zip="7z.exe"
 set rs1="game.7z"
 set rs=%rs1%
 del %rs1% /Q
