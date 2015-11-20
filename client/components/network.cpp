@@ -464,7 +464,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(vc,v);
-				LogEvent(EventType::Debug, "Appended 'new mobile entity' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime.value));
+				LogEvent(EventType::Debug, "Appended 'new mobile entity("+vc.state.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime.value));
 
 			}
 		}
@@ -489,7 +489,7 @@ namespace Network
 			if (!sc.state.entityState.timestamp.rightNow)
 			{
 				Animation::primitives.Append().Init(sc,s);
-				LogEvent(EventType::Debug, "Appended 'new structure' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime.value));
+				LogEvent(EventType::Debug, "Appended 'new structure("+sc.state.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime.value));
 			}
 			else
 			{

@@ -671,14 +671,14 @@ namespace Animation
 	{
 		type = Construction;
 		allocatedTarget = s;
-		time.SetMinAndMax(sc.state.entityState.timestamp.atTime-0.01f);
+		time.SetMinAndMax(sc.state.entityState.timestamp.atTime/*-0.01f*/);
 	}
 
 	void					Primitive::Init(Protocol::NewMobileEntity&sc, const Objects::PMobileEntity&v)
 	{
 		type = NewMobileEntity;
 		allocatedTarget = v;
-		time.SetMinAndMax(sc.state.entityState.timestamp.atTime-0.01f);
+		time.SetMinAndMax(sc.state.entityState.timestamp.atTime/*-0.01f*/);
 	}
 	void					Primitive::Init(Protocol::MobileState&vs)
 	{
@@ -721,14 +721,14 @@ namespace Animation
 	}
 	void					Primitive::Init(Protocol::DestroyEntity&e)
 	{
-		LogEvent(EventType::Debug,nullptr,"Registering removal of entity "+e.id.value.ToString()+" ("+Objects::RemovalType::Reinterpret(e.type.value).ToString()+")");
 		type = DestroyEntity;
 		targetEntityID = e.id;
 		//target = Objects::GetEntity(e.id,true);
 		explode = e.type == Objects::RemovalType::ControlledExplosion || e.type == Objects::RemovalType::UncontrolledExplosion;
 		removalType = e.type;
 		//ASSERT__(target);
-		time.SetMinAndMax(e.timestamp.atTime+0.01f);
+		time.SetMinAndMax(e.timestamp.atTime/*+0.01f*/);
+		LogEvent(EventType::Debug,nullptr,"Registered removal of entity "+e.id.value.ToString()+" ("+Objects::RemovalType::Reinterpret(e.type.value).ToString()+") at t="+time.ToString());
 	}
 	void					Primitive::Init(Protocol::AttackTrajectory&a)
 	{
