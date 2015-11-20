@@ -66,7 +66,11 @@ namespace State
 	};
 
 
-	void	HandleConnectionLoss(const PClient&);
+	/**
+	Processes connection loss of the specified client (or disconnects them).
+	Parameter must be a copy.
+	*/
+	void	HandleConnectionLoss(PClient);
 
 	extern Buffer<PClient>	clients,activePlayers;
 	extern GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;

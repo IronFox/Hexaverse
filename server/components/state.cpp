@@ -27,7 +27,7 @@ namespace State
 	}
 
 
-	void HandleConnectionLoss(const PClient&client)
+	void HandleConnectionLoss(PClient client)
 	{
 		State::clients.FindAndErase(client);
 		State::activePlayers.FindAndErase(client);
