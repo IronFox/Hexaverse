@@ -1996,6 +1996,7 @@ int main( int argc, const char* argv[])
 					{
 						LogEvent(EventType::SessionRelated,*peer,"Client ping timeout (30 sec) exceeded. Disconnecting client");
 						peer->DisconnectPeer();
+						break;	//loop breaks
 					}
 				}
 				else
