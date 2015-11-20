@@ -1934,6 +1934,7 @@ int main( int argc, const char* argv[])
 			{
 				if (!Technites::ProcessNext())
 				{
+					CheckSendTerrain();
 					for (const auto&tf : Technites::Faction::allTechniteFactions)
 					{
 						State::PClient client;

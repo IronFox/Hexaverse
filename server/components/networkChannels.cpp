@@ -209,7 +209,7 @@ namespace Receiver
 			return;
 		}
 
-		LogEvent(EventType::TechniteLogic,nullptr,"Receiving technite instruction chunk, containing "+String(instructions.instructions.Count())+" technites, starting from "+String(instructions.offset));
+		LogEvent(EventType::TechniteLogic,peer,"Receiving technite instruction chunk, containing "+String(instructions.instructions.Count())+" technites, starting from "+String(instructions.offset));
 
 
 		for (index_t i = 0; i < instructions.instructions.Count(); i++)
@@ -388,7 +388,13 @@ namespace Receiver
 			return;
 		}
 
-		if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase && RuntimeConfig::phase != RuntimeConfig::Phase::TechniteCommandPhase && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
+		if (
+			RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase 
+			&& RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame
+			&& RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase
+
+			&& RuntimeConfig::phase != RuntimeConfig::Phase::TechniteCommandPhase 
+			)
 		{
 			//disconnecting client. no new faction
 			LogEvent(EventType::CommandRejected, peer, "Cannot connect ("+String(RuntimeConfig::phase.ToString())+") right now. Disconnecting");
@@ -821,16 +827,6 @@ namespace Receiver
 		}
 
 
-		if (client->faction->IsTechniteFaction())
-		{
-			State::techniteFactionsOnline++;
-			LogEvent(EventType::SessionRelated,"Technite factions online: "+String(State::techniteFactionsOnline));
-
-			Technites::PFaction tf = To<Technites::Faction>::Cast(client->faction);
-			SendTechniteStateTo(tf,peer);
-		}
-
-
 
 		#ifndef CHEAT_SHOW_ALL_RESOURCES
 		if (!newFaction)
@@ -945,6 +941,16 @@ namespace Receiver
 		Channels::unitLimits.SendTo(peer,limits);
 		
 		Channels::lockEmpZones.SendTo(peer,State::empZonesLocked);
+
+
+		if (client->faction->IsTechniteFaction())
+		{
+			State::techniteFactionsOnline++;
+			LogEvent(EventType::SessionRelated,"Technite factions online: "+String(State::techniteFactionsOnline));
+
+			Technites::PFaction tf = To<Technites::Faction>::Cast(client->faction);
+			SendTechniteStateTo(tf,peer);
+		}
 
 		peer.SendSignal(Protocol::ChannelID::BeginGame);
 		

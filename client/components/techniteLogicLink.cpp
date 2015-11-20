@@ -382,13 +382,19 @@ namespace TechniteLogicLink
 	}
 
 
-	void		ExecuteLogic(UINT32 roundNumber,UINT32 techniteSubRoundNumber)
+	void		ExecuteLogicWhenAllTechnitesAreThere(UINT32 roundNumber,UINT32 techniteSubRoundNumber)
 	{
-		executed = true;
-		TechniteProtocol::InstructTechnites tech;
-		tech.roundNumber = roundNumber;
-		tech.techniteSubRoundNumber = techniteSubRoundNumber;
-		Channels::instructTechnites.SendTo(logicServer,tech,1);
+		if (haveAllTechnites)
+		{
+			LogEvent(EventType::TechniteLogic,"ExecuteLogic("+String(roundNumber)+","+String(techniteSubRoundNumber)+")");
+			executed = true;
+			TechniteProtocol::InstructTechnites tech;
+			tech.roundNumber = roundNumber;
+			tech.techniteSubRoundNumber = techniteSubRoundNumber;
+			Channels::instructTechnites.SendTo(logicServer,tech,1);
+		}
+		else
+			executed = true;
 	}
 
 
@@ -456,7 +462,7 @@ namespace TechniteLogicLink
 
 		static String CompileProtocolString()
 		{
-			return "Aquinas v1.5." + String(TechniteProtocol::ChannelID::Count);
+			return "Aquinas v1.6." + String(TechniteProtocol::ChannelID::Count);
 		}
 
 
@@ -550,7 +556,7 @@ namespace TechniteLogicLink
 
 
 			if (haveAllTechnites && executed)
-				ExecuteLogic(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
+				ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
 
 		}
 
@@ -830,7 +836,7 @@ namespace TechniteLogicLink
 		{
 			haveAllTechnites = true;
 			if (executed)
-				ExecuteLogic(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
+				ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
 		}
 	}
 

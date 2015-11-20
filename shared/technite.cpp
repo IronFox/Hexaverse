@@ -1735,7 +1735,7 @@ namespace Technites
 			}
 			case Technite::Task::Scan:
 			{
-				Technite::Resources	useEnergy(0,technite.taskParameter);
+				Technite::Resources	useEnergy(technite.taskParameter,0);
 				if (!ReduceResources(technite, useEnergy))
 				{
 					return Technite::TaskResult::TechniteLacksResources;
@@ -1995,13 +1995,13 @@ namespace Technites
 
 			for (const auto&loc : data->addSensor)
 			{
-				TSensor	sensor(Grid::ToWorld(loc.first),loc.second);
+				float radius = sqrt(float(loc.second));
+				TSensor	sensor(Grid::ToWorld(loc.first),radius);
 				sensors.Append(sensor);
 				RegisterSensorCreation(sensor,false,t,false);
 			}
 			data->addSensor.Clear();
 
-				//float radius = sqrt(float(technite.taskParameter));
 
 		}
 

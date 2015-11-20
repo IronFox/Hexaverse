@@ -1138,10 +1138,11 @@ namespace Network
 			case Protocol::ChannelID::BeginGame:
 				gameHasBegun = true;
 				LogEvent(EventType::SessionRelated,nullptr,"Game has begun");
-				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Animation::AllDone())
+				if (RuntimeConfig::IsAnyCommandPhase() && Animation::AllDone())
 				{
 					Objects::RefreshSkyHubConnections();
 					Animation::UpdateAutomation(CLOCATION);
+					TechniteLogicLink::ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
 				}
 			break;
 			case Protocol::ChannelID::Pong:
@@ -1469,7 +1470,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	#ifdef HAS_WINDOW
 		Dialog::SignalSituationChange();
 	#endif
-	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase || RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase)
+	if (RuntimeConfig::IsAnyCommandPhase())
 	{
 		if (amTechniteFaction)
 		{
@@ -1481,7 +1482,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			else
 				LogEvent(EventType::Debug,nullptr,"Animations not completely done. Cannot verify technite faction integrity. Assuming it is correct.");
 
-			TechniteLogicLink::ExecuteLogic(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
+			TechniteLogicLink::ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
 		}
 	}
 }
