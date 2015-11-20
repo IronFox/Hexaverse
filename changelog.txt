@@ -2,6 +2,9 @@ v0.3.9		[Nov 20 2015]
 	*Upgraded internal sensor system to work better with grid-based entities (e.g. technites).
 	*Fixed AI cannon tanks not attacking stationary targets.
 	*Various internal fixes.
+	+Increased visual range of technites to 2 cell blocks horizontally, up, and down.
+	+Added server-option to disabled technite TTL.
+	+Added new instruction that allows to scan the surrounding in a spherical field.
 
 v0.3.8		[Nov 9 2015]
 	+Added option to undo round-end request.
