@@ -1102,7 +1102,7 @@ void ProcessChanges()
 	for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 	{
 		if (Grid::high.family[k].normal.outdated)
-			State::SignalFamilyChange(k,++counter == changed,false);
+			State::SignalFamilyChange(k,++counter == changed,RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase);
 	}
 	if (changed)
 	{
