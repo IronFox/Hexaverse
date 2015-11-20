@@ -138,6 +138,12 @@ namespace Technites
 				PFaction f = Faction::allTechniteFactions[i];
 				processingOrder[i].Set(f);
 				f->ProcessLighting();
+				foreach (f->sensors,s)
+				{
+					f->RegisterSensorRemoval(*s,false,t0,false);
+				}
+				f->sensors.Clear();
+				f->visibility.CheckChanges(t0);
 			}
 
 			std::sort(processingOrder.begin(),processingOrder.end());
@@ -1081,16 +1087,22 @@ namespace Technites
 			{
 				tf->visibility.FlushAllData(false);
 				tf->visibility.LockChangeChecking();
+				float t= 0.f;
 				foreach (tf->allMobiles,_m)
-					_m->lock()->RegisterFactionSensory(0.f);
+					_m->lock()->RegisterSensory(t,false);
 				foreach (tf->structures,_s)
-					_s->lock()->RegisterFactionSensory(0.f);
+					_s->lock()->RegisterSensory(t,false);
 				foreach (tf->satellites,_sat)
-					_sat->lock()->RegisterFactionSensory(0.f);
-				foreach (tf->technites,t)
-					t->RegisterFactionSensory(tf->visibility, 0.f);
+					_sat->lock()->Objects::WorldEntity::RegisterSensory(t,false);
+				foreach (tf->technites,tc)
+					tf->RegisterTechniteSensory(tc->location.GetU(), t,false);
 				tf->visibility.UnlockChangeChecking(0.f);
 				ApplyCoverageChange(tf);
+
+				Objects::ForeachWorldEntity([tf,&t](const Objects::PWorldEntity&e)
+				{
+					tf->CheckGridVisibility(e,t);
+				});
 			}
 
 			VerifyGrid();
@@ -1202,16 +1214,23 @@ namespace Technites
 				{
 					tf->visibility.FlushAllData(false);
 					tf->visibility.LockChangeChecking();
+					float t = 0.f;
 					foreach (tf->allMobiles,_m)
-						_m->lock()->RegisterFactionSensory(0.f);
+						_m->lock()->RegisterSensory(t,false);
 					foreach (tf->structures,_s)
-						_s->lock()->RegisterFactionSensory(0.f);
+						_s->lock()->RegisterSensory(t,false);
 					foreach (tf->satellites,_sat)
-						_sat->lock()->RegisterFactionSensory(0.f);
-					foreach (tf->technites,t)
-						t->RegisterFactionSensory(tf->visibility, 0.f);
+						_sat->lock()->Objects::WorldEntity::RegisterSensory(t,false);
+					foreach (tf->technites,tc)
+						tf->RegisterTechniteSensory(tc->location.GetU(),t,false);
 					tf->visibility.UnlockChangeChecking(0.f);
 					ApplyCoverageChange(tf);
+
+
+					Objects::ForeachWorldEntity([tf,&t](const Objects::PWorldEntity&e)
+					{
+						tf->CheckGridVisibility(e,t);
+					});
 				}
 
 				VerifyGrid();
@@ -1225,10 +1244,54 @@ namespace Technites
 	#endif
 
 
-	void			Technite::RegisterFactionSensory(Grid::VisibilityState&vis, float t) const
+	void			Faction::UnregisterTechniteSensory(const Grid::HCellIdU&tecLoc, float&t, bool checkNow)
 	{
-		vis.ChangeTechniteSensory(location.GetU(), t, (short)1);
-		vis.CheckChanges(t);
+
+		static Grid::HighSetup::TVolumeDescriptor desc;
+		Grid::high.GenerateStep2Volume(tecLoc,desc);
+		#ifdef CLIENT
+			Grid::actualWorld.InsertSensor(desc);
+		#else
+			visibility.ChangeSensory(desc,t,(short)-1);
+			if (checkNow)
+				visibility.CheckChanges(t);
+			static Array<Objects::PWorldEntity>	keys;
+			seeing.exportKeys(keys);
+			foreach (keys,k)
+			{
+				if (!GridCanSee(*k))
+					SignalDisappearance(*k,t,true);
+			}
+		#endif
+
+	}
+
+	void			Faction::RegisterTechniteSensory(const Grid::HCellIdU&tecLoc, float&t, bool checkNow)
+	{
+
+		static Grid::HighSetup::TVolumeDescriptor desc;
+		Grid::high.GenerateStep2Volume(tecLoc,desc);
+		#ifdef CLIENT
+			Grid::actualWorld.RemoveSensor(desc);
+		#else
+			const auto&low = Grid::highToLowMap[tecLoc.stackID];
+			static Grid::LowSetup::TVolumeDescriptor desc0;
+			Grid::low.GenerateStep1MultiVolume(low.lowCells,low.lowCells[1] != low.Empty ? 2 : 1,tecLoc.layer,desc0);
+
+			visibility.ChangeSensory(desc,t,(short)1);
+			if (checkNow)
+				visibility.CheckChanges(t);
+
+			foreach (desc0.coverage,c)
+			{
+				for (UINT32 l = c->layerBegin; l < c->layerEnd; l++)
+				{
+					Objects::PWorldEntity e = Objects::GetEntity(Grid::LCellIdI(c->stackID,Grid::CellStack::ToHeight(l)));
+					if (e && GridCanSee(e))
+						SignalAppearance(e,t,true,false);
+				}
+			}
+		#endif
 	}
 
 
@@ -1755,7 +1818,8 @@ namespace Technites
 				}
 				else
 				{
-					visibility.ChangeTechniteSensory(loc, t, -1);
+					UnregisterTechniteSensory(loc,t);
+					//visibility.ChangeTechniteSensory(loc, t, -1);
 					techniteMap.Unset(loc);
 					atomicGrid.cellStack[loc.stackID].volumeCell[loc.layer].content = Grid::Content::Clear;
 					atomicGrid.SignalStackChange(loc.stackID);
@@ -1821,7 +1885,7 @@ namespace Technites
 				}
 				else
 				{
-					visibility.ChangeTechniteSensory(loc, t, -1);
+					UnregisterTechniteSensory(loc,t);
 					techniteMap.Unset(loc);
 
 					const auto mapping = Grid::highToLowMap[loc.stackID];
@@ -1920,7 +1984,7 @@ namespace Technites
 				DBG_ASSERT_EQUAL__(Grid::actualWorld.cellStack[loc.stackID].volumeCell[loc.layer].techniteFaction,this->gridID);
 
 				techniteMap.Set(loc, at);
-				visibility.ChangeTechniteSensory(loc, t, 1);
+				RegisterTechniteSensory(loc,t);
 
 
 			}
@@ -1933,17 +1997,7 @@ namespace Technites
 			{
 				TSensor	sensor(Grid::ToWorld(loc.first),loc.second);
 				sensors.Append(sensor);
-				Objects::ForeachWorldEntity([sensor](const Objects::PWorldEntity&e)
-				{
-					if (sensor.Contains(e->system.w.xyz))
-					{
-						
-
-					}
-
-				}
-				);
-
+				RegisterSensorCreation(sensor,false,t,false);
 			}
 			data->addSensor.Clear();
 
@@ -2253,8 +2307,7 @@ namespace Technites
 		Grid::high.family[family].SetOutdated(t);
 
 		#ifndef CLIENT
-			visibility.ChangeTechniteSensory(tech.location.GetU(), t, 1);
-			visibility.CheckChanges(t);
+			RegisterTechniteSensory(tech.location.GetU(),t);
 		#endif
 
 		return at;

@@ -31,85 +31,92 @@ namespace Objects
 
 
 
-	/*virtual override*/ bool				Satellite::CanSee(const PWorldEntity&other)	const
+	///*virtual override*/ bool				Satellite::CanSee(const PWorldEntity&other)	const
+	//{
+	//	if (Super::CanSee(other))
+	//		return true;
+	//	if (!turret->groundScanningRange)
+	//		return false;
+	//	UINT32 higher = Grid::low.grid.GetCell(other->location.stackID).higherEquivalent;
+	//	int h;
+	//	if (skySensorState.coverageMap.Query(higher,h))
+	//	{
+	//		return h <= other->location.height;
+	//	}
+	//	return false;
+	//}
+
+
+	///*virtual override*/ bool				Satellite::CanSee(const TVec3<>&center, float radius)	const
+	//{
+	//	if (Super::CanSee(center,radius))
+	//		return true;
+
+	//	if (!turret->groundScanningRange)
+	//		return false;
+	//	
+	//	UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+	//	int h;
+	//	if (!skySensorState.coverageMap.Query(higher,h))
+	//		return false;	//this would be a bug... ah, whatever
+
+	//	float r0 = Grid::ToRadius(h);
+	//	const TVec3<>&n = Grid::low.cells[location.stackID].cornerCenter;
+	//	float vertical = Vec::dot(n,center) - r0;
+	//	if (vertical + radius < 0.f)
+	//		return false;
+	//	TVec3<> base = n*vertical;
+	//	float d2 = Vec::quadraticDistance(base,center);
+	//	float range = EMPModify(turret->groundScannerPenetration,2);
+	//	return d2 <= sqr(range+radius);
+	//}
+
+
+	/*virtual override*/ void		Satellite::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 	{
-		if (Super::CanSee(other))
-			return true;
-		if (!turret->groundScanningRange)
-			return false;
-		UINT32 higher = Grid::low.grid.GetCell(other->location.stackID).higherEquivalent;
-		int h;
-		if (skySensorState.coverageMap.Query(higher,h))
+		Super::RegisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0, newContacts);
+		#ifdef CLIENT
+			if (isMine)
+				Grid::visibleOrbitGrid.ChangeSensory(loc,GetScanningRange(),+1);
+		#endif
+		if (turret->groundScanningRange > 0.f)
 		{
-			return h <= other->location.height;
+			float range = EMPModify(turret->groundScanningRange,2);
+			Grid::actualWorld.MapSensorState(loc.stackID,range,loc.height,turret->groundScannerPenetration,skySensorState);
+			Grid::actualWorld.UpdateSensorState(skySensorState);
+			#ifdef CLIENT
+				if (isMine)
+				{
+					Grid::actualWorld.InsertSensorCoverage(skySensorState);
+				}
+			#else
+				owner->RegisterSensorCreation(skySensorState,atTime,checkChangesNow,newContacts);
+			#endif
 		}
-		return false;
 	}
 
-
-	/*virtual override*/ bool				Satellite::CanSee(const TVec3<>&center, float radius)	const
+	/*virtual override*/ void		Satellite::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
 	{
-		if (Super::CanSee(center,radius))
-			return true;
-
-		if (!turret->groundScanningRange)
-			return false;
-		
-		UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-		int h;
-		if (!skySensorState.coverageMap.Query(higher,h))
-			return false;	//this would be a bug... ah, whatever
-
-		float r0 = Grid::ToRadius(h);
-		const TVec3<>&n = Grid::low.cells[location.stackID].cornerCenter;
-		float vertical = Vec::dot(n,center) - r0;
-		if (vertical + radius < 0.f)
-			return false;
-		TVec3<> base = n*vertical;
-		float d2 = Vec::quadraticDistance(base,center);
-		float range = EMPModify(turret->groundScannerPenetration,2);
-		return d2 <= sqr(range+radius);
+		Super::UnregisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0);
+		#ifdef CLIENT
+			if (isMine)
+				Grid::visibleOrbitGrid.ChangeSensory(loc,GetScanningRange(),-1);
+		#endif
+		if (turret->groundScanningRange > 0.f)
+		{
+			#ifdef CLIENT
+				if (isMine)
+				{
+					Grid::actualWorld.RemoveSensorCoverage(skySensorState);
+				}
+			#else
+				owner->RegisterSensorRemoval(skySensorState,atTime,checkChangesNow);
+			#endif
+		}
 	}
-
 
 	#ifndef CLIENT
-		/*virtual*/ void		Satellite::RegisterFactionSensory(float atTime)
-		{
-			//owner->RegisterSensorCreation(location,GetScanningRange(), atTime);
 
-			if (turret->groundScanningRange > 0.f)
-			{
-				float range = EMPModify(turret->groundScanningRange,2);
-				Grid::actualWorld.MapSensorState(location.stackID,range,location.height,turret->groundScannerPenetration,skySensorState);
-//				Grid::actualWorld.MapSensorState(location.stackID,turret->groundScanningRange,turret->groundScannerPenetration,skySensorState);
-				Grid::actualWorld.UpdateSensorState(skySensorState);
-				owner->RegisterSensorCreation(skySensorState,atTime);
-			}
-		}
-
-		/*virtual*/ void		Satellite::UnregisterFactionSensory(float atTime)
-		{
-			if (turret->groundScanningRange > 0.f)
-			{
-				owner->RegisterSensorRemoval(skySensorState,atTime);
-			}
-
-			//owner->RegisterSensorRemoval(location,GetScanningRange(), atTime);
-		}
-		/*virtual*/ void		Satellite::MoveFactionSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float atTime)
-		{
-			//owner->RegisterSensorMotion(from,to,GetScanningRange(), atTime);
-			if (from.stackID != to.stackID && turret->groundScanningRange > 0.f)
-			{
-				owner->RegisterSensorRemoval(skySensorState,atTime);
-				float range = EMPModify(turret->groundScanningRange,2);
-				Grid::actualWorld.MapSensorState(to.stackID,range,to.height,turret->groundScannerPenetration,skySensorState);
-//				Grid::actualWorld.MapSensorState(to.stackID,turret->groundScanningRange,turret->groundScannerPenetration,skySensorState);
-				Grid::actualWorld.UpdateSensorState(skySensorState);
-				owner->RegisterSensorCreation(skySensorState,atTime);
-
-			}
-		}
 
 		bool					Satellite::RefreshGroundSensor(float&atTime)
 		{
@@ -120,9 +127,9 @@ namespace Objects
 				{
 					LogEvent(EventType::MinorEntityProcess,this,"Ground-sensor change detected");
 
-					owner->RegisterSensorRemoval(state,atTime);
+					owner->RegisterSensorCreation(skySensorState,atTime,false);
 					atTime += timeEpsilon;
-					owner->RegisterSensorCreation(skySensorState,atTime);
+					owner->RegisterSensorRemoval(state,atTime,true);
 					atTime += timeEpsilon;
 					return true;
 				}
@@ -158,51 +165,51 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void Satellite::RegisterWorldSensory()
-		{
-			Grid::visibleOrbitGrid.ChangeSensory(location,GetScanningRange(),+1);
+		///*virtual override*/ void Satellite::RegisterWorldSensory()
+		//{
+		//	Grid::visibleOrbitGrid.ChangeSensory(location,GetScanningRange(),+1);
 
-			if (turret->groundScanningRange > 0.f)
-			{
-				float range = EMPModify(turret->groundScanningRange,2);
-				Grid::actualWorld.MapSensorState(location.stackID,range,location.height,turret->groundScannerPenetration,skySensorState);
-				Grid::actualWorld.UpdateSensorState(skySensorState);
-				Grid::actualWorld.InsertSensorCoverage(skySensorState);
-			}
-		}
+		//	if (turret->groundScanningRange > 0.f)
+		//	{
+		//		float range = EMPModify(turret->groundScanningRange,2);
+		//		Grid::actualWorld.MapSensorState(location.stackID,range,location.height,turret->groundScannerPenetration,skySensorState);
+		//		Grid::actualWorld.UpdateSensorState(skySensorState);
+		//		Grid::actualWorld.InsertSensorCoverage(skySensorState);
+		//	}
+		//}
 
-		/*virtual override*/ void Satellite::UnregisterWorldSensory()
-		{
-			Grid::visibleOrbitGrid.ChangeSensory(location,GetScanningRange(),-1);
-
-
-			if (turret->groundScanningRange > 0.f)
-			{
-				Grid::actualWorld.RemoveSensorCoverage(skySensorState);
-			}
-		}
-
-		/*virtual override*/ void	Satellite::MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to)
-		{
-			if (from != to)
-			{
-				Grid::visibleOrbitGrid.ChangeSensory(from,GetScanningRange(),-1);
-				Grid::visibleOrbitGrid.ChangeSensory(to,GetScanningRange(),+1);
+		///*virtual override*/ void Satellite::UnregisterWorldSensory()
+		//{
+		//	Grid::visibleOrbitGrid.ChangeSensory(location,GetScanningRange(),-1);
 
 
-				if (turret->groundScanningRange > 0.f)
-				{
-					Grid::actualWorld.RemoveSensorCoverage(skySensorState);
+		//	if (turret->groundScanningRange > 0.f)
+		//	{
+		//		Grid::actualWorld.RemoveSensorCoverage(skySensorState);
+		//	}
+		//}
 
-					float range = EMPModify(turret->groundScanningRange,2);
-					Grid::actualWorld.MapSensorState(to.stackID,range,to.height,turret->groundScannerPenetration,skySensorState);
-					Grid::actualWorld.UpdateSensorState(skySensorState);
-					Grid::actualWorld.InsertSensorCoverage(skySensorState);
-				}
-			}
+		///*virtual override*/ void	Satellite::MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to)
+		//{
+		//	if (from != to)
+		//	{
+		//		Grid::visibleOrbitGrid.ChangeSensory(from,GetScanningRange(),-1);
+		//		Grid::visibleOrbitGrid.ChangeSensory(to,GetScanningRange(),+1);
 
 
-		}
+		//		if (turret->groundScanningRange > 0.f)
+		//		{
+		//			Grid::actualWorld.RemoveSensorCoverage(skySensorState);
+
+		//			float range = EMPModify(turret->groundScanningRange,2);
+		//			Grid::actualWorld.MapSensorState(to.stackID,range,to.height,turret->groundScannerPenetration,skySensorState);
+		//			Grid::actualWorld.UpdateSensorState(skySensorState);
+		//			Grid::actualWorld.InsertSensorCoverage(skySensorState);
+		//		}
+		//	}
+
+
+		//}
 
 		#if 0
 
@@ -689,162 +696,7 @@ namespace Objects
 						RegisterChange(WorldEntity::TasksChanged,timeAt);
 					}
 				}
-				this->UpdateSystem();
-				if (signalEvent)
-				{
-					static GenericHashSet<OwnerParameter,OwnerHash>	checkStillBeeingSeenBy;
-					static Buffer0<PWorldEntity> checkCanStillSee;
-					checkCanStillSee.Clear();
-					checkStillBeeingSeenBy.Clear();
-
-					float oldTime = timeAt;
-					timeAt += timeCost;
-
-					for (index_t i = 0; i < seeing.Count(); i++)
-					{
-						const PWorldEntity&other = seeing[i];
-	
-						if (!CanSee(other))
-						{
-							ASSERT__(other->seenBy.FindAndErase(shared_from_this()));
-
-							bool found = false;
-							foreach (other->seenBy,s2)
-							{
-								if ((*s2)->owner == owner)
-								{
-									found = true;
-									break;
-								}
-							}
-							if (!found)
-							{
-								PMobileEntity v = To<MobileEntity>::DynamicCast(other);
-								if (v)
-									timeAt = std::max(timeAt, v->timeAt);
-								owner->SignalDisappearance(other,timeAt);
-							}
-
-							seeing.Erase(i--);
-						}
-					}
-					for (index_t i = 0; i < seenBy.Count(); i++)
-					{
-						const PWorldEntity&other = seenBy[i];
-	
-						if (!other->CanSee(shared_from_this()))
-						{
-							ASSERT__(other->seeing.FindAndErase(shared_from_this()));
-							checkStillBeeingSeenBy.set(other->owner);
-							seenBy.Erase(i--);
-						}
-					}
-
-			
-					foreach (seenBy,s)
-						checkStillBeeingSeenBy.Unset((*s)->owner);
-
-				
-					checkStillBeeingSeenBy.VisitAllKeys([this,timeCost](const OwnerParameter&id)
-					{
-						//SignalDisappearanceToHostileFaction(id,shared_from_this(),timeAt+timeCost);
-						id->SignalDisappearance(shared_from_this(),timeAt);
-					});
-					for (const auto&v : satellites)
-					{
-						if (!ProcessVisibilityOfS(v,timeAt) && v->CanAttack())
-						{
-							for (WMobileEntity w : owner->satellites)
-							{
-								PMobileEntity v2 = w.lock();
-								if (!v2->IsSatellite())
-									continue;
-
-								for (index_t i = 0; i < v2->myTasks.Count(); i++)
-								{
-									const Task&task = v2->myTasks[i];
-									bool badTask = false;
-									if (task.type == Task::MoveTo)
-									{
-										for (const auto&node : task.path)
-										{
-											//TVec3<> world = Grid::ToWorld(node.cell);
-											
-											Grid::LCellIdI actual;
-											if (v->ExtCanHit((v)->location,node.cell,actual))
-											{
-												badTask = true;
-												break;
-											}
-
-										}
-									}
-									if (badTask)
-									{
-										LogEvent(EventType::EntityProcess,v2.get(),"Dangerous movement into range of "+(v)->GetNiceName()+" detected. Dropping task(s).");
-										if (v2.get() == this)
-										{
-											ClearAllTasks(true,CLOCATION);
-											result = MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
-										}
-										else
-										{
-											while (v2->myTasks.Count() > i)
-												v2->myTasks.EraseBack();
-										}
-										break;
-									}
-
-								}
-							}
-
-
-					
-						}
-					}
-
-
-		
-					MoveFactionSensory(old, location, timeAt);
-
-
-					if (timeCost > 0)
-					{
-						SignalMotion(To<Satellite>::Cast(shared_from_this()),old,location,oldTime,timeCost);
-					}
-					else
-					{
-						#ifndef CLIENT
-							LogEvent(EventType::MinorEntityProcess,this,"Time cost is "+String(timeCost)+". Warping satellite at time "+String(oldTime));
-						#endif
-						RegisterChange(PositionChanged,oldTime);
-					}
-					//timeAt += timeCost;
-
-					Grid::LCellIdI loc;
-					foreach (satellites, t)
-						if ((*t)->WouldAttack(shared_from_this(),loc,timeAt))
-						{
-							if ((*t)->AttackNext(loc,true))
-							{
-								LogEvent(EventType::EntityProcess,t->get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
-
-								(*t)->Attack(timeAt);
-								if (health <= 0)
-									return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
-							}
-						}
-					#ifndef CLIENT
-						LogEvent(EventType::MinorEntityProcess,this,"Motion completed");
-					#endif
-				}
-				else
-				{
-					timeAt += timeCost;
-					#ifndef CLIENT
-						LogEvent(EventType::MinorEntityProcess,this,"Silent motion completed");
-					#endif
-				}
+				Super::HandleMotion(result,signalEvent,old,timeCost);
 			}
 			#ifdef _DEBUG
 				ASSERT__(Failed(result) || hadTasks == HasTasks());
@@ -1108,8 +960,9 @@ namespace Objects
 
 			//float d2 = Grid::GetQuadraticGeometricDistance(location+1,target->location);
 
-			return		owner->canSee.IsSet(target)
-					&&	turret->CanAttack() 
+			return		//owner->ExtCanSee(target,entityTime)
+					/*&&	*/
+						turret->CanAttack() 
 					&& timeAt <= entityTime 
 					&& CountPossibleAttacks() > 0 
 					&& ExtCanHit(location,target->location,outTarget)

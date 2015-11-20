@@ -10,7 +10,6 @@
 
 namespace Objects
 {
-	#ifdef HAS_WINDOW
 
 	bool						controlIsEnabled = false;
 	Buffer0<Grid::LCellIdI>		movementChoices;
@@ -49,17 +48,11 @@ namespace Objects
 	{
 		//activeCursorMode = 
 
-		#ifdef HAS_WINDOW
-			RefreshCommands(controlEnabled);
-		#endif
+		RefreshCommands(controlEnabled);
 
 		if (controlEnabled)
 			GetChoices(selectedEntity,
-				#ifdef HAS_WINDOW
-					Objects::VehicleStore::deployingVehicle, 
-				#else
-					Objects::PVehicle(),
-				#endif
+				Objects::VehicleStore::deployingVehicle, 
 				activeCursorMode,movementChoices,showArrow,hasArrowCellTarget,arrowFrom,arrowFromCell);
 		else
 		{
@@ -71,7 +64,6 @@ namespace Objects
 
 
 
-	#endif
 
 
 	

@@ -617,6 +617,8 @@ namespace Receiver
 					response.startFactionTypes = response.startFactionTypes & ~Protocol::FactionType::RegularFaction;
 				}
 			}
+		if (client->faction->allMobiles.IsEmpty() && client->faction->structures.IsEmpty() && client->faction->IsTechniteFaction())
+			response.startFactionTypes = response.startFactionTypes & ~Protocol::FactionType::RegularFaction;
 
 		Channels::clientFactionResponse.SendTo(client->peer.lock(),response);
 		Protocol::FactionID outFactionID(client->faction->id,0xFF);
@@ -750,7 +752,7 @@ namespace Receiver
 			timestamp.rightNow = true;
 
 
-			client->faction->canSee.VisitAllKeys([&peer,client,timestamp](const Objects::PWorldEntity&e)
+			client->faction->seeing.VisitAllKeys([&peer,client,timestamp](const Objects::PWorldEntity&e)
 			{
 				if (e->health <= 0)
 				{

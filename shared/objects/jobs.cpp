@@ -846,16 +846,6 @@ namespace Objects
 					Grid::high.family[k].SetOutdated(v.timeAt);
 					Grid::low.family[k].SetOutdated(v.timeAt);
 				}
-			//if (Grid::LowCellIsClear(v->location - 1))//done by PlaceExactlyAt()
-			//PVehicle v1 = To<MobileEntity>::DynamicCast(v);
-			//if (v1 && v1->PlaceExactlyAt(v->location - 1))
-			//{
-			//	RefreshSeeThrough(v->location.height+1);
-			//	Grid::SeeThrough::Update(Grid::SeeThrough::IsEnabled(), v->location);	//don't change cutoff mode
-			//	if (v == selectedEntity)
-			//		UpdateChoices();
-			//}
-			//v.timeAt += Times::Dig;
 			SignalClusterAndNeighborsChange(target,v.timeAt-Times::Dig,&v);
 			MobilePlacementResult rc = v.PlaceExactlyAt(target, Times::Dig,v.timeAt);
 			if (!Succeeded(rc))

@@ -197,7 +197,7 @@ namespace State
 	*/
 	void		RestartSession();
 
-	inline bool	InExtraTechniteRound()	{return RuntimeConfig::techniteSubRoundNumber < State::Config::extraTechniteRounds;}
+	inline bool	CurrentRoundIsExtraTechniteRound()	{return RuntimeConfig::techniteSubRoundNumber > 0 && RuntimeConfig::techniteSubRoundNumber <= State::Config::extraTechniteRounds;}
 
 
 

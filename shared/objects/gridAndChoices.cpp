@@ -165,7 +165,7 @@ namespace Objects
 			if (base.turret->ammoNeedPerShot > munitionStorage)
 				return false;
 			const Grid::WorldData&world = source.owner->currentState;
-			source.owner->canSee.VisitAllKeys([zOffset,&world, &source,sourceLocation,&base,&c2,&closest,&closestEntity](const PWorldEntity&e)
+			source.owner->seeing.VisitAllKeys([zOffset,&world, &source,sourceLocation,&base,&c2,&closest,&closestEntity](const PWorldEntity&e)
 			{
 //					&& turret->TraceTrajectory(location+1,target.location,trajectory,iat,ic)==Turret::ReachesTarget;		
 				
@@ -1019,6 +1019,12 @@ namespace Objects
 					Renderer::animatedTurrets << b;
 			#endif
 			OnAppear(e);
+		#else
+			ForeachFaction([e,&atTime](const PFaction&f)
+			{
+				f->CheckGridVisibility(e,atTime);
+			});
+
 		#endif
 
 		e->isInserted = true;
@@ -1146,9 +1152,9 @@ namespace Objects
 			RefreshCompoundCoverage(atTime);
 		#else
 			s->owner->structures << s;
-
-			if (To<Tower>::DynamicCast(s))
-				towers << To<Tower>::Cast(s);
+			PTower t = To<Tower>::DynamicCast(s);
+			if (t)
+				s->owner->towers << t;
 			if (!refreshNetworkNow)
 				compoundCoverageChanged = true;
 			else
@@ -1247,11 +1253,6 @@ namespace Objects
 				}
 			#endif
 
-			#ifndef CLIENT
-				PTower t = To<Tower>::DynamicCast(e);
-				if (t)
-					towers.FindAndErase(t);
-			#endif
 
 		}
 		else
@@ -1329,7 +1330,15 @@ namespace Objects
 				compoundCoverageChanged = true;
 		#endif
 		if (t != RemovalType::DestroyedInStorage)
-			e->UnregisterSensory(timestamp,true);
+		{
+			e->UnregisterSensory(timestamp);
+			#ifndef CLIENT
+			ForeachFaction([e,&timestamp](const PFaction&f)
+			{
+				f->SignalDisappearance(e,timestamp,true,false);
+			});
+			#endif
+		}
 
 		e->isInserted = false;
 	}

@@ -295,8 +295,8 @@ namespace Objects
 
 			//float d2 = Grid::GetQuadraticGeometricDistance(location+1,target->location);
 
-			return		owner->canSee.IsSet(target)
-					&&	turret->CanAttack() 
+			return		//owner->canSee.IsSet(target)
+					/*&&	*/turret->CanAttack() 
 					&& timeAt <= entityTime 
 					&& CountPossibleAttacks() > 0 
 					&& ExtCanHit(owner,location,foundationHeight, target->location,outTarget)
@@ -1096,7 +1096,7 @@ namespace Objects
 
 	/*static*/ void Structure::ChangeBroadStructCount(const Grid::LCellIdI&location, int height, bool hasFoundation, int changeDirection, float atTime)
 	{
-		LogEvent(EventType::Debug,nullptr,"ChangeBroadStructCount("+location.ToString()+", height="+String(height)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection));
+		LogEvent(EventType::Debug,nullptr,"ChangeBroadStructCount("+location.ToString()+", height="+String(height)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
 
 		{
 			const int lowEdge = hasFoundation ? -1 : 0;

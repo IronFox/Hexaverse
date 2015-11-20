@@ -80,14 +80,6 @@ namespace Objects
 	void					Destroy();
 
 
-	#ifdef CLIENT
-		//void					UpdateChoices(bool controlEnabled);
-
-		#ifdef HAS_WINDOW
-			void				RefreshSeeThrough(int oldVehicleHeight, bool controlEnabled);
-		#endif
-
-	#endif
 
 
 

@@ -350,7 +350,6 @@ namespace Technites
 		}
 
 
-		void			RegisterFactionSensory(Grid::VisibilityState&, float t) const;
 
 	};
 
@@ -508,6 +507,9 @@ namespace Technites
 		static PFaction			GetFactionOf(BYTE gridFactionID);
 		Technite*				GetOwnTechnite(const Grid::HCellIdU&location);
 
+		void					RegisterTechniteSensory(const Grid::HCellIdU&tecLoc, float&t, bool checkNow=true);
+		void					UnregisterTechniteSensory(const Grid::HCellIdU&tecLoc, float&t, bool checkNow=true);
+
 
 		void					VerifyIntegrity();
 
@@ -600,6 +602,7 @@ namespace Technites
 		#ifdef _DEBUG
 			static void			ReportLocation(const Grid::HCellIdU&loc);
 		#endif
+
 
 		static Array<WorkerData>	workerData;
 

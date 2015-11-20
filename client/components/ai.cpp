@@ -183,36 +183,33 @@ namespace AI
 		Grid::LCellIdI target;
 		if (source.ExtCanHit(source.owner, source.location,source.base->height,candidate.location,target))
 		{
-			//Grid::LCellIdI target = candidate.location;
-			//if (distance > sqr(range))	//explosion radius zone
-			//{
-
-			//	float at = range / (range + source.turret->explosionRadius - 1);
-			//	float3 refPoint = source.system.w.xyz + (candidate.system.w.xyz - source.system.w.xyz) * at;
-			//	Grid::LCellIdI newTarget(Grid::low.Locate(refPoint.Normalized(),target.cellID),target.height);
-			//	target = newTarget;
-			//	distance = Vec::quadraticDistance(source.system.w.xyz,Grid::ToWorld(target));
-			//	while (distance > sqr(range))
-			//	{
-			//		at -= 1.f / (range + source.turret->explosionRadius - 1);
-			//		if (at <= 0)
-			//			return;
-			//		refPoint = source.system.w.xyz + (candidate.system.w.xyz - source.system.w.xyz) * at;
-			//		Grid::LCellIdI newTarget(Grid::low.Locate(refPoint.Normalized(),target.cellID),target.height);
-			//		target = newTarget;
-			//		distance = Vec::quadraticDistance(source.system.w.xyz,Grid::ToWorld(target));
-			//	}
-			//}
 
 
 			TVec3<> detonationAt;
 			Objects::TurretTrajectory rs = source.TraceTrajectory(Grid::actualWorld,target,detonationAt);
+			LogEvent(EventType::Debug,&source,"Checking possible attack trajectory to "+candidate.GetName()+", attacking "+target.ToString()+", detonating at "+Vec::toString(detonationAt)+": "+rs.ToString());
+
+			if (rs == Objects::TurretTrajectory::InvalidTrajectory)
+			{
+				LogEvent(EventType::Debug,&source,"Cannot trace good trajectory to destination. Invalid trajectory");
+				return;
+			}
+			if (rs != Objects::TurretTrajectory::ReachesTarget)
+			{
+				float distanceToTarget = Vec::distance(detonationAt,candidate.system.w.xyz);
+				if (distanceToTarget > source.turret->explosionRadius)
+				{
+					LogEvent(EventType::Debug,&source,"Cannot trace good trajectory to destination. Final distance is "+String(distanceToTarget)+"/"+String(source.turret->explosionRadius));
+					return;
+				}
+			}
 			//Objects::Turret::TraceTrajectory(
 			//Objects::Turret::MaxRangeToVelocity(source.GetFlatAttackRange()),
 				//									Grid::actualWorld, source.location,target,detonationAt);
-			if (rs == Objects::TurretTrajectory::ReachesTarget
-			 || (rs == Objects::TurretTrajectory::MidFlightImpact && source.turret->explosionRadius > 1 && !source.turret->dealsEMPDamage))
+			//if (rs == Objects::TurretTrajectory::ReachesTarget
+			// || (rs == Objects::TurretTrajectory::MidFlightImpact && source.turret->explosionRadius > 1 && !source.turret->dealsEMPDamage))
 			{
+				LogEvent(EventType::Debug,&source,"Trajectory checks out");
 				count_t needAttacks = ceil(float(std::max(1,candidate.health)) / source.turret->damageLevel);
 				if (rs != Objects::TurretTrajectory::ReachesTarget)
 					needAttacks ++;
@@ -226,6 +223,7 @@ namespace AI
 					priority += ProcessAttackPriority(**_v,detonationAt,source.turret->explosionRadius);
 				foreach (Objects::Marker::mobileGhosts,_v)
 					priority += ProcessAttackPriority(**_v,detonationAt,source.turret->explosionRadius);
+				LogEvent(EventType::Debug,&source,"Base Priority considered "+String(priority));
 				for (index_t i = 0; i < needAttacks; i++)
 				{
 					TAttackTarget&t = attackTarget.Append();
@@ -425,59 +423,22 @@ namespace AI
 				const TVec3<> reference = Grid::ToWorld(n->cell);
 				float goodWeight = 0;
 				float badWeight = 0;
-				foreach (Objects::vehicles,_v)
+				Objects::ForeachWorldEntity([&goodWeight,&badWeight,reference](const Objects::PWorldEntity&e)
 				{
-					if ((*_v)->isMine)
+					if (e->isMine || e->IsSatellite())
 					{
 						//if (distance < 16.f)
 						//	badWeight += 100.f / (1.f + distance);	//repell close vehicles a bit
-						continue;
+						return;
 					}
-					float distance = Vec::quadraticDistance((*_v)->system.w.xyz,reference);
-					float fc = EstimateInterest((*_v)->Objects::WorldEntity::GetTurretBase(),(*_v)->location.height,
-								(*_v)->GetConstructionCost(),distance);
-					goodWeight += fc / (1.f + distance);
-				}
-				foreach (Objects::structures,_v)
-				{
-					if ((*_v)->isMine)
-						continue;
-					float distance = Vec::quadraticDistance((*_v)->system.w.xyz,reference);
-					float fc = EstimateInterest((*_v)->Objects::WorldEntity::GetTurretBase(), (*_v)->location.height,
-								(*_v)->GetConstructionCost(),distance);
-					goodWeight += fc /  (1.f + distance);
-				}
-
-				foreach (Objects::Marker::mobileGhosts,_v)
-				{
-					float distance = Vec::quadraticDistance((*_v)->system.w.xyz,reference);
-					float fc = EstimateInterest((*_v)->Objects::WorldEntity::GetTurretBase(), (*_v)->location.height,
-								(*_v)->GetConstructionCost(),distance);
-					if ((*_v)->isMine)
-					{
-						if (distance > 64.f)
-							goodWeight += fc /  (1.f + distance);
-						else
-							badWeight += fc /  (1.f + distance);
-						continue;
-					}
-					goodWeight += fc /  (1.f + distance);
-				}
-				foreach (Objects::Marker::structureGhosts,_v)
-				{
-					float distance = Vec::quadraticDistance((*_v)->system.w.xyz,reference);
-					float fc = EstimateInterest((*_v)->Objects::WorldEntity::GetTurretBase(), (*_v)->location.height,
-								(*_v)->GetConstructionCost(),distance);
-					if ((*_v)->isMine)
-					{
-						if (distance > 100.f)
-							goodWeight += fc /  (1.f + distance);
-						else
-							badWeight += fc /  (1.f + distance);
-						continue;
-					}
-					goodWeight += fc /  (1.f + distance);
-				}
+					float distance = Vec::quadraticDistance(e->system.w.xyz,reference);
+					float fc = EstimateInterest(e->GetTurretBase(),e->location.height,
+								e->GetConstructionCost(),distance);
+					if (distance < Objects::Component::artillery.explosionRadius)
+						badWeight += 20 / (1.f + distance);
+					else
+						goodWeight += fc / (1.f + distance);
+				});
 				//if (badWeight < 0.1f && goodWeight < 0.05f)
 				{
 					foreach (Objects::Marker::all,_m)
@@ -585,7 +546,7 @@ namespace AI
 			switch (m.type)
 			{
 				case Objects::Marker::Type::HostileContact:
-					if (m.age >= 10 && m.mobileVisualization)	//after 10 rounds, assume vehicle has moved
+					if (m.age >= 10 && m.visualization && m.visualization->IsMobile())	//after 10 rounds, assume vehicle has moved
 					{
 						LogEvent(EventType::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" since hostile vehicle markers are considered outdated after 10 rounds (age="+String(m.age)+")");
 						SignalMarkerDeletion(m.id);

@@ -466,6 +466,7 @@ namespace Network
 					}
 
 				Animation::primitives.Append().Init(delta);
+				LogEvent(EventType::Debug, "Appended world delta primitive to animation sequence at t="+String(delta.timestamp.atTime.value));
 			}
 			else
 			{
@@ -500,7 +501,11 @@ namespace Network
 				if (vs.entityState.timestamp.rightNow)
 					Animation::whenDone.Append().Init(vs);
 				else
+				{
 					Animation::primitives.Append().Init(vs);
+					LogEvent(EventType::Debug, "Appended mobile state primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
+				}
+
 			}
 		}
 
@@ -532,6 +537,8 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(vc,v);
+				LogEvent(EventType::Debug, "Appended 'new mobile entity("+vc.state.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime.value));
+
 			}
 		}
 
@@ -556,6 +563,7 @@ namespace Network
 			if (!sc.state.entityState.timestamp.rightNow)
 			{
 				Animation::primitives.Append().Init(sc,s);
+				LogEvent(EventType::Debug, "Appended 'new structure("+sc.state.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime.value));
 			}
 			else
 			{
@@ -583,7 +591,10 @@ namespace Network
 				if (vs.entityState.timestamp.rightNow)
 					Animation::whenDone.Append().Init(vs);
 				else
+				{
 					Animation::primitives.Append().Init(vs);
+					LogEvent(EventType::Debug, "Appended 'structure state' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
+				}
 			}
 
 		}
@@ -631,7 +642,10 @@ namespace Network
 				if (de.timestamp.rightNow)
 					Animation::whenDone.Append().Init(de);
 				else
+				{
 					Animation::primitives.Append().Init(de);
+					LogEvent(EventType::Debug, "Appended 'destruction' primitive to animation sequence at t="+String(de.timestamp.atTime.value));
+				}
 			}
 		}
 
@@ -741,6 +755,7 @@ namespace Network
 				if (!found)
 				{
 					Animation::primitives.Append().Init(m);
+					LogEvent(EventType::Debug, "Appended 'mobile entity motion' primitive to animation sequence at t="+String(m.timestamp.atTime.value));
 				}
 
 			}
@@ -757,6 +772,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(a);
+				LogEvent(EventType::Debug, "Appended 'trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime.value));
 			}
 			
 		}
@@ -772,6 +788,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(ex);
+				LogEvent(EventType::Debug, "Appended 'explosion' primitive to animation sequence at t="+String(ex.timestamp.atTime.value));
 			}
 			
 		}
@@ -792,8 +809,10 @@ namespace Network
 				v->turretAngleY = -(90.f - Vec::angle(rot.toWorld.value,Grid::low.cells[v->location.stackID].centerVertex.xyz)) * M_PIF / 180.f;
 			}
 			else
+			{
 				Animation::primitives.Append().Init(rot);
-
+				LogEvent(EventType::Debug, "Appended 'entity turret rotation' primitive to animation sequence at t="+String(rot.timestamp.atTime.value));
+			}
 		}
 
 
@@ -808,7 +827,10 @@ namespace Network
 				#endif
 			}
 			else
+			{
 				Animation::primitives.Append().Init(u);
+				LogEvent(EventType::Debug, "Appended 'resource update' primitive to animation sequence at t="+String(u.timestamp.atTime.value));
+			}
 
 		}
 
@@ -1439,13 +1461,12 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			Animation::UpdateAutomation(CLOCATION);
 		}
 	}
+	for (const auto&f : Objects::Faction::allKnown)
+	{
+		f->requestedNewRound = false;
+		f->roundChangeNotifications = 0;
+	};
 	#ifdef HAS_WINDOW
-		for (const auto&f : Objects::Faction::allKnown)
-		//factionMap.VisitAllValues([](const Objects::PFaction&f)
-		{
-			f->requestedNewRound = false;
-			f->roundChangeNotifications = 0;
-		};//);
 		Dialog::SignalSituationChange();
 	#endif
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase || RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase)
@@ -1477,9 +1498,8 @@ void	Network::Receiver::LockEmpZones(NET(UINT16)&zones)
 			Grid::high.family[i].SetOutdated(0);
 			Grid::low.family[i].SetOutdated(0);
 		}
-
-		Grid::visibleOrbitGrid.Invalidate();
 	#endif
+	Grid::visibleOrbitGrid.Invalidate();
 	//SpaceGrid::Invalidate();
 }
 

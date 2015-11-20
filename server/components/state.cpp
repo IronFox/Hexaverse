@@ -267,7 +267,7 @@ namespace State
 
 		ResetFactionStartMineralValue();
 
-		Objects::VerifyVisibilityNetwork();
+//		Objects::VerifyVisibilityNetwork();
 		Objects::CheckMobileEntitySanity();
 		Objects::VerifyGrid();
 
@@ -319,7 +319,7 @@ namespace State
 		#ifdef _DEBUG
 			if (to == RuntimeConfig::Phase::AnimationPhase)	//should have enough time during animation RuntimeConfig::phase
 			{
-				Objects::VerifyVisibilityNetwork();	 //seems stable
+				//Objects::VerifyVisibilityNetwork();	 //seems stable
 				Objects::CheckMobileEntitySanity();
 
 				Objects::VerifyGrid();
@@ -1806,6 +1806,7 @@ void	State::Load(const PathString&filename)
 								{
 									Technites::PFaction tfaction = Technites::Faction::CreateFromFile(factionID, (BYTE)id);
 									faction = tfaction;
+									float t0 = 0.f;
 									GetPODs(list, RID::technites, tfaction->technites);
 									for (index_t i = 0; i < tfaction->technites.Count(); i++)
 									{
@@ -1813,8 +1814,9 @@ void	State::Load(const PathString&filename)
 										Grid::HCellIdU loc = t.location.GetU();
 										tfaction->techniteMap.Set(loc, i);
 										Grid::actualWorld.cellStack[loc.stackID].SetLocalTechniteFaction(t.location.GetHeight(), tfaction->gridID);
-										t.RegisterFactionSensory(tfaction->visibility,0.f);
+										tfaction->RegisterTechniteSensory(loc,t0,false); 
 									}
+									tfaction->visibility.CheckChanges(t0);
 								}
 								else
 								{

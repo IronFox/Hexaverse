@@ -427,6 +427,11 @@ namespace TechniteLogicLink
 					//auto-new-round, if set. Not sure if this should be set
 					TransmitRoundEndRequest();
 				}
+				else
+				{
+					bool brk = true;
+
+				}
 			}
 		}
 
@@ -750,13 +755,10 @@ namespace TechniteLogicLink
 			case Objects::Marker::Type::HostileContact:
 			{
 				TechniteProtocol::GameObject obj;
-				if (m.mobileVisualization)
-					FillIn(m.mobileVisualization,obj);
+				if (m.visualization)
+					FillIn(m.visualization,obj);
 				else
-					if (m.structureVisualization)
-						FillIn(m.structureVisualization,obj);
-					else
-						return;
+					return;
 				LogEvent(EventType::TechniteLogic,nullptr,"Creating new ghost-marker for "+m.id.ToString());
 				obj.id.isGhost = true;
 				obj.birthRound = m.createdInRound;
