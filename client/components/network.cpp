@@ -1138,7 +1138,7 @@ namespace Network
 			case Protocol::ChannelID::BeginGame:
 				gameHasBegun = true;
 				LogEvent(EventType::SessionRelated,nullptr,"Game has begun");
-				if (RuntimeConfig::IsAnyCommandPhase() && Animation::AllDone())
+				if (RuntimeConfig::IsInAnyCommandPhase() && Animation::AllDone())
 				{
 					Objects::RefreshSkyHubConnections();
 					Animation::UpdateAutomation(CLOCATION);
@@ -1470,7 +1470,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	#ifdef HAS_WINDOW
 		Dialog::SignalSituationChange();
 	#endif
-	if (RuntimeConfig::IsAnyCommandPhase())
+	if (RuntimeConfig::IsInAnyCommandPhase())
 	{
 		if (amTechniteFaction)
 		{

@@ -56,7 +56,7 @@ void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromSto
 		return;
 	const Objects::MobileEntity&v = *_v;
 
-	Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,atTime);
+	Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
 	if (!restoredFromStorage)
 	{
 		TCP::Serial<Protocol::NewMobileEntity>	w;
@@ -119,7 +119,7 @@ void	SignalNewStructure(const Objects::PStructure&s, float atTime)
 
 
 	TCP::Serial<Protocol::StructureConstruction>	w;
-	Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,atTime);
+	Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
 	State::Describe(w.Ref(),*s,true,timestamp);
 	//State::Describe(w2.Ref(),s,true,&parent);
 	w.Seal();
@@ -168,7 +168,7 @@ void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, cons
 		return;
 	//if (!client->ShowNew(e))
 		//return;	//already knows this
-	Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,atTime);
+	Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
 
 	if (e->IsMobile())
 	{
@@ -205,7 +205,7 @@ void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float 
 	self.id = e->id;
 	self.type = t;
 	self.timestamp.atTime = atTime;
-	self.timestamp.rightNow = RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
+	self.timestamp.rightNow = RuntimeConfig::IsInAnyCommandPhase();
 	others = self;
 	bool sendToOthers = true,sendToSelf = true;
 	switch (t)
@@ -266,7 +266,7 @@ void	SignalDisappearanceToHostileFaction(const Objects::OwnerParameter&target, c
 	de.id = e->id;
 	de.type = Objects::RemovalType::Vanished;
 	de.timestamp.atTime = atTime;
-	de.timestamp.rightNow = RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
+	de.timestamp.rightNow = RuntimeConfig::IsInAnyCommandPhase();
 
 	//LogEvent(EventType::MinorEntityProcess,*client->peer.lock(),e,"Signalling disappearance");
 	LogEvent(EventType::MinorEntityProcess,*client->peer.lock(),e,"Signalling disappearance "+(de.timestamp.rightNow ? "(now)" : " at time="+String(atTime)));
@@ -1106,7 +1106,6 @@ void CheckSendTerrain()
 bool	CheckCoverageSendTerrain(const Objects::PFaction&faction,const TCP::PPeer&peer)
 {
 	static Protocol::WorldDelta	delta;
-	const bool rightNow = RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase || RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase;
 
 	BYTE numChanged = 0;
 	for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
@@ -1121,7 +1120,7 @@ bool	CheckCoverageSendTerrain(const Objects::PFaction&faction,const TCP::PPeer&p
 			{
 				faction->visibility.families[family].coverageChanged = false;
 				at++;
-				Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,rightNow,at == numChanged,Protocol::WorldDeltaType::ProgressiveUpdate);
+				Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,RuntimeConfig::IsInAnyCommandPhase(),at == numChanged,Protocol::WorldDeltaType::ProgressiveUpdate);
 				Channels::updateWorld.SendTo(peer,delta);
 			}
 		return true;
@@ -1137,7 +1136,6 @@ bool ApplyCoverageChange(const Objects::PFaction&faction)
 
 void ProcessChanges()
 {
-	const bool rightNow = RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase || RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase;
 	
 	BYTE changed = 0,counter=0;
 	for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
@@ -1148,7 +1146,7 @@ void ProcessChanges()
 	for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 	{
 		if (Grid::high.family[k].normal.outdated)
-			State::SignalFamilyChange(k,++counter == changed,rightNow);
+			State::SignalFamilyChange(k,++counter == changed,RuntimeConfig::IsInAnyCommandPhase());
 	}
 	if (changed)
 	{
@@ -1166,7 +1164,7 @@ void ProcessChanges()
 			bool othersNeedToKnow = (v.changeFlags & State::NotifyOthers) != 0;
 
 			TCP::Serial<Protocol::MobileState>	w0,w1;
-			Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,v.changeTimer);
+			Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),v.changeTimer);
 			State::Describe(w0.Ref(),v,false,timestamp,v.changeFlags);
 			State::Describe(w1.Ref(),v,true,timestamp,v.changeFlags);
 			w0.Seal();
@@ -1198,7 +1196,7 @@ void ProcessChanges()
 				
 			bool othersNeedToKnow = (s.changeFlags & State::NotifyOthers) != 0;
 
-			Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,s.changeTimer);
+			Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),s.changeTimer);
 
 			TCP::Serial<Protocol::StructureState>	w0,w1;
 			State::Describe(w0.Ref(),**_s,false,timestamp,s.changeFlags);
@@ -1801,7 +1799,7 @@ int main( int argc, const char* argv[])
 
 	while (!application_shutting_down)
 	{
-		if (RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase || RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
+		if (RuntimeConfig::IsInAnyCommandPhase() || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 			Sleep(1);
 		State::server.Resolve();
 		if (State::Config::enableNexusAI)
