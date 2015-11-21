@@ -27,7 +27,7 @@ namespace State
 	}
 
 
-	void HandleConnectionLoss(const PClient&client)
+	void HandleConnectionLoss(PClient client)
 	{
 		State::clients.FindAndErase(client);
 		State::activePlayers.FindAndErase(client);
@@ -247,7 +247,7 @@ namespace State
 
 		ResetFactionStartMineralValue();
 
-		Objects::VerifyVisibilityNetwork();
+//		Objects::VerifyVisibilityNetwork();
 		Objects::CheckMobileEntitySanity();
 		Objects::VerifyGrid();
 	}
@@ -260,7 +260,7 @@ namespace State
 	{
 		info.activePhase = RuntimeConfig::phase;
 		info.numFactionsOnline = (UINT16)State::activePlayers.Count();
-		info.numFactionsCreated = (UINT16)Objects::Faction::all.Count();
+		info.numFactionsCreated = (UINT16)Objects::Faction::all.Count() + (State::Config::enableNexusAI ? 1 : 0);
 		info.roundNumber = (UINT32)RuntimeConfig::roundNumber;
 		info.worldID = State::worldID;
 		info.gameGoal = (UINT32)RuntimeConfig::gameGoal;
@@ -296,12 +296,21 @@ namespace State
 		#ifdef _DEBUG
 			if (to == RuntimeConfig::Phase::AnimationPhase)	//should have enough time during animation RuntimeConfig::phase
 			{
-				Objects::VerifyVisibilityNetwork();	 //seems stable
+				//Objects::VerifyVisibilityNetwork();	 //seems stable
 				Objects::CheckMobileEntitySanity();
 
 				Objects::VerifyGrid();
 			}
 		#endif
+
+
+		if (to == RuntimeConfig::Phase::AnimationPhase && !((RuntimeConfig::roundNumber+1)%State::Config::saveEveryNRounds))
+		{
+			RuntimeConfig::roundNumber++;	//is formally incremented at the beginning of the command phase
+			State::AutoSave();
+			RuntimeConfig::roundNumber--;
+		}
+
 
 
 		//if (to == RuntimeConfig::Phase::CommandPhase)
@@ -591,6 +600,7 @@ namespace State
 		server.InstallChannel(Channels::chatMessage);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,1);
+		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,1);
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,1);
 		
 		server.onSignal = Receiver::OnSignal;
@@ -2060,7 +2070,8 @@ void	State::Save( const PathString&name)
 
 	if (container.SaveToFile(name.c_str()))
 	{
-		LogEvent(EventType::SessionRelated,"World snapshot written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
+		LogEvent(EventType::Debug,"World snapshot written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
+		LogEvent(EventType::SessionRelated,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
 	}
 	else
 		LogEvent(EventType::InternalFault,"Unable to write world to "+String(name));

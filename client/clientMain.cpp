@@ -319,6 +319,18 @@ void	SignalConstructTowerTurret(const TUniqueID&towerID,const Objects::Component
 #endif
 
 
+bool	HasSignalledRoundEnd()
+{
+	return Network::newRoundRequested;
+}
+
+bool	CanChangeRoundState()
+{
+	return Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
+}
+
+
+
 void	SignalRoundEnd()
 {
 	if (Network::ControlEnabled())
@@ -330,6 +342,17 @@ void	SignalRoundEnd()
 		#endif
 		LogEvent(EventType::SessionRelated,nullptr,"Requested new round");
 	}
+}
+
+void	SignalUndoRoundEnd()
+{
+	if (Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::newRoundRequested)
+	{
+		Network::client.SendSignal(Protocol::ChannelID::RequestContinueRound);
+		Network::newRoundRequested = false;
+		LogEvent(EventType::SessionRelated,nullptr,"Requested to continue new round");
+	}
+
 }
 
 #ifdef HAS_WINDOW
@@ -2457,7 +2480,7 @@ bool loop()
 void MyFatal(const FatalDescriptor&descriptor)
 {
 	String message = descriptor.ToString();
-	LogFile file("fatal.log",false);
+	LogFile file(RuntimeConfig::ConfigFile("fatal.log"),false);
 	
 	file.Log(message+"\n",true);
 	file.Close();
@@ -2784,7 +2807,6 @@ void Select()
 				//else
 					//ShowMessage("nothing");
 			}
-			Objects::RefreshSeeThrough(oldVehicleHeight,Network::ControlEnabled());
 
 		}
 	}

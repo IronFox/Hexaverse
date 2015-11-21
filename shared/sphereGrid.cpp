@@ -48,8 +48,11 @@ namespace Grid
 
 
 
-	#ifdef HAS_WINDOW
+	#ifdef CLIENT
 		OrbitGrid	visibleOrbitGrid;
+	#endif
+
+	#ifdef HAS_WINDOW
 		/*static*/ const float4 WaterCompiler::waterColor = float4(0.5f, 0.6f, 1.f,0.6f);
 	#endif
 
@@ -532,6 +535,9 @@ namespace Grid
 			#ifdef HAS_WINDOW
 				volumeCell[i].intLightLevel = 0xFF;
 				volumeCell[i].submergence = 0;
+			#endif
+
+			#ifdef CLIENT
 				volumeCell[i].visible = 0;
 			#endif
 		}
@@ -545,7 +551,7 @@ namespace Grid
 		for (UINT i = 0; i < Range; i++)
 		{
 			volumeCell[i].structureCounter = 0;
-			#ifdef HAS_WINDOW
+			#ifdef CLIENT
 				volumeCell[i].visible = 0;
 			#endif
 		}
@@ -1386,7 +1392,7 @@ namespace Grid
 	}
 
 
-	#ifdef HAS_WINDOW
+	#ifdef CLIENT
 	
 		void				WorldData::InsertSensorCoverage(const SkySensorState&state)
 		{
@@ -3441,33 +3447,7 @@ namespace Grid
 			}
 			ASSERT_EQUAL__(at, range* CellStack::Range);
 		}
-		//if (data1.IsNotEmpty())
-		//{
-		//	index_t at = 0;
-
-		//	foreach (data1,block)
-		//	{
-		//		for (index_t i = 0; i < block->repitition; i++)
-		//		{
-		//			index_t stackIndex = (at % range) + offset;
-		//			index_t layer = at / range;
-
-		//			CellStack&stack = cellStack[stackIndex];
-
-		//			if (stack.volumeCell[layer].ApplyDelta(block->value))
-		//			{
-		//				anyChanged = true;
-		//				#ifdef HAS_WINDOW
-		//					stack.lightingChangedTo = std::max<BYTE>(stack.lightingChangedTo,(BYTE)(layer+1));
-		//				#endif
-		//			}
-		//		
-		//			at++;
-		//		}
-		//	}
-		//	ASSERT_EQUAL__(at, range* CellStack::Range);
-		//	
-		//}
+	
 		#ifdef CLIENT
 			ASSERT__(actualWorld);	//client only knows one world
 		#endif
@@ -3615,33 +3595,6 @@ namespace Grid
 			}
 			ASSERT_CONCLUSION(data0,delta);
 		}
-		//{
-		//	const CellStack::TStructCountDelta*delta = data1.pointer();
-		//	for (index_t i = 0; i < range; i++)
-		//	{
-		//		CellStack&stack = cellStack[i+offset];
-		//		bool anyChanged = false;
-		//		for (index_t j = 0; j < CellStack::Range; j++)
-		//		{
-		//			if (stack.volumeCell[j].ApplyDelta(*delta))
-		//			{
-		//				anyChanged = true;
-		//				#ifdef HAS_WINDOW
-		//					stack.lightingChangedTo = std::max<BYTE>(stack.lightingChangedTo,(BYTE)j+1);
-		//				#endif
-		//			}
-		//			delta ++;
-		//		}
-		//		if (anyChanged)
-		//		{
-		//			#ifdef HAS_WINDOW
-		//				stack.UpdateRange();
-		//				changed << i + offset;
-		//			#endif
-		//		}
-		//	}
-		//	ASSERT_CONCLUSION(data1,delta);
-		//}
 		high.family[family].SetOutdated(0);
 		low.family[family].SetOutdated(0);
 
@@ -3781,17 +3734,19 @@ namespace Grid
 			initialWorld.FlushAllData();
 		#endif
 			
-		#ifdef HAS_WINDOW
+		#ifdef CLIENT
 			visibleOrbitGrid.Clear();
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-			{
-				high.family[k].SetOutdated(0);
-				low.family[k].SetOutdated(0);
-			}
+			#ifdef HAS_WINDOW
+				for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+				{
+					high.family[k].SetOutdated(0);
+					low.family[k].SetOutdated(0);
+				}
+
+				UnsetParaboloidAndSphereDisplay();
+			#endif
 			foreach (Resource::all,res)
 				memset(res->known,false,sizeof(res->known));
-
-			UnsetParaboloidAndSphereDisplay();
 		#endif
 
 		#ifdef DEBUG_SENSORY
@@ -3872,14 +3827,27 @@ namespace Grid
 				families[i].changed = true;
 	}
 
-	void				VisibilityState::ChangeSensory(const LCellIdI&center, float radius, float t, short changeBy)
+	void				VisibilityState::ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy)
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = { false };
-		Grid::TemplateHelper::ChangeSensory(Grid::ToWorld(center), radius, changeBy, cellStack.pointer(), familyChanged);
+		Grid::TemplateHelper::ChangeSensory(desc, changeBy, cellStack.pointer(), familyChanged);
 		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
 			if (familyChanged[i])
+			{
 				families[i].changed = true;
+				//families[i].lastChange
+			}
+
 	}
+
+	//void				VisibilityState::ChangeSensory(const LCellIdI&center, float radius, float t, short changeBy)
+	//{
+	//	bool familyChanged[BaseGrid::NumFamilies] = { false };
+	//	Grid::TemplateHelper::ChangeSensory(Grid::ToWorld(center), radius, changeBy, cellStack.pointer(), familyChanged);
+	//	for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
+	//		if (familyChanged[i])
+	//			families[i].changed = true;
+	//}
 	void				VisibilityState::ChangeSensory(const SkySensorState&state, float t, short changeBy)
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = { false };
@@ -3937,10 +3905,10 @@ namespace Grid
 					families[f].coverageChanged = true;
 					families[f].lastChange = t;
 				}
-	}
 			}
-
 		}
+
+	}
 
 
 
@@ -4030,7 +3998,10 @@ namespace Grid
 
 
 
+	#endif
 
+
+	#ifdef CLIENT
 
 
 	
@@ -4063,6 +4034,41 @@ namespace Grid
 
 		LogEvent(EventType::PerformanceMeasurement,nullptr,"Orbital sensory change processed in "+String(timer.GetSecondsSince(t0))+". Used orbit was "+String(orbit));
 		//ShowMessage(timer.GetSecondsSince(t0));
+	}
+
+	bool		WorldData::GridCanSeeAny(const HCellIdU&base, UINT height) const
+	{
+		const auto&stack = cellStack[base.stackID];
+		UINT end = std::min(base.layer + height,CellStack::Range);
+		for (UINT layer = base.layer; layer < end; layer++)
+			if (stack.volumeCell[layer].visible > 0)
+				return true;
+		return false;
+	}
+
+	bool		WorldData::GridCanSee(const LCellIdI&center, int height, bool broad) const
+	{
+		UINT32 fine = low.grid.GetCell(center.stackID).higherEquivalent;
+		UINT32 layer0 = CellStack::ToLayer(center.height);
+		if (GridCanSeeAny(HCellIdU(fine,layer0),(UINT)height))
+			return true;
+		if (!broad)
+			return false;
+		const auto&n = high.grid.GetCell(fine).neighborhood;
+		for (int i = 0; i < n.numNeighbors; i++)
+			if (GridCanSeeAny(HCellIdU(n.neighborID[i],layer0),(UINT)height))
+				return true;
+		return false;
+	}
+
+
+	void		WorldData::ChangeSensorCoverage(const HighSetup::TVolumeDescriptor&state, signed char change)
+	{
+		bool familyChanged[BaseGrid::NumFamilies] = {false};
+		TemplateHelper::ChangeSensory(state,change,cellStack.pointer(),familyChanged);
+		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
+			if (familyChanged[i])
+				Grid::high.family[i].SetOutdated(0);
 	}
 
 	void		WorldData::ChangeSensorCoverage(const SkySensorState&state, signed char change)
@@ -4150,27 +4156,37 @@ namespace Grid
 		#endif
 	}
 
-	void		WorldData::InsertSensor(const LCellIdI&cell, float radius)
+	void				WorldData::InsertSensor(const HighSetup::TVolumeDescriptor&desc)
 	{
-		ChangeSensory(cell,radius,1);
-		#ifdef DEBUG_SENSORY
-			TSensor s;
-			s.center = cell;
-			s.radius = radius;
-			//ASSERT__(!sensors.Contains(s));	//this can fire falsely, if a vehicle is moved to the previous location of another vehicle (which hasn't updated yet)
-			sensors.Append(s);
-		#endif
+		ChangeSensorCoverage(desc,1);
 	}
-	void		WorldData::RemoveSensor(const LCellIdI&cell, float radius)
+
+	void				WorldData::RemoveSensor(const HighSetup::TVolumeDescriptor&desc)
 	{
-		#ifdef DEBUG_SENSORY
-			TSensor s;
-			s.center = cell;
-			s.radius = radius;
-			ASSERT__(sensors.FindAndErase(s));	//this must always work, however
-		#endif
-		ChangeSensory(cell,radius,-1);
+		ChangeSensorCoverage(desc,-1);
 	}
+
+	//void		WorldData::InsertSensor(const LCellIdI&cell, float radius)
+	//{
+	//	ChangeSensory(cell,radius,1);
+	//	#ifdef DEBUG_SENSORY
+	//		TSensor s;
+	//		s.center = cell;
+	//		s.radius = radius;
+	//		//ASSERT__(!sensors.Contains(s));	//this can fire falsely, if a vehicle is moved to the previous location of another vehicle (which hasn't updated yet)
+	//		sensors.Append(s);
+	//	#endif
+	//}
+	//void		WorldData::RemoveSensor(const LCellIdI&cell, float radius)
+	//{
+	//	#ifdef DEBUG_SENSORY
+	//		TSensor s;
+	//		s.center = cell;
+	//		s.radius = radius;
+	//		ASSERT__(sensors.FindAndErase(s));	//this must always work, however
+	//	#endif
+	//	ChangeSensory(cell,radius,-1);
+	//}
 
 	#endif
 

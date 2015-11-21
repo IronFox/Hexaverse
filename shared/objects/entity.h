@@ -151,6 +151,8 @@ namespace Objects
 			bool					TestIntersection(const Geometry&geo, const TVec3<>&b, const TVec3<>&d, float & distance) const;
 		#endif
 
+	private:
+
 	public:
 		virtual						~WorldEntity();
 
@@ -213,15 +215,15 @@ namespace Objects
 			void					SignalChange(changeType_t type, float timeAt)	{RegisterChange(type,timeAt);}
 
 
-			Buffer0<PWorldEntity>	seenBy,
-									seeing;
+			//Buffer0<PWorldEntity>	seenBy,
+				//					seeing;
 			
 
 
 			virtual void			SetupSystem()=0;	//used to setup the matrices once after creation
 		#endif
-		virtual bool				CanSee(const PWorldEntity&other)	const;
-		virtual bool				CanSee(const TVec3<>&center, float radius)	const;
+		//virtual bool				CanSee(const PWorldEntity&other)	const;
+		//virtual bool				CanSee(const TVec3<>&center, float radius)	const;
 
 
 		/**
@@ -348,20 +350,18 @@ namespace Objects
 			health -= damageLevel;
 		}
 
+		void					RegisterSensory(float&atTime, bool checkChangesNow=true) {RegisterSensory(location,atTime,checkChangesNow);}
+		void					UnregisterSensory(float&atTime, bool checkChangesNow=true)  {UnregisterSensory(location,atTime,checkChangesNow);}
 
-		void					RegisterSensory(float&atTime);
-		void					UnregisterSensory(float&atTime, bool isFinal);
-		#ifdef HAS_WINDOW
-			virtual void		RegisterWorldSensory();
-			virtual void		UnregisterWorldSensory();
-			virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to);
+		virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
+		virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true);
+		void					MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow=true);
+		#ifdef CLIENT
+			virtual void		RegisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
+			virtual void		UnregisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
+			//virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to);
 		#endif
 
-		#ifndef CLIENT
-			virtual void		RegisterFactionSensory(float atTime);
-			virtual void		UnregisterFactionSensory(float atTime);
-			virtual void		MoveFactionSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float atTime);
-		#endif
 
 
 
@@ -407,7 +407,7 @@ namespace Objects
 				int newDamage = std::max(empDamageLevel,damageLevel);
 				if (newDamage == empDamageLevel)
 					return;
-				UnregisterSensory(atTime,false);
+				UnregisterSensory(atTime);
 				empDamageLevel = newDamage;
 				RegisterChange(EMPDamageChanged,atTime);
 				RegisterSensory(atTime);
@@ -416,7 +416,7 @@ namespace Objects
 			{
 				if (empDamageLevel > 0)
 				{
-					UnregisterSensory(atTime,false);
+					UnregisterSensory(atTime);
 					empDamageLevel--;
 					RegisterChange(EMPDamageChanged,atTime);
 					RegisterSensory(atTime);
@@ -424,7 +424,7 @@ namespace Objects
 			}
 
 		private:
-			static void				MapVisibilityBetween(const PWorldEntity&, const PWorldEntity&, float&atTime);
+			//static void				MapVisibilityBetween(const PWorldEntity&, const PWorldEntity&, float&atTime);
 
 		#endif
 

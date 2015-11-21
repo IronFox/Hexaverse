@@ -204,23 +204,22 @@ namespace Objects
 		virtual bool			IsSatellite() const override {return true;}
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = 0.f; return To<MobileEntity>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = 0.f; return To<const MobileEntity>::Cast(shared_from_this());}
-		virtual bool				CanSee(const PWorldEntity&other)	const override;
-		virtual bool				CanSee(const TVec3<>&center, float radius)	const override;
+		//virtual bool				CanSee(const PWorldEntity&other)	const override;
+		//virtual bool				CanSee(const TVec3<>&center, float radius)	const override;
 
 		#ifdef HAS_WINDOW
 			virtual void		DescribeType(BaseCommand::Label&outResult, UINT32 descFlags) override;
-			virtual void		RegisterWorldSensory() override;
-			virtual void		UnregisterWorldSensory() override;
-			virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to) override;
+			//virtual void		RegisterWorldSensory() override;
+			//virtual void		UnregisterWorldSensory() override;
+//			virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to) override;
 			virtual void		VisitAllCommands(FCommandVisitor visitor) override {turret->VisitAllCommands(visitor);};
 
 		#endif
 
-		#ifndef CLIENT
-			virtual void		RegisterFactionSensory(float atTime) override;
-			virtual void		UnregisterFactionSensory(float atTime) override;
-			virtual void		MoveFactionSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float atTime) override;
-		#endif
+		//#ifndef CLIENT
+			virtual void		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr) override;
+			virtual void		UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true) override;
+		//#endif
 
 		//MobileEntity overrides:
 		virtual void			TranslateLocationForExport() override
@@ -335,12 +334,6 @@ namespace Objects
 	template <typename Derivative>
 		/*virtual override*/	void			SatelliteTemplate<Derivative>::PrototypeSetup()
 		{
-			#ifdef HAS_WINDOW
-
-				//iconCommands.Append(IconCommand(int2(4,0), "Abort", &VehicleCmd::AbortOperation, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::AlwaysFalse<PWorldEntity const&>,NoCosts));
-				//iconCommands.Append(IconCommand(int2(4,1), "Undo", &VehicleCmd::UndoOperation, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::AlwaysFalse<PWorldEntity const&>,NoCosts));
-
-			#endif
 			turret = GetTurretType();
 
 		}

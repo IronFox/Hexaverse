@@ -47,7 +47,7 @@ void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromSto
 		return;
 	const Objects::MobileEntity&v = *_v;
 
-	Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,atTime);
+	Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
 	if (!restoredFromStorage)
 	{
 		TCP::Serial<Protocol::NewMobileEntity>	w;
@@ -110,7 +110,7 @@ void	SignalNewStructure(const Objects::PStructure&s, float atTime)
 
 
 	TCP::Serial<Protocol::StructureConstruction>	w;
-	Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,atTime);
+	Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
 	State::Describe(w.Ref(),*s,true,timestamp);
 	//State::Describe(w2.Ref(),s,true,&parent);
 	w.Seal();
@@ -159,11 +159,11 @@ void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, cons
 		return;
 	//if (!client->ShowNew(e))
 		//return;	//already knows this
-	Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,atTime);
+	Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
 
-	Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
-	if (v)
+	if (e->IsMobile())
 	{
+		Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
 	//	TCP::Serial<Protocol::VehicleConstruction>	w;
 		TCP::Serial<Protocol::NewMobileEntity>	w;
 		State::Describe(w.Ref(),*v,false,timestamp,0xFFFFFFFF);
@@ -173,7 +173,7 @@ void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, cons
 	else
 	{
 		Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
-		ASSERT__(s);
+		ASSERT1__(s,e->GetName());
 		TCP::Serial<Protocol::StructureConstruction>	w;
 		State::Describe(w.Ref(),*s,false,timestamp);
 		w.Seal();
@@ -196,7 +196,7 @@ void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float 
 	self.id = e->id;
 	self.type = t;
 	self.timestamp.atTime = atTime;
-	self.timestamp.rightNow = RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
+	self.timestamp.rightNow = RuntimeConfig::IsInAnyCommandPhase();
 	others = self;
 	bool sendToOthers = true,sendToSelf = true;
 	switch (t)
@@ -233,14 +233,6 @@ void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float 
 				continue;
 			const Protocol::DestroyEntity&send = (*cl)->faction == e->owner ? self : others;
 			LogEvent(EventType::MinorEntityProcess,(*cl)->ToString()+" reported seeing removal of "+e->GetName()+" at time "+String(atTime) );
-			#ifdef _DEBUG
-				if ((*cl)->faction != e->owner)
-				{
-					Objects::PWorldEntity seeingThis = e->seenBy.first();
-
-					LogEvent(EventType::MinorEntityProcess," as seen by "+seeingThis->GetName() );
-				}
-			#endif
 
 
 			//(*cl)->Hide(e);
@@ -265,7 +257,7 @@ void	SignalDisappearanceToHostileFaction(const Objects::OwnerParameter&target, c
 	de.id = e->id;
 	de.type = Objects::RemovalType::Vanished;
 	de.timestamp.atTime = atTime;
-	de.timestamp.rightNow = RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
+	de.timestamp.rightNow = RuntimeConfig::IsInAnyCommandPhase();
 
 	//LogEvent(EventType::MinorEntityProcess,*client->peer.lock(),e,"Signalling disappearance");
 	LogEvent(EventType::MinorEntityProcess,*client->peer.lock(),e,"Signalling disappearance "+(de.timestamp.rightNow ? "(now)" : " at time="+String(atTime)));
@@ -307,14 +299,6 @@ void	SignalMotion(const Objects::PMobileEntity&v, const Grid::LCellIdI&from,cons
 		if (peer && Receiver::CanSee(*cl,v,t0))
 		{
 			LogEvent(EventType::MinorEntityProcess,(*cl)->ToString()+" reported seeing motion of "+v->GetName()+" at time "+String(t0)+"+"+String(timeNeeded) );
-			#ifdef _DEBUG
-				if ((*cl)->faction != v->owner)
-				{
-					Objects::PWorldEntity seeingThis = v->seenBy.first();
-
-					LogEvent(EventType::MinorEntityProcess," as seen by "+seeingThis->GetName() );
-				}
-			#endif
 
 			Channels::mobileEntityMotion.SendTo(peer,motion);
 		}
@@ -523,24 +507,38 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 	explosion.timestamp.atTime = atTime;
 	explosion.timestamp.rightNow = false;
 
-	static GenericHashSet<Objects::OwnerParameter,Objects::OwnerHash>	map;
+	//static GenericHashSet<Objects::OwnerParameter,Objects::OwnerHash>	map;
+	static Buffer0<Objects::OwnerParameter>	canSee;
 
 	bool allSee = isDoomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose;
 
-	map.Clear();
+	canSee.Clear();
 	if (allSee)
 	{
 		//just set all. I'm lazy, and these are rare
 		foreach (Objects::Faction::all, f)
-			map.Set(f->lock());
-		map.Set(Objects::Faction::nexus);
+			canSee.Append(f->lock());
+		canSee.Append(Objects::Faction::nexus);
 	}
 	else
-		Objects::ForeachWorldEntity([center,explosionRadius](const Objects::PWorldEntity&e)
+	{
+		static Grid::HighSetup::TVolumeDescriptor volume;
+		Sphere<> explosionSphere(center,explosionRadius);
+		Grid::high.GenerateVolume(explosionSphere,volume);
+
+		Objects::ForeachFaction([explosionSphere](const Objects::PFaction&f)
 		{
-			if (!map.IsSet(e->owner) && e->CanSee(center,explosionRadius))
-				map.Set(e->owner);
+			if (f->GridCanSee(volume) || f->CountSatelliteCoverage(explosionSphere))
+			{
+				canSee.Append(f);
+			};
 		});
+	}
+		//Objects::ForeachWorldEntity([center,explosionRadius](const Objects::PWorldEntity&e)
+		//{
+		//	if (!map.IsSet(e->owner) && e->CanSee(center,explosionRadius))
+		//		map.Set(e->owner);
+		//});
 
 
 	Protocol::AttackTrajectory	roughAttack;
@@ -579,8 +577,8 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 		roughAttack.sourcePosition.value += mod;
 	}
 
-
-	map.VisitAllKeys([explosion,attackFrom,roughAttack, hasTrajectory](const Objects::OwnerParameter&p)
+	for (const Objects::OwnerParameter&p : canSee)
+	//map.VisitAllKeys([explosion,attackFrom,roughAttack, hasTrajectory](const Objects::OwnerParameter&p)
 	{
 		State::PClient client;
 		if (State::playerMap.Query(p,client))
@@ -599,7 +597,8 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 
 			}
 		}
-	});
+	}
+	//);
 }
 
 
@@ -1077,7 +1076,7 @@ bool	CheckCoverageSendTerrain(const Objects::PFaction&faction,const TCP::PPeer&p
 			{
 				faction->visibility.families[family].coverageChanged = false;
 				at++;
-				Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,at == numChanged,Protocol::WorldDeltaType::ProgressiveUpdate);
+				Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,RuntimeConfig::IsInAnyCommandPhase(),at == numChanged,Protocol::WorldDeltaType::ProgressiveUpdate);
 				Channels::updateWorld.SendTo(peer,delta);
 			}
 		return true;
@@ -1089,6 +1088,110 @@ bool ApplyCoverageChange(const Objects::PFaction&faction)
 {
 	return CheckCoverageSendTerrain(faction,TCP::PPeer());
 }
+
+
+void ProcessChanges()
+{
+	
+	BYTE changed = 0,counter=0;
+	for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+	{
+		if (Grid::high.family[k].normal.outdated)
+			changed ++;
+	}
+	for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+	{
+		if (Grid::high.family[k].normal.outdated)
+			State::SignalFamilyChange(k,++counter == changed,RuntimeConfig::IsInAnyCommandPhase());
+	}
+	if (changed)
+	{
+		State::terrainChanged = true;
+	}
+
+	Objects::ForeachMobileEntityIncludingStored([/*&anythingChanged*/](const Objects::PMobileEntity&_v)
+	{
+		Objects::MobileEntity&v = *_v;
+		if (v.changeFlags)
+		{
+			//anythingChanged = true;
+			//LogEvent(EventType::MinorEntityProcess,&v,"State change detected");	//this says relatively little
+
+			bool othersNeedToKnow = (v.changeFlags & State::NotifyOthers) != 0;
+
+			TCP::Serial<Protocol::MobileState>	w0,w1;
+			Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),v.changeTimer);
+			State::Describe(w0.Ref(),v,false,timestamp,v.changeFlags);
+			State::Describe(w1.Ref(),v,true,timestamp,v.changeFlags);
+			w0.Seal();
+			w1.Seal();
+			if (!othersNeedToKnow)
+			{
+				State::SendToOwner(Channels::setMobileState,v,w1);
+			}
+			else
+				foreach(State::clients,cl)
+				{
+					if (Receiver::HasAccess(*cl,v))
+						Channels::setMobileState.SendTo((*cl)->peer.lock(),w1);
+					else
+						if (Receiver::CanSee(*cl,_v,0))
+							Channels::setMobileState.SendTo((*cl)->peer.lock(),w0);
+				}			
+			v.ResetAllChange();
+		}
+	});
+
+	foreach (Objects::structures, _s)
+	{
+		Objects::Structure&s = **_s;
+		if (s.changeFlags)
+		{
+			//anythingChanged = true;
+			LogEvent(EventType::MinorEntityProcess,&s,"State change detected");
+				
+			bool othersNeedToKnow = (s.changeFlags & State::NotifyOthers) != 0;
+
+			Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),s.changeTimer);
+
+			TCP::Serial<Protocol::StructureState>	w0,w1;
+			State::Describe(w0.Ref(),**_s,false,timestamp,s.changeFlags);
+			State::Describe(w1.Ref(),**_s,true,timestamp,s.changeFlags);
+			w0.Seal();
+			w1.Seal();
+			if (!othersNeedToKnow)
+			{
+				State::SendToOwner(Channels::setStructureState,s,w1);
+			}
+			else
+				foreach(State::clients,cl)
+				{
+					if (Receiver::HasAccess(*cl,s))
+						Channels::setStructureState.SendTo((*cl)->peer.lock(),w1);
+					else
+						if (Receiver::CanSee(*cl,*_s,0))
+							Channels::setStructureState.SendTo((*cl)->peer.lock(),w0);
+					//Channels::setStructureState.SendTo((*cl)->peer.lock(),Receiver::HasAccess(*cl,s) ? w1 : w0);
+				}
+			s.ResetAllChange();
+		}
+	}
+
+
+	foreach (State::activePlayers,cl)
+	{
+		//if ((*cl)->faction->global.coverageChanged)
+		{
+			const Objects::PFaction&faction = (*cl)->faction;
+
+			CheckCoverageSendTerrain(faction,(*cl)->peer.lock());
+				//anythingChanged = true;
+		}
+	}
+
+
+}
+
 
 int main( int argc, const char* argv[])
 {
@@ -1617,7 +1720,7 @@ int main( int argc, const char* argv[])
 
 	while (!application_shutting_down)
 	{
-		if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
+		if (RuntimeConfig::IsInAnyCommandPhase() || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 			Sleep(1);
 		State::server.Resolve();
 		if (State::Config::enableNexusAI)
@@ -1626,7 +1729,7 @@ int main( int argc, const char* argv[])
 
 		RuntimeConfig::Phase p0 = RuntimeConfig::phase;
 
-		bool anythingChanged = false;
+		//bool anythingChanged = false;
 
 		bool newRoundNow = false;
 
@@ -1673,7 +1776,7 @@ int main( int argc, const char* argv[])
 
 		if (newRoundNow)
 		{
-			anythingChanged = true;
+			//anythingChanged = true;
 			Objects::ProcessStructures0();
 			foreach (State::activePlayers,p)
 				(*p)->wantNewRound = false;
@@ -1703,11 +1806,12 @@ int main( int argc, const char* argv[])
 			case RuntimeConfig::Phase::AttackPhase:
 				if (!Objects::ProcessNextVehicleAttack())
 					State::ChangePhase(RuntimeConfig::Phase::MovementPhase);
-				anythingChanged = true;
+				//anythingChanged = true;
 			break;
 			case RuntimeConfig::Phase::MovementPhase:
 				if (!Objects::ProcessVehicleMotion())
 				{
+					ProcessChanges();
 					#ifndef NO_HIBERNATION
 						State::UpdateHibernation();
 					#endif
@@ -1726,7 +1830,7 @@ int main( int argc, const char* argv[])
 					State::effectiveAnimationLength = std::min(10.f,animationLength);
 					State::ChangePhase(RuntimeConfig::Phase::AnimationPhase,std::max(1.f,animationLength / 10.f));
 				}
-				anythingChanged = true;
+				//anythingChanged = true;
 			break;
 			case RuntimeConfig::Phase::AnimationPhase:
 				if (timer.GetSecondsSince(State::lastPhaseChange) >= State::effectiveAnimationLength+0.5f)
@@ -1741,122 +1845,17 @@ int main( int argc, const char* argv[])
 
 
 				}
-				anythingChanged = true;
+				//anythingChanged = true;
 			break;
 			case RuntimeConfig::Phase::CommandPhase:
 			break;
 		}
 
 
+		ProcessChanges();
 
 
 
-
-
-	
-		BYTE changed = 0,counter=0;
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			if (Grid::high.family[k].normal.outdated)
-				changed ++;
-		}
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			if (Grid::high.family[k].normal.outdated)
-				State::SignalFamilyChange(k,++counter == changed,false);
-		}
-		if (changed)
-		{
-			State::terrainChanged = true;
-		}
-
-		Objects::ForeachMobileEntityIncludingStored([&anythingChanged](const Objects::PMobileEntity&_v)
-		{
-			Objects::MobileEntity&v = *_v;
-			if (v.changeFlags)
-			{
-				anythingChanged = true;
-				//LogEvent(EventType::MinorEntityProcess,&v,"State change detected");	//this says relatively little
-
-				bool othersNeedToKnow = (v.changeFlags & State::NotifyOthers) != 0;
-
-				TCP::Serial<Protocol::MobileState>	w0,w1;
-				Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,v.changeTimer);
-				State::Describe(w0.Ref(),v,false,timestamp,v.changeFlags);
-				State::Describe(w1.Ref(),v,true,timestamp,v.changeFlags);
-				w0.Seal();
-				w1.Seal();
-				if (!othersNeedToKnow)
-				{
-					State::SendToOwner(Channels::setMobileState,v,w1);
-				}
-				else
-					foreach(State::clients,cl)
-					{
-						if (Receiver::HasAccess(*cl,v))
-							Channels::setMobileState.SendTo((*cl)->peer.lock(),w1);
-						else
-							if (Receiver::CanSee(*cl,_v,0))
-								Channels::setMobileState.SendTo((*cl)->peer.lock(),w0);
-					}			
-				v.ResetAllChange();
-			}
-		});
-
-		foreach (Objects::structures, _s)
-		{
-			Objects::Structure&s = **_s;
-			if (s.changeFlags)
-			{
-				anythingChanged = true;
-				LogEvent(EventType::MinorEntityProcess,&s,"State change detected");
-				
-				bool othersNeedToKnow = (s.changeFlags & State::NotifyOthers) != 0;
-
-				Protocol::Timestamp timestamp(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase,s.changeTimer);
-
-				TCP::Serial<Protocol::StructureState>	w0,w1;
-				State::Describe(w0.Ref(),**_s,false,timestamp,s.changeFlags);
-				State::Describe(w1.Ref(),**_s,true,timestamp,s.changeFlags);
-				w0.Seal();
-				w1.Seal();
-				if (!othersNeedToKnow)
-				{
-					State::SendToOwner(Channels::setStructureState,s,w1);
-				}
-				else
-					foreach(State::clients,cl)
-					{
-						if (Receiver::HasAccess(*cl,s))
-							Channels::setStructureState.SendTo((*cl)->peer.lock(),w1);
-						else
-							if (Receiver::CanSee(*cl,*_s,0))
-								Channels::setStructureState.SendTo((*cl)->peer.lock(),w0);
-						//Channels::setStructureState.SendTo((*cl)->peer.lock(),Receiver::HasAccess(*cl,s) ? w1 : w0);
-					}
-				s.ResetAllChange();
-			}
-		}
-
-
-		foreach (State::activePlayers,cl)
-		{
-			//if ((*cl)->faction->global.coverageChanged)
-			{
-				const Objects::PFaction&faction = (*cl)->faction;
-
-				if (CheckCoverageSendTerrain(faction,(*cl)->peer.lock()))
-					anythingChanged = true;
-			}
-		}
-
-
-
-		if (!anythingChanged && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && State::lastSaveRound != RuntimeConfig::roundNumber && !(RuntimeConfig::roundNumber%State::Config::saveEveryNRounds))
-		{
-			State::AutoSave();
-
-		}
 
 
 		//#ifndef _DEBUG
@@ -1869,6 +1868,7 @@ int main( int argc, const char* argv[])
 					{
 						LogEvent(EventType::SessionRelated,*peer,"Client ping timeout (30 sec) exceeded. Disconnecting client");
 						peer->DisconnectPeer();
+						break;	//loop breaks
 					}
 				}
 				else

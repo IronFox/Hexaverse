@@ -275,7 +275,10 @@ namespace Objects
 		{
 			float d2 = Vec::quadraticDistance(source,dest);
 			if (d2 > sqr(range))
+			{
+				DBG_FATAL__("Trajectory out of range: "+String(sqrt(d2))+">="+String(range));
 				return;
+			}
 		
 
 			const float h0 = Vec::length(source);
@@ -313,7 +316,18 @@ namespace Objects
 		{
 			Turret::TAngles angles = Turret::GetAngleForDistance(velocity,source,dest);
 			if (angles.numAngles == 0)
+			{
+				if (velocity < 50.f)
+				{
+					LogEvent(EventType::InternalFault,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+Vec::toString(source)+", dest="+Vec::toString(dest)+". Increasing velocity and retrying.");
+					velocity *= 1.1f;
+					TraceArtilleryTrajectory(velocity,source,dest,outSteps);
+					return;
+				}
+
+				DBG_FATAL__("Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+Vec::toString(source)+", dest="+Vec::toString(dest));
 				return;
+			}
 		
 			float angle = angles.idealAngle[angles.numAngles-1];
 

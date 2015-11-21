@@ -11,6 +11,7 @@
 #endif
 #ifndef CLIENT
 	#include "faction.h"
+	#include "gridAndChoices.h"
 #endif
 #include "vehicle.h"
 #include "structure.h"
@@ -59,7 +60,7 @@ namespace Objects
 		float t=0.f;
 
 		if (isMine && isCreated)
-			UnregisterSensory(t,false);
+			UnregisterSensory(t);
 
 		empDamageLevel = damageLevel;
 
@@ -232,15 +233,15 @@ namespace Objects
 	}
 
 
-	bool		WorldEntity::CanSee(const PWorldEntity&other) const
-	{
-		return Vec::quadraticDistance(system.w.xyz,other->system.w.xyz) <= sqr(GetScanningRange());
-	}
+	//bool		WorldEntity::CanSee(const PWorldEntity&other) const
+	//{
+	//	return Vec::quadraticDistance(system.w.xyz,other->system.w.xyz) <= sqr(GetScanningRange());
+	//}
 
-	bool		WorldEntity::CanSee(const TVec3<>&center, float radius)	const
-	{
-		return Vec::quadraticDistance(system.w.xyz,center) <= sqr(GetScanningRange()+radius);
-	}
+	//bool		WorldEntity::CanSee(const TVec3<>&center, float radius)	const
+	//{
+	//	return Vec::quadraticDistance(system.w.xyz,center) <= sqr(GetScanningRange()+radius);
+	//}
 
 
 
@@ -336,194 +337,121 @@ namespace Objects
 	#ifndef CLIENT
 
 
-		/*static*/ void WorldEntity::MapVisibilityBetween(const PWorldEntity&e, const PWorldEntity&other, float&atTime)
-		{
-			if (e == other || e->owner == other->owner)
-				return;
-			if (e->health <= 0)
-			{
-				LogEvent(EventType::InternalFault,e.get(),"Trying to call MapVisibilityBetween() on a dead entity.");
-				//this happens due to some rare cascading events where the destruction of some structure leads to the ownership change of a nexus port, which in turn redetects visibility,
-				// but the destroyed structure has not yet been removed from lists. moving OnDestroy down now but this fix remains until it does no longer occur
-				return;
-			}
-			if (e->CanSee(other))
-			{
-				//seeing:
-				/*bool seeingNewEntity = true;
-				foreach (other->seenBy,s)
-					if ((*s)->owner == e->owner)
-					{
-						seeingNewEntity = false;
-						break;
-					}*/
-				e->seeing << other;
-				other->seenBy << e;
-				//if (seeingNewEntity)
-				{
-					//SignalAppearanceToHostileFaction(e->owner,other,atTime);
-					e->owner->SignalAppearance(other,atTime);
-				}
-			}
+		///*static*/ void WorldEntity::MapVisibilityBetween(const PWorldEntity&e, const PWorldEntity&other, float&atTime)
+		//{
+		//	if (e == other || e->owner == other->owner)
+		//		return;
+		//	if (e->health <= 0)
+		//	{
+		//		LogEvent(EventType::InternalFault,e.get(),"Trying to call MapVisibilityBetween() on a dead entity.");
+		//		//this happens due to some rare cascading events where the destruction of some structure leads to the ownership change of a nexus port, which in turn redetects visibility,
+		//		// but the destroyed structure has not yet been removed from lists. moving OnDestroy down now but this fix remains until it does no longer occur
+		//		return;
+		//	}
+		//	if (e->CanSee(other))
+		//	{
+		//		//seeing:
+		//		/*bool seeingNewEntity = true;
+		//		foreach (other->seenBy,s)
+		//			if ((*s)->owner == e->owner)
+		//			{
+		//				seeingNewEntity = false;
+		//				break;
+		//			}*/
+		//		e->seeing << other;
+		//		other->seenBy << e;
+		//		//if (seeingNewEntity)
+		//		{
+		//			//SignalAppearanceToHostileFaction(e->owner,other,atTime);
+		//			e->owner->SignalAppearance(other,atTime);
+		//		}
+		//	}
 
-			if (other->CanSee(e))
-			{
-				//beeing seen:
-				//bool beingSeenByNewOwner = true;
-				//foreach (e->seenBy,s)
-				//	if ((*s)->owner == other->owner)
-				//	{
-				//		beingSeenByNewOwner = false;
-				//		break;
-				//	}
-				e->seenBy << other;
-				other->seeing << e;
-				//if (beingSeenByNewOwner)
-				{
-					//SignalAppearanceToHostileFaction(other->owner,e,atTime);
-					other->owner->SignalAppearance(e,atTime);
+		//	if (other->CanSee(e))
+		//	{
+		//		//beeing seen:
+		//		//bool beingSeenByNewOwner = true;
+		//		//foreach (e->seenBy,s)
+		//		//	if ((*s)->owner == other->owner)
+		//		//	{
+		//		//		beingSeenByNewOwner = false;
+		//		//		break;
+		//		//	}
+		//		e->seenBy << other;
+		//		other->seeing << e;
+		//		//if (beingSeenByNewOwner)
+		//		{
+		//			//SignalAppearanceToHostileFaction(other->owner,e,atTime);
+		//			other->owner->SignalAppearance(e,atTime);
 
-				}
-			}
-		}
+		//		}
+		//	}
+		//}
 
 
 	#endif
 	
 
-	#ifdef HAS_WINDOW
-		/*virtual*/ void WorldEntity::RegisterWorldSensory()
+	#ifdef CLIENT
+		/*virtual*/ void WorldEntity::RegisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&desc)
 		{
-			Grid::actualWorld.InsertSensor(location,GetScanningRange());
+			Grid::actualWorld.InsertSensor(desc);
 
 		}
 
-		/*virtual*/ void WorldEntity::UnregisterWorldSensory()
+		/*virtual*/ void WorldEntity::UnregisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&desc)
 		{
-			Grid::actualWorld.RemoveSensor(location,GetScanningRange());
+			Grid::actualWorld.RemoveSensor(desc);
 		}
-
-		/*virtual*/ void	WorldEntity::MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to)
-		{
-			Grid::actualWorld.MoveSensor(from,to,GetScanningRange());
-		}
-
-
 	#endif
 
 
-	#ifndef CLIENT
-		/*virtual*/ void		WorldEntity::RegisterFactionSensory(float atTime)
-		{
-			owner->RegisterSensorCreation(location,GetScanningRange(), atTime);
-		}
-
-		/*virtual*/ void		WorldEntity::UnregisterFactionSensory(float atTime)
-		{
-			owner->RegisterSensorRemoval(location,GetScanningRange(), atTime);
-		}
-		/*virtual*/ void		WorldEntity::MoveFactionSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float atTime)
-		{
-			owner->RegisterSensorMotion(from,to,GetScanningRange(), atTime);
-		}
-
-	#endif
-
-	void WorldEntity::RegisterSensory(float&atTime)
+	void					WorldEntity::MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow/*=true*/)
 	{
-		LogEvent(EventType::MinorEntityProcess,this,"Registering sensory ("+String(GetScanningRange())+")");
-		#ifndef CLIENT
-			ForeachWorldEntity([this,&atTime](const PWorldEntity&other)
-			{
-				MapVisibilityBetween(shared_from_this(),other,atTime);
-			});
-		#endif
+		if (from == to)
+			return;
+		RegisterSensory(to,atTime,false);
+		UnregisterSensory(from,atTime,checkChangesNow);
+	}
 
+	/*virtual override*/	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+	{
+		
+		LogEvent(EventType::MinorEntityProcess,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+")");
 		#ifdef CLIENT
-			#ifdef HAS_WINDOW
-				if (isMine)
-				{
-					RegisterWorldSensory();
-					#ifdef THOROUGLY_DEBUG_SENSORY
-						VerifySensory();
-					#endif
-				}
-			#endif
+			if (isMine)
+			{
+				Grid::HighSetup::TVolumeDescriptor desc;
+				Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
+				RegisterWorldSensory(desc);
+				#ifdef THOROUGLY_DEBUG_SENSORY
+					VerifySensory();
+				#endif
+			}
 
 		#else
-			RegisterFactionSensory(atTime);
+			owner->RegisterSensorCreation(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),IsSatellite(), atTime,checkChangesNow, newContacts);
 		#endif
 	}
 
-	void					WorldEntity::UnregisterSensory(float&atTime, bool isFinal)
+	/*virtual override*/	void					WorldEntity::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
 	{
-		LogEvent(EventType::MinorEntityProcess,this,"Unregistering sensory ("+String(GetScanningRange())+") at time "+String(atTime));
+		LogEvent(EventType::MinorEntityProcess,this,"Unregistering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
 		
-		PWorldEntity _this = shared_from_this();
 		#ifndef CLIENT
-			if (isFinal)
-			{
-
-
-
-				foreach (seenBy,s)
-				{
-					(*s)->owner->canSee.Unset(_this);
-					ASSERT__((*s)->seeing.FindAndErase(_this));
-				}
-
-				foreach (Faction::all,_f)
-				{
-					PFaction f= _f->lock();
-					if (f)
-					{
-						if (f->canSee.Unset(_this))
-							LogEvent(EventType::InternalFault,this,"Sensor removal should have been seen by "+f->GetLogName());
-					}
-				}
-
-			}
-			foreach (seeing,s)
-			{
-				//SignalDisappearance(shared_from_this(),timestamp,false);
-				ASSERT__((*s)->seenBy.FindAndErase(_this));
-				PWorldEntity other = *s;
-				bool found = false;
-				foreach (other->seenBy,s2)
-				{
-					if ((*s2)->owner == owner)
-					{
-						found = true;
-						break;
-					}
-				}
-				if (!found)
-				{
-					PMobileEntity v = To<MobileEntity>::DynamicCast(other);
-					if (v)
-						atTime = std::max(atTime,v->timeAt);
-					owner->SignalDisappearance(other,atTime);
-				}
-
-			}
-			if (isFinal)
-				seenBy.Clear(0);
-			seeing.Clear(0);
+			owner->RegisterSensorRemoval(Sphere<>(Grid::ToWorld(loc), GetScanningRange()),IsSatellite(),atTime,checkChangesNow);
 		#endif
 
 		#ifdef CLIENT
-			#ifdef HAS_WINDOW
-				if (isMine)
-				{
-					UnregisterWorldSensory();
-					#ifdef THOROUGLY_DEBUG_SENSORY
-						VerifySensory();
-					#endif
-				}
-			#endif
-
-		#else
-			UnregisterFactionSensory(atTime);
+			if (isMine)
+			{
+				Grid::HighSetup::TVolumeDescriptor desc;
+				Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
+				UnregisterWorldSensory(desc);
+				#ifdef THOROUGLY_DEBUG_SENSORY
+					VerifySensory();
+				#endif
+			}
 		#endif
 
 

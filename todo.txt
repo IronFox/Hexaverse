@@ -38,7 +38,6 @@ research concept, stations, states. AI? viruses?
 send entity id with server messages so user can click on the message to focus on them
 
 
-why do towers fire simultaneously?	//do they?
 
 
 
@@ -104,6 +103,8 @@ remote server control, including local starting
 
 
 ------------- done (newest first) -------------
+
+why do towers fire simultaneously?	//tower turret rotation is simultaneous, actual attack is not
 
 Might not be able to cleanly recover. Application should restart.:
 	The GPU device instance has been suspended. Use GetDeviceRemovedReason to determine the appropriate action.

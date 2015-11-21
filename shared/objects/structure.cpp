@@ -295,8 +295,8 @@ namespace Objects
 
 			//float d2 = Grid::GetQuadraticGeometricDistance(location+1,target->location);
 
-			return		owner->canSee.IsSet(target)
-					&&	turret->CanAttack() 
+			return		//owner->canSee.IsSet(target)
+					/*&&	*/turret->CanAttack() 
 					&& timeAt <= entityTime 
 					&& CountPossibleAttacks() > 0 
 					&& ExtCanHit(owner,location,foundationHeight, target->location,outTarget)
@@ -648,9 +648,9 @@ namespace Objects
 
 
 		if (IsBroad())
-			CommonRegisterBroadStructure(location,GetHeight(),HasFoundation(),atTime);
+			CommonRegisterBroadStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
 		else
-			CommonRegisterNarrowStructure(location,GetHeight(),HasFoundation(),atTime);
+			CommonRegisterNarrowStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
 
 		TStructureNeighborhood	neighborhood;
 		GetNeighborhood(owner,ConnectsToDifferentOwnership(), location, neighborhood);
@@ -713,9 +713,9 @@ namespace Objects
 		Super::OnDestroy(atTime);
 		LogEvent(EventType::Debug,this,"Unregistering...");
 		if (IsBroad())
-			CommonUnregisterBroadStructure(location,GetHeight(),HasFoundation(),atTime);
+			CommonUnregisterBroadStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
 		else
-			CommonUnregisterNarrowStructure(location,GetHeight(),HasFoundation(),atTime);
+			CommonUnregisterNarrowStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
 
 		LogEvent(EventType::Debug,this,"Disconnecting...");
 		DisconnectFromNeighborhood(atTime);
@@ -1096,7 +1096,7 @@ namespace Objects
 
 	/*static*/ void Structure::ChangeBroadStructCount(const Grid::LCellIdI&location, int height, bool hasFoundation, int changeDirection, float atTime)
 	{
-		LogEvent(EventType::Debug,nullptr,"ChangeBroadStructCount("+location.ToString()+", height="+String(height)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection));
+		LogEvent(EventType::Debug,nullptr,"ChangeBroadStructCount("+location.ToString()+", height="+String(height)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
 
 		{
 			const int lowEdge = hasFoundation ? -1 : 0;
@@ -1715,7 +1715,7 @@ namespace Objects
 				Grid::high.family[i].SetOutdated(atTime);
 				Grid::low.family[i].SetOutdated(atTime);
 			}
-		#ifdef CLIENT
+		#ifdef HAS_WINDOW
 			Grid::actualWorld.SignalLightingChange(location);
 		#endif
 

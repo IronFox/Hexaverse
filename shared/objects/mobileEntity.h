@@ -43,6 +43,8 @@ namespace Objects
 			, public Hibernating
 		#endif
 	{
+	protected:
+		void		HandleMotion(MobilePlacementResult&rs, bool signalEvent, const Grid::LCellIdI&oldLocation, float timeCost);
 	public:
 		typedef CursorMode::mode_t	mode_t;
 
@@ -356,8 +358,8 @@ namespace Objects
 
 			bool				PerformNonAttack();
 		protected:
-			void				ProcessVisibilityOf(const PWorldEntity&e, float&t);
-			bool				ProcessVisibilityOfS(const PWorldEntity&e, float&t);
+			//void				ProcessVisibilityOf(const PWorldEntity&e, float&t);
+			//bool				ProcessVisibilityOfS(const PWorldEntity&e, float&t);
 		private:
 			bool				HandleNormalTask();
 		public:

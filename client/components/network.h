@@ -18,7 +18,8 @@ namespace Network
 
 	extern bool			haveFaction,
 						haveId,
-						amOnline;
+						amOnline,
+						gameHasBegun;
 	#ifdef HAS_WINDOW
 		extern bool		amLocated;
 	#endif
@@ -43,6 +44,7 @@ namespace Network
 
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id);
+	void					ConnectTo(const String&url);
 
 	void SaveWorldAccessTokens();
 
@@ -131,6 +133,7 @@ namespace Network
 		void	FactionOnline(NET(TUniqueID)&);
 		void	FactionOffline(NET(TUniqueID)&);
 		void	FactionRequestedNewRound(NET(TUniqueID)&);
+		void	FactionContinuedRound(NET(TUniqueID)&);
 		void	LockEmpZones(NET(UINT16)&);
 	}
 
@@ -166,6 +169,7 @@ namespace Network
 		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionOnline>						factionOnline;
 		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionOffline>						factionOffline;
 		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionRequestedNewRound>			factionRequestedNewRound;
+		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionContinuedRound>				factionContinuedRound;
 		extern TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>							lockEmpZones;
 		extern TCP::Channel<NET(int32_t), 0, Protocol::ChannelID::UplinkBandwidth>						uplinkBandwidth;
 

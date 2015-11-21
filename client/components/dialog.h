@@ -115,6 +115,7 @@ namespace Dialog
 	{
 		String	name;
 		bool	online, requestedNewRound;
+		void*	factionReference;
 	};
 
 	/**

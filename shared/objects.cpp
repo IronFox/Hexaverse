@@ -19,29 +19,6 @@
 
 namespace Objects
 {
-	#ifdef CLIENT
-
-		#ifdef HAS_WINDOW
-		#endif
-	#else
-		//Buffer0<POwner>			owners;
-
-
-
-	#endif
-
-
-
-
-
-
-//	static const float			vehicleScale = 0.01f * WorldScale;
-
-
-
-
-
-	//Buffer0<PStructureClass>	StructureClasss;
 
 	void RefreshSkyHubConnections()
 	{
@@ -238,35 +215,37 @@ namespace Objects
 
 			}
 			);
-			foreach (towers,_t)
+			ForeachFaction([](const PFaction&f)
 			{
-				PTower t = *_t;
-				if (t->IsHibernating())
-					continue;
-				attackTime = 0;
-				t->BeginAttackPhase();
-				//t->BeginAttackPhase();
-				if (t->turret->CanAttack())
+				foreach (f->towers,_t)
 				{
-					if (t->attackQueue.IsEmpty() && !t->FillAttackQueue())
+					PTower t = _t->lock();
+					if (!t || t->IsHibernating())
 						continue;
-					if (!t->HasAmmoForShot(0))
+					attackTime = 0;
+					t->BeginAttackPhase();
+					//t->BeginAttackPhase();
+					if (t->turret->CanAttack())
 					{
-						LogEvent(EventType::CommandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
-						t->attackQueue.Clear();
-						t->RegisterChange(WorldEntity::TasksChanged,t->timeAt);
-						continue;
+						if (t->attackQueue.IsEmpty() && !t->FillAttackQueue())
+							continue;
+						if (!t->HasAmmoForShot(0))
+						{
+							LogEvent(EventType::CommandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
+							t->attackQueue.Clear();
+							t->RegisterChange(WorldEntity::TasksChanged,t->timeAt);
+							continue;
+						}
+
+
+						TAttackReference&ref = attackingEntities.Append();
+						ref.eref = t;
+						ref.tref = t;
+						//ref.initiative = v->GetAttackInitiative();
+						//ref.attacksLeft = v->CountPossibleAttacks();
 					}
-
-
-					TAttackReference&ref = attackingEntities.Append();
-					ref.eref = t;
-					ref.tref = t;
-					//ref.initiative = v->GetAttackInitiative();
-					//ref.attacksLeft = v->CountPossibleAttacks();
 				}
-			}
-
+			});
 
 
 		}
@@ -283,15 +262,18 @@ namespace Objects
 		
 		void			ResetTowerAttackAction(float atTime)
 		{
-			foreach (towers,t)
+			ForeachFaction([&atTime](const PFaction&f)
 			{
-				if ((*t)->attackActionLeft != 1.f)
+				foreach (f->towers,_t)
 				{
-					(*t)->attackActionLeft = 1.f;
-					(*t)->SignalChange(WorldEntity::ActionChanged,atTime);
+					PTower t = _t->lock();
+					if (t->attackActionLeft != 1.f)
+					{
+						t->attackActionLeft = 1.f;
+						t->SignalChange(WorldEntity::ActionChanged,atTime);
+					}
 				}
-			}
-
+			});
 		}
 
 
@@ -392,11 +374,10 @@ namespace Objects
 	void					Create()
 	{
 		#ifdef CLIENT
+			Grid::visibleOrbitGrid.orbit = Grid::ToRadius(Satellite::BaseResidenceHeight);
+			Grid::visibleOrbitGrid.Clear();
 			#ifdef HAS_WINDOW
-				Grid::visibleOrbitGrid.orbit = Grid::ToRadius(Satellite::BaseResidenceHeight);
-				Grid::visibleOrbitGrid.Clear();
 				Renderer::Create();
-				
 			#endif
 		#else
 
@@ -535,7 +516,7 @@ namespace Objects
 			foreach (Component::baseComponents,bc)
 				(*bc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();});
 
-			globalCommands.Append(GlobalCommand(int2(0,0),"End Round", [](int){SignalRoundEnd();}, [](int, bool controlEnabled)->bool {return controlEnabled;},&CommonCmd::AlwaysFalse<int>));
+			globalCommands.Append(GlobalCommand(int2(0,0),"End Round", [](int){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, [](int, bool controlEnabled)->bool {return CanChangeRoundState();},[](int)->bool {return HasSignalledRoundEnd();}));
 
 
 			globalCommands.Append(GlobalCommand(int2(1,2),"Clip Terrain", &GlobalCmd::ToggleSeeThrough, &CommonCmd::AlwaysEnabled<int>, &GlobalCmd::SeeThroughIsActive));
@@ -1020,49 +1001,6 @@ namespace Objects
 
 
 
-	#ifdef HAS_WINDOW
-		void RefreshSeeThrough(int oldVehicleHeight, bool controlEnabled)
-		{
-			//if (selectedEntity)
-			//{
-			//	const Grid::LCellIdI&location = selectedEntity->location;
-			//	bool allClear = true;
-			//	const auto&n = Grid::low.grid.GetCell(location.cellID).neighborhood;
-			//	for (int i = location.height + 1; i < Grid::CellStack::HalfRange; i++)
-			//		if (!Grid::actualWorld.LowCellIsClear(Grid::LCellIdI( location.cellID, i)))
-			//		{
-			//			allClear = false;
-			//			break;
-			//		}
-			//		else
-			//		{
-			//			if (i - location.height > 3)
-			//			{
-			//				for (int j = 0; j < n.numNeighbors; j++)
-			//					if (!Grid::actualWorld.LowCellIsClear(Grid::LCellIdI(n.neighborID[j],i)))
-			//					{
-			//						allClear = false;
-			//						break;
-			//					}
-
-			//			}
-
-			//		}
-
-			//	#ifdef CLIENT
-			//		if (oldVehicleHeight != Grid::SeeThrough::GetFocusPoint().height && Grid::SeeThrough::IsEnabled() == !allClear)
-			//			Grid::SeeThrough::Update(!allClear, Grid::LCellIdI(location.cellID, Grid::SeeThrough::GetFocusPoint().height));
-			//		else
-			//			Grid::SeeThrough::Update(!allClear,location);
-			//	#endif
-			//	RefreshCommands(controlEnabled);
-			//}
-		}
-	#endif
-
-
-
-
 
 	#ifdef HAS_WINDOW
 
@@ -1128,7 +1066,6 @@ namespace Objects
 			waste.Clear();
 
 		#else
-			towers.Clear();
 			Faction::all.Clear();
 			Faction::nexus->online = false;
 		#endif

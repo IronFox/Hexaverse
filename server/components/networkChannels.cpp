@@ -61,6 +61,7 @@ namespace Channels
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOnline>							factionOnline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionOffline>							factionOffline;
 	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionRequestedNewRound>				factionRequestedNewRound;
+	TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::FactionContinuedRound>					factionContinuedRound;
 
 	TCP::ObjectSender<NET(UINT16), Protocol::ChannelID::LockEMPZones>								lockEmpZones;
 	#ifndef NO_HIBERNATION
@@ -569,7 +570,7 @@ namespace Receiver
 			timestamp.rightNow = true;
 
 
-			client->faction->canSee.VisitAllKeys([&peer,client,timestamp](const Objects::PWorldEntity&e)
+			client->faction->seeing.VisitAllKeys([&peer,client,timestamp](const Objects::PWorldEntity&e)
 			{
 				if (e->health <= 0)
 				{
@@ -752,6 +753,8 @@ namespace Receiver
 		Channels::unitLimits.SendTo(peer,limits);
 		
 		Channels::lockEmpZones.SendTo(peer,State::empZonesLocked);
+
+		peer.SendSignal(Protocol::ChannelID::BeginGame);
 		
 	}
 
@@ -1720,12 +1723,25 @@ namespace Receiver
 			case Protocol::ChannelID::Unused:
 				State::InvalidOperation(peer);
 			break;
+			case Protocol::ChannelID::RequestContinueRound:
+			{
+				
+				//Objects::Tick();
+				State::PClient client = To<State::Client>::Cast(peer.attachment);
+				if (client && client->faction && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && client->wantNewRound)
+				{
+					client->wantNewRound = false;
+					LogEvent(EventType::SessionRelated,peer,"Continued round");
+					Channels::factionContinuedRound.SendTo(State::server,client->faction->id);
+				}
+			}
+			break;
 			case Protocol::ChannelID::RequestRoundEnd:
 			{
 				
 				//Objects::Tick();
 				State::PClient client = To<State::Client>::Cast(peer.attachment);
-				if (client && client->faction && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
+				if (client && client->faction && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && !client->wantNewRound)
 				{
 					client->wantNewRound = true;
 					LogEvent(EventType::SessionRelated,peer,"Requested new round");

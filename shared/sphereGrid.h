@@ -164,15 +164,15 @@ namespace Grid
 
 			BYTE	content;
 			BYTE	structureCounter;	//number of structures (density) that occupy this block
-			#ifdef HAS_WINDOW
-				short	visible;	//indicates levels of visibility. should not fall below 0. might make it unsigned when i am convinced it works. values >= 1 indicate this cell is visible
+			#ifdef CLIENT
+				short	visible=0;	//indicates levels of visibility. should not fall below 0. might make it unsigned when i am convinced it works. values >= 1 indicate this cell is visible
 			#endif
 
 			/**/	CompactCell() :content(Content::Clear), structureCounter(0) {}
 			/**/	CompactCell(Content t) :content(t), structureCounter(0)	{}
 
 
-			#ifdef HAS_WINDOW
+			#ifdef CLIENT
 				void	AlterVisibility(short change)
 				{
 					visible += change;
@@ -920,6 +920,42 @@ namespace Grid
 			}
 		};
 
+		struct TVolumeDescriptor
+		{
+			struct TStack
+			{
+				UINT32				stackID;	//high-resolution cell IDs
+				UINT32				layerBegin,layerEnd;	//layerEnd is one higher than actual limit
+			};
+
+			Buffer0<TStack>			coverage;
+
+			void					Clear()
+			{
+				coverage.Clear();
+			}
+
+
+			struct Operator
+			{
+				bool	stackVisited[GridType::CellCount];
+				Queue<UINT32>	stacksLeft;
+
+				/**/		Operator()
+				{
+					memset(stackVisited,false,sizeof(stackVisited));
+				}
+
+				void		ResetVisited(const TVolumeDescriptor&res)
+				{
+					foreach (res.coverage,c)
+						stackVisited[c->stackID] = false;
+
+				}
+			};
+		};
+
+
 
 		/**/						Setup()
 		{
@@ -1132,6 +1168,46 @@ namespace Grid
 					return section->GetMax();
 
 			return -1.f;
+		}
+
+	
+
+
+		void	GenerateVolume(const Sphere<>&sphere,TVolumeDescriptor&volume) const
+		{
+			static TVolumeDescriptor::Operator op;
+			volume.Clear();
+			UINT32 centerStack = Locate(sphere.center);
+			op.stacksLeft << centerStack;
+
+			const float br = ToRadius(CellStack::BottomHeight);
+			const float tr = ToRadius(CellStack::TopHeight);
+			UINT32 next;
+			while (op.stacksLeft >> next)
+			{
+				if (op.stackVisited[next])
+					continue;
+				op.stackVisited[next] = true;
+				const TVec3<>&dir = cells[next].cornerCenter;
+				TVec2<> distances;
+				TVec3<> bottom,top;
+				Vec::mult(dir,br,bottom);
+				Vec::mult(dir,tr,top);
+				TVolumeDescriptor::TStack&st = volume.coverage.Append();
+				st.stackID = next;
+				if (!Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
+				{
+					st.layerBegin = st.layerEnd = 0;
+					continue;
+				}
+			
+				st.layerBegin = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
+				st.layerEnd = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
+				const auto&n = grid.GetCell(next).neighborhood;
+				for (int i = 0; i < n.numNeighbors; i++)
+					op.stacksLeft << n.neighborID[i];
+			}
+			op.ResetVisited(volume);
 		}
 
 		#ifdef HAS_WINDOW
@@ -1699,9 +1775,9 @@ namespace Grid
 													(
 														(cell.height >= -CellStack::HalfRange && cell.height < CellStack::HalfRange)
 														||
-														(cell.height == satHeight)
+														(cell.height == satHeight || cell.height == satHeight+1)
 														||
-														(cell.height == decSatHeight)
+														(cell.height == decSatHeight || cell.height == decSatHeight+1)
 													)
 													;}
 	#ifdef HYBRID_GRID
@@ -1750,6 +1826,9 @@ namespace Grid
 	#ifdef VOXEL_SCANNER
 		void		RemapToLowStacks(BYTE family);
 	#endif
+
+
+
 
 
 	class SkySensorState
@@ -1806,6 +1885,11 @@ namespace Grid
 						temporarilyVisible = true;
 					}
 				}
+
+				bool	IsVisible() const
+				{
+					return visibility > 0 || temporarilyVisible;
+				}
 			};
 			Cell	volumeCell[Grid::CellStack::Range];
 
@@ -1852,7 +1936,8 @@ namespace Grid
 		Affects the cell and its immediate neighbors only
 		*/
 		void				ChangeSensory(const Grid::HCellIdU&center, float t, short changeBy);
-		void				ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short changeBy);
+//		void				ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short changeBy);
+		void				ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy);
 		void				ChangeSensory(const Grid::SkySensorState&state, float t, short changeBy);
 		void				RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);
 
@@ -1999,21 +2084,22 @@ namespace Grid
 				void			SignalLightingChange(const HCellIdI&cellID);
 			#endif
 			void				SignalLightingChange(const LCellIdI&cellID);
-			void				InsertSensor(const LCellIdI&, float radius);
-			void				RemoveSensor(const LCellIdI&, float radius);
-			inline void			MoveSensor(const LCellIdI&from, const LCellIdI&to, float radius) {if (from == Grid::LCellIdI::Invalid || from == to) return; RemoveSensor(from,radius); InsertSensor(to,radius);}
-
-			void				InsertSensorCoverage(const SkySensorState&);
-			void				RemoveSensorCoverage(const SkySensorState&);
-
-			bool				HasSensor(const LCellIdI&, float radius) const;
-
-			private:
-				void			ChangeSensory(const LCellIdI&center, float radius, signed char change);
-				void			ChangeSensorCoverage(const SkySensorState&,signed char change);
 		#endif
-			
+		void					InsertSensor(const HighSetup::TVolumeDescriptor&desc);
+		void					RemoveSensor(const HighSetup::TVolumeDescriptor&desc);
 
+		void					InsertSensorCoverage(const SkySensorState&);
+		void					RemoveSensorCoverage(const SkySensorState&);
+
+		bool					HasSensor(const LCellIdI&, float radius) const;
+
+		bool					GridCanSee(const LCellIdI&, int height, bool broad) const;
+		bool					GridCanSeeAny(const HCellIdU&, UINT height) const;
+
+		private:
+			void				ChangeSensory(const LCellIdI&center, float radius, signed char change);
+			void				ChangeSensorCoverage(const SkySensorState&,signed char change);
+			void				ChangeSensorCoverage(const HighSetup::TVolumeDescriptor&state, signed char change);
 	};
 
 	extern WorldData			actualWorld;
@@ -2161,40 +2247,22 @@ namespace Grid
 	#endif
 
 
-	#ifdef HAS_WINDOW
-
-		class OrbitGrid
+	class OrbitGrid
+	{
+	public:
+		struct TCell
 		{
-		public:
-			struct TCell
-			{
-				short visible = 0;
+			short visible = 0;
 
 
-			};
+		};
 
 
-			TCell	cells[LowSetup::GridType::CellCount];
-			float	orbit = 1.f;
-
-			//struct TColorArea
-			//{
-			//	LCellIdI	center;
-			//	//int			fuelRadius;
-			//	bool		active = false;
-
-			//	bool		operator==(const TColorArea&other) const
-			//	{
-			//		if (active != other.active)
-			//			return false;
-			//		if (!active)
-			//			return true;
-			//		return fuelRadius == other.fuelRadius && center == other.center;
-			//	}
-
-			//}	colorArea;
+		TCell	cells[LowSetup::GridType::CellCount];
+		float	orbit = 1.f;
 
 
+		#ifdef HAS_WINDOW
 			struct Vertex
 			{
 				float4		vertex3_edge;
@@ -2207,35 +2275,38 @@ namespace Grid
 			};
 	
 			Array<Vertex>	vertices;
-			bool			valid = false;
 			DX11::InstructionBlock32	instruction;
-
 			void		ForceRecompileNow();
-			void		Invalidate() {valid = false;}
+			void		Render(const Engine::Frustum<>&);
+		#endif
+
+		bool			valid = false;
+		void			Invalidate() {valid = false;}
 
 			
-			/**/	OrbitGrid()
-			{
-				Clear();
-			}
+		/**/			OrbitGrid()
+		{
+			Clear();
+		}
 
-			void	ChangeSensory(const LCellIdI&center, float radius, signed char change);
+		void			ChangeSensory(const LCellIdI&center, float radius, signed char change);
 
-			void	Clear()
-			{
-				TCell clear;
-				for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
-					cells[i] = clear;
-				Invalidate();
-				//colorArea.active = false;
-			}
+		void			Clear()
+		{
+			TCell clear;
+			for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
+				cells[i] = clear;
+			Invalidate();
+			//colorArea.active = false;
+		}
 
-			void	Render(const Engine::Frustum<>&);
 
-			//void	Color(const LCellIdI&center, int fuelRadius);
-			//void	StripColor();
+		//void	Color(const LCellIdI&center, int fuelRadius);
+		//void	StripColor();
 
-		};
+	};
+
+	#ifdef CLIENT
 
 		extern OrbitGrid	visibleOrbitGrid;
 

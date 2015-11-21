@@ -1775,6 +1775,7 @@ namespace Protocol
 			GameProgress,		//s2c: GameProgress
 
 			PhaseChange,		//s2c: PhaseChange
+			BeginGame,			//s2c: <signal> //indicates that the player faction is fully initialized and transferred, and the game should begin. Mostly important for AI, only
 
 			SetClientState,		//c2s: ClientState -> s2c: Result
 			ClientFaction,		//c2s: ClientFactionRequest -> s2c: ClientFactionResponse
@@ -1802,6 +1803,7 @@ namespace Protocol
 
 			ChoiceIntersection,	//c2s: ChoiceIntersection
 			RequestRoundEnd,	//c2s: <signal>
+			RequestContinueRound,	//c2s: <signal>
 
 			EntityDirectCommand,//c2s: EntityDirectCommand
 
@@ -1830,6 +1832,7 @@ namespace Protocol
 			FactionOnline,		// s2c: TUniqueID
 			FactionOffline,		// s2c: TUniqueID
 			FactionRequestedNewRound,	// s2c: TUniqueID
+			FactionContinuedRound,		// s2c: TUniqueID
 
 			LockEMPZones,		// s2c : UINT16
 			UplinkBandwidth,	// s2c : int, can be negative to indicate it's disabled

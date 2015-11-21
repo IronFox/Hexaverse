@@ -56,8 +56,7 @@ namespace Objects
 			createdInRound = other.createdInRound;
 
 			#ifdef CLIENT
-				structureVisualization.swap(other.structureVisualization);
-				mobileVisualization.swap(other.mobileVisualization);
+				visualization.swap(other.visualization);
 			#endif
 			((BaseEntity&)*this) = other;
 		}
@@ -88,8 +87,9 @@ namespace Objects
 
 			void					UpdateAge(UINT32 roundNumber);
 
-			PStructure				structureVisualization;
-			PMobileEntity			mobileVisualization;
+			PWorldEntity			visualization;
+			//PStructure				structureVisualization;
+			//PMobileEntity			mobileVisualization;
 
 			struct TVisited
 			{
@@ -137,7 +137,7 @@ namespace Objects
 	{
 	private:
 		#ifndef CLIENT
-			void		ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short changeBy);
+			void		ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy);
 			void		ChangeSensory(const Grid::SkySensorState&state, float t, short changeBy);
 //			void		ReplaceSensory(const Grid::SkySensorState&oldState, const Grid::SkySensorState&newState, float t, short changeBy);
 			void		CheckChanges(float t);
@@ -149,6 +149,7 @@ namespace Objects
 		#ifdef CLIENT
 			bool	requestedNewRound = false;
 			bool	isMine = false;
+			count_t	roundChangeNotifications=0;
 		#endif
 
 		#ifdef CONNECTOR_LESS
@@ -183,6 +184,8 @@ namespace Objects
 			Buffer0<WSkyHub>			skyHubs;	//overlaps with satellites
 			Buffer0<WStructure>			structures;
 
+			Buffer0<WTower>				towers;
+
 			static Buffer0<WFaction>	all;
 			static PFaction				nexus;
 
@@ -216,7 +219,15 @@ namespace Objects
 				gainedVisualAt.Clear();
 			}
 
-			GenericHashSet<PWorldEntity, SharedPtrHash>	canSee;
+
+			struct SeeingReference
+			{
+				count_t			sightLevel=0;
+
+
+			};
+
+			GenericHashTable<PWorldEntity, SeeingReference, SharedPtrHash>	seeing;
 
 			/**/		Faction(const String&name=""):name(name)
 			{
@@ -264,14 +275,22 @@ namespace Objects
 
 			bool		CanSee(const PWorldEntity&e, float t)	const;
 
-			bool		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true);
-			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false);
+			bool		GridCanSee(const PWorldEntity&e) const;
+			bool		GridCanSee(const Grid::HighSetup::TVolumeDescriptor&) const;
 
-			void		RegisterSensorCreation(const Grid::SkySensorState&state, float t);
-			void		RegisterSensorRemoval(const Grid::SkySensorState&state, float t);
-			void		RegisterSensorCreation(const Grid::LCellIdI&center, float radius, float t);
-			void		RegisterSensorMotion(const Grid::LCellIdI&oldCenter, const Grid::LCellIdI&newCenter, float radius, float t);
-			void		RegisterSensorRemoval(const Grid::LCellIdI&center, float radius, float t);
+			void		CheckGridVisibility(const PWorldEntity&,float&timeAt);
+
+			void		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true, index_t incStackBy=1);
+			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false, bool signalConnectedClient=true);
+
+			void		RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
+			void		RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow);
+			void		RegisterSensorCreation(const Sphere<>&, bool isSatellite, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
+			void		RegisterSensorMotion(const Sphere<>&from, bool isSatellite, const Sphere<>&to, float&t, bool checkChangesNow);
+			void		RegisterSensorRemoval(const Sphere<>&, bool isSatellite, float&t, bool checkChangesNow);
+
+			count_t		CountSatelliteCoverage(const TVec3<>&center)	const;
+			count_t		CountSatelliteCoverage(const Sphere<>&)	const;
 
 			/**
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater
@@ -306,7 +325,7 @@ namespace Objects
 		void	ChangeStorage(WorldEntity&e, float atTime, const ResourceVector&max, ResourceVector&storage, Resource res, int change);
 		void	ChangeStorage(WorkingStructure&ws, float atTime, Resource res, int change);
 		void	ChangeStorage(MobileEntity&v, float atTime, Resource res, int change);
-		void	MapVisibility2(const PWorldEntity&e, const PWorldEntity&other, const OwnerParameter&checkForOwner, float&atTime);
+		//void	MapVisibility2(const PWorldEntity&e, const PWorldEntity&other, const OwnerParameter&checkForOwner, float&atTime);
 		void	ChangeOwnership( const PWorldEntity&e, const OwnerParameter&newOwner, float&atTime);
 
 		/**
@@ -315,7 +334,7 @@ namespace Objects
 		not be called too frequently.
 		Verification failure leads to program termination.
 		*/
-		void	VerifyVisibilityNetwork();
+//		void	VerifyVisibilityNetwork();
 		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource res, int demand);
 		int		GetStorage(const MobileEntity&v, Resource res);
 
@@ -323,6 +342,10 @@ namespace Objects
 		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine);
 	#endif
 
+	/**
+	Iterates through all factions, including the nexus faction
+	*/
+	void			ForeachFaction(const std::function<void(const PFaction&)>&func);
 
 	/**
 	Iterates through all entities that are located in the world, including markers (markers on client only)

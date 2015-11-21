@@ -9,7 +9,7 @@ namespace AI
 	extern Buffer0<Objects::PVehicle>	vehicles;
 
 	void	Process(float timeQuantum);
-	void	SignalStart();
+	void	SignalStart(const String&because, const TCodeLocation&caller);
 
 
 	/**

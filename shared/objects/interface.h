@@ -15,6 +15,9 @@
 	#endif
 	void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI&c, Objects::CursorMode::mode_t mode, const Objects::PMobileEntity&deployingWhat);
 	void	SignalRoundEnd();
+	void	SignalUndoRoundEnd();
+	bool	HasSignalledRoundEnd();
+	bool	CanChangeRoundState();
 	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName);
 	void	SignalTerrainModification(const Objects::PVehicle&v,Objects::CursorMode::mode_t activeCursorMode,const Array<Grid::HCellIdI>&selection);
 	void	SignalDropLastTask(const Objects::PWorldEntity&v);

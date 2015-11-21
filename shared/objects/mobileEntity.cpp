@@ -371,6 +371,180 @@ namespace Objects
 	
 
 
+		void MobileEntity::HandleMotion(MobilePlacementResult&result, bool signalEvent, const Grid::LCellIdI&oldLocation, float timeCost)
+		{
+//			MobilePlacementResult result;
+			this->UpdateSystem();
+			if (signalEvent)
+			{
+
+				//static GenericHashSet<OwnerParameter,OwnerHash>	checkStillBeeingSeenBy;
+				//static Buffer0<PWorldEntity> checkCanStillSee;
+				//checkCanStillSee.Clear();
+				//checkStillBeeingSeenBy.Clear();
+
+				float oldTime = timeAt;
+				timeAt += timeCost;
+
+				static Buffer0<PWorldEntity> newContacts;
+				newContacts.Clear();
+				this->RegisterSensory(location,timeAt,false,&newContacts);
+				this->UnregisterSensory(oldLocation,timeAt,true);
+				foreach (newContacts,c)
+				{
+					float zOffset;
+					PTurretBase b = (*c)->GetTurretBase(zOffset);
+					if (!b)
+						continue;
+					if (b->turret->CanAttack())
+					{
+						for (WMobileEntity w : owner->allMobiles)
+						{
+							PMobileEntity v2 = w.lock();
+							if (!v2)
+								continue;
+
+							for (index_t i = 0; i < v2->myTasks.Count(); i++)
+							{
+								const Task&task = v2->myTasks[i];
+								bool badTask = false;
+								if (task.type == Task::MoveTo)
+								{
+									for (const auto&node : task.path)
+									{
+										//TVec3<> world = Grid::ToWorld(node.cell);
+										//float zOffset;
+										//const auto&base = m->GetTurretBase(zOffset);
+										Grid::LCellIdI actual;
+										if (b->ExtCanHit((*c)->owner,(*c)->location,zOffset,node.cell, actual))
+										{
+											badTask = true;
+											break;
+										}
+
+									}
+								}
+								if (badTask)
+								{
+									LogEvent(EventType::EntityProcess,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected. Dropping task(s).");
+									if (v2.get() == this)
+									{
+										ClearAllTasks(true,CLOCATION);
+										result = MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
+									}
+									else
+									{
+										while (v2->myTasks.Count() > i)
+											v2->myTasks.EraseBack();
+									}
+									break;
+								}
+
+							}
+						}
+					}
+				};
+
+
+		
+
+				if (timeCost > 0)
+				{
+					SignalMotion(To<Vehicle>::Cast(shared_from_this()),oldLocation,location,oldTime,timeCost);
+				}
+				else
+				{
+					#ifndef CLIENT
+						LogEvent(EventType::MinorEntityProcess,this,"Time cost is "+String(timeCost)+". Warping mobile entity at time "+String(oldTime));
+					#endif
+					RegisterChange(PositionChanged,oldTime);
+				}
+				//timeAt += timeCost;
+
+				const auto _this = shared_from_this();
+				ForeachFaction([this,_this](const PFaction&f)
+				{
+					f->CheckGridVisibility(_this,timeAt);
+				});
+
+				bool doBreak = false;
+				ForeachFaction([this,&doBreak,_this](const PFaction&f)
+				{
+					if (doBreak)
+						return;
+					if (!f->CanSee(_this,timeAt))
+						return;
+					Grid::LCellIdI loc;
+					if (IsSatellite())
+					{
+						foreach (f->satellites, _s)
+						{
+							PSatellite s = _s->lock();
+							if (s && s->WouldAttack(_this,loc,timeAt))
+							{
+								if (s->AttackNext(loc,true))
+								{
+									LogEvent(EventType::EntityProcess,s.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
+
+									s->Attack(timeAt);
+									if (health <= 0)
+									{
+										doBreak = true;
+										return;
+									}
+										
+								}
+							}
+						}
+
+					}
+					else
+					{
+						foreach (f->towers, _t)
+						{
+							PTower t = _t->lock();
+							if (t && t->WouldAttack(_this,loc,timeAt))
+							{
+								if (t->AttackNext(loc,true))
+								{
+									LogEvent(EventType::EntityProcess,t.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
+
+									t->Attack(timeAt);
+									if (health <= 0)
+									{
+										doBreak = true;
+										return;
+									}
+										
+								}
+							}
+						}
+					}
+				});
+				if (doBreak)
+				{
+					result = MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
+					#ifndef CLIENT
+						LogEvent(EventType::MinorEntityProcess,this,"Motion failed. Dead");
+					#endif
+					return;
+				}
+
+				#ifndef CLIENT
+					LogEvent(EventType::MinorEntityProcess,this,"Motion completed");
+				#endif
+			}
+			else
+			{
+				timeAt += timeCost;
+				#ifndef CLIENT
+					LogEvent(EventType::MinorEntityProcess,this,"Silent motion completed");
+				#endif
+			}
+
+		}
+
+
 
 		bool			MobileEntity::PerformNonAttack()
 		{
@@ -392,7 +566,7 @@ namespace Objects
 							if (PlotCourse(ways[target],false))
 							{
 								hasTriedPlottingOnMoveAutoMotion = true;
-								LogEvent(EventType::EntityProcess,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
+								LogEvent(EventType::MinorEntityProcess,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
 								return false;	//retry
 							}
 						}
@@ -401,7 +575,7 @@ namespace Objects
 							if (PlotCourse(ways[i],false))
 							{
 								hasTriedPlottingOnMoveAutoMotion = true;
-								LogEvent(EventType::EntityProcess,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
+								LogEvent(EventType::MinorEntityProcess,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
 								return false;	//retry
 							}
 					}
@@ -612,57 +786,57 @@ namespace Objects
 		}
 
 
-		void MobileEntity::ProcessVisibilityOf(const PWorldEntity&e, float&t)
-		{
-			if (e.get() == this || e->owner == owner)
-				return;
-			if (CanSee(e) && !seeing.Contains(e))
-			{
-				seeing << e;
-				(e)->seenBy << shared_from_this();
-				//SignalAppearanceToHostileFaction(owner,e,t);
-				owner->SignalAppearance(e,t);
-			}
-			if (e->CanSee(shared_from_this()) && !seenBy.Contains(e))
-			{
-				seenBy << e;
-				(e)->seeing << shared_from_this();
-				//SignalAppearanceToHostileFaction(e->owner,shared_from_this(),t);
-				e->owner->SignalAppearance(shared_from_this(),t);
-			}
+		//void MobileEntity::ProcessVisibilityOf(const PWorldEntity&e, float&t)
+		//{
+		//	if (e.get() == this || e->owner == owner)
+		//		return;
+		//	if (CanSee(e) && !seeing.Contains(e))
+		//	{
+		//		seeing << e;
+		//		(e)->seenBy << shared_from_this();
+		//		//SignalAppearanceToHostileFaction(owner,e,t);
+		//		owner->SignalAppearance(e,t);
+		//	}
+		//	if (e->CanSee(shared_from_this()) && !seenBy.Contains(e))
+		//	{
+		//		seenBy << e;
+		//		(e)->seeing << shared_from_this();
+		//		//SignalAppearanceToHostileFaction(e->owner,shared_from_this(),t);
+		//		e->owner->SignalAppearance(shared_from_this(),t);
+		//	}
 
 
-		}
+		//}
 
 
-		bool MobileEntity::ProcessVisibilityOfS(const PWorldEntity&e, float&t)
-		{
-			if (e.get() == this || e->owner == owner)
-				return true;
-			bool rs = true;
-			if (CanSee(e) && !seeing.Contains(e))
-			{
-				seeing << e;
-				(e)->seenBy << shared_from_this();
-				//SignalAppearanceToHostileFaction(owner,e,t);
-				
-				if (owner->SignalAppearance(e,t)
-					&& e->GetTurretBase() 
-					&& !owner->FindReferenceMarker(Marker::Type::HostileContact,e->id))
-				{
-					rs = false;
-				}
-			}
-			if (e->CanSee(shared_from_this()) && !seenBy.Contains(e))
-			{
-				seenBy << e;
-				(e)->seeing << shared_from_this();
-				//SignalAppearanceToHostileFaction(e->owner,shared_from_this(),t);
-				e->owner->SignalAppearance(shared_from_this(),t);
-			}
+		//bool MobileEntity::ProcessVisibilityOfS(const PWorldEntity&e, float&t)
+		//{
+		//	if (e.get() == this || e->owner == owner)
+		//		return true;
+		//	bool rs = true;
+		//	if (CanSee(e) && !seeing.Contains(e))
+		//	{
+		//		seeing << e;
+		//		(e)->seenBy << shared_from_this();
+		//		//SignalAppearanceToHostileFaction(owner,e,t);
+		//		
+		//		if (owner->SignalAppearance(e,t)
+		//			&& e->GetTurretBase() 
+		//			&& !owner->FindReferenceMarker(Marker::Type::HostileContact,e->id))
+		//		{
+		//			rs = false;
+		//		}
+		//	}
+		//	if (e->CanSee(shared_from_this()) && !seenBy.Contains(e))
+		//	{
+		//		seenBy << e;
+		//		(e)->seeing << shared_from_this();
+		//		//SignalAppearanceToHostileFaction(e->owner,shared_from_this(),t);
+		//		e->owner->SignalAppearance(shared_from_this(),t);
+		//	}
 
-			return rs;
-		}
+		//	return rs;
+		//}
 
 
 		void			MobileEntity::EraseFirstTask()
@@ -874,14 +1048,21 @@ namespace Objects
 		{
 			if (toLocation == location)
 				return;
-			#ifdef HAS_WINDOW
+			LogEvent(EventType::MinorEntityProcess,this,"Relocating to "+toLocation.ToString()+" ("+String(updateSystem)+")");
+			#ifdef CLIENT
+				static Grid::HighSetup::TVolumeDescriptor desc;
+				float t = 0.f;
 				if (isMine)
-					UnregisterWorldSensory();
+				{
+					UnregisterSensory(t);
+				}
 			#endif
 			location = toLocation;
-			#ifdef HAS_WINDOW
+			#ifdef CLIENT
 				if (isMine)
-					RegisterWorldSensory();
+				{
+					RegisterSensory(t);
+				}
 				#ifdef THOROUGLY_DEBUG_SENSORY
 					if (isMine)
 						VerifySensory();

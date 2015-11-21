@@ -548,7 +548,7 @@ namespace Dialog
 		return d;
 	}
 
-	String	WordForThinking()
+	String	WordForThinking(UINT32 roundNumber, const void*factionPointer)
 	{
 		static String words[] = {
 			"Thinking",
@@ -564,8 +564,13 @@ namespace Dialog
 			"Beyond the flow of time",
 			"Please hold the line...",
 		};
+		CRC32::beginSequence();
+		CRC32::calcNext(&roundNumber,sizeof(roundNumber));
+		CRC32::calcNext(&factionPointer,sizeof(factionPointer));
+		
+		UINT32 random = CRC32::endSequence();
 
-		return words[random.getIndex(ARRAYSIZE(words)-1)];
+		return words[random % ARRAYSIZE(words)];
 	}
 
 
@@ -693,7 +698,7 @@ namespace Dialog
 		list.first() = "Known factions:";
 		for (index_t i = 0; i < factions.Count(); i++)
 			list[i+1] = "* "+factions[i].name+(factions[i].online?
-			(factions[i].requestedNewRound ? "" : " ("+WordForThinking()+")")
+			(factions[i].requestedNewRound ? "" : " ("+WordForThinking(RuntimeConfig::roundNumber,factions[i].factionReference )+")")
 			:"   -    offline");
 
 		d->textField->SetText( list );
@@ -936,7 +941,12 @@ namespace Dialog
 		CheckResult ck = check();
 		if (ck == CheckResult::Abort)
 			return PDialog();
-
+		if (RuntimeConfig::aiMode)
+		{
+			if (ck == CheckResult::OkayContinue)
+				onConfirm();
+			return PDialog();
+		}
 
 
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton| Detail::ComponentFlags::CancelButton, "Confirm", false);

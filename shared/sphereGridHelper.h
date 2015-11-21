@@ -3,6 +3,13 @@
 
 #include "sphereGrid.h"
 
+#ifdef _DEBUG
+	#include <io/encryption.h>
+
+#endif
+
+
+
 namespace Grid
 {
 	namespace TemplateHelper
@@ -26,6 +33,34 @@ namespace Grid
 			LogEvent(EventType::PerformanceMeasurement,nullptr,"Sky sensory change processed in "+String(timer.GetSecondsSince(t0)));
 		}
 
+
+		template <typename Stack>
+		void		ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, short changeBy, Stack*cellStack, bool*familyChanged)
+		{
+			#ifdef _DEBUG
+			{
+				UINT32 crc = CRC32::getChecksum(desc.coverage.pointer(),desc.coverage.GetContentSize());
+				LogEvent(EventType::Debug,"Applying sensory change ("+String(changeBy)+"), using descriptor with "+String(desc.coverage.Count())+" stack(s), crc="+IntToHex((int)crc,8));	
+			}
+
+			#endif
+
+
+			foreach (desc.coverage,c)
+			{
+				#ifdef _DEBUG
+					ASSERT_LESS__(c->stackID,HighSetup::GridType::CellCount);
+					ASSERT_LESS_OR_EQUAL__(c->layerBegin,c->layerEnd);
+					ASSERT_LESS__(c->layerBegin,CellStack::Range);
+				#endif
+				auto&stack = cellStack[c->stackID];
+				familyChanged[high.grid.GetCell(c->stackID).family] = true;
+				for (UINT32 layer = c->layerBegin; layer < c->layerEnd; layer++)
+				{
+					stack.volumeCell[layer].AlterVisibility(changeBy);
+				}
+			}
+		}
 
 
 		template <typename Stack>
