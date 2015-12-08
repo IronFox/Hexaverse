@@ -3943,7 +3943,7 @@ int main( int argc, const char* argv[])
 	}
 	catch (const Exception&exception)
 	{
-		FATAL__("Caught unhandled exception of type "+String(exception.getType())+":\n"+exception.what());
+		FATAL__("Caught unhandled exception of type "+String(exception.GetType())+":\n"+exception.what());
 	}
 	catch (const std::exception&exception)
 	{
