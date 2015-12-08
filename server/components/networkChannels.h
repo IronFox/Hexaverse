@@ -6,7 +6,7 @@
 
 namespace Receiver
 {
-	void	ClientState(Protocol::ClientState&state, TCP::Peer&peer);
+	void	Hello(Protocol::Hello&state, TCP::Peer&peer);
 	void	EntityDirectCommand(Protocol::EntityDirectCommand&cmd, TCP::Peer&peer);
 	void	ChoiceIntersection(Protocol::ChoiceIntersection&ch, TCP::Peer&peer);
 	void	DropLastTask(NET(TUniqueID)&uuid, TCP::Peer&peer);
@@ -23,7 +23,7 @@ namespace Receiver
 	void	CreateMarker(Protocol::Marker&, TCP::Peer&peer);
 	void	DestroyMarker(NET(TUniqueID)&, TCP::Peer&peer);
 	void	TouchMarker(Protocol::TouchedMarker&, TCP::Peer&peer);
-	void	ChangeMyName(Package::NetString<32>&, TCP::Peer&peer);
+	void	ChangeMyName(Protocol::ClientName&, TCP::Peer&peer);
 	void	IdentifyUser(NET(TUniqueID)&, TCP::Peer&peer);
 	void	ChatMessage(Package::NetString<256>&, TCP::Peer&peer);
 
@@ -69,7 +69,7 @@ namespace Channels
 	//TCP::ObjectSender<Protocol::Result,Protocol::ChannelID::
 
 
-	extern TCP::Channel<Protocol::ClientState, 0,Protocol::ChannelID::SetClientState>					setClientState;
+	extern TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>									hello;
 	extern TCP::Channel<Protocol::EntityDirectCommand, 1, Protocol::ChannelID::EntityDirectCommand>		entityDirectCommand;
 	extern TCP::Channel<Protocol::ChoiceIntersection, 1, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection;
 	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::DropLastTask>							dropLastTask;
@@ -87,7 +87,7 @@ namespace Channels
 	extern TCP::Channel<Protocol::Marker, 1, Protocol::ChannelID::CreateMarker>							createMarker;
 	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::DestroyMarker>							destroyMarker;
 	extern TCP::Channel<Protocol::TouchedMarker, 1, Protocol::ChannelID::TouchMarker>					touchMarker;
-	extern TCP::Channel<Package::NetString<32>,1,Protocol::ChannelID::ChangeMyName>						changeMyName;
+	extern TCP::Channel<Protocol::ClientName,1,Protocol::ChannelID::ChangeMyName>						changeMyName;
 	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::IdentifyUser>							identifyUserRecv;
 	extern TCP::Channel<Package::NetString<256>, 1, Protocol::ChannelID::ChatMessage>					chatMessage;
 

@@ -38,7 +38,7 @@ namespace State
 	class Client : public TCP::Peer::Attachment
 	{
 	public:
-		Protocol::ClientState		state;
+		Protocol::ClientName		name;
 		std::weak_ptr<TCP::Peer>	peer;
 		//Timer::Time					lastPing;
 		Objects::PFaction			faction;
