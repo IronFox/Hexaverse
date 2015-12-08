@@ -21,7 +21,7 @@ namespace State
 
 	String						Client::ToString() const
 	{
-		return (faction ? faction->id.ToString() : "[no faction]")+":'"+state.playerName+"'";
+		return (faction ? faction->id.ToString() : "[no faction]")+":'"+name+"'";
 	}
 
 	bool		Client::CanSee(const Objects::PWorldEntity&e, float t)	const
@@ -601,7 +601,7 @@ namespace State
 	{
 		worldID.Generate();
 
-		server.InstallChannel(Channels::setClientState);
+		server.InstallChannel(Channels::hello);
 		server.InstallChannel(Channels::entityDirectCommand);
 		server.InstallChannel(Channels::choiceIntersection);
 		server.InstallChannel(Channels::dropLastTask);

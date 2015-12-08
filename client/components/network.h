@@ -93,7 +93,7 @@ namespace Network
 		extern bool			eventsLocked/* = true*/;	//purely for debugging purposes. If set no events should be pouring in from the server. When the connection is lost, this is set to true, and no evenst should be triggered until a new connection is established
 
 
-		void	OnClientStateResponse(Protocol::Result&response);
+		void	OnHelloResponse(Protocol::Result&response);
 		void	OnWorldDelta(Protocol::WorldDelta&delta);
 
 
@@ -146,7 +146,7 @@ namespace Network
 	{
 		extern TCP::Channel<Protocol::ControlMessage,0,Protocol::ChannelID::ControlMessage>				controlMessage;
 
-		extern TCP::Channel<Protocol::Result,0,Protocol::ChannelID::SetClientState>						clientStateUpdateResponse;
+		extern TCP::Channel<Protocol::Result,0,Protocol::ChannelID::Hello>								helloResponse;
 		extern TCP::Channel<Protocol::WorldDelta,0,Protocol::ChannelID::WorldDelta>						worldData;
 		extern TCP::Channel<Protocol::NewMobileEntity,0,Protocol::ChannelID::NewMobileEntity>			newMobileEntity;
 		extern TCP::Channel<Protocol::MobileState,0,Protocol::ChannelID::MobileState>					mobileStateUpdate;
@@ -183,7 +183,7 @@ namespace Network
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		extern TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
-		extern TCP::ObjectSender<Protocol::ClientState,Protocol::ChannelID::SetClientState>					clientStateSender;
+		extern TCP::ObjectSender<Protocol::Hello,Protocol::ChannelID::Hello>							hello;
 		extern TCP::ObjectSender<Protocol::EntityDirectCommand, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
 		extern TCP::ObjectSender<Protocol::ChoiceIntersection, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection;
 		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::DropLastTask>							dropLastTask;
@@ -196,7 +196,7 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::Automate,Protocol::ChannelID::Automate>						automate;
 		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RestoreCoreLink>					restoreCoreLink;
 		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
-		extern TCP::ObjectSender<Package::NetString<32>, Protocol::ChannelID::ChangeMyName>				changeMyName;
+		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
 
 		
