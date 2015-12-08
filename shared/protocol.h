@@ -692,12 +692,12 @@ namespace Protocol
 		, NET(float), atTime
 	)
 
+	typedef Package::NetString<32>	ClientName,Hello;
 
-	NETSTRUCT3(ClientState
-		, Package::NetString<64>, playerName
-		, NET(TUniqueID), factionToken
-		, NET(UINT32), state	//gonna fill this out later
-	)
+	//NETSTRUCT2(ClientState
+	//	, Package::NetString<64>, playerName
+	//	, NET(UINT32), state	//place holder for client state. currently this is ignored, and always interpreted as a hello
+	//)
 
 	NETSTRUCT2(Result
 		, NET(bool), success
@@ -1777,7 +1777,7 @@ namespace Protocol
 			PhaseChange,		//s2c: PhaseChange
 			BeginGame,			//s2c: <signal> //indicates that the player faction is fully initialized and transferred, and the game should begin. Mostly important for AI, only
 
-			SetClientState,		//c2s: ClientState -> s2c: Result
+			Hello,				//c2s: Hello -> s2c: Result
 			ClientFaction,		//c2s: ClientFactionRequest -> s2c: ClientFactionResponse
 			SetFactionID,		//s2c: NET(TUniqueID)
 
@@ -1828,7 +1828,7 @@ namespace Protocol
 			TouchMarker,		//c2s: TouchedMarker
 
 			IdentifyUser,		// [c2s: TUniqueID -> ] s2c: IdentifyUser
-			ChangeMyName,		// c2s: String
+			ChangeMyName,		// c2s: ClientName
 			FactionOnline,		// s2c: TUniqueID
 			FactionOffline,		// s2c: TUniqueID
 			FactionRequestedNewRound,	// s2c: TUniqueID

@@ -17,7 +17,7 @@ namespace Channels
 	//TCP::ObjectSender<Protocol::Result,Protocol::ChannelID::
 
 
-	TCP::Channel<Protocol::ClientState, 0,Protocol::ChannelID::SetClientState>						setClientState(Receiver::ClientState);
+	TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>										hello(Receiver::Hello);
 	TCP::Channel<Protocol::EntityDirectCommand, 1, Protocol::ChannelID::EntityDirectCommand>		entityDirectCommand(Receiver::EntityDirectCommand);
 	TCP::Channel<Protocol::ChoiceIntersection, 1, Protocol::ChannelID::ChoiceIntersection>			choiceIntersection(Receiver::ChoiceIntersection);
 	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::DropLastTask>								dropLastTask(Receiver::DropLastTask);
@@ -35,7 +35,7 @@ namespace Channels
 	TCP::Channel<Protocol::Marker, 1, Protocol::ChannelID::CreateMarker>							createMarker(Receiver::CreateMarker);
 	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::DestroyMarker>								destroyMarker(Receiver::DestroyMarker);
 	TCP::Channel<Protocol::TouchedMarker, 1, Protocol::ChannelID::TouchMarker>						touchMarker(Receiver::TouchMarker);
-	TCP::Channel<Package::NetString<32>,1,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
+	TCP::Channel<Protocol::ClientName,1,Protocol::ChannelID::ChangeMyName>							changeMyName(Receiver::ChangeMyName);
 	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::IdentifyUser>								identifyUserRecv(Receiver::IdentifyUser);
 	TCP::Channel<Package::NetString<256>, 1, Protocol::ChannelID::ChatMessage>						chatMessage(Receiver::ChatMessage);
 
@@ -702,12 +702,12 @@ namespace Receiver
 		Channels::phaseChange.SendTo(peer,ph);
 
 
-		faction->name = client->state.playerName;
+		faction->name = client->name;
 		//faction->online = true;
 		//probably optional later on
 		{
 			//broadcast name and state
-			Channels::identifyUser.SendTo(State::server,Protocol::IdentifyUser(client->faction->id,client->state.playerName));
+			Channels::identifyUser.SendTo(State::server,Protocol::IdentifyUser(client->faction->id,client->name));
 			Channels::factionOnline.SendTo(State::server,client->faction->id);
 
 		}
@@ -1006,7 +1006,7 @@ namespace Receiver
 	}
 
 	
-	void	ChangeMyName(Package::NetString<32>&name, TCP::Peer&peer)
+	void	ChangeMyName(Protocol::ClientName&name, TCP::Peer&peer)
 	{
 		LogEvent(EventType::MinorEntityProcess, peer, nullptr, "Begin: " __func__);
 		if (!peer.attachment)
@@ -1015,7 +1015,7 @@ namespace Receiver
 			return;
 		}
 		State::PClient cl = To<State::Client>::Cast(peer.attachment);
-		cl->state.playerName = name;
+		cl->name = name;
 		if (cl->faction)
 		{
 			Protocol::IdentifyUser userID;
@@ -1596,11 +1596,11 @@ namespace Receiver
 		LogEvent(EventType::CommandRejected,peer,e,"Tried to issue direct command on incompatible entity");
 	}
 
-	void	ClientState(Protocol::ClientState&state, TCP::Peer&peer)
+	void	Hello(Protocol::Hello&hello, TCP::Peer&peer)
 	{
-		if (state.playerName.trim().IsEmpty())
+		if (hello.trim().IsEmpty())
 		{
-			peer.SendObject(Protocol::ChannelID::SetClientState,Protocol::Result(false,"Invalid username"));
+			peer.SendObject(Protocol::ChannelID::Hello,Protocol::Result(false,"Invalid username"));
 			return;
 		}
 		//foreach (State::clients,c)
@@ -1629,7 +1629,7 @@ namespace Receiver
 				//peer.shared_from_this();
 			peer.attachment = client;
 			State::clients << client;
-			client->state = state;
+			client->name = hello;
 			LogEvent(EventType::SessionRelated,peer,client->ToString()+" joined the session");
 
 			
@@ -1665,12 +1665,13 @@ namespace Receiver
 				}
 			}
 			*/
-
+			return;
 		}
 		//else
 			//LogEvent(EventType::SessionRelated,client->state.playerName+" -> "+ state.playerName);
 
-		client->state = state;
+
+		ChangeMyName(hello,peer);
 	}
 
 

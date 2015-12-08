@@ -370,7 +370,7 @@ namespace Network
 		bool			eventsLocked = true;
 
 
-		void	OnClientStateResponse(Protocol::Result&response)
+		void	OnHelloResponse(Protocol::Result&response)
 		{
 			ASSERT__(response.success);
 			if (response.success)
@@ -831,7 +831,7 @@ namespace Network
 
 		TCP::Channel<Protocol::ClientFactionResponse,0,Protocol::ChannelID::ClientFaction>			clientFactionResponse(Receiver::ClientFactionResponse);
 
-		TCP::Channel<Protocol::Result,0,Protocol::ChannelID::SetClientState>						clientStateUpdateResponse(Receiver::OnClientStateResponse);
+		TCP::Channel<Protocol::Result,0,Protocol::ChannelID::Hello>									helloResponse(Receiver::OnHelloResponse);
 		TCP::Channel<Protocol::WorldDelta,0,Protocol::ChannelID::WorldDelta>						worldData(Receiver::OnWorldDelta);
 		TCP::Channel<Protocol::NewMobileEntity,0,Protocol::ChannelID::NewMobileEntity>				newMobileEntity(Receiver::OnNewMobileEntity);
 		TCP::Channel<Protocol::MobileState,0,Protocol::ChannelID::MobileState>						mobileStateUpdate(Receiver::OnMobileState);
@@ -866,7 +866,7 @@ namespace Network
 
 		TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
-		TCP::ObjectSender<Protocol::ClientState,Protocol::ChannelID::SetClientState>				clientStateSender;
+		TCP::ObjectSender<Protocol::Hello,Protocol::ChannelID::Hello>								hello;
 		TCP::ObjectSender<Protocol::EntityDirectCommand, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
 		TCP::ObjectSender<Protocol::ChoiceIntersection, Protocol::ChannelID::ChoiceIntersection>	choiceIntersection;
 		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::DropLastTask>						dropLastTask;
@@ -879,7 +879,7 @@ namespace Network
 		TCP::ObjectSender<Protocol::Automate,Protocol::ChannelID::Automate>							automate;
 		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RestoreCoreLink>						restoreCoreLink;
 		TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
-		TCP::ObjectSender<Package::NetString<32>, Protocol::ChannelID::ChangeMyName>				changeMyName;
+		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
 		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
 
 			//	,			//c2s: NET(bool) -> NET(bool)
@@ -968,12 +968,12 @@ namespace Network
 
 				LogEvent(EventType::SessionRelated, nullptr, "Connection established to "+client.ToString());
 				
-				Protocol::ClientState state;
-				state.playerName = RuntimeConfig::aiMode ? "<NexusAI>" : chosenNickname;
+				Protocol::Hello hello;
+				hello = RuntimeConfig::aiMode ? "<NexusAI>" : chosenNickname;
 				if (RuntimeConfig::aiMode)
-					chosenNickname = state.playerName;
-				state.state = 0U;
-				Channels::clientStateSender.SendTo(client,state);	//elevate client state
+					chosenNickname = hello;
+				//state.state = 0U;
+				Channels::hello.SendTo(client,hello);	//elevate client state
 
 				if (RuntimeConfig::aiMode)
 					AttemptFactionLogin(false,Protocol::FactionType::ContinueOnly);
@@ -1054,7 +1054,7 @@ namespace Network
 
 	void		Setup()
 	{
-		client.InstallChannel(Channels::clientStateUpdateResponse);
+		client.InstallChannel(Channels::helloResponse);
 		client.InstallChannel(Channels::worldData);
 		client.InstallChannel(Channels::newMobileEntity);
 		client.InstallChannel(Channels::mobileStateUpdate);
