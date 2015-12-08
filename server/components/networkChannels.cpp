@@ -479,6 +479,10 @@ namespace Receiver
 		client->wantNewRound = false;
 
 
+		response.startFactionTypes = Protocol::FactionType::RegularFaction;
+		if (client->faction == Objects::Faction::nexus)
+			response.startFactionTypes |= Protocol::FactionType::NexusFaction;
+
 		Channels::clientFactionResponse.SendTo(client->peer.lock(),response);
 		Channels::setFactionID.SendTo(client->peer.lock(),client->faction->id);
 
