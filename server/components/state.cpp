@@ -363,7 +363,7 @@ namespace State
 	{
 		task.foci.SetSize(t.foci.Count());
 		for (index_t i = 0; i < task.foci.Count(); i++)
-			task.foci[i] = t.foci[i];
+			task.foci[i] = t.foci[i].target;
 		task.mode = t.mode;
 		task.name = t.name;
 		task.type = t.type;
@@ -437,7 +437,7 @@ namespace State
 				const auto&task = v.myTasks[i];
 				Describe(info.tasks[i],v,loc, task,i);
 				if (task.ContainsMovement())
-					loc = task.foci.GetNewest();
+					loc = task.foci.GetNewest().target;
 			}
 			#ifndef CONNECTOR_LESS
 				info.resourceVector = v.currentStorage;
@@ -804,6 +804,7 @@ namespace State
 								resources("RSRC"),
 								noMunitionResources("RSRM"),
 								foci("FOCI"),
+								fociFlags("FCIF"),
 								taskName("TNME"),
 								taskData("TDAT"),
 								path("PATH"),
@@ -984,25 +985,55 @@ namespace State
 	}
 
 
-	static void Export(Riff::Chunk*taskChunk, const Queue<Grid::LCellIdI>&foci)
+	namespace FocusFlag
 	{
-		static Array<Grid::LCellIdI>	fociArray;
-		if (foci.IsEmpty())
-			return;
-		foci.CopyToArray(fociArray);
-		taskChunk->AppendBlock(RID::foci,fociArray.pointer(),fociArray.contentSize());
+		enum flag_t : BYTE
+		{
+			IsDetailed = 0x1,
+			IsIntermediate = 0x2
+		};
 	}
 
-	static void Import(Riff::Chunk*taskChunk, Queue<Grid::LCellIdI>&outFoci)
+	static void Export(Riff::Chunk*taskChunk, const Queue<Objects::MobileEntity::Task::Focus>&foci)
+	{
+		static Array<Grid::LCellIdI>	fociArray;
+		static Array<BYTE>	flagArray;
+		if (foci.IsEmpty())
+			return;
+		fociArray.SetSize(foci.Count());
+		flagArray.SetSize(foci.Count());
+		for (index_t i = 0; i < foci.Count(); i++)
+		{
+			const auto&source = foci[i];
+			fociArray[i] = source.target;
+			flagArray[i] = (source.isDetailed ? FocusFlag::IsDetailed : 0) | (source.isIntermediate ? FocusFlag::IsIntermediate : 0);
+		}
+		taskChunk->AppendBlock(RID::foci,fociArray.pointer(),fociArray.GetContentSize());
+		taskChunk->AppendBlock(RID::fociFlags,flagArray.pointer(),flagArray.GetContentSize());
+	}
+
+	static void Import(Riff::Chunk*taskChunk, Queue<Objects::MobileEntity::Task::Focus>&outFoci)
 	{
 		Riff::Chunk*source = taskChunk->FindFirst(RID::foci);
+		Riff::Chunk*source1 = taskChunk->FindFirst(RID::fociFlags);
 		outFoci.Clear();
 		if (source)
 		{
 			const count_t numFoci = source->size() / sizeof(Grid::LCellIdI);
 			const Grid::LCellIdI*foci = (const Grid::LCellIdI*)source->pointer();
 			for (index_t i = 0; i < numFoci; i++)
-				outFoci << foci[i];
+				outFoci.Push().target = foci[i];
+			if (source1)
+			{
+				ASSERT_EQUAL__(numFoci,source1->size());
+				const BYTE*fociFlags = source1->pointer();
+				for (index_t i = 0; i < numFoci; i++)
+				{
+					BYTE flags = fociFlags[i];
+					outFoci[i].isDetailed = (flags & FocusFlag::IsDetailed) != 0;
+					outFoci[i].isIntermediate = (flags & FocusFlag::IsIntermediate) != 0;
+				}
+			}
 		}
 	}
 
@@ -2312,19 +2343,19 @@ namespace State
 				{
 					if (stack.volumeCell[layer].content == Grid::Content::Clear)
 					{
-						BYTE fill = 
+						BYTE Fill = 
 							layer+1 < Grid::CellStack::Range && Grid::CellStack::Cell::IsLiquid(stack.volumeCell[layer].content) ? stack.volumeCell[layer].content : 0;
-						if (!fill)
+						if (!Fill)
 							for (int i = 0; i < neighborhood.numNeighbors; i++)
 								if (Grid::CellStack::Cell::IsLiquid(nStacks[i]->volumeCell[layer].content))
 								{
-									fill = nStacks[i]->volumeCell[layer].content;
+									Fill = nStacks[i]->volumeCell[layer].content;
 									break;
 								}
 
-						if (fill)
+						if (Fill)
 						{
-							target.volumeCell[layer] = fill;
+							target.volumeCell[layer] = Fill;
 							thisChanged = true;
 						}
 					}

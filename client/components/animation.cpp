@@ -277,50 +277,195 @@ namespace Animation
 	}
 
 
+	bool	Equals(const Objects::PVehicleJob&a, const Objects::PVehicleJob&b)
+	{
+		if (!a && !b)
+			return true;
+		if (!a || !b)
+			return false;
+
+		
+		std::shared_ptr<Objects::VehicleJob::DummyPathJob> pj0 = To<Objects::VehicleJob::DummyPathJob>::DynamicCast(a);
+		std::shared_ptr<Objects::VehicleJob::DummyPathJob> pj1 = To<Objects::VehicleJob::DummyPathJob>::DynamicCast(b);
+
+		std::shared_ptr<Objects::VehicleJob::DummyJob> j0 = To<Objects::VehicleJob::DummyJob>::DynamicCast(a);
+		std::shared_ptr<Objects::VehicleJob::DummyJob> j1 = To<Objects::VehicleJob::DummyJob>::DynamicCast(b);
+
+		if ((!pj0 == !pj1) && (!j0 == !j1))
+		{
+			if (pj0)
+			{
+				return pj0->path == pj1->path;
+			}
+			else
+				return true;
+		}
+		else
+			return false;
+
+	}
+
+	//a=serverVersion, b = localVersion
+	bool	Mergeable(const Objects::MobileEntity::Task&a, const Objects::MobileEntity::Task&b)
+	{
+		if (a.name != b.name || a.mode != b.mode || a.type != b.type)
+			return false;
+		if (a.foci.IsNotEmpty())
+		{
+			if (b.foci.IsEmpty())
+				return false;
+
+			if (a.foci.GetNewest() != b.foci.GetNewest() && a.foci.GetOldest() != b.foci.GetOldest())
+				return false;
+			if (b.path.IsEmpty())
+				return false;
+		}
+		else
+			if (b.foci.IsNotEmpty())
+				return false;
+		return Equals(a.job,b.job);
+	}
+
+	void	Merge(const Objects::MobileEntity&parent, const Grid::LCellIdI&pointOfOrigin, Objects::MobileEntity::Task&serverVersion, Objects::MobileEntity::Task&localVersion, Objects::MobileEntity::Task&outMerged)
+	{
+		ASSERT__(Mergeable(serverVersion,localVersion));
+
+
+		if (serverVersion.foci == localVersion.foci)
+		{
+			outMerged.swap(localVersion);
+			return;
+		}
+		outMerged.mode = localVersion.mode;
+		outMerged.job = localVersion.job;
+		outMerged.localizableShapes.adoptData(localVersion.localizableShapes);
+		outMerged.name.adoptData(localVersion.name);
+		outMerged.type = localVersion.type;
+		outMerged.visualization = localVersion.visualization;
+		if (serverVersion.foci.GetOldest() == localVersion.foci.GetOldest())
+		{
+			auto it0 = serverVersion.foci.begin();
+			auto it1 = localVersion.foci.begin();
+			outMerged.path.Clear();
+			auto pit = localVersion.path.begin();
+			while (it0 != serverVersion.foci.end() && it1 != localVersion.foci.end() && *it0 == *it1)
+			{
+				while (pit->cell != it0->target && pit != localVersion.path.end())
+				{
+					outMerged.path << *pit;
+					++pit;
+				}
+				if (pit == localVersion.path.end())
+				{
+					outMerged = serverVersion;
+					outMerged.Replot(pointOfOrigin,&parent,Objects::FocusChangeType::FullChange,true);
+					return;
+				}
+				outMerged.foci << *it0;
+				++it0;
+				++it1;
+			}
+			outMerged.path << *pit;
+			while (it0 != serverVersion.foci.end())
+			{
+				outMerged.foci << *it0;
+
+				outMerged.Replot(pointOfOrigin,&parent,Objects::FocusChangeType::FocusAppended,false);
+
+				++it0;
+			}
+			outMerged.Replot(pointOfOrigin,&parent,Objects::FocusChangeType::NoChange,true);
+			return;
+		}
+		else if (serverVersion.foci.GetNewest() == localVersion.foci.GetNewest())
+		{
+			if (serverVersion.foci.Count() < localVersion.foci.Count())	//first n foci deleted
+			{
+				auto pit = localVersion.path.begin();
+				while (pit != localVersion.path.end() && pit->cell != /*serverVersion.foci.Peek().target*/ parent.location)
+					pit++;
+				if (pit == localVersion.path.end())
+				{
+					outMerged.swap(serverVersion);
+					outMerged.Replot(pointOfOrigin,&parent,Objects::FocusChangeType::FullChange,true);
+					return;
+				}
+				while (localVersion.foci.IsNotEmpty() && localVersion.foci.Peek() != serverVersion.foci.Peek())
+					localVersion.foci.Pop();
+				auto it0 = localVersion.foci.begin();
+				auto it1 = serverVersion.foci.begin();
+				while (it0 != localVersion.foci.end() && it1 != serverVersion.foci.end() && *it0 == *it1)
+				{
+					++it0;
+					++it1;
+				}
+
+				if (it0 != localVersion.foci.end() || it1 != serverVersion.foci.end())
+				{
+					outMerged.swap(serverVersion);
+					outMerged.Replot(pointOfOrigin,&parent,Objects::FocusChangeType::FullChange,true);
+					return;
+				}
+				while (pit != localVersion.path.end())
+				{
+					outMerged.path << *pit;
+					++pit;
+				}
+				outMerged.foci.swap(serverVersion.foci);
+				outMerged.Replot(pointOfOrigin,&parent,Objects::FocusChangeType::NoChange,true);
+				return;
+			}
+			//foci added out front ...? probably all mismatched. ignoring this case
+
+		}
+
+		outMerged.swap(serverVersion);
+		outMerged.Replot(pointOfOrigin,&parent,Objects::FocusChangeType::FullChange,true);
+	}
+
 
 	
-	void	AppendTask(const Objects::PMobileEntity&v, const Protocol::MobileTask*t)
+	void	TranslateTask(const Objects::MobileEntity&e, const Protocol::MobileTask&sourceTask, Objects::MobileEntity::Task&t1)
 	{
-		Objects::Vehicle::Task&t1 = v->myTasks.Push();
-		foreach (t->foci,f)
-			t1.foci << *f;
-		t1.mode = (Objects::Vehicle::mode_t) t->mode.value;
-		t1.name = t->name;
-		t1.type = (Objects::Vehicle::Task::type_t) t->type.value;
+		foreach (sourceTask.foci,f)
+			t1.foci.Push().target = *f;
+		t1.mode = (Objects::Vehicle::mode_t) sourceTask.mode.value;
+		t1.name = sourceTask.name;
+		t1.type = (Objects::Vehicle::Task::type_t) sourceTask.type.value;
 		if (t1.type == Objects::Vehicle::TaskData::Job)
 		{
-			if (t->buildPath.IsNotEmpty())
+			if (sourceTask.buildPath.IsNotEmpty())
 			{
-				std::shared_ptr<Objects::VehicleJob::DummyPathJob>	job(new Objects::VehicleJob::DummyPathJob(*v));
-				job->path.Clear(t->buildPath.length());
-				foreach (t->buildPath,p)
+				std::shared_ptr<Objects::VehicleJob::DummyPathJob>	job(new Objects::VehicleJob::DummyPathJob(e));
+				job->path.Clear(sourceTask.buildPath.length());
+				foreach (sourceTask.buildPath,p)
 					job->path << *p;
 				t1.job = job;
 			}
 			else
 			{
-				std::shared_ptr<Objects::VehicleJob::DummyJob>	job(new Objects::VehicleJob::DummyJob(*v));
+				std::shared_ptr<Objects::VehicleJob::DummyJob>	job(new Objects::VehicleJob::DummyJob(e));
 				t1.job = job;
 			}
-			t1.job->movesToFocusWhenDone = t->visualizePathToFocus;
-			t1.job->roundsToJobCompletion = t->roundsToJobCompletion;
-			t1.job->mineralCostLeft = t->mineralCostLeft;
+			t1.job->movesToFocusWhenDone = sourceTask.visualizePathToFocus;
+			t1.job->roundsToJobCompletion = sourceTask.roundsToJobCompletion;
+			t1.job->mineralCostLeft = sourceTask.mineralCostLeft;
 			#ifdef HAS_WINDOW
-				if (t->foci.Count())
+				if (sourceTask.foci.Count())
 				{
-					Grid::LCellIdI loc = t->foci.first();
-					if (t->visualizationStructureName != ConstName::Empty && v->IsSatellite())
+					Grid::LCellIdI loc = sourceTask.foci.first();
+					if (sourceTask.visualizationStructureName != ConstName::Empty && e.IsSatellite())
 					{
 						int h = Objects::SkyHub::GetStructureBuildHeight(loc);
 						if (h != Objects::badHeight)
 							loc.height = h;
 					}
 
-					t1.SetLocalizableShape(t->visualizationStructureName,loc);
+					t1.SetLocalizableShape(sourceTask.visualizationStructureName,loc);
 				}
 			#endif
 		}
-		t1.Recompile(v->GetPrevPointOfOrigin(),v.get());
+		//t1.Recompile(v->GetPrevPointOfOrigin(),v.get());
 	}
 
 
@@ -383,11 +528,80 @@ namespace Animation
 				v->currentStorage = info->resourceVector;
 			#endif
 			v->constructionRoundCounter = info->constructionRoundCounter;
-			v->myTasks.Clear();
-			foreach (info->tasks,t)
+
+			Array<Objects::MobileEntity::Task>	currentTasks,newTasks(info->tasks.Count());
+			v->myTasks.MoveToArray(currentTasks);
+
+			for (index_t i = 0; i < info->tasks.Count(); i++)
+				TranslateTask(*v, info->tasks[i],newTasks[i]);
+			if (newTasks.IsEmpty())
 			{
-				AppendTask(v,t);
 			}
+			else
+			{
+				bool fullRebuild = false;
+//				if (v->myTasks.Count() >= newTasks.Count())
+				{
+					if (currentTasks.IsNotEmpty() && Mergeable(newTasks.First(),currentTasks.First()))
+					{
+						Grid::LCellIdI last = v->location;
+						for (index_t i = 0; i < newTasks.Count(); i++)
+						{
+							if (Mergeable(newTasks[i],currentTasks[i]))
+								Merge(*v, last,newTasks[i],currentTasks[i],v->myTasks.Push());
+							else
+							{
+								v->myTasks.Push().swap(newTasks[i]);
+								v->myTasks.GetNewest().Replot(last,v.get(),Objects::FocusChangeType::FullChange,true);
+							}
+							last = v->GetLastPointOfOrigin();
+						}
+					}
+					elif (currentTasks.IsNotEmpty() && Mergeable(newTasks.Last(),currentTasks.Last()))
+					{
+						while (currentTasks.IsNotEmpty() && !Mergeable(newTasks.First(),currentTasks.First()))
+							currentTasks.erase(0U);
+						if (currentTasks.IsEmpty())
+							fullRebuild = true;
+						else
+						{
+							Grid::LCellIdI last = v->location;
+							for (index_t i = 0; i < newTasks.Count(); i++)
+							{
+								if (i < currentTasks.Count() && Mergeable(newTasks[i],currentTasks[i]))
+									Merge(*v, last,newTasks[i],currentTasks[i],v->myTasks.Push());
+								else
+								{
+									v->myTasks.Push().swap(newTasks[i]);
+									v->myTasks.GetNewest().Replot(last,v.get(),Objects::FocusChangeType::FullChange,true);
+								}
+								last = v->GetLastPointOfOrigin();
+							}
+						}
+					}
+					else
+						fullRebuild = true;
+				}
+
+				if (fullRebuild)
+				{
+					Grid::LCellIdI last = v->location;
+					for (index_t i = 0; i < newTasks.Count(); i++)
+					{
+						v->myTasks.Push().swap(newTasks[i]);
+						v->myTasks.GetNewest().Replot(last,v.get(),Objects::FocusChangeType::FullChange,true);
+						last = v->GetLastPointOfOrigin();
+					}
+				}
+
+			}
+
+
+			//v->myTasks.Clear();
+			//foreach (info->tasks,t)
+			//{
+			//	AppendTask(v,t);
+			//}
 			auto id = info->storedIn.Get0();
 			if (id)
 			{
@@ -1002,6 +1216,16 @@ namespace Animation
 				}
 				v->preAnimationLocation = v->location;
 				allocatedTarget.reset();	//for debugging purposes
+				#ifdef HAS_WINDOW
+					if (v->myTasks.IsNotEmpty())
+					{
+						auto&task = v->myTasks.Peek();
+						while (task.foci.IsNotEmpty() && this->path->Contains(task.foci.Peek().target))
+							task.foci.Pop();
+						//this->path->nodes
+						v->myTasks.Peek().Replot(v->location,v.get(),Objects::FocusChangeType::FirstSegmentChanged,true);
+					}
+				#endif
 				//v->UpdateSystem();	//might bite me in the arse later
 			}
 			break;

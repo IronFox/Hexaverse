@@ -151,7 +151,7 @@ namespace Objects
 			@return true, if changes were detected and applied, false otherwise
 			*/
 			bool				RefreshGroundSensor(float&atTime);
-			bool				AttackNext(const Grid::LCellIdI&outTarget, bool autoTarget);
+			bool				AttackNext(Grid::LCellIdI target, bool autoTarget);
 		#endif
 
 		#ifdef HAS_WINDOW
@@ -246,8 +246,8 @@ namespace Objects
 		virtual bool			MotionIgnoresAttack() const override {return false;}
 		virtual float			GetPathSize() const override {return 1.f;}
 		#ifndef CLIENT
-			virtual bool				DirectTo(mode_t mode, Grid::LCellIdI destination, bool leftClick = false) override;
-			virtual MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) override;
+			bool				DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) override;
 		#endif
 	};
 

@@ -528,85 +528,125 @@ namespace Objects
 
 
 
-		void	Vehicle::EnqueueAttack(const Grid::LCellIdI&destination)
+		void	Vehicle::EnqueueAttack(Grid::LCellIdI destination)
 		{
 			Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 			ASSERT__(!TasksAreLocked());
 			if (!HasTasks() || !myTasks.GetNewest().IsMode(CursorMode::AttackMode))
 			{
-				myTasks << Task("Attack Position",destination,Task::Mode,CursorMode::AttackMode);
-				myTasks.GetNewest().Recompile(pointOfOrigin,this);
+				myTasks << Task("Attack Position",destination,true,Task::Mode,CursorMode::AttackMode);
+				myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
 				RegisterChange(TasksChanged,-1);
 			}
 			else
 			{
 				//if (!tasks.GetNewest().foci.Contains(destination))	//irrelevant. attack same location as often as you want
 				{
-					myTasks.GetNewest().foci << destination;
-					myTasks.GetNewest().Recompile(pointOfOrigin,this);
+					myTasks.GetNewest().foci.Push().target = destination;
+					myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FocusAppended,true);
 					RegisterChange(TasksChanged,-1);
 				}
 			}
 		}
 
 
-		bool	Vehicle::DirectTo(mode_t mode, Grid::LCellIdI destination, bool leftClick/* = false*/)
+		bool	Vehicle::DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			switch (mode)
 			{
 				case CursorMode::Idle:
-					return PlotCourse(destination);
+					return PlotCourse(waypoints,detailedPath);
 				break;
 				case CursorMode::DigTunnelMode:
 					if (!turret->constructionSpeed)
 						return false;
 					if (leftClick)
 					{
-						destination--;
-						if (destination != location)
+						const Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
+
+						Buffer0<PathNode> path;
+						Grid::LCellIdI	possibilities[6 * 3];
+						if (detailedPath)
 						{
-							Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
-							Buffer0<PathNode> path;
-							if (!AppendShortestDirectPath(pointOfOrigin,destination,path))
-								LogEvent(EventType::CommandRejected,this,"Unable to plot path to destination");
-					
-							Grid::LCellIdI c = pointOfOrigin;
-							foreach (path,node)
+							Grid::LCellIdI prev = GetLastPointOfOrigin();
+							for (const auto&dest : waypoints)
 							{
-								if (GetStructure(node->cell))
-									break;
-
-								if (node->cell.height == c.height)
-									RegisterNewJob("", PVehicleJob(new VehicleJob::DigHorizontal(*this)),&node->cell);
-								else
+								count_t numWays = Objects::GetWays(owner->currentState,this,prev,possibilities,dest,true,true);
+								bool found = false;
+								for (index_t j = 0; j < numWays; j++)
 								{
-									if (node->cell.height < c.height)
+									if (possibilities[j] == dest)
 									{
-										RegisterNewJob("", PVehicleJob(new VehicleJob::DigDown(*this)),&node->cell);
+										found = true;
+										break;
 									}
-									else
-									{
-										RegisterNewJob("", PVehicleJob(new VehicleJob::ClearAbove(*this)),&node->cell);
-										++node;
-										if (node != path.end())
-											RegisterNewJob("", PVehicleJob(new VehicleJob::ClearAbove(*this)),&node->cell);
-										else
-											break;
-										ASSERT__(!TasksAreLocked());
-
-										myTasks << Task("Move To",node->cell,Task::MoveTo);
-										RegisterChange(TasksChanged,-1);
-										myTasks.GetNewest().Recompile(pointOfOrigin, this);
-									}
-
 								}
-
-								c = node->cell;
+								if (!found)
+								{
+									LogEvent(EventType::CommandRejected,this,"Failed to trace explicit path");
+								}
+								path.Append().cell = dest;
+								prev = dest;
 							}
 						}
+						else
+						{
+
+							for (Grid::LCellIdI destination : waypoints)
+							{
+								destination--;
+								if (destination != pointOfOrigin)
+								{
+									if (!AppendShortestDirectPath(pointOfOrigin,destination,path))
+									{
+										LogEvent(EventType::CommandRejected,this,"Unable to plot path to destination");
+										return false;
+									}
+								}
+							}
+
+
+						}
+
+						Grid::LCellIdI c = pointOfOrigin;
+
+						foreach (path,node)
+						{
+							if (GetStructure(node->cell))
+								break;
+
+							if (node->cell.height == c.height)
+								RegisterNewJob("", PVehicleJob(new VehicleJob::DigHorizontal(*this)),&node->cell);
+							else
+							{
+								if (node->cell.height < c.height)
+								{
+									RegisterNewJob("", PVehicleJob(new VehicleJob::DigDown(*this)),&node->cell);
+								}
+								else
+								{
+									RegisterNewJob("", PVehicleJob(new VehicleJob::ClearAbove(*this)),&node->cell);
+									++node;
+									if (node != path.end())
+										RegisterNewJob("", PVehicleJob(new VehicleJob::ClearAbove(*this)),&node->cell);
+									else
+										break;
+									ASSERT__(!TasksAreLocked());
+
+									myTasks << Task("Move To",node->cell,true,Task::MoveTo);
+									RegisterChange(TasksChanged,-1);
+									myTasks.GetNewest().Replot(pointOfOrigin, this,FocusChangeType::FullChange,true);
+								}
+
+							}
+
+							c = node->cell;
+						}
+
+
 					}
 					else
-						PlotCourse(destination);
+						return PlotCourse(waypoints,detailedPath);
 
 				break;
 
@@ -621,10 +661,11 @@ namespace Objects
 					{
 						/*if (!Grid::LowCellIsClear(destination))
 							destination ++;*/
-						RegisterNewJob("", PVehicleJob(new VehicleJob::Sequence(*this,mode)),&destination);
+						for (const auto&way : waypoints)
+							RegisterNewJob("", PVehicleJob(new VehicleJob::Sequence(*this,mode)),&way);
 					}
 					else
-						PlotCourse(destination);
+						return PlotCourse(waypoints,detailedPath);
 				break;
 				case CursorMode::AttackMode:
 					if (!turret->CanAttack())
@@ -632,21 +673,24 @@ namespace Objects
 
 					if (leftClick)
 					{
-						if (destination != location)
+						for (Grid::LCellIdI destination : waypoints)
 						{
-							Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
-
-							if (!CanHitFrom(pointOfOrigin,destination))
+							if (destination != location)
 							{
-								LogEvent(EventType::CommandRejected,this,"Destination out of range");
-								return false;
-							}
+								Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 
-							EnqueueAttack(destination);
+								if (!CanHitFrom(pointOfOrigin,destination))
+								{
+									LogEvent(EventType::CommandRejected,this,"Destination out of range");
+									return false;
+								}
+
+								EnqueueAttack(destination);
+							}
 						}
 					}
 					else
-						PlotCourse(destination);
+						return PlotCourse(waypoints,detailedPath);
 				break;
 			}
 			return true;

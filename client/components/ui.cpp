@@ -450,7 +450,7 @@
 			{
 				if (currentSelection == InvalidIndex)
 				{
-					currentSelection = entries.indexOf(Objects::selectedEntity);
+					currentSelection = entries.GetIndexOf(Objects::selectedEntity);
 					if (currentSelection == InvalidIndex)
 					{
 						float distance = std::numeric_limits<float>::max();
@@ -1817,9 +1817,9 @@
 				textout << name <<nl;
 			else
 			{
-				index_t split = name.indexOf('\'');
+				index_t split = name.GetIndexOf('\'');
 				if (split == 0)
-					split = name.indexOf(' ');
+					split = name.GetIndexOf(' ');
 				textout << name.subStringRef(0,split-1) << nl;
 				textout << ' '<<name.subStringRef((int)split-1) << nl;
 				

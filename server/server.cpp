@@ -1637,18 +1637,18 @@ int main( int argc, const char* argv[])
 
 	//State::currentState = Grid::cellStack;	//reference for deltas
 
-	//Array<BYTE>	out(Grid::cellStack.contentSize());
+	//Array<BYTE>	out(Grid::cellStack.GetContentSize());
 
 	//for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 	//{
 	//	const index_t offset = Grid::high.grid.GetFamilyOffset(k);
 	//	const index_t range = Grid::high.grid.CountFamilyMembers(k) * Grid::CellStack::Range;
 	//	Timer::Time t0 = timer.Now();
-	//	size_t size = BZ2::compress(Grid::cellStack.pointer()+offset,sizeof(Grid::CellStack::Cell)*range,out.pointer(),out.contentSize());
+	//	size_t size = BZ2::compress(Grid::cellStack.pointer()+offset,sizeof(Grid::CellStack::Cell)*range,out.pointer(),out.GetContentSize());
 	//	std::cout << (int)k<< " "<<timer.GetSecondsSince(t0)<<std::endl;;;
 	//}
 	//std::flush(std::cout);
-	//ShowMessage(String(size)+"/"+String(Grid::cellStack.contentSize()));
+	//ShowMessage(String(size)+"/"+String(Grid::cellStack.GetContentSize()));
 
 
 

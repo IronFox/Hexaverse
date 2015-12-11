@@ -260,7 +260,7 @@ namespace Test
 					for (const auto&target : task.foci)
 					{
 						Objects::TurretTrajectory	tr;
-						if (tr = v->TraceTrajectory(faction1->currentState, target,trajectory,impactAt,impactCell))
+						if (tr = v->TraceTrajectory(faction1->currentState, target.target,trajectory,impactAt,impactCell))
 						{
 							ASSERT__(tr == Objects::TurretTrajectory::ReachesTarget);
 							if (Grid::GetGeometricDistance(vehicleAt,generatorAt) > turret->scanningRange)
@@ -270,7 +270,7 @@ namespace Test
 							if (distance <= v->turret->explosionRadius)
 							{
 								//baaaaad
-								bool chk = Objects::TurretBase::CheckArea(faction1, target, turret->explosionRadius);
+								bool chk = Objects::TurretBase::CheckArea(faction1, target.target, turret->explosionRadius);
 								ASSERT__(!chk);
 							}
 							ASSERT_GREATER__(distance,v->turret->explosionRadius);

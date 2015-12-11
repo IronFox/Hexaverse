@@ -153,21 +153,21 @@ namespace Objects
 						//while (task.foci.IsNotEmpty())
 						{
 							//Grid::LCellIdI focus = task.foci.peek();
-							if (!task.UpdatePath(this,location))
+							if (!task.UpdatePath(this,location,FocusChangeType::SituationChanged))
 							{
 								bool changedAny = false;
 								foreach (task.foci,f)
-									if (!world.LowCellIsClear(*f))
+									if (!world.LowCellIsClear(f->target))
 									{
-										(*f) ++;
+										f->target ++;
 										//location ++;
 										bool abort = true;
-										if (world.LowCellIsClear(*f) )
+										if (world.LowCellIsClear(f->target) )
 											changedAny = true;
 									}
 								if (changedAny)
 								{
-									if (!task.UpdatePath(this,location))
+									if (!task.UpdatePath(this,location,FocusChangeType::SituationChanged))
 									{
 										LogEvent(EventType::CommandRejected,this,"Route to destination lost. Motion aborted.");
 										this->UnlockTasks();
@@ -217,7 +217,7 @@ namespace Objects
 									case MobilePlacementResult::PlacementOkay:
 									{
 										ASSERT__(HasTasks());
-										if (task.path.last().cell == task.foci.Peek())
+										if (task.path.last().cell == task.foci.Peek().target)
 											task.foci.EraseFront();
 
 										remaining-=task.path.last().movementCostsFromPrevNode;
@@ -292,7 +292,7 @@ namespace Objects
 								this->EraseFirstTask();
 								//tasks.EraseFront();
 								if (HasTasks() && To<VehicleJob::PathJob>::DynamicCast(myTasks.Peek().job))
-									myTasks.Peek().Recompile(location,this);
+									myTasks.Peek().Replot(location,this,FocusChangeType::SituationChanged,true);
 								#ifndef CLIENT
 									RegisterChange(TasksChanged,timeAt);
 								#endif
@@ -315,7 +315,7 @@ namespace Objects
 									task.path << PathNode(location,0);
 									task.path.Revert();
 								
-									task.Recompile(location,this);
+									task.Replot(location,this,FocusChangeType::SituationChanged,true);
 									#ifdef CLIENT
 										if (selectedEntity.get() == this)
 											UpdateChoices();
@@ -563,7 +563,7 @@ namespace Objects
 						{
 							static Random random;
 							index_t target = random.getIndex(numWays-1);
-							if (PlotCourse(ways[target],false))
+							if (PlotCourse(ways[target],true,false))
 							{
 								hasTriedPlottingOnMoveAutoMotion = true;
 								LogEvent(EventType::MinorEntityProcess,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
@@ -572,7 +572,7 @@ namespace Objects
 						}
 						//iterative, in case random missed some option
 						for (index_t i = 0; i < numWays; i++)
-							if (PlotCourse(ways[i],false))
+							if (PlotCourse(ways[i],true, false))
 							{
 								hasTriedPlottingOnMoveAutoMotion = true;
 								LogEvent(EventType::MinorEntityProcess,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
@@ -721,7 +721,7 @@ namespace Objects
 			task.type = Task::Job;
 			task.name = job->GetName();
 			if (destination)
-				task.foci << *destination;
+				task.foci.Push().target = *destination;
 			#ifdef CLIENT
 				if (localizableShapeIdentifier.IsNotEmpty())
 				{
@@ -736,7 +736,7 @@ namespace Objects
 				}
 			#endif
 			task.job = job; 
-			if (!task.Recompile(origin,this))
+			if (!task.Replot(origin,this,FocusChangeType::FullChange,true))
 			{
 				LogEvent(EventType::EntityProcessFailed,this, "Failed to compile task. Unable to enqueue job.");
 				myTasks.EraseBack();
@@ -759,7 +759,7 @@ namespace Objects
 			task.type = Task::Job;
 			task.name = job->GetName();
 			if (destination)
-				task.foci << *destination;
+				task.foci.Push().target = *destination;
 			#ifdef CLIENT
 				if (localizableShapeIdentifier.IsNotEmpty())
 				{
@@ -775,7 +775,7 @@ namespace Objects
 			#endif
 
 			task.job = job; 
-			task.Recompile(location,this);
+			task.Replot(location,this,FocusChangeType::FullChange,true);
 
 			#ifdef CLIENT
 				if (selectedEntity.get() == this)
@@ -845,22 +845,31 @@ namespace Objects
 			myTasks.EraseFront();
 		}
 
-		bool			MobileEntity::PlotCourse(Grid::LCellIdI destination, bool virtualPlatformMode/*=false*/)
+		bool			MobileEntity::PlotCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/)
 		{
 			const Grid::WorldData&world = owner->currentState;
 			if (IsVehicle())
 			{
-				while (!world.LowCellIsClear(destination) && !MobileDestinationStructureHere(destination,*this))
-					destination++;
-				while (world.LowCellIsClear(destination-1) || MobileDestinationStructureHere(destination-1,*this))
-					destination--;
-				if (!virtualPlatformMode && !((Vehicle*)this)->CanStandOn(world,destination -1,false,false))
-					return false;
+				for (index_t i = 0; i < destination.length(); i++)
+				{
+					Grid::LCellIdI&dest = destination[i];
+
+					while (!world.LowCellIsClear(dest) && !MobileDestinationStructureHere(dest,*this))
+						dest++;
+					while (world.LowCellIsClear(dest-1) || MobileDestinationStructureHere(dest-1,*this))
+						dest--;
+					if (!virtualPlatformMode && !((Vehicle*)this)->CanStandOn(world,dest -1,false,false))
+						return false;
+				}
 			}
 
 			Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 
-			if (destination == pointOfOrigin)
+			while (destination.IsNotEmpty() && destination.First() == pointOfOrigin)
+			{
+				destination = ArrayRef<Grid::LCellIdI>(destination.GetPointer() +1 ,destination.GetLength()-1);
+			}
+			if (destination.IsEmpty())
 			{
 				return false;
 			}
@@ -868,8 +877,8 @@ namespace Objects
 			if (!HasTasks() || myTasks.GetNewest().type != Task::MoveTo)
 			{
 				ASSERT__(!TasksAreLocked());
-				myTasks << Task("Move To",destination,Task::MoveTo);
-				if (!myTasks.GetNewest().Recompile(pointOfOrigin, this))
+				myTasks << Task("Move To",destination,detailedPath, Task::MoveTo);
+				if (!myTasks.GetNewest().Replot(pointOfOrigin, this,FocusChangeType::FullChange,true))
 				{
 					LogEvent(EventType::CommandRejected,this,"Unable to plot path to destination. Task rejected.");
 					myTasks.EraseBack();
@@ -879,13 +888,45 @@ namespace Objects
 			}
 			else
 			{
-				if (myTasks.GetNewest().foci.IsEmpty() || myTasks.GetNewest().foci.GetNewest() != destination)
+				if (myTasks.GetNewest().foci.IsNotEmpty())
 				{
-					myTasks.GetNewest().foci << destination;
-					if (!myTasks.GetNewest().Recompile(GetPrevPointOfOrigin(), this))
+					const auto&match = myTasks.GetNewest().foci.GetNewest();
+					while (destination.IsNotEmpty() && destination.First() == match.target)
+					{
+						destination = ArrayRef<Grid::LCellIdI>(destination.GetPointer() +1 ,destination.GetLength()-1);
+					}
+				}
+				if (destination.IsEmpty())
+				{
+					return false;
+				}
+
+				{
+					count_t offset = myTasks.GetNewest().foci.Count();
+					bool failed = false;
+					for (index_t i = 0; i < destination.GetLength(); i++)
+					{
+						if (myTasks.GetNewest().foci.Count() >= MaxFocusCount)
+						{
+							failed = true;
+							break;
+						}
+						Task::Focus&f = myTasks.GetNewest().foci.Push();
+						f.target = destination[i];
+						f.isDetailed = detailedPath;
+						f.isIntermediate = i+1 < destination.GetLength();
+
+						if (!myTasks.GetNewest().Replot(GetPrevPointOfOrigin(), this,FocusChangeType::FocusAppended,true))
+						{
+							failed = true;
+							break;
+						}
+					}
+					if (failed)
 					{
 						LogEvent(EventType::CommandRejected,this,"Unable to plot path to destination. Task rejected.");
-						myTasks.GetNewest().foci.EraseBack();
+						while (myTasks.GetNewest().foci.Count() > offset)
+							myTasks.GetNewest().foci.EraseBack();
 						return false;
 					}
 					RegisterChange(TasksChanged,-1);
@@ -895,19 +936,26 @@ namespace Objects
 			return true;
 		}
 
-		bool	MobileEntity::PlotFrontCourse(Grid::LCellIdI destination)
+		bool	MobileEntity::PlotFrontCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath)
 		{
 			const Grid::WorldData&world = owner->currentState;
 
 			if (IsVehicle())
 			{
-				while (!world.LowCellIsClear(destination))
-					destination++;
-				if (!((Vehicle*)this)->CanStandOn(world,destination -1,false,false))
-					return false;
+				for (auto&dest : destination)
+				{
+					while (!world.LowCellIsClear(dest))
+						dest++;
+					if (!((Vehicle*)this)->CanStandOn(world,dest -1,false,false))
+						return false;
+				}
 			}
 
-			if (destination == location)
+			while (destination.IsNotEmpty() && destination.First() == location)
+			{
+				destination = ArrayRef<Grid::LCellIdI>(destination.GetPointer() +1 ,destination.GetLength()-1);
+			}
+			if (destination.IsEmpty())
 			{
 				return false;
 			}
@@ -915,8 +963,8 @@ namespace Objects
 			{
 				ASSERT__(!TasksAreLocked());
 
-				myTasks.PushFront(Task("Move To",destination,Task::MoveTo));
-				myTasks.GetOldest().Recompile(location, this);
+				myTasks.PushFront(Task("Move To",destination,detailedPath,Task::MoveTo));
+				myTasks.GetOldest().Replot(location, this, FocusChangeType::FullChange,true);
 				RegisterChange(TasksChanged,timeAt);
 			}
 
@@ -931,17 +979,26 @@ namespace Objects
 			if (!HasTasks())
 				return;
 			ASSERT__(!TasksAreLocked());
-			if (myTasks.GetNewest().type == Task::MoveTo && myTasks.GetNewest().foci.Count() > 1)
+			if (myTasks.GetNewest().type == Task::MoveTo)
 			{
 				myTasks.GetNewest().foci.EraseBack();
-				myTasks.GetNewest().Recompile(GetPrevPointOfOrigin(),this);
+				myTasks.GetNewest().Replot(GetPrevPointOfOrigin(),this,FocusChangeType::LastFocusDropped,false);
+				while (myTasks.GetNewest().foci.IsNotEmpty() && myTasks.GetNewest().foci.GetNewest().isIntermediate)
+				{
+					myTasks.GetNewest().foci.EraseBack();
+					myTasks.GetNewest().Replot(GetPrevPointOfOrigin(),this,FocusChangeType::LastFocusDropped,false);
+				}
+				if (myTasks.GetNewest().foci.IsEmpty())
+					myTasks.EraseBack();
+				else
+					myTasks.GetNewest().Replot(GetPrevPointOfOrigin(),this,FocusChangeType::NoChange,true);
 			}
 			else
 			{
 				if (myTasks.GetNewest().IsMode(CursorMode::AttackMode) && myTasks.GetNewest().foci.Count() > 1)
 				{
 					myTasks.GetNewest().foci.EraseBack();
-					myTasks.GetNewest().Recompile(GetPrevPointOfOrigin(),this);
+					myTasks.GetNewest().Replot(GetPrevPointOfOrigin(),this,FocusChangeType::LastFocusDropped,true);
 				}
 				else
 					myTasks.EraseBack();
@@ -965,7 +1022,7 @@ namespace Objects
 
 			Task&task = LockedPeekTask();
 
-			const Grid::LCellIdI target = task.foci.Pop();
+			const Grid::LCellIdI target = task.foci.Pop().target;
 			float3 dir = Grid::low.cells[target.stackID].centerVertex.xyz * Grid::ToRadius(target.height) - this->system.w.xyz;
 			float3 innerDir;
 			Mat::rotate(this->inverse,dir,innerDir);
@@ -1032,7 +1089,7 @@ namespace Objects
 			}
 			else
 			{
-				task.Recompile(location,this);
+				task.Replot(location,this,FocusChangeType::FirstFocusDropped,true);
 				UnlockTasks();
 			}
 			RegisterChange(TasksChanged,timeAt);
@@ -1075,40 +1132,178 @@ namespace Objects
 
 	#endif
 
-	bool MobileEntity::Task::UpdatePath(const MobileEntity*v, const Grid::LCellIdI&pointOfOrigin)
+
+	bool	MobileEntity::Task::AppendPathSegment(const MobileEntity*v, const Grid::LCellIdI&prev, const Task::Focus&target)
 	{
-		path.Clear();
-		path << PathNode(pointOfOrigin,0);
+		if (v->IsVehicle())
+		{
+			//would be faster, but too complicated to extract cost
+			//if (target.isExplicit)
+			//{
+			//	Grid::LCellIdI	possibilities[6 * 3];
+			//	count_t numWays = Objects::GetWays(v->owner->currentState,(const Objects::Vehicle*)v,prev,possibilities,target.target,true,true);
+			//	bool found = false;
+			//	for (index_t i = 0; i < numWays; i++)
+			//		if (possibilities[i] == target.target)
+			//		{
+			//			found = true;
+			//			break;
+			//		}
+			//	if (!found)
+			//		return false;
+			//	path << target.target;
+			//}
+			//else
+			{
+				if (!AppendShortestPathI((const Vehicle*)v,prev,target.target,path))
+					return false;
+			}
+		}
+		else
+		{
+			if (v->IsSatellite())
+			{
+				//would be faster, but too complicated to extract cost
+				//if (target.isExplicit)
+				//{
+				//	UINT32	possibilities[6 * 3];
+				//	count_t numWays = Objects::GetWays((const Objects::Satellite*)v,prev.stackID,possibilities,target.target.stackID,true,true);
+				//	bool found = false;
+				//	for (index_t i = 0; i < numWays; i++)
+				//		if (possibilities[i] == target.target.stackID)
+				//		{
+				//			found = true;
+				//			break;
+				//		}
+				//	if (!found)
+				//		return false;
+				//	path << target.target;
+				//}
+				//else
+				{
+					count_t offset = path.Count();
+					if (!AppendShortestPathI((const Satellite*)v,prev,target.target.stackID,path))
+						return false;
+					#ifndef CLIENT
+						if (target.isDetailed && path.Count() - offset != 1)
+						{
+							path.Truncate(offset);
+							return false;
+						}
+					#endif
+				}
+			}
+			else
+				FATAL__("Routing not implemented for "+v->GetTypeName());
+		}
+
+		return true;
+	}
+
+	bool MobileEntity::Task::UpdatePath(const MobileEntity*v, const Grid::LCellIdI&pointOfOrigin, FocusChangeType type)
+	{
+		if (type == FocusChangeType::NoChange)
+			return true;
 		auto it = foci.end();
 		if (!job)
 		{
-			foreach (foci,f)
+			bool newPath = false;
+			if (path.IsEmpty())
 			{
-				const Grid::LCellIdI&prev = f == foci.begin() ? pointOfOrigin : *it;
-				if (v->IsVehicle())
+				type = FocusChangeType::FullChange;
+			}
+			switch (type)
+			{
+				case FocusChangeType::FullChange:
+				case FocusChangeType::SituationChanged:
+				case FocusChangeType::FirstFocusDropped:
+					newPath = true;
+				break;
+				case FocusChangeType::FirstSegmentChanged:
 				{
-					if (!AppendShortestPathI((const Vehicle*)v,prev,*f,path))
-						return false;
-				}
-				else
-				{
-					if (v->IsSatellite())
+					if (foci.IsEmpty())
 					{
-						if (!AppendShortestPathI((const Satellite*)v,prev,f->stackID,path))
-							return false;
+						newPath = true;
 					}
 					else
-						FATAL__("Routing not implemented for "+v->GetTypeName());
+					{					
+						auto it = path.begin();
+						const auto nextFocus = foci.Peek();
+						while (it != path.end() && it->cell != nextFocus.target)
+							++it;
+						if (it == path.end())
+						{
+							newPath = true;
+						}
+						else
+						{
+							++it;
+							if (it == path.end())
+							{
+								newPath = true;
+							}
+							else
+							{
+								index_t offset = it-path.begin();
+								ArrayRef<PathNode> ref = path.ToRef();
+								ref = ArrayRef<PathNode>(ref.GetPointer() + offset,ref.Count()-offset);
+								Array<PathNode>	nodes = ref;
+								path.Clear();
+								path << PathNode(v->location,0);
+								if (!AppendPathSegment(v,v->location,nextFocus))
+								{
+									newPath = true;
+								}
+								else
+								{
+									path.Append(nodes);
+								}
+							}
 
+						}
+					}
 				}
-				it = f;
+				break;
+				case FocusChangeType::LastFocusDropped:
+				{
+					if (foci.IsNotEmpty())
+					{
+						Grid::LCellIdI lookFor = foci.GetNewest().target;
+						while (path.IsNotEmpty() && path.last().cell != lookFor)
+							path.EraseLast();
+					}
+					else
+						path.Clear();
+					if (path.IsEmpty())
+						newPath = true;
+				}
+				break;
+				case FocusChangeType::FocusAppended:
+				{
+					const Grid::LCellIdI&prev = path.last().cell;
+					if (!AppendPathSegment(v,prev,foci.GetNewest()))
+						return false;
+				}
+				break;
+			}
+			if (newPath)
+			{
+				path.Clear();
+				path << PathNode(pointOfOrigin,0);
+				foreach (foci,f)
+				{
+					const Grid::LCellIdI&prev = f == foci.begin() ? pointOfOrigin : it->target;
+					if (!AppendPathSegment(v,prev,*f))
+						return false;
+					it = f;
+				}
 			}
 		}
 		else
 		{
 			if (v->IsVehicle())
 			{
-				if (!AppendShortestDirectPath(pointOfOrigin,foci.Peek(),path,false))
+				if (!AppendShortestDirectPath(pointOfOrigin,foci.Peek().target,path,false))
 				{
 					return false;	//this would be weird, but happens
 				}
@@ -1117,7 +1312,7 @@ namespace Objects
 			{
 				if (v->IsSatellite())
 				{
-					if (!AppendShortestDirectSatellitePath(pointOfOrigin,foci.Peek().stackID,path))
+					if (!AppendShortestDirectSatellitePath(pointOfOrigin,foci.Peek().target.stackID,path))
 						return false;
 				}
 				else
@@ -1130,7 +1325,7 @@ namespace Objects
 	
 
 	
-	bool					MobileEntity::Task::Recompile(const Grid::LCellIdI&pointOfOrigin, const MobileEntity*parent)
+	bool					MobileEntity::Task::Replot(const Grid::LCellIdI&pointOfOrigin, const MobileEntity*parent, FocusChangeType t, bool recompileVisualization)
 	{
 		switch (type)
 		{
@@ -1143,7 +1338,7 @@ namespace Objects
 				{
 					if (job)
 					{
-						if (job->UpdatePath(*parent, pointOfOrigin, foci.Peek()))
+						if (job->UpdatePath(*parent, pointOfOrigin, foci.Peek().target))
 						{
 							path.Clear();
 							path << PathNode(pointOfOrigin,0);
@@ -1152,7 +1347,8 @@ namespace Objects
 								path << PathNode(*n,1);
 							}
 							#ifdef HAS_WINDOW
-								RecompilePath(1);
+								if (recompileVisualization)
+									RecompilePath(1);
 							#endif
 							job->pathChanged = false;
 						}
@@ -1167,10 +1363,11 @@ namespace Objects
 			case MoveTo:
 				//if (!job || job->movesToFocusWhenDone)
 				{
-					if (!UpdatePath(parent,pointOfOrigin))
+					if (!UpdatePath(parent,pointOfOrigin,t))
 						return false;
 					#ifdef HAS_WINDOW
-						RecompilePath(parent->GetMovementStepsPerRound(),parent->GetPathSize());
+						if (recompileVisualization)
+							RecompilePath(parent->GetMovementStepsPerRound(),parent->GetPathSize());
 					#endif
 				}
 				
@@ -1181,31 +1378,34 @@ namespace Objects
 					case CursorMode::AttackMode:
 					{
 						#ifdef HAS_WINDOW		
-							static Buffer0<TVec4<> > trajectory;
-							Geometry geo;
-								localizableShapes.Clear();
-							foreach (foci,f)
+							if (recompileVisualization)
 							{
-								trajectory.Clear();
-								TVec3<> dummy0;
-								Grid::HCellIdI dummy1;
-								if (parent->TraceTrajectoryFrom(Grid::actualWorld, pointOfOrigin,*f,trajectory,dummy0,dummy1))
+								static Buffer0<TVec4<> > trajectory;
+								Geometry geo;
+									localizableShapes.Clear();
+								foreach (foci,f)
 								{
-									Component::Turret::CompileTrajectory(trajectory,true,geo,0.25f);
+									trajectory.Clear();
+									TVec3<> dummy0;
+									Grid::HCellIdI dummy1;
+									if (parent->TraceTrajectoryFrom(Grid::actualWorld, pointOfOrigin,f->target,trajectory,dummy0,dummy1))
+									{
+										Component::Turret::CompileTrajectory(trajectory,true,geo,0.25f);
 
-									Shape&shape = localizableShapes.Append();
-									((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
-									shape.instruction.vbo = sphereVBO[0];
-									shape.instruction.ibo = sphereIBO[0];
-									shape.depthTest = true;
+										Shape&shape = localizableShapes.Append();
+										((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
+										shape.instruction.vbo = sphereVBO[0];
+										shape.instruction.ibo = sphereIBO[0];
+										shape.depthTest = true;
 
-									BuildSystem(trajectory.last().xyz * trajectory.last().w,parent->GetAttackExplosionRadius(),  parent->GetAttackExplosionRadius(),shape.system);
+										BuildSystem(trajectory.last().xyz * trajectory.last().w,parent->GetAttackExplosionRadius(),  parent->GetAttackExplosionRadius(),shape.system);
+									}
 								}
+								if (visualization.shader.IsEmpty())
+									(DX11::BaseInstructionBlock&)visualization = pathShader;
+								visualization.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
+								visualization.ibo.Create(geo.GetLOD(0).indices);
 							}
-							if (visualization.shader.IsEmpty())
-								(DX11::BaseInstructionBlock&)visualization = pathShader;
-							visualization.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
-							visualization.ibo.Create(geo.GetLOD(0).indices);
 						#endif
 					}
 					break;
@@ -1226,7 +1426,7 @@ namespace Objects
 			at--;
 		if (at >= myTasks.Count() || myTasks[at].foci.IsEmpty())
 			return location;
-		return myTasks[at].foci.GetNewest();
+		return myTasks[at].foci.GetNewest().target;
 	}
 
 
@@ -1248,7 +1448,7 @@ namespace Objects
 				return location;
 		}
 
-		return myTasks[at].ContainsMovement() ? myTasks[at].foci.GetNewest() : location;
+		return myTasks[at].ContainsMovement() ? myTasks[at].foci.GetNewest().target : location;
 	}
 
 

@@ -4292,7 +4292,7 @@ namespace Grid
 						if (cellStack[n.neighborID[k]].volumeCell[layer].IsSolid())
 							cnt ++;
 					}
-					target.volumeCell[layer].isEmpty = cnt == 0;
+					target.volumeCell[layer].IsEmpty = cnt == 0;
 					target.volumeCell[layer].isFull = cnt == 1 + n.numNeighbors;
 				}
 			});
