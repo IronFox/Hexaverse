@@ -12,7 +12,15 @@ ambient restocking (and repairing?) of support vehicles. //restocking no longer 
 
 
 
+visualize attack radius on water
 
+transfer build-state of terraformer to hostile factions
+
+better surveyor automation logic
+
+ability to pause construction (of terraformers)
+
+automatically fix incomplete configuration files
 
 favorize certain vehicle construction jobs
 
