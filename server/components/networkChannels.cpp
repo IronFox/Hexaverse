@@ -568,7 +568,62 @@ namespace Receiver
 				Objects::SpawnVehicle(client->faction,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,0);
 			}
 		}
-		else
+
+
+		#ifndef CHEAT_SHOW_ALL_RESOURCES
+		if (!newFaction)
+		#endif
+		{
+			Protocol::Timestamp	timestamp;
+			timestamp.rightNow = true;
+
+			static Buffer0<UINT32>	final;
+			final.Clear();
+			auto&discovered = client->faction->visibility.resourcesDiscovered;
+			for (index_t i = 0; i < discovered.Count(); i++)
+			{
+				if (discovered[i])
+					final << (UINT32)i;
+			}
+
+			if (final.IsNotEmpty())
+			{
+				Protocol::ResourceUpdate	package;
+				package.timestamp = timestamp;
+				package.cells.SetSize(final.Count());
+				for (index_t i = 0; i < final.Count(); i++)
+					package.cells[i].cellIndex = final[i];
+				foreach (Grid::Resource::all,res)
+				{
+					package.resourceName = res->GetCName();
+					for (index_t i = 0; i < final.Count(); i++)
+					{
+						BYTE sourceCov = res->coverage[final[i]];
+						package.cells[i].coverage = sourceCov;
+					}
+
+					Channels::resourceUpdate.SendTo(peer,package);
+				}
+			}
+
+		}
+		Protocol::WorldDelta	delta;
+		delta.timestamp.rightNow = true;
+		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+		{
+			Protocol::GenerateWorldDelta(client->faction ? &client->faction->visibility : nullptr,  client->faction ? &client->faction->currentState : nullptr,
+									delta,k,true,k+1 == BaseGrid::NumFamilies,newFaction ? Protocol::WorldDeltaType::ProgressiveInit : Protocol::WorldDeltaType::FactionCopy);
+
+			Channels::updateWorld.SendTo(peer,delta);
+		}
+
+		String why;
+		if (State::Config::basesRequired && faction->deathInRounds > 0)
+			faction->CanLive(why);
+		client->SendProgressUpdate(false,why);
+
+
+		if (!newFaction)
 		{
 			Protocol::Timestamp	timestamp;
 			timestamp.rightNow = true;
@@ -644,57 +699,7 @@ namespace Receiver
 		}
 
 
-		#ifndef CHEAT_SHOW_ALL_RESOURCES
-		if (!newFaction)
-		#endif
-		{
-			Protocol::Timestamp	timestamp;
-			timestamp.rightNow = true;
 
-			static Buffer0<UINT32>	final;
-			final.Clear();
-			auto&discovered = client->faction->visibility.resourcesDiscovered;
-			for (index_t i = 0; i < discovered.Count(); i++)
-			{
-				if (discovered[i])
-					final << (UINT32)i;
-			}
-
-			if (final.IsNotEmpty())
-			{
-				Protocol::ResourceUpdate	package;
-				package.timestamp = timestamp;
-				package.cells.SetSize(final.Count());
-				for (index_t i = 0; i < final.Count(); i++)
-					package.cells[i].cellIndex = final[i];
-				foreach (Grid::Resource::all,res)
-				{
-					package.resourceName = res->GetCName();
-					for (index_t i = 0; i < final.Count(); i++)
-					{
-						BYTE sourceCov = res->coverage[final[i]];
-						package.cells[i].coverage = sourceCov;
-					}
-
-					Channels::resourceUpdate.SendTo(peer,package);
-				}
-			}
-
-		}
-		Protocol::WorldDelta	delta;
-		delta.timestamp.rightNow = true;
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			Protocol::GenerateWorldDelta(client->faction ? &client->faction->visibility : nullptr,  client->faction ? &client->faction->currentState : nullptr,
-									delta,k,true,k+1 == BaseGrid::NumFamilies,newFaction ? Protocol::WorldDeltaType::ProgressiveInit : Protocol::WorldDeltaType::FactionCopy);
-
-			Channels::updateWorld.SendTo(peer,delta);
-		}
-
-		String why;
-		if (State::Config::basesRequired && faction->deathInRounds > 0)
-			faction->CanLive(why);
-		client->SendProgressUpdate(false,why);
 		
 
 		Protocol::PhaseChange	ph;
@@ -1522,27 +1527,32 @@ namespace Receiver
 	*/
 	void	EntityDirectCommand(Protocol::EntityDirectCommand&cmd, TCP::Peer&peer)
 	{
-		LogEvent(EventType::MinorEntityProcess,peer,nullptr,"Begin: Directing entity "+cmd.id.value.ToString()+" in mode "+String(cmd.mode.value)+" via click "+String(cmd.leftClick)+" to "+cmd.target.ToString());
+		static StringBuffer buffer;
+		buffer.Clear();
+		foreach (cmd.path,n)
+			buffer << ' '<<n->ToString();
+		LogEvent(EventType::MinorEntityProcess,peer,nullptr,"Begin: Directing entity "+cmd.id.value.ToString()+" in mode "+String(cmd.mode.value)+" given flags "+String(cmd.directFlags)+" to"+buffer.ToString());
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(cmd.id,peer);
 		if (!e)
 			return;
 
-		if (!Grid::ValidCell(cmd.target, Objects::Satellite::BaseResidenceHeight,Objects::Satellite::DeclinedResidenceHeight))
-		{
-			LogEvent(EventType::CommandRejected, peer, e, "Parameter fault");
-			return;
-		}
+		foreach (cmd.path,n)
+			if (!Grid::ValidCell(*n, Objects::Satellite::BaseResidenceHeight,Objects::Satellite::DeclinedResidenceHeight))
+			{
+				LogEvent(EventType::CommandRejected, peer, e, "Parameter fault ("+n->ToString()+")");
+				return;
+			}
 
 		if (!e->IsSatellite()) //must find other logic for satellites...
 		{
 			Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
-			if (p)
+			if (p && cmd.path.Count() == 1)
 			{
-				if (p->gatheringPoint.current != cmd.target)
+				if (p->gatheringPoint.current != cmd.path.first())
 				{
 					LogEvent(EventType::EntityProcess, peer, e, "Set gathering point");
-					p->gatheringPoint.current = cmd.target;
+					p->gatheringPoint.current = cmd.path.first();
 				}
 				else
 				{
@@ -1555,15 +1565,17 @@ namespace Receiver
 			}
 		}
 		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
+		const bool leftClick = (cmd.directFlags&Protocol::DirectFlag::LeftClick)!=0;
+		const bool detailedPath = (cmd.directFlags&Protocol::DirectFlag::Detailed)!=0;
 		if (v)
 		{
-			if (!v->DirectTo((Objects::Vehicle::mode_t)cmd.mode.value,cmd.target,cmd.leftClick))
+			if (!v->DirectTo((Objects::Vehicle::mode_t)cmd.mode.value,cmd.path,detailedPath,leftClick))
 			{
 				LogEvent(EventType::CommandRejected,peer,e,"Unable to comply");
-				LogEvent(EventType::MinorEntityProcess,peer,e,"(Directed vehicle in mode "+String(cmd.mode.value)+" via click "+String(cmd.leftClick)+" to "+cmd.target.ToString()+")");
+				LogEvent(EventType::MinorEntityProcess,peer,e,"(Directed vehicle in mode "+String(cmd.mode.value)+" via click "+String(leftClick)+" to"+buffer.ToString()+" detailed="+String(detailedPath)+")");
 			}
 			else
-				LogEvent(EventType::MinorEntityProcess,peer,e,"Directed vehicle in mode "+String(cmd.mode.value)+" via click "+String(cmd.leftClick)+" to "+cmd.target.ToString());
+				LogEvent(EventType::MinorEntityProcess,peer,e,"Directed vehicle in mode "+String(cmd.mode.value)+" via click "+String(leftClick)+" to"+buffer.ToString()+" detailed="+String(detailedPath));
 			//Objects::WorldEntity::UnlockChanges();
 			//Protocol::VehicleState	w;
 			//State::Describe(w,*v, true, Protocol::Timestamp(true,0),false);
@@ -1575,24 +1587,25 @@ namespace Receiver
 		Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
 		if (t)
 		{
-			if (cmd.mode != Objects::CursorMode::AttackMode || !cmd.leftClick)
+			if (cmd.mode != Objects::CursorMode::AttackMode || !leftClick)
 			{
 				LogEvent(EventType::CommandRejected,peer,e,"Parameter fault");
 				return;
 			}
 
 //			Objects::WorldEntity::LockChanges();
-			if (!t->AttackNext(cmd.target,false))
-			{
-				LogEvent(EventType::CommandRejected,peer,e,"Unable to comply");
-			}
+			foreach (cmd.path,n)
+				if (!t->AttackNext(*n,false))
+				{
+					LogEvent(EventType::CommandRejected,peer,e,"Unable to comply");
+				}
 	//		Objects::WorldEntity::UnlockChanges();
 
 			//Protocol::StructureState	w;
 			//State::Describe(w,t,true,Protocol::Timestamp(true,0),Objects::WorldEntity::TasksChanged);
 
 			//Channels::setStructureState.SendTo(peer,w);	
-			LogEvent(EventType::MinorEntityProcess,peer,e,"Issued tower attack to "+cmd.target.ToString());
+			LogEvent(EventType::MinorEntityProcess,peer,e,"Issued tower attack to"+buffer.ToString());
 			return;		
 		}
 

@@ -2,7 +2,7 @@
 #include "ai.h"
 
 void	SignalDropAllTasks(const Objects::PWorldEntity&v);
-void	DirectTo(const Objects::PWorldEntity&v, const Grid::LCellIdI&target, bool leftClick, Objects::Vehicle::mode_t mode);
+void	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode);
 void	SignalRemoval(const Objects::PWorldEntity&entity);
 void	SignalMarkerCreation(Protocol::Marker&marker);
 void	SignalMarkerDeletion(TUniqueID markerID);
@@ -136,15 +136,25 @@ namespace AI
 	}
 
 
-	void IssuePath(const Objects::PVehicle&v, const Objects::ReachabilityMapper&mapper, const Objects::ReachabilityMapper::MapNode*current)
+	void AssemblePath(const Objects::ReachabilityMapper&mapper, const Objects::ReachabilityMapper::MapNode*current, BasicBuffer<Grid::LCellIdI>&outResult)
 	{
 		if (current->predecessor != InvalidIndex)	//if invalidindex, means this is a cell neighboring the point of origin
-			IssuePath(v,mapper, mapper.result + current->predecessor);
+			AssemblePath(mapper, mapper.result + current->predecessor,outResult);
 
 
 		//LogEvent(EventType::Debug,v.get(),"AI: directing to next waypoint");
 
-		DirectTo(v, current->cell, false, Objects::CursorMode::Idle);
+		outResult << current->cell;
+		//DirectTo(v, current->cell, false, Objects::CursorMode::Idle);
+	}
+
+
+	void IssuePath(const Objects::PVehicle&v, const Objects::ReachabilityMapper&mapper, const Objects::ReachabilityMapper::MapNode*current)
+	{
+		static Buffer0<Grid::LCellIdI> path;
+		path.Clear();
+		AssemblePath(mapper, current,path);
+		DirectTo(v,path.ToRef(),true,false,Objects::CursorMode::Idle);
 	}
 
 
@@ -366,11 +376,14 @@ namespace AI
 			}
 			std::sort(attackTarget.begin(),attackTarget.end());
 			attackTarget.Truncate(v->turret->attacksPerRound);
+			static Array<Grid::LCellIdI>	targets;
+			targets.SetSize(attackTarget.Count());
 			foreach (attackTarget,t)
 			{
-				//LogEvent(EventType::Debug,v.get(),"AI: directing to next waypoint");
-				DirectTo(v, t->target, true, Objects::CursorMode::AttackMode);
+				targets[t-attackTarget.pointer()] = t->target;
 			}
+			DirectTo(v,targets,false,true, Objects::CursorMode::AttackMode);
+
 			if (attackTarget.IsNotEmpty() && !v->base->ignoresVehicleAttacks)
 				return;
 		}
@@ -480,7 +493,7 @@ namespace AI
 			}
 			if (best)
 			{
-				IssuePath(v,mapper, best);
+				IssuePath(v,mapper,best);
 			}
 		}
 	}

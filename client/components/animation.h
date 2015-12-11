@@ -106,6 +106,7 @@ namespace Animation
 
 			void				Rebuild(const Objects::PMobileEntity&target);
 			void				ApplyTo(const Objects::PMobileEntity&target, float t);
+			bool				Contains(const Grid::LCellIdI&loc)	{foreach (rawPath,p) if (p->first == loc) return true; return false;}
 		};
 
 		

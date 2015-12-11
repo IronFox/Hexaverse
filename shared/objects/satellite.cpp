@@ -706,12 +706,12 @@ namespace Objects
 		}
 
 	
-		bool	Satellite::DirectTo(mode_t mode, Grid::LCellIdI destination, bool leftClick/* = false*/)
+		bool	Satellite::DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			switch (mode)
 			{
 				case CursorMode::Idle:
-					return PlotCourse(destination);
+					return PlotCourse(waypoints,detailedPath);
 				break;
 				case CursorMode::DigTunnelMode:
 					return false;
@@ -724,10 +724,14 @@ namespace Objects
 					{
 						/*if (!Grid::LowCellIsClear(destination))
 							destination ++;*/
-						RegisterNewJob("", PVehicleJob(new VehicleJob::Sequence(*this,mode)),&destination);
+						foreach (waypoints,way)
+							if (myTasks.Count() < MaxProductionTasks)
+								RegisterNewJob("", PVehicleJob(new VehicleJob::Sequence(*this,mode)),way);
+							else
+								break;
 					}
 					else
-						PlotCourse(destination);
+						PlotCourse(waypoints,detailedPath);
 				break;
 				case CursorMode::AttackMode:
 					if (!CanAttack())
@@ -735,26 +739,30 @@ namespace Objects
 
 					if (leftClick)
 					{
-						if (destination.stackID != location.stackID || turret->trajectoryType == TrajectoryType::VerticalBeam)
+						for (const auto&destination : waypoints)
 						{
-							if (turret->trajectoryType != TrajectoryType::VerticalBeam)
+							if (destination.stackID != location.stackID || turret->trajectoryType == TrajectoryType::VerticalBeam)
 							{
-								Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
-								//attack logic here
-						
-								if (!CanHitFrom(pointOfOrigin,destination))
+								if (turret->trajectoryType != TrajectoryType::VerticalBeam)
 								{
-									LogEvent(EventType::CommandRejected,this,"Destination out of range");
-									return false;
+									Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
+									//attack logic here
+						
+									if (!CanHitFrom(pointOfOrigin,destination))
+									{
+										LogEvent(EventType::CommandRejected,this,"Destination out of range");
+										return false;
+									}
 								}
+								if (!AttackNext(destination,false))
+									return false;
 							}
-							AttackNext(destination,false);
+							else
+								LogEvent(EventType::CommandRejected,this,"Attempting to attack current location");
 						}
-						else
-							LogEvent(EventType::CommandRejected,this,"Attempting to attack current location");
 					}
 					else
-						PlotCourse(destination);
+						PlotCourse(waypoints,detailedPath);
 				break;
 			}
 			return true;
@@ -894,7 +902,7 @@ namespace Objects
 
 
 
-		/*virtual override*/ bool	Satellite::AttackNext(const Grid::LCellIdI&target, bool autoTarget)
+		/*virtual override*/ bool	Satellite::AttackNext(Grid::LCellIdI target, bool autoTarget)
 		{
 			ASSERT__(!TasksAreLocked());
 			if (!CanAttack())
@@ -926,16 +934,16 @@ namespace Objects
 
 			if (!HasTasks() || !myTasks.GetNewest().IsMode(CursorMode::AttackMode))
 			{
-				myTasks << Task("Attack Position",target,Task::Mode,CursorMode::AttackMode);
-				myTasks.GetNewest().Recompile(pointOfOrigin,this);
+				myTasks << Task("Attack Position",target,false,Task::Mode,CursorMode::AttackMode);
+				myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FullChange,true);
 				RegisterChange(TasksChanged,-1);
 			}
 			else
 			{
 				//if (!tasks.GetNewest().foci.Contains(destination))	//irrelevant. attack same location as often as you want
 				{
-					myTasks.GetNewest().foci << target;
-					myTasks.GetNewest().Recompile(pointOfOrigin,this);
+					myTasks.GetNewest().foci.Push().target = target;
+					myTasks.GetNewest().Replot(pointOfOrigin,this,FocusChangeType::FocusAppended,true);
 					RegisterChange(TasksChanged,-1);
 				}
 			}

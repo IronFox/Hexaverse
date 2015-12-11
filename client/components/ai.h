@@ -18,6 +18,7 @@ namespace AI
 	*/
 	bool	BlockTest(const Grid::LCellIdI&location);
 
+	void	AssemblePath(const Objects::ReachabilityMapper&mapper, const Objects::ReachabilityMapper::MapNode*current, BasicBuffer<Grid::LCellIdI>&outResult);
 	void	IssuePath(const Objects::PVehicle&v, const Objects::ReachabilityMapper&mapper, const Objects::ReachabilityMapper::MapNode*current);
 
 }

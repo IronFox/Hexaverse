@@ -1707,18 +1707,18 @@ namespace Objects
 
 	bool AppendShortestPath(const Vehicle*vehicle, const Grid::LCellIdI&from,
 							const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath,
-							bool ignoreFriendlyVehiclesOnRoute);
+							bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/);
 
 	bool AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from,
-							const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath)
+							const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
 	{
 		static Buffer0<PathNode>	routeI, route;
 		routeI.Clear();
 		route.Clear();
-		bool hasI = AppendShortestPath(vehicle,from,to,routeI,true);
+		bool hasI = AppendShortestPath(vehicle,from,to,routeI,true,failIfLimitReached,outWouldFailDueToLimitReached);
 		if (!hasI)
 			return false;
-		bool has = AppendShortestPath(vehicle,from,to,route,false);
+		bool has = AppendShortestPath(vehicle,from,to,route,false,failIfLimitReached,outWouldFailDueToLimitReached);
 		//foreach (routeI,r)
 		//	ASSERT__(*r != Grid::LCellIdI::Invalid);
 		//if (has)
@@ -1748,18 +1748,18 @@ namespace Objects
 
 	bool AppendShortestPath(const Satellite*sat, const Grid::LCellIdI&from,
 							const UINT32 to, BasicBuffer<PathNode>&oPath,
-							bool ignoreFriendlyVehiclesOnRoute);
+							bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/);
 
 	bool AppendShortestPathI(const Satellite*sat, const Grid::LCellIdI&from,
-							const UINT32 to, BasicBuffer<PathNode>&oPath)
+							const UINT32 to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
 	{
 		static Buffer0<PathNode>	routeI, route;
 		routeI.Clear();
 		route.Clear();
-		bool hasI = AppendShortestPath(sat,from,to,routeI,true);
+		bool hasI = AppendShortestPath(sat,from,to,routeI,true,failIfLimitReached,outWouldFailDueToLimitReached);
 		if (!hasI)
 			return false;
-		bool has = AppendShortestPath(sat,from,to,route,false);
+		bool has = AppendShortestPath(sat,from,to,route,false,failIfLimitReached,outWouldFailDueToLimitReached);
 		//foreach (routeI,r)
 		//	ASSERT__(*r != Grid::LCellIdI::Invalid);
 		//if (has)
@@ -1796,8 +1796,12 @@ namespace Objects
 
 	bool AppendShortestPath(const Vehicle*vehicle, const Grid::LCellIdI&from,
 							const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath,
-							bool ignoreFriendlyVehiclesOnRoute)
+							bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
 	{
+		bool inRange = true;
+		if (outWouldFailDueToLimitReached)
+			(*outWouldFailDueToLimitReached) = false;
+
 		const Grid::WorldData&world = 
 		#ifdef CLIENT
 			Grid::actualWorld;
@@ -1843,11 +1847,19 @@ namespace Objects
 		while (queue.PopLeast(current))
 		{
 			iterations ++;
-			static bool ignoreIterations = false;	//runtime switch
-			if (!ignoreIterations && iterations > 2000)
+			if (iterations > 2000)
 			{
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-				return false;//let's ignore long ranges
+				if (failIfLimitReached)	//client sided operation may choose to not implement maximum ranges
+				{
+					//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+					return false;//let's ignore long ranges
+				}
+				else
+				{
+					if (outWouldFailDueToLimitReached)
+						(*outWouldFailDueToLimitReached) = true;
+					inRange = false;
+				}
 			}
 
 			Grid::LCellIdI cellID(DESCOF(current));
@@ -1870,6 +1882,7 @@ namespace Objects
 					//GetCellMovementCosts(next, vehicle);
 					int hCosts = next < buffer.Count() ?  std::max(0, DESCOF(current).height - DESCOF(next).height ) : 0;
 					outPath << PathNode(DESCOF(current), std::max(nextCosts, buffer[current].nodeCosts) + hCosts);
+//					outPath.last().reachedInProcessingLimit = inRange;
 					current = next;
 				}
 				outPath.EraseLast();	//dont need entry point
@@ -1910,8 +1923,11 @@ namespace Objects
 
 	bool AppendShortestPath(const Satellite*sat, const Grid::LCellIdI&from,
 							const UINT32 to, BasicBuffer<PathNode>&oPath,
-							bool ignoreFriendlyVehiclesOnRoute)
+							bool ignoreFriendlyVehiclesOnRoute
+							, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
 	{
+		if (outWouldFailDueToLimitReached)
+			(*outWouldFailDueToLimitReached) = false;
 		const int speed = sat->GetMovementStepsPerRound();
 		UINT32	possibilities[6];
 
@@ -1941,11 +1957,16 @@ namespace Objects
 		while (queue.PopLeast(current))
 		{
 			iterations ++;
-			static bool ignoreIterations = false;	//runtime switch
-			if (!ignoreIterations && iterations > 2000)
+			if (iterations > 2000)
 			{
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
-				return false;//let's ignore long ranges
+				if (failIfLimitReached)
+				{
+					//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+					return false;//let's ignore long ranges
+				}
+				else
+					if (outWouldFailDueToLimitReached)
+						(*outWouldFailDueToLimitReached) = true;
 			}
 
 			//Grid::LCellIdI stackID(DESCOF(current));

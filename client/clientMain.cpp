@@ -185,36 +185,119 @@ bool CanEnableAtAll()
 
 }
 
-
-
-void	DirectTo(const Objects::PWorldEntity&v, const Grid::LCellIdI&target, bool leftClick, Objects::Vehicle::mode_t mode)
+static void SendDirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode)
 {
-	const bool moveTo = mode == Objects::CursorMode::Idle && !leftClick;
-
-	DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
 	Protocol::EntityDirectCommand	cmd;
 	cmd.id = v->id;
 	cmd.mode = mode;
-	cmd.target = target;
-	if (moveTo && v->IsSatellite())
-		cmd.target.height = v->location.height;
-	cmd.leftClick = leftClick;
+	cmd.path = targets;
+	cmd.directFlags = 0;
+	if (detailedPath)
+		cmd.directFlags |= Protocol::DirectFlag::Detailed;
+	if (leftClick)
+		cmd.directFlags |= Protocol::DirectFlag::LeftClick;
 	Network::Channels::entityDirectCommand.SendTo(Network::client,cmd);
+}
+
+
+void	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Grid::LCellIdI target)
+{
+	Buffer0<Objects::PathNode>		path;
+	{
+		bool tooLong;
+		bool foundPath;
+
+		if (v->IsVehicle())
+		{
+			foundPath = Objects::AppendShortestPathI((const Objects::Vehicle*)v.get(),prev,target,path,false,&tooLong);
+		}
+		else
+		{
+			if (v->IsSatellite())
+				foundPath = Objects::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
+			else
+				FATAL__("Routing not implemented for "+v->GetTypeName());
+		}
+		if (!foundPath)
+		{
+			LogEvent(EventType::CommandRejected,v.get(),"Unable to find route to designated destination. Asking server");
+			SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//maybe some error in the client
+			return;
+		}
+		if (!tooLong)
+			SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//all good
+		else
+		{
+			LogEvent(EventType::MinorEntityProcess,v.get(),"Splitting long path into parts");
+			static Buffer0<Grid::LCellIdI>	waypoints;
+			waypoints.Clear();
+			bool open = true;
+			for (index_t i = 0; i < path.length(); i++)
+			{
+				if (!((i+1)%5))
+				{
+					waypoints << path[i].cell;
+					//SendDirectTo(v,path[i].cell,false,Objects::CursorMode::Idle);
+					open = false;
+				}
+				else
+					open = true;
+			}
+
+			if (open)
+				waypoints << path.last().cell;
+				//SendDirectTo(v,path.last().cell,false,Objects::CursorMode::Idle);
+			SendDirectTo(v,waypoints.ToRef(),false,false,Objects::CursorMode::Idle);
+		}
+	}
+
+
+
+}
+
+
+void	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode)
+{
+	DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
+	const bool moveTo = mode == Objects::CursorMode::Idle && !leftClick;
+	if (moveTo && v->IsSatellite())
+		foreach (targets,t)
+			ASSERT_EQUAL__(t->height,v->location.height);
+
+
+	if (v->IsMobile() && moveTo)
+	{
+		Objects::PMobileEntity me = To<Objects::MobileEntity>::Cast(v);
+		if (!detailedPath)
+		{
+			Grid::LCellIdI start = me->GetLastPointOfOrigin();
+			foreach (targets,t)
+			{
+				MoveVehicleTo(me,start,*t);
+				start = *t;
+			}
+		}
+		else
+			SendDirectTo(v,targets,detailedPath,false,Objects::CursorMode::Idle);
+	}
+	else
+	{
+		SendDirectTo(v,targets,detailedPath,leftClick,mode);
+	}
 
 	#ifdef HAS_WINDOW
 		Objects::DisableModes(Network::ControlEnabled());
 		if (moveTo)
 			Tutorial::ShowMessage("Move To");
 	#endif
-
 }
 
-void	DirectTo(const Objects::PWorldEntity&v, const Grid::LCellIdI&target, bool leftClick)
+void	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick)
 {
 	#ifdef HAS_WINDOW
-		DirectTo(v,target,leftClick,Objects::activeCursorMode);
+		DirectTo(v,targets, detailedPath,leftClick,Objects::activeCursorMode);
 	#else
-		DirectTo(v,target,leftClick,Objects::CursorMode::Idle);
+		DirectTo(v,targets, detailedPath,leftClick,Objects::CursorMode::Idle);
 	#endif
 }
 
@@ -238,7 +321,8 @@ void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI
 
 void	SignalTargetLessAttack(const Objects::PWorldEntity&e)
 {
-	DirectTo(e,e->location,true,Objects::CursorMode::AttackMode);
+//	Grid::LCellIdI loc = e->location;
+	DirectTo(e,Grid::LCellIdI(e->location),false,true,Objects::CursorMode::AttackMode);
 }
 
 
@@ -2155,8 +2239,8 @@ bool loop()
 					{
 						foreach (Objects::selectedMobileEntity->myTasks.Peek().foci,f)
 						{
-							Grid::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(f->height)+0.1f));
-							Grid::low.RenderCell(f->stackID);
+							Grid::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(f->target.height)+0.1f));
+							Grid::low.RenderCell(f->target.stackID);
 						}
 					}
 				}
@@ -2658,7 +2742,9 @@ void Select()
 
 			if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
 			{
-				DirectTo(Objects::selectedMobileEntity,target,true);
+				if (Objects::selectedMobileEntity->IsSatellite())
+					target.height = Objects::selectedMobileEntity->location.height;
+				DirectTo(Objects::selectedMobileEntity,target,false,true);
 				return;
 			}
 		}
@@ -2677,7 +2763,7 @@ void Select()
 				Grid::LCellIdI	target;
 				if (GetLowCellUnderCursor(target,true,true))
 				{
-					DirectTo(Objects::selectedEntity,target,true);
+					DirectTo(Objects::selectedEntity,target,false,true);
 					return;
 				}
 			}
@@ -2753,7 +2839,7 @@ void Select()
 							else
 							{
 								Grid::HCellIdI	cell = Grid::HCellIdI(stackID, h);
-								index_t current = Objects::cellSelection.indexOf(cell);
+								index_t current = Objects::cellSelection.GetIndexOf(cell);
 								if (current == InvalidIndex)
 									Objects::cellSelection << cell;
 								else
@@ -3084,7 +3170,7 @@ String GenerateOreName(Random&random)
 						{
 							if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 							{
-								DirectTo(Objects::selectedEntity,target,false);
+								DirectTo(Objects::selectedEntity,target,false,false);
 								return;
 							}
 						}
@@ -3101,7 +3187,9 @@ String GenerateOreName(Random&random)
 				if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 				{
 					//Grid::LCellIdI	target((UINT32)cellID,Grid::FromRadius(height));
-					DirectTo(Objects::selectedMobileEntity,target,false);
+					if (Objects::selectedMobileEntity->IsSatellite())
+						target.height = Objects::selectedMobileEntity->location.height;
+					DirectTo(Objects::selectedMobileEntity,target,false,false);
 				}
 			}
 		}

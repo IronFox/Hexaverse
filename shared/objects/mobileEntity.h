@@ -9,10 +9,24 @@
 
 namespace Objects
 {
+	CONSTRUCT_ENUMERATION7(FocusChangeType,
+		NoChange,
+		FullChange,
+		SituationChanged,
+		FirstSegmentChanged,
+		FocusAppended,
+		LastFocusDropped,
+		FirstFocusDropped
+	);
+
+
+
+
 	struct PathNode
 	{
 		Grid::LCellIdI	cell;
 		int				movementCostsFromPrevNode;
+		//bool			reachedInProcessingLimit = true;	//not useful, even for client
 
 		PathNode():movementCostsFromPrevNode(0)	{}
 		PathNode(const Grid::LCellIdI&cell, int costs) : cell(cell),movementCostsFromPrevNode(costs)	{}
@@ -77,8 +91,32 @@ namespace Objects
 
 		struct Task : public TaskData
 		{
+			struct Focus
+			{
+				Grid::LCellIdI		target;
+				#ifndef CLIENT
+					bool			isDetailed=false,		//!< Indicates that this node represents exactly one step from the previous. Detailed paths imply explicit computing, and fail if steps between nodes exceed one step
+									isIntermediate=false;	//!< Indicates that this node is an automatic waypoint and implicitly computed. Will be removed automatically if the last task is dropped
+				#endif
 
-			Queue<Grid::LCellIdI>	foci;	//function depends on current mode. movement destination(s) if idle, firing target(s) if in attack mode
+				bool				operator==(const Focus&other) const
+				{
+					return target == other.target
+						#ifndef CLIENT
+							&& isDetailed == other.isDetailed
+							&& isIntermediate == other.isIntermediate
+						#endif
+					;
+				}
+
+				bool				operator!=(const Focus&other) const
+				{
+					return !operator==(other);
+				}
+			};
+
+
+			Queue<Focus>	foci;	//function depends on current mode. movement destination(s) if idle, firing target(s) if in attack mode
 			
 			Buffer0<PathNode>		path;
 
@@ -100,9 +138,27 @@ namespace Objects
 
 
 			/**/					Task()	{}
-			/**/					Task(const String&name, const Grid::LCellIdI&focus, type_t type, mode_t mode=CursorMode::Idle) : TaskData(type,mode), name(name)
+			/**/					Task(const String&name, const ArrayRef<Grid::LCellIdI>&destination, bool isDetailed, type_t type, mode_t mode=CursorMode::Idle) : TaskData(type,mode), name(name)
 			{
-				foci << focus;
+				ASSERT__(destination.IsNotEmpty());
+				for (index_t i = 0; i+1 < destination.length(); i++)
+				{
+					Focus&f = this->foci.Push();
+					#ifndef CLIENT
+					f.isDetailed = isDetailed;
+					f.isIntermediate = true;
+					#endif
+					f.target = destination[i];
+				}
+
+				{
+					Focus&f = this->foci.Push();
+					#ifndef CLIENT
+					f.isDetailed = isDetailed;
+					f.isIntermediate = false;
+					#endif
+					f.target = destination.Last();
+				}
 			}
 
 
@@ -120,10 +176,11 @@ namespace Objects
 
 			Grid::LCellIdI			GetFocus(const Grid::LCellIdI&fallback)	const
 			{
-				return foci.IsNotEmpty() ? foci.Peek() : fallback;
+				return foci.IsNotEmpty() ? foci.GetNewest().target : fallback;
 			}
 
-			bool					UpdatePath(const MobileEntity*v, const Grid::LCellIdI&pointOfOrigin);
+			bool					AppendPathSegment(const MobileEntity*v, const Grid::LCellIdI&prev, const Task::Focus&target);
+			bool					UpdatePath(const MobileEntity*v, const Grid::LCellIdI&pointOfOrigin, FocusChangeType);
 
 			bool					IsJob() const
 			{
@@ -141,7 +198,7 @@ namespace Objects
 			}
 
 
-			bool					Recompile(const Grid::LCellIdI&pointOfOrigin, const MobileEntity*parent);
+			bool					Replot(const Grid::LCellIdI&pointOfOrigin, const MobileEntity*parent, FocusChangeType, bool recompileVisualization);
 
 		private:
 			#ifdef HAS_WINDOW
@@ -257,8 +314,8 @@ namespace Objects
 			bool				HasTasks() const {return myTasks.IsNotEmpty();}
 		#else
 
-			bool				PlotCourse(Grid::LCellIdI destination, bool virtualPlatformMode=false);
-			bool				PlotFrontCourse(Grid::LCellIdI destination);
+			bool				PlotCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode=false);
+			bool				PlotFrontCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath);
 			virtual	void		SetupSystem() override {UpdateSystem();}
 			void				RegisterNewJob(
 										const String&localizableShapeIdentifier,
@@ -418,7 +475,7 @@ namespace Objects
 		virtual void			TranslateLocationFromExport(){};
 
 		#ifndef CLIENT
-			virtual bool		DirectTo(mode_t mode, Grid::LCellIdI destination, bool leftClick = false) = 0;
+			virtual bool		DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
 		#endif
 
 
