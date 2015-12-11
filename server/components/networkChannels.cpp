@@ -611,7 +611,8 @@ namespace Receiver
 		client->wantNewRound = false;
 
 		response.startFactionTypes = 0;
-		if (client->faction->allMobiles.IsNotEmpty() || client->faction->structures.IsNotEmpty())
+		if (client->faction->allMobiles.IsNotEmpty() || client->faction->structures.IsNotEmpty()
+			|| (newFaction && _p.startFactionTypes & Protocol::FactionType::RegularFaction))
 			response.startFactionTypes |= Protocol::FactionType::RegularFaction;
 		if (client->faction->IsTechniteFaction())
 			response.startFactionTypes |= Protocol::FactionType::TechniteFaction;
