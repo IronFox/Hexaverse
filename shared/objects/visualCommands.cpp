@@ -390,7 +390,7 @@ namespace Objects
 			{
 				image.setChannels(4,BaseImage::CA_REPEAT);
 //						Image image2(image.getWidth(),image.getHeight(),0);
-////						image2.fill(255,255,255);
+////						image2.Fill(255,255,255);
 //						image2.appendAlpha(&image);
 //						image2.setChannels(4,BaseImage::CA_REPEAT);
 //						image.swap(image2);

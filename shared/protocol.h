@@ -125,7 +125,7 @@ namespace Protocol
 				if (!IsISerializable(data))
 				{
 					//cout << "data is not of i-serializable type. reading plain"<<endl;
-					return inStream.Read(data,(serial_size_t)contentSize());
+					return inStream.Read(data,(serial_size_t)GetContentSize());
 				}
 
 				//cout << "data is of i-serializable type. invoking deserializers"<<endl;
@@ -1610,12 +1610,28 @@ namespace Protocol
 	)
 
 
+	namespace DirectFlag
+	{
+		enum flag_t
+		{
+			LeftClick = 0x1,
+			Detailed = 0x2
+		};
 
+	}
+
+	/**
+	If directFlags contains DirectFlag::Explicit, path is considered explicit with one entry per neighboring node.
+	In this case the command is rejected, if the path is not possible when applied to the known world of the respective client.
+	If the path is found to be inapplicable during computation phases, an automatically determined path to the last given node is computed and applied, then dropped.
+	Path must always be of at least length 1
+	*/
+	typedef NetArray<Grid::LCellIdI,Objects::MaxFocusCount>	DirectPath;
 	NETSTRUCT4(EntityDirectCommand
 		, NET(TUniqueID), id
 		, NET(UINT16),	mode
-		, LCellIdI, target
-		, NET(bool), leftClick
+		, DirectPath, path
+		, NET(UINT8), directFlags
 	)
 
 

@@ -418,7 +418,7 @@ namespace Grid
 		class Cell
 		{
 		public:
-			bool	isEmpty,	//indicates that there are no solid blocks intersecting this cell
+			bool	IsEmpty,	//indicates that there are no solid blocks intersecting this cell
 					isFull;		//indicates that no clear blocks intersect this cell
 			enum sensor_visibility_t
 			{
@@ -429,7 +429,7 @@ namespace Grid
 
 		
 		
-			/**/	Cell():isEmpty(true),isFull(false),visibility(Unchecked)	{}
+			/**/	Cell():IsEmpty(true),isFull(false),visibility(Unchecked)	{}
 		};
 		Cell		volumeCell[CellStack::Range];		//All contained cells
 

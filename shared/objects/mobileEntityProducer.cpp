@@ -205,7 +205,7 @@ namespace Objects
 						if (!v->IsSatellite())
 						{
 							LogEvent(EventType::EntityProcess,v.get(),"Directing vehicle to gathering point");
-							v->PlotCourse(gatheringPoint.current);
+							v->PlotCourse(gatheringPoint.current,false);
 						}
 					}
 //					else

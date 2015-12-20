@@ -1486,7 +1486,7 @@ namespace Objects
 					}
 					for (const auto&waypoint : t.foci)
 					{
-						RenderBeam(Grid::ToWorld(waypoint),-(Grid::ToRadius(waypoint.height) 
+						RenderBeam(Grid::ToWorld(waypoint.target),-(Grid::ToRadius(waypoint.target.height) 
 										- bottom) /
 										Grid::SingleLayerHeight,
 										0.05f);

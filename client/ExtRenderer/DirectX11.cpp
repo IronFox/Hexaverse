@@ -744,7 +744,7 @@ namespace Engine
 		Clear();
 
 		Array<D3D_SHADER_MACRO>macros;
-		if (macroDefinitions.isNotEmpty())
+		if (macroDefinitions.IsNotEmpty())
 		{
 			macros.setSize(macroDefinitions.count()+1);
 			for (index_t i = 0; i < macroDefinitions.count(); i++)
@@ -779,7 +779,7 @@ namespace Engine
 		Clear();
 
 		Array<D3D_SHADER_MACRO>macros;
-		if (macroDefinitions.isNotEmpty())
+		if (macroDefinitions.IsNotEmpty())
 		{
 			macros.setSize(macroDefinitions.count()+1);
 			for (index_t i = 0; i < macroDefinitions.count(); i++)
@@ -796,7 +796,7 @@ namespace Engine
 		{
 			return DirectX11::globalInstance->GetDevice()->CreateVertexShader(data,size,NULL,shader);
 		},base.pointer(),base.count(),b,numBindings,macros.pointer());
-		if (geometryShaderName.isNotEmpty())
+		if (geometryShaderName.IsNotEmpty())
 			Load<ID3D11GeometryShader>(geometryStage,filename,geometryShaderName,"gs_5_0",[this,outDefinition](const void*data, SIZE_T size, ID3D11GeometryShader**shader)->HRESULT
 			{
 				D3D11_SO_DECLARATION_ENTRY entries[64];
@@ -830,7 +830,7 @@ namespace Engine
 		Clear();
 
 		Array<D3D_SHADER_MACRO>macros;
-		if (macroDefinitions.isNotEmpty())
+		if (macroDefinitions.IsNotEmpty())
 		{
 			macros.setSize(macroDefinitions.count()+1);
 			for (index_t i = 0; i < macroDefinitions.count(); i++)
@@ -846,7 +846,7 @@ namespace Engine
 		{
 			return DirectX11::globalInstance->GetDevice()->CreateVertexShader(data,size,NULL,shader);
 		},base.pointer(),base.count(),b,numBindings,macros.pointer());
-		if (geometryShaderName.isNotEmpty())
+		if (geometryShaderName.IsNotEmpty())
 			Load<ID3D11GeometryShader>(geometryStage,baseFilename+".gs.hlsl",geometryShaderName,"gs_5_0",[this](const void*data, SIZE_T size, ID3D11GeometryShader**shader)->HRESULT
 			{
 				return DirectX11::globalInstance->GetDevice()->CreateGeometryShader(data,size,NULL,shader);
@@ -1473,7 +1473,7 @@ namespace Engine
 	DX11::Handle<ID3D11InputLayout>	DX11::Shader::BuildLayout(const VertexDescription&binding)
 	{
 		DX11::Handle<ID3D11InputLayout> rs;
-		if (binding.desc.isEmpty())
+		if (binding.desc.IsEmpty())
 			return rs;
 		if (!vertexStage.blob)
 			FATAL__("Trying to build vertex layout using empty shader");

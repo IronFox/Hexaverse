@@ -855,7 +855,7 @@ namespace Objects
 				if (!Succeeded(v.PlaceExactlyAt(v.location,0,v.timeAt)))
 					return TerminalFailureVehicleDestroyed;
 			}
-					//or else it falls, breaking the task list. HOWEVER: must be done AFTER signalling neighbors because they must have a chance to fill the hole again.
+					//or else it falls, breaking the task list. HOWEVER: must be done AFTER signalling neighbors because they must have a chance to Fill the hole again.
 			return JobDone;
 		}
 			
@@ -1194,7 +1194,7 @@ namespace Objects
 								const auto&task = v.myTasks[i];
 								if (To<BuildRoad>::DynamicCast(task.job) && 
 									(
-										(task.foci.Count() == 1 && task.foci.Peek() == origin)
+										(task.foci.Count() == 1 && task.foci.Peek().target == origin)
 										||
 										(task.foci.Count() == 0 && at == origin)
 									)
@@ -1204,7 +1204,7 @@ namespace Objects
 									break;
 								}
 								if (task.ContainsMovement())
-									at = task.foci.GetNewest();
+									at = task.foci.GetNewest().target;
 							}
 							if (!found)
 								cost = BuildRoadMineralCosts;
@@ -1219,7 +1219,7 @@ namespace Objects
 							{
 								const auto&task = v.myTasks[i];
 								PConstruct cnst  = To<Construct>::DynamicCast(task.job);
-								if (cnst && cnst->constructWhat == Connector::globalPrototype && task.foci.Count() == 1 && task.foci.Peek() == origin)
+								if (cnst && cnst->constructWhat == Connector::globalPrototype && task.foci.Count() == 1 && task.foci.Peek().target == origin)
 								{
 									found = true;
 									break;
@@ -1237,7 +1237,7 @@ namespace Objects
 							for (index_t i = 0; i < myJobIndex; i++)
 							{
 								const auto&task = v.myTasks[i];
-								if (To<BuildHorizontalWall>::DynamicCast(task.job) && task.foci.Count() == 1 && task.foci.Peek().stackID == origin.stackID)
+								if (To<BuildHorizontalWall>::DynamicCast(task.job) && task.foci.Count() == 1 && task.foci.Peek().target.stackID == origin.stackID)
 								{
 									found ++;
 								}
@@ -1245,7 +1245,7 @@ namespace Objects
 								if (To<BuildWallUp>::DynamicCast(task.job) 
 								&& 
 								(
-								(task.foci.Count() == 1 && task.foci.Peek().stackID == origin.stackID)
+								(task.foci.Count() == 1 && task.foci.Peek().target.stackID == origin.stackID)
 								||
 								((task.foci.Count() == 0 && at.stackID == origin.stackID))
 								))
@@ -1445,7 +1445,7 @@ namespace Objects
 							Grid::LCellIdI focus = v.location;
 							focus++;
 							//auto next = path.begin();
-							v.myTasks.PushFront(MobileEntity::Task("Move To",next,MobileEntity::Task::MoveTo));
+							v.myTasks.PushFront(MobileEntity::Task("Move To",next,true,MobileEntity::Task::MoveTo));
 							//v.RegisterChange(TasksChanged,-1);
 							//v.myTasks.GetNewest().Recompile(pointOfOrigin, this);
 
@@ -1510,7 +1510,7 @@ namespace Objects
 							break;
 					}
 
-					if (!v.PlotFrontCourse(c))
+					if (!v.PlotFrontCourse(c,false))
 					{
 						//bool abort = true;
 						if (GetStructure(c))
