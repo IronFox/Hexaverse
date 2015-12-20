@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="ISO-8859-1" ?>
 <font image="font.png" shader="shader.hlsl" scale="0.4">
 	<char id="65" left="6" right="32" bottom="23" top="51">A</char>
 	<char id="66" left="53" right="77" bottom="23" top="51">B</char>
