@@ -1259,7 +1259,7 @@ namespace Technites
 			seeing.exportKeys(keys);
 			foreach (keys,k)
 			{
-				if (!GridCanSee(*k))
+				if ((*k)->owner.get() != this && !GridCanSee(*k))
 					SignalDisappearance(*k,t,true);
 			}
 		#endif
@@ -1287,7 +1287,7 @@ namespace Technites
 				for (UINT32 l = c->layerBegin; l < c->layerEnd; l++)
 				{
 					Objects::PWorldEntity e = Objects::GetEntity(Grid::LCellIdI(c->stackID,Grid::CellStack::ToHeight(l)));
-					if (e && GridCanSee(e))
+					if (e && e->owner.get() != this && GridCanSee(e))
 						SignalAppearance(e,t,true,false);
 				}
 			}
