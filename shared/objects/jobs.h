@@ -5,6 +5,7 @@
 #include "../sphereGrid.h"
 #include "cursorMode.h"
 #include "types.h"
+#include "../uniqueID.h"
 
 namespace Objects
 {
@@ -49,6 +50,13 @@ namespace Objects
 
 
 			/**/					BaseJob(Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):jobAutoCompletion(jobAutoCompletion),movesToFocusWhenDone(movesToFocusWhenDone)	{}
+			void					ResetMineralsAndRoundsLeft(int mineralCosts, const MobileEntity&v, bool actuallyConsumesMinerals);
+
+			/**
+			Expected to reset minerals and rounds left based on the local job composition for the given vehicle.
+			Should internally call ResetMineralsAndRoundsLeft() with appropriate parameters.
+			*/
+			virtual void			Restart(const MobileEntity&v) = 0;
 
 			/**/					BaseJob(int mineralCosts, const MobileEntity&v, bool actuallyConsumesMinerals, Autocomplete jobAutoCompletion, bool movesToFocusWhenDone);
 			virtual					~BaseJob()	{}
@@ -98,6 +106,7 @@ namespace Objects
 			/**/						PathJob(int mineralCosts, const MobileEntity&v, bool actuallyConsumesMinerals, Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):
 										Super(mineralCosts, v, actuallyConsumesMinerals, jobAutoCompletion, movesToFocusWhenDone), pathChanged(false)	{}
 
+
 			virtual bool				UpdatePath(const MobileEntity&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&_destination) =0;
 			virtual	serial_size_t		GetSerialSize(bool export_size) const override {return (serial_size_t)(path.GetContentSize() + (export_size ? GetSerialSizeOfSize((serial_size_t)path.length()):0));}
 			virtual	bool				Serialize(IWriteStream&outStream, bool exportSize) const override
@@ -128,10 +137,10 @@ namespace Objects
 			public:
 				typedef PathJob	Super;
 
-				/**/			DummyPathJob(const MobileEntity&v) : Super(1,v,false,Autocomplete::Always,false)
-				{}
+				/**/					DummyPathJob(const MobileEntity&v) : Super(1,v,false,Autocomplete::Always,false) {}
+				virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft(1,v,false);}
 
-				virtual bool				UpdatePath(const MobileEntity&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&_destination)	override
+				virtual bool			UpdatePath(const MobileEntity&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&_destination)	override
 				{
 					return true;	//dont change anything
 				}
@@ -142,8 +151,9 @@ namespace Objects
 			public:
 				typedef BaseJob	Super;
 
-				/**/			DummyJob(const MobileEntity&v) : Super(1,v,false,Autocomplete::Always,false)
-				{}
+				/**/					DummyJob(const MobileEntity&v) : Super(1,v,false,Autocomplete::Always,false) {}
+				virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft(1,v,false);}
+
 				//virtual Riff::TID		GetDataKey() const override {return "BLDF";};
 				//virtual PJob	Instantiate() const override {return PJob(new BuildFoundation());}
 				virtual	serial_size_t	GetSerialSize(bool exportSize) const override	{return 0;};
@@ -161,10 +171,10 @@ namespace Objects
 
 
 				/**/					BuildRoad():Super(Autocomplete::Always,false)	{}
-				/**/					BuildRoad(MobileEntity&v) : BaseJob(BuildRoadMineralCosts,v,true,Autocomplete::Always,false),prevCell(-1),nextCell(-1)
-				{}
-				/**/					BuildRoad(MobileEntity&v, UINT32 from, UINT32 to) : BaseJob(BuildRoadMineralCosts,v,true,Autocomplete::Always,false),prevCell(from),nextCell(to)
-				{}
+				/**/					BuildRoad(MobileEntity&v) : BaseJob(BuildRoadMineralCosts,v,true,Autocomplete::Always,false),prevCell(-1),nextCell(-1) {}
+				/**/					BuildRoad(MobileEntity&v, UINT32 from, UINT32 to) : BaseJob(BuildRoadMineralCosts,v,true,Autocomplete::Always,false),prevCell(from),nextCell(to) {}
+				virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft(BuildRoadMineralCosts,v,true);}
+
 
 				virtual String			GetName() const override {return "build roads";}
 
@@ -186,8 +196,7 @@ namespace Objects
 			protected:
 			
 				/**/					BuildWallUp(Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):Super(jobAutoCompletion, movesToFocusWhenDone)	{}
-				/**/					BuildWallUp(MobileEntity&v,Autocomplete jobAutoCompletion, bool movesToFocusWhenDone) : BaseJob(BuildWallMineralCosts,v,true,jobAutoCompletion, movesToFocusWhenDone)
-				{}
+				/**/					BuildWallUp(MobileEntity&v,Autocomplete jobAutoCompletion, bool movesToFocusWhenDone) : BaseJob(BuildWallMineralCosts,v,true,jobAutoCompletion, movesToFocusWhenDone) {}
 
 				virtual Grid::LCellIdI	FocusToBuildLocation(const Grid::LCellIdI&focus) const {return focus-1;}
 
@@ -201,8 +210,9 @@ namespace Objects
 				
 
 				/**/					BuildWallUp():Super(Autocomplete::Always,true)	{}
-				/**/					BuildWallUp(MobileEntity&v) : BaseJob(BuildWallMineralCosts,v,true,Autocomplete::Always,true)
-				{}
+				/**/					BuildWallUp(MobileEntity&v) : BaseJob(BuildWallMineralCosts,v,true,Autocomplete::Always,true) {}
+				virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft(BuildWallMineralCosts,v,true);}
+
 
 				virtual begin_t			BeginHere(MobileEntity&v, const Grid::LCellIdI&_destination, bool hasToMoveFirst)	override;
 				virtual String			GetName() const override {return "build wall";}
@@ -230,8 +240,8 @@ namespace Objects
 				
 
 				/**/					BuildHorizontalWall():Super(Autocomplete::Never,false)	{}
-				/**/					BuildHorizontalWall(MobileEntity&v) : Super(v,Autocomplete::Never,false)
-				{}
+				/**/					BuildHorizontalWall(MobileEntity&v) : Super(v,Autocomplete::Never,false) {}
+
 				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&/*outError*/)	override	{return true;};
 				virtual begin_t			BeginHere(MobileEntity&v, const Grid::LCellIdI&, bool hasToMoveFirst) override	{return hasToMoveFirst ? CannotStartAbort : Started;}
 
@@ -276,8 +286,8 @@ namespace Objects
 				BYTE					maxHeightDifference;
 
 				/**/					AlterTerrain():Super(Autocomplete::Always,false),maxHeightDifference(1)	{}
-				/**/					AlterTerrain(MobileEntity&v, CursorMode::mode_t mode, const Array<Grid::HCellIdI>&selection) : BaseJob((int)selection.Count() * BuildWallMineralCosts,v,mode == CursorMode::BuildBlockMode,Autocomplete::Always,false),mode(mode),selection(selection),maxHeightDifference(1)
-				{}
+				/**/					AlterTerrain(MobileEntity&v, CursorMode::mode_t mode, const Array<Grid::HCellIdI>&selection) : BaseJob((int)selection.Count() * BuildWallMineralCosts,v,mode == CursorMode::BuildBlockMode,Autocomplete::Always,false),mode(mode),selection(selection),maxHeightDifference(1) {}
+				virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft((int)selection.Count() * BuildWallMineralCosts,v,mode == CursorMode::BuildBlockMode);}
 
 				virtual String			GetName() const override {return mode == CursorMode::BuildBlockMode ? "deposit earth" : "remove terrain";}
 
@@ -318,8 +328,8 @@ namespace Objects
 					CursorMode::mode_t		mode;
 
 					/**/					TransferJob():Super(Autocomplete::Always,false)	{}
-					/**/					TransferJob(MobileEntity&v, CursorMode::mode_t mode) : BaseJob(0,v,false,Autocomplete::Always,false),mode(mode)
-					{}
+					/**/					TransferJob(MobileEntity&v, CursorMode::mode_t mode) : BaseJob(0,v,false,Autocomplete::Always,false),mode(mode) {}
+					virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft(0,v,false);}
 
 					virtual String			GetName() const override {return mode == CursorMode::RestockMode ? "Restock from complex/vehicle" : "Transfer to complex/vehicle";}
 					virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)	override;
@@ -347,8 +357,8 @@ namespace Objects
 				typedef BaseJob			Super;
 
 				/**/					RepairJob():Super(Autocomplete::Always,false)	{}
-				/**/					RepairJob(MobileEntity&v) : BaseJob(0,v,false,Autocomplete::Always,false)
-				{}
+				/**/					RepairJob(MobileEntity&v) : BaseJob(0,v,false,Autocomplete::Always,false) {}
+				virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft(0,v,false);}
 
 				virtual String			GetName() const override {return "Repair complex/vehicle";}
 				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)	override;
@@ -367,8 +377,9 @@ namespace Objects
 				typedef BaseJob			Super;
 
 				/**/					ClearAbove():Super(Autocomplete::Always,false)	{}
-				/**/					ClearAbove(MobileEntity&v) : BaseJob(ClearAboveMineralCosts,v,false,Autocomplete::Always,false)
-				{}
+				/**/					ClearAbove(MobileEntity&v) : BaseJob(ClearAboveMineralCosts,v,false,Autocomplete::Always,false) {}
+				virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft(ClearAboveMineralCosts,v,false);}
+
 				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)	override;
 				virtual String			GetName() const override {return "clear upper terrain";}
 				virtual continue_t		Finish(MobileEntity&v, const Grid::LCellIdI&focus)	override;
@@ -379,6 +390,7 @@ namespace Objects
 				virtual	serial_size_t	GetSerialSize(bool exportSize) const override {return 0;};
 				virtual	bool			Serialize(IWriteStream&outStream, bool exportSize) const override {return true;};
 				virtual	bool			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override {return true;};
+
 			};
 
 			class DigHorizontal : public BaseJob
@@ -387,9 +399,8 @@ namespace Objects
 				typedef BaseJob			Super;
 
 				/**/					DigHorizontal():Super(Autocomplete::Always,true)	{}
-				/**/					DigHorizontal(MobileEntity&v) : BaseJob(DigHorizontalMineralCosts,v,false,Autocomplete::Always,true)
-				{}
-
+				/**/					DigHorizontal(MobileEntity&v) : BaseJob(DigHorizontalMineralCosts,v,false,Autocomplete::Always,true) {}
+				virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft(DigHorizontalMineralCosts,v,false);}
 
 				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)	override;
 				virtual continue_t		Finish(MobileEntity&v, const Grid::LCellIdI&focus)	override;
@@ -400,6 +411,8 @@ namespace Objects
 				virtual	serial_size_t	GetSerialSize(bool exportSize) const override {return 0;};
 				virtual	bool			Serialize(IWriteStream&outStream, bool exportSize) const override {return true;};
 				virtual	bool			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override {return true;};
+
+
 			};
 
 			class DigDown : public BaseJob
@@ -410,8 +423,8 @@ namespace Objects
 				typedef BaseJob	Super;
 				/**/					DigDown():Super(Autocomplete::Always,true) {}
 
-				/**/					DigDown(MobileEntity&v) : BaseJob(DigDownMineralCosts,v,false,Autocomplete::Always,true)
-				{}
+				/**/					DigDown(MobileEntity&v) : BaseJob(DigDownMineralCosts,v,false,Autocomplete::Always,true) {}
+				virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft(DigDownMineralCosts,v,false);}
 
 				virtual String			GetName() const override {return "dig down";}
 
@@ -424,6 +437,8 @@ namespace Objects
 				virtual	serial_size_t	GetSerialSize(bool exportSize) const override {return 0;};
 				virtual	bool			Serialize(IWriteStream&outStream, bool exportSize) const override {return true;};
 				virtual	bool			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override {return true;};
+
+
 			};
 
 
@@ -436,8 +451,9 @@ namespace Objects
 				typedef BaseJob			Super;
 
 				PStructure				constructWhat;
+				TUniqueID				useID;
 
-				/**/					Construct():Super(Autocomplete::IfSatellite,false)	{}
+				/**/					Construct():Super(Autocomplete::IfSatellite,false)	{useID.Generate();}
 				/**/					Construct(MobileEntity&v, const PStructure&c);
 
 				virtual String			GetName() const override;
@@ -452,6 +468,9 @@ namespace Objects
 				virtual	serial_size_t	GetSerialSize(bool exportSize) const override;
 				virtual	bool			Serialize(IWriteStream&outStream, bool exportSize) const override;
 				virtual	bool			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override;
+
+				virtual void			Restart(const MobileEntity&v) override;
+
 			};
 
 
@@ -468,8 +487,8 @@ namespace Objects
 				bool					first;
 				/**/					Sequence():Super(Autocomplete::Always,true)	{};
 
-				/**/					Sequence(MobileEntity&v, CursorMode::mode_t mode) : Super(1,v,false,Autocomplete::Always,/*false*/true),mode(mode),first(true)
-				{}
+				/**/					Sequence(MobileEntity&v, CursorMode::mode_t mode) : Super(1,v,false,Autocomplete::Always,/*false*/true),mode(mode),first(true) {}
+				virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft(1,v,false);}
 
 				virtual String			GetName() const override
 				{

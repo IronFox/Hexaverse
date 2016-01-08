@@ -1,0 +1,958 @@
+#include <global_root.h>
+#include <math/basic.h>
+#include "reflection.h"
+#include "state.h"
+#include "journalSaveGame.h"
+#include <io/config.h>
+#include <io/file_system.h>
+
+namespace Reflection
+{
+	CLI::Interpretor	state;
+
+	namespace Variable
+	{
+		void				Base::OnChanged()
+		{
+			if (extraOnChange)
+				extraOnChange(*this);
+			if (WriteToSavegame())
+			{
+				Journal::currentRound.RegisterPersistentVariableChange(false,To<Base>::Cast(shared_from_this()));
+			}
+			lastValue = ToString();
+		};
+
+		void				Base::SetupBase()
+		{
+			lastValue = ToString();
+		}
+
+
+
+		class StringVar : public Base
+		{
+				typedef Base	Super;
+		public:
+			String value,
+					defaultValue;
+
+
+			/**/		StringVar(const String&name, Persistence persistence, const String&value, unsigned protection=CLI::EraseProtection) : Super(name,"String",persistence, 1,protection),value(value),defaultValue(value)
+			{}
+			virtual String	ToString()		const	override	{return value;}
+			virtual	bool	Set(const String&value)	override
+			{
+				if (this->value != value)
+				{
+					this->value = value;
+					OnChanged();
+				}
+				return true;
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = value;
+			}
+		};
+
+
+		template <typename T>
+			class TypedVariable : public Base
+			{
+				typedef Base	Super;
+			public:
+				T				*const reference;
+				T				defaultValue;
+				const TFloatRange<T>	range;
+				
+				/**/			TypedVariable(const String&name, Persistence p, T&reference, T min, T max, unsigned protection=CLI::EraseProtection):Super(name,TypeInfo<T>::name,p,1,protection),reference(&reference),range(FloatRange(min,max))
+				{
+					defaultValue = reference;
+				}
+				virtual String	ToString()		const	override	{return String(*reference);}
+				virtual	bool	Set(const String&value)	override
+				{
+					T old = *reference;
+					if (convert(value.c_str(),value.length(), *reference))
+					{
+						*reference = range.Clamp(*reference);
+						if (old != *reference)
+							OnChanged();
+						return true;
+					}
+					return false;
+				}
+				virtual String	GetDefault() const override
+				{
+					return String(defaultValue);
+				}
+				virtual String		GetSupportedValues() const override 
+				{
+					return range.ToString();
+				}
+
+				virtual void		SetCurrentToDefault() override
+				{
+					defaultValue = *reference;
+				}
+			};
+
+
+		
+		template <typename T, typename RefT>
+			class MappedEnumVariable : public Base
+			{
+				typedef Base	Super;
+			public:
+				RefT			*const reference,
+								defaultValue;
+
+				static constexpr String	MakeTypeName()
+				{
+					return T::GetName();
+				}
+				
+				/**/			MappedEnumVariable(const String&name, Persistence p, RefT&reference, unsigned protection=CLI::EraseProtection):Super(name,MakeTypeName(),p,1,protection),reference(&reference),defaultValue((RefT)T())	{}
+				virtual String	ToString()		const	override	{return T::Reinterpret(*reference).ToString();}
+				virtual	bool	Set(const String&value)	override
+				{
+					T temp;
+					RefT old = *reference;
+					if (!temp.Decode(value.c_str()))
+					{
+						return false;
+					}
+					(*reference) = (RefT)temp;
+					if (*reference != old)
+						OnChanged();
+					return true;
+				}
+				virtual String		GetSupportedValues() const override 
+				{
+					static StringBuffer allowed;
+					allowed.Clear();
+					for (index_t i = 0; i < T::NumberOfPossibilities; i++)
+					{
+						if (i)
+							allowed << ", ";
+						allowed << T::Reinterpret(i).ToString();
+					}
+					//allowed += "'";
+					return allowed.ToStringRef();
+				}
+
+				virtual String	GetDefault() const override
+				{
+					return T::Reinterpret(defaultValue).ToString();
+				}
+				virtual void		SetCurrentToDefault() override
+				{
+					defaultValue = *reference;
+				}
+
+			};
+
+
+		template <typename T>
+			class EnumVariable : public MappedEnumVariable<T,T>
+			{
+				typedef MappedEnumVariable<T,T>	Super;
+			public:
+
+				/**/			EnumVariable(const String&name, Persistence p, T&reference, unsigned protection=CLI::EraseProtection):Super(name,p,reference,protection)	{}
+				virtual String	ToString()		const	override	{return reference->ToString();}
+
+				virtual String	GetDefault() const override
+				{
+					return defaultValue.ToString();
+				}
+
+			};
+
+
+
+		class SupportedFactions : public Base
+		{
+			typedef Base	Super;
+		public:
+			String			defaultValue = "Regular";
+
+			/**/			SupportedFactions(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "Flagset",Persistence::RestoreFromSavegame,1,protection)	{}
+			virtual String	ToString()		const	override	{return State::Config::FactionSupportFlagString();}
+			virtual	bool	Set(const String&value)	override
+			{
+				String old = ToString();
+				bool rs = State::Config::SetFactionSupportFlagString(value);
+				if (old != ToString())
+				{
+					OnChanged();
+				}
+				return rs;
+			}
+			virtual String		GetSupportedValues() const override 
+			{
+				return "'Regular'";
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = ToString();
+			}
+		};
+
+		class NexusVehicleTurrets : public Base
+		{
+			typedef Base	Super;
+		public:
+			String			defaultValue = "Cannon, Artillery, Radar";
+
+			/**/			NexusVehicleTurrets(const String&name, unsigned protection=CLI::EraseProtection):Super(name,"Turretset",Persistence::RestoreFromSavegame,1,protection)	{}
+			virtual String	ToString()		const	override
+			{
+				static StringBuffer buffer;
+				buffer.Clear();
+				foreach (State::Config::Nexus::vehicleTurrets,t)
+				{
+					if (buffer.IsNotEmpty())
+						buffer << ',';
+					buffer << (*t)->typeName;
+				}
+				return buffer.ToString();
+			}
+			virtual	bool	Set(const String&value)	override
+			{
+				String old = ToString();
+				static Array<String>vehicleTurretNames;
+
+				explode(',', value, vehicleTurretNames);
+				foreach (vehicleTurretNames,t)
+				{
+					t->trimThis();
+					Objects::Component::Turret*ct = Objects::Component::GetTurretByName(*t);
+					if (!ct || ct->isSatelliteRing)
+						return false;
+				}
+				State::Config::Nexus::vehicleTurrets.SetSize(vehicleTurretNames.Count());
+				for (index_t i = 0; i < vehicleTurretNames.Count(); i++)
+					State::Config::Nexus::vehicleTurrets[i] = Objects::Component::GetTurretByName(vehicleTurretNames[i]);
+				if (ToString() != old)
+				{
+					OnChanged();
+				}
+				return true;
+
+			}
+			virtual String		GetSupportedValues() const override 
+			{
+				String rs;
+				foreach (Objects::Component::allTurretComponents,tc)
+					if (!(*tc)->isSatelliteRing)
+					{
+						if (rs.IsNotEmpty())
+							rs += ",";
+						rs += (*tc)->typeName;
+					}
+				return "{"+rs+"}*";
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = ToString();
+			}
+		};
+
+
+		class UnitLimit : public Base
+		{
+			typedef Base	Super;
+		public:
+			const ConstName	key;
+			UINT16			defaultValue;
+
+			UINT16			Get() const
+			{
+				return (UINT16)RuntimeConfig::UnitLimits::Get(key,true);
+			}
+
+			/**/			UnitLimit(const String&name, ConstName key, unsigned protection=CLI::EraseProtection):Super(name,"Count16",Persistence::RestoreFromSavegame,1,protection),key(key)
+			{}
+			virtual String	ToString()		const	override	{return String(Get());}
+			virtual	bool	Set(const String&value)	override
+			{
+				int v;
+				UINT16 old = Get();
+				if (convert(value.c_str(),v) && RuntimeConfig::UnitLimits::Set(key,v))
+				{
+					if (old != Get())
+						OnChanged();
+					return true;
+				}
+				return false;
+			}
+			virtual String		GetSupportedValues() const override 
+			{
+				return "[0,65535]";
+			}
+			virtual String	GetDefault() const override
+			{
+				return String(defaultValue);
+			}
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = Get();
+			}
+
+		};
+
+
+		class UnitLimitEnabled : public Base
+		{
+			typedef Base	Super;
+		public:
+			bool			defaultValue =true;
+
+			/**/			UnitLimitEnabled(const String&name, unsigned protection=CLI::EraseProtection):Super(name,"bool",Persistence::RestoreFromSavegame,1,protection)
+			{}
+			virtual String	ToString()		const	override	{return String(RuntimeConfig::UnitLimits::IsEnabled());}
+			virtual	bool	Set(const String&value)	override
+			{
+				bool enable;
+
+				bool old = RuntimeConfig::UnitLimits::IsEnabled();
+				if (convert(value.c_str(),enable))
+				{
+					RuntimeConfig::UnitLimits::Enable(enable);
+					if (old != RuntimeConfig::UnitLimits::IsEnabled())
+						OnChanged();
+					return true;
+				}
+				return false;
+			}
+			virtual String		GetSupportedValues() const override 
+			{
+				return "[false,true]";
+			}
+			virtual String	GetDefault() const override
+			{
+				return String(defaultValue);
+			}
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = RuntimeConfig::UnitLimits::IsEnabled();
+			}
+
+		};
+
+
+		class FileReferenceAttachment : public CLI::Folder::Attachable
+		{
+		public:
+			const CLI::PVariable	sourceVariable;
+			const String	base;
+
+			/**/			FileReferenceAttachment(const String&base, const CLI::PVariable&source):sourceVariable(source),base(base)	{}
+		};
+
+
+
+		PBase	SetString(const String&name, const String&value, Persistence p)
+		{
+			PBase rs (new StringVar(name,p, value, CLI::EraseProtection));
+			state.SetVariable(rs);
+			return rs;
+		}
+
+
+		template <typename T>
+		PBase	Set(const String&name, T&reference, T min, T max, Persistence p)
+		{
+			PBase rs (new TypedVariable<T>(name,p,reference,min,max,CLI::EraseProtection));
+			state.SetVariable(rs);
+			return rs;
+		}
+
+
+		template <typename T>
+		PBase	SetEnum(const String&name, T&enumReference, Persistence p)
+		{
+			PBase rs (new EnumVariable<T>(name,p,enumReference,CLI::EraseProtection));
+			state.SetVariable(rs);
+			return rs;
+		}
+		template <typename T, typename RefT>
+		PBase	SetMappedEnum(const String&name, RefT&enumReference, Persistence p)
+		{
+			PBase rs (new MappedEnumVariable<T,RefT>(name,p,enumReference,CLI::EraseProtection));
+			state.SetVariable(rs);
+			return rs;
+		}
+	}
+
+
+	static void MapConfig(Grid::TPlanetConfig::TLayer&layer, const CLI::PFolder&context)
+	{
+		state.PushAndReplaceFocus(context);
+			Variable::Set("baseHeight",layer.baseHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight, Variable::Persistence::GameInvariant);
+			Variable::Set("noiseHeightScale",layer.heightScale,0.f, 10.f, Variable::Persistence::GameInvariant);
+			Variable::Set("frequency",layer.frequency,0.f, 10.f, Variable::Persistence::GameInvariant);
+			Variable::Set("dampening",layer.dampening,0, 10, Variable::Persistence::GameInvariant);
+		state.PopFocus();
+	}
+
+	static bool DeclareFolder(const XML::Node&node, const CLI::PFolder&context)
+	{
+		bool allGood = true;
+		foreach (node.children,child)
+		{
+			String name;
+			if (!child->Query("name",name))
+			{
+				LogEvent(EventType::ConfigRelated,"Unable to retrieve name attribute of XML variable node in "+context->GetPath());
+				allGood = false;
+				continue;
+			}
+			if (child->name == "variable")
+			{
+				CLI::PVariable v = context->variables.Query(name);
+				if (!v)
+				{
+					LogEvent(EventType::ConfigRelated,"Addressed variable '"+name+"' does not exist in "+context->GetPath());
+					allGood = false;
+					continue;
+				}
+				String help = child->inner_content.trim();
+				if (help.IsNotEmpty())
+				{
+					static Array<String>	lines;
+					static StringBuffer		fused;
+					fused.Clear();
+					explodeCallback(isNewline<char>,help,lines);
+					//wrap(help,80,lines);
+					foreach (lines,line)
+					{
+						StringRef trimmed = line->trimRef();
+						if (trimmed.length())
+						{
+							if (fused.IsNotEmpty())
+								fused << nl;
+							fused << trimmed;
+						}
+					}
+					//if (fused.ToString().find("The higher, the thinner, sharper and"))
+					//{
+					//	bool brk = true;
+					//}
+					v->SetUniqueHelp(fused.ToStringRef());
+				}
+
+
+				String value;
+				if (child->Query("default",value) && value.IsNotEmpty())
+				{
+					if (v->Set(value))
+						v->SetCurrentToDefault();
+					else
+					{
+						LogEvent(EventType::ConfigRelated,"Failed to set '"+v->name+"' to '"+value+"' in "+context->GetPath());
+						allGood = false;
+					}
+				}
+
+				continue;
+			}
+			if (child->name == "command")
+			{
+				CLI::PCommand v = context->commands.Query(name);
+				if (!v)
+				{
+					LogEvent(EventType::ConfigRelated,"Addressed command '"+name+"' does not exist in "+context->GetPath());
+					allGood = false;
+					continue;
+				}
+				if (child->inner_content.trim().IsNotEmpty())
+					v->SetUniqueHelp(child->inner_content.trim());
+
+				continue;
+			}
+
+			if (child->name == "context")
+			{
+				CLI::PFolder f = context->folders.Query(name);
+				if (!f)
+				{
+					LogEvent(EventType::ConfigRelated,"Addressed context '"+name+"' does not exist in "+context->GetPath());
+					allGood = false;
+					continue;
+				}
+				if (child->inner_content.trim().IsNotEmpty())
+					f->SetUniqueHelp(child->inner_content.trim());
+				if (!DeclareFolder(*child,f))
+					allGood = false;
+				continue;
+			}
+
+			{
+				LogEvent(EventType::ConfigRelated,"Unexpected XML node type '"+child->name+"' found in "+context->GetPath());
+				continue;
+			}
+		}
+		return allGood;
+	}
+
+	static void ExportFolder(XML::Node&node, const CLI::PFolder&context)
+	{
+		for (const auto&cmd : context->commands)
+		{
+			XML::Node&xcmd = node.Create("command");
+			xcmd.Set("name",cmd->name);
+			if (cmd->help)
+				xcmd.inner_content  = *cmd->help;
+		}
+		for (const auto&var : context->variables)
+		{
+			XML::Node&xcmd = node.Create("variable");
+			xcmd.Set("name",var->name);
+			if (var->help)
+				xcmd.inner_content  = *var->help;
+			String def = var->GetDefault();
+			//if (def.IsNotEmpty())
+			xcmd.Set("default",def);
+		}
+		for (const auto&ctx : context->folders)
+		{
+			XML::Node&xentry = node.Create("context");
+			xentry.Set("name",ctx->name);
+			if (ctx->help)
+				xentry.inner_content  = *ctx->help;
+			ExportFolder(xentry,ctx);
+		}
+	}
+
+	static void SetupBase(const CLI::PFolder&context)
+	{
+		for (const auto&var : context->variables)
+		{
+			To<Variable::Base>::Cast(var)->SetupBase();
+		}
+		for (const auto&ctx : context->folders)
+		{
+			SetupBase(ctx);
+		}
+	}
+
+	void	CreatePrototypeDeclaration()
+	{
+		XML::Container xml;
+		xml.root_node.name = "declaration";
+		ExportFolder(xml.root_node,state.GetRoot());
+		xml.SaveToFile("./config/declaration.xml");
+	}
+
+	static CLI::PVariable planetType;
+
+	
+	void	Create()
+	{
+		#undef VAR
+		#define VAR(_NAME_,_CONTEXT_,_MIN_,_MAX_,_PERSISTENCE_)	Variable::Set(#_NAME_,_CONTEXT_::_NAME_,_MIN_,_MAX_,_PERSISTENCE_);
+		#undef ENUMVAR
+		#define ENUMVAR(_NAME_,_CONTEXT_,_PERSISTENCE_)	Variable::SetEnum(#_NAME_,_CONTEXT_::_NAME_,_PERSISTENCE_);
+
+		state.EnterNewFolder("World");
+			VAR(simulateLiquids,State::Config,false,true,Variable::Persistence::RestoreFromSavegame);
+			ENUMVAR(worldDiscovery,State::Config,Variable::Persistence::GameInvariant)
+
+			state.EnterNewFolder("Resources");
+				for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+				{
+					Objects::Resource res = Objects::Resource::Reinterpret(i);
+					state.EnterNewFolder(res.ToString());
+						Variable::Set("probability",Grid::Resource::probability[i],0.f,1.f,Variable::Persistence::GameInvariant);
+						Variable::Set("max",Grid::Resource::maximum[i],(Grid::Resource::coverage_t)1,(Grid::Resource::coverage_t)32,Variable::Persistence::GameInvariant);
+					state.ExitFolder();
+				}
+			state.ExitFolder();
+
+			state.EnterNewFolder("Planet");
+				planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::GameInvariant);
+				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("config/planets",planetType));
+				{
+					Variable::Set("atmosphereDensity",Grid::currentPlanetConfig.atmosphereColor.a,0.f,1.f,Variable::Persistence::GameInvariant);
+					Variable::SetMappedEnum<Grid::Content,UINT32>("innerCoreType",Grid::currentPlanetConfig.innerCoreType,Variable::Persistence::GameInvariant);
+					state.EnterNewFolder("ExtendedCore");
+						Variable::SetEnum("type",Grid::currentPlanetConfig.extendedCoreType,Variable::Persistence::GameInvariant);
+					state.ExitFolder();
+					
+					
+					CLI::PFolder mountains = state.EnterNewFolder("Mountains");
+						Variable::SetEnum("top",Grid::currentPlanetConfig.topType,Variable::Persistence::GameInvariant)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
+						Variable::SetEnum("type",Grid::currentPlanetConfig.innerType,Variable::Persistence::GameInvariant)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
+						Variable::Set("snowHeight",Grid::currentPlanetConfig.snowHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight,Variable::Persistence::GameInvariant)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
+					state.ExitFolder();
+
+					state.EnterNewFolder("Liquid");
+						Variable::SetEnum("type",Grid::currentPlanetConfig.liquidCoverage,Variable::Persistence::GameInvariant)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
+						Variable::Set("level",Grid::currentPlanetConfig.liquidHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight,Variable::Persistence::GameInvariant)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
+						Variable::SetEnum("outline",Grid::currentPlanetConfig.liquidOutline,Variable::Persistence::GameInvariant);
+					state.ExitFolder();
+
+					MapConfig(Grid::currentPlanetConfig.extendedCore,state.GetFocus()->CreateOrGetChild("ExtendedCore"));
+					MapConfig(Grid::currentPlanetConfig.mountains,mountains);
+
+				}
+				state.ExitFolder();
+			state.ExitFolder();
+		state.ExitFolder();
+		state.EnterNewFolder("Rules");
+
+			ENUMVAR(gameGoal,RuntimeConfig,Variable::Persistence::RestoreFromSavegame)
+
+			state.SetVariable(CLI::PVariable(new Variable::SupportedFactions("supportedFactions")));
+
+			VAR(closedGame,State::Config,false,true,Variable::Persistence::RestoreFromSavegame)
+			VAR(roundTimer,State::Config,-1,INT_MAX,Variable::Persistence::ConfigOverridesSavegame)
+			VAR(startBases,State::Config,false,true,Variable::Persistence::RestoreFromSavegame)
+			VAR(basesRequired,State::Config,false,true,Variable::Persistence::RestoreFromSavegame)
+			VAR(exposeActionLeftToHostileFactions,State::Config,false,true,Variable::Persistence::ConfigOverridesSavegame)
+			VAR(newVehiclesHaveFullAmmo,Objects,false,true,Variable::Persistence::RestoreFromSavegame)
+			VAR(uplinkBandwidth,State::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame)
+			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::ConfigOverridesSavegame)
+
+			state.EnterNewFolder("UnitLimits");
+				RuntimeConfig::UnitLimits::Reset();
+
+				state.SetVariable(CLI::PVariable(new Variable::UnitLimitEnabled("Enabled")));
+
+				state.EnterNewFolder("Structures");
+					for (const Objects::PStructure&p:Objects::structurePrototypes)
+					{
+						String key = p->GetTypeName();
+						key.replace(' ','_');
+						state.SetVariable(CLI::PVariable(new Variable::UnitLimit(key,p->GetCTypeName())));
+					}
+				state.ExitFolder();
+
+				state.EnterNewFolder("MobileTurrets");
+					for (const auto&c:Objects::Component::allTurretComponents)
+					{
+						String key = c->typeName;
+						key.replace(' ','_');
+						state.SetVariable(CLI::PVariable(new Variable::UnitLimit(key,c->constName)));
+					}
+				state.ExitFolder();
+			state.ExitFolder();
+
+			state.EnterNewFolder("Nexus");
+				VAR(haveBases,State::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
+				VAR(enableAI,State::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
+				VAR(threatEstimationFactor,State::Config::Nexus,0.001f,100.f,Variable::Persistence::ConfigOverridesSavegame)
+				state.SetVariable(CLI::PVariable(new Variable::NexusVehicleTurrets("vehicleTurrets")));
+			state.ExitFolder();
+		state.ExitFolder();
+
+		state.EnterNewFolder("Server");
+			VAR(saveEveryNRounds,State::Config,-1,100,Variable::Persistence::ConfigOnly);
+			VAR(saveWhenAllQuit,State::Config,false,true,Variable::Persistence::ConfigOnly);
+		state.ExitFolder();
+
+		SetupBase(state.GetRoot());
+
+		{
+			XML::Container xdecl("./config/declaration.xml");
+			if (!DeclareFolder(xdecl.root_node,state.GetRoot()))
+			{
+				CreatePrototypeDeclaration();
+			}
+		}
+
+
+	}
+
+	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction);
+
+	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction)
+	{
+		bool allGood = true;
+		for (const auto&var : folder->variables)
+		{
+			if (filterFunction)
+			{
+				Variable::PBase b = To<Variable::Base>::Cast(var);
+				if (!filterFunction(b))
+					continue;
+
+			}
+			const Config::Context::Attribute*attrib = ctx ? ctx->GetAttrib(var->name) : nullptr;
+			if (attrib)
+			{
+				if (!var->Set(attrib->value))
+				{
+					String support = var->GetSupportedValues();
+					if (support.IsNotEmpty())
+						support = "Supported values are "+var->GetSupportedValues()+". ";
+					LogEvent(EventType::ConfigRelated,"Unable to set "+folder->GetPath()+"/"+var->name+" to '"+attrib->value+"'. "+support+"Defaulting to "+var->GetDefault());
+					ASSERT2__(var->Set(var->GetDefault()),folder->GetPath()+"/"+var->name,var->GetDefault());
+					allGood = false;
+				}
+			}
+			else
+			{
+				String support = var->GetSupportedValues();
+				if (support.IsNotEmpty())
+					support = "Supported values are "+var->GetSupportedValues()+". ";
+				LogEvent(EventType::ConfigRelated,"Unable to read "+folder->GetPath()+"/"+var->name+". "+support+"Defaulting to "+var->GetDefault());
+				ASSERT2__(var->Set(var->GetDefault()),folder->GetPath()+"/"+var->name,var->GetDefault());
+				allGood = false;
+			}
+
+		}
+		for (const auto&dir : folder->folders)
+		{
+			if (dir->attachment)
+			{
+				if (testMode)
+					planetType->Set("LushGreen");
+
+				std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(dir->attachment);
+				ASSERT__(ref);
+				//PathString str = RuntimeConfig::ConfigFile( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"));
+				Feed(dir,PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"),testMode,filterFunction);
+			}
+			else
+			{
+				const Config::Context*sub = ctx ? ctx->GetContext(dir->name) : nullptr;
+				if (ctx && !sub)
+					allGood = false;
+				bool innerGood = InnerFeed(dir,sub,testMode,filterFunction);
+				if (!innerGood)
+					allGood = false;
+
+			}
+
+		}
+		return allGood;
+	}
+
+
+	static void WriteIndent(StringFile&outFile, int indent)
+	{
+		for (int i = 0; i < indent; i++)
+			outFile << '\t';
+	}
+
+	static void WriteHelp(StringFile&outFile, const std::shared_ptr<CLI::NamedItem>&item, int indent, const String&prefix)
+	{
+		static StringBuffer outBuffer;
+		outBuffer.Clear();
+		outBuffer << prefix;
+		if (item->help && item->help->IsNotEmpty())
+			outBuffer << *item->help;
+		outBuffer << nl;
+
+
+		Variable::PBase var = To<Variable::Base>::DynamicCast(item);
+		if (var)
+		{
+			String values = var->GetSupportedValues();
+
+			switch (var->persistence)
+			{
+				case Variable::Persistence::ConfigOnly:
+					outBuffer << "Loaded from configuration each time the server is restarted. Not written to savegames."<<nl;
+				break;
+				case Variable::Persistence::ConfigOverridesSavegame:
+					outBuffer << "Written to savegames and applied during loading, but overridden by settings found in configuration files afterwards."<<nl;
+				break;
+				case Variable::Persistence::GameInvariant:
+					outBuffer << "Written to savegames and restored from there, but cannot be altered once a game has started."<<nl;
+				break;
+				case Variable::Persistence::RestoreFromSavegame:
+					outBuffer << "Written to savegames and restored from there, overriding any settings found in configuration files. May be changed by the server during runtime."<<nl;
+				break;
+				default:
+					FATAL__("Unknown or unsupported type for export");
+				break;
+			}
+
+
+			outBuffer << var->type;
+			if (values.IsNotEmpty())
+			{
+				outBuffer <<"; range=" << values;
+			}
+			String def = var->GetDefault();
+			if (def.IsNotEmpty())
+			{
+				outBuffer << "; default=" << def;
+			}
+			outBuffer <<'.'<<nl;
+		}
+
+		static Array<String>	lines;
+		wrap(outBuffer.ToString(),80,lines);
+		foreach (lines,line)
+		{
+			String trimmed = line->trim();
+			if (trimmed.IsNotEmpty())
+			{
+				WriteIndent(outFile,indent);
+				outFile << ';' << trimmed<<nl;
+			}
+		}
+	}
+
+	static void DefineConfig(StringFile&outFile,const CLI::PFolder&folder, int indent)
+	{
+		for (const auto&var : folder->variables)
+		{
+			Variable::PBase b = To<Variable::Base>::Cast(var);
+			if (b->persistence == Variable::Persistence::Temporary)
+				continue;
+			WriteHelp(outFile,var,indent,var->name+": ");
+			WriteIndent(outFile,indent);
+			outFile << var->name << '='<<var->ToString() << nl;
+		}
+		for (const auto&dir : folder->folders)
+		{
+			if (dir->attachment)
+				continue;
+			WriteHelp(outFile,dir,indent,"");
+			WriteIndent(outFile,indent);
+			outFile << '[' << dir->name<<']'<<nl;
+			DefineConfig(outFile,dir,indent+1);
+		}
+	}
+
+	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction)
+	{
+		Configuration	config;
+		Config::Context*	ctx = nullptr;
+		
+		PathString configName = RuntimeConfig::ConfigFile(PathString(subConfigName));
+
+		bool rewrite = true;
+		if (FileSystem::IsFile(configName))
+		{
+			if (!config.LoadFromFile(configName))
+			{
+				LogEvent(EventType::InternalFault,"Unable to parse "+String(configName)+":\n"+config.Report());
+			}
+			else
+			{
+				ctx = &config;
+				rewrite = false;
+			}
+		}
+		else
+		{
+			if (FileSystem::IsFile(subConfigName))
+			{
+				LogEvent(EventType::ConfigRelated,"Restoring missing configuration file '"+String(subConfigName)+"' from base data");
+				if (FileSystem::Copy(subConfigName,configName,true))
+				{
+					if (!config.LoadFromFile(configName))
+					{
+						LogEvent(EventType::InternalFault,"Unable to parse "+String(configName)+":\n"+config.Report());
+					}
+					else
+					{
+						ctx = &config;
+						rewrite = false;
+					}
+				}
+			}	
+		}
+
+		if (!ctx)
+			LogEvent(EventType::ConfigRelated,"Default configuration loaded");
+		bool allGood = InnerFeed(folder,ctx,testMode,filterFunction);
+		if (!allGood || rewrite)
+		{
+			StringFile outFile;
+			if (!outFile.Create(configName))
+			{
+				LogEvent(EventType::ConfigRelated,"Unable to overwrite '"+String(configName)+"'");
+			}
+			else
+			{
+				DefineConfig(outFile,folder, 0);
+				outFile.Close();
+			}
+		}
+	}
+
+
+
+	void	LoadOverrides()
+	{
+		#ifdef _DEBUG
+			const char*localServerINI = "config/debug_server.ini";
+		#else
+			const char*localServerINI = "config/server.ini";
+		#endif
+
+		Feed(state.GetRoot(),localServerINI, false, [](const Variable::PBase&base)->bool
+		{
+			return base->persistence == Variable::Persistence::ConfigOverridesSavegame;
+		});
+
+		Grid::currentPlanetConfig.GenerateAtmosphereColor();
+
+
+	}
+
+	void Load(bool testMode)
+	{
+		FileSystem::Folder planetPrototypes = FileSystem::Folder().FindFolder("config/planets");
+		
+
+		if (planetPrototypes.IsValidLocation())
+		{
+			FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("config/planets"));
+			planetPrototypes.Rewind();
+			FileSystem::File file;
+			while (planetPrototypes.NextFile(".ini",file))
+			{
+				PathString dest = RuntimeConfig::ConfigFile("config/planets/"+file.GetName());
+				if (!FileSystem::IsFile(dest))
+				{
+					if (!FileSystem::Copy(file.GetLocation(),dest,true))
+					{
+						LogEvent(EventType::InternalFault,"Warning: Unable to restore default planet type '"+String(file.GetInnerName())+"'");
+					}
+					else
+						LogEvent(EventType::InternalFault,"Restored default planet type '"+String(file.GetInnerName())+"'");
+				}
+			}
+
+		}
+		else
+			LogEvent(EventType::InternalFault,"Warning: Unable to find base planet source folder");
+
+
+		#ifdef _DEBUG
+			const char*localServerINI = "config/debug_server.ini";
+		#else
+			const char*localServerINI = "config/server.ini";
+		#endif
+
+		Feed(state.GetRoot(),localServerINI, testMode,std::function<bool(const Variable::PBase&)>());
+
+		Grid::currentPlanetConfig.GenerateAtmosphereColor();
+	}
+
+}
+
+

@@ -2,9 +2,10 @@
 #include "entity.h"
 #include "turretBase.h"
 
+#include "../runtimeConfig.h"
+
 #ifdef HAS_WINDOW
 	#include "visualCommands.h"
-	#include "../runtimeConfig.h"
 	//#include "gridAndChoices.h"
 	#include "satellite.h"
 	#include "faction.h"
@@ -94,11 +95,11 @@ namespace Objects
 	{
 		if (!this)
 			return "<NULL>";
-		#ifdef _DEBUG
-			return GetTypeName() + " " + id.ToString()+" @"+String((void*)this);
-		#else
+		//#ifdef _DEBUG
+		//	return GetTypeName() + " " + id.ToString()+" @"+String((void*)this);
+		//#else
 			return GetTypeName() + " " + id.ToString();
-		#endif
+//		#endif
 	}
 
 
@@ -457,6 +458,19 @@ namespace Objects
 
 	}
 
+	#ifndef CLIENT
+		void					WorldEntity::ReSeedRandom()
+		{
+			CRC32::beginSequence();
+			CRC32::calcNext(&location,sizeof(location));
+			CRC32::calcNext(&RuntimeConfig::roundNumber,sizeof(RuntimeConfig::roundNumber));
+			ConstName cName = GetCTypeName();
+			CRC32::calcNext(&cName,sizeof(ConstName));
+			UINT32 seed = CRC32::endSequence();
+			//std::cout << "Reseeding "<<GetName()<<" to "<<seed<< std::endl;
+			localRandom.setSeed(seed);
+		}
+	#endif
 
 	PWorldEntity			GetEntity(const TUniqueID&id)
 	{

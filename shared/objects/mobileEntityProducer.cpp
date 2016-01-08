@@ -7,6 +7,7 @@
 #include "structureCompound.h"
 #include "faction.h"
 
+
 #ifdef HAS_WINDOW
 	#include "visualChoices.h"
 	#include "rendering.h"
@@ -138,8 +139,8 @@ namespace Objects
 			}
 
 			PMobileEntity v = CompleteProduction();
-			static Random random;
-			Grid::LCellIdI c = movementChoices[random.getIndex(movementChoices.Count()-1)];
+			//static Random random;
+			Grid::LCellIdI c = movementChoices[parent->localRandom.getIndex(movementChoices.Count()-1)];
 
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))
@@ -257,7 +258,7 @@ namespace Objects
 			return v;
 		}
 
-		PVehicle				MobileEntityProducer::EnqueueProductionOfVehicle(ConstName baseName, ConstName turretName)
+		MobileEntityProducer::WorkItem*				MobileEntityProducer::EnqueueProductionOfVehicle(ConstName baseName, ConstName turretName)
 		{
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			ASSERT_NOT_NULL__(parent);
@@ -266,17 +267,17 @@ namespace Objects
 			if (!turret)
 			{
 				LogEvent(EventType::CommandRejected,parent,"Invalid turret component");
-				return PVehicle();
+				return nullptr;
 			}
 			if (!base)
 			{
 				LogEvent(EventType::CommandRejected,parent,"Invalid base component");
-				return PVehicle();
+				return nullptr;
 			}
 			return EnqueueProductionOfVehicle(base,turret);
 		}
 
-		PSatellite				MobileEntityProducer::EnqueueProductionOfSatellite(ConstName typeName)
+		MobileEntityProducer::WorkItem*				MobileEntityProducer::EnqueueProductionOfSatellite(ConstName typeName)
 		{
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			ASSERT_NOT_NULL__(parent);
@@ -286,44 +287,48 @@ namespace Objects
 			if (!parent->owner->CanSpawnType(proto,error))
 			{
 				LogEvent(EventType::OperationAborted,parent,"Unable to enqueue production of "+proto->GetTypeName()+": "+error);
-				return PSatellite();
+				return nullptr;
 			}
 
 			if (!proto)
 			{
 				LogEvent(EventType::CommandRejected,parent,"Invalid satellite type");
-				return PSatellite();
+				return nullptr;
 			}
 
 			PSatellite sat = To<Satellite>::Cast(proto->CreateNewInstance(parent->owner,parent->location,0.f));
-			EnqueueProductionOf(sat);
+			WorkItem*rs = EnqueueProductionOf(sat);
 			parent->RegisterChange(WorldEntity::TasksChanged,-1);
 			SignalNewProductionEnqueued();
-			return sat;
+			return rs;
 		}
 
 
 
-		void					MobileEntityProducer::EnqueueProductionOf(const PMobileEntity&e)
+		MobileEntityProducer::WorkItem*				MobileEntityProducer::EnqueueProductionOf(const PMobileEntity&e, index_t at /*= InvalidIndex*/)
 		{
-			index_t index = queue.Count();
+			index_t index = std::min(at,queue.Count());
 			//productionRoundsLeft
 			UINT32 rounds = ProductionRounds(e,!index);
 			if (!index)
 				productionRoundsLeft = rounds;
-			WorkItem&item = queue.Append();
+			WorkItem&item = queue.Insert(at);
 			item.id.Generate();
 			item.producing = e;
+			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
+			ASSERT_NOT_NULL__(parent);
+			parent->RegisterChange(WorldEntity::TasksChanged,-1);
+			return &item;
 		}
 
-		PVehicle				MobileEntityProducer::EnqueueProductionOfVehicle(Component::VehicleBase*selectedBase, Component::Turret*selectedTurret)
+		MobileEntityProducer::WorkItem*				MobileEntityProducer::EnqueueProductionOfVehicle(Component::VehicleBase*selectedBase, Component::Turret*selectedTurret)
 		{
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			ASSERT_NOT_NULL__(parent);
 			if (queue.Count() >= MaxStructureTasks)
 			{
-				LogEvent(EventType::CommandRejected,parent,"Max queue length ("+String(MaxProductionTasks)+") reached");
-				return PVehicle();
+				LogEvent(EventType::CommandRejected,parent,"Max queue length ("+String(MaxStructureTasks)+") reached");
+				return nullptr;
 			}
 			if (selectedBase && selectedTurret)
 			{
@@ -332,14 +337,14 @@ namespace Objects
 				if (!parent->owner->CanSpawnType(vehicle,error))
 				{
 					LogEvent(EventType::OperationAborted,parent,"Unable to enqueue production of "+vehicle->GetTypeName()+": "+error);
-					return PVehicle();
+					return nullptr;
 				}
-				EnqueueProductionOf(vehicle);
+				WorkItem*rs = EnqueueProductionOf(vehicle);
 				parent->RegisterChange(WorldEntity::TasksChanged,-1);
 				SignalNewProductionEnqueued();
-				return vehicle;
+				return rs;
 			}
-			return PVehicle();
+			return nullptr;
 		}
 
 		bool				MobileEntityProducer::AbortConstruction(const TUniqueID&id)
@@ -365,6 +370,22 @@ namespace Objects
 				}
 			}
 			return false;
+		}
+
+		void			MobileEntityProducer::UpdateGatheringPoint(const Grid::LCellIdI&loc)
+		{
+			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
+			if (gatheringPoint.current != loc)
+			{
+				LogEvent(EventType::EntityProcess, parent, "Set gathering point");
+				gatheringPoint.current = loc;
+			}
+			else
+			{
+				LogEvent(EventType::EntityProcess, parent, "Unset gathering point");
+				gatheringPoint.current = Grid::LCellIdI::Invalid;
+			}
+			parent->RegisterChange(Objects::WorldEntity::AutomationChanged,0);
 		}
 
 

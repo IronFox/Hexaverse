@@ -189,6 +189,9 @@ namespace Objects
 			static Buffer0<WFaction>	all;
 			static PFaction				nexus;
 
+			static PFaction			FindByID(const TUniqueID&);
+
+
 
 			Grid::WorldData			currentState;
 			Grid::VisibilityState	visibility;
@@ -213,7 +216,7 @@ namespace Objects
 			GenericHashTable<PWorldEntity,float,SharedPtrHash>	lostVisualAt,//!< Used for entities that dropped out of contact during the same round
 															gainedVisualAt;
 
-			void DropFrameData()
+			void DropPerRoundData()
 			{
 				lostVisualAt.Clear();
 				gainedVisualAt.Clear();
@@ -352,6 +355,11 @@ namespace Objects
 	Stored mobiles are not iterated
 	*/
 	void			ForeachWorldEntity(const std::function<void(const PWorldEntity&)>&func);
+	/**
+	Iterates through all entities that are located in the world, including markers (markers on client only)
+	Stored mobiles are also iterated
+	*/
+	void			ForeachWorldEntityIncludingStored(const std::function<void(const PWorldEntity&)>&func);
 
 	/**
 	Iterates through all mobile entities that are located in the world.

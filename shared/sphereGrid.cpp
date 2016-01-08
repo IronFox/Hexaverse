@@ -50,7 +50,10 @@ namespace Grid
 
 	#ifdef CLIENT
 		OrbitGrid	visibleOrbitGrid;
+	#else
+
 	#endif
+		TPlanetConfig	currentPlanetConfig;
 
 	#ifdef HAS_WINDOW
 		/*static*/ const float4 WaterCompiler::waterColor = float4(0.5f, 0.6f, 1.f,0.6f);
@@ -413,8 +416,8 @@ namespace Grid
 			if (h > config.snowHeight)
 				return Content::Snow;
 
-			if (h < config.liquidHeight && CellStack::Cell::IsLiquid(config.liquidCoverage) && CellStack::Cell::IsSolid(config.liquidProximity))
-				return config.liquidProximity;
+			if (h < config.liquidHeight && CellStack::Cell::IsLiquid(config.liquidCoverage) && CellStack::Cell::IsSolid(config.liquidOutline))
+				return config.liquidOutline;
 
 			if (h < 3 || config.innerType != Content::Unknown)
 				return config.topType;
@@ -425,7 +428,6 @@ namespace Grid
 
 		void			CellStack::Init(float2 heights, const TPlanetConfig&config)
 		{
-
 			//float topHeight = heights.y;
 			//based on this, h could go up to 40, though chances for that are excessively rare
 			int up0 = (int)Round(heights.y * config.mountains.heightScale / RawLayerHeight);
@@ -479,10 +481,12 @@ namespace Grid
 						volumeCell[i].submergence = h < 0 && i == uh ? (BYTE)clamp(HalfRange - int(i),0,255) : 0;
 					#endif
 				}
-
-
 			}
 			volumeCell[uh].content = GetTopTypeAtHeight(config,h);
+
+			for (UINT l = uh+1; l < Range; l++)
+				volumeCell[l].content = Content::Clear;
+
 
 			for (UINT i = 0; i < coreLayer; i++)
 			{
@@ -492,7 +496,8 @@ namespace Grid
 
 			if (config.liquidCoverage != Content::Clear)
 			{
-				for (UINT i = 0; i <= (UINT)(HalfRange + config.liquidHeight) && i < Range; i++)
+				UINT top = std::min(ToLayer(config.liquidHeight),Range-1);
+				for (UINT i = 0; i <= top; i++)
 				{
 					if (volumeCell[i].content == Content::Clear)
 					{
@@ -625,7 +630,8 @@ namespace Grid
 
 	int CellStack::FindMostApplicableGround(int h, bool canStandOnWater) const
 	{
-		UINT uh = unsigned(h + HalfRange);
+		UINT uh = ToLayer(h);
+		//unsigned(h + HalfRange);
 		if (uh < Range)
 		{
 			if (volumeCell[uh].IsSolid() || (volumeCell[uh].IsWater() && canStandOnWater))
@@ -662,6 +668,10 @@ namespace Grid
 	{
 		#ifdef HAS_WINDOW
 			Buffer0<DX11::Shader::Binding> bindings;
+
+
+			foreach (Resource::all,res)
+				memset(res->known,false,sizeof(res->known));
 
 			//bindings;
 		
@@ -882,8 +892,14 @@ namespace Grid
 			return content == Content::Earth || content == Content::Rock || content == Content::Sand;
 		}
 
-		void GenerateWorldVolume(const TPlanetConfig&config, WorldDiscovery discovery)
+		void BuildWorld(const TPlanetConfig&config, WorldDiscovery discovery)
 		{
+			static Random random;
+
+			foreach (Resource::all,res)
+				res->Fill(random);
+
+
 			for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
 			{
 				actualWorld.cellStack[i].Init(RandomHeight(high.cells[i].centerVertex.xyz,config),config);
@@ -984,7 +1000,7 @@ namespace Grid
 			});
 
 
-			const bool solidProx = CellStack::Cell::IsSolid(config.liquidProximity) && CellStack::Cell::IsLiquid(config.liquidCoverage);
+			const bool solidProx = CellStack::Cell::IsSolid(config.liquidOutline) && CellStack::Cell::IsLiquid(config.liquidCoverage);
 			for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
 			{
 				auto&stack = actualWorld.cellStack[i];
@@ -1010,17 +1026,16 @@ namespace Grid
 						{
 							const auto&n = high.grid.GetCell(i).neighborhood;
 							for (BYTE k = 0; k < n.numNeighbors; k++)
-								actualWorld.cellStack[n.neighborID[k]].volumeCell[l].SetToIfSolid(config.liquidProximity);
+								actualWorld.cellStack[n.neighborID[k]].volumeCell[l].SetToIfSolid(config.liquidOutline);
 						}
 
 					}
 				}
 
-
 			for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
 			{
 				auto&stack = initialWorld.cellStack[i];
-				stack = actualWorld.cellStack[i];
+				stack = actualWorld.cellStack[i];	//raw copy
 				switch (discovery)
 				{
 					case WorldDiscovery::None:
@@ -1046,21 +1061,32 @@ namespace Grid
 							}
 						}
 					break;
+					case WorldDiscovery::Liquids:
+						for (unsigned j = 0; j < CellStack::Range; j++)
+						{
+							CellStack::Cell&c = stack.volumeCell[j];
+							if (c.content != Content::Clear && !c.IsLiquid())
+							{
+								c.content = Content::Unknown;
+								DBG_ASSERT__(c.structureCounter == 0);
+							}
+						}
+					break;
 				}
 			}
 		}
 
 	#endif
 
-	void				Create0(const TPlanetConfig&config, WorldDiscovery discovery)
+	void				Create0()
 	{
 		#ifdef HAS_WINDOW
 			Instruction::atmosphereConfig.Create(VecN<float,8>());
-			UpdateAtmosphere(config.atmosphereColor);
+			UpdateAtmosphere(currentPlanetConfig.atmosphereColor);
 
 			Instruction::sunDirection.Create(float4());
 			Instruction::sunColor.Create(float4());
-			UpdateSun(config.sunPlaneNormal_Speed,config.sunColor);
+			UpdateSun(currentPlanetConfig.sunPlaneNormal_Speed,currentPlanetConfig.sunColor);
 
 
 
@@ -1150,12 +1176,13 @@ namespace Grid
 			lowCellStack.SetSize(low.cells.Count());
 		#endif
 
-		CellStack::bottom.content = config.innerCoreType;
+		//CellStack::bottom.content = config.innerCoreType;
 
 
 		#ifndef CLIENT
-			GenerateWorldVolume(config,discovery);
-
+			//GenerateWorldVolume(config,discovery);
+			initialWorld.FlushAllData();
+			actualWorld.FlushAllData();
 		#else
 			actualWorld.FlushAllData();
 		#endif
@@ -1884,22 +1911,26 @@ namespace Grid
 			#ifndef DEBUG_HIDE_SENSORY
 				if (visible <= 0)
 				{
-					//float avg = (color.r + color.g + color.b) / 3.f * 0.5f + 0.5f;
-					if (color.r < 0)
-					{
-						color.r = -(1.f - (1.f + color.r) / 4.f);
-						color.g = -(1.f - (1.f + color.g) / 4.f);
-						color.b = -(1.f - (1.f + color.b) / 4.f);
-					}
-					else
-					{
-						color.r = 1.f - (1.f - color.r) / 4.f;
-						color.g = 1.f - (1.f - color.g) / 4.f;
-						color.b = 1.f - (1.f - color.b) / 4.f;
-					}
-					//color.r = (color.r + typeColor[0].r*2) / 3.f;
-					//color.g = (color.g + typeColor[0].g*2) / 3.f;
-					//color.b = (color.b + typeColor[0].b*2) / 3.f;
+					#if 0
+						color = (float3)0.f;
+					#else
+						//float avg = (color.r + color.g + color.b) / 3.f * 0.5f + 0.5f;
+						if (color.r < 0)
+						{
+							color.r = -(1.f - (1.f + color.r) / 4.f);
+							color.g = -(1.f - (1.f + color.g) / 4.f);
+							color.b = -(1.f - (1.f + color.b) / 4.f);
+						}
+						else
+						{
+							color.r = 1.f - (1.f - color.r) / 4.f;
+							color.g = 1.f - (1.f - color.g) / 4.f;
+							color.b = 1.f - (1.f - color.b) / 4.f;
+						}
+						//color.r = (color.r + typeColor[0].r*2) / 3.f;
+						//color.g = (color.g + typeColor[0].g*2) / 3.f;
+						//color.b = (color.b + typeColor[0].b*2) / 3.f;
+					#endif
 				}
 			#endif
 			return color; 
@@ -2996,21 +3027,29 @@ namespace Grid
 	}
 
 
-	/*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, float p, coverage_t max)
+	///*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color)
+	//{
+	//	// low.cells[i].centerVertex.xyz,
+	//	Resource&rc = Resource::all.Append();
+	//	rc.Name(name,cname,color);
+	//}
+
+	void Resource::Fill(Random&random)
 	{
-		// low.cells[i].centerVertex.xyz,
-		Resource&rc = Resource::all.Append();
-		rc.Name(name,cname,color);
-		static Random random;
+		Fill(random,probability[resourceIndex],maximum[resourceIndex]);
+	}
+
+	void Resource::Fill(Random&random,float p, coverage_t max)
+	{
 		float3 seed(random.getFloat(-10.f,10.f),random.getFloat(-10.f,10.f),random.getFloat(-10.f,10.f));
 
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 		{
 			#ifndef CLIENT
-				rc.coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p,max);
+				coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p,max);
 			#else
-				rc.coverage[i] = 0;
-				rc.known[i] = false;
+				coverage[i] = 0;
+				known[i] = false;
 			#endif
 		}
 
@@ -3023,8 +3062,8 @@ namespace Grid
 
 			for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 			{
-				familyTotal[Grid::low.grid.GetCell(i).family] += rc.coverage[i];
-				total += rc.coverage[i];
+				familyTotal[Grid::low.grid.GetCell(i).family] += coverage[i];
+				total += coverage[i];
 			}
 
 			float avgPerCell = float(total) / float(LowSetup::GridType::CellCount);
@@ -3043,39 +3082,12 @@ namespace Grid
 					familyTotal[k] = 0;
 					for (index_t i = offset; i < offset + count; i++)
 					{
-						rc.coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p,max);
-						familyTotal[k]+=rc.coverage[i];
+						coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p,max);
+						familyTotal[k]+=coverage[i];
 					}
 
 				}
 
-				
-				
-				//float p2 = p;
-				//coverage_t cv = max;
-
-				//while (familyTotal[k] == 0)
-				//{
-				//	LogEvent(EventType::SessionRelated,nullptr," Family has no coverage. Trying to increase...");
-				//	p2 += 0.001f;
-				//	p2 *= 1.1f;
-				//	cv ++;
-
-				//	familyTotal[k] = 0;
-				//	for (index_t i = offset; i < offset + count; i++)
-				//	{
-				//		rc.coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p2,cv);
-				//		familyTotal[k]+=rc.coverage[i];
-				//	}
-				//}
-
-
-				//float scale = want / familyTotal[k];
-				//LogEvent(EventType::SessionRelated,nullptr," Scale determined at "+String(scale));
-				//for (index_t i = offset; i < offset + count; i++)
-				//{
-				//	rc.coverage[i] *= scale;
-				//}
 			}
 
 
@@ -3088,7 +3100,9 @@ namespace Grid
 	/*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, index_t resIndex)
 	{
 		ASSERT_LESS__(resIndex, Objects::Resource::NumberOfPossibilities);
-		Create(name,cname,color,probability[resIndex],maximum[resIndex]);
+		Resource&rc = Resource::all.Append();
+		rc.Name(name,cname,color);
+		rc.resourceIndex = resIndex;
 	}
 
 	/*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 stackID))
@@ -3880,6 +3894,50 @@ namespace Grid
 			stack->Reset();
 
 	}
+
+
+	void		VisibilityState::UpdateResourceCoverage(const Grid::LCellIdI&center,float range, BasicBuffer<UINT32>&outNewDiscoveries)
+	{
+		static IndexSet covered;
+		static Buffer0<UINT32>	coverage;
+		static Queue<UINT32>	stacks;
+		covered.Clear();
+		coverage.Clear();
+		stacks.Clear();
+		outNewDiscoveries.Clear();
+
+		stacks << center.stackID;
+
+		const TVec3<> worldCenter = Grid::ToWorld(center);
+
+		UINT32 stackID;
+		while (stacks >> stackID)
+		{
+			const TVec3<> world = Grid::ToWorld(Grid::LCellIdI(stackID,center.height));
+			if (Vec::quadraticDistance(world,worldCenter) > sqr(range))
+				continue;
+			if (!covered.IsSet(stackID))
+			{
+				covered.Set(stackID);
+				coverage << stackID;
+			}
+			else
+				continue;
+
+			const auto&n = Grid::low.grid.GetCell(stackID).neighborhood;
+			for (BYTE k = 0; k < n.numNeighbors; k++)
+				stacks << n.neighborID[k];
+		}
+			
+		foreach (coverage,cov)
+		{
+			if (resourcesDiscovered[*cov])
+				continue;
+			resourcesDiscovered[*cov] = true;
+			outNewDiscoveries << *cov;
+		}
+	}
+
 
 	void		VisibilityState::CheckChanges(float t)
 	{

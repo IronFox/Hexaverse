@@ -60,6 +60,11 @@ namespace Objects
 				Component::VehicleBase*		base=nullptr;	//set for vehicles only
 			#else
 				PMobileEntity		producing;
+
+				/**
+				Checks whether or not the local work item produces anything. null-pointer sensitive (can be called on a null-object)
+				*/
+				bool				IsEmpty() const	{return this != nullptr && !producing;}
 			#endif
 
 			bool					IsSatellite() const;
@@ -68,7 +73,7 @@ namespace Objects
 		Buffer0<WorkItem>			queue;	//must use buffer here, because elements can be erased and changes are rare
 
 		UINT32						productionPerRound,	//!< Amount of minerals converted per round. Effectively the production speed of the local instance
-									productionDone=0, 
+									productionDone=0,	//!< Total amount of minerals invested into the current production. Reset to 0 upon completion
 									productionRoundsLeft=0;
 
 
@@ -95,10 +100,10 @@ namespace Objects
 		bool						AwaitsUserInteraction() const;
 
 		#ifndef CLIENT
-			void					EnqueueProductionOf(const PMobileEntity&e);
-			PVehicle				EnqueueProductionOfVehicle(ConstName baseName, ConstName turretName);
-			PVehicle				EnqueueProductionOfVehicle(Component::VehicleBase*selectedBase, Component::Turret*selectedTurret);
-			PSatellite				EnqueueProductionOfSatellite(ConstName typeName);
+			WorkItem*				EnqueueProductionOf(const PMobileEntity&e, index_t at = InvalidIndex);
+			WorkItem*				EnqueueProductionOfVehicle(ConstName baseName, ConstName turretName);
+			WorkItem*				EnqueueProductionOfVehicle(Component::VehicleBase*selectedBase, Component::Turret*selectedTurret);
+			WorkItem*				EnqueueProductionOfSatellite(ConstName typeName);
 
 			void					Tick(ResourceVector&v);
 			UINT32					ProductionRounds(const WorkItem&e, bool isActive) const	{return ProductionRounds(e.producing,isActive);}
@@ -107,6 +112,7 @@ namespace Objects
 			PMobileEntity			CompleteProduction();
 			PMobileEntity			GetActiveProduction() const;
 			bool					AbortConstruction(const TUniqueID&);
+			void					UpdateGatheringPoint(const Grid::LCellIdI&);
 
 		#else
 			UINT32					ProductionRounds(const WorkItem&e, bool isActive) const	{return ProductionRounds(e.cost,isActive);}

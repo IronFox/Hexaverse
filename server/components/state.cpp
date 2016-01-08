@@ -5,12 +5,14 @@
 #include "aiProcess.h"
 #include <io/file_system.h>
 #include "../../client/version.h"
+#include "journalSaveGame.h"
 
 extern TUniqueID	serverID;
 
 
 namespace State
 {
+	Evolver::Abstract			*evolver = nullptr;
 
 	TCP::Server		server;
 
@@ -33,6 +35,8 @@ namespace State
 		State::activePlayers.FindAndErase(client);
 		if (client->faction)
 		{
+			Journal::currentRound.LogFactionOffline(client->faction);
+
 			State::playerMap.Unset(client->faction);
 			client->faction->online = false;
 			Channels::factionOffline.SendTo(State::server,client->faction->id);
@@ -42,65 +46,36 @@ namespace State
 
 
 
-	void		Client::UpdateResourceCoverage(const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
+	void		UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp)
 	{
-		static IndexSet covered;
-		static Buffer0<UINT32>	coverage, final;
-		static Queue<UINT32>	stacks;
-		covered.Clear();
-		coverage.Clear();
-		stacks.Clear();
-		final.Clear();
-
-		stacks << center.stackID;
-
-		const TVec3<> worldCenter = Grid::ToWorld(center);
-
-		UINT32 stackID;
-		while (stacks >> stackID)
-		{
-			const TVec3<> world = Grid::ToWorld(Grid::LCellIdI(stackID,center.height));
-			if (Vec::quadraticDistance(world,worldCenter) > sqr(range))
-				continue;
-			if (!covered.IsSet(stackID))
-			{
-				covered.Set(stackID);
-				coverage << stackID;
-			}
-			else
-				continue;
-
-			const auto&n = Grid::low.grid.GetCell(stackID).neighborhood;
-			for (BYTE k = 0; k < n.numNeighbors; k++)
-				stacks << n.neighborID[k];
-		}
-			
-		foreach (coverage,cov)
-		{
-			if (faction->visibility.resourcesDiscovered[*cov])
-				continue;
-			faction->visibility.resourcesDiscovered[*cov] = true;
-			final << *cov;
-		}
-
-		if (final.IsEmpty())
+		static Buffer0<UINT32>	changed;
+		if (!f)
+			return;
+		f->visibility.UpdateResourceCoverage(center,range,changed);
+		if (changed.IsEmpty())
+			return;
+		State::PClient client;
+		if (!State::playerMap.query(f,client))
+			return;
+		TCP::PPeer peer = client->peer.lock();
+		if (!peer)
 			return;
 
 		Protocol::ResourceUpdate	package;
 		package.timestamp = timestamp;
-		package.cells.SetSize(final.Count());
-		for (index_t i = 0; i < final.Count(); i++)
-			package.cells[i].cellIndex = final[i];
+		package.cells.SetSize(changed.Count());
+		for (index_t i = 0; i < changed.Count(); i++)
+			package.cells[i].cellIndex = changed[i];
 		foreach (Grid::Resource::all,res)
 		{
 			package.resourceName = res->GetCName();
-			for (index_t i = 0; i < final.Count(); i++)
+			for (index_t i = 0; i < changed.Count(); i++)
 			{
-				BYTE sourceCov = res->coverage[final[i]];
+				BYTE sourceCov = res->coverage[changed[i]];
 				package.cells[i].coverage = sourceCov;
 			}
 
-			Channels::resourceUpdate.SendTo(peer.lock(),package);
+			Channels::resourceUpdate.SendTo(peer,package);
 		}
 	}
 
@@ -114,12 +89,14 @@ namespace State
 	Timer::Time		lastPhaseChange = timer.Now();
 	bool			roundTimerPaused = true;
 
-	Grid::TSharedPlanetConfig	persistentPlanetInfo;
+	//Grid::TSharedPlanetConfig	persistentPlanetInfo;
 
 
 	namespace Config
 	{
 		float		factionStartMineralValue=1.f;	//determined during loading
+
+		Grid::WorldDiscovery	worldDiscovery;
 
 
 		int			roundTimer = -1;
@@ -131,23 +108,22 @@ namespace State
 					simulateLiquids = true,
 					empZones = false,
 					exposeActionLeftToHostileFactions = true;
-		UINT32		saveEveryNRounds = 10;
+		int			saveEveryNRounds = 10;
 		bool		saveWhenAllQuit = true;
 		//count_t		limitMinesTo = 100l;
 
 		UINT32		factionSupportFlags = AllFactionSupportFlags;
 
-		bool		enableNexusAI = false;
-		float		nexusThreatEstimationFactor = 1.f;
-		Array<Objects::Component::Turret*>	nexusVehicleTurrets;
-		Array<String>			nexusVehicleTurretNames;	//used during config loading, identical to nexusVehicleTurrets later
 		
 
 		
 
-		namespace NexusPorts
+		namespace Nexus
 		{
 			bool	haveBases = false;
+			bool		enableAI = false;
+			float		threatEstimationFactor = 1.f;
+			Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
 	}
 	
@@ -180,7 +156,7 @@ namespace State
 		worldID.Generate();
 		winner.reset();
 
-		if (State::Config::enableNexusAI)
+		if (State::Config::Nexus::enableAI)
 			AIProcess::End();
 
 		Objects::FlushAllData();
@@ -212,7 +188,7 @@ namespace State
 				+
 				Objects::Vehicle::GetPrice(Objects::Component::hoverbase, Objects::Component::artillery);
 		}
-		//if (State::Config::NexusPorts::haveBases)
+		//if (State::Config::Nexus::haveBases)
 		//{
 		//	Config::nexusStartMineralValue = 
 		//		Objects::Connector::globalPrototype->GetConstructionCost()*5
@@ -242,7 +218,7 @@ namespace State
 		if (!State::server.StartService(SERVICE_PORT))
 			FATAL__("Unable to start service. Chances are, a server is already running.")
 
-		if (State::Config::enableNexusAI)
+		if (State::Config::Nexus::enableAI)
 			AIProcess::Begin(Objects::Faction::nexus->accessToken);
 
 		ResetFactionStartMineralValue();
@@ -260,7 +236,7 @@ namespace State
 	{
 		info.activePhase = RuntimeConfig::phase;
 		info.numFactionsOnline = (UINT16)State::activePlayers.Count();
-		info.numFactionsCreated = (UINT16)Objects::Faction::all.Count() + (State::Config::enableNexusAI ? 1 : 0);
+		info.numFactionsCreated = (UINT16)Objects::Faction::all.Count() + (State::Config::Nexus::enableAI ? 1 : 0);
 		info.roundNumber = (UINT32)RuntimeConfig::roundNumber;
 		info.worldID = State::worldID;
 		info.gameGoal = (UINT32)RuntimeConfig::gameGoal;
@@ -271,7 +247,7 @@ namespace State
 			info.gameFlags |= Protocol::GameFlag::BasesRequired;
 		if (State::Config::startBases)
 			info.gameFlags |= Protocol::GameFlag::StartBases;
-		if (State::Config::enableNexusAI)
+		if (State::Config::Nexus::enableAI)
 			info.gameFlags |= Protocol::GameFlag::NexusAI;
 
 		info.gameFlags |= State::Config::factionSupportFlags;
@@ -304,7 +280,7 @@ namespace State
 		#endif
 
 
-		if (to == RuntimeConfig::Phase::AnimationPhase && !((RuntimeConfig::roundNumber+1)%State::Config::saveEveryNRounds))
+		if (to == RuntimeConfig::Phase::AnimationPhase && State::Config::saveEveryNRounds > 0 && !((RuntimeConfig::roundNumber+1)%State::Config::saveEveryNRounds))
 		{
 			RuntimeConfig::roundNumber++;	//is formally incremented at the beginning of the command phase
 			State::AutoSave();
@@ -481,8 +457,9 @@ namespace State
 
 	void	Describe(Protocol::AttackTask&task, const Objects::Tower::AttackTask&element)
 	{
-		task.id = element.id;
-		task.target = element.target;
+		//task.id = element.id;
+		//task.target = element.target;
+		task = element.target;
 	}
 
 	void	Describe(Protocol::StructureState&state, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
@@ -1343,7 +1320,7 @@ namespace State
 	}
 
 
-	NETSTRUCT3(AttackItemSerializable, NET(bool), autoTarget, NET(Grid::LCellIdI), destination, NET(TUniqueID), id);
+	NETSTRUCT2(AttackItemSerializable, NET(bool), autoTarget, NET(Grid::LCellIdI), destination);
 
 	
 
@@ -1352,7 +1329,7 @@ namespace State
 		AttackItemSerializable helper;
 		helper.destination = item.target;
 		helper.autoTarget = item.autoTarget;
-		helper.id = item.id;
+	//	helper.id = item.id;
 		serial_size_t size = helper.GetSerialSize(false);
 		ASSERT1__(SerializeToMemory(helper,parent->AppendBlock(RID::towerItem)->SetData(size),size,false),size);
 	}
@@ -1362,7 +1339,7 @@ namespace State
 		AttackItemSerializable helper;
 		ASSERT__(DeserializeFromMemory(helper,source->pointer(),source->size(),false));
 		item.target = helper.destination;
-		item.id = helper.id;
+//		item.id = helper.id;
 		item.autoTarget = helper.autoTarget;
 	}
 
@@ -1519,6 +1496,42 @@ namespace State
 	}
 }
 
+void	State::WriteToListChunk(Grid::WorldData&inData, Riff::Chunk&outChunk)
+{
+	for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+	{
+		TCP::Serial<Protocol::WorldDelta>	delta;
+		delta.Ref().timestamp.rightNow = true;
+		Protocol::GenerateWorldDelta(nullptr, &inData, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::LocalCopy);
+		SerializeToChunk(delta.Ref().data0,outChunk.AppendBlock(RID::worldTypeChunk));
+	}
+}
+
+
+void	State::ReadFromListChunk(const Riff::Chunk&list, Grid::WorldData&outData)
+{
+	Protocol::TypeDeltaArray	typeArray;
+
+	const Riff::Chunk*child;
+	BYTE atFamily = 0;
+	if (child = list.GetFirstChild())
+		do
+		{
+			if (child->IsID(RID::worldTypeChunk))
+			{
+				ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
+				ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
+				outData.ApplyFamilyDelta(atFamily,typeArray,false,true);
+
+				atFamily++;
+			}
+			else
+				FATAL__("Unexpected chunk id "+String(child->GetID().ToString()));
+		}
+		while (child = child->GetNextSibling());
+	ASSERT_EQUAL__(atFamily,BaseGrid::NumFamilies);
+}
+
 void	State::Load(const PathString&filename)
 {
 	insertIntoHangar.Clear();
@@ -1612,10 +1625,10 @@ void	State::Load(const PathString&filename)
 							GetPOD(list,"RNDN",RuntimeConfig::roundNumber);
 
 
-							State::Config::enableNexusAI = list->FindFirst(RID::nexusAI) != nullptr;
+							State::Config::Nexus::enableAI = list->FindFirst(RID::nexusAI) != nullptr;
 
 							GetPOD(list,RID::closedGame,State::Config::closedGame);
-							GetOptionalPOD(list,RID::nexusBases,State::Config::NexusPorts::haveBases,false);
+							GetOptionalPOD(list,RID::nexusBases,State::Config::Nexus::haveBases,false);
 							UINT16 goal;
 							GetPOD(list,RID::goal,goal);
 							RuntimeConfig::gameGoal = State::Config::Goal::Reinterpret(goal);
@@ -1628,8 +1641,9 @@ void	State::Load(const PathString&filename)
 								GetOptionalPOD(list,RID::doomsdayWeapons,v,(UINT8)0);
 								RuntimeConfig::doomsdayWeapons.Load(v);
 							}
-							GetPOD(list,RID::worldConfig,State::persistentPlanetInfo);
-							Grid::CellStack::bottom.content = (BYTE)State::persistentPlanetInfo.innerCoreType;
+							//Grid::TSharedPlanetConfig persistentPlanetInfo;
+							GetPOD(list,RID::worldConfig,(Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
+							Grid::CellStack::bottom.content = (BYTE)Grid::currentPlanetConfig.innerCoreType;
 
 							GetOptionalPOD(list,RID::factionSupportFlags,State::Config::factionSupportFlags,State::Config::AllFactionSupportFlags);
 
@@ -1691,60 +1705,13 @@ void	State::Load(const PathString&filename)
 					case ChunkName::WorldGroup:
 						if (round == 0)
 						{
-							//Protocol::WorldDelta delta;
-							Protocol::TypeDeltaArray	typeArray;
-
-							Riff::Chunk*child;
-							BYTE atFamily = 0;
-							if (child = list->First())
-								do
-								{
-
-									if (child->IsID(RID::worldTypeChunk))
-									{
-										ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
-										ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
-										Grid::actualWorld.ApplyFamilyDelta(atFamily,typeArray,false,true);
-
-										atFamily++;
-									}
-
-									//if (child->IsID(RID::worldChunk))
-									//{
-									//	ASSERT__(DeserializeFromMemory(delta,child->pointer(),child->size(),false));
-									//	BYTE family = delta.family & 0x7F;
-									//	std::cout << "family: "<<(int)family<<std::endl;
-									//	Grid::ApplyFamilyDelta(family,delta.data0,delta.data1,true);
-									//}
-									else
-										FATAL__("Unexpected chunk id "+String(child->GetID().ToString()));
-								}
-								while (child = list->Next());
-							ASSERT_EQUAL__(atFamily,BaseGrid::NumFamilies);
+							ReadFromListChunk(*list,Grid::actualWorld);
 						}
 					break;
 					case ChunkName::InitialWorldGroup:
 						if (round == 0)
 						{
-							Protocol::TypeDeltaArray	typeArray;
-							Riff::Chunk*child;
-							BYTE atFamily = 0;
-							if (child = list->First())
-								do
-								{
-									if (child->IsID(RID::worldTypeChunk))
-									{
-										ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
-										Grid::initialWorld.ApplyFamilyDelta(atFamily,typeArray,true,false);
-
-										atFamily++;
-									}
-									else
-										FATAL__("Unexpected chunk id "+String(child->GetID().ToString()));
-								}
-								while (child = list->Next());
-							ASSERT_EQUAL__(atFamily,BaseGrid::NumFamilies);
-
+							ReadFromListChunk(*list,Grid::initialWorld);
 						}
 					break;
 					case ChunkName::ResourceSection:
@@ -1901,7 +1868,7 @@ void	State::Load(const PathString&filename)
 		int unlocked = 0;
 		for (index_t i = 0; i < numZones; i++)
 		{
-			if (State::Config::NexusPorts::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
+			if (State::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
 			{
 				unlocked++;
 			}
@@ -1954,6 +1921,14 @@ void State::AutoSave()
 	State::lastSaveRound = RuntimeConfig::roundNumber;
 }
 
+void	State::WriteActualWorldToContainer(Riff::Chunk&container)
+{
+	Riff::Chunk*world = CreateNamedList(container,ChunkName::WorldGroup);
+	WriteToListChunk(Grid::actualWorld,*world);
+	Riff::Chunk*initialWorld = CreateNamedList(container,ChunkName::InitialWorldGroup);
+	WriteToListChunk(Grid::initialWorld,*initialWorld);
+}
+
 void	State::Save( const PathString&name)
 {
 	static_assert(sizeof(TUniqueID) == TUniqueID::NumBytes, "Alignment fault" );
@@ -1967,12 +1942,12 @@ void	State::Save( const PathString&name)
 	Riff::Chunk*general = CreateNamedList(container,ChunkName::WorldInfoGroup);
 	general->AppendBlock("WDID")->SetPODData(worldID);
 	general->AppendBlock("RNDN")->SetPODData(RuntimeConfig::roundNumber);
-	general->AppendBlock(RID::worldConfig)->SetPODData(State::persistentPlanetInfo);
+	general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
 	general->AppendBlock(RID::factionSupportFlags)->SetPODData(State::Config::factionSupportFlags);
 	general->AppendBlock(RID::closedGame)->SetPODData(State::Config::closedGame);
-	general->AppendBlock(RID::nexusBases)->SetPODData(State::Config::NexusPorts::haveBases);
+	general->AppendBlock(RID::nexusBases)->SetPODData(State::Config::Nexus::haveBases);
 	general->AppendBlock(RID::goal)->SetPODData((UINT16)RuntimeConfig::gameGoal);
-	if (State::Config::enableNexusAI)
+	if (State::Config::Nexus::enableAI)
 		general->AppendBlock(RID::nexusAI);
 	general->AppendBlock(RID::startBases)->SetPODData(State::Config::startBases);
 	general->AppendBlock(RID::basesRequired )->SetPODData(State::Config::basesRequired );
@@ -1982,27 +1957,7 @@ void	State::Save( const PathString&name)
 
 	GenericHashSet<Objects::PFaction,SharedPtrHash>	allFactions;
 
-	Riff::Chunk*world = CreateNamedList(container,ChunkName::WorldGroup);
-	for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-	{
-		TCP::Serial<Protocol::WorldDelta>	delta;
-		delta.Ref().timestamp.rightNow = true;
-		Protocol::GenerateWorldDelta(nullptr, nullptr, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::GlobalCopy);
-		//delta.Ref().timestamp.atTime = 0;
-		//delta.Ref().data1.Clear();
-		//delta.Seal();
-		SerializeToChunk(delta.Ref().data0,world->AppendBlock(RID::worldTypeChunk));
-	}
-	Riff::Chunk*initialWorld = CreateNamedList(container,ChunkName::InitialWorldGroup);
-	for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-	{
-		TCP::Serial<Protocol::WorldDelta>	delta,delta2;
-		delta.Ref().timestamp.rightNow = true;
-		Protocol::GenerateWorldDelta(nullptr, nullptr, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::GlobalInitialCopy);
-
-		SerializeToChunk(delta.Ref().data0,initialWorld->AppendBlock(RID::worldTypeChunk));
-		//initialWorld->AppendBlock(RID::worldChunk)->SetData(delta.Get());
-	}
+	WriteActualWorldToContainer(container);
 
 
 	Riff::Chunk*objects = CreateNamedList(container,ChunkName::ObjectGroup);
@@ -2064,17 +2019,10 @@ void	State::Save( const PathString&name)
 		{
 			TCP::Serial<Protocol::WorldDelta>	delta;
 			delta.Ref().timestamp.rightNow = true;
-			Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::FactionCopy);
+			Protocol::GenerateWorldDelta(nullptr,&faction->currentState, delta.Ref(),k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::LocalCopy);
 			delta.Ref().timestamp.atTime = 0;
 
-			//delta.Seal();
 			SerializeToChunk(delta.Ref().data0, factionSection->AppendBlock(RID::factionWorldTypeChunk));
-			//SerializeToChunk(delta.Ref().data1, factionSection->AppendBlock(RID::factionWorldCounterChunk));
-										//factionWorldTypeChunk("WTCK"),
-										//factionWorldCounterChunk("WCCK"),
-
-
-			//factionSection->AppendBlock(RID::worldChunk)->SetData(delta.Get());	//faction world chunk
 		}
 
 		static Buffer0<UINT32>	final;
@@ -2118,6 +2066,146 @@ void	State::Save( const PathString&name)
 
 namespace State
 {
+	bool	CheckCoverageSendTerrain(const Objects::PFaction&faction,const TCP::PPeer&peer)
+	{
+		static Protocol::WorldDelta	delta;
+
+		BYTE numChanged = 0;
+		for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
+			if (faction->visibility.families[family].coverageChanged)
+				numChanged++;
+
+		if (numChanged)
+		{
+			BYTE at = 0;
+			for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
+				if (faction->visibility.families[family].coverageChanged)
+				{
+					faction->visibility.families[family].coverageChanged = false;
+					at++;
+					Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,RuntimeConfig::IsInAnyCommandPhase(),at == numChanged,peer ? Protocol::WorldDeltaType::ProgressiveUpdate : Protocol::WorldDeltaType::ProgressiveUpdateNoDelta);
+					if (peer)
+						Channels::updateWorld.SendTo(peer,delta);
+				}
+			return true;
+		}
+		return false;
+	}
+
+
+	void	ProcessChanges(bool thoroughly)
+	{
+		BYTE changed = 0,counter=0;
+		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+		{
+			if (Grid::high.family[k].normal.outdated)
+				changed ++;
+		}
+		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+		{
+			if (Grid::high.family[k].normal.outdated)
+				State::SignalFamilyChange(k,++counter == changed,RuntimeConfig::IsInAnyCommandPhase());
+		}
+		if (changed)
+		{
+			State::terrainChanged = true;
+		}
+
+		Objects::ForeachMobileEntityIncludingStored([/*&anythingChanged*/](const Objects::PMobileEntity&_v)
+		{
+			Objects::MobileEntity&v = *_v;
+			if (v.changeFlags)
+			{
+				//anythingChanged = true;
+				//LogEvent(EventType::MinorEntityProcess,&v,"State change detected");	//this says relatively little
+
+				bool othersNeedToKnow = (v.changeFlags & State::NotifyOthers) != 0;
+
+				TCP::Serial<Protocol::MobileState>	w0,w1;
+				Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),v.changeTimer);
+				State::Describe(w0.Ref(),v,false,timestamp,v.changeFlags);
+				State::Describe(w1.Ref(),v,true,timestamp,v.changeFlags);
+				w0.Seal();
+				w1.Seal();
+				if (!othersNeedToKnow)
+				{
+					State::SendToOwner(Channels::setMobileState,v,w1);
+				}
+				else
+					foreach(State::clients,cl)
+					{
+						if (Receiver::HasAccess(*cl,v))
+							Channels::setMobileState.SendTo((*cl)->peer.lock(),w1);
+						else
+							if (Receiver::CanSee(*cl,_v,0))
+								Channels::setMobileState.SendTo((*cl)->peer.lock(),w0);
+					}			
+				v.ResetAllChange();
+			}
+		});
+
+		foreach (Objects::structures, _s)
+		{
+			Objects::Structure&s = **_s;
+			if (s.changeFlags)
+			{
+				//anythingChanged = true;
+				LogEvent(EventType::MinorEntityProcess,&s,"State change detected");
+				
+				bool othersNeedToKnow = (s.changeFlags & State::NotifyOthers) != 0;
+
+				Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),s.changeTimer);
+
+				TCP::Serial<Protocol::StructureState>	w0,w1;
+				State::Describe(w0.Ref(),**_s,false,timestamp,s.changeFlags);
+				State::Describe(w1.Ref(),**_s,true,timestamp,s.changeFlags);
+				w0.Seal();
+				w1.Seal();
+				if (!othersNeedToKnow)
+				{
+					State::SendToOwner(Channels::setStructureState,s,w1);
+				}
+				else
+					foreach(State::clients,cl)
+					{
+						if (Receiver::HasAccess(*cl,s))
+							Channels::setStructureState.SendTo((*cl)->peer.lock(),w1);
+						else
+							if (Receiver::CanSee(*cl,*_s,0))
+								Channels::setStructureState.SendTo((*cl)->peer.lock(),w0);
+						//Channels::setStructureState.SendTo((*cl)->peer.lock(),Receiver::HasAccess(*cl,s) ? w1 : w0);
+					}
+				s.ResetAllChange();
+			}
+		}
+
+		if (thoroughly)
+		{
+			Objects::ForeachFaction([](const Objects::PFaction&faction)
+			{
+				State::PClient client;
+				if (State::playerMap.Query(faction,client))
+					CheckCoverageSendTerrain(faction,client->peer.lock());
+				else
+					CheckCoverageSendTerrain(faction,TCP::PPeer());
+			});
+		}
+		else
+			foreach (State::activePlayers,cl)
+			{
+				//if ((*cl)->faction->global.coverageChanged)
+				{
+					const Objects::PFaction&faction = (*cl)->faction;
+
+					CheckCoverageSendTerrain(faction,(*cl)->peer.lock());
+						//anythingChanged = true;
+				}
+			}
+
+
+
+	}
+
 
 
 	ChunkName Compare1(Riff::File&a, Riff::File&b, Buffer<Riff::TID>&idStack, const String&indent="")
@@ -2559,7 +2647,7 @@ namespace State
 									Protocol::ClientFactionResponse cr;
 									cr.factionToken.value.Generate();
 									cr.startFactionTypes = 0;
-									cr.planetConfig = State::persistentPlanetInfo;
+									cr.planetConfig = Grid::currentPlanetConfig;
 									Channels::clientFactionResponse.SendTo(client->peer.lock(),cr);
 								}
 
@@ -2662,7 +2750,7 @@ namespace State
 	{
 		LogEvent(EventType::SessionRelated,"Spawning Nexus base at pole "+String(pole));
 
-		ASSERT__(Config::NexusPorts::haveBases);
+		ASSERT__(Config::Nexus::haveBases);
 
 		Objects::PNexusPort port;
 		int h;
@@ -2963,6 +3051,205 @@ namespace State
 
 
 	}
+
+
+	index_t			GetFactionStartLocation(Random&random)
+	{
+		index_t best = InvalidIndex;
+		float bestDist = 0;
+
+		Objects::Component::VehicleBase *testBase = &Objects::Component::hoverbase;
+
+		float biggestNDist = 0;
+
+		count_t numTries = 0;
+		while (best == InvalidIndex)
+		{
+			if (++numTries > 10)
+			{
+				return InvalidIndex;
+
+			}
+
+			const float r = Grid::ToRadius(0);
+			//avoid 12 corner cells: make sure all candidates have 6 neighbors
+			for (index_t i = 12; i < Grid::LowSetup::GridType::CellCount; i++)
+			{
+				if (RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
+				{
+					if (!(State::unlockedEMPZones & Grid::low.grid.GetCell(i).cornerFlags))
+						continue;
+
+					const auto&n = Grid::low.grid.GetCell(i).neighborhood;
+					bool broken = false;
+					for (int k = 0; k < n.numNeighbors ; k++)
+					{
+						if (!(State::unlockedEMPZones & Grid::low.grid.GetCell(n.neighborID[k]).cornerFlags))
+						{
+							broken = true;
+							break;
+						}
+					}
+					if (broken)
+						continue;
+				}
+
+
+				const int h0 = Objects::FindApplicableGround(Grid::LCellIdI((UINT32)i,0),true);
+				if (h0 == Objects::badHeight || h0 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(Grid::actualWorld,Grid::LCellIdI((UINT32)i,h0-1),false,false))
+					continue;
+				{
+					const auto&n = Grid::low.grid.GetCell(i).neighborhood;
+					bool broken = false;
+					for (int k = 0; k < n.numNeighbors && !broken; k++)
+					{
+						const int h1 = Objects::FindApplicableGround(Grid::LCellIdI(n.neighborID[k],0),true);
+						if (h1 == Objects::badHeight || h1 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(Grid::actualWorld,Grid::LCellIdI(n.neighborID[k],h1-1),false,false))
+							broken = true;
+					}
+					if (broken)
+						continue;
+
+				}
+
+
+				float3 ref = Grid::low.cells[i].centerVertex.xyz;// * r;
+				float dist2 = std::numeric_limits<float>::max();
+				float ndist2 = std::numeric_limits<float>::max();
+				foreach (Objects::structures, s)
+				{
+					float d2 = Vec::quadraticDistance(Grid::low.cells[(*s)->location.stackID].centerVertex.xyz,ref);
+					if (!To<Objects::NexusPort>::DynamicCast(*s))
+					{
+						Objects::PTurretBase base = (*s)->GetTurretBase();
+						if (base)
+							d2 = sqr(sqrt(d2) - base->GetFlatAttackRange());	//fair enough here
+						dist2 = std::min(dist2, d2);
+					}
+					else
+					{
+						ndist2 = std::min(ndist2, d2);
+					}
+				}
+				foreach (Objects::vehicles, v)
+				{
+					float d2 = Vec::quadraticDistance(Grid::low.cells[(*v)->location.stackID].centerVertex.xyz,ref);
+					dist2 = std::min(dist2, d2);
+				}
+				if (/*Objects::structures.IsEmpty() &&*/ Objects::vehicles.IsEmpty())
+					dist2 = sqr(random.getFloat(1,2));
+				else
+					dist2 *= random.getFloat(0.9f,1.f / 0.9f);
+
+				biggestNDist = std::max(biggestNDist,ndist2);
+
+				if (dist2 > bestDist && ndist2 > 0.25f)	//actual
+				{
+					bestDist = dist2;
+					//nbestDist = ndist2;
+					best = i;
+
+					//if (Objects::structures.IsEmpty() && Objects::vehicles.IsEmpty())
+						//break;
+				}
+
+			}
+		}
+		return best;
+	}
+
+
+	void			SpawnFactionStartUnits(const Objects::PFaction&f, index_t startLocation)
+	{
+		const auto&n = Grid::low.grid.GetCell(startLocation).neighborhood;
+		if (State::Config::startBases)
+		{
+			Grid::LCellIdI location(startLocation,0);	//first 12 are corner cells
+			int h = Objects::FindApplicableGround(location,true);
+			location.height = h;
+			static const int want = 20;
+			static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);
+			Journal::currentRound.RegisterResourceCoverageChange(true,location.stackID,Objects::Resource::Fuel,stackHeight);
+			Journal::currentRound.RegisterResourceCoverageChange(true,location.stackID,Objects::Resource::Minerals,stackHeight);
+			Objects::ForeachFaction([location](const Objects::PFaction&f)
+			{
+				Journal::currentRound.RegisterResourceCoverageKnowledgeLoss(true,f,location.stackID);
+			});
+
+			Grid::LCellIdI at0 = Grid::LCellIdI(n.neighborID[0],h);
+			Grid::LCellIdI at1 = Grid::LCellIdI(n.neighborID[1],h);
+			Grid::LCellIdI at2 = Grid::LCellIdI(n.neighborID[2],h);
+			Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],h);
+			Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],h);
+
+			Objects::PMine mine = To<Objects::Mine>::Cast(
+				Objects::Mine::globalPrototype->CreateNewInstance(f,location,0));
+			mine->CorrectTerrain(false,0,true);
+			Objects::InsertConstructed(mine,0);
+			mine->SetEnabledOverride(true);
+				
+			Objects::PGenerator generator = To<Objects::Generator>::Cast(
+				Objects::Generator::globalPrototype->CreateNewInstance(f,at1,0));
+			generator->CorrectTerrain(false,0,true);
+			Objects::InsertConstructed(generator,0);
+			generator->SetEnabledOverride(true);
+				
+			std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
+				Objects::MineralContainer::globalPrototype->CreateNewInstance(f,at2,0));
+			container->CorrectTerrain(false,0,true);
+			Objects::InsertConstructed(container,0);
+			Objects::RefreshCompoundCoverage(0);
+
+
+			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
+			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
+			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,0);
+
+		}
+		else
+		{
+			Grid::LCellIdI at0 = Grid::LCellIdI(n.neighborID[0],0);
+			Grid::LCellIdI at1 = Grid::LCellIdI(n.neighborID[1],0);
+			Grid::LCellIdI at2 = Grid::LCellIdI(n.neighborID[2],0);
+			Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],0);
+			Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],0);
+
+			Objects::SpawnVehicle(f,Grid::LCellIdI((UINT32)startLocation,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
+			Objects::SpawnVehicle(f,at1,Objects::Component::hoverbase, Objects::Component::radar,true,0);
+			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,0);
+			Objects::SpawnVehicle(f,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
+			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
+			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,0);
+		}
+	}
+
+
+	void			UpdateEMPZones(count_t temporaryFactionCountBonus/*=0*/)
+	{
+		if (RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
+		{
+			count_t numZones = Objects::Faction::all.Count()+temporaryFactionCountBonus;	//not counting nexus faction, but counting new faction(s)
+			numZones = (numZones/3) + !!(numZones % 3);
+
+			int unlocked = 0;
+			for (index_t i = 0; i < numZones; i++)
+			{
+				if (State::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
+				{
+					unlocked++;
+				}
+				unlocked++;
+			}
+				
+
+			State::unlockedEMPZones = ((1<<unlocked) - 1);
+			State::empZonesLocked = ((1 << 12)-1)  & ~State::unlockedEMPZones;
+
+			Channels::lockEmpZones.SendTo(State::server,State::empZonesLocked);
+		}
+
+	}
+
 
 }
 

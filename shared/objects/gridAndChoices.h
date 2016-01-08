@@ -18,7 +18,8 @@ namespace Objects
 	}
 
 	static const count_t MaxStructureTasks = 16;
-	static const count_t MaxProductionTasks = MaxStructureTasks;
+	static const count_t MaxProductionTasks = MaxStructureTasks,
+						MaxFocusPoints = 64;
 	static const count_t MaxFocusCount = 64;
 
 

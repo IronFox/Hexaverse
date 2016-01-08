@@ -2737,8 +2737,9 @@ namespace Objects
 						//break;
 						case CursorMode::RepairMode:
 						{
-							PWorldEntity target = GetEntity(c-1);
-							if (target && target->health < target->GetMaxHealth() && target != v && v->CanRepair())
+							//PWorldEntity target = GetEntity(c-1);
+							//if (target && target->health < target->GetMaxHealth() && target != v && v->CanRepair())
+							//for consistency reasons with journal-saves no check here. just put it in there, and have the job figure out if it's good to execute
 							{
 								c--;
 								PVehicleJob job(new VehicleJob::RepairJob(*v));

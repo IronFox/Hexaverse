@@ -3885,7 +3885,7 @@ int main( int argc, const char* argv[])
 
 
 		
-		Grid::Create0(Grid::TPlanetConfig(),Grid::WorldDiscovery());
+		Grid::Create0();
 		Objects::Create();
 		Grid::Create1();
 

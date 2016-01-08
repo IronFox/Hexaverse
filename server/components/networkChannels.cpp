@@ -2,6 +2,7 @@
 #include "networkChannels.h"
 #include "state.h"
 #include "serverLogEvent.h"
+#include "journalSaveGame.h"
 
 extern Random		random;
 
@@ -89,46 +90,6 @@ namespace Receiver
 		e.type1 = source.referencedType[1];
 	}
 
-	static bool ConvertReferenceEntity(const Protocol::MarkerReferenceEntity&source, Objects::Marker&dest )
-	{
-		dest.referenceEntity = source.id;
-		dest.referencedType[0] = source.type0;
-		dest.referencedType[1] = source.type1;
-		if (dest.referencedType[0] == ConstName::Empty && dest.referencedType[1] == ConstName::Empty)
-			return true;
-		if (dest.referencedType[1] == ConstName::Empty)
-		{
-			if (!Objects::GetPrototypeByName(dest.referencedType[0]))
-			{
-				if (!Objects::GetSatellitePrototypeByName(dest.referencedType[0]))
-				{
-					LogEvent(EventType::CommandRejected, "Unknown structure type #" + String(int(dest.referencedType[0])));
-					return false;
-				}
-			}
-			return true;
-		}
-		if (dest.referencedType[0] == ConstName::Empty)
-		{
-			LogEvent(EventType::CommandRejected, "Unknown marker format");
-			return false;
-		}
-
-		//String turretName = source.type.subStringRef((int)separatorAt);
-		if (!Objects::Component::GetTurretByName(dest.referencedType[1]))
-		{
-			LogEvent(EventType::CommandRejected, "Unknown turret type #" + String(int(dest.referencedType[1])));
-			return false;
-		}
-		if (!Objects::Component::GetVehicleBaseByName(dest.referencedType[0]))
-		{
-			LogEvent(EventType::CommandRejected, "Unknown base type #" + String(int(dest.referencedType[0])));
-			return false;
-		}
-		return true;
-	}
-
-
 
 	static void ConvertMarker(const Objects::Marker&source, Protocol::Marker&dest)
 	{
@@ -153,129 +114,10 @@ namespace Receiver
 
 	static index_t GetStartLocation()
 	{
-		index_t best = InvalidIndex;
-		float bestDist = 0;
-
-		Objects::Component::VehicleBase *testBase = &Objects::Component::hoverbase;
-
-		count_t numTries = 0;
-		while (best == InvalidIndex)
-		{
-			if (++numTries > 10)
-			{
-				return InvalidIndex;
-
-			}
-
-			const float r = Grid::ToRadius(0);
-			//avoid 12 corner cells: make sure all candidates have 6 neighbors
-			for (index_t i = 12; i < Grid::LowSetup::GridType::CellCount; i++)
-			{
-				if (RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
-				{
-					if (!(State::unlockedEMPZones & Grid::low.grid.GetCell(i).cornerFlags))
-						continue;
-
-					const auto&n = Grid::low.grid.GetCell(i).neighborhood;
-					bool broken = false;
-					for (int k = 0; k < n.numNeighbors ; k++)
-					{
-						if (!(State::unlockedEMPZones & Grid::low.grid.GetCell(n.neighborID[k]).cornerFlags))
-						{
-							broken = true;
-							break;
-						}
-					}
-					if (broken)
-						continue;
-				}
-
-
-				const int h0 = Objects::FindApplicableGround(Grid::LCellIdI((UINT32)i,0),true);
-				if (h0 == Objects::badHeight || h0 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(Grid::actualWorld,Grid::LCellIdI((UINT32)i,h0-1),false,false))
-					continue;
-				{
-					const auto&n = Grid::low.grid.GetCell(i).neighborhood;
-					bool broken = false;
-					for (int k = 0; k < n.numNeighbors && !broken; k++)
-					{
-						const int h1 = Objects::FindApplicableGround(Grid::LCellIdI(n.neighborID[k],0),true);
-						if (h1 == Objects::badHeight || h1 == -Grid::CellStack::HalfRange || !testBase->CanStandOn(Grid::actualWorld,Grid::LCellIdI(n.neighborID[k],h1-1),false,false))
-							broken = true;
-					}
-					if (broken)
-						continue;
-
-				}
-
-
-				float3 ref = Grid::low.cells[i].centerVertex.xyz;// * r;
-				float dist2 = std::numeric_limits<float>::max();
-				float ndist2 = std::numeric_limits<float>::max();
-				foreach (Objects::structures, s)
-				{
-					float d2 = Vec::quadraticDistance(Grid::low.cells[(*s)->location.stackID].centerVertex.xyz,ref);
-					if (!To<Objects::NexusPort>::DynamicCast(*s))
-					{
-						Objects::PTurretBase base = (*s)->GetTurretBase();
-						if (base)
-							d2 = sqr(sqrt(d2) - base->GetFlatAttackRange());	//fair enough here
-						dist2 = std::min(dist2, d2);
-					}
-					else
-					{
-						ndist2 = std::min(ndist2, d2);
-					}
-				}
-				foreach (Objects::vehicles, v)
-				{
-					float d2 = Vec::quadraticDistance(Grid::low.cells[(*v)->location.stackID].centerVertex.xyz,ref);
-					dist2 = std::min(dist2, d2);
-				}
-				if (/*Objects::structures.IsEmpty() &&*/ Objects::vehicles.IsEmpty())
-					dist2 = sqr(random.getFloat(1,2));
-				else
-					dist2 *= random.getFloat(0.9f,1.f / 0.9f);
-
-				if (dist2 > bestDist && ndist2 > 0.25f)	//actual
-				{
-					bestDist = dist2;
-					//nbestDist = ndist2;
-					best = i;
-
-					//if (Objects::structures.IsEmpty() && Objects::vehicles.IsEmpty())
-						//break;
-				}
-
-			}
-		}
-		return best;
+		return State::GetFactionStartLocation(random);
 	}
 
-	static void UpdateEMPZones(count_t inc)
-	{
-		if (RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
-		{
-			count_t numZones = Objects::Faction::all.Count()+inc;	//not counting nexus faction, but counting new faction(s)
-			numZones = (numZones/3) + !!(numZones % 3);
 
-			int unlocked = 0;
-			for (index_t i = 0; i < numZones; i++)
-			{
-				if (State::Config::NexusPorts::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
-				{
-					unlocked++;
-				}
-				unlocked++;
-			}
-				
-
-			State::unlockedEMPZones = ((1<<unlocked) - 1);
-			State::empZonesLocked = ((1 << 12)-1)  & ~State::unlockedEMPZones;
-
-			Channels::lockEmpZones.SendTo(State::server,State::empZonesLocked);
-		}
-	}
 
 
 	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
@@ -286,7 +128,7 @@ namespace Receiver
 		Protocol::ClientFactionResponse response;
 		response.startFactionTypes = _p.startFactionTypes;
 		response.factionToken = _p.factionToken;
-		response.planetConfig = State::persistentPlanetInfo;
+		response.planetConfig = Grid::currentPlanetConfig;
 		State::AssembleGameInfo(response.info);
 		//response.info = CompileWorldInfo();
 
@@ -294,6 +136,7 @@ namespace Receiver
 		{
 			if (State::activePlayers.FindAndErase(client))
 			{
+				Journal::currentRound.LogFactionOffline(client->faction);
 				LogEvent(EventType::SessionRelated,peer,"Abandoning faction");
 				State::playerMap.Unset(client->faction);
 				client->faction->online = false;
@@ -344,7 +187,7 @@ namespace Receiver
 
 		bool newFaction = false;
 
-		if (State::Config::enableNexusAI && Objects::Faction::nexus->accessToken == response.factionToken && (peer.ToString(false) == "localhost"))
+		if (State::Config::Nexus::enableAI && Objects::Faction::nexus->accessToken == response.factionToken && (peer.ToString(false) == "localhost"))
 		{
 			LogEvent(EventType::SessionRelated, peer, "Access to nexus faction permitted.");
 			faction = Objects::Faction::nexus;
@@ -447,11 +290,11 @@ namespace Receiver
 				return;
 			}
 
-			UpdateEMPZones(1);
+			State::UpdateEMPZones(1);
 			startLocation = GetStartLocation();
 			if (startLocation == InvalidIndex)
 			{
-				UpdateEMPZones(0);
+				State::UpdateEMPZones(0);
 				response.startFactionTypes = 0;
 				Channels::clientFactionResponse.SendTo(peer,response);
 				LogEvent(EventType::OperationAborted,peer,"Unable to find valid starting location for new faction.");
@@ -461,9 +304,9 @@ namespace Receiver
 			client->faction.reset(new Objects::Faction());
 			faction = client->faction;
 			Objects::Faction::all << client->faction;
+			client->faction->name = client->name;
 
 
-			
 			LogEvent(EventType::SessionRelated,peer,"Created new faction.");
 
 			client->faction->accessToken = response.factionToken;
@@ -505,68 +348,8 @@ namespace Receiver
 
 		if (newFaction)
 		{
+			State::SpawnFactionStartUnits(client->faction,startLocation);
 
-
-			const auto&n = Grid::low.grid.GetCell(startLocation).neighborhood;
-			if (State::Config::startBases)
-			{
-				Grid::LCellIdI location(startLocation,0);	//first 12 are corner cells
-				int h = Objects::FindApplicableGround(location,true);
-				location.height = h;
-				static const int want = 20;
-				static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);
-				Grid::Resource::Require("Fuel").coverage[location.stackID] = stackHeight;
-				Grid::Resource::Require("Minerals").coverage[location.stackID] = stackHeight;
-				foreach (Objects::Faction::all, _f)
-				{
-					_f->lock()->visibility.resourcesDiscovered[location.stackID] = false;
-				}
-
-				Grid::LCellIdI at0 = Grid::LCellIdI(n.neighborID[0],h);
-				Grid::LCellIdI at1 = Grid::LCellIdI(n.neighborID[1],h);
-				Grid::LCellIdI at2 = Grid::LCellIdI(n.neighborID[2],h);
-				Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],h);
-				Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],h);
-
-				Objects::PMine mine = To<Objects::Mine>::Cast(
-					Objects::Mine::globalPrototype->CreateNewInstance(client->faction,location,0));
-				mine->CorrectTerrain(false,0,true);
-				Objects::InsertConstructed(mine,0);
-				mine->SetEnabledOverride(true);
-				
-				Objects::PGenerator generator = To<Objects::Generator>::Cast(
-					Objects::Generator::globalPrototype->CreateNewInstance(client->faction,at1,0));
-				generator->CorrectTerrain(false,0,true);
-				Objects::InsertConstructed(generator,0);
-				generator->SetEnabledOverride(true);
-				
-				std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
-					Objects::MineralContainer::globalPrototype->CreateNewInstance(client->faction,at2,0));
-				container->CorrectTerrain(false,0,true);
-				Objects::InsertConstructed(container,0);
-				Objects::RefreshCompoundCoverage(0);
-
-
-				Objects::SpawnVehicle(client->faction,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-				Objects::SpawnVehicle(client->faction,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-				Objects::SpawnVehicle(client->faction,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,0);
-
-			}
-			else
-			{
-				Grid::LCellIdI at0 = Grid::LCellIdI(n.neighborID[0],0);
-				Grid::LCellIdI at1 = Grid::LCellIdI(n.neighborID[1],0);
-				Grid::LCellIdI at2 = Grid::LCellIdI(n.neighborID[2],0);
-				Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],0);
-				Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],0);
-
-				Objects::SpawnVehicle(client->faction,Grid::LCellIdI((UINT32)startLocation,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-				Objects::SpawnVehicle(client->faction,at1,Objects::Component::hoverbase, Objects::Component::radar,true,0);
-				Objects::SpawnVehicle(client->faction,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,0);
-				Objects::SpawnVehicle(client->faction,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-				Objects::SpawnVehicle(client->faction,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-				Objects::SpawnVehicle(client->faction,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,0);
-			}
 		}
 
 
@@ -612,7 +395,7 @@ namespace Receiver
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			Protocol::GenerateWorldDelta(client->faction ? &client->faction->visibility : nullptr,  client->faction ? &client->faction->currentState : nullptr,
-									delta,k,true,k+1 == BaseGrid::NumFamilies,newFaction ? Protocol::WorldDeltaType::ProgressiveInit : Protocol::WorldDeltaType::FactionCopy);
+									delta,k,true,k+1 == BaseGrid::NumFamilies,newFaction ? Protocol::WorldDeltaType::ProgressiveInit : Protocol::WorldDeltaType::LocalCopy);
 
 			Channels::updateWorld.SendTo(peer,delta);
 		}
@@ -721,6 +504,9 @@ namespace Receiver
 
 		}
 
+		if (newFaction)
+			Journal::currentRound.LogFactionCreation(client->faction,Journal::GetType(client->faction));
+		Journal::currentRound.LogFactionOnline(client->faction);
 		LogEvent(EventType::SessionRelated,faction->name+" connected");
 
 		for (const auto&weak : Objects::Faction::all)
@@ -889,6 +675,7 @@ namespace Receiver
 	{
 		LogEvent(EventType::MinorEntityProcess, peer, nullptr, "Begin: " __func__);
 
+
 		if (!peer.attachment)
 		{
 			LogEvent(EventType::CommandRejected, peer, "Marker creation denied. Player not ready");
@@ -909,6 +696,8 @@ namespace Receiver
 		bool failed = false;
 		static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
 		const Protocol::MarkerReferenceEntity*e = m.data.Get0();
+		Protocol::MarkerReferenceEntity ref;
+		ref.type0 = ref.type1 = ConstName::Empty;
 		Objects::Marker::Type type;
 		TUniqueID	refID = TUniqueID::Empty();
 		if (e)
@@ -935,6 +724,9 @@ namespace Receiver
 			}
 
 		}
+		if (e)
+			ref = *e;
+		ref.id = refID;
 
 		if (failed)
 		{
@@ -942,25 +734,7 @@ namespace Receiver
 			return;
 		}
 
-		Objects::Marker&marker = f->CreateMarker(m.id,f == Objects::Faction::nexus,type,refID);
-
-		marker.createdInRound = m.createdInRound;
-		marker.location = m.location;
-		if (marker.UtilizesReferenceEntity())
-			failed = !ConvertReferenceEntity(*e, marker);
-
-		if (failed)
-		{
-			f->DestroyMarker(marker.id);
-			LogEvent(EventType::CommandRejected, peer, "Marker creation rejected. Invalid marker configuration");
-			return;
-		}
-		//Protocol::Marker outMarker;
-		//ConvertMarker(marker, outMarker);
-		String ref;
-		if (marker.UtilizesReferenceEntity())
-			ref = ", referencing #"+String(int(marker.referencedType[0]))+"-#"+String(int(marker.referencedType[1]));
-		LogEvent(EventType::Notification, peer, marker.GetName()+" created"+ref);
+		Journal::currentRound.Register(true,f,new Journal::Round::CreateMarker(m.id,type,m.createdInRound,m.location,ref));
 		//Channels::createdMarker.SendTo(peer, outMarker);
 	}
 
@@ -980,12 +754,8 @@ namespace Receiver
 			LogEvent(EventType::CommandRejected, peer, "Marker destruction denied. Player has no faction");
 			return;
 		}
-		if (f->DestroyMarker(id))
-			LogEvent(EventType::Notification, peer, "Marker " + id.value.ToString() + " destroyed");
-		else
-			LogEvent(EventType::CommandRejected, peer, "Marker " + id.value.ToString() + " not found for destruction");
 
-		//Channels::destroyMarker.SendTo(peer, id);	//knows already
+		Journal::currentRound.Register(true,f,new Journal::Round::DestroyMarker(id));
 	}
 
 	void	ChatMessage(Package::NetString<256>&message, TCP::Peer&peer)
@@ -1083,9 +853,7 @@ namespace Receiver
 		}
 		if (v->isAutomated == a.doAutomate)
 			return;
-		v->isAutomated = a.doAutomate;
-		v->RegisterChange(Objects::WorldEntity::AutomationChanged,0);
-		LogEvent(EventType::MinorEntityProcess,peer,e,"Modified automation-state "+String(v->isAutomated));
+		Journal::currentRound.RegisterAutomationChange(true,v,a.doAutomate);
 	}
 
 	void	EnableStructure(Protocol::EnableStructure&es, TCP::Peer&peer)
@@ -1102,17 +870,8 @@ namespace Receiver
 		{
 			LogEvent(EventType::CommandRejected,peer,e,"Tried to enable/disable entity that is not a working structure");
 			return;
-		}	
-		Objects::RefreshCompoundCoverageIfNeeded(0);
-		#ifndef CONNECTOR_LESS
-			if (w->compoundID == Objects::Compound::InvalidNetwork)
-			{
-				Objects::RefreshCompoundCoverage(0);
-				ASSERT__(w->compoundID != Objects::Compound::InvalidNetwork);
-			}
-		#endif
-		LogEvent(EventType::MinorEntityProcess,peer,e,"Modified enabled-state "+String(es.enable));
-		w->SetEnabled(es.enable,0);
+		}
+		Journal::currentRound.Register(true,w,new Journal::Round::EnableStructure(es.enable));
 	}
 
 	void	RestoreCoreLink(NET(TUniqueID)&uuid, TCP::Peer&peer)
@@ -1129,11 +888,8 @@ namespace Receiver
 			LogEvent(EventType::CommandRejected,peer,e,"Invalid operation on entity");
 			return;
 		}	
-		if (m->LinkToCore(0))
-			LogEvent(EventType::EntityProcess,peer,e,"Core-link restored");
-		else
-			LogEvent(EventType::EntityProcessFailed,peer,e,"Unable to restore Core-link");
-		//w->SetEnabled(es.enable);
+		Journal::currentRound.Register(true,m, new Journal::Round::RestoreCoreLink());
+
 	}
 	void	RemoveEntity(NET(TUniqueID)&uuid, TCP::Peer&peer)
 	{
@@ -1143,10 +899,7 @@ namespace Receiver
 		if (!e)
 			return;
 
-		Objects::Remove(e,Objects::RemovalType::ControlledExplosion,0,false);	//user-requested. let's explode it anyways
-		if (To<Objects::Structure>::DynamicCast(e))
-			Objects::RefreshCompoundCoverageIfNeeded(0);
-
+		Journal::currentRound.RegisterEntityDestruction(true,e,e->isInserted ? Objects::RemovalType::ControlledExplosion : Objects::RemovalType::DestroyedInStorage);
 	}
 
 	void	ConstructionAbort(Protocol::ConstructionAbort&ca, TCP::Peer&peer)
@@ -1160,72 +913,40 @@ namespace Receiver
 		//Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(e);
 
 		Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
-		//ws?ws->ToProducer() : nullptr;
 		if (!p)
 		{
 			LogEvent(EventType::CommandRejected,peer,e,"Tried to abort construction-plant job on non-plant entity ");
 			return;
 		}
-		if (!p->AbortConstruction(ca.taskId))
-		{
-			LogEvent(EventType::CommandRejected,peer,e, "Tried to abort non-existend construction-plant job on plant entity");
-		}
-		else
-			LogEvent(EventType::MinorEntityProcess,peer,e,"Aborted construction job "+ca.taskId.value.ToString());
-
+		Journal::currentRound.Register(true,e,new Journal::Round::ConstructionAbort(ca.taskId));
 	}
 
 
 	void	ConstructionBegin(Protocol::ConstructionBegin&cb, TCP::Peer&peer)
 	{
-		LogEvent(EventType::MinorEntityProcess,peer,nullptr,"Begin: Registering vehicle plant construction, given "+String(cb.parameters.Count())+" parameter(s), for entity "+cb.plantID.value.ToString());
+		LogEvent(EventType::MinorEntityProcess,peer,nullptr,"Begin: Registering mobile producer construction, given "+String(cb.parameters.Count())+" parameter(s), for entity "+cb.plantID.value.ToString());
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(cb.plantID,peer);
 		if (!e)
 			return;
 
 		Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
-		//Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(e);
-		//Objects::MobileEntityProducer*p = ws?ws->ToProducer() : nullptr;
 		if (p)
 		{
-			switch (cb.parameters.Count())
-			{
-				case 2:
-					p->EnqueueProductionOfVehicle(cb.parameters.first(), cb.parameters.last());
-				break;
-				case 1:
-					p->EnqueueProductionOfSatellite(cb.parameters.first());
-				break;
-				default:
-					LogEvent(EventType::CommandRejected,peer,e,"Received invalid construction-plant job parameter configuration");
-				break;
-			}
+			Journal::currentRound.RegisterProductionJobStart(true,e,p,cb.parameters.pointer(),cb.parameters.Count());
 			return;
 		}
-		//Objects::PTower t = To<Objects::Tower>::DynamicCast(e);	//deprecated concept
-		//if (t)
-		//{
-		//	if (cb.parameters.Count() != 1)
-		//	{
-		//		LogEvent(EventType::CommandRejected,peer,e,"Received invalid tower job parameter configuration");
-		//		return;
-		//	}
-		//	t->Enqueue(cb.parameters.first());
-		//	return;
-		//}
-
 		LogEvent(EventType::CommandRejected,peer,e,"Tried to issue construction job on incompatible entity");
 		return;
 
 	}
 
 
-	void	SignalNewJob(Protocol::StandardJob&job, TCP::Peer&peer)
+	void	SignalNewJob(Protocol::StandardJob&sjob, TCP::Peer&peer)
 	{
-		LogEvent(EventType::MinorEntityProcess,peer,nullptr,"Begin: Registering new Job #"+String(int(job.jobName.value))+" for vehicle "+job.id.value.ToString());
+		LogEvent(EventType::MinorEntityProcess,peer,nullptr,"Begin: Registering new Job #"+String(int(sjob.jobName.value))+" for vehicle "+sjob.id.value.ToString());
 
-		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(job.id,peer);
+		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(sjob.id,peer);
 		if (!e)
 			return;
 		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
@@ -1237,6 +958,11 @@ namespace Receiver
 		if (!v->GetConstructionSpeed())
 		{
 			LogEvent(EventType::CommandRejected,peer,e,"This mobile entity cannot build");
+			return;
+		}
+		if (v->myTasks.Count() >= Objects::MaxProductionTasks)
+		{
+			LogEvent(EventType::CommandRejected,peer,e,"Max queue length ("+String(Objects::MaxProductionTasks)+") reached. Task rejected");
 			return;
 		}
 
@@ -1260,7 +986,9 @@ namespace Receiver
 			class Sequence : public PathJob
 		*/
 		using namespace Objects;
-		switch (job.jobName)
+		PVehicleJob job;
+		Grid::LCellIdI target = Grid::LCellIdI::Invalid;
+		switch (sjob.jobName)
 		{
 			case ConstName::Job_BuildRoad:
 			{
@@ -1270,40 +998,40 @@ namespace Receiver
 					return;
 				}
 
-				PVehicleJob job(new VehicleJob::BuildRoad(*v));
+				job.reset(new VehicleJob::BuildRoad(*v));
 				v->RegisterNewJob("", job,nullptr);
 				LogEvent(EventType::MinorEntityProcess,peer,e,"Registered new job "+job->GetName());
 			}
 			break;
 			case ConstName::Job_BuildWallUp:
 			{
-				Grid::LCellIdI target = v->GetLastPointOfOrigin()+1;	//has moveToFocusWhenDone, focus must be set to where vehicle will move
-				if (target.height+1 >= Grid::CellStack::HalfRange)
+				target = v->GetLastPointOfOrigin()+1;	//has moveToFocusWhenDone, focus must be set to where vehicle will move
+				if (target.height >= Grid::CellStack::HalfRange)
 				{
 					LogEvent(EventType::CommandRejected,peer,e,"Cannot build wall on top layer");
 					return;
 				}
-				PVehicleJob job(new VehicleJob::BuildWallUp(*v));
+				job.reset(new VehicleJob::BuildWallUp(*v));
 				v->RegisterNewJob("", job,&target);
 				LogEvent(EventType::MinorEntityProcess,peer,e,"Registered new job "+job->GetName());
 			}
 			break;
 			case ConstName::Job_BuildHorizontalWall:
 			{
-				Grid::LCellIdI target = v->GetLastPointOfOrigin()+1;
+				//Grid::LCellIdI target = v->GetLastPointOfOrigin()+1;
 				//if (target.height+1 >= Grid::CellStack::HalfRange)
 				//{
 				//	LogEvent(EventType::CommandRejected,peer,e,"Cannot build wall on top layer");
 				//	return;
 				//}
-				PVehicleJob job(new VehicleJob::BuildHorizontalWall(*v));
+				job.reset(new VehicleJob::BuildHorizontalWall(*v));
 				v->RegisterNewJob("", job,nullptr);
 				LogEvent(EventType::MinorEntityProcess,peer,e,"Registered new job "+job->GetName());
 			}
 			break;
 			case ConstName::Job_DigDown:
 			{
-				Grid::LCellIdI target = v->GetLastPointOfOrigin()-1;
+				target = v->GetLastPointOfOrigin()-1;
 				if (target.height < -Grid::CellStack::HalfRange)
 				{
 					LogEvent(EventType::CommandRejected,peer,e,"Bottom layer reached. Cannot dig any further");
@@ -1311,7 +1039,7 @@ namespace Receiver
 				}
 				else
 				{
-					PVehicleJob job(new VehicleJob::DigDown(*v));
+					job.reset(new VehicleJob::DigDown(*v));
 					v->RegisterNewJob("",job,&target);		
 					LogEvent(EventType::MinorEntityProcess,peer,e,"Registered new job "+job->GetName());
 				}
@@ -1325,54 +1053,20 @@ namespace Receiver
 					return;
 				}
 
-				auto loc = v->GetLastPointOfOrigin();
-				/*if (!p->CanPlace(loc))
-				{
-					LogEvent("Unable to place " + p->GetTypeName() + " here");
-					return;
-				}*/
+				target = v->GetLastPointOfOrigin();
 
 				Objects::PStructure p;
 				foreach (Objects::structurePrototypes,proto)
-					if ((*proto)->GetCTypeName() == job.parameterName)
+					if ((*proto)->GetCTypeName() == sjob.parameterName)
 					{
 						p = *proto;
 						break;
 					}
 				if (p)
 				{	
-					//if (To<Objects::Mine>::DynamicCast(p))
-					//{
-					//	count_t numMines = 0;
-					//	for (const auto&w : v->owner->structures)
-					//	{
-					//		if (To<Objects::Mine>::DynamicCast(w.lock()))
-					//			numMines ++;
-					//	}
-					//	for (const auto&w : v->owner->vehicles)
-					//	{
-					//		PVehicle o = w.lock();
-					//		if (o)
-					//			for (const auto&job : o->myTasks)
-					//				if (job.IsJob())
-					//				{
-					//					Objects::VehicleJob::PConstruct cnst = To<Objects::VehicleJob::Construct>::DynamicCast(job.job);
-					//					if (cnst && To<Objects::Mine>::DynamicCast(cnst->constructWhat))
-					//						numMines++;
-					//			
-					//				}
-					//	}
-					//	if (numMines >= State::Config::limitMinesTo)
-					//	{
-					//		LogEvent(EventType::CommandRejected,peer,e,"Maximum mine count ("+String(State::Config::limitMinesTo)+") reached");
-					//		return;
-					//	}
-					//}
+					job.reset(new VehicleJob::Construct(*v,p));
 
-
-					PVehicleJob job(new VehicleJob::Construct(*v,p));
-
-					v->RegisterNewJob(p->GetTypeName(),job,&loc);
+					v->RegisterNewJob(p->GetTypeName(),job,&target);
 					LogEvent(EventType::MinorEntityProcess,peer,e,"Registered new job "+job->GetName());
 				}
 				else
@@ -1384,10 +1078,14 @@ namespace Receiver
 			break;
 			default:
 			{
-				LogEvent(EventType::CommandRejected,peer,v,"Illegal job name #"+String(int(job.jobName.value)));
+				LogEvent(EventType::CommandRejected,peer,v,"Illegal job name #"+String(int(sjob.jobName.value)));
 				State::InvalidOperation(peer);
 			}
+			return;
 		}
+		if (job)
+			Journal::currentRound.LogJobCommandStart(e,*job,target);
+
 	}
 
 
@@ -1424,6 +1122,11 @@ namespace Receiver
 		Objects::PVehicleJob job(new Objects::VehicleJob::AlterTerrain(*v,(Objects::Vehicle::mode_t)mod.mode.value,mod.cells));
 
 		v->RegisterNewJob("",job,nullptr);
+
+		if (job)
+			Journal::currentRound.LogJobCommandStart(e,*job,Grid::LCellIdI::Invalid);
+
+
 		LogEvent(EventType::MinorEntityProcess,peer,e,"End: Registered new job "+job->GetName());
 	}
 
@@ -1443,6 +1146,7 @@ namespace Receiver
 		}
 
 
+
 		const NET(TUniqueID)*deploying = ch.deployingWhat.Get0();
 		Objects::PMobileEntity deployingWhat;
 		
@@ -1455,11 +1159,8 @@ namespace Receiver
 		if (To<Objects::VehicleStore>::DynamicCast(e))
 			ASSERT_NOT_NULL__(deploying);
 
-		if (!Objects::ProcessChoiceIntersection(e,ch.target,(Objects::Vehicle::mode_t)ch.mode.value,deployingWhat))
-		{
-			LogEvent(EventType::CommandRejected,peer,e,"Invalid choice intersection");
-			return;
-		}
+		Journal::currentRound.RegisterChoiceIntersection(true,e,ch.target,(Objects::Vehicle::mode_t)ch.mode.value,deployingWhat);
+
 		LogEvent(EventType::MinorEntityProcess,peer,e,"End: Processed choice intersection in mode "+String(ch.mode)+" at cell "+ch.target.ToString());
 	}
 
@@ -1471,24 +1172,35 @@ namespace Receiver
 		if (!e)
 			return;
 
+
 		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
 		if (v)
 		{
-			v->DropLastTask();
-			LogEvent(EventType::MinorEntityProcess,peer,e,"Cleared last entity task");
-			return;
+			if (v->myTasks.IsEmpty())
+			{
+				LogEvent(EventType::MinorEntityProcess,peer,e,"Nothing to undo");
+				return;
+			}
 		}
-
-		Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
-		if (t)
+		else
 		{
-			t->DropLastTask();
-			LogEvent(EventType::MinorEntityProcess,peer,e,"Cleared last tower attack target");
-			return;
+			Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
+			if (t)
+			{
+				if (t->attackQueue.IsEmpty())
+				{
+					LogEvent(EventType::MinorEntityProcess,peer,e,"Nothing to undo");
+					return;
+				}
+			}
+			else
+			{
+				LogEvent(EventType::CommandRejected,peer,e,"Tried to drop command on incompatible entity");
+				return;
+			}
 		}
+		Journal::currentRound.RegisterDropLastEntityCommand(true,e);
 
-		LogEvent(EventType::CommandRejected,peer,e,"Tried to drop command on incompatible entity");
-		return;
 		
 	}
 
@@ -1503,21 +1215,31 @@ namespace Receiver
 		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
 		if (v)
 		{
-			v->ClearAllTasks(false,CLOCATION);
-			LogEvent(EventType::MinorEntityProcess,peer,e,"Cleared all mobile entity tasks");
-			return;
+			if (v->myTasks.IsEmpty())
+			{
+				LogEvent(EventType::MinorEntityProcess,peer,e,"No tasks to clear");
+				return;
+			}
 		}
-
-		Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
-		if (t)
+		else
 		{
-			t->ClearTasks();
-			LogEvent(EventType::MinorEntityProcess,peer,e,"Cleared all tower attack targets");
-			return;
+			Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
+			if (t)
+			{
+				if (t->attackQueue.IsEmpty())
+				{
+					LogEvent(EventType::MinorEntityProcess,peer,e,"No tasks to clear");
+					return;
+				}
+			}
+			else
+			{
+				LogEvent(EventType::CommandRejected,peer,e,"Tried to drop commands of incompatible entity");
+				return;
+			}
 		}
+		Journal::currentRound.RegisterClearEntityCommands(true,e);
 
-		LogEvent(EventType::CommandRejected,peer,e,"Tried to drop command on incompatible entity");
-		return;
 	}
 
 
@@ -1536,13 +1258,28 @@ namespace Receiver
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(cmd.id,peer);
 		if (!e)
 			return;
-
 		foreach (cmd.path,n)
 			if (!Grid::ValidCell(*n, Objects::Satellite::BaseResidenceHeight,Objects::Satellite::DeclinedResidenceHeight))
 			{
 				LogEvent(EventType::CommandRejected, peer, e, "Parameter fault ("+n->ToString()+")");
 				return;
 			}
+		const bool leftClick = (cmd.directFlags & Protocol::DirectFlag::LeftClick) != 0;
+		const bool detailed = (cmd.directFlags & Protocol::DirectFlag::Detailed) != 0;
+		//if (!e->DirectTo((Objects::Vehicle::mode_t)cmd.mode.value,cmd.path,detailed,leftClick))
+		//{
+		//	LogEvent(EventType::CommandRejected,peer,e,"Unable to comply");
+		//	static StringBuffer buffer;
+		//	buffer.Clear();
+		//	foreach (cmd.path,p)
+		//		buffer << ' '<<p->ToString();
+		//	LogEvent(EventType::MinorEntityProcess,peer,e,"(Directed entity in mode "+String(cmd.mode.value)+" via click "+String(leftClick)+" to "+buffer.ToString()+" (detailed="+String(detailed)+"))");
+		//	return;
+		//}
+		Journal::currentRound.RegisterDirectEntityTo(true,e,(Objects::Vehicle::mode_t)cmd.mode.value,cmd.path,detailed,leftClick);
+	}
+
+	#if 0
 
 		if (!e->IsSatellite()) //must find other logic for satellites...
 		{
@@ -1561,6 +1298,8 @@ namespace Receiver
 				}
 				e->RegisterChange(Objects::WorldEntity::AutomationChanged,0);
 
+				Journal::currentRound.LogDirectEntityTo(*e,p->gatheringPoint.current,(Objects::Vehicle::mode_t)0,true);
+
 				return;
 			}
 		}
@@ -1576,6 +1315,10 @@ namespace Receiver
 			}
 			else
 				LogEvent(EventType::MinorEntityProcess,peer,e,"Directed vehicle in mode "+String(cmd.mode.value)+" via click "+String(leftClick)+" to"+buffer.ToString()+" detailed="+String(detailedPath));
+			{
+				Journal::currentRound.LogDirectEntityTo(*v,cmd.target,(Objects::Vehicle::mode_t)cmd.mode.value,cmd.leftClick);
+				LogEvent(EventType::MinorEntityProcess,peer,e,"Directed vehicle in mode "+String(cmd.mode.value)+" via click "+String(cmd.leftClick)+" to "+cmd.target.ToString());
+			}
 			//Objects::WorldEntity::UnlockChanges();
 			//Protocol::VehicleState	w;
 			//State::Describe(w,*v, true, Protocol::Timestamp(true,0),false);
@@ -1597,15 +1340,13 @@ namespace Receiver
 			foreach (cmd.path,n)
 				if (!t->AttackNext(*n,false))
 				{
-					LogEvent(EventType::CommandRejected,peer,e,"Unable to comply");
+					LogEvent(EventType::CommandRejected,peer,e,"Tower attack: Unable to comply");
 				}
-	//		Objects::WorldEntity::UnlockChanges();
-
-			//Protocol::StructureState	w;
-			//State::Describe(w,t,true,Protocol::Timestamp(true,0),Objects::WorldEntity::TasksChanged);
-
-			//Channels::setStructureState.SendTo(peer,w);	
-			LogEvent(EventType::MinorEntityProcess,peer,e,"Issued tower attack to"+buffer.ToString());
+			else
+			{
+				Journal::currentRound.LogDirectEntityTo(*e,cmd.target,(Objects::Vehicle::mode_t)0,true);
+				LogEvent(EventType::MinorEntityProcess,peer,e,"Issued tower attack to "+buffer.ToString());
+			}
 			return;		
 		}
 
@@ -1613,6 +1354,7 @@ namespace Receiver
 		LogEvent(EventType::CommandRejected,peer,e,"Tried to issue direct command on incompatible entity");
 	}
 
+	#endif /*0*/
 	void	Hello(Protocol::Hello&hello, TCP::Peer&peer)
 	{
 		if (hello.trim().IsEmpty())
@@ -1657,6 +1399,7 @@ namespace Receiver
 
 
 			Channels::phaseChange.SendTo(peer,ph);
+
 
 
 			/*
