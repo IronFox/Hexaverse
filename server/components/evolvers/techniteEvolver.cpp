@@ -92,4 +92,13 @@ namespace Evolver
 		}
 	}
 
+	/*virtual override*/ void Technite::BeginRoundProcessing()
+	{
+		if (RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase)
+			State::ChangePhase(RuntimeConfig::Phase::TechnitePhase);
+		else
+			Super::BeginRoundProcessing();
+	}
+
+
 }

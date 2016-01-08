@@ -15,6 +15,7 @@ namespace Evolver
 
 		bool	ContinueRoundProcessing() override;
 		void	FinishRoundProcessing() override;
+		void	BeginRoundProcessing() override;
 	};
 
 }
