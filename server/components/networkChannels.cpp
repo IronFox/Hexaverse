@@ -424,9 +424,9 @@ namespace Receiver
 					Objects::Faction::all << client->faction;
 				}
 			faction = client->faction;
+			client->faction->name = client->name;
 
 
-			
 			LogEvent(EventType::SessionRelated,peer,"Created new faction.");
 
 			client->faction->accessToken = response.factionToken;
