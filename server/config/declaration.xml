@@ -146,8 +146,10 @@
 			&apos;Conceal&apos; will treat them like ordinary weaponry: if explosion and/or affected terrain are in scanning range, the effects will be partially or completely visible.
 		</variable>
 		<variable name="limitTechniteLife" default="true">
-			Sets wether or not technites are limited in their maximum lifetime.
-			If set true, technites slowly degenerate until they disappear. Otherwise they live forever.
+			Sets wether or not technites are limited in their maximum lifetime. If set true, technites slowly degenerate until they disappear. Otherwise they live forever.
+		</variable>
+		<variable name="extraTechniteRounds" default="1">
+			Declares the number of extra rounds per regular round, during which only technites may be instructed. Setting higher values accelerates technite evolution relative to normal player operations.
 		</variable>
 		<context name="UnitLimits">
 			Total number of structures/vehicles that may be deployed by any one faction.
