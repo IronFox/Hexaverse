@@ -53,6 +53,8 @@ namespace Grid
 					ASSERT_LESS_OR_EQUAL__(c->layerBegin,c->layerEnd);
 					ASSERT_LESS__(c->layerBegin,CellStack::Range);
 				#endif
+				if (c->layerEnd == c->layerBegin)
+					continue;
 				auto&stack = cellStack[c->stackID];
 				familyChanged[high.grid.GetCell(c->stackID).family] = true;
 				for (UINT32 layer = c->layerBegin; layer < c->layerEnd; layer++)

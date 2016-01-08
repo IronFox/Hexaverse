@@ -547,7 +547,7 @@ namespace Animation
 						Grid::LCellIdI last = v->location;
 						for (index_t i = 0; i < newTasks.Count(); i++)
 						{
-							if (Mergeable(newTasks[i],currentTasks[i]))
+							if (i < currentTasks.Count() && Mergeable(newTasks[i],currentTasks[i]))
 								Merge(*v, last,newTasks[i],currentTasks[i],v->myTasks.Push());
 							else
 							{
@@ -777,7 +777,7 @@ namespace Animation
 					foreach (state->attackTasks,at)
 					{
 						//ASSERT_EQUAL__(t->parameters.Count(),2);
-						t->AppendTask(at->id,at->target);
+						t->AppendTask(*at);
 					}
 				}
 			}

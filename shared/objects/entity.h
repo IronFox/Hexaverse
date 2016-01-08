@@ -154,6 +154,18 @@ namespace Objects
 	private:
 
 	public:
+		#ifndef CLIENT
+
+			Random					localRandom;
+			
+			void					ReSeedRandom();
+
+
+
+		#endif
+
+
+
 		virtual						~WorldEntity();
 
 		#ifdef HAS_WINDOW
@@ -322,13 +334,23 @@ namespace Objects
 		virtual bool				AwaitsUserInteraction() const {return false;}
 
 
+		#ifndef CLIENT
+			virtual bool			DirectTo(CursorMode::mode_t, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
+		#endif
+
+
 		//various type check methods. technically, a dynamic cast into the respective structure would be sufficient but i am led to believe that these are faster
 		virtual bool				IsWorkingStructure() const {return false;}
 		virtual bool				IsMobile() const {return false;}
 		virtual bool				IsVehicle() const {return false;}
 		virtual bool				IsSatellite() const {return false;}
 		virtual bool				IsStructure() const {return false;}
-		virtual bool				IsVehiclePlant() const {return false;}
+		//virtual bool				IsVehiclePlant() const {return false;}
+		//these are performance optimizations. Some visualizations may behave unexpectedly if they are not
+		//overidden by classes implementing MobileEntityProducer
+		//dynamic cast is not suitable for high frequency queries:
+		//http://stackoverflow.com/questions/9959315/why-virtual-function-call-is-faster-than-dynamic-cast
+		virtual const MobileEntityProducer*	CastToProducer() const {return nullptr;}
 
 
 		virtual bool				IsIndestructible() const	{return false;};
@@ -336,11 +358,6 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			virtual void			OnSelect()	{};
 			virtual void			OnDeselect(){};
-			//these are performance optimizations. Some visualizations may behave unexpectedly if they are not
-			//overidden by classes implementing MobileEntityProducer
-			//dynamic cast is not suitable for high frequency queries:
-			//http://stackoverflow.com/questions/9959315/why-virtual-function-call-is-faster-than-dynamic-cast
-			virtual const MobileEntityProducer*CastToProducer() const {return nullptr;}
 		#endif
 
 

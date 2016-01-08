@@ -22,6 +22,8 @@ namespace Logging
 void		LogEvent(EventType t, TCP::Peer&p, const String&msg);
 void		LogEvent(EventType t, TCP::Peer&p, const Objects::PWorldEntity&e, const String&msg);
 
+inline void		LogEvent(EventType t, const TCP::PPeer&p, const String&msg)	{if (p) LogEvent(t,*p,msg); else LogEvent(t,msg);}
+inline void		LogEvent(EventType t, const TCP::PPeer&p, const Objects::PWorldEntity&e, const String&msg)	{if (p) LogEvent(t,*p,e,msg); else LogEvent(t,e.get(),msg);}
 
 
 

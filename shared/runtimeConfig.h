@@ -32,10 +32,12 @@ namespace RuntimeConfig
 	extern UINT32 techniteSubRoundNumber/*=0*/;
 	namespace UnitLimits
 	{
+		bool		IsEnabled();
+		void		Enable(bool doEnable);
 		void		Reset();
 		bool		AnySet();
-		void		Set(ConstName, int);
-		count_t		Get(ConstName);
+		bool		Set(ConstName, int);
+		count_t		Get(ConstName, bool ignoreEnabledState=false);
 		void		Export(Array<std::pair<UINT16,UINT16> >&);
 		void		Import(const Array<std::pair<UINT16,UINT16> >&);
 	}

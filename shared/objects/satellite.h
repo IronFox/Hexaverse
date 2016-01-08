@@ -450,8 +450,8 @@ namespace Objects
 			virtual void		VisitAllCommands(FCommandVisitor visitor) override;
 			virtual void		OnSelect() override;
 			virtual void		OnDeselect() override;
-			virtual const MobileEntityProducer*CastToProducer() const override {return this;}
 		#endif
+		virtual const MobileEntityProducer*CastToProducer() const override {return this;}
 		virtual void			PrototypeSetup() override;
 
 

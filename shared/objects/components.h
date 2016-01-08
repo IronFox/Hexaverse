@@ -386,11 +386,14 @@ namespace Objects
 				template <ConstName Command>
 					void	IssueCommand(const PWorldEntity&v)
 					{
-						if (v->location.height+1 >= Grid::CellStack::HalfRange)
-							return;
 						PMobileEntity vehicle = To<MobileEntity>::DynamicCast(v);
 						if (!vehicle)
 							return;
+						//if (vehicle->GetLastPointOfOrigin().height+1 >= Grid::CellStack::TopHeight)	//not the place of the client to decide
+						//{
+						//	LogEvent(EventType::CommandRejected
+						//	return;
+						//}
 						SignalNewJob(vehicle, Command,ConstName::Empty);					
 					}
 

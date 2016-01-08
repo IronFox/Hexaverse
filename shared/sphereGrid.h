@@ -22,9 +22,10 @@ static const float WorldScale = 40.f;
 
 namespace Grid
 {
-	CONSTRUCT_ENUMERATION3(WorldDiscovery,
+	CONSTRUCT_ENUMERATION4(WorldDiscovery,
 		None,
 		Oceans,
+		Liquids,
 		FullTerrain
 	)
 
@@ -102,6 +103,7 @@ namespace Grid
 		typedef TSharedPlanetConfig	TPlanetConfig;
 	#endif
 
+	extern TPlanetConfig	currentPlanetConfig;
 	
 
 
@@ -326,6 +328,9 @@ namespace Grid
 			{
 				return cnt == Content::Water || cnt == Content::Lava;
 			}
+
+			bool	IsLiquid() const {return IsLiquid(content);}
+
 			bool	IsSolid() const
 			{
 				//if (content == Content::Foundation)
@@ -1947,13 +1952,15 @@ namespace Grid
 
 		static Buffer0<Resource>all;
 		static void				Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 cellID));
-		static void				Create(const String&name, ConstName cname, const float3&color, float p, coverage_t);
+//		static void				Create(const String&name, ConstName cname, const float3&color/*, float p, coverage_t*/);
 		static void				Create(const String&name, ConstName cname, const float3&color, index_t);
 		//static void				Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield);
 		static Resource&		Require(const String&name);
 		static Resource&		Require(ConstName name);
 		static coverage_t		Sample(const String&resourceName, index_t cellID);
 		static coverage_t		Sample(ConstName resourceName, index_t cellID);
+
+		index_t					resourceIndex;
 
 		/**/					Resource()
 		{
@@ -1963,8 +1970,11 @@ namespace Grid
 		}
 		void					Name(const String&name, ConstName cname, const float3&color)	{this->name = name; this->cname = cname; this->color = color;}
 		
+		void					Fill(Random&random, float p, coverage_t);
+		void					Fill(Random&random);
+
 		const String&			GetName() const {return name;}
-		ConstName			GetCName() const {return cname;}
+		ConstName				GetCName() const {return cname;}
 		const float3&			GetColor() const {return color;}
 	};
 
@@ -2072,16 +2082,15 @@ namespace Grid
 	#ifndef CLIENT
 		/**
 		Redefines the world volume, based on the specified world configuration and discovery setting
-		Called by Create0() implicitly. Can be used to overwrite the current world.
 		MUST NOT be used on a session with active factions/players
 		*/
-		void			GenerateWorldVolume(const TPlanetConfig&config, WorldDiscovery discovery);
+		void			BuildWorld(const TPlanetConfig&config, WorldDiscovery discovery);
 	#endif
 
 	/**
 	Initializes the grid and all static gpu resources. Call ONCE before creating objects (and their shadows)
 	*/
-	void				Create0(const TPlanetConfig&, WorldDiscovery);
+	void				Create0();
 	/**
 	Concludes grid initialization. Call ONCE after Create0(), and creating objects (and their shadows)
 	*/
@@ -2313,6 +2322,17 @@ namespace Grid
 		*/
 		void				CheckChanges(float t);
 
+
+		/**
+		Detects resource coverage changes within the specified sphere, and updates @a resourcesDiscovered where necessary.
+		Uses some static fields. Do not call in parallel.
+		@param center Terrain center to detect resources from
+		@param range Sphere radius to detect resources within
+		@param[inout] outNewDiscoveries Buffer to add newly discovered cell stacks to. Cleared automatically
+		*/
+		void				UpdateResourceCoverage(const Grid::LCellIdI&center,float range, BasicBuffer<UINT32>&outNewDiscoveries);
+
+
 	};
 
 
@@ -2360,6 +2380,7 @@ namespace Grid
 
 		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, const Array<CellStack::TTechniteFactionDelta>&data1, bool initialization);
 		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TTechniteFactionDeltaBlock>&data1, bool initialization, bool actualWorld);
+		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld);
 
 		/**
 			Signals that the fine geometry in and on the edge of the specified cell has changed.
@@ -2499,7 +2520,7 @@ namespace Grid
 						innerType = Content::Unknown,
 						liquidCoverage = Content::Water,
 						extendedCoreType = Content::Granite,
-						liquidProximity = Content::Sand;
+						liquidOutline = Content::Sand;
 
 			static void RandomizeSeed(float3&v, Random&random)
 			{
@@ -2566,29 +2587,29 @@ namespace Grid
 
 			}
 
-			void	GenerateAtmosphereColorForType(Content t, float density)
+			void	GenerateAtmosphereColorForType(Content t)
 			{
 				if (t == Content::Water)
 				{
-					atmosphereColor = float4(0.7,0.8,1.0,density);
+					atmosphereColor.rgb = float3(0.7,0.8,1.0);
 					return;
 				}
-				atmosphereColor = float4(CellStack::Cell::typeColor[t],density);
+				atmosphereColor.rgb = CellStack::Cell::typeColor[t];
 				Vec::abs(atmosphereColor);
 			}
 
-			void	GenerateAtmosphereColor(float density = 0.5f)
+			void	GenerateAtmosphereColor()
 			{
 				if (liquidCoverage != Content::Clear)
 				{
-					GenerateAtmosphereColorForType(liquidCoverage,density);
+					GenerateAtmosphereColorForType(liquidCoverage);
 					
 					return;
 				}
 				if (innerCoreType != Content::Clear)
-					GenerateAtmosphereColorForType(Content::Reinterpret(innerCoreType),density);
+					GenerateAtmosphereColorForType(Content::Reinterpret(innerCoreType));
 				else
-					GenerateAtmosphereColorForType(topType,density);
+					GenerateAtmosphereColorForType(topType);
 			}
 
 		};

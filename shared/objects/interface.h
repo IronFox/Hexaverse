@@ -41,6 +41,15 @@
 
 	extern UINT32			globalVersionOfCurrentFile;
 
+	struct FileVersions
+	{
+		enum version_t : UINT32
+		{
+			HasUUIDInConstructionJobs = 1041
+		};
+	};
+
+
 
 	void	SignalNewMobileEntity(const Objects::PMobileEntity&v, bool restoredFromStorage, float atTime);
 	void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float atTime);

@@ -2,6 +2,8 @@
 #define protocolH
 
 
+#undef FAR
+#define FAR
 #include <iphlpapi.h>
 #include <net/tcp.h>
 #include <net/containers.h>
@@ -1656,11 +1658,11 @@ namespace Protocol
 	)
 
 
-
-	NETSTRUCT2(AttackTask
-		, LCellIdI, target
-		, NET(TUniqueID), id
-	)
+	typedef LCellIdI	AttackTask;
+	//NETSTRUCT2(AttackTask
+	//	, LCellIdI, target
+	//	, NET(TUniqueID), id
+	//)
 
 
 	//NETSTRUCT2(ProductionTask
@@ -2053,7 +2055,8 @@ namespace Protocol
 			*/
 			ProgressiveInit,	
 			ProgressiveUpdate,	//!< Works on the assumption that the recepient has a previous state, which should also be updated if visible
-			FactionCopy,		//!< Creates a copy of the faction state, assuming the recepient knows only an empty terrain. Does not update anything
+			ProgressiveUpdateNoDelta,	//!< Like ProgressiveUpdate but generates no delta structure. The passed delta parameter is ignored
+			LocalCopy,		//!< Creates a copy of the specified world-state. Does not update anything. Does not reference any global state
 			GlobalCopy,			//!< Creates a copy of the actual world state, assuming the recepient knows only an empty terrain. Does not update anything
 			GlobalInitialCopy,	//!< Creates a copy of the initial world state, assuming the recepient knows only an empty terrain. Does not update anything
 		};
@@ -2062,6 +2065,8 @@ namespace Protocol
 	/**
 	Generates a world delta for storage/client notification
 	//@param faction Reference to the respective client faction (must be set if deltaType is ProgressiveInit, ProgressiveUpdate, or FactionCopy)
+	@param vs Faction visibility state. Used for ProgressiveInit and ProgressiveUpdate only
+	@param ws Faction/local world state. Required not-null for ProgressiveUpdate and LocalCopy, ignored otherwise. Updated during ProgressiveUpdate
 	@param[out] delta Resulting delta
 	@param familyID Index of the grid family that the delta should be computed of
 	@param rightNow Indicates that the enclosed timestamp should be flagged as 'rightNow', as opposed to using the grid timestamp
@@ -2069,7 +2074,6 @@ namespace Protocol
 	@param deltaType Type of delta to compute (see delta_type_t for details)
 	*/
 	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType);
-
 }
 
 

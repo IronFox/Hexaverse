@@ -91,6 +91,14 @@ namespace Test
 
 	};
 
+	class Journal : public Test
+	{
+	public:
+		/**/			Journal():Test("Journal"){}
+		virtual void	Run(Random&random)	override;
+	};
+
+
 	class Bin2Str : public Test
 	{
 	public:

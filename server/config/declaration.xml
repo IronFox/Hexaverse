@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<declaration>
+	<context name="World">Settings related to the current world
+		<variable name="simulateLiquids" default="true">
+			Enables or liquid expansion. Lava and water will expand horizontally and downwards, and eventually floodfill all available space.
+			No actual simulation at this stage. Liquid volume increases as long as connected space is available.
+			Set false to disable.
+		</variable>
+		<variable name="worldDiscovery" default="None">
+			Information visible to factions out front.
+			'None' will send two types of terrain information: 'Clear' and 'Unknown' where 'Unknown' accounts for all non-clear terrain types, including water and lava.
+			'Oceans' will separately expose all water.
+			'Liquids' will expose all liquids in general (currently water and lava).
+			'FullTerrain' exposes all initial terrain information to all clients (excluding terrain modifications caused by subsequent changes, e.g. nexus base construction).
+		</variable>
+		<context name="Resources">
+			<context name="Fuel">
+				<variable name="probability" default="0.045" />
+				<variable name="max" default="8" />
+			</context>
+			<context name="Minerals">
+				<variable name="probability" default="0.045" />
+				<variable name="max" default="12" />
+			</context>
+			<context name="Energy">
+				<variable name="probability" default="0" />
+				<variable name="max" default="1" />
+			</context>
+			<context name="Uranium">
+				<variable name="probability" default="0.01" />
+				<variable name="max" default="6" />
+			</context>
+		</context>
+		<context name="Planet">
+			<variable name="Type" default="LushGreen">
+				The following defines which planet type to use.
+				For any given string X, a valid file /config/planets/[X].ini should exist.
+			</variable>
+			<context name="Config">
+				<variable name="atmosphereDensity" default="0.5">Floating point 0 (none visible) to 1 (very dense)</variable>
+				<variable name="innerCoreType" default="Lava">
+					Describes the content of the inner-most sphere of the planet.
+					Use &apos;Clear&apos; to make the inner core hollow.
+					Depending on this setting, certain (or all) vehicles will be unable to stand on the bottom layer.
+					Lava is always nice.
+				</variable>
+				<context name="ExtendedCore">Describes the first layer of matter around the core. This layer will replace any matter formed by [Mountains]
+					<variable name="type" default="Unknown">
+						Terrain content to fill the extended core with.
+						The extended core reaches from the bottom most layer up to a height level corresponding to the remaining configuration of [ExtendedCore].
+						The core itself it not altered by these settings.
+						Common scenarios include Lava or something hard like Granite.
+						Less common, but sometimes nice is to set this to 'Clear', which will carve caves atop the inner core.
+					</variable>
+					<variable name="baseHeight" default="-16">
+						Central height of extended core matter.
+						The terrain content specified in [type] will replace matter up to height=baseHeight+[random value]*noiseHeightScale, so chosing a low value might be a good idea.
+					</variable>
+					<variable name="noiseHeightScale" default="1">
+						Vertical noise stretching. Non-negative floating point.
+						0.0 will create a perfectly flat sphere at height baseHeight.
+						1 will be fairly mountainous, more is usually overkill.
+					</variable>
+					<variable name="frequency" default="1">
+						Frequency of noise evolution. The higher, the thinner, sharper and more frequent mountains occur.
+						Doesn&apos;t affect their height but will create a lot of pointy needles if too high.
+						Lower values can be used to relax the terrain
+					</variable>
+					<variable name="dampening" default="0">
+						Height levels above and below zero that are collapsed to zero to create an overall flatter terrain.
+						E.g. if this is set to 2 then any resulting random height-level ([random value]*noiseHeightScale) that is -2,-1,0,1, or 2 will be interpreted as 0.
+						Using any non-zero setting will result in flat valleys near the median height (baseHeight).
+					</variable>
+				</context>
+				<context name="Mountains">
+					<variable name="top" default="Grass">
+						Content of the top-most surface cell (except where intersected by [ExtendedCore], or covered by [Liquid]).
+						Depending on height and settings this value may selectively be replaced by &apos;Snow&apos;, or Liquid.outline where appropriate.
+						If type is set to &apos;Unknown&apos; it can also be replaced by &apos;Rock&apos;, if above height level 2.
+					</variable>
+					<variable name="type" default="Unknown">
+						Type to fill mountains with.
+						&apos;Unknown&apos; attempts to guess what is best and may also selectively replace top under certain circumstances.
+						Using &apos;Unknown&apos; will chose mostly &apos;Rock&apos;. &apos;Earth&apos; is chosen only if appropriate by height, and top is set to
+						&apos;Earth&apos;, &apos;Grass&apos;, &apos;Sand&apos;, or &apos;Snow&apos;
+					</variable>
+					<variable name="snowHeight" default="5">
+						Height level at which snow will occur. Set to 16+ to disable snow.
+						Snow will replace the top most block in this layer, and selectively override top.
+					</variable>
+					<variable name="baseHeight" default="0">
+						Same as ExtendedCore.baseHeight except for the mountain layer.
+						Should be set to something much bigger than ExtendedCore.baseHeight&gt;, since any matter generated by this layer will be replaced by [ExtendedCore].
+					</variable>
+					<variable name="noiseHeightScale" default="1">
+						Vertical noise stretching. Non-negative floating point.
+						0.0 will create a perfectly flat sphere at height baseHeight.
+						1 will be fairly mountainous, more is usually overkill.
+					</variable>
+					<variable name="frequency" default="1">
+						Frequency of noise evolution. The higher, the thinner, sharper and more frequent mountains occur.
+						Doesn&apos;t affect their height but will create a lot of pointy needles if too high.
+						Lower values can be used to relax the terrain.
+					</variable>
+					<variable name="dampening" default="0">
+						Height levels above and below zero that are collapsed to zero to create an overall flatter terrain.
+						E.g. if this is set to 2 then any resulting random height-level ([random value]*noiseHeightScale) that is -2,-1,0,1, or 2 will be interpreted as 0.
+						Using any non-zero setting will result in flat valleys near the median height (baseHeight).
+					</variable>
+				</context>
+				<context name="Liquid">
+					<variable name="type" default="Unknown" />
+					<variable name="level" default="0" />
+					<variable name="outline" default="Unknown" />
+				</context>
+			</context>
+		</context>
+	</context>
+	<context name="Rules">Game rule settings
+		<variable name="gameGoal" default="EMPConquerNexus">
+			None: No AI bases, no winning rules other than killing everyone else.
+			ConquerNexus: Three AI bases are spawned around the globe. Their center NexusPorts must be conquered by building anything next to it. All three NexusPorts must be conquered to win.
+			EMPConquerNexus: NexusPorts are spawned on all of the 12 pole points, but only three are expanded to full AI stations. EMP fields are created depending on the number of player factions.
+			Depending on the number of active factions, two or three of all NexusPorts must be conquered to win the game. It does not matter whether these NexusPorts are surrounded by stations.
+		</variable>
+		<variable name="supportedFactions" default="Regular, Technite, Hybrid">Comma-separated list of supported faction types.</variable>
+		<variable name="closedGame" default="false">Indicates that new faction can be created only during round 0.</variable>
+		<variable name="roundTimer" default="60">
+			Time in seconds that players can remain in command phase. once the deadline is reached, rounds will be progressed.
+			Set negative or zero to deactivate.
+		</variable>
+		<variable name="startBases" default="true">New players are given minimal bases (that meet the constraints of basesRequired)</variable>
+		<variable name="basesRequired" default="false">Indicates that players must maintain minimal bases to be considered &apos;alive&apos;. Minimal bases include a mandatory compound capable of generating infinite amounts of minerals. Such a compound includes a live mine that can deliver at least 10 units of fuel, one that can deliver at least 5 units of minerals, and a generator. Additionally, the player must own at least one terraformer or a vehicle plant that can be switched on. If any one of these conditions is not met, a death counter will count down each round for the respective faction, until it reaches zero. If it does, all vehicles and structures of that faction are destroyed. If the game is closed and only one faction remains, that faction is declared victor.</variable>
+		<variable name="exposeActionLeftToHostileFactions" default="true">Sends effective vehicle initiative to hostile factions</variable>
+		<variable name="newVehiclesHaveFullAmmo" default="true">
+			New offensive vehicles using normal ammunition start with full ammo.
+			Effective only for vehicles actually requiring ammunition, and using default ammunition.
+		</variable>
+		<variable name="uplinkBandwidth" default="500">
+			Maximum possible uplink bandwidth per faction.
+			Effective only when uplink bandwidth system is enabled. Currently not.
+		</variable>
+		<variable name="doomsdayWeapons" default="Expose">
+			Configures treatment of doomsday-weaponry.
+			&apos;Expose&apos; will notify clients of both the explosion and resulting crater even if they cannot actually see the explosion.
+			&apos;Conceal&apos; will treat them like ordinary weaponry: if explosion and/or affected terrain are in scanning range, the effects will be partially or completely visible.
+		</variable>
+		<variable name="limitTechniteLife" default="true">
+			Sets wether or not technites are limited in their maximum lifetime.
+			If set true, technites slowly degenerate until they disappear. Otherwise they live forever.
+		</variable>
+		<context name="UnitLimits">
+			Total number of structures/vehicles that may be deployed by any one faction.
+			Only deployment is counted. Vehicles may be stored in vehicle stores to avoid being counted.
+			<variable name="Enabled" default="true">Specifies whether or not unit limits should be applied.</variable>
+			<context name="Structures">Limits for buildings
+				<variable name="Mine" default="8" />
+				<variable name="Generator" default="8" />
+				<variable name="Munition_Factory" default="4" />
+				<variable name="Vehicle_Plant" default="4" />
+				<variable name="Connector" default="1024" />
+				<variable name="Fuel_Container" default="8" />
+				<variable name="Mineral_Container" default="8" />
+				<variable name="Munition_Storage" default="24" />
+				<variable name="Uranium_Storage" default="8" />
+				<variable name="Nexus_Port" default="0" />
+				<variable name="Vehicle_Store" default="8" />
+				<variable name="Sky_Port" default="4" />
+				<variable name="Missile_Launcher_Tower" default="6" />
+				<variable name="Radar_Tower" default="8" />
+				<variable name="Cannon_Tower" default="16" />
+			</context>
+			<context name="MobileTurrets">Limits for mobile turrets. The used base, if flexible, is irrelevant.
+				<variable name="Radar" default="8" />
+				<variable name="Sky_Hub" default="4" />
+				<variable name="Sky_Guardian" default="8" />
+				<variable name="Ragnarök" default="1" />
+				<variable name="Star_Port" default="0" />
+				<variable name="Cannon" default="8" />
+				<variable name="Artillery" default="5" />
+				<variable name="Missile_Launcher" default="3" />
+				<variable name="EMP" default="3" />
+				<variable name="Terraformer" default="4" />
+				<variable name="Surveyor" default="16" />
+				<variable name="Mechanic" default="4" />
+			</context>
+		</context>
+		<context name="Nexus">Nexus faction settings
+			<variable name="haveBases" default="true">If enabled then Nexus bases are constructed around 3 of the 12 planet poles.</variable>
+			<variable name="enableAI" default="false">
+				Enables the AI to process units of the Nexus faction.
+				Spawns nexus vehicles, and AI client to control nexus vehicles/structures (if any).
+				A client is separately launched to compute AI decisions.
+			</variable>
+			<variable name="threatEstimationFactor" default="0.5">
+				Linearly affects density of nexus vehicles.
+				If density is saturated, vehicle production/spawning halts.
+			</variable>
+			<variable name="vehicleTurrets" default="Cannon, Artillery, Radar">
+				List of turrets that the AI will spawn if &apos;nexus&apos; is set to true.
+				Only affects newly created vehicles - does not affect nexus vehicles loaded from a save-file.
+			</variable>
+		</context>
+	</context>
+	<context name="Server">
+		<variable name="saveEveryNRounds" default="10">Number of rounds between auto-saves. Set negative to disable.</variable>
+		<variable name="saveWhenAllQuit" default="true">Indicates that auto-saves should be performed when the last client disconnects. not saved to state files</variable>
+	</context>
+</declaration>

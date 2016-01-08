@@ -325,7 +325,7 @@ namespace Objects
 										const PVehicleJob&job, const Grid::LCellIdI*focus);
 
 
-			void				DropLastTask();
+			bool				DropLastTask();
 
 			void				BeginMotionPhase(float timeOffset)
 			{
@@ -368,13 +368,15 @@ namespace Objects
 					
 
 			*/
-			void				ClearAllTasks(bool isReaction, const TCodeLocation&caller)
+			bool				ClearAllTasks(bool isReaction, const TCodeLocation&caller)
 			{
 				if (TasksAreLocked())
 				{
+					if (flushTasksOnUnlock)
+						return false;
 					LogEvent(EventType::Debug,this,"Issued task clearing: "+String(caller.ToString()));
 					flushTasksOnUnlock = true;
-					return;
+					return true;
 				}
 				
 				if (myTasks.IsNotEmpty() || completeOnMove)
@@ -385,7 +387,9 @@ namespace Objects
 					RegisterChange(TasksChanged,timeAt);
 					//tasksChanged = true;
 					myTasks.Clear();
+					return true;
 				}
+				return false;
 			}
 
 			bool				HasTasks() const
@@ -473,10 +477,6 @@ namespace Objects
 		So far only satellites do this in case residence height changes
 		*/
 		virtual void			TranslateLocationFromExport(){};
-
-		#ifndef CLIENT
-			virtual bool		DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
-		#endif
 
 
 		//TurretBase overrides:

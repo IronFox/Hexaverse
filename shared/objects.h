@@ -93,21 +93,18 @@ namespace Objects
 
 	#ifndef CLIENT
 		//void					Tick();
-		/**
-		Processes resource generation and distribution.
-		Supposed to be called at the beginning of round processing (before attack or movement phase)
-		If not in connector-less mode, everything is done here.
-		*/
-		void					ProcessStructures0();
-		/**
-		Distributes remaining overproduction to storage units.
-		Effective only if compiled in connector-less mode.
-		Supposed to be called at the end of the round processing (after movement phase, before animation phase)
-		*/
-		void					ProcessStructures1(float atTime);
-		bool					ProcessNextVehicleAttack();
-		bool					ProcessVehicleMotion();
-		void					ProcessEMPState(float atTime, const std::function<bool(const PWorldEntity&)>&doHeal);
+		///**
+		//Processes resource generation and distribution.
+		//Supposed to be called at the beginning of round processing (before attack or movement phase)
+		//If not in connector-less mode, everything is done here.
+		//*/
+		//void					ProcessStructures0();
+		///**
+		//Distributes remaining overproduction to storage units.
+		//Effective only if compiled in connector-less mode.
+		//Supposed to be called at the end of the round processing (after movement phase, before animation phase)
+		//*/
+		//void					ProcessStructures1(float atTime);
 
 	#endif
 
@@ -140,20 +137,6 @@ namespace Objects
 
 
 	#ifndef CLIENT
-		/**
-		Like vehicles, towers have an attack action floation point value. Unlike vehicles, they are not part of the
-		movement phase. Therefore, once per round, this function must be called to reset their attack action.
-		*/
-		void			ResetTowerAttackAction(float atTime);
-		/**
-		Updates what satellites can see on the ground (if terrainChanged is set true), and their fuel supply.
-		Unsupplied satellites may be destroyed.
-		Must be called once per round.
-		@param t Server time
-		@param terrainChanged Set true if the terrain changed sind the last invocation of this function. If in doubt pass true. 
-		*/
-		void			CheckSatelliteSupplyAndSensory(float&t, bool terrainChanged);
-
 	#endif
 
 

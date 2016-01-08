@@ -2,19 +2,24 @@
 #define serverStateH
 
 #include <global_string.h>
-#include <net/tcp.h>
+//#undef FAR
+//#define FAR
+//#include <net/tcp.h>
 #include "../../shared/protocol.h"
 #include "../../shared/objects.h"
 #include "../../shared/runtimeConfig.h"
 
-
+#include "evolver.h"
 
 
 
 
 namespace State
 {
-	static const UINT32	SupportedFileVersion = 1040;
+	static const UINT32	SupportedFileVersion = 1041;
+
+
+
 
 	static const UINT32 NotifyOthers = Objects::WorldEntity::PositionChanged 
 										| Objects::WorldEntity::HealthChanged 
@@ -23,6 +28,14 @@ namespace State
 										| Objects::WorldEntity::HibernationChanged;
 
 
+	void	WriteActualWorldToContainer(Riff::Chunk&container);
+	/**
+	Serializes @a inData to @a outChunk.
+	@param inData Data to serialize. Is not altered. Reference only for compatibilty with existing functions.
+	@param outChunk Riff-Chunk to write to
+	*/
+	void	WriteToListChunk(Grid::WorldData&inData, Riff::Chunk&outChunk);
+	void	ReadFromListChunk(const Riff::Chunk&, Grid::WorldData&);
 	void	Save(const PathString&name);
 	void	Load(const PathString&name);
 	void	AssembleGameInfo(Protocol::GameInfo&info);
@@ -31,6 +44,8 @@ namespace State
 	void	AutoSave();
 
 	extern TCP::Server		server;
+
+	extern Evolver::Abstract		*evolver;
 
 	class Client;
 	typedef std::shared_ptr<Client>	PClient;
@@ -56,14 +71,16 @@ namespace State
 		*/
 		void				SendProgressUpdate(bool dead, const String&warningReason);
 
+	};
 		/**
-		Detects resource coverage changes within the specified sphere, and notifies the local faction client
+	Detects resource coverage changes within the specified sphere, and notifies the local faction client, if any
+	Uses static fields. Do not call in parallel
+	@param f Faction to update
 		@param center Terrain center to detect resources from
 		@param range Sphere radius to detect resources within
 		@param timeStamp Timestamp to send to this client
 		*/
-		void				UpdateResourceCoverage(const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp);
-	};
+	void				UpdateResourceCoverage(const Objects::PFaction&f, const Grid::LCellIdI&center,float range, const Protocol::Timestamp&timestamp);
 
 
 	/**
@@ -82,7 +99,7 @@ namespace State
 	extern Timer::Time		lastPhaseChange /*= timer.Now()*/;
 	extern bool				roundTimerPaused /*= true*/;
 
-	extern Grid::TSharedPlanetConfig	persistentPlanetInfo;
+	//extern Grid::TSharedPlanetConfig	persistentPlanetInfo;
 
 	extern count_t			techniteFactionsOnline;
 
@@ -90,6 +107,7 @@ namespace State
 	{
 		extern float	factionStartMineralValue;	//determined during loading
 
+		extern Grid::WorldDiscovery	worldDiscovery;
 
 		extern int		roundTimer/* = -1*/,
 						extraTechniteRoundTimer/* = -1*/;
@@ -100,16 +118,12 @@ namespace State
 						basesRequired/* = false*/,
 						simulateLiquids/* = true*/,
 						exposeActionLeftToHostileFactions/* = true*/;
-		extern UINT32	saveEveryNRounds/* = 10*/;
+		extern int		saveEveryNRounds/* = 10*/;
 		extern bool		saveWhenAllQuit/* = true*/;
 		//extern count_t	limitMinesTo/* = 100*/;
 
 		extern UINT32	factionSupportFlags;
 		static const UINT32 AllFactionSupportFlags = Protocol::GameFlag::SupportRegularFactions | Protocol::GameFlag::SupportTechniteFactions | Protocol::GameFlag::SupportHybridFactions;
-		extern bool		enableNexusAI/* = false*/;
-		extern float	nexusThreatEstimationFactor/* = 1.f*/;
-		extern Array<Objects::Component::Turret*>	nexusVehicleTurrets;
-		extern Array<String>			nexusVehicleTurretNames;	//used during config loading, identical to nexusVehicleTurrets later
 		
 		typedef RuntimeConfig::GameGoal	Goal;
 
@@ -142,11 +156,12 @@ namespace State
 			return rs;
 		}
 
-		inline void		SetFactionSupportFlagString(const String&supp)
+		inline bool		SetFactionSupportFlagString(const String&supp)
 		{
 			factionSupportFlags = 0;
 			Array<String>	segs;
 			explode(',',supp,segs);
+			bool allGood = true;
 			foreach (segs,seg)
 			{
 				seg->trimThis();
@@ -159,8 +174,12 @@ namespace State
 				if (*seg == "Hybrid")
 					factionSupportFlags |= Protocol::GameFlag::SupportHybridFactions;
 				else
+				{
 					LogEvent(EventType::ConfigRelated,nullptr,"Warning: Unsupported faction type for this build: '"+*seg+"'. Ignoring");
+					allGood = false;
 			}
+		}
+			return allGood;
 		}
 
 
@@ -172,9 +191,12 @@ namespace State
 						: 2;	//should be 2 here, because in normal ConquerNexus mode, only nexus bases are spawned, whereas in EMP ConsquerNexus mode ports are spawned on all of the 12 poles
 		}
 
-		namespace NexusPorts
+		namespace Nexus
 		{
 			extern bool	haveBases/* = false*/;
+			extern bool		enableAI/* = false*/;
+			extern float	threatEstimationFactor/* = 1.f*/;
+			extern Array<Objects::Component::Turret*>	vehicleTurrets;
 		}
 	}
 	
@@ -262,6 +284,13 @@ namespace State
 	void			DebugCheckWorld(bool restart);
 
 
+	/**
+	Detects all changes in entities and world states and sends updates to the respective clients
+	@param thoroughly If set, also checks faction terrain changes that currently offline
+	*/
+	void			ProcessChanges(bool thoroughly);
+	bool			CheckCoverageSendTerrain(const Objects::PFaction&faction,const TCP::PPeer&peer);
+
 
 	void			PerformNewRoundLogic(float &atTime);	//includes UpdateHibernation()
 	
@@ -277,6 +306,23 @@ namespace State
 	void			SpawnNexusBaseAtPoleWithPort(int pole);
 	void			SpawnNexusPortAtPole(int pole);
 	void			RefreshWindowTitle();
+
+	
+	/**
+	Spawns all units required by a new faction.
+	The function does NOT check whether the location is any good.
+	It assumes such checks have been performed. Both the specified stack and all immediately surrounding stacks must be suitable for unit spawning.
+	*/
+	void			SpawnFactionStartUnits(const Objects::PFaction&f, index_t startLocationCenterStackIndex);
+
+	/**
+	Finds a randomized suitable starting location for a new faction.
+	
+	*/
+	index_t			GetFactionStartLocation(Random&random);
+
+
+	void			UpdateEMPZones(count_t temporaryFactionCountBonus=0);
 
 	
 	template <index_t Channel, class Item>

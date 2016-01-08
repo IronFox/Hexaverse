@@ -48,21 +48,26 @@ namespace Bin2Str
 	{
 		return Convert(v.pointer(),v.size());
 	}
-
-	inline void Convert(void*outData, size_t outDataSize, const String&source)
+	inline void Convert(void*outData, size_t outDataSize, const char*source, size_t sourceLen)
 	{
-		if (source.length() != outDataSize * 2)
+		if (sourceLen != outDataSize * 2)
 		{
-			throw Program::ParameterFault("Unable to decode byte-string '" + source + "': Invalid length (" + String(source.length()) + "). Expected "+String(outDataSize*2)+" characters");
+			throw Program::ParameterFault("Unable to decode byte-string '" + String(source,sourceLen) + "': Invalid length (" + String(sourceLen) + "). Expected "+String(outDataSize*2)+" characters");
 		}
 		BYTE*outBytes = (BYTE*)outData;
 		for (index_t i = 0; i < outDataSize; i++)
 		{
-			char a0 = source.get(i * 2);
-			char a1 = source.get(i * 2 + 1);
+			char a0 = source[i * 2];
+			char a1 = source[i * 2 + 1];
 			outBytes[i] = _HexToByte(a0, a1);
 		}
 	}
+
+	inline void Convert(void*outData, size_t outDataSize, const String&source)
+	{
+		Convert(outData,outDataSize,source.c_str(),source.length());
+	}
+
 }
 
 
@@ -76,10 +81,10 @@ struct TUniqueID
 		return stdMemHash(id.bytes,sizeof(id.bytes));
 	}
 
-	//String		ToString() const
-	//{
-	//	return Bin2Str::Convert(bytes,/*sizeof(bytes)*/4);
-	//}
+	String		ToFullString() const
+	{
+		return Bin2Str::Convert(bytes,NumBytes);
+	}
 
 	String		ToString(count_t numBytes=4) const
 	{
