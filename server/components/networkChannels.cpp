@@ -304,9 +304,9 @@ namespace Receiver
 			client->faction.reset(new Objects::Faction());
 			faction = client->faction;
 			Objects::Faction::all << client->faction;
+			client->faction->name = client->name;
 
 
-			
 			LogEvent(EventType::SessionRelated,peer,"Created new faction.");
 
 			client->faction->accessToken = response.factionToken;
