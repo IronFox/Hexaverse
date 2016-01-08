@@ -99,6 +99,33 @@ namespace Test
 	}
 
 
+
+	/*virtual override*/ void	Journal::Run(Random&random)
+	{
+		Grid::TPlanetConfig	config;
+		Objects::FlushAllData();
+		Grid::ResetStructureCounters();
+		config.extendedCore.heightScale = 0.f;
+		config.extendedCore.baseHeight = -Grid::CellStack::HalfRange;
+		config.liquidHeight = -Grid::CellStack::HalfRange;
+		config.mountains.baseHeight = 1;
+		config.mountains.heightScale = 1.5f;	//cause turbulence
+		config.RandomizeSeeds(random);
+		Grid::BuildWorld(config,Grid::WorldDiscovery::FullTerrain);
+
+
+
+
+
+
+
+		Objects::FlushAllData();
+		Grid::ResetStructureCounters();
+	}
+
+
+
+
 	/*virtual override*/ void	Serialization::Run(Random&random)
 	{
 		for (index_t i = 0; i < 3000; i++)
@@ -187,7 +214,7 @@ namespace Test
 		config.mountains.baseHeight = 1;
 		config.mountains.heightScale = 1.5f;	//cause turbulence
 		config.RandomizeSeeds(random);
-		Grid::GenerateWorldVolume(config,Grid::WorldDiscovery::FullTerrain);
+		Grid::BuildWorld(config,Grid::WorldDiscovery::FullTerrain);
 
 
 
@@ -527,10 +554,10 @@ namespace Test
 		bool rs ;
 		if (random.getFloat() < 0.8f)
 		{
-			rs = !!plant->EnqueueProductionOfVehicle(&Objects::Component::hoverbase,&Objects::Component::terraformer);
+			rs = plant->EnqueueProductionOfVehicle(&Objects::Component::hoverbase,&Objects::Component::terraformer) != nullptr;
 		}
 		else
-			rs = !!plant->EnqueueProductionOfSatellite(Objects::SkyHub::globalPrototype->GetCTypeName());
+			rs = plant->EnqueueProductionOfSatellite(Objects::SkyHub::globalPrototype->GetCTypeName()) != nullptr;
 
 		ASSERT__(rs);
 	}

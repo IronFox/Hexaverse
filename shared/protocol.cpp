@@ -48,18 +48,22 @@ namespace Protocol
 
 	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType)
 	{
-	
 			const index_t offset = Grid::high.grid.GetFamilyOffset(familyID);
 			const count_t length = Grid::high.grid.CountFamilyMembers(familyID);
 
-			delta.timestamp.atTime = std::max(Grid::high.family[familyID].outdatedAt,vs?vs->families[familyID].lastChange : 0.f);
-			delta.timestamp.rightNow = rightNow;
-			delta.familyAndLastFlag = familyID;
-			if (last)
-				delta.familyAndLastFlag.value |= 0x80;
+			const bool writeOutput = deltaType != WorldDeltaType::ProgressiveUpdateNoDelta;
+
+			if (writeOutput)
+			{
+				delta.timestamp.atTime = std::max(Grid::high.family[familyID].outdatedAt,vs?vs->families[familyID].lastChange : 0.f);
+				delta.timestamp.rightNow = rightNow;
+				delta.familyAndLastFlag = familyID;
+				if (last)
+					delta.familyAndLastFlag.value |= 0x80;
+			}
 
 			const Grid::CellStack::Cell empty(Grid::Content::Reinterpret(0),0);
-			Array<Grid::CellStack::TTypeDelta> tdts(length * Grid::CellStack::Range);
+			Array<Grid::CellStack::TTypeDelta> tdts(writeOutput ? length * Grid::CellStack::Range : 0);
 			//Array<Grid::CellStack::TTechniteFactionDelta> fdts(length * Grid::CellStack::Range);
 			//Array<bool> fdtsValid(length * Grid::CellStack::Range);
 
@@ -92,6 +96,17 @@ namespace Protocol
 							cell.temporarilyVisible = false;
 						}
 						break;
+						case WorldDeltaType::ProgressiveUpdateNoDelta:
+						{
+							auto&cell =  vs->cellStack[stackID].volumeCell[layer];
+							bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
+							if (canSee)
+							{
+								ws->cellStack[stackID].volumeCell[layer] = Grid::actualWorld.cellStack[stackID].volumeCell[layer];
+								cell.temporarilyVisible = false;
+							}
+						}
+						break;
 						case WorldDeltaType::ProgressiveInit:
 						{
 							auto&cell =  vs->cellStack[stackID].volumeCell[layer];
@@ -109,7 +124,7 @@ namespace Protocol
 						}
 						break;
 					#endif
-					case WorldDeltaType::FactionCopy:
+					case WorldDeltaType::LocalCopy:
 					{
 						const Grid::CellStack::Cell& source = ws->cellStack[stackID].volumeCell[layer];
 						source.GetDeltaFrom(empty,tdts[i]/*,fdts[i],fdtsValid[i]*/);
@@ -124,19 +139,21 @@ namespace Protocol
 				}
 			});
 
-
-			Compress(tdts,delta.data0, /*deltaType == FactionCopy || */deltaType == WorldDeltaType::GlobalCopy/* || deltaType == GlobalInitialCopy*/);
-			//{
-			//	BYTE lastSet = 0;
-			//	for (index_t i = 0; i < fdts.Count(); i++)
-			//	{
-			//		if (!fdtsValid[i])
-			//			fdts[i].newTechniteFaction = lastSet;
-			//		else
-			//			lastSet = fdts[i].newTechniteFaction;
-			//	}
-			//	Compress(fdts,delta.data2);
-			//}
+			if (writeOutput)
+			{
+				Compress(tdts,delta.data0, /*deltaType == FactionCopy || */deltaType == WorldDeltaType::GlobalCopy/* || deltaType == GlobalInitialCopy*/);
+				//{
+				//	BYTE lastSet = 0;
+				//	for (index_t i = 0; i < fdts.Count(); i++)
+				//	{
+				//		if (!fdtsValid[i])
+				//			fdts[i].newTechniteFaction = lastSet;
+				//		else
+				//			lastSet = fdts[i].newTechniteFaction;
+				//	}
+				//	Compress(fdts,delta.data2);
+				//}
+			}
 
 	}
 

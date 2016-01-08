@@ -561,8 +561,7 @@ namespace Objects
 						//random first to maybe not make the same mistake twice
 						for (index_t i = 0; i < numWays; i++)
 						{
-							static Random random;
-							index_t target = random.getIndex(numWays-1);
+							index_t target = localRandom.getIndex(numWays-1);
 							if (PlotCourse(ways[target],true,false))
 							{
 								hasTriedPlottingOnMoveAutoMotion = true;
@@ -876,6 +875,12 @@ namespace Objects
 
 			if (!HasTasks() || myTasks.GetNewest().type != Task::MoveTo)
 			{
+				if (myTasks.Count() >= Objects::MaxProductionTasks)
+				{
+					LogEvent(EventType::CommandRejected,this,"Max queue length ("+String(Objects::MaxProductionTasks)+") reached. Task rejected");
+					return false;
+				}
+
 				ASSERT__(!TasksAreLocked());
 				myTasks << Task("Move To",destination,detailedPath, Task::MoveTo);
 				if (!myTasks.GetNewest().Replot(pointOfOrigin, this,FocusChangeType::FullChange,true))
@@ -890,6 +895,11 @@ namespace Objects
 			{
 				if (myTasks.GetNewest().foci.IsNotEmpty())
 				{
+					if (myTasks.GetNewest().foci.Count() >= Objects::MaxFocusPoints)
+					{
+						LogEvent(EventType::CommandRejected,this,"Max focus point count ("+String(Objects::MaxFocusPoints)+") reached. Task rejected");
+						return false;
+					}
 					const auto&match = myTasks.GetNewest().foci.GetNewest();
 					while (destination.IsNotEmpty() && destination.First() == match.target)
 					{
@@ -974,10 +984,10 @@ namespace Objects
 
 	
 	
-		void		MobileEntity::DropLastTask()
+		bool		MobileEntity::DropLastTask()
 		{
 			if (!HasTasks())
-				return;
+				return false;
 			ASSERT__(!TasksAreLocked());
 			if (myTasks.GetNewest().type == Task::MoveTo)
 			{
@@ -1004,6 +1014,7 @@ namespace Objects
 					myTasks.EraseBack();
 			}
 			RegisterChange(TasksChanged,timeAt);
+			return true;
 		}
 
 
@@ -1320,6 +1331,14 @@ namespace Objects
 
 			}
 		}
+
+		static StringBuffer strPlottedCourse;
+		strPlottedCourse.Clear();
+		foreach (path,node)
+		{
+			strPlottedCourse << ' ' << node->cell.stackID<<'.'<<node->cell.height;
+		}
+		LogEvent(EventType::MinorEntityProcess,v,strPlottedCourse.ToStringRef());
 		return true;
 	}
 	
@@ -1338,7 +1357,7 @@ namespace Objects
 				{
 					if (job)
 					{
-						if (job->UpdatePath(*parent, pointOfOrigin, foci.Peek().target))
+						if (foci.IsNotEmpty() && job->UpdatePath(*parent, pointOfOrigin, foci.Peek().target))
 						{
 							path.Clear();
 							path << PathNode(pointOfOrigin,0);

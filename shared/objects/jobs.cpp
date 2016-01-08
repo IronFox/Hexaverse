@@ -22,6 +22,11 @@ namespace Objects
 										roundsToJobCompletion(-1),mineralCostLeft(0),
 										jobAutoCompletion(jobAutoCompletion),movesToFocusWhenDone(movesToFocusWhenDone)
 		{
+			ResetMineralsAndRoundsLeft(mineralCosts,v,actuallyConsumesMinerals);
+		}
+
+		void BaseJob::ResetMineralsAndRoundsLeft(int mineralCosts, const MobileEntity&v, bool actuallyConsumesMinerals)
+		{
 			if (mineralCosts)
 			{
 				int speed = v.GetConstructionSpeed();
@@ -863,37 +868,59 @@ namespace Objects
 
 		/*virtual override*/	bool			Construct::Serialize(IWriteStream&outStream, bool exportSize) const 
 		{
-			return constructWhat->GetTypeName().Serialize(outStream,exportSize);
+			return outStream.Write(useID.bytes,(serial_size_t)useID.NumBytes) && constructWhat->GetTypeName().Serialize(outStream,exportSize);
 		}
 
 		/*virtual override*/	serial_size_t	Construct::GetSerialSize(bool exportSize) const 
 		{
-			return constructWhat->GetTypeName().GetSerialSize(exportSize);
+			return (serial_size_t)useID.NumBytes + constructWhat->GetTypeName().GetSerialSize(exportSize);
 		}
+
 
 
 		/*virtual override*/	bool			Construct::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
 		{
 			String whatName;
+			if (globalVersionOfCurrentFile >= FileVersions::HasUUIDInConstructionJobs)
+			{
+				if (!inStream.Read(useID.bytes,(serial_size_t)useID.NumBytes))
+					return false;
+				if (fixedSize != EmbeddedSize)
+					fixedSize -= useID.NumBytes;
+			}
+			else
+				useID.Generate();
 			if (!whatName.Deserialize(inStream,fixedSize))
 				return false;
+
 			constructWhat = GetPrototypeByName(whatName);
 			if (!constructWhat)
 			{
 				if (whatName == "Artillery Tower" || whatName=="Cannon Tower")
 					constructWhat = GetPrototypeByName(ConstName::Type_LauncherTower);
 				ASSERT1__(constructWhat,whatName);
-
 			}
 			jobAutoCompletion = !!To<Connector>::DynamicCast(constructWhat) ? Autocomplete::Always : Autocomplete::IfSatellite;
+
+			if (constructWhat)
+				this->jobAutoCompletion = !!To<Connector>::DynamicCast(constructWhat) ? Autocomplete::Always : Autocomplete::IfSatellite;
+
 			//!!To<Connector>::DynamicCast(constructWhat);
 			return !!constructWhat;
 		};
 
+		/*virtual override*/ void			Construct::Restart(const MobileEntity&v)
+		{
+			Super::ResetMineralsAndRoundsLeft(constructWhat?constructWhat->GetConstructionCost():0,v,true);
+		}
+
+
 
 		/**/					Construct::Construct(MobileEntity&v, const PStructure&c) : 
 			BaseJob(c->GetConstructionCost(),v,true,!!To<Connector>::DynamicCast(c) ? Autocomplete::Always : Autocomplete::IfSatellite,false),constructWhat(c)
-		{}
+		{
+			useID.Generate();
+		}
 
 		/*virtual override*/ String			Construct::GetName() const
 		{
@@ -1098,6 +1125,7 @@ namespace Objects
 			}
 
 			PStructure s = To<Structure>::Cast(constructWhat->CreateNewInstance(v.owner, target, v.timeAt));
+			s->id = useID;
 			LogEvent(EventType::EntityProcess,&v,"Constructed " + s->GetNiceName());
 			InsertConstructed(s,v.timeAt,true);
 			return JobDone;

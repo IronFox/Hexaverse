@@ -881,26 +881,44 @@ namespace Objects
 			}
 
 			AttackTask&cmd = attackQueue.Push();
-			cmd.id.Generate();
+//			cmd.id.Generate();
 			cmd.target = target;
 			cmd.autoTarget = autoTarget;
 			SignalChange(TasksChanged,0);
 			return true;
 		}
-		void					Tower::ClearTasks()
+
+
+		/*virtual override*/ bool			Tower::DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
-			if (attackQueue.IsEmpty())
-				return;
-			attackQueue.Clear();
-			SignalChange(TasksChanged,0);
+		
+			if (mode != Objects::CursorMode::AttackMode || !leftClick)
+				return false;
+			for (const auto&destination : waypoints)
+			{
+				if (!AttackNext(destination,false))
+					return false;
+				LogEvent(EventType::MinorEntityProcess,this,"Issued tower attack to "+destination.ToString());
+			}
+			return true;
 		}
 
-		void					Tower::DropLastTask()
+		bool					Tower::ClearTasks()
 		{
 			if (attackQueue.IsEmpty())
-				return;
+				return false;
+			attackQueue.Clear();
+			SignalChange(TasksChanged,0);
+			return true;
+		}
+
+		bool					Tower::DropLastTask()
+		{
+			if (attackQueue.IsEmpty())
+				return false;
 			attackQueue.EraseBack();
 			SignalChange(TasksChanged,0);
+			return true;
 		}
 	#else
 
@@ -1952,6 +1970,25 @@ namespace Objects
 	}
 
 
+	#ifndef CLIENT
+		/*virtual override*/ bool			VehiclePlant::DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		{
+			if (waypoints.Count() != 1)
+				return false;
+			MobileEntityProducer::UpdateGatheringPoint(waypoints.First());
+			return true;
+		}
+
+		/*virtual override*/ bool			SkyPort::DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		{
+			if (waypoints.Count() != 1)
+				return false;
+			MobileEntityProducer::UpdateGatheringPoint(waypoints.First());
+			return true;
+		}
+	#endif
+
+
 	VehiclePlant::VehiclePlant(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner, location, atTime),
 		MobileEntityProducer(DefaultProductionPerRound)
 	{
@@ -2025,10 +2062,9 @@ namespace Objects
 		
 
 
-		void				Tower::AppendTask(const TUniqueID&taskID, const Grid::LCellIdI&attackTarget)
+		void				Tower::AppendTask(const Grid::LCellIdI&attackTarget)
 		{
 			AttackTask&task = attackQueue.Append();
-			task.id = taskID;
 			task.target = attackTarget;
 
 			#ifdef HAS_WINDOW
@@ -2149,11 +2185,13 @@ namespace Objects
 
 		PVehicle				VehiclePlant::Enqueue(Component::VehicleBase*b, Component::Turret*t)
 		{
-			return MobileEntityProducer::EnqueueProductionOfVehicle(b,t);
+			auto item = MobileEntityProducer::EnqueueProductionOfVehicle(b,t);
+			return item ? To<Vehicle>::Cast(item->producing) : PVehicle();
 		}
 		PVehicle				VehiclePlant::Enqueue(ConstName baseName, ConstName turretName)
 		{
-			return MobileEntityProducer::EnqueueProductionOfVehicle(baseName,turretName);
+			auto item = MobileEntityProducer::EnqueueProductionOfVehicle(baseName,turretName);
+			return item ? To<Vehicle>::Cast(item->producing) : PVehicle();
 		}
 
 

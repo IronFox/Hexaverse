@@ -61,6 +61,18 @@ namespace RuntimeConfig
 		static UINT16	map[(unsigned)ConstName::NumTypes];
 
 		static bool isSet = false;
+		static bool isEnabled = true;
+
+		bool		IsEnabled()
+		{
+			return isEnabled;
+		}
+
+		void		Enable(bool doEnable)
+		{
+			isEnabled = doEnable;
+		}
+
 
 		bool		AnySet()
 		{
@@ -71,15 +83,20 @@ namespace RuntimeConfig
 			isSet = false;
 			memset(map,0,sizeof(map));
 		}
-		void		Set(ConstName entry, int value)
+		bool		Set(ConstName entry, int value)
 		{
+			if (entry >= ConstName::NumTypes)
+				return false;
+			if (value < 0)
+				return false;
 			isSet = true;
-			ASSERT__(value >= 0);
+			//ASSERT__(value >= 0);
 			map[(unsigned)entry] = (UINT16)std::min<UINT16>(0xFFFF,value);
+			return true;
 		}
-		count_t		Get(ConstName entry)
+		count_t		Get(ConstName entry, bool ignoreEnabledState/*=false*/)
 		{
-			return map[(unsigned)entry];
+			return (isEnabled || ignoreEnabledState) ? map[(unsigned)entry] : 0xFFFF;
 		}
 
 		void		Export(Array<std::pair<UINT16,UINT16> >&result)

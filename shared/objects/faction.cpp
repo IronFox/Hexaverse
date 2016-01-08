@@ -994,9 +994,19 @@ namespace Objects
 			foreach (Faction::allKnown,a)
 				func(*a);
 		#else
+			
 			func(Faction::nexus);
-			for (const WFaction&f : Faction::all)
-				func(f.lock());
+			for (index_t i = 0; i < Faction::all.Count(); i++)
+			{
+				PFaction f = Faction::all[i].lock();
+				if (!f)
+				{
+					Faction::all.Erase(i);
+					i--;
+				}
+				else
+					func(f);
+			}
 		#endif
 	}
 
@@ -1021,6 +1031,25 @@ namespace Objects
 	}
 
 
+	void			ForeachWorldEntityIncludingStored(const std::function<void(const PWorldEntity&)>&func)
+	{
+		for (const PWorldEntity&e : vehicles)
+			func(e);
+		for (const PWorldEntity&e : storedMobileEntities)
+			func(e);
+		for (const PWorldEntity&e : satellites)
+			func(e);
+		for (const PWorldEntity&e : structures)
+			func(e);
+		#ifdef CLIENT
+			for (const PWorldEntity&e : Marker::structureGhosts)
+				func(e);
+			for (const PWorldEntity&e : Marker::mobileGhosts)
+				func(e);
+		#endif
+
+
+	}
 
 	void ForeachWorldEntity(const std::function<void(const PWorldEntity&)>&func)
 	{
@@ -1517,6 +1546,19 @@ namespace Objects
 					break;
 				}
 			LogEvent(EventType::GameProgressRelated, nullptr,"Faction terminated: "+f->id.ToString());
+		}
+
+		/*static*/ PFaction			Faction::FindByID(const TUniqueID&id)
+		{
+			if (nexus->id == id)
+				return nexus;
+			foreach (all,_f)
+			{
+				PFaction f = _f->lock();
+				if (f && f->id == id)
+					return f;
+			}
+			return PFaction();
 		}
 
 
