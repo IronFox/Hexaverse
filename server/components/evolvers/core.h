@@ -9,8 +9,11 @@ namespace Evolver
 
 	class Core : public Abstract
 	{
+		typedef Abstract	Super;
+	protected:
+		/**/	Core(const char*derivativeName):Super(derivativeName)	{}
 	public:
-		/**/	Core():Abstract("Core v1.0")	{}
+		/**/	Core():Super("Core v1.0")	{}
 
 		void	BeginRoundProcessing() override;
 		bool	ContinueRoundProcessing() override;
