@@ -1203,35 +1203,6 @@ namespace Journal
 	}
 
 
-	void	Round::WalkRegisterVariables(const CLI::PFolder&f)
-	{
-		for (const auto&var : f->variables)
-		{
-			Reflection::Variable::PBase&v = To<Reflection::Variable::Base>::DynamicCast(var);
-			if (v && v->WriteToSavegame())
-			{
-				v->lastValue = v->ToString();
-				RegisterPersistentVariableChange(false,v);
-			}
-		}
-		for (const auto&dir : f->folders)
-			WalkRegisterVariables(dir);
-	}
-
-
-	void	Round::WalkCheckVariables(const CLI::PFolder&f)
-	{
-		for (const auto&var : f->variables)
-		{
-			Reflection::Variable::PBase&v = To<Reflection::Variable::Base>::DynamicCast(var);
-			if (v && v->WriteToSavegame())
-			{
-				v->CheckChanges();
-			}
-		}
-		for (const auto&dir : f->folders)
-			WalkCheckVariables(dir);
-	}
 
 	void	Writer::InitNew(const PathString&root)
 	{
@@ -1246,7 +1217,16 @@ namespace Journal
 		logStream.open(file.c_str(),std::ios::binary | std::ios::out | std::ios::trunc);
 		ASSERT__(logStream.is_open());
 
-		currentRound.WalkRegisterVariables(Reflection::state.GetRoot());
+
+		Reflection::VisitAllVariables([this](const Reflection::Variable::PBase&v)
+		{
+			if (v->WriteToSavegame())
+			{
+				v->lastValue = v->ToString();
+				currentRound.RegisterPersistentVariableChange(false,v);
+			}
+		});
+
 
 		Objects::ForeachFaction([this](const Objects::PFaction&f)
 		{

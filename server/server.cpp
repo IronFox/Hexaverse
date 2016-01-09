@@ -1463,7 +1463,7 @@ int main( int argc, const char* argv[])
 
 			Journal::currentRound.roundNumber = RuntimeConfig::roundNumber;
 			Journal::currentRound.evolver = State::evolver;
-			Journal::currentRound.WalkCheckVariables(Reflection::state.GetRoot());
+			Reflection::CheckAllSaveGameVariables();
 			Journal::currentRound.AppendEntityVerification();
 
 			//Journal::globalWriter.CommitAndClear(Journal::currentRound);

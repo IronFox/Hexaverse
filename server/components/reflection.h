@@ -53,6 +53,9 @@ namespace Reflection
 		};
 
 		typedef std::shared_ptr<Base>	PBase;
+
+		typedef std::function<void(const PBase&)>	FCallback;
+
 	}
 
 
@@ -81,6 +84,17 @@ namespace Reflection
 	Reloads configuration files and updates all variables that are tagged as ConfigOverridesSavegame
 	*/
 	void	LoadOverrides();
+
+
+	/**
+	Visits all variables in the CLI state tree
+	*/
+	void	VisitAllVariables(const Variable::FCallback&);
+
+	/**
+	Visits all variables and calls CheckChanges() on each. This checks for changes that happend outside the CLI state callback architecture
+	*/
+	void	CheckAllSaveGameVariables();
 }
 
 
