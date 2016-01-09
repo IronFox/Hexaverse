@@ -16,9 +16,13 @@
 
 namespace State
 {
-	static const UINT32	SupportedFileVersion = 1041;
+	static const UINT32	SupportedFileVersion = 1042;
 
+	namespace Milestones
+	{
+		static const UINT32	FirstVersionWithVariables = 1042;
 
+	}
 
 
 	static const UINT32 NotifyOthers = Objects::WorldEntity::PositionChanged 

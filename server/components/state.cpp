@@ -744,6 +744,7 @@ namespace State
 	{
 		static const Riff::TID	fileVersion("VERS"),
 								worldContentTypeCount("WCTC"),
+								variableConfiguration("VARC"),
 								entity("ENTI"),
 								location("LOCA"),
 								vehicle("VEHC"),
@@ -1627,25 +1628,61 @@ void	State::Load(const PathString&filename)
 
 							State::Config::Nexus::enableAI = list->FindFirst(RID::nexusAI) != nullptr;
 
-							GetPOD(list,RID::closedGame,State::Config::closedGame);
-							GetOptionalPOD(list,RID::nexusBases,State::Config::Nexus::haveBases,false);
-							UINT16 goal;
-							GetPOD(list,RID::goal,goal);
-							RuntimeConfig::gameGoal = State::Config::Goal::Reinterpret(goal);
-							GetPOD(list,RID::startBases,State::Config::startBases);
-							GetPOD(list,RID::basesRequired,State::Config::basesRequired );
-							GetOptionalPOD(list,RID::newVehiclesHaveFullAmmo,Objects::newVehiclesHaveFullAmmo,true);
-							GetOptionalPOD(list,RID::exposeActionLeftToHostileFactions,State::Config::exposeActionLeftToHostileFactions,true);
+							if (globalVersionOfCurrentFile < Milestones::FirstVersionWithVariables)
 							{
-								UINT8 v;
-								GetOptionalPOD(list,RID::doomsdayWeapons,v,(UINT8)0);
-								RuntimeConfig::doomsdayWeapons.Load(v);
+								GetPOD(list,RID::closedGame,State::Config::closedGame);
+								GetOptionalPOD(list,RID::nexusBases,State::Config::Nexus::haveBases,false);
+								UINT16 goal;
+								GetPOD(list,RID::goal,goal);
+								RuntimeConfig::gameGoal = State::Config::Goal::Reinterpret(goal);
+								GetPOD(list,RID::startBases,State::Config::startBases);
+								GetPOD(list,RID::basesRequired,State::Config::basesRequired );
+								GetOptionalPOD(list,RID::newVehiclesHaveFullAmmo,Objects::newVehiclesHaveFullAmmo,true);
+								GetOptionalPOD(list,RID::exposeActionLeftToHostileFactions,State::Config::exposeActionLeftToHostileFactions,true);
+								{
+									UINT8 v;
+									GetOptionalPOD(list,RID::doomsdayWeapons,v,(UINT8)0);
+									RuntimeConfig::doomsdayWeapons.Load(v);
+								}
+								GetOptionalPOD(list,RID::factionSupportFlags,State::Config::factionSupportFlags,State::Config::AllFactionSupportFlags);
+							}
+							else
+							{
+								Riff::Chunk*chk = list->FindFirst(RID::variableConfiguration);
+								ASSERT_NOT_NULL__(chk);
+								String variables(chk->pointer(),chk->size());
+								Array<String> lines;
+								explode('\n',variables,lines);
+								foreach (lines,line)
+								{
+									if (line->IsEmpty())
+										continue;
+									index_t tabAt = line->find(tab);
+									ASSERT__(tabAt);
+									if (tabAt)
+									{
+										String key = line->subStringRef(0,tab-1);
+										StringRef value = line->subStringRef(tab);
+		
+										CLI::PVariable v = Reflection::state.FindVar(key);
+										if (!v)
+										{
+											LogEvent(EventType::InternalFault,"State::Load(): Unable to find variable '"+key+"' for update");
+											continue;
+										}
+										if (!v->Set(value))
+										{
+											LogEvent(EventType::InternalFault,"State::Load(): Unable to update variable '"+key+"' to '"+value+"'. Supported values are "+v->GetSupportedValues());
+										}
+									}
+								}
+
+
 							}
 							//Grid::TSharedPlanetConfig persistentPlanetInfo;
 							GetPOD(list,RID::worldConfig,(Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
 							Grid::CellStack::bottom.content = (BYTE)Grid::currentPlanetConfig.innerCoreType;
 
-							GetOptionalPOD(list,RID::factionSupportFlags,State::Config::factionSupportFlags,State::Config::AllFactionSupportFlags);
 
 						}
 					break;
@@ -1880,9 +1917,11 @@ void	State::Load(const PathString&filename)
 		State::empZonesLocked = ((1 << 12)-1)  & ~State::unlockedEMPZones;
 	}
 
+	Reflection::LoadOverrides();
 
 	LogEvent(EventType::SessionRelated,"Restored world "+worldID.ToNiceString()+" in round "+String(RuntimeConfig::roundNumber));
 	State::RefreshWindowTitle();
+
 
 
 	State::RestartSession();
@@ -1939,21 +1978,36 @@ void	State::Save( const PathString&name)
 	UINT32 vid = SupportedFileVersion;
 	container.AppendBlock(RID::fileVersion,&vid,sizeof(vid));
 	container.AppendBlock(RID::worldContentTypeCount)->SetPODData((UINT32)Grid::Content::NumberOfPossibilities);
+
+	{
+		static StringBuffer variableBuffer;
+		variableBuffer.Clear();
+		Reflection::VisitAllVariables([](const Reflection::Variable::PBase&v)
+		{
+			if (v->WriteToSavegame())
+			{
+				variableBuffer << v->GetPath()<<tab<<v->ToString()<<nl;
+			}
+		});
+		container.AppendBlock(RID::variableConfiguration,variableBuffer.pointer(),variableBuffer.GetContentSize());
+	}
+
+
 	Riff::Chunk*general = CreateNamedList(container,ChunkName::WorldInfoGroup);
 	general->AppendBlock("WDID")->SetPODData(worldID);
 	general->AppendBlock("RNDN")->SetPODData(RuntimeConfig::roundNumber);
 	general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
-	general->AppendBlock(RID::factionSupportFlags)->SetPODData(State::Config::factionSupportFlags);
-	general->AppendBlock(RID::closedGame)->SetPODData(State::Config::closedGame);
-	general->AppendBlock(RID::nexusBases)->SetPODData(State::Config::Nexus::haveBases);
-	general->AppendBlock(RID::goal)->SetPODData((UINT16)RuntimeConfig::gameGoal);
-	if (State::Config::Nexus::enableAI)
-		general->AppendBlock(RID::nexusAI);
-	general->AppendBlock(RID::startBases)->SetPODData(State::Config::startBases);
-	general->AppendBlock(RID::basesRequired )->SetPODData(State::Config::basesRequired );
-	general->AppendBlock(RID::newVehiclesHaveFullAmmo)->SetPODData(Objects::newVehiclesHaveFullAmmo);
-	general->AppendBlock(RID::exposeActionLeftToHostileFactions )->SetPODData(State::Config::exposeActionLeftToHostileFactions );
-	general->AppendBlock(RID::doomsdayWeapons)->SetPODData((UINT8)RuntimeConfig::doomsdayWeapons);
+	//general->AppendBlock(RID::factionSupportFlags)->SetPODData(State::Config::factionSupportFlags);
+	//general->AppendBlock(RID::closedGame)->SetPODData(State::Config::closedGame);
+	//general->AppendBlock(RID::nexusBases)->SetPODData(State::Config::Nexus::haveBases);
+	//general->AppendBlock(RID::goal)->SetPODData((UINT16)RuntimeConfig::gameGoal);
+	//if (State::Config::Nexus::enableAI)
+		//general->AppendBlock(RID::nexusAI);
+	//general->AppendBlock(RID::startBases)->SetPODData(State::Config::startBases);
+	//general->AppendBlock(RID::basesRequired )->SetPODData(State::Config::basesRequired );
+	//general->AppendBlock(RID::newVehiclesHaveFullAmmo)->SetPODData(Objects::newVehiclesHaveFullAmmo);
+	//general->AppendBlock(RID::exposeActionLeftToHostileFactions )->SetPODData(State::Config::exposeActionLeftToHostileFactions );
+	//general->AppendBlock(RID::doomsdayWeapons)->SetPODData((UINT8)RuntimeConfig::doomsdayWeapons);
 
 	GenericHashSet<Objects::PFaction,SharedPtrHash>	allFactions;
 
