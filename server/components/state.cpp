@@ -744,6 +744,8 @@ namespace State
 	{
 		static const Riff::TID	fileVersion("VERS"),
 								worldContentTypeCount("WCTC"),
+								worldID("WDID"),
+								roundNumber("RNDN"),
 								variableConfiguration("VARC"),
 								entity("ENTI"),
 								location("LOCA"),
@@ -1622,8 +1624,8 @@ void	State::Load(const PathString&filename)
 						{
 							ASSERT__(!worldInfoFound);
 							worldInfoFound = true;
-							GetPOD(list,"WDID",worldID);
-							GetPOD(list,"RNDN",RuntimeConfig::roundNumber);
+							GetPOD(list,RID::worldID,worldID);
+							GetPOD(list,RID::roundNumber,RuntimeConfig::roundNumber);
 
 
 							State::Config::Nexus::enableAI = list->FindFirst(RID::nexusAI) != nullptr;
@@ -1994,8 +1996,8 @@ void	State::Save( const PathString&name)
 
 
 	Riff::Chunk*general = CreateNamedList(container,ChunkName::WorldInfoGroup);
-	general->AppendBlock("WDID")->SetPODData(worldID);
-	general->AppendBlock("RNDN")->SetPODData(RuntimeConfig::roundNumber);
+	general->AppendBlock(RID::worldID)->SetPODData(worldID);
+	general->AppendBlock(RID::roundNumber)->SetPODData(RuntimeConfig::roundNumber);
 	general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
 	//general->AppendBlock(RID::factionSupportFlags)->SetPODData(State::Config::factionSupportFlags);
 	//general->AppendBlock(RID::closedGame)->SetPODData(State::Config::closedGame);
