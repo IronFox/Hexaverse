@@ -50,6 +50,16 @@ namespace Reflection
 			{
 				return persistence != Persistence::Temporary && persistence != Persistence::ConfigOnly;
 			}
+
+			String				GetPath() const
+			{
+				CLI::PFolder dir = parent.lock();
+				if (dir)
+				{
+					return dir->GetPath()+'/'+this->name;
+				}
+				return this->name;
+			}
 		};
 
 		typedef std::shared_ptr<Base>	PBase;

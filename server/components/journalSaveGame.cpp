@@ -1195,8 +1195,7 @@ namespace Journal
 	{
 		if (lockEvents)
 			return;
-		String path = var->parent.lock()->GetPath()+'/'+var->name;
-		PGlobalEvent ev(new UpdateVariable(path,var->ToString()));
+		PGlobalEvent ev(new UpdateVariable(var->GetPath(),var->ToString()));
 		if (!execute || ev->TryExecute())
 			return;
 		this->globalEvents.Append(ev);
