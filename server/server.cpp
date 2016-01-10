@@ -25,6 +25,7 @@
 #include "components/networkChannels.h"
 #include "components/journalSaveGame.h"
 #include "components/reflection.h"
+#include "components/luaInterface.h"
 
 UINT32 globalVersionOfCurrentFile = 0;	//file version being loaded right now
 
@@ -1075,6 +1076,8 @@ bool ApplyCoverageChange(const Objects::PFaction&faction)
 
 int main( int argc, const char* argv[])
 {
+	return LuaRun(argc,argv);
+
 
 
 	onFatal = MyFatal;
