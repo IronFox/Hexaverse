@@ -3636,7 +3636,7 @@ void ParseKeyValue(const String&key, const String&value)
 		}
 		elif(key == "serverURL")
 		{
-			RuntimeConfig::serverURL = value;
+			RuntimeConfig::serverAddress = Network::ServerAddress(value);
 		}
 		else
 			throw Program::ParameterFault("`"+key+"` is not a recognized runtime parameter");
@@ -3710,9 +3710,9 @@ bool ConfigureClient(const wchar_t*commandLine)
 		MyFatal(FatalDescriptor(CLOCATION, e.what()));
 		return false;
 	}
-	if (RuntimeConfig::serverURL.IsNotEmpty())
+	if (RuntimeConfig::serverAddress.host.IsNotEmpty())
 	{
-		Network::ServerDiscovery::RegisterNewHost(RuntimeConfig::serverURL, false,true);
+		Network::ServerDiscovery::RegisterNewHost(RuntimeConfig::serverAddress, false,true);
 	}
 
 

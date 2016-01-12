@@ -15,7 +15,7 @@ void LoadHosts()
 	{
 		String host;
 		while (hosts >> host)
-			Network::ServerDiscovery::RegisterNewHost(host,false, false);
+			Network::ServerDiscovery::RegisterNewHost(Network::ServerAddress(host),false, false);
 	}
 }
 
@@ -24,10 +24,10 @@ void	SaveHosts()
 	StringFile hosts;
 	if (hosts.Create(RuntimeConfig::ConfigFile("hosts.txt")))
 	{
-		static Buffer0<String>	 urls;
+		static Buffer0<Network::ServerAddress>	 urls;
 		Network::ServerDiscovery::ListNonAutoAttempts(urls);
 		foreach (urls,url)
-			hosts << *url << nl;
+			hosts << url->host << ':' << url->basePort << nl;
 		hosts.Close();
 	}
 }
@@ -138,11 +138,11 @@ void	SaveHosts()
 				if (!info)
 					return;
 				index_t best = 0;
-				float bestPing = info->urls.first().second;
-				for (index_t i = 1; i < info->urls.Count(); i++)
-					if (info->urls[i].second < bestPing)
+				float bestPing = info->addresses.first().second;
+				for (index_t i = 1; i < info->addresses.Count(); i++)
+					if (info->addresses[i].second < bestPing)
 					{
-						bestPing = info->urls[i].second;
+						bestPing = info->addresses[i].second;
 						best = i;
 					}
 				info->selected = true;
@@ -154,7 +154,7 @@ void	SaveHosts()
 				Network::gameFlags = info->info.gameInfo.gameFlags;
 				RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info->info.gameInfo.gameGoal);
 
-				Network::ConnectTo(info->urls[best].first + ":"+String(SERVICE_PORT));
+				Network::ConnectTo(info->addresses[best].first);
 			});
 
 		}
@@ -207,9 +207,9 @@ void	SaveHosts()
 		//0.7f * 1.5f = ~1
 		//color set to 70% opacity
 		bool first = true;
-		foreach (info.urls,url)
+		foreach (info.addresses,addr)
 		{
-			PLabel label = MakeTabLabel(url->first+ " (ping "+String((int)ceil(url->second*1000))+')',0.7f);
+			PLabel label = MakeTabLabel(addr->first.ToString()+ " (ping "+String((int)ceil(addr->second*1000))+')',0.7f);
 			label->SetColor(float4(1,1,1,0.7f));
 			label->anchorConfig.Left().Set(0.05f);
 			if (first)
@@ -304,7 +304,7 @@ void	SaveHosts()
 		}
 
 		//count_t openAttempts = 0;
-		static Buffer0<String>	list;
+		static Buffer0<Network::ServerAddress>	list;
 		Network::ServerDiscovery::ListFailedAttempts(list);
 
 		foreach (list,failed)
@@ -332,17 +332,17 @@ void	SaveHosts()
 			
 			
 
-			PLabel label = MakeTabLabel("Still trying to query '"+*failed+"'...",0.7f);
+			PLabel label = MakeTabLabel("Still trying to query '"+failed->ToString()+"'...",0.7f);
 //			label->anchorConfig.Left().Set(0.1f,false);
 			label->SetColor(1,0.75f,0.75f,0.9f);
 			label->anchorConfig.Top().Set(0.01f,GUIElements::TAnchor::RelativeToScreen);
 			label->anchorConfig.Right().Set(0.01f,GUIElements::TAnchor::RelativeToScreen);
 			pb->components << label;
-			String url = *failed;
+			Network::ServerAddress url = *failed;
 			PButton forget(new Button("Forget this host",
 			[url]()
 			{
-				Dialog::Confirm("'"+url+"' will be removed from the list of actively checked hosts. Please confirm.",
+				Dialog::Confirm("'"+url.ToString()+"' will be removed from the list of actively checked hosts. Please confirm.",
 				[url]()
 				{
 					if (Network::ServerDiscovery::TryRemoveHost(url))
@@ -395,8 +395,15 @@ void	SaveHosts()
 				Dialog::Query("Enter a new host address to attempt connection to.","",allowedHostChars,CheckHostName,
 				[](const String&url)
 				{
-					if (Network::ServerDiscovery::RegisterNewHost(url,false,false))
-						SaveHosts();
+					try
+					{
+						if (Network::ServerDiscovery::RegisterNewHost(Network::ServerAddress(url),false,false))
+							SaveHosts();
+					}
+					catch (const std::exception&ex)
+					{
+						Dialog::ShowMessage(ex.what());
+					}
 				});
 			
 			}));

@@ -43,8 +43,37 @@ namespace Network
 
 
 
+	class ServerAddress
+	{
+	public:
+		String				host;
+		UINT16				basePort;
+
+
+		/**/				ServerAddress():basePort(DEFAULT_SERVER_BASE_PORT){}
+		explicit			ServerAddress(const String&url);
+
+		bool				operator==(const ServerAddress&other) const
+		{
+			return basePort == other.basePort && host == other.host;
+		}
+
+		void				adoptData(ServerAddress&other)
+		{
+			host.adoptData(other.host);
+			basePort = other.basePort;
+		}
+
+		String				ToString() const {return basePort != DEFAULT_SERVER_BASE_PORT ? host + ':' + String(basePort) : host;}
+	};
+}
+
+DECLARE_DEFAULT_STRATEGY(Network::ServerAddress,Adopt);
+
+namespace Network
+{
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id);
-	void					ConnectTo(const String&url);
+	void					ConnectTo(const ServerAddress&);
 
 	void SaveWorldAccessTokens();
 
@@ -57,8 +86,8 @@ namespace Network
 	
 	namespace ServerDiscovery
 	{
-		bool	ListeningButCantConnectTo(const String&url);
-		bool	TryRemoveHost(const String&url);
+		bool	ListeningButCantConnectTo(const ServerAddress&);
+		bool	TryRemoveHost(const ServerAddress&);
 
 		void OnServerInfo(Protocol::ServerInfo&info, TCP::Peer&peer);
 		void OnPing(Protocol::Ping&ping, TCP::Peer&peer);
@@ -70,14 +99,14 @@ namespace Network
 		Queries all connection attempts that have so far not successfully connected.
 		Only non-automatic (user-registered) attempts are listed.
 		*/
-		void	ListFailedAttempts(Buffer0<String,Adopt>&outList);
+		void	ListFailedAttempts(Buffer0<ServerAddress,Adopt>&outList);
 		/**
 		Queries all connection attempts (successful or not).
 		Only non-automatic (user-registered) attempts are listed.
 		*/
-		void	ListNonAutoAttempts(Buffer0<String>&outList);
+		void	ListNonAutoAttempts(Buffer0<ServerAddress>&outList);
 
-		bool	RegisterNewHost(const String&host, bool probablyRightVersion, bool automaticallyDiscovered);
+		bool	RegisterNewHost(const ServerAddress&, bool probablyRightVersion, bool automaticallyDiscovered);
 
 
 
@@ -230,6 +259,7 @@ namespace Network
 	};
 
 
+
 	class ServerInfo
 	{
 	public:
@@ -238,7 +268,7 @@ namespace Network
 								protocolIncompatible = false;
 		Protocol::ServerInfo	info;
 		
-		Buffer0<std::pair<String, float> >			urls;
+		Buffer0<std::pair<ServerAddress, float> >			addresses;
 		
 		//float					top, bottom;
 		bool					selected, haveToken;
@@ -251,10 +281,18 @@ namespace Network
 
 		/**/					ServerInfo() :/*top(0), bottom(0),*/ selected(false), haveToken(false)	{}
 
-		bool					HasURL(const String&url) const
+		//bool					HasURL(const String&url) const
+		//{
+		//	foreach(urls, u)
+		//		if (u->first.host == url)
+		//			return true;
+		//	return false;
+		//}
+
+		bool					HasAddress(const ServerAddress&addr) const
 		{
-			foreach(urls, u)
-				if (u->first == url)
+			foreach(addresses, u)
+				if (u->first == addr)
 					return true;
 			return false;
 		}
@@ -266,7 +304,7 @@ namespace Network
 			//swp(top,other.top);
 			//swp(bottom,other.bottom);
 			swp(selected,other.selected);
-			urls.swap(other.urls);
+			addresses.swap(other.addresses);
 			swp(haveToken,other.haveToken);
 			swp(rightVersion,other.rightVersion);
 			#ifdef HAS_WINDOW

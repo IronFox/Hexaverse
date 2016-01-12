@@ -8,8 +8,10 @@ namespace RuntimeConfig
 {
 	bool aiMode = false;
 	CryptographicID aiAccessToken;
-	String serverURL;
 	bool udpListen = true;
+
+	Network::ServerAddress	serverAddress;
+
 
 
 	void	ClientInit()
