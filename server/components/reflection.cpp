@@ -581,12 +581,20 @@ namespace Reflection
 	static CLI::PVariable planetType;
 
 	
+	void PrintLn(const String&line)
+	{
+		LogEvent(EventType::RemoteControl,"Response: '"+line+"'");
+	}
+
+
 	void	Create()
 	{
 		#undef VAR
 		#define VAR(_NAME_,_CONTEXT_,_MIN_,_MAX_,_PERSISTENCE_)	Variable::Set(#_NAME_,_CONTEXT_::_NAME_,_MIN_,_MAX_,_PERSISTENCE_);
 		#undef ENUMVAR
 		#define ENUMVAR(_NAME_,_CONTEXT_,_PERSISTENCE_)	Variable::SetEnum(#_NAME_,_CONTEXT_::_NAME_,_PERSISTENCE_);
+
+		CLI::InitDefaults(state,PrintLn);
 
 		state.EnterNewFolder("World");
 			VAR(simulateLiquids,State::Config,false,true,Variable::Persistence::RestoreFromSavegame);
