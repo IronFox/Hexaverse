@@ -8,7 +8,7 @@ namespace UDPBroadCast
 {
 	extern Protocol::THostBroadcastPacket	packet;
 
-	bool		Start();
+	bool		Start(UINT16 basePort);
 	void		Terminate();
 	void		Update();
 }

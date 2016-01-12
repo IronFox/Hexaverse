@@ -93,7 +93,7 @@ namespace UDPBroadCast
 
 
 
-	bool		Start()
+	bool		Start(UINT16 basePort)
 	{
 		#ifdef _WIN32
 			//Start up Winsock…
@@ -112,6 +112,7 @@ namespace UDPBroadCast
 		#endif
 
 		packet.hostID = serverID;
+		packet.serverBasePort = basePort;
 		{
 			const char var[] = SERVER_NAME;
 			const size_t len = sizeof(var);
@@ -133,7 +134,8 @@ namespace UDPBroadCast
 		SOCKADDR_IN me;
 		memset(&me,0,sizeof(me));
 		me.sin_family=AF_INET;
-		me.sin_port=htons(BROADCAST_FROM_PORT);
+		UINT16 port = basePort + PortOffset::BroadcastFrom;
+		me.sin_port=htons(basePort);
 		me.sin_addr.s_addr=ADDR_ANY;
 		int rc=::bind(broadcastSocket,(SOCKADDR*)&me,sizeof(SOCKADDR_IN));
 		if (rc != 0)
@@ -144,6 +146,7 @@ namespace UDPBroadCast
 			LogEvent(EventType::SessionRelated,"Warning: Unable to bind UDP broadcast socket. Chances are, a server is already running.");
 			return false;
 		}
+		LogEvent(EventType::SessionRelated,"UDP broadcast online, broadcasting from port "+String(port));
 		int so_broadcast = TRUE;
 		rc = setsockopt(broadcastSocket,SOL_SOCKET,SO_BROADCAST,(const char*)&so_broadcast,sizeof so_broadcast);
 		ASSERT_EQUAL__(rc,0);

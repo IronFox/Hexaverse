@@ -98,6 +98,8 @@ namespace State
 
 		Grid::WorldDiscovery	worldDiscovery;
 
+		UINT16		sessionPort = DEFAULT_SERVER_BASE_PORT + PortOffset::Session;
+
 
 		int			roundTimer = -1;
 		UINT32		uplinkBandwidth = 500;
@@ -206,6 +208,19 @@ namespace State
 		//	Config::nexusStartMineralValue = 0;
 	}
 
+	static void StartServer()
+	{
+		if (State::server.StartService(Config::sessionPort))
+		{
+			LogEvent(EventType::SessionRelated,"Session server started on port "+String(Config::sessionPort));
+		}
+		else
+			FATAL__("Unable to start service in port "+String(Config::sessionPort)+" ("+State::server.GetError(true)+"). Chances are, a server is already running on that port.")
+
+	}
+
+
+
 	void	RestartSession()
 	{
 		LogEvent(EventType::SessionRelated,"Restarting session.");
@@ -215,8 +230,7 @@ namespace State
 
 
 		State::server.FlushPendingEvents();
-		if (!State::server.StartService(SERVICE_PORT))
-			FATAL__("Unable to start service. Chances are, a server is already running.")
+		StartServer();
 
 		if (State::Config::Nexus::enableAI)
 			AIProcess::Begin(Objects::Faction::nexus->accessToken);
@@ -551,7 +565,7 @@ namespace State
 
 
 
-	void						Start()
+	void						GenerateWorldIdAndStartServer()
 	{
 		worldID.Generate();
 
@@ -584,8 +598,7 @@ namespace State
 		server.SetAsync(false);
 		server.onEvent = Receiver::OnEvent;
 		server.onIgnorePackage = Receiver::OnIgnorePackage;
-		if (!State::server.StartService(SERVICE_PORT))
-			FATAL__("Unable to start service. Chances are, a server is already running.")
+		StartServer();
 
 	}
 

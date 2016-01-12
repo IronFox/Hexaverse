@@ -110,6 +110,8 @@ namespace State
 	{
 		extern float	factionStartMineralValue;	//determined during loading
 
+		extern UINT16	sessionPort;
+
 		extern Grid::WorldDiscovery	worldDiscovery;
 
 		extern int		roundTimer/* = -1*/;
@@ -245,7 +247,7 @@ namespace State
 	Start function that must be called once during application start
 	It installs all channels and configures the TCP server system
 	*/
-	void		Start();
+	void		GenerateWorldIdAndStartServer();
 
 
 
