@@ -18,11 +18,25 @@
 #pragma comment(lib, "IPHLPAPI.lib")
 
 
-#define INFO_PORT			10245
-#define SERVICE_PORT		10244
-#define BROADCAST_PORT		10243
-#define BROADCAST_FROM_PORT	10242
-//#define SERVER_NAME		PRODUCT_NAME" server v"PRODUCT_VERSION
+#define BROADCAST_PORT				10246	//must be constant
+#define DEFAULT_SERVER_BASE_PORT	10247
+
+namespace PortOffset
+{
+	/**
+	@brief Service port delta to root port
+	*/
+	enum delta_t
+	{
+		Info,
+		Session,
+		BroadcastFrom,
+		Control
+	};
+}
+
+
+
 
 #ifdef CONNECTOR_LESS
 	#define NAME_APPEND0	"c"
@@ -1998,8 +2012,12 @@ namespace Protocol
 	{
 		TUniqueID	hostID;
 		char		version[64];
+		UINT16		serverBasePort;
 	};
-	static_assert(sizeof(THostBroadcastPacket) == sizeof(TUniqueID) + 64, "Struct packing not appropriate for host broadcast packet");
+
+	static const size_t THostBroadcastPacket_size = sizeof(THostBroadcastPacket);
+
+	static_assert(sizeof(THostBroadcastPacket) == sizeof(TUniqueID) + 64 + 2, "Struct packing not appropriate for host broadcast packet");//make sure there are no gaps
 
 
 	namespace GameFlag

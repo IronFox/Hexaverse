@@ -51,11 +51,11 @@ namespace Network
 	bool			newRoundRequested = false;
 
 
-	void			ConnectTo(const String&url)
+	void			ConnectTo(const ServerAddress&addr)
 	{
 		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
 		gameHasBegun = false;
-		client.ConnectAsync(url);
+		client.ConnectAsync(addr.host + ":"+String(addr.basePort + PortOffset::Session));
 	}
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, BYTE techniteFactionIfNew /*= 0xFF*/)
@@ -155,7 +155,7 @@ namespace Network
 		{
 		public:
 			TCP::Client		client;
-			String			url;
+			ServerAddress	address;
 			bool			hasContact = false,
 							hasInfo = false,
 							rightVersion = false,
@@ -189,7 +189,7 @@ namespace Network
 					hasInfo = false;
 					while (!application_shutting_down && !doQuit)
 					{
-						if (client.Connect(url + ":"+String(INFO_PORT)))
+						if (client.Connect(address.host + ":"+String(address.basePort + PortOffset::Info)))
 						{
 							break;
 						}
@@ -219,35 +219,35 @@ namespace Network
 
 		Buffer0<PHostContactAttempt>	attempts,waste;
 
-		void	ListFailedAttempts(Buffer0<String,Adopt>&outList)
+		void	ListFailedAttempts(Buffer0<ServerAddress,Adopt>&outList)
 		{
 			outList.Clear();
 			foreach (attempts,a)
 			{
 				if (!(*a)->autoAttempt && !(*a)->hasContact)
-					outList << (*a)->url;
+					outList << (*a)->address;
 			}
 
 		}
 
-		void	ListNonAutoAttempts(Buffer0<String>&outList)
+		void	ListNonAutoAttempts(Buffer0<ServerAddress>&outList)
 		{
 			outList.Clear();
 			foreach (attempts,a)
 			{
 				if (!(*a)->autoAttempt)
-					outList << (*a)->url;
+					outList << (*a)->address;
 			}
 		}
 
 
-		bool	TryRemoveHost(const String&url)
+		bool	TryRemoveHost(const ServerAddress&addr)
 		{
 			if (client.IsAttemptingToConnect() || client.IsConnected())
 				return false;
 			foreach (attempts,a)
 			{
-				if ((*a)->url == url)
+				if ((*a)->address == addr)
 				{
 					(*a)->doQuit = true;
 					waste << *a;
@@ -262,13 +262,13 @@ namespace Network
 		}
 
 
-		bool	ListeningButCantConnectTo(const String&url)
+		bool	ListeningButCantConnectTo(const ServerAddress&addr)
 		{
 			if (client.IsAttemptingToConnect() || client.IsConnected())
 				return false;
 			foreach (attempts,a)
 			{
-				if ((*a)->url == url)
+				if ((*a)->address == addr)
 				{
 					return !(*a)->hasContact || !(*a)->rightVersion || (*a)->protocolIncompatible;
 				}
@@ -317,14 +317,14 @@ namespace Network
 		}
 
 
-		bool	RegisterNewHost(const String&host, bool probablyRightVersion, bool automaticallyDiscovered)
+		bool	RegisterNewHost(const ServerAddress&host, bool probablyRightVersion, bool automaticallyDiscovered)
 		{
 			foreach (attempts,a)
-				if ((*a)->url == host)
+				if ((*a)->address == host)
 					return false;	//already there
 			PHostContactAttempt&attempt = attempts.Append();
 			attempt.reset(new HostContactAttempt());
-			attempt->url = host;
+			attempt->address = host;
 			attempt->rightVersion = probablyRightVersion;
 			attempt->autoAttempt = automaticallyDiscovered;
 			
@@ -1112,7 +1112,7 @@ namespace Network
 				//TechniteLogicLink::SignalTerrainReset();
 				TechniteLogicLink::Destroy();
 
-				if (RuntimeConfig::aiMode && RuntimeConfig::serverURL.IsNotEmpty())
+				if (RuntimeConfig::aiMode && RuntimeConfig::serverAddress.host.IsNotEmpty())
 					application_shutting_down = true;
 				#ifdef HAS_WINDOW
 					QueryNicknameIfEmpty();
@@ -1248,6 +1248,25 @@ namespace Network
 	//Buffer0<ServerAddress>	servers;
 
 
+	/*explicit*/			ServerAddress::ServerAddress(const String&url)
+	{
+		index_t portAt = url.find(':');
+		if (portAt)
+		{
+			RuntimeConfig::serverAddress.host = url.subStringRef(0,portAt-1);
+			StringRef conv = url.subStringRef(portAt);
+			if (!convert(conv.pointer(),conv.length(),RuntimeConfig::serverAddress.basePort))
+			{
+				throw Program::ParameterFault("Unable to parse port component '" + String(conv) + "' of '"+url+"'");
+			}
+		}
+		else
+		{
+			RuntimeConfig::serverAddress.host = url;
+			RuntimeConfig::serverAddress.basePort = DEFAULT_SERVER_BASE_PORT;
+		}
+	}
+
 
 	Buffer0<ServerInfo,Swap>	servers;
 	GenericHashTable<TUniqueID,index_t,TUniqueID>	serverMap;
@@ -1256,7 +1275,7 @@ namespace Network
 
 	void		Update()
 	{
-		if (!client.IsConnected() && RuntimeConfig::serverURL.IsNotEmpty())
+		if (!client.IsConnected() && RuntimeConfig::serverAddress.host.IsNotEmpty())
 			ConnectToConfiguredServerIfAvailable();
 
 
@@ -1279,12 +1298,14 @@ namespace Network
 					//if (!strcmp(packet.version, SERVER_NAME))	//connect anyways
 					{
 						bool found = false;
-						String url = TCP::ToString(from,len,false);
-						if (url == "127.0.0.1" || url == "::1")
-							url = "localhost";
+						ServerAddress addr;
+						addr.host = TCP::ToString(from,len,false);
+						if (addr.host == "127.0.0.1" || addr.host == "::1")
+							addr.host = "localhost";
+						addr.basePort = packet.serverBasePort;
 						foreach(ServerDiscovery::attempts, sv)
 						{
-							if ((*sv)->url == url)
+							if ((*sv)->address == addr)
 							{
 								found = true;
 								break;
@@ -1292,13 +1313,7 @@ namespace Network
 						}
 						if (!found)
 						{
-
-							ServerDiscovery::RegisterNewHost(url, !strcmp(packet.version, SERVER_NAME),true);
-
-							//if (!client.isActive())
-							//{
-							//	Network::client.ConnectAsync(TCP::ToString(from) + ":"+String(SERVICE_PORT));
-							//}
+							ServerDiscovery::RegisterNewHost(addr, !strcmp(packet.version, SERVER_NAME),true);
 						}
 					}
 				}
@@ -1366,7 +1381,7 @@ namespace Network
 					}
 
 					ServerInfo&info = servers[at];
-					info.urls.Append(std::make_pair(a.url,a.lastPing));
+					info.addresses.Append(std::make_pair(a.address,a.lastPing));
 				}
 			}
 		}
@@ -1583,14 +1598,14 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 		return false;	//make sure there is enough time to rebuild the server list in-between connection attempts to a ghost-server that is configured via runtime parameter
 	foreach(Network::servers, srv)
 	{
-		if (srv->rightVersion && srv->HasURL(RuntimeConfig::serverURL))
+		if (srv->rightVersion && srv->HasAddress(RuntimeConfig::serverAddress))
 		{
 			index_t best = 0;
-			float bestPing = srv->urls.first().second;
-			for (index_t i = 1; i < srv->urls.Count(); i++)
-				if (srv->urls[i].second < bestPing)
+			float bestPing = srv->addresses.first().second;
+			for (index_t i = 1; i < srv->addresses.Count(); i++)
+				if (srv->addresses[i].second < bestPing)
 				{
-					bestPing = srv->urls[i].second;
+					bestPing = srv->addresses[i].second;
 					best = i;
 				}
 			srv->selected = true;
@@ -1599,7 +1614,7 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 			Network::serverIDString = Network::serverID.ToNiceString();
 			Network::worldID = srv->info.gameInfo.worldID;
 			Network::worldIDString = Network::worldID.ToNiceString();
-			Network::ConnectTo(srv->urls[best].first + ":" + String(SERVICE_PORT));
+			Network::ConnectTo(srv->addresses[best].first);
 
 			lastAttempt = timer.Now();
 			delayCounter = 0;

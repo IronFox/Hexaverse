@@ -1630,6 +1630,7 @@ namespace Receiver
 				}
 			}
 			*/
+			peer.SendObject(Protocol::ChannelID::Hello,Protocol::Result(true,"Userlevel set to "+String(peer.userLevel)));
 			return;
 		}
 		//else
@@ -1637,6 +1638,7 @@ namespace Receiver
 
 
 		ChangeMyName(hello,peer);
+		peer.SendObject(Protocol::ChannelID::Hello,Protocol::Result(true,"User already known. Userlevel is "+String(peer.userLevel)+". Username updated"));
 	}
 
 

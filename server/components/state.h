@@ -16,9 +16,13 @@
 
 namespace State
 {
-	static const UINT32	SupportedFileVersion = 1041;
+	static const UINT32	SupportedFileVersion = 1042;
 
+	namespace Milestones
+	{
+		static const UINT32	FirstVersionWithVariables = 1042;
 
+	}
 
 
 	static const UINT32 NotifyOthers = Objects::WorldEntity::PositionChanged 
@@ -106,6 +110,8 @@ namespace State
 	namespace Config
 	{
 		extern float	factionStartMineralValue;	//determined during loading
+
+		extern UINT16	sessionPort;
 
 		extern Grid::WorldDiscovery	worldDiscovery;
 
@@ -253,7 +259,7 @@ namespace State
 	Start function that must be called once during application start
 	It installs all channels and configures the TCP server system
 	*/
-	void		Start();
+	void		GenerateWorldIdAndStartServer();
 
 
 

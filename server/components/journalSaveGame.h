@@ -886,8 +886,6 @@ namespace Journal
 
 		void	Clear();
 
-		void	WalkRegisterVariables(const CLI::PFolder&f);
-		void	WalkCheckVariables(const CLI::PFolder&f);
 		void	AppendEntityVerification();
 
 		/**

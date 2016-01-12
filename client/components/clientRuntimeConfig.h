@@ -6,14 +6,19 @@
 #include "../../shared/uniqueID.h"
 #include "../../shared/runtimeConfig.h"
 
+namespace Network
+{
+	class ServerAddress;
+
+}
+
 namespace RuntimeConfig
 {
 	extern bool aiMode;
 	extern CryptographicID aiAccessToken;
-	extern String serverURL;
 	extern bool udpListen;
 
-
+	extern Network::ServerAddress	serverAddress;
 
 	void					ClientInit();
 

@@ -338,7 +338,9 @@ namespace Animation
 		}
 		outMerged.mode = localVersion.mode;
 		outMerged.job = localVersion.job;
-		outMerged.localizableShapes.adoptData(localVersion.localizableShapes);
+		#ifdef HAS_WINDOW
+			outMerged.localizableShapes.adoptData(localVersion.localizableShapes);
+		#endif
 		outMerged.name.adoptData(localVersion.name);
 		outMerged.type = localVersion.type;
 		outMerged.visualization = localVersion.visualization;

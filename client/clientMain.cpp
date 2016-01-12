@@ -1878,10 +1878,18 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			if (sum)
 			{
 				change.level[Objects::Resource::Minerals] -= sum;//-Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft;
-				UI::Update(Objects::selectedVehicle->GetUplinkTraffic(),  current,max,change);
+				UI::Update(
+						#ifndef NO_HIBERNATION
+							Objects::selectedVehicle->GetUplinkTraffic(),	
+						#endif
+							current,max,change);
 			}
 			else
-				UI::Update(Objects::selectedVehicle->GetUplinkTraffic(), current,max);
+				UI::Update(
+						#ifndef NO_HIBERNATION
+							Objects::selectedVehicle->GetUplinkTraffic(),
+						#endif
+						current,max);
 		}
 		else if (Objects::selectedEntity && Objects::selectedEntity->IsMobile())
 		{
@@ -1897,10 +1905,18 @@ void	OnAppear(const Objects::PWorldEntity&e)
 				{
 					Objects::ResourceVector change, storage, max;
 					ws->GetResourceVector(change, storage, max);
-					UI::Update(Objects::selectedEntity->GetUplinkTraffic(), n.total.storage, n.total.storageMax, n.total.supply - n.total.demand, storage/*,change, ws->IsEnabled()*/);
+					UI::Update(
+						#ifndef NO_HIBERNATION
+							Objects::selectedEntity->GetUplinkTraffic(), 
+						#endif
+						n.total.storage, n.total.storageMax, n.total.supply - n.total.demand, storage/*,change, ws->IsEnabled()*/);
 				}
 				else
-					UI::Update(Objects::selectedEntity->GetUplinkTraffic(), n.total.storage, n.total.storageMax, n.total.supply - n.total.demand);
+					UI::Update(
+						#ifndef NO_HIBERNATION
+							Objects::selectedEntity->GetUplinkTraffic(),
+						#endif
+						n.total.storage, n.total.storageMax, n.total.supply - n.total.demand);
 			}
 			else
 				UI::HideExtraGauges();
@@ -3637,7 +3653,7 @@ void ParseKeyValue(const String&key, const String&value)
 		}
 		elif(key == "serverURL")
 		{
-			RuntimeConfig::serverURL = value;
+			RuntimeConfig::serverAddress = Network::ServerAddress(value);
 		}
 		else
 			throw Program::ParameterFault("`"+key+"` is not a recognized runtime parameter");
@@ -3711,9 +3727,9 @@ bool ConfigureClient(const wchar_t*commandLine)
 		MyFatal(FatalDescriptor(CLOCATION, e.what()));
 		return false;
 	}
-	if (RuntimeConfig::serverURL.IsNotEmpty())
+	if (RuntimeConfig::serverAddress.host.IsNotEmpty())
 	{
-		Network::ServerDiscovery::RegisterNewHost(RuntimeConfig::serverURL, false,true);
+		Network::ServerDiscovery::RegisterNewHost(RuntimeConfig::serverAddress, false,true);
 	}
 
 
