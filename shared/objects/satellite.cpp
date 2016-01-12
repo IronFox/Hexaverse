@@ -547,9 +547,9 @@ namespace Objects
 			hubs.Clear();
 			#ifdef CLIENT
 				for (const auto&port : skyLinks)
-					if (port.first->owner == owner && port.second->connectedToHub)
+					if (port.second->owner == owner && port.first->connectedToHub)
 					{
-						PSkyHub hub = port.second->connectedToHub;
+						PSkyHub hub = port.first->connectedToHub;
 						if (hub.get() != this)
 						{
 							hubs.Append().hub = hub;

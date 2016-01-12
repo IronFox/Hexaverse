@@ -1195,43 +1195,13 @@ namespace Journal
 	{
 		if (lockEvents)
 			return;
-		String path = var->parent.lock()->GetPath()+'/'+var->name;
-		PGlobalEvent ev(new UpdateVariable(path,var->ToString()));
+		PGlobalEvent ev(new UpdateVariable(var->GetPath(),var->ToString()));
 		if (!execute || ev->TryExecute())
 			return;
 		this->globalEvents.Append(ev);
 	}
 
 
-	void	Round::WalkRegisterVariables(const CLI::PFolder&f)
-	{
-		for (const auto&var : f->variables)
-		{
-			Reflection::Variable::PBase&v = To<Reflection::Variable::Base>::DynamicCast(var);
-			if (v && v->WriteToSavegame())
-			{
-				v->lastValue = v->ToString();
-				RegisterPersistentVariableChange(false,v);
-			}
-		}
-		for (const auto&dir : f->folders)
-			WalkRegisterVariables(dir);
-	}
-
-
-	void	Round::WalkCheckVariables(const CLI::PFolder&f)
-	{
-		for (const auto&var : f->variables)
-		{
-			Reflection::Variable::PBase&v = To<Reflection::Variable::Base>::DynamicCast(var);
-			if (v && v->WriteToSavegame())
-			{
-				v->CheckChanges();
-			}
-		}
-		for (const auto&dir : f->folders)
-			WalkCheckVariables(dir);
-	}
 
 	void	Writer::InitNew(const PathString&root)
 	{
@@ -1246,7 +1216,16 @@ namespace Journal
 		logStream.open(file.c_str(),std::ios::binary | std::ios::out | std::ios::trunc);
 		ASSERT__(logStream.is_open());
 
-		currentRound.WalkRegisterVariables(Reflection::state.GetRoot());
+
+		Reflection::VisitAllVariables([this](const Reflection::Variable::PBase&v)
+		{
+			if (v->WriteToSavegame())
+			{
+				v->lastValue = v->ToString();
+				currentRound.RegisterPersistentVariableChange(false,v);
+			}
+		});
+
 
 		Objects::ForeachFaction([this](const Objects::PFaction&f)
 		{
@@ -1732,6 +1711,11 @@ namespace Journal
 	/*virtual override*/ void	Round::EnableStructure::Execute(const Objects::PWorldEntity&e) const
 	{
 		Objects::RefreshCompoundCoverageIfNeeded(0);
+		if (!e->IsWorkingStructure())
+		{
+			throw Round::RoundException(CLOCATION,"Cannot enable '"+e->GetName()+"': Not a working structure");
+		}
+		Objects::PWorkingStructure w = To<Objects::WorkingStructure>::Cast(e);
 		#ifndef CONNECTOR_LESS
 			if (w->compoundID == Objects::Compound::InvalidNetwork)
 			{
@@ -1739,11 +1723,6 @@ namespace Journal
 				ASSERT__(w->compoundID != Objects::Compound::InvalidNetwork);
 			}
 		#endif
-		if (!e->IsWorkingStructure())
-		{
-			throw Round::RoundException(CLOCATION,"Cannot enable '"+e->GetName()+"': Not a working structure");
-		}
-		Objects::PWorkingStructure w = To<Objects::WorkingStructure>::Cast(e);
 
 		if (w->SetEnabled(doEnable,0))
 			LogEvent(EventType::MinorEntityProcess,e.get(),"Modified enabled-state "+String(doEnable));

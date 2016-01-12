@@ -12,6 +12,24 @@ namespace Reflection
 
 	namespace Variable
 	{
+	
+	
+		void	Walk(const CLI::PFolder&f, const Variable::FCallback&callback)
+		{
+			for (const auto&var : f->variables)
+			{
+				Reflection::Variable::PBase&v = To<Reflection::Variable::Base>::DynamicCast(var);
+				if (v)
+				{
+					callback(v);
+				}
+			}
+			for (const auto&dir : f->folders)
+				Walk(dir,callback);
+		}
+
+
+
 		void				Base::OnChanged()
 		{
 			if (extraOnChange)
@@ -952,6 +970,28 @@ namespace Reflection
 
 		Grid::currentPlanetConfig.GenerateAtmosphereColor();
 	}
+
+
+	void	VisitAllVariables(const Variable::FCallback&callback)
+	{
+		Variable::Walk(state.GetRoot(),callback);
+	}
+
+
+	void	CheckAllSaveGameVariables()
+	{
+		VisitAllVariables([](const Variable::PBase&v)
+		{
+			if (v->WriteToSavegame())
+			{
+				v->CheckChanges();
+			}
+		});
+
+	}
+
+
+
 
 }
 
