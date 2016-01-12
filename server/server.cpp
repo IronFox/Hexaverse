@@ -1108,7 +1108,7 @@ namespace ParameterConfig
 			case ExpectPort:
 				if (!convert(arg,basePort))
 				{
-					LogEvent(EventType::CommandLineError,"Unable to convert '"+String(arg)+"' to a valid port number");
+					LogEvent(EventType::ConfigError,"Unable to convert '"+String(arg)+"' to a valid port number");
 				}
 				else
 				{
@@ -1174,7 +1174,7 @@ int main( int argc, const char* argv[])
 		for (int i = 1; i < argc; i++)
 			ParameterConfig::Process(argv[i]);
 
-		RemoteControl::Start(ParameterConfig::basePort);
+		//RemoteControl::Start(ParameterConfig::basePort);
 
 
 
