@@ -11,6 +11,7 @@ CONSTRUCT_ENUMERATION20(EventType,
 						Debug,
 						PerformanceMeasurement,
 						ConfigRelated,
+						ConfigError,
 						InternalFault,
 						Notification, //unspecified notification
 						SessionRelated, //users joining or leaving
@@ -24,8 +25,7 @@ CONSTRUCT_ENUMERATION20(EventType,
 						CommandRejected,	//notifies that a specific command was rejected
 						ChatMessage,
 						RemoteControl,
-						RemoteControlError,
-						CommandLineError
+						RemoteControlError
 						)
 
 

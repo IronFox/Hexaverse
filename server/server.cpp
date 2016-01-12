@@ -1108,7 +1108,7 @@ namespace ParameterConfig
 			case ExpectPort:
 				if (!convert(arg,basePort))
 				{
-					LogEvent(EventType::CommandLineError,"Unable to convert '"+String(arg)+"' to a valid port number");
+					LogEvent(EventType::ConfigError,"Unable to convert '"+String(arg)+"' to a valid port number");
 				}
 				else
 				{
