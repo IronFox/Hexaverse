@@ -440,7 +440,7 @@ namespace Network
 		void	OnNewMobileEntity(Protocol::NewMobileEntity&vc)
 		{
 			ASSERT__(!eventsLocked);
-			ASSERT__(Network::haveId);
+			//ASSERT__(Network::haveId);
 
 			Objects::PMobileEntity v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,vc.state.entityState.timestamp.rightNow,Network::haveId && Network::myID == vc.owner);
 			if (vc.state.entityState.timestamp.rightNow)

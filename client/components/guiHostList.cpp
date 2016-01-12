@@ -94,6 +94,8 @@ void	SaveHosts()
 			result += ", Start Bases";
 		if (info.gameInfo.gameFlags & Protocol::GameFlag::NexusAI)
 			result += ", Nexus AI";
+		if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportSpectatorFactions)
+			result += ", Spectator";
 		if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportRegularFactions)
 			result += ", Regular";
 

@@ -109,12 +109,16 @@ namespace Protocol
 						break;
 						case WorldDeltaType::ProgressiveInit:
 						{
-							auto&cell =  vs->cellStack[stackID].volumeCell[layer];
-							bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
+							bool canSee = true;
+							if (vs)
+							{
+								auto&cell =  vs->cellStack[stackID].volumeCell[layer];
+								canSee = cell.visibility > 0 || cell.temporarilyVisible;
+								cell.temporarilyVisible = false;
+							}
 							const Grid::CellStack::Cell& source = canSee ? Grid::actualWorld.cellStack[stackID].volumeCell[layer] : Grid::initialWorld.cellStack[stackID].volumeCell[layer];
 							source.GetDeltaFrom(empty,tdts[i]/*,fdts[i],fdtsValid[i]*/);
 							ws->cellStack[stackID].volumeCell[layer] = source;
-							cell.temporarilyVisible = false;
 						}
 						break;
 						case WorldDeltaType::GlobalInitialCopy:

@@ -61,11 +61,15 @@ namespace State
 		std::weak_ptr<TCP::Peer>	peer;
 		//Timer::Time					lastPing;
 		Objects::PFaction			faction;
-		bool						wantNewRound;
+		bool						wantNewRound=false;
+
+
+		/**
+		Indicates that this client sees everything, but has no faction to control
+		*/
+		bool				isSpectator=false;
 
 		
-		/**/				Client():/*lastPing(timer.Now()),*//*hasUnits(false),*/wantNewRound(false)
-		{}
 
 		String				ToString() const;
 		bool				CanSee(const Objects::PWorldEntity&e, float t)	const;
@@ -93,7 +97,12 @@ namespace State
 	*/
 	void	HandleConnectionLoss(PClient);
 
-	extern Buffer<PClient>	clients,activePlayers;
+
+	extern Grid::WorldData	spectatorWorldState;
+
+
+	extern Buffer<PClient>	//clients,
+							activePlayers,spectators;
 	extern GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
 	extern GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
 	extern UINT32			lastSaveRound /*= 0*/,
@@ -126,7 +135,7 @@ namespace State
 		//extern count_t	limitMinesTo/* = 100*/;
 
 		extern UINT32	factionSupportFlags;
-		static const UINT32 AllFactionSupportFlags = Protocol::GameFlag::SupportRegularFactions;
+		static const UINT32 AllFactionSupportFlags = Protocol::GameFlag::SupportSpectatorFactions || Protocol::GameFlag::SupportRegularFactions;
 		
 		typedef RuntimeConfig::GameGoal	Goal;
 
@@ -152,6 +161,7 @@ namespace State
 		inline String	FactionSupportFlagString()
 		{
 			String rs;
+			CheckFactionSupportFlag(rs,Protocol::GameFlag::SupportSpectatorFactions,"Spectator");
 			CheckFactionSupportFlag(rs,Protocol::GameFlag::SupportRegularFactions,"Regular");
 
 			return rs;
@@ -166,6 +176,9 @@ namespace State
 			foreach (segs,seg)
 			{
 				seg->trimThis();
+				if (*seg == "Spectator")
+					factionSupportFlags |= Protocol::GameFlag::SupportSpectatorFactions;
+				else
 				if (*seg == "Regular")
 					factionSupportFlags |= Protocol::GameFlag::SupportRegularFactions;
 				else
@@ -327,6 +340,8 @@ namespace State
 			{
 				channel.SendTo((*cl)->peer.lock(),item);
 			}
+			foreach (spectators,s)
+				channel.SendTo((*s)->peer.lock(),item);
 		}
 
 	template <index_t Channel, class Item>
@@ -337,6 +352,8 @@ namespace State
 			{
 				channel.SendTo((*cl)->peer.lock(),item);
 			}
+			foreach (spectators,s)
+				channel.SendTo((*s)->peer.lock(),item);
 		}
 
 }

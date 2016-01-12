@@ -3954,6 +3954,7 @@ int main( int argc, const char* argv[])
 				&& RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
 			}
 			);
+			AddFactionCreationChoice("Spectate",Protocol::FactionType::SpectatorFaction, Protocol::GameFlag::SupportSpectatorFactions);
 			AddFactionCreationChoice("Create new faction",Protocol::FactionType::RegularFaction, Protocol::GameFlag::SupportRegularFactions);
 
 			
