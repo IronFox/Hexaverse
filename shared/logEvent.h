@@ -4,12 +4,13 @@
 #include <general/enumeration.h>
 #include <global_string.h>
 
-CONSTRUCT_ENUMERATION18(EventType, 
+CONSTRUCT_ENUMERATION19(EventType, 
 						Fatal,
 						UnexpectedBehavior,
 						Debug,
 						PerformanceMeasurement,
 						ConfigRelated,
+						ConfigError,
 						InternalFault,
 						Notification, //unspecified notification
 						SessionRelated, //users joining or leaving
