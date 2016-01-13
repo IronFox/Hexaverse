@@ -94,6 +94,8 @@ void	SaveHosts()
 			result += ", Start Bases";
 		if (info.gameInfo.gameFlags & Protocol::GameFlag::NexusAI)
 			result += ", Nexus AI";
+		if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportSpectatorFactions)
+			result += ", Spectator";
 		if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportRegularFactions)
 			result += ", Regular";
 
@@ -103,6 +105,12 @@ void	SaveHosts()
 
 	}
 
+	static float PingOf(const std::pair<Network::ServerAddress,float>&p)
+	{
+		if (p.first.host == "localhost")
+			return -1;
+		return p.second;
+	}
 
 	GUIElements::PButtonPanel ConstructPanel(Network::ServerInfo&info)
 	{
@@ -138,13 +146,16 @@ void	SaveHosts()
 				if (!info)
 					return;
 				index_t best = 0;
-				float bestPing = info->addresses.first().second;
+				float bestPing = PingOf(info->addresses.first());
 				for (index_t i = 1; i < info->addresses.Count(); i++)
-					if (info->addresses[i].second < bestPing)
+				{
+					float ping = PingOf(info->addresses[i]);
+					if (ping < bestPing)
 					{
-						bestPing = info->addresses[i].second;
+						bestPing = ping;
 						best = i;
 					}
+				}
 				info->selected = true;
 
 				Network::serverID = info->id;
