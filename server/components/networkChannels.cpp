@@ -202,7 +202,7 @@ namespace Receiver
 
 
 
-	void	SendSessionConfigTo(TCP::Peer&peer, const Objects::PFaction&exclude)
+	void	SendSessionConfigTo(TCP::Peer&peer, const Objects::PFaction&exclude, bool sendTechniteFactionColors)
 	{
 		Objects::ForeachFaction([&peer,exclude](const Objects::PFaction&f)
 		{
@@ -227,7 +227,7 @@ namespace Receiver
 		
 		Channels::lockEmpZones.SendTo(peer,State::empZonesLocked);
 
-		
+		if (sendTechniteFactionColors)
 		{
 			Protocol::TechniteColors	colorVector;
 			colorVector.SetSize(0xFF);
@@ -414,7 +414,7 @@ namespace Receiver
 				Channels::updateWorld.SendTo(peer,delta);
 			}
 
-			SendSessionConfigTo(peer, Objects::PFaction());
+			SendSessionConfigTo(peer, Objects::PFaction(), true);
 
 			return;
 		}
@@ -505,7 +505,7 @@ namespace Receiver
 				client->SendProgressUpdate(true,"<null>");
 			}
 		}
-		//bool colorsSent = false;
+		bool colorsSent = false;
 
 		index_t startLocation = InvalidIndex;
 		if (newFaction)
@@ -549,14 +549,14 @@ namespace Receiver
 						return;
 					}
 
-					//Protocol::TechniteColors	colorVector;
-					//colorVector.SetSize(0xFF);
-					//for (index_t i = 0; i < 0xFF; i++)
-					//{
-					//	colorVector[i] = byte3( Technites::Technite::factionColor[i]*255.f );
-					//}
-					//Channels::techniteColors.SendTo(State::server,colorVector,1);
-					//colorsSent = true;
+					Protocol::TechniteColors	colorVector;
+					colorVector.SetSize(0xFF);
+					for (index_t i = 0; i < 0xFF; i++)
+					{
+						colorVector[i] = byte3( Technites::Technite::factionColor[i]*255.f );
+					}
+					Channels::techniteColors.SendTo(State::server,colorVector,1);
+					colorsSent = true;
 				}
 				else
 				{
@@ -576,6 +576,7 @@ namespace Receiver
 		{
 			faction->name = client->name;
 		}
+
 
 
 		State::activePlayers << client;
@@ -805,7 +806,7 @@ namespace Receiver
 		Journal::currentRound.LogFactionOnline(client->faction);
 		LogEvent(EventType::SessionRelated,faction->name+" connected");
 
-		SendSessionConfigTo(peer,client->faction);
+		SendSessionConfigTo(peer,client->faction, !colorsSent);
 
 		
 
