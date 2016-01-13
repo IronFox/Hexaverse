@@ -1,3 +1,8 @@
+v0.3.11
+	*Server ports can now be altered by specifying 'port 12345' as runtime parameter when launching the server.
+	
+
+
 v0.3.10
 	*Long distance routes will now be computed by the client and sent as a sequence of waypoints.
 	*Improved performance of route changes both for server and client.
