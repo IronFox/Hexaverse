@@ -119,6 +119,41 @@ namespace Receiver
 
 
 
+	void	SendSessionConfigTo(TCP::Peer&peer, const Objects::PFaction&exclude)
+	{
+		Objects::ForeachFaction([&peer,exclude](const Objects::PFaction&f)
+		{
+			if (f != exclude)
+			{
+				Channels::identifyUser.SendTo(peer,Protocol::IdentifyUser(f->id,f->name));
+				if (f->online)
+				{
+					Channels::factionOnline.SendTo(peer,f->id);
+					if (State::playerMap.Require(f)->wantNewRound)
+						Channels::factionRequestedNewRound.SendTo(peer,f->id);
+				}
+			}
+		});
+
+		#ifndef NO_HIBERNATION
+			Channels::uplinkBandwidth.SendTo(peer,State::Config::uplinkBandwidth);
+		#endif
+		Protocol::UnitLimits	limits;
+		RuntimeConfig::UnitLimits::Export(limits);
+		Channels::unitLimits.SendTo(peer,limits);
+		
+		Channels::lockEmpZones.SendTo(peer,State::empZonesLocked);
+
+
+		Protocol::PhaseChange	ph;
+		ph.newPhase = RuntimeConfig::phase;
+		ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
+		ph.timeFactor = -1;
+
+
+		Channels::phaseChange.SendTo(peer,ph);
+
+	}
 
 	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
 	{
@@ -142,10 +177,12 @@ namespace Receiver
 				client->faction->online = false;
 				client->faction.reset();
 
-				Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 			}
 			if (!response.startFactionTypes)
+			{
+				Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 				return;
+			}
 		}
 		
 		if (response.startFactionTypes != Protocol::FactionType::SpectatorFaction && client->isSpectator)
@@ -268,6 +305,10 @@ namespace Receiver
 
 				Channels::updateWorld.SendTo(peer,delta);
 			}
+
+			response.factionToken = CryptographicID();
+			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
+			SendSessionConfigTo(peer, Objects::PFaction());
 
 			return;
 		}
@@ -403,7 +444,7 @@ namespace Receiver
 		}
 		else
 		{
-
+			faction->name = client->name;
 		}
 		State::activePlayers << client;
 		State::playerMap.Set(client->faction,client);
@@ -571,16 +612,8 @@ namespace Receiver
 
 		
 
-		Protocol::PhaseChange	ph;
-		ph.newPhase = RuntimeConfig::phase;
-		ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
-		ph.timeFactor = -1;
 
 
-		Channels::phaseChange.SendTo(peer,ph);
-
-
-		faction->name = client->name;
 		//faction->online = true;
 		//probably optional later on
 		{
@@ -595,48 +628,9 @@ namespace Receiver
 		Journal::currentRound.LogFactionOnline(client->faction);
 		LogEvent(EventType::SessionRelated,faction->name+" connected");
 
-		for (const auto&weak : Objects::Faction::all)
-		{
-			Objects::PFaction f = weak.lock();
-			if (f && f != client->faction)
-			{
-				Channels::identifyUser.SendTo(peer,Protocol::IdentifyUser(f->id,f->name));
-				if (f->online)
-				{
-					Channels::factionOnline.SendTo(peer,f->id);
-					if (State::playerMap.Require(f)->wantNewRound)
-						Channels::factionRequestedNewRound.SendTo(peer,f->id);
-				}
-			}
-		}
-
-		{
-			Objects::PFaction f = Objects::Faction::nexus;
-			if (f && f != client->faction)
-			{
-				Channels::identifyUser.SendTo(peer,Protocol::IdentifyUser(f->id,f->name));
-				if (f->online)
-				{
-					Channels::factionOnline.SendTo(peer,f->id);
-
-					if (State::playerMap.Require(f)->wantNewRound)
-						Channels::factionRequestedNewRound.SendTo(peer,f->id);
-
-				}
-				
-			}
-		}
-		#ifndef NO_HIBERNATION
-			Channels::uplinkBandwidth.SendTo(peer,State::Config::uplinkBandwidth);
-		#endif
-		Protocol::UnitLimits	limits;
-		RuntimeConfig::UnitLimits::Export(limits);
-		Channels::unitLimits.SendTo(peer,limits);
+		SendSessionConfigTo(peer,client->faction);
 		
-		Channels::lockEmpZones.SendTo(peer,State::empZonesLocked);
-
 		peer.SendSignal(Protocol::ChannelID::BeginGame);
-		
 	}
 
 	bool CanControl(const State::Client&c, const Objects::WorldEntity&e)
