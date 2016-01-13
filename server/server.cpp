@@ -1473,6 +1473,8 @@ int main( int argc, const char* argv[])
 				bool hasNexus = false,nexusWantsNewRound = false;
 				foreach(State::activePlayers, p)
 				{
+					if ((*p)->isSpectator)	//doesn't count towards new round
+						continue;
 					if ((*p)->faction == Objects::Faction::nexus)
 					{
 						ASSERT__(!hasNexus);
