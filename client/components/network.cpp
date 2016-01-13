@@ -1160,17 +1160,17 @@ namespace Network
 		index_t portAt = url.find(':');
 		if (portAt)
 		{
-			RuntimeConfig::serverAddress.host = url.subStringRef(0,portAt-1);
+			host = url.subStringRef(0,portAt-1);
 			StringRef conv = url.subStringRef(portAt);
-			if (!convert(conv.pointer(),conv.length(),RuntimeConfig::serverAddress.basePort))
+			if (!convert(conv.pointer(),conv.length(),basePort))
 			{
 				throw Program::ParameterFault("Unable to parse port component '" + String(conv) + "' of '"+url+"'");
 			}
 		}
 		else
 		{
-			RuntimeConfig::serverAddress.host = url;
-			RuntimeConfig::serverAddress.basePort = DEFAULT_SERVER_BASE_PORT;
+			host = url;
+			basePort = DEFAULT_SERVER_BASE_PORT;
 		}
 	}
 
