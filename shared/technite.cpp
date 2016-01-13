@@ -1382,7 +1382,7 @@ namespace Technites
 			}
 			else
 			{
-				LogEvent(EventType::InternalFault,nullptr,"Expected technite content type in cell "+t->location.GetU().ToString()+", but got "+Grid::Content::Reinterpret(vcell.content).ToString());
+				LogEvent(EventType::InternalFault,nullptr,this->GetLogName() +": Expected technite content type in cell "+t->location.GetU().ToString()+", but got "+Grid::Content::Reinterpret(vcell.content).ToString());
 			}
 		}
 
@@ -1607,9 +1607,9 @@ namespace Technites
 
 				ASSERT_EQUAL__(iteration,0);
 
-				bool expected = true;
-				if (technite.isDead.Set(expected,true))
+				if (technite.isDead.Set(false,true))
 				{
+					anyDied = true;
 					if (technite.taskParameter >= ARRAYSIZE(Technite::MatterYield) || Technite::MatterYield[technite.taskParameter] == 0)
 					{
 						#ifdef _DEBUG
