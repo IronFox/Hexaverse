@@ -227,6 +227,17 @@ namespace Receiver
 		
 		Channels::lockEmpZones.SendTo(peer,State::empZonesLocked);
 
+		
+		{
+			Protocol::TechniteColors	colorVector;
+			colorVector.SetSize(0xFF);
+			for (index_t i = 0; i < 0xFF; i++)
+			{
+				colorVector[i] = byte3( Technites::Technite::factionColor[i]*255.f );
+			}
+			Channels::techniteColors.SendTo(peer,colorVector,1);
+		}
+
 
 		Protocol::PhaseChange	ph;
 		ph.newPhase = RuntimeConfig::phase;
@@ -494,7 +505,7 @@ namespace Receiver
 				client->SendProgressUpdate(true,"<null>");
 			}
 		}
-		bool colorsSent = false;
+		//bool colorsSent = false;
 
 		index_t startLocation = InvalidIndex;
 		if (newFaction)
@@ -538,14 +549,14 @@ namespace Receiver
 						return;
 					}
 
-					Protocol::TechniteColors	colorVector;
-					colorVector.SetSize(0xFF);
-					for (index_t i = 0; i < 0xFF; i++)
-					{
-						colorVector[i] = byte3( Technites::Technite::factionColor[i]*255.f );
-					}
-					Channels::techniteColors.SendTo(State::server,colorVector,1);
-					colorsSent = true;
+					//Protocol::TechniteColors	colorVector;
+					//colorVector.SetSize(0xFF);
+					//for (index_t i = 0; i < 0xFF; i++)
+					//{
+					//	colorVector[i] = byte3( Technites::Technite::factionColor[i]*255.f );
+					//}
+					//Channels::techniteColors.SendTo(State::server,colorVector,1);
+					//colorsSent = true;
 				}
 				else
 				{
@@ -566,16 +577,6 @@ namespace Receiver
 			faction->name = client->name;
 		}
 
-		if (!colorsSent)
-		{
-			Protocol::TechniteColors	colorVector;
-			colorVector.SetSize(0xFF);
-			for (index_t i = 0; i < 0xFF; i++)
-			{
-				colorVector[i] = byte3( Technites::Technite::factionColor[i]*255.f );
-			}
-			Channels::techniteColors.SendTo(peer,colorVector,1);
-		}
 
 		State::activePlayers << client;
 		State::playerMap.Set(client->faction,client);
