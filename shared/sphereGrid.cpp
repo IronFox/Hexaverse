@@ -59,8 +59,7 @@ namespace Grid
 	#ifdef HAS_WINDOW
 		/*static*/ const float4 WaterCompiler::waterColor = float4(0.5f, 0.6f, 1.f,0.6f);
 	#endif
-
-
+	
 	static_assert(CellStack::Cell::TypeCount == Content::NumberOfPossibilities, "Adjust type count");
 
 	/*static*/ float3	CellStack::Cell::typeColor[TypeCount] =
@@ -134,7 +133,7 @@ namespace Grid
 		1,	//water
 		1	//clear
 	};
-
+			
 
 	void			CellStack::ChangeStructureCounterI(int height, int by)
 	{
