@@ -1934,7 +1934,6 @@ void	State::Load(const PathString&filename)
 							Riff::Chunk*child;
 
 							Protocol::TypeDeltaArray	typeArray;
-							Protocol::TechniteFactionDeltaArray techniteFactionArray;
 							//Riff::Chunk*child;
 							BYTE atFamily = 0;
 
@@ -1948,13 +1947,8 @@ void	State::Load(const PathString&filename)
 									if (child->IsID(RID::factionWorldTypeChunk))
 									{
 										ASSERT__(DeserializeFromMemory(typeArray,child->pointer(),child->size(),false));
-									}
-									elif(child->IsID(RID::factionWorldTechniteFactionChunk))
-									{
-										ASSERT__(DeserializeFromMemory(techniteFactionArray, child->pointer(), child->size(), false));
 										ASSERT_LESS__(atFamily, BaseGrid::NumFamilies);
-										faction->currentState.ApplyFamilyDelta(atFamily,typeArray,techniteFactionArray, false,false);
-
+										faction->currentState.ApplyFamilyDelta(atFamily,typeArray,false,false);
 										atFamily++;
 									}
 									//elif (child->IsID(RID::factionWorldCounterChunk))
