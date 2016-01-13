@@ -245,6 +245,10 @@ namespace Receiver
 			}
 			client->isSpectator = true;
 
+			response.factionToken = CryptographicID();
+			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
+
+			//send world state:
 
 			Protocol::Timestamp	timestamp;
 			timestamp.rightNow = true;
@@ -306,8 +310,6 @@ namespace Receiver
 				Channels::updateWorld.SendTo(peer,delta);
 			}
 
-			response.factionToken = CryptographicID();
-			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 			SendSessionConfigTo(peer, Objects::PFaction());
 
 			return;
