@@ -221,7 +221,7 @@ namespace Reflection
 			{
 				return "'Spectator'"
 						", 'Regular'"
-						". 'Technite'"
+						", 'Technite'"
 						", 'Hybrid'"
 						;
 			}
