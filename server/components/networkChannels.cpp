@@ -275,7 +275,10 @@ namespace Receiver
 			State::spectators.FindAndErase(client);
 		}
 
-		if (!RuntimeConfig::IsInAnyCommandPhase() && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
+		if (!RuntimeConfig::IsInAnyCommandPhase()
+			&& RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame
+			&& RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase
+			)
 		{
 			//disconnecting client. no new faction
 			LogEvent(EventType::CommandRejected, peer, "Cannot connect ("+String(RuntimeConfig::phase.ToString())+") right now. Disconnecting");
