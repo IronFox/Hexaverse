@@ -2031,9 +2031,8 @@ namespace Protocol
 
 			SupportSpectatorFactions = 0x10,
 			SupportRegularFactions = 0x20,
-
-			SupportTechniteFactions = 0x20,
-			SupportHybridFactions = 0x40,
+			SupportTechniteFactions = 0x40,
+			SupportHybridFactions = 0x80,
 
 		};
 
