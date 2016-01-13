@@ -3591,7 +3591,7 @@ String GenerateOreName(Random&random)
 		Dialog::loginMenu->AddCommand(line,
 		[typeFlags,supportFactionFlag]()
 		{
-			if (Network::HaveFactionKeyForCurrentWorld())
+			if (Network::HaveFactionKeyForCurrentWorld() && typeFlags != Protocol::FactionType::SpectatorFaction)
 			{
 				Dialog::Confirm("A faction key is known for this world ("+Network::worldIDString+"). If you create a new faction, this key will be lost, and control of your old faction will irreversible be abandoned. Please confirm.",
 				[typeFlags](){
@@ -3611,7 +3611,13 @@ String GenerateOreName(Random&random)
 				Network::AttemptFactionLogin(true,typeFlags);
 				Dialog::Hide(Dialog::loginMenu);
 			}
-		},[supportFactionFlag](){return Network::amOnline && !Network::haveFaction && (Network::gameFlags & supportFactionFlag) && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;},false);
+		},[supportFactionFlag](){return Network::amOnline && !Network::haveFaction && (Network::gameFlags & supportFactionFlag) 
+			&& (
+					RuntimeConfig::IsInAnyCommandPhase() 
+						|| RuntimeConfig::phase  == RuntimeConfig::Phase::AnimationPhase 
+						|| RuntimeConfig::phase  == RuntimeConfig::Phase::EndOfGame
+				)
+			;},false);
 
 
 	}
