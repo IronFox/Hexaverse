@@ -66,7 +66,7 @@ namespace State
 
 			State::playerMap.Unset(client->faction);
 			client->faction->online = false;
-			Channels::factionOffline.SendTo(State::server,client->faction->id);
+			Channels::factionOffline.SendTo(State::server,client->faction->id,2);
 		}
 	}
 
@@ -591,7 +591,7 @@ namespace State
 			{
 				playerMap.Unset(client->faction);
 				client->faction->online = false;
-				Channels::factionOffline.SendTo(State::server,client->faction->id);
+				Channels::factionOffline.SendTo(State::server,client->faction->id,2);
 			}
 
 			peer.attachment.reset();
@@ -3424,7 +3424,7 @@ namespace State
 			State::unlockedEMPZones = ((1<<unlocked) - 1);
 			State::empZonesLocked = ((1 << 12)-1)  & ~State::unlockedEMPZones;
 
-			Channels::lockEmpZones.SendTo(State::server,State::empZonesLocked);
+			Channels::lockEmpZones.SendTo(State::server,State::empZonesLocked,2);
 		}
 
 	}

@@ -266,12 +266,16 @@ namespace Receiver
 		{
 			if (State::activePlayers.FindAndErase(client))
 			{
-				Journal::currentRound.LogFactionOffline(client->faction);
-				LogEvent(EventType::SessionRelated,peer,"Abandoning faction");
-				State::playerMap.Unset(client->faction);
-				client->faction->online = false;
-				client->faction.reset();
-
+				if (client->faction)
+				{
+					Journal::currentRound.LogFactionOffline(client->faction);
+					LogEvent(EventType::SessionRelated,peer,"Abandoning faction");
+					State::playerMap.Unset(client->faction);
+					client->faction->online = false;
+					client->faction.reset();
+				}
+				peer.userLevel = 1;
+				LogEvent(EventType::Debug,peer,"User level changed to "+String(peer.userLevel));
 			}
 			if (!response.startFactionTypes)
 			{
@@ -341,6 +345,9 @@ namespace Receiver
 		if (response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
 		{
 			//authenticated and purged any previous faction. let's go
+			peer.userLevel = 2;
+			LogEvent(EventType::Debug,peer,"User level changed to "+String(peer.userLevel));
+
 			bool firstSpectator = State::spectators.IsEmpty();
 			if (!client->isSpectator)
 			{
@@ -576,8 +583,8 @@ namespace Receiver
 		{
 			faction->name = client->name;
 		}
-
-
+		peer.userLevel = 2;
+		LogEvent(EventType::Debug,peer,"User level changed to "+String(peer.userLevel));
 
 		State::activePlayers << client;
 		State::playerMap.Set(client->faction,client);
@@ -796,8 +803,8 @@ namespace Receiver
 		//probably optional later on
 		{
 			//broadcast name and state
-			Channels::identifyUser.SendTo(State::server,Identify(client->faction));
-			Channels::factionOnline.SendTo(State::server,client->faction->id);
+			Channels::identifyUser.SendTo(State::server,Identify(client->faction),2);
+			Channels::factionOnline.SendTo(State::server,client->faction->id,2);
 
 		}
 
@@ -1102,7 +1109,7 @@ namespace Receiver
 		if (cl->faction)
 		{
 			cl->faction->name = name;
-			Channels::identifyUser.SendTo(State::server,Identify(cl->faction));
+			Channels::identifyUser.SendTo(State::server,Identify(cl->faction),2);
 			LogEvent(EventType::SessionRelated, peer, "User renamed to '"+name+"'");
 		}
 	}
@@ -1683,6 +1690,8 @@ namespace Receiver
 				return;
 			}
 			peer.userLevel = 1;
+			LogEvent(EventType::Debug,peer,"User level changed to "+String(peer.userLevel));
+
 			client.reset(new State::Client());
 			client->peer = ppeer;
 			ASSERT__(ppeer);
@@ -1796,7 +1805,7 @@ namespace Receiver
 				{
 					client->wantNewRound = false;
 					LogEvent(EventType::SessionRelated,peer,"Continued round");
-					Channels::factionContinuedRound.SendTo(State::server,client->faction->id);
+					Channels::factionContinuedRound.SendTo(State::server,client->faction->id,2);
 				}
 			}
 			break;
@@ -1811,7 +1820,7 @@ namespace Receiver
 				{
 					client->wantNewRound = true;
 					LogEvent(EventType::SessionRelated,peer,"Requested new round");
-					Channels::factionRequestedNewRound.SendTo(State::server,client->faction->id);
+					Channels::factionRequestedNewRound.SendTo(State::server,client->faction->id,2);
 				}
 
 			}
