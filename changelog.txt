@@ -2,6 +2,7 @@ v0.3.11
 	*Server ports can now be altered by specifying 'port 12345' as runtime parameter when launching the server.
 	*Implemented spectator mode.
 	*New factions can now be created during animation phase.
+	*Fixed technite SelfTransformToType
 
 	
 v0.3.10
