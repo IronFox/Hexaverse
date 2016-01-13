@@ -171,12 +171,16 @@ namespace Receiver
 		{
 			if (State::activePlayers.FindAndErase(client))
 			{
-				Journal::currentRound.LogFactionOffline(client->faction);
-				LogEvent(EventType::SessionRelated,peer,"Abandoning faction");
-				State::playerMap.Unset(client->faction);
-				client->faction->online = false;
-				client->faction.reset();
-
+				if (client->faction)
+				{
+					Journal::currentRound.LogFactionOffline(client->faction);
+					LogEvent(EventType::SessionRelated,peer,"Abandoning faction");
+					State::playerMap.Unset(client->faction);
+					client->faction->online = false;
+					client->faction.reset();
+				}
+				peer.userLevel = 1;
+				LogEvent(EventType::Debug,peer,"User level changed to "+String(peer.userLevel));
 			}
 			if (!response.startFactionTypes)
 			{
