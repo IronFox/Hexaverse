@@ -1718,7 +1718,7 @@ namespace Protocol
 		{
 			ContinueOnly = 0xFFFFFFFF,
 			NexusFaction = 0x1,
-			Reserved0 = 0x2,
+			SpectatorFaction = 0x2,
 			Reserved1 = 0x4,
 			RegularFaction = 0x8,
 		};
@@ -1908,8 +1908,8 @@ namespace Protocol
 			StartBases = 0x4,
 			NexusAI = 0x8,
 
-
-			SupportRegularFactions = 0x10,
+			SupportSpectatorFactions = 0x10,
+			SupportRegularFactions = 0x20,
 
 
 		};

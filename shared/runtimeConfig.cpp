@@ -101,17 +101,28 @@ namespace RuntimeConfig
 
 		void		Export(Array<std::pair<UINT16,UINT16> >&result)
 		{
-			count_t nonZero = 0;
-			for (index_t i = 0; i < ARRAYSIZE(map); i++)
-				if (map[i])
-					nonZero++;
-			result.SetSize(nonZero);
-			index_t at = 0;
-			for (index_t i = 0; i < ARRAYSIZE(map); i++)
-				if (map[i])
+			if (isEnabled)
+			{
+				count_t nonZero = 0;
+				for (index_t i = 0; i < ARRAYSIZE(map); i++)
+					if (map[i])
+						nonZero++;
+				result.SetSize(nonZero);
+				index_t at = 0;
+				for (index_t i = 0; i < ARRAYSIZE(map); i++)
+					if (map[i])
+					{
+						result[at++] = std::make_pair((UINT16)i,map[i]);
+					}
+			}
+			else
+			{
+				result.SetSize(ARRAYSIZE(map));
+				for (index_t i = 0; i < ARRAYSIZE(map); i++)
 				{
-					result[at++] = std::make_pair((UINT16)i,map[i]);
+					result[i] = std::make_pair((UINT16)i,0xFFFF);
 				}
+			}
 		}
 
 		void		Import(const Array<std::pair<UINT16,UINT16> >&input)

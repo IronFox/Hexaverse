@@ -5,12 +5,13 @@
 #include <global_string.h>
 
 
-CONSTRUCT_ENUMERATION17(EventType, 
+CONSTRUCT_ENUMERATION18(EventType, 
 						Fatal,
 						UnexpectedBehavior,
 						Debug,
 						PerformanceMeasurement,
 						ConfigRelated,
+						ConfigError,
 						InternalFault,
 						Notification, //unspecified notification
 						SessionRelated, //users joining or leaving

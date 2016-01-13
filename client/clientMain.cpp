@@ -2528,7 +2528,7 @@ bool loop()
 					}
 			}
 			#ifdef _DEBUG
-				if (Network::haveId)
+				if (Network::haveID)
 					textout << "My ID: "<<Network::myIDString<<nl;
 				textout << -Camera::scene.retraction.z/WorldScale << nl;
 			#endif
@@ -3415,7 +3415,7 @@ String GenerateOreName(Random&random)
 			return;
 
 		const count_t total = Objects::vehicles.Count() + Objects::satellites.Count() + Objects::structures.Count();
-		if ((total == 0) || !Network::haveId)
+		if ((total == 0) || !Network::haveID)
 			return;
 		index_t from = 0;
 		if (Objects::selectedVehicle)
@@ -3489,7 +3489,7 @@ String GenerateOreName(Random&random)
 	void	SelectAndFocusPrev()
 	{
 		const count_t total = Objects::vehicles.Count() + Objects::satellites.Count();
-		if ((total == 0) || !Network::haveId)
+		if ((total == 0) || !Network::haveID)
 			return;
 		index_t from = 0;
 		if (Objects::selectedMobileEntity)
@@ -3542,7 +3542,7 @@ String GenerateOreName(Random&random)
 	void	SelectAndFocusNext()
 	{
 		const count_t total = Objects::vehicles.Count() + Objects::satellites.Count();
-		if ((total == 0) || !Network::haveId)
+		if ((total == 0) || !Network::haveID)
 			return;
 		index_t from = 0;
 		if (Objects::selectedMobileEntity)
@@ -3641,6 +3641,7 @@ void ParseKeyValue(const String&key, const String&value)
 		elif(key == "serverURL")
 		{
 			RuntimeConfig::serverAddress = Network::ServerAddress(value);
+			LogEvent(EventType::ConfigRelated, nullptr, "Server address set to "+RuntimeConfig::serverAddress.ToString());
 		}
 		else
 			throw Program::ParameterFault("`"+key+"` is not a recognized runtime parameter");
@@ -3964,6 +3965,7 @@ int main( int argc, const char* argv[])
 				&& RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
 			}
 			);
+			AddFactionCreationChoice("Spectate",Protocol::FactionType::SpectatorFaction, Protocol::GameFlag::SupportSpectatorFactions);
 			AddFactionCreationChoice("Create new faction",Protocol::FactionType::RegularFaction, Protocol::GameFlag::SupportRegularFactions);
 
 			
