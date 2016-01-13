@@ -3637,6 +3637,7 @@ void ParseKeyValue(const String&key, const String&value)
 		elif(key == "serverURL")
 		{
 			RuntimeConfig::serverAddress = Network::ServerAddress(value);
+			LogEvent(EventType::ConfigRelated, nullptr, "Server address set to "+RuntimeConfig::serverAddress.ToString());
 		}
 		else
 			throw Program::ParameterFault("`"+key+"` is not a recognized runtime parameter");
