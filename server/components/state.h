@@ -135,7 +135,10 @@ namespace State
 		//extern count_t	limitMinesTo/* = 100*/;
 
 		extern UINT32	factionSupportFlags;
-		static const UINT32 AllFactionSupportFlags = Protocol::GameFlag::SupportSpectatorFactions || Protocol::GameFlag::SupportRegularFactions;
+		static const UINT32 AllFactionSupportFlags = 
+								Protocol::GameFlag::SupportSpectatorFactions
+								| Protocol::GameFlag::SupportRegularFactions
+								;
 		
 		typedef RuntimeConfig::GameGoal	Goal;
 
