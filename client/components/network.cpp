@@ -24,7 +24,11 @@ void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird
 
 namespace Network
 {
-	bool			haveFaction = false,haveId = false,amOnline=false,gameHasBegun=false;
+	bool			haveFaction = false,
+					haveID = false,
+					amSpectator = false,
+					amOnline=false,
+					gameHasBegun=false;
 	#ifdef HAS_WINDOW
 		bool		amLocated=false;
 	#endif
@@ -512,10 +516,10 @@ namespace Network
 		void	OnNewMobileEntity(Protocol::NewMobileEntity&vc)
 		{
 			ASSERT__(!eventsLocked);
-			ASSERT__(Network::haveId);
+			ASSERT__(Network::haveID || Network::amSpectator);
 			TechniteLogicLink::Handle(vc);
 
-			Objects::PMobileEntity v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,vc.state.entityState.timestamp.rightNow,Network::haveId && Network::myID == vc.owner);
+			Objects::PMobileEntity v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,vc.state.entityState.timestamp.rightNow,Network::haveID && Network::myID == vc.owner);
 			if (vc.state.entityState.timestamp.rightNow)
 				LogEvent(EventType::MinorEntityProcess,v.get(),  "Placed vehicle entity outside animation");
 			bool isMine = v->isMine;
@@ -554,7 +558,7 @@ namespace Network
 					Grid::actualWorld.UpdateLighting();
 			#endif
 
-			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.typeName, sc.state.entityState.timestamp.rightNow, Network::haveId && Network::myID == sc.owner);
+			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.typeName, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
 			ASSERT__(s);
 			if (sc.state.entityState.timestamp.rightNow)
 				LogEvent(EventType::MinorEntityProcess,s.get(),  "Placed structure entity outside animation");
@@ -674,9 +678,10 @@ namespace Network
 			amRegularFaction =  (cr.startFactionTypes & Protocol::FactionType::RegularFaction) != 0;
 			if (haveFaction)
 			{
+				amSpectator = cr.startFactionTypes == Protocol::FactionType::SpectatorFaction;
 				activeToken = cr.factionToken;
 				activeTokenString = activeToken.ToString();
-				if (!RuntimeConfig::aiMode)
+				if (!RuntimeConfig::aiMode && !amSpectator)
 				{
 					LogEvent(EventType::SessionRelated,nullptr,"Updating access token of world "+worldID.ToString()+" to "+activeToken.ToString());
 					accessMap.Set(worldID,activeToken);
@@ -698,11 +703,20 @@ namespace Network
 			}
 			else
 			{
+				amSpectator = false;
 				LogEvent(EventType::SessionRelated, nullptr, "Server response: Faction void.");
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
 					Dialog::Show(Dialog::loginMenu);
 				#endif
+			}
+
+			if (amSpectator)
+			{
+				foreach (Grid::actualWorld.cellStack,stack)
+					for (UINT32 l = 0; l < Grid::CellStack::Range; l++)
+						stack->volumeCell[l].visible = 1;	//entire world is visible
+
 			}
 		}
 
@@ -711,7 +725,8 @@ namespace Network
 			ASSERT__(!eventsLocked);
 
 			TechniteLogicLink::StartSession(id.id,id.techniteGridID);
-			haveId = true;
+			haveID = true;
+			amSpectator = false;
 			myID = id.id;
 			LogEvent(EventType::Debug,"SetFactionID("+id.id.value.ToString()+","+String(id.techniteGridID)+")");
 			myFaction = ResolveFaction(myID,id.techniteGridID);
@@ -1253,17 +1268,17 @@ namespace Network
 		index_t portAt = url.find(':');
 		if (portAt)
 		{
-			RuntimeConfig::serverAddress.host = url.subStringRef(0,portAt-1);
+			host = url.subStringRef(0,portAt-1);
 			StringRef conv = url.subStringRef(portAt);
-			if (!convert(conv.pointer(),conv.length(),RuntimeConfig::serverAddress.basePort))
+			if (!convert(conv.pointer(),conv.length(),basePort))
 			{
 				throw Program::ParameterFault("Unable to parse port component '" + String(conv) + "' of '"+url+"'");
 			}
 		}
 		else
 		{
-			RuntimeConfig::serverAddress.host = url;
-			RuntimeConfig::serverAddress.basePort = DEFAULT_SERVER_BASE_PORT;
+			host = url;
+			basePort = DEFAULT_SERVER_BASE_PORT;
 		}
 	}
 

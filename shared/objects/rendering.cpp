@@ -808,7 +808,7 @@ namespace Objects
 			if (v != selectedEntity)
 			{
 				ApplyStateTint(*v,baseTint,false);
-				Renderer::Render(*v,activeColorMine,activeColorTheirs ,light);
+				Renderer::Render(*v,v->isMine ? activeColorMine : activeColorTheirs,v->isMine ? inactiveColorMine : inactiveColorTheirs ,light);
 				ApplyBaseTint(*v,baseTint);
 			}
 		}

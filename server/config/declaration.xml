@@ -123,8 +123,10 @@
 			EMPConquerNexus: NexusPorts are spawned on all of the 12 pole points, but only three are expanded to full AI stations. EMP fields are created depending on the number of player factions.
 			Depending on the number of active factions, two or three of all NexusPorts must be conquered to win the game. It does not matter whether these NexusPorts are surrounded by stations.
 		</variable>
-		<variable name="supportedFactions" default="Regular, Technite, Hybrid">Comma-separated list of supported faction types.</variable>
-		<variable name="closedGame" default="false">Indicates that new faction can be created only during round 0.</variable>
+		<variable name="supportedFactions" default="Spectator, Regular, Technite, Hybrid">
+			Comma-separated list of supported faction types.
+		</variable>
+		<variable name="closedGame" default="false">Indicates that new factions can be created only during round 0.</variable>
 		<variable name="roundTimer" default="60">
 			Time in seconds that players can remain in command phase. once the deadline is reached, rounds will be progressed.
 			Set negative or zero to deactivate.

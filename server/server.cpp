@@ -40,31 +40,28 @@ Random		random;
 
 
 
-
 void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromStorage, float atTime)
 {
-	State::PClient client;
-	State::playerMap.query(_v->owner,client);
-		//return;
 	const Objects::MobileEntity&v = *_v;
 
 
+
 	Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
-	if (client)
+	//if (client)
 	{
 		if (!restoredFromStorage)
 		{
-			TCP::Serial<Protocol::NewMobileEntity>	w;
-			State::Describe(w.Ref(),v,true,timestamp,0xFFFFFFFF);
-			w.Seal();
-
-			Channels::newMobileEntity.SendTo((client)->peer.lock(),w);
+			Protocol::NewMobileEntity	w;
+			State::Describe(w,v,true,timestamp,0xFFFFFFFF);
+			State::SendToOwner(Channels::newMobileEntity,v,w);
+//			Channels::newMobileEntity.SendTo((client)->peer.lock(),w);
 		}
 		else
 		{
 			Protocol::MobileState state;
 			State::Describe(state,(const Objects::MobileEntity&)v,true,timestamp,0xFFFFFFFF);
-			Channels::setMobileState.SendTo(client->peer.lock(),state);
+			State::SendToOwner(Channels::setMobileState,v,state);
+			//Channels::setMobileState.SendTo(client->peer.lock(),state);
 		}
 	}
 
@@ -85,40 +82,36 @@ void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromSto
 			if (v.owner->deathInRounds > 0)
 			{
 				v.owner->deathInRounds = 0;
-				if (client)
+				State::PClient client;
+				if (State::playerMap.query(v.owner,client))
 					client->SendProgressUpdate(false,whyNot);
 			}
 		}
 		else
 			LogEvent(EventType::SessionRelated,_v.get(),"Nope: "+whyNot);
 	}
-
-
-	//foreach (State::clients,cl)
-	//{
-	//	TCP::PPeer peer = (*cl)->peer.lock();
-	//	if (peer && Receiver::CanSee(*cl,_v))
-	//		Channels::createVehicle.SendTo(peer,Receiver::HasAccess(*cl,_v) ? w2 : w);
-	//}
 }
 
 void	SignalNewStructure(const Objects::PStructure&s, float atTime)
 {
 	const Objects::Structure&v = *s;
 
-	State::PClient*cl = State::playerMap.QueryPointer(v.owner);
-	if (!cl)
-		return;
+	//State::PClient*cl = State::playerMap.QueryPointer(v.owner);
+	//if (!cl)
+	//	return;
 
 
-	TCP::Serial<Protocol::StructureConstruction>	w;
+	Protocol::StructureConstruction	w;
 	Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
-	State::Describe(w.Ref(),*s,true,timestamp);
+	State::Describe(w,*s,true,timestamp);
+	State::SendToOwner(Channels::createStructure,v,w);
+
+
 	//State::Describe(w2.Ref(),s,true,&parent);
-	w.Seal();
+	//w.Seal();
 	//w2.Seal();
 
-	Channels::createStructure.SendTo((*cl)->peer.lock(),w);
+	//Channels::createStructure.SendTo((*cl)->peer.lock(),w);
 
 	//SendToOwner(Channels::createStructure,v,w);
 
@@ -222,18 +215,19 @@ void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float 
 			FATAL__("Unrecognized removal type "+String(t.ToString()));
 	}
 
-	foreach (State::clients,cl)
+	foreach (State::activePlayers,cl)
 	{
 		TCP::PPeer peer = (*cl)->peer.lock();
 		if (peer && Receiver::CanSee(*cl,e,atTime))
 		{
+			bool access = Receiver::CanSeePrivateDetails(*cl,e);
 			if (
-				((*cl)->faction != e->owner && !sendToOthers)
+				(!access && !sendToOthers)
 				||
-				((*cl)->faction == e->owner && !sendToSelf)
+				(access && !sendToSelf)
 				)
 				continue;
-			const Protocol::DestroyEntity&send = (*cl)->faction == e->owner ? self : others;
+			const Protocol::DestroyEntity&send = access ? self : others;
 			LogEvent(EventType::MinorEntityProcess,(*cl)->ToString()+" reported seeing removal of "+e->GetName()+" at time "+String(atTime) );
 
 
@@ -291,7 +285,7 @@ void	SignalMotion(const Objects::PMobileEntity&v, const Grid::LCellIdI&from,cons
 	}
 
 
-	foreach (State::clients,cl)
+	foreach (State::activePlayers,cl)
 	{
 		TCP::PPeer peer = (*cl)->peer.lock();
 		if (peer && Receiver::CanSee(*cl,v,t0))
@@ -335,7 +329,7 @@ void	SignalTurretRotation(const Objects::PWorldEntity&e, const TVec3<>&toWorld, 
 		}
 	}
 
-	foreach (State::clients,cl)
+	foreach (State::activePlayers,cl)
 	{
 		TCP::PPeer peer = (*cl)->peer.lock();
 		if (peer && Receiver::CanSee(*cl,e,rotationTime))
@@ -485,7 +479,7 @@ void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, f
 
 	preciseAttack.flightTime = flightTime;
 
-	for (auto cl : State::clients)
+	for (auto cl : State::activePlayers)
 	{
 		TCP::PPeer peer = (cl)->peer.lock();
 		if (!peer)
@@ -507,6 +501,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 
 	//static GenericHashSet<Objects::OwnerParameter,Objects::OwnerHash>	map;
 	static Buffer0<Objects::OwnerParameter>	canSee;
+	static Buffer0<State::PClient>	clientsCanSee;
 
 	bool allSee = isDoomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose;
 
@@ -532,11 +527,20 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 			};
 		});
 	}
-		//Objects::ForeachWorldEntity([center,explosionRadius](const Objects::PWorldEntity&e)
-		//{
-		//	if (!map.IsSet(e->owner) && e->CanSee(center,explosionRadius))
-		//		map.Set(e->owner);
-		//});
+
+	clientsCanSee.Clear();
+
+	for (const Objects::OwnerParameter&p : canSee)
+	{
+		State::PClient client;
+		if (State::playerMap.Query(p,client))
+			clientsCanSee << client;
+	}
+	clientsCanSee.Append(State::spectators);
+
+	if (clientsCanSee.IsEmpty())
+		return;
+	
 
 
 	Protocol::AttackTrajectory	roughAttack;
@@ -575,28 +579,16 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 		roughAttack.sourcePosition.value += mod;
 	}
 
-	for (const Objects::OwnerParameter&p : canSee)
-	//map.VisitAllKeys([explosion,attackFrom,roughAttack, hasTrajectory](const Objects::OwnerParameter&p)
+	for (const State::PClient&client : clientsCanSee)
 	{
-		State::PClient client;
-		if (State::playerMap.Query(p,client))
+		TCP::PPeer peer = client->peer.lock();
+		if (peer)
 		{
-			TCP::PPeer peer = client->peer.lock();
-			if (peer)
-			{
-				if (!client->faction->CanSee(attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
-					Channels::attackTrajectory.SendTo(peer,roughAttack);
-
-
-				Channels::explosion.SendTo(peer,explosion);
-
-
-
-
-			}
+			if (!client->faction->CanSee(attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
+				Channels::attackTrajectory.SendTo(peer,roughAttack);
+			Channels::explosion.SendTo(peer,explosion);
 		}
 	}
-	//);
 }
 
 
@@ -1481,6 +1473,8 @@ int main( int argc, const char* argv[])
 				bool hasNexus = false,nexusWantsNewRound = false;
 				foreach(State::activePlayers, p)
 				{
+					if ((*p)->isSpectator)	//doesn't count towards new round
+						continue;
 					if ((*p)->faction == Objects::Faction::nexus)
 					{
 						ASSERT__(!hasNexus);
@@ -1556,26 +1550,29 @@ int main( int argc, const char* argv[])
 
 
 			//#ifndef _DEBUG
-				foreach (State::clients,cl)
+			{
+				static Buffer0<TCP::PPeer>	disconnect;
+				State::server.VisitAllPeers([](const TCP::PPeer&peer)
 				{
-					TCP::PPeer peer = (*cl)->peer.lock();
-					if (peer)
+					if (timer.GetSecondsSince(peer->GetLastPackageTime()) > 30.f)
 					{
-						if (timer.GetSecondsSince(peer->GetLastPackageTime()) > 30.f)
-						{
-							LogEvent(EventType::SessionRelated,*peer,"Client ping timeout (30 sec) exceeded. Disconnecting client");
-							peer->DisconnectPeer();
-							break;	//loop breaks
-						}
+						LogEvent(EventType::SessionRelated,*peer,"Client ping timeout (30 sec) exceeded. Disconnecting client");
+						disconnect << peer;
 					}
-					else
+				});
+				foreach (disconnect,d)
+					(*d)->DisconnectPeer();
+				disconnect.Clear();
+
+				for (const auto&p : State::activePlayers)
+				{
+					if (p->peer.expired())
 					{
-						LogEvent(EventType::SessionRelated,nullptr,"Peer lost: "+(*cl)->ToString());
-						State::HandleConnectionLoss(*cl);
-						break;	//loop breaks
+						LogEvent(EventType::SessionRelated,nullptr,"Peer lost: "+p->ToString());
+						State::HandleConnectionLoss(p);
 					}
-		
 				}
+			}
 			//#endif
 
 			UDPBroadCast::Update();

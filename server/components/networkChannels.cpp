@@ -202,6 +202,41 @@ namespace Receiver
 
 
 
+	void	SendSessionConfigTo(TCP::Peer&peer, const Objects::PFaction&exclude)
+	{
+		Objects::ForeachFaction([&peer,exclude](const Objects::PFaction&f)
+		{
+			if (f != exclude)
+			{
+				Channels::identifyUser.SendTo(peer,Identify(f));
+				if (f->online)
+				{
+					Channels::factionOnline.SendTo(peer,f->id);
+					if (State::playerMap.Require(f)->wantNewRound)
+						Channels::factionRequestedNewRound.SendTo(peer,f->id);
+				}
+			}
+		});
+
+		#ifndef NO_HIBERNATION
+			Channels::uplinkBandwidth.SendTo(peer,State::Config::uplinkBandwidth);
+		#endif
+		Protocol::UnitLimits	limits;
+		RuntimeConfig::UnitLimits::Export(limits);
+		Channels::unitLimits.SendTo(peer,limits);
+		
+		Channels::lockEmpZones.SendTo(peer,State::empZonesLocked);
+
+
+		Protocol::PhaseChange	ph;
+		ph.newPhase = RuntimeConfig::phase;
+		ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
+		ph.timeFactor = -1;
+
+
+		Channels::phaseChange.SendTo(peer,ph);
+
+	}
 
 	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
 	{
@@ -216,7 +251,7 @@ namespace Receiver
 		State::AssembleGameInfo(response.info);
 		//response.info = CompileWorldInfo();
 
-		if (!response.startFactionTypes)
+		if (!response.startFactionTypes || response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
 		{
 			if (State::activePlayers.FindAndErase(client))
 			{
@@ -226,18 +261,21 @@ namespace Receiver
 				client->faction->online = false;
 				client->faction.reset();
 
-				Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 			}
-			return;
+			if (!response.startFactionTypes)
+			{
+				Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
+				return;
+			}
+		}
+		
+		if (response.startFactionTypes != Protocol::FactionType::SpectatorFaction && client->isSpectator)
+		{
+			client->isSpectator = false;	
+			State::spectators.FindAndErase(client);
 		}
 
-		if (
-			RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase 
-			&& RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame
-			&& RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase
-
-			&& RuntimeConfig::phase != RuntimeConfig::Phase::TechniteCommandPhase 
-			)
+		if (!RuntimeConfig::IsInAnyCommandPhase() && RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
 		{
 			//disconnecting client. no new faction
 			LogEvent(EventType::CommandRejected, peer, "Cannot connect ("+String(RuntimeConfig::phase.ToString())+") right now. Disconnecting");
@@ -258,6 +296,13 @@ namespace Receiver
 			case Protocol::FactionType::ContinueOnly:
 				factionTypeNotSupported = false;
 			break;
+			case Protocol::FactionType::SpectatorFaction:
+			{
+				factionTypeNotSupported = !peer.IsLocalhost();
+				if (factionTypeNotSupported)
+					LogEvent(EventType::CommandRejected,peer,"Spectator type is allowed only from localhost, but peer is "+peer.ToString());
+			}
+			break;
 			case Protocol::FactionType::RegularFaction:
 				factionTypeNotSupported = !(State::Config::factionSupportFlags & Protocol::GameFlag::SupportRegularFactions);
 			break;
@@ -276,6 +321,87 @@ namespace Receiver
 			response.startFactionTypes = 0;
 			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
 			client->peer.lock()->DisconnectPeer();
+			return;
+		}
+
+		if (response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
+		{
+			//authenticated and purged any previous faction. let's go
+			bool firstSpectator = State::spectators.IsEmpty();
+			if (!client->isSpectator)
+			{
+				State::spectators << client;
+				State::activePlayers << client;
+			}
+			client->isSpectator = true;
+
+			response.factionToken = CryptographicID();
+			Channels::clientFactionResponse.SendTo(client->peer.lock(), response);
+
+			//send world state:
+
+			Protocol::Timestamp	timestamp;
+			timestamp.rightNow = true;
+
+			for (const auto&s : Objects::structures)
+			{
+				Protocol::StructureConstruction st;
+				State::Describe(st,*s,true,timestamp);
+				Channels::createStructure.SendTo(peer,st);
+			}
+
+			for (const auto&v : Objects::vehicles)
+			{
+				Protocol::NewMobileEntity st;
+				State::Describe(st,*v,true,timestamp,0xFFFFFFFF);
+				Channels::newMobileEntity.SendTo(peer,st);
+			}
+
+			for (const auto&v : Objects::satellites)
+			{
+				Protocol::NewMobileEntity st;
+				State::Describe(st,*v,true,timestamp,0xFFFFFFFF);
+				Channels::newMobileEntity.SendTo(peer,st);
+			}
+
+			{
+				Protocol::ResourceUpdate	package;
+				package.timestamp = timestamp;
+				package.cells.SetSize(Grid::LowSetup::GridType::CellCount);
+				for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
+					package.cells[i].cellIndex = (UINT32)i;
+				foreach (Grid::Resource::all,res)
+				{
+					package.resourceName = res->GetCName();
+					for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
+					{
+						BYTE sourceCov = res->coverage[i];
+						package.cells[i].coverage = sourceCov;
+					}
+
+					Channels::resourceUpdate.SendTo(peer,package);
+				}
+			}
+			if (firstSpectator)
+				State::spectatorWorldState.FlushAllData();
+			Protocol::WorldDelta	delta;
+			delta.timestamp.rightNow = true;
+			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+			{
+				if (firstSpectator)
+				{
+					Protocol::GenerateWorldDelta(nullptr,&State::spectatorWorldState,
+											delta,k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::ProgressiveInit);
+				}
+				else
+					Protocol::GenerateWorldDelta(nullptr,&State::spectatorWorldState,
+											delta,k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::LocalCopy);
+
+				Channels::updateWorld.SendTo(peer,delta);
+			}
+
+			SendSessionConfigTo(peer, Objects::PFaction());
+
 			return;
 		}
 
@@ -434,7 +560,7 @@ namespace Receiver
 		}
 		else
 		{
-
+			faction->name = client->name;
 		}
 
 		if (!colorsSent)
@@ -595,9 +721,6 @@ namespace Receiver
 				if (e->health <= 0)
 				{
 					//weird...? weirder...
-
-
-
 					return;
 				}
 
@@ -662,16 +785,8 @@ namespace Receiver
 
 		
 
-		Protocol::PhaseChange	ph;
-		ph.newPhase = RuntimeConfig::phase;
-		ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
-		ph.timeFactor = -1;
 
 
-		Channels::phaseChange.SendTo(peer,ph);
-
-
-		faction->name = client->name;
 		//faction->online = true;
 		//probably optional later on
 		{
@@ -686,46 +801,9 @@ namespace Receiver
 		Journal::currentRound.LogFactionOnline(client->faction);
 		LogEvent(EventType::SessionRelated,faction->name+" connected");
 
-		for (const auto&weak : Objects::Faction::all)
-		{
-			Objects::PFaction f = weak.lock();
-			if (f && f != client->faction)
-			{
-				Channels::identifyUser.SendTo(peer,Identify(f));
-				if (f->online)
-				{
-					Channels::factionOnline.SendTo(peer,f->id);
-					if (State::playerMap.Require(f)->wantNewRound)
-						Channels::factionRequestedNewRound.SendTo(peer,f->id);
-				}
-			}
-		}
+		SendSessionConfigTo(peer,client->faction);
 
-		{
-			Objects::PFaction f = Objects::Faction::nexus;
-			if (f && f != client->faction)
-			{
-				Channels::identifyUser.SendTo(peer,Identify(f));
-				if (f->online)
-				{
-					Channels::factionOnline.SendTo(peer,f->id);
-
-					if (State::playerMap.Require(f)->wantNewRound)
-						Channels::factionRequestedNewRound.SendTo(peer,f->id);
-
-				}
-				
-			}
-		}
-		#ifndef NO_HIBERNATION
-			Channels::uplinkBandwidth.SendTo(peer,State::Config::uplinkBandwidth);
-		#endif
-		Protocol::UnitLimits	limits;
-		RuntimeConfig::UnitLimits::Export(limits);
-		Channels::unitLimits.SendTo(peer,limits);
 		
-		Channels::lockEmpZones.SendTo(peer,State::empZonesLocked);
-
 
 		if (client->faction->IsTechniteFaction())
 		{
@@ -735,10 +813,9 @@ namespace Receiver
 		}
 
 		peer.SendSignal(Protocol::ChannelID::BeginGame);
-		
 	}
 
-	bool HasAccess(const State::Client&c, const Objects::WorldEntity&e)
+	bool CanControl(const State::Client&c, const Objects::WorldEntity&e)
 	{
 		if (c.faction != e.owner)
 			return false;
@@ -750,23 +827,37 @@ namespace Receiver
 		}
 		return true;
 	}
-	bool HasAccess(const State::PClient&c, const Objects::PWorldEntity&e)
+	bool CanControl(const State::PClient&c, const Objects::PWorldEntity&e)
 	{
-		return HasAccess(*c,*e);
+		return CanControl(*c,*e);
 	}
-	bool HasAccess(const State::PClient&c, const Objects::WorldEntity&e)
+	bool CanControl(const State::PClient&c, const Objects::WorldEntity&e)
 	{
-		return HasAccess(*c,e);
+		return CanControl(*c,e);
 	}
-	bool PeerHasAccess(TCP::Peer&peer, const Objects::WorldEntity&e)
+	bool PeerCanControl(TCP::Peer&peer, const Objects::WorldEntity&e)
 	{
 		if (!peer.attachment)
 			return false;
-		return HasAccess(To<State::Client>::Cast(peer.attachment),e);
+		return CanControl(To<State::Client>::Cast(peer.attachment),e);
 	}
-	bool PeerHasAccess(TCP::Peer&peer, const Objects::PWorldEntity&e)
+	bool PeerCanControl(TCP::Peer&peer, const Objects::PWorldEntity&e)
 	{
-		return PeerHasAccess(peer,*e);
+		return PeerCanControl(peer,*e);
+	}
+
+
+	bool CanSeePrivateDetails(const State::Client&c, const Objects::WorldEntity&e)
+	{
+		return c.faction == e.owner || c.isSpectator;
+	}
+	bool CanSeePrivateDetails(const State::PClient&c, const Objects::PWorldEntity&e)
+	{
+		return CanSeePrivateDetails(*c,*e);
+	}
+	bool CanSeePrivateDetails(const State::PClient&c, const Objects::WorldEntity&e)
+	{
+		return CanSeePrivateDetails(*c,e);
 	}
 
 
@@ -837,7 +928,7 @@ namespace Receiver
 			return Objects::PWorldEntity();
 		}
 
-		if (!PeerHasAccess(peer,e))
+		if (!PeerCanControl(peer,e))
 		{
 			LogEvent(EventType::CommandRejected,peer,e,"Access denied");
 			return Objects::PWorldEntity();
@@ -1592,7 +1683,7 @@ namespace Receiver
 			ASSERT__(ppeer);
 				//peer.shared_from_this();
 			peer.attachment = client;
-			State::clients << client;
+			//State::clients << client;
 			client->name = hello;
 			LogEvent(EventType::SessionRelated,peer,client->ToString()+" joined the session");
 

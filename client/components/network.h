@@ -17,7 +17,8 @@ namespace Network
 
 
 	extern bool			haveFaction,
-						haveId,
+						haveID,
+						amSpectator,
 						amOnline,
 						gameHasBegun,
 						amRegularFaction,	//can be set together with amTechniteFaction
@@ -78,7 +79,6 @@ DECLARE_DEFAULT_STRATEGY(Network::ServerAddress,Adopt);
 
 namespace Network
 {
-	Objects::OwnerParameter ResolveFaction(const TUniqueID&id);
 	void					ConnectTo(const ServerAddress&);
 
 	void SaveWorldAccessTokens();

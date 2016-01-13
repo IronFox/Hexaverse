@@ -37,25 +37,29 @@ namespace State
 
 	TCP::Server		server;
 
+	Grid::WorldData				spectatorWorldState;
+
+
 	bool						terrainChanged=false;
 	count_t						techniteFactionsOnline=0;
 
 
 	String						Client::ToString() const
 	{
-		return (faction ? faction->id.ToString() : "[no faction]")+":'"+name+"'";
+		return (faction ? faction->id.ToString() : (isSpectator ? "[spectator]" : "[no faction]"))+":'"+name+"'";
 	}
 
 	bool		Client::CanSee(const Objects::PWorldEntity&e, float t)	const
 	{
-		return faction && faction->CanSee(e,t);
+		return isSpectator || (faction && faction->CanSee(e,t));
 	}
 
 
 	void HandleConnectionLoss(PClient client)
 	{
-		State::clients.FindAndErase(client);
+		//State::clients.FindAndErase(client);
 		State::activePlayers.FindAndErase(client);
+		State::spectators.FindAndErase(client);
 		if (client->faction)
 		{
 			Journal::currentRound.LogFactionOffline(client->faction);
@@ -103,7 +107,7 @@ namespace State
 	}
 
 
-	Buffer<PClient>	clients,activePlayers;
+	Buffer<PClient>	/*clients,*/activePlayers,spectators;
 	GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
 	GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
 	UINT32			lastSaveRound = 0, empZonesLocked = 0, unlockedEMPZones = 0xFFFF;
@@ -167,8 +171,9 @@ namespace State
 
 		RuntimeConfig::doomsdayWeapons = RuntimeConfig::DoomsdayWeapons();	//load default value
 
-		clients.Clear();
+		//clients.Clear();
 		activePlayers.Clear();
+		spectators.Clear();
 		playerMap.Clear();
 
 		techniteFactionsOnline = 0;
@@ -578,8 +583,10 @@ namespace State
 		Logging::WriteEvent(EventType::UnexpectedBehavior, "Invalid operation performed",&peer,nullptr);
 		if (client)
 		{
-			clients.FindAndErase(client);
+			//clients.FindAndErase(client);
 			activePlayers.FindAndErase(client);
+			spectators.FindAndErase(client);
+			client->isSpectator = false;
 			if (client->faction)
 			{
 				playerMap.Unset(client->faction);
@@ -647,6 +654,17 @@ namespace State
 
 	void						SignalFamilyChange(BYTE familyId, bool last, bool rightNow)
 	{
+		if (State::spectators.IsNotEmpty())
+		{
+			static Protocol::WorldDelta	delta;
+			GenerateWorldDelta(nullptr,&State::spectatorWorldState,delta,familyId,rightNow,last,Protocol::WorldDeltaType::ProgressiveUpdate);
+			for (const auto&s : State::spectators)
+			{
+				Channels::updateWorld.SendTo(s->peer.lock(),delta);
+			}
+		}
+
+
 		SignalFamilyChangeToFaction(Objects::Faction::nexus,familyId,last,rightNow);
 		foreach (Objects::Faction::all,_f)
 		{
@@ -2293,9 +2311,9 @@ namespace State
 					State::SendToOwner(Channels::setMobileState,v,w1);
 				}
 				else
-					foreach(State::clients,cl)
+					foreach(State::activePlayers,cl)
 					{
-						if (Receiver::HasAccess(*cl,v))
+						if (Receiver::CanSeePrivateDetails(*cl,v))
 							Channels::setMobileState.SendTo((*cl)->peer.lock(),w1);
 						else
 							if (Receiver::CanSee(*cl,_v,0))
@@ -2327,9 +2345,9 @@ namespace State
 					State::SendToOwner(Channels::setStructureState,s,w1);
 				}
 				else
-					foreach(State::clients,cl)
+					foreach(State::activePlayers,cl)
 					{
-						if (Receiver::HasAccess(*cl,s))
+						if (Receiver::CanSeePrivateDetails(*cl,s))
 							Channels::setStructureState.SendTo((*cl)->peer.lock(),w1);
 						else
 							if (Receiver::CanSee(*cl,*_s,0))
@@ -2357,8 +2375,8 @@ namespace State
 				//if ((*cl)->faction->global.coverageChanged)
 				{
 					const Objects::PFaction&faction = (*cl)->faction;
-
-					CheckCoverageSendTerrain(faction,(*cl)->peer.lock());
+					if (faction)
+						CheckCoverageSendTerrain(faction,(*cl)->peer.lock());
 						//anythingChanged = true;
 				}
 			}
