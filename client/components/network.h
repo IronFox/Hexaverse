@@ -48,7 +48,8 @@ namespace Network
 
 
 
-	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, BYTE techniteFactionIfNew = 0xFF);
+	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, BYTE techniteFactionIfNew);
+	Objects::OwnerParameter TryResolveFaction(const TUniqueID&id);
 
 	class ServerAddress
 	{

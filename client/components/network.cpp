@@ -62,7 +62,7 @@ namespace Network
 		client.ConnectAsync(addr.host + ":"+String(addr.basePort + PortOffset::Session));
 	}
 
-	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, BYTE techniteFactionIfNew /*= 0xFF*/)
+	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, BYTE techniteFactionIfNew)
 	{
 		LogEvent(EventType::Debug,"ResolveFaction("+id.ToString()+","+String(techniteFactionIfNew)+")");
 
@@ -94,6 +94,19 @@ namespace Network
 		}
 		factionMap.Set(id,rs);
 		return rs;
+	}
+
+	
+	Objects::OwnerParameter TryResolveFaction(const TUniqueID&id)
+	{
+		LogEvent(EventType::Debug,"TryResolveFaction("+id.ToString()+")");
+
+		{
+			Objects::OwnerParameter*rs = factionMap.QueryPointer(id);
+			if (rs)
+				return *rs;
+		}
+		return Objects::OwnerParameter();
 	}
 
 
@@ -519,7 +532,7 @@ namespace Network
 			ASSERT__(Network::haveID || Network::amSpectator);
 			TechniteLogicLink::Handle(vc);
 
-			Objects::PMobileEntity v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,vc.state.entityState.timestamp.rightNow,Network::haveID && Network::myID == vc.owner);
+			Objects::PMobileEntity v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner,0xFF),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,vc.state.entityState.timestamp.rightNow,Network::haveID && Network::myID == vc.owner);
 			if (vc.state.entityState.timestamp.rightNow)
 				LogEvent(EventType::MinorEntityProcess,v.get(),  "Placed vehicle entity outside animation");
 			bool isMine = v->isMine;
@@ -558,7 +571,7 @@ namespace Network
 					Grid::actualWorld.UpdateLighting();
 			#endif
 
-			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.typeName, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
+			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner,0xFF),  sc.state.entityState.id,sc.state.entityState.location,sc.typeName, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
 			ASSERT__(s);
 			if (sc.state.entityState.timestamp.rightNow)
 				LogEvent(EventType::MinorEntityProcess,s.get(),  "Placed structure entity outside animation");
@@ -854,7 +867,7 @@ namespace Network
 			Objects::PWorldEntity e = Objects::GetEntity(c.entityID);
 			ASSERT__(e);
 			ASSERT__(e->owner->id != c.ownerID);
-			Objects::ChangeOwnership(e,Network::ResolveFaction(c.ownerID),Network::myID == c.ownerID);
+			Objects::ChangeOwnership(e,Network::ResolveFaction(c.ownerID,0xFF),Network::myID == c.ownerID);
 		}
 
 		void	GameProgress(Protocol::GameProgress&progress)
@@ -1537,40 +1550,52 @@ void	Network::Receiver::LockEmpZones(NET(UINT16)&zones)
 
 void	Network::Receiver::FactionOnline(NET(TUniqueID)&id)
 {
-	Objects::OwnerParameter faction = Network::ResolveFaction(id);
-	faction->online = true;
-	#ifdef HAS_WINDOW
-		UI::RefreshSessionView();
-	#endif
+	Objects::OwnerParameter faction = Network::TryResolveFaction(id);
+	if (faction)
+	{
+		faction->online = true;
+		#ifdef HAS_WINDOW
+			UI::RefreshSessionView();
+		#endif
+	}
 }
 void	Network::Receiver::FactionOffline(NET(TUniqueID)&id)
 {
-	Objects::OwnerParameter faction = Network::ResolveFaction(id);
-	faction->online = false;
-	#ifdef HAS_WINDOW
-		UI::RefreshSessionView();
-	#endif
+	Objects::OwnerParameter faction = Network::TryResolveFaction(id);
+	if (faction)
+	{
+		faction->online = false;
+		#ifdef HAS_WINDOW
+			UI::RefreshSessionView();
+		#endif
+	}
 }
 void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
 {
-	Objects::OwnerParameter faction = Network::ResolveFaction(id);
-	faction->requestedNewRound = true;
-	faction->roundChangeNotifications++;
-	LogEvent(faction->roundChangeNotifications < 3 ? EventType::SessionRelated : EventType::Debug,nullptr,faction->GetName()+" is done thinking");
-	#ifdef HAS_WINDOW
-		UI::RefreshSessionView();
-	#endif
+	Objects::OwnerParameter faction = Network::TryResolveFaction(id);
+	if (faction)
+	{
+		faction->requestedNewRound = true;
+		faction->roundChangeNotifications++;
+		LogEvent(faction->roundChangeNotifications < 3 ? EventType::SessionRelated : EventType::Debug,nullptr,faction->GetName()+" is done thinking");
+		#ifdef HAS_WINDOW
+			UI::RefreshSessionView();
+		#endif
+	}
 }
 
 void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 {
-	Objects::OwnerParameter faction = Network::ResolveFaction(id);
-	faction->requestedNewRound = false;
-	faction->roundChangeNotifications++;
-	LogEvent(faction->roundChangeNotifications < 3 ? EventType::SessionRelated : EventType::Debug,nullptr,faction->GetName()+" is thinking some more");
-	#ifdef HAS_WINDOW
-		UI::RefreshSessionView();
-	#endif
+	Objects::OwnerParameter faction = Network::TryResolveFaction(id);
+	if (faction)
+	{
+		faction->requestedNewRound = false;
+		faction->roundChangeNotifications++;
+		LogEvent(faction->roundChangeNotifications < 3 ? EventType::SessionRelated : EventType::Debug,nullptr,faction->GetName()+" is thinking some more");
+		#ifdef HAS_WINDOW
+			UI::RefreshSessionView();
+		#endif
+	}
 }
 
 
