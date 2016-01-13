@@ -21,7 +21,7 @@ Vehicles (and satellites) can pull directly from the faction storage and overpro
 Connectors cannot be built but are maintained for backward compatibility
 Last verified to compile in both modes Aug 22 2015
 */
-#define CONNECTOR_LESS
+//#define CONNECTOR_LESS
 
 
 

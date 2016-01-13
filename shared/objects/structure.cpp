@@ -633,7 +633,7 @@ namespace Objects
 	{
 		foreach (this->connectedTo,conn)
 		{
-			(*conn)->SignalLostNeighbor(To<Structure>::Cast(shared_from_this()),atTime);
+			conn->structure->SignalLostNeighbor(To<Structure>::Cast(shared_from_this()),atTime);
 		}
 		this->connectedTo.Clear();
 		#ifdef HAS_WINDOW
@@ -685,13 +685,13 @@ namespace Objects
 			#endif
 			if (ConnectionPossibleTo(c, between) && c->ConnectionPossibleTo(_this, between))
 			{
-				connectedTo << c;
-				c->connectedTo << _this;
+				c->OnNewConnection(Connection(_this), between, atTime);
+				_this->OnNewConnection(Connection(c), between, atTime);
+				connectedTo << Connection(c);
+				c->connectedTo << Connection(_this);
 				#ifdef HAS_WINDOW
 					changed = c->changed = Structure::anyChanged = true;
 				#endif
-				c->OnNewConnection(_this, between, atTime);
-				_this->OnNewConnection(c, between, atTime);
 				LogEvent(EventType::MinorEntityProcess,nullptr, "Connection established between "+GetName()+" and "+c->GetName());
 				#ifdef HAS_WINDOW
 					if (c->changed)
@@ -703,6 +703,53 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			Recompile();
 		#endif
+	}
+
+
+	bool	Structure::IsPhysicallyConnectedAnywhere() const
+	{
+		foreach (connectedTo,c)
+			if (!c->wireless)
+				return true;
+		return false;
+	}
+
+
+	bool	Structure::IsConnectedTo(const Objects::PStructure&other)	const
+	{
+		foreach (connectedTo,c)
+			if (c->structure == other)
+				return true;
+		return false;
+	}
+
+
+
+	
+	void Pylon::OnConstructionFinished(float atTime)
+	{
+		Super::OnConstructionFinished(atTime);
+
+		Grid::LowSetup::TVolumeDescriptor desc;
+		Grid::low.GenerateVolume(Sphere<>(system.w.xyz,GetConnectionRadius()),desc);
+
+		PStructure _this = To<Structure>::Cast(shared_from_this());
+
+		foreach (desc.coverage,s)
+		{
+			for (UINT32 layer = s->layerBegin; layer < s->layerEnd; layer++)
+			{
+				Objects::PStructure&other = GetStructure(Grid::LCellIdU(s->stackID,layer));
+				if (other && other->owner == owner && other.get() != this)
+				{
+					other->OnNewConnection(Connection(_this,true), 0, atTime);
+					_this->OnNewConnection(Connection(other,true), 0, atTime);
+					connectedTo << Connection(other,true);
+					other->connectedTo << Connection(_this,true);
+					LogEvent(EventType::MinorEntityProcess,nullptr, "Wireless Connection established between "+GetName()+" and "+other->GetName());
+				}
+			}
+		}
 	}
 
 
@@ -1075,10 +1122,6 @@ namespace Objects
 		#endif
 	}
 
-	/*virtual override*/ void				Connector::OnDestroy(float atTime)
-	{
-		Super::OnDestroy(atTime);
-	}
 
 
 
@@ -1229,11 +1272,13 @@ namespace Objects
 
 
 
-	/*virtual override*/ void				VehicleStore::OnNewConnection(const PStructure&s, UINT32 acrossHighCell, float atTime)
+	/*virtual override*/ void				VehicleStore::OnNewConnection(const Connection&c, UINT32 acrossHighCell, float atTime)
 	{
-		Super::OnNewConnection(s,acrossHighCell,atTime);
+		Super::OnNewConnection(c,acrossHighCell,atTime);
 
-		PVehicleStore other = To<VehicleStore>::DynamicCast(s);
+		if (c.wireless)
+			return;
+		PVehicleStore other = To<VehicleStore>::DynamicCast(c.structure);
 		if (other && other->location.height == location.height)
 		{
 			sneighbors.Append(other);
@@ -1260,11 +1305,13 @@ namespace Objects
 
 
 	}
-	/*virtual override*/ void				VehicleStore::OnConnectionLost(const PStructure&s, UINT32 acrossHighCell, float atTime)
+	/*virtual override*/ void				VehicleStore::OnConnectionLost(const Connection&c, UINT32 acrossHighCell, float atTime)
 	{
-		Super::OnConnectionLost(s,acrossHighCell,atTime);
+		Super::OnConnectionLost(c,acrossHighCell,atTime);
+		if (c.wireless)
+			return;
 
-		PVehicleStore other = To<VehicleStore>::DynamicCast(s);
+		PVehicleStore other = To<VehicleStore>::DynamicCast(c.structure);
 		if (other)
 		{
 			foreach (sneighbors,_s)
@@ -1854,26 +1901,34 @@ namespace Objects
 
 	/*virtual*/ void				Structure::SignalLostNeighbor(const PStructure&other, float atTime)
 	{
-		if (connectedTo.FindAndErase(other))
+		for (index_t i = 0; i < connectedTo.Count(); i++)
 		{
-			LogEvent(EventType::MinorEntityProcess,nullptr, "Connection lost between "+GetName()+" and "+other->GetName());
-			#ifdef HYBRID_GRID
-				const UINT32 high = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-				const auto&n = Grid::high.grid.GetCell(high).neighborhood;
-				//foreach(connectedTo, c)
+			const Connection&conn = connectedTo[i];
+			if (conn.structure != other)
+				continue;
 
-				const PStructure c = other;
-				const UINT32 high2 = Grid::low.grid.GetCell((c)->location.stackID).higherEquivalent;
-				const auto&n2 = Grid::high.grid.GetCell(high2).neighborhood;
-				UINT32 between = BaseGrid::RequireIntersection(n, n2);
-			#else
-				UINT32 between = 0;
+			LogEvent(EventType::MinorEntityProcess,nullptr, String(conn.wireless ? "Wireless connection":"Direct connection")+" lost between "+GetName()+" and "+other->GetName());
+			UINT32 between = 0;
+			#ifdef HYBRID_GRID
+				if (!conn.wireless)
+				{
+					const UINT32 high = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+					const auto&n = Grid::high.grid.GetCell(high).neighborhood;
+					//foreach(connectedTo, c)
+
+					const PStructure c = other;
+					const UINT32 high2 = Grid::low.grid.GetCell((c)->location.stackID).higherEquivalent;
+					const auto&n2 = Grid::high.grid.GetCell(high2).neighborhood;
+					between = BaseGrid::RequireIntersection(n, n2);
+				}
 			#endif
 
-			OnConnectionLost(other, between, atTime);
+			OnConnectionLost(conn, between, atTime);
 			#ifdef HAS_WINDOW
 				changed = anyChanged = true;
 			#endif
+			connectedTo.Erase(i);
+			i--;
 		}
 
 	}
@@ -1913,13 +1968,13 @@ namespace Objects
 				#endif
 				if (ConnectionPossibleTo(c, between) && c->ConnectionPossibleTo(_this,between))
 				{
-					connectedTo << c;
+					OnNewConnection(Connection(c), between,atTime);
+					c->OnNewConnection(Connection(_this),between,atTime);
+					c->connectedTo << Connection(_this);
+					connectedTo << Connection(c);
 					#ifdef HAS_WINDOW
 						changed = anyChanged = true;
 					#endif
-					OnNewConnection(c, between,atTime);
-					c->connectedTo << _this;
-					c->OnNewConnection(_this,between,atTime);
 					LogEvent(EventType::MinorEntityProcess,nullptr, "Connection established between "+GetName()+" and "+c->GetName());
 
 				}
@@ -1927,7 +1982,10 @@ namespace Objects
 
 		for (index_t i = 0; i < limit; i++)
 		{
-			const PStructure c = connectedTo[i];
+			const auto&connection = connectedTo[i];
+			if (connection.wireless)
+				continue;
+			const PStructure c = connection.structure;
 			#ifdef HYBRID_GRID
 				const UINT32 high2 = Grid::low.grid.GetCell((c)->location.stackID).higherEquivalent;
 				const auto&n2 = Grid::high.grid.GetCell(high2).neighborhood;
@@ -1937,14 +1995,20 @@ namespace Objects
 			#endif
 			if (!ConnectionPossibleTo(c, between) || !c->ConnectionPossibleTo(_this,between))
 			{
-				c->connectedTo.FindAndErase(_this);
+				
+				foreach (c->connectedTo,cc)
+					if (!cc->wireless && cc->structure == _this)
+					{
+						c->connectedTo.erase(cc);
+						break;
+					}
 				connectedTo.Erase(i--);
 				limit--;
 				#ifdef HAS_WINDOW
 					c->changed = changed = anyChanged = true;
 				#endif
-				OnConnectionLost(c, between,atTime);
-				c->OnConnectionLost(_this,between,atTime);
+				OnConnectionLost(Connection(c), between,atTime);
+				c->OnConnectionLost(Connection(_this),between,atTime);
 				LogEvent(EventType::MinorEntityProcess,nullptr, "Connection lost between "+GetName()+" and "+c->GetName());
 
 			}
@@ -2399,28 +2463,30 @@ namespace Objects
 	/*virtual override*/ bool				NexusPort::ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)
 	{
 		#ifndef CLIENT
-			return (connectedTo.IsEmpty() || other->owner == connectedTo.first()->owner);
+			return (connectedTo.IsEmpty() || other->owner == connectedTo.first().structure->owner);
 		#else
 			return true;
 		#endif
 	}
 
-	/*virtual override*/ void				NexusPort::OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime)
+	/*virtual override*/ void				NexusPort::OnNewConnection(const Connection&other, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
-			if (owner != other->owner)
+			Super::OnNewConnection(other,acrossHighCell,atTime);
+			if (!IsPhysicallyConnectedAnywhere() && !other.wireless && owner != other.structure->owner)
 			{
 				resistence = ResistenceRounds;
 				SetEnabled(false,atTime,false);
-				ChangeOwnership(shared_from_this(), other->owner,atTime);
+				ChangeOwnership(shared_from_this(), other.structure->owner,atTime);
 			}
 		#endif
 	}
 
-	/*virtual override*/ void				NexusPort::OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime)
+	/*virtual override*/ void				NexusPort::OnConnectionLost(const Connection&c, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
-			if (connectedTo.IsEmpty() && owner != Faction::nexus)
+			Super::OnConnectionLost(c,acrossHighCell,atTime);
+			if (!IsPhysicallyConnectedAnywhere() && owner != Faction::nexus)
 			{
 				SetEnabled(false,atTime,false);
 				OwnerParameter old = owner;
@@ -2547,8 +2613,8 @@ namespace Objects
 					s->compoundID = compoundID;
 					network.AppendStructure(s);
 					foreach (s->connectedTo,c)
-						if ((*c)->compoundID == Compound::InvalidNetwork)
-							primary << c->get();
+						if (c->structure->compoundID == Compound::InvalidNetwork)
+							primary << c->structure.get();
 				}
 				network.Compact();
 			}

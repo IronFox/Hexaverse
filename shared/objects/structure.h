@@ -124,10 +124,19 @@ namespace Objects
 		//TIntRange<UINT32>			compiledSection;
 	
 
+		struct Connection
+		{
+			PStructure				structure;
+			bool					wireless=false;
+
+			explicit				Connection(const PStructure&p, bool wireless=false):structure(p),wireless(wireless)	{}
+			/**/					Connection()	{}
+		};
+
 		/**
 		List of all structures, the local structure is connected to. Symmetric. The connected structures must have a link back to the local structure.
 		*/
-		Buffer0<PStructure>			connectedTo;
+		Buffer0<Connection>			connectedTo;
 		#ifdef HAS_WINDOW
 			/**
 			Indicates whether or not the local structure has changed since the last Recompile() call
@@ -144,7 +153,8 @@ namespace Objects
 			DX11::InstructionBlock32	compiledShape,*localizableShape;
 		#endif
 
-
+		bool						IsConnectedTo(const Objects::PStructure&other)	const;
+		bool						IsPhysicallyConnectedAnywhere() const;
 
 
 		/**
@@ -204,16 +214,16 @@ namespace Objects
 		virtual void				SignalLostNeighbor(const PStructure&, float atTime);
 		/**
 		Signalling method invoked by default implementations of SignalEnvironmentChange() and SignalNewNeighbor()
-		Invoked whenever a new connection has been established.
-		@param acrossHighCell CellId of the high-resolution cell between the local instance and the specified other instance. May be used to detect terrain state.
+		Invoked whenever a new direct or wireless connection has been established. Called before the new connection is inserted into @a connectedTo
+		@param acrossHighCell CellId of the high-resolution cell between the local instance and the specified other instance. May be used to detect terrain state. 0 if the new connection is wireless
 		*/
-		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) {};
+		virtual void				OnNewConnection(const Connection&, UINT32 acrossHighCell, float atTime) {};
 		/**
 		Signalling method invoked by default implementations of SignalEnvironmentChange() and SignalLostNeighbor()
-		Invoked whenever an existing connection has been lost.
-		@param acrossHighCell CellId of the high-resolution cell between the local instance and the specified other instance. May be used to detect terrain state.
+		Invoked whenever an existing connection (direct or wireless) has been lost. Called after the connection has been removed from @a connectedTo
+		@param acrossHighCell CellId of the high-resolution cell between the local instance and the specified other instance. May be used to detect terrain state. 0 if the removed connection is wireless
 		*/
-		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) {};
+		virtual void				OnConnectionLost(const Connection&, UINT32 acrossHighCell, float atTime) {};
 		/**
 		Updates possible connections, and checks if the building survives the terra-forming operation
 		*/
@@ -538,8 +548,8 @@ namespace Objects
 
 
 		//Structure overrides:
-		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) override;
-		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
+		virtual void				OnNewConnection(const Connection&, UINT32 acrossHighCell, float atTime) override;
+		virtual void				OnConnectionLost(const Connection&, UINT32 acrossHighCell, float atTime) override;
 		virtual bool				HasFoundation() const override {return true;}
 		virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) override;
 
@@ -602,17 +612,61 @@ namespace Objects
 			virtual int				GetUplinkTraffic() const override {return 1;}
 		#endif
 
-
+		//WorldEntity overrides:
 		virtual bool				IsBroad() const override {return false;}
 
 
-		virtual void				OnDestroy(float atTime) override;
 		#ifdef HAS_WINDOW
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 			{
 				Super::DescribeType(label,descFlags);
 				label.MarkBriefEnd();
 				label.WrapAppendText("Connectors establish links between structures that are too distant from one another to otherwise connect. Connected structures form compounds and share their input/output."
+				);			
+			}
+		#endif
+
+	};
+
+	
+	/**
+	Wireless structure used to connect distant structures into a single compound. Other than connectors, pylons work over extended radial distances.
+	Effective only if CONNECTOR_LESS is not defined.
+	Otherwise instances are kept for backwards compatibility, but cannot be newly constructed, and are practically without function
+	*/
+	class Pylon : public OtherStructure<Pylon>
+	{
+	private:
+		typedef OtherStructure<Pylon>		Super;
+
+		friend class Super;
+		/**/						Pylon() {}
+		/**/						Pylon(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
+	public:
+		static const int			maxConnectionRadius = 6;
+
+		virtual String				GetTypeName() const override { return "Pylon"; };
+		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Pylon;}
+
+		float						GetConnectionRadius() const {return maxConnectionRadius;}
+
+		virtual int					GetConstructionCost() const override {return 5 * maxConnectionRadius;}
+		#ifndef NO_HIBERNATION
+			virtual int				GetUplinkTraffic() const override {return maxConnectionRadius;}
+		#endif
+
+
+		//WorldEntity overrides:
+		virtual bool				IsBroad() const override {return true;}
+		virtual void				OnConstructionFinished(float atTime) override;
+
+
+		#ifdef HAS_WINDOW
+			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
+			{
+				Super::DescribeType(label,descFlags);
+				label.MarkBriefEnd();
+				label.WrapAppendText("Pylons establish wireless links between structures that are too distant from one another to otherwise connect. Connected structures form compounds and share their input/output."
 				);			
 			}
 		#endif
@@ -950,8 +1004,8 @@ namespace Objects
 
 		virtual bool				WouldLikeToEnable() const override {return true;}
 		virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override;
-		virtual void				OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime) override;
-		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
+		virtual void				OnNewConnection(const Connection&other, UINT32 acrossHighCell, float atTime) override;
+		virtual void				OnConnectionLost(const Connection&, UINT32 acrossHighCell, float atTime) override;
 		#ifndef CLIENT
 			virtual bool			ConnectsToDifferentOwnership() const override;
 			void					OnLoad();
