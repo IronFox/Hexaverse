@@ -4,7 +4,7 @@ v0.3.11
 	+Implemented spectator mode.
 	+New factions can now be created during animation phase.
 	*Fixed satellite active/inactive coloring.
-	*Fixed technite SelfTransformToType
+	*Fixed technite SelfTransformToType.
 
 	
 v0.3.10
