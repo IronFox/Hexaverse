@@ -1282,7 +1282,7 @@ namespace Network
 		if (portAt)
 		{
 			host = url.subStringRef(0,portAt-1);
-			StringRef conv = url.subStringRef(portAt);
+			StringRef conv = url.subStringRef((int)portAt);
 			if (!convert(conv.pointer(),conv.length(),basePort))
 			{
 				throw Program::ParameterFault("Unable to parse port component '" + String(conv) + "' of '"+url+"'");

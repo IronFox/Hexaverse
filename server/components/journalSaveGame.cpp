@@ -416,7 +416,7 @@ namespace Journal
 		if (storedMinerals != 0)
 			e.intParameters.Set("StoredMinerals",storedMinerals);
 		if (taskListLength != 0)
-			e.intParameters.Set("TaskListLength",taskListLength);
+			e.intParameters.Set("TaskListLength",(int)taskListLength);
 		if (jobMineralsLeft != 0)
 			e.intParameters.Set("JobMineralsLeft",jobMineralsLeft);
 		if (!isEnabled)
@@ -747,7 +747,7 @@ namespace Journal
 			if (p->get()->GetDataKey() == this->jobID)
 			{
 				auto job = p->get()->Instantiate();
-				ASSERT2__(DeserializeFromMemory(*job,this->jobPayload.pointer(),jobPayload.size(),false), job->GetName(),jobPayload.size());
+				ASSERT2__(DeserializeFromMemory(*job,this->jobPayload.pointer(),(serial_size_t)jobPayload.size(),false), job->GetName(),jobPayload.size());
 				job->Restart(*m);
 				m->RegisterNewJob("",job,focus != Grid::LCellIdI::Invalid ? &focus : nullptr);
 				return;
@@ -1412,7 +1412,7 @@ namespace Journal
 		cmd->focus = focus;
 		serial_size_t size = job.GetSerialSize(false);
 		cmd->jobPayload.SetSize(size);
-		ASSERT__(SerializeToMemory(job,cmd->jobPayload.pointer(),cmd->jobPayload.GetContentSize(),false));
+		ASSERT__(SerializeToMemory(job,cmd->jobPayload.pointer(),(serial_size_t)cmd->jobPayload.GetContentSize(),false));
 	}
 
 

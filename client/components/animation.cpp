@@ -343,7 +343,9 @@ namespace Animation
 		#endif
 		outMerged.name.adoptData(localVersion.name);
 		outMerged.type = localVersion.type;
-		outMerged.visualization = localVersion.visualization;
+		#ifdef HAS_WINDOW
+			outMerged.visualization = localVersion.visualization;
+		#endif
 		if (serverVersion.foci.GetOldest() == localVersion.foci.GetOldest())
 		{
 			auto it0 = serverVersion.foci.begin();
@@ -562,7 +564,7 @@ namespace Animation
 					elif (currentTasks.IsNotEmpty() && Mergeable(newTasks.Last(),currentTasks.Last()))
 					{
 						while (currentTasks.IsNotEmpty() && !Mergeable(newTasks.First(),currentTasks.First()))
-							currentTasks.erase(0U);
+							currentTasks.erase(index_t(0));
 						if (currentTasks.IsEmpty())
 							fullRebuild = true;
 						else

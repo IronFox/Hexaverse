@@ -1751,7 +1751,7 @@ void	State::Load(const PathString&filename)
 									if (tabAt)
 									{
 										String key = line->subStringRef(0,tabAt-1);
-										StringRef value = line->subStringRef(tabAt);
+										StringRef value = line->subStringRef((int)tabAt);
 		
 										CLI::PVariable v = Reflection::state.FindVar(key);
 										if (!v)
