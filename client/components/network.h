@@ -17,7 +17,8 @@ namespace Network
 
 
 	extern bool			haveFaction,
-						haveId,
+						haveID,
+						amSpectator,
 						amOnline,
 						gameHasBegun;
 	#ifdef HAS_WINDOW

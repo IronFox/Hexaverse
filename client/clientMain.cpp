@@ -2524,7 +2524,7 @@ bool loop()
 					}
 			}
 			#ifdef _DEBUG
-				if (Network::haveId)
+				if (Network::haveID)
 					textout << "My ID: "<<Network::myIDString<<nl;
 				textout << -Camera::scene.retraction.z/WorldScale << nl;
 			#endif
@@ -3411,7 +3411,7 @@ String GenerateOreName(Random&random)
 			return;
 
 		const count_t total = Objects::vehicles.Count() + Objects::satellites.Count() + Objects::structures.Count();
-		if ((total == 0) || !Network::haveId)
+		if ((total == 0) || !Network::haveID)
 			return;
 		index_t from = 0;
 		if (Objects::selectedVehicle)
@@ -3485,7 +3485,7 @@ String GenerateOreName(Random&random)
 	void	SelectAndFocusPrev()
 	{
 		const count_t total = Objects::vehicles.Count() + Objects::satellites.Count();
-		if ((total == 0) || !Network::haveId)
+		if ((total == 0) || !Network::haveID)
 			return;
 		index_t from = 0;
 		if (Objects::selectedMobileEntity)
@@ -3538,7 +3538,7 @@ String GenerateOreName(Random&random)
 	void	SelectAndFocusNext()
 	{
 		const count_t total = Objects::vehicles.Count() + Objects::satellites.Count();
-		if ((total == 0) || !Network::haveId)
+		if ((total == 0) || !Network::haveID)
 			return;
 		index_t from = 0;
 		if (Objects::selectedMobileEntity)
@@ -3591,7 +3591,7 @@ String GenerateOreName(Random&random)
 		Dialog::loginMenu->AddCommand(line,
 		[typeFlags,supportFactionFlag]()
 		{
-			if (Network::HaveFactionKeyForCurrentWorld())
+			if (Network::HaveFactionKeyForCurrentWorld() && typeFlags != Protocol::FactionType::SpectatorFaction)
 			{
 				Dialog::Confirm("A faction key is known for this world ("+Network::worldIDString+"). If you create a new faction, this key will be lost, and control of your old faction will irreversible be abandoned. Please confirm.",
 				[typeFlags](){
@@ -3611,7 +3611,13 @@ String GenerateOreName(Random&random)
 				Network::AttemptFactionLogin(true,typeFlags);
 				Dialog::Hide(Dialog::loginMenu);
 			}
-		},[supportFactionFlag](){return Network::amOnline && !Network::haveFaction && (Network::gameFlags & supportFactionFlag) && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;},false);
+		},[supportFactionFlag](){return Network::amOnline && !Network::haveFaction && (Network::gameFlags & supportFactionFlag) 
+			&& (
+					RuntimeConfig::IsInAnyCommandPhase() 
+						|| RuntimeConfig::phase  == RuntimeConfig::Phase::AnimationPhase 
+						|| RuntimeConfig::phase  == RuntimeConfig::Phase::EndOfGame
+				)
+			;},false);
 
 
 	}
@@ -3637,6 +3643,7 @@ void ParseKeyValue(const String&key, const String&value)
 		elif(key == "serverURL")
 		{
 			RuntimeConfig::serverAddress = Network::ServerAddress(value);
+			LogEvent(EventType::ConfigRelated, nullptr, "Server address set to "+RuntimeConfig::serverAddress.ToString());
 		}
 		else
 			throw Program::ParameterFault("`"+key+"` is not a recognized runtime parameter");
@@ -3954,6 +3961,7 @@ int main( int argc, const char* argv[])
 				&& RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
 			}
 			);
+			AddFactionCreationChoice("Spectate",Protocol::FactionType::SpectatorFaction, Protocol::GameFlag::SupportSpectatorFactions);
 			AddFactionCreationChoice("Create new faction",Protocol::FactionType::RegularFaction, Protocol::GameFlag::SupportRegularFactions);
 
 			

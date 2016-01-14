@@ -16,30 +16,34 @@ namespace State
 
 	TCP::Server		server;
 
+	Grid::WorldData				spectatorWorldState;
+
+
 	bool						terrainChanged=false;
 
 	String						Client::ToString() const
 	{
-		return (faction ? faction->id.ToString() : "[no faction]")+":'"+name+"'";
+		return (faction ? faction->id.ToString() : (isSpectator ? "[spectator]" : "[no faction]"))+":'"+name+"'";
 	}
 
 	bool		Client::CanSee(const Objects::PWorldEntity&e, float t)	const
 	{
-		return faction && faction->CanSee(e,t);
+		return isSpectator || (faction && faction->CanSee(e,t));
 	}
 
 
 	void HandleConnectionLoss(PClient client)
 	{
-		State::clients.FindAndErase(client);
+		//State::clients.FindAndErase(client);
 		State::activePlayers.FindAndErase(client);
+		State::spectators.FindAndErase(client);
 		if (client->faction)
 		{
 			Journal::currentRound.LogFactionOffline(client->faction);
 
 			State::playerMap.Unset(client->faction);
 			client->faction->online = false;
-			Channels::factionOffline.SendTo(State::server,client->faction->id);
+			Channels::factionOffline.SendTo(State::server,client->faction->id,2);
 		}
 	}
 
@@ -80,7 +84,7 @@ namespace State
 	}
 
 
-	Buffer<PClient>	clients,activePlayers;
+	Buffer<PClient>	/*clients,*/activePlayers,spectators;
 	GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
 	GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
 	UINT32			lastSaveRound = 0, empZonesLocked = 0, unlockedEMPZones = 0xFFFF;
@@ -143,8 +147,9 @@ namespace State
 
 		RuntimeConfig::doomsdayWeapons = RuntimeConfig::DoomsdayWeapons();	//load default value
 
-		clients.Clear();
+		//clients.Clear();
 		activePlayers.Clear();
+		spectators.Clear();
 		playerMap.Clear();
 
 		tokenMap.Clear();
@@ -549,13 +554,15 @@ namespace State
 		Logging::WriteEvent(EventType::UnexpectedBehavior, "Invalid operation performed",&peer,nullptr);
 		if (client)
 		{
-			clients.FindAndErase(client);
+			//clients.FindAndErase(client);
 			activePlayers.FindAndErase(client);
+			spectators.FindAndErase(client);
+			client->isSpectator = false;
 			if (client->faction)
 			{
 				playerMap.Unset(client->faction);
 				client->faction->online = false;
-				Channels::factionOffline.SendTo(State::server,client->faction->id);
+				Channels::factionOffline.SendTo(State::server,client->faction->id,2);
 			}
 
 			peer.attachment.reset();
@@ -617,6 +624,17 @@ namespace State
 
 	void						SignalFamilyChange(BYTE familyId, bool last, bool rightNow)
 	{
+		if (State::spectators.IsNotEmpty())
+		{
+			static Protocol::WorldDelta	delta;
+			GenerateWorldDelta(nullptr,&State::spectatorWorldState,delta,familyId,rightNow,last,Protocol::WorldDeltaType::ProgressiveUpdate);
+			for (const auto&s : State::spectators)
+			{
+				Channels::updateWorld.SendTo(s->peer.lock(),delta);
+			}
+		}
+
+
 		SignalFamilyChangeToFaction(Objects::Faction::nexus,familyId,last,rightNow);
 		foreach (Objects::Faction::all,_f)
 		{
@@ -1676,8 +1694,8 @@ void	State::Load(const PathString&filename)
 									ASSERT__(tabAt);
 									if (tabAt)
 									{
-										String key = line->subStringRef(0,tab-1);
-										StringRef value = line->subStringRef(tab);
+										String key = line->subStringRef(0,tabAt-1);
+										StringRef value = line->subStringRef((int)tabAt);
 		
 										CLI::PVariable v = Reflection::state.FindVar(key);
 										if (!v)
@@ -1994,6 +2012,13 @@ void	State::Save( const PathString&name)
 	container.AppendBlock(RID::fileVersion,&vid,sizeof(vid));
 	container.AppendBlock(RID::worldContentTypeCount)->SetPODData((UINT32)Grid::Content::NumberOfPossibilities);
 
+
+
+	Riff::Chunk*general = CreateNamedList(container,ChunkName::WorldInfoGroup);
+	general->AppendBlock(RID::worldID)->SetPODData(worldID);
+	general->AppendBlock(RID::roundNumber)->SetPODData(RuntimeConfig::roundNumber);
+	general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
+
 	{
 		static StringBuffer variableBuffer;
 		variableBuffer.Clear();
@@ -2004,14 +2029,10 @@ void	State::Save( const PathString&name)
 				variableBuffer << v->GetPath()<<tab<<v->ToString()<<nl;
 			}
 		});
-		container.AppendBlock(RID::variableConfiguration,variableBuffer.pointer(),variableBuffer.GetContentSize());
+		general->AppendBlock(RID::variableConfiguration,variableBuffer.pointer(),variableBuffer.GetContentSize());
 	}
 
 
-	Riff::Chunk*general = CreateNamedList(container,ChunkName::WorldInfoGroup);
-	general->AppendBlock(RID::worldID)->SetPODData(worldID);
-	general->AppendBlock(RID::roundNumber)->SetPODData(RuntimeConfig::roundNumber);
-	general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
 	//general->AppendBlock(RID::factionSupportFlags)->SetPODData(State::Config::factionSupportFlags);
 	//general->AppendBlock(RID::closedGame)->SetPODData(State::Config::closedGame);
 	//general->AppendBlock(RID::nexusBases)->SetPODData(State::Config::Nexus::haveBases);
@@ -2201,9 +2222,9 @@ namespace State
 					State::SendToOwner(Channels::setMobileState,v,w1);
 				}
 				else
-					foreach(State::clients,cl)
+					foreach(State::activePlayers,cl)
 					{
-						if (Receiver::HasAccess(*cl,v))
+						if (Receiver::CanSeePrivateDetails(*cl,v))
 							Channels::setMobileState.SendTo((*cl)->peer.lock(),w1);
 						else
 							if (Receiver::CanSee(*cl,_v,0))
@@ -2235,9 +2256,9 @@ namespace State
 					State::SendToOwner(Channels::setStructureState,s,w1);
 				}
 				else
-					foreach(State::clients,cl)
+					foreach(State::activePlayers,cl)
 					{
-						if (Receiver::HasAccess(*cl,s))
+						if (Receiver::CanSeePrivateDetails(*cl,s))
 							Channels::setStructureState.SendTo((*cl)->peer.lock(),w1);
 						else
 							if (Receiver::CanSee(*cl,*_s,0))
@@ -2265,8 +2286,8 @@ namespace State
 				//if ((*cl)->faction->global.coverageChanged)
 				{
 					const Objects::PFaction&faction = (*cl)->faction;
-
-					CheckCoverageSendTerrain(faction,(*cl)->peer.lock());
+					if (faction)
+						CheckCoverageSendTerrain(faction,(*cl)->peer.lock());
 						//anythingChanged = true;
 				}
 			}
@@ -3314,7 +3335,7 @@ namespace State
 			State::unlockedEMPZones = ((1<<unlocked) - 1);
 			State::empZonesLocked = ((1 << 12)-1)  & ~State::unlockedEMPZones;
 
-			Channels::lockEmpZones.SendTo(State::server,State::empZonesLocked);
+			Channels::lockEmpZones.SendTo(State::server,State::empZonesLocked,2);
 		}
 
 	}

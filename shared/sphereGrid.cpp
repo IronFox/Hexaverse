@@ -58,8 +58,10 @@ namespace Grid
 	#ifdef HAS_WINDOW
 		/*static*/ const float4 WaterCompiler::waterColor = float4(0.5f, 0.6f, 1.f,0.6f);
 	#endif
+	
+	static_assert(CellStack::Cell::TypeCount == Content::NumberOfPossibilities, "Adjust type count");
 
-	/*static*/ float3	CellStack::Cell::typeColor[Content::NumberOfPossibilities] =
+	/*static*/ float3	CellStack::Cell::typeColor[TypeCount] =
 	{
 		float3(1.f),	//Unknown
 		float3(0.25f),	//Granite
@@ -71,11 +73,14 @@ namespace Grid
 		float3(0.6f),	//foundation
 		float3(0.3f, 0.3f, 0.3f), //road
 		float3(1.2f,0.6f,0.5f)*-2.5f,	//Lava
+		-float3(0.6f,0.5f,1.2f),	//technite
 		float3(0.5f, 0.6f, 1.f)*0.3f,	//Water
 		float3(1)	//clear
 	};
+	
 
-	/*static*/ int	CellStack::Cell::typeStrength[Content::NumberOfPossibilities] =
+	
+	/*static*/ int	CellStack::Cell::typeStrength[TypeCount] =
 	{
 		INT_MAX, //Unknown
 		9,	//granite
@@ -87,11 +92,12 @@ namespace Grid
 		7,	//foundation
 		6,	//road
 		1,	//lava
+		7,	//technite
 		2,	//water
 		0	//clear
 	};
 
-	/*static*/ bool	CellStack::Cell::typeColorMixes[Content::NumberOfPossibilities] =
+	/*static*/ bool	CellStack::Cell::typeColorMixes[TypeCount] =
 	{
 		true,	//Unkown
 		true,	//granite
@@ -103,13 +109,14 @@ namespace Grid
 		false,	//foundation
 		false,	//road
 		false,	//lava
+		false,	//technite
 		false,	//water
 		false	//clear
 	};
 
 
 
-	/*static*/ float	CellStack::Cell::typeStructureFactor[Content::NumberOfPossibilities] =
+	/*static*/ float	CellStack::Cell::typeStructureFactor[TypeCount] =
 	{
 		1,	//unknown
 		1,	//granite
@@ -121,10 +128,11 @@ namespace Grid
 		0,	//foundation
 		0,	//road
 		1,	//lava
+		0,	//technite
 		1,	//water
 		1	//clear
 	};
-
+			
 
 	void			CellStack::ChangeStructureCounterI(int height, int by)
 	{

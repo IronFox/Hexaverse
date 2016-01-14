@@ -148,7 +148,7 @@ namespace Grid
 		class CompactCell
 		{
 		public:
-			CONSTRUCT_ENUMERATION12(Content,
+			CONSTRUCT_ENUMERATION13(Content,
 				Unknown,
 				Granite,
 				Earth,
@@ -159,6 +159,7 @@ namespace Grid
 				Foundation,
 				Road,
 				Lava,
+				Technite,
 				Water,
 				Clear
 			)
@@ -253,10 +254,12 @@ namespace Grid
 			#endif
 
 
-			static float3	typeColor[Content::NumberOfPossibilities];
-			static float	typeStructureFactor[Content::NumberOfPossibilities];
-			static bool		typeColorMixes[Content::NumberOfPossibilities];
-			static int		typeStrength[Content::NumberOfPossibilities];
+			static const count_t TypeCount = 13;
+
+			static float3	typeColor[TypeCount];
+			static float	typeStructureFactor[TypeCount];
+			static bool		typeColorMixes[TypeCount];
+			static int		typeStrength[TypeCount];
 
 
 			#ifdef HAS_WINDOW
@@ -268,6 +271,7 @@ namespace Grid
 			#endif
 			void	SetToIfSolid(Content cnt)	{if (IsSolid()) content = cnt;}
 			bool	IsWater() const { return content == Content::Water; }
+			bool	IsTechnite() const {return content == Content::Technite; }
 			//bool	WaterSurfaceBelow() const { return content == Content::Clear; }
 			bool	IsOccupied() const
 			{
@@ -280,6 +284,16 @@ namespace Grid
 			bool	IsClearOrWaterIgnoreStructure() const
 			{
 				return (content == Content::Clear || content == Content::Water);
+			}
+
+
+			static bool IsDead(BYTE cnt)
+			{
+				return cnt < Content::Technite;
+			}
+			static bool IsAlive(BYTE cnt)
+			{
+				return cnt == Content::Technite;
 			}
 			static bool IsSolid(BYTE cnt)
 			{
@@ -299,6 +313,7 @@ namespace Grid
 				return IsSolid(content);
 				//return content < Content::Water;
 			}
+			bool	IsSolidDead() const	{return IsDead(content);}
 			int		GetStrength() const
 			{
 				return typeStrength[content];
