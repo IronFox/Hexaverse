@@ -1,4 +1,4 @@
-v0.3.11
+v0.3.11		[Jan 14 2016]
 	+Server ports can now be altered by specifying 'port 12345' as runtime parameter when launching the server.
 	+Clients can connect to different ports by specifying a port segment in the respective server url ('host:port').
 	+Implemented spectator mode.
