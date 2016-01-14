@@ -43,7 +43,7 @@ namespace State
 
 			State::playerMap.Unset(client->faction);
 			client->faction->online = false;
-			Channels::factionOffline.SendTo(State::server,client->faction->id);
+			Channels::factionOffline.SendTo(State::server,client->faction->id,2);
 		}
 	}
 
@@ -562,7 +562,7 @@ namespace State
 			{
 				playerMap.Unset(client->faction);
 				client->faction->online = false;
-				Channels::factionOffline.SendTo(State::server,client->faction->id);
+				Channels::factionOffline.SendTo(State::server,client->faction->id,2);
 			}
 
 			peer.attachment.reset();
@@ -1694,8 +1694,8 @@ void	State::Load(const PathString&filename)
 									ASSERT__(tabAt);
 									if (tabAt)
 									{
-										String key = line->subStringRef(0,tab-1);
-										StringRef value = line->subStringRef(tab);
+										String key = line->subStringRef(0,tabAt-1);
+										StringRef value = line->subStringRef((int)tabAt);
 		
 										CLI::PVariable v = Reflection::state.FindVar(key);
 										if (!v)
@@ -2012,6 +2012,13 @@ void	State::Save( const PathString&name)
 	container.AppendBlock(RID::fileVersion,&vid,sizeof(vid));
 	container.AppendBlock(RID::worldContentTypeCount)->SetPODData((UINT32)Grid::Content::NumberOfPossibilities);
 
+
+
+	Riff::Chunk*general = CreateNamedList(container,ChunkName::WorldInfoGroup);
+	general->AppendBlock(RID::worldID)->SetPODData(worldID);
+	general->AppendBlock(RID::roundNumber)->SetPODData(RuntimeConfig::roundNumber);
+	general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
+
 	{
 		static StringBuffer variableBuffer;
 		variableBuffer.Clear();
@@ -2022,14 +2029,10 @@ void	State::Save( const PathString&name)
 				variableBuffer << v->GetPath()<<tab<<v->ToString()<<nl;
 			}
 		});
-		container.AppendBlock(RID::variableConfiguration,variableBuffer.pointer(),variableBuffer.GetContentSize());
+		general->AppendBlock(RID::variableConfiguration,variableBuffer.pointer(),variableBuffer.GetContentSize());
 	}
 
 
-	Riff::Chunk*general = CreateNamedList(container,ChunkName::WorldInfoGroup);
-	general->AppendBlock(RID::worldID)->SetPODData(worldID);
-	general->AppendBlock(RID::roundNumber)->SetPODData(RuntimeConfig::roundNumber);
-	general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
 	//general->AppendBlock(RID::factionSupportFlags)->SetPODData(State::Config::factionSupportFlags);
 	//general->AppendBlock(RID::closedGame)->SetPODData(State::Config::closedGame);
 	//general->AppendBlock(RID::nexusBases)->SetPODData(State::Config::Nexus::haveBases);
@@ -3332,7 +3335,7 @@ namespace State
 			State::unlockedEMPZones = ((1<<unlocked) - 1);
 			State::empZonesLocked = ((1 << 12)-1)  & ~State::unlockedEMPZones;
 
-			Channels::lockEmpZones.SendTo(State::server,State::empZonesLocked);
+			Channels::lockEmpZones.SendTo(State::server,State::empZonesLocked,2);
 		}
 
 	}

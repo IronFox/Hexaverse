@@ -1326,9 +1326,9 @@ int main( int argc, const char* argv[])
 		}
 
 
-		if (argc > 1)
+		if (ParameterConfig::loadFile.IsNotEmpty())
 		{
-			PathString filename = argv[1];
+			PathString filename = PathString(ParameterConfig::loadFile);
 			if (FileSystem::IsFile(filename))
 			{
 				State::Load(filename);
