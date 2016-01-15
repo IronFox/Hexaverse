@@ -82,6 +82,16 @@ namespace World
 
 		bool		CheckCoverageSendTerrain(const Objects::PFaction&faction,const TCP::PPeer&peer);
 
+
+		/**
+		Scans through all global grid families and looks for outdated ones.
+		Outdated families are sent to clients via SignalFamilyChange().
+		Sets terrainChanged if at least one outdated family is encountered.
+		terrainChanged is left unchanged otherwise.
+		*/
+		void		SendChangedFamilies();
+
+
 		/**
 		Called automatically by Network::CloseSession()
 		Flushes any residual network related data
