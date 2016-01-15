@@ -228,7 +228,8 @@ namespace Receiver
 			break;
 			case Protocol::FactionType::SpectatorFaction:
 			{
-				factionTypeNotSupported = !peer.IsLocalhost();
+				factionTypeNotSupported = !peer.IsLocalhost()
+											|| !(Game::Config::factionSupportFlags & Protocol::GameFlag::SupportSpectatorFactions);
 				if (factionTypeNotSupported)
 					LogEvent(EventType::CommandRejected,peer,"Spectator type is allowed only from localhost, but peer is "+peer.ToString());
 			}
