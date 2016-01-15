@@ -704,8 +704,7 @@ namespace Protocol
 		};
 			
 	
-	CONSTRUCT_ENUMERATION2(ServerMode, Idle, Active);
-
+	
 
 	NETSTRUCT2(Timestamp
 		, NET(bool), rightNow

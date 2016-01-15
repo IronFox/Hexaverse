@@ -31,10 +31,10 @@ namespace Evolver
 
 		bool InExtraTechniteRound()
 		{
-			if (!State::CurrentRoundIsExtraTechniteRound())
+			if (!Game::CurrentRoundIsExtraTechniteRound())
 				return false;
 
-			return State::techniteFactionsOnline > 0;
+			return Network::techniteFactionsOnline > 0;
 
 		}
 
@@ -54,8 +54,8 @@ namespace Evolver
 					CheckSendTerrain();
 					for (const auto&tf : Technites::Faction::allTechniteFactions)
 					{
-						State::PClient client;
-						if (!State::playerMap.query(tf,client))
+						Network::PClient client;
+						if (!Network::playerMap.query(tf,client))
 							continue;
 						TCP::PPeer peer = client->peer.lock();
 						if (peer)
@@ -69,7 +69,7 @@ namespace Evolver
 			default:
 				if (!Super::ContinueRoundProcessing())
 				{
-					State::ChangePhase(RuntimeConfig::Phase::TechnitePhase);
+					Game::Network::ChangePhase(RuntimeConfig::Phase::TechnitePhase);
 					Technites::BeginProcessing(TechniteDetails::GetBaseAnimationLength());
 				}
 				return true;
@@ -81,14 +81,14 @@ namespace Evolver
 		RuntimeConfig::techniteSubRoundNumber ++;
 		if (TechniteDetails::InExtraTechniteRound())
 		{
-			State::ChangePhase(RuntimeConfig::Phase::TechniteCommandPhase,State::Config::extraTechniteRoundTimer > 0 && !State::roundTimerPaused ? State::Config::extraTechniteRoundTimer : -1);
+			Game::Network::ChangePhase(RuntimeConfig::Phase::TechniteCommandPhase,Game::Config::extraTechniteRoundTimer > 0 && !Game::roundTimerPaused ? Game::Config::extraTechniteRoundTimer : -1);
 		}
 		else
 		{
 			RuntimeConfig::roundNumber++;
 			RuntimeConfig::techniteSubRoundNumber = 0;
 
-			State::ChangePhase(RuntimeConfig::Phase::CommandPhase,State::Config::roundTimer > 0 && !State::roundTimerPaused ? State::Config::roundTimer : -1);
+			Game::Network::ChangePhase(RuntimeConfig::Phase::CommandPhase,Game::Config::roundTimer > 0 && !Game::roundTimerPaused ? Game::Config::roundTimer : -1);
 		}
 	}
 
@@ -96,7 +96,7 @@ namespace Evolver
 	{
 		if (RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase)
 		{
-			State::ChangePhase(RuntimeConfig::Phase::TechnitePhase);
+			Game::Network::ChangePhase(RuntimeConfig::Phase::TechnitePhase);
 			Technites::BeginProcessing(TechniteDetails::GetBaseAnimationLength());
 		}
 		else

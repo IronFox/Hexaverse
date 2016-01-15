@@ -157,7 +157,7 @@ namespace Receiver
 		if (!peer.attachment)
 			return;
 		//const Protocol::ClientFactionRequest&p = _p;
-		State::PClient client = To<State::Client>::Cast(peer.attachment);
+		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client->faction || !client->faction->IsTechniteFaction())
 			return;
 		if (!CheckTechniteCommandMode(peer))
@@ -197,10 +197,17 @@ namespace Receiver
 
 	static index_t GetStartLocation()
 	{
-		return State::GetFactionStartLocation(random);
+		return World::GetFactionStartLocation(random);
 	}
 
 
+	static void ChangeUserLevel(TCP::Peer&peer, UINT newLevel)
+	{
+		if (peer.userLevel == newLevel)
+			return;
+		peer.userLevel = newLevel;
+		LogEvent(EventType::Debug,peer,"User level changed to "+String(peer.userLevel));
+	}
 
 	void	SendSessionConfigTo(TCP::Peer&peer, const Objects::PFaction&exclude, bool sendTechniteFactionColors)
 	{
@@ -212,7 +219,7 @@ namespace Receiver
 				if (f->online)
 				{
 					Channels::factionOnline.SendTo(peer,f->id);
-					if (State::playerMap.Require(f)->wantNewRound)
+					if (Network::playerMap.Require(f)->wantNewRound)
 						Channels::factionRequestedNewRound.SendTo(peer,f->id);
 				}
 			}
@@ -225,7 +232,7 @@ namespace Receiver
 		RuntimeConfig::UnitLimits::Export(limits);
 		Channels::unitLimits.SendTo(peer,limits);
 		
-		Channels::lockEmpZones.SendTo(peer,State::empZonesLocked);
+		Channels::lockEmpZones.SendTo(peer,World::empZonesLocked);
 
 		if (sendTechniteFactionColors)
 		{
@@ -253,29 +260,27 @@ namespace Receiver
 	{
 		if (!peer.attachment)
 			return;
-		//const Protocol::ClientFactionRequest&p = _p;
-		State::PClient client = To<State::Client>::Cast(peer.attachment);
+		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		Protocol::ClientFactionResponse response;
 		response.startFactionTypes = _p.startFactionTypes;
 		response.factionToken = _p.factionToken;
 		response.planetConfig = Grid::currentPlanetConfig;
-		State::AssembleGameInfo(response.info);
+		Game::Network::AssembleGameInfo(response.info);
 		//response.info = CompileWorldInfo();
 
 		if (!response.startFactionTypes || response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
 		{
-			if (State::activePlayers.FindAndErase(client))
+			if (Network::activePlayers.FindAndErase(client))
 			{
 				if (client->faction)
 				{
 					Journal::currentRound.LogFactionOffline(client->faction);
 					LogEvent(EventType::SessionRelated,peer,"Abandoning faction");
-					State::playerMap.Unset(client->faction);
+					Network::playerMap.Unset(client->faction);
 					client->faction->online = false;
 					client->faction.reset();
 				}
-				peer.userLevel = 1;
-				LogEvent(EventType::Debug,peer,"User level changed to "+String(peer.userLevel));
+				ChangeUserLevel(peer,1);
 			}
 			if (!response.startFactionTypes)
 			{
@@ -287,7 +292,7 @@ namespace Receiver
 		if (response.startFactionTypes != Protocol::FactionType::SpectatorFaction && client->isSpectator)
 		{
 			client->isSpectator = false;	
-			State::spectators.FindAndErase(client);
+			Network::spectators.FindAndErase(client);
 		}
 
 		if (!RuntimeConfig::IsInAnyCommandPhase()
@@ -304,7 +309,7 @@ namespace Receiver
 		}
 
 
-		if (State::activePlayers.Contains(client))
+		if (Network::activePlayers.Contains(client))
 			return;
 
 		bool factionTypeNotSupported = true;
@@ -322,13 +327,13 @@ namespace Receiver
 			}
 			break;
 			case Protocol::FactionType::RegularFaction:
-				factionTypeNotSupported = !(State::Config::factionSupportFlags & Protocol::GameFlag::SupportRegularFactions);
+				factionTypeNotSupported = !(Game::Config::factionSupportFlags & Protocol::GameFlag::SupportRegularFactions);
 			break;
 			case Protocol::FactionType::TechniteFaction:
-				factionTypeNotSupported = !(State::Config::factionSupportFlags & Protocol::GameFlag::SupportTechniteFactions);
+				factionTypeNotSupported = !(Game::Config::factionSupportFlags & Protocol::GameFlag::SupportTechniteFactions);
 			break;
 			case Protocol::FactionType::TechniteFaction | Protocol::FactionType::RegularFaction:
-				factionTypeNotSupported = !(State::Config::factionSupportFlags & Protocol::GameFlag::SupportHybridFactions);
+				factionTypeNotSupported = !(Game::Config::factionSupportFlags & Protocol::GameFlag::SupportHybridFactions);
 			break;
 		}
 
@@ -345,14 +350,13 @@ namespace Receiver
 		if (response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
 		{
 			//authenticated and purged any previous faction. let's go
-			peer.userLevel = 2;
-			LogEvent(EventType::Debug,peer,"User level changed to "+String(peer.userLevel));
+			ChangeUserLevel(peer,2);
 
-			bool firstSpectator = State::spectators.IsEmpty();
+			bool firstSpectator = Network::spectators.IsEmpty();
 			if (!client->isSpectator)
 			{
-				State::spectators << client;
-				State::activePlayers << client;
+				Network::spectators << client;
+				Network::activePlayers << client;
 			}
 			client->isSpectator = true;
 
@@ -367,21 +371,21 @@ namespace Receiver
 			for (const auto&s : Objects::structures)
 			{
 				Protocol::StructureConstruction st;
-				State::Describe(st,*s,true,timestamp);
+				Game::Network::Describe(st,*s,true,timestamp);
 				Channels::createStructure.SendTo(peer,st);
 			}
 
 			for (const auto&v : Objects::vehicles)
 			{
 				Protocol::NewMobileEntity st;
-				State::Describe(st,*v,true,timestamp,0xFFFFFFFF);
+				Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
 				Channels::newMobileEntity.SendTo(peer,st);
 			}
 
 			for (const auto&v : Objects::satellites)
 			{
 				Protocol::NewMobileEntity st;
-				State::Describe(st,*v,true,timestamp,0xFFFFFFFF);
+				Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
 				Channels::newMobileEntity.SendTo(peer,st);
 			}
 
@@ -404,18 +408,18 @@ namespace Receiver
 				}
 			}
 			if (firstSpectator)
-				State::spectatorWorldState.FlushAllData();
+				World::spectatorWorldState.FlushAllData();
 			Protocol::WorldDelta	delta;
 			delta.timestamp.rightNow = true;
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 			{
 				if (firstSpectator)
 				{
-					Protocol::GenerateWorldDelta(nullptr,&State::spectatorWorldState,
+					Protocol::GenerateWorldDelta(nullptr,&World::spectatorWorldState,
 											delta,k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::ProgressiveInit);
 				}
 				else
-					Protocol::GenerateWorldDelta(nullptr,&State::spectatorWorldState,
+					Protocol::GenerateWorldDelta(nullptr,&World::spectatorWorldState,
 											delta,k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::LocalCopy);
 
 				Channels::updateWorld.SendTo(peer,delta);
@@ -430,14 +434,14 @@ namespace Receiver
 
 		bool newFaction = false;
 
-		if (State::Config::Nexus::enableAI && Objects::Faction::nexus->accessToken == response.factionToken && (peer.ToString(false) == "localhost"))
+		if (Game::Config::Nexus::enableAI && Objects::Faction::nexus->accessToken == response.factionToken && (peer.ToString(false) == "localhost"))
 		{
 			LogEvent(EventType::SessionRelated, peer, "Access to nexus faction permitted.");
 			faction = Objects::Faction::nexus;
 		}
 		#ifdef _DEBUG
 			if (faction
-				|| State::tokenMap.Query(response.factionToken,faction)
+				|| Network::tokenMap.Query(response.factionToken,faction)
 				|| (
 						response.startFactionTypes == Protocol::FactionType::ContinueOnly 
 						&& Objects::Faction::all.IsNotEmpty()
@@ -451,8 +455,8 @@ namespace Receiver
 			#ifdef _DEBUG
 				response.factionToken = faction->accessToken;
 			#endif
-			State::PClient other;
-			if (State::playerMap.Query(faction,other))
+			Network::PClient other;
+			if (Network::playerMap.Query(faction,other))
 			{
 				LogEvent(EventType::SessionRelated,peer,"Faction access token recognized, but faction is already being controlled. Disconnecting "+other->ToString());
 
@@ -466,7 +470,7 @@ namespace Receiver
 					return;
 				}
 				other->peer.lock()->DisconnectPeer();
-				State::playerMap.Unset(faction);
+				Network::playerMap.Unset(faction);
 				faction->online = false;
 				other->faction.reset();
 				client->faction = faction;
@@ -488,7 +492,7 @@ namespace Receiver
 			{
 				LogEvent(EventType::SessionRelated,peer,"Provided token not recognized: "+response.factionToken.value.ToString());
 
-				if (State::Config::closedGame && RuntimeConfig::roundNumber > 0)
+				if (Game::Config::closedGame && RuntimeConfig::roundNumber > 0)
 				{
 					foreach (Objects::Faction::all,f)
 					{
@@ -525,7 +529,7 @@ namespace Receiver
 				return;
 			}
 
-			if (State::Config::closedGame && RuntimeConfig::roundNumber > 0)
+			if (Game::Config::closedGame && RuntimeConfig::roundNumber > 0)
 			{
 				response.startFactionTypes = 0;
 				Channels::clientFactionResponse.SendTo(peer,response);
@@ -533,11 +537,11 @@ namespace Receiver
 				return;
 			}
 
-			State::UpdateEMPZones(1);
+			World::UpdateEMPZones(1);
 			startLocation = GetStartLocation();
 			if (startLocation == InvalidIndex)
 			{
-				State::UpdateEMPZones(0);
+				World::UpdateEMPZones(0);
 				response.startFactionTypes = 0;
 				Channels::clientFactionResponse.SendTo(peer,response);
 				LogEvent(EventType::OperationAborted,peer,"Unable to find valid starting location for new faction.");
@@ -562,7 +566,7 @@ namespace Receiver
 					{
 						colorVector[i] = byte3( Technites::Technite::factionColor[i]*255.f );
 					}
-					Channels::techniteColors.SendTo(State::server,colorVector,1);
+					Channels::techniteColors.SendTo(Network::server,colorVector,1);
 					colorsSent = true;
 				}
 				else
@@ -577,17 +581,16 @@ namespace Receiver
 			LogEvent(EventType::SessionRelated,peer,"Created new faction.");
 
 			client->faction->accessToken = response.factionToken;
-			State::tokenMap.Set(response.factionToken,client->faction);
+			Network::tokenMap.Set(response.factionToken,client->faction);
 		}
 		else
 		{
 			faction->name = client->name;
 		}
-		peer.userLevel = 2;
-		LogEvent(EventType::Debug,peer,"User level changed to "+String(peer.userLevel));
+		ChangeUserLevel(peer,2);
 
-		State::activePlayers << client;
-		State::playerMap.Set(client->faction,client);
+		Network::activePlayers << client;
+		Network::playerMap.Set(client->faction,client);
 		client->faction->online = true;
 		client->wantNewRound = false;
 
@@ -630,7 +633,7 @@ namespace Receiver
 		if (newFaction)
 		{
 			if ((response.startFactionTypes & Protocol::FactionType::RegularFaction)!=0)
-				State::SpawnFactionStartUnits(client->faction,startLocation);
+				Game::SpawnFactionStartUnits(client->faction,startLocation);
 
 
 			if (response.startFactionTypes & Protocol::FactionType::TechniteFaction)
@@ -717,7 +720,7 @@ namespace Receiver
 		}
 
 		String why;
-		if (State::Config::basesRequired && faction->deathInRounds > 0)
+		if (Game::Config::basesRequired && faction->deathInRounds > 0)
 			faction->CanLive(why);
 		client->SendProgressUpdate(false,why);
 
@@ -740,7 +743,7 @@ namespace Receiver
 				if (s)
 				{
 					Protocol::StructureConstruction st;
-					State::Describe(st,*s,(s)->owner == client->faction,timestamp);
+					Game::Network::Describe(st,*s,(s)->owner == client->faction,timestamp);
 					Channels::createStructure.SendTo(peer,st);
 				}
 				else
@@ -749,7 +752,7 @@ namespace Receiver
 					if (v)
 					{
 						Protocol::NewMobileEntity st;
-						State::Describe(st,*v,(v)->owner == client->faction,timestamp,0xFFFFFFFF);
+						Game::Network::Describe(st,*v,(v)->owner == client->faction,timestamp,0xFFFFFFFF);
 						Channels::newMobileEntity.SendTo(peer,st);
 					}
 					else
@@ -765,7 +768,7 @@ namespace Receiver
 				if (s)
 				{
 					Protocol::StructureConstruction st;
-					State::Describe(st,*s,(s)->owner == client->faction,timestamp);
+					Game::Network::Describe(st,*s,(s)->owner == client->faction,timestamp);
 					Channels::createStructure.SendTo(peer,st);
 				}
 			}
@@ -776,7 +779,7 @@ namespace Receiver
 				if (v)
 				{
 					Protocol::NewMobileEntity st;
-					State::Describe(st,*v,true,timestamp,0xFFFFFFFF);
+					Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
 					Channels::newMobileEntity.SendTo(peer,st);
 				}
 			}
@@ -787,7 +790,7 @@ namespace Receiver
 				if (v)
 				{
 					Protocol::NewMobileEntity st;
-					State::Describe(st,*v,true,timestamp,0xFFFFFFFF);
+					Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
 					Channels::newMobileEntity.SendTo(peer,st);
 				}
 			}
@@ -803,8 +806,8 @@ namespace Receiver
 		//probably optional later on
 		{
 			//broadcast name and state
-			Channels::identifyUser.SendTo(State::server,Identify(client->faction),2);
-			Channels::factionOnline.SendTo(State::server,client->faction->id,2);
+			Channels::identifyUser.SendTo(Network::server,Identify(client->faction),2);
+			Channels::factionOnline.SendTo(Network::server,client->faction->id,2);
 
 		}
 
@@ -827,61 +830,6 @@ namespace Receiver
 		peer.SendSignal(Protocol::ChannelID::BeginGame);
 	}
 
-	bool CanControl(const State::Client&c, const Objects::WorldEntity&e)
-	{
-		if (c.faction != e.owner)
-			return false;
-		if (c.wantNewRound)
-		{
-			ASSERT__(c.faction == e.owner);
-			LogEvent(EventType::CommandRejected,&e,"Unable to comply: You have ended your round");
-			return false;
-		}
-		return true;
-	}
-	bool CanControl(const State::PClient&c, const Objects::PWorldEntity&e)
-	{
-		return CanControl(*c,*e);
-	}
-	bool CanControl(const State::PClient&c, const Objects::WorldEntity&e)
-	{
-		return CanControl(*c,e);
-	}
-	bool PeerCanControl(TCP::Peer&peer, const Objects::WorldEntity&e)
-	{
-		if (!peer.attachment)
-			return false;
-		return CanControl(To<State::Client>::Cast(peer.attachment),e);
-	}
-	bool PeerCanControl(TCP::Peer&peer, const Objects::PWorldEntity&e)
-	{
-		return PeerCanControl(peer,*e);
-	}
-
-
-	bool CanSeePrivateDetails(const State::Client&c, const Objects::WorldEntity&e)
-	{
-		return c.faction == e.owner || c.isSpectator;
-	}
-	bool CanSeePrivateDetails(const State::PClient&c, const Objects::PWorldEntity&e)
-	{
-		return CanSeePrivateDetails(*c,*e);
-	}
-	bool CanSeePrivateDetails(const State::PClient&c, const Objects::WorldEntity&e)
-	{
-		return CanSeePrivateDetails(*c,e);
-	}
-
-
-	bool CanSee(const State::Client&c, const Objects::PWorldEntity&e, float t)
-	{
-		return c.CanSee(e,t);
-		//return /*c.id == e.owner*/ true;	//placeholder
-	}
-	bool CanSee(const State::PClient&c, const Objects::PWorldEntity&e, float t)
-	{
-		return CanSee(*c,e,t);
-	}
 	//bool CanSee(const TCP::PPeer&p, const Objects::WorldEntity&e)
 	//{
 	//	if (!p->attachment)
@@ -940,7 +888,7 @@ namespace Receiver
 			return Objects::PWorldEntity();
 		}
 
-		if (!PeerCanControl(peer,e))
+		if (!Network::PeerCanControl(peer,e))
 		{
 			LogEvent(EventType::CommandRejected,peer,e,"Access denied");
 			return Objects::PWorldEntity();
@@ -980,7 +928,7 @@ namespace Receiver
 			LogEvent(EventType::CommandRejected, peer, "Marker creation denied. Player not ready");
 			return;
 		}
-		const Objects::PFaction&f = To<State::Client>::Cast(peer.attachment)->faction;
+		const Objects::PFaction&f = To<Network::Client>::Cast(peer.attachment)->faction;
 		if (!f)
 		{
 			LogEvent(EventType::CommandRejected, peer, "Marker creation denied. Player has no faction");
@@ -1059,7 +1007,7 @@ namespace Receiver
 			LogEvent(EventType::CommandRejected, peer, "Marker destruction denied. Player not ready");
 			return;
 		}
-		const Objects::PFaction&f = To<State::Client>::Cast(peer.attachment)->faction;
+		const Objects::PFaction&f = To<Network::Client>::Cast(peer.attachment)->faction;
 		if (!f)
 		{
 			LogEvent(EventType::CommandRejected, peer, "Marker destruction denied. Player has no faction");
@@ -1073,7 +1021,7 @@ namespace Receiver
 	{
 		if (!peer.attachment)
 			return;
-		State::PClient client = To<State::Client>::Cast(peer.attachment);
+		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client->faction)
 			return;
 		LogEvent(EventType::ChatMessage,client->faction->GetName()+": "+message);
@@ -1104,12 +1052,12 @@ namespace Receiver
 			LogEvent(EventType::CommandRejected, peer, "Name change denied. Player not ready");
 			return;
 		}
-		State::PClient cl = To<State::Client>::Cast(peer.attachment);
+		Network::PClient cl = To<Network::Client>::Cast(peer.attachment);
 		cl->name = name;
 		if (cl->faction)
 		{
 			cl->faction->name = name;
-			Channels::identifyUser.SendTo(State::server,Identify(cl->faction),2);
+			Channels::identifyUser.SendTo(Network::server,Identify(cl->faction),2);
 			LogEvent(EventType::SessionRelated, peer, "User renamed to '"+name+"'");
 		}
 	}
@@ -1123,7 +1071,7 @@ namespace Receiver
 			LogEvent(EventType::CommandRejected, peer, "Marker touch denied. Player not ready");
 			return;
 		}
-		const Objects::PFaction&f = To<State::Client>::Cast(peer.attachment)->faction;
+		const Objects::PFaction&f = To<Network::Client>::Cast(peer.attachment)->faction;
 		if (!f)
 		{
 			LogEvent(EventType::CommandRejected, peer, "Marker touch denied. Player has no faction");
@@ -1380,14 +1328,14 @@ namespace Receiver
 				else
 				{
 					LogEvent(EventType::CommandRejected,peer,v,"Unable to construct structure type");
-					State::InvalidOperation(peer);
+					Network::InvalidOperation(peer);
 				}
 			}
 			break;
 			default:
 			{
 				LogEvent(EventType::CommandRejected,peer,v,"Illegal job name #"+String(int(sjob.jobName.value)));
-				State::InvalidOperation(peer);
+				Network::InvalidOperation(peer);
 			}
 			return;
 		}
@@ -1680,19 +1628,18 @@ namespace Receiver
 		//
 		//}
 
-		State::PClient client = To<State::Client>::Cast(peer.attachment);
+		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 		if (!client)
 		{
-			TCP::PPeer ppeer = State::server.GetSharedPointerOfClient(&peer);
+			TCP::PPeer ppeer = Network::server.GetSharedPointerOfClient(&peer);
 			if (!ppeer)	//disconnected in the meantime. rare, but it happens
 			{
 				LogEvent(EventType::SessionRelated,"Peer disconnected on its own before client state handling could commence. Ignoring event");
 				return;
 			}
-			peer.userLevel = 1;
-			LogEvent(EventType::Debug,peer,"User level changed to "+String(peer.userLevel));
+			ChangeUserLevel(peer,1);
 
-			client.reset(new State::Client());
+			client.reset(new Network::Client());
 			client->peer = ppeer;
 			ASSERT__(ppeer);
 				//peer.shared_from_this();
@@ -1759,21 +1706,21 @@ namespace Receiver
 			case TCP::Event::ConnectionClosed:
 			case TCP::Event::ConnectionLost:
 			{
-				State::PClient client = To<State::Client>::Cast(peer.attachment);
+				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 				if (client)
 				{
 					LogEvent(EventType::SessionRelated,"Player disconnected: "+client->ToString());
-					State::HandleConnectionLoss(client);
+					Network::HandleConnectionLoss(client);
 
 					peer.attachment.reset();
 				}
 				LogEvent(EventType::SessionRelated,peer,"Client disconnected");
 
-				if (State::activePlayers.IsEmpty() || (State::activePlayers.Count() == 1 && State::activePlayers.first()->faction == Objects::Faction::nexus))
+				if (Network::activePlayers.IsEmpty() || (Network::activePlayers.Count() == 1 && Network::activePlayers.first()->faction == Objects::Faction::nexus))
 				{
-					State::roundTimerPaused = true;
-					if (State::Config::saveWhenAllQuit)
-						State::AutoSave();
+					Game::roundTimerPaused = true;
+					if (FileIO::Config::saveWhenAllQuit)
+						FileIO::AutoSave();
 				}
 			}
 			break;
@@ -1794,18 +1741,18 @@ namespace Receiver
 		switch (signal)
 		{
 			case Protocol::ChannelID::Unused:
-				State::InvalidOperation(peer);
+				Network::InvalidOperation(peer);
 			break;
 			case Protocol::ChannelID::RequestContinueRound:
 			{
 				
 				//Objects::Tick();
-				State::PClient client = To<State::Client>::Cast(peer.attachment);
+				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 				if (client && client->faction && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && client->wantNewRound)
 				{
 					client->wantNewRound = false;
 					LogEvent(EventType::SessionRelated,peer,"Continued round");
-					Channels::factionContinuedRound.SendTo(State::server,client->faction->id,2);
+					Channels::factionContinuedRound.SendTo(Network::server,client->faction->id,2);
 				}
 			}
 			break;
@@ -1813,14 +1760,14 @@ namespace Receiver
 			{
 				
 				//Objects::Tick();
-				State::PClient client = To<State::Client>::Cast(peer.attachment);
+				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
 				if (client && client->faction && !client->wantNewRound &&
 					(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase || RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase)
 					)
 				{
 					client->wantNewRound = true;
 					LogEvent(EventType::SessionRelated,peer,"Requested new round");
-					Channels::factionRequestedNewRound.SendTo(State::server,client->faction->id,2);
+					Channels::factionRequestedNewRound.SendTo(Network::server,client->faction->id,2);
 				}
 
 			}

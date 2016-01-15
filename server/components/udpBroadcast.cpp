@@ -4,8 +4,7 @@
 #include "../../client/version.h"
 #include "serverLogEvent.h"
 
-
-extern TUniqueID	serverID;
+#include "state/networkState.h"
 
 
 namespace UDPBroadCast
@@ -111,7 +110,7 @@ namespace UDPBroadCast
 			}
 		#endif
 
-		packet.hostID = serverID;
+		packet.hostID = Network::serverID;
 		packet.serverBasePort = basePort;
 		{
 			const char var[] = SERVER_NAME;
