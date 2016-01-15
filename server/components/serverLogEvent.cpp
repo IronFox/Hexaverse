@@ -12,11 +12,11 @@ namespace Logging
 			|| type == EventType::MinorEntityProcess 
 			|| type == EventType::RemoteControl
 			|| type == EventType::RemoteControlError
-			|| !State::server.IsOnline())
+			|| !Network::server.IsOnline())
 			return;
 		if (!toPeer && e)
 		{
-			State::PClient*cl = State::playerMap.QueryPointer(e->owner);
+			Network::PClient*cl = Network::playerMap.QueryPointer(e->owner);
 			if (cl)
 				toPeer = (*cl)->peer.lock().get();
 			else
@@ -38,7 +38,7 @@ namespace Logging
 			Channels::controlMessage.SendTo(*toPeer,out);
 		}
 		else
-			Channels::controlMessage.SendTo(State::server,out);
+			Channels::controlMessage.SendTo(Network::server,out,2);
 	}
 }
 
