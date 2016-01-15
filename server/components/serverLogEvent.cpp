@@ -8,11 +8,11 @@ namespace Logging
 	void SendEntityEvent( TCP::Peer*toPeer,EventType type, const Objects::WorldEntity*e, const String&msg)
 	{
 		if (type == EventType::PerformanceMeasurement ||
-			type == EventType::Debug || type == EventType::MinorEntityProcess || !State::server.IsOnline())
+			type == EventType::Debug || type == EventType::MinorEntityProcess || !Network::server.IsOnline())
 			return;
 		if (!toPeer && e)
 		{
-			State::PClient*cl = State::playerMap.QueryPointer(e->owner);
+			Network::PClient*cl = Network::playerMap.QueryPointer(e->owner);
 			if (cl)
 				toPeer = (*cl)->peer.lock().get();
 			else
@@ -34,7 +34,7 @@ namespace Logging
 			Channels::controlMessage.SendTo(*toPeer,out);
 		}
 		else
-			Channels::controlMessage.SendTo(State::server,out);
+			Channels::controlMessage.SendTo(Network::server,out,2);
 	}
 }
 

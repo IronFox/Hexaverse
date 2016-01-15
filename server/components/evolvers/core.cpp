@@ -264,9 +264,9 @@ namespace Evolver
 				return !Grid::AffectedByEMP(e->location);
 			});
 
-			State::SimulateLiquidsIfEnabled();
+			World::SimulateLiquidsIfEnabled();
 
-			State::ChangePhase(RuntimeConfig::Phase::AttackPhase);
+			Game::Network::ChangePhase(RuntimeConfig::Phase::AttackPhase);
 		}
 
 		void ProcessStructures1(float atTime)
@@ -343,13 +343,13 @@ namespace Evolver
 			{
 				case RuntimeConfig::Phase::AttackPhase:
 					if (!ProcessNextVehicleAttack())
-						State::ChangePhase(RuntimeConfig::Phase::MovementPhase);
+						Game::Network::ChangePhase(RuntimeConfig::Phase::MovementPhase);
 					//anythingChanged = true;
 				break;
 				case RuntimeConfig::Phase::MovementPhase:
 					if (!ProcessVehicleMotion())
 					{
-						State::ProcessChanges(true);
+						Game::ProcessChanges(true);
 						#ifndef NO_HIBERNATION
 							State::UpdateHibernation();
 						#endif
@@ -359,10 +359,10 @@ namespace Evolver
 						{
 							animationLength = std::max(m->timeAt,animationLength);
 						});
-						State::PerformNewRoundLogic(animationLength);
+						Game::PerformNewRoundLogic(animationLength);
 						ResetTowerAttackAction(animationLength);
-						CheckSatelliteSupplyAndSensory(animationLength,State::terrainChanged);
-						State::terrainChanged = false;
+						CheckSatelliteSupplyAndSensory(animationLength,World::terrainChanged);
+						World::terrainChanged = false;
 						ProcessStructures1(animationLength);//clears overproduction: must be called after CheckSatelliteSupply()
 						return false;
 					}
@@ -389,7 +389,7 @@ namespace Evolver
 	{
 		RuntimeConfig::roundNumber++;
 
-		State::ChangePhase(RuntimeConfig::Phase::CommandPhase,State::Config::roundTimer > 0 && !State::roundTimerPaused ? State::Config::roundTimer : -1);
+		Game::Network::ChangePhase(RuntimeConfig::Phase::CommandPhase,Game::Config::roundTimer > 0 && !Game::roundTimerPaused ? Game::Config::roundTimer : -1);
 	}
 
 }

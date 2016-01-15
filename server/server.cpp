@@ -29,7 +29,6 @@
 UINT32 globalVersionOfCurrentFile = 0;	//file version being loaded right now
 
 
-TUniqueID	serverID;
 
 Random		random;
 
@@ -52,25 +51,25 @@ void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromSto
 		if (!restoredFromStorage)
 		{
 			Protocol::NewMobileEntity	w;
-			State::Describe(w,v,true,timestamp,0xFFFFFFFF);
-			State::SendToOwner(Channels::newMobileEntity,v,w);
+			Game::Network::Describe(w,v,true,timestamp,0xFFFFFFFF);
+			Network::SendToOwner(Channels::newMobileEntity,v,w);
 //			Channels::newMobileEntity.SendTo((client)->peer.lock(),w);
 		}
 		else
 		{
 			Protocol::MobileState state;
-			State::Describe(state,(const Objects::MobileEntity&)v,true,timestamp,0xFFFFFFFF);
-			State::SendToOwner(Channels::setMobileState,v,state);
+			Game::Network::Describe(state,(const Objects::MobileEntity&)v,true,timestamp,0xFFFFFFFF);
+			Network::SendToOwner(Channels::setMobileState,v,state);
 			//Channels::setMobileState.SendTo(client->peer.lock(),state);
 		}
 	}
 
 	if (_v->IsVehicle() && To<Objects::Vehicle>::Cast(_v)->turret->detectsResources)
 	{
-		State::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
+		Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
 	}
 
-	if (State::Config::basesRequired && v.GetConstructionSpeed() && !v.owner->hasTerraformer)
+	if (Game::Config::basesRequired && v.GetConstructionSpeed() && !v.owner->hasTerraformer)
 	{
 		LogEvent(EventType::SessionRelated,_v.get(),"Recognized as terraformer. Reevaluating survivial conditions");
 		v.owner->hasTerraformer = true;
@@ -82,8 +81,8 @@ void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromSto
 			if (v.owner->deathInRounds > 0)
 			{
 				v.owner->deathInRounds = 0;
-				State::PClient client;
-				if (State::playerMap.query(v.owner,client))
+				Network::PClient client;
+				if (Network::playerMap.query(v.owner,client))
 					client->SendProgressUpdate(false,whyNot);
 			}
 		}
@@ -103,8 +102,8 @@ void	SignalNewStructure(const Objects::PStructure&s, float atTime)
 
 	Protocol::StructureConstruction	w;
 	Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
-	State::Describe(w,*s,true,timestamp);
-	State::SendToOwner(Channels::createStructure,v,w);
+	Game::Network::Describe(w,*s,true,timestamp);
+	Network::SendToOwner(Channels::createStructure,v,w);
 
 
 	//State::Describe(w2.Ref(),s,true,&parent);
@@ -126,7 +125,7 @@ void	SignalNewStructure(const Objects::PStructure&s, float atTime)
 
 void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::OwnerParameter&target, float t)
 {
-	for (const auto&p : State::activePlayers)
+	for (const auto&p : Network::activePlayers)
 	{
 		if (p->CanSee(e,t) || p->faction == target)
 		{
@@ -149,8 +148,8 @@ void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, cons
 		LogEvent(EventType::InternalFault,nullptr, "Trying to show null");
 		return;
 	}
-	State::PClient client;
-	if (!State::playerMap.query(target,client))
+	Network::PClient client;
+	if (!Network::playerMap.query(target,client))
 		return;
 	//if (!client->ShowNew(e))
 		//return;	//already knows this
@@ -161,7 +160,7 @@ void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, cons
 		Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
 	//	TCP::Serial<Protocol::VehicleConstruction>	w;
 		TCP::Serial<Protocol::NewMobileEntity>	w;
-		State::Describe(w.Ref(),*v,false,timestamp,0xFFFFFFFF);
+		Game::Network::Describe(w.Ref(),*v,false,timestamp,0xFFFFFFFF);
 		w.Seal();
 		Channels::newMobileEntity.SendTo(client->peer.lock(),w);
 	}
@@ -170,7 +169,7 @@ void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, cons
 		Objects::PStructure s = To<Objects::Structure>::DynamicCast(e);
 		ASSERT1__(s,e->GetName());
 		TCP::Serial<Protocol::StructureConstruction>	w;
-		State::Describe(w.Ref(),*s,false,timestamp);
+		Game::Network::Describe(w.Ref(),*s,false,timestamp);
 		w.Seal();
 		Channels::createStructure.SendTo(client->peer.lock(),w);
 	}
@@ -215,12 +214,12 @@ void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float 
 			FATAL__("Unrecognized removal type "+String(t.ToString()));
 	}
 
-	foreach (State::activePlayers,cl)
+	foreach (Network::activePlayers,cl)
 	{
 		TCP::PPeer peer = (*cl)->peer.lock();
-		if (peer && Receiver::CanSee(*cl,e,atTime))
+		if (peer && Network::CanSee(*cl,e,atTime))
 		{
-			bool access = Receiver::CanSeePrivateDetails(*cl,e);
+			bool access = Network::CanSeeAsOwner(*cl,e);
 			if (
 				(!access && !sendToOthers)
 				||
@@ -246,8 +245,8 @@ void	SignalDisappearanceToHostileFaction(const Objects::OwnerParameter&target, c
 		LogEvent(EventType::InternalFault,nullptr, "Trying to hide null");
 		return;
 	}
-	State::PClient client;
-	if (!State::playerMap.query(target,client))
+	Network::PClient client;
+	if (!Network::playerMap.query(target,client))
 		return;
 	Protocol::DestroyEntity de;
 	de.id = e->id;
@@ -281,14 +280,14 @@ void	SignalMotion(const Objects::PMobileEntity&v, const Grid::LCellIdI&from,cons
 
 	if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->turret->detectsResources)
 	{
-		State::UpdateResourceCoverage(v->owner,v->location,v->GetScanningRange(),motion.timestamp);
+		Game::Network::UpdateResourceCoverage(v->owner,v->location,v->GetScanningRange(),motion.timestamp);
 	}
 
 
-	foreach (State::activePlayers,cl)
+	foreach (Network::activePlayers,cl)
 	{
 		TCP::PPeer peer = (*cl)->peer.lock();
-		if (peer && Receiver::CanSee(*cl,v,t0))
+		if (peer && Network::CanSee(*cl,v,t0))
 		{
 			LogEvent(EventType::MinorEntityProcess,(*cl)->ToString()+" reported seeing motion of "+v->GetName()+" at time "+String(t0)+"+"+String(timeNeeded) );
 
@@ -329,10 +328,10 @@ void	SignalTurretRotation(const Objects::PWorldEntity&e, const TVec3<>&toWorld, 
 		}
 	}
 
-	foreach (State::activePlayers,cl)
+	foreach (Network::activePlayers,cl)
 	{
 		TCP::PPeer peer = (*cl)->peer.lock();
-		if (peer && Receiver::CanSee(*cl,e,rotationTime))
+		if (peer && Network::CanSee(*cl,e,rotationTime))
 			Channels::entityTurretRotation.SendTo(peer,rot);
 	}
 }
@@ -343,25 +342,25 @@ void	SignalNexusControlChange(const Objects::PFaction&f)
 {
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		return;
-	if (RuntimeConfig::gameGoal == State::Config::Goal::ConquerNexus || RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
+	if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus || RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::EMPConquerNexus)
 	{
-		if (f->nexusControl >= State::Config::GetTargetNexusCount())
+		if (f->nexusControl >= Game::Config::GetTargetNexusCount())
 		{
-			State::ChangePhase(RuntimeConfig::Phase::EndOfGame);
-			State::winner = f;
+			Game::Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
+			Game::winner = f;
 
-			foreach (State::activePlayers,p)
+			foreach (Network::activePlayers,p)
 			{
 				(*p)->SendProgressUpdate(true,"<null>");
 			}
 		}
 		else
 		{
-			State::PClient client;
-			if (State::playerMap.Query(f,client))
+			Network::PClient client;
+			if (Network::playerMap.Query(f,client))
 			{
 				String why;
-				if (State::Config::basesRequired && f->deathInRounds > 0)
+				if (Game::Config::basesRequired && f->deathInRounds > 0)
 					f->CanLive(why);
 				client->SendProgressUpdate(false,why);
 			}
@@ -479,12 +478,12 @@ void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, f
 
 	preciseAttack.flightTime = flightTime;
 
-	for (auto cl : State::activePlayers)
+	for (auto cl : Network::activePlayers)
 	{
 		TCP::PPeer peer = (cl)->peer.lock();
 		if (!peer)
 			continue;
-		if (Receiver::CanSee(cl,e,preciseAttack.timestamp.atTime))
+		if (Network::CanSee(cl,e,preciseAttack.timestamp.atTime))
 			Channels::attackTrajectory.SendTo(peer,preciseAttack);
 	}
 }
@@ -501,7 +500,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 
 	//static GenericHashSet<Objects::OwnerParameter,Objects::OwnerHash>	map;
 	static Buffer0<Objects::OwnerParameter>	canSee;
-	static Buffer0<State::PClient>	clientsCanSee;
+	static Buffer0<Network::PClient>	clientsCanSee;
 
 	bool allSee = isDoomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose;
 
@@ -532,11 +531,11 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 
 	for (const Objects::OwnerParameter&p : canSee)
 	{
-		State::PClient client;
-		if (State::playerMap.Query(p,client))
+		Network::PClient client;
+		if (Network::playerMap.Query(p,client))
 			clientsCanSee << client;
 	}
-	clientsCanSee.Append(State::spectators);
+	clientsCanSee.Append(Network::spectators);
 
 	if (clientsCanSee.IsEmpty())
 		return;
@@ -579,7 +578,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 		roughAttack.sourcePosition.value += mod;
 	}
 
-	for (const State::PClient&client : clientsCanSee)
+	for (const Network::PClient&client : clientsCanSee)
 	{
 		TCP::PPeer peer = client->peer.lock();
 		if (peer)
@@ -624,7 +623,7 @@ namespace InformationProvider
 			while (!application_shutting_down)
 			{
 				Sleep(1000);
-				State::AssembleGameInfo(info.gameInfo);
+				Game::Network::AssembleGameInfo(info.gameInfo);
 
 				infoSender.SendTo(server,info);
 			}
@@ -788,7 +787,7 @@ static Objects::PNexusPort ClosestPort(const Objects::PWorldEntity&e, const Obje
 
 void ProcessAICoverage()
 {
-	if (State::Config::Nexus::enableAI
+	if (Game::Config::Nexus::enableAI
 		//#ifdef _DEBUG
 		//	|| State::Config::Nexus::haveBases
 		//#endif
@@ -800,7 +799,7 @@ void ProcessAICoverage()
 			friendlyNearNexus[12] = { 0 },
 			constructorNearNexus[12] = {0};
 
-		if (State::Config::startBases)
+		if (Game::Config::startBases)
 		{
 			
 
@@ -832,7 +831,7 @@ void ProcessAICoverage()
 
 		for (int i = 0; i < 12; i++)
 			if (BaseGrid::IsIsolatedCorner(i))
-				friendlyNearNexus[i] = State::Config::factionStartMineralValue /*- State::Config::nexusStartMineralValue*/;
+				friendlyNearNexus[i] = Game::factionStartMineralValue /*- State::Config::nexusStartMineralValue*/;
 		Objects::PNexusPort ports[12];
 		index_t portAt = 0;
 		foreach(Objects::structures, s)
@@ -862,16 +861,16 @@ void ProcessAICoverage()
 		}
 		static Buffer0<UINT32> neighborField;
 		for (int i = 0; i < 12; i++)
-			if (BaseGrid::IsIsolatedCorner(i) && (State::unlockedEMPZones & (1<<i)))
+			if (BaseGrid::IsIsolatedCorner(i) && (World::unlockedEMPZones & (1<<i)))
 			{
 				Objects::PNexusPort p = ports[i];
 				if (RuntimeConfig::roundNumber - p->lastSpawnRound < 5 || p->owner != Objects::Faction::nexus)
 					continue;	//not allowed to spawn anything for the moment
 
-				float threatLevel = sqr(hostileNearNexus[i] )*State::Config::Nexus::threatEstimationFactor
+				float threatLevel = sqr(hostileNearNexus[i] )*Game::Config::Nexus::threatEstimationFactor
 						*1e-3f;
 				LogEvent(EventType::Debug, "Threat level for " + ports[i]->GetName() + " considered " + String(threatLevel));
-				if (State::Config::Nexus::haveBases)
+				if (Game::Config::Nexus::haveBases)
 				{
 					Objects::RefreshCompoundCoverageIfNeeded(0);
 
@@ -917,7 +916,7 @@ void ProcessAICoverage()
 
 	//				if (producing < existing)
 					{
-						while (producing < existing && (friendlyNearNexus[i] < threatLevel || (constructorNearNexus[i] > 0.2f && friendlyNearNexus[i] < State::Config::factionStartMineralValue + 20.f)))
+						while (producing < existing && (friendlyNearNexus[i] < threatLevel || (constructorNearNexus[i] > 0.2f && friendlyNearNexus[i] < Game::factionStartMineralValue + 20.f)))
 						{
 							for (Objects::WWorkingStructure _ws : n.containedStructures)
 							{
@@ -929,13 +928,13 @@ void ProcessAICoverage()
 								Objects::PVehiclePlant vplant = To<Objects::VehiclePlant>::DynamicCast(ws);
 								if (plant && vplant && plant->queue.IsEmpty())
 								{
-									index_t choice = vplant->localRandom.getIndex(State::Config::Nexus::vehicleTurrets.Count() - 1);
+									index_t choice = vplant->localRandom.getIndex(Game::Config::Nexus::vehicleTurrets.Count() - 1);
 									//random.getIndex(State::Config::Nexus::vehicleTurrets.Count() - 1);
-									ASSERT_LESS__(choice,State::Config::Nexus::vehicleTurrets.Count());
+									ASSERT_LESS__(choice,Game::Config::Nexus::vehicleTurrets.Count());
 									//Objects::Component::Turret* turret = State::Config::Nexus::vehicleTurrets[choice];
 									//Objects::MobileEntityProducer::WorkItem item = vplant->EnqueueProductionOfVehicle(&Objects::Component::hoverbase,turret);
 									//Objects::PVehicle v = To<Objects::Vehicle>::Cast(item.producing);
-									ConstName	parameters[2] = {ConstName::VehicleBase_HoverBase, State::Config::Nexus::vehicleTurrets[choice]->constName};
+									ConstName	parameters[2] = {ConstName::VehicleBase_HoverBase, Game::Config::Nexus::vehicleTurrets[choice]->constName};
 									LogEvent(EventType::MinorEntityProcess,vplant.get(),"Enqueueing vehicle production job due to high threat level");
 									Journal::currentRound.RegisterProductionJobStart(true,vplant,plant,parameters,2);
 									
@@ -954,7 +953,7 @@ void ProcessAICoverage()
 
 				}
 				else
-				while (friendlyNearNexus[i] < threatLevel || (constructorNearNexus[i] > 0.2f && friendlyNearNexus[i] < State::Config::factionStartMineralValue + 20.f))
+				while (friendlyNearNexus[i] < threatLevel || (constructorNearNexus[i] > 0.2f && friendlyNearNexus[i] < Game::factionStartMineralValue + 20.f))
 				{
 					LogEvent(EventType::Debug, "Spawning nexus unit near " + p->GetName());
 					p->lastSpawnRound = RuntimeConfig::roundNumber;
@@ -978,7 +977,7 @@ void ProcessAICoverage()
 
 					if (location != Grid::LCellIdI::Invalid)
 					{
-						Objects::Component::Turret* turret = State::Config::Nexus::vehicleTurrets[random.getIndex(State::Config::Nexus::vehicleTurrets.Count() - 1)];
+						Objects::Component::Turret* turret = Game::Config::Nexus::vehicleTurrets[random.getIndex(Game::Config::Nexus::vehicleTurrets.Count() - 1)];
 						Objects::PVehicle v = Objects::SpawnVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, 0);
 						Journal::currentRound.LogEntityCreation(v);
 						EstimatePresence(*v,v->location, hostileNearNexus,constructorNearNexus, friendlyNearNexus);
@@ -1018,9 +1017,9 @@ void TerminateNow(bool isMain)
 
 
 		Logging::WriteEvent(EventType::SessionRelated,"Closing down",nullptr,nullptr);
-		State::server.Shutdown();
+		Network::server.Shutdown();
 
-		if (State::Config::Nexus::enableAI)
+		if (Game::Config::Nexus::enableAI)
 			AIProcess::End();
 
 
@@ -1067,7 +1066,7 @@ void LogConfig(const String&msg)
 
 bool ApplyCoverageChange(const Objects::PFaction&faction)
 {
-	return State::CheckCoverageSendTerrain(faction,TCP::PPeer());
+	return World::Network::CheckCoverageSendTerrain(faction,TCP::PPeer());
 }
 
 
@@ -1082,11 +1081,13 @@ namespace ParameterConfig
 
 	}		mode = Idle;
 
-
 	String	loadFile;
+	bool	startLocked = false;
+
 
 	void	Process(const char*arg)
 	{
+		LogEvent(EventType::ConfigRelated,arg);
 		switch (mode)
 		{
 			case Idle:
@@ -1094,6 +1095,8 @@ namespace ParameterConfig
 					inTestMode = true;
 				elif (!strcmp(arg,"port"))
 					mode = ExpectPort;
+				elif (!strcmp(arg,"locked"))
+					startLocked = true;
 				else
 					loadFile = arg;
 			return;
@@ -1104,8 +1107,8 @@ namespace ParameterConfig
 				}
 				else
 				{
-					State::Config::sessionPort = basePort + PortOffset::Session;
-					LogEvent(EventType::ConfigRelated,"Base port redefined as "+String(basePort)+", session port set to "+String(State::Config::sessionPort));
+					Network::Config::sessionPort = basePort + PortOffset::Session;
+					LogEvent(EventType::ConfigRelated,"Base port redefined as "+String(basePort)+", session port set to "+String(Network::Config::sessionPort));
 				}
 				mode = Idle;
 			return;
@@ -1159,7 +1162,7 @@ int main( int argc, const char* argv[])
 		NiceName::Load();
 
 		Evolver::Create();
-		State::evolver = Evolver::GetDefault();
+		Game::evolver = Evolver::GetDefault();
 
 		Journal::Create();
 
@@ -1193,37 +1196,13 @@ int main( int argc, const char* argv[])
 			Reflection::Load(false);
 
 
-		//Reflection::CreatePrototypeDeclaration();
-
-
-		Grid::currentPlanetConfig.RandomizeSeeds(random);
-		Grid::currentPlanetConfig.RandomizeSun(random);
-
-
-		Grid::BuildWorld(Grid::currentPlanetConfig,State::Config::worldDiscovery);
-
-
-		if (State::Config::Nexus::enableAI)
-			Objects::Faction::nexus->currentState = Grid::initialWorld;
-
-		//{
-		//	State::Config::Nexus::vehicleTurrets.SetSize(State::Config::nexusVehicleTurretNames.Count());
-		//	for (index_t i = 0; i < State::Config::nexusVehicleTurretNames.Count(); i++)
-		//	{
-		//		State::Config::Nexus::vehicleTurrets[i] = Objects::Component::GetTurretByName(State::Config::nexusVehicleTurretNames[i]);
-		//		if (!State::Config::Nexus::vehicleTurrets[i])
-		//		{
-		//			FATAL__("Nexus AI: '" + State::Config::nexusVehicleTurretNames[i] + "' is not a valid turret name");
-		//		}
-		//	}
-		//	//State::Config::nexusVehicleTurretNames.Clear();
-		//}
-
-
 
 		if (inTestMode)
 		{
 			std::cout << "Running tests..." << std::endl;
+
+			World::BuildConfiguredWorld(random);
+
 
 			{
 				Test::Run(Test::ServerClient());
@@ -1247,32 +1226,57 @@ int main( int argc, const char* argv[])
 
 
 
+		//Reflection::CreatePrototypeDeclaration();
+
+		if (!ParameterConfig::startLocked)
+		{
+			World::BuildConfiguredWorld(random);
+		}
 
 
-		if (RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
+		//{
+		//	State::Config::Nexus::vehicleTurrets.SetSize(State::Config::nexusVehicleTurretNames.Count());
+		//	for (index_t i = 0; i < State::Config::nexusVehicleTurretNames.Count(); i++)
+		//	{
+		//		State::Config::Nexus::vehicleTurrets[i] = Objects::Component::GetTurretByName(State::Config::nexusVehicleTurretNames[i]);
+		//		if (!State::Config::Nexus::vehicleTurrets[i])
+		//		{
+		//			FATAL__("Nexus AI: '" + State::Config::nexusVehicleTurretNames[i] + "' is not a valid turret name");
+		//		}
+		//	}
+		//	//State::Config::nexusVehicleTurretNames.Clear();
+		//}
+
+
+
+
+
+
+
+		if (RuntimeConfig::gameGoal == Game::Config::Goal::EMPConquerNexus)
 		{
 			LogEvent(EventType::SessionRelated, "Spawning Nexus Ports...");
 			for (int pole = 0; pole < 12; pole++)
-				State::SpawnNexusPortAtPole(pole);
-			if (State::Config::Nexus::haveBases)
+				Game::SpawnNexusPortAtPole(pole);
+			if (Game::Config::Nexus::haveBases)
 				for (int pole = 0; pole < 12; pole++)
 					if (BaseGrid::IsIsolatedCorner(pole))
 					{
-						State::SpawnNexusBaseAtPoleWithPort(pole);
+						Game::SpawnNexusBaseAtPoleWithPort(pole);
 					}
 		}
 
 
-		if (RuntimeConfig::gameGoal == State::Config::Goal::ConquerNexus)
+		if (RuntimeConfig::gameGoal == Game::Config::Goal::ConquerNexus)
 		{
 			LogEvent(EventType::SessionRelated, "Spawning Nexus Ports...");
 		
 			for (int pole = 0; pole < 12; pole++)
 				if (BaseGrid::IsIsolatedCorner(pole))
 				{
-					State::SpawnNexusPortAtPole(pole);
-					if (State::Config::Nexus::haveBases)
-						State::SpawnNexusBaseAtPoleWithPort(pole);
+					Game::SpawnNexusPortAtPole(pole);
+					if (Game::Config::Nexus::haveBases)
+						Game::SpawnNexusBaseAtPoleWithPort(pole);
 				}
 		}
 
@@ -1297,15 +1301,11 @@ int main( int argc, const char* argv[])
 
 
 
-		{
-			UUID id;
-			UuidCreate(&id);
-			ASSERT_EQUAL__(sizeof(serverID),sizeof(TUniqueID));
-			memcpy(serverID.bytes,&id,sizeof(UUID));
-		}
+		Network::serverID.Generate();
 		UDPBroadCast::Start(ParameterConfig::basePort);
 
-		State::GenerateWorldIdAndStartServer();
+		World::worldID.Generate();
+		Network::Start();
 
 		InformationProvider::Create(ParameterConfig::basePort);
 
@@ -1313,15 +1313,15 @@ int main( int argc, const char* argv[])
 		{
 			Logging::WriteEvent(EventType::SessionRelated,"Testing server.",nullptr,nullptr);
 
-			State::Save(PathString("test0."+State::savFileExtension));
-			State::Load(PathString("test0."+State::savFileExtension));
-			State::Save(PathString("test1."+State::savFileExtension));
+			FileIO::Save(PathString("test0."+FileIO::savFileExtension));
+			FileIO::Load(PathString("test0."+FileIO::savFileExtension));
+			FileIO::Save(PathString("test1."+FileIO::savFileExtension));
 
 			Riff::File a,b;
-			ASSERT__(a.Open(PathString("test0."+State::savFileExtension).c_str()));
-			ASSERT__(b.Open(PathString("test1."+State::savFileExtension).c_str()));
+			ASSERT__(a.Open(PathString("test0."+FileIO::savFileExtension).c_str()));
+			ASSERT__(b.Open(PathString("test1."+FileIO::savFileExtension).c_str()));
 			Buffer<Riff::TID>	stack;
-			State::Compare(a,b,stack);
+			FileIO::Compare(a,b,stack);
 
 		}
 
@@ -1331,7 +1331,7 @@ int main( int argc, const char* argv[])
 			PathString filename = PathString(ParameterConfig::loadFile);
 			if (FileSystem::IsFile(filename))
 			{
-				State::Load(filename);
+				FileIO::Load(filename);
 			}
 			else
 				Logging::WriteEvent(EventType::SessionRelated,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr);
@@ -1340,16 +1340,16 @@ int main( int argc, const char* argv[])
 		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));
 
-		Logging::WriteEvent(EventType::SessionRelated, "Preparation of world '" + State::worldID.ToString() + "' completed.", nullptr, nullptr);
-		Logging::WriteEvent(EventType::SessionRelated,"Server "+serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr);
-		State::RefreshWindowTitle();
+		Logging::WriteEvent(EventType::SessionRelated, "Preparation of world '" + World::worldID.ToString() + "' completed.", nullptr, nullptr);
+		Logging::WriteEvent(EventType::SessionRelated,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr);
+		FileIO::RefreshWindowTitle();
 
 	
 		LogConfig("AI is configured as follows:");
-		if (State::Config::Nexus::enableAI)
+		if (Game::Config::Nexus::enableAI)
 		{
 			LogConfig(" -Nexus-AI enabled");
-			LogConfig(" -ThreatEstimationFactor=" + String(State::Config::Nexus::threatEstimationFactor));
+			LogConfig(" -ThreatEstimationFactor=" + String(Game::Config::Nexus::threatEstimationFactor));
 			//LogConfig(" -NexusTurrets=" + implode(',', State::Config::Nexus::vehicleTurretNames));
 		}
 		else
@@ -1360,30 +1360,30 @@ int main( int argc, const char* argv[])
 			LogConfig(" -Uplink traffic per faction is limited to "+String(State::Config::uplinkBandwidth));
 		#endif
 
-		LogConfig(" -Factions: "+State::Config::FactionSupportFlagString());
+		LogConfig(" -Factions: "+Game::Config::FactionSupportFlagString());
 
-		if (State::Config::simulateLiquids)
+		if (World::Config::simulateLiquids)
 			LogConfig(" -Liquids: Expanding.");
 		else
 			LogConfig(" -Liquids: Static.");
 		switch (RuntimeConfig::gameGoal)
 		{
-			case State::Config::Goal::EMPConquerNexus:
+			case RuntimeConfig::GameGoal::EMPConquerNexus:
 				LogConfig(" -Goal: Connect and enable 2+ Nexus Ports. Watch out for EMP fields.");
 			break;
-			case State::Config::Goal::None:
+			case RuntimeConfig::GameGoal::None:
 				LogConfig(" -Goal: None.");
 			break;
-			case State::Config::Goal::ConquerNexus:
+			case RuntimeConfig::GameGoal::ConquerNexus:
 				static_assert(BaseGrid::IsolatedCornerCount==3,"Unexpected count");
 				LogConfig(" -Goal: Connect and enable 2 of 3 Nexus Ports.");
 			break;
 		}
-		if (State::Config::closedGame)
+		if (Game::Config::closedGame)
 			LogConfig(" -Closed: Joining will be restricted to first round and access tokens. Game can be won.");
 		else
 			LogConfig(" -Open: Players can join any time. Game is endless.");
-		if (State::Config::Nexus::haveBases)
+		if (Game::Config::Nexus::haveBases)
 			LogConfig(" -Nexus-Bases: Nexus bases will be randomly created during world creation");
 		else
 			LogConfig(" -No Nexus-Bases: Nexus bases will not be created");
@@ -1404,15 +1404,15 @@ int main( int argc, const char* argv[])
 			break;
 		}
 
-		if (State::Config::roundTimer > 0)
-			LogConfig(" -Round Timer: Rounds beyond the first may last at most "+String(State::Config::roundTimer)+" seconds.");
+		if (Game::Config::roundTimer > 0)
+			LogConfig(" -Round Timer: Rounds beyond the first may last at most "+String(Game::Config::roundTimer)+" seconds.");
 		else
 			LogConfig(" -No Round Timer: Rounds end when all players requested so.");
-		if (State::Config::basesRequired)
+		if (Game::Config::basesRequired)
 			LogConfig(" -Bases Required: Factions that do not meet the station requirements die after five rounds.");
 		else
 			LogConfig(" -No Survival Conditions: Factions live forever (although their vehicles/structures might not).");
-		if (State::Config::startBases)
+		if (Game::Config::startBases)
 			LogConfig(" -Bases: New factions are given minimal bases.");
 		else
 			LogConfig(" -Flexibility: New factions are given vehicles, but no structures.");
@@ -1420,31 +1420,31 @@ int main( int argc, const char* argv[])
 			LogConfig(" -Ammo: New vehicles using standard ammo are given full ammo.");
 		else
 			LogConfig(" -No Ammo: New vehicles have zero ammo.");
-		if (State::Config::exposeActionLeftToHostileFactions)
+		if (Game::Config::exposeActionLeftToHostileFactions)
 			LogConfig(" -Expose Vehicle Initiative: Vehicle initiative is exposed to hostile factions.");
 		else
 			LogConfig(" -Private Vehicle Action: Vehicle movement is not exposed to hostile factions.");
 
-		LogConfig(" -Auto-saves will be created every "+String(State::Config::saveEveryNRounds)+" round(s).");
-		if (State::Config::saveWhenAllQuit)
+		LogConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
+		if (FileIO::Config::saveWhenAllQuit)
 			LogConfig(" -Auto-saves will be created when all quit.");
 
 
 		//FATAL__("test");
-		if (State::Config::Nexus::enableAI)
+		if (Game::Config::Nexus::enableAI)
 		{
 			AIProcess::Begin(Objects::Faction::nexus->accessToken);
 		}
 
-		State::ResetFactionStartMineralValue();
+		Game::ResetFactionStartMineralValue();
 
 
 		while (!application_shutting_down)
 		{
 			if (RuntimeConfig::IsInAnyCommandPhase() || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 				Sleep(1);
-			State::server.Resolve();
-			if (State::Config::Nexus::enableAI)
+			Network::server.Resolve();
+			if (Game::Config::Nexus::enableAI)
 				AIProcess::Check();
 
 
@@ -1454,9 +1454,9 @@ int main( int argc, const char* argv[])
 
 			bool newRoundNow = false;
 
-			if (State::Config::roundTimer > 0 && !State::roundTimerPaused)
+			if (Game::Config::roundTimer > 0 && !Game::roundTimerPaused)
 			{
-				if (timer.GetSecondsSince(State::lastPhaseChange) - 0.5f > State::Config::roundTimer)//tolerance of a half second
+				if (timer.GetSecondsSince(Game::lastPhaseChange) - 0.5f > Game::Config::roundTimer)//tolerance of a half second
 				{
 					newRoundNow = true;
 					LogEvent(EventType::SessionRelated,"Round timeout reached. Forcing new round.");
@@ -1471,7 +1471,7 @@ int main( int argc, const char* argv[])
 			{
 				count_t numFactions=0, wantNewRound = 0;
 				bool hasNexus = false,nexusWantsNewRound = false;
-				foreach(State::activePlayers, p)
+				foreach(Network::activePlayers, p)
 				{
 					if ((*p)->isSpectator)	//doesn't count towards new round
 						continue;
@@ -1507,43 +1507,43 @@ int main( int argc, const char* argv[])
 				ProcessAICoverage();
 
 				Journal::currentRound.roundNumber = RuntimeConfig::roundNumber;
-				Journal::currentRound.evolver = State::evolver;
+				Journal::currentRound.evolver = Game::evolver;
 				Reflection::CheckAllSaveGameVariables();
 				Journal::currentRound.AppendEntityVerification();
 
 				//Journal::globalWriter.CommitAndClear(Journal::currentRound);
 				Journal::currentRound.Clear();
 
-				foreach (State::activePlayers,p)
+				foreach (Network::activePlayers,p)
 					(*p)->wantNewRound = false;
 
-				State::evolver->BeginRoundProcessing();
-				State::ProcessChanges(true);
+				Game::evolver->BeginRoundProcessing();
+				Game::ProcessChanges(true);
 			}
 
 			if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 			{
-				if (timer.GetSecondsSince(State::lastPhaseChange) >= State::effectiveAnimationLength+0.5f)
+				if (timer.GetSecondsSince(Game::lastPhaseChange) >= Game::effectiveAnimationLength+0.5f)
 				{
-					if (State::activePlayers.IsNotEmpty())
-						State::roundTimerPaused = false;
-					State::evolver->FinishRoundProcessing();
+					if (Network::activePlayers.IsNotEmpty())
+						Game::roundTimerPaused = false;
+					Game::evolver->FinishRoundProcessing();
 				}
 			}
 			else if (!RuntimeConfig::IsInAnyCommandPhase())
 			{
-				if (!State::evolver->ContinueRoundProcessing())
+				if (!Game::evolver->ContinueRoundProcessing())
 				{
-					float animationLength = State::evolver->animationLength;
-					State::effectiveAnimationLength = std::min(10.f,animationLength);
-					State::ChangePhase(RuntimeConfig::Phase::AnimationPhase,std::max(1.f,animationLength / 10.f));
+					float animationLength = Game::evolver->animationLength;
+					Game::effectiveAnimationLength = std::min(10.f,animationLength);
+					Game::Network::ChangePhase(RuntimeConfig::Phase::AnimationPhase,std::max(1.f,animationLength / 10.f));
 				}
-				State::ProcessChanges(true);
+				Game::ProcessChanges(true);
 			}
 
 
 
-			State::ProcessChanges(false);
+			Game::ProcessChanges(false);
 
 
 
@@ -1552,7 +1552,7 @@ int main( int argc, const char* argv[])
 			//#ifndef _DEBUG
 			{
 				static Buffer0<TCP::PPeer>	disconnect;
-				State::server.VisitAllPeers([](const TCP::PPeer&peer)
+				Network::server.VisitAllPeers([](const TCP::PPeer&peer)
 				{
 					if (timer.GetSecondsSince(peer->GetLastPackageTime()) > 30.f)
 					{
@@ -1564,12 +1564,12 @@ int main( int argc, const char* argv[])
 					(*d)->DisconnectPeer();
 				disconnect.Clear();
 
-				for (const auto&p : State::activePlayers)
+				for (const auto&p : Network::activePlayers)
 				{
 					if (p->peer.expired())
 					{
 						LogEvent(EventType::SessionRelated,nullptr,"Peer lost: "+p->ToString());
-						State::HandleConnectionLoss(p);
+						Network::HandleConnectionLoss(p);
 					}
 				}
 			}
