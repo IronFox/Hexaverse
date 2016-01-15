@@ -433,21 +433,7 @@ namespace Game
 
 	void	ProcessChanges(bool thoroughly)
 	{
-		BYTE changed = 0,counter=0;
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			if (Grid::high.family[k].normal.outdated)
-				changed ++;
-		}
-		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-		{
-			if (Grid::high.family[k].normal.outdated)
-				World::Network::SignalFamilyChange(k,++counter == changed,RuntimeConfig::IsInAnyCommandPhase());
-		}
-		if (changed)
-		{
-			World::terrainChanged = true;
-		}
+		World::Network::SendChangedFamilies();
 
 		Objects::ForeachMobileEntityIncludingStored([/*&anythingChanged*/](const Objects::PMobileEntity&_v)
 		{
