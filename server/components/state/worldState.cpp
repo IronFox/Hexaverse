@@ -112,6 +112,28 @@ namespace World
 		}
 
 
+		
+		void SendChangedFamilies()
+		{
+			BYTE changed = 0,counter=0;
+			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+			{
+				if (Grid::high.family[k].normal.outdated)
+					changed ++;
+			}
+			if (changed)
+			{
+				for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+				{
+					if (Grid::high.family[k].normal.outdated)
+						SignalFamilyChange(k,++counter == changed,RuntimeConfig::IsInAnyCommandPhase());
+				}
+				terrainChanged = true;
+			}
+		}
+
+
+
 	}
 
 
