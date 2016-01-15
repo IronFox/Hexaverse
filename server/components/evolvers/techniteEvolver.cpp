@@ -7,7 +7,10 @@
 
 #include "../networkChannels.h"
 
-void CheckSendTerrain();
+void CheckSendTerrain()
+{
+	World::Network::SendChangedFamilies();
+}
 
 
 namespace Evolver
