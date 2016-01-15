@@ -454,7 +454,7 @@ namespace Journal
 			UINT32			fileDataVersion;
 
 			/**/			CommitRound(const String&evolverName="", UINT32 roundNumber=0)
-							:roundNumber(roundNumber),evolverName(evolverName),fileDataVersion(State::SupportedFileVersion) {}
+							:roundNumber(roundNumber),evolverName(evolverName),fileDataVersion(FileIO::SupportedFileVersion) {}
 			virtual Event*	Instantiate() const override {return new CommitRound("",0);};
 			virtual void	Decode(const Entry&e) override;
 			virtual void	Execute() const override {};
@@ -848,7 +848,7 @@ namespace Journal
 		//StringTable<String>					variableUpdates;
 		
 		UINT32	roundNumber=0;
-		UINT32	fileDataVersion=State::SupportedFileVersion;
+		UINT32	fileDataVersion=FileIO::SupportedFileVersion;
 		Evolver::Abstract	*evolver = nullptr;
 		//const char*	kernelName=nullptr;
 
