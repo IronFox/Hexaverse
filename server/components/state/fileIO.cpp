@@ -182,6 +182,28 @@ namespace FileIO
 		{
 			GetBinary(parent,id,&resultOut,sizeof(T));
 		}
+	
+	template <typename T>
+		inline static void GetPODs(Riff::Chunk*parent, const Riff::TID&id, ArrayData<T>&resultOut)
+		{
+			Riff::Chunk*chk = parent->FindFirst(id);
+			ASSERT_NOT_NULL1__(chk, id.ToString());
+			ASSERT__(chk->IsMultipleOf(sizeof(T)));
+			count_t numElements = chk->size() / sizeof(T);
+			resultOut.SetSize(numElements);
+			chk->Get(resultOut.pointer());
+		}
+
+	template <typename T>
+		inline static void GetPODs(Riff::Chunk*parent, const Riff::TID&id, BasicBuffer<T>&resultOut)
+		{
+			Riff::Chunk*chk = parent->FindFirst(id);
+			ASSERT_NOT_NULL1__(chk, id.ToString());
+			ASSERT__(chk->IsMultipleOf(sizeof(T)));
+			count_t numElements = chk->size() / sizeof(T);
+			resultOut.SetSize(numElements,true);
+			chk->Get(resultOut.pointer());
+		}
 
 	inline static bool GetOptionalBinary(Riff::Chunk*parent, const Riff::TID&id, void*resultOut, size_t size)
 	{
