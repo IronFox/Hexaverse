@@ -170,7 +170,7 @@ namespace Logging
 		if (peer)
 		{
 			#ifndef CLIENT
-				State::PClient c = To<State::Client>::Cast(peer->attachment);
+				Network::PClient c = To<Network::Client>::Cast(peer->attachment);
 				if (c)
 				{
 					if (printToConsole)

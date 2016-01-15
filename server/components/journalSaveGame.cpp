@@ -22,8 +22,8 @@ namespace Journal
 
 	static TCP::PPeer	GetPeerOfFaction(const Objects::PFaction&f)
 	{
-		State::PClient client;
-		if (State::playerMap.Query(f,client))
+		Network::PClient client;
+		if (Network::playerMap.Query(f,client))
 			return client->peer.lock();
 		return TCP::PPeer();
 	}
@@ -160,7 +160,7 @@ namespace Journal
 			e->ReSeedRandom();
 		});
 
-		State::ProcessChanges(true);
+		Game::ProcessChanges(true);
 
 		if (process)
 		{
@@ -171,7 +171,7 @@ namespace Journal
 			Timer::Time t0 = timer.Now();
 			evolver->ProcessRound();
 			LogEvent(EventType::SessionRelated,"Round processed in "+String(timer.GetSecondsSince(t0))+" seconds");
-			State::ProcessChanges(true);
+			Game::ProcessChanges(true);
 		}
 
 		lockEvents = false;
@@ -231,9 +231,9 @@ namespace Journal
 		f->accessToken = accessToken;
 		f->id = factionID;
 		ASSERT__(f->visibility.cellStack.IsNotEmpty());
-		State::tokenMap.Set(f->accessToken,f);
+		Network::tokenMap.Set(f->accessToken,f);
 
-		State::UpdateEMPZones();
+		World::UpdateEMPZones();
 	}
 
 
@@ -416,7 +416,7 @@ namespace Journal
 		if (storedMinerals != 0)
 			e.intParameters.Set("StoredMinerals",storedMinerals);
 		if (taskListLength != 0)
-			e.intParameters.Set("TaskListLength",taskListLength);
+			e.intParameters.Set("TaskListLength",(int)taskListLength);
 		if (jobMineralsLeft != 0)
 			e.intParameters.Set("JobMineralsLeft",jobMineralsLeft);
 		if (!isEnabled)
@@ -747,7 +747,7 @@ namespace Journal
 			if (p->get()->GetDataKey() == this->jobID)
 			{
 				auto job = p->get()->Instantiate();
-				ASSERT2__(DeserializeFromMemory(*job,this->jobPayload.pointer(),jobPayload.size(),false), job->GetName(),jobPayload.size());
+				ASSERT2__(DeserializeFromMemory(*job,this->jobPayload.pointer(),(serial_size_t)jobPayload.size(),false), job->GetName(),jobPayload.size());
 				job->Restart(*m);
 				m->RegisterNewJob("",job,focus != Grid::LCellIdI::Invalid ? &focus : nullptr);
 				return;
@@ -1033,7 +1033,7 @@ namespace Journal
 	void	Helper::WriteToFile(Grid::WorldData&data, const PathString&filename)
 	{
 		Riff::Chunk	world;
-		State::WriteToListChunk(data,world);
+		FileIO::WriteToListChunk(data,world);
 		bool success = world.SaveToFile(filename.c_str());
 		if (!success)
 			throw Except::IO::DriveAccess::DataWriteFault(CLOCATION, "Unable to write world to "+String(filename));
@@ -1045,7 +1045,7 @@ namespace Journal
 		Riff::Chunk world;
 		if (!world.LoadFromFile(filename.c_str()))
 			throw Except::IO::DriveAccess::DataReadFault(CLOCATION, "Unable to read world from "+String(filename));
-		State::ReadFromListChunk(world,data);
+		FileIO::ReadFromListChunk(world,data);
 	}
 
 	void	Helper::WriteToFile(const Grid::Resource&resource, const PathString&filename)
@@ -1241,7 +1241,7 @@ namespace Journal
 
 	void	Writer::ContinueExisting(const PathString&root)
 	{
-		State::CloseSession();
+		bool closed = Network::CloseSession();
 
 		LogEvent(EventType::SessionRelated,"Restoring journal from "+String(root));
 
@@ -1257,17 +1257,17 @@ namespace Journal
 		PathString file = root+FOLDER_SLASH+"journal.txt";
 		Storage journal;
 		journal.Load(file);
-		bool ai = State::Config::Nexus::enableAI;
-		State::Config::Nexus::enableAI = false;
+		bool ai = Game::Config::Nexus::enableAI;
+		Game::Config::Nexus::enableAI = false;
 
-		if (RuntimeConfig::gameGoal == State::Config::Goal::EMPConquerNexus)
+		if (RuntimeConfig::gameGoal == Game::Config::Goal::EMPConquerNexus)
 		{
-			count_t numZones = State::Config::CountAccessibleZones();
+			count_t numZones = Game::Config::CountAccessibleZones();
 
 			int unlocked = 0;
 			for (index_t i = 0; i < numZones; i++)
 			{
-				if (State::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
+				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
 				{
 					unlocked++;
 				}
@@ -1275,21 +1275,22 @@ namespace Journal
 			}
 				
 
-			State::unlockedEMPZones = ((1<<unlocked) - 1);
-			State::empZonesLocked = ((1 << 12)-1)  & ~State::unlockedEMPZones;
+			World::unlockedEMPZones = ((1<<unlocked) - 1);
+			World::empZonesLocked = ((1 << 12)-1)  & ~World::unlockedEMPZones;
 		}
 
-		State::RestartSession();
+		if (closed)
+			Network::RestartSession();
 
 
 
 		journal.ApplyToGlobalState();
 
-		State::Config::Nexus::enableAI = ai;
+		Game::Config::Nexus::enableAI = ai;
 
 		Reflection::LoadOverrides();
 
-		if (State::Config::Nexus::enableAI)
+		if (Game::Config::Nexus::enableAI)
 			AIProcess::Begin(Objects::Faction::nexus->accessToken);
 
 
@@ -1365,13 +1366,14 @@ namespace Journal
 
 	void	Writer::Continue(const Storage&journal, const Grid::WorldData&world, const Grid::WorldData&initialWorld, const PathString&writeTo)
 	{
-		State::CloseSession();
+		bool closed = Network::CloseSession();
 		Grid::actualWorld = world;
 		Grid::initialWorld = initialWorld;
 
 		journal.ApplyToGlobalState();
 
-		State::RestartSession();
+		if (closed)
+			Network::RestartSession();
 
 		logStream.open(writeTo.c_str(),std::ios::binary | std::ios::out | std::ios::trunc);
 		ASSERT__(logStream.is_open());
@@ -1412,7 +1414,7 @@ namespace Journal
 		cmd->focus = focus;
 		serial_size_t size = job.GetSerialSize(false);
 		cmd->jobPayload.SetSize(size);
-		ASSERT__(SerializeToMemory(job,cmd->jobPayload.pointer(),cmd->jobPayload.GetContentSize(),false));
+		ASSERT__(SerializeToMemory(job,cmd->jobPayload.pointer(),(serial_size_t)cmd->jobPayload.GetContentSize(),false));
 	}
 
 

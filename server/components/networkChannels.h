@@ -45,21 +45,6 @@ namespace Receiver
 
 
 
-	bool CanControl(const State::Client&c, const Objects::WorldEntity&e);
-	bool CanControl(const State::PClient&c, const Objects::PWorldEntity&e);
-	bool CanControl(const State::PClient&c, const Objects::WorldEntity&e);
-
-	bool PeerCanControl(TCP::Peer&peer, const Objects::WorldEntity&e);
-	bool PeerCanControl(TCP::Peer&peer, const Objects::PWorldEntity&e);
-
-
-	bool CanSeePrivateDetails(const State::Client&c, const Objects::WorldEntity&e);
-	bool CanSeePrivateDetails(const State::PClient&c, const Objects::PWorldEntity&e);
-	bool CanSeePrivateDetails(const State::PClient&c, const Objects::WorldEntity&e);
-
-	bool CanSee(const State::Client&c, const Objects::PWorldEntity&e, float t);
-	bool CanSee(const State::PClient&c, const Objects::PWorldEntity&e, float t);
-
 }
 
 

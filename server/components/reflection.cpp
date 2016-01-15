@@ -204,11 +204,11 @@ namespace Reflection
 											;
 
 			/**/			SupportedFactions(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "Flagset",Persistence::RestoreFromSavegame,1,protection)	{}
-			virtual String	ToString()		const	override	{return State::Config::FactionSupportFlagString();}
+			virtual String	ToString()		const	override	{return Game::Config::FactionSupportFlagString();}
 			virtual	bool	Set(const String&value)	override
 			{
 				String old = ToString();
-				bool rs = State::Config::SetFactionSupportFlagString(value);
+				bool rs = Game::Config::SetFactionSupportFlagString(value);
 				if (old != ToString())
 				{
 					OnChanged();
@@ -242,7 +242,7 @@ namespace Reflection
 			{
 				static StringBuffer buffer;
 				buffer.Clear();
-				foreach (State::Config::Nexus::vehicleTurrets,t)
+				foreach (Game::Config::Nexus::vehicleTurrets,t)
 				{
 					if (buffer.IsNotEmpty())
 						buffer << ',';
@@ -263,9 +263,9 @@ namespace Reflection
 					if (!ct || ct->isSatelliteRing)
 						return false;
 				}
-				State::Config::Nexus::vehicleTurrets.SetSize(vehicleTurretNames.Count());
+				Game::Config::Nexus::vehicleTurrets.SetSize(vehicleTurretNames.Count());
 				for (index_t i = 0; i < vehicleTurretNames.Count(); i++)
-					State::Config::Nexus::vehicleTurrets[i] = Objects::Component::GetTurretByName(vehicleTurretNames[i]);
+					Game::Config::Nexus::vehicleTurrets[i] = Objects::Component::GetTurretByName(vehicleTurretNames[i]);
 				if (ToString() != old)
 				{
 					OnChanged();
@@ -593,8 +593,8 @@ namespace Reflection
 		#define ENUMVAR(_NAME_,_CONTEXT_,_PERSISTENCE_)	Variable::SetEnum(#_NAME_,_CONTEXT_::_NAME_,_PERSISTENCE_);
 
 		state.EnterNewFolder("World");
-			VAR(simulateLiquids,State::Config,false,true,Variable::Persistence::RestoreFromSavegame);
-			ENUMVAR(worldDiscovery,State::Config,Variable::Persistence::GameInvariant)
+			VAR(simulateLiquids,World::Config,false,true,Variable::Persistence::RestoreFromSavegame);
+			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::GameInvariant)
 
 			state.EnterNewFolder("Resources");
 				for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
@@ -643,13 +643,13 @@ namespace Reflection
 
 			state.SetVariable(CLI::PVariable(new Variable::SupportedFactions("supportedFactions")));
 
-			VAR(closedGame,State::Config,false,true,Variable::Persistence::RestoreFromSavegame)
-			VAR(roundTimer,State::Config,-1,INT_MAX,Variable::Persistence::ConfigOverridesSavegame)
-			VAR(startBases,State::Config,false,true,Variable::Persistence::RestoreFromSavegame)
-			VAR(basesRequired,State::Config,false,true,Variable::Persistence::RestoreFromSavegame)
-			VAR(exposeActionLeftToHostileFactions,State::Config,false,true,Variable::Persistence::ConfigOverridesSavegame)
+			VAR(closedGame,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame)
+			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::ConfigOverridesSavegame)
+			VAR(startBases,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame)
+			VAR(basesRequired,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame)
+			VAR(exposeActionLeftToHostileFactions,Game::Config,false,true,Variable::Persistence::ConfigOverridesSavegame)
 			VAR(newVehiclesHaveFullAmmo,Objects,false,true,Variable::Persistence::RestoreFromSavegame)
-			VAR(uplinkBandwidth,State::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame)
+			VAR(uplinkBandwidth,Game::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame)
 			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::ConfigOverridesSavegame)
 
 			state.EnterNewFolder("UnitLimits");
@@ -677,16 +677,16 @@ namespace Reflection
 			state.ExitFolder();
 
 			state.EnterNewFolder("Nexus");
-				VAR(haveBases,State::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
-				VAR(enableAI,State::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
-				VAR(threatEstimationFactor,State::Config::Nexus,0.001f,100.f,Variable::Persistence::ConfigOverridesSavegame)
+				VAR(haveBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
+				VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
+				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::ConfigOverridesSavegame)
 				state.SetVariable(CLI::PVariable(new Variable::NexusVehicleTurrets("vehicleTurrets")));
 			state.ExitFolder();
 		state.ExitFolder();
 
 		state.EnterNewFolder("Server");
-			VAR(saveEveryNRounds,State::Config,-1,100,Variable::Persistence::ConfigOnly);
-			VAR(saveWhenAllQuit,State::Config,false,true,Variable::Persistence::ConfigOnly);
+			VAR(saveEveryNRounds,FileIO::Config,-1,100,Variable::Persistence::ConfigOnly);
+			VAR(saveWhenAllQuit,FileIO::Config,false,true,Variable::Persistence::ConfigOnly);
 		state.ExitFolder();
 
 		SetupBase(state.GetRoot());
