@@ -170,24 +170,39 @@ namespace Network
 	}
 
 
-
-
-	bool		CloseSession()
+	bool		SuspendSession()
 	{
 		bool isOnline = server.IsOnline();
+		if (!isOnline)
+			return false;
+		LogEvent(EventType::SessionRelated,"Suspending session.");
 
-		LogEvent(EventType::SessionRelated,isOnline ? "Closing session." : "Flushing session data.");
-		//Sleep(500);
-		if (isOnline)
-			server.Shutdown();
+		server.Shutdown();
 
-		RuntimeConfig::doomsdayWeapons = RuntimeConfig::DoomsdayWeapons();	//load default value
-
-		//clients.Clear();
 		activePlayers.Clear();
 		spectators.Clear();
 		playerMap.Clear();
 
+		Game::Network::HandleSessionSuspension();
+
+
+		return true;
+
+	}
+
+	bool		CloseSession()
+	{
+		bool isOnline = server.IsOnline();
+		LogEvent(EventType::SessionRelated,isOnline ? "Closing session." : "Flushing session data.");
+
+		server.Shutdown();
+
+		activePlayers.Clear();
+		spectators.Clear();
+		playerMap.Clear();
+
+
+		RuntimeConfig::doomsdayWeapons = RuntimeConfig::DoomsdayWeapons();	//load default value
 		tokenMap.Clear();
 
 		World::Network::HandleSessionClosure();
@@ -199,6 +214,7 @@ namespace Network
 
 		Objects::FlushAllData();
 		Grid::FlushAllData();
+
 		return isOnline;
 
 	}

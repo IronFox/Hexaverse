@@ -18,7 +18,6 @@ namespace UDPBroadCast
 
 	Protocol::THostBroadcastPacket	packet;
 
-	bool			enabled = false;
 
 
 	void UpdateOutAdapters(BasicBuffer<sockaddr_in>&out)
@@ -141,7 +140,6 @@ namespace UDPBroadCast
 		{
 			closesocket(broadcastSocket);
 			broadcastSocket = INVALID_SOCKET;
-			enabled = false;
 			LogEvent(EventType::SessionRelated,"Warning: Unable to bind UDP broadcast socket. Chances are, a server is already running.");
 			return false;
 		}
@@ -153,14 +151,13 @@ namespace UDPBroadCast
 		UpdateOutAdapters(everyone);
 		lastBroadcast = lastAdapterQuery = timer.Now();
 
-		enabled = true;
 		return true;
 	}
 
 
 	void	Terminate()
 	{
-		if (enabled)
+		if (broadcastSocket != INVALID_SOCKET)
 		{
 			closesocket(broadcastSocket);
 			broadcastSocket = INVALID_SOCKET;
@@ -168,9 +165,17 @@ namespace UDPBroadCast
 	}
 
 
+	bool		IsStarted()
+	{
+		return broadcastSocket != INVALID_SOCKET;
+	}
+
+
 	void	Update()
 	{
 
+		if (broadcastSocket == INVALID_SOCKET)
+			return;
 		if (timer.GetSecondsSince( lastAdapterQuery) > 5)
 		{
 			UpdateOutAdapters(everyone);

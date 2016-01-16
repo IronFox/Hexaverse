@@ -598,7 +598,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 namespace InformationProvider
 {
 	TCP::Server		server;
-
+	bool			created = false;
 
 	void	OnPing(Protocol::Ping&ping, TCP::Peer&peer);
 
@@ -615,12 +615,14 @@ namespace InformationProvider
 	class Updater : public ThreadObject
 	{
 	public:
+		volatile bool	doEnd = false;
+
 		void	ThreadMain() override
 		{
 			Protocol::ServerInfo info;
 			info.hostInfo = UDPBroadCast::packet;
 
-			while (!application_shutting_down)
+			while (!application_shutting_down && !doEnd)
 			{
 				Sleep(1000);
 				Game::Network::AssembleGameInfo(info.gameInfo);
@@ -632,10 +634,13 @@ namespace InformationProvider
 	}		updater;
 
 
-	void		Create(UINT16 basePort)
+	void		Start(UINT16 basePort)
 	{
-		server.InstallChannel(pingChannel);
-
+		if (!created)
+		{
+			created = true;
+			server.InstallChannel(pingChannel);
+		}
 
 		UINT16 port = basePort + PortOffset::Info;
 
@@ -644,6 +649,7 @@ namespace InformationProvider
 		else
 		{
 			LogEvent(EventType::SessionRelated,"Info server started on port "+String(port));
+			updater.doEnd = false;
 			updater.start();
 		}
 
@@ -651,6 +657,11 @@ namespace InformationProvider
 
 	}
 
+	void		Stop()
+	{
+		updater.doEnd = true;
+		updater.awaitCompletion();
+	}
 
 	void		Destroy()
 	{
@@ -1119,6 +1130,60 @@ namespace ParameterConfig
 }
 
 
+void	StartUp()
+{
+	UDPBroadCast::Start(ParameterConfig::basePort);
+	Network::Start();
+	InformationProvider::Start(ParameterConfig::basePort);
+}
+
+void	ShutDown()
+{
+	UDPBroadCast::Terminate();
+	Network::server.StopService();
+	InformationProvider::Stop();
+}
+
+class ServiceVar : public Reflection::Variable::Base
+{
+	typedef Reflection::Variable::Base	Super;
+public:
+	typedef std::function<bool()>	FCheckIsOnline;
+	typedef std::function<void()>	FSet;
+
+	FCheckIsOnline			checkIsOnline;
+	FSet					setOnline,setOffline;
+
+	/**/					ServiceVar(const String&name):Super(name,"ServiceOnline",Reflection::Variable::Persistence::Temporary,1,CLI::EraseProtection)
+							{}
+	/**/					ServiceVar(const String&name, const FCheckIsOnline&c, const FSet&offline, const FSet&online)
+								:Super(name,"ServiceOnline",Reflection::Variable::Persistence::Temporary,1,CLI::EraseProtection),
+								checkIsOnline(c),setOffline(offline),setOnline(online)
+							{}
+
+	String					ToString() const override
+	{
+		return checkIsOnline();
+	}
+
+
+	bool					Set(const String&value) override
+	{
+		bool v;
+		if (!convert(value.c_str(),value.length(),v))
+			return false;
+		if (v == checkIsOnline())
+			return true;
+		if (v)
+			setOnline();
+		else
+			setOffline();
+		return true;
+	}
+
+};
+
+
 int main( int argc, const char* argv[])
 {
 	
@@ -1192,6 +1257,16 @@ int main( int argc, const char* argv[])
 
 
 		Reflection::Create();
+		Reflection::state.PushFocus();
+		Reflection::state.EnterNewFolder("/serviceOnline");
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start(ParameterConfig::basePort);})));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return InformationProvider::server.IsOnline();},InformationProvider::Stop,[](){InformationProvider::Start(ParameterConfig::basePort);})));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},Network::RestartSession)));
+		Reflection::state.InsertCommand(CLI::PCommand(new CLI::Command(CLI::Command::Name("closeSession"),(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion)),"/");	//why...?
+
+		Reflection::state.PopFocus();
+
+
 		if (!inTestMode)
 			Reflection::Load(false);
 
@@ -1302,12 +1377,14 @@ int main( int argc, const char* argv[])
 
 
 		Network::serverID.Generate();
-		UDPBroadCast::Start(ParameterConfig::basePort);
-
 		World::worldID.Generate();
-		Network::Start();
 
-		InformationProvider::Create(ParameterConfig::basePort);
+		if (!ParameterConfig::startLocked)
+		{
+			StartUp();
+		}
+
+
 
 		if (false)
 		{

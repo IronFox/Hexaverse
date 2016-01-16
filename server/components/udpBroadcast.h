@@ -11,6 +11,7 @@ namespace UDPBroadCast
 	bool		Start(UINT16 basePort);
 	void		Terminate();
 	void		Update();
+	bool		IsStarted();
 }
 
 
