@@ -22,6 +22,14 @@ namespace Network
 	}
 
 
+	enum class UserLevel : UINT32
+	{
+		PreHello,
+		PreFaction,
+		CommonFaction,
+		Spectator
+	};
+
 
 	class Client;
 	typedef std::shared_ptr<Client>	PClient;
@@ -100,6 +108,7 @@ namespace Network
 	*/
 	void		Start();
 
+	void		ChangeUserLevel(TCP::Peer&peer, UserLevel newLevel);
 
 
 

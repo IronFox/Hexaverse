@@ -57,29 +57,30 @@ namespace Channels
 	
 	//TCP::ObjectSender<Protocol::ServerState,Protocol::ChannelID::GetInfo>		infoSender;
 	//TCP::ObjectSender<Protocol::Result,Protocol::ChannelID::
+	static const UINT32 FactionLevel = (UINT32)Network::UserLevel::CommonFaction;
+	static const UINT32 PreFaction = (UINT32)Network::UserLevel::PreFaction;
 
-
-	extern TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>									hello;
-	extern TCP::Channel<Protocol::EntityDirectCommand, 1, Protocol::ChannelID::EntityDirectCommand>		entityDirectCommand;
-	extern TCP::Channel<Protocol::ChoiceIntersection, 1, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection;
-	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::DropLastTask>							dropLastTask;
-	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::DropAllTasks>							dropAllTasks;
-	extern TCP::Channel<Protocol::StandardJob, 1, Protocol::ChannelID::SignalNewJob>					signalNewJob;
-	extern TCP::Channel<Protocol::TerrainMod, 1, Protocol::ChannelID::SignalTerrainMod>					signalTerrainMod;
-	extern TCP::Channel<Protocol::ConstructionAbort, 1, Protocol::ChannelID::ConstructionAbort>			constructionAbort;
-	extern TCP::Channel<Protocol::ConstructionBegin, 1, Protocol::ChannelID::ConstructionBegin>			constructionBegin;
-	extern TCP::Channel<Protocol::EnableStructure, 1, Protocol::ChannelID::EnableStructure>				enableStructure;
-	extern TCP::Channel<Protocol::ClientFactionRequest, 1, Protocol::ChannelID::ClientFaction>			clientFactionRequest;
+	extern TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>											hello;
+	extern TCP::Channel<Protocol::EntityDirectCommand, FactionLevel, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
+	extern TCP::Channel<Protocol::ChoiceIntersection, FactionLevel, Protocol::ChannelID::ChoiceIntersection>	choiceIntersection;
+	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DropLastTask>						dropLastTask;
+	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DropAllTasks>						dropAllTasks;
+	extern TCP::Channel<Protocol::StandardJob, FactionLevel, Protocol::ChannelID::SignalNewJob>					signalNewJob;
+	extern TCP::Channel<Protocol::TerrainMod, FactionLevel, Protocol::ChannelID::SignalTerrainMod>				signalTerrainMod;
+	extern TCP::Channel<Protocol::ConstructionAbort, FactionLevel, Protocol::ChannelID::ConstructionAbort>		constructionAbort;
+	extern TCP::Channel<Protocol::ConstructionBegin, FactionLevel, Protocol::ChannelID::ConstructionBegin>		constructionBegin;
+	extern TCP::Channel<Protocol::EnableStructure, FactionLevel, Protocol::ChannelID::EnableStructure>			enableStructure;
+	extern TCP::Channel<Protocol::ClientFactionRequest, PreFaction, Protocol::ChannelID::ClientFaction>			clientFactionRequest;
 	
-	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::RestoreCoreLink>						restoreCoreLink;
-	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::RemoveEntity>							removeEntity;
-	extern TCP::Channel<Protocol::Automate, 1, Protocol::ChannelID::Automate>							automate;
-	extern TCP::Channel<Protocol::Marker, 1, Protocol::ChannelID::CreateMarker>							createMarker;
-	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::DestroyMarker>							destroyMarker;
-	extern TCP::Channel<Protocol::TouchedMarker, 1, Protocol::ChannelID::TouchMarker>					touchMarker;
-	extern TCP::Channel<Protocol::ClientName,1,Protocol::ChannelID::ChangeMyName>						changeMyName;
-	extern TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::IdentifyUser>							identifyUserRecv;
-	extern TCP::Channel<Package::NetString<256>, 1, Protocol::ChannelID::ChatMessage>					chatMessage;
+	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RestoreCoreLink>						restoreCoreLink;
+	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RemoveEntity>						removeEntity;
+	extern TCP::Channel<Protocol::Automate, FactionLevel, Protocol::ChannelID::Automate>						automate;
+	extern TCP::Channel<Protocol::Marker, FactionLevel, Protocol::ChannelID::CreateMarker>						createMarker;
+	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DestroyMarker>						destroyMarker;
+	extern TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>				touchMarker;
+	extern TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>					changeMyName;
+	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>						identifyUserRecv;
+	extern TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>				chatMessage;
 
 	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>		clientFactionResponse;
 	extern TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>	markerCreationFailedLimitReached;

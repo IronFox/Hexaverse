@@ -19,26 +19,26 @@ namespace Channels
 
 
 	TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>										hello(Receiver::Hello);
-	TCP::Channel<Protocol::EntityDirectCommand, 1, Protocol::ChannelID::EntityDirectCommand>		entityDirectCommand(Receiver::EntityDirectCommand);
-	TCP::Channel<Protocol::ChoiceIntersection, 1, Protocol::ChannelID::ChoiceIntersection>			choiceIntersection(Receiver::ChoiceIntersection);
-	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::DropLastTask>								dropLastTask(Receiver::DropLastTask);
-	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::DropAllTasks>								dropAllTasks(Receiver::DropAllTasks);
-	TCP::Channel<Protocol::StandardJob, 1, Protocol::ChannelID::SignalNewJob>						signalNewJob(Receiver::SignalNewJob);
-	TCP::Channel<Protocol::TerrainMod, 1, Protocol::ChannelID::SignalTerrainMod>					signalTerrainMod(Receiver::SignalTerrainMod);
-	TCP::Channel<Protocol::ConstructionAbort, 1, Protocol::ChannelID::ConstructionAbort>			constructionAbort(Receiver::ConstructionAbort);
-	TCP::Channel<Protocol::ConstructionBegin, 1, Protocol::ChannelID::ConstructionBegin>			constructionBegin(Receiver::ConstructionBegin);
-	TCP::Channel<Protocol::EnableStructure, 1, Protocol::ChannelID::EnableStructure>				enableStructure(Receiver::EnableStructure);
-	TCP::Channel<Protocol::ClientFactionRequest, 1, Protocol::ChannelID::ClientFaction>				clientFactionRequest(Receiver::ClientFaction);
+	TCP::Channel<Protocol::EntityDirectCommand, FactionLevel, Protocol::ChannelID::EntityDirectCommand>		entityDirectCommand(Receiver::EntityDirectCommand);
+	TCP::Channel<Protocol::ChoiceIntersection, FactionLevel, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection(Receiver::ChoiceIntersection);
+	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DropLastTask>							dropLastTask(Receiver::DropLastTask);
+	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DropAllTasks>							dropAllTasks(Receiver::DropAllTasks);
+	TCP::Channel<Protocol::StandardJob, FactionLevel, Protocol::ChannelID::SignalNewJob>					signalNewJob(Receiver::SignalNewJob);
+	TCP::Channel<Protocol::TerrainMod, FactionLevel, Protocol::ChannelID::SignalTerrainMod>					signalTerrainMod(Receiver::SignalTerrainMod);
+	TCP::Channel<Protocol::ConstructionAbort, FactionLevel, Protocol::ChannelID::ConstructionAbort>			constructionAbort(Receiver::ConstructionAbort);
+	TCP::Channel<Protocol::ConstructionBegin, FactionLevel, Protocol::ChannelID::ConstructionBegin>			constructionBegin(Receiver::ConstructionBegin);
+	TCP::Channel<Protocol::EnableStructure, FactionLevel, Protocol::ChannelID::EnableStructure>				enableStructure(Receiver::EnableStructure);
+	TCP::Channel<Protocol::ClientFactionRequest, PreFaction, Protocol::ChannelID::ClientFaction>			clientFactionRequest(Receiver::ClientFaction);
 	
-	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::RestoreCoreLink>							restoreCoreLink(Receiver::RestoreCoreLink);
-	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::RemoveEntity>								removeEntity(Receiver::RemoveEntity);
-	TCP::Channel<Protocol::Automate, 1, Protocol::ChannelID::Automate>								automate(Receiver::Automate);
-	TCP::Channel<Protocol::Marker, 1, Protocol::ChannelID::CreateMarker>							createMarker(Receiver::CreateMarker);
-	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::DestroyMarker>								destroyMarker(Receiver::DestroyMarker);
-	TCP::Channel<Protocol::TouchedMarker, 1, Protocol::ChannelID::TouchMarker>						touchMarker(Receiver::TouchMarker);
-	TCP::Channel<Protocol::ClientName,1,Protocol::ChannelID::ChangeMyName>							changeMyName(Receiver::ChangeMyName);
-	TCP::Channel<NET(TUniqueID), 1, Protocol::ChannelID::IdentifyUser>								identifyUserRecv(Receiver::IdentifyUser);
-	TCP::Channel<Package::NetString<256>, 1, Protocol::ChannelID::ChatMessage>						chatMessage(Receiver::ChatMessage);
+	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RestoreCoreLink>						restoreCoreLink(Receiver::RestoreCoreLink);
+	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RemoveEntity>							removeEntity(Receiver::RemoveEntity);
+	TCP::Channel<Protocol::Automate, FactionLevel, Protocol::ChannelID::Automate>							automate(Receiver::Automate);
+	TCP::Channel<Protocol::Marker, FactionLevel, Protocol::ChannelID::CreateMarker>							createMarker(Receiver::CreateMarker);
+	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DestroyMarker>							destroyMarker(Receiver::DestroyMarker);
+	TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>					touchMarker(Receiver::TouchMarker);
+	TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
+	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>							identifyUserRecv(Receiver::IdentifyUser);
+	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
@@ -118,13 +118,6 @@ namespace Receiver
 	}
 
 
-	static void ChangeUserLevel(TCP::Peer&peer, UINT newLevel)
-	{
-		if (peer.userLevel == newLevel)
-			return;
-		peer.userLevel = newLevel;
-		LogEvent(EventType::Debug,peer,"User level changed to "+String(peer.userLevel));
-	}
 
 
 	void	SendSessionConfigTo(TCP::Peer&peer, const Objects::PFaction&exclude)
@@ -259,7 +252,7 @@ namespace Receiver
 					client->faction->online = false;
 					client->faction.reset();
 				}
-				ChangeUserLevel(peer,1);
+				Network::ChangeUserLevel(peer,Network::UserLevel::PreFaction);
 			}
 			if (!response.startFactionTypes)
 			{
@@ -324,7 +317,8 @@ namespace Receiver
 		if (response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
 		{
 			//authenticated and purged any previous faction. let's go
-			ChangeUserLevel(peer,3);
+			Network::ChangeUserLevel(peer,Network::UserLevel::Spectator);
+
 
 			bool firstSpectator = Network::spectators.IsEmpty();
 			if (!client->isSpectator)
@@ -479,7 +473,7 @@ namespace Receiver
 		{
 			faction->name = client->name;
 		}
-		ChangeUserLevel(peer,2);
+		Network::ChangeUserLevel(peer,Network::UserLevel::CommonFaction);
 
 		Network::activePlayers << client;
 		Network::playerMap.Set(client->faction,client);
@@ -1455,7 +1449,8 @@ namespace Receiver
 				LogEvent(EventType::SessionRelated,"Peer disconnected on its own before client state handling could commence. Ignoring event");
 				return;
 			}
-			ChangeUserLevel(peer,1);
+			Network::ChangeUserLevel(peer,Network::UserLevel::PreFaction);
+
 
 			client.reset(new Network::Client());
 			client->peer = ppeer;
