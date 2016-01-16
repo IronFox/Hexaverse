@@ -169,7 +169,7 @@ namespace Receiver
 		Protocol::Timestamp	timestamp;
 		timestamp.rightNow = true;
 
-		peer.SendSignal(Protocol::ChannelID::RequestEverything);
+		peer.SendSignal(Protocol::ChannelID::BeginEverything);
 
 		for (const auto&s : Objects::structures)
 		{
@@ -229,6 +229,9 @@ namespace Receiver
 		}
 
 		SendSessionConfigTo(peer, Objects::PFaction());
+
+		peer.SendSignal(Protocol::ChannelID::EndEverything);
+
 
 	}
 
