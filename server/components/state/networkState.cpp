@@ -124,6 +124,7 @@ namespace Network
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,1);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,1);
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,1);
+		server.OpenSignalChannel(Protocol::ChannelID::RequestEverything,3);
 		
 		server.onSignal = Receiver::OnSignal;
 		server.SetAsync(false);

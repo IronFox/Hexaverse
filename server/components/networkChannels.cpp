@@ -163,6 +163,75 @@ namespace Receiver
 
 	}
 
+
+	void	SendAllToSpectator(TCP::Peer&peer, bool firstSpectator)
+	{
+		Protocol::Timestamp	timestamp;
+		timestamp.rightNow = true;
+
+		peer.SendSignal(Protocol::ChannelID::RequestEverything);
+
+		for (const auto&s : Objects::structures)
+		{
+			Protocol::StructureConstruction st;
+			Game::Network::Describe(st,*s,true,timestamp);
+			Channels::createStructure.SendTo(peer,st);
+		}
+
+		for (const auto&v : Objects::vehicles)
+		{
+			Protocol::NewMobileEntity st;
+			Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
+			Channels::newMobileEntity.SendTo(peer,st);
+		}
+
+		for (const auto&v : Objects::satellites)
+		{
+			Protocol::NewMobileEntity st;
+			Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
+			Channels::newMobileEntity.SendTo(peer,st);
+		}
+
+		{
+			Protocol::ResourceUpdate	package;
+			package.timestamp = timestamp;
+			package.cells.SetSize(Grid::LowSetup::GridType::CellCount);
+			for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
+				package.cells[i].cellIndex = (UINT32)i;
+			foreach (Grid::Resource::all,res)
+			{
+				package.resourceName = res->GetCName();
+				for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
+				{
+					BYTE sourceCov = res->coverage[i];
+					package.cells[i].coverage = sourceCov;
+				}
+
+				Channels::resourceUpdate.SendTo(peer,package);
+			}
+		}
+		if (firstSpectator)
+			World::spectatorWorldState.FlushAllData();
+		Protocol::WorldDelta	delta;
+		delta.timestamp.rightNow = true;
+		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+		{
+			if (firstSpectator)
+			{
+				Protocol::GenerateWorldDelta(nullptr,&World::spectatorWorldState,
+										delta,k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::ProgressiveInit);
+			}
+			else
+				Protocol::GenerateWorldDelta(nullptr,&World::spectatorWorldState,
+										delta,k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::LocalCopy);
+
+			Channels::updateWorld.SendTo(peer,delta);
+		}
+
+		SendSessionConfigTo(peer, Objects::PFaction());
+
+	}
+
 	void	ClientFaction(Protocol::ClientFactionRequest&_p, TCP::Peer&peer)
 	{
 		if (!peer.attachment)
@@ -252,7 +321,7 @@ namespace Receiver
 		if (response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
 		{
 			//authenticated and purged any previous faction. let's go
-			ChangeUserLevel(peer,2);
+			ChangeUserLevel(peer,3);
 
 			bool firstSpectator = Network::spectators.IsEmpty();
 			if (!client->isSpectator)
@@ -267,67 +336,9 @@ namespace Receiver
 
 			//send world state:
 
-			Protocol::Timestamp	timestamp;
-			timestamp.rightNow = true;
+			SendAllToSpectator(peer, firstSpectator);
 
-			for (const auto&s : Objects::structures)
-			{
-				Protocol::StructureConstruction st;
-				Game::Network::Describe(st,*s,true,timestamp);
-				Channels::createStructure.SendTo(peer,st);
-			}
 
-			for (const auto&v : Objects::vehicles)
-			{
-				Protocol::NewMobileEntity st;
-				Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
-				Channels::newMobileEntity.SendTo(peer,st);
-			}
-
-			for (const auto&v : Objects::satellites)
-			{
-				Protocol::NewMobileEntity st;
-				Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
-				Channels::newMobileEntity.SendTo(peer,st);
-			}
-
-			{
-				Protocol::ResourceUpdate	package;
-				package.timestamp = timestamp;
-				package.cells.SetSize(Grid::LowSetup::GridType::CellCount);
-				for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
-					package.cells[i].cellIndex = (UINT32)i;
-				foreach (Grid::Resource::all,res)
-				{
-					package.resourceName = res->GetCName();
-					for (index_t i = 0; i < Grid::LowSetup::GridType::CellCount; i++)
-					{
-						BYTE sourceCov = res->coverage[i];
-						package.cells[i].coverage = sourceCov;
-					}
-
-					Channels::resourceUpdate.SendTo(peer,package);
-				}
-			}
-			if (firstSpectator)
-				World::spectatorWorldState.FlushAllData();
-			Protocol::WorldDelta	delta;
-			delta.timestamp.rightNow = true;
-			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-			{
-				if (firstSpectator)
-				{
-					Protocol::GenerateWorldDelta(nullptr,&World::spectatorWorldState,
-											delta,k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::ProgressiveInit);
-				}
-				else
-					Protocol::GenerateWorldDelta(nullptr,&World::spectatorWorldState,
-											delta,k,true,k+1 == BaseGrid::NumFamilies,Protocol::WorldDeltaType::LocalCopy);
-
-				Channels::updateWorld.SendTo(peer,delta);
-			}
-
-			SendSessionConfigTo(peer, Objects::PFaction());
 
 			return;
 		}
@@ -1584,6 +1595,15 @@ namespace Receiver
 				#ifdef _DEBUG
 					LogEvent(EventType::Debug,"pong");
 				#endif
+			break;
+			case Protocol::ChannelID::RequestEverything:
+			{
+				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
+				if (client && client->isSpectator)
+					SendAllToSpectator(peer,false);
+				else
+					LogEvent(EventType::InternalFault,peer,"Should not have received RequestEverything from non-spectator");
+			}
 			break;
 		}
 	}

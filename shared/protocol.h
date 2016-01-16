@@ -1815,6 +1815,8 @@ namespace Protocol
 			ClientFaction,		//c2s: ClientFactionRequest -> s2c: ClientFactionResponse
 			SetFactionID,		//s2c: NET(TUniqueID)
 
+			RequestEverything,	//c2s: <signal> -> [everything] //(only if spectator) 
+
 			WorldDelta,			//s2c : WorldDelta
 
 			Explosion,			//s2c : Explosion
