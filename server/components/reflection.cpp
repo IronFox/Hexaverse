@@ -566,7 +566,9 @@ namespace Reflection
 	{
 		for (const auto&var : context->variables)
 		{
-			To<Variable::Base>::Cast(var)->SetupBase();
+			Variable::PBase base = To<Variable::Base>::DynamicCast(var);
+			if (base)
+				base->SetupBase();
 		}
 		for (const auto&ctx : context->folders)
 		{
@@ -717,8 +719,8 @@ namespace Reflection
 		bool allGood = true;
 		for (const auto&var : folder->variables)
 		{
-			Variable::PBase b = To<Variable::Base>::Cast(var);
-			if (b->persistence == Reflection::Variable::Persistence::Temporary)
+			Variable::PBase b = To<Variable::Base>::DynamicCast(var);
+			if (!b || b->persistence == Reflection::Variable::Persistence::Temporary)
 				continue;
 			if (filterFunction)
 			{
@@ -758,7 +760,8 @@ namespace Reflection
 					planetType->Set("LushGreen");
 
 				std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(dir->attachment);
-				ASSERT__(ref);
+				if (!ref)	//externally created
+					continue;
 				//PathString str = RuntimeConfig::ConfigFile( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"));
 				Feed(dir,PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"),testMode,filterFunction);
 			}
@@ -849,8 +852,8 @@ namespace Reflection
 	{
 		for (const auto&var : folder->variables)
 		{
-			Variable::PBase b = To<Variable::Base>::Cast(var);
-			if (b->persistence == Variable::Persistence::Temporary)
+			Variable::PBase b = To<Variable::Base>::DynamicCast(var);
+			if (!b || b->persistence == Variable::Persistence::Temporary)
 				continue;
 			WriteHelp(outFile,var,indent,var->name+": ");
 			WriteIndent(outFile,indent);
