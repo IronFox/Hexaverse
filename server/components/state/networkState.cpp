@@ -50,6 +50,15 @@ namespace Network
 	}
 
 
+
+	void ChangeUserLevel(TCP::Peer&peer, UserLevel newLevel)
+	{
+		if (peer.userLevel == (UINT32)newLevel)
+			return;
+		peer.userLevel = (UINT32)newLevel;
+		LogEvent(EventType::Debug,peer,"User level changed to "+String(peer.userLevel));
+	}
+
 	String						Client::ToString() const
 	{
 		return (faction ? faction->id.ToString() : (isSpectator ? "[spectator]" : "[no faction]"))+":'"+name+"'";
@@ -127,9 +136,10 @@ namespace Network
 		server.InstallChannel(Channels::identifyUserRecv);
 		server.InstallChannel(Channels::chatMessage);
 
-		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,1);
-		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,1);
-		server.OpenSignalChannel(Protocol::ChannelID::Ping,1);
+		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
+		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
+		server.OpenSignalChannel(Protocol::ChannelID::Ping,0);
+		server.OpenSignalChannel(Protocol::ChannelID::RequestEverything,(UINT32)UserLevel::Spectator);
 		
 		server.onSignal = Receiver::OnSignal;
 		server.SetAsync(false);
