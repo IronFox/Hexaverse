@@ -5,7 +5,7 @@
 #include <global_string.h>
 
 
-CONSTRUCT_ENUMERATION20(EventType, 
+CONSTRUCT_ENUMERATION21(EventType, 
 						Fatal,
 						UnexpectedBehavior,
 						Debug,
@@ -25,6 +25,7 @@ CONSTRUCT_ENUMERATION20(EventType,
 						CommandRejected,	//notifies that a specific command was rejected
 						ChatMessage,
 						RemoteControl,
+						RemoteControlResponse,
 						RemoteControlError
 						)
 

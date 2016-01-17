@@ -34,6 +34,12 @@ namespace Network
 
 	static void StartServer()
 	{
+		if (server.IsOnline())
+		{
+			if (server.GetPort() == Config::sessionPort)
+				return;
+			server.EndService();
+		}
 		if (server.StartService(Config::sessionPort))
 		{
 			LogEvent(EventType::SessionRelated,"Session server started on port "+String(Config::sessionPort));

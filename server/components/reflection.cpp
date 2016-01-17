@@ -717,9 +717,11 @@ namespace Reflection
 		bool allGood = true;
 		for (const auto&var : folder->variables)
 		{
+			Variable::PBase b = To<Variable::Base>::Cast(var);
+			if (b->persistence == Reflection::Variable::Persistence::Temporary)
+				continue;
 			if (filterFunction)
 			{
-				Variable::PBase b = To<Variable::Base>::Cast(var);
 				if (!filterFunction(b))
 					continue;
 

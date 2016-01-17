@@ -31,17 +31,7 @@ namespace RemoteControl
 			LogEvent(EventType::InternalFault,nullptr,"Consensus: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
 		}
 
-		void OnEvent(TCP::event_t event, TCP::Peer&origin)
-		{
-			LogEvent(EventType::Debug,nullptr,"Consensus: "+origin.ToString()+": "+TCP::event2str(event));
-			switch (event)
-			{
-				case TCP::Event::ConnectionEstablished:
-					//ASSERT__(Channels::hello.SendTo(client,Protocol::ProtocolVersion));
-				break;
 
-			}
-		}
 
 		void OnIgnorePackage(UINT32 channel,UINT32 size, TCP::Peer&origin)
 		{
@@ -72,7 +62,7 @@ namespace RemoteControl
 		{
 
 			
-			void	OnCommand( Package::NetString<1024>&cmd, TCP::Peer&peer);
+			void	OnCommand(Package::NetString<1024>&cmd, TCP::Peer&peer);
 		}
 
 		namespace Channels
@@ -85,6 +75,7 @@ namespace RemoteControl
 					Error,		//s2c : string
 					Context,	//s2c : string
 					Response,	//s2c : string
+					ExecutionDone,	//s2c : <signal>
 				};
 			}
 
@@ -96,6 +87,18 @@ namespace RemoteControl
 		}
 
 
+		void OnEvent(TCP::event_t event, TCP::Peer&origin)
+		{
+			LogEvent(EventType::Debug,nullptr,"Consensus: "+origin.ToString()+": "+TCP::event2str(event));
+			switch (event)
+			{
+				case TCP::Event::ConnectionEstablished:
+					Channels::context.SendTo(origin,Reflection::state.GetFocus()->GetPath());
+					//ASSERT__(Channels::hello.SendTo(client,Protocol::ProtocolVersion));
+				break;
+
+			}
+		}
 		namespace ExecutionContext
 		{
 			TCP::Peer*currentPeer;
@@ -103,13 +106,13 @@ namespace RemoteControl
 
 			void PrintLn(const String&line)
 			{
-				LogEvent(EventType::RemoteControl,"Response: '"+line+"'");
+				LogEvent(EventType::RemoteControlResponse,line);
 				Channels::response.SendTo(*currentPeer,line);
 			}
 			void	OnFocusChange()
 			{
 				String context = Reflection::state.GetFocus()->GetPath();
-				LogEvent(EventType::RemoteControl,"Focus change to '"+context+"'");
+				LogEvent(EventType::RemoteControlResponse,"Focus change to '"+context+"'");
 				Channels::context.SendTo(*currentPeer,context);
 			}
 		}
@@ -127,7 +130,10 @@ namespace RemoteControl
 				LogEvent(EventType::RemoteControlError,Reflection::state.GetError());
 				Channels::error.SendTo(peer,Reflection::state.GetError());
 			}
+
+			peer.SendSignal(Channels::ID::ExecutionDone);
 		}
+
 
 
 		void	Create()

@@ -1132,7 +1132,7 @@ namespace ParameterConfig
 
 void	StartUp()
 {
-	UDPBroadCast::Start(ParameterConfig::basePort);
+	UDPBroadCast::Start();
 	Network::Start();
 	InformationProvider::Start(ParameterConfig::basePort);
 }
@@ -1234,6 +1234,7 @@ int main( int argc, const char* argv[])
 		for (int i = 1; i < argc; i++)
 			ParameterConfig::Process(argv[i]);
 
+		UDPBroadCast::Create(ParameterConfig::basePort);
 		RemoteControl::Start(ParameterConfig::basePort);
 
 
@@ -1258,11 +1259,11 @@ int main( int argc, const char* argv[])
 
 		Reflection::Create();
 		Reflection::state.PushFocus();
-		Reflection::state.EnterNewFolder("/serviceOnline");
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start(ParameterConfig::basePort);})));
+		Reflection::state.EnterNewFolder("/ServiceOnline");
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start();})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return InformationProvider::server.IsOnline();},InformationProvider::Stop,[](){InformationProvider::Start(ParameterConfig::basePort);})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},Network::RestartSession)));
-		Reflection::state.InsertCommand(CLI::PCommand(new CLI::Command(CLI::Command::Name("closeSession"),(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion)),"/");	//why...?
+		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
 
 		Reflection::state.PopFocus();
 
@@ -1521,6 +1522,7 @@ int main( int argc, const char* argv[])
 			if (RuntimeConfig::IsInAnyCommandPhase() || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 				Sleep(1);
 			Network::server.Resolve();
+			RemoteControl::Resolve();
 			if (Game::Config::Nexus::enableAI)
 				AIProcess::Check();
 

@@ -20,3 +20,4 @@ client/TechniteLogic/*.config
 client/TechniteLogic/*.manifest
 *.coverage
 *.odt#
+RemoteControlConsole/.projector/
