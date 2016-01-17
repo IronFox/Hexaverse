@@ -278,6 +278,7 @@ namespace ParameterConfig
 
 	}		mode = Idle;
 
+	const char*program = "";
 	StringBuffer	command;
 	bool	interactive = false;
 
@@ -295,6 +296,12 @@ namespace ParameterConfig
 					mode = ExpectPort;
 				elif (!strcmp(arg,"--interactive") || !strcmp(arg,"-i"))
 					Handler::interactive = interactive = true;
+				elif (!strcmp(arg,"--help") || !strcmp(arg,"-i"))
+				{
+					std::cout << "usage: "<<program<<" [-p basePort] [-i] [command(s)]"<<std::endl;
+					std::cout << " -i/--interactive\tOpen a shell to enter commands interactively"<<std::endl;
+					std::cout << " -p/--port [port]\tUse a non-default base port"<<std::endl;
+				}
 				else
 				{
 					command << arg;
@@ -326,6 +333,7 @@ int main(int argc, char* argv[])
 	
 	SetConsoleCtrlHandler(MyHandlerRoutine,TRUE);
 
+	ParameterConfig::program = argc > 0 ? argv[0] : "";
 	for (int i = 1; i < argc; i++)
 		ParameterConfig::Process(argv[i]);
 
@@ -341,6 +349,8 @@ int main(int argc, char* argv[])
 	client.onIgnorePackage = OnIgnorePackage;
 	client.onSignal = OnSignal;
 
+	if (!ParameterConfig::interactive && bufferedCommands.IsEmpty())
+		return 0;
 	client.ConnectAsync("localhost:"+String(ParameterConfig::basePort+PortOffset::Control));
 	std::cout << std::endl;
 
