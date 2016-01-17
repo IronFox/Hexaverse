@@ -1088,12 +1088,14 @@ namespace ParameterConfig
 	enum mode_t
 	{
 		Idle,
-		ExpectPort
+		ExpectPort,
+		ExpectWorldID
 
 	}		mode = Idle;
 
 	String	loadFile;
-	bool	startLocked = false;
+	bool	startOffline = false;
+	bool	customWorldID = false;
 
 
 	void	Process(const char*arg)
@@ -1101,13 +1103,21 @@ namespace ParameterConfig
 		LogEvent(EventType::ConfigRelated,arg);
 		switch (mode)
 		{
+			case ExpectWorldID:
+				Bin2Str::Convert(World::worldID.bytes,World::worldID.NumBytes,arg,strlen(arg));
+				LogEvent(EventType::ConfigRelated,"World ID set to "+World::worldID.ToFullString());
+				mode = Idle;
+				customWorldID = true;
+			return;
 			case Idle:
 				if (!strcmp(arg,"test"))
 					inTestMode = true;
 				elif (!strcmp(arg,"port"))
 					mode = ExpectPort;
-				elif (!strcmp(arg,"locked"))
-					startLocked = true;
+				elif (!strcmp(arg,"offline"))
+					startOffline = true;
+				elif (!strcmp(arg,"world"))
+					mode = ExpectWorldID;
 				else
 					loadFile = arg;
 			return;
@@ -1231,6 +1241,7 @@ int main( int argc, const char* argv[])
 
 		Journal::Create();
 
+		World::worldID.Generate();
 		for (int i = 1; i < argc; i++)
 			ParameterConfig::Process(argv[i]);
 
@@ -1266,6 +1277,15 @@ int main( int argc, const char* argv[])
 		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
 
 		Reflection::state.PopFocus();
+
+		Reflection::state.DefineCommand("/World/generate",(CLI::Command::function0_t)[]()
+		{
+			bool started = Network::CloseSession();
+			World::worldID.Generate();
+			World::BuildConfiguredWorld(random);
+			if (started)
+				Network::RestartSession();
+		},CLI::NoCompletion);
 
 
 		if (!inTestMode)
@@ -1304,7 +1324,7 @@ int main( int argc, const char* argv[])
 
 		//Reflection::CreatePrototypeDeclaration();
 
-		if (!ParameterConfig::startLocked)
+		if (!ParameterConfig::customWorldID)
 		{
 			World::BuildConfiguredWorld(random);
 		}
@@ -1378,9 +1398,8 @@ int main( int argc, const char* argv[])
 
 
 		Network::serverID.Generate();
-		World::worldID.Generate();
 
-		if (!ParameterConfig::startLocked)
+		if (!ParameterConfig::startOffline)
 		{
 			StartUp();
 		}
