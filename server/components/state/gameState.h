@@ -64,6 +64,8 @@ namespace Game
 			String rs;
 			CheckFactionSupportFlag(rs,Protocol::GameFlag::SupportSpectatorFactions,"Spectator");
 			CheckFactionSupportFlag(rs,Protocol::GameFlag::SupportRegularFactions,"Regular");
+			CheckFactionSupportFlag(rs,Protocol::GameFlag::SupportTechniteFactions,"Technite");
+			CheckFactionSupportFlag(rs,Protocol::GameFlag::SupportHybridFactions,"Hybrid");
 
 			return rs;
 		}
@@ -82,6 +84,12 @@ namespace Game
 				else
 				if (*seg == "Regular")
 					factionSupportFlags |= Protocol::GameFlag::SupportRegularFactions;
+				else
+				if (*seg == "Technite")
+					factionSupportFlags |= Protocol::GameFlag::SupportTechniteFactions;
+				else
+				if (*seg == "Hybrid")
+					factionSupportFlags |= Protocol::GameFlag::SupportHybridFactions;
 				else
 				{
 					LogEvent(EventType::ConfigRelated,nullptr,"Warning: Unsupported faction type for this build: '"+*seg+"'. Ignoring");
