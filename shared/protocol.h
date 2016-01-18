@@ -1815,6 +1815,10 @@ namespace Protocol
 			ClientFaction,		//c2s: ClientFactionRequest -> s2c: ClientFactionResponse
 			SetFactionID,		//s2c: NET(TUniqueID)
 
+			RequestEverything,	//c2s: <signal> -> [everything] //(only if spectator) 
+			BeginEverything,	//s2c: <signal> //indicates that now everything will be (re)sent
+			EndEverything,		//s2c: <signal> //indicates that the server is done sending everything, and normal delta updates will resume
+
 			WorldDelta,			//s2c : WorldDelta
 
 			Explosion,			//s2c : Explosion
