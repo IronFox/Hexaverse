@@ -737,7 +737,8 @@ namespace Reflection
 					if (support.IsNotEmpty())
 						support = "Supported values are "+var->GetSupportedValues()+". ";
 					LogEvent(EventType::ConfigRelated,"Unable to set "+folder->GetPath()+"/"+var->name+" to '"+attrib->value+"'. "+support+"Defaulting to "+var->GetDefault());
-					ASSERT2__(var->Set(var->GetDefault()),folder->GetPath()+"/"+var->name,var->GetDefault());
+					String varPath = folder->GetPath()+"/"+var->name;
+					ASSERT2__(var->Set(var->GetDefault()),varPath,var->GetDefault());
 					allGood = false;
 				}
 			}
@@ -747,7 +748,8 @@ namespace Reflection
 				if (support.IsNotEmpty())
 					support = "Supported values are "+var->GetSupportedValues()+". ";
 				LogEvent(EventType::ConfigRelated,"Unable to read "+folder->GetPath()+"/"+var->name+". "+support+"Defaulting to "+var->GetDefault());
-				ASSERT2__(var->Set(var->GetDefault()),folder->GetPath()+"/"+var->name,var->GetDefault());
+				String varPath = folder->GetPath()+"/"+var->name;
+				ASSERT2__(var->Set(var->GetDefault()),varPath,var->GetDefault());
 				allGood = false;
 			}
 
