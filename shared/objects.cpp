@@ -120,6 +120,7 @@ namespace Objects
 		structurePrototypes << MunitionFactory::globalPrototype;
 		structurePrototypes << VehiclePlant::globalPrototype;
 		structurePrototypes << Connector::globalPrototype;
+		structurePrototypes << Pylon::globalPrototype;
 		structurePrototypes << FuelContainer::globalPrototype;
 		structurePrototypes << MineralContainer::globalPrototype;
 		#ifdef CONNECTOR_LESS

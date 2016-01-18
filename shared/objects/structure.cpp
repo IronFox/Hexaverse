@@ -537,9 +537,11 @@ namespace Objects
 			localMesh.ClearCompletely();
 
 			{
-				for (const auto&c : this->connectedTo)
-				//foreach(this->connectedTo, c)
+				for (const auto&conn : this->connectedTo)
 				{
+					if (conn.wireless)
+						continue;
+					const auto&c = conn.structure;
 					if (c->location.stackID > location.stackID)
 						continue;	//only one direction
 
@@ -706,7 +708,7 @@ namespace Objects
 	}
 
 
-	bool	Structure::IsPhysicallyConnectedAnywhere() const
+	bool	Structure::IsWiredToAnything() const
 	{
 		foreach (connectedTo,c)
 			if (!c->wireless)
@@ -719,6 +721,14 @@ namespace Objects
 	{
 		foreach (connectedTo,c)
 			if (c->structure == other)
+				return true;
+		return false;
+	}
+
+	bool	Structure::IsWiredTo(const Objects::PStructure&other)	const
+	{
+		foreach (connectedTo,c)
+			if (c->structure == other && !c->wireless)
 				return true;
 		return false;
 	}
@@ -1116,11 +1126,12 @@ namespace Objects
 
 
 	Connector::Connector(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true, atTime)
-	{
-		#ifdef HAS_WINDOW
-			Super::localizableShape = &shape;
-		#endif
-	}
+	{}
+
+
+	Pylon::Pylon(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true, atTime)
+	{}
+
 
 
 
@@ -1230,13 +1241,7 @@ namespace Objects
 
 
 	VehicleStore::VehicleStore(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true,atTime)
-	{
-		#ifdef CLIENT
-			#ifdef HAS_WINDOW
-				Super::localizableShape = &shape;
-			#endif
-		#endif
-	}
+	{}
 
 
 	/*virtual override*/ bool						VehicleStore::CanStoreType(const MobileEntity&e) const 
@@ -1956,7 +1961,7 @@ namespace Objects
 		auto _this = To<Structure>::Cast(shared_from_this());
 		count_t limit = connectedTo.Count();
 		foreach(neighborhood, candidate)
-			if (!connectedTo.Contains(*candidate))
+			if (!IsWiredTo(*candidate))
 			{
 				const PStructure c = *candidate;
 				#ifdef HYBRID_GRID
@@ -2473,7 +2478,7 @@ namespace Objects
 	{
 		#ifndef CLIENT
 			Super::OnNewConnection(other,acrossHighCell,atTime);
-			if (!IsPhysicallyConnectedAnywhere() && !other.wireless && owner != other.structure->owner)
+			if (!IsWiredToAnything() && !other.wireless && owner != other.structure->owner)
 			{
 				resistence = ResistenceRounds;
 				SetEnabled(false,atTime,false);
@@ -2486,7 +2491,7 @@ namespace Objects
 	{
 		#ifndef CLIENT
 			Super::OnConnectionLost(c,acrossHighCell,atTime);
-			if (!IsPhysicallyConnectedAnywhere() && owner != Faction::nexus)
+			if (!IsWiredToAnything() && owner != Faction::nexus)
 			{
 				SetEnabled(false,atTime,false);
 				OwnerParameter old = owner;

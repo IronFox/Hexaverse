@@ -834,7 +834,11 @@ namespace Animation
 
 
 		if (w)
+		{
+			if (s->compoundID = 0xFFFFFFFF)
+				Objects::RefreshCompoundCoverage(0);
 			s->GetCompound().RefreshState(0);
+		}
 
 		#ifdef HAS_WINDOW
 			OnSelectionChange(true);	//could be affecting selected network

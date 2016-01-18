@@ -154,7 +154,8 @@ namespace Objects
 		#endif
 
 		bool						IsConnectedTo(const Objects::PStructure&other)	const;
-		bool						IsPhysicallyConnectedAnywhere() const;
+		bool						IsWiredTo(const Objects::PStructure&other)	const;
+		bool						IsWiredToAnything() const;
 
 
 		/**
@@ -325,8 +326,12 @@ namespace Objects
 		{
 			typedef Structure Super;
 		protected:
-		/**/						OtherStructure<Derivative>(const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime):Super(owner,location,buildSystem,atTime)
-									{}
+			/**/					OtherStructure<Derivative>(const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime):Super(owner,location,buildSystem,atTime)
+			{
+				#ifdef HAS_WINDOW
+					Super::localizableShape = &shape;
+				#endif		
+			}
 			/**/					OtherStructure<Derivative>()
 			{ 
 				#ifdef HAS_WINDOW
@@ -659,7 +664,7 @@ namespace Objects
 		//WorldEntity overrides:
 		virtual bool				IsBroad() const override {return true;}
 		virtual void				OnConstructionFinished(float atTime) override;
-
+		virtual int					GetHeight() const override {return 2;}
 
 		#ifdef HAS_WINDOW
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
