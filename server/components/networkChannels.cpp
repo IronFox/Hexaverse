@@ -459,7 +459,7 @@ namespace Receiver
 					)
 				)
 		#else
-			if (faction || State::tokenMap.Query(response.factionToken,faction))
+			if (faction || Network::tokenMap.Query(response.factionToken,faction))
 		#endif
 		{
 			#ifdef _DEBUG
