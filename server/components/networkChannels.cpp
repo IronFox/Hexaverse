@@ -41,7 +41,7 @@ namespace Channels
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>							identifyUserRecv(Receiver::IdentifyUser);
 	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
 
-	TCP::Channel<Protocol::TechniteInstructions, 1, Protocol::ChannelID::TechniteInstructions>		techniteInstructions(Receiver::TechniteInstructions);
+	TCP::Channel<Protocol::TechniteInstructions, FactionLevel, Protocol::ChannelID::TechniteInstructions>		techniteInstructions(Receiver::TechniteInstructions);
 
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
