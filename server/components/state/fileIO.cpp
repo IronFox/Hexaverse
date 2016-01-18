@@ -1077,9 +1077,9 @@ namespace FileIO
 								GetPOD(list,RID::worldConfig,(Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
 								Grid::CellStack::bottom.content = (BYTE)Grid::currentPlanetConfig.innerCoreType;
 
-								#ifndef _DEBUG
-									GetOptionalPOD(list,RID::extraTechniteRounds,State::Config::extraTechniteRounds,State::Config::extraTechniteRounds);
-								#endif
+//								#ifndef _DEBUG
+								GetOptionalPOD(list,RID::extraTechniteRounds,Game::Config::extraTechniteRounds,Game::Config::extraTechniteRounds);
+	//							#endif
 
 							}
 						break;

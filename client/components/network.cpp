@@ -1225,6 +1225,8 @@ namespace Network
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
+		client.OpenSignalChannel(Protocol::ChannelID::BeginEverything,0);
+		client.OpenSignalChannel(Protocol::ChannelID::EndEverything,0);
 
 
 		client.SetAsync(false);
