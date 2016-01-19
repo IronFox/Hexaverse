@@ -1283,6 +1283,8 @@ namespace Grid
 
 				foreach(dat.terrain.vertices, vtx)
 					box.Include(vtx->vertex.xyz);
+				foreach(dat.water.vertices, vtx)
+					box.Include(vtx->vertex.xyz);
 				dat.boundingBox = box;
 				dat.boundingSphere.center = box.GetCenter();
 				dat.boundingSphere.radius = 0.f;
@@ -1596,7 +1598,7 @@ namespace Grid
 		*/
 		static coverage_t		GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max);
 
-		static float			probability[];
+		static float			probability[],density[];
 		static coverage_t		maximum[];
 
 		//static coverage_t		UraniumCoverage(UINT32)
@@ -1632,7 +1634,7 @@ namespace Grid
 		}
 		void					Name(const String&name, ConstName cname, const float3&color)	{this->name = name; this->cname = cname; this->color = color;}
 		
-		void					Fill(Random&random, float p, coverage_t);
+		void					Fill(Random&random, float p, coverage_t, float density);
 		void					Fill(Random&random);
 
 		const String&			GetName() const {return name;}

@@ -5,9 +5,9 @@
 
 namespace RemoteControl
 {
-	void	Start(Protocol::ChannelID::id_t waitForPacket = Protocol::ChannelID::Unused);
+	void	Start(UINT16 serverBasePort);
 	void	Destroy();
-
+	void	Resolve();
 }
 
 
