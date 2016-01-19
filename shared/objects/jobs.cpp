@@ -75,8 +75,10 @@ namespace Objects
 				#ifndef CONNECTOR_LESS
 					if (!CanWithdrawFromStorage(v,Resource::Minerals,mineralCostLeft))
 					{
-						LogEvent(EventType::CommandRejected,&v,"Unable to complete operation. Insufficient minerals left in storage ("+String(v.currentStorage.level[Resource::Minerals])+"/"+String(mineralCostLeft)+").");
-						return TerminalFailure;
+						LogEvent(EventType::EntityProcessFailed,&v,"Unable to continue construction at this point. Insufficient minerals available (need "+String(withdrawNow)+"). Delaying operation.");
+						return ContinueJob;
+						//LogEvent(EventType::CommandRejected,&v,"Unable to complete operation. Insufficient minerals left in storage ("+String(v.currentStorage.level[Resource::Minerals])+"/"+String(mineralCostLeft)+").");
+						//return TerminalFailure;
 					}
 				#endif
 			}
