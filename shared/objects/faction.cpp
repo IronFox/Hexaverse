@@ -22,7 +22,33 @@ namespace Objects
 		int		GetStorage(const MobileEntity&v, Resource res)
 		{
 			#ifndef CONNECTOR_LESS
-				return v.currentStorage.level[res];
+				#ifdef WIRELESS_VEHICLES
+					int rs = v.currentStorage.level[res];
+					static Grid::LowSetup::TVolumeDescriptor desc;
+					Grid::low.GenerateVolume(Sphere<>(v.system.w.xyz,WirelessTransferRange),desc);
+					static Buffer0<index_t>	compounds;
+					compounds.Clear();
+					foreach (desc.coverage,c)
+					{
+						for (UINT l = c->layerBegin; l < c->layerEnd; l++)
+						{
+							PStructure s = GetStructure(Grid::LCellIdU(c->stackID,l));
+							if (!s || s->owner != v.owner)
+								continue;
+							if (s->compoundID == Compound::InvalidNetwork)
+								continue;
+							if (!compounds.Contains(s->compoundID))
+								compounds << s->compoundID;
+						}
+					}
+					foreach (compounds,c)
+						rs += Objects::compounds[*c].total.storage.level[res] + Objects::compounds[*c].overproduction.level[res];
+
+					return rs;
+
+				#else
+					return v.currentStorage.level[res];
+				#endif
 			#else
 				const Compound&compound = v.owner->compound;
 				return compound.total.storage.level[res] + compound.overproduction.level[res];
@@ -67,18 +93,16 @@ namespace Objects
 		{
 			ResourceVector demand;
 
-			#ifdef CONNECTOR_LESS
-				if (change < 0 && compound.overproduction.level[res] > 0)
-				{
-					int production = compound.overproduction.level[res];
-					int overproductionTransfer = std::min(production,-change);
-					LogEvent(EventType::MinorEntityProcess,originatingAt,String(res.ToString())+ " overproduction ("+String(production)+") redirected for demand ("+String(change)+"): "+String(overproductionTransfer)+" transferred");
-					change += overproductionTransfer;
-					compound.overproduction.level[res]-= overproductionTransfer;
-					if (change == 0)
-						return;
-				}
-			#endif
+			if (change < 0 && compound.overproduction.level[res] > 0)
+			{
+				int production = compound.overproduction.level[res];
+				int overproductionTransfer = std::min(production,-change);
+				LogEvent(EventType::MinorEntityProcess,originatingAt,String(res.ToString())+ " overproduction ("+String(production)+") redirected for demand ("+String(change)+"): "+String(overproductionTransfer)+" transferred");
+				change += overproductionTransfer;
+				compound.overproduction.level[res]-= overproductionTransfer;
+				if (change == 0)
+					return;
+			}
 			demand.level[res] = abs(change);
 			if (change < 0)
 				compound.Collect(demand,atTime);
