@@ -1852,11 +1852,14 @@
 					last = &e;
 					lastDeployed = e.CompileDeploymentCount(e.owner);
 				}
-				textout.PushColorState();
-				textout.color(0.6,0.7,1.f);
-				textout << nl << lastDeployed;
+				if (lastDeployed.IsNotEmpty())
+				{
+					textout.PushColorState();
+					textout.color(0.6,0.7,1.f);
+					textout << nl << lastDeployed;
 
-				textout.PopColorState();
+					textout.PopColorState();
+				}
 
 			}
 			textout << nl;
