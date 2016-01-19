@@ -1157,8 +1157,8 @@ namespace ParameterConfig
 					mode = ExpectFilename;
 				else
 				{
+					LogEvent(EventType::ConfigError, "Unsupported runtime parameter '"+String(arg)+"'");
 					PrintHelp();
-					FATAL__("Unsupported runtime parameter '"+String(arg)+"'");
 				}
 			return;
 			case ExpectPort:
