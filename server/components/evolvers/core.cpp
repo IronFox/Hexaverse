@@ -271,13 +271,13 @@ namespace Evolver
 
 		void ProcessStructures1(float atTime)
 		{
-			#ifdef CONNECTOR_LESS
+			//#ifdef CONNECTOR_LESS
 				Objects::RefreshCompoundCoverageIfNeeded(atTime);
 				Objects::ForeachCompound([atTime](Objects::Compound&c)
 				{
 					c.TickEnd(atTime);
 				});
-			#endif
+			//#endif
 
 		}
 
