@@ -1,3 +1,5 @@
+#ifdef HAS_WINDOW
+
 #include <global_root.h>
 #include "encryptionHelper.h"
 
@@ -169,3 +171,5 @@ namespace Encryption
 	}
 
 }
+
+#endif

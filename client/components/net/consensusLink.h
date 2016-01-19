@@ -1,5 +1,7 @@
 #ifndef netConsensusH
 #define netConsensusH
+#ifdef HAS_WINDOW
+
 
 #include <global_string.h>
 
@@ -52,4 +54,5 @@ namespace ConsensusLink
 
 
 
+#endif
 #endif

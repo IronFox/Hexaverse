@@ -1,3 +1,5 @@
+#ifdef HAS_WINDOW
+
 #include <global_root.h>
 
 
@@ -296,7 +298,7 @@ namespace ConsensusLink
 			bool		askToEncryptPrivateKey = false;
 			FileSystem::Folder	certificateFolder;
 
-			void		SecureWrite(const String&filename, const void*data, size_t dataSize)
+			void		SecureWrite(const PathString&filename, const void*data, size_t dataSize)
 			{
 				SHA256::HashContainer payloadHash;
 				SHA256::Hash(data,dataSize,payloadHash);
@@ -306,18 +308,19 @@ namespace ConsensusLink
 				outStream.Write(payloadHash.bytes,payloadHash.NumBytes);
 				outStream.Write(data,dataSize);
 				outStream.Close();
-				FileSystem::Copy(filename,filename+"2",true);
+				PathString backup = filename+"2";
+				FileSystem::Copy(filename,backup,true);
 
-				LogEvent(EventType::SessionRelated,nullptr,"File written: "+filename);
-				LogEvent(EventType::SessionRelated,nullptr,"Copied to: "+filename+"2");
+				LogEvent(EventType::SessionRelated,nullptr,"File written: "+String(filename));
+				LogEvent(EventType::SessionRelated,nullptr,"Copied to: "+String(backup));
 			}
 
-			bool		TryLoad(const String&filename, Array<BYTE>&out)
+			bool		TryLoad(const PathString&filename, Array<BYTE>&out)
 			{
-				FILE*f = fopen(filename.c_str(),"rb");
+				FILE*f = FOPEN(filename.c_str(),"rb");
 				if (!f)
 				{
-					LogEvent(EventType::InternalFault,nullptr,"Unable to load '"+filename+"'. File does not exist or is not accessible");
+					LogEvent(EventType::InternalFault,nullptr,"Unable to load '"+String(filename)+"'. File does not exist or is not accessible");
 					return false;
 				}
 				fseek(f,0,SEEK_END);
@@ -331,7 +334,7 @@ namespace ConsensusLink
 				if (read != loaded.NumBytes)
 				{
 					fclose(f);
-					LogEvent(EventType::InternalFault,nullptr,"Unable to read the first chunk of bytes from '"+filename+"'");
+					LogEvent(EventType::InternalFault,nullptr,"Unable to read the first chunk of bytes from '"+String(filename)+"'");
 					return false;
 				}
 
@@ -342,20 +345,20 @@ namespace ConsensusLink
 				fclose(f);
 				if (read != size)
 				{
-					LogEvent(EventType::InternalFault,nullptr,"Unable to read the second chunk of bytes from '"+filename+"'");
+					LogEvent(EventType::InternalFault,nullptr,"Unable to read the second chunk of bytes from '"+String(filename)+"'");
 					return false;
 				}
 				SHA256::Hash(out.pointer(),size,computed);
 				if (computed != loaded)
 				{
-					LogEvent(EventType::InternalFault,nullptr,"Hash mismatch in '"+filename+"'");
+					LogEvent(EventType::InternalFault,nullptr,"Hash mismatch in '"+String(filename)+"'");
 					return false;
 				}
 				return true;
 			}
 
 
-			bool		SecureRead(const String&filename, Array<BYTE>&out)
+			bool		SecureRead(const PathString&filename, Array<BYTE>&out)
 			{
 				return TryLoad(filename,out) || TryLoad(filename+"2",out);
 
@@ -407,8 +410,8 @@ namespace ConsensusLink
 
 			void		RestoreCertificateAndConnect()
 			{
-				String keyFileName = (certificateFolder.GetLocation() + FOLDER_SLASH + "private.key");
-				String certFileName = (certificateFolder.GetLocation() + FOLDER_SLASH + "public.cert");
+				PathString keyFileName = (certificateFolder.GetLocation() + FOLDER_SLASH + "private.key");
+				PathString certFileName = (certificateFolder.GetLocation() + FOLDER_SLASH + "public.cert");
 
 				Array<BYTE>	cert,key;
 				if (!SecureRead(keyFileName,key) || !SecureRead(certFileName,cert))
@@ -516,8 +519,8 @@ namespace ConsensusLink
 				}
 
 
-				String keyFileName = (certificateFolder.GetLocation() + FOLDER_SLASH + "private.key");
-				String certFileName = (certificateFolder.GetLocation() + FOLDER_SLASH + "public.cert");
+				PathString keyFileName = (certificateFolder.GetLocation() + FOLDER_SLASH + "private.key");
+				PathString certFileName = (certificateFolder.GetLocation() + FOLDER_SLASH + "public.cert");
 
 				SecureWrite(keyFileName,payload.pointer(),payload.GetContentSize());
 				SecureWrite(certFileName,certificate.pointer(),certificate.GetContentSize());
@@ -622,7 +625,7 @@ namespace ConsensusLink
 					{
 						Array<BYTE>	certificateCopy = Config::certificate;
 						Dialog::AskYesNoHelp("The server sent a new account certificate for the Consensus network. Do you wish to encrypt the received private key using a password?",
-							"The certificate you just received is the key to your new account. It will be stored persistently in "+Config::certificateFolder.GetLocation()+".\n"
+							"The certificate you just received is the key to your new account. It will be stored persistently in "+String(Config::certificateFolder.GetLocation())+".\n"
 							"Anyone with access to your files will be able to use it and log in with full control over your account. To prevent this from happening, using a password is recommended, but not required.\n"
 							"However, if you forget your password, then access to your account will be irreversably lost, same as if you had lost the certificate itself.\n"
 							"If you do set a password, you will be asked for this password every time you start " PRODUCT_NAME ". The password can be changed or removed later on.",
@@ -788,7 +791,7 @@ namespace ConsensusLink
 		Detail::Config::lastHost = host;
 		Detail::Config::connectOnCreate = connectOnCreate;
 		Detail::Config::askToEncryptPrivateKey = askToEncryptPrivateKey;
-		Detail::Config::certificateFolder = FileSystem::Folder(FileSystem::CreateDirectory("./config/certificates/"+TCP::StripPort(host)));
+		Detail::Config::certificateFolder = FileSystem::Folder(FileSystem::CreateDirectory(PathString("./config/certificates/"+TCP::StripPort(host))));
 	}
 
 
@@ -800,3 +803,5 @@ namespace ConsensusLink
 
 
 }
+
+#endif

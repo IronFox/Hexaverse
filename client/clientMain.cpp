@@ -44,6 +44,7 @@
 #include "../shared/objects/visualChoices.h"
 #include "../shared/objects/prototypes.h"
 #include "../shared/objects/rendering.h"
+#include "../shared/galaxy.h"
 
 #include "components/network.h"
 #include "components/ui.h"
@@ -59,6 +60,7 @@
 #include "components/world.h"
 #include "components/atmosphere.h"
 #include "components/guiHostList.h"
+#include "components/net/consensusLink.h"
 
 #include "rc/Resource.h"
 
@@ -2206,9 +2208,15 @@ bool loop()
 
 		//rendere scene here
 
+		Galaxy::Render(Camera::scene,frustum);
+
 		display.SetRasterizer(true, true);
 
 
+
+
+
+		if (false)
 		{
 			//Atmosphere::Render(Grid::ToRadius(-Grid::CellStack::HalfRange),Grid::ToRadius(Grid::CellStack::HalfRange-1), Camera::scene.GetAbsoluteLocation());
 			Atmosphere::Render(Camera::scene);
@@ -2216,34 +2224,7 @@ bool loop()
 			if (Grid::SeeThrough::IsEnabled() /*&& !Objects::selectedEntity*/)
 				Grid::SeeThrough::Update(Grid::SeeThrough::IsEnabled(), Grid::SeeThrough::LocateCamera());
 
-	//		const Grid::Resource&resource = Grid::Resource::all[Objects::activeResource];
-
-			#if 0
-				for (int i = 0; i < 20; i++)
-					for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
-					{
-						Grid::TFamily::TData&dat = Grid::high.family[k].normal;
-						dat.outdated = false;
-						familiesRebuilt++;
-						if (Grid::SeeThrough::IsEnabled())
-						{
-							Grid::high.BakeBlockInstruction(Grid::cellStack, k, Grid::SeeThrough::ClipHeight);
-						}
-						else
-						{
-							Grid::high.BakeBlockInstruction(Grid::cellStack, k, Grid::Clip::NoClip);
-						}
-					}
-
-
-			#else
-				World::Render(frustum);
-
-
-			#endif
-		//display.SetDepthTest(false,false);
-
-
+			World::Render(frustum);
 
 			if (Objects::selectedEntity)
 			{
@@ -2293,13 +2274,7 @@ bool loop()
 
 
 			if (Camera::SkyGridIsVisible())
-			{
-				//render sky grid
-				//Grid::UpdatePlanetRenderingParameters();
 				Grid::visibleOrbitGrid.Render(frustum);
-				//Grid::low.RenderGrid(Grid::ToRadius(Objects::Satellite::BaseResidenceHeight));
-
-			}
 
 			Objects::Renderer::RenderTranslucent();
 
@@ -2323,7 +2298,6 @@ bool loop()
 
 			if (Objects::showArrow)
 			{
-	//			display.SetDepthTest(false, false);
 				bool includeWater = false;
 				if (Objects::activeCursorMode == Objects::CursorMode::AttackMode)
 					includeWater = true;
@@ -2347,44 +2321,44 @@ bool loop()
 				}
 
 			}
-		}
 			
 
 
 
-		display.ClearDepth();
+			display.ClearDepth();
 
-		{
+			{
 		
-			float3 b, d;
-			Camera::scene.ScreenToVector(Engine::mouse.location.windowRelative * 2.f - 1.f, b, d);
-			index_t choice = InvalidIndex;
-			if (!Vec::zero(d))
-			{
-				Vec::normalize(d);
+				float3 b, d;
+				Camera::scene.ScreenToVector(Engine::mouse.location.windowRelative * 2.f - 1.f, b, d);
+				index_t choice = InvalidIndex;
+				if (!Vec::zero(d))
+				{
+					Vec::normalize(d);
 
-				float distance = std::numeric_limits<float>::max();
-				choice = Objects::DetectChoiceIntersection(b, d, distance);
+					float distance = std::numeric_limits<float>::max();
+					choice = Objects::DetectChoiceIntersection(b, d, distance);
+				}
+
+
+
+
+				foreach(Objects::movementChoices, choice)
+				{
+					Grid::UpdatePlanetRenderingParameters(Grid::ToRadius(choice->height));
+					//if (choice->height >= Grid::CellStack::TopHeight)
+						Grid::low.RenderTransparentCell(choice->stackID);
+					//else
+				}
+				if (choice != InvalidIndex)
+				{
+					Grid::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(Objects::movementChoices[choice].height) + 0.2f));
+					Grid::low.RenderCell(Objects::movementChoices[choice].stackID);
+				}
 			}
 
-
-
-
-			foreach(Objects::movementChoices, choice)
-			{
-				Grid::UpdatePlanetRenderingParameters(Grid::ToRadius(choice->height));
-				//if (choice->height >= Grid::CellStack::TopHeight)
-					Grid::low.RenderTransparentCell(choice->stackID);
-				//else
-			}
-			if (choice != InvalidIndex)
-			{
-				Grid::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(Objects::movementChoices[choice].height) + 0.2f));
-				Grid::low.RenderCell(Objects::movementChoices[choice].stackID);
-			}
+			LineRenderer::Flush();
 		}
-
-		LineRenderer::Flush();
 
 
 		display.pick(Camera::hud);
@@ -3789,9 +3763,10 @@ int main( int argc, const char* argv[])
 				display.config.fsaa_samples = config.GetInt("runtime/fsaa",4);
 
 				UI::resourcesAsList = config.GetBool("runtime/resourcesAsList",false);
+
+				ConsensusLink::Configure(config.RequireString("consensus/host"),config.RequireBool("consensus/autoConnect"),config.RequireBool("consensus/askToEncryptPrivateKey"));
 			#endif
 
-			ConsensusLink::Configure(config.RequireString("consensus/host"),config.RequireBool("consensus/autoConnect"),config.RequireBool("consensus/askToEncryptPrivateKey"));
 
 		}
 		LoadHosts();
@@ -3911,6 +3886,9 @@ int main( int argc, const char* argv[])
 		Grid::Create0();
 		Objects::Create();
 		Grid::Create1();
+
+		Galaxy::Build(0);
+
 
 		Animation::Create();
 

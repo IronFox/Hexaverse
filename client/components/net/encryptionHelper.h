@@ -1,6 +1,8 @@
 #ifndef netEncryptionHelperH
 #define netEncryptionHelperH
 
+#ifdef HAS_WINDOW
+
 #include <mbedtls/net.h>
 #include <mbedtls/ssl.h>
 #include <mbedtls/entropy.h>
@@ -181,6 +183,7 @@ namespace Encryption
 
 }
 
+#endif
 
 
 #endif
