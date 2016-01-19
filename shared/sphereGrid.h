@@ -1283,6 +1283,8 @@ namespace Grid
 
 				foreach(dat.terrain.vertices, vtx)
 					box.Include(vtx->vertex.xyz);
+				foreach(dat.water.vertices, vtx)
+					box.Include(vtx->vertex.xyz);
 				dat.boundingBox = box;
 				dat.boundingSphere.center = box.GetCenter();
 				dat.boundingSphere.radius = 0.f;
