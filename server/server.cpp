@@ -1089,13 +1089,38 @@ namespace ParameterConfig
 	{
 		Idle,
 		ExpectPort,
-		ExpectWorldID
+		ExpectWorldID,
+		ExpectFilename,
 
 	}		mode = Idle;
 
 	String	loadFile;
 	bool	startOffline = false;
 	bool	customWorldID = false;
+	bool	enableRemoteControl = false;
+	const char*	programName="";
+
+	void	SetProgramName(const char*base)
+	{
+		const char*slashAt;
+		while (slashAt = Template::strchr(base,FOLDER_SLASH))
+		{
+			base = slashAt+1;
+		}
+		programName = base;
+	}
+
+	void	PrintHelp()
+	{
+		std::cout << std::endl << "usage: "<<programName<<" ..."<<std::endl;
+		std::cout << "  --load/-l [filename]\tload savegame"<<std::endl;
+		std::cout << "  --offline/-o \tstart offline"<<std::endl;
+		std::cout << "  --port/-p [basePort]\tuse a non-default base port"<<std::endl;
+		std::cout << "  --remote/-r \tstart remote control service"<<std::endl;
+		std::cout << "  --test/-t \trun self-tests, then quit"<<std::endl;
+		std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
+	}
+
 
 
 	void	Process(const char*arg)
@@ -1109,17 +1134,32 @@ namespace ParameterConfig
 				mode = Idle;
 				customWorldID = true;
 			return;
+			case ExpectFilename:
+				loadFile = arg;
+				mode = Idle;
+			break;
 			case Idle:
-				if (!strcmp(arg,"test"))
+				if (!strcmp(arg,"--test") || !strcmp(arg,"-t"))
 					inTestMode = true;
-				elif (!strcmp(arg,"port"))
+				elif (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
 					mode = ExpectPort;
-				elif (!strcmp(arg,"offline"))
+				elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
 					startOffline = true;
-				elif (!strcmp(arg,"world"))
+				elif (!strcmp(arg,"--help"))
+				{
+					PrintHelp();
+				}
+				elif (!strcmp(arg,"--world") || !strcmp(arg,"-w"))
 					mode = ExpectWorldID;
+				elif (!strcmp(arg,"-r") || !strcmp(arg,"--remoteControl") || !strcmp(arg,"--remote"))
+					enableRemoteControl = true;
+				elif (!strcmp(arg,"--load") || !strcmp(arg,"-l"))
+					mode = ExpectFilename;
 				else
-					loadFile = arg;
+				{
+					PrintHelp();
+					FATAL__("Unsupported runtime parameter '"+String(arg)+"'");
+				}
 			return;
 			case ExpectPort:
 				if (!convert(arg,basePort))
@@ -1242,11 +1282,13 @@ int main( int argc, const char* argv[])
 		Journal::Create();
 
 		World::worldID.Generate();
+		ParameterConfig::SetProgramName(argc > 0 ? argv[0] : "program");
 		for (int i = 1; i < argc; i++)
 			ParameterConfig::Process(argv[i]);
 
 		UDPBroadCast::Create(ParameterConfig::basePort);
-		RemoteControl::Start(ParameterConfig::basePort);
+		if (ParameterConfig::enableRemoteControl)
+			RemoteControl::Start(ParameterConfig::basePort);
 
 
 
