@@ -77,13 +77,17 @@ namespace Game
 		}
 
 
+		void		HandleSessionSuspension()
+		{
+			if (Config::Nexus::enableAI)
+				AIProcess::End();
+		}
+
 		void		HandleSessionClosure()
 		{
 			roundTimerPaused = true;
 			winner.reset();
-			if (Config::Nexus::enableAI)
-				AIProcess::End();
-
+			HandleSessionSuspension();
 		}
 
 		void		HandleSessionRestart()

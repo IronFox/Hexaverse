@@ -33,9 +33,11 @@ namespace Grid
 	//static Resource::coverage_t	GetResourceCoverage(const TVec3<>&seed, const TVec3<>&center0,float rarity,Resource::coverage_t maxYield, float probabilityModifier);
 	#ifndef NO_MUNITION
 		/*static*/ float			Resource::probability[Objects::Resource::NumberOfPossibilities] = {0.08f,0.08f,0,0,0.008f } ;
+		/*static*/ float			Resource::density[Objects::Resource::NumberOfPossibilities] = {0.04f,0.06f,0,0,0.02f } ;
 		/*static*/ Resource::coverage_t		Resource::maximum[Objects::Resource::NumberOfPossibilities] = {12,12,0,0,6};
 	#else
 		/*static*/ float			Resource::probability[Objects::Resource::NumberOfPossibilities] = {0.08f,0.08f,0,0.008f } ;
+		/*static*/ float			Resource::density[Objects::Resource::NumberOfPossibilities] = {0.04f,0.06f,0,0.02f } ;
 		/*static*/ Resource::coverage_t		Resource::maximum[Objects::Resource::NumberOfPossibilities] = {12,12,0,6};
 	#endif
 
@@ -3493,17 +3495,17 @@ namespace Grid
 
 	void Resource::Fill(Random&random)
 	{
-		Fill(random,probability[resourceIndex],maximum[resourceIndex]);
+		Fill(random,probability[resourceIndex],maximum[resourceIndex], density[resourceIndex]);
 	}
 
-	void Resource::Fill(Random&random,float p, coverage_t max)
+	void Resource::Fill(Random&random,float p0, coverage_t max, float avgPerCell)
 	{
 		float3 seed(random.getFloat(-10.f,10.f),random.getFloat(-10.f,10.f),random.getFloat(-10.f,10.f));
 
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 		{
 			#ifndef CLIENT
-				coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p,max);
+				coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p0,max);
 			#else
 				coverage[i] = 0;
 				known[i] = false;
@@ -3511,7 +3513,7 @@ namespace Grid
 		}
 
 		#ifndef CLIENT
-			if (p <= 0.f || !max)
+			if (p0 <= 0.f || !max)
 				return;
 
 			LogEvent(EventType::SessionRelated,nullptr,"Equalizing resource distribution of "+name);
@@ -3523,18 +3525,42 @@ namespace Grid
 				total += coverage[i];
 			}
 
-			float avgPerCell = float(total) / float(LowSetup::GridType::CellCount);
-			LogEvent(EventType::SessionRelated,nullptr,"Average per cell estimated at "+String(avgPerCell));
+			//float avgPerCell = float(total) / float(LowSetup::GridType::CellCount);
+			//LogEvent(EventType::SessionRelated,nullptr,"Average per cell estimated at "+String(avgPerCell));
+
+
+//			float avgPerCell = float(total) / float(LowSetup::GridType::CellCount);
 			for (int k = 0; k < BaseGrid::NumFamilies; k++)
 			{
+				float p = p0;
 				LogEvent(EventType::Debug,nullptr,"Processing family "+String(k));
 				const count_t count = Grid::low.grid.CountFamilyMembers(k);
 				const index_t offset = Grid::low.grid.GetFamilyOffset(k);
 				float want = avgPerCell * count;
-				
+				count_t retries = 0;
 				while (want * 1.5f < familyTotal[k] || want * 0.75f > familyTotal[k])
 				{
-					LogEvent(EventType::Debug,nullptr," Family found out of range. Randomizing...");
+					//if (!(retries %3))
+					{
+						float factor = want / float(std::max((count_t)1,familyTotal[k]));
+						float magnitude = log(factor);
+						factor = pow(4.f,float(sign(factor-1.f))/(retries*2 + 1));
+						p *= factor;
+						p = clamp(p,0.0001f,0.999f);
+						LogEvent(EventType::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
+									+"), p adjusted by "+String(factor)+" to "+String(p)+". Randomizing...");
+					}
+					//else
+					//	LogEvent(EventType::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
+					//				+"). Randomizing...");
+	
+					//if (factor > 0)
+					//	p *= 1.1f;
+					//else
+					//	p *= 1.f / 1.1f;
+//					factor = 1.f + clamp(magnitude,-0.5f,2.f);
+					//clamp((factor-1.f)*0.4f + 1.f,0.25f,4.f);
+	//				p *= factor;
 					float3 seed = float3(random.getFloat(-10.f,10.f),random.getFloat(-10.f,10.f),random.getFloat(-10.f,10.f));
 					familyTotal[k] = 0;
 					for (index_t i = offset; i < offset + count; i++)
@@ -3542,7 +3568,11 @@ namespace Grid
 						coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p,max);
 						familyTotal[k]+=coverage[i];
 					}
-
+					if (++retries > 10)
+					{
+						LogEvent(EventType::Debug,nullptr," Max retries reached for this family. Giving up");
+						break;
+					}
 				}
 
 			}

@@ -570,7 +570,9 @@ namespace Reflection
 	{
 		for (const auto&var : context->variables)
 		{
-			To<Variable::Base>::Cast(var)->SetupBase();
+			Variable::PBase base = To<Variable::Base>::DynamicCast(var);
+			if (base)
+				base->SetupBase();
 		}
 		for (const auto&ctx : context->folders)
 		{
@@ -589,12 +591,20 @@ namespace Reflection
 	static CLI::PVariable planetType;
 
 	
+	void PrintLn(const String&line)
+	{
+		LogEvent(EventType::RemoteControl,"Response: '"+line+"'");
+	}
+
+
 	void	Create()
 	{
 		#undef VAR
 		#define VAR(_NAME_,_CONTEXT_,_MIN_,_MAX_,_PERSISTENCE_)	Variable::Set(#_NAME_,_CONTEXT_::_NAME_,_MIN_,_MAX_,_PERSISTENCE_);
 		#undef ENUMVAR
 		#define ENUMVAR(_NAME_,_CONTEXT_,_PERSISTENCE_)	Variable::SetEnum(#_NAME_,_CONTEXT_::_NAME_,_PERSISTENCE_);
+
+		CLI::InitDefaults(state,PrintLn);
 
 		state.EnterNewFolder("World");
 			VAR(simulateLiquids,World::Config,false,true,Variable::Persistence::RestoreFromSavegame);
@@ -605,7 +615,8 @@ namespace Reflection
 				{
 					Objects::Resource res = Objects::Resource::Reinterpret(i);
 					state.EnterNewFolder(res.ToString());
-						Variable::Set("probability",Grid::Resource::probability[i],0.f,1.f,Variable::Persistence::GameInvariant);
+						Variable::Set("density",Grid::Resource::density[i],0.f,1.f,Variable::Persistence::GameInvariant);
+						//Variable::Set("probability",Grid::Resource::probability[i],0.f,1.f,Variable::Persistence::GameInvariant);
 						Variable::Set("max",Grid::Resource::maximum[i],(Grid::Resource::coverage_t)1,(Grid::Resource::coverage_t)32,Variable::Persistence::GameInvariant);
 					state.ExitFolder();
 				}
@@ -716,9 +727,11 @@ namespace Reflection
 		bool allGood = true;
 		for (const auto&var : folder->variables)
 		{
+			Variable::PBase b = To<Variable::Base>::DynamicCast(var);
+			if (!b || b->persistence == Reflection::Variable::Persistence::Temporary)
+				continue;
 			if (filterFunction)
 			{
-				Variable::PBase b = To<Variable::Base>::Cast(var);
 				if (!filterFunction(b))
 					continue;
 
@@ -757,7 +770,8 @@ namespace Reflection
 					planetType->Set("LushGreen");
 
 				std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(dir->attachment);
-				ASSERT__(ref);
+				if (!ref)	//externally created
+					continue;
 				//PathString str = RuntimeConfig::ConfigFile( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"));
 				Feed(dir,PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"),testMode,filterFunction);
 			}
@@ -848,8 +862,8 @@ namespace Reflection
 	{
 		for (const auto&var : folder->variables)
 		{
-			Variable::PBase b = To<Variable::Base>::Cast(var);
-			if (b->persistence == Variable::Persistence::Temporary)
+			Variable::PBase b = To<Variable::Base>::DynamicCast(var);
+			if (!b || b->persistence == Variable::Persistence::Temporary)
 				continue;
 			WriteHelp(outFile,var,indent,var->name+": ");
 			WriteIndent(outFile,indent);

@@ -146,6 +146,13 @@ SpinLock	eventLock;
 
 //LogFile	eventLog;
 
+#ifdef _DEBUG
+namespace Debug
+{
+	float3			lastClickPoint;
+	Grid::LCellIdI	lastClickCell;
+}
+#endif
 
 
 Timer::Time rightMouseDragBegun;
@@ -2173,7 +2180,8 @@ bool loop()
 			}
 			if (!Vec::zero(change))
 			{
-				Vec::setLen(change, Engine::timing.delta*100.f);
+				//Vec::setLen(change, Engine::timing.delta*100.f);
+				Vec::mult(change,Engine::timing.delta*100.f);
 				Camera::Rotate(change);
 			}
 		}
@@ -2391,8 +2399,20 @@ bool loop()
 			}
 		}
 
+
+
 		LineRenderer::Flush();
 
+		#ifdef _DEBUG
+		{
+			LineRenderer::SetColor(float4(1,0,0,1));
+			display.SetDepthTest(false,false);
+			LineRenderer::Rasterize(Debug::lastClickPoint - float3(1,0,0),Debug::lastClickPoint + float3(1,0,0));
+			LineRenderer::Rasterize(Debug::lastClickPoint - float3(0,1,0),Debug::lastClickPoint + float3(0,1,0));
+			LineRenderer::Rasterize(Debug::lastClickPoint - float3(0,0,1),Debug::lastClickPoint + float3(0,0,1));
+			LineRenderer::Flush();
+		}
+		#endif
 
 		display.pick(Camera::hud);
 			display.SetRasterizer(true,false);
@@ -2653,6 +2673,9 @@ void MyFatal(const FatalDescriptor&descriptor)
 				TVec3<> normal;
 				if (Grid::high.TestHullIntersection(b, d, distance, normal, includeWater))
 				{
+					#ifdef _DEBUG
+						Debug::lastClickPoint = b + d * distance;
+					#endif
 					//if (test)
 						//return false;
 					float3 p = b + d * distance;
@@ -2662,6 +2685,11 @@ void MyFatal(const FatalDescriptor&descriptor)
 					if (stackID != InvalidIndex)
 					{
 						result = Grid::LCellIdI((UINT32)stackID,Grid::FromRadius(height));
+
+						#ifdef _DEBUG
+							Debug::lastClickCell = result;
+						#endif
+
 						return true;
 					}
 				}

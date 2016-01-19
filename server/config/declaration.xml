@@ -8,26 +8,32 @@
 		</variable>
 		<variable name="worldDiscovery" default="None">
 			Information visible to factions out front.
-			'None' will send two types of terrain information: 'Clear' and 'Unknown' where 'Unknown' accounts for all non-clear terrain types, including water and lava.
-			'Oceans' will separately expose all water.
-			'Liquids' will expose all liquids in general (currently water and lava).
-			'FullTerrain' exposes all initial terrain information to all clients (excluding terrain modifications caused by subsequent changes, e.g. nexus base construction).
+			&apos;None&apos; will send two types of terrain information: &apos;Clear&apos; and &apos;Unknown&apos; where &apos;Unknown&apos; accounts for all non-clear terrain types, including water and lava.
+			&apos;Oceans&apos; will separately expose all water.
+			&apos;Liquids&apos; will expose all liquids in general (currently water and lava).
+			&apos;FullTerrain&apos; exposes all initial terrain information to all clients (excluding terrain modifications caused by subsequent changes, e.g. nexus base construction).
 		</variable>
 		<context name="Resources">
 			<context name="Fuel">
-				<variable name="probability" default="0.045" />
+				<variable name="density" default="0.08">
+					Average number of fuel units per world cell. Forced similar for each surface chunk
+				</variable>
 				<variable name="max" default="8" />
 			</context>
 			<context name="Minerals">
-				<variable name="probability" default="0.045" />
+				<variable name="density" default="0.06">
+					Average number of mineral units per world cell. Forced similar for each surface chunk
+				</variable>
 				<variable name="max" default="12" />
 			</context>
 			<context name="Energy">
-				<variable name="probability" default="0" />
+				<variable name="density" default="0" />
 				<variable name="max" default="1" />
 			</context>
 			<context name="Uranium">
-				<variable name="probability" default="0.01" />
+				<variable name="density" default="0.02">
+					Average number of uranium units per world cell. Forced similar for each surface chunk
+				</variable>
 				<variable name="max" default="6" />
 			</context>
 		</context>
@@ -50,7 +56,7 @@
 						The extended core reaches from the bottom most layer up to a height level corresponding to the remaining configuration of [ExtendedCore].
 						The core itself it not altered by these settings.
 						Common scenarios include Lava or something hard like Granite.
-						Less common, but sometimes nice is to set this to 'Clear', which will carve caves atop the inner core.
+						Less common, but sometimes nice is to set this to &apos;Clear&apos;, which will carve caves atop the inner core.
 					</variable>
 					<variable name="baseHeight" default="-16">
 						Central height of extended core matter.
@@ -200,7 +206,7 @@
 				Linearly affects density of nexus vehicles.
 				If density is saturated, vehicle production/spawning halts.
 			</variable>
-			<variable name="vehicleTurrets" default="Cannon, Artillery, Radar">
+			<variable name="vehicleTurrets" default="Cannon,Artillery,Radar">
 				List of turrets that the AI will spawn if &apos;nexus&apos; is set to true.
 				Only affects newly created vehicles - does not affect nexus vehicles loaded from a save-file.
 			</variable>

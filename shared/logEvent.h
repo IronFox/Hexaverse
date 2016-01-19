@@ -4,7 +4,8 @@
 #include <general/enumeration.h>
 #include <global_string.h>
 
-CONSTRUCT_ENUMERATION19(EventType, 
+
+CONSTRUCT_ENUMERATION22(EventType, 
 						Fatal,
 						UnexpectedBehavior,
 						Debug,
@@ -23,6 +24,9 @@ CONSTRUCT_ENUMERATION19(EventType,
 						OperationAborted,	//notifies that an operation was aborted (unplanned)
 						CommandRejected,	//notifies that a specific command was rejected
 						ChatMessage,
+						RemoteControl,
+						RemoteControlResponse,
+						RemoteControlError,
 						TechniteLogic
 						)
 

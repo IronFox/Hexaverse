@@ -598,7 +598,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 namespace InformationProvider
 {
 	TCP::Server		server;
-
+	bool			created = false;
 
 	void	OnPing(Protocol::Ping&ping, TCP::Peer&peer);
 
@@ -615,12 +615,14 @@ namespace InformationProvider
 	class Updater : public ThreadObject
 	{
 	public:
+		volatile bool	doEnd = false;
+
 		void	ThreadMain() override
 		{
 			Protocol::ServerInfo info;
 			info.hostInfo = UDPBroadCast::packet;
 
-			while (!application_shutting_down)
+			while (!application_shutting_down && !doEnd)
 			{
 				Sleep(1000);
 				Game::Network::AssembleGameInfo(info.gameInfo);
@@ -632,10 +634,13 @@ namespace InformationProvider
 	}		updater;
 
 
-	void		Create(UINT16 basePort)
+	void		Start(UINT16 basePort)
 	{
-		server.InstallChannel(pingChannel);
-
+		if (!created)
+		{
+			created = true;
+			server.InstallChannel(pingChannel);
+		}
 
 		UINT16 port = basePort + PortOffset::Info;
 
@@ -644,6 +649,7 @@ namespace InformationProvider
 		else
 		{
 			LogEvent(EventType::SessionRelated,"Info server started on port "+String(port));
+			updater.doEnd = false;
 			updater.start();
 		}
 
@@ -651,6 +657,11 @@ namespace InformationProvider
 
 	}
 
+	void		Stop()
+	{
+		updater.doEnd = true;
+		updater.awaitCompletion();
+	}
 
 	void		Destroy()
 	{
@@ -1077,12 +1088,39 @@ namespace ParameterConfig
 	enum mode_t
 	{
 		Idle,
-		ExpectPort
+		ExpectPort,
+		ExpectWorldID,
+		ExpectFilename,
 
 	}		mode = Idle;
 
 	String	loadFile;
-	bool	startLocked = false;
+	bool	startOffline = false;
+	bool	customWorldID = false;
+	bool	enableRemoteControl = false;
+	const char*	programName="";
+
+	void	SetProgramName(const char*base)
+	{
+		const char*slashAt;
+		while (slashAt = Template::strchr(base,FOLDER_SLASH))
+		{
+			base = slashAt+1;
+		}
+		programName = base;
+	}
+
+	void	PrintHelp()
+	{
+		std::cout << std::endl << "usage: "<<programName<<" ..."<<std::endl;
+		std::cout << "  --load/-l [filename]\tload savegame"<<std::endl;
+		std::cout << "  --offline/-o \tstart offline"<<std::endl;
+		std::cout << "  --port/-p [basePort]\tuse a non-default base port"<<std::endl;
+		std::cout << "  --remote/-r \tstart remote control service"<<std::endl;
+		std::cout << "  --test/-t \trun self-tests, then quit"<<std::endl;
+		std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
+	}
+
 
 
 	void	Process(const char*arg)
@@ -1090,15 +1128,38 @@ namespace ParameterConfig
 		LogEvent(EventType::ConfigRelated,arg);
 		switch (mode)
 		{
+			case ExpectWorldID:
+				Bin2Str::Convert(World::worldID.bytes,World::worldID.NumBytes,arg,strlen(arg));
+				LogEvent(EventType::ConfigRelated,"World ID set to "+World::worldID.ToFullString());
+				mode = Idle;
+				customWorldID = true;
+			return;
+			case ExpectFilename:
+				loadFile = arg;
+				mode = Idle;
+			break;
 			case Idle:
-				if (!strcmp(arg,"test"))
+				if (!strcmp(arg,"--test") || !strcmp(arg,"-t"))
 					inTestMode = true;
-				elif (!strcmp(arg,"port"))
+				elif (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
 					mode = ExpectPort;
-				elif (!strcmp(arg,"locked"))
-					startLocked = true;
+				elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
+					startOffline = true;
+				elif (!strcmp(arg,"--help"))
+				{
+					PrintHelp();
+				}
+				elif (!strcmp(arg,"--world") || !strcmp(arg,"-w"))
+					mode = ExpectWorldID;
+				elif (!strcmp(arg,"-r") || !strcmp(arg,"--remoteControl") || !strcmp(arg,"--remote"))
+					enableRemoteControl = true;
+				elif (!strcmp(arg,"--load") || !strcmp(arg,"-l"))
+					mode = ExpectFilename;
 				else
-					loadFile = arg;
+				{
+					PrintHelp();
+					FATAL__("Unsupported runtime parameter '"+String(arg)+"'");
+				}
 			return;
 			case ExpectPort:
 				if (!convert(arg,basePort))
@@ -1117,6 +1178,60 @@ namespace ParameterConfig
 
 
 }
+
+
+void	StartUp()
+{
+	UDPBroadCast::Start();
+	Network::Start();
+	InformationProvider::Start(ParameterConfig::basePort);
+}
+
+void	ShutDown()
+{
+	UDPBroadCast::Terminate();
+	Network::server.StopService();
+	InformationProvider::Stop();
+}
+
+class ServiceVar : public Reflection::Variable::Base
+{
+	typedef Reflection::Variable::Base	Super;
+public:
+	typedef std::function<bool()>	FCheckIsOnline;
+	typedef std::function<void()>	FSet;
+
+	FCheckIsOnline			checkIsOnline;
+	FSet					setOnline,setOffline;
+
+	/**/					ServiceVar(const String&name):Super(name,"ServiceOnline",Reflection::Variable::Persistence::Temporary,1,CLI::EraseProtection)
+							{}
+	/**/					ServiceVar(const String&name, const FCheckIsOnline&c, const FSet&offline, const FSet&online)
+								:Super(name,"ServiceOnline",Reflection::Variable::Persistence::Temporary,1,CLI::EraseProtection),
+								checkIsOnline(c),setOffline(offline),setOnline(online)
+							{}
+
+	String					ToString() const override
+	{
+		return checkIsOnline();
+	}
+
+
+	bool					Set(const String&value) override
+	{
+		bool v;
+		if (!convert(value.c_str(),value.length(),v))
+			return false;
+		if (v == checkIsOnline())
+			return true;
+		if (v)
+			setOnline();
+		else
+			setOffline();
+		return true;
+	}
+
+};
 
 
 int main( int argc, const char* argv[])
@@ -1166,10 +1281,14 @@ int main( int argc, const char* argv[])
 
 		Journal::Create();
 
+		World::worldID.Generate();
+		ParameterConfig::SetProgramName(argc > 0 ? argv[0] : "program");
 		for (int i = 1; i < argc; i++)
 			ParameterConfig::Process(argv[i]);
 
-		//RemoteControl::Start(ParameterConfig::basePort);
+		UDPBroadCast::Create(ParameterConfig::basePort);
+		if (ParameterConfig::enableRemoteControl)
+			RemoteControl::Start(ParameterConfig::basePort);
 
 
 
@@ -1192,6 +1311,25 @@ int main( int argc, const char* argv[])
 
 
 		Reflection::Create();
+		Reflection::state.PushFocus();
+		Reflection::state.EnterNewFolder("/ServiceOnline");
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start();})));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return InformationProvider::server.IsOnline();},InformationProvider::Stop,[](){InformationProvider::Start(ParameterConfig::basePort);})));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},Network::RestartSession)));
+		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
+
+		Reflection::state.PopFocus();
+
+		Reflection::state.DefineCommand("/World/generate",(CLI::Command::function0_t)[]()
+		{
+			bool started = Network::CloseSession();
+			World::worldID.Generate();
+			World::BuildConfiguredWorld(random);
+			if (started)
+				Network::RestartSession();
+		},CLI::NoCompletion);
+
+
 		if (!inTestMode)
 			Reflection::Load(false);
 
@@ -1228,7 +1366,7 @@ int main( int argc, const char* argv[])
 
 		//Reflection::CreatePrototypeDeclaration();
 
-		if (!ParameterConfig::startLocked)
+		if (!ParameterConfig::customWorldID)
 		{
 			World::BuildConfiguredWorld(random);
 		}
@@ -1302,12 +1440,13 @@ int main( int argc, const char* argv[])
 
 
 		Network::serverID.Generate();
-		UDPBroadCast::Start(ParameterConfig::basePort);
 
-		World::worldID.Generate();
-		Network::Start();
+		if (!ParameterConfig::startOffline)
+		{
+			StartUp();
+		}
 
-		InformationProvider::Create(ParameterConfig::basePort);
+
 
 		if (false)
 		{
@@ -1444,6 +1583,7 @@ int main( int argc, const char* argv[])
 			if (RuntimeConfig::IsInAnyCommandPhase() || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 				Sleep(1);
 			Network::server.Resolve();
+			RemoteControl::Resolve();
 			if (Game::Config::Nexus::enableAI)
 				AIProcess::Check();
 

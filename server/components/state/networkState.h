@@ -81,9 +81,17 @@ namespace Network
 	/**
 	Disconnects all clients, flushes the scene, and disables the TCP server systems.
 	Clients will not be able to connect unless RestartSession is called.
-	@return true, if the session was started and subsequently closed, false if it was not started
+	@return true, if the session was online and subsequently closed, false if it was not started
 	*/
 	bool		CloseSession();
+
+	/**
+	Disconnects all clients and disables the TCP server systems. Does NOT flush the scene.
+	Clients will not be able to connect unless RestartSession is called.
+	@return true, if the server was running and subsequently closed, false if it was not started
+	*/
+	bool		SuspendSession();
+
 
 	/**
 	Restarts a previously closed session (via CloseSession() ). A new world should be generated or restored from file

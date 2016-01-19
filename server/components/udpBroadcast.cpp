@@ -18,7 +18,6 @@ namespace UDPBroadCast
 
 	Protocol::THostBroadcastPacket	packet;
 
-	bool			enabled = false;
 
 
 	void UpdateOutAdapters(BasicBuffer<sockaddr_in>&out)
@@ -91,8 +90,23 @@ namespace UDPBroadCast
 	}
 
 
+	void		Create(UINT16 basePort)
+	{
+	
+		packet.hostID = Network::serverID;
+		packet.serverBasePort = basePort;
+		{
+			const char var[] = SERVER_NAME;
+			const size_t len = sizeof(var);
+			ASSERT_LESS__(len,sizeof(packet.version));
 
-	bool		Start(UINT16 basePort)
+			memcpy(packet.version,var,len);
+		}
+
+	}
+
+
+	bool		Start()
 	{
 		#ifdef _WIN32
 			//Start up Winsock…
@@ -110,15 +124,6 @@ namespace UDPBroadCast
 			}
 		#endif
 
-		packet.hostID = Network::serverID;
-		packet.serverBasePort = basePort;
-		{
-			const char var[] = SERVER_NAME;
-			const size_t len = sizeof(var);
-			ASSERT_LESS__(len,sizeof(packet.version));
-
-			memcpy(packet.version,var,len);
-		}
 
 		/*
 		note 1:
@@ -133,15 +138,14 @@ namespace UDPBroadCast
 		SOCKADDR_IN me;
 		memset(&me,0,sizeof(me));
 		me.sin_family=AF_INET;
-		UINT16 port = basePort + PortOffset::BroadcastFrom;
-		me.sin_port=htons(basePort);
+		UINT16 port = packet.serverBasePort + PortOffset::BroadcastFrom;
+		me.sin_port=htons(packet.serverBasePort);
 		me.sin_addr.s_addr=ADDR_ANY;
 		int rc=::bind(broadcastSocket,(SOCKADDR*)&me,sizeof(SOCKADDR_IN));
 		if (rc != 0)
 		{
 			closesocket(broadcastSocket);
 			broadcastSocket = INVALID_SOCKET;
-			enabled = false;
 			LogEvent(EventType::SessionRelated,"Warning: Unable to bind UDP broadcast socket. Chances are, a server is already running.");
 			return false;
 		}
@@ -153,14 +157,13 @@ namespace UDPBroadCast
 		UpdateOutAdapters(everyone);
 		lastBroadcast = lastAdapterQuery = timer.Now();
 
-		enabled = true;
 		return true;
 	}
 
 
 	void	Terminate()
 	{
-		if (enabled)
+		if (broadcastSocket != INVALID_SOCKET)
 		{
 			closesocket(broadcastSocket);
 			broadcastSocket = INVALID_SOCKET;
@@ -168,9 +171,17 @@ namespace UDPBroadCast
 	}
 
 
+	bool		IsStarted()
+	{
+		return broadcastSocket != INVALID_SOCKET;
+	}
+
+
 	void	Update()
 	{
 
+		if (broadcastSocket == INVALID_SOCKET)
+			return;
 		if (timer.GetSecondsSince( lastAdapterQuery) > 5)
 		{
 			UpdateOutAdapters(everyone);

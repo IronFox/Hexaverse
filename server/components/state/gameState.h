@@ -168,6 +168,11 @@ namespace Game
 		*/
 		void		HandleSessionClosure();
 		/**
+		Called automatically by Network::SuspendSession()
+		Stops AI process
+		*/
+		void		HandleSessionSuspension();
+		/**
 		Called automatically by Network::RestartSession()
 		*/
 		void		HandleSessionRestart();
