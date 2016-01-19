@@ -2162,7 +2162,8 @@ bool loop()
 			}
 			if (!Vec::zero(change))
 			{
-				Vec::setLen(change, Engine::timing.delta*100.f);
+				//Vec::setLen(change, Engine::timing.delta*100.f);
+				Vec::mult(change,Engine::timing.delta*100.f);
 				Camera::Rotate(change);
 			}
 		}
