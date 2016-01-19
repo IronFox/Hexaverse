@@ -67,8 +67,7 @@ namespace Objects
 			void			FeedLeftovers(ResourceVector&vector, float atTime);
 
 
-			void			Collect(ResourceVector demand, float atTime);
-			void			Distribute(ResourceVector supply, float atTime);
+			void			ChangeStorage(ResourceVector&supply, float atTime);
 			bool			CanEnable(const WorkingStructure*, String&outWhy) const;
 			FullResourceVector	GetVector(const Array<bool>&virtualEnabled) const;
 		#endif

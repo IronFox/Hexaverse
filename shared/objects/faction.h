@@ -324,12 +324,33 @@ namespace Objects
 
 
 
+	class MobileResourceSession
+	{
+		MobileEntity	*target = nullptr;
+		const MobileEntity	*constTarget = nullptr;
+		bool				isVehicle=false;
+		#ifdef WIRELESS_VEHICLES
+			Grid::LowSetup::TVolumeDescriptor desc;
+			Buffer0<index_t>	compounds;
+		#endif
+	public:
+		void		SetTo(MobileEntity&);
+		void		SetTo(const MobileEntity&);
+		bool		CanWithdraw(Resource res, int demand)	const;
+		#ifndef CLIENT
+			void	ChangeStorage(Resource res, int&change);
+			void	ForceChangeStorage(Resource res, int change);
+		#endif
+		int			GetStorage(Resource res)	const;
+	};
+		
 	#ifndef CLIENT
-		void	ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int change);
+		void	ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int&change);
+		void	ForceChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int change);
 
-		void	ChangeStorage(WorldEntity&e, float atTime, const ResourceVector&max, ResourceVector&storage, Resource res, int change);
+		void	ChangeStorage(WorldEntity&e, float atTime, const ResourceVector&max, ResourceVector&storage, Resource res, int&change);
 		void	ChangeStorage(WorkingStructure&ws, float atTime, Resource res, int change);
-		void	ChangeStorage(MobileEntity&v, float atTime, Resource res, int change);
+		//void	ChangeStorage(MobileEntity&v, float atTime, Resource res, int change);
 		//void	MapVisibility2(const PWorldEntity&e, const PWorldEntity&other, const OwnerParameter&checkForOwner, float&atTime);
 		void	ChangeOwnership( const PWorldEntity&e, const OwnerParameter&newOwner, float&atTime);
 
@@ -340,8 +361,8 @@ namespace Objects
 		Verification failure leads to program termination.
 		*/
 //		void	VerifyVisibilityNetwork();
-		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource res, int demand);
-		int		GetStorage(const MobileEntity&v, Resource res);
+		//bool	CanWithdrawFromStorage(const MobileEntity&v, Resource res, int demand);
+		//int		GetStorage(const MobileEntity&v, Resource res);
 
 	#else
 		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine);

@@ -613,7 +613,7 @@ namespace Objects
 
 					if (available >= demand)
 					{
-						ChangeCompoundStorage(compound, this, atTime, Resource::Fuel, -demand);
+						ForceChangeCompoundStorage(compound, this, atTime, Resource::Fuel, -demand);
 						return port;
 					}
 				}

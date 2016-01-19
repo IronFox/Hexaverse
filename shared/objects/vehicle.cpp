@@ -5,9 +5,7 @@
 #include "prototypes.h"
 #include "systems.h"
 #include "gridAndChoices.h"
-#if !defined CLIENT || defined CONNECTOR_LESS
-	#include "faction.h"
-#endif
+#include "faction.h"
 
 namespace Objects
 {
@@ -469,12 +467,11 @@ namespace Objects
 
 	/*virtual override*/bool				Vehicle::HasAmmoForShot() const 
 	{
-	#ifdef CONNECTOR_LESS
-		const Compound&compound = owner->compound;
-		return compound.total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	#else
-		return currentStorage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	#endif
+		if (!turret->ammoNeedPerShot)
+			return true;
+		static MobileResourceSession session;
+		session.SetTo(*this);
+		return session.CanWithdraw(turret->ammoType,turret->ammoNeedPerShot);
 	}
 	
 	#ifdef HAS_WINDOW

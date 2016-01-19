@@ -14,62 +14,114 @@
 namespace Objects
 {
 
+
+	static void	GetOwnCompoundsIn(const OwnerParameter&p, const Grid::LowSetup::TVolumeDescriptor&desc, BasicBuffer<UINT32>&outCompoundIDs)
+	{
+		outCompoundIDs.Clear();
+		foreach (desc.coverage,c)
+		{
+			for (UINT l = c->layerBegin; l < c->layerEnd; l++)
+			{
+				PStructure s = GetStructure(Grid::LCellIdU(c->stackID,l));
+				if (!s || s->owner != p)
+					continue;
+				if (s->compoundID == Compound::InvalidNetwork)
+					continue;
+				if (!outCompoundIDs.Contains(s->compoundID))
+					outCompoundIDs << s->compoundID;
+			}
+		}
+	}
+
+	void	MobileResourceSession::SetTo(MobileEntity&v)
+	{
+		target = &v;
+		constTarget = &v;
+		isVehicle = v.IsVehicle();
+		#ifdef WIRELESS_VEHICLES
+			Grid::low.GenerateVolume(Sphere<>(v.system.w.xyz,WirelessTransferRange),desc);
+			GetOwnCompoundsIn(v.owner,desc,compounds);
+		#endif
+	}
+
+	void	MobileResourceSession::SetTo(const MobileEntity&v)
+	{
+		target = nullptr;
+		constTarget = &v;
+		isVehicle = v.IsVehicle();
+		#ifdef WIRELESS_VEHICLES
+			Grid::low.GenerateVolume(Sphere<>(v.system.w.xyz,WirelessTransferRange),desc);
+			GetOwnCompoundsIn(v.owner,desc,compounds);
+		#endif
+	}
+
+
+	int		 MobileResourceSession::GetStorage(Resource res)	const
+	{
+		#ifndef CONNECTOR_LESS
+			#ifdef WIRELESS_VEHICLES
+				if (isVehicle)
+				{
+					int rs = constTarget->currentStorage.level[res];
+					foreach (compounds,c)
+						rs += Objects::compounds[*c].total.storage.level[res] 
+							#ifndef CLIENT
+								+ Objects::compounds[*c].overproduction.level[res]
+							#endif
+							;
+					return rs;
+				}
+			#endif
+			return constTarget->currentStorage.level[res];
+		#else
+			const Compound&compound = constTarget->owner->compound;
+			return compound.total.storage.level[res] + compound.overproduction.level[res];
+		#endif
+
+	}
+	bool	MobileResourceSession::CanWithdraw(Resource res, int demand)	const
+	{
+		if (demand == 0)
+			return true;
+		return GetStorage(res) >= demand;
+	}
+
+
 	#ifndef CLIENT
 
 		/*static*/ Buffer0<WFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus(new Faction("<Nexus>"));
 
-		int		GetStorage(const MobileEntity&v, Resource res)
-		{
-			#ifndef CONNECTOR_LESS
-				#ifdef WIRELESS_VEHICLES
-					int rs = v.currentStorage.level[res];
-					static Grid::LowSetup::TVolumeDescriptor desc;
-					Grid::low.GenerateVolume(Sphere<>(v.system.w.xyz,WirelessTransferRange),desc);
-					static Buffer0<index_t>	compounds;
-					compounds.Clear();
-					foreach (desc.coverage,c)
-					{
-						for (UINT l = c->layerBegin; l < c->layerEnd; l++)
-						{
-							PStructure s = GetStructure(Grid::LCellIdU(c->stackID,l));
-							if (!s || s->owner != v.owner)
-								continue;
-							if (s->compoundID == Compound::InvalidNetwork)
-								continue;
-							if (!compounds.Contains(s->compoundID))
-								compounds << s->compoundID;
-						}
-					}
-					foreach (compounds,c)
-						rs += Objects::compounds[*c].total.storage.level[res] + Objects::compounds[*c].overproduction.level[res];
-
-					return rs;
-
-				#else
-					return v.currentStorage.level[res];
-				#endif
-			#else
-				const Compound&compound = v.owner->compound;
-				return compound.total.storage.level[res] + compound.overproduction.level[res];
-			#endif
-
-		}
-
-		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource res, int demand)
-		{
-			if (demand == 0)
-				return true;
-			return GetStorage(v,res) >= demand;
-		}
 
 
-		void ChangeStorage(WorldEntity&e, float atTime, const ResourceVector&max, ResourceVector&storage, Resource res, int change)
+		
+
+
+
+		//bool	CanWithdrawFromStorage(const MobileEntity&v, Resource res, int demand)
+		//{
+		//	if (demand == 0)
+		//		return true;
+		//	return GetStorage(v,res) >= demand;
+		//}
+
+
+		void ChangeStorage(WorldEntity&e, float atTime, const ResourceVector&max, ResourceVector&storage, Resource res, int&change)
 		{
 			if (change == 0)
 				return;
-			storage.level[res] += change;
-			LogEvent(EventType::MinorEntityProcess,&e,String(res.ToString())+ " storage changed by "+String(change)+" to "+String(storage.level[res])+"/"+String(max.level[res]));
+			int transfer = 0;
+			if (change > 0)
+			{
+				int capacity = max.level[res] - storage.level[res];
+				transfer = std::min(capacity,change);
+			}
+			else
+				transfer = std::max(-max.level[res],change);
+			
+			storage.level[res] += transfer;
+			change -= transfer;
+			LogEvent(EventType::MinorEntityProcess,&e,String(res.ToString())+ " storage changed by "+String(transfer)+" to "+String(storage.level[res])+"/"+String(max.level[res]));
 			e.RegisterChange(WorldEntity::StorageChanged,atTime);
 			ASSERT_IS_CONSTRAINED__(storage.level[res] , 0, max.level[res]);
 		}
@@ -89,10 +141,9 @@ namespace Objects
 			#endif
 		}
 
-		void ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int change)
-		{
-			ResourceVector demand;
 
+		static void WithdrawOverproduction(Compound&compound, MobileEntity*originatingAt, Resource res, int&change)
+		{
 			if (change < 0 && compound.overproduction.level[res] > 0)
 			{
 				int production = compound.overproduction.level[res];
@@ -100,25 +151,75 @@ namespace Objects
 				LogEvent(EventType::MinorEntityProcess,originatingAt,String(res.ToString())+ " overproduction ("+String(production)+") redirected for demand ("+String(change)+"): "+String(overproductionTransfer)+" transferred");
 				change += overproductionTransfer;
 				compound.overproduction.level[res]-= overproductionTransfer;
-				if (change == 0)
-					return;
 			}
-			demand.level[res] = abs(change);
-			if (change < 0)
-				compound.Collect(demand,atTime);
-			else
-				compound.Distribute(demand,atTime);
+		}
+
+		void	ForceChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int change)
+		{
+			int original = change;
+			ChangeCompoundStorage(compound,originatingAt,atTime,res,change);
+			if (change != 0)
+				FATAL__(originatingAt->GetName()+": Unable to change compound storage by "+String(original)+" unit(s) of "+res.ToString()+". "+String(change)+" unit(s) remaining");
+		}
+
+		void ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int&change)
+		{
+			ResourceVector demand;
+
+			WithdrawOverproduction(compound,originatingAt,res,change);
+			if (change == 0)
+				return;
+			demand.level[res] = change;
+			compound.ChangeStorage(demand,atTime);
+			change = demand.level[res];
+		}
+
+		void	MobileResourceSession::ForceChangeStorage(Resource res, int change)
+		{
+			int original = change;
+			ChangeStorage(res,change);
+			if (change != 0)
+				FATAL__(target->GetName()+": Unable to change surrounding storage by "+String(original)+" unit(s) of "+res.ToString()+". "+String(change)+" unit(s) remaining");
 		}
 
 
-		void ChangeStorage(MobileEntity&v, float atTime, Resource res, int change)
+		void MobileResourceSession::ChangeStorage(Resource res, int&change)
 		{
+			ASSERT_NOT_NULL__(target);
 			if (change == 0)
 				return;
 			#ifndef CONNECTOR_LESS
-				ChangeStorage(v,atTime,v.GetMaxStorageCapacity(),v.currentStorage,res,change);
+				#ifdef WIRELESS_VEHICLES
+					if (isVehicle)
+					{
+					
+						foreach (compounds,c)
+						{
+							Compound&compound = Objects::compounds[*c];
+							WithdrawOverproduction(compound,target,res,change);
+							if (change == 0)
+								return;
+						}
+						Objects::ChangeStorage(*target,target->timeAt,target->GetMaxStorageCapacity(),target->currentStorage,res,change);
+						if (!change)
+							return;
+						ResourceVector demand;
+						foreach (compounds,c)
+						{
+							Compound&compound = Objects::compounds[*c];
+							demand.level[res] = change;
+							compound.ChangeStorage(demand,target->timeAt);
+							change = demand.level[res];
+							if (change == 0)
+								return;
+						}
+						return;
+					}
+
+				#endif
+				Objects::ChangeStorage(*target,target->timeAt,target->GetMaxStorageCapacity(),target->currentStorage,res,change);
 			#else
-				ChangeCompoundStorage(v.owner->compound, &v, atTime,res,change);
+				ChangeCompoundStorage(target->owner->compound, target, atTime,res,change);
 			#endif
 		}
 

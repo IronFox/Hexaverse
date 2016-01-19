@@ -213,10 +213,10 @@ namespace Objects
 					ChangeStorage(*this,attackTime, turret->ammoType,-turret->ammoNeedPerShot);
 				else
 				{
-					ResourceVector change;
 					RefreshCompoundCoverageIfNeeded(timeAt);
-					change.level[turret->ammoType] = turret->ammoNeedPerShot;
-					GetCompound().Collect(change,timeAt);
+					ResourceVector change;
+					change.level[turret->ammoType] = -turret->ammoNeedPerShot;
+					GetCompound().ChangeStorage(change,timeAt);
 					//ASSERT__(change.IsEmpty());
 				}
 				

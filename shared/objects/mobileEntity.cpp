@@ -1081,7 +1081,10 @@ namespace Objects
 
 
 				SignalAttack(To<Vehicle>::Cast(shared_from_this()),target,flightTime);
-				ChangeStorage(*this,timeAt,turret->ammoType,-turret->ammoNeedPerShot);
+
+				static MobileResourceSession session;
+				session.SetTo(*this);
+				session.ForceChangeStorage(turret->ammoType,-turret->ammoNeedPerShot);
 				
 				timeAt += flightTime;
 

@@ -17,6 +17,10 @@ namespace Objects
 
 	namespace VehicleJob
 	{
+		#ifndef CLIENT
+			static Objects::MobileResourceSession session;
+		#endif
+
 
 		/**/					BaseJob::BaseJob(int mineralCosts, const MobileEntity&v, bool actuallyConsumesMinerals, Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):
 										roundsToJobCompletion(-1),mineralCostLeft(0),
@@ -67,20 +71,21 @@ namespace Objects
 				}
 
 			#endif
-
+			session.SetTo(v);
 			if (roundsToJobCompletion > 0 && isNewRound)
 			{
-				roundsToJobCompletion --;
 
 				#ifndef CONNECTOR_LESS
-					if (!CanWithdrawFromStorage(v,Resource::Minerals,mineralCostLeft))
+					if (!session.CanWithdraw(Resource::Minerals,withdrawNow))
 					{
 						LogEvent(EventType::EntityProcessFailed,&v,"Unable to continue construction at this point. Insufficient minerals available (need "+String(withdrawNow)+"). Delaying operation.");
 						return ContinueJob;
 						//LogEvent(EventType::CommandRejected,&v,"Unable to complete operation. Insufficient minerals left in storage ("+String(v.currentStorage.level[Resource::Minerals])+"/"+String(mineralCostLeft)+").");
 						//return TerminalFailure;
 					}
+				//	session.ForceChangeStorage(Resource::Minerals,-withdrawNow);
 				#endif
+				roundsToJobCompletion --;
 			}
 		
 			bool rs = true;
@@ -88,7 +93,7 @@ namespace Objects
 			{
 
 				LogEvent(EventType::EntityProcess,&v,"'"+GetName()+"' completed");
-				ChangeStorage(v,v.timeAt, Resource::Minerals,-mineralCostLeft);
+				session.ForceChangeStorage(Resource::Minerals,-mineralCostLeft);
 
 				mineralCostLeft = 0;
 
@@ -117,7 +122,7 @@ namespace Objects
 				if (mineralCostLeft > 0 && isNewRound)
 				{
 					int capacity = v.GetConstructionSpeed();
-					ChangeStorage(v,v.timeAt,Resource::Minerals,-capacity);
+					session.ForceChangeStorage(Resource::Minerals,-capacity);
 					mineralCostLeft -= capacity;
 				}
 			}
@@ -610,8 +615,9 @@ namespace Objects
 							if (demand.IsNotEmpty())
 							{
 								LogEvent(EventType::EntityProcess,&v,"Restocking vehicle: transferred "+demand.ToString());
-								n.Collect(demand,v.timeAt);
 								v.currentStorage += demand;
+								demand.Negate();
+								n.ChangeStorage(demand,v.timeAt);
 								v.RegisterChange(WorldEntity::StorageChanged,v.timeAt);
 							}
 							else
@@ -635,8 +641,8 @@ namespace Objects
 							{
 								LogEvent(EventType::EntityProcess,&v,"Deposition: transferred "+supply.ToString());
 
-								n.Distribute(supply,v.timeAt);
 								v.currentStorage -= supply;
+								n.ChangeStorage(supply,v.timeAt);
 								v.RegisterChange(WorldEntity::StorageChanged,v.timeAt);
 							}
 							else
@@ -767,26 +773,27 @@ namespace Objects
 
 			int cost = (int)ceil(float(target->GetConstructionCost()) * relative);
 
-			if (CanWithdrawFromStorage(v,Resource::Minerals,cost))
+			session.SetTo(v);
+			if (session.CanWithdraw(Resource::Minerals,cost))
 			{
 				target->health = maxHealth;
 				target->RegisterChange(WorldEntity::HealthChanged,v.timeAt);
-				ChangeStorage(v,v.timeAt, Resource::Minerals,-cost);
+				session.ForceChangeStorage(Resource::Minerals,-cost);
 				LogEvent(EventType::CommandRejected,&v,this->GetName()+ ": '"+target->GetNiceName()+"' repaired");
 				return JobDone;
 			}
 
-			int canRepair = (int)floor(float(maxHealth) * float(GetStorage(v,Resource::Minerals)) / float(target->GetConstructionCost()));
+			int canRepair = (int)floor(float(maxHealth) * float(session.GetStorage(Resource::Minerals)) / float(target->GetConstructionCost()));
 			if (!canRepair)
 			{
 				LogEvent(EventType::CommandRejected,&v,this->GetName()+ ": Insufficient minerals in storage to repair '"+target->GetNiceName()+"'");
-				return JobDone;
+				return ContinueJob;
 			}
 			LogEvent(EventType::CommandRejected,&v,this->GetName()+ ": Insufficient minerals in storage to fully repair '"+target->GetNiceName()+"'. Repairing "+String(canRepair)+" health...");
 			target->health += canRepair;
 			target->RegisterChange(WorldEntity::HealthChanged,v.timeAt);
 
-			ChangeStorage(v,v.timeAt, Resource::Minerals,-(int)ceil(float(canRepair) * float(target->GetConstructionCost()) / float(maxHealth)));
+			session.ForceChangeStorage(Resource::Minerals,-(int)ceil(float(canRepair) * float(target->GetConstructionCost()) / float(maxHealth)));
 			return JobDone;
 
 		}

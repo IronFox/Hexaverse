@@ -156,37 +156,28 @@ namespace Objects
 
 
 		}
-		void			Compound::Distribute(ResourceVector supply, float atTime)
+		void			Compound::ChangeStorage(ResourceVector&change, float atTime)
 		{
 			ASSERT__(total.balance.IsStable());
-			total.storage += supply;
+
+			ResourceVector original = change;
+			FeedLeftovers(change, atTime);
+			ResourceVector added = original - change;
+
+			total.storage += added;
+			total.balance += added;
 			ASSERT2__(total.storage <= total.storageMax, total.storage.ToString(), total.storageMax.ToString());
-			total.balance += supply;
 			ASSERT__(total.storage.IsStable());
 			ASSERT__(total.balance.IsStable());
-			FeedLeftovers(supply, atTime);
-
 		}
 
 
-		void			Compound::Collect(ResourceVector demand, float atTime)
-		{
-			ASSERT__(total.balance.IsStable());
-			demand.Negate();
-			total.storage += demand;
-			total.balance += demand;
-			ASSERT__(total.storage.IsStable());
-			//ASSERT__(total.balance.IsStable());	//not guaranteed
-			FeedLeftovers(demand, atTime);
-			if (!total.balance.IsStable())
-			{
-				//RefreshCompoundCoverageIfNeeded(atTime);
-				this->RefreshState(atTime);
-
-			}
-
-
-		}
+		//void			Compound::Collect(ResourceVector&change, float atTime)
+		//{
+		//	change.Negate();
+		//	Distribute(change,atTime);
+		//	change.Negate();
+		//}
 
 		FullResourceVector Compound::GetVector(const Array<bool>&virtualEnabled) const
 		{
