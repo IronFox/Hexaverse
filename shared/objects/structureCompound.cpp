@@ -90,14 +90,14 @@ namespace Objects
 
 		void				Compound::TickEnd(float atTime)
 		{
-			#ifdef CONNECTOR_LESS
+			//#ifdef CONNECTOR_LESS
 				if (stable)
 				{
 					FeedLeftovers(overproduction,atTime);
 					overproduction.Clear();
 					total = GetVector();
 				}
-			#endif
+			//#endif
 
 		}
 
@@ -132,15 +132,12 @@ namespace Objects
 					events << std::make_pair(PStructure(), vector);
 				#endif
 
-				#ifdef CONNECTOR_LESS
-					ResourceVector localDemand;
-					vector.SeparateBySign(overproduction,localDemand);
-					FeedLeftovers(localDemand,0);
-					vector = localDemand;
-				#else
-					FeedLeftovers(vector,0);
-				#endif
-
+				
+				ResourceVector localDemand;
+				vector.SeparateBySign(overproduction,localDemand);
+				FeedLeftovers(localDemand,0);
+				vector = localDemand;
+				
 				if (!vector.IsStable())
 				{
 					LogEvent(EventType::InternalFault, nullptr, "Compound resource vector unstable: {"+vector.ToString()+"}");

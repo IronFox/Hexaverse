@@ -26,9 +26,9 @@ namespace Objects
 		Buffer0<WWorkingStructure>	containedStructures;
 		FullResourceVector			total;
 		#ifndef CLIENT
-			#ifdef CONNECTOR_LESS
+//			#ifdef CONNECTOR_LESS
 				ResourceVector		overproduction;	//set during initial phases, cleared before animation phase
-			#endif
+	//		#endif
 		#endif
 
 		bool						stable;
@@ -40,9 +40,7 @@ namespace Objects
 			total = FullResourceVector();
 			containedStructures.Clear();
 			#ifndef CLIENT
-				#ifdef CONNECTOR_LESS
-					overproduction = ResourceVector();
-				#endif
+				overproduction = ResourceVector();
 			#endif
 		}
 
@@ -52,9 +50,7 @@ namespace Objects
 			swp(total,other.total);
 			swp(stable,other.stable);
 			#ifndef CLIENT
-				#ifdef CONNECTOR_LESS
-					swp(overproduction,other.overproduction);
-				#endif
+				swp(overproduction,other.overproduction);
 			#endif
 			//swp(hashIdentifier,other.hashIdentifier);
 		}
