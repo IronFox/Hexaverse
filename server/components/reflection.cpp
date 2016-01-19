@@ -611,7 +611,8 @@ namespace Reflection
 				{
 					Objects::Resource res = Objects::Resource::Reinterpret(i);
 					state.EnterNewFolder(res.ToString());
-						Variable::Set("probability",Grid::Resource::probability[i],0.f,1.f,Variable::Persistence::GameInvariant);
+						Variable::Set("density",Grid::Resource::density[i],0.f,1.f,Variable::Persistence::GameInvariant);
+						//Variable::Set("probability",Grid::Resource::probability[i],0.f,1.f,Variable::Persistence::GameInvariant);
 						Variable::Set("max",Grid::Resource::maximum[i],(Grid::Resource::coverage_t)1,(Grid::Resource::coverage_t)32,Variable::Persistence::GameInvariant);
 					state.ExitFolder();
 				}
