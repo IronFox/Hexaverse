@@ -11,7 +11,9 @@ namespace Objects
 	//typedef std::shared_ptr<Faction>	PFaction;
 	//typedef std::weak_ptr<Faction>		WFaction;
 
-
+	#ifdef WIRELESS_VEHICLES
+		static const int			WirelessTransferRange = 6;
+	#endif
 
 	
 	/**
