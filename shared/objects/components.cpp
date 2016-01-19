@@ -1669,7 +1669,8 @@ namespace Objects
 						+
 						Satellite::CountTurretOccurrences(owner,this);
 					limit = RuntimeConfig::UnitLimits::Get(constName);
-					outResult << " Deployed: "+String(cnt)+"/"+String(limit);
+					if (limit != 0xFFFF)
+						outResult << " Deployed: "+String(cnt)+"/"+String(limit);
 				}
 
 
