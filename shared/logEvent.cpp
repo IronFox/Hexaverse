@@ -141,8 +141,10 @@ namespace Logging
 
 	void WriteEvent( EventType type, const String&message, TCP::Peer*peer, const Objects::WorldEntity*e)
 	{
-		bool printToConsole = type != EventType::Debug && type != EventType::MinorEntityProcess
-							&& type != EventType::PerformanceMeasurement;
+		bool printToConsole = type != EventType::Debug
+							&& type != EventType::MinorEntityProcess
+							&& type != EventType::PerformanceMeasurement
+							&& type != EventType::RemoteControlResponse;
 
 		if (inTestMode)
 		{

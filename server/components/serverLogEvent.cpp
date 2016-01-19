@@ -7,8 +7,12 @@ namespace Logging
 {
 	void SendEntityEvent( TCP::Peer*toPeer,EventType type, const Objects::WorldEntity*e, const String&msg)
 	{
-		if (type == EventType::PerformanceMeasurement ||
-			type == EventType::Debug || type == EventType::MinorEntityProcess || !Network::server.IsOnline())
+		if (type == EventType::PerformanceMeasurement
+			|| type == EventType::Debug
+			|| type == EventType::MinorEntityProcess 
+			|| type == EventType::RemoteControl
+			|| type == EventType::RemoteControlError
+			|| !Network::server.IsOnline())
 			return;
 		if (!toPeer && e)
 		{
