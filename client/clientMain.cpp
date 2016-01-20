@@ -2151,11 +2151,11 @@ bool loop()
 			}
 
 			float2 change;
-			if (Engine::input.pressed[Key::A])
+			if (Engine::input.pressed[Key::A] || Engine::input.pressed[Key::Q])
 			{
 				change.x --;
 			}
-			if (Engine::input.pressed[Key::D])
+			if (Engine::input.pressed[Key::D] || Engine::input.pressed[Key::E])
 			{
 				change.x++;
 			}
