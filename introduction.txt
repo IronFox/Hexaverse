@@ -28,4 +28,7 @@ steam greenlight format:
 
 
 [h1]Synopsis[/h1]
-Hexaverse is a turn based strategy game. Placed on volumetric spheres, players are given all the tools necessary to establish colonies 
+Hexaverse is a turn based, hexagonal strategy game.
+Placed on volumetric spheres, players are given all the tools necessary to establish colonies,
+explore, expand, terraform, and conquer terrain occupied by hostile factions.
+With a wide range of possible planet structures available, players are put in command of 
