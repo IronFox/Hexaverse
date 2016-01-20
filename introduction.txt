@@ -1,0 +1,34 @@
+steam greenlight format:
+[h1] Header text	[/h1]
+[b] Bold text	[/b]
+[u] Underlined text	[/u]
+[i] Italic text	[/i]
+[strike] Strikethrough text	[/strike]
+[spoiler] Spoiler text	[/spoiler]
+[noparse] Doesn't parse [b]tags[/b] [/noparse]
+[list]
+    [*]Bulleted list
+    [*]Bulleted list
+    [*]Bulleted list
+[/list]
+
+[olist]
+    [*]Ordered list
+    [*]Ordered list
+    [*]Ordered list
+[/olist]
+
+[quote=author] Quoted text	[/quote]
+[code] Fixed-width font, preserves spaces	[/code]
+
+
+
+
+
+
+
+[h1]Synopsis[/h1]
+Hexaverse is a turn based, hexagonal strategy game.
+Placed on volumetric spheres, players are given all the tools necessary to establish colonies,
+explore, expand, terraform, and conquer terrain occupied by hostile factions.
+With a wide range of possible planet structures available, players are put in command of 

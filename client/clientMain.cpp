@@ -2151,11 +2151,11 @@ bool loop()
 			}
 
 			float2 change;
-			if (Engine::input.pressed[Key::A])
+			if (Engine::input.pressed[Key::A] || Engine::input.pressed[Key::Q])
 			{
 				change.x --;
 			}
-			if (Engine::input.pressed[Key::D])
+			if (Engine::input.pressed[Key::D] || Engine::input.pressed[Key::E])
 			{
 				change.x++;
 			}
@@ -2393,6 +2393,7 @@ bool loop()
 		LineRenderer::Flush();
 
 		#ifdef _DEBUG
+		if (!saveScreenshot)
 		{
 			LineRenderer::SetColor(float4(1,0,0,1));
 			display.SetDepthTest(false,false);
