@@ -2393,6 +2393,7 @@ bool loop()
 		LineRenderer::Flush();
 
 		#ifdef _DEBUG
+		if (!saveScreenshot)
 		{
 			LineRenderer::SetColor(float4(1,0,0,1));
 			display.SetDepthTest(false,false);
