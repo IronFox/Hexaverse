@@ -28,7 +28,11 @@ steam greenlight format:
 
 
 [h1]Synopsis[/h1]
-Hexaverse is a turn based, hexagonal strategy game.
-Placed on volumetric spheres, players are given all the tools necessary to establish colonies,
-explore, expand, terraform, and conquer terrain occupied by hostile factions.
-With a wide range of possible planet structures available, players are put in command of 
+Hexaverse is a turn based, 4X multiplayer strategy game.
+Other than in common strategy games, Hexaverse plays along concentric spherical layers that shape a volumetric planetary terrain. Players are free to build walls and bridges, excavate tunnels, submerge their bases beneath mountains, or blow up those mountains.
+Given infinite resources, success is defined by the efficiency and speed at which resources are excavated and consumed.
+
+
+[h1]Phases[/h1]
+Hexaverse is turn based. More specifically, it is phase based, meaning the server processes events in successive phases, each computing a different aspect of the game rules. Most of the time, the server accepts instructions in the command phase, during which all players simultaneously control their units. Most operations are not instantaneously, but rather queued for execution during the respective phase.
+Since all players are in command phase at the same time, the time needed for a single game round depends less on the number of players active, but on the longest time any one player needs, and/or limits enforced by the server.
