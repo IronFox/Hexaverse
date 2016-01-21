@@ -14,23 +14,36 @@ namespace ServerProcess
 		MonitoredProcess	process;
 		bool				remoteControl = false;
 
+
+		PathString	GetWorkingDirectory()
+		{
+			return "..\\server\\";
+		}
+
+		PathString GetExecutablePath()
+		{
+			#ifdef _DEBUG
+				return "..\\server\\.projector\\Debug\\server.exe";
+			#else
+				return "..\\server\\server" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
+			#endif
+		}
+
 		void	Start()
 		{
 			char parameterBuffer[32768];
-			PathString	path,
-						workingDirectory = "..\\server\\";
-			#ifdef _DEBUG
-				path = "..\\server\\.projector\\Debug\\server.exe";
-			#else
-				path = "..\\server\\server" PLATFORM_TARGET_NAME_EXTENSION_STR ".exe";
-			#endif
+			PathString	path = GetExecutablePath(),
+						workingDirectory = GetWorkingDirectory();
 
 			PathString parameters;
 			if (remoteControl)
 				parameters = "--remote";
 
-			ASSERT3__(process.ResumeOrStart(workingDirectory,path,parameters), workingDirectory,path,parameterBuffer);
-//			ASSERT3__(process.ResumeOrStart(workingDirectory,path,parameters,false), workingDirectory,path,parameterBuffer);
+			bool showWindow = false;
+			#ifdef _DEBUG
+				showWindow = true;
+			#endif
+			ASSERT3__(process.ResumeOrStart(workingDirectory,path,parameters,showWindow), workingDirectory,path,parameterBuffer);
 		}
 	
 	}
@@ -54,6 +67,8 @@ namespace ServerProcess
 
 	bool			IsRunning()
 	{
+		if (!Detail::process.IsRunning())
+			Detail::process.TryResume(Detail::GetWorkingDirectory(),Detail::GetExecutablePath());
 		return Detail::process.IsRunning();
 	}
 
