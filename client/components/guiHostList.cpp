@@ -7,6 +7,7 @@
 #include <io/string_file.h>
 #include "../../shared/runtimeConfig.h"
 #include "clientRuntimeConfig.h"
+#include "serverProcess.h"
 
 void LoadHosts()
 {
@@ -400,6 +401,7 @@ void	SaveHosts()
 		};
 
 
+		PButton addHostButton;
 		{
 			PButton b(new Button("Add new host...",[]()
 			{
@@ -423,6 +425,45 @@ void	SaveHosts()
 			b->LockIdealWidth();
 
 			Dialog::serverChoice->components << b;
+			
+			addHostButton = b;
+		}
+		
+
+		{
+			PButton start(new Button("Start server"));
+			PButton stop(new Button("Stop server"));
+			bool running = ServerProcess::IsRunning();
+			stop->SetEnabled(running);
+			start->SetEnabled(!running);
+			WButton wstart = start;
+			WButton wstop = stop;
+			start->SetOnPress([wstart,wstop]()
+			{
+				ServerProcess::Begin(true);
+				PButton b = wstart.lock();
+				if (b)
+					b->SetEnabled(false);
+				b = wstop.lock();
+				if (b)
+					b->SetEnabled(true);
+			});
+			stop->SetOnPress([wstart,wstop]()
+			{
+				ServerProcess::End();
+				PButton b = wstart.lock();
+				if (b)
+					b->SetEnabled(true);
+				b = wstop.lock();
+				if (b)
+					b->SetEnabled(false);
+			});
+			start->anchorConfig.Top() = addHostButton->anchorConfig.Top();
+			stop->anchorConfig.Top() = addHostButton->anchorConfig.Top();
+			start->anchorConfig.Left().Set(addHostButton,0.02f);
+			stop->anchorConfig.Left().Set(start,0.02f);
+
+			Dialog::serverChoice->components << start << stop;
 		}
 		
 
