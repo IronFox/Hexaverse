@@ -4,6 +4,14 @@ stationary structure is not declare invisible dispite sole sensing vehicle movin
 Faction::SignalDisappearance() never called or ref not set (which means is already invisible).
 Assumption: SignalDisappearance() not called
 
+Theory:
+Two story high building. Optimization only checks bottom center. Vehicle exited such that the top was in the checked sphere, but the bottom was not. Thus ignored.
+
+
+
+
+
+
 becoming visible:
 
 MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Radar Tower	b2603756	4d9ddd83:'<Nexus>'	112[h=1]	c095c6f6:'IronFox': Sight level increased to 1
