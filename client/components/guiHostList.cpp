@@ -431,8 +431,8 @@ void	SaveHosts()
 		
 
 		{
-			PButton start(new Button("Start server"));
-			PButton stop(new Button("Stop server"));
+			PButton start(new Button("Start local server"));
+			PButton stop(new Button("Stop local server"));
 			bool running = ServerProcess::IsRunning();
 			stop->SetEnabled(running);
 			start->SetEnabled(!running);
