@@ -1061,6 +1061,8 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 		case CTRL_C_EVENT:
 		case CTRL_CLOSE_EVENT:
 		case CTRL_SHUTDOWN_EVENT:
+		case WM_CLOSE:
+			LogEvent(EventType::SessionRelated,"Received close event. Terminating");
 			TerminateNow(false);
 		return TRUE;
 	
