@@ -23,16 +23,49 @@ steam greenlight format:
 
 
 
-
+eXplore, eXpand, eXploit, and eXterminate
+eXcavate
 
 
 
 [h1]Synopsis[/h1]
 Hexaverse is a turn based, 4X multiplayer strategy game.
-Other than in common strategy games, Hexaverse plays along concentric spherical layers that shape a volumetric planetary terrain. Players are free to build walls and bridges, excavate tunnels, submerge their bases beneath mountains, or blow up those mountains.
-Given infinite resources, success is defined by the efficiency and speed at which resources are excavated and consumed.
+All matches take place on volumetric planets. Players are free to expand any way around the globe. Use your terraformers to build walls and bridges, excavate tunnels, or submerge your bases beneath mountains, only to see them nuked from orbit. Face off a whole planet filled with hostile players, and build an empire atop the remains of their shattered defenses.
+Given undepletable natural resources, you dominate through the speed at which you extract and use these resources, and the cleverness of your military strategy.
 
 
 [h1]Phases[/h1]
-Hexaverse is turn based. More specifically, it is phase based, meaning the server processes events in successive phases, each computing a different aspect of the game rules. Most of the time, the server accepts instructions in the command phase, during which all players simultaneously control their units. Most operations are not instantaneously, but rather queued for execution during the respective phase.
-Since all players are in command phase at the same time, the time needed for a single game round depends less on the number of players active, but on the longest time any one player needs, and/or limits enforced by the server.
+In Hexaverse all players act simultaneously to reduce the time needed per round. While you change the planed operations of your units, your opponents will do the same.
+During the various automated computation phases, attacks are generally processed first. Then motion. You can't run if you are dead.
+
+
+
+[h1]Terrain[/h1]
+In this game you'll dominate whole planets. If you can.
+The general grid is split into hexagonal cells that cover the entire planet. Stacked 32 times you get a volume. The lower half (give or take) of that volume is usually composed of various types of solid or liquid matter. Its composition can change over time (liquids), by active player terraforming, or high caliber weapon impacts.
+Planets come in various types: from desert and dust right to lava, ocean, and hollow-core planets. Use any of the predefined planets or define your own.
+
+
+
+[h1]Resources[/h1]
+Planets are covered by natural resources which are used to maintain and expand your empire.
+Resources are infinite and height-independent. However, mines are blocked by any lower vehicle or building. That means, that if you manage to undermine a hostile base, then you can very effectively cut it off its resources.
+Among connected buildings, resources are shared through implicit resource networks, called compounds.
+Vehicles that require resources can draw from any such compounds in their vicinity.
+
+
+[h1]Satellites[/h1]
+This game features satellites. Ideally they stay up in orbit high above the terrain. Most need fuel to stay up there.
+Satellites can be used to scan, colonize, defend, and evaporate whole bases with a single shot.
+
+
+[h1]Sensory[/h1]
+Everything in Hexaverse has sensors, and sensors are everything. It may seem tempting to believe that there's still nothing on that unsuspecting mountain near your base. But if you don't have any sort of radar there, you can never know. And your enemy probably knows that you don't know.
+Hexaverse is all about knowing what you don't know, and ideally putting some radars there to fix it.
+It's also about firing an EMP bolt into those radar. It's fun. You should try it.
+
+
+[h1]Weaponry[/h1]
+Offensive vehicles, buildings, and satellites feature different attack types, varying their respective ranges dramatically. Artillery vehicles benefit from being stationed on mountains while units of radial attack type are better off stationed near ground level.
+Defense turrets and satellites behave mostly like vehicles with the added capacity to fire at moving targets during their respective motion phase. This makes them considerably more dangerous than vehicles, albeit immobile, and more easy to avoid.
+EMP weaponry is capable of causing temporary damage to sensory, mobility, and attack range. EMP weapons are [u]very[/u] effective.
