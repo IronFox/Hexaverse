@@ -403,7 +403,8 @@ namespace Objects
 		bool	SeeThroughIsActive2(int,bool);
 		void	ToggleObjectView(int);
 		bool	ObjectsAreHidden(int);
-
+		void	ToggleCompoundHightlights(int);
+		bool	CompoundAreHightlighted(int);
 	}
 
 }

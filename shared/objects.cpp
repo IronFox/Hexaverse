@@ -222,6 +222,9 @@ namespace Objects
 			globalCommands.Append(GlobalCommand(int2(0,0),"End Round", [](int){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, [](int, bool controlEnabled)->bool {return CanChangeRoundState();},[](int)->bool {return HasSignalledRoundEnd();}));
 
 
+			globalCommands.Append(GlobalCommand(int2(0,2),"Highlight Compounds", &GlobalCmd::ToggleCompoundHightlights, &CommonCmd::AlwaysEnabled<int>, &GlobalCmd::CompoundAreHightlighted));
+
+
 			globalCommands.Append(GlobalCommand(int2(1,2),"Clip Terrain", &GlobalCmd::ToggleSeeThrough, &CommonCmd::AlwaysEnabled<int>, &GlobalCmd::SeeThroughIsActive));
 			globalCommands.Append(GlobalCommand(int2(2,2),"Clip-View Down", &GlobalCmd::SeeThroughDown, &GlobalCmd::SeeThroughIsActive2, &CommonCmd::AlwaysFalse<int>));
 			globalCommands.Append(GlobalCommand(int2(3,2),"Clip-View Up", &GlobalCmd::SeeThroughUp, &GlobalCmd::SeeThroughIsActive2, &CommonCmd::AlwaysFalse<int>));
@@ -754,6 +757,7 @@ namespace Objects
 				Deselect(false);
 				resourceView = false;
 				objectView = true;
+				compoundsColored = false;
 				hasArrowCellTarget = false;
 				showArrow = false;
 				arrowFrom = float3();

@@ -491,6 +491,17 @@ namespace Objects
 		return !objectView;
 	}
 
+	void	GlobalCmd::ToggleCompoundHightlights(int)
+	{
+		compoundsColored = !compoundsColored;
+	}
+
+	bool	GlobalCmd::CompoundAreHightlighted(int)
+	{
+		return compoundsColored;
+	}
+
+
 
 	
 

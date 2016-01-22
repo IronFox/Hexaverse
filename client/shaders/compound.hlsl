@@ -61,9 +61,10 @@ float4 psMain(V2P input, float4 screenSpace : SV_Position) : SV_TARGET
 	step = max(abs(ddx(dist)),abs(ddy(dist)));
 	float opacity = 1.0 - 0.5 * smoothstep(1.0-step,1.0+step,dist);
 	float3 tint = Tint.rgb * opacity;
+	float stripe = a * b;
+	stripe = 0.5 + 0.5 * stripe;
 	
-	
-	return float4(tint,a * b * Tint.a * opacity);	//if this works we move on
+	return float4(tint,stripe * Tint.a * opacity);	//if this works we move on
 }
 
 

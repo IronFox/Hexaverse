@@ -18,7 +18,8 @@ namespace Objects
 	extern bool					resourceView, 
 								showFriendlyRanges,
 								showHostileRanges,
-								objectView;
+								objectView,
+								compoundsColored;
 
 
 	extern DX11::ObjectBuffer<float4>	keyColor, overallTint;

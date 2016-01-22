@@ -28,7 +28,8 @@ namespace Objects
 	bool						resourceView = false,
 								showHostileRanges = false,
 								showFriendlyRanges = false,
-								objectView = true;
+								objectView = true,
+								compoundsColored = false;
 
 
 	DX11::ObjectBuffer<float4>	keyColor, overallTint,
@@ -907,7 +908,7 @@ namespace Objects
 			}
 		}
 
-		bool colorCompounds = false;
+		bool doColorCompounds = false;
 
 		#ifdef WIRELESS_VEHICLES
 
@@ -922,13 +923,13 @@ namespace Objects
 					foreach (v->resourceEnvironment.sourceCompounds,c)
 						compounds[*c].color = ColorCompoundInRange(*c);
 					wirelessRange.Update(float4(v->system.w.xyz,sqr(WirelessTransferRange)));
-					colorCompounds = true;
+					doColorCompounds = true;
 				}
 			}
 			
 		#endif
 
-		if (!colorCompounds)
+		if (!doColorCompounds && compoundsColored)
 		{
 			//if (selectedEntity->IsWorkingStructure())
 			{
@@ -941,7 +942,7 @@ namespace Objects
 					compounds[cID].color.a *= 0.25f;// = float4();
 				}
 	//			compounds[cID].color = ColorCompoundInRange(cID);
-				colorCompounds = true;
+				doColorCompounds = true;
 				wirelessRange.Update(float4(0,0,0,10000));
 			}
 
@@ -985,7 +986,7 @@ namespace Objects
 		}
 
 		
-		if (colorCompounds)
+		if (doColorCompounds)
 		{
 			display.StoreRendererState();
 			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
