@@ -683,11 +683,13 @@ void MyFatal(const FatalDescriptor&descriptor)
 	Logging::WriteEvent(EventType::Fatal,message,nullptr,nullptr);
 
 	application_shutting_down = true;	//prevent certain operations in Close()
-	ErrMessage(message);
+	DisplayMessage(PRODUCT_NAME" Server Error",message,false);
+	//ErrMessage("Hexaverse Server: "+message);
 	std::cerr << message << std::endl;
-	char confirm[0x100];
-	std::cin.getline(confirm,sizeof(confirm));
-
+	#ifdef _DEBUG
+		char confirm[0x100];
+		std::cin.getline(confirm,sizeof(confirm));
+	#endif
 
 
 	//NetworkConnection::Close();
