@@ -878,7 +878,7 @@ namespace Reflection
 		Configuration	config;
 		Config::Context*	ctx = nullptr;
 		
-		PathString configName = readOriginal ? "./"+subConfigName :  RuntimeConfig::ConfigFile(PathString(subConfigName));
+		const PathString configName = readOriginal ? "./"+subConfigName :  RuntimeConfig::ConfigFile(PathString(subConfigName));
 
 		bool rewrite = true;
 		if (FileSystem::IsFile(configName))
@@ -930,6 +930,11 @@ namespace Reflection
 				outFile.Close();
 			}
 		}
+		else
+			if (readOriginal && !allGood)
+			{
+				FATAL__("There were errors while trying to parse original configuration file "+String(configName)+". Fix the errors and restart the application.\nCheck your server logs (My Documents/My Games/Hexaverse/server/logs) for details. Redownloading the application should also fix the issue.")
+			}
 	}
 
 
