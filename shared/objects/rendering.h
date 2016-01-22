@@ -28,7 +28,8 @@ namespace Objects
 										jobShader,
 										paraboloidShader,
 										skyPortBeam,
-										arrowInstruction;
+										arrowInstruction,
+										compoundShader;
 	extern DX11::StreamVBO				arrowBuffer;
 	extern DX11::VBO					sphereVBO[4];
 	extern DX11::IBO32					sphereIBO[4], attackIBO;

@@ -33,6 +33,7 @@ namespace Objects
 
 	DX11::ObjectBuffer<float4>	keyColor, overallTint,
 								cylinderConfig,
+								wirelessRange,
 								beamBottomColor,
 								beamTopColor;
 
@@ -43,7 +44,8 @@ namespace Objects
 								cylinderShader,
 								paraboloidShader,
 								arrowInstruction,
-								skyPortBeam;
+								skyPortBeam,
+								compoundShader;
 	DX11::StreamVBO				arrowBuffer;
 	DX11::VBO					sphereVBO[4],cylinderVBO[4];
 	DX11::IBO32					sphereIBO[4],cylinderIBO[4], attackIBO;
@@ -166,12 +168,14 @@ namespace Objects
 		overallTint.Clear();
 		beamBottomColor.Clear();
 		beamTopColor.Clear();
+		wirelessRange.Clear();
 
 		seeThroughShader = stdVehicleShader = DX11::BaseInstructionBlock();
 		Structure::standardCompiledShader = Structure::standardLocalizableShader =
 			pathShader = jobShader = cylinderShader = paraboloidShader = 
 			arrowInstruction = 
 			skyPortBeam = 
+			compoundShader = 
 			foundation = cordon = DX11::InstructionBlock32();
 		userInteractionNotifier.Clear();
 		gatheringPoint.Clear();
@@ -249,6 +253,7 @@ namespace Objects
 		keyColor.Create(float4(0));
 		overallTint.Create(float4(1));
 		cylinderConfig.Create(float4(1));
+		wirelessRange.Create(float4(0,0,0,1));
 		{
 			Engine::VertexBinding binding;
 			binding.color.set(6, 4);
@@ -402,6 +407,22 @@ namespace Objects
 			shadowInstruction.SetTriangles();	
 		}
 
+		#ifdef WIRELESS_VEHICLES
+		{
+			DX11::Shader::Binding bindings[] =
+			{
+				DX11::Shader::Binding(overallTint, "Tint"),
+				DX11::Shader::Binding(Grid::Instruction::sunDirection,"Sun"),
+				DX11::Shader::Binding(Grid::Instruction::sunColor,"SunColor"),
+				DX11::Shader::Binding(wirelessRange, "WirelessRange"),
+			};
+
+			compoundShader.binding = stdVehicleShader.binding;
+			compoundShader.shader.LoadFromFile("shaders/compound.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			compoundShader.UpdateLayout();
+			compoundShader.SetTriangles();
+		}		
+		#endif
 
 		for (int k = 0; k < 4; k++)
 		{
@@ -703,6 +724,21 @@ namespace Objects
 	double now = 0;
 
 
+	float4	ColorCompoundInRange(UINT32 cID)
+	{
+		int primaryColor = 2 - (cID%3);
+		int secondaryColor = (cID/3)%3;
+		int secondaryIntensity = (cID/9)%2;
+		float4 result(0,0,0,0.2f);
+		result.v[primaryColor] = 1.f;
+		if (primaryColor != secondaryColor)
+		{
+			result.v[secondaryColor] = 0.5f + 0.5f * secondaryIntensity;
+		}
+		return result;
+	}
+
+
 	void					UpdateSeeThroughColor(bool isMine, bool isSelected)
 	{
 		static const float4 mySeeThroughColor(0.6,0.7,1,1);
@@ -830,6 +866,9 @@ namespace Objects
 
 		overallTint.Update(noTint);
 
+
+
+
 		foreach(structures, _s)
 		{
 			Structure&s = **_s;
@@ -863,9 +902,49 @@ namespace Objects
 					continue;
 				ApplyStateTint(s,baseTint,false);
 				Renderer::Render(s,activeColorMine,activeColorTheirs );
-				ApplyBaseTint(s,baseTint);
+				//ApplyBaseTint(s,baseTint);	//why?
 
 			}
+		}
+
+		bool colorCompounds = false;
+
+		#ifdef WIRELESS_VEHICLES
+
+			if (selectedMobileEntity && selectedMobileEntity->IsVehicle())
+			{
+				PVehicle v =  To<Vehicle>::Cast(selectedMobileEntity);
+				if (v->turret->ConsumesResources())
+				{
+					v->resourceEnvironment.CheckRefresh(*v);
+					foreach (compounds,c)
+						c->color = float4();
+					foreach (v->resourceEnvironment.sourceCompounds,c)
+						compounds[*c].color = ColorCompoundInRange(*c);
+					wirelessRange.Update(float4(v->system.w.xyz,sqr(WirelessTransferRange)));
+					colorCompounds = true;
+				}
+			}
+			
+		#endif
+
+		if (!colorCompounds)
+		{
+			//if (selectedEntity->IsWorkingStructure())
+			{
+				
+				foreach (compounds,c)
+					c->color = ColorCompoundInRange((UINT32)(c - compounds.pointer()));
+				if (selectedEntity && selectedEntity->IsStructure())
+				{
+					UINT32 cID = To<WorkingStructure>::Cast(selectedEntity)->compoundID;
+					compounds[cID].color.a *= 0.25f;// = float4();
+				}
+	//			compounds[cID].color = ColorCompoundInRange(cID);
+				colorCompounds = true;
+				wirelessRange.Update(float4(0,0,0,10000));
+			}
+
 		}
 
 
@@ -905,6 +984,49 @@ namespace Objects
 			ApplyBaseTint(*selectedEntity, tint);
 		}
 
+		
+		if (colorCompounds)
+		{
+			display.StoreRendererState();
+			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+			display.SetDepthTest(false,false);
+			display.LinkShader(compoundShader,true,true);
+
+				display.SetObjectMatrix(Matrix<>::eye4);
+				foreach(structures, _s)
+				{
+					Structure&s = **_s;
+					if (s.compiledShape.vbo.IsSet())
+					{
+						const float4&color = compounds[s.compoundID].color;
+						if (color.a == 0.f)
+							continue;
+						overallTint.Update(color);
+						display.Render(s.compiledShape,true);
+					}
+				}
+
+				foreach(structures, _s)
+				{
+					Structure&s = **_s;
+
+					if (s.localizableShape)
+					{
+						const float4&color = compounds[s.compoundID].color;
+						if (color.a == 0.f)
+							continue;
+						overallTint.Update(color);
+						_Locate(s);
+						if (s.HasFoundation())
+							display.Render(foundation, true);
+						_RenderSimpleLocated(s);
+					}
+				}
+
+
+			display.UnlockShader();
+			display.RestoreRendererState();
+		}
 
 
 
@@ -1287,8 +1409,9 @@ namespace Objects
 				}
 			}
 
-			float dummy;
-			if (!v && selectedEntity->GetTurretBase(dummy))
+			float zOffset;
+			PTurretBase base = selectedEntity->GetTurretBase(zOffset);
+			if (!v && base)
 			{
 				PTower t = To<Tower>::DynamicCast(selectedEntity);
 				ASSERT__(t);
@@ -1305,8 +1428,13 @@ namespace Objects
 
 			float scanningRange = selectedEntity->GetScanningRange();
 			RenderRangeSphere(selectedEntity->system.w.xyz,scanningRange,float4(1,1,0,0.8f));
-			float zOffset;
-			PTurretBase base = selectedEntity->GetTurretBase(zOffset);
+			
+			#ifdef WIRELESS_VEHICLES
+				if (base && v && base->turret->ConsumesResources() && v->IsVehicle())
+				{
+					RenderRangeSphere(selectedEntity->system.w.xyz,WirelessTransferRange,float4(0,0,1,0.8f));
+				}
+			#endif
 			if (base)
 			{
 				if (base->turret->CanAttack())
