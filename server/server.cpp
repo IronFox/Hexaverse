@@ -1158,6 +1158,13 @@ namespace ParameterConfig
 					mode = ExpectFilename;
 				else
 				{
+					PathString path = arg;
+					if (path.endsWithCaseIgnore(FileIO::savFileExtension) && FileSystem::IsFile(arg))
+					{
+						mode = ExpectFilename;
+						Process(arg);
+						return;
+					}
 					LogEvent(EventType::ConfigError, "Unsupported runtime parameter '"+String(arg)+"'");
 					PrintHelp();
 				}
