@@ -288,6 +288,10 @@ namespace Objects
 				void						DescribeType(BaseCommand::Label&label, bool compound, const String&parentType, const OwnerParameter&owner);
 			#endif
 
+			/**
+			Checks whether or not the local turret could ever possibly consume resources
+			*/
+			bool							ConsumesResources() const	{return CanAttack() ? ammoNeedPerShot > 0 : constructionSpeed > 0;}
 		};
 
 
