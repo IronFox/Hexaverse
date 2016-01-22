@@ -122,9 +122,7 @@ namespace Objects
 		structurePrototypes << Connector::globalPrototype;
 		structurePrototypes << FuelContainer::globalPrototype;
 		structurePrototypes << MineralContainer::globalPrototype;
-		#ifdef CONNECTOR_LESS
-			structurePrototypes << MunitionStorage::globalPrototype;
-		#endif
+		//structurePrototypes << MunitionStorage::globalPrototype;
 		structurePrototypes << UraniumStorage::globalPrototype;
 		structurePrototypes << NexusPort::globalPrototype;
 		structurePrototypes << VehicleStore::globalPrototype;

@@ -806,7 +806,12 @@ namespace FileIO
 			}
 		}
 
-		ASSERT1__(proto,typeName);
+		if (!proto)
+		{
+			LogEvent(EventType::SessionRelated,"Warning: Unable to structure of type '" +typeName+"', which is not supported by the local version");
+			return Objects::PStructure();
+		}
+//		ASSERT1__(proto,typeName);
 
 
 		Objects::PStructure rs = To<Objects::Structure>::Cast( proto->CreateNewInstance(Objects::PFaction(),location,0));

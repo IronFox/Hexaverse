@@ -15,15 +15,11 @@
 		</variable>
 		<context name="Resources">
 			<context name="Fuel">
-				<variable name="density" default="0.08">
-					Average number of fuel units per world cell. Forced similar for each surface chunk
-				</variable>
+				<variable name="density" default="0.08">Average number of fuel units per world cell. Forced similar for each surface chunk</variable>
 				<variable name="max" default="8" />
 			</context>
 			<context name="Minerals">
-				<variable name="density" default="0.06">
-					Average number of mineral units per world cell. Forced similar for each surface chunk
-				</variable>
+				<variable name="density" default="0.06">Average number of mineral units per world cell. Forced similar for each surface chunk</variable>
 				<variable name="max" default="12" />
 			</context>
 			<context name="Energy">
@@ -31,9 +27,7 @@
 				<variable name="max" default="1" />
 			</context>
 			<context name="Uranium">
-				<variable name="density" default="0.02">
-					Average number of uranium units per world cell. Forced similar for each surface chunk
-				</variable>
+				<variable name="density" default="0.02">Average number of uranium units per world cell. Forced similar for each surface chunk</variable>
 				<variable name="max" default="6" />
 			</context>
 		</context>
@@ -163,7 +157,6 @@
 				<variable name="Connector" default="1024" />
 				<variable name="Fuel_Container" default="8" />
 				<variable name="Mineral_Container" default="8" />
-				<variable name="Munition_Storage" default="24" />
 				<variable name="Uranium_Storage" default="8" />
 				<variable name="Nexus_Port" default="0" />
 				<variable name="Vehicle_Store" default="8" />

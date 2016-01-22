@@ -603,6 +603,9 @@ namespace Objects
 				ref->sightLevel --;
 				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Sight level reduced to "+String(ref->sightLevel));
 			}
+			else
+				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": ref not set");
+
 
 			if ((ref && !ref->sightLevel) || force)
 			{
@@ -783,14 +786,16 @@ namespace Objects
 				if (checkChangesNow)
 					CheckChanges(t);
 			}
-			float escaped = sqr(sphere.radius+2);
+//			float escaped = sqr(sphere.radius+2);
 			static Array<PWorldEntity>	seen;
 			seeing.exportKeys(seen);
 			foreach (seen,s)
 			{
 				
-				float d2 = Vec::quadraticDistance(sphere.center,(*s)->system.w.xyz);
-				if (d2 > escaped || (*s)->IsSatellite() != isSatellite)
+				//float d2 = Vec::quadraticDistance(sphere.center,(*s)->system.w.xyz);
+				//if (d2 > escaped || (*s)->IsSatellite() != isSatellite)
+				//	continue;
+				if ((*s)->IsSatellite() != isSatellite)
 					continue;
 				if ((*s)->IsSatellite())
 				{
