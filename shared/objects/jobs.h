@@ -71,6 +71,7 @@ namespace Objects
 				enum continue_t
 				{
 					JobDone,
+					JobDelayed,
 					ContinueJob,
 					TerminalFailure,
 					TerminalFailureVehicleDestroyed

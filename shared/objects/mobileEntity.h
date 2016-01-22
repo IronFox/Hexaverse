@@ -22,6 +22,57 @@ namespace Objects
 
 
 
+	
+
+	class MobileResourceEnvironment
+	{
+	public:
+		#ifdef WIRELESS_VEHICLES
+			Grid::LowSetup::TVolumeDescriptor desc;
+			Buffer0<index_t>	sourceCompounds;
+
+			void				GetOwnCompoundsIn(const OwnerParameter&p, const Grid::LowSetup::TVolumeDescriptor&desc);
+
+			#ifndef CLIENT
+				static void		ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int&change);
+				static void		ForceChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int change);
+				static void		WithdrawOverproduction(Compound&compound, MobileEntity*originatingAt, Resource res, int&change);
+			#endif
+
+			void				AddCompound(UINT32);
+
+			struct TCacheID
+			{
+				UINT32			round=0xFFFFFFFF;
+				UINT16			stackID=0xFFFF;
+				UINT8			layerID=0xFF;
+				UINT8			phase=0xFF;
+
+				/**/			TCacheID()	{}
+				/**/			TCacheID(const MobileEntity&);
+
+				bool			operator==(const TCacheID&other) const {return round == other.round && stackID == other.stackID && layerID == other.layerID && phase == other.phase;}
+				bool			operator!=(const TCacheID&other) const {return !operator==(other);}
+			};
+
+			TCacheID			cacheID;
+
+			void	CheckRefresh(const MobileEntity&);
+		#else
+			inline void	CheckRefresh(const MobileEntity&)	{};
+
+		#endif
+
+		bool		CanWithdraw(const MobileEntity&owner, Resource res, int demand)	const;
+		#ifndef CLIENT
+			void	ChangeStorage(MobileEntity&owner, Resource res, int&change);
+			void	ForceChangeStorage(MobileEntity&owner, Resource res, int change);
+		#endif
+		int			GetStorage(const MobileEntity&owner, Resource res)	const;
+	};
+		
+
+
 	struct PathNode
 	{
 		Grid::LCellIdI	cell;
@@ -60,6 +111,9 @@ namespace Objects
 	protected:
 		void		HandleMotion(MobilePlacementResult&rs, bool signalEvent, const Grid::LCellIdI&oldLocation, float timeCost);
 	public:
+		MobileResourceEnvironment	resourceEnvironment;
+
+
 		typedef CursorMode::mode_t	mode_t;
 
 		struct TaskData

@@ -1580,7 +1580,7 @@ namespace Objects
 
 		#endif
 		bool						HasAmmoForShot(float atTime) const;
-		bool						HasAmmoForShot() const override;
+		bool						HasAmmoForShot() override;
 
 
 

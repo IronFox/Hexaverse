@@ -7,6 +7,7 @@
 #include "satellite.h"
 #include "systems.h"
 #include "prototypes.h"
+#include "../runtimeConfig.h"
 
 namespace Objects
 {
@@ -66,6 +67,201 @@ namespace Objects
 	}
 
 
+	#ifdef WIRELESS_VEHICLES
+
+
+		void				MobileResourceEnvironment::AddCompound(UINT32 compoundID)
+		{
+			if (!sourceCompounds.Contains(compoundID))	//we assume the number of compounds is very low here (usually 0..2), so this should be okay in regards to performance
+				sourceCompounds << compoundID;
+		}
+
+		void	MobileResourceEnvironment::GetOwnCompoundsIn(const OwnerParameter&p, const Grid::LowSetup::TVolumeDescriptor&desc)
+		{
+			foreach (desc.coverage,c)
+			{
+				for (UINT l = c->layerBegin; l < c->layerEnd; l++)
+				{
+					PStructure s = GetStructure(Grid::LCellIdU(c->stackID,l));
+					if (!s || s->owner != p)
+						continue;
+					if (s->compoundID == Compound::InvalidNetwork)
+						continue;
+					AddCompound(s->compoundID);
+				}
+			}
+		}
+
+
+		MobileResourceEnvironment::TCacheID::TCacheID(const MobileEntity&m)
+		{
+			round = RuntimeConfig::roundNumber;
+			stackID = (UINT16)m.location.stackID;
+			layerID = (UINT8)Grid::CellStack::ToLayer(m.location.height);
+			phase = (UINT8)RuntimeConfig::phase;
+		}
+
+		#ifndef CLIENT
+
+			/*static*/ void MobileResourceEnvironment::ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int&change)
+			{
+				ResourceVector demand;
+
+				WithdrawOverproduction(compound,originatingAt,res,change);
+				if (change == 0)
+					return;
+				demand.level[res] = change;
+				compound.ChangeStorage(demand,atTime);
+				change = demand.level[res];
+			}
+
+
+
+
+			/*static*/ void	MobileResourceEnvironment::ForceChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int change)
+			{
+				int original = change;
+				ChangeCompoundStorage(compound,originatingAt,atTime,res,change);
+				if (change != 0)
+					FATAL__(originatingAt->GetName()+": Unable to change compound storage by "+String(original)+" unit(s) of "+res.ToString()+". "+String(change)+" unit(s) remaining");
+			}
+
+		#endif
+
+	
+
+		void	MobileResourceEnvironment::CheckRefresh(const MobileEntity&m)
+		{
+			if (cacheID == m)
+				return;
+			cacheID = m;
+			#ifdef WIRELESS_VEHICLES
+				sourceCompounds.Clear();
+				if (m.IsVehicle())
+				{
+					Grid::low.GenerateVolume(Sphere<>(m.system.w.xyz,WirelessTransferRange),desc);
+					GetOwnCompoundsIn(m.owner,desc);
+				}
+				else
+					if (m.IsSatellite())
+					{
+						#ifdef CLIENT
+							foreach (skyLinks,s)
+							{
+								if (s->second->owner == m.owner && s->first->connectedToHub)
+									AddCompound(s->second->compoundID);
+							}
+						#else
+							foreach (m.owner->skyHubs,h)
+							{
+								PSkyHub hub = h->lock();
+								if (hub)
+								{
+									PSkyLinkStructure link = hub->connectedTo.lock();
+									if (link)
+									{
+										AddCompound(link->CastToStructure()->compoundID);
+									}
+								}
+							}
+						#endif
+					}
+			#endif
+
+		}
+	#endif
+
+	bool		MobileResourceEnvironment::CanWithdraw(const MobileEntity&owner, Resource res, int demand)	const
+	{
+		if (demand == 0)
+			return true;
+		return GetStorage(owner,res) >= demand;
+	}
+		
+	#ifndef CLIENT
+		/**
+		Attempts to withdraw the specified amount of the specified resource from the specified compound's overproduction this round
+		@param compound Compound to attempt to withdraw overproduction from
+		@param originatingAt For reference only: mobile entity that is attempting the withdrawal
+		@param res Resource to withdraw
+		@param[inout] change Change value. Must be negative for withdrawal. Positive or zero values are ignored. The resulting value in change represents how much was not withdrawn.
+		If @a change is 0 after the call has finished, then all was withdrawn
+		*/
+		/*static*/ void	MobileResourceEnvironment::WithdrawOverproduction(Compound&compound, MobileEntity*originatingAt, Resource res, int&change)
+		{
+			if (change < 0 && compound.overproduction.level[res] > 0)
+			{
+				int production = compound.overproduction.level[res];
+				int overproductionTransfer = std::min(production,-change);
+				LogEvent(EventType::MinorEntityProcess,originatingAt,String(res.ToString())+ " overproduction ("+String(production)+") redirected for demand ("+String(change)+"): "+String(overproductionTransfer)+" transferred");
+				change += overproductionTransfer;
+				compound.overproduction.level[res]-= overproductionTransfer;
+			}
+		}
+
+		void	MobileResourceEnvironment::ChangeStorage(MobileEntity&owner, Resource res, int&change)
+		{
+			if (change == 0)
+				return;
+			#ifndef CONNECTOR_LESS
+				#ifdef WIRELESS_VEHICLES
+					foreach (sourceCompounds,c)
+					{
+						Compound&compound = Objects::compounds[*c];
+						WithdrawOverproduction(compound,&owner,res,change);
+						if (change == 0)
+							return;
+					}
+					Objects::ChangeStorage(owner,owner.timeAt,owner.GetMaxStorageCapacity(),owner.currentStorage,res,change);
+					if (!change)
+						return;
+					ResourceVector demand;
+					foreach (sourceCompounds,c)
+					{
+						Compound&compound = Objects::compounds[*c];
+						demand.level[res] = change;
+						compound.ChangeStorage(demand,owner.timeAt);
+						change = demand.level[res];
+						if (change == 0)
+							return;
+					}
+				#else
+					Objects::ChangeStorage(owner,owner.timeAt,owner.GetMaxStorageCapacity(),owner.currentStorage,res,change);
+				#endif
+			#else
+				ChangeCompoundStorage(owner.owner->compound, &owner, atTime,res,change);
+			#endif
+		}
+
+		void	MobileResourceEnvironment::ForceChangeStorage(MobileEntity&owner, Resource res, int change)
+		{
+			int original = change;
+			ChangeStorage(owner,res,change);
+			if (change != 0)
+				FATAL__(owner.GetName()+": Unable to change surrounding storage by "+String(original)+" unit(s) of "+res.ToString()+". "+String(change)+" unit(s) remaining");
+		}
+	#endif
+
+	int			MobileResourceEnvironment::GetStorage(const MobileEntity&owner, Resource res)	const
+	{
+		#ifndef CONNECTOR_LESS
+			#ifdef WIRELESS_VEHICLES
+				int rs = owner.currentStorage.level[res];
+				foreach (sourceCompounds,c)
+					rs += Objects::compounds[*c].total.storage.level[res] 
+						#ifndef CLIENT
+							+ Objects::compounds[*c].overproduction.level[res]
+						#endif
+						;
+				return rs;
+			#else
+				return owner.currentStorage.level[res];
+			#endif
+		#else
+			const Compound&compound = owner.owner->compound;
+			return compound.total.storage.level[res] + compound.overproduction.level[res];
+		#endif
+	}
 
 
 
@@ -649,6 +845,9 @@ namespace Objects
 					{
 						case VehicleJob::BaseJob::ContinueJob:
 						break;
+						case VehicleJob::BaseJob::JobDelayed:
+							constructionRoundCounter --;
+						break;
 						case VehicleJob::BaseJob::JobDone:
 							LogEvent(EventType::MinorEntityProcess,this,"Job ended: '"+job->GetName()+"'");
 
@@ -1082,9 +1281,8 @@ namespace Objects
 
 				SignalAttack(To<Vehicle>::Cast(shared_from_this()),target,flightTime);
 
-				static MobileResourceSession session;
-				session.SetTo(*this);
-				session.ForceChangeStorage(turret->ammoType,-turret->ammoNeedPerShot);
+				resourceEnvironment.CheckRefresh(*this);
+				resourceEnvironment.ForceChangeStorage(*this, turret->ammoType,-turret->ammoNeedPerShot);
 				
 				timeAt += flightTime;
 

@@ -613,7 +613,7 @@ namespace Objects
 
 					if (available >= demand)
 					{
-						ForceChangeCompoundStorage(compound, this, atTime, Resource::Fuel, -demand);
+						MobileResourceEnvironment::ForceChangeCompoundStorage(compound, this, atTime, Resource::Fuel, -demand);
 						return port;
 					}
 				}
@@ -856,7 +856,7 @@ namespace Objects
 	#endif /*0*/
 
 
-	/*virtual override*/ bool					Satellite::HasAmmoForShot() const
+	/*virtual override*/ bool					Satellite::HasAmmoForShot()
 	{
 	#ifdef CONNECTOR_LESS
 		const Compound&compound = owner->compound;
@@ -952,7 +952,7 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ bool SkyGuardian::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime) const
+		/*virtual override*/ bool SkyGuardian::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)
 		{
 			if (!HasAmmoForShot() && empDamageLevel == 0)
 			{

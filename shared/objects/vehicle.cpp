@@ -465,13 +465,12 @@ namespace Objects
 
 
 
-	/*virtual override*/bool				Vehicle::HasAmmoForShot() const 
+	/*virtual override*/bool				Vehicle::HasAmmoForShot() 
 	{
 		if (!turret->ammoNeedPerShot)
 			return true;
-		static MobileResourceSession session;
-		session.SetTo(*this);
-		return session.CanWithdraw(turret->ammoType,turret->ammoNeedPerShot);
+		resourceEnvironment.CheckRefresh(*this);
+		return resourceEnvironment.CanWithdraw(*this,turret->ammoType,turret->ammoNeedPerShot);
 	}
 	
 	#ifdef HAS_WINDOW
