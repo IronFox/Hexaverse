@@ -22,7 +22,7 @@ namespace FileIO
 	}
 
 	extern UINT32	lastSaveRound /*= 0*/;
-	static const String	savFileExtension = "hsf";	//hexaverse save file
+	static const PathString	savFileExtension = "hsf";	//hexaverse save file
 
 
 
