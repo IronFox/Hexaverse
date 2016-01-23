@@ -5,7 +5,9 @@
 #include "visualSelection.h"
 #include "prototypes.h"
 #include "vehicle.h"
-#include "satellite.h"
+#include "orbitalStructure.h"
+#include "orbitalVehicle.h"
+
 #ifndef CLIENT
 	#include "faction.h"
 	#include "../runtimeConfig.h"
@@ -15,8 +17,11 @@ namespace Objects
 {
 	Array<PVehicle>			vehicleGrid(Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range);
 	Array<PStructure>		structureGrid(Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range);
-
-
+	namespace Orbital
+	{
+		Array<PStation>		stationGrid(Grid::LowSetup::GridType::CellCount);
+		Array<PShip>		shipGrid(Grid::LowSetup::GridType::CellCount);
+	}
 	
 
 
@@ -35,7 +40,7 @@ namespace Objects
 		}
 		bool NoHostileSatelliteHere(UINT32 cellID, const OwnerParameter&v)
 		{
-			PSatellite vh = GetSatellite(cellID);
+			Orbital::PShip vh = GetSatellite(cellID);
 			return !vh || vh->owner == v;
 		}
 	#else
@@ -47,14 +52,18 @@ namespace Objects
 			;
 		}
 
-		bool NoHostileSatelliteHere(UINT32 cellID, const OwnerParameter&v, float t)
+		namespace Orbital
 		{
-			PSatellite vh = GetSatellite(cellID);
-			return !vh || vh->owner == v 
-					|| !v->CanSee(vh,t)
-			;
-		}
+
+			bool NoHostileShipHere(UINT32 cellID, const OwnerParameter&v, float t)
+			{
+				PShip vh = GetShip(cellID);
+				return !vh || vh->owner == v 
+						|| !v->CanSee(vh,t)
+				;
+			}
 		
+		}
 
 		void SignalClusterChange(const Grid::LCellIdI&location, int verticalTolerance,float atTime,const WorldEntity*except)
 		{
@@ -479,6 +488,12 @@ namespace Objects
 		return rs;
 	}
 
+
+	bool		HostileVisible(const PWorldEntity&e, const OwnerParameter&owner, float t)
+	{
+		return e && e->owner != owner && owner->CanSee(e,t);
+	}
+
 	bool NothingHere(const Grid::LCellIdI&stackID)
 	{
 		return !GetStructure(stackID) && !GetVehicle(stackID);
@@ -488,7 +503,7 @@ namespace Objects
 	{
 		return !GetVehicle(stackID);
 	}
-	bool NoVehicleHereExcept(const Grid::LCellIdI&cellID, const Vehicle*v)
+	bool NoVehicleVisibleHereExcept(const Grid::LCellIdI&cellID, const Vehicle*v)
 	{
 		PVehicle vh = GetVehicle(cellID);
 		return !vh || vh.get() == v 
@@ -498,21 +513,118 @@ namespace Objects
 		;
 	}
 
-	bool NoSatelliteHere(const UINT32 stackID)
+	namespace Orbital
 	{
-		return !GetSatellite(stackID);
-	}
-	bool NoSatelliteHereExcept(UINT32 stackID, const Satellite*v)
-	{
-		PSatellite vh = GetSatellite(stackID);
-		return !vh || vh.get() == v
-			#ifndef CLIENT
-				|| !v->owner->CanSee(vh,v->timeAt)
-			#endif
-		;
-	}
+		bool NoShipHere(const UINT32 stackID)
+		{
+			return !GetShip(stackID);
+		}
+
+		bool NotMeAndVisible(const PWorldEntity&other, const MobileEntity*me)
+		{
+			return other && other.get() != me
+				#ifndef CLIENT
+					&& me->owner->CanSee(other,me->timeAt)
+				#endif
+			;
+		}
+
+		bool NoShipVisibleHereExcept(UINT32 stackID, const Orbital::Ship*v)
+		{
+			return !NotMeAndVisible(GetShip(stackID),v);
+		}
+
+		bool		NothingVisibleHereExcept(const UINT32 stackID, const MobileEntity*e)
+		{
+			return !NotMeAndVisible(GetShip(stackID),e) && !NotMeAndVisible(GetStation(stackID),e);
+		}
 
 
+
+		bool		NothingHostileVisibleHere(UINT32 stackID, const OwnerParameter&v, float t)
+		{
+			if (HostileVisible(GetShip(stackID),v,t))
+				return false;
+			if (HostileVisible(GetStation(stackID),v,t))
+				return false;
+			return true;
+		}
+
+
+		
+		bool NoStationHere(const UINT32 stackID)
+		{
+			return !GetStation(stackID);
+		}
+		bool NoStationVisibleHereExcept(UINT32 stackID, const Orbital::Station*v)
+		{
+			Orbital::PStation vh = GetStation(stackID);
+			return !vh || vh.get() == v
+				#ifndef CLIENT
+					|| !v->owner->CanSee(vh,v->timeAt)
+				#endif
+			;
+		}
+
+
+
+		template <typename T>
+			void				RemoveFromGrid(Array<T>&grid, UINT32 stackID, const T&object)
+			{
+				ASSERT__(object->isInsertedIntoGrid);
+				index_t at = stackID;
+				if (grid[at] != object)
+				{
+					index_t foundAt = InvalidIndex;
+					index_t cloneAt = InvalidIndex;
+					T	cloneIs;
+					for (index_t i = 0; i < grid.length(); i++)
+					{
+						if (grid[i] == object)
+						{
+							ASSERT__(foundAt == InvalidIndex);
+							foundAt = i;
+						}
+						else if (grid[i] && grid[i]->id == object->id)
+						{
+							cloneAt = i;
+							cloneIs = grid[i];
+						}
+					}
+					if (grid[at])
+						LogEvent(EventType::InternalFault,grid[at].get(),"Found instead of "+object->GetName());
+					String clone = cloneAt != InvalidIndex ? " {found clone ("+cloneIs->GetName()+") at "+String(stackID)+"}" : "";
+					if (foundAt != InvalidIndex)
+					{
+						//Grid::LCellIdI actualLocation(foundAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( foundAt/Grid::LowSetup::GridType::CellCount)));
+						FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+", but object resides in "+String(foundAt)+clone);
+					}
+					else
+						FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+", but object is not mapped in the grid"+clone);
+				}
+				LogEvent(EventType::MinorEntityProcess,object.get(),"Removed from grid location "+String(at));
+				grid[at].reset();
+				object->isInsertedIntoGrid = false;
+			}
+		template <typename T>
+			void				InsertIntoGrid(Array<T>&grid, UINT32 stackID, const T&object)
+			{
+				ASSERT__(!object->isInsertedIntoGrid);
+				ASSERT_LESS__(stackID,Grid::LowSetup::GridType::CellCount);
+				//Grid::AssertIsValid(location);
+				index_t at = stackID;
+				//CellToGridIndex(location);
+				ASSERT1__(!grid[at],grid[at]->GetName());
+				LogEvent(EventType::MinorEntityProcess,object.get(),"Inserted into grid location "+String(at));
+				grid[at] = object;
+				object->isInsertedIntoGrid = true;
+			}
+		template <typename T>
+			T					QueryGrid(const Array<T>&grid, UINT32 stackID)
+			{
+				return grid[stackID];
+			}
+	}
 		
 	template <typename T>
 		void				RemoveFromGrid(Array<T>&grid, const Grid::LCellIdI&location, const T&object)
@@ -592,32 +704,42 @@ namespace Objects
 
 	PMobileEntity GetMobileEntity(const Grid::LCellIdI&cellID)
 	{
-		if (cellID.height < Grid::CellStack::HalfRange)
+		if (cellID.height <= Grid::CellStack::TopHeight)
 			return QueryGrid(vehicleGrid,cellID);
-		return GetSatellite(cellID.stackID);
+		return Orbital::GetShip(cellID.stackID);
 	}
 	PMobileEntity GetMobileEntity(const Grid::LCellIdU&cellID)
 	{
 		if (cellID.layer < Grid::CellStack::Range)
 			return QueryGrid(vehicleGrid,cellID);
-		return GetSatellite(cellID.stackID);
+		return Orbital::GetShip(cellID.stackID);
 	}
 
-
-	PSatellite		GetSatellite(UINT32 flatCellID)
+	namespace Orbital
 	{
-		for (const auto&s : satellites)
-			if (s->location.stackID == flatCellID)
-				return s;
-		return PSatellite();
-	}
+		Orbital::PShip		GetShip(UINT32 flatCellID)
+		{
+			return QueryGrid(Orbital::shipGrid,flatCellID);
+			//for (const auto&s : Orbital::ships)
+			//	if (s->location.stackID == flatCellID)
+			//		return s;
+			//return Orbital::PShip();
+		}
 
+		Orbital::PStation		GetStation(UINT32 flatCellID)
+		{
+			return QueryGrid(Orbital::stationGrid,flatCellID);
+		}
+	}
 
 	PWorldEntity					GetEntity(const Grid::LCellIdI&cellID)
 	{
-		if (cellID.height >= Grid::CellStack::HalfRange)
+		if (cellID.height > Grid::CellStack::TopHeight)
 		{
-			return GetSatellite(cellID.stackID);	//if there is no satellite here, there is nothing else here either
+			PWorldEntity e = Orbital::GetShip(cellID.stackID);	//if there is no satellite here, there is nothing else here either
+			if (e)
+				return e;
+			return Orbital::GetStation(cellID.stackID);
 		}
 		PWorldEntity e = GetVehicle(cellID);
 		if (e)
@@ -631,15 +753,18 @@ namespace Objects
 	{
 		if (cellID.height >= Grid::CellStack::HalfRange)
 		{
+			Orbital::PStation s = Orbital::GetStation(cellID.stackID);
+			if (s && s->BlocksMobileEntities())
+				return false;
 			#ifdef CLIENT
-				return !checkVehiclesOnClient || !GetSatellite(cellID.stackID);	//timing issues may cause problems with getVehicle, but sometimes it wont matter
+				return !checkVehiclesOnClient || !Orbital::GetShip(cellID.stackID);	//timing issues may cause problems with getVehicle, but sometimes it wont matter
 			#else
-				return !GetSatellite(cellID.stackID);
+				return !Orbital::GetShip(cellID.stackID);
 			#endif
 		}
 
 		PStructure s = GetStructure(cellID);
-		if (s && !To<Connector>::DynamicCast(s))
+		if (s && s->BlocksMobileEntities())
 			return false;
 		#ifdef CLIENT
 			return !checkVehiclesOnClient || !GetVehicle(cellID);	//timing issues may cause problems with getVehicle, but sometimes it wont matter
@@ -728,13 +853,13 @@ namespace Objects
 						base = To<Vehicle>::Cast(production)->base;
 					}
 					else
-						ASSERT1__(production->IsSatellite(),production->GetName());
+						ASSERT1__(production->IsOrbital(),production->GetName());
 				#endif
 					if (base)
 						GetProductionChoices(&entity,base,movementChoices);
 					else
 					{
-						if (entity.IsSatellite())
+						if (entity.IsOrbital())
 						{
 							//satellite producing satellite
 
@@ -743,8 +868,8 @@ namespace Objects
 							for (int i = 0; i < n.numNeighbors; i++)
 							{
 								UINT32 stackID = n.neighborID[i];
-								if (!GetSatellite(stackID))
-									movementChoices << Grid::LCellIdI(stackID, Satellite::BaseResidenceHeight);
+								if (Orbital::NothingHere(stackID))
+									movementChoices << Grid::LCellIdI(stackID, Orbital::Ship::BaseResidenceHeight);
 							}
 						}
 						else
@@ -752,8 +877,8 @@ namespace Objects
 							//must be producing a satellite
 							//in time, mobile entities will be producers, too, but for here we can conclude this is a bottom-up production
 							//thus: vertical
-							if (!GetSatellite(entity.location.stackID))
-								movementChoices << Grid::LCellIdI(entity.location.stackID,Satellite::BaseResidenceHeight);
+							if (Orbital::NothingHere(entity.location.stackID))
+								movementChoices << Grid::LCellIdI(entity.location.stackID,Orbital::Ship::BaseResidenceHeight);
 						}
 					}
 			}
@@ -1031,13 +1156,13 @@ namespace Objects
 	}
 
 	#ifdef HAS_WINDOW
-		void	InsertSatelliteSensor(Satellite*sat)
+		void	InsertSatelliteSensor(Orbital::Ship*sat)
 		{
 			Component::Turret *turret = sat->turret;
 
 		}
 
-		void	RemoveSatelliteSensor(Satellite*sat)
+		void	RemoveSatelliteSensor(Orbital::Ship*sat)
 		{
 
 
@@ -1074,10 +1199,15 @@ namespace Objects
 			}
 		}
 		else
-			if (v->IsSatellite())
+			if (v->IsOrbital())
 			{
 				//ASSERT__(!satellitesAreLocked);
-				satellites << To<Satellite>::Cast(v);
+				Orbital::ships << To<Orbital::Ship>::Cast(v);
+
+				if (insertIntoGrid)
+				{
+					Orbital::InsertIntoGrid(Orbital::shipGrid,v->location.stackID,To<Orbital::Ship>::Cast(v));
+				}
 			}
 			else
 				FATAL__("Cannot insert. Unexpected mobile: "+v->GetName());
@@ -1113,27 +1243,38 @@ namespace Objects
 
 		PStructure existing;
 		
-		for (int h = 0; h < s->GetHeight(); h++)
+		if (!s->IsOrbital())
 		{
-			int actualLayer = s->location.height+h;
-			if (actualLayer > Grid::CellStack::TopHeight)
+			for (int h = 0; h < s->GetHeight(); h++)
 			{
-				ASSERT__(h > 0);
-				break;
+				int actualLayer = s->location.height+h;
+				if (actualLayer > Grid::CellStack::TopHeight)
+				{
+					ASSERT__(h > 0);
+					break;
+				}
+				existing = QueryGrid(structureGrid,s->location+h);
+				ASSERT4__(!existing,s->GetName(),s->location.ToString(),h,existing->GetName());
 			}
-			existing = QueryGrid(structureGrid,s->location+h);
-			ASSERT4__(!existing,s->GetName(),s->location.ToString(),h,existing->GetName());
+			if (s->HasFoundation())
+			{
+				existing = QueryGrid(structureGrid,s->location-1);
+				ASSERT3__(!existing,s->GetName(),s->location.ToString(),existing->GetName());
+			}
 		}
-		if (s->HasFoundation())
+		else
 		{
-			existing = QueryGrid(structureGrid,s->location-1);
+			existing = Orbital::GetStation(s->location.stackID);
 			ASSERT3__(!existing,s->GetName(),s->location.ToString(),existing->GetName());
 		}
-
 		InsertConstructedEntity(s,atTime,setHealthToFull);
 
 
 		structures << s;
+		if (s->IsOrbital())
+			Orbital::stations << To<Orbital::Station>::Cast(s);
+
+		
 
 		#ifdef HAS_WINDOW
 			if (s->IsSkyLinkStructure())
@@ -1143,8 +1284,10 @@ namespace Objects
 			}
 		#endif
 
-
-		InsertIntoGrid(structureGrid,s->location,s);
+		if (s->IsOrbital())
+			Orbital::InsertIntoGrid(Orbital::stationGrid,s->location.stackID,To<Orbital::Station>::Cast(s));
+		else
+			InsertIntoGrid(structureGrid,s->location,s);
 
 //		InjectIntoNeighborhood(s,atTime);
 
@@ -1238,9 +1381,14 @@ namespace Objects
 			#endif
 
 			if (!isRemovedFromGrid)
-				RemoveFromGrid(structureGrid,e->location,To<Structure>::Cast(e));
+				if (e->IsOrbital())
+					Orbital::RemoveFromGrid(Orbital::stationGrid,e->location.stackID,To<Orbital::Station>::Cast(e));
+				else
+					RemoveFromGrid(structureGrid,e->location,To<Structure>::Cast(e));
 
 			ASSERT1__(structures.FindAndErase(e),e->GetName());
+			if (e->IsOrbital())
+				Orbital::stations.FindAndErase(e);
 			#ifdef HAS_WINDOW
 				if (To<Structure>::Cast(e)->IsSkyLinkStructure())
 				{
@@ -1281,6 +1429,9 @@ namespace Objects
 					RemoveFromGrid(vehicleGrid,v->location,To<Objects::Vehicle>::Cast(v));
 				}
 
+				if (v->IsOrbital() && !isRemovedFromGrid)
+					Orbital::RemoveFromGrid(Orbital::shipGrid,v->location.stackID,To<Orbital::Ship>::Cast(v));
+
 				if (t == RemovalType::DestroyedInStorage)
 					storedMobileEntities.FindAndErase(e);
 				else
@@ -1288,10 +1439,10 @@ namespace Objects
 					if (e->IsVehicle())
 						vehicles.FindAndErase(e);
 					else
-						if (e->IsSatellite())
+						if (e->IsOrbital())
 						{
 							//ASSERT__(!satellitesAreLocked);
-							satellites.FindAndErase(e);
+							Orbital::ships.FindAndErase(e);
 						}
 						else
 							FATAL__("Type not supported at this point: "+e->GetName());
@@ -1452,14 +1603,14 @@ namespace Objects
 				{
 					if (cell==destination)
 					{
-						if (!ignoreVehiclesOnDestination && !NoVehicleHereExcept(cell,v))
+						if (!ignoreVehiclesOnDestination && !NoVehicleVisibleHereExcept(cell,v))
 							continue;
 					}
 					else
 					{
 						if (!ignoreFriendlyVehiclesOnRoute)
 						{
-							if (!NoVehicleHereExcept(cell,v))
+							if (!NoVehicleVisibleHereExcept(cell,v))
 								continue;
 						}
 						else
@@ -1483,7 +1634,7 @@ namespace Objects
 	}
 
 
-	count_t GetWays(		const Satellite*v,  UINT32 location, 
+	count_t GetWays(		const Orbital::Ship*v,  UINT32 location, 
 							UINT32*outChoices, UINT32 destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute)
 	{
@@ -1500,14 +1651,14 @@ namespace Objects
 
 				if (cell==destination)
 				{
-					if (!ignoreVehiclesOnDestination && !NoSatelliteHereExcept(cell,v))
+					if (!ignoreVehiclesOnDestination && !Orbital::NothingVisibleHereExcept(cell,v))
 						continue;
 				}
 				else
 				{
 					if (!ignoreFriendlyVehiclesOnRoute)
 					{
-						if (!NoSatelliteHereExcept(cell,v))
+						if (!Orbital::NothingVisibleHereExcept(cell,v))
 							continue;
 					}
 					else
@@ -1515,7 +1666,7 @@ namespace Objects
 							if (!NoHostileSatelliteHere(cell,v->owner))
 								continue;
 						#else
-							if (!NoHostileSatelliteHere(cell,v->owner,v->timeAt))
+							if (!Orbital::NothingHostileVisibleHere(cell,v->owner,v->timeAt))
 								continue;
 						#endif
 				}
@@ -1540,10 +1691,10 @@ namespace Objects
 		{
 			return GetWays(world,(const Vehicle*)v, location, outChoices, destination,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute);
 		}
-		if (v->IsSatellite())
+		if (v->IsOrbital())
 		{
 			UINT32	ways[6 * 3];
-			count_t rs = GetWays((const Satellite*)v,location.stackID,ways,destination.stackID,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute);
+			count_t rs = GetWays((const Orbital::Ship*)v,location.stackID,ways,destination.stackID,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute);
 			for (index_t i = 0; i < rs; i++)
 			{
 				outChoices[i].stackID = ways[i];
@@ -1746,11 +1897,11 @@ namespace Objects
 
 	}
 
-	bool AppendShortestPath(const Satellite*sat, const Grid::LCellIdI&from,
+	bool AppendShortestPath(const Orbital::Ship*sat, const Grid::LCellIdI&from,
 							const UINT32 to, BasicBuffer<PathNode>&oPath,
 							bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/);
 
-	bool AppendShortestPathI(const Satellite*sat, const Grid::LCellIdI&from,
+	bool AppendShortestPathI(const Orbital::Ship*sat, const Grid::LCellIdI&from,
 							const UINT32 to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
 	{
 		static Buffer0<PathNode>	routeI, route;
@@ -1921,7 +2072,7 @@ namespace Objects
 		return false;
 	}
 
-	bool AppendShortestPath(const Satellite*sat, const Grid::LCellIdI&from,
+	bool AppendShortestPath(const Orbital::Ship*sat, const Grid::LCellIdI&from,
 							const UINT32 to, BasicBuffer<PathNode>&oPath,
 							bool ignoreFriendlyVehiclesOnRoute
 							, bool failIfLimitReached/*=true*/, bool*outWouldFailDueToLimitReached/*=nullptr*/)
@@ -2549,9 +2700,9 @@ namespace Objects
 		{
 			if (turret.IsNotEmpty())
 				return AssembleVehicle(owner,id,baseLocation,base,turret);
-			PSatellite	proto = GetSatellitePrototypeByName(base);
+			Orbital::PShip	proto = Orbital::GetShipPrototypeByName(base);
 			ASSERT1__(proto,base);
-			PSatellite s = To<Satellite>::Cast( proto->CreateNewInstance(owner,baseLocation,0) );
+			Orbital::PShip s = To<Orbital::Ship>::Cast( proto->CreateNewInstance(owner,baseLocation,0) );
 			s->location = baseLocation;
 			s->id = id;
 
@@ -2571,11 +2722,11 @@ namespace Objects
 			return Objects::SpawnSatellite(owner,  id,baseLocation,base,placeNow,isMine);
 		}
 
-		PSatellite		SpawnSatellite(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isMine)
+		Orbital::PShip		SpawnSatellite(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isMine)
 		{
-			PSatellite	proto = GetSatellitePrototypeByName(type);
+			Orbital::PShip	proto = GetSatellitePrototypeByName(type);
 			ASSERT1__(proto,(int)type);
-			PSatellite s = To<Satellite>::Cast( proto->CreateNewInstance(owner,baseLocation,0) );
+			Orbital::PShip s = To<Orbital::Ship>::Cast( proto->CreateNewInstance(owner,baseLocation,0) );
 			s->location = baseLocation;
 			s->id = id;
 			s->UpdateSystem();
@@ -2625,7 +2776,7 @@ namespace Objects
 			InsertConstructed(vehicle,0,insertIntoGrid);
 			ASSERT1__(vehicles.Contains(vehicle),vehicle->GetName());
 		}
-		void			Place( const PSatellite&s)
+		void			Place( const Orbital::PShip&s)
 		{
 			ASSERT__(s);
 			ASSERT3__(s->preAnimationLocation == s->location,s->preAnimationLocation.ToString(),s->location.ToString(),s->GetName());

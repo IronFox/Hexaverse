@@ -54,7 +54,11 @@ namespace Objects
 	PStructure		GetStructure(const Grid::LCellIdI&cellID);
 	PStructure		GetStructure(const Grid::LCellIdU&cellID);
 	PWorldEntity	GetEntity(const Grid::LCellIdI&cellID);
-	PSatellite		GetSatellite(UINT32 flatCellID);
+	namespace Orbital
+	{
+		PShip		GetShip(UINT32 flatCellID);
+		PStation	GetStation(UINT32 flatCellID);
+	}
 	PMobileEntity	GetMobileEntity(const Grid::LCellIdI&cellID);
 	PMobileEntity	GetMobileEntity(const Grid::LCellIdU&cellID);
 
@@ -71,10 +75,10 @@ namespace Objects
 
 
 	bool			AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
-	bool			AppendShortestPathI(const Satellite*vehicle, const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
+	bool			AppendShortestPathI(const Orbital::Ship*vehicle, const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
 	bool			AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool doFloat, const Grid::LCellIdI&from, Grid::LCellIdI to, BasicBuffer<Grid::LCellIdI>&oPath);
 	bool			AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion=true);
-	bool			AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath);
+	bool			AppendShortestDirectOrbitalPath(const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath);
 
 
 	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
@@ -105,7 +109,7 @@ namespace Objects
 							const Vehicle*v,  const Grid::LCellIdI&location, 
 							Grid::LCellIdI*outChoices, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
-	count_t			GetWays(const Satellite*v,  UINT32 location, 
+	count_t			GetWays(const Orbital::Ship*v,  UINT32 location, 
 							UINT32*outChoices, UINT32 destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
 	count_t			GetMobileWays(	const Grid::WorldData&world,
@@ -114,8 +118,16 @@ namespace Objects
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
 
 	bool			NoVehicleHere(const Grid::LCellIdI&cellID);
-	bool			NoVehicleHereExcept(const Grid::LCellIdI&cellID, const Vehicle*);
-	bool			NoSatelliteHere(const UINT32 cellID);
+	bool			NoVehicleVisibleHereExcept(const Grid::LCellIdI&cellID, const Vehicle*);
+
+	namespace Orbital
+	{
+		bool		NoShipHere(const UINT32 cellID);
+		bool		NoStationHere(const UINT32 cellID);
+		bool		NoStationVisibleHereExcept(UINT32 stackID, const Orbital::Station*v);
+		inline bool	NothingHere(const UINT32 cellID) {return NoShipHere(cellID) && NoStationHere(cellID);}
+		bool		NothingVisibleHereExcept(const UINT32 cellID, const WorldEntity*);
+	}
 
 	void			RemoveVehicleFromGrid(const PVehicle&v,const Grid::LCellIdI&location);
 	void			InsertVehicleIntoGrid(const PVehicle&v,const Grid::LCellIdI&location);
@@ -153,8 +165,8 @@ namespace Objects
 	#else
 		PVehicle	AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret);
 		/**
-		Selectively constructs a vehicle or a satellite, depending on the given configuration.
-		To successfully construct a satellite the specified @a turret parameter must be empty, and @a base must be a valid satellite type name
+		Selectively constructs a vehicle or a orbital ship, depending on the given configuration.
+		To successfully construct a ship the specified @a turret parameter must be empty, and @a base must be a valid ship type name
 		*/
 		PMobileEntity	AssembleMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret);
 
@@ -173,7 +185,7 @@ namespace Objects
 		/**
 		Checks that all vehicles and structures are stored in their respective grids at their current location.
 		Verification failure leads to program termination.
-		Executes in linear time, depending on the number of vehicles and structures. Does not test satellites.
+		Executes in linear time, depending on the number of vehicles and structures. Does not test orbital units.
 		*/
 		void		VerifyGrid();
 
@@ -202,7 +214,6 @@ namespace Objects
 	*/
 	void			InitGrid();
 
-	//void			DbgCheckSatellites(const PMobileEntity&includeIfSatellite = PMobileEntity());
 
 
 

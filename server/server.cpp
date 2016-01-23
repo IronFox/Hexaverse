@@ -1359,7 +1359,7 @@ int main( int argc, const char* argv[])
 				Test::Run(Test::Bin2Str());
 				Test::Run(Test::Serialization());
 				Test::Run(Test::VehiclePlant());
-				Test::Run(Test::SkyPort());
+				Test::Run(Test::SkyGate());
 				Test::Run(Test::StorageUnits());
 			}
 			std::cout << "Tests completed. Press enter to quit" << std::endl;

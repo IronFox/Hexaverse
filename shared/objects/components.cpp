@@ -10,7 +10,8 @@
 #include "visualSelection.h"
 #include "visualChoices.h"
 #include "rendering.h"
-#include "satellite.h"
+#include "orbitalStructure.h"
+#include "orbitalVehicle.h"
 #include "gridAndChoices.h"
 #include "../runtimeConfig.h"
 
@@ -136,7 +137,7 @@ namespace Objects
 		{
 			if (t == TrajectoryType::VerticalBeam)
 			{
-				return Satellite::GetGroundHeight(origin) != badHeight;
+				return Orbital::Ship::GetGroundHeight(origin) != badHeight;
 			}
 			float hDest = Vec::length(dest);
 			return CanHit(	t, flatRange,
@@ -158,7 +159,7 @@ namespace Objects
 		{
 			if (t == TrajectoryType::VerticalBeam)
 			{
-				return Satellite::GetGroundHeight(origin) != badHeight;
+				return Orbital::Ship::GetGroundHeight(origin) != badHeight;
 			}
 			return CanHit(	t, flatRange,
 							Grid::low.cells[origin.stackID].centerVertex.xyz,Grid::ToRadius(origin.height) + zOffset,
@@ -259,7 +260,7 @@ namespace Objects
 				case TrajectoryType::VerticalBeam:
 				{
 					UINT32 stackIndex = Grid::low.Locate(dest);
-					int h = Satellite::GetGroundHeight(Grid::LCellIdI(stackIndex,0));
+					int h = Orbital::Ship::GetGroundHeight(Grid::LCellIdI(stackIndex,0));
 					if (h == badHeight)
 						return;
 					float4 p(Grid::low.cells[stackIndex].cornerCenter,Grid::ToRadius(h));
@@ -378,7 +379,7 @@ namespace Objects
 				break;
 				case TrajectoryType::VerticalBeam:
 				{
-					int h = Satellite::GetGroundHeight(source);
+					int h = Orbital::Ship::GetGroundHeight(source);
 					if (h == badHeight)
 						return TurretTrajectory::InvalidTrajectory;
 					outSteps.Clear();

@@ -23,6 +23,8 @@
 	#include "faction.h"
 #endif
 
+#include "orbitalStructure.h"
+
 namespace Objects
 {
 
@@ -82,8 +84,8 @@ namespace Objects
 									VehicleStore::cmdRight;
 		/*static*/ Geometry			VehicleStore::interConnector;
 
-		/*static*/ VehicleConstructionCommand	SkyPort::formerConstructionCommand;
-		/*static*/ SatelliteConstructionCommand	SkyPort::skyHubConstructionCommand;
+		/*static*/ VehicleConstructionCommand	SkyGate::formerConstructionCommand;
+		/*static*/ SatelliteConstructionCommand	SkyGate::skyHubConstructionCommand;
 
 
 	#endif
@@ -110,6 +112,12 @@ namespace Objects
 		return rs;
 	}
 
+
+	/*virtual*/ void				Structure::VisitAllConnected(const std::function<void(const PStructure&)>&visitor) const
+	{
+		foreach (connectedTo,c)
+			visitor(*c);
+	}
 
 
 
@@ -1954,13 +1962,20 @@ namespace Objects
 
 
 
-	/*virtual override*/ bool		SkyPort::WouldLikeToEnable() const
+	/*virtual override*/ void		SkyGate::VisitAllConnected(const std::function<void(const PStructure&)>&visitor) const
+	{
+		Super::VisitAllConnected(visitor);
+		if (this->connectedToHub)
+			visitor(this->connectedToHub);
+	}
+
+	/*virtual override*/ bool		SkyGate::WouldLikeToEnable() const
 	{
 		return !!GetSatellite(location.stackID);
 	}
 
 
-	/*virtual override*/ void		SkyPort::GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&)	const
+	/*virtual override*/ void		SkyGate::GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&)	const
 	{
 		v.level[Resource::Energy] = -EnergyConsumption;
 		if (MobileEntityProducer::queue.IsNotEmpty())
@@ -1979,7 +1994,7 @@ namespace Objects
 			return true;
 		}
 
-		/*virtual override*/ bool			SkyPort::DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			SkyGate::DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			if (waypoints.Count() != 1)
 				return false;
@@ -2013,31 +2028,13 @@ namespace Objects
 
 
 
-		/*virtual override*/ void			SkyPort::OnEnabledChange()
+		/*virtual override*/ void			SkyGate::OnEnabledChange()
 		{
-			if (!this->IsEnabled())
-			{
-				if (connectedToHub)
-				{
-					//LogEvent(EventType::EntityProcessFailed,this,"Connection to "+connectedTo->GetNiceName()+" lost");
-					connectedToHub->LoseGroundConnection();
-				}
-			}
-			else
-				if (!connectedToHub)
-				{
-					PSkyHub hub = To<SkyHub>::DynamicCast(GetSatellite(location.stackID));
-					if (hub && hub->owner == owner)
-					{
-						if (hub->GainGroundConnection(To<SkyPort>::Cast(shared_from_this())))
-							ASSERT__(hub == connectedToHub);
-
-					}
-				}
+			SkyLinkStructure::OnEnabledChanged(this->IsEnabled(), To<SkyGate>::Cast(shared_from_this()));
 		}
 
 
-		/*virtual override*/ void				SkyPort::Tick(ResourceVector&v)
+		/*virtual override*/ void				SkyGate::Tick(ResourceVector&v)
 		{
 			v.level[Resource::Energy] -= EnergyConsumption;
 			if (MobileEntityProducer::queue.IsNotEmpty())
@@ -2117,11 +2114,11 @@ namespace Objects
 				gatheringPoint.selected = Grid::LCellIdI::Invalid;
 			}
 
-			/*virtual override*/ void			SkyPort::OnSelect()
+			/*virtual override*/ void			SkyGate::OnSelect()
 			{
 				gatheringPoint.UpdateVisuals();
 			}
-			/*virtual override*/ void			SkyPort::OnDeselect()
+			/*virtual override*/ void			SkyGate::OnDeselect()
 			{
 				gatheringPoint.selected = Grid::LCellIdI::Invalid;
 			}
@@ -2330,7 +2327,7 @@ namespace Objects
 			MobileEntityProducer::VisitAllCommands(visitor);
 			Super::VisitAllCommands(visitor);
 		}
-		/*virtual override*/ void				SkyPort::VisitAllCommands(FCommandVisitor visitor)
+		/*virtual override*/ void				SkyGate::VisitAllCommands(FCommandVisitor visitor)
 		{
 			MobileEntityProducer::VisitAllCommands(visitor);
 			visitor(skyHubConstructionCommand);
@@ -2345,14 +2342,14 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ bool				SkyPort::AwaitsUserInteraction() const 
+	/*virtual override*/ bool				SkyGate::AwaitsUserInteraction() const 
 	{
 		return MobileEntityProducer::AwaitsUserInteraction();
 	}
 
 
 
-	/*virtual override*/ void				SkyPort::PrototypeSetup()
+	/*virtual override*/ void				SkyGate::PrototypeSetup()
 	{
 		Super::PrototypeSetup();
 
@@ -2364,7 +2361,7 @@ namespace Objects
 				//VehicleBase* c = *comp;
 				formerConstructionCommand = VehicleConstructionCommand(int2(5,0), "Construct Hover-Former", &Component::hoverbase,&Component::terraformer, [](const PWorldEntity&e)
 				{
-					PSkyPort port = To<SkyPort>::DynamicCast(e);
+					PSkyGate port = To<SkyGate>::DynamicCast(e);
 					if (!port)
 						return;
 					SignalConstructionBegin(port->id, ConstName::VehicleBase_HoverBase, ConstName::Turret_Terraformer);
@@ -2373,7 +2370,7 @@ namespace Objects
 				
 				skyHubConstructionCommand = SatelliteConstructionCommand(int2(5,1), "Construct SkyHub", SkyHub::globalPrototype, [](const PWorldEntity&e)
 				{
-					PSkyPort port = To<SkyPort>::DynamicCast(e);
+					PSkyGate port = To<SkyGate>::DynamicCast(e);
 					if (!port)
 						return;
 					SignalConstructionBegin(port->id, ConstName::Type_SkyHub, ConstName::Empty);
@@ -2395,6 +2392,12 @@ namespace Objects
 
 
 
+	/*virtual override*/ void		NexusPort::VisitAllConnected(const std::function<void(const PStructure&)>&visitor) const
+	{
+		Super::VisitAllConnected(visitor);
+		if (this->connectedToHub)
+			visitor(this->connectedToHub);
+	}
 	
 	/*virtual override*/ bool				NexusPort::ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)
 	{
@@ -2495,6 +2498,35 @@ namespace Objects
 				RegisterChange(NexusControlChanged,0);
 				SignalNexusControlChange(owner);
 			}
+
+			SkyLinkStructure::OnEnabledChanged(this->IsEnabled(), To<NexusPort>::Cast(shared_from_this()));
+
+
+		}
+
+
+		void SkyLinkStructure::OnEnabledChanged(bool nowEnabled, PSkyLinkStructure self)
+		{
+			if (!nowEnabled)
+			{
+				if (connectedToHub)
+				{
+					//LogEvent(EventType::EntityProcessFailed,this,"Connection to "+connectedTo->GetNiceName()+" lost");
+					connectedToHub->LoseGroundConnection();
+				}
+			}
+			else
+				if (!connectedToHub)
+				{
+					Structure*st = self->CastToStructure();
+					Orbital::PHub hub = To<Orbital::Hub>::DynamicCast(GetOrbitalStation(st->location.stackID));
+					if (hub && hub->owner == st->owner)
+					{
+						if (hub->GainGroundConnection(self))
+							ASSERT__(hub == connectedToHub);
+
+					}
+				}
 		}
 	#endif
 
@@ -2546,9 +2578,11 @@ namespace Objects
 						continue;
 					s->compoundID = compoundID;
 					network.AppendStructure(s);
-					foreach (s->connectedTo,c)
-						if ((*c)->compoundID == Compound::InvalidNetwork)
-							primary << c->get();
+					s->VisitAllConnected([&primary](const PStructure&s)
+					{
+						if (s->compoundID == Compound::InvalidNetwork)
+							primary << s.get();
+					});
 				}
 				network.Compact();
 			}

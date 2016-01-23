@@ -22,13 +22,10 @@ namespace Objects
 
 	void RefreshSkyHubConnections()
 	{
-		for (const auto&sat : satellites)
+		for (const auto&sat : Orbital::stations)
 		{
-			if (sat->IsSkyHub())
-				To<SkyHub>::Cast(sat)->UpdateConnections();
-			#ifdef HAS_WINDOW
-				sat->FlushFuelDemandCache();
-			#endif
+			if (sat->IsHub())
+				To<Orbital::Hub>::Cast(sat)->UpdateConnections();
 		}
 		#ifdef HAS_WINDOW
 			OnSelectionChange(true);
@@ -126,12 +123,12 @@ namespace Objects
 		structurePrototypes << UraniumStorage::globalPrototype;
 		structurePrototypes << NexusPort::globalPrototype;
 		structurePrototypes << VehicleStore::globalPrototype;
-		structurePrototypes << SkyPort::globalPrototype;
+		structurePrototypes << SkyGate::globalPrototype;
 
-		satellitePrototypes << SkyHub::globalPrototype;
-		satellitePrototypes << SkyGuardian::globalPrototype;
-		satellitePrototypes << Ragnarok::globalPrototype;
-		satellitePrototypes << StarPort::globalPrototype;
+		Orbital::stationPrototypes << Orbital::Hub::globalPrototype;
+		Orbital::shipPrototypes << Orbital::Guardian::globalPrototype;
+		Orbital::shipPrototypes << Orbital::Ragnarok::globalPrototype;
+		Orbital::shipPrototypes << Orbital::StarPort::globalPrototype;
 
 
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::launcher));
@@ -206,7 +203,9 @@ namespace Objects
 
 		Component::ConfigureAll();
 
-		foreach(satellitePrototypes, p)
+		foreach(Orbital::stationPrototypes, p)
+			(*p)->PrototypeSetup();
+		foreach(Orbital::shipPrototypes, p)
 			(*p)->PrototypeSetup();
 		foreach(structurePrototypes, p)
 			(*p)->PrototypeSetup();
@@ -302,6 +301,11 @@ namespace Objects
 		//	hexGrid.Clear();
 		#endif
 		structures.Clear();
+		vehicles.Clear();
+		Orbital::stations.Clear();
+		Orbital::ships.Clear();
+		Orbital::stationPrototypes.Clear();
+		Orbital::shipPrototypes.Clear();
 		structurePrototypes.Clear();
 		Component::DestroyAll();
 
@@ -735,7 +739,8 @@ namespace Objects
 		RuntimeConfig::hibernationSystemEnabled = false;
 
 		storedMobileEntities.Clear();
-		satellites.Clear();
+		Orbital::ships.Clear();
+		Orbital::stations.Clear();
 		vehicles.Clear();
 		structures.Clear();
 		idMap.Clear();

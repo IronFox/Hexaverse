@@ -225,7 +225,7 @@ namespace Objects
 								break;
 							}
 						if (To<Satellite>::Cast(e)->IsSkyHub())
-							foreach (this->skyHubs,sat)
+							foreach (this->orbitalHubs,sat)
 								if (sat->lock() == e)
 								{
 									this->skyHubs.erase(sat);

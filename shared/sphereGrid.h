@@ -17,6 +17,8 @@ static const float WorldScale = 40.f;
 
 namespace Grid
 {
+	static const int badHeight = 0x1FFFFFFF;
+
 	CONSTRUCT_ENUMERATION4(WorldDiscovery,
 		None,
 		Oceans,
@@ -425,6 +427,9 @@ namespace Grid
 		If the specified cell is occupied, any applicable ground must be ab
 		*/
 		int				FindMostApplicableGround(int h, bool canStandOnWater) const;
+
+
+		int				FindTopNonClear(bool failOnStructureCount);
 	};
 
 	typedef CellStack::Cell::Content Content;

@@ -343,9 +343,15 @@ namespace Objects
 		virtual bool				IsWorkingStructure() const {return false;}
 		virtual bool				IsMobile() const {return false;}
 		virtual bool				IsVehicle() const {return false;}
-		virtual bool				IsSatellite() const {return false;}
 		virtual bool				IsStructure() const {return false;}
-		//virtual bool				IsVehiclePlant() const {return false;}
+
+		virtual void				GetUpkeep(ResourceVector&v) const {v.level[Resource::Minerals] = GetConstructionCost()/10;}
+
+		/**
+		Checks whether or not the local entity resides in orbit
+		*/
+		virtual bool				IsOrbital() const {return false;}
+
 		//these are performance optimizations. Some visualizations may behave unexpectedly if they are not
 		//overidden by classes implementing MobileEntityProducer
 		//dynamic cast is not suitable for high frequency queries:

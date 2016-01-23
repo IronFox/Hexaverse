@@ -638,6 +638,36 @@ namespace Grid
 		return false;
 	}
 
+	int	CellStack::FindTopNonClear(bool failOnStructureCount)
+	{
+		UINT32 h;
+		#ifdef HAS_WINDOW
+			h = highestOpaqueCell;
+			if (waterRange.IsNotEmpty())
+				h = std::max(h,waterRange.end-1);
+		#else
+			h = Grid::CellStack::Range-1;
+		#endif
+		for (; h < Grid::CellStack::Range; h--)
+		{
+			const Cell&c = volumeCell[h];
+			if (c.content != Grid::Content::Clear)
+				break;
+		}
+		h++;
+		if (h >= Grid::CellStack::Range-1)
+			return badHeight;
+		if (failOnStructureCount)
+		{
+			const Grid::CellStack::Cell&c = volumeCell[h];
+			if (c.structureCounter > 1)
+				return badHeight;
+		}
+
+		return Grid::CellStack::ToHeight(h);
+	}
+
+
 	int CellStack::FindMostApplicableGround(int h, bool canStandOnWater) const
 	{
 		UINT uh = ToLayer(h);

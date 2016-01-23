@@ -144,6 +144,7 @@ namespace Objects
 			DX11::InstructionBlock32	compiledShape,*localizableShape;
 		#endif
 
+		virtual void				VisitAllConnected(const std::function<void(const PStructure&)>&visitor) const;
 
 
 
@@ -232,7 +233,7 @@ namespace Objects
 		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const {return false;}
 
 		/**
-		Checks whether or not the local structure is an instance of SkyPort.
+		Checks whether or not the local structure is an instance of SkyGate.
 		Obviously, a dynamic cast would do the same, but at much higher computation cost.
 		*/
 		virtual bool				IsSkyPort() const {return false;}
@@ -259,6 +260,9 @@ namespace Objects
 		The configuration of the local instance should not have an influence on the result, only its class should.
 		*/
 		virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) = 0;
+
+
+		virtual bool				BlocksMobileEntities() const {return true;}
 
 		/**
 		Signals that the local structure will be removed. Overrides the WorldEntity method
@@ -604,6 +608,7 @@ namespace Objects
 
 
 		virtual bool				IsBroad() const override {return false;}
+		virtual bool				BlocksMobileEntities() const {return false;}
 
 
 		virtual void				OnDestroy(float atTime) override;
@@ -821,24 +826,27 @@ namespace Objects
 	class SkyLinkStructure
 	{
 	public:
-		PSkyHub						connectedToHub;
+		Orbital::PHub					connectedToHub;
 
-		virtual WorkingStructure*	CastToStructure() = 0;
+		virtual WorkingStructure*		CastToStructure() = 0;
+		#ifndef CLIENT
+			void						OnEnabledChanged(bool nowEnabled, PSkyLinkStructure self);
+		#endif
 	};
 
-	class SkyPort : public CommonStructure<SkyPort>, public MobileEntityProducer, public SkyLinkStructure
+	class SkyGate : public CommonStructure<SkyGate>, public MobileEntityProducer, public SkyLinkStructure
 	{
 	public:
 	protected:
-		typedef CommonStructure<SkyPort>	Super;
+		typedef CommonStructure<SkyGate>	Super;
 
 		#ifdef HAS_WINDOW
 			void					UpdateIconLocations();
 		#endif
 
 		friend class Super;
-		/**/						SkyPort():MobileEntityProducer(ConstructionSpeed) {}
-		/**/						SkyPort(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), MobileEntityProducer(ConstructionSpeed){}
+		/**/						SkyGate():MobileEntityProducer(ConstructionSpeed) {}
+		/**/						SkyGate(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), MobileEntityProducer(ConstructionSpeed){}
 	public:
 
 		#ifdef HAS_WINDOW
@@ -910,6 +918,7 @@ namespace Objects
 		}
 		virtual bool				IsSkyPort() const override {return true;}
 		virtual bool				IsSkyLinkStructure() const override {return true;}
+		virtual void				VisitAllConnected(const std::function<void(const PStructure&)>&visitor) const override;
 
 
 		//SkyLinkStructure overrides:
@@ -964,23 +973,24 @@ namespace Objects
 			#endif
 		#endif
 
-		virtual bool				IsNexusPort() const override {return true;}
 
 
 
+		//BaseEntity overrides:
+		virtual String				GetTypeName() const override { return "Nexus Port"; };
+		virtual ConstName			GetCTypeName() const override {return ConstName::Type_NexusPort;}
 
+		//WorldEntity overrides:
+		virtual bool				IsIndestructible() const	override {return true;};
+		virtual int					GetMaxHealth() const override {return 1;}
 		virtual int					GetConstructionCost() const override {return 0;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 10;}
 			virtual int				GetUplinkPriority() const override {return 750;};	//not much point going far beyond generators. if they shut off, this thing shuts off, too
 		#endif
 
-		virtual int					GetMaxHealth() const override {return 1;}
-
-		virtual String				GetTypeName() const override { return "Nexus Port"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_NexusPort;}
-
-		virtual bool				IsIndestructible() const	override {return true;};
+		//WorkingStructure overrides:
+		virtual bool				IsNexusPort() const override {return true;}
 		virtual void				GetResourceVector(ResourceVector&v, ResourceVector&, ResourceVector&) const override
 		{
 			v.level[Resource::Minerals] = 50;	
@@ -989,11 +999,13 @@ namespace Objects
 			v.level[Resource::Energy] = -EnergyConsumption;
 		}
 
+		//CommonStructure overrides:
 		virtual Grid::Content		GetFoundationType() const override {return Grid::Content::Rock;}
 
 
 		//Structure overrides:
 		virtual bool				IsSkyLinkStructure() const override {return true;}
+		virtual void				VisitAllConnected(const std::function<void(const PStructure&)>&visitor) const override;
 
 
 
@@ -1262,7 +1274,7 @@ namespace Objects
 			#endif
 
 		#else
-			/*virtual*/ void			CorrectTerrain(bool signalChange, float atTime, bool deep)	override
+			virtual void			CorrectTerrain(bool signalChange, float atTime, bool deep)	override
 			{
 				CommonFixTerrain(this,location,GetFoundationType(), 1, signalChange,atTime,deep,true,false);
 			}
@@ -1475,7 +1487,7 @@ namespace Objects
 	*/
 	class Tower : public WorkingStructure, public TurretBase
 	{
-	private:
+	protected:
 		static bool					setup;
 		typedef WorkingStructure	Super;
 		friend class Super;
@@ -1620,7 +1632,7 @@ namespace Objects
 		virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
 
 		#ifndef CLIENT
-			void					CorrectTerrain(bool signalChange, float atTime, bool deep);
+			virtual void			CorrectTerrain(bool signalChange, float atTime, bool deep) override;
 
 
 			virtual void			OnConstructionFinished(float atTime) override;

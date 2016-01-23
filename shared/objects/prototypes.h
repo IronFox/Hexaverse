@@ -17,9 +17,16 @@ namespace Objects
 										allTurretComponents;
 
 	}
-	extern Buffer0<PSatellite>			satellitePrototypes;
+	namespace Orbital
+	{
+		extern Buffer0<PShip>			shipPrototypes;
+		extern Buffer0<PStation>		stationPrototypes;
 
-
+		PStation		GetStationPrototypeByName(const String&name);
+		PStation		GetStationPrototypeByName(ConstName name);
+		PShip			GetShipPrototypeByName(const String&name);
+		PShip			GetShipPrototypeByName(ConstName name);
+	}
 
 	
 
@@ -27,8 +34,6 @@ namespace Objects
 
 	PStructure		GetPrototypeByName(ConstName structureTypeName);
 	PStructure		GetPrototypeByName(const String&structureTypeName);
-	PSatellite		GetSatellitePrototypeByName(const String&name);
-	PSatellite		GetSatellitePrototypeByName(ConstName name);
 
 	namespace Component
 	{

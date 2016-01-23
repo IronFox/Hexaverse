@@ -1651,7 +1651,7 @@ namespace Objects
 				{
 					if (ws->IsSkyPort())
 					{
-						PSkyPort port = To<SkyPort>::Cast(ws);
+						PSkyGate port = To<SkyGate>::Cast(ws);
 						if (ws->IsEnabled() && port->queue.IsNotEmpty() && port->queue.first().IsSatellite())
 						{
 							render = true;

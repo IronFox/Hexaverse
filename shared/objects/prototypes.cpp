@@ -1,6 +1,7 @@
 #include <global_root.h>
 #include "prototypes.h"
-#include "satellite.h"
+#include "orbitalStructure.h"
+#include "orbitalVehicle.h"
 #include "vehicle.h"
 #include "structure.h"
 
@@ -8,7 +9,6 @@
 namespace Objects
 {
 	Buffer0<PStructure>			structurePrototypes;
-	Buffer0<PSatellite>			satellitePrototypes;
 	namespace Component
 	{
 		Buffer0<VehicleBase*>		baseComponents;
@@ -16,33 +16,65 @@ namespace Objects
 									allTurretComponents;
 	}
 
+	namespace Orbital
+	{
+		Buffer0<PShip>			shipPrototypes;
+		Buffer0<PStation>		stationPrototypes;
+
+
+		
+
+
+		PShip		GetShipPrototypeByName(const String&name)
+		{
+			if (name.IsNotEmpty())
+			{
+				foreach (shipPrototypes,p)
+					if ((*p)->GetTypeName() == name)
+						return *p;
+			}
+			return PShip();
+		}
+		PShip		GetShipPrototypeByName(ConstName name)
+		{
+			if (name != ConstName::Empty)
+			{
+				foreach (shipPrototypes,p)
+					if ((*p)->GetCTypeName() == name)
+						return *p;
+			}
+			return PShip();
+		}
+
+		
+
+
+		PStation		GetStationPrototypeByName(const String&name)
+		{
+			if (name.IsNotEmpty())
+			{
+				foreach (stationPrototypes,p)
+					if ((*p)->GetTypeName() == name)
+						return *p;
+			}
+			return PStation();
+		}
+		PStation		GetStationPrototypeByName(ConstName name)
+		{
+			if (name != ConstName::Empty)
+			{
+				foreach (stationPrototypes,p)
+					if ((*p)->GetCTypeName() == name)
+						return *p;
+			}
+			return PStation();
+		}
+
+	}
+
 
 
 	
-
-
-	PSatellite		GetSatellitePrototypeByName(const String&name)
-	{
-		if (name.IsNotEmpty())
-		{
-			foreach (satellitePrototypes,p)
-				if ((*p)->GetTypeName() == name)
-					return *p;
-		}
-		return PSatellite();
-	}
-	PSatellite		GetSatellitePrototypeByName(ConstName name)
-	{
-		if (name != ConstName::Empty)
-		{
-			foreach (satellitePrototypes,p)
-				if ((*p)->GetCTypeName() == name)
-					return *p;
-		}
-		return PSatellite();
-	}
-
-
 
 	PStructure		GetPrototypeByName(ConstName structureTypeName)
 	{

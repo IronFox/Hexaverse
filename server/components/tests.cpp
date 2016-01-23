@@ -549,7 +549,7 @@ namespace Test
 	}
 
 	
-	/*static*/ void SkyPort::EnqueueRandom(Objects::PSkyPort&plant, Random&random)
+	/*static*/ void SkyGate::EnqueueRandom(Objects::PSkyGate&plant, Random&random)
 	{
 		bool rs ;
 		if (random.getFloat() < 0.8f)
@@ -563,7 +563,7 @@ namespace Test
 	}
 
 
-	/*virtual override*/ void	SkyPort::Run(Random&random)
+	/*virtual override*/ void	SkyGate::Run(Random&random)
 	{
 		Grid::TPlanetConfig	config;
 		Objects::FlushAllData();
@@ -581,7 +581,7 @@ namespace Test
 
 		Objects::PMine mine(CreateStructure<Objects::Mine>(faction, mineAt));
 		Objects::PGenerator generator(CreateStructure<Objects::Generator>(faction, generatorAt));
-		Objects::PSkyPort plant(CreateStructure<Objects::SkyPort>(faction, plantAt));
+		Objects::PSkyGate plant(CreateStructure<Objects::SkyGate>(faction, plantAt));
 
 		const auto&n2 = Grid::low.grid.GetCell(plantAt.stackID).neighborhood;
 		for (int i = 0; i < n2.numNeighbors; i++)
@@ -690,7 +690,7 @@ namespace Test
 					}
 				}
 			}
-			//ASSERT__(!plant->IsEnabled());	//SkyPort does not switch off
+			//ASSERT__(!plant->IsEnabled());	//SkyGate does not switch off
 			ASSERT__(v0);
 			//ASSERT__(v1);
 			if (v0->IsVehicle())

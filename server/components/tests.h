@@ -80,14 +80,14 @@ namespace Test
 
 	};
 
-	class SkyPort : public Test
+	class SkyGate : public Test
 	{
 	public:
-		/**/			SkyPort() :Test("SkyPort")
+		/**/			SkyGate() :Test("SkyGate")
 		{}
 
 		virtual void	Run(Random&random)	override;
-		static void		EnqueueRandom(Objects::PSkyPort&plant, Random&random);
+		static void		EnqueueRandom(Objects::PSkyGate&plant, Random&random);
 
 	};
 
