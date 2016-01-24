@@ -302,7 +302,7 @@ namespace Journal
 			}
 		}
 
-		const Objects::MobileEntityProducer*prod = e.CastToProducer();
+		const Objects::EntityFactory*prod = e.CastToFactory();
 		if (prod)
 			return prod->gatheringPoint.current;
 
@@ -327,7 +327,7 @@ namespace Journal
 				return t->attackQueue.Count();
 			}
 		}
-		const Objects::MobileEntityProducer*prod = e.CastToProducer();
+		const Objects::EntityFactory*prod = e.CastToFactory();
 		if (prod)
 			return prod->queue.Count();
 		return 0;
@@ -546,11 +546,7 @@ namespace Journal
 
 	Objects::PWorldEntity Round::PureEntityDescriptor::Instantiate(const Objects::PFaction&f, const TUniqueID&id, const Grid::LCellIdI&loc) const
 	{
-		Objects::PWorldEntity proto = Objects::GetPrototypeByName(baseType);
-		if (!proto)
-		{
-			proto = Objects::GetSatellitePrototypeByName(baseType);
-		}
+		Objects::PWorldEntity proto = Objects::GetAnyNonVehiclePrototypeByName(baseType);
 		Objects::PWorldEntity e;
 		if (proto)
 		{
@@ -778,12 +774,11 @@ namespace Journal
 
 	/*virtual override*/ void	Round::DropEntityProduction::Execute(const Objects::PWorldEntity&e) const
 	{
-		if (!e->CastToProducer())
+		Objects::EntityFactory*p = e->CastToMutableFactory();
+		if (!p)
 		{
 			throw RoundException(CLOCATION, "Trying to drop production task from non-producer entity "+e->GetName());
 		}
-		Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
-
 		if (!p->AbortConstruction(taskID))
 			throw RoundException(CLOCATION, "Failed KOto remove production task '"+taskID.ToString()+"' from "+e->GetName());
 	}
@@ -791,15 +786,15 @@ namespace Journal
 
 	/*virtual override*/ void	Round::NewEntityProduction::Execute(const Objects::PWorldEntity&e) const
 	{
-		if (!e->CastToProducer())
+		Objects::EntityFactory*p = e->CastToMutableFactory();
+		if (!p)
 		{
 			throw RoundException(CLOCATION, "Trying to assign production task to non-producer entity "+e->GetName());
 		}
-		Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
 		Objects::PWorldEntity produced = desc.Instantiate(e->owner,this->newEntityID,Grid::LCellIdI(0,0));
 		if (produced->IsMobile())
 		{
-			Objects::MobileEntityProducer::WorkItem*item = p->EnqueueProductionOf(To<Objects::MobileEntity>::Cast(produced),insertAt);
+			Objects::EntityFactory::WorkItem*item = p->EnqueueProductionOf(To<Objects::MobileEntity>::Cast(produced),insertAt);
 			if (!item)
 				throw RoundException(CLOCATION,"Failed to enqueue production task");
 			item->id = taskID;
@@ -852,7 +847,7 @@ namespace Journal
 				sink(e);
 			}
 		}
-		const Objects::MobileEntityProducer*p = entity.CastToProducer();
+		const Objects::EntityFactory*p = entity.CastToProducer();
 		if (p)
 		{
 		//MobileProducerGatheringPoint,
@@ -890,9 +885,9 @@ namespace Journal
 		foreach (locationParameters.entries,p)
 		{
 			stream << tab << p->key << "=l"<<p->value.stackID<<'.';
-			if (p->value.height == Objects::Satellite::BaseResidenceHeight)
+			if (p->value.height == Objects::Orbital::BaseHeight)
 				stream << "sat";
-			elif (p->value.height == Objects::Satellite::DeclinedResidenceHeight)
+			elif (p->value.height == Objects::Orbital::DeclinedHeight)
 				stream << "declSat";
 			else
 				stream << p->value.height;
@@ -1002,16 +997,19 @@ namespace Journal
 					}
 
 					if (sHeight == "sat")
-						target.height = Objects::Satellite::BaseResidenceHeight;
+						target.height = Objects::Orbital::BaseHeight;
 					elif (sHeight == "declSat")
-						target.height = Objects::Satellite::DeclinedResidenceHeight;
+						target.height = Objects::Orbital::DeclinedHeight;
 					else
 					{
 						if (!convert(sHeight.pointer(),sHeight.length(),target.height))
 						{
 							throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Expected valid height for parameter '"+String(paraRef)+"', but got '"+String(dotAt+1, valLen  - (dotAt-value)-1)+"' while decoding line "+String(line,lineLen));
 						}
-						if ((target.height < Grid::CellStack::BottomHeight || target.height > Grid::CellStack::TopHeight) && target.height != Objects::Satellite::BaseResidenceHeight && target.height != Objects::Satellite::DeclinedResidenceHeight)
+						if ((target.height < Grid::CellStack::BottomHeight || target.height > Grid::CellStack::TopHeight) 
+								&& target.height != Objects::Orbital::BaseHeight 
+								&& target.height != Objects::Orbital::DeclinedHeight
+							)
 						{
 							throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded height of "+String(paraRef)+"=" +target.ToString()+" is out of range, while decoding line "+String(line,lineLen));
 						}
@@ -1537,13 +1535,10 @@ namespace Journal
 			return true;
 		if (dest.referencedType[1] == ConstName::Empty)
 		{
-			if (!Objects::GetPrototypeByName(dest.referencedType[0]))
+			if (!Objects::GetAnyNonVehiclePrototypeByName(dest.referencedType[0]))
 			{
-				if (!Objects::GetSatellitePrototypeByName(dest.referencedType[0]))
-				{
-					LogEvent(EventType::CommandRejected, "Unknown structure type #" + String(int(dest.referencedType[0])));
-					return false;
-				}
+				LogEvent(EventType::CommandRejected, "Unknown structure type #" + String(int(dest.referencedType[0])));
+				return false;
 			}
 			return true;
 		}
@@ -1574,18 +1569,12 @@ namespace Journal
 			return;
 		if (source.type1 == ConstName::Empty)
 		{
-			Objects::PStructure proto = Objects::GetPrototypeByName(source.type0);
+			Objects::PWorldEntity proto = Objects::GetAnyNonVehiclePrototypeByName(source.type0);
 			if (proto)
-				result.stringParameters.Set("ReferenceStructure",proto->GetTypeName());
+				result.stringParameters.Set("ReferenceOther",proto->GetTypeName());
 			else
 			{
-				Objects::PSatellite sproto = Objects::GetSatellitePrototypeByName(source.type0);
-				if (sproto)
-					result.stringParameters.Set("ReferenceSatellite",sproto->GetTypeName());
-				else
-				{
-					throw Round::RoundException(CLOCATION, "Unknown structure type #" + String(int(source.type0.value)));
-				}
+				throw Round::RoundException(CLOCATION, "Unknown structure type #" + String(int(source.type0.value)));
 			}
 			return;
 		}
@@ -1628,15 +1617,9 @@ namespace Journal
 			ref.type1 = Require(Objects::Component::GetTurretByName(turret))->constName;
 			return;
 		}
-		if (e.stringParameters.TryGet("ReferenceSatellite",base))
+		if (e.stringParameters.TryGet("ReferenceOther",base))
 		{
-			ref.type0 = Require(Objects::GetSatellitePrototypeByName(base))->GetCTypeName();
-			ref.type1 = ConstName::Empty;
-			return;
-		}
-		if (e.stringParameters.TryGet("ReferenceStructure",base))
-		{
-			ref.type0 = Require(Objects::GetPrototypeByName(base))->GetCTypeName();
+			ref.type0 = Require(Objects::GetAnyNonVehiclePrototypeByName(base))->GetCTypeName();
 			ref.type1 = ConstName::Empty;
 			return;
 		}
@@ -1757,7 +1740,7 @@ namespace Journal
 
 	/*virtual override*/ void	Round::ConstructionAbort::Execute(const Objects::PWorldEntity&e) const
 	{
-		Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
+		Objects::EntityFactory*p = e->CastToMutableFactory();
 		if (!p)
 			throw RoundException(CLOCATION,"Tried to abort construction-plant job on non-plant entity ");
 
@@ -1936,9 +1919,9 @@ namespace Journal
 		LogFactionOnline(f,false);
 	}
 
-	void	Round::RegisterProductionJobStart(bool apply, const Objects::PWorldEntity&e, const Objects::PMobileEntityProducer&asProducer, const ConstName*parameters, count_t parameterCount)
+	void	Round::RegisterProductionJobStart(bool apply, const Objects::PWorldEntity&e, Objects::EntityFactory*asFactory, const ConstName*parameters, count_t parameterCount)
 	{
-		if (apply && asProducer->queue.GetLength() >= Objects::MaxProductionTasks)
+		if (apply && asFactory->queue.GetLength() >= Objects::MaxProductionTasks)
 		{
 			LogEvent(EventType::CommandRejected,e.get(),"Job denied: Max production jobs reached");
 			return;
@@ -1954,7 +1937,7 @@ namespace Journal
 				cmd->desc.baseType = Objects::Component::GetVehicleBaseByName(parameters[0])->typeName;
 			break;
 			case 1:
-				cmd->desc.baseType = Objects::GetSatellitePrototypeByName(parameters[0])->GetTypeName();
+				cmd->desc.baseType = Objects::GetAnyNonVehiclePrototypeByName(parameters[0])->GetTypeName();
 			break;
 			default:
 				LogEvent(EventType::CommandRejected,e.get(),"Received invalid construction-plant job parameter configuration");

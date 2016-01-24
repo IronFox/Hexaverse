@@ -1978,8 +1978,8 @@ namespace Objects
 	/*virtual override*/ void		SkyGate::GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&)	const
 	{
 		v.level[Resource::Energy] = -EnergyConsumption;
-		if (MobileEntityProducer::queue.IsNotEmpty())
-			v.level[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;
+		if (EntityFactory::queue.IsNotEmpty())
+			v.level[Resource::Minerals] = -(int)EntityFactory::productionPerRound;
 
 
 	}
@@ -1990,7 +1990,7 @@ namespace Objects
 		{
 			if (waypoints.Count() != 1)
 				return false;
-			MobileEntityProducer::UpdateGatheringPoint(waypoints.First());
+			EntityFactory::UpdateGatheringPoint(waypoints.First());
 			return true;
 		}
 
@@ -1998,14 +1998,14 @@ namespace Objects
 		{
 			if (waypoints.Count() != 1)
 				return false;
-			MobileEntityProducer::UpdateGatheringPoint(waypoints.First());
+			EntityFactory::UpdateGatheringPoint(waypoints.First());
 			return true;
 		}
 	#endif
 
 
 	VehiclePlant::VehiclePlant(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner, location, atTime),
-		MobileEntityProducer(DefaultProductionPerRound)
+		EntityFactory(DefaultProductionPerRound)
 	{
 		#ifdef CLIENT
 			// make some base selected by default
@@ -2021,7 +2021,7 @@ namespace Objects
 		{
 			v.level[Resource::Energy] -= EnergyConsumption;
 
-			MobileEntityProducer::Tick(v);
+			EntityFactory::Tick(v);
 		}
 
 
@@ -2037,8 +2037,8 @@ namespace Objects
 		/*virtual override*/ void				SkyGate::Tick(ResourceVector&v)
 		{
 			v.level[Resource::Energy] -= EnergyConsumption;
-			if (MobileEntityProducer::queue.IsNotEmpty())
-				MobileEntityProducer::Tick(v);
+			if (EntityFactory::queue.IsNotEmpty())
+				EntityFactory::Tick(v);
 
 
 
@@ -2048,7 +2048,7 @@ namespace Objects
 
 		PVehicle					VehiclePlant::GetProduction() const
 		{
-			return To<Vehicle>::Cast(MobileEntityProducer::GetActiveProduction());
+			return To<Vehicle>::Cast(EntityFactory::GetActiveProduction());
 		}
 
 
@@ -2182,19 +2182,19 @@ namespace Objects
 
 		PVehicle				VehiclePlant::Enqueue(Component::VehicleBase*b, Component::Turret*t)
 		{
-			auto item = MobileEntityProducer::EnqueueProductionOfVehicle(b,t);
+			auto item = EntityFactory::EnqueueProductionOfVehicle(b,t);
 			return item ? To<Vehicle>::Cast(item->producing) : PVehicle();
 		}
 		PVehicle				VehiclePlant::Enqueue(ConstName baseName, ConstName turretName)
 		{
-			auto item = MobileEntityProducer::EnqueueProductionOfVehicle(baseName,turretName);
+			auto item = EntityFactory::EnqueueProductionOfVehicle(baseName,turretName);
 			return item ? To<Vehicle>::Cast(item->producing) : PVehicle();
 		}
 
 
 		bool				VehiclePlant::AbortConstruction(const TUniqueID&id)
 		{
-			return MobileEntityProducer::AbortConstruction(id);
+			return EntityFactory::AbortConstruction(id);
 		}
 
 
@@ -2324,12 +2324,12 @@ namespace Objects
 	#ifdef HAS_WINDOW
 		/*virtual override*/ void				VehiclePlant::VisitAllCommands(FCommandVisitor visitor)
 		{
-			MobileEntityProducer::VisitAllCommands(visitor);
+			EntityFactory::VisitAllCommands(visitor);
 			Super::VisitAllCommands(visitor);
 		}
 		/*virtual override*/ void				SkyGate::VisitAllCommands(FCommandVisitor visitor)
 		{
-			MobileEntityProducer::VisitAllCommands(visitor);
+			EntityFactory::VisitAllCommands(visitor);
 			visitor(skyHubConstructionCommand);
 			visitor(formerConstructionCommand);
 			Super::VisitAllCommands(visitor);
@@ -2338,13 +2338,13 @@ namespace Objects
 	#endif
 	/*virtual override*/ bool				VehiclePlant::AwaitsUserInteraction() const 
 	{
-		return  MobileEntityProducer::AwaitsUserInteraction();
+		return  EntityFactory::AwaitsUserInteraction();
 	}
 
 
 	/*virtual override*/ bool				SkyGate::AwaitsUserInteraction() const 
 	{
-		return MobileEntityProducer::AwaitsUserInteraction();
+		return EntityFactory::AwaitsUserInteraction();
 	}
 
 

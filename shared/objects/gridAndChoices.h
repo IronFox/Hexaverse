@@ -145,7 +145,10 @@ namespace Objects
 		void		MoveGridVehicle(const PVehicle&v, const Grid::LCellIdI&from, const Grid::LCellIdI&to);
 		PStructure	SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,ConstName type, bool placeNow, bool isMine);
 		PVehicle	SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isMine);
-		PSatellite	SpawnSatellite(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isMine);
+		namespace Orbital
+		{
+			PShip	SpawnShip(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isMine);
+		}
 		/**
 		Selectively spawns either a vehicle or a satellite, depending on the parameters
 		In order to spawn a satellite, @a turret must be @a ConstName::Empty, and @base be a valid satellite type name
@@ -153,14 +156,9 @@ namespace Objects
 		PMobileEntity	SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isMine);
 		void		Place( const PStructure&s);
 		void		Place( const PVehicle&vehicle, bool insertIntoGrid=true);
-		void		Place( const PSatellite&s);
+		void		Place( const Orbital::PShip&s);
 		void		PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGridIfVehicle=true);
 
-
-		#ifdef HAS_WINDOW
-			void	InsertSatelliteSensor(Satellite*);
-			void	RemoveSatelliteSensor(Satellite*);
-		#endif
 
 	#else
 		PVehicle	AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret);

@@ -890,7 +890,7 @@ void ProcessAICoverage()
 					Objects::Compound&n = p->GetCompound();
 					count_t producing = 0,
 							existing = 0;
-					for (Objects::WWorkingStructure _ws : n.containedStructures)
+					for (Objects::WWorkingStructure _ws : n.workingStructures)
 					{
 						Objects::PWorkingStructure	ws = _ws.lock();
 						if (!ws)
@@ -903,13 +903,13 @@ void ProcessAICoverage()
 							continue;
 						if (ws->health < ws->GetMaxHealth())
 							friendlyNearNexus[i] -= ws->GetConstructionCost();
-						Objects::PMobileEntityProducer plant = To<Objects::MobileEntityProducer>::DynamicCast(ws);
+						Objects::EntityFactory*plant = ws->CastToMutableFactory();
 						if (plant)
 						{
 							existing++;
 							if (plant->AwaitsUserInteraction())
 							{
-								Objects::PMobileEntity v = plant->SpawnFinishedProductionAnywhere();
+								Objects::PWorldEntity v = plant->SpawnFinishedProductionAnywhere();
 								if (!v)
 								{
 									producing++;	//dont count
@@ -931,13 +931,13 @@ void ProcessAICoverage()
 					{
 						while (producing < existing && (friendlyNearNexus[i] < threatLevel || (constructorNearNexus[i] > 0.2f && friendlyNearNexus[i] < Game::factionStartMineralValue + 20.f)))
 						{
-							for (Objects::WWorkingStructure _ws : n.containedStructures)
+							for (Objects::WWorkingStructure _ws : n.workingStructures)
 							{
 								Objects::PWorkingStructure ws = _ws.lock();
 								if (!ws)
 									continue;
-								Objects::PMobileEntityProducer plant = To<Objects::MobileEntityProducer>::DynamicCast(ws);
-		//						Objects::MobileEntityProducer*plant = ws->ToProducer();
+								Objects::EntityFactory*plant = ws->CastToMutableFactory();
+		//						Objects::EntityFactory*plant = ws->ToProducer();
 								Objects::PVehiclePlant vplant = To<Objects::VehiclePlant>::DynamicCast(ws);
 								if (plant && vplant && plant->queue.IsEmpty())
 								{
@@ -945,7 +945,7 @@ void ProcessAICoverage()
 									//random.getIndex(State::Config::Nexus::vehicleTurrets.Count() - 1);
 									ASSERT_LESS__(choice,Game::Config::Nexus::vehicleTurrets.Count());
 									//Objects::Component::Turret* turret = State::Config::Nexus::vehicleTurrets[choice];
-									//Objects::MobileEntityProducer::WorkItem item = vplant->EnqueueProductionOfVehicle(&Objects::Component::hoverbase,turret);
+									//Objects::EntityFactory::WorkItem item = vplant->EnqueueProductionOfVehicle(&Objects::Component::hoverbase,turret);
 									//Objects::PVehicle v = To<Objects::Vehicle>::Cast(item.producing);
 									ConstName	parameters[2] = {ConstName::VehicleBase_HoverBase, Game::Config::Nexus::vehicleTurrets[choice]->constName};
 									LogEvent(EventType::MinorEntityProcess,vplant.get(),"Enqueueing vehicle production job due to high threat level");

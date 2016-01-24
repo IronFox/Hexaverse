@@ -27,7 +27,9 @@ namespace Objects
 			if (sat->IsHub())
 				To<Orbital::Hub>::Cast(sat)->UpdateConnections();
 		}
-		RefreshCompoundCoverageIfNeeded(t);
+		#ifndef CLIENT
+			RefreshCompoundCoverageIfNeeded(t);
+		#endif
 		#ifdef HAS_WINDOW
 			OnSelectionChange(true);
 		#endif
@@ -77,7 +79,7 @@ namespace Objects
 	void					Create()
 	{
 		#ifdef CLIENT
-			Grid::visibleOrbitGrid.orbit = Grid::ToRadius(Satellite::BaseResidenceHeight);
+			Grid::visibleOrbitGrid.orbit = Grid::ToRadius(Orbital::BaseHeight);
 			Grid::visibleOrbitGrid.Clear();
 			#ifdef HAS_WINDOW
 				Renderer::Create();
@@ -191,7 +193,9 @@ namespace Objects
 
 			}
 			LogEvent(EventType::Debug,nullptr,"Loading prototype geometry");
-			foreach(satellitePrototypes, p)
+			foreach(Orbital::shipPrototypes, p)
+				(*p)->PrototypeLoadGeometry();
+			foreach(Orbital::stationPrototypes, p)
 				(*p)->PrototypeLoadGeometry();
 			foreach(structurePrototypes, p)
 				(*p)->PrototypeLoadGeometry();

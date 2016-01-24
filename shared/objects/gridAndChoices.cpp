@@ -38,11 +38,17 @@ namespace Objects
 			PVehicle vh = GetVehicle(cellID);
 			return !vh || vh->owner == v;
 		}
-		bool NoHostileSatelliteHere(UINT32 cellID, const OwnerParameter&v)
+		namespace Orbital
 		{
-			Orbital::PShip vh = GetSatellite(cellID);
-			return !vh || vh->owner == v;
+
+			bool NoHostileShipHere(UINT32 cellID, const OwnerParameter&v)
+			{
+				PShip vh = GetShip(cellID);
+				return !vh || vh->owner == v;
+			}
+		
 		}
+
 	#else
 		bool NoHostileVehicleHere(const Grid::LCellIdI&cellID, const OwnerParameter&v, float t)
 		{
@@ -485,12 +491,16 @@ namespace Objects
 
 	bool		HostileVisible(const PWorldEntity&e, const OwnerParameter&owner, float t)
 	{
-		return e && e->owner != owner && owner->CanSee(e,t);
+		return e && e->owner != owner 
+			#ifndef CLIENT
+				&& owner->CanSee(e,t)
+			#endif
+		;
 	}
 
-	bool NothingHere(const Grid::LCellIdI&stackID)
+	bool NothingHere(const Grid::LCellIdI&loc)
 	{
-		return !GetStructure(stackID) && !GetVehicle(stackID);
+		return !GetStructure(loc) && !GetMobileEntity(loc);
 	}
 	
 	bool NoVehicleHere(const Grid::LCellIdI&stackID)
@@ -833,7 +843,7 @@ namespace Objects
 
 		movementChoices.Clear();
 		
-		const MobileEntityProducer*p = dynamic_cast<const MobileEntityProducer*>(&entity);// entity.ToProducer();
+		const EntityFactory*p = dynamic_cast<const EntityFactory*>(&entity);// entity.ToProducer();
 		//const WorkingStructure*ws = dynamic_cast<WorkingStructure*>(&entity);
 		if (p && p->AwaitsUserInteraction())
 		{
@@ -842,13 +852,13 @@ namespace Objects
 				#ifdef CLIENT
 					base = p->GetActiveProductionBase();
 				#else
-					const PMobileEntity production = p->GetActiveProduction();
+					const PWorldEntity production = p->GetActiveProduction();
 					if (production->IsVehicle())
 					{
 						base = To<Vehicle>::Cast(production)->base;
 					}
-					else
-						ASSERT1__(production->IsOrbital(),production->GetName());
+					//else
+						//ASSERT1__(production->IsOrbital(),production->GetName());
 				#endif
 					if (base)
 						GetProductionChoices(&entity,base,movementChoices);
@@ -856,24 +866,39 @@ namespace Objects
 					{
 						if (entity.IsOrbital())
 						{
-							//satellite producing satellite
-
-							const auto&n = Grid::low.grid.GetCell(entity.location.stackID).neighborhood;
-
-							for (int i = 0; i < n.numNeighbors; i++)
+							if (production->IsOrbital())
 							{
-								UINT32 stackID = n.neighborID[i];
-								if (Orbital::NothingHere(stackID))
-									movementChoices << Grid::LCellIdI(stackID, Orbital::Ship::BaseResidenceHeight);
+								//satellite producing satellite
+
+								const auto&n = Grid::low.grid.GetCell(entity.location.stackID).neighborhood;
+
+								for (int i = 0; i < n.numNeighbors; i++)
+								{
+									UINT32 stackID = n.neighborID[i];
+									if (Orbital::NothingHere(stackID))
+										movementChoices << Grid::LCellIdI(stackID, Orbital::Ship::BaseResidenceHeight);
+								}
+							}
+							else
+							{
+								//satellite producing ground unit
+								Grid::LCellIdI target = Grid::LCellIdI(entity.location.stackID,Orbital::Station::GetStructureBuildHeight(entity.location));
+								if (NothingHere(target))
+									movementChoices << target;
 							}
 						}
 						else
 						{
-							//must be producing a satellite
-							//in time, mobile entities will be producers, too, but for here we can conclude this is a bottom-up production
-							//thus: vertical
-							if (Orbital::NothingHere(entity.location.stackID))
-								movementChoices << Grid::LCellIdI(entity.location.stackID,Orbital::Ship::BaseResidenceHeight);
+							if (production->IsOrbital())
+							{
+								//must be producing a satellite
+								//in time, mobile entities will be producers, too, but for here we can conclude this is a bottom-up production
+								//thus: vertical
+								if (Orbital::NothingHere(entity.location.stackID))
+									movementChoices << Grid::LCellIdI(entity.location.stackID,Orbital::Ship::BaseResidenceHeight);
+							}
+							else
+								FATAL__("Feature not implemented");
 						}
 					}
 			}
@@ -1149,20 +1174,6 @@ namespace Objects
 
 		e->isInserted = true;
 	}
-
-	#ifdef HAS_WINDOW
-		void	InsertSatelliteSensor(Orbital::Ship*sat)
-		{
-			Component::Turret *turret = sat->turret;
-
-		}
-
-		void	RemoveSatelliteSensor(Orbital::Ship*sat)
-		{
-
-
-		}
-	#endif
 
 
 	void	InsertConstructed( const PMobileEntity&v, float atTime, bool insertIntoGrid/*= true*/, bool setHealthToFull/*=true*/)
@@ -2551,7 +2562,7 @@ namespace Objects
 	}
 
 	
-	bool AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 to, BasicBuffer<PathNode>&oPath)
+	bool AppendShortestDirectOrbitalPath(const Grid::LCellIdI&from, const UINT32 to, BasicBuffer<PathNode>&oPath)
 	{
 		//Timer::Time t0 = timer.Now();
 
@@ -2835,24 +2846,47 @@ namespace Objects
 				return false;
 
 
-			PMobileEntityProducer p = To<MobileEntityProducer>::DynamicCast(e);
+			EntityFactory*p = e->CastToMutableFactory();
 			//e->ToProducer();
 			if (e->AwaitsUserInteraction() && p)
 			{
 				auto c = choice;
-				PMobileEntity v = p->CompleteProduction();
+				PWorldEntity v = p->CompleteProduction();
 				if (!v)
 				{
 					return false;
 				}
-				MobilePlacementResult result = v->PlaceExactlyAt(c,0,0,false,false);
-				if (Failed(result))
+				if (v->IsMobile())
 				{
-					LogEvent(EventType::Fatal,v.get(),"Failed to position non-constructed at "+c.ToString());
-					FATAL__("Failed to position entity at designated position");
+					PMobileEntity m = To<MobileEntity>::Cast(v);
+					MobilePlacementResult result = m->PlaceExactlyAt(c,0,0,false,false);
+					if (Failed(result))
+					{
+						LogEvent(EventType::Fatal,v.get(),"Failed to position non-constructed at "+c.ToString());
+						FATAL__("Failed to position entity at designated position");
+					}
+					if (result == MobilePlacementResult::PlacementOkay || result == MobilePlacementResult::PlacementOkayFellDown)
+						InsertConstructed(m,0);
 				}
-				if (result == MobilePlacementResult::PlacementOkay || result == MobilePlacementResult::PlacementOkayFellDown)
-					InsertConstructed(v,0);
+				else
+					if (v->IsStructure())
+					{
+						if (NothingHere(c))
+						{
+							v->location = c;
+							v->SetupSystem();
+							InsertConstructed(To<Structure>::Cast(v),0,true);
+
+						}
+						else
+						{
+							LogEvent(EventType::Fatal,v.get(),"Failed to position non-constructed at "+c.ToString());
+							FATAL__("Failed to position entity at designated position");
+						}
+
+					}
+					else
+						FATAL__("WTF is this? "+v->GetName());
 
 				if (e->IsStructure())
 				{

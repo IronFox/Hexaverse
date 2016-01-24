@@ -193,54 +193,56 @@ namespace Objects
 		virtual void		CompileLabel(const PWorldEntity&, Label&outResult) override;
 	};
 
-	class SatelliteCommand : public EntityCommand
+	class VisualEntityCommand : public EntityCommand
 	{
 	public:
 		typedef EntityCommand	Super;
-		PSatellite			sat;
+		PWorldEntity		target;
 
-		/**/				SatelliteCommand()	{}
-		/**/				SatelliteCommand(int2 coords, const String&name, const PSatellite&sat,   OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) : Super(coords,name,f,a,p),sat(sat)
+		/**/				VisualEntityCommand()	{}
+		/**/				VisualEntityCommand(int2 coords, const String&name, const PWorldEntity&e,   OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) : Super(coords,name,f,a,p),target(e)
 		{
 			if (rasterize)
-				UpdateTexture(sat,true);
+				UpdateTexture(target,true);
 		}
 
 
-		void				UpdateTexture(const PSatellite&v, bool isPrototype, const float4&backgroundColor = float4(0));
-		static void			UpdateTexture(EntityCommand&target, const PSatellite&v, bool isPrototype, const float4&backgroundColor = float4(0));
+		void				UpdateTexture(const PWorldEntity&, bool isPrototype, const float4&backgroundColor = float4(0));
+		static void			UpdateTexture(EntityCommand&target, const PWorldEntity&, bool isPrototype, const float4&backgroundColor = float4(0));
 
 	};
 
-	class SatelliteConstructionCommand : public SatelliteCommand
+	class EntityConstructionCommand : public VisualEntityCommand
 	{
 	public:
-		typedef SatelliteCommand	Super;
+		typedef VisualEntityCommand	Super;
 
 
-		/**/				SatelliteConstructionCommand()	{}
-		/**/				SatelliteConstructionCommand(int2 coords, const String&name, const PSatellite&sat,   OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) : Super(coords,name,sat,f,a,p,rasterize) {}
+		/**/				EntityConstructionCommand()	{}
+		/**/				EntityConstructionCommand(int2 coords, const String&name, const PWorldEntity&e,   OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) : Super(coords,name,e,f,a,p,rasterize) {}
 
 		virtual void		CompileLabel(const PWorldEntity&, Label&outResult) override;
 	};
 
 
-	class FactoryConstructionAbortCommand : public SatelliteConstructionCommand
+	class FactoryConstructionAbortCommand : public EntityConstructionCommand
 	{
 	public:
-		typedef SatelliteConstructionCommand	Super;
+		typedef EntityConstructionCommand	Super;
 		Component::Turret*		turret;
 		Component::VehicleBase*	base;
-		PStructure				structure;
 
 		unsigned			roundsLeft = 0xFFFFFFFF;
 		unsigned			mineralsLeft = 0xFFFFFFFF;
 
 
 		/**/				FactoryConstructionAbortCommand()	{}
-		/**/				FactoryConstructionAbortCommand(int2 coords, const String&name, Component::VehicleBase*base, Component::Turret*turret, const PSatellite&sat,   OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) : Super(coords,name,sat,f,a,p, rasterize && sat),turret(turret),base(base)
+		/**/				FactoryConstructionAbortCommand(int2 coords, const String&name, Component::VehicleBase*base, Component::Turret*turret, const PWorldEntity&e,   
+															OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) 
+															:	Super(coords,name,e,f,a,p, rasterize && e),
+																turret(turret),base(base)
 		{
-			if (rasterize && !sat)
+			if (rasterize && !e)
 				VehicleConstructionCommand::UpdateTexture(*this,base,turret);
 		}
 

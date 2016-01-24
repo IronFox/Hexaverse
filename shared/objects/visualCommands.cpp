@@ -9,7 +9,7 @@
 #include "structure.h"
 #include "visualSelection.h"
 #include "visualChoices.h"
-#include "satellite.h"
+#include "orbitalVehicle.h"
 #include <image/converter/magic.h>
 
 extern Engine::Display<Engine::DirectX11>	display;
@@ -147,19 +147,19 @@ namespace Objects
 	}
 
 
-	/*static*/ void		SatelliteCommand::UpdateTexture(EntityCommand&target, const PSatellite&sat, bool isPrototype, const float4&tone/* = float4(0)*/)
+	/*static*/ void		VisualEntityCommand::UpdateTexture(EntityCommand&target, const PWorldEntity&entity, bool isPrototype, const float4&tone/* = float4(0)*/)
 	{
 		GeometryImage::BeginRendering(tone,1.5f);
 
 		//TMatrix4<> sys = Matrix<>::eye4;
 		//sys.x.x = sys.y.y = sys.z.z = 2.5f;
 
-		UpdateStateColors(sat,tone,isPrototype);
+		UpdateStateColors(entity,tone,isPrototype);
 			//keyColor.Update(float4(0.5f,0.5f,1,1));
 
 			
 		//display.SetObjectMatrix(sys);
-		Renderer::RenderSimpleIdentity(*sat);
+		Renderer::RenderSimpleIdentity(*entity);
 
 
 		target.texture = GeometryImage::EndRendering();
@@ -199,7 +199,7 @@ namespace Objects
 	/*virtual override*/ void		VehicleConstructionCommand::CompileLabel(const PWorldEntity&e, Label&outResult)
 	{
 		
-		PMobileEntityProducer p = To<MobileEntityProducer>::DynamicCast(e);
+		PMobileEntityProducer p = To<EntityFactory>::DynamicCast(e);
 		//PWorkingStructure ws = To<WorkingStructure>::DynamicCast(e);
 		ASSERT__(p);
 		UINT32 rounds = 0,rawRounds = 0;
@@ -250,7 +250,7 @@ namespace Objects
 	/*virtual override*/ void		SatelliteConstructionCommand::CompileLabel(const PWorldEntity&e, Label&outResult)
 	{
 		
-		PMobileEntityProducer p = To<MobileEntityProducer>::DynamicCast(e);
+		PMobileEntityProducer p = To<EntityFactory>::DynamicCast(e);
 		ASSERT__(p);
 		UINT32 rounds = 0;
 		int price = sat->GetConstructionCost();
@@ -277,7 +277,7 @@ namespace Objects
 	{
 		
 		//PWorkingStructure ws = To<WorkingStructure>::DynamicCast(e);
-		PMobileEntityProducer p = To<MobileEntityProducer>::DynamicCast(e);
+		PMobileEntityProducer p = To<EntityFactory>::DynamicCast(e);
 		ASSERT__(p);
 		UINT32 rounds = 0,rawRounds = 0;
 		int rawPrice = sat ? sat->GetConstructionCost() : Vehicle::GetPrice(base,turret);

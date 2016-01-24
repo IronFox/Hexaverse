@@ -30,7 +30,8 @@ namespace Objects
 
 	
 
-
+	PWorldEntity	GetAnyNonVehiclePrototypeByName(ConstName structureTypeName);
+	PWorldEntity	GetAnyNonVehiclePrototypeByName(const String&structureTypeName);
 
 	PStructure		GetPrototypeByName(ConstName structureTypeName);
 	PStructure		GetPrototypeByName(const String&structureTypeName);

@@ -6,7 +6,7 @@
 #include <math/vector.h>
 #include "structure.h"
 #include "vehicle.h"
-#include "satellite.h"
+#include "orbitalVehicle.h"
 #include "faction.h"
 #include "../../client/components/progressBar.h"
 #include "visualChoices.h"
@@ -138,7 +138,7 @@ namespace Objects
 			break;
 			case TrajectoryType::VerticalBeam:
 			{
-				int h = Satellite::GetGroundHeight(location);
+				int h = Orbital::Ship::GetGroundHeight(location);
 				if (h != badHeight)
 				{
 					const TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
@@ -495,7 +495,7 @@ namespace Objects
 		_RenderSimpleLocated(s);
 	}
 
-	static void _RenderSimpleLocated(Satellite&s, const TMatrix4<>&system)
+	static void _RenderSimpleLocated(Orbital::Ship&s, const TMatrix4<>&system)
 	{
 		display.Render(*s.baseRenderingInstruction, true);
 		Renderer::RenderComponent(system, 0.f, *s.turret, s.turretAngleX, s.turretAngleY);
@@ -503,21 +503,21 @@ namespace Objects
 
 
 
-	void	Renderer::RenderSimple(Satellite&s)
+	void	Renderer::RenderSimple(Orbital::Ship&s)
 	{
 		//float scale = Vec::length(s.system.x.xyz);
 		display.SetObjectMatrix(s.system);
 		_RenderSimpleLocated(s,s.system);
 	}
 
-	void	Renderer::RenderSimpleIdentity(Satellite&s)
+	void	Renderer::RenderSimpleIdentity(Orbital::Ship&s)
 	{
 		//float scale = Vec::length(s.system.x.xyz);
 		display.SetObjectMatrix(Matrix<>::eye4);
 		_RenderSimpleLocated(s,Matrix<>::eye4);
 	}
 
-	void	Renderer::Render(Satellite&s, const float3&activeColor, const float3&inactiveColor, float light)
+	void	Renderer::Render(Orbital::Ship&s, const float3&activeColor, const float3&inactiveColor, float light)
 	{
 		display.SetObjectMatrix(s.system);
 		{
@@ -560,7 +560,7 @@ namespace Objects
 			}
 			else
 			{
-				if (s.unstable)
+				if (s.unstable || !s.maintained)
 				{
 					keyColor.Update(float4(flip ? float3() : activeColor,light));
 						
@@ -830,9 +830,9 @@ namespace Objects
 				ApplyBaseTint(*v,baseTint);
 			}
 		}
-		foreach(satellites, _v)
+		foreach(Orbital::ships, _v)
 		{
-			const PSatellite&v = *_v;
+			const Orbital::PShip&v = *_v;
 			const float light = GetLowLighting(v->location);
 
 			bool isBuilding = v->IsBuilding();
@@ -963,9 +963,9 @@ namespace Objects
 				if (selectedVehicle)
 					Renderer::Render(*selectedVehicle,activeColorMine,activeColorTheirs,GetLowLighting(selectedEntity->location));
 				else
-					if (selectedMobileEntity && selectedMobileEntity->IsSatellite())
+					if (selectedMobileEntity && selectedMobileEntity->IsOrbital())
 					{
-						Renderer::Render(*To<Satellite>::Cast(selectedMobileEntity),activeColorMine,activeColorTheirs,GetLowLighting(selectedEntity->location));
+						Renderer::Render(*To<Orbital::Ship>::Cast(selectedMobileEntity),activeColorMine,activeColorTheirs,GetLowLighting(selectedEntity->location));
 					}
 					else
 						FATAL__("Can't render this: "+selectedEntity->GetName());
@@ -1049,12 +1049,12 @@ namespace Objects
 			{
 				int maxHealth = v->GetMaxHealth();
 				bool isBuilding = v->IsBuilding();
-				const MobileEntityProducer*p= v->CastToProducer();
+				const EntityFactory*p= v->CastToFactory();
 				std::pair<int,int> progress2;
 				bool isBuilding2 = (p && p->IsBuilding(progress2));
 				if (isBuilding || v->health < maxHealth || isBuilding2)
 				{
-					ProgressBar::SetLocation(v->system.w.xyz, v->IsSatellite() ? 3.f : 1.f);
+					ProgressBar::SetLocation(v->system.w.xyz, v->IsOrbital() ? 3.f : 1.f);
 					//ProgressBar::RenderNewBar(0,float3(0.1,0.1,0.1));
 					//ProgressBar::RenderNewBar(0.25f,float3(1,0.1,0.1));
 					//ProgressBar::RenderNewBar(0.75f,float3(0.1,1,0.1));
@@ -1191,9 +1191,9 @@ namespace Objects
 				Renderer::RenderSimple(*v);
 			}
 			else
-				if (m->IsSatellite())
+				if (m->IsOrbital())
 				{
-					PSatellite s = To<Satellite>::Cast(m);
+					Orbital::PShip s = To<Orbital::Ship>::Cast(m);
 					Renderer::RenderSimple(*s);
 				}
 				else
@@ -1219,9 +1219,9 @@ namespace Objects
 				Renderer::RenderSimple(*v);
 			}
 			else
-				if (m->IsSatellite())
+				if (m->IsOrbital())
 				{
-					PSatellite s = To<Satellite>::Cast(m);
+					Orbital::PShip s = To<Orbital::Ship>::Cast(m);
 					Renderer::RenderSimple(*s);
 				}
 				else
@@ -1578,9 +1578,9 @@ namespace Objects
 		display.SetDepthTest(true,false);
 		display.SetBlendMode(Engine::BlendMode::Add);
 
-		foreach (satellites,_s)
+		foreach (Orbital::ships,_s)
 		{
-			const PSatellite&sat = *_s;
+			const Orbital::PShip&sat = *_s;
 			TVec3<> color;
 			if (sat->isMine)
 			{
@@ -1652,12 +1652,12 @@ namespace Objects
 					if (ws->IsSkyPort())
 					{
 						PSkyGate port = To<SkyGate>::Cast(ws);
-						if (ws->IsEnabled() && port->queue.IsNotEmpty() && port->queue.first().IsSatellite())
+						if (ws->IsEnabled() && port->queue.IsNotEmpty() && port->queue.first().IsOrbital())
 						{
 							render = true;
 							beamBottomColor.Update(float4(0.5,0.6,1.0,2.5));
 							beamTopColor.Update(float4(0.5,0.6,1.0,0));
-							h1 = Satellite::BaseResidenceHeight;
+							h1 = Orbital::Ship::BaseResidenceHeight;
 						}
 					}
 				}
@@ -1802,7 +1802,7 @@ namespace Objects
 		_RenderShadow(v.system,0,*v.base,0,0);
 		_RenderShadow(v.system,v.base->height,*v.turret,v.turretAngleX,v.turretAngleY);
 	}
-	static void _RenderShadow(const Satellite&s)
+	static void _RenderShadow(const Orbital::Ship&s)
 	{
 		display.SetObjectMatrix(s.system);
 		if (s.IsBuilding())
@@ -1875,7 +1875,7 @@ namespace Objects
 				{
 					_RenderShadow(**v);
 				}
-				foreach (satellites, s)
+				foreach (Orbital::ships, s)
 					_RenderShadow(**s);
 				display.SetObjectMatrix(Matrix<>::eye4);
 

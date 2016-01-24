@@ -458,11 +458,16 @@ namespace Animation
 				if (sourceTask.foci.Count())
 				{
 					Grid::LCellIdI loc = sourceTask.foci.first();
-					if (sourceTask.visualizationStructureName != ConstName::Empty && e.IsSatellite())
+					if (sourceTask.visualizationStructureName != ConstName::Empty)
 					{
-						int h = Objects::SkyHub::GetStructureBuildHeight(loc);
-						if (h != Objects::badHeight)
-							loc.height = h;
+						if (e.IsOrbital())	//up building down
+						{
+							int h = Objects::Orbital::Hub::GetStructureBuildHeight(loc);
+							if (h != Objects::badHeight)
+								loc.height = h;
+						}
+						else  //down building up
+							loc.height = Objects::Orbital::BaseHeight;
 					}
 
 					t1.SetLocalizableShape(sourceTask.visualizationStructureName,loc);
@@ -615,7 +620,7 @@ namespace Animation
 				
 			}
 
-			Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(v);
+			Objects::EntityFactory*p = v->CastToMutableFactory();
 			if (p)
 			{
 				const Protocol::ProducerState*state = info->producerState.Get0();
@@ -727,6 +732,7 @@ namespace Animation
 
 	void	UpdateState(const Objects::PStructure&s,Protocol::StructureState&vs)
 	{
+		s->maintained = (vs.flags & Protocol::StructureFlags::Maintained) != 0;
 		Objects::PWorkingStructure w = To<Objects::WorkingStructure>::DynamicCast(s);
 		if (w)
 		{
@@ -737,7 +743,7 @@ namespace Animation
 			#endif
 	
 
-			Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(s);
+			Objects::EntityFactory*p = s->CastToMutableFactory();
 
 
 			if (p)
@@ -822,12 +828,12 @@ namespace Animation
 			Objects::RefreshCompoundCoverage(0);
 		}
 
-		if (s->IsSkyPort())
+		if (s->IsSkyGate())
 		{
-			Objects::PSatellite sat = Objects::GetSatellite(s->location.stackID);
-			if (sat && sat->IsSkyHub())
+			Objects::Orbital::PStation sat = Objects::Orbital::GetStation(s->location.stackID);
+			if (sat && sat->IsHub())
 			{
-				Objects::PSkyHub hub = To<Objects::SkyHub>::Cast(sat);
+				Objects::Orbital::PHub hub = To<Objects::Orbital::Hub>::Cast(sat);
 				hub->UpdateConnections();
 			}
 		}
@@ -854,7 +860,7 @@ namespace Animation
 
 	float GetExplosionSize(const Objects::PWorldEntity&target)
 	{
-		return target->IsSatellite() ? 12.f : 4.f;
+		return target->IsOrbital() ? 12.f : 4.f;
 	}
 
 	float GetExplosionTime(const Objects::PWorldEntity&target)
@@ -1410,7 +1416,7 @@ namespace Animation
 			//Vec::makeNormalTo(nodes.first().dir,nodes.first().position);
 			Vec::makeNormalTo(nodes.last().dir,nodes.last().position);
 		}
-		if (!target->IsSatellite())
+		if (!target->IsOrbital())
 			nodes.first().dir = -target->system.y.xyz;
 		foreach (nodes, n)
 		{
@@ -1465,7 +1471,7 @@ namespace Animation
 			Vec::resolveBezierCurvePoint(p0,c0,c1,p1,fj,p);
 
 			TMatrix4<>&sys = target->system;
-			if (target->IsSatellite())
+			if (target->IsOrbital())
 			{
 				sys.z.xyz = p;
 				Vec::normalize0(sys.z.xyz);
@@ -1645,7 +1651,7 @@ namespace Animation
 
 				foreach (Objects::vehicles, v)
 					(*v)->preAnimationLocation = (*v)->location;
-				foreach (Objects::satellites, v)
+				foreach (Objects::Orbital::ships, v)
 					(*v)->preAnimationLocation = (*v)->location;
 
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::gameHasBegun)

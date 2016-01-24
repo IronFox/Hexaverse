@@ -171,19 +171,13 @@ namespace Receiver
 			Channels::createStructure.SendTo(peer,st);
 		}
 
-		for (const auto&v : Objects::vehicles)
+		Objects::ForeachMobileWorldEntity([timestamp,&peer](const Objects::PMobileEntity&m)
 		{
 			Protocol::NewMobileEntity st;
-			Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
+			Game::Network::Describe(st,*m,true,timestamp,0xFFFFFFFF);
 			Channels::newMobileEntity.SendTo(peer,st);
-		}
+		});
 
-		for (const auto&v : Objects::satellites)
-		{
-			Protocol::NewMobileEntity st;
-			Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
-			Channels::newMobileEntity.SendTo(peer,st);
-		}
 
 		{
 			Protocol::ResourceUpdate	package;
@@ -980,7 +974,7 @@ namespace Receiver
 
 		//Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(e);
 
-		Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
+		const Objects::EntityFactory*p = e->CastToFactory();
 		if (!p)
 		{
 			LogEvent(EventType::CommandRejected,peer,e,"Tried to abort construction-plant job on non-plant entity ");
@@ -998,7 +992,7 @@ namespace Receiver
 		if (!e)
 			return;
 
-		Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
+		Objects::EntityFactory*p = e->CastToMutableFactory();
 		if (p)
 		{
 			Journal::currentRound.RegisterProductionJobStart(true,e,p,cb.parameters.pointer(),cb.parameters.Count());
@@ -1207,7 +1201,7 @@ namespace Receiver
 			return;
 
 
-		if (!Grid::ValidCell(ch.target, Objects::Satellite::BaseResidenceHeight, Objects::Satellite::DeclinedResidenceHeight))
+		if (!Grid::ValidCell(ch.target, Objects::Orbital::BaseHeight, Objects::Orbital::DeclinedHeight))
 		{
 			LogEvent(EventType::CommandRejected,peer,e,"Parameter fault");
 			return;
@@ -1327,7 +1321,7 @@ namespace Receiver
 		if (!e)
 			return;
 		foreach (cmd.path,n)
-			if (!Grid::ValidCell(*n, Objects::Satellite::BaseResidenceHeight,Objects::Satellite::DeclinedResidenceHeight))
+			if (!Grid::ValidCell(*n, Objects::Orbital::BaseHeight, Objects::Orbital::DeclinedHeight))
 			{
 				LogEvent(EventType::CommandRejected, peer, e, "Parameter fault ("+n->ToString()+")");
 				return;
@@ -1351,7 +1345,7 @@ namespace Receiver
 
 		if (!e->IsSatellite()) //must find other logic for satellites...
 		{
-			Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
+			Objects::PMobileEntityProducer p = To<Objects::EntityFactory>::DynamicCast(e);
 			if (p && cmd.path.Count() == 1)
 			{
 				if (p->gatheringPoint.current != cmd.path.first())

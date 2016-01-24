@@ -486,7 +486,7 @@ namespace FileIO
 				NET(TUniqueID), productID, 
 				NET(TUniqueID), id);
 
-	static void Export(Riff::Chunk*parent, const Objects::MobileEntityProducer::WorkItem&item)
+	static void Export(Riff::Chunk*parent, const Objects::EntityFactory::WorkItem&item)
 	{
 		WorkItemSerializable helper;
 		if (item.producing->IsVehicle())
@@ -504,7 +504,7 @@ namespace FileIO
 		serial_size_t size = helper.GetSerialSize(false);
 		ASSERT1__(SerializeToMemory(helper,parent->AppendBlock(RID::vehiclePlantItem)->SetData(size),size,false),size);
 	}
-	static void Import(Riff::Chunk*source, Objects::MobileEntityProducer::WorkItem&item, const Objects::PFaction&owner)
+	static void Import(Riff::Chunk*source, Objects::EntityFactory::WorkItem&item, const Objects::PFaction&owner)
 	{
 		ASSERT1__(source->IsID(RID::vehiclePlantItem),source->GetID().ToString());
 
@@ -517,14 +517,14 @@ namespace FileIO
 		}
 		else
 		{
-			Objects::PSatellite proto = Objects::GetSatellitePrototypeByName(helper.baseName);
+			Objects::PWorldEntity proto = Objects::GetAnyNonVehiclePrototypeByName(helper.baseName);
 			ASSERT1__(proto,helper.baseName);
-			item.producing = To<Objects::MobileEntity>::Cast(proto->CreateNewInstance(owner,Grid::LCellIdI(0,0),0));
+			item.producing = proto->CreateNewInstance(owner,Grid::LCellIdI(0,0),0);
 		}
 		item.id = helper.id;
 	}
 
-	static void Export(Riff::Chunk*parent, const Objects::MobileEntityProducer&p)
+	static void Export(Riff::Chunk*parent, const Objects::EntityFactory&p)
 	{
 		parent->AppendBlock(RID::vehiclePlant)->SetPODData(p.productionDone);
 		if (p.gatheringPoint.current != Grid::LCellIdI::Invalid)
@@ -537,13 +537,13 @@ namespace FileIO
 		}
 	}
 
-	static void Import(Riff::Chunk*parent, Objects::MobileEntityProducer&producer, const Objects::PWorldEntity&selfReference)
+	static void Import(Riff::Chunk*parent, Objects::EntityFactory&producer, const Objects::PWorldEntity&selfReference)
 	//const Objects::OwnerParameter&owner)
 	{
 		Riff::Chunk*vehiclePlantChunk = parent->FindFirst(RID::vehiclePlant);
 		if (!vehiclePlantChunk)
 		{
-			LogEvent(EventType::Notification,selfReference.get(),"Warning: Data chunk missing in file: MobileEntityProducer state. Skipping");
+			LogEvent(EventType::Notification,selfReference.get(),"Warning: Data chunk missing in file: EntityFactory state. Skipping");
 			return;
 		}
 //		ASSERT_NOT_NULL__(vehiclePlantChunk);
@@ -615,7 +615,7 @@ namespace FileIO
 			Export(t,*task);
 		}
 
-		const Objects::MobileEntityProducer*p = dynamic_cast<const Objects::MobileEntityProducer*>(&v);
+		const Objects::EntityFactory*p = dynamic_cast<const Objects::EntityFactory*>(&v);
 		if (p)
 		{
 			Export(parent,*p);
@@ -682,7 +682,7 @@ namespace FileIO
 			}
 			while (parent->FindNextNamedList(name,data));
 
-		Objects::MobileEntityProducer*p = dynamic_cast<Objects::MobileEntityProducer*>(v.get());
+		Objects::EntityFactory*p = dynamic_cast<Objects::EntityFactory*>(v.get());
 		if (p)
 		{
 			Import(parent,*p,v);
@@ -750,7 +750,7 @@ namespace FileIO
 			Export(parent,resources);
 			parent->AppendBlock(RID::structureEnabled)->SetPODData(w->IsEnabled());
 
-			const Objects::MobileEntityProducer*p = dynamic_cast<const Objects::MobileEntityProducer*>(&s);
+			const Objects::EntityFactory*p = dynamic_cast<const Objects::EntityFactory*>(&s);
 			if (p)
 			{
 				Export(parent,*p);
@@ -834,8 +834,8 @@ namespace FileIO
 				w->SetEnabled(isEnabled,0,false,Objects::WorkingStructure::ForceEnable,false);
 			else
 				w->SetEnabledOverride(false);
-			Objects::MobileEntityProducer*p = dynamic_cast<Objects::MobileEntityProducer*>(w);
-	//		Objects::MobileEntityProducer*p = w->ToProducer();
+			Objects::EntityFactory*p = dynamic_cast<Objects::EntityFactory*>(w);
+	//		Objects::EntityFactory*p = w->ToProducer();
 			//Objects::VehiclePlant*p = dynamic_cast<Objects::VehiclePlant*>(rs.get());
 			if (p)
 			{

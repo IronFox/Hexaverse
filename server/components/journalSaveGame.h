@@ -871,7 +871,7 @@ namespace Journal
 		void	LogFactionOffline(const Objects::PFaction&);
 		void	LogFactionOnline(const Objects::PFaction&);
 		void	LogFactionOnline(const Objects::PFaction&,bool nowOnline);
-		void	RegisterProductionJobStart(bool execute, const Objects::PWorldEntity&e, const Objects::PMobileEntityProducer&asProducer, const ConstName*parameters, count_t parameterCount);
+		void	RegisterProductionJobStart(bool execute, const Objects::PWorldEntity&e, Objects::EntityFactory*asFactory, const ConstName*parameters, count_t parameterCount);
 		void	RegisterEntityDestruction(bool execute, const Objects::PWorldEntity&, Objects::RemovalType t);
 		void	LogEntityCreation(const Objects::PWorldEntity&);
 		void	RegisterAutomationChange(bool execute, const Objects::PMobileEntity&, bool isNowAutomated);

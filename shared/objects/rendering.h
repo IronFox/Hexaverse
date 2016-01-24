@@ -98,11 +98,12 @@ namespace Objects
 		void	Render(Structure&s, const float3&activeColor, const float3&inactiveColor, float light);
 		void	Render(Structure&s, const float3&activeColorMine, const float3&activeColorTheirs);
 
-		void	Render(Satellite&s, const float3&activeColor, const float3&inactiveColor, float light);
+		void	Render(Orbital::Ship&s, const float3&activeColor, const float3&inactiveColor, float light);
+		void	Render(Orbital::Station&s, const float3&activeColor, const float3&inactiveColor, float light);
 
 		void	RenderSimple(Structure&s, bool includeFoundation = false);
-		void	RenderSimple(Satellite&s);
-		void	RenderSimpleIdentity(Satellite&s);
+		void	RenderSimple(Orbital::Ship&s);
+		void	RenderSimpleIdentity(Orbital::Ship&s);
 
 
 		/**

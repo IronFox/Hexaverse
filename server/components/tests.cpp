@@ -557,7 +557,7 @@ namespace Test
 			rs = plant->EnqueueProductionOfVehicle(&Objects::Component::hoverbase,&Objects::Component::terraformer) != nullptr;
 		}
 		else
-			rs = plant->EnqueueProductionOfSatellite(Objects::SkyHub::globalPrototype->GetCTypeName()) != nullptr;
+			rs = plant->EnqueueProductionOf(Objects::Orbital::Hub::globalPrototype->GetCTypeName()) != nullptr;
 
 		ASSERT__(rs);
 	}
@@ -626,14 +626,14 @@ namespace Test
 		count_t twoCount = 0;
 		for (int i = 0; i < 100 || twoCount < 20; i++)
 		{
-			ASSERT__(Objects::satellites.IsEmpty());
+			ASSERT__(Objects::Orbital::stations.IsEmpty());
 
 			EnqueueRandom(plant,random);
 			EnqueueRandom(plant, random);
 
-			Objects::PMobileEntity v0, v1;
+			Objects::PWorldEntity v0, v1;
 
-			ASSERT__(Objects::satellites.IsEmpty());
+			ASSERT__(Objects::Orbital::stations.IsEmpty());
 
 			ASSERT__(plant->IsEnabled());
 			std::pair<int,int> progress;
@@ -643,13 +643,13 @@ namespace Test
 				net.TickBegin();
 				net.TickEnd(0);
 
-				if (Objects::satellites.Count() > satelliteOffset)
+				if (Objects::Orbital::stations.Count() > satelliteOffset)
 				{
-					satelliteOffset = Objects::satellites.Count();
+					satelliteOffset = Objects::Orbital::stations.Count();
 					//satellites are spawned automatically during Tick...()
 					ASSERT_LESS_OR_EQUAL__(satelliteOffset,1);
 
-					Objects::PSatellite v = Objects::satellites.last();
+					Objects::Orbital::PStation v = Objects::Orbital::stations.last();
 					ASSERT_EQUAL__(v->health, v->GetMaxHealth());
 					ASSERT2__(v->location.stackID == plant->location.stackID, v->location.ToString(), plant->location.ToString());
 					if (!v0)
@@ -669,14 +669,14 @@ namespace Test
 					Objects::GetChoices(plant, Objects::PVehicle(),Objects::CursorMode::Idle, choices, showArrow, hasArrowCellTarget, arrowFrom, arrowFromCell);
 					if (choices.IsEmpty())
 					{
-						Objects::PMobileEntity producing = plant->GetActiveProduction();
-						ASSERT1__(producing->IsSatellite(),producing->GetName());	//only satellites should be able to block each other
+						Objects::PWorldEntity producing = plant->GetActiveProduction();
+						ASSERT1__(producing->IsOrbital(),producing->GetName());	//only satellites should be able to block each other
 						plant->AbortConstruction(plant->queue.first().id);
 						ASSERT__(v0);	//this should not happen with the first one
 						continue;
 					}
 					//ASSERT__(choices.IsNotEmpty());
-					Objects::PMobileEntity v = plant->GetActiveProduction();
+					Objects::PWorldEntity v = plant->GetActiveProduction();
 					Grid::LCellIdI choice = choices[random.getIndex(choices.Count() - 1)];
 					Objects::ProcessChoiceIntersection(plant, choice, Objects::CursorMode::Idle, Objects::PVehicle());
 					ASSERT_EQUAL__(v->health, v->GetMaxHealth());
@@ -698,8 +698,8 @@ namespace Test
 				ASSERT__(Objects::GetVehicle(v0->location) == v0);
 			}
 			else
-				if (v0->IsSatellite())
-					ASSERT__(Objects::GetSatellite(v0->location.stackID) == v0);
+				if (v0->IsOrbital())
+					ASSERT__(Objects::Orbital::GetStation(v0->location.stackID) == v0);
 			Objects::Remove(v0,	Objects::RemovalType::ControlledExplosion,0,false);
 			if (v1)
 			{
@@ -709,12 +709,12 @@ namespace Test
 					ASSERT__(Objects::GetVehicle(v1->location) == v1);
 				}
 				else
-					if (v1->IsSatellite())
-						ASSERT__(Objects::GetSatellite(v1->location.stackID) == v1);
+					if (v1->IsOrbital())
+						ASSERT__(Objects::Orbital::GetStation(v1->location.stackID) == v1);
 				Objects::Remove(v1, Objects::RemovalType::ControlledExplosion,0, false);
 			}
 			ASSERT__(Objects::vehicles.IsEmpty());
-			ASSERT__(Objects::satellites.IsEmpty());
+			ASSERT__(Objects::Orbital::stations.IsEmpty());
 			ASSERT__(generator->IsEnabled());
 			ASSERT__(mine->IsEnabled());
 		}

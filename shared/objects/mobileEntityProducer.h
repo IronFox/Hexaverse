@@ -36,7 +36,7 @@ namespace Objects
 	/**
 	Member class used by all structures that can produce other entities (usually mobile).
 	Only vertical producers (satellites producing down, or skygates producing satellites) can produce structures
-	Rather than inheriting this class, they store it as a member and override the ToProducer() method.
+	Must be inherited, with WorldEntity::CastToFactory() overridden to return this
 	*/
 	class EntityFactory
 	{

@@ -10,7 +10,7 @@ namespace Objects
 
 
 	DECLARE_POINTER_CLASS(HangarStructure)
-	DECLARE_POINTER_CLASS(MobileEntityProducer)
+	
 	DECLARE_POINTER_CLASS(SkyLinkStructure)
 
 	DECLARE_POINTER_CLASS(BaseEntity)
@@ -66,7 +66,7 @@ namespace Objects
 	);
 
 	class Compound;
-
+	class EntityFactory;
 
 
 	CONSTRUCT_ENUMERATION6(MobilePlacementResult,

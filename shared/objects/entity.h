@@ -33,6 +33,8 @@ namespace Objects
 	extern GenericHashTable<TUniqueID,PWorldEntity,TUniqueID,Strategy::POD,Strategy::Swap>	idMap;
 
 
+	inline int CeilDiv(int value, int divBy)	{return value / divBy + !!(value%divBy);}
+
 	#ifdef HAS_WINDOW
 
 
@@ -341,7 +343,7 @@ namespace Objects
 		virtual bool				IsVehicle() const {return false;}
 		virtual bool				IsStructure() const {return false;}
 
-		virtual void				GetUpkeep(ResourceVector&v) const {v.level[Resource::Minerals] = GetConstructionCost()/10;}
+		virtual void				GetUpkeep(ResourceVector&v) const {v.level[Resource::Minerals] = CeilDiv(GetConstructionCost(),10);}
 
 		/**
 		Checks whether or not the local entity resides in orbit
@@ -349,10 +351,11 @@ namespace Objects
 		virtual bool				IsOrbital() const {return false;}
 
 		//these are performance optimizations. Some visualizations may behave unexpectedly if they are not
-		//overidden by classes implementing MobileEntityProducer
+		//overidden by classes implementing EntityFactory
 		//dynamic cast is not suitable for high frequency queries:
 		//http://stackoverflow.com/questions/9959315/why-virtual-function-call-is-faster-than-dynamic-cast
-		virtual const MobileEntityProducer*	CastToProducer() const {return nullptr;}
+		virtual const EntityFactory*CastToFactory() const {return nullptr;}
+		EntityFactory*				CastToMutableFactory() {return const_cast<EntityFactory*>(CastToFactory());}//admittedly evil, but I'm lazy and more methods add complexity, so this will stay, plus I don't want CastToFactory() to actually change anything
 
 
 		virtual bool				IsIndestructible() const	{return false;};
@@ -367,14 +370,18 @@ namespace Objects
 		inline void					TakeDamage(int damageLevel, float t)
 		{
 			health -= damageLevel;
-			SignalChange(HealthChanged,t);
+			#ifndef CLIENT
+				SignalChange(HealthChanged,t);
+			#endif
 		}
 		inline void				SetStable(bool stable, float t)
 		{
 			if (unstable != stable)
 				return;
 			unstable = !stable;
-			SignalChange(StabilityChanged,t);
+			#ifndef CLIENT
+				SignalChange(StabilityChanged,t);
+			#endif
 		}
 
 		void					RegisterSensory(float&atTime, bool checkChangesNow=true) {RegisterSensory(location,atTime,checkChangesNow);}

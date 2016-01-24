@@ -153,7 +153,7 @@ namespace Game
 
 
 
-		void	Describe(Protocol::ProductionTask&task, const Objects::MobileEntityProducer::WorkItem&element)
+		void	Describe(Protocol::ProductionTask&task, const Objects::EntityFactory::WorkItem&element)
 		{
 			if (element.producing->IsVehicle())
 			{
@@ -260,7 +260,7 @@ namespace Game
 				state.movementActionLeft = v.movementActionLeft;
 
 
-				const Objects::MobileEntityProducer*p = dynamic_cast<const Objects::MobileEntityProducer*>(&v);
+				const Objects::EntityFactory*p = dynamic_cast<const Objects::EntityFactory*>(&v);
 				if (p)
 				{
 					Protocol::ProducerState&subState = info.producerState.Set0();
@@ -330,7 +330,7 @@ namespace Game
 				state.flags.value |= Protocol::StructureFlags::Enabled;
 			if (w && w->IsHibernating())
 				state.flags.value |= Protocol::StructureFlags::Hibernating;
-			if (s.IsMaintained())
+			if (s.IsMaintained() || !owned)
 				state.flags.value |= Protocol::StructureFlags::Maintained;
 
 			if (w && owned)
@@ -339,7 +339,7 @@ namespace Game
 				w->GetResourceVector(dontCare, state.resourceVector, dontCare);
 
 				//const Objects::WorkingStructure*p = dynamic_cast<const Objects::WorkingStructure*>(&s);
-				const Objects::MobileEntityProducer*p = dynamic_cast<const Objects::MobileEntityProducer*>(&s);
+				const Objects::EntityFactory*p = dynamic_cast<const Objects::EntityFactory*>(&s);
 				if (p)
 				{
 					Protocol::ProducerState&subState = state.selective.Set1();

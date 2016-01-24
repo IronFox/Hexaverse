@@ -238,7 +238,7 @@ namespace Objects
 		Checks whether or not the local structure is an instance of SkyGate.
 		Obviously, a dynamic cast would do the same, but at much higher computation cost.
 		*/
-		virtual bool				IsSkyPort() const {return false;}
+		virtual bool				IsSkyGate() const {return false;}
 
 		virtual bool				IsSkyLinkStructure() const {return false;}
 
@@ -844,7 +844,7 @@ namespace Objects
 		#endif
 	};
 
-	class SkyGate : public CommonStructure<SkyGate>, public MobileEntityProducer, public SkyLinkStructure
+	class SkyGate : public CommonStructure<SkyGate>, public EntityFactory, public SkyLinkStructure
 	{
 	public:
 	protected:
@@ -855,13 +855,13 @@ namespace Objects
 		#endif
 
 		friend class Super;
-		/**/						SkyGate():MobileEntityProducer(ConstructionSpeed) {}
-		/**/						SkyGate(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), MobileEntityProducer(ConstructionSpeed){}
+		/**/						SkyGate():EntityFactory(ConstructionSpeed) {}
+		/**/						SkyGate(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), EntityFactory(ConstructionSpeed){}
 	public:
 
 		#ifdef HAS_WINDOW
 			static VehicleConstructionCommand	formerConstructionCommand;
-			static SatelliteConstructionCommand	skyHubConstructionCommand;
+			static EntityConstructionCommand	orbitalHubConstructionCommand;
 		#endif
 
 
@@ -910,9 +910,9 @@ namespace Objects
 			virtual void			OnDeselect() override;
 
 		#endif
-		virtual const MobileEntityProducer*CastToProducer() const override {return this;}
+		virtual const EntityFactory*CastToFactory() const override {return this;}
 
-		//MobileEntityProducer overrides
+		//EntityFactory overrides
 		#ifndef CLIENT
 			virtual void			SignalNewProductionEnqueued() override {SetEnabled(true,0);}
 			virtual bool			DirectTo(CursorMode::mode_t, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
@@ -924,9 +924,9 @@ namespace Objects
 		virtual bool				HasFoundation() const override {return true;}
 		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override
 		{
-			return MobileEntityProducer::IsBuilding(outProgress);
+			return EntityFactory::IsBuilding(outProgress);
 		}
-		virtual bool				IsSkyPort() const override {return true;}
+		virtual bool				IsSkyGate() const override {return true;}
 		virtual bool				IsSkyLinkStructure() const override {return true;}
 		virtual void				VisitAllConnected(const std::function<void(const PStructure&)>&visitor) const override;
 
@@ -1060,14 +1060,14 @@ namespace Objects
 
 
 
-	class VehiclePlant : public CommonStructure<VehiclePlant>, public MobileEntityProducer
+	class VehiclePlant : public CommonStructure<VehiclePlant>, public EntityFactory
 	{
 		friend class CommonStructure<VehiclePlant>;
 
         /**/						VehiclePlant(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
-		/**/						VehiclePlant():  MobileEntityProducer(DefaultProductionPerRound) {}//global prototype
+		/**/						VehiclePlant():  EntityFactory(DefaultProductionPerRound) {}//global prototype
 	protected:
-		virtual bool				CanEnable() const override {return MobileEntityProducer::queue.IsNotEmpty();}
+		virtual bool				CanEnable() const override {return EntityFactory::queue.IsNotEmpty();}
 
 	public:
 		typedef CommonStructure<VehiclePlant>	Super;
@@ -1122,7 +1122,7 @@ namespace Objects
 		//Structure overrides:
 		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override
 		{
-			return MobileEntityProducer::IsBuilding(outProgress);
+			return EntityFactory::IsBuilding(outProgress);
 		}
 
 
@@ -1136,7 +1136,7 @@ namespace Objects
 		virtual bool				AwaitsUserInteraction() const override;
 
 
-		//MobileEntityProducer overrides
+		//EntityFactory overrides
 		#ifndef CLIENT
 			virtual void			SignalLastProductionDone() override {LogEvent(EventType::EntityProcess, this, "Queue is empty. Shutting off"); SetEnabled(false,0);}
 			virtual void			SignalNewProductionEnqueued() override {SetEnabled(true,0);}
@@ -1158,11 +1158,11 @@ namespace Objects
 			virtual void			OnSelect()	override;
 			virtual void			OnDeselect() override;
 		#endif
-		virtual const MobileEntityProducer*CastToProducer() const override {return this;}
+		virtual const EntityFactory*CastToFactory() const override {return this;}
 
 
 		//WorkingStructure overrides:
-		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Energy] = -EnergyConsumption; v.level[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;}
+		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Energy] = -EnergyConsumption; v.level[Resource::Minerals] = -(int)EntityFactory::productionPerRound;}
 
 	};
 

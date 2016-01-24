@@ -98,6 +98,40 @@ namespace Objects
 		return PStructure();
 	}
 
+
+	PWorldEntity	GetAnyNonVehiclePrototypeByName(ConstName structureTypeName)
+	{
+		PWorldEntity rs;
+
+		rs = GetPrototypeByName(structureTypeName);
+		if (rs)
+			return rs;
+		rs = Orbital::GetShipPrototypeByName(structureTypeName);
+		if (rs)
+			return rs;
+		rs = Orbital::GetStationPrototypeByName(structureTypeName);
+		if (rs)
+			return rs;
+		return rs;
+	}
+
+	PWorldEntity	GetAnyNonVehiclePrototypeByName(const String&structureTypeName)
+	{
+		PWorldEntity rs;
+
+		rs = GetPrototypeByName(structureTypeName);
+		if (rs)
+			return rs;
+		rs = Orbital::GetShipPrototypeByName(structureTypeName);
+		if (rs)
+			return rs;
+		rs = Orbital::GetStationPrototypeByName(structureTypeName);
+		if (rs)
+			return rs;
+		return rs;
+	}
+
+
 	namespace Component
 	{
 

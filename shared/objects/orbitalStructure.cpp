@@ -22,11 +22,13 @@ namespace Objects
 				visitor(To<Structure>::Cast(s->CastToStructure()->shared_from_this()));
 		}
 
-
+		#ifndef CLIENT
 		void			Hub::OnConstructionFinished(float atTime)
 		{
+			Super::OnConstructionFinished(atTime);
 			UpdateConnections();
 		}
+		#endif
 
 
 		bool			Hub::UpdateConnections()
@@ -76,8 +78,13 @@ namespace Objects
 					rs = true;
 				}
 			}
-			if (rs)
-				compoundCoverageChanged = true;
+			#ifdef CLIENT
+				if (rs)
+					RefreshCompoundCoverage(0.f);
+			#else
+				if (rs)
+					compoundCoverageChanged = true;
+			#endif
 			return rs;
 		}
 
@@ -189,12 +196,12 @@ namespace Objects
 		{
 			#ifdef HAS_WINDOW
 				int2 at = AllocateProductionSlot();
-				structureConstructionCommands.Append(
-					StructureConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
+				entityConstructionCommands.Append(
+					EntityConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
 					std::bind(&Component::Terraformer::Cmd::Construct, s, std::placeholders::_1),
 					std::bind(&MyCmd::CanBuild,s,std::placeholders::_1),
 					&CommonCmd::AlwaysFalse<PWorldEntity const&>));
-				structureConstructionCommands.last().RasterizeImage();
+				entityConstructionCommands.last().RasterizeImage();
 			#endif
 		}
 
@@ -202,33 +209,38 @@ namespace Objects
 		{
 			#ifdef HAS_WINDOW
 				int2 at = AllocateProductionSlot();
-				satelliteConstructionCommands.Append(
-					SatelliteConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
+				entityConstructionCommands.Append(
+					EntityConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
 					std::bind(&MyCmd::Build, s, std::placeholders::_1),
 					&CommonCmd::IsModeActiveC<CursorMode::Idle>,
 					&CommonCmd::AlwaysFalse<PWorldEntity const&>));
+				entityConstructionCommands.last().RasterizeImage();
 			#endif
 		}
 
 		
-
+		#ifndef CLIENT
 		/*virtual override*/ void		Hub::Tick(ResourceVector&v)
 		{
-			Super::Tick(v);
-			PSkyLinkStructure port = connectedToLink.lock();
+			//Super::Tick(v);
+			//PSkyLinkStructure port = connectedToLink.lock();
 
-			if (MobileEntityProducer::queue.IsNotEmpty())
-			{
-				Compound&cmp = port->CastToStructure()->GetCompound();
-				if (cmp.total.balance.level[Resource::Minerals] >= (int)MobileEntityProducer::productionPerRound)
-				{
-					MobileEntityProducer::Tick(cmp.total.balance);
-				}
-				else
-					LogEvent(EventType::EntityProcessFailed,this,"Insufficient resources available in "+port->CastToStructure()->GetNiceName()+". Delaying production");
-			}
+			//if (EntityFactory::queue.IsNotEmpty())
+			//{
+			//	Compound&cmp = port->CastToStructure()->GetCompound();
+			//	if (cmp.total.balance.level[Resource::Minerals] >= (int)EntityFactory::productionPerRound)
+			//	{
+			//		EntityFactory::Tick(cmp.total.balance);
+			//	}
+			//	else
+			//		LogEvent(EventType::EntityProcessFailed,this,"Insufficient resources available in "+port->CastToStructure()->GetNiceName()+". Delaying production");
+			//}
+
+			v.level[Resource::Energy] -= EnergyConsumption;
+
+			EntityFactory::Tick(v);
 		}
-
+		#endif
 
 
 
@@ -252,50 +264,51 @@ namespace Objects
 		
 		#ifdef HAS_WINDOW
 
-			/*virtual override*/ void			SkyHub::OnSelect()
+			/*virtual override*/ void			Hub::OnSelect()
 			{
 				gatheringPoint.UpdateVisuals();
 			}
-			/*virtual override*/ void			SkyHub::OnDeselect()
+			/*virtual override*/ void			Hub::OnDeselect()
 			{
 				gatheringPoint.selected = Grid::LCellIdI::Invalid;
 			}
 
 
-			/*virtual override*/ void		SkyHub::VisitAllCommands(FCommandVisitor visitor)
+			/*virtual override*/ void		Hub::VisitAllCommands(FCommandVisitor visitor)
 			{
 				Super::VisitAllCommands(visitor);
-				foreach (structureConstructionCommands,cmd)
+				foreach (entityConstructionCommands,cmd)
 					visitor(*cmd);
-				foreach (satelliteConstructionCommands,cmd)
-					visitor(*cmd);
-				MobileEntityProducer::VisitAllCommands(visitor);
+				EntityFactory::VisitAllCommands(visitor);
 			}
 
 			
 			/*static*/ bool			Hub::MyCmd::CanBuild(const PStructure&what, const PWorldEntity&who)
 			{
-				PSkyHub hub = To<Hub>::DynamicCast(who);
+				PHub hub = To<Hub>::DynamicCast(who);
 				ASSERT1__(hub,who->GetName());
 		
 				if (!CommonCmd::IsModeActiveC<CursorMode::Idle>(who,true)
 					||
-					!hub->connectedTo.expired())
+					!hub->connectedToLink.expired())
 					return false;
 
-				Grid::LCellIdI loc = hub->GetLastPointOfOrigin();
+				Grid::LCellIdI loc = hub->location;
 				int h = GetStructureBuildHeight(loc);
 				return h != badHeight && !GetVehicle(Grid::LCellIdI(loc.stackID,h));
 			}
 
 
 
-			/*static*/ void Hub::MyCmd::Build(const PSatellite&p, const PWorldEntity&v)
+			/*static*/ void Hub::MyCmd::Build(const PShip&p, const PWorldEntity&v)
 			{
-				PMobileEntity mob = To<MobileEntity>::DynamicCast(v);
-				if (!mob)
+				if (!v->IsOrbital())
 					return;
-				SignalConstructionBegin(mob->id, p->GetCTypeName(), ConstName::Empty);
+				PStation s = To<Station>::Cast(v);
+				if (!s->IsHub())
+					return;
+
+				SignalConstructionBegin(v->id, p->GetCTypeName(), ConstName::Empty);
 			}
 
 		#endif

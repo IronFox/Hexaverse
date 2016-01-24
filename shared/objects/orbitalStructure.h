@@ -51,7 +51,7 @@ namespace Objects
 			virtual bool		IsOrbital() const override {return true;}
 			virtual bool		HasFoundation() const override {return false;}
 
-			virtual void		GetUpkeep(ResourceVector&v) const override {Super::GetUpkeep(v); v.level[Resource::Fuel] = GetConstructionCost()/4;}
+			virtual void		GetUpkeep(ResourceVector&v) const override {Super::GetUpkeep(v); v.level[Resource::Fuel] = CeilDiv(GetConstructionCost(),4);}
 
 			virtual Component::Turret*GetTurretType() const  = 0;
 
@@ -90,6 +90,7 @@ namespace Objects
 				static const std::shared_ptr<Derivative>		globalPrototype;
 				#ifdef HAS_WINDOW
 					static Buffer0<IconCommand>	commands;
+					static Buffer0<EntityConstructionCommand>		constructionCommands;
 
 
 					/**
@@ -112,14 +113,38 @@ namespace Objects
 				#ifndef CLIENT
 				#else
 					#ifdef HAS_WINDOW
-						virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
+						virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return WorldEntity::TestIntersection(geometry,b,d,distance);}
 						virtual void		VisitAllCommands(FCommandVisitor visitor) override {foreach (commands,cmd) visitor(*cmd);};
 					#endif
 				#endif
 			};
 		
 		
+			template <typename Derivative>
+				/*virtual override*/	void			FloatingStructureT<Derivative>::PrototypeSetup()
+				{
+					Super::PrototypeSetup();
+				}
+
+
 		
+		
+			template <typename Derivative>
+				/*static*/ const std::shared_ptr<Derivative>		FloatingStructureT<Derivative>::globalPrototype(new Derivative());
+
+			#ifdef HAS_WINDOW
+				template <typename Derivative>
+					/*static*/ DX11::InstructionBlock32	FloatingStructureT<Derivative>::shape;
+
+
+				template <typename Derivative>
+					/*static*/ Geometry				FloatingStructureT<Derivative>::geometry;
+				template <typename Derivative>
+					/*static*/ Buffer0<IconCommand>		FloatingStructureT<Derivative>::commands;
+				template <typename Derivative>
+					/*static*/ Buffer0<EntityConstructionCommand>		FloatingStructureT<Derivative>::constructionCommands;
+			#endif
+
 		
 			#ifdef HAS_WINDOW
 				template <typename Derivative>
@@ -142,16 +167,17 @@ namespace Objects
 		
 
 
-			class Hub : public FloatingStructureT<Hub>, public MobileEntityProducer
+			class Hub : public FloatingStructureT<Hub>, public EntityFactory
 			{
 			protected:
 				typedef FloatingStructureT<Hub>	Super;
 				friend class Super;
 
 				static const int		ProductionSpeed = 10;
+				static const int		EnergyConsumption = 10;
 
-				/**/					Hub(const OwnerParameter&owner, const Grid::LCellIdI&location, float time):Super(GetTurretType(),owner,location,time),MobileEntityProducer(ProductionSpeed) {}
-				/**/					Hub():Super(GetTurretType()),MobileEntityProducer(ProductionSpeed){}	//global prototype
+				/**/					Hub(const OwnerParameter&owner, const Grid::LCellIdI&location, float time):Super(GetTurretType(),owner,location,time),EntityFactory(ProductionSpeed) {}
+				/**/					Hub():Super(GetTurretType()),EntityFactory(ProductionSpeed){}	//global prototype
 
 				static int2				AllocateProductionSlot();
 
@@ -159,13 +185,12 @@ namespace Objects
 				static void				RegisterProduction(const PStructure&);
 
 				#ifdef HAS_WINDOW
-					static Buffer<StructureConstructionCommand>	structureConstructionCommands;
-					static Buffer<SatelliteConstructionCommand>	satelliteConstructionCommands;
+					static Buffer<EntityConstructionCommand>	entityConstructionCommands;
 
 					struct MyCmd
 					{
 						static bool		CanBuild(const PStructure&what, const PWorldEntity&who);
-						static void		Build(const PSatellite&what, const PWorldEntity&who);
+						static void		Build(const PShip&what, const PWorldEntity&who);
 					};
 				#endif
 
@@ -189,6 +214,8 @@ namespace Objects
 				//Station overrides:
 				virtual bool			IsHub() const override {return true;}
 
+				//WorkingStructure overrides:
+				virtual void			GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Energy] = -EnergyConsumption; v.level[Resource::Minerals] = -(int)EntityFactory::productionPerRound;}
 
 				//BaseEntity overrides:
 				virtual String			GetTypeName() const override {return "Sky Hub";}
@@ -209,18 +236,18 @@ namespace Objects
 				//virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return Grid::LCellIdI(focus.stackID,GetStructureBuildHeight(focus));}
 
 				//WorldEntity overrides:
-				virtual int				GetConstructionCost() const override {return 50;}
+				virtual int				GetConstructionCost() const override {return 100;}
 				#ifndef NO_HIBERNATION
 					virtual int			GetUplinkTraffic() const override {return 10;}
 				#endif
 				virtual void			OnDestroy(float atTime) override {LoseGroundConnection();}
-				virtual bool			AwaitsUserInteraction() const override {return MobileEntityProducer::AwaitsUserInteraction();}
+				virtual bool			AwaitsUserInteraction() const override {return EntityFactory::AwaitsUserInteraction();}
 				#ifdef HAS_WINDOW
 					virtual void		VisitAllCommands(FCommandVisitor visitor) override;
 					virtual void		OnSelect() override;
 					virtual void		OnDeselect() override;
 				#endif
-				virtual const MobileEntityProducer*CastToProducer() const override {return this;}
+				virtual const EntityFactory*CastToFactory() const override {return this;}
 				virtual void			PrototypeSetup() override;
 				#ifndef CLIENT
 					virtual void		OnConstructionFinished(float atTime) override;
