@@ -4,6 +4,8 @@
 #include <objects/mobileEntity.h>
 #include <objects/faction.h>
 #include "../state.h"
+#include <objects/orbitalStructure.h>
+#include <objects/orbitalVehicle.h>
 
 namespace Evolver
 {
@@ -16,14 +18,6 @@ namespace Evolver
 		movement phase. Therefore, once per round, this function must be called to reset their attack action.
 		*/
 		void			ResetTowerAttackAction(float atTime);
-		/**
-		Updates what satellites can see on the ground (if terrainChanged is set true), and their fuel supply.
-		Unsupplied satellites may be destroyed.
-		Must be called once per round.
-		@param t Server time
-		@param terrainChanged Set true if the terrain changed sind the last invocation of this function. If in doubt pass true. 
-		*/
-		void			CheckSatelliteSupplyAndSensory(float&t, bool terrainChanged);
 
 
 
@@ -284,55 +278,83 @@ namespace Evolver
 
 
 
-		void CheckSatelliteSupplyAndSensory(float&t, bool terrainChanged)
+		void CheckOrbitalSensory(float&t, bool terrainChanged)
 		{
-			Objects::RefreshSkyHubConnections();
 			if (terrainChanged)
 				LogEvent(EventType::Debug,nullptr,"Terrain changed, updating satellite ground-sensory");
-			
-			static Buffer0<Objects::PSatellite>	waste;
-			for (index_t i = 0; i < Objects::satellites.Count(); i++)	//must be an integer loop (see ProcessRound())
+			for (const auto&sat : Objects::Orbital::ships)
 			{
-				Objects::PSatellite sat = Objects::satellites[i];
 				t+=Objects::timeEpsilon;
 
 				if (terrainChanged)
 					sat->RefreshGroundSensor(t);
-
-				if (!sat->ProcessRound(t))	//this method can insert new satellites, hence a int loop, and not a foreach loop
-				{
-					if (sat->location.height <= Objects::Satellite::DeclinedResidenceHeight)
-					{
-						LogEvent(EventType::EntityProcessFailed,sat.get(),"Insufficient fuel supply. Satellite lost");
-						//t+= 0.025f;
-						sat->timeAt+=Objects::timeEpsilon;
-						waste << sat;
-					}
-					else
-					{
-						LogEvent(EventType::EntityProcessFailed,sat.get(),"Insufficient fuel supply. Satellite is declining");
-						Grid::LCellIdI newLocation = sat->location;
-						newLocation.height = Objects::Satellite::DeclinedResidenceHeight;
-						//t+= 0.025f;
-						sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
-					}
-				}
-				else
-					if (sat->location.height < Objects::Satellite::BaseResidenceHeight)
-					{
-						LogEvent(EventType::EntityProcess,sat.get(),"Satellite height restored");
-						Grid::LCellIdI newLocation = sat->location;
-						newLocation.height = Objects::Satellite::BaseResidenceHeight;
-						sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
-					}
 			}
-			//satellitesAreLocked = false;
+			for (const auto&sat : Objects::Orbital::stations)
+			{
+				t+=Objects::timeEpsilon;
 
-			for (const auto&sat : waste)
-				Objects::Remove(sat, Objects::RemovalType::UncontrolledExplosion, sat->timeAt, true);
-			waste.Clear();
+				if (terrainChanged)
+					sat->RefreshGroundSensor(t);
+			}
 		};
 
+		int GetDamageDueToMissingUpkeep(const Objects::ResourceVector&missing)
+		{
+			return missing.SumPositive();
+		}
+
+
+		void CheckMobileSupply(float&t)
+		{
+			Objects::RefreshSkyHubConnections(t);
+			Objects::ResourceVector missing;
+			Buffer0<Objects::PWorldEntity>	died;
+			Objects::ForeachMobileWorldEntity([&missing,&t,&died](const Objects::PMobileEntity&e)
+			{
+				t+=Objects::timeEpsilon;
+
+				if (!e->TrySelfMaintain(t,missing))
+				{
+					LogEvent(EventType::EntityProcess,e.get(),"Insufficient resources to self-maintain (missing "+missing.ToString()+"). Unit took damage.");
+					int damage = GetDamageDueToMissingUpkeep(missing);
+					e->SetStable(false,t);
+					e->TakeDamage(damage,t);
+					if (e->health <= 0)
+						died << e;
+				}
+				else
+					e->SetStable(true,t);
+			});
+
+			for (const auto&d : died)
+				Objects::Remove(d,d->IsOrbital() ? Objects::RemovalType::UncontrolledOrbitalDecline : Objects::RemovalType::UncontrolledExplosion,t,true);
+			
+			t+=Objects::timeEpsilon;
+		}
+
+		void CheckStructureSupply(float&t)
+		{
+			Objects::RefreshSkyHubConnections(t);
+			Objects::ResourceVector missing;
+			Buffer0<Objects::PWorldEntity>	died;
+			for (const auto&e : Objects::structures)
+			{
+				if (e->IsIndestructible() || e->IsMaintained())
+					return;
+
+				t+=Objects::timeEpsilon;
+
+				e->GetUpkeep(missing);
+				e->TakeDamage(GetDamageDueToMissingUpkeep(missing),t);
+				if (e->health <= 0)
+					died << e;
+			};
+
+			for (const auto&d : died)
+				Objects::Remove(d,d->IsOrbital() ? Objects::RemovalType::UncontrolledOrbitalDecline : Objects::RemovalType::UncontrolledExplosion,t,true);
+			
+			t+=Objects::timeEpsilon;
+		}
 
 
 
@@ -361,8 +383,10 @@ namespace Evolver
 						});
 						Game::PerformNewRoundLogic(animationLength);
 						ResetTowerAttackAction(animationLength);
-						CheckSatelliteSupplyAndSensory(animationLength,World::terrainChanged);
+						CheckOrbitalSensory(animationLength,World::terrainChanged);
 						World::terrainChanged = false;
+						CheckMobileSupply(animationLength);
+						CheckStructureSupply(animationLength);
 						ProcessStructures1(animationLength);//clears overproduction: must be called after CheckSatelliteSupply()
 						return false;
 					}

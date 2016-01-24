@@ -189,6 +189,7 @@ namespace Objects
 		int							health;
 		int							empDamageLevel = 0;	//!< Number of rounds that scanners are disabled due to emp-damage. Also affects extend of damage
 
+
 		bool						unstable;	//!< Indicates that something is wrong with the consumption vector of the local network. Or the vehicle state is unstable. Again, DO NOT CHANGE.
 
 		#ifndef CLIENT
@@ -207,6 +208,8 @@ namespace Objects
 				CanEnableChanged = 0x200,
 				HibernationChanged = 0x400,
 				OrbitalConnectionChanged = 0x800,
+				MaintenanceChanged = 0x1000,
+				StabilityChanged = 0x2000,
 			};
 			float					changeTimer;	//Earliest change time. Reduced if an earlier even occurs
 			UINT32					changeFlags;	//Everything that has changed since the last reset (usually once per server-frame)
@@ -227,15 +230,8 @@ namespace Objects
 			void					SignalChange(changeType_t type, float timeAt)	{RegisterChange(type,timeAt);}
 
 
-			//Buffer0<PWorldEntity>	seenBy,
-				//					seeing;
-			
-
-
 			virtual void			SetupSystem()=0;	//used to setup the matrices once after creation
 		#endif
-		//virtual bool				CanSee(const PWorldEntity&other)	const;
-		//virtual bool				CanSee(const TVec3<>&center, float radius)	const;
 
 
 		/**
@@ -368,9 +364,17 @@ namespace Objects
 
 
 
-		inline void					TakeDamage(int damageLevel)
+		inline void					TakeDamage(int damageLevel, float t)
 		{
 			health -= damageLevel;
+			SignalChange(HealthChanged,t);
+		}
+		inline void				SetStable(bool stable, float t)
+		{
+			if (unstable != stable)
+				return;
+			unstable = !stable;
+			SignalChange(StabilityChanged,t);
 		}
 
 		void					RegisterSensory(float&atTime, bool checkChangesNow=true) {RegisterSensory(location,atTime,checkChangesNow);}

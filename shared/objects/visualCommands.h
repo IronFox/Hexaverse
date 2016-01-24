@@ -225,19 +225,20 @@ namespace Objects
 	};
 
 
-	class MobileEntityConstructionAbortCommand : public SatelliteConstructionCommand
+	class FactoryConstructionAbortCommand : public SatelliteConstructionCommand
 	{
 	public:
 		typedef SatelliteConstructionCommand	Super;
 		Component::Turret*		turret;
 		Component::VehicleBase*	base;
+		PStructure				structure;
 
 		unsigned			roundsLeft = 0xFFFFFFFF;
 		unsigned			mineralsLeft = 0xFFFFFFFF;
 
 
-		/**/				MobileEntityConstructionAbortCommand()	{}
-		/**/				MobileEntityConstructionAbortCommand(int2 coords, const String&name, Component::VehicleBase*base, Component::Turret*turret, const PSatellite&sat,   OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) : Super(coords,name,sat,f,a,p, rasterize && sat),turret(turret),base(base)
+		/**/				FactoryConstructionAbortCommand()	{}
+		/**/				FactoryConstructionAbortCommand(int2 coords, const String&name, Component::VehicleBase*base, Component::Turret*turret, const PSatellite&sat,   OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) : Super(coords,name,sat,f,a,p, rasterize && sat),turret(turret),base(base)
 		{
 			if (rasterize && !sat)
 				VehicleConstructionCommand::UpdateTexture(*this,base,turret);

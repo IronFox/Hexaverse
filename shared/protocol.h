@@ -1466,6 +1466,7 @@ namespace Protocol
 		{
 			Enabled = 0x1,
 			Hibernating = 0x2,
+			Maintained = 0x4,
 			//ConnectedToSpace = 0x4,//never used
 		};
 	}

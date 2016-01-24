@@ -9,6 +9,10 @@ namespace Objects
 {
 	namespace Orbital
 	{
+		/**
+		List of all living stations.
+		Also contained by Objects::structures
+		*/
 		extern Buffer0<PStation>stations;
 
 		static const int		BaseHeight = Grid::CellStack::HalfRange * 5;
@@ -171,8 +175,9 @@ namespace Objects
 
 				/**
 				Updates @a connectedTo if necessary
+				@return true if anything changed
 				*/
-				void				UpdateConnections();
+				bool				UpdateConnections();
 				bool				GainGroundConnection(const PSkyLinkStructure&to);
 				void				LoseGroundConnection();
 
@@ -200,8 +205,8 @@ namespace Objects
 				virtual Component::Turret*
 										GetTurretType() const override	{return &Component::skyHubTurret;}
 
-				//MobileEntity overrides:
-				virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return Grid::LCellIdI(focus.stackID,GetStructureBuildHeight(focus));}
+				////MobileEntity overrides:
+				//virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return Grid::LCellIdI(focus.stackID,GetStructureBuildHeight(focus));}
 
 				//WorldEntity overrides:
 				virtual int				GetConstructionCost() const override {return 50;}
@@ -227,6 +232,74 @@ namespace Objects
 		
 		
 		
+			class Guardian : public FloatingStructureT<Guardian>
+			{
+			protected:
+				typedef FloatingStructureT<Guardian>	Super;
+				friend class Super;
+
+				/**/					Guardian(const OwnerParameter&owner, const Grid::LCellIdI&location, float time):Super(GetTurretType(),owner,location, time)
+										{}
+				/**/					Guardian():Super(GetTurretType())
+										{}	//global prototype
+			public:
+
+
+				//BaseEntity overrides:
+				virtual String			GetTypeName() const override {return "Sky Guardian";}
+				virtual ConstName		GetCTypeName() const override {return ConstName::Type_SkyGuardian;}
+
+				//SatelliteTemplate overrides:
+				virtual Component::Turret*
+										GetTurretType() const override	{return &Component::protonCannon;}
+
+				//WorldEntity overrides:
+				virtual int				GetConstructionCost() const override {return 15;}
+				#ifndef NO_HIBERNATION
+					virtual int			GetUplinkTraffic() const override {return 4;}
+				#endif
+
+				//Hibernating overrides:
+				#ifndef NO_HIBERNATION
+					virtual int			GetUplinkPriority() const override {return 900;}
+				#endif
+
+
+			};
+
+
+
+			class StarPort : public FloatingStructureT<StarPort>
+			{
+			protected:
+				typedef FloatingStructureT<StarPort>	Super;
+				friend class Super;
+
+				/**/					StarPort(const OwnerParameter&owner, const Grid::LCellIdI&location, float time):Super(GetTurretType(),owner,location, time)
+										{}
+				/**/					StarPort():Super(GetTurretType())
+										{}	//global prototype
+			public:
+				static const int		ProductionSpeed = 5;
+
+				//BaseEntity overrides:
+				virtual String			GetTypeName() const override {return "Star Port";}
+				virtual ConstName		GetCTypeName() const override {return ConstName::Type_StarPort;}
+
+				//SatelliteTemplate overrides:
+				virtual Component::Turret*
+										GetTurretType() const override	{return &Component::starPort;}
+
+				//WorldEntity overrides:
+				virtual int				GetConstructionCost() const override {return 200;}
+				#ifndef NO_HIBERNATION
+					virtual int			GetUplinkTraffic() const override {return 5;}
+
+					//Hibernating overrides:
+					virtual int			GetUplinkPriority() const override {return 1000;}
+				#endif
+
+			};
 		
 		
 	}

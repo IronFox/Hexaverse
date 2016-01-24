@@ -362,6 +362,11 @@ namespace Objects
 	units or orbital units
 	*/
 	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func);
+
+	/**
+	Iterates through all orbital entities excluding stored.
+	*/
+	void			ForeachOrbitalWorldEntity(const std::function<void(const PWorldEntity&)>&func);
 }
 
 

@@ -15,7 +15,7 @@
 #include "prototypes.h"
 #include "visualSelection.h"
 #include "faction.h"
-#include "satellite.h"
+#include "orbitalStructure.h"
 #include "vehicle.h"
 #include "structureCompound.h"
 
@@ -1971,7 +1971,7 @@ namespace Objects
 
 	/*virtual override*/ bool		SkyGate::WouldLikeToEnable() const
 	{
-		return !!GetSatellite(location.stackID);
+		return !!Orbital::GetStation(location.stackID);
 	}
 
 
@@ -2519,7 +2519,7 @@ namespace Objects
 				if (!connectedToHub)
 				{
 					Structure*st = self->CastToStructure();
-					Orbital::PHub hub = To<Orbital::Hub>::DynamicCast(GetOrbitalStation(st->location.stackID));
+					Orbital::PHub hub = To<Orbital::Hub>::DynamicCast(Orbital::GetStation(st->location.stackID));
 					if (hub && hub->owner == st->owner)
 					{
 						if (hub->GainGroundConnection(self))

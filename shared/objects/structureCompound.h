@@ -25,7 +25,8 @@ namespace Objects
 			float4					color;
 		#endif
 
-		Buffer0<WWorkingStructure>	containedStructures;
+		Buffer0<WWorkingStructure>	workingStructures;
+		Buffer0<WStructure>			allStructures;
 		FullResourceVector			total;
 		#ifndef CLIENT
 //			#ifdef CONNECTOR_LESS
@@ -40,7 +41,8 @@ namespace Objects
 		void				Clear()
 		{
 			total = FullResourceVector();
-			containedStructures.Clear();
+			workingStructures.Clear();
+			allStructures.Clear();
 			#ifndef CLIENT
 				overproduction = ResourceVector();
 			#endif
@@ -48,7 +50,8 @@ namespace Objects
 
 		void				swap(Compound&other)
 		{
-			containedStructures.swap(other.containedStructures);
+			workingStructures.swap(other.workingStructures);
+			allStructures.swap(other.allStructures);
 			swp(total,other.total);
 			swp(stable,other.stable);
 			#ifndef CLIENT
@@ -58,7 +61,8 @@ namespace Objects
 		}
 		void				Compact()
 		{
-			containedStructures.Compact();
+			workingStructures.Compact();
+			allStructures.Compact();
 		}
 
 		void				AppendStructure(Structure*s);

@@ -11,9 +11,12 @@ namespace Objects
 
 	void				Compound::AppendStructure(Structure*s)
 	{
-		WorkingStructure*s2 = dynamic_cast<WorkingStructure*>(s);
-		if (s2)
-			containedStructures << To<WorkingStructure>::Cast( s2->shared_from_this());
+		if (s->IsWorkingStructure())
+		{
+			workingStructures << To<WorkingStructure>::Cast( s->shared_from_this());
+		}
+		allStructures << To<Structure>::Cast( s->shared_from_this() );
+
 	}
 
 
@@ -31,7 +34,7 @@ namespace Objects
 				{
 					bool done = false;
 					for (index_t i = 0; i <= WorkingStructure::FinalLeftoverIteration && !done; i++)
-						foreach (containedStructures,s0)
+						foreach (workingStructures,s0)
 						{	
 							PWorkingStructure s= s0->lock();
 							if (!s || s->IsHibernating())
@@ -51,7 +54,7 @@ namespace Objects
 				{
 					bool done = false;
 					for (index_t i = WorkingStructure::FinalLeftoverIteration-1; i <= WorkingStructure::FinalLeftoverIteration && !done; i--)
-						foreach (containedStructures,s0)
+						foreach (workingStructures,s0)
 						{	
 							PWorkingStructure s= s0->lock();
 							if (!s || s->IsHibernating())
@@ -67,7 +70,7 @@ namespace Objects
 							}
 						}
 					if (!done)
-						foreach (containedStructures,s0)
+						foreach (workingStructures,s0)
 						{	
 							PWorkingStructure s= s0->lock();
 							if (!s || s->IsHibernating())
@@ -90,15 +93,12 @@ namespace Objects
 
 		void				Compound::TickEnd(float atTime)
 		{
-			//#ifdef CONNECTOR_LESS
-				if (stable)
-				{
-					FeedLeftovers(overproduction,atTime);
-					overproduction.Clear();
-					total = GetVector();
-				}
-			//#endif
-
+			if (stable)
+			{
+				FeedLeftovers(overproduction,atTime);
+				overproduction.Clear();
+				total = GetVector();
+			}
 		}
 
 		void				Compound::TickBegin()
@@ -115,7 +115,7 @@ namespace Objects
 				#ifdef _DEBUG
 					events << std::make_pair(PStructure(), vector);
 				#endif
-				foreach (containedStructures,s0)
+				foreach (workingStructures,s0)
 				{	
 					PWorkingStructure s= s0->lock();
 					if (!s || s->IsHibernating())
@@ -128,6 +128,24 @@ namespace Objects
 						#endif
 					}
 				}
+				#ifdef _DEBUG
+					events << std::make_pair(PStructure(), vector);
+				#endif
+				foreach (allStructures,s0)
+				{	
+					PStructure s= s0->lock();
+					if (!s || !s->IsMaintained() || s->IsIndestructible())
+						continue;
+					{
+						ResourceVector upkeep;
+						s->GetUpkeep(upkeep);
+						vector -= upkeep;
+						#ifdef _DEBUG
+							events << std::make_pair(s, vector);
+						#endif
+					}
+				}
+
 				#ifdef _DEBUG
 					events << std::make_pair(PStructure(), vector);
 				#endif
@@ -181,10 +199,12 @@ namespace Objects
 
 		FullResourceVector Compound::GetVector(const Array<bool>&virtualEnabled) const
 		{
+			ASSERT_EQUAL__(virtualEnabled.Count(),workingStructures.Count());
+
 			FullResourceVector result;
-			for (index_t i = 0; i < containedStructures.Count(); i++)
+			for (index_t i = 0; i < workingStructures.Count(); i++)
 			{
-				PWorkingStructure s= containedStructures[i].lock();
+				PWorkingStructure s= workingStructures[i].lock();
 				DBG_ASSERT__(s);
 				if (!s || s->IsHibernating())
 					continue;
@@ -198,6 +218,16 @@ namespace Objects
 				if (!enabled)
 					local.Clear();
 				result.Include(local,storage,storageMax);
+			}
+			for (index_t i = 0; i < allStructures.Count(); i++)
+			{
+				PStructure s= allStructures[i].lock();
+				DBG_ASSERT__(s);
+				if (!s || !s->IsMaintained() || s->IsIndestructible())
+					continue;
+				ResourceVector upkeep;
+				s->GetUpkeep(upkeep);
+				result.IncludeUpkeep(upkeep);
 			}
 			return result;
 		}
@@ -213,14 +243,15 @@ namespace Objects
 					outWhy = "generally cannot enable";
 				return false;
 			}
-			Array<bool>	virtualEnabled(containedStructures.Count());
-			for (index_t i = 0; i < containedStructures.Count(); i++)
+			Array<bool>	virtualEnabled(workingStructures.Count());
+			for (index_t i = 0; i < workingStructures.Count(); i++)
 			{
-				PWorkingStructure s = containedStructures[i].lock();
+				PWorkingStructure s = workingStructures[i].lock();
 				if (!s || s->IsHibernating())
 					continue;
 				virtualEnabled[i] = s && (s->IsEnabled() || s.get() == toEnable);
 			}
+
 
 			FullResourceVector total = GetVector(virtualEnabled);
 
@@ -239,9 +270,9 @@ namespace Objects
 					lacking[r] = true;
 				}
 				
-			for (index_t i = 0; i < containedStructures.Count(); i++)
+			for (index_t i = 0; i < workingStructures.Count(); i++)
 			{
-				PWorkingStructure s= containedStructures[i].lock();
+				PWorkingStructure s= workingStructures[i].lock();
 				DBG_ASSERT__(s);
 				if (!s || s->IsHibernating())
 					continue;
@@ -267,7 +298,6 @@ namespace Objects
 
 				virtualEnabled[i] = false;
 			}
-
 			outWhy = "lacking";
 			for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
 				if (lacking[r])
@@ -284,7 +314,7 @@ namespace Objects
 	{
 		FullResourceVector result;
 
-		foreach (containedStructures,s0)
+		foreach (workingStructures,s0)
 		{
 			PWorkingStructure s= s0->lock();
 			DBG_ASSERT__(s);
@@ -308,6 +338,16 @@ namespace Objects
 				local.Clear();
 			result.Include(local,storage,storageMax);
 		}
+		foreach (allStructures,s0)
+		{
+			PStructure s= s0->lock();
+			DBG_ASSERT__(s);
+			if (!s || !s->IsMaintained() || s->IsIndestructible())
+				continue;
+			ResourceVector upkeep;
+			s->GetUpkeep(upkeep);
+			result.IncludeUpkeep(upkeep);
+		}
 		return result;
 	}
 
@@ -321,7 +361,7 @@ namespace Objects
 
 			if (!stable)
 			{
-				foreach (containedStructures,s0)
+				foreach (workingStructures,s0)
 				{
 					PWorkingStructure s= s0->lock();
 					DBG_ASSERT__(s);
@@ -375,7 +415,7 @@ namespace Objects
 				PWorkingStructure	toDisable;
 				int damageLevel = std::numeric_limits<int>::max();
 
-				foreach (containedStructures,s0)
+				foreach (workingStructures,s0)
 				{
 					PWorkingStructure s= s0->lock();
 					DBG_ASSERT__(s);
@@ -414,8 +454,9 @@ namespace Objects
 					}
 					s->SetEnabled(true,atTime,false);
 				}
+				if (!toDisable)	//due to upkeep this can happen
+					break;
 
-				ASSERT__(toDisable);
 				{
 					LogEvent(EventType::CompoundProcess, toDisable.get(),"Auto-balance: Structure disabled ");
 					toDisable->SetEnabled(false,atTime,false);
@@ -423,8 +464,50 @@ namespace Objects
 					stable = total.balance.IsStable();
 				}
 			}
+			while (!stable)
+			{
+				PStructure	toDisable;
+				int damageLevel = std::numeric_limits<int>::max();
+				Buffer0<PStructure>	partOfTheProblem;
 
-			foreach (containedStructures,s0)
+				foreach (allStructures,s0)
+				{
+					PStructure s= s0->lock();
+					DBG_ASSERT__(s);
+					if (!s || !s->IsMaintained() || s->IsIndestructible())
+						continue;
+
+					Objects::ResourceVector upkeep;
+					s->GetUpkeep(upkeep);
+
+					bool isAtFault = false;
+					for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
+					{
+						if (total.balance.level[i] < 0 && upkeep.level[i] != 0)
+						{
+							isAtFault = true;
+							break;
+						}
+					}
+					if (!isAtFault)
+						continue;
+					partOfTheProblem << s;
+				}
+
+				ASSERT__(partOfTheProblem.IsNotEmpty());
+				static Random random;
+				toDisable = partOfTheProblem[random.getIndex(partOfTheProblem.Count()-1)];
+
+
+				{
+					LogEvent(EventType::CompoundProcess, toDisable.get(),"Auto-balance: Maintenance disabled ");
+					toDisable->SetMaintenance(false,atTime);
+					total = GetVector();
+					stable = total.balance.IsStable();
+				}
+			}
+
+			foreach (workingStructures,s0)
 			{
 				PWorkingStructure s= s0->lock();
 				if (!s || s->IsHibernating())

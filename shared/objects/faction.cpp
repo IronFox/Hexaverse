@@ -6,7 +6,8 @@
 #include "gridAndChoices.h"
 #include "prototypes.h"
 #include "visualSelection.h"
-#include "satellite.h"
+#include "orbitalStructure.h"
+#include "orbitalVehicle.h"
 #include "vehicle.h"
 #include "../sphereGridHelper.h"
 #include "../runtimeConfig.h"
@@ -207,6 +208,20 @@ namespace Objects
 						break;
 					}
 			}
+			if (e->IsOrbital())
+			{
+				Orbital::PStation s = To<Orbital::Station>::Cast(e);
+				if (s->IsHub())
+				{
+					foreach (this->orbitalHubs,sat)
+						if (sat->lock() == e)
+						{
+							this->orbitalHubs.erase(sat);
+							break;
+						}
+				}
+
+			}
 		}
 		void		Faction::RegisterActiveMobileLoss(const PWorldEntity&e)
 		{
@@ -216,22 +231,23 @@ namespace Objects
 				{
 					allMobiles.erase(_v);
 
-					if (e->IsSatellite())
+					if (e->IsOrbital())
 					{
-						foreach (this->satellites,sat)
+						foreach (this->orbitalShips,sat)
 							if (sat->lock() == e)
 							{
-								this->satellites.erase(sat);
+								this->orbitalShips.erase(sat);
 								break;
 							}
-						if (To<Satellite>::Cast(e)->IsSkyHub())
-							foreach (this->orbitalHubs,sat)
-								if (sat->lock() == e)
-								{
-									this->skyHubs.erase(sat);
-									break;
-								}
-						}
+					}
+						//if (To<Satellite>::Cast(e)->IsSkyHub())
+						//	foreach (this->orbitalHubs,sat)
+						//		if (sat->lock() == e)
+						//		{
+						//			this->skyHubs.erase(sat);
+						//			break;
+						//		}
+						//}
 					return;
 				}
 			}
@@ -276,12 +292,19 @@ namespace Objects
 		}
 		void		Faction::RegisterStructureGain(const PWorldEntity&e)
 		{
-			PStructure s = To<Structure>::DynamicCast(e);
+			ASSERT1__(e->IsStructure(),e->GetName());
+			PStructure s = To<Structure>::Cast(e);
 			ASSERT1__(s,e->GetName());
 			structures << s;
 			PTower t = To<Tower>::DynamicCast(s);
 			if (t)
 				towers << t;
+			if (s->IsOrbital())
+			{
+				Orbital::PStation st = To<Orbital::Station>::Cast(s);
+				if (st->IsHub())
+					this->orbitalHubs << To<Orbital::Hub>::Cast(st);
+			}
 		}
 		void		Faction::RegisterActiveMobileGain(const PWorldEntity&e)
 		{
@@ -289,12 +312,10 @@ namespace Objects
 			ASSERT1__(v,e->GetName());
 			ASSERT1__(v->storedIn.expired(),e->GetName());
 			allMobiles << v;
-			if (v->IsSatellite())
+			if (v->IsOrbital())
 			{
-				PSatellite sat = To<Satellite>::Cast(v);
-				this->satellites << sat;
-				if (sat->IsSkyHub())
-					this->skyHubs << To<SkyHub>::Cast(sat);
+				Orbital::PShip sat = To<Orbital::Ship>::Cast(v);
+				this->orbitalShips << sat;
 			}
 		}
 		void		Faction::RegisterStoredMobileGain(const PWorldEntity&e)
@@ -303,21 +324,19 @@ namespace Objects
 			ASSERT1__(v,e->GetName());
 			ASSERT1__(!v->storedIn.expired(),e->GetName());
 			storedMobiles << v;
-			if (v->IsSatellite())
+			if (v->IsOrbital())
 			{
-				PSatellite sat = To<Satellite>::Cast(v);
-				this->satellites << sat;
-				if (sat->IsSkyHub())
-					this->skyHubs << To<SkyHub>::Cast(sat);
+				Orbital::PShip sat = To<Orbital::Ship>::Cast(v);
+				this->orbitalShips << sat;
 			}
 		}
 
 
 		bool		Faction::HasActiveMobile(const PMobileEntity&v, bool forceDoNotCheckSatellites) const
 		{
-			if (!forceDoNotCheckSatellites && v->IsSatellite())
+			if (!forceDoNotCheckSatellites && v->IsOrbital())
 			{
-				foreach (this->satellites,_v)
+				foreach (this->orbitalShips,_v)
 					if (_v->lock() == v)
 						return true;
 				return false;
@@ -517,24 +536,22 @@ namespace Objects
 		count_t		Faction::CountSatelliteCoverage(const TVec3<>&center)	const
 		{
 			count_t rs = 0;
-			foreach (satellites,s)
+			ForeachOrbitalWorldEntity([&rs,center](const PWorldEntity&sat)
 			{
-				PSatellite sat = s->lock();
-				if (sat && Sphere<>(sat->system.w.xyz,sat->GetScanningRange()).Contains(center))
+				if (Sphere<>(sat->system.w.xyz,sat->GetScanningRange()).Contains(center))
 					rs++;
-			}
+			});
 			return rs;
 		}
 
 		count_t		Faction::CountSatelliteCoverage(const Sphere<>&sphere)	const
 		{
 			count_t rs = 0;
-			foreach (satellites,s)
+			ForeachOrbitalWorldEntity([&rs,sphere](const PWorldEntity&sat)
 			{
-				PSatellite sat = s->lock();
-				if (sat && Sphere<>(sat->system.w.xyz,sat->GetScanningRange()).Intersects(sphere))
+				if (Sphere<>(sat->system.w.xyz,sat->GetScanningRange()).Intersects(sphere))
 					rs++;
-			}
+			});
 			return rs;
 		}
 
@@ -545,7 +562,7 @@ namespace Objects
 				return;
 			if (seeing.IsSet(e))
 			{
-				if (e->IsSatellite())
+				if (e->IsOrbital())
 				{
 					count_t cover = CountSatelliteCoverage(e->system.w.xyz);
 					if (cover == 0)
@@ -561,7 +578,7 @@ namespace Objects
 			}
 			else
 			{
-				if (e->IsSatellite())
+				if (e->IsOrbital())
 				{
 					count_t cover = CountSatelliteCoverage(e->system.w.xyz);
 					if (cover > 0)
@@ -610,10 +627,8 @@ namespace Objects
 			else
 			{
 				//count_t coverage = CountSatelliteCoverage(sat->system.w.xyz);
-
-				foreach (Objects::satellites,s)
+				ForeachOrbitalWorldEntity([newContacts,sphere,this,&t](const PWorldEntity sat)
 				{
-					PSatellite sat = *s;
 					if (sat->owner.get() != this && sphere.Contains(sat->system.w.xyz))
 					{
 						bool wasSeeing = newContacts && seeing.IsSet(sat);
@@ -621,7 +636,7 @@ namespace Objects
 						if (newContacts && !wasSeeing)
 							newContacts->Append(sat);
 					}
-				}
+				});
 			}
 		}
 
@@ -645,14 +660,14 @@ namespace Objects
 				//float d2 = Vec::quadraticDistance(sphere.center,(*s)->system.w.xyz);
 				//if (d2 > escaped || (*s)->IsSatellite() != isSatellite)
 				//	continue;
-				if ((*s)->IsSatellite() != isSatellite)
+				if ((*s)->IsOrbital() != isSatellite)
 					continue;
-				if ((*s)->IsSatellite())
+				if (isSatellite)
 				{
-					PSatellite sat = To<Satellite>::Cast(*s);
-					if (sphere.Contains(sat->system.w.xyz))
+					//PSatellite sat = To<Satellite>::Cast(*s);
+					if (sphere.Contains((*s)->system.w.xyz))
 					{
-						SignalDisappearance(sat,t);
+						SignalDisappearance(*s,t);
 					}
 				}
 				else
@@ -731,8 +746,8 @@ namespace Objects
 			markerMap.Clear();
 			nexusControl = acquiringNexusControl = 0;
 			deathInRounds = 0;
-			this->satellites.Clear();
-			skyHubs.Clear();
+			this->orbitalHubs.Clear();
+			this->orbitalShips.Clear();
 			allMobiles.Clear();
 			structures.Clear();
 			towers.Clear();
@@ -837,6 +852,8 @@ namespace Objects
 
 		bool		Faction::CanSpawnType(const PWorldEntity&e, String&errorOut)	const
 		{
+			if (!e)
+				return false;
 			if (this == nexus.get())
 				return true;
 			if (e->IsMobile())
@@ -991,12 +1008,20 @@ namespace Objects
 	}
 
 
+	void			ForeachOrbitalWorldEntity(const std::function<void(const PWorldEntity&)>&func)
+	{
+		for (const PWorldEntity&e : Orbital::ships)
+			func(e);
+		for (const PWorldEntity&e : Orbital::stations)
+			func(e);
+	}
+
 
 	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func)
 	{
 		for (const PMobileEntity&e : vehicles)
 			func(e);
-		for (const PMobileEntity&e : satellites)
+		for (const Orbital::PShip&e : Orbital::ships)
 			func(e);
 	}
 
@@ -1004,7 +1029,7 @@ namespace Objects
 	{
 		for (const PMobileEntity&e : vehicles)
 			func(e);
-		for (const PMobileEntity&e : satellites)
+		for (const Orbital::PShip&e : Orbital::ships)
 			func(e);
 		for (const PMobileEntity&e : storedMobileEntities)
 			func(e);
@@ -1017,7 +1042,9 @@ namespace Objects
 			func(e);
 		for (const PWorldEntity&e : storedMobileEntities)
 			func(e);
-		for (const PWorldEntity&e : satellites)
+		for (const PWorldEntity&e : Orbital::ships)
+			func(e);
+		for (const PWorldEntity&e : Orbital::stations)
 			func(e);
 		for (const PWorldEntity&e : structures)
 			func(e);
@@ -1035,7 +1062,9 @@ namespace Objects
 	{
 		for (const PWorldEntity&e : vehicles)
 			func(e);
-		for (const PWorldEntity&e : satellites)
+		for (const PWorldEntity&e : Orbital::ships)
+			func(e);
+		for (const PWorldEntity&e : Orbital::stations)
 			func(e);
 		for (const PWorldEntity&e : structures)
 			func(e);

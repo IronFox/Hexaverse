@@ -54,11 +54,12 @@ namespace Objects
 	typedef PFaction		OwnerParameter;
 
 
-	CONSTRUCT_ENUMERATION7(RemovalType,
+	CONSTRUCT_ENUMERATION8(RemovalType,
 		Vanished,
 		BeingReplaced,
 		ControlledExplosion,
 		UncontrolledExplosion,
+		UncontrolledOrbitalDecline,
 		EnteredStorage,
 		DestroyedInStorage,
 		ChangingOwnership

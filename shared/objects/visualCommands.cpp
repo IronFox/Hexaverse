@@ -273,7 +273,7 @@ namespace Objects
 
 	}
 
-	/*virtual override*/ void		MobileEntityConstructionAbortCommand::CompileLabel(const PWorldEntity&e, Label&outResult)
+	/*virtual override*/ void		FactoryConstructionAbortCommand::CompileLabel(const PWorldEntity&e, Label&outResult)
 	{
 		
 		//PWorkingStructure ws = To<WorkingStructure>::DynamicCast(e);

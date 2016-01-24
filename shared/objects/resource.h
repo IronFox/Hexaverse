@@ -222,6 +222,16 @@ namespace Objects
 			this->storage += storage;
 			this->storageMax += storageMax;
 		}
+
+		void	IncludeUpkeep(const ResourceVector&v)
+		{
+			for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+			{
+				int val = abs(v.level[i]);
+				demand.level[i] += val;
+				balance.level[i] -= val;
+			}
+		}
 	
 	
 	};

@@ -4,7 +4,7 @@
 #include "gridAndChoices.h"
 #include "rendering.h"
 #include "vehicle.h"
-#include "satellite.h"
+#include "orbitalVehicle.h"
 #include "systems.h"
 #include "prototypes.h"
 #include "../runtimeConfig.h"
@@ -22,6 +22,7 @@ namespace Objects
 	{
 		for (const auto&v : vehicles)
 		{
+			ASSERT1__(!v->IsOrbital(),v->GetName());
 			ASSERT1__(v->isInserted,v->GetName());
 			ASSERT1__(v->health > 0,v->GetName());
 			ASSERT1__(GetEntity(v->id) == v, v->GetName());
@@ -32,8 +33,9 @@ namespace Objects
 				ASSERT2__(v->owner->HasActiveMobile(v),v->GetName(),v->owner->GetName());
 			#endif
 		}
-		for (const auto&v : satellites)
+		for (const auto&v : Orbital::ships)
 		{
+			ASSERT1__(v->IsOrbital(),v->GetName());
 			ASSERT1__(v->isInserted,v->GetName());
 			ASSERT1__(!v->isInsertedIntoGrid,v->GetName());	//satellites are never inserted into grid
 			ASSERT1__(v->health > 0,v->GetName());
@@ -143,28 +145,10 @@ namespace Objects
 					GetOwnCompoundsIn(m.owner,desc);
 				}
 				else
-					if (m.IsSatellite())
+					if (m.IsOrbital())
 					{
-						#ifdef CLIENT
-							foreach (skyLinks,s)
-							{
-								if (s->second->owner == m.owner && s->first->connectedToHub)
-									AddCompound(s->second->compoundID);
-							}
-						#else
-							foreach (m.owner->skyHubs,h)
-							{
-								PSkyHub hub = h->lock();
-								if (hub)
-								{
-									PSkyLinkStructure link = hub->connectedTo.lock();
-									if (link)
-									{
-										AddCompound(link->CastToStructure()->compoundID);
-									}
-								}
-							}
-						#endif
+						Grid::low.GenerateOrbitalDisk(Sphere<>(m.system.w.xyz,WirelessTransferRange),Orbital::BaseHeight, desc);
+						GetOwnCompoundsIn(m.owner,desc);
 					}
 			#endif
 
@@ -671,48 +655,22 @@ namespace Objects
 					if (!f->CanSee(_this,timeAt))
 						return;
 					Grid::LCellIdI loc;
-					if (IsSatellite())
+					foreach (f->towers, _t)
 					{
-						foreach (f->satellites, _s)
+						PTower t = _t->lock();
+						if (t && t->WouldAttack(_this,loc,timeAt))
 						{
-							PSatellite s = _s->lock();
-							if (s && s->WouldAttack(_this,loc,timeAt))
+							if (t->AttackNext(loc,true))
 							{
-								if (s->AttackNext(loc,true))
+								LogEvent(EventType::EntityProcess,t.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
+
+								t->Attack(timeAt);
+								if (health <= 0)
 								{
-									LogEvent(EventType::EntityProcess,s.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
-
-									s->Attack(timeAt);
-									if (health <= 0)
-									{
-										doBreak = true;
-										return;
-									}
-										
+									doBreak = true;
+									return;
 								}
-							}
-						}
-
-					}
-					else
-					{
-						foreach (f->towers, _t)
-						{
-							PTower t = _t->lock();
-							if (t && t->WouldAttack(_this,loc,timeAt))
-							{
-								if (t->AttackNext(loc,true))
-								{
-									LogEvent(EventType::EntityProcess,t.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
-
-									t->Attack(timeAt);
-									if (health <= 0)
-									{
-										doBreak = true;
-										return;
-									}
 										
-								}
 							}
 						}
 					}
@@ -1310,6 +1268,23 @@ namespace Objects
 		}
 
 
+		bool					MobileEntity::TrySelfMaintain(float&atTime, ResourceVector&outMissing)
+		{
+			outMissing.Clear();
+			if (IsIndestructible())
+			{
+				return true;
+			}
+			GetUpkeep(outMissing);
+			outMissing.Negate();
+			resourceEnvironment.CheckRefresh(*this);
+			for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+			{
+				resourceEnvironment.ChangeStorage(*this,Resource::Reinterpret(i),outMissing.level[i]);
+			}
+			outMissing.Negate();
+			return outMissing.IsEmpty();
+		}
 
 
 	#else
@@ -1373,7 +1348,7 @@ namespace Objects
 		}
 		else
 		{
-			if (v->IsSatellite())
+			if (v->IsOrbital())
 			{
 				//would be faster, but too complicated to extract cost
 				//if (target.isExplicit)
@@ -1394,7 +1369,7 @@ namespace Objects
 				//else
 				{
 					count_t offset = path.Count();
-					if (!AppendShortestPathI((const Satellite*)v,prev,target.target.stackID,path))
+					if (!AppendShortestPathI((const Orbital::Ship*)v,prev,target.target.stackID,path))
 						return false;
 					#ifndef CLIENT
 						if (target.isDetailed && path.Count() - offset != 1)
@@ -1522,9 +1497,9 @@ namespace Objects
 			}
 			else
 			{
-				if (v->IsSatellite())
+				if (v->IsOrbital())
 				{
-					if (!AppendShortestDirectSatellitePath(pointOfOrigin,foci.Peek().target.stackID,path))
+					if (!AppendShortestDirectOrbitalPath(pointOfOrigin,foci.Peek().target.stackID,path))
 						return false;
 				}
 				else

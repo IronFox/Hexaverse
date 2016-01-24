@@ -267,15 +267,9 @@ namespace Objects
 				{
 					if (d2 <= outerRadius)
 					{
-						e->TakeDamage(damageLevel);
+						e->TakeDamage(damageLevel,atTime);
 						if (e->health <= 0)
-						{
 							toDestroy << e;
-						}
-						else
-						{
-							e->RegisterChange(WorldEntity::HealthChanged,atTime);
-						}
 					}
 				}
 
@@ -687,14 +681,15 @@ namespace Objects
 		}
 
 
-	PStructure GetStructure(const Grid::LCellIdI&stackID)
+	PStructure GetStructure(const Grid::LCellIdI&loc)
 	{
-		return QueryGrid(structureGrid,stackID);
+		return loc.height <= Grid::CellStack::TopHeight ? QueryGrid(structureGrid,loc) : Orbital::QueryGrid(Orbital::stationGrid,loc.stackID);
 	}
 
-	PStructure GetStructure(const Grid::LCellIdU&stackID)
+	PStructure GetStructure(const Grid::LCellIdU&loc)
 	{
-		return QueryGrid(structureGrid,stackID);
+		return loc.layer < Grid::CellStack::Range ? QueryGrid(structureGrid,loc) : Orbital::QueryGrid(Orbital::stationGrid,loc.stackID);
+		//return QueryGrid(structureGrid,stackID);
 	}
 
 	PVehicle GetVehicle(const Grid::LCellIdI&stackID)

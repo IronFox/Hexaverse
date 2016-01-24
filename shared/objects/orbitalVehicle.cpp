@@ -270,11 +270,11 @@ namespace Objects
 			
 				//VerifyVisibilityNetwork();
 				timeAt = std::max(minTimeOffset,timeAt);
-				if ((location.stackID != cell && !NoOrbitalHere(cell)))
+				if ((location.stackID != cell && !Orbital::NothingHere(cell)))
 				{
 					if (failIsFatal)
 					{
-						LogEvent(EventType::Fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
+						LogEvent(EventType::Fatal,this,"Target cell ("+String(cell)+") is obstructed by orbital");
 						FATAL__("Critical abort");
 					}
 					return MobilePlacementResult::PlacementFailedObstructed;
@@ -497,10 +497,10 @@ namespace Objects
 
 
 
-			/*virtual override*/ bool			Guardian::ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const
-			{
-				return TurretBase::ExtCanHit(owner,attackFrom,0.f,attackTarget,actual);
-			}
+			///*virtual override*/ bool			Guardian::ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const
+			//{
+			//	return TurretBase::ExtCanHit(owner,attackFrom,0.f,attackTarget,actual);
+			//}
 
 
 
@@ -554,31 +554,31 @@ namespace Objects
 			}
 
 
-			/*virtual override*/ bool Guardian::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)
-			{
-				if (!HasAmmoForShot() && empDamageLevel == 0)
-				{
-					//LogEvent(EventType::CommandRejected,this,"Insufficient ammunition");
-					return false;
-				}
+			///*virtual override*/ bool Guardian::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)
+			//{
+			//	if (!HasAmmoForShot() && empDamageLevel == 0)
+			//	{
+			//		//LogEvent(EventType::CommandRejected,this,"Insufficient ammunition");
+			//		return false;
+			//	}
 
-				static Buffer0<TVec4<> > trajectory;
+			//	static Buffer0<TVec4<> > trajectory;
 
-				TVec3<> iat;
-				Grid::HCellIdI ic;
+			//	TVec3<> iat;
+			//	Grid::HCellIdI ic;
 
 
-				//float d2 = Grid::GetQuadraticGeometricDistance(location+1,target->location);
+			//	//float d2 = Grid::GetQuadraticGeometricDistance(location+1,target->location);
 
-				return		//owner->ExtCanSee(target,entityTime)
-						/*&&	*/
-							turret->CanAttack() 
-						&& timeAt <= entityTime 
-						&& CountPossibleAttacks() > 0 
-						&& ExtCanHit(location,target->location,outTarget)
-						//&& d2 > sqr(turret->explosionRadius)
-						&& TraceTrajectory(owner->currentState, target->location,trajectory,iat,ic)==TurretTrajectory::ReachesTarget;
-			}
+			//	return		//owner->ExtCanSee(target,entityTime)
+			//			/*&&	*/
+			//				turret->CanAttack() 
+			//			&& timeAt <= entityTime 
+			//			&& CountPossibleAttacks() > 0 
+			//			&& ExtCanHit(location,target->location,outTarget)
+			//			//&& d2 > sqr(turret->explosionRadius)
+			//			&& TraceTrajectory(owner->currentState, target->location,trajectory,iat,ic)==TurretTrajectory::ReachesTarget;
+			//}
 
 
 		

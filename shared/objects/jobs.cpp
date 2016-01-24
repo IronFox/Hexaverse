@@ -95,7 +95,7 @@ namespace Objects
 				mineralCostLeft = 0;
 
 				if (jobAutoCompletion == BaseJob::Autocomplete::Always || 
-					(jobAutoCompletion == BaseJob::Autocomplete::IfSatellite && v.IsSatellite())
+					(jobAutoCompletion == BaseJob::Autocomplete::IfSatellite && v.IsOrbital())
 					)
 				{
 					continue_t rs = Finish(v,focus);

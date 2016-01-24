@@ -34,14 +34,15 @@ namespace Objects
 
 	
 	/**
-	Member class used by all structures that can produce mobile entities.
-	Rather than inheriting this class, they store it as a member and override the ToProducer() methods
+	Member class used by all structures that can produce other entities (usually mobile).
+	Only vertical producers (satellites producing down, or skygates producing satellites) can produce structures
+	Rather than inheriting this class, they store it as a member and override the ToProducer() method.
 	*/
-	class MobileEntityProducer
+	class EntityFactory
 	{
 	protected:
 		String						JobName(index_t index, const String&itemName, UINT32 roundsLeft)const;
-		UINT32						ProductionRounds( const PMobileEntity&v, bool isActive) const;
+		UINT32						ProductionRounds( const PWorldEntity&v, bool isActive) const;
 
 	public:
 	
@@ -52,14 +53,14 @@ namespace Objects
 			TUniqueID				id;
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
-					MobileEntityConstructionAbortCommand		
+					FactoryConstructionAbortCommand		
 									commandToTerminate;	//works for mobiles in general
 				#endif
 				String				name;
 				int					cost, roundsToCompletion;
 				Component::VehicleBase*		base=nullptr;	//set for vehicles only
 			#else
-				PMobileEntity		producing;
+				PWorldEntity		producing;
 
 				/**
 				Checks whether or not the local work item produces anything. null-pointer sensitive (can be called on a null-object)
@@ -67,7 +68,8 @@ namespace Objects
 				bool				IsEmpty() const	{return this != nullptr && !producing;}
 			#endif
 
-			bool					IsSatellite() const;
+			bool					IsOrbitalShip() const;
+			bool					IsOrbital() const;
 		};
 		//typedef std::pair<PVehicle,Command>		WorkItem;
 		Buffer0<WorkItem>			queue;	//must use buffer here, because elements can be erased and changes are rare
@@ -77,7 +79,7 @@ namespace Objects
 									productionRoundsLeft=0;
 
 
-		/**/						MobileEntityProducer(UINT32 productionPerRound):productionPerRound(productionPerRound)
+		/**/						EntityFactory(UINT32 productionPerRound):productionPerRound(productionPerRound)
 									{}
 
 		UINT32						ProductionRounds(int cost, bool isActive) const;
@@ -100,17 +102,17 @@ namespace Objects
 		bool						AwaitsUserInteraction() const;
 
 		#ifndef CLIENT
-			WorkItem*				EnqueueProductionOf(const PMobileEntity&e, index_t at = InvalidIndex);
+			WorkItem*				EnqueueProductionOf(const PWorldEntity&e, index_t at = InvalidIndex);
 			WorkItem*				EnqueueProductionOfVehicle(ConstName baseName, ConstName turretName);
 			WorkItem*				EnqueueProductionOfVehicle(Component::VehicleBase*selectedBase, Component::Turret*selectedTurret);
-			WorkItem*				EnqueueProductionOfSatellite(ConstName typeName);
+			WorkItem*				EnqueueProductionOf(ConstName typeName);
 
 			void					Tick(ResourceVector&v);
 			UINT32					ProductionRounds(const WorkItem&e, bool isActive) const	{return ProductionRounds(e.producing,isActive);}
 
-			PMobileEntity			SpawnFinishedProductionAnywhere();
-			PMobileEntity			CompleteProduction();
-			PMobileEntity			GetActiveProduction() const;
+			PWorldEntity			SpawnFinishedProductionAnywhere();
+			PWorldEntity			CompleteProduction();
+			PWorldEntity			GetActiveProduction() const;
 			bool					AbortConstruction(const TUniqueID&);
 			void					UpdateGatheringPoint(const Grid::LCellIdI&);
 

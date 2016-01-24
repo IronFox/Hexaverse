@@ -20,13 +20,14 @@
 namespace Objects
 {
 
-	void RefreshSkyHubConnections()
+	void RefreshSkyHubConnections(float t)
 	{
 		for (const auto&sat : Orbital::stations)
 		{
 			if (sat->IsHub())
 				To<Orbital::Hub>::Cast(sat)->UpdateConnections();
 		}
+		RefreshCompoundCoverageIfNeeded(t);
 		#ifdef HAS_WINDOW
 			OnSelectionChange(true);
 		#endif
@@ -126,9 +127,9 @@ namespace Objects
 		structurePrototypes << SkyGate::globalPrototype;
 
 		Orbital::stationPrototypes << Orbital::Hub::globalPrototype;
-		Orbital::shipPrototypes << Orbital::Guardian::globalPrototype;
+		Orbital::stationPrototypes << Orbital::Guardian::globalPrototype;
 		Orbital::shipPrototypes << Orbital::Ragnarok::globalPrototype;
-		Orbital::shipPrototypes << Orbital::StarPort::globalPrototype;
+		Orbital::stationPrototypes << Orbital::StarPort::globalPrototype;
 
 
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::launcher));

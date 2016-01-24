@@ -100,6 +100,8 @@ namespace Objects
 			UINT32					compoundID = 0xFFFFFFFF;	//!< ID of the compound this structure is part of. Do not change (is recomputed automatically). Cannot make private at this point
 		#endif
 
+		bool						maintained = true;	//!< Indicates that sufficient resources are available to pay structure upkeep, and the player has not chosen to withhold this payment
+
 		
 
 		#ifdef HAS_WINDOW
@@ -299,6 +301,14 @@ namespace Objects
 
 		//	#endif
 		#endif
+
+
+		#ifndef CLIENT
+			void					SetMaintenance(bool maintain, float t)	{if (maintain != maintained) {maintained = maintain; SignalChange(MaintenanceChanged,t);} }
+		#endif
+
+		bool						IsMaintained() const {return maintained;}
+
 
 	};
 
@@ -988,6 +998,7 @@ namespace Objects
 			virtual int				GetUplinkTraffic() const override {return 10;}
 			virtual int				GetUplinkPriority() const override {return 750;};	//not much point going far beyond generators. if they shut off, this thing shuts off, too
 		#endif
+		virtual void				GetUpkeep(ResourceVector&v) const override {}
 
 		//WorkingStructure overrides:
 		virtual bool				IsNexusPort() const override {return true;}

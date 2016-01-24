@@ -52,6 +52,10 @@ namespace Objects
 
 	namespace Orbital
 	{
+		/**
+		List of all living ships.
+		Does NOT overlap with Objects::vehicles
+		*/
 		extern Buffer0<PShip>			ships;
 
 		/**
@@ -118,12 +122,6 @@ namespace Objects
 			#ifndef CLIENT
 				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const {return false;}
 				virtual bool		WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	{return false;}
-				/**
-				Performs all per-round operations the local satellite can. The base version handles fueling of the local satellite.
-				Any overriding class should call the base version of this method and return its result, unless fuel processing should not commence for whatever reason
-				@return true, if the local satellite was successfully supplied with fuel, false if declination should happen
-				*/
-				virtual bool		ProcessRound(float&atTime);
 			#endif
 
 			//TurretBase overrides:
@@ -284,52 +282,6 @@ namespace Objects
 
 
 
-		class Guardian : public ShipTemplate<Guardian>
-		{
-		protected:
-			typedef ShipTemplate<Guardian>	Super;
-			friend class Super;
-
-			/**/					Guardian(const OwnerParameter&owner, const Grid::LCellIdI&location):Super(owner,GetTurretType(),location)
-									{}
-			/**/					Guardian():Super(GetTurretType())
-									{}	//global prototype
-		public:
-
-			#ifndef CLIENT
-				//Satellite overrides:
-				bool				WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	override;
-				bool				ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const override;
-			#endif
-
-
-			//MobileEntity overrides:
-			virtual int				GetMovementStepsPerRound() const override {return 1;}
-			virtual int				GetConstructionSpeed() const override {return 0;}
-
-
-			//BaseEntity overrides:
-			virtual String			GetTypeName() const override {return "Sky Guardian";}
-			virtual ConstName		GetCTypeName() const override {return ConstName::Type_SkyGuardian;}
-
-			//SatelliteTemplate overrides:
-			virtual Component::Turret*
-									GetTurretType() const override	{return &Component::protonCannon;}
-
-			//WorldEntity overrides:
-			virtual int				GetConstructionCost() const override {return 15;}
-			#ifndef NO_HIBERNATION
-				virtual int			GetUplinkTraffic() const override {return 4;}
-			#endif
-
-			//Hibernating overrides:
-			#ifndef NO_HIBERNATION
-				virtual int			GetUplinkPriority() const override {return 900;}
-			#endif
-
-
-		};
-
 		class Ragnarok : public ShipTemplate<Ragnarok>
 		{
 		protected:
@@ -365,41 +317,6 @@ namespace Objects
 		};
 
 
-		class StarPort : public ShipTemplate<StarPort>
-		{
-		protected:
-			typedef ShipTemplate<StarPort>	Super;
-			friend class Super;
-
-			/**/					StarPort(const OwnerParameter&owner, const Grid::LCellIdI&location):Super(owner,GetTurretType(),location)
-									{}
-			/**/					StarPort():Super(GetTurretType())
-									{}	//global prototype
-		public:
-			static const int		ProductionSpeed = 5;
-
-			//MobileEntity overrides:
-			virtual int				GetMovementStepsPerRound() const override {return 1;}
-			virtual int				GetConstructionSpeed() const override {return ProductionSpeed;}
-
-			//BaseEntity overrides:
-			virtual String			GetTypeName() const override {return "Star Port";}
-			virtual ConstName		GetCTypeName() const override {return ConstName::Type_StarPort;}
-
-			//SatelliteTemplate overrides:
-			virtual Component::Turret*
-									GetTurretType() const override	{return &Component::starPort;}
-
-			//WorldEntity overrides:
-			virtual int				GetConstructionCost() const override {return 200;}
-			#ifndef NO_HIBERNATION
-				virtual int			GetUplinkTraffic() const override {return 5;}
-
-				//Hibernating overrides:
-				virtual int			GetUplinkPriority() const override {return 1000;}
-			#endif
-
-		};
 
 
 

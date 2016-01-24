@@ -500,6 +500,14 @@ namespace Objects
 
 
 		/**
+		Attempts to withdraw upkeep from locally available resources.
+		@return true, if the required amount has successfully been withdrawn, false otherwise
+		@param[out] outMissing Vector containing missing resources. Always valid, even if the method returns true (will be all 0 then)
+		*/
+		bool					TrySelfMaintain(float&atTime, ResourceVector&outMissing);
+
+
+		/**
 		Updates @a system and @a invert based on @a location
 		Called automatically where needed.
 		*/

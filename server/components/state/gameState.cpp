@@ -228,9 +228,9 @@ namespace Game
 
 		void	Describe(Protocol::MobileState&state, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
 		{
-			if (v.IsSatellite())
+			if (v.IsOrbital())
 			{
-				DBG_ASSERT_GREATER_OR_EQUAL1__(v.location.height, Grid::CellStack::HalfRange,v.GetName());
+				DBG_ASSERT_GREATER1__(v.location.height, Grid::CellStack::TopHeight,v.GetName());
 			}
 	
 			state.flags = 0;
@@ -322,13 +322,16 @@ namespace Game
 
 		void	Describe(Protocol::StructureState&state, const Objects::Structure&s, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
 		{
-			const Objects::WorkingStructure*w = dynamic_cast<const Objects::WorkingStructure*>(&s);
+			const Objects::WorkingStructure*w = s.IsWorkingStructure() ? (const Objects::WorkingStructure*)&s : nullptr;
+			//dynamic_cast<const Objects::WorkingStructure*>(&s);
 			//state.productionDone = 0;
 			state.flags = 0;
 			if (!w || w->IsEnabled())
 				state.flags.value |= Protocol::StructureFlags::Enabled;
 			if (w && w->IsHibernating())
 				state.flags.value |= Protocol::StructureFlags::Hibernating;
+			if (s.IsMaintained())
+				state.flags.value |= Protocol::StructureFlags::Maintained;
 
 			if (w && owned)
 			{
@@ -655,7 +658,7 @@ namespace Game
 
 			Objects::ForeachCompound([](Objects::Compound&c)
 			{
-				if (c.containedStructures.IsEmpty())
+				if (c.workingStructures.IsEmpty())
 					return;	//pure technite factions don't have units. Also, depending on server settings, some factions might not either
 				bool hasFuelMine = false,
 					hasMineralMine = false,
@@ -668,7 +671,7 @@ namespace Game
 					hasMineralContainer = true;	//don't need
 				#endif
 				Objects::ResourceVector dummy,storage;
-				foreach (c.containedStructures,_s)
+				foreach (c.workingStructures,_s)
 				{
 					Objects::PWorkingStructure s = _s->lock();
 					if (!s)
@@ -692,7 +695,7 @@ namespace Game
 					if (To<Objects::VehiclePlant>::DynamicCast(s))
 						hasVehiclePlant = true;
 				}
-				Objects::PFaction f = c.containedStructures.first().lock()->owner;
+				Objects::PFaction f = c.workingStructures.first().lock()->owner;
 				f->hasFuelMine = hasFuelMine;
 				f->hasMineralMine = hasMineralMine;
 				f->hasMineralContainer = hasMineralContainer;
@@ -1123,9 +1126,9 @@ namespace Game
 				}
 
 
-				Objects::PSkyHub hub = To<Objects::SkyHub>::Cast( Objects::SkyHub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Satellite::BaseResidenceHeight),0) );
+				Objects::Orbital::PHub hub = To<Objects::Orbital::Hub>::Cast( Objects::Orbital::Hub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Orbital::BaseHeight),0) );
 				Objects::InsertConstructed(hub,0);
-				ASSERT__(hub->connectedTo.lock() == port);
+				ASSERT__(hub->connectedToLink.lock() == port);
 
 				for (index_t i : distances)
 				{
@@ -1135,7 +1138,7 @@ namespace Game
 					bool noEdge = Grid::low.grid.GetCell(i).family != 0;
 					if (!noEdge && field.distance[i] == 2)
 					{
-						Objects::PSkyGuardian guard = To<Objects::SkyGuardian>::Cast( Objects::SkyGuardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Satellite::BaseResidenceHeight),0));
+						Objects::Orbital::PGuardian guard = To<Objects::Orbital::Guardian>::Cast( Objects::Orbital::Guardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Orbital::BaseHeight),0));
 						Objects::InsertConstructed(guard,0);
 					}
 				}

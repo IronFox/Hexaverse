@@ -1,6 +1,6 @@
 #include <global_root.h>
 #include "vehicle.h"
-#include "satellite.h"
+#include "orbitalVehicle.h"
 #include "rendering.h"
 #include "prototypes.h"
 #include "systems.h"
@@ -387,7 +387,7 @@ namespace Objects
 			int fallingHeight = 0;
 			while (location.height-fallingHeight > -Grid::CellStack::HalfRange 
 					&& Grid::actualWorld.LowCellIsClear(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1))
-					&& NoVehicleHereExcept(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1),this))
+					&& NoVehicleVisibleHereExcept(Grid::LCellIdI(location.stackID, location.height - fallingHeight - 1),this))
 				fallingHeight ++;
 			//if (fallingHeight > 0)
 			{

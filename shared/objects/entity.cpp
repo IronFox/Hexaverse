@@ -433,7 +433,7 @@ namespace Objects
 			}
 
 		#else
-			owner->RegisterSensorCreation(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),IsSatellite(), atTime,checkChangesNow, newContacts);
+			owner->RegisterSensorCreation(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),IsOrbital(), atTime,checkChangesNow, newContacts);
 		#endif
 	}
 
@@ -442,7 +442,7 @@ namespace Objects
 		LogEvent(EventType::MinorEntityProcess,this,"Unregistering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
 		
 		#ifndef CLIENT
-			owner->RegisterSensorRemoval(Sphere<>(Grid::ToWorld(loc), GetScanningRange()),IsSatellite(),atTime,checkChangesNow);
+			owner->RegisterSensorRemoval(Sphere<>(Grid::ToWorld(loc), GetScanningRange()),IsOrbital(),atTime,checkChangesNow);
 		#endif
 
 		#ifdef CLIENT

@@ -2,6 +2,7 @@
 #include "orbitalStructure.h"
 #include "gridAndChoices.h"
 #include "orbitalStructure.h"
+#include "orbitalVehicle.h"
 #include "structureCompound.h"
 #include "faction.h"
 
@@ -28,15 +29,17 @@ namespace Objects
 		}
 
 
-		void			Hub::UpdateConnections()
+		bool			Hub::UpdateConnections()
 		{
 			PSkyLinkStructure port = connectedToLink.lock();
 			WorkingStructure*ws = port ? port->CastToStructure() : nullptr;
 
+			bool rs= false;
 			if (port && ws->health <= 0)
 			{
 				connectedTo.reset();
 				port.reset();
+				rs = true;
 			}
 
 			if (ws)
@@ -45,6 +48,7 @@ namespace Objects
 				{
 					LoseGroundConnection();
 					port.reset();
+					rs = true;
 				}
 			}
 
@@ -69,8 +73,12 @@ namespace Objects
 				if (port)
 				{
 					GainGroundConnection(port);
+					rs = true;
 				}
 			}
+			if (rs)
+				compoundCoverageChanged = true;
+			return rs;
 		}
 
 

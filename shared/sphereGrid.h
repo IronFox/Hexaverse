@@ -1196,11 +1196,11 @@ namespace Grid
 		}
 
 	
+		static typename TVolumeDescriptor::Operator op;
 
 
 		void	GenerateVolume(const Sphere<>&sphere,TVolumeDescriptor&volume) const
 		{
-			static TVolumeDescriptor::Operator op;
 			volume.Clear();
 			UINT32 centerStack = Locate(sphere.center);
 			op.stacksLeft << centerStack;
@@ -1228,6 +1228,44 @@ namespace Grid
 			
 				st.layerBegin = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
 				st.layerEnd = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
+				const auto&n = grid.GetCell(next).neighborhood;
+				for (int i = 0; i < n.numNeighbors; i++)
+					op.stacksLeft << n.neighborID[i];
+			}
+			op.ResetVisited(volume);
+		}
+
+
+		void	GenerateOrbitalDisk(const Sphere<>&sphere,int orbitalHeight,TVolumeDescriptor&volume) const
+		{
+			volume.Clear();
+			UINT32 centerStack = Locate(sphere.center);
+			op.stacksLeft << centerStack;
+
+			const float r2 = sqr(sphere.radius);
+			const float r = ToRadius(orbitalHeight);
+			UINT32 next;
+			while (op.stacksLeft >> next)
+			{
+				if (op.stackVisited[next])
+					continue;
+				op.stackVisited[next] = true;
+				const TVec3<>&dir = cells[next].cornerCenter;
+				TVec2<> distances;
+				TVec3<> p;
+				Vec::mult(dir,r,p);
+				float dist = Vec::quadraticDistance(p,sphere.center);
+				TVolumeDescriptor::TStack&st = volume.coverage.Append();
+				st.stackID = next;
+				if (dist > r2)
+				{
+					volume.coverage.EraseLast();
+					//st.layerBegin = st.layerEnd = 0;
+					continue;
+				}
+			
+				st.layerBegin = CellStack::ToLayer(orbitalHeight);
+				st.layerEnd = CellStack::ToLayer(orbitalHeight+1);
 				const auto&n = grid.GetCell(next).neighborhood;
 				for (int i = 0; i < n.numNeighbors; i++)
 					op.stacksLeft << n.neighborID[i];
@@ -1555,6 +1593,9 @@ namespace Grid
 			}
 		#endif
 	};
+
+	template <unsigned Exponent>
+		/*static */ typename Setup<Exponent>::TVolumeDescriptor::Operator Setup<Exponent>::op;
 
 	typedef Setup<5>	LowSetup;
 
