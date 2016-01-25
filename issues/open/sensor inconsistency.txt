@@ -1,0 +1,50 @@
+stationary structure is not declare invisible dispite sole sensing vehicle moving on.
+
+
+Faction::SignalDisappearance() never called or ref not set (which means is already invisible).
+Assumption: SignalDisappearance() not called
+
+Theory:
+Two story high building. Optimization only checks bottom center. Vehicle exited such that the top was in the checked sphere, but the bottom was not. Thus ignored.
+
+
+
+
+
+
+becoming visible:
+
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Radar Tower	b2603756	4d9ddd83:'<Nexus>'	112[h=1]	c095c6f6:'IronFox': Sight level increased to 1
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Radar Tower	b2603756	4d9ddd83:'<Nexus>'	112[h=1]	c095c6f6:'IronFox': Gained visual
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase	c095c6f6:'IronFox'	localhost:33027	Radar Tower	b2603756	4d9ddd83:'<Nexus>'	112[h=1]	Signalling appearance  at time=0.1975
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Hoversurveyor	ec651c0e	c095c6f6:'IronFox'	2482[h=1]	Unregistering sensory (2489[h=1], 4) at time 0.2075
+Debug	2016 January 20. 15:31:51	18	MovementPhase							Applying sensory change (-1), using descriptor with 168 stack(s), crc=92E2AC84
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase							c095c6f6:'IronFox' reported seeing motion of Hoversurveyor ec651c0e at time 0+0.1875
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Hoversurveyor	ec651c0e	c095c6f6:'IronFox'	2482[h=1]	Motion completed
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Hoversurveyor	ec651c0e	c095c6f6:'IronFox'	2476[h=1]	Removed from grid location 187646/2482[h=1]
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Hoversurveyor	ec651c0e	c095c6f6:'IronFox'	2476[h=1]	Inserted into grid location 187640/2476[h=1]
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Hoversurveyor	ec651c0e	c095c6f6:'IronFox'	2476[h=1]	Registering sensory (2476[h=1], 4)
+Debug	2016 January 20. 15:31:51	18	MovementPhase							Applying sensory change (1), using descriptor with 169 stack(s), crc=9280F5C4
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Hoversurveyor	ec651c0e	c095c6f6:'IronFox'	2476[h=1]	Unregistering sensory (2482[h=1], 4) at time 0.395
+Debug	2016 January 20. 15:31:51	18	MovementPhase							Applying sensory change (-1), using descriptor with 169 stack(s), crc=ED152BE7
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase							c095c6f6:'IronFox' reported seeing motion of Hoversurveyor ec651c0e at time 0.2075+0.1875
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Hoversurveyor	ec651c0e	c095c6f6:'IronFox'	2476[h=1]	Motion completed
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Hoversurveyor	ec651c0e	c095c6f6:'IronFox'	2470[h=1]	Removed from grid location 187640/2476[h=1]
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Hoversurveyor	ec651c0e	c095c6f6:'IronFox'	2470[h=1]	Inserted into grid location 187634/2470[h=1]
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Hoversurveyor	ec651c0e	c095c6f6:'IronFox'	2470[h=1]	Registering sensory (2470[h=1], 4)
+Debug	2016 January 20. 15:31:51	18	MovementPhase							Applying sensory change (1), using descriptor with 169 stack(s), crc=91B6FEDF
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Vehicle Plant	f1acc5eb	4d9ddd83:'<Nexus>'	110[h=1]	c095c6f6:'IronFox': Sight level increased to 1
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Vehicle Plant	f1acc5eb	4d9ddd83:'<Nexus>'	110[h=1]	c095c6f6:'IronFox': Gained visual
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase	c095c6f6:'IronFox'	localhost:33027	Vehicle Plant	f1acc5eb	4d9ddd83:'<Nexus>'	110[h=1]	Signalling appearance  at time=0.5925
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Hoversurveyor	ec651c0e	c095c6f6:'IronFox'	2470[h=1]	Unregistering sensory (2476[h=1], 4) at time 0.6025
+Debug	2016 January 20. 15:31:51	18	MovementPhase							Applying sensory change (-1), using descriptor with 169 stack(s), crc=9280F5C4
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase							c095c6f6:'IronFox' reported seeing motion of Hoversurveyor ec651c0e at time 0.395+0.1875
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Hoversurveyor	ec651c0e	c095c6f6:'IronFox'	2470[h=1]	Motion completed
+Debug	2016 January 20. 15:31:51	18	MovementPhase			Hoversurveyor	ec651c0e	c095c6f6:'IronFox'	2470[h=1]	Issued task clearing: line 260 of objects\mobileentity.cpp::Objects::MobileEntity::HandleNormalTask()
+EntityProcessFailed	2016 January 20. 15:31:51	18	MovementPhase			Hoversurveyor	ec651c0e	c095c6f6:'IronFox'	2470[h=1]	Unable to complete movement.
+MinorEntityProcess	2016 January 20. 15:31:51	18	MovementPhase			Mineral Container	7e8d9e41	c095c6f6:'IronFox'	2133[h=1]	Minerals storage changed by 21 to 348/400
+Debug	2016 January 20. 15:31:51	18	MovementPhase							Changing RuntimeConfig::phase to AnimationPhase with time window 1
+MinorEntityProcess	2016 January 20. 15:31:51	18	AnimationPhase			Mineral Container	7e8d9e41	c095c6f6:'IronFox'	2133[h=1]	State change detected
+
+
+never registered as being invisible again

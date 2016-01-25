@@ -720,7 +720,7 @@ namespace Reflection
 
 	}
 
-	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction);
+	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, bool readOriginal=false);
 
 	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction)
 	{
@@ -880,12 +880,12 @@ namespace Reflection
 		}
 	}
 
-	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction)
+	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, bool readOriginal/*=false*/)
 	{
 		Configuration	config;
 		Config::Context*	ctx = nullptr;
 		
-		PathString configName = RuntimeConfig::ConfigFile(PathString(subConfigName));
+		const PathString configName = readOriginal ? "./"+subConfigName :  RuntimeConfig::ConfigFile(PathString(subConfigName));
 
 		bool rewrite = true;
 		if (FileSystem::IsFile(configName))
@@ -923,8 +923,9 @@ namespace Reflection
 		if (!ctx)
 			LogEvent(EventType::ConfigRelated,"Default configuration loaded");
 		bool allGood = InnerFeed(folder,ctx,testMode,filterFunction);
-		if (!allGood || rewrite)
+		if (!readOriginal && (!allGood || rewrite))
 		{
+			Feed(folder,subConfigName,testMode,filterFunction,true);
 			StringFile outFile;
 			if (!outFile.Create(configName))
 			{
@@ -936,6 +937,11 @@ namespace Reflection
 				outFile.Close();
 			}
 		}
+		else
+			if (readOriginal && !allGood)
+			{
+				FATAL__("There were errors while trying to parse original configuration file "+String(configName)+". Fix the errors and restart the application.\nCheck your server logs (My Documents/My Games/Hexaverse/server/logs) for details. Redownloading the application should also fix the issue.")
+			}
 	}
 
 

@@ -835,7 +835,9 @@ namespace Animation
 
 		if (w && w->isInserted)
 		{
-			ASSERT__(s->compoundID != Objects::Compound::InvalidNetwork);
+			#ifndef CONNECTOR_LESS
+				ASSERT__(s->compoundID != Objects::Compound::InvalidNetwork);
+			#endif
 			s->GetCompound().RefreshState(0);
 		}
 

@@ -683,11 +683,13 @@ void MyFatal(const FatalDescriptor&descriptor)
 	Logging::WriteEvent(EventType::Fatal,message,nullptr,nullptr);
 
 	application_shutting_down = true;	//prevent certain operations in Close()
-	ErrMessage(message);
+	DisplayMessage(PRODUCT_NAME" Server Error",message,false);
+	//ErrMessage("Hexaverse Server: "+message);
 	std::cerr << message << std::endl;
-	char confirm[0x100];
-	std::cin.getline(confirm,sizeof(confirm));
-
+	#ifdef _DEBUG
+		char confirm[0x100];
+		std::cin.getline(confirm,sizeof(confirm));
+	#endif
 
 
 	//NetworkConnection::Close();
@@ -1061,6 +1063,7 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 		case CTRL_C_EVENT:
 		case CTRL_CLOSE_EVENT:
 		case CTRL_SHUTDOWN_EVENT:
+			LogEvent(EventType::SessionRelated,"Received close event. Terminating");
 			TerminateNow(false);
 		return TRUE;
 	
@@ -1157,6 +1160,13 @@ namespace ParameterConfig
 					mode = ExpectFilename;
 				else
 				{
+					PathString path = arg;
+					if (path.endsWithCaseIgnore(FileIO::savFileExtension) && FileSystem::IsFile(arg))
+					{
+						mode = ExpectFilename;
+						Process(arg);
+						return;
+					}
 					LogEvent(EventType::ConfigError, "Unsupported runtime parameter '"+String(arg)+"'");
 					PrintHelp();
 				}
