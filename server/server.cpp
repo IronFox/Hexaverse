@@ -1278,7 +1278,7 @@ int main( int argc, const char* argv[])
 			}
 	//		#ifdef _DEBUG
 		//	#endif
-			if (FileSystem::IsFile(dir + StringW(FOLDER_SLASH_STR)+"server.ini"))
+			if (FileSystem::IsFile(dir + "/config/declaration.xml"))
 				FileSystem::SetWorkingDirectory(dir);
 			//ShowMessageW(dir);
 		}
