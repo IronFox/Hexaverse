@@ -1135,7 +1135,7 @@ namespace Objects
 
 		structures << s;
 
-		#ifdef HAS_WINDOW
+		#ifdef CLIENT
 			if (s->IsSkyLinkStructure())
 			{
 				PSkyLinkStructure link = To<SkyLinkStructure>::DynamicCast(s);
@@ -1241,7 +1241,7 @@ namespace Objects
 				RemoveFromGrid(structureGrid,e->location,To<Structure>::Cast(e));
 
 			ASSERT1__(structures.FindAndErase(e),e->GetName());
-			#ifdef HAS_WINDOW
+			#ifdef CLIENT
 				if (To<Structure>::Cast(e)->IsSkyLinkStructure())
 				{
 					foreach (skyLinks,link)

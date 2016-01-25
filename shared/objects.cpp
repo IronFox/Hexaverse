@@ -298,8 +298,10 @@ namespace Objects
 	{
 		#ifdef HAS_WINDOW
 			Renderer::Destroy();
-			skyLinks.Clear();
 		//	hexGrid.Clear();
+		#endif
+		#ifdef CLIENT
+			skyLinks.Clear();
 		#endif
 		structures.Clear();
 		structurePrototypes.Clear();
@@ -745,9 +747,7 @@ namespace Objects
 		vehicleGrid.Fill(PVehicle());
 		structureGrid.Fill(PStructure());
 		#ifdef CLIENT
-			#ifdef HAS_WINDOW
-				skyLinks.Clear();
-			#endif
+			skyLinks.Clear();
 			Marker::FlushAll();
 			#ifndef NO_HIBERNATION
 				uplinkTraffic = 0;
