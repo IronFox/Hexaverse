@@ -2335,7 +2335,7 @@ String GenerateOreName(Random&random)
 					{
 						//Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(Objects::selectedEntity);
 						//Objects::MobileEntityProducer*p = ws
-						if (Objects::selectedEntity->CastToProducer())
+						if (!Objects::selectedEntity->IsSatellite() && Objects::selectedEntity->CastToProducer())
 						{
 							if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 							{
