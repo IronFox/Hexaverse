@@ -991,14 +991,14 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			//Grid::visibleOrbitGrid.StripColor();
 
 		#ifndef CONNECTOR_LESS
-		if (Objects::selectedVehicle)
+		if (Objects::selectedMobileEntity)
 		{
 			//if (Objects::selectedVehicle->tasks.IsNotEmpty() && Objects::selectedVehicle->tasks.Peek().job && Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft)
 			Objects::ResourceVector change;
-			const Objects::ResourceVector&current = Objects::selectedVehicle->currentStorage;
-			const Objects::ResourceVector max = Objects::selectedVehicle->GetMaxStorageCapacity();
+			const Objects::ResourceVector&current = Objects::selectedMobileEntity->currentStorage;
+			const Objects::ResourceVector max = Objects::selectedMobileEntity->GetMaxStorageCapacity();
 			int sum = 0;
-			foreach (Objects::selectedVehicle->myTasks,t)
+			foreach (Objects::selectedMobileEntity->myTasks,t)
 				if (t->job)
 					sum += t->job->mineralCostLeft;
 			if (sum)
@@ -1017,10 +1017,10 @@ void	OnAppear(const Objects::PWorldEntity&e)
 						#endif
 						current,max);
 		}
-		else if (Objects::selectedEntity && Objects::selectedEntity->IsMobile())
-		{
-			FATAL__("not implemented yet");
-		}
+		//else if (Objects::selectedEntity && Objects::selectedEntity->IsMobile())
+		//{
+		//	FATAL__("not implemented yet");
+		//}
 		else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
 		{
 			if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
