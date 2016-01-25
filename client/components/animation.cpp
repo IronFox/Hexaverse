@@ -1656,7 +1656,7 @@ namespace Animation
 
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::gameHasBegun)
 				{
-					Objects::RefreshSkyHubConnections();
+					Objects::RefreshSkyHubConnections(0.f);
 					UpdateAutomation(CLOCATION);
 				}
 			}

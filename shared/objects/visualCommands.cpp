@@ -149,23 +149,26 @@ namespace Objects
 
 	/*static*/ void		VisualEntityCommand::UpdateTexture(EntityCommand&target, const PWorldEntity&entity, bool isPrototype, const float4&tone/* = float4(0)*/)
 	{
-		GeometryImage::BeginRendering(tone,1.5f);
-
-		//TMatrix4<> sys = Matrix<>::eye4;
-		//sys.x.x = sys.y.y = sys.z.z = 2.5f;
-
-		UpdateStateColors(entity,tone,isPrototype);
-			//keyColor.Update(float4(0.5f,0.5f,1,1));
-
-			
-		//display.SetObjectMatrix(sys);
-		Renderer::RenderSimpleIdentity(*entity);
-
-
-		target.texture = GeometryImage::EndRendering();
+		if (entity->IsMobile())
+		{
+			if (entity->IsVehicle())
+				VehicleCommand::UpdateTexture(target,To<Vehicle>::Cast(entity),isPrototype,tone);
+			else
+				if (entity->IsOrbital())
+				{
+					GeometryImage::BeginRendering(tone,1.5f);
+					UpdateStateColors(entity,tone,isPrototype);
+					Renderer::RenderSimpleIdentity(*To<Orbital::Ship>::Cast(entity));
+					target.texture = GeometryImage::EndRendering();
+				}
+		}
+		elif (entity->IsStructure())
+		{
+			StructureCommand::UpdateTexture(target,To<Structure>::Cast(entity),isPrototype,tone);
+		}
 	}
 
-	void				SatelliteCommand::UpdateTexture(const PSatellite&v, bool isPrototype, const float4&backgroundColor/* = float4(0)*/)
+	void				VisualEntityCommand::UpdateTexture(const PWorldEntity&v, bool isPrototype, const float4&backgroundColor/* = float4(0)*/)
 	{
 		UpdateTexture(*this,v,isPrototype, backgroundColor);
 
@@ -199,7 +202,7 @@ namespace Objects
 	/*virtual override*/ void		VehicleConstructionCommand::CompileLabel(const PWorldEntity&e, Label&outResult)
 	{
 		
-		PMobileEntityProducer p = To<EntityFactory>::DynamicCast(e);
+		const EntityFactory*p = e->CastToFactory();
 		//PWorkingStructure ws = To<WorkingStructure>::DynamicCast(e);
 		ASSERT__(p);
 		UINT32 rounds = 0,rawRounds = 0;
@@ -247,13 +250,13 @@ namespace Objects
 //			outResult << "Rounds: "+String(rounds);
 	}
 
-	/*virtual override*/ void		SatelliteConstructionCommand::CompileLabel(const PWorldEntity&e, Label&outResult)
+	/*virtual override*/ void		EntityConstructionCommand::CompileLabel(const PWorldEntity&e, Label&outResult)
 	{
 		
-		PMobileEntityProducer p = To<EntityFactory>::DynamicCast(e);
+		const EntityFactory*p = e->CastToFactory();
 		ASSERT__(p);
 		UINT32 rounds = 0;
-		int price = sat->GetConstructionCost();
+		int price = e->GetConstructionCost();
 
 		rounds = (unsigned)p->ProductionRounds(price,false);
 
@@ -263,13 +266,13 @@ namespace Objects
 		if (rounds)
 			outResult.lines.last() += "  "+String(TimeResourceTag()) + String(rounds);
 
-		sat->AppendDeploymentCount(outResult, e->owner);
+		e->AppendDeploymentCount(outResult, e->owner);
 
 
 		outResult.MarkBriefEnd();
 		outResult << "";
 
-		sat->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
+		e->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
 
 	}
 
@@ -277,17 +280,17 @@ namespace Objects
 	{
 		
 		//PWorkingStructure ws = To<WorkingStructure>::DynamicCast(e);
-		PMobileEntityProducer p = To<EntityFactory>::DynamicCast(e);
+		EntityFactory*p = e->CastToMutableFactory();
 		ASSERT__(p);
 		UINT32 rounds = 0,rawRounds = 0;
-		int rawPrice = sat ? sat->GetConstructionCost() : Vehicle::GetPrice(base,turret);
+		int rawPrice = target ? target->GetConstructionCost() : Vehicle::GetPrice(base,turret);
 		int price = (int)std::min(mineralsLeft, (unsigned)rawPrice);
 
 		rawRounds = (unsigned)p->ProductionRounds(rawPrice,false);
 		rounds = (int)std::min(roundsLeft, rawRounds);
 
 
-		if (sat || (base && turret))
+		if (target || (base && turret))
 		{
 			outResult << "Active construction: "+name;
 			outResult << String(ResourceTag(Resource::Minerals))+ " "+String(price);
@@ -304,9 +307,9 @@ namespace Objects
 			outResult << "";
 		}
 
-		if (sat)
+		if (target)
 		{
-			sat->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth|WorldEntity::DescIncludeUnitCount);
+			target->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth|WorldEntity::DescIncludeUnitCount);
 		}
 		else
 		{
@@ -459,7 +462,7 @@ namespace Objects
 		if (selectedEntity)
 		{
 			Grid::LCellIdI target = Grid::SeeThrough::LocateCamera();
-			if (!selectedEntity->IsSatellite())
+			if (!selectedEntity->IsOrbital())
 				target.height = selectedEntity->location.height;
 			Grid::SeeThrough::Update(!Grid::SeeThrough::IsEnabled(), target);
 //					Grid::SeeThrough::Update(!Grid::SeeThrough::IsEnabled(), selectedEntity->location);

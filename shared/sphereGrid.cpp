@@ -644,7 +644,7 @@ namespace Grid
 		#ifdef HAS_WINDOW
 			h = highestOpaqueCell;
 			if (waterRange.IsNotEmpty())
-				h = std::max(h,waterRange.end-1);
+				h = std::max(h,(UINT32)waterRange.end-1);
 		#else
 			h = Grid::CellStack::Range-1;
 		#endif

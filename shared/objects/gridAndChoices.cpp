@@ -849,14 +849,17 @@ namespace Objects
 		{
 			{
 				Component::VehicleBase* base = nullptr;
+				bool orbital = false;
 				#ifdef CLIENT
 					base = p->GetActiveProductionBase();
+					orbital = p->ActiveProductionIsOrbital();
 				#else
 					const PWorldEntity production = p->GetActiveProduction();
 					if (production->IsVehicle())
 					{
 						base = To<Vehicle>::Cast(production)->base;
 					}
+					orbital = production->IsOrbital();
 					//else
 						//ASSERT1__(production->IsOrbital(),production->GetName());
 				#endif
@@ -866,7 +869,7 @@ namespace Objects
 					{
 						if (entity.IsOrbital())
 						{
-							if (production->IsOrbital())
+							if (orbital)
 							{
 								//satellite producing satellite
 
@@ -889,7 +892,7 @@ namespace Objects
 						}
 						else
 						{
-							if (production->IsOrbital())
+							if (orbital)
 							{
 								//must be producing a satellite
 								//in time, mobile entities will be producers, too, but for here we can conclude this is a bottom-up production
@@ -1669,7 +1672,7 @@ namespace Objects
 					}
 					else
 						#ifdef CLIENT
-							if (!NoHostileSatelliteHere(cell,v->owner))
+							if (!Orbital::NothingHostileVisibleHere(cell,v->owner,0.f))
 								continue;
 						#else
 							if (!Orbital::NothingHostileVisibleHere(cell,v->owner,v->timeAt))
@@ -2725,23 +2728,26 @@ namespace Objects
 		{
 			if (turret != ConstName::Empty)
 				return Objects::SpawnVehicle(owner,  id,baseLocation,base,turret,placeNow,isMine);
-			return Objects::SpawnSatellite(owner,  id,baseLocation,base,placeNow,isMine);
+			return Orbital::SpawnShip(owner,  id,baseLocation,base,placeNow,isMine);
 		}
 
-		Orbital::PShip		SpawnSatellite(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isMine)
+		namespace Orbital
 		{
-			Orbital::PShip	proto = GetSatellitePrototypeByName(type);
-			ASSERT1__(proto,(int)type);
-			Orbital::PShip s = To<Orbital::Ship>::Cast( proto->CreateNewInstance(owner,baseLocation,0) );
-			s->location = baseLocation;
-			s->id = id;
-			s->UpdateSystem();
-			ASSERT_GREATER_OR_EQUAL1__(baseLocation.height, Grid::CellStack::HalfRange,s->GetName());
-			s->UpdateNiceName();
-			s->isMine = isMine;
-			if (placeNow)
-				Place(s);
-			return s;
+			Orbital::PShip		SpawnShip(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isMine)
+			{
+				Orbital::PShip	proto = Orbital::GetShipPrototypeByName(type);
+				ASSERT1__(proto,(int)type);
+				Orbital::PShip s = To<Orbital::Ship>::Cast( proto->CreateNewInstance(owner,baseLocation,0) );
+				s->location = baseLocation;
+				s->id = id;
+				s->UpdateSystem();
+				ASSERT_GREATER_OR_EQUAL1__(baseLocation.height, Grid::CellStack::HalfRange,s->GetName());
+				s->UpdateNiceName();
+				s->isMine = isMine;
+				if (placeNow)
+					Place(s);
+				return s;
+			}
 		}
 
 		PStructure		SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,ConstName type, bool placeNow, bool isMine)
@@ -2772,6 +2778,8 @@ namespace Objects
 		void			Place( const PStructure&s)
 		{
 			InsertConstructed(s,0);
+			if (s->IsOrbital() && To<Orbital::Station>::Cast(s)->IsHub())
+				To<Orbital::Hub>::Cast(s)->UpdateConnections();
 		}
 		void			Place( const PVehicle&vehicle, bool insertIntoGrid/*=true*/)
 		{
@@ -2787,10 +2795,8 @@ namespace Objects
 			ASSERT__(s);
 			ASSERT3__(s->preAnimationLocation == s->location,s->preAnimationLocation.ToString(),s->location.ToString(),s->GetName());
 			InsertConstructed(s,0);
-			ASSERT1__(satellites.Contains(s),s->GetName());
+			ASSERT1__(Orbital::ships.Contains(s),s->GetName());
 
-			if (s->IsSkyHub())
-				To<SkyHub>::Cast(s)->UpdateConnections();
 		}
 
 		void			PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGridIfVehicle/*=true*/)
@@ -2798,14 +2804,16 @@ namespace Objects
 			ASSERT__(m);
 			ASSERT3__(m->preAnimationLocation == m->location,m->preAnimationLocation.ToString(),m->location.ToString(),m->GetName());
 			InsertConstructed(m,0,insertIntoGridIfVehicle);
-			if (m->IsSatellite())
+			if (m->IsOrbital())
 			{
-				ASSERT1__(satellites.Contains(m),m->GetName());
+				ASSERT1__(Orbital::ships.Contains(m),m->GetName());
+				ASSERT1__(!vehicles.Contains(m),m->GetName());
 			}
 			else
 				if (m->IsVehicle())
 				{
 					ASSERT1__(vehicles.Contains(m),m->GetName());
+					ASSERT1__(!Orbital::ships.Contains(m),m->GetName());
 				}
 				else
 					FATAL__("Unsupported mobile entity type at this point: "+m->GetName());

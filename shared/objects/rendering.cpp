@@ -626,6 +626,13 @@ namespace Objects
 		RenderComponent(v.system,v.base->height,*v.turret,v.turretAngleX,v.turretAngleY);
 	}
 
+	void	Renderer::RenderSimpleIdentity(const Vehicle&v)
+	{
+		RenderComponent(Matrix<>::eye4,0,*v.base,0,0);
+		RenderComponent(Matrix<>::eye4,v.base->height,*v.turret,v.turretAngleX,v.turretAngleY);
+	}
+
+
 	void Renderer::Render(const Vehicle&v, const float3&activeColorMine, const float3&activeColorTheirs, float light)
 	{
 		const float3&inactiveColor = v.isMine ? inactiveColorMine : inactiveColorTheirs;
@@ -779,7 +786,12 @@ namespace Objects
 			{
 				PVehicle&v = *_v;
 				UpdateSeeThroughColor(v->isMine, v==selectedEntity);
-				//overallTint.Update(v->isMine ? mySeeThroughColor : hostileSeeThroughColor);
+				Renderer::RenderSimple(*v);
+			}
+			foreach(Orbital::ships, _v)
+			{
+				Orbital::PShip&v = *_v;
+				UpdateSeeThroughColor(v->isMine, v==selectedEntity);
 				Renderer::RenderSimple(*v);
 			}
 
@@ -1649,7 +1661,7 @@ namespace Objects
 				}
 				else
 				{
-					if (ws->IsSkyPort())
+					if (ws->IsSkyGate())
 					{
 						PSkyGate port = To<SkyGate>::Cast(ws);
 						if (ws->IsEnabled() && port->queue.IsNotEmpty() && port->queue.first().IsOrbital())
@@ -1872,9 +1884,7 @@ namespace Objects
 				display.LinkShader(shadowInstruction,false,true);
 
 				foreach(vehicles, v)
-				{
 					_RenderShadow(**v);
-				}
 				foreach (Orbital::ships, s)
 					_RenderShadow(**s);
 				display.SetObjectMatrix(Matrix<>::eye4);

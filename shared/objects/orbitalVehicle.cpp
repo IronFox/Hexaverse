@@ -12,10 +12,7 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			/*static*/ Buffer<StructureConstructionCommand>	SkyHub::structureConstructionCommands;
-			/*static*/ Buffer<SatelliteConstructionCommand>	SkyHub::satelliteConstructionCommands;
-
-
+			/*static*/ Buffer<EntityConstructionCommand>	Hub::entityConstructionCommands;
 		#endif
 
 		/*static*/ count_t			Ship::CountTurretOccurrences(const OwnerParameter&o,Component::Turret*t)
@@ -154,19 +151,6 @@ namespace Objects
 					outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(this->GetConstructionSpeed())+" per round";
 
 				const String fuel (ResourceTag(Resource::Fuel));
-
-				int demand = this->GetFuelConsumptionPerRound();
-				if ((descFlags & DescIncludeFuelDemandModifier) && !this->RequiresFuel())
-					demand = 0;
-				if ((descFlags & DescIncludeFuelDemandModifier) && demand)
-				{
-					outResult << "Consumes"+fuel+String(demand)+'+'+String(GetExtraFuelDemand())+" per round";
-				}
-				else
-				{
-					outResult << "Consumes"+fuel+String(demand)+" per round";
-				}
-
 
 
 				outResult.MarkBriefEnd();

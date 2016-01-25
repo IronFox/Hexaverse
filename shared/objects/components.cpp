@@ -1668,7 +1668,7 @@ namespace Objects
 					count_t cnt = 0, limit = 0;
 					cnt = Vehicle::CountTurretOccurrences(owner,this)
 						+
-						Satellite::CountTurretOccurrences(owner,this);
+						Orbital::Ship::CountTurretOccurrences(owner,this);
 					limit = RuntimeConfig::UnitLimits::Get(constName);
 					if (limit != 0xFFFF)
 						outResult << " Deployed: "+String(cnt)+"/"+String(limit);

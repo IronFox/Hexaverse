@@ -1051,7 +1051,7 @@ namespace Network
 				LogEvent(EventType::SessionRelated,nullptr,"Game has begun");
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Animation::AllDone())
 				{
-					Objects::RefreshSkyHubConnections();
+					Objects::RefreshSkyHubConnections(0.f);
 					Animation::UpdateAutomation(CLOCATION);
 				}
 			break;
@@ -1381,7 +1381,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 
 		if (gameHasBegun && Animation::AllDone())
 		{
-			Objects::RefreshSkyHubConnections();
+			Objects::RefreshSkyHubConnections(0.f);
 			Animation::UpdateAutomation(CLOCATION);
 		}
 	}

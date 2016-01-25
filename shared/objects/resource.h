@@ -22,6 +22,11 @@ namespace Objects
 	typedef ResourceVectorT<Resource>	ResourceVector;
 
 
+	static const char TextoutResourceTagOffset = (char)2;	//global char offset used for mineral output in strings
+	static_assert((index_t)TextoutResourceTagOffset + Resource::NumberOfPossibilities+2 < (index_t)'\n',"Relocate tag offset");
+	static inline char ResourceTag(index_t index) {return (char)(TextoutResourceTagOffset + (char)index);}
+	static inline char TimeResourceTag() {return ResourceTag(Resource::NumberOfPossibilities);}
+	static inline char TrafficResourceTag() {return ResourceTag(Resource::NumberOfPossibilities+1);}
 	
 	struct NaturalResourceVector
 	{
@@ -175,12 +180,17 @@ namespace Objects
 			{
 				VecUnroll<Resource::NumberOfPossibilities>::mul(level,-1);
 			}
-			String	ToString() const
+			String	ToString(bool useIcons = false) const
 			{
 				Buffer0<String> rs;
 				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
 					if (level[i] != 0)
-						rs << Resource::Reinterpret(i).ToString()+String(": ")+String(level[i]);
+					{
+						if (useIcons)
+							rs << ResourceTag(i)+String(": ")+String(level[i]);
+						else
+							rs << Resource::Reinterpret(i).ToString()+String(": ")+String(level[i]);
+					}
 				return implode(',',rs.pointer(),rs.Count());
 			}
 
@@ -239,11 +249,6 @@ namespace Objects
 
 
 
-	static const char TextoutResourceTagOffset = (char)2;	//global char offset used for mineral output in strings
-	static_assert((index_t)TextoutResourceTagOffset + Resource::NumberOfPossibilities+2 < (index_t)'\n',"Relocate tag offset");
-	static inline char ResourceTag(index_t index) {return (char)(TextoutResourceTagOffset + (char)index);}
-	static inline char TimeResourceTag() {return ResourceTag(Resource::NumberOfPossibilities);}
-	static inline char TrafficResourceTag() {return ResourceTag(Resource::NumberOfPossibilities+1);}
 
 }
 

@@ -241,25 +241,24 @@ namespace UI
 			typedef std::shared_ptr<Group>				PGroup;
 
 
-			class VehicleFocusCommand : public Objects::VehicleCommand
+			class EntityFocusCommand : public Objects::VisualEntityCommand
 			{
 			public:
-				typedef	Objects::VehicleCommand	Super;
-				Objects::PVehicle		target;
+				typedef	Objects::VisualEntityCommand	Super;
+				Objects::PWorldEntity		target;
 
 				//int2 coords, const String&name, const VehicleBase*&base, const Turret*&turret,   OnExecute f, CheckEnabled a, IsPermaActive p
-				/**/				VehicleFocusCommand()	{}
-				/**/				VehicleFocusCommand(const Objects::PVehicle&target) 
-									: Super(int2(), target->GetNiceName(),target->base,
-										target->turret,
-										std::bind(&VehicleFocusCommand::OnExecute,target,std::placeholders::_1),
+				/**/				EntityFocusCommand()	{}
+				/**/				EntityFocusCommand(const Objects::PWorldEntity&target) 
+									: Super(int2(), target->GetNiceName(),target,
+										std::bind(&EntityFocusCommand::OnExecute,target,std::placeholders::_1),
 										Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
 										Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>,
 										false), 
 										target(target)
 				{}
 
-				static void				OnExecute(Objects::PVehicle const&target, Objects::PWorldEntity const&)	//must be static because it may move before being executed
+				static void				OnExecute(Objects::PWorldEntity const&target, Objects::PWorldEntity const&)	//must be static because it may move before being executed
 				{
 					//Objects::PVehicle target = To<Objects::Vehicle>::Cast(t);
 					Camera::TranslateTo(target->system.w.xyz);
@@ -269,56 +268,6 @@ namespace UI
 				virtual void	CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
 			};
 
-			class SatelliteFocusCommand : public Objects::SatelliteCommand
-			{
-			public:
-				typedef	Objects::SatelliteCommand	Super;
-				Objects::PSatellite		target;
-
-				//int2 coords, const String&name, const VehicleBase*&base, const Turret*&turret,   OnExecute f, CheckEnabled a, IsPermaActive p
-				/**/				SatelliteFocusCommand()	{}
-				/**/				SatelliteFocusCommand(const Objects::PSatellite&target) 
-									: Super(int2(), target->GetNiceName(),target,
-										std::bind(&SatelliteFocusCommand::OnExecute,target,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
-										Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>,
-										false), 
-										target(target)
-				{}
-
-				static void				OnExecute(Objects::PSatellite const&target, Objects::PWorldEntity const&)	//must be static because it may move before being executed
-				{
-					//Objects::PVehicle target = To<Objects::Vehicle>::Cast(t);
-					Camera::TranslateTo(target->system.w.xyz);
-				}
-
-
-				virtual void	CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
-			};
-
-			class StructureFocusCommand : public Objects::StructureCommand
-			{
-			public:
-				typedef	Objects::StructureCommand	Super;
-			
-				//int2 coords, const String&name, const VehicleBase*&base, const Turret*&turret,   OnExecute f, CheckEnabled a, IsPermaActive p
-				/**/				StructureFocusCommand()	{}
-				/**/				StructureFocusCommand(const Objects::PStructure&target) 
-									: Super(int2(), target->GetNiceName(),target,
-										std::bind(&StructureFocusCommand::OnExecute,target,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
-										Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>)
-				{}
-
-				static void				OnExecute(Objects::PStructure const&target, Objects::PWorldEntity const&)	//must be static because it may move before being executed
-				{
-					//Objects::PStructure target = To<Objects::Structure>::Cast(t);
-					Camera::TranslateTo(target->system.w.xyz);
-				}
-
-
-				virtual void	CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
-			};
 
 
 			static const float4 friendlyBackgroundColor(0,0,1,0);
@@ -351,8 +300,7 @@ namespace UI
 			//Buffer0<VehicleFocusCommand>		vehicleCommands;
 			//Buffer0<StructureFocusCommand>		structureCommands;
 			extern Buffer0<GroupFocusCommand>			groupFocusCommands;
-			extern VehicleFocusCommand					selectedVehicleFocus;
-			extern StructureFocusCommand				selectedStructureFocus;
+			extern EntityFocusCommand					selectedFocus;
 
 			extern std::shared_ptr<ArrowCommand>		leftCommand,rightCommand,
 														friendlyLeftCommand,friendlyRightCommand;

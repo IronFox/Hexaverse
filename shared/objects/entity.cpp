@@ -7,7 +7,7 @@
 #ifdef HAS_WINDOW
 	#include "visualCommands.h"
 	//#include "gridAndChoices.h"
-	#include "satellite.h"
+	#include "orbitalVehicle.h"
 	#include "faction.h"
 #endif
 #ifndef CLIENT
@@ -262,8 +262,8 @@ namespace Objects
 					Component::Turret* t = ((const MobileEntity*)this)->turret;
 					if (IsVehicle())
 						cnt = Vehicle::CountTurretOccurrences(overrideOwner,t);
-					elif (IsSatellite())
-						cnt = Satellite::CountTurretOccurrences(overrideOwner,t);
+					elif (IsOrbital())
+						cnt = Orbital::Ship::CountTurretOccurrences(overrideOwner,t);
 					else
 						FATAL__("Unexpected mobile entity type: "+GetName());
 					limit = RuntimeConfig::UnitLimits::Get(t->constName);
@@ -312,6 +312,13 @@ namespace Objects
 			}
 			if (descFlags & DescIncludePrice)
 				outResult << " Price: "+String(ResourceTag(Resource::Minerals)) + String(" ") + String(this->GetConstructionCost());
+			if (descFlags & DescIncludeUpkeep)
+			{
+				ResourceVector vec;
+				GetUpkeep(vec);
+				if (vec.IsNotEmpty())
+					outResult << " Upkeep: "+vec.ToString(true);
+			}
 			if ((descFlags & DescIncludeUnitCount))
 			{
 				AppendDeploymentCount(outResult,owner);
@@ -332,7 +339,7 @@ namespace Objects
 				if (b->turret->CanAttack())
 					outResult << " Hrz. Attack range: "+String(b->GetFlatAttackRange()) + "+"+String(b->turret->explosionRadius);
 				outResult << "";
-				b->turret->DescribeType(outResult,true, IsSatellite() ? "Satellite" : (IsVehicle() ? "Vehicle":"Tower"),owner);
+				b->turret->DescribeType(outResult,true, (IsMobile() ? (IsOrbital() ? "Ship" : "Vehicle") : (IsOrbital() ? "Station" : "Tower")),owner);
 			}
 		}
 	#endif

@@ -55,7 +55,7 @@ namespace Camera
 		groundTargetOrbit = targetOrbit;
 
 		float dist = std::numeric_limits<float>::max();
-		targetOrbit = Grid::ToRadius(Objects::Satellite::BaseResidenceHeight);
+		targetOrbit = Grid::ToRadius(Objects::Orbital::BaseHeight);
 		if (
 			Obj::detectOpticalSphereIntersection(Vector<>::zero,targetOrbit,scene.GetAbsoluteLocation(),-scene.GetViewingDirection(),dist)
 			

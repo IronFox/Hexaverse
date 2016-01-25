@@ -220,8 +220,8 @@ void	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 		}
 		else
 		{
-			if (v->IsSatellite())
-				foundPath = Objects::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
+			if (v->IsOrbital())
+				foundPath = Objects::AppendShortestPathI((const Objects::Orbital::Ship*)v.get(),prev,target.stackID,path,false,&tooLong);
 			else
 				FATAL__("Routing not implemented for "+v->GetTypeName());
 		}
@@ -267,7 +267,7 @@ void	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targ
 {
 	DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
 	const bool moveTo = mode == Objects::CursorMode::Idle && !leftClick;
-	if (moveTo && v->IsSatellite())
+	if (moveTo && v->IsOrbital())
 		foreach (targets,t)
 			ASSERT_EQUAL__(t->height,v->location.height);
 
@@ -976,7 +976,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 			if (!stateChangeOnly)
 			{
-				if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsSatellite())
+				if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsOrbital())
 				{
 	//				Grid::visibleOrbitGrid.Color(Objects::selectedMobileEntity->location, Objects::selectedMobileEntity->turret->fuelSupplyRadius);
 //					strip = false;
@@ -1911,7 +1911,7 @@ void Select()
 
 			if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
 			{
-				if (Objects::selectedMobileEntity->IsSatellite())
+				if (Objects::selectedMobileEntity->IsOrbital())
 					target.height = Objects::selectedMobileEntity->location.height;
 				DirectTo(Objects::selectedMobileEntity,target,false,true);
 				return;
@@ -2335,7 +2335,7 @@ String GenerateOreName(Random&random)
 					{
 						//Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(Objects::selectedEntity);
 						//Objects::MobileEntityProducer*p = ws
-						if (Objects::selectedEntity->CastToProducer())
+						if (Objects::selectedEntity->CastToFactory())
 						{
 							if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 							{
@@ -2356,7 +2356,7 @@ String GenerateOreName(Random&random)
 				if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 				{
 					//Grid::LCellIdI	target((UINT32)cellID,Grid::FromRadius(height));
-					if (Objects::selectedMobileEntity->IsSatellite())
+					if (Objects::selectedMobileEntity->IsOrbital())
 						target.height = Objects::selectedMobileEntity->location.height;
 					DirectTo(Objects::selectedMobileEntity,target,false,false);
 				}
@@ -2502,7 +2502,7 @@ String GenerateOreName(Random&random)
 
 	bool	IsIdle(const Objects::PMobileEntity&v)
 	{
-		if (v->IsHibernating() || v->IsSatellite())
+		if (v->IsHibernating())
 			return false;
 		if (v->myTasks.IsNotEmpty())
 		{
@@ -2521,11 +2521,18 @@ String GenerateOreName(Random&random)
 						return true;
 			}
 			else
-				if (v->IsSatellite())
+				if (v->IsOrbital())
 				{
-					for (auto other : Objects::satellites)
+					bool found = false;
+					Objects::ForeachOrbitalWorldEntity([v,&found](const Objects::PWorldEntity&other)
+					{
+						if (found)
+							return;
 						if (!other->isMine && v->CanHit(other->location))
-							return true;
+							found = true;
+					});
+					if (found)
+						return true;
 				}
 				else
 				{
@@ -2563,16 +2570,16 @@ String GenerateOreName(Random&random)
 		if (Dialog::ConfirmCurrent(true))
 			return;
 
-		const count_t total = Objects::vehicles.Count() + Objects::satellites.Count() + Objects::structures.Count();
+		const count_t total = Objects::vehicles.Count() + Objects::Orbital::ships.Count() + Objects::structures.Count();
 		if ((total == 0) || !Network::haveID)
 			return;
 		index_t from = 0;
 		if (Objects::selectedVehicle)
 			from = Objects::vehicles.GetIndexOf(Objects::selectedVehicle);
 		else
-			if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsSatellite())
+			if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsOrbital())
 			{
-				from = Objects::satellites.GetIndexOf(Objects::selectedMobileEntity);
+				from = Objects::Orbital::ships.GetIndexOf(Objects::selectedMobileEntity);
 				if (from != InvalidIndex)
 					from += Objects::vehicles.Count();
 			}
@@ -2581,7 +2588,7 @@ String GenerateOreName(Random&random)
 				{
 					from = Objects::structures.GetIndexOf(Objects::selectedEntity);
 					if (from != InvalidIndex)
-						from += Objects::vehicles.Count() + Objects::satellites.Count();
+						from += Objects::vehicles.Count() + Objects::Orbital::ships.Count();
 				}
 		if (from == InvalidIndex)
 			from = 0;
@@ -2603,10 +2610,10 @@ String GenerateOreName(Random&random)
 				}
 			}
 			else
-				if (to < Objects::vehicles.Count() + Objects::satellites.Count())
+				if (to < Objects::vehicles.Count() + Objects::Orbital::ships.Count())
 				{
 					index_t at = to - Objects::vehicles.Count();
-					Objects::PMobileEntity v = Objects::satellites[at];
+					Objects::PMobileEntity v = Objects::Orbital::ships[at];
 					if (v->isMine && IsIdle(v))
 					{
 						Objects::Select(v,Network::ControlEnabled());
@@ -2616,7 +2623,7 @@ String GenerateOreName(Random&random)
 				}
 				else
 				{
-					index_t at = to - Objects::vehicles.Count() - Objects::satellites.Count();
+					index_t at = to - Objects::vehicles.Count() - Objects::Orbital::ships.Count();
 					Objects::PStructure s = Objects::structures[at];
 
 					if (s->isMine && IsIdle(s))
@@ -2637,7 +2644,7 @@ String GenerateOreName(Random&random)
 	
 	void	SelectAndFocusPrev()
 	{
-		const count_t total = Objects::vehicles.Count() + Objects::satellites.Count();
+		const count_t total = Objects::vehicles.Count() + Objects::Orbital::ships.Count();
 		if ((total == 0) || !Network::haveID)
 			return;
 		index_t from = 0;
@@ -2646,9 +2653,9 @@ String GenerateOreName(Random&random)
 			if (Objects::selectedMobileEntity->IsVehicle())
 				from = Objects::vehicles.GetIndexOf(Objects::selectedMobileEntity);
 			else
-				if (Objects::selectedMobileEntity->IsSatellite())
+				if (Objects::selectedMobileEntity->IsOrbital())
 				{
-					from = Objects::satellites.GetIndexOf(Objects::selectedMobileEntity);
+					from = Objects::Orbital::ships.GetIndexOf(Objects::selectedMobileEntity);
 					if (from != InvalidIndex)
 						from +=  Objects::vehicles.Count();
 				}
@@ -2676,9 +2683,9 @@ String GenerateOreName(Random&random)
 				}
 			}
 			else
-				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Network::myFaction)
+				if (Objects::Orbital::ships[to - Objects::vehicles.Count()]->owner == Network::myFaction)
 				{
-					Objects::Select(Objects::satellites[to - Objects::vehicles.Count()],Network::ControlEnabled());
+					Objects::Select(Objects::Orbital::ships[to - Objects::vehicles.Count()],Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
 					return;
 				}
@@ -2690,7 +2697,7 @@ String GenerateOreName(Random&random)
 
 	void	SelectAndFocusNext()
 	{
-		const count_t total = Objects::vehicles.Count() + Objects::satellites.Count();
+		const count_t total = Objects::vehicles.Count() + Objects::Orbital::ships.Count();
 		if ((total == 0) || !Network::haveID)
 			return;
 		index_t from = 0;
@@ -2699,9 +2706,9 @@ String GenerateOreName(Random&random)
 			if (Objects::selectedMobileEntity->IsVehicle())
 				from = Objects::vehicles.GetIndexOf(Objects::selectedMobileEntity);
 			else
-				if (Objects::selectedMobileEntity->IsSatellite())
+				if (Objects::selectedMobileEntity->IsOrbital())
 				{
-					from = Objects::satellites.GetIndexOf(Objects::selectedMobileEntity);
+					from = Objects::Orbital::ships.GetIndexOf(Objects::selectedMobileEntity);
 					if (from != InvalidIndex)
 						from +=  Objects::vehicles.Count();
 				}
@@ -2725,9 +2732,9 @@ String GenerateOreName(Random&random)
 				}
 			}
 			else
-				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Network::myFaction)
+				if (Objects::Orbital::ships[to - Objects::vehicles.Count()]->owner == Network::myFaction)
 				{
-					Objects::Select(Objects::satellites[to - Objects::vehicles.Count()],Network::ControlEnabled());
+					Objects::Select(Objects::Orbital::ships[to - Objects::vehicles.Count()],Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
 					return;
 				}

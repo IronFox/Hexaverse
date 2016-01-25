@@ -1184,34 +1184,24 @@ namespace Objects
 				}
 				else
 				{
-					//structure
-					PStructure prototype = Objects::GetPrototypeByName(referenceType[0]);
+					//other
+					PWorldEntity prototype = Objects::GetAnyNonVehiclePrototypeByName(referenceType[0]);
 					if (prototype)
 					{
 						ASSERT1__(prototype, referenceType);
-						m.visualization = To<Structure>::Cast(prototype->CreateNewInstance(OwnerParameter(), location, 0));
+						m.visualization = prototype->CreateNewInstance(OwnerParameter(), location, 0);
 						m.visualization->id = referenceID;
+						if (m.visualization->IsMobile())
+							To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
 						m.visualization->health = -(int)m.age;
 						m.visualization->isMine = type == Type::EntityDeath;
 						m.visualization->UpdateNiceName();
-						structureGhosts << To<Structure>::Cast(m.visualization);
-					}
-					else
-					{
-						PSatellite prototype = Objects::GetSatellitePrototypeByName(referenceType[0]);
-						if (prototype)
-						{
-							//satellite
-							m.visualization = To<MobileEntity>::Cast(prototype->CreateNewInstance(OwnerParameter(), location, 0.f));
-							m.visualization->id = referenceID;
-							To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
-							m.visualization->health = -(int)m.age;
-							m.visualization->isMine = type == Type::EntityDeath;
-							m.visualization->UpdateNiceName();
-							mobileGhosts << To<MobileEntity>::Cast( m.visualization);
-						}
-						//probably sattelite, but not gonna go there now
-
+						if (m.visualization->IsStructure())
+							structureGhosts << To<Structure>::Cast(m.visualization);
+						elif (m.visualization->IsMobile())
+							mobileGhosts << To<MobileEntity>::Cast(m.visualization);
+						else
+							LogEvent(EventType::InternalFault,m.visualization.get(),"Unsupported type for ghost insertion");
 					}
 				}
 			}

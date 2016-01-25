@@ -103,7 +103,8 @@ namespace Objects
 
 		void	RenderSimple(Structure&s, bool includeFoundation = false);
 		void	RenderSimple(Orbital::Ship&s);
-		void	RenderSimpleIdentity(Orbital::Ship&s);
+		void	RenderSimpleIdentity(Orbital::Ship&s);	//can't make const because of GetTurretBase
+		void	RenderSimpleIdentity(const Vehicle&v);
 
 
 		/**

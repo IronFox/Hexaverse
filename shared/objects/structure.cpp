@@ -85,7 +85,7 @@ namespace Objects
 		/*static*/ Geometry			VehicleStore::interConnector;
 
 		/*static*/ VehicleConstructionCommand	SkyGate::formerConstructionCommand;
-		/*static*/ SatelliteConstructionCommand	SkyGate::skyHubConstructionCommand;
+		/*static*/ EntityConstructionCommand	SkyGate::orbitalHubConstructionCommand;
 
 
 	#endif
@@ -2330,7 +2330,7 @@ namespace Objects
 		/*virtual override*/ void				SkyGate::VisitAllCommands(FCommandVisitor visitor)
 		{
 			EntityFactory::VisitAllCommands(visitor);
-			visitor(skyHubConstructionCommand);
+			visitor(orbitalHubConstructionCommand);
 			visitor(formerConstructionCommand);
 			Super::VisitAllCommands(visitor);
 		}
@@ -2368,7 +2368,7 @@ namespace Objects
 				}
 				,CommonCmd::MostlyEnabled<PWorldEntity const&>,CommonCmd::AlwaysFalse<PWorldEntity const&>);
 				
-				skyHubConstructionCommand = SatelliteConstructionCommand(int2(5,1), "Construct SkyHub", SkyHub::globalPrototype, [](const PWorldEntity&e)
+				orbitalHubConstructionCommand = EntityConstructionCommand(int2(5,1), "Construct SkyHub", Orbital::Hub::globalPrototype, [](const PWorldEntity&e)
 				{
 					PSkyGate port = To<SkyGate>::DynamicCast(e);
 					if (!port)
@@ -2380,7 +2380,7 @@ namespace Objects
 				{
 					if (!controlsEnabled)
 						return false;
-					return !GetSatellite(e->location.stackID);
+					return Orbital::NothingHere(e->location.stackID);
 				},
 				CommonCmd::AlwaysFalse<PWorldEntity const&>);
 			}

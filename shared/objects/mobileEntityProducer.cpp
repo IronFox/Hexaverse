@@ -36,13 +36,22 @@ namespace Objects
 	}
 
 
+	bool					EntityFactory::WorkItem::IsOrbital() const
+	{
+		#ifdef CLIENT
+			return nonVehiclePrototype && nonVehiclePrototype->IsOrbital();
+		#else
+			return producing->IsOrbital();
+		#endif
+
+	}
 
 	bool					EntityFactory::WorkItem::IsOrbitalShip() const
 	{
 		#ifdef CLIENT
-			return !base;
+			return nonVehiclePrototype && nonVehiclePrototype->IsOrbital() && nonVehiclePrototype->IsMobile();
 		#else
-			return producing->IsOrbital();
+			return producing->IsOrbital() && producing->IsMobile();
 		#endif
 
 	}
@@ -439,8 +448,14 @@ namespace Objects
 		{
 			return queue.IsNotEmpty() ? queue.first().base : nullptr;
 		}
+
+		bool						EntityFactory::ActiveProductionIsOrbital() const
+		{
+			return queue.IsNotEmpty() && queue.first().IsOrbital();
+		}
+
 		
-				String				EntityFactory::JobName(index_t index, const String&itemName, UINT32 roundsLeft)	const
+		String				EntityFactory::JobName(index_t index, const String&itemName, UINT32 roundsLeft)	const
 		{
 			return "#"+String(index)+" "+itemName+ " ("+String(roundsLeft)+")";
 		}
@@ -454,7 +469,7 @@ namespace Objects
 			String name;
 			Component::VehicleBase* base = nullptr;
 			Component::Turret* turret = nullptr;
-			PSatellite sat;
+			PWorldEntity other;
 			if (turretName != ConstName::Empty)
 			{
 				base = Component::GetVehicleBaseByName(baseName);
@@ -467,10 +482,10 @@ namespace Objects
 			}
 			else
 			{
-				sat = GetSatellitePrototypeByName(baseName);
-				ASSERT1__(sat, (int)baseName);
-				price = sat->GetConstructionCost();
-				name = sat->GetTypeName();
+				other = GetAnyNonVehiclePrototypeByName(baseName);
+				ASSERT1__(other, (int)baseName);
+				price = other->GetConstructionCost();
+				name = other->GetTypeName();
 			}
 
 			{
@@ -489,12 +504,17 @@ namespace Objects
 				item.base = base;
 				item.roundsToCompletion = rounds;
 
+				#ifdef CLIENT
+					item.nonVehiclePrototype = other;
+				#endif
+
+
 				#ifdef HAS_WINDOW
-					item.commandToTerminate = FactoryConstructionAbortCommand(int2(5+index,2), JobName(index,item.name,rounds),base,turret,sat,[id,index](const PWorldEntity&e)
+					item.commandToTerminate = FactoryConstructionAbortCommand(int2(5+index,2), JobName(index,item.name,rounds),base,turret,other,[id,index](const PWorldEntity&e)
 					{
 //						PWorkingStructure s = To<WorkingStructure>::DynamicCast(e);
 	//					ASSERT__(s);
-						PEntityFactory p = To<EntityFactory>::DynamicCast(e);
+						EntityFactory*p = e->CastToMutableFactory();
 						ASSERT__(p);
 						if (!index && p->productionDone)
 						{

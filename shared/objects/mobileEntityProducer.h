@@ -59,6 +59,7 @@ namespace Objects
 				String				name;
 				int					cost, roundsToCompletion;
 				Component::VehicleBase*		base=nullptr;	//set for vehicles only
+				PWorldEntity		nonVehiclePrototype;
 			#else
 				PWorldEntity		producing;
 
@@ -119,6 +120,7 @@ namespace Objects
 		#else
 			UINT32					ProductionRounds(const WorkItem&e, bool isActive) const	{return ProductionRounds(e.cost,isActive);}
 			Component::VehicleBase*	GetActiveProductionBase() const;
+			bool					ActiveProductionIsOrbital() const;
 
 		#endif
 

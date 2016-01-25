@@ -438,7 +438,7 @@ namespace AI
 				float badWeight = 0;
 				Objects::ForeachWorldEntity([&goodWeight,&badWeight,reference](const Objects::PWorldEntity&e)
 				{
-					if (e->isMine || e->IsSatellite())
+					if (e->isMine || e->IsOrbital())
 					{
 						//if (distance < 16.f)
 						//	badWeight += 100.f / (1.f + distance);	//repell close vehicles a bit
