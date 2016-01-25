@@ -915,7 +915,7 @@ namespace Objects
 			if (selectedMobileEntity && selectedMobileEntity->IsVehicle())
 			{
 				PVehicle v =  To<Vehicle>::Cast(selectedMobileEntity);
-				if (v->turret->ConsumesResources())
+				if (v->turret->ConsumesResources() && compounds.IsNotEmpty())
 				{
 					v->resourceEnvironment.CheckRefresh(*v);
 					foreach (compounds,c)
@@ -929,7 +929,7 @@ namespace Objects
 			
 		#endif
 
-		if (!doColorCompounds && compoundsColored)
+		if (!doColorCompounds && compoundsColored && compounds.IsNotEmpty())
 		{
 			//if (selectedEntity->IsWorkingStructure())
 			{
