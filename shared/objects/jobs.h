@@ -107,7 +107,7 @@ namespace Objects
 										Super(mineralCosts, v, actuallyConsumesMinerals, jobAutoCompletion, movesToFocusWhenDone), pathChanged(false)	{}
 
 
-			virtual bool				UpdatePath(const MobileEntity&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&_destination) =0;
+			virtual bool				UpdatePath(const MobileEntity&v, const Grid::LCellIdI&origin, Grid::LCellIdI&destination) =0;
 			virtual	serial_size_t		GetSerialSize(bool export_size) const override {return (serial_size_t)(path.GetContentSize() + (export_size ? GetSerialSizeOfSize((serial_size_t)path.length()):0));}
 			virtual	bool				Serialize(IWriteStream&outStream, bool exportSize) const override
 			{
@@ -140,7 +140,7 @@ namespace Objects
 				/**/					DummyPathJob(const MobileEntity&v) : Super(1,v,false,Autocomplete::Always,false) {}
 				virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft(1,v,false);}
 
-				virtual bool			UpdatePath(const MobileEntity&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&_destination)	override
+				virtual bool			UpdatePath(const MobileEntity&v, const Grid::LCellIdI&origin, Grid::LCellIdI&destination)	override
 				{
 					return true;	//dont change anything
 				}
@@ -520,7 +520,7 @@ namespace Objects
 				void					Guess(const MobileEntity&v, const Grid::LCellIdI&origin, index_t myJobIndex, UINT16 & roundsToJobCompletion, UINT16 & mineralCostLeft)	const;
 
 				bool					DoneHere(const Grid::WorldData&world,const Grid::LCellIdI&cell, const Grid::LCellIdI&nextCell)	const;
-				virtual bool			UpdatePath(const MobileEntity&v, const Grid::LCellIdI&origin, const Grid::LCellIdI&_destination)	override;
+				virtual bool			UpdatePath(const MobileEntity&v, const Grid::LCellIdI&origin, Grid::LCellIdI&destination)	override;
 
 
 				virtual begin_t			BeginHere(MobileEntity&v, const Grid::LCellIdI&_destination, bool hasToMoveFirst)	override;
