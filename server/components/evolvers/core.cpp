@@ -20,6 +20,7 @@ namespace Evolver
 		void			ResetTowerAttackAction(float atTime);
 
 
+		void CheckMobileSupply(float&t);
 
 
 		struct TActionReference
@@ -191,6 +192,8 @@ namespace Evolver
 				c.RefreshState(0);
 			});
 
+			float t = 0.f;
+			CheckMobileSupply(t);
 
 
 
@@ -385,7 +388,6 @@ namespace Evolver
 						ResetTowerAttackAction(animationLength);
 						CheckOrbitalSensory(animationLength,World::terrainChanged);
 						World::terrainChanged = false;
-						CheckMobileSupply(animationLength);
 						CheckStructureSupply(animationLength);
 						ProcessStructures1(animationLength);//clears overproduction: must be called after CheckSatelliteSupply()
 						return false;

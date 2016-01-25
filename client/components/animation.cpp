@@ -458,17 +458,17 @@ namespace Animation
 				if (sourceTask.foci.Count())
 				{
 					Grid::LCellIdI loc = sourceTask.foci.first();
-					if (sourceTask.visualizationStructureName != ConstName::Empty)
-					{
-						if (e.IsOrbital())	//up building down
-						{
-							int h = Objects::Orbital::Hub::GetStructureBuildHeight(loc);
-							if (h != Objects::badHeight)
-								loc.height = h;
-						}
-						else  //down building up
-							loc.height = Objects::Orbital::BaseHeight;
-					}
+					//if (sourceTask.visualizationStructureName != ConstName::Empty)
+					//{
+					//	if (e.IsOrbital())	//up building down
+					//	{
+					//		int h = Objects::Orbital::Hub::GetStructureBuildHeight(loc);
+					//		if (h != Objects::badHeight)
+					//			loc.height = h;
+					//	}
+					//	else  //down building up
+					//		loc.height = Objects::Orbital::BaseHeight;
+					//}
 
 					t1.SetLocalizableShape(sourceTask.visualizationStructureName,loc);
 				}

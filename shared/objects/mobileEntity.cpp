@@ -1270,6 +1270,7 @@ namespace Objects
 
 		bool					MobileEntity::TrySelfMaintain(float&atTime, ResourceVector&outMissing)
 		{
+			timeAt = std::max(timeAt,atTime);
 			outMissing.Clear();
 			if (IsIndestructible())
 			{

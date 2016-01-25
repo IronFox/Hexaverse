@@ -119,7 +119,11 @@ namespace Objects
 
 	/*static*/ void			StructureCommand::UpdateTexture(EntityCommand&target, const PStructure&structure, bool isPrototype, const float4&tone /*= float4(0)*/)
 	{
-		GeometryImage::BeginRendering(tone);
+
+		float distanceFactor = 1.f + 0.1f * structure->GetHeight();
+		if (structure->IsOrbital())
+			distanceFactor *= 3;
+		GeometryImage::BeginRendering(tone,distanceFactor);
 
 		UpdateStateColors(structure,tone,isPrototype);
 			

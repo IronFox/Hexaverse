@@ -238,7 +238,8 @@ namespace Objects
 
 			v.level[Resource::Energy] -= EnergyConsumption;
 
-			EntityFactory::Tick(v);
+			if (EntityFactory::queue.IsNotEmpty())
+				EntityFactory::Tick(v);
 		}
 		#endif
 

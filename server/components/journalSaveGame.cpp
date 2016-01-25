@@ -792,9 +792,9 @@ namespace Journal
 			throw RoundException(CLOCATION, "Trying to assign production task to non-producer entity "+e->GetName());
 		}
 		Objects::PWorldEntity produced = desc.Instantiate(e->owner,this->newEntityID,Grid::LCellIdI(0,0));
-		if (produced->IsMobile())
+		//if (produced->IsMobile())
 		{
-			Objects::EntityFactory::WorkItem*item = p->EnqueueProductionOf(To<Objects::MobileEntity>::Cast(produced),insertAt);
+			Objects::EntityFactory::WorkItem*item = p->EnqueueProductionOf(produced,insertAt);
 			if (!item)
 				throw RoundException(CLOCATION,"Failed to enqueue production task");
 			item->id = taskID;
@@ -808,8 +808,8 @@ namespace Journal
 
 			}
 		}
-		else
-			throw RoundException(CLOCATION, "Expected mobile entity being produced by "+e->GetName()+", but got "+produced->GetName());
+		//else
+			//throw RoundException(CLOCATION, "Expected mobile entity being produced by "+e->GetName()+", but got "+produced->GetName());
 	}
 
 	/*virtual override*/ void	Round::NewEntityProduction::Compile(Entry&e) const
