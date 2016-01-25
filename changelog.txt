@@ -1,4 +1,6 @@
 v0.3.12		[Jan 25 2016]
+	+Cleaned up server runtime parameters. All parameters now have long versions (e.g. --port 12345), and short versions (e.g. -p 12345).
+	+Remote control allows to control some aspects of the server from localhost, if --remote is passed as runtime parameter. This feature is still in active development.
 	+Replaced resource probability parameter with density value to better control resource distribution.
 	+Added buttons to start and stop local server.
 	+Q and E now also rotate the camera (like A and D do).
