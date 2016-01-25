@@ -342,6 +342,7 @@ namespace Receiver
 					Journal::currentRound.LogFactionOffline(client->faction);
 					LogEvent(EventType::SessionRelated,peer,"Abandoning faction");
 					Network::playerMap.Unset(client->faction);
+					Channels::factionOffline.SendTo(Network::server,client->faction->id,2);
 					client->faction->online = false;
 					client->faction.reset();
 				}

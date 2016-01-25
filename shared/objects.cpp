@@ -122,7 +122,7 @@ namespace Objects
 		structurePrototypes << Connector::globalPrototype;
 		structurePrototypes << FuelContainer::globalPrototype;
 		structurePrototypes << MineralContainer::globalPrototype;
-		//structurePrototypes << MunitionStorage::globalPrototype;
+		structurePrototypes << MunitionStorage::globalPrototype; //DO NOT COMMENT. Nexus bases feature these
 		structurePrototypes << UraniumStorage::globalPrototype;
 		structurePrototypes << NexusPort::globalPrototype;
 		structurePrototypes << VehicleStore::globalPrototype;
