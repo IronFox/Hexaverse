@@ -1,3 +1,8 @@
+v0.3.13		[Jan 25 2016]
+	*Fixed abandoned factions not registered as offline by other connected clients.
+	*Fixed server not changing working directory to directory of executable when launched with a different working directory.
+	+H now hides the control GUI and contact list.
+
 v0.3.12		[Jan 25 2016]
 	+Cleaned up server runtime parameters. All parameters now have long versions (e.g. --port 12345), and short versions (e.g. -p 12345).
 	+Remote control allows to control some aspects of the server from localhost, if --remote is passed as runtime parameter. This feature is still in active development.
