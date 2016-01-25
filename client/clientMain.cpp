@@ -991,14 +991,14 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			//Grid::visibleOrbitGrid.StripColor();
 
 		#ifndef CONNECTOR_LESS
-		if (Objects::selectedVehicle)
+		if (Objects::selectedMobileEntity)
 		{
 			//if (Objects::selectedVehicle->tasks.IsNotEmpty() && Objects::selectedVehicle->tasks.Peek().job && Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft)
 			Objects::ResourceVector change;
-			const Objects::ResourceVector&current = Objects::selectedVehicle->currentStorage;
-			const Objects::ResourceVector max = Objects::selectedVehicle->GetMaxStorageCapacity();
+			const Objects::ResourceVector&current = Objects::selectedMobileEntity->currentStorage;
+			const Objects::ResourceVector max = Objects::selectedMobileEntity->GetMaxStorageCapacity();
 			int sum = 0;
-			foreach (Objects::selectedVehicle->myTasks,t)
+			foreach (Objects::selectedMobileEntity->myTasks,t)
 				if (t->job)
 					sum += t->job->mineralCostLeft;
 			if (sum)
@@ -1017,10 +1017,10 @@ void	OnAppear(const Objects::PWorldEntity&e)
 						#endif
 						current,max);
 		}
-		else if (Objects::selectedEntity && Objects::selectedEntity->IsMobile())
-		{
-			FATAL__("not implemented yet");
-		}
+		//else if (Objects::selectedEntity && Objects::selectedEntity->IsMobile())
+		//{
+		//	FATAL__("not implemented yet");
+		//}
 		else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
 		{
 			if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
@@ -2281,6 +2281,12 @@ String GenerateOreName(Random&random)
 
 #ifdef HAS_WINDOW
 
+	void ToggleControlGUI()
+	{
+		UI::showControlsAndContacts = !UI::showControlsAndContacts;
+		UI::HexGrid::Configure(Objects::selectedEntity);
+	}
+
 	void BeginCameraDrag()
 	{
 		Tutorial::lastDelayingEvent = timer.Now();
@@ -2335,7 +2341,7 @@ String GenerateOreName(Random&random)
 					{
 						//Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(Objects::selectedEntity);
 						//Objects::MobileEntityProducer*p = ws
-						if (Objects::selectedEntity->CastToFactory())
+						if (!Objects::selectedEntity->IsMobile() && Objects::selectedEntity->CastToFactory())
 						{
 							if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 							{
@@ -3029,6 +3035,8 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::Tab, UI::ShowSession);
 			Engine::input.bind(Key::T,[](){}, QueryAndSendChatMessage);
 			Engine::input.bind(Key::R,ToggleResourceView);
+
+			Engine::input.bind(Key::H,ToggleControlGUI);
 
 			Engine::input.bind(Key::MouseButton0, Select, Dialog::HandleMouseUp);
 			Engine::input.bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);

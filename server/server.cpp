@@ -583,7 +583,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 		TCP::PPeer peer = client->peer.lock();
 		if (peer)
 		{
-			if (!client->faction->CanSee(attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
+			if (!client->CanSee(attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
 				Channels::attackTrajectory.SendTo(peer,roughAttack);
 			Channels::explosion.SendTo(peer,explosion);
 		}
@@ -1278,7 +1278,7 @@ int main( int argc, const char* argv[])
 			}
 	//		#ifdef _DEBUG
 		//	#endif
-			if (FileSystem::IsFile(dir + StringW(FOLDER_SLASH_STR)+"server.ini"))
+			if (FileSystem::IsFile(dir + "/config/declaration.xml"))
 				FileSystem::SetWorkingDirectory(dir);
 			//ShowMessageW(dir);
 		}

@@ -29,7 +29,7 @@ namespace Objects
 	public:
 		#ifdef WIRELESS_VEHICLES
 			Grid::LowSetup::TVolumeDescriptor desc;
-			Buffer0<index_t>	sourceCompounds;
+			Buffer0<UINT32>		sourceCompounds;
 
 			void				GetOwnCompoundsIn(const OwnerParameter&p, const Grid::LowSetup::TVolumeDescriptor&desc);
 

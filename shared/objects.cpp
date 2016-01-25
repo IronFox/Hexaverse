@@ -122,7 +122,7 @@ namespace Objects
 		structurePrototypes << Connector::globalPrototype;
 		structurePrototypes << FuelContainer::globalPrototype;
 		structurePrototypes << MineralContainer::globalPrototype;
-		//structurePrototypes << MunitionStorage::globalPrototype;
+		structurePrototypes << MunitionStorage::globalPrototype; //DO NOT COMMENT. Nexus bases feature these
 		structurePrototypes << UraniumStorage::globalPrototype;
 		structurePrototypes << NexusPort::globalPrototype;
 		structurePrototypes << VehicleStore::globalPrototype;
@@ -302,8 +302,10 @@ namespace Objects
 	{
 		#ifdef HAS_WINDOW
 			Renderer::Destroy();
-			skyLinks.Clear();
 		//	hexGrid.Clear();
+		#endif
+		#ifdef CLIENT
+			skyLinks.Clear();
 		#endif
 		structures.Clear();
 		vehicles.Clear();
@@ -727,9 +729,7 @@ namespace Objects
 		vehicleGrid.Fill(PVehicle());
 		structureGrid.Fill(PStructure());
 		#ifdef CLIENT
-			#ifdef HAS_WINDOW
-				skyLinks.Clear();
-			#endif
+			skyLinks.Clear();
 			Marker::FlushAll();
 			#ifndef NO_HIBERNATION
 				uplinkTraffic = 0;

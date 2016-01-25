@@ -30,6 +30,7 @@ namespace UI
 	{
 		namespace DX11 = Engine::DX11;
 
+		extern bool showControlsAndContacts /*=true*/;
 
 		class IconItem
 		{

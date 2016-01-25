@@ -17,6 +17,7 @@
 
 		namespace DX11 = Engine::DX11; //!< Shortcut
 
+		bool showControlsAndContacts = true;
 
 
 		void	ShowSession()
@@ -1066,7 +1067,15 @@
 			}
 
 
-
+			void		ClearContacts()
+			{
+				DeleteAllCellsOfType(GridCell::ContactListEntry);
+				DeleteAllCellsOfType(GridCell::ContactListLeft);
+				DeleteAllCellsOfType(GridCell::ContactListRight);
+				DeleteAllCellsOfType(GridCell::OwnedListEntry);
+				DeleteAllCellsOfType(GridCell::OwnedListLeft);
+				DeleteAllCellsOfType(GridCell::OwnedListRight);
+			}
 
 			void					RefreshContacts()
 			{
@@ -1091,12 +1100,7 @@
 
 				if (rightCommand)
 					rightCommand->coords.x = int(ContactListOffset.x + 1+currentContactListWidth);
-				DeleteAllCellsOfType(GridCell::ContactListEntry);
-				DeleteAllCellsOfType(GridCell::ContactListLeft);
-				DeleteAllCellsOfType(GridCell::ContactListRight);
-				DeleteAllCellsOfType(GridCell::OwnedListEntry);
-				DeleteAllCellsOfType(GridCell::OwnedListLeft);
-				DeleteAllCellsOfType(GridCell::OwnedListRight);
+				ClearContacts();
 
 				{
 					static StringTable<Buffer0<Objects::PWorldEntity>,Swap>	hostileCollection, friendlyCollection;
@@ -1286,16 +1290,20 @@
 			{
 				DeleteAllCellsOfType(GridCell::EntityCommand);
 
-				at = int2(5,1);
-				foreach (Objects::globalCommands,cmd)
-					VisitCommand(*cmd);
-				Next();
-				Next();
+				if (showControlsAndContacts)
+				{
+					at = int2(5,1);
+					foreach (Objects::globalCommands,cmd)
+						VisitCommand(*cmd);
+					Next();
+					Next();
+				}
 
 				if (e)
 				{
 					hasFocusButton = true;
-					e->VisitAllCommands(VisitCommand);
+					if (showControlsAndContacts)
+						e->VisitAllCommands(VisitCommand);
 
 					selectedFocus = EntityFocusCommand(e);
 					selectedFocus.coords = GetFocusLocation();
@@ -1319,7 +1327,10 @@
 
 
 
-				RefreshContacts();
+				if (showControlsAndContacts)
+					RefreshContacts();
+				else
+					ClearContacts();
 
 			}
 		}
