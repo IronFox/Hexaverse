@@ -583,7 +583,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 		TCP::PPeer peer = client->peer.lock();
 		if (peer)
 		{
-			if (!client->faction->CanSee(attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
+			if (!client->CanSee(attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
 				Channels::attackTrajectory.SendTo(peer,roughAttack);
 			Channels::explosion.SendTo(peer,explosion);
 		}
