@@ -938,7 +938,7 @@ namespace Reflection
 			}
 		}
 		else
-			if (readOriginal && !allGood)
+			if (readOriginal && !allGood && !rewrite)
 			{
 				FATAL__("There were errors while trying to parse original configuration file "+String(configName)+". Fix the errors and restart the application.\nCheck your server logs (My Documents/My Games/Hexaverse/server/logs) for details. Redownloading the application should also fix the issue.")
 			}
