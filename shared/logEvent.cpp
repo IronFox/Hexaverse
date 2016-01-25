@@ -101,6 +101,7 @@ namespace Logging
 		#ifndef HAS_WINDOW
 		consoleThread.Begin();
 		#endif
+		LogEvent(EventType::SessionRelated,"Logging enabled using out path '"+String(path)+"'" );
 	}
 
 

@@ -2281,6 +2281,12 @@ String GenerateOreName(Random&random)
 
 #ifdef HAS_WINDOW
 
+	void ToggleControlGUI()
+	{
+		UI::showControlsAndContacts = !UI::showControlsAndContacts;
+		UI::HexGrid::Configure(Objects::selectedEntity);
+	}
+
 	void BeginCameraDrag()
 	{
 		Tutorial::lastDelayingEvent = timer.Now();
@@ -2335,7 +2341,7 @@ String GenerateOreName(Random&random)
 					{
 						//Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(Objects::selectedEntity);
 						//Objects::MobileEntityProducer*p = ws
-						if (Objects::selectedEntity->CastToProducer())
+						if (!Objects::selectedEntity->IsSatellite() && Objects::selectedEntity->CastToProducer())
 						{
 							if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 							{
@@ -3022,6 +3028,8 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::Tab, UI::ShowSession);
 			Engine::input.bind(Key::T,[](){}, QueryAndSendChatMessage);
 			Engine::input.bind(Key::R,ToggleResourceView);
+
+			Engine::input.bind(Key::H,ToggleControlGUI);
 
 			Engine::input.bind(Key::MouseButton0, Select, Dialog::HandleMouseUp);
 			Engine::input.bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
