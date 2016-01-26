@@ -4,7 +4,9 @@ v0.3.13		[Jan 25 2016]
 	*Fixed server crashing when relaying explosion trajectories to spectator factions (thanks to Alex).
 	>Increased contrast of range visualizations (attack/sensor).
 	>Improved appearance of lava (replaced sin-equations with perlin noise).
+	>Improved initial faction placement.
 	-Removed confirmation from server disconnection and faction abandoning. Since these are reversible operations the confirmation makes no sense.
+	-Removed control icons when selecting units not owned by the local client.
 	+Terrain see-through now displays lava toned down rather than black.
 	+Pressing H now hides the control GUI and contact list.
 
