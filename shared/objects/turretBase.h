@@ -28,12 +28,12 @@ namespace Objects
 			float lastRange = 0.f;
 			float lastExp = 0.f;
 			TMatrix4<> matrix;
-			DX11::InstructionBlock32	attackInstruction;
+			DX11::InstructionBlock32	attackInstruction,extendedInstruction;
 
+			static void		MakeHull(DX11::InstructionBlock32&target, const TMatrix4<>&matrix, float flatRange, float explosionRadius, const TVec3<>&center);
 
 		public:
-			void			Render(const Grid::LCellIdI&cell, float zOffset, float flatRange, float explosionRadius, const float4&color);
-
+			void			Render(const Grid::LCellIdI&cell, float zOffset, float flatRange, float explosionRadius, const float4&color, bool extended);
 		};
 	#endif
 
