@@ -680,6 +680,10 @@ namespace Network
 
 			ApplyPlanetConfig(cr.planetConfig);
 
+			myID = TUniqueID::Empty();
+			myFaction.reset();
+			myIDString = myID.ToString();
+
 			Network::gameFlags = cr.info.gameFlags;
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);

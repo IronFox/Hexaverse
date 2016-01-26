@@ -1,0 +1,4 @@
+unclear, observed in ft_wireless_vehicles.
+possible loss of constructed tower when forced to manually relocate after construction completion.
+so far unable to reproduce. manual relocation, when forced, appears to work in master branch.
+might be related to ft_wireless_vehicles branch changes.
