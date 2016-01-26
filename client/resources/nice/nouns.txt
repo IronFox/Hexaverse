@@ -1,7 +1,6 @@
 alpaca
 ant
 ape
-ass
 donkey
 baboon
 badger
