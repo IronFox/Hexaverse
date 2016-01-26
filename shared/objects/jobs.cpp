@@ -1338,10 +1338,10 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ bool				Sequence::UpdatePath(const MobileEntity&v, const Grid::LCellIdI&_origin, const Grid::LCellIdI&_destination)
+		/*virtual override*/ bool				Sequence::UpdatePath(const MobileEntity&v, const Grid::LCellIdI&_origin, Grid::LCellIdI&destination)
 		{
 			const Grid::WorldData&world = v.owner->currentState;
-			Grid::LCellIdI destination = _destination;
+//			Grid::LCellIdI destination = _destination;
 			if (v.IsVehicle())
 			{
 				while (!world.LowCellIsClearIgnoreStructure(destination))
@@ -1436,7 +1436,7 @@ namespace Objects
 			
 			//if (destination != v.location)
 			{
-				if (!UpdatePath(v,v.location,_destination))
+				if (!UpdatePath(v,v.location,destination))
 				{
 					LogEvent(EventType::CommandRejected,&v, GetName()+": Unable to plot path to destination");
 					return CannotStartAbort;

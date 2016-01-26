@@ -480,6 +480,19 @@ namespace Grid
 			extern DX11::ObjectBuffer<float4>	ParaboloidColor_FlatRadius;
 			extern DX11::ObjectBuffer<VecN<float,8> > atmosphereConfig;
 			extern DX11::ObjectBuffer<float4> sunDirection,sunColor;
+
+
+			struct THeightMapOrientation
+			{
+				TMatrix4<>	orientation0,
+							orientation1,
+							orientation2;
+			};
+
+			static_assert(sizeof(THeightMapOrientation)==sizeof(float)*16*3,"Sruct alignment out of wack");
+			extern DX11::ObjectBuffer<THeightMapOrientation>	heightMapOrientation;	//used for lava
+			extern DX11::Texture								cubeHeightMap;	//used for lava
+
 			
 			extern DX11::BaseInstructionBlock terrainBase, terrainSphereBase, 
 											terrainParaboloidBase, terrainShadowBase, 

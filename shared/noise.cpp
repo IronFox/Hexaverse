@@ -28,10 +28,6 @@ BasePerlinNoise::BasePerlinNoise()
 		p[256+i] = p[i] = PerlinNoisePermutation::permutation[i];
 }
 
-void BasePerlinNoise::Create()
-{
-//	noiseMap.LoadInts(512,1,1,p);
-}
 
 float NSym(float x, float y, float z)
 {

@@ -84,5 +84,9 @@ Effective only if CONNECTOR_LESS is not defined.
 Define in the project settings, not here.
 */
 
+/* DEBUG_ACCESS_RESTRICTIONS
+If defined, activates visual controls on hostile entities and ghosts. Server must reject any such attempts.
+Define in the project settings, not here.
+*/
 
 #endif

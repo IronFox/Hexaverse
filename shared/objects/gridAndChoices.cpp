@@ -1716,12 +1716,42 @@ namespace Objects
 
 
 
-	static count_t GetConstructionWays(const Grid::WorldData&world, bool ignoreWater, bool doFloat, bool canGoDownVertically,
+	static count_t GetConstructionWays(const Grid::WorldData&world, bool ignoreWater, bool flat, bool canGoDownVertically,
 										const Vehicle*v,  const Grid::LCellIdI&location, 
 										Grid::LCellIdI*outChoices, const Grid::LCellIdI&destination)
 	{
 		index_t rs = 0;
 		const auto&n = Grid::low.grid.GetCell(location.stackID).neighborhood;
+
+
+		if (flat)
+		{
+			for (int i = 0; i < n.numNeighbors; i++)
+			{
+				const Grid::LCellIdI	cell(n.neighborID[i], location.height);
+
+				bool okay = cell.height < Grid::CellStack::HalfRange && cell.height >= -Grid::CellStack::HalfRange;
+				if (okay)
+				{
+					for (int j = cell.height; j > location.height; j--)
+						if (!world.LowCellIsClear(Grid::LCellIdI(location.stackID, j)))
+						{
+							okay = false;
+							break;
+						}
+				}
+				if (!okay)
+					continue;
+
+				if ( ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, true) )
+				{
+					(*outChoices++) = cell;
+					rs++;
+				}
+			}
+
+			return rs;
+		}
 
 		for (int j = -1; j <= 1; j++)
 		{
@@ -1754,7 +1784,7 @@ namespace Objects
 				if (!okay)
 					continue;
 
-				if ( ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, doFloat) )
+				if ( ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, false) )
 //				if ((cell == destination || world.LowCellIsClear(cell)) && (v->CanStandOn(world,cell-1,ignoreWater)))
 				{
 					(*outChoices++) = cell;
@@ -1788,7 +1818,7 @@ namespace Objects
 							break;
 						}
 			}
-			if ( okay && ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, doFloat) )
+			if ( okay && ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, false) )
 //				if ((cell == destination || world.LowCellIsClear(cell)) && (v->CanStandOn(world,cell-1,ignoreWater)))
 			{
 				(*outChoices++) = cell;
@@ -2337,8 +2367,10 @@ namespace Objects
 	}
 
 	
-	bool AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool doFloat, const Grid::LCellIdI&from, Grid::LCellIdI to, BasicBuffer<Grid::LCellIdI>&oPath)
+	bool AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, BasicBuffer<Grid::LCellIdI>&oPath)
 	{
+		if (flat)
+			to.height = from.height;
 		if (from == to)
 			return true;
 		const Grid::WorldData&world = 
@@ -2347,13 +2379,14 @@ namespace Objects
 		#else
 			vehicle->owner->currentState;
 		#endif
-		if (!vehicle->CanStandOn(world,to -1,ignoreWater,doFloat) /*|| !Grid::LowCellIsClear(to)*/)// || !NothingHere(destination))
-		{
-			if (doFloat)
-				to++;
-			if (!vehicle->CanStandOn(world,to -1,ignoreWater,doFloat) /*|| !Grid::LowCellIsClear(to)*/)// || !NothingHere(destination))
-				return false;
-		}
+		if (!flat)
+			if (!vehicle->CanStandOn(world,to -1,ignoreWater,false) /*|| !Grid::LowCellIsClear(to)*/)// || !NothingHere(destination))
+			{
+				if (flat)
+					to++;
+				if (!vehicle->CanStandOn(world,to -1,ignoreWater,false) /*|| !Grid::LowCellIsClear(to)*/)// || !NothingHere(destination))
+					return false;
+			}
 
 		//Timer::Time t0 = timer.Now();
 		Grid::LCellIdI	possibilities[6 * 3 + 2];
@@ -2419,7 +2452,7 @@ namespace Objects
 				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
 			}
-			count_t ways = GetConstructionWays(world, ignoreWater, doFloat, cellID == from, vehicle, cellID, possibilities, to);
+			count_t ways = GetConstructionWays(world, ignoreWater, flat, cellID == from, vehicle, cellID, possibilities, to);
 			ASSERT_LESS_OR_EQUAL__(ways,ARRAYSIZE(possibilities));
 
 

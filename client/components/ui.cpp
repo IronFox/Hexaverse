@@ -1290,6 +1290,12 @@
 			{
 				DeleteAllCellsOfType(GridCell::EntityCommand);
 
+				bool showControls = showControlsAndContacts && e
+						#ifndef DEBUG_ACCESS_RESTRICTIONS
+							&& e->isMine && e->health > 0
+						#endif
+					 ;
+
 				if (showControlsAndContacts)
 				{
 					at = int2(5,1);
@@ -1302,7 +1308,7 @@
 				if (e)
 				{
 					hasFocusButton = true;
-					if (showControlsAndContacts)
+					if (showControls)
 						e->VisitAllCommands(VisitCommand);
 
 					selectedFocus = EntityFocusCommand(e);

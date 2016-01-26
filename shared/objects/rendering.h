@@ -56,11 +56,11 @@ namespace Objects
 	extern DX11::BaseInstructionBlock		shadowInstruction;
 
 
-	inline	int DetermineLODInstruction(float radius)
+	inline	int DetermineLODInstruction(float distance, float radius)
 	{
 		//outerDistance = std::max(0.f,outerDistance);
-		float d = log(1.f + std::max(0.f,radius)*20);
-		return clamp((int)d,0,3);
+		float d = log(1.f + std::max(0.f,(distance-radius)/radius));
+		return 3 - clamp((int)d,0,3);
 	}
 
 	
@@ -74,6 +74,13 @@ namespace Objects
 	namespace Renderer
 	{
 		extern Buffer0<PTurretBase>		animatedTurrets;
+
+		/**
+		Scene distance between core range visualization and the shadow behind it (to increase contrast).
+		The shadow is rendered first and surrounds the actual visualization
+		*/	
+		static const float RangeShadowExtension = 0.2f;
+		static const float RangeShadowOpacity = 0.2f;
 
 		/**
 		Creates/loads all commonly used rendering resources (shaders, for the most part)
@@ -161,6 +168,12 @@ namespace Objects
 		void	RenderTranslucentBeams();
 
 
+		/**
+		Renders all ranges (attack, sensor, etc) of the selected entity and other entities if the respective settings are active.
+		@param extendedShadow if true renders shaded and extended versions of the range spheres/cylinders/paraboloids
+		*/
+		void	RenderRanges(bool extendedShadow);
+
 
 		#ifdef CASCADING_SHADOW
 			/**
@@ -178,7 +191,7 @@ namespace Objects
 
 		void	RenderRangeSphere(const TVec3<>&center, float radius, const float4&color);
 		void	RenderRangeCylinder(const TVec3<>&direction, float bottomRadius, float topRadius, float bottom, float top, const float4&color);
-		void	RenderRange(const Grid::LCellIdI&location, float zOffset, const PTurretBase&base, float opacity);
+		void	RenderRange(const Grid::LCellIdI&location, float zOffset, const PTurretBase&base, const float4&color, bool extended);
 
 	}
 
