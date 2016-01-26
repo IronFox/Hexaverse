@@ -1,3 +1,20 @@
+v0.3.13		[Jan 25 2016]
+	*Fixed abandoned factions not registering as offline to other connected clients.
+	*Fixed server not changing working directory to directory of executable when launched in a different working directory.
+	*Fixed server crashing when relaying explosion trajectories to spectator factions (thanks to Alex).
+	+Increased contrast of range visualizations (attack/sensor).
+	+Improved appearance of lava (replaced sin-equations with perlin noise).
+	+Terrain see-through now displays lava toned down rather than black.
+	+Pressing H now hides the control GUI and contact list.
+
+v0.3.12		[Jan 25 2016]
+	+Cleaned up server runtime parameters. All parameters now have long versions (e.g. --port 12345), and short versions (e.g. -p 12345).
+	+Remote control allows to control some aspects of the server from localhost, if --remote is passed as runtime parameter. This feature is still in active development.
+	+Replaced resource probability parameter with density value to better control resource distribution.
+	+Added buttons to start and stop local server.
+	+Q and E now also rotate the camera (like A and D do).
+	*Fixed default planet types.
+	
 v0.3.11		[Jan 14 2016]
 	+Server ports can now be altered by specifying 'port 12345' as runtime parameter when launching the server.
 	+Clients can connect to different ports by specifying a port segment in the respective server url ('host:port').
@@ -16,7 +33,7 @@ v0.3.9		[Nov 20 2015]
 
 v0.3.8		[Nov 9 2015]
 	+Added option to undo round-end request.
-	+Auto-savegames are created at the beginning of the animation phase now.
+	+Auto-savegames are created at the beginning of the animation phase now to reduce noticable delay.
 	*Fixed towers now firing due to self-obstruction.
 
 v0.3.7		[Nov 8 2015]
@@ -34,7 +51,7 @@ v0.3.7		[Nov 8 2015]
 	
 v0.3.6		[Nov 5 2015]
 	Limited zooming range.
-	Increased size of round timer.
+	Increased visual size of round timer.
 	Now computing struct counts client-side, rather than transferring them.
 	
 
@@ -42,12 +59,12 @@ v0.3.2		[Oct 14 2015]
 	Improved GUI system, tutorial messages, and general application stability.
 
 v0.3.1		[Aug 30 2015]
-	Disabled hibernation system
-	Moved planet types from server/server.ini to server/config/planets/*.ini
-	Introduced table in server.ini that allows to declare the maximum number of units per type
-	Introduced 'Build Bridge to' command for Terraformers
-	VehiclePlants no longer have grayed out buttons but rather tell the user what needs to be done to continue
-	VehiclePlants now have the first base selected by default (thanks to Christian)
+	Disabled hibernation system.
+	Moved planet types from server/server.ini to server/config/planets/*.ini.
+	Introduced table in server.ini that allows to declare the maximum number of units per type.
+	Introduced 'Build Bridge to' command for Terraformers.
+	VehiclePlants no longer have grayed out buttons but rather tell the user what needs to be done to continue.
+	VehiclePlants now have the first base selected by default (thanks to Christian).
 
 v0.3.0		[Aug 25 2015]
 	Added satellite grid and view

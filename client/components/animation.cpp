@@ -833,8 +833,13 @@ namespace Animation
 		}
 
 
-		if (w)
+		if (w && w->isInserted)
+		{
+			#ifndef CONNECTOR_LESS
+				ASSERT__(s->compoundID != Objects::Compound::InvalidNetwork);
+			#endif
 			s->GetCompound().RefreshState(0);
+		}
 
 		#ifdef HAS_WINDOW
 			OnSelectionChange(true);	//could be affecting selected network

@@ -276,6 +276,8 @@ namespace Objects
 				}
 				else
 					FATAL__("Unexpected entity type: "+GetName());
+				if (limit == 0xffff)
+					return "";
 
 				return " Deployed: "+String(cnt)+"/"+String(limit);
 

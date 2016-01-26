@@ -381,14 +381,17 @@ namespace GUIElements
 		{
 			//String set = baseLabel;
 			bool changed =false;
-			if (check && !check())
+			if (check)
 			{
+				if (!check())
+				{
 				
-				//set += " (not right now)";
-				changed = SetEnabled(false);
+					//set += " (not right now)";
+					changed = SetEnabled(false);
+				}
+				else
+					changed = SetEnabled(true);
 			}
-			else
-				changed = SetEnabled(true);
 
 			//Super::SetText(set);
 			return changed;

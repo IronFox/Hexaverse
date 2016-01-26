@@ -26,6 +26,16 @@
 	};
 #endif
 
+TextureCube<float>	HeightMap;
+SamplerState			HeightMapSampler;
+
+cbuffer HeightMapOrientation
+{
+	float4x4	HeightMapOrientation0,
+				HeightMapOrientation1,
+				HeightMapOrientation2;
+};
+
 cbuffer Time
 {
 	float	Time;
@@ -65,7 +75,23 @@ float4 Amplitude(float3 p, float frequency, float tfrequency, float offset, floa
 
 float4 Amplitude(float3 p, float frequency, float offset)
 {
+	p.xyz += float3(-17.9837,79.334698,-127.0346);
 	return Amplitude(p,frequency,0.7*frequency,offset,1.0) + Amplitude(p,frequency,-0.7*frequency,PI *1.0124125* offset,-1.0);
+}
+
+float SampleHeightMap(float3 p)
+{
+	return
+		(
+		HeightMap.SampleLevel(HeightMapSampler,p,0.0)
+		*
+		HeightMap.SampleLevel(HeightMapSampler,mul(HeightMapOrientation0,float4(p,1.0)).xyz,0.0)
+		*
+		HeightMap.SampleLevel(HeightMapSampler,mul(HeightMapOrientation1,float4(p,1.0)).xyz,0.0)
+		*
+		HeightMap.SampleLevel(HeightMapSampler,mul(HeightMapOrientation2,float4(p,1.0)).xyz,0.0)
+		)
+		;
 }
 
 
@@ -100,7 +126,9 @@ void vsMain(A2V input, out V2P output)
 	comb = clamp(comb*2.0,0.0,1.0);
 	//comb = 1.0 - sqr(1.0 - comb
 
-	output.glowColor *= comb*1.6+0.4;//sqr(comb+1.0);
+	output.glowColor *= SampleHeightMap(input.position.xyz)*7.0 + 0.2;
+	//output.glowColor *= sqr(sqr(SampleHeightMap(input.position.xyz)))*25.0*25.0*5.0 + 0.4;
+	//comb*1.6+0.4;
 
 
 	output.color.rgb *= SunColor.rgb;

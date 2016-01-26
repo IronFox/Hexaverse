@@ -17,6 +17,7 @@
 
 		namespace DX11 = Engine::DX11; //!< Shortcut
 
+		bool showControlsAndContacts = true;
 
 
 		void	ShowSession()
@@ -1156,7 +1157,15 @@
 			}
 
 
-
+			void		ClearContacts()
+			{
+				DeleteAllCellsOfType(GridCell::ContactListEntry);
+				DeleteAllCellsOfType(GridCell::ContactListLeft);
+				DeleteAllCellsOfType(GridCell::ContactListRight);
+				DeleteAllCellsOfType(GridCell::OwnedListEntry);
+				DeleteAllCellsOfType(GridCell::OwnedListLeft);
+				DeleteAllCellsOfType(GridCell::OwnedListRight);
+			}
 
 			void					RefreshContacts()
 			{
@@ -1181,12 +1190,7 @@
 
 				if (rightCommand)
 					rightCommand->coords.x = int(ContactListOffset.x + 1+currentContactListWidth);
-				DeleteAllCellsOfType(GridCell::ContactListEntry);
-				DeleteAllCellsOfType(GridCell::ContactListLeft);
-				DeleteAllCellsOfType(GridCell::ContactListRight);
-				DeleteAllCellsOfType(GridCell::OwnedListEntry);
-				DeleteAllCellsOfType(GridCell::OwnedListLeft);
-				DeleteAllCellsOfType(GridCell::OwnedListRight);
+				ClearContacts();
 
 				{
 					static StringTable<Buffer0<Objects::PWorldEntity>,Swap>	hostileCollection, friendlyCollection;
@@ -1376,16 +1380,26 @@
 			{
 				DeleteAllCellsOfType(GridCell::EntityCommand);
 
-				at = int2(5,1);
-				foreach (Objects::globalCommands,cmd)
-					VisitCommand(*cmd);
-				Next();
-				Next();
+				bool showControls = showControlsAndContacts && e
+						#ifndef DEBUG_ACCESS_RESTRICTIONS
+							&& e->isMine && e->health > 0
+						#endif
+					 ;
+
+				if (showControlsAndContacts)
+				{
+					at = int2(5,1);
+					foreach (Objects::globalCommands,cmd)
+						VisitCommand(*cmd);
+					Next();
+					Next();
+				}
 
 				if (e)
 				{
 					hasFocusButton = true;
-					e->VisitAllCommands(VisitCommand);
+					if (showControls)
+						e->VisitAllCommands(VisitCommand);
 					if (e->IsVehicle())
 					{
 						Objects::PVehicle v = To<Objects::Vehicle>::Cast(e);
@@ -1459,7 +1473,10 @@
 
 
 
-				RefreshContacts();
+				if (showControlsAndContacts)
+					RefreshContacts();
+				else
+					ClearContacts();
 
 			}
 		}
@@ -1852,11 +1869,14 @@
 					last = &e;
 					lastDeployed = e.CompileDeploymentCount(e.owner);
 				}
-				textout.PushColorState();
-				textout.color(0.6,0.7,1.f);
-				textout << nl << lastDeployed;
+				if (lastDeployed.IsNotEmpty())
+				{
+					textout.PushColorState();
+					textout.color(0.6,0.7,1.f);
+					textout << nl << lastDeployed;
 
-				textout.PopColorState();
+					textout.PopColorState();
+				}
 
 			}
 			textout << nl;
