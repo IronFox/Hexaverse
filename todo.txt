@@ -1,4 +1,3 @@
-somehow increase attack spheres/paraboloid contrast on lava planets (almost invisible, much like sensor range on desert planets)
 
 button to hide paths of non-selected entity
 
@@ -8,7 +7,6 @@ dying factions should not cause emp areas to become inaccessible
 
 lava ship
 
-see-through not blackening lava. maybe just darken everything?
 
 flash new-round button when all others have finished their round and nothing apparent needs instructions right now
 
@@ -118,6 +116,8 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+somehow increase attack spheres/paraboloid contrast on lava planets (almost invisible, much like sensor range on desert planets) //now rendering black spheres around actual range spheres to increase contrast
+see-through not blackening lava. maybe just darken everything? //lava is darkened but not blackened anymore
 start local server button in client 
 remote server control, including local starting // partially implemented
 server async logging // doesn't seem necessary for files, and possibly problematic with message loss in case of crash. console output is now async
