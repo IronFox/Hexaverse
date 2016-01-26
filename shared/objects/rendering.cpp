@@ -77,7 +77,7 @@ namespace Objects
 	void Renderer::RenderRangeSphere(const TVec3<>&center, float radius, const float4&color)
 	{
 		float d = Vec::distance(Camera::scene.GetAbsoluteLocation(),center);
-		int instructionIndex = DetermineLODInstruction(radius / d);
+		int instructionIndex = DetermineLODInstruction(d,radius);
 		if (sphereInstruction[instructionIndex].shader.IsEmpty())
 		{
 			sphereInstruction[instructionIndex].SetBase(jobShader);
@@ -92,13 +92,12 @@ namespace Objects
 				
 		display.SetObjectMatrix(scaled);
 		display.Render(sphereInstruction[instructionIndex],true);
-
 	}
 
 	void	Renderer::RenderRangeCylinder(const TVec3<>&direction, float bottomRadius, float topRadius, float bottom, float top, const float4&color)
 	{
 		float d = Vec::distance(Camera::scene.GetAbsoluteLocation(),direction*top);
-		int instructionIndex = DetermineLODInstruction(topRadius / d);
+		int instructionIndex = DetermineLODInstruction(d,topRadius);
 		if (cylinderInstruction[instructionIndex].shader.IsEmpty())
 		{
 			cylinderInstruction[instructionIndex].SetBase(cylinderShader);
@@ -118,7 +117,7 @@ namespace Objects
 
 	
 
-	void	Renderer::RenderRange(const Grid::LCellIdI&location, float zOffset, const PTurretBase&base, float opacity)
+	void	Renderer::RenderRange(const Grid::LCellIdI&location, float zOffset, const PTurretBase&base, const float4&color, bool extended)
 	{
 		switch (base->turret->trajectoryType)
 		{
@@ -126,14 +125,18 @@ namespace Objects
 			{
 				base->paraboloidBuffer.Render(location, 
 					zOffset,base->GetFlatAttackRange(),
-					base->turret->explosionRadius,float4(1,0,0,opacity)
+					base->turret->explosionRadius,color,
+					extended
 					);
 			}
 			break;
 			case TrajectoryType::Missile:
 			{
 				const TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
-				RenderRangeSphere(d * (Grid::ToRadius(location.height)+zOffset),base->GetFlatAttackRange() + base->turret->explosionRadius,float4(1,0,0,opacity));
+				float explosionRadius = base->turret->explosionRadius;
+				if (extended)
+					explosionRadius += RangeShadowExtension;
+				RenderRangeSphere(d * (Grid::ToRadius(location.height)+zOffset),base->GetFlatAttackRange() + explosionRadius,color);
 			}
 			break;
 			case TrajectoryType::VerticalBeam:
@@ -142,7 +145,10 @@ namespace Objects
 				if (h != badHeight)
 				{
 					const TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
-					RenderRangeSphere(d * (Grid::ToRadius(h)+zOffset),base->GetFlatAttackRange() + base->turret->explosionRadius,float4(1,0,0,opacity));
+					float explosionRadius = base->turret->explosionRadius;
+					if (extended)
+						explosionRadius += RangeShadowExtension;
+					RenderRangeSphere(d * (Grid::ToRadius(h)+zOffset),base->GetFlatAttackRange() + explosionRadius,color);
 				}
 
 			}
@@ -1168,6 +1174,87 @@ namespace Objects
 		RenderBeam(base,height,width);
 	}
 
+
+	namespace Renderer
+	{
+		void RenderAttackRangeOf(const PWorldEntity&e, const float4&color, bool extendedShadow)
+		{
+			float zOffset;
+			PTurretBase base = e->GetTurretBase(zOffset);		
+			if (base && base->turret->CanAttack() && (!e->isMine || !base->turret->dealsEMPDamage))
+				RenderRange(e->location,zOffset,base,color,extendedShadow);
+		}
+	}
+
+	void Renderer::RenderRanges(bool extendedShadow)
+	{
+		if (selectedEntity)
+		{
+			float scanningRange = selectedEntity->GetScanningRange();
+			if (extendedShadow)
+				scanningRange += RangeShadowExtension;
+
+			float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,1,0,0.8f);
+
+			Renderer::RenderRangeSphere(selectedEntity->system.w.xyz,scanningRange,
+				color
+				);
+			float zOffset;
+			PTurretBase base = selectedEntity->GetTurretBase(zOffset);		
+			if (base && base->turret->groundScanningRange > 0.f)
+			{
+				scanningRange = selectedEntity->EMPModify(base->turret->groundScanningRange,2);
+				float refHeight = Grid::ToRadius(selectedEntity->location.height);
+				float top = Grid::ToRadius(/*selectedEntity->location.height*/Grid::CellStack::HalfRange);
+				float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
+				float topR = scanningRange*top/refHeight;
+				float bottomR = scanningRange *bottom/refHeight;
+				if (extendedShadow)
+				{
+					topR += RangeShadowExtension;
+					bottomR += RangeShadowExtension;
+				}
+				RenderRangeCylinder(selectedEntity->system.z.xyz,bottomR,topR,bottom,top,color);
+			}
+
+			#ifdef WIRELESS_VEHICLES
+				if (base && base->turret->ConsumesResources() && selectedEntity->IsMobile())
+				{
+					float r = WirelessTransferRange;
+					if (extendedShadow)
+						r += RangeShadowExtension;
+					color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(0,0,1,0.8f);
+					RenderRangeSphere(selectedEntity->system.w.xyz,r,color);
+				}
+			#endif
+
+
+		}
+		float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,0,0,0.8f);
+		if (selectedEntity)
+			RenderAttackRangeOf(selectedEntity,color,extendedShadow);
+		
+
+		if (showHostileRanges || showFriendlyRanges)
+		{
+			ForeachWorldEntity(
+				[color,extendedShadow](const PWorldEntity&e)
+				{
+					if (e != selectedEntity)
+					{
+						if ((e->isMine && showFriendlyRanges && e->health > 0) || (!e->isMine && showHostileRanges))
+						{
+							RenderAttackRangeOf(e,color,extendedShadow);
+						}
+					}
+				}
+			);
+
+
+		}
+		display.SetObjectMatrix(Matrix<>::eye4);
+	}
+
 	void	Renderer::RenderTranslucent()
 	{
 		if (!objectView)
@@ -1394,6 +1481,15 @@ namespace Objects
 		display.SetDepthTest(false,false);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
+
+		display.SetDepthTest(true,false);
+		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+		RenderRanges(true);
+		display.SetBlendMode(Engine::BlendMode::FlareBlend);
+		RenderRanges(false);
+		display.SetDepthTest(false,false);
+		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+
 		if (selectedEntity)
 		{
 			const PMobileEntity&v = selectedMobileEntity;
@@ -1424,75 +1520,10 @@ namespace Objects
 				}
 			}
 
-			display.SetDepthTest(true,false);
-			display.SetBlendMode(Engine::BlendMode::FlareBlend);
-
-			float scanningRange = selectedEntity->GetScanningRange();
-			RenderRangeSphere(selectedEntity->system.w.xyz,scanningRange,float4(1,1,0,0.8f));
-			
-			#ifdef WIRELESS_VEHICLES
-				if (base && v && base->turret->ConsumesResources() && v->IsVehicle())
-				{
-					RenderRangeSphere(selectedEntity->system.w.xyz,WirelessTransferRange,float4(0,0,1,0.8f));
-				}
-			#endif
-			if (base)
-			{
-				if (base->turret->CanAttack())
-				{
-					Grid::LCellIdI location = selectedEntity->location;
-					RenderRange(location,zOffset,base,0.8f);
-				}
-				if (base->turret->groundScanningRange > 0.f)
-				{
-					scanningRange = selectedEntity->EMPModify(base->turret->groundScanningRange,2);
-					float refHeight = Grid::ToRadius(selectedEntity->location.height);
-					float top = Grid::ToRadius(/*selectedEntity->location.height*/Grid::CellStack::HalfRange);
-					float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
-					float topR = scanningRange*top/refHeight;
-					float bottomR = scanningRange *bottom/refHeight;
-					RenderRangeCylinder(selectedEntity->system.z.xyz,bottomR,topR,bottom,top,float4(1,1,0,0.8f));
-				}
-
-				//if (base->turret->fuelSupplyRadius)
-				//{
-				//	RenderRangeSphere(selectedEntity->system.w.xyz,base->turret->fuelSupplyRadius,float4(0,1,0,0.8f));
-				//}
-			}
-
-
-			display.SetObjectMatrix(Matrix<>::eye4);
 
 
 		}
 
-
-
-		if (showHostileRanges || showFriendlyRanges)
-		{
-			display.SetDepthTest(true,false);
-			display.SetBlendMode(Engine::BlendMode::FlareBlend);
-
-			ForeachWorldEntity(
-				[](const PWorldEntity&e)
-				{
-					if (e != selectedEntity)
-					{
-						if ((e->isMine && showFriendlyRanges && e->health > 0) || (!e->isMine && showHostileRanges))
-						{
-							float zOffset;
-							PTurretBase base = e->GetTurretBase(zOffset);		
-							if (base && base->turret->CanAttack() && (!e->isMine || !base->turret->dealsEMPDamage))
-								RenderRange(e->location,zOffset,base,0.6f);
-						}
-					}
-				}
-			);
-
-
-			display.SetObjectMatrix(Matrix<>::eye4);
-		}
-		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 		display.SetRasterizer(true,true);
 
 

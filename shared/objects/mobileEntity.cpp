@@ -936,7 +936,7 @@ namespace Objects
 			task.job = job; 
 			if (!task.Replot(origin,this,FocusChangeType::FullChange,true))
 			{
-				LogEvent(EventType::EntityProcessFailed,this, "Failed to compile task. Unable to enqueue job.");
+				LogEvent(EventType::EntityProcessFailed,this, "Destination unreachable or out of range for pathfinding. Unable to enqueue job.");
 				myTasks.EraseBack();
 				return;
 			}
