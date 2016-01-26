@@ -334,6 +334,9 @@ namespace World
 		Objects::Component::VehicleBase *testBase = &Objects::Component::hoverbase;
 
 		float biggestNDist = 0;
+		float bestDistSum = std::numeric_limits<float>::max();
+
+		Buffer0<float> results;
 
 		count_t numTries = 0;
 		while (best == InvalidIndex)
@@ -389,6 +392,8 @@ namespace World
 				float3 ref = Grid::low.cells[i].centerVertex.xyz;// * r;
 				float dist2 = std::numeric_limits<float>::max();
 				float ndist2 = std::numeric_limits<float>::max();
+				float distSum = 0.f;
+
 				foreach (Objects::structures, s)
 				{
 					float d2 = Vec::quadraticDistance(Grid::low.cells[(*s)->location.stackID].centerVertex.xyz,ref);
@@ -397,6 +402,7 @@ namespace World
 						Objects::PTurretBase base = (*s)->GetTurretBase();
 						if (base)
 							d2 = sqr(sqrt(d2) - base->GetFlatAttackRange());	//fair enough here
+						distSum += 1.f/std::max(0.01f,Vec::angle(Grid::low.cells[(*s)->location.stackID].centerVertex.xyz,ref));
 						dist2 = std::min(dist2, d2);
 					}
 					else
@@ -407,6 +413,7 @@ namespace World
 				foreach (Objects::vehicles, v)
 				{
 					float d2 = Vec::quadraticDistance(Grid::low.cells[(*v)->location.stackID].centerVertex.xyz,ref);
+						distSum += 1.f/std::max(0.01f,Vec::angle(Grid::low.cells[(*v)->location.stackID].centerVertex.xyz,ref));
 					dist2 = std::min(dist2, d2);
 				}
 				if (/*Objects::structures.IsEmpty() &&*/ Objects::vehicles.IsEmpty())
@@ -416,11 +423,22 @@ namespace World
 
 				biggestNDist = std::max(biggestNDist,ndist2);
 
-				if (dist2 > bestDist && ndist2 > 0.25f)	//actual
+				results << distSum;
+
+				if (
+					ndist2 > 0.25f
+					&&
+					(
+						(/*dist2 > bestDist * 0.9f && */dist2 > 0.25f && distSum < bestDistSum)
+						//||
+						//(dist2 > bestDist * 1.1f)
+					)
+					)
 				{
 					bestDist = dist2;
 					//nbestDist = ndist2;
 					best = i;
+					bestDistSum = distSum;
 
 					//if (Objects::structures.IsEmpty() && Objects::vehicles.IsEmpty())
 						//break;
@@ -428,6 +446,9 @@ namespace World
 
 			}
 		}
+		LogEvent(EventType::Debug,"GetFactionStartLocation() returning "+String(best)+", with bestDist="+String(bestDist)+", and bestDistSum="+String(bestDistSum));
+		foreach (results,r)
+			LogEvent(EventType::Debug,String(*r));
 		return best;
 	}
 
