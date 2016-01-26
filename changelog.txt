@@ -2,6 +2,8 @@ v0.3.13		[Jan 25 2016]
 	*Fixed abandoned factions not registering as offline to other connected clients.
 	*Fixed server not changing working directory to directory of executable when launched in a different working directory.
 	*Fixed server crashing when relaying explosion trajectories to spectator factions (thanks to Alex).
+	+Increased contrast of range visualizations (attack/sensor).
+	+Improved appearance of lava (replaced sin-equations with perlin noise).
 	+Pressing H now hides the control GUI and contact list.
 
 v0.3.12		[Jan 25 2016]

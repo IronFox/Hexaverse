@@ -292,6 +292,8 @@ namespace Grid
 			DX11::ObjectBuffer<VecN<float,8> > atmosphereConfig;
 			DX11::ObjectBuffer<float4> sunDirection,sunColor;
 
+			DX11::ObjectBuffer<THeightMapOrientation>	heightMapOrientation;	//used for lava
+			DX11::Texture								cubeHeightMap;	//used for lava
 
 
 		}
@@ -699,6 +701,10 @@ namespace Grid
 			#endif
 			bindings.Append(DX11::Shader::Binding(Instruction::atmosphereConfig, "AtmosphereConfig"));
 			bindings.Append(DX11::Shader::SamplerBinding(true, Engine::TextureFilter::None, 1, "ShadowSampler"));
+
+			bindings.Append(DX11::Shader::SamplerBinding(true,Engine::TextureFilter::Trilinear,1,"HeightMapSampler"));
+			bindings.Append(DX11::Shader::Binding(Instruction::cubeHeightMap,"HeightMap"));
+			bindings.Append(DX11::Shader::Binding(Instruction::heightMapOrientation,"HeightMapOrientation"));
 		
 			Instruction::terrainBase.shader.LoadFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 
@@ -884,6 +890,19 @@ namespace Grid
 				UpdateSunDirection(SunDetails::sunDirection,true);
 			}
 
+
+			void	SetOrientation(TMatrix4<>&m, const float3&axis, double t, const float3&seedAxis, double seedRot)
+			{
+				TMatrix3<> sys1,sys2,sys;
+				Mat::rotationMatrix(t*1.5,axis,sys1);
+				Mat::rotationMatrix(seedRot,seedAxis,sys2);
+				Mat::mult(sys1,sys2,sys);
+				Mat::copyOrientation(sys,m);
+				m.w.xyz = Vector<>::zero;
+				Mat::resetBottomRow(m);
+
+			}
+
 			void	UpdateSunDirection(const float3&p, bool shadows /*= true*/)
 			{
 				SunDetails::sunDirection = p;
@@ -891,6 +910,15 @@ namespace Grid
 				//	SunDetails::sunDirection = -p;
 				//#endif
 				Instruction::sunDirection.Update(float4(SunDetails::sunDirection,shadows));
+
+				Random random(23984);
+				Instruction::THeightMapOrientation	orientation;
+				SetOrientation(orientation.orientation0,float3(1,0.75,0.75).Normalized0(),Engine::timing.now, float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)).Normalized0(),random.getDouble(0,100));
+				SetOrientation(orientation.orientation1,float3(0.75,1,0.75).Normalized0(),-Engine::timing.now*1.35, float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)).Normalized0(),random.getDouble(0,100));
+				SetOrientation(orientation.orientation2,float3(0.75,0.75,1).Normalized0(),Engine::timing.now/M_PI, float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)).Normalized0(),random.getDouble(0,100));
+
+				Instruction::heightMapOrientation.Update(orientation);
+
 			}
 
 
@@ -1088,9 +1116,75 @@ namespace Grid
 
 	#endif
 
+
+
+	static float CDF(float x)
+	{
+		float sum = x;
+		float value = x;
+		for (int i = 0; i < 100; i++)
+		{
+			value = (value*x*x/(2*i+1));
+			sum = sum+value;
+		}
+		static const float div = 0.39894228040143267793994605993438f;
+		 //1.f/sqrt(2.f*M_PIF);
+		return 0.5f+(sum*div)*exp(-(x*x)/2);
+	}
+
+
+	static BYTE GetHeightMapHeight(TVec3<> p)
+	{
+		Vec::normalize(p);
+		Vec::mult(p,2.f);
+		float perlin = 0.5f * (noise.Get(p) + noise.Get(p*2.f));	//pseudo normal distributed -1..+1
+
+		float x = //fabs(perlin);
+				fabs(CDF(perlin));
+		//float x = p.z * 0.5f + 0.5f;
+		//;
+		return (BYTE)(std::min(x ,1.f)* 255.f);
+	}
+
+	static void CreateHeightMapSide(Image&result, const float3&origin, const float3&dx, const float3&dy)
+	{
+		result.setDimensions(128,128,1);
+		Concurrency::parallel_for(index_t(0),result.width()*result.height(),[&result,origin,dx,dy](index_t i)
+		{
+			TVec3<> p;
+			index_t x = i/result.height();
+			index_t y = i%result.height();
+			{
+				float fx = float(x)/float(result.width()-1) * 2.f - 1.f;
+				float fy = float(y)/float(result.height()-1) * 2.f - 1.f;
+				
+				Vec::mad(origin,dx,fx,p);
+				Vec::mad(p,dy,fy);
+				result.setChannel(x,y,0,GetHeightMapHeight(p));
+			}
+		});
+	}
+
 	void				Create0()
 	{
 		#ifdef HAS_WINDOW
+			
+			Instruction::heightMapOrientation.Create(Instruction::THeightMapOrientation());
+
+			{
+				Image sides[6];
+				//+x, -x, +y, -y, +z, -z.
+				CreateHeightMapSide(sides[0],float3(1,0,0),float3(0,0,-1),float3(0,1,0));
+				CreateHeightMapSide(sides[1],float3(-1,0,0),float3(0,0,1),float3(0,1,0));
+				CreateHeightMapSide(sides[2],float3(0,1,0),float3(1,0,0),float3(0,0,-1));
+				CreateHeightMapSide(sides[3],float3(0,-1,0),float3(1,0,0),float3(0,0,1));
+				CreateHeightMapSide(sides[4],float3(0,0,1),float3(1,0,0),float3(0,1,0));
+				CreateHeightMapSide(sides[5],float3(0,0,-1),float3(-1,0,0),float3(0,1,0));
+
+
+				Instruction::cubeHeightMap.LoadCube(sides,false);
+			}
+
 			Instruction::atmosphereConfig.Create(VecN<float,8>());
 			UpdateAtmosphere(currentPlanetConfig.atmosphereColor);
 
@@ -1258,6 +1352,9 @@ namespace Grid
 			Instruction::ParaboloidDirection_Height.Clear();
 			Instruction::ParaboloidColor_FlatRadius.Clear();
 			Instruction::SphereDef.Clear();
+			Instruction::heightMapOrientation.Clear();
+			Instruction::cubeHeightMap.Clear();
+
 		#endif
 		//terrainColor.Clear();
 	}

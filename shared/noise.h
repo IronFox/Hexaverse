@@ -21,7 +21,6 @@ public:
 	//Engine::DX11::Texture noiseMap;
 
 	BasePerlinNoise();
-	void Create();
 };
 
 template <typename T>
