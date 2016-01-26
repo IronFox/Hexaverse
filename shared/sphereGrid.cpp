@@ -145,6 +145,15 @@ namespace Grid
 	}
 
 	#ifdef HAS_WINDOW
+
+		static void CapColor(TVec4<>&rs)
+		{
+			if (rs.r >= 0.f)
+				rs.rgb = Vector<>::zero;
+			else
+				rs.rgb *= 0.5f;
+		}
+
 		float4			CellStack::GetColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const
 		{
 			if (layer >= Range)
@@ -2053,7 +2062,9 @@ namespace Grid
 			TVec4<> color0 = stack.GetColorU(ih, Content::Clear, mixes0,centerType);
 			float emp0 = FlagsAffectedByEMP(cell.cornerFlags);
 			
-			float4 c0 = capped ? float4() : color0;
+			float4 c0 = color0;
+			if (capped)
+				CapColor(c0);
 			ApplyEMP(emp0,c0.rgb);
 			solidMesh << TerrainVertex(cell.centerVertex, range.max, cell.centerVertex.xyz, c0, thisCell.GetStructureFactor());
 			for (int j = 0; j < cell.numCorners; j++)
@@ -2063,13 +2074,13 @@ namespace Grid
 					TVec4<> color;
 
 					float emp = emp0;
-					if (capped)
-					{
-						//brighness = 0.f;
-						color = float4(0,0,0,1);
-						brightness = 0;
-					}
-					else
+					//if (capped)
+					//{
+					//	//brighness = 0.f;
+					//	color = float4(0,0,0,1);
+					//	brightness = 0;
+					//}
+					//else
 					{
 						Vec::clear(color);
 						Content c0,c1;
@@ -2098,6 +2109,8 @@ namespace Grid
 						//color.rgb *= brightness / color.a;
 						//brightness /= color.a;
 					}
+					if (capped)
+						CapColor(color);
 					ApplyEMP(emp,color.rgb);
 
 					solidMesh << TerrainVertex(cell.cornerVertex[j], range.max, cell.cornerVertex[j].xyz, float4(color.rgb,brightness), 1.f);
