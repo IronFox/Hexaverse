@@ -33,7 +33,7 @@ namespace Evolver
 			Objects::WMobileEntity	ref;
 			float			initiativeFactor;
 
-			/**/		TActionReference(const Objects::PMobileEntity&e):ref(e)	{initiativeFactor = e->localRandom.getFloat(0.95f,1.f); /*std::cout << e->GetName()<<": "<< initiativeFactor << std::endl;*/}
+			/**/		TActionReference(const Objects::PMobileEntity&e):ref(e)	{initiativeFactor = e->entityRandom.getFloat(0.95f,1.f); /*std::cout << e->GetName()<<": "<< initiativeFactor << std::endl;*/}
 
 			bool		IsAlive() const {return ref.lock() && ref.lock()->health >= 0;}
 
@@ -48,7 +48,7 @@ namespace Evolver
 			Objects::WWorldEntity			eref;
 			float			initiativeFactor;
 
-			/**/		TAttackReference(const Objects::PWorldEntity&we):eref(we)	{initiativeFactor = we->localRandom.getFloat(0.95f,1.f);/*std::cout << we->GetName()<<": "<< initiativeFactor << std::endl;*/}
+			/**/		TAttackReference(const Objects::PWorldEntity&we):eref(we)	{initiativeFactor = we->entityRandom.getFloat(0.95f,1.f);/*std::cout << we->GetName()<<": "<< initiativeFactor << std::endl;*/}
 
 			bool		IsAlive() const {Objects::PWorldEntity e = eref.lock(); return e && e->health >= 0;}
 

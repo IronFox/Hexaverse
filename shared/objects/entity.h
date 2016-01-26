@@ -156,7 +156,7 @@ namespace Objects
 	public:
 		#ifndef CLIENT
 
-			Random					localRandom;
+			Random					entityRandom;
 			
 			void					ReSeedRandom();
 

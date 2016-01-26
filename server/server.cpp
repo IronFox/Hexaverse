@@ -941,7 +941,7 @@ void ProcessAICoverage()
 								Objects::PVehiclePlant vplant = To<Objects::VehiclePlant>::DynamicCast(ws);
 								if (plant && vplant && plant->queue.IsEmpty())
 								{
-									index_t choice = vplant->localRandom.getIndex(Game::Config::Nexus::vehicleTurrets.Count() - 1);
+									index_t choice = vplant->entityRandom.getIndex(Game::Config::Nexus::vehicleTurrets.Count() - 1);
 									//random.getIndex(State::Config::Nexus::vehicleTurrets.Count() - 1);
 									ASSERT_LESS__(choice,Game::Config::Nexus::vehicleTurrets.Count());
 									//Objects::Component::Turret* turret = State::Config::Nexus::vehicleTurrets[choice];
