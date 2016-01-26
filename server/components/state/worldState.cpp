@@ -445,7 +445,7 @@ namespace World
 	{
 		if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::EMPConquerNexus)
 		{
-			count_t numZones = Objects::Faction::all.Count()+temporaryFactionCountBonus;	//not counting nexus faction, but counting new faction(s)
+			count_t numZones = Game::mostFactionsAlive+temporaryFactionCountBonus;	//not counting nexus faction, but counting new faction(s)
 			numZones = (numZones/3) + !!(numZones % 3);
 
 			int unlocked = 0;
