@@ -3087,26 +3087,11 @@ int main( int argc, const char* argv[])
 
 			mainMenu.reset(new Dialog::Menu(0.25f,"Main"));
 			mainMenu->AddCommand("Change Nickname",QueryNickname);
-			mainMenu->AddCommand("Abandon faction",
-				[]()
-				{
-					Dialog::Confirm("Your current faction will be abandoned. Its access key will be preserved until you create a new faction in this world. Please confirm.",
-								Network::AbandonCurrentFaction,
-								[](){return Network::client.IsConnected() && Network::haveFaction ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
-				},
-				[](){return Network::amOnline && Network::haveFaction;});
+			mainMenu->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction;});
 			mainMenu->AddCommand("Disconnect",
 				[]()
 				{
-					Dialog::Confirm("You will be disconnected from the server and returned to the server selection screen.",
-						[]()
-						{ 
-							Network::client.Disconnect();
-						},
-						[]()
-						{
-							return Network::client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;
-						});
+					Network::client.Disconnect();
 				},
 				[](){return Network::client.IsConnected();});
 			mainMenu->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
