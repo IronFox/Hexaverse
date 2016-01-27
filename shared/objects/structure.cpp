@@ -777,16 +777,16 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			geometry.Clear();
-			commands << IconCommand(int2(4,0), "Abort", &VehicleCmd::AbortOperation, &CommonCmd::CommonButtonCheck<PWorldEntity const&>
+			commands << IconCommand(int2(4,0), "Abort", &VehicleCmd::AbortOperation, &CommonCmd::CommonButtonCheck
 						,NoCosts
 			);
-			commands << IconCommand(int2(4,1), "Undo", &VehicleCmd::UndoOperation, &CommonCmd::CommonButtonCheck<PWorldEntity const&>
+			commands << IconCommand(int2(4,1), "Undo", &VehicleCmd::UndoOperation, &CommonCmd::CommonButtonCheck
 						,NoCosts
 			);
 			commands << IconCommand(int2(5,1), "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>
 						,NoCosts
 			);
-			commands << IconCommand(int2(5,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck<PWorldEntity const&>
+			commands << IconCommand(int2(5,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck
 						,NoCosts
 			);
 		#endif
@@ -1363,7 +1363,7 @@ namespace Objects
 				},
 				[w](const PWorldEntity&storeEntity, bool controlEnabled)
 				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck<PWorldEntity>(storeEntity,controlEnabled);
+					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(storeEntity,controlEnabled);
 					PVehicleStore s = To<VehicleStore>::DynamicCast(storeEntity);
 					if (deployingVehicle && s == selectedEntity && deployingVehicle == w.lock() && deployingVehicle->health > 0)
 						rs |= BaseCommand::Flags::IsPermaActive;
@@ -2302,7 +2302,7 @@ namespace Objects
 				}
 				,[c](const PWorldEntity&e, bool controlEnabled)
 				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck<const PWorldEntity&>(e,controlEnabled);
+					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(e,controlEnabled);
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
 					if (plant && plant->selectedBase == c)
 						rs |= BaseCommand::Flags::IsPermaActive;
@@ -2323,7 +2323,7 @@ namespace Objects
 				}
 				,[c](const PWorldEntity&e, bool controlEnabled)
 				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck<const PWorldEntity&>(e,controlEnabled);
+					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(e,controlEnabled);
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
 					if (plant && plant->selectedTurret == c)
 						rs |= BaseCommand::Flags::IsPermaActive;
@@ -2381,7 +2381,7 @@ namespace Objects
 						return;
 					SignalConstructionBegin(port->id, ConstName::VehicleBase_HoverBase, ConstName::Turret_Terraformer);
 				}
-				,CommonCmd::CommonButtonCheck<PWorldEntity const&>);
+				,CommonCmd::CommonButtonCheck);
 				
 				skyHubConstructionCommand = SatelliteConstructionCommand(int2(5,1), "Construct SkyHub", SkyHub::globalPrototype, [](const PWorldEntity&e)
 				{

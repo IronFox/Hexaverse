@@ -475,7 +475,7 @@ namespace Objects
 						else
 							SignalConstructionAbort(e->id,id);	//lossless
 
-					},CommonCmd::CommonButtonCheck<PWorldEntity const&>);
+					},CommonCmd::CommonButtonCheck);
 					if (!index)
 					{
 						item.commandToTerminate.roundsLeft = rounds;
