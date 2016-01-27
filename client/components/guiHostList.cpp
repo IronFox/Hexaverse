@@ -37,6 +37,8 @@ void	SaveHosts()
 #ifdef HAS_WINDOW
 
 
+	const float4 incompatibleColor(1,0.6,0.55,1);
+
 	static const float VisualTabWidth = 0.2f;
 
 	GUIElements::PLabel	MakeTabLabel(const String&text, float zoom)
@@ -54,7 +56,7 @@ void	SaveHosts()
 	};
 
 
-	GUIElements::PLabel	AddTab(const GUIElements::PPanel&context, const String&name, float verticalSpacing = 0.f, GUIElements::TAnchor::distanceType_t verticalSpacingIsRelative = GUIElements::TAnchor::RelativeToScreen)
+	GUIElements::PLabel	AddTab(const GUIElements::PPanel&context, const String&name, bool incompatible, float verticalSpacing = 0.f, GUIElements::TAnchor::distanceType_t verticalSpacingIsRelative = GUIElements::TAnchor::RelativeToScreen)
 	{
 		using namespace GUIElements;
 		PLabel label=MakeTabLabel(name,1.1f);
@@ -64,12 +66,14 @@ void	SaveHosts()
 		else
 			label->anchorConfig.Left().Set(0.f);
 		context->components.Append(label);
+		if (incompatible)
+			label->SetColor(incompatibleColor);
 		return label;
 	}
 
-	GUIElements::PLabel	AddTab(const String&name)
+	GUIElements::PLabel	AddTab(const String&name, bool incompatible)
 	{
-		return AddTab(Dialog::serverChoice,name);
+		return AddTab(Dialog::serverChoice,name,incompatible);
 	}
 
 	static String CompileRules(const Protocol::ServerInfo&info)
@@ -186,7 +190,7 @@ void	SaveHosts()
 			}
 			else
 			{
-				color = float4(1,0.4,0.4,0.8) * 1.3f;
+				color = incompatibleColor * 1.3f;
 				if (info.protocolIncompatible)
 				{
 					text = " <Unknown> (Protocol Incompatible)";
@@ -206,11 +210,11 @@ void	SaveHosts()
 		p->components << info.headLine;
 
 
-
+		bool incompatible = !info.rightVersion || info.protocolIncompatible;
 		{
-			AddTab(p,String(info.info.gameInfo.numFactionsOnline) + "/" + String(info.info.gameInfo.numFactionsCreated),0.01f,GUIElements::TAnchor::RelativeToScreen);
-			AddTab(p,String(info.info.gameInfo.roundNumber),0.01f,GUIElements::TAnchor::RelativeToScreen);
-			PLabel l = AddTab(p,CompileRules(info.info),0.01f,GUIElements::TAnchor::RelativeToScreen);
+			AddTab(p,String(info.info.gameInfo.numFactionsOnline) + "/" + String(info.info.gameInfo.numFactionsCreated),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
+			AddTab(p,String(info.info.gameInfo.roundNumber),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
+			PLabel l = AddTab(p,CompileRules(info.info),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
 			l->zoom *= 0.9f;
 
 		}
@@ -222,7 +226,10 @@ void	SaveHosts()
 		foreach (info.addresses,addr)
 		{
 			PLabel label = MakeTabLabel(addr->first.ToString()+ " (ping "+String((int)ceil(addr->second*1000))+')',0.7f);
-			label->SetColor(float4(1,1,1,0.7f));
+			if (info.rightVersion && !info.protocolIncompatible)
+				label->SetColor(float4(1,1,1,0.7f));
+			else
+				label->SetColor(incompatibleColor);
 			label->anchorConfig.Left().Set(0.05f);
 			if (first)
 			{
@@ -239,17 +246,21 @@ void	SaveHosts()
 		if (!info.rightVersion && !info.protocolIncompatible)
 		{
 			PLabel label = MakeTabLabel("Server identifies as '"+String(info.info.hostInfo.value.version)+'\'',0.7f);
-			label->SetColor(1,0.5,0.5,0.7f);
+			label->SetColor(incompatibleColor);
 			label->anchorConfig.Top().Set(p->components.last(),0.005f,GUIElements::TAnchor::RelativeToScreen);
 			p->components << label;
 					
 			label = MakeTabLabel("Client expected '" SERVER_NAME "\'",0.7f);
-			label->SetColor(1,0.5,0.5,0.7f);
+			label->SetColor(incompatibleColor);
 			label->anchorConfig.Top().Set(p->components.last(),0.005f,GUIElements::TAnchor::RelativeToScreen);
 			p->components << label;
 		}
 
 		p->autoHeightSpacing = 0.01f;
+		if (!info.rightVersion || info.protocolIncompatible)
+			p->backgroundTone = incompatibleColor.rgb * 0.75f;
+		else
+			p->backgroundTone = float3(1);
 		
 		return p;
 	}
@@ -289,10 +300,10 @@ void	SaveHosts()
 		Dialog::serverChoice->anchorConfig.Top().Set(0.1f);
 
 
-		AddTab("HostID/WorldID");
-		AddTab("Factions online");
-		AddTab("Round Number");
-		AddTab("Rules");
+		AddTab("HostID/WorldID",false);
+		AddTab("Factions online",false);
+		AddTab("Round Number",false);
+		AddTab("Rules",false);
 
 		bool attemptingConnection = Network::client.IsAttemptingToConnect();
 
