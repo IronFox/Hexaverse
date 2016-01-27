@@ -959,7 +959,9 @@ namespace Reflection
 
 	void Load(bool testMode)
 	{
-		FileSystem::Folder planetPrototypes = FileSystem::Folder().FindFolder("config/planets");
+		FileSystem::Folder	root;
+		ASSERT__(root.IsValidLocation());
+		FileSystem::Folder planetPrototypes = root.FindFolder("config/planets");
 		
 
 		if (planetPrototypes.IsValidLocation())
@@ -983,7 +985,7 @@ namespace Reflection
 
 		}
 		else
-			LogEvent(EventType::InternalFault,"Warning: Unable to find base planet source folder");
+			LogEvent(EventType::InternalFault,"Warning: Unable to find base planet source folder from '"+String(root.GetLocation()));
 
 
 		#ifdef _DEBUG
