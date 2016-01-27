@@ -1327,6 +1327,11 @@ namespace FileIO
 	}
 
 
+	PathString GetAutoSavePath(index_t index)
+	{
+		return RuntimeConfig::ConfigFile("saves/auto/snapshot") + PathString(index)+"."+savFileExtension;
+	}
+
 	void AutoSave()
 	{
 		PathString base = RuntimeConfig::ConfigFile("saves/auto/snapshot");

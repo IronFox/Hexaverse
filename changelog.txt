@@ -10,6 +10,7 @@ v0.3.13		[Jan 27 2016]
 	-Removed control icons when selecting units not owned by the local client.
 	+Terrain see-through now displays lava toned down rather than black.
 	+Pressing H now hides the control GUI and contact list.
+	+Added option --loadAuto/-a [number] to load automated savegames without specifying a full path. -a 0 loads the most recent.
 
 v0.3.12		[Jan 25 2016]
 	>Cleaned up server runtime parameters. All parameters now have long versions (e.g. --port 12345), and short versions (e.g. -p 12345).

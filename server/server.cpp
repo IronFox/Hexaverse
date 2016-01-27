@@ -1094,10 +1094,11 @@ namespace ParameterConfig
 		ExpectPort,
 		ExpectWorldID,
 		ExpectFilename,
+		ExpectAutoSaveNumber,
 
 	}		mode = Idle;
 
-	String	loadFile;
+	PathString	loadFile;
 	bool	startOffline = false;
 	bool	customWorldID = false;
 	bool	enableRemoteControl = false;
@@ -1117,6 +1118,7 @@ namespace ParameterConfig
 	{
 		std::cout << std::endl << "usage: "<<programName<<" ..."<<std::endl;
 		std::cout << "  --load/-l [filename]\tload savegame"<<std::endl;
+		std::cout << "  --loadAuto/-a [number]\tload previously created auto-savegame. number=0 => most recent"<<std::endl;
 		std::cout << "  --offline/-o \tstart offline"<<std::endl;
 		std::cout << "  --port/-p [basePort]\tuse a non-default base port"<<std::endl;
 		std::cout << "  --remote/-r \tstart remote control service"<<std::endl;
@@ -1128,7 +1130,7 @@ namespace ParameterConfig
 
 	void	Process(const char*arg)
 	{
-		LogEvent(EventType::ConfigRelated,arg);
+		LogEvent(EventType::Debug,"ParameterConfig::Process: '"+String(arg)+"'");
 		switch (mode)
 		{
 			case ExpectWorldID:
@@ -1141,6 +1143,18 @@ namespace ParameterConfig
 				loadFile = arg;
 				mode = Idle;
 			break;
+			case ExpectAutoSaveNumber:
+			{
+				mode = Idle;
+				index_t index;
+				if (!convert(arg,index))
+				{
+					LogEvent(EventType::ConfigError,"Unable to convert '"+String(arg)+"' to a valid index");
+					return;
+				}
+				loadFile = FileIO::GetAutoSavePath(index);
+			}
+			break;
 			case Idle:
 				if (!strcmp(arg,"--test") || !strcmp(arg,"-t"))
 					inTestMode = true;
@@ -1148,6 +1162,8 @@ namespace ParameterConfig
 					mode = ExpectPort;
 				elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
 					startOffline = true;
+				elif (!strcmp(arg,"--loadAuto") || !strcmp(arg,"-a"))
+					mode = ExpectAutoSaveNumber;
 				elif (!strcmp(arg,"--help"))
 				{
 					PrintHelp();
@@ -1477,7 +1493,7 @@ int main( int argc, const char* argv[])
 
 		if (ParameterConfig::loadFile.IsNotEmpty())
 		{
-			PathString filename = PathString(ParameterConfig::loadFile);
+			PathString filename = ParameterConfig::loadFile;
 			if (FileSystem::IsFile(filename))
 			{
 				FileIO::Load(filename);
