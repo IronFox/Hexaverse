@@ -1261,7 +1261,12 @@ public:
 
 bool	IsTargetWorkingDirectory(const PathString&dir)
 {
-	return FileSystem::IsFile(dir + "/config/declaration.xml");
+	PathString test = dir + "/config/declaration.xml";
+	bool rs = FileSystem::IsFile(test);
+	LogEvent(EventType::Debug,"Checking server target directory candidate '"+String(dir)+"'=>'"+String(test)+"'. Result="+String(rs));
+
+
+	return rs;
 }
 
 
@@ -1276,6 +1281,10 @@ int main( int argc, const char* argv[])
 	{
 
 		RuntimeConfig::InitConfigDir("server");
+		ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
+		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/server_"+Logging::TimeStamp(true)+".log")));
+		LogEvent(EventType::SessionRelated,nullptr,"Starting server v" PRODUCT_VERSION);
+
 
 		TCP::onIgnoredException = [](const TCodeLocation&loc, const std::exception&ex)
 		{
@@ -1325,13 +1334,6 @@ int main( int argc, const char* argv[])
 		#ifdef _DEBUG
 			//inTestMode = true;
 		#endif
-
-		if (!inTestMode)
-		{
-			ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
-			Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/server_"+Logging::TimeStamp(true)+".log")));
-			LogEvent(EventType::SessionRelated,nullptr,"Starting server v" PRODUCT_VERSION);
-		}
 
 
 
