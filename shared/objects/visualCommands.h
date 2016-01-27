@@ -446,7 +446,6 @@ namespace Objects
 		void	ToggleObjectView(int);
 		bool	ObjectsAreHidden(int);
 		void	ToggleCompoundHightlights(int);
-		bool	CompoundAreHightlighted(int);
 	}
 
 }

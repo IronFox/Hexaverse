@@ -266,7 +266,9 @@ namespace Objects
 			}));
 
 
-			globalCommands.Append(GlobalCommand(int2(0,2),"Highlight Compounds", &GlobalCmd::ToggleCompoundHightlights, &CommonCmd::AlwaysEnabled<int>, &GlobalCmd::CompoundAreHightlighted));
+			globalCommands.Append(GlobalCommand(int2(0,2),"Highlight Compounds", &GlobalCmd::ToggleCompoundHightlights
+					, GlobalPermaSwitch(compoundsColored)
+				));
 			globalCommands.Append(GlobalCommand(int2(1,2),"Clip Terrain", &GlobalCmd::ToggleSeeThrough
 					,GlobalPermaSwitch(Grid::SeeThrough::IsEnabled)
 				));

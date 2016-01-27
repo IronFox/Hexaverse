@@ -500,10 +500,6 @@ namespace Objects
 		compoundsColored = !compoundsColored;
 	}
 
-	bool	GlobalCmd::CompoundAreHightlighted(int)
-	{
-		return compoundsColored;
-	}
 
 
 
