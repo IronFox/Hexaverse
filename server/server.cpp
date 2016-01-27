@@ -1259,6 +1259,11 @@ public:
 
 };
 
+bool	IsTargetWorkingDirectory(const PathString&dir)
+{
+	return FileSystem::IsFile(dir + "/config/declaration.xml");
+}
+
 
 int main( int argc, const char* argv[])
 {
@@ -1287,16 +1292,15 @@ int main( int argc, const char* argv[])
 			wchar_t path[MAX_PATH];
 			ASSERT__(GetModuleFileNameW(NULL,path,MAX_PATH));
 			StringW dir = FileSystem::ExtractFileDir(StringW(path));
-			while (dir.length() > 1 &&  !FileSystem::IsFile(dir + StringW(FOLDER_SLASH_STR)+"server.ini"))
+			while (dir.length() > 1 && !IsTargetWorkingDirectory(dir))
 			{
 				dir = FileSystem::ExtractFileDir(dir);
 				LogEvent(EventType::Debug,"Walking up to "+String(dir.c_str()));
 			}
-	//		#ifdef _DEBUG
-		//	#endif
-			if (FileSystem::IsFile(dir + "/config/declaration.xml"))
+			if (IsTargetWorkingDirectory(dir))
 				FileSystem::SetWorkingDirectory(dir);
-			//ShowMessageW(dir);
+			else
+				FATAL__("Something is wrong. Unable to locate server executable, or config/declaration.xml is missing.");
 		}
 
 
