@@ -1239,7 +1239,7 @@ namespace Grid
 	static void CreateHeightMapSide(Image&result, const float3&origin, const float3&dx, const float3&dy)
 	{
 		result.setDimensions(128,128,1);
-		Concurrency::parallel_for(index_t(0),result.width()*result.height(),[&result,origin,dx,dy](index_t i)
+		Concurrency::parallel_for(index_t(0),count_t(result.width()*result.height()),[&result,origin,dx,dy](index_t i)
 		{
 			TVec3<> p;
 			index_t x = i/result.height();
@@ -1250,7 +1250,7 @@ namespace Grid
 				
 				Vec::mad(origin,dx,fx,p);
 				Vec::mad(p,dy,fy);
-				result.setChannel(x,y,0,GetHeightMapHeight(p));
+				result.setChannel((UINT32)x,(UINT32)y,0,GetHeightMapHeight(p));
 			}
 		});
 	}
