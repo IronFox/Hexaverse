@@ -42,7 +42,7 @@ namespace AIProcess
 
 	void Begin(const CryptographicID&accessToken)
 	{
-		if (detail::process.IsStarted())
+		if (detail::process.IsRunning())
 		{
 			ASSERT__(accessToken == detail::accessToken);
 			return;

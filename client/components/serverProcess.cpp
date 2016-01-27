@@ -4,6 +4,7 @@
 //#include "../../shared/uniqueID.h"
 #include <general/timer.h>
 #include <general/monitoredProcess.h>
+#include <logEvent.h>
 
 namespace ServerProcess
 {
@@ -29,6 +30,18 @@ namespace ServerProcess
 			#endif
 		}
 
+		bool TryResume()
+		{
+			if (Detail::process.TryResume(Detail::GetWorkingDirectory(),Detail::GetExecutablePath()))
+			{
+				LogEvent(EventType::Debug,"Resumed running server process at '"+String(Detail::GetExecutablePath())+"'");
+				return true;
+			}
+			return false;
+
+
+		}
+
 		void	Start()
 		{
 			char parameterBuffer[32768];
@@ -43,15 +56,19 @@ namespace ServerProcess
 			#ifdef _DEBUG
 				showWindow = true;
 			#endif
-			ASSERT3__(process.ResumeOrStart(workingDirectory,path,parameters,showWindow), workingDirectory,path,parameterBuffer);
+			if (TryResume())
+				return;
+			LogEvent(EventType::Debug,"Starting server process (workingDirectory='"+String(workingDirectory)+"', path='"+String(path)+"', parameters='"+String(parameters)+"', showWindow="+String(showWindow)+")");
+			ASSERT3__(process.Start(workingDirectory,path,parameters,showWindow), workingDirectory,path,parameterBuffer);
 		}
-	
+
+			
 	}
 
 
 	void Begin(bool remoteControl/*=true*/)
 	{
-		if (Detail::process.IsStarted())
+		if (Detail::process.IsRunning())
 		{
 			ASSERT__(remoteControl == Detail::remoteControl);
 			return;
@@ -68,7 +85,7 @@ namespace ServerProcess
 	bool			IsRunning()
 	{
 		if (!Detail::process.IsRunning())
-			Detail::process.TryResume(Detail::GetWorkingDirectory(),Detail::GetExecutablePath());
+			Detail::TryResume();
 		return Detail::process.IsRunning();
 	}
 
