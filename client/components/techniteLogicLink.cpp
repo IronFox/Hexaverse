@@ -710,7 +710,7 @@ namespace TechniteLogicLink
 
 		if (autoStartClient)
 		{
-			if (!logicProcess.IsStarted() && !logicProcess.Start(FileSystem::GetWorkingDirectory(),autoStartClientPath,PathString(actualServerPortNumber)))
+			if (!logicProcess.IsRunning() && !logicProcess.Start(FileSystem::GetWorkingDirectory(),autoStartClientPath,PathString(actualServerPortNumber)))
 				FATAL__("Failed to launch technite logic");
 		}
 
