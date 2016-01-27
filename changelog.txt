@@ -6,8 +6,10 @@ v0.3.13		[Jan 27 2016]
 	>Increased contrast of range visualizations (attack/sensor).
 	>Improved appearance of lava (replaced sin-equations with perlin noise).
 	>Improved initial faction placement.
+	>Improved space button to visit working structures (mines/factories) only once per round even if no commands are given.
 	-Removed confirmation from server disconnection and faction abandoning. Since these are reversible operations the confirmation makes no sense.
 	-Removed control icons when selecting units not owned by the local client.
+	+The end-round-button now starts flashing red, if the local faction is the last online to request a new round, and all local entities have been visited or are busy.
 	+Terrain see-through now displays lava toned down rather than black.
 	+Pressing H now hides the control GUI and contact list.
 	+Added option --loadAuto/-a [number] to load automated savegames without specifying a full path. -a 0 loads the most recent.

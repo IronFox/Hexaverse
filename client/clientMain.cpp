@@ -2541,12 +2541,22 @@ String GenerateOreName(Random&random)
 		return false;
 	}
 
-	bool	IsIdle(const Objects::PStructure&s)
+
+	bool	IsIdle(const Objects::PStructure&s, bool tagVisited)
 	{
 		#ifndef NO_HIBERNATION
 			if (s->ToHibernating()->IsHibernating())
 				return false;
 		#endif
+
+		if (!s->IsWorkingStructure())
+			return false;
+		Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
+		if (ws->visited)
+			return false;
+		if (tagVisited)
+			ws->visited = true;
+
 		Objects::PVehiclePlant vp = To<Objects::VehiclePlant>::DynamicCast(s);
 		if (vp)
 			return (vp->AwaitsUserInteraction() || /*vp->queue.IsEmpty() || */
@@ -2561,6 +2571,40 @@ String GenerateOreName(Random&random)
 
 		return false;
 
+	}
+
+	bool	ShouldSignalRoundEnd()
+	{
+		if (!Network::myFaction || Network::myFaction->requestedNewRound)
+			return false;
+		count_t total=0,requested=0;
+		Objects::ForeachFaction([&total,&requested](const Objects::PFaction&f)
+		{
+			total++;
+			if ((f->requestedNewRound || !f->online) && f != Network::myFaction)
+				requested++;
+		});
+
+		if (requested+1 != total)
+			return false;
+
+		bool any = false;
+		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
+		{
+			if (any)
+				return;
+			if (e->IsMobile())
+			{
+				if (IsIdle(To<Objects::MobileEntity>::Cast(e)))
+					any = true;
+			}
+			elif (e->IsStructure())
+			{
+				if (IsIdle(To<Objects::Structure>::Cast(e),false))
+					any = true;
+			}
+		});
+		return !any;
 	}
 	
 
@@ -2625,7 +2669,7 @@ String GenerateOreName(Random&random)
 					index_t at = to - Objects::vehicles.Count() - Objects::satellites.Count();
 					Objects::PStructure s = Objects::structures[at];
 
-					if (s->isMine && IsIdle(s))
+					if (s->isMine && IsIdle(s,true))
 					{
 						Objects::Select(s,Network::ControlEnabled());
 						Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);

@@ -413,6 +413,7 @@ namespace Objects
 
 				void	CommitOperation(const PWorldEntity&);
 				bool	CommitIsPossibleC(const PWorldEntity&, bool);
+				BaseCommand::Flags CommitCheck(const PWorldEntity&, bool);
 		
 
 	//				bool	AbortIsPossible(const PWorldEntity&);
