@@ -1022,7 +1022,7 @@ namespace FileIO
 								worldInfoFound = true;
 								GetPOD(list,RID::worldID,World::worldID);
 								GetPOD(list,RID::roundNumber,RuntimeConfig::roundNumber);
-
+								GetOptionalPOD(list,RID::mostFactionsAlive,Game::mostFactionsAlive,(UINT32)0);
 
 								Game::Config::Nexus::enableAI = list->FindFirst(RID::nexusAI) != nullptr;
 
@@ -1378,6 +1378,7 @@ namespace FileIO
 		general->AppendBlock(RID::worldID)->SetPODData(World::worldID);
 		general->AppendBlock(RID::roundNumber)->SetPODData(RuntimeConfig::roundNumber);
 		general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
+		general->AppendBlock(RID::mostFactionsAlive)->SetPODData(Game::mostFactionsAlive);
 
 		{
 			static StringBuffer variableBuffer;

@@ -1,7 +1,8 @@
-v0.3.13		[Jan 25 2016]
+v0.3.13		[Jan 27 2016]
 	*Fixed abandoned factions not registering as offline to other connected clients.
 	*Fixed server not changing working directory to directory of executable when launched in a different working directory.
 	*Fixed server crashing when relaying explosion trajectories to spectator factions (thanks to Alex).
+	*Fixed unintended EMP zone collapsing when factions die.
 	>Increased contrast of range visualizations (attack/sensor).
 	>Improved appearance of lava (replaced sin-equations with perlin noise).
 	>Improved initial faction placement.
