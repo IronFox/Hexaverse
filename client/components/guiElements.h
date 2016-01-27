@@ -123,7 +123,7 @@ namespace GUIElements
 	protected:
 		static void		Darken(const Rect<>&rect, float alpha=0.9f, bool flush=false);
 
-		static void		RenderArea(const Rect<>&rect, bool lit, bool flip);
+		static void		RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone);
 
 		virtual bool	ClientIsLit() const {return true;}
 
@@ -196,6 +196,7 @@ namespace GUIElements
 		typedef Component	Super;
 
 		bool			fillBackground = true;
+		float3			backgroundTone = float3(1);
 
 		virtual bool	UpdateHeight() override;
 		virtual bool	UpdateHeightIfNecessary() override;

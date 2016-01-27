@@ -76,6 +76,38 @@ namespace Objects
 	#endif
 
 
+	#ifdef HAS_WINDOW
+
+		/**
+		Relay-functor to convert a single boolean function or variable to BaseCommand::Flags.
+		Depending on the returned boolean value, flag compositions will either be 
+		BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive 
+		or
+		BaseCommand::Flags::IsEnabled
+		*/
+		class GlobalPermaSwitch
+		{
+			std::function<bool()>	getState;
+		public:
+			/**/	GlobalPermaSwitch(const std::function<bool()>&f):getState(f)
+			{}
+			/**/	GlobalPermaSwitch(bool&b):getState([&b](){return b;})
+			{}
+
+
+			BaseCommand::Flags	operator()(int, bool)
+			{
+				return getState() ? BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::IsEnabled;
+			}
+
+
+		};
+
+
+
+	#endif
+
+
 	void					Create()
 	{
 		#ifdef CLIENT
@@ -236,7 +268,7 @@ namespace Objects
 
 			globalCommands.Append(GlobalCommand(int2(0,2),"Highlight Compounds", &GlobalCmd::ToggleCompoundHightlights, &CommonCmd::AlwaysEnabled<int>, &GlobalCmd::CompoundAreHightlighted));
 			globalCommands.Append(GlobalCommand(int2(1,2),"Clip Terrain", &GlobalCmd::ToggleSeeThrough
-					,[](int,bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive(0) ? BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::IsEnabled;}
+					,GlobalPermaSwitch(Grid::SeeThrough::IsEnabled)
 				));
 			globalCommands.Append(GlobalCommand(int2(2,2),"Clip-View Down", &GlobalCmd::SeeThroughDown
 					,[](int,bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive(0) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
@@ -246,35 +278,32 @@ namespace Objects
 				));
 
 			globalCommands.Append(GlobalCommand(int2(2,0),"Hide Objects", &GlobalCmd::ToggleObjectView
-					,[](int,bool)->BaseCommand::Flags{return GlobalCmd::ObjectsAreHidden(0) ? BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::IsEnabled;}
+					,GlobalPermaSwitch([](){return !objectView;})
 				));
 
 
 			globalCommands.Append(GlobalCommand(int2(0,1),"Show Resources", [](int)
-			{
-				resourceView = !resourceView;
-				for (int j = 0; j < BaseGrid::NumFamilies; j++)
-					Grid::low.family[j].normal.resourceOutdated = true;
+					{
+						resourceView = !resourceView;
+						for (int j = 0; j < BaseGrid::NumFamilies; j++)
+							Grid::low.family[j].normal.resourceOutdated = true;
 			
-			}, [](int, bool)->BaseCommand::Flags
-			{
-				return resourceView ? BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::IsEnabled;
-			}));
+					}
+					,GlobalPermaSwitch(resourceView)
+				));
 
 			globalCommands.Append(GlobalCommand(int2(1,1),"Show Ranges", [](int)
-			{
-				showFriendlyRanges = !showFriendlyRanges;
-			}, [](int,bool)->BaseCommand::Flags
-			{
-				return showFriendlyRanges ? BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::IsEnabled;
-			}));
+					{
+						showFriendlyRanges = !showFriendlyRanges;
+					}
+					, GlobalPermaSwitch(showFriendlyRanges)
+				));
 			globalCommands.Append(GlobalCommand(int2(2,1),"Show Hostile Ranges", [](int)
-			{
-				showHostileRanges = !showHostileRanges;
-			}, [](int,bool)->BaseCommand::Flags
-			{
-				return showHostileRanges ? BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::IsEnabled;
-			}));
+					{
+						showHostileRanges = !showHostileRanges;
+					}
+					,GlobalPermaSwitch(showHostileRanges)
+				));
 
 			//ASSERT__(Grid::Resource::all.IsNotEmpty());	//wrong order if this fires
 			//for (index_t i = 0; i < Grid::Resource::all.Count(); i++)

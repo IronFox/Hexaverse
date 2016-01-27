@@ -636,9 +636,9 @@ namespace Objects
 
 			CellCoords ConfigureStandardCommands(Turret&component)
 			{
-				component.iconCommands.Append(IconCommand(int2(4,0), "Abort", &VehicleCmd::AbortOperation, &CommonCmd::CommonButtonCheck<PWorldEntity const&>,NoCosts));
-				component.iconCommands.Append(IconCommand(int2(4,1), "Undo", &VehicleCmd::UndoOperation, &CommonCmd::CommonButtonCheck<PWorldEntity const&>,NoCosts));
-				component.iconCommands.Append(IconCommand(int2(5,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck<PWorldEntity const&>,NoCosts));
+				component.iconCommands.Append(IconCommand(int2(4,0), "Abort", &VehicleCmd::AbortOperation, &CommonCmd::CommonButtonCheck,NoCosts));
+				component.iconCommands.Append(IconCommand(int2(4,1), "Undo", &VehicleCmd::UndoOperation, &CommonCmd::CommonButtonCheck,NoCosts));
+				component.iconCommands.Append(IconCommand(int2(5,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck,NoCosts));
 				return CellCoords(5,1);
 			}
 		#endif
@@ -1051,7 +1051,7 @@ namespace Objects
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
 
-				component.iconCommands.Append(IconCommand(offset++, "Obliterate",&MyCmd::Obliterate, &CommonCmd::CommonButtonCheck<PWorldEntity const&>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Obliterate",&MyCmd::Obliterate, &CommonCmd::CommonButtonCheck,NoCosts));
 
 				component.parts.setSize(1);
 				component.parts.first().first.LoadFromObj("objects/ragnarökRing.obj");

@@ -585,7 +585,7 @@ namespace Objects
 
 	BaseCommand::Flags	VehicleCmd::AutomatedCheck(const PWorldEntity&e,bool controlEnabled)
 	{
-		BaseCommand::Flags f = CommonCmd::CommonButtonCheck<PWorldEntity>(e,controlEnabled);
+		BaseCommand::Flags f = CommonCmd::CommonButtonCheck(e,controlEnabled);
 		if (IsAutomated(e))
 			f |= BaseCommand::Flags::IsPermaActive;
 		return f;
