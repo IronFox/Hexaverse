@@ -8,12 +8,20 @@
 
 namespace Game
 {
+	UINT32				mostFactionsAlive=0;
 	Evolver::Abstract	*evolver = nullptr;
 	Objects::PFaction	winner;	//if set indicates game is over
 	Timer::Time			lastPhaseChange = timer.Now();
 	bool				roundTimerPaused = true;
 	float				factionStartMineralValue=1.f;	//determined during loading
 	float				effectiveAnimationLength = 1.f;
+
+
+
+	void			SignalFactionsChanged()
+	{
+		mostFactionsAlive = std::max(mostFactionsAlive,(UINT32)Objects::Faction::all.Count());
+	}
 
 
 	namespace Config
@@ -83,6 +91,7 @@ namespace Game
 		void		HandleSessionClosure()
 		{
 			roundTimerPaused = true;
+			mostFactionsAlive = 0;
 			winner.reset();
 			HandleSessionSuspension();
 		}
@@ -91,6 +100,7 @@ namespace Game
 		{
 			if (Config::Nexus::enableAI)
 				AIProcess::Begin(Objects::Faction::nexus->accessToken);
+			SignalFactionsChanged();
 		}
 
 
@@ -761,6 +771,7 @@ namespace Game
 								}
 
 								Objects::Faction::Kill(faction);
+								SignalFactionsChanged();
 								if (client)
 									::Network::activePlayers.FindAndErase(client);
 								::Network::tokenMap.Unset(faction->accessToken);

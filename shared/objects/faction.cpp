@@ -457,10 +457,10 @@ namespace Objects
 				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": ref not set");
 
 
-			if ((ref && !ref->sightLevel) || force)
+			if (ref && (!ref->sightLevel || force))
 			{
 				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Lost visual at time="+String(t));
-				if (ref && ref->sightLevel)
+				if (ref->sightLevel)
 				{
 					LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": WARNING: Visual loss was forced");
 				}

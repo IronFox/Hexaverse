@@ -1,5 +1,5 @@
 <project type="Application:Console" stackSize="4000000">
-	<source path="../shared" />
+	<source path="../shared" include="true" />
 	<source path="./">
 		<exclude file="visual.rc2" />
 		<exclude find="consensusLink" />

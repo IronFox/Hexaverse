@@ -30,10 +30,14 @@ namespace Objects
 
 	/*virtual override*/ void		EntityCommand::Refresh(bool controlEnabled)
 	{
-		ASSERT__(checkPermaActive);
-		permaActive = checkPermaActive(selectedEntity); 
-		isEnabled = checkEnabled(selectedEntity,controlEnabled);
+		ASSERT__(check);
+		state = check(selectedEntity,controlEnabled);
 	}
+	/*virtual override*/ void		GlobalCommand::Refresh(bool controlEnabled)
+	{
+		state = check(0,controlEnabled);
+	}
+
 	/*virtual override*/ void		EntityCommand::Execute() 
 	{
 		execute(selectedEntity);
@@ -331,7 +335,7 @@ namespace Objects
 	}
 
 
-	/**/				DeployVehicleCommand::DeployVehicleCommand(int2 coords, const PVehicle&v,   OnExecute f, CheckEnabled a, IsPermaActive p) : Super(coords,v->GetNiceName(),v->base,v->turret,f,a,p), vehicle(v)
+	/**/				DeployVehicleCommand::DeployVehicleCommand(int2 coords, const PVehicle&v,   OnExecute f, Check c) : Super(coords,v->GetNiceName(),v->base,v->turret,f,c), vehicle(v)
 	{}
 
 
@@ -576,6 +580,15 @@ namespace Objects
 	{
 		PMobileEntity v= To<MobileEntity>::DynamicCast(e);
 		return v && v->isAutomated;
+	}
+
+
+	BaseCommand::Flags	VehicleCmd::AutomatedCheck(const PWorldEntity&e,bool controlEnabled)
+	{
+		BaseCommand::Flags f = CommonCmd::CommonButtonCheck<PWorldEntity>(e,controlEnabled);
+		if (IsAutomated(e))
+			f |= BaseCommand::Flags::IsPermaActive;
+		return f;
 	}
 
 

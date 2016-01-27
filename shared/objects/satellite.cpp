@@ -415,8 +415,11 @@ namespace Objects
 			structureConstructionCommands.Append(
 				StructureConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
 				std::bind(&Component::Terraformer::Cmd::Construct, s, std::placeholders::_1),
-				std::bind(&MyCmd::CanBuild,s,std::placeholders::_1),
-				&CommonCmd::AlwaysFalse<PWorldEntity const&>));
+				[s](const PWorldEntity&e, bool controlEnabled)->BaseCommand::Flags
+				{
+					return MyCmd::CanBuild(s,e) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+				}
+				));
 			structureConstructionCommands.last().RasterizeImage();
 		#endif
 	}
@@ -428,8 +431,7 @@ namespace Objects
 			satelliteConstructionCommands.Append(
 				SatelliteConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
 				std::bind(&MyCmd::Build, s, std::placeholders::_1),
-				&CommonCmd::IsModeActiveC<CursorMode::Idle>,
-				&CommonCmd::AlwaysFalse<PWorldEntity const&>));
+				&CommonCmd::IdleCheck));
 		#endif
 	}
 

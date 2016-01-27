@@ -140,7 +140,7 @@ namespace Objects
 
 			PMobileEntity v = CompleteProduction();
 			//static Random random;
-			Grid::LCellIdI c = movementChoices[parent->localRandom.getIndex(movementChoices.Count()-1)];
+			Grid::LCellIdI c = movementChoices[parent->entityRandom.getIndex(movementChoices.Count()-1)];
 
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))
@@ -475,7 +475,7 @@ namespace Objects
 						else
 							SignalConstructionAbort(e->id,id);	//lossless
 
-					},CommonCmd::MostlyEnabled<PWorldEntity const&>,CommonCmd::AlwaysFalse<PWorldEntity const&>);
+					},CommonCmd::CommonButtonCheck<PWorldEntity const&>);
 					if (!index)
 					{
 						item.commandToTerminate.roundsLeft = rounds;

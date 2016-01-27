@@ -219,17 +219,35 @@ namespace Objects
 			foreach (Component::baseComponents,bc)
 				(*bc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();});
 
-			globalCommands.Append(GlobalCommand(int2(0,0),"End Round", [](int){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, [](int, bool controlEnabled)->bool {return CanChangeRoundState();},[](int)->bool {return HasSignalledRoundEnd();}));
+			globalCommands.Append(GlobalCommand(int2(0,0),"End Round", [](int){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
+			[](int, bool controlEnabled)->BaseCommand::Flags
+			{
+				BaseCommand::Flags rs = BaseCommand::Flags::None;
+				if (CanChangeRoundState())
+					rs |= BaseCommand::Flags::IsEnabled;
+				if (HasSignalledRoundEnd())
+					rs |= BaseCommand::Flags::IsPermaActive;
+				else
+					if (ShouldSignalRoundEnd())
+						rs |= BaseCommand::Flags::IsFlashing;
+				return rs;
+			}));
 
 
 			globalCommands.Append(GlobalCommand(int2(0,2),"Highlight Compounds", &GlobalCmd::ToggleCompoundHightlights, &CommonCmd::AlwaysEnabled<int>, &GlobalCmd::CompoundAreHightlighted));
+			globalCommands.Append(GlobalCommand(int2(1,2),"Clip Terrain", &GlobalCmd::ToggleSeeThrough
+					,[](int,bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive(0) ? BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::IsEnabled;}
+				));
+			globalCommands.Append(GlobalCommand(int2(2,2),"Clip-View Down", &GlobalCmd::SeeThroughDown
+					,[](int,bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive(0) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
+				));
+			globalCommands.Append(GlobalCommand(int2(3,2),"Clip-View Up", &GlobalCmd::SeeThroughUp
+					,[](int,bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive(0) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
+				));
 
-
-			globalCommands.Append(GlobalCommand(int2(1,2),"Clip Terrain", &GlobalCmd::ToggleSeeThrough, &CommonCmd::AlwaysEnabled<int>, &GlobalCmd::SeeThroughIsActive));
-			globalCommands.Append(GlobalCommand(int2(2,2),"Clip-View Down", &GlobalCmd::SeeThroughDown, &GlobalCmd::SeeThroughIsActive2, &CommonCmd::AlwaysFalse<int>));
-			globalCommands.Append(GlobalCommand(int2(3,2),"Clip-View Up", &GlobalCmd::SeeThroughUp, &GlobalCmd::SeeThroughIsActive2, &CommonCmd::AlwaysFalse<int>));
-
-			globalCommands.Append(GlobalCommand(int2(2,0),"Hide Objects", &GlobalCmd::ToggleObjectView, &CommonCmd::AlwaysEnabled<int>, &GlobalCmd::ObjectsAreHidden));
+			globalCommands.Append(GlobalCommand(int2(2,0),"Hide Objects", &GlobalCmd::ToggleObjectView
+					,[](int,bool)->BaseCommand::Flags{return GlobalCmd::ObjectsAreHidden(0) ? BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::IsEnabled;}
+				));
 
 
 			globalCommands.Append(GlobalCommand(int2(0,1),"Show Resources", [](int)
@@ -238,24 +256,24 @@ namespace Objects
 				for (int j = 0; j < BaseGrid::NumFamilies; j++)
 					Grid::low.family[j].normal.resourceOutdated = true;
 			
-			}, &CommonCmd::AlwaysEnabled<int>, [](int)->bool
+			}, [](int, bool)->BaseCommand::Flags
 			{
-				return resourceView;
+				return resourceView ? BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::IsEnabled;
 			}));
 
 			globalCommands.Append(GlobalCommand(int2(1,1),"Show Ranges", [](int)
 			{
 				showFriendlyRanges = !showFriendlyRanges;
-			}, &CommonCmd::AlwaysEnabled<int>, [](int)->bool
+			}, [](int,bool)->BaseCommand::Flags
 			{
-				return showFriendlyRanges;
+				return showFriendlyRanges ? BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::IsEnabled;
 			}));
 			globalCommands.Append(GlobalCommand(int2(2,1),"Show Hostile Ranges", [](int)
 			{
 				showHostileRanges = !showHostileRanges;
-			}, &CommonCmd::AlwaysEnabled<int>, [](int)->bool
+			}, [](int,bool)->BaseCommand::Flags
 			{
-				return showHostileRanges;
+				return showHostileRanges ? BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::IsEnabled;
 			}));
 
 			//ASSERT__(Grid::Resource::all.IsNotEmpty());	//wrong order if this fires
