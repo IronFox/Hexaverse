@@ -416,7 +416,7 @@ bool	HasSignalledRoundEnd()
 
 bool	CanChangeRoundState()
 {
-	return Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
+	return Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && !Network::amSpectator;
 }
 
 
@@ -2575,7 +2575,7 @@ String GenerateOreName(Random&random)
 
 	bool	ShouldSignalRoundEnd()
 	{
-		if (!Network::myFaction || Network::myFaction->requestedNewRound)
+		if (!Network::myFaction || Network::myFaction->requestedNewRound || Network::amSpectator)
 			return false;
 		count_t total=0,requested=0;
 		Objects::ForeachFaction([&total,&requested](const Objects::PFaction&f)
