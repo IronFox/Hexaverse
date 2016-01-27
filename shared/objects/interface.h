@@ -17,6 +17,7 @@
 	void	SignalRoundEnd();
 	void	SignalUndoRoundEnd();
 	bool	HasSignalledRoundEnd();
+	bool	ShouldSignalRoundEnd();
 	bool	CanChangeRoundState();
 	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName);
 	void	SignalTerrainModification(const Objects::PVehicle&v,Objects::CursorMode::mode_t activeCursorMode,const Array<Grid::HCellIdI>&selection);

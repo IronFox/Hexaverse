@@ -643,6 +643,10 @@ namespace Objects
 		#endif
 
 	public:
+		#ifdef HAS_WINDOW
+			bool					visited=false;
+		#endif
+
 		/**
 		Checks whether or not the conditions are given to enable the local structure
 		*/
@@ -1765,19 +1769,26 @@ namespace Objects
 
 			#ifdef HAS_WINDOW
 
-				iconCommands << IconCommand(int2(4,1), "Enable",&Cmd::Enable,[](const PWorldEntity&e, bool controlEnabled)->bool
+				iconCommands << IconCommand(int2(4,1), "Enable",&Cmd::Enable,
+				[](const PWorldEntity&e, bool controlEnabled)->BaseCommand::Flags
 				{
-					if (!controlEnabled)
-						return false;
+					BaseCommand::Flags rs = BaseCommand::Flags::None;
 					CommonStructure<Derivative>*div = dynamic_cast<CommonStructure<Derivative>*>(e.get());
-					return div && div->CanEnable();
+					if (controlEnabled)
+					{
+						if (div && div->CanEnable())
+						{
+							rs |= BaseCommand::Flags::IsEnabled;
+						}
+					}
+					if (div && div->IsEnabled())
+						rs |= BaseCommand::Flags::IsPermaActive;
+					return rs;
 				}
-				,&Cmd::IsEnabled
 				,NoCosts
 				);
 				if (!IsIndestructible())
-					iconCommands << IconCommand(int2(4,0), "Demolish",&SignalRemoval,&CommonCmd::MostlyEnabled<PWorldEntity const&>
-							,&CommonCmd::AlwaysFalse<PWorldEntity const&>
+					iconCommands << IconCommand(int2(4,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck<PWorldEntity const&>
 							,NoCosts
 							);
 			#endif
@@ -1803,8 +1814,7 @@ namespace Objects
 			#ifdef HAS_WINDOW
 
 				if (!IsIndestructible())
-					commands << IconCommand(int2(4,0), "Demolish",&SignalRemoval,&CommonCmd::MostlyEnabled<PWorldEntity const&>
-							,&CommonCmd::AlwaysFalse<PWorldEntity const&>
+					commands << IconCommand(int2(4,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck<PWorldEntity const&>
 							,NoCosts
 							);
 			#endif

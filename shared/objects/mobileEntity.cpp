@@ -561,7 +561,7 @@ namespace Objects
 						//random first to maybe not make the same mistake twice
 						for (index_t i = 0; i < numWays; i++)
 						{
-							index_t target = localRandom.getIndex(numWays-1);
+							index_t target = entityRandom.getIndex(numWays-1);
 							if (PlotCourse(ways[target],true,false))
 							{
 								hasTriedPlottingOnMoveAutoMotion = true;

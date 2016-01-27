@@ -586,6 +586,7 @@ namespace Receiver
 					Objects::Faction::all << client->faction;
 				}
 			faction = client->faction;
+			Game::SignalFactionsChanged();
 			client->faction->name = client->name;
 
 
