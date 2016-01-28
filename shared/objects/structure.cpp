@@ -161,7 +161,7 @@ namespace Objects
 
 
 			//const Grid::LCellIdI target = task.foci.Pop();
-			float3 dir = Grid::low.cells[target.target.stackID].centerVertex.xyz * Grid::ToRadius(target.target.height) - this->system.w.xyz;
+			float3 dir = Grid::low.cells[target.target.stackID].centerVertex.xyz * Grid::ToRadius(target.target.height) - this->GetWorldPosition();
 			float3 innerDir;
 			Mat::rotate(this->inverse,dir,innerDir);
 			TVec3<> t0;
@@ -558,8 +558,8 @@ namespace Objects
 						//const float3&b0 = Grid::low.cells[this->location.stackID].cornerCenter;
 						//const float3&b1 = Grid::low.cells[(*c)->location.stackID].cornerCenter;
 
-						const TVec3<>&center0 = this->system.w.xyz,
-									&center1 = c->system.w.xyz;
+						const TVec3<>&center0 = this->GetWorldPosition(),
+									&center1 = c->GetWorldPosition();
 
 						const float height0 = Vec::length(center0),
 									height1 = Vec::length(center1),

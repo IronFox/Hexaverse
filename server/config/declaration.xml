@@ -148,7 +148,7 @@
 		<context name="UnitLimits">
 			Total number of structures/vehicles that may be deployed by any one faction.
 			Only deployment is counted. Vehicles may be stored in vehicle stores to avoid being counted.
-			<variable name="Enabled" default="true">Specifies whether or not unit limits should be applied.</variable>
+			<variable name="Enabled" default="false">Specifies whether or not unit limits should be applied.</variable>
 			<context name="Structures">Limits for buildings
 				<variable name="Mine" default="8" />
 				<variable name="Generator" default="8" />

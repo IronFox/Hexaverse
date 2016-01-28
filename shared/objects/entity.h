@@ -95,6 +95,7 @@ namespace Objects
 		TMatrix4<>					inverse;	//!< inverse of system
 
 
+		const TVec3<>&				GetWorldPosition() const {return system.w.xyz;}
 
 		/**
 		Assembles a name composed of the parent management class name and the local instance id

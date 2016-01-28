@@ -515,7 +515,7 @@ namespace Objects
 							PSkyHub hub = port.first->connectedToHub;
 							if (hub.get() != this)
 							{
-								float d2 = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
+								float d2 = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 								if (d2 < distance)
 								{
 									distance = d2;
@@ -529,7 +529,7 @@ namespace Objects
 						PSkyHub hub = sat.lock();
 						if (hub && hub.get() != this && !hub->connectedTo.expired())
 						{
-							float d2 = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
+							float d2 = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 							if (d2 < distance)
 							{
 								distance = d2;
@@ -555,7 +555,7 @@ namespace Objects
 						if (hub.get() != this)
 						{
 							hubs.Append().hub = hub;
-							hubs.last().distance = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
+							hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 						}
 					}
 			#else
@@ -565,7 +565,7 @@ namespace Objects
 					if (hub && hub.get() != this && !hub->connectedTo.expired())
 					{
 						hubs.Append().hub = hub;
-						hubs.last().distance = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
+						hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 					}
 				}
 			#endif

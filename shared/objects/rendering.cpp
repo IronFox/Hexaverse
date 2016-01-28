@@ -1060,7 +1060,7 @@ namespace Objects
 				bool isBuilding2 = (p && p->IsBuilding(progress2));
 				if (isBuilding || v->health < maxHealth || isBuilding2)
 				{
-					ProgressBar::SetLocation(v->system.w.xyz, v->IsSatellite() ? 3.f : 1.f);
+					ProgressBar::SetLocation(v->GetWorldPosition(), v->IsSatellite() ? 3.f : 1.f);
 					//ProgressBar::RenderNewBar(0,float3(0.1,0.1,0.1));
 					//ProgressBar::RenderNewBar(0.25f,float3(1,0.1,0.1));
 					//ProgressBar::RenderNewBar(0.75f,float3(0.1,1,0.1));
@@ -1093,7 +1093,7 @@ namespace Objects
 
 			if (s->health < maxHealth || isBuilding)
 			{
-				ProgressBar::SetLocation(s->system.w.xyz 
+				ProgressBar::SetLocation(s->GetWorldPosition()
 				+ 
 				Grid::low.cells[s->location.stackID].centerVertex.xyz*(float(s->GetHeight()-1) * Grid::SingleLayerHeight));
 				{
@@ -1196,7 +1196,7 @@ namespace Objects
 
 			float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,1,0,0.8f);
 
-			Renderer::RenderRangeSphere(selectedEntity->system.w.xyz,scanningRange,
+			Renderer::RenderRangeSphere(selectedEntity->GetWorldPosition(),scanningRange,
 				color
 				);
 			float zOffset;
@@ -1444,6 +1444,9 @@ namespace Objects
 
 		display.SetRasterizer(true,false);
 
+		display.SetBlendMode(Engine::BlendMode::FlareBlend);
+		overallTint.Update(float4(float3(0.18f,0.185f,2.f),1.f));
+
 		ForeachMobileWorldEntity([](const PMobileEntity&v)
 		{
 			if (v != selectedEntity)
@@ -1455,6 +1458,8 @@ namespace Objects
 
 			}
 		});
+		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+		overallTint.Update(noTint);
 		
 		foreach(structures, _s)
 		{
@@ -1626,7 +1631,7 @@ namespace Objects
 			const float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
 			{
 				//display.SetBlendMode(Engine::BlendMode::Add);
-				RenderBeam(sat->system.w.xyz,-(Grid::ToRadius(sat->location.height) 
+				RenderBeam(sat->GetWorldPosition(),-(Grid::ToRadius(sat->location.height) 
 								- bottom) /
 								Grid::SingleLayerHeight,
 								0.1f

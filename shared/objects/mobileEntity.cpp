@@ -1233,7 +1233,7 @@ namespace Objects
 			Task&task = LockedPeekTask();
 
 			const Grid::LCellIdI target = task.foci.Pop().target;
-			float3 dir = Grid::low.cells[target.stackID].centerVertex.xyz * Grid::ToRadius(target.height) - this->system.w.xyz;
+			float3 dir = Grid::low.cells[target.stackID].centerVertex.xyz * Grid::ToRadius(target.height) - this->GetWorldPosition();
 			float3 innerDir;
 			Mat::rotate(this->inverse,dir,innerDir);
 			TVec3<> t0;
