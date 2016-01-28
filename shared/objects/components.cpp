@@ -806,7 +806,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Terraformer;
 
 			component.productionCosts = 40;
-			#if !defined CONNECTOR_LESS && !defined WIRELESS_VEHICLES
+			#if !defined CONNECTOR_LESS
 				component.baseStorageCapacity.level[Resource::Minerals] = 200;
 			#endif
 			component.constructionSpeed = 10;
@@ -850,7 +850,7 @@ namespace Objects
 			component.constTowerName = ConstName::Type_ArtilleryTower;
 
 			component.productionCosts = 20;
-			#if !defined CONNECTOR_LESS && !defined NO_MUNITION && !defined WIRELESS_VEHICLES
+			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
 			component.constructionSpeed = 0;
@@ -901,7 +901,7 @@ namespace Objects
 			component.constTowerName = ConstName::Type_LauncherTower;
 
 			component.productionCosts = 30;
-			#if !defined CONNECTOR_LESS && !defined NO_MUNITION && !define WIRELESS_VEHICLES
+			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
 			component.constructionSpeed = 0;
@@ -953,7 +953,7 @@ namespace Objects
 			component.constTowerName = ConstName::Type_CannonTower;
 
 			component.productionCosts = 15;
-			#if !defined CONNECTOR_LESS && !defined NO_MUNITION && !defined WIRELESS_VEHICLES
+			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
 			#endif
 			component.constructionSpeed = 0;
@@ -1003,7 +1003,7 @@ namespace Objects
 			component.constTowerName = ConstName::Type_EMPTower;
 
 			component.productionCosts = 100;
-			#if !defined CONNECTOR_LESS && !defined WIRELESS_VEHICLES
+			#if !defined CONNECTOR_LESS
 				component.baseStorageCapacity.level[Resource::Uranium] = 150;
 			#endif
 			component.constructionSpeed = 0;
@@ -1293,7 +1293,7 @@ namespace Objects
 			component.constTowerName = ConstName::Type_MechanicTower;
 
 			component.productionCosts = 30;
-			#if !defined CONNECTOR_LESS && !defined WIRELESS_VEHICLES
+			#if !defined CONNECTOR_LESS
 				component.baseStorageCapacity.level[Resource::Minerals] = 100;
 			#endif
 			component.constructionSpeed = 0;
