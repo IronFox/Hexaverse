@@ -227,6 +227,7 @@
 				{
 					textout.color(1,0.6,0.5);
 					textout <<changePerRound;
+					textout.color(color * 0.5f + float3(0.5f));
 				}
 			if (max > 0)
 			{

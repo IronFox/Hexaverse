@@ -28,24 +28,25 @@ namespace Objects
 		Buffer0<WWorkingStructure>	workingStructures;
 		Buffer0<WStructure>			allStructures;
 		FullResourceVector			total;
-		#ifndef CLIENT
-//			#ifdef CONNECTOR_LESS
-				ResourceVector		overproduction;	//set during initial phases, cleared before animation phase
-	//		#endif
-		#endif
 
 		bool						stable;
 		//ID							hashIdentifier;
 
+		static PWorkingStructure	Reference(const WWorkingStructure&_s);
+		count_t						CountWorkingStructures() const;
+
+		#ifndef CLIENT
+			ResourceVector	GetOverproduction() const;
+			int				GetOverproduction(Resource) const;
+			void			DistributeOverproduction(const ResourceVector&v);
+			void			WithdrawOverproduction(Resource res ,int positiveAmount);
+		#endif
 
 		void				Clear()
 		{
 			total = FullResourceVector();
 			workingStructures.Clear();
 			allStructures.Clear();
-			#ifndef CLIENT
-				overproduction = ResourceVector();
-			#endif
 		}
 
 		void				swap(Compound&other)
@@ -54,10 +55,6 @@ namespace Objects
 			allStructures.swap(other.allStructures);
 			swp(total,other.total);
 			swp(stable,other.stable);
-			#ifndef CLIENT
-				swp(overproduction,other.overproduction);
-			#endif
-			//swp(hashIdentifier,other.hashIdentifier);
 		}
 		void				Compact()
 		{
