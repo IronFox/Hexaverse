@@ -44,14 +44,14 @@ namespace Objects
 			struct TCacheID
 			{
 				UINT32			round=0xFFFFFFFF;
-				UINT16			stackID=0xFFFF;
+				UINT16			stackID=0xFFFF,numCompounds=0;
 				UINT8			layerID=0xFF;
 				UINT8			phase=0xFF;
 
 				/**/			TCacheID()	{}
 				/**/			TCacheID(const MobileEntity&);
 
-				bool			operator==(const TCacheID&other) const {return round == other.round && stackID == other.stackID && layerID == other.layerID && phase == other.phase;}
+				bool			operator==(const TCacheID&other) const {return round == other.round && stackID == other.stackID && layerID == other.layerID && phase == other.phase && numCompounds == other.numCompounds;}
 				bool			operator!=(const TCacheID&other) const {return !operator==(other);}
 			};
 
@@ -498,6 +498,7 @@ namespace Objects
 		bool					CanRepair() const {return turret->canRepair;}
 		bool					CanAttack() const {return turret->CanAttack();}
 
+		int						GetCurrentMineralConsumption() const;
 
 		/**
 		Updates @a system and @a invert based on @a location

@@ -99,6 +99,7 @@ namespace Objects
 			stackID = (UINT16)m.location.stackID;
 			layerID = (UINT8)Grid::CellStack::ToLayer(m.location.height);
 			phase = (UINT8)RuntimeConfig::phase;
+			numCompounds = (UINT16)compounds.Count();
 		}
 
 		#ifndef CLIENT
@@ -189,13 +190,17 @@ namespace Objects
 		*/
 		/*static*/ void	MobileResourceEnvironment::WithdrawOverproduction(Compound&compound, MobileEntity*originatingAt, Resource res, int&change)
 		{
-			if (change < 0 && compound.overproduction.level[res] > 0)
+			if (change >= 0)
+				return;
+			ResourceVector overproduction = compound.GetOverproduction();
+			if (overproduction.level[res] > 0)
 			{
-				int production = compound.overproduction.level[res];
+				int production = overproduction.level[res];
 				int overproductionTransfer = std::min(production,-change);
 				LogEvent(EventType::MinorEntityProcess,originatingAt,String(res.ToString())+ " overproduction ("+String(production)+") redirected for demand ("+String(change)+"): "+String(overproductionTransfer)+" transferred");
 				change += overproductionTransfer;
-				compound.overproduction.level[res]-= overproductionTransfer;
+				compound.WithdrawOverproduction(res,overproductionTransfer);
+//				compound.overproduction.level[res]-= overproductionTransfer;
 			}
 		}
 
@@ -250,7 +255,7 @@ namespace Objects
 				foreach (sourceCompounds,c)
 					rs += Objects::compounds[*c].total.storage.level[res] 
 						#ifndef CLIENT
-							+ Objects::compounds[*c].overproduction.level[res]
+							+ Objects::compounds[*c].GetOverproduction(res)
 						#endif
 						;
 				return rs;
@@ -1835,6 +1840,13 @@ namespace Objects
 	#endif
 
 	
+
+	int MobileEntity::GetCurrentMineralConsumption() const
+	{
+		if (myTasks.IsNotEmpty() && myTasks.Peek().job)
+			return std::min(myTasks.Peek().job->mineralCostLeft,GetConstructionSpeed()) ;
+		return 0;
+	}
 
 
 }

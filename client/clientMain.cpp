@@ -995,27 +995,53 @@ void	OnAppear(const Objects::PWorldEntity&e)
 		{
 			//if (Objects::selectedVehicle->tasks.IsNotEmpty() && Objects::selectedVehicle->tasks.Peek().job && Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft)
 			Objects::ResourceVector change;
-			const Objects::ResourceVector&current = Objects::selectedMobileEntity->currentStorage;
-			const Objects::ResourceVector max = Objects::selectedMobileEntity->GetMaxStorageCapacity();
-			int sum = 0;
-			foreach (Objects::selectedMobileEntity->myTasks,t)
-				if (t->job)
-					sum += t->job->mineralCostLeft;
-			if (sum)
+			Objects::ResourceVector current = Objects::selectedMobileEntity->currentStorage;
+			Objects::ResourceVector max = Objects::selectedMobileEntity->GetMaxStorageCapacity();
+			Objects::selectedMobileEntity->resourceEnvironment.CheckRefresh(*Objects::selectedMobileEntity);
+			bool any = false;
+			foreach (Objects::selectedMobileEntity->resourceEnvironment.sourceCompounds,c)
 			{
-				change.level[Objects::Resource::Minerals] -= sum;//-Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft;
+				if (*c >= Objects::compounds.Count())
+					continue;
+				const auto&compound = Objects::compounds[*c];
+				current += compound.total.storage;
+				max += compound.total.storageMax;
+				change += compound.total.supply;
+				change -= compound.total.demand;
+				any = true;
+				for (const auto v : Objects::vehicles)
+					if (v->isMine)
+					{
+						v->resourceEnvironment.CheckRefresh(*v);
+						if (v->resourceEnvironment.sourceCompounds.Contains(*c))
+						{
+							change.level[Objects::Resource::Minerals] -= v->GetCurrentMineralConsumption();
+						}
+					}
+
+			}
+			if (!any)
+				change.level[Objects::Resource::Minerals] -= Objects::selectedMobileEntity->GetCurrentMineralConsumption();
+//				int sum = Objects::selectedMobileEntity->GetCurrentMineralConsumption();
+				
+			//foreach (Objects::selectedMobileEntity->myTasks,t)
+			//	if (t->job)
+			//		sum += t->job->mineralCostLeft;
+//			if (sum)
+			{
+//				change.level[Objects::Resource::Minerals] -= sum;//-Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft;
 				UI::Update(
 						#ifndef NO_HIBERNATION
 							Objects::selectedVehicle->GetUplinkTraffic(),	
 						#endif
 							current,max,change);
 			}
-			else
-				UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedVehicle->GetUplinkTraffic(),
-						#endif
-						current,max);
+			//else
+			//	UI::Update(
+			//			#ifndef NO_HIBERNATION
+			//				Objects::selectedVehicle->GetUplinkTraffic(),
+			//			#endif
+			//			current,max);
 		}
 		//else if (Objects::selectedEntity && Objects::selectedEntity->IsMobile())
 		//{
@@ -1025,8 +1051,20 @@ void	OnAppear(const Objects::PWorldEntity&e)
 		{
 			if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
 			{
-				const Objects::Compound&n = Objects::compounds[To<Objects::Structure>::Cast(Objects::selectedEntity)->compoundID];
-				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
+				Objects::PStructure s = To<Objects::Structure>::Cast(Objects::selectedEntity);
+				const Objects::Compound&n = Objects::compounds[s->compoundID];
+				Objects::PWorkingStructure ws = s->IsWorkingStructure() ? To<Objects::WorkingStructure>::Cast(Objects::selectedEntity) : Objects::PWorkingStructure();
+				Objects::ResourceVector balance = n.total.supply;
+				balance -= n.total.demand;
+				for (const auto v : Objects::vehicles)
+					if (v->isMine)
+					{
+						v->resourceEnvironment.CheckRefresh(*v);
+						if (v->resourceEnvironment.sourceCompounds.Contains(s->compoundID))
+						{
+							balance.level[Objects::Resource::Minerals] -= v->GetCurrentMineralConsumption();
+						}
+					}
 				if (ws)
 				{
 					Objects::ResourceVector change, storage, max;
@@ -1035,14 +1073,14 @@ void	OnAppear(const Objects::PWorldEntity&e)
 						#ifndef NO_HIBERNATION
 							Objects::selectedEntity->GetUplinkTraffic(), 
 						#endif
-						n.total.storage, n.total.storageMax, n.total.supply - n.total.demand, storage/*,change, ws->IsEnabled()*/);
+						n.total.storage, n.total.storageMax, balance, storage/*,change, ws->IsEnabled()*/);
 				}
 				else
 					UI::Update(
 						#ifndef NO_HIBERNATION
 							Objects::selectedEntity->GetUplinkTraffic(),
 						#endif
-						n.total.storage, n.total.storageMax, n.total.supply - n.total.demand);
+						n.total.storage, n.total.storageMax, balance);
 			}
 			else
 				UI::HideExtraGauges();
