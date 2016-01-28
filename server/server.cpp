@@ -561,7 +561,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 
 		const float3 traceToWorld = Grid::ToWorld(traceTo);
 
-		roughAttack.sourcePosition = attackFrom->system.w.xyz + Grid::low.cells[attackFrom->location.stackID].centerVertex.xyz * zOffset;
+		roughAttack.sourcePosition = attackFrom->GetWorldPosition() + Grid::low.cells[attackFrom->location.stackID].centerVertex.xyz * zOffset;
 		//attack.timestamp.atTime = v->timeAt;
 		
 
@@ -787,7 +787,7 @@ static Objects::PNexusPort ClosestPort(const Objects::PWorldEntity&e, const Obje
 	{
 		if (!cornerPorts[i])
 			continue;
-		float nd2 = Vec::quadraticDistance(e->system.w.xyz,cornerPorts[i]->system.w.xyz);
+		float nd2 = Vec::quadraticDistance(e->GetWorldPosition(),cornerPorts[i]->GetWorldPosition());
 		if (nd2 < d2)
 		{
 			d2 = nd2;
