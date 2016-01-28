@@ -11,8 +11,11 @@ namespace Game
 
 	extern float	factionStartMineralValue;	//determined during loading
 
-	
-
+	/**
+	Most factions that have ever existed at the same time throughout the game. Used to determine number of accessible EMP areas.
+	Not decremented when factions die. Restored from savegame.
+	*/
+	extern UINT32			mostFactionsAlive	/*=0*/;
 	extern Objects::PFaction	winner;	//if set indicates game is over
 	extern Timer::Time		lastPhaseChange /*= timer.Now()*/;
 	extern bool				roundTimerPaused /*= true*/;
@@ -20,6 +23,12 @@ namespace Game
 
 	//extern Grid::TSharedPlanetConfig	persistentPlanetInfo;
 
+
+	/**
+	Signals that a new faction has been created or an existing one has been removed.
+	Alters @a mostFactionsAlive. Does not do anything else
+	*/
+	void				SignalFactionsChanged();
 
 	namespace Config
 	{
@@ -41,7 +50,7 @@ namespace Game
 
 		inline count_t	CountAccessibleZones()
 		{
-			count_t numZones = Objects::Faction::all.Count();	//not counting nexus faction
+			count_t numZones = mostFactionsAlive;	//not counting nexus faction
 			numZones = (numZones/3) + !!(numZones % 3);
 			return numZones;
 		}

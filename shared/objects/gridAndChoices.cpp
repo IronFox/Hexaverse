@@ -967,7 +967,7 @@ namespace Objects
 						break;
 						case TrajectoryType::Missile:
 							Grid::SetSphereDisplay(
-								entity.system.w.xyz,
+								entity.GetWorldPosition(),
 								b->GetFlatAttackRange(),
 								float4(1,0,0,0.5f));
 						break;
@@ -1182,6 +1182,7 @@ namespace Objects
 	void	InsertConstructed( const PMobileEntity&v, float atTime, bool insertIntoGrid/*= true*/, bool setHealthToFull/*=true*/)
 	{
 		//if (insertIntoGrid)
+		v->UpdateSystem();
 		ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 		bool restored = idMap.IsSet(v->id);
 		if (restored)
@@ -2697,7 +2698,7 @@ namespace Objects
 		#else
 			vehicle->health = vehicle->GetMaxHealth();	//or else PositionOnTop will fail
 			vehicle->PositionOnTop(baseLocation,false);
-			vehicle->UpdateSystem();
+		//	vehicle->UpdateSystem();
 		#endif
 		#ifndef CONNECTOR_LESS
 			if (fillStorage)

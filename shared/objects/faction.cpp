@@ -476,10 +476,10 @@ namespace Objects
 				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": ref not set");
 
 
-			if ((ref && !ref->sightLevel) || force)
+			if (ref && (!ref->sightLevel || force))
 			{
 				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Lost visual at time="+String(t));
-				if (ref && ref->sightLevel)
+				if (ref->sightLevel)
 				{
 					LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": WARNING: Visual loss was forced");
 				}
@@ -538,7 +538,7 @@ namespace Objects
 			count_t rs = 0;
 			ForeachOrbitalWorldEntity([&rs,center](const PWorldEntity&sat)
 			{
-				if (Sphere<>(sat->system.w.xyz,sat->GetScanningRange()).Contains(center))
+				if (Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Contains(center))
 					rs++;
 			});
 			return rs;
@@ -549,7 +549,7 @@ namespace Objects
 			count_t rs = 0;
 			ForeachOrbitalWorldEntity([&rs,sphere](const PWorldEntity&sat)
 			{
-				if (Sphere<>(sat->system.w.xyz,sat->GetScanningRange()).Intersects(sphere))
+				if (Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Intersects(sphere))
 					rs++;
 			});
 			return rs;
@@ -564,7 +564,7 @@ namespace Objects
 			{
 				if (e->IsOrbital())
 				{
-					count_t cover = CountSatelliteCoverage(e->system.w.xyz);
+					count_t cover = CountSatelliteCoverage(e->GetWorldPosition());
 					if (cover == 0)
 						SignalDisappearance(e,timeAt,true);
 					else
@@ -580,7 +580,7 @@ namespace Objects
 			{
 				if (e->IsOrbital())
 				{
-					count_t cover = CountSatelliteCoverage(e->system.w.xyz);
+					count_t cover = CountSatelliteCoverage(e->GetWorldPosition());
 					if (cover > 0)
 						SignalAppearance(e,timeAt,true,false,cover);
 				}
@@ -629,7 +629,7 @@ namespace Objects
 				//count_t coverage = CountSatelliteCoverage(sat->system.w.xyz);
 				ForeachOrbitalWorldEntity([newContacts,sphere,this,&t](const PWorldEntity sat)
 				{
-					if (sat->owner.get() != this && sphere.Contains(sat->system.w.xyz))
+					if (sat->owner.get() != this && sphere.Contains(sat->GetWorldPosition()))
 					{
 						bool wasSeeing = newContacts && seeing.IsSet(sat);
 						SignalAppearance(sat,t,true);

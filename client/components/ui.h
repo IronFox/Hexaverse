@@ -144,7 +144,10 @@ namespace UI
 			public:
 				/**/				TutorialCommand() : Super(int2(1,1),"Tutorial",
 										TutorialCommand::OnExecute,
-										TutorialCommand::IsEnabled,Objects::CommonCmd::AlwaysFalse<Objects::PWorldEntity>,
+										[](const Objects::PWorldEntity&e, bool b)->BaseCommand::Flags
+										{
+											return TutorialCommand::IsEnabled(e,b) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+										},
 										Objects::NoCosts)
 										{}
 
@@ -195,7 +198,7 @@ namespace UI
 										std::bind(
 											(friendly ? (&ArrowOnExecute<true>) : (&ArrowOnExecute<false>))
 											,left,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<Objects::PWorldEntity>,Objects::CommonCmd::AlwaysFalse<Objects::PWorldEntity>,
+										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;},
 										Objects::NoCosts)
 					{}
 
@@ -253,8 +256,7 @@ namespace UI
 				/**/				EntityFocusCommand(const Objects::PWorldEntity&target) 
 									: Super(int2(), target->GetNiceName(),target,
 										std::bind(&EntityFocusCommand::OnExecute,target,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
-										Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>,
+										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;},
 										false), 
 										target(target)
 				{}
@@ -268,7 +270,6 @@ namespace UI
 
 				virtual void	CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
 			};
-
 
 
 			static const float4 friendlyBackgroundColor(0,0,1,0);

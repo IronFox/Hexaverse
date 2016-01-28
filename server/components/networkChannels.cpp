@@ -456,6 +456,7 @@ namespace Receiver
 			client->faction.reset(new Objects::Faction());
 			faction = client->faction;
 			Objects::Faction::all << client->faction;
+			Game::SignalFactionsChanged();
 			client->faction->name = client->name;
 
 

@@ -1,3 +1,6 @@
+all available generators are switched on when power is needed, and are never switched off again. always?
+Uranium storage is geometrically too high
+movement arrows are too broad for unselected entities
 
 button to hide paths of non-selected entity
 

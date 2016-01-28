@@ -199,8 +199,8 @@ namespace Objects
 				entityConstructionCommands.Append(
 					EntityConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
 					std::bind(&Component::Terraformer::Cmd::Construct, s, std::placeholders::_1),
-					std::bind(&MyCmd::CanBuild,s,std::placeholders::_1),
-					&CommonCmd::AlwaysFalse<PWorldEntity const&>));
+					[s](const PWorldEntity&e, bool controlEnabled){return MyCmd::CanBuild(s,e) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None; }
+					));
 				entityConstructionCommands.last().RasterizeImage();
 			#endif
 		}
@@ -212,8 +212,7 @@ namespace Objects
 				entityConstructionCommands.Append(
 					EntityConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
 					std::bind(&MyCmd::Build, s, std::placeholders::_1),
-					&CommonCmd::IsModeActiveC<CursorMode::Idle>,
-					&CommonCmd::AlwaysFalse<PWorldEntity const&>));
+					&CommonCmd::IdleCheck));
 				entityConstructionCommands.last().RasterizeImage();
 			#endif
 		}

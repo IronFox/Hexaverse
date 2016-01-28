@@ -1,55 +1,67 @@
-v0.3.13		[Jan 25 2016]
-	*Fixed abandoned factions not registering as offline to other connected clients.
-	*Fixed server not changing working directory to directory of executable when launched in a different working directory.
-	*Fixed server crashing when relaying explosion trajectories to spectator factions (thanks to Alex).
-	+Increased contrast of range visualizations (attack/sensor).
-	+Improved appearance of lava (replaced sin-equations with perlin noise).
-	+Terrain see-through now displays lava toned down rather than black.
-	+Pressing H now hides the control GUI and contact list.
+v0.3.14		[Jan 28 2016]
+	* Fixed client not being able to start server
+	* Fixed nexus satellites not seeing approaching player satellites
+	> Path projections of unselected mobiles are now displayed with less contrast
+
+v0.3.13		[Jan 27 2016]
+	* Fixed abandoned factions not registering as offline to other connected clients.
+	* Fixed server not changing working directory to directory of executable when launched in a different working directory.
+	* Fixed server crashing when relaying explosion trajectories to spectator factions (thanks to Alex).
+	* Fixed unintended EMP zone collapsing when factions die.
+	> Increased contrast of range visualizations (attack/sensor).
+	> Improved appearance of lava (replaced sin-equations with perlin noise).
+	> Improved initial faction placement.
+	> Improved space button to visit working structures (mines/factories) only once per round even if no commands are given.
+	- Removed confirmation from server disconnection and faction abandoning. Since these are reversible operations the confirmation makes no sense.
+	- Removed control icons when selecting units not owned by the local client.
+	+ The end-round-button now starts flashing red, if the local faction is the last online to request a new round, and all local entities have been visited or are busy.
+	+ Terrain see-through now displays lava toned down rather than black.
+	+ Pressing H now hides the control GUI and contact list.
+	+ Added option --loadAuto/-a [number] to load automated savegames without specifying a full path. -a 0 loads the most recent.
 
 v0.3.12		[Jan 25 2016]
-	+Cleaned up server runtime parameters. All parameters now have long versions (e.g. --port 12345), and short versions (e.g. -p 12345).
-	+Remote control allows to control some aspects of the server from localhost, if --remote is passed as runtime parameter. This feature is still in active development.
-	+Replaced resource probability parameter with density value to better control resource distribution.
-	+Added buttons to start and stop local server.
-	+Q and E now also rotate the camera (like A and D do).
-	+Re-enabled compound system. Vehicles in the vicinity of compounds will implicitly draw from them.
-	+Added compound visualization to show which compound a structure belongs to and/or which compounds a vehicle will draw from.
-	*Fixed default planet types.
+	> Cleaned up server runtime parameters. All parameters now have long versions (e.g. --port 12345), and short versions (e.g. -p 12345).
+	> Replaced resource probability parameter with density value to better control resource distribution.
+	+ Remote control allows to control some aspects of the server from localhost, if --remote is passed as runtime parameter. This feature is still in active development.
+	+ Added buttons to start and stop local server.
+	+ Q and E now also rotate the camera (like A and D do).
+	+ Re-enabled compound system. Vehicles in the vicinity of compounds will implicitly draw from them.
+	+ Added compound visualization to show which compound a structure belongs to and/or which compounds a vehicle will draw from.
+	* Fixed default planet types.
 	
 v0.3.11		[Jan 14 2016]
-	+Server ports can now be altered by specifying 'port 12345' as runtime parameter when launching the server.
-	+Clients can connect to different ports by specifying a port segment in the respective server url ('host:port').
-	+Implemented spectator mode.
-	+New factions can now be created during animation phase.
-	*Fixed satellite active/inactive coloring.
+	+ Server ports can now be altered by specifying 'port 12345' as runtime parameter when launching the server.
+	+ Clients can connect to different ports by specifying a port segment in the respective server url ('host:port').
+	+ Implemented spectator mode.
+	> New factions can now be created during animation phase.
+	* Fixed satellite active/inactive coloring.
 	
 v0.3.10
-	*Long distance routes will now be computed by the client and sent as a sequence of waypoints.
-	*Improved performance of route changes both for server and client.
+	> Long distance routes will now be computed by the client and sent as a sequence of waypoints.
+	> Improved performance of route changes both for server and client.
 
 v0.3.9		[Nov 20 2015]
-	*Upgraded internal sensor system to work better with grid-based entities (e.g. technites).
-	*Fixed AI cannon tanks not attacking stationary targets.
-	*Various internal fixes.
+	> Upgraded internal sensor system to better work with grid-based entities (e.g. technites).
+	* Fixed AI cannon tanks not attacking stationary targets.
+	* Various internal fixes.
 
 v0.3.8		[Nov 9 2015]
-	+Added option to undo round-end request.
-	+Auto-savegames are created at the beginning of the animation phase now to reduce noticable delay.
-	*Fixed towers now firing due to self-obstruction.
+	+ Added option to undo round-end request.
+	> Auto-savegames are created at the beginning of the animation phase now to reduce noticable delay.
+	* Fixed towers now firing due to self-obstruction.
 
 v0.3.7		[Nov 8 2015]
-	Replaced outdated d3dcompiler_43.dll with d3dcompiler_47.dll. On systems running win8.1+ this is not necessary.
-	Reworked core TCP module to handle events outside critical region. This limits deadlock errors to actual deadlocks, and not event handling taking unusually long.
-	Removed x32 version of visual client to avoid having to ship d3dcompiler_47.dll for 32bit, too.
-	Moved user configuration, auto-savegames, and log file output to [My Documents/My Games/Hexaverse].
-	Client log file names now contain a timestamp, and are not overwritten, like server log files.
-	Decreased scanning range of radar turrets (14->12).
-	Increased scanning range of surveyor and terraformers (3->4).
-	Slightly increased default terrain fuel and mineral yield.
-	Abandoning a faction will now append '(abandoned)' to the user name before quitting the faction. This name change is revoked if a connection is reestablished.
-	The nexus faction will now no longer suffer residual EMP damage on its units.
-	Fixed Nexus faction unit production. This must have been broken since abandoning connectors.
+	* Replaced outdated d3dcompiler_43.dll with d3dcompiler_47.dll. On systems running win8.1+ this is not necessary.
+	* Reworked core TCP module to handle events outside critical region. This limits deadlock errors to actual deadlocks, and not event handling taking unusually long.
+	> Removed x32 version of visual client to avoid having to ship d3dcompiler_47.dll for 32bit, too.
+	+ Moved user configuration, auto-savegames, and log file output to [My Documents/My Games/Hexaverse].
+	+ Client log file names now contain a timestamp, and are not overwritten, like server log files.
+	> Decreased scanning range of radar turrets (14->12).
+	> Increased scanning range of surveyor and terraformers (3->4).
+	> Slightly increased default terrain fuel and mineral yield.
+	+ Abandoning a faction will now append '(abandoned)' to the user name before quitting the faction. This name change is revoked if a connection is reestablished.
+	> The nexus faction will now no longer suffer residual EMP damage on its units.
+	* Fixed Nexus faction unit production. This must have been broken since abandoning connectors.
 	
 v0.3.6		[Nov 5 2015]
 	Limited zooming range.

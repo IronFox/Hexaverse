@@ -109,59 +109,62 @@ namespace FileIO
 
 	namespace RID 	//RIFF id constants
 	{
-		static const Riff::TID	fileVersion("VERS"),
-								worldContentTypeCount("WCTC"),
-								worldID("WDID"),
-								roundNumber("RNDN"),
-								variableConfiguration("VARC"),
-								entity("ENTI"),
-								location("LOCA"),
-								vehicle("VEHC"),
-								vehiclePlant("SVPL"),				//also used for MobileEntityProducers in general for backwards-compatibility reasons
-								vehiclePlantGatheringPoint("SVPG"),	//also used for MobileEntityProducers in general for backwards-compatibility reasons
-								vehiclePlantItem("SVPI"),
-								towerItem("STOI"),
-								structureEnabled("SENA"),
-								structureType("STYP"),
-								towerActionLeft("STAL"),
-								resources("RSRC"),
-								noMunitionResources("RSRM"),
-								foci("FOCI"),
-								fociFlags("FCIF"),
-								taskName("TNME"),
-								taskData("TDAT"),
-								path("PATH"),
-								vehicleBase("VEHB"),
-								vehicleTurret("VEHT"),
-								mobileEntityType("METY"),
-								factionID("ID  "),
-								factionName("NAME"),
-								factionAccessToken("ACTK"),
-								factionWorldTypeChunk("WTCK"),
-								factionWorldCounterChunk("WCCK"),
-								factionMarkers("MARK"),
+		static const Riff::TID	
+								mostFactionsAlive(" MFA"),
 								worldTypeChunk(" WTC"),
 								worldCounterChunk(" WCC"),
-								//worldChunk("WDCK"),
-								baseJob("VHBJ"),
-								resourceName("RSNM"),
-								resourceCoverage("RSCV"),
-								resourcesDiscoveredCompressed("RSDC"),
-								resourcesDiscoveredFull("RSDF"),
-								nexusTag("NEXU"),
-								nexusData("NEXD"),
-								nexusBases("NEXB"),
-								closedGame("CLGM"),
-								goal("GOAL"),
-								nexusAI("NEXA"),	//currently only indicates that nexus ai is active
-								startBases("STBS"),
+								factionAccessToken("ACTK"),
 								basesRequired("BSRQ"),
-								newVehiclesHaveFullAmmo("NVHA"),
+								closedGame("CLGM"),
 								doomsdayWeapons("DODW"),
 								exposeActionLeftToHostileFactions("EAHF"),
 								empDamageLevel("EMPD"),
+								entity("ENTI"),
+								factionID("ID  "),
+								fociFlags("FCIF"),
+								foci("FOCI"),
+								factionSupportFlags("FSFL"),
+								goal("GOAL"),
+								location("LOCA"),
+								factionMarkers("MARK"),
+								mobileEntityType("METY"),
+								factionName("NAME"),
+								nexusAI("NEXA"),	//currently only indicates that nexus ai is active
+								nexusBases("NEXB"),
+								nexusData("NEXD"),
+								nexusTag("NEXU"),
+								newVehiclesHaveFullAmmo("NVHA"),
+								path("PATH"),
+								roundNumber("RNDN"),
+								resourceCoverage("RSCV"),
+								resourcesDiscoveredCompressed("RSDC"),
+								resourcesDiscoveredFull("RSDF"),
+								resourceName("RSNM"),
+								resources("RSRC"),
+								noMunitionResources("RSRM"),
+								structureEnabled("SENA"),
+								towerActionLeft("STAL"),
+								startBases("STBS"),
+								towerItem("STOI"),
+								structureType("STYP"),
+								vehiclePlant("SVPL"),				//also used for MobileEntityProducers in general for backwards-compatibility reasons
+								vehiclePlantGatheringPoint("SVPG"),	//also used for MobileEntityProducers in general for backwards-compatibility reasons
+								vehiclePlantItem("SVPI"),
+								taskData("TDAT"),
+								taskName("TNME"),
+								variableConfiguration("VARC"),
+								vehicle("VEHC"),
+								vehicleBase("VEHB"),
+								vehicleTurret("VEHT"),
+								fileVersion("VERS"),
+								baseJob("VHBJ"),
+								factionWorldCounterChunk("WCCK"),
 								worldConfig("WCFG"),
-								factionSupportFlags("FSFL")
+								worldContentTypeCount("WCTC"),
+								worldID("WDID"),
+								factionWorldTypeChunk("WTCK"),
+
+								zzzz("zzzz")	//no use, just so that every line can have a comma at the end
 								;
 
 
@@ -1019,7 +1022,7 @@ namespace FileIO
 								worldInfoFound = true;
 								GetPOD(list,RID::worldID,World::worldID);
 								GetPOD(list,RID::roundNumber,RuntimeConfig::roundNumber);
-
+								GetOptionalPOD(list,RID::mostFactionsAlive,Game::mostFactionsAlive,(UINT32)0);
 
 								Game::Config::Nexus::enableAI = list->FindFirst(RID::nexusAI) != nullptr;
 
@@ -1324,6 +1327,11 @@ namespace FileIO
 	}
 
 
+	PathString GetAutoSavePath(index_t index)
+	{
+		return RuntimeConfig::ConfigFile("saves/auto/snapshot") + PathString(index)+"."+savFileExtension;
+	}
+
 	void AutoSave()
 	{
 		PathString base = RuntimeConfig::ConfigFile("saves/auto/snapshot");
@@ -1375,6 +1383,7 @@ namespace FileIO
 		general->AppendBlock(RID::worldID)->SetPODData(World::worldID);
 		general->AppendBlock(RID::roundNumber)->SetPODData(RuntimeConfig::roundNumber);
 		general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
+		general->AppendBlock(RID::mostFactionsAlive)->SetPODData(Game::mostFactionsAlive);
 
 		{
 			static StringBuffer variableBuffer;

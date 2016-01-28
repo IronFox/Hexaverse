@@ -555,8 +555,8 @@
 				//			? To<Objects::Structure>::Cast(group->entries[group->currentSelection]) : Objects::PStructure()),
 				Super(int2(), group->name+" ("+String(group->entries.Count())+")",
 									std::bind(&GroupFocusCommand::OnExecute,group,std::placeholders::_1),
-									Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
-									Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>)
+										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;}
+										)
 				//that's no constructor. that's a spacestation
 			{
 				RasterizeImage();
@@ -842,7 +842,7 @@
 					{
 						if (c->Contains(Engine::mouse.location.windowRelative))
 						{
-							if (c->command->isEnabled)
+							if (c->command->state & Objects::BaseCommand::Flags::IsEnabled)
 							{
 								c->command->Execute();
 								Objects::UpdateChoices(Network::ControlEnabled());
@@ -867,6 +867,8 @@
 			void						Render()
 			{
 				//static int2 lastMouse;
+				float flashOpacity = float(sin(Engine::timing.now*2.0*M_PI)*0.5+0.5);
+				//((UINT64)floor(Engine::timing.now*2.0))%2;
 
 
 				static float stationaryCounter = 0;
@@ -898,13 +900,6 @@
 				{
 					if (c->command->texture.IsNotEmpty())
 					{
-						//c->command->DbgRefresh();
-						//display.SetRasterizer(true,false);
-						//display.SetDepthTest(false,false);
-						//display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-						//display.pick(camera);
-
-
 						float2 world = c->ToFloatCoords();
 						float3 at;
 						camera.Project(float3(world,0),at);
@@ -923,17 +918,17 @@
 							
 								}
 							}
+							else
+								if (cmd.state & Objects::BaseCommand::Flags::IsFlashing)
+								{
+									code.r = flashOpacity;
+								}
 							
-								//color.Update(float4(1.f, 0.5f, 0.5f, 1.f));
-							//else
-								if (cmd.permaActive)
-									code.y = 1.f;
-									//color.Update(float4(0, 0, 1.f, 1.f));
-								//else
-									//color.Update(float4(1, 1, 1.f, 1.f));
+							if (cmd.state & Objects::BaseCommand::Flags::IsPermaActive)
+								code.y = 1.f;
 						}
 
-						if (!cmd.isEnabled)
+						if (!(cmd.state & Objects::BaseCommand::Flags::IsEnabled))
 						{
 						//	code.xy = float2(0);
 							code.z = 0.5f;
@@ -1061,6 +1056,7 @@
 			void	VisitCommand(Objects::BaseCommand&cmd)
 			{
 				GridCell&cell = guiCells.Append();
+				cmd.Refresh(Network::ControlEnabled());
 				cell.type = GridCell::EntityCommand;
 				cell.command = &cmd;
 				cell.Update(camera);

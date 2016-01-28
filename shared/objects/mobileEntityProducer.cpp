@@ -175,7 +175,7 @@ namespace Objects
 
 			PWorldEntity v = CompleteProduction();
 			//static Random random;
-			Grid::LCellIdI c = movementChoices[parent->localRandom.getIndex(movementChoices.Count()-1)];
+			Grid::LCellIdI c = movementChoices[parent->entityRandom.getIndex(movementChoices.Count()-1)];
 
 			if (v->IsMobile())
 			{
@@ -540,7 +540,7 @@ namespace Objects
 						else
 							SignalConstructionAbort(e->id,id);	//lossless
 
-					},CommonCmd::MostlyEnabled<PWorldEntity const&>,CommonCmd::AlwaysFalse<PWorldEntity const&>);
+					},CommonCmd::CommonButtonCheck);
 					if (!index)
 					{
 						item.commandToTerminate.roundsLeft = rounds;

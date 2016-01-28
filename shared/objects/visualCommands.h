@@ -20,20 +20,33 @@ namespace Objects
 	void				RefreshCommands(bool controlEnabled);
 
 
+
+
+
 	class BaseCommand
 	{
 	public:
+		enum class Flags
+		{
+			None = 0,
+			IsEnabled=0x1,
+			IsPermaActive=0x2,
+			IsFlashing=0x4
+		};
+
+
 		String			name;
-		bool			permaActive, isEnabled;
+		Flags			state = Flags::IsEnabled;
 		int2			coords;
 		DX11::Texture	texture;
 
 		static const int2 coordOffset;
 
-		/**/			BaseCommand(int2 coords, const String&name):name(name),permaActive(false), isEnabled(true),coords(coords+coordOffset)
+		/**/			BaseCommand(int2 coords, const String&name):name(name),coords(coords+coordOffset)
 		{}
 
 		virtual void	Execute() = 0;
+		virtual	void	Refresh(bool controlEnabled) = 0;
 
 		#undef LoadIcon
 		static GenericHashTable<PathString, DX11::Texture>	textureMap;
@@ -96,25 +109,41 @@ namespace Objects
 
 	};
 
+	inline BaseCommand::Flags operator|(BaseCommand::Flags a, BaseCommand::Flags b)
+	{
+		using T = std::underlying_type_t <BaseCommand::Flags>;
+		return (BaseCommand::Flags)(((T)a)|((T)b));
+	}
+	
+	inline void operator|=(BaseCommand::Flags&a, BaseCommand::Flags b)
+	{
+		using T = std::underlying_type_t <BaseCommand::Flags>;
+		a = (BaseCommand::Flags)(((T)a)|((T)b));
+	}
+
+	inline bool operator&(BaseCommand::Flags a, BaseCommand::Flags b)
+	{
+		using T = std::underlying_type_t <BaseCommand::Flags>;
+		return (((T)a)&((T)b)) != 0;
+	}
+
+
 	template <class Target>
 		class TemplateCommand : public BaseCommand
 		{
 		public:
 			typedef std::function<void(Target)>	OnExecute;
-			typedef std::function<bool(Target, bool)>	CheckEnabled;
-			typedef std::function<bool(Target)>	IsPermaActive;
+			typedef std::function<Flags(Target, bool)>	Check;
 
 			OnExecute	execute;
-			CheckEnabled	checkEnabled;
-			IsPermaActive	checkPermaActive;
+			Check		check;
 
 			TFloatRect	screenRect;
 
 			/**/		TemplateCommand():BaseCommand(int2(0),""){}
-			/**/		TemplateCommand(int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p) :BaseCommand(coords,name), execute(f), checkEnabled(a), checkPermaActive(p)
+			/**/		TemplateCommand(int2 coords, const String&name, OnExecute f, Check c) :BaseCommand(coords,name), execute(f), check(c)
 			{}
 
-			virtual	void	Refresh(bool controlEnabled) = 0;
 		};
 
 
@@ -128,7 +157,7 @@ namespace Objects
 		typedef EntityCommand	This;
 
 		/**/				This()	{}
-		/**/				This(int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p) : Super(coords,name,f,a,p)
+		/**/				This(int2 coords, const String&name, OnExecute f, Check c) : Super(coords,name,f,c)
 		{}
 
 		virtual void		Refresh(bool controlEnabled) override;
@@ -148,7 +177,7 @@ namespace Objects
 		GetCosts			getCosts;
 
 		/**/				This()	{}
-		/**/				This(int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p, GetCosts c) : Super(coords,name,f,a,p),getCosts(c)
+		/**/				This(int2 coords, const String&name, OnExecute f, Check ch, GetCosts c) : Super(coords,name,f,ch),getCosts(c)
 		{
 			LoadIcon();
 		}
@@ -165,7 +194,7 @@ namespace Objects
 		Component::Turret	*turret;
 
 		/**/				VehicleCommand()	{}
-		/**/				VehicleCommand(int2 coords, const String&name, Component::VehicleBase*base, Component::Turret*turret,   OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) : Super(coords,name,f,a,p),base(base),turret(turret)
+		/**/				VehicleCommand(int2 coords, const String&name, Component::VehicleBase*base, Component::Turret*turret,   OnExecute f, Check c, bool rasterize=true) : Super(coords,name,f,c),base(base),turret(turret)
 		{
 			if (rasterize)
 				UpdateTexture(base,turret);
@@ -187,7 +216,7 @@ namespace Objects
 		unsigned			mineralsLeft = 0xFFFFFFFF;
 
 		/**/				VehicleConstructionCommand()	{}
-		/**/				VehicleConstructionCommand(int2 coords, const String&name, Component::VehicleBase*base, Component::Turret*turret,   OnExecute f, CheckEnabled a, IsPermaActive p) : Super(coords,name,base,turret,f,a,p)	{}
+		/**/				VehicleConstructionCommand(int2 coords, const String&name, Component::VehicleBase*base, Component::Turret*turret,   OnExecute f, Check c) : Super(coords,name,base,turret,f,c)	{}
 
 
 		virtual void		CompileLabel(const PWorldEntity&, Label&outResult) override;
@@ -200,7 +229,7 @@ namespace Objects
 		PWorldEntity		target;
 
 		/**/				VisualEntityCommand()	{}
-		/**/				VisualEntityCommand(int2 coords, const String&name, const PWorldEntity&e,   OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) : Super(coords,name,f,a,p),target(e)
+		/**/				VisualEntityCommand(int2 coords, const String&name, const PWorldEntity&e,   OnExecute f, Check c, bool rasterize=true) : Super(coords,name,f,c),target(e)
 		{
 			if (rasterize)
 				UpdateTexture(target,true);
@@ -219,7 +248,7 @@ namespace Objects
 
 
 		/**/				EntityConstructionCommand()	{}
-		/**/				EntityConstructionCommand(int2 coords, const String&name, const PWorldEntity&e,   OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) : Super(coords,name,e,f,a,p,rasterize) {}
+		/**/				EntityConstructionCommand(int2 coords, const String&name, const PWorldEntity&e,   OnExecute f, Check c, bool rasterize=true) : Super(coords,name,e,f,c,rasterize) {}
 
 		virtual void		CompileLabel(const PWorldEntity&, Label&outResult) override;
 	};
@@ -238,8 +267,8 @@ namespace Objects
 
 		/**/				FactoryConstructionAbortCommand()	{}
 		/**/				FactoryConstructionAbortCommand(int2 coords, const String&name, Component::VehicleBase*base, Component::Turret*turret, const PWorldEntity&e,   
-															OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) 
-															:	Super(coords,name,e,f,a,p, rasterize && e),
+															OnExecute f, Check c, bool rasterize=true) 
+															:	Super(coords,name,e,f,c, rasterize && e),
 																turret(turret),base(base)
 		{
 			if (rasterize && !e)
@@ -263,7 +292,7 @@ namespace Objects
 
 
 		/**/				This()	{}
-		/**/				This(int2 coords, const PVehicle&v,   OnExecute f, CheckEnabled a, IsPermaActive p);
+		/**/				This(int2 coords, const PVehicle&v,   OnExecute f, Check c);
 
 
 
@@ -279,7 +308,7 @@ namespace Objects
 		PStructure			structure;
 
 		/**/				StructureCommand()	{}
-		/**/				StructureCommand(int2 coords, const String&name, const PStructure&structure,   OnExecute f, CheckEnabled a, IsPermaActive p) : Super(coords,name,f,a,p),structure(structure)
+		/**/				StructureCommand(int2 coords, const String&name, const PStructure&structure,   OnExecute f, Check c) : Super(coords,name,f,c),structure(structure)
 		{
 			//UpdateTexture(structure);
 		}
@@ -298,7 +327,7 @@ namespace Objects
 
 
 		/**/				StructureConstructionCommand()	{}
-		/**/				StructureConstructionCommand(int2 coords, const String&name, const PStructure&structure,   OnExecute f, CheckEnabled a, IsPermaActive p) : Super(coords,name,structure,f,a,p)
+		/**/				StructureConstructionCommand(int2 coords, const String&name, const PStructure&structure,   OnExecute f, Check c) : Super(coords,name,structure,f,c)
 		{
 			//UpdateTexture(structure);
 		}
@@ -315,16 +344,12 @@ namespace Objects
 		typedef GlobalCommand			This;
 
 		/**/				This()	{}
-		/**/				This(int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p) : Super(coords,name,f,a,p)
+		/**/				This(int2 coords, const String&name, OnExecute f, Check c) : Super(coords,name,f,c)
 		{
 			LoadIcon();
 		}
 
-		virtual void		Refresh(bool controlEnabled) override
-		{
-			permaActive = checkPermaActive(0); 
-			isEnabled = checkEnabled(0,controlEnabled);
-		}
+		virtual void		Refresh(bool controlEnabled) override;
 		virtual void		Execute() override {execute(0);}
 
 	};
@@ -342,6 +367,8 @@ namespace Objects
 		void	Automate(const PWorldEntity&);
 
 		bool	IsAutomated(const PWorldEntity&);
+
+		BaseCommand::Flags AutomatedCheck(const PWorldEntity&,bool controlEnabled);
 
 	}
 
@@ -361,8 +388,7 @@ namespace Objects
 			template<typename T>
 				inline static bool AlwaysEnabled(T,bool)	{return true;}
 		#endif
-		template<typename T>
-			inline static bool MostlyEnabled(T,bool controlEnabled)	{return controlEnabled;}
+		inline BaseCommand::Flags CommonButtonCheck(const PWorldEntity&,bool controlEnabled)	{return controlEnabled ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
 
 
 		void ToggleMode(const PWorldEntity&e, CursorMode::mode_t mode);
@@ -376,6 +402,7 @@ namespace Objects
 
 		bool IsModeActive(const PWorldEntity&e, CursorMode::mode_t mode);
 		bool IsModeActiveOrIdle(const PWorldEntity&e, CursorMode::mode_t mode);
+
 		template <CursorMode::mode_t M>
 			inline bool IsModeActive(const PWorldEntity&e)
 			{
@@ -392,6 +419,21 @@ namespace Objects
 				return controlEnabled && IsModeActiveOrIdle(e,M);
 			}
 
+		template <CursorMode::mode_t M>
+			inline BaseCommand::Flags ModeCheck(const PWorldEntity&e, bool controlsEnabled)
+			{
+				BaseCommand::Flags rs = BaseCommand::Flags::None;
+				if (IsModeActiveOrIdleC<M>(e,controlsEnabled))
+					rs |= BaseCommand::Flags::IsEnabled;
+				if (CommonCmd::IsModeActive<M>(e))
+					rs |= BaseCommand::Flags::IsPermaActive;
+				return rs;
+			}
+		inline BaseCommand::Flags IdleCheck(const PWorldEntity&e, bool controlsEnabled)
+		{
+			return IsModeActive(e,CursorMode::Idle) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+		}
+
 
 
 	}
@@ -407,7 +449,6 @@ namespace Objects
 		void	ToggleObjectView(int);
 		bool	ObjectsAreHidden(int);
 		void	ToggleCompoundHightlights(int);
-		bool	CompoundAreHightlighted(int);
 	}
 
 }
