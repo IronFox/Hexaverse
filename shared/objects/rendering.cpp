@@ -1309,6 +1309,9 @@ namespace Objects
 
 		display.SetRasterizer(true,false);
 
+		display.SetBlendMode(Engine::BlendMode::FlareBlend);
+		overallTint.Update(float4(float3(0.18f,0.185f,2.f),1.f));
+
 		ForeachMobileWorldEntity([](const PMobileEntity&v)
 		{
 			if (v != selectedEntity)
@@ -1320,6 +1323,8 @@ namespace Objects
 
 			}
 		});
+		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+		overallTint.Update(noTint);
 		
 		foreach(structures, _s)
 		{
