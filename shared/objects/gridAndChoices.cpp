@@ -6,8 +6,8 @@
 #include "prototypes.h"
 #include "vehicle.h"
 #include "satellite.h"
+#include "faction.h"
 #ifndef CLIENT
-	#include "faction.h"
 	#include "../runtimeConfig.h"
 #endif
 
@@ -789,7 +789,7 @@ namespace Objects
 		
 
 //		const PVehicle v = To<Vehicle>::DynamicCast(entity);
-		const MobileEntity*v = dynamic_cast<MobileEntity*>(&entity);
+		 MobileEntity*v = dynamic_cast<MobileEntity*>(&entity);
 		float h;
 		if (PTurretBase b = entity.GetTurretBase(h))
 		{
@@ -845,21 +845,46 @@ namespace Objects
 					case CursorMode::DepositMode:
 					//case CursorMode::TransferMode:
 					{
-						//const auto&c = Grid::low.grid.GetCell(location.stackID);
-						for (int h = location.height -1; h <= location.height+1; h++)
+						v->resourceEnvironment.CheckRefresh(*v);
+						foreach (v->resourceEnvironment.sourceCompounds,cmp)
 						{
-							if (h >= -Grid::CellStack::HalfRange && h < Grid::CellStack::HalfRange-1)
+							const Compound&compound = compounds[*cmp];
+							foreach (compound.containedStructures,_s)
 							{
-								for (int j = 0; j < n.numNeighbors; j++)
-								{
-									const Grid::LCellIdI candidate(n.neighborID[j],h);
-									PVehicle other = GetVehicle(candidate);
-									PStructure otherStructure = GetStructure(candidate);
-									if ((otherStructure && otherStructure->owner==v->owner) || (other && other.get() != v && other->owner == v->owner))
-										movementChoices << (candidate+1);
-								}
+								PStructure s = _s->lock();
+								if (s && Vec::quadraticDistance(v->GetWorldPosition(),s->GetWorldPosition()) <= sqr(WirelessTransferRange))
+									movementChoices << s->location + 1;
 							}
 						}
+						#ifdef CLIENT
+						ForeachMobileWorldEntity([v,&movementChoices](const PMobileEntity&m)
+						{
+							if (m->owner == v->owner && Vec::quadraticDistance(v->GetWorldPosition(),m->GetWorldPosition()) <= sqr(WirelessTransferRange))
+								movementChoices << m->location + 1;
+						});
+						#else
+						foreach (v->owner->allMobiles,_m)
+						{
+							PMobileEntity m = _m->lock();
+							if (m && Vec::quadraticDistance(v->GetWorldPosition(),m->GetWorldPosition()) <= sqr(WirelessTransferRange))
+								movementChoices << m->location + 1;
+						}
+						#endif
+						//const auto&c = Grid::low.grid.GetCell(location.stackID);
+						//for (int h = location.height -1; h <= location.height+1; h++)
+						//{
+						//	if (h >= -Grid::CellStack::HalfRange && h < Grid::CellStack::HalfRange-1)
+						//	{
+						//		for (int j = 0; j < n.numNeighbors; j++)
+						//		{
+						//			const Grid::LCellIdI candidate(n.neighborID[j],h);
+						//			PVehicle other = GetVehicle(candidate);
+						//			PStructure otherStructure = GetStructure(candidate);
+						//			if ((otherStructure && otherStructure->owner==v->owner) || (other && other.get() != v && other->owner == v->owner))
+						//				movementChoices << (candidate+1);
+						//		}
+						//	}
+						//}
 					}
 					break;
 				#endif
@@ -2756,19 +2781,19 @@ namespace Objects
 					auto c = choice;
 					switch (mode)
 					{
-						//case CursorMode::DepositMode:
-						//case CursorMode::RestockMode:
-						//{
-						//	PStructure target = GetStructure(c-1);
-						//	PVehicle vTarget = GetVehicle(c-1);
-						//	if ((target && target->owner == e->owner) || (vTarget && vTarget->owner == e->owner))
-						//	{
-						//		c--;
-						//		PVehicleJob job(new VehicleJob::TransferJob(*v,mode));
-						//		v->RegisterNewJob("", job,&c);
-						//	}
-						//}
-						//break;
+						case CursorMode::DepositMode:
+						case CursorMode::RestockMode:
+						{
+							PStructure target = GetStructure(c-1);
+							PVehicle vTarget = GetVehicle(c-1);
+							if ((target && target->owner == e->owner) || (vTarget && vTarget->owner == e->owner))
+							{
+								c--;
+								PVehicleJob job(new VehicleJob::TransferJob(*v,mode));
+								v->RegisterNewJob("", job,&c);
+							}
+						}
+						break;
 						case CursorMode::RepairMode:
 						{
 							//PWorldEntity target = GetEntity(c-1);
