@@ -1788,7 +1788,7 @@ namespace Objects
 				,NoCosts
 				);
 				if (!IsIndestructible())
-					iconCommands << IconCommand(int2(4,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck<PWorldEntity const&>
+					iconCommands << IconCommand(int2(4,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck
 							,NoCosts
 							);
 			#endif
@@ -1814,7 +1814,7 @@ namespace Objects
 			#ifdef HAS_WINDOW
 
 				if (!IsIndestructible())
-					commands << IconCommand(int2(4,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck<PWorldEntity const&>
+					commands << IconCommand(int2(4,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck
 							,NoCosts
 							);
 			#endif

@@ -385,8 +385,7 @@ namespace Objects
 			template<typename T>
 				inline static bool AlwaysEnabled(T,bool)	{return true;}
 		#endif
-		template<typename T>
-			inline static BaseCommand::Flags CommonButtonCheck(T,bool controlEnabled)	{return controlEnabled ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
+		inline BaseCommand::Flags CommonButtonCheck(const PWorldEntity&,bool controlEnabled)	{return controlEnabled ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
 
 
 		void ToggleMode(const PWorldEntity&e, CursorMode::mode_t mode);
