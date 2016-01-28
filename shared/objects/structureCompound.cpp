@@ -17,8 +17,103 @@ namespace Objects
 	}
 
 
+	/*static*/ PWorkingStructure	Compound::Reference(const WWorkingStructure&_s)
+	{
+		PWorkingStructure s = _s.lock();
+		if (!s || s->health <= 0)
+			return PWorkingStructure();
+		return s;
+	}
+
+	count_t						Compound::CountWorkingStructures() const
+	{
+		count_t rs = 0;
+		foreach (containedStructures,_s)
+		{
+			if (Reference(*_s))
+				rs++;
+		}
+		return rs;
+	}
+
+
 	#ifndef CLIENT
 
+
+		ResourceVector		Compound::GetOverproduction() const
+		{
+			ResourceVector result;
+			foreach (containedStructures,_s)
+			{
+				PWorkingStructure s = Reference(*_s);
+				if (s)
+					result += s->overproduction;
+			}
+			return result;
+		}
+
+		int					Compound::GetOverproduction(Resource res) const
+		{
+			int result = 0;
+			foreach (containedStructures,_s)
+			{
+				PWorkingStructure s = Reference(*_s);
+				if (s)
+					result += s->overproduction.level[res];
+			}
+			return result;
+		}
+
+
+		void				Compound::DistributeOverproduction(const ResourceVector&v)
+		{
+			if (v.IsEmpty())
+				return;
+			count_t active = CountWorkingStructures();
+			if (!active)
+				return;
+			ResourceVector perStructure,remainder;
+			for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+			{
+				perStructure.level[i] = v.level[i] / active;
+				remainder.level[i] = v.level[i] % active;
+			}
+			bool first = true;
+			foreach (containedStructures,_s)
+			{
+				PWorkingStructure s = Reference(*_s);
+				if (s)
+				{
+					s->overproduction = perStructure;
+					if (first)
+						s->overproduction += remainder;
+
+					first = false;
+				}
+			}
+		}
+
+		void			Compound::WithdrawOverproduction(Resource res ,int positiveAmount)
+		{
+			if (positiveAmount <= 0)
+				return;
+			foreach (containedStructures,_s)
+			{
+				PWorkingStructure s = Reference(*_s);
+				if (s)
+				{
+					if (s->overproduction.level[res] > 0)
+					{
+						int transfer = std::min(s->overproduction.level[res],positiveAmount);
+						positiveAmount -= transfer;
+						s->overproduction.level[res] -= transfer;
+						if (!positiveAmount)
+							return;
+					}
+				}
+			}
+			FATAL__("Should have reached positiveAmount=0, but have "+String(positiveAmount)+" left");
+		}
 
 
 		void				Compound::FeedLeftovers(ResourceVector&vector, float atTime)
@@ -93,8 +188,7 @@ namespace Objects
 			//#ifdef CONNECTOR_LESS
 				if (stable)
 				{
-					FeedLeftovers(overproduction,atTime);
-					overproduction.Clear();
+					FeedLeftovers(GetOverproduction(),atTime);
 					total = GetVector();
 				}
 			//#endif
@@ -133,9 +227,10 @@ namespace Objects
 				#endif
 
 				
-				ResourceVector localDemand;
+				ResourceVector localDemand,overproduction;
 				vector.SeparateBySign(overproduction,localDemand);
 				FeedLeftovers(localDemand,0);
+				DistributeOverproduction(overproduction);
 				vector = localDemand;
 				
 				if (!vector.IsStable())

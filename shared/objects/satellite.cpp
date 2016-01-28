@@ -610,7 +610,7 @@ namespace Objects
 					Compound&compound = port->CastToStructure()->GetCompound();
 					int available = compound.total.storage.level[Resource::Fuel];
 					//#ifdef CONNECTOR_LESS
-					available += compound.overproduction.level[Resource::Fuel];
+					available += compound.GetOverproduction(Resource::Fuel);
 					//#endif
 
 					if (available >= demand)

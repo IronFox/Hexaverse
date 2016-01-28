@@ -633,6 +633,11 @@ namespace Objects
 		typedef Structure			Super;
 		bool						isEnabled;
 
+		#ifndef CLIENT
+			ResourceVector			overproduction;
+			friend class Compound;
+		#endif
+
 	protected:
 		/**/						WorkingStructure() : isEnabled(false)	{ }	//global prototype
 		/**/						WorkingStructure(const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime) : Super(owner,location,buildSystem,atTime),isEnabled(false)
