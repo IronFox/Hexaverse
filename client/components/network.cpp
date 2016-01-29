@@ -21,6 +21,10 @@ void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird
 #endif
 
 
+extern bool saveScreenshot;
+
+
+
 namespace Network
 {
 	bool			haveFaction = false,
@@ -1328,6 +1332,9 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	switch (c.newPhase.value)
 	{
 		case RuntimeConfig::Phase::AnimationPhase:
+			if (amSpectator){
+				saveScreenshot = true;
+			}
 			if (RuntimeConfig::aiMode)
 				AI::vehicles.Clear();	//whichever is left, cannot be computed
 			Animation::atTime = 0.f;
@@ -1364,7 +1371,9 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 				}
 
 			#endif
-
+				if (amSpectator){
+					saveScreenshot = true;
+				}
 		break;
 	}
 	#ifdef HAS_WINDOW

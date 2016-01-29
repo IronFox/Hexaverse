@@ -792,8 +792,8 @@ public:
 			{
 				counter++;
 				filename = PathString("screenshots/screenshot"+String(counter)+".png");
-			}
-			png.SaveToFile(image,filename);
+			} 
+			png.SaveToFileQ(image,filename);
 			active = false;
 			LogEvent(EventType::Notification, nullptr, "Screenshot written to "+String(filename));
 		}
@@ -1565,7 +1565,9 @@ bool loop()
 
 			if (saveScreenshot)
 			{
-				saveScreenshot = false;
+				if (RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase || !Network::amSpectator){
+					saveScreenshot = false;
+				}
 				//display.SetBackbufferClearColor(0,0,0,0);
 
 				//Image image;
