@@ -4,6 +4,7 @@ v0.3.14		[Jan 29 2016]
 	* Fixed client not being able to start server.
 	* Fixed nexus satellites not seeing approaching player satellites.
 	* Fixed 'new round' button not flashing when it should.
+	> Satellites now automatically fire at stationary hostile targets as well as moving ones.
 	> Ghosts are now removed if an owned mobile entity moves onto the same location.
 	> Path projections of unselected mobiles are now displayed with less contrast
 

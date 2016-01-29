@@ -208,8 +208,19 @@ namespace Evolver
 				v->BeginAttackPhase();
 
 				Objects::PTurretBase b = v->GetTurretBase();
+				if (!b || !b->turret->CanAttack() || !b->CountPossibleAttacks())
+					return;
 
-				if (v->NextTaskIsAttack() && b && b->CountPossibleAttacks())
+				if (v->IsSatellite())
+				{
+				//	Objects::PSatellite s = To<Objects::Satellite>::Cast(v);
+
+					if (v->myTasks.IsEmpty())
+						v->FillAttackQueue();
+				}
+
+
+				if (v->NextTaskIsAttack())
 				{
 					if (b->HasAmmoForShot())
 					{
