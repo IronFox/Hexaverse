@@ -1998,16 +1998,23 @@ namespace Grid
 		{
 			if (intensity > 0.f)
 			{
-				TVec3<> rs2;
-				if (rs.r < 0)
-					rs2 = rs * -0.4f + 0.6f;
-				else
-					rs2 = rs * 0.4f + 0.6f;
-				rs2.r *= 0.7f;
-				rs2.g *= 0.85f;
-				if (rs.r < 0)
-					rs2 = -rs2;
-				Vec::interpolate(rs,rs2,intensity,rs);
+				rs *= -1.5f;
+				rs.rg *= 0.8f;
+				rs.b *= 1.2f;
+				//rs.b *= 1.5f;
+				//rs.b -= (2.f + rs.b)*intensity;
+				//TVec3<> rs2;
+				//if (rs.r < 0)
+				//	rs2 = rs * -0.4f + 0.6f;
+				//else
+				//	rs2 = rs * 0.4f + 0.6f;
+				//rs2.r *= 0.7f;
+				//rs2.g *= 0.85f;
+				//if (rs.r < 0)
+				//	rs2 = -rs2;
+				//Vec::interpolate(rs,rs2,intensity,rs);
+				//if (rs.b > 0)
+				//	rs.b = -rs.b;
 
 			}
 		}
