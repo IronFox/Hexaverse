@@ -312,7 +312,7 @@ namespace Objects
 			if (terrainExplosionRadius > 0)
 			{
 				Grid::actualWorld.Explode(targetCell,terrainExplosionRadius, atTime);
-				if (RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose)
+				if (doomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose)
 					foreach (Faction::all,f)
 					{
 						bool changed[BaseGrid::NumFamilies] = {false};
