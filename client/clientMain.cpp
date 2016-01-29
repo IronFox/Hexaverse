@@ -2591,7 +2591,7 @@ String GenerateOreName(Random&random)
 		bool any = false;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
 		{
-			if (any)
+			if (any || !e->isMine)
 				return;
 			if (e->IsMobile())
 			{
