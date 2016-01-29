@@ -691,6 +691,15 @@ namespace Objects
 					changed = c->changed = Structure::anyChanged = true;
 				#endif
 				c->OnNewConnection(_this, between, atTime);
+				if (!c->connectedTo.Contains(_this))
+				{
+					//this can happen when placing new structures and c is a nexus port that changes ownership as a result, and thus reconnects to all existing structures which this is not yet a part of
+					DBG_ASSERT__(!connectedTo.Contains(c));
+					connectedTo << c;
+					c->connectedTo << _this;
+					c->OnNewConnection(_this, between, atTime);
+					ASSERT__(c->connectedTo.Contains(_this));
+				}
 				_this->OnNewConnection(c, between, atTime);
 				LogEvent(EventType::MinorEntityProcess,nullptr, "Connection established between "+GetName()+" and "+c->GetName());
 				#ifdef HAS_WINDOW
