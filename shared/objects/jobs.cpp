@@ -1139,7 +1139,7 @@ namespace Objects
 				fixedSize -= 2 + sizeof(Grid::LCellIdI) + 2;
 			if (!inStream.ReadPrimitive(i16))
 				return false;
-			mode = (CursorMode::mode_t)i16;
+			mode = (CursorMode)i16;
 
 			if (globalVersionOfCurrentFile == 1035)
 			{

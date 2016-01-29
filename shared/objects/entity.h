@@ -336,7 +336,7 @@ namespace Objects
 
 
 		#ifndef CLIENT
-			virtual bool			DirectTo(CursorMode::mode_t, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
+			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
 		#endif
 
 

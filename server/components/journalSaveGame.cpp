@@ -335,7 +335,7 @@ namespace Journal
 
 
 
-	/*static*/ Objects::CursorMode::mode_t		Round::EntityStateCheck::GetNextTaskMode(const Objects::PWorldEntity&_e)
+	/*static*/ Objects::CursorMode		Round::EntityStateCheck::GetNextTaskMode(const Objects::PWorldEntity&_e)
 	{
 		const Objects::WorldEntity&e = *_e;
 		if (e.IsMobile())
@@ -411,8 +411,8 @@ namespace Journal
 		e.locationParameters.Set("Location",location);
 		if (nextTaskFocus != Grid::LCellIdI::Invalid)
 			e.locationParameters.Set("NextTaskFocus",nextTaskFocus);
-		if (nextTaskMode != 0)
-			e.intParameters.Set("NextTaskMode",nextTaskMode);
+		if (nextTaskMode != Objects::CursorMode::Idle)
+			e.intParameters.Set("NextTaskMode",(int)nextTaskMode);
 		if (storedMinerals != 0)
 			e.intParameters.Set("StoredMinerals",storedMinerals);
 		if (taskListLength != 0)
@@ -433,9 +433,9 @@ namespace Journal
 			nextTaskFocus = Grid::LCellIdI::Invalid;
 		int mode;
 		if (!e.intParameters.TryGet("NextTaskMode",mode))
-			nextTaskMode = (Objects::CursorMode::mode_t)0;
+			nextTaskMode = (Objects::CursorMode)0;
 		else
-			nextTaskMode = (Objects::CursorMode::mode_t)mode;
+			nextTaskMode = (Objects::CursorMode)mode;
 		if (!e.intParameters.TryGet("StoredMinerals",storedMinerals))
 			storedMinerals = 0;
 		if (!e.intParameters.TryGet("JobMineralsLeft",jobMineralsLeft))
@@ -465,7 +465,7 @@ namespace Journal
 		#undef EVERIFY2
 		#define EVERIFY2(_VAR_,_OTHER_)	if (_VAR_ != _OTHER_) LogEvent(EventType::ConfigRelated,e->GetName()+ ": Verification failed " #_VAR_ ": "+String(_VAR_)+" expected, but found "+String(_OTHER_));
 		//throw RoundException(CLOCATION,e->GetName()+ ": Verification failed " #_VAR_ ": "+String(_VAR_)+" expected, but found "+String(_OTHER_));
-		EVERIFY2(nextTaskMode,GetNextTaskMode(e));
+		EVERIFY2((int)nextTaskMode,(int)GetNextTaskMode(e));
 		EVERIFY2(storedMinerals,GetStoredMinerals(e));
 		EVERIFY2(jobMineralsLeft,GetJobMineralsLeft(e));
 		EVERIFY2(taskListLength,GetTaskListLength(e));
@@ -659,7 +659,7 @@ namespace Journal
 	{
 		
 		e.locationParameters.Set("Location",target);
-		e.intParameters.Set("DirectMode",mode);
+		e.intParameters.Set("DirectMode",(int)mode);
 		if (deployingWhat != TUniqueID::Empty())
 			e.uuidParameters.Set("EntityID",deployingWhat);
 	}
@@ -678,7 +678,7 @@ namespace Journal
 	{
 		
 		target = e.locationParameters.Require(CLOCATION,"Location");
-		mode = (Objects::CursorMode::mode_t) e.intParameters.Require(CLOCATION,"DirectMode");
+		mode = (Objects::CursorMode) e.intParameters.Require(CLOCATION,"DirectMode");
 		if (!e.uuidParameters.TryGet("EntityID",deployingWhat))
 			deployingWhat = TUniqueID::Empty();
 	}
@@ -688,8 +688,8 @@ namespace Journal
 		
 		foreach (targets,t)
 			e.locationParameters.Set("Waypoint",*t);
-		if (mode != 0)
-			e.intParameters.Set("DirectMode",mode);
+		if (mode != Objects::CursorMode::Idle)
+			e.intParameters.Set("DirectMode",(int)mode);
 		if (leftClick)
 			e.intParameters.Set("LeftClick",leftClick);
 		if (detailed)
@@ -716,7 +716,7 @@ namespace Journal
 		int md;
 		if (!e.intParameters.TryGet("DirectMode",md))
 			md = 0;
-		mode = (Objects::CursorMode::mode_t)md;
+		mode = (Objects::CursorMode)md;
 		if (e.intParameters.TryGet("LeftClick",md))
 			leftClick = md != 0;
 		else
@@ -1860,7 +1860,7 @@ namespace Journal
 		}
 	}
 
-	void	Round::RegisterDirectEntityTo(bool apply, const Objects::PWorldEntity&e, Objects::CursorMode::mode_t mode, const ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick)
+	void	Round::RegisterDirectEntityTo(bool apply, const Objects::PWorldEntity&e, Objects::CursorMode mode, const ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick)
 	{
 		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
 		std::shared_ptr<DirectToCommand> cmd(new DirectToCommand());
@@ -1872,7 +1872,7 @@ namespace Journal
 			strand.Append(cmd);
 	}
 
-	void	Round::RegisterChoiceIntersection(bool apply, const Objects::PWorldEntity&e,const Grid::LCellIdI&target, Objects::CursorMode::mode_t mode, const Objects::PWorldEntity&deployingWhat)
+	void	Round::RegisterChoiceIntersection(bool apply, const Objects::PWorldEntity&e,const Grid::LCellIdI&target, Objects::CursorMode mode, const Objects::PWorldEntity&deployingWhat)
 	{
 		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
 		std::shared_ptr<ChoiceIntersection> cmd(new ChoiceIntersection());

@@ -691,6 +691,15 @@ namespace Objects
 					changed = c->changed = Structure::anyChanged = true;
 				#endif
 				c->OnNewConnection(_this, between, atTime);
+				if (!c->connectedTo.Contains(_this))
+				{
+					//this can happen when placing new structures and c is a nexus port that changes ownership as a result, and thus reconnects to all existing structures which this is not yet a part of
+					DBG_ASSERT__(!connectedTo.Contains(c));
+					connectedTo << c;
+					c->connectedTo << _this;
+					c->OnNewConnection(_this, between, atTime);
+					ASSERT__(c->connectedTo.Contains(_this));
+				}
 				_this->OnNewConnection(c, between, atTime);
 				LogEvent(EventType::MinorEntityProcess,nullptr, "Connection established between "+GetName()+" and "+c->GetName());
 				#ifdef HAS_WINDOW
@@ -888,7 +897,7 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ bool			Tower::DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			Tower::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 		
 			if (mode != Objects::CursorMode::AttackMode || !leftClick)
@@ -1974,7 +1983,7 @@ namespace Objects
 
 
 	#ifndef CLIENT
-		/*virtual override*/ bool			VehiclePlant::DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			VehiclePlant::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			if (waypoints.Count() != 1)
 				return false;
@@ -1982,7 +1991,7 @@ namespace Objects
 			return true;
 		}
 
-		/*virtual override*/ bool			SkyPort::DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			SkyPort::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			if (waypoints.Count() != 1)
 				return false;

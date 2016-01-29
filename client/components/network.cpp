@@ -1463,7 +1463,14 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			RuntimeConfig::roundNumber = c.roundNumber;
 			RuntimeConfig::phase.Load(c.newPhase);
 
-
+			Objects::ForeachMobileWorldEntity([](const Objects::PWorldEntity&e)
+			{
+				if (e->health <= 0 || !e->isMine)
+					return;
+				Objects::Marker *m = Objects::Marker::Find(e->location);
+				if (m)
+					SignalMarkerDeletion(m->id);
+			});
 
 			#ifdef HAS_WINDOW
 				for (const auto&s : Objects::structures)

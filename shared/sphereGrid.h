@@ -557,12 +557,12 @@ namespace Grid
 		struct TerrainVertex
 		{
 			float4		vertex;
-			float4		normal;
+			sbyte4		normal_structure;
 			float4		color;
 
 			/**/		TerrainVertex()	{};
-			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float4&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal(n,structure), color(color){}
-			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float3&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal(n, structure), color(color,1.f){}
+			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float4&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f,structure*127.f), color(color){}
+			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float3&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f, structure*127.f), color(color,1.f){}
 		};
 	
 		struct ResourceVertex //! Temporarily the same layout as TerrainVertex
@@ -1710,7 +1710,7 @@ namespace Grid
 								TVec3<> normal;
 								for (index_t i = _i; i < _i + HullTestBatch*3 && i < dat.terrain.indices.Count(); i+=3)
 								{
-									if (Vec::dot(dat.terrain.vertices[indices[i]].normal.xyz,d) > 0.f)
+									if (Vec::dot(dat.terrain.vertices[indices[i]].normal_structure.xyz,d) > 0.f)
 										continue;
 									if (Obj::detectOpticalIntersection(
 										dat.terrain.vertices[indices[i]].vertex.xyz,
@@ -1719,7 +1719,8 @@ namespace Grid
 										b, d, dist))
 									{
 										any = true;
-										normal = dat.terrain.vertices[indices[i]].normal.xyz;	//correct enough
+										Vec::copy(dat.terrain.vertices[indices[i]].normal_structure.xyz,normal);	//correct enough
+										Vec::div(normal,127.f);
 									}
 								}
 								if (any)

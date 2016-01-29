@@ -79,8 +79,8 @@ namespace Objects
 	bool			AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath);
 
 
-	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
-	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
 
 
 
@@ -186,7 +186,7 @@ namespace Objects
 		@param mode Current cursor mode that effects available choices
 		@param deployWhat Vehicle being deployed (only if @a e points to a vehicle store)
 		*/
-		bool		ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  CursorMode::mode_t mode, const PMobileEntity&deployWhat);
+		bool		ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  CursorMode mode, const PMobileEntity&deployWhat);
 
 	#endif
 

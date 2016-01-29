@@ -198,7 +198,7 @@ static void SendDirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCe
 {
 	Protocol::EntityDirectCommand	cmd;
 	cmd.id = v->id;
-	cmd.mode = mode;
+	cmd.mode = (UINT16)mode;
 	cmd.path = targets;
 	cmd.directFlags = 0;
 	if (detailedPath)
@@ -315,7 +315,7 @@ void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI
 {
 	Protocol::ChoiceIntersection	ch;
 	ch.id = e->id;
-	ch.mode = mode;
+	ch.mode = (UINT16)mode;
 	ch.target = c;
 	if (deployingWhat)
 		ch.deployingWhat.Set0().value = deployingWhat->id;
@@ -631,7 +631,7 @@ void	SignalTerrainModification(const Objects::PVehicle&v,Objects::Vehicle::mode_
 {
 	Protocol::TerrainMod	job;
 	job.id = v->id;
-	job.mode = activeCursorMode;
+	job.mode = (UINT16)activeCursorMode;
 	job.cells = selection;
 	Network::Channels::signalTerrainMod.SendTo(Network::client,job);
 }
@@ -2333,7 +2333,7 @@ String GenerateOreName(Random&random)
 						Objects::PWorldEntity possibleTarget = Objects::GetRayIntersection(b,d,distance);
 						if (possibleTarget && !possibleTarget->isMine)
 						{
-							DirectTo(Objects::selectedEntity,possibleTarget->location,true,Objects::CursorMode::AttackMode);
+							DirectTo(Objects::selectedEntity,possibleTarget->location,false,true, Objects::CursorMode::AttackMode);
 							return;
 						}
 					}
@@ -2341,7 +2341,7 @@ String GenerateOreName(Random&random)
 					{
 						if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 						{
-							DirectTo(Objects::selectedEntity,target,true,Objects::CursorMode::AttackMode);
+							DirectTo(Objects::selectedEntity,target,false,true,Objects::CursorMode::AttackMode);
 							return;
 						}
 					}
@@ -2370,6 +2370,7 @@ String GenerateOreName(Random&random)
 				&& Objects::VehicleCanBeDirected()	//TODO: rename/relocate for mobile entities
 			)
 			{
+
 				if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 				{
 					//Grid::LCellIdI	target((UINT32)cellID,Grid::FromRadius(height));
@@ -2602,7 +2603,7 @@ String GenerateOreName(Random&random)
 		bool any = false;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
 		{
-			if (any)
+			if (any || !e->isMine)
 				return;
 			if (e->IsMobile())
 			{

@@ -189,7 +189,7 @@ namespace Game
 			task.foci.SetSize(t.foci.Count());
 			for (index_t i = 0; i < task.foci.Count(); i++)
 				task.foci[i] = t.foci[i].target;
-			task.mode = t.mode;
+			task.mode = (BYTE)t.mode;
 			task.name = t.name;
 			task.type = t.type;
 			if (t.job)
