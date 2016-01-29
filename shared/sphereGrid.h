@@ -169,6 +169,12 @@ namespace Grid
 			BYTE	structureCounter;	//number of structures (density) that occupy this block
 			#ifdef CLIENT
 				short	visible=0;	//indicates levels of visibility. should not fall below 0. might make it unsigned when i am convinced it works. values >= 1 indicate this cell is visible
+				/**
+				Distance from the nearest resource horizon edge. Values <= 0 indicate this cell is in range of some compound.
+				Values > 0 indicate that this cell is out of range.
+				Values are stored in multiples of 0.01f in world space
+				*/
+				short	resourceDistance=MAXSHORT;
 			#endif
 
 			/**/	CompactCell() :content(Content::Clear), structureCounter(0) {}
@@ -194,23 +200,6 @@ namespace Grid
 				other = *this;
 			}
 
-
-			//bool	ApplyDelta(const TTypeDelta&tdelta, const TStructCountDelta&sdelta)
-			//{
-			//	if (tdelta.newType == 0 && sdelta.newStructureCounter == 0)
-			//		return false;
-			//	if (tdelta.newType)
-			//	{
-			//		content = tdelta.newType;
-			//		DBG_ASSERT_LESS__(content,Content::NumberOfPossibilities);
-			//	}
-			//	if (sdelta.newStructureCounter)
-			//	{
-			//		structureCounter = sdelta.newStructureCounter-1;
-			//		DBG_ASSERT_LESS__(structureCounter,3);
-			//	}
-			//	return true;
-			//}
 			bool	ApplyDelta(const TTypeDelta&tdelta)
 			{
 				if (tdelta.newType)
@@ -221,16 +210,6 @@ namespace Grid
 				}
 				return false;
 			}
-			//bool	ApplyDelta(const TStructCountDelta&sdelta)
-			//{
-			//	if (sdelta.newStructureCounter)
-			//	{
-			//		structureCounter = sdelta.newStructureCounter-1;
-			//		DBG_ASSERT_LESS__(structureCounter,3);
-			//		return true;
-			//	}
-			//	return false;
-			//}
 		};
 
 		class Cell : public CompactCell
@@ -496,13 +475,15 @@ namespace Grid
 		struct TerrainVertex
 		{
 			float4		vertex;
-			float4		normal;
+			sbyte4		normal_structure;
 			float4		color;
+			short2		distance_reserved;
 
 			/**/		TerrainVertex()	{};
-			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float4&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal(n,structure), color(color){}
-			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float3&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal(n, structure), color(color,1.f){}
+			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float4&color, float structure, short distance) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f,structure*127.f), color(color), distance_reserved(distance,0) {}
+			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float3&color, float structure, short distance) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f,structure*127.f), color(color,1.f), distance_reserved(distance,0) {}
 		};
+		static_assert(sizeof(TerrainVertex) == 4*4+4+4*4+2*2, "Struct alignment failure");
 	
 		struct ResourceVertex //! Temporarily the same layout as TerrainVertex
 		{
@@ -1476,7 +1457,7 @@ namespace Grid
 								TVec3<> normal;
 								for (index_t i = _i; i < _i + HullTestBatch*3 && i < dat.terrain.indices.Count(); i+=3)
 								{
-									if (Vec::dot(dat.terrain.vertices[indices[i]].normal.xyz,d) > 0.f)
+									if (Vec::dot(dat.terrain.vertices[indices[i]].normal_structure.xyz,d) > 0.f)
 										continue;
 									if (Obj::detectOpticalIntersection(
 										dat.terrain.vertices[indices[i]].vertex.xyz,
@@ -1485,7 +1466,8 @@ namespace Grid
 										b, d, dist))
 									{
 										any = true;
-										normal = dat.terrain.vertices[indices[i]].normal.xyz;	//correct enough
+										Vec::copy(dat.terrain.vertices[indices[i]].normal_structure.xyz,normal);//correct enough
+										normal /= 127.f;
 									}
 								}
 								if (any)
@@ -2019,6 +2001,8 @@ namespace Grid
 
 	class WorldData
 	{
+	private:
+		static short			ResourceDistance(const Sphere<>&resourceSphere, const TVec3<>&cellCenter);
 	public:
 		Array<CellStack>		cellStack;
 		#ifdef HAS_WINDOW
@@ -2134,6 +2118,19 @@ namespace Grid
 				void			SignalLightingChange(const HCellIdI&cellID);
 			#endif
 			void				SignalLightingChange(const LCellIdI&cellID);
+
+
+			void				ClearResourceDistanceField();
+			/**
+			Paints a sphere into the resource distance field, 2 units larger than the specified sphere.
+			This method uses static instances of classes and must not be called in parallel
+			*/
+			void				PaintResourceDistanceField(const Sphere<>&resourceSphere);
+
+			/**
+			Detailed version of the above. This version may be called in parallel
+			*/
+			void				PaintResourceDistanceField(const HighSetup::TVolumeDescriptor&desc, const Sphere<>&resourceSphere);
 		#endif
 		void					InsertSensor(const HighSetup::TVolumeDescriptor&desc);
 		void					RemoveSensor(const HighSetup::TVolumeDescriptor&desc);

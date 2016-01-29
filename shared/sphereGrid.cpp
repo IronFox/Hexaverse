@@ -561,6 +561,7 @@ namespace Grid
 			#ifdef HAS_WINDOW
 				volumeCell[i].intLightLevel = 0xFF;
 				volumeCell[i].submergence = 0;
+				volumeCell[i].resourceDistance = MAXSHORT;
 			#endif
 
 			#ifdef CLIENT
@@ -720,18 +721,21 @@ namespace Grid
 		
 
 			{
-				Engine::VertexBinding binding;
-				binding.vertex.set(0, 4);
-				binding.normal.set(4, 4);
-				binding.color.set(8, 4);
-				binding.floats_per_vertex = 12;
-				Instruction::terrainBase.binding = binding;
+				//Engine::VertexBinding binding;
+				//binding.vertex.set(0, 4);
+				//binding.normal.set(4, 4);
+				//binding.color.set(8, 4);
+				//binding.floats_per_vertex = 12;
+				Instruction::terrainBase.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
+				Instruction::terrainBase.binding.Append("NORMAL",0,DXGI_FORMAT_R8G8B8A8_SNORM);
+				Instruction::terrainBase.binding.Append("COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
+				Instruction::terrainBase.binding.Append("Distance",0,DXGI_FORMAT_R16G16_SNORM);
 				Instruction::terrainBase.SetTriangles();
 
-				Instruction::terrainSphereBase.binding = binding;
+				Instruction::terrainSphereBase.binding = Instruction::terrainBase.binding;
 				Instruction::terrainSphereBase.SetTriangles();
 
-				Instruction::terrainParaboloidBase.binding = binding;
+				Instruction::terrainParaboloidBase.binding = Instruction::terrainBase.binding;
 				Instruction::terrainParaboloidBase.SetTriangles();
 
 				Instruction::terrainBase.UpdateLayout();
@@ -1996,6 +2000,7 @@ namespace Grid
 
 		/*static*/ void TerrainCompiler::ApplyEMP(float intensity,TVec3<>&rs)
 		{
+
 			if (intensity > 0.f)
 			{
 				rs *= -1.5f;
@@ -2073,7 +2078,7 @@ namespace Grid
 			if (capped)
 				CapColor(c0);
 			ApplyEMP(emp0,c0.rgb);
-			solidMesh << TerrainVertex(cell.centerVertex, range.max, cell.centerVertex.xyz, c0, thisCell.GetStructureFactor());
+			solidMesh << TerrainVertex(cell.centerVertex, range.max, cell.centerVertex.xyz, c0, thisCell.GetStructureFactor(),thisCell.resourceDistance);
 			for (int j = 0; j < cell.numCorners; j++)
 			{
 				{
@@ -2088,6 +2093,7 @@ namespace Grid
 					//	brightness = 0;
 					//}
 					//else
+					float d = thisCell.resourceDistance;
 					{
 						Vec::clear(color);
 						Content c0,c1;
@@ -2098,6 +2104,9 @@ namespace Grid
 						emp += AffectedByEMP(n1);
 						emp += AffectedByEMP(n2);
 						emp /= 3;
+
+						d += this->stacks[n1].volumeCell[ih].resourceDistance;
+						d += this->stacks[n2].volumeCell[ih].resourceDistance;
 
 						float4 add(color0.rgb, 1.f);
 						if (!mixes0)
@@ -2120,7 +2129,7 @@ namespace Grid
 						CapColor(color);
 					ApplyEMP(emp,color.rgb);
 
-					solidMesh << TerrainVertex(cell.cornerVertex[j], range.max, cell.cornerVertex[j].xyz, float4(color.rgb,brightness), 1.f);
+					solidMesh << TerrainVertex(cell.cornerVertex[j], range.max, cell.cornerVertex[j].xyz, float4(color.rgb,brightness), 1.f,d/3);
 				}
 				solidMesh << 0 << 1 + (UINT16)j << 1 + (UINT16)(j + 1) % cell.numCorners;
 			}	
@@ -2139,7 +2148,7 @@ namespace Grid
 			{
 				float4 c0 = color0;
 				ApplyEMP(emp0,c0.rgb);
-				solidMesh << TerrainVertex(cell.centerVertex, h, -cell.centerVertex.xyz, c0, thisCell.GetStructureFactor());
+				solidMesh << TerrainVertex(cell.centerVertex, h, -cell.centerVertex.xyz, c0, thisCell.GetStructureFactor(),thisCell.resourceDistance);
 			}
 			for (int j = 0; j < cell.numCorners; j++)
 			{
@@ -2164,7 +2173,7 @@ namespace Grid
 						//brightness /= color.a;
 					}
 					ApplyEMP(emp,color.rgb);
-					solidMesh << TerrainVertex(cell.cornerVertex[j], h, -cell.cornerVertex[j].xyz, float4(color.rgb,brightness), 1.f);
+					solidMesh << TerrainVertex(cell.cornerVertex[j], h, -cell.cornerVertex[j].xyz, float4(color.rgb,brightness), 1.f,thisCell.resourceDistance);
 				}
 				solidMesh << 0 << 1 + (UINT16)(j + 1) % cell.numCorners << 1 + (UINT16)j;
 			}	
@@ -2178,14 +2187,27 @@ namespace Grid
 			const UINT32 n1 = neighbors.neighborID[(j + 1) % cell.numCorners];
 			const UINT32 n2 = neighbors.neighborID[(j + 2) % cell.numCorners];
 			const CellStack&sn = stacks[n1];
-			const bool filled = sn.GetCellU(ih).IsSolid();
+			const CellStack&sn0 = stacks[n0];
+			const CellStack&sn2 = stacks[n2];
+			const auto&neighborCell = sn.GetCellU(ih);
+			const bool filled = neighborCell.IsSolid();
+
+			short otherDistanceNow0 = thisCell.resourceDistance + neighborCell.resourceDistance + sn0.GetCellU(ih).resourceDistance;
+			short otherDistanceNow2 = thisCell.resourceDistance + neighborCell.resourceDistance + sn2.GetCellU(ih).resourceDistance;
+			short otherDistanceLast0 = lastCell.resourceDistance + sn.GetCellU(ih-1).resourceDistance + sn0.GetCellU(ih-1).resourceDistance;
+			short otherDistanceLast2 = lastCell.resourceDistance + sn.GetCellU(ih-1).resourceDistance + sn2.GetCellU(ih-1).resourceDistance;
+			otherDistanceNow0 /= 3;
+			otherDistanceNow2 /= 3;
+			otherDistanceLast0 /= 3;
+			otherDistanceLast2 /= 3;
 			//bool wasEmpty = false;
 			const bool ncutoff = IsClipped(clipHeight, n1, ir);
 			{
+				const int j2 = (j + 1) % cell.numCorners;
 				TVec4<>	color1 = newCornerColor[j],
-						color2 = newCornerColor[(j + 1) % cell.numCorners],
+						color2 = newCornerColor[j2],
 						lowerColor1 = wasEmpty ? newCornerColor[j] : cornerColor[j],
-						lowerColor2 = wasEmpty ? newCornerColor[(j + 1) % cell.numCorners] : cornerColor[(j + 1) % cell.numCorners];
+						lowerColor2 = wasEmpty ? newCornerColor[j2] : cornerColor[j2];
 
 				if (ncutoff && filled)
 				{
@@ -2215,10 +2237,10 @@ namespace Grid
 					Vec::cross(v0.xyz, v0.xyz - v1.xyz, normal);
 					Vec::normalize(normal);
 					solidMesh.SetOffset();
-					solidMesh <<  TerrainVertex(v0, range.max, normal, color1, 1.f);
-					solidMesh <<  TerrainVertex(v0, range.min, normal, lowerColor1, 1.f);
-					solidMesh <<  TerrainVertex(v1, range.min, normal, lowerColor2, 1.f);
-					solidMesh <<  TerrainVertex(v1, range.max, normal, color2, 1.f);
+					solidMesh <<  TerrainVertex(v0, range.max, normal, color1, 1.f,otherDistanceNow0);
+					solidMesh <<  TerrainVertex(v0, range.min, normal, lowerColor1, 1.f,otherDistanceLast0);
+					solidMesh <<  TerrainVertex(v1, range.min, normal, lowerColor2, 1.f,otherDistanceLast2);
+					solidMesh <<  TerrainVertex(v1, range.max, normal, color2, 1.f,otherDistanceNow2);
 					solidMesh << 0 << 1 << 2 << 0 << 2 << 3;
 				}
 
@@ -2344,7 +2366,7 @@ namespace Grid
 					solidMesh.SetOffset();
 					Content centerContent;
 					TVec4<> color0 = stack.GetDownColorU(0, Content::Clear,mixes0,centerContent);
-					solidMesh << TerrainVertex(cell.centerVertex, h, -cell.centerVertex.xyz, color0, thisCell.GetStructureFactor());
+					solidMesh << TerrainVertex(cell.centerVertex, h, -cell.centerVertex.xyz, color0, thisCell.GetStructureFactor(),MAXSHORT);
 					for (int j = 0; j < cell.numCorners; j++)
 					{
 						{
@@ -2364,7 +2386,7 @@ namespace Grid
 								//color.rgb *= brightness / color.a;
 								//brightness /= color.a;
 							}
-							solidMesh << TerrainVertex(cell.cornerVertex[j], h, -cell.cornerVertex[j].xyz, float4(color.rgb,brightness), 1.f);
+							solidMesh << TerrainVertex(cell.cornerVertex[j], h, -cell.cornerVertex[j].xyz, float4(color.rgb,brightness), 1.f,MAXSHORT);
 						}
 						solidMesh << 0 << 1 + (UINT16)(j + 1) % cell.numCorners << 1 + (UINT16)j;
 					}	
@@ -3279,6 +3301,84 @@ namespace Grid
 
 
 	#ifdef HAS_WINDOW
+
+		void				WorldData::ClearResourceDistanceField()
+		{
+			bool familyChanged[BaseGrid::NumFamilies] = {false};
+			foreach (cellStack,stack)
+			{
+				bool changed = false;
+				for (index_t i = 0; i < CellStack::Range; i++)
+				{
+					auto&cell = stack->volumeCell[i];
+					if (cell.resourceDistance != MAXSHORT)
+					{
+						cell.resourceDistance = MAXSHORT;
+						changed = true;
+					}
+				}
+				if (changed)
+					familyChanged[high.grid.GetCell(stack - cellStack.pointer()).family] = true;
+			}
+			for (BYTE i = 0; i < BaseGrid::NumFamilies; i++)
+				if (familyChanged[i])
+				{
+					Grid::high.family[i].SetOutdated(0.f);
+					Grid::low.family[i].SetOutdated(0.f);
+				}
+		}
+
+		/*static*/ short	WorldData::ResourceDistance(const Sphere<>&resourceSphere, const TVec3<>&cellCenter)
+		{
+			float d = Vec::distance(cellCenter,resourceSphere.center) - resourceSphere.radius;
+			return short( round(d * 100.f) );
+		}
+
+
+		void				WorldData::PaintResourceDistanceField(const Sphere<>&resourceSphere)
+		{
+			static HighSetup::TVolumeDescriptor desc;
+			Sphere<> larger = resourceSphere;
+			larger.radius += 2;
+			bool familyChanged[BaseGrid::NumFamilies] = {false};
+			high.GenerateVolume(larger,desc);
+			Concurrency::parallel_for(index_t(0),desc.coverage.Count(),[&familyChanged, resourceSphere,this](index_t i)
+			{
+				const auto&c = desc.coverage[i];
+				const TVec3<>&dir = high.cells[c.stackID].cornerCenter;
+				TVec3<> step = dir * SingleLayerHeight;
+				TVec3<> at = dir * ToRadiusf(0.5f + CellStack::ToHeight(c.layerBegin));
+				bool changed = false;
+				CellStack&stack = cellStack[c.stackID];
+				for (index_t layer = c.layerBegin; layer < c.layerEnd; layer++)
+				{
+					short d = ResourceDistance(resourceSphere,at);
+					auto&cell = stack.volumeCell[layer];
+					short nd = std::min(cell.resourceDistance,d);
+					if (nd != cell.resourceDistance)
+					{
+						cell.resourceDistance = nd;
+						changed = true;
+					}
+					at += step;
+				}
+
+				if (changed)
+					familyChanged[high.grid.GetCell(c.stackID).family] = true;
+			});
+			for (BYTE i = 0; i < BaseGrid::NumFamilies; i++)
+				if (familyChanged[i])
+				{
+					Grid::high.family[i].SetOutdated(0.f);
+					Grid::low.family[i].SetOutdated(0.f);
+				}
+		}
+
+		///**
+		//Detailed version of the above. This version may be called in parallel
+		//*/
+		//void				PaintResourceDistanceField(const HighSetup::TVolumeDescriptor&desc, const Sphere<>&resourceSphere);
+
 	void	WorldData::UpdateLighting()
 	{
 		lightingOutdated = false;

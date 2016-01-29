@@ -6,6 +6,7 @@ struct A2V
 	float4 position : POSITION;
 	float4 normal : NORMAL;
 	float4 color : COLOR;
+	float2 resourceDistance_reserved : Distance;
 };
 
 struct V2P

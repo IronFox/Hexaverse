@@ -46,6 +46,7 @@ struct A2V
 	float4 position : POSITION;
 	float4 normal : NORMAL;
 	float4 color : COLOR;
+	float2 resourceDistance_reserved : Distance;
 };
 
 struct V2P
@@ -57,7 +58,7 @@ struct V2P
 	float3 world : World;
 	float3 normal : Normal;
 	float intensity : Intensity;
-	float2 structureBlueshift : StructureBlueshift;
+	float3 structureBlueshiftDistance : StructureBlueshiftDistance;
 	float4 color : COLOR;
 	float3 glowColor : GlowColor;
 	float diffuse : Diffuse;
@@ -134,8 +135,9 @@ void vsMain(A2V input, out V2P output)
 	output.color.rgb *= SunColor.rgb;
 	//output.color.rgb += output.glowColor;
 	output.diffuse = max(0.0, dot(input.normal.xyz, Sun.xyz));
-	output.structureBlueshift.x = input.normal.w;
-	output.structureBlueshift.y = smoothstep(-0.4,0.3, -dot(normalize(output.world),Sun.xyz));
+	output.structureBlueshiftDistance.x = input.normal.w;
+	output.structureBlueshiftDistance.y = smoothstep(-0.4,0.3, -dot(normalize(output.world),Sun.xyz));
+	output.structureBlueshiftDistance.z = input.resourceDistance_reserved.x;
 	output.atmosphere = CalculatePositionFog(output.world);
 
 	#ifdef PARABOLOID_DISPLAY
@@ -175,14 +177,14 @@ float4 psMain(V2P input) : SV_TARGET
 
 	float3 tone;
 
-	step = max(abs(ddx(input.structureBlueshift.x)), abs(ddy(input.structureBlueshift.x)));
-	float structure = (smoothstep(0.9 - step, 0.9 + step, input.structureBlueshift.x) + 1.0 - input.structureBlueshift.x) * 0.5 + 0.5;
+	step = max(abs(ddx(input.structureBlueshiftDistance.x)), abs(ddy(input.structureBlueshiftDistance.x)));
+	float structure = (smoothstep(0.9 - step, 0.9 + step, input.structureBlueshiftDistance.x) + 1.0 - input.structureBlueshiftDistance.x) * 0.5 + 0.5;
 
 	float diffuse = input.diffuse;
 	float light = diffuse > 0 ? Shade(input.world) : 0.0;
 
 	//max(0.0, dot(input.normal, Sun));
-	float3 baseAmbient = lerp((float3)MaxAmbient,BlueAmbient,input.structureBlueshift.y);
+	float3 baseAmbient = lerp((float3)MaxAmbient,BlueAmbient,input.structureBlueshiftDistance.y);
 	float3 baseDiffuse = (float3)1.0 - baseAmbient;
 
 	float4 rs = float4(/*tone **/ input.color.xyz * structure * ((baseDiffuse*diffuse *light + baseAmbient) * (0.25 + 0.75 * input.color.a)), 1.0);
@@ -222,6 +224,11 @@ float4 psMain(V2P input) : SV_TARGET
 		rs.rgb = lerp(rs.rgb, color, sphereOpacity );
 
 	#endif
+
+	const float lineWidth = 1.0/327.0, blurWidth = lineWidth*0.5;
+	float outLine = smoothstep(-blurWidth,blurWidth,-input.structureBlueshiftDistance.z)*
+					smoothstep(-lineWidth-blurWidth,-lineWidth+blurWidth,input.structureBlueshiftDistance.z);
+	rs.rgb = lerp(rs.rgb,float3(0,0,1),outLine);
 
 	//rs.rgb = CalculatePositionFog(input.world, rs.rgb);
 	rs.rgb = lerp(rs.rgb,input.atmosphere.rgb,input.atmosphere.a);
