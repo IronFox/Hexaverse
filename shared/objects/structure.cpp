@@ -888,7 +888,7 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ bool			Tower::DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			Tower::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 		
 			if (mode != Objects::CursorMode::AttackMode || !leftClick)
@@ -1974,7 +1974,7 @@ namespace Objects
 
 
 	#ifndef CLIENT
-		/*virtual override*/ bool			VehiclePlant::DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			VehiclePlant::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			if (waypoints.Count() != 1)
 				return false;
@@ -1982,7 +1982,7 @@ namespace Objects
 			return true;
 		}
 
-		/*virtual override*/ bool			SkyPort::DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			SkyPort::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			if (waypoints.Count() != 1)
 				return false;

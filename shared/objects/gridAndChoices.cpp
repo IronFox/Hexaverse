@@ -702,7 +702,7 @@ namespace Objects
 
 
 	
-	void		GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
+	void		GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
 	{
 		const Grid::WorldData&world = 
 		#ifdef CLIENT
@@ -956,7 +956,7 @@ namespace Objects
 
 
 
-	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
+	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
 	{
 		showArrow = false;
 		hasArrowCellTarget = false;

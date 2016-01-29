@@ -1,4 +1,5 @@
 v0.3.14		[Jan 29 2016]
+	* Fixed implicit attack targeting when right-clicking on a hostile unit.
 	* Fixed client not being able to start server.
 	* Fixed nexus satellites not seeing approaching player satellites.
 	* Fixed 'new round' button not flashing when it should.
