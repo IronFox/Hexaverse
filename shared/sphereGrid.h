@@ -2017,9 +2017,11 @@ namespace Grid
 
 	};
 
-
+	
 	class WorldData
 	{
+	private:
+		static short			ResourceDistance(const Sphere<>&resourceSphere, const TVec3<>&cellCenter);
 	public:
 		Array<CellStack>		cellStack;
 		#ifdef HAS_WINDOW
@@ -2135,6 +2137,19 @@ namespace Grid
 				void			SignalLightingChange(const HCellIdI&cellID);
 			#endif
 			void				SignalLightingChange(const LCellIdI&cellID);
+
+
+			void				ClearResourceDistanceField();
+			/**
+			Paints a sphere into the resource distance field, 2 units larger than the specified sphere.
+			This method uses static instances of classes and must not be called in parallel
+			*/
+			void				PaintResourceDistanceField(const Sphere<>&resourceSphere);
+
+			/**
+			Detailed version of the above. This version may be called in parallel
+			*/
+			void				PaintResourceDistanceField(const HighSetup::TVolumeDescriptor&desc, const Sphere<>&resourceSphere);
 		#endif
 		void					InsertSensor(const HighSetup::TVolumeDescriptor&desc);
 		void					RemoveSensor(const HighSetup::TVolumeDescriptor&desc);
@@ -2153,6 +2168,7 @@ namespace Grid
 			void				ChangeSensorCoverage(const HighSetup::TVolumeDescriptor&state, signed char change);
 	};
 
+	
 	extern WorldData			actualWorld;
 	#ifndef CLIENT
 		extern WorldData		initialWorld;

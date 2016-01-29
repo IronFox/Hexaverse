@@ -877,8 +877,19 @@ void	SignalMarkerTouch(Objects::Marker&marker)
 
 
 
+
+
 void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 {
+	if (e->isMine && e->IsStructure())
+	{
+		Grid::actualWorld.ClearResourceDistanceField();
+		foreach (Objects::structures,s)
+			if ((*s)->isMine)
+				Grid::actualWorld.PaintResourceDistanceField(Sphere<>((*s)->GetWorldPosition(),Objects::WirelessTransferRange));
+	}
+
+
 	if (t == Objects::RemovalType::UncontrolledExplosion && e->isMine)
 	{
 		Protocol::Marker marker;
@@ -919,6 +930,11 @@ void	OnAppear(const Objects::PWorldEntity&e)
 	}
 	else
 	{
+		if (e->IsStructure())
+		{
+			Grid::actualWorld.PaintResourceDistanceField(Sphere<>(e->GetWorldPosition(),Objects::WirelessTransferRange));
+		}
+
 		if (To<Objects::Structure>::DynamicCast(e))
 		{
 			for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
@@ -934,8 +950,6 @@ void	OnAppear(const Objects::PWorldEntity&e)
 		}
 	}
 }
-
-
 
 
 
