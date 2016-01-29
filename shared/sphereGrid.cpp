@@ -720,18 +720,20 @@ namespace Grid
 		
 
 			{
-				Engine::VertexBinding binding;
-				binding.vertex.set(0, 4);
-				binding.normal.set(4, 4);
-				binding.color.set(8, 4);
-				binding.floats_per_vertex = 12;
-				Instruction::terrainBase.binding = binding;
+				//Engine::VertexBinding binding;
+				//binding.vertex.set(0, 4);
+				//binding.normal.set(4, 4);
+				//binding.color.set(8, 4);
+				//binding.floats_per_vertex = 12;
+				Instruction::terrainBase.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
+				Instruction::terrainBase.binding.Append("NORMAL",0,DXGI_FORMAT_R8G8B8A8_SNORM);
+				Instruction::terrainBase.binding.Append("COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
 				Instruction::terrainBase.SetTriangles();
 
-				Instruction::terrainSphereBase.binding = binding;
+				Instruction::terrainSphereBase.binding = Instruction::terrainBase.binding;
 				Instruction::terrainSphereBase.SetTriangles();
 
-				Instruction::terrainParaboloidBase.binding = binding;
+				Instruction::terrainParaboloidBase.binding = Instruction::terrainBase.binding;
 				Instruction::terrainParaboloidBase.SetTriangles();
 
 				Instruction::terrainBase.UpdateLayout();
