@@ -269,6 +269,8 @@ namespace Objects
 						}
 					}
 				}
+				if (e->health <= 0)
+					return;	//prevent being added to affect*
 
 				{
 					Vec::mult(c,Grid::ToRadius(e->location.height -1),p);	//include own lower level
