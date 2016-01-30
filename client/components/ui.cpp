@@ -2011,6 +2011,14 @@
 
 			if (e.IsStructure())
 			{
+				#ifdef _DEBUG
+				{
+					textout << " Connected to: "<<nl;
+					const Objects::Structure&s = (const Objects::Structure&)e;
+					foreach (s.connectedTo,c)
+						textout << "  "<<(*c)->GetName()<<nl;
+				}
+				#endif
 				const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&e);
 				if (t)
 				{

@@ -505,20 +505,20 @@ namespace Objects
 
 	
 
-	bool CommonCmd::IsModeActive(const PWorldEntity&e, CursorMode::mode_t mode)
+	bool CommonCmd::IsModeActive(const PWorldEntity&e, CursorMode mode)
 	{
 		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
 		return v && activeCursorMode == mode;
 	}
 		
-	bool CommonCmd::IsModeActiveOrIdle(const PWorldEntity&e, CursorMode::mode_t mode)
+	bool CommonCmd::IsModeActiveOrIdle(const PWorldEntity&e, CursorMode mode)
 	{
 		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
 		return v && (activeCursorMode == mode || activeCursorMode == CursorMode::Idle);
 	}
 	
 
-	void CommonCmd::ToggleMode(const PWorldEntity&e, CursorMode::mode_t mode)
+	void CommonCmd::ToggleMode(const PWorldEntity&e, CursorMode mode)
 	{
 		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
 		PTower t = To<Tower>::DynamicCast(e);

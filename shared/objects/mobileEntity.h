@@ -112,9 +112,7 @@ namespace Objects
 		void		HandleMotion(MobilePlacementResult&rs, bool signalEvent, const Grid::LCellIdI&oldLocation, float timeCost);
 	public:
 		MobileResourceEnvironment	resourceEnvironment;
-
-
-		typedef CursorMode::mode_t	mode_t;
+		typedef CursorMode	mode_t;
 
 		struct TaskData
 		{
@@ -125,7 +123,7 @@ namespace Objects
 				Mode,
 				Job,
 			}						type;
-			CursorMode::mode_t		mode;
+			CursorMode		mode;
 		
 			#ifdef HAS_WINDOW
 				DX11::InstructionBlock32			visualization;

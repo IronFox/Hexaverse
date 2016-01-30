@@ -1272,6 +1272,14 @@ namespace Objects
 			#endif
 		}
 
+		/*static*/ Marker*			Marker::Find(const Grid::LCellIdI&loc)
+		{
+			foreach (all,m)
+				if (m->visualization && m->visualization->location == loc)
+					return m;
+			return nullptr;
+		}
+
 		/*static*/ Marker*			Marker::FindByReference(const TUniqueID&referenceID)
 		{
 			index_t index;

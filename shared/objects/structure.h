@@ -90,7 +90,7 @@ namespace Objects
 			static void				CommonFixTerrain(const WorldEntity*e, const Grid::LCellIdI&location,  const Grid::Content foundationType, int height, bool signalChange, float atTime, bool deep, bool requireCentralFoundation, bool broadFoundation);
 			virtual void			CorrectTerrain(bool signalChange, float atTime, bool deep) = 0;
 
-			virtual bool			DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override	{return false;}
+			virtual bool			DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override	{return false;}
 
 		#endif
 
@@ -906,7 +906,7 @@ namespace Objects
 		//MobileEntityProducer overrides
 		#ifndef CLIENT
 			virtual void			SignalNewProductionEnqueued() override {SetEnabled(true,0);}
-			virtual bool			DirectTo(CursorMode::mode_t, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 
 
@@ -1126,7 +1126,7 @@ namespace Objects
 		#ifndef CLIENT
 			virtual void			SignalLastProductionDone() override {LogEvent(EventType::EntityProcess, this, "Queue is empty. Shutting off"); SetEnabled(false,0);}
 			virtual void			SignalNewProductionEnqueued() override {SetEnabled(true,0);}
-			virtual bool			DirectTo(CursorMode::mode_t, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 
 		#ifndef NO_HIBERNATION
@@ -1585,7 +1585,7 @@ namespace Objects
 			bool					IsIdleButCouldAttack(float atTime) const {return attackQueue.IsEmpty() && HasAmmoForShot(atTime);}
 
 
-			virtual bool			DirectTo(CursorMode::mode_t, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 
 		#endif
 		bool						HasAmmoForShot(float atTime) const;
