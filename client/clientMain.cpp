@@ -881,6 +881,7 @@ void	SignalMarkerTouch(Objects::Marker&marker)
 
 void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 {
+	#if 0
 	if (e->isMine && e->IsStructure())
 	{
 		Grid::actualWorld.ClearResourceDistanceField();
@@ -888,6 +889,7 @@ void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 			if ((*s)->isMine)
 				Grid::actualWorld.PaintResourceDistanceField(Sphere<>((*s)->GetWorldPosition(),Objects::WirelessTransferRange));
 	}
+	#endif /*0*/
 
 
 	if (t == Objects::RemovalType::UncontrolledExplosion && e->isMine)
@@ -930,10 +932,12 @@ void	OnAppear(const Objects::PWorldEntity&e)
 	}
 	else
 	{
+		#if 0
 		if (e->IsStructure())
 		{
 			Grid::actualWorld.PaintResourceDistanceField(Sphere<>(e->GetWorldPosition(),Objects::WirelessTransferRange));
 		}
+		#endif /*0*/
 
 		if (To<Objects::Structure>::DynamicCast(e))
 		{

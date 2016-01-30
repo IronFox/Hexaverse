@@ -2139,6 +2139,7 @@ namespace Grid
 			void				SignalLightingChange(const LCellIdI&cellID);
 
 
+			#if 0
 			void				ClearResourceDistanceField();
 			/**
 			Paints a sphere into the resource distance field, 2 units larger than the specified sphere.
@@ -2150,6 +2151,7 @@ namespace Grid
 			Detailed version of the above. This version may be called in parallel
 			*/
 			void				PaintResourceDistanceField(const HighSetup::TVolumeDescriptor&desc, const Sphere<>&resourceSphere);
+			#endif /*0*/
 		#endif
 		void					InsertSensor(const HighSetup::TVolumeDescriptor&desc);
 		void					RemoveSensor(const HighSetup::TVolumeDescriptor&desc);

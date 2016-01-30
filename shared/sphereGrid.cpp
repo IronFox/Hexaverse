@@ -3282,6 +3282,7 @@ namespace Grid
 
 	#ifdef HAS_WINDOW
 
+		#if 0
 		void				WorldData::ClearResourceDistanceField()
 		{
 			bool familyChanged[BaseGrid::NumFamilies] = {false};
@@ -3354,6 +3355,7 @@ namespace Grid
 				}
 		}
 
+		#endif /*0*/
 
 	void	WorldData::UpdateLighting()
 	{
