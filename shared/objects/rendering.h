@@ -167,6 +167,13 @@ namespace Objects
 
 
 		/**
+		Renders the resource space around each participating compound. Translucent. Alters depth-buffer. Should be called at the very end.
+		Only renders anything if a consuming mobile entity is selected.
+		*/
+		void	RenderCompoundAreas();
+
+
+		/**
 		Renders all ranges (attack, sensor, etc) of the selected entity and other entities if the respective settings are active.
 		@param extendedShadow if true renders shaded and extended versions of the range spheres/cylinders/paraboloids
 		*/

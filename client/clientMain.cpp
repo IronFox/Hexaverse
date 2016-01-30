@@ -1009,8 +1009,16 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			//Grid::visibleOrbitGrid.StripColor();
 
 		#ifndef CONNECTOR_LESS
+		Objects::compoundsColored = false;
 		if (Objects::selectedMobileEntity)
 		{
+			Objects::PTurretBase base = Objects::selectedMobileEntity->GetTurretBase();
+
+			if (base && base->turret->ConsumesResources())
+				Objects::compoundsColored = true;
+
+
+
 			//if (Objects::selectedVehicle->tasks.IsNotEmpty() && Objects::selectedVehicle->tasks.Peek().job && Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft)
 			Objects::ResourceVector change;
 			Objects::ResourceVector current = Objects::selectedMobileEntity->currentStorage;
@@ -1534,6 +1542,8 @@ bool loop()
 				}
 
 			}
+
+			Objects::Renderer::RenderCompoundAreas();
 		}
 			
 
