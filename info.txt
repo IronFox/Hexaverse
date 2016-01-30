@@ -8,6 +8,12 @@ Unless specified otherwise, all work done by Stefan Elsen, copyright (C) 2014-20
 Exceptions:
 Console icon used in console applications:
 http://findicons.com/icon/93659/guake?id=274746
+Music titles:
+Shores of Avalon: http://incompetech.com/music/royalty-free/index.html?isrc=USUAN1100633
+Clean Soul: http://incompetech.com/music/royalty-free/index.html?isrc=USUAN1300033
+
+
+
 
 
 This project uses the following libaries and acknowledges their priceless contribution:
