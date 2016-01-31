@@ -193,6 +193,7 @@ namespace Objects
 
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
+			static PFaction				mine;
 
 			/**/					Faction(const TUniqueID&id):id(id) {IDToColor(color,id);}
 

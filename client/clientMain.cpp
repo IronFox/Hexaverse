@@ -1058,7 +1058,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			if (Objects::selectedEntity)
 				f = Objects::selectedEntity->owner;
 			else
-				f = Network::myFaction;
+				f = Objects::Faction::mine;
 			if (f)
 			{
 				if (f->compound.containedStructures.IsEmpty())
@@ -2576,13 +2576,13 @@ String GenerateOreName(Random&random)
 
 	bool	ShouldSignalRoundEnd()
 	{
-		if (!Network::myFaction || Network::myFaction->requestedNewRound || Network::amSpectator)
+		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound || Network::amSpectator)
 			return false;
 		count_t total=0,requested=0;
 		Objects::ForeachFaction([&total,&requested](const Objects::PFaction&f)
 		{
 			total++;
-			if ((f->requestedNewRound || !f->online) && f != Network::myFaction)
+			if ((f->requestedNewRound || !f->online) && f != Objects::Faction::mine)
 				requested++;
 		});
 
@@ -2719,7 +2719,7 @@ String GenerateOreName(Random&random)
 				to = total-1;
 			if (to < Objects::vehicles.Count())
 			{
-				if (Objects::vehicles[to]->owner == Network::myFaction)
+				if (Objects::vehicles[to]->owner == Objects::Faction::mine)
 				{
 					Objects::Select(Objects::vehicles[to],Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -2727,7 +2727,7 @@ String GenerateOreName(Random&random)
 				}
 			}
 			else
-				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Network::myFaction)
+				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Objects::Faction::mine)
 				{
 					Objects::Select(Objects::satellites[to - Objects::vehicles.Count()],Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -2768,7 +2768,7 @@ String GenerateOreName(Random&random)
 				to = 0;
 			if (to < Objects::vehicles.Count())
 			{
-				if (Objects::vehicles[to]->owner == Network::myFaction)
+				if (Objects::vehicles[to]->owner == Objects::Faction::mine)
 				{
 					Objects::Select(Objects::vehicles[to],Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -2776,7 +2776,7 @@ String GenerateOreName(Random&random)
 				}
 			}
 			else
-				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Network::myFaction)
+				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Objects::Faction::mine)
 				{
 					Objects::Select(Objects::satellites[to - Objects::vehicles.Count()],Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);

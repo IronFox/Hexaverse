@@ -963,6 +963,7 @@ namespace Objects
 
 	#else
 		/*static*/ Buffer0<PFaction>			Faction::allKnown;
+		/*static*/ PFaction						Faction::mine;
 
 		/*static*/ Buffer0<Marker, Strategy::Adopt>	Marker::all; 
 		/*static*/ GenericHashTable<TUniqueID, index_t, TUniqueID>	Marker::idMap,
@@ -1653,16 +1654,22 @@ namespace Objects
 
 	#endif
 
+	float Next(std::mt19937&random)
+	{
+		return float(random()) / float(random.max());
+	}
 
 	/*static*/ void Faction::IDToColor(TVec3<>&rs, const TUniqueID&id, int iteration/*=0*/)
 	{
 		UINT32 crc32 = CRC32::getChecksum(id.bytes,id.NumBytes);
-		Random r(crc32+iteration);
+		std::mt19937 r((long)(crc32+iteration));
+		//Random r(crc32+iteration);
 		//float3 rs;
 		float lowest,highest,delta;
 		do
 		{
-			Vec::def(rs,r.getFloat(),r.getFloat(),r.getFloat());
+		
+			Vec::def(rs,Next(r),Next(r),Next(r));
 			lowest = Vec::min(rs);
 			highest = Vec::max(rs);
 			delta = highest - lowest;
