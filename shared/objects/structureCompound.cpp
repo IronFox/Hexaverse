@@ -391,7 +391,8 @@ namespace Objects
 			#ifndef CLIENT
 				if (enabled && !s->CanEnable())
 				{
-					s->SetEnabled(false,0,false);
+					float t = 0.f;
+					s->SetEnabled(false,t,false);
 					enabled = false;
 				}
 			#endif

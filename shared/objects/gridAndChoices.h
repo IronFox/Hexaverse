@@ -164,10 +164,10 @@ namespace Objects
 		void		SignalClusterAndNeighborsChange(const Grid::LCellIdI&location, float atTime, const WorldEntity*except = nullptr);
 		void		Explode(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, 
 						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
-						float atTime
+						float&atTime
 						);
 		void		ExplodeEMP(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, 
-						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float atTime);
+						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float&atTime);
 
 
 		/**
@@ -188,14 +188,14 @@ namespace Objects
 
 	#endif
 
-	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float atTime);
-	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float atTime);
-	void			InsertConstructed(const PMobileEntity&v, float atTime, bool insertIntoGrid= true, bool setHealthToFull=true);
-	void			InsertConstructed(const PStructure&s, float atTime, bool refreshNetworkNow=false, bool setHealthToFull=true);
-	void			RegisterNewOffGrid(const PMobileEntity&v, float atTime, bool setHealthToFull=true);
+	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float&atTime);
+	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float&atTime);
+	void			InsertConstructed(const PMobileEntity&v, float&atTime, bool insertIntoGrid= true, bool setHealthToFull=true);
+	void			InsertConstructed(const PStructure&s, float&atTime, bool refreshNetworkNow=false, bool setHealthToFull=true);
+	void			RegisterNewOffGrid(const PMobileEntity&v, float&atTime, bool setHealthToFull=true);
 
 
-	void			Remove( const PWorldEntity&, RemovalType t, float atTime, bool controlEnabled, bool isRemovedFromGrid=false, bool ignoreIndestructible=false);
+	void			Remove( const PWorldEntity&, RemovalType t, float&atTime, bool controlEnabled, bool isRemovedFromGrid=false, bool ignoreIndestructible=false);
 
 	/**
 	Must be called once during start up, after the base grids have been created

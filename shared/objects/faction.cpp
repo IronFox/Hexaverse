@@ -414,7 +414,7 @@ namespace Objects
 
 			if (ref.sightLevel == incStackBy)
 			{
-				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Gained visual");
+				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Gained visual at time="+String(t));
 				float t0;
 				if (lostVisualAt.QueryAndUnset(e,t0))
 				{
@@ -543,6 +543,7 @@ namespace Objects
 		{
 			if (!e || e->owner.get() == this)
 				return;
+			LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+ ": CheckGridVisibility at time "+String(timeAt));
 			if (seeing.IsSet(e))
 			{
 				if (e->IsSatellite())
@@ -570,6 +571,7 @@ namespace Objects
 				else
 					if (GridCanSee(e))
 					{
+						LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+ ": SignalAppearance at time "+String(timeAt));
 						SignalAppearance(e,timeAt,true,false);
 					}
 			}
@@ -1524,8 +1526,9 @@ namespace Objects
 				{
 					toDelete << f->allMobiles[i].lock();
 				}
+			float t=0;
 			foreach (toDelete,del)
-				Remove(*del,Objects::RemovalType::ControlledExplosion,0,false);
+				Remove(*del,Objects::RemovalType::ControlledExplosion,t,false);
 			toDelete.Clear();
 
 			for (index_t i = 0; i < all.Count(); i++)

@@ -601,8 +601,9 @@ namespace Journal
 	/*virtual override*/ void	Round::CreateEntity::Execute(const Objects::PFaction&f) const
 	{
 		Objects::PWorldEntity e = desc.Instantiate(f,entityID,location);
+		float t = 0;
 		if (e->IsMobile())
-			Objects::InsertConstructed(To<Objects::MobileEntity>::Cast(e),0);
+			Objects::InsertConstructed(To<Objects::MobileEntity>::Cast(e),t);
 		else
 		{
 			if (e->IsStructure())
@@ -610,7 +611,7 @@ namespace Journal
 				Objects::PStructure s = To<Objects::Structure>::Cast(e);
 				s->CorrectTerrain(false,0,true);
 			}
-			Objects::InsertConstructed(To<Objects::Structure>::Cast(e),0);
+			Objects::InsertConstructed(To<Objects::Structure>::Cast(e),t);
 
 			if (e->IsWorkingStructure())
 			{
@@ -618,7 +619,7 @@ namespace Journal
 				if (m)
 					m->LinkToCore(0);
 				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(e);
-				ws->SetEnabled(enableWorkingStructure,0,false,Objects::WorkingStructure::ForceEnable,false);
+				ws->SetEnabled(enableWorkingStructure,t,false,Objects::WorkingStructure::ForceEnable,false);
 			}
 		}
 	}
@@ -795,6 +796,7 @@ namespace Journal
 		{
 			throw RoundException(CLOCATION, "Trying to assign production task to non-producer entity "+e->GetName());
 		}
+		float t = 0;
 		Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
 		Objects::PWorldEntity produced = desc.Instantiate(e->owner,this->newEntityID,Grid::LCellIdI(0,0));
 		if (produced->IsMobile())
@@ -808,7 +810,7 @@ namespace Journal
 				Objects::PWorkingStructure&ws = To<Objects::WorkingStructure>::Cast(e);
 				if (!ws->IsEnabled())
 				{
-					ws->SetEnabled(true,0.f);
+					ws->SetEnabled(true,t);
 				}
 
 			}
@@ -1522,9 +1524,10 @@ namespace Journal
 		{
 			throw RoundException(CLOCATION,e->GetName()+": Unable to destroy entity. Entity already dead");
 		}
-		Objects::Remove(e,type,0,false);
+		float t = 0;
+		Objects::Remove(e,type,t,false);
 		if (To<Objects::Structure>::DynamicCast(e))
-			Objects::RefreshCompoundCoverageIfNeeded(0);
+			Objects::RefreshCompoundCoverageIfNeeded(t);
 
 	}
 
@@ -1725,8 +1728,8 @@ namespace Journal
 				ASSERT__(w->compoundID != Objects::Compound::InvalidNetwork);
 			}
 		#endif
-
-		if (w->SetEnabled(doEnable,0))
+		float t = 0;
+		if (w->SetEnabled(doEnable,t))
 			LogEvent(EventType::MinorEntityProcess,e.get(),"Modified enabled-state "+String(doEnable));
 		else
 			throw RoundException(CLOCATION,"Cannot enable structure at this time");

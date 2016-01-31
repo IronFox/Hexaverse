@@ -287,14 +287,14 @@ namespace Objects
 		Structures should handle compound disconnections and struct count decreases.
 		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
 		*/
-		virtual void				OnDestroy(float atTime)	{};	
+		virtual void				OnDestroy(float&atTime)	{atTime += timeEpsilon;};	
 
 		/**
 		Signals that the local entity has been created.
 		Structures should handle compound disconnections and struct count decreases.
 		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
 		*/
-		virtual void				OnConstructionFinished(float atTime);
+		virtual void				OnConstructionFinished(float&atTime);
 
 		/**
 		Called exactly once on the prototype instance only, once instantiation of all prototype objects is completed (other prototypes may be references, but might not be set up yet).

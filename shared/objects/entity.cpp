@@ -246,8 +246,9 @@ namespace Objects
 
 
 
-	/*virtual*/ void	WorldEntity::OnConstructionFinished( float atTime)
+	/*virtual*/ void	WorldEntity::OnConstructionFinished(float&atTime)
 	{
+		atTime += timeEpsilon;
 	}
 
 	#ifdef HAS_WINDOW
@@ -420,7 +421,7 @@ namespace Objects
 	/*virtual override*/	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 	{
 		
-		LogEvent(EventType::MinorEntityProcess,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+")");
+		LogEvent(EventType::MinorEntityProcess,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
 		#ifdef CLIENT
 			if (isMine)
 			{

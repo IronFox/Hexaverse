@@ -188,7 +188,8 @@ namespace Test
 	{
 		Objects::PStructure result(To<Objects::Structure>::Cast( prototype->CreateNewInstance(owner, location, 0)));
 		result->CorrectTerrain(true, 0, true);
-		Objects::InsertConstructed(result, 0);
+		float t = 0;
+		Objects::InsertConstructed(result, t);
 		return result;
 	}
 
@@ -270,11 +271,11 @@ namespace Test
 
 
 			Objects::PVehicle v(new Objects::Vehicle(faction1,vehicleAt,&Objects::Component::hoverbase,turret));
-			Objects::InsertConstructed(v,0);
+			float t = 0;
+			Objects::InsertConstructed(v,t);
 			#ifndef CONNECTOR_LESS
 				v->currentStorage.level[v->turret->ammoType] = v->GetMaxStorageCapacity().level[v->turret->ammoType];
 			#endif
-			float t = 0;
 			faction1->SignalAppearance(generator,t);	//make sure tower can see generator
 			//faction1->currentState = Grid::actualWorld;
 			bool wouldFire = v->FillAttackQueue();
@@ -317,8 +318,8 @@ namespace Test
 
 			t++;
 			faction1->SignalDisappearance(generator,t);
-			Objects::Remove(v,Objects::RemovalType::Vanished,0,true);
-			Objects::Remove(generator,Objects::RemovalType::Vanished,0,true);
+			Objects::Remove(v,Objects::RemovalType::Vanished,t,true);
+			Objects::Remove(generator,Objects::RemovalType::Vanished,t,true);
 
 
 		}
@@ -391,17 +392,18 @@ namespace Test
 		Objects::Compound&net = mine->GetCompound();
 		//Objects::compounds[mine->compoundID];
 
-		generator->SetEnabled(false, 0, false);
-		mine->SetEnabled(false, 0, false);
+		float t = 0;
+		generator->SetEnabled(false, t, false);
+		mine->SetEnabled(false, t, false);
 
-		mineralContainer->SetEnabled(true, 0, false);
-		fuelContainer0->SetEnabled(true, 0, false);
-		fuelContainer1->SetEnabled(false, 0, false);
+		mineralContainer->SetEnabled(true, t, false);
+		fuelContainer0->SetEnabled(true, t, false);
+		fuelContainer1->SetEnabled(false, t, false);
 
 		net.TickBegin();
 		net.TickEnd(0);
 
-		generator->SetEnabled(true, 0);
+		generator->SetEnabled(true, t);
 		ASSERT__(generator->IsEnabled());
 		ASSERT__(mine->IsEnabled());
 
@@ -484,16 +486,17 @@ namespace Test
 		//#endif
 		Objects::Compound&net = mine->GetCompound();
 
-		generator->SetEnabled(false, 0, false);
-		mine->SetEnabled(false, 0, false);
-		plant->SetEnabled(false, 0, false);
+		float t = 0;
+		generator->SetEnabled(false, t, false);
+		mine->SetEnabled(false, t, false);
+		plant->SetEnabled(false, t, false);
 
 
 
 		net.TickBegin();
 		net.TickEnd(0);
 
-		generator->SetEnabled(true, 0);
+		generator->SetEnabled(true, t);
 		ASSERT__(generator->IsEnabled());
 		ASSERT__(mine->IsEnabled());
 		ASSERT__(!plant->IsEnabled());
@@ -538,8 +541,8 @@ namespace Test
 			ASSERT__(v1);
 			ASSERT__(Objects::GetVehicle(v0->location) == v0);
 			ASSERT__(Objects::GetVehicle(v1->location) == v1);
-			Objects::Remove(v0,	Objects::RemovalType::ControlledExplosion,0,false);
-			Objects::Remove(v1, Objects::RemovalType::ControlledExplosion,0, false);
+			Objects::Remove(v0,	Objects::RemovalType::ControlledExplosion,t,false);
+			Objects::Remove(v1, Objects::RemovalType::ControlledExplosion,t, false);
 			ASSERT__(Objects::vehicles.IsEmpty());
 			ASSERT__(generator->IsEnabled());
 			ASSERT__(mine->IsEnabled());
@@ -604,16 +607,17 @@ namespace Test
 		//#endif
 		Objects::Compound&net = mine->GetCompound();
 
-		generator->SetEnabled(false, 0, false);
-		mine->SetEnabled(false, 0, false);
-		plant->SetEnabled(false, 0, false);
+		float t = 0;
+		generator->SetEnabled(false, t, false);
+		mine->SetEnabled(false, t, false);
+		plant->SetEnabled(false, t, false);
 
 
 
 		net.TickBegin();
 		net.TickEnd(0);
 
-		generator->SetEnabled(true, 0);
+		generator->SetEnabled(true, t);
 		ASSERT__(generator->IsEnabled());
 		ASSERT__(mine->IsEnabled());
 		ASSERT__(!plant->IsEnabled());
@@ -700,7 +704,7 @@ namespace Test
 			else
 				if (v0->IsSatellite())
 					ASSERT__(Objects::GetSatellite(v0->location.stackID) == v0);
-			Objects::Remove(v0,	Objects::RemovalType::ControlledExplosion,0,false);
+			Objects::Remove(v0,	Objects::RemovalType::ControlledExplosion,t,false);
 			if (v1)
 			{
 				twoCount++;
@@ -711,7 +715,7 @@ namespace Test
 				else
 					if (v1->IsSatellite())
 						ASSERT__(Objects::GetSatellite(v1->location.stackID) == v1);
-				Objects::Remove(v1, Objects::RemovalType::ControlledExplosion,0, false);
+				Objects::Remove(v1, Objects::RemovalType::ControlledExplosion,t, false);
 			}
 			ASSERT__(Objects::vehicles.IsEmpty());
 			ASSERT__(Objects::satellites.IsEmpty());

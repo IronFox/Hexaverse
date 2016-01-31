@@ -68,8 +68,10 @@ namespace Objects
 	#ifndef CLIENT
 
 
-		/*virtual override*/ void		Vehicle::OnConstructionFinished(float atTime)
+		/*virtual override*/ void		Vehicle::OnConstructionFinished(float&atTime)
 		{
+			Super::OnConstructionFinished(atTime);
+			timeAt = atTime;
 			if (turret->CanAttack())
 			{
 				//leave munitions here. it seems fair that a new tank starts with full ammo, but an emp-tank should not start with full uranium...

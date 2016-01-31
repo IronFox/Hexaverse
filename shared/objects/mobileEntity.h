@@ -426,6 +426,7 @@ namespace Objects
 				{
 					if (flushTasksOnUnlock)
 						return false;
+					timeAt += timeEpsilon;
 					LogEvent(EventType::Debug,this,"Issued task clearing: "+String(caller.ToString()));
 					flushTasksOnUnlock = true;
 					return true;
@@ -433,6 +434,7 @@ namespace Objects
 				
 				if (myTasks.IsNotEmpty() || completeOnMove)
 				{
+					timeAt += timeEpsilon;
 					jobStarted = false;
 					if (!isReaction)
 						completeOnMove.reset();
@@ -550,10 +552,12 @@ namespace Objects
 
 
 	protected:
-		inline void				OffsetTime(float t)
+		inline void				OffsetTime(float&t)
 		{
 			#ifndef CLIENT
 				timeAt = std::max(timeAt,t);
+				timeAt += timeEpsilon;
+				t = timeAt;
 			#endif
 		}
 	};

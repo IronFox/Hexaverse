@@ -306,9 +306,11 @@ namespace World
 			float t = timer.GetSecondsSince(t0);
 			LogEvent(EventType::PerformanceMeasurement,"Time needed to process water: "+String(t));
 
-
 			for (const auto&e:waste)
-				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,0,false);
+			{
+				float at = 0;
+				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,at,false);
+			}
 			waste.Clear();
 		}
 

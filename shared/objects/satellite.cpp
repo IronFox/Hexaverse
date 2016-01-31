@@ -271,8 +271,9 @@ namespace Objects
 
 
 
-	void			SkyHub::OnConstructionFinished(float atTime)
+	void			SkyHub::OnConstructionFinished(float&atTime)
 	{
+		Super::OnConstructionFinished(atTime);
 		OffsetTime(atTime);
 		UpdateConnections();
 	}
@@ -646,7 +647,7 @@ namespace Objects
 				Compound&cmp = port->CastToStructure()->GetCompound();
 				if (cmp.total.balance.level[Resource::Minerals] >= (int)MobileEntityProducer::productionPerRound)
 				{
-					MobileEntityProducer::Tick(cmp.total.balance);
+					MobileEntityProducer::Tick(cmp.total.balance,atTime);
 				}
 				else
 					LogEvent(EventType::EntityProcessFailed,this,"Insufficient resources available in "+port->CastToStructure()->GetNiceName()+". Delaying production");

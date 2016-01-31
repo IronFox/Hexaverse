@@ -153,6 +153,7 @@ namespace Objects
 		/*virtual override*/ void Tower::Attack(float&attackTime)
 		{
 			//timeAt = attackTime;
+			attackTime = timeAt = std::max(attackTime,timeAt)+timeEpsilon;
 
 
 			ASSERT__(attackQueue.IsNotEmpty());
@@ -268,7 +269,7 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void			Tower::OnConstructionFinished(float atTime)
+		/*virtual override*/ void			Tower::OnConstructionFinished(float&atTime)
 		{
 			Super::OnConstructionFinished(atTime);
 			ChangeStorage(*this,atTime,turret->ammoType,GetMaxStorageCapacity().level[turret->ammoType] - storage.level[turret->ammoType]);
@@ -629,7 +630,7 @@ namespace Objects
 		#endif
 	}
 	
-	void	Structure::DisconnectFromNeighborhood(float atTime)
+	void	Structure::DisconnectFromNeighborhood(float&atTime)
 	{
 		foreach (this->connectedTo,conn)
 		{
@@ -642,7 +643,7 @@ namespace Objects
 	}
 
 
-	void Structure::OnConstructionFinished(float atTime)
+	void Structure::OnConstructionFinished(float&atTime)
 	{
 		Super::OnConstructionFinished(atTime);
 
@@ -701,7 +702,7 @@ namespace Objects
 					ASSERT__(c->connectedTo.Contains(_this));
 				}
 				_this->OnNewConnection(c, between, atTime);
-				LogEvent(EventType::MinorEntityProcess,nullptr, "Connection established between "+GetName()+" and "+c->GetName());
+				LogEvent(EventType::MinorEntityProcess,nullptr, "Connection established between "+GetName()+" and "+c->GetName()+" at time "+String(atTime));
 				#ifdef HAS_WINDOW
 					if (c->changed)
 						c->Recompile();
@@ -717,10 +718,10 @@ namespace Objects
 
 
 
-	/*virtual*/ void Structure::OnDestroy(float atTime)
+	/*virtual*/ void Structure::OnDestroy(float&atTime)
 	{
 		Super::OnDestroy(atTime);
-		LogEvent(EventType::Debug,this,"Unregistering...");
+		LogEvent(EventType::Debug,this,"Unregistering at time="+String(atTime)+"...");
 		if (IsBroad())
 			CommonUnregisterBroadStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
 		else
@@ -888,11 +889,12 @@ namespace Objects
 				}
 			}
 
+			timeAt += timeEpsilon;
 			AttackTask&cmd = attackQueue.Push();
 //			cmd.id.Generate();
 			cmd.target = target;
 			cmd.autoTarget = autoTarget;
-			SignalChange(TasksChanged,0);
+			SignalChange(TasksChanged,timeAt);
 			return true;
 		}
 
@@ -1083,7 +1085,7 @@ namespace Objects
 		#endif
 	}
 
-	/*virtual override*/ void				Connector::OnDestroy(float atTime)
+	/*virtual override*/ void				Connector::OnDestroy(float&atTime)
 	{
 		Super::OnDestroy(atTime);
 	}
@@ -1687,7 +1689,7 @@ namespace Objects
 
 	#endif
 
-	/*virtual override*/ void				VehicleStore::OnDestroy(float atTime)
+	/*virtual override*/ void				VehicleStore::OnDestroy(float&atTime)
 	{
 		//Buffer0<WVehicleStore>	copy = sneighbors;
 		Super::OnDestroy(atTime);	//disconnects from neighborhood. sneighbors should be empty now
@@ -1864,8 +1866,9 @@ namespace Objects
 		return Super::SignalEnvironmentChange(neighborhood,atTime);
 	}
 
-	/*virtual*/ void				Structure::SignalLostNeighbor(const PStructure&other, float atTime)
+	/*virtual*/ void				Structure::SignalLostNeighbor(const PStructure&other, float&atTime)
 	{
+		atTime += timeEpsilon;
 		if (connectedTo.FindAndErase(other))
 		{
 			LogEvent(EventType::MinorEntityProcess,nullptr, "Connection lost between "+GetName()+" and "+other->GetName());
@@ -2018,7 +2021,8 @@ namespace Objects
 		{
 			v.level[Resource::Energy] -= EnergyConsumption;
 
-			MobileEntityProducer::Tick(v);
+			float t = 0.f;	//buildings always come at the beginning
+			MobileEntityProducer::Tick(v,t);
 		}
 
 
@@ -2053,7 +2057,10 @@ namespace Objects
 		{
 			v.level[Resource::Energy] -= EnergyConsumption;
 			if (MobileEntityProducer::queue.IsNotEmpty())
-				MobileEntityProducer::Tick(v);
+			{
+				float t = 0;
+				MobileEntityProducer::Tick(v,t);
+			}
 
 
 
@@ -2722,13 +2729,13 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ void				WorkingStructure::OnDestroy(float atTime)
+	/*virtual override*/ void				WorkingStructure::OnDestroy(float&atTime)
 	{
 		Super::OnDestroy(atTime);
 	}
 
 	#ifndef CLIENT
-		bool						WorkingStructure::SetEnabled(bool b, float atTime, bool refreshNetwork/*=true*/, force_t force/*=DontForce*/, bool signalStructure/*=true*/)
+		bool						WorkingStructure::SetEnabled(bool b, float&atTime, bool refreshNetwork/*=true*/, force_t force/*=DontForce*/, bool signalStructure/*=true*/)
 		{
 			if (isEnabled == b)
 			{
@@ -2761,6 +2768,7 @@ namespace Objects
 				//	return false;
 				//}
 			}
+			atTime += timeEpsilon;
 			isEnabled = b;
 			RegisterChange(EnableChanged,atTime);
 			if (signalStructure)

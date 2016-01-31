@@ -201,7 +201,7 @@ namespace Objects
 		Typical behavior is to check for existing connections and remove them from @a connectedTo where necessary
 		Invokes OnConnectionLost() on the local instance, if a connection was removed.
 		*/
-		virtual void				SignalLostNeighbor(const PStructure&, float atTime);
+		virtual void				SignalLostNeighbor(const PStructure&, float&atTime);
 		/**
 		Signalling method invoked by default implementations of SignalEnvironmentChange() and SignalNewNeighbor()
 		Invoked whenever a new connection has been established.
@@ -265,8 +265,8 @@ namespace Objects
 		Base version also notifies all connected structures of the removal, so Super::OnDestroy()
 		should be called by overriding implementations at some point.
 		*/
-		virtual void				OnDestroy(float atTime) override;
-		virtual void				OnConstructionFinished(float atTime) override;
+		virtual void				OnDestroy(float&atTime) override;
+		virtual void				OnConstructionFinished(float&atTime) override;
 
 		/**
 		Height applied during struct count setting in the terrain. For most structures this equals the actual height.
@@ -279,7 +279,7 @@ namespace Objects
 		generally not recommended to call this method manually. OnDestroy() will call this method, as will methods that
 		alter the ownership of entities.
 		*/
-		void						DisconnectFromNeighborhood(float atTime);
+		void						DisconnectFromNeighborhood(float&atTime);
 
 		#ifdef HAS_WINDOW
 
@@ -547,7 +547,7 @@ namespace Objects
 		//HangarStructure overrides:
 		const WorldEntity&			ToEntity() const override {return *this;}
 		WorldEntity&				ToEntity() override {return *this;}
-		virtual void				OnDestroy(float atTime) override;
+		virtual void				OnDestroy(float&atTime) override;
 
 
 		//WorldEntity overrides:
@@ -606,7 +606,7 @@ namespace Objects
 		virtual bool				IsBroad() const override {return false;}
 
 
-		virtual void				OnDestroy(float atTime) override;
+		virtual void				OnDestroy(float&atTime) override;
 		#ifdef HAS_WINDOW
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 			{
@@ -673,7 +673,7 @@ namespace Objects
 			@return true if the local structure could be enabled. Failure may happen if CanEnable() returns false and force is set to EnableIfPossible, 
 				or if refreshCompounds is set and the local compounds cannot supply required resources
 			*/
-			bool					SetEnabled(bool b, float atTime, bool refreshCompounds=true, force_t force=EnableIfPossible, bool signalStructure=true);
+			bool					SetEnabled(bool b, float&atTime, bool refreshCompounds=true, force_t force=EnableIfPossible, bool signalStructure=true);
 		#endif
 
 		bool						IsEnabled() const {return isEnabled;}
@@ -755,7 +755,7 @@ namespace Objects
 		#endif
 		virtual bool				IsActive() const override {return isEnabled && !IsHibernating();}
 		virtual bool				IsWorkingStructure() const override {return true;}
-		virtual void				OnDestroy(float atTime) override;
+		virtual void				OnDestroy(float&atTime) override;
 	};
 
 	/**
@@ -814,7 +814,6 @@ namespace Objects
 			virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override;
 			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override;
 
-			virtual void				OnDestroy(float atTime) override;
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
 					virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
@@ -905,7 +904,7 @@ namespace Objects
 
 		//MobileEntityProducer overrides
 		#ifndef CLIENT
-			virtual void			SignalNewProductionEnqueued() override {SetEnabled(true,0);}
+			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 
@@ -966,7 +965,7 @@ namespace Objects
 			void					OnLoad();
 
 			virtual void			Tick(ResourceVector&) override;
-			virtual void			OnConstructionFinished(float atTime)	{Super::OnConstructionFinished(atTime); SetEnabled(false,atTime,false);}
+			virtual void			OnConstructionFinished(float&atTime)	{Super::OnConstructionFinished(atTime); SetEnabled(false,atTime,false);}
 		#else
 			#ifdef HAS_WINDOW
 				virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
@@ -1124,8 +1123,8 @@ namespace Objects
 
 		//MobileEntityProducer overrides
 		#ifndef CLIENT
-			virtual void			SignalLastProductionDone() override {LogEvent(EventType::EntityProcess, this, "Queue is empty. Shutting off"); SetEnabled(false,0);}
-			virtual void			SignalNewProductionEnqueued() override {SetEnabled(true,0);}
+			virtual void			SignalLastProductionDone(float&t) override {LogEvent(EventType::EntityProcess, this, "Queue is empty. Shutting off"); SetEnabled(false,t);}
+			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 
@@ -1508,10 +1507,6 @@ namespace Objects
 		bool						WouldLikeToEnable() const override {return true;}
 
 
-		virtual  void				OnDestroy(float atTime) override
-		{
-			Super::OnDestroy(atTime);
-		}
 
 	public:
 
@@ -1632,7 +1627,7 @@ namespace Objects
 			void					CorrectTerrain(bool signalChange, float atTime, bool deep);
 
 
-			virtual void			OnConstructionFinished(float atTime) override;
+			virtual void			OnConstructionFinished(float&atTime) override;
 			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime) override;
 		#else
 			#ifdef HAS_WINDOW
@@ -1843,12 +1838,6 @@ namespace Objects
 					Super::localizableShape = &shape;
 				#endif
 			#endif
-		}
-
-	template <typename Derivative>
-		/*virtual override*/ void				CommonStructure<Derivative>::OnDestroy(float atTime)
-		{
-			Super::OnDestroy(atTime);
 		}
 
 

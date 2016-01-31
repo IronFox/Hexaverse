@@ -909,7 +909,8 @@ void ProcessAICoverage()
 							existing++;
 							if (plant->AwaitsUserInteraction())
 							{
-								Objects::PMobileEntity v = plant->SpawnFinishedProductionAnywhere();
+								float t = 0;
+								Objects::PMobileEntity v = plant->SpawnFinishedProductionAnywhere(t);
 								if (!v)
 								{
 									producing++;	//dont count
@@ -991,7 +992,8 @@ void ProcessAICoverage()
 					if (location != Grid::LCellIdI::Invalid)
 					{
 						Objects::Component::Turret* turret = Game::Config::Nexus::vehicleTurrets[random.getIndex(Game::Config::Nexus::vehicleTurrets.Count() - 1)];
-						Objects::PVehicle v = Objects::SpawnVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, 0);
+						float t = 0;
+						Objects::PVehicle v = Objects::SpawnVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, t);
 						Journal::currentRound.LogEntityCreation(v);
 						EstimatePresence(*v,v->location, hostileNearNexus,constructorNearNexus, friendlyNearNexus);
 					//	Objects::VerifyVisibilityNetwork();
