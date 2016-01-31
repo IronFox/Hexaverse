@@ -19,7 +19,7 @@ namespace Objects
 								showFriendlyRanges,
 								showHostileRanges,
 								objectView,
-								compoundsColored;
+								anyCompoundsColored;
 
 
 	extern DX11::ObjectBuffer<float4>	keyColor, overallTint;
@@ -168,9 +168,21 @@ namespace Objects
 
 		/**
 		Renders the resource space around each participating compound. Translucent. Alters depth-buffer. Should be called at the very end.
-		Only renders anything if a consuming mobile entity is selected.
+		Only renders compounds selected via any of the SelectCompoundAreas() overloads
 		*/
 		void	RenderCompoundAreas();
+
+		/**
+		Selects all compounds with a non-0 balance on the specified resource for area visualization
+		@param owner Faction to select compounds of. Passing an empty parameter results in an empty selection
+		@param producersOf Resource to look for. The result will be empty if there are no compounds with a non-0 balance on this resource
+		*/
+		void	SelectCompoundAreas(const OwnerParameter&owner, Resource producersOf);
+		/**
+		Selects all compounds with a non-0 balance on any resource for area visualization
+		@param owner Faction to select compounds of. Passing an empty parameter results in all compounds with a non-0 balance being selected
+		*/
+		void	SelectCompoundAreas(const OwnerParameter&owner);
 
 
 		/**
@@ -197,6 +209,8 @@ namespace Objects
 		void	RenderRangeSphere(const TVec3<>&center, float radius, const float4&color);
 		void	RenderRangeCylinder(const TVec3<>&direction, float bottomRadius, float topRadius, float bottom, float top, const float4&color);
 		void	RenderRange(const Grid::LCellIdI&location, float zOffset, const PTurretBase&base, const float4&color, bool extended);
+
+		void	Flush();
 
 	}
 

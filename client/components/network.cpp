@@ -37,7 +37,6 @@ namespace Network
 
 	CryptographicID	activeToken;
 	String			myIDString,serverIDString,worldIDString,activeTokenString;
-	Objects::OwnerParameter myFaction;
 	INT32			uplinkBandwidth = -1;
 	
 	GenericHashTable<TUniqueID,CryptographicID,TUniqueID>	accessMap;
@@ -345,8 +344,8 @@ namespace Network
 		Network::newRoundRequested = false;
 		Network::factionMap.Clear();
 		Objects::Faction::allKnown.Clear();
+		Objects::Faction::mine.reset();
 
-		Network::myFaction.reset();
 		Animation::primitives.Clear();
 		Animation::actives.Clear();
 		Animation::activeTrajectory.Clear();
@@ -592,7 +591,7 @@ namespace Network
 			ApplyPlanetConfig(cr.planetConfig);
 
 			myID = TUniqueID::Empty();
-			myFaction.reset();
+			Objects::Faction::mine.reset();
 			myIDString = myID.ToString();
 
 			Network::gameFlags = cr.info.gameFlags;
@@ -645,9 +644,9 @@ namespace Network
 			haveID = true;
 			amSpectator = false;
 			myID = id;
-			myFaction = ResolveFaction(myID);
+			Objects::Faction::mine = ResolveFaction(myID);
 			myIDString = myID.ToString();
-			myFaction->isMine = true;
+			Objects::Faction::mine->isMine = true;
 		}
 
 		void	PhaseChange(Protocol::PhaseChange&c);

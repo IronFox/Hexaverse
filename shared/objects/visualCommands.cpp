@@ -11,6 +11,7 @@
 #include "visualChoices.h"
 #include "satellite.h"
 #include <image/converter/magic.h>
+#include "faction.h"
 
 extern Engine::Display<Engine::DirectX11>	display;
 //extern Engine::VectorCamera<>				scene;
@@ -497,7 +498,12 @@ namespace Objects
 
 	void	GlobalCmd::ToggleCompoundHightlights(int)
 	{
-		compoundsColored = !compoundsColored;
+		anyCompoundsColored = !anyCompoundsColored;
+		if (anyCompoundsColored && !selectedMobileEntity)
+		{
+			Renderer::SelectCompoundAreas(selectedEntity ? selectedEntity->owner : Faction::mine);
+
+		}
 	}
 
 

@@ -29,7 +29,7 @@ namespace Objects
 								showHostileRanges = false,
 								showFriendlyRanges = false,
 								objectView = true,
-								compoundsColored = false;
+								anyCompoundsColored=false;
 
 
 	DX11::ObjectBuffer<float4>	keyColor, overallTint,
@@ -1514,25 +1514,72 @@ namespace Objects
 
 	}
 
+	static Buffer0<index_t>	compoundScope;
+
+	void		Renderer::SelectCompoundAreas(const OwnerParameter&owner)
+	{
+		compoundScope.Clear();
+		
+				
+		foreach (compounds,c)
+		{
+			if (c->containedStructures.IsEmpty())
+				continue;
+			PStructure s = c->containedStructures.first().lock();
+			if (!s || (s->owner != owner && owner))
+				continue;
+			if (c->total.balance.IsNotEmpty())
+			{
+				compoundScope << c - compounds.pointer();
+			}
+		}
+
+		for (auto c : compoundScope)
+		{
+			compounds[c].color = ColorCompoundInRange((UINT32)(c));
+		}
+
+	}
+
+
+	void		Renderer::SelectCompoundAreas(const OwnerParameter&owner, Resource producersOf)
+	{
+		compoundScope.Clear();
+		
+				
+		foreach (compounds,c)
+		{
+			if (c->containedStructures.IsEmpty())
+				continue;
+			PStructure s = c->containedStructures.first().lock();
+			if (!s || s->owner != owner)
+				continue;
+			if (c->total.balance.level[producersOf])
+			{
+				compoundScope << c - compounds.pointer();
+			}
+		}
+
+		for (auto c : compoundScope)
+		{
+			compounds[c].color = ColorCompoundInRange((UINT32)(c));
+		}
+	}
+
+
+	void		Renderer::Flush()
+	{
+		compoundScope.Clear();
+	}
+
+
 	void		Renderer::RenderCompoundAreas()
 	{
-		if (!compoundsColored)
+		if (!anyCompoundsColored || compoundScope.IsEmpty() || compounds.IsEmpty())
 			return;
 
 
 
-
-
-				
-		foreach (compounds,c)
-			c->color = ColorCompoundInRange((UINT32)(c - compounds.pointer()));
-		//if (selectedEntity && selectedEntity->IsStructure())
-		//{
-		//	UINT32 cID = To<WorkingStructure>::Cast(selectedEntity)->compoundID;
-		//	compounds[cID].color.a *= 0.25f;// = float4();
-		//}
-//			compounds[cID].color = ColorCompoundInRange(cID);
-		//doColorCompounds = true;
 		wirelessRange.Update(float4(0,0,0,10000));
 
 
@@ -1545,36 +1592,42 @@ namespace Objects
 			display.LinkShader(compoundShader,true,true);
 
 				display.SetObjectMatrix(Matrix<>::eye4);
-				foreach(structures, _s)
+				for (auto ci : compoundScope)
 				{
-					Structure&s = **_s;
-					if (s.isMine && s.compiledShape.vbo.IsSet())
+					const auto*c = compounds + ci;
+					const float4&color = c->color;
+					if (color.a == 0.f)
+						continue;
+					overallTint.Update(color);
+					foreach(c->containedStructures, _s)
 					{
-						const float4&color = compounds[s.compoundID].color;
-						if (color.a == 0.f)
-							continue;
-						overallTint.Update(color);
-						display.Render(s.compiledShape,true);
+						Structure&s = *_s->lock();
+						if (s.compiledShape.vbo.IsSet())
+						{
+							display.Render(s.compiledShape,true);
+						}
 					}
 				}
-
-				foreach(structures, _s)
+				for (auto ci : compoundScope)
 				{
-					Structure&s = **_s;
-
-					if (s.isMine && s.localizableShape)
+					const auto*c = compounds + ci;
+					const float4&color = c->color;
+					if (color.a == 0.f)
+						continue;
+					overallTint.Update(color);
+					foreach(c->containedStructures, _s)
 					{
-						const float4&color = compounds[s.compoundID].color;
-						if (color.a == 0.f)
-							continue;
-						overallTint.Update(color);
-						_Locate(s);
-						if (s.HasFoundation())
-							display.Render(foundation, true);
-						_RenderSimpleLocated(s);
+						Structure&s = *_s->lock();
+
+						if (s.localizableShape)
+						{
+							_Locate(s);
+							if (s.HasFoundation())
+								display.Render(foundation, true);
+							_RenderSimpleLocated(s);
+						}
 					}
 				}
-
 
 			display.UnlockShader();
 			display.RestoreRendererState();
@@ -1588,40 +1641,42 @@ namespace Objects
 		display.StoreRendererState();
 
 		display.SetDepthTest(true,true);
-		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+		display.SetBlendMode(Engine::BlendMode::FlareBlend);
 		display.SetRasterizer(true,true);
 
 		for (int extendedShadow = 0; extendedShadow < 2; extendedShadow++)
 		{
+			if (extendedShadow)
+				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
 			float r = WirelessTransferRange;
 			if (extendedShadow)
 				r += RangeShadowExtension;
 
-			//if (!extendedShadow)
+			for (auto ci : compoundScope)
 			{
-				for (const auto&s : structures)
+				const auto*c = compounds + ci;
+
+				foreach(c->containedStructures, _s)
 				{
-					if (s->isMine)
-					{
-						const Compound&c = compounds[s->compoundID];
-						if (c.color.a != 0.f)
-							RenderRangeSphere(s->GetWorldPosition(),r,float4());
-					}
+					Structure&s = *_s->lock();
+					RenderRangeSphere(s.GetWorldPosition(),r,float4());
+				}
+
+			}
+			for (auto ci : compoundScope)
+			{
+				const auto*c = compounds + ci;
+				float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(c->color.rgb*1.5f,1.0f);
+				foreach(c->containedStructures, _s)
+				{
+					Structure&s = *_s->lock();
+					RenderRangeSphere(s.GetWorldPosition(),r,color);
 				}
 
 			}
 
-			//if (!extendedShadow)
-			for (const auto&s : structures)
-			{
-				if (s->isMine)
-				{
-					const Compound&c = compounds[s->compoundID];
-					if (c.color.a != 0.f)
-						RenderRangeSphere(s->GetWorldPosition(),r,extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(compounds[s->compoundID].color.rgb*1.5f,1.0f));
-				}
-			}
+
 		}
 
 		display.RestoreRendererState();

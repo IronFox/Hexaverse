@@ -48,6 +48,17 @@ namespace Objects
 		}
 
 
+		bool							Turret::ConsumesResources(Resource&res) const
+		{
+			if (CanAttack())
+			{
+				res = ammoType;
+				return ammoNeedPerShot > 0;
+			}
+			res = Resource::Minerals;
+			return constructionSpeed > 0;
+		}
+
 
 		#ifdef HAS_WINDOW
 			/*static*/ float			Turret::CompileTrajectory(const Buffer0<TVec4<> >&v, bool schematic,Geometry&geo, float widthScale/*=1.f*/)
