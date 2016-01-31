@@ -1101,7 +1101,7 @@ namespace ParameterConfig
 	PathString	loadFile;
 	bool	startOffline = false;
 	bool	customWorldID = false;
-	bool	enableRemoteControl = false;
+	bool	enableRemoteControl = true;
 	const char*	programName="";
 
 	void	SetProgramName(const char*base)
@@ -1121,7 +1121,7 @@ namespace ParameterConfig
 		std::cout << "  --loadAuto/-a [number]\tload previously created auto-savegame. number=0 => most recent"<<std::endl;
 		std::cout << "  --offline/-o \tstart offline"<<std::endl;
 		std::cout << "  --port/-p [basePort]\tuse a non-default base port"<<std::endl;
-		std::cout << "  --remote/-r \tstart remote control service"<<std::endl;
+		std::cout << "  --noRemote/-r \tdisable remote control service"<<std::endl;
 		std::cout << "  --test/-t \trun self-tests, then quit"<<std::endl;
 		std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
 	}
@@ -1170,8 +1170,8 @@ namespace ParameterConfig
 				}
 				elif (!strcmp(arg,"--world") || !strcmp(arg,"-w"))
 					mode = ExpectWorldID;
-				elif (!strcmp(arg,"-r") || !strcmp(arg,"--remoteControl") || !strcmp(arg,"--remote"))
-					enableRemoteControl = true;
+				elif (!strcmp(arg,"-r") || !strcmp(arg,"--noRemote"))
+					enableRemoteControl = false;
 				elif (!strcmp(arg,"--load") || !strcmp(arg,"-l"))
 					mode = ExpectFilename;
 				else
