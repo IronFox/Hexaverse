@@ -31,7 +31,7 @@ namespace Objects
 	count_t						Compound::CountWorkingStructures() const
 	{
 		count_t rs = 0;
-		foreach (containedStructures,_s)
+		foreach (workingStructures,_s)
 		{
 			if (Reference(*_s))
 				rs++;
@@ -46,7 +46,7 @@ namespace Objects
 		ResourceVector		Compound::GetOverproduction() const
 		{
 			ResourceVector result;
-			foreach (containedStructures,_s)
+			foreach (workingStructures,_s)
 			{
 				PWorkingStructure s = Reference(*_s);
 				if (s)
@@ -58,7 +58,7 @@ namespace Objects
 		int					Compound::GetOverproduction(Resource res) const
 		{
 			int result = 0;
-			foreach (containedStructures,_s)
+			foreach (workingStructures,_s)
 			{
 				PWorkingStructure s = Reference(*_s);
 				if (s)
@@ -82,7 +82,7 @@ namespace Objects
 				remainder.level[i] = v.level[i] % active;
 			}
 			bool first = true;
-			foreach (containedStructures,_s)
+			foreach (workingStructures,_s)
 			{
 				PWorkingStructure s = Reference(*_s);
 				if (s)
@@ -96,11 +96,33 @@ namespace Objects
 			}
 		}
 
-		void			Compound::WithdrawOverproduction(Resource res ,int positiveAmount)
+		void			Compound::TryWithdrawOverproduction(ResourceVector&positiveVector)
+		{
+			foreach (workingStructures,_s)
+			{
+				PWorkingStructure s = Reference(*_s);
+				if (s)
+				{
+					for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
+					{
+						if (s->overproduction.level[r] > 0)
+						{
+							int transfer = std::min(s->overproduction.level[r],positiveVector.level[r]);
+							positiveVector.level[r] -= transfer;
+							s->overproduction.level[r] -= transfer;
+						}
+					}
+					if (positiveVector.IsEmpty())
+						return;
+				}
+			}
+		}
+
+		void			Compound::ForceWithdrawOverproduction(Resource res ,int positiveAmount)
 		{
 			if (positiveAmount <= 0)
 				return;
-			foreach (containedStructures,_s)
+			foreach (workingStructures,_s)
 			{
 				PWorkingStructure s = Reference(*_s);
 				if (s)
@@ -424,7 +446,8 @@ namespace Objects
 			#ifndef CLIENT
 				if (enabled && !s->CanEnable())
 				{
-					s->SetEnabled(false,0,false);
+					float t = 0.f;
+					s->SetEnabled(false,t,false);
 					enabled = false;
 				}
 			#endif

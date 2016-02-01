@@ -5,6 +5,7 @@
 #include "journalSaveGame.h"
 #include <io/config.h>
 #include <io/file_system.h>
+#include "aiProcess.h"
 
 namespace Reflection
 {
@@ -193,6 +194,49 @@ namespace Reflection
 
 			};
 
+
+		class NexusAIEnabled : public Base
+		{
+			typedef Base	Super;
+		public:
+			String			defaultValue = "true";
+
+			/**/			NexusAIEnabled(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "bool",Persistence::RestoreFromSavegame,1,protection)	{}
+			virtual String	ToString()		const	override	{return String(Game::Config::Nexus::enableAI);}
+			virtual	bool	Set(const String&value)	override
+			{
+				String old = ToString();
+				bool val;
+				bool rs = convert(value.c_str(),val);
+				if (!rs)
+					return false;
+				Game::Config::Nexus::enableAI = val;
+				if (old != ToString())
+				{
+					if (Network::SessionIsStarted())
+					{
+						if (!val)
+							AIProcess::End();
+						else
+							AIProcess::Begin(Objects::Faction::nexus->accessToken);
+					}
+					OnChanged();
+				}
+				return rs;
+			}
+			virtual String		GetSupportedValues() const override 
+			{
+				return "[false,true]";
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = ToString();
+			}
+		};
 
 
 		class SupportedFactions : public Base
@@ -689,7 +733,8 @@ namespace Reflection
 
 			state.EnterNewFolder("Nexus");
 				VAR(haveBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
-				VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
+				state.SetVariable(CLI::PVariable(new Variable::NexusAIEnabled("enableAI")));
+				//VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
 				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::ConfigOverridesSavegame)
 				state.SetVariable(CLI::PVariable(new Variable::NexusVehicleTurrets("vehicleTurrets")));
 			state.ExitFolder();

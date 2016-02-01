@@ -11,6 +11,7 @@
 #include "visualChoices.h"
 #include "orbitalVehicle.h"
 #include <image/converter/magic.h>
+#include "faction.h"
 
 extern Engine::Display<Engine::DirectX11>	display;
 //extern Engine::VectorCamera<>				scene;
@@ -504,7 +505,12 @@ namespace Objects
 
 	void	GlobalCmd::ToggleCompoundHightlights(int)
 	{
-		compoundsColored = !compoundsColored;
+		anyCompoundsColored = !anyCompoundsColored;
+		if (anyCompoundsColored && !selectedMobileEntity)
+		{
+			Renderer::SelectCompoundAreas(selectedEntity ? selectedEntity->owner : Faction::mine);
+
+		}
 	}
 
 
@@ -512,20 +518,20 @@ namespace Objects
 
 	
 
-	bool CommonCmd::IsModeActive(const PWorldEntity&e, CursorMode::mode_t mode)
+	bool CommonCmd::IsModeActive(const PWorldEntity&e, CursorMode mode)
 	{
 		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
 		return v && activeCursorMode == mode;
 	}
 		
-	bool CommonCmd::IsModeActiveOrIdle(const PWorldEntity&e, CursorMode::mode_t mode)
+	bool CommonCmd::IsModeActiveOrIdle(const PWorldEntity&e, CursorMode mode)
 	{
 		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
 		return v && (activeCursorMode == mode || activeCursorMode == CursorMode::Idle);
 	}
 	
 
-	void CommonCmd::ToggleMode(const PWorldEntity&e, CursorMode::mode_t mode)
+	void CommonCmd::ToggleMode(const PWorldEntity&e, CursorMode mode)
 	{
 		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
 		PTower t = To<Tower>::DynamicCast(e);

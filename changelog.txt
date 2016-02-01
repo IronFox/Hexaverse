@@ -1,6 +1,13 @@
-v0.3.14		[Jan 28 2016]
-	* Fixed client not being able to start server
-	* Fixed nexus satellites not seeing approaching player satellites
+v0.3.14		[Jan 29 2016]
+	* Fixed Nexus Port incorrectly registering with new neighbors when changing ownership as a result.
+	* Fixed regular explosion terrain changes being treated like doomsday explosions.
+	* Fixed Nexus Ports sometimes not changing ownership when building next to them.
+	* Fixed implicit attack targeting when right-clicking on a hostile unit.
+	* Fixed client not being able to start server.
+	* Fixed nexus satellites not seeing approaching player satellites.
+	* Fixed 'new round' button not flashing when it should.
+	> Satellites now automatically fire at stationary hostile targets as well as moving ones.
+	> Ghosts are now removed if an owned mobile entity moves onto the same location.
 	> Path projections of unselected mobiles are now displayed with less contrast
 
 v0.3.13		[Jan 27 2016]

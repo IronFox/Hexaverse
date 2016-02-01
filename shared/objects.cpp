@@ -271,7 +271,7 @@ namespace Objects
 
 
 			globalCommands.Append(GlobalCommand(int2(0,2),"Highlight Compounds", &GlobalCmd::ToggleCompoundHightlights
-					, GlobalPermaSwitch(compoundsColored)
+					, GlobalPermaSwitch(anyCompoundsColored)
 				));
 			globalCommands.Append(GlobalCommand(int2(1,2),"Clip Terrain", &GlobalCmd::ToggleSeeThrough
 					,GlobalPermaSwitch(Grid::SeeThrough::IsEnabled)
@@ -785,10 +785,11 @@ namespace Objects
 				onlineUplinkTraffic = 0;
 			#endif
 			#ifdef HAS_WINDOW
+				Renderer::Flush();
 				Deselect(false);
 				resourceView = false;
 				objectView = true;
-				compoundsColored = false;
+				anyCompoundsColored = false;
 				hasArrowCellTarget = false;
 				showArrow = false;
 				arrowFrom = float3();

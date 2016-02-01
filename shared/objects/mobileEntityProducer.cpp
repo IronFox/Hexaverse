@@ -118,7 +118,7 @@ namespace Objects
 
 
 	#ifndef CLIENT
-		PWorldEntity				EntityFactory::SpawnFinishedProductionAnywhere()
+		PWorldEntity				EntityFactory::SpawnFinishedProductionAnywhere(float&t)
 		{
 			if (!AwaitsUserInteraction())
 				return PMobileEntity();
@@ -169,11 +169,11 @@ namespace Objects
 
 			if (movementChoices.IsEmpty())
 			{
-				LogEvent(EventType::EntityProcessFailed,parent,"Failed to automatically spawn finished unit. Is something blocking deployment?");
+				LogEvent( EventType::EntityProcessFailed,parent,"Failed to automatically spawn finished unit. Is something blocking deployment?");
 				return PMobileEntity();
 			}
 
-			PWorldEntity v = CompleteProduction();
+			PWorldEntity v = CompleteProduction(t);
 			//static Random random;
 			Grid::LCellIdI c = movementChoices[parent->entityRandom.getIndex(movementChoices.Count()-1)];
 
@@ -187,25 +187,25 @@ namespace Objects
 					FATAL__("Failed to position entity as designated position");
 				}
 				if (rs == MobilePlacementResult::PlacementOkay || rs == MobilePlacementResult::PlacementOkayFellDown)
-					InsertConstructed(m,0);
+					InsertConstructed(m,t);
 			}
 			else
 				if (v->IsStructure())
 				{
 					v->location = c;
 					v->SetupSystem();
-					InsertConstructed(To<Structure>::Cast(v),0,true);
+					InsertConstructed(To<Structure>::Cast(v),t,true);
 				}
 				else
 					FATAL__("Unsupported entity type for deployment: "+v->GetName());
 			Structure*s = dynamic_cast<Structure*>(this);
 			if (s)
-				s->GetCompound().RefreshState(0);
+				s->GetCompound().RefreshState(t);
 			return v;
 		}
 
 
-		void EntityFactory::Tick(ResourceVector&v)
+		void EntityFactory::Tick(ResourceVector&v, float&t)
 		{
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			ASSERT_NOT_NULL__(parent);
@@ -222,7 +222,7 @@ namespace Objects
 				if (queue.first().IsOrbitalShip())
 				{
 					LogEvent(EventType::MinorEntityProcess,parent,"Auto-spawning satellite");
-					Objects::PWorldEntity e = SpawnFinishedProductionAnywhere();
+					Objects::PWorldEntity e = SpawnFinishedProductionAnywhere(t);
 
 
 					return;
@@ -248,7 +248,7 @@ namespace Objects
 				if (gatheringPoint.current != Grid::LCellIdI::Invalid || queue.first().IsOrbitalShip())
 				{
 					LogEvent(EventType::MinorEntityProcess,parent,"Auto-spawning mobile entity");
-					Objects::PWorldEntity v = SpawnFinishedProductionAnywhere();
+					Objects::PWorldEntity v = SpawnFinishedProductionAnywhere(t);
 					if (v && v->IsMobile())
 					{
 //						if (!v->IsOrbital())
@@ -275,7 +275,7 @@ namespace Objects
 
 
 
-		PWorldEntity					EntityFactory::CompleteProduction()
+		PWorldEntity					EntityFactory::CompleteProduction(float &t)
 		{
 			PWorldEntity v = GetActiveProduction();
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
@@ -289,13 +289,20 @@ namespace Objects
 			ASSERT__(v);
 			ASSERT_EQUAL__(0,ProductionRounds(v,true));
 			v->health = v->GetMaxHealth();	//must set to max here, or positioning will fail
+			t+= timeEpsilon;
+			if (v->IsMobile())
+			{
+				To<MobileEntity>::Cast(v)->timeAt = t;
+				t+= timeEpsilon;
+			}
+
 			queue.Erase(0);
 			productionDone = 0;	//must be before ProductionRounds() or calculation will produce invalid results
 			if (queue.IsEmpty())
 			{
 				productionRoundsLeft = 0;
 				
-				SignalLastProductionDone();
+				SignalLastProductionDone(t);
 			}
 			else
 				productionRoundsLeft = ProductionRounds(queue.first().producing,true);

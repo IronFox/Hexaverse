@@ -282,12 +282,12 @@ namespace Objects
 			{
 			public:
 				typedef BaseJob			Super;
-				CursorMode::mode_t		mode;
+				CursorMode		mode;
 				Array<Grid::HCellIdI>	selection;
 				BYTE					maxHeightDifference;
 
 				/**/					AlterTerrain():Super(Autocomplete::Always,false),maxHeightDifference(1)	{}
-				/**/					AlterTerrain(MobileEntity&v, CursorMode::mode_t mode, const Array<Grid::HCellIdI>&selection) : BaseJob((int)selection.Count() * BuildWallMineralCosts,v,mode == CursorMode::BuildBlockMode,Autocomplete::Always,false),mode(mode),selection(selection),maxHeightDifference(1) {}
+				/**/					AlterTerrain(MobileEntity&v, CursorMode mode, const Array<Grid::HCellIdI>&selection) : BaseJob((int)selection.Count() * BuildWallMineralCosts,v,mode == CursorMode::BuildBlockMode,Autocomplete::Always,false),mode(mode),selection(selection),maxHeightDifference(1) {}
 				virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft((int)selection.Count() * BuildWallMineralCosts,v,mode == CursorMode::BuildBlockMode);}
 
 				virtual String			GetName() const override {return mode == CursorMode::BuildBlockMode ? "deposit earth" : "remove terrain";}
@@ -310,7 +310,7 @@ namespace Objects
 					UINT16 i16;
 					if (!inStream.ReadPrimitive(i16) || !inStream.ReadPrimitive(maxHeightDifference) )
 						return false;
-					mode = (CursorMode::mode_t)i16;
+					mode = (CursorMode)i16;
 					if (fixedSize != EmbeddedSize)
 						fixedSize -= 2;
 					return selection.Deserialize(inStream,fixedSize);
@@ -326,10 +326,10 @@ namespace Objects
 				public:
 					typedef BaseJob			Super;
 
-					CursorMode::mode_t		mode;
+					CursorMode		mode;
 
 					/**/					TransferJob():Super(Autocomplete::Always,false)	{}
-					/**/					TransferJob(MobileEntity&v, CursorMode::mode_t mode) : BaseJob(0,v,false,Autocomplete::Always,false),mode(mode) {}
+					/**/					TransferJob(MobileEntity&v, CursorMode mode) : BaseJob(0,v,false,Autocomplete::Always,false),mode(mode) {}
 					virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft(0,v,false);}
 
 					virtual String			GetName() const override {return mode == CursorMode::RestockMode ? "Restock from complex/vehicle" : "Transfer to complex/vehicle";}
@@ -345,7 +345,7 @@ namespace Objects
 						UINT16 i16;
 						if (!inStream.ReadPrimitive(i16))
 							return false;
-						mode = (CursorMode::mode_t)i16;
+						mode = (CursorMode)i16;
 						return true;
 					};
 				};
@@ -483,12 +483,12 @@ namespace Objects
 			public:
 				typedef PathJob	Super;
 
-				CursorMode::mode_t		mode;
+				CursorMode		mode;
 				Grid::LCellIdI			lastLocation = Grid::LCellIdI::Invalid;
 				bool					first;
 				/**/					Sequence():Super(Autocomplete::Always,true)	{};
 
-				/**/					Sequence(MobileEntity&v, CursorMode::mode_t mode) : Super(1,v,false,Autocomplete::Always,/*false*/true),mode(mode),first(true) {}
+				/**/					Sequence(MobileEntity&v, CursorMode mode) : Super(1,v,false,Autocomplete::Always,/*false*/true),mode(mode),first(true) {}
 				virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft(1,v,false);}
 
 				virtual String			GetName() const override

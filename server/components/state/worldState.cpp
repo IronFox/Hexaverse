@@ -57,15 +57,30 @@ namespace World
 			if (numChanged)
 			{
 				BYTE at = 0;
+				bool checkUnits = false;
 				for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
 					if (faction->visibility.families[family].coverageChanged)
 					{
 						faction->visibility.families[family].coverageChanged = false;
 						at++;
-						Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,RuntimeConfig::IsInAnyCommandPhase(),at == numChanged,peer ? Protocol::WorldDeltaType::ProgressiveUpdate : Protocol::WorldDeltaType::ProgressiveUpdateNoDelta);
+						bool changed = Protocol::GenerateWorldDelta(&faction->visibility,
+							&faction->currentState,
+							delta,family,
+							RuntimeConfig::IsInAnyCommandPhase(),
+							at == numChanged,
+							peer ? 
+								Protocol::WorldDeltaType::ProgressiveUpdate 
+								: Protocol::WorldDeltaType::ProgressiveUpdateNoDelta
+						);
+						if (changed)
+							checkUnits = true;
 						if (peer)
 							Channels::updateWorld.SendTo(peer,delta);
 					}
+				if (checkUnits)
+				{
+					faction->SignalLossOfTemporarySensory();
+				}
 				return true;
 			}
 			return false;
@@ -306,9 +321,11 @@ namespace World
 			float t = timer.GetSecondsSince(t0);
 			LogEvent(EventType::PerformanceMeasurement,"Time needed to process water: "+String(t));
 
-
 			for (const auto&e:waste)
-				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,0,false);
+			{
+				float at = 0;
+				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,at,false);
+			}
 			waste.Clear();
 		}
 
@@ -319,8 +336,7 @@ namespace World
 		Grid::currentPlanetConfig.RandomizeSeeds(random);
 		Grid::currentPlanetConfig.RandomizeSun(random);
 		Grid::BuildWorld(Grid::currentPlanetConfig,Config::worldDiscovery);
-		if (Game::Config::Nexus::enableAI)
-			Objects::Faction::nexus->currentState = Grid::initialWorld;
+		Objects::Faction::nexus->currentState = Grid::initialWorld;
 	}
 
 

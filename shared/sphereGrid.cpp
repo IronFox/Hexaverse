@@ -750,18 +750,20 @@ namespace Grid
 		
 
 			{
-				Engine::VertexBinding binding;
-				binding.vertex.set(0, 4);
-				binding.normal.set(4, 4);
-				binding.color.set(8, 4);
-				binding.floats_per_vertex = 12;
-				Instruction::terrainBase.binding = binding;
+				//Engine::VertexBinding binding;
+				//binding.vertex.set(0, 4);
+				//binding.normal.set(4, 4);
+				//binding.color.set(8, 4);
+				//binding.floats_per_vertex = 12;
+				Instruction::terrainBase.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
+				Instruction::terrainBase.binding.Append("NORMAL",0,DXGI_FORMAT_R8G8B8A8_SNORM);
+				Instruction::terrainBase.binding.Append("COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
 				Instruction::terrainBase.SetTriangles();
 
-				Instruction::terrainSphereBase.binding = binding;
+				Instruction::terrainSphereBase.binding = Instruction::terrainBase.binding;
 				Instruction::terrainSphereBase.SetTriangles();
 
-				Instruction::terrainParaboloidBase.binding = binding;
+				Instruction::terrainParaboloidBase.binding = Instruction::terrainBase.binding;
 				Instruction::terrainParaboloidBase.SetTriangles();
 
 				Instruction::terrainBase.UpdateLayout();
@@ -2028,16 +2030,23 @@ namespace Grid
 		{
 			if (intensity > 0.f)
 			{
-				TVec3<> rs2;
-				if (rs.r < 0)
-					rs2 = rs * -0.4f + 0.6f;
-				else
-					rs2 = rs * 0.4f + 0.6f;
-				rs2.r *= 0.7f;
-				rs2.g *= 0.85f;
-				if (rs.r < 0)
-					rs2 = -rs2;
-				Vec::interpolate(rs,rs2,intensity,rs);
+				rs *= -1.5f;
+				rs.rg *= 0.8f;
+				rs.b *= 1.2f;
+				//rs.b *= 1.5f;
+				//rs.b -= (2.f + rs.b)*intensity;
+				//TVec3<> rs2;
+				//if (rs.r < 0)
+				//	rs2 = rs * -0.4f + 0.6f;
+				//else
+				//	rs2 = rs * 0.4f + 0.6f;
+				//rs2.r *= 0.7f;
+				//rs2.g *= 0.85f;
+				//if (rs.r < 0)
+				//	rs2 = -rs2;
+				//Vec::interpolate(rs,rs2,intensity,rs);
+				//if (rs.b > 0)
+				//	rs.b = -rs.b;
 
 			}
 		}
@@ -3302,6 +3311,82 @@ namespace Grid
 
 
 	#ifdef HAS_WINDOW
+
+		#if 0
+		void				WorldData::ClearResourceDistanceField()
+		{
+			bool familyChanged[BaseGrid::NumFamilies] = {false};
+			foreach (cellStack,stack)
+			{
+				bool changed = false;
+				for (index_t i = 0; i < CellStack::Range; i++)
+				{
+					auto&cell = stack->volumeCell[i];
+					if (cell.resourceDistance != MAXSHORT)
+					{
+						cell.resourceDistance = MAXSHORT;
+						changed = true;
+					}
+				}
+				if (changed)
+					familyChanged[high.grid.GetCell(stack - cellStack.pointer()).family] = true;
+			}
+			for (BYTE i = 0; i < BaseGrid::NumFamilies; i++)
+				if (familyChanged[i])
+				{
+					Grid::high.family[i].SetOutdated(0.f);
+					Grid::low.family[i].SetOutdated(0.f);
+				}
+		}
+
+		/*static*/ short	WorldData::ResourceDistance(const Sphere<>&resourceSphere, const TVec3<>&cellCenter)
+		{
+			float d = Vec::distance(cellCenter,resourceSphere.center) - resourceSphere.radius;
+			return short( round(d * 100.f) );
+		}
+
+
+		void				WorldData::PaintResourceDistanceField(const Sphere<>&resourceSphere)
+		{
+			static HighSetup::TVolumeDescriptor desc;
+			Sphere<> larger = resourceSphere;
+			larger.radius += 2;
+			bool familyChanged[BaseGrid::NumFamilies] = {false};
+			high.GenerateVolume(larger,desc);
+			Concurrency::parallel_for(index_t(0),desc.coverage.Count(),[&familyChanged, resourceSphere,this](index_t i)
+			{
+				const auto&c = desc.coverage[i];
+				const TVec3<>&dir = high.cells[c.stackID].cornerCenter;
+				TVec3<> step = dir * SingleLayerHeight;
+				TVec3<> at = dir * ToRadiusf(0.5f + CellStack::ToHeight(c.layerBegin));
+				bool changed = false;
+				CellStack&stack = cellStack[c.stackID];
+				for (index_t layer = c.layerBegin; layer < c.layerEnd; layer++)
+				{
+					short d = ResourceDistance(resourceSphere,at);
+					auto&cell = stack.volumeCell[layer];
+					short nd = std::min(cell.resourceDistance,d);
+					if (nd != cell.resourceDistance)
+					{
+						cell.resourceDistance = nd;
+						changed = true;
+					}
+					at += step;
+				}
+
+				if (changed)
+					familyChanged[high.grid.GetCell(c.stackID).family] = true;
+			});
+			for (BYTE i = 0; i < BaseGrid::NumFamilies; i++)
+				if (familyChanged[i])
+				{
+					Grid::high.family[i].SetOutdated(0.f);
+					Grid::low.family[i].SetOutdated(0.f);
+				}
+		}
+
+		#endif /*0*/
+
 	void	WorldData::UpdateLighting()
 	{
 		lightingOutdated = false;

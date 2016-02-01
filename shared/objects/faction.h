@@ -114,6 +114,7 @@ namespace Objects
 			static void				Destroy(const TUniqueID&id, bool controlEnabled);
 			static Marker*			FindByReference(const TUniqueID&referenceID);
 			static Marker*			Find(const TUniqueID&referenceID);
+			static Marker*			Find(const Grid::LCellIdI&);
 			static void				GetDeletionCandidates(BasicBuffer<TCandidate>&candidates);
 			static void				FlushAll();
 			static void				GetOutdated(BasicBuffer<TUniqueID>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
@@ -178,6 +179,7 @@ namespace Objects
 
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
+			static PFaction				mine;
 		#else
 			CryptographicID	accessToken;
 			Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
@@ -296,6 +298,12 @@ namespace Objects
 
 			count_t		CountSatelliteCoverage(const TVec3<>&center)	const;
 			count_t		CountSatelliteCoverage(const Sphere<>&)	const;
+
+			/**
+			Signals that any previously available temporary sensory has been removed, and the local faction
+			should check all 'visible' hostile entities.
+			*/
+			void		SignalLossOfTemporarySensory();
 
 			/**
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater

@@ -355,6 +355,35 @@ namespace Objects
 
 		}
 
+		void		Faction::SignalLossOfTemporarySensory()
+		{
+			static Buffer0<PWorldEntity>	toDump;
+			seeing.VisitAllKeys([this](const PWorldEntity&e)
+			{
+				if (!e->IsOrbital() && !GridCanSee(e))
+				{
+					toDump << e;
+				}
+			});
+
+			if (toDump.IsEmpty())
+				return;
+			for (const auto&e : toDump)
+			{
+				float t = 0;
+				gainedVisualAt.Query(e,t);
+				if (e->IsMobile())
+					t = std::max(t,To<MobileEntity>::Cast(e)->timeAt);
+
+				SignalDisappearance(e,t,true);
+			}
+
+
+			toDump.Clear();
+
+		}
+
+
 		bool Faction::GridCanSee(const Grid::HighSetup::TVolumeDescriptor&v) const
 		{
 			foreach (v.coverage,st)
@@ -433,7 +462,7 @@ namespace Objects
 
 			if (ref.sightLevel == incStackBy)
 			{
-				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Gained visual");
+				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Gained visual at time="+String(t));
 				float t0;
 				if (lostVisualAt.QueryAndUnset(e,t0))
 				{
@@ -560,6 +589,7 @@ namespace Objects
 		{
 			if (!e || e->owner.get() == this)
 				return;
+			LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+ ": CheckGridVisibility at time "+String(timeAt));
 			if (seeing.IsSet(e))
 			{
 				if (e->IsOrbital())
@@ -587,6 +617,7 @@ namespace Objects
 				else
 					if (GridCanSee(e))
 					{
+						LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+ ": SignalAppearance at time "+String(timeAt));
 						SignalAppearance(e,timeAt,true,false);
 					}
 			}
@@ -926,6 +957,7 @@ namespace Objects
 
 	#else
 		/*static*/ Buffer0<PFaction>			Faction::allKnown;
+		/*static*/ PFaction						Faction::mine;
 
 		/*static*/ Buffer0<Marker, Strategy::Adopt>	Marker::all; 
 		/*static*/ GenericHashTable<TUniqueID, index_t, TUniqueID>	Marker::idMap,
@@ -955,7 +987,8 @@ namespace Objects
 			LogEvent(EventType::MinorEntityProcess, e.get(),"Changed ownership to "+newOwner->GetName());	//this is also notified from the server, hence: minor
 			if (s)
 			{
-				s->DisconnectFromNeighborhood(0);
+				float t = 0;
+				s->DisconnectFromNeighborhood(t);
 			}
 			e->owner = newOwner;
 			e->isMine = isNowMine;
@@ -1291,6 +1324,14 @@ namespace Objects
 			#endif
 		}
 
+		/*static*/ Marker*			Marker::Find(const Grid::LCellIdI&loc)
+		{
+			foreach (all,m)
+				if (m->visualization && m->visualization->location == loc)
+					return m;
+			return nullptr;
+		}
+
 		/*static*/ Marker*			Marker::FindByReference(const TUniqueID&referenceID)
 		{
 			index_t index;
@@ -1534,8 +1575,9 @@ namespace Objects
 				{
 					toDelete << f->allMobiles[i].lock();
 				}
+			float t=0;
 			foreach (toDelete,del)
-				Remove(*del,Objects::RemovalType::ControlledExplosion,0,false);
+				Remove(*del,Objects::RemovalType::ControlledExplosion,t,false);
 			toDelete.Clear();
 
 			for (index_t i = 0; i < all.Count(); i++)

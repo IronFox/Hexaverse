@@ -391,35 +391,35 @@ namespace Objects
 		inline BaseCommand::Flags CommonButtonCheck(const PWorldEntity&,bool controlEnabled)	{return controlEnabled ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
 
 
-		void ToggleMode(const PWorldEntity&e, CursorMode::mode_t mode);
+		void ToggleMode(const PWorldEntity&e, CursorMode mode);
 	
-		template <CursorMode::mode_t M>
+		template <CursorMode M>
 			inline void ToggleMode(const PWorldEntity&e)
 			{
 				ToggleMode(e,M);
 			}
 
 
-		bool IsModeActive(const PWorldEntity&e, CursorMode::mode_t mode);
-		bool IsModeActiveOrIdle(const PWorldEntity&e, CursorMode::mode_t mode);
+		bool IsModeActive(const PWorldEntity&e, CursorMode mode);
+		bool IsModeActiveOrIdle(const PWorldEntity&e, CursorMode mode);
 
-		template <CursorMode::mode_t M>
+		template <CursorMode M>
 			inline bool IsModeActive(const PWorldEntity&e)
 			{
 				return IsModeActive(e,M);
 			}
-		template <CursorMode::mode_t M>
+		template <CursorMode M>
 			inline bool IsModeActiveC(const PWorldEntity&e, bool controlEnabled)
 			{
 				return controlEnabled && IsModeActive(e,M);
 			}
-		template <CursorMode::mode_t M>
+		template <CursorMode M>
 			inline bool IsModeActiveOrIdleC(const PWorldEntity&e, bool controlEnabled)
 			{
 				return controlEnabled && IsModeActiveOrIdle(e,M);
 			}
 
-		template <CursorMode::mode_t M>
+		template <CursorMode M>
 			inline BaseCommand::Flags ModeCheck(const PWorldEntity&e, bool controlsEnabled)
 			{
 				BaseCommand::Flags rs = BaseCommand::Flags::None;

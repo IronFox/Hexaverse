@@ -427,13 +427,13 @@ namespace Journal
 			static int		GetStoredMinerals(const Objects::PWorldEntity&e);
 			static Grid::LCellIdI		GetNextTaskFocus(const Objects::PWorldEntity&e);
 			static count_t		GetTaskListLength(const Objects::PWorldEntity&e);
-			static Objects::CursorMode::mode_t		GetNextTaskMode(const Objects::PWorldEntity&e);
+			static Objects::CursorMode		GetNextTaskMode(const Objects::PWorldEntity&e);
 			static bool		IsEnabled(const Objects::PWorldEntity&e);
 		public:
 			Grid::LCellIdI	location,nextTaskFocus;
 			int				health=0,empDamageLevel=0,storedMinerals=0,jobMineralsLeft=0;
 			count_t			taskListLength=0;
-			Objects::CursorMode::mode_t	nextTaskMode;
+			Objects::CursorMode	nextTaskMode;
 			bool			isEnabled;
 
 			/**/			EntityStateCheck()	{}
@@ -644,7 +644,7 @@ namespace Journal
 		{
 		public:
 			TUniqueID		deployingWhat=TUniqueID::Empty();
-			Objects::CursorMode::mode_t mode;
+			Objects::CursorMode mode;
 			Grid::LCellIdI	target;
 			
 			virtual void	Decode(const Entry&e) override;
@@ -659,7 +659,7 @@ namespace Journal
 		{
 		public:
 			bool			leftClick, detailed;
-			Objects::CursorMode::mode_t mode;
+			Objects::CursorMode mode;
 			Array<Grid::LCellIdI>	targets;
 			
 			virtual void	Decode(const Entry&e) override;
@@ -865,8 +865,8 @@ namespace Journal
 		void	LogFactionCreation(const Objects::PFaction&f, Round::CreateFaction::FactionType type);
 		void	RegisterClearEntityCommands(bool execute, const Objects::PWorldEntity&);
 		void	RegisterDropLastEntityCommand(bool execute, const Objects::PWorldEntity&);
-		void	RegisterDirectEntityTo(bool execute, const Objects::PWorldEntity&, Objects::CursorMode::mode_t mode, const ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick);
-		void	RegisterChoiceIntersection(bool execute, const Objects::PWorldEntity&,const Grid::LCellIdI&target, Objects::CursorMode::mode_t mode, const Objects::PWorldEntity&deployingWhat);
+		void	RegisterDirectEntityTo(bool execute, const Objects::PWorldEntity&, Objects::CursorMode mode, const ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick);
+		void	RegisterChoiceIntersection(bool execute, const Objects::PWorldEntity&,const Grid::LCellIdI&target, Objects::CursorMode mode, const Objects::PWorldEntity&deployingWhat);
 		void	LogJobCommandStart(const Objects::PWorldEntity&, const Objects::VehicleJob::BaseJob&, const Grid::LCellIdI&focus);
 		void	LogFactionOffline(const Objects::PFaction&);
 		void	LogFactionOnline(const Objects::PFaction&);

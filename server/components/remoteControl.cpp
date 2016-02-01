@@ -157,6 +157,12 @@ namespace RemoteControl
 	}
 
 
+	void	RelayEvent(const String&message)
+	{
+		Detail::Channels::response.SendTo(Detail::server,message);
+
+	}
+
 
 	
 	void	Start(UINT16 serverBasePort /*= DEFAULT_SERVER_ROOT_PORT*/)

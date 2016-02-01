@@ -240,3 +240,5 @@ bush
 blade
 edge
 hippo
+moon
+star

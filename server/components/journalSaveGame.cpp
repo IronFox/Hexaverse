@@ -335,7 +335,7 @@ namespace Journal
 
 
 
-	/*static*/ Objects::CursorMode::mode_t		Round::EntityStateCheck::GetNextTaskMode(const Objects::PWorldEntity&_e)
+	/*static*/ Objects::CursorMode		Round::EntityStateCheck::GetNextTaskMode(const Objects::PWorldEntity&_e)
 	{
 		const Objects::WorldEntity&e = *_e;
 		if (e.IsMobile())
@@ -411,8 +411,8 @@ namespace Journal
 		e.locationParameters.Set("Location",location);
 		if (nextTaskFocus != Grid::LCellIdI::Invalid)
 			e.locationParameters.Set("NextTaskFocus",nextTaskFocus);
-		if (nextTaskMode != 0)
-			e.intParameters.Set("NextTaskMode",nextTaskMode);
+		if (nextTaskMode != Objects::CursorMode::Idle)
+			e.intParameters.Set("NextTaskMode",(int)nextTaskMode);
 		if (storedMinerals != 0)
 			e.intParameters.Set("StoredMinerals",storedMinerals);
 		if (taskListLength != 0)
@@ -433,9 +433,9 @@ namespace Journal
 			nextTaskFocus = Grid::LCellIdI::Invalid;
 		int mode;
 		if (!e.intParameters.TryGet("NextTaskMode",mode))
-			nextTaskMode = (Objects::CursorMode::mode_t)0;
+			nextTaskMode = (Objects::CursorMode)0;
 		else
-			nextTaskMode = (Objects::CursorMode::mode_t)mode;
+			nextTaskMode = (Objects::CursorMode)mode;
 		if (!e.intParameters.TryGet("StoredMinerals",storedMinerals))
 			storedMinerals = 0;
 		if (!e.intParameters.TryGet("JobMineralsLeft",jobMineralsLeft))
@@ -465,7 +465,7 @@ namespace Journal
 		#undef EVERIFY2
 		#define EVERIFY2(_VAR_,_OTHER_)	if (_VAR_ != _OTHER_) LogEvent(EventType::ConfigRelated,e->GetName()+ ": Verification failed " #_VAR_ ": "+String(_VAR_)+" expected, but found "+String(_OTHER_));
 		//throw RoundException(CLOCATION,e->GetName()+ ": Verification failed " #_VAR_ ": "+String(_VAR_)+" expected, but found "+String(_OTHER_));
-		EVERIFY2(nextTaskMode,GetNextTaskMode(e));
+		EVERIFY2((int)nextTaskMode,(int)GetNextTaskMode(e));
 		EVERIFY2(storedMinerals,GetStoredMinerals(e));
 		EVERIFY2(jobMineralsLeft,GetJobMineralsLeft(e));
 		EVERIFY2(taskListLength,GetTaskListLength(e));
@@ -597,8 +597,9 @@ namespace Journal
 	/*virtual override*/ void	Round::CreateEntity::Execute(const Objects::PFaction&f) const
 	{
 		Objects::PWorldEntity e = desc.Instantiate(f,entityID,location);
+		float t = 0;
 		if (e->IsMobile())
-			Objects::InsertConstructed(To<Objects::MobileEntity>::Cast(e),0);
+			Objects::InsertConstructed(To<Objects::MobileEntity>::Cast(e),t);
 		else
 		{
 			if (e->IsStructure())
@@ -606,7 +607,7 @@ namespace Journal
 				Objects::PStructure s = To<Objects::Structure>::Cast(e);
 				s->CorrectTerrain(false,0,true);
 			}
-			Objects::InsertConstructed(To<Objects::Structure>::Cast(e),0);
+			Objects::InsertConstructed(To<Objects::Structure>::Cast(e),t);
 
 			if (e->IsWorkingStructure())
 			{
@@ -614,7 +615,7 @@ namespace Journal
 				if (m)
 					m->LinkToCore(0);
 				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(e);
-				ws->SetEnabled(enableWorkingStructure,0,false,Objects::WorkingStructure::ForceEnable,false);
+				ws->SetEnabled(enableWorkingStructure,t,false,Objects::WorkingStructure::ForceEnable,false);
 			}
 		}
 	}
@@ -655,7 +656,7 @@ namespace Journal
 	{
 		
 		e.locationParameters.Set("Location",target);
-		e.intParameters.Set("DirectMode",mode);
+		e.intParameters.Set("DirectMode",(int)mode);
 		if (deployingWhat != TUniqueID::Empty())
 			e.uuidParameters.Set("EntityID",deployingWhat);
 	}
@@ -674,7 +675,7 @@ namespace Journal
 	{
 		
 		target = e.locationParameters.Require(CLOCATION,"Location");
-		mode = (Objects::CursorMode::mode_t) e.intParameters.Require(CLOCATION,"DirectMode");
+		mode = (Objects::CursorMode) e.intParameters.Require(CLOCATION,"DirectMode");
 		if (!e.uuidParameters.TryGet("EntityID",deployingWhat))
 			deployingWhat = TUniqueID::Empty();
 	}
@@ -684,8 +685,8 @@ namespace Journal
 		
 		foreach (targets,t)
 			e.locationParameters.Set("Waypoint",*t);
-		if (mode != 0)
-			e.intParameters.Set("DirectMode",mode);
+		if (mode != Objects::CursorMode::Idle)
+			e.intParameters.Set("DirectMode",(int)mode);
 		if (leftClick)
 			e.intParameters.Set("LeftClick",leftClick);
 		if (detailed)
@@ -712,7 +713,7 @@ namespace Journal
 		int md;
 		if (!e.intParameters.TryGet("DirectMode",md))
 			md = 0;
-		mode = (Objects::CursorMode::mode_t)md;
+		mode = (Objects::CursorMode)md;
 		if (e.intParameters.TryGet("LeftClick",md))
 			leftClick = md != 0;
 		else
@@ -791,6 +792,7 @@ namespace Journal
 		{
 			throw RoundException(CLOCATION, "Trying to assign production task to non-producer entity "+e->GetName());
 		}
+		float t = 0;
 		Objects::PWorldEntity produced = desc.Instantiate(e->owner,this->newEntityID,Grid::LCellIdI(0,0));
 		//if (produced->IsMobile())
 		{
@@ -803,7 +805,7 @@ namespace Journal
 				Objects::PWorkingStructure&ws = To<Objects::WorkingStructure>::Cast(e);
 				if (!ws->IsEnabled())
 				{
-					ws->SetEnabled(true,0.f);
+					ws->SetEnabled(true,t);
 				}
 
 			}
@@ -1520,9 +1522,10 @@ namespace Journal
 		{
 			throw RoundException(CLOCATION,e->GetName()+": Unable to destroy entity. Entity already dead");
 		}
-		Objects::Remove(e,type,0,false);
+		float t = 0;
+		Objects::Remove(e,type,t,false);
 		if (To<Objects::Structure>::DynamicCast(e))
-			Objects::RefreshCompoundCoverageIfNeeded(0);
+			Objects::RefreshCompoundCoverageIfNeeded(t);
 
 	}
 
@@ -1708,8 +1711,8 @@ namespace Journal
 				ASSERT__(w->compoundID != Objects::Compound::InvalidNetwork);
 			}
 		#endif
-
-		if (w->SetEnabled(doEnable,0))
+		float t = 0;
+		if (w->SetEnabled(doEnable,t))
 			LogEvent(EventType::MinorEntityProcess,e.get(),"Modified enabled-state "+String(doEnable));
 		else
 			throw RoundException(CLOCATION,"Cannot enable structure at this time");
@@ -1843,7 +1846,7 @@ namespace Journal
 		}
 	}
 
-	void	Round::RegisterDirectEntityTo(bool apply, const Objects::PWorldEntity&e, Objects::CursorMode::mode_t mode, const ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick)
+	void	Round::RegisterDirectEntityTo(bool apply, const Objects::PWorldEntity&e, Objects::CursorMode mode, const ArrayRef<Grid::LCellIdI>&target, bool detailed, bool mouseLeftClick)
 	{
 		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
 		std::shared_ptr<DirectToCommand> cmd(new DirectToCommand());
@@ -1855,7 +1858,7 @@ namespace Journal
 			strand.Append(cmd);
 	}
 
-	void	Round::RegisterChoiceIntersection(bool apply, const Objects::PWorldEntity&e,const Grid::LCellIdI&target, Objects::CursorMode::mode_t mode, const Objects::PWorldEntity&deployingWhat)
+	void	Round::RegisterChoiceIntersection(bool apply, const Objects::PWorldEntity&e,const Grid::LCellIdI&target, Objects::CursorMode mode, const Objects::PWorldEntity&deployingWhat)
 	{
 		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
 		std::shared_ptr<ChoiceIntersection> cmd(new ChoiceIntersection());

@@ -185,7 +185,7 @@ namespace Game
 			task.foci.SetSize(t.foci.Count());
 			for (index_t i = 0; i < task.foci.Count(); i++)
 				task.foci[i] = t.foci[i].target;
-			task.mode = t.mode;
+			task.mode = (BYTE)t.mode;
 			task.name = t.name;
 			task.type = t.type;
 			if (t.job)
@@ -859,11 +859,12 @@ namespace Game
 		std::shared_ptr<Objects::NexusPort> port = To<Objects::NexusPort>::Cast(
 		Objects::NexusPort::globalPrototype->CreateNewInstance(Objects::Faction::nexus,location,0));
 		port->CorrectTerrain(false,0,true);
-		Objects::InsertConstructed(port,0);
+		float t = 0;
+		Objects::InsertConstructed(port,t);
 //		if (enableNexus)
 		{
-			port->SetEnabled(true,0,false,Objects::WorkingStructure::ForceEnable);
-			Objects::RefreshCompoundCoverageIfNeeded(0);
+			port->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
+			Objects::RefreshCompoundCoverageIfNeeded(t);
 			//ASSERT__(port->IsEnabled());
 		}
 //			const auto&n = Grid::low.grid.GetCell(i).neighborhood;
@@ -990,6 +991,7 @@ namespace Game
 				int factoryCount = 0;
 				int generatorCount = 0,
 					connectorCount = 0;
+				float t = 0;
 				for (index_t i : distances)
 				{
 					//ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
@@ -1016,7 +1018,7 @@ namespace Game
 								Grid::LCellIdI(i,h),
 								0));
 							tower->CorrectTerrain(false,0,true);
-							Objects::InsertConstructed(tower,0);
+							Objects::InsertConstructed(tower,t);
 						}
 
 						if (field.distance[i] == (2))
@@ -1029,7 +1031,7 @@ namespace Game
 									0));
 								storage->CorrectTerrain(false,0,true);
 								storage->storage = storage->maxStorage;
-								Objects::InsertConstructed(storage,0);
+								Objects::InsertConstructed(storage,t);
 								alwaysOn << storage;
 							}
 							else
@@ -1039,7 +1041,7 @@ namespace Game
 									Grid::LCellIdI(i,h),
 									0));
 								generator->CorrectTerrain(false,0,true);
-								Objects::InsertConstructed(generator,0);
+								Objects::InsertConstructed(generator,t);
 								generatorCount++;
 								if (generatorCount < 4)
 									alwaysOn << generator;	//only need three generators switched on
@@ -1054,7 +1056,7 @@ namespace Game
 									Grid::LCellIdI(i,h),
 									0));
 								connector->CorrectTerrain(false,0,true);
-								Objects::InsertConstructed(connector,0);
+								Objects::InsertConstructed(connector,t);
 								connectorCount++;
 							}
 						}
@@ -1067,7 +1069,7 @@ namespace Game
 									Grid::LCellIdI(i,h),
 									0));
 								factory->CorrectTerrain(false,0,true);
-								Objects::InsertConstructed(factory,0);
+								Objects::InsertConstructed(factory,t);
 								alwaysOn << factory;
 							}
 							else
@@ -1077,7 +1079,7 @@ namespace Game
 									Grid::LCellIdI(i,h),
 									0));
 								plant->CorrectTerrain(false,0,true);
-								Objects::InsertConstructed(plant,0);
+								Objects::InsertConstructed(plant,t);
 								factoryCount++;
 							}
 						}
@@ -1125,20 +1127,20 @@ namespace Game
 
 				for (auto ws : alwaysOn)
 				{
-					ws->SetEnabled(true,0,false,Objects::WorkingStructure::ForceEnable);
+					ws->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
 				}
 				enableNexus = alwaysOn.IsNotEmpty();
 
 
 				if (enableNexus)
 				{
-					port->SetEnabled(true,0,false,Objects::WorkingStructure::ForceEnable);
+					port->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
 
 				}
 
 
 				Objects::Orbital::PHub hub = To<Objects::Orbital::Hub>::Cast( Objects::Orbital::Hub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Orbital::BaseHeight),0) );
-				Objects::InsertConstructed(hub,0);
+				Objects::InsertConstructed(hub,t);
 				ASSERT__(hub->connectedToLink.lock() == port);
 
 				for (index_t i : distances)
@@ -1150,7 +1152,7 @@ namespace Game
 					if (!noEdge && field.distance[i] == 2)
 					{
 						Objects::Orbital::PGuardian guard = To<Objects::Orbital::Guardian>::Cast( Objects::Orbital::Guardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Orbital::BaseHeight),0));
-						Objects::InsertConstructed(guard,0);
+						Objects::InsertConstructed(guard,t);
 					}
 				}
 
@@ -1209,28 +1211,29 @@ namespace Game
 			Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],h);
 			Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],h);
 
+			float t = 0;
 			Objects::PMine mine = To<Objects::Mine>::Cast(
 				Objects::Mine::globalPrototype->CreateNewInstance(f,location,0));
 			mine->CorrectTerrain(false,0,true);
-			Objects::InsertConstructed(mine,0);
+			Objects::InsertConstructed(mine,t);
 			mine->SetEnabledOverride(true);
 				
 			Objects::PGenerator generator = To<Objects::Generator>::Cast(
 				Objects::Generator::globalPrototype->CreateNewInstance(f,at1,0));
 			generator->CorrectTerrain(false,0,true);
-			Objects::InsertConstructed(generator,0);
+			Objects::InsertConstructed(generator,t);
 			generator->SetEnabledOverride(true);
 				
 			std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
 				Objects::MineralContainer::globalPrototype->CreateNewInstance(f,at2,0));
 			container->CorrectTerrain(false,0,true);
-			Objects::InsertConstructed(container,0);
-			Objects::RefreshCompoundCoverage(0);
+			Objects::InsertConstructed(container,t);
+			Objects::RefreshCompoundCoverage(t);
 
 
-			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,0);
+			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
 
 		}
 		else
@@ -1241,12 +1244,13 @@ namespace Game
 			Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],0);
 			Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],0);
 
-			Objects::SpawnVehicle(f,Grid::LCellIdI((UINT32)startLocation,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-			Objects::SpawnVehicle(f,at1,Objects::Component::hoverbase, Objects::Component::radar,true,0);
-			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,0);
-			Objects::SpawnVehicle(f,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,0);
+			float t = 0;
+			Objects::SpawnVehicle(f,Grid::LCellIdI((UINT32)startLocation,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::SpawnVehicle(f,at1,Objects::Component::hoverbase, Objects::Component::radar,true,t);
+			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
+			Objects::SpawnVehicle(f,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,t);
 		}
 	}
 

@@ -108,11 +108,11 @@ namespace Objects
 			WorkItem*				EnqueueProductionOfVehicle(Component::VehicleBase*selectedBase, Component::Turret*selectedTurret);
 			WorkItem*				EnqueueProductionOf(ConstName typeName);
 
-			void					Tick(ResourceVector&v);
+			void					Tick(ResourceVector&v, float&t);
 			UINT32					ProductionRounds(const WorkItem&e, bool isActive) const	{return ProductionRounds(e.producing,isActive);}
 
-			PWorldEntity			SpawnFinishedProductionAnywhere();
-			PWorldEntity			CompleteProduction();
+			PWorldEntity			SpawnFinishedProductionAnywhere(float&t);
+			PWorldEntity			CompleteProduction(float &t);
 			PWorldEntity			GetActiveProduction() const;
 			bool					AbortConstruction(const TUniqueID&);
 			void					UpdateGatheringPoint(const Grid::LCellIdI&);
@@ -126,7 +126,7 @@ namespace Objects
 
 
 		//new overriables:
-		virtual void				SignalLastProductionDone() {}
+		virtual void				SignalLastProductionDone(float&t) {}
 		virtual void				SignalNewProductionEnqueued() {}
 
 	};

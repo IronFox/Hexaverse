@@ -59,7 +59,7 @@ namespace Objects
 
 			#ifndef CLIENT
 				virtual void	CorrectTerrain(bool signalChange, float atTime, bool deep) override	{};
-				virtual void	OnConstructionFinished(float atTime) override	{};
+				virtual void	OnConstructionFinished(float&atTime) override	{Super::OnConstructionFinished(atTime);};
 				/**
 				Adjust to ground changes. Should be called once per round to account for 
 				@return true, if changes were detected and applied, false otherwise
@@ -240,7 +240,7 @@ namespace Objects
 				#ifndef NO_HIBERNATION
 					virtual int			GetUplinkTraffic() const override {return 10;}
 				#endif
-				virtual void			OnDestroy(float atTime) override {LoseGroundConnection();}
+				virtual void			OnDestroy(float&atTime) override {LoseGroundConnection();Super::OnDestroy(atTime);}
 				virtual bool			AwaitsUserInteraction() const override {return EntityFactory::AwaitsUserInteraction();}
 				#ifdef HAS_WINDOW
 					virtual void		VisitAllCommands(FCommandVisitor visitor) override;
@@ -250,7 +250,7 @@ namespace Objects
 				virtual const EntityFactory*CastToFactory() const override {return this;}
 				virtual void			PrototypeSetup() override;
 				#ifndef CLIENT
-					virtual void		OnConstructionFinished(float atTime) override;
+					virtual void		OnConstructionFinished(float&atTime) override;
 				#endif
 				virtual void			VisitAllConnected(const std::function<void(const PStructure&)>&visitor) const override;
 

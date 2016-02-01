@@ -291,7 +291,7 @@ namespace Objects
 			/**
 			Checks whether or not the local turret could ever possibly consume resources
 			*/
-			bool							ConsumesResources() const	{return CanAttack() ? ammoNeedPerShot > 0 : constructionSpeed > 0;}
+			bool							ConsumesResources(Resource&res) const;
 		};
 
 

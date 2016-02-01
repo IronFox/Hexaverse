@@ -221,7 +221,7 @@ namespace Objects
 		
 		void Explode(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, 
 					 const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
-					 float atTime)
+					 float&atTime)
 		{
 			if (doomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Disallow)
 			{
@@ -250,7 +250,7 @@ namespace Objects
 			static Buffer0<PWorldEntity>	toDestroy;
 			static Buffer0<PStructure>		affectedStructures;
 			static Buffer0<PVehicle>		affectedVehicles;
-			ForeachWorldEntity([center,outerRadius,damageLevel,atTime](const PWorldEntity e)
+			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime](const PWorldEntity e)
 			{
 				if (e->IsIndestructible())
 					return;
@@ -278,6 +278,8 @@ namespace Objects
 							toDestroy << e;
 					}
 				}
+				if (e->health <= 0)
+					return;	//prevent being added to affect*
 
 				{
 					Vec::mult(c,Grid::ToRadius(e->location.height -1),p);	//include own lower level
@@ -319,7 +321,7 @@ namespace Objects
 			if (terrainExplosionRadius > 0)
 			{
 				Grid::actualWorld.Explode(targetCell,terrainExplosionRadius, atTime);
-				if (RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose)
+				if (doomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose)
 					foreach (Faction::all,f)
 					{
 						bool changed[BaseGrid::NumFamilies] = {false};
@@ -355,7 +357,7 @@ namespace Objects
 		}
 	
 		void ExplodeEMP(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, 
-						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float atTime)
+						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float&atTime)
 		{
 			SignalExplosion(attackFrom, traceTo, flightTime, 
 							center,explosionRadius,true,false,atTime);
@@ -364,7 +366,7 @@ namespace Objects
 			static Buffer0<PWorldEntity>	toDisable;
 
 
-			ForeachWorldEntity([center,outerRadius,damageLevel,atTime](const PWorldEntity e)
+			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime](const PWorldEntity e)
 			{
 				float d2 = std::numeric_limits<float>::max();
 				const int h = e->GetHeight();
@@ -832,7 +834,7 @@ namespace Objects
 
 
 	
-	void		GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
+	void		GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
 	{
 		const Grid::WorldData&world = 
 		#ifdef CLIENT
@@ -997,7 +999,7 @@ namespace Objects
 						foreach (v->resourceEnvironment.sourceCompounds,cmp)
 						{
 							const Compound&compound = compounds[*cmp];
-							foreach (compound.containedStructures,_s)
+							foreach (compound.allStructures,_s)
 							{
 								PStructure s = _s->lock();
 								if (s && Vec::quadraticDistance(v->GetWorldPosition(),s->GetWorldPosition()) <= sqr(WirelessTransferRange))
@@ -1129,7 +1131,7 @@ namespace Objects
 
 
 
-	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
+	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
 	{
 		showArrow = false;
 		hasArrowCellTarget = false;
@@ -1145,7 +1147,7 @@ namespace Objects
 	}
 
 	
-	static void	InsertConstructedEntity(const PWorldEntity&e, float atTime, bool setHealthToFull)
+	static void	InsertConstructedEntity(const PWorldEntity&e, float&atTime, bool setHealthToFull)
 	{
 		ASSERT1__(!e->isInserted, e->GetName());
 		#ifndef CLIENT
@@ -1204,7 +1206,7 @@ namespace Objects
 	}
 
 
-	void	InsertConstructed( const PMobileEntity&v, float atTime, bool insertIntoGrid/*= true*/, bool setHealthToFull/*=true*/)
+	void	InsertConstructed( const PMobileEntity&v, float&atTime, bool insertIntoGrid/*= true*/, bool setHealthToFull/*=true*/)
 	{
 		//if (insertIntoGrid)
 		v->UpdateSystem();
@@ -1252,7 +1254,7 @@ namespace Objects
 		#endif
 	}
 
-	void			RegisterNewOffGrid(const PMobileEntity&v, float atTime, bool setHealthToFull/*=true*/)
+	void			RegisterNewOffGrid(const PMobileEntity&v, float&atTime, bool setHealthToFull/*=true*/)
 	{
 		ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 		ASSERT1__(!v->isInserted,v->GetName());
@@ -1266,13 +1268,13 @@ namespace Objects
 
 
 		#ifndef CLIENT
-			v->timeAt = std::max(v->timeAt,atTime);
+			atTime = v->timeAt = std::max(v->timeAt,atTime) + timeEpsilon;
 			v->owner->storedMobiles.Append(v);
 		#endif
 	}
 
 
-	void InsertConstructed( const PStructure&s, float atTime, bool refreshNetworkNow/*=false*/, bool setHealthToFull/*=true*/)
+	void InsertConstructed( const PStructure&s, float&atTime, bool refreshNetworkNow/*=false*/, bool setHealthToFull/*=true*/)
 	{
 		ASSERT__(s);
 
@@ -1369,8 +1371,9 @@ namespace Objects
 
 
 
-	void					Remove( const PWorldEntity&e, RemovalType t, float timestamp, bool controlEnabled, bool isRemovedFromGrid/*=false*/, bool ignoreIndestructible/*=false*/)
+	void					Remove( const PWorldEntity&e, RemovalType t, float&timestamp, bool controlEnabled, bool isRemovedFromGrid/*=false*/, bool ignoreIndestructible/*=false*/)
 	{
+		timestamp += timeEpsilon;
 		ASSERT__(e);
 		ASSERT1__(e->isInserted != ( t == RemovalType::DestroyedInStorage ),e->GetName());
 		#ifdef CLIENT
@@ -1388,7 +1391,7 @@ namespace Objects
 		#else
 			ASSERT1__(ignoreIndestructible || !e->IsIndestructible(), e->GetName());
 		#endif
-		LogEvent(EventType::EntityProcess, e.get(),"Removing entity ("+String(t.ToString())+")");
+		LogEvent(EventType::EntityProcess, e.get(),"Removing entity ("+String(t.ToString())+") at time="+String(timestamp));
 		const bool move = t==RemovalType::EnteredStorage;
 		if (!move)
 		{
@@ -2708,12 +2711,12 @@ namespace Objects
 	
 
 
-	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float atTime)
+	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float&atTime)
 	{
 		return SpawnVehicle(owner,baseLocation,&base,&turret,fillStorage,atTime);
 	}
 
-	PVehicle SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float atTime)
+	PVehicle SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float&atTime)
 	{
 		PVehicle vehicle(new Vehicle(owner, baseLocation,base,turret));
 		#ifdef CLIENT
@@ -2834,7 +2837,8 @@ namespace Objects
 		}
 		void			Place( const PStructure&s)
 		{
-			InsertConstructed(s,0);
+			float t = 0;
+			InsertConstructed(s,t);
 			if (s->IsOrbital() && To<Orbital::Station>::Cast(s)->IsHub())
 				To<Orbital::Hub>::Cast(s)->UpdateConnections();
 		}
@@ -2842,16 +2846,17 @@ namespace Objects
 		{
 			ASSERT__(vehicle);
 			ASSERT3__(vehicle->preAnimationLocation == vehicle->location,vehicle->preAnimationLocation.ToString(),vehicle->location.ToString(),vehicle->GetName());
-
+			float t = 0;
 			//vehicle->preAnimationLocation = vehicle->location;
-			InsertConstructed(vehicle,0,insertIntoGrid);
+			InsertConstructed(vehicle,t,insertIntoGrid);
 			ASSERT1__(vehicles.Contains(vehicle),vehicle->GetName());
 		}
 		void			Place( const Orbital::PShip&s)
 		{
 			ASSERT__(s);
 			ASSERT3__(s->preAnimationLocation == s->location,s->preAnimationLocation.ToString(),s->location.ToString(),s->GetName());
-			InsertConstructed(s,0);
+			float t = 0;
+			InsertConstructed(s,t);
 			ASSERT1__(Orbital::ships.Contains(s),s->GetName());
 
 		}
@@ -2860,7 +2865,8 @@ namespace Objects
 		{
 			ASSERT__(m);
 			ASSERT3__(m->preAnimationLocation == m->location,m->preAnimationLocation.ToString(),m->location.ToString(),m->GetName());
-			InsertConstructed(m,0,insertIntoGridIfVehicle);
+			float t = 0;
+			InsertConstructed(m,t,insertIntoGridIfVehicle);
 			if (m->IsOrbital())
 			{
 				ASSERT1__(Orbital::ships.Contains(m),m->GetName());
@@ -2916,7 +2922,8 @@ namespace Objects
 			if (e->AwaitsUserInteraction() && p)
 			{
 				auto c = choice;
-				PWorldEntity v = p->CompleteProduction();
+				float t= 0;
+				PWorldEntity v = p->CompleteProduction(t);
 				if (!v)
 				{
 					return false;
@@ -2931,7 +2938,7 @@ namespace Objects
 						FATAL__("Failed to position entity at designated position");
 					}
 					if (result == MobilePlacementResult::PlacementOkay || result == MobilePlacementResult::PlacementOkayFellDown)
-						InsertConstructed(m,0);
+						InsertConstructed(m,m->timeAt);
 				}
 				else
 					if (v->IsStructure())
@@ -2940,8 +2947,8 @@ namespace Objects
 						{
 							v->location = c;
 							v->SetupSystem();
-							InsertConstructed(To<Structure>::Cast(v),0,true);
-
+							float t = 0;
+							InsertConstructed(To<Structure>::Cast(v),t,true);
 						}
 						else
 						{

@@ -37,7 +37,6 @@ namespace Network
 
 	CryptographicID	activeToken;
 	String			myIDString,serverIDString,worldIDString,activeTokenString;
-	Objects::OwnerParameter myFaction;
 	INT32			uplinkBandwidth = -1;
 	
 	GenericHashTable<TUniqueID,CryptographicID,TUniqueID>	accessMap;
@@ -345,8 +344,8 @@ namespace Network
 		Network::newRoundRequested = false;
 		Network::factionMap.Clear();
 		Objects::Faction::allKnown.Clear();
+		Objects::Faction::mine.reset();
 
-		Network::myFaction.reset();
 		Animation::primitives.Clear();
 		Animation::actives.Clear();
 		Animation::activeTrajectory.Clear();
@@ -546,8 +545,9 @@ namespace Network
 				{
 					Animation::ExplodeEntity(e,[e,type]()
 					{
+						float t = 0;
 						if (Objects::GetEntity(e->id))
-							Objects::Remove(e,type, 0,Network::ControlEnabled());
+							Objects::Remove(e,type, t,Network::ControlEnabled());
 						#ifdef HAS_WINDOW
 							Dialog::SignalSituationChange();
 						#endif
@@ -555,7 +555,8 @@ namespace Network
 				}
 				else
 				{
-					Objects::Remove(e,type, 0,Network::ControlEnabled());
+					float t = 0;
+					Objects::Remove(e,type, t,Network::ControlEnabled());
 					#ifdef HAS_WINDOW
 						Dialog::SignalSituationChange();
 					#endif
@@ -592,7 +593,7 @@ namespace Network
 			ApplyPlanetConfig(cr.planetConfig);
 
 			myID = TUniqueID::Empty();
-			myFaction.reset();
+			Objects::Faction::mine.reset();
 			myIDString = myID.ToString();
 
 			Network::gameFlags = cr.info.gameFlags;
@@ -645,9 +646,9 @@ namespace Network
 			haveID = true;
 			amSpectator = false;
 			myID = id;
-			myFaction = ResolveFaction(myID);
+			Objects::Faction::mine = ResolveFaction(myID);
 			myIDString = myID.ToString();
-			myFaction->isMine = true;
+			Objects::Faction::mine->isMine = true;
 		}
 
 		void	PhaseChange(Protocol::PhaseChange&c);
@@ -1342,7 +1343,14 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			RuntimeConfig::roundNumber = c.roundNumber;
 			RuntimeConfig::phase.Load(c.newPhase);
 
-
+			Objects::ForeachMobileWorldEntity([](const Objects::PWorldEntity&e)
+			{
+				if (e->health <= 0 || !e->isMine)
+					return;
+				Objects::Marker *m = Objects::Marker::Find(e->location);
+				if (m)
+					SignalMarkerDeletion(m->id);
+			});
 
 			#ifdef HAS_WINDOW
 				for (const auto&s : Objects::structures)

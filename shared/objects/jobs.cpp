@@ -608,13 +608,19 @@ namespace Objects
 						}
 						else
 						{
-							demand.Cap(n.total.storage);
-							if (demand.IsNotEmpty())
+							//demand.Cap(n.total.storage);
+							//if (demand.IsNotEmpty())
+							ResourceVector withdrawn = demand;
+							n.TryWithdrawOverproduction(demand);
+							demand.Negate();
+							n.ChangeStorage(demand,v.timeAt);
+							demand.Negate();
+							withdrawn -= demand;
+							if (withdrawn.IsNotEmpty())
 							{
-								LogEvent(EventType::EntityProcess,&v,"Restocking vehicle: transferred "+demand.ToString());
-								v.currentStorage += demand;
-								demand.Negate();
-								n.ChangeStorage(demand,v.timeAt);
+								LogEvent(EventType::EntityProcess,&v,"Restocking vehicle: transferred "+withdrawn.ToString());
+								v.currentStorage += withdrawn;
+
 								v.RegisterChange(WorldEntity::StorageChanged,v.timeAt);
 							}
 							else
@@ -1145,7 +1151,7 @@ namespace Objects
 				fixedSize -= 2 + sizeof(Grid::LCellIdI) + 2;
 			if (!inStream.ReadPrimitive(i16))
 				return false;
-			mode = (CursorMode::mode_t)i16;
+			mode = (CursorMode)i16;
 
 			if (globalVersionOfCurrentFile == 1035)
 			{

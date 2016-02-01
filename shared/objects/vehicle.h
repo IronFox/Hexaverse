@@ -89,7 +89,7 @@ namespace Objects
 			RelocationResult	RelocateTo(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true);
 */
 
-			virtual void		OnConstructionFinished(float atTime) override;
+			virtual void		OnConstructionFinished(float&atTime) override;
 
 		#else
 

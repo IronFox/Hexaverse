@@ -23,7 +23,7 @@ namespace Objects
 		}
 
 		#ifndef CLIENT
-		void			Hub::OnConstructionFinished(float atTime)
+		void			Hub::OnConstructionFinished(float&atTime)
 		{
 			Super::OnConstructionFinished(atTime);
 			UpdateConnections();
@@ -238,7 +238,10 @@ namespace Objects
 			v.level[Resource::Energy] -= EnergyConsumption;
 
 			if (EntityFactory::queue.IsNotEmpty())
-				EntityFactory::Tick(v);
+			{
+				float t = 0;
+				EntityFactory::Tick(v,t);
+			}
 		}
 		#endif
 

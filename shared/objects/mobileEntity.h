@@ -112,9 +112,7 @@ namespace Objects
 		void		HandleMotion(MobilePlacementResult&rs, bool signalEvent, const Grid::LCellIdI&oldLocation, float timeCost);
 	public:
 		MobileResourceEnvironment	resourceEnvironment;
-
-
-		typedef CursorMode::mode_t	mode_t;
+		typedef CursorMode	mode_t;
 
 		struct TaskData
 		{
@@ -125,7 +123,7 @@ namespace Objects
 				Mode,
 				Job,
 			}						type;
-			CursorMode::mode_t		mode;
+			CursorMode		mode;
 		
 			#ifdef HAS_WINDOW
 				DX11::InstructionBlock32			visualization;
@@ -428,6 +426,7 @@ namespace Objects
 				{
 					if (flushTasksOnUnlock)
 						return false;
+					timeAt += timeEpsilon;
 					LogEvent(EventType::Debug,this,"Issued task clearing: "+String(caller.ToString()));
 					flushTasksOnUnlock = true;
 					return true;
@@ -435,6 +434,7 @@ namespace Objects
 				
 				if (myTasks.IsNotEmpty() || completeOnMove)
 				{
+					timeAt += timeEpsilon;
 					jobStarted = false;
 					if (!isReaction)
 						completeOnMove.reset();
@@ -560,10 +560,12 @@ namespace Objects
 
 
 	protected:
-		inline void				OffsetTime(float t)
+		inline void				OffsetTime(float&t)
 		{
 			#ifndef CLIENT
 				timeAt = std::max(timeAt,t);
+				timeAt += timeEpsilon;
+				t = timeAt;
 			#endif
 		}
 	};
