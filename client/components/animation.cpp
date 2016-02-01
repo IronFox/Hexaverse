@@ -1072,8 +1072,8 @@ namespace Animation
 					}
 				}
 
-
-				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),0,Network::ControlEnabled(),removed);
+				float t = 0;
+				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t,Network::ControlEnabled(),removed);
 				if (!allocatedTarget->isMine)
 					UI::HexGrid::RefreshContacts();
 				#ifdef HAS_WINDOW

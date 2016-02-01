@@ -2676,22 +2676,24 @@ namespace Objects
 		}
 		void			Place( const PStructure&s)
 		{
-			InsertConstructed(s,0);
+			float t = 0;
+			InsertConstructed(s,t);
 		}
 		void			Place( const PVehicle&vehicle, bool insertIntoGrid/*=true*/)
 		{
 			ASSERT__(vehicle);
 			ASSERT3__(vehicle->preAnimationLocation == vehicle->location,vehicle->preAnimationLocation.ToString(),vehicle->location.ToString(),vehicle->GetName());
-
+			float t = 0;
 			//vehicle->preAnimationLocation = vehicle->location;
-			InsertConstructed(vehicle,0,insertIntoGrid);
+			InsertConstructed(vehicle,t,insertIntoGrid);
 			ASSERT1__(vehicles.Contains(vehicle),vehicle->GetName());
 		}
 		void			Place( const PSatellite&s)
 		{
 			ASSERT__(s);
 			ASSERT3__(s->preAnimationLocation == s->location,s->preAnimationLocation.ToString(),s->location.ToString(),s->GetName());
-			InsertConstructed(s,0);
+			float t = 0;
+			InsertConstructed(s,t);
 			ASSERT1__(satellites.Contains(s),s->GetName());
 
 			if (s->IsSkyHub())
@@ -2702,7 +2704,8 @@ namespace Objects
 		{
 			ASSERT__(m);
 			ASSERT3__(m->preAnimationLocation == m->location,m->preAnimationLocation.ToString(),m->location.ToString(),m->GetName());
-			InsertConstructed(m,0,insertIntoGridIfVehicle);
+			float t = 0;
+			InsertConstructed(m,t,insertIntoGridIfVehicle);
 			if (m->IsSatellite())
 			{
 				ASSERT1__(satellites.Contains(m),m->GetName());
