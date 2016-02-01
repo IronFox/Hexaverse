@@ -46,9 +46,8 @@ namespace Protocol
 		}
 
 
-	bool			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType)
+	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType)
 	{
-		bool result = false;
 		const index_t offset = Grid::high.grid.GetFamilyOffset(familyID);
 		const count_t length = Grid::high.grid.CountFamilyMembers(familyID);
 
@@ -72,7 +71,8 @@ namespace Protocol
 			vs->families[familyID].Reset();
 			
 		Concurrency::parallel_for(index_t(0),length*Grid::CellStack::Range,
-		[&tdts,/*&fdts,&fdtsValid,*/length,offset,empty,deltaType,vs,ws,&result](index_t i)
+		[&tdts,/*&fdts,&fdtsValid,*/length,
+			offset,empty,deltaType,vs,ws](index_t i)
 		{
 			//index_t stackId = offset + (i / Grid::CellStack::Range);
 			//index_t layer = i % Grid::CellStack::Range;
@@ -88,8 +88,6 @@ namespace Protocol
 						{
 							auto&cell =  vs->cellStack[stackID].volumeCell[layer];
 							canSee = cell.visibility > 0 || cell.temporarilyVisible;
-							if (cell.temporarilyVisible)
-								result = true;
 							cell.temporarilyVisible = false;
 						}
 						if (canSee)
@@ -110,8 +108,6 @@ namespace Protocol
 						if (canSee)
 						{
 							ws->cellStack[stackID].volumeCell[layer] = Grid::actualWorld.cellStack[stackID].volumeCell[layer];
-							if (cell.temporarilyVisible)
-								result = true;
 							cell.temporarilyVisible = false;
 						}
 					}
@@ -123,8 +119,6 @@ namespace Protocol
 						{
 							auto&cell =  vs->cellStack[stackID].volumeCell[layer];
 							canSee = cell.visibility > 0 || cell.temporarilyVisible;
-							if (cell.temporarilyVisible)
-								result = true;
 							cell.temporarilyVisible = false;
 						}
 						const Grid::CellStack::Cell& source = canSee ? Grid::actualWorld.cellStack[stackID].volumeCell[layer] : Grid::initialWorld.cellStack[stackID].volumeCell[layer];
@@ -169,7 +163,6 @@ namespace Protocol
 			//	Compress(fdts,delta.data2);
 			//}
 		}
-		return result;
 	}
 
 }	
