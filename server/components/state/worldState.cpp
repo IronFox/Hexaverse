@@ -57,13 +57,12 @@ namespace World
 			if (numChanged)
 			{
 				BYTE at = 0;
-				bool checkUnits = false;
 				for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
 					if (faction->visibility.families[family].coverageChanged)
 					{
 						faction->visibility.families[family].coverageChanged = false;
 						at++;
-						bool changed = Protocol::GenerateWorldDelta(&faction->visibility,
+						Protocol::GenerateWorldDelta(&faction->visibility,
 							&faction->currentState,
 							delta,family,
 							RuntimeConfig::IsInAnyCommandPhase(),
@@ -72,15 +71,9 @@ namespace World
 								Protocol::WorldDeltaType::ProgressiveUpdate 
 								: Protocol::WorldDeltaType::ProgressiveUpdateNoDelta
 						);
-						if (changed)
-							checkUnits = true;
 						if (peer)
 							Channels::updateWorld.SendTo(peer,delta);
 					}
-				if (checkUnits)
-				{
-					faction->SignalLossOfTemporarySensory();
-				}
 				return true;
 			}
 			return false;
