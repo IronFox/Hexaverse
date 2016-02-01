@@ -213,10 +213,13 @@ namespace Reflection
 				Game::Config::Nexus::enableAI = val;
 				if (old != ToString())
 				{
-					if (!val)
-						AIProcess::End();
-					else
-						AIProcess::Begin(Objects::Faction::nexus->accessToken);
+					if (Network::SessionIsStarted())
+					{
+						if (!val)
+							AIProcess::End();
+						else
+							AIProcess::Begin(Objects::Faction::nexus->accessToken);
+					}
 					OnChanged();
 				}
 				return rs;
