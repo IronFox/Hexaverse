@@ -319,8 +319,7 @@ namespace World
 		Grid::currentPlanetConfig.RandomizeSeeds(random);
 		Grid::currentPlanetConfig.RandomizeSun(random);
 		Grid::BuildWorld(Grid::currentPlanetConfig,Config::worldDiscovery);
-		if (Game::Config::Nexus::enableAI)
-			Objects::Faction::nexus->currentState = Grid::initialWorld;
+		Objects::Faction::nexus->currentState = Grid::initialWorld;
 	}
 
 
