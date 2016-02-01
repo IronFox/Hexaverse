@@ -355,33 +355,33 @@ namespace Objects
 
 		}
 
-		void		Faction::SignalLossOfTemporarySensory()
-		{
-			static Buffer0<PWorldEntity>	toDump;
-			seeing.VisitAllKeys([this](const PWorldEntity&e)
-			{
-				if (!e->IsOrbital() && !GridCanSee(e))
-				{
-					toDump << e;
-				}
-			});
+		//void		Faction::SignalLossOfTemporarySensory()
+		//{
+		//	static Buffer0<PWorldEntity>	toDump;
+		//	seeing.VisitAllKeys([this](const PWorldEntity&e)
+		//	{
+		//		if (!e->IsSatellite() && !GridCanSee(e))
+		//		{
+		//			toDump << e;
+		//		}
+		//	});
 
-			if (toDump.IsEmpty())
-				return;
-			for (const auto&e : toDump)
-			{
-				float t = 0;
-				gainedVisualAt.Query(e,t);
-				if (e->IsMobile())
-					t = std::max(t,To<MobileEntity>::Cast(e)->timeAt);
+		//	if (toDump.IsEmpty())
+		//		return;
+		//	for (const auto&e : toDump)
+		//	{
+		//		float t = 0;
+		//		gainedVisualAt.Query(e,t);
+		//		if (e->IsMobile())
+		//			t = std::max(t,To<MobileEntity>::Cast(e)->timeAt);
 
-				SignalDisappearance(e,t,true);
-			}
+		//		SignalDisappearance(e,t,true);
+		//	}
 
 
-			toDump.Clear();
+		//	toDump.Clear();
 
-		}
+		//}
 
 
 		bool Faction::GridCanSee(const Grid::HighSetup::TVolumeDescriptor&v) const
@@ -394,7 +394,7 @@ namespace Objects
 				const auto&stack = visibility.cellStack[st->stackID];
 				for (UINT32 layer = st->layerBegin; layer < st->layerEnd; layer++)
 				{
-					if (stack.volumeCell[layer].IsVisible())
+					if (stack.volumeCell[layer].IsCurrentlyVisible())
 						return true;
 				}
 			}
@@ -413,7 +413,7 @@ namespace Objects
 				const auto&stack = visibility.cellStack[fine];
 				//const UINT32 fine2 = c.neighborhood.neighborID[k];
 				for (UINT32 layer = bottom; layer < end; layer++)
-					if (stack.volumeCell[layer].IsVisible())
+					if (stack.volumeCell[layer].IsCurrentlyVisible())
 						return true;
 			}
 
