@@ -1354,6 +1354,18 @@ int main( int argc, const char* argv[])
 
 		Reflection::state.PopFocus();
 
+
+		Reflection::state.DefineCommand("/Server/autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
+		Reflection::state.DefineCommand("/Server/saveTo fileName",(CLI::Command::function1_t)[](const String&path)
+		{
+			FileIO::Save(PathString(path));
+		},CLI::FileCompletion);
+
+		Reflection::state.DefineCommand("/Server/loadFrom fileName",(CLI::Command::function1_t)[](const String&path)
+		{
+			FileIO::Load(PathString(path));
+		},CLI::FileCompletion);
+
 		Reflection::state.DefineCommand("/World/generate",(CLI::Command::function0_t)[]()
 		{
 			bool started = Network::CloseSession();
