@@ -38,7 +38,8 @@ namespace Objects
 			ResourceVector	GetOverproduction() const;
 			int				GetOverproduction(Resource) const;
 			void			DistributeOverproduction(const ResourceVector&v);
-			void			WithdrawOverproduction(Resource res ,int positiveAmount);
+			void			ForceWithdrawOverproduction(Resource res ,int positiveAmount);
+			void			TryWithdrawOverproduction(ResourceVector&positiveVector);
 		#endif
 
 		void				Clear()

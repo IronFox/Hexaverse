@@ -93,7 +93,29 @@ namespace Objects
 			}
 		}
 
-		void			Compound::WithdrawOverproduction(Resource res ,int positiveAmount)
+		void			Compound::TryWithdrawOverproduction(ResourceVector&positiveVector)
+		{
+			foreach (containedStructures,_s)
+			{
+				PWorkingStructure s = Reference(*_s);
+				if (s)
+				{
+					for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
+					{
+						if (s->overproduction.level[r] > 0)
+						{
+							int transfer = std::min(s->overproduction.level[r],positiveVector.level[r]);
+							positiveVector.level[r] -= transfer;
+							s->overproduction.level[r] -= transfer;
+						}
+					}
+					if (positiveVector.IsEmpty())
+						return;
+				}
+			}
+		}
+
+		void			Compound::ForceWithdrawOverproduction(Resource res ,int positiveAmount)
 		{
 			if (positiveAmount <= 0)
 				return;

@@ -199,7 +199,7 @@ namespace Objects
 				int overproductionTransfer = std::min(production,-change);
 				LogEvent(EventType::MinorEntityProcess,originatingAt,String(res.ToString())+ " overproduction ("+String(production)+") redirected for demand ("+String(change)+"): "+String(overproductionTransfer)+" transferred");
 				change += overproductionTransfer;
-				compound.WithdrawOverproduction(res,overproductionTransfer);
+				compound.ForceWithdrawOverproduction(res,overproductionTransfer);
 //				compound.overproduction.level[res]-= overproductionTransfer;
 			}
 		}
