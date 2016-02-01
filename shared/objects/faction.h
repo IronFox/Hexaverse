@@ -309,12 +309,6 @@ namespace Objects
 			count_t		CountSatelliteCoverage(const Sphere<>&)	const;
 
 			/**
-			Signals that any previously available temporary sensory has been removed, and the local faction
-			should check all 'visible' hostile entities.
-			*/
-			void		SignalLossOfTemporarySensory();
-
-			/**
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater
 			*/
 			void		RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);

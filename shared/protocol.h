@@ -2092,9 +2092,8 @@ namespace Protocol
 	@param rightNow Indicates that the enclosed timestamp should be flagged as 'rightNow', as opposed to using the grid timestamp
 	@param last Indicates that the result should include the 'last'-flag, which means no deltas will follow this one for the current sequence
 	@param deltaType Type of delta to compute (see delta_type_t for details)
-	@return true, if any temporary visibility has been lost as a result of this operation, false otherwise
 	*/
-	bool			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType);
+	void			GenerateWorldDelta(Grid::VisibilityState*vs, Grid::WorldData*ws, Protocol::WorldDelta&delta, BYTE familyID, bool rightNow, bool last, WorldDeltaType::delta_type_t deltaType);
 }
 
 

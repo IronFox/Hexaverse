@@ -2265,9 +2265,25 @@ namespace Grid
 					}
 				}
 
-				bool	IsVisible() const
+				/**
+				Checks whether or not the terrain contents of the local cell are currently visible,
+				either because it is currently in range, or has been in range at any given time during
+				the last processing round.
+				Use this method for terrain contents only. Not to be used for entity visibility.
+				Use IsCurrentlyVisible() instead!
+				*/
+				bool	TerrainIsVisible() const
 				{
 					return visibility > 0 || temporarilyVisible;
+				}
+
+				/**
+				Checks whether or not this cell is currently visible.
+				Should be used for entity visibility.
+				*/
+				bool	IsCurrentlyVisible() const
+				{
+					return visibility > 0;
 				}
 			};
 			Cell	volumeCell[Grid::CellStack::Range];
