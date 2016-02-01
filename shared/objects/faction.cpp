@@ -361,6 +361,35 @@ namespace Objects
 
 		}
 
+		void		Faction::SignalLossOfTemporarySensory()
+		{
+			static Buffer0<PWorldEntity>	toDump;
+			seeing.VisitAllKeys([this](const PWorldEntity&e)
+			{
+				if (!e->IsSatellite() && !GridCanSee(e))
+				{
+					toDump << e;
+				}
+			});
+
+			if (toDump.IsEmpty())
+				return;
+			for (const auto&e : toDump)
+			{
+				float t = 0;
+				gainedVisualAt.Query(e,t);
+				if (e->IsMobile())
+					t = std::max(t,To<MobileEntity>::Cast(e)->timeAt);
+
+				SignalDisappearance(e,t,true);
+			}
+
+
+			toDump.Clear();
+
+		}
+
+
 		bool Faction::GridCanSee(const Grid::HighSetup::TVolumeDescriptor&v) const
 		{
 			foreach (v.coverage,st)

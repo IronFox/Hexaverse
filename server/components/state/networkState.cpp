@@ -208,6 +208,12 @@ namespace Network
 
 	}
 
+	bool		SessionIsStarted()
+	{
+		return server.IsOnline();
+	}
+
+
 	bool		CloseSession()
 	{
 		bool isOnline = server.IsOnline();

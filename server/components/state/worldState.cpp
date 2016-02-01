@@ -57,15 +57,30 @@ namespace World
 			if (numChanged)
 			{
 				BYTE at = 0;
+				bool checkUnits = false;
 				for (BYTE family = 0; family < BaseGrid::NumFamilies; family++)
 					if (faction->visibility.families[family].coverageChanged)
 					{
 						faction->visibility.families[family].coverageChanged = false;
 						at++;
-						Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,RuntimeConfig::IsInAnyCommandPhase(),at == numChanged,peer ? Protocol::WorldDeltaType::ProgressiveUpdate : Protocol::WorldDeltaType::ProgressiveUpdateNoDelta);
+						bool changed = Protocol::GenerateWorldDelta(&faction->visibility,
+							&faction->currentState,
+							delta,family,
+							RuntimeConfig::IsInAnyCommandPhase(),
+							at == numChanged,
+							peer ? 
+								Protocol::WorldDeltaType::ProgressiveUpdate 
+								: Protocol::WorldDeltaType::ProgressiveUpdateNoDelta
+						);
+						if (changed)
+							checkUnits = true;
 						if (peer)
 							Channels::updateWorld.SendTo(peer,delta);
 					}
+				if (checkUnits)
+				{
+					faction->SignalLossOfTemporarySensory();
+				}
 				return true;
 			}
 			return false;
@@ -319,8 +334,7 @@ namespace World
 		Grid::currentPlanetConfig.RandomizeSeeds(random);
 		Grid::currentPlanetConfig.RandomizeSun(random);
 		Grid::BuildWorld(Grid::currentPlanetConfig,Config::worldDiscovery);
-		if (Game::Config::Nexus::enableAI)
-			Objects::Faction::nexus->currentState = Grid::initialWorld;
+		Objects::Faction::nexus->currentState = Grid::initialWorld;
 	}
 
 

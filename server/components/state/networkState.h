@@ -78,6 +78,7 @@ namespace Network
 	*/
 	void		HandleConnectionLoss(PClient);
 
+	bool		SessionIsStarted();
 	/**
 	Disconnects all clients, flushes the scene, and disables the TCP server systems.
 	Clients will not be able to connect unless RestartSession is called.
