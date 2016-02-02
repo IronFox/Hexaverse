@@ -484,12 +484,14 @@ namespace Objects
 	{
 		display.Render(*s.localizableShape, true);
 
-
 		float zOffset;
 		PTurretBase b = s.GetTurretBase(zOffset);
 		if (b)
 		{
-			Renderer::RenderScaledComponent(s.system, zOffset, 2.f, *b->turret, b->turretAngleX, b->turretAngleY);
+			if (s.IsOrbital())
+				Renderer::RenderComponent(s.system,0.f,*b->turret, b->turretAngleX, b->turretAngleY);
+			else
+				Renderer::RenderScaledComponent(s.system, zOffset, 2.f, *b->turret, b->turretAngleX, b->turretAngleY);
 		}
 	}
 

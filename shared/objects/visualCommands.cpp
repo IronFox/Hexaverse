@@ -265,7 +265,7 @@ namespace Objects
 		const EntityFactory*p = e->CastToFactory();
 		ASSERT__(p);
 		UINT32 rounds = 0;
-		int price = e->GetConstructionCost();
+		int price = target->GetConstructionCost();
 
 		rounds = (unsigned)p->ProductionRounds(price,false);
 
@@ -275,13 +275,13 @@ namespace Objects
 		if (rounds)
 			outResult.lines.last() += "  "+String(TimeResourceTag()) + String(rounds);
 
-		e->AppendDeploymentCount(outResult, e->owner);
+		target->AppendDeploymentCount(outResult, e->owner);
 
 
 		outResult.MarkBriefEnd();
 		outResult << "";
 
-		e->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
+		target->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
 
 	}
 

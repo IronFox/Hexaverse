@@ -36,6 +36,15 @@ namespace Objects
 	PStructure		GetPrototypeByName(ConstName structureTypeName);
 	PStructure		GetPrototypeByName(const String&structureTypeName);
 
+	/**
+	Retrieves the first match among structure and orbital station prototypes
+	*/
+	PStructure		GetAnyStructurePrototypeByName(ConstName structureTypeName);
+	/**
+	@copydoc GetAnyStructurePrototypeByName()
+	*/
+	PStructure		GetAnyStructurePrototypeByName(const String&structureTypeName);
+
 	namespace Component
 	{
 		VehicleBase*	GetVehicleBaseByName(ConstName name);

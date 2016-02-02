@@ -141,8 +141,7 @@ namespace Objects
 				;
 
 		#endif
-		LogEvent(EventType::PerformanceMeasurement, nullptr, "Vehicle grid of "+String(vehicleGrid.GetContentSize())+" bytes allocated");
-		LogEvent(EventType::PerformanceMeasurement, nullptr, "Structure grid of "+String(structureGrid.GetContentSize())+" bytes allocated");
+		LogGridSizes();
 
 
 
@@ -162,8 +161,9 @@ namespace Objects
 
 		Orbital::stationPrototypes << Orbital::Hub::globalPrototype;
 		Orbital::stationPrototypes << Orbital::Guardian::globalPrototype;
-		Orbital::shipPrototypes << Orbital::Ragnarok::globalPrototype;
 		Orbital::stationPrototypes << Orbital::StarPort::globalPrototype;
+		Orbital::shipPrototypes << Orbital::Ragnarok::globalPrototype;
+		Orbital::shipPrototypes << Orbital::Engineer::globalPrototype;
 
 
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::launcher));
@@ -775,8 +775,7 @@ namespace Objects
 		#ifndef CONNECTOR_LESS
 			compounds.Clear();
 		#endif
-		vehicleGrid.Fill(PVehicle());
-		structureGrid.Fill(PStructure());
+		FlushGrids();
 		#ifdef CLIENT
 			skyLinks.Clear();
 			Marker::FlushAll();

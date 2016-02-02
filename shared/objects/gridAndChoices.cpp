@@ -11,6 +11,8 @@
 #include "faction.h"
 #ifndef CLIENT
 	#include "../runtimeConfig.h"
+#else
+	#include "prototypes.h"
 #endif
 
 namespace Objects
@@ -23,6 +25,22 @@ namespace Objects
 		Array<PShip>		shipGrid(Grid::LowSetup::GridType::CellCount);
 	}
 	
+	void		FlushGrids()
+	{
+		vehicleGrid.Fill(PVehicle());
+		structureGrid.Fill(PStructure());
+		Orbital::stationGrid.Fill(Orbital::PStation());
+		Orbital::shipGrid.Fill(Orbital::PShip());
+	}
+
+	void	LogGridSizes()
+	{
+		LogEvent(EventType::PerformanceMeasurement, nullptr, "Vehicle grid of "+String(vehicleGrid.GetContentSize())+" bytes allocated");
+		LogEvent(EventType::PerformanceMeasurement, nullptr, "Structure grid of "+String(structureGrid.GetContentSize())+" bytes allocated");
+		LogEvent(EventType::PerformanceMeasurement, nullptr, "Station grid of "+String(Orbital::stationGrid.GetContentSize())+" bytes allocated");
+		LogEvent(EventType::PerformanceMeasurement, nullptr, "Ship grid of "+String(Orbital::shipGrid.GetContentSize())+" bytes allocated");
+	}
+
 
 
 
@@ -2775,8 +2793,6 @@ namespace Objects
 			s->location = baseLocation;
 			s->id = id;
 
-			if (baseLocation.height < Grid::CellStack::HalfRange)
-				s->TranslateLocationFromExport();
 			s->UpdateSystem();
 			ASSERT_GREATER_OR_EQUAL1__(s->location.height, Grid::CellStack::HalfRange,s->GetName());
 			return s;
@@ -2812,26 +2828,28 @@ namespace Objects
 
 		PStructure		SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,ConstName type, bool placeNow, bool isMine)
 		{
-			foreach (structurePrototypes,p)
-				if ((*p)->GetCTypeName() == type)
+			PStructure proto = GetAnyStructurePrototypeByName(type);
+			if (proto)
+			{
+				PStructure s = To<Structure>::Cast(proto->CreateNewInstance(owner,location,0));
+				if (s->IsOrbital())
 				{
-					//PStructure s = (*p)->CreateNewInstance(location);
-					PStructure s = To<Structure>::Cast((*p)->CreateNewInstance(owner,location,0));
-					s->health = s->GetMaxHealth();
-					s->id = id;
-					s->UpdateNiceName();
-					s->isMine = isMine;
-					//LogEvent(EventType::MinorEntityProcess, s.get(),"Constructed " + s->GetName());
-					if (placeNow)
-					{
-						Place(s);
-					}
-					//else
-					//	unplacedIDMap.Set(id,s);
-
-
-					return s;
+					ASSERT__(location.height == Orbital::BaseHeight || location.height == Orbital::DeclinedHeight);
 				}
+				else
+					ASSERT_IS_CONSTRAINED__(location.height,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight);
+				s->health = s->GetMaxHealth();
+				s->id = id;
+				s->UpdateNiceName();
+				s->isMine = isMine;
+				//LogEvent(EventType::MinorEntityProcess, s.get(),"Constructed " + s->GetName());
+				if (placeNow)
+				{
+					Place(s);
+				}
+
+				return s;
+			}
 			FATAL__("Type not found for construction #" + String((int)type));
 			return PStructure();
 		}

@@ -534,12 +534,6 @@ namespace Objects
 		So far only satellites do this in case residence height changes
 		*/
 		virtual void			TranslateLocationForExport() {}
-		/**
-		Changes the @a location member of the local entity such that it can be used during runtime.
-		@a location is expected to be in a state read from file.
-		So far only satellites do this in case residence height changes
-		*/
-		virtual void			TranslateLocationFromExport(){};
 
 
 		//TurretBase overrides:

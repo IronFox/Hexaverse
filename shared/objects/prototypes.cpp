@@ -131,6 +131,35 @@ namespace Objects
 		return rs;
 	}
 
+	PStructure		GetAnyStructurePrototypeByName(ConstName structureTypeName)
+	{
+		PStructure rs;
+
+		rs = GetPrototypeByName(structureTypeName);
+		if (rs)
+			return rs;
+		rs = Orbital::GetStationPrototypeByName(structureTypeName);
+		if (rs)
+			return rs;
+		return rs;
+
+	}
+
+	PStructure		GetAnyStructurePrototypeByName(const String&structureTypeName)
+	{
+		PStructure rs;
+
+		rs = GetPrototypeByName(structureTypeName);
+		if (rs)
+			return rs;
+		rs = Orbital::GetStationPrototypeByName(structureTypeName);
+		if (rs)
+			return rs;
+		return rs;
+
+	}
+
+
 
 	namespace Component
 	{
@@ -194,10 +223,11 @@ namespace Objects
 			Artillery::Configure(artillery);
 			Launcher::Configure(launcher);
 			EMP::Configure(emp);
-			SkyGuardian::Configure(protonCannon);
-			SkyHubTurret::Configure(skyHubTurret);
-			Ragnarok::Configure(ragnarok);
-			StarPort::Configure(starPort);
+			Orbital::Guardian::Configure(Orbital::protonCannon);
+			Orbital::Hub::Configure(Orbital::hub);
+			Orbital::Ragnarok::Configure(Orbital::ragnarok);
+			Orbital::StarPort::Configure(Orbital::starPort);
+			Orbital::Engineer::Configure(Orbital::engineer);
 
 			Armored::Configure(armored);
 			Radar::Configure(radar);
@@ -213,7 +243,7 @@ namespace Objects
 
 
 			allTurretComponents << &radar 
-								<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
+								<< &Orbital::hub << &Orbital::protonCannon << &Orbital::ragnarok << &Orbital::starPort << &Orbital::engineer
 								<< &armored << &artillery << &launcher << &emp
 								<< &terraformer << &resourceScanner
 								#ifndef CONNECTOR_LESS

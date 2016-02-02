@@ -22,8 +22,15 @@ namespace Objects
 		Turret			terraformer,mechanic,
 						artillery,launcher,emp,armored,
 						munitionTransporter,
-						radar,resourceScanner,
-						protonCannon,skyHubTurret,ragnarok,starPort;
+						radar,resourceScanner;
+		namespace Orbital
+		{
+			Turret		protonCannon,
+						hub,
+						starPort,
+						ragnarok,
+						engineer;
+		}
 
 
 		VehicleBase		hoverbase,
@@ -148,7 +155,7 @@ namespace Objects
 		{
 			if (t == TrajectoryType::VerticalBeam)
 			{
-				return Orbital::Ship::GetGroundHeight(origin) != badHeight;
+				return Objects::Orbital::Ship::GetGroundHeight(origin) != badHeight;
 			}
 			float hDest = Vec::length(dest);
 			return CanHit(	t, flatRange,
@@ -170,7 +177,7 @@ namespace Objects
 		{
 			if (t == TrajectoryType::VerticalBeam)
 			{
-				return Orbital::Ship::GetGroundHeight(origin) != badHeight;
+				return Objects::Orbital::Ship::GetGroundHeight(origin) != badHeight;
 			}
 			return CanHit(	t, flatRange,
 							Grid::low.cells[origin.stackID].centerVertex.xyz,Grid::ToRadius(origin.height) + zOffset,
@@ -271,7 +278,7 @@ namespace Objects
 				case TrajectoryType::VerticalBeam:
 				{
 					UINT32 stackIndex = Grid::low.Locate(dest);
-					int h = Orbital::Ship::GetGroundHeight(Grid::LCellIdI(stackIndex,0));
+					int h = Objects::Orbital::Ship::GetGroundHeight(Grid::LCellIdI(stackIndex,0));
 					if (h == badHeight)
 						return;
 					float4 p(Grid::low.cells[stackIndex].cornerCenter,Grid::ToRadius(h));
@@ -390,7 +397,7 @@ namespace Objects
 				break;
 				case TrajectoryType::VerticalBeam:
 				{
-					int h = Orbital::Ship::GetGroundHeight(source);
+					int h = Objects::Orbital::Ship::GetGroundHeight(source);
 					if (h == badHeight)
 						return TurretTrajectory::InvalidTrajectory;
 					outSteps.Clear();
@@ -656,6 +663,86 @@ namespace Objects
 		#endif
 
 
+		void			Orbital::Engineer::Configure(Turret&component)
+		{
+
+			#ifdef HAS_WINDOW
+				CellCoords offset = ConfigureStandardCommands(component);
+
+				#ifndef CONNECTOR_LESS
+					component.iconCommands.Append(IconCommand(offset++, "Withdraw Resources",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Deposit Resources",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+
+					component.iconCommands.Append(IconCommand(offset++, "Build Connectors to", &CommonCmd::ToggleMode<CursorMode::BuildConnectorChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildConnectorChainMode>,NoCosts));
+				#else
+
+				#endif
+
+				offset++;offset++;
+
+
+				Buffer<PStructure> canBuild;
+		
+				foreach (Objects::Orbital::stationPrototypes,p)
+					if (!(*p)->IsIndestructible())
+						#ifdef CONNECTOR_LESS
+							if (!To<Connector>::DynamicCast(*p))
+						#endif
+						#ifdef NO_MUNITION
+							if (!To<MunitionFactory>::DynamicCast(*p) && !To<MunitionStorage>::DynamicCast(*p))
+						#endif
+						canBuild << *p;
+				//canBuild << Mine::globalPrototype;
+				//canBuild << Connector::globalPrototype;
+				//canBuild << Generator::globalPrototype;
+				//canBuild << VehiclePlant::globalPrototype;
+				//canBuild << FuelContainer::globalPrototype;
+				//canBuild << MineralContainer::globalPrototype;
+				int at = 0;
+
+				foreach(canBuild, b)
+				{
+					PStructure s = *b;
+					component.structureConstructionCommands.Append(StructureConstructionCommand(int2(5 + (at%9),2+at/9), /*"Build " + */(*b)->GetTypeName(), *b,std::bind(&Terraformer::Cmd::Construct, *b, std::placeholders::_1),
+					//[s](const PWorldEntity&e)->bool
+					//{
+					//	PVehicle v = To<Vehicle>::DynamicCast(e);
+					//	return v && Cmd::ConstructionIsPossible(e) && s->CanPlace(v->GetLastPointOfOrigin());
+					//},
+					&CommonCmd::IdleCheck));
+					at++;
+				}
+			#endif
+		
+
+			//#ifdef HAS_WINDOW		
+			//	component.parts.setSize(1);
+
+			//	component.parts.first().first.LoadFromObj("objects/orbitalEngineer.obj");
+			//#endif
+
+			component.typeName = "Orbital Engineer";
+			component.shortName = "engineer";
+			component.constName = ConstName::OrbitalTurret_Engineer;
+
+			component.productionCosts = 40;
+			#if !defined CONNECTOR_LESS
+				component.baseStorageCapacity.level[Resource::Minerals] = 200;
+			#endif
+			component.constructionSpeed = 10;
+			component.healthMultiplier = 1;
+			component.scanningRange = 8;
+			component.uplinkTraffic = 30;
+			component.uplinkPriority = 200;	//fairly early
+
+		
+			component.weight = 2;					//turret weight
+
+
+			component.FinishCreation();
+		}
+
+
 		void			Terraformer::Configure(Turret&component)
 		{
 
@@ -833,7 +920,6 @@ namespace Objects
 
 			component.FinishCreation();
 		}
-
 
 	
 
@@ -1041,6 +1127,8 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW		
+			namespace Orbital
+			{
 			namespace Ragnarok
 			{
 				namespace MyCmd
@@ -1051,9 +1139,10 @@ namespace Objects
 					}
 				}
 			}
+			}
 		#endif
 
-		void			Ragnarok::Configure(Turret&component)
+		void			Orbital::Ragnarok::Configure(Turret&component)
 		{
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
@@ -1072,7 +1161,7 @@ namespace Objects
 
 			component.typeName = "Ragnarök";
 			component.shortName = " Ragnarök";
-			component.constName = ConstName::Turret_Ragnarok;
+			component.constName = ConstName::OrbitalTurret_Ragnarok;
 			component.constTowerName = ConstName::Empty;	//not used
 
 			component.isSatelliteRing = true;
@@ -1114,7 +1203,7 @@ namespace Objects
 
 
 	
-		void			SkyGuardian::Configure(Turret&component)
+		void			Orbital::Guardian::Configure(Turret&component)
 		{
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
@@ -1133,7 +1222,7 @@ namespace Objects
 
 			component.typeName = "Sky Guardian";
 			component.shortName = " Guardian";
-			component.constName = ConstName::Turret_ProtonCannon;
+			component.constName = ConstName::OrbitalTurret_ProtonCannon;
 			component.constTowerName = ConstName::Empty;	//not used
 
 			component.isSatelliteRing = true;
@@ -1164,7 +1253,7 @@ namespace Objects
 			component.FinishCreation(false);
 		}
 
-		void			SkyHubTurret::Configure(Turret&component)
+		void			Orbital::Hub::Configure(Turret&component)
 		{
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
@@ -1179,7 +1268,7 @@ namespace Objects
 
 			component.typeName = "Sky Hub";
 			component.shortName = " Hub";
-			component.constName = ConstName::Turret_SkyHub;
+			component.constName = ConstName::OrbitalTurret_Hub;
 			component.constTowerName = ConstName::Empty;	//not used
 
 			component.isSatelliteRing = true;
@@ -1204,7 +1293,7 @@ namespace Objects
 			component.FinishCreation(false);
 		}
 
-		void			StarPort::Configure(Turret&component)
+		void			Orbital::StarPort::Configure(Turret&component)
 		{
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
@@ -1219,7 +1308,7 @@ namespace Objects
 
 			component.typeName = "Star Port";
 			component.shortName = " Port";
-			component.constName = ConstName::Turret_StarPort;
+			component.constName = ConstName::OrbitalTurret_StarPort;
 			component.constTowerName = ConstName::Empty;	//not used
 
 			component.isSatelliteRing = true;
@@ -1688,7 +1777,7 @@ namespace Objects
 					count_t cnt = 0, limit = 0;
 					cnt = Vehicle::CountTurretOccurrences(owner,this)
 						+
-						Orbital::Ship::CountTurretOccurrences(owner,this);
+						Objects::Orbital::Ship::CountTurretOccurrences(owner,this);
 					limit = RuntimeConfig::UnitLimits::Get(constName);
 					if (limit != 0xFFFF)
 						outResult << " Deployed: "+String(cnt)+"/"+String(limit);

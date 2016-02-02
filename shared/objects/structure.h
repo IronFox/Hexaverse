@@ -881,7 +881,7 @@ namespace Objects
 
 		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return "Sky Port"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_SkyPort;}
+		virtual ConstName			GetCTypeName() const override {return ConstName::Type_SkyGate;}
 
 		//WorkingStructure overrides:
 		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override;

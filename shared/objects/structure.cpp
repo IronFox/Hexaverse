@@ -2401,7 +2401,7 @@ namespace Objects
 					PSkyGate port = To<SkyGate>::DynamicCast(e);
 					if (!port)
 						return;
-					SignalConstructionBegin(port->id, ConstName::Type_SkyHub, ConstName::Empty);
+					SignalConstructionBegin(port->id, ConstName::StationType_Hub, ConstName::Empty);
 				}
 				,
 				[](const PWorldEntity&e, bool controlsEnabled)

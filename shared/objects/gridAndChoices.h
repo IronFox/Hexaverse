@@ -44,10 +44,17 @@ namespace Objects
 	};
 
 
-	extern Array<PVehicle>			vehicleGrid;
-	extern Array<PStructure>		structureGrid;
+	/**
+	Removes all entities from their respective grids.
+	Does not access lists, only grid
+	*/
+	void			FlushGrids();
 
-	index_t					CellToGridIndex(const Grid::LCellIdU&location);
+	index_t			CellToGridIndex(const Grid::LCellIdU&location);
+	/**
+	Logs allocated size of entity grids
+	*/
+	void			LogGridSizes();
 
 
 	PVehicle		GetVehicle(const Grid::LCellIdI&cellID);

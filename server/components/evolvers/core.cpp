@@ -354,7 +354,7 @@ namespace Evolver
 			for (const auto&e : Objects::structures)
 			{
 				if (e->IsIndestructible() || e->IsMaintained())
-					return;
+					continue;
 
 				t+=Objects::timeEpsilon;
 
@@ -362,7 +362,16 @@ namespace Evolver
 				e->TakeDamage(GetDamageDueToMissingUpkeep(missing),t);
 				if (e->health <= 0)
 					died << e;
+				else
+				{
+					LogEvent(EventType::EntityProcess,e.get(),"Trying to re-enable maintenance");
+					e->SetMaintenance(true,t);
+				}
 			};
+			Objects::ForeachCompound([t](Objects::Compound&c)
+			{
+				c.RefreshState(t);
+			});
 
 			for (const auto&d : died)
 				Objects::Remove(d,d->IsOrbital() ? Objects::RemovalType::UncontrolledOrbitalDecline : Objects::RemovalType::UncontrolledExplosion,t,true);

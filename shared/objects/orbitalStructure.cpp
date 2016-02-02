@@ -192,18 +192,18 @@ namespace Objects
 			return h <= Grid::CellStack::TopHeight ? h : badHeight;
 		}
 
-		/*static*/ void Hub::RegisterProduction(const PStructure&s)
-		{
-			#ifdef HAS_WINDOW
-				int2 at = AllocateProductionSlot();
-				entityConstructionCommands.Append(
-					EntityConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
-					std::bind(&Component::Terraformer::Cmd::Construct, s, std::placeholders::_1),
-					[s](const PWorldEntity&e, bool controlEnabled){return MyCmd::CanBuild(s,e) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None; }
-					));
-				entityConstructionCommands.last().RasterizeImage();
-			#endif
-		}
+		///*static*/ void Hub::RegisterProduction(const PStructure&s)
+		//{
+		//	#ifdef HAS_WINDOW
+		//		int2 at = AllocateProductionSlot();
+		//		entityConstructionCommands.Append(
+		//			EntityConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
+		//			std::bind(&Component::Terraformer::Cmd::Construct, s, std::placeholders::_1),
+		//			[s](const PWorldEntity&e, bool controlEnabled){return MyCmd::CanBuild(s,e) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None; }
+		//			));
+		//		entityConstructionCommands.last().RasterizeImage();
+		//	#endif
+		//}
 
 		/*static*/ void Hub::RegisterProduction(const PShip&s)
 		{
@@ -250,11 +250,12 @@ namespace Objects
 		/*virtual override*/ void			Hub::PrototypeSetup()
 		{
 			Super::PrototypeSetup();
-			RegisterProduction(SkyGate::globalPrototype);
-			RegisterProduction(Guardian::globalPrototype);
-			RegisterProduction(Hub::globalPrototype);
+			//RegisterProduction(SkyGate::globalPrototype);
+			//RegisterProduction(Guardian::globalPrototype);
+			//RegisterProduction(Hub::globalPrototype);
 			RegisterProduction(Ragnarok::globalPrototype);
-			RegisterProduction(StarPort::globalPrototype);
+			RegisterProduction(Engineer::globalPrototype);
+//			RegisterProduction(StarPort::globalPrototype);
 		}
 
 		/*static*/ int2	Hub::AllocateProductionSlot()

@@ -170,6 +170,35 @@ namespace FileIO
 
 	}
 
+	static void			TranslateLocationForExport(const Objects::WorldEntity&e, Grid::LCellIdI&outLoc)
+	{
+		if (e.IsOrbital())
+		{
+			outLoc.stackID = e.location.stackID;
+			if (e.location.height < Objects::Orbital::BaseHeight)
+				outLoc.height = -1;
+			else
+				outLoc.height = 0;
+		}
+		else
+			outLoc = e.location;
+	}
+	static void			TranslateLocationFromExport(Objects::WorldEntity&e, const Grid::LCellIdI&inLoc)
+	{
+		if (e.IsOrbital())
+		{
+			e.location.stackID = inLoc.stackID;
+			if (inLoc.height == 0)
+				e.location.height = Objects::Orbital::BaseHeight;
+			else
+				e.location.height = Objects::Orbital::DeclinedHeight;
+		}
+		else
+			e.location = inLoc;
+		e.SetupSystem();
+	}
+
+
 
 
 	inline static void GetBinary(Riff::Chunk*parent, const Riff::TID&id, void*resultOut, size_t size)
@@ -242,7 +271,10 @@ namespace FileIO
 		stream.Append(e.unstable);
 		
 		parent->AppendBlock(RID::entity,stream.pointer(),stream.GetFillLevel());
-		parent->AppendBlock(RID::location)->SetPODData(e.location);
+		
+		Grid::LCellIdI loc;
+		TranslateLocationForExport(e,loc);
+		parent->AppendBlock(RID::location)->SetPODData(loc);
 		if (e.empDamageLevel)
 			parent->AppendBlock(RID::empDamageLevel)->SetPODData(e.empDamageLevel);
 	}
@@ -596,6 +628,8 @@ namespace FileIO
 		return ((UINT16)a & (UINT16)b) != 0;
 	}
 
+
+
 	Buffer0<Objects::PMobileEntity>	insertIntoHangar;
 
 	static void Export(Riff::Chunk*parent, Objects::MobileEntity&v, GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
@@ -605,9 +639,7 @@ namespace FileIO
 		{
 			v.location = store->ToEntity().location;
 		}
-		v.TranslateLocationForExport();
 		Export(parent,(Objects::WorldEntity&)v,factions);
-		v.TranslateLocationFromExport();
 		#ifndef CONNECTOR_LESS
 			Export(parent,v.currentStorage);
 		#endif
@@ -659,10 +691,9 @@ namespace FileIO
 
 	static bool Import(Riff::Chunk*parent, Riff::Chunk*vehicleChunk,const Objects::PMobileEntity&v, GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>&factions)
 	{
-		//Grid::LCellIdI location;
-		GetPOD(parent,RID::location,v->location);
-		v->TranslateLocationFromExport();
-		v->SetupSystem();
+		Grid::LCellIdI location;
+		GetPOD(parent,RID::location,location);
+		TranslateLocationFromExport(*v,location);
 		 
 
 		Import(parent,(Objects::WorldEntity&)*v,factions);
@@ -818,7 +849,7 @@ namespace FileIO
 
 
 		Objects::PStructure rs = To<Objects::Structure>::Cast( proto->CreateNewInstance(Objects::PFaction(),location,0));
-
+		TranslateLocationFromExport(*rs,location);
 
 
 		Import(parent,(Objects::WorldEntity&)*rs,factions);
@@ -931,6 +962,8 @@ namespace FileIO
 			while (child = child->GetNextSibling());
 		ASSERT_EQUAL__(atFamily,BaseGrid::NumFamilies);
 	}
+
+
 
 	void	Load(const PathString&filename)
 	{
@@ -1104,23 +1137,38 @@ namespace FileIO
 													Import(child,RID::vehicleBase,base);
 													Import(child,RID::vehicleTurret,turret);
 												}
-												Objects::PMobileEntity v = Objects::AssembleMobileEntity(Objects::PFaction(),TUniqueID(),Grid::LCellIdI(0,0),base,turret);
-
-												bool doInsert = Import(child,vehicleChunk,v,factionMap);
-												#if defined CHEAT_FULL_STORAGE && !defined CONNECTOR_LESS
-													 v->currentStorage = v->GetMaxStorageCapacity();
-												#endif
-												if (doInsert)
+												Objects::PWorldEntity proto = Objects::GetAnyNonVehiclePrototypeByName(base);
+												if (proto && proto->IsStructure())
 												{
+													Objects::PWorldEntity e = proto->CreateNewInstance(Objects::PFaction(),Grid::LCellIdI(0,0),0);
+													Import(child,*e,factionMap);
+													Grid::LCellIdI loc;
+													GetPOD(child,RID::location,loc);
+													TranslateLocationFromExport(*e,loc);
+
 													float t =0;
-													Objects::InsertConstructed(v,t,true,false);
+													Objects::InsertConstructed(To<Objects::Structure>::Cast(e),t,false,false);
 												}
 												else
 												{
-													//Objects::storedVehicles << v;
-													//v->owner->storedVehicles << v;
-													//Objects::idMap.Set(v->id,v);
-													//v->isInserted = v->isInsertedIntoGrid = false;
+													Objects::PMobileEntity v = Objects::AssembleMobileEntity(Objects::PFaction(),TUniqueID(),Grid::LCellIdI(0,0),base,turret);
+
+													bool doInsert = Import(child,vehicleChunk,v,factionMap);
+													#if defined CHEAT_FULL_STORAGE && !defined CONNECTOR_LESS
+														 v->currentStorage = v->GetMaxStorageCapacity();
+													#endif
+													if (doInsert)
+													{
+														float t =0;
+														Objects::InsertConstructed(v,t,true,false);
+													}
+													else
+													{
+														//Objects::storedVehicles << v;
+														//v->owner->storedVehicles << v;
+														//Objects::idMap.Set(v->id,v);
+														//v->isInserted = v->isInsertedIntoGrid = false;
+													}
 												}
 											}
 											else

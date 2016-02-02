@@ -223,9 +223,9 @@ namespace UI
 
 				Objects::PWorldEntity	GetPrototype() const
 				{
-					if (entries.first()->IsStructure())
-						return Objects::GetPrototypeByName(entries.first()->GetCTypeName());
-					return entries.first();	//good enough
+					if (entries.first()->IsVehicle())
+						return entries.first();	//good enough
+					return Objects::GetAnyNonVehiclePrototypeByName(entries.first()->GetCTypeName());
 
 				}
 

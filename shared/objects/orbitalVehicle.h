@@ -146,20 +146,6 @@ namespace Objects
 
 
 			//MobileEntity overrides:
-			virtual void			TranslateLocationForExport() override
-			{
-				if (location.height < BaseResidenceHeight)
-					location.height = -1;
-				else
-					location.height = 0;
-			}
-			virtual void			TranslateLocationFromExport() override
-			{
-				if (location.height == 0)
-					location.height = BaseResidenceHeight;
-				else
-					location.height = DeclinedResidenceHeight;
-			}
 			#ifndef CONNECTOR_LESS
 				virtual ResourceVector		GetMaxStorageCapacity()	const override
 				{
@@ -294,16 +280,16 @@ namespace Objects
 									{}	//global prototype
 		public:
 			//MobileEntity overrides:
-			virtual int				GetMovementStepsPerRound() const override {return 1;}
+			virtual int				GetMovementStepsPerRound() const override {return 2;}
 			virtual int				GetConstructionSpeed() const override {return 0;}
 
 			//BaseEntity overrides:
 			virtual String			GetTypeName() const override {return "Ragnarök";}
-			virtual ConstName		GetCTypeName() const override {return ConstName::Type_Ragnarok;}
+			virtual ConstName		GetCTypeName() const override {return ConstName::ShipType_Ragnarok;}
 
 			//SatelliteTemplate overrides:
 			virtual Component::Turret*
-									GetTurretType() const override	{return &Component::ragnarok;}
+									GetTurretType() const override	{return &Component::Orbital::ragnarok;}
 
 			//WorldEntity overrides:
 			virtual int				GetConstructionCost() const override {return 100;}
@@ -316,6 +302,40 @@ namespace Objects
 
 		};
 
+
+		class Engineer : public ShipTemplate<Engineer>
+		{
+		protected:
+			typedef ShipTemplate<Engineer>	Super;
+			friend class Super;
+
+			/**/					Engineer(const OwnerParameter&owner, const Grid::LCellIdI&location):Super(owner,GetTurretType(),location)
+									{}
+			/**/					Engineer():Super(GetTurretType())
+									{}	//global prototype
+		public:
+			//MobileEntity overrides:
+			virtual int				GetMovementStepsPerRound() const override {return 5;}
+			virtual int				GetConstructionSpeed() const override {return GetTurretType()->constructionSpeed;}
+
+			//BaseEntity overrides:
+			virtual String			GetTypeName() const override {return "Orbital Engineer";}
+			virtual ConstName		GetCTypeName() const override {return ConstName::ShipType_Engineer;}
+
+			//SatelliteTemplate overrides:
+			virtual Component::Turret*
+									GetTurretType() const override	{return &Component::Orbital::engineer;}
+
+			//WorldEntity overrides:
+			virtual int				GetConstructionCost() const override {return GetTurretType()->productionCosts + 20;}
+			#ifndef NO_HIBERNATION
+				virtual int			GetUplinkTraffic() const override {return GetTurretType()->uplinkTraffic;}
+
+				//Hibernating overrides:
+				virtual int			GetUplinkPriority() const override {return GetTurretType()->uplinkPriority;}
+			#endif
+
+		};
 
 
 

@@ -435,11 +435,18 @@ namespace Objects
 
 
 	
-		extern Turret	terraformer,mechanic,
-						artillery,launcher,emp,armored,
-						munitionTransporter,
-						radar,resourceScanner,
-						protonCannon,skyHubTurret,ragnarok,starPort;
+		extern Turret		terraformer,mechanic,
+							artillery,launcher,emp,armored,
+							munitionTransporter,
+							radar,resourceScanner;
+		namespace Orbital
+		{
+			extern Turret	protonCannon,
+							hub,
+							starPort,
+							ragnarok,
+							engineer;
+		}
 
 	
 		namespace Artillery
@@ -457,32 +464,39 @@ namespace Objects
 			void		Configure(Turret&);
 		};
 
-		/**
-		ProtonCannons are used by satellites, and (re)use the missile trajectory
-		*/
-		namespace SkyGuardian
+		namespace Orbital
 		{
-			void		Configure(Turret&);
-		};
+			/**
+			ProtonCannons are used by satellites, and (re)use the missile trajectory
+			*/
+			namespace Guardian
+			{
+				void		Configure(Turret&);
+			};
 
-		/**
-		Used only by the SkyHub satellite. Provides its logic
-		*/
-		namespace SkyHubTurret
-		{
-			void		Configure(Turret&);
-		};
+			/**
+			Used only by the SkyHub satellite. Provides its logic
+			*/
+			namespace Hub
+			{
+				void		Configure(Turret&);
+			};
 
-		namespace Ragnarok
-		{
-			void		Configure(Turret&);
-		};
+			namespace Ragnarok
+			{
+				void		Configure(Turret&);
+			};
 
-		namespace StarPort
-		{
-			void		Configure(Turret&);
-		};
+			namespace StarPort
+			{
+				void		Configure(Turret&);
+			};
 
+			namespace Engineer
+			{
+				void		Configure(Turret&);
+			}
+		}
 
 		namespace Armored
 		{

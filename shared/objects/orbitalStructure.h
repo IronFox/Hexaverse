@@ -182,7 +182,7 @@ namespace Objects
 				static int2				AllocateProductionSlot();
 
 				static void				RegisterProduction(const PShip&);
-				static void				RegisterProduction(const PStructure&);
+				//static void				RegisterProduction(const PStructure&);
 
 				#ifdef HAS_WINDOW
 					static Buffer<EntityConstructionCommand>	entityConstructionCommands;
@@ -219,7 +219,7 @@ namespace Objects
 
 				//BaseEntity overrides:
 				virtual String			GetTypeName() const override {return "Sky Hub";}
-				virtual ConstName		GetCTypeName() const override {return ConstName::Type_SkyHub;}
+				virtual ConstName		GetCTypeName() const override {return ConstName::StationType_Hub;}
 
 
 				//Hibernating overrides:
@@ -230,7 +230,7 @@ namespace Objects
 
 				//SatelliteTemplate overrides:
 				virtual Component::Turret*
-										GetTurretType() const override	{return &Component::skyHubTurret;}
+										GetTurretType() const override	{return &Component::Orbital::hub;}
 
 				////MobileEntity overrides:
 				//virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return Grid::LCellIdI(focus.stackID,GetStructureBuildHeight(focus));}
@@ -274,11 +274,11 @@ namespace Objects
 
 				//BaseEntity overrides:
 				virtual String			GetTypeName() const override {return "Sky Guardian";}
-				virtual ConstName		GetCTypeName() const override {return ConstName::Type_SkyGuardian;}
+				virtual ConstName		GetCTypeName() const override {return ConstName::StationType_Guardian;}
 
 				//SatelliteTemplate overrides:
 				virtual Component::Turret*
-										GetTurretType() const override	{return &Component::protonCannon;}
+										GetTurretType() const override	{return &Component::Orbital::protonCannon;}
 
 				//WorldEntity overrides:
 				virtual int				GetConstructionCost() const override {return 15;}
@@ -311,11 +311,11 @@ namespace Objects
 
 				//BaseEntity overrides:
 				virtual String			GetTypeName() const override {return "Star Port";}
-				virtual ConstName		GetCTypeName() const override {return ConstName::Type_StarPort;}
+				virtual ConstName		GetCTypeName() const override {return ConstName::StationType_StarPort;}
 
 				//SatelliteTemplate overrides:
 				virtual Component::Turret*
-										GetTurretType() const override	{return &Component::starPort;}
+										GetTurretType() const override	{return &Component::Orbital::starPort;}
 
 				//WorldEntity overrides:
 				virtual int				GetConstructionCost() const override {return 200;}
