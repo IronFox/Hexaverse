@@ -95,6 +95,7 @@ namespace Objects
 		TMatrix4<>					inverse;	//!< inverse of system
 
 
+		const TVec3<>&				GetWorldPosition() const {return system.w.xyz;}
 
 		/**
 		Assembles a name composed of the parent management class name and the local instance id
@@ -156,7 +157,7 @@ namespace Objects
 	public:
 		#ifndef CLIENT
 
-			Random					localRandom;
+			Random					entityRandom;
 			
 			void					ReSeedRandom();
 
@@ -335,7 +336,7 @@ namespace Objects
 
 
 		#ifndef CLIENT
-			virtual bool			DirectTo(CursorMode::mode_t, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
+			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
 		#endif
 
 

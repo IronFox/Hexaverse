@@ -65,6 +65,12 @@ namespace FileIO
 
 	void			RefreshWindowTitle();
 
+	/**
+	Retrieves the full path string of the auto-save file with the specified index.
+	Note that the respective doesn't necessarily exist.
+	*/
+	PathString		GetAutoSavePath(index_t index);
+
 }
 
 

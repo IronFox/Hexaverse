@@ -13,13 +13,14 @@
 		extern Engine::Display<Engine::DirectX11>	display;
 
 	#endif
-	void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI&c, Objects::CursorMode::mode_t mode, const Objects::PMobileEntity&deployingWhat);
+	void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI&c, Objects::CursorMode mode, const Objects::PMobileEntity&deployingWhat);
 	void	SignalRoundEnd();
 	void	SignalUndoRoundEnd();
 	bool	HasSignalledRoundEnd();
+	bool	ShouldSignalRoundEnd();
 	bool	CanChangeRoundState();
 	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName);
-	void	SignalTerrainModification(const Objects::PVehicle&v,Objects::CursorMode::mode_t activeCursorMode,const Array<Grid::HCellIdI>&selection);
+	void	SignalTerrainModification(const Objects::PVehicle&v,Objects::CursorMode activeCursorMode,const Array<Grid::HCellIdI>&selection);
 	void	SignalDropLastTask(const Objects::PWorldEntity&v);
 	void	SignalDropAllTasks(const Objects::PWorldEntity&v);
 	void	SignalRestoreCoreLink(const TUniqueID&mineId);

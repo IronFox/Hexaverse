@@ -1,5 +1,5 @@
 <project type="Application:Windows" stackSize="4000000">
-	<source path="../shared" />
+	<source path="../shared" include="true" />
 	<source path="./">
 		<exclude file="console.rc2" />
 	</source>

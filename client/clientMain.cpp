@@ -199,7 +199,7 @@ static void SendDirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCe
 {
 	Protocol::EntityDirectCommand	cmd;
 	cmd.id = v->id;
-	cmd.mode = mode;
+	cmd.mode = (UINT16)mode;
 	cmd.path = targets;
 	cmd.directFlags = 0;
 	if (detailedPath)
@@ -316,7 +316,7 @@ void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI
 {
 	Protocol::ChoiceIntersection	ch;
 	ch.id = e->id;
-	ch.mode = mode;
+	ch.mode = (UINT16)mode;
 	ch.target = c;
 	if (deployingWhat)
 		ch.deployingWhat.Set0().value = deployingWhat->id;
@@ -419,7 +419,7 @@ bool	HasSignalledRoundEnd()
 
 bool	CanChangeRoundState()
 {
-	return Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
+	return Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && !Network::amSpectator;
 }
 
 
@@ -626,7 +626,7 @@ void	SignalTerrainModification(const Objects::PVehicle&v,Objects::Vehicle::mode_
 {
 	Protocol::TerrainMod	job;
 	job.id = v->id;
-	job.mode = activeCursorMode;
+	job.mode = (UINT16)activeCursorMode;
 	job.cells = selection;
 	Network::Channels::signalTerrainMod.SendTo(Network::client,job);
 }
@@ -2299,7 +2299,7 @@ String GenerateOreName(Random&random)
 						Objects::PWorldEntity possibleTarget = Objects::GetRayIntersection(b,d,distance);
 						if (possibleTarget && !possibleTarget->isMine)
 						{
-							DirectTo(Objects::selectedEntity,possibleTarget->location,true,Objects::CursorMode::AttackMode);
+							DirectTo(Objects::selectedEntity,possibleTarget->location,false,true, Objects::CursorMode::AttackMode);
 							return;
 						}
 					}
@@ -2307,7 +2307,7 @@ String GenerateOreName(Random&random)
 					{
 						if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 						{
-							DirectTo(Objects::selectedEntity,target,true,Objects::CursorMode::AttackMode);
+							DirectTo(Objects::selectedEntity,target,false,true,Objects::CursorMode::AttackMode);
 							return;
 						}
 					}
@@ -2336,6 +2336,7 @@ String GenerateOreName(Random&random)
 				&& Objects::VehicleCanBeDirected()	//TODO: rename/relocate for mobile entities
 			)
 			{
+
 				if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 				{
 					//Grid::LCellIdI	target((UINT32)cellID,Grid::FromRadius(height));
@@ -2518,12 +2519,22 @@ String GenerateOreName(Random&random)
 		return false;
 	}
 
-	bool	IsIdle(const Objects::PStructure&s)
+
+	bool	IsIdle(const Objects::PStructure&s, bool tagVisited)
 	{
 		#ifndef NO_HIBERNATION
 			if (s->ToHibernating()->IsHibernating())
 				return false;
 		#endif
+
+		if (!s->IsWorkingStructure())
+			return false;
+		Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
+		if (ws->visited)
+			return false;
+		if (tagVisited)
+			ws->visited = true;
+
 		Objects::PVehiclePlant vp = To<Objects::VehiclePlant>::DynamicCast(s);
 		if (vp)
 			return (vp->AwaitsUserInteraction() || /*vp->queue.IsEmpty() || */
@@ -2538,6 +2549,40 @@ String GenerateOreName(Random&random)
 
 		return false;
 
+	}
+
+	bool	ShouldSignalRoundEnd()
+	{
+		if (!Network::myFaction || Network::myFaction->requestedNewRound || Network::amSpectator)
+			return false;
+		count_t total=0,requested=0;
+		Objects::ForeachFaction([&total,&requested](const Objects::PFaction&f)
+		{
+			total++;
+			if ((f->requestedNewRound || !f->online) && f != Network::myFaction)
+				requested++;
+		});
+
+		if (requested+1 != total)
+			return false;
+
+		bool any = false;
+		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
+		{
+			if (any || !e->isMine)
+				return;
+			if (e->IsMobile())
+			{
+				if (IsIdle(To<Objects::MobileEntity>::Cast(e)))
+					any = true;
+			}
+			elif (e->IsStructure())
+			{
+				if (IsIdle(To<Objects::Structure>::Cast(e),false))
+					any = true;
+			}
+		});
+		return !any;
 	}
 	
 
@@ -2602,7 +2647,7 @@ String GenerateOreName(Random&random)
 					index_t at = to - Objects::vehicles.Count() - Objects::satellites.Count();
 					Objects::PStructure s = Objects::structures[at];
 
-					if (s->isMine && IsIdle(s))
+					if (s->isMine && IsIdle(s,true))
 					{
 						Objects::Select(s,Network::ControlEnabled());
 						Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -3074,26 +3119,11 @@ int main( int argc, const char* argv[])
 
 			mainMenu.reset(new Dialog::Menu(0.25f,"Main"));
 			mainMenu->AddCommand("Change Nickname",QueryNickname);
-			mainMenu->AddCommand("Abandon faction",
-				[]()
-				{
-					Dialog::Confirm("Your current faction will be abandoned. Its access key will be preserved until you create a new faction in this world. Please confirm.",
-								Network::AbandonCurrentFaction,
-								[](){return Network::client.IsConnected() && Network::haveFaction ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
-				},
-				[](){return Network::amOnline && Network::haveFaction;});
+			mainMenu->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction;});
 			mainMenu->AddCommand("Disconnect",
 				[]()
 				{
-					Dialog::Confirm("You will be disconnected from the server and returned to the server selection screen.",
-						[]()
-						{ 
-							Network::client.Disconnect();
-						},
-						[]()
-						{
-							return Network::client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;
-						});
+					Network::client.Disconnect();
 				},
 				[](){return Network::client.IsConnected();});
 			mainMenu->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});

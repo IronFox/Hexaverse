@@ -3,29 +3,26 @@
 
 namespace Objects
 {
-	namespace CursorMode
+	enum class CursorMode	//progressive ONLY (add, do not replace, do not remove elements). Used for IO
 	{
-		enum mode_t	//progressive ONLY (add, do not replace, do not remove elements). Used for IO
-		{
-			Idle,
-			DigMode,
-			ClearAboveMode,
-			BuildBlockMode,
-			RemoveBlockMode,
-			RestockMode,
-			DepositMode,
-			RepairMode,
-			AttackMode,
-			BuildConnectorChainMode,
-			BuildRoadChainMode,
-			BuildWallChainMode,
-			DigTunnelMode,
-			BuildBridgeMode,
-		};
-	}
+		Idle,
+		DigMode,
+		ClearAboveMode,
+		BuildBlockMode,
+		RemoveBlockMode,
+		RestockMode,
+		DepositMode,
+		RepairMode,
+		AttackMode,
+		BuildConnectorChainMode,
+		BuildRoadChainMode,
+		BuildWallChainMode,
+		DigTunnelMode,
+		BuildBridgeMode,
+	};
 
 	#ifdef HAS_WINDOW
-		extern CursorMode::mode_t	activeCursorMode;
+		extern CursorMode	activeCursorMode;
 	#endif
 
 }

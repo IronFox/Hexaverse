@@ -415,8 +415,11 @@ namespace Objects
 			structureConstructionCommands.Append(
 				StructureConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
 				std::bind(&Component::Terraformer::Cmd::Construct, s, std::placeholders::_1),
-				std::bind(&MyCmd::CanBuild,s,std::placeholders::_1),
-				&CommonCmd::AlwaysFalse<PWorldEntity const&>));
+				[s](const PWorldEntity&e, bool controlEnabled)->BaseCommand::Flags
+				{
+					return MyCmd::CanBuild(s,e) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+				}
+				));
 			structureConstructionCommands.last().RasterizeImage();
 		#endif
 	}
@@ -428,8 +431,7 @@ namespace Objects
 			satelliteConstructionCommands.Append(
 				SatelliteConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
 				std::bind(&MyCmd::Build, s, std::placeholders::_1),
-				&CommonCmd::IsModeActiveC<CursorMode::Idle>,
-				&CommonCmd::AlwaysFalse<PWorldEntity const&>));
+				&CommonCmd::IdleCheck));
 		#endif
 	}
 
@@ -513,7 +515,7 @@ namespace Objects
 							PSkyHub hub = port.first->connectedToHub;
 							if (hub.get() != this)
 							{
-								float d2 = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
+								float d2 = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 								if (d2 < distance)
 								{
 									distance = d2;
@@ -527,7 +529,7 @@ namespace Objects
 						PSkyHub hub = sat.lock();
 						if (hub && hub.get() != this && !hub->connectedTo.expired())
 						{
-							float d2 = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
+							float d2 = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 							if (d2 < distance)
 							{
 								distance = d2;
@@ -553,7 +555,7 @@ namespace Objects
 						if (hub.get() != this)
 						{
 							hubs.Append().hub = hub;
-							hubs.last().distance = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
+							hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 						}
 					}
 			#else
@@ -563,7 +565,7 @@ namespace Objects
 					if (hub && hub.get() != this && !hub->connectedTo.expired())
 					{
 						hubs.Append().hub = hub;
-						hubs.last().distance = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
+						hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 					}
 				}
 			#endif

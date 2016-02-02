@@ -144,7 +144,10 @@ namespace UI
 			public:
 				/**/				TutorialCommand() : Super(int2(1,1),"Tutorial",
 										TutorialCommand::OnExecute,
-										TutorialCommand::IsEnabled,Objects::CommonCmd::AlwaysFalse<Objects::PWorldEntity>,
+										[](const Objects::PWorldEntity&e, bool b)->BaseCommand::Flags
+										{
+											return TutorialCommand::IsEnabled(e,b) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+										},
 										Objects::NoCosts)
 										{}
 
@@ -195,7 +198,7 @@ namespace UI
 										std::bind(
 											(friendly ? (&ArrowOnExecute<true>) : (&ArrowOnExecute<false>))
 											,left,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<Objects::PWorldEntity>,Objects::CommonCmd::AlwaysFalse<Objects::PWorldEntity>,
+										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;},
 										Objects::NoCosts)
 					{}
 
@@ -254,8 +257,7 @@ namespace UI
 									: Super(int2(), target->GetNiceName(),target->base,
 										target->turret,
 										std::bind(&VehicleFocusCommand::OnExecute,target,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
-										Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>,
+										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;},
 										false), 
 										target(target)
 				{}
@@ -281,8 +283,7 @@ namespace UI
 				/**/				SatelliteFocusCommand(const Objects::PSatellite&target) 
 									: Super(int2(), target->GetNiceName(),target,
 										std::bind(&SatelliteFocusCommand::OnExecute,target,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
-										Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>,
+										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;},
 										false), 
 										target(target)
 				{}
@@ -307,8 +308,8 @@ namespace UI
 				/**/				StructureFocusCommand(const Objects::PStructure&target) 
 									: Super(int2(), target->GetNiceName(),target,
 										std::bind(&StructureFocusCommand::OnExecute,target,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
-										Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>)
+										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;}
+										)
 				{}
 
 				static void				OnExecute(Objects::PStructure const&target, Objects::PWorldEntity const&)	//must be static because it may move before being executed

@@ -1,7 +1,6 @@
 alpaca
 ant
 ape
-ass
 donkey
 baboon
 badger
@@ -241,3 +240,5 @@ bush
 blade
 edge
 hippo
+moon
+star

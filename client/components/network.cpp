@@ -1342,12 +1342,26 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			RuntimeConfig::roundNumber = c.roundNumber;
 			RuntimeConfig::phase.Load(c.newPhase);
 
-
+			Objects::ForeachMobileWorldEntity([](const Objects::PWorldEntity&e)
+			{
+				if (e->health <= 0 || !e->isMine)
+					return;
+				Objects::Marker *m = Objects::Marker::Find(e->location);
+				if (m)
+					SignalMarkerDeletion(m->id);
+			});
 
 			#ifdef HAS_WINDOW
 				for (const auto&s : Objects::structures)
-					if (s->isMine && s->IsWorkingStructure() && (To<Objects::WorkingStructure>::Cast(s))->AwaitsUserInteraction())
-						Tutorial::ShowMessage("Interaction");
+				{
+					if (s->isMine && s->IsWorkingStructure() )
+					{
+						Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
+						ws->visited = false;
+						if (ws->AwaitsUserInteraction())
+							Tutorial::ShowMessage("Interaction");
+					}
+				}
 
 			#endif
 

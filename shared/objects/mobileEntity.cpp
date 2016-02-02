@@ -561,7 +561,7 @@ namespace Objects
 						//random first to maybe not make the same mistake twice
 						for (index_t i = 0; i < numWays; i++)
 						{
-							index_t target = localRandom.getIndex(numWays-1);
+							index_t target = entityRandom.getIndex(numWays-1);
 							if (PlotCourse(ways[target],true,false))
 							{
 								hasTriedPlottingOnMoveAutoMotion = true;
@@ -1034,7 +1034,7 @@ namespace Objects
 			Task&task = LockedPeekTask();
 
 			const Grid::LCellIdI target = task.foci.Pop().target;
-			float3 dir = Grid::low.cells[target.stackID].centerVertex.xyz * Grid::ToRadius(target.height) - this->system.w.xyz;
+			float3 dir = Grid::low.cells[target.stackID].centerVertex.xyz * Grid::ToRadius(target.height) - this->GetWorldPosition();
 			float3 innerDir;
 			Mat::rotate(this->inverse,dir,innerDir);
 			TVec3<> t0;

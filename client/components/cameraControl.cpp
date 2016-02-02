@@ -190,9 +190,10 @@ namespace Camera
 			Camera::ToggleOrbit();
 		}
 
-		bool SkyGridIsEnabled(int)
+		Objects::BaseCommand::Flags Check(int,bool)
 		{
-			return Camera::SkyGridIsVisible();
+			return Objects::BaseCommand::Flags::IsEnabled | 
+					(Camera::SkyGridIsVisible() ? Objects::BaseCommand::Flags::IsPermaActive : Objects::BaseCommand::Flags::None);
 		}
 	}
 
@@ -209,7 +210,7 @@ namespace Camera
 
 		Objects::globalCommands.Append(
 			Objects::GlobalCommand(int2(1,0),"Show Sky Grid", 
-			&Cmd::ToggleSkyGrid, &Objects::CommonCmd::AlwaysEnabled<int>, &Cmd::SkyGridIsEnabled));
+			&Cmd::ToggleSkyGrid, &Cmd::Check));
 	}
 
 
