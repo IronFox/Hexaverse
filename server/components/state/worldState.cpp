@@ -62,7 +62,15 @@ namespace World
 					{
 						faction->visibility.families[family].coverageChanged = false;
 						at++;
-						Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,RuntimeConfig::IsInAnyCommandPhase(),at == numChanged,peer ? Protocol::WorldDeltaType::ProgressiveUpdate : Protocol::WorldDeltaType::ProgressiveUpdateNoDelta);
+						Protocol::GenerateWorldDelta(&faction->visibility,
+							&faction->currentState,
+							delta,family,
+							RuntimeConfig::IsInAnyCommandPhase(),
+							at == numChanged,
+							peer ? 
+								Protocol::WorldDeltaType::ProgressiveUpdate 
+								: Protocol::WorldDeltaType::ProgressiveUpdateNoDelta
+						);
 						if (peer)
 							Channels::updateWorld.SendTo(peer,delta);
 					}
@@ -319,8 +327,7 @@ namespace World
 		Grid::currentPlanetConfig.RandomizeSeeds(random);
 		Grid::currentPlanetConfig.RandomizeSun(random);
 		Grid::BuildWorld(Grid::currentPlanetConfig,Config::worldDiscovery);
-		if (Game::Config::Nexus::enableAI)
-			Objects::Faction::nexus->currentState = Grid::initialWorld;
+		Objects::Faction::nexus->currentState = Grid::initialWorld;
 	}
 
 
