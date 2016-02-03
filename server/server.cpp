@@ -210,6 +210,10 @@ void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float 
 		case Objects::RemovalType::UncontrolledExplosion:
 			others.type = Objects::RemovalType::UncontrolledExplosion;
 		break;
+		case Objects::RemovalType::UncontrolledOrbitalDecline:
+			others.type = t;
+		break;
+		
 		default:
 			FATAL__("Unrecognized removal type "+String(t.ToString()));
 	}
