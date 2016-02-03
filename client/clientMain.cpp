@@ -1015,43 +1015,42 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			Objects::PTurretBase base = Objects::selectedMobileEntity->GetTurretBase();
 
 			Objects::Resource res;
+			Objects::ResourceVector change;
+			Objects::ResourceVector current = Objects::selectedMobileEntity->currentStorage;
+			Objects::ResourceVector max = Objects::selectedMobileEntity->GetMaxStorageCapacity();
 			if (base && base->turret->ConsumesResources(res))
 			{
 				Objects::anyCompoundsColored = true;
 				Objects::Renderer::SelectCompoundAreas(Objects::selectedMobileEntity->owner,res);
+
+
+
+				Objects::selectedMobileEntity->resourceEnvironment.CheckRefresh(*Objects::selectedMobileEntity);
+				bool any = false;
+				foreach (Objects::selectedMobileEntity->resourceEnvironment.sourceCompounds,c)
+				{
+					if (*c >= Objects::compounds.Count())
+						continue;
+					const auto&compound = Objects::compounds[*c];
+					current.level[res] += compound.total.storage.level[res];
+					max.level[res] += compound.total.storageMax.level[res];
+					change.level[res] += compound.total.supply.level[res];
+					change.level[res] -= compound.total.demand.level[res];
+					any = true;
+					if (res == Objects::Resource::Minerals)
+						for (const auto v : Objects::vehicles)
+							if (v->isMine)
+							{
+								v->resourceEnvironment.CheckRefresh(*v);
+								if (v->resourceEnvironment.sourceCompounds.Contains(*c))
+								{
+									change.level[Objects::Resource::Minerals] -= v->GetCurrentMineralConsumption();
+								}
+							}
+				}
+				if (!any && res == Objects::Resource::Minerals)
+					change.level[Objects::Resource::Minerals] -= Objects::selectedMobileEntity->GetCurrentMineralConsumption();
 			}
-
-
-
-			//if (Objects::selectedVehicle->tasks.IsNotEmpty() && Objects::selectedVehicle->tasks.Peek().job && Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft)
-			Objects::ResourceVector change;
-			Objects::ResourceVector current = Objects::selectedMobileEntity->currentStorage;
-			Objects::ResourceVector max = Objects::selectedMobileEntity->GetMaxStorageCapacity();
-			Objects::selectedMobileEntity->resourceEnvironment.CheckRefresh(*Objects::selectedMobileEntity);
-			bool any = false;
-			foreach (Objects::selectedMobileEntity->resourceEnvironment.sourceCompounds,c)
-			{
-				if (*c >= Objects::compounds.Count())
-					continue;
-				const auto&compound = Objects::compounds[*c];
-				current += compound.total.storage;
-				max += compound.total.storageMax;
-				change += compound.total.supply;
-				change -= compound.total.demand;
-				any = true;
-				for (const auto v : Objects::vehicles)
-					if (v->isMine)
-					{
-						v->resourceEnvironment.CheckRefresh(*v);
-						if (v->resourceEnvironment.sourceCompounds.Contains(*c))
-						{
-							change.level[Objects::Resource::Minerals] -= v->GetCurrentMineralConsumption();
-						}
-					}
-
-			}
-			if (!any)
-				change.level[Objects::Resource::Minerals] -= Objects::selectedMobileEntity->GetCurrentMineralConsumption();
 //				int sum = Objects::selectedMobileEntity->GetCurrentMineralConsumption();
 				
 			//foreach (Objects::selectedMobileEntity->myTasks,t)
