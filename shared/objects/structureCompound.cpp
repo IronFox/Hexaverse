@@ -234,9 +234,10 @@ namespace Objects
 				#ifdef _DEBUG
 					events << std::make_pair(PStructure(), vector);
 				#endif
-				foreach (workingStructures,s0)
+				for (index_t i = 0; i < workingStructures.Count(); i++)
 				{	
-					PWorkingStructure s= s0->lock();
+					//must be pointer-copy, must access via index, because Tick() might create new structures
+					PWorkingStructure s= workingStructures[i].lock();
 					if (!s || s->IsHibernating())
 						continue;
 					if (s->IsEnabled() && !s->AwaitsUserInteraction())

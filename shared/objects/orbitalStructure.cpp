@@ -5,13 +5,21 @@
 #include "orbitalVehicle.h"
 #include "structureCompound.h"
 #include "faction.h"
-
+#include "systems.h"
 
 namespace Objects
 {
 	namespace Orbital
 	{
 		Buffer0<PStation>	stations;
+
+
+		void				Station::UpdateOrbitalSystem()
+		{
+			BuildNormalizedSystem(location,system);
+			Mat::invertSystem(system,inverse);
+		}
+
 
 
 		/*virtual override*/ void		Hub::VisitAllConnected(const std::function<void(const PStructure&)>&visitor) const
@@ -267,6 +275,8 @@ namespace Objects
 
 		
 		#ifdef HAS_WINDOW
+
+
 
 			/*virtual override*/ void			Hub::OnSelect()
 			{

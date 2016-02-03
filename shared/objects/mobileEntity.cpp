@@ -37,7 +37,7 @@ namespace Objects
 		{
 			ASSERT1__(v->IsOrbital(),v->GetName());
 			ASSERT1__(v->isInserted,v->GetName());
-			ASSERT1__(!v->isInsertedIntoGrid,v->GetName());	//satellites are never inserted into grid
+			ASSERT1__(v->isInsertedIntoGrid,v->GetName());	//satellites now ARE inserted into grid
 			ASSERT1__(v->health > 0,v->GetName());
 			ASSERT1__(GetEntity(v->id) == v, v->GetName());
 			ASSERT1__(!storedMobileEntities.Contains(v), v->GetName());

@@ -1518,7 +1518,7 @@ namespace Objects
 				Super::localizableShape = &shape;
 			#endif
 		}
-		/**/						Tower(Component::Turret*turret, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) : Super(owner,location,true,time),TurretBase(turret)
+		/**/						Tower(Component::Turret*turret, const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float time) : Super(owner,location,buildSystem,time),TurretBase(turret)
 		{
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
@@ -1628,7 +1628,7 @@ namespace Objects
 			return CommonCheckStructurePlacement(location,2,true);
 		}
 
-		virtual PWorldEntity				CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Tower(turret,owner,location,atTime));};
+		virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Tower(turret,owner,location,true,atTime));};
 
 
 		virtual float				GetMaxScanningRange() const override	{return turret->CanAttack() ? turret->scanningRange - 2.f : turret->scanningRange + 2.f;};	//returns the effective scanning range of the local entity

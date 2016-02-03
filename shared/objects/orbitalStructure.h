@@ -25,8 +25,10 @@ namespace Objects
 		protected:
 			/**/				Station(Component::Turret*turret) : Super(turret)
 			{}
-			/**/				Station(Component::Turret*turret, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) : Super(turret,owner,location,time)
-			{}
+			/**/				Station(Component::Turret*turret, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) : Super(turret,owner,location,false,time)
+			{
+				UpdateOrbitalSystem();
+			}
 
 		public:
 
@@ -39,23 +41,25 @@ namespace Objects
 			Grid::SkySensorState	skySensorState;
 
 
-			virtual void		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr) override;
-			virtual void		UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true) override;
-
-
-
+			/**
+			Updates the local system matrix
+			*/
+			void				UpdateOrbitalSystem();
 			static int			GetStructureBuildHeight(const Grid::LCellIdI&satelliteLocation);
 			int					GetStructureBuildHeight() const;
 
-
+			//WorldEntity overrides:
+			virtual void		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr) override;
+			virtual void		UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true) override;
+			#ifndef CLIENT
+				virtual	void	SetupSystem() override {UpdateOrbitalSystem();}
+			#endif
+			virtual PTurretBase			GetTurretBase(float&zOffset) override { zOffset = 0.f; return To<Station>::Cast(shared_from_this());}
+			virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = 0.f; return To<const Station>::Cast(shared_from_this());}
 			virtual bool		IsOrbital() const override {return true;}
 			virtual bool		HasFoundation() const override {return false;}
-
 			virtual void		GetUpkeep(ResourceVector&v) const override {Super::GetUpkeep(v); v.level[Resource::Fuel] = CeilDiv(GetConstructionCost(),4);}
 
-			virtual Component::Turret*GetTurretType() const  = 0;
-
-			virtual bool		IsHub() const {return false;}
 
 			#ifndef CLIENT
 				virtual void	CorrectTerrain(bool signalChange, float atTime, bool deep) override	{};
@@ -66,6 +70,10 @@ namespace Objects
 				*/
 				bool			RefreshGroundSensor(float&atTime);
 			#endif
+
+			//new overridables:
+			virtual Component::Turret*GetTurretType() const  = 0;
+			virtual bool		IsHub() const {return false;}
 		};
 
 
@@ -113,7 +121,7 @@ namespace Objects
 				#ifndef CLIENT
 				#else
 					#ifdef HAS_WINDOW
-						virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return WorldEntity::TestIntersection(geometry,b,d,distance);}
+						virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
 						virtual void		VisitAllCommands(FCommandVisitor visitor) override {foreach (commands,cmd) visitor(*cmd);};
 					#endif
 				#endif
@@ -147,6 +155,18 @@ namespace Objects
 
 		
 			#ifdef HAS_WINDOW
+
+
+				template <typename Derivative>
+					/*virtual override*/ bool			FloatingStructureT<Derivative>::TestIntersection(const TVec3<>&_b, const TVec3<>&_d, float & distance) const
+					{
+						TVec3<> b,d;//,test;
+						Mat::transform(inverse,_b,b);
+						Mat::rotate(inverse,_d,d);
+			
+						return WorldEntity::TestIntersection(geometry, b,d,distance) | turret->TestIntersection(0.f, turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
+					}
+
 				template <typename Derivative>
 					/*virtual override*/	void			FloatingStructureT<Derivative>::PrototypeLoadGeometry()
 					{

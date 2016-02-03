@@ -361,17 +361,21 @@ namespace Game
 						Describe(subState.productionTasks[i],p->queue[i]);
 					}
 				}
-				const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&s);
-				if (t)
+				else
 				{
-					Protocol::TowerState&subState = state.selective.Set3();
-					subState.attackTasks.SetSize(t->attackQueue.Count());
-					for (index_t i = 0; i < subState.attackTasks.Count(); i++)
+					const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&s);
+					if (t)
 					{
-						Describe(subState.attackTasks[i],t->attackQueue[i]);
-					}
+						Protocol::TowerState&subState = state.selective.Set3();
+						subState.attackTasks.SetSize(t->attackQueue.Count());
+						for (index_t i = 0; i < subState.attackTasks.Count(); i++)
+						{
+							Describe(subState.attackTasks[i],t->attackQueue[i]);
+						}
 				
+					}
 				}
+
 				const Objects::NexusPort*n = dynamic_cast<const Objects::NexusPort*>(&s);
 				if (n)
 				{

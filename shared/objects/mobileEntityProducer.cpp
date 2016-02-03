@@ -216,20 +216,7 @@ namespace Objects
 			}
 
 			productionRoundsLeft = ProductionRounds(queue.first().producing,true);
-
-			if (productionRoundsLeft == 0)
-			{
-				if (queue.first().IsOrbitalShip())
-				{
-					LogEvent(EventType::MinorEntityProcess,parent,"Auto-spawning satellite");
-					Objects::PWorldEntity e = SpawnFinishedProductionAnywhere(t);
-
-
-					return;
-				}
-				FATAL__("This should not happen");
-			}
-
+			//LogEvent(EventType::CommandRejected,String(productionRoundsLeft));
 			if (productionRoundsLeft == 1)
 			{
 				int delta = (queue.first().producing->GetConstructionCost() - productionDone);
@@ -244,6 +231,14 @@ namespace Objects
 			if (productionDone >= (UINT32)(queue.first().producing->GetConstructionCost()))
 			{
 				LogEvent(EventType::EntityProcess,parent,"Construction of "+queue.first().producing->GetNiceName()+" completed");
+				if (queue.first().IsOrbital())
+				{
+					LogEvent(EventType::MinorEntityProcess,parent,"Auto-spawning satellite");
+					Objects::PWorldEntity e = SpawnFinishedProductionAnywhere(t);
+
+
+					return;
+				}
 
 				if (gatheringPoint.current != Grid::LCellIdI::Invalid || queue.first().IsOrbitalShip())
 				{
