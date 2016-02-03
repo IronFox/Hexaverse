@@ -370,6 +370,22 @@ namespace Objects
 				if (v2.balance.IsStable())
 					return true;
 
+				for (index_t j = i+1; j < containedStructures.Count(); j++)
+				{
+					PWorkingStructure s= containedStructures[j].lock();
+					DBG_ASSERT__(s);
+					if (!s || s->IsHibernating())
+						continue;
+					if (virtualEnabled[j] || !s->CanEnable())
+						continue;
+					virtualEnabled[j] = true;
+
+					FullResourceVector v2 = GetVector(virtualEnabled);
+					if (v2.balance.IsStable())
+						return true;
+					virtualEnabled[i] = false;
+				}
+
 				count_t nowLacking = 0;
 				for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
 					if (v2.balance.level[r] < 0)
@@ -463,25 +479,26 @@ namespace Objects
 					++s1;
 					for (;s1 != containedStructures.end(); ++s1)
 					{
-						PWorkingStructure s= s1->lock();
-						DBG_ASSERT__(s);
-						if (!s || s->IsHibernating())
+						PWorkingStructure st= s1->lock();
+						DBG_ASSERT__(st);
+						if (!st || st->IsHibernating())
 							continue;
-						if (s->IsEnabled() || !s->CanEnable())
+						if (st->IsEnabled() || !st->CanEnable())
 							continue;
 					
-						s->SetEnabled(true,atTime,false);
+						st->SetEnabled(true,atTime,false);
 
 						FullResourceVector v2 = GetVector();
 						if (v2.balance.IsStable())
 						{
 							LogEvent(EventType::CompoundProcess,s.get(), "Auto-balance: Structure enabled");
+							LogEvent(EventType::CompoundProcess,st.get(), "Auto-balance: Structure enabled");
 							total = v2;
 							stable = true;
 							break;
 						}
 
-						s->SetEnabled(false,atTime,false);
+						st->SetEnabled(false,atTime,false);
 					}
 					
 					if (stable)
