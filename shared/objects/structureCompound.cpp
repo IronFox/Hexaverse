@@ -69,7 +69,7 @@ namespace Objects
 		{
 			if (v.IsEmpty())
 				return;
-			count_t active = CountWorkingStructures();
+			int active = (int)CountWorkingStructures();
 			if (!active)
 				return;
 			ResourceVector perStructure,remainder;
