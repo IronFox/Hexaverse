@@ -1331,7 +1331,9 @@ int main( int argc, const char* argv[])
 		for (int i = 1; i < argc; i++)
 			ParameterConfig::Process(argv[i]);
 
-		UDPBroadCast::Create(ParameterConfig::basePort);
+		Network::serverID.Generate();
+		UDPBroadCast::Create(ParameterConfig::basePort,Network::serverID);
+
 		if (ParameterConfig::enableRemoteControl)
 			RemoteControl::Start(ParameterConfig::basePort);
 
@@ -1489,7 +1491,6 @@ int main( int argc, const char* argv[])
 
 
 
-		Network::serverID.Generate();
 
 		if (!ParameterConfig::startOffline)
 		{
@@ -1614,7 +1615,8 @@ int main( int argc, const char* argv[])
 		else
 			LogConfig(" -Private Vehicle Action: Vehicle movement is not exposed to hostile factions.");
 
-		LogConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
+		if (FileIO::Config::saveEveryNRounds > 0)
+			LogConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
 		if (FileIO::Config::saveWhenAllQuit)
 			LogConfig(" -Auto-saves will be created when all quit.");
 

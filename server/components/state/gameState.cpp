@@ -1012,7 +1012,7 @@ namespace Game
 									Grid::LCellIdI(i,h),
 									0));
 								tower->CorrectTerrain(false,0,true);
-								Objects::InsertConstructed(tower,0);
+								Objects::InsertConstructed(tower,t);
 							#endif
 						}
 						if (field.distance[i] == 5)

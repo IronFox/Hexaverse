@@ -431,7 +431,7 @@ namespace Objects
 			}
 		inline BaseCommand::Flags IdleCheck(const PWorldEntity&e, bool controlsEnabled)
 		{
-			return activeCursorMode == CursorMode::Idle ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+			return controlsEnabled && activeCursorMode == CursorMode::Idle ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 		}
 
 
