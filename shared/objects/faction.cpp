@@ -48,7 +48,7 @@ namespace Objects
 				transfer = std::min(capacity,change);
 			}
 			else
-				transfer = std::max(-max.level[res],change);
+				transfer = std::max(-storage.level[res],change);
 			
 			storage.level[res] += transfer;
 			change -= transfer;
