@@ -1609,7 +1609,8 @@ int main( int argc, const char* argv[])
 		else
 			LogConfig(" -Private Vehicle Action: Vehicle movement is not exposed to hostile factions.");
 
-		LogConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
+		if (FileIO::Config::saveEveryNRounds > 0)
+			LogConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
 		if (FileIO::Config::saveWhenAllQuit)
 			LogConfig(" -Auto-saves will be created when all quit.");
 
