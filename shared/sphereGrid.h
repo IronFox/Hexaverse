@@ -1235,6 +1235,7 @@ namespace Grid
 				st.stackID = next;
 				if (!Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
 				{
+					//volume.coverage.EraseLast();	//can't erase last because entries are used to reset visited
 					st.layerBegin = st.layerEnd = 0;
 					continue;
 				}
@@ -1272,8 +1273,8 @@ namespace Grid
 				st.stackID = next;
 				if (dist > r2)
 				{
-					volume.coverage.EraseLast();
-					//st.layerBegin = st.layerEnd = 0;
+					//volume.coverage.EraseLast();	//can't erase last because entries are used to reset visited
+					st.layerBegin = st.layerEnd = 0;
 					continue;
 				}
 			

@@ -494,11 +494,8 @@ namespace Animation
 			{
 				if (!insertIntoGridLater.IsSet(v->id))
 				{
-					if (v->IsVehicle())
-					{
-						Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(v),v->preAnimationLocation);
-						insertIntoGridLater.Set(v->id);
-					}
+					Objects::RemoveFromGrid(v,v->preAnimationLocation);
+					insertIntoGridLater.Set(v->id);
 				}
 				v->location = vs.entityState.location;
 			}
@@ -1042,8 +1039,7 @@ namespace Animation
 					//MoveSensor(v->preAnimationLocation,v->location,v->turret->scanningRange);
 					v->preAnimationLocation = v->location;
 					Objects::PlaceMobileEntity(v,false);
-					if (v->IsVehicle())	//only vehicles get to be inserted anyhow
-						insertIntoGridLater.Set(v->id);
+					insertIntoGridLater.Set(v->id);
 					if (!allocatedTarget->isMine)
 						UI::HexGrid::RefreshContacts();
 				}
@@ -1103,8 +1099,7 @@ namespace Animation
 					//		ASSERT1__(Grid::actualWorld.HasSensor(v->location,v->GetScanningRange()),v->id.ToString());
 					//#endif
 					v->preAnimationLocation = v->location;
-					if (v->IsVehicle())
-						Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(v),v->location);
+					Objects::RemoveFromGrid(v,v->location);
 					insertIntoGridLater.Set(v->id);
 				}
 				path->Rebuild(v);
@@ -1643,8 +1638,7 @@ namespace Animation
 							float t = 0.f;
 							v->MoveSensory(v->preAnimationLocation,v->location,t);
 						}
-						if (v->IsVehicle())
-							Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(v),v->location);
+						Objects::InsertIntoGrid(v,v->location);
 					}
 				});
 				Animation::insertIntoGridLater.Clear();
@@ -1652,7 +1646,10 @@ namespace Animation
 				foreach (Objects::vehicles, v)
 					(*v)->preAnimationLocation = (*v)->location;
 				foreach (Objects::Orbital::ships, v)
+				{
 					(*v)->preAnimationLocation = (*v)->location;
+					ASSERT__((*v)->isInsertedIntoGrid);
+				}
 
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::gameHasBegun)
 				{

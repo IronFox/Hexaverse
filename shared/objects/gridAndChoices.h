@@ -141,6 +141,8 @@ namespace Objects
 
 	void			RemoveVehicleFromGrid(const PVehicle&v,const Grid::LCellIdI&location);
 	void			InsertVehicleIntoGrid(const PVehicle&v,const Grid::LCellIdI&location);
+	void			RemoveFromGrid(const PMobileEntity&,const Grid::LCellIdI&location);
+	void			InsertIntoGrid(const PMobileEntity&,const Grid::LCellIdI&location);
 
 
 	inline bool		Failed(MobilePlacementResult rs)	{return rs == MobilePlacementResult::PlacementFailedHarmfulOrBlocked || rs == MobilePlacementResult::PlacementFailedObstructed;}

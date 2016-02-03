@@ -37,7 +37,8 @@ namespace Objects
 		{
 			ASSERT1__(v->IsOrbital(),v->GetName());
 			ASSERT1__(v->isInserted,v->GetName());
-			ASSERT1__(v->isInsertedIntoGrid,v->GetName());	//satellites now ARE inserted into grid
+//			ASSERT1__(v->isInsertedIntoGrid,v->GetName());	//satellites now ARE inserted into grid
+			//but removed check because this function can be called during animation, and then this unit might not be inserted (same as vehicles)
 			ASSERT1__(v->health > 0,v->GetName());
 			ASSERT1__(GetEntity(v->id) == v, v->GetName());
 			ASSERT1__(!storedMobileEntities.Contains(v), v->GetName());

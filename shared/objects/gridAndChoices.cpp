@@ -2936,6 +2936,24 @@ namespace Objects
 
 
 
+	void			RemoveFromGrid(const PMobileEntity&m,const Grid::LCellIdI&location)
+	{
+		if (m->IsOrbital())
+			Orbital::RemoveShipFromGrid(To<Orbital::Ship>::Cast(m),location.stackID);
+		else
+			if (m->IsVehicle())
+				RemoveVehicleFromGrid(To<Vehicle>::Cast(m),location);
+	}
+
+	void			InsertIntoGrid(const PMobileEntity&m,const Grid::LCellIdI&location)
+	{
+		if (m->IsOrbital())
+			Orbital::InsertShipIntoGrid(To<Orbital::Ship>::Cast(m),location.stackID);
+		else
+			if (m->IsVehicle())
+				InsertVehicleIntoGrid(To<Vehicle>::Cast(m),location);
+	}
+
 
 	void					RemoveVehicleFromGrid(const PVehicle&v,const Grid::LCellIdI&location)
 	{
