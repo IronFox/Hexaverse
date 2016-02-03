@@ -96,6 +96,7 @@ namespace Objects
 
 
 		const TVec3<>&				GetWorldPosition() const {return system.w.xyz;}
+		static TVec3<>				GetWorldPosition(const Grid::LCellIdI&loc) {return Grid::ToWorld(loc);}	//might change in the future. Have to make sure that the various system build functions in systems.cpp match
 
 		/**
 		Assembles a name composed of the parent management class name and the local instance id

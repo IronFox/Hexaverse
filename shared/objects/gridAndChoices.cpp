@@ -847,28 +847,30 @@ namespace Objects
 					case CursorMode::DepositMode:
 					//case CursorMode::TransferMode:
 					{
-						v->resourceEnvironment.CheckRefresh(*v);
+
+						v->resourceEnvironment.CheckRefresh(*v, location);
+						const TVec3<> world = WorldEntity::GetWorldPosition(location);
 						foreach (v->resourceEnvironment.sourceCompounds,cmp)
 						{
 							const Compound&compound = compounds[*cmp];
 							foreach (compound.containedStructures,_s)
 							{
 								PStructure s = _s->lock();
-								if (s && Vec::quadraticDistance(v->GetWorldPosition(),s->GetWorldPosition()) <= sqr(WirelessTransferRange))
+								if (s && Vec::quadraticDistance(world,s->GetWorldPosition()) <= sqr(WirelessTransferRange))
 									movementChoices << s->location + 1;
 							}
 						}
 						#ifdef CLIENT
-						ForeachMobileWorldEntity([v,&movementChoices](const PMobileEntity&m)
+						ForeachMobileWorldEntity([v,&movementChoices,world](const PMobileEntity&m)
 						{
-							if (m->owner == v->owner && Vec::quadraticDistance(v->GetWorldPosition(),m->GetWorldPosition()) <= sqr(WirelessTransferRange))
+							if (m->owner == v->owner && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= sqr(WirelessTransferRange))
 								movementChoices << m->location + 1;
 						});
 						#else
 						foreach (v->owner->allMobiles,_m)
 						{
 							PMobileEntity m = _m->lock();
-							if (m && Vec::quadraticDistance(v->GetWorldPosition(),m->GetWorldPosition()) <= sqr(WirelessTransferRange))
+							if (m && v != m.get() && Vec::quadraticDistance(v->GetWorldPosition(),m->GetWorldPosition()) <= sqr(WirelessTransferRange))
 								movementChoices << m->location + 1;
 						}
 						#endif

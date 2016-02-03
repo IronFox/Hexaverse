@@ -102,6 +102,15 @@ namespace Objects
 			numCompounds = (UINT16)compounds.Count();
 		}
 
+		MobileResourceEnvironment::TCacheID::TCacheID(const MobileEntity&m, const Grid::LCellIdI&loc)
+		{
+			round = RuntimeConfig::roundNumber;
+			stackID = (UINT16)loc.stackID;
+			layerID = (UINT8)Grid::CellStack::ToLayer(loc.height);
+			phase = (UINT8)RuntimeConfig::phase;
+			numCompounds = (UINT16)compounds.Count();
+		}
+
 		#ifndef CLIENT
 
 			/*static*/ void MobileResourceEnvironment::ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int&change)
@@ -130,17 +139,16 @@ namespace Objects
 		#endif
 
 	
-
-		void	MobileResourceEnvironment::CheckRefresh(const MobileEntity&m)
+		void	MobileResourceEnvironment::CheckRefresh(const MobileEntity&m, const Grid::LCellIdI&loc)
 		{
-			if (cacheID == m)
+			if (cacheID == TCacheID(m,loc))
 				return;
 			cacheID = m;
 			#ifdef WIRELESS_VEHICLES
 				sourceCompounds.Clear();
 				if (m.IsVehicle())
 				{
-					Grid::low.GenerateVolume(Sphere<>(m.system.w.xyz,WirelessTransferRange),desc);
+					Grid::low.GenerateVolume(Sphere<>(WorldEntity::GetWorldPosition(loc),WirelessTransferRange),desc);
 					GetOwnCompoundsIn(m.owner,desc);
 				}
 				else
@@ -169,6 +177,12 @@ namespace Objects
 					}
 			#endif
 
+		}
+
+
+		void	MobileResourceEnvironment::CheckRefresh(const MobileEntity&m)
+		{
+			return CheckRefresh(m,m.location);
 		}
 	#endif
 

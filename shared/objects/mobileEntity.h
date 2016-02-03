@@ -50,6 +50,7 @@ namespace Objects
 
 				/**/			TCacheID()	{}
 				/**/			TCacheID(const MobileEntity&);
+				/**/			TCacheID(const MobileEntity&, const Grid::LCellIdI&);
 
 				bool			operator==(const TCacheID&other) const {return round == other.round && stackID == other.stackID && layerID == other.layerID && phase == other.phase && numCompounds == other.numCompounds;}
 				bool			operator!=(const TCacheID&other) const {return !operator==(other);}
@@ -58,6 +59,7 @@ namespace Objects
 			TCacheID			cacheID;
 
 			void	CheckRefresh(const MobileEntity&);
+			void	CheckRefresh(const MobileEntity&, const Grid::LCellIdI&);
 		#else
 			inline void	CheckRefresh(const MobileEntity&)	{};
 
