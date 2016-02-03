@@ -90,10 +90,10 @@ namespace UDPBroadCast
 	}
 
 
-	void		Create(UINT16 basePort)
+	void		Create(UINT16 basePort, const TUniqueID&serverID)
 	{
 	
-		packet.hostID = Network::serverID;
+		packet.hostID = serverID;
 		packet.serverBasePort = basePort;
 		{
 			const char var[] = SERVER_NAME;
