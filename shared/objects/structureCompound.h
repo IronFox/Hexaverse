@@ -31,6 +31,9 @@ namespace Objects
 		bool						stable;
 		//ID							hashIdentifier;
 
+		#ifndef CLIENT
+			static WorkingStructure*lastDisabled;
+		#endif
 		static PWorkingStructure	Reference(const WWorkingStructure&_s);
 		count_t						CountWorkingStructures() const;
 
