@@ -2761,6 +2761,10 @@ namespace Objects
 				//	return false;
 				//}
 			}
+			if (!b)
+				Compound::lastDisabled = this;
+			else
+				Compound::lastDisabled = nullptr;
 			isEnabled = b;
 			RegisterChange(EnableChanged,atTime);
 			if (signalStructure)

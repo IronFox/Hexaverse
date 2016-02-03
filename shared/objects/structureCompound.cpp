@@ -9,6 +9,8 @@ namespace Objects
 		Buffer0<Compound,Swap>		compounds;
 	#endif
 
+
+
 	void				Compound::AppendStructure(Structure*s)
 	{
 		WorkingStructure*s2 = dynamic_cast<WorkingStructure*>(s);
@@ -19,6 +21,7 @@ namespace Objects
 
 	#ifndef CLIENT
 
+		WorkingStructure*	Compound::lastDisabled = nullptr;
 
 
 		void				Compound::FeedLeftovers(ResourceVector&vector, float atTime)
@@ -257,6 +260,9 @@ namespace Objects
 				DBG_ASSERT__(s);
 				if (!s || s->IsHibernating())
 					continue;
+				if (lastDisabled == s.get())
+					continue;
+
 				if (virtualEnabled[i] || !s->CanEnable())
 					continue;
 				virtualEnabled[i] = true;
@@ -270,6 +276,8 @@ namespace Objects
 					PWorkingStructure s= containedStructures[j].lock();
 					DBG_ASSERT__(s);
 					if (!s || s->IsHibernating())
+						continue;
+					if (lastDisabled == s.get())
 						continue;
 					if (virtualEnabled[j] || !s->CanEnable())
 						continue;
@@ -357,6 +365,8 @@ namespace Objects
 						continue;
 					if (s->IsEnabled() || !s->CanEnable())
 						continue;
+					if (lastDisabled == s.get())
+						continue;
 					
 					s->SetEnabled(true,atTime,false);
 
@@ -378,6 +388,8 @@ namespace Objects
 						if (!st || st->IsHibernating())
 							continue;
 						if (st->IsEnabled() || !st->CanEnable())
+							continue;
+						if (lastDisabled == st.get())
 							continue;
 					
 						st->SetEnabled(true,atTime,false);

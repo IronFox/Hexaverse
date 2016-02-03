@@ -180,6 +180,7 @@ namespace Evolver
 
 		void	BeginRoundProcessing()
 		{
+			Objects::Compound::lastDisabled = nullptr;
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
 				f->DropPerRoundData();
