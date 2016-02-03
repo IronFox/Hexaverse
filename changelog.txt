@@ -1,3 +1,6 @@
+v0.3.15
+	* Fixed incorrect server IDs leading to client-side merging of different servers into one
+
 v0.3.14		[Jan 29 2016]
 	* Fixed Nexus Port incorrectly registering with new neighbors when changing ownership as a result.
 	* Fixed regular explosion terrain changes being treated like doomsday explosions.

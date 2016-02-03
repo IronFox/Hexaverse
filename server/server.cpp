@@ -1325,7 +1325,9 @@ int main( int argc, const char* argv[])
 		for (int i = 1; i < argc; i++)
 			ParameterConfig::Process(argv[i]);
 
-		UDPBroadCast::Create(ParameterConfig::basePort);
+		Network::serverID.Generate();
+		UDPBroadCast::Create(ParameterConfig::basePort,Network::serverID);
+
 		if (ParameterConfig::enableRemoteControl)
 			RemoteControl::Start(ParameterConfig::basePort);
 
@@ -1483,7 +1485,6 @@ int main( int argc, const char* argv[])
 
 
 
-		Network::serverID.Generate();
 
 		if (!ParameterConfig::startOffline)
 		{
