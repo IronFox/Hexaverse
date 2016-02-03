@@ -458,6 +458,36 @@ namespace Objects
 						stable = true;
 						break;
 					}
+
+					auto s1 = s0;
+					++s1;
+					for (;s1 != containedStructures.end(); ++s1)
+					{
+						PWorkingStructure s= s1->lock();
+						DBG_ASSERT__(s);
+						if (!s || s->IsHibernating())
+							continue;
+						if (s->IsEnabled() || !s->CanEnable())
+							continue;
+					
+						s->SetEnabled(true,atTime,false);
+
+						FullResourceVector v2 = GetVector();
+						if (v2.balance.IsStable())
+						{
+							LogEvent(EventType::CompoundProcess,s.get(), "Auto-balance: Structure enabled");
+							total = v2;
+							stable = true;
+							break;
+						}
+
+						s->SetEnabled(false,atTime,false);
+					}
+					
+					if (stable)
+						break;
+
+
 					s->SetEnabled(false,atTime,false);
 				}
 			
