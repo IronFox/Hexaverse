@@ -134,6 +134,9 @@ namespace Objects
 		bool		NoStationVisibleHereExcept(UINT32 stackID, const Orbital::Station*v);
 		inline bool	NothingHere(const UINT32 cellID) {return NoShipHere(cellID) && NoStationHere(cellID);}
 		bool		NothingVisibleHereExcept(const UINT32 cellID, const WorldEntity*);
+
+		void		RemoveShipFromGrid(const PShip&v,UINT32 stackID);
+		void		InsertShipIntoGrid(const PShip&v,UINT32 stackID);
 	}
 
 	void			RemoveVehicleFromGrid(const PVehicle&v,const Grid::LCellIdI&location);

@@ -271,11 +271,15 @@ namespace Objects
 			
 				location = _cell;
 	
+
 				MobilePlacementResult result = MobilePlacementResult::PlacementOkay;
 				if (old != location)
 				{
 					if (isCreated)
 					{
+						Orbital::RemoveShipFromGrid(To<Ship>::Cast(shared_from_this()),old.stackID);
+						Orbital::InsertShipIntoGrid(To<Ship>::Cast(shared_from_this()),location.stackID);
+
 						if (constructionRoundCounter)
 						{
 							constructionRoundCounter = 0;

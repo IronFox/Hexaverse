@@ -94,8 +94,9 @@ namespace Objects
 
 				mineralCostLeft = 0;
 
-				if (jobAutoCompletion == BaseJob::Autocomplete::Always || 
-					(jobAutoCompletion == BaseJob::Autocomplete::IfSatellite && v.IsOrbital())
+				if (jobAutoCompletion == BaseJob::Autocomplete::Always 
+					//|| 
+					//(jobAutoCompletion == BaseJob::Autocomplete::IfSatellite && v.IsOrbital())
 					)
 				{
 					continue_t rs = Finish(v,focus);
@@ -912,10 +913,10 @@ namespace Objects
 					constructWhat = GetPrototypeByName(ConstName::Type_LauncherTower);
 				ASSERT1__(constructWhat,whatName);
 			}
-			jobAutoCompletion = !!To<Connector>::DynamicCast(constructWhat) ? Autocomplete::Always : Autocomplete::IfSatellite;
+			jobAutoCompletion = Autocomplete::Never;
 
 			if (constructWhat)
-				this->jobAutoCompletion = !!To<Connector>::DynamicCast(constructWhat) ? Autocomplete::Always : Autocomplete::IfSatellite;
+				this->jobAutoCompletion = constructWhat->BlocksMobileEntities() ? Autocomplete::Never : Autocomplete::Always;
 
 			//!!To<Connector>::DynamicCast(constructWhat);
 			return !!constructWhat;
@@ -929,7 +930,9 @@ namespace Objects
 
 
 		/**/					Construct::Construct(MobileEntity&v, const PStructure&c) : 
-			BaseJob(c->GetConstructionCost(),v,true,!!To<Connector>::DynamicCast(c) ? Autocomplete::Always : Autocomplete::IfSatellite,false),constructWhat(c)
+			BaseJob(c->GetConstructionCost(),v,true,
+				c->BlocksMobileEntities() ? Autocomplete::Never : Autocomplete::Always,
+				false),constructWhat(c)
 		{
 			useID.Generate();
 		}

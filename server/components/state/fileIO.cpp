@@ -827,7 +827,7 @@ namespace FileIO
 			elif (typeName == "NexusPort")
 				typeName = "Nexus Port";
 		}
-		Objects::PStructure proto = Objects::GetPrototypeByName(typeName);
+		Objects::PStructure proto = Objects::GetAnyStructurePrototypeByName(typeName);
 
 		if (globalVersionOfCurrentFile <= 1038)
 		{
@@ -1151,7 +1151,7 @@ namespace FileIO
 												}
 												else
 												{
-													Objects::PMobileEntity v = Objects::AssembleMobileEntity(Objects::PFaction(),TUniqueID(),Grid::LCellIdI(0,0),base,turret);
+													Objects::PMobileEntity v = Objects::AssembleMobileEntity(Objects::PFaction(),TUniqueID(),Grid::LCellIdI(0,Objects::Orbital::BaseHeight),base,turret);
 
 													bool doInsert = Import(child,vehicleChunk,v,factionMap);
 													#if defined CHEAT_FULL_STORAGE && !defined CONNECTOR_LESS
@@ -1483,6 +1483,7 @@ namespace FileIO
 		foreach (Objects::structures,_s)
 		{
 			Objects::Structure&s = **_s;
+			bool b = s.IsOrbital();
 			Export(objects->AppendBlock(RIFF_LIST),s,allFactions);
 		}
 

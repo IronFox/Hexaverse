@@ -43,7 +43,7 @@ namespace Objects
 			{
 				Never,
 				Always,
-				IfSatellite
+				//IfSatellite
 			};
 
 			Autocomplete			jobAutoCompletion;	//must be non-const because it can be updated from deserialization
@@ -454,7 +454,7 @@ namespace Objects
 				PStructure				constructWhat;
 				TUniqueID				useID;
 
-				/**/					Construct():Super(Autocomplete::IfSatellite,false)	{useID.Generate();}
+				/**/					Construct():Super(Autocomplete::Never,false)	{useID.Generate();}
 				/**/					Construct(MobileEntity&v, const PStructure&c);
 
 				virtual String			GetName() const override;

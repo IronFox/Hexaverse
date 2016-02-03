@@ -1119,13 +1119,7 @@ namespace Receiver
 
 				target = v->GetLastPointOfOrigin();
 
-				Objects::PStructure p;
-				foreach (Objects::structurePrototypes,proto)
-					if ((*proto)->GetCTypeName() == sjob.parameterName)
-					{
-						p = *proto;
-						break;
-					}
+				Objects::PStructure p = GetAnyStructurePrototypeByName(sjob.parameterName);
 				if (p)
 				{	
 					job.reset(new VehicleJob::Construct(*v,p));
@@ -1135,7 +1129,7 @@ namespace Receiver
 				}
 				else
 				{
-					LogEvent(EventType::CommandRejected,peer,v,"Unable to construct structure type");
+					LogEvent(EventType::CommandRejected,peer,v,"Unable to construct unknown or non-structure type #"+String((int)sjob.parameterName.value));
 					Network::InvalidOperation(peer);
 				}
 			}

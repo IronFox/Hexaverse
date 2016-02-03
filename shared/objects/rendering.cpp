@@ -1019,9 +1019,10 @@ namespace Objects
 
 			if (s->health < maxHealth || isBuilding)
 			{
+				float scale = s->IsOrbital() ? 3.f : 1.f;
 				ProgressBar::SetLocation(s->GetWorldPosition()
 				+ 
-				Grid::low.cells[s->location.stackID].centerVertex.xyz*(float(s->GetHeight()-1) * Grid::SingleLayerHeight));
+				Grid::low.cells[s->location.stackID].centerVertex.xyz*(float(s->GetHeight()-1) * Grid::SingleLayerHeight),scale);
 				{
 					if (isBuilding)
 					{

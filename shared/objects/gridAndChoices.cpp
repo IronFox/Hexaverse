@@ -773,31 +773,45 @@ namespace Objects
 	}
 
 
-
-	bool NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient)
+	PWorldEntity GetBlocker(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient)
 	{
 		if (cellID.height >= Grid::CellStack::HalfRange)
 		{
 			Orbital::PStation s = Orbital::GetStation(cellID.stackID);
 			if (s && s->BlocksMobileEntities())
-				return false;
+				return PWorldEntity();
 			#ifdef CLIENT
-				return !checkVehiclesOnClient || !Orbital::GetShip(cellID.stackID);	//timing issues may cause problems with getVehicle, but sometimes it wont matter
+				return checkVehiclesOnClient ? Orbital::GetShip(cellID.stackID) : PWorldEntity();	//timing issues may cause problems with getVehicle, but sometimes it wont matter
 			#else
-				return !Orbital::GetShip(cellID.stackID);
+				return Orbital::GetShip(cellID.stackID);
 			#endif
 		}
 
 		PStructure s = GetStructure(cellID);
 		if (s && s->BlocksMobileEntities())
-			return false;
+			return PWorldEntity();
 		#ifdef CLIENT
-			return !checkVehiclesOnClient || !GetVehicle(cellID);	//timing issues may cause problems with getVehicle, but sometimes it wont matter
+			return checkVehiclesOnClient ? GetVehicle(cellID) : PWorldEntity();	//timing issues may cause problems with getVehicle, but sometimes it wont matter
 		#else
 			PVehicle v = GetVehicle(cellID);
-			return !v;
+			return v;
 		#endif
 	}
+
+
+	bool NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient)
+	{
+		return !GetBlocker(cellID,checkVehiclesOnClient);
+	}
+
+	void AssertNothingBlockingHere(const Grid::LCellIdI&loc,bool checkVehiclesOnClient)
+	{
+		PWorldEntity e = GetBlocker(loc,checkVehiclesOnClient);
+		if (e)
+			ASSERT3__(e->location==loc,e->GetName(),e->location.ToString(),loc.ToString());
+		ASSERT2__(!e,e->GetName(),e->location.ToString());
+	}
+
 
 
 	void	GetProductionChoices(const WorldEntity*producer,Component::VehicleBase*production,
@@ -1169,7 +1183,8 @@ namespace Objects
 	{
 		ASSERT1__(!e->isInserted, e->GetName());
 		#ifndef CLIENT
-			ASSERT2__(To<Connector>::DynamicCast(e) || NothingBlockingHere(e->location,false),e->GetName(),e->location.ToString());
+			if (!To<Connector>::DynamicCast(e))
+				AssertNothingBlockingHere(e->location,false);
 			e->ResetAllChange();
 		#else
 			ASSERT__(To<Connector>::DynamicCast(e) || e->IsMobile() || NothingBlockingHere(e->location,false));
@@ -2902,6 +2917,22 @@ namespace Objects
 
 
 	#endif
+
+
+
+	namespace Orbital
+	{
+		void		RemoveShipFromGrid(const PShip&v,UINT32 stackID)
+		{
+			RemoveFromGrid(shipGrid,stackID,v);
+		}
+		void		InsertShipIntoGrid(const PShip&v,UINT32 stackID)
+		{
+			InsertIntoGrid(shipGrid,stackID,v);
+		}
+
+
+	}
 
 
 

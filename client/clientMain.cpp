@@ -561,7 +561,7 @@ void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName p
 			Objects::NaturalResourceVector	res;
 			if (res.SampleWorld(v->GetLastPointOfOrigin().stackID))
 			{
-				String name = Objects::GetPrototypeByName(parameterName)->GetTypeName();
+				String name = Objects::GetAnyStructurePrototypeByName(parameterName)->GetTypeName();
 				TUniqueID id = v->id;
 				if (parameterName != ConstName::Type_Mine && res.IsNotEmpty())
 				{

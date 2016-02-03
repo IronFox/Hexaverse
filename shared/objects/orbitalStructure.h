@@ -236,6 +236,10 @@ namespace Objects
 
 				//WorkingStructure overrides:
 				virtual void			GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Energy] = -EnergyConsumption; v.level[Resource::Minerals] = -(int)EntityFactory::productionPerRound;}
+				virtual bool			IsBuilding(std::pair<int,int>&outProgress) const override
+				{
+					return EntityFactory::IsBuilding(outProgress);
+				}
 
 				//BaseEntity overrides:
 				virtual String			GetTypeName() const override {return "Sky Hub";}

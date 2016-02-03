@@ -1416,7 +1416,7 @@ namespace Animation
 			//Vec::makeNormalTo(nodes.first().dir,nodes.first().position);
 			Vec::makeNormalTo(nodes.last().dir,nodes.last().position);
 		}
-		if (!target->IsOrbital())
+		//if (!target->IsOrbital())
 			nodes.first().dir = -target->system.y.xyz;
 		foreach (nodes, n)
 		{
@@ -1471,17 +1471,17 @@ namespace Animation
 			Vec::resolveBezierCurvePoint(p0,c0,c1,p1,fj,p);
 
 			TMatrix4<>&sys = target->system;
-			if (target->IsOrbital())
-			{
-				sys.z.xyz = p;
-				Vec::normalize0(sys.z.xyz);
+			//if (target->IsOrbital())
+			//{
+			//	sys.z.xyz = p;
+			//	Vec::normalize0(sys.z.xyz);
 
-				Vec::cross(sys.y.xyz,sys.z.xyz,sys.x.xyz);
-				Vec::normalize0(sys.x.xyz);
-				Vec::cross(sys.z.xyz,sys.x.xyz,sys.y.xyz);
-				Vec::normalize0(sys.y.xyz);
-			}
-			else
+			//	Vec::cross(sys.y.xyz,sys.z.xyz,sys.x.xyz);
+			//	Vec::normalize0(sys.x.xyz);
+			//	Vec::cross(sys.z.xyz,sys.x.xyz,sys.y.xyz);
+			//	Vec::normalize0(sys.y.xyz);
+			//}
+			//else
 			{
 				TVec3<> n,d,axis;
 				Vec::resolveBezierCurveAxis(p0,c0,c1,p1,fj,axis);
