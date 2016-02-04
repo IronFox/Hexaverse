@@ -3,6 +3,7 @@ v0.3.15
 	* Fixed UI buttons now graying out when they should.
 	> Extended automatic building activation to two.
 	> It is now possible to deactivate essential buildings without the balancer automatically reactivating them.
+	+ Spectator mode now colors units differently depending on their faction
 
 v0.3.14		[Jan 29 2016]
 	* Fixed Nexus Port incorrectly registering with new neighbors when changing ownership as a result.
