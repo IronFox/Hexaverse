@@ -1418,7 +1418,7 @@ bool loop()
 			}
 
 
-
+			Objects::Renderer::RefreshFactionColors(!saveScreenshot);
 			Objects::Renderer::RenderScene();
 
 

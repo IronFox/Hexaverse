@@ -191,9 +191,10 @@ namespace Objects
 
 
 		/**
-		Updates active and inactive colors of all factions. Should be called once per frame. Currently called by RenderScene() automatically
+		Updates active and inactive colors of all factions. Should be called once per frame
+		@param pulse Set true to let active entity colors pulse, false to use time-invariant colors
 		*/
-		void	RefreshFactionColors();
+		void	RefreshFactionColors(bool pulse);
 	}
 
 }
