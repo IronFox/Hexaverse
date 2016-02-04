@@ -1653,4 +1653,23 @@ namespace Objects
 
 	#endif
 
+
+	/*static*/ void Faction::IDToColor(TVec3<>&rs, const TUniqueID&id, int iteration/*=0*/)
+	{
+		UINT32 crc32 = CRC32::getChecksum(id.bytes,id.NumBytes);
+		Random r(crc32+iteration);
+		//float3 rs;
+		float lowest,highest,delta;
+		do
+		{
+			Vec::def(rs,r.getFloat(),r.getFloat(),r.getFloat());
+			lowest = Vec::min(rs);
+			highest = Vec::max(rs);
+			delta = highest - lowest;
+		}
+		while (delta < 0.01f);
+		Vec::subVal(rs,lowest);	//rs = (rs - lowest) / delta;
+		Vec::div(rs,delta);	//trying to be faster here
+	};
+
 }

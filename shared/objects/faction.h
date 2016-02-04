@@ -147,7 +147,10 @@ namespace Objects
 		TUniqueID	id;
 		String		name;
 		bool		online = false;
+		float3		color;
 		#ifdef CLIENT
+			float3	activeEntityColor,
+					inactiveEntityColor;
 			bool	requestedNewRound = false;
 			bool	isMine = false;
 			count_t	roundChangeNotifications=0;
@@ -171,12 +174,28 @@ namespace Objects
 				return "<NULL>";
 			return id.ToString()+":'"+name+"'";
 		}
+
+
+		/**
+		Computes a suitable color from a given faction ID.
+		The process is guaranteed to return a well saturated, lit color, but may be too slow to use on a per-frame basis.
+		No checks for uniqueness are performed at this stage.
+		@param[out] outColor Resulting faction color
+		@param id Unique faction ID
+		@param iteration Passing a different iteration alters the resulting color in a random way
+		*/		
+		static void IDToColor(TVec3<>&outColor, const TUniqueID&id, int iteration=0);
+
+
 		#ifdef CONNECTOR_LESS
 			//index_t		compoundIndex = InvalidIndex;
 		#endif
 
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
+
+			/**/					Faction(const TUniqueID&id):id(id) {IDToColor(color,id);}
+
 		#else
 			CryptographicID	accessToken;
 			Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
@@ -240,6 +259,7 @@ namespace Objects
 
 				accessToken.Generate();
 				id.Generate();
+				IDToColor(color,id);
 			}
 
 			/**

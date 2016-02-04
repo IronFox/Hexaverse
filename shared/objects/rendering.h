@@ -189,6 +189,12 @@ namespace Objects
 		void	RenderRangeCylinder(const TVec3<>&direction, float bottomRadius, float topRadius, float bottom, float top, const float4&color);
 		void	RenderRange(const Grid::LCellIdI&location, float zOffset, const PTurretBase&base, const float4&color, bool extended);
 
+
+
+		/**
+		Updates active and inactive colors of all factions. Should be called once per frame. Currently called by RenderScene() automatically
+		*/
+		void	RefreshFactionColors();
 	}
 
 }

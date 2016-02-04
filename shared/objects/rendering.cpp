@@ -160,7 +160,8 @@ namespace Objects
 
 
 
-	static const float3 inactiveColorMine(/*0.2f, 0.2f, 0.5f*/0.f), inactiveColorTheirs(0.5f,0.2f,0.2f);
+	static const float3 inactiveColorMine/*=0*/,
+						inactiveColorTheirs(0.5f,0.2f,0.2f);
 	static bool flip=false;
 
 
@@ -501,6 +502,12 @@ namespace Objects
 		_RenderSimpleLocated(s,Matrix<>::eye4);
 	}
 
+	void	Renderer::RefreshFactionColors()
+	{
+		
+	}
+
+
 	void	Renderer::Render(Satellite&s, const float3&activeColor, const float3&inactiveColor, float light)
 	{
 		display.SetObjectMatrix(s.system);
@@ -567,6 +574,7 @@ namespace Objects
 		_RenderSimpleLocated(s);
 
 	}
+
 
 	void	Renderer::Render(Structure&s, const float3&activeColorMine, const float3&activeColorTheirs)
 	{

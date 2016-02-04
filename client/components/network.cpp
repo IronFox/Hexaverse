@@ -66,8 +66,7 @@ namespace Network
 			if (rs)
 				return *rs;
 		}
-		Objects::OwnerParameter rs(new Objects::Faction());
-		rs->id = id;
+		Objects::OwnerParameter rs(new Objects::Faction(id));
 		factionMap.Set(id,rs);
 		Objects::Faction::allKnown << rs;
 		return rs;
