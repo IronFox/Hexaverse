@@ -74,22 +74,22 @@
 
 
 
-
-		void	Gauge::Set(int current, int max, int changePerRound, int localCurrent, int localChange, bool enabled)
+		void	Gauge::Set(int current, int max, int current2, int max2, int changePerRound, bool enabled)
 		{
-
-			//max = std::max(10.f,max);
-			if (current == this->current && max == this->max && changePerRound == this->changePerRound
-				&& localCurrent == this->localCurrent && localChange == this->localChange && enabled == this->enabled)
+			if (current == this->current && max == this->max 
+				&&
+				current2 == this->current2 && max2 == this->max2
+				&& changePerRound == this->changePerRound
+				&& enabled == this->enabled)
 				return;
 			top0 = std::max(current,current+changePerRound);
 			top1 = std::max(max,top0);
-			top = std::max(abs(current+localChange), top1);
+			top = std::max(abs(current), top1);
 			this->current = current;
 			this->max = max;
+			this->current2 = current2;
+			this->max2 = max2;
 			this->changePerRound = changePerRound;
-			this->localCurrent = localCurrent;
-			this->localChange = localChange;
 			this->enabled = enabled;
 			ftop = std::max(1,top);
 			hScale = height / float(ftop);
@@ -103,7 +103,6 @@
 			#endif
 			changed = true;
 		}
-
 
 
 
@@ -236,6 +235,13 @@
 				textout.scale(0.6f,0.6f);
 				textout <<'/'<<max;
 			}
+			if (max2 > 0)
+			{
+				textout.scale(1.f/0.6f,1.f/0.6f);
+				textout << " +"<<current2;
+				textout.scale(0.6f,0.6f);
+				textout <<'/'<<max2;
+			}
 			//textout << max;
 			textout.popState();
 
@@ -354,16 +360,16 @@
 
 			if (changePerRound >= 0)
 			{
-				if (localCurrent > 0)
-				{
-					ConstructPart(1.f,0,localCurrent,float4(1,0,0,0.95f),geo[0]);
-					ConstructPart(1.f,localCurrent,current,float4(color,0.95f),geo[0]);
-				}
-				else
+				//if (localCurrent > 0)
+				//{
+				//	ConstructPart(1.f,0,localCurrent,float4(1,0,0,0.95f),geo[0]);
+				//	ConstructPart(1.f,localCurrent,current,float4(color,0.95f),geo[0]);
+				//}
+				//else
 					ConstructPart(1.f,0,current,float4(color,0.95f),geo[0]);
 				if (changePerRound > 0)
 				{
-					int top = current + std::max(0,changePerRound - (enabled ? localChange : 0));
+					int top = current + std::max(0,changePerRound /*- (enabled ? localChange : 0)*/);
 					//int top1 = std::min(max,top);
 					ConstructPart(0.8f,current,top,float4(color,0.f),float4(color,0.6f),geo[0]);
 
@@ -373,37 +379,37 @@
 			}
 			else
 			{
-				if (localCurrent > 0)
-				{
-					int step = std::min(localCurrent,std::max(0,(current+changePerRound)));
-					ConstructPart(1.f,0,step,float4(1,0,0,0.95f),geo[0]);
+				//if (localCurrent > 0)
+				//{
+				//	int step = std::min(localCurrent,std::max(0,(current+changePerRound)));
+				//	ConstructPart(1.f,0,step,float4(1,0,0,0.95f),geo[0]);
 
-					ConstructPart(1.f,step,std::max(0,(current+changePerRound)) ,float4(color,0.95f),geo[0]);
-				}
-				else
+				//	ConstructPart(1.f,step,std::max(0,(current+changePerRound)) ,float4(color,0.95f),geo[0]);
+				//}
+				//else
 				{
 					ConstructPart(1.f,0,std::max(0,(current+changePerRound)) ,float4(color,0.95f),geo[0]);
 				}
 				ConstructPart(1.f,std::max(0,(current+changePerRound)),current,float4((color + float3(1,0.5,0.5))/1.5f,0.95f),geo[0]);
 			}
 
-			if (localChange != 0)
-			{
-				float t = current+changePerRound;
-				if (localChange > 0)
-				{
-					if (enabled)
-						ConstructPart(0.6f,t- localChange,t,float4(1,0,0,0.f),float4(1,0,0,0.6f),geo[0]);
-					else
-						ConstructPart(0.6f,t,t + localChange,float4(1,0.5f,0,0.f),float4(1,0.5f,0,0.6f),geo[0]);
-				}
-				else
-					if (enabled)
-						ConstructPart(0.6f,t,t-localChange,float4(1,0,0,0.6f),float4(1,0,0,0.f),geo[0]);
-					else
-						ConstructPart(0.6f,t+localChange,t,float4(1,0.5f,0,0.6f),float4(1,0.5f,0,0.f),geo[0]);
-					//ConstructPart(0.8f,current,top1,float4(color,0.f),float4(color,0.6f),geo[0]);
-			}
+			//if (localChange != 0)
+			//{
+			//	float t = current+changePerRound;
+			//	if (localChange > 0)
+			//	{
+			//		if (enabled)
+			//			ConstructPart(0.6f,t- localChange,t,float4(1,0,0,0.f),float4(1,0,0,0.6f),geo[0]);
+			//		else
+			//			ConstructPart(0.6f,t,t + localChange,float4(1,0.5f,0,0.f),float4(1,0.5f,0,0.6f),geo[0]);
+			//	}
+			//	else
+			//		if (enabled)
+			//			ConstructPart(0.6f,t,t-localChange,float4(1,0,0,0.6f),float4(1,0,0,0.f),geo[0]);
+			//		else
+			//			ConstructPart(0.6f,t+localChange,t,float4(1,0.5f,0,0.6f),float4(1,0.5f,0,0.f),geo[0]);
+			//		//ConstructPart(0.8f,current,top1,float4(color,0.f),float4(color,0.6f),geo[0]);
+			//}
 
 			ConstructPart(1.f,0,max,float4(float3(1),0.25),geo[1]);
 
@@ -1611,9 +1617,25 @@
 				showExtraGauges = true;
 			#endif
 			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
-				gauges[i].Set(current.level[i],max.level[i],change.level[i],0,0,true);
+				gauges[i].Set(current.level[i],max.level[i],0,0,change.level[i],true);
 
 		}
+
+		void	Update(TRAFFIC	const Objects::ResourceVector&current, const Objects::ResourceVector&max, 
+								const Objects::ResourceVector&current2, const Objects::ResourceVector&max2, 
+								const Objects::ResourceVector&change)
+		{
+			#ifndef NO_HIBERNATION
+				UpdateTraffic(traffic);
+			#else
+				showExtraGauges = true;
+			#endif
+			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
+				gauges[i].Set(current.level[i],max.level[i],current2.level[i],max2.level[i],change.level[i],true);
+		}
+
+
+
 
 		void	Update( TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max)
 		{
@@ -1627,18 +1649,18 @@
 
 		}
 
-		void	Update( TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change,
-						const Objects::ResourceVector&localCurrent/*, const Objects::ResourceVector&localChange, bool isEnabled*/)
-		{
-			#ifndef NO_HIBERNATION
-				UpdateTraffic(traffic);
-			#else
-				showExtraGauges = true;
-			#endif
-			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
-	//			resources[i].Set(current.level[i],max.level[i],change.level[i],localCurrent.level[i],localChange.level[i],isEnabled);
-				gauges[i].Set(current.level[i],max.level[i],change.level[i],localCurrent.level[i],0,true);
-		}
+	//	void	Update( TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change,
+	//					const Objects::ResourceVector&localCurrent/*, const Objects::ResourceVector&localChange, bool isEnabled*/)
+	//	{
+	//		#ifndef NO_HIBERNATION
+	//			UpdateTraffic(traffic);
+	//		#else
+	//			showExtraGauges = true;
+	//		#endif
+	//		for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
+	////			resources[i].Set(current.level[i],max.level[i],change.level[i],localCurrent.level[i],localChange.level[i],isEnabled);
+	//			gauges[i].Set(current.level[i],max.level[i],change.level[i],localCurrent.level[i],0,true);
+	//	}
 
 		void	Render()
 		{

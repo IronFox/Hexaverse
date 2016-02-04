@@ -291,7 +291,7 @@ namespace Objects
 			/**
 			Checks whether or not the local turret could ever possibly consume resources
 			*/
-			bool							ConsumesResources(Resource&res) const;
+			bool							ConsumesResources(ResourceFlagSet&res) const;
 		};
 
 

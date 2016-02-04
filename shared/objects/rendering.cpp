@@ -1566,6 +1566,30 @@ namespace Objects
 		}
 	}
 
+	void		Renderer::SelectCompoundAreas(const OwnerParameter&owner, ResourceFlagSet producersOf)
+	{
+		compoundScope.Clear();
+		
+				
+		foreach (compounds,c)
+		{
+			if (c->containedStructures.IsEmpty())
+				continue;
+			PStructure s = c->containedStructures.first().lock();
+			if (!s || s->owner != owner)
+				continue;
+			if (c->total.balance.AnyIsSet(producersOf))
+			{
+				compoundScope << c - compounds.pointer();
+			}
+		}
+
+		for (auto c : compoundScope)
+		{
+			compounds[c].color = ColorCompoundInRange((UINT32)(c));
+		}
+	}
+
 
 	void		Renderer::Flush()
 	{

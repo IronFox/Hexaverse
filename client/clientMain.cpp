@@ -1014,9 +1014,9 @@ void	OnAppear(const Objects::PWorldEntity&e)
 		{
 			Objects::PTurretBase base = Objects::selectedMobileEntity->GetTurretBase();
 
-			Objects::Resource res;
+			Objects::ResourceFlagSet res;
 			Objects::ResourceVector change;
-			Objects::ResourceVector current = Objects::selectedMobileEntity->currentStorage;
+			Objects::ResourceVector current = Objects::selectedMobileEntity->currentStorage,current2,max2;
 			Objects::ResourceVector max = Objects::selectedMobileEntity->GetMaxStorageCapacity();
 			if (base && base->turret->ConsumesResources(res))
 			{
@@ -1032,12 +1032,16 @@ void	OnAppear(const Objects::PWorldEntity&e)
 					if (*c >= Objects::compounds.Count())
 						continue;
 					const auto&compound = Objects::compounds[*c];
-					current.level[res] += compound.total.storage.level[res];
-					max.level[res] += compound.total.storageMax.level[res];
-					change.level[res] += compound.total.supply.level[res];
-					change.level[res] -= compound.total.demand.level[res];
+					for (index_t i = 0; i < Objects::Resource::N; i++)
+						if (res & i)
+						{
+							current2.level[i] += compound.total.storage.level[i];
+							max2.level[i] += compound.total.storageMax.level[i];
+							change.level[i] += compound.total.supply.level[i];
+							change.level[i] -= compound.total.demand.level[i];
+						}
 					any = true;
-					if (res == Objects::Resource::Minerals)
+					if (res & Objects::Resource::Minerals)
 						for (const auto v : Objects::vehicles)
 							if (v->isMine)
 							{
@@ -1047,35 +1051,40 @@ void	OnAppear(const Objects::PWorldEntity&e)
 									change.level[Objects::Resource::Minerals] -= v->GetCurrentMineralConsumption();
 								}
 							}
+					if (res & Objects::Resource::Fuel)
+						for (const auto v : Objects::satellites)
+							if (v->isMine && v->RequiresFuel())
+							{
+								v->resourceEnvironment.CheckRefresh(*v);
+								if (v->resourceEnvironment.sourceCompounds.Contains(*c))
+								{
+									change.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound();
+								}
+							}
 				}
-				if (!any && res == Objects::Resource::Minerals)
-					change.level[Objects::Resource::Minerals] -= Objects::selectedMobileEntity->GetCurrentMineralConsumption();
+				if (!any)
+				{
+					if (res & Objects::Resource::Minerals)
+						change.level[Objects::Resource::Minerals] -= Objects::selectedMobileEntity->GetCurrentMineralConsumption();
+					if (res & Objects::Resource::Fuel)
+					{
+						if (Objects::selectedMobileEntity->IsSatellite())
+						{
+							Objects::PSatellite sat = To<Objects::Satellite>::Cast(Objects::selectedMobileEntity);
+							if (sat->RequiresFuel())
+								change.level[Objects::Resource::Fuel] -= sat->GetFuelConsumptionPerRound();
+						}
+					}
+				}
 			}
-//				int sum = Objects::selectedMobileEntity->GetCurrentMineralConsumption();
-				
-			//foreach (Objects::selectedMobileEntity->myTasks,t)
-			//	if (t->job)
-			//		sum += t->job->mineralCostLeft;
-//			if (sum)
 			{
-//				change.level[Objects::Resource::Minerals] -= sum;//-Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft;
 				UI::Update(
 						#ifndef NO_HIBERNATION
 							Objects::selectedVehicle->GetUplinkTraffic(),	
 						#endif
-							current,max,change);
+							current,max,current2,max2, change);
 			}
-			//else
-			//	UI::Update(
-			//			#ifndef NO_HIBERNATION
-			//				Objects::selectedVehicle->GetUplinkTraffic(),
-			//			#endif
-			//			current,max);
 		}
-		//else if (Objects::selectedEntity && Objects::selectedEntity->IsMobile())
-		//{
-		//	FATAL__("not implemented yet");
-		//}
 		else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
 		{
 			if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
@@ -1094,22 +1103,20 @@ void	OnAppear(const Objects::PWorldEntity&e)
 							balance.level[Objects::Resource::Minerals] -= v->GetCurrentMineralConsumption();
 						}
 					}
-				if (ws)
-				{
-					Objects::ResourceVector change, storage, max;
-					ws->GetResourceVector(change, storage, max);
-					UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedEntity->GetUplinkTraffic(), 
-						#endif
-						n.total.storage, n.total.storageMax, balance, storage/*,change, ws->IsEnabled()*/);
-				}
-				else
-					UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedEntity->GetUplinkTraffic(),
-						#endif
-						n.total.storage, n.total.storageMax, balance);
+				for (const auto v : Objects::satellites)
+					if (v->isMine && v->RequiresFuel())
+					{
+						v->resourceEnvironment.CheckRefresh(*v);
+						if (v->resourceEnvironment.sourceCompounds.Contains(s->compoundID))
+						{
+							balance.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound();
+						}
+					}
+				UI::Update(
+					#ifndef NO_HIBERNATION
+						Objects::selectedEntity->GetUplinkTraffic(),
+					#endif
+					n.total.storage, n.total.storageMax, balance);
 			}
 			else
 				UI::HideExtraGauges();

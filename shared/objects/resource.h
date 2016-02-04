@@ -21,7 +21,27 @@ namespace Objects
 
 	typedef ResourceVectorT<Resource>	ResourceVector;
 
+	struct ResourceFlagSet
+	{
+	private:
+		static_assert(Resource::N<=32,"Need other flag storage");
+		typedef UINT32	flagT;
+		flagT	isSet = 0;
 
+		explicit	ResourceFlagSet(flagT set) : isSet(set)	{}
+	public:
+		/**/	ResourceFlagSet()	{}
+		/**/	ResourceFlagSet(Resource res)	{Set(res);}
+		/**/	ResourceFlagSet(Resource::value_t res)	{Set(res);}
+
+
+		void	Set(Resource res)	{isSet |= ((flagT)1 << (flagT)res);}
+		
+		void	operator|=(ResourceFlagSet res)	{isSet |= res.isSet;}
+		ResourceFlagSet	operator|(ResourceFlagSet res) const	{return ResourceFlagSet(isSet | res.isSet);}
+		bool	operator&(Resource res) const {return (isSet & ((flagT)1 << (flagT)res)) != 0;}
+		bool	operator&(index_t resIndex) const {return (isSet & ((flagT)1 << (flagT)resIndex)) != 0;}
+	};
 	
 	struct NaturalResourceVector
 	{
@@ -196,6 +216,14 @@ namespace Objects
 			{
 				static const int compare0[Resource::NumberOfPossibilities] = {0};
 				return !VecUnroll<Resource::NumberOfPossibilities>::oneLess(level,compare0);
+			}
+
+			bool	AnyIsSet(const ResourceFlagSet&set) const
+			{
+				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+					if ((set & i) && level[i] != 0)
+						return true;
+				return false;
 			}
 		};
 
