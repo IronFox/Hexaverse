@@ -361,6 +361,35 @@ namespace Objects
 
 		}
 
+		//void		Faction::SignalLossOfTemporarySensory()
+		//{
+		//	static Buffer0<PWorldEntity>	toDump;
+		//	seeing.VisitAllKeys([this](const PWorldEntity&e)
+		//	{
+		//		if (!e->IsSatellite() && !GridCanSee(e))
+		//		{
+		//			toDump << e;
+		//		}
+		//	});
+
+		//	if (toDump.IsEmpty())
+		//		return;
+		//	for (const auto&e : toDump)
+		//	{
+		//		float t = 0;
+		//		gainedVisualAt.Query(e,t);
+		//		if (e->IsMobile())
+		//			t = std::max(t,To<MobileEntity>::Cast(e)->timeAt);
+
+		//		SignalDisappearance(e,t,true);
+		//	}
+
+
+		//	toDump.Clear();
+
+		//}
+
+
 		bool Faction::GridCanSee(const Grid::HighSetup::TVolumeDescriptor&v) const
 		{
 			foreach (v.coverage,st)
@@ -371,7 +400,7 @@ namespace Objects
 				const auto&stack = visibility.cellStack[st->stackID];
 				for (UINT32 layer = st->layerBegin; layer < st->layerEnd; layer++)
 				{
-					if (stack.volumeCell[layer].IsVisible())
+					if (stack.volumeCell[layer].IsCurrentlyVisible())
 						return true;
 				}
 			}
@@ -390,7 +419,7 @@ namespace Objects
 				const auto&stack = visibility.cellStack[fine];
 				//const UINT32 fine2 = c.neighborhood.neighborID[k];
 				for (UINT32 layer = bottom; layer < end; layer++)
-					if (stack.volumeCell[layer].IsVisible())
+					if (stack.volumeCell[layer].IsCurrentlyVisible())
 						return true;
 			}
 
@@ -934,6 +963,7 @@ namespace Objects
 
 	#else
 		/*static*/ Buffer0<PFaction>			Faction::allKnown;
+		/*static*/ PFaction						Faction::mine;
 
 		/*static*/ Buffer0<Marker, Strategy::Adopt>	Marker::all; 
 		/*static*/ GenericHashTable<TUniqueID, index_t, TUniqueID>	Marker::idMap,
@@ -1623,5 +1653,30 @@ namespace Objects
 
 
 	#endif
+
+	float Next(std::mt19937&random)
+	{
+		return float(random()) / float(random.max());
+	}
+
+	/*static*/ void Faction::IDToColor(TVec3<>&rs, const TUniqueID&id, int iteration/*=0*/)
+	{
+		UINT32 crc32 = CRC32::getChecksum(id.bytes,id.NumBytes);
+		std::mt19937 r((long)(crc32+iteration));
+		//Random r(crc32+iteration);
+		//float3 rs;
+		float lowest,highest,delta;
+		do
+		{
+		
+			Vec::def(rs,Next(r),Next(r),Next(r));
+			lowest = Vec::min(rs);
+			highest = Vec::max(rs);
+			delta = highest - lowest;
+		}
+		while (delta < 0.01f);
+		Vec::subVal(rs,lowest);	//rs = (rs - lowest) / delta;
+		Vec::div(rs,delta);	//trying to be faster here
+	};
 
 }

@@ -2,6 +2,7 @@
 #include "serverLogEvent.h"
 
 #include "networkChannels.h"
+#include "remoteControl.h"
 
 namespace Logging
 {
@@ -11,8 +12,12 @@ namespace Logging
 			|| type == EventType::Debug
 			|| type == EventType::MinorEntityProcess 
 			|| type == EventType::RemoteControl
-			|| type == EventType::RemoteControlError
-			|| !Network::server.IsOnline())
+			|| type == EventType::RemoteControlResponse
+			|| type == EventType::RemoteControlError)
+			return;
+
+
+		if (!Network::server.IsOnline())
 			return;
 		if (!toPeer && e)
 		{
@@ -31,6 +36,9 @@ namespace Logging
 		else
 			out.message = msg;
 		out.type = (BYTE)type;
+
+		if (!toPeer)
+			RemoteControl::RelayEvent(out.message);
 
 		if (toPeer)
 		{

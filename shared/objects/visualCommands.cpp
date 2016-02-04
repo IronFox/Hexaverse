@@ -10,6 +10,7 @@
 #include "visualSelection.h"
 #include "visualChoices.h"
 #include "satellite.h"
+#include "faction.h"
 #include <image/converter/magic.h>
 
 extern Engine::Display<Engine::DirectX11>	display;
@@ -45,6 +46,13 @@ namespace Objects
 
 
 
+	float4 BackgroundColor(const PWorldEntity&e)
+	{
+		return float4(e->owner->activeEntityColor*0.4f,0.5f);
+
+	}
+
+
 	/*static*/ void		VehicleCommand::UpdateTexture(EntityCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
 	{
 		GeometryImage::BeginRendering(backgroundColor);
@@ -73,8 +81,10 @@ namespace Objects
 		if (v->health <= 0)
 			overallTint.Update(float4(0.25f));
 
-		if (v->health <= 0 && v->isMine)
-			keyColor.Update(float4(0.2,0.2,0.4,1));
+		if (v->health <= 0)
+			keyColor.Update(float4(0,0,0,1));
+		else
+			keyColor.Update(float4(v->owner->activeEntityColor,1));
 		#ifndef NO_HIBERNATION
 			if (v->ToHibernating()->IsHibernating())
 			{
@@ -89,7 +99,7 @@ namespace Objects
 
 	/*static*/ void		VehicleCommand::UpdateTexture(EntityCommand&target, const PVehicle&v, bool isPrototype, const float4&tone/* = float4(0)*/)
 	{
-		GeometryImage::BeginRendering(tone);
+		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(v));
 
 		TMatrix4<> sys = Matrix<>::eye4;
 		sys.x.x = sys.y.y = sys.z.z = 2.5f;
@@ -123,7 +133,7 @@ namespace Objects
 
 	/*static*/ void			StructureCommand::UpdateTexture(EntityCommand&target, const PStructure&structure, bool isPrototype, const float4&tone /*= float4(0)*/)
 	{
-		GeometryImage::BeginRendering(tone);
+		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(structure));
 
 		UpdateStateColors(structure,tone,isPrototype);
 			
@@ -153,7 +163,7 @@ namespace Objects
 
 	/*static*/ void		SatelliteCommand::UpdateTexture(EntityCommand&target, const PSatellite&sat, bool isPrototype, const float4&tone/* = float4(0)*/)
 	{
-		GeometryImage::BeginRendering(tone,1.5f);
+		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(sat),1.5f);
 
 		//TMatrix4<> sys = Matrix<>::eye4;
 		//sys.x.x = sys.y.y = sys.z.z = 2.5f;

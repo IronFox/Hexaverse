@@ -9,6 +9,8 @@ namespace Objects
 		Buffer0<Compound,Swap>		compounds;
 	#endif
 
+
+
 	void				Compound::AppendStructure(Structure*s)
 	{
 		WorkingStructure*s2 = dynamic_cast<WorkingStructure*>(s);
@@ -19,6 +21,7 @@ namespace Objects
 
 	#ifndef CLIENT
 
+		WorkingStructure*	Compound::lastDisabled = nullptr;
 
 
 		void				Compound::FeedLeftovers(ResourceVector&vector, float atTime)
@@ -257,6 +260,9 @@ namespace Objects
 				DBG_ASSERT__(s);
 				if (!s || s->IsHibernating())
 					continue;
+				if (lastDisabled == s.get())
+					continue;
+
 				if (virtualEnabled[i] || !s->CanEnable())
 					continue;
 				virtualEnabled[i] = true;
@@ -264,6 +270,24 @@ namespace Objects
 				FullResourceVector v2 = GetVector(virtualEnabled);
 				if (v2.balance.IsStable())
 					return true;
+
+				for (index_t j = i+1; j < containedStructures.Count(); j++)
+				{
+					PWorkingStructure s= containedStructures[j].lock();
+					DBG_ASSERT__(s);
+					if (!s || s->IsHibernating())
+						continue;
+					if (lastDisabled == s.get())
+						continue;
+					if (virtualEnabled[j] || !s->CanEnable())
+						continue;
+					virtualEnabled[j] = true;
+
+					FullResourceVector v2 = GetVector(virtualEnabled);
+					if (v2.balance.IsStable())
+						return true;
+					virtualEnabled[i] = false;
+				}
 
 				count_t nowLacking = 0;
 				for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
@@ -341,6 +365,8 @@ namespace Objects
 						continue;
 					if (s->IsEnabled() || !s->CanEnable())
 						continue;
+					if (lastDisabled == s.get())
+						continue;
 					
 					s->SetEnabled(true,atTime,false);
 
@@ -352,6 +378,39 @@ namespace Objects
 						stable = true;
 						break;
 					}
+
+					auto s1 = s0;
+					++s1;
+					for (;s1 != containedStructures.end(); ++s1)
+					{
+						PWorkingStructure st= s1->lock();
+						DBG_ASSERT__(st);
+						if (!st || st->IsHibernating())
+							continue;
+						if (st->IsEnabled() || !st->CanEnable())
+							continue;
+						if (lastDisabled == st.get())
+							continue;
+					
+						st->SetEnabled(true,atTime,false);
+
+						FullResourceVector v2 = GetVector();
+						if (v2.balance.IsStable())
+						{
+							LogEvent(EventType::CompoundProcess,s.get(), "Auto-balance: Structure enabled");
+							LogEvent(EventType::CompoundProcess,st.get(), "Auto-balance: Structure enabled");
+							total = v2;
+							stable = true;
+							break;
+						}
+
+						st->SetEnabled(false,atTime,false);
+					}
+					
+					if (stable)
+						break;
+
+
 					s->SetEnabled(false,atTime,false);
 				}
 			

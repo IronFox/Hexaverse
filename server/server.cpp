@@ -1101,7 +1101,7 @@ namespace ParameterConfig
 	PathString	loadFile;
 	bool	startOffline = false;
 	bool	customWorldID = false;
-	bool	enableRemoteControl = false;
+	bool	enableRemoteControl = true;
 	const char*	programName="";
 
 	void	SetProgramName(const char*base)
@@ -1121,7 +1121,7 @@ namespace ParameterConfig
 		std::cout << "  --loadAuto/-a [number]\tload previously created auto-savegame. number=0 => most recent"<<std::endl;
 		std::cout << "  --offline/-o \tstart offline"<<std::endl;
 		std::cout << "  --port/-p [basePort]\tuse a non-default base port"<<std::endl;
-		std::cout << "  --remote/-r \tstart remote control service"<<std::endl;
+		std::cout << "  --noRemote/-r \tdisable remote control service"<<std::endl;
 		std::cout << "  --test/-t \trun self-tests, then quit"<<std::endl;
 		std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
 	}
@@ -1170,8 +1170,8 @@ namespace ParameterConfig
 				}
 				elif (!strcmp(arg,"--world") || !strcmp(arg,"-w"))
 					mode = ExpectWorldID;
-				elif (!strcmp(arg,"-r") || !strcmp(arg,"--remoteControl") || !strcmp(arg,"--remote"))
-					enableRemoteControl = true;
+				elif (!strcmp(arg,"-r") || !strcmp(arg,"--noRemote"))
+					enableRemoteControl = false;
 				elif (!strcmp(arg,"--load") || !strcmp(arg,"-l"))
 					mode = ExpectFilename;
 				else
@@ -1325,7 +1325,9 @@ int main( int argc, const char* argv[])
 		for (int i = 1; i < argc; i++)
 			ParameterConfig::Process(argv[i]);
 
-		UDPBroadCast::Create(ParameterConfig::basePort);
+		Network::serverID.Generate();
+		UDPBroadCast::Create(ParameterConfig::basePort,Network::serverID);
+
 		if (ParameterConfig::enableRemoteControl)
 			RemoteControl::Start(ParameterConfig::basePort);
 
@@ -1351,6 +1353,18 @@ int main( int argc, const char* argv[])
 		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
 
 		Reflection::state.PopFocus();
+
+
+		Reflection::state.DefineCommand("/Server/autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
+		Reflection::state.DefineCommand("/Server/saveTo fileName",(CLI::Command::function1_t)[](const String&path)
+		{
+			FileIO::Save(PathString(path));
+		},CLI::FileCompletion);
+
+		Reflection::state.DefineCommand("/Server/loadFrom fileName",(CLI::Command::function1_t)[](const String&path)
+		{
+			FileIO::Load(PathString(path));
+		},CLI::FileCompletion);
 
 		Reflection::state.DefineCommand("/World/generate",(CLI::Command::function0_t)[]()
 		{
@@ -1471,7 +1485,6 @@ int main( int argc, const char* argv[])
 
 
 
-		Network::serverID.Generate();
 
 		if (!ParameterConfig::startOffline)
 		{
@@ -1596,7 +1609,8 @@ int main( int argc, const char* argv[])
 		else
 			LogConfig(" -Private Vehicle Action: Vehicle movement is not exposed to hostile factions.");
 
-		LogConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
+		if (FileIO::Config::saveEveryNRounds > 0)
+			LogConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
 		if (FileIO::Config::saveWhenAllQuit)
 			LogConfig(" -Auto-saves will be created when all quit.");
 
