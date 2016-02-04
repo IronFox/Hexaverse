@@ -520,11 +520,11 @@ namespace Objects
 
 	*/
 
-	void	Renderer::RefreshFactionColors()
+	void	Renderer::RefreshFactionColors(bool doPulse)
 	{
 		static const Timer::Time t0 = timer.Now();
 		now = timer.GetSecondsSinceD(t0);
-		double pulse = GetActiveColor(now);
+		float pulse = doPulse ? GetActiveColor(now) : 1.f;
 
 		if (!Faction::mine)
 		{
@@ -534,8 +534,10 @@ namespace Objects
 			foreach (Faction::allKnown,_f)
 			{
 				Faction&f = **_f;
-				f.inactiveEntityColor = f.color * 0.5f;
-				f.activeEntityColor = f.color;// * pulse;	//no pulse (experimental)
+				float3 c = f.color * 0.5f + 0.5f;
+				
+				f.inactiveEntityColor = c * 0.5f;
+				f.activeEntityColor = c * pulse;
 			}
 
 		}
@@ -544,7 +546,7 @@ namespace Objects
 			float3 mine = float3 (0.5f, 0.5f, 1.f) * pulse;
 			float3 theirs = float3 (1.f, 0.5f, 0.5f) * pulse;
 			static const float3 inactiveColorMine/*=0*/,
-								inactiveColorTheirs(0.5f,0.2f,0.2f);
+								inactiveColorTheirs(0.5f,0.25f,0.25f);
 
 			foreach (Faction::allKnown,_f)
 			{
@@ -779,7 +781,6 @@ namespace Objects
 		if (!objectView)
 			return;
 
-		RefreshFactionColors();
 
 		//double now = Engine::timing.now;
 
@@ -1904,6 +1905,7 @@ namespace Objects
 
 		void		BeginRendering(const float4&tone, float distanceFactor/*=1.f*/)
 		{
+			Renderer::RefreshFactionColors(false);
 			if (fbo.IsEmpty())
 			{
 				fbo.Create(Resolution(128,128),DXGI_FORMAT_R8G8B8A8_UNORM,true,DX11::FBO::PrepareMips);
