@@ -745,18 +745,31 @@ bool saveScreenshot = false;
 class StorageThread : public ThreadObject
 {
 public:
-	Image		image;
-	Semaphore	semaphore;
-	volatile bool	active;
+	//Image		image;
+	//Semaphore	semaphore;
+	//volatile bool	active;
+	Timer::Time	lastSubmission = timer.Now();
+	ProductionPipe<Image>	workPipe;
 
-	StorageThread():active(false)
+	StorageThread()
 	{}
 
 	void ThreadMain() override
 	{
+		Array<std::shared_ptr<Image> >	images;
 		while (!application_shutting_down)
 		{
-			semaphore.enter();
+			workPipe.WaitForContent();
+			if (application_shutting_down)
+				return;
+			workPipe.SignalRead();
+
+			const count_t numImages = workPipe.Count();
+			if (numImages > images.Count())
+				images.SetSize(numImages);
+			for (index_t i = 0; i < numImages; i++)
+				images[i].swap(workPipe[i]);
+			workPipe.ExitRead();
 			if (application_shutting_down)
 				return;
 //
@@ -783,34 +796,39 @@ public:
 ////						#endif
 //					}
 //				}
-			image.setChannels(3);
-
-			FileSystem::CreateFolder("screenshots");
-			index_t counter = 0;
-			PathString filename = PathString("screenshots/screenshot"+String(counter)+".png");
-			while (FileSystem::IsFile(filename))
+			for (index_t i = 0; i < numImages; i++)
 			{
-				counter++;
-				filename = PathString("screenshots/screenshot"+String(counter)+".png");
+				Image&image = *images[i];
+				image.setChannels(3);
+
+				FileSystem::CreateFolder("screenshots");
+				index_t counter = 0;
+				PathString filename = PathString("screenshots/screenshot"+String(counter)+".png");
+				while (FileSystem::IsFile(filename))
+				{
+					counter++;
+					filename = PathString("screenshots/screenshot"+String(counter)+".png");
+				}
+				png.SaveToFile(image,filename);
+				LogEvent(EventType::Notification, nullptr, "Screenshot written to "+String(filename));
 			}
-			png.SaveToFile(image,filename);
-			active = false;
-			LogEvent(EventType::Notification, nullptr, "Screenshot written to "+String(filename));
 		}
 	}
 
-	bool	CanRun() const {return !active;}
-	void	Run()
+	bool	CanRun() const {return timer.GetSecondsSince(lastSubmission) > 0.2f;}
+	void	Run(const std::shared_ptr<Image>&image)
 	{
-		if (active)
+		if (!CanRun())
 			return;
-		active = true;
-		semaphore.release();
+
+//		active = true;
+	//	semaphore.release();
+		workPipe << image;
 	}
 	void	Terminate()
 	{
 		ASSERT__(application_shutting_down);
-		semaphore.release();
+		workPipe.OverrideSignalNow();
 	}
 
 }		storageThread;
@@ -1572,9 +1590,10 @@ bool loop()
 				if (storageThread.CanRun())
 				{
 					LogEvent(EventType::Notification, nullptr, "Writing screenshot to disk...");
-					display.Capture(storageThread.image);
+					std::shared_ptr<Image> capture(new Image());
+					display.Capture(*capture);
 
-					storageThread.Run();
+					storageThread.Run(capture);
 				}
 
 			}
