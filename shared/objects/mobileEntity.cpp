@@ -1312,6 +1312,8 @@ namespace Objects
 		}
 		else
 		{
+			path.Clear();
+			path << PathNode(pointOfOrigin,0);
 			if (v->IsVehicle())
 			{
 				if (!AppendShortestDirectPath(pointOfOrigin,foci.Peek().target,path,false))
@@ -1331,14 +1333,15 @@ namespace Objects
 
 			}
 		}
-
-		static StringBuffer strPlottedCourse;
-		strPlottedCourse.Clear();
-		foreach (path,node)
-		{
-			strPlottedCourse << ' ' << node->cell.stackID<<'.'<<node->cell.height;
-		}
-		LogEvent(EventType::MinorEntityProcess,v,strPlottedCourse.ToStringRef());
+		#ifdef _DEBUG
+			static StringBuffer strPlottedCourse;
+			strPlottedCourse.Clear();
+			foreach (path,node)
+			{
+				strPlottedCourse << ' ' << node->cell.stackID<<'.'<<node->cell.height;
+			}
+			LogEvent(EventType::MinorEntityProcess,v,strPlottedCourse.ToStringRef());
+		#endif
 		return true;
 	}
 	
@@ -1350,32 +1353,32 @@ namespace Objects
 		{
 			case Job:
 			{
-				std::shared_ptr<VehicleJob::PathJob> job = To<VehicleJob::PathJob>::DynamicCast(this->job);
+				if (!job || !job->movesToFocusWhenDone)
+					break;
+				std::shared_ptr<VehicleJob::PathJob> pjob = To<VehicleJob::PathJob>::DynamicCast(this->job);
 				//if (foci.IsNotEmpty() || type == MoveTo)
 
-				if (!job || job->movesToFocusWhenDone)
+				if (pjob && pjob->movesToFocusWhenDone)
 				{
-					if (job)
+					if (foci.IsNotEmpty() && pjob->UpdatePath(*parent, pointOfOrigin, foci.Peek().target))
 					{
-						if (foci.IsNotEmpty() && job->UpdatePath(*parent, pointOfOrigin, foci.Peek().target))
+						path.Clear();
+						path << PathNode(pointOfOrigin,0);
+						foreach(pjob->path,n)
 						{
-							path.Clear();
-							path << PathNode(pointOfOrigin,0);
-							foreach(job->path,n)
-							{
-								path << PathNode(*n,1);
-							}
-							#ifdef HAS_WINDOW
-								if (recompileVisualization)
-									RecompilePath(1);
-							#endif
-							job->pathChanged = false;
+							path << PathNode(*n,1);
 						}
-						#ifndef CLIENT
-						else
-							return false;
+						#ifdef HAS_WINDOW
+							if (recompileVisualization)
+								RecompilePath(1);
 						#endif
+						pjob->pathChanged = false;
 					}
+					#ifndef CLIENT
+					else
+						return false;
+					#endif
+
 					break;
 				}
 			}
