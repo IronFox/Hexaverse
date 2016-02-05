@@ -186,6 +186,7 @@ namespace Objects
 		*/		
 		static void IDToColor(TVec3<>&outColor, const TUniqueID&id, int iteration=0);
 
+		void							UpdateID(const TUniqueID&toID, bool recomputeColor=true);
 
 		#ifdef CONNECTOR_LESS
 			//index_t		compoundIndex = InvalidIndex;
@@ -195,7 +196,7 @@ namespace Objects
 			static Buffer0<PFaction>	allKnown;
 			static PFaction				mine;
 
-			/**/					Faction(const TUniqueID&id):id(id) {IDToColor(color,id);}
+			/**/						Faction(const TUniqueID&id) {UpdateID(id);}
 
 		#else
 			CryptographicID	accessToken;
@@ -210,7 +211,7 @@ namespace Objects
 			static Buffer0<WFaction>	all;
 			static PFaction				nexus;
 
-			static PFaction			FindByID(const TUniqueID&);
+			static PFaction				FindByID(const TUniqueID&);
 
 
 
@@ -253,14 +254,13 @@ namespace Objects
 
 			GenericHashTable<PWorldEntity, SeeingReference, SharedPtrHash>	seeing;
 
-			/**/		Faction(const String&name=""):name(name)
+			/**/		Faction(const TUniqueID&id, const String&name=""):name(name)
 			{
 				nexusControl = acquiringNexusControl = 0;
 				deathInRounds = 0;
 
 				accessToken.Generate();
-				id.Generate();
-				IDToColor(color,id);
+				UpdateID(id);
 			}
 
 			/**

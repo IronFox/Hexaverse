@@ -224,7 +224,7 @@ namespace Journal
 			f = Objects::Faction::nexus;
 		else
 		{
-			f.reset(new Objects::Faction());
+			f.reset(new Objects::Faction(TUniqueID::Empty()));
 			Objects::Faction::all << f;
 		}
 		f->currentState = Grid::initialWorld;

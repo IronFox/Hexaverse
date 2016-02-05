@@ -1194,6 +1194,8 @@ namespace FileIO
 							if (round == 0)
 							{
 								Objects::PFaction faction;
+								TUniqueID factionID;
+								GetPOD(list,RID::factionID,factionID);
 							
 								bool isNexus = false;
 								if (list->FindFirst(RID::nexusTag))
@@ -1204,17 +1206,17 @@ namespace FileIO
 									faction = Objects::Faction::nexus;
 									faction->FlushData();
 									LogEvent(EventSignificance::Common,"Loading nexus faction");
+									faction->UpdateID(factionID);
 								}
 								else
 								{
-									faction.reset(new Objects::Faction());
+									faction.reset(new Objects::Faction(factionID));
 									Objects::Faction::all << faction;
 
 									faction->currentState.FlushAllData();
 									//foreach (faction->currentState,stat)
 									//	stat->ZeroInit();
 								}
-								GetPOD(list,RID::factionID,faction->id);
 								GetPOD(list,RID::factionAccessToken,faction->accessToken);
 
 								Riff::Chunk*nameChunk = list->FindFirst(RID::factionName);

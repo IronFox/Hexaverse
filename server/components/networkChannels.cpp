@@ -451,7 +451,7 @@ namespace Receiver
 				return;
 			}
 			//p.factionToken.value.Generate();	let's keep it even if it's unknown
-			client->faction.reset(new Objects::Faction());
+			client->faction.reset(new Objects::Faction(TUniqueID::Empty()));
 			faction = client->faction;
 			Objects::Faction::all << client->faction;
 			Game::SignalFactionsChanged();
