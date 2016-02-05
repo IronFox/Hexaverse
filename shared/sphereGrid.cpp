@@ -617,6 +617,18 @@ namespace Grid
 		{
 			if (volumeCell[uh].content != type)
 			{
+				#if 0
+					//this would be nice to capture some errors...
+					//sadly, foundations also register as structures although they are submerged most of the time.
+					//even if type was limited to foundation, mines would instantly trigger an asseration violation.
+					//damn
+					#if defined _DEBUG && !defined CLIENT
+					if (type != Content::Clear && volumeCell[uh].content == Content::Clear)
+					{
+						ASSERT_EQUAL1__(volumeCell[uh].structureCounter,0, uh);
+					}
+					#endif
+				#endif /*0*/
 				bool wasSolid = volumeCell[uh].IsSolid();
 				volumeCell[uh].content = type;
 

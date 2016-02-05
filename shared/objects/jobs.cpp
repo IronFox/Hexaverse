@@ -262,6 +262,13 @@ namespace Objects
 				LogEvent(EventType::CommandRejected,&v, GetName()+": Would have to move first. But cannot move");
 				return CannotStartAbort;
 			}
+			const Grid::LCellIdI target = FocusToBuildLocation(focus);
+			PStructure existing = GetStructure(target);	//this isn't caught by LowCellIsClear() since we don't want connectors to be submerged either
+			if (existing)
+			{
+				LogEvent(EventType::CommandRejected,&v,GetName()+": Destination occupied by "+existing->GetName());
+				return CannotStartAbort;
+			}
 
 			const auto&stack = Grid::actualWorld.cellStack[Grid::low.grid.GetCell(focus.stackID).higherEquivalent];
 			if (stack.GetCellI(v.location.height-1).IsClearOrWater() && focus == v.location+1)
@@ -315,6 +322,14 @@ namespace Objects
 			if (this->movesToFocusWhenDone && !Grid::actualWorld.LowCellIsClear(focus))
 			{
 				outError = "Cannot build wall here: "+(focus).ToString()+" is not empty";
+				return false;
+			}
+
+			Grid::LCellIdI target = FocusToBuildLocation(focus);
+			PStructure existing = GetStructure(target);	//this isn't caught by LowCellIsClear() since we don't want connectors to be submerged either
+			if (existing)
+			{
+				outError = "Cannot build wall here: "+(target).ToString()+" is occupied by "+existing->GetName();
 				return false;
 			}
 			return true;
