@@ -43,7 +43,7 @@ namespace Objects
 			if (change == 0)
 				return;
 			storage.level[res] += change;
-			LogEvent(EventType::MinorEntityProcess,&e,String(res.ToString())+ " storage changed by "+String(change)+" to "+String(storage.level[res])+"/"+String(max.level[res]));
+			LogEvent(EventSignificance::Common,&e,String(res.ToString())+ " storage changed by "+String(change)+" to "+String(storage.level[res])+"/"+String(max.level[res]));
 			e.RegisterChange(WorldEntity::StorageChanged,atTime);
 			ASSERT_IS_CONSTRAINED__(storage.level[res] , 0, max.level[res]);
 		}
@@ -72,7 +72,7 @@ namespace Objects
 				{
 					int production = compound.overproduction.level[res];
 					int overproductionTransfer = std::min(production,-change);
-					LogEvent(EventType::MinorEntityProcess,originatingAt,String(res.ToString())+ " overproduction ("+String(production)+") redirected for demand ("+String(change)+"): "+String(overproductionTransfer)+" transferred");
+					LogEvent(EventSignificance::Common,originatingAt,String(res.ToString())+ " overproduction ("+String(production)+") redirected for demand ("+String(change)+"): "+String(overproductionTransfer)+" transferred");
 					change += overproductionTransfer;
 					compound.overproduction.level[res]-= overproductionTransfer;
 					if (change == 0)
@@ -147,7 +147,7 @@ namespace Objects
 		{
 			if (e->owner == newOwner)
 				return;
-			LogEvent(EventType::GameProgressRelated,e.get(),"Changing ownership ('"+e->owner->GetName()+"' -> '"+newOwner->GetName()+"')");
+			LogEvent( EventClass(EventSignificance::Important,EventFlavor::Loss) ,e.get(),"Changing ownership ('"+e->owner->GetName()+"' -> '"+newOwner->GetName()+"')");
 
 			OwnerParameter oldOwner = e->owner;
 
@@ -165,9 +165,10 @@ namespace Objects
 				if (e->IsStructure())
 					InsertConstructed(To<Structure>::Cast(e),atTime,true,false);
 				else
-					LogEvent(EventType::InternalFault,e.get(), "Unexpected entity type. Cannot change ownership");
+					LogEvent(EventClass::Preset::error,e.get(), "Unexpected entity type. Cannot change ownership");
 			//VerifyVisibilityNetwork();
 
+			LogEvent( EventClass(EventSignificance::Important,EventFlavor::Gain) ,e.get(),"Changed ownership ('"+oldOwner->GetName()+"' -> '"+newOwner->GetName()+"')");
 		}
 
 		#ifdef CONNECTOR_LESS
@@ -219,8 +220,7 @@ namespace Objects
 			if (!found0)
 			{
 				ASSERT1__(e->IsStructure(),e->GetName());
-				LogEvent(EventType::Fatal,e.get(),"Unable to register loss for faction "+GetLogName());
-				FATAL__("Unable to register loss of entity");
+				FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
 				return;
 			}
 			if (To<Tower>::DynamicCast(e))
@@ -263,8 +263,7 @@ namespace Objects
 			ASSERT1__(e->IsMobile(),e->GetName());
 			ASSERT1__(To<MobileEntity>::Cast(e)->storedIn.expired(),e->GetName());
 
-			LogEvent(EventType::Fatal,e.get(),"Unable to register loss for faction "+GetLogName());
-			FATAL__("Unable to register loss of entity");
+			FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
 		}
 
 		void		Faction::RegisterStoredMobileLoss(const PWorldEntity&e)
@@ -279,8 +278,7 @@ namespace Objects
 			}
 			ASSERT1__(e->IsMobile(),e->GetName());
 			ASSERT1__(!To<MobileEntity>::Cast(e)->storedIn.expired(),e->GetName());
-			LogEvent(EventType::Fatal,e.get(),"Unable to register loss for faction "+GetLogName());
-			FATAL__("Unable to register loss of entity");
+			FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
 		}
 
 		void		Faction::RegisterGain(const PWorldEntity&e)
@@ -459,7 +457,7 @@ namespace Objects
 			if (ref.sightLevel == 0 || stack)
 			{
 				ref.sightLevel +=incStackBy;
-				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Sight level increased to "+String(ref.sightLevel));
+				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Sight level increased to "+String(ref.sightLevel));
 
 			}
 			else
@@ -468,7 +466,7 @@ namespace Objects
 
 			if (ref.sightLevel == incStackBy)
 			{
-				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Gained visual");
+				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual");
 				float t0;
 				if (lostVisualAt.QueryAndUnset(e,t0))
 				{
@@ -505,18 +503,18 @@ namespace Objects
 			if (ref)
 			{
 				ref->sightLevel --;
-				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Sight level reduced to "+String(ref->sightLevel));
+				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Sight level reduced to "+String(ref->sightLevel));
 			}
 			else
-				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": ref not set");
+				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": ref not set");
 
 
 			if (ref && (!ref->sightLevel || force))
 			{
-				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Lost visual at time="+String(t));
+				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual at time="+String(t));
 				if (ref->sightLevel)
 				{
-					LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": WARNING: Visual loss was forced");
+					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": WARNING: Visual loss was forced");
 				}
 
 
@@ -525,7 +523,7 @@ namespace Objects
 				if (gainedVisualAt.QueryAndUnset(e,t0))
 				{
 					t = std::max(t0,t);	//permissive. whatever. seriously
-					LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Lost visual, time updated to "+String(t));
+					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual, time updated to "+String(t));
 				}
 				PMobileEntity v= To<MobileEntity>::DynamicCast(e);
 				//if (v)
@@ -536,7 +534,7 @@ namespace Objects
 				if (v)
 				{
 					t = v->timeAt = std::max(v->timeAt,t);
-					LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Lost visual, time updated to "+String(t));
+					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual, time updated to "+String(t));
 				}
 				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),e->id.ToString());
 				seeing.Unset(e);
@@ -990,7 +988,7 @@ namespace Objects
 					#endif
 				}
 			#endif
-			LogEvent(EventType::MinorEntityProcess, e.get(),"Changed ownership to "+newOwner->GetName());	//this is also notified from the server, hence: minor
+			LogEvent(EventSignificance::Important, e.get(),"Changed ownership to "+newOwner->GetName());	//this is also notified from the server, hence: common
 			if (s)
 			{
 				s->DisconnectFromNeighborhood(0);
@@ -1132,7 +1130,7 @@ namespace Objects
 						
 						if (m->age > deathOutdatedAfterRounds)
 						{
-							LogEvent(EventType::Debug,nullptr,"Marker "+m->GetName()+" considered outdated after "+String(m->age)+" round(s)");
+							LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered outdated after "+String(m->age)+" round(s)");
 
 							outOudated << m;
 						}
@@ -1146,7 +1144,7 @@ namespace Objects
 						/*foreach(structures, s)
 							if ((*s)->isMine && (*s)->CanSee(center, 0))
 							{
-								LogEvent(EventType::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
+								LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
 								seen = true;
 								break;
 							}
@@ -1154,7 +1152,7 @@ namespace Objects
 							foreach(vehicles, s)
 								if ((*s)->isMine && (*s)->CanSee(center, 0))
 								{
-									LogEvent(EventType::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
+									LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
 									seen = true;
 									break;
 								}
@@ -1162,7 +1160,7 @@ namespace Objects
 							foreach(satellites, s)
 								if ((*s)->isMine && (*s)->CanSee(center, 0))
 								{
-									LogEvent(EventType::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
+									LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
 									seen = true;
 									break;
 								}*/
@@ -1509,7 +1507,7 @@ namespace Objects
 			index_t at;
 			if (!markerMap.QueryAndUnset(markerID, at))
 			{
-				LogEvent(EventType::InternalFault,nullptr,"Unable to destroy Marker. ID not set " + markerID.ToString());
+				LogEvent(EventClass::Preset::error,nullptr,"Unable to destroy Marker. ID not set " + markerID.ToString());
 				return false;
 			}
 			ASSERT_LESS__(at, markers.Count());
@@ -1566,7 +1564,7 @@ namespace Objects
 
 		/*static*/ void	Faction::Kill(const PFaction&f)
 		{
-			LogEvent(EventType::Debug,nullptr, "Erasing faction "+f->id.ToString());
+			LogEvent(EventSignificance::Debug,nullptr, "Erasing faction "+f->id.ToString());
 			static Buffer0<PWorldEntity>	toDelete;
 			for (index_t i = 0; i < f->structures.Count(); i++)
 				if (!f->structures[i].lock()->IsIndestructible())
@@ -1589,7 +1587,7 @@ namespace Objects
 					all.Erase(i);
 					break;
 				}
-			LogEvent(EventType::GameProgressRelated, nullptr,"Faction terminated: "+f->id.ToString());
+			LogEvent( EventClass::Preset::factionDeath, "Faction terminated: "+f->id.ToString());
 		}
 
 		/*static*/ PFaction			Faction::FindByID(const TUniqueID&id)

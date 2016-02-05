@@ -114,14 +114,14 @@ namespace Objects
 					
 						if (Grid::actualWorld.Clear(v->location,atTime))
 						{
-							LogEvent(EventType::MinorEntityProcess,v.get(),"Cleared terrain to make space for vehicle");
+							LogEvent(EventSignificance::Common,v.get(),"Cleared terrain to make space for vehicle");
 						}
 
 						if (v->base->requirements == Component::VehicleBase::Requirement::Water)
 						{
 							if (Grid::actualWorld.Overwrite(v->location-1,Grid::Content::Water, atTime))
 							{
-								LogEvent(EventType::MinorEntityProcess,v.get(),"Cleared terrain to make water for naval vehicle");
+								LogEvent(EventSignificance::Common,v.get(),"Cleared terrain to make water for naval vehicle");
 							}
 						}
 
@@ -194,7 +194,7 @@ namespace Objects
 			});
 			if (closest != Grid::LCellIdI::Invalid)
 			{
-				LogEvent(EventType::EntityProcess,&source,"Auto-targeting "+closestEntity->GetNiceName());
+				LogEvent(EventSignificance::Common,&source,"Auto-targeting "+closestEntity->GetNiceName());
 
 				outTarget = closest;
 				return true;
@@ -210,13 +210,13 @@ namespace Objects
 		{
 			if (doomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Disallow)
 			{
-				LogEvent(EventType::CommandRejected,nullptr,"Unable to process doomsday explosion: disallowed");
+				LogEvent(EventClass::Preset::commandRejected,nullptr,"Unable to process doomsday explosion: disallowed");
 				return;
 			}
 
 			if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::EMPConquerNexus && Grid::AffectedByEMP(targetCell))
 			{
-				LogEvent(EventType::CommandRejected,nullptr,"Explosion dissipated due to EMP field in target area");
+				LogEvent(EventClass::Preset::commandRejected,nullptr,"Explosion dissipated due to EMP field in target area");
 				return;
 			}
 
@@ -249,7 +249,7 @@ namespace Objects
 					float d3 = Vec::quadraticDistance(p,center);
 					d2 = std::min(d2,d3);
 				}
-				//LogEvent(EventType::Debug,e->get(),Vec::toString((*e)->system.w.xyz)+" <> "+Vec::toString(center)+ " = "+ String(sqrt(d2)));
+				//LogEvent(EventSignificance::Debug,e->get(),Vec::toString((*e)->system.w.xyz)+" <> "+Vec::toString(center)+ " = "+ String(sqrt(d2)));
 				//if (d2 < coreRadius)
 				//{
 				//	toDestroy << *e;
@@ -431,7 +431,7 @@ namespace Objects
 							s->owner != referenceOwner 
 						)
 					{
-						//LogEvent(EventType::Debug,s->get(),"Rejected due to ownership: "+referenceOwner.ToString()+" != "+(*s)->owner.ToString());
+						//LogEvent(EventSignificance::Debug,s->get(),"Rejected due to ownership: "+referenceOwner.ToString()+" != "+(*s)->owner.ToString());
 						continue;
 					}
 
@@ -442,7 +442,7 @@ namespace Objects
 		#else
 			foreach(structures, s)
 			{
-				//LogEvent(EventType::Debug,s->get(),"Testing as neighbor of cell "+cellID.ToString()+" local position is "+(*s)->location.ToString());
+				//LogEvent(EventSignificance::Debug,s->get(),"Testing as neighbor of cell "+cellID.ToString()+" local position is "+(*s)->location.ToString());
 				if (
 						#ifndef CLIENT
 							!ignoreOwnership && 
@@ -451,14 +451,14 @@ namespace Objects
 						(*s)->owner != referenceOwner 
 					)
 				{
-					//LogEvent(EventType::Debug,s->get(),"Rejected due to ownership: "+referenceOwner.ToString()+" != "+(*s)->owner.ToString());
+					//LogEvent(EventSignificance::Debug,s->get(),"Rejected due to ownership: "+referenceOwner.ToString()+" != "+(*s)->owner.ToString());
 					continue;
 				}
 
 				if (_IsNeighbor(cellID, n, (*s)->location))
 					outNeighborhood.Append(*s);
 				//else
-					//LogEvent(EventType::Debug,s->get(),"Rejected due to location");
+					//LogEvent(EventSignificance::Debug,s->get(),"Rejected due to location");
 			}
 		#endif
 	}
@@ -540,7 +540,7 @@ namespace Objects
 					}
 				}
 				if (grid[at])
-					LogEvent(EventType::InternalFault,grid[at].get(),"Found instead of "+object->GetName());
+					LogEvent(EventClass::Preset::error,grid[at].get(),"Found instead of "+object->GetName());
 				String clone = cloneAt != InvalidIndex ? " {found clone ("+cloneIs->GetName()+") at "+Grid::LCellIdI(cloneAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( cloneAt/Grid::LowSetup::GridType::CellCount))).ToString()+"}" : "";
 				if (foundAt != InvalidIndex)
 				{
@@ -550,7 +550,7 @@ namespace Objects
 				else
 					FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+location.ToString()+", but object is not mapped in the grid"+clone);
 			}
-			LogEvent(EventType::MinorEntityProcess,object.get(),"Removed from grid location "+String(at)+"/"+location.ToString());
+			LogEvent(EventSignificance::Common,object.get(),"Removed from grid location "+String(at)+"/"+location.ToString());
 			grid[at].reset();
 			object->isInsertedIntoGrid = false;
 		}
@@ -561,7 +561,7 @@ namespace Objects
 			Grid::AssertIsValid(location);
 			index_t at = CellToGridIndex(location);
 			ASSERT1__(!grid[at],grid[at]->GetName());
-			LogEvent(EventType::MinorEntityProcess,object.get(),"Inserted into grid location "+String(at)+"/"+location.ToString());
+			LogEvent(EventSignificance::Common,object.get(),"Inserted into grid location "+String(at)+"/"+location.ToString());
 			grid[at] = object;
 			object->isInsertedIntoGrid = true;
 		}
@@ -997,9 +997,9 @@ namespace Objects
 		if (!restored)
 			e->OnConstructionFinished(atTime);
 		#ifdef _DEBUG
-			LogEvent(EventType::EntityProcess, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+e->location.ToString());
+			LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+e->location.ToString());
 		#else
-			LogEvent(EventType::EntityProcess, e.get(),String(restored ? "Redeployed" : "Deployed"));
+			LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed"));
 		#endif
 		if (!restored)
 		{
@@ -1097,7 +1097,7 @@ namespace Objects
 		DBG_ASSERT__(!storedMobileEntities.Contains(v));
 		storedMobileEntities << v;
 		v->OnConstructionFinished(atTime);
-		LogEvent(EventType::EntityProcess, v.get(),"Deployed into storage");
+		LogEvent(EventSignificance::Common, v.get(),"Deployed into storage");
 		if (setHealthToFull)
 			v->health = v->GetMaxHealth();
 		ASSERT1__(idMap.SetNew(v->id,v),v->GetName());
@@ -1215,7 +1215,7 @@ namespace Objects
 		#else
 			ASSERT1__(ignoreIndestructible || !e->IsIndestructible(), e->GetName());
 		#endif
-		LogEvent(EventType::EntityProcess, e.get(),"Removing entity ("+String(t.ToString())+")");
+		LogEvent(EventSignificance::Common, e.get(),"Removing entity ("+String(t.ToString())+")");
 		const bool move = t==RemovalType::EnteredStorage;
 		if (!move)
 		{
@@ -1317,7 +1317,7 @@ namespace Objects
 
 		if (!move)
 		{
-			LogEvent(EventType::Debug,e.get(),"OnDestroy()");
+			LogEvent(EventSignificance::Debug,e.get(),"OnDestroy()");
 			e->OnDestroy(timestamp);
 		}
 		#ifdef CLIENT
@@ -1884,7 +1884,7 @@ namespace Objects
 			{
 				if (failIfLimitReached)	//client sided operation may choose to not implement maximum ranges
 				{
-					//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+					//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 					return false;//let's ignore long ranges
 				}
 				else
@@ -1922,7 +1922,7 @@ namespace Objects
 				outPath.Revert();
 				oPath.Append(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
 			}
 			count_t ways = GetWays(world,vehicle,  cellID, possibilities, to, true, ignoreFriendlyVehiclesOnRoute);
@@ -1950,7 +1950,7 @@ namespace Objects
 			}
 		}
 		//ShowMessage("no route found after "+String(iterations)+" iterations");
-		//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 		return false;
 	}
 
@@ -1994,7 +1994,7 @@ namespace Objects
 			{
 				if (failIfLimitReached)
 				{
-					//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+					//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 					return false;//let's ignore long ranges
 				}
 				else
@@ -2023,7 +2023,7 @@ namespace Objects
 				outPath.Revert();
 				oPath.Append(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
 			}
 			count_t ways = GetWays(sat,  current, possibilities, to, true, ignoreFriendlyVehiclesOnRoute);
@@ -2046,7 +2046,7 @@ namespace Objects
 			}
 		}
 		//ShowMessage("no route found after "+String(iterations)+" iterations");
-		//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 		return false;
 	}
 
@@ -2090,7 +2090,7 @@ namespace Objects
 			static bool ignoreIterations = false;	//runtime switch
 			if (!ignoreIterations && iterations > 1998)
 			{
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				break;
 			}
 
@@ -2172,7 +2172,7 @@ namespace Objects
 
 		//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
 		//if (logPerformance)
-			//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+			//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 	
 	}
 
@@ -2267,7 +2267,7 @@ namespace Objects
 			iterations ++;
 			if (iterations > 2000)
 			{
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return false;//let's ignore long ranges
 			}
 
@@ -2294,7 +2294,7 @@ namespace Objects
 				outPath.Revert();
 				oPath.Append(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
 			}
 			count_t ways = GetConstructionWays(world, ignoreWater, flat, cellID == from, vehicle, cellID, possibilities, to);
@@ -2336,7 +2336,7 @@ namespace Objects
 			}
 		}
 		//ShowMessage("no route found after "+String(iterations)+" iterations");
-		//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 		return false;
 	}
 
@@ -2376,7 +2376,7 @@ namespace Objects
 			iterations ++;
 			if (iterations > 2000)
 			{
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return false;//let's ignore long ranges
 			}
 
@@ -2400,7 +2400,7 @@ namespace Objects
 				outPath.Revert();
 				oPath.Append(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
 			}
 			count_t ways = GetAllWays(cellID, possibilities);
@@ -2436,7 +2436,7 @@ namespace Objects
 			}
 		}
 		//ShowMessage("no route found after "+String(iterations)+" iterations");
-		//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 		return false;
 	}
 
@@ -2472,7 +2472,7 @@ namespace Objects
 			iterations ++;
 			if (iterations > 2000)
 			{
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return false;//let's ignore long ranges
 			}
 
@@ -2495,7 +2495,7 @@ namespace Objects
 				outPath.Revert();
 				oPath.Append(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
 			}
 			count_t ways = GetAllSatelliteWays(current, possibilities);
@@ -2519,7 +2519,7 @@ namespace Objects
 			}
 		}
 		//ShowMessage("no route found after "+String(iterations)+" iterations");
-		//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 		return false;
 	}
 
@@ -2634,7 +2634,7 @@ namespace Objects
 					s->id = id;
 					s->UpdateNiceName();
 					s->isMine = isMine;
-					//LogEvent(EventType::MinorEntityProcess, s.get(),"Constructed " + s->GetName());
+					//LogEvent(EventSignificance::Common, s.get(),"Constructed " + s->GetName());
 					if (placeNow)
 					{
 						Place(s);
@@ -2738,8 +2738,7 @@ namespace Objects
 				MobilePlacementResult result = v->PlaceExactlyAt(c,0,0,false,false);
 				if (Failed(result))
 				{
-					LogEvent(EventType::Fatal,v.get(),"Failed to position non-constructed at "+c.ToString());
-					FATAL__("Failed to position entity at designated position");
+					FATAL__(v->GetName()+": Failed to position non-constructed at "+c.ToString());
 				}
 				if (result == MobilePlacementResult::PlacementOkay || result == MobilePlacementResult::PlacementOkayFellDown)
 					InsertConstructed(v,0);
@@ -2833,18 +2832,18 @@ namespace Objects
 									if (deployWhat)
 									{
 										if (!actual)
-											LogEvent(EventType::Fatal,s.get(),"Attempting to re-checkout "+deployWhat->GetName());
+											LogEvent(EventClass::Preset::fatal,s.get(),"Attempting to re-checkout "+deployWhat->GetName());
 										else
 											if (actualStore->park != s->park)
 											{
-												LogEvent(EventType::Fatal,s.get(),"Unable to checkout "+deployWhat->GetName()+" from this store: stored in a different park");
+												LogEvent(EventClass::Preset::fatal,s.get(),"Unable to checkout "+deployWhat->GetName()+" from this store: stored in a different park");
 											}
 											else
 												FATAL__("Equation evaluation error. Did the compiler fuck up?");
 									}
 									else
 									{
-										LogEvent(EventType::Fatal,s.get(),"Nothing to deploy (reference is null)");
+										LogEvent(EventClass::Preset::fatal,s.get(),"Nothing to deploy (reference is null)");
 									}
 								}
 

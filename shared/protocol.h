@@ -1687,9 +1687,10 @@ namespace Protocol
 		)
 
 
-	NETSTRUCT2(ControlMessage
+	NETSTRUCT3(ControlMessage
 		, Package::NetString<256>, message
-		, NET(BYTE), type
+		, NET(BYTE), significance
+		, NET(BYTE), flavor
 	)
 
 

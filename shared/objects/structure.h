@@ -1119,7 +1119,7 @@ namespace Objects
 
 		//MobileEntityProducer overrides
 		#ifndef CLIENT
-			virtual void			SignalLastProductionDone() override {LogEvent(EventType::EntityProcess, this, "Queue is empty. Shutting off"); SetEnabled(false,0);}
+			virtual void			SignalLastProductionDone() override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); SetEnabled(false,0);}
 			virtual void			SignalNewProductionEnqueued() override {SetEnabled(true,0);}
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif

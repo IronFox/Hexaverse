@@ -10,7 +10,7 @@
 
 extern Engine::Display<Engine::DirectX11>	display;
 
-void LogEvent(EventType type,  const Objects::WorldEntity*e, const String&_event);
+void LogEvent(EventClass type,  const Objects::WorldEntity*e, const String&_event);
 
 namespace Explosions
 {
@@ -215,7 +215,7 @@ namespace Explosions
 				ErrMessage("Warning: Unable to initialize OpenAL.\nOpenAL might not be installed on your system. Attempting to install...");
 				int rs = system("oalinst.exe");
 				//ShellExecuteA(Engine::context.getWindow(), "runas", "oalinst.exe", 0, 0, SW_SHOWNORMAL);
-				LogEvent(EventType::Notification,nullptr,"Calling OpenAL installer resulted in return code "+String(rs));
+				LogEvent(EventClass::Preset::common,"Calling OpenAL installer resulted in return code "+String(rs));
 
 				StringFile marker;
 				if (marker.Create(markerFileName))
@@ -226,7 +226,7 @@ namespace Explosions
 					marker.Close();
 				}
 				else
-					LogEvent(EventType::InternalFault,nullptr,"Warning: Unable to create OpenAL marker file "+String(markerFileName));
+					LogEvent(EventClass::Preset::error,"Warning: Unable to create OpenAL marker file "+String(markerFileName));
 
 				if (!OpenAL::Init())
 				{
@@ -236,7 +236,7 @@ namespace Explosions
 			else
 				haveSound = false;
 			if (!haveSound)
-				LogEvent(EventType::InternalFault,nullptr,"Warning: Unable to initialize OpenAL. Sound will be disabled for this session.");
+				LogEvent(EventClass::Preset::error,"Warning: Unable to initialize OpenAL. Sound will be disabled for this session.");
 		}
 		
 

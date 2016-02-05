@@ -374,7 +374,7 @@ namespace Objects
 				{
 					if (flushTasksOnUnlock)
 						return false;
-					LogEvent(EventType::Debug,this,"Issued task clearing: "+String(caller.ToString()));
+					LogEvent(EventSignificance::Debug,this,"Issued task clearing: "+String(caller.ToString()));
 					flushTasksOnUnlock = true;
 					return true;
 				}

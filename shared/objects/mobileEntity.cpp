@@ -169,21 +169,21 @@ namespace Objects
 								{
 									if (!task.UpdatePath(this,location,FocusChangeType::SituationChanged))
 									{
-										LogEvent(EventType::CommandRejected,this,"Route to destination lost. Motion aborted.");
+										LogEvent(EventClass::Preset::commandRejected,this,"Route to destination lost. Motion aborted.");
 										this->UnlockTasks();
 										this->ClearAllTasks(true, CLOCATION);
 										return true;
 									}
-									LogEvent(EventType::EntityProcess,this,"Revised path due to terrain changes.");
+									LogEvent(EventSignificance::Common,this,"Revised path due to terrain changes.");
 								}
 								else
 								{
-									LogEvent(EventType::CommandRejected,this,"Route to destination lost. Motion aborted.");
+									LogEvent(EventClass::Preset::commandRejected,this,"Route to destination lost. Motion aborted.");
 									this->UnlockTasks();
 									ClearAllTasks(true, CLOCATION);
 									return true;
 									//hasMoved = true;
-									//LogEvent(EventType::CommandRejected,this,"Route to destination blocked. Motion delayed.");
+									//LogEvent(EventClass::Preset::commandRejected,this,"Route to destination blocked. Motion delayed.");
 									//return false;
 								}
 							}
@@ -252,7 +252,7 @@ namespace Objects
 									break;
 									case MobilePlacementResult::PlacementOkayFellDown:
 									{
-										LogEvent(EventType::EntityProcessFailed,this,"Falling event interrupted motion.");
+										LogEvent(EventClass::Preset::operationAborted,this,"Falling event interrupted motion.");
 										stop = true;
 									}
 									break;
@@ -260,10 +260,10 @@ namespace Objects
 										this->ClearAllTasks(true, CLOCATION);
 									case MobilePlacementResult::PlacementFailedObstructed:
 									{
-										LogEvent(EventType::EntityProcessFailed,this,"Unable to complete movement.");
+										LogEvent(EventClass::Preset::operationAborted,this,"Unable to complete movement.");
 										if (health <= 0)
 										{
-											LogEvent(EventType::MinorEntityProcess,this,"Is dead.");
+											LogEvent(EventSignificance::Common,this,"Is dead.");
 											if (completeOnMove)
 											{
 												CompleteOnMove(previousLocation);
@@ -345,13 +345,13 @@ namespace Objects
 
 		bool			MobileEntity::CompleteOnMove(const Grid::LCellIdI&referenceLocation)
 		{
-			LogEvent(EventType::EntityProcess,this,"Completing on-move job '"+completeOnMove->GetName()+ "'");
+			LogEvent(EventSignificance::Common,this,"Completing on-move job '"+completeOnMove->GetName()+ "'");
 			VehicleJob::BaseJob::continue_t rs = completeOnMove->Finish(*this,referenceLocation);
 			completeOnMove.reset();
 			unstable = false;
 			if (rs == VehicleJob::BaseJob::TerminalFailureVehicleDestroyed)
 			{
-				LogEvent(EventType::EntityProcess,this,"Terminal failure. Remaining tasks dropped. Vehicle destroyed.");
+				LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped. Vehicle destroyed.");
 				jobStarted = false;
 				ClearAllTasks(true, CLOCATION);
 				unstable = false;
@@ -360,7 +360,7 @@ namespace Objects
 			}
 			if (rs == VehicleJob::BaseJob::TerminalFailure)
 			{
-				LogEvent(EventType::EntityProcess,this,"Terminal failure. Remaining tasks dropped.");
+				LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped.");
 				jobStarted = false;
 				ClearAllTasks(true, CLOCATION);
 				unstable = false;
@@ -426,7 +426,7 @@ namespace Objects
 								}
 								if (badTask)
 								{
-									LogEvent(EventType::EntityProcess,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected. Dropping task(s).");
+									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected. Dropping task(s).");
 									if (v2.get() == this)
 									{
 										ClearAllTasks(true,CLOCATION);
@@ -455,7 +455,7 @@ namespace Objects
 				else
 				{
 					#ifndef CLIENT
-						LogEvent(EventType::MinorEntityProcess,this,"Time cost is "+String(timeCost)+". Warping mobile entity at time "+String(oldTime));
+						LogEvent(EventSignificance::Common,this,"Time cost is "+String(timeCost)+". Warping mobile entity at time "+String(oldTime));
 					#endif
 					RegisterChange(PositionChanged,oldTime);
 				}
@@ -484,7 +484,7 @@ namespace Objects
 							{
 								if (s->AttackNext(loc,true))
 								{
-									LogEvent(EventType::EntityProcess,s.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
+									LogEvent(EventSignificance::Common,s.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
 
 									s->Attack(timeAt);
 									if (health <= 0)
@@ -507,7 +507,7 @@ namespace Objects
 							{
 								if (t->AttackNext(loc,true))
 								{
-									LogEvent(EventType::EntityProcess,t.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
+									LogEvent(EventSignificance::Common,t.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
 
 									t->Attack(timeAt);
 									if (health <= 0)
@@ -525,20 +525,20 @@ namespace Objects
 				{
 					result = MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
 					#ifndef CLIENT
-						LogEvent(EventType::MinorEntityProcess,this,"Motion failed. Dead");
+						LogEvent(EventSignificance::Common,this,"Motion failed. Dead");
 					#endif
 					return;
 				}
 
 				#ifndef CLIENT
-					LogEvent(EventType::MinorEntityProcess,this,"Motion completed");
+					LogEvent(EventSignificance::Common,this,"Motion completed");
 				#endif
 			}
 			else
 			{
 				timeAt += timeCost;
 				#ifndef CLIENT
-					LogEvent(EventType::MinorEntityProcess,this,"Silent motion completed");
+					LogEvent(EventSignificance::Common,this,"Silent motion completed");
 				#endif
 			}
 
@@ -565,7 +565,7 @@ namespace Objects
 							if (PlotCourse(ways[target],true,false))
 							{
 								hasTriedPlottingOnMoveAutoMotion = true;
-								LogEvent(EventType::MinorEntityProcess,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
+								LogEvent(EventSignificance::Common,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
 								return false;	//retry
 							}
 						}
@@ -574,11 +574,11 @@ namespace Objects
 							if (PlotCourse(ways[i],true, false))
 							{
 								hasTriedPlottingOnMoveAutoMotion = true;
-								LogEvent(EventType::MinorEntityProcess,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
+								LogEvent(EventSignificance::Common,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
 								return false;	//retry
 							}
 					}
-					LogEvent(EventType::EntityProcessFailed,this,"Unable to automatically relocate. Move manually to finish '"+completeOnMove->GetName()+"'");
+					LogEvent(EventClass::Preset::operationAborted,this,"Unable to automatically relocate. Move manually to finish '"+completeOnMove->GetName()+"'");
 				}
 				return true;
 			}
@@ -592,7 +592,7 @@ namespace Objects
 			{
 				if (this->empDamageLevel)
 				{
-					LogEvent(EventType::EntityProcessFailed,this,"EMP damage: Unable to continue job at this time.");
+					LogEvent(EventClass::Preset::operationAborted,this,"EMP damage: Unable to continue job at this time.");
 					return true;
 				}
 				//const Grid::LCellIdI loc = task.foci.IsNotEmpty() ? task.foci.Peek() : location;
@@ -610,33 +610,33 @@ namespace Objects
 						switch (b)
 						{
 							case VehicleJob::BaseJob::Delayed:
-								LogEvent(EventType::EntityProcess,this,"Delayed Job");
+								LogEvent(EventSignificance::Common,this,"Delayed Job");
 							break;
 							case VehicleJob::BaseJob::Started:
-								LogEvent(EventType::MinorEntityProcess,this,"Started '"+myTasks.Peek().job->GetName()+"'");
+								LogEvent(EventSignificance::Common,this,"Started '"+myTasks.Peek().job->GetName()+"'");
 								cont = false;
 								jobStarted = true;
 								//movementActionLeft = 0;
 							break;
 							case VehicleJob::BaseJob::CannotStartAbort:
 							{
-								LogEvent(EventType::MinorEntityProcess,this,"Cannot start '"+myTasks.Peek().job->GetName()+"'. Skipping");
+								LogEvent(EventSignificance::Common,this,"Cannot start '"+myTasks.Peek().job->GetName()+"'. Skipping");
 								PVehicleJob parent = myTasks.Peek().job->parent.lock();
 								EraseFirstTask();
 								if (parent)
 								{
 									while (myTasks.IsNotEmpty() && myTasks.Peek().job != parent)
 									{
-										LogEvent(EventType::MinorEntityProcess,this,"Cannot continue offspring '"+myTasks.Peek().name+"'. Skipping");
+										LogEvent(EventSignificance::Common,this,"Cannot continue offspring '"+myTasks.Peek().name+"'. Skipping");
 										EraseFirstTask();
 									}
 									if (myTasks.IsNotEmpty())
 									{
-										LogEvent(EventType::MinorEntityProcess,this,"Cannot continue parent '"+myTasks.Peek().name+"'. Skipping");
+										LogEvent(EventSignificance::Common,this,"Cannot continue parent '"+myTasks.Peek().name+"'. Skipping");
 										EraseFirstTask();
 									}
 									else
-										LogEvent(EventType::InternalFault,this,"Cannot find parent job '"+parent->GetName()+"'");
+										LogEvent(EventClass::Preset::error,this,"Cannot find parent job '"+parent->GetName()+"'");
 								}
 								RegisterChange(TasksChanged,timeAt);
 							}
@@ -653,7 +653,7 @@ namespace Objects
 
 					if (!myTasks.Peek().job)
 					{
-						LogEvent(EventType::MinorEntityProcess,this,"Executing normal task");
+						LogEvent(EventSignificance::Common,this,"Executing normal task");
 						return HandleNormalTask();
 					}
 				}
@@ -668,25 +668,25 @@ namespace Objects
 						case VehicleJob::BaseJob::ContinueJob:
 						break;
 						case VehicleJob::BaseJob::JobDone:
-							LogEvent(EventType::MinorEntityProcess,this,"Job ended: '"+job->GetName()+"'");
+							LogEvent(EventSignificance::Common,this,"Job ended: '"+job->GetName()+"'");
 
 							EraseFirstTask();
 							RegisterChange(TasksChanged,timeAt);
 							while (HasTasks() && myTasks.Peek().job && myTasks.Peek().job->IsImplicitlyDone(*this,myTasks.Peek().GetFocus(location)))
 							{
-								LogEvent(EventType::MinorEntityProcess,this,"Job has implicitly ended: '"+myTasks.Peek().job->GetName()+"'");
+								LogEvent(EventSignificance::Common,this,"Job has implicitly ended: '"+myTasks.Peek().job->GetName()+"'");
 
 								EraseFirstTask();
 							}
 							if (HasTasks() && myTasks.Peek().job)
 							{
-								LogEvent(EventType::EntityProcess,this,"Next front job: '"+myTasks.Peek().job->GetName()+"'");
+								LogEvent(EventSignificance::Common,this,"Next front job: '"+myTasks.Peek().job->GetName()+"'");
 							}
 							jobStarted = false;
 
 						return false;
 						case VehicleJob::BaseJob::TerminalFailureVehicleDestroyed:
-							LogEvent(EventType::EntityProcess,this,"Terminal failure. Remaining tasks dropped. Vehicle destroyed.");
+							LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped. Vehicle destroyed.");
 							jobStarted = false;
 							ClearAllTasks(true, CLOCATION);
 							unstable = false;
@@ -694,7 +694,7 @@ namespace Objects
 							Remove(shared_from_this(),RemovalType::UncontrolledExplosion,timeAt,false,false);
 						return false;
 						case VehicleJob::BaseJob::TerminalFailure:
-							LogEvent(EventType::EntityProcess,this,"Terminal failure. Remaining tasks dropped.");
+							LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped.");
 							jobStarted = false;
 							ClearAllTasks(true, CLOCATION);
 							unstable = false;
@@ -755,7 +755,7 @@ namespace Objects
 			task.job = job; 
 			if (!task.Replot(origin,this,FocusChangeType::FullChange,true))
 			{
-				LogEvent(EventType::EntityProcessFailed,this, "Destination unreachable or out of range for pathfinding. Unable to enqueue job.");
+				LogEvent(EventClass::Preset::operationAborted,this, "Destination unreachable or out of range for pathfinding. Unable to enqueue job.");
 				myTasks.EraseBack();
 				return;
 			}
@@ -763,7 +763,7 @@ namespace Objects
 				if (selectedEntity.get() == this)
 					UpdateChoices();
 			#else
-				LogEvent(EventType::MinorEntityProcess,this,"Enqueued new job '"+job->GetName()+"'");
+				LogEvent(EventSignificance::Common,this,"Enqueued new job '"+job->GetName()+"'");
 			#endif
 		}
 	
@@ -801,7 +801,7 @@ namespace Objects
 				if (selectedEntity.get() == this)
 					UpdateChoices();
 			#else
-				LogEvent(EventType::MinorEntityProcess,this,"Enqueued new front-job '"+job->GetName()+"'");
+				LogEvent(EventSignificance::Common,this,"Enqueued new front-job '"+job->GetName()+"'");
 			#endif
 		}
 
@@ -898,7 +898,7 @@ namespace Objects
 			{
 				if (myTasks.Count() >= Objects::MaxProductionTasks)
 				{
-					LogEvent(EventType::CommandRejected,this,"Max queue length ("+String(Objects::MaxProductionTasks)+") reached. Task rejected");
+					LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(Objects::MaxProductionTasks)+") reached. Task rejected");
 					return false;
 				}
 
@@ -906,7 +906,7 @@ namespace Objects
 				myTasks << Task("Move To",destination,detailedPath, Task::MoveTo);
 				if (!myTasks.GetNewest().Replot(pointOfOrigin, this,FocusChangeType::FullChange,true))
 				{
-					LogEvent(EventType::CommandRejected,this,"Unable to plot path to destination. Task rejected.");
+					LogEvent(EventClass::Preset::commandRejected,this,"Unable to plot path to destination. Task rejected.");
 					myTasks.EraseBack();
 					return false;
 				}
@@ -918,7 +918,7 @@ namespace Objects
 				{
 					if (myTasks.GetNewest().foci.Count() >= Objects::MaxFocusPoints)
 					{
-						LogEvent(EventType::CommandRejected,this,"Max focus point count ("+String(Objects::MaxFocusPoints)+") reached. Task rejected");
+						LogEvent(EventClass::Preset::commandRejected,this,"Max focus point count ("+String(Objects::MaxFocusPoints)+") reached. Task rejected");
 						return false;
 					}
 					const auto&match = myTasks.GetNewest().foci.GetNewest();
@@ -955,7 +955,7 @@ namespace Objects
 					}
 					if (failed)
 					{
-						LogEvent(EventType::CommandRejected,this,"Unable to plot path to destination. Task rejected.");
+						LogEvent(EventClass::Preset::commandRejected,this,"Unable to plot path to destination. Task rejected.");
 						while (myTasks.GetNewest().foci.Count() > offset)
 							myTasks.GetNewest().foci.EraseBack();
 						return false;
@@ -1049,7 +1049,7 @@ namespace Objects
 			if (!HasAmmoForShot())
 				return;
 
-			LogEvent(EventType::Debug,this,"Setting local time ("+String(timeAt)+") to attack time="+String(attackTime));
+			LogEvent(EventSignificance::Debug,this,"Setting local time ("+String(timeAt)+") to attack time="+String(attackTime));
 			timeAt = attackTime;
 
 			Task&task = LockedPeekTask();
@@ -1137,7 +1137,7 @@ namespace Objects
 		{
 			if (toLocation == location)
 				return;
-			LogEvent(EventType::MinorEntityProcess,this,"Relocating to "+toLocation.ToString()+" ("+String(updateSystem)+")");
+			LogEvent(EventSignificance::Common,this,"Relocating to "+toLocation.ToString()+" ("+String(updateSystem)+")");
 			#ifdef CLIENT
 				static Grid::HighSetup::TVolumeDescriptor desc;
 				float t = 0.f;
@@ -1361,7 +1361,7 @@ namespace Objects
 			{
 				strPlottedCourse << ' ' << node->cell.stackID<<'.'<<node->cell.height;
 			}
-			LogEvent(EventType::MinorEntityProcess,v,strPlottedCourse.ToStringRef());
+			LogEvent(EventSignificance::Common,v,strPlottedCourse.ToStringRef());
 		#endif
 		return true;
 	}

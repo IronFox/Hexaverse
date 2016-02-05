@@ -19,6 +19,11 @@ namespace Objects
 	}
 
 
+
+	static EventClass	forceEnable(EventSignificance::Uncommon,EventFlavor::Gain),
+						forceDisable(EventSignificance::Uncommon,EventFlavor::Loss);
+
+
 	#ifndef CLIENT
 
 		WorkingStructure*	Compound::lastDisabled = nullptr;
@@ -146,14 +151,14 @@ namespace Objects
 
 				if (!vector.IsStable())
 				{
-					LogEvent(EventType::InternalFault, nullptr, "Compound resource vector unstable: {"+vector.ToString()+"}");
+					LogEvent(EventClass::Preset::error, nullptr, "Compound resource vector unstable: {"+vector.ToString()+"}");
 					#ifdef _DEBUG
 						foreach(events, ev)
 						{
 							if (ev->first)
-								LogEvent(EventType::InternalFault, ev->first.get(), "Tick() called. Vector is now {" + ev->second.ToString()+"}");
+								LogEvent(EventClass::Preset::error, ev->first.get(), "Tick() called. Vector is now {" + ev->second.ToString()+"}");
 							else
-								LogEvent(EventType::InternalFault, nullptr, "Event processed. Vector is now {" + ev->second.ToString() + "}");
+								LogEvent(EventClass::Preset::error, nullptr, "Event processed. Vector is now {" + ev->second.ToString() + "}");
 						}
 					#endif
 					FATAL__("Compound resource vector unstable. Cannot recover. Terminating");
@@ -373,7 +378,7 @@ namespace Objects
 					FullResourceVector v2 = GetVector();
 					if (v2.balance.IsStable())
 					{
-						LogEvent(EventType::CompoundProcess,s.get(), "Auto-balance: Structure enabled");
+						LogEvent(forceEnable,s.get(), "Auto-balance: Structure enabled");
 						total = v2;
 						stable = true;
 						break;
@@ -397,8 +402,8 @@ namespace Objects
 						FullResourceVector v2 = GetVector();
 						if (v2.balance.IsStable())
 						{
-							LogEvent(EventType::CompoundProcess,s.get(), "Auto-balance: Structure enabled");
-							LogEvent(EventType::CompoundProcess,st.get(), "Auto-balance: Structure enabled");
+							LogEvent(forceEnable,s.get(), "Auto-balance: Structure enabled");
+							LogEvent(forceEnable,st.get(), "Auto-balance: Structure enabled");
 							total = v2;
 							stable = true;
 							break;
@@ -488,7 +493,7 @@ namespace Objects
 
 				ASSERT__(toDisable);
 				{
-					LogEvent(EventType::CompoundProcess, toDisable.get(),"Auto-balance: Structure disabled ");
+					LogEvent(forceDisable, toDisable.get(),"Auto-balance: Structure disabled ");
 					toDisable->SetEnabled(false,atTime,false);
 					total = GetVector();
 					stable = total.balance.IsStable();

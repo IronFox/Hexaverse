@@ -558,7 +558,7 @@ namespace FileIO
 		Riff::Chunk*vehiclePlantChunk = parent->FindFirst(RID::vehiclePlant);
 		if (!vehiclePlantChunk)
 		{
-			LogEvent(EventType::Notification,selfReference.get(),"Warning: Data chunk missing in file: MobileEntityProducer state. Skipping");
+			LogEvent(EventClass::Preset::fileError,selfReference.get(),"Warning: Data chunk missing in file: MobileEntityProducer state. Skipping");
 			return;
 		}
 //		ASSERT_NOT_NULL__(vehiclePlantChunk);
@@ -714,7 +714,7 @@ namespace FileIO
 						break;
 					}
 				if (!found)
-					LogEvent(EventType::InternalFault,"Warning unable to find parent #"+String(t->job->ioParentID)+" of "+t->name);
+					LogEvent(EventClass::Preset::error,"Warning unable to find parent #"+String(t->job->ioParentID)+" of "+t->name);
 			}
 
 		Objects::MobileEntityProducer*p = dynamic_cast<Objects::MobileEntityProducer*>(v.get());
@@ -843,7 +843,7 @@ namespace FileIO
 
 		if (!proto)
 		{
-			LogEvent(EventType::SessionRelated,"Warning: Unable to structure of type '" +typeName+"', which is not supported by the local version");
+			LogEvent(EventClass::Preset::fileError,"Warning: Unable to import structure of type '" +typeName+"', which is not supported by the local version");
 			return Objects::PStructure();
 		}
 //		ASSERT1__(proto,typeName);
@@ -972,7 +972,7 @@ namespace FileIO
 		String filenameName = "'"+String(FileSystem::ExtractFileNameExt(filename))+ "'";
 		if (!file.LoadFromFile(filename.c_str()))
 		{
-			LogEvent(EventType::InternalFault,"File not found");
+			LogEvent(EventClass::Preset::error,"File not found");
 			failed = true;
 		}
 		else
@@ -980,7 +980,7 @@ namespace FileIO
 			Riff::Chunk*vers = file.FindFirst(RID::fileVersion);
 			if (!vers)
 			{
-				LogEvent(EventType::InternalFault,"Unable to read version number");
+				LogEvent(EventClass::Preset::error,"Unable to read version number");
 
 				failed = true;
 			}
@@ -989,7 +989,7 @@ namespace FileIO
 				UINT32 vid;
 				if (vers->size() != 4)
 				{
-					LogEvent(EventType::InternalFault,"Version size mismatch");
+					LogEvent(EventClass::Preset::error,"Version size mismatch");
 
 					failed = true;
 				}
@@ -998,14 +998,14 @@ namespace FileIO
 					vers->Get(&vid);
 					if (vid < 1035)
 					{
-						LogEvent(EventType::InternalFault,"Version not supported anymore. Expected >= 1035, found "+String(vid));
+						LogEvent(EventClass::Preset::error,"Version not supported anymore. Expected >= 1035, found "+String(vid));
 
 						failed = true;
 					}
 					else
 						if (vid > SupportedFileVersion)
 						{
-							LogEvent(EventType::InternalFault,"Unsupported version: "+String(vid)+". Versions are supported up to "+String(SupportedFileVersion));
+							LogEvent(EventClass::Preset::error,"Unsupported version: "+String(vid)+". Versions are supported up to "+String(SupportedFileVersion));
 							failed = true;
 						}
 						else
@@ -1017,7 +1017,7 @@ namespace FileIO
 			GetOptionalPOD(&file,RID::worldContentTypeCount,contentTypeCount,(UINT32)12);
 			if (contentTypeCount != Grid::Content::NumberOfPossibilities)
 			{
-				LogEvent(EventType::InternalFault,"Grid content type count extracted from file is "+String(contentTypeCount)+". Local count is "+String(Grid::Content::NumberOfPossibilities));
+				LogEvent(EventClass::Preset::error,"Grid content type count extracted from file is "+String(contentTypeCount)+". Local count is "+String(Grid::Content::NumberOfPossibilities));
 				failed = true;
 			}
 		}
@@ -1025,12 +1025,12 @@ namespace FileIO
 
 		if (failed)
 		{
-			LogEvent(EventType::InternalFault,"Unable to restore saved world state from '"+String(filename)+"'.");
+			LogEvent(EventClass::Preset::error,"Unable to restore saved world state from '"+String(filename)+"'.");
 			return;
 		}
 
 
-		LogEvent(EventType::SessionRelated,"Restoring saved world state from '"+String(filename)+"'.");
+		LogEvent(EventSignificance::Uncommon,"Restoring saved world state from '"+String(filename)+"'.");
 		bool wasOpen = ::Network::CloseSession();
 
 		bool nexusFound = false, worldInfoFound = false;
@@ -1097,12 +1097,12 @@ namespace FileIO
 											CLI::PVariable v = Reflection::state.FindVar(key);
 											if (!v)
 											{
-												LogEvent(EventType::InternalFault,"State::Load(): Unable to find variable '"+key+"' for update");
+												LogEvent(EventClass::Preset::error,"State::Load(): Unable to find variable '"+key+"' for update");
 												continue;
 											}
 											if (!v->Set(value))
 											{
-												LogEvent(EventType::InternalFault,"State::Load(): Unable to update variable '"+key+"' to '"+value+"'. Supported values are "+v->GetSupportedValues());
+												LogEvent(EventClass::Preset::error,"State::Load(): Unable to update variable '"+key+"' to '"+value+"'. Supported values are "+v->GetSupportedValues());
 											}
 										}
 									}
@@ -1203,7 +1203,7 @@ namespace FileIO
 									nexusFound = true;
 									faction = Objects::Faction::nexus;
 									faction->FlushData();
-									LogEvent(EventType::SessionRelated,"Loading nexus faction");
+									LogEvent(EventSignificance::Common,"Loading nexus faction");
 								}
 								else
 								{
@@ -1349,7 +1349,7 @@ namespace FileIO
 
 		Reflection::LoadOverrides();
 
-		LogEvent(EventType::SessionRelated,"Restored world "+World::worldID.ToNiceString()+" in round "+String(RuntimeConfig::roundNumber));
+		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+World::worldID.ToString()+" in round "+String(RuntimeConfig::roundNumber));
 		RefreshWindowTitle();
 
 
@@ -1537,11 +1537,11 @@ namespace FileIO
 
 		if (container.SaveToFile(name.c_str()))
 		{
-			LogEvent(EventType::Debug,"World snapshot written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
-			LogEvent(EventType::SessionRelated,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
+			LogEvent(EventSignificance::Debug,"World snapshot written to "+String(name)+" in "+String(timer.GetSecondsSince(t0))+" seconds");
+			LogEvent(EventSignificance::Uncommon,"World snapshot created in "+String(timer.GetSecondsSince(t0))+" seconds");
 		}
 		else
-			LogEvent(EventType::InternalFault,"Unable to write world to "+String(name));
+			LogEvent(EventClass::Preset::error,"Unable to write world to "+String(name));
 		//Grid::SaveToFiles(name+".grid");
 		//Objects::SaveToFiles(name+".objects");
 
