@@ -2135,26 +2135,6 @@ namespace Technites
 
 	}
 
-	#ifndef CLIENT
-	/*static*/ float3 Faction::ToColor(const TUniqueID&id)
-	{
-		UINT32 crc32 = CRC32::getChecksum(id.bytes,id.NumBytes);
-		Random r(crc32);
-		float3 rs;
-		float lowest,highest,delta;
-		do
-		{
-			rs  = float3(r.getFloat(),r.getFloat(),r.getFloat());
-			lowest = Vec::min(rs);
-			highest = Vec::max(rs);
-			delta = highest - lowest;
-		}
-		while (delta < 0.01f);
-		rs = (rs - lowest) / delta;
-		return rs;
-	};
-	#endif
-
 	/*static*/ PFaction			Faction::CreateFromFile(const TUniqueID&id, BYTE gridID, bool copyInitialWorld/* = false*/)
 	{
 		ASSERT__(gridID != 0xFF);
@@ -2163,7 +2143,6 @@ namespace Technites
 		//	faction->id = id;
 		faction->gridID = gridID;
 		#ifndef CLIENT
-			faction->color = ToColor(faction->id);
 			Technite::factionColor[gridID] = faction->color;
 		#endif
 		gridIDMap[gridID] = faction;

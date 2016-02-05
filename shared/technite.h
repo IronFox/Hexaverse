@@ -467,10 +467,6 @@ namespace Technites
 		Buffer<Technite>		technites;
 		Buffer0<TSensor>		sensors;
 
-		#ifndef CLIENT
-			float3					color;// = float3(0.2,0.3,0.9);
-		#endif
-
 		BroadTechniteMap		techniteMap;
 
 		BYTE					gridID;				//!< Identifier in the grid. 255/0xFF is invalid. Up to 254 different cell factions on one planet.
@@ -591,7 +587,6 @@ namespace Technites
 		//static Grid::Content	GetGlobalGridContent(const Grid::HCellIdU&cellID);
 
 		#ifndef CLIENT
-			static float3		ToColor(const TUniqueID&id);
 			void				Process(float t);
 			void				ProcessLighting();
 			#ifdef _DEBUG
