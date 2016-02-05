@@ -1091,7 +1091,8 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			if (base && base->turret->ConsumesResources(res))
 			{
 				Objects::anyCompoundsColored = true;
-				Objects::Renderer::SelectCompoundAreas(Objects::selectedMobileEntity->owner,res);
+				Objects::OwnerParameter o = Objects::selectedMobileEntity->owner;
+				Objects::Renderer::SelectCompoundAreas(o,res);
 
 
 
@@ -1113,7 +1114,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 					any = true;
 					if (res & Objects::Resource::Minerals)
 						for (const auto v : Objects::vehicles)
-							if (v->isMine)
+							if (v->owner == o)
 							{
 								v->resourceEnvironment.CheckRefresh(*v);
 								if (v->resourceEnvironment.sourceCompounds.Contains(*c))
@@ -1123,7 +1124,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 							}
 					if (res & Objects::Resource::Fuel)
 						for (const auto v : Objects::satellites)
-							if (v->isMine && v->RequiresFuel())
+							if (v->owner == o && v->RequiresFuel())
 							{
 								v->resourceEnvironment.CheckRefresh(*v);
 								if (v->resourceEnvironment.sourceCompounds.Contains(*c))
@@ -1159,13 +1160,14 @@ void	OnAppear(const Objects::PWorldEntity&e)
 		{
 			if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
 			{
+				Objects::OwnerParameter o = Objects::selectedEntity->owner;
 				Objects::PStructure s = To<Objects::Structure>::Cast(Objects::selectedEntity);
 				const Objects::Compound&n = Objects::compounds[s->compoundID];
 				Objects::PWorkingStructure ws = s->IsWorkingStructure() ? To<Objects::WorkingStructure>::Cast(Objects::selectedEntity) : Objects::PWorkingStructure();
 				Objects::ResourceVector balance = n.total.supply;
 				balance -= n.total.demand;
 				for (const auto v : Objects::vehicles)
-					if (v->isMine)
+					if (v->owner == o)
 					{
 						v->resourceEnvironment.CheckRefresh(*v);
 						if (v->resourceEnvironment.sourceCompounds.Contains(s->compoundID))
@@ -1174,7 +1176,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 						}
 					}
 				for (const auto v : Objects::satellites)
-					if (v->isMine && v->RequiresFuel())
+					if (v->owner == o && v->RequiresFuel())
 					{
 						v->resourceEnvironment.CheckRefresh(*v);
 						if (v->resourceEnvironment.sourceCompounds.Contains(s->compoundID))
