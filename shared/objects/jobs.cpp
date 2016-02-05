@@ -269,7 +269,7 @@ namespace Objects
 				//focus --;
 				Grid::LCellIdI f2 = focus;
 				f2--;
-				v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),&f2);
+				v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),shared_from_this(), &f2);
 				return Delayed;
 			}
 
@@ -291,7 +291,7 @@ namespace Objects
 					Grid::LCellIdI up = focus;
 					if (job)
 					{
-						v.RegisterNewFrontJob("", job,&up);
+						v.RegisterNewFrontJob("", job,shared_from_this(), &up);
 						return Delayed;
 					}
 					else
@@ -1088,7 +1088,7 @@ namespace Objects
 					LogEvent(EventType::EntityProcess,&v,GetName()+": Obstruction detected. Resolution: clearing upper terrain.");
 					PVehicleJob job(new ClearAbove(v));
 					Grid::LCellIdI up = constLoc+1;
-					v.RegisterNewFrontJob("", job,&up);
+					v.RegisterNewFrontJob("", job,shared_from_this(), &up);
 				}
 				return Delayed;
 			}			
@@ -1459,14 +1459,18 @@ namespace Objects
 								new BuildRoad(v,
 									lastLocation != Grid::LCellIdI::Invalid && lastLocation.height < v.location.height ? lastLocation.stackID : 0xFFFFFFFF,
 									!nextIsLast && next.height < v.location.height ?next.stackID : 0xFFFFFFFF)),
-								nullptr);
+									shared_from_this(), 
+									nullptr);
 							}
 							else
-								v.RegisterNewFrontJob("", PVehicleJob(new BuildRoad(v)),nullptr);
+								v.RegisterNewFrontJob("", PVehicleJob(new BuildRoad(v)),shared_from_this(), nullptr);
 						}
 						break;
 						case CursorMode::BuildConnectorChainMode:
-							v.RegisterNewFrontJob(Connector::globalPrototype->GetTypeName(), PVehicleJob(new Construct(v,Connector::globalPrototype)),&v.location);
+							v.RegisterNewFrontJob(Connector::globalPrototype->GetTypeName(), 
+								PVehicleJob(new Construct(v,Connector::globalPrototype)),
+								shared_from_this(),
+								&v.location);
 						break;
 						case CursorMode::BuildWallChainMode:
 						{
@@ -1477,8 +1481,8 @@ namespace Objects
 							//v.RegisterChange(TasksChanged,-1);
 							//v.myTasks.GetNewest().Recompile(pointOfOrigin, this);
 
-							v.RegisterNewFrontJob("", PVehicleJob(new BuildHorizontalWall(v)),nullptr);
-							v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),&focus);
+							v.RegisterNewFrontJob("", PVehicleJob(new BuildHorizontalWall(v)),shared_from_this(), nullptr);
+							v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),shared_from_this(), &focus);
 
 						}
 						break;
@@ -1489,7 +1493,7 @@ namespace Objects
 							Grid::LCellIdI focus = Grid::LCellIdI(v.location.stackID,next.height);
 							if (next.height > v.location.height)
 							{
-								v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),&focus);
+								v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),shared_from_this(), &focus);
 							}
 
 
@@ -1500,13 +1504,15 @@ namespace Objects
 							{
 								//RegisterNewJob(nullptr, PJob(new Objects::Job::DigDown(*this)),nullptr);
 								v.RegisterNewFrontJob("", PVehicleJob(
-								new BuildRoad(v,
-									lastLocation != Grid::LCellIdI::Invalid && lastLocation.height < v.location.height ? lastLocation.stackID : 0xFFFFFFFF,
-									/*next != path.end() && next->height < v.location.height ?next->stackID :*/ 0xFFFFFFFF)),
-								nullptr);
+									new BuildRoad(v,
+										lastLocation != Grid::LCellIdI::Invalid && lastLocation.height < v.location.height ? lastLocation.stackID : 0xFFFFFFFF,
+										/*next != path.end() && next->height < v.location.height ?next->stackID :*/ 
+										0xFFFFFFFF)),
+									shared_from_this(), 
+									nullptr);
 							}
 							else
-								v.RegisterNewFrontJob("", PVehicleJob(new BuildRoad(v)),nullptr);
+								v.RegisterNewFrontJob("", PVehicleJob(new BuildRoad(v)),shared_from_this(), nullptr);
 
 							if (
 								(hasNext && next.height < v.location.height && next.stackID == v.location.stackID)
@@ -1515,7 +1521,7 @@ namespace Objects
 								)
 							{
 								focus--;
-								v.RegisterNewFrontJob("", PVehicleJob(new DigDown(v)),&focus);
+								v.RegisterNewFrontJob("", PVehicleJob(new DigDown(v)),shared_from_this(), &focus);
 							}
 
 //							v.RegisterNewFrontJob("", PVehicleJob(new BuildRoad(v)),nullptr);

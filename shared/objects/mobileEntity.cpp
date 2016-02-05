@@ -619,9 +619,27 @@ namespace Objects
 								//movementActionLeft = 0;
 							break;
 							case VehicleJob::BaseJob::CannotStartAbort:
+							{
 								LogEvent(EventType::MinorEntityProcess,this,"Cannot start '"+myTasks.Peek().job->GetName()+"'. Skipping");
+								PVehicleJob parent = myTasks.Peek().job->parent.lock();
 								EraseFirstTask();
+								if (parent)
+								{
+									while (myTasks.IsNotEmpty() && myTasks.Peek().job != parent)
+									{
+										LogEvent(EventType::MinorEntityProcess,this,"Cannot continue offspring '"+myTasks.Peek().name+"'. Skipping");
+										EraseFirstTask();
+									}
+									if (myTasks.IsNotEmpty())
+									{
+										LogEvent(EventType::MinorEntityProcess,this,"Cannot continue parent '"+myTasks.Peek().name+"'. Skipping");
+										EraseFirstTask();
+									}
+									else
+										LogEvent(EventType::InternalFault,this,"Cannot find parent job '"+parent->GetName()+"'");
+								}
 								RegisterChange(TasksChanged,timeAt);
+							}
 							break;
 						}
 						if (!cont)
@@ -749,7 +767,7 @@ namespace Objects
 			#endif
 		}
 	
-		void					MobileEntity::RegisterNewFrontJob(const String&localizableShapeIdentifier, const PVehicleJob&job, const Grid::LCellIdI*destination)
+		void					MobileEntity::RegisterNewFrontJob(const String&localizableShapeIdentifier, const PVehicleJob&job, const PVehicleJob&parent, const Grid::LCellIdI*destination)
 		{
 			ASSERT__(!TasksAreLocked());
 
@@ -771,6 +789,9 @@ namespace Objects
 							task.localizableShape.ibo = (*p)->localizableShape->ibo;
 						}
 				}
+			#else
+				ASSERT__(parent);
+				job->parent = parent;
 			#endif
 
 			task.job = job; 
@@ -1358,7 +1379,7 @@ namespace Objects
 				std::shared_ptr<VehicleJob::PathJob> pjob = To<VehicleJob::PathJob>::DynamicCast(this->job);
 				//if (foci.IsNotEmpty() || type == MoveTo)
 
-				if (pjob && pjob->movesToFocusWhenDone)
+				if (pjob)
 				{
 					if (foci.IsNotEmpty() && pjob->UpdatePath(*parent, pointOfOrigin, foci.Peek().target))
 					{
