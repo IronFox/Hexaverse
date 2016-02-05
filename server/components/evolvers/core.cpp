@@ -231,7 +231,7 @@ namespace Evolver
 					}
 					else
 					{
-						LogEvent(EventType::CommandRejected,v.get(),"Insufficient ammunition. Attacks cancelled");
+						LogEvent(EventClass::Preset::commandRejected,v.get(),"Insufficient ammunition. Attacks cancelled");
 						v->EraseFirstTask();
 						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->timeAt);
 					}
@@ -257,7 +257,7 @@ namespace Evolver
 							continue;
 						if (!t->HasAmmoForShot(0))
 						{
-							LogEvent(EventType::CommandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
+							LogEvent(EventClass::Preset::commandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
 							t->attackQueue.Clear();
 							t->RegisterChange(Objects::WorldEntity::TasksChanged,t->timeAt);
 							continue;
@@ -300,7 +300,7 @@ namespace Evolver
 		{
 			Objects::RefreshSkyHubConnections();
 			if (terrainChanged)
-				LogEvent(EventType::Debug,nullptr,"Terrain changed, updating satellite ground-sensory");
+				LogEvent(EventSignificance::Debug,nullptr,"Terrain changed, updating satellite ground-sensory");
 			
 			static Buffer0<Objects::PSatellite>	waste;
 			for (index_t i = 0; i < Objects::satellites.Count(); i++)	//must be an integer loop (see ProcessRound())
@@ -315,14 +315,14 @@ namespace Evolver
 				{
 					if (sat->location.height <= Objects::Satellite::DeclinedResidenceHeight)
 					{
-						LogEvent(EventType::EntityProcessFailed,sat.get(),"Insufficient fuel supply. Satellite lost");
+						LogEvent(EventClass(EventSignificance::Important, EventFlavor::Loss),sat.get(),"Insufficient fuel supply. Satellite lost");
 						//t+= 0.025f;
 						sat->timeAt+=Objects::timeEpsilon;
 						waste << sat;
 					}
 					else
 					{
-						LogEvent(EventType::EntityProcessFailed,sat.get(),"Insufficient fuel supply. Satellite is declining");
+						LogEvent(EventClass(EventSignificance::Important, EventFlavor::Loss),sat.get(),"Insufficient fuel supply. Satellite is declining");
 						Grid::LCellIdI newLocation = sat->location;
 						newLocation.height = Objects::Satellite::DeclinedResidenceHeight;
 						//t+= 0.025f;
@@ -332,7 +332,7 @@ namespace Evolver
 				else
 					if (sat->location.height < Objects::Satellite::BaseResidenceHeight)
 					{
-						LogEvent(EventType::EntityProcess,sat.get(),"Satellite height restored");
+						LogEvent( EventClass(EventSignificance::Uncommon, EventFlavor::Gain),sat.get(),"Satellite height restored");
 						Grid::LCellIdI newLocation = sat->location;
 						newLocation.height = Objects::Satellite::BaseResidenceHeight;
 						sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);

@@ -30,7 +30,7 @@ namespace Grid
 				}
 				familyChanged[Grid::high.grid.GetCell(c.hStackID).family] = true;
 			});
-			LogEvent(EventType::PerformanceMeasurement,nullptr,"Sky sensory change processed in "+String(timer.GetSecondsSince(t0)));
+			LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sky sensory change processed in "+String(timer.GetSecondsSince(t0)));
 		}
 
 
@@ -40,7 +40,7 @@ namespace Grid
 			#ifdef _DEBUG
 			{
 				UINT32 crc = CRC32::getChecksum(desc.coverage.pointer(),desc.coverage.GetContentSize());
-				LogEvent(EventType::Debug,"Applying sensory change ("+String(changeBy)+"), using descriptor with "+String(desc.coverage.Count())+" stack(s), crc="+IntToHex((int)crc,8));	
+				LogEvent(EventSignificance::Debug,"Applying sensory change ("+String(changeBy)+"), using descriptor with "+String(desc.coverage.Count())+" stack(s), crc="+IntToHex((int)crc,8));	
 			}
 
 			#endif
@@ -141,7 +141,7 @@ namespace Grid
 
 			}
 
-			LogEvent(EventType::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
+			LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
 			//ShowMessage(timer.GetSecondsSince(t0));
 
 

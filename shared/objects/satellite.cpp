@@ -125,7 +125,7 @@ namespace Objects
 				Grid::SkySensorState state = skySensorState;
 				if (Grid::actualWorld.UpdateSensorState(skySensorState))
 				{
-					LogEvent(EventType::MinorEntityProcess,this,"Ground-sensor change detected");
+					LogEvent(EventSignificance::Common,this,"Ground-sensor change detected");
 
 					owner->RegisterSensorCreation(skySensorState,atTime,false);
 					atTime += timeEpsilon;
@@ -650,7 +650,7 @@ namespace Objects
 					MobileEntityProducer::Tick(cmp.total.balance,atTime);
 				}
 				else
-					LogEvent(EventType::EntityProcessFailed,this,"Insufficient resources available in "+port->CastToStructure()->GetNiceName()+". Delaying production");
+					LogEvent(EventClass::Preset::operationAborted,this,"Insufficient resources available in "+port->CastToStructure()->GetNiceName()+". Delaying production");
 			}
 			return true;
 		}
@@ -663,7 +663,7 @@ namespace Objects
 			{
 				if (failIsFatal)
 				{
-					LogEvent(EventType::Fatal,this,"Dead");
+					LogEvent(EventClass::Preset::fatal,this,"Dead");
 					FATAL__("Critical abort");
 				}
 				return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
@@ -675,7 +675,7 @@ namespace Objects
 			{
 				if (failIsFatal)
 				{
-					LogEvent(EventType::Fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
+					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
 					FATAL__("Critical abort");
 				}
 				return MobilePlacementResult::PlacementFailedObstructed;
@@ -753,7 +753,7 @@ namespace Objects
 						
 									if (!CanHitFrom(pointOfOrigin,destination))
 									{
-										LogEvent(EventType::CommandRejected,this,"Destination out of range");
+										LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 										return false;
 									}
 								}
@@ -761,7 +761,7 @@ namespace Objects
 									return false;
 							}
 							else
-								LogEvent(EventType::CommandRejected,this,"Attempting to attack current location");
+								LogEvent(EventClass::Preset::commandRejected,this,"Attempting to attack current location");
 						}
 					}
 					else
@@ -912,13 +912,13 @@ namespace Objects
 				return false;
 			if (myTasks.Count() >= MaxStructureTasks)
 			{
-				LogEvent(EventType::CommandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
+				LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
 				return false;
 			}
 			Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 			if (target.stackID == pointOfOrigin.stackID && turret->trajectoryType != TrajectoryType::VerticalBeam)
 			{
-				LogEvent(EventType::CommandRejected,this,"Destination too close");
+				LogEvent(EventClass::Preset::commandRejected,this,"Destination too close");
 				return false;
 			}
 			if (turret->trajectoryType != TrajectoryType::VerticalBeam)
@@ -930,7 +930,7 @@ namespace Objects
 
 				if (!CanHitFrom(pointOfOrigin,target))
 				{
-					LogEvent(EventType::CommandRejected,this,"Destination out of range");
+					LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 					return false;
 				}
 			}
@@ -959,7 +959,7 @@ namespace Objects
 		{
 			if (!HasAmmoForShot() && empDamageLevel == 0)
 			{
-				//LogEvent(EventType::CommandRejected,this,"Insufficient ammunition");
+				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;
 			}
 
@@ -994,7 +994,7 @@ namespace Objects
 			if (port && port->CastToStructure()->location.stackID == location.stackID)
 			{
 				#ifndef CLIENT
-					LogEvent(EventType::EntityProcessFailed,this,"Cannot connect to "+port->CastToStructure()->GetNiceName()+": Already connected to "+port->connectedToHub->GetNiceName());
+					LogEvent(EventClass::Preset::operationAborted,this,"Cannot connect to "+port->CastToStructure()->GetNiceName()+": Already connected to "+port->connectedToHub->GetNiceName());
 				#endif
 				return false;
 			}
@@ -1006,7 +1006,7 @@ namespace Objects
 			SignalChange(OrbitalConnectionChanged,timeAt);
 			WorkingStructure*ws = to->CastToStructure();
 			ws->SignalChange(OrbitalConnectionChanged,timeAt);
-			LogEvent(EventType::EntityProcess,this,"Connection to "+ws->GetNiceName()+" established");
+			LogEvent(EventSignificance::Common,this,"Connection to "+ws->GetNiceName()+" established");
 		#endif
 
 		to->connectedToHub = To<SkyHub>::Cast(shared_from_this());
@@ -1021,7 +1021,7 @@ namespace Objects
 		{
 			WorkingStructure*ws = port->CastToStructure();
 			#ifndef CLIENT
-				LogEvent(EventType::EntityProcessFailed,this,"Connection to "+ws->GetNiceName()+" lost");
+				LogEvent(EventClass::Preset::operationAborted,this,"Connection to "+ws->GetNiceName()+" lost");
 			#endif
 
 

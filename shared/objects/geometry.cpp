@@ -279,7 +279,7 @@ namespace Objects
 		PathString cgsName = baseName + ".cgs";
 		if (!FileSystem::IsFile(cgsName) || FileSystem::GetModificationTime(cgsName) < FileSystem::GetModificationTime(filename) || !geo.LoadFromFile(cgsName))
 		{
-			LogEvent(EventType::Notification ,nullptr, "Reconverting " + String(filename)+"...");
+			LogEvent(EventSignificance::Uncommon, "Reconverting " + String(filename)+"...");
 			Converter::obj_converter.positionObjects = false;
 			ASSERT1__(Converter::obj_converter.LoadFromFile(geo, filename),filename);
 			geo.SaveToFile(cgsName);

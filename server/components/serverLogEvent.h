@@ -11,19 +11,19 @@ namespace Logging
 	/**
 	Writes an event to the console and/or log file
 	*/
-	void	WriteEvent(EventType type, const String&message, TCP::Peer*peer, const Objects::WorldEntity*e);
+	void	WriteEvent(const EventClass&type, const String&message, TCP::Peer*peer, const Objects::WorldEntity*e);
 
 	/**
 	Sends an event to a peer
 	*/
-	void	SendEntityEvent(TCP::Peer*toPeer,EventType type, const Objects::WorldEntity*e, const String&msg);
+	void	SendEntityEvent(TCP::Peer*toPeer,const EventClass&type, const Objects::WorldEntity*e, const String&msg);
 }
 
-void		LogEvent(EventType t, TCP::Peer&p, const String&msg);
-void		LogEvent(EventType t, TCP::Peer&p, const Objects::PWorldEntity&e, const String&msg);
+void		LogEvent(const EventClass&t, TCP::Peer&p, const String&msg);
+void		LogEvent(const EventClass&t, TCP::Peer&p, const Objects::PWorldEntity&e, const String&msg);
 
-inline void		LogEvent(EventType t, const TCP::PPeer&p, const String&msg)	{if (p) LogEvent(t,*p,msg); else LogEvent(t,msg);}
-inline void		LogEvent(EventType t, const TCP::PPeer&p, const Objects::PWorldEntity&e, const String&msg)	{if (p) LogEvent(t,*p,e,msg); else LogEvent(t,e.get(),msg);}
+inline void		LogEvent(const EventClass&t, const TCP::PPeer&p, const String&msg)	{if (p) LogEvent(t,*p,msg); else LogEvent(t,msg);}
+inline void		LogEvent(const EventClass&t, const TCP::PPeer&p, const Objects::PWorldEntity&e, const String&msg)	{if (p) LogEvent(t,*p,e,msg); else LogEvent(t,e.get(),msg);}
 
 
 

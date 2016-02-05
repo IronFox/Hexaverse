@@ -238,7 +238,7 @@ namespace Objects
 			}
 			else
 			{
-				LogEvent(EventType::EntityProcessFailed,this,"Unable to plot trajectory to target");
+				LogEvent(EventClass::Preset::operationAborted,this,"Unable to plot trajectory to target");
 			}
 
 
@@ -274,7 +274,7 @@ namespace Objects
 			Super::OnConstructionFinished(atTime);
 			ChangeStorage(*this,atTime,turret->ammoType,GetMaxStorageCapacity().level[turret->ammoType] - storage.level[turret->ammoType]);
 			//storage.level[Resource::Munitions] = GetMaxStorageCapacity().level[Resource::Munitions];
-			//LogEvent(EventType::MinorEntityProcess,this,"Munition storage changed to "+String(storage.level[Resource::Munitions]));
+			//LogEvent(EventSignificance::Common,this,"Munition storage changed to "+String(storage.level[Resource::Munitions]));
 
 		}
 
@@ -284,7 +284,7 @@ namespace Objects
 		{
 			if (!HasAmmoForShot(entityTime) || empDamageLevel != 0 || IsHibernating())
 			{
-				//LogEvent(EventType::CommandRejected,this,"Insufficient ammunition");
+				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;
 			}
 
@@ -534,7 +534,7 @@ namespace Objects
 		{
 			changed = false;
 
-			LogEvent(EventType::MinorEntityProcess, this, "Recompiling geometry");
+			LogEvent(EventClass::Preset::common, this, "Recompiling geometry");
 			localMesh.ClearCompletely();
 
 			{
@@ -665,7 +665,7 @@ namespace Objects
 		//String dbgStr;
 		//foreach (neighborhood,n)
 		//	dbgStr += ", "+ n->get()->GetName();
-		//LogEvent(EventType::Debug,nullptr, "Neighborhood of "+s->GetName()+"[owner "+s->owner.ToString()+"]@"+s->location.ToString()+": "+dbgStr);
+		//LogEvent(EventSignificance::Debug,nullptr, "Neighborhood of "+s->GetName()+"[owner "+s->owner.ToString()+"]@"+s->location.ToString()+": "+dbgStr);
 
 		//Structure&_s = *s;
 		}
@@ -702,7 +702,7 @@ namespace Objects
 					ASSERT__(c->connectedTo.Contains(_this));
 				}
 				_this->OnNewConnection(c, between, atTime);
-				LogEvent(EventType::MinorEntityProcess,nullptr, "Connection established between "+GetName()+" and "+c->GetName()+" at time "+String(atTime));
+				LogEvent(EventSignificance::Common,nullptr, "Connection established between "+GetName()+" and "+c->GetName()+" at time "+String(atTime));
 				#ifdef HAS_WINDOW
 					if (c->changed)
 						c->Recompile();
@@ -721,13 +721,13 @@ namespace Objects
 	/*virtual*/ void Structure::OnDestroy(float&atTime)
 	{
 		Super::OnDestroy(atTime);
-		LogEvent(EventType::Debug,this,"Unregistering at time="+String(atTime)+"...");
+		LogEvent(EventSignificance::Debug,this,"Unregistering at time="+String(atTime)+"...");
 		if (IsBroad())
 			CommonUnregisterBroadStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
 		else
 			CommonUnregisterNarrowStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
 
-		LogEvent(EventType::Debug,this,"Disconnecting...");
+		LogEvent(EventClass::Preset::debug,this,"Disconnecting...");
 		DisconnectFromNeighborhood(atTime);
 
 		#ifdef HAS_WINDOW
@@ -866,12 +866,12 @@ namespace Objects
 		{
 			if (attackQueue.Count() >= MaxStructureTasks)
 			{
-				LogEvent(EventType::CommandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
+				LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
 				return false;
 			}
 			if (!turret->CanAttack())
 			{
-				LogEvent(EventType::CommandRejected,this,"This tower cannot attack");
+				LogEvent(EventClass::Preset::commandRejected,this,"This tower cannot attack");
 				return false;
 			}
 
@@ -884,7 +884,7 @@ namespace Objects
 
 				if (!CanHit(target))
 				{
-					LogEvent(EventType::CommandRejected,this,"Destination out of range");
+					LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 					return false;
 				}
 			}
@@ -908,7 +908,7 @@ namespace Objects
 			{
 				if (!AttackNext(destination,false))
 					return false;
-				LogEvent(EventType::MinorEntityProcess,this,"Issued tower attack to "+destination.ToString());
+				LogEvent(EventSignificance::Common,this,"Issued tower attack to "+destination.ToString());
 			}
 			return true;
 		}
@@ -1124,7 +1124,7 @@ namespace Objects
 
 	/*static*/ void Structure::ChangeBroadStructCount(const Grid::LCellIdI&location, int height, bool hasFoundation, int changeDirection, float atTime)
 	{
-		LogEvent(EventType::Debug,nullptr,"ChangeBroadStructCount("+location.ToString()+", height="+String(height)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
+		LogEvent(EventSignificance::Debug,nullptr,"ChangeBroadStructCount("+location.ToString()+", height="+String(height)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
 
 		{
 			const int lowEdge = hasFoundation ? -1 : 0;
@@ -1353,7 +1353,7 @@ namespace Objects
 				RegisterNewOffGrid(v,atTime,setHealthToFullIfNew);
 			}
 		}
-		LogEvent(EventType::EntityProcess,v.get()," Now stored in "+GetNiceName());
+		LogEvent(EventSignificance::Common,v.get()," Now stored in "+GetNiceName());
 		v->storedIn = To<VehicleStore>::Cast(shared_from_this());
 		//v->location = location;
 		//#ifndef CLIENT
@@ -1557,7 +1557,7 @@ namespace Objects
 			String error;
 			if (!owner->CanSpawnFromStorage(v,error))
 			{
-				LogEvent(EventType::CommandRejected,this,"Failed to check out "+v->GetNiceName()+": "+error);
+				LogEvent(EventClass::Preset::commandRejected,this,"Failed to check out "+v->GetNiceName()+": "+error);
 				return;
 			}
 		}
@@ -1569,7 +1569,7 @@ namespace Objects
 		#endif
 		ASSERT3__(v->storedIn.lock().get() == this, v->GetName(),v->storedIn.lock()->ToEntity().GetName(),GetName());
 		ASSERT2__(RemoveStored(v),v->GetName(),GetName());
-		LogEvent(EventType::Debug,this,"Checking out "+v->GetName()+" to "+targetLocation.ToString());
+		LogEvent(EventSignificance::Debug,this,"Checking out "+v->GetName()+" to "+targetLocation.ToString());
 		#ifndef CLIENT
 			
 		
@@ -1580,11 +1580,11 @@ namespace Objects
 			{
 				if (v->health <= 0)
 				{
-					LogEvent(EventType::Debug,this,v->GetName()+" did not survive checkout to "+targetLocation.ToString());
+					LogEvent(EventSignificance::Debug,this,v->GetName()+" did not survive checkout to "+targetLocation.ToString());
 				}
 				else
 				{
-					LogEvent(EventType::Fatal,this,"Checkout of "+v->GetName()+" failed unexpectedly: "+String(rs));
+					LogEvent(EventClass::Preset::fatal,this,"Checkout of "+v->GetName()+" failed unexpectedly: "+String(rs));
 					FATAL__("Checkout failed");
 				}
 			}
@@ -1775,7 +1775,7 @@ namespace Objects
 					Grid::CellStack&stack = Grid::actualWorld.cellStack[n.neighborID[j]];
 					if (broadFoundation && stack.GetCellI(location.height - 1).GetStrength() < needStrength)
 					{
-						LogEvent(EventType::MinorEntityProcess,e,"Strengthening cell "+Grid::HCellIdI(n.neighborID[j],location.height-1).ToString());
+						LogEvent(EventSignificance::Common,e,"Strengthening cell "+Grid::HCellIdI(n.neighborID[j],location.height-1).ToString());
 
 						anyChanged |= stack.LocalOverwrite(location.height - 1, foundationType);
 						if (deep)
@@ -1794,7 +1794,7 @@ namespace Objects
 					for (int a = 0; a < height; a++)
 						if (stack.GetCellI(location.height+a).content != Grid::Content::Clear)
 						{
-							LogEvent(EventType::MinorEntityProcess,e,"Clearing cell "+Grid::HCellIdI(n.neighborID[j],location.height+a).ToString());
+							LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(n.neighborID[j],location.height+a).ToString());
 
 							anyChanged |= stack.MakeLocalHole(location.height+a);
 						}
@@ -1803,7 +1803,7 @@ namespace Objects
 			Grid::CellStack&stack = Grid::actualWorld.cellStack[higher];
 			//if (requireCentralBlock && stack.GetCellI(location.height - 1).GetStrength() < needStrength)
 			//{
-			//	LogEvent(EventType::MinorEntityProcess,e,"Strengthening cell "+Grid::HCellIdI(higher,location.height-1).ToString());
+			//	LogEvent(EventSignificance::Common,e,"Strengthening cell "+Grid::HCellIdI(higher,location.height-1).ToString());
 			//	anyChanged |= stack.LocalOverwrite(location.height - 1, foundationType);
 			//	if (deep)
 			//	{
@@ -1821,7 +1821,7 @@ namespace Objects
 			for (int a = 0; a < height; a++)
 				if (stack.GetCellI(location.height+a).content != Grid::Content::Clear)
 				{
-					LogEvent(EventType::MinorEntityProcess,e,"Clearing cell "+Grid::HCellIdI(higher,location.height+a).ToString());
+					LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(higher,location.height+a).ToString());
 
 					anyChanged |= stack.MakeLocalHole(location.height+a);
 				}
@@ -1871,7 +1871,7 @@ namespace Objects
 		atTime += timeEpsilon;
 		if (connectedTo.FindAndErase(other))
 		{
-			LogEvent(EventType::MinorEntityProcess,nullptr, "Connection lost between "+GetName()+" and "+other->GetName());
+			LogEvent(EventSignificance::Common,nullptr, "Connection lost between "+GetName()+" and "+other->GetName());
 			#ifdef HYBRID_GRID
 				const UINT32 high = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
 				const auto&n = Grid::high.grid.GetCell(high).neighborhood;
@@ -1935,7 +1935,7 @@ namespace Objects
 					OnNewConnection(c, between,atTime);
 					c->connectedTo << _this;
 					c->OnNewConnection(_this,between,atTime);
-					LogEvent(EventType::MinorEntityProcess,nullptr, "Connection established between "+GetName()+" and "+c->GetName());
+					LogEvent(EventSignificance::Common,nullptr, "Connection established between "+GetName()+" and "+c->GetName());
 
 				}
 			}
@@ -1960,7 +1960,7 @@ namespace Objects
 				#endif
 				OnConnectionLost(c, between,atTime);
 				c->OnConnectionLost(_this,between,atTime);
-				LogEvent(EventType::MinorEntityProcess,nullptr, "Connection lost between "+GetName()+" and "+c->GetName());
+				LogEvent(EventSignificance::Common,nullptr, "Connection lost between "+GetName()+" and "+c->GetName());
 
 			}
 		}
@@ -2035,7 +2035,7 @@ namespace Objects
 			{
 				if (connectedToHub)
 				{
-					//LogEvent(EventType::EntityProcessFailed,this,"Connection to "+connectedTo->GetNiceName()+" lost");
+					//LogEvent(EventClass::Preset::operationAborted,this,"Connection to "+connectedTo->GetNiceName()+" lost");
 					connectedToHub->LoseGroundConnection();
 				}
 			}
@@ -2481,7 +2481,7 @@ namespace Objects
 					owner->acquiringNexusControl --;
 					DBG_ASSERT__(owner->acquiringNexusControl >= 0);
 					owner->nexusControl ++;
-					LogEvent(EventType::GameProgressRelated,this,"Control Acquired");
+					LogEvent( EventClass( EventSignificance::Important,EventFlavor::Gain ),this,"Control Acquired");
 					SignalNexusControlChange(owner);
 				}
 			}
@@ -2508,13 +2508,13 @@ namespace Objects
 						DBG_ASSERT__(owner->nexusControl > 0);
 						owner->nexusControl--;
 					}
-					LogEvent(EventType::GameProgressRelated,this,"Lost control");
+					LogEvent(EventClass( EventSignificance::Important,EventFlavor::Loss ),this,"Lost control");
 				}
 				else
 				{
 					owner->acquiringNexusControl++;
 
-					LogEvent(EventType::GameProgressRelated,this,"Acquiring control");
+					LogEvent(EventClass( EventSignificance::Uncommon,EventFlavor::Gain ),this,"Acquiring control");
 
 				}
 
@@ -2546,7 +2546,7 @@ namespace Objects
 
 	void RefreshCompoundCoverage( float atTime) 
 	{
-		//LogEvent(EventType::Debug,nullptr,"Refreshing network coverage");
+		//LogEvent(EventSignificance::Debug,nullptr,"Refreshing network coverage");
 
 		#ifndef CONNECTOR_LESS
 
@@ -2739,13 +2739,13 @@ namespace Objects
 		{
 			if (isEnabled == b)
 			{
-				LogEvent(EventType::MinorEntityProcess,this,"Requested structure enable-state already set: "+String(b)+". Notifying client. Ignoring command.");
+				LogEvent(EventSignificance::Common,this,"Requested structure enable-state already set: "+String(b)+". Notifying client. Ignoring command.");
 				RegisterChange(EnableChanged,atTime);	//some state error, must be corrected
 				return true;
 			}
 			if (b && (force==EnableIfPossible && !CanEnable()))
 			{
-				LogEvent(EventType::EntityProcessFailed,this,"Cannot enable at this time");
+				LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable at this time");
 				RegisterChange(CanEnableChanged,atTime);	//might be off...
 				return false;
 			}
@@ -2758,13 +2758,13 @@ namespace Objects
 					String outWhy;
 					if (!network.CanEnable(this,outWhy))
 					{
-						LogEvent(EventType::EntityProcessFailed,this,"Cannot enable: Insufficient resource supply in compound ("+outWhy+")");
+						LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable: Insufficient resource supply in compound ("+outWhy+")");
 						return false;
 					}
 				}
 				//else
 				//{
-				//	LogEvent(EventType::InternalFault,this,"Compound ID out of bounds: "+String(compoundID)+"/"+String(compounds.Count()));
+				//	LogEvent(EventClass::Preset::error,this,"Compound ID out of bounds: "+String(compoundID)+"/"+String(compounds.Count()));
 				//	return false;
 				//}
 			}
@@ -2785,7 +2785,7 @@ namespace Objects
 				//	compounds[compoundID].RefreshState(atTime);
 				//else
 				//{
-				//	LogEvent(EventType::InternalFault,this,"Compound ID out of bounds: "+String(compoundID)+"/"+String(compounds.Count()));
+				//	LogEvent(EventClass::Preset::error,this,"Compound ID out of bounds: "+String(compoundID)+"/"+String(compounds.Count()));
 				//}
 			}
 			return true;
