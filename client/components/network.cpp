@@ -1384,12 +1384,13 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		Objects::CheckMobileEntitySanity();
 
 
-		static Buffer0<TUniqueID> outdated;
+		static Buffer0<Objects::Marker*> outdated;
 		Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10);
 		foreach(outdated, o)
 		{
-			LogEvent(EventType::Debug,nullptr,"Deleting marker "+Objects::Marker::Find(*o)->GetName()+" since it's outdated");
-			SignalMarkerDeletion(*o);
+			
+			LogEvent(EventType::Debug,nullptr,"Deleting marker "+(*o)->GetName()+" since it's outdated (at age "+String((*o)->age)+")");
+			SignalMarkerDeletion((*o)->id);
 			//Network::Channels::destroyMarker.SendTo(Network::client, *o);
 		}
 
