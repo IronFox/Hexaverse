@@ -20,7 +20,7 @@ namespace Objects
 	#ifndef CLIENT
 
 		/*static*/ Buffer0<WFaction>	Faction::all;
-		/*static*/ PFaction				Faction::nexus(new Faction("<Nexus>"));
+		/*static*/ PFaction				Faction::nexus(new Faction(TUniqueID::Empty(), "<Nexus>"));
 
 
 
@@ -1654,5 +1654,16 @@ namespace Objects
 		Vec::subVal(rs,lowest);	//rs = (rs - lowest) / delta;
 		Vec::div(rs,delta);	//trying to be faster here
 	};
+
+
+	void		Faction::UpdateID(const TUniqueID&toID, bool recomputeColor/*=true*/)
+	{
+		if (id == TUniqueID::Empty())
+			this->id.Generate();
+		else
+			this->id = id;
+		if (recomputeColor)
+			IDToColor(color,this->id);
+	}
 
 }

@@ -219,8 +219,8 @@ namespace Test
 
 
 
-		Objects::PFaction faction0(new Objects::Faction()),
-							faction1(new Objects::Faction());
+		Objects::PFaction faction0(new Objects::Faction(TUniqueID::Empty())),
+							faction1(new Objects::Faction(TUniqueID::Empty()));
 
 		Objects::Faction::all << faction0 << faction1;
 
@@ -352,7 +352,7 @@ namespace Test
 		Objects::FlushAllData();
 		Grid::ResetStructureCounters();
 
-		Objects::PFaction faction(new Objects::Faction());
+		Objects::PFaction faction(new Objects::Faction(TUniqueID::Empty()));
 		Objects::Faction::all << faction;
 
 		Grid::LCellIdI	mineAt(0, 1);
@@ -451,7 +451,7 @@ namespace Test
 		Objects::FlushAllData();
 		Grid::ResetStructureCounters();
 
-		Objects::PFaction faction(new Objects::Faction());
+		Objects::PFaction faction(new Objects::Faction(TUniqueID::Empty()));
 		Objects::Faction::all << faction;
 
 		Grid::LCellIdI	mineAt(0, 1);
@@ -572,7 +572,7 @@ namespace Test
 		Objects::FlushAllData();
 		Grid::ResetStructureCounters();
 
-		Objects::PFaction faction(new Objects::Faction());
+		Objects::PFaction faction(new Objects::Faction(TUniqueID::Empty()));
 		Objects::Faction::all << faction;
 
 		Grid::LCellIdI	mineAt(0, 1);
