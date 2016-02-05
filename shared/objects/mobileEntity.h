@@ -322,7 +322,7 @@ namespace Objects
 										const PVehicleJob&job, const Grid::LCellIdI*focus);
 			void				RegisterNewFrontJob(
 										const String&localizableShapeIdentifier,
-										const PVehicleJob&job, const Grid::LCellIdI*focus);
+										const PVehicleJob&job, const PVehicleJob&parent, const Grid::LCellIdI*focus);
 
 
 			bool				DropLastTask();

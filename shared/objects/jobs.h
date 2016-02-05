@@ -26,6 +26,7 @@ namespace Objects
 
 		class BaseJob;
 		typedef std::shared_ptr<BaseJob>	PJob;
+		typedef std::weak_ptr<BaseJob>		WJob;
 
 
 		class BaseJob : public std::enable_shared_from_this<BaseJob>, public ISerializable
@@ -35,6 +36,9 @@ namespace Objects
 									mineralCostLeft;
 
 			#ifndef CLIENT
+				UINT32				ioID,		//transitory. used during io operations
+									ioParentID;		//transitory. used during io operations
+				WJob				parent;
 				const 
 			#endif
 			bool					movesToFocusWhenDone;

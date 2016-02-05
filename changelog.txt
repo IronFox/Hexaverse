@@ -1,6 +1,8 @@
 v0.3.15
 	* Fixed incorrect server IDs leading to client-side merging of different servers into one.
 	* Fixed UI buttons now graying out when they should.
+	* Fixed visualization of dig-to jobs.
+	* Fixed hostile markers (ghosts) disappearing too quickly.
 	> Extended automatic building activation to two.
 	> It is now possible to deactivate essential buildings without the balancer automatically reactivating them.
 	+ Spectator mode now colors units differently depending on their faction

@@ -1120,7 +1120,7 @@ namespace Objects
 			}
 		}
 
-		/*static*/ void				Marker::GetOutdated(BasicBuffer<TUniqueID>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds)
+		/*static*/ void				Marker::GetOutdated(BasicBuffer<Marker*>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds)
 		{
 			outOudated.Clear();
 			foreach(all, m)
@@ -1134,14 +1134,15 @@ namespace Objects
 						{
 							LogEvent(EventType::Debug,nullptr,"Marker "+m->GetName()+" considered outdated after "+String(m->age)+" round(s)");
 
-							outOudated << m->id;
+							outOudated << m;
 						}
 					break;
 					case Type::HostileContact:
 					{
 						//TVec3<> center = Grid::ToWorld(m->location);
 						//if ()
-						bool seen = m->visualization && Grid::actualWorld.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
+						bool seen = m->age > 1 &&	//don't delete hostile markers in round <2. grid might be outdated
+									 m->visualization && Grid::actualWorld.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
 						/*foreach(structures, s)
 							if ((*s)->isMine && (*s)->CanSee(center, 0))
 							{
@@ -1166,7 +1167,7 @@ namespace Objects
 									break;
 								}*/
 						if (seen)
-							outOudated << m->id;
+							outOudated << m;
 					}
 					break;
 

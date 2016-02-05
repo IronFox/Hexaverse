@@ -619,9 +619,27 @@ namespace Objects
 								//movementActionLeft = 0;
 							break;
 							case VehicleJob::BaseJob::CannotStartAbort:
+							{
 								LogEvent(EventType::MinorEntityProcess,this,"Cannot start '"+myTasks.Peek().job->GetName()+"'. Skipping");
+								PVehicleJob parent = myTasks.Peek().job->parent.lock();
 								EraseFirstTask();
+								if (parent)
+								{
+									while (myTasks.IsNotEmpty() && myTasks.Peek().job != parent)
+									{
+										LogEvent(EventType::MinorEntityProcess,this,"Cannot continue offspring '"+myTasks.Peek().name+"'. Skipping");
+										EraseFirstTask();
+									}
+									if (myTasks.IsNotEmpty())
+									{
+										LogEvent(EventType::MinorEntityProcess,this,"Cannot continue parent '"+myTasks.Peek().name+"'. Skipping");
+										EraseFirstTask();
+									}
+									else
+										LogEvent(EventType::InternalFault,this,"Cannot find parent job '"+parent->GetName()+"'");
+								}
 								RegisterChange(TasksChanged,timeAt);
+							}
 							break;
 						}
 						if (!cont)
@@ -749,7 +767,7 @@ namespace Objects
 			#endif
 		}
 	
-		void					MobileEntity::RegisterNewFrontJob(const String&localizableShapeIdentifier, const PVehicleJob&job, const Grid::LCellIdI*destination)
+		void					MobileEntity::RegisterNewFrontJob(const String&localizableShapeIdentifier, const PVehicleJob&job, const PVehicleJob&parent, const Grid::LCellIdI*destination)
 		{
 			ASSERT__(!TasksAreLocked());
 
@@ -771,6 +789,9 @@ namespace Objects
 							task.localizableShape.ibo = (*p)->localizableShape->ibo;
 						}
 				}
+			#else
+				ASSERT__(parent);
+				job->parent = parent;
 			#endif
 
 			task.job = job; 
@@ -1312,6 +1333,8 @@ namespace Objects
 		}
 		else
 		{
+			path.Clear();
+			path << PathNode(pointOfOrigin,0);
 			if (v->IsVehicle())
 			{
 				if (!AppendShortestDirectPath(pointOfOrigin,foci.Peek().target,path,false))
@@ -1331,14 +1354,15 @@ namespace Objects
 
 			}
 		}
-
-		static StringBuffer strPlottedCourse;
-		strPlottedCourse.Clear();
-		foreach (path,node)
-		{
-			strPlottedCourse << ' ' << node->cell.stackID<<'.'<<node->cell.height;
-		}
-		LogEvent(EventType::MinorEntityProcess,v,strPlottedCourse.ToStringRef());
+		#ifdef _DEBUG
+			static StringBuffer strPlottedCourse;
+			strPlottedCourse.Clear();
+			foreach (path,node)
+			{
+				strPlottedCourse << ' ' << node->cell.stackID<<'.'<<node->cell.height;
+			}
+			LogEvent(EventType::MinorEntityProcess,v,strPlottedCourse.ToStringRef());
+		#endif
 		return true;
 	}
 	
@@ -1350,32 +1374,32 @@ namespace Objects
 		{
 			case Job:
 			{
-				std::shared_ptr<VehicleJob::PathJob> job = To<VehicleJob::PathJob>::DynamicCast(this->job);
+				if (!job || !job->movesToFocusWhenDone || foci.IsEmpty())
+					break;
+				std::shared_ptr<VehicleJob::PathJob> pjob = To<VehicleJob::PathJob>::DynamicCast(this->job);
 				//if (foci.IsNotEmpty() || type == MoveTo)
 
-				if (!job || job->movesToFocusWhenDone)
+				if (pjob)
 				{
-					if (job)
+					if (foci.IsNotEmpty() && pjob->UpdatePath(*parent, pointOfOrigin, foci.Peek().target))
 					{
-						if (foci.IsNotEmpty() && job->UpdatePath(*parent, pointOfOrigin, foci.Peek().target))
+						path.Clear();
+						path << PathNode(pointOfOrigin,0);
+						foreach(pjob->path,n)
 						{
-							path.Clear();
-							path << PathNode(pointOfOrigin,0);
-							foreach(job->path,n)
-							{
-								path << PathNode(*n,1);
-							}
-							#ifdef HAS_WINDOW
-								if (recompileVisualization)
-									RecompilePath(1);
-							#endif
-							job->pathChanged = false;
+							path << PathNode(*n,1);
 						}
-						#ifndef CLIENT
-						else
-							return false;
+						#ifdef HAS_WINDOW
+							if (recompileVisualization)
+								RecompilePath(1);
 						#endif
+						pjob->pathChanged = false;
 					}
+					#ifndef CLIENT
+					else
+						return false;
+					#endif
+
 					break;
 				}
 			}
