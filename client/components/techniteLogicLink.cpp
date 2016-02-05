@@ -11,6 +11,10 @@ extern void	TransmitRoundEndRequest();
 
 namespace TechniteLogicLink
 {
+	static EventClass linkError = EventClass( EventSignificance::NonFatalError, EventFlavor::ServerPrivate );
+	static EventClass event = EventClass( EventSignificance::Common, EventFlavor::ServerPrivate );
+	static EventClass uncommonEvent = EventClass( EventSignificance::Uncommon, EventFlavor::ServerPrivate );
+
 	PathString autoStartClientPath="TechniteLogic/Client.exe";
 	bool autoStartClient=true;
 	static bool isActive = false,sessionStarted=false;
@@ -109,7 +113,7 @@ namespace TechniteLogicLink
 		else
 		{
 			if (!storedGameObjects.Unset(entity.id))
-				LogEvent(EventType::InternalFault,nullptr,"TechniteLogicLink: Unable to destroy entity "+entity.id.value.ToString()+": Not known");
+				LogEvent(linkError,nullptr,"TechniteLogicLink: Unable to destroy entity "+entity.id.value.ToString()+": Not known");
 		}
 	}
 
@@ -155,12 +159,12 @@ namespace TechniteLogicLink
 		{
 			if (m->storedIn.Get0())
 			{
-				LogEvent(EventType::TechniteLogic,nullptr,"Registering new stored mobile entity '"+mobile.state.entityState.id.value.ToString()+"' at "+mobile.state.entityState.location.ToString());
+				LogEvent(event,"Registering new stored mobile entity '"+mobile.state.entityState.id.value.ToString()+"' at "+mobile.state.entityState.location.ToString());
 				storedGameObjects.Set(mobile.state.entityState.id,obj);
 				return;
 			}
 		}
-		LogEvent(EventType::TechniteLogic,nullptr,"Registering new mobile entity '"+mobile.state.entityState.id.value.ToString()+"' at "+mobile.state.entityState.location.ToString());
+		LogEvent(event,"Registering new mobile entity '"+mobile.state.entityState.id.value.ToString()+"' at "+mobile.state.entityState.location.ToString());
 		gameObjects.Set(mobile.state.entityState.id,obj);
 		Channels::createGameObject.SendTo(logicServer,obj,1);
 	}
@@ -176,7 +180,7 @@ namespace TechniteLogicLink
 			FATAL__("Unable to find game object by id (for motion): "+state.id.value.ToString());
 			return;
 		}
-		LogEvent(EventType::TechniteLogic,nullptr,"Registering motion of entity '"+state.id.value.ToString()+"' to "+state.location.ToString());
+		LogEvent(event,"Registering motion of entity '"+state.id.value.ToString()+"' to "+state.location.ToString());
 
 		Channels::removeGameObject.SendTo(logicServer,obj->id,1);
 		obj->id.location = EncodeLocation(state.location);
@@ -204,7 +208,7 @@ namespace TechniteLogicLink
 			Channels::createGameObject.SendTo(logicServer,obj,1);
 
 			gameObjects.Set(state.entityState.id,obj);
-			LogEvent(EventType::TechniteLogic,nullptr,"Checked out entity '"+state.entityState.id.value.ToString()+"' to "+state.entityState.location.ToString());
+			LogEvent(event,"Checked out entity '"+state.entityState.id.value.ToString()+"' to "+state.entityState.location.ToString());
 			return;
 		}
 		if (m && m->storedIn.Get0())
@@ -213,7 +217,7 @@ namespace TechniteLogicLink
 			ASSERT1__(gameObjects.QueryAndUnset(state.entityState.id,obj),state.entityState.id.value.ToString());
 			Channels::removeGameObject.SendTo(logicServer,obj.id,1);
 			storedGameObjects.Set(state.entityState.id,obj);
-			LogEvent(EventType::TechniteLogic,nullptr,"Checked in entity '"+state.entityState.id.value.ToString()+"' to "+state.entityState.location.ToString());
+			LogEvent(event,"Checked in entity '"+state.entityState.id.value.ToString()+"' to "+state.entityState.location.ToString());
 			return;
 		}
 		Handle(state.entityState);
@@ -223,7 +227,7 @@ namespace TechniteLogicLink
 	{
 		if (!isActive)
 			return;
-		LogEvent(EventType::TechniteLogic,nullptr,"Registering new structure entity '"+struc.state.entityState.id.value.ToString()+"' at "+struc.state.entityState.location.ToString());
+		LogEvent(event,"Registering new structure entity '"+struc.state.entityState.id.value.ToString()+"' at "+struc.state.entityState.location.ToString());
 
 		TechniteProtocol::GameObject obj;
 		obj.birthRound = RuntimeConfig::roundNumber;
@@ -260,7 +264,7 @@ namespace TechniteLogicLink
 			FATAL__("Unable to find game object by id (for animated motion): "+motion.id.value.ToString());
 			return;
 		}
-		LogEvent(EventType::TechniteLogic,nullptr,"Registering animated motion of entity '"+motion.id.value.ToString()+"' to "+motion.toLocation.ToString());
+		LogEvent(event,"Registering animated motion of entity '"+motion.id.value.ToString()+"' to "+motion.toLocation.ToString());
 
 		Channels::removeGameObject.SendTo(logicServer,obj->id,1);
 		obj->id.location = EncodeLocation(motion.toLocation);
@@ -272,7 +276,7 @@ namespace TechniteLogicLink
 
 	static void SendWorldDataTo(TCP::Peer&peer)
 	{
-		LogEvent(EventType::SessionRelated,nullptr,peer.ToString()+ ": Technite logic: Sending world data to client");
+		LogEvent(event,peer.ToString()+ ": Technite logic: Sending world data to client");
 		Protocol::WorldDelta delta;
 		TechniteProtocol::GridDelta outDelta;
 		for (int i = 0; i < BaseGrid::NumFamilies; i++)
@@ -291,7 +295,7 @@ namespace TechniteLogicLink
 	}
 	static void SendWorld(TCP::Peer&peer)
 	{
-		LogEvent(EventType::SessionRelated,nullptr,peer.ToString()+ ": Technite logic: Sending grid layout to client");
+		LogEvent(event,peer.ToString()+ ": Technite logic: Sending grid layout to client");
 		TechniteProtocol::NodeChunk chunk;
 		for (int i = 0; i < BaseGrid::NumFamilies; i++)
 		{
@@ -350,7 +354,7 @@ namespace TechniteLogicLink
 		executed = false;
 		if (!logicServer.HasAnyClients())
 			return;
-		LogEvent(EventType::SessionRelated,nullptr,"Technite logic: Sending world data to all client");
+		LogEvent(event,"Technite logic: Sending world data to all client");
 		Protocol::WorldDelta delta;
 		TechniteProtocol::GridDelta outDelta;
 		for (int i = 0; i < BaseGrid::NumFamilies; i++)
@@ -386,7 +390,7 @@ namespace TechniteLogicLink
 	{
 		if (haveAllTechnites)
 		{
-			LogEvent(EventType::TechniteLogic,"ExecuteLogic("+String(roundNumber)+","+String(techniteSubRoundNumber)+")");
+			LogEvent(event,"ExecuteLogic("+String(roundNumber)+","+String(techniteSubRoundNumber)+")");
 			executed = true;
 			TechniteProtocol::InstructTechnites tech;
 			tech.roundNumber = roundNumber;
@@ -403,12 +407,12 @@ namespace TechniteLogicLink
 		void TechniteInstructionChunk(Protocol::TechniteInstructions&chunk)
 		{
 			//re-route to server as is
-			LogEvent(EventType::TechniteLogic,nullptr,"Forwarding technite instruction chunk to server, containing "+String(chunk.instructions.Count())+" technites, starting from "+String(chunk.offset));
+			LogEvent(event,"Forwarding technite instruction chunk to server, containing "+String(chunk.instructions.Count())+" technites, starting from "+String(chunk.offset));
 			Network::Channels::techniteInstructions.SendTo(Network::client,chunk);
 			
-			if (Network::myFaction && Network::myFaction->IsTechniteFaction())
+			if (Objects::Faction::mine && Objects::Faction::mine->IsTechniteFaction())
 			{
-				Technites::PFaction pf = To<Technites::Faction>::Cast(Network::myFaction);
+				Technites::PFaction pf = To<Technites::Faction>::Cast(Objects::Faction::mine);
 
 				count_t end = chunk.instructions.Count() + chunk.offset;
 				if (end <= pf->technites.Count())
@@ -419,12 +423,12 @@ namespace TechniteLogicLink
 						Grid::high.family[Grid::high.grid.GetCell(pf->technites[at].location.GetStackID()).family].SetOutdated(0.f);
 					}
 				else
-					LogEvent(EventType::TechniteLogic,nullptr,"Local technite field ("+String(pf->technites.Count())+") does not support that many technite instructions ("+String(end)+"). How weird");
+					LogEvent(event,"Local technite field ("+String(pf->technites.Count())+") does not support that many technite instructions ("+String(end)+"). How weird");
 			}
 
 			if (chunk.offset + chunk.instructions.Count() == recordedHistory.Count())
 			{
-				LogEvent(EventType::TechniteLogic,nullptr,"All technites instructed");
+				LogEvent(event,"All technites instructed");
 				
 				logicIsDone = true;
 
@@ -450,7 +454,7 @@ namespace TechniteLogicLink
 		//	colorChunk.Deserialize(test);
 
 
-			Technites::PFaction tf = To<Technites::Faction>::Cast(Network::myFaction);
+			Technites::PFaction tf = To<Technites::Faction>::Cast(Objects::Faction::mine);
 			foreach (colorChunk.colors,c)
 				if (c->index >= tf->technites.Count())
 					return;
@@ -472,18 +476,18 @@ namespace TechniteLogicLink
 			if (version != expect)
 			{
 				String msg = "TechniteLogic: Logic client version mismatch (server uses '"+expect+"', client sent '"+version+"')";
-				LogEvent(EventType::OperationAborted,nullptr,msg);
+				LogEvent(EventClass::Preset::operationAborted,nullptr,msg);
 				msg = msg.subString(0,256);
 				Channels::error.SendTo(peer,msg);
 				return;
 			}
-			LogEvent(EventType::TechniteLogic,nullptr,peer.ToString()+": Ready");
+			LogEvent(event,peer.ToString()+": Ready");
 
 			SendWorld(peer);
 
 			//if (Network::amTechniteFaction)
 			{
-				//Technites::PFaction tf = To<Technites::Faction>::Cast(Network::myFaction);
+				//Technites::PFaction tf = To<Technites::Faction>::Cast(Objects::Faction::mine);
 
 				Protocol::TechniteChunk chunk;
 				//chunk.first = true;
@@ -491,7 +495,7 @@ namespace TechniteLogicLink
 				count_t numChunks = recordedHistory.Count() / Protocol::MaxTechnitesPerChunk;
 				if (recordedHistory.Count() % Protocol::MaxTechnitesPerChunk)
 					numChunks++;
-				LogEvent(EventType::TechniteLogic,nullptr,"Sending "+String(numChunks)+" technite state chunks to logic client");
+				LogEvent(event,"Sending "+String(numChunks)+" technite state chunks to logic client");
 				index_t offset = 0;
 				for (index_t i = 0; i < numChunks; i++)
 				{
@@ -504,7 +508,7 @@ namespace TechniteLogicLink
 					chunk.technites.SetSize(numTechs);
 					chunk.technites.copyFrom(recordedHistory+offset,numTechs);
 
-					LogEvent(EventType::TechniteLogic,nullptr," Sending chunk containing "+String(numTechs)+" technites, starting from "+String(offset)+", flagged as ="+String(chunk.flags));
+					LogEvent(event," Sending chunk containing "+String(numTechs)+" technites, starting from "+String(offset)+", flagged as ="+String(chunk.flags));
 					Channels::techniteStateChunk.SendTo(peer,chunk);
 
 					offset += numTechs;
@@ -530,7 +534,7 @@ namespace TechniteLogicLink
 			}
 
 
-			LogEvent(EventType::TechniteLogic,nullptr," Elevating user level");
+			LogEvent(event," Elevating user level");
 			peer.userLevel = 1;
 
 			numClients ++;
@@ -632,7 +636,7 @@ namespace TechniteLogicLink
 		{
 			case TCP::Event::ConnectionEstablished:
 			{
-				LogEvent(EventType::SessionRelated, nullptr, "TechniteLogic: Peer connected: "+peer.ToString());
+				LogEvent(uncommonEvent, "TechniteLogic: Peer connected: "+peer.ToString());
 				Init(peer);
 
 			}
@@ -654,7 +658,7 @@ namespace TechniteLogicLink
 						}
 					#endif
 				}
-				LogEvent(EventType::SessionRelated, nullptr, "TechniteLogic: Peer connection lost");
+				LogEvent(uncommonEvent, nullptr, "TechniteLogic: Peer connection lost");
 			}
 			break;
 		}
@@ -765,7 +769,7 @@ namespace TechniteLogicLink
 					FillIn(m.visualization,obj);
 				else
 					return;
-				LogEvent(EventType::TechniteLogic,nullptr,"Creating new ghost-marker for "+m.id.ToString());
+				LogEvent(event,"Creating new ghost-marker for "+m.id.ToString());
 				obj.id.isGhost = true;
 				obj.birthRound = m.createdInRound;
 				ghostGameObjects.Set(m.id,obj);
@@ -774,7 +778,7 @@ namespace TechniteLogicLink
 			break;
 			case Objects::Marker::Type::ControlMarker:
 			{
-				LogEvent(EventType::TechniteLogic,nullptr,"Creating new control-marker for "+m.id.ToString());
+				LogEvent(event,"Creating new control-marker for "+m.id.ToString());
 				TechniteProtocol::ControlMarker mrk;
 				mrk.birthRound = m.createdInRound;
 				mrk.location = EncodeLocation(m.location);
@@ -795,14 +799,14 @@ namespace TechniteLogicLink
 		TechniteProtocol::GameObject obj;
 		if (ghostGameObjects.QueryAndUnSet(id,obj))
 		{
-			LogEvent(EventType::TechniteLogic,nullptr,"Removing ghost-marker for "+id.ToString());
+			LogEvent(event,"Removing ghost-marker for "+id.ToString());
 			Channels::removeGameObject.SendTo(logicServer,obj.id);
 			return;
 		}
 		TechniteProtocol::ControlMarker mrk;
 		if (controlMarkers.QueryAndUnSet(id,mrk))
 		{
-			LogEvent(EventType::TechniteLogic,nullptr,"Removing control-marker for "+id.ToString());
+			LogEvent(event,"Removing control-marker for "+id.ToString());
 			Channels::removeControlMarker.SendTo(logicServer,mrk.location);
 			return;
 		}

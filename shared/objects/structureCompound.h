@@ -34,6 +34,9 @@ namespace Objects
 		bool						stable;
 		//ID							hashIdentifier;
 
+		#ifndef CLIENT
+			static WorkingStructure*lastDisabled;
+		#endif
 
 		void				Clear()
 		{

@@ -51,7 +51,7 @@ namespace Objects
 			if (!CanContinue(v,focus,error))
 			{
 				ASSERT3__(error.IsNotEmpty(), GetName(), v.GetName(), focus.ToString());
-				LogEvent(EventType::EntityProcessFailed,&v,"Unable to continue '"+GetName()+"' ("+error+").");	//cant use GetName(), once we call ClearTasks()
+				LogEvent(EventClass::Preset::operationAborted,&v,"Unable to continue '"+GetName()+"' ("+error+").");	//cant use GetName(), once we call ClearTasks()
 				return TerminalFailure;
 			}
 
@@ -62,7 +62,7 @@ namespace Objects
 				int storage = GetStorage(v,Resource::Minerals);
 				if (storage < withdrawNow)
 				{
-					LogEvent(EventType::EntityProcessFailed,&v,"Unable to continue construction at this point. Insufficient minerals available ("+String(storage)+"/"+String(withdrawNow)+"). Delaying operation.");
+					LogEvent(EventClass::Preset::operationAborted,&v,"Unable to continue construction at this point. Insufficient minerals available ("+String(storage)+"/"+String(withdrawNow)+"). Delaying operation.");
 					return ContinueJob;
 				}
 
@@ -75,7 +75,7 @@ namespace Objects
 				#ifndef CONNECTOR_LESS
 					if (!CanWithdrawFromStorage(v,Resource::Minerals,mineralCostLeft))
 					{
-						LogEvent(EventType::CommandRejected,&v,"Unable to complete operation. Insufficient minerals left in storage ("+String(v.currentStorage.level[Resource::Minerals])+"/"+String(mineralCostLeft)+").");
+						LogEvent(EventClass::Preset::commandRejected,&v,"Unable to complete operation. Insufficient minerals left in storage ("+String(v.currentStorage.level[Resource::Minerals])+"/"+String(mineralCostLeft)+").");
 						return TerminalFailure;
 					}
 				#endif
@@ -85,7 +85,7 @@ namespace Objects
 			if (roundsToJobCompletion<=0)
 			{
 
-				LogEvent(EventType::EntityProcess,&v,"'"+GetName()+"' completed");
+				LogEvent(EventSignificance::Common,&v,"'"+GetName()+"' completed");
 				ChangeStorage(v,v.timeAt, Resource::Minerals,-mineralCostLeft);
 
 				mineralCostLeft = 0;
@@ -259,7 +259,14 @@ namespace Objects
 
 			if (hasToMoveFirst)
 			{
-				LogEvent(EventType::CommandRejected,&v, GetName()+": Would have to move first. But cannot move");
+				LogEvent(EventClass::Preset::commandRejected,&v, GetName()+": Would have to move first. But cannot move");
+				return CannotStartAbort;
+			}
+			const Grid::LCellIdI target = FocusToBuildLocation(focus);
+			PStructure existing = GetStructure(target);	//this isn't caught by LowCellIsClear() since we don't want connectors to be submerged either
+			if (existing)
+			{
+				LogEvent(EventClass::Preset::commandRejected,&v,GetName()+": Destination occupied by "+existing->GetName());
 				return CannotStartAbort;
 			}
 
@@ -269,7 +276,7 @@ namespace Objects
 				//focus --;
 				Grid::LCellIdI f2 = focus;
 				f2--;
-				v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),&f2);
+				v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),shared_from_this(), &f2);
 				return Delayed;
 			}
 
@@ -277,7 +284,7 @@ namespace Objects
 			{
 				if (!Grid::actualWorld.LowCellHasStructure(focus))
 				{
-					LogEvent(EventType::EntityProcess,&v,GetName()+": Obstruction detected. Resolution: clearing upper terrain.");
+					LogEvent(EventSignificance::Common,&v,GetName()+": Obstruction detected. Resolution: clearing upper terrain.");
 					PVehicleJob job;
 					if (focus == v.location + 1)
 					{
@@ -291,18 +298,18 @@ namespace Objects
 					Grid::LCellIdI up = focus;
 					if (job)
 					{
-						v.RegisterNewFrontJob("", job,&up);
+						v.RegisterNewFrontJob("", job,shared_from_this(), &up);
 						return Delayed;
 					}
 					else
 					{
-						LogEvent(EventType::EntityProcess,&v,GetName()+": Obstruction detected. Focus cell is not above or horizontal to vehicle. Cannot remove. Aborting.");
+						LogEvent(EventSignificance::Common,&v,GetName()+": Obstruction detected. Focus cell is not above or horizontal to vehicle. Cannot remove. Aborting.");
 						return CannotStartAbort;
 					}
 				}
 				else
 				{
-					LogEvent(EventType::EntityProcess,&v,GetName()+": Obstruction detected. Cannot remove. Aborting.");
+					LogEvent(EventSignificance::Common,&v,GetName()+": Obstruction detected. Cannot remove. Aborting.");
 					return CannotStartAbort;
 				}
 			}
@@ -315,6 +322,14 @@ namespace Objects
 			if (this->movesToFocusWhenDone && !Grid::actualWorld.LowCellIsClear(focus))
 			{
 				outError = "Cannot build wall here: "+(focus).ToString()+" is not empty";
+				return false;
+			}
+
+			Grid::LCellIdI target = FocusToBuildLocation(focus);
+			PStructure existing = GetStructure(target);	//this isn't caught by LowCellIsClear() since we don't want connectors to be submerged either
+			if (existing)
+			{
+				outError = "Cannot build wall here: "+(target).ToString()+" is occupied by "+existing->GetName();
 				return false;
 			}
 			return true;
@@ -387,7 +402,7 @@ namespace Objects
 				{
 					if (cell->stackID >= Grid::HighSetup::GridType::CellCount )
 					{
-						LogEvent(EventType::UnexpectedBehavior,&v,GetName()+": Invalid block index "+String(cell->stackID));
+						LogEvent(EventClass::Preset::unexpectedBehavior,&v,GetName()+": Invalid block index "+String(cell->stackID));
 						return JobDone;
 					}
 					if (Objects::vehicleDistanceField.distance[cell->stackID] > 3)
@@ -420,7 +435,7 @@ namespace Objects
 				{
 					if (cell->stackID >= Grid::HighSetup::GridType::CellCount )
 					{
-						LogEvent(EventType::UnexpectedBehavior,&v,GetName()+": Invalid block index "+String(cell->stackID));
+						LogEvent(EventClass::Preset::unexpectedBehavior,&v,GetName()+": Invalid block index "+String(cell->stackID));
 						return JobDone;
 					}
 					if (Objects::vehicleDistanceField.distance[cell->stackID] > 3)
@@ -489,7 +504,7 @@ namespace Objects
 		//		PWorldEntity entity = GetEntity(Grid::LCellIdI(n.neighborID[i],v.location.height-1));
 		//		if (entity && !To<Connector>::DynamicCast(entity))
 		//		{
-		//			LogEvent(EventType::CommandRejected,&v,this->GetName()+ " (can continue?): "+entity->GetNiceName()+" is in the way");
+		//			LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ " (can continue?): "+entity->GetNiceName()+" is in the way");
 
 		//			return false;
 		//		}
@@ -600,20 +615,20 @@ namespace Objects
 						demand -= v.currentStorage;
 						if (demand.IsEmpty())
 						{
-							LogEvent(EventType::EntityProcess,&v,"Nothing to restock. Storage is full.");
+							LogEvent(EventSignificance::Common,&v,"Nothing to restock. Storage is full.");
 						}
 						else
 						{
 							demand.Cap(n.total.storage);
 							if (demand.IsNotEmpty())
 							{
-								LogEvent(EventType::EntityProcess,&v,"Restocking vehicle: transferred "+demand.ToString());
+								LogEvent(EventSignificance::Common,&v,"Restocking vehicle: transferred "+demand.ToString());
 								n.Collect(demand,v.timeAt);
 								v.currentStorage += demand;
 								v.RegisterChange(WorldEntity::StorageChanged,v.timeAt);
 							}
 							else
-								LogEvent(EventType::CommandRejected,&v, "Compound: Nothing to withdraw");
+								LogEvent(EventClass::Preset::commandRejected,&v, "Compound: Nothing to withdraw");
 						}
 					}
 					else
@@ -623,7 +638,7 @@ namespace Objects
 						networkCapacity -= n.total.storage;
 						if (supply.IsEmpty())
 						{
-							LogEvent(EventType::CommandRejected,&v,"Insufficient resources to complete operation");
+							LogEvent(EventClass::Preset::commandRejected,&v,"Insufficient resources to complete operation");
 						}
 						else
 						{
@@ -631,14 +646,14 @@ namespace Objects
 
 							if (supply.IsNotEmpty())
 							{
-								LogEvent(EventType::EntityProcess,&v,"Deposition: transferred "+supply.ToString());
+								LogEvent(EventSignificance::Common,&v,"Deposition: transferred "+supply.ToString());
 
 								n.Distribute(supply,v.timeAt);
 								v.currentStorage -= supply;
 								v.RegisterChange(WorldEntity::StorageChanged,v.timeAt);
 							}
 							else
-								LogEvent(EventType::CommandRejected,&v,"Compound: Insufficient resource storage capacity at destination to complete operation");
+								LogEvent(EventClass::Preset::commandRejected,&v,"Compound: Insufficient resource storage capacity at destination to complete operation");
 						}
 					}
 				}
@@ -647,12 +662,12 @@ namespace Objects
 					PVehicle vTarget = GetVehicle(focus);
 					if (!vTarget || !v.owner->CanSee(vTarget,v.timeAt))
 					{
-						LogEvent(EventType::CommandRejected,&v,"Nothing here");
+						LogEvent(EventClass::Preset::commandRejected,&v,"Nothing here");
 						return JobDone;
 					}
 					if (vTarget->owner != v.owner)
 					{
-						LogEvent(EventType::CommandRejected,&v,"Access denied");
+						LogEvent(EventClass::Preset::commandRejected,&v,"Access denied");
 						return JobDone;
 					}
 					if (mode == CursorMode::RestockMode)
@@ -661,21 +676,21 @@ namespace Objects
 						demand -= v.currentStorage;
 						if (demand.IsEmpty())
 						{
-							LogEvent(EventType::EntityProcess,&v,"Nothing to restock. Storage is full.");
+							LogEvent(EventSignificance::Common,&v,"Nothing to restock. Storage is full.");
 						}
 						else
 						{
 							demand.Cap(vTarget->currentStorage);
 							if (demand.IsNotEmpty())
 							{
-								LogEvent(EventType::EntityProcess,&v,"Restocking vehicle: transferred "+demand.ToString());
+								LogEvent(EventSignificance::Common,&v,"Restocking vehicle: transferred "+demand.ToString());
 								vTarget->currentStorage -= demand;
 								v.currentStorage += demand;
 								vTarget->RegisterChange(WorldEntity::StorageChanged,v.timeAt);
 								v.RegisterChange(WorldEntity::StorageChanged,v.timeAt);
 							}
 							else
-								LogEvent(EventType::CommandRejected,&v, vTarget->GetNiceName()+": Insufficient resource availability to complete operation");
+								LogEvent(EventClass::Preset::commandRejected,&v, vTarget->GetNiceName()+": Insufficient resource availability to complete operation");
 						}
 					}
 					else
@@ -685,7 +700,7 @@ namespace Objects
 						remoteCapacity -= vTarget->currentStorage;
 						if (supply.IsEmpty())
 						{
-							LogEvent(EventType::CommandRejected,&v,"Insufficient resources to complete operation");
+							LogEvent(EventClass::Preset::commandRejected,&v,"Insufficient resources to complete operation");
 						}
 						else
 						{
@@ -693,7 +708,7 @@ namespace Objects
 
 							if (supply.IsNotEmpty())
 							{
-								LogEvent(EventType::EntityProcess,&v,"Deposition: transferred "+supply.ToString());
+								LogEvent(EventSignificance::Common,&v,"Deposition: transferred "+supply.ToString());
 
 								vTarget->currentStorage += supply;
 								v.currentStorage -= supply;
@@ -701,7 +716,7 @@ namespace Objects
 								v.RegisterChange(WorldEntity::StorageChanged,v.timeAt);
 							}
 							else
-								LogEvent(EventType::CommandRejected,&v,vTarget->GetNiceName()+ ": Insufficient resource storage capacity at destination to complete operation");
+								LogEvent(EventClass::Preset::commandRejected,&v,vTarget->GetNiceName()+ ": Insufficient resource storage capacity at destination to complete operation");
 						}
 					}
 
@@ -732,7 +747,7 @@ namespace Objects
 			}
 			//if (e->owner != v.owner)
 			//{
-			//	LogEvent(EventType::CommandRejected,&v,this->GetNiceName()+ ": Access to '"+e->GetNiceName()+"' denied");
+			//	LogEvent(EventClass::Preset::commandRejected,&v,this->GetNiceName()+ ": Access to '"+e->GetNiceName()+"' denied");
 			//	return false;
 			//}
 			return true;
@@ -746,12 +761,12 @@ namespace Objects
 			PWorldEntity target = GetEntity(focus);
 			if (!target || !v.owner->CanSee(target,v.timeAt) || target.get() == &v)
 			{
-				LogEvent(EventType::CommandRejected,&v,this->GetName()+ ": Nothing in focus cell "+focus.ToString());
+				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Nothing in focus cell "+focus.ToString());
 				return JobDone;
 			}
 			if (target->health == target->GetMaxHealth())
 			{
-				LogEvent(EventType::CommandRejected,&v,this->GetName()+ ": '"+target->GetNiceName()+"' is at full health");
+				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": '"+target->GetNiceName()+"' is at full health");
 				return JobDone;
 			}
 			const int maxHealth = target->GetMaxHealth();
@@ -759,7 +774,7 @@ namespace Objects
 			float relative = float(missing)/float(maxHealth);
 			if (relative <= 0)
 			{
-				LogEvent(EventType::InternalFault,target.get(),this->GetName()+ ": Invalid health state ("+String(target->health)+")");
+				LogEvent(EventClass::Preset::error,target.get(),this->GetName()+ ": Invalid health state ("+String(target->health)+")");
 				return JobDone;
 			}
 
@@ -770,17 +785,17 @@ namespace Objects
 				target->health = maxHealth;
 				target->RegisterChange(WorldEntity::HealthChanged,v.timeAt);
 				ChangeStorage(v,v.timeAt, Resource::Minerals,-cost);
-				LogEvent(EventType::CommandRejected,&v,this->GetName()+ ": '"+target->GetNiceName()+"' repaired");
+				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": '"+target->GetNiceName()+"' repaired");
 				return JobDone;
 			}
 
 			int canRepair = (int)floor(float(maxHealth) * float(GetStorage(v,Resource::Minerals)) / float(target->GetConstructionCost()));
 			if (!canRepair)
 			{
-				LogEvent(EventType::CommandRejected,&v,this->GetName()+ ": Insufficient minerals in storage to repair '"+target->GetNiceName()+"'");
+				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient minerals in storage to repair '"+target->GetNiceName()+"'");
 				return JobDone;
 			}
-			LogEvent(EventType::CommandRejected,&v,this->GetName()+ ": Insufficient minerals in storage to fully repair '"+target->GetNiceName()+"'. Repairing "+String(canRepair)+" health...");
+			LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient minerals in storage to fully repair '"+target->GetNiceName()+"'. Repairing "+String(canRepair)+" health...");
 			target->health += canRepair;
 			target->RegisterChange(WorldEntity::HealthChanged,v.timeAt);
 
@@ -953,14 +968,14 @@ namespace Objects
 			//Grid::LCellIdI target = focus;
 			if (hasToMoveFirst)
 			{
-				LogEvent(EventType::CommandRejected,&v, GetName()+": Would have to move first. But cannot move");
+				LogEvent(EventClass::Preset::commandRejected,&v, GetName()+": Would have to move first. But cannot move");
 				return CannotStartAbort;
 			}
 			{
 				String error;
 				if (!v.owner->CanSpawnType(constructWhat,error))
 				{
-					LogEvent(EventType::CommandRejected,&v, GetName()+": "+error);
+					LogEvent(EventClass::Preset::commandRejected,&v, GetName()+": "+error);
 					return CannotStartAbort;
 				}
 			}
@@ -968,11 +983,11 @@ namespace Objects
 			const Grid::LCellIdI constLoc = v.GetConstructionLocation();
 			switch (constructWhat->CheckPlacement(constLoc))
 			{
-//				LogEvent(EventType::MinorEntityProcess,&v,GetName()+": Unable to place without modifications.");
+//				LogEvent(EventSignificance::Common,&v,GetName()+": Unable to place without modifications.");
 
 				//case Structure::LacksCentralEarthFoundation:
 				//{
-				//	LogEvent(EventType::EntityProcess,&v,GetName()+": Central earth foundation missing. Resolution: placing earth block underneath.");
+				//	LogEvent(EventSignificance::Common,&v,GetName()+": Central earth foundation missing. Resolution: placing earth block underneath.");
 
 				//	#ifdef HYBRID_GRID
 				//		const UINT32 finer = Grid::low.grid.GetCell(v.location.stackID).higherEquivalent;
@@ -1016,7 +1031,7 @@ namespace Objects
 				//		PWorldEntity entity = GetEntity(Grid::LCellIdI(n.neighborID[i],v.location.height-1));
 				//		if (entity)
 				//		{
-				//			LogEvent(EventType::EntityProcessFailed,&v,GetName()+": Unable to fuild foundation. "+entity->GetNiceName()+" in the way.");
+				//			LogEvent(EventClass::Preset::operationAborted,&v,GetName()+": Unable to fuild foundation. "+entity->GetNiceName()+" in the way.");
 
 				//			buildFoundation = false;
 				//			break;
@@ -1029,18 +1044,18 @@ namespace Objects
 				//	}
 				//	else
 				//	{
-				//		LogEvent(EventType::MinorEntityProcess,&v,GetName()+": Unable to fuild foundation. Attempting to dig down.");
+				//		LogEvent(EventSignificance::Common,&v,GetName()+": Unable to fuild foundation. Attempting to dig down.");
 				//		bool digDown = true;
 				//		for (int i = 0; i < n.numNeighbors; i++)
 				//			if (To<WorkingStructure>::DynamicCast( GetStructure(Grid::LCellIdI(n.neighborID[i],v.location.height))))
 				//			{
-				//				LogEvent(EventType::EntityProcessFailed,&v,GetName()+": Cannot dig down: Neighboring working structure found.");
+				//				LogEvent(EventClass::Preset::operationAborted,&v,GetName()+": Cannot dig down: Neighboring working structure found.");
 				//				digDown = false;
 				//				break;
 				//			}
 				//		if (digDown && GetStructure(Grid::LCellIdI(v.location)))
 				//		{
-				//			LogEvent(EventType::EntityProcessFailed,&v,GetName()+": Cannot dig down: Connector in place.");
+				//			LogEvent(EventClass::Preset::operationAborted,&v,GetName()+": Cannot dig down: Connector in place.");
 				//			digDown = false;
 				//		}
 				//		if (!digDown)
@@ -1059,14 +1074,14 @@ namespace Objects
 				//				return CannotStartAbort;
 				//			else
 				//			{
-				//				LogEvent(EventType::EntityProcessFailed,&v,GetName()+": Blocking entity is connector. Proceeding anyway.");
+				//				LogEvent(EventClass::Preset::operationAborted,&v,GetName()+": Blocking entity is connector. Proceeding anyway.");
 				//				PVehicleJob foundationJob(new BuildFoundation(v));
 				//				v.RegisterNewFrontJob("", foundationJob,nullptr);
 				//			}
 				//		}
 				//		if (!buildFoundation)
 				//		{
-				//			LogEvent(EventType::EntityProcess,&v,GetName()+": Resolution: digging down.");
+				//			LogEvent(EventSignificance::Common,&v,GetName()+": Resolution: digging down.");
 
 				//			PVehicleJob job(new DigDown(v));
 				//			Grid::LCellIdI down = v.location-1;
@@ -1076,23 +1091,23 @@ namespace Objects
 				//}
 				//return Delayed;
 				case Structure::GroundLevelObstruction:
-					LogEvent(EventType::EntityProcessFailed,&v,GetName()+": Obstruction detected. Aborting.");
+					LogEvent(EventClass::Preset::operationAborted,&v,GetName()+": Obstruction detected. Aborting.");
 				return CannotStartAbort;
 				case Structure::UpperLevelObstruction:
 				{
 					if (GetStructure(constLoc+1) || GetStructure(constLoc+2))
 					{
-						LogEvent(EventType::EntityProcessFailed,&v,GetName()+": Structure obstruction detected. Cannot remove. Aborting.");
+						LogEvent(EventClass::Preset::operationAborted,&v,GetName()+": Structure obstruction detected. Cannot remove. Aborting.");
 						return CannotStartAbort;
 					}
-					LogEvent(EventType::EntityProcess,&v,GetName()+": Obstruction detected. Resolution: clearing upper terrain.");
+					LogEvent(EventSignificance::Common,&v,GetName()+": Obstruction detected. Resolution: clearing upper terrain.");
 					PVehicleJob job(new ClearAbove(v));
 					Grid::LCellIdI up = constLoc+1;
-					v.RegisterNewFrontJob("", job,&up);
+					v.RegisterNewFrontJob("", job,shared_from_this(), &up);
 				}
 				return Delayed;
 			}			
-			LogEvent(EventType::MinorEntityProcess,&v,GetName()+": All fine. Commencing.");
+			LogEvent(EventSignificance::Common,&v,GetName()+": All fine. Commencing.");
 			return Started;
 			
 		}
@@ -1103,7 +1118,7 @@ namespace Objects
 			auto check = constructWhat->CheckPlacement(target);
 			if (check != Structure::CanPlace)
 			{
-				LogEvent(EventType::CommandRejected,&v,GetName()+" (finish): Unable to finish construction. Placement-check of "+constructWhat->GetTypeName()+" returned "+Structure::ToString(check));
+				LogEvent(EventClass::Preset::commandRejected,&v,GetName()+" (finish): Unable to finish construction. Placement-check of "+constructWhat->GetTypeName()+" returned "+Structure::ToString(check));
 				return TerminalFailure;
 			}
 			
@@ -1119,14 +1134,14 @@ namespace Objects
 				}
 				else
 				{
-					LogEvent(EventType::CommandRejected,&v, GetName()+" (finish): Unable to place " +constructWhat->GetTypeName() + " here. "+existing->GetNiceName()+" is in the way");
+					LogEvent(EventClass::Preset::commandRejected,&v, GetName()+" (finish): Unable to place " +constructWhat->GetTypeName() + " here. "+existing->GetNiceName()+" is in the way");
 					return TerminalFailure;
 				}
 			}
 
 			PStructure s = To<Structure>::Cast(constructWhat->CreateNewInstance(v.owner, target, v.timeAt));
 			s->id = useID;
-			LogEvent(EventType::EntityProcess,&v,"Constructed " + s->GetNiceName());
+			LogEvent(EventSignificance::Common,&v,"Constructed " + s->GetNiceName());
 			InsertConstructed(s,v.timeAt,true);
 			return JobDone;
 		}
@@ -1432,7 +1447,7 @@ namespace Objects
 			{
 				if (!UpdatePath(v,v.location,destination))
 				{
-					LogEvent(EventType::CommandRejected,&v, GetName()+": Unable to plot path to destination");
+					LogEvent(EventClass::Preset::commandRejected,&v, GetName()+": Unable to plot path to destination");
 					return CannotStartAbort;
 				}
 
@@ -1459,14 +1474,18 @@ namespace Objects
 								new BuildRoad(v,
 									lastLocation != Grid::LCellIdI::Invalid && lastLocation.height < v.location.height ? lastLocation.stackID : 0xFFFFFFFF,
 									!nextIsLast && next.height < v.location.height ?next.stackID : 0xFFFFFFFF)),
-								nullptr);
+									shared_from_this(), 
+									nullptr);
 							}
 							else
-								v.RegisterNewFrontJob("", PVehicleJob(new BuildRoad(v)),nullptr);
+								v.RegisterNewFrontJob("", PVehicleJob(new BuildRoad(v)),shared_from_this(), nullptr);
 						}
 						break;
 						case CursorMode::BuildConnectorChainMode:
-							v.RegisterNewFrontJob(Connector::globalPrototype->GetTypeName(), PVehicleJob(new Construct(v,Connector::globalPrototype)),&v.location);
+							v.RegisterNewFrontJob(Connector::globalPrototype->GetTypeName(), 
+								PVehicleJob(new Construct(v,Connector::globalPrototype)),
+								shared_from_this(),
+								&v.location);
 						break;
 						case CursorMode::BuildWallChainMode:
 						{
@@ -1477,8 +1496,8 @@ namespace Objects
 							//v.RegisterChange(TasksChanged,-1);
 							//v.myTasks.GetNewest().Recompile(pointOfOrigin, this);
 
-							v.RegisterNewFrontJob("", PVehicleJob(new BuildHorizontalWall(v)),nullptr);
-							v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),&focus);
+							v.RegisterNewFrontJob("", PVehicleJob(new BuildHorizontalWall(v)),shared_from_this(), nullptr);
+							v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),shared_from_this(), &focus);
 
 						}
 						break;
@@ -1489,7 +1508,7 @@ namespace Objects
 							Grid::LCellIdI focus = Grid::LCellIdI(v.location.stackID,next.height);
 							if (next.height > v.location.height)
 							{
-								v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),&focus);
+								v.RegisterNewFrontJob("", PVehicleJob(new BuildWallUp(v)),shared_from_this(), &focus);
 							}
 
 
@@ -1500,13 +1519,15 @@ namespace Objects
 							{
 								//RegisterNewJob(nullptr, PJob(new Objects::Job::DigDown(*this)),nullptr);
 								v.RegisterNewFrontJob("", PVehicleJob(
-								new BuildRoad(v,
-									lastLocation != Grid::LCellIdI::Invalid && lastLocation.height < v.location.height ? lastLocation.stackID : 0xFFFFFFFF,
-									/*next != path.end() && next->height < v.location.height ?next->stackID :*/ 0xFFFFFFFF)),
-								nullptr);
+									new BuildRoad(v,
+										lastLocation != Grid::LCellIdI::Invalid && lastLocation.height < v.location.height ? lastLocation.stackID : 0xFFFFFFFF,
+										/*next != path.end() && next->height < v.location.height ?next->stackID :*/ 
+										0xFFFFFFFF)),
+									shared_from_this(), 
+									nullptr);
 							}
 							else
-								v.RegisterNewFrontJob("", PVehicleJob(new BuildRoad(v)),nullptr);
+								v.RegisterNewFrontJob("", PVehicleJob(new BuildRoad(v)),shared_from_this(), nullptr);
 
 							if (
 								(hasNext && next.height < v.location.height && next.stackID == v.location.stackID)
@@ -1515,7 +1536,7 @@ namespace Objects
 								)
 							{
 								focus--;
-								v.RegisterNewFrontJob("", PVehicleJob(new DigDown(v)),&focus);
+								v.RegisterNewFrontJob("", PVehicleJob(new DigDown(v)),shared_from_this(), &focus);
 							}
 
 //							v.RegisterNewFrontJob("", PVehicleJob(new BuildRoad(v)),nullptr);
@@ -1544,7 +1565,7 @@ namespace Objects
 						if (GetStructure(c))
 						{
 							roundsToJobCompletion = 0;
-							LogEvent(EventType::CommandRejected,&v, GetName()+": Destination is occupied. Job done");
+							LogEvent(EventClass::Preset::commandRejected,&v, GetName()+": Destination is occupied. Job done");
 						}
 						else
 						{
@@ -1556,7 +1577,7 @@ namespace Objects
 							//		abort = false;
 							//	}
 							//	else
-									LogEvent(EventType::CommandRejected,&v, GetName()+": Unable to plot path to destination. Motion delayed");
+									LogEvent(EventClass::Preset::commandRejected,&v, GetName()+": Unable to plot path to destination. Motion delayed");
 						}
 //						if (abort)
 							return CannotStartAbort;

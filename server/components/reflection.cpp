@@ -489,7 +489,7 @@ namespace Reflection
 			String name;
 			if (!child->Query("name",name))
 			{
-				LogEvent(EventType::ConfigRelated,"Unable to retrieve name attribute of XML variable node in "+context->GetPath());
+				LogEvent(EventClass::Preset::configuration,"Unable to retrieve name attribute of XML variable node in "+context->GetPath());
 				allGood = false;
 				continue;
 			}
@@ -498,7 +498,7 @@ namespace Reflection
 				CLI::PVariable v = context->variables.Query(name);
 				if (!v)
 				{
-					LogEvent(EventType::ConfigRelated,"Addressed variable '"+name+"' does not exist in "+context->GetPath());
+					LogEvent(EventClass::Preset::configuration,"Addressed variable '"+name+"' does not exist in "+context->GetPath());
 					allGood = false;
 					continue;
 				}
@@ -535,7 +535,7 @@ namespace Reflection
 						v->SetCurrentToDefault();
 					else
 					{
-						LogEvent(EventType::ConfigRelated,"Failed to set '"+v->name+"' to '"+value+"' in "+context->GetPath());
+						LogEvent(EventClass::Preset::configuration,"Failed to set '"+v->name+"' to '"+value+"' in "+context->GetPath());
 						allGood = false;
 					}
 				}
@@ -547,7 +547,7 @@ namespace Reflection
 				CLI::PCommand v = context->commands.Query(name);
 				if (!v)
 				{
-					LogEvent(EventType::ConfigRelated,"Addressed command '"+name+"' does not exist in "+context->GetPath());
+					LogEvent(EventClass::Preset::configuration,"Addressed command '"+name+"' does not exist in "+context->GetPath());
 					allGood = false;
 					continue;
 				}
@@ -562,7 +562,7 @@ namespace Reflection
 				CLI::PFolder f = context->folders.Query(name);
 				if (!f)
 				{
-					LogEvent(EventType::ConfigRelated,"Addressed context '"+name+"' does not exist in "+context->GetPath());
+					LogEvent(EventClass::Preset::configuration,"Addressed context '"+name+"' does not exist in "+context->GetPath());
 					allGood = false;
 					continue;
 				}
@@ -574,7 +574,7 @@ namespace Reflection
 			}
 
 			{
-				LogEvent(EventType::ConfigRelated,"Unexpected XML node type '"+child->name+"' found in "+context->GetPath());
+				LogEvent(EventClass::Preset::configuration,"Unexpected XML node type '"+child->name+"' found in "+context->GetPath());
 				continue;
 			}
 		}
@@ -637,7 +637,7 @@ namespace Reflection
 	
 	void PrintLn(const String&line)
 	{
-		LogEvent(EventType::RemoteControl,"Response: '"+line+"'");
+		LogEvent(EventClass::Preset::remoteControlCommand,"Response: '"+line+"'");
 	}
 
 
@@ -789,7 +789,7 @@ namespace Reflection
 					String support = var->GetSupportedValues();
 					if (support.IsNotEmpty())
 						support = "Supported values are "+var->GetSupportedValues()+". ";
-					LogEvent(EventType::ConfigRelated,"Unable to set "+folder->GetPath()+"/"+var->name+" to '"+attrib->value+"'. "+support+"Defaulting to "+var->GetDefault());
+					LogEvent(EventClass::Preset::configuration,"Unable to set "+folder->GetPath()+"/"+var->name+" to '"+attrib->value+"'. "+support+"Defaulting to "+var->GetDefault());
 					String varPath = folder->GetPath()+"/"+var->name;
 					ASSERT2__(var->Set(var->GetDefault()),varPath,var->GetDefault());
 					allGood = false;
@@ -800,7 +800,7 @@ namespace Reflection
 				String support = var->GetSupportedValues();
 				if (support.IsNotEmpty())
 					support = "Supported values are "+var->GetSupportedValues()+". ";
-				LogEvent(EventType::ConfigRelated,"Unable to read "+folder->GetPath()+"/"+var->name+". "+support+"Defaulting to "+var->GetDefault());
+				LogEvent(EventClass::Preset::configuration,"Unable to read "+folder->GetPath()+"/"+var->name+". "+support+"Defaulting to "+var->GetDefault());
 				String varPath = folder->GetPath()+"/"+var->name;
 				ASSERT2__(var->Set(var->GetDefault()),varPath,var->GetDefault());
 				allGood = false;
@@ -937,7 +937,7 @@ namespace Reflection
 		{
 			if (!config.LoadFromFile(configName))
 			{
-				LogEvent(EventType::InternalFault,"Unable to parse "+String(configName)+":\n"+config.Report());
+				LogEvent(EventClass::Preset::error,"Unable to parse "+String(configName)+":\n"+config.Report());
 			}
 			else
 			{
@@ -949,12 +949,12 @@ namespace Reflection
 		{
 			if (FileSystem::IsFile(subConfigName))
 			{
-				LogEvent(EventType::ConfigRelated,"Restoring missing configuration file '"+String(subConfigName)+"' from base data");
+				LogEvent(EventClass::Preset::configuration,"Restoring missing configuration file '"+String(subConfigName)+"' from base data");
 				if (FileSystem::Copy(subConfigName,configName,true))
 				{
 					if (!config.LoadFromFile(configName))
 					{
-						LogEvent(EventType::InternalFault,"Unable to parse "+String(configName)+":\n"+config.Report());
+						LogEvent(EventClass::Preset::error,"Unable to parse "+String(configName)+":\n"+config.Report());
 					}
 					else
 					{
@@ -966,7 +966,7 @@ namespace Reflection
 		}
 
 		if (!ctx)
-			LogEvent(EventType::ConfigRelated,"Default configuration loaded");
+			LogEvent(EventClass::Preset::configuration,"Default configuration loaded");
 		bool allGood = InnerFeed(folder,ctx,testMode,filterFunction);
 		if (!readOriginal && (!allGood || rewrite))
 		{
@@ -974,7 +974,7 @@ namespace Reflection
 			StringFile outFile;
 			if (!outFile.Create(configName))
 			{
-				LogEvent(EventType::ConfigRelated,"Unable to overwrite '"+String(configName)+"'");
+				LogEvent(EventClass::Preset::configuration,"Unable to overwrite '"+String(configName)+"'");
 			}
 			else
 			{
@@ -1028,16 +1028,16 @@ namespace Reflection
 				{
 					if (!FileSystem::Copy(file.GetLocation(),dest,true))
 					{
-						LogEvent(EventType::InternalFault,"Warning: Unable to restore default planet type '"+String(file.GetInnerName())+"'");
+						LogEvent(EventClass::Preset::error,"Warning: Unable to restore default planet type '"+String(file.GetInnerName())+"'");
 					}
 					else
-						LogEvent(EventType::InternalFault,"Restored default planet type '"+String(file.GetInnerName())+"'");
+						LogEvent(EventClass::Preset::error,"Restored default planet type '"+String(file.GetInnerName())+"'");
 				}
 			}
 
 		}
 		else
-			LogEvent(EventType::InternalFault,"Warning: Unable to find base planet source folder from '"+String(root.GetLocation()));
+			LogEvent(EventClass::Preset::error,"Warning: Unable to find base planet source folder from '"+String(root.GetLocation()));
 
 
 		#ifdef _DEBUG

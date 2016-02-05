@@ -19,7 +19,15 @@ void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird
 #ifdef HAS_WINDOW
 	void		QueryNicknameIfEmpty();
 
+
+	extern bool saveScreenshot;
+
+	namespace TimeLapse
+	{
+		extern bool enabled;
+	}
 #endif
+
 
 
 namespace Network
@@ -40,7 +48,6 @@ namespace Network
 
 	CryptographicID	activeToken;
 	String			myIDString,serverIDString,worldIDString,activeTokenString;
-	Objects::OwnerParameter myFaction;
 	INT32			uplinkBandwidth = -1;
 	
 	GenericHashTable<TUniqueID,CryptographicID,TUniqueID>	accessMap;
@@ -64,7 +71,7 @@ namespace Network
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, BYTE techniteFactionIfNew)
 	{
-		LogEvent(EventType::Debug,"ResolveFaction("+id.ToString()+","+String(techniteFactionIfNew)+")");
+		LogEvent(EventSignificance::Debug,"ResolveFaction("+id.ToString()+","+String(techniteFactionIfNew)+")");
 
 		{
 			Objects::OwnerParameter*rs = factionMap.QueryPointer(id);
@@ -88,9 +95,8 @@ namespace Network
 		}
 		else
 		{
-			rs.reset(new Objects::Faction());
+			rs.reset(new Objects::Faction(id));
 			Objects::Faction::allKnown << rs;
-			rs->id = id;
 		}
 		factionMap.Set(id,rs);
 		return rs;
@@ -99,7 +105,7 @@ namespace Network
 	
 	Objects::OwnerParameter TryResolveFaction(const TUniqueID&id)
 	{
-		LogEvent(EventType::Debug,"TryResolveFaction("+id.ToString()+")");
+		LogEvent(EventSignificance::Debug,"TryResolveFaction("+id.ToString()+")");
 
 		{
 			Objects::OwnerParameter*rs = factionMap.QueryPointer(id);
@@ -121,7 +127,7 @@ namespace Network
 		FILE*f = FOPEN(AccessFilename().c_str(), "wb+");
 		if (!f)
 		{
-			LogEvent(EventType::InternalFault,nullptr,"Unable to write to world access map");
+			LogEvent(EventClass::Preset::error,nullptr,"Unable to write to world access map");
 			return;
 		}
 
@@ -132,7 +138,7 @@ namespace Network
 		});
 
 		fclose(f);
-		LogEvent(EventType::SessionRelated,nullptr,"Updated world access map");
+		LogEvent(EventClass::Preset::common,nullptr,"Updated world access map");
 	}
 
 	void LoadWorldAccessTokens()
@@ -153,7 +159,7 @@ namespace Network
 			}
 		}
 
-		LogEvent(EventType::SessionRelated,nullptr,"World access map imported. "+String(accessMap.count())+" entry/ies loaded.");
+		LogEvent(EventClass::Preset::common,nullptr,"World access map imported. "+String(accessMap.count())+" entry/ies loaded.");
 		fclose(f);
 	}
 
@@ -385,8 +391,8 @@ namespace Network
 		Network::newRoundRequested = false;
 		Network::factionMap.Clear();
 		Objects::Faction::allKnown.Clear();
+		Objects::Faction::mine.reset();
 
-		Network::myFaction.reset();
 		Animation::primitives.Clear();
 		Animation::actives.Clear();
 		Animation::activeTrajectory.Clear();
@@ -435,8 +441,8 @@ namespace Network
 			{
 				if (amTechniteFaction)
 				{
-					ASSERT__(myFaction->IsTechniteFaction());
-					Technites::PFaction tf = To<Technites::Faction>::Cast(myFaction);
+					ASSERT__(Objects::Faction::mine->IsTechniteFaction());
+					Technites::PFaction tf = To<Technites::Faction>::Cast(Objects::Faction::mine);
 					if (chunk.flags & Protocol::TechniteChunkFlags::IsFirst)
 						tf->ClearTechnites();
 					tf->AppendTechnites(chunk.technites);
@@ -449,7 +455,7 @@ namespace Network
 					}
 					if (chunk.flags & Protocol::TechniteChunkFlags::IsLast)
 					{
-						LogEvent(EventType::TechniteLogic,nullptr,"Received a total of "+String(tf->technites.Count())+" technite state(s)");
+						LogEvent(EventSignificance::Common,"Received a total of "+String(tf->technites.Count())+" technite state(s)");
 					}
 					#endif
 				}
@@ -462,7 +468,7 @@ namespace Network
 		{
 			ASSERT__(response.success);
 			if (response.success)
-				LogEvent(EventType::SessionRelated, nullptr, "Status confirmed");
+				LogEvent(EventClass::Preset::common, nullptr, "Status confirmed");
 		}
 
 		void	OnWorldDelta(Protocol::WorldDelta&delta)
@@ -483,7 +489,7 @@ namespace Network
 					}
 
 				Animation::primitives.Append().Init(delta);
-				LogEvent(EventType::Debug, "Appended world delta primitive to animation sequence at t="+String(delta.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended world delta primitive to animation sequence at t="+String(delta.timestamp.atTime.value));
 			}
 			else
 			{
@@ -520,7 +526,7 @@ namespace Network
 				else
 				{
 					Animation::primitives.Append().Init(vs);
-					LogEvent(EventType::Debug, "Appended mobile state primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended mobile state primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
 				}
 
 			}
@@ -534,7 +540,7 @@ namespace Network
 
 			Objects::PMobileEntity v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner,0xFF),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,vc.state.entityState.timestamp.rightNow,Network::haveID && Network::myID == vc.owner);
 			if (vc.state.entityState.timestamp.rightNow)
-				LogEvent(EventType::MinorEntityProcess,v.get(),  "Placed vehicle entity outside animation");
+				LogEvent(EventSignificance::Common,v.get(),  "Placed vehicle entity outside animation");
 			bool isMine = v->isMine;
 
 			//v->id = vc.state.entityState.id;
@@ -554,7 +560,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(vc,v);
-				LogEvent(EventType::Debug, "Appended 'new mobile entity("+vc.state.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'new mobile entity("+vc.state.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vc.state.entityState.timestamp.atTime.value));
 
 			}
 		}
@@ -574,13 +580,13 @@ namespace Network
 			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner,0xFF),  sc.state.entityState.id,sc.state.entityState.location,sc.typeName, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
 			ASSERT__(s);
 			if (sc.state.entityState.timestamp.rightNow)
-				LogEvent(EventType::MinorEntityProcess,s.get(),  "Placed structure entity outside animation");
+				LogEvent(EventSignificance::Common,s.get(),  "Placed structure entity outside animation");
 
 			Animation::UpdateState(s,sc.state);
 			if (!sc.state.entityState.timestamp.rightNow)
 			{
 				Animation::primitives.Append().Init(sc,s);
-				LogEvent(EventType::Debug, "Appended 'new structure("+sc.state.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'new structure("+sc.state.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(sc.state.entityState.timestamp.atTime.value));
 			}
 			else
 			{
@@ -610,7 +616,7 @@ namespace Network
 				else
 				{
 					Animation::primitives.Append().Init(vs);
-					LogEvent(EventType::Debug, "Appended 'structure state' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended 'structure state' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
 				}
 			}
 
@@ -625,7 +631,7 @@ namespace Network
 			{
 				const Objects::PWorldEntity&e = Objects::GetEntity(de.id);
 				ASSERT__(e);
-				LogEvent(EventType::MinorEntityProcess,e.get(),  "Removed entity outside animation");
+				LogEvent(EventSignificance::Common,e.get(),  "Removed entity outside animation");
 
 				const Objects::RemovalType type = Objects::RemovalType::Reinterpret(de.type);
 				bool explode = type == Objects::RemovalType::ControlledExplosion 
@@ -655,20 +661,20 @@ namespace Network
 			}
 			else
 			{
-				LogEvent(EventType::Debug,nullptr,"Reception of entity destruction message for "+de.id.value.ToString()+" ("+Objects::RemovalType::Reinterpret(de.type.value).ToString()+")");
+				LogEvent(EventSignificance::Debug,nullptr,"Reception of entity destruction message for "+de.id.value.ToString()+" ("+Objects::RemovalType::Reinterpret(de.type.value).ToString()+")");
 				if (de.timestamp.rightNow)
 					Animation::whenDone.Append().Init(de);
 				else
 				{
 					Animation::primitives.Append().Init(de);
-					LogEvent(EventType::Debug, "Appended 'destruction' primitive to animation sequence at t="+String(de.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended 'destruction' primitive to animation sequence at t="+String(de.timestamp.atTime.value));
 				}
 			}
 		}
 
 		void ControlMessage(Protocol::ControlMessage&msg)
 		{
-			LogEvent(EventType::Reinterpret(msg.type),nullptr,">"+msg.message);
+			LogEvent(EventClass( EventSignificance::Reinterpret(msg.significance),  EventFlavor::Reinterpret(msg.flavor)) ,nullptr,">"+msg.message);
 		}
 
 
@@ -681,7 +687,7 @@ namespace Network
 			ApplyPlanetConfig(cr.planetConfig);
 
 			myID = TUniqueID::Empty();
-			myFaction.reset();
+			Objects::Faction::mine.reset();
 			myIDString = myID.ToString();
 
 			Network::gameFlags = cr.info.gameFlags;
@@ -700,7 +706,7 @@ namespace Network
 				activeTokenString = activeToken.ToString();
 				if (!RuntimeConfig::aiMode && !amSpectator)
 				{
-					LogEvent(EventType::SessionRelated,nullptr,"Updating access token of world "+worldID.ToString()+" to "+activeToken.ToString());
+					LogEvent(EventClass::Preset::common,nullptr,"Updating access token of world "+worldID.ToString()+" to "+activeToken.ToString());
 					accessMap.Set(worldID,activeToken);
 					SaveWorldAccessTokens();
 				}
@@ -721,7 +727,7 @@ namespace Network
 			else
 			{
 				amSpectator = false;
-				LogEvent(EventType::SessionRelated, nullptr, "Server response: Faction void.");
+				LogEvent(EventClass::Preset::uncommon, nullptr, "Server response: Faction void.");
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
 					Dialog::Show(Dialog::loginMenu);
@@ -745,15 +751,15 @@ namespace Network
 			haveID = true;
 			amSpectator = false;
 			myID = id.id;
-			LogEvent(EventType::Debug,"SetFactionID("+id.id.value.ToString()+","+String(id.techniteGridID)+")");
-			myFaction = ResolveFaction(myID,id.techniteGridID);
+			LogEvent(EventSignificance::Debug,"SetFactionID("+id.id.value.ToString()+","+String(id.techniteGridID)+")");
+			Objects::Faction::mine = ResolveFaction(myID,id.techniteGridID);
 			ASSERT_EQUAL__(id.techniteGridID != 0xFF, amTechniteFaction);
 			if (amTechniteFaction)
 			{
-				ASSERT__(myFaction->IsTechniteFaction());
+				ASSERT__(Objects::Faction::mine->IsTechniteFaction());
 			}
 			myIDString = myID.ToString();
-			myFaction->isMine = true;
+			Objects::Faction::mine->isMine = true;
 		}
 
 		void	PhaseChange(Protocol::PhaseChange&c);
@@ -787,7 +793,7 @@ namespace Network
 				if (!found)
 				{
 					Animation::primitives.Append().Init(m);
-					LogEvent(EventType::Debug, "Appended 'mobile entity motion' primitive to animation sequence at t="+String(m.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended 'mobile entity motion' primitive to animation sequence at t="+String(m.timestamp.atTime.value));
 				}
 
 			}
@@ -804,7 +810,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(a);
-				LogEvent(EventType::Debug, "Appended 'trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime.value));
 			}
 			
 		}
@@ -820,7 +826,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(ex);
-				LogEvent(EventType::Debug, "Appended 'explosion' primitive to animation sequence at t="+String(ex.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'explosion' primitive to animation sequence at t="+String(ex.timestamp.atTime.value));
 			}
 			
 		}
@@ -843,7 +849,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(rot);
-				LogEvent(EventType::Debug, "Appended 'entity turret rotation' primitive to animation sequence at t="+String(rot.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'entity turret rotation' primitive to animation sequence at t="+String(rot.timestamp.atTime.value));
 			}
 		}
 
@@ -861,7 +867,7 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(u);
-				LogEvent(EventType::Debug, "Appended 'resource update' primitive to animation sequence at t="+String(u.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'resource update' primitive to animation sequence at t="+String(u.timestamp.atTime.value));
 			}
 
 		}
@@ -1040,7 +1046,7 @@ namespace Network
 			Protocol::ClientFactionRequest ready;
 			ready.startFactionTypes = 0;
 			ready.factionToken.value = CryptographicID();
-			LogEvent(EventType::SessionRelated, nullptr, "Abandoning current faction");
+			LogEvent(EventClass::Preset::uncommon, nullptr, "Abandoning current faction");
 			Channels::clientFactionRequest.SendTo(client,ready);
 
 			#ifdef HAS_WINDOW
@@ -1061,19 +1067,19 @@ namespace Network
 		if (RuntimeConfig::aiMode)
 		{
 			ready.factionToken = RuntimeConfig::aiAccessToken;
-			LogEvent(EventType::SessionRelated, nullptr, "Attempting to log in to " + worldID.ToString() + " as AI using token: " + ready.factionToken.value.ToString());
+			LogEvent(EventClass::Preset::common, nullptr, "Attempting to log in to " + worldID.ToString() + " as AI using token: " + ready.factionToken.value.ToString());
 		}
 		elif (!forceNewFaction && accessMap.Query(worldID, ready.factionToken.value))
 		{
-			LogEvent(EventType::SessionRelated,nullptr,"Attempting to use existing access token of world "+worldID.ToString()+": "+ready.factionToken.value.ToString());
+			LogEvent(EventClass::Preset::common,nullptr,"Attempting to use existing access token of world "+worldID.ToString()+": "+ready.factionToken.value.ToString());
 		}
 		else
 		{
 						
 			if (forceNewFaction)
-				LogEvent(EventType::SessionRelated, nullptr, "Forcing new faction in world " + worldID.ToString());
+				LogEvent(EventClass::Preset::common, nullptr, "Forcing new faction in world " + worldID.ToString());
 			else
-				LogEvent(EventType::SessionRelated, nullptr, "No access token found for world " + worldID.ToString());
+				LogEvent(EventClass::Preset::common, nullptr, "No access token found for world " + worldID.ToString());
 
 			ready.factionToken.value = CryptographicID();
 		}
@@ -1100,7 +1106,7 @@ namespace Network
 
 				amOnline = true;
 
-				LogEvent(EventType::SessionRelated, nullptr, "Connection established to "+client.ToString());
+				LogEvent(EventClass::Preset::uncommon, nullptr, "Connection established to "+client.ToString());
 				
 				Protocol::Hello hello;
 				hello = RuntimeConfig::aiMode ? "<NexusAI>" : chosenNickname;
@@ -1123,7 +1129,7 @@ namespace Network
 			break;
 			case TCP::Event::ConnectionFailed:
 			{
-				LogEvent(EventType::SessionRelated, nullptr, "Connection attempt failed");
+				LogEvent(EventClass::Preset::uncommon, nullptr, "Connection attempt failed");
 				#ifdef HAS_WINDOW
 					Dialog::SignalSituationChange();
 				#endif
@@ -1132,7 +1138,7 @@ namespace Network
 			case TCP::Event::ConnectionLost:
 			case TCP::Event::ConnectionClosed:
 			{
-				LogEvent(EventType::SessionRelated, nullptr, "Connection lost");
+				LogEvent(EventClass::Preset::uncommon, nullptr, "Connection lost");
 				amOnline = false;
 
 				FlushFaction(true);
@@ -1169,7 +1175,7 @@ namespace Network
 		{
 			case Protocol::ChannelID::BeginGame:
 				gameHasBegun = true;
-				LogEvent(EventType::SessionRelated,nullptr,"Game has begun");
+				LogEvent(EventClass::Preset::uncommon,nullptr,"Game has begun");
 				if (RuntimeConfig::IsInAnyCommandPhase() && Animation::AllDone())
 				{
 					Objects::RefreshSkyHubConnections();
@@ -1183,7 +1189,7 @@ namespace Network
 					Dialog::SignalSituationChange();
 				#endif
 				#ifdef _DEBUG
-					LogEvent(EventType::Debug,nullptr,"Got pong from server");
+					LogEvent(EventSignificance::Debug,nullptr,"Got pong from server");
 				#endif
 			break;
 		}
@@ -1253,7 +1259,7 @@ namespace Network
 				int rc = ::bind(broadcastListenSocket, (const sockaddr*)&me, (int)sizeof(me));
 				if (rc != 0)
 				{
-					LogEvent(EventType::OperationAborted,nullptr,"Unable to initiate UDP listening for servers on the local area network (maybe another instance of " PRODUCT_NAME " is running already?). Listening will be disabled." );
+					LogEvent(EventClass::Preset::operationAborted,nullptr,"Unable to initiate UDP listening for servers on the local area network (maybe another instance of " PRODUCT_NAME " is running already?). Listening will be disabled." );
 					RuntimeConfig::udpListen = false;
 					closesocket(broadcastListenSocket);
 					return;
@@ -1374,14 +1380,14 @@ namespace Network
 				float age = timer.ToSeconds(t - client.GetLastPackageTime());
 				if (age > maxPong)
 				{
-					LogEvent(EventType::SessionRelated,nullptr,"Server has not responded for "+String(age)+"/"+String(maxPong)+" second(s). Disconnecting");
+					LogEvent(EventClass::Preset::uncommon,nullptr,"Server has not responded for "+String(age)+"/"+String(maxPong)+" second(s). Disconnecting");
 					client.Disconnect();
 				}
 				else
 				{
 					client.SendSignal(Protocol::ChannelID::Ping);
 					#ifdef _DEBUG
-						LogEvent(EventType::Debug,nullptr,"ping");
+						LogEvent(EventSignificance::Debug,nullptr,"ping");
 					#endif
 				}
 			}
@@ -1449,6 +1455,10 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	switch (c.newPhase.value)
 	{
 		case RuntimeConfig::Phase::AnimationPhase:
+			#ifdef HAS_WINDOW
+				if (TimeLapse::enabled)
+					saveScreenshot = true;
+			#endif
 			if (RuntimeConfig::aiMode)
 				AI::vehicles.Clear();	//whichever is left, cannot be computed
 			Animation::atTime = 0.f;
@@ -1484,8 +1494,9 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 					}
 				}
 
+				if (TimeLapse::enabled)
+					saveScreenshot = true;
 			#endif
-
 		break;
 	}
 	#ifdef HAS_WINDOW
@@ -1502,22 +1513,23 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	UI::HexGrid::RefreshContacts();
 	//while (Objects::Network::records.IsNotEmpty() && timer.GetSecondsSince(Objects::Network::records.Peek().recorded) > 10)
 	//	Objects::Network::records.EraseFront();
-	LogEvent(EventType::MinorEntityProcess,nullptr,"Server phase changed to "+String(RuntimeConfig::phase.ToString())+" ("+String(c.timeFactor.value)+") @"+String(Animation::atTime));
+	LogEvent(EventSignificance::Common,nullptr,"Server phase changed to "+String(RuntimeConfig::phase.ToString())+" ("+String(c.timeFactor.value)+") @"+String(Animation::atTime));
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 	{
 		Objects::CheckMobileEntitySanity();
 
 
-		static Buffer0<TUniqueID> outdated;
+		static Buffer0<Objects::Marker*> outdated;
 		Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10);
 		foreach(outdated, o)
 		{
-			LogEvent(EventType::Debug,nullptr,"Deleting marker "+Objects::Marker::Find(*o)->GetName()+" since it's outdated");
-			SignalMarkerDeletion(*o);
+			
+			LogEvent(EventSignificance::Debug,nullptr,"Deleting marker "+(*o)->GetName()+" since it's outdated (at age "+String((*o)->age)+")");
+			SignalMarkerDeletion((*o)->id);
 			//Network::Channels::destroyMarker.SendTo(Network::client, *o);
 		}
 
-		LogEvent(EventType::SessionRelated, nullptr, "Begin round " + String(RuntimeConfig::roundNumber));
+		LogEvent(EventClass::Preset::uncommon, nullptr, "Begin round " + String(RuntimeConfig::roundNumber));
 
 		if (gameHasBegun && Animation::AllDone())
 		{
@@ -1539,11 +1551,11 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		{
 			if (Animation::AllDone())
 			{
-				Technites::PFaction tf = To<Technites::Faction>::Cast(myFaction);
+				Technites::PFaction tf = To<Technites::Faction>::Cast(Objects::Faction::mine);
 				tf->VerifyIntegrity();
 			}
 			else
-				LogEvent(EventType::Debug,nullptr,"Animations not completely done. Cannot verify technite faction integrity. Assuming it is correct.");
+				LogEvent(EventSignificance::Debug,nullptr,"Animations not completely done. Cannot verify technite faction integrity. Assuming it is correct.");
 
 			TechniteLogicLink::ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
 		}
@@ -1597,7 +1609,7 @@ void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
 	{
 		faction->requestedNewRound = true;
 		faction->roundChangeNotifications++;
-		LogEvent(faction->roundChangeNotifications < 3 ? EventType::SessionRelated : EventType::Debug,nullptr,faction->GetName()+" is done thinking");
+		LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is done thinking");
 		#ifdef HAS_WINDOW
 			UI::RefreshSessionView();
 		#endif
@@ -1611,7 +1623,7 @@ void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 	{
 		faction->requestedNewRound = false;
 		faction->roundChangeNotifications++;
-		LogEvent(faction->roundChangeNotifications < 3 ? EventType::SessionRelated : EventType::Debug,nullptr,faction->GetName()+" is thinking some more");
+		LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is thinking some more");
 		#ifdef HAS_WINDOW
 			UI::RefreshSessionView();
 		#endif
@@ -1622,7 +1634,7 @@ void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 
 void	Network::Receiver::IdentifyUser(Protocol::IdentifyUser&id)
 {
-	LogEvent(EventType::Debug,nullptr,"Identify("+id.id.value.ToString()+", "+String(id.techniteGridFactionID)+")");
+	LogEvent(EventSignificance::Debug,nullptr,"Identify("+id.id.value.ToString()+", "+String(id.techniteGridFactionID)+")");
 
 	Objects::OwnerParameter faction = Network::ResolveFaction(id.id, id.techniteGridFactionID);
 	faction->name = id.name;

@@ -20,6 +20,10 @@ namespace Technites
 {
 	bool limitTechniteLife = true;
 
+
+	const EventClass techniteError = EventClass( EventSignificance::NonFatalError, EventFlavor::ServerPrivate );
+
+
 	/*static*/ const Technite::Resources	Technite::SplitCost = Resources(SplitEnergyCost, SplitMatterCost),
 		Technite::MoveCost = Resources(MoveEnergyCost, 0),
 		Technite::GnawAtCost = Resources(GnawAtEnergyCost, 0),
@@ -391,14 +395,14 @@ namespace Technites
 							const Grid::HCellIdU loc(i,l);
 							if (!f)
 							{
-								LogEvent(EventType::TechniteLogic,nullptr,"Found homeless technite in "+loc.ToString()+", clearing cell");
+								LogEvent(techniteError,"Found homeless technite in "+loc.ToString()+", clearing cell");
 								to.volumeCell[l].content = Grid::Content::Clear;
 								continue;
 							}
 							Technite*t = f->GetOwnTechnite(loc);
 							if (!t)
 							{
-								LogEvent(EventType::TechniteLogic,nullptr,"Found abandoned technite of faction "+f->GetLogName()+" in "+loc.ToString()+", clearing cell");
+								LogEvent(techniteError,"Found abandoned technite of faction "+f->GetLogName()+" in "+loc.ToString()+", clearing cell");
 								to.volumeCell[l].content = Grid::Content::Clear;
 								continue;
 							}
@@ -941,7 +945,7 @@ namespace Technites
 		if (cell.visibility <= 0)
 		{
 			mutex.lock();
-			LogEvent(EventType::TechniteLogic,nullptr,"Visibility mismatch in cell "+techniteIn.ToString()+". Expected this cell to be visibile");
+			LogEvent(techniteError,"Visibility mismatch in cell "+techniteIn.ToString()+". Expected this cell to be visibile");
 			ReportLocation(techniteIn);
 			mutex.unlock();
 			return false;
@@ -1025,7 +1029,7 @@ namespace Technites
 		count_t gridTechniteCount = totalCounter - abandonedCounter;
 		if (gridTechniteCount < shouldBeTechniteCount)
 		{
-			LogEvent(EventType::TechniteLogic,nullptr,"Encountered "+String(shouldBeTechniteCount-gridTechniteCount)+" technite ghost(s). Ignoring");
+			LogEvent(techniteError,"Encountered "+String(shouldBeTechniteCount-gridTechniteCount)+" technite ghost(s). Ignoring");
 			//ignore this case, won't last long anyways
 		}
 		else
@@ -1033,7 +1037,7 @@ namespace Technites
 
 		if (abandonedCounter > 0)
 		{
-			LogEvent(EventType::TechniteLogic,nullptr,"Cleared "+String(abandonedCounter)+"/"+String(totalCounter)+" abandoned technite cell(s), "+String(shouldBeTechniteCount)+" technite(s) left");
+			LogEvent(techniteError,"Cleared "+String(abandonedCounter)+"/"+String(totalCounter)+" abandoned technite cell(s), "+String(shouldBeTechniteCount)+" technite(s) left");
 
 			
 			CheckSendTerrain();
@@ -1081,7 +1085,7 @@ namespace Technites
 		});
 		if (visibilityErrors > 0)
 		{
-			LogEvent(EventType::TechniteLogic,nullptr,"Detected "+String(visibilityErrors)+" visibility error(s). Rebuilding visibility grid");
+			LogEvent(techniteError,"Detected "+String(visibilityErrors)+" visibility error(s). Rebuilding visibility grid");
 
 			for (const auto&tf : Faction::allTechniteFactions)
 			{
@@ -1137,7 +1141,7 @@ namespace Technites
 						if (!f)
 						{
 							mutex.lock();
-							LogEvent(EventType::TechniteLogic,nullptr,"Found homeless technite in "+loc.ToString()+", clearing cell");
+							LogEvent(techniteError,"Found homeless technite in "+loc.ToString()+", clearing cell");
 							ReportLocation(loc);
 							mutex.unlock();
 
@@ -1150,7 +1154,7 @@ namespace Technites
 						if (!t)
 						{
 							mutex.lock();
-							LogEvent(EventType::TechniteLogic,nullptr,"Found abandoned technite of faction "+f->GetLogName()+" in "+loc.ToString()+", clearing cell");
+							LogEvent(techniteError,"Found abandoned technite of faction "+f->GetLogName()+" in "+loc.ToString()+", clearing cell");
 							ReportLocation(loc);
 							mutex.unlock();
 
@@ -1167,7 +1171,7 @@ namespace Technites
 
 
 			if (abandonedCounter > 0)
-				LogEvent(EventType::TechniteLogic,nullptr,"Cleared "+String(abandonedCounter)+"/"+String(totalCounter)+" abandoned technite cell(s)");
+				LogEvent(techniteError,"Cleared "+String(abandonedCounter)+"/"+String(totalCounter)+" abandoned technite cell(s)");
 
 
 			std::atomic<count_t>	visibilityErrors = 0;
@@ -1208,7 +1212,7 @@ namespace Technites
 			});
 			if (visibilityErrors > 0)
 			{
-				LogEvent(EventType::TechniteLogic,nullptr,"Detected "+String(visibilityErrors)+" visibility error(s). Rebuilding visibility grid");
+				LogEvent(techniteError,"Detected "+String(visibilityErrors)+" visibility error(s). Rebuilding visibility grid");
 
 				for (const auto&tf : Faction::allTechniteFactions)
 				{
@@ -1382,7 +1386,7 @@ namespace Technites
 			}
 			else
 			{
-				LogEvent(EventType::InternalFault,nullptr,this->GetLogName() +": Expected technite content type in cell "+t->location.GetU().ToString()+", but got "+Grid::Content::Reinterpret(vcell.content).ToString());
+				LogEvent(techniteError,this->GetLogName() +": Expected technite content type in cell "+t->location.GetU().ToString()+", but got "+Grid::Content::Reinterpret(vcell.content).ToString());
 			}
 		}
 
@@ -1776,7 +1780,7 @@ namespace Technites
 			std::sort(events.begin(),events.end());
 
 			foreach (events, ev) 
-				LogEvent(EventType::TechniteLogic,nullptr,
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::ServerPrivate ),
 					String(ev->stamp)
 					+ ": "+String(ev->type.ToString()).subString(0,5)
 					+", it="+String(ev->iteration)
@@ -1909,7 +1913,7 @@ namespace Technites
 							}
 							if (!found)
 							{
-								LogEvent(EventType::TechniteLogic,nullptr,"Error: leftover technite found in cell "+loc.ToString());
+								LogEvent(techniteError,"Error: leftover technite found in cell "+loc.ToString());
 								ReportLocation(loc);
 
 								atomicGrid.cellStack[loc.stackID].volumeCell[loc.layer].content = Grid::Content::Clear;
@@ -2006,9 +2010,9 @@ namespace Technites
 		}
 
 		if (deathByBadSupport)
-			LogEvent(EventType::TechniteLogic,nullptr,this->GetLogName()+": Lost "+String(deathByBadSupport)+"/"+String(totalNew)+" new technite(s) due to lack of terrain support");
+			LogEvent(techniteError,this->GetLogName()+": Lost "+String(deathByBadSupport)+"/"+String(totalNew)+" new technite(s) due to lack of terrain support");
 		if (deathByLostContent)
-			LogEvent(EventType::TechniteLogic,nullptr,this->GetLogName()+": Lost "+String(deathByLostContent)+"/"+String(totalNew)+" new technite(s) due to terrain content mismatch");
+			LogEvent(techniteError,this->GetLogName()+": Lost "+String(deathByLostContent)+"/"+String(totalNew)+" new technite(s) due to terrain content mismatch");
 
 
 		
@@ -2154,9 +2158,9 @@ namespace Technites
 	/*static*/ PFaction			Faction::CreateFromFile(const TUniqueID&id, BYTE gridID, bool copyInitialWorld/* = false*/)
 	{
 		ASSERT__(gridID != 0xFF);
-		PFaction faction(new Faction());
-		if (id != TUniqueID::Empty())
-			faction->id = id;
+		PFaction faction(new Faction(id));
+		//if (id != TUniqueID::Empty())
+		//	faction->id = id;
 		faction->gridID = gridID;
 		#ifndef CLIENT
 			faction->color = ToColor(faction->id);

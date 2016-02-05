@@ -14,6 +14,7 @@ namespace Technites
 	DECLARE_POINTER_CLASS(Faction);
 
 	extern bool limitTechniteLife;
+	extern const EventClass techniteError;
 
 	struct AtomicBool
 	{
@@ -551,7 +552,7 @@ namespace Technites
 		};
 
 
-		/**/					Faction():Super() {};
+		/**/					Faction(const TUniqueID&id):Super(id) {};
 
 		#if defined CLIENT && defined HAS_WINDOW
 			void				ChangeVision(const Grid::HCellIdU&center, short change);

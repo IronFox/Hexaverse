@@ -125,7 +125,7 @@ namespace Objects
 			String error;
 			if (!parent->owner->CanSpawnType(production,error))
 			{
-				LogEvent(EventType::OperationAborted,parent,"Unable to deploy "+production->GetNiceName()+": "+error);
+				LogEvent(EventClass::Preset::operationAborted,parent,"Unable to deploy "+production->GetNiceName()+": "+error);
 				return PMobileEntity();
 			}
 			ASSERT_NOT_NULL__(parent);
@@ -134,7 +134,7 @@ namespace Objects
 
 			if (movementChoices.IsEmpty())
 			{
-				LogEvent(EventType::EntityProcessFailed,parent,"Failed to automatically spawn finished unit. Is something blocking deployment?");
+				LogEvent(EventClass::Preset::operationAborted,parent,"Failed to automatically spawn finished unit. Is something blocking deployment?");
 				return PMobileEntity();
 			}
 
@@ -145,7 +145,7 @@ namespace Objects
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))
 			{
-				LogEvent(EventType::Fatal,v.get(),"Failed to position non-constructed at "+c.ToString());
+				LogEvent(EventClass::Preset::fatal,v.get(),"Failed to position non-constructed at "+c.ToString());
 				FATAL__("Failed to position entity as designated position");
 			}
 			if (rs == MobilePlacementResult::PlacementOkay || rs == MobilePlacementResult::PlacementOkayFellDown)
@@ -173,7 +173,7 @@ namespace Objects
 			{
 				if (queue.first().IsSatellite())
 				{
-					LogEvent(EventType::MinorEntityProcess,parent,"Auto-spawning satellite");
+					LogEvent(EventSignificance::Common,parent,"Auto-spawning satellite");
 					Objects::PMobileEntity e = SpawnFinishedProductionAnywhere();
 
 
@@ -195,22 +195,22 @@ namespace Objects
 			productionRoundsLeft = ProductionRounds(queue.first().producing,true);
 			if (productionDone >= (UINT32)(queue.first().producing->GetConstructionCost()))
 			{
-				LogEvent(EventType::EntityProcess,parent,"Construction of "+queue.first().producing->GetNiceName()+" completed");
+				LogEvent(EventSignificance::Common,parent,"Construction of "+queue.first().producing->GetNiceName()+" completed");
 
 				if (gatheringPoint.current != Grid::LCellIdI::Invalid || queue.first().IsSatellite())
 				{
-					LogEvent(EventType::MinorEntityProcess,parent,"Auto-spawning mobile entity");
+					LogEvent(EventSignificance::Common,parent,"Auto-spawning mobile entity");
 					Objects::PMobileEntity v = SpawnFinishedProductionAnywhere();
 					if (v)
 					{
 						if (!v->IsSatellite())
 						{
-							LogEvent(EventType::EntityProcess,v.get(),"Directing vehicle to gathering point");
+							LogEvent(EventSignificance::Common,v.get(),"Directing vehicle to gathering point");
 							v->PlotCourse(gatheringPoint.current,false);
 						}
 					}
 //					else
-	//					LogEvent(EventType::EntityProcessFailed,parent,"Failed to automatically spawn finished entity. Is something blocking deployment?");
+	//					LogEvent(EventClass::Preset::operationAborted,parent,"Failed to automatically spawn finished entity. Is something blocking deployment?");
 				}
 			}
 
@@ -234,7 +234,7 @@ namespace Objects
 			String error;
 			if (!parent->owner->CanSpawnType(v,error))
 			{
-				LogEvent(EventType::OperationAborted,parent,"Unable to deploy "+v->GetNiceName()+": "+error);
+				LogEvent(EventClass::Preset::operationAborted,parent,"Unable to deploy "+v->GetNiceName()+": "+error);
 				return PMobileEntity();
 			}
 
@@ -266,12 +266,12 @@ namespace Objects
 			Component::Turret* turret = Component::GetTurretByName(turretName);
 			if (!turret)
 			{
-				LogEvent(EventType::CommandRejected,parent,"Invalid turret component");
+				LogEvent(EventClass::Preset::commandRejected,parent,"Invalid turret component");
 				return nullptr;
 			}
 			if (!base)
 			{
-				LogEvent(EventType::CommandRejected,parent,"Invalid base component");
+				LogEvent(EventClass::Preset::commandRejected,parent,"Invalid base component");
 				return nullptr;
 			}
 			return EnqueueProductionOfVehicle(base,turret);
@@ -286,13 +286,13 @@ namespace Objects
 			String error;
 			if (!parent->owner->CanSpawnType(proto,error))
 			{
-				LogEvent(EventType::OperationAborted,parent,"Unable to enqueue production of "+proto->GetTypeName()+": "+error);
+				LogEvent(EventClass::Preset::operationAborted,parent,"Unable to enqueue production of "+proto->GetTypeName()+": "+error);
 				return nullptr;
 			}
 
 			if (!proto)
 			{
-				LogEvent(EventType::CommandRejected,parent,"Invalid satellite type");
+				LogEvent(EventClass::Preset::commandRejected,parent,"Invalid satellite type");
 				return nullptr;
 			}
 
@@ -327,7 +327,7 @@ namespace Objects
 			ASSERT_NOT_NULL__(parent);
 			if (queue.Count() >= MaxStructureTasks)
 			{
-				LogEvent(EventType::CommandRejected,parent,"Max queue length ("+String(MaxStructureTasks)+") reached");
+				LogEvent(EventClass::Preset::commandRejected,parent,"Max queue length ("+String(MaxStructureTasks)+") reached");
 				return nullptr;
 			}
 			if (selectedBase && selectedTurret)
@@ -336,7 +336,7 @@ namespace Objects
 				String error;
 				if (!parent->owner->CanSpawnType(vehicle,error))
 				{
-					LogEvent(EventType::OperationAborted,parent,"Unable to enqueue production of "+vehicle->GetTypeName()+": "+error);
+					LogEvent(EventClass::Preset::operationAborted,parent,"Unable to enqueue production of "+vehicle->GetTypeName()+": "+error);
 					return nullptr;
 				}
 				WorkItem*rs = EnqueueProductionOf(vehicle);
@@ -377,12 +377,12 @@ namespace Objects
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			if (gatheringPoint.current != loc)
 			{
-				LogEvent(EventType::EntityProcess, parent, "Set gathering point");
+				LogEvent(EventSignificance::Common, parent, "Set gathering point");
 				gatheringPoint.current = loc;
 			}
 			else
 			{
-				LogEvent(EventType::EntityProcess, parent, "Unset gathering point");
+				LogEvent(EventSignificance::Common, parent, "Unset gathering point");
 				gatheringPoint.current = Grid::LCellIdI::Invalid;
 			}
 			parent->RegisterChange(Objects::WorldEntity::AutomationChanged,0);

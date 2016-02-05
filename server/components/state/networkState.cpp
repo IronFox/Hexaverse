@@ -42,7 +42,7 @@ namespace Network
 		}
 		if (server.StartService(Config::sessionPort))
 		{
-			LogEvent(EventType::SessionRelated,"Session server started on port "+String(Config::sessionPort));
+			LogEvent(EventClass::Preset::network,"Session server started on port "+String(Config::sessionPort));
 		}
 		else
 			FATAL__("Unable to start service in port "+String(Config::sessionPort)+" ("+server.GetError(true)+"). Chances are, a server is already running on that port.")
@@ -56,7 +56,7 @@ namespace Network
 		if (peer.userLevel == (UINT32)newLevel)
 			return;
 		peer.userLevel = (UINT32)newLevel;
-		LogEvent(EventType::Debug,peer,"User level changed to "+String(peer.userLevel));
+		LogEvent(EventSignificance::Debug,peer,"User level changed to "+String(peer.userLevel));
 	}
 
 	String						Client::ToString() const
@@ -146,6 +146,7 @@ namespace Network
 		server.SetAsync(false);
 		server.onEvent = Receiver::OnEvent;
 		server.onIgnorePackage = Receiver::OnIgnorePackage;
+		server.onDeserializationFailed = Receiver::OnDeserializationFailed;
 	}
 
 
@@ -168,7 +169,7 @@ namespace Network
 
 	void	RestartSession()
 	{
-		LogEvent(EventType::SessionRelated,"Restarting session.");
+		LogEvent(EventSignificance::Important,"Restarting session.");
 		#ifndef NO_HIBERNATION
 			UpdateHibernation();
 		#endif
@@ -193,7 +194,7 @@ namespace Network
 		bool isOnline = server.IsOnline();
 		if (!isOnline)
 			return false;
-		LogEvent(EventType::SessionRelated,"Suspending session.");
+		LogEvent(EventSignificance::Important,"Suspending session.");
 
 		server.Shutdown();
 
@@ -217,7 +218,7 @@ namespace Network
 	bool		CloseSession()
 	{
 		bool isOnline = server.IsOnline();
-		LogEvent(EventType::SessionRelated,isOnline ? "Closing session." : "Flushing session data.");
+		LogEvent(EventSignificance::Important,isOnline ? "Closing session." : "Flushing session data.");
 
 		server.Shutdown();
 
@@ -252,7 +253,7 @@ namespace Network
 	void InvalidOperation(TCP::Peer&peer)
 	{
 		PClient client = To<Client>::Cast(peer.attachment);
-		Logging::WriteEvent(EventType::UnexpectedBehavior, "Invalid operation performed",&peer,nullptr);
+		Logging::WriteEvent(EventClass::Preset::unexpectedBehavior, "Invalid operation performed",&peer,nullptr);
 		if (client)
 		{
 			//clients.FindAndErase(client);
@@ -280,7 +281,7 @@ namespace Network
 		if (c.wantNewRound)
 		{
 			ASSERT__(c.faction == e.owner);
-			LogEvent(EventType::CommandRejected,&e,"Unable to comply: You have ended your round");
+			LogEvent(EventClass::Preset::commandRejected,&e,"Unable to comply: You have ended your round");
 			return false;
 		}
 		return true;
