@@ -1152,7 +1152,6 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
 			{
 				Objects::OwnerParameter o = Objects::selectedEntity->owner;
-
 				Objects::PStructure s = To<Objects::Structure>::Cast(Objects::selectedEntity);
 				const Objects::Compound&n = Objects::compounds[s->compoundID];
 				Objects::PWorkingStructure ws = s->IsWorkingStructure() ? To<Objects::WorkingStructure>::Cast(Objects::selectedEntity) : Objects::PWorkingStructure();
