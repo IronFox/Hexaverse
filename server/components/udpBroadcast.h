@@ -11,7 +11,7 @@ namespace UDPBroadCast
 	/**
 	Creates the UDP broadcast packet. Must be called once when the program starts even if UDP broadcast will never be used
 	*/
-	void		Create(UINT16 basePort);
+	void		Create(UINT16 basePort, const TUniqueID&serverID);
 	/**
 	Starts UDP broadcasting relative to the specified base port
 	*/

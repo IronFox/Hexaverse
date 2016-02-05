@@ -101,29 +101,55 @@ SpinLock	eventLock;
 
 		/**/		VisualEvent():color(1.f),age(0)
 		{}
-		/**/		VisualEvent(const String&message, EventType type):message(message)
+
+		static float3 ToAverage(const float3&source, float level)
 		{
-			switch (type)
+			float3 avg = (float3)1.f;
+			//float3((source.r + source.g + source.b)/3.f);
+			Vec::interpolate(source,avg,level,avg);
+			return avg;
+		}
+
+		/**/		VisualEvent(const String&message, EventClass type):message(message)
+		{
+			color = float3(1.f);
+			switch (type.flavor)
 			{
-				case EventType::CommandRejected:
-				case EventType::InternalFault:
-				case EventType::OperationAborted:
-				case EventType::EntityProcessFailed:
-				case EventType::GameProgressRelated:
-					color = float3(1,0.5f,0.5f);
+				case EventFlavor::Gain:
+					color = float3(0,1,0);
+				break;
+				case EventFlavor::Loss:
+					color = float3(1,0,0);
+				break;
+				case EventFlavor::SystemError:
+				case EventFlavor::UserError:
+					color = float3(1,0,0.5);
+				break;
+				case EventFlavor::Neutral:
+					if (type.significance == EventSignificance::Important)
+						color = float3(0,0,1);
+				break;
+			}
+
+
+			switch (type.significance)
+			{
+				case EventSignificance::ClientFatal:
+				case EventSignificance::FactionFatal:
+				case EventSignificance::SystemFatal:
+				case EventSignificance::Important:
+				case EventSignificance::NonFatalError:
 					age = -MaxAge;
 				break;
-				case EventType::ChatMessage:
-					color = float3(0.9f,0.9f,1);
-					scale = 1.5f;
+				case EventSignificance::Uncommon:
+					color = ToAverage(color,0.65f);
+					color *= 0.85f;
 					age = -MaxAge/2.f;
 				break;
-				case EventType::CompoundProcess:
-					color = float3(0.5f,1,0.5f);
-					age = -MaxAge/4.f;
-				break;
 				default:
-					//color *= 0.8f;
+					color = ToAverage(color,0.75f);
+					color *= 0.7f;
+					age = -MaxAge/4.f;
 				break;
 			}
 		}
@@ -185,7 +211,7 @@ void	OnTutorialsChanged()
 
 
 
-void LogEvent(EventType type,  const Objects::WorldEntity*e, const String&_event);
+//void LogEvent(const EventClass&type,  const Objects::WorldEntity*e, const String&_event);
 
 
 
@@ -230,7 +256,7 @@ void	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 		}
 		if (!foundPath)
 		{
-			LogEvent(EventType::CommandRejected,v.get(),"Unable to find route to designated destination. Asking server");
+			LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to find route to designated destination. Asking server");
 			SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//maybe some error in the client
 			return;
 		}
@@ -238,7 +264,7 @@ void	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 			SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//all good
 		else
 		{
-			LogEvent(EventType::MinorEntityProcess,v.get(),"Splitting long path into parts");
+			LogEvent(EventSignificance::Common,v.get(),"Splitting long path into parts");
 			static Buffer0<Grid::LCellIdI>	waypoints;
 			waypoints.Clear();
 			bool open = true;
@@ -433,7 +459,7 @@ void	SignalRoundEnd()
 		#ifdef HAS_WINDOW
 			Objects::UpdateChoices(Network::ControlEnabled());
 		#endif
-		LogEvent(EventType::SessionRelated,nullptr,"Requested new round");
+		LogEvent(EventClass::Preset::uncommon,nullptr,"Requested new round");
 	}
 }
 
@@ -443,14 +469,14 @@ void	SignalUndoRoundEnd()
 	{
 		Network::client.SendSignal(Protocol::ChannelID::RequestContinueRound);
 		Network::newRoundRequested = false;
-		LogEvent(EventType::SessionRelated,nullptr,"Requested to continue new round");
+		LogEvent(EventClass::Preset::uncommon,nullptr,"Requested to continue new round");
 	}
 
 }
 
 #ifdef HAS_WINDOW
 
-	void VisualLogEvent( EventType type,  const Objects::WorldEntity*e, const String&_event)
+	void VisualLogEvent( EventClass type,  const Objects::WorldEntity*e, const String&_event)
 	{
 		String event = _event, outEvent = _event;
 		if (e)
@@ -459,11 +485,11 @@ void	SignalUndoRoundEnd()
 			outEvent = e->owner->GetLogName()+","+ e->GetName()+": "+event;
 		}
 		eventLock.lock();
-		if (type != EventType::Debug && type != EventType::PerformanceMeasurement && type != EventType::MinorEntityProcess)
+		if (type.significance > EventSignificance::Common)
 		{
 			#ifdef HAS_WINDOW
-				if (type == EventType::ChatMessage)
-					events << VisualEvent("",EventType::Debug);
+				if (type.flavor == EventFlavor::ChatMessage)
+					events << VisualEvent("",EventSignificance::Debug);
 				events << VisualEvent(event,type);
 			#else
 				std::cout << event << std::endl;
@@ -741,86 +767,130 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 
 
+#ifdef HAS_WINDOW
+	bool saveScreenshot = false;
 
-bool saveScreenshot = false;
-
-
-class StorageThread : public ThreadObject
-{
-public:
-	Image		image;
-	Semaphore	semaphore;
-	volatile bool	active;
-
-	StorageThread():active(false)
-	{}
-
-	void ThreadMain() override
+	namespace TimeLapse
 	{
-		while (!application_shutting_down)
+		index_t runningNumber = 0;
+		bool enabled = false;
+		float		frameDelaySeconds=0.2f;
+		PathString	basePath;
+		PathString	customBasePath;
+	}
+
+
+	class StorageThread : public ThreadObject
+	{
+	public:
+		//Image		image;
+		//Semaphore	semaphore;
+		//volatile bool	active;
+		Timer::Time	lastSubmission = timer.Now();
+		ProductionPipe<Image>	workPipe;
+
+		StorageThread()
+		{}
+
+		void ThreadMain() override
 		{
-			semaphore.enter();
-			if (application_shutting_down)
-				return;
-//
-//			image.truncateToOpaque();
-//
-//			for (UINT32 x = 0; x < image.getWidth(); x++)
-//				for (UINT32 y = 0; y < image.getHeight(); y++)
-//				{
-//					BYTE*pixel = image.getPixel(x,y);
-//					if (pixel[3] > 0 && pixel[3] < 255)
-//					{
-//						//#ifdef WHITE_STYLE
-//						//	TVec3<> intermediate;
-//						//	Vec::mult(Vec::ref3(pixel),1.f / 255.f,intermediate);
-//						//	float a = float(pixel[3])/255.f;
-//						//	Vec::addVal(intermediate,a - 1.f);
-//						//	Vec::div(intermediate,a);
-//						//	Vec::clamp(intermediate,0,1);
-//						//	Vec::mult(intermediate,255.f,Vec::ref3(pixel));
-//
-//						//#else
-//							float scale = 1.f / (float(pixel[3])/255.f);
-//							Vec::mult(Vec::ref3(pixel),scale);
-////						#endif
-//					}
-//				}
-			image.setChannels(3);
-
-			FileSystem::CreateFolder("screenshots");
-			index_t counter = 0;
-			PathString filename = PathString("screenshots/screenshot"+String(counter)+".png");
-			while (FileSystem::IsFile(filename))
+			Array<std::shared_ptr<Image> >	images;
+			while (!application_shutting_down)
 			{
-				counter++;
-				filename = PathString("screenshots/screenshot"+String(counter)+".png");
+				workPipe.WaitForContent();
+				if (application_shutting_down)
+					return;
+				workPipe.SignalRead();
+
+				const count_t numImages = workPipe.Count();
+				if (numImages > images.Count())
+					images.SetSize(numImages);
+				for (index_t i = 0; i < numImages; i++)
+					images[i].swap(workPipe[i]);
+				workPipe.ExitRead();
+				if (application_shutting_down)
+					return;
+	//
+	//			image.truncateToOpaque();
+	//
+	//			for (UINT32 x = 0; x < image.getWidth(); x++)
+	//				for (UINT32 y = 0; y < image.getHeight(); y++)
+	//				{
+	//					BYTE*pixel = image.getPixel(x,y);
+	//					if (pixel[3] > 0 && pixel[3] < 255)
+	//					{
+	//						//#ifdef WHITE_STYLE
+	//						//	TVec3<> intermediate;
+	//						//	Vec::mult(Vec::ref3(pixel),1.f / 255.f,intermediate);
+	//						//	float a = float(pixel[3])/255.f;
+	//						//	Vec::addVal(intermediate,a - 1.f);
+	//						//	Vec::div(intermediate,a);
+	//						//	Vec::clamp(intermediate,0,1);
+	//						//	Vec::mult(intermediate,255.f,Vec::ref3(pixel));
+	//
+	//						//#else
+	//							float scale = 1.f / (float(pixel[3])/255.f);
+	//							Vec::mult(Vec::ref3(pixel),scale);
+	////						#endif
+	//					}
+	//				}
+				for (index_t i = 0; i < numImages; i++)
+				{
+					Image&image = *images[i];
+					image.setChannels(3);
+
+					if (!TimeLapse::enabled)
+					{
+						FileSystem::CreateFolder("screenshots");
+						index_t counter = 0;
+						PathString filename = PathString("screenshots/screenshot"+String(counter)+".png");
+						while (FileSystem::IsFile(filename))
+						{
+							counter++;
+							filename = PathString("screenshots/screenshot"+String(counter)+".png");
+						}
+						png.SaveToFile(image,filename);
+						LogEvent(EventClass::Preset::uncommon, nullptr, "Screenshot written to "+String(filename));
+					}
+					else
+					{
+						String runningNumber = String(TimeLapse::runningNumber++);
+						while (runningNumber.length() < 4)
+							runningNumber = '0'+runningNumber;
+						String core = "capture"+runningNumber+".png";
+						PathString filename = TimeLapse::basePath + FOLDER_SLASH + core;
+
+						png.SaveToFileQ(image,filename);
+						count_t remaining = numImages - i - 1 + workPipe.Count();
+						LogEvent(EventClass::Preset::uncommon, nullptr, "Time lapse frame written to "+String(core)+". "+String(remaining)+" remaining.");
+					}
+				}
 			}
-			png.SaveToFile(image,filename);
-			active = false;
-			LogEvent(EventType::Notification, nullptr, "Screenshot written to "+String(filename));
 		}
-	}
 
-	bool	CanRun() const {return !active;}
-	void	Run()
-	{
-		if (active)
-			return;
-		active = true;
-		semaphore.release();
-	}
-	void	Terminate()
-	{
-		ASSERT__(application_shutting_down);
-		semaphore.release();
-	}
+		bool	CanRun() const {return timer.GetSecondsSince(lastSubmission) > TimeLapse::frameDelaySeconds;}
+		void	Run(const std::shared_ptr<Image>&image)
+		{
+			if (!CanRun())
+				return;
 
-}		storageThread;
+	//		active = true;
+		//	semaphore.release();
+			workPipe << image;
+			lastSubmission = timer.Now();
+		}
+		void	Terminate()
+		{
+			ASSERT__(application_shutting_down);
+			workPipe.OverrideSignalNow();
+		}
+
+	}		storageThread;
 
 
 
 
+#endif
 
 
 
@@ -916,7 +986,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 		Objects::Marker*m = Objects::Marker::FindByReference(e->id);
 		if (m)
 		{
-			LogEvent(EventType::Debug,e.get(),"Deleting marker "+m->GetName()+" since original reappeared");
+			LogEvent(EventSignificance::Debug,e.get(),"Deleting marker "+m->GetName()+" since original reappeared");
 			SignalMarkerDeletion(m->id);
 		}
 	}
@@ -929,7 +999,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 				Objects::Marker&m = Objects::Marker::all[i];
 				if (m.type == Objects::Marker::Type::EntityDeath && m.location == e->location)
 				{
-					LogEvent(EventType::Debug,e.get(),"Deleting marker "+m.GetName()+" since new structure constructed in its place");
+					LogEvent(EventSignificance::Debug,e.get(),"Deleting marker "+m.GetName()+" since new structure constructed in its place");
 					SignalMarkerDeletion(m.id);
 					i--;
 				}
@@ -1061,7 +1131,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			if (Objects::selectedEntity)
 				f = Objects::selectedEntity->owner;
 			else
-				f = Network::myFaction;
+				f = Objects::Faction::mine;
 			if (f)
 			{
 				if (f->compound.containedStructures.IsEmpty())
@@ -1384,7 +1454,7 @@ bool loop()
 			}
 
 
-
+			Objects::Renderer::RefreshFactionColors(!saveScreenshot);
 			Objects::Renderer::RenderScene();
 
 
@@ -1542,16 +1612,21 @@ bool loop()
 
 			if (saveScreenshot)
 			{
-				saveScreenshot = false;
+				if (RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase || !TimeLapse::enabled)
+				{
+					saveScreenshot = false;
+				}
 				//display.SetBackbufferClearColor(0,0,0,0);
 
 				//Image image;
 				if (storageThread.CanRun())
 				{
-					LogEvent(EventType::Notification, nullptr, "Writing screenshot to disk...");
-					display.Capture(storageThread.image);
+					if (!TimeLapse::enabled)
+						LogEvent(EventClass::Preset::uncommon, nullptr, "Writing screenshot to disk...");
+					std::shared_ptr<Image> capture(new Image());
+					display.Capture(*capture);
 
-					storageThread.Run();
+					storageThread.Run(capture);
 				}
 
 			}
@@ -1703,7 +1778,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	file.Log(message+"\n",true);
 	file.Close();
 	application_shutting_down = true;	//prevent certain operations in Close()
-	LogEvent(EventType::Fatal, nullptr, message);
+	LogEvent(EventClass( EventSignificance::SystemFatal, EventFlavor::SystemError ), nullptr, message);
 	ErrMessage(message);
 	//NetworkConnection::Close();
 
@@ -1790,280 +1865,297 @@ void MyFatal(const FatalDescriptor&descriptor)
 		return false;
 	}
 
-#endif
 
-
-
-#ifdef HAS_WINDOW
-/**
-Primary entry point used when clicking anywhere on the window
-*/
-void Select()
-{
-	Tutorial::lastDelayingEvent = timer.Now();
-
-	if (Dialog::HandleMouseDown() || UI::HandleClick())
-		return;
-	if (Rect<>(0.f,0.97f,0.1f,1.f).Contains(Engine::mouse.location.windowRelative))
+	/**
+	Primary entry point used when clicking anywhere on the window
+	*/
+	void Select()
 	{
-		QueryNickname();
-		return;
-	}
-//	if (Engine::input.pressed[Key::Control])
-	//LogEvent(nullptr, "Select()");
+		Tutorial::lastDelayingEvent = timer.Now();
 
-	//if (Objects::Network::Transfer::isActive)
-	//{
-	//	TransferPanel::HandleClick();
-	//	return;
-	//}
-	//if (!Network::client.IsConnected())
-	//{
-	//	if (Engine::mouse.location.windowRelative.x < 0.1f || Engine::mouse.location.windowRelative.x > 0.9f)
-	//		return;
-	//	if (Network::client.IsAttemptingToConnect())
-	//		return;
-	//	if (RuntimeConfig::serverURL.IsNotEmpty())
-	//		return;
-	//	foreach (Network::servers,srv)
-	//	{
-	//		if (srv->rightVersion && srv->bottom < Engine::mouse.location.windowRelative.y && srv->top > Engine::mouse.location.windowRelative.y)
-	//		{
-	//			index_t best = 0;
-	//			float bestPing = srv->urls.first().second;
-	//			for (index_t i = 1; i < srv->urls.Count(); i++)
-	//				if (srv->urls[i].second < bestPing)
-	//				{
-	//					bestPing = srv->urls[i].second;
-	//					best = i;
-	//				}
-	//			srv->selected = true;
+		if (Dialog::HandleMouseDown() || UI::HandleClick())
+			return;
+		if (Rect<>(0.f,0.97f,0.1f,1.f).Contains(Engine::mouse.location.windowRelative))
+		{
+			QueryNickname();
+			return;
+		}
+	//	if (Engine::input.pressed[Key::Control])
+		//LogEvent(nullptr, "Select()");
 
-	//			Network::serverID = srv->id;
-	//			Network::serverIDString = Network::serverID.ToNiceString();
-	//			Network::worldID = srv->info.worldID;
-	//			Network::worldIDString = Network::worldID.ToNiceString();
-	//			Network::client.ConnectAsync(srv->urls[best].first + ":"+String(SERVICE_PORT));
-	//			return;
-	//		}
+		//if (Objects::Network::Transfer::isActive)
+		//{
+		//	TransferPanel::HandleClick();
+		//	return;
+		//}
+		//if (!Network::client.IsConnected())
+		//{
+		//	if (Engine::mouse.location.windowRelative.x < 0.1f || Engine::mouse.location.windowRelative.x > 0.9f)
+		//		return;
+		//	if (Network::client.IsAttemptingToConnect())
+		//		return;
+		//	if (RuntimeConfig::serverURL.IsNotEmpty())
+		//		return;
+		//	foreach (Network::servers,srv)
+		//	{
+		//		if (srv->rightVersion && srv->bottom < Engine::mouse.location.windowRelative.y && srv->top > Engine::mouse.location.windowRelative.y)
+		//		{
+		//			index_t best = 0;
+		//			float bestPing = srv->urls.first().second;
+		//			for (index_t i = 1; i < srv->urls.Count(); i++)
+		//				if (srv->urls[i].second < bestPing)
+		//				{
+		//					bestPing = srv->urls[i].second;
+		//					best = i;
+		//				}
+		//			srv->selected = true;
 
-	//	}
+		//			Network::serverID = srv->id;
+		//			Network::serverIDString = Network::serverID.ToNiceString();
+		//			Network::worldID = srv->info.worldID;
+		//			Network::worldIDString = Network::worldID.ToNiceString();
+		//			Network::client.ConnectAsync(srv->urls[best].first + ":"+String(SERVICE_PORT));
+		//			return;
+		//		}
+
+		//	}
 
 
-	//	return;
-	//}
+		//	return;
+		//}
 
 	
 
-	int oldVehicleHeight = Grid::SeeThrough::GetFocusPoint().height;
-	if (Objects::selectedEntity)
-		oldVehicleHeight = Objects::selectedEntity->location.height;
+		int oldVehicleHeight = Grid::SeeThrough::GetFocusPoint().height;
+		if (Objects::selectedEntity)
+			oldVehicleHeight = Objects::selectedEntity->location.height;
 
 	
 
 
-	//{
-	//	if (CommandPanel::HandleClick())
-	//	{
-	//		Objects::RefreshCommands(Network::ControlEnabled());
-	//		return;
-	//	}
-	//}
+		//{
+		//	if (CommandPanel::HandleClick())
+		//	{
+		//		Objects::RefreshCommands(Network::ControlEnabled());
+		//		return;
+		//	}
+		//}
 
 
 
-	if (Objects::selectedMobileEntity 
-		&& Objects::VehicleCanBeLeftClickDirected()	//also works for mobiles in general. TODO: rename/relocate
-		)
-	{
-		if (Objects::selectedMobileEntity)
+		if (Objects::selectedMobileEntity 
+			&& Objects::VehicleCanBeLeftClickDirected()	//also works for mobiles in general. TODO: rename/relocate
+			)
 		{
-			Grid::LCellIdI	target;
-			bool includeWater = false;
-			if (Objects::activeCursorMode == Objects::CursorMode::AttackMode)
-				includeWater = true;
-			else
-				//if (Objects::selectedVehicle->base->moveOnWater)
-					includeWater = true;
-
-			if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
-			{
-				if (Objects::selectedMobileEntity->IsSatellite())
-					target.height = Objects::selectedMobileEntity->location.height;
-				DirectTo(Objects::selectedMobileEntity,target,false,true);
-				return;
-			}
-		}
-		else
-		{
-			FATAL__("not implemented for non-mobiles yet" );
-		}
-	}
-	else
-		if (Objects::selectedEntity && Objects::activeCursorMode == Objects::CursorMode::AttackMode)
-		{
-			float h;
-			Objects::PTurretBase base = Objects::selectedEntity->GetTurretBase(h);
-			if (base)
+			if (Objects::selectedMobileEntity)
 			{
 				Grid::LCellIdI	target;
-				if (GetLowCellUnderCursor(target,true,true))
+				bool includeWater = false;
+				if (Objects::activeCursorMode == Objects::CursorMode::AttackMode)
+					includeWater = true;
+				else
+					//if (Objects::selectedVehicle->base->moveOnWater)
+						includeWater = true;
+
+				if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
 				{
-					DirectTo(Objects::selectedEntity,target,false,true);
+					if (Objects::selectedMobileEntity->IsSatellite())
+						target.height = Objects::selectedMobileEntity->location.height;
+					DirectTo(Objects::selectedMobileEntity,target,false,true);
 					return;
 				}
 			}
-		}
-
-	//selectedId = InvalidIndex;
-	{
-		float3 b,d;
-		Camera::scene.ScreenToVector(Engine::mouse.location.windowRelative * 2.f - 1.f,b,d);
-		if (!Vec::zero(d))
-		{
-			Vec::normalize(d);
-
-			float distance = std::numeric_limits<float>::max();
-
-
-			bool handledChoice = Objects::HandleChoiceIntersection(b, d, distance);
-			if (!handledChoice)
+			else
 			{
-				TVec3<> normal;
-				bool selectionDone = false;
-				if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity) || Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
+				FATAL__("not implemented for non-mobiles yet" );
+			}
+		}
+		else
+			if (Objects::selectedEntity && Objects::activeCursorMode == Objects::CursorMode::AttackMode)
+			{
+				float h;
+				Objects::PTurretBase base = Objects::selectedEntity->GetTurretBase(h);
+				if (base)
 				{
-					if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
+					Grid::LCellIdI	target;
+					if (GetLowCellUnderCursor(target,true,true))
 					{
-						if (Objects::selectedVehicle)
-						{
-							float3 p = b + d * distance;
-							float r = p.length();
-							float3 d = p / r;
-							UINT32 stackID;
-							int h;
-							if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity))
-							{
-								if (Vec::dot(d, normal) > 0.5f)	//flat selection
-								{
-									stackID = Grid::high.Locate(d);
-									h = Grid::FromRadius(r);
-								}
-								else
-								{
-									stackID = Grid::high.Locate(d + normal*0.001f);
-									h = Grid::FloorFromRadius(r);
-								}
-							}
-							else
-								if (Vec::dot(d, normal) > 0.5f)	//flat selection
-								{
-									stackID = Grid::high.Locate(d);
-									h = int(floor(Grid::FromRadiusf(r)-0.5f));
-								}
-								else
-								{
-									stackID = Grid::high.Locate(d - normal*0.01f);
-									h = Grid::FloorFromRadius(r);
-								}
-							String activity = "build";
-							if (Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
-								activity = "remove";
-							Grid::LCellIdI origin = Objects::selectedVehicle->GetLastPointOfOrigin();
-							if (h < -Grid::CellStack::HalfRange)
-							{
-								LogEvent(EventType::EntityProcess, Objects::selectedEntity.get(), "Cannot "+activity+" here: Cannot alter bottom-layer");
-							}
-							elif (abs(h - origin.height) > 1)
-							{
-								LogEvent(EventType::EntityProcess, Objects::selectedEntity.get(), "Cannot "+activity+" here: Height difference too big: Selected="+String(h)+", vehicle at: "+String(origin.height));
-							}
-							elif(Objects::vehicleDistanceField.distance[stackID] > 3)
-								LogEvent(EventType::EntityProcess, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too far away from vehicle");
-							elif(Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity) && h == origin.height && Objects::vehicleDistanceField.distance[stackID] <= 1)
-								LogEvent(EventType::EntityProcess, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too close to vehicle");
-							else
-							{
-								Grid::HCellIdI	cell = Grid::HCellIdI(stackID, h);
-								index_t current = Objects::cellSelection.GetIndexOf(cell);
-								if (current == InvalidIndex)
-									Objects::cellSelection << cell;
-								else
-									Objects::cellSelection.Erase(current);
-							}
-						}
-						else
-							FATAL__("vehicle selection lost");
-						selectionDone = true;
+						DirectTo(Objects::selectedEntity,target,false,true);
+						return;
 					}
 				}
-				if (!selectionDone)
-					if (Objects::Select(b, d, distance, Network::ControlEnabled()))
-					{
-						selectionDone = true;
-					}
-					else
-					{
-						distance = std::numeric_limits<float>::max();
+			}
 
+		//selectedId = InvalidIndex;
+		{
+			float3 b,d;
+			Camera::scene.ScreenToVector(Engine::mouse.location.windowRelative * 2.f - 1.f,b,d);
+			if (!Vec::zero(d))
+			{
+				Vec::normalize(d);
+
+				float distance = std::numeric_limits<float>::max();
+
+
+				bool handledChoice = Objects::HandleChoiceIntersection(b, d, distance);
+				if (!handledChoice)
+				{
+					TVec3<> normal;
+					bool selectionDone = false;
+					if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity) || Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
+					{
 						if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
 						{
-							float3 p = b + d * distance;
-							float height = p.Length();
-
+							if (Objects::selectedVehicle)
+							{
+								float3 p = b + d * distance;
+								float r = p.length();
+								float3 d = p / r;
+								UINT32 stackID;
+								int h;
+								if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity))
+								{
+									if (Vec::dot(d, normal) > 0.5f)	//flat selection
+									{
+										stackID = Grid::high.Locate(d);
+										h = Grid::FromRadius(r);
+									}
+									else
+									{
+										stackID = Grid::high.Locate(d + normal*0.001f);
+										h = Grid::FloorFromRadius(r);
+									}
+								}
+								else
+									if (Vec::dot(d, normal) > 0.5f)	//flat selection
+									{
+										stackID = Grid::high.Locate(d);
+										h = int(floor(Grid::FromRadiusf(r)-0.5f));
+									}
+									else
+									{
+										stackID = Grid::high.Locate(d - normal*0.01f);
+										h = Grid::FloorFromRadius(r);
+									}
+								String activity = "build";
+								if (Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
+									activity = "remove";
+								Grid::LCellIdI origin = Objects::selectedVehicle->GetLastPointOfOrigin();
+								if (h < -Grid::CellStack::HalfRange)
+								{
+									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot "+activity+" here: Cannot alter bottom-layer");
+								}
+								elif (abs(h - origin.height) > 1)
+								{
+									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot "+activity+" here: Height difference too big: Selected="+String(h)+", vehicle at: "+String(origin.height));
+								}
+								elif(Objects::vehicleDistanceField.distance[stackID] > 3)
+									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too far away from vehicle");
+								elif(Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity) && h == origin.height && Objects::vehicleDistanceField.distance[stackID] <= 1)
+									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too close to vehicle");
+								else
+								{
+									Grid::HCellIdI	cell = Grid::HCellIdI(stackID, h);
+									index_t current = Objects::cellSelection.GetIndexOf(cell);
+									if (current == InvalidIndex)
+										Objects::cellSelection << cell;
+									else
+										Objects::cellSelection.Erase(current);
+								}
+							}
+							else
+								FATAL__("vehicle selection lost");
+							selectionDone = true;
+						}
+					}
+					if (!selectionDone)
+						if (Objects::Select(b, d, distance, Network::ControlEnabled()))
+						{
+							selectionDone = true;
+						}
+						else
+						{
 							distance = std::numeric_limits<float>::max();
 
-							index_t stackID = Grid::low.TestGridIntersection(b, d, height, distance);
-							if (stackID != InvalidIndex)
+							if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
 							{
-								Grid::LCellIdI	target((UINT32)stackID,Grid::FromRadius(height));
-								if (target.height < Grid::CellStack::HalfRange && target.height >= -Grid::CellStack::HalfRange)
+								float3 p = b + d * distance;
+								float height = p.Length();
+
+								distance = std::numeric_limits<float>::max();
+
+								index_t stackID = Grid::low.TestGridIntersection(b, d, height, distance);
+								if (stackID != InvalidIndex)
 								{
-									Objects::PWorldEntity e = Objects::GetEntity(target);
-									Objects::Select(e,Network::ControlEnabled());
-									selectionDone = true;
-									#ifdef _DEBUG
-										if (Engine::input.pressed[Key::Shift])
-											ShowMessage(target.ToString());
-									#endif
+									Grid::LCellIdI	target((UINT32)stackID,Grid::FromRadius(height));
+									if (target.height < Grid::CellStack::HalfRange && target.height >= -Grid::CellStack::HalfRange)
+									{
+										Objects::PWorldEntity e = Objects::GetEntity(target);
+										Objects::Select(e,Network::ControlEnabled());
+										selectionDone = true;
+										#ifdef _DEBUG
+											if (Engine::input.pressed[Key::Shift])
+												ShowMessage(target.ToString());
+										#endif
+									}
 								}
 							}
 						}
-					}
-				if (!selectionDone)
-					Objects::Deselect(Network::ControlEnabled());
-				//else
-					//ShowMessage("nothing");
-			}
+					if (!selectionDone)
+						Objects::Deselect(Network::ControlEnabled());
+					//else
+						//ShowMessage("nothing");
+				}
 
+			}
 		}
 	}
-}
 
-#endif
-
-void SaveScreenshot()
-{
-	saveScreenshot =true;
-	//display.SetBackbufferClearColor(1,1,1,0);
+	void SaveScreenshot()
+	{
+		saveScreenshot =true;
+	}
 
 
-}
-//
-//void SelectNext()
-//{
-//	selectedFamily++;
-//	selectedFamily %= BaseGrid::NumFamilies;
-//}
-//void SelectPrev()
-//{
-//	if (selectedFamily > 0)
-//		selectedFamily--;
-//	else
-//		selectedFamily = BaseGrid::NumFamilies - 1;
-//}
 
-#ifdef HAS_WINDOW
+	void ToggleTimeLapse()
+	{
+		if (TimeLapse::enabled)
+		{
+			TimeLapse::enabled = false;
+			LogEvent(EventClass::Preset::uncommon,"Time lapse disabled");
+		}
+		else
+		{
+			PathString outDirName = PathString(Logging::TimeStamp(true));
+			if (TimeLapse::customBasePath.IsNotEmpty())
+			{
+				FileSystem::Folder f = FileSystem::CreateDirectory(TimeLapse::customBasePath);
+				if (f.IsValidLocation())
+					outDirName = f.FindFile(outDirName,false)->GetLocation();
+				else
+				{
+					LogEvent( EventClass::Preset::commandRejected , "Unable to find folder '"+String(TimeLapse::customBasePath)+". Defaulting to default Documents folder");
+					outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
+				}
+			}
+			else
+				outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
+
+			int framesPerSecond = (int)ceil(1.f / std::max(0.001f,TimeLapse::frameDelaySeconds));
+			Dialog::Confirm("Timelapse mode will capture roughly "+String(framesPerSecond)+" frame(s) per second during animation phase, but remain inactive during all other phases. For best results leave the camera stationary.\nProceed?",
+			[outDirName]()
+			{
+				TimeLapse::runningNumber = 0;
+				TimeLapse::enabled = true;
+				TimeLapse::basePath = outDirName;
+				FileSystem::CreateDirectory(outDirName);
+				LogEvent(EventClass::Preset::uncommon,"Time lapse enabled. Writing to "+String(outDirName));
+			},[](){return Dialog::CheckResult::OkayContinue;});
+		}
+	}
+
+
 
 	void ViewDown()
 	{
@@ -2241,11 +2333,11 @@ String GenerateOreName(Random&random)
 //		outEvent = e->owner->GetLogName()+","+ e->GetName()+": "+event;
 //	}
 //	eventLock.lock();
-//	if (type != EventType::Debug && type != EventType::PerformanceMeasurement && type != EventType::MinorEntityProcess)
+//	if (type != EventSignificance::Debug && type != EventSignificance::PerformanceMeasurement && type != EventSignificance::Common)
 //	{
 //		#ifdef HAS_WINDOW
 //			if (type == EventType::ChatMessage)
-//				events << VisualEvent("",EventType::Debug);
+//				events << VisualEvent("",EventSignificance::Debug);
 //			events << VisualEvent(event,type);
 //		#else
 //			std::cout << event << std::endl;
@@ -2553,13 +2645,13 @@ String GenerateOreName(Random&random)
 
 	bool	ShouldSignalRoundEnd()
 	{
-		if (!Network::myFaction || Network::myFaction->requestedNewRound || Network::amSpectator)
+		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound || Network::amSpectator)
 			return false;
 		count_t total=0,requested=0;
 		Objects::ForeachFaction([&total,&requested](const Objects::PFaction&f)
 		{
 			total++;
-			if ((f->requestedNewRound || !f->online) && f != Network::myFaction)
+			if ((f->requestedNewRound || !f->online) && f != Objects::Faction::mine)
 				requested++;
 		});
 
@@ -2696,7 +2788,7 @@ String GenerateOreName(Random&random)
 				to = total-1;
 			if (to < Objects::vehicles.Count())
 			{
-				if (Objects::vehicles[to]->owner == Network::myFaction)
+				if (Objects::vehicles[to]->owner == Objects::Faction::mine)
 				{
 					Objects::Select(Objects::vehicles[to],Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -2704,7 +2796,7 @@ String GenerateOreName(Random&random)
 				}
 			}
 			else
-				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Network::myFaction)
+				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Objects::Faction::mine)
 				{
 					Objects::Select(Objects::satellites[to - Objects::vehicles.Count()],Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -2745,7 +2837,7 @@ String GenerateOreName(Random&random)
 				to = 0;
 			if (to < Objects::vehicles.Count())
 			{
-				if (Objects::vehicles[to]->owner == Network::myFaction)
+				if (Objects::vehicles[to]->owner == Objects::Faction::mine)
 				{
 					Objects::Select(Objects::vehicles[to],Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -2753,7 +2845,7 @@ String GenerateOreName(Random&random)
 				}
 			}
 			else
-				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Network::myFaction)
+				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Objects::Faction::mine)
 				{
 					Objects::Select(Objects::satellites[to - Objects::vehicles.Count()],Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -2810,7 +2902,7 @@ void ParseKeyValue(const String&key, const String&value)
 {
 	try
 	{
-		LogEvent(EventType::ConfigRelated, nullptr, "Setting `" + key + "` = '" + value + "'");
+		LogEvent(EventClass::Preset::configuration, nullptr, "Setting `" + key + "` = '" + value + "'");
 		if (key == "aiAccessToken")
 		{
 			RuntimeConfig::aiMode = true;
@@ -2824,7 +2916,7 @@ void ParseKeyValue(const String&key, const String&value)
 		elif(key == "serverURL")
 		{
 			RuntimeConfig::serverAddress = Network::ServerAddress(value);
-			LogEvent(EventType::ConfigRelated, nullptr, "Server address set to "+RuntimeConfig::serverAddress.ToString());
+			LogEvent(EventClass::Preset::configuration, nullptr, "Server address set to "+RuntimeConfig::serverAddress.ToString());
 		}
 		else
 			throw Program::ParameterFault("`"+key+"` is not a recognized runtime parameter");
@@ -2932,7 +3024,7 @@ int main( int argc, const char* argv[])
 
 	try
 	{
-		LogEvent(EventType::SessionRelated,nullptr,"Starting client v" PRODUCT_VERSION);
+		LogEvent(EventClass::Preset::uncommon,nullptr,"Starting client v" PRODUCT_VERSION);
 
 	//	FileSystem::CreateDirectory(RuntimeConfig::ConfigDir());
 		
@@ -2951,7 +3043,7 @@ int main( int argc, const char* argv[])
 				FileSystem::CopyFile(PathString("./game.ini"),userConfigPath,false);
 			if (!config.LoadFromFile(userConfigPath))
 			{
-				LogEvent(EventType::ConfigRelated,nullptr,"Unable to load user configuration from '"+String(userConfigPath)+"': '"+config.Report()+"'. Attempting to load original config");
+				LogEvent(EventClass::Preset::configuration,nullptr,"Unable to load user configuration from '"+String(userConfigPath)+"': '"+config.Report()+"'. Attempting to load original config");
 				config.LoadFromFile("game.ini");
 			}
 
@@ -2967,6 +3059,9 @@ int main( int argc, const char* argv[])
 
 				UI::resourcesAsList = config.GetBool("runtime/resourcesAsList",false);
 
+				TimeLapse::customBasePath = PathString(config.GetString("timelapse/outDirectory"));
+				TimeLapse::frameDelaySeconds = config.GetFloat("timelapse/frameDelaySeconds",0.2f);
+
 				ConsensusLink::Configure(config.RequireString("consensus/host"),config.RequireBool("consensus/autoConnect"),config.RequireBool("consensus/askToEncryptPrivateKey"));
 			#endif
 
@@ -2978,29 +3073,7 @@ int main( int argc, const char* argv[])
 		applicationStart = timer.Now();
 
 
-		//{
-		//	StringFile	oreNames;
-		//	oreNames.create("oreNames.txt");
 
-		//	Random random;
-
-		//	for (int i = 0; i < 100; i++)
-		//		oreNames << GenerateOreName(random) << nl;
-
-		//
-		//}
-
-
-
-#ifdef GAME_BLOB_SYSTEM
-
-		WorkerConnectionModule::Start(ModuleLog);
-		Network::Setup();
-#endif /*0*/
-
-
-
-		storageThread.start();
 
 		Engine::GlobalAspectConfiguration::worldZIsUp = true;
 		
@@ -3008,6 +3081,8 @@ int main( int argc, const char* argv[])
 		//display.create(Engine::DisplayConfig("TerraLab");
 
 		#ifdef HAS_WINDOW
+			storageThread.start();
+
 			Engine::CreateDisplay(display,
 				RuntimeConfig::ConfigDir(),
 				RuntimeConfig::aiMode ? "AI":
@@ -3023,15 +3098,8 @@ int main( int argc, const char* argv[])
 
 
 			textout.getActiveFont()->LoadFromFile("Font/font.xml");
-		#endif
-	
 
 
-
-	
-
-
-		#ifdef HAS_WINDOW
 			LineRenderer::Create();
 			SurfaceRenderer::Create();
 
@@ -3064,6 +3132,7 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
 
 			Engine::input.bind(Key::F3, SaveScreenshot);
+			Engine::input.bind(Key::F2,ToggleTimeLapse);
 
 			#ifdef RAYTRACE
 				Engine::input.bind(Key::Up,ZoomIn);
@@ -3219,9 +3288,9 @@ int main( int argc, const char* argv[])
 		application_shutting_down = true;
 
 
-		storageThread.Terminate();
 
 		#ifdef HAS_WINDOW
+			storageThread.Terminate();
 			display.destroy();
 		#endif
 

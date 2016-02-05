@@ -9,6 +9,8 @@ namespace Objects
 		Buffer0<Compound,Swap>		compounds;
 	#endif
 
+
+
 	void				Compound::AppendStructure(Structure*s)
 	{
 		WorkingStructure*s2 = dynamic_cast<WorkingStructure*>(s);
@@ -17,8 +19,14 @@ namespace Objects
 	}
 
 
+
+	static EventClass	forceEnable(EventSignificance::Uncommon,EventFlavor::Gain),
+						forceDisable(EventSignificance::Uncommon,EventFlavor::Loss);
+
+
 	#ifndef CLIENT
 
+		WorkingStructure*	Compound::lastDisabled = nullptr;
 
 
 		void				Compound::FeedLeftovers(ResourceVector&vector, float atTime)
@@ -143,14 +151,14 @@ namespace Objects
 
 				if (!vector.IsStable())
 				{
-					LogEvent(EventType::InternalFault, nullptr, "Compound resource vector unstable: {"+vector.ToString()+"}");
+					LogEvent(EventClass::Preset::error, nullptr, "Compound resource vector unstable: {"+vector.ToString()+"}");
 					#ifdef _DEBUG
 						foreach(events, ev)
 						{
 							if (ev->first)
-								LogEvent(EventType::InternalFault, ev->first.get(), "Tick() called. Vector is now {" + ev->second.ToString()+"}");
+								LogEvent(EventClass::Preset::error, ev->first.get(), "Tick() called. Vector is now {" + ev->second.ToString()+"}");
 							else
-								LogEvent(EventType::InternalFault, nullptr, "Event processed. Vector is now {" + ev->second.ToString() + "}");
+								LogEvent(EventClass::Preset::error, nullptr, "Event processed. Vector is now {" + ev->second.ToString() + "}");
 						}
 					#endif
 					FATAL__("Compound resource vector unstable. Cannot recover. Terminating");
@@ -257,6 +265,9 @@ namespace Objects
 				DBG_ASSERT__(s);
 				if (!s || s->IsHibernating())
 					continue;
+				if (lastDisabled == s.get())
+					continue;
+
 				if (virtualEnabled[i] || !s->CanEnable())
 					continue;
 				virtualEnabled[i] = true;
@@ -264,6 +275,24 @@ namespace Objects
 				FullResourceVector v2 = GetVector(virtualEnabled);
 				if (v2.balance.IsStable())
 					return true;
+
+				for (index_t j = i+1; j < containedStructures.Count(); j++)
+				{
+					PWorkingStructure s= containedStructures[j].lock();
+					DBG_ASSERT__(s);
+					if (!s || s->IsHibernating())
+						continue;
+					if (lastDisabled == s.get())
+						continue;
+					if (virtualEnabled[j] || !s->CanEnable())
+						continue;
+					virtualEnabled[j] = true;
+
+					FullResourceVector v2 = GetVector(virtualEnabled);
+					if (v2.balance.IsStable())
+						return true;
+					virtualEnabled[i] = false;
+				}
 
 				count_t nowLacking = 0;
 				for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
@@ -341,17 +370,52 @@ namespace Objects
 						continue;
 					if (s->IsEnabled() || !s->CanEnable())
 						continue;
+					if (lastDisabled == s.get())
+						continue;
 					
 					s->SetEnabled(true,atTime,false);
 
 					FullResourceVector v2 = GetVector();
 					if (v2.balance.IsStable())
 					{
-						LogEvent(EventType::CompoundProcess,s.get(), "Auto-balance: Structure enabled");
+						LogEvent(forceEnable,s.get(), "Auto-balance: Structure enabled");
 						total = v2;
 						stable = true;
 						break;
 					}
+
+					auto s1 = s0;
+					++s1;
+					for (;s1 != containedStructures.end(); ++s1)
+					{
+						PWorkingStructure st= s1->lock();
+						DBG_ASSERT__(st);
+						if (!st || st->IsHibernating())
+							continue;
+						if (st->IsEnabled() || !st->CanEnable())
+							continue;
+						if (lastDisabled == st.get())
+							continue;
+					
+						st->SetEnabled(true,atTime,false);
+
+						FullResourceVector v2 = GetVector();
+						if (v2.balance.IsStable())
+						{
+							LogEvent(forceEnable,s.get(), "Auto-balance: Structure enabled");
+							LogEvent(forceEnable,st.get(), "Auto-balance: Structure enabled");
+							total = v2;
+							stable = true;
+							break;
+						}
+
+						st->SetEnabled(false,atTime,false);
+					}
+					
+					if (stable)
+						break;
+
+
 					s->SetEnabled(false,atTime,false);
 				}
 			
@@ -429,7 +493,7 @@ namespace Objects
 
 				ASSERT__(toDisable);
 				{
-					LogEvent(EventType::CompoundProcess, toDisable.get(),"Auto-balance: Structure disabled ");
+					LogEvent(forceDisable, toDisable.get(),"Auto-balance: Structure disabled ");
 					toDisable->SetEnabled(false,atTime,false);
 					total = GetVector();
 					stable = total.balance.IsStable();

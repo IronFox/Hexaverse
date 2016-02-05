@@ -1,3 +1,14 @@
+v0.3.15
+	* Fixed incorrect server IDs leading to client-side merging of different servers into one.
+	* Fixed UI buttons now graying out when they should.
+	* Fixed visualization of dig-to jobs.
+	* Fixed hostile markers (ghosts) disappearing too quickly.
+	> Extended automatic building activation to two.
+	> It is now possible to deactivate essential buildings without the balancer automatically reactivating them.
+	> Reduced the amount of log messages on screen.
+	+ Spectator mode now colors units differently depending on their faction
+	+ Time lapse mode (activated/disabled via F2) can be used to automatically capture sequences of screenshots.
+
 v0.3.14		[Jan 29 2016]
 	* Fixed Nexus Port incorrectly registering with new neighbors when changing ownership as a result.
 	* Fixed regular explosion terrain changes being treated like doomsday explosions.

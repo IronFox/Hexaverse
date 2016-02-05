@@ -90,10 +90,10 @@ namespace UDPBroadCast
 	}
 
 
-	void		Create(UINT16 basePort)
+	void		Create(UINT16 basePort, const TUniqueID&serverID)
 	{
 	
-		packet.hostID = Network::serverID;
+		packet.hostID = serverID;
 		packet.serverBasePort = basePort;
 		{
 			const char var[] = SERVER_NAME;
@@ -146,10 +146,10 @@ namespace UDPBroadCast
 		{
 			closesocket(broadcastSocket);
 			broadcastSocket = INVALID_SOCKET;
-			LogEvent(EventType::SessionRelated,"Warning: Unable to bind UDP broadcast socket. Chances are, a server is already running.");
+			LogEvent(EventClass::Preset::networkError,"Warning: Unable to bind UDP broadcast socket. Chances are, a server is already running.");
 			return false;
 		}
-		LogEvent(EventType::SessionRelated,"UDP broadcast online, broadcasting from port "+String(port));
+		LogEvent(EventClass::Preset::network,"UDP broadcast online, broadcasting from port "+String(port));
 		int so_broadcast = TRUE;
 		rc = setsockopt(broadcastSocket,SOL_SOCKET,SO_BROADCAST,(const char*)&so_broadcast,sizeof so_broadcast);
 		ASSERT_EQUAL__(rc,0);

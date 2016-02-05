@@ -29,7 +29,6 @@ namespace Network
 	extern UINT32				gameFlags;
 	extern CryptographicID		activeToken;
 	extern String				myIDString,serverIDString,worldIDString,activeTokenString;
-	extern Objects::OwnerParameter myFaction;
 	
 	extern GenericHashTable<TUniqueID,CryptographicID,TUniqueID>	accessMap;
 	extern GenericHashTable<TUniqueID,Objects::OwnerParameter,TUniqueID>	factionMap;

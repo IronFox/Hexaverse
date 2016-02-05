@@ -117,7 +117,7 @@ namespace ConsensusLink
 		{
 			((void) level);
 			_CRT_UNUSED(ctx);
-			LogEvent(EventType::Debug,nullptr,"In "+String(file)+", line "+String(line)+": '"+str+"'");
+			LogEvent(EventSignificance::Debug,"In "+String(file)+", line "+String(line)+": '"+str+"'");
 
 			//fprintf( (FILE *) ctx, "%s:%04d: %s", file, line, str );
 			//fflush(  (FILE *) ctx  );
@@ -157,7 +157,7 @@ namespace ConsensusLink
 			};
 			virtual void			SetSocket(SOCKET socket) override
 			{
-				LogEvent(EventType::SessionRelated,nullptr,"Creating socket");
+				LogEvent(EventClass::Preset::network,"Creating socket");
 
 				isDestroyed = false;
 				//mbedtls_x509_crt_init(&certificate);
@@ -193,13 +193,13 @@ namespace ConsensusLink
 					const size_t certSize = cert->raw.len;
 
 				//	String bin = Bin2Str::Interpret(certData,certSize);
-					//LogEvent(EventType::SessionRelated,nullptr, "Consensus: Server certificate: "+bin);
+					//LogEvent(EventClass::Preset::network, "Consensus: Server certificate: "+bin);
 				}
 
 			}
 			virtual void			CloseSocket() override
 			{
-				LogEvent(EventType::SessionRelated,nullptr,"Closing socket");
+				LogEvent(EventClass::Preset::network,"Closing socket");
 				bool exp = false;
 				if (isDestroyed.compare_exchange_strong(exp,true))
 				{
@@ -237,7 +237,7 @@ namespace ConsensusLink
 						return sent;
 					at += sent;
 				}
-				LogEvent(EventType::SessionRelated,nullptr,"Sent "+String(dataSize)+" bytes");
+				LogEvent(EventClass::Preset::network,"Sent "+String(dataSize)+" bytes");
 //				MBEDTLS_SSL_FLUSH_BUFFERS
 				return (int)dataSize;
 			}
@@ -245,12 +245,12 @@ namespace ConsensusLink
 
 		void OnDeserializationFailed(UINT32 channel, TCP::Peer&origin)
 		{
-			LogEvent(EventType::InternalFault,nullptr,"Consensus: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
+			LogEvent(EventClass::Preset::networkError,"Consensus: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
 		}
 
 		void OnEvent(TCP::event_t event, TCP::Peer&origin)
 		{
-			LogEvent(EventType::Debug,nullptr,"Consensus: "+origin.ToString()+": "+TCP::event2str(event));
+			LogEvent(EventSignificance::Debug,"Consensus: "+origin.ToString()+": "+TCP::event2str(event));
 			switch (event)
 			{
 				case TCP::Event::ConnectionEstablished:
@@ -263,20 +263,20 @@ namespace ConsensusLink
 
 		void OnIgnorePackage(UINT32 channel,UINT32 size, TCP::Peer&origin)
 		{
-			LogEvent(EventType::InternalFault,nullptr,"Consensus: "+origin.ToString()+": Package of size "+String(size)+" ignored on channel "+String(channel));
+			LogEvent(EventClass::Preset::networkError,"Consensus: "+origin.ToString()+": Package of size "+String(size)+" ignored on channel "+String(channel));
 		}
 
 		void OnSignal(UINT32 channel, TCP::Peer&origin)
 		{
-			LogEvent(EventType::Debug,nullptr,"Consensus: "+origin.ToString()+": Signal on channel "+String(channel));
+			LogEvent(EventSignificance::Debug,"Consensus: "+origin.ToString()+": Signal on channel "+String(channel));
 			switch (channel)
 			{
 				case Protocol::ChannelID::NotAuthenticated:
 					client.SendSignal(Protocol::ChannelID::RequestNewAccount);
-					LogEvent(EventType::SessionRelated,nullptr,"Not authenticated: Requested new account");
+					LogEvent(EventClass::Preset::network,"Not authenticated: Requested new account");
 				break;
 				case Protocol::ChannelID::VersionMismatch:
-					LogEvent(EventType::OperationAborted,nullptr,"Server signalled protocol version mismatch. Unable to connect to Consensus network");
+					LogEvent(EventClass::Preset::networkError,"Server signalled protocol version mismatch. Unable to connect to Consensus network");
 					connect = false;
 					client.Disconnect();
 				break;
@@ -311,8 +311,8 @@ namespace ConsensusLink
 				PathString backup = filename+"2";
 				FileSystem::Copy(filename,backup,true);
 
-				LogEvent(EventType::SessionRelated,nullptr,"File written: "+String(filename));
-				LogEvent(EventType::SessionRelated,nullptr,"Copied to: "+String(backup));
+				LogEvent(EventClass::Preset::network,"File written: "+String(filename));
+				LogEvent(EventClass::Preset::network,"Copied to: "+String(backup));
 			}
 
 			bool		TryLoad(const PathString&filename, Array<BYTE>&out)
@@ -320,7 +320,7 @@ namespace ConsensusLink
 				FILE*f = FOPEN(filename.c_str(),"rb");
 				if (!f)
 				{
-					LogEvent(EventType::InternalFault,nullptr,"Unable to load '"+String(filename)+"'. File does not exist or is not accessible");
+					LogEvent(EventClass::Preset::networkError,"Unable to load '"+String(filename)+"'. File does not exist or is not accessible");
 					return false;
 				}
 				fseek(f,0,SEEK_END);
@@ -334,7 +334,7 @@ namespace ConsensusLink
 				if (read != loaded.NumBytes)
 				{
 					fclose(f);
-					LogEvent(EventType::InternalFault,nullptr,"Unable to read the first chunk of bytes from '"+String(filename)+"'");
+					LogEvent(EventClass::Preset::networkError,"Unable to read the first chunk of bytes from '"+String(filename)+"'");
 					return false;
 				}
 
@@ -345,13 +345,13 @@ namespace ConsensusLink
 				fclose(f);
 				if (read != size)
 				{
-					LogEvent(EventType::InternalFault,nullptr,"Unable to read the second chunk of bytes from '"+String(filename)+"'");
+					LogEvent(EventClass::Preset::networkError,"Unable to read the second chunk of bytes from '"+String(filename)+"'");
 					return false;
 				}
 				SHA256::Hash(out.pointer(),size,computed);
 				if (computed != loaded)
 				{
-					LogEvent(EventType::InternalFault,nullptr,"Hash mismatch in '"+String(filename)+"'");
+					LogEvent(EventClass::Preset::networkError,"Hash mismatch in '"+String(filename)+"'");
 					return false;
 				}
 				return true;
@@ -373,11 +373,11 @@ namespace ConsensusLink
 					return;
 				}
 				#ifdef _DEBUG
-					LogEvent(EventType::Debug,nullptr,"hash: '"+Bin2Str::Convert(keyHash.bytes,keyHash.NumBytes)+"'");
-					LogEvent(EventType::Debug,nullptr,"pwd: '"+String(pwd)+"'");
-					LogEvent(EventType::Debug,nullptr,"iv: '"+Bin2Str::Convert(iv.bytes,iv.NumBytes)+"'");
-					LogEvent(EventType::Debug,nullptr,"len: '"+String(innerKey.GetLength())+"'");
-					LogEvent(EventType::Debug,nullptr,"enc: '"+Bin2Str::Convert(innerKey.pointer(),innerKey.GetLength())+"'");
+					LogEvent(EventSignificance::Debug,"hash: '"+Bin2Str::Convert(keyHash.bytes,keyHash.NumBytes)+"'");
+					LogEvent(EventSignificance::Debug,"pwd: '"+String(pwd)+"'");
+					LogEvent(EventSignificance::Debug,"iv: '"+Bin2Str::Convert(iv.bytes,iv.NumBytes)+"'");
+					LogEvent(EventSignificance::Debug,"len: '"+String(innerKey.GetLength())+"'");
+					LogEvent(EventSignificance::Debug,"enc: '"+Bin2Str::Convert(innerKey.pointer(),innerKey.GetLength())+"'");
 				#endif
 
 				AES aes;
@@ -387,8 +387,8 @@ namespace ConsensusLink
 				aes.Decrypt(innerKey,copy);
 				SHA256::HashContainer computed;
 				SHA256::Hash(copy.pointer(),copy.GetContentSize(),computed);
-					LogEvent(EventType::Debug,nullptr,"unenc: '"+Bin2Str::Convert(copy.pointer(),copy.GetLength())+"'");
-					LogEvent(EventType::Debug,nullptr,"computed hash: '"+Bin2Str::Convert(computed.bytes,computed.NumBytes)+"'");
+					LogEvent(EventSignificance::Debug,"unenc: '"+Bin2Str::Convert(copy.pointer(),copy.GetLength())+"'");
+					LogEvent(EventSignificance::Debug,"computed hash: '"+Bin2Str::Convert(computed.bytes,computed.NumBytes)+"'");
 				if (computed != keyHash)
 				{
 					Dialog::QueryPassword("Incorrect password. The Consensus certificate key for '"+host+"' is encrypted. Please specify the password to decrypt",[cert,keyHash,iv,innerKey,host](const char*pwd)
@@ -424,7 +424,7 @@ namespace ConsensusLink
 				BYTE encrypted;
 				if (!(keyStream >> encrypted) || encrypted > 1)
 				{
-					LogEvent(EventType::InternalFault,nullptr,"Consensus RSA key: The key file uses some unknown format. Cannot continue with this");
+					LogEvent(EventClass::Preset::networkError,"Consensus RSA key: The key file uses some unknown format. Cannot continue with this");
 					return;
 				}
 				if (encrypted)
@@ -432,19 +432,19 @@ namespace ConsensusLink
 					SHA256::HashContainer keyHash;
 					if (!(keyStream.Read(keyHash.bytes,keyHash.NumBytes)))
 					{
-						LogEvent(EventType::InternalFault,nullptr,"Consensus RSA key: IO fault reading hash chunk");
+						LogEvent(EventClass::Preset::networkError,"Consensus RSA key: IO fault reading hash chunk");
 						return;
 					}
 					AES::InitializationVector iv;
 					if (!(keyStream.Read(iv.bytes,iv.NumBytes)))
 					{
-						LogEvent(EventType::InternalFault,nullptr,"Consensus RSA key: IO fault reading initialization vector");
+						LogEvent(EventClass::Preset::networkError,"Consensus RSA key: IO fault reading initialization vector");
 						return;
 					}
 					Array<BYTE> innerKey(keyStream.GetRemainingBytes());
 					if (!(keyStream.Read(innerKey.pointer(),innerKey.GetContentSize())))
 					{
-						LogEvent(EventType::InternalFault,nullptr,"Consensus RSA key: IO fault reading encrypted RSA key");
+						LogEvent(EventClass::Preset::networkError,"Consensus RSA key: IO fault reading encrypted RSA key");
 						return;
 					}
 					String host = Config::lastHost;
@@ -463,7 +463,7 @@ namespace ConsensusLink
 				Array<BYTE> innerKey(keyStream.GetRemainingBytes());
 				if (!(keyStream.Read(innerKey.pointer(),innerKey.GetContentSize())))
 				{
-					LogEvent(EventType::InternalFault,nullptr,"Consensus RSA key: IO fault reading un-encrypted RSA key");
+					LogEvent(EventClass::Preset::networkError,"Consensus RSA key: IO fault reading un-encrypted RSA key");
 					return;
 				}
 				Config::certificate.adoptData(cert);
@@ -496,17 +496,17 @@ namespace ConsensusLink
 					aes.SetPWD(password,strlen(password));
 
 					#ifdef _DEBUG
-						LogEvent(EventType::Debug,nullptr,"hash: '"+Bin2Str::Convert(hashed.bytes,hashed.NumBytes)+"'");
-						LogEvent(EventType::Debug,nullptr,"pwd: '"+String(password)+"'");
-						LogEvent(EventType::Debug,nullptr,"iv: '"+Bin2Str::Convert(aes.GetIV().bytes,aes.GetIV().NumBytes)+"'");
-						LogEvent(EventType::Debug,nullptr,"len: '"+String(Config::certificateKey.GetLength())+"'");
-						LogEvent(EventType::Debug,nullptr,"unenc: '"+Bin2Str::Convert(Config::certificateKey.pointer(),Config::certificateKey.GetLength())+"'");
+						LogEvent(EventSignificance::Debug,"hash: '"+Bin2Str::Convert(hashed.bytes,hashed.NumBytes)+"'");
+						LogEvent(EventSignificance::Debug,"pwd: '"+String(password)+"'");
+						LogEvent(EventSignificance::Debug,"iv: '"+Bin2Str::Convert(aes.GetIV().bytes,aes.GetIV().NumBytes)+"'");
+						LogEvent(EventSignificance::Debug,"len: '"+String(Config::certificateKey.GetLength())+"'");
+						LogEvent(EventSignificance::Debug,"unenc: '"+Bin2Str::Convert(Config::certificateKey.pointer(),Config::certificateKey.GetLength())+"'");
 					#endif
 					Array<BYTE> encrypted;
 					aes.Encrypt(Config::certificateKey, encrypted);
 					payload.Append(aes.GetIV().bytes,AES::InitializationVector::NumBytes);
 					payload.Append(encrypted.pointer(),encrypted.GetContentSize());
-					LogEvent(EventType::Debug,nullptr,"enc: '"+Bin2Str::Convert(encrypted.pointer(),encrypted.GetLength())+"'");
+					LogEvent(EventSignificance::Debug,"enc: '"+Bin2Str::Convert(encrypted.pointer(),encrypted.GetLength())+"'");
 					AES::Wipe(encrypted.pointer(),encrypted.GetContentSize());
 
 					//memcpy(payload.AppendRow(copy.length()),copy.pointer(),copy.length());
@@ -654,20 +654,20 @@ namespace ConsensusLink
 				}
 
 
-				LogEvent(EventType::SessionRelated,nullptr,"Created new account "+Config::accountName);
-				LogEvent(EventType::SessionRelated,nullptr,"Disconnecting client to try authenticating with new certificate");
+				LogEvent(EventClass::Preset::network,"Created new account "+Config::accountName);
+				LogEvent(EventClass::Preset::network,"Disconnecting client to try authenticating with new certificate");
 				client.Disconnect();
 				Authenticate();
 			}
 
 			void	Authenticated(Protocol::AccountDetails&acc)
 			{
-				LogEvent(EventType::SessionRelated,nullptr,"Authenticated as "+acc.accountName);
+				LogEvent(EventClass::Preset::network,"Authenticated as "+acc.accountName);
 			}
 
 			void	BadAccountName(Package::NetString<256>&msg)
 			{
-				LogEvent(EventType::SessionRelated,nullptr,"Bad account name "+msg);
+				LogEvent(EventClass::Preset::network,"Bad account name "+msg);
 			}
 
 
@@ -680,8 +680,8 @@ namespace ConsensusLink
 			int rc = mbedtls_x509_crt_parse_der(&loadedCertificate,Config::certificate.pointer(),Config::certificate.GetContentSize());
 			if (rc != 0)
 			{
-				LogEvent(EventType::InternalFault,nullptr,"mbedtls_x509_crt_parse returned "+ErrorToString(rc));
-				LogEvent(EventType::InternalFault,nullptr,"Closing down consensus link");
+				LogEvent(EventClass::Preset::networkError,"mbedtls_x509_crt_parse returned "+ErrorToString(rc));
+				LogEvent(EventClass::Preset::networkError,"Closing down consensus link");
 				Disconnect();
 				return;
 			}
@@ -698,23 +698,23 @@ namespace ConsensusLink
 			rc = mbedtls_pk_parse_key(&loadedCertificateKey,(const unsigned char*)pemBuilder.pointer(),pemBuilder.GetFillLevel(),(const BYTE*)password.c_str(),password.length());
 			if (rc != 0)
 			{
-				LogEvent(EventType::InternalFault,nullptr,"mbedtls_pk_parse_key returned "+ErrorToString(rc));
-				LogEvent(EventType::InternalFault,nullptr,"Closing down consensus link");
+				LogEvent(EventClass::Preset::networkError,"mbedtls_pk_parse_key returned "+ErrorToString(rc));
+				LogEvent(EventClass::Preset::networkError,"Closing down consensus link");
 				Disconnect();
 				return;
 			}
 
 
-			//LogEvent(EventType::SessionRelated,nullptr,"Certificate loaded: "+Bin2Str::Interpret(certificate.pointer(),certificate.GetContentSize()));
+			//LogEvent(EventClass::Preset::network,"Certificate loaded: "+Bin2Str::Interpret(certificate.pointer(),certificate.GetContentSize()));
 
 
 			{
-				LogEvent(EventType::SessionRelated,nullptr,"Setting local certificate");
+				LogEvent(EventClass::Preset::network,"Setting local certificate");
 				int ret = mbedtls_ssl_conf_own_cert(&config,&loadedCertificate,&loadedCertificateKey);
 				if (ret != 0)
 				{
-					LogEvent(EventType::InternalFault,nullptr,"mbedtls_ssl_conf_own_cert returned "+ErrorToString(ret));
-					LogEvent(EventType::InternalFault,nullptr,"Closing down consensus link");
+					LogEvent(EventClass::Preset::networkError,"mbedtls_ssl_conf_own_cert returned "+ErrorToString(ret));
+					LogEvent(EventClass::Preset::networkError,"Closing down consensus link");
 					Disconnect();
 				}
 			}

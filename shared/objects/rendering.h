@@ -72,6 +72,7 @@ namespace Objects
 	namespace Renderer
 	{
 		extern Buffer0<PTurretBase>		animatedTurrets;
+		extern double					now; //double-precision seconds since program start. Updated during RefreshFactionColors()
 
 		/**
 		Scene distance between core range visualization and the shadow behind it (to increase contrast).
@@ -100,10 +101,10 @@ namespace Objects
 
 
 
-		void	Render(Structure&s, const float3&activeColor, const float3&inactiveColor, float light);
-		void	Render(Structure&s, const float3&activeColorMine, const float3&activeColorTheirs);
+		void	Render(Structure&s, float light);
+		void	Render(Structure&s);
 
-		void	Render(Satellite&s, const float3&activeColor, const float3&inactiveColor, float light);
+		void	Render(Satellite&s, float light);
 
 		void	RenderSimple(Structure&s, bool includeFoundation = false);
 		void	RenderSimple(Satellite&s);
@@ -130,11 +131,9 @@ namespace Objects
 		/**
 		Renders the specified vehicle
 		@param v Vehicle to render
-		@param activeColorMine Key color to use if the vehicle is owned by the player
-		@param activeColorTheirs Key color to use if the vehicle is not owned by the player
 		@param light Light level around the vehicle in [0,1]
 		*/
-		void	Render(const Vehicle&v, const float3&activeColorMine, const float3&activeColorTheirs, float light);
+		void	Render(const Vehicle&v, float light);
 
 
 
@@ -189,6 +188,13 @@ namespace Objects
 		void	RenderRangeCylinder(const TVec3<>&direction, float bottomRadius, float topRadius, float bottom, float top, const float4&color);
 		void	RenderRange(const Grid::LCellIdI&location, float zOffset, const PTurretBase&base, const float4&color, bool extended);
 
+
+
+		/**
+		Updates active and inactive colors of all factions. Should be called once per frame
+		@param pulse Set true to let active entity colors pulse, false to use time-invariant colors
+		*/
+		void	RefreshFactionColors(bool pulse);
 	}
 
 }
