@@ -103,7 +103,8 @@ SpinLock	eventLock;
 
 		static float3 ToAverage(const float3&source, float level)
 		{
-			float3 avg = float3((source.r + source.g + source.b)/3.f);
+			float3 avg = (float3)1.f;
+			//float3((source.r + source.g + source.b)/3.f);
 			Vec::interpolate(source,avg,level,avg);
 			return avg;
 		}
@@ -140,11 +141,13 @@ SpinLock	eventLock;
 					age = -MaxAge;
 				break;
 				case EventSignificance::Uncommon:
-					color = ToAverage(color,0.5f);
+					color = ToAverage(color,0.65f);
+					color *= 0.85f;
 					age = -MaxAge/2.f;
 				break;
 				default:
 					color = ToAverage(color,0.75f);
+					color *= 0.7f;
 					age = -MaxAge/4.f;
 				break;
 			}
