@@ -1658,12 +1658,12 @@ namespace Objects
 
 	void		Faction::UpdateID(const TUniqueID&toID, bool recomputeColor/*=true*/)
 	{
-		if (id == TUniqueID::Empty())
-			this->id.Generate();
+		if (toID == TUniqueID::Empty())
+			id.Generate();
 		else
-			this->id = id;
+			id = toID;
 		if (recomputeColor)
-			IDToColor(color,this->id);
+			IDToColor(color,id);
 	}
 
 }
