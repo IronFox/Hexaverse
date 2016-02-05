@@ -1374,7 +1374,7 @@ namespace Objects
 		{
 			case Job:
 			{
-				if (!job || !job->movesToFocusWhenDone)
+				if (!job || !job->movesToFocusWhenDone || foci.IsEmpty())
 					break;
 				std::shared_ptr<VehicleJob::PathJob> pjob = To<VehicleJob::PathJob>::DynamicCast(this->job);
 				//if (foci.IsNotEmpty() || type == MoveTo)
