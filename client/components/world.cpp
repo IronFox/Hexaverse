@@ -244,7 +244,7 @@ namespace World
 			if (familiesRebuilt > 0)
 			{
 				float seconds = timer.GetSecondsSince(t0);
-				LogEvent(EventType::PerformanceMeasurement, nullptr, "Rebuilt "+String(familiesRebuilt)+" families in "+String(seconds));
+				LogEvent(EventSignificance::PerformanceMeasurement, nullptr, "Rebuilt "+String(familiesRebuilt)+" families in "+String(seconds));
 			}
 		}
 	}

@@ -20,11 +20,11 @@ namespace Objects
 		#ifndef CLIENT
 			self->RegisterChange(WorldEntity::HibernationChanged,atTime);
 			if (hibernate)
-				LogEvent(EventType::EntityProcessFailed,self,"Uplink bandwidth exhausted: Entering hibernation");
+				LogEvent(EventClass::Preset::operationAborted,self,"Uplink bandwidth exhausted: Entering hibernation");
 			else
-				LogEvent(EventType::EntityProcess,self,"Uplink restored. Exiting hibernation");
+				LogEvent(EventSignificance::Common,self,"Uplink restored. Exiting hibernation");
 		#else
-			LogEvent(EventType::Debug,self,"Hibernation change ("+String(hibernate)+")");
+			LogEvent(EventSignificance::Debug,self,"Hibernation change ("+String(hibernate)+")");
 			if (hibernate)
 			{
 				#ifdef HAS_WINDOW

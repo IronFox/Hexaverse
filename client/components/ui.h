@@ -49,8 +49,9 @@ namespace UI
 		class Gauge : public IconItem
 		{
 		public:
-			int	current,max,changePerRound,
-				localCurrent,localChange,
+			int	current,max,
+				current2=0, max2=0,
+				changePerRound,
 				top,top0,top1;
 			static const float height;
 			float3	base,alternatingColor,projectedTop, projectedDelta,projectedBottom,projectedMax;
@@ -84,7 +85,7 @@ namespace UI
 			}
 
 
-			void	Set(int current, int max, int changePerRound, int localCurrent, int localChange, bool enabled);
+			void	Set(int current, int max, int current2, int max2, int changePerRound, bool enabled);
 
 
 
@@ -92,7 +93,7 @@ namespace UI
 			static void StaticCreate();
 			static void StaticDestroy();
 
-			/**/	Gauge():changed(true),usesAlternatingColors(false),current(0),max(0),changePerRound(0),localCurrent(0),localChange(0),top(0),ftop(1)
+			/**/	Gauge():changed(true),usesAlternatingColors(false),current(0),max(0),changePerRound(0),top(0),ftop(1)
 			{}
 
 			void	UpdateTextProjection(const Engine::Aspect<>&camera);
@@ -471,9 +472,12 @@ namespace UI
 		@param localCurrent Storage of the selected entity within its compound
 		*/
 		void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change);
+		void	Update(TRAFFIC	const Objects::ResourceVector&current, const Objects::ResourceVector&max, 
+								const Objects::ResourceVector&current2, const Objects::ResourceVector&max2, 
+								const Objects::ResourceVector&change);
 		void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max);
-		void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change,
-						const Objects::ResourceVector&localCurrent/*, const Objects::ResourceVector&localChange, bool isEnabled*/);
+		//void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change,
+		//				const Objects::ResourceVector&localCurrent/*, const Objects::ResourceVector&localChange, bool isEnabled*/);
 		void	Render();
 		void	Destroy();
 

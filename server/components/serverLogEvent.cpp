@@ -6,14 +6,9 @@
 
 namespace Logging
 {
-	void SendEntityEvent( TCP::Peer*toPeer,EventType type, const Objects::WorldEntity*e, const String&msg)
+	void SendEntityEvent( TCP::Peer*toPeer,const EventClass&type, const Objects::WorldEntity*e, const String&msg)
 	{
-		if (type == EventType::PerformanceMeasurement
-			|| type == EventType::Debug
-			|| type == EventType::MinorEntityProcess 
-			|| type == EventType::RemoteControl
-			|| type == EventType::RemoteControlResponse
-			|| type == EventType::RemoteControlError)
+		if (type.flavor == EventFlavor::ServerPrivate || type.significance <= EventSignificance::Common)
 			return;
 
 
@@ -35,7 +30,8 @@ namespace Logging
 			out.message = e->GetNiceName()+": "+msg;
 		else
 			out.message = msg;
-		out.type = (BYTE)type;
+		out.significance = (BYTE)type.significance;
+		out.flavor = (BYTE)type.flavor;
 
 		if (!toPeer)
 			RemoteControl::RelayEvent(out.message);
@@ -50,14 +46,14 @@ namespace Logging
 	}
 }
 
-void LogEvent(EventType t, TCP::Peer&peer, const String&msg)
+void LogEvent(const EventClass&t, TCP::Peer&peer, const String&msg)
 {
 	Logging::SendEntityEvent(&peer,t,nullptr,msg);
 
 	Logging::WriteEvent(t,msg,&peer,nullptr);
 }
 
-void LogEvent(EventType t, TCP::Peer&peer, const Objects::PWorldEntity&e, const String&msg)
+void LogEvent(const EventClass&t, TCP::Peer&peer, const Objects::PWorldEntity&e, const String&msg)
 {
 	Logging::SendEntityEvent(&peer,t,e.get(),msg);
 	Logging::WriteEvent(t,msg,&peer,e.get());

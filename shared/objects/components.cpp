@@ -56,15 +56,17 @@ namespace Objects
 		}
 
 
-		bool							Turret::ConsumesResources(Resource&res) const
+		bool							Turret::ConsumesResources(ResourceFlagSet&res) const
 		{
+			if (this->isSatelliteRing)
+				res |= Resource::Fuel;
 			if (CanAttack())
 			{
 				res = ammoType;
-				return ammoNeedPerShot > 0;
+				return ammoNeedPerShot > 0 || this->isSatelliteRing;
 			}
-			res = Resource::Minerals;
-			return constructionSpeed > 0;
+			res |= Resource::Minerals;
+			return constructionSpeed > 0 || this->isSatelliteRing;
 		}
 
 
@@ -338,7 +340,7 @@ namespace Objects
 			{
 				if (velocity < 50.f)
 				{
-					LogEvent(EventType::InternalFault,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+Vec::toString(source)+", dest="+Vec::toString(dest)+". Increasing velocity and retrying.");
+					LogEvent(EventClass::Preset::error,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+Vec::toString(source)+", dest="+Vec::toString(dest)+". Increasing velocity and retrying.");
 					velocity *= 1.1f;
 					TraceArtilleryTrajectory(velocity,source,dest,outSteps);
 					return;

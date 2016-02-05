@@ -71,7 +71,7 @@ void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromSto
 
 	if (Game::Config::basesRequired && v.GetConstructionSpeed() && !v.owner->hasTerraformer)
 	{
-		LogEvent(EventType::SessionRelated,_v.get(),"Recognized as terraformer. Reevaluating survivial conditions");
+		LogEvent(EventSignificance::Debug,_v.get(),"Recognized as terraformer. Reevaluating survivial conditions");
 		v.owner->hasTerraformer = true;
 		String whyNot;
 		bool canLive = v.owner->CanLive(whyNot);
@@ -87,7 +87,7 @@ void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromSto
 			}
 		}
 		else
-			LogEvent(EventType::SessionRelated,_v.get(),"Nope: "+whyNot);
+			LogEvent(EventSignificance::Debug,_v.get(),"Nope: "+whyNot);
 	}
 }
 
@@ -133,7 +133,7 @@ void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::OwnerPar
 			DBG_ASSERT1__(peer,p->ToString());
 			if (peer)
 			{
-				LogEvent(EventType::MinorEntityProcess,*peer,e,"Reported seeing ownership change (-> '"+target->GetName()+"')");
+				LogEvent(EventSignificance::Common,*peer,e,"Reported seeing ownership change (-> '"+target->GetName()+"')");
 				Channels::changeEntityOwner.SendTo(peer,Protocol::ChangeEntityOwner(e->id,target->id));
 			}
 		}
@@ -145,7 +145,7 @@ void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, cons
 {
 	if (!e)
 	{
-		LogEvent(EventType::InternalFault,nullptr, "Trying to show null");
+		LogEvent(EventClass::Preset::error,nullptr, "Trying to show null");
 		return;
 	}
 	Network::PClient client;
@@ -173,7 +173,7 @@ void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, cons
 		w.Seal();
 		Channels::createStructure.SendTo(client->peer.lock(),w);
 	}
-	LogEvent(EventType::MinorEntityProcess,*client->peer.lock(),e,"Signalling appearance "+(timestamp.rightNow ? "(now)" : " at time="+String(atTime)));
+	LogEvent(EventSignificance::Common,*client->peer.lock(),e,"Signalling appearance "+(timestamp.rightNow ? "(now)" : " at time="+String(atTime)));
 	
 }
 
@@ -183,7 +183,7 @@ void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float 
 {
 	if (!e)
 	{
-		LogEvent(EventType::InternalFault,nullptr, "Trying to remove null");
+		LogEvent(EventClass::Preset::error,nullptr, "Trying to remove null");
 		return;
 	}
 	Protocol::DestroyEntity self,others;
@@ -231,7 +231,7 @@ void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float 
 				)
 				continue;
 			const Protocol::DestroyEntity&send = access ? self : others;
-			LogEvent(EventType::MinorEntityProcess,(*cl)->ToString()+" reported seeing removal of "+e->GetName()+" at time "+String(atTime) );
+			LogEvent(EventSignificance::Common,(*cl)->ToString()+" reported seeing removal of "+e->GetName()+" at time "+String(atTime) );
 
 
 			//(*cl)->Hide(e);
@@ -246,7 +246,7 @@ void	SignalDisappearanceToHostileFaction(const Objects::OwnerParameter&target, c
 {
 	if (!e)
 	{
-		LogEvent(EventType::InternalFault,nullptr, "Trying to hide null");
+		LogEvent(EventClass::Preset::error,nullptr, "Trying to hide null");
 		return;
 	}
 	Network::PClient client;
@@ -258,8 +258,8 @@ void	SignalDisappearanceToHostileFaction(const Objects::OwnerParameter&target, c
 	de.timestamp.atTime = atTime;
 	de.timestamp.rightNow = RuntimeConfig::IsInAnyCommandPhase();
 
-	//LogEvent(EventType::MinorEntityProcess,*client->peer.lock(),e,"Signalling disappearance");
-	LogEvent(EventType::MinorEntityProcess,*client->peer.lock(),e,"Signalling disappearance "+(de.timestamp.rightNow ? "(now)" : " at time="+String(atTime)));
+	//LogEvent(EventSignificance::Common,*client->peer.lock(),e,"Signalling disappearance");
+	LogEvent(EventSignificance::Common,*client->peer.lock(),e,"Signalling disappearance "+(de.timestamp.rightNow ? "(now)" : " at time="+String(atTime)));
 
 	Channels::destroyEntity.SendTo(client->peer.lock(),de);
 }
@@ -271,7 +271,7 @@ void	SignalMotion(const Objects::PMobileEntity&v, const Grid::LCellIdI&from,cons
 {
 	if (!v)
 	{
-		LogEvent(EventType::CommandRejected,nullptr, "Trying to move null");
+		LogEvent(EventClass::Preset::commandRejected,nullptr, "Trying to move null");
 		return;
 	}
 	Protocol::MobileEntityMotion motion;
@@ -293,7 +293,7 @@ void	SignalMotion(const Objects::PMobileEntity&v, const Grid::LCellIdI&from,cons
 		TCP::PPeer peer = (*cl)->peer.lock();
 		if (peer && Network::CanSee(*cl,v,t0))
 		{
-			LogEvent(EventType::MinorEntityProcess,(*cl)->ToString()+" reported seeing motion of "+v->GetName()+" at time "+String(t0)+"+"+String(timeNeeded) );
+			LogEvent(EventSignificance::Common,(*cl)->ToString()+" reported seeing motion of "+v->GetName()+" at time "+String(t0)+"+"+String(timeNeeded) );
 
 			Channels::mobileEntityMotion.SendTo(peer,motion);
 		}
@@ -304,7 +304,7 @@ void	SignalTurretRotation(const Objects::PWorldEntity&e, const TVec3<>&toWorld, 
 {
 	if (!e)
 	{
-		LogEvent(EventType::CommandRejected,nullptr, "Trying to let null attack");
+		LogEvent(EventClass::Preset::commandRejected,nullptr, "Trying to let null attack");
 		return;
 	}
 	Protocol::EntityTurretRotation rot;
@@ -326,7 +326,7 @@ void	SignalTurretRotation(const Objects::PWorldEntity&e, const TVec3<>&toWorld, 
 				rot.timestamp.atTime = t->timeAt;
 			else
 			{
-				LogEvent(EventType::CommandRejected,e.get(), "Trying to let incompatible entity attack");
+				LogEvent(EventClass::Preset::commandRejected,e.get(), "Trying to let incompatible entity attack");
 				return;	
 			}
 		}
@@ -377,10 +377,10 @@ void	SignalNexusControlChange(const Objects::PFaction&f)
 /*
 	if (!e)
 	{
-		LogEvent(EventType::CommandRejected,nullptr, "NULL attempting attack");
+		LogEvent(EventClass::Preset::commandRejected,nullptr, "NULL attempting attack");
 		return;
 	}
-	LogEvent(EventType::MinorEntityProcess,e.get(),"Attacking "+traceTo.ToString()+" in "+String(flightTime)+" seconds");
+	LogEvent(EventSignificance::Common,e.get(),"Attacking "+traceTo.ToString()+" in "+String(flightTime)+" seconds");
 	Protocol::EntityAttack roughAttack,preciseAttack;
 	float zOffset;
 	Objects::PTurretBase base = e->GetTurretBase(zOffset);
@@ -405,7 +405,7 @@ void	SignalNexusControlChange(const Objects::PFaction&f)
 				preciseAttack.timestamp.atTime = t->timeAt;
 			else
 			{
-				LogEvent(EventType::CommandRejected,e.get(), "Incompatible entity attempting attack");
+				LogEvent(EventClass::Preset::commandRejected,e.get(), "Incompatible entity attempting attack");
 				return;	
 			}
 		}
@@ -440,10 +440,10 @@ void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, f
 {
 	if (!e)
 	{
-		LogEvent(EventType::CommandRejected,nullptr, "NULL attempting attack");
+		LogEvent(EventClass::Preset::commandRejected,nullptr, "NULL attempting attack");
 		return;
 	}
-	LogEvent(EventType::MinorEntityProcess,e.get(),"Attacking "+traceTo.ToString()+" in "+String(flightTime)+" seconds");
+	LogEvent(EventSignificance::Common,e.get(),"Attacking "+traceTo.ToString()+" in "+String(flightTime)+" seconds");
 	Protocol::AttackTrajectory preciseAttack;
 	float zOffset;
 	Objects::PTurretBase base = e->GetTurretBase(zOffset);
@@ -474,7 +474,7 @@ void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, f
 				preciseAttack.timestamp.atTime = t->timeAt;
 			else
 			{
-				LogEvent(EventType::CommandRejected,e.get(), "Incompatible entity attempting attack");
+				LogEvent(EventClass::Preset::commandRejected,e.get(), "Incompatible entity attempting attack");
 				return;	
 			}
 		}
@@ -551,7 +551,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 	if (attackFrom)
 	{
 		hasTrajectory = true;
-		LogEvent(EventType::MinorEntityProcess,attackFrom.get(),"Tracing rough trajectory to "+Vec::toString(center)+" in "+String(flightTime)+" seconds");
+		LogEvent(EventSignificance::Common,attackFrom.get(),"Tracing rough trajectory to "+Vec::toString(center)+" in "+String(flightTime)+" seconds");
 		float zOffset;
 		Objects::PTurretBase base = attackFrom->GetTurretBase(zOffset);
 		ASSERT__(base);
@@ -652,7 +652,7 @@ namespace InformationProvider
 			FATAL__("Unable to register information server. Chances are, a server is already running on port "+String(port)+".")
 		else
 		{
-			LogEvent(EventType::SessionRelated,"Info server started on port "+String(port));
+			LogEvent(EventSignificance::Uncommon,"Info server started on port "+String(port));
 			updater.doEnd = false;
 			updater.start();
 		}
@@ -684,7 +684,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	file.Log(message+"\n",true);
 	file.Close();
 
-	Logging::WriteEvent(EventType::Fatal,message,nullptr,nullptr);
+	Logging::WriteEvent(EventClass::Preset::fatal,message,nullptr,nullptr);
 
 	application_shutting_down = true;	//prevent certain operations in Close()
 	DisplayMessage(PRODUCT_NAME" Server Error",message,false);
@@ -886,7 +886,7 @@ void ProcessAICoverage()
 
 				float threatLevel = sqr(hostileNearNexus[i] )*Game::Config::Nexus::threatEstimationFactor
 						*1e-3f;
-				LogEvent(EventType::Debug, "Threat level for " + ports[i]->GetName() + " considered " + String(threatLevel));
+				LogEvent(EventSignificance::Debug, "Threat level for " + ports[i]->GetName() + " considered " + String(threatLevel));
 				if (Game::Config::Nexus::haveBases)
 				{
 					Objects::RefreshCompoundCoverageIfNeeded(0);
@@ -953,7 +953,7 @@ void ProcessAICoverage()
 									//Objects::EntityFactory::WorkItem item = vplant->EnqueueProductionOfVehicle(&Objects::Component::hoverbase,turret);
 									//Objects::PVehicle v = To<Objects::Vehicle>::Cast(item.producing);
 									ConstName	parameters[2] = {ConstName::VehicleBase_HoverBase, Game::Config::Nexus::vehicleTurrets[choice]->constName};
-									LogEvent(EventType::MinorEntityProcess,vplant.get(),"Enqueueing vehicle production job due to high threat level");
+									LogEvent(EventSignificance::Common,vplant.get(),"Enqueueing vehicle production job due to high threat level");
 									Journal::currentRound.RegisterProductionJobStart(true,vplant,plant,parameters,2);
 									
 									EstimatePresence(*vplant->queue.last().producing,vplant->location,hostileNearNexus,constructorNearNexus,friendlyNearNexus);
@@ -973,7 +973,7 @@ void ProcessAICoverage()
 				else
 				while (friendlyNearNexus[i] < threatLevel || (constructorNearNexus[i] > 0.2f && friendlyNearNexus[i] < Game::factionStartMineralValue + 20.f))
 				{
-					LogEvent(EventType::Debug, "Spawning nexus unit near " + p->GetName());
+					LogEvent(EventSignificance::Debug, "Spawning nexus unit near " + p->GetName());
 					p->lastSpawnRound = RuntimeConfig::roundNumber;
 
 
@@ -1004,7 +1004,7 @@ void ProcessAICoverage()
 					}
 					else
 					{
-						LogEvent(EventType::Debug, "Unable to spawn nexus vehicle. Not enough space near " + ports[i]->GetName());
+						LogEvent(EventSignificance::Debug, "Unable to spawn nexus vehicle. Not enough space near " + ports[i]->GetName());
 						break;
 					}
 				}
@@ -1035,7 +1035,7 @@ void TerminateNow(bool isMain)
 		}
 
 
-		Logging::WriteEvent(EventType::SessionRelated,"Closing down",nullptr,nullptr);
+		Logging::WriteEvent(EventSignificance::Uncommon,"Closing down",nullptr,nullptr);
 		Network::server.Shutdown();
 
 		if (Game::Config::Nexus::enableAI)
@@ -1050,7 +1050,7 @@ void TerminateNow(bool isMain)
 		RemoteControl::Destroy();
 
 
-		Logging::WriteEvent(EventType::SessionRelated,"Terminating process",nullptr,nullptr);
+		Logging::WriteEvent(EventSignificance::Uncommon,"Terminating process",nullptr,nullptr);
 		Logging::End();
 
 	mutex.release();
@@ -1069,7 +1069,7 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 		case CTRL_C_EVENT:
 		case CTRL_CLOSE_EVENT:
 		case CTRL_SHUTDOWN_EVENT:
-			LogEvent(EventType::SessionRelated,"Received close event. Terminating");
+			LogEvent(EventSignificance::Uncommon,"Received close event. Terminating");
 			TerminateNow(false);
 		return TRUE;
 	
@@ -1079,7 +1079,7 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 
 void LogConfig(const String&msg)
 {
-	Logging::WriteEvent(EventType::ConfigRelated,msg,nullptr,nullptr);
+	Logging::WriteEvent(EventClass::Preset::configuration,msg,nullptr,nullptr);
 }
 
 
@@ -1136,12 +1136,12 @@ namespace ParameterConfig
 
 	void	Process(const char*arg)
 	{
-		LogEvent(EventType::Debug,"ParameterConfig::Process: '"+String(arg)+"'");
+		LogEvent(EventSignificance::Debug,"ParameterConfig::Process: '"+String(arg)+"'");
 		switch (mode)
 		{
 			case ExpectWorldID:
 				Bin2Str::Convert(World::worldID.bytes,World::worldID.NumBytes,arg,strlen(arg));
-				LogEvent(EventType::ConfigRelated,"World ID set to "+World::worldID.ToFullString());
+				LogEvent(EventClass::Preset::configuration,"World ID set to "+World::worldID.ToFullString());
 				mode = Idle;
 				customWorldID = true;
 			return;
@@ -1155,7 +1155,7 @@ namespace ParameterConfig
 				index_t index;
 				if (!convert(arg,index))
 				{
-					LogEvent(EventType::ConfigError,"Unable to convert '"+String(arg)+"' to a valid index");
+					LogEvent(EventClass::Preset::configurationError,"Unable to convert '"+String(arg)+"' to a valid index");
 					return;
 				}
 				loadFile = FileIO::GetAutoSavePath(index);
@@ -1189,19 +1189,19 @@ namespace ParameterConfig
 						Process(arg);
 						return;
 					}
-					LogEvent(EventType::ConfigError, "Unsupported runtime parameter '"+String(arg)+"'");
+					LogEvent(EventClass::Preset::configurationError, "Unsupported runtime parameter '"+String(arg)+"'");
 					PrintHelp();
 				}
 			return;
 			case ExpectPort:
 				if (!convert(arg,basePort))
 				{
-					LogEvent(EventType::ConfigError,"Unable to convert '"+String(arg)+"' to a valid port number");
+					LogEvent(EventClass::Preset::configurationError,"Unable to convert '"+String(arg)+"' to a valid port number");
 				}
 				else
 				{
 					Network::Config::sessionPort = basePort + PortOffset::Session;
-					LogEvent(EventType::ConfigRelated,"Base port redefined as "+String(basePort)+", session port set to "+String(Network::Config::sessionPort));
+					LogEvent(EventClass::Preset::configuration,"Base port redefined as "+String(basePort)+", session port set to "+String(Network::Config::sessionPort));
 				}
 				mode = Idle;
 			return;
@@ -1269,7 +1269,7 @@ bool	IsTargetWorkingDirectory(const PathString&dir)
 {
 	PathString test = dir + "/config/declaration.xml";
 	bool rs = FileSystem::IsFile(test);
-	LogEvent(EventType::Debug,"Checking server target directory candidate '"+String(dir)+"'=>'"+String(test)+"'. Result="+String(rs));
+	LogEvent(EventSignificance::Debug,"Checking server target directory candidate '"+String(dir)+"'=>'"+String(test)+"'. Result="+String(rs));
 
 
 	return rs;
@@ -1289,16 +1289,16 @@ int main( int argc, const char* argv[])
 		RuntimeConfig::InitConfigDir("server");
 		ASSERT__(FileSystem::CreateDirectory(RuntimeConfig::ConfigFile("logs")));
 		Logging::Begin(RuntimeConfig::ConfigFile(PathString("logs/server_"+Logging::TimeStamp(true)+".log")));
-		LogEvent(EventType::SessionRelated,nullptr,"Starting server v" PRODUCT_VERSION);
+		LogEvent(EventSignificance::Uncommon,nullptr,"Starting server v" PRODUCT_VERSION);
 
 
 		TCP::onIgnoredException = [](const TCodeLocation&loc, const std::exception&ex)
 		{
-			LogEvent(EventType::Debug,"TCP exception: "+String(loc.ToString())+": "+ex.what());
+			LogEvent(EventSignificance::Debug,"TCP exception: "+String(loc.ToString())+": "+ex.what());
 		};
 		TCP::onIgnoredArbitraryException = [](const TCodeLocation&loc)
 		{
-			LogEvent(EventType::Debug,"TCP exception (arbitrary): "+String(loc.ToString()));
+			LogEvent(EventSignificance::Debug,"TCP exception (arbitrary): "+String(loc.ToString()));
 		};
 
 		SetConsoleCtrlHandler(MyHandlerRoutine,TRUE);
@@ -1310,7 +1310,7 @@ int main( int argc, const char* argv[])
 			while (dir.length() > 1 && !IsTargetWorkingDirectory(dir))
 			{
 				dir = FileSystem::ExtractFileDir(dir);
-				LogEvent(EventType::Debug,"Walking up to "+String(dir.c_str()));
+				LogEvent(EventSignificance::Debug,"Walking up to "+String(dir.c_str()));
 			}
 			if (IsTargetWorkingDirectory(dir))
 				FileSystem::SetWorkingDirectory(dir);
@@ -1445,7 +1445,7 @@ int main( int argc, const char* argv[])
 
 		if (RuntimeConfig::gameGoal == Game::Config::Goal::EMPConquerNexus)
 		{
-			LogEvent(EventType::SessionRelated, "Spawning Nexus Ports...");
+			LogEvent(EventSignificance::Common, "Spawning Nexus Ports...");
 			for (int pole = 0; pole < 12; pole++)
 				Game::SpawnNexusPortAtPole(pole);
 			if (Game::Config::Nexus::haveBases)
@@ -1459,7 +1459,7 @@ int main( int argc, const char* argv[])
 
 		if (RuntimeConfig::gameGoal == Game::Config::Goal::ConquerNexus)
 		{
-			LogEvent(EventType::SessionRelated, "Spawning Nexus Ports...");
+			LogEvent(EventSignificance::Common, "Spawning Nexus Ports...");
 		
 			for (int pole = 0; pole < 12; pole++)
 				if (BaseGrid::IsIsolatedCorner(pole))
@@ -1501,7 +1501,7 @@ int main( int argc, const char* argv[])
 
 		if (false)
 		{
-			Logging::WriteEvent(EventType::SessionRelated,"Testing server.",nullptr,nullptr);
+			Logging::WriteEvent(EventSignificance::Uncommon,"Testing server.",nullptr,nullptr);
 
 			FileIO::Save(PathString("test0."+FileIO::savFileExtension));
 			FileIO::Load(PathString("test0."+FileIO::savFileExtension));
@@ -1524,14 +1524,14 @@ int main( int argc, const char* argv[])
 				FileIO::Load(filename);
 			}
 			else
-				Logging::WriteEvent(EventType::SessionRelated,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr);
+				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr);
 		}
 
 		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));
 
-		Logging::WriteEvent(EventType::SessionRelated, "Preparation of world '" + World::worldID.ToString() + "' completed.", nullptr, nullptr);
-		Logging::WriteEvent(EventType::SessionRelated,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr);
+		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + World::worldID.ToString() + " completed.", nullptr, nullptr);
+		Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr);
 		FileIO::RefreshWindowTitle();
 
 	
@@ -1651,7 +1651,7 @@ int main( int argc, const char* argv[])
 				if (timer.GetSecondsSince(Game::lastPhaseChange) - 0.5f > Game::Config::roundTimer)//tolerance of a half second
 				{
 					newRoundNow = true;
-					LogEvent(EventType::SessionRelated,"Round timeout reached. Forcing new round.");
+					LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ),"Round timeout reached. Forcing new round.");
 				}
 			}
 
@@ -1685,7 +1685,7 @@ int main( int argc, const char* argv[])
 								&& (!hasNexus || nexusWantsNewRound);
 				if (newRoundNow)
 				{
-					LogEvent(EventType::SessionRelated,"All players have requested a new round. Commencing...");
+					LogEvent(EventSignificance::Common,"All players have requested a new round. Commencing...");
 				}
 			}
 
@@ -1748,7 +1748,7 @@ int main( int argc, const char* argv[])
 				{
 					if (timer.GetSecondsSince(peer->GetLastPackageTime()) > 30.f)
 					{
-						LogEvent(EventType::SessionRelated,*peer,"Client ping timeout (30 sec) exceeded. Disconnecting client");
+						LogEvent( EventClass( EventSignificance::ClientFatal, EventFlavor::ServerPrivate ),*peer,"Client ping timeout (30 sec) exceeded. Disconnecting client");
 						disconnect << peer;
 					}
 				});
@@ -1760,7 +1760,7 @@ int main( int argc, const char* argv[])
 				{
 					if (p->peer.expired())
 					{
-						LogEvent(EventType::SessionRelated,nullptr,"Peer lost: "+p->ToString());
+						LogEvent( EventClass( EventSignificance::ClientFatal, EventFlavor::ServerPrivate ),nullptr,"Peer lost: "+p->ToString());
 						Network::HandleConnectionLoss(p);
 					}
 				}

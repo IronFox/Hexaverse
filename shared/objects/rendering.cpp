@@ -163,7 +163,6 @@ namespace Objects
 
 
 
-	static const float3 inactiveColorMine(/*0.2f, 0.2f, 0.5f*/0.f), inactiveColorTheirs(0.5f,0.2f,0.2f);
 	static bool flip=false;
 
 
@@ -525,19 +524,87 @@ namespace Objects
 		_RenderSimpleLocated(s,Matrix<>::eye4);
 	}
 
-	void	Renderer::Render(Orbital::Ship&s, const float3&activeColor, const float3&inactiveColor, float light)
+
+
+	namespace Renderer
+	{
+		double now = 0;
+		float					GetActiveColor(double now)
+		{
+			return 1.f + (float)sin(now*2.0) * 0.25f;
+		}
+	}
+	/*
+	void					GetActiveColors(double now, float3&mine, float3&theirs)
+	{
+		float c = GetActiveColor(now);
+		mine = float3 (0.5f, 0.5f, 1.f) * c;
+		theirs = float3 (1.f, 0.5f, 0.5f) * c;
+	}
+
+	*/
+
+	void	Renderer::RefreshFactionColors(bool doPulse)
+	{
+		static const Timer::Time t0 = timer.Now();
+		now = timer.GetSecondsSinceD(t0);
+		float pulse = doPulse ? GetActiveColor(now) : 1.f;
+
+		if (!Faction::mine)
+		{
+			//spectator
+
+
+			foreach (Faction::allKnown,_f)
+			{
+				Faction&f = **_f;
+				float3 c = f.color * 0.5f + 0.5f;
+				
+				f.inactiveEntityColor = c * 0.5f;
+				f.activeEntityColor = c * pulse;
+			}
+
+		}
+		else
+		{
+			float3 mine = float3 (0.5f, 0.5f, 1.f) * pulse;
+			float3 theirs = float3 (1.f, 0.5f, 0.5f) * pulse;
+			static const float3 inactiveColorMine/*=0*/,
+								inactiveColorTheirs(0.5f,0.25f,0.25f);
+
+			foreach (Faction::allKnown,_f)
+			{
+				Faction&f = **_f;
+				if (f.isMine)
+				{
+					f.activeEntityColor = mine;
+					f.inactiveEntityColor = inactiveColorMine;
+				}
+				else
+				{
+					f.activeEntityColor = theirs;
+					f.inactiveEntityColor = inactiveColorTheirs;
+				}
+
+			}
+
+		}
+	}
+
+
+	void	Renderer::Render(Orbital::Ship&s, float light)
 	{
 		display.SetObjectMatrix(s.system);
 		{
 			if (!s.IsActive())
 			{
-				keyColor.Update(float4(inactiveColor, light));
+				keyColor.Update(float4(s.owner->inactiveEntityColor, light));
 			}
 			else
 			{
 				if (s.unstable)
 				{
-					keyColor.Update(float4(flip ? float3() : activeColor,light));
+					keyColor.Update(float4(flip ? float3() : s.owner->activeEntityColor,light));
 						
 					if (!flip)
 					{
@@ -550,27 +617,27 @@ namespace Objects
 					}
 				}
 				else
-					keyColor.Update(float4(activeColor,light));
+					keyColor.Update(float4(s.owner->activeEntityColor,light));
 			}
 		}
 		_RenderSimpleLocated(s,s.system);
 	}
 
 
-	void	Renderer::Render(Structure&s, const float3&activeColor, const float3&inactiveColor, float light)
+	void	Renderer::Render(Structure&s, float light)
 	{
 		_Locate(s);
 		bool workingStructure = s.IsWorkingStructure();
 		{
 			if (!s.IsActive())
 			{
-				keyColor.Update(float4(inactiveColor, light));
+				keyColor.Update(float4(s.owner->inactiveEntityColor, light));
 			}
 			else
 			{
 				if (s.unstable || !s.maintained)
 				{
-					keyColor.Update(float4(flip ? float3() : activeColor,light));
+					keyColor.Update(float4(flip ? float3() : s.owner->activeEntityColor,light));
 						
 					if (!flip && workingStructure)
 					{
@@ -583,7 +650,7 @@ namespace Objects
 					}
 				}
 				else
-					keyColor.Update(float4(activeColor,light));
+					keyColor.Update(float4(s.owner->activeEntityColor,light));
 			}
 		}
 		if (s.HasFoundation())
@@ -592,13 +659,14 @@ namespace Objects
 
 	}
 
-	void	Renderer::Render(Structure&s, const float3&activeColorMine, const float3&activeColorTheirs)
+
+	void	Renderer::Render(Structure&s)
 	{
 		const float light = GetLowLighting(s.location + (s.GetHeight()-1));
-		const float3&inactiveColor = s.isMine ? inactiveColorMine : inactiveColorTheirs;
-		const float3&activeColor = s.isMine ? activeColorMine : activeColorTheirs;
+		//const float3&inactiveColor = s.owner->inactiveEntityColor;
+		//const float3&activeColor = s.owner->activeEntityColor;
 
-		Render(s,activeColor,inactiveColor,light);
+		Render(s,light);
 	}
 
 
@@ -641,10 +709,10 @@ namespace Objects
 	}
 
 
-	void Renderer::Render(const Vehicle&v, const float3&activeColorMine, const float3&activeColorTheirs, float light)
+	void Renderer::Render(const Vehicle&v, float light)
 	{
-		const float3&inactiveColor = v.isMine ? inactiveColorMine : inactiveColorTheirs;
-		const float3&activeColor = v.isMine ? activeColorMine : activeColorTheirs;
+		const float3&inactiveColor = v.owner->inactiveEntityColor;
+		const float3&activeColor = v.owner->activeEntityColor;
 
 		{
 			if (!v.IsActive())
@@ -661,17 +729,6 @@ namespace Objects
 	}
 
 
-	float					GetActiveColor(double now)
-	{
-		return 1.f + (float)sin(now*2.0) * 0.25f;
-	}
-
-	void					GetActiveColors(double now, float3&mine, float3&theirs)
-	{
-		float c = GetActiveColor(now);
-		mine = float3 (0.5f, 0.5f, 1.f) * c;
-		theirs = float3 (1.f, 0.5f, 0.5f) * c;
-	}
 
 
 	void					ApplyStateTint(const WorldEntity&e, const float4&baseTint, bool selected)
@@ -737,7 +794,6 @@ namespace Objects
 			overallTint.Update(baseTint);
 	}
 
-	double now = 0;
 
 
 	float4	ColorCompoundInRange(UINT32 cID)
@@ -761,22 +817,19 @@ namespace Objects
 		static const float4 hostileSeeThroughColor(1,0.7,0.6,1);
 		float4 color = isMine ? mySeeThroughColor : hostileSeeThroughColor;
 		if (isSelected)
-			color.rgb *= GetActiveColor(now*5.0);
+			color.rgb *= Renderer::GetActiveColor(Renderer::now*5.0);
 		overallTint.Update(color);
 
 	}
 	void					Renderer::RenderScene()
 	{
 		waste.Clear();
-		static const Timer::Time t0 = timer.Now();
-		now = timer.GetSecondsSinceD(t0);
 		if (!objectView)
 			return;
 
+
 		//double now = Engine::timing.now;
 
-		float3 activeColorMine,activeColorTheirs;
-		GetActiveColors(now,activeColorMine,activeColorTheirs);
 	
 		static const float4 baseTint(0);
 
@@ -840,13 +893,13 @@ namespace Objects
 			if (isBuilding)
 			{
 				display.SetObjectMatrix(v->system);
-				keyColor.Update(float4(v->isMine ? activeColorMine : activeColorTheirs,light));
+				keyColor.Update(float4(v->owner->activeEntityColor,light));
 				display.Render(cordon,true);
 			}
 			if (v != selectedEntity)
 			{
 				ApplyStateTint(*v,baseTint,false);
-				Renderer::Render(*v,activeColorMine,activeColorTheirs ,light);
+				Renderer::Render(*v,light);
 				ApplyBaseTint(*v,baseTint);
 			}
 		}
@@ -859,13 +912,13 @@ namespace Objects
 			if (isBuilding)
 			{
 				display.SetObjectMatrix(v->system);
-				keyColor.Update(float4(v->isMine ? activeColorMine : activeColorTheirs,light));
+				keyColor.Update(float4(v->owner->activeEntityColor,light));
 				display.Render(cordon,true);
 			}
 			if (v != selectedEntity)
 			{
 				ApplyStateTint(*v,baseTint,false);
-				Renderer::Render(*v,v->isMine ? activeColorMine : activeColorTheirs,v->isMine ? inactiveColorMine : inactiveColorTheirs ,light);
+				Renderer::Render(*v,light);
 				ApplyBaseTint(*v,baseTint);
 			}
 		}
@@ -902,10 +955,7 @@ namespace Objects
 			}
 			if (s.compiledShape.vbo.IsSet())
 			{
-				if (s.isMine)
-					keyColor.Update(float4(activeColorMine,1.f));
-				else
-					keyColor.Update(float4(activeColorTheirs,1.f));
+				keyColor.Update(float4(s.owner->activeEntityColor,1.f));
 
 				//ApplyStateTint(s,baseTint,false);
 				display.Render(s.compiledShape,true);
@@ -922,7 +972,7 @@ namespace Objects
 				if (&s == selectedEntity.get())
 					continue;
 				ApplyStateTint(s,baseTint,false);
-				Renderer::Render(s,activeColorMine,activeColorTheirs );
+				Renderer::Render(s);
 				//ApplyBaseTint(s,baseTint);	//why?
 
 			}
@@ -936,15 +986,15 @@ namespace Objects
 			if (selectedEntity->IsStructure())
 			{
 				PStructure struc = To<Structure>::Cast(selectedEntity);
-				Renderer::Render(*struc,activeColorMine,activeColorTheirs);
+				Renderer::Render(*struc);
 			}
 			else
 				if (selectedVehicle)
-					Renderer::Render(*selectedVehicle,activeColorMine,activeColorTheirs,GetLowLighting(selectedEntity->location));
+					Renderer::Render(*selectedVehicle,GetLowLighting(selectedEntity->location));
 				else
 					if (selectedMobileEntity && selectedMobileEntity->IsOrbital())
 					{
-						Renderer::Render(*To<Orbital::Ship>::Cast(selectedMobileEntity),activeColorMine,activeColorTheirs,GetLowLighting(selectedEntity->location));
+						Renderer::Render(*To<Orbital::Ship>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
 					}
 					else
 						FATAL__("Can't render this: "+selectedEntity->GetName());
@@ -955,7 +1005,7 @@ namespace Objects
 				//if (plant->gatheringPoint != Grid::LCellIdI::Invalid)
 				{
 					display.SetObjectMatrix(GatheringPoint::selectedVisual);
-					keyColor.Update(float4(activeColorMine,1.f));
+					keyColor.Update(float4(selectedEntity->owner->activeEntityColor,1.f));
 					//overallTint.Update(float4(1));
 
 					display.Render(gatheringPoint,true);
@@ -1581,6 +1631,30 @@ namespace Objects
 		}
 	}
 
+	void		Renderer::SelectCompoundAreas(const OwnerParameter&owner, ResourceFlagSet producersOf)
+	{
+		compoundScope.Clear();
+		
+				
+		foreach (compounds,c)
+		{
+			if (c->allStructures.IsEmpty())
+				continue;
+			PStructure s = c->allStructures.first().lock();
+			if (!s || s->owner != owner)
+				continue;
+			if (c->total.balance.AnyIsSet(producersOf))
+			{
+				compoundScope << c - compounds.pointer();
+			}
+		}
+
+		for (auto c : compoundScope)
+		{
+			compounds[c].color = ColorCompoundInRange((UINT32)(c));
+		}
+	}
+
 
 	void		Renderer::Flush()
 	{
@@ -2083,6 +2157,7 @@ namespace Objects
 
 		void		BeginRendering(const float4&tone, float distanceFactor/*=1.f*/)
 		{
+			Renderer::RefreshFactionColors(false);
 			if (fbo.IsEmpty())
 			{
 				fbo.Create(Resolution(128,128),DXGI_FORMAT_R8G8B8A8_UNORM,true,DX11::FBO::PrepareMips);

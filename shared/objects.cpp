@@ -120,7 +120,7 @@ namespace Objects
 
 			//#ifdef _DEBUG
 			//	Faction::nexus->accessToken = CryptographicID();
-			//	LogEvent(EventType::SessionRelated, nullptr, "Debug: Set nexus access token to " + Faction::nexus->accessToken.ToString() + "...");
+			//	LogEvent(EventClass::Preset::uncommon, nullptr, "Debug: Set nexus access token to " + Faction::nexus->accessToken.ToString() + "...");
 			//#endif
 
 			VehicleJob::BaseJob::allJobPrototypes
@@ -176,7 +176,7 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 		{
-			LogEvent(EventType::Debug, nullptr, "Loading common geometry");
+			LogEvent(EventSignificance::Debug, nullptr, "Loading common geometry");
 
 			{
 				Geometry geo;
@@ -224,7 +224,7 @@ namespace Objects
 				gatheringPoint.ibo.Create(geo.GetLOD(0).indices);
 
 			}
-			LogEvent(EventType::Debug,nullptr,"Loading prototype geometry");
+			LogEvent(EventSignificance::Debug,nullptr,"Loading prototype geometry");
 			foreach(Orbital::shipPrototypes, p)
 				(*p)->PrototypeLoadGeometry();
 			foreach(Orbital::stationPrototypes, p)
@@ -234,7 +234,7 @@ namespace Objects
 		}
 		#endif
 
-		LogEvent(EventType::Debug, nullptr, "Structure static setup");
+		LogEvent(EventSignificance::Debug, nullptr, "Structure static setup");
 
 		Structure::StaticSetup();
 
@@ -759,7 +759,7 @@ namespace Objects
 
 	void			FlushAllData()
 	{
-		LogEvent(EventType::Notification,nullptr,"Flushing scene data");
+		LogEvent(EventClass::Preset::uncommon,"Flushing scene data");
 
 		#ifdef CLIENT	//temporary. once i figured out good values the limit will be restored from file and clearing is valid for server too
 			RuntimeConfig::UnitLimits::Reset();

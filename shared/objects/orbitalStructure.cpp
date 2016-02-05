@@ -152,7 +152,7 @@ namespace Objects
 					Grid::SkySensorState state = skySensorState;
 					if (Grid::actualWorld.UpdateSensorState(skySensorState))
 					{
-						LogEvent(EventType::MinorEntityProcess,this,"Ground-sensor change detected");
+						LogEvent(EventSignificance::Common,this,"Ground-sensor change detected");
 
 						owner->RegisterSensorCreation(skySensorState,atTime,false);
 						atTime += timeEpsilon;
@@ -336,7 +336,7 @@ namespace Objects
 				if (port && port->CastToStructure()->location.stackID == location.stackID)
 				{
 					#ifndef CLIENT
-						LogEvent(EventType::EntityProcessFailed,this,"Cannot connect to "+port->CastToStructure()->GetNiceName()+": Already connected to "+port->connectedToHub->GetNiceName());
+						LogEvent(EventClass::Preset::operationAborted,this,"Cannot connect to "+port->CastToStructure()->GetNiceName()+": Already connected to "+port->connectedToHub->GetNiceName());
 					#endif
 					return false;
 				}
@@ -348,7 +348,7 @@ namespace Objects
 				SignalChange(OrbitalConnectionChanged,timeAt);
 				WorkingStructure*ws = to->CastToStructure();
 				ws->SignalChange(OrbitalConnectionChanged,timeAt);
-				LogEvent(EventType::EntityProcess,this,"Connection to "+ws->GetNiceName()+" established");
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ),this,"Connection to "+ws->GetNiceName()+" established");
 			#endif
 
 			to->connectedToHub = To<Hub>::Cast(shared_from_this());
@@ -363,7 +363,7 @@ namespace Objects
 			{
 				WorkingStructure*ws = port->CastToStructure();
 				#ifndef CLIENT
-					LogEvent(EventType::EntityProcessFailed,this,"Connection to "+ws->GetNiceName()+" lost");
+					LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ),this,"Connection to "+ws->GetNiceName()+" lost");
 				#endif
 
 

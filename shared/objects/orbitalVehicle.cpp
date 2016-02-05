@@ -120,7 +120,7 @@ namespace Objects
 					Grid::SkySensorState state = skySensorState;
 					if (Grid::actualWorld.UpdateSensorState(skySensorState))
 					{
-						LogEvent(EventType::MinorEntityProcess,this,"Ground-sensor change detected");
+						LogEvent(EventSignificance::Common,this,"Ground-sensor change detected");
 
 						owner->RegisterSensorCreation(skySensorState,atTime,false);
 						atTime += timeEpsilon;
@@ -246,7 +246,7 @@ namespace Objects
 				{
 					if (failIsFatal)
 					{
-						LogEvent(EventType::Fatal,this,"Dead");
+						LogEvent(EventClass::Preset::fatal,this,"Dead");
 						FATAL__("Critical abort");
 					}
 					return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
@@ -258,7 +258,7 @@ namespace Objects
 				{
 					if (failIsFatal)
 					{
-						LogEvent(EventType::Fatal,this,"Target cell ("+String(cell)+") is obstructed by orbital");
+						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+String(cell)+") is obstructed by orbital");
 						FATAL__("Critical abort");
 					}
 					return MobilePlacementResult::PlacementFailedObstructed;
@@ -340,7 +340,7 @@ namespace Objects
 						
 										if (!CanHitFrom(pointOfOrigin,destination))
 										{
-											LogEvent(EventType::CommandRejected,this,"Destination out of range");
+											LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 											return false;
 										}
 									}
@@ -348,7 +348,7 @@ namespace Objects
 										return false;
 								}
 								else
-									LogEvent(EventType::CommandRejected,this,"Attempting to attack current location");
+									LogEvent(EventClass::Preset::commandRejected,this,"Attempting to attack current location");
 							}
 						}
 						else
@@ -499,13 +499,13 @@ namespace Objects
 					return false;
 				if (myTasks.Count() >= MaxStructureTasks)
 				{
-					LogEvent(EventType::CommandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
+					LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
 					return false;
 				}
 				Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 				if (target.stackID == pointOfOrigin.stackID && turret->trajectoryType != TrajectoryType::VerticalBeam)
 				{
-					LogEvent(EventType::CommandRejected,this,"Destination too close");
+					LogEvent(EventClass::Preset::commandRejected,this,"Destination too close");
 					return false;
 				}
 				if (turret->trajectoryType != TrajectoryType::VerticalBeam)
@@ -517,7 +517,7 @@ namespace Objects
 
 					if (!CanHitFrom(pointOfOrigin,target))
 					{
-						LogEvent(EventType::CommandRejected,this,"Destination out of range");
+						LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 						return false;
 					}
 				}
@@ -546,7 +546,7 @@ namespace Objects
 			//{
 			//	if (!HasAmmoForShot() && empDamageLevel == 0)
 			//	{
-			//		//LogEvent(EventType::CommandRejected,this,"Insufficient ammunition");
+			//		//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 			//		return false;
 			//	}
 

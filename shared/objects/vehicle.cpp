@@ -82,7 +82,7 @@ namespace Objects
 
 				//
 				//currentStorage.level[Resource::Munitions] = GetMaxStorageCapacity().level[Resource::Munitions];
-				//LogEvent(EventType::MinorEntityProcess,this,"Munition storage changed to "+String(currentStorage.level[Resource::Munitions]));
+				//LogEvent(EventSignificance::Common,this,"Munition storage changed to "+String(currentStorage.level[Resource::Munitions]));
 			}
 		}
 
@@ -162,7 +162,7 @@ namespace Objects
 		//	{
 		//		if (failIsFatal)
 		//		{
-		//			LogEvent(EventType::Fatal,this,"Dead");
+		//			LogEvent(EventClass::Preset::fatal,this,"Dead");
 		//			FATAL__("Critical abort");
 		//		}
 		//		return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
@@ -174,7 +174,7 @@ namespace Objects
 		//	{
 		//		if (failIsFatal)
 		//		{
-		//			LogEvent(EventType::Fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
+		//			LogEvent(EventClass::Preset::fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
 		//			FATAL__("Critical abort");
 		//		}
 		//		return MobilePlacementResult::PlacementFailedObstructed;
@@ -246,7 +246,7 @@ namespace Objects
 		//							}
 		//							if (badTask)
 		//							{
-		//								LogEvent(EventType::EntityProcess,v2.get(),"Dangerous movement into range of "+m->GetNiceName()+" detected. Dropping task(s).");
+		//								LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+m->GetNiceName()+" detected. Dropping task(s).");
 		//								if (v2.get() == this)
 		//								{
 		//									ClearAllTasks(true,CLOCATION);
@@ -282,7 +282,7 @@ namespace Objects
 		//			else
 		//			{
 		//				#ifndef CLIENT
-		//					LogEvent(EventType::MinorEntityProcess,this,"Time cost is "+String(timeCost)+". Warping satellite at time "+String(oldTime));
+		//					LogEvent(EventSignificance::Common,this,"Time cost is "+String(timeCost)+". Warping satellite at time "+String(oldTime));
 		//				#endif
 		//				RegisterChange(PositionChanged,oldTime);
 		//			}
@@ -303,7 +303,7 @@ namespace Objects
 		//					{
 		//						if (s->AttackNext(loc,true))
 		//						{
-		//							LogEvent(EventType::EntityProcess,s.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
+		//							LogEvent(EventSignificance::Common,s.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
 		//							s->Attack(timeAt);
 		//							if (health <= 0)
 		//							{
@@ -317,14 +317,14 @@ namespace Objects
 		//				return MobilePlacementResult::PlacementFailedMobileDestroyed;
 
 		//			#ifndef CLIENT
-		//				LogEvent(EventType::MinorEntityProcess,this,"Motion completed");
+		//				LogEvent(EventSignificance::Common,this,"Motion completed");
 		//			#endif
 		//		}
 		//		else
 		//		{
 		//			timeAt += timeCost;
 		//			#ifndef CLIENT
-		//				LogEvent(EventType::MinorEntityProcess,this,"Silent motion completed");
+		//				LogEvent(EventSignificance::Common,this,"Silent motion completed");
 		//			#endif
 		//		}
 		//	}
@@ -342,7 +342,7 @@ namespace Objects
 			{
 				if (failIsFatal)
 				{
-					LogEvent(EventType::Fatal,this,"Dead");
+					LogEvent(EventClass::Preset::fatal,this,"Dead");
 					FATAL__("Critical abort");
 				}
 				return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
@@ -364,7 +364,7 @@ namespace Objects
 				}
 				if (failIsFatal)
 				{
-					LogEvent(EventType::Fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure");
+					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure");
 					FATAL__("Critical abort");
 				}
 
@@ -374,7 +374,7 @@ namespace Objects
 			{
 				if (failIsFatal)
 				{
-					LogEvent(EventType::Fatal,this,"Target cell ("+cell.ToString()+") is obstructed by vehicle");
+					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by vehicle");
 					FATAL__("Critical abort");
 				}
 				return MobilePlacementResult::PlacementFailedObstructed;
@@ -403,7 +403,7 @@ namespace Objects
 						PlaceExactlyAt(location,0,minTimeOffset,signalEvent,isCreated);
 						if (failIsFatal)
 						{
-							LogEvent(EventType::Fatal,this,"Target cell ("+cell.ToString()+") is unsuitable for placement");
+							LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is unsuitable for placement");
 							FATAL__("Critical abort");
 						}
 
@@ -422,12 +422,12 @@ namespace Objects
 						InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
 						//RemoveFromGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 					}
-					LogEvent(EventType::CommandRejected,this, "Unable to relocate here. Vehicle destroyed.");
+					LogEvent(EventClass::Preset::commandRejected,this, "Unable to relocate here. Vehicle destroyed.");
 //					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,timeAt,false,true);
 
 					if (failIsFatal)
 					{
-						LogEvent(EventType::Fatal,this,"Target cell ("+cell.ToString()+") is unsuitable for placement. Destruction event");
+						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is unsuitable for placement. Destruction event");
 						FATAL__("Critical abort");
 					}
 
@@ -581,7 +581,7 @@ namespace Objects
 								}
 								if (!found)
 								{
-									LogEvent(EventType::CommandRejected,this,"Failed to trace explicit path");
+									LogEvent(EventClass::Preset::commandRejected,this,"Failed to trace explicit path");
 								}
 								path.Append().cell = dest;
 								prev = dest;
@@ -597,7 +597,7 @@ namespace Objects
 								{
 									if (!AppendShortestDirectPath(pointOfOrigin,destination,path))
 									{
-										LogEvent(EventType::CommandRejected,this,"Unable to plot path to destination");
+										LogEvent(EventClass::Preset::commandRejected,this,"Unable to plot path to destination");
 										return false;
 									}
 								}
@@ -679,7 +679,7 @@ namespace Objects
 
 								if (!CanHitFrom(pointOfOrigin,destination))
 								{
-									LogEvent(EventType::CommandRejected,this,"Destination out of range");
+									LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 									return false;
 								}
 

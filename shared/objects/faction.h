@@ -117,7 +117,7 @@ namespace Objects
 			static Marker*			Find(const Grid::LCellIdI&);
 			static void				GetDeletionCandidates(BasicBuffer<TCandidate>&candidates);
 			static void				FlushAll();
-			static void				GetOutdated(BasicBuffer<TUniqueID>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
+			static void				GetOutdated(BasicBuffer<Marker*>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
 
 			static Buffer0<Marker, Strategy::Adopt>	all;
 			static Buffer0<PStructure>	structureGhosts;
@@ -149,7 +149,10 @@ namespace Objects
 		TUniqueID	id;
 		String		name;
 		bool		online = false;
+		float3		color;
 		#ifdef CLIENT
+			float3	activeEntityColor,
+					inactiveEntityColor;
 			bool	requestedNewRound = false;
 			bool	isMine = false;
 			count_t	roundChangeNotifications=0;
@@ -173,6 +176,20 @@ namespace Objects
 				return "<NULL>";
 			return id.ToString()+":'"+name+"'";
 		}
+
+
+		/**
+		Computes a suitable color from a given faction ID.
+		The process is guaranteed to return a well saturated, lit color, but may be too slow to use on a per-frame basis.
+		No checks for uniqueness are performed at this stage.
+		@param[out] outColor Resulting faction color
+		@param id Unique faction ID
+		@param iteration Passing a different iteration alters the resulting color in a random way
+		*/		
+		static void IDToColor(TVec3<>&outColor, const TUniqueID&id, int iteration=0);
+
+		void							UpdateID(const TUniqueID&toID, bool recomputeColor=true);
+
 		#ifdef CONNECTOR_LESS
 			//index_t		compoundIndex = InvalidIndex;
 		#endif
@@ -180,6 +197,9 @@ namespace Objects
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
 			static PFaction				mine;
+
+			/**/						Faction(const TUniqueID&id) {UpdateID(id);}
+
 		#else
 			CryptographicID	accessToken;
 			Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
@@ -193,7 +213,7 @@ namespace Objects
 			static Buffer0<WFaction>	all;
 			static PFaction				nexus;
 
-			static PFaction			FindByID(const TUniqueID&);
+			static PFaction				FindByID(const TUniqueID&);
 
 
 
@@ -236,13 +256,13 @@ namespace Objects
 
 			GenericHashTable<PWorldEntity, SeeingReference, SharedPtrHash>	seeing;
 
-			/**/		Faction(const String&name=""):name(name)
+			/**/		Faction(const TUniqueID&id, const String&name=""):name(name)
 			{
 				nexusControl = acquiringNexusControl = 0;
 				deathInRounds = 0;
 
 				accessToken.Generate();
-				id.Generate();
+				UpdateID(id);
 			}
 
 			/**

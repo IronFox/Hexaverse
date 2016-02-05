@@ -617,6 +617,18 @@ namespace Grid
 		{
 			if (volumeCell[uh].content != type)
 			{
+				#if 0
+					//this would be nice to capture some errors...
+					//sadly, foundations also register as structures although they are submerged most of the time.
+					//even if type was limited to foundation, mines would instantly trigger an asseration violation.
+					//damn
+					#if defined _DEBUG && !defined CLIENT
+					if (type != Content::Clear && volumeCell[uh].content == Content::Clear)
+					{
+						ASSERT_EQUAL1__(volumeCell[uh].structureCounter,0, uh);
+					}
+					#endif
+				#endif /*0*/
 				bool wasSolid = volumeCell[uh].IsSolid();
 				volumeCell[uh].content = type;
 
@@ -3216,7 +3228,7 @@ namespace Grid
 			if (p0 <= 0.f || !max)
 				return;
 
-			LogEvent(EventType::SessionRelated,nullptr,"Equalizing resource distribution of "+name);
+			LogEvent(EventClass::Preset::uncommon,nullptr,"Equalizing resource distribution of "+name);
 			count_t familyTotal[BaseGrid::NumFamilies] = {0}, total = 0;
 
 			for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
@@ -3226,14 +3238,14 @@ namespace Grid
 			}
 
 			//float avgPerCell = float(total) / float(LowSetup::GridType::CellCount);
-			//LogEvent(EventType::SessionRelated,nullptr,"Average per cell estimated at "+String(avgPerCell));
+			//LogEvent(EventClass::Preset::uncommon,nullptr,"Average per cell estimated at "+String(avgPerCell));
 
 
 //			float avgPerCell = float(total) / float(LowSetup::GridType::CellCount);
 			for (int k = 0; k < BaseGrid::NumFamilies; k++)
 			{
 				float p = p0;
-				LogEvent(EventType::Debug,nullptr,"Processing family "+String(k));
+				LogEvent(EventSignificance::Debug,nullptr,"Processing family "+String(k));
 				const count_t count = Grid::low.grid.CountFamilyMembers(k);
 				const index_t offset = Grid::low.grid.GetFamilyOffset(k);
 				float want = avgPerCell * count;
@@ -3247,11 +3259,11 @@ namespace Grid
 						factor = pow(4.f,float(sign(factor-1.f))/(retries*2 + 1));
 						p *= factor;
 						p = clamp(p,0.0001f,0.999f);
-						LogEvent(EventType::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
+						LogEvent(EventSignificance::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
 									+"), p adjusted by "+String(factor)+" to "+String(p)+". Randomizing...");
 					}
 					//else
-					//	LogEvent(EventType::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
+					//	LogEvent(EventSignificance::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
 					//				+"). Randomizing...");
 	
 					//if (factor > 0)
@@ -3270,7 +3282,7 @@ namespace Grid
 					}
 					if (++retries > 10)
 					{
-						LogEvent(EventType::Debug,nullptr," Max retries reached for this family. Giving up");
+						LogEvent(EventSignificance::Debug,nullptr," Max retries reached for this family. Giving up");
 						break;
 					}
 				}
@@ -3474,7 +3486,7 @@ namespace Grid
 				stack->lightingChangedTo = 0;
 		}
 
-		LogEvent(EventType::PerformanceMeasurement,  nullptr, "Updated lighting in "+String(timer.GetSecondsSince(t0))+" seconds");
+		LogEvent(EventSignificance::PerformanceMeasurement,  "Updated lighting in "+String(timer.GetSecondsSince(t0))+" seconds");
 	
 	
 	}
@@ -3947,7 +3959,7 @@ namespace Grid
 
 			if (Instruction::lastColor != color_r)
 			{
-				//LogEvent(EventType::Debug,nullptr,"change2 detected");
+				//LogEvent(EventSignificance::Debug,nullptr,"change2 detected");
 				Instruction::lastColor = color_r;
 				Instruction::ParaboloidColor_FlatRadius.Update(color_r);
 			}
@@ -3965,13 +3977,13 @@ namespace Grid
 		//	float4 def(center,sqr(radius));
 		//	if (def != Instruction::lastDef)
 		//	{
-		//		//LogEvent(EventType::Debug,nullptr,"change1 detected");
+		//		//LogEvent(EventSignificance::Debug,nullptr,"change1 detected");
 		//		Instruction::lastDef = def;
 		//		Instruction::sphereDef.Update(def);
 		//	}
 		//	if (Instruction::lastColor != color)
 		//	{
-		//		//LogEvent(EventType::Debug,nullptr,"change2 detected");
+		//		//LogEvent(EventSignificance::Debug,nullptr,"change2 detected");
 		//		Instruction::lastColor = color;
 		//		Instruction::sphereColor.Update(color);
 		//	}
@@ -4353,7 +4365,7 @@ namespace Grid
 			}
 		});
 
-		LogEvent(EventType::PerformanceMeasurement,nullptr,"Orbital sensory change processed in "+String(timer.GetSecondsSince(t0))+". Used orbit was "+String(orbit));
+		LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Orbital sensory change processed in "+String(timer.GetSecondsSince(t0))+". Used orbit was "+String(orbit));
 		//ShowMessage(timer.GetSecondsSince(t0));
 	}
 
@@ -4458,7 +4470,7 @@ namespace Grid
 				});
 			}
 
-			LogEvent(EventType::Debug,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
+			LogEvent(EventSignificance::Debug,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
 			//ShowMessage(timer.GetSecondsSince(t0));
 		}
 	#endif

@@ -23,38 +23,24 @@ namespace RemoteControl
 		{
 			((void) level);
 			_CRT_UNUSED(ctx);
-			LogEvent(EventType::Debug,nullptr,"In "+String(file)+", line "+String(line)+": '"+str+"'");
+			LogEvent(EventSignificance::Debug,nullptr,"In "+String(file)+", line "+String(line)+": '"+str+"'");
 		}
 
 		void OnDeserializationFailed(UINT32 channel, TCP::Peer&origin)
 		{
-			LogEvent(EventType::InternalFault,nullptr,"Consensus: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
+			LogEvent(EventClass::Preset::networkError,nullptr,"RemoteControl: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
 		}
 
 
 
 		void OnIgnorePackage(UINT32 channel,UINT32 size, TCP::Peer&origin)
 		{
-			LogEvent(EventType::InternalFault,nullptr,"Consensus: "+origin.ToString()+": Package of size "+String(size)+" ignored on channel "+String(channel));
+			LogEvent(EventClass::Preset::networkError,nullptr,"RemoteControl: "+origin.ToString()+": Package of size "+String(size)+" ignored on channel "+String(channel));
 		}
 
 		void OnSignal(UINT32 channel, TCP::Peer&origin)
 		{
-			LogEvent(EventType::Debug,nullptr,"Consensus: "+origin.ToString()+": Signal on channel "+String(channel));
-			//switch (channel)
-			//{
-			//	case Protocol::ChannelID::NotAuthenticated:
-			//		client.SendSignal(Protocol::ChannelID::RequestNewAccount);
-			//		LogEvent(EventType::SessionRelated,nullptr,"Not authenticated: Requested new account");
-			//	break;
-			//	case Protocol::ChannelID::VersionMismatch:
-			//		LogEvent(EventType::OperationAborted,nullptr,"Server signalled protocol version mismatch. Unable to connect to Consensus network");
-			//		connect = false;
-			//		client.Disconnect();
-			//	break;
-
-			//}
-			//Dialog::SignalSituationChange();
+			LogEvent(EventSignificance::Debug,nullptr,"RemoteControl: "+origin.ToString()+": Signal on channel "+String(channel));
 		}
 
 
@@ -89,7 +75,7 @@ namespace RemoteControl
 
 		void OnEvent(TCP::event_t event, TCP::Peer&origin)
 		{
-			LogEvent(EventType::Debug,nullptr,"Consensus: "+origin.ToString()+": "+TCP::event2str(event));
+			LogEvent(EventSignificance::Debug,nullptr,"RemoteControl: "+origin.ToString()+": "+TCP::event2str(event));
 			switch (event)
 			{
 				case TCP::Event::ConnectionEstablished:
@@ -106,13 +92,13 @@ namespace RemoteControl
 
 			void PrintLn(const String&line)
 			{
-				LogEvent(EventType::RemoteControlResponse,line);
+				LogEvent(EventClass::Preset::remoteControlResponse,line);
 				Channels::response.SendTo(*currentPeer,line);
 			}
 			void	OnFocusChange()
 			{
 				String context = Reflection::state.GetFocus()->GetPath();
-				LogEvent(EventType::RemoteControlResponse,"Focus change to '"+context+"'");
+				LogEvent(EventClass::Preset::remoteControlResponse,"Focus change to '"+context+"'");
 				Channels::context.SendTo(*currentPeer,context);
 			}
 		}
@@ -120,14 +106,14 @@ namespace RemoteControl
 
 		void	Handler::OnCommand(Package::NetString<1024>&cmd, TCP::Peer&peer)
 		{
-			LogEvent(EventType::RemoteControl, Reflection::state.GetContext()+">'"+cmd+"'");
+			LogEvent(EventClass::Preset::remoteControlCommand, Reflection::state.GetContext()+">'"+cmd+"'");
 			CLI::println = ExecutionContext::PrintLn;
 			CLI::onFocusChange = ExecutionContext::OnFocusChange;
 			ExecutionContext::currentPeer = &peer;
 
 			if (!Reflection::state.Interpret(cmd))
 			{
-				LogEvent(EventType::RemoteControlError,Reflection::state.GetError());
+				LogEvent(EventClass::Preset::remoteControlError,Reflection::state.GetError());
 				Channels::error.SendTo(peer,Reflection::state.GetError());
 			}
 
@@ -171,10 +157,10 @@ namespace RemoteControl
 		UINT16 port = serverBasePort + PortOffset::Control;
 		if (Detail::server.StartService(port,true))
 		{
-			LogEvent(EventType::RemoteControl,"Remote control server online on port "+String(port));
+			LogEvent(EventClass::Preset::remoteControlCommand,"Remote control server online on port "+String(port));
 		}
 		else
-			LogEvent(EventType::RemoteControlError,"Failed to register remote control server on port "+String(port));
+			LogEvent(EventClass::Preset::remoteControlError,"Failed to register remote control server on port "+String(port));
 	}
 
 

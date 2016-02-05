@@ -142,7 +142,7 @@ namespace AI
 			AssemblePath(mapper, mapper.result + current->predecessor,outResult);
 
 
-		//LogEvent(EventType::Debug,v.get(),"AI: directing to next waypoint");
+		//LogEvent(EventSignificance::Debug,v.get(),"AI: directing to next waypoint");
 
 		outResult << current->cell;
 		//DirectTo(v, current->cell, false, Objects::CursorMode::Idle);
@@ -197,11 +197,11 @@ namespace AI
 
 			TVec3<> detonationAt;
 			Objects::TurretTrajectory rs = source.TraceTrajectory(Grid::actualWorld,target,detonationAt);
-			LogEvent(EventType::Debug,&source,"Checking possible attack trajectory to "+candidate.GetName()+", attacking "+target.ToString()+", detonating at "+Vec::toString(detonationAt)+": "+rs.ToString());
+			LogEvent(EventSignificance::Debug,&source,"Checking possible attack trajectory to "+candidate.GetName()+", attacking "+target.ToString()+", detonating at "+Vec::toString(detonationAt)+": "+rs.ToString());
 
 			if (rs == Objects::TurretTrajectory::InvalidTrajectory)
 			{
-				LogEvent(EventType::Debug,&source,"Cannot trace good trajectory to destination. Invalid trajectory");
+				LogEvent(EventSignificance::Debug,&source,"Cannot trace good trajectory to destination. Invalid trajectory");
 				return;
 			}
 			if (rs != Objects::TurretTrajectory::ReachesTarget)
@@ -209,7 +209,7 @@ namespace AI
 				float distanceToTarget = Vec::distance(detonationAt,candidate.system.w.xyz);
 				if (distanceToTarget > source.turret->explosionRadius)
 				{
-					LogEvent(EventType::Debug,&source,"Cannot trace good trajectory to destination. Final distance is "+String(distanceToTarget)+"/"+String(source.turret->explosionRadius));
+					LogEvent(EventSignificance::Debug,&source,"Cannot trace good trajectory to destination. Final distance is "+String(distanceToTarget)+"/"+String(source.turret->explosionRadius));
 					return;
 				}
 			}
@@ -219,7 +219,7 @@ namespace AI
 			//if (rs == Objects::TurretTrajectory::ReachesTarget
 			// || (rs == Objects::TurretTrajectory::MidFlightImpact && source.turret->explosionRadius > 1 && !source.turret->dealsEMPDamage))
 			{
-				LogEvent(EventType::Debug,&source,"Trajectory checks out");
+				LogEvent(EventSignificance::Debug,&source,"Trajectory checks out");
 				count_t needAttacks = ceil(float(std::max(1,candidate.health)) / source.turret->damageLevel);
 				if (rs != Objects::TurretTrajectory::ReachesTarget)
 					needAttacks ++;
@@ -233,7 +233,7 @@ namespace AI
 					priority += ProcessAttackPriority(**_v,detonationAt,source.turret->explosionRadius);
 				foreach (Objects::Marker::mobileGhosts,_v)
 					priority += ProcessAttackPriority(**_v,detonationAt,source.turret->explosionRadius);
-				LogEvent(EventType::Debug,&source,"Base Priority considered "+String(priority));
+				LogEvent(EventSignificance::Debug,&source,"Base Priority considered "+String(priority));
 				for (index_t i = 0; i < needAttacks; i++)
 				{
 					TAttackTarget&t = attackTarget.Append();
@@ -252,7 +252,7 @@ namespace AI
 		Objects::Component::Turret*t = v->turret;
 		if (t->detectsResources || t->constructionSpeed)
 		{
-			LogEvent(EventType::Notification,v.get(),  "AI: Skipping unsupported vehicle type");
+			LogEvent(EventSignificance::Uncommon,v.get(),  "AI: Skipping unsupported vehicle type");
 			return;
 		}
 
@@ -270,14 +270,14 @@ namespace AI
 		#ifndef CONNECTOR_LESS
 			if (attacker && !v->HasAmmoForShot())
 			{
-				LogEvent(EventType::Debug,v.get(),"AI: Out of ammo: destroying vehicle");
+				LogEvent(EventSignificance::Debug,v.get(),"AI: Out of ammo: destroying vehicle");
 				SignalRemoval(v);
 				return;
 			}
 		#endif
 		//if (v->tasks.IsNotEmpty())
 		{
-			//LogEvent(EventType::Debug,v.get(),"AI: dropping tasks");
+			//LogEvent(EventSignificance::Debug,v.get(),"AI: dropping tasks");
 			SignalDropAllTasks(v);
 		}
 
@@ -549,7 +549,7 @@ namespace AI
 	void	SignalStart(const String&because, const TCodeLocation&caller)
 	{
 		if (done)
-			LogEvent(EventType::Debug,nullptr,"AI: Starting ("+because+", by "+caller.ToString()+")");
+			LogEvent(EventSignificance::Debug,"AI: Starting ("+because+", by "+caller.ToString()+")");
 
 		done = false;
 
@@ -561,7 +561,7 @@ namespace AI
 				case Objects::Marker::Type::HostileContact:
 					if (m.age >= 10 && m.visualization && m.visualization->IsMobile())	//after 10 rounds, assume vehicle has moved
 					{
-						LogEvent(EventType::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" since hostile vehicle markers are considered outdated after 10 rounds (age="+String(m.age)+")");
+						LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" since hostile vehicle markers are considered outdated after 10 rounds (age="+String(m.age)+")");
 						SignalMarkerDeletion(m.id);
 						i--;
 					}
@@ -572,7 +572,7 @@ namespace AI
 					EstimateThreatFromAll(Grid::ToWorld(m.location),false,false,estimation);
 					if (estimation.damageThreat > 0)	//knowing cause, dropping ghost
 					{
-						LogEvent(EventType::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" because cause of destruction is considered known");
+						LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" because cause of destruction is considered known");
 						SignalMarkerDeletion(m.id);
 						i--;
 					}
@@ -607,7 +607,7 @@ namespace AI
 	{
 		if (done)
 			return;
-		LogEvent(EventType::Debug,nullptr,"AI: Not done processing");
+		LogEvent(EventSignificance::Debug,nullptr,"AI: Not done processing");
 		tempMarkers.Clear();
 		Timer::Time started = timer.Now();
 		for (index_t i = vehicles.Count() - 1; i < vehicles.Count(); i--)
@@ -626,7 +626,7 @@ namespace AI
 				const Objects::Marker&m = Objects::Marker::all[i];
 				if (m.type == Objects::Marker::Type::Visited && m.age > 100)
 				{
-					LogEvent(EventType::Debug,nullptr,"AI: Deleting marker "+m.GetName()+". Reached end-of-life after 100 rounds");
+					LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+". Reached end-of-life after 100 rounds");
 
 					SignalMarkerDeletion(m.id);
 					i--;
@@ -634,7 +634,7 @@ namespace AI
 			}
 
 			ASSERT__(done);
-			LogEvent(EventType::Debug,nullptr,"AI: all done. requesting new round");
+			LogEvent(EventSignificance::Debug,nullptr,"AI: all done. requesting new round");
 			SignalRoundEnd();
 			
 		}

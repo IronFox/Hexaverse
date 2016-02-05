@@ -354,7 +354,7 @@ namespace Objects
 		//		return;
 		//	if (e->health <= 0)
 		//	{
-		//		LogEvent(EventType::InternalFault,e.get(),"Trying to call MapVisibilityBetween() on a dead entity.");
+		//		LogEvent(EventClass::Preset::error,e.get(),"Trying to call MapVisibilityBetween() on a dead entity.");
 		//		//this happens due to some rare cascading events where the destruction of some structure leads to the ownership change of a nexus port, which in turn redetects visibility,
 		//		// but the destroyed structure has not yet been removed from lists. moving OnDestroy down now but this fix remains until it does no longer occur
 		//		return;
@@ -428,7 +428,7 @@ namespace Objects
 	/*virtual override*/	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 	{
 		
-		LogEvent(EventType::MinorEntityProcess,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
+		LogEvent(EventSignificance::Common,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
 		#ifdef CLIENT
 			if (isMine)
 			{
@@ -447,7 +447,7 @@ namespace Objects
 
 	/*virtual override*/	void					WorldEntity::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
 	{
-		LogEvent(EventType::MinorEntityProcess,this,"Unregistering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
+		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
 		
 		#ifndef CLIENT
 			owner->RegisterSensorRemoval(Sphere<>(Grid::ToWorld(loc), GetScanningRange()),IsOrbital(),atTime,checkChangesNow);

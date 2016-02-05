@@ -128,7 +128,7 @@ namespace Game
 
 		void	ChangePhase(RuntimeConfig::Phase to, float timeWindow/* = -1*/)
 		{
-			LogEvent(EventType::Debug,"Changing RuntimeConfig::phase to "+String(to.ToString())+" with time window "+String(timeWindow));
+			LogEvent(EventSignificance::Debug,"Changing RuntimeConfig::phase to "+String(to.ToString())+" with time window "+String(timeWindow));
 			Protocol::PhaseChange	ph;
 			ph.newPhase = to;
 			ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
@@ -462,7 +462,7 @@ namespace Game
 			if (v.changeFlags)
 			{
 				//anythingChanged = true;
-				//LogEvent(EventType::MinorEntityProcess,&v,"State change detected");	//this says relatively little
+				//LogEvent(EventSignificance::Common,&v,"State change detected");	//this says relatively little
 
 				bool othersNeedToKnow = (v.changeFlags & Network::NotifyOthers) != 0;
 
@@ -495,7 +495,7 @@ namespace Game
 			if (s.changeFlags)
 			{
 				//anythingChanged = true;
-				LogEvent(EventType::MinorEntityProcess,&s,"State change detected");
+				LogEvent(EventSignificance::Common,&s,"State change detected");
 				
 				bool othersNeedToKnow = (s.changeFlags & Network::NotifyOthers) != 0;
 
@@ -766,7 +766,7 @@ namespace Game
 								dead = true;
 								String name = client ? client->ToString() : "Faction "+faction->id.ToString();
 											
-								LogEvent(EventType::GameProgressRelated,name+" died: "+whyNot);
+								LogEvent(EventClass::Preset::factionDeath,name+" died: "+whyNot);
 
 								if (client)
 								{
@@ -792,7 +792,7 @@ namespace Game
 								{
 									if (Objects::Faction::all.IsEmpty())
 									{
-										LogEvent(EventType::SessionRelated,"All factions destroyed. Application requires restart.");
+										LogEvent(EventClass::Preset::factionDeath,"All factions destroyed. Application requires restart.");
 										//application_shutting_down = true;
 									}
 									else
@@ -800,7 +800,7 @@ namespace Game
 									{
 										if (RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
 										{
-											LogEvent(EventType::SessionRelated,"Only one faction left. Declaring winner.");
+											LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one faction left. Declaring winner.");
 											Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 											winner = Objects::Faction::all.first().lock();
 											::Network::PClient client;
@@ -833,7 +833,7 @@ namespace Game
 			if (Grid::AffectedByEMP(e->location))
 			{
 				if (e->empDamageLevel < 10)
-					LogEvent(EventType::EntityProcess,e.get(),"Entering EMP-Zone");
+					LogEvent(EventSignificance::Common,e.get(),"Entering EMP-Zone");
 				e->HandleEMPDamage(10,atTime);
 			}
 					
@@ -850,7 +850,7 @@ namespace Game
 	//void			SpawnNexusBaseAtPoleWithPort(int pole);
 	void			SpawnNexusPortAtPole(int pole)
 	{
-		LogEvent(EventType::SessionRelated,"Spawning Nexus Port at pole "+String(pole));
+		LogEvent(EventSignificance::Common,"Spawning Nexus Port at pole "+String(pole));
 
 		Grid::LCellIdI location((UINT32)pole,0);	//first 12 are corner cells
 		int h = Objects::FindApplicableGround(location,true);
@@ -883,7 +883,7 @@ namespace Game
 
 	void SpawnNexusBaseAtPoleWithPort(int pole)
 	{
-		LogEvent(EventType::SessionRelated,"Spawning Nexus base at pole "+String(pole));
+		LogEvent(EventSignificance::Common,"Spawning Nexus base at pole "+String(pole));
 
 		ASSERT__(Config::Nexus::haveBases);
 

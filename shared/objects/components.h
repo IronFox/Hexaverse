@@ -291,7 +291,7 @@ namespace Objects
 			/**
 			Checks whether or not the local turret could ever possibly consume resources
 			*/
-			bool							ConsumesResources(Resource&res) const;
+			bool							ConsumesResources(ResourceFlagSet&res) const;
 		};
 
 
@@ -395,7 +395,7 @@ namespace Objects
 							return;
 						//if (vehicle->GetLastPointOfOrigin().height+1 >= Grid::CellStack::TopHeight)	//not the place of the client to decide
 						//{
-						//	LogEvent(EventType::CommandRejected
+						//	LogEvent(EventClass::Preset::commandRejected
 						//	return;
 						//}
 						SignalNewJob(vehicle, Command,ConstName::Empty);					

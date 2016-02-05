@@ -50,6 +50,7 @@ namespace Objects
 
 				/**/			TCacheID()	{}
 				/**/			TCacheID(const MobileEntity&);
+				/**/			TCacheID(const MobileEntity&, const Grid::LCellIdI&);
 
 				bool			operator==(const TCacheID&other) const {return round == other.round && stackID == other.stackID && layerID == other.layerID && phase == other.phase && numCompounds == other.numCompounds;}
 				bool			operator!=(const TCacheID&other) const {return !operator==(other);}
@@ -58,6 +59,7 @@ namespace Objects
 			TCacheID			cacheID;
 
 			void	CheckRefresh(const MobileEntity&);
+			void	CheckRefresh(const MobileEntity&, const Grid::LCellIdI&);
 		#else
 			inline void	CheckRefresh(const MobileEntity&)	{};
 
@@ -374,7 +376,7 @@ namespace Objects
 										const PVehicleJob&job, const Grid::LCellIdI*focus);
 			void				RegisterNewFrontJob(
 										const String&localizableShapeIdentifier,
-										const PVehicleJob&job, const Grid::LCellIdI*focus);
+										const PVehicleJob&job, const PVehicleJob&parent, const Grid::LCellIdI*focus);
 
 
 			bool				DropLastTask();
@@ -427,7 +429,7 @@ namespace Objects
 					if (flushTasksOnUnlock)
 						return false;
 					timeAt += timeEpsilon;
-					LogEvent(EventType::Debug,this,"Issued task clearing: "+String(caller.ToString()));
+					LogEvent(EventSignificance::Debug,this,"Issued task clearing: "+String(caller.ToString()));
 					flushTasksOnUnlock = true;
 					return true;
 				}

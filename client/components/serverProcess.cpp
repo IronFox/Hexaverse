@@ -34,7 +34,7 @@ namespace ServerProcess
 		{
 			if (Detail::process.TryResume(Detail::GetWorkingDirectory(),Detail::GetExecutablePath()))
 			{
-				LogEvent(EventType::Debug,"Resumed running server process at '"+String(Detail::GetExecutablePath())+"'");
+				LogEvent(EventSignificance::Debug,"Resumed running server process at '"+String(Detail::GetExecutablePath())+"'");
 				return true;
 			}
 			return false;
@@ -58,7 +58,7 @@ namespace ServerProcess
 			#endif
 			if (TryResume())
 				return;
-			LogEvent(EventType::Debug,"Starting server process (workingDirectory='"+String(workingDirectory)+"', path='"+String(path)+"', parameters='"+String(parameters)+"', showWindow="+String(showWindow)+")");
+			LogEvent(EventSignificance::Debug,"Starting server process (workingDirectory='"+String(workingDirectory)+"', path='"+String(path)+"', parameters='"+String(parameters)+"', showWindow="+String(showWindow)+")");
 			ASSERT3__(process.Start(workingDirectory,path,parameters,showWindow), workingDirectory,path,parameterBuffer);
 		}
 

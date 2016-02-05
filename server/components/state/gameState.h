@@ -91,7 +91,7 @@ namespace Game
 					factionSupportFlags |= Protocol::GameFlag::SupportRegularFactions;
 				else
 				{
-					LogEvent(EventType::ConfigRelated,nullptr,"Warning: Unsupported faction type for this build: '"+*seg+"'. Ignoring");
+					LogEvent(EventClass::Preset::configurationError,nullptr,"Warning: Unsupported faction type for this build: '"+*seg+"'. Ignoring");
 					allGood = false;
 				}
 			}

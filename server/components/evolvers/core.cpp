@@ -175,6 +175,7 @@ namespace Evolver
 
 		void	BeginRoundProcessing()
 		{
+			Objects::Compound::lastDisabled = nullptr;
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
 				f->DropPerRoundData();
@@ -227,7 +228,7 @@ namespace Evolver
 					}
 					else
 					{
-						LogEvent(EventType::CommandRejected,v.get(),"Insufficient ammunition. Attacks cancelled");
+						LogEvent(EventClass::Preset::commandRejected,v.get(),"Insufficient ammunition. Attacks cancelled");
 						v->EraseFirstTask();
 						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->timeAt);
 					}
@@ -253,7 +254,7 @@ namespace Evolver
 							continue;
 						if (!t->HasAmmoForShot(0))
 						{
-							LogEvent(EventType::CommandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
+							LogEvent(EventClass::Preset::commandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
 							t->attackQueue.Clear();
 							t->RegisterChange(Objects::WorldEntity::TasksChanged,t->timeAt);
 							continue;
@@ -295,7 +296,7 @@ namespace Evolver
 		void CheckOrbitalSensory(float&t, bool terrainChanged)
 		{
 			if (terrainChanged)
-				LogEvent(EventType::Debug,nullptr,"Terrain changed, updating satellite ground-sensory");
+				LogEvent(EventSignificance::Debug,nullptr,"Terrain changed, updating satellite ground-sensory");
 			for (const auto&sat : Objects::Orbital::ships)
 			{
 				t+=Objects::timeEpsilon;
@@ -329,7 +330,7 @@ namespace Evolver
 
 				if (!e->TrySelfMaintain(t,missing))
 				{
-					LogEvent(EventType::EntityProcess,e.get(),"Insufficient resources to self-maintain (missing "+missing.ToString()+"). Unit took damage.");
+					LogEvent(EventClass(EventSignificance::Uncommon, EventFlavor::Loss),e.get(),"Insufficient resources to self-maintain (missing "+missing.ToString()+"). Unit took damage.");
 					int damage = GetDamageDueToMissingUpkeep(missing);
 					e->SetStable(false,t);
 					e->TakeDamage(damage,t);
@@ -364,7 +365,7 @@ namespace Evolver
 					died << e;
 				else
 				{
-					LogEvent(EventType::EntityProcess,e.get(),"Trying to re-enable maintenance");
+					LogEvent(EventSignificance::Common,e.get(),"Trying to re-enable maintenance");
 					e->SetMaintenance(true,t);
 				}
 			};
