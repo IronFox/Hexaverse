@@ -2128,7 +2128,7 @@ void ToggleTimeLapse()
 	}
 	else
 	{
-		PathString outDirName = PathString("timelapses/"+Logging::TimeStamp(true));
+		PathString outDirName = PathString(Logging::TimeStamp(true));
 		if (TimeLapse::customBasePath.IsNotEmpty())
 		{
 			FileSystem::Folder f = FileSystem::CreateDirectory(TimeLapse::customBasePath);
@@ -2137,11 +2137,11 @@ void ToggleTimeLapse()
 			else
 			{
 				LogEvent(EventType::CommandRejected,"Unable to find folder '"+String(TimeLapse::customBasePath)+". Defaulting to default Documents folder");
-				outDirName = RuntimeConfig::ConfigFile(outDirName);
+				outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
 			}
 		}
 		else
-			outDirName = RuntimeConfig::ConfigFile(outDirName);
+			outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
 
 		int framesPerSecond = (int)ceil(1.f / std::max(0.001f,TimeLapse::frameDelaySeconds));
 		Dialog::Confirm("Timelapse mode will capture roughly "+String(framesPerSecond)+" frame(s) per second during animation phase, but remain inactive during all other phases. For best results leave the camera stationary.\nProceed?",
