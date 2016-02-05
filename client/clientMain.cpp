@@ -741,6 +741,13 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 bool saveScreenshot = false;
 
+namespace TimeLapse
+{
+	index_t runningNumber = 0;
+	bool enabled = false;
+	PathString	basePath;
+}
+
 
 class StorageThread : public ThreadObject
 {
@@ -801,17 +808,31 @@ public:
 				Image&image = *images[i];
 				image.setChannels(3);
 
-				FileSystem::CreateFolder("screenshots");
-				index_t counter = 0;
-				PathString filename = PathString("screenshots/screenshot"+String(counter)+".png");
-				while (FileSystem::IsFile(filename))
+				if (!TimeLapse::enabled)
 				{
-					counter++;
-					filename = PathString("screenshots/screenshot"+String(counter)+".png");
+					FileSystem::CreateFolder("screenshots");
+					index_t counter = 0;
+					PathString filename = PathString("screenshots/screenshot"+String(counter)+".png");
+					while (FileSystem::IsFile(filename))
+					{
+						counter++;
+						filename = PathString("screenshots/screenshot"+String(counter)+".png");
+					}
+					png.SaveToFile(image,filename);
+					LogEvent(EventType::Notification, nullptr, "Screenshot written to "+String(filename));
 				}
-				png.SaveToFile(image,filename);
-				LogEvent(EventType::Notification, nullptr, "Screenshot written to "+String(filename));
-			png.SaveToFileQ(image,filename);
+				else
+				{
+					String runningNumber = String(TimeLapse::runningNumber++);
+					while (runningNumber.length() < 4)
+						runningNumber = '0'+runningNumber;
+					String core = "capture"+runningNumber+".png";
+					PathString filename = TimeLapse::basePath + FOLDER_SLASH + core;
+
+					png.SaveToFileQ(image,filename);
+					count_t remaining = numImages - i - 1 + workPipe.Count();
+					LogEvent(EventType::Notification, nullptr, "Time lapse frame written to "+String(core)+". "+String(remaining)+" remaining.");
+				}
 			}
 		}
 	}
@@ -825,6 +846,7 @@ public:
 //		active = true;
 	//	semaphore.release();
 		workPipe << image;
+		lastSubmission = timer.Now();
 	}
 	void	Terminate()
 	{
@@ -1584,7 +1606,8 @@ bool loop()
 
 			if (saveScreenshot)
 			{
-				if (RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase || !Network::amSpectator){
+				if (RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase || !TimeLapse::enabled)
+				{
 					saveScreenshot = false;
 				}
 				//display.SetBackbufferClearColor(0,0,0,0);
@@ -1592,7 +1615,8 @@ bool loop()
 				//Image image;
 				if (storageThread.CanRun())
 				{
-					LogEvent(EventType::Notification, nullptr, "Writing screenshot to disk...");
+					if (!TimeLapse::enabled)
+						LogEvent(EventType::Notification, nullptr, "Writing screenshot to disk...");
 					std::shared_ptr<Image> capture(new Image());
 					display.Capture(*capture);
 
@@ -2090,10 +2114,30 @@ void Select()
 void SaveScreenshot()
 {
 	saveScreenshot =true;
-	//display.SetBackbufferClearColor(1,1,1,0);
-
-
 }
+
+void ToggleTimeLapse()
+{
+	if (TimeLapse::enabled)
+	{
+		TimeLapse::enabled = false;
+		LogEvent(EventType::SessionRelated,"Time lapse disabled");
+	}
+	else
+	{
+		PathString outDirName = RuntimeConfig::ConfigFile(PathString("timelapses/"+Logging::TimeStamp(true)));
+		Dialog::Confirm("Timelapse mode will capture roughly 5 frames per second during animation phase, but remain inactive during all other phases. For best results leave the camera stationary.\nProceed?",
+		[outDirName]()
+		{
+			TimeLapse::runningNumber = 0;
+			TimeLapse::enabled = true;
+			TimeLapse::basePath = outDirName;
+			FileSystem::CreateDirectory(outDirName);
+			LogEvent(EventType::SessionRelated,"Time lapse enabled. Writing to "+String(outDirName));
+		},[](){return Dialog::CheckResult::OkayContinue;});
+	}
+}
+
 //
 //void SelectNext()
 //{
@@ -3103,6 +3147,7 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
 
 			Engine::input.bind(Key::F3, SaveScreenshot);
+			Engine::input.bind(Key::F2,ToggleTimeLapse);
 
 			#ifdef RAYTRACE
 				Engine::input.bind(Key::Up,ZoomIn);

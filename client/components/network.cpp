@@ -23,6 +23,11 @@ void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird
 
 extern bool saveScreenshot;
 
+namespace TimeLapse
+{
+	extern bool enabled;
+}
+
 
 
 namespace Network
@@ -1330,7 +1335,8 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	switch (c.newPhase.value)
 	{
 		case RuntimeConfig::Phase::AnimationPhase:
-			if (amSpectator){
+			if (TimeLapse::enabled)
+			{
 				saveScreenshot = true;
 			}
 			if (RuntimeConfig::aiMode)
