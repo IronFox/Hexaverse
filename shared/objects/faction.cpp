@@ -1706,4 +1706,15 @@ namespace Objects
 		Vec::div(rs,delta);	//trying to be faster here
 	};
 
+
+	void		Faction::UpdateID(const TUniqueID&toID, bool recomputeColor/*=true*/)
+	{
+		if (id == TUniqueID::Empty())
+			this->id.Generate();
+		else
+			this->id = id;
+		if (recomputeColor)
+			IDToColor(color,this->id);
+	}
+
 }

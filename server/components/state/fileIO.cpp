@@ -1200,10 +1200,9 @@ namespace FileIO
 							if (round == 0)
 							{
 								Objects::PFaction faction;
-								
 								TUniqueID factionID;
 								GetPOD(list,RID::factionID,factionID);
-
+							
 								bool isNexus = false;
 								if (list->FindFirst(RID::nexusTag))
 								{
@@ -1213,7 +1212,7 @@ namespace FileIO
 									faction = Objects::Faction::nexus;
 									faction->FlushData();
 									LogEvent(EventSignificance::Common,"Loading nexus faction");
-									faction->id = factionID;
+									faction->UpdateID(factionID);
 								}
 								else
 								{

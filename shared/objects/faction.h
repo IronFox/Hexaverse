@@ -13,7 +13,7 @@ namespace Objects
 
 
 
-	
+
 	/**
 	Persistent scene markers added/removed by the client.
 	Markers are visible only to the owning faction, and do not hinder movement or construction.
@@ -25,8 +25,8 @@ namespace Objects
 		#endif
 	{
 	public:
-		CONSTRUCT_ENUMERATION4(Type, 
-			EntityDeath,		//friendly entity has died here. usually preserved for 2-5 rounds. AI may preserve them longer to establish statistics 
+		CONSTRUCT_ENUMERATION4(Type,
+			EntityDeath,		//friendly entity has died here. usually preserved for 2-5 rounds. AI may preserve them longer to establish statistics
 			HostileContact,		//hostile entity was detected here when radar contact was lost. Usually preserved until radar contact is re-established
 			Visited,				//marker used by AI to remember previously visited area. referenceEntity is either empty of the mobile that was memorized here
 			ControlMarker
@@ -86,9 +86,9 @@ namespace Objects
 		static bool					UtilizesSubType(Type type) { return type == Type::ControlMarker; }
 
 		bool						operator==(const Marker&other) const
-		{ 
-			return id == other.id && location == other.location 
-			&& type == other.type && createdInRound == other.createdInRound 
+		{
+			return id == other.id && location == other.location
+			&& type == other.type && createdInRound == other.createdInRound
 			&& referenceEntity == other.referenceEntity && referencedType[0] == other.referencedType[0] && referencedType[1] == other.referencedType[1];
 		}
 
@@ -139,7 +139,7 @@ namespace Objects
 
 
 
-	
+
 
 
 
@@ -193,9 +193,10 @@ namespace Objects
 		@param[out] outColor Resulting faction color
 		@param id Unique faction ID
 		@param iteration Passing a different iteration alters the resulting color in a random way
-		*/		
+		*/
 		static void IDToColor(TVec3<>&outColor, const TUniqueID&id, int iteration=0);
 
+		void							UpdateID(const TUniqueID&toID, bool recomputeColor=true);
 
 		#ifdef CONNECTOR_LESS
 			//index_t		compoundIndex = InvalidIndex;
@@ -205,7 +206,7 @@ namespace Objects
 			static Buffer0<PFaction>	allKnown;
 			static PFaction				mine;
 
-			/**/					Faction(const TUniqueID&id):id(id) {IDToColor(color,id);}
+			/**/						Faction(const TUniqueID&id) {UpdateID(id);}
 
 		#else
 			CryptographicID	accessToken;
@@ -220,7 +221,7 @@ namespace Objects
 			static Buffer0<WFaction>	all;
 			static PFaction				nexus;
 
-			static PFaction			FindByID(const TUniqueID&);
+			static PFaction				FindByID(const TUniqueID&);
 
 
 
@@ -269,12 +270,8 @@ namespace Objects
 				deathInRounds = 0;
 
 				accessToken.Generate();
-				//id.Generate();
-				if (id == TUniqueID::Empty())
-					this->id.Generate();
-				else
-					this->id = id;
-				IDToColor(color,this->id);
+				UpdateID(id);
+
 			}
 
 			/**
