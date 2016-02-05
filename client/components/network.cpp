@@ -1464,7 +1464,7 @@ void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
 	Objects::OwnerParameter faction = Network::ResolveFaction(id);
 	faction->requestedNewRound = true;
 	faction->roundChangeNotifications++;
-	LogEvent(faction->roundChangeNotifications < 3 ? EventClass::Preset::uncommon : EventSignificance::Debug,nullptr,faction->GetName()+" is done thinking");
+	LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is done thinking");
 	#ifdef HAS_WINDOW
 		UI::RefreshSessionView();
 	#endif
@@ -1475,7 +1475,7 @@ void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 	Objects::OwnerParameter faction = Network::ResolveFaction(id);
 	faction->requestedNewRound = false;
 	faction->roundChangeNotifications++;
-	LogEvent(faction->roundChangeNotifications < 3 ? EventClass::Preset::uncommon : EventSignificance::Debug,nullptr,faction->GetName()+" is thinking some more");
+	LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is thinking some more");
 	#ifdef HAS_WINDOW
 		UI::RefreshSessionView();
 	#endif
