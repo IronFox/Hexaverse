@@ -18,15 +18,14 @@ void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird
 #ifdef HAS_WINDOW
 	void		QueryNicknameIfEmpty();
 
+
+	extern bool saveScreenshot;
+
+	namespace TimeLapse
+	{
+		extern bool enabled;
+	}
 #endif
-
-
-extern bool saveScreenshot;
-
-namespace TimeLapse
-{
-	extern bool enabled;
-}
 
 
 
@@ -1335,10 +1334,10 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	switch (c.newPhase.value)
 	{
 		case RuntimeConfig::Phase::AnimationPhase:
-			if (TimeLapse::enabled)
-			{
-				saveScreenshot = true;
-			}
+			#ifdef HAS_WINDOW
+				if (TimeLapse::enabled)
+					saveScreenshot = true;
+			#endif
 			if (RuntimeConfig::aiMode)
 				AI::vehicles.Clear();	//whichever is left, cannot be computed
 			Animation::atTime = 0.f;

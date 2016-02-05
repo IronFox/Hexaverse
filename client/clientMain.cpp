@@ -738,15 +738,18 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 
 
+#ifdef HAS_WINDOW
+	bool saveScreenshot = false;
 
-bool saveScreenshot = false;
-
-namespace TimeLapse
-{
-	index_t runningNumber = 0;
-	bool enabled = false;
-	PathString	basePath;
-}
+	namespace TimeLapse
+	{
+		index_t runningNumber = 0;
+		bool enabled = false;
+		float		frameDelaySeconds=0.2f;
+		PathString	basePath;
+		PathString	customBasePath;
+	}
+#endif
 
 
 class StorageThread : public ThreadObject
@@ -837,7 +840,7 @@ public:
 		}
 	}
 
-	bool	CanRun() const {return timer.GetSecondsSince(lastSubmission) > 0.2f;}
+	bool	CanRun() const {return timer.GetSecondsSince(lastSubmission) > TimeLapse::frameDelaySeconds;}
 	void	Run(const std::shared_ptr<Image>&image)
 	{
 		if (!CanRun())
@@ -2125,8 +2128,23 @@ void ToggleTimeLapse()
 	}
 	else
 	{
-		PathString outDirName = RuntimeConfig::ConfigFile(PathString("timelapses/"+Logging::TimeStamp(true)));
-		Dialog::Confirm("Timelapse mode will capture roughly 5 frames per second during animation phase, but remain inactive during all other phases. For best results leave the camera stationary.\nProceed?",
+		PathString outDirName = PathString("timelapses/"+Logging::TimeStamp(true));
+		if (TimeLapse::customBasePath.IsNotEmpty())
+		{
+			FileSystem::Folder f = FileSystem::CreateDirectory(TimeLapse::customBasePath);
+			if (f.IsValidLocation())
+				outDirName = f.FindFile(outDirName,false)->GetLocation();
+			else
+			{
+				LogEvent(EventType::CommandRejected,"Unable to find folder '"+String(TimeLapse::customBasePath)+". Defaulting to default Documents folder");
+				outDirName = RuntimeConfig::ConfigFile(outDirName);
+			}
+		}
+		else
+			outDirName = RuntimeConfig::ConfigFile(outDirName);
+
+		int framesPerSecond = (int)ceil(1.f / std::max(0.001f,TimeLapse::frameDelaySeconds));
+		Dialog::Confirm("Timelapse mode will capture roughly "+String(framesPerSecond)+" frame(s) per second during animation phase, but remain inactive during all other phases. For best results leave the camera stationary.\nProceed?",
 		[outDirName]()
 		{
 			TimeLapse::runningNumber = 0;
@@ -3053,6 +3071,9 @@ int main( int argc, const char* argv[])
 				display.config.fsaa_samples = config.GetInt("runtime/fsaa",4);
 
 				UI::resourcesAsList = config.GetBool("runtime/resourcesAsList",false);
+
+				TimeLapse::customBasePath = PathString(config.GetString("timelapse/outDirectory"));
+				TimeLapse::frameDelaySeconds = config.GetFloat("timelapse/frameDelaySeconds",0.2f);
 			#endif
 		}
 		LoadHosts();
