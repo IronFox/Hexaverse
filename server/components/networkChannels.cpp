@@ -1453,7 +1453,7 @@ namespace Receiver
 			peer.attachment = client;
 			//State::clients << client;
 			client->name = hello;
-			LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ),peer,client->ToString()+" joined the session");
+			LogEvent(EventClass( EventSignificance::Common, EventFlavor::Gain ),peer,client->ToString()+" joined the session");
 
 			
 			Protocol::PhaseChange	ph;
