@@ -890,7 +890,7 @@ void ProcessAICoverage()
 					Objects::Compound&n = p->GetCompound();
 					count_t producing = 0,
 							existing = 0;
-					for (Objects::WWorkingStructure _ws : n.containedStructures)
+					for (Objects::WWorkingStructure _ws : n.workingStructures)
 					{
 						Objects::PWorkingStructure	ws = _ws.lock();
 						if (!ws)
@@ -932,7 +932,7 @@ void ProcessAICoverage()
 					{
 						while (producing < existing && (friendlyNearNexus[i] < threatLevel || (constructorNearNexus[i] > 0.2f && friendlyNearNexus[i] < Game::factionStartMineralValue + 20.f)))
 						{
-							for (Objects::WWorkingStructure _ws : n.containedStructures)
+							for (Objects::WWorkingStructure _ws : n.workingStructures)
 							{
 								Objects::PWorkingStructure ws = _ws.lock();
 								if (!ws)

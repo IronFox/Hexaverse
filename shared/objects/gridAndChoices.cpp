@@ -853,7 +853,7 @@ namespace Objects
 						foreach (v->resourceEnvironment.sourceCompounds,cmp)
 						{
 							const Compound&compound = compounds[cmp->first];
-							foreach (compound.containedStructures,_s)
+							foreach (compound.allStructures,_s)
 							{
 								PStructure s = _s->lock();
 								if (s && Vec::quadraticDistance(world,s->GetWorldPosition()) <= sqr(WirelessTransferRange))

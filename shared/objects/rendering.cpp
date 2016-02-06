@@ -1624,9 +1624,9 @@ namespace Objects
 				
 		foreach (compounds,c)
 		{
-			if (c->containedStructures.IsEmpty())
+			if (c->allStructures.IsEmpty())
 				continue;
-			PStructure s = c->containedStructures.first().lock();
+			PStructure s = c->allStructures.first().lock();
 			if (!s || (s->owner != owner && owner))
 				continue;
 			if (c->total.balance.IsNotEmpty())
@@ -1678,9 +1678,9 @@ namespace Objects
 				
 		foreach (compounds,c)
 		{
-			if (c->containedStructures.IsEmpty())
+			if (c->allStructures.IsEmpty())
 				continue;
-			PStructure s = c->containedStructures.first().lock();
+			PStructure s = c->allStructures.first().lock();
 			if (!s || s->owner != owner)
 				continue;
 			if (c->total.balance.AnyIsSet(producersOf))
@@ -1758,7 +1758,7 @@ namespace Objects
 					if (color.a == 0.f)
 						continue;
 					overallTint.Update(color);
-					foreach(c->containedStructures, _s)
+					foreach(c->allStructures, _s)
 					{
 						Structure&s = *_s->lock();
 						if (s.compiledShape.vbo.IsSet())
@@ -1774,7 +1774,7 @@ namespace Objects
 					if (color.a == 0.f)
 						continue;
 					overallTint.Update(color);
-					foreach(c->containedStructures, _s)
+					foreach(c->allStructures, _s)
 					{
 						Structure&s = *_s->lock();
 
@@ -1816,7 +1816,7 @@ namespace Objects
 			{
 				const auto*c = compounds + ci;
 
-				foreach(c->containedStructures, _s)
+				foreach(c->allStructures, _s)
 				{
 					Structure&s = *_s->lock();
 					RenderRangeSphere(s.GetWorldPosition(),r,float4());
@@ -1827,7 +1827,7 @@ namespace Objects
 			{
 				const auto*c = compounds + ci;
 				float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(c->color.rgb*1.5f,1.0f);
-				foreach(c->containedStructures, _s)
+				foreach(c->allStructures, _s)
 				{
 					Structure&s = *_s->lock();
 					RenderRangeSphere(s.GetWorldPosition(),r,color);
