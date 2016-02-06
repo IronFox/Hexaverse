@@ -2960,26 +2960,41 @@ namespace Engine
 		desc.AddressU = desc.AddressV = desc.AddressW = clamp ? D3D11_TEXTURE_ADDRESS_CLAMP : D3D11_TEXTURE_ADDRESS_WRAP;
 		desc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
 
-		/*
-  	D3D11_FILTER_MIN_MAG_MIP_POINT	= 0,
-	D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR	= 0x1,
-	D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT	= 0x4,
-	D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR	= 0x5,
-	D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT	= 0x10,
-	D3D11_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR	= 0x11,
-	D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT	= 0x14,
-	D3D11_FILTER_MIN_MAG_MIP_LINEAR	= 0x15,
-	D3D11_FILTER_ANISOTROPIC	= 0x55,
-	D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT	= 0x80,
-	D3D11_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR	= 0x81,
-	D3D11_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT	= 0x84,
-	D3D11_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR	= 0x85,
-	D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT	= 0x90,
-	D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR	= 0x91,
-	D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT	= 0x94,
-	D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR	= 0x95,
-	D3D11_FILTER_COMPARISON_ANISOTROPIC	= 0xd5
-*/
+		switch (filter)
+		{
+			case TextureFilter::None:
+				desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+			break;
+			case TextureFilter::Linear:
+				desc.Filter = D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+			break;
+			case TextureFilter::Bilinear:
+				desc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+			break;
+			case TextureFilter::Trilinear:
+				desc.Filter = maxAnisotropy > 1 ? D3D11_FILTER_ANISOTROPIC :  D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+			break;
+			default:
+				FATAL__("Unexpected filter");
+		}
+		desc.MaxAnisotropy = maxAnisotropy;
+		desc.MaxLOD = D3D11_FLOAT32_MAX;
+		desc.MinLOD = 0.f;
+
+
+		DirectX11::globalInstance->GetDevice()->CreateSamplerState(&desc,samplerHandle.Init());
+	}
+	DX11::Shader::SamplerBinding::SamplerBinding(Engine::TextureFilter filter, UINT32 clampFlags, UINT maxAnisotropy, const String&name)
+	{
+		bufferName = name;
+		
+		D3D11_SAMPLER_DESC desc;
+		memset(&desc,0,sizeof(desc));
+		desc.AddressU = (clampFlags&ClampU) ? D3D11_TEXTURE_ADDRESS_CLAMP : D3D11_TEXTURE_ADDRESS_WRAP;
+		desc.AddressV = (clampFlags&ClampV) ? D3D11_TEXTURE_ADDRESS_CLAMP : D3D11_TEXTURE_ADDRESS_WRAP;
+		desc.AddressW = (clampFlags&ClampW) ? D3D11_TEXTURE_ADDRESS_CLAMP : D3D11_TEXTURE_ADDRESS_WRAP;
+		desc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+
 		switch (filter)
 		{
 			case TextureFilter::None:
