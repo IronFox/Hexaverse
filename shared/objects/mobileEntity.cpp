@@ -73,10 +73,18 @@ namespace Objects
 	#ifdef WIRELESS_VEHICLES
 
 
-		void				MobileResourceEnvironment::AddCompound(UINT32 compoundID)
+		bool				MobileResourceEnvironment::ContainsCompound(UINT32 compoundID)	const
 		{
-			if (!sourceCompounds.Contains(compoundID))	//we assume the number of compounds is very low here (usually 0..2), so this should be okay in regards to performance
-				sourceCompounds << compoundID;
+			foreach (this->sourceCompounds,c)
+				if (c->first == compoundID)
+					return true;
+			return false;
+		}
+
+		void				MobileResourceEnvironment::AddCompound(const PStructure&ref)
+		{
+			if (!ContainsCompound(ref->compoundID))	//we assume the number of compounds is very low here (usually 0..2), so this should be okay in regards to performance
+				sourceCompounds << std::make_pair(ref->compoundID,ref);
 		}
 
 		void	MobileResourceEnvironment::GetOwnCompoundsIn(const OwnerParameter&p, const Grid::LowSetup::TVolumeDescriptor&desc)
@@ -90,7 +98,7 @@ namespace Objects
 						continue;
 					if (s->compoundID == Compound::InvalidNetwork)
 						continue;
-					AddCompound(s->compoundID);
+					AddCompound(s);
 				}
 			}
 		}
@@ -211,7 +219,7 @@ namespace Objects
 				#ifdef WIRELESS_VEHICLES
 					foreach (sourceCompounds,c)
 					{
-						Compound&compound = Objects::compounds[*c];
+						Compound&compound = Objects::compounds[c->first];
 						WithdrawOverproduction(compound,&owner,res,change);
 						if (change == 0)
 							return;
@@ -222,7 +230,7 @@ namespace Objects
 					ResourceVector demand;
 					foreach (sourceCompounds,c)
 					{
-						Compound&compound = Objects::compounds[*c];
+						Compound&compound = Objects::compounds[c->first];
 						demand.level[res] = change;
 						compound.ChangeStorage(demand,owner.timeAt);
 						change = demand.level[res];
@@ -252,9 +260,9 @@ namespace Objects
 			#ifdef WIRELESS_VEHICLES
 				int rs = owner.currentStorage.level[res];
 				foreach (sourceCompounds,c)
-					rs += Objects::compounds[*c].total.storage.level[res] 
+					rs += Objects::compounds[c->first].total.storage.level[res] 
 						#ifndef CLIENT
-							+ Objects::compounds[*c].GetOverproduction(res)
+							+ Objects::compounds[c->first].GetOverproduction(res)
 						#endif
 						;
 				return rs;

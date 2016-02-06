@@ -1092,16 +1092,16 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			{
 				Objects::anyCompoundsColored = true;
 				Objects::OwnerParameter o = Objects::selectedMobileEntity->owner;
-				Objects::Renderer::SelectCompoundAreas(o,res);
-
-
 				Objects::selectedMobileEntity->resourceEnvironment.CheckRefresh(*Objects::selectedMobileEntity);
+				Objects::Renderer::SelectCompoundAreas(o,res,Objects::selectedMobileEntity->GetWorldPosition(),Objects::selectedMobileEntity->resourceEnvironment);
+
+
 				bool any = false;
 				foreach (Objects::selectedMobileEntity->resourceEnvironment.sourceCompounds,c)
 				{
-					if (*c >= Objects::compounds.Count())
+					if (c->first >= Objects::compounds.Count())
 						continue;
-					const auto&compound = Objects::compounds[*c];
+					const auto&compound = Objects::compounds[c->first];
 					for (index_t i = 0; i < Objects::Resource::N; i++)
 						if (res & i)
 						{
@@ -1163,7 +1163,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 					if (e->owner != o)
 						return;
 					e->resourceEnvironment.CheckRefresh(*e);
-					if (!e->resourceEnvironment.sourceCompounds.Contains(s->compoundID))
+					if (!e->resourceEnvironment.ContainsCompound(s->compoundID))
 						return;
 							
 					Objects::ResourceVector upkeep;

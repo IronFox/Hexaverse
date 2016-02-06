@@ -4,6 +4,7 @@
 #include <engine/aspect.h>
 #include "../../client/ExtRenderer/DirectX11.h"
 #include <math/vector.h>
+#include <image/converter/magic.h>
 #include "structure.h"
 #include "vehicle.h"
 #include "orbitalVehicle.h"
@@ -56,10 +57,11 @@ namespace Objects
 								foundation,
 								userInteractionNotifier,
 								gatheringPoint;
+	DX11::InstructionBlock16	resourceArrowInstruction;
 
 	static const float4			noTint;	//base constructor: (0,0,0,0)
 
-	//DX11::Texture				hexGrid;
+	DX11::Texture				resourceArrowTex;
 
 	#ifdef CASCADING_SHADOW
 
@@ -175,6 +177,8 @@ namespace Objects
 		beamBottomColor.Clear();
 		beamTopColor.Clear();
 		wirelessRange.Clear();
+		resourceArrowTex.Clear();
+		resourceArrowInstruction.Clear();
 
 		seeThroughShader = stdVehicleShader = DX11::BaseInstructionBlock();
 		Structure::standardCompiledShader = Structure::standardLocalizableShader =
@@ -370,11 +374,7 @@ namespace Objects
 
 
 
-		/*	Image img;
-			Magic::LoadFromFile(img,"resources/hexgrid.png");
-
-			hexGrid.Load(img);*/
-
+	
 			DX11::Shader::Binding bindings2[] =
 			{
 				DX11::Shader::Binding(overallTint, "Tint"),
@@ -412,6 +412,55 @@ namespace Objects
 			shadowInstruction.UpdateLayout();
 			shadowInstruction.SetTriangles();	
 		}
+
+		{
+			Image img;
+			Magic::LoadFromFile(img,"resources/textures/ResourceArrow.png");
+
+			resourceArrowTex.Load(img);
+
+
+			resourceArrowInstruction.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT);
+
+			DX11::Shader::Binding bindings[] =
+			{
+				DX11::Shader::Binding(overallTint, "Tint"),
+				DX11::Shader::Binding(resourceArrowTex,"ArrowTex"),
+				DX11::Shader::SamplerBinding(Engine::TextureFilter::Trilinear, DX11::Shader::SamplerBinding::ClampV,1,"ArrowTexSampler"),
+			};
+
+			resourceArrowInstruction.shader.LoadFromFile("shaders/resourceArrow.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings));
+			resourceArrowInstruction.UpdateLayout();
+			resourceArrowInstruction.SetTriangles();
+
+
+			{
+				static const count_t Resolution = 50;
+
+				Buffer0<float3>		vertexBuffer;
+				Buffer0<UINT16>		indexBuffer;
+				for (index_t i = 0; i < Resolution; i++)
+				{
+					float x = float(i)/float(Resolution-1);
+					float y = 1.f - sqr((x-0.5f)*2.f);
+					vertexBuffer.Append(float3(-1.f,x,y));
+					vertexBuffer.Append(float3(1.f,x,y));
+					if (i+1 < Resolution)
+					{
+						indexBuffer.Append((UINT32)i*2);
+						indexBuffer.Append((UINT32)i*2+2);
+						indexBuffer.Append((UINT32)i*2+1);
+
+						indexBuffer.Append((UINT32)i*2+3);
+						indexBuffer.Append((UINT32)i*2+1);
+						indexBuffer.Append((UINT32)i*2+2);
+					}
+				}
+				resourceArrowInstruction.ibo.Create(indexBuffer);
+				resourceArrowInstruction.vbo.CreateFromStructs(vertexBuffer);
+			}
+		}
+
 
 		#ifdef WIRELESS_VEHICLES
 		{
@@ -801,7 +850,7 @@ namespace Objects
 		int primaryColor = 2 - (cID%3);
 		int secondaryColor = (cID/3)%3;
 		int secondaryIntensity = (cID/9)%2;
-		float4 result(0,0,0,0.2f);
+		float4 result(0,0,0,0.5f);
 		result.v[primaryColor] = 1.f;
 		if (primaryColor != secondaryColor)
 		{
@@ -1579,12 +1628,14 @@ namespace Objects
 
 	}
 
-	static Buffer0<index_t>	compoundScope;
+
+	static Buffer0<UINT32>	compoundScope;
+	static Buffer0<std::pair<TMatrix4<>, float3> >	resourceArrowSystems;
 
 	void		Renderer::SelectCompoundAreas(const OwnerParameter&owner)
 	{
 		compoundScope.Clear();
-		
+		resourceArrowSystems.Clear();
 				
 		foreach (compounds,c)
 		{
@@ -1595,45 +1646,49 @@ namespace Objects
 				continue;
 			if (c->total.balance.IsNotEmpty())
 			{
-				compoundScope << c - compounds.pointer();
+				compoundScope << (UINT32)(c - compounds.pointer());
 			}
 		}
 
 		for (auto c : compoundScope)
 		{
-			compounds[c].color = ColorCompoundInRange((UINT32)(c));
+			compounds[c].color = ColorCompoundInRange(c);
 		}
 
 	}
 
 
-	void		Renderer::SelectCompoundAreas(const OwnerParameter&owner, Resource producersOf)
+	//void		Renderer::SelectCompoundAreas(const OwnerParameter&owner, Resource producersOf, const TVec3<>&arrowTo, const MobileResourceEnvironment&env)
+	//{
+	//	compoundScope.Clear();
+	//	
+	//			
+	//	foreach (compounds,c)
+	//	{
+	//		if (c->containedStructures.IsEmpty())
+	//			continue;
+	//		PStructure s = c->containedStructures.first().lock();
+	//		if (!s || s->owner != owner)
+	//			continue;
+	//		if (c->total.balance.level[producersOf])
+	//		{
+	//			TCompoundReference&ref = compoundScope.Append();
+	//			ref.compoundIndex = (UINT32)(c - compounds.pointer());
+
+	//			compoundScope << c - compounds.pointer();
+	//		}
+	//	}
+
+	//	for (auto c : compoundScope)
+	//	{
+	//		compounds[c].color = ColorCompoundInRange((UINT32)(c));
+	//	}
+	//}
+
+	void		Renderer::SelectCompoundAreas(const OwnerParameter&owner, ResourceFlagSet producersOf, const TVec3<>&arrowTo, const MobileResourceEnvironment&env)
 	{
 		compoundScope.Clear();
-		
-				
-		foreach (compounds,c)
-		{
-			if (c->allStructures.IsEmpty())
-				continue;
-			PStructure s = c->allStructures.first().lock();
-			if (!s || s->owner != owner)
-				continue;
-			if (c->total.balance.level[producersOf])
-			{
-				compoundScope << c - compounds.pointer();
-			}
-		}
-
-		for (auto c : compoundScope)
-		{
-			compounds[c].color = ColorCompoundInRange((UINT32)(c));
-		}
-	}
-
-	void		Renderer::SelectCompoundAreas(const OwnerParameter&owner, ResourceFlagSet producersOf)
-	{
-		compoundScope.Clear();
+		resourceArrowSystems.Clear();
 		
 				
 		foreach (compounds,c)
@@ -1653,6 +1708,23 @@ namespace Objects
 		{
 			compounds[c].color = ColorCompoundInRange((UINT32)(c));
 		}
+
+		foreach (env.sourceCompounds,c)
+		{
+			if (!compounds[c->first].total.balance.AnyIsSet(producersOf))
+				continue;
+			auto&item = resourceArrowSystems.Append();
+			TMatrix4<>&mat = item.first;
+			mat.w.xyz = c->second->GetWorldPosition();
+			mat.z.xyz = Grid::low.cells[c->second->location.stackID].cornerCenter;
+			Vec::mad(mat.w.xyz,mat.z.xyz,Grid::SingleLayerHeight * c->second->GetHeight());
+			Vec::sub(arrowTo,mat.w.xyz,mat.y.xyz);
+			Vec::cross(mat.z.xyz,mat.y.xyz,mat.x.xyz);
+			Vec::setLen(mat.x.xyz,0.1f);
+			Mat::resetBottomRow(mat);
+
+			item.second = compounds[c->first].color.rgb*1.5f;
+		}
 	}
 
 
@@ -1668,16 +1740,28 @@ namespace Objects
 			return;
 
 
+		overallTint.Update(float4(1));
+
+		display.StoreRendererState();
+		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+		display.SetRasterizer(true,false);
+
+		foreach (resourceArrowSystems,sys)
+		{
+			display.SetObjectMatrix(sys->first);
+			overallTint.Update(float4(sys->second,0.75f));
+			display.Render(resourceArrowInstruction,true);
+		}
 
 		wirelessRange.Update(float4(0,0,0,10000));
 
 
 		
 		//if (doColorCompounds)
+		//if (false)
 		{
-			display.StoreRendererState();
-			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-			display.SetDepthTest(false,false);
+			display.SetRasterizer(true,true);
+			display.SetDepthTest(true,false);
 			display.LinkShader(compoundShader,true,true);
 
 				display.SetObjectMatrix(Matrix<>::eye4);
@@ -1719,9 +1803,9 @@ namespace Objects
 				}
 
 			display.UnlockShader();
-			display.RestoreRendererState();
 		}
 
+		display.RestoreRendererState();
 
 
 

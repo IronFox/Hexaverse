@@ -685,11 +685,13 @@ namespace Game
 					hasMineralContainer = true;	//don't need
 				#endif
 				Objects::ResourceVector dummy,storage;
+				Objects::OwnerParameter o;
 				foreach (c.workingStructures,_s)
 				{
 					Objects::PWorkingStructure s = _s->lock();
 					if (!s)
 						continue;
+					o = s->owner;
 					Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 					if (mine && mine->IsLinkedToCore())
 					{
@@ -709,12 +711,15 @@ namespace Game
 					if (To<Objects::VehiclePlant>::DynamicCast(s))
 						hasVehiclePlant = true;
 				}
-				Objects::PFaction f = c.workingStructures.first().lock()->owner;
-				f->hasFuelMine = hasFuelMine;
-				f->hasMineralMine = hasMineralMine;
-				f->hasMineralContainer = hasMineralContainer;
-				f->hasGenerator = hasGenerator;
-				f->hasVehiclePlant = hasVehiclePlant;
+				Objects::PFaction f = o;//c.workingStructures.first().lock()->owner;
+				if (f)
+				{
+					f->hasFuelMine = hasFuelMine;
+					f->hasMineralMine = hasMineralMine;
+					f->hasMineralContainer = hasMineralContainer;
+					f->hasGenerator = hasGenerator;
+					f->hasVehiclePlant = hasVehiclePlant;
+				}
 			});
 
 			Objects::ForeachMobileEntityIncludingStored([](const Objects::PMobileEntity&v)

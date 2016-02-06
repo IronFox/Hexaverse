@@ -67,6 +67,7 @@ namespace Objects
 
 	class Compound;
 	class EntityFactory;
+	class MobileResourceEnvironment;
 
 
 	CONSTRUCT_ENUMERATION6(MobilePlacementResult,
