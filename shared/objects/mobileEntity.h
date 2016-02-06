@@ -29,7 +29,9 @@ namespace Objects
 	public:
 		#ifdef WIRELESS_VEHICLES
 			Grid::LowSetup::TVolumeDescriptor desc;
-			Buffer0<UINT32>		sourceCompounds;
+			Buffer0<std::pair<UINT32, PStructure> >		sourceCompounds;
+
+			bool				ContainsCompound(UINT32 compoundID)	const;
 
 			void				GetOwnCompoundsIn(const OwnerParameter&p, const Grid::LowSetup::TVolumeDescriptor&desc);
 
@@ -39,7 +41,7 @@ namespace Objects
 				static void		WithdrawOverproduction(Compound&compound, MobileEntity*originatingAt, Resource res, int&change);
 			#endif
 
-			void				AddCompound(UINT32);
+			void				AddCompound(const PStructure&ref);
 
 			struct TCacheID
 			{

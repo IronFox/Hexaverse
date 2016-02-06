@@ -60,6 +60,7 @@ namespace Objects
 	);
 
 	class Compound;
+	class MobileResourceEnvironment;
 
 
 

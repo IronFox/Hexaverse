@@ -852,7 +852,7 @@ namespace Objects
 						const TVec3<> world = WorldEntity::GetWorldPosition(location);
 						foreach (v->resourceEnvironment.sourceCompounds,cmp)
 						{
-							const Compound&compound = compounds[*cmp];
+							const Compound&compound = compounds[cmp->first];
 							foreach (compound.containedStructures,_s)
 							{
 								PStructure s = _s->lock();

@@ -1092,17 +1092,17 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			{
 				Objects::anyCompoundsColored = true;
 				Objects::OwnerParameter o = Objects::selectedMobileEntity->owner;
-				Objects::Renderer::SelectCompoundAreas(o,res);
-
-
-
 				Objects::selectedMobileEntity->resourceEnvironment.CheckRefresh(*Objects::selectedMobileEntity);
+				Objects::Renderer::SelectCompoundAreas(o,res,Objects::selectedMobileEntity->GetWorldPosition(),Objects::selectedMobileEntity->resourceEnvironment);
+
+
+
 				bool any = false;
 				foreach (Objects::selectedMobileEntity->resourceEnvironment.sourceCompounds,c)
 				{
-					if (*c >= Objects::compounds.Count())
+					if (c->first >= Objects::compounds.Count())
 						continue;
-					const auto&compound = Objects::compounds[*c];
+					const auto&compound = Objects::compounds[c->first];
 					for (index_t i = 0; i < Objects::Resource::N; i++)
 						if (res & i)
 						{
@@ -1170,7 +1170,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 					if (v->owner == o)
 					{
 						v->resourceEnvironment.CheckRefresh(*v);
-						if (v->resourceEnvironment.sourceCompounds.Contains(s->compoundID))
+						if (v->resourceEnvironment.ContainsCompound(s->compoundID))
 						{
 							balance.level[Objects::Resource::Minerals] -= v->GetCurrentMineralConsumption();
 						}
@@ -1179,7 +1179,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 					if (v->owner == o && v->RequiresFuel())
 					{
 						v->resourceEnvironment.CheckRefresh(*v);
-						if (v->resourceEnvironment.sourceCompounds.Contains(s->compoundID))
+						if (v->resourceEnvironment.ContainsCompound(s->compoundID))
 						{
 							balance.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound();
 						}
