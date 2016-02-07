@@ -160,7 +160,7 @@ namespace Objects
 		//MobileEntity overrides:
 		virtual bool			MotionIgnoresAttack() const override {return base->ignoresVehicleAttacks;}
 		virtual int				GetMovementStepsPerRound() const override;
-		virtual int				GetConstructionSpeed() const override;
+		virtual int				GetOperationSpeed(Component::operation_t op) const override;
 		virtual float			GetBaseMovementInitiative() const override {return base->initiative;}
 		#ifndef CONNECTOR_LESS
 			virtual ResourceVector		GetMaxStorageCapacity()	const override;

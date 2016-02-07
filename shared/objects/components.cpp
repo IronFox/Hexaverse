@@ -66,7 +66,7 @@ namespace Objects
 				return ammoNeedPerShot > 0 || this->isSatelliteRing;
 			}
 			res |= Resource::Minerals;
-			return constructionSpeed > 0 || this->isSatelliteRing;
+			return CanDo(Component::Construct) || CanDo(Component::Repair) || CanDo(Component::TerrainAdd) || this->isSatelliteRing;
 		}
 
 
@@ -732,7 +732,8 @@ namespace Objects
 				component.baseStorageCapacity.level[Resource::Minerals] = 2000;
 				component.baseStorageCapacity.level[Resource::Fuel] = 500;
 			#endif
-			component.constructionSpeed = 100;
+			component.operationSpeed[Construct] = 100;
+			component.operationSpeed[Repair] = 100;
 			component.healthMultiplier = 1;
 			component.scanningRange = 8;
 			component.uplinkTraffic = 30;
@@ -759,7 +760,7 @@ namespace Objects
 						mineralCostOut = 0;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetConstructionRounds(VehicleJob::DigHorizontalMineralCosts);
+						timeCostOut = v->GetOperationRounds(VehicleJob::DigHorizontalMineralCosts,TerrainRemove);
 					}
 					));
 				component.iconCommands.Append(IconCommand(offset++, "Dig Down", &Cmd::DigDown, 
@@ -769,7 +770,7 @@ namespace Objects
 						mineralCostOut = 0;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetConstructionRounds(VehicleJob::DigDownMineralCosts);
+						timeCostOut = v->GetOperationRounds(VehicleJob::DigDownMineralCosts,TerrainRemove);
 					}
 				));
 				component.iconCommands.Append(IconCommand(offset++, "Clear Above", &Cmd::ClearAbove
@@ -779,7 +780,7 @@ namespace Objects
 						mineralCostOut = 0;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetConstructionRounds(VehicleJob::ClearAboveMineralCosts);
+						timeCostOut = v->GetOperationRounds(VehicleJob::ClearAboveMineralCosts,TerrainRemove);
 					}
 				));
 
@@ -790,7 +791,7 @@ namespace Objects
 						mineralCostOut = VehicleJob::BuildWallMineralCosts;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetConstructionRounds(mineralCostOut);
+						timeCostOut = v->GetOperationRounds(mineralCostOut,TerrainAdd);
 					}
 				));
 				component.iconCommands.Append(IconCommand(offset++, "Build Horizontal Wall", &Cmd::IssueCommand<ConstName::Job_BuildHorizontalWall>
@@ -800,7 +801,7 @@ namespace Objects
 						mineralCostOut = VehicleJob::BuildWallMineralCosts;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetConstructionRounds(mineralCostOut);
+						timeCostOut = v->GetOperationRounds(mineralCostOut,TerrainAdd);
 					}
 				));
 				component.iconCommands.Append(IconCommand(offset++, "Build Road", &Cmd::BuildRoad
@@ -810,7 +811,7 @@ namespace Objects
 						mineralCostOut = VehicleJob::BuildRoadMineralCosts;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetConstructionRounds(mineralCostOut);
+						timeCostOut = v->GetOperationRounds(mineralCostOut,TerrainAdd);
 					}
 				));
 
@@ -839,7 +840,7 @@ namespace Objects
 						}
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetConstructionRounds(mineralCostOut);
+						timeCostOut = v->GetOperationRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? TerrainRemove : TerrainAdd);
 						if (activeCursorMode != CursorMode::BuildBlockMode)
 							mineralCostOut = 0;
 					}
@@ -909,7 +910,9 @@ namespace Objects
 			#if !defined CONNECTOR_LESS
 				component.baseStorageCapacity.level[Resource::Minerals] = 2000;
 			#endif
-			component.constructionSpeed = 100;
+			component.operationSpeed[Construct] = 100;
+			component.operationSpeed[TerrainRemove] = 100;
+			component.operationSpeed[TerrainAdd] = 100;
 			component.healthMultiplier = 1;
 			component.scanningRange = 4;
 			component.uplinkTraffic = 30;
@@ -952,7 +955,6 @@ namespace Objects
 			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
-			component.constructionSpeed = 0;
 		
 			component.weight = 3;
 			component.healthMultiplier = 1.5f;
@@ -1003,7 +1005,6 @@ namespace Objects
 			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
-			component.constructionSpeed = 0;
 		
 			component.weight = 13;
 			component.healthMultiplier = 1.5f;
@@ -1055,7 +1056,6 @@ namespace Objects
 			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
 			#endif
-			component.constructionSpeed = 0;
 		
 			component.weight = 3;
 			component.healthMultiplier = 2;
@@ -1105,7 +1105,6 @@ namespace Objects
 			#if !defined CONNECTOR_LESS
 				component.baseStorageCapacity.level[Resource::Uranium] = 1500;
 			#endif
-			component.constructionSpeed = 0;
 		
 			component.weight = 5;
 			component.healthMultiplier = 1;
@@ -1173,7 +1172,6 @@ namespace Objects
 
 
 			component.productionCosts = 1;	//irrelevant
-			component.constructionSpeed = 0;
 		
 			component.weight = 1;	//irrelevant
 			component.healthMultiplier = 1;	//irrelevant
@@ -1230,7 +1228,6 @@ namespace Objects
 			component.isSatelliteRing = true;
 
 			component.productionCosts = 1;	//irrelevant
-			component.constructionSpeed = 0;
 		
 			component.weight = 1;	//irrelevant
 			component.healthMultiplier = 1;	//irrelevant
@@ -1271,14 +1268,14 @@ namespace Objects
 			component.constTowerName = ConstName::Empty;	//not used
 
 			component.isSatelliteRing = true;
-			component.canRepair = true;
+			component.operationSpeed[Repair] = 100;
+			component.operationSpeed[Construct] = 50;
 			//component.fuelSupplyRadius = 20;
 
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = 0.25f;
 
 			component.productionCosts = 1;	//irrelevant
-			component.constructionSpeed = 50;
 		
 			component.weight = 1;	//irrelevant
 			component.healthMultiplier = 1;	//irrelevant
@@ -1311,14 +1308,12 @@ namespace Objects
 			component.constTowerName = ConstName::Empty;	//not used
 
 			component.isSatelliteRing = true;
-			component.canRepair = false;
-			//component.fuelSupplyRadius = 20;
 
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = -0.05f;
 
 			component.productionCosts = 1;	//irrelevant
-			component.constructionSpeed = 50;
+			component.operationSpeed[Repair] = 100;
 		
 			component.weight = 1;	//irrelevant
 			component.healthMultiplier = 1;	//irrelevant
@@ -1353,7 +1348,6 @@ namespace Objects
 			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 100;
 			#endif
-			component.constructionSpeed = 0;
 		
 			component.weight = 4;
 			component.healthMultiplier = 1;
@@ -1396,12 +1390,11 @@ namespace Objects
 			#if !defined CONNECTOR_LESS
 				component.baseStorageCapacity.level[Resource::Minerals] = 100;
 			#endif
-			component.constructionSpeed = 0;
 		
 			component.weight = 2;
 			component.healthMultiplier = 1;
 			component.scanningRange = 3;
-			component.canRepair = true;
+			component.operationSpeed[Repair] = 10;
 			component.uplinkTraffic = 10;
 
 
@@ -1426,7 +1419,6 @@ namespace Objects
 			component.constTowerName = ConstName::Type_RadarTower;
 
 			component.productionCosts = 100;
-			component.constructionSpeed = 0;
 		
 			component.weight = 2;
 			component.healthMultiplier = 1;
@@ -1457,7 +1449,6 @@ namespace Objects
 			component.constName = ConstName::Turret_Surveyor;
 
 			component.productionCosts = 100;
-			component.constructionSpeed = 0;
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = -1.f;
 
@@ -1544,7 +1535,7 @@ namespace Objects
 			#ifndef CONNECTOR_LESS
 				component.storageMultiplier = 2;
 			#endif
-			component.constructionSpeedMultiplier = 2;
+			component.operationSpeedMultiplier = 2;
 
 			component.baseMovementSpeed = 15;
 			component.carryingCapacity = 10;
@@ -1592,7 +1583,7 @@ namespace Objects
 			#ifndef CONNECTOR_LESS
 				component.storageMultiplier = 2;
 			#endif
-			component.constructionSpeedMultiplier = 2;
+			component.operationSpeedMultiplier = 2;
 			component.rangeModifier = 1;
 
 			component.baseMovementSpeed = 8;
@@ -1744,8 +1735,8 @@ namespace Objects
 				#endif
 				if (!compound)
 				{
-					if (constructionSpeedMultiplier != 1)
-						outResult << " Construction speed multiplied by "+String(constructionSpeedMultiplier);
+					if (operationSpeedMultiplier != 1)
+						outResult << " Operation speed multiplied by "+String(operationSpeedMultiplier);
 					outResult<<" Base speed: "+String(baseMovementSpeed);
 					if (requirements == Requirement::Water)
 						outResult.lines.last()+= " (naval)";
@@ -1817,9 +1808,11 @@ namespace Objects
 					outResult << " "+String(attacksPerRound)+" attack(s) per round";
 				}
 
-				if (constructionSpeed && !compound)
-					outResult << " Construction: Converts "+String(ResourceTag(Resource::Minerals))+String(constructionSpeed)+" per round";
-				if (canRepair)
+				if (CanConstruct() && !compound)
+					outResult << " Construction: Converts "+String(ResourceTag(Resource::Minerals))+String(operationSpeed[Construct])+" per round";
+				if ((CanDo(TerrainRemove) || CanDo(TerrainAdd)) && !compound)
+					outResult << " Terraforming: Can shape the surrounding terrain";
+				if (CanRepair())
 					outResult <<" Can repair other vehicles/structures";
 				if (detectsResources)
 					outResult <<  " Detects natural resources";
@@ -1838,9 +1831,9 @@ namespace Objects
 				#endif
 				outResult.MarkBriefEnd();
 				outResult << "";
-				if (constructionSpeed)
+				if (CanConstruct())
 					outResult.WrapAppendText("This "+lowerName+" type can build structures in valid locations. It requires "+String(ResourceTag(Resource::Minerals))+" to initiate construction.");
-				if (canRepair)
+				if (CanRepair())
 					outResult.WrapAppendText("This "+lowerName+" type can repair other structures and vehicles. It requires "+String(ResourceTag(Resource::Minerals))+" to initiate repair.");
 				if (detectsResources)
 					outResult.WrapAppendText("This "+lowerName+" type detects all naturally occuring resources within its scanning range. It can be automated.");

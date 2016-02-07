@@ -250,7 +250,7 @@ namespace AI
 	static void ProcessVehicle(const Objects::PVehicle&v)
 	{
 		Objects::Component::Turret*t = v->turret;
-		if (t->detectsResources || t->constructionSpeed)
+		if (t->detectsResources || t->CanDo(Objects::Component::Construct))
 		{
 			LogEvent(EventSignificance::Uncommon,v.get(),  "AI: Skipping unsupported vehicle type");
 			return;

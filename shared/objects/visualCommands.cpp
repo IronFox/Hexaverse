@@ -379,7 +379,7 @@ namespace Objects
 		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
 		ASSERT__(v);
 		int price = structure->GetConstructionCost();
-		UINT32 roundsToJobCompletion = v->GetConstructionRounds(price);
+		UINT32 roundsToJobCompletion = v->GetOperationRounds(price,Component::Construct);
 		//mineralCostLeft = actuallyConsumesMinerals ? mineralCosts : 0;
 
 		outResult << name;
@@ -531,14 +531,14 @@ namespace Objects
 
 	bool CommonCmd::IsModeActive(const PWorldEntity&e, CursorMode mode)
 	{
-		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
-		return v && activeCursorMode == mode;
+		//PMobileEntity v = To<MobileEntity>::DynamicCast(e);
+		return /*v && */activeCursorMode == mode;
 	}
 		
 	bool CommonCmd::IsModeActiveOrIdle(const PWorldEntity&e, CursorMode mode)
 	{
-		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
-		return v && (activeCursorMode == mode || activeCursorMode == CursorMode::Idle);
+		//PMobileEntity v = To<MobileEntity>::DynamicCast(e);
+		return /*v &&*/ (activeCursorMode == mode || activeCursorMode == CursorMode::Idle);
 	}
 	
 

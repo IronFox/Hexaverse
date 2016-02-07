@@ -112,6 +112,7 @@ namespace Objects
 			, public Hibernating
 		#endif
 	{
+		typedef WorldEntity	Super;
 	protected:
 		void		HandleMotion(MobilePlacementResult&rs, bool signalEvent, const Grid::LCellIdI&oldLocation, float timeCost);
 	public:
@@ -323,7 +324,7 @@ namespace Objects
 
 		UINT32					constructionRoundCounter=0;	//!< Number of rounds that the entity has been busy building at its current location
 
-		/**/					MobileEntity(const OwnerParameter&owner, Component::Turret*turret, const Grid::LCellIdI&location) : WorldEntity(owner,location), TurretBase(turret)
+		/**/					MobileEntity(const OwnerParameter&owner, Component::Turret*turret, const Grid::LCellIdI&location) : Super(owner,location), TurretBase(turret)
 								#ifdef CLIENT
 									,preAnimationLocation(location)
 								#endif
@@ -485,21 +486,24 @@ namespace Objects
 
 		#endif
 
-		UINT32					GetConstructionRounds(int jobCosts) const
+		UINT32					GetOperationRounds(int jobCosts, Component::operation_t op) const
 		{
-			int speed = GetConstructionSpeed();
+			if (!jobCosts)
+				return 0;
+			int speed = GetOperationSpeed(op);
+			if (!speed)
+				return 0xFFFFFFFF;
 			int rs = jobCosts / speed;
 			if (jobCosts % speed)
 				rs ++;
 			return rs;
 		}
-
 		Grid::LCellIdI			GetConstructionLocation() const {return GetConstructionLocation(location);}
 		float					GetMovementInitiative()const	{return GetBaseMovementInitiative() * movementActionLeft;}
 		bool					AttackIgnoresMotion() const {return turret->ignoresVehicleMotion;}
 		bool					AttackIsStationary() const {return turret->requiresStationaryVehicle;}
 		float					GetAttackExplosionRadius() const {return turret->explosionRadius;}
-		bool					CanRepair() const {return turret->canRepair;}
+		bool					CanRepair() const {return turret->CanRepair();}
 		bool					CanAttack() const {return turret->CanAttack();}
 
 		int						GetCurrentMineralConsumption() const;
@@ -522,7 +526,7 @@ namespace Objects
 		Retrieves the amount of minerals that can be converted into structure by the local entity
 		@return Amount of minerals that can be converted per round by the local entity. 0 for entities that cannot construct
 		*/
-		virtual int				GetConstructionSpeed() const=0;
+		virtual int				GetOperationSpeed(Component::operation_t op) const {return turret->operationSpeed[op];}
 		virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return focus;}
 		virtual bool			MotionIgnoresAttack() const=0;
 		virtual int				GetMovementStepsPerRound() const =0;

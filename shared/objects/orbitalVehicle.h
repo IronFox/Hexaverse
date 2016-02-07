@@ -152,7 +152,7 @@ namespace Objects
 					return turret->baseStorageCapacity;
 				}
 			#endif
-
+			virtual int				GetOperationSpeed(Component::operation_t op) const override {return turret->operationSpeed[op];}
 			virtual bool			MotionIgnoresAttack() const override {return false;}
 			virtual float			GetPathSize() const override {return 1.f;}
 			#ifndef CLIENT
@@ -281,7 +281,6 @@ namespace Objects
 		public:
 			//MobileEntity overrides:
 			virtual int				GetMovementStepsPerRound() const override {return 2;}
-			virtual int				GetConstructionSpeed() const override {return 0;}
 
 			//BaseEntity overrides:
 			virtual String			GetTypeName() const override {return "Ragnarök";}
@@ -316,7 +315,6 @@ namespace Objects
 		public:
 			//MobileEntity overrides:
 			virtual int				GetMovementStepsPerRound() const override {return 5;}
-			virtual int				GetConstructionSpeed() const override {return GetTurretType()->constructionSpeed;}
 
 			//BaseEntity overrides:
 			virtual String			GetTypeName() const override {return "Orbital Engineer";}

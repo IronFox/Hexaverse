@@ -147,8 +147,9 @@ namespace Objects
 				String speed = "Speed: "+String(this->GetMovementStepsPerRound()) + " (orbital)";
 
 				outResult << speed;
-				if (GetConstructionSpeed())
-					outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(this->GetConstructionSpeed())+" per round";
+				int opSpeed = GetOperationSpeed(Component::Construct);
+				if (opSpeed)
+					outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(opSpeed)+" per round";
 
 				const String fuel (ResourceTag(Resource::Fuel));
 
@@ -307,7 +308,7 @@ namespace Objects
 						return false;
 
 					case CursorMode::BuildConnectorChainMode:
-						if (!GetConstructionSpeed())
+						if (!GetOperationSpeed(Component::Construct))
 							return false;
 
 						if (leftClick)
