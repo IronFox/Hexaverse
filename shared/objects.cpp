@@ -148,6 +148,7 @@ namespace Objects
 
 		structurePrototypes << Mine::globalPrototype;
 		structurePrototypes << Generator::globalPrototype;
+		structurePrototypes << ReactorCore::globalPrototype;
 		structurePrototypes << MunitionFactory::globalPrototype;
 		structurePrototypes << VehiclePlant::globalPrototype;
 		structurePrototypes << Connector::globalPrototype;

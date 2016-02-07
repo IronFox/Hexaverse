@@ -134,6 +134,7 @@ namespace Objects
 
 	/*static*/ void			StructureCommand::UpdateTexture(EntityCommand&target, const PStructure&structure, bool isPrototype, const float4&tone /*= float4(0)*/)
 	{
+		ASSERT_NOT_NULL__(structure->localizableShape);
 
 		float distanceFactor = 1.f + 0.1f * structure->GetHeight();
 		if (structure->IsOrbital())
