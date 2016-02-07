@@ -680,13 +680,13 @@ namespace Objects
 		{
 			if (!s.IsActive())
 			{
-				keyColor.Update(float4(s.owner->inactiveEntityColor, light));
+				keyColor.Update(float4(flip && !s.maintained ? float3(0.5f,0,0) : s.owner->inactiveEntityColor, light));
 			}
 			else
 			{
-				if (s.unstable || !s.maintained)
+				if (s.unstable)
 				{
-					keyColor.Update(float4(flip ? float3() : s.owner->activeEntityColor,light));
+					keyColor.Update(float4(flip ? (s.maintained ? float3() : float3(0.5f,0,0)) : s.owner->activeEntityColor,light));
 						
 					if (!flip && workingStructure)
 					{
@@ -699,9 +699,10 @@ namespace Objects
 					}
 				}
 				else
-					keyColor.Update(float4(s.owner->activeEntityColor,light));
+					keyColor.Update(float4(flip && !s.maintained ? float3(0.5f,0,0) : s.owner->activeEntityColor,light));
 			}
 		}
+		
 		if (s.HasFoundation())
 			display.Render(foundation, true);
 		_RenderSimpleLocated(s);
@@ -833,6 +834,11 @@ namespace Objects
 				if (((const Vehicle&)e).IsHibernating())
 					Vec::interpolate(effectiveTint,float4(0,0,0,1),0.6f,effectiveTint);
 			}
+		if (e.IsStructure() && !((const Structure&)e).maintained)
+		{
+			if (flip)
+				effectiveTint = float4(1,0,0,1);
+		}
 
 		overallTint.Update(effectiveTint);
 	}
