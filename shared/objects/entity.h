@@ -345,7 +345,7 @@ namespace Objects
 		virtual bool				IsVehicle() const {return false;}
 		virtual bool				IsStructure() const {return false;}
 
-		virtual void				GetUpkeep(ResourceVector&v) const {v.level[Resource::Minerals] = CeilDiv(GetConstructionCost(),100);}
+		virtual void				GetUpkeep(ResourceVector&v) const {v.level[Resource::Minerals] = CeilDiv(GetConstructionCost(),1000);}
 
 		/**
 		Checks whether or not the local entity resides in orbit
