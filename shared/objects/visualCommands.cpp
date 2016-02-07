@@ -371,7 +371,7 @@ namespace Objects
 		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
 		ASSERT__(v);
 		int price = structure->GetConstructionCost();
-		UINT32 roundsToJobCompletion = v->GetConstructionRounds(price);
+		UINT32 roundsToJobCompletion = v->GetOperationRounds(price,Component::Construct);
 		//mineralCostLeft = actuallyConsumesMinerals ? mineralCosts : 0;
 
 		outResult << name;

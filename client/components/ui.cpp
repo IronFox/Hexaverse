@@ -1958,8 +1958,12 @@
 					if (v->turret->ignoresVehicleMotion)
 						textout << "  (ignores movement)"<<nl;
 				}
-				if (v->turret->constructionSpeed)
-					textout << " Converts "<<Objects::ResourceTag(Objects::Resource::Minerals)<<v->GetConstructionSpeed()<<" per round"<<nl;
+				int opSpeed = v->GetOperationSpeed(Objects::Component::Construct);
+				if (opSpeed)
+					textout << " Converts "<<Objects::ResourceTag(Objects::Resource::Minerals)<<opSpeed<<" per round"<<nl;
+				opSpeed = v->GetOperationSpeed(Objects::Component::Repair);
+				if (opSpeed)
+					textout << " Repairs "<<Objects::ResourceTag(Objects::Resource::Minerals)<<opSpeed<<" per round"<<nl;
 
 				textout << " Tasks:" << nl;
 				if (v->myTasks.IsEmpty())
