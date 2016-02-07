@@ -966,6 +966,7 @@ namespace FileIO
 
 	void	Load(const PathString&filename)
 	{
+		RuntimeConfig::loadingPhase = true;
 		insertIntoHangar.Clear();
 
 		Riff::Container file;
@@ -1360,6 +1361,8 @@ namespace FileIO
 
 		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+World::worldID.ToString()+" in round "+String(RuntimeConfig::roundNumber));
 		RefreshWindowTitle();
+
+		RuntimeConfig::loadingPhase = false;
 
 
 		if (wasOpen)

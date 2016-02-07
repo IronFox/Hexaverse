@@ -1016,7 +1016,7 @@ namespace Network
 			break;
 			case TCP::Event::ConnectionFailed:
 			{
-				LogEvent(EventClass::Preset::uncommon, nullptr, "Connection attempt failed");
+				LogEvent(EventClass::Preset::networkError, nullptr, "Connection attempt failed");
 				#ifdef HAS_WINDOW
 					Dialog::SignalSituationChange();
 				#endif
@@ -1025,7 +1025,7 @@ namespace Network
 			case TCP::Event::ConnectionLost:
 			case TCP::Event::ConnectionClosed:
 			{
-				LogEvent(EventClass::Preset::uncommon, nullptr, "Connection lost");
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, "Connection lost");
 				amOnline = false;
 
 				FlushFaction(true);

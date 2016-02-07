@@ -149,6 +149,7 @@ namespace Objects
 
 		structurePrototypes << Mine::globalPrototype;
 		structurePrototypes << Generator::globalPrototype;
+		structurePrototypes << ReactorCore::globalPrototype;
 		structurePrototypes << MunitionFactory::globalPrototype;
 		structurePrototypes << VehiclePlant::globalPrototype;
 		structurePrototypes << Connector::globalPrototype;
@@ -163,7 +164,7 @@ namespace Objects
 		satellitePrototypes << SkyHub::globalPrototype;
 		satellitePrototypes << SkyGuardian::globalPrototype;
 		satellitePrototypes << Ragnarok::globalPrototype;
-		satellitePrototypes << StarPort::globalPrototype;
+		//satellitePrototypes << StarPort::globalPrototype;
 
 
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::launcher));

@@ -21,6 +21,7 @@
 
 #ifndef CLIENT
 	#include "faction.h"
+	#include "../runtimeConfig.h"
 #endif
 
 namespace Objects
@@ -80,7 +81,8 @@ namespace Objects
 
 		/*static*/ IconCommand		VehicleStore::cmdLeft,
 									VehicleStore::cmdRight;
-		/*static*/ Geometry			VehicleStore::interConnector;
+		/*static*/ Geometry			VehicleStore::interConnector,
+									Generator::reactorConnector;
 
 		/*static*/ VehicleConstructionCommand	SkyPort::formerConstructionCommand;
 		/*static*/ SatelliteConstructionCommand	SkyPort::skyHubConstructionCommand;
@@ -1079,11 +1081,7 @@ namespace Objects
 
 
 	Connector::Connector(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true, atTime)
-	{
-		#ifdef HAS_WINDOW
-			Super::localizableShape = &shape;
-		#endif
-	}
+	{}
 
 	/*virtual override*/ void				Connector::OnDestroy(float&atTime)
 	{
@@ -1195,15 +1193,46 @@ namespace Objects
 		return CanPlace;
 	}
 
+	/*virtual override*/ void				Generator::OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime)
+	{
+		Super::OnNewConnection(other,acrossHighCell,atTime);
+		if (connectedToReactor.expired() && other->location.height == location.height)
+		{
+			PReactorCore reactor = To<ReactorCore>::DynamicCast(other);
+			if (reactor)
+			{
+				connectedToReactor = reactor;
+				#ifdef CLIENT
+					changed = anyChanged = true;
+				#endif
+			}
+		}
+	}
+
+	/*virtual override*/ void				Generator::OnConnectionLost(const PStructure&s, UINT32 acrossHighCell, float atTime)
+	{
+		Super::OnConnectionLost(s,acrossHighCell,atTime);
+		PReactorCore core = connectedToReactor.lock();
+		if (core == s || !core)
+		{
+			foreach (connectedTo,conn)
+			{
+				core = To<ReactorCore>::DynamicCast(*conn);
+				if (core && core->location.height == location.height)
+				{
+					connectedToReactor = core;
+					#ifdef CLIENT
+						changed = anyChanged = true;
+					#endif
+					return;
+				}
+			}
+		}
+	}
+
 
 	VehicleStore::VehicleStore(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true,atTime)
-	{
-		#ifdef CLIENT
-			#ifdef HAS_WINDOW
-				Super::localizableShape = &shape;
-			#endif
-		#endif
-	}
+	{}
 
 
 	/*virtual override*/ bool						VehicleStore::CanStoreType(const MobileEntity&e) const 
@@ -1422,6 +1451,14 @@ namespace Objects
 
 			interConnector.LoadFromObj("objects/vehicleStoreConnector.obj");
 		}
+
+		/*virtual override*/ void			Generator::PrototypeLoadGeometry()
+		{
+			Super::PrototypeLoadGeometry();
+
+			reactorConnector.LoadFromObj("objects/reactorCoreConnector.obj");
+		}
+
 	#endif
 
 
@@ -2435,7 +2472,7 @@ namespace Objects
 	/*virtual override*/ void				NexusPort::OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
-			if (owner != other->owner)
+			if (owner != other->owner && !RuntimeConfig::loadingPhase)
 			{
 				resistence = ResistenceRounds;
 				SetEnabled(false,atTime,false);
@@ -2447,7 +2484,7 @@ namespace Objects
 	/*virtual override*/ void				NexusPort::OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
-			if (connectedTo.IsEmpty() && owner != Faction::nexus)
+			if (connectedTo.IsEmpty() && owner != Faction::nexus && !RuntimeConfig::loadingPhase)
 			{
 				SetEnabled(false,atTime,false);
 				OwnerParameter old = owner;
@@ -2494,33 +2531,35 @@ namespace Objects
 
 		/*virtual override*/ void			NexusPort::OnEnabledChange()
 		{
-			if (owner != Faction::nexus)
+			if (!RuntimeConfig::loadingPhase)
 			{
-				if (!IsEnabled())
+				if (owner != Faction::nexus)
 				{
-					if (resistence > 0)
+					if (!IsEnabled())
 					{
-						DBG_ASSERT__(owner->acquiringNexusControl > 0);
-						owner->acquiringNexusControl--;
+						if (resistence > 0)
+						{
+							DBG_ASSERT__(owner->acquiringNexusControl > 0);
+							owner->acquiringNexusControl--;
+						}
+						else
+						{
+							DBG_ASSERT__(owner->nexusControl > 0);
+							owner->nexusControl--;
+						}
+						LogEvent(EventClass( RuntimeConfig::loadingPhase ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss ),this,"Lost control");
 					}
 					else
 					{
-						DBG_ASSERT__(owner->nexusControl > 0);
-						owner->nexusControl--;
+						owner->acquiringNexusControl++;
+
+						LogEvent(EventClass( RuntimeConfig::loadingPhase ? EventSignificance::Common : EventSignificance::Uncommon,EventFlavor::Gain ),this,"Acquiring control");
+
 					}
-					LogEvent(EventClass( EventSignificance::Important,EventFlavor::Loss ),this,"Lost control");
+					resistence = ResistenceRounds;
+					RegisterChange(NexusControlChanged,0);
+					SignalNexusControlChange(owner);
 				}
-				else
-				{
-					owner->acquiringNexusControl++;
-
-					LogEvent(EventClass( EventSignificance::Uncommon,EventFlavor::Gain ),this,"Acquiring control");
-
-				}
-
-				resistence = ResistenceRounds;
-				RegisterChange(NexusControlChanged,0);
-				SignalNexusControlChange(owner);
 			}
 		}
 	#endif
@@ -2647,15 +2686,25 @@ namespace Objects
 			);
 		}
 
+
+
 		/*virtual override*/ void			Generator::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
 			label.WrapAppendText("Enabled generators provide energy for the local compound."
 			" Since many structures consume "+String(ResourceTag(Resource::Energy))+" when enabled, generators are a crucial component of any active base."
+			" Combine with reactor cores for increased output."
 			);
 		}
 
+		/*virtual override*/ void			ReactorCore::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
+		{
+			Super::DescribeType(label,  descFlags);
+			label.MarkBriefEnd();
+			label.WrapAppendText("Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator, but multiple generators may be connected to the same reactor core."
+			);
+		}
 		/*virtual override*/ void			VehiclePlant::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
 			Super::DescribeType(label,  descFlags);

@@ -315,8 +315,12 @@ namespace Objects
 		{
 			typedef Structure Super;
 		protected:
-		/**/						OtherStructure<Derivative>(const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime):Super(owner,location,buildSystem,atTime)
-									{}
+			/**/					OtherStructure<Derivative>(const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime):Super(owner,location,buildSystem,atTime)
+			{ 
+				#ifdef HAS_WINDOW
+					Super::localizableShape = &shape;
+				#endif
+			}
 			/**/					OtherStructure<Derivative>()
 			{ 
 				#ifdef HAS_WINDOW
@@ -1016,9 +1020,18 @@ namespace Objects
 		/**/						Generator(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{}
 		/**/						Generator()	{ }	//global prototype
 	public:
-		typedef CommonStructure<Generator>	Super;
-
 		static const int FuelCostPerRound = 10;
+		typedef CommonStructure<Generator>	Super;
+		WReactorCore				connectedToReactor;
+
+
+		int							GetEnergyProduction() const {return connectedToReactor.expired() ? 20 : 40;}
+
+		#ifdef HAS_WINDOW
+			static Geometry			reactorConnector;
+				
+			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return connectedToReactor.lock() == connected ? &reactorConnector : &standardConnector;}
+		#endif
 
 		virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
@@ -1032,15 +1045,44 @@ namespace Objects
 		virtual String				GetTypeName() const override { return "Generator"; };
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Generator;}
 
-		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Fuel] = -FuelCostPerRound; v.level[Resource::Energy] = 20; }	//20 is temporary
+		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Fuel] = -FuelCostPerRound; v.level[Resource::Energy] = GetEnergyProduction(); }
+
+		virtual void				OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime) override;
+		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
+
 
 		#ifdef HAS_WINDOW
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+			virtual void			PrototypeLoadGeometry() override;
 		#endif
 
 	};
 
+	class ReactorCore : public OtherStructure<ReactorCore>
+	{
+		typedef OtherStructure<ReactorCore>	Super;
+		friend class Super;
+		/**/						ReactorCore(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,true,atTime)	{}
+		/**/						ReactorCore()	{ }	//global prototype
+	public:
 
+		virtual int					GetConstructionCost() const override {return 120;}
+		#ifndef NO_HIBERNATION
+			virtual int				GetUplinkTraffic() const override {return 15;}
+			virtual int				GetUplinkPriority() const override {return 750;};
+		#endif
+
+		virtual int					GetHeight() const override {return 2;}
+		virtual String				GetTypeName() const override { return "Reactor Core"; };
+		virtual ConstName			GetCTypeName() const override {return ConstName::Type_ReactorCore;}
+
+		#ifdef HAS_WINDOW
+			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {PGenerator gen = To<Generator>::DynamicCast(connected); return gen && gen->connectedToReactor.lock().get() == this ? &Generator::reactorConnector : &standardConnector;}
+
+			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+		#endif
+
+	};
 
 
 
@@ -1497,10 +1539,8 @@ namespace Objects
 		}
 		/**/						Tower(Component::Turret*turret, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) : Super(owner,location,true,time),TurretBase(turret)
 		{
-			#ifdef CLIENT
-				#ifdef HAS_WINDOW
-					Super::localizableShape = &shape;
-				#endif
+			#ifdef HAS_WINDOW
+				Super::localizableShape = &shape;
 			#endif
 		}
 
