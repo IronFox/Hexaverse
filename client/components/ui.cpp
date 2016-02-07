@@ -1765,13 +1765,23 @@
 				if (h)
 					textout << " "<<Objects::TrafficResourceTag()  << "Priority: "<<h->GetUplinkPriority()<<nl;
 			#endif
-
+			textout.PushColorState();
 			if (e.health > 0)
 			{
 				if (e.IsIndestructible())
 					textout << " Indestructible" << nl;
 				else
+				{
+					int maxHealth = e.GetMaxHealth();
+					if (e.health < maxHealth/4)
+						textout.Tint(1,0.2,0.2);
+					elif (e.health < maxHealth/2)
+						textout.Tint(1,1,0.2);
+					elif (e.health < maxHealth)
+						textout.Tint(0.2,1,0.2);
+
 					textout << " Health: " << e.health << "/" << e.GetMaxHealth() << nl;
+				}
 			}
 			else
 			{
@@ -1779,6 +1789,7 @@
 				textout << " Ghost created " << -e.health << " round(s) ago" << nl;
 				textout.color(color);
 			}
+			textout.PopColorState();
 			#ifndef NO_HIBERNATION
 				if (h->IsHibernating())
 				{
