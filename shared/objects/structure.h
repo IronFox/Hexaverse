@@ -772,6 +772,7 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual const Hibernating*	ToHibernating() const override {return this;}
 		#endif
+		virtual void				GetUpkeep(ResourceVector&v) const override { Super::GetUpkeep(v); if (!IsActive()) v.level[Resource::Minerals] = 0;}
 		virtual bool				IsActive() const override {return isEnabled && !IsHibernating();}
 		virtual bool				IsWorkingStructure() const override {return true;}
 		virtual void				OnDestroy(float&atTime) override;
