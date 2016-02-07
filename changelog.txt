@@ -1,4 +1,4 @@
-v0.3.15
+v0.3.15		[Feb 7 2016]
 	* Fixed incorrect server IDs leading to client-side merging of different servers into one.
 	* Fixed UI buttons now graying out when they should.
 	* Fixed visualization of dig-to jobs.
