@@ -511,8 +511,8 @@ namespace Objects
 
 	bool CommonCmd::IsModeActive(const PWorldEntity&e, CursorMode mode)
 	{
-		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
-		return v && activeCursorMode == mode;
+		//PMobileEntity v = To<MobileEntity>::DynamicCast(e);
+		return /*v && */activeCursorMode == mode;
 	}
 		
 	bool CommonCmd::IsModeActiveOrIdle(const PWorldEntity&e, CursorMode mode)
