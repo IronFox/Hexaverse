@@ -712,7 +712,7 @@ namespace Game
 
 			Objects::ForeachMobileEntityIncludingStored([](const Objects::PMobileEntity&v)
 			{
-				if (v->GetConstructionSpeed())
+				if (v->GetOperationSpeed(Objects::Component::Construct))
 				{
 					v->owner->hasTerraformer = true;
 				}
