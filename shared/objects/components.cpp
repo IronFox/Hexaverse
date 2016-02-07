@@ -727,11 +727,12 @@ namespace Objects
 			component.shortName = "engineer";
 			component.constName = ConstName::OrbitalTurret_Engineer;
 
-			component.productionCosts = 40;
+			component.productionCosts = 400;
 			#if !defined CONNECTOR_LESS
-				component.baseStorageCapacity.level[Resource::Minerals] = 200;
+				component.baseStorageCapacity.level[Resource::Minerals] = 2000;
+				component.baseStorageCapacity.level[Resource::Fuel] = 500;
 			#endif
-			component.constructionSpeed = 10;
+			component.constructionSpeed = 100;
 			component.healthMultiplier = 1;
 			component.scanningRange = 8;
 			component.uplinkTraffic = 30;
@@ -890,8 +891,6 @@ namespace Objects
 			//component.typeName = "Constructor";
 			//component.shortName = "structor";
 			//component.productionCosts = 20;
-			//component.baseStorageCapacity.level[Resource::Minerals] = 200;
-			//component.constructionSpeed = 5;
 		
 
 			#ifdef HAS_WINDOW		
@@ -906,11 +905,11 @@ namespace Objects
 			component.shortName = "former";
 			component.constName = ConstName::Turret_Terraformer;
 
-			component.productionCosts = 40;
+			component.productionCosts = 400;
 			#if !defined CONNECTOR_LESS
-				component.baseStorageCapacity.level[Resource::Minerals] = 200;
+				component.baseStorageCapacity.level[Resource::Minerals] = 2000;
 			#endif
-			component.constructionSpeed = 10;
+			component.constructionSpeed = 100;
 			component.healthMultiplier = 1;
 			component.scanningRange = 4;
 			component.uplinkTraffic = 30;
@@ -949,7 +948,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Artillery;
 			component.constTowerName = ConstName::Type_ArtilleryTower;
 
-			component.productionCosts = 20;
+			component.productionCosts = 200;
 			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
@@ -1000,7 +999,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Launcher;
 			component.constTowerName = ConstName::Type_LauncherTower;
 
-			component.productionCosts = 30;
+			component.productionCosts = 300;
 			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
@@ -1052,7 +1051,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Cannon;
 			component.constTowerName = ConstName::Type_CannonTower;
 
-			component.productionCosts = 15;
+			component.productionCosts = 150;
 			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
 			#endif
@@ -1102,9 +1101,9 @@ namespace Objects
 			component.constName = ConstName::Turret_EMP;
 			component.constTowerName = ConstName::Type_EMPTower;
 
-			component.productionCosts = 100;
+			component.productionCosts = 1000;
 			#if !defined CONNECTOR_LESS
-				component.baseStorageCapacity.level[Resource::Uranium] = 150;
+				component.baseStorageCapacity.level[Resource::Uranium] = 1500;
 			#endif
 			component.constructionSpeed = 0;
 		
@@ -1189,10 +1188,11 @@ namespace Objects
 			#ifdef _DEBUG
 				component.ammoNeedPerShot = 0;//1000;
 			#else
-				component.ammoNeedPerShot = 2000;
+				component.ammoNeedPerShot = 20000;
 			#endif
 			#ifndef CONNECTOR_LESS
 				component.baseStorageCapacity.level[Resource::Uranium] = component.ammoNeedPerShot;
+				component.baseStorageCapacity.level[Resource::Fuel] = 500;
 			#endif
 			component.ammoType = Resource::Uranium;
 			component.requiresStationaryVehicle = true;
@@ -1230,9 +1230,6 @@ namespace Objects
 			component.isSatelliteRing = true;
 
 			component.productionCosts = 1;	//irrelevant
-			//#ifndef CONNECTOR_LESS
-			//	component.baseStorageCapacity.level[Resource::Uranium] = 30;
-			//#endif
 			component.constructionSpeed = 0;
 		
 			component.weight = 1;	//irrelevant
@@ -1281,7 +1278,7 @@ namespace Objects
 			component.continuousRotationSpeed = 0.25f;
 
 			component.productionCosts = 1;	//irrelevant
-			component.constructionSpeed = 5;
+			component.constructionSpeed = 50;
 		
 			component.weight = 1;	//irrelevant
 			component.healthMultiplier = 1;	//irrelevant
@@ -1321,7 +1318,7 @@ namespace Objects
 			component.continuousRotationSpeed = -0.05f;
 
 			component.productionCosts = 1;	//irrelevant
-			component.constructionSpeed = 5;
+			component.constructionSpeed = 50;
 		
 			component.weight = 1;	//irrelevant
 			component.healthMultiplier = 1;	//irrelevant
@@ -1352,7 +1349,7 @@ namespace Objects
 			component.shortName = " Ammo Truck";
 			component.constName = ConstName::Turret_MunitionTransporter;
 
-			component.productionCosts = 5;
+			component.productionCosts = 500;
 			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 100;
 			#endif
@@ -1395,7 +1392,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Mechanic;
 			component.constTowerName = ConstName::Type_MechanicTower;
 
-			component.productionCosts = 30;
+			component.productionCosts = 300;
 			#if !defined CONNECTOR_LESS
 				component.baseStorageCapacity.level[Resource::Minerals] = 100;
 			#endif
@@ -1428,7 +1425,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Radar;
 			component.constTowerName = ConstName::Type_RadarTower;
 
-			component.productionCosts = 10;
+			component.productionCosts = 100;
 			component.constructionSpeed = 0;
 		
 			component.weight = 2;
@@ -1459,7 +1456,7 @@ namespace Objects
 			component.shortName = "surveyor";
 			component.constName = ConstName::Turret_Surveyor;
 
-			component.productionCosts = 10;
+			component.productionCosts = 100;
 			component.constructionSpeed = 0;
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = -1.f;
@@ -1498,7 +1495,7 @@ namespace Objects
 			component.shortName = "Hover";
 			component.constName = ConstName::VehicleBase_HoverBase;
 
-			component.productionCosts = 40;
+			component.productionCosts = 400;
 			component.requirements = VehicleBase::Requirement::AnyBlock;
 			component.moveOnWater = true;
 			component.minClimbDown = -int(Grid::CellStack::Range);
@@ -1539,7 +1536,7 @@ namespace Objects
 			component.shortName = "Heavy";
 			component.constName = ConstName::VehicleBase_HeavyBase;
 
-			component.productionCosts = 80;
+			component.productionCosts = 800;
 			component.requirements = VehicleBase::Requirement::AnyBlock;	//none is broken...
 			component.moveOnWater = false;
 			component.minClimbDown = -2;
@@ -1587,7 +1584,7 @@ namespace Objects
 			component.shortName = "Cat";
 			component.constName = ConstName::VehicleBase_CatBase;
 
-			component.productionCosts = 100;
+			component.productionCosts = 1000;
 			component.requirements = VehicleBase::Requirement::Water;	//none is broken...
 			component.moveOnWater = true;
 			component.minClimbDown = -2;

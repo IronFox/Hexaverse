@@ -573,7 +573,7 @@ namespace Objects
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_VehicleStore;}
 		virtual int					GetHeight() const override {return 2;}
 		virtual void				PrototypeSetup() override;
-		virtual int					GetConstructionCost() const override {return 40;}
+		virtual int					GetConstructionCost() const override {return 400;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 2;}
 		#endif
@@ -615,7 +615,7 @@ namespace Objects
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Connector;}
 
 
-		virtual int					GetConstructionCost() const override {return 5;}
+		virtual int					GetConstructionCost() const override {return 50;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 1;}
 		#endif
@@ -880,7 +880,7 @@ namespace Objects
 
 
 
-		static const int			ConstructionSpeed = 5;
+		static const int			ConstructionSpeed = 50;
 		static const int			EnergyConsumption = 10;
 
 
@@ -894,7 +894,7 @@ namespace Objects
 		//WorldEntity overrides:
 		virtual int					GetHeight() const override {return 2;}
 		virtual void				PrototypeSetup() override;
-		virtual int					GetConstructionCost() const override {return 40;}
+		virtual int					GetConstructionCost() const override {return 400;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 10;}
 			virtual int				GetUplinkPriority() const override {return 750;};	//not much point going far beyond generators. if they shut off, this thing shuts off, too
@@ -1017,9 +1017,9 @@ namespace Objects
 		virtual bool				IsNexusPort() const override {return true;}
 		virtual void				GetResourceVector(ResourceVector&v, ResourceVector&, ResourceVector&) const override
 		{
-			v.level[Resource::Minerals] = 50;	
-			v.level[Resource::Fuel] = 55;	
-			v.level[Resource::Uranium] = 10;
+			v.level[Resource::Minerals] = 500;	
+			v.level[Resource::Fuel] = 550;	
+			v.level[Resource::Uranium] = 100;
 			v.level[Resource::Energy] = -EnergyConsumption;
 		}
 
@@ -1044,7 +1044,7 @@ namespace Objects
 		/**/						Generator(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{}
 		/**/						Generator()	{ }	//global prototype
 	public:
-		static const int FuelCostPerRound = 10;
+		static const int FuelCostPerRound = 100;
 		typedef CommonStructure<Generator>	Super;
 		WReactorCore				connectedToReactor;
 
@@ -1057,7 +1057,7 @@ namespace Objects
 			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return connectedToReactor.lock() == connected ? &reactorConnector : &standardConnector;}
 		#endif
 
-		virtual int					GetConstructionCost() const override {return 40;}
+		virtual int					GetConstructionCost() const override {return 400;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 5;}
 			virtual int				GetUplinkPriority() const override {return 750;};
@@ -1090,7 +1090,7 @@ namespace Objects
 		/**/						ReactorCore()	{ }	//global prototype
 	public:
 
-		virtual int					GetConstructionCost() const override {return 120;}
+		virtual int					GetConstructionCost() const override {return 1200;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 15;}
 			virtual int				GetUplinkPriority() const override {return 750;};
@@ -1126,7 +1126,7 @@ namespace Objects
 
 
 		static const int			EnergyConsumption = 10;
-		static const int			DefaultProductionPerRound = 10;
+		static const int			DefaultProductionPerRound = 100;
 
 
 		/**
@@ -1179,7 +1179,7 @@ namespace Objects
 
 		//WorldEntity overrides:
 		virtual void				PrototypeSetup()	override;
-		virtual int					GetConstructionCost() const override {return 80;}
+		virtual int					GetConstructionCost() const override {return 800;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 20;}
 		#endif
@@ -1293,7 +1293,7 @@ namespace Objects
 				}
 			#endif
 		#endif
-		virtual int					GetConstructionCost() const override {return 10;}
+		virtual int					GetConstructionCost() const override {return 100;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 2;}
 			virtual int				GetUplinkPriority() const override {return 1000;};
@@ -1321,7 +1321,7 @@ namespace Objects
 	public:
 		static const int			EnergyConsumption = 10;
 		#ifndef CONNECTOR_LESS
-			static const int		MineralStorage = 10;
+			static const int		MineralStorage = 100;
 		#else
 			static const int		MineralStorage = 0;
 		#endif
@@ -1361,7 +1361,7 @@ namespace Objects
 										v.level[Resource::Energy] += -EnergyConsumption;
 									}
 
-		virtual int					GetConstructionCost() const override {return 40;}
+		virtual int					GetConstructionCost() const override {return 400;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 10;}
 			virtual int				GetUplinkPriority() const override {return naturalResources.fuel*5 + naturalResources.minerals + naturalResources.uranium;};
@@ -1403,7 +1403,7 @@ namespace Objects
 		friend class CommonStructure<Self>;
 
 
-		static const int LocalMunitionStorage = 4;
+		static const int LocalMunitionStorage = 40;
 		/**/						Self(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)
 		{
 			#ifndef NO_MUNITION
@@ -1425,7 +1425,7 @@ namespace Objects
 
 
 		static const int			EnergyConsumption = 10,
-									MineralConsumption = 10,
+									MineralConsumption = 100,
 									MunitionOutput = 2;
 
 		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&storage, ResourceVector&max) const override
@@ -1438,7 +1438,7 @@ namespace Objects
 			Super::GetResourceVector(v,storage,max);
 		}
 
-		virtual int					GetConstructionCost() const override {return 40;}
+		virtual int					GetConstructionCost() const override {return 400;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 5;}
 			virtual int				GetUplinkPriority() const override {return 400;};
@@ -1472,8 +1472,8 @@ namespace Objects
 		typedef StorageStructure<FuelContainer>	Super;
 		friend class Super;
 		friend class CommonStructure<FuelContainer>;
-		/**/						FuelContainer(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Fuel] = 400;}
-		/**/						FuelContainer()	{maxStorage.level[Resource::Fuel] = 400; }	//global prototype
+		/**/						FuelContainer(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Fuel] = 4000;}
+		/**/						FuelContainer()	{maxStorage.level[Resource::Fuel] = 4000; }	//global prototype
 	public:
 		virtual String				GetTypeName() const override { return "Fuel Container"; };
 		virtual ConstName		GetCTypeName() const override {return ConstName::Type_FuelContainer;}
@@ -1486,8 +1486,8 @@ namespace Objects
 		typedef StorageStructure<MineralContainer>	Super;
 		friend class Super;
 		friend class CommonStructure<MineralContainer>;
-		/**/						MineralContainer(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Minerals] = 400;}
-		/**/						MineralContainer()	{maxStorage.level[Resource::Minerals] = 400; }	//global prototype
+		/**/						MineralContainer(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Minerals] = 4000;}
+		/**/						MineralContainer()	{maxStorage.level[Resource::Minerals] = 4000; }	//global prototype
 	public:
 		virtual String				GetTypeName() const override { return "Mineral Container"; };
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_MineralContainer;}
@@ -1500,8 +1500,8 @@ namespace Objects
 		typedef StorageStructure<UraniumStorage>	Super;
 		friend class Super;
 		friend class CommonStructure<UraniumStorage>;
-		/**/						UraniumStorage(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Uranium] = 400;}
-		/**/						UraniumStorage()	{maxStorage.level[Resource::Uranium] = 400; }	//global prototype
+		/**/						UraniumStorage(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Uranium] = 4000;}
+		/**/						UraniumStorage()	{maxStorage.level[Resource::Uranium] = 4000; }	//global prototype
 	public:
 		virtual String				GetTypeName() const override { return "Uranium Storage"; };
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_UraniumStorage;}
@@ -1679,7 +1679,7 @@ namespace Objects
 		virtual String				GetTypeName() const override { return turret->typeName+" Tower"; };
 		virtual ConstName			GetCTypeName() const override {return turret->constTowerName;}
 
-		virtual int					GetConstructionCost() const override {return 40 + turret->productionCosts;}
+		virtual int					GetConstructionCost() const override {return 400 + turret->productionCosts;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return turret->uplinkTraffic;}
 			virtual int				GetUplinkPriority() const override {return 1000;}
