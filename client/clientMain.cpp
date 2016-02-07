@@ -116,11 +116,11 @@ SpinLock	eventLock;
 					color = float3(0,1,0);
 				break;
 				case EventFlavor::Loss:
-					color = float3(1,0,0);
+					color = float3(0.9,0.1,0.1);
 				break;
 				case EventFlavor::SystemError:
 				case EventFlavor::UserError:
-					color = float3(1,0,0.5);
+					color = float3(1,0.1,0.2);
 				break;
 				case EventFlavor::Neutral:
 					if (type.significance == EventSignificance::Important)
