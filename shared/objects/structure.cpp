@@ -21,6 +21,7 @@
 
 #ifndef CLIENT
 	#include "faction.h"
+	#include "../runtimeConfig.h"
 #endif
 
 namespace Objects
@@ -2428,7 +2429,7 @@ namespace Objects
 	/*virtual override*/ void				NexusPort::OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
-			if (owner != other->owner)
+			if (owner != other->owner && !RuntimeConfig::loadingPhase)
 			{
 				resistence = ResistenceRounds;
 				SetEnabled(false,atTime,false);
@@ -2440,7 +2441,7 @@ namespace Objects
 	/*virtual override*/ void				NexusPort::OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
-			if (connectedTo.IsEmpty() && owner != Faction::nexus)
+			if (connectedTo.IsEmpty() && owner != Faction::nexus && !RuntimeConfig::loadingPhase)
 			{
 				SetEnabled(false,atTime,false);
 				OwnerParameter old = owner;
@@ -2487,33 +2488,35 @@ namespace Objects
 
 		/*virtual override*/ void			NexusPort::OnEnabledChange()
 		{
-			if (owner != Faction::nexus)
+			if (!RuntimeConfig::loadingPhase)
 			{
-				if (!IsEnabled())
+				if (owner != Faction::nexus)
 				{
-					if (resistence > 0)
+					if (!IsEnabled())
 					{
-						DBG_ASSERT__(owner->acquiringNexusControl > 0);
-						owner->acquiringNexusControl--;
+						if (resistence > 0)
+						{
+							DBG_ASSERT__(owner->acquiringNexusControl > 0);
+							owner->acquiringNexusControl--;
+						}
+						else
+						{
+							DBG_ASSERT__(owner->nexusControl > 0);
+							owner->nexusControl--;
+						}
+						LogEvent(EventClass( RuntimeConfig::loadingPhase ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss ),this,"Lost control");
 					}
 					else
 					{
-						DBG_ASSERT__(owner->nexusControl > 0);
-						owner->nexusControl--;
+						owner->acquiringNexusControl++;
+
+						LogEvent(EventClass( RuntimeConfig::loadingPhase ? EventSignificance::Common : EventSignificance::Uncommon,EventFlavor::Gain ),this,"Acquiring control");
+
 					}
-					LogEvent(EventClass( EventSignificance::Important,EventFlavor::Loss ),this,"Lost control");
+					resistence = ResistenceRounds;
+					RegisterChange(NexusControlChanged,0);
+					SignalNexusControlChange(owner);
 				}
-				else
-				{
-					owner->acquiringNexusControl++;
-
-					LogEvent(EventClass( EventSignificance::Uncommon,EventFlavor::Gain ),this,"Acquiring control");
-
-				}
-
-				resistence = ResistenceRounds;
-				RegisterChange(NexusControlChanged,0);
-				SignalNexusControlChange(owner);
 			}
 		}
 	#endif

@@ -13,6 +13,10 @@
 
 namespace RuntimeConfig
 {
+	#ifndef CLIENT
+		bool		loadingPhase = false;
+	#endif
+
 	DoomsdayWeapons doomsdayWeapons;
 	GameGoal gameGoal;
 

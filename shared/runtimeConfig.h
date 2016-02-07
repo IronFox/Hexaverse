@@ -38,6 +38,10 @@ namespace RuntimeConfig
 		void		Import(const Array<std::pair<UINT16,UINT16> >&);
 	}
 
+	#ifndef CLIENT
+		extern bool		loadingPhase;
+	#endif
+
 
 //	PathString	ConfigFile(const String&base);
 	PathString	ConfigFile(PathString base);
