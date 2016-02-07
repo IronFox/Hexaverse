@@ -1890,7 +1890,7 @@ namespace Objects
 	int MobileEntity::GetCurrentMineralConsumption() const
 	{
 		if (myTasks.IsNotEmpty() && myTasks.Peek().job)
-			return std::min(myTasks.Peek().job->mineralCostLeft,GetConstructionSpeed()) ;
+			return std::min(myTasks.Peek().job->mineralCostLeft,GetOperationSpeed(myTasks.Peek().job->GetOperationAffinity())) ;
 		return 0;
 	}
 

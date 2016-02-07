@@ -40,9 +40,9 @@ namespace Objects
 
 
 	
-	int						Vehicle::GetConstructionSpeed() const
+	int						Vehicle::GetOperationSpeed(Component::operation_t op)  const
 	{
-		return base->constructionSpeedMultiplier * turret->constructionSpeed;
+		return base->operationSpeedMultiplier *  turret->operationSpeed[op];
 	}
 
 
@@ -496,8 +496,10 @@ namespace Objects
 			else
 				if (base->moveOnWater)
 					outResult.lines.last() += " (moves over water)";
-			if (turret->constructionSpeed)
-				outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(this->GetConstructionSpeed())+" per round";
+
+			int opSpeed = std::max(GetOperationSpeed(Component::Construct),GetOperationSpeed(Component::TerrainAdd));
+			if (opSpeed)
+				outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(opSpeed)+" per round";
 
 			#ifndef CONNECTOR_LESS
 				if (turret->baseStorageCapacity.IsNotEmpty())
@@ -556,7 +558,7 @@ namespace Objects
 					return PlotCourse(waypoints,detailedPath);
 				break;
 				case CursorMode::DigTunnelMode:
-					if (!turret->constructionSpeed)
+					if (!turret->CanDo(Component::TerrainRemove))
 						return false;
 					if (leftClick)
 					{
@@ -652,7 +654,7 @@ namespace Objects
 				case CursorMode::BuildRoadChainMode:
 				case CursorMode::BuildWallChainMode:
 				case CursorMode::BuildBridgeMode:
-					if (!turret->constructionSpeed)
+					if (!turret->CanDo(mode == CursorMode::BuildConnectorChainMode ? Component::Construct : Component::TerrainAdd  ) )
 						return false;
 
 					if (leftClick)

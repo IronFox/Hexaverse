@@ -2819,7 +2819,7 @@ namespace Objects
 						break;
 						case CursorMode::ClearAboveMode:
 						{
-							if (!v->GetConstructionSpeed())
+							if (!v->GetOperationSpeed(Component::TerrainRemove))
 								return false;
 							PVehicleJob job(new VehicleJob::ClearAbove(*v));
 							v->RegisterNewJob("", job,&c);
@@ -2827,7 +2827,7 @@ namespace Objects
 						break;
 						case CursorMode::DigMode:
 						{
-							if (!v->GetConstructionSpeed())
+							if (!v->GetOperationSpeed(Component::TerrainRemove))
 								return false;
 
 							auto copy = c;

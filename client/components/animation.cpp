@@ -71,7 +71,7 @@ namespace Animation
 			{
 				Objects::PMobileEntity o = To<Objects::MobileEntity>::Cast(e);
 				bool surveyor = o->IsVehicle() && To<Objects::Vehicle>::Cast(o)->IsAutomatedResourceDetector();
-				bool constructor = o->GetConstructionSpeed() > 0;
+				bool constructor = o->GetOperationSpeed(Objects::Component::Construct) > 0;
 				if (!surveyor && !constructor)
 					return;
 				const Grid::LCellIdI&loc =o->GetLastPointOfOrigin();

@@ -435,7 +435,6 @@ namespace Objects
 		//MobileEntity overrides:
 		virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return Grid::LCellIdI(focus.stackID,GetStructureBuildHeight(focus));}
 		virtual int				GetMovementStepsPerRound() const override {return 1;}
-		virtual int				GetConstructionSpeed() const override {return 10;}
 
 
 		//WorldEntity overrides:
@@ -479,7 +478,6 @@ namespace Objects
 
 		//MobileEntity overrides:
 		virtual int				GetMovementStepsPerRound() const override {return 1;}
-		virtual int				GetConstructionSpeed() const override {return 0;}
 
 
 		//BaseEntity overrides:
@@ -517,7 +515,6 @@ namespace Objects
 	public:
 		//MobileEntity overrides:
 		virtual int				GetMovementStepsPerRound() const override {return 1;}
-		virtual int				GetConstructionSpeed() const override {return 0;}
 
 		//BaseEntity overrides:
 		virtual String			GetTypeName() const override {return "Ragnarök";}
@@ -554,7 +551,6 @@ namespace Objects
 
 		//MobileEntity overrides:
 		virtual int				GetMovementStepsPerRound() const override {return 1;}
-		virtual int				GetConstructionSpeed() const override {return ProductionSpeed;}
 
 		//BaseEntity overrides:
 		virtual String			GetTypeName() const override {return "Star Port";}
