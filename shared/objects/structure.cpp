@@ -1202,7 +1202,7 @@ namespace Objects
 			if (reactor)
 			{
 				connectedToReactor = reactor;
-				#ifdef CLIENT
+				#ifdef HAS_WINDOW
 					changed = anyChanged = true;
 				#endif
 			}
@@ -1221,7 +1221,7 @@ namespace Objects
 				if (core && core->location.height == location.height)
 				{
 					connectedToReactor = core;
-					#ifdef CLIENT
+					#ifdef HAS_WINDOW
 						changed = anyChanged = true;
 					#endif
 					return;
