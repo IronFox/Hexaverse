@@ -133,6 +133,7 @@ namespace Objects
 
 	/*static*/ void			StructureCommand::UpdateTexture(EntityCommand&target, const PStructure&structure, bool isPrototype, const float4&tone /*= float4(0)*/)
 	{
+		ASSERT_NOT_NULL__(structure->localizableShape);
 		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(structure));
 
 		UpdateStateColors(structure,tone,isPrototype);
