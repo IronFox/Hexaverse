@@ -116,7 +116,7 @@ namespace Objects
 				bool				AttackNext(Grid::LCellIdI target, bool autoTarget);
 			#endif
 
-			virtual void			GetUpkeep(ResourceVector&v) const override {Super::GetUpkeep(v); v.level[Resource::Fuel] = GetConstructionCost()/4;}
+			virtual void			GetUpkeep(ResourceVector&v) const override {Super::GetUpkeep(v); v.level[Resource::Fuel] = GetConstructionCost()/40;}
 
 			//new overridables:
 			#ifndef CLIENT

@@ -58,7 +58,7 @@ namespace Objects
 			virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = 0.f; return To<const Station>::Cast(shared_from_this());}
 			virtual bool		IsOrbital() const override {return true;}
 			virtual bool		HasFoundation() const override {return false;}
-			virtual void		GetUpkeep(ResourceVector&v) const override {Super::GetUpkeep(v); v.level[Resource::Fuel] = CeilDiv(GetConstructionCost(),4);}
+			virtual void		GetUpkeep(ResourceVector&v) const override {Super::GetUpkeep(v); v.level[Resource::Fuel] = CeilDiv(GetConstructionCost(),40);}
 
 
 			#ifndef CLIENT
