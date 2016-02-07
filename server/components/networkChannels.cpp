@@ -1201,6 +1201,21 @@ namespace Receiver
 
 	}
 
+	Objects::Component::operation_t GetOperationAffinity(ConstName cname)
+	{
+		switch (cname)
+		{
+			case ConstName::Job_BuildRoad:
+			case ConstName::Job_BuildWallUp:
+			case ConstName::Job_BuildHorizontalWall:
+				return Objects::Component::TerrainAdd;
+			case ConstName::Job_DigDown:
+				return Objects::Component::TerrainRemove;
+			case ConstName::Job_Construct:
+				return Objects::Component::Construct;
+		}
+		return Objects::Component::TerrainRemove;	//shouldn't happen, but not our case to handle here
+	}
 
 	void	SignalNewJob(Protocol::StandardJob&sjob, TCP::Peer&peer)
 	{
@@ -1215,9 +1230,9 @@ namespace Receiver
 			LogEvent(EventClass::Preset::commandRejected,peer,e,"Tried to issue mobile entity job on non-vehicle entity");
 			return;
 		}
-		if (!v->GetConstructionSpeed())
+		if (!v->GetOperationSpeed(GetOperationAffinity(sjob.jobName)))
 		{
-			LogEvent(EventClass::Preset::commandRejected,peer,e,"This mobile entity cannot build");
+			LogEvent(EventClass::Preset::commandRejected,peer,e,"This mobile entity cannot perform the requested operation");
 			return;
 		}
 		if (v->myTasks.Count() >= Objects::MaxProductionTasks)
@@ -1363,7 +1378,10 @@ namespace Receiver
 			LogEvent(EventClass::Preset::commandRejected,peer,e,"Tried to issue vehicle job on non-vehicle entity");
 			return;
 		}
-		if (!v->turret->constructionSpeed)
+
+		Objects::CursorMode mode = (Objects::CursorMode)mod.mode.value;
+
+		if (!v->turret->CanDo(Objects::VehicleJob::AlterTerrain::GetOperationAffinity(mode)))
 		{
 			LogEvent(EventClass::Preset::commandRejected,peer,e,"This vehicle cannot shape terrain");
 			return;
@@ -1379,7 +1397,7 @@ namespace Receiver
 			}
 		}
 	
-		Objects::PVehicleJob job(new Objects::VehicleJob::AlterTerrain(*v,(Objects::Vehicle::mode_t)mod.mode.value,mod.cells));
+		Objects::PVehicleJob job(new Objects::VehicleJob::AlterTerrain(*v,mode,mod.cells));
 
 		v->RegisterNewJob("",job,nullptr);
 

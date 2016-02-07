@@ -18,25 +18,17 @@ namespace Objects
 	namespace VehicleJob
 	{
 
-		/**/					BaseJob::BaseJob(int mineralCosts, const MobileEntity&v, bool actuallyConsumesMinerals, Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):
+		/**/					BaseJob::BaseJob(int mineralCosts, const MobileEntity&v, Component::operation_t op, Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):
 										roundsToJobCompletion(-1),mineralCostLeft(0),
 										jobAutoCompletion(jobAutoCompletion),movesToFocusWhenDone(movesToFocusWhenDone)
 		{
-			ResetMineralsAndRoundsLeft(mineralCosts,v,actuallyConsumesMinerals);
+			ResetMineralsAndRoundsLeft(mineralCosts,v,op);
 		}
 
-		void BaseJob::ResetMineralsAndRoundsLeft(int mineralCosts, const MobileEntity&v, bool actuallyConsumesMinerals)
+		void BaseJob::ResetMineralsAndRoundsLeft(int mineralCosts, const MobileEntity&v, Component::operation_t op)
 		{
-			if (mineralCosts)
-			{
-				int speed = v.GetConstructionSpeed();
-				roundsToJobCompletion = mineralCosts / speed;
-				if (mineralCosts % speed)
-					roundsToJobCompletion++;
-			}
-			else
-				roundsToJobCompletion = 0;
-			mineralCostLeft = actuallyConsumesMinerals ? mineralCosts : 0;
+			roundsToJobCompletion = v.GetOperationRounds(mineralCosts,op);
+			mineralCostLeft = op != Component::TerrainRemove ? mineralCosts : 0;
 		}
 
 
@@ -55,7 +47,7 @@ namespace Objects
 				return TerminalFailure;
 			}
 
-			int withdrawNow = std::min(mineralCostLeft,v.GetConstructionSpeed());
+			int withdrawNow = std::min(mineralCostLeft,v.GetOperationSpeed(GetOperationAffinity()));
 
 
 			#ifdef CONNECTOR_LESS
@@ -114,7 +106,7 @@ namespace Objects
 			{
 				if (mineralCostLeft > 0 && isNewRound)
 				{
-					int capacity = v.GetConstructionSpeed();
+					int capacity = v.GetOperationSpeed(GetOperationAffinity());
 					ChangeStorage(v,v.timeAt,Resource::Minerals,-capacity);
 					mineralCostLeft -= capacity;
 				}
@@ -785,7 +777,7 @@ namespace Objects
 				target->health = maxHealth;
 				target->RegisterChange(WorldEntity::HealthChanged,v.timeAt);
 				ChangeStorage(v,v.timeAt, Resource::Minerals,-cost);
-				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": '"+target->GetNiceName()+"' repaired");
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ) ,&v,this->GetName()+ ": '"+target->GetNiceName()+"' repaired");
 				return JobDone;
 			}
 
@@ -926,13 +918,13 @@ namespace Objects
 
 		/*virtual override*/ void			Construct::Restart(const MobileEntity&v)
 		{
-			Super::ResetMineralsAndRoundsLeft(constructWhat?constructWhat->GetConstructionCost():0,v,true);
+			Super::ResetMineralsAndRoundsLeft(constructWhat?constructWhat->GetConstructionCost():0,v,GetOperationAffinity());
 		}
 
 
 
 		/**/					Construct::Construct(MobileEntity&v, const PStructure&c) : 
-			BaseJob(c->GetConstructionCost(),v,true,!!To<Connector>::DynamicCast(c) ? Autocomplete::Always : Autocomplete::IfSatellite,false),constructWhat(c)
+			BaseJob(c->GetConstructionCost(),v,GetOperationAffinity(),!!To<Connector>::DynamicCast(c) ? Autocomplete::Always : Autocomplete::IfSatellite,false),constructWhat(c)
 		{
 			useID.Generate();
 		}
@@ -1216,7 +1208,7 @@ namespace Objects
 			mineralCostLeft = 0;
 
 			const Grid::WorldData&world = v.owner->currentState;
-			int speed = v.GetConstructionSpeed();
+			int speed = v.GetOperationSpeed(GetOperationAffinity());
 			//if (destination != v.location)
 			{
 				auto next = path.IsNotEmpty() ? *path.begin() : origin;

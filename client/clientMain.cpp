@@ -118,11 +118,11 @@ SpinLock	eventLock;
 					color = float3(0,1,0);
 				break;
 				case EventFlavor::Loss:
-					color = float3(1,0,0);
+					color = float3(0.9,0.1,0.1);
 				break;
 				case EventFlavor::SystemError:
 				case EventFlavor::UserError:
-					color = float3(1,0,0.5);
+					color = float3(1,0.1,0.2);
 				break;
 				case EventFlavor::Neutral:
 					if (type.significance == EventSignificance::Important)
@@ -1152,11 +1152,12 @@ void	OnAppear(const Objects::PWorldEntity&e)
 				{
 					if (v->owner != f)
 						return;
-					if (!v->GetConstructionSpeed())
-						return;
 					if (v->myTasks.IsEmpty() || !v->myTasks.Peek().job)
 						return;
-					change.level[Objects::Resource::Minerals] -= std::min(v->GetConstructionSpeed(), v->myTasks.Peek().job->mineralCostLeft);
+					int opSpeed = v->GetOperationSpeed(v->myTasks.Peek().job->GetOperationAffinity());
+					if (!opSpeed)
+						return;
+					change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->mineralCostLeft);
 
 				});
 
@@ -2618,7 +2619,7 @@ String GenerateOreName(Random&random)
 		{
 			return false;
 		}
-		if (v->GetConstructionSpeed())
+		if (v->GetOperationSpeed(Objects::Component::Construct))
 			return true;
 		if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsNonAutomatedResourceDetector())
 			return true;

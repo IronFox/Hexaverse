@@ -69,7 +69,7 @@ void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromSto
 		Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
 	}
 
-	if (Game::Config::basesRequired && v.GetConstructionSpeed() && !v.owner->hasTerraformer)
+	if (Game::Config::basesRequired && v.GetOperationSpeed(Objects::Component::Construct) && !v.owner->hasTerraformer)
 	{
 		LogEvent(EventSignificance::Debug,_v.get(),"Recognized as terraformer. Reevaluating survivial conditions");
 		v.owner->hasTerraformer = true;
@@ -763,7 +763,7 @@ void EstimatePresence(Objects::WorldEntity&e, const Grid::LCellIdI&location, flo
 						hostileNearNexus[i] += opacity * impact;
 
 						Objects::PTurretBase b = e.GetTurretBase();
-						if (b && b->turret->constructionSpeed)
+						if (b && b->turret->CanDo(Objects::Component::Construct))
 						{
 							constructorNearNexus[i] += Grid::powi(opacity,64);
 						}
