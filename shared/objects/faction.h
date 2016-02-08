@@ -212,6 +212,7 @@ namespace Objects
 			Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
 										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
 			Buffer0<Orbital::WShip>		orbitalShips;	//overlaps with @a allMobiles
+			Buffer0<Orbital::WStation>	orbitalStations;	//overlaps with @a structures
 			Buffer0<Orbital::WHub>		orbitalHubs;	//overlaps with @a structures
 			Buffer0<WStructure>			structures;
 

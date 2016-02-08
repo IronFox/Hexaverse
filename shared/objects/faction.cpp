@@ -209,6 +209,12 @@ namespace Objects
 			if (e->IsOrbital())
 			{
 				Orbital::PStation s = To<Orbital::Station>::Cast(e);
+				foreach (this->orbitalStations,sat)
+					if (sat->lock() == e)
+					{
+						this->orbitalStations.erase(sat);
+						break;
+					}
 				if (s->IsHub())
 				{
 					foreach (this->orbitalHubs,sat)
@@ -300,6 +306,7 @@ namespace Objects
 				Orbital::PStation st = To<Orbital::Station>::Cast(s);
 				if (st->IsHub())
 					this->orbitalHubs << To<Orbital::Hub>::Cast(st);
+				this->orbitalStations << st;
 			}
 		}
 		void		Faction::RegisterActiveMobileGain(const PWorldEntity&e)
@@ -444,6 +451,12 @@ namespace Objects
 
 		void		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/, bool stack/*=true*/, index_t incStackBy/*=1*/)
 		{
+			if (e->IsOrbital())
+			{
+				bool brk = true;
+
+			}
+
 			SeeingReference&ref = seeing.Set(e);
 
 			if (ref.sightLevel == 0 || stack)
@@ -561,22 +574,36 @@ namespace Objects
 		count_t		Faction::CountSatelliteCoverage(const TVec3<>&center)	const
 		{
 			count_t rs = 0;
-			ForeachOrbitalWorldEntity([&rs,center](const PWorldEntity&sat)
+			foreach (this->orbitalShips,sat)
 			{
-				if (Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Contains(center))
+				Orbital::PShip sh = sat->lock();
+				if (sh && Sphere<>(sh->GetWorldPosition(),sh->GetScanningRange()).Contains(center))
 					rs++;
-			});
+			};
+			foreach (this->orbitalStations,sat)
+			{
+				Orbital::PStation st = sat->lock();
+				if (st && Sphere<>(st->GetWorldPosition(),st->GetScanningRange()).Contains(center))
+					rs++;
+			};
 			return rs;
 		}
 
 		count_t		Faction::CountSatelliteCoverage(const Sphere<>&sphere)	const
 		{
 			count_t rs = 0;
-			ForeachOrbitalWorldEntity([&rs,sphere](const PWorldEntity&sat)
+			foreach (this->orbitalShips,sat)
 			{
-				if (Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Intersects(sphere))
+				Orbital::PShip sh = sat->lock();
+				if (sh && Sphere<>(sh->GetWorldPosition(),sh->GetScanningRange()).Intersects(sphere))
 					rs++;
-			});
+			};
+			foreach (this->orbitalStations,sat)
+			{
+				Orbital::PStation st = sat->lock();
+				if (st && Sphere<>(st->GetWorldPosition(),st->GetScanningRange()).Intersects(sphere))
+					rs++;
+			};
 			return rs;
 		}
 
@@ -773,6 +800,7 @@ namespace Objects
 			markerMap.Clear();
 			nexusControl = acquiringNexusControl = 0;
 			deathInRounds = 0;
+			this->orbitalStations.Clear();
 			this->orbitalHubs.Clear();
 			this->orbitalShips.Clear();
 			allMobiles.Clear();
@@ -1242,12 +1270,6 @@ namespace Objects
 					{
 						ASSERT1__(prototype, referenceType);
 						m.visualization = prototype->CreateNewInstance(OwnerParameter(), location, 0);
-						m.visualization->id = referenceID;
-						if (m.visualization->IsMobile())
-							To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
-						m.visualization->health = -(int)m.age;
-						m.visualization->isMine = type == Type::EntityDeath;
-						m.visualization->UpdateNiceName();
 						if (m.visualization->IsStructure())
 							structureGhosts << To<Structure>::Cast(m.visualization);
 						elif (m.visualization->IsMobile())
@@ -1259,6 +1281,8 @@ namespace Objects
 
 				if (m.visualization)
 				{
+					if (m.visualization->IsMobile())
+						To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
 					m.visualization->id = referenceID;
 					m.visualization->owner = referenceOwnerID == TUniqueID::Empty() ? PFaction() : Faction::GetOrCreate(referenceOwnerID);
 					m.visualization->health = -(int)m.age;
