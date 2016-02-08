@@ -187,7 +187,7 @@ namespace Test
 	Objects::PWorldEntity CreateStructure(const Objects::OwnerParameter&owner, const Objects::PStructure&prototype, const Grid::LCellIdI&location)
 	{
 		Objects::PStructure result(To<Objects::Structure>::Cast( prototype->CreateNewInstance(owner, location, 0)));
-		result->CorrectTerrain(true, 0, true);
+		result->CorrectTerrain(true, 0);
 		Objects::InsertConstructed(result, 0);
 		return result;
 	}

@@ -855,7 +855,7 @@ namespace Game
 		location.height = h;
 		std::shared_ptr<Objects::NexusPort> port = To<Objects::NexusPort>::Cast(
 		Objects::NexusPort::globalPrototype->CreateNewInstance(Objects::Faction::nexus,location,0));
-		port->CorrectTerrain(false,0,true);
+		port->CorrectTerrain(false,0);
 		Objects::InsertConstructed(port,0);
 //		if (enableNexus)
 		{
@@ -1002,7 +1002,7 @@ namespace Game
 									Objects::GetPrototypeByName(ConstName::Type_LauncherTower)->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								tower->CorrectTerrain(false,0,true);
+								tower->CorrectTerrain(false,0);
 								Objects::InsertConstructed(tower,0);
 							#endif
 						}
@@ -1012,7 +1012,7 @@ namespace Game
 								Objects::GetPrototypeByName(ConstName::Type_RadarTower)->CreateNewInstance(Objects::Faction::nexus,
 								Grid::LCellIdI(i,h),
 								0));
-							tower->CorrectTerrain(false,0,true);
+							tower->CorrectTerrain(false,0);
 							Objects::InsertConstructed(tower,0);
 						}
 
@@ -1024,7 +1024,7 @@ namespace Game
 									Objects::MunitionStorage::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								storage->CorrectTerrain(false,0,true);
+								storage->CorrectTerrain(false,0);
 								storage->storage = storage->maxStorage;
 								Objects::InsertConstructed(storage,0);
 								alwaysOn << storage;
@@ -1035,7 +1035,7 @@ namespace Game
 									Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								generator->CorrectTerrain(false,0,true);
+								generator->CorrectTerrain(false,0);
 								Objects::InsertConstructed(generator,0);
 								generatorCount++;
 								if (generatorCount < 4)
@@ -1050,7 +1050,7 @@ namespace Game
 									Objects::Connector::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								connector->CorrectTerrain(false,0,true);
+								connector->CorrectTerrain(false,0);
 								Objects::InsertConstructed(connector,0);
 								connectorCount++;
 							}
@@ -1063,7 +1063,7 @@ namespace Game
 									Objects::MunitionFactory::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								factory->CorrectTerrain(false,0,true);
+								factory->CorrectTerrain(false,0);
 								Objects::InsertConstructed(factory,0);
 								alwaysOn << factory;
 							}
@@ -1073,7 +1073,7 @@ namespace Game
 									Objects::VehiclePlant::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								plant->CorrectTerrain(false,0,true);
+								plant->CorrectTerrain(false,0);
 								Objects::InsertConstructed(plant,0);
 								factoryCount++;
 							}
@@ -1208,19 +1208,19 @@ namespace Game
 
 			Objects::PMine mine = To<Objects::Mine>::Cast(
 				Objects::Mine::globalPrototype->CreateNewInstance(f,location,0));
-			mine->CorrectTerrain(false,0,true);
+			mine->CorrectTerrain(false,0);
 			Objects::InsertConstructed(mine,0);
 			mine->SetEnabledOverride(true);
 				
 			Objects::PGenerator generator = To<Objects::Generator>::Cast(
 				Objects::Generator::globalPrototype->CreateNewInstance(f,at1,0));
-			generator->CorrectTerrain(false,0,true);
+			generator->CorrectTerrain(false,0);
 			Objects::InsertConstructed(generator,0);
 			generator->SetEnabledOverride(true);
 				
 			std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
 				Objects::MineralContainer::globalPrototype->CreateNewInstance(f,at2,0));
-			container->CorrectTerrain(false,0,true);
+			container->CorrectTerrain(false,0);
 			Objects::InsertConstructed(container,0);
 			Objects::RefreshCompoundCoverage(0);
 
