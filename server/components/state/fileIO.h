@@ -7,13 +7,7 @@
 
 namespace FileIO
 {
-	static const UINT32	SupportedFileVersion = 1042;
 
-	namespace Milestones
-	{
-		static const UINT32	FirstVersionWithVariables = 1042;
-
-	}
 
 	namespace Config
 	{

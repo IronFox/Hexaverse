@@ -650,10 +650,7 @@ namespace Objects
 		Super::OnConstructionFinished(atTime);
 
 
-		if (IsBroad())
-			CommonRegisterBroadStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
-		else
-			CommonRegisterNarrowStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
+		CommonRegisterStructure(location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
 
 		TStructureNeighborhood	neighborhood;
 		GetNeighborhood(owner,ConnectsToDifferentOwnership(), location, neighborhood);
@@ -724,10 +721,7 @@ namespace Objects
 	{
 		Super::OnDestroy(atTime);
 		LogEvent(EventSignificance::Debug,this,"Unregistering at time="+String(atTime)+"...");
-		if (IsBroad())
-			CommonUnregisterBroadStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
-		else
-			CommonUnregisterNarrowStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
+		CommonUnregisterStructure(location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
 
 		LogEvent(EventClass::Preset::debug,this,"Disconnecting...");
 		DisconnectFromNeighborhood(atTime);
@@ -1097,32 +1091,9 @@ namespace Objects
 
 
 
-	/*static*/ void Structure::ChangeNarrowStructCount(const Grid::LCellIdI&location, int height, bool hasFoundation, int changeDirection, float atTime)
+	/*static*/ void Structure::ChangeStructCount(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime)
 	{
-		const int lowEdge = hasFoundation ? -1 : 0;
-		#ifdef HYBRID_GRID
-			const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-		#else
-			const UINT32 higher = location.cellID;
-		#endif
-		for (int h = lowEdge; h < height; h++)
-			Grid::actualWorld.cellStack[higher].ChangeStructureCounterI(location.height+h,changeDirection);
-		InvalidateTerrain(location,atTime);
-	}
-
-	/*static*/ void	Structure::CommonRegisterNarrowStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime)
-	{
-		ChangeNarrowStructCount(location,height,hasFoundation,+1,atTime);
-	}
-	/*static*/ void	Structure::CommonUnregisterNarrowStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime)
-	{
-		ChangeNarrowStructCount(location,height,hasFoundation,-1,atTime);
-	}
-
-
-	/*static*/ void Structure::ChangeBroadStructCount(const Grid::LCellIdI&location, int height, bool hasFoundation, int changeDirection, float atTime)
-	{
-		LogEvent(EventSignificance::Debug,nullptr,"ChangeBroadStructCount("+location.ToString()+", height="+String(height)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
+		LogEvent(EventSignificance::Debug,nullptr,"ChangeStructCount("+location.ToString()+", broadHeight="+String(broadHeight)+", height="+String(totalHeight)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
 
 		{
 			const int lowEdge = hasFoundation ? -1 : 0;
@@ -1132,36 +1103,39 @@ namespace Objects
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
 					Grid::CellStack&stack = Grid::actualWorld.cellStack[n.neighborID[j]];
-					for (int h = lowEdge; h < height; h++)
+					for (int h = lowEdge; h < broadHeight; h++)
 						stack.ChangeStructureCounterI(location.height+h,changeDirection);
 				}
 				Grid::CellStack&stack = Grid::actualWorld.cellStack[higher];
 			#else
 				Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
 			#endif
-			for (int h = lowEdge; h < height; h++)
+			for (int h = lowEdge; h < broadHeight; h++)
 				stack.ChangeStructureCounterI(location.height+h,2*changeDirection);
+			for (int h = broadHeight; h < totalHeight; h++)
+				stack.ChangeStructureCounterI(location.height+h,changeDirection);
 		}
+
 		InvalidateTerrain(location,atTime);
 	}
 
-	/*static*/ void Structure::CommonRegisterBroadStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime)
+	/*static*/ void	Structure::CommonRegisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
 	{
-		ChangeBroadStructCount(location,height,hasFoundation,+1,atTime);
+		ChangeStructCount(location,broadHeight, totalHeight,hasFoundation,+1,atTime);
+	}
+	/*static*/ void	Structure::CommonUnregisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
+	{
+		ChangeStructCount(location,broadHeight, totalHeight,hasFoundation,-1,atTime);
 	}
 
-	/*static*/ void Structure::CommonUnregisterBroadStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime)
-	{
-		ChangeBroadStructCount(location,height,hasFoundation,-1,atTime);
-	}
 
-	/*static*/	Structure::placement_t	Structure::CommonCheckStructurePlacement(const Grid::LCellIdI&location, int height, bool isBroad)
+
+	/*static*/	Structure::placement_t	Structure::CommonCheckStructurePlacement(const Grid::LCellIdI&location, int broadHeight, int totalHeight)
 	{
 		if (location.height == badHeight)
 			return BadHeight;
 		#ifdef HYBRID_GRID
 			const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-			if (isBroad)
 			{
 				const auto&n = Grid::high.grid.GetCell(higher).neighborhood;
 				for (int j = 0; j < n.numNeighbors; j++)
@@ -1171,7 +1145,7 @@ namespace Objects
 	//					return LacksFullFoundation;
 					if (stack.GetCellI(location.height).content != Grid::CellStack::Cell::Content::Clear)
 						return GroundLevelObstruction;
-					for (int h = 1; h < height; h++)
+					for (int h = 1; h < broadHeight; h++)
 						if (stack.GetCellI(location.height + h).content != Grid::CellStack::Cell::Content::Clear)
 							return UpperLevelObstruction;
 				}
@@ -1184,7 +1158,7 @@ namespace Objects
 		//	return LacksFullFoundation;
 		if (stack.GetCellI(location.height).content != Grid::CellStack::Cell::Content::Clear)
 			return GroundLevelObstruction;
-		for (int h = 1; h < height; h++)
+		for (int h = 1; h < totalHeight; h++)
 			if (stack.GetCellI(location.height + h).content != Grid::CellStack::Cell::Content::Clear)
 				return UpperLevelObstruction;
 
@@ -1795,7 +1769,7 @@ namespace Objects
 	#ifndef CLIENT
 
 	
-		/*static*/	void Structure::CommonFixTerrain(const WorldEntity*e, const Grid::LCellIdI&location,  const Grid::Content foundationType, int height, bool signalChange, float atTime, bool deep, bool requireCentralBlock, bool broadFoundation)
+		/*static*/	void Structure::CommonFixTerrain(const WorldEntity*e, const Grid::LCellIdI&location,  int broadHeight, int totalHeight, bool signalChange, float atTime)
 		{
 			#ifdef HYBRID_GRID
 				const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
@@ -1805,30 +1779,11 @@ namespace Objects
 			#endif
 			//const Grid::Content::type_t foundationType = s.GetFoundationType();
 			bool anyChanged = false;
-			const int needStrength = Grid::CellStack::Cell::typeStrength[foundationType];
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
 					Grid::CellStack&stack = Grid::actualWorld.cellStack[n.neighborID[j]];
-					if (broadFoundation && stack.GetCellI(location.height - 1).GetStrength() < needStrength)
-					{
-						LogEvent(EventSignificance::Common,e,"Strengthening cell "+Grid::HCellIdI(n.neighborID[j],location.height-1).ToString());
-
-						anyChanged |= stack.LocalOverwrite(location.height - 1, foundationType);
-						if (deep)
-						{
-							int h = location.height-2;
-							int bottom = -Grid::CellStack::HalfRange;
-							if (!Grid::CellStack::bottom.IsClearOrWaterIgnoreStructure())
-								//bottom = h;
-								while (h >= bottom && stack.GetCellI(h).IsClearOrWater())
-								{
-									anyChanged |= stack.LocalOverwrite(h,  Grid::CellStack::Cell::Content::Earth);
-									h--;
-								}
-						}
-					}
-					for (int a = 0; a < height; a++)
+					for (int a = 0; a < broadHeight; a++)
 						if (stack.GetCellI(location.height+a).content != Grid::Content::Clear)
 						{
 							LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(n.neighborID[j],location.height+a).ToString());
@@ -1855,7 +1810,7 @@ namespace Objects
 			//			}
 			//	}
 			//}
-			for (int a = 0; a < height; a++)
+			for (int a = 0; a < totalHeight; a++)
 				if (stack.GetCellI(location.height+a).content != Grid::Content::Clear)
 				{
 					LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(higher,location.height+a).ToString());
@@ -1886,23 +1841,9 @@ namespace Objects
 		}
 
 
-		void					Tower::CorrectTerrain(bool signalChange, float atTime, bool deep)
-		{
-			Structure::CommonFixTerrain(this,location, Grid::Content::Foundation,2,signalChange,atTime,deep,false,false);
-		}
 	#endif
 
 	
-	/*virtual override*/ bool				Tower::SignalEnvironmentChange(const TStructureNeighborhood&neighborhood,float atTime)
-	{
-		#ifndef CLIENT
-			CorrectTerrain(false,atTime,false);
-		#endif
-
-
-		return Super::SignalEnvironmentChange(neighborhood,atTime);
-	}
-
 	/*virtual*/ void				Structure::SignalLostNeighbor(const PStructure&other, float&atTime)
 	{
 		atTime += timeEpsilon;
@@ -1933,23 +1874,14 @@ namespace Objects
 
 	/*virtual*/ bool				Structure::SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime)
 	{
+		#ifndef CLIENT
+			CorrectTerrain(false,atTime);
+		#endif
 		#ifdef HYBRID_GRID
 			const UINT32 high = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
 			const auto&n = Grid::high.grid.GetCell(high).neighborhood;
 		#endif
-		//if (!Grid::cellStack[high].GetCellI(location.height - 1).IsSolid() || Grid::cellStack[high].GetCellI(location.height).IsSolid())	//must be implemented by derivative structure, if necessary
-		//{
-		//	if (Grid::cellStack[high].GetCellI(location.height).IsSolid())
-		//	{
-		//		Grid::cellStack[high].Overwrite(location.height, Grid::CellStack::Cell::Content::LightStructure);
-		//	}
-		//	if (!Grid::cellStack[high].GetCellI(location.height - 1).IsSolid())
-		//		Grid::cellStack[high].Overwrite(location.height - 1, Grid::CellStack::Cell::Content::Foundation);
-
-		////	return false;
-		//}
-		//foreach(connectedTo, c)
-
+		
 		auto _this = To<Structure>::Cast(shared_from_this());
 		count_t limit = connectedTo.Count();
 		foreach(neighborhood, candidate)

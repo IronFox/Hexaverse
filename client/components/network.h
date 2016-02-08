@@ -31,7 +31,6 @@ namespace Network
 	extern String				myIDString,serverIDString,worldIDString,activeTokenString;
 	
 	extern GenericHashTable<TUniqueID,CryptographicID,TUniqueID>	accessMap;
-	extern GenericHashTable<TUniqueID,Objects::OwnerParameter,TUniqueID>	factionMap;
 
 
 	extern Protocol::GameProgress	gameProgress;

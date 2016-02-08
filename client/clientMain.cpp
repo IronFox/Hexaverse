@@ -905,6 +905,7 @@ void FillMarker(Protocol::Marker&marker, const Objects::PWorldEntity&e, Protocol
 {
 	marker.location = e->location;
 	outE.id = e->id;
+	outE.owner = e->owner->id;
 	Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
 	if (!v)
 	{
@@ -985,22 +986,25 @@ void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 				static_assert(Objects::Marker::Type::HostileContact == 1, "Please update marker logic");
 				FillMarker(marker, e, marker.data.Set1());
 				SignalMarkerCreation(marker);
+
+				LogEvent(EventSignificance::Debug,e.get(),"Created hostile contact marker for "+e->GetName()+" since original disappeared");
 			}
 		}
 }
 
 void	OnAppear(const Objects::PWorldEntity&e)
 {
-	if (!e->isMine)
+	//fix: doesn't matter if e->isMine is true or not. Must ALWAYS remove existing markers if we see the original again.
+	//reason for this problem: entity ownership change causes vanishing, and thus ghost creation, which was not removed here, because e was suddenly mine.
+	Objects::Marker*m = Objects::Marker::FindByReference(e->id);
+	if (m)
 	{
-		Objects::Marker*m = Objects::Marker::FindByReference(e->id);
-		if (m)
-		{
-			LogEvent(EventSignificance::Debug,e.get(),"Deleting marker "+m->GetName()+" since original reappeared");
-			SignalMarkerDeletion(m->id);
-		}
+		LogEvent(EventSignificance::Debug,e.get(),"Deleting marker "+m->GetName()+" since original reappeared");
+		SignalMarkerDeletion(m->id);
 	}
-	else
+
+
+	if (e->isMine)
 	{
 		#if 0
 		if (e->IsStructure())
