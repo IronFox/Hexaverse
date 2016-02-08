@@ -159,13 +159,13 @@ namespace Objects
 				sourceCompounds.Clear();
 				if (m.IsVehicle())
 				{
-					Grid::low.GenerateVolume(Sphere<>(WorldEntity::GetWorldPosition(loc),WirelessTransferRange),desc);
+					Grid::low.GenerateVolume(Sphere<>(WorldEntity::GetWorldPosition(loc),GroundWirelessTransferRange),desc);
 					GetOwnCompoundsIn(m.owner,desc);
 				}
 				else
 					if (m.IsOrbital())
 					{
-						Grid::low.GenerateOrbitalDisk(Sphere<>(m.system.w.xyz,WirelessTransferRange),Orbital::BaseHeight, desc);
+						Grid::low.GenerateOrbitalDisk(Sphere<>(m.system.w.xyz,OrbitalWirelessTransferRange),Orbital::BaseHeight, desc);
 						GetOwnCompoundsIn(m.owner,desc);
 					}
 			#endif

@@ -1219,10 +1219,6 @@ namespace Objects
 
 		if (selectedEntity)
 		{
-			float r = WirelessTransferRange;
-			if (extendedShadow)
-				r += RangeShadowExtension;
-
 			float scanningRange = selectedEntity->GetScanningRange();
 			if (extendedShadow)
 				scanningRange += RangeShadowExtension;
@@ -1249,10 +1245,6 @@ namespace Objects
 				}
 				RenderRangeCylinder(selectedEntity->system.z.xyz,bottomR,topR,bottom,top,color);
 			}
-
-
-
-
 		}
 		float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,0,0,0.8f);
 		if (selectedEntity)
@@ -1824,9 +1816,14 @@ namespace Objects
 			if (extendedShadow)
 				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
-			float r = WirelessTransferRange;
+			int rg = GroundWirelessTransferRange,
+				ro = OrbitalWirelessTransferRange;
 			if (extendedShadow)
-				r += RangeShadowExtension;
+			{
+				rg += RangeShadowExtension;
+				ro += RangeShadowExtension;
+			}
+
 
 			for (auto ci : compoundScope)
 			{
@@ -1835,6 +1832,7 @@ namespace Objects
 				foreach(c->allStructures, _s)
 				{
 					Structure&s = *_s->lock();
+					const int r = (s.IsOrbital() ? ro : rg);
 					RenderRangeSphere(s.GetWorldPosition(),r,float4());
 				}
 
@@ -1846,6 +1844,7 @@ namespace Objects
 				foreach(c->allStructures, _s)
 				{
 					Structure&s = *_s->lock();
+					const int r = (s.IsOrbital() ? ro : rg);
 					RenderRangeSphere(s.GetWorldPosition(),r,color);
 				}
 

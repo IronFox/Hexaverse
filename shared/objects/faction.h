@@ -12,7 +12,8 @@ namespace Objects
 	//typedef std::weak_ptr<Faction>		WFaction;
 
 	#ifdef WIRELESS_VEHICLES
-		static const int			WirelessTransferRange = 6;
+		static const int			GroundWirelessTransferRange = 6,
+									OrbitalWirelessTransferRange = 18;
 	#endif
 
 	
