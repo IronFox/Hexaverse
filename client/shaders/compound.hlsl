@@ -13,10 +13,6 @@ cbuffer Tint
 	float4 Tint;
 };
 
-cbuffer WirelessRange
-{
-	float4 WirelessRange;
-};
 
 struct A2V
 {
@@ -57,14 +53,11 @@ float4 psMain(V2P input, float4 screenSpace : SV_Position) : SV_TARGET
 	float a = smoothstep(5.0 - step,5.0+step,z);
 	float b = 1.0 - smoothstep(15.0 - step,15.0+step,z);
 	
-	float dist = sqr(input.world - WirelessRange.xyz) / (WirelessRange.w);	//.w already squared
-	step = max(abs(ddx(dist)),abs(ddy(dist)));
-	float opacity = 1.0 - 0.5 * smoothstep(1.0-step,1.0+step,dist);
-	float3 tint = Tint.rgb * opacity;
+	float3 tint = Tint.rgb;
 	float stripe = a * b;
 	stripe = 0.5 + 0.5 * stripe;
 	
-	return float4(tint,stripe * Tint.a * opacity);	//if this works we move on
+	return float4(tint,stripe * Tint.a );	//if this works we move on
 }
 
 

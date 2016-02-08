@@ -35,7 +35,6 @@ namespace Objects
 
 	DX11::ObjectBuffer<float4>	keyColor, overallTint,
 								cylinderConfig,
-								wirelessRange,
 								beamBottomColor,
 								beamTopColor;
 
@@ -176,7 +175,6 @@ namespace Objects
 		overallTint.Clear();
 		beamBottomColor.Clear();
 		beamTopColor.Clear();
-		wirelessRange.Clear();
 		resourceArrowTex.Clear();
 		resourceArrowInstruction.Clear();
 
@@ -263,7 +261,6 @@ namespace Objects
 		keyColor.Create(float4(0));
 		overallTint.Create(float4(1));
 		cylinderConfig.Create(float4(1));
-		wirelessRange.Create(float4(0,0,0,1));
 		{
 			Engine::VertexBinding binding;
 			binding.color.set(6, 4);
@@ -469,7 +466,6 @@ namespace Objects
 				DX11::Shader::Binding(overallTint, "Tint"),
 				DX11::Shader::Binding(Grid::Instruction::sunDirection,"Sun"),
 				DX11::Shader::Binding(Grid::Instruction::sunColor,"SunColor"),
-				DX11::Shader::Binding(wirelessRange, "WirelessRange"),
 			};
 
 			compoundShader.binding = stdVehicleShader.binding;
@@ -1726,20 +1722,8 @@ namespace Objects
 			return;
 
 
-		overallTint.Update(float4(1));
-
 		display.StoreRendererState();
-		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-		display.SetRasterizer(true,false);
 
-		foreach (resourceArrowSystems,sys)
-		{
-			display.SetObjectMatrix(sys->first);
-			overallTint.Update(float4(sys->second,0.75f));
-			display.Render(resourceArrowInstruction,true);
-		}
-
-		wirelessRange.Update(float4(0,0,0,10000));
 
 
 		
@@ -1790,6 +1774,18 @@ namespace Objects
 
 			display.UnlockShader();
 		}
+
+
+		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+		display.SetRasterizer(true,false);
+
+		foreach (resourceArrowSystems,sys)
+		{
+			display.SetObjectMatrix(sys->first);
+			overallTint.Update(float4(sys->second,0.75f));
+			display.Render(resourceArrowInstruction,true);
+		}
+
 
 		display.RestoreRendererState();
 
