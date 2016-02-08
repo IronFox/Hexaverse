@@ -132,6 +132,7 @@ namespace Objects
 			#endif
 
 			//WorldEntity overrides:
+			virtual int				GetConstructionCost() const override {return turret->productionCosts + 200;}
 			virtual bool			IsOrbital() const override {return true;}
 			virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = 0.f; return To<MobileEntity>::Cast(shared_from_this());}
 			virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = 0.f; return To<const MobileEntity>::Cast(shared_from_this());}
@@ -291,7 +292,6 @@ namespace Objects
 									GetTurretType() const override	{return &Component::Orbital::ragnarok;}
 
 			//WorldEntity overrides:
-			virtual int				GetConstructionCost() const override {return 100;}
 			#ifndef NO_HIBERNATION
 				virtual int			GetUplinkTraffic() const override {return 50;}
 
@@ -325,7 +325,6 @@ namespace Objects
 									GetTurretType() const override	{return &Component::Orbital::engineer;}
 
 			//WorldEntity overrides:
-			virtual int				GetConstructionCost() const override {return GetTurretType()->productionCosts + 20;}
 			#ifndef NO_HIBERNATION
 				virtual int			GetUplinkTraffic() const override {return GetTurretType()->uplinkTraffic;}
 
