@@ -62,7 +62,7 @@ namespace Objects
 
 
 			#ifndef CLIENT
-				virtual void	CorrectTerrain(bool signalChange, float atTime, bool deep) override	{};
+				virtual void	CorrectTerrain(bool signalChange, float atTime) override	{};
 				virtual void	OnConstructionFinished(float&atTime) override	{Super::OnConstructionFinished(atTime);};
 				/**
 				Adjust to ground changes. Should be called once per round to account for 

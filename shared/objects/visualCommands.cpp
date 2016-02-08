@@ -49,7 +49,7 @@ namespace Objects
 
 	float4 BackgroundColor(const PWorldEntity&e)
 	{
-		return float4(e->owner ? e->owner->activeEntityColor*0.4f : float3(),0.5f);
+		return float4(e->health > 0 && e->owner ? e->owner->activeEntityColor*0.4f : float3(),0.5f);
 
 	}
 

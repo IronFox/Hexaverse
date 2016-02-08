@@ -605,7 +605,7 @@ namespace Journal
 			if (e->IsStructure())
 			{
 				Objects::PStructure s = To<Objects::Structure>::Cast(e);
-				s->CorrectTerrain(false,0,true);
+				s->CorrectTerrain(false,0);
 			}
 			Objects::InsertConstructed(To<Objects::Structure>::Cast(e),t);
 
@@ -1655,7 +1655,7 @@ namespace Journal
 	/*virtual override*/ void Round::CreateMarker::Execute(const Objects::PFaction&f) const
 	{
 
-		Objects::Marker&marker = f->CreateMarker(markerID,f == Objects::Faction::nexus,type,referenceEntity.id);
+		Objects::Marker&marker = f->CreateMarker(markerID,f == Objects::Faction::nexus,type,referenceEntity.id,referenceEntity.owner);
 
 		marker.createdInRound = createdInRound;
 		marker.location = location;
