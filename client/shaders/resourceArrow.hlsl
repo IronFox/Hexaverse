@@ -38,8 +38,10 @@ void vsMain(A2V input, out V2P output)
 //	output.normal = normalize(mul(ObjectMatrix, float4(input.normal,0.0) ).xyz);
 	output.world = mul(ObjectMatrix,float4(input.position,1.0)).xyz;
 	output.position = TransformAndProject(output.world);
+	float3 refVector = float3(ObjectMatrix[0].y,ObjectMatrix[1].y,ObjectMatrix[2].y);
+	//float3 refVector = ObjectMatrix[1].xyz;
 	output.uvw = float3(
-					input.position.y * length(ObjectMatrix[1].xyz)*10.0 - Time,
+					input.position.y * length(refVector)*5.0 - Time,
 					input.position.x * 0.5 + 0.5,
 					input.position.y
 					);
