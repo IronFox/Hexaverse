@@ -251,7 +251,7 @@ namespace Objects
 		
 
 		#ifdef HAS_WINDOW
-			foreach (Component::vehicleTurretComponents,tc)
+			foreach (Component::allTurretComponents,tc)
 				(*tc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();});
 			foreach (Component::baseComponents,bc)
 				(*bc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();});
