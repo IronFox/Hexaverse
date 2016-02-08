@@ -126,7 +126,7 @@ SpinLock	eventLock;
 				break;
 				case EventFlavor::Neutral:
 					if (type.significance == EventSignificance::Important)
-						color = float3(0,0,1);
+						color = float3(0.5,0.5,1);
 				break;
 			}
 

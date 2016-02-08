@@ -241,8 +241,7 @@ namespace FileIO
 
 		stream.Append(e.id);
 		stream.Append(e.owner->id);
-		stream.Append(e.health);
-		//stream.Append(e.location);
+		stream.Append(float(e.health) / float(e.GetMaxHealth()));
 		stream.Append(e.unstable);
 		
 		parent->AppendBlock(RID::entity,stream.pointer(),stream.GetFillLevel());
@@ -260,8 +259,17 @@ namespace FileIO
 		ASSERT__(source->Stream(e.id));
 		TUniqueID	ownerID;
 		ASSERT__(source->Stream(ownerID));
-		ASSERT__(source->Stream(e.health));
-		//ASSERT__(source->Stream(e.location));
+		if (globalVersionOfCurrentFile < FileVersions::CurrentEntityHealthIsFloat)
+		{
+			ASSERT__(source->Stream(e.health));
+		}
+		else
+		{
+			float fhealth;
+			ASSERT__(source->Stream(fhealth));
+			e.health = (int)round(float(e.GetMaxHealth()) * fhealth);
+		}
+		e.health = std::min(e.health,e.GetMaxHealth());
 		ASSERT__(source->Stream(e.unstable));
 		ASSERT__(source->CloseStream());
 		ASSERT__(ownerMap.Query(ownerID,e.owner));
@@ -689,6 +697,7 @@ namespace FileIO
 		Import(parent,(Objects::WorldEntity&)*v,factions);
 		#ifndef CONNECTOR_LESS
 			Import(parent,v->currentStorage);
+			v->currentStorage.Cap(v->GetMaxStorageCapacity());
 		#endif
 		Import(parent,v->completeOnMove);
 		Riff::Chunk *name,*data;

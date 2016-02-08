@@ -1,7 +1,4 @@
-disable/redesign munition transporter in connector mode
 decrease max transparency of water (make it configurable?)
-nexus port changing ownership creates a ghost even if visible. maybe check ghosts when new structure appears?
-either change stored health to float or store max health, so that stretching to different versions is possible
 all available generators are switched on when power is needed, and are never switched off again. always?
 
 
@@ -114,6 +111,9 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+disable/redesign munition transporter in connector mode	//disabled
+nexus port changing ownership creates a ghost even if visible. maybe check ghosts when new structure appears?	//fixed
+either change stored health to float or store max health, so that stretching to different versions is possible	//changed to float
 reactor core has no foundation (change default?)
 Uranium storage is geometrically too high
 better generator (reactor core)
