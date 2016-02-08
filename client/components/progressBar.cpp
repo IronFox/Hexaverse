@@ -40,6 +40,11 @@ namespace ProgressBar
 	*/
 	void	RenderNewBar(float progress, float max, const float3&color)
 	{
+		if (max > 10)
+		{
+			progress /= max;
+			max = 1;
+		}
 		TVertex&vtx = vertices.Append();
 		vtx.positionMax = float4(center,max);
 		vtx.colorProgress = float4(color,progress);
