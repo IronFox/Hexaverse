@@ -267,9 +267,11 @@
 			if (max2 > 0)
 			{
 				textout.scale(1.f/0.6f,1.f/0.6f);
-				textout << " +"<<current2;
+				textout << " +";
+				Write(current2);
 				textout.scale(0.6f,0.6f);
-				textout <<'/'<<max2;
+				textout <<'/';
+				Write(max2);
 			}
 			//textout << max;
 			textout.popState();
