@@ -1,3 +1,7 @@
+v0.3.16
+	> Reduced height of uranium storage to better show resource marker on top.
+	
+
 v0.3.15		[Feb 7 2016]
 	* Fixed incorrect server IDs leading to client-side merging of different servers into one.
 	* Fixed UI buttons now graying out when they should.

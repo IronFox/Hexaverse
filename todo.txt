@@ -4,7 +4,6 @@ decrease max transparency of water (make it configurable?)
 nexus port changing ownership creates a ghost even if visible. maybe check ghosts when new structure appears?
 either change stored health to float or store max health, so that stretching to different versions is possible
 all available generators are switched on when power is needed, and are never switched off again. always?
-Uranium storage is geometrically too high
 
 
 
@@ -116,6 +115,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+Uranium storage is geometrically too high
 better generator (reactor core)
 flash new-round button when all others have finished their round and nothing apparent needs instructions right now
 dying factions should not cause emp areas to become inaccessible // fixed
