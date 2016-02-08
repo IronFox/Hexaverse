@@ -120,7 +120,7 @@ SpinLock	eventLock;
 				break;
 				case EventFlavor::SystemError:
 				case EventFlavor::UserError:
-					color = float3(1,0.1,0.2);
+					color = float3(1,0.4,0.4);
 				break;
 				case EventFlavor::Neutral:
 					if (type.significance == EventSignificance::Important)
