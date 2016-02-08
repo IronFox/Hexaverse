@@ -1326,7 +1326,7 @@ bool loop()
 	
 		//bool rebuildCamera = false;
 
-		if (!Dialog::IsModal())
+		if (!Dialog::IsModal() && !TimeLapse::enabled)
 		{
 			{
 				if (Engine::mouse.buttons.right_down || Engine::mouse.buttons.middle_down)
@@ -1640,7 +1640,7 @@ bool loop()
 
 			if (saveScreenshot)
 			{
-				if (RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase || !TimeLapse::enabled)
+				if (!TimeLapse::enabled || (RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase && Animation::AllDone() && Explosions::NoneActive()))
 				{
 					saveScreenshot = false;
 				}
@@ -2151,6 +2151,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 		if (TimeLapse::enabled)
 		{
 			TimeLapse::enabled = false;
+			Dialog::SignalSituationChange();
 			LogEvent(EventClass::Preset::uncommon,"Time lapse disabled");
 		}
 		else
@@ -2179,6 +2180,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 				TimeLapse::basePath = outDirName;
 				FileSystem::CreateDirectory(outDirName);
 				LogEvent(EventClass::Preset::uncommon,"Time lapse enabled. Writing to "+String(outDirName));
+				Dialog::PermanentMessage("Time lapse recording is enabled. Camera is locked. Press F2 to end time lapse recording",[](){return TimeLapse::enabled ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
 			},[](){return Dialog::CheckResult::OkayContinue;});
 		}
 	}
