@@ -1,4 +1,3 @@
-reactor core has no foundation (change default?)
 disable/redesign munition transporter in connector mode
 decrease max transparency of water (make it configurable?)
 nexus port changing ownership creates a ghost even if visible. maybe check ghosts when new structure appears?
@@ -115,6 +114,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+reactor core has no foundation (change default?)
 Uranium storage is geometrically too high
 better generator (reactor core)
 flash new-round button when all others have finished their round and nothing apparent needs instructions right now

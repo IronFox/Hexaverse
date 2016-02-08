@@ -177,7 +177,7 @@ namespace Objects
 		/**
 		Indicates that this structure stands atop a foundation (mostly visualization only)
 		*/
-		virtual bool				HasFoundation() const {return false;}
+		virtual bool				HasFoundation() const {return true;}
 
 		static void					StaticSetup();	//!< Invoked once before all other static setup methods are called.
 		#ifdef CLIENT
@@ -530,7 +530,6 @@ namespace Objects
 		//Structure overrides:
 		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) override;
 		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
-		virtual bool				HasFoundation() const override {return true;}
 		virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) override;
 
 
@@ -593,8 +592,6 @@ namespace Objects
 		#endif
 
 
-		virtual int					GetBroadHeight() const {return 0;}
-
 
 		virtual void				OnDestroy(float atTime) override;
 		#ifdef HAS_WINDOW
@@ -607,6 +604,9 @@ namespace Objects
 			}
 		#endif
 
+		//Structure overrides
+		virtual int					GetBroadHeight() const {return 0;}
+		virtual bool				HasFoundation() const override {return false;}
 	};
 
 	/**
@@ -731,8 +731,6 @@ namespace Objects
 		virtual void				SetResourceStorage(const ResourceVector&vec)	{};
 		virtual bool				IsNexusPort() const {return false;}
 
-		//Structure overrides:
-		virtual bool				HasFoundation() const override {return true;}
 
 		//WorldEntity overrides:
 		#ifndef NO_HIBERNATION
@@ -893,7 +891,6 @@ namespace Objects
 
 		//Structure overrides:
 		virtual bool				WouldLikeToEnable() const;
-		virtual bool				HasFoundation() const override {return true;}
 		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override
 		{
 			return MobileEntityProducer::IsBuilding(outProgress);
