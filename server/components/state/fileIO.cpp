@@ -298,7 +298,7 @@ namespace FileIO
 			ASSERT__(source->Stream(fhealth));
 			e.health = (int)round(float(e.GetMaxHealth()) * fhealth);
 		}
-		//ASSERT__(source->Stream(e.location));
+		e.health = std::min(e.health,e.GetMaxHealth());
 		ASSERT__(source->Stream(e.unstable));
 		ASSERT__(source->CloseStream());
 		ASSERT__(ownerMap.Query(ownerID,e.owner));
@@ -725,6 +725,7 @@ namespace FileIO
 		Import(parent,(Objects::WorldEntity&)*v,factions);
 		#ifndef CONNECTOR_LESS
 			Import(parent,v->currentStorage);
+			v->currentStorage.Cap(v->GetMaxStorageCapacity());
 		#endif
 		Import(parent,v->completeOnMove);
 		Riff::Chunk *name,*data;
