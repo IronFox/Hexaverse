@@ -179,8 +179,7 @@ namespace Objects
 		@param owner Faction to select compounds of. Passing an empty parameter results in an empty selection
 		@param producersOf Resource to look for. The result will be empty if there are no compounds with a non-0 balance on this resource
 		*/
-		//void	SelectCompoundAreas(const OwnerParameter&owner, Resource producersOf, const TVec3<>&arrowTo, const MobileResourceEnvironment&);
-		void	SelectCompoundAreas(const OwnerParameter&owner, ResourceFlagSet producersOf, const TVec3<>&arrowTo, const MobileResourceEnvironment&);
+		void	SelectCompoundAreas(const OwnerParameter&owner, ResourceFlagSet producersOf, const TVec3<>&arrowTo, const MobileResourceEnvironment&, bool orbital);
 		/**
 		Selects all compounds with a non-0 balance on any resource for area visualization
 		@param owner Faction to select compounds of. Passing an empty parameter results in all compounds with a non-0 balance being selected

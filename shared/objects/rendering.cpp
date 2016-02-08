@@ -1679,7 +1679,7 @@ namespace Objects
 	//	}
 	//}
 
-	void		Renderer::SelectCompoundAreas(const OwnerParameter&owner, ResourceFlagSet producersOf, const TVec3<>&arrowTo, const MobileResourceEnvironment&env)
+	void		Renderer::SelectCompoundAreas(const OwnerParameter&owner, ResourceFlagSet producersOf, const TVec3<>&arrowTo, const MobileResourceEnvironment&env, bool orbital)
 	{
 		compoundScope.Clear();
 		resourceArrowSystems.Clear();
@@ -1714,7 +1714,7 @@ namespace Objects
 			Vec::mad(mat.w.xyz,mat.z.xyz,Grid::SingleLayerHeight * c->second->GetHeight());
 			Vec::sub(arrowTo,mat.w.xyz,mat.y.xyz);
 			Vec::cross(mat.z.xyz,mat.y.xyz,mat.x.xyz);
-			Vec::setLen(mat.x.xyz,0.1f);
+			Vec::setLen(mat.x.xyz,orbital ? 0.3f : 0.1f);
 			Mat::resetBottomRow(mat);
 
 			item.second = compounds[c->first].color.rgb*1.5f;

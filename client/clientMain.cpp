@@ -1097,7 +1097,9 @@ void	OnAppear(const Objects::PWorldEntity&e)
 				Objects::anyCompoundsColored = true;
 				Objects::OwnerParameter o = Objects::selectedMobileEntity->owner;
 				Objects::selectedMobileEntity->resourceEnvironment.CheckRefresh(*Objects::selectedMobileEntity);
-				Objects::Renderer::SelectCompoundAreas(o,res,Objects::selectedMobileEntity->GetWorldPosition(),Objects::selectedMobileEntity->resourceEnvironment);
+				Objects::Renderer::SelectCompoundAreas(o,res,Objects::selectedMobileEntity->GetWorldPosition(),
+															Objects::selectedMobileEntity->resourceEnvironment,
+															Objects::selectedMobileEntity->IsOrbital());
 
 
 				bool any = false;
