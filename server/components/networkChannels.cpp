@@ -116,6 +116,7 @@ namespace Receiver
 	static void ConvertReferenceEntity(const Objects::Marker&source, Protocol::MarkerReferenceEntity&e)
 	{
 		e.id = source.referenceEntity;
+		e.owner = source.referenceEntityOwner;
 		e.type0 = source.referencedType[0];
 		e.type1 = source.referencedType[1];
 	}

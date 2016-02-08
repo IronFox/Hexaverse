@@ -51,7 +51,6 @@ namespace Network
 	INT32			uplinkBandwidth = -1;
 	
 	GenericHashTable<TUniqueID,CryptographicID,TUniqueID>	accessMap;
-	GenericHashTable<TUniqueID,Objects::OwnerParameter,TUniqueID>	factionMap;
 
 
 	Protocol::GameProgress	gameProgress;
@@ -71,48 +70,13 @@ namespace Network
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, BYTE techniteFactionIfNew)
 	{
-		LogEvent(EventSignificance::Debug,"ResolveFaction("+id.ToString()+","+String(techniteFactionIfNew)+")");
-
-		{
-			Objects::OwnerParameter*rs = factionMap.QueryPointer(id);
-			if (rs)
-			{
-				if (techniteFactionIfNew != 0xFF)
-				{
-					ASSERT__((*rs)->IsTechniteFaction());
-					Technites::PFaction tf = To<Technites::Faction>::Cast(*rs);
-					ASSERT_EQUAL__(tf->gridID,techniteFactionIfNew);
-				}
-				//else
-				//	ASSERT__(!(*rs)->IsTechniteFaction());
-				return *rs;
-			}
-		}
-		Objects::OwnerParameter  rs;
-		if (techniteFactionIfNew != 0xFF)
-		{
-			rs = Technites::Faction::CreateFromFile(id,techniteFactionIfNew);
-		}
-		else
-		{
-			rs.reset(new Objects::Faction(id));
-			Objects::Faction::allKnown << rs;
-		}
-		factionMap.Set(id,rs);
-		return rs;
+		return Objects::Faction::GetOrCreate(id,techniteFactionIfNew);
 	}
 
 	
 	Objects::OwnerParameter TryResolveFaction(const TUniqueID&id)
 	{
-		LogEvent(EventSignificance::Debug,"TryResolveFaction("+id.ToString()+")");
-
-		{
-			Objects::OwnerParameter*rs = factionMap.QueryPointer(id);
-			if (rs)
-				return *rs;
-		}
-		return Objects::OwnerParameter();
+		return Objects::Faction::FindByID(id);
 	}
 
 
@@ -389,7 +353,7 @@ namespace Network
 		Network::gameProgress.status = "";
 		Network::gameProgress.warning = "";
 		Network::newRoundRequested = false;
-		Network::factionMap.Clear();
+		Objects::Faction::idMap.Clear();
 		Objects::Faction::allKnown.Clear();
 		Objects::Faction::mine.reset();
 
@@ -887,9 +851,7 @@ namespace Network
 
 		void	CreateMarker(Protocol::Marker&marker)
 		{
-			
-
-			TUniqueID	entityID = TUniqueID::Empty();
+			TUniqueID	entityID = TUniqueID::Empty(), ownerID = TUniqueID::Empty();
 			ConstName	entityType[2];
 			Objects::Marker::Type type;
 
@@ -898,6 +860,7 @@ namespace Network
 			{
 				type = Objects::Marker::Type::Reinterpret(0);
 				entityID = entity->id;
+				ownerID = entity->owner;
 				entityType[0] = entity->type0;
 				entityType[1] = entity->type1;
 			}
@@ -908,6 +871,7 @@ namespace Network
 				{
 					type = Objects::Marker::Type::Reinterpret(1);
 					entityID = entity->id;
+					ownerID = entity->owner;
 					entityType[0] = entity->type0;
 					entityType[1] = entity->type1;
 				}
@@ -917,7 +881,7 @@ namespace Network
 					type = Objects::Marker::Type::Reinterpret(2);
 				}
 			}
-			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, entityType, std::max<int>(RuntimeConfig::roundNumber,marker.createdInRound));
+			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, ownerID, entityType, std::max<int>(RuntimeConfig::roundNumber,marker.createdInRound));
 			TechniteLogicLink::CreateMarker(Objects::Marker::all.last());
 			#ifdef HAS_WINDOW
 				OnSelectionChange(true);

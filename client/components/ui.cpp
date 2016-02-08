@@ -1855,23 +1855,26 @@
 			#endif
 
 			textout << " Owner: "<<e.owner->GetName();
-			if (e.isMine && e.health > 0)
+			if (e.isMine)
 			{
 				textout<<" (me)";
-				static const Objects::WorldEntity *last=nullptr;
-				static String lastDeployed;
-				if (last != &e)
+				if (e.health > 0)
 				{
-					last = &e;
-					lastDeployed = e.CompileDeploymentCount(e.owner);
-				}
-				if (lastDeployed.IsNotEmpty())
-				{
-					textout.PushColorState();
-					textout.color(0.6,0.7,1.f);
-					textout << nl << lastDeployed;
+					static const Objects::WorldEntity *last=nullptr;
+					static String lastDeployed;
+					if (last != &e)
+					{
+						last = &e;
+						lastDeployed = e.CompileDeploymentCount(e.owner);
+					}
+					if (lastDeployed.IsNotEmpty())
+					{
+						textout.PushColorState();
+						textout.color(0.6,0.7,1.f);
+						textout << nl << lastDeployed;
 
-					textout.PopColorState();
+						textout.PopColorState();
+					}
 				}
 
 			}

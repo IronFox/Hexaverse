@@ -1062,7 +1062,7 @@ namespace FileIO
 
 								Game::Config::Nexus::enableAI = list->FindFirst(RID::nexusAI) != nullptr;
 
-								if (globalVersionOfCurrentFile < Milestones::FirstVersionWithVariables)
+								if (globalVersionOfCurrentFile < FileVersions::FirstVersionWithVariables)
 								{
 									GetPOD(list,RID::closedGame,Game::Config::closedGame);
 									GetOptionalPOD(list,RID::nexusBases,Game::Config::Nexus::haveBases,false);

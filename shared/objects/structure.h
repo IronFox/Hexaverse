@@ -37,12 +37,14 @@ namespace Objects
 	class Structure : public WorldEntity
 	{
 	private:
-		static void					ChangeBroadStructCount(const Grid::LCellIdI&location, int height, bool hasFoundation, int changeDirection, float atTime);
-		static void					ChangeNarrowStructCount(const Grid::LCellIdI&location, int height, bool hasFoundation, int changeDirection, float atTime);
-		static void					CommonRegisterBroadStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime);
-		static void					CommonUnregisterBroadStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime);
-		static void					CommonRegisterNarrowStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime);
-		static void					CommonUnregisterNarrowStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime);
+		/*
+		New concept:
+		To better support specifics of towers, hybrid structures (narrow on top of broad) are possible.
+		If both broadHeight is specified less than totalHeight, narrowHeight is considered (totalHeight - broadHeight) and to be on top of broadHeight
+		*/
+		static void					ChangeStructCount(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime);
+		static void					CommonRegisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
+		static void					CommonUnregisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
 
 	protected:
 		typedef WorldEntity			Super;
@@ -73,11 +75,9 @@ namespace Objects
 		/**
 		Function to check common (theoretical) structure placement at a given location
 		@param location to check
-		@param height Structure height. Most structures have height=1
-		@param isBroad Indicates whether or not the structure occupies more than the central volume cell. For all structures except connectors this is true
 		@return Terrain condition at the given location
 		*/
-		static placement_t			CommonCheckStructurePlacement(const Grid::LCellIdI&location, int height, bool isBroad);
+		static placement_t			CommonCheckStructurePlacement(const Grid::LCellIdI&location, int broadHeight, int totalHeight);
 
 		static count_t				CountOccurrences(const OwnerParameter&o,ConstName type);
 
@@ -87,8 +87,11 @@ namespace Objects
 		#ifndef CLIENT
 
 
-			static void				CommonFixTerrain(const WorldEntity*e, const Grid::LCellIdI&location,  const Grid::Content foundationType, int height, bool signalChange, float atTime, bool deep, bool requireCentralFoundation, bool broadFoundation);
-			virtual void			CorrectTerrain(bool signalChange, float atTime, bool deep) = 0;
+			static void				CommonFixTerrain(const WorldEntity*e, const Grid::LCellIdI&location,  int broadHeight, int totalHeight, bool signalChange, float atTime);
+			virtual void			CorrectTerrain(bool signalChange, float atTime)
+			{
+				CommonFixTerrain(this,location,GetBroadHeight(),GetHeight(),signalChange,atTime);
+			}
 
 			virtual bool			DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override	{return false;}
 
@@ -174,7 +177,7 @@ namespace Objects
 		/**
 		Indicates that this structure stands atop a foundation (mostly visualization only)
 		*/
-		virtual bool				HasFoundation() const {return false;}
+		virtual bool				HasFoundation() const {return true;}
 
 		static void					StaticSetup();	//!< Invoked once before all other static setup methods are called.
 		#ifdef CLIENT
@@ -269,10 +272,11 @@ namespace Objects
 		virtual void				OnConstructionFinished(float atTime) override;
 
 		/**
-		Height applied during struct count setting in the terrain. For most structures this equals the actual height.
-		Towers, however, need the top level struct-count-free or their trajectory calculations will fail
+		Retrieves the height of the local structure that it is broad in. The remainder of GetHeight() is considered narrow.
+		The result must be between 0 and GetHeight() - both inclusive.
+		Most structures return either 0 or GetHeight(). Only towers feature a mixture of broad and narrow.
 		*/
-		virtual int					GetStructCountHeight() const {return GetHeight();}
+		virtual int					GetBroadHeight() const {return GetHeight();}
 
 		/**
 		Erases all connection to other structures in the neighborhood. Since this may cause an inconsistent situation it is
@@ -359,29 +363,11 @@ namespace Objects
 			virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
 
 
-			virtual  bool				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood,float atTime) override
-			{
-				#ifndef CLIENT
-					CorrectTerrain(true,atTime,false);
-				#endif
-				return Super::SignalEnvironmentChange(neighborhood,atTime);
-			}
 
 			virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override
 			{
-				return CommonCheckStructurePlacement(location,GetHeight(),IsBroad());
+				return CommonCheckStructurePlacement(location,GetBroadHeight(), GetHeight());
 			}
-
-
-			#ifndef CLIENT
-				virtual void			CorrectTerrain(bool signalChange, float atTime, bool deep) override
-				{
-					CommonFixTerrain(this,location,Grid::Content::Foundation,GetHeight(),signalChange,atTime,false,false,IsBroad());
-				}
-			#endif
-
-
-
 		};
 
 	/**
@@ -544,7 +530,6 @@ namespace Objects
 		//Structure overrides:
 		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) override;
 		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
-		virtual bool				HasFoundation() const override {return true;}
 		virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) override;
 
 
@@ -607,8 +592,6 @@ namespace Objects
 		#endif
 
 
-		virtual bool				IsBroad() const override {return false;}
-
 
 		virtual void				OnDestroy(float atTime) override;
 		#ifdef HAS_WINDOW
@@ -621,6 +604,9 @@ namespace Objects
 			}
 		#endif
 
+		//Structure overrides
+		virtual int					GetBroadHeight() const {return 0;}
+		virtual bool				HasFoundation() const override {return false;}
 	};
 
 	/**
@@ -745,8 +731,6 @@ namespace Objects
 		virtual void				SetResourceStorage(const ResourceVector&vec)	{};
 		virtual bool				IsNexusPort() const {return false;}
 
-		//Structure overrides:
-		virtual bool				HasFoundation() const override {return true;}
 
 		//WorldEntity overrides:
 		#ifndef NO_HIBERNATION
@@ -808,7 +792,6 @@ namespace Objects
 			#endif
 
 
-			virtual bool				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood,float atTime) override;
 			virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override;
 			virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override;
 			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override;
@@ -819,10 +802,7 @@ namespace Objects
 					virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
 					virtual void		VisitAllCommands(FCommandVisitor visitor) override {foreach (iconCommands,cmd) visitor(*cmd);foreach (vehicleConstructionCommands,cmd) visitor(*cmd);};
 				#endif
-			#else
-				virtual void			CorrectTerrain(bool signalChange, float atTime, bool deep) override;
 			#endif
-			virtual Grid::Content		GetFoundationType() const {return Grid::Content::Foundation;}
 		};
 
 
@@ -911,7 +891,6 @@ namespace Objects
 
 		//Structure overrides:
 		virtual bool				WouldLikeToEnable() const;
-		virtual bool				HasFoundation() const override {return true;}
 		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override
 		{
 			return MobileEntityProducer::IsBuilding(outProgress);
@@ -996,8 +975,6 @@ namespace Objects
 			v.level[Resource::Uranium] = 10;
 			v.level[Resource::Energy] = -EnergyConsumption;
 		}
-
-		virtual Grid::Content		GetFoundationType() const override {return Grid::Content::Rock;}
 
 
 		//Structure overrides:
@@ -1306,12 +1283,6 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
 			#endif
-
-		#else
-			/*virtual*/ void			CorrectTerrain(bool signalChange, float atTime, bool deep)	override
-			{
-				CommonFixTerrain(this,location,GetFoundationType(), 1, signalChange,atTime,deep,true,false);
-			}
 
 		#endif
 
@@ -1650,7 +1621,6 @@ namespace Objects
 
 		virtual float				GetMaxScanningRange() const override	{return turret->CanAttack() ? turret->scanningRange - 2.f : turret->scanningRange + 2.f;};	//returns the effective scanning range of the local entity
 		virtual int					GetMaxHealth() const override {return int(ceil(float(Super::GetMaxHealth()) * turret->healthMultiplier));}
-		virtual bool				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood,float atTime) override;
 		virtual void				PrototypeSetup()	override;
 		virtual String				GetTypeName() const override { return turret->typeName+" Tower"; };
 		virtual ConstName			GetCTypeName() const override {return turret->constTowerName;}
@@ -1664,8 +1634,6 @@ namespace Objects
 		virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
 
 		#ifndef CLIENT
-			void					CorrectTerrain(bool signalChange, float atTime, bool deep);
-
 
 			virtual void			OnConstructionFinished(float atTime) override;
 			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime) override;
@@ -1678,7 +1646,7 @@ namespace Objects
 		#endif
 
 		//structure overrides:
-		virtual int					GetStructCountHeight() const override {return std::max(1,GetHeight()-1);}
+		virtual int					GetBroadHeight() const {return std::max(1,GetHeight()-1);}
 
 
 		//turret base overrides:
@@ -1889,25 +1857,6 @@ namespace Objects
 		}
 
 
-	#ifndef CLIENT
-		template <typename Derivative>
-			void CommonStructure<Derivative>::CorrectTerrain(bool signalChange, float atTime, bool deep)
-			{
-				CommonFixTerrain(this,location,GetFoundationType(), 1, signalChange,atTime,deep,false,false);
-
-			}
-	#endif
-
-	template <typename Derivative>
-		/*virtual override*/ bool				CommonStructure<Derivative>::SignalEnvironmentChange(const TStructureNeighborhood&neighborhood,float atTime)
-		{
-			#ifndef CLIENT
-				CorrectTerrain(false,atTime,false);
-			#endif
-				//return false;
-
-			return Super::SignalEnvironmentChange(neighborhood,atTime);
-		}
 
 	template <typename Derivative>
 		/*virtual override*/ bool				CommonStructure<Derivative>::ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)
@@ -1918,7 +1867,7 @@ namespace Objects
 	template <typename Derivative>
 		/*virtual override*/ Structure::placement_t				CommonStructure<Derivative>::CheckPlacement(const Grid::LCellIdI&location)
 		{
-			return CommonCheckStructurePlacement(location,GetHeight(),IsBroad());
+			return CommonCheckStructurePlacement(location,GetBroadHeight(), GetHeight());
 		}
 
 	#ifdef CLIENT

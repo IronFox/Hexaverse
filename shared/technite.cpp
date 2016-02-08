@@ -2148,9 +2148,7 @@ namespace Technites
 		gridIDMap[gridID] = faction;
 
 		Faction::allTechniteFactions.Append(faction);
-		#ifdef CLIENT
-			Super::allKnown.Append(faction);
-		#else
+		#ifndef CLIENT
 			Super::all.Append(faction);
 			if (copyInitialWorld)
 				faction->currentState = Grid::initialWorld;
