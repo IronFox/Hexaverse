@@ -1,4 +1,5 @@
 v0.3.16
+	* Fixed ownership change of nexus port causing the undesired appearance of a ghost.
 	> Reduced height of uranium storage to better show resource marker on top.
 	
 
