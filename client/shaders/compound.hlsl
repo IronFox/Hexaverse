@@ -55,7 +55,7 @@ float4 psMain(V2P input, float4 screenSpace : SV_Position) : SV_TARGET
 	
 	float3 tint = Tint.rgb;
 	float stripe = a * b;
-	stripe = 0.5 + 0.5 * stripe;
+	stripe = 0.75;//0.5 + 0.5 * stripe;
 	
 	return float4(tint,stripe * Tint.a );	//if this works we move on
 }
