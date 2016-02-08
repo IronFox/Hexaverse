@@ -1400,7 +1400,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			//Network::Channels::destroyMarker.SendTo(Network::client, *o);
 		}
 
-		LogEvent(EventClass::Preset::uncommon, nullptr, "Begin round " + String(RuntimeConfig::roundNumber));
+		LogEvent(EventClass::Preset::important, nullptr, "Begin round " + String(RuntimeConfig::roundNumber));
 
 		if (gameHasBegun && Animation::AllDone())
 		{
