@@ -31,7 +31,8 @@ namespace Objects
 			Visited				//marker used by AI to remember previously visited area. referenceEntity is either empty of the mobile that was memorized here
 			);
 
-		TUniqueID					referenceEntity = TUniqueID::Empty();	//!< Usage depends on type
+		TUniqueID					referenceEntity = TUniqueID::Empty(),	//!< Usage depends on type
+									referenceEntityOwner = TUniqueID::Empty();
 		ConstName					referencedType[2];
 
 		Type						type;
@@ -108,7 +109,7 @@ namespace Objects
 				}
 			};
 
-			static void				Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, UINT32 createdInRound, const TUniqueID&referenceID, ConstName referenceType[2], UINT32 currentRound);
+			static void				Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, UINT32 createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], UINT32 currentRound);
 			static void				Destroy(const TUniqueID&id, bool controlEnabled);
 			static Marker*			FindByReference(const TUniqueID&referenceID);
 			static Marker*			Find(const TUniqueID&referenceID);
@@ -194,7 +195,13 @@ namespace Objects
 
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
+			static GenericHashTable<TUniqueID,PFaction,TUniqueID>	idMap;
+
 			static PFaction				mine;
+
+
+			static PFaction				FindByID(const TUniqueID&id);
+			static PFaction				GetOrCreate(const TUniqueID&id);
 
 			/**/						Faction(const TUniqueID&id) {UpdateID(id);}
 
@@ -323,7 +330,7 @@ namespace Objects
 			void		RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);
 
 			bool		CanCreateMarker(bool priveleged) const { return markers.Count() < (priveleged ? Marker::MaxMarkersPerFaction*16 : Marker::MaxMarkersPerFaction); }
-			Marker&		CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID);
+			Marker&		CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID, const TUniqueID&ownerReferenceID);
 			Marker*		FindMarker(const TUniqueID&markerID);
 			bool		DestroyMarker(const TUniqueID&markerID);
 			void		RestoreMarkers(const ArrayData<Marker>&source);

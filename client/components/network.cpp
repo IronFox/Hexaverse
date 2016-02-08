@@ -48,7 +48,6 @@ namespace Network
 	INT32			uplinkBandwidth = -1;
 	
 	GenericHashTable<TUniqueID,CryptographicID,TUniqueID>	accessMap;
-	GenericHashTable<TUniqueID,Objects::OwnerParameter,TUniqueID>	factionMap;
 
 
 	Protocol::GameProgress	gameProgress;
@@ -68,15 +67,7 @@ namespace Network
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
 	{
-		{
-			Objects::OwnerParameter*rs = factionMap.QueryPointer(id);
-			if (rs)
-				return *rs;
-		}
-		Objects::OwnerParameter rs(new Objects::Faction(id));
-		factionMap.Set(id,rs);
-		Objects::Faction::allKnown << rs;
-		return rs;
+		return Objects::Faction::GetOrCreate(id);
 	}
 
 
@@ -349,7 +340,7 @@ namespace Network
 		Network::gameProgress.status = "";
 		Network::gameProgress.warning = "";
 		Network::newRoundRequested = false;
-		Network::factionMap.Clear();
+		Objects::Faction::idMap.Clear();
 		Objects::Faction::allKnown.Clear();
 		Objects::Faction::mine.reset();
 
@@ -780,7 +771,7 @@ namespace Network
 
 		void	CreateMarker(Protocol::Marker&marker)
 		{
-			TUniqueID	entityID = TUniqueID::Empty();
+			TUniqueID	entityID = TUniqueID::Empty(), ownerID = TUniqueID::Empty();
 			ConstName	entityType[2];
 			Objects::Marker::Type type;
 
@@ -789,6 +780,7 @@ namespace Network
 			{
 				type = Objects::Marker::Type::Reinterpret(0);
 				entityID = entity->id;
+				ownerID = entity->owner;
 				entityType[0] = entity->type0;
 				entityType[1] = entity->type1;
 			}
@@ -799,6 +791,7 @@ namespace Network
 				{
 					type = Objects::Marker::Type::Reinterpret(1);
 					entityID = entity->id;
+					ownerID = entity->owner;
 					entityType[0] = entity->type0;
 					entityType[1] = entity->type1;
 				}
@@ -808,7 +801,7 @@ namespace Network
 					type = Objects::Marker::Type::Reinterpret(2);
 				}
 			}
-			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, entityType, std::max<int>(RuntimeConfig::roundNumber,marker.createdInRound));
+			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, ownerID, entityType, std::max<int>(RuntimeConfig::roundNumber,marker.createdInRound));
 			#ifdef HAS_WINDOW
 				OnSelectionChange(true);
 			#endif
@@ -1407,7 +1400,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			//Network::Channels::destroyMarker.SendTo(Network::client, *o);
 		}
 
-		LogEvent(EventClass::Preset::uncommon, nullptr, "Begin round " + String(RuntimeConfig::roundNumber));
+		LogEvent(EventClass::Preset::important, nullptr, "Begin round " + String(RuntimeConfig::roundNumber));
 
 		if (gameHasBegun && Animation::AllDone())
 		{

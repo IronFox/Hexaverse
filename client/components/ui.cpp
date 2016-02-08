@@ -209,6 +209,30 @@
 		}
 
 
+		static void Write(int value)
+		{
+			if (value < 0)
+			{
+				textout << '-';
+				Write(-value);
+				return;
+			}
+			if (value < 2000)
+			{
+				textout << value;
+				return;
+			}
+			if (value < 2000000)
+			{
+				int v = (int)round(float(value)/1000.f);
+				textout << v << 'k';
+				return;
+			}
+			int v = (int)round(float(value)/1000000.f);
+			textout << v << 'm';
+			return;
+		}
+
 		void	Gauge::RenderListText(int y)
 		{
 			textout.pushState();
@@ -221,19 +245,24 @@
 			
 			textout.color(color * 0.5f + float3(0.5f));
 			if (changePerRound > 0)
-				textout << "+"<<changePerRound;
+			{
+				textout << "+";
+				Write(changePerRound);
+			}
 			else
 				if (changePerRound < 0)
 				{
 					textout.color(1,0.6,0.5);
-					textout <<changePerRound;
+					Write(changePerRound);
 				}
 			if (max > 0)
 			{
 				textout.scale(1.2f,1.2f);
-				textout << ' '<<current;
+				textout << ' ';
+				Write(current);
 				textout.scale(0.6f,0.6f);
-				textout <<'/'<<max;
+				textout <<'/';
+				Write(max);
 			}
 			//textout << max;
 			textout.popState();
@@ -1855,23 +1884,26 @@
 			#endif
 
 			textout << " Owner: "<<e.owner->GetName();
-			if (e.isMine && e.health > 0)
+			if (e.isMine)
 			{
 				textout<<" (me)";
-				static const Objects::WorldEntity *last=nullptr;
-				static String lastDeployed;
-				if (last != &e)
+				if (e.health > 0)
 				{
-					last = &e;
-					lastDeployed = e.CompileDeploymentCount(e.owner);
-				}
-				if (lastDeployed.IsNotEmpty())
-				{
-					textout.PushColorState();
-					textout.color(0.6,0.7,1.f);
-					textout << nl << lastDeployed;
+					static const Objects::WorldEntity *last=nullptr;
+					static String lastDeployed;
+					if (last != &e)
+					{
+						last = &e;
+						lastDeployed = e.CompileDeploymentCount(e.owner);
+					}
+					if (lastDeployed.IsNotEmpty())
+					{
+						textout.PushColorState();
+						textout.color(0.6,0.7,1.f);
+						textout << nl << lastDeployed;
 
-					textout.PopColorState();
+						textout.PopColorState();
+					}
 				}
 
 			}

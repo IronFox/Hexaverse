@@ -1,18 +1,10 @@
+decrease max transparency of water (make it configurable?)
 all available generators are switched on when power is needed, and are never switched off again. always?
-Uranium storage is geometrically too high
-movement arrows are too broad for unselected entities
 
-button to hide paths of non-selected entity
 
-increase spawning distance between players
 
-dying factions should not cause emp areas to become inaccessible
 
 lava ship
-
-
-flash new-round button when all others have finished their round and nothing apparent needs instructions right now
-
 
 send entity id with server messages so user can click on the message to focus on them
 	/visual event log extracted from animation:
@@ -21,9 +13,10 @@ send entity id with server messages so user can click on the message to focus on
 	damage markers
 	auto-pause animation during events (might be too tricky)
 increase resource stack minimum
-better generator (reactor core)
 better mine output (refinery)
 research
+	research concept, stations, states. AI? viruses?
+	virus infection and propagation (possibly from nexus ports - possibly same effect as emp)
 recycling
 visual server configurator 
 faster digging
@@ -52,7 +45,6 @@ ragnarök attack beam visualization
 
 spy-satellite
 
-research concept, stations, states. AI? viruses?
 
 
 
@@ -60,6 +52,7 @@ research concept, stations, states. AI? viruses?
 
 ...later...
 
+button to hide paths of non-selected entity
 better customization for goal specification. currently ConquerNexus and EMPConquerNexus have implied, rather specific characteristics that should be exposed as settings
 
 better scoring
@@ -83,7 +76,6 @@ loading screen	//doesn't seem necessary just yet
 granite-digging turret
 
 
-virus infection and propagation (possibly from nexus ports - possibly same effect as emp)
 
 nexus tower	(defensive tower surrounding each nexus port)
 caves for nexus
@@ -119,6 +111,16 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+disable/redesign munition transporter in connector mode	//disabled
+nexus port changing ownership creates a ghost even if visible. maybe check ghosts when new structure appears?	//fixed
+either change stored health to float or store max health, so that stretching to different versions is possible	//changed to float
+reactor core has no foundation (change default?)
+Uranium storage is geometrically too high
+better generator (reactor core)
+flash new-round button when all others have finished their round and nothing apparent needs instructions right now
+dying factions should not cause emp areas to become inaccessible // fixed
+increase spawning distance between players
+movement arrows are too broad for unselected entities //made arrows light blue for unselected entities. people seem to agree this is acceptable
 somehow increase attack spheres/paraboloid contrast on lava planets (almost invisible, much like sensor range on desert planets) //now rendering black spheres around actual range spheres to increase contrast
 see-through not blackening lava. maybe just darken everything? //lava is darkened but not blackened anymore
 start local server button in client 

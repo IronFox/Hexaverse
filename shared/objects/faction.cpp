@@ -961,6 +961,7 @@ namespace Objects
 
 	#else
 		/*static*/ Buffer0<PFaction>			Faction::allKnown;
+		/*static*/ GenericHashTable<TUniqueID,PFaction,TUniqueID>	Faction::idMap;
 		/*static*/ PFaction						Faction::mine;
 
 		/*static*/ Buffer0<Marker, Strategy::Adopt>	Marker::all; 
@@ -970,6 +971,29 @@ namespace Objects
 		/*static*/ Buffer0<Marker::TVisited>	Marker::visitedSystems;
 		/*static*/ Buffer0<PStructure>	Marker::structureGhosts;
 		/*static*/ Buffer0<PMobileEntity>	Marker::mobileGhosts;
+
+		/*static*/ PFaction				Faction::FindByID(const TUniqueID&id)
+		{
+			PFaction*f = idMap.QueryPointer(id);
+			if (f)
+				return *f;
+			return PFaction();
+		}
+
+
+		/*static*/ PFaction				Faction::GetOrCreate(const TUniqueID&id)
+		{
+			{
+				PFaction*rs = idMap.QueryPointer(id);
+				if (rs)
+					return *rs;
+			}
+			PFaction rs(new Faction(id));
+			idMap.Set(id,rs);
+			allKnown << rs;
+			return rs;
+		}
+
 
 
 		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine)
@@ -1176,11 +1200,12 @@ namespace Objects
 		}
 
 
-		/*static*/ void				Marker::Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, UINT32 createdInRound, const TUniqueID&referenceID, ConstName referenceType[2], UINT32 currentRound)
+		/*static*/ void				Marker::Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, UINT32 createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], UINT32 currentRound)
 		{
 			const index_t newIndex = all.Count();
 			Marker&m = all.Append();
 			m.id = id;
+			m.referenceEntityOwner = referenceOwnerID;
 			m.location = location;
 			m.createdInRound = createdInRound;
 			m.age = currentRound - createdInRound;
@@ -1201,10 +1226,7 @@ namespace Objects
 					ASSERT1__(base, referenceType);
 					ASSERT1__(turret, referenceType);
 					m.visualization.reset(new Vehicle(OwnerParameter(), location, base, turret));
-					m.visualization->id = referenceID;
 					To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
-					m.visualization->health = -(int)m.age;
-					m.visualization->isMine = type == Type::EntityDeath;
 					mobileGhosts << To<MobileEntity>::Cast( m.visualization );
 				}
 				else
@@ -1215,10 +1237,6 @@ namespace Objects
 					{
 						ASSERT1__(prototype, referenceType);
 						m.visualization = To<Structure>::Cast(prototype->CreateNewInstance(OwnerParameter(), location, 0));
-						m.visualization->id = referenceID;
-						m.visualization->health = -(int)m.age;
-						m.visualization->isMine = type == Type::EntityDeath;
-						m.visualization->UpdateNiceName();
 						structureGhosts << To<Structure>::Cast(m.visualization);
 					}
 					else
@@ -1228,16 +1246,19 @@ namespace Objects
 						{
 							//satellite
 							m.visualization = To<MobileEntity>::Cast(prototype->CreateNewInstance(OwnerParameter(), location, 0.f));
-							m.visualization->id = referenceID;
 							To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
-							m.visualization->health = -(int)m.age;
-							m.visualization->isMine = type == Type::EntityDeath;
-							m.visualization->UpdateNiceName();
 							mobileGhosts << To<MobileEntity>::Cast( m.visualization);
 						}
-						//probably sattelite, but not gonna go there now
-
 					}
+				}
+
+				if (m.visualization)
+				{
+					m.visualization->id = referenceID;
+					m.visualization->owner = referenceOwnerID == TUniqueID::Empty() ? PFaction() : Faction::GetOrCreate(referenceOwnerID);
+					m.visualization->health = -(int)m.age;
+					m.visualization->isMine = (m.visualization->owner && m.visualization->owner->isMine) || (!m.visualization->owner && m.type == Type::EntityDeath);
+					m.visualization->UpdateNiceName();
 				}
 			}
 			else
@@ -1414,7 +1435,8 @@ namespace Objects
 			size += sizeof(location);
 			if (UtilizesReferenceEntity())
 			{
-				size += sizeof(TUniqueID);	//referenced entity id
+				size += 2 * sizeof(TUniqueID);	//referenced entity id
+
 
 				String t0 = Convert(this->referencedType[0]);
 				String t1 = Convert(this->referencedType[1]);
@@ -1434,7 +1456,7 @@ namespace Objects
 				return false;
 			if (UtilizesReferenceEntity())
 			{
-				if (!outStream.WritePrimitive(this->referenceEntity))
+				if (!outStream.WritePrimitive(this->referenceEntity) || !outStream.WritePrimitive(this->referenceEntityOwner))
 					return false;
 				String t0 = Convert(this->referencedType[0]);
 				String t1 = Convert(this->referencedType[1]);
@@ -1453,9 +1475,24 @@ namespace Objects
 			if (UtilizesReferenceEntity())
 			{
 				if (fixedSize != EmbeddedSize)
+				{
 					fixedSize -= sizeof(TUniqueID) + 1 + GetSerialSizeOfSize(createdInRound) + sizeof(TUniqueID) + sizeof(location);
+					{
+						fixedSize -= sizeof(TUniqueID);
+					}
+				}
 				String t0,t1;
-				if (!inStream.ReadPrimitive(this->referenceEntity) || !t0.Deserialize(inStream,EmbeddedSize) || !t1.Deserialize(inStream,EmbeddedSize))
+				if (!inStream.ReadPrimitive(this->referenceEntity))
+					return false;
+
+				if (globalVersionOfCurrentFile >= FileVersions::MarkersHaveOwner)
+				{
+					if (!inStream.ReadPrimitive(this->referenceEntityOwner))
+						return false;
+				}
+				else
+					this->referenceEntityOwner = TUniqueID::Empty();
+				if (!t0.Deserialize(inStream,EmbeddedSize) || !t1.Deserialize(inStream,EmbeddedSize))
 					return false;
 				this->referencedType[0] = Convert(t0);
 				this->referencedType[1] = Convert(t1);
@@ -1470,13 +1507,14 @@ namespace Objects
 		}
 
 
-		Marker&		Faction::CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID)
+		Marker&		Faction::CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID)
 		{
 			ASSERT__(CanCreateMarker(priveleged)); 
 			Marker&rs = markers.Append(); 
 			rs.id = id; 
 			rs.type = type;
 			rs.referenceEntity = referenceID;
+			rs.referenceEntityOwner = referenceOwnerID;
 			markerMap.Set(rs.id, markers.Count() - 1); 
 			if (rs.UtilizesReferenceEntity())
 				ASSERT__(referenceMap.SetNew(referenceID,markers.Count()-1));
