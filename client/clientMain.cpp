@@ -1068,7 +1068,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 			if (!stateChangeOnly)
 			{
-				if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsOrbital())
+				if (Objects::selectedEntity->IsOrbital())
 				{
 	//				Grid::visibleOrbitGrid.Color(Objects::selectedMobileEntity->location, Objects::selectedMobileEntity->turret->fuelSupplyRadius);
 //					strip = false;
