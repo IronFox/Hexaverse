@@ -141,7 +141,7 @@ namespace Objects
 											detectsResources = false,
 											continuousRotation = false,	//indicates that the turret should rotate continuously, regardless of server turret rotation commands
 											requiresStationaryVehicle = false,	//cannot fire if vehicle moved last round
-											isSatelliteRing = false,
+											isOrbital = false,
 											isDoomsday = false;	//server may reject their deployment
 
 			float							explosionRadius = 0.f;

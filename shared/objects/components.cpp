@@ -58,15 +58,15 @@ namespace Objects
 
 		bool							Turret::ConsumesResources(ResourceFlagSet&res) const
 		{
-			if (this->isSatelliteRing)
+			if (this->isOrbital)
 				res |= Resource::Fuel;
 			if (CanAttack())
 			{
 				res = ammoType;
-				return ammoNeedPerShot > 0 || this->isSatelliteRing;
+				return ammoNeedPerShot > 0 || this->isOrbital;
 			}
 			res |= Resource::Minerals;
-			return CanDo(Component::Construct) || CanDo(Component::Repair) || CanDo(Component::TerrainAdd) || this->isSatelliteRing;
+			return CanDo(Component::Construct) || CanDo(Component::Repair) || CanDo(Component::TerrainAdd) || this->isOrbital;
 		}
 
 
@@ -738,7 +738,7 @@ namespace Objects
 			component.scanningRange = 8;
 			component.uplinkTraffic = 30;
 			component.uplinkPriority = 200;	//fairly early
-
+			component.isOrbital = true;
 		
 			component.weight = 2;					//turret weight
 
@@ -1164,7 +1164,7 @@ namespace Objects
 			component.constName = ConstName::OrbitalTurret_Ragnarok;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.isOrbital = true;
 			component.isDoomsday = true;
 
 			component.continuousRotation = true;
@@ -1225,7 +1225,7 @@ namespace Objects
 			component.constName = ConstName::OrbitalTurret_ProtonCannon;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.isOrbital = true;
 
 			component.productionCosts = 1;	//irrelevant
 		
@@ -1267,7 +1267,7 @@ namespace Objects
 			component.constName = ConstName::OrbitalTurret_Hub;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.isOrbital = true;
 			component.operationSpeed[Repair] = 100;
 			component.operationSpeed[Construct] = 50;
 			//component.fuelSupplyRadius = 20;
@@ -1307,7 +1307,7 @@ namespace Objects
 			component.constName = ConstName::OrbitalTurret_StarPort;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.isOrbital = true;
 
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = -0.05f;
