@@ -995,7 +995,7 @@ namespace Game
 					#if 1
 					if (Grid::low.grid.GetCell(i).family == 0)	//align of family members implies family zero members are along edges between nexus poles
 					{
-						if (field.distance[i] == 4)
+						if (field.distance[i] == 5)
 						{
 							#ifndef _DEBUG
 								std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
@@ -1006,7 +1006,7 @@ namespace Game
 								Objects::InsertConstructed(tower,0);
 							#endif
 						}
-						if (field.distance[i] == 5)
+						if (field.distance[i] == 4)
 						{
 							std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
 								Objects::GetPrototypeByName(ConstName::Type_RadarTower)->CreateNewInstance(Objects::Faction::nexus,
