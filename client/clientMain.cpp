@@ -905,6 +905,7 @@ void FillMarker(Protocol::Marker&marker, const Objects::PWorldEntity&e, Protocol
 {
 	marker.location = e->location;
 	outE.id = e->id;
+	outE.owner = e->owner->id;
 	Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
 	if (!v)
 	{

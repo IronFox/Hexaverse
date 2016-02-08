@@ -1669,7 +1669,7 @@ namespace Journal
 	/*virtual override*/ void Round::CreateMarker::Execute(const Objects::PFaction&f) const
 	{
 
-		Objects::Marker&marker = f->CreateMarker(markerID,f == Objects::Faction::nexus,type,referenceEntity.id);
+		Objects::Marker&marker = f->CreateMarker(markerID,f == Objects::Faction::nexus,type,referenceEntity.id,referenceEntity.owner);
 
 		marker.createdInRound = createdInRound;
 		marker.location = location;

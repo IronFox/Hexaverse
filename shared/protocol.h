@@ -1765,8 +1765,9 @@ namespace Protocol
 		, NET(bool), doAutomate
 	)
 
-	NETSTRUCT3(MarkerReferenceEntity
+	NETSTRUCT4(MarkerReferenceEntity
 		, NET(TUniqueID), id
+		, NET(TUniqueID), owner
 		, NET(ConstName), type0
 		, NET(ConstName), type1
 	)
