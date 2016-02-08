@@ -238,8 +238,7 @@ namespace FileIO
 
 		stream.Append(e.id);
 		stream.Append(e.owner->id);
-		stream.Append(e.health);
-		//stream.Append(e.location);
+		stream.Append(float(e.health) / float(e.GetMaxHealth()));
 		stream.Append(e.unstable);
 		
 		parent->AppendBlock(RID::entity,stream.pointer(),stream.GetFillLevel());
@@ -257,7 +256,16 @@ namespace FileIO
 		ASSERT__(source->Stream(e.id));
 		TUniqueID	ownerID;
 		ASSERT__(source->Stream(ownerID));
-		ASSERT__(source->Stream(e.health));
+		if (globalVersionOfCurrentFile < FileVersions::CurrentEntityHealthIsFloat)
+		{
+			ASSERT__(source->Stream(e.health));
+		}
+		else
+		{
+			float fhealth;
+			ASSERT__(source->Stream(fhealth));
+			e.health = (int)round(float(e.GetMaxHealth()) * fhealth);
+		}
 		//ASSERT__(source->Stream(e.location));
 		ASSERT__(source->Stream(e.unstable));
 		ASSERT__(source->CloseStream());
