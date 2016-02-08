@@ -861,18 +861,19 @@ namespace Objects
 							}
 						}
 						#ifdef CLIENT
-						ForeachMobileWorldEntity([v,&movementChoices,world](const PMobileEntity&m)
-						{
-							if (m->owner == v->owner && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= sqr(WirelessTransferRange))
-								movementChoices << m->location + 1;
-						});
+							v->resourceEnvironment.CheckRefresh(*v);
+							ForeachMobileWorldEntity([v,&movementChoices,world](const PMobileEntity&m)
+							{
+								if (m->owner == v->owner && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= sqr(WirelessTransferRange))
+									movementChoices << m->location + 1;
+							});
 						#else
-						foreach (v->owner->allMobiles,_m)
-						{
-							PMobileEntity m = _m->lock();
-							if (m && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= sqr(WirelessTransferRange))
-								movementChoices << m->location + 1;
-						}
+							foreach (v->owner->allMobiles,_m)
+							{
+								PMobileEntity m = _m->lock();
+								if (m && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= sqr(WirelessTransferRange))
+									movementChoices << m->location + 1;
+							}
 						#endif
 						//const auto&c = Grid::low.grid.GetCell(location.stackID);
 						//for (int h = location.height -1; h <= location.height+1; h++)

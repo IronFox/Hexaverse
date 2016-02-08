@@ -149,9 +149,10 @@ namespace Objects
 	
 		void	MobileResourceEnvironment::CheckRefresh(const MobileEntity&m, const Grid::LCellIdI&loc)
 		{
-			if (cacheID == TCacheID(m,loc))
+			TCacheID	check(m,loc);
+			if (cacheID == check)
 				return;
-			cacheID = m;
+			cacheID = check;
 			#ifdef WIRELESS_VEHICLES
 				sourceCompounds.Clear();
 				if (m.IsVehicle())
