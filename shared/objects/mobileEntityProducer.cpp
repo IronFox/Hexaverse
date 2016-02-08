@@ -420,7 +420,12 @@ namespace Objects
 					queue.erase(e);
 					if (queue.IsNotEmpty())
 						productionRoundsLeft = ProductionRounds(queue.first(),true);
-
+					else
+					{
+						productionRoundsLeft = 0;
+						float t = 0;
+						SignalLastProductionDone(t);
+					}
 					parent->RegisterChange(WorldEntity::TasksChanged,-1);
 					return true;
 				}
