@@ -371,7 +371,8 @@ namespace Objects
 					else
 					{
 						productionRoundsLeft = 0;
-						SignalLastProductionDone();
+						float t = 0;
+						SignalLastProductionDone(t);
 					}
 					parent->RegisterChange(WorldEntity::TasksChanged,-1);
 					return true;
