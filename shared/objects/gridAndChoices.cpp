@@ -870,7 +870,7 @@ namespace Objects
 						foreach (v->owner->allMobiles,_m)
 						{
 							PMobileEntity m = _m->lock();
-							if (m && v != m.get() && Vec::quadraticDistance(v->GetWorldPosition(),m->GetWorldPosition()) <= sqr(WirelessTransferRange))
+							if (m && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= sqr(WirelessTransferRange))
 								movementChoices << m->location + 1;
 						}
 						#endif
