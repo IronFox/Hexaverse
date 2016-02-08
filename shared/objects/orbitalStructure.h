@@ -97,8 +97,9 @@ namespace Objects
 			public:
 				static const std::shared_ptr<Derivative>		globalPrototype;
 				#ifdef HAS_WINDOW
-					static Buffer0<IconCommand>	commands;
-					static Buffer0<EntityConstructionCommand>		constructionCommands;
+					static Buffer0<IconCommand>					commands;
+					static Buffer0<EntityConstructionCommand>	constructionCommands;
+
 
 
 					/**
@@ -122,7 +123,7 @@ namespace Objects
 				#else
 					#ifdef HAS_WINDOW
 						virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
-						virtual void		VisitAllCommands(FCommandVisitor visitor) override {foreach (commands,cmd) visitor(*cmd);};
+						virtual void		VisitAllCommands(FCommandVisitor visitor) override {foreach (commands,cmd) visitor(*cmd); foreach (constructionCommands,cmd) visitor(*cmd);};
 					#endif
 				#endif
 			};
@@ -193,7 +194,7 @@ namespace Objects
 				typedef FloatingStructureT<Hub>	Super;
 				friend class Super;
 
-				static const int		ProductionSpeed = 10;
+				static const int		ProductionSpeed = 100;
 				static const int		EnergyConsumption = 10;
 
 				/**/					Hub(const OwnerParameter&owner, const Grid::LCellIdI&location, float time):Super(GetTurretType(),owner,location,time),EntityFactory(ProductionSpeed) {}
@@ -205,26 +206,27 @@ namespace Objects
 				//static void				RegisterProduction(const PStructure&);
 
 				#ifdef HAS_WINDOW
-					static Buffer<EntityConstructionCommand>	entityConstructionCommands;
-
 					struct MyCmd
 					{
 						static bool		CanBuild(const PStructure&what, const PWorldEntity&who);
 						static void		Build(const PShip&what, const PWorldEntity&who);
 					};
 				#endif
+		
+				virtual bool			CanEnable() const override {return EntityFactory::queue.IsNotEmpty();}
+
 
 			public:
-				WSkyLinkStructure	connectedToLink;
+				WSkyLinkStructure		connectedToLink;
 
 
 				/**
 				Updates @a connectedTo if necessary
 				@return true if anything changed
 				*/
-				bool				UpdateConnections();
-				bool				GainGroundConnection(const PSkyLinkStructure&to);
-				void				LoseGroundConnection();
+				bool					UpdateConnections();
+				bool					GainGroundConnection(const PSkyLinkStructure&to);
+				void					LoseGroundConnection();
 
 
 				#ifndef CLIENT
@@ -256,8 +258,12 @@ namespace Objects
 				virtual Component::Turret*
 										GetTurretType() const override	{return &Component::Orbital::hub;}
 
-				////MobileEntity overrides:
-				//virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return Grid::LCellIdI(focus.stackID,GetStructureBuildHeight(focus));}
+				//EntityFactory overrides
+				#ifndef CLIENT
+					virtual void		SignalLastProductionDone(float&t) override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); SetEnabled(false,t);}
+					virtual void		SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
+					virtual bool		DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+				#endif
 
 				//WorldEntity overrides:
 				virtual int				GetConstructionCost() const override {return 100;}

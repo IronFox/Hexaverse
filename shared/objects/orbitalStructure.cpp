@@ -217,11 +217,11 @@ namespace Objects
 		{
 			#ifdef HAS_WINDOW
 				int2 at = AllocateProductionSlot();
-				entityConstructionCommands.Append(
+				constructionCommands.Append(
 					EntityConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
 					std::bind(&MyCmd::Build, s, std::placeholders::_1),
 					&CommonCmd::IdleCheck));
-				entityConstructionCommands.last().RasterizeImage();
+				constructionCommands.last().RasterizeImage();
 			#endif
 		}
 
@@ -257,13 +257,38 @@ namespace Objects
 
 		/*virtual override*/ void			Hub::PrototypeSetup()
 		{
+			#ifdef HAS_WINDOW
+			commands << IconCommand(int2(4,1), "Enable",
+				[](const PWorldEntity&e)
+				{
+
+					Hub*s2 = dynamic_cast<Hub*>(e.get());
+					if (s2)
+					{
+						if (!s2->IsEnabled() && !s2->CanEnable())
+						{
+							SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job using the respective buttons.");
+							return;
+						}
+						SignalEnableStructure(*s2, !s2->IsEnabled());
+					}
+				}
+				,[](const PWorldEntity&e, bool controlEnabled)
+				{
+					BaseCommand::Flags rs = BaseCommand::Flags::None;
+					Hub*div = dynamic_cast<Hub*>(e.get());
+					if (controlEnabled && div != nullptr)
+						rs |= BaseCommand::Flags::IsEnabled;
+					if (div && div->IsEnabled())
+						rs |= BaseCommand::Flags::IsPermaActive;
+					return rs;
+				}
+				,NoCosts
+			);
+			#endif
 			Super::PrototypeSetup();
-			//RegisterProduction(SkyGate::globalPrototype);
-			//RegisterProduction(Guardian::globalPrototype);
-			//RegisterProduction(Hub::globalPrototype);
 			RegisterProduction(Ragnarok::globalPrototype);
 			RegisterProduction(Engineer::globalPrototype);
-//			RegisterProduction(StarPort::globalPrototype);
 		}
 
 		/*static*/ int2	Hub::AllocateProductionSlot()
@@ -272,7 +297,17 @@ namespace Objects
 			int at = current++;
 			return int2(5 + (at%9),1+at/9);
 		}
+		
 
+		#ifndef CLIENT
+			/*virtual override*/ bool			Hub::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+			{
+				if (waypoints.Count() != 1)
+					return false;
+				EntityFactory::UpdateGatheringPoint(waypoints.First());
+				return true;
+			}
+		#endif
 		
 		#ifdef HAS_WINDOW
 
@@ -291,8 +326,6 @@ namespace Objects
 			/*virtual override*/ void		Hub::VisitAllCommands(FCommandVisitor visitor)
 			{
 				Super::VisitAllCommands(visitor);
-				foreach (entityConstructionCommands,cmd)
-					visitor(*cmd);
 				EntityFactory::VisitAllCommands(visitor);
 			}
 

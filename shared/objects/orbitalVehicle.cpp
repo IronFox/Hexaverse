@@ -11,10 +11,6 @@ namespace Objects
 		//bool					satellitesAreLocked = false;
 
 
-		#ifdef HAS_WINDOW
-			/*static*/ Buffer<EntityConstructionCommand>	Hub::entityConstructionCommands;
-		#endif
-
 		/*static*/ count_t			Ship::CountTurretOccurrences(const OwnerParameter&o,Component::Turret*t)
 		{
 			count_t rs = 0;
