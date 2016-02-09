@@ -444,13 +444,13 @@ namespace Objects
 					vertexBuffer.Append(float3(1.f,x,y));
 					if (i+1 < Resolution)
 					{
-						indexBuffer.Append((UINT32)i*2);
-						indexBuffer.Append((UINT32)i*2+2);
-						indexBuffer.Append((UINT32)i*2+1);
+						indexBuffer.Append((UINT16)i*2);
+						indexBuffer.Append((UINT16)i*2+2);
+						indexBuffer.Append((UINT16)i*2+1);
 
-						indexBuffer.Append((UINT32)i*2+3);
-						indexBuffer.Append((UINT32)i*2+1);
-						indexBuffer.Append((UINT32)i*2+2);
+						indexBuffer.Append((UINT16)i*2+3);
+						indexBuffer.Append((UINT16)i*2+1);
+						indexBuffer.Append((UINT16)i*2+2);
 					}
 				}
 				resourceArrowInstruction.ibo.Create(indexBuffer);

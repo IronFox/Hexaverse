@@ -116,11 +116,11 @@ SpinLock	eventLock;
 					color = float3(0,1,0);
 				break;
 				case EventFlavor::Loss:
-					color = float3(0.9,0.1,0.1);
+					color = float3(1,0.35,0.3);
 				break;
 				case EventFlavor::SystemError:
 				case EventFlavor::UserError:
-					color = float3(1,0.4,0.4);
+					color = float3(1,0.3,0.4);
 				break;
 				case EventFlavor::Neutral:
 					if (type.significance == EventSignificance::Important)
@@ -456,7 +456,7 @@ void	SignalRoundEnd()
 		#ifdef HAS_WINDOW
 			Objects::UpdateChoices(Network::ControlEnabled());
 		#endif
-		LogEvent(EventClass::Preset::uncommon,nullptr,"Requested new round");
+		LogEvent(EventClass::Preset::common,nullptr,"Requested new round");
 	}
 }
 
@@ -2758,7 +2758,7 @@ String GenerateOreName(Random&random)
 			);
 		Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 		if (mine)
-			return !mine->IsEnabled()/* && mine->CouldEnable()*/;
+			return !mine->IsEnabled() && mine->CouldEnable();
 
 		return false;
 

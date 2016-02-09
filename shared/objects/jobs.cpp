@@ -54,7 +54,7 @@ namespace Objects
 				int storage = GetStorage(v,Resource::Minerals);
 				if (storage < withdrawNow)
 				{
-					LogEvent(EventClass::Preset::operationAborted,&v,"Unable to continue construction at this point. Insufficient minerals available ("+String(storage)+"/"+String(withdrawNow)+"). Delaying operation.");
+					LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient minerals available ("+String(storage)+"/"+String(withdrawNow)+"). Delaying operation.");
 					return JobDelayed;
 				}
 
@@ -66,7 +66,7 @@ namespace Objects
 				#ifndef CONNECTOR_LESS
 					if (!v.resourceEnvironment.CanWithdraw(v,Resource::Minerals,withdrawNow))
 					{
-						LogEvent(EventClass::Preset::operationAborted,&v,"Unable to continue construction at this point. Insufficient minerals available (need "+String(withdrawNow)+"). Delaying operation.");
+						LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient minerals available (need "+String(withdrawNow)+"). Delaying operation.");
 						return JobDelayed;
 						//LogEvent(EventType::CommandRejected,&v,"Unable to complete operation. Insufficient minerals left in storage ("+String(v.currentStorage.level[Resource::Minerals])+"/"+String(mineralCostLeft)+").");
 						//return TerminalFailure;
