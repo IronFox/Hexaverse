@@ -11,7 +11,7 @@
 #include "ai.h"
 #include "techniteLogicLink.h"
 #include "clientRuntimeConfig.h"
-
+#include "timelapse.h"
 
 
 void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
@@ -20,12 +20,7 @@ void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird
 	void		QueryNicknameIfEmpty();
 
 
-	extern bool saveScreenshot;
 
-	namespace TimeLapse
-	{
-		extern bool enabled;
-	}
 #endif
 
 
@@ -342,6 +337,8 @@ namespace Network
 
 	static void		FlushFaction(bool alsoFlushWorld)
 	{
+		TimeLapse::enabled = false;
+
 		haveFaction = false;
 		//dbgRoundNumber = 0xFFFFFFFF;
 

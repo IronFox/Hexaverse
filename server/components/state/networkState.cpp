@@ -17,7 +17,7 @@
 
 namespace Network
 {
-	Buffer<PClient>	activePlayers,spectators;
+	Buffer<PClient>	activePlayersAndSpectators,spectators;
 	GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
 	GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
 	count_t			techniteFactionsOnline=0;
@@ -149,11 +149,25 @@ namespace Network
 		server.onDeserializationFailed = Receiver::OnDeserializationFailed;
 	}
 
+	bool FactionIsActive(const Objects::PFaction&f)
+	{
+		foreach (activePlayersAndSpectators,a)
+			if (!(*a)->isSpectator && (*a)->faction == f)
+				return true;
+		return false;
+	}
+
+
+	bool AnyHumanPlayersActive()
+	{
+		count_t activePlayers = activePlayersAndSpectators.Count() - spectators.Count();
+		return activePlayers > 1 || (activePlayers == 1 && !FactionIsActive(Objects::Faction::nexus));
+	}
 
 	void HandleConnectionLoss(PClient client)
 	{
 		//State::clients.FindAndErase(client);
-		activePlayers.FindAndErase(client);
+		activePlayersAndSpectators.FindAndErase(client);
 		spectators.FindAndErase(client);
 		if (client->faction)
 		{
@@ -198,7 +212,7 @@ namespace Network
 
 		server.Shutdown();
 
-		activePlayers.Clear();
+		activePlayersAndSpectators.Clear();
 		spectators.Clear();
 		playerMap.Clear();
 
@@ -222,7 +236,7 @@ namespace Network
 
 		server.Shutdown();
 
-		activePlayers.Clear();
+		activePlayersAndSpectators.Clear();
 		spectators.Clear();
 		playerMap.Clear();
 
@@ -257,7 +271,7 @@ namespace Network
 		if (client)
 		{
 			//clients.FindAndErase(client);
-			activePlayers.FindAndErase(client);
+			activePlayersAndSpectators.FindAndErase(client);
 			spectators.FindAndErase(client);
 			client->isSpectator = false;
 			if (client->faction)

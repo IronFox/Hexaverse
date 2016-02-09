@@ -125,7 +125,7 @@ void	SignalNewStructure(const Objects::PStructure&s, float atTime)
 
 void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::OwnerParameter&target, float t)
 {
-	for (const auto&p : Network::activePlayers)
+	for (const auto&p : Network::activePlayersAndSpectators)
 	{
 		if (p->CanSee(e,t) || p->faction == target)
 		{
@@ -214,7 +214,7 @@ void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float 
 			FATAL__("Unrecognized removal type "+String(t.ToString()));
 	}
 
-	foreach (Network::activePlayers,cl)
+	foreach (Network::activePlayersAndSpectators,cl)
 	{
 		TCP::PPeer peer = (*cl)->peer.lock();
 		if (peer && Network::CanSee(*cl,e,atTime))
@@ -284,7 +284,7 @@ void	SignalMotion(const Objects::PMobileEntity&v, const Grid::LCellIdI&from,cons
 	}
 
 
-	foreach (Network::activePlayers,cl)
+	foreach (Network::activePlayersAndSpectators,cl)
 	{
 		TCP::PPeer peer = (*cl)->peer.lock();
 		if (peer && Network::CanSee(*cl,v,t0))
@@ -328,7 +328,7 @@ void	SignalTurretRotation(const Objects::PWorldEntity&e, const TVec3<>&toWorld, 
 		}
 	}
 
-	foreach (Network::activePlayers,cl)
+	foreach (Network::activePlayersAndSpectators,cl)
 	{
 		TCP::PPeer peer = (*cl)->peer.lock();
 		if (peer && Network::CanSee(*cl,e,rotationTime))
@@ -349,7 +349,7 @@ void	SignalNexusControlChange(const Objects::PFaction&f)
 			Game::Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 			Game::winner = f;
 
-			foreach (Network::activePlayers,p)
+			foreach (Network::activePlayersAndSpectators,p)
 			{
 				(*p)->SendProgressUpdate(true,"<null>");
 			}
@@ -478,7 +478,7 @@ void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, f
 
 	preciseAttack.flightTime = flightTime;
 
-	for (auto cl : Network::activePlayers)
+	for (auto cl : Network::activePlayersAndSpectators)
 	{
 		TCP::PPeer peer = (cl)->peer.lock();
 		if (!peer)
@@ -1437,32 +1437,6 @@ int main( int argc, const char* argv[])
 
 
 
-		if (RuntimeConfig::gameGoal == Game::Config::Goal::EMPConquerNexus)
-		{
-			LogEvent(EventSignificance::Common, "Spawning Nexus Ports...");
-			for (int pole = 0; pole < 12; pole++)
-				Game::SpawnNexusPortAtPole(pole);
-			if (Game::Config::Nexus::haveBases)
-				for (int pole = 0; pole < 12; pole++)
-					if (BaseGrid::IsIsolatedCorner(pole))
-					{
-						Game::SpawnNexusBaseAtPoleWithPort(pole);
-					}
-		}
-
-
-		if (RuntimeConfig::gameGoal == Game::Config::Goal::ConquerNexus)
-		{
-			LogEvent(EventSignificance::Common, "Spawning Nexus Ports...");
-		
-			for (int pole = 0; pole < 12; pole++)
-				if (BaseGrid::IsIsolatedCorner(pole))
-				{
-					Game::SpawnNexusPortAtPole(pole);
-					if (Game::Config::Nexus::haveBases)
-						Game::SpawnNexusBaseAtPoleWithPort(pole);
-				}
-		}
 
 
 
@@ -1657,7 +1631,7 @@ int main( int argc, const char* argv[])
 			{
 				count_t numFactions=0, wantNewRound = 0;
 				bool hasNexus = false,nexusWantsNewRound = false;
-				foreach(Network::activePlayers, p)
+				foreach(Network::activePlayersAndSpectators, p)
 				{
 					if ((*p)->isSpectator)	//doesn't count towards new round
 						continue;
@@ -1700,7 +1674,7 @@ int main( int argc, const char* argv[])
 				//Journal::globalWriter.CommitAndClear(Journal::currentRound);
 				Journal::currentRound.Clear();
 
-				foreach (Network::activePlayers,p)
+				foreach (Network::activePlayersAndSpectators,p)
 					(*p)->wantNewRound = false;
 
 				Game::evolver->BeginRoundProcessing();
@@ -1711,7 +1685,7 @@ int main( int argc, const char* argv[])
 			{
 				if (timer.GetSecondsSince(Game::lastPhaseChange) >= Game::effectiveAnimationLength+0.5f)
 				{
-					if (Network::activePlayers.IsNotEmpty())
+					if (Network::AnyHumanPlayersActive())
 						Game::roundTimerPaused = false;
 					Game::evolver->FinishRoundProcessing();
 				}
@@ -1750,14 +1724,22 @@ int main( int argc, const char* argv[])
 					(*d)->DisconnectPeer();
 				disconnect.Clear();
 
-				for (const auto&p : Network::activePlayers)
+
+				static Buffer0<Network::PClient>	clientDump;
+				for (const auto&p : Network::activePlayersAndSpectators)
 				{
 					if (p->peer.expired())
 					{
-						LogEvent( EventClass( EventSignificance::ClientFatal, EventFlavor::ServerPrivate ),nullptr,"Peer lost: "+p->ToString());
-						Network::HandleConnectionLoss(p);
+						clientDump << p;
 					}
 				}
+
+				for (const auto&p : clientDump)
+				{
+					LogEvent( EventClass( EventSignificance::ClientFatal, EventFlavor::ServerPrivate ),nullptr,"Peer lost: "+p->ToString());
+					Network::HandleConnectionLoss(p);
+				}
+				clientDump.Clear();
 			}
 			//#endif
 

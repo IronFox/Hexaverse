@@ -60,6 +60,7 @@
 #include "components/world.h"
 #include "components/atmosphere.h"
 #include "components/guiHostList.h"
+#include "components/serverProcess.h"
 
 #include "rc/Resource.h"
 
@@ -118,11 +119,11 @@ SpinLock	eventLock;
 					color = float3(0,1,0);
 				break;
 				case EventFlavor::Loss:
-					color = float3(0.9,0.1,0.1);
+					color = float3(1,0.35,0.3);
 				break;
 				case EventFlavor::SystemError:
 				case EventFlavor::UserError:
-					color = float3(1,0.1,0.2);
+					color = float3(1,0.3,0.4);
 				break;
 				case EventFlavor::Neutral:
 					if (type.significance == EventSignificance::Important)
@@ -1337,7 +1338,7 @@ bool loop()
 	
 		//bool rebuildCamera = false;
 
-		if (!Dialog::IsModal())
+		if (!Dialog::IsModal() && !TimeLapse::enabled)
 		{
 			{
 				if (Engine::mouse.buttons.right_down || Engine::mouse.buttons.middle_down)
@@ -1651,7 +1652,7 @@ bool loop()
 
 			if (saveScreenshot)
 			{
-				if (RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase || !TimeLapse::enabled)
+				if (!TimeLapse::enabled || (RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase && Animation::AllDone() && Explosions::NoneActive()))
 				{
 					saveScreenshot = false;
 				}
@@ -2162,35 +2163,44 @@ void MyFatal(const FatalDescriptor&descriptor)
 		if (TimeLapse::enabled)
 		{
 			TimeLapse::enabled = false;
+			Dialog::SignalSituationChange();
 			LogEvent(EventClass::Preset::uncommon,"Time lapse disabled");
 		}
 		else
 		{
-			PathString outDirName = PathString(Logging::TimeStamp(true));
-			if (TimeLapse::customBasePath.IsNotEmpty())
+			if (!Network::amSpectator || !Network::client.IsConnected())
 			{
-				FileSystem::Folder f = FileSystem::CreateDirectory(TimeLapse::customBasePath);
-				if (f.IsValidLocation())
-					outDirName = f.FindFile(outDirName,false)->GetLocation();
-				else
-				{
-					LogEvent( EventClass::Preset::commandRejected , "Unable to find folder '"+String(TimeLapse::customBasePath)+". Defaulting to default Documents folder");
-					outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
-				}
+				LogEvent(EventClass(EventSignificance::Important,EventFlavor::UserError),"Time lapse recording cannot be enabled if the local client is not configured as spectator");
 			}
 			else
-				outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
-
-			int framesPerSecond = (int)ceil(1.f / std::max(0.001f,TimeLapse::frameDelaySeconds));
-			Dialog::Confirm("Timelapse mode will capture roughly "+String(framesPerSecond)+" frame(s) per second during animation phase, but remain inactive during all other phases. For best results leave the camera stationary.\nProceed?",
-			[outDirName]()
 			{
-				TimeLapse::runningNumber = 0;
-				TimeLapse::enabled = true;
-				TimeLapse::basePath = outDirName;
-				FileSystem::CreateDirectory(outDirName);
-				LogEvent(EventClass::Preset::uncommon,"Time lapse enabled. Writing to "+String(outDirName));
-			},[](){return Dialog::CheckResult::OkayContinue;});
+				PathString outDirName = PathString(Logging::TimeStamp(true));
+				if (TimeLapse::customBasePath.IsNotEmpty())
+				{
+					FileSystem::Folder f = FileSystem::CreateDirectory(TimeLapse::customBasePath);
+					if (f.IsValidLocation())
+						outDirName = f.FindFile(outDirName,false)->GetLocation();
+					else
+					{
+						LogEvent( EventClass::Preset::commandRejected , "Unable to find folder '"+String(TimeLapse::customBasePath)+". Defaulting to default Documents folder");
+						outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
+					}
+				}
+				else
+					outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
+
+				int framesPerSecond = (int)ceil(1.f / std::max(0.001f,TimeLapse::frameDelaySeconds));
+				Dialog::Confirm("Timelapse mode will capture roughly "+String(framesPerSecond)+" frame(s) per second during animation phase, but remain inactive during all other phases. The camera will be locked in place.\nProceed?",
+				[outDirName]()
+				{
+					TimeLapse::runningNumber = 0;
+					TimeLapse::enabled = true;
+					TimeLapse::basePath = outDirName;
+					FileSystem::CreateDirectory(outDirName);
+					LogEvent(EventClass::Preset::uncommon,"Time lapse enabled. Writing to "+String(outDirName));
+					Dialog::PermanentMessage("Time lapse recording is enabled. Camera is locked. Press F2 to end time lapse recording",[](){return TimeLapse::enabled ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
+				},[](){return Dialog::CheckResult::OkayContinue;});
+			}
 		}
 	}
 
@@ -2676,7 +2686,7 @@ String GenerateOreName(Random&random)
 			);
 		Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 		if (mine)
-			return !mine->IsEnabled()/* && mine->CouldEnable()*/;
+			return !mine->IsEnabled() && mine->CouldEnable();
 
 		return false;
 
@@ -3335,8 +3345,8 @@ int main( int argc, const char* argv[])
 			display.destroy();
 		#endif
 
+		ServerProcess::End();
 		Logging::End();
-
 
 		TerminateProcess(GetCurrentProcess(),0);	//self-terminate
 
