@@ -851,7 +851,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Artillery;
 			component.constTowerName = ConstName::Type_ArtilleryTower;
 
-			component.productionCosts = 20;
+			component.productionCosts = 25;
 			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
@@ -901,7 +901,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Launcher;
 			component.constTowerName = ConstName::Type_LauncherTower;
 
-			component.productionCosts = 30;
+			component.productionCosts = 40;
 			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
