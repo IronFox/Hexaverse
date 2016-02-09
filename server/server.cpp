@@ -1752,14 +1752,22 @@ int main( int argc, const char* argv[])
 					(*d)->DisconnectPeer();
 				disconnect.Clear();
 
+
+				static Buffer0<Network::PClient>	clientDump;
 				for (const auto&p : Network::activePlayers)
 				{
 					if (p->peer.expired())
 					{
-						LogEvent( EventClass( EventSignificance::ClientFatal, EventFlavor::ServerPrivate ),nullptr,"Peer lost: "+p->ToString());
-						Network::HandleConnectionLoss(p);
+						clientDump << p;
 					}
 				}
+
+				for (const auto&p : clientDump)
+				{
+					LogEvent( EventClass( EventSignificance::ClientFatal, EventFlavor::ServerPrivate ),nullptr,"Peer lost: "+p->ToString());
+					Network::HandleConnectionLoss(p);
+				}
+				clientDump.Clear();
 			}
 			//#endif
 

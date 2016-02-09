@@ -1675,22 +1675,16 @@ namespace Objects
 
 	/*static*/ void Faction::IDToColor(TVec3<>&rs, const TUniqueID&id, int iteration/*=0*/)
 	{
-		UINT32 crc32 = CRC32::getChecksum(id.bytes,id.NumBytes);
-		std::mt19937 r((long)(crc32+iteration));
-		//Random r(crc32+iteration);
-		//float3 rs;
-		float lowest,highest,delta;
-		do
-		{
-		
-			Vec::def(rs,Next(r),Next(r),Next(r));
-			lowest = Vec::min(rs);
-			highest = Vec::max(rs);
-			delta = highest - lowest;
-		}
-		while (delta < 0.01f);
-		Vec::subVal(rs,lowest);	//rs = (rs - lowest) / delta;
-		Vec::div(rs,delta);	//trying to be faster here
+		USHORT	v0 = *(const USHORT*)id.bytes,
+				v1 = *(((const USHORT*)id.bytes)+1),
+				v2 = *(((const USHORT*)id.bytes)+2);
+		int primary = v0 % 3;	//not perfectly evenly distributed since 65536 isn't divisible by 3, but it should be close enough
+		int secondary = (primary + (v1 % 2) + 1) % 3;
+		float secondaryLevel = (float(v2)/float(0xFFFF));
+		Vec::clear(rs);
+		rs.v[primary] = sqrt(1.f - sqr(secondaryLevel));
+		rs.v[secondary] = secondaryLevel;
+		rs *= 0.5f;//account for fading effects altering the color
 	};
 
 
