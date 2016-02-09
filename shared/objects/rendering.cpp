@@ -572,9 +572,14 @@ namespace Objects
 	namespace Renderer
 	{
 		double now = 0;
+		float				GetPulse(double now, float min, float max)
+		{
+			return ((float)sin(now*2.0)*0.5f+0.5f)*(max - min) + min;
+		}
+
 		float					GetActiveColor(double now)
 		{
-			return 1.f + (float)sin(now*2.0) * 0.25f;
+			return GetPulse(now,0.75f,1.25f);
 		}
 	}
 	/*
@@ -591,11 +596,12 @@ namespace Objects
 	{
 		static const Timer::Time t0 = timer.Now();
 		now = timer.GetSecondsSinceD(t0);
-		float pulse = doPulse ? GetActiveColor(now) : 1.f;
 
 		if (!Faction::mine)
 		{
 			//spectator
+	
+			float pulse = doPulse ? GetPulse(now,0.75f,1.f) : 1.f;
 
 
 			foreach (Faction::allKnown,_f)
@@ -610,6 +616,8 @@ namespace Objects
 		}
 		else
 		{
+			float pulse = doPulse ? GetActiveColor(now) : 1.f;
+
 			float3 mine = float3 (0.5f, 0.5f, 1.f) * pulse;
 			float3 theirs = float3 (1.f, 0.5f, 0.5f) * pulse;
 			static const float3 inactiveColorMine/*=0*/,

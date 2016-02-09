@@ -1,3 +1,4 @@
+improve sky grid
 decrease max transparency of water (make it configurable?)
 all available generators are switched on when power is needed, and are never switched off again. always?
 

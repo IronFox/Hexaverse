@@ -8,7 +8,10 @@ namespace Logging
 {
 	void SendEntityEvent( TCP::Peer*toPeer,const EventClass&type, const Objects::WorldEntity*e, const String&msg)
 	{
-		if (type.flavor == EventFlavor::ServerPrivate || type.significance <= EventSignificance::Common)
+		if (!toPeer && !e && type.significance >= EventSignificance::Uncommon)
+			RemoteControl::RelayEvent(msg);
+
+		if (type.flavor == EventFlavor::ServerPrivate || type.significance < EventSignificance::Uncommon)
 			return;
 
 
@@ -32,9 +35,6 @@ namespace Logging
 			out.message = msg;
 		out.significance = (BYTE)type.significance;
 		out.flavor = (BYTE)type.flavor;
-
-		if (!toPeer)
-			RemoteControl::RelayEvent(out.message);
 
 		if (toPeer)
 		{

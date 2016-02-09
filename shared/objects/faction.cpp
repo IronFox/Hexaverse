@@ -1684,9 +1684,7 @@ namespace Objects
 		Vec::clear(rs);
 		rs.v[primary] = sqrt(1.f - sqr(secondaryLevel));
 		rs.v[secondary] = secondaryLevel;
-		rs *= 0.5f;//account for fading effects altering the color
-	};
-
+	}
 
 	void		Faction::UpdateID(const TUniqueID&toID, bool recomputeColor/*=true*/)
 	{

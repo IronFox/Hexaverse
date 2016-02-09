@@ -112,7 +112,7 @@ namespace Console
 			break;
 			case '\n':
 			case '\r':
-				std::cout << "\n" + lastLine;
+				//std::cout << "\n" + lastLine;
 				Dispatch(input.ToStringRef());
 				input.Clear();
 			break;
