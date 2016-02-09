@@ -109,7 +109,7 @@ namespace RemoteControl
 
 		void	Handler::OnCommand(Package::NetString<1024>&cmd, TCP::Peer&peer)
 		{
-			LogEvent(EventClass::Preset::remoteControlCommand, Reflection::state.GetContext()+">'"+cmd+"'");
+			LogEvent(EventClass::Preset::remoteControlCommand, Reflection::state.GetContext()+">"+cmd);
 			CLI::println = ExecutionContext::PrintLn;
 			CLI::onFocusChange = ExecutionContext::OnFocusChange;
 			ExecutionContext::currentPeer = &peer;
