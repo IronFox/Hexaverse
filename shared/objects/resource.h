@@ -164,6 +164,14 @@ namespace Objects
 				return rs;
 			}
 
+			int	Sum() const
+			{
+				int rs = 0;
+				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+					rs += level[i];
+				return rs;
+			}
+
 			int	SumNegative() const
 			{
 				int rs = 0;
