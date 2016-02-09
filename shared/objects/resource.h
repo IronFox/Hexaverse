@@ -3,6 +3,7 @@
 
 #include <math/vclasses.h>
 #include <container/buffer.h>
+#include "../config.h"
 
 namespace Objects
 {
@@ -21,7 +22,28 @@ namespace Objects
 
 	typedef ResourceVectorT<Resource>	ResourceVector;
 
+	class ResourceFlagSet
+	{
+	private:
+		static_assert(Resource::N<=32,"Need other flag storage");
+		typedef UINT32	flagT;
+		flagT	isSet = 0;
 
+		explicit	ResourceFlagSet(flagT set) : isSet(set)	{}
+	public:
+		/**/	ResourceFlagSet()	{}
+		/**/	ResourceFlagSet(Resource res)	{Set(res);}
+		/**/	ResourceFlagSet(Resource::value_t res)	{Set(res);}
+		/**/	ResourceFlagSet(const ResourceVector&res)	{SetAllNonZero(res);}
+
+		void	Set(Resource res)	{isSet |= ((flagT)1 << (flagT)res);}
+		void	SetAllNonZero(const ResourceVector&res);
+		
+		void	operator|=(ResourceFlagSet res)	{isSet |= res.isSet;}
+		ResourceFlagSet	operator|(ResourceFlagSet res) const	{return ResourceFlagSet(isSet | res.isSet);}
+		bool	operator&(Resource res) const {return (isSet & ((flagT)1 << (flagT)res)) != 0;}
+		bool	operator&(index_t resIndex) const {return (isSet & ((flagT)1 << (flagT)resIndex)) != 0;}
+	};
 	
 	struct NaturalResourceVector
 	{
@@ -29,7 +51,7 @@ namespace Objects
 				minerals,
 				uranium;
 
-		static const int TranslationFactor = 3;	//!< Translation factor used to scale resource vectors samples from the world
+		static const int TranslationFactor = 2;	//!< Translation factor used to scale resource vectors samples from the world
 
 		/**/	NaturalResourceVector():fuel(0),minerals(0),uranium(0)	{}
 
@@ -139,6 +161,14 @@ namespace Objects
 			{	
 				Self rs = *this;
 				rs *= multiplier;
+				return rs;
+			}
+
+			int	Sum() const
+			{
+				int rs = 0;
+				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+					rs += level[i];
 				return rs;
 			}
 
