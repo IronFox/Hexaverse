@@ -1083,124 +1083,130 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			//Grid::visibleOrbitGrid.StripColor();
 
 		#ifndef CONNECTOR_LESS
-		Objects::anyCompoundsColored = false;
-		if (Objects::selectedMobileEntity)
-		{
-			Objects::PTurretBase base = Objects::selectedMobileEntity->GetTurretBase();
-
-			Objects::ResourceFlagSet res;
-			Objects::ResourceVector change;
-			Objects::ResourceVector current = Objects::selectedMobileEntity->currentStorage,current2,max2;
-			Objects::ResourceVector max = Objects::selectedMobileEntity->GetMaxStorageCapacity();
-			if (base && base->turret->ConsumesResources(res))
+			bool compoundSelectionUpdated = false;
+			if (!stateChangeOnly)
+				Objects::anyCompoundsColored = false;
+			if (Objects::selectedMobileEntity)
 			{
-				Objects::anyCompoundsColored = true;
-				Objects::OwnerParameter o = Objects::selectedMobileEntity->owner;
-				Objects::selectedMobileEntity->resourceEnvironment.CheckRefresh(*Objects::selectedMobileEntity);
-				Objects::Renderer::SelectCompoundAreas(o,res,Objects::selectedMobileEntity->GetWorldPosition(),Objects::selectedMobileEntity->resourceEnvironment);
+				Objects::PTurretBase base = Objects::selectedMobileEntity->GetTurretBase();
 
-
-
-				bool any = false;
-				foreach (Objects::selectedMobileEntity->resourceEnvironment.sourceCompounds,c)
+				Objects::ResourceFlagSet res;
+				Objects::ResourceVector change;
+				Objects::ResourceVector current = Objects::selectedMobileEntity->currentStorage,current2,max2;
+				Objects::ResourceVector max = Objects::selectedMobileEntity->GetMaxStorageCapacity();
+				if (base && base->turret->ConsumesResources(res))
 				{
-					if (c->first >= Objects::compounds.Count())
-						continue;
-					const auto&compound = Objects::compounds[c->first];
-					for (index_t i = 0; i < Objects::Resource::N; i++)
-						if (res & i)
-						{
-							current2.level[i] += compound.total.storage.level[i];
-							max2.level[i] += compound.total.storageMax.level[i];
-							change.level[i] += compound.total.supply.level[i];
-							change.level[i] -= compound.total.demand.level[i];
-						}
-					any = true;
-					if (res & Objects::Resource::Minerals)
-						for (const auto v : Objects::vehicles)
-							if (v->owner == o)
-							{
-								v->resourceEnvironment.CheckRefresh(*v);
-								if (v->resourceEnvironment.sourceCompounds.Contains(*c))
-								{
-									change.level[Objects::Resource::Minerals] -= v->GetCurrentMineralConsumption();
-								}
-							}
-					if (res & Objects::Resource::Fuel)
-						for (const auto v : Objects::satellites)
-							if (v->owner == o && v->RequiresFuel())
-							{
-								v->resourceEnvironment.CheckRefresh(*v);
-								if (v->resourceEnvironment.sourceCompounds.Contains(*c))
-								{
-									change.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound();
-								}
-							}
-				}
-				if (!any)
-				{
-					if (res & Objects::Resource::Minerals)
-						change.level[Objects::Resource::Minerals] -= Objects::selectedMobileEntity->GetCurrentMineralConsumption();
-					if (res & Objects::Resource::Fuel)
+					if (!stateChangeOnly)
+						Objects::anyCompoundsColored = true;
+					Objects::OwnerParameter o = Objects::selectedMobileEntity->owner;
+					Objects::selectedMobileEntity->resourceEnvironment.CheckRefresh(*Objects::selectedMobileEntity);
+					Objects::Renderer::SelectCompoundAreas(o,res,Objects::selectedMobileEntity->GetWorldPosition(),Objects::selectedMobileEntity->resourceEnvironment);
+					compoundSelectionUpdated = true;
+
+
+
+					bool any = false;
+					foreach (Objects::selectedMobileEntity->resourceEnvironment.sourceCompounds,c)
 					{
-						if (Objects::selectedMobileEntity->IsSatellite())
+						if (c->first >= Objects::compounds.Count())
+							continue;
+						const auto&compound = Objects::compounds[c->first];
+						for (index_t i = 0; i < Objects::Resource::N; i++)
+							if (res & i)
+							{
+								current2.level[i] += compound.total.storage.level[i];
+								max2.level[i] += compound.total.storageMax.level[i];
+								change.level[i] += compound.total.supply.level[i];
+								change.level[i] -= compound.total.demand.level[i];
+							}
+						any = true;
+						if (res & Objects::Resource::Minerals)
+							for (const auto v : Objects::vehicles)
+								if (v->owner == o)
+								{
+									v->resourceEnvironment.CheckRefresh(*v);
+									if (v->resourceEnvironment.sourceCompounds.Contains(*c))
+									{
+										change.level[Objects::Resource::Minerals] -= v->GetCurrentMineralConsumption();
+									}
+								}
+						if (res & Objects::Resource::Fuel)
+							for (const auto v : Objects::satellites)
+								if (v->owner == o && v->RequiresFuel())
+								{
+									v->resourceEnvironment.CheckRefresh(*v);
+									if (v->resourceEnvironment.sourceCompounds.Contains(*c))
+									{
+										change.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound();
+									}
+								}
+					}
+					if (!any)
+					{
+						if (res & Objects::Resource::Minerals)
+							change.level[Objects::Resource::Minerals] -= Objects::selectedMobileEntity->GetCurrentMineralConsumption();
+						if (res & Objects::Resource::Fuel)
 						{
-							Objects::PSatellite sat = To<Objects::Satellite>::Cast(Objects::selectedMobileEntity);
-							if (sat->RequiresFuel())
-								change.level[Objects::Resource::Fuel] -= sat->GetFuelConsumptionPerRound();
+							if (Objects::selectedMobileEntity->IsSatellite())
+							{
+								Objects::PSatellite sat = To<Objects::Satellite>::Cast(Objects::selectedMobileEntity);
+								if (sat->RequiresFuel())
+									change.level[Objects::Resource::Fuel] -= sat->GetFuelConsumptionPerRound();
+							}
 						}
 					}
 				}
+				{
+					UI::Update(
+							#ifndef NO_HIBERNATION
+								Objects::selectedVehicle->GetUplinkTraffic(),	
+							#endif
+								current,max,current2,max2, change);
+				}
 			}
+			else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
 			{
-				UI::Update(
+				if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
+				{
+					Objects::OwnerParameter o = Objects::selectedEntity->owner;
+					Objects::PStructure s = To<Objects::Structure>::Cast(Objects::selectedEntity);
+					const Objects::Compound&n = Objects::compounds[s->compoundID];
+					Objects::PWorkingStructure ws = s->IsWorkingStructure() ? To<Objects::WorkingStructure>::Cast(Objects::selectedEntity) : Objects::PWorkingStructure();
+					Objects::ResourceVector balance = n.total.supply;
+					balance -= n.total.demand;
+					for (const auto v : Objects::vehicles)
+						if (v->owner == o)
+						{
+							v->resourceEnvironment.CheckRefresh(*v);
+							if (v->resourceEnvironment.ContainsCompound(s->compoundID))
+							{
+								balance.level[Objects::Resource::Minerals] -= v->GetCurrentMineralConsumption();
+							}
+						}
+					for (const auto v : Objects::satellites)
+						if (v->owner == o && v->RequiresFuel())
+						{
+							v->resourceEnvironment.CheckRefresh(*v);
+							if (v->resourceEnvironment.ContainsCompound(s->compoundID))
+							{
+								balance.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound();
+							}
+						}
+					UI::Update(
 						#ifndef NO_HIBERNATION
-							Objects::selectedVehicle->GetUplinkTraffic(),	
+							Objects::selectedEntity->GetUplinkTraffic(),
 						#endif
-							current,max,current2,max2, change);
-			}
-		}
-		else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
-		{
-			if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
-			{
-				Objects::OwnerParameter o = Objects::selectedEntity->owner;
-				Objects::PStructure s = To<Objects::Structure>::Cast(Objects::selectedEntity);
-				const Objects::Compound&n = Objects::compounds[s->compoundID];
-				Objects::PWorkingStructure ws = s->IsWorkingStructure() ? To<Objects::WorkingStructure>::Cast(Objects::selectedEntity) : Objects::PWorkingStructure();
-				Objects::ResourceVector balance = n.total.supply;
-				balance -= n.total.demand;
-				for (const auto v : Objects::vehicles)
-					if (v->owner == o)
-					{
-						v->resourceEnvironment.CheckRefresh(*v);
-						if (v->resourceEnvironment.ContainsCompound(s->compoundID))
-						{
-							balance.level[Objects::Resource::Minerals] -= v->GetCurrentMineralConsumption();
-						}
-					}
-				for (const auto v : Objects::satellites)
-					if (v->owner == o && v->RequiresFuel())
-					{
-						v->resourceEnvironment.CheckRefresh(*v);
-						if (v->resourceEnvironment.ContainsCompound(s->compoundID))
-						{
-							balance.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound();
-						}
-					}
-				UI::Update(
-					#ifndef NO_HIBERNATION
-						Objects::selectedEntity->GetUplinkTraffic(),
-					#endif
-					n.total.storage, n.total.storageMax, balance);
+						n.total.storage, n.total.storageMax, balance);
+				}
+				else
+					UI::HideExtraGauges();
+
+
 			}
 			else
 				UI::HideExtraGauges();
-
-
-		}
-		else
-			UI::HideExtraGauges();
+			if (!compoundSelectionUpdated && Objects::anyCompoundsColored)
+				Objects::Renderer::SelectCompoundAreas(Objects::selectedEntity ? Objects::selectedEntity->owner : Objects::Faction::mine);
 
 		#else
 			
