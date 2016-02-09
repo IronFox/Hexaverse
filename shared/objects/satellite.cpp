@@ -445,7 +445,7 @@ namespace Objects
 		RegisterProduction(SkyGuardian::globalPrototype);
 		RegisterProduction(SkyHub::globalPrototype);
 		RegisterProduction(Ragnarok::globalPrototype);
-		RegisterProduction(StarPort::globalPrototype);
+		//RegisterProduction(StarPort::globalPrototype);
 	}
 
 
