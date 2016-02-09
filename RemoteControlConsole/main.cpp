@@ -6,6 +6,7 @@
 #include <net/containers.h>
 #include <string/string_buffer.h>
 #include <mutex>
+#include <conio.h>
 #include "../shared/protocol.h"
 
 BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
@@ -26,6 +27,12 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 
 void	Dispatch(const StringRef&);
 
+
+
+std::thread connectionRetryThread;
+void ConnectionRetry();
+void CompleteInput();
+
 namespace Console
 {
 	std::recursive_mutex	mutex;
@@ -45,10 +52,13 @@ namespace Console
 	{
 		std::cout << '\r';
 		for (index_t i = 0; i < lastLine.length(); i++)
-			std::cout << ' ';
+			if (lastLine.get(i) != '\t')
+				std::cout << ' ';
+			else
+				std::cout << '\t';
 		std::cout << '\r';
-
 	}
+
 
 	void	WriteLine(const String&line)
 	{
@@ -78,26 +88,31 @@ namespace Console
 		mutex.unlock();
 	}
 
+	void	SetInput(const String&line)
+	{
+		mutex.lock();
+		input.Clear();
+		input << line;
+		Refresh();
+		mutex.unlock();
+	}
 	void	AddChar(char c)
 	{
 		mutex.lock();
 		switch (c)
 		{
 			case 8:
-				input.EraseLast();
+				if (input.IsNotEmpty())
+					input.EraseLast();
 			break;
-			//case '\t':
-			//{
-			//	input << ' ';
-
-			//	lastLine += ' ';
-			//	while (lastLine.length()%8)
-			//		lastLine += ' ';
-			//	Refresh();
-			//}
-			//break;
+			case '\t':
+			{
+				CompleteInput();
+			}
+			break;
 			case '\n':
 			case '\r':
+				//std::cout << "\n" + lastLine;
 				Dispatch(input.ToStringRef());
 				input.Clear();
 			break;
@@ -153,6 +168,11 @@ namespace Handler
 			std::cout << '-'<<error<<std::endl;;
 	}
 
+	void	OnComplete(Package::NetString<1024>&error)
+	{
+		Console::SetInput(error);
+	}
+
 }
 
 namespace Channels
@@ -162,6 +182,7 @@ namespace Channels
 		enum id_t
 		{
 			Command,	//c2s
+			Complete,	//both : string
 			Error,		//s2c : string
 			Context,	//s2c : string
 			Response,	//s2c : string
@@ -170,16 +191,33 @@ namespace Channels
 	}
 
 
-	TCP::ObjectSender<Package::NetString<1024>,ID::Command>	command;
+	TCP::ObjectSender<Package::NetString<1024>,ID::Command>		command;
+	TCP::Channel<Package::NetString<1024>,0,ID::Complete>		complete(Handler::OnComplete);
 	TCP::Channel<Package::NetString<1024>,0,ID::Error>		error(Handler::OnError);
 	TCP::Channel<Package::NetString<1024>,0,ID::Context>	context(Handler::OnContext);
 	TCP::Channel<Package::NetString<1024>,0,ID::Response>	response(Handler::OnResponse);
+
 }
 
 
 TCP::Client client;
 Buffer0<String>	bufferedCommands;
 std::mutex	bufferedCommandsMutex;
+
+
+void	CompleteInput()
+{
+	StringRef line = Console::input.ToStringRef();
+	//if (line.length() >= 2 && line.beginsWith("ex"))
+	//	Console::SetInput("exit");
+	//else
+	{
+		if (client.IsConnected())
+		{
+			Channels::complete.SendTo(client,line);
+		}
+	}
+}
 
 void	Dispatch(const StringRef&line)
 {
@@ -195,9 +233,16 @@ void	Dispatch(const StringRef&line)
 	}
 	else
 	{
-		bufferedCommandsMutex.lock();
-		bufferedCommands << line;
-		bufferedCommandsMutex.unlock();
+		if (Handler::interactive)
+		{
+			Console::WriteLine("Unable to execute command. Not connected");
+		}
+		else
+		{
+			bufferedCommandsMutex.lock();
+			bufferedCommands << line;
+			bufferedCommandsMutex.unlock();
+		}
 	}
 }
 
@@ -209,62 +254,6 @@ void OnDeserializationFailed(UINT32 channel, TCP::Peer&peer)
 
 
 Event	exitLock;
-
-
-void OnEvent(TCP::event_t event, TCP::Peer&peer)
-{
-	switch (event)
-	{
-		case TCP::Event::ConnectionClosed:
-		case TCP::Event::ConnectionFailed:
-		case TCP::Event::ConnectionLost:
-			if (Handler::interactive)
-			{
-				Console::WriteLine(peer.ToString()+": "+TCP::event2str(event)+" => closing down");
-				exit(-1);
-			}
-			else
-				exitLock.signal();
-		return;
-		case TCP::Event::ConnectionEstablished:
-			if (Handler::interactive)
-				Console::WriteLine(peer.ToString()+": "+TCP::event2str(event));
-			bufferedCommandsMutex.lock();
-			{
-				for (index_t i = 0; i < bufferedCommands.Count(); i++)
-				{
-					Channels::command.SendTo(client,bufferedCommands[i]);
-				}
-			}
-			bufferedCommandsMutex.unlock();
-		return;
-	}
-	Console::WriteLine(peer.ToString()+": "+TCP::event2str(event));
-}
-
-
-void OnIgnorePackage(UINT32 channel, UINT32 size, TCP::Peer&peer)
-{
-	Console::WriteLine(peer.ToString()+": Ignoring package of size "+String(size)+" on channel "+String(channel));
-}
-
-void OnSignal(UINT32 signal, TCP::Peer&peer)
-{
-	if (signal == Channels::ID::ExecutionDone)
-	{
-		if (!Handler::interactive)
-		{
-			exitLock.signal();
-			return;
-		}
-
-	}
-	else
-		Console::WriteLine(peer.ToString()+": Received signal on channel "+String(signal));
-
-}
-
-
 
 namespace ParameterConfig
 {
@@ -327,6 +316,84 @@ namespace ParameterConfig
 
 }
 
+void OnEvent(TCP::event_t event, TCP::Peer&peer)
+{
+	switch (event)
+	{
+		case TCP::Event::ConnectionClosed:
+		case TCP::Event::ConnectionFailed:
+		case TCP::Event::ConnectionLost:
+			if (Handler::interactive)
+			{
+				Console::WriteLine(peer.ToString()+": "+TCP::event2str(event));
+				if (!connectionRetryThread.joinable())
+				{
+					connectionRetryThread.swap(std::thread(ConnectionRetry));
+				}
+			}
+			else
+				exitLock.signal();
+		return;
+		case TCP::Event::ConnectionEstablished:
+			if (connectionRetryThread.joinable())
+			{
+				try
+				{
+					connectionRetryThread.join();
+				}
+				catch (...)
+				{}
+			}
+			if (Handler::interactive)
+				Console::WriteLine(peer.ToString()+": "+TCP::event2str(event));
+			bufferedCommandsMutex.lock();
+			{
+				for (index_t i = 0; i < bufferedCommands.Count(); i++)
+				{
+					Channels::command.SendTo(client,bufferedCommands[i]);
+				}
+			}
+			bufferedCommandsMutex.unlock();
+		return;
+	}
+	Console::WriteLine(peer.ToString()+": "+TCP::event2str(event));
+}
+
+
+void OnIgnorePackage(UINT32 channel, UINT32 size, TCP::Peer&peer)
+{
+	Console::WriteLine(peer.ToString()+": Ignoring package of size "+String(size)+" on channel "+String(channel));
+}
+
+void OnSignal(UINT32 signal, TCP::Peer&peer)
+{
+	if (signal == Channels::ID::ExecutionDone)
+	{
+		if (!Handler::interactive)
+		{
+			exitLock.signal();
+			return;
+		}
+
+	}
+	else
+		Console::WriteLine(peer.ToString()+": Received signal on channel "+String(signal));
+
+}
+
+void ConnectionRetry()
+{
+	while (!client.IsConnected())
+	{
+		Sleep(1000);
+		if (!client.IsAttemptingToConnect() && !client.IsConnected())
+			client.ConnectAsync("localhost:"+String(ParameterConfig::basePort+PortOffset::Control));
+	}
+}
+
+
+
+
 
 int main(int argc, char* argv[])
 {
@@ -342,6 +409,7 @@ int main(int argc, char* argv[])
 	client.InstallChannel(Channels::error);
 	client.InstallChannel(Channels::context);
 	client.InstallChannel(Channels::response);
+	client.InstallChannel(Channels::complete);
 	client.OpenSignalChannel(Channels::ID::ExecutionDone,0);
 
 	client.onDeserializationFailed = OnDeserializationFailed;
@@ -359,8 +427,9 @@ int main(int argc, char* argv[])
 		Console::Refresh();
 		while (!application_shutting_down)
 		{
-			char c;
-			std::cin.get(c);
+			char c = (char)(BYTE)(unsigned)_getch();
+//			std::cin.get(c);
+		//	if (client.IsConnected())
 			Console::AddChar(c);
 		}
 		client.Disconnect();

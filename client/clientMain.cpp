@@ -70,6 +70,8 @@ extern "C"
 	_declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
 
+
+
 #ifdef HAS_WINDOW
 	namespace DX11 = Engine::DX11; //!< Shortcut
 
@@ -116,11 +118,11 @@ SpinLock	eventLock;
 					color = float3(0,1,0);
 				break;
 				case EventFlavor::Loss:
-					color = float3(0.9,0.1,0.1);
+					color = float3(1,0.35,0.3);
 				break;
 				case EventFlavor::SystemError:
 				case EventFlavor::UserError:
-					color = float3(1,0.4,0.4);
+					color = float3(1,0.3,0.4);
 				break;
 				case EventFlavor::Neutral:
 					if (type.significance == EventSignificance::Important)
@@ -456,7 +458,7 @@ void	SignalRoundEnd()
 		#ifdef HAS_WINDOW
 			Objects::UpdateChoices(Network::ControlEnabled());
 		#endif
-		LogEvent(EventClass::Preset::uncommon,nullptr,"Requested new round");
+		LogEvent(EventClass::Preset::common,nullptr,"Requested new round");
 	}
 }
 
@@ -1083,116 +1085,129 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			//Grid::visibleOrbitGrid.StripColor();
 
 		#ifndef CONNECTOR_LESS
-		Objects::anyCompoundsColored = false;
-		if (Objects::selectedMobileEntity)
-		{
-			Objects::PTurretBase base = Objects::selectedMobileEntity->GetTurretBase();
-
-			Objects::ResourceFlagSet res;
-			Objects::ResourceVector change;
-			Objects::ResourceVector current = Objects::selectedMobileEntity->currentStorage,current2,max2;
-			Objects::ResourceVector max = Objects::selectedMobileEntity->GetMaxStorageCapacity();
-			if (base && base->turret->ConsumesResources(res))
+			bool compoundSelectionUpdated = false;
+			if (!stateChangeOnly)
+				Objects::anyCompoundsColored = false;
+			if (Objects::selectedMobileEntity)
 			{
-				Objects::anyCompoundsColored = true;
-				Objects::OwnerParameter o = Objects::selectedMobileEntity->owner;
-				Objects::selectedMobileEntity->resourceEnvironment.CheckRefresh(*Objects::selectedMobileEntity);
-				Objects::Renderer::SelectCompoundAreas(o,res,Objects::selectedMobileEntity->GetWorldPosition(),
-															Objects::selectedMobileEntity->resourceEnvironment,
-															Objects::selectedMobileEntity->IsOrbital());
+				Objects::PTurretBase base = Objects::selectedMobileEntity->GetTurretBase();
 
+				Objects::ResourceFlagSet res;
+				Objects::ResourceVector change,upkeep;
+				Objects::ResourceVector current = Objects::selectedMobileEntity->currentStorage,current2,max2;
+				Objects::ResourceVector max = Objects::selectedMobileEntity->GetMaxStorageCapacity();
 
-				bool any = false;
-				foreach (Objects::selectedMobileEntity->resourceEnvironment.sourceCompounds,c)
+				Objects::selectedMobileEntity->GetUpkeep(upkeep);
+
+				if (upkeep.IsNotEmpty() || (base && base->turret->ConsumesResources(res)))
 				{
-					if (c->first >= Objects::compounds.Count())
-						continue;
-					const auto&compound = Objects::compounds[c->first];
-					for (index_t i = 0; i < Objects::Resource::N; i++)
-						if (res & i)
+					res |= upkeep;
+					if (!stateChangeOnly)
+						Objects::anyCompoundsColored = true;
+					Objects::OwnerParameter o = Objects::selectedMobileEntity->owner;
+					Objects::selectedMobileEntity->resourceEnvironment.CheckRefresh(*Objects::selectedMobileEntity);
+					Objects::Renderer::SelectCompoundAreas(o,res,Objects::selectedMobileEntity->GetWorldPosition(),
+																Objects::selectedMobileEntity->resourceEnvironment,
+																Objects::selectedMobileEntity->IsOrbital());
+					compoundSelectionUpdated = true;
+
+					bool any = false;
+					foreach (Objects::selectedMobileEntity->resourceEnvironment.sourceCompounds,c)
+					{
+						if (c->first >= Objects::compounds.Count())
+							continue;
+						const auto&compound = Objects::compounds[c->first];
+						for (index_t i = 0; i < Objects::Resource::N; i++)
+							if (res & i)
+							{
+								current2.level[i] += compound.total.storage.level[i];
+								max2.level[i] += compound.total.storageMax.level[i];
+								change.level[i] += compound.total.supply.level[i];
+								change.level[i] -= compound.total.demand.level[i];
+							}
+						any = true;
+						Objects::ForeachMobileWorldEntity([&change,res,o,c](const Objects::PMobileEntity&e)
 						{
-							current2.level[i] += compound.total.storage.level[i];
-							max2.level[i] += compound.total.storageMax.level[i];
-							change.level[i] += compound.total.supply.level[i];
-							change.level[i] -= compound.total.demand.level[i];
-						}
-					any = true;
-					Objects::ForeachMobileWorldEntity([&change,res,o,c](const Objects::PMobileEntity&e)
+							if (e->owner != o)
+								return;
+							e->resourceEnvironment.CheckRefresh(*e);
+							if (!e->resourceEnvironment.sourceCompounds.Contains(*c))
+								return;
+							
+							Objects::ResourceVector upkeep;
+							e->GetUpkeep(upkeep);
+							for (index_t i = 0; i < Objects::Resource::N; i++)
+								if (res & i)
+									change.level[i] -= upkeep.level[i];
+							if (res & Objects::Resource::Minerals)
+								change.level[Objects::Resource::Minerals] -= e->GetCurrentMineralConsumption();
+						});
+					}
+					if (!any)
+					{
+						if (res & Objects::Resource::Minerals)
+							change.level[Objects::Resource::Minerals] -= Objects::selectedMobileEntity->GetCurrentMineralConsumption();
+						Objects::ResourceVector upkeep;
+						Objects::selectedMobileEntity->GetUpkeep(upkeep);
+						for (index_t i = 0; i < Objects::Resource::N; i++)
+							if (res & i)
+								change.level[i] -= upkeep.level[i];
+					}
+					{
+						UI::Update(
+								#ifndef NO_HIBERNATION
+									Objects::selectedVehicle->GetUplinkTraffic(),	
+								#endif
+									current,max,current2,max2, change);
+					}
+				}
+				else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
+				{
+					UI::Update(
+							#ifndef NO_HIBERNATION
+								Objects::selectedVehicle->GetUplinkTraffic(),	
+							#endif
+								current,max,current2,max2, change);
+				}
+			}
+			else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
+			{
+				if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
+				{
+					Objects::OwnerParameter o = Objects::selectedEntity->owner;
+					Objects::PStructure s = To<Objects::Structure>::Cast(Objects::selectedEntity);
+					const Objects::Compound&n = Objects::compounds[s->compoundID];
+					Objects::PWorkingStructure ws = s->IsWorkingStructure() ? To<Objects::WorkingStructure>::Cast(Objects::selectedEntity) : Objects::PWorkingStructure();
+					Objects::ResourceVector balance = n.total.supply;
+					balance -= n.total.demand;
+
+					Objects::ForeachMobileWorldEntity([&balance,o,s](const Objects::PMobileEntity&e)
 					{
 						if (e->owner != o)
 							return;
 						e->resourceEnvironment.CheckRefresh(*e);
-						if (!e->resourceEnvironment.sourceCompounds.Contains(*c))
+						if (!e->resourceEnvironment.ContainsCompound(s->compoundID))
 							return;
 							
 						Objects::ResourceVector upkeep;
 						e->GetUpkeep(upkeep);
 						for (index_t i = 0; i < Objects::Resource::N; i++)
-							if (res & i)
-								change.level[i] -= upkeep.level[i];
-						if (res & Objects::Resource::Minerals)
-							change.level[Objects::Resource::Minerals] -= e->GetCurrentMineralConsumption();
-					});
-				}
-				if (!any)
-				{
-					if (res & Objects::Resource::Minerals)
-						change.level[Objects::Resource::Minerals] -= Objects::selectedMobileEntity->GetCurrentMineralConsumption();
-					Objects::ResourceVector upkeep;
-					Objects::selectedMobileEntity->GetUpkeep(upkeep);
-					for (index_t i = 0; i < Objects::Resource::N; i++)
-						if (res & i)
-							change.level[i] -= upkeep.level[i];
-				}
-			}
-			{
-				UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedVehicle->GetUplinkTraffic(),	
-						#endif
-							current,max,current2,max2, change);
-			}
-		}
-		else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
-		{
-			if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
-			{
-				Objects::OwnerParameter o = Objects::selectedEntity->owner;
-				Objects::PStructure s = To<Objects::Structure>::Cast(Objects::selectedEntity);
-				const Objects::Compound&n = Objects::compounds[s->compoundID];
-				Objects::PWorkingStructure ws = s->IsWorkingStructure() ? To<Objects::WorkingStructure>::Cast(Objects::selectedEntity) : Objects::PWorkingStructure();
-				Objects::ResourceVector balance = n.total.supply;
-				balance -= n.total.demand;
-
-				Objects::ForeachMobileWorldEntity([&balance,o,s](const Objects::PMobileEntity&e)
-				{
-					if (e->owner != o)
-						return;
-					e->resourceEnvironment.CheckRefresh(*e);
-					if (!e->resourceEnvironment.ContainsCompound(s->compoundID))
-						return;
-							
-					Objects::ResourceVector upkeep;
-					e->GetUpkeep(upkeep);
-					for (index_t i = 0; i < Objects::Resource::N; i++)
-						balance.level[i] -= upkeep.level[i];
+							balance.level[i] -= upkeep.level[i];
 					
-					balance.level[Objects::Resource::Minerals] -= e->GetCurrentMineralConsumption();
-				});
+						balance.level[Objects::Resource::Minerals] -= e->GetCurrentMineralConsumption();
+					});
 
-				UI::Update(
-					#ifndef NO_HIBERNATION
-						Objects::selectedEntity->GetUplinkTraffic(),
-					#endif
-					n.total.storage, n.total.storageMax, balance);
+					UI::Update(
+						#ifndef NO_HIBERNATION
+							Objects::selectedEntity->GetUplinkTraffic(),
+						#endif
+						n.total.storage, n.total.storageMax, balance);
+				}
+				else
+					UI::HideExtraGauges();
 			}
-			else
-				UI::HideExtraGauges();
-
-
-		}
-		else
-			UI::HideExtraGauges();
+			if (!compoundSelectionUpdated && Objects::anyCompoundsColored)
+				Objects::Renderer::SelectCompoundAreas(Objects::selectedEntity ? Objects::selectedEntity->owner : Objects::Faction::mine);
 
 		#else
 			
@@ -1394,7 +1409,7 @@ bool loop()
 	
 		//bool rebuildCamera = false;
 
-		if (!Dialog::IsModal())
+		if (!Dialog::IsModal() && !TimeLapse::enabled)
 		{
 			{
 				if (Engine::mouse.buttons.right_down || Engine::mouse.buttons.middle_down)
@@ -1710,7 +1725,7 @@ bool loop()
 
 			if (saveScreenshot)
 			{
-				if (RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase || !TimeLapse::enabled)
+				if (!TimeLapse::enabled || (RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase && Animation::AllDone() && Explosions::NoneActive()))
 				{
 					saveScreenshot = false;
 				}
@@ -2214,35 +2229,44 @@ void MyFatal(const FatalDescriptor&descriptor)
 		if (TimeLapse::enabled)
 		{
 			TimeLapse::enabled = false;
+			Dialog::SignalSituationChange();
 			LogEvent(EventClass::Preset::uncommon,"Time lapse disabled");
 		}
 		else
 		{
-			PathString outDirName = PathString(Logging::TimeStamp(true));
-			if (TimeLapse::customBasePath.IsNotEmpty())
+			if (!Network::amSpectator || !Network::client.IsConnected())
 			{
-				FileSystem::Folder f = FileSystem::CreateDirectory(TimeLapse::customBasePath);
-				if (f.IsValidLocation())
-					outDirName = f.FindFile(outDirName,false)->GetLocation();
-				else
-				{
-					LogEvent( EventClass::Preset::commandRejected , "Unable to find folder '"+String(TimeLapse::customBasePath)+". Defaulting to default Documents folder");
-					outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
-				}
+				LogEvent(EventClass(EventSignificance::Important,EventFlavor::UserError),"Time lapse recording cannot be enabled if the local client is not configured as spectator");
 			}
 			else
-				outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
-
-			int framesPerSecond = (int)ceil(1.f / std::max(0.001f,TimeLapse::frameDelaySeconds));
-			Dialog::Confirm("Timelapse mode will capture roughly "+String(framesPerSecond)+" frame(s) per second during animation phase, but remain inactive during all other phases. For best results leave the camera stationary.\nProceed?",
-			[outDirName]()
 			{
-				TimeLapse::runningNumber = 0;
-				TimeLapse::enabled = true;
-				TimeLapse::basePath = outDirName;
-				FileSystem::CreateDirectory(outDirName);
-				LogEvent(EventClass::Preset::uncommon,"Time lapse enabled. Writing to "+String(outDirName));
-			},[](){return Dialog::CheckResult::OkayContinue;});
+				PathString outDirName = PathString(Logging::TimeStamp(true));
+				if (TimeLapse::customBasePath.IsNotEmpty())
+				{
+					FileSystem::Folder f = FileSystem::CreateDirectory(TimeLapse::customBasePath);
+					if (f.IsValidLocation())
+						outDirName = f.FindFile(outDirName,false)->GetLocation();
+					else
+					{
+						LogEvent( EventClass::Preset::commandRejected , "Unable to find folder '"+String(TimeLapse::customBasePath)+". Defaulting to default Documents folder");
+						outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
+					}
+				}
+				else
+					outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
+
+				int framesPerSecond = (int)ceil(1.f / std::max(0.001f,TimeLapse::frameDelaySeconds));
+				Dialog::Confirm("Timelapse mode will capture roughly "+String(framesPerSecond)+" frame(s) per second during animation phase, but remain inactive during all other phases. The camera will be locked in place.\nProceed?",
+				[outDirName]()
+				{
+					TimeLapse::runningNumber = 0;
+					TimeLapse::enabled = true;
+					TimeLapse::basePath = outDirName;
+					FileSystem::CreateDirectory(outDirName);
+					LogEvent(EventClass::Preset::uncommon,"Time lapse enabled. Writing to "+String(outDirName));
+					Dialog::PermanentMessage("Time lapse recording is enabled. Camera is locked. Press F2 to end time lapse recording",[](){return TimeLapse::enabled ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
+				},[](){return Dialog::CheckResult::OkayContinue;});
+			}
 		}
 	}
 
@@ -2735,7 +2759,7 @@ String GenerateOreName(Random&random)
 			);
 		Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 		if (mine)
-			return !mine->IsEnabled()/* && mine->CouldEnable()*/;
+			return !mine->IsEnabled() && mine->CouldEnable();
 
 		return false;
 

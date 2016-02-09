@@ -225,9 +225,6 @@ namespace Objects
 						if (change == 0)
 							return;
 					}
-					Objects::ChangeStorage(owner,owner.timeAt,owner.GetMaxStorageCapacity(),owner.currentStorage,res,change);
-					if (!change)
-						return;
 					ResourceVector demand;
 					foreach (sourceCompounds,c)
 					{
@@ -238,6 +235,9 @@ namespace Objects
 						if (change == 0)
 							return;
 					}
+					Objects::ChangeStorage(owner,owner.timeAt,owner.GetMaxStorageCapacity(),owner.currentStorage,res,change);
+					if (!change)
+						return;
 				#else
 					Objects::ChangeStorage(owner,owner.timeAt,owner.GetMaxStorageCapacity(),owner.currentStorage,res,change);
 				#endif

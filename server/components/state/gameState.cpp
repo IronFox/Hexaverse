@@ -107,7 +107,7 @@ namespace Game
 		void	AssembleGameInfo(Protocol::GameInfo&info)
 		{
 			info.activePhase = RuntimeConfig::phase;
-			info.numFactionsOnline = (UINT16)::Network::activePlayers.Count();
+			info.numFactionsOnline = (UINT16)::Network::activePlayersAndSpectators.Count();
 			info.numFactionsCreated = (UINT16)Objects::Faction::all.Count() + (Config::Nexus::enableAI ? 1 : 0);
 			info.roundNumber = (UINT32)RuntimeConfig::roundNumber;
 			info.worldID = World::worldID;
@@ -477,7 +477,7 @@ namespace Game
 					::Network::SendToOwner(Channels::setMobileState,v,w1);
 				}
 				else
-					foreach(::Network::activePlayers,cl)
+					foreach(::Network::activePlayersAndSpectators,cl)
 					{
 						if (::Network::CanSeeAsOwner(*cl,v))
 							Channels::setMobileState.SendTo((*cl)->peer.lock(),w1);
@@ -511,7 +511,7 @@ namespace Game
 					::Network::SendToOwner(Channels::setStructureState,s,w1);
 				}
 				else
-					foreach(::Network::activePlayers,cl)
+					foreach(::Network::activePlayersAndSpectators,cl)
 					{
 						if (::Network::CanSeeAsOwner(*cl,s))
 							Channels::setStructureState.SendTo((*cl)->peer.lock(),w1);
@@ -536,7 +536,7 @@ namespace Game
 			});
 		}
 		else
-			foreach (::Network::activePlayers,cl)
+			foreach (::Network::activePlayersAndSpectators,cl)
 			{
 				//if ((*cl)->faction->global.coverageChanged)
 				{
@@ -785,7 +785,7 @@ namespace Game
 								Objects::Faction::Kill(faction);
 								SignalFactionsChanged();
 								if (client)
-									::Network::activePlayers.FindAndErase(client);
+									::Network::activePlayersAndSpectators.FindAndErase(client);
 								::Network::tokenMap.Unset(faction->accessToken);
 								::Network::playerMap.Unset(faction);
 								faction->online = false;

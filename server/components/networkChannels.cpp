@@ -237,7 +237,7 @@ namespace Receiver
 
 		if (!response.startFactionTypes || response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
 		{
-			if (Network::activePlayers.FindAndErase(client))
+			if (Network::activePlayersAndSpectators.FindAndErase(client))
 			{
 				if (client->faction)
 				{
@@ -277,7 +277,7 @@ namespace Receiver
 		}
 
 
-		if (Network::activePlayers.Contains(client))
+		if (Network::activePlayersAndSpectators.Contains(client))
 			return;
 
 		bool factionTypeNotSupported = true;
@@ -320,7 +320,7 @@ namespace Receiver
 			if (!client->isSpectator)
 			{
 				Network::spectators << client;
-				Network::activePlayers << client;
+				Network::activePlayersAndSpectators << client;
 			}
 			client->isSpectator = true;
 
@@ -464,7 +464,7 @@ namespace Receiver
 		}
 		Network::ChangeUserLevel(peer,Network::UserLevel::CommonFaction);
 
-		Network::activePlayers << client;
+		Network::activePlayersAndSpectators << client;
 		Network::playerMap.Set(client->faction,client);
 		client->faction->online = true;
 		client->wantNewRound = false;
@@ -1508,7 +1508,6 @@ namespace Receiver
 	}
 
 
-
 	void OnEvent(TCP::event_t ev, TCP::Peer&peer)
 	{
 		switch (ev)
@@ -1530,8 +1529,10 @@ namespace Receiver
 				}
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::ServerPrivate ),peer,"Client disconnected");
 
-				if (Network::activePlayers.IsEmpty() || (Network::activePlayers.Count() == 1 && Network::activePlayers.first()->faction == Objects::Faction::nexus))
+
+				if (!Network::AnyHumanPlayersActive())
 				{
+					LogEvent(EventClass::Preset::uncommon,"Last active player has disconnected. Pausing round timer");
 					Game::roundTimerPaused = true;
 					if (FileIO::Config::saveWhenAllQuit)
 						FileIO::AutoSave();

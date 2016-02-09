@@ -195,6 +195,8 @@ namespace Explosions
 
 	void				Render(const Engine::Aspect<>&);
 
+	inline bool			NoneActive() {return explosions.IsEmpty();}
+
 	void				InitExplosion(const TVec3<>&coordinates, bool isEMP, float size=25.f, float duration = 1.3f);
 	void				InitExplosion(const TVec3<>&coordinates, bool isEMP, float size, float duration, const std::function<void()>&onQuarterDone);
 }
