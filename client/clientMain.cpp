@@ -2674,7 +2674,7 @@ String GenerateOreName(Random&random)
 			);
 		Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 		if (mine)
-			return !mine->IsEnabled()/* && mine->CouldEnable()*/;
+			return !mine->IsEnabled() && mine->CouldEnable();
 
 		return false;
 
