@@ -1016,7 +1016,7 @@ namespace Objects
 			virtual int				GetUplinkPriority() const override {return 750;};
 		#endif
 
-		virtual bool				WouldLikeToEnable() const override {return true;}
+		virtual bool				WouldLikeToEnable() const override {return false;}
 
 
 		virtual String				GetTypeName() const override { return "Generator"; };

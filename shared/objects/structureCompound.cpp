@@ -463,6 +463,56 @@ namespace Objects
 		return result;
 	}
 
+	#ifndef CLIENT
+		bool				Compound::ProcessEnableCandidate(PWorkingStructure*bestOut, int&bestBalance, ResourceVector&balance,  index_t recursionDepth, int parentSum, WWorkingStructure*parent)
+		{
+			bool rs = false;
+			ResourceVector dummy;
+			WWorkingStructure*_s = parent;
+			if (!_s)
+				_s = workingStructures.begin();
+			else
+				++_s;
+			for (;_s != workingStructures.end(); ++_s)
+			{
+				PWorkingStructure s= _s->lock();
+				DBG_ASSERT__(s);
+				if (!s || s->IsHibernating())
+					continue;
+				if (s->IsEnabled() || !s->CanEnable())
+					continue;
+				if (lastDisabled == s.get())
+					continue;
+
+				ResourceVector local;
+				s->GetResourceVector(local,dummy,dummy);
+				balance += local;
+				int summed = local.SumNegative() + local.SumPositive()/10 + parentSum;
+				if (balance.IsStable())
+				{
+					if (summed > bestBalance)
+					{
+						rs = true;
+						bestBalance = summed;
+						*bestOut = s;
+						for (index_t r = 1; r <= recursionDepth; r++)
+							bestOut[r].reset();
+					}
+				}
+				if (recursionDepth)
+				{
+					if (ProcessEnableCandidate(bestOut+1, bestBalance, balance,  recursionDepth-1, summed, _s))
+					{
+						*bestOut = s;
+						rs = true;
+					}
+				}
+				balance -= local;
+			}
+			return rs;
+		}
+	#endif
+
 	void				Compound::RefreshState(float atTime)
 	{
 		total = GetVector();
@@ -473,63 +523,24 @@ namespace Objects
 
 			if (!stable)
 			{
-				foreach (workingStructures,s0)
+				ResourceVector balance = total.balance;
+				int bestBalance = -1000;
+				PWorkingStructure bestEnable[2];
+				if (ProcessEnableCandidate(bestEnable, bestBalance, balance,  ARRAYSIZE(bestEnable)-1, 0,nullptr))
 				{
-					PWorkingStructure s= s0->lock();
-					DBG_ASSERT__(s);
-					if (!s || s->IsHibernating())
-						continue;
-					if (s->IsEnabled() || !s->CanEnable())
-						continue;
-					if (lastDisabled == s.get())
-						continue;
-					
-					s->SetEnabled(true,atTime,false);
-
-					FullResourceVector v2 = GetVector();
-					if (v2.balance.IsStable())
+					for (index_t i = 0; i < ARRAYSIZE(bestEnable); i++)
 					{
-						LogEvent(forceEnable,s.get(), "Auto-balance: Structure enabled");
-						total = v2;
-						stable = true;
-						break;
-					}
-
-					auto s1 = s0;
-					++s1;
-					for (;s1 != workingStructures.end(); ++s1)
-					{
-						PWorkingStructure st= s1->lock();
-						DBG_ASSERT__(st);
-						if (!st || st->IsHibernating())
-							continue;
-						if (st->IsEnabled() || !st->CanEnable())
-							continue;
-						if (lastDisabled == st.get())
-							continue;
-					
-						st->SetEnabled(true,atTime,false);
-
-						FullResourceVector v2 = GetVector();
-						if (v2.balance.IsStable())
+						if (bestEnable[i])
 						{
-							LogEvent(forceEnable,s.get(), "Auto-balance: Structure enabled");
-							LogEvent(forceEnable,st.get(), "Auto-balance: Structure enabled");
-							total = v2;
-							stable = true;
-							break;
+							LogEvent(forceEnable,bestEnable[i].get(), "Auto-balance: Structure enabled");
+							bestEnable[i]->SetEnabled(true,atTime,false);
 						}
-
-						st->SetEnabled(false,atTime,false);
 					}
-					
-					if (stable)
-						break;
+					total = GetVector();
 
-
-					s->SetEnabled(false,atTime,false);
+					stable = total.balance.IsStable();
+					ASSERT__(stable);
 				}
-			
 			}
 
 			//if (!stable)
