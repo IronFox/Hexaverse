@@ -1205,7 +1205,7 @@ namespace Game
 			Grid::LCellIdI location(startLocation,0);	//first 12 are corner cells
 			int h = Objects::FindApplicableGround(location,true);
 			location.height = h;
-			static const int want = 20;
+			static const int want = 10;
 			static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);
 			Journal::currentRound.RegisterResourceCoverageChange(true,location.stackID,Objects::Resource::Fuel,stackHeight);
 			Journal::currentRound.RegisterResourceCoverageChange(true,location.stackID,Objects::Resource::Minerals,stackHeight);
@@ -1235,6 +1235,7 @@ namespace Game
 				
 			std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
 				Objects::MineralContainer::globalPrototype->CreateNewInstance(f,at2,0));
+			container->storage = container->maxStorage;
 			container->CorrectTerrain(false,0);
 			Objects::InsertConstructed(container,t);
 			Objects::RefreshCompoundCoverage(t);

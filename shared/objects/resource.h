@@ -56,7 +56,7 @@ namespace Objects
 				minerals,
 				uranium;
 
-		static const int TranslationFactor = 30;	//!< Translation factor used to scale resource vectors samples from the world
+		static const int TranslationFactor = 20;	//!< Translation factor used to scale resource vectors samples from the world
 
 		/**/	NaturalResourceVector():fuel(0),minerals(0),uranium(0)	{}
 
@@ -166,6 +166,14 @@ namespace Objects
 			{	
 				Self rs = *this;
 				rs *= multiplier;
+				return rs;
+			}
+
+			int	Sum() const
+			{
+				int rs = 0;
+				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+					rs += level[i];
 				return rs;
 			}
 

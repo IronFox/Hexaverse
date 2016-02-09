@@ -18,6 +18,9 @@ namespace Objects
 	
 	class Compound 
 	{
+		#ifndef CLIENT
+			bool					ProcessEnableCandidate(PWorkingStructure*bestOut, int&bestBalance, ResourceVector&balance,  index_t recursionDepth, int parentSum, WWorkingStructure*parent);
+		#endif
 	public:
 		static const UINT32 InvalidNetwork = 0xFFFFFFFF;
 

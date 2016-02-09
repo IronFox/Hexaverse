@@ -378,7 +378,7 @@ namespace Objects
 								{
 									if (!task.UpdatePath(this,location,FocusChangeType::SituationChanged))
 									{
-										LogEvent(EventClass::Preset::commandRejected,this,"Route to destination lost. Motion aborted.");
+										LogEvent(isAutomated ? EventClass::Preset::common : EventClass::Preset::operationAborted,this,"Route to destination lost. Motion aborted.");
 										this->UnlockTasks();
 										this->ClearAllTasks(true, CLOCATION);
 										return true;
@@ -387,7 +387,7 @@ namespace Objects
 								}
 								else
 								{
-									LogEvent(EventClass::Preset::commandRejected,this,"Route to destination lost. Motion aborted.");
+									LogEvent(isAutomated ? EventClass::Preset::common : EventClass::Preset::operationAborted,this,"Route to destination lost. Motion aborted.");
 									this->UnlockTasks();
 									ClearAllTasks(true, CLOCATION);
 									return true;
