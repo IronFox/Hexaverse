@@ -58,6 +58,7 @@
 #include "components/world.h"
 #include "components/atmosphere.h"
 #include "components/guiHostList.h"
+#include "components/serverProcess.h"
 
 #include "rc/Resource.h"
 
@@ -3320,8 +3321,8 @@ int main( int argc, const char* argv[])
 			display.destroy();
 		#endif
 
+		ServerProcess::End();
 		Logging::End();
-
 
 		TerminateProcess(GetCurrentProcess(),0);	//self-terminate
 
