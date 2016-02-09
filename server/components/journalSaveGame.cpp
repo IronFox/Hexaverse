@@ -1936,14 +1936,31 @@ namespace Journal
 		switch (parameterCount)
 		{
 			case 2:
-				cmd->desc.turretType = Objects::Component::GetTurretByName(parameters[1])->typeName;
-				cmd->desc.baseType = Objects::Component::GetVehicleBaseByName(parameters[0])->typeName;
+			{
+				Objects::Component::Turret*turret = Objects::Component::GetTurretByName(parameters[1]);
+				Objects::Component::Base*base = Objects::Component::GetVehicleBaseByName(parameters[0]);
+				if (!turret || !base)
+				{
+					LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
+					return;
+				}
+				cmd->desc.turretType = turret->typeName;
+				cmd->desc.baseType = base->typeName;
+			}
 			break;
 			case 1:
-				cmd->desc.baseType = Objects::GetAnyNonVehiclePrototypeByName(parameters[0])->GetTypeName();
+			{
+				Objects::PWorldEntity proto = Objects::GetAnyNonVehiclePrototypeByName(parameters[0]);
+				if (!proto)
+				{
+					LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
+					return;
+				}
+				cmd->desc.baseType = proto->GetTypeName();
+			}
 			break;
 			default:
-				LogEvent(EventClass::Preset::commandRejected,e.get(),"Received invalid construction-plant job parameter configuration");
+				LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
 				return;
 			break;
 		}
