@@ -456,7 +456,7 @@ void	SignalRoundEnd()
 		#ifdef HAS_WINDOW
 			Objects::UpdateChoices(Network::ControlEnabled());
 		#endif
-		LogEvent(EventClass::Preset::uncommon,nullptr,"Requested new round");
+		LogEvent(EventClass::Preset::common,nullptr,"Requested new round");
 	}
 }
 
