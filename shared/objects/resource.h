@@ -3,6 +3,7 @@
 
 #include <math/vclasses.h>
 #include <container/buffer.h>
+#include "../config.h"
 
 namespace Objects
 {
@@ -21,7 +22,7 @@ namespace Objects
 
 	typedef ResourceVectorT<Resource>	ResourceVector;
 
-	struct ResourceFlagSet
+	class ResourceFlagSet
 	{
 	private:
 		static_assert(Resource::N<=32,"Need other flag storage");
@@ -33,9 +34,10 @@ namespace Objects
 		/**/	ResourceFlagSet()	{}
 		/**/	ResourceFlagSet(Resource res)	{Set(res);}
 		/**/	ResourceFlagSet(Resource::value_t res)	{Set(res);}
-
+		/**/	ResourceFlagSet(const ResourceVector&res)	{SetAllNonZero(res);}
 
 		void	Set(Resource res)	{isSet |= ((flagT)1 << (flagT)res);}
+		void	SetAllNonZero(const ResourceVector&res);
 		
 		void	operator|=(ResourceFlagSet res)	{isSet |= res.isSet;}
 		ResourceFlagSet	operator|(ResourceFlagSet res) const	{return ResourceFlagSet(isSet | res.isSet);}
