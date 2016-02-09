@@ -1437,32 +1437,6 @@ int main( int argc, const char* argv[])
 
 
 
-		if (RuntimeConfig::gameGoal == Game::Config::Goal::EMPConquerNexus)
-		{
-			LogEvent(EventSignificance::Common, "Spawning Nexus Ports...");
-			for (int pole = 0; pole < 12; pole++)
-				Game::SpawnNexusPortAtPole(pole);
-			if (Game::Config::Nexus::haveBases)
-				for (int pole = 0; pole < 12; pole++)
-					if (BaseGrid::IsIsolatedCorner(pole))
-					{
-						Game::SpawnNexusBaseAtPoleWithPort(pole);
-					}
-		}
-
-
-		if (RuntimeConfig::gameGoal == Game::Config::Goal::ConquerNexus)
-		{
-			LogEvent(EventSignificance::Common, "Spawning Nexus Ports...");
-		
-			for (int pole = 0; pole < 12; pole++)
-				if (BaseGrid::IsIsolatedCorner(pole))
-				{
-					Game::SpawnNexusPortAtPole(pole);
-					if (Game::Config::Nexus::haveBases)
-						Game::SpawnNexusBaseAtPoleWithPort(pole);
-				}
-		}
 
 
 
