@@ -49,6 +49,7 @@ namespace RemoteControl
 
 			
 			void	OnCommand(Package::NetString<1024>&cmd, TCP::Peer&peer);
+			void	OnComplete(Package::NetString<1024>&cmd, TCP::Peer&peer);
 		}
 
 		namespace Channels
@@ -58,6 +59,7 @@ namespace RemoteControl
 				enum id_t
 				{
 					Command,	//c2s
+					Complete,	//both : string
 					Error,		//s2c : string
 					Context,	//s2c : string
 					Response,	//s2c : string
@@ -67,6 +69,7 @@ namespace RemoteControl
 
 
 			TCP::Channel<Package::NetString<1024>,0,ID::Command>	command(Handler::OnCommand);
+			TCP::Channel<Package::NetString<1024>,0,ID::Complete>	complete(Handler::OnComplete);
 			TCP::ObjectSender<Package::NetString<1024>,ID::Error>	error;
 			TCP::ObjectSender<Package::NetString<1024>,ID::Context>	context;
 			TCP::ObjectSender<Package::NetString<1024>,ID::Response>	response;
@@ -120,6 +123,14 @@ namespace RemoteControl
 			peer.SendSignal(Channels::ID::ExecutionDone);
 		}
 
+		void	Handler::OnComplete(Package::NetString<1024>&cmd, TCP::Peer&peer)
+		{
+			//LogEvent(EventClass::Preset::remoteControlCommand, Reflection::state.GetContext()+"complete:'"+cmd+"'");
+			StringList results;
+			String result = Reflection::state.Complete(cmd,results);
+			if (result.IsNotEmpty())
+				Channels::complete.SendTo(peer,result);
+		}
 
 
 		void	Create()
@@ -134,6 +145,7 @@ namespace RemoteControl
 			server.SetAsync(false);
 
 			server.InstallChannel(Channels::command);
+			server.InstallChannel(Channels::complete);
 
 			//client.OpenSignalChannel(Protocol::ChannelID::VersionMismatch,0);
 
