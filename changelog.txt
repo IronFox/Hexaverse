@@ -6,6 +6,7 @@ v0.3.16
 	> Improved faction coloring in spectator mode.
 	> Time lapse mode now locks the camera, and shows a gui message to indicate that recording is active.
 	> Mines that cannot be enabled right now are no longer considered idle (they will not show up iterating via space).
+	> Reduced resource output of nexus ports that are not part of nexus bases.
 	+ Ghosts now memorize the owner of the referenced entity (if any).
 
 v0.3.15		[Feb 7 2016]

@@ -972,10 +972,20 @@ namespace Objects
 		virtual bool				IsIndestructible() const	override {return true;};
 		virtual void				GetResourceVector(ResourceVector&v, ResourceVector&, ResourceVector&) const override
 		{
-			v.level[Resource::Minerals] = 50;	
-			v.level[Resource::Fuel] = 55;	
-			v.level[Resource::Uranium] = 10;
-			v.level[Resource::Energy] = -EnergyConsumption;
+			if (BaseGrid::IsIsolatedCorner(location.stackID))
+			{
+				v.level[Resource::Minerals] = 50;	
+				v.level[Resource::Fuel] = 55;	
+				v.level[Resource::Uranium] = 10;
+				v.level[Resource::Energy] = -EnergyConsumption;
+			}
+			else
+			{
+				v.level[Resource::Minerals] = 10;
+				v.level[Resource::Fuel] = 10;	
+				v.level[Resource::Uranium] = 5;
+				v.level[Resource::Energy] = -EnergyConsumption;
+			}
 		}
 
 
