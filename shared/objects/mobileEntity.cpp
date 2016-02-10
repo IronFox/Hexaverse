@@ -398,6 +398,7 @@ namespace Objects
 						continue;
 					if (b->turret->CanAttack())
 					{
+						LogEvent(EventClass::Preset::common,this,"Processing new hostile contact "+(*c)->GetName()+"...");
 						for (WMobileEntity w : owner->allMobiles)
 						{
 							PMobileEntity v2 = w.lock();
@@ -426,7 +427,7 @@ namespace Objects
 								}
 								if (badTask)
 								{
-									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected. Dropping task(s).");
+									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected.");
 									if (v2.get() == this)
 									{
 										ClearAllTasks(true,CLOCATION);
@@ -434,7 +435,8 @@ namespace Objects
 									}
 									else
 									{
-										while (v2->myTasks.Count() > i)
+										LogEvent(EventSignificance::Common,v2.get(),"Truncating tasks to "+String(i));
+										while (v2->myTasks.Count() >= i)
 											v2->myTasks.EraseBack();
 									}
 									break;
@@ -1138,24 +1140,28 @@ namespace Objects
 			if (toLocation == location)
 				return;
 			LogEvent(EventSignificance::Common,this,"Relocating to "+toLocation.ToString()+" ("+String(updateSystem)+")");
-			#ifdef CLIENT
-				static Grid::HighSetup::TVolumeDescriptor desc;
-				float t = 0.f;
+			static Grid::HighSetup::TVolumeDescriptor desc;
+			float t = 0.f;
+			if (isMine)
+			{
+				UnregisterSensory(t);
+			}
+			if (IsVehicle())
+			{
+				Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(shared_from_this()),location);
+			}
+			preAnimationLocation = location = toLocation;
+			if (IsVehicle())
+			{
+				Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(shared_from_this()),location);
+			}
+			if (isMine)
+			{
+				RegisterSensory(t);
+			}
+			#ifdef THOROUGLY_DEBUG_SENSORY
 				if (isMine)
-				{
-					UnregisterSensory(t);
-				}
-			#endif
-			location = toLocation;
-			#ifdef CLIENT
-				if (isMine)
-				{
-					RegisterSensory(t);
-				}
-				#ifdef THOROUGLY_DEBUG_SENSORY
-					if (isMine)
-						VerifySensory();
-				#endif
+					VerifySensory();
 			#endif
 
 			if (updateSystem)
