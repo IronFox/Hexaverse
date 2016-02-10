@@ -127,7 +127,7 @@ namespace RemoteControl
 		{
 			//LogEvent(EventClass::Preset::remoteControlCommand, Reflection::state.GetContext()+"complete:'"+cmd+"'");
 			StringList results;
-			String result = Reflection::state.Complete(cmd,results);
+			String result = Reflection::state.ExtendedComplete(cmd,results);
 			if (result.IsNotEmpty())
 				Channels::complete.SendTo(peer,result);
 		}
