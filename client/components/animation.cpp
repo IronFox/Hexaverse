@@ -486,25 +486,8 @@ namespace Animation
 		if (locationChanged)
 		{
 			LogEvent(EventClass::Preset::debug,v.get(), "ApplyState(): Updating location: "+v->location.ToString()+"->"+vs.entityState.location.ToString());
-			if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
-			{
-				if (!insertIntoGridLater.IsSet(v->id))
-				{
-					if (v->IsVehicle())
-					{
-						Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(v),v->preAnimationLocation);
-						insertIntoGridLater.Set(v->id);
-					}
-				}
-				ASSERT3__(v->preAnimationLocation == v->location,v->GetName(),v->preAnimationLocation.ToString(),v->location.ToString());
-				v->preAnimationLocation = v->location = vs.entityState.location;
-			}
-			else
-			{
-				v->Relocate(vs.entityState.location,false);	//this moves sensors. not good during animation phase
-
-			}
-
+			ASSERT3__(v->preAnimationLocation == v->location, v->GetName(), v->preAnimationLocation.ToString(), v->location.ToString());
+			v->Relocate(vs.entityState.location,false);	//this moves sensors. not good during animation phase. however, this is a rare and isolated process (not part of a sequence of updates)
 		}
 		v->health = vs.entityState.health;
 		v->unstable = vs.entityState.unstable;
