@@ -223,7 +223,7 @@ namespace Objects
 		}
 
 
-		bool				Compound::CanEnable( const WorkingStructure*toEnable, String&outWhy) const
+		bool				Compound::CanEnable( WorkingStructure*toEnable, String&outWhy) const
 		{
 			if (toEnable->IsHibernating() || !toEnable->CanEnable())
 			{
@@ -233,22 +233,22 @@ namespace Objects
 					outWhy = "generally cannot enable";
 				return false;
 			}
-			Array<bool>	virtualEnabled(containedStructures.Count());
-			for (index_t i = 0; i < containedStructures.Count(); i++)
-			{
-				PWorkingStructure s = containedStructures[i].lock();
-				if (!s || s->IsHibernating())
-					continue;
-				virtualEnabled[i] = s && (s->IsEnabled() || s.get() == toEnable);
-			}
 
-			FullResourceVector total = GetVector(virtualEnabled);
-
-			bool stable = total.balance.IsStable();
-
-			if (stable)
-				return true;
-
+			int balance = -1000;
+			PWorkingStructure bestEnable[2];
+			toEnable->SetEnabledOverride(true,false);
+				FullResourceVector total = GetVector();
+				if (total.balance.IsStable())
+				{
+					toEnable->SetEnabledOverride(false,false);
+					return true;
+				}
+				if (FindBestEnableCandidates(bestEnable,balance, total.balance, ARRAYSIZE(bestEnable)-1,0,nullptr))
+				{
+					toEnable->SetEnabledOverride(false,false);
+					return true;
+				}
+			toEnable->SetEnabledOverride(false,false);
 
 			bool lacking[Resource::NumberOfPossibilities]	= {false};
 			count_t currentlyLacking = 0;
@@ -258,56 +258,6 @@ namespace Objects
 					currentlyLacking ++;
 					lacking[r] = true;
 				}
-				
-			for (index_t i = 0; i < containedStructures.Count(); i++)
-			{
-				PWorkingStructure s= containedStructures[i].lock();
-				DBG_ASSERT__(s);
-				if (!s || s->IsHibernating())
-					continue;
-				if (lastDisabled == s.get())
-					continue;
-
-				if (virtualEnabled[i] || !s->CanEnable())
-					continue;
-				virtualEnabled[i] = true;
-
-				FullResourceVector v2 = GetVector(virtualEnabled);
-				if (v2.balance.IsStable())
-					return true;
-
-				for (index_t j = i+1; j < containedStructures.Count(); j++)
-				{
-					PWorkingStructure s= containedStructures[j].lock();
-					DBG_ASSERT__(s);
-					if (!s || s->IsHibernating())
-						continue;
-					if (lastDisabled == s.get())
-						continue;
-					if (virtualEnabled[j] || !s->CanEnable())
-						continue;
-					virtualEnabled[j] = true;
-
-					FullResourceVector v2 = GetVector(virtualEnabled);
-					if (v2.balance.IsStable())
-						return true;
-					virtualEnabled[i] = false;
-				}
-
-				count_t nowLacking = 0;
-				for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
-					if (v2.balance.level[r] < 0)
-						nowLacking ++;
-
-				if (nowLacking < currentlyLacking)
-				{
-					currentlyLacking = nowLacking;
-					for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
-						lacking[r] = v2.balance.level[r] < 0;
-				}
-
-				virtualEnabled[i] = false;
-			}
 
 			outWhy = "lacking";
 			for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
@@ -353,11 +303,23 @@ namespace Objects
 	}
 
 	#ifndef CLIENT
-		bool				Compound::ProcessEnableCandidate(PWorkingStructure*bestOut, int&bestBalance, ResourceVector&balance,  index_t recursionDepth, int parentSum, WWorkingStructure*parent)
+		bool				Compound::FindBestEnableCandidates(PWorkingStructure*bestOut, count_t bestOutCount) const
+		{
+			ResourceVector balance = total.balance;
+			int bestBalance = -1000;
+			return FindBestEnableCandidates(bestOut, bestBalance, balance,  bestOutCount-1, 0,nullptr);
+		}
+
+		/*static*/ int Compound::GetEnableChangeBalance(const ResourceVector&local)
+		{
+			return local.SumNegative() + local.SumPositive()/10;
+		}
+
+		bool				Compound::FindBestEnableCandidates(PWorkingStructure*bestOut, int&bestBalance, ResourceVector&balance,  index_t recursionDepth, int parentSum, const WWorkingStructure*parent) const
 		{
 			bool rs = false;
 			ResourceVector dummy;
-			WWorkingStructure*_s = parent;
+			const WWorkingStructure*_s = parent;
 			if (!_s)
 				_s = containedStructures.begin();
 			else
@@ -376,7 +338,7 @@ namespace Objects
 				ResourceVector local;
 				s->GetResourceVector(local,dummy,dummy);
 				balance += local;
-				int summed = local.SumNegative() + local.SumPositive()/10 + parentSum;
+				int summed = GetEnableChangeBalance(local)+parentSum;
 				if (balance.IsStable())
 				{
 					if (summed > bestBalance)
@@ -390,7 +352,7 @@ namespace Objects
 				}
 				if (recursionDepth)
 				{
-					if (ProcessEnableCandidate(bestOut+1, bestBalance, balance,  recursionDepth-1, summed, _s))
+					if (FindBestEnableCandidates(bestOut+1, bestBalance, balance,  recursionDepth-1, summed, _s))
 					{
 						*bestOut = s;
 						rs = true;
@@ -412,10 +374,8 @@ namespace Objects
 
 			if (!stable)
 			{
-				ResourceVector balance = total.balance;
-				int bestBalance = -1000;
 				PWorkingStructure bestEnable[2];
-				if (ProcessEnableCandidate(bestEnable, bestBalance, balance,  ARRAYSIZE(bestEnable)-1, 0,nullptr))
+				if (FindBestEnableCandidates(bestEnable, ARRAYSIZE(bestEnable)))
 				{
 					for (index_t i = 0; i < ARRAYSIZE(bestEnable); i++)
 					{
