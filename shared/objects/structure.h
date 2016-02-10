@@ -641,7 +641,6 @@ namespace Objects
 		Checks whether or not the conditions are given to enable the local structure
 		*/
 		virtual bool				CanEnable() const	{return true;}
-		void						SetEnabledOverride(bool b, bool registerChange=true);
 		
 		#ifndef CLIENT
 			enum force_t
@@ -659,6 +658,9 @@ namespace Objects
 				or if refreshCompounds is set and the local compounds cannot supply required resources
 			*/
 			bool					SetEnabled(bool b, float atTime, bool refreshCompounds=true, force_t force=EnableIfPossible, bool signalStructure=true);
+			void					SetEnabledOverride(bool b, bool registerChange=true);
+		#else
+			void					ApplyEnableChangeFromServer(bool b);
 		#endif
 
 		bool						IsEnabled() const {return isEnabled;}

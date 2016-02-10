@@ -151,6 +151,14 @@ namespace Objects
 
 	#ifndef CLIENT
 
+		void						WorkingStructure::SetEnabledOverride(bool b, bool registerChange/*=true*/)
+		{
+			isEnabled = b;
+			if (registerChange)
+				RegisterChange(EnableChanged,0);
+		
+		}
+
 	
 		/*virtual override*/ void Tower::Attack(float&attackTime)
 		{
@@ -2764,17 +2772,13 @@ namespace Objects
 			}
 			return true;
 		}
+	#else
+		void					WorkingStructure::ApplyEnableChangeFromServer(bool b)
+		{
+			isEnabled = b;
+		}
+
 	#endif
-
-	void						WorkingStructure::SetEnabledOverride(bool b, bool registerChange/*=true*/)
-	{
-		isEnabled = b;
-		if (registerChange)
-			RegisterChange(EnableChanged,0);
-		
-	}
-
-
 
 
 }

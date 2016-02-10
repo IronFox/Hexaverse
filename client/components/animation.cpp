@@ -731,7 +731,7 @@ namespace Animation
 		if (w)
 		{
 			w->SetResourceStorage(vs.resourceVector);
-			w->SetEnabledOverride((vs.flags & Protocol::StructureFlags::Enabled) != 0);
+			w->ApplyEnableChangeFromServer((vs.flags & Protocol::StructureFlags::Enabled) != 0);
 			#ifndef NO_HIBERNATION
 				w->Hibernate((vs.flags & Protocol::StructureFlags::Hibernating) != 0,0);
 			#endif

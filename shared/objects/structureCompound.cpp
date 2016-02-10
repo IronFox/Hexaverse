@@ -222,9 +222,15 @@ namespace Objects
 			return result;
 		}
 
-
+		/**
+		Checks whether or not the specified working structure can be enabled.
+		Extensively checks whether the auto balancing strategy can fix any inbalances caused by enabling this structure.
+		Temporarily changes the structure's state to enabled without signalling the change or registering change.
+		This method must be kept in sync with RefreshState() auto-balancing strategy!
+		*/
 		bool				Compound::CanEnable( WorkingStructure*toEnable, String&outWhy) const
 		{
+			DBG_ASSERT_NOT_NULL__(toEnable);
 			if (toEnable->IsHibernating() || !toEnable->CanEnable())
 			{
 				if (toEnable->IsHibernating())
@@ -374,6 +380,7 @@ namespace Objects
 
 			if (!stable)
 			{
+				//This section must be kept in sync with Compound::CanEnable(...) oracle function, or bad shit will happen!
 				PWorkingStructure bestEnable[2];
 				if (FindBestEnableCandidates(bestEnable, ARRAYSIZE(bestEnable)))
 				{
