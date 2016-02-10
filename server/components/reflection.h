@@ -8,7 +8,7 @@
 namespace Reflection
 {
 
-	extern CLI::Interpretor	state;
+	extern CLI::Interpreter	state;
 
 	namespace Variable
 	{

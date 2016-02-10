@@ -126,8 +126,17 @@ namespace RemoteControl
 		void	Handler::OnComplete(Package::NetString<1024>&cmd, TCP::Peer&peer)
 		{
 			//LogEvent(EventClass::Preset::remoteControlCommand, Reflection::state.GetContext()+"complete:'"+cmd+"'");
-			StringList results;
-			String result = Reflection::state.Complete(cmd,results);
+			StringList alternatives;
+			String result = Reflection::state.ExtendedComplete(cmd,alternatives);
+			if (alternatives > 1)
+			{
+				for (index_t i = 0; i < alternatives.count() && i < 5; i++)
+					Channels::response.SendTo(peer,alternatives[i]);
+				if (alternatives.count() > 5)
+					Channels::response.SendTo(peer,"(...)");
+					
+				Channels::response.SendTo(peer,"--");
+			}
 			if (result.IsNotEmpty())
 				Channels::complete.SendTo(peer,result);
 		}
