@@ -82,6 +82,12 @@ namespace ServerProcess
 		Detail::process.Terminate();
 	}
 
+	void Destroy()
+	{
+		if (Detail::process.IsRunning() && !Detail::process.HasAnyWindow())
+			Detail::process.Terminate();
+	}
+
 	bool			IsRunning()
 	{
 		if (!Detail::process.IsRunning())
