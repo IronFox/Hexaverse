@@ -9,6 +9,7 @@
 	#include "rendering.h"
 	#include "visualCommands.h"
 	#include "../../client/components/dialog.h"
+	#include "interface.h"
 #endif
 
 #include "gridAndChoices.h"
@@ -2584,6 +2585,9 @@ namespace Objects
 		#endif
 
 		RefreshCompoundStates(atTime);
+		#ifdef HAS_WINDOW
+			OnSelectionChange(true);
+		#endif
 	}
 
 
