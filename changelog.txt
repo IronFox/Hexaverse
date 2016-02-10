@@ -1,6 +1,7 @@
 v0.3.16
 	* Fixed ownership change of nexus port causing the undesired appearance of a ghost.
 	* Client now correctly closes down any started server before quitting.
+	* Fixed clients in visual range not always seeing instantaneous events as they should.
 	> Reduced height of uranium storage to better show resource marker on top.
 	> Improved faction coloring in spectator mode.
 	> Time lapse mode now locks the camera, and shows a gui message to indicate that recording is active.
