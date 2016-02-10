@@ -187,6 +187,12 @@ namespace Network
 			UpdateHibernation();
 		#endif
 
+		Objects::ForeachFaction([](const Objects::PFaction&f)
+		{
+			f->DropPerRoundData();	//make sure any remnant timing information from previous operations is dropped
+		});
+
+
 
 		server.FlushPendingEvents();
 		StartServer();

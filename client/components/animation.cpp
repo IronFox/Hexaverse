@@ -490,21 +490,9 @@ namespace Animation
 								&& vs.entityState.location != Grid::LCellIdI::Invalid;
 		if (locationChanged)
 		{
-			if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
-			{
-				if (!insertIntoGridLater.IsSet(v->id))
-				{
-					Objects::RemoveFromGrid(v,v->preAnimationLocation);
-					insertIntoGridLater.Set(v->id);
-				}
-				v->location = vs.entityState.location;
-			}
-			else
-			{
-				v->Relocate(vs.entityState.location,false);	//this moves sensors. not good during animation phase
-
-			}
-
+			LogEvent(EventClass::Preset::debug,v.get(), "ApplyState(): Updating location: "+v->location.ToString()+"->"+vs.entityState.location.ToString());
+			ASSERT3__(v->preAnimationLocation == v->location, v->GetName(), v->preAnimationLocation.ToString(), v->location.ToString());
+			v->Relocate(vs.entityState.location,false);	//this moves sensors. not good during animation phase. however, this is a rare and isolated process (not part of a sequence of updates)
 		}
 		v->health = vs.entityState.health;
 		v->unstable = vs.entityState.unstable;
@@ -734,7 +722,7 @@ namespace Animation
 		if (w)
 		{
 			w->SetResourceStorage(vs.resourceVector);
-			w->SetEnabledOverride((vs.flags & Protocol::StructureFlags::Enabled) != 0);
+			w->ApplyEnableChangeFromServer((vs.flags & Protocol::StructureFlags::Enabled) != 0);
 			#ifndef NO_HIBERNATION
 				w->Hibernate((vs.flags & Protocol::StructureFlags::Hibernating) != 0,0);
 			#endif

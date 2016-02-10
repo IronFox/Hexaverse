@@ -1344,24 +1344,22 @@ namespace Objects
 			if (toLocation == location)
 				return;
 			LogEvent(EventSignificance::Common,this,"Relocating to "+toLocation.ToString()+" ("+String(updateSystem)+")");
-			#ifdef CLIENT
-				static Grid::HighSetup::TVolumeDescriptor desc;
-				float t = 0.f;
+			static Grid::HighSetup::TVolumeDescriptor desc;
+			float t = 0.f;
+			if (isMine)
+			{
+				UnregisterSensory(t);
+			}
+			Objects::RemoveFromGrid(To<Objects::MobileEntity>::Cast(shared_from_this()),location);
+			preAnimationLocation = location = toLocation;
+			Objects::InsertIntoGrid(To<Objects::MobileEntity>::Cast(shared_from_this()),location);
+			if (isMine)
+			{
+				RegisterSensory(t);
+			}
+			#ifdef THOROUGLY_DEBUG_SENSORY
 				if (isMine)
-				{
-					UnregisterSensory(t);
-				}
-			#endif
-			location = toLocation;
-			#ifdef CLIENT
-				if (isMine)
-				{
-					RegisterSensory(t);
-				}
-				#ifdef THOROUGLY_DEBUG_SENSORY
-					if (isMine)
-						VerifySensory();
-				#endif
+					VerifySensory();
 			#endif
 
 			if (updateSystem)

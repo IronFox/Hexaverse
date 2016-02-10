@@ -1410,8 +1410,7 @@ namespace FileIO
 			}
 				
 
-			World::unlockedEMPZones = ((1<<unlocked) - 1);
-			World::empZonesLocked = ((1 << 12)-1)  & ~World::unlockedEMPZones;
+			World::SetUnlockedEMPZones(unlocked);
 		}
 
 		Reflection::LoadOverrides();

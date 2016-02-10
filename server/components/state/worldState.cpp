@@ -495,9 +495,7 @@ namespace World
 				unlocked++;
 			}
 				
-
-			unlockedEMPZones = ((1<<unlocked) - 1);
-			empZonesLocked = ((1 << 12)-1)  & ~unlockedEMPZones;
+			SetUnlockedEMPZones(unlocked);
 
 			Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,2);
 		}
@@ -505,5 +503,10 @@ namespace World
 	}
 
 
+	void		SetUnlockedEMPZones(int unlocked)
+	{
+		Grid::empZonesUnlocked = unlockedEMPZones = ((1<<unlocked) - 1);
+		Grid::empZonesLocked = empZonesLocked = ((1 << 12)-1)  & ~unlockedEMPZones;
+	}
 
 }

@@ -1143,7 +1143,9 @@
 
 					Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
 					{
-						String key = e->GetTypeName() + "|" + e->owner->id.ToFullString();
+						String key = e->GetTypeName() + "|";
+						if (e->owner)
+							key += e->owner->id.ToFullString();
 						if (e->health <= 0)
 							key += "|ghost";
 						#ifndef NO_HIBERNATION

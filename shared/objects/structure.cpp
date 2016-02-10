@@ -9,6 +9,7 @@
 	#include "rendering.h"
 	#include "visualCommands.h"
 	#include "../../client/components/dialog.h"
+	#include "interface.h"
 #endif
 
 #include "gridAndChoices.h"
@@ -158,6 +159,14 @@ namespace Objects
 
 
 	#ifndef CLIENT
+
+		void						WorkingStructure::SetEnabledOverride(bool b, bool registerChange/*=true*/)
+		{
+			isEnabled = b;
+			if (registerChange)
+				RegisterChange(EnableChanged,0);
+		
+		}
 
 	
 		/*virtual override*/ void Tower::Attack(float&attackTime)
@@ -2617,6 +2626,9 @@ namespace Objects
 		#endif
 
 		RefreshCompoundStates(atTime);
+		#ifdef HAS_WINDOW
+			OnSelectionChange(true);
+		#endif
 	}
 
 
@@ -2766,6 +2778,7 @@ namespace Objects
 			}
 			if (b && refreshNetwork)
 			{
+				Compound::lastDisabled = nullptr;
 				RefreshCompoundCoverageIfNeeded(atTime);
 //				if (compoundID < compounds.Count())
 				{
@@ -2805,15 +2818,13 @@ namespace Objects
 			}
 			return true;
 		}
+	#else
+		void					WorkingStructure::ApplyEnableChangeFromServer(bool b)
+		{
+			isEnabled = b;
+		}
+
 	#endif
-
-	void						WorkingStructure::SetEnabledOverride(bool b)
-	{
-		isEnabled = b;
-		
-	}
-
-
 
 
 }

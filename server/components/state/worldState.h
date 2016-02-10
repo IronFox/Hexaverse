@@ -56,7 +56,8 @@ namespace World
 	*/
 	void			DebugCheckWorld(bool restart);
 
-	
+
+	void			SetUnlockedEMPZones(int unlocked);
 
 
 	namespace Network

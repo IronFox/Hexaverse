@@ -178,7 +178,9 @@ void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, cons
 }
 
 
-
+/*
+Note: anyone that can see this entity must be told it is being removed. There will be no other notifications
+*/
 void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float atTime)
 {
 	if (!e)
@@ -192,11 +194,11 @@ void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float 
 	self.timestamp.atTime = atTime;
 	self.timestamp.rightNow = RuntimeConfig::IsInAnyCommandPhase();
 	others = self;
-	bool sendToOthers = true,sendToSelf = true;
+	bool sendToSelf = true;
 	switch (t)
 	{
 		case Objects::RemovalType::DestroyedInStorage:
-			sendToOthers = false;
+			others.type = Objects::RemovalType::Vanished;
 		break;
 		case Objects::RemovalType::EnteredStorage:
 			sendToSelf = false;
@@ -225,11 +227,12 @@ void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float 
 		{
 			bool access = Network::CanSeeAsOwner(*cl,e);
 			if (
-				(!access && !sendToOthers)
-				||
 				(access && !sendToSelf)
 				)
+			{
+				LogEvent(EventSignificance::Debug,(*cl)->ToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) );
 				continue;
+			}
 			const Protocol::DestroyEntity&send = access ? self : others;
 			LogEvent(EventSignificance::Common,(*cl)->ToString()+" reported seeing removal of "+e->GetName()+" at time "+String(atTime) );
 
@@ -237,6 +240,8 @@ void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float 
 			//(*cl)->Hide(e);
 			Channels::destroyEntity.SendTo(peer,send);
 		}
+		else
+			LogEvent(EventSignificance::Debug,(*cl)->ToString()+" reported NOT seeing removal of "+e->GetName()+" (t="+String(t.ToString())+", access="+String(access)+", sendToSelf="+String(sendToSelf)+") at time "+String(atTime) +" - hasPeer="+String((bool)peer));
 	}
 
 	
