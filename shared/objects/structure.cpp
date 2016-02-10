@@ -2732,6 +2732,7 @@ namespace Objects
 			}
 			if (b && refreshNetwork)
 			{
+				Compound::lastDisabled = nullptr;
 				RefreshCompoundCoverageIfNeeded(atTime);
 //				if (compoundID < compounds.Count())
 				{
@@ -2773,9 +2774,11 @@ namespace Objects
 		}
 	#endif
 
-	void						WorkingStructure::SetEnabledOverride(bool b)
+	void						WorkingStructure::SetEnabledOverride(bool b, bool registerChange/*=true*/)
 	{
 		isEnabled = b;
+		if (registerChange)
+			RegisterChange(EnableChanged,0);
 		
 	}
 

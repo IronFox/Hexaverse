@@ -646,7 +646,7 @@ namespace Objects
 		Checks whether or not the conditions are given to enable the local structure
 		*/
 		virtual bool				CanEnable() const	{return true;}
-		void						SetEnabledOverride(bool b);
+		void						SetEnabledOverride(bool b, bool registerChange=true);
 		
 		#ifndef CLIENT
 			enum force_t
