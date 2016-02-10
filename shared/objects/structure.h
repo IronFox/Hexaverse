@@ -998,10 +998,20 @@ namespace Objects
 		virtual bool				IsNexusPort() const override {return true;}
 		virtual void				GetResourceVector(ResourceVector&v, ResourceVector&, ResourceVector&) const override
 		{
-			v.level[Resource::Minerals] = 500;	
-			v.level[Resource::Fuel] = 550;	
-			v.level[Resource::Uranium] = 100;
-			v.level[Resource::Energy] = -EnergyConsumption;
+			if (BaseGrid::IsIsolatedCorner(location.stackID))
+			{
+				v.level[Resource::Minerals] = 500;	
+				v.level[Resource::Fuel] = 550;	
+				v.level[Resource::Uranium] = 100;
+				v.level[Resource::Energy] = -EnergyConsumption;
+			}
+			else
+			{
+				v.level[Resource::Minerals] = 100;
+				v.level[Resource::Fuel] = 100;	
+				v.level[Resource::Uranium] = 50;
+				v.level[Resource::Energy] = -EnergyConsumption;
+			}
 		}
 
 

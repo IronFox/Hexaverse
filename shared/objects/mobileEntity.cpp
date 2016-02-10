@@ -607,6 +607,7 @@ namespace Objects
 						continue;
 					if (b->turret->CanAttack())
 					{
+						LogEvent(EventClass::Preset::common,this,"Processing new hostile contact "+(*c)->GetName()+"...");
 						for (WMobileEntity w : owner->allMobiles)
 						{
 							PMobileEntity v2 = w.lock();
@@ -635,7 +636,7 @@ namespace Objects
 								}
 								if (badTask)
 								{
-									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected. Dropping task(s).");
+									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected.");
 									if (v2.get() == this)
 									{
 										ClearAllTasks(true,CLOCATION);
@@ -643,7 +644,8 @@ namespace Objects
 									}
 									else
 									{
-										while (v2->myTasks.Count() > i)
+										LogEvent(EventSignificance::Common,v2.get(),"Truncating tasks to "+String(i));
+										while (v2->myTasks.Count() >= i)
 											v2->myTasks.EraseBack();
 									}
 									break;
