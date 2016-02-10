@@ -156,6 +156,13 @@ namespace Game
 			{
 				FileIO::CheckAutoSave(true);	//round number is formally incremented at the beginning of the command phase, but animation phase produces a delay anyways, so better save here
 			}
+			else if (RuntimeConfig::IsInAnyCommandPhase())
+			{
+				Objects::ForeachFaction([](const Objects::PFaction&f)
+				{
+					f->DropPerRoundData();	//make sure instantaneous destruction commands are processed with correct visibility information
+				});
+			}
 
 
 

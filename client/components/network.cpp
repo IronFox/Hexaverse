@@ -337,7 +337,9 @@ namespace Network
 
 	static void		FlushFaction(bool alsoFlushWorld)
 	{
-		TimeLapse::enabled = false;
+		#ifdef HAS_WINDOW
+			TimeLapse::enabled = false;
+		#endif
 
 		haveFaction = false;
 		//dbgRoundNumber = 0xFFFFFFFF;

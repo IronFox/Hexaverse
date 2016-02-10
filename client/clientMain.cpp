@@ -3345,7 +3345,7 @@ int main( int argc, const char* argv[])
 			display.destroy();
 		#endif
 
-		ServerProcess::End();
+		ServerProcess::Destroy();
 		Logging::End();
 
 		TerminateProcess(GetCurrentProcess(),0);	//self-terminate

@@ -560,7 +560,11 @@ namespace Objects
 			ASSERT__(!object->isInsertedIntoGrid);
 			Grid::AssertIsValid(location);
 			index_t at = CellToGridIndex(location);
-			ASSERT1__(!grid[at],grid[at]->GetName());
+			if (grid[at])
+			{
+				FATAL__("Trying to register "+object->GetName()+"(@"+object->location.ToString()+") at "+location.ToString()+": Cell occupied by "+grid[at]->GetName()+"(@"+grid[at]->location.ToString()+")");
+			}
+			ASSERT3__(!grid[at],grid[at]->GetName(),location.ToString(),object->GetName());
 			LogEvent(EventSignificance::Common,object.get(),"Inserted into grid location "+String(at)+"/"+location.ToString());
 			grid[at] = object;
 			object->isInsertedIntoGrid = true;

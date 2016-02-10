@@ -371,12 +371,13 @@ namespace Objects
 			*/
 			bool				ClearAllTasks(bool isReaction, const TCodeLocation&caller)
 			{
+				LogEvent(EventSignificance::Debug,this,"ClearAllTasks("+String(isReaction)+", "+String(caller.ToString())+")");
 				if (TasksAreLocked())
 				{
 					if (flushTasksOnUnlock)
 						return false;
-					LogEvent(EventSignificance::Debug,this,"Issued task clearing: "+String(caller.ToString()));
 					flushTasksOnUnlock = true;
+					LogEvent(EventSignificance::Debug,this," ...set to clear on unlock");
 					return true;
 				}
 				
@@ -388,6 +389,7 @@ namespace Objects
 					RegisterChange(TasksChanged,timeAt);
 					//tasksChanged = true;
 					myTasks.Clear();
+					LogEvent(EventSignificance::Debug,this," ...cleared");
 					return true;
 				}
 				return false;
