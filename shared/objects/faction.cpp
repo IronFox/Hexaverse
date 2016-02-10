@@ -716,6 +716,7 @@ namespace Objects
 				CheckChanges(t);
 
 			static Array<PWorldEntity>	seen;
+			this->seeing.exportKeys(seen);
 			foreach (seen,s)
 			{
 				if (!GridCanSee(*s))

@@ -485,6 +485,7 @@ namespace Animation
 								&& vs.entityState.location != Grid::LCellIdI::Invalid;
 		if (locationChanged)
 		{
+			LogEvent(EventClass::Preset::debug,v.get(), "ApplyState(): Updating location: "+v->location.ToString()+"->"+vs.entityState.location.ToString());
 			if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 			{
 				if (!insertIntoGridLater.IsSet(v->id))
@@ -495,7 +496,8 @@ namespace Animation
 						insertIntoGridLater.Set(v->id);
 					}
 				}
-				v->location = vs.entityState.location;
+				ASSERT3__(v->preAnimationLocation == v->location,v->GetName(),v->preAnimationLocation.ToString(),v->location.ToString());
+				v->preAnimationLocation = v->location = vs.entityState.location;
 			}
 			else
 			{
