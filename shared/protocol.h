@@ -1543,9 +1543,8 @@ namespace Protocol
 		, NET(float), timeNeeded
 	)
 
-	NETSTRUCT7(AttackTrajectory
+	NETSTRUCT6(AttackTrajectory
 		, Timestamp, timestamp
-		, NET(BYTE), trajectoryType
 		, NET(float), flightTime
 		, NET(TVec3<>), sourcePosition
 		, NET(ConstName), turretType

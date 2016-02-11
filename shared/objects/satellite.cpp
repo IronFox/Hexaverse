@@ -874,6 +874,13 @@ namespace Objects
 	#ifndef CLIENT
 		/*virtual override*/ bool					Satellite::FillAttackQueue()
 		{
+			if (!turret->CanAttack() || !HasAmmoForShot())
+			{
+				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
+				return false;
+			}
+
+			DBG_ASSERT__(IsSentry());
 			{
 				Grid::LCellIdI target;
 
@@ -958,7 +965,7 @@ namespace Objects
 
 		/*virtual override*/ bool SkyGuardian::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)
 		{
-			if (!HasAmmoForShot() && empDamageLevel == 0)
+			if (!turret->CanAttack() || !HasAmmoForShot())
 			{
 				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;

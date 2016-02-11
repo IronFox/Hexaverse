@@ -73,7 +73,6 @@ namespace Animation
 		Objects::Component::Turret*		attacker;
 		float					attackRange;
 		TVec3<>					attackerPosition;
-		Objects::TrajectoryType	attackTrajectoryType;
 
 		TVec3<>					explosionCenter;	//if Explosion
 		float					explosionRadius;	//if Explosion

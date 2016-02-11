@@ -449,7 +449,6 @@ void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, f
 	float zOffset;
 	Objects::PTurretBase base = e->GetTurretBase(zOffset);
 	ASSERT__(base);
-	preciseAttack.trajectoryType = base->turret->trajectoryType;
 	preciseAttack.turretType = base->turret->constName;
 	preciseAttack.traceTo = traceTo;
 	preciseAttack.turretRange = base->GetFlatAttackRange();
