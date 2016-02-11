@@ -88,6 +88,11 @@ namespace Objects
 
 		/*virtual override*/ bool Vehicle::FillAttackQueue()
 		{
+			if (!turret->CanAttack() || !HasAmmoForShot())
+			{
+				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
+				return false;
+			}
 			//index_t freeSlots = attackQueue.Count() < t->GetAttacksPerRound() <  t->GetAttacksPerRound() - t->attackQueue.Count() : 0;
 			//if (attackQueue.Count() < CountPossibleAttacks())
 			{
