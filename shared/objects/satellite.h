@@ -183,7 +183,8 @@ namespace Objects
 		//new overridables:
 		#ifndef CLIENT
 			virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const {return false;}
-			virtual bool		WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime) const	{return false;}
+			virtual bool		WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	{return false;}
+			virtual bool		IsSentry() const	{return false;}
 			/**
 			Performs all per-round operations the local satellite can. The base version handles fueling of the local satellite.
 			Any overriding class should call the base version of this method and return its result, unless fuel processing should not commence for whatever reason
@@ -471,8 +472,9 @@ namespace Objects
 
 		#ifndef CLIENT
 			//Satellite overrides:
-			bool				WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	const override;
-			bool				ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const override;
+			virtual bool		WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	override;
+			virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const override;
+			virtual bool		IsSentry() const override {return true;}
 		#endif
 
 
