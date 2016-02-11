@@ -7,7 +7,9 @@ v0.3.16
 	> Time lapse mode now locks the camera, and shows a gui message to indicate that recording is active.
 	> Mines that cannot be enabled right now are no longer considered idle (they will not show up iterating via space).
 	> Reduced resource output of nexus ports that are not part of nexus bases.
+	> Truncated time lapse screenshots to when animations of any sort are actually active.
 	+ Ghosts now memorize the owner of the referenced entity (if any).
+	+ Added option to use max compression for time lapse series PNG files.
 
 v0.3.15		[Feb 7 2016]
 	* Fixed incorrect server IDs leading to client-side merging of different servers into one.
