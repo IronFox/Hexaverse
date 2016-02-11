@@ -1725,7 +1725,14 @@ bool loop()
 
 			if (saveScreenshot)
 			{
-				if (!TimeLapse::enabled || (RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase && Animation::AllDone() && Explosions::NoneActive()))
+				if (!TimeLapse::enabled 
+					|| 
+					(
+						//RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase 
+						Animation::AllDone() 
+						&& Explosions::NoneActive()
+					)
+					)
 				{
 					saveScreenshot = false;
 				}
@@ -1735,7 +1742,9 @@ bool loop()
 				if (storageThread.CanRun())
 				{
 					if (!TimeLapse::enabled)
-						LogEvent(EventClass::Preset::uncommon, nullptr, "Writing screenshot to disk...");
+						LogEvent(EventClass::Preset::uncommon,"Writing screenshot to disk...");
+					//else
+					//	LogEvent(EventClass::Preset::uncommon,"screenshot "+String(RuntimeConfig::phase.ToString())+", "+String(Animation::AllDone())+", "+String(Explosions::NoneActive()));
 					std::shared_ptr<Image> capture(new Image());
 					display.Capture(*capture);
 
