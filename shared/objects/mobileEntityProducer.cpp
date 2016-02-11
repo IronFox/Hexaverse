@@ -122,6 +122,7 @@ namespace Objects
 
 
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
+			LogEvent(EventSignificance::Debug,parent,"Trying to spawn finished production "+production->GetNiceName()+" anywhere...");
 			String error;
 			if (!parent->owner->CanSpawnType(production,error))
 			{
@@ -148,7 +149,9 @@ namespace Objects
 				LogEvent(EventClass::Preset::fatal,v.get(),"Failed to position non-constructed at "+c.ToString());
 				FATAL__("Failed to position entity as designated position");
 			}
-			if (rs == MobilePlacementResult::PlacementOkay || rs == MobilePlacementResult::PlacementOkayFellDown)
+			LogEvent(EventSignificance::Debug,parent,"Successfully spawned finished production  "+production->GetNiceName()+" at "+c.ToString()+" with placement result "+String(rs.ToString()));
+
+			if (rs != MobilePlacementResult::EnteredStructure)
 				InsertConstructed(v,0);
 			Structure*s = dynamic_cast<Structure*>(this);
 			if (s)
@@ -195,22 +198,24 @@ namespace Objects
 			productionRoundsLeft = ProductionRounds(queue.first().producing,true);
 			if (productionDone >= (UINT32)(queue.first().producing->GetConstructionCost()))
 			{
-				LogEvent(EventSignificance::Common,parent,"Construction of "+queue.first().producing->GetNiceName()+" completed");
+				LogEvent(EventSignificance::Debug,parent,"Construction of "+queue.first().producing->GetName()+" completed");
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ) ,parent,"Construction of "+queue.first().producing->GetNiceName()+" completed");
 
 				if (gatheringPoint.current != Grid::LCellIdI::Invalid || queue.first().IsSatellite())
 				{
-					LogEvent(EventSignificance::Common,parent,"Auto-spawning mobile entity");
+					LogEvent(EventSignificance::Common,parent,"Auto-spawning mobile entity...");
 					Objects::PMobileEntity v = SpawnFinishedProductionAnywhere();
 					if (v)
 					{
+						LogEvent(EventSignificance::Common,parent,"Auto-spawned mobile entity "+v->GetName());
 						if (!v->IsSatellite())
 						{
 							LogEvent(EventSignificance::Common,v.get(),"Directing vehicle to gathering point");
 							v->PlotCourse(gatheringPoint.current,false);
 						}
 					}
-//					else
-	//					LogEvent(EventClass::Preset::operationAborted,parent,"Failed to automatically spawn finished entity. Is something blocking deployment?");
+					else
+						LogEvent(EventClass( EventSignificance::Common, EventFlavor::Loss ),parent,"Failed to automatically spawn finished entity");
 				}
 			}
 
