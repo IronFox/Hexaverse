@@ -775,6 +775,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		float		frameDelaySeconds=0.2f;
 		PathString	basePath;
 		PathString	customBasePath;
+		bool		maxCompressionPNG=false;
 	}
 
 
@@ -858,7 +859,10 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 						String core = "capture"+runningNumber+".png";
 						PathString filename = TimeLapse::basePath + FOLDER_SLASH + core;
 
-						png.SaveToFileQ(image,filename);
+						if (TimeLapse::maxCompressionPNG)
+							png.SaveToFile(image,filename);
+						else
+							png.SaveToFileQ(image,filename);
 						count_t remaining = numImages - i - 1 + workPipe.Count();
 						LogEvent(EventClass::Preset::uncommon, nullptr, "Time lapse frame written to "+String(core)+". "+String(remaining)+" remaining.");
 					}
@@ -3190,6 +3194,7 @@ int main( int argc, const char* argv[])
 
 				TimeLapse::customBasePath = PathString(config.GetString("timelapse/outDirectory"));
 				TimeLapse::frameDelaySeconds = config.GetFloat("timelapse/frameDelaySeconds",0.2f);
+				TimeLapse::maxCompressionPNG = config.GetBool("timelapse/maxCompressionPNG");
 			#endif
 		}
 		LoadHosts();
