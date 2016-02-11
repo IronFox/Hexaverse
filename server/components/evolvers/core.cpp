@@ -212,7 +212,7 @@ namespace Evolver
 				if (!b || !b->turret->CanAttack() || !b->CountPossibleAttacks())
 					return;
 
-				if (v->IsSatellite())
+				if (v->IsSatellite() && To<Objects::Satellite>::Cast(v)->IsSentry())
 				{
 				//	Objects::PSatellite s = To<Objects::Satellite>::Cast(v);
 
