@@ -1257,9 +1257,9 @@ namespace Network
 				else
 				{
 					client.SendSignal(Protocol::ChannelID::Ping);
-					#ifdef _DEBUG
-						LogEvent(EventSignificance::Debug,nullptr,"ping");
-					#endif
+					//#ifdef _DEBUG
+					//	LogEvent(EventSignificance::Debug,nullptr,"ping");
+					//#endif
 				}
 			}
 
