@@ -276,8 +276,9 @@ namespace Objects
 			float d2 = Vec::quadraticDistance(source,dest);
 			if (d2 > sqr(range))
 			{
-				DBG_FATAL__("Trajectory out of range: "+String(sqrt(d2))+">="+String(range));
-				return;
+				LogEvent(EventClass::Preset::error,"TraceMissileTrajectory(): Distance to target ("+String(sqrt(d2))+") exceeds maximum range ("+String(range)+") of missile turret. Ignoring for now.");
+				//DBG_FATAL__("Trajectory out of range: "+String(sqrt(d2))+">="+String(range));
+				//return;
 			}
 		
 
