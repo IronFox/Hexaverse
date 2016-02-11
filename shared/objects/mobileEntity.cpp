@@ -660,8 +660,17 @@ namespace Objects
 									else
 									{
 										LogEvent(EventSignificance::Common,v2.get(),"Truncating tasks to "+String(i));
-										while (v2->myTasks.Count() >= i)
+										bool anyChanged = false;
+										while (v2->myTasks.Count() > i)	//must be greater. task 1 is bad => queue max length is 1 (task 0 is assumed good)
+										{
 											v2->myTasks.EraseBack();
+											anyChanged = true;
+										}
+										if (anyChanged)
+										{
+											timeAt += timeEpsilon;
+											v2->RegisterChange(TasksChanged,timeAt);
+										}
 									}
 									break;
 								}
