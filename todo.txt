@@ -1,3 +1,69 @@
+smoke trail of last round attacks
+emp vehicle idle only if attackable has no emp damage
+vehicle idle only if it has any shots left, and ammo
+still possible to have negative compound power level when generator could be enable but isn't? i think this happened when enabling a skyport
+button flashing when nothing is idle at round start
+dig tunnel to
+repair vehicle idle if something damaged?
+compound inefficieny
+wireless power? ... dedicated compounds?
+button to toggle offensive vehicles to also be considered idle if standing around
+button to toggle factories being considered idle
+hostile satellites show up as ghosts if in radar range
+job trajectory isn't always rendered if near the edge
+terraformer moves with a finished construction but move on finish is not executed until vehicle moves again. then places building on the location the vehicle first moved to...
+building was two floors high. no occulsion on second floor
+	see below:
+	Cannon Tower	11a86a0b
+	
+	
+	
+	
+Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	140[h=2]	 140.2 108.2
+Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Removed from grid location 196196/140[h=2]
+Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Inserted into grid location 196164/108[h=2]
+Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Registering sensory (108[h=2], 4) at time 0.3
+Debug	2016 February 11. 22:35:44	232	MovementPhase							Applying sensory change (1), using descriptor with 162 stack(s), crc=D3C8D1D0
+Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Unregistering sensory (140[h=2], 4) at time 0.3
+Debug	2016 February 11. 22:35:44	232	MovementPhase							Applying sensory change (-1), using descriptor with 162 stack(s), crc=5EEF467C
+Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Processing new hostile contact Hovertank e1b91bd2...
+Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Dangerous movement into range of Hovertank 'Hooked Seal' @07ED3B40 detected.
+Debug	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	ClearAllTasks(true, line 657 of objects\mobileentity.cpp::Objects::MobileEntity::HandleMotion())
+Debug	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	 ...set to clear on unlock
+Common	2016 February 11. 22:35:44	232	MovementPhase							[spectator]:'IronFox' reported seeing motion of Heavyformer 0168a292 at time 0+0.3
+Common	2016 February 11. 22:35:44	232	MovementPhase							664cc40f:'IronFox' reported seeing motion of Heavyformer 0168a292 at time 0+0.3
+Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	8d197fdb:'<NexusAI>': CheckGridVisibility at time 0.31
+Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Motion completed
+Debug	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	ClearAllTasks(true, line 484 of objects\mobileentity.cpp::Objects::MobileEntity::HandleNormalTask())
+NonFatalError	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Unable to complete movement.
+Debug	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	ClearAllTasks(true, line 351 of objects\mobileentity.cpp::Objects::MobileEntity::UnlockTasks())
+Debug	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	 ...cleared
+NonFatalError	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Unable to automatically relocate. Move manually to finish 'construct Cannon Tower'
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 improve sky grid
 decrease max transparency of water (make it configurable?)
 all available generators are switched on when power is needed, and are never switched off again. always?
