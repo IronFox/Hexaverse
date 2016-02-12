@@ -2639,20 +2639,27 @@ String GenerateOreName(Random&random)
 			return true;
 		if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsNonAutomatedResourceDetector())
 			return true;
-		if (v->CanAttack())
+		if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())
 		{
+			bool emp = v->turret->dealsEMPDamage;
 			if (v->IsVehicle())
 			{
 				for (auto other : Objects::vehicles)
 					if (!other->isMine && v->CanHit(other->location))
-						return true;
+						if (!emp || !other->empDamageLevel)
+							return true;
+				for (auto other : Objects::structures)
+					if (!other->isMine && v->CanHit(other->location))
+						if (!emp || !other->empDamageLevel)
+							return true;
 			}
 			else
 				if (v->IsSatellite())
 				{
 					for (auto other : Objects::satellites)
 						if (!other->isMine && v->CanHit(other->location))
-							return true;
+							if (!emp || !other->empDamageLevel)
+								return true;
 				}
 				else
 				{
