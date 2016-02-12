@@ -3,6 +3,7 @@ v0.3.16
 	* Client now correctly closes down any started server before quitting.
 	* Fixed clients in visual range not always seeing instantaneous events as they should.
 	* Fixed artillery attack job trajectory not always being rendered correctly.
+	* Possibly fixed rare case where a terraformer would not finish a construction job if its movement was only partially successful.
 	> Reduced height of uranium storage to better show resource marker on top.
 	> Improved faction coloring in spectator mode.
 	> Time lapse mode now locks the camera, and shows a gui message to indicate that recording is active.

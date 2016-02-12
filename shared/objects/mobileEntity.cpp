@@ -233,15 +233,6 @@ namespace Objects
 										RegisterChange(ActionChanged,timeAt);
 										task.path.EraseLast();
 										cost = task.path.IsNotEmpty() ? task.path.last().movementCostsFromPrevNode : 1;
-
-										if (completeOnMove)
-										{
-											if (!CompleteOnMove(previousLocation))
-											{
-												UnlockTasks();
-												return true;
-											}
-										}
 									}
 									break;
 									case MobilePlacementResult::EnteredStructure:
@@ -283,6 +274,16 @@ namespace Objects
 									default:
 										FATAL__("Unexpected placement result "+String(rs));
 								}
+
+								if (completeOnMove && location != previousLocation)
+								{
+									if (!CompleteOnMove(previousLocation))
+									{
+										UnlockTasks();
+										return true;
+									}
+								}
+
 								if (stop)
 									break;
 							}
