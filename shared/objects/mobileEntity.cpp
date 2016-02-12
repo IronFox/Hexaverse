@@ -427,7 +427,7 @@ namespace Objects
 								}
 								if (badTask)
 								{
-									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected.");
+									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetName()+" at "+(*c)->location.ToString()+" detected.");
 									if (v2.get() == this)
 									{
 										ClearAllTasks(true,CLOCATION);
