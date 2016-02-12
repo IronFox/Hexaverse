@@ -401,8 +401,16 @@ namespace Objects
 		{
 			Turret::TAngles angles = Turret::GetAngleForDistance(velocity,source,zOffset,dest);
 			if (angles.numAngles == 0)
+			{
+				if (velocity < 50.f)
+				{
+					LogEvent(EventClass::Preset::error,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+source.ToString()+", dest="+dest.ToString()+". Increasing velocity and retrying.");
+					velocity = velocity > 0 ? velocity * 1.1f : 1.f;	//should not be zero, but it's better to handle this case here anyway. Otherwise we're causing a stack overflow in no-time
+					return TraceArtilleryTrajectory(velocity,world,source,zOffset, dest,outSteps,impactAt,impactCell);
+				}
+
 				return TurretTrajectory::InvalidTrajectory;
-		
+			}
 
 			const float h0 = zOffset + Grid::ToRadiusf(0.05f + source.height);
 			const float h1 = Grid::ToRadiusf(0.05f + dest.height);
