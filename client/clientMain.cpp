@@ -200,6 +200,15 @@ int2 rightMouseDragFrom;
 void							SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
 
 
+/**
+Triggered when entering command mode and animations have finished (whichever of those events happens later)
+*/
+void	OnPlayerControlBegin()
+{
+	UI::RefreshButtonState();
+	Objects::RefreshSkyHubConnections();
+	Animation::UpdateAutomation(CLOCATION);
+}
 
 void	OnTutorialsChanged()
 {

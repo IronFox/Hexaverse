@@ -1181,6 +1181,15 @@
 				cell.Update(camera);
 			}
 
+			void RefreshButtonState()
+			{
+				foreach (guiCells,cell)
+				{
+					cell->command->Refresh(Network::ControlEnabled());
+				}
+
+			}
+
 
 			void		ClearContacts()
 			{
@@ -1807,6 +1816,12 @@
 
 
 
+		
+		void	RefreshButtonState()
+		{
+			HexGrid::RefreshButtonState();
+		}
+
 
 
 
@@ -2359,7 +2374,6 @@
 			textout.popState();
 	
 		}
-
 
 
 	}

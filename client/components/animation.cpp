@@ -11,6 +11,7 @@
 
 
 void			SignalMarkerDeletion(TUniqueID markerID);
+void			OnPlayerControlBegin();
 
 
 namespace Animation
@@ -1635,8 +1636,7 @@ namespace Animation
 
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::gameHasBegun)
 				{
-					Objects::RefreshSkyHubConnections();
-					UpdateAutomation(CLOCATION);
+					OnPlayerControlBegin();
 				}
 			}
 

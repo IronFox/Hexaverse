@@ -14,6 +14,7 @@
 
 
 void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
+void			OnPlayerControlBegin();
 
 #ifdef HAS_WINDOW
 	void		QueryNicknameIfEmpty();
@@ -1388,7 +1389,6 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	{
 		Objects::CheckMobileEntitySanity();
 
-
 		static Buffer0<Objects::Marker*> outdated;
 		Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10);
 		foreach(outdated, o)
@@ -1403,8 +1403,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 
 		if (gameHasBegun && Animation::AllDone())
 		{
-			Objects::RefreshSkyHubConnections();
-			Animation::UpdateAutomation(CLOCATION);
+			OnPlayerControlBegin();
 		}
 	}
 	for (const auto&f : Objects::Faction::allKnown)
