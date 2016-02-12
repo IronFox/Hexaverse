@@ -40,7 +40,7 @@ namespace ProgressBar
 	*/
 	void	RenderNewBar(float progress, float max, const float3&color)
 	{
-		if (max > 10)
+		if (max > 20)
 		{
 			progress /= max;
 			max = 1;

@@ -88,6 +88,11 @@ namespace Objects
 
 		/*virtual override*/ bool Vehicle::FillAttackQueue()
 		{
+			if (!turret->CanAttack() || !HasAmmoForShot())
+			{
+				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
+				return false;
+			}
 			//index_t freeSlots = attackQueue.Count() < t->GetAttacksPerRound() <  t->GetAttacksPerRound() - t->attackQueue.Count() : 0;
 			//if (attackQueue.Count() < CountPossibleAttacks())
 			{
@@ -570,7 +575,7 @@ namespace Objects
 						Grid::LCellIdI	possibilities[6 * 3];
 						if (detailedPath)
 						{
-							Grid::LCellIdI prev = GetLastPointOfOrigin();
+							Grid::LCellIdI prev = pointOfOrigin;
 							for (const auto&dest : waypoints)
 							{
 								count_t numWays = Objects::GetWays(owner->currentState,this,prev,possibilities,dest,true,true);
@@ -596,7 +601,8 @@ namespace Objects
 
 							for (Grid::LCellIdI destination : waypoints)
 							{
-								destination--;
+								if (destination.height > pointOfOrigin.height)
+									destination--;
 								if (destination != pointOfOrigin)
 								{
 									if (!AppendShortestDirectPath(pointOfOrigin,destination,path))

@@ -7,6 +7,7 @@
 #include <string/string_buffer.h>
 #include <mutex>
 #include <conio.h>
+#include <general/timer.h>
 #include "../shared/protocol.h"
 
 BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
@@ -27,8 +28,9 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 
 void	Dispatch(const StringRef&);
 
+String targetHost = "localhost";
 
-
+Timer::Time connectionAttemptStarted = timer.Now();
 std::thread connectionRetryThread;
 void ConnectionRetry();
 void CompleteInput();
@@ -335,6 +337,8 @@ void OnEvent(TCP::event_t event, TCP::Peer&peer)
 				exitLock.signal();
 		return;
 		case TCP::Event::ConnectionEstablished:
+			if (Handler::interactive)
+				Console::WriteLine("Connection established to "+peer.ToString()+" after "+String(timer.GetSecondsSince(connectionAttemptStarted)));
 			if (connectionRetryThread.joinable())
 			{
 				try
@@ -344,8 +348,8 @@ void OnEvent(TCP::event_t event, TCP::Peer&peer)
 				catch (...)
 				{}
 			}
-			if (Handler::interactive)
-				Console::WriteLine(peer.ToString()+": "+TCP::event2str(event));
+			//if (Handler::interactive)
+				//Console::WriteLine(peer.ToString()+": "+TCP::event2str(event));
 			bufferedCommandsMutex.lock();
 			{
 				for (index_t i = 0; i < bufferedCommands.Count(); i++)
@@ -387,7 +391,10 @@ void ConnectionRetry()
 	{
 		Sleep(1000);
 		if (!client.IsAttemptingToConnect() && !client.IsConnected())
-			client.ConnectAsync("localhost:"+String(ParameterConfig::basePort+PortOffset::Control));
+		{
+			connectionAttemptStarted = timer.Now();
+			client.ConnectAsync(targetHost+":"+String(ParameterConfig::basePort+PortOffset::Control));
+		}
 	}
 }
 
@@ -419,7 +426,8 @@ int main(int argc, char* argv[])
 
 	if (!ParameterConfig::interactive && bufferedCommands.IsEmpty())
 		return 0;
-	client.ConnectAsync("localhost:"+String(ParameterConfig::basePort+PortOffset::Control));
+	connectionAttemptStarted = timer.Now();
+	client.ConnectAsync(targetHost+":"+String(ParameterConfig::basePort+PortOffset::Control));
 	std::cout << std::endl;
 
 	if (ParameterConfig::interactive)
