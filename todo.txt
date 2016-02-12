@@ -1,3 +1,4 @@
+have foundation auto-connect to anything that is not air
 smoke trail of last round attacks
 emp vehicle idle only if attackable has no emp damage
 vehicle idle only if it has any shots left, and ammo
@@ -16,7 +17,7 @@ building was two floors high. no occulsion on second floor
 	see below:
 	Cannon Tower	11a86a0b
 	
-	
+have pylons (ft_pylon) connect to each other only, replace connectors	
 	
 	
 Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	140[h=2]	 140.2 108.2
