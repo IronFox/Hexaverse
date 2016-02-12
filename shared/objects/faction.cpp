@@ -1157,7 +1157,7 @@ namespace Objects
 			}
 		}
 
-		/*static*/ void				Marker::GetOutdated(BasicBuffer<Marker*>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds)
+		/*static*/ void				Marker::GetOutdated(BasicBuffer<Marker>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds)
 		{
 			outOudated.Clear();
 			foreach(all, m)
@@ -1171,7 +1171,7 @@ namespace Objects
 						{
 							LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered outdated after "+String(m->age)+" round(s)");
 
-							outOudated << m;
+							outOudated << *m;
 						}
 					break;
 					case Type::HostileContact:
@@ -1204,7 +1204,7 @@ namespace Objects
 									break;
 								}*/
 						if (seen)
-							outOudated << m;
+							outOudated << *m;
 					}
 					break;
 
