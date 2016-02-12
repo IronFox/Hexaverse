@@ -116,13 +116,16 @@ namespace Objects
 
 	void	Renderer::RenderRange(const Grid::LCellIdI&location, float zOffset, const PTurretBase&base, const float4&color, bool extended)
 	{
+		float explosionRadius = 0;//base->turret->explosionRadius;
+		if (extended)
+			explosionRadius += RangeShadowExtension;
 		switch (base->turret->trajectoryType)
 		{
 			case TrajectoryType::Artillery:
 			{
 				base->paraboloidBuffer.Render(location, 
 					zOffset,base->GetFlatAttackRange(),
-					base->turret->explosionRadius,color,
+					explosionRadius,color,
 					extended
 					);
 			}
@@ -130,9 +133,6 @@ namespace Objects
 			case TrajectoryType::Missile:
 			{
 				const TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
-				float explosionRadius = base->turret->explosionRadius;
-				if (extended)
-					explosionRadius += RangeShadowExtension;
 				RenderRangeSphere(d * (Grid::ToRadius(location.height)+zOffset),base->GetFlatAttackRange() + explosionRadius,color);
 			}
 			break;
@@ -142,9 +142,6 @@ namespace Objects
 				if (h != badHeight)
 				{
 					const TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
-					float explosionRadius = base->turret->explosionRadius;
-					if (extended)
-						explosionRadius += RangeShadowExtension;
 					RenderRangeSphere(d * (Grid::ToRadius(h)+zOffset),base->GetFlatAttackRange() + explosionRadius,color);
 				}
 

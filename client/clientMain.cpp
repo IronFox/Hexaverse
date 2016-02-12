@@ -202,6 +202,15 @@ int2 rightMouseDragFrom;
 void							SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
 
 
+/**
+Triggered when entering command mode and animations have finished (whichever of those events happens later)
+*/
+void	OnPlayerControlBegin()
+{
+	UI::RefreshButtonState();
+	Objects::RefreshSkyHubConnections();
+	Animation::UpdateAutomation(CLOCATION);
+}
 
 void	OnTutorialsChanged()
 {
@@ -783,6 +792,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		float		frameDelaySeconds=0.2f;
 		PathString	basePath;
 		PathString	customBasePath;
+		bool		maxCompressionPNG=false;
 	}
 
 
@@ -866,7 +876,10 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 						String core = "capture"+runningNumber+".png";
 						PathString filename = TimeLapse::basePath + FOLDER_SLASH + core;
 
-						png.SaveToFileQ(image,filename);
+						if (TimeLapse::maxCompressionPNG)
+							png.SaveToFile(image,filename);
+						else
+							png.SaveToFileQ(image,filename);
 						count_t remaining = numImages - i - 1 + workPipe.Count();
 						LogEvent(EventClass::Preset::uncommon, nullptr, "Time lapse frame written to "+String(core)+". "+String(remaining)+" remaining.");
 					}
@@ -1145,7 +1158,14 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			if (f)
 			{
 				if (f->compound.containedStructures.IsEmpty())
-					Objects::RefreshCompoundCoverage(0);
+				{
+					bool any = false;
+					for (const auto& s : Objects::structures)
+						if (s->IsWorkingStructure() && s->owner == f)
+							any = true;
+					if (any)	//prevent stack overflow
+						Objects::RefreshCompoundCoverage(0);
+				}
 			}
 			if (f)
 			{
@@ -1652,7 +1672,14 @@ bool loop()
 
 			if (saveScreenshot)
 			{
-				if (!TimeLapse::enabled || (RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase && Animation::AllDone() && Explosions::NoneActive()))
+				if (!TimeLapse::enabled 
+					|| 
+					(
+						//RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase 
+						Animation::AllDone() 
+						&& Explosions::NoneActive()
+					)
+					)
 				{
 					saveScreenshot = false;
 				}
@@ -1662,7 +1689,9 @@ bool loop()
 				if (storageThread.CanRun())
 				{
 					if (!TimeLapse::enabled)
-						LogEvent(EventClass::Preset::uncommon, nullptr, "Writing screenshot to disk...");
+						LogEvent(EventClass::Preset::uncommon,"Writing screenshot to disk...");
+					//else
+					//	LogEvent(EventClass::Preset::uncommon,"screenshot "+String(RuntimeConfig::phase.ToString())+", "+String(Animation::AllDone())+", "+String(Explosions::NoneActive()));
 					std::shared_ptr<Image> capture(new Image());
 					display.Capture(*capture);
 
@@ -1983,31 +2012,17 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 
 
-		if (Objects::selectedMobileEntity 
-			&& Objects::VehicleCanBeLeftClickDirected()	//also works for mobiles in general. TODO: rename/relocate
-			)
+		if (Objects::selectedMobileEntity && Objects::CursorModeExpectsLeftClick())
 		{
-			if (Objects::selectedMobileEntity)
-			{
-				Grid::LCellIdI	target;
-				bool includeWater = false;
-				if (Objects::activeCursorMode == Objects::CursorMode::AttackMode)
-					includeWater = true;
-				else
-					//if (Objects::selectedVehicle->base->moveOnWater)
-						includeWater = true;
+			Grid::LCellIdI	target;
+			bool includeWater = true;
 
-				if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
-				{
-					if (Objects::selectedMobileEntity->IsSatellite())
-						target.height = Objects::selectedMobileEntity->location.height;
-					DirectTo(Objects::selectedMobileEntity,target,false,true);
-					return;
-				}
-			}
-			else
+			if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
 			{
-				FATAL__("not implemented for non-mobiles yet" );
+				if (Objects::selectedMobileEntity->IsSatellite())
+					target.height = Objects::selectedMobileEntity->location.height;
+				DirectTo(Objects::selectedMobileEntity,target,false,true);
+				return;
 			}
 		}
 		else
@@ -2637,20 +2652,27 @@ String GenerateOreName(Random&random)
 			return true;
 		if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsNonAutomatedResourceDetector())
 			return true;
-		if (v->CanAttack())
+		if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())
 		{
+			bool emp = v->turret->dealsEMPDamage;
 			if (v->IsVehicle())
 			{
 				for (auto other : Objects::vehicles)
-					if (!other->isMine && v->CanHit(other->location))
-						return true;
+					if (!emp || !other->empDamageLevel)
+						if (!other->isMine && v->CanHit(other->location))
+							return true;
+				for (auto other : Objects::structures)
+					if (!emp || !other->empDamageLevel)
+						if (!other->isMine && v->CanHit(other->location))
+							return true;
 			}
 			else
 				if (v->IsSatellite())
 				{
 					for (auto other : Objects::satellites)
 						if (!other->isMine && v->CanHit(other->location))
-							return true;
+							if (!emp || !other->empDamageLevel)
+								return true;
 				}
 				else
 				{
@@ -3119,6 +3141,7 @@ int main( int argc, const char* argv[])
 
 				TimeLapse::customBasePath = PathString(config.GetString("timelapse/outDirectory"));
 				TimeLapse::frameDelaySeconds = config.GetFloat("timelapse/frameDelaySeconds",0.2f);
+				TimeLapse::maxCompressionPNG = config.GetBool("timelapse/maxCompressionPNG");
 			#endif
 		}
 		LoadHosts();
