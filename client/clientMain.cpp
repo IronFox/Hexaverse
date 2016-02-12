@@ -2647,12 +2647,12 @@ String GenerateOreName(Random&random)
 			if (v->IsVehicle())
 			{
 				for (auto other : Objects::vehicles)
-					if (!other->isMine && v->CanHit(other->location))
-						if (!emp || !other->empDamageLevel)
+					if (!emp || !other->empDamageLevel)
+						if (!other->isMine && v->CanHit(other->location))
 							return true;
 				for (auto other : Objects::structures)
-					if (!other->isMine && v->CanHit(other->location))
-						if (!emp || !other->empDamageLevel)
+					if (!emp || !other->empDamageLevel)
+						if (!other->isMine && v->CanHit(other->location))
 							return true;
 			}
 			else
