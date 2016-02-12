@@ -573,7 +573,7 @@ namespace Objects
 						Grid::LCellIdI	possibilities[6 * 3];
 						if (detailedPath)
 						{
-							Grid::LCellIdI prev = GetLastPointOfOrigin();
+							Grid::LCellIdI prev = pointOfOrigin;
 							for (const auto&dest : waypoints)
 							{
 								count_t numWays = Objects::GetWays(owner->currentState,this,prev,possibilities,dest,true,true);
@@ -599,7 +599,8 @@ namespace Objects
 
 							for (Grid::LCellIdI destination : waypoints)
 							{
-								destination--;
+								if (destination.height > pointOfOrigin.height)
+									destination--;
 								if (destination != pointOfOrigin)
 								{
 									if (!AppendShortestDirectPath(pointOfOrigin,destination,path))

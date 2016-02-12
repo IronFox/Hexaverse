@@ -14,6 +14,7 @@
 
 
 void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
+void			OnPlayerControlBegin();
 
 #ifdef HAS_WINDOW
 	void		QueryNicknameIfEmpty();
@@ -1259,9 +1260,9 @@ namespace Network
 				else
 				{
 					client.SendSignal(Protocol::ChannelID::Ping);
-					#ifdef _DEBUG
-						LogEvent(EventSignificance::Debug,nullptr,"ping");
-					#endif
+					//#ifdef _DEBUG
+					//	LogEvent(EventSignificance::Debug,nullptr,"ping");
+					//#endif
 				}
 			}
 
@@ -1390,14 +1391,13 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	{
 		Objects::CheckMobileEntitySanity();
 
-
-		static Buffer0<Objects::Marker*> outdated;
+		static Buffer0<Objects::Marker> outdated;
 		Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10);
 		foreach(outdated, o)
 		{
 			
-			LogEvent(EventSignificance::Debug,nullptr,"Deleting marker "+(*o)->GetName()+" since it's outdated (at age "+String((*o)->age)+")");
-			SignalMarkerDeletion((*o)->id);
+			LogEvent(EventSignificance::Debug,nullptr,"Deleting marker "+o->GetName()+" since it's outdated (at age "+String(o->age)+")");
+			SignalMarkerDeletion(o->id);
 			//Network::Channels::destroyMarker.SendTo(Network::client, *o);
 		}
 
@@ -1405,8 +1405,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 
 		if (gameHasBegun && Animation::AllDone())
 		{
-			Objects::RefreshSkyHubConnections();
-			Animation::UpdateAutomation(CLOCATION);
+			OnPlayerControlBegin();
 		}
 	}
 	for (const auto&f : Objects::Faction::allKnown)

@@ -700,11 +700,15 @@ namespace Journal
 	{
 		if (!e->DirectTo(mode,targets,detailed,leftClick))
 		{
-			static StringBuffer buffer;
-			buffer.Clear();
-			foreach (targets,t)
-				buffer << ' '<<t->ToString();
-			throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to"+buffer.ToString()+" in mode "+String(int(mode)));
+			#ifdef _DEBUG
+				static StringBuffer buffer;
+				buffer.Clear();
+				foreach (targets,t)
+					buffer << ' '<<t->ToString();
+				throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to"+buffer.ToString()+" in mode "+String(int(mode)));
+			#else
+				throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to destination");
+			#endif
 		}
 	}
 

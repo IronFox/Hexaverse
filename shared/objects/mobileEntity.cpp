@@ -457,15 +457,6 @@ namespace Objects
 										RegisterChange(ActionChanged,timeAt);
 										task.path.EraseLast();
 										cost = task.path.IsNotEmpty() ? task.path.last().movementCostsFromPrevNode : 1;
-
-										if (completeOnMove)
-										{
-											if (!CompleteOnMove(previousLocation))
-											{
-												UnlockTasks();
-												return true;
-											}
-										}
 									}
 									break;
 									case MobilePlacementResult::EnteredStructure:
@@ -507,6 +498,16 @@ namespace Objects
 									default:
 										FATAL__("Unexpected placement result "+String(rs));
 								}
+
+								if (completeOnMove && location != previousLocation)
+								{
+									if (!CompleteOnMove(previousLocation))
+									{
+										UnlockTasks();
+										return true;
+									}
+								}
+
 								if (stop)
 									break;
 							}
@@ -651,7 +652,7 @@ namespace Objects
 								}
 								if (badTask)
 								{
-									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected.");
+									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetName()+" at "+(*c)->location.ToString()+" detected.");
 									if (v2.get() == this)
 									{
 										ClearAllTasks(true,CLOCATION);

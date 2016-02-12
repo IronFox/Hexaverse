@@ -1144,7 +1144,7 @@ namespace Objects
 
 			PStructure s = To<Structure>::Cast(constructWhat->CreateNewInstance(v.owner, target, v.timeAt));
 			s->id = useID;
-			LogEvent(EventSignificance::Common,&v,"Constructed " + s->GetNiceName());
+			LogEvent(EventSignificance::Common,&v,"Constructed " + s->GetName()+" at "+s->location.ToString());
 			InsertConstructed(s,v.timeAt,true);
 			return JobDone;
 		}

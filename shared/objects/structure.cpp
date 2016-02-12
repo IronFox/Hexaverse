@@ -2710,6 +2710,8 @@ namespace Objects
 	
 	bool						WorkingStructure::CouldEnable() const
 	{
+		if (health <= 0)
+			return false;
 		if (IsEnabled())
 			return true;
 
