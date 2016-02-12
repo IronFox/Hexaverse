@@ -1150,7 +1150,14 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			if (f)
 			{
 				if (f->compound.containedStructures.IsEmpty())
-					Objects::RefreshCompoundCoverage(0);
+				{
+					bool any = false;
+					for (const auto& s : Objects::structures)
+						if (s->IsWorkingStructure() && s->owner == f)
+							any = true;
+					if (any)	//prevent stack overflow
+						Objects::RefreshCompoundCoverage(0);
+				}
 			}
 			if (f)
 			{
