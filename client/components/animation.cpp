@@ -11,6 +11,7 @@
 
 
 void			SignalMarkerDeletion(TUniqueID markerID);
+void			OnPlayerControlBegin();
 
 
 namespace Animation
@@ -948,9 +949,9 @@ namespace Animation
 	{
 		type = Attack;
 		attacker = Objects::Component::GetTurretByName(a.turretType);
+		ASSERT_NOT_NULL1__(attacker,(int)a.turretType.value);
 		attackRange = a.turretRange;
 		attackerPosition = a.sourcePosition;
-		attackTrajectoryType.Load(a.trajectoryType);
 		explosionCenter = Grid::ToWorld(a.traceTo);
 
 		//Objects::PWorldEntity e = Objects::GetEntity(a.id,true);
@@ -1133,7 +1134,7 @@ namespace Animation
 			{
 			//	allocatedTarget = Objects::GetEntity(targetEntityID);
 				//if (allocatedTarget)
-				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+String(attackTrajectoryType.ToString())+",range="+String(attackRange)+",loc="+location.ToString()+") at "+String(Animation::atTime)+"/"+String(this->time.min));
+				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attacker->typeName+",range="+String(attackRange)+",loc="+location.ToString()+") at "+String(Animation::atTime)+"/"+String(this->time.min));
 				
 				{
 					//Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
@@ -1155,7 +1156,7 @@ namespace Animation
 					}*/
 					Grid::HCellIdI			attackTargetCell;	//not needed
 					//TVec3<>					attackTarget;	//not needed
-					Objects::Component::Turret::TraceTrajectory(attackTrajectoryType,attackRange, attackerPosition,Grid::ToWorld(location),activeTrajectory);
+					Objects::Component::Turret::TraceTrajectory(attacker->trajectoryType,attackRange, attackerPosition,Grid::ToWorld(location),activeTrajectory);
 					explosionRadius = attacker->explosionRadius;
 					projectileAt = 0.f;
 					projectileActive = true;
@@ -1641,8 +1642,7 @@ namespace Animation
 
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::gameHasBegun)
 				{
-					Objects::RefreshSkyHubConnections(0.f);
-					UpdateAutomation(CLOCATION);
+					OnPlayerControlBegin();
 				}
 			}
 

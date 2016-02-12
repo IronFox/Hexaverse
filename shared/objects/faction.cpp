@@ -466,7 +466,10 @@ namespace Objects
 
 			}
 			else
+			{
+				LogEvent(EventSignificance::Debug,e.get(),this->GetLogName()+": Sight level already set to "+String(ref.sightLevel));
 				return;
+			}
 
 
 			if (ref.sightLevel == incStackBy)
@@ -681,6 +684,7 @@ namespace Objects
 			else
 			{
 				//count_t coverage = CountSatelliteCoverage(sat->system.w.xyz);
+				//LogEvent(EventSignificance::Debug,"Registering orbital sensor sphere "+sphere.ToString());
 				ForeachOrbitalWorldEntity([newContacts,sphere,this,&t](const PWorldEntity sat)
 				{
 					if (sat->owner.get() != this && sphere.Contains(sat->GetWorldPosition()))
@@ -706,30 +710,38 @@ namespace Objects
 					CheckChanges(t);
 			}
 //			float escaped = sqr(sphere.radius+2);
-			static Array<PWorldEntity>	seen;
-			seeing.exportKeys(seen);
-			foreach (seen,s)
+			//if (isSatellite)
+			//	LogEvent(EventSignificance::Debug,"Unregistering orbital sensor sphere "+sphere.ToString());
+
+			static Buffer<PWorldEntity>	disappear;
+
+			this->seeing.VisitAllKeys([this,isSatellite,sphere](const PWorldEntity&s)
 			{
 				
 				//float d2 = Vec::quadraticDistance(sphere.center,(*s)->system.w.xyz);
 				//if (d2 > escaped || (*s)->IsSatellite() != isSatellite)
 				//	continue;
-				if ((*s)->IsOrbital() != isSatellite)
-					continue;
+				if (s->IsOrbital() != isSatellite)
+					return;
 				if (isSatellite)
 				{
 					//PSatellite sat = To<Satellite>::Cast(*s);
-					if (sphere.Contains((*s)->system.w.xyz))
+					if (sphere.Contains(s->GetWorldPosition()))
 					{
-						SignalDisappearance(*s,t);
+//						float d = Vec::distance(sat->GetWorldPosition(),sphere.center);
+//						LogEvent(EventSignificance::Debug,sat.get()," Reported in range of "+sphere.ToString()+", at distance="+String(d));
+						disappear << s;
 					}
 				}
 				else
-					if (!GridCanSee(*s))
+					if (!GridCanSee(s))
 					{
-						SignalDisappearance(*s,t);
+						disappear << s;
 					}
-			};
+			});
+			foreach (disappear,s)
+				SignalDisappearance(*s,t);
+			disappear.Clear();
 		}
 
 		void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
@@ -757,15 +769,18 @@ namespace Objects
 			if (checkChangesNow)
 				CheckChanges(t);
 
-			static Array<PWorldEntity>	seen;
-			this->seeing.exportKeys(seen);
-			foreach (seen,s)
+			static Buffer<PWorldEntity>	disappear;
+			this->seeing.VisitAllKeys([this](const PWorldEntity&s)
 			{
-				if (!GridCanSee(*s))
+				if (!s->IsOrbital() && !GridCanSee(s))
 				{
-					SignalDisappearance(*s,t);
+					disappear << s;
 				}
-			};
+			});
+			foreach (disappear,s)
+				SignalDisappearance(*s,t);
+			disappear.Clear();
+
 		}
 
 
@@ -1176,7 +1191,7 @@ namespace Objects
 			}
 		}
 
-		/*static*/ void				Marker::GetOutdated(BasicBuffer<Marker*>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds)
+		/*static*/ void				Marker::GetOutdated(BasicBuffer<Marker>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds)
 		{
 			outOudated.Clear();
 			foreach(all, m)
@@ -1190,7 +1205,7 @@ namespace Objects
 						{
 							LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered outdated after "+String(m->age)+" round(s)");
 
-							outOudated << m;
+							outOudated << *m;
 						}
 					break;
 					case Type::HostileContact:
@@ -1223,7 +1238,7 @@ namespace Objects
 									break;
 								}*/
 						if (seen)
-							outOudated << m;
+							outOudated << *m;
 					}
 					break;
 

@@ -213,7 +213,9 @@ namespace Objects
 
 				static bool				ConnectTo(BYTE content)
 				{
-					return Grid::CellStack::Cell::typeStrength[content] >= 4;	//grass strength
+					return Grid::CellStack::Cell::IsSolid(content);
+					//return content != Grid::Content::Clear;	//everything not clear
+					//return Grid::CellStack::Cell::typeStrength[content] >= 4;	//grass strength
 				}
 
 			public:

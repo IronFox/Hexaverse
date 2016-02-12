@@ -1599,9 +1599,9 @@ namespace Receiver
 				//	client->lastPing = timer.Now();
 				//}
 				peer.SendSignal(Protocol::ChannelID::Pong);
-				#ifdef _DEBUG
-					LogEvent(EventSignificance::Debug,"pong");
-				#endif
+				//#ifdef _DEBUG
+				//	LogEvent(EventSignificance::Debug,"pong");
+				//#endif
 			break;
 			case Protocol::ChannelID::RequestEverything:
 			{

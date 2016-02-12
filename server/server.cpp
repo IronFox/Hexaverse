@@ -453,7 +453,6 @@ void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, f
 	float zOffset;
 	Objects::PTurretBase base = e->GetTurretBase(zOffset);
 	ASSERT__(base);
-	preciseAttack.trajectoryType = base->turret->trajectoryType;
 	preciseAttack.turretType = base->turret->constName;
 	preciseAttack.traceTo = traceTo;
 	preciseAttack.turretRange = base->GetFlatAttackRange();
@@ -1365,7 +1364,10 @@ int main( int argc, const char* argv[])
 
 		Reflection::state.PopFocus();
 
-
+		Reflection::state.DefineCommand("/Server/shutdown",(CLI::Command::function0_t)[]()
+		{
+			application_shutting_down = true;
+		})->SetUniqueHelp("Shuts down the service and terminates the application");
 		Reflection::state.DefineCommand("/Server/autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
 		Reflection::state.DefineCommand("/Server/saveTo fileName",(CLI::Command::function1_t)[](const String&path)
 		{

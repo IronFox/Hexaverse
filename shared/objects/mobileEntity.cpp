@@ -442,15 +442,6 @@ namespace Objects
 										RegisterChange(ActionChanged,timeAt);
 										task.path.EraseLast();
 										cost = task.path.IsNotEmpty() ? task.path.last().movementCostsFromPrevNode : 1;
-
-										if (completeOnMove)
-										{
-											if (!CompleteOnMove(previousLocation))
-											{
-												UnlockTasks();
-												return true;
-											}
-										}
 									}
 									break;
 									case MobilePlacementResult::EnteredStructure:
@@ -492,6 +483,16 @@ namespace Objects
 									default:
 										FATAL__("Unexpected placement result "+String(rs));
 								}
+
+								if (completeOnMove && location != previousLocation)
+								{
+									if (!CompleteOnMove(previousLocation))
+									{
+										UnlockTasks();
+										return true;
+									}
+								}
+
 								if (stop)
 									break;
 							}
@@ -636,7 +637,7 @@ namespace Objects
 								}
 								if (badTask)
 								{
-									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected.");
+									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetName()+" at "+(*c)->location.ToString()+" detected.");
 									if (v2.get() == this)
 									{
 										ClearAllTasks(true,CLOCATION);
@@ -645,8 +646,17 @@ namespace Objects
 									else
 									{
 										LogEvent(EventSignificance::Common,v2.get(),"Truncating tasks to "+String(i));
-										while (v2->myTasks.Count() >= i)
+										bool anyChanged = false;
+										while (v2->myTasks.Count() > i)	//must be greater. task 1 is bad => queue max length is 1 (task 0 is assumed good)
+										{
 											v2->myTasks.EraseBack();
+											anyChanged = true;
+										}
+										if (anyChanged)
+										{
+											timeAt += timeEpsilon;
+											v2->RegisterChange(TasksChanged,timeAt);
+										}
 									}
 									break;
 								}
@@ -693,7 +703,8 @@ namespace Objects
 						{
 							if (t->AttackNext(loc,true))
 							{
-								LogEvent(EventSignificance::Common,t.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
+								LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString());
+								LogEvent(EventSignificance::Important,t.get(),"Auto-targeting moving "+GetNiceName());
 
 								t->Attack(timeAt);
 								if (health <= 0)
@@ -701,7 +712,6 @@ namespace Objects
 									doBreak = true;
 									return;
 								}
-										
 							}
 						}
 					}

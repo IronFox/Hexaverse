@@ -408,6 +408,7 @@ namespace UI
 
 			void		VisitCommand(Objects::BaseCommand&cmd);
 
+			void		RefreshButtonState();
 
 
 			void		RefreshContacts();
@@ -483,7 +484,7 @@ namespace UI
 
 
 
-
+		void	RefreshButtonState();
 
 		void	ShowSession();
 		void	RefreshSessionView();

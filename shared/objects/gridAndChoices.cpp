@@ -227,7 +227,9 @@ namespace Objects
 			});
 			if (closest != Grid::LCellIdI::Invalid)
 			{
-				LogEvent(EventSignificance::Common,&source,"Auto-targeting "+closestEntity->GetNiceName());
+				ASSERT__(closestEntity->isInserted);
+				LogEvent(EventSignificance::Debug,&source,"Auto-targeting "+closestEntity->GetName()+" (located at "+closestEntity->location.ToString()+") via closest viable trajectory target "+closest.ToString());
+				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),&source,"Auto-targeting "+closestEntity->GetNiceName());
 
 				outTarget = closest;
 				return true;
