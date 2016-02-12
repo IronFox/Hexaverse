@@ -10,6 +10,7 @@ v0.3.16
 	> Truncated time lapse screenshots to when animations of any sort are actually active.
 	> Buildings walls (up or forward) now connects to any solid neighboring matter.
 	> Offensive vehicles are now considered idle only, if they actually can attack this round.
+	> "Dig Tunnel To..." command now tries better to stay on the same level as the vehicle currently is.
 	+ Ghosts now memorize the owner of the referenced entity (if any).
 	+ Added option to use max compression for time lapse series PNG files.
 

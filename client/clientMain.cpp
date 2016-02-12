@@ -1994,31 +1994,17 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 
 
-		if (Objects::selectedMobileEntity 
-			&& Objects::VehicleCanBeLeftClickDirected()	//also works for mobiles in general. TODO: rename/relocate
-			)
+		if (Objects::selectedMobileEntity && Objects::CursorModeExpectsLeftClick())
 		{
-			if (Objects::selectedMobileEntity)
-			{
-				Grid::LCellIdI	target;
-				bool includeWater = false;
-				if (Objects::activeCursorMode == Objects::CursorMode::AttackMode)
-					includeWater = true;
-				else
-					//if (Objects::selectedVehicle->base->moveOnWater)
-						includeWater = true;
+			Grid::LCellIdI	target;
+			bool includeWater = true;
 
-				if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
-				{
-					if (Objects::selectedMobileEntity->IsSatellite())
-						target.height = Objects::selectedMobileEntity->location.height;
-					DirectTo(Objects::selectedMobileEntity,target,false,true);
-					return;
-				}
-			}
-			else
+			if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
 			{
-				FATAL__("not implemented for non-mobiles yet" );
+				if (Objects::selectedMobileEntity->IsSatellite())
+					target.height = Objects::selectedMobileEntity->location.height;
+				DirectTo(Objects::selectedMobileEntity,target,false,true);
+				return;
 			}
 		}
 		else
