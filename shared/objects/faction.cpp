@@ -461,7 +461,10 @@ namespace Objects
 
 			}
 			else
+			{
+				LogEvent(EventSignificance::Debug,e.get(),this->GetLogName()+": Sight level already set to "+String(ref.sightLevel));
 				return;
+			}
 
 
 			if (ref.sightLevel == incStackBy)
@@ -662,7 +665,7 @@ namespace Objects
 			else
 			{
 				//count_t coverage = CountSatelliteCoverage(sat->system.w.xyz);
-
+				//LogEvent(EventSignificance::Debug,"Registering orbital sensor sphere "+sphere.ToString());
 				foreach (Objects::satellites,s)
 				{
 					PSatellite sat = *s;
@@ -689,8 +692,8 @@ namespace Objects
 					CheckChanges(t);
 			}
 //			float escaped = sqr(sphere.radius+2);
-			if (isSatellite)
-				LogEvent(EventSignificance::Debug,"Unregistering orbital sensor sphere "+sphere.ToString());
+			//if (isSatellite)
+			//	LogEvent(EventSignificance::Debug,"Unregistering orbital sensor sphere "+sphere.ToString());
 
 			static Buffer<PWorldEntity>	disappear;
 
