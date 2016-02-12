@@ -738,7 +738,7 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual const Hibernating*	ToHibernating() const override {return this;}
 		#endif
-		virtual bool				IsActive() const override {return isEnabled && !IsHibernating();}
+		virtual float				GetActivityLevel() const override {return std::min(isEnabled ? 1.f : 0.f, Super::GetActivityLevel());}
 		virtual bool				IsWorkingStructure() const override {return true;}
 		virtual void				OnDestroy(float atTime) override;
 	};

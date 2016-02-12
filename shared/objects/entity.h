@@ -243,8 +243,9 @@ namespace Objects
 
 		/**
 		Used for visualization: active entities have bright, pulsing key colors, dull dark colors otherwise.
+		@return 0 (completely inactive) to 1 (active)
 		*/
-		virtual bool				IsActive() const {return true;}
+		virtual float				GetActivityLevel() const {return IsHibernating() ? 0.f : (sleeping ? 0.5f : 1.f);}
 
 		/**
 		Retrieves the maximum possible health level
