@@ -145,6 +145,15 @@ namespace Grid
 	}
 
 	#ifdef HAS_WINDOW
+
+		static void CapColor(TVec4<>&rs)
+		{
+			if (rs.r >= 0.f)
+				rs.rgb = Vector<>::zero;
+			else
+				rs.rgb *= 0.5f;
+		}
+
 		float4			CellStack::GetColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const
 		{
 			if (layer >= Range)
@@ -292,6 +301,8 @@ namespace Grid
 			DX11::ObjectBuffer<VecN<float,8> > atmosphereConfig;
 			DX11::ObjectBuffer<float4> sunDirection,sunColor;
 
+			DX11::ObjectBuffer<THeightMapOrientation>	heightMapOrientation;	//used for lava
+			DX11::Texture								cubeHeightMap;	//used for lava
 
 
 		}
@@ -606,6 +617,18 @@ namespace Grid
 		{
 			if (volumeCell[uh].content != type)
 			{
+				#if 0
+					//this would be nice to capture some errors...
+					//sadly, foundations also register as structures although they are submerged most of the time.
+					//even if type was limited to foundation, mines would instantly trigger an asseration violation.
+					//damn
+					#if defined _DEBUG && !defined CLIENT
+					if (type != Content::Clear && volumeCell[uh].content == Content::Clear)
+					{
+						ASSERT_EQUAL1__(volumeCell[uh].structureCounter,0, uh);
+					}
+					#endif
+				#endif /*0*/
 				bool wasSolid = volumeCell[uh].IsSolid();
 				volumeCell[uh].content = type;
 
@@ -699,24 +722,30 @@ namespace Grid
 			#endif
 			bindings.Append(DX11::Shader::Binding(Instruction::atmosphereConfig, "AtmosphereConfig"));
 			bindings.Append(DX11::Shader::SamplerBinding(true, Engine::TextureFilter::None, 1, "ShadowSampler"));
+
+			bindings.Append(DX11::Shader::SamplerBinding(true,Engine::TextureFilter::Trilinear,1,"HeightMapSampler"));
+			bindings.Append(DX11::Shader::Binding(Instruction::cubeHeightMap,"HeightMap"));
+			bindings.Append(DX11::Shader::Binding(Instruction::heightMapOrientation,"HeightMapOrientation"));
 		
 			Instruction::terrainBase.shader.LoadFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 
 		
 
 			{
-				Engine::VertexBinding binding;
-				binding.vertex.set(0, 4);
-				binding.normal.set(4, 4);
-				binding.color.set(8, 4);
-				binding.floats_per_vertex = 12;
-				Instruction::terrainBase.binding = binding;
+				//Engine::VertexBinding binding;
+				//binding.vertex.set(0, 4);
+				//binding.normal.set(4, 4);
+				//binding.color.set(8, 4);
+				//binding.floats_per_vertex = 12;
+				Instruction::terrainBase.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
+				Instruction::terrainBase.binding.Append("NORMAL",0,DXGI_FORMAT_R8G8B8A8_SNORM);
+				Instruction::terrainBase.binding.Append("COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT);
 				Instruction::terrainBase.SetTriangles();
 
-				Instruction::terrainSphereBase.binding = binding;
+				Instruction::terrainSphereBase.binding = Instruction::terrainBase.binding;
 				Instruction::terrainSphereBase.SetTriangles();
 
-				Instruction::terrainParaboloidBase.binding = binding;
+				Instruction::terrainParaboloidBase.binding = Instruction::terrainBase.binding;
 				Instruction::terrainParaboloidBase.SetTriangles();
 
 				Instruction::terrainBase.UpdateLayout();
@@ -884,6 +913,19 @@ namespace Grid
 				UpdateSunDirection(SunDetails::sunDirection,true);
 			}
 
+
+			void	SetOrientation(TMatrix4<>&m, const float3&axis, double t, const float3&seedAxis, double seedRot)
+			{
+				TMatrix3<> sys1,sys2,sys;
+				Mat::rotationMatrix(t*1.5,axis,sys1);
+				Mat::rotationMatrix(seedRot,seedAxis,sys2);
+				Mat::mult(sys1,sys2,sys);
+				Mat::copyOrientation(sys,m);
+				m.w.xyz = Vector<>::zero;
+				Mat::resetBottomRow(m);
+
+			}
+
 			void	UpdateSunDirection(const float3&p, bool shadows /*= true*/)
 			{
 				SunDetails::sunDirection = p;
@@ -891,6 +933,15 @@ namespace Grid
 				//	SunDetails::sunDirection = -p;
 				//#endif
 				Instruction::sunDirection.Update(float4(SunDetails::sunDirection,shadows));
+
+				Random random(23984);
+				Instruction::THeightMapOrientation	orientation;
+				SetOrientation(orientation.orientation0,float3(1,0.75,0.75).Normalized0(),Engine::timing.now, float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)).Normalized0(),random.getDouble(0,100));
+				SetOrientation(orientation.orientation1,float3(0.75,1,0.75).Normalized0(),-Engine::timing.now*1.35, float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)).Normalized0(),random.getDouble(0,100));
+				SetOrientation(orientation.orientation2,float3(0.75,0.75,1).Normalized0(),Engine::timing.now/M_PI, float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)).Normalized0(),random.getDouble(0,100));
+
+				Instruction::heightMapOrientation.Update(orientation);
+
 			}
 
 
@@ -1088,9 +1139,75 @@ namespace Grid
 
 	#endif
 
+
+
+	static float CDF(float x)
+	{
+		float sum = x;
+		float value = x;
+		for (int i = 0; i < 100; i++)
+		{
+			value = (value*x*x/(2*i+1));
+			sum = sum+value;
+		}
+		static const float div = 0.39894228040143267793994605993438f;
+		 //1.f/sqrt(2.f*M_PIF);
+		return 0.5f+(sum*div)*exp(-(x*x)/2);
+	}
+
+
+	static BYTE GetHeightMapHeight(TVec3<> p)
+	{
+		Vec::normalize(p);
+		Vec::mult(p,2.f);
+		float perlin = 0.5f * (noise.Get(p) + noise.Get(p*2.f));	//pseudo normal distributed -1..+1
+
+		float x = //fabs(perlin);
+				fabs(CDF(perlin));
+		//float x = p.z * 0.5f + 0.5f;
+		//;
+		return (BYTE)(std::min(x ,1.f)* 255.f);
+	}
+
+	static void CreateHeightMapSide(Image&result, const float3&origin, const float3&dx, const float3&dy)
+	{
+		result.setDimensions(128,128,1);
+		Concurrency::parallel_for(index_t(0),count_t(result.width()*result.height()),[&result,origin,dx,dy](index_t i)
+		{
+			TVec3<> p;
+			index_t x = i/result.height();
+			index_t y = i%result.height();
+			{
+				float fx = float(x)/float(result.width()-1) * 2.f - 1.f;
+				float fy = float(y)/float(result.height()-1) * 2.f - 1.f;
+				
+				Vec::mad(origin,dx,fx,p);
+				Vec::mad(p,dy,fy);
+				result.setChannel((UINT32)x,(UINT32)y,0,GetHeightMapHeight(p));
+			}
+		});
+	}
+
 	void				Create0()
 	{
 		#ifdef HAS_WINDOW
+			
+			Instruction::heightMapOrientation.Create(Instruction::THeightMapOrientation());
+
+			{
+				Image sides[6];
+				//+x, -x, +y, -y, +z, -z.
+				CreateHeightMapSide(sides[0],float3(1,0,0),float3(0,0,-1),float3(0,1,0));
+				CreateHeightMapSide(sides[1],float3(-1,0,0),float3(0,0,1),float3(0,1,0));
+				CreateHeightMapSide(sides[2],float3(0,1,0),float3(1,0,0),float3(0,0,-1));
+				CreateHeightMapSide(sides[3],float3(0,-1,0),float3(1,0,0),float3(0,0,1));
+				CreateHeightMapSide(sides[4],float3(0,0,1),float3(1,0,0),float3(0,1,0));
+				CreateHeightMapSide(sides[5],float3(0,0,-1),float3(-1,0,0),float3(0,1,0));
+
+
+				Instruction::cubeHeightMap.LoadCube(sides,false);
+			}
+
 			Instruction::atmosphereConfig.Create(VecN<float,8>());
 			UpdateAtmosphere(currentPlanetConfig.atmosphereColor);
 
@@ -1258,6 +1375,9 @@ namespace Grid
 			Instruction::ParaboloidDirection_Height.Clear();
 			Instruction::ParaboloidColor_FlatRadius.Clear();
 			Instruction::SphereDef.Clear();
+			Instruction::heightMapOrientation.Clear();
+			Instruction::cubeHeightMap.Clear();
+
 		#endif
 		//terrainColor.Clear();
 	}
@@ -1892,16 +2012,23 @@ namespace Grid
 		{
 			if (intensity > 0.f)
 			{
-				TVec3<> rs2;
-				if (rs.r < 0)
-					rs2 = rs * -0.4f + 0.6f;
-				else
-					rs2 = rs * 0.4f + 0.6f;
-				rs2.r *= 0.7f;
-				rs2.g *= 0.85f;
-				if (rs.r < 0)
-					rs2 = -rs2;
-				Vec::interpolate(rs,rs2,intensity,rs);
+				rs *= -1.5f;
+				rs.rg *= 0.8f;
+				rs.b *= 1.2f;
+				//rs.b *= 1.5f;
+				//rs.b -= (2.f + rs.b)*intensity;
+				//TVec3<> rs2;
+				//if (rs.r < 0)
+				//	rs2 = rs * -0.4f + 0.6f;
+				//else
+				//	rs2 = rs * 0.4f + 0.6f;
+				//rs2.r *= 0.7f;
+				//rs2.g *= 0.85f;
+				//if (rs.r < 0)
+				//	rs2 = -rs2;
+				//Vec::interpolate(rs,rs2,intensity,rs);
+				//if (rs.b > 0)
+				//	rs.b = -rs.b;
 
 			}
 		}
@@ -1956,7 +2083,9 @@ namespace Grid
 			TVec4<> color0 = stack.GetColorU(ih, Content::Clear, mixes0,centerType);
 			float emp0 = FlagsAffectedByEMP(cell.cornerFlags);
 			
-			float4 c0 = capped ? float4() : color0;
+			float4 c0 = color0;
+			if (capped)
+				CapColor(c0);
 			ApplyEMP(emp0,c0.rgb);
 			solidMesh << TerrainVertex(cell.centerVertex, range.max, cell.centerVertex.xyz, c0, thisCell.GetStructureFactor());
 			for (int j = 0; j < cell.numCorners; j++)
@@ -1966,13 +2095,13 @@ namespace Grid
 					TVec4<> color;
 
 					float emp = emp0;
-					if (capped)
-					{
-						//brighness = 0.f;
-						color = float4(0,0,0,1);
-						brightness = 0;
-					}
-					else
+					//if (capped)
+					//{
+					//	//brighness = 0.f;
+					//	color = float4(0,0,0,1);
+					//	brightness = 0;
+					//}
+					//else
 					{
 						Vec::clear(color);
 						Content c0,c1;
@@ -2001,6 +2130,8 @@ namespace Grid
 						//color.rgb *= brightness / color.a;
 						//brightness /= color.a;
 					}
+					if (capped)
+						CapColor(color);
 					ApplyEMP(emp,color.rgb);
 
 					solidMesh << TerrainVertex(cell.cornerVertex[j], range.max, cell.cornerVertex[j].xyz, float4(color.rgb,brightness), 1.f);
@@ -3067,7 +3198,7 @@ namespace Grid
 			if (p0 <= 0.f || !max)
 				return;
 
-			LogEvent(EventType::SessionRelated,nullptr,"Equalizing resource distribution of "+name);
+			LogEvent(EventClass::Preset::uncommon,nullptr,"Equalizing resource distribution of "+name);
 			count_t familyTotal[BaseGrid::NumFamilies] = {0}, total = 0;
 
 			for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
@@ -3077,14 +3208,14 @@ namespace Grid
 			}
 
 			//float avgPerCell = float(total) / float(LowSetup::GridType::CellCount);
-			//LogEvent(EventType::SessionRelated,nullptr,"Average per cell estimated at "+String(avgPerCell));
+			//LogEvent(EventClass::Preset::uncommon,nullptr,"Average per cell estimated at "+String(avgPerCell));
 
 
 //			float avgPerCell = float(total) / float(LowSetup::GridType::CellCount);
 			for (int k = 0; k < BaseGrid::NumFamilies; k++)
 			{
 				float p = p0;
-				LogEvent(EventType::Debug,nullptr,"Processing family "+String(k));
+				LogEvent(EventSignificance::Debug,nullptr,"Processing family "+String(k));
 				const count_t count = Grid::low.grid.CountFamilyMembers(k);
 				const index_t offset = Grid::low.grid.GetFamilyOffset(k);
 				float want = avgPerCell * count;
@@ -3098,11 +3229,11 @@ namespace Grid
 						factor = pow(4.f,float(sign(factor-1.f))/(retries*2 + 1));
 						p *= factor;
 						p = clamp(p,0.0001f,0.999f);
-						LogEvent(EventType::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
+						LogEvent(EventSignificance::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
 									+"), p adjusted by "+String(factor)+" to "+String(p)+". Randomizing...");
 					}
 					//else
-					//	LogEvent(EventType::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
+					//	LogEvent(EventSignificance::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
 					//				+"). Randomizing...");
 	
 					//if (factor > 0)
@@ -3121,7 +3252,7 @@ namespace Grid
 					}
 					if (++retries > 10)
 					{
-						LogEvent(EventType::Debug,nullptr," Max retries reached for this family. Giving up");
+						LogEvent(EventSignificance::Debug,nullptr," Max retries reached for this family. Giving up");
 						break;
 					}
 				}
@@ -3162,6 +3293,82 @@ namespace Grid
 
 
 	#ifdef HAS_WINDOW
+
+		#if 0
+		void				WorldData::ClearResourceDistanceField()
+		{
+			bool familyChanged[BaseGrid::NumFamilies] = {false};
+			foreach (cellStack,stack)
+			{
+				bool changed = false;
+				for (index_t i = 0; i < CellStack::Range; i++)
+				{
+					auto&cell = stack->volumeCell[i];
+					if (cell.resourceDistance != MAXSHORT)
+					{
+						cell.resourceDistance = MAXSHORT;
+						changed = true;
+					}
+				}
+				if (changed)
+					familyChanged[high.grid.GetCell(stack - cellStack.pointer()).family] = true;
+			}
+			for (BYTE i = 0; i < BaseGrid::NumFamilies; i++)
+				if (familyChanged[i])
+				{
+					Grid::high.family[i].SetOutdated(0.f);
+					Grid::low.family[i].SetOutdated(0.f);
+				}
+		}
+
+		/*static*/ short	WorldData::ResourceDistance(const Sphere<>&resourceSphere, const TVec3<>&cellCenter)
+		{
+			float d = Vec::distance(cellCenter,resourceSphere.center) - resourceSphere.radius;
+			return short( round(d * 100.f) );
+		}
+
+
+		void				WorldData::PaintResourceDistanceField(const Sphere<>&resourceSphere)
+		{
+			static HighSetup::TVolumeDescriptor desc;
+			Sphere<> larger = resourceSphere;
+			larger.radius += 2;
+			bool familyChanged[BaseGrid::NumFamilies] = {false};
+			high.GenerateVolume(larger,desc);
+			Concurrency::parallel_for(index_t(0),desc.coverage.Count(),[&familyChanged, resourceSphere,this](index_t i)
+			{
+				const auto&c = desc.coverage[i];
+				const TVec3<>&dir = high.cells[c.stackID].cornerCenter;
+				TVec3<> step = dir * SingleLayerHeight;
+				TVec3<> at = dir * ToRadiusf(0.5f + CellStack::ToHeight(c.layerBegin));
+				bool changed = false;
+				CellStack&stack = cellStack[c.stackID];
+				for (index_t layer = c.layerBegin; layer < c.layerEnd; layer++)
+				{
+					short d = ResourceDistance(resourceSphere,at);
+					auto&cell = stack.volumeCell[layer];
+					short nd = std::min(cell.resourceDistance,d);
+					if (nd != cell.resourceDistance)
+					{
+						cell.resourceDistance = nd;
+						changed = true;
+					}
+					at += step;
+				}
+
+				if (changed)
+					familyChanged[high.grid.GetCell(c.stackID).family] = true;
+			});
+			for (BYTE i = 0; i < BaseGrid::NumFamilies; i++)
+				if (familyChanged[i])
+				{
+					Grid::high.family[i].SetOutdated(0.f);
+					Grid::low.family[i].SetOutdated(0.f);
+				}
+		}
+
+		#endif /*0*/
+
 	void	WorldData::UpdateLighting()
 	{
 		lightingOutdated = false;
@@ -3249,7 +3456,7 @@ namespace Grid
 				stack->lightingChangedTo = 0;
 		}
 
-		LogEvent(EventType::PerformanceMeasurement,  nullptr, "Updated lighting in "+String(timer.GetSecondsSince(t0))+" seconds");
+		LogEvent(EventSignificance::PerformanceMeasurement,  "Updated lighting in "+String(timer.GetSecondsSince(t0))+" seconds");
 	
 	
 	}
@@ -3722,7 +3929,7 @@ namespace Grid
 
 			if (Instruction::lastColor != color_r)
 			{
-				//LogEvent(EventType::Debug,nullptr,"change2 detected");
+				//LogEvent(EventSignificance::Debug,nullptr,"change2 detected");
 				Instruction::lastColor = color_r;
 				Instruction::ParaboloidColor_FlatRadius.Update(color_r);
 			}
@@ -3740,13 +3947,13 @@ namespace Grid
 		//	float4 def(center,sqr(radius));
 		//	if (def != Instruction::lastDef)
 		//	{
-		//		//LogEvent(EventType::Debug,nullptr,"change1 detected");
+		//		//LogEvent(EventSignificance::Debug,nullptr,"change1 detected");
 		//		Instruction::lastDef = def;
 		//		Instruction::sphereDef.Update(def);
 		//	}
 		//	if (Instruction::lastColor != color)
 		//	{
-		//		//LogEvent(EventType::Debug,nullptr,"change2 detected");
+		//		//LogEvent(EventSignificance::Debug,nullptr,"change2 detected");
 		//		Instruction::lastColor = color;
 		//		Instruction::sphereColor.Update(color);
 		//	}
@@ -4128,7 +4335,7 @@ namespace Grid
 			}
 		});
 
-		LogEvent(EventType::PerformanceMeasurement,nullptr,"Orbital sensory change processed in "+String(timer.GetSecondsSince(t0))+". Used orbit was "+String(orbit));
+		LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Orbital sensory change processed in "+String(timer.GetSecondsSince(t0))+". Used orbit was "+String(orbit));
 		//ShowMessage(timer.GetSecondsSince(t0));
 	}
 
@@ -4233,7 +4440,7 @@ namespace Grid
 				});
 			}
 
-			LogEvent(EventType::Debug,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
+			LogEvent(EventSignificance::Debug,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
 			//ShowMessage(timer.GetSecondsSince(t0));
 		}
 	#endif

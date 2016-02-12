@@ -1,13 +1,26 @@
-
-------------- not done ------------- 
-
-...requested...
-
-ambient restocking (and repairing?) of support vehicles. //restocking no longer an issue
+improve sky grid
+decrease max transparency of water (make it configurable?)
+all available generators are switched on when power is needed, and are never switched off again. always?
 
 
-...next...
 
+
+lava ship
+
+send entity id with server messages so user can click on the message to focus on them
+	/visual event log extracted from animation:
+	trajectories
+	explosion markers
+	damage markers
+	auto-pause animation during events (might be too tricky)
+increase resource stack minimum
+better mine output (refinery)
+research
+	research concept, stations, states. AI? viruses?
+	virus infection and propagation (possibly from nexus ports - possibly same effect as emp)
+recycling
+visual server configurator 
+faster digging
 
 
 
@@ -15,14 +28,12 @@ ambient restocking (and repairing?) of support vehicles. //restocking no longer 
 visualize attack radius on water
 
 transfer build-state of terraformer to hostile factions
+	/see what hostile former is building currently
 
 better surveyor automation logic
 
 ability to pause construction (of terraformers)
-
-automatically fix incomplete configuration files
-
-favorize certain vehicle construction jobs
+	/favorize certain vehicle construction jobs (this is actually the same as the former)
 
 
 
@@ -31,19 +42,9 @@ Better handling of crashes in release (should not cause windows popup).
 
 Satellite beam animation seed.
 
-
-
-see what hostile former is building currently
-
-
-
-ragnarök beam visualization
+ragnarök attack beam visualization
 
 spy-satellite
-
-research concept, stations, states. AI? viruses?
-
-send entity id with server messages so user can click on the message to focus on them
 
 
 
@@ -52,17 +53,18 @@ send entity id with server messages so user can click on the message to focus on
 
 ...later...
 
+button to hide paths of non-selected entity
 better customization for goal specification. currently ConquerNexus and EMPConquerNexus have implied, rather specific characteristics that should be exposed as settings
 
 better scoring
-fuel transporter vehicle // no longer required
-foundation (and road) building should block required cells
+general resource transporter vehicles
+
+planed foundation (and road) building should block required cells
 
 let foundation blocks (and granite) explode into stone first // maybe later
 
 
 
-server async logging // doesn't seem necessary for now. console now is async
 
 
 client-sided structure count doesn't seem to update if destroying a faction ends game. disconnecting and re-connecting fixes it. works fine if game does not end
@@ -75,7 +77,6 @@ loading screen	//doesn't seem necessary just yet
 granite-digging turret
 
 
-virus infection and propagation (possibly from nexus ports - possibly same effect as emp)
 
 nexus tower	(defensive tower surrounding each nexus port)
 caves for nexus
@@ -101,7 +102,6 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 
 
-remote server control, including local starting
 
 
 
@@ -112,6 +112,22 @@ remote server control, including local starting
 
 ------------- done (newest first) -------------
 
+disable/redesign munition transporter in connector mode	//disabled
+nexus port changing ownership creates a ghost even if visible. maybe check ghosts when new structure appears?	//fixed
+either change stored health to float or store max health, so that stretching to different versions is possible	//changed to float
+reactor core has no foundation (change default?)
+Uranium storage is geometrically too high
+better generator (reactor core)
+flash new-round button when all others have finished their round and nothing apparent needs instructions right now
+dying factions should not cause emp areas to become inaccessible // fixed
+increase spawning distance between players
+movement arrows are too broad for unselected entities //made arrows light blue for unselected entities. people seem to agree this is acceptable
+somehow increase attack spheres/paraboloid contrast on lava planets (almost invisible, much like sensor range on desert planets) //now rendering black spheres around actual range spheres to increase contrast
+see-through not blackening lava. maybe just darken everything? //lava is darkened but not blackened anymore
+start local server button in client 
+remote server control, including local starting // partially implemented
+server async logging // doesn't seem necessary for files, and possibly problematic with message loss in case of crash. console output is now async
+automatically fix incomplete configuration files
 why do towers fire simultaneously?	//tower turret rotation is simultaneous, actual attack is not
 
 Might not be able to cleanly recover. Application should restart.:

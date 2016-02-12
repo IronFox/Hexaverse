@@ -30,6 +30,7 @@ namespace UI
 	{
 		namespace DX11 = Engine::DX11;
 
+		extern bool showControlsAndContacts /*=true*/;
 
 		class IconItem
 		{
@@ -48,8 +49,9 @@ namespace UI
 		class Gauge : public IconItem
 		{
 		public:
-			int	current,max,changePerRound,
-				localCurrent,localChange,
+			int	current,max,
+				current2=0, max2=0,
+				changePerRound,
 				top,top0,top1;
 			static const float height;
 			float3	base,alternatingColor,projectedTop, projectedDelta,projectedBottom,projectedMax;
@@ -83,7 +85,7 @@ namespace UI
 			}
 
 
-			void	Set(int current, int max, int changePerRound, int localCurrent, int localChange, bool enabled);
+			void	Set(int current, int max, int current2, int max2, int changePerRound, bool enabled);
 
 
 
@@ -91,7 +93,7 @@ namespace UI
 			static void StaticCreate();
 			static void StaticDestroy();
 
-			/**/	Gauge():changed(true),usesAlternatingColors(false),current(0),max(0),changePerRound(0),localCurrent(0),localChange(0),top(0),ftop(1)
+			/**/	Gauge():changed(true),usesAlternatingColors(false),current(0),max(0),changePerRound(0),top(0),ftop(1)
 			{}
 
 			void	UpdateTextProjection(const Engine::Aspect<>&camera);
@@ -143,7 +145,10 @@ namespace UI
 			public:
 				/**/				TutorialCommand() : Super(int2(1,1),"Tutorial",
 										TutorialCommand::OnExecute,
-										TutorialCommand::IsEnabled,Objects::CommonCmd::AlwaysFalse<Objects::PWorldEntity>,
+										[](const Objects::PWorldEntity&e, bool b)->BaseCommand::Flags
+										{
+											return TutorialCommand::IsEnabled(e,b) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+										},
 										Objects::NoCosts)
 										{}
 
@@ -194,7 +199,7 @@ namespace UI
 										std::bind(
 											(friendly ? (&ArrowOnExecute<true>) : (&ArrowOnExecute<false>))
 											,left,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<Objects::PWorldEntity>,Objects::CommonCmd::AlwaysFalse<Objects::PWorldEntity>,
+										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;},
 										Objects::NoCosts)
 					{}
 
@@ -253,8 +258,7 @@ namespace UI
 									: Super(int2(), target->GetNiceName(),target->base,
 										target->turret,
 										std::bind(&VehicleFocusCommand::OnExecute,target,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
-										Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>,
+										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;},
 										false), 
 										target(target)
 				{}
@@ -280,8 +284,7 @@ namespace UI
 				/**/				SatelliteFocusCommand(const Objects::PSatellite&target) 
 									: Super(int2(), target->GetNiceName(),target,
 										std::bind(&SatelliteFocusCommand::OnExecute,target,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
-										Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>,
+										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;},
 										false), 
 										target(target)
 				{}
@@ -306,8 +309,8 @@ namespace UI
 				/**/				StructureFocusCommand(const Objects::PStructure&target) 
 									: Super(int2(), target->GetNiceName(),target,
 										std::bind(&StructureFocusCommand::OnExecute,target,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
-										Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>)
+										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;}
+										)
 				{}
 
 				static void				OnExecute(Objects::PStructure const&target, Objects::PWorldEntity const&)	//must be static because it may move before being executed
@@ -521,9 +524,12 @@ namespace UI
 		@param localCurrent Storage of the selected entity within its compound
 		*/
 		void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change);
+		void	Update(TRAFFIC	const Objects::ResourceVector&current, const Objects::ResourceVector&max, 
+								const Objects::ResourceVector&current2, const Objects::ResourceVector&max2, 
+								const Objects::ResourceVector&change);
 		void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max);
-		void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change,
-						const Objects::ResourceVector&localCurrent/*, const Objects::ResourceVector&localChange, bool isEnabled*/);
+		//void	Update(TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change,
+		//				const Objects::ResourceVector&localCurrent/*, const Objects::ResourceVector&localChange, bool isEnabled*/);
 		void	Render();
 		void	Destroy();
 

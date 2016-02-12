@@ -17,6 +17,7 @@
 
 		namespace DX11 = Engine::DX11; //!< Shortcut
 
+		bool showControlsAndContacts = true;
 
 
 		void	ShowSession()
@@ -73,22 +74,22 @@
 
 
 
-
-		void	Gauge::Set(int current, int max, int changePerRound, int localCurrent, int localChange, bool enabled)
+		void	Gauge::Set(int current, int max, int current2, int max2, int changePerRound, bool enabled)
 		{
-
-			//max = std::max(10.f,max);
-			if (current == this->current && max == this->max && changePerRound == this->changePerRound
-				&& localCurrent == this->localCurrent && localChange == this->localChange && enabled == this->enabled)
+			if (current == this->current && max == this->max 
+				&&
+				current2 == this->current2 && max2 == this->max2
+				&& changePerRound == this->changePerRound
+				&& enabled == this->enabled)
 				return;
 			top0 = std::max(current,current+changePerRound);
 			top1 = std::max(max,top0);
-			top = std::max(abs(current+localChange), top1);
+			top = std::max(abs(current), top1);
 			this->current = current;
 			this->max = max;
+			this->current2 = current2;
+			this->max2 = max2;
 			this->changePerRound = changePerRound;
-			this->localCurrent = localCurrent;
-			this->localChange = localChange;
 			this->enabled = enabled;
 			ftop = std::max(1,top);
 			hScale = height / float(ftop);
@@ -102,7 +103,6 @@
 			#endif
 			changed = true;
 		}
-
 
 
 
@@ -208,6 +208,30 @@
 		}
 
 
+		static void Write(int value)
+		{
+			if (value < 0)
+			{
+				textout << '-';
+				Write(-value);
+				return;
+			}
+			if (value < 2000)
+			{
+				textout << value;
+				return;
+			}
+			if (value < 2000000)
+			{
+				int v = (int)round(float(value)/1000.f);
+				textout << v << 'k';
+				return;
+			}
+			int v = (int)round(float(value)/1000000.f);
+			textout << v << 'm';
+			return;
+		}
+
 		void	Gauge::RenderListText(int y)
 		{
 			textout.pushState();
@@ -220,19 +244,34 @@
 			
 			textout.color(color * 0.5f + float3(0.5f));
 			if (changePerRound > 0)
-				textout << "+"<<changePerRound;
+			{
+				textout << "+";
+				Write(changePerRound);
+			}
 			else
 				if (changePerRound < 0)
 				{
 					textout.color(1,0.6,0.5);
-					textout <<changePerRound;
+					Write(changePerRound);
+					textout.color(color * 0.5f + float3(0.5f));
 				}
 			if (max > 0)
 			{
 				textout.scale(1.2f,1.2f);
-				textout << ' '<<current;
+				textout << ' ';
+				Write(current);
 				textout.scale(0.6f,0.6f);
-				textout <<'/'<<max;
+				textout <<'/';
+				Write(max);
+			}
+			if (max2 > 0)
+			{
+				textout.scale(1.f/0.6f,1.f/0.6f);
+				textout << " +";
+				Write(current2);
+				textout.scale(0.6f,0.6f);
+				textout <<'/';
+				Write(max2);
 			}
 			//textout << max;
 			textout.popState();
@@ -352,16 +391,16 @@
 
 			if (changePerRound >= 0)
 			{
-				if (localCurrent > 0)
-				{
-					ConstructPart(1.f,0,localCurrent,float4(1,0,0,0.95f),geo[0]);
-					ConstructPart(1.f,localCurrent,current,float4(color,0.95f),geo[0]);
-				}
-				else
+				//if (localCurrent > 0)
+				//{
+				//	ConstructPart(1.f,0,localCurrent,float4(1,0,0,0.95f),geo[0]);
+				//	ConstructPart(1.f,localCurrent,current,float4(color,0.95f),geo[0]);
+				//}
+				//else
 					ConstructPart(1.f,0,current,float4(color,0.95f),geo[0]);
 				if (changePerRound > 0)
 				{
-					int top = current + std::max(0,changePerRound - (enabled ? localChange : 0));
+					int top = current + std::max(0,changePerRound /*- (enabled ? localChange : 0)*/);
 					//int top1 = std::min(max,top);
 					ConstructPart(0.8f,current,top,float4(color,0.f),float4(color,0.6f),geo[0]);
 
@@ -371,37 +410,37 @@
 			}
 			else
 			{
-				if (localCurrent > 0)
-				{
-					int step = std::min(localCurrent,std::max(0,(current+changePerRound)));
-					ConstructPart(1.f,0,step,float4(1,0,0,0.95f),geo[0]);
+				//if (localCurrent > 0)
+				//{
+				//	int step = std::min(localCurrent,std::max(0,(current+changePerRound)));
+				//	ConstructPart(1.f,0,step,float4(1,0,0,0.95f),geo[0]);
 
-					ConstructPart(1.f,step,std::max(0,(current+changePerRound)) ,float4(color,0.95f),geo[0]);
-				}
-				else
+				//	ConstructPart(1.f,step,std::max(0,(current+changePerRound)) ,float4(color,0.95f),geo[0]);
+				//}
+				//else
 				{
 					ConstructPart(1.f,0,std::max(0,(current+changePerRound)) ,float4(color,0.95f),geo[0]);
 				}
 				ConstructPart(1.f,std::max(0,(current+changePerRound)),current,float4((color + float3(1,0.5,0.5))/1.5f,0.95f),geo[0]);
 			}
 
-			if (localChange != 0)
-			{
-				float t = current+changePerRound;
-				if (localChange > 0)
-				{
-					if (enabled)
-						ConstructPart(0.6f,t- localChange,t,float4(1,0,0,0.f),float4(1,0,0,0.6f),geo[0]);
-					else
-						ConstructPart(0.6f,t,t + localChange,float4(1,0.5f,0,0.f),float4(1,0.5f,0,0.6f),geo[0]);
-				}
-				else
-					if (enabled)
-						ConstructPart(0.6f,t,t-localChange,float4(1,0,0,0.6f),float4(1,0,0,0.f),geo[0]);
-					else
-						ConstructPart(0.6f,t+localChange,t,float4(1,0.5f,0,0.6f),float4(1,0.5f,0,0.f),geo[0]);
-					//ConstructPart(0.8f,current,top1,float4(color,0.f),float4(color,0.6f),geo[0]);
-			}
+			//if (localChange != 0)
+			//{
+			//	float t = current+changePerRound;
+			//	if (localChange > 0)
+			//	{
+			//		if (enabled)
+			//			ConstructPart(0.6f,t- localChange,t,float4(1,0,0,0.f),float4(1,0,0,0.6f),geo[0]);
+			//		else
+			//			ConstructPart(0.6f,t,t + localChange,float4(1,0.5f,0,0.f),float4(1,0.5f,0,0.6f),geo[0]);
+			//	}
+			//	else
+			//		if (enabled)
+			//			ConstructPart(0.6f,t,t-localChange,float4(1,0,0,0.6f),float4(1,0,0,0.f),geo[0]);
+			//		else
+			//			ConstructPart(0.6f,t+localChange,t,float4(1,0.5f,0,0.6f),float4(1,0.5f,0,0.f),geo[0]);
+			//		//ConstructPart(0.8f,current,top1,float4(color,0.f),float4(color,0.6f),geo[0]);
+			//}
 
 			ConstructPart(1.f,0,max,float4(float3(1),0.25),geo[1]);
 
@@ -625,8 +664,8 @@
 				//			? To<Objects::Structure>::Cast(group->entries[group->currentSelection]) : Objects::PStructure()),
 				Super(int2(), group->name+" ("+String(group->entries.Count())+")",
 									std::bind(&GroupFocusCommand::OnExecute,group,std::placeholders::_1),
-									Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
-									Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>)
+										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;}
+										)
 				//that's no constructor. that's a spacestation
 			{
 				RasterizeImage();
@@ -931,7 +970,7 @@
 					{
 						if (c->Contains(Engine::mouse.location.windowRelative))
 						{
-							if (c->command->isEnabled)
+							if (c->command->state & Objects::BaseCommand::Flags::IsEnabled)
 							{
 								c->command->Execute();
 								Objects::UpdateChoices(Network::ControlEnabled());
@@ -956,6 +995,8 @@
 			void						Render()
 			{
 				//static int2 lastMouse;
+				float flashOpacity = float(sin(Engine::timing.now*2.0*M_PI)*0.5+0.5);
+				//((UINT64)floor(Engine::timing.now*2.0))%2;
 
 
 				static float stationaryCounter = 0;
@@ -987,13 +1028,6 @@
 				{
 					if (c->command->texture.IsNotEmpty())
 					{
-						//c->command->DbgRefresh();
-						//display.SetRasterizer(true,false);
-						//display.SetDepthTest(false,false);
-						//display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-						//display.pick(camera);
-
-
 						float2 world = c->ToFloatCoords();
 						float3 at;
 						camera.Project(float3(world,0),at);
@@ -1012,17 +1046,17 @@
 							
 								}
 							}
+							else
+								if (cmd.state & Objects::BaseCommand::Flags::IsFlashing)
+								{
+									code.r = flashOpacity;
+								}
 							
-								//color.Update(float4(1.f, 0.5f, 0.5f, 1.f));
-							//else
-								if (cmd.permaActive)
-									code.y = 1.f;
-									//color.Update(float4(0, 0, 1.f, 1.f));
-								//else
-									//color.Update(float4(1, 1, 1.f, 1.f));
+							if (cmd.state & Objects::BaseCommand::Flags::IsPermaActive)
+								code.y = 1.f;
 						}
 
-						if (!cmd.isEnabled)
+						if (!(cmd.state & Objects::BaseCommand::Flags::IsEnabled))
 						{
 						//	code.xy = float2(0);
 							code.z = 0.5f;
@@ -1150,13 +1184,22 @@
 			void	VisitCommand(Objects::BaseCommand&cmd)
 			{
 				GridCell&cell = guiCells.Append();
+				cmd.Refresh(Network::ControlEnabled());
 				cell.type = GridCell::EntityCommand;
 				cell.command = &cmd;
 				cell.Update(camera);
 			}
 
 
-
+			void		ClearContacts()
+			{
+				DeleteAllCellsOfType(GridCell::ContactListEntry);
+				DeleteAllCellsOfType(GridCell::ContactListLeft);
+				DeleteAllCellsOfType(GridCell::ContactListRight);
+				DeleteAllCellsOfType(GridCell::OwnedListEntry);
+				DeleteAllCellsOfType(GridCell::OwnedListLeft);
+				DeleteAllCellsOfType(GridCell::OwnedListRight);
+			}
 
 			void					RefreshContacts()
 			{
@@ -1181,12 +1224,7 @@
 
 				if (rightCommand)
 					rightCommand->coords.x = int(ContactListOffset.x + 1+currentContactListWidth);
-				DeleteAllCellsOfType(GridCell::ContactListEntry);
-				DeleteAllCellsOfType(GridCell::ContactListLeft);
-				DeleteAllCellsOfType(GridCell::ContactListRight);
-				DeleteAllCellsOfType(GridCell::OwnedListEntry);
-				DeleteAllCellsOfType(GridCell::OwnedListLeft);
-				DeleteAllCellsOfType(GridCell::OwnedListRight);
+				ClearContacts();
 
 				{
 					static StringTable<Buffer0<Objects::PWorldEntity>,Swap>	hostileCollection, friendlyCollection;
@@ -1195,7 +1233,9 @@
 
 					Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
 					{
-						String key = e->GetTypeName() + "|" + e->owner->GetName();
+						String key = e->GetTypeName() + "|";
+						if (e->owner)
+							key += e->owner->id.ToFullString();
 						if (e->health <= 0)
 							key += "|ghost";
 						#ifndef NO_HIBERNATION
@@ -1376,16 +1416,26 @@
 			{
 				DeleteAllCellsOfType(GridCell::EntityCommand);
 
-				at = int2(5,1);
-				foreach (Objects::globalCommands,cmd)
-					VisitCommand(*cmd);
-				Next();
-				Next();
+				bool showControls = showControlsAndContacts && e
+						#ifndef DEBUG_ACCESS_RESTRICTIONS
+							&& e->isMine && e->health > 0
+						#endif
+					 ;
+
+				if (showControlsAndContacts)
+				{
+					at = int2(5,1);
+					foreach (Objects::globalCommands,cmd)
+						VisitCommand(*cmd);
+					Next();
+					Next();
+				}
 
 				if (e)
 				{
 					hasFocusButton = true;
-					e->VisitAllCommands(VisitCommand);
+					if (showControls)
+						e->VisitAllCommands(VisitCommand);
 					if (e->IsVehicle())
 					{
 						Objects::PVehicle v = To<Objects::Vehicle>::Cast(e);
@@ -1459,7 +1509,10 @@
 
 
 
-				RefreshContacts();
+				if (showControlsAndContacts)
+					RefreshContacts();
+				else
+					ClearContacts();
 
 			}
 		}
@@ -1597,9 +1650,25 @@
 				showExtraGauges = true;
 			#endif
 			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
-				gauges[i].Set(current.level[i],max.level[i],change.level[i],0,0,true);
+				gauges[i].Set(current.level[i],max.level[i],0,0,change.level[i],true);
 
 		}
+
+		void	Update(TRAFFIC	const Objects::ResourceVector&current, const Objects::ResourceVector&max, 
+								const Objects::ResourceVector&current2, const Objects::ResourceVector&max2, 
+								const Objects::ResourceVector&change)
+		{
+			#ifndef NO_HIBERNATION
+				UpdateTraffic(traffic);
+			#else
+				showExtraGauges = true;
+			#endif
+			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
+				gauges[i].Set(current.level[i],max.level[i],current2.level[i],max2.level[i],change.level[i],true);
+		}
+
+
+
 
 		void	Update( TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max)
 		{
@@ -1613,18 +1682,18 @@
 
 		}
 
-		void	Update( TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change,
-						const Objects::ResourceVector&localCurrent/*, const Objects::ResourceVector&localChange, bool isEnabled*/)
-		{
-			#ifndef NO_HIBERNATION
-				UpdateTraffic(traffic);
-			#else
-				showExtraGauges = true;
-			#endif
-			for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
-	//			resources[i].Set(current.level[i],max.level[i],change.level[i],localCurrent.level[i],localChange.level[i],isEnabled);
-				gauges[i].Set(current.level[i],max.level[i],change.level[i],localCurrent.level[i],0,true);
-		}
+	//	void	Update( TRAFFIC const Objects::ResourceVector&current, const Objects::ResourceVector&max, const Objects::ResourceVector&change,
+	//					const Objects::ResourceVector&localCurrent/*, const Objects::ResourceVector&localChange, bool isEnabled*/)
+	//	{
+	//		#ifndef NO_HIBERNATION
+	//			UpdateTraffic(traffic);
+	//		#else
+	//			showExtraGauges = true;
+	//		#endif
+	//		for (index_t i = 0; i < Objects::ResourceVector::NumEntries; i++)
+	////			resources[i].Set(current.level[i],max.level[i],change.level[i],localCurrent.level[i],localChange.level[i],isEnabled);
+	//			gauges[i].Set(current.level[i],max.level[i],change.level[i],localCurrent.level[i],0,true);
+	//	}
 
 		void	Render()
 		{
@@ -1842,21 +1911,27 @@
 			#endif
 
 			textout << " Owner: "<<e.owner->GetName();
-			if (e.isMine && e.health > 0)
+			if (e.isMine)
 			{
 				textout<<" (me)";
-				static const Objects::WorldEntity *last=nullptr;
-				static String lastDeployed;
-				if (last != &e)
+				if (e.health > 0)
 				{
-					last = &e;
-					lastDeployed = e.CompileDeploymentCount(e.owner);
-				}
-				textout.PushColorState();
-				textout.color(0.6,0.7,1.f);
-				textout << nl << lastDeployed;
+					static const Objects::WorldEntity *last=nullptr;
+					static String lastDeployed;
+					if (last != &e)
+					{
+						last = &e;
+						lastDeployed = e.CompileDeploymentCount(e.owner);
+					}
+					if (lastDeployed.IsNotEmpty())
+					{
+						textout.PushColorState();
+						textout.color(0.6,0.7,1.f);
+						textout << nl << lastDeployed;
 
-				textout.PopColorState();
+						textout.PopColorState();
+					}
+				}
 
 			}
 			textout << nl;
@@ -1866,13 +1941,23 @@
 				if (h)
 					textout << " "<<Objects::TrafficResourceTag()  << "Priority: "<<h->GetUplinkPriority()<<nl;
 			#endif
-
+			textout.PushColorState();
 			if (e.health > 0)
 			{
 				if (e.IsIndestructible())
 					textout << " Indestructible" << nl;
 				else
+				{
+					int maxHealth = e.GetMaxHealth();
+					if (e.health < maxHealth/4)
+						textout.Tint(1,0.2,0.2);
+					elif (e.health < maxHealth/2)
+						textout.Tint(1,1,0.2);
+					elif (e.health < maxHealth)
+						textout.Tint(0.2,1,0.2);
+
 					textout << " Health: " << e.health << "/" << e.GetMaxHealth() << nl;
+				}
 			}
 			else
 			{
@@ -1880,6 +1965,7 @@
 				textout << " Ghost created " << -e.health << " round(s) ago" << nl;
 				textout.color(color);
 			}
+			textout.PopColorState();
 			#ifndef NO_HIBERNATION
 				if (h->IsHibernating())
 				{
@@ -1942,8 +2028,12 @@
 					if (v->turret->ignoresVehicleMotion)
 						textout << "  (ignores movement)"<<nl;
 				}
-				if (v->turret->constructionSpeed)
-					textout << " Converts "<<Objects::ResourceTag(Objects::Resource::Minerals)<<v->GetConstructionSpeed()<<" per round"<<nl;
+				int opSpeed = v->GetOperationSpeed(Objects::Component::Construct);
+				if (opSpeed)
+					textout << " Converts "<<Objects::ResourceTag(Objects::Resource::Minerals)<<opSpeed<<" per round"<<nl;
+				opSpeed = v->GetOperationSpeed(Objects::Component::Repair);
+				if (opSpeed)
+					textout << " Repairs "<<Objects::ResourceTag(Objects::Resource::Minerals)<<opSpeed<<" per round"<<nl;
 
 				textout << " Tasks:" << nl;
 				if (v->myTasks.IsEmpty())
@@ -1994,6 +2084,14 @@
 
 			if (e.IsStructure())
 			{
+				#ifdef _DEBUG
+				{
+					textout << " Connected to: "<<nl;
+					const Objects::Structure&s = (const Objects::Structure&)e;
+					foreach (s.connectedTo,c)
+						textout << "  "<<(*c)->GetName()<<nl;
+				}
+				#endif
 				const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&e);
 				if (t)
 				{

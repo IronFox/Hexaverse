@@ -1543,9 +1543,8 @@ namespace Protocol
 		, NET(float), timeNeeded
 	)
 
-	NETSTRUCT7(AttackTrajectory
+	NETSTRUCT6(AttackTrajectory
 		, Timestamp, timestamp
-		, NET(BYTE), trajectoryType
 		, NET(float), flightTime
 		, NET(TVec3<>), sourcePosition
 		, NET(ConstName), turretType
@@ -1687,9 +1686,10 @@ namespace Protocol
 		)
 
 
-	NETSTRUCT2(ControlMessage
+	NETSTRUCT3(ControlMessage
 		, Package::NetString<256>, message
-		, NET(BYTE), type
+		, NET(BYTE), significance
+		, NET(BYTE), flavor
 	)
 
 
@@ -1764,8 +1764,9 @@ namespace Protocol
 		, NET(bool), doAutomate
 	)
 
-	NETSTRUCT3(MarkerReferenceEntity
+	NETSTRUCT4(MarkerReferenceEntity
 		, NET(TUniqueID), id
+		, NET(TUniqueID), owner
 		, NET(ConstName), type0
 		, NET(ConstName), type1
 	)

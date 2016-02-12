@@ -6,8 +6,8 @@
 #include "prototypes.h"
 #include "vehicle.h"
 #include "satellite.h"
+#include "faction.h"
 #ifndef CLIENT
-	#include "faction.h"
 	#include "../runtimeConfig.h"
 #endif
 
@@ -114,14 +114,14 @@ namespace Objects
 					
 						if (Grid::actualWorld.Clear(v->location,atTime))
 						{
-							LogEvent(EventType::MinorEntityProcess,v.get(),"Cleared terrain to make space for vehicle");
+							LogEvent(EventSignificance::Common,v.get(),"Cleared terrain to make space for vehicle");
 						}
 
 						if (v->base->requirements == Component::VehicleBase::Requirement::Water)
 						{
 							if (Grid::actualWorld.Overwrite(v->location-1,Grid::Content::Water, atTime))
 							{
-								LogEvent(EventType::MinorEntityProcess,v.get(),"Cleared terrain to make water for naval vehicle");
+								LogEvent(EventSignificance::Common,v.get(),"Cleared terrain to make water for naval vehicle");
 							}
 						}
 
@@ -194,7 +194,9 @@ namespace Objects
 			});
 			if (closest != Grid::LCellIdI::Invalid)
 			{
-				LogEvent(EventType::EntityProcess,&source,"Auto-targeting "+closestEntity->GetNiceName());
+				ASSERT__(closestEntity->isInserted);
+				LogEvent(EventSignificance::Debug,&source,"Auto-targeting "+closestEntity->GetName()+" (located at "+closestEntity->location.ToString()+") via closest viable trajectory target "+closest.ToString());
+				LogEvent(EventClass( EventSignificance::Important, EventFlavor::Neutral),&source,"Auto-targeting "+closestEntity->GetNiceName());
 
 				outTarget = closest;
 				return true;
@@ -206,17 +208,17 @@ namespace Objects
 		
 		void Explode(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, 
 					 const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
-					 float atTime)
+					 float&atTime)
 		{
 			if (doomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Disallow)
 			{
-				LogEvent(EventType::CommandRejected,nullptr,"Unable to process doomsday explosion: disallowed");
+				LogEvent(EventClass::Preset::commandRejected,nullptr,"Unable to process doomsday explosion: disallowed");
 				return;
 			}
 
 			if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::EMPConquerNexus && Grid::AffectedByEMP(targetCell))
 			{
-				LogEvent(EventType::CommandRejected,nullptr,"Explosion dissipated due to EMP field in target area");
+				LogEvent(EventClass::Preset::commandRejected,nullptr,"Explosion dissipated due to EMP field in target area");
 				return;
 			}
 
@@ -235,7 +237,7 @@ namespace Objects
 			static Buffer0<PWorldEntity>	toDestroy;
 			static Buffer0<PStructure>		affectedStructures;
 			static Buffer0<PVehicle>		affectedVehicles;
-			ForeachWorldEntity([center,outerRadius,damageLevel,atTime](const PWorldEntity e)
+			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime](const PWorldEntity e)
 			{
 				if (e->IsIndestructible())
 					return;
@@ -249,7 +251,7 @@ namespace Objects
 					float d3 = Vec::quadraticDistance(p,center);
 					d2 = std::min(d2,d3);
 				}
-				//LogEvent(EventType::Debug,e->get(),Vec::toString((*e)->system.w.xyz)+" <> "+Vec::toString(center)+ " = "+ String(sqrt(d2)));
+				//LogEvent(EventSignificance::Debug,e->get(),Vec::toString((*e)->system.w.xyz)+" <> "+Vec::toString(center)+ " = "+ String(sqrt(d2)));
 				//if (d2 < coreRadius)
 				//{
 				//	toDestroy << *e;
@@ -269,6 +271,8 @@ namespace Objects
 						}
 					}
 				}
+				if (e->health <= 0)
+					return;	//prevent being added to affect*
 
 				{
 					Vec::mult(c,Grid::ToRadius(e->location.height -1),p);	//include own lower level
@@ -310,7 +314,7 @@ namespace Objects
 			if (terrainExplosionRadius > 0)
 			{
 				Grid::actualWorld.Explode(targetCell,terrainExplosionRadius, atTime);
-				if (RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose)
+				if (doomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose)
 					foreach (Faction::all,f)
 					{
 						bool changed[BaseGrid::NumFamilies] = {false};
@@ -346,7 +350,7 @@ namespace Objects
 		}
 	
 		void ExplodeEMP(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, 
-						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float atTime)
+						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float&atTime)
 		{
 			SignalExplosion(attackFrom, traceTo, flightTime, 
 							center,explosionRadius,true,false,atTime);
@@ -355,7 +359,7 @@ namespace Objects
 			static Buffer0<PWorldEntity>	toDisable;
 
 
-			ForeachWorldEntity([center,outerRadius,damageLevel,atTime](const PWorldEntity e)
+			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime](const PWorldEntity e)
 			{
 				float d2 = std::numeric_limits<float>::max();
 				const int h = e->GetHeight();
@@ -429,7 +433,7 @@ namespace Objects
 							s->owner != referenceOwner 
 						)
 					{
-						//LogEvent(EventType::Debug,s->get(),"Rejected due to ownership: "+referenceOwner.ToString()+" != "+(*s)->owner.ToString());
+						//LogEvent(EventSignificance::Debug,s->get(),"Rejected due to ownership: "+referenceOwner.ToString()+" != "+(*s)->owner.ToString());
 						continue;
 					}
 
@@ -440,7 +444,7 @@ namespace Objects
 		#else
 			foreach(structures, s)
 			{
-				//LogEvent(EventType::Debug,s->get(),"Testing as neighbor of cell "+cellID.ToString()+" local position is "+(*s)->location.ToString());
+				//LogEvent(EventSignificance::Debug,s->get(),"Testing as neighbor of cell "+cellID.ToString()+" local position is "+(*s)->location.ToString());
 				if (
 						#ifndef CLIENT
 							!ignoreOwnership && 
@@ -449,14 +453,14 @@ namespace Objects
 						(*s)->owner != referenceOwner 
 					)
 				{
-					//LogEvent(EventType::Debug,s->get(),"Rejected due to ownership: "+referenceOwner.ToString()+" != "+(*s)->owner.ToString());
+					//LogEvent(EventSignificance::Debug,s->get(),"Rejected due to ownership: "+referenceOwner.ToString()+" != "+(*s)->owner.ToString());
 					continue;
 				}
 
 				if (_IsNeighbor(cellID, n, (*s)->location))
 					outNeighborhood.Append(*s);
 				//else
-					//LogEvent(EventType::Debug,s->get(),"Rejected due to location");
+					//LogEvent(EventSignificance::Debug,s->get(),"Rejected due to location");
 			}
 		#endif
 	}
@@ -538,7 +542,7 @@ namespace Objects
 					}
 				}
 				if (grid[at])
-					LogEvent(EventType::InternalFault,grid[at].get(),"Found instead of "+object->GetName());
+					LogEvent(EventClass::Preset::error,grid[at].get(),"Found instead of "+object->GetName());
 				String clone = cloneAt != InvalidIndex ? " {found clone ("+cloneIs->GetName()+") at "+Grid::LCellIdI(cloneAt%Grid::LowSetup::GridType::CellCount,Grid::CellStack::ToHeight((UINT32)( cloneAt/Grid::LowSetup::GridType::CellCount))).ToString()+"}" : "";
 				if (foundAt != InvalidIndex)
 				{
@@ -548,7 +552,7 @@ namespace Objects
 				else
 					FATAL__("Trying to remove "+object->GetName()+" from location "+String(at)+"/"+location.ToString()+", but object is not mapped in the grid"+clone);
 			}
-			LogEvent(EventType::MinorEntityProcess,object.get(),"Removed from grid location "+String(at)+"/"+location.ToString());
+			LogEvent(EventSignificance::Common,object.get(),"Removed from grid location "+String(at)+"/"+location.ToString());
 			grid[at].reset();
 			object->isInsertedIntoGrid = false;
 		}
@@ -558,8 +562,12 @@ namespace Objects
 			ASSERT__(!object->isInsertedIntoGrid);
 			Grid::AssertIsValid(location);
 			index_t at = CellToGridIndex(location);
-			ASSERT1__(!grid[at],grid[at]->GetName());
-			LogEvent(EventType::MinorEntityProcess,object.get(),"Inserted into grid location "+String(at)+"/"+location.ToString());
+			if (grid[at])
+			{
+				FATAL__("Trying to register "+object->GetName()+"(@"+object->location.ToString()+") at "+location.ToString()+": Cell occupied by "+grid[at]->GetName()+"(@"+grid[at]->location.ToString()+")");
+			}
+			ASSERT3__(!grid[at],grid[at]->GetName(),location.ToString(),object->GetName());
+			LogEvent(EventSignificance::Common,object.get(),"Inserted into grid location "+String(at)+"/"+location.ToString());
 			grid[at] = object;
 			object->isInsertedIntoGrid = true;
 		}
@@ -702,7 +710,7 @@ namespace Objects
 
 
 	
-	void		GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
+	void		GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
 	{
 		const Grid::WorldData&world = 
 		#ifdef CLIENT
@@ -789,7 +797,7 @@ namespace Objects
 		
 
 //		const PVehicle v = To<Vehicle>::DynamicCast(entity);
-		const MobileEntity*v = dynamic_cast<MobileEntity*>(&entity);
+		 MobileEntity*v = dynamic_cast<MobileEntity*>(&entity);
 		float h;
 		if (PTurretBase b = entity.GetTurretBase(h))
 		{
@@ -819,7 +827,7 @@ namespace Objects
 						break;
 						case TrajectoryType::Missile:
 							Grid::SetSphereDisplay(
-								entity.system.w.xyz,
+								entity.GetWorldPosition(),
 								b->GetFlatAttackRange(),
 								float4(1,0,0,0.5f));
 						break;
@@ -845,21 +853,49 @@ namespace Objects
 					case CursorMode::DepositMode:
 					//case CursorMode::TransferMode:
 					{
-						//const auto&c = Grid::low.grid.GetCell(location.stackID);
-						for (int h = location.height -1; h <= location.height+1; h++)
+
+						v->resourceEnvironment.CheckRefresh(*v, location);
+						const TVec3<> world = WorldEntity::GetWorldPosition(location);
+						foreach (v->resourceEnvironment.sourceCompounds,cmp)
 						{
-							if (h >= -Grid::CellStack::HalfRange && h < Grid::CellStack::HalfRange-1)
+							const Compound&compound = compounds[cmp->first];
+							foreach (compound.allStructures,_s)
 							{
-								for (int j = 0; j < n.numNeighbors; j++)
-								{
-									const Grid::LCellIdI candidate(n.neighborID[j],h);
-									PVehicle other = GetVehicle(candidate);
-									PStructure otherStructure = GetStructure(candidate);
-									if ((otherStructure && otherStructure->owner==v->owner) || (other && other.get() != v && other->owner == v->owner))
-										movementChoices << (candidate+1);
-								}
+								PStructure s = _s->lock();
+								if (s && Vec::quadraticDistance(world,s->GetWorldPosition()) <= sqr(WirelessTransferRange))
+									movementChoices << s->location + 1;
 							}
 						}
+						#ifdef CLIENT
+							v->resourceEnvironment.CheckRefresh(*v);
+							ForeachMobileWorldEntity([v,&movementChoices,world](const PMobileEntity&m)
+							{
+								if (m->owner == v->owner && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= sqr(WirelessTransferRange))
+									movementChoices << m->location + 1;
+							});
+						#else
+							foreach (v->owner->allMobiles,_m)
+							{
+								PMobileEntity m = _m->lock();
+								if (m && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= sqr(WirelessTransferRange))
+									movementChoices << m->location + 1;
+							}
+						#endif
+						//const auto&c = Grid::low.grid.GetCell(location.stackID);
+						//for (int h = location.height -1; h <= location.height+1; h++)
+						//{
+						//	if (h >= -Grid::CellStack::HalfRange && h < Grid::CellStack::HalfRange-1)
+						//	{
+						//		for (int j = 0; j < n.numNeighbors; j++)
+						//		{
+						//			const Grid::LCellIdI candidate(n.neighborID[j],h);
+						//			PVehicle other = GetVehicle(candidate);
+						//			PStructure otherStructure = GetStructure(candidate);
+						//			if ((otherStructure && otherStructure->owner==v->owner) || (other && other.get() != v && other->owner == v->owner))
+						//				movementChoices << (candidate+1);
+						//		}
+						//	}
+						//}
 					}
 					break;
 				#endif
@@ -956,7 +992,7 @@ namespace Objects
 
 
 
-	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
+	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
 	{
 		showArrow = false;
 		hasArrowCellTarget = false;
@@ -972,7 +1008,7 @@ namespace Objects
 	}
 
 	
-	static void	InsertConstructedEntity(const PWorldEntity&e, float atTime, bool setHealthToFull)
+	static void	InsertConstructedEntity(const PWorldEntity&e, float&atTime, bool setHealthToFull)
 	{
 		ASSERT1__(!e->isInserted, e->GetName());
 		#ifndef CLIENT
@@ -995,9 +1031,9 @@ namespace Objects
 		if (!restored)
 			e->OnConstructionFinished(atTime);
 		#ifdef _DEBUG
-			LogEvent(EventType::EntityProcess, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+e->location.ToString());
+			LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+e->location.ToString());
 		#else
-			LogEvent(EventType::EntityProcess, e.get(),String(restored ? "Redeployed" : "Deployed"));
+			LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed"));
 		#endif
 		if (!restored)
 		{
@@ -1045,9 +1081,10 @@ namespace Objects
 	#endif
 
 
-	void	InsertConstructed( const PMobileEntity&v, float atTime, bool insertIntoGrid/*= true*/, bool setHealthToFull/*=true*/)
+	void	InsertConstructed( const PMobileEntity&v, float&atTime, bool insertIntoGrid/*= true*/, bool setHealthToFull/*=true*/)
 	{
 		//if (insertIntoGrid)
+		v->UpdateSystem();
 		ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 		bool restored = idMap.IsSet(v->id);
 		if (restored)
@@ -1087,27 +1124,27 @@ namespace Objects
 		#endif
 	}
 
-	void			RegisterNewOffGrid(const PMobileEntity&v, float atTime, bool setHealthToFull/*=true*/)
+	void			RegisterNewOffGrid(const PMobileEntity&v, float&atTime, bool setHealthToFull/*=true*/)
 	{
 		ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 		ASSERT1__(!v->isInserted,v->GetName());
 		DBG_ASSERT__(!storedMobileEntities.Contains(v));
 		storedMobileEntities << v;
 		v->OnConstructionFinished(atTime);
-		LogEvent(EventType::EntityProcess, v.get(),"Deployed into storage");
+		LogEvent(EventSignificance::Common, v.get(),"Deployed into storage");
 		if (setHealthToFull)
 			v->health = v->GetMaxHealth();
 		ASSERT1__(idMap.SetNew(v->id,v),v->GetName());
 
 
 		#ifndef CLIENT
-			v->timeAt = std::max(v->timeAt,atTime);
+			atTime = v->timeAt = std::max(v->timeAt,atTime) + timeEpsilon;
 			v->owner->storedMobiles.Append(v);
 		#endif
 	}
 
 
-	void InsertConstructed( const PStructure&s, float atTime, bool refreshNetworkNow/*=false*/, bool setHealthToFull/*=true*/)
+	void InsertConstructed( const PStructure&s, float&atTime, bool refreshNetworkNow/*=false*/, bool setHealthToFull/*=true*/)
 	{
 		ASSERT__(s);
 
@@ -1135,7 +1172,7 @@ namespace Objects
 
 		structures << s;
 
-		#ifdef HAS_WINDOW
+		#ifdef CLIENT
 			if (s->IsSkyLinkStructure())
 			{
 				PSkyLinkStructure link = To<SkyLinkStructure>::DynamicCast(s);
@@ -1193,8 +1230,9 @@ namespace Objects
 
 
 
-	void					Remove( const PWorldEntity&e, RemovalType t, float timestamp, bool controlEnabled, bool isRemovedFromGrid/*=false*/, bool ignoreIndestructible/*=false*/)
+	void					Remove( const PWorldEntity&e, RemovalType t, float&timestamp, bool controlEnabled, bool isRemovedFromGrid/*=false*/, bool ignoreIndestructible/*=false*/)
 	{
+		timestamp += timeEpsilon;
 		ASSERT__(e);
 		ASSERT1__(e->isInserted != ( t == RemovalType::DestroyedInStorage ),e->GetName());
 		#ifdef CLIENT
@@ -1212,7 +1250,7 @@ namespace Objects
 		#else
 			ASSERT1__(ignoreIndestructible || !e->IsIndestructible(), e->GetName());
 		#endif
-		LogEvent(EventType::EntityProcess, e.get(),"Removing entity ("+String(t.ToString())+")");
+		LogEvent(EventSignificance::Common, e.get(),"Removing entity ("+String(t.ToString())+") at time="+String(timestamp));
 		const bool move = t==RemovalType::EnteredStorage;
 		if (!move)
 		{
@@ -1241,7 +1279,7 @@ namespace Objects
 				RemoveFromGrid(structureGrid,e->location,To<Structure>::Cast(e));
 
 			ASSERT1__(structures.FindAndErase(e),e->GetName());
-			#ifdef HAS_WINDOW
+			#ifdef CLIENT
 				if (To<Structure>::Cast(e)->IsSkyLinkStructure())
 				{
 					foreach (skyLinks,link)
@@ -1314,7 +1352,7 @@ namespace Objects
 
 		if (!move)
 		{
-			LogEvent(EventType::Debug,e.get(),"OnDestroy()");
+			LogEvent(EventSignificance::Debug,e.get(),"OnDestroy()");
 			e->OnDestroy(timestamp);
 		}
 		#ifdef CLIENT
@@ -1558,12 +1596,42 @@ namespace Objects
 
 
 
-	static count_t GetConstructionWays(const Grid::WorldData&world, bool ignoreWater, bool doFloat, bool canGoDownVertically,
+	static count_t GetConstructionWays(const Grid::WorldData&world, bool ignoreWater, bool flat, bool canGoDownVertically,
 										const Vehicle*v,  const Grid::LCellIdI&location, 
 										Grid::LCellIdI*outChoices, const Grid::LCellIdI&destination)
 	{
 		index_t rs = 0;
 		const auto&n = Grid::low.grid.GetCell(location.stackID).neighborhood;
+
+
+		if (flat)
+		{
+			for (int i = 0; i < n.numNeighbors; i++)
+			{
+				const Grid::LCellIdI	cell(n.neighborID[i], location.height);
+
+				bool okay = cell.height < Grid::CellStack::HalfRange && cell.height >= -Grid::CellStack::HalfRange;
+				if (okay)
+				{
+					for (int j = cell.height; j > location.height; j--)
+						if (!world.LowCellIsClear(Grid::LCellIdI(location.stackID, j)))
+						{
+							okay = false;
+							break;
+						}
+				}
+				if (!okay)
+					continue;
+
+				if ( ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, true) )
+				{
+					(*outChoices++) = cell;
+					rs++;
+				}
+			}
+
+			return rs;
+		}
 
 		for (int j = -1; j <= 1; j++)
 		{
@@ -1596,7 +1664,7 @@ namespace Objects
 				if (!okay)
 					continue;
 
-				if ( ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, doFloat) )
+				if ( ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, false) )
 //				if ((cell == destination || world.LowCellIsClear(cell)) && (v->CanStandOn(world,cell-1,ignoreWater)))
 				{
 					(*outChoices++) = cell;
@@ -1630,7 +1698,7 @@ namespace Objects
 							break;
 						}
 			}
-			if ( okay && ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, doFloat) )
+			if ( okay && ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, false) )
 //				if ((cell == destination || world.LowCellIsClear(cell)) && (v->CanStandOn(world,cell-1,ignoreWater)))
 			{
 				(*outChoices++) = cell;
@@ -1851,7 +1919,7 @@ namespace Objects
 			{
 				if (failIfLimitReached)	//client sided operation may choose to not implement maximum ranges
 				{
-					//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+					//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 					return false;//let's ignore long ranges
 				}
 				else
@@ -1889,7 +1957,7 @@ namespace Objects
 				outPath.Revert();
 				oPath.Append(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
 			}
 			count_t ways = GetWays(world,vehicle,  cellID, possibilities, to, true, ignoreFriendlyVehiclesOnRoute);
@@ -1917,7 +1985,7 @@ namespace Objects
 			}
 		}
 		//ShowMessage("no route found after "+String(iterations)+" iterations");
-		//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 		return false;
 	}
 
@@ -1961,7 +2029,7 @@ namespace Objects
 			{
 				if (failIfLimitReached)
 				{
-					//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+					//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 					return false;//let's ignore long ranges
 				}
 				else
@@ -1990,7 +2058,7 @@ namespace Objects
 				outPath.Revert();
 				oPath.Append(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
 			}
 			count_t ways = GetWays(sat,  current, possibilities, to, true, ignoreFriendlyVehiclesOnRoute);
@@ -2013,7 +2081,7 @@ namespace Objects
 			}
 		}
 		//ShowMessage("no route found after "+String(iterations)+" iterations");
-		//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 		return false;
 	}
 
@@ -2057,7 +2125,7 @@ namespace Objects
 			static bool ignoreIterations = false;	//runtime switch
 			if (!ignoreIterations && iterations > 1998)
 			{
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				break;
 			}
 
@@ -2139,7 +2207,7 @@ namespace Objects
 
 		//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
 		//if (logPerformance)
-			//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+			//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 	
 	}
 
@@ -2179,8 +2247,10 @@ namespace Objects
 	}
 
 	
-	bool AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool doFloat, const Grid::LCellIdI&from, Grid::LCellIdI to, BasicBuffer<Grid::LCellIdI>&oPath)
+	bool AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, BasicBuffer<Grid::LCellIdI>&oPath)
 	{
+		if (flat)
+			to.height = from.height;
 		if (from == to)
 			return true;
 		const Grid::WorldData&world = 
@@ -2189,13 +2259,14 @@ namespace Objects
 		#else
 			vehicle->owner->currentState;
 		#endif
-		if (!vehicle->CanStandOn(world,to -1,ignoreWater,doFloat) /*|| !Grid::LowCellIsClear(to)*/)// || !NothingHere(destination))
-		{
-			if (doFloat)
-				to++;
-			if (!vehicle->CanStandOn(world,to -1,ignoreWater,doFloat) /*|| !Grid::LowCellIsClear(to)*/)// || !NothingHere(destination))
-				return false;
-		}
+		if (!flat)
+			if (!vehicle->CanStandOn(world,to -1,ignoreWater,false) /*|| !Grid::LowCellIsClear(to)*/)// || !NothingHere(destination))
+			{
+				if (flat)
+					to++;
+				if (!vehicle->CanStandOn(world,to -1,ignoreWater,false) /*|| !Grid::LowCellIsClear(to)*/)// || !NothingHere(destination))
+					return false;
+			}
 
 		//Timer::Time t0 = timer.Now();
 		Grid::LCellIdI	possibilities[6 * 3 + 2];
@@ -2231,7 +2302,7 @@ namespace Objects
 			iterations ++;
 			if (iterations > 2000)
 			{
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return false;//let's ignore long ranges
 			}
 
@@ -2258,10 +2329,10 @@ namespace Objects
 				outPath.Revert();
 				oPath.Append(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
 			}
-			count_t ways = GetConstructionWays(world, ignoreWater, doFloat, cellID == from, vehicle, cellID, possibilities, to);
+			count_t ways = GetConstructionWays(world, ignoreWater, flat, cellID == from, vehicle, cellID, possibilities, to);
 			ASSERT_LESS_OR_EQUAL__(ways,ARRAYSIZE(possibilities));
 
 
@@ -2300,7 +2371,7 @@ namespace Objects
 			}
 		}
 		//ShowMessage("no route found after "+String(iterations)+" iterations");
-		//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 		return false;
 	}
 
@@ -2340,7 +2411,7 @@ namespace Objects
 			iterations ++;
 			if (iterations > 2000)
 			{
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return false;//let's ignore long ranges
 			}
 
@@ -2364,7 +2435,7 @@ namespace Objects
 				outPath.Revert();
 				oPath.Append(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
 			}
 			count_t ways = GetAllWays(cellID, possibilities);
@@ -2400,7 +2471,7 @@ namespace Objects
 			}
 		}
 		//ShowMessage("no route found after "+String(iterations)+" iterations");
-		//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 		return false;
 	}
 
@@ -2436,7 +2507,7 @@ namespace Objects
 			iterations ++;
 			if (iterations > 2000)
 			{
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return false;//let's ignore long ranges
 			}
 
@@ -2459,7 +2530,7 @@ namespace Objects
 				outPath.Revert();
 				oPath.Append(outPath);
 				//ShowMessage("found route with "+String(outPath.Count())+" steps, requiring "+String(iterations)+" iterations" );
-				//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
 			}
 			count_t ways = GetAllSatelliteWays(current, possibilities);
@@ -2483,7 +2554,7 @@ namespace Objects
 			}
 		}
 		//ShowMessage("no route found after "+String(iterations)+" iterations");
-		//LogEvent(EventType::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
+		//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 		return false;
 	}
 
@@ -2491,12 +2562,12 @@ namespace Objects
 	
 
 
-	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float atTime)
+	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float&atTime)
 	{
 		return SpawnVehicle(owner,baseLocation,&base,&turret,fillStorage,atTime);
 	}
 
-	PVehicle SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float atTime)
+	PVehicle SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float&atTime)
 	{
 		PVehicle vehicle(new Vehicle(owner, baseLocation,base,turret));
 		#ifdef CLIENT
@@ -2506,7 +2577,7 @@ namespace Objects
 		#else
 			vehicle->health = vehicle->GetMaxHealth();	//or else PositionOnTop will fail
 			vehicle->PositionOnTop(baseLocation,false);
-			vehicle->UpdateSystem();
+		//	vehicle->UpdateSystem();
 		#endif
 		#ifndef CONNECTOR_LESS
 			if (fillStorage)
@@ -2598,7 +2669,7 @@ namespace Objects
 					s->id = id;
 					s->UpdateNiceName();
 					s->isMine = isMine;
-					//LogEvent(EventType::MinorEntityProcess, s.get(),"Constructed " + s->GetName());
+					//LogEvent(EventSignificance::Common, s.get(),"Constructed " + s->GetName());
 					if (placeNow)
 					{
 						Place(s);
@@ -2614,22 +2685,24 @@ namespace Objects
 		}
 		void			Place( const PStructure&s)
 		{
-			InsertConstructed(s,0);
+			float t = 0;
+			InsertConstructed(s,t);
 		}
 		void			Place( const PVehicle&vehicle, bool insertIntoGrid/*=true*/)
 		{
 			ASSERT__(vehicle);
 			ASSERT3__(vehicle->preAnimationLocation == vehicle->location,vehicle->preAnimationLocation.ToString(),vehicle->location.ToString(),vehicle->GetName());
-
+			float t = 0;
 			//vehicle->preAnimationLocation = vehicle->location;
-			InsertConstructed(vehicle,0,insertIntoGrid);
+			InsertConstructed(vehicle,t,insertIntoGrid);
 			ASSERT1__(vehicles.Contains(vehicle),vehicle->GetName());
 		}
 		void			Place( const PSatellite&s)
 		{
 			ASSERT__(s);
 			ASSERT3__(s->preAnimationLocation == s->location,s->preAnimationLocation.ToString(),s->location.ToString(),s->GetName());
-			InsertConstructed(s,0);
+			float t = 0;
+			InsertConstructed(s,t);
 			ASSERT1__(satellites.Contains(s),s->GetName());
 
 			if (s->IsSkyHub())
@@ -2640,7 +2713,8 @@ namespace Objects
 		{
 			ASSERT__(m);
 			ASSERT3__(m->preAnimationLocation == m->location,m->preAnimationLocation.ToString(),m->location.ToString(),m->GetName());
-			InsertConstructed(m,0,insertIntoGridIfVehicle);
+			float t = 0;
+			InsertConstructed(m,t,insertIntoGridIfVehicle);
 			if (m->IsSatellite())
 			{
 				ASSERT1__(satellites.Contains(m),m->GetName());
@@ -2694,7 +2768,8 @@ namespace Objects
 			if (e->AwaitsUserInteraction() && p)
 			{
 				auto c = choice;
-				PMobileEntity v = p->CompleteProduction();
+				float t= 0;
+				PMobileEntity v = p->CompleteProduction(t);
 				if (!v)
 				{
 					return false;
@@ -2702,11 +2777,13 @@ namespace Objects
 				MobilePlacementResult result = v->PlaceExactlyAt(c,0,0,false,false);
 				if (Failed(result))
 				{
-					LogEvent(EventType::Fatal,v.get(),"Failed to position non-constructed at "+c.ToString());
-					FATAL__("Failed to position entity at designated position");
+					FATAL__(v->GetName()+": Failed to position non-constructed at "+c.ToString());
 				}
 				if (result == MobilePlacementResult::PlacementOkay || result == MobilePlacementResult::PlacementOkayFellDown)
-					InsertConstructed(v,0);
+				{
+					float t = 0;
+					InsertConstructed(v,t);
+				}
 
 				if (e->IsStructure())
 				{
@@ -2722,19 +2799,19 @@ namespace Objects
 					auto c = choice;
 					switch (mode)
 					{
-						//case CursorMode::DepositMode:
-						//case CursorMode::RestockMode:
-						//{
-						//	PStructure target = GetStructure(c-1);
-						//	PVehicle vTarget = GetVehicle(c-1);
-						//	if ((target && target->owner == e->owner) || (vTarget && vTarget->owner == e->owner))
-						//	{
-						//		c--;
-						//		PVehicleJob job(new VehicleJob::TransferJob(*v,mode));
-						//		v->RegisterNewJob("", job,&c);
-						//	}
-						//}
-						//break;
+						case CursorMode::DepositMode:
+						case CursorMode::RestockMode:
+						{
+							PStructure target = GetStructure(c-1);
+							PVehicle vTarget = GetVehicle(c-1);
+							if ((target && target->owner == e->owner) || (vTarget && vTarget->owner == e->owner))
+							{
+								c--;
+								PVehicleJob job(new VehicleJob::TransferJob(*v,mode));
+								v->RegisterNewJob("", job,&c);
+							}
+						}
+						break;
 						case CursorMode::RepairMode:
 						{
 							//PWorldEntity target = GetEntity(c-1);
@@ -2749,7 +2826,7 @@ namespace Objects
 						break;
 						case CursorMode::ClearAboveMode:
 						{
-							if (!v->GetConstructionSpeed())
+							if (!v->GetOperationSpeed(Component::TerrainRemove))
 								return false;
 							PVehicleJob job(new VehicleJob::ClearAbove(*v));
 							v->RegisterNewJob("", job,&c);
@@ -2757,7 +2834,7 @@ namespace Objects
 						break;
 						case CursorMode::DigMode:
 						{
-							if (!v->GetConstructionSpeed())
+							if (!v->GetOperationSpeed(Component::TerrainRemove))
 								return false;
 
 							auto copy = c;
@@ -2797,18 +2874,18 @@ namespace Objects
 									if (deployWhat)
 									{
 										if (!actual)
-											LogEvent(EventType::Fatal,s.get(),"Attempting to re-checkout "+deployWhat->GetName());
+											LogEvent(EventClass::Preset::fatal,s.get(),"Attempting to re-checkout "+deployWhat->GetName());
 										else
 											if (actualStore->park != s->park)
 											{
-												LogEvent(EventType::Fatal,s.get(),"Unable to checkout "+deployWhat->GetName()+" from this store: stored in a different park");
+												LogEvent(EventClass::Preset::fatal,s.get(),"Unable to checkout "+deployWhat->GetName()+" from this store: stored in a different park");
 											}
 											else
 												FATAL__("Equation evaluation error. Did the compiler fuck up?");
 									}
 									else
 									{
-										LogEvent(EventType::Fatal,s.get(),"Nothing to deploy (reference is null)");
+										LogEvent(EventClass::Preset::fatal,s.get(),"Nothing to deploy (reference is null)");
 									}
 								}
 

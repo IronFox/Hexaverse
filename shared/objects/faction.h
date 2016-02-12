@@ -11,7 +11,9 @@ namespace Objects
 	//typedef std::shared_ptr<Faction>	PFaction;
 	//typedef std::weak_ptr<Faction>		WFaction;
 
-
+	#ifdef WIRELESS_VEHICLES
+		static const int			WirelessTransferRange = 6;
+	#endif
 
 	
 	/**
@@ -31,7 +33,8 @@ namespace Objects
 			Visited				//marker used by AI to remember previously visited area. referenceEntity is either empty of the mobile that was memorized here
 			);
 
-		TUniqueID					referenceEntity = TUniqueID::Empty();	//!< Usage depends on type
+		TUniqueID					referenceEntity = TUniqueID::Empty(),	//!< Usage depends on type
+									referenceEntityOwner = TUniqueID::Empty();
 		ConstName					referencedType[2];
 
 		Type						type;
@@ -108,13 +111,14 @@ namespace Objects
 				}
 			};
 
-			static void				Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, UINT32 createdInRound, const TUniqueID&referenceID, ConstName referenceType[2], UINT32 currentRound);
+			static void				Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, UINT32 createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], UINT32 currentRound);
 			static void				Destroy(const TUniqueID&id, bool controlEnabled);
 			static Marker*			FindByReference(const TUniqueID&referenceID);
 			static Marker*			Find(const TUniqueID&referenceID);
+			static Marker*			Find(const Grid::LCellIdI&);
 			static void				GetDeletionCandidates(BasicBuffer<TCandidate>&candidates);
 			static void				FlushAll();
-			static void				GetOutdated(BasicBuffer<TUniqueID>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
+			static void				GetOutdated(BasicBuffer<Marker*>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
 
 			static Buffer0<Marker, Strategy::Adopt>	all;
 			static Buffer0<PStructure>	structureGhosts;
@@ -146,7 +150,10 @@ namespace Objects
 		TUniqueID	id;
 		String		name;
 		bool		online = false;
+		float3		color;
 		#ifdef CLIENT
+			float3	activeEntityColor,
+					inactiveEntityColor;
 			bool	requestedNewRound = false;
 			bool	isMine = false;
 			count_t	roundChangeNotifications=0;
@@ -170,12 +177,36 @@ namespace Objects
 				return "<NULL>";
 			return id.ToString()+":'"+name+"'";
 		}
+
+
+		/**
+		Computes a suitable color from a given faction ID.
+		The process is guaranteed to return a well saturated, lit color, but may be too slow to use on a per-frame basis.
+		No checks for uniqueness are performed at this stage.
+		@param[out] outColor Resulting faction color
+		@param id Unique faction ID
+		@param iteration Passing a different iteration alters the resulting color in a random way
+		*/		
+		static void IDToColor(TVec3<>&outColor, const TUniqueID&id, int iteration=0);
+
+		void							UpdateID(const TUniqueID&toID, bool recomputeColor=true);
+
 		#ifdef CONNECTOR_LESS
 			//index_t		compoundIndex = InvalidIndex;
 		#endif
 
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
+			static GenericHashTable<TUniqueID,PFaction,TUniqueID>	idMap;
+
+			static PFaction				mine;
+
+
+			static PFaction				FindByID(const TUniqueID&id);
+			static PFaction				GetOrCreate(const TUniqueID&id);
+
+			/**/						Faction(const TUniqueID&id) {UpdateID(id);}
+
 		#else
 			CryptographicID	accessToken;
 			Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
@@ -189,7 +220,7 @@ namespace Objects
 			static Buffer0<WFaction>	all;
 			static PFaction				nexus;
 
-			static PFaction			FindByID(const TUniqueID&);
+			static PFaction				FindByID(const TUniqueID&);
 
 
 
@@ -232,13 +263,13 @@ namespace Objects
 
 			GenericHashTable<PWorldEntity, SeeingReference, SharedPtrHash>	seeing;
 
-			/**/		Faction(const String&name=""):name(name)
+			/**/		Faction(const TUniqueID&id, const String&name=""):name(name)
 			{
 				nexusControl = acquiringNexusControl = 0;
 				deathInRounds = 0;
 
 				accessToken.Generate();
-				id.Generate();
+				UpdateID(id);
 			}
 
 			/**
@@ -301,7 +332,7 @@ namespace Objects
 			void		RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);
 
 			bool		CanCreateMarker(bool priveleged) const { return markers.Count() < (priveleged ? Marker::MaxMarkersPerFaction*16 : Marker::MaxMarkersPerFaction); }
-			Marker&		CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID);
+			Marker&		CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID, const TUniqueID&ownerReferenceID);
 			Marker*		FindMarker(const TUniqueID&markerID);
 			bool		DestroyMarker(const TUniqueID&markerID);
 			void		RestoreMarkers(const ArrayData<Marker>&source);
@@ -321,25 +352,10 @@ namespace Objects
 		//extern Buffer0<POwner>	owners;
 
 
-
 	#ifndef CLIENT
-		void	ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int change);
-
-		void	ChangeStorage(WorldEntity&e, float atTime, const ResourceVector&max, ResourceVector&storage, Resource res, int change);
+		void	ChangeStorage(WorldEntity&e, float atTime, const ResourceVector&max, ResourceVector&storage, Resource res, int&change);
 		void	ChangeStorage(WorkingStructure&ws, float atTime, Resource res, int change);
-		void	ChangeStorage(MobileEntity&v, float atTime, Resource res, int change);
-		//void	MapVisibility2(const PWorldEntity&e, const PWorldEntity&other, const OwnerParameter&checkForOwner, float&atTime);
 		void	ChangeOwnership( const PWorldEntity&e, const OwnerParameter&newOwner, float&atTime);
-
-		/**
-		Thoroughly checks whether or not entities able to see each other are correctly referenced as such.
-		This method has quadratic complexity (where n = number of entities in the world), and should
-		not be called too frequently.
-		Verification failure leads to program termination.
-		*/
-//		void	VerifyVisibilityNetwork();
-		bool	CanWithdrawFromStorage(const MobileEntity&v, Resource res, int demand);
-		int		GetStorage(const MobileEntity&v, Resource res);
 
 	#else
 		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine);

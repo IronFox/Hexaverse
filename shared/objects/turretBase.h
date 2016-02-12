@@ -28,12 +28,12 @@ namespace Objects
 			float lastRange = 0.f;
 			float lastExp = 0.f;
 			TMatrix4<> matrix;
-			DX11::InstructionBlock32	attackInstruction;
+			DX11::InstructionBlock32	attackInstruction,extendedInstruction;
 
+			static void		MakeHull(DX11::InstructionBlock32&target, const TMatrix4<>&matrix, float flatRange, float explosionRadius, const TVec3<>&center);
 
 		public:
-			void			Render(const Grid::LCellIdI&cell, float zOffset, float flatRange, float explosionRadius, const float4&color);
-
+			void			Render(const Grid::LCellIdI&cell, float zOffset, float flatRange, float explosionRadius, const float4&color, bool extended);
 		};
 	#endif
 
@@ -96,7 +96,13 @@ namespace Objects
 		int						CountPossibleAttacks() const {return GetAttacksPerRound() * GetAttackActionLeft();}
 		virtual bool			NextTaskIsAttack() const = 0;
 		virtual float			GetFlatAttackRange() const = 0;
-		virtual bool			HasAmmoForShot() const = 0;
+
+		/**
+		Checks if there are enough resources available for a single shot.
+		Cannot be const due to the complexity of resource allocation of mobile entities.
+		Must not persistently alter the local entity, however.
+		*/
+		virtual bool			HasAmmoForShot() = 0;
 		
 		/**
 		Determines whether or not the local turret base can hit a given location.

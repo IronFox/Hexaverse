@@ -18,4 +18,12 @@ namespace Objects
 	}
 
 
+	void	ResourceFlagSet::SetAllNonZero(const ResourceVector&res)
+	{
+		for (index_t i = 0; i < Resource::N; i++)
+			if (res.level[i])
+				isSet |= ((flagT)1 << (flagT)i);
+	}
+
+
 }

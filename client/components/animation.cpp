@@ -71,7 +71,7 @@ namespace Animation
 			{
 				Objects::PMobileEntity o = To<Objects::MobileEntity>::Cast(e);
 				bool surveyor = o->IsVehicle() && To<Objects::Vehicle>::Cast(o)->IsAutomatedResourceDetector();
-				bool constructor = o->GetConstructionSpeed() > 0;
+				bool constructor = o->GetOperationSpeed(Objects::Component::Construct) > 0;
 				if (!surveyor && !constructor)
 					return;
 				const Grid::LCellIdI&loc =o->GetLastPointOfOrigin();
@@ -220,7 +220,7 @@ namespace Animation
 
 		if (RuntimeConfig::aiMode)
 		{
-			//LogEvent(EventType::Debug,nullptr,"Automation issued by "+String(loc.ToString()));
+			//LogEvent(EventSignificance::Debug,nullptr,"Automation issued by "+String(loc.ToString()));
 			AI::vehicles.Clear();
 		}
 		foreach(Objects::vehicles, _v)
@@ -485,24 +485,9 @@ namespace Animation
 								&& vs.entityState.location != Grid::LCellIdI::Invalid;
 		if (locationChanged)
 		{
-			if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
-			{
-				if (!insertIntoGridLater.IsSet(v->id))
-				{
-					if (v->IsVehicle())
-					{
-						Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(v),v->preAnimationLocation);
-						insertIntoGridLater.Set(v->id);
-					}
-				}
-				v->location = vs.entityState.location;
-			}
-			else
-			{
-				v->Relocate(vs.entityState.location,false);	//this moves sensors. not good during animation phase
-
-			}
-
+			LogEvent(EventClass::Preset::debug,v.get(), "ApplyState(): Updating location: "+v->location.ToString()+"->"+vs.entityState.location.ToString());
+			ASSERT3__(v->preAnimationLocation == v->location, v->GetName(), v->preAnimationLocation.ToString(), v->location.ToString());
+			v->Relocate(vs.entityState.location,false);	//this moves sensors. not good during animation phase. however, this is a rare and isolated process (not part of a sequence of updates)
 		}
 		v->health = vs.entityState.health;
 		v->unstable = vs.entityState.unstable;
@@ -657,7 +642,7 @@ namespace Animation
 		Objects::PVehicleStore currentlyStoredIn = To<Objects::VehicleStore>::DynamicCast(v->storedIn.lock());
 		if (storedIn != currentlyStoredIn)
 		{
-			LogEvent(EventType::Debug,v.get(),"StoredIn-change ("+currentlyStoredIn->GetName()+" -> "+storedIn->GetName()+")");
+			LogEvent(EventSignificance::Debug,v.get(),"StoredIn-change ("+currentlyStoredIn->GetName()+" -> "+storedIn->GetName()+")");
 			float f = 0;
 
 			Objects::PVehicle veh = To<Objects::Vehicle>::DynamicCast(v);
@@ -683,7 +668,7 @@ namespace Animation
 				ASSERT1__(vs.entityState.location != Grid::LCellIdI::Invalid,v->GetName());
 				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 				currentlyStoredIn->LocalCheckout(veh,vs.entityState.location,f);
-				LogEvent(EventType::Debug,v.get(),"Checked out to "+vs.entityState.location.ToString());
+				LogEvent(EventSignificance::Debug,v.get(),"Checked out to "+vs.entityState.location.ToString());
 				ASSERT1__(v->location == vs.entityState.location,v->GetName());
 				ASSERT1__(v->isInserted,v->GetName());
 				ASSERT1__(Objects::vehicles.Contains(v),v->GetName());
@@ -695,7 +680,7 @@ namespace Animation
 			UI::HexGrid::RefreshContacts();
 		}
 		//else
-			//LogEvent(EventType::Debug,v.get(),"StoredIn unchanged ("+currentlyStoredIn->GetName()+")");
+			//LogEvent(EventSignificance::Debug,v.get(),"StoredIn unchanged ("+currentlyStoredIn->GetName()+")");
 
 		v->attackActionLeft = vs.attackActionLeft;
 		v->movementActionLeft = vs.movementActionLeft;
@@ -731,7 +716,7 @@ namespace Animation
 		if (w)
 		{
 			w->SetResourceStorage(vs.resourceVector);
-			w->SetEnabledOverride((vs.flags & Protocol::StructureFlags::Enabled) != 0);
+			w->ApplyEnableChangeFromServer((vs.flags & Protocol::StructureFlags::Enabled) != 0);
 			#ifndef NO_HIBERNATION
 				w->Hibernate((vs.flags & Protocol::StructureFlags::Hibernating) != 0,0);
 			#endif
@@ -833,7 +818,11 @@ namespace Animation
 		}
 
 
-		if (w)
+		if (w && w->isInserted)
+		{
+			#ifndef CONNECTOR_LESS
+				ASSERT__(s->compoundID != Objects::Compound::InvalidNetwork);
+			#endif
 		{
 			if (s->compoundID = 0xFFFFFFFF)
 				Objects::RefreshCompoundCoverage(0);
@@ -929,7 +918,7 @@ namespace Animation
 		path->rawPath.Append(std::make_pair(motion.toLocation,motion.timestamp.atTime + motion.timeNeeded));
 		path->changed = true;
 		targetEntityID = motion.id;
-		//LogEvent(EventType::Debug,nullptr,"Initiating movement stream at time "+String(motion.timestamp.atTime.value));
+		//LogEvent(EventSignificance::Debug,nullptr,"Initiating movement stream at time "+String(motion.timestamp.atTime.value));
 		time.Set(motion.timestamp.atTime, motion.timestamp.atTime + motion.timeNeeded);
 	}
 	void				Primitive::Append(Protocol::MobileEntityMotion&motion)
@@ -950,15 +939,15 @@ namespace Animation
 		removalType = e.type;
 		//ASSERT__(target);
 		time.SetMinAndMax(e.timestamp.atTime/*+0.01f*/);
-		LogEvent(EventType::Debug,nullptr,"Registered removal of entity "+e.id.value.ToString()+" ("+Objects::RemovalType::Reinterpret(e.type.value).ToString()+") at t="+time.ToString());
+		LogEvent(EventSignificance::Debug,nullptr,"Registered removal of entity "+e.id.value.ToString()+" ("+Objects::RemovalType::Reinterpret(e.type.value).ToString()+") at t="+time.ToString());
 	}
 	void					Primitive::Init(Protocol::AttackTrajectory&a)
 	{
 		type = Attack;
 		attacker = Objects::Component::GetTurretByName(a.turretType);
+		ASSERT_NOT_NULL1__(attacker,(int)a.turretType.value);
 		attackRange = a.turretRange;
 		attackerPosition = a.sourcePosition;
-		attackTrajectoryType.Load(a.trajectoryType);
 		explosionCenter = Grid::ToWorld(a.traceTo);
 
 		//Objects::PWorldEntity e = Objects::GetEntity(a.id,true);
@@ -1020,7 +1009,7 @@ namespace Animation
 		{
 			case Construction:
 			{
-				LogEvent(EventType::MinorEntityProcess,allocatedTarget.get(),  "Placing structure entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
+				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing structure entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
 				Objects::Place(To<Objects::Structure>::DynamicCast(allocatedTarget));
 				if (!allocatedTarget->isMine)
 					UI::HexGrid::RefreshContacts();
@@ -1031,7 +1020,7 @@ namespace Animation
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				if (v)
 				{
-					LogEvent(EventType::MinorEntityProcess,allocatedTarget.get(),  "Placing mobile entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
+					LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing mobile entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
 					//MoveSensor(v->preAnimationLocation,v->location,v->turret->scanningRange);
 					v->preAnimationLocation = v->location;
 					Objects::PlaceMobileEntity(v,false);
@@ -1049,7 +1038,7 @@ namespace Animation
 				if (explode)
 					ExplodeEntity(allocatedTarget);
 				bool removed = false;
-				LogEvent(EventType::MinorEntityProcess,allocatedTarget.get(),  "Removing entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
+				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Removing entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
 				//if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 				{
 					Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
@@ -1071,8 +1060,8 @@ namespace Animation
 					}
 				}
 
-
-				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),0,Network::ControlEnabled(),removed);
+				float t = 0;
+				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t,Network::ControlEnabled(),removed);
 				if (!allocatedTarget->isMine)
 					UI::HexGrid::RefreshContacts();
 				#ifdef HAS_WINDOW
@@ -1083,7 +1072,7 @@ namespace Animation
 			case MovementStream:
 			{
 				allocatedTarget = Objects::GetEntity(targetEntityID);
-				LogEvent(EventType::Debug, allocatedTarget.get() ,"Starting movement stream at "+String(Animation::atTime)+"/"+this->time.ToString());
+				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting movement stream at "+String(Animation::atTime)+"/"+this->time.ToString());
 				ASSERT1__(allocatedTarget,targetEntityID.ToString());
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				ASSERT1__(v,allocatedTarget->GetName());
@@ -1127,7 +1116,7 @@ namespace Animation
 				}
 				else
 				{
-					LogEvent(EventType::InternalFault,nullptr,"Warning: Unable to identify entity "+targetEntityID.ToString()+" for turret rotation");
+					LogEvent(EventClass::Preset::error,nullptr,"Warning: Unable to identify entity "+targetEntityID.ToString()+" for turret rotation");
 					/*let's ignore this for now. this event is caused, when visibility of
 					its target has been determined but at a latter time by some vehicle.
 					during the motion phase of a different vehicle an automated attack is caused.
@@ -1143,7 +1132,7 @@ namespace Animation
 			{
 			//	allocatedTarget = Objects::GetEntity(targetEntityID);
 				//if (allocatedTarget)
-				LogEvent(EventType::Debug, allocatedTarget.get() ,"Starting attack ("+String(attackTrajectoryType.ToString())+",range="+String(attackRange)+",loc="+location.ToString()+") at "+String(Animation::atTime)+"/"+String(this->time.min));
+				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attacker->typeName+",range="+String(attackRange)+",loc="+location.ToString()+") at "+String(Animation::atTime)+"/"+String(this->time.min));
 				
 				{
 					//Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
@@ -1165,7 +1154,7 @@ namespace Animation
 					}*/
 					Grid::HCellIdI			attackTargetCell;	//not needed
 					//TVec3<>					attackTarget;	//not needed
-					Objects::Component::Turret::TraceTrajectory(attackTrajectoryType,attackRange, attackerPosition,Grid::ToWorld(location),activeTrajectory);
+					Objects::Component::Turret::TraceTrajectory(attacker->trajectoryType,attackRange, attackerPosition,Grid::ToWorld(location),activeTrajectory);
 					explosionRadius = attacker->explosionRadius;
 					projectileAt = 0.f;
 					projectileActive = true;
@@ -1173,7 +1162,7 @@ namespace Animation
 					#ifdef HAS_WINDOW
 						trajectoryGeometry.Clear();
 						#ifdef _DEBUG
-							LogEvent(EventType::Debug, allocatedTarget.get() ,"Compiling trajectory with "+String(activeTrajectory.Count())+" steps, starting from "+Vec::toString(activeTrajectory.first())+", ending "+Vec::toString(activeTrajectory.last()));
+							LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Compiling trajectory with "+String(activeTrajectory.Count())+" steps, starting from "+Vec::toString(activeTrajectory.first())+", ending "+Vec::toString(activeTrajectory.last()));
 						#endif
 						maxProjectileProjection = Objects::Component::Turret::CompileTrajectory(activeTrajectory,false,trajectoryGeometry,0.5f);
 						trajectoryVisualization.vbo.CreateFromStructs(trajectoryGeometry.GetLOD(0).vertices);
@@ -1184,7 +1173,7 @@ namespace Animation
 				}
 				/*else
 				{
-					LogEvent(EventType::InternalFault,nullptr,"Warning: Unable to identify entity "+targetEntityID.ToString()+" for attack animation");
+					LogEvent(EventClass::Preset::error,nullptr,"Warning: Unable to identify entity "+targetEntityID.ToString()+" for attack animation");
 
 				}*/
 			}
@@ -1206,7 +1195,7 @@ namespace Animation
 		{
 			case  MovementStream:
 			{
-				LogEvent(EventType::Debug, allocatedTarget.get() ,"Ending movement stream at "+String(Animation::atTime)+"/"+this->time.ToString());
+				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Ending movement stream at "+String(Animation::atTime)+"/"+this->time.ToString());
 
 				Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(allocatedTarget);
 				ASSERT__(v);
@@ -1238,7 +1227,7 @@ namespace Animation
 			}
 			break;
 			case Attack:
-				LogEvent(EventType::Debug, allocatedTarget.get() ,"Ending attack at "+String(Animation::atTime)+"/"+String(this->time.max));
+				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Ending attack at "+String(Animation::atTime)+"/"+String(this->time.max));
 				projectileActive = false;
 				for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
 				{
@@ -1247,7 +1236,7 @@ namespace Animation
 						continue;
 					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < sqr(explosionRadius))
 					{
-						LogEvent(EventType::MinorEntityProcess,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
+						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
 						SignalMarkerDeletion(m.id);
 						i--;
 					}
@@ -1261,7 +1250,7 @@ namespace Animation
 						continue;
 					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < sqr(explosionRadius))
 					{
-						LogEvent(EventType::MinorEntityProcess,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
+						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
 						SignalMarkerDeletion(m.id);
 						i--;
 					}
@@ -1352,7 +1341,7 @@ namespace Animation
 			}
 			break;
 			case MovementStream:
-				//LogEvent(EventType::Debug,allocatedTarget.get(),"Animation stream updated at "+String(t));
+				//LogEvent(EventSignificance::Debug,allocatedTarget.get(),"Animation stream updated at "+String(t));
 				path->ApplyTo(To<Objects::Vehicle>::Cast(allocatedTarget),t);
 				ASSERT_LESS_OR_EQUAL__(t,time.max);
 			break;
@@ -1426,7 +1415,7 @@ namespace Animation
 		//String out;
 		//foreach (rawPath,p)
 			//out += ","+String(p->second);
-		//LogEvent(EventType::Debug,target.get()," Applying at "+String(t)+" in {"+out+"}");
+		//LogEvent(EventSignificance::Debug,target.get()," Applying at "+String(t)+" in {"+out+"}");
 
 		for (index_t i = 0; i+1 < rawPath.Count(); i++)
 		{
@@ -1451,7 +1440,7 @@ namespace Animation
 
 			float relative = std::max(0.f,(t - rawPath[i].second) / (rawPath[i+1].second - rawPath[i].second));
 
-			//LogEvent(EventType::Debug,target.get()," Relative ("+String(i)+"/"+String(rawPath.Count())+")="+String(relative));
+			//LogEvent(EventSignificance::Debug,target.get()," Relative ("+String(i)+"/"+String(rawPath.Count())+")="+String(relative));
 			//!((i+1)% stepsPerRound);
 
 			//TVec3<> d = p1 - p0;
@@ -1516,7 +1505,7 @@ namespace Animation
 				#else
 					float increase = Engine::timing.delta * Network::animationTimeFactor;
 				#endif
-				//LogEvent(EventType::Debug,nullptr,"Animation::Update(@"+String(Animation::atTime)+"+"+String(increase)+")");
+				//LogEvent(EventSignificance::Debug,nullptr,"Animation::Update(@"+String(Animation::atTime)+"+"+String(increase)+")");
 				Animation::atTime += increase;
 
 
@@ -1592,7 +1581,7 @@ namespace Animation
 			{
 				if (whenDone.IsNotEmpty())
 				{
-					LogEvent(EventType::Debug,nullptr,"Executing "+String(whenDone.Count())+" post-animation event(s)");
+					LogEvent(EventSignificance::Debug,nullptr,"Executing "+String(whenDone.Count())+" post-animation event(s)");
 					for (auto&entry : whenDone)
 					{
 						entry.time.min = 0.f;

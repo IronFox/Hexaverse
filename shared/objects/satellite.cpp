@@ -125,7 +125,7 @@ namespace Objects
 				Grid::SkySensorState state = skySensorState;
 				if (Grid::actualWorld.UpdateSensorState(skySensorState))
 				{
-					LogEvent(EventType::MinorEntityProcess,this,"Ground-sensor change detected");
+					LogEvent(EventSignificance::Common,this,"Ground-sensor change detected");
 
 					owner->RegisterSensorCreation(skySensorState,atTime,false);
 					atTime += timeEpsilon;
@@ -240,8 +240,9 @@ namespace Objects
 			String speed = "Speed: "+String(this->GetMovementStepsPerRound()) + " (orbital)";
 
 			outResult << speed;
-			if (GetConstructionSpeed())
-				outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(this->GetConstructionSpeed())+" per round";
+			int opSpeed = GetOperationSpeed(Component::Construct);
+			if (opSpeed)
+				outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(opSpeed)+" per round";
 
 			const String fuel (ResourceTag(Resource::Fuel));
 
@@ -271,8 +272,9 @@ namespace Objects
 
 
 
-	void			SkyHub::OnConstructionFinished(float atTime)
+	void			SkyHub::OnConstructionFinished(float&atTime)
 	{
+		Super::OnConstructionFinished(atTime);
 		OffsetTime(atTime);
 		UpdateConnections();
 	}
@@ -415,8 +417,11 @@ namespace Objects
 			structureConstructionCommands.Append(
 				StructureConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
 				std::bind(&Component::Terraformer::Cmd::Construct, s, std::placeholders::_1),
-				std::bind(&MyCmd::CanBuild,s,std::placeholders::_1),
-				&CommonCmd::AlwaysFalse<PWorldEntity const&>));
+				[s](const PWorldEntity&e, bool controlEnabled)->BaseCommand::Flags
+				{
+					return MyCmd::CanBuild(s,e) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+				}
+				));
 			structureConstructionCommands.last().RasterizeImage();
 		#endif
 	}
@@ -428,8 +433,7 @@ namespace Objects
 			satelliteConstructionCommands.Append(
 				SatelliteConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
 				std::bind(&MyCmd::Build, s, std::placeholders::_1),
-				&CommonCmd::IsModeActiveC<CursorMode::Idle>,
-				&CommonCmd::AlwaysFalse<PWorldEntity const&>));
+				&CommonCmd::IdleCheck));
 		#endif
 	}
 
@@ -441,7 +445,7 @@ namespace Objects
 		RegisterProduction(SkyGuardian::globalPrototype);
 		RegisterProduction(SkyHub::globalPrototype);
 		RegisterProduction(Ragnarok::globalPrototype);
-		RegisterProduction(StarPort::globalPrototype);
+		//RegisterProduction(StarPort::globalPrototype);
 	}
 
 
@@ -513,7 +517,7 @@ namespace Objects
 							PSkyHub hub = port.first->connectedToHub;
 							if (hub.get() != this)
 							{
-								float d2 = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
+								float d2 = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 								if (d2 < distance)
 								{
 									distance = d2;
@@ -527,7 +531,7 @@ namespace Objects
 						PSkyHub hub = sat.lock();
 						if (hub && hub.get() != this && !hub->connectedTo.expired())
 						{
-							float d2 = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
+							float d2 = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 							if (d2 < distance)
 							{
 								distance = d2;
@@ -553,7 +557,7 @@ namespace Objects
 						if (hub.get() != this)
 						{
 							hubs.Append().hub = hub;
-							hubs.last().distance = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
+							hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 						}
 					}
 			#else
@@ -563,7 +567,7 @@ namespace Objects
 					if (hub && hub.get() != this && !hub->connectedTo.expired())
 					{
 						hubs.Append().hub = hub;
-						hubs.last().distance = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
+						hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 					}
 				}
 			#endif
@@ -607,13 +611,13 @@ namespace Objects
 
 					Compound&compound = port->CastToStructure()->GetCompound();
 					int available = compound.total.storage.level[Resource::Fuel];
-					#ifdef CONNECTOR_LESS
-						available += compound.overproduction.level[Resource::Fuel];
-					#endif
+					//#ifdef CONNECTOR_LESS
+					available += compound.GetOverproduction(Resource::Fuel);
+					//#endif
 
 					if (available >= demand)
 					{
-						ChangeCompoundStorage(compound, this, atTime, Resource::Fuel, -demand);
+						MobileResourceEnvironment::ForceChangeCompoundStorage(compound, this, atTime, Resource::Fuel, -demand);
 						return port;
 					}
 				}
@@ -644,10 +648,10 @@ namespace Objects
 				Compound&cmp = port->CastToStructure()->GetCompound();
 				if (cmp.total.balance.level[Resource::Minerals] >= (int)MobileEntityProducer::productionPerRound)
 				{
-					MobileEntityProducer::Tick(cmp.total.balance);
+					MobileEntityProducer::Tick(cmp.total.balance,atTime);
 				}
 				else
-					LogEvent(EventType::EntityProcessFailed,this,"Insufficient resources available in "+port->CastToStructure()->GetNiceName()+". Delaying production");
+					LogEvent(EventClass::Preset::operationAborted,this,"Insufficient resources available in "+port->CastToStructure()->GetNiceName()+". Delaying production");
 			}
 			return true;
 		}
@@ -660,7 +664,7 @@ namespace Objects
 			{
 				if (failIsFatal)
 				{
-					LogEvent(EventType::Fatal,this,"Dead");
+					LogEvent(EventClass::Preset::fatal,this,"Dead");
 					FATAL__("Critical abort");
 				}
 				return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
@@ -672,7 +676,7 @@ namespace Objects
 			{
 				if (failIsFatal)
 				{
-					LogEvent(EventType::Fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
+					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
 					FATAL__("Critical abort");
 				}
 				return MobilePlacementResult::PlacementFailedObstructed;
@@ -717,7 +721,7 @@ namespace Objects
 					return false;
 
 				case CursorMode::BuildConnectorChainMode:
-					if (!GetConstructionSpeed())
+					if (!GetOperationSpeed(Component::Construct))
 						return false;
 
 					if (leftClick)
@@ -750,7 +754,7 @@ namespace Objects
 						
 									if (!CanHitFrom(pointOfOrigin,destination))
 									{
-										LogEvent(EventType::CommandRejected,this,"Destination out of range");
+										LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 										return false;
 									}
 								}
@@ -758,7 +762,7 @@ namespace Objects
 									return false;
 							}
 							else
-								LogEvent(EventType::CommandRejected,this,"Attempting to attack current location");
+								LogEvent(EventClass::Preset::commandRejected,this,"Attempting to attack current location");
 						}
 					}
 					else
@@ -856,7 +860,7 @@ namespace Objects
 	#endif /*0*/
 
 
-	/*virtual override*/ bool					Satellite::HasAmmoForShot() const
+	/*virtual override*/ bool					Satellite::HasAmmoForShot()
 	{
 	#ifdef CONNECTOR_LESS
 		const Compound&compound = owner->compound;
@@ -870,6 +874,13 @@ namespace Objects
 	#ifndef CLIENT
 		/*virtual override*/ bool					Satellite::FillAttackQueue()
 		{
+			if (!turret->CanAttack() || !HasAmmoForShot())
+			{
+				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
+				return false;
+			}
+
+			DBG_ASSERT__(IsSentry());
 			{
 				Grid::LCellIdI target;
 
@@ -909,13 +920,13 @@ namespace Objects
 				return false;
 			if (myTasks.Count() >= MaxStructureTasks)
 			{
-				LogEvent(EventType::CommandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
+				LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
 				return false;
 			}
 			Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 			if (target.stackID == pointOfOrigin.stackID && turret->trajectoryType != TrajectoryType::VerticalBeam)
 			{
-				LogEvent(EventType::CommandRejected,this,"Destination too close");
+				LogEvent(EventClass::Preset::commandRejected,this,"Destination too close");
 				return false;
 			}
 			if (turret->trajectoryType != TrajectoryType::VerticalBeam)
@@ -927,7 +938,7 @@ namespace Objects
 
 				if (!CanHitFrom(pointOfOrigin,target))
 				{
-					LogEvent(EventType::CommandRejected,this,"Destination out of range");
+					LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 					return false;
 				}
 			}
@@ -952,11 +963,11 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ bool SkyGuardian::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime) const
+		/*virtual override*/ bool SkyGuardian::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)
 		{
-			if (!HasAmmoForShot() && empDamageLevel == 0)
+			if (!turret->CanAttack() || !HasAmmoForShot())
 			{
-				//LogEvent(EventType::CommandRejected,this,"Insufficient ammunition");
+				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;
 			}
 
@@ -991,7 +1002,7 @@ namespace Objects
 			if (port && port->CastToStructure()->location.stackID == location.stackID)
 			{
 				#ifndef CLIENT
-					LogEvent(EventType::EntityProcessFailed,this,"Cannot connect to "+port->CastToStructure()->GetNiceName()+": Already connected to "+port->connectedToHub->GetNiceName());
+					LogEvent(EventClass::Preset::operationAborted,this,"Cannot connect to "+port->CastToStructure()->GetNiceName()+": Already connected to "+port->connectedToHub->GetNiceName());
 				#endif
 				return false;
 			}
@@ -1003,7 +1014,7 @@ namespace Objects
 			SignalChange(OrbitalConnectionChanged,timeAt);
 			WorkingStructure*ws = to->CastToStructure();
 			ws->SignalChange(OrbitalConnectionChanged,timeAt);
-			LogEvent(EventType::EntityProcess,this,"Connection to "+ws->GetNiceName()+" established");
+			LogEvent(EventSignificance::Common,this,"Connection to "+ws->GetNiceName()+" established");
 		#endif
 
 		to->connectedToHub = To<SkyHub>::Cast(shared_from_this());
@@ -1018,7 +1029,7 @@ namespace Objects
 		{
 			WorkingStructure*ws = port->CastToStructure();
 			#ifndef CLIENT
-				LogEvent(EventType::EntityProcessFailed,this,"Connection to "+ws->GetNiceName()+" lost");
+				LogEvent(EventClass::Preset::operationAborted,this,"Connection to "+ws->GetNiceName()+" lost");
 			#endif
 
 

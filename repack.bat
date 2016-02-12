@@ -16,6 +16,7 @@ del %rs1% /Q
 %zip% a %rs% "client/resources/*.png"
 %zip% a %rs% "client/resources/nice/*.txt"
 %zip% a %rs% "client/resources/icons/*.png"
+%zip% a %rs% "client/resources/textures/*.png"
 %zip% a %rs% "client/resources/tutorial/*.png"
 %zip% a %rs% "client/resources/tutorial/*.jpg"
 %zip% a %rs% "client/resources/tutorial/*.xml"

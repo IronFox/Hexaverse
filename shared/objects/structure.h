@@ -37,12 +37,14 @@ namespace Objects
 	class Structure : public WorldEntity
 	{
 	private:
-		static void					ChangeBroadStructCount(const Grid::LCellIdI&location, int height, bool hasFoundation, int changeDirection, float atTime);
-		static void					ChangeNarrowStructCount(const Grid::LCellIdI&location, int height, bool hasFoundation, int changeDirection, float atTime);
-		static void					CommonRegisterBroadStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime);
-		static void					CommonUnregisterBroadStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime);
-		static void					CommonRegisterNarrowStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime);
-		static void					CommonUnregisterNarrowStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime);
+		/*
+		New concept:
+		To better support specifics of towers, hybrid structures (narrow on top of broad) are possible.
+		If both broadHeight is specified less than totalHeight, narrowHeight is considered (totalHeight - broadHeight) and to be on top of broadHeight
+		*/
+		static void					ChangeStructCount(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime);
+		static void					CommonRegisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
+		static void					CommonUnregisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
 
 	protected:
 		typedef WorldEntity			Super;
@@ -73,11 +75,9 @@ namespace Objects
 		/**
 		Function to check common (theoretical) structure placement at a given location
 		@param location to check
-		@param height Structure height. Most structures have height=1
-		@param isBroad Indicates whether or not the structure occupies more than the central volume cell. For all structures except connectors this is true
 		@return Terrain condition at the given location
 		*/
-		static placement_t			CommonCheckStructurePlacement(const Grid::LCellIdI&location, int height, bool isBroad);
+		static placement_t			CommonCheckStructurePlacement(const Grid::LCellIdI&location, int broadHeight, int totalHeight);
 
 		static count_t				CountOccurrences(const OwnerParameter&o,ConstName type);
 
@@ -87,10 +87,13 @@ namespace Objects
 		#ifndef CLIENT
 
 
-			static void				CommonFixTerrain(const WorldEntity*e, const Grid::LCellIdI&location,  const Grid::Content foundationType, int height, bool signalChange, float atTime, bool deep, bool requireCentralFoundation, bool broadFoundation);
-			virtual void			CorrectTerrain(bool signalChange, float atTime, bool deep) = 0;
+			static void				CommonFixTerrain(const WorldEntity*e, const Grid::LCellIdI&location,  int broadHeight, int totalHeight, bool signalChange, float atTime);
+			virtual void			CorrectTerrain(bool signalChange, float atTime)
+			{
+				CommonFixTerrain(this,location,GetBroadHeight(),GetHeight(),signalChange,atTime);
+			}
 
-			virtual bool			DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override	{return false;}
+			virtual bool			DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override	{return false;}
 
 		#endif
 
@@ -185,7 +188,7 @@ namespace Objects
 		/**
 		Indicates that this structure stands atop a foundation (mostly visualization only)
 		*/
-		virtual bool				HasFoundation() const {return false;}
+		virtual bool				HasFoundation() const {return true;}
 
 		static void					StaticSetup();	//!< Invoked once before all other static setup methods are called.
 		#ifdef CLIENT
@@ -212,7 +215,7 @@ namespace Objects
 		Typical behavior is to check for existing connections and remove them from @a connectedTo where necessary
 		Invokes OnConnectionLost() on the local instance, if a connection was removed.
 		*/
-		virtual void				SignalLostNeighbor(const PStructure&, float atTime);
+		virtual void				SignalLostNeighbor(const PStructure&, float&atTime);
 		/**
 		Signalling method invoked by default implementations of SignalEnvironmentChange() and SignalNewNeighbor()
 		Invoked whenever a new direct or wireless connection has been established. Called before the new connection is inserted into @a connectedTo
@@ -276,21 +279,22 @@ namespace Objects
 		Base version also notifies all connected structures of the removal, so Super::OnDestroy()
 		should be called by overriding implementations at some point.
 		*/
-		virtual void				OnDestroy(float atTime) override;
-		virtual void				OnConstructionFinished(float atTime) override;
+		virtual void				OnDestroy(float&atTime) override;
+		virtual void				OnConstructionFinished(float&atTime) override;
 
 		/**
-		Height applied during struct count setting in the terrain. For most structures this equals the actual height.
-		Towers, however, need the top level struct-count-free or their trajectory calculations will fail
+		Retrieves the height of the local structure that it is broad in. The remainder of GetHeight() is considered narrow.
+		The result must be between 0 and GetHeight() - both inclusive.
+		Most structures return either 0 or GetHeight(). Only towers feature a mixture of broad and narrow.
 		*/
-		virtual int					GetStructCountHeight() const {return GetHeight();}
+		virtual int					GetBroadHeight() const {return GetHeight();}
 
 		/**
 		Erases all connection to other structures in the neighborhood. Since this may cause an inconsistent situation it is
 		generally not recommended to call this method manually. OnDestroy() will call this method, as will methods that
 		alter the ownership of entities.
 		*/
-		void						DisconnectFromNeighborhood(float atTime);
+		void						DisconnectFromNeighborhood(float&atTime);
 
 		#ifdef HAS_WINDOW
 
@@ -327,10 +331,10 @@ namespace Objects
 			typedef Structure Super;
 		protected:
 			/**/					OtherStructure<Derivative>(const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime):Super(owner,location,buildSystem,atTime)
-			{
+			{ 
 				#ifdef HAS_WINDOW
 					Super::localizableShape = &shape;
-				#endif		
+				#endif
 			}
 			/**/					OtherStructure<Derivative>()
 			{ 
@@ -370,29 +374,11 @@ namespace Objects
 			virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
 
 
-			virtual  bool				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood,float atTime) override
-			{
-				#ifndef CLIENT
-					CorrectTerrain(true,atTime,false);
-				#endif
-				return Super::SignalEnvironmentChange(neighborhood,atTime);
-			}
 
 			virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override
 			{
-				return CommonCheckStructurePlacement(location,GetHeight(),IsBroad());
+				return CommonCheckStructurePlacement(location,GetBroadHeight(), GetHeight());
 			}
-
-
-			#ifndef CLIENT
-				virtual void			CorrectTerrain(bool signalChange, float atTime, bool deep) override
-				{
-					CommonFixTerrain(this,location,Grid::Content::Foundation,GetHeight(),signalChange,atTime,false,false,IsBroad());
-				}
-			#endif
-
-
-
 		};
 
 	/**
@@ -555,14 +541,13 @@ namespace Objects
 		//Structure overrides:
 		virtual void				OnNewConnection(const Connection&, UINT32 acrossHighCell, float atTime) override;
 		virtual void				OnConnectionLost(const Connection&, UINT32 acrossHighCell, float atTime) override;
-		virtual bool				HasFoundation() const override {return true;}
 		virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) override;
 
 
 		//HangarStructure overrides:
 		const WorldEntity&			ToEntity() const override {return *this;}
 		WorldEntity&				ToEntity() override {return *this;}
-		virtual void				OnDestroy(float atTime) override;
+		virtual void				OnDestroy(float&atTime) override;
 
 
 		//WorldEntity overrides:
@@ -618,7 +603,6 @@ namespace Objects
 		#endif
 
 		//WorldEntity overrides:
-		virtual bool				IsBroad() const override {return false;}
 
 
 		#ifdef HAS_WINDOW
@@ -631,6 +615,9 @@ namespace Objects
 			}
 		#endif
 
+		//Structure overrides
+		virtual int					GetBroadHeight() const {return 0;}
+		virtual bool				HasFoundation() const override {return false;}
 	};
 
 	
@@ -692,6 +679,11 @@ namespace Objects
 		typedef Structure			Super;
 		bool						isEnabled;
 
+		#ifndef CLIENT
+			ResourceVector			overproduction;
+			friend class Compound;
+		#endif
+
 	protected:
 		/**/						WorkingStructure() : isEnabled(false)	{ }	//global prototype
 		/**/						WorkingStructure(const OwnerParameter&owner, const Grid::LCellIdI&location, bool buildSystem, float atTime) : Super(owner,location,buildSystem,atTime),isEnabled(false)
@@ -702,11 +694,14 @@ namespace Objects
 		#endif
 
 	public:
+		#ifdef HAS_WINDOW
+			bool					visited=false;
+		#endif
+
 		/**
 		Checks whether or not the conditions are given to enable the local structure
 		*/
 		virtual bool				CanEnable() const	{return true;}
-		void						SetEnabledOverride(bool b);
 		
 		#ifndef CLIENT
 			enum force_t
@@ -723,7 +718,10 @@ namespace Objects
 			@return true if the local structure could be enabled. Failure may happen if CanEnable() returns false and force is set to EnableIfPossible, 
 				or if refreshCompounds is set and the local compounds cannot supply required resources
 			*/
-			bool					SetEnabled(bool b, float atTime, bool refreshCompounds=true, force_t force=EnableIfPossible, bool signalStructure=true);
+			bool					SetEnabled(bool b, float&atTime, bool refreshCompounds=true, force_t force=EnableIfPossible, bool signalStructure=true);
+			void					SetEnabledOverride(bool b, bool registerChange=true);
+		#else
+			void					ApplyEnableChangeFromServer(bool b);
 		#endif
 
 		bool						IsEnabled() const {return isEnabled;}
@@ -796,8 +794,6 @@ namespace Objects
 		virtual void				SetResourceStorage(const ResourceVector&vec)	{};
 		virtual bool				IsNexusPort() const {return false;}
 
-		//Structure overrides:
-		virtual bool				HasFoundation() const override {return true;}
 
 		//WorldEntity overrides:
 		#ifndef NO_HIBERNATION
@@ -805,7 +801,7 @@ namespace Objects
 		#endif
 		virtual bool				IsActive() const override {return isEnabled && !IsHibernating();}
 		virtual bool				IsWorkingStructure() const override {return true;}
-		virtual void				OnDestroy(float atTime) override;
+		virtual void				OnDestroy(float&atTime) override;
 	};
 
 	/**
@@ -859,21 +855,16 @@ namespace Objects
 			#endif
 
 
-			virtual bool				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood,float atTime) override;
 			virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override;
 			virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override;
 			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override;
 
-			virtual void				OnDestroy(float atTime) override;
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
 					virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
 					virtual void		VisitAllCommands(FCommandVisitor visitor) override {foreach (iconCommands,cmd) visitor(*cmd);foreach (vehicleConstructionCommands,cmd) visitor(*cmd);};
 				#endif
-			#else
-				virtual void			CorrectTerrain(bool signalChange, float atTime, bool deep) override;
 			#endif
-			virtual Grid::Content		GetFoundationType() const {return Grid::Content::Foundation;}
 		};
 
 
@@ -955,14 +946,13 @@ namespace Objects
 
 		//MobileEntityProducer overrides
 		#ifndef CLIENT
-			virtual void			SignalNewProductionEnqueued() override {SetEnabled(true,0);}
-			virtual bool			DirectTo(CursorMode::mode_t, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
+			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 
 
 		//Structure overrides:
 		virtual bool				WouldLikeToEnable() const;
-		virtual bool				HasFoundation() const override {return true;}
 		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override
 		{
 			return MobileEntityProducer::IsBuilding(outProgress);
@@ -1016,7 +1006,7 @@ namespace Objects
 			void					OnLoad();
 
 			virtual void			Tick(ResourceVector&) override;
-			virtual void			OnConstructionFinished(float atTime)	{Super::OnConstructionFinished(atTime); SetEnabled(false,atTime,false);}
+			virtual void			OnConstructionFinished(float&atTime)	{Super::OnConstructionFinished(atTime); SetEnabled(false,atTime,false);}
 		#else
 			#ifdef HAS_WINDOW
 				virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
@@ -1042,13 +1032,21 @@ namespace Objects
 		virtual bool				IsIndestructible() const	override {return true;};
 		virtual void				GetResourceVector(ResourceVector&v, ResourceVector&, ResourceVector&) const override
 		{
-			v.level[Resource::Minerals] = 50;	
-			v.level[Resource::Fuel] = 55;	
-			v.level[Resource::Uranium] = 10;
-			v.level[Resource::Energy] = -EnergyConsumption;
+			if (BaseGrid::IsIsolatedCorner(location.stackID))
+			{
+				v.level[Resource::Minerals] = 50;	
+				v.level[Resource::Fuel] = 55;	
+				v.level[Resource::Uranium] = 10;
+				v.level[Resource::Energy] = -EnergyConsumption;
+			}
+			else
+			{
+				v.level[Resource::Minerals] = 10;
+				v.level[Resource::Fuel] = 10;	
+				v.level[Resource::Uranium] = 5;
+				v.level[Resource::Energy] = -EnergyConsumption;
+			}
 		}
-
-		virtual Grid::Content		GetFoundationType() const override {return Grid::Content::Rock;}
 
 
 		//Structure overrides:
@@ -1067,9 +1065,18 @@ namespace Objects
 		/**/						Generator(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{}
 		/**/						Generator()	{ }	//global prototype
 	public:
-		typedef CommonStructure<Generator>	Super;
-
 		static const int FuelCostPerRound = 10;
+		typedef CommonStructure<Generator>	Super;
+		WReactorCore				connectedToReactor;
+
+
+		int							GetEnergyProduction() const {return connectedToReactor.expired() ? 20 : 40;}
+
+		#ifdef HAS_WINDOW
+			static Geometry			reactorConnector;
+				
+			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return connectedToReactor.lock() == connected ? &reactorConnector : &standardConnector;}
+		#endif
 
 		virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
@@ -1077,21 +1084,50 @@ namespace Objects
 			virtual int				GetUplinkPriority() const override {return 750;};
 		#endif
 
-		virtual bool				WouldLikeToEnable() const override {return true;}
+		virtual bool				WouldLikeToEnable() const override {return false;}
 
 
 		virtual String				GetTypeName() const override { return "Generator"; };
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Generator;}
 
-		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Fuel] = -FuelCostPerRound; v.level[Resource::Energy] = 20; }	//20 is temporary
+		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Fuel] = -FuelCostPerRound; v.level[Resource::Energy] = GetEnergyProduction(); }
+
+		virtual void				OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime) override;
+		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
+
 
 		#ifdef HAS_WINDOW
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+			virtual void			PrototypeLoadGeometry() override;
 		#endif
 
 	};
 
+	class ReactorCore : public OtherStructure<ReactorCore>
+	{
+		typedef OtherStructure<ReactorCore>	Super;
+		friend class Super;
+		/**/						ReactorCore(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,true,atTime)	{}
+		/**/						ReactorCore()	{ }	//global prototype
+	public:
 
+		virtual int					GetConstructionCost() const override {return 120;}
+		#ifndef NO_HIBERNATION
+			virtual int				GetUplinkTraffic() const override {return 15;}
+			virtual int				GetUplinkPriority() const override {return 750;};
+		#endif
+
+		virtual int					GetHeight() const override {return 2;}
+		virtual String				GetTypeName() const override { return "Reactor Core"; };
+		virtual ConstName			GetCTypeName() const override {return ConstName::Type_ReactorCore;}
+
+		#ifdef HAS_WINDOW
+			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {PGenerator gen = To<Generator>::DynamicCast(connected); return gen && gen->connectedToReactor.lock().get() == this ? &Generator::reactorConnector : &standardConnector;}
+
+			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+		#endif
+
+	};
 
 
 
@@ -1174,9 +1210,9 @@ namespace Objects
 
 		//MobileEntityProducer overrides
 		#ifndef CLIENT
-			virtual void			SignalLastProductionDone() override {LogEvent(EventType::EntityProcess, this, "Queue is empty. Shutting off"); SetEnabled(false,0);}
-			virtual void			SignalNewProductionEnqueued() override {SetEnabled(true,0);}
-			virtual bool			DirectTo(CursorMode::mode_t, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			virtual void			SignalLastProductionDone(float&t) override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); SetEnabled(false,t);}
+			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
+			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 
 		#ifndef NO_HIBERNATION
@@ -1319,12 +1355,6 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
 			#endif
-
-		#else
-			/*virtual*/ void			CorrectTerrain(bool signalChange, float atTime, bool deep)	override
-			{
-				CommonFixTerrain(this,location,GetFoundationType(), 1, signalChange,atTime,deep,true,false);
-			}
 
 		#endif
 
@@ -1548,20 +1578,14 @@ namespace Objects
 		}
 		/**/						Tower(Component::Turret*turret, const OwnerParameter&owner, const Grid::LCellIdI&location, float time) : Super(owner,location,true,time),TurretBase(turret)
 		{
-			#ifdef CLIENT
-				#ifdef HAS_WINDOW
-					Super::localizableShape = &shape;
-				#endif
+			#ifdef HAS_WINDOW
+				Super::localizableShape = &shape;
 			#endif
 		}
 
 		bool						WouldLikeToEnable() const override {return true;}
 
 
-		virtual  void				OnDestroy(float atTime) override
-		{
-			Super::OnDestroy(atTime);
-		}
 
 	public:
 
@@ -1635,11 +1659,11 @@ namespace Objects
 			bool					IsIdleButCouldAttack(float atTime) const {return attackQueue.IsEmpty() && HasAmmoForShot(atTime);}
 
 
-			virtual bool			DirectTo(CursorMode::mode_t, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 
 		#endif
 		bool						HasAmmoForShot(float atTime) const;
-		bool						HasAmmoForShot() const override;
+		bool						HasAmmoForShot() override;
 
 
 
@@ -1665,7 +1689,6 @@ namespace Objects
 
 		virtual float				GetMaxScanningRange() const override	{return turret->CanAttack() ? turret->scanningRange - 2.f : turret->scanningRange + 2.f;};	//returns the effective scanning range of the local entity
 		virtual int					GetMaxHealth() const override {return int(ceil(float(Super::GetMaxHealth()) * turret->healthMultiplier));}
-		virtual bool				SignalEnvironmentChange(const TStructureNeighborhood&neighborhood,float atTime) override;
 		virtual void				PrototypeSetup()	override;
 		virtual String				GetTypeName() const override { return turret->typeName+" Tower"; };
 		virtual ConstName			GetCTypeName() const override {return turret->constTowerName;}
@@ -1679,10 +1702,8 @@ namespace Objects
 		virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
 
 		#ifndef CLIENT
-			void					CorrectTerrain(bool signalChange, float atTime, bool deep);
 
-
-			virtual void			OnConstructionFinished(float atTime) override;
+			virtual void			OnConstructionFinished(float&atTime) override;
 			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime) override;
 		#else
 			#ifdef HAS_WINDOW
@@ -1693,7 +1714,7 @@ namespace Objects
 		#endif
 
 		//structure overrides:
-		virtual int					GetStructCountHeight() const override {return std::max(1,GetHeight()-1);}
+		virtual int					GetBroadHeight() const {return std::max(1,GetHeight()-1);}
 
 
 		//turret base overrides:
@@ -1722,12 +1743,10 @@ namespace Objects
 
 
 	extern Buffer0<PStructure>			structures;
-	#ifdef HAS_WINDOW
+	#ifdef CLIENT
 		typedef std::pair<PSkyLinkStructure,PWorkingStructure>	TLinkReference;
 		extern Buffer0<TLinkReference>		skyLinks;	//also included in structures, but filtered for quicker access
 	#endif
-
-
 
 
 	/**
@@ -1824,19 +1843,26 @@ namespace Objects
 
 			#ifdef HAS_WINDOW
 
-				iconCommands << IconCommand(int2(4,1), "Enable",&Cmd::Enable,[](const PWorldEntity&e, bool controlEnabled)->bool
+				iconCommands << IconCommand(int2(4,1), "Enable",&Cmd::Enable,
+				[](const PWorldEntity&e, bool controlEnabled)->BaseCommand::Flags
 				{
-					if (!controlEnabled)
-						return false;
+					BaseCommand::Flags rs = BaseCommand::Flags::None;
 					CommonStructure<Derivative>*div = dynamic_cast<CommonStructure<Derivative>*>(e.get());
-					return div && div->CanEnable();
+					if (controlEnabled)
+					{
+						if (div && div->CanEnable())
+						{
+							rs |= BaseCommand::Flags::IsEnabled;
+						}
+					}
+					if (div && div->IsEnabled())
+						rs |= BaseCommand::Flags::IsPermaActive;
+					return rs;
 				}
-				,&Cmd::IsEnabled
 				,NoCosts
 				);
 				if (!IsIndestructible())
-					iconCommands << IconCommand(int2(4,0), "Demolish",&SignalRemoval,&CommonCmd::MostlyEnabled<PWorldEntity const&>
-							,&CommonCmd::AlwaysFalse<PWorldEntity const&>
+					iconCommands << IconCommand(int2(4,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck
 							,NoCosts
 							);
 			#endif
@@ -1862,8 +1888,7 @@ namespace Objects
 			#ifdef HAS_WINDOW
 
 				if (!IsIndestructible())
-					commands << IconCommand(int2(4,0), "Demolish",&SignalRemoval,&CommonCmd::MostlyEnabled<PWorldEntity const&>
-							,&CommonCmd::AlwaysFalse<PWorldEntity const&>
+					commands << IconCommand(int2(4,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck
 							,NoCosts
 							);
 			#endif
@@ -1891,32 +1916,7 @@ namespace Objects
 			#endif
 		}
 
-	template <typename Derivative>
-		/*virtual override*/ void				CommonStructure<Derivative>::OnDestroy(float atTime)
-		{
-			Super::OnDestroy(atTime);
-		}
 
-
-	#ifndef CLIENT
-		template <typename Derivative>
-			void CommonStructure<Derivative>::CorrectTerrain(bool signalChange, float atTime, bool deep)
-			{
-				CommonFixTerrain(this,location,GetFoundationType(), 1, signalChange,atTime,deep,false,false);
-
-			}
-	#endif
-
-	template <typename Derivative>
-		/*virtual override*/ bool				CommonStructure<Derivative>::SignalEnvironmentChange(const TStructureNeighborhood&neighborhood,float atTime)
-		{
-			#ifndef CLIENT
-				CorrectTerrain(false,atTime,false);
-			#endif
-				//return false;
-
-			return Super::SignalEnvironmentChange(neighborhood,atTime);
-		}
 
 	template <typename Derivative>
 		/*virtual override*/ bool				CommonStructure<Derivative>::ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)
@@ -1927,7 +1927,7 @@ namespace Objects
 	template <typename Derivative>
 		/*virtual override*/ Structure::placement_t				CommonStructure<Derivative>::CheckPlacement(const Grid::LCellIdI&location)
 		{
-			return CommonCheckStructurePlacement(location,GetHeight(),IsBroad());
+			return CommonCheckStructurePlacement(location,GetBroadHeight(), GetHeight());
 		}
 
 	#ifdef CLIENT

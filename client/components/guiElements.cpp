@@ -143,7 +143,7 @@ namespace GUIElements
 	}
 
 
-	/*static*/ void				Component::RenderArea(const Rect<>&rect, bool lit, bool flip)
+	/*static*/ void				Component::RenderArea(const Rect<>&rect, bool lit, bool flip, const float3&backgroundTone)
 	{
 		float low = 0.55f;  //0.3;
 		float high = lit ? 0.89f : 0.77f;   //0.8f : 0.6;
@@ -152,15 +152,17 @@ namespace GUIElements
 
 		//low = sqrt(low);
 		float4 lowColor(low,low,low,low);
+		Vec::stretch(lowColor.rgb,backgroundTone,lowColor.rgb);
 		//high = sqrt(high);
 		float4 highColor(high,high,high,high);
+		Vec::stretch(highColor.rgb,backgroundTone,highColor.rgb);
 
 		SurfaceRenderer::Rasterize(float2(rect.x.min,rect.y.min), lowColor, float2(rect.x.max,rect.y.min),lowColor, float2(rect.x.max,rect.y.max), highColor, float2(rect.x.min,rect.y.max),highColor);
 		SurfaceRenderer::Flush();
 		
 
-		float4 lineLowColor(1,1,1,low*low);
-		float4 lineHighColor(1,1,1,high*high);
+		float4 lineLowColor(backgroundTone,low*low);
+		float4 lineHighColor(backgroundTone,high*high);
 	
 
 		LineRenderer::Rasterize(float3(rect.x.min,rect.y.min,0.f), lineLowColor, float3(rect.x.max,rect.y.min,0.f),lineLowColor);
@@ -226,7 +228,7 @@ namespace GUIElements
 
 	void				Area::BaseRender(bool lit, bool flipped)
 	{
-		RenderArea(rect,lit,flipped);
+		RenderArea(rect,lit,flipped,backgroundTone);
 	}
 
 	static const float CellSize = 0.01f;
@@ -417,7 +419,7 @@ namespace GUIElements
 		//core.Scale(0.97f);
 
 		if (fillBackground)
-			RenderArea(core,false,true);
+			RenderArea(core,false,true,backgroundTone);
 
 		StringRef text = GetText();
 

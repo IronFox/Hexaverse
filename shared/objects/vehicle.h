@@ -89,7 +89,7 @@ namespace Objects
 			RelocationResult	RelocateTo(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true);
 */
 
-			virtual void		OnConstructionFinished(float atTime) override;
+			virtual void		OnConstructionFinished(float&atTime) override;
 
 		#else
 
@@ -160,7 +160,7 @@ namespace Objects
 		//MobileEntity overrides:
 		virtual bool			MotionIgnoresAttack() const override {return base->ignoresVehicleAttacks;}
 		virtual int				GetMovementStepsPerRound() const override;
-		virtual int				GetConstructionSpeed() const override;
+		virtual int				GetOperationSpeed(Component::operation_t op) const override;
 		virtual float			GetBaseMovementInitiative() const override {return base->initiative;}
 		#ifndef CONNECTOR_LESS
 			virtual ResourceVector		GetMaxStorageCapacity()	const override;
@@ -169,7 +169,7 @@ namespace Objects
 
 		//TurretBase overrides:
 		virtual float			GetFlatAttackRange() const override {return EMPModify(turret->horizontalAttackRange + base->rangeModifier,1.f);}
-		virtual bool			HasAmmoForShot() const override;
+		virtual bool			HasAmmoForShot() override;
 
 
 		//Hibernating overrides:

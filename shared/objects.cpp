@@ -76,6 +76,38 @@ namespace Objects
 	#endif
 
 
+	#ifdef HAS_WINDOW
+
+		/**
+		Relay-functor to convert a single boolean function or variable to BaseCommand::Flags.
+		Depending on the returned boolean value, flag compositions will either be 
+		BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive 
+		or
+		BaseCommand::Flags::IsEnabled
+		*/
+		class GlobalPermaSwitch
+		{
+			std::function<bool()>	getState;
+		public:
+			/**/	GlobalPermaSwitch(const std::function<bool()>&f):getState(f)
+			{}
+			/**/	GlobalPermaSwitch(bool&b):getState([&b](){return b;})
+			{}
+
+
+			BaseCommand::Flags	operator()(int, bool)
+			{
+				return getState() ? BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::IsEnabled;
+			}
+
+
+		};
+
+
+
+	#endif
+
+
 	void					Create()
 	{
 		#ifdef CLIENT
@@ -88,7 +120,7 @@ namespace Objects
 
 			//#ifdef _DEBUG
 			//	Faction::nexus->accessToken = CryptographicID();
-			//	LogEvent(EventType::SessionRelated, nullptr, "Debug: Set nexus access token to " + Faction::nexus->accessToken.ToString() + "...");
+			//	LogEvent(EventClass::Preset::uncommon, nullptr, "Debug: Set nexus access token to " + Faction::nexus->accessToken.ToString() + "...");
 			//#endif
 
 			VehicleJob::BaseJob::allJobPrototypes
@@ -109,23 +141,22 @@ namespace Objects
 				;
 
 		#endif
-		LogEvent(EventType::PerformanceMeasurement, nullptr, "Vehicle grid of "+String(vehicleGrid.GetContentSize())+" bytes allocated");
-		LogEvent(EventType::PerformanceMeasurement, nullptr, "Structure grid of "+String(structureGrid.GetContentSize())+" bytes allocated");
+		LogEvent(EventSignificance::PerformanceMeasurement, nullptr, "Vehicle grid of "+String(vehicleGrid.GetContentSize())+" bytes allocated");
+		LogEvent(EventSignificance::PerformanceMeasurement, nullptr, "Structure grid of "+String(structureGrid.GetContentSize())+" bytes allocated");
 
 
 
 
 		structurePrototypes << Mine::globalPrototype;
 		structurePrototypes << Generator::globalPrototype;
+		structurePrototypes << ReactorCore::globalPrototype;
 		structurePrototypes << MunitionFactory::globalPrototype;
 		structurePrototypes << VehiclePlant::globalPrototype;
 		structurePrototypes << Connector::globalPrototype;
 		structurePrototypes << Pylon::globalPrototype;
 		structurePrototypes << FuelContainer::globalPrototype;
 		structurePrototypes << MineralContainer::globalPrototype;
-		#ifdef CONNECTOR_LESS
-			structurePrototypes << MunitionStorage::globalPrototype;
-		#endif
+		structurePrototypes << MunitionStorage::globalPrototype; //DO NOT COMMENT. Nexus bases feature these
 		structurePrototypes << UraniumStorage::globalPrototype;
 		structurePrototypes << NexusPort::globalPrototype;
 		structurePrototypes << VehicleStore::globalPrototype;
@@ -134,7 +165,7 @@ namespace Objects
 		satellitePrototypes << SkyHub::globalPrototype;
 		satellitePrototypes << SkyGuardian::globalPrototype;
 		satellitePrototypes << Ragnarok::globalPrototype;
-		satellitePrototypes << StarPort::globalPrototype;
+		//satellitePrototypes << StarPort::globalPrototype;
 
 
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::launcher));
@@ -147,7 +178,7 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 		{
-			LogEvent(EventType::Debug, nullptr, "Loading common geometry");
+			LogEvent(EventSignificance::Debug, nullptr, "Loading common geometry");
 
 			{
 				Geometry geo;
@@ -195,7 +226,7 @@ namespace Objects
 				gatheringPoint.ibo.Create(geo.GetLOD(0).indices);
 
 			}
-			LogEvent(EventType::Debug,nullptr,"Loading prototype geometry");
+			LogEvent(EventSignificance::Debug,nullptr,"Loading prototype geometry");
 			foreach(satellitePrototypes, p)
 				(*p)->PrototypeLoadGeometry();
 			foreach(structurePrototypes, p)
@@ -203,7 +234,7 @@ namespace Objects
 		}
 		#endif
 
-		LogEvent(EventType::Debug, nullptr, "Structure static setup");
+		LogEvent(EventSignificance::Debug, nullptr, "Structure static setup");
 
 		Structure::StaticSetup();
 
@@ -222,41 +253,61 @@ namespace Objects
 			foreach (Component::baseComponents,bc)
 				(*bc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();});
 
-			globalCommands.Append(GlobalCommand(int2(0,0),"End Round", [](int){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, [](int, bool controlEnabled)->bool {return CanChangeRoundState();},[](int)->bool {return HasSignalledRoundEnd();}));
+			globalCommands.Append(GlobalCommand(int2(0,0),"End Round", [](int){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
+			[](int, bool controlEnabled)->BaseCommand::Flags
+			{
+				BaseCommand::Flags rs = BaseCommand::Flags::None;
+				if (CanChangeRoundState())
+					rs |= BaseCommand::Flags::IsEnabled;
+				if (HasSignalledRoundEnd())
+					rs |= BaseCommand::Flags::IsPermaActive;
+				else
+					if (ShouldSignalRoundEnd())
+						rs |= BaseCommand::Flags::IsFlashing;
+				return rs;
+			}));
 
 
-			globalCommands.Append(GlobalCommand(int2(1,2),"Clip Terrain", &GlobalCmd::ToggleSeeThrough, &CommonCmd::AlwaysEnabled<int>, &GlobalCmd::SeeThroughIsActive));
-			globalCommands.Append(GlobalCommand(int2(2,2),"Clip-View Down", &GlobalCmd::SeeThroughDown, &GlobalCmd::SeeThroughIsActive2, &CommonCmd::AlwaysFalse<int>));
-			globalCommands.Append(GlobalCommand(int2(3,2),"Clip-View Up", &GlobalCmd::SeeThroughUp, &GlobalCmd::SeeThroughIsActive2, &CommonCmd::AlwaysFalse<int>));
+			globalCommands.Append(GlobalCommand(int2(0,2),"Highlight Compounds", &GlobalCmd::ToggleCompoundHightlights
+					, GlobalPermaSwitch(anyCompoundsColored)
+				));
+			globalCommands.Append(GlobalCommand(int2(1,2),"Clip Terrain", &GlobalCmd::ToggleSeeThrough
+					,GlobalPermaSwitch(Grid::SeeThrough::IsEnabled)
+				));
+			globalCommands.Append(GlobalCommand(int2(2,2),"Clip-View Down", &GlobalCmd::SeeThroughDown
+					,[](int,bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive(0) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
+				));
+			globalCommands.Append(GlobalCommand(int2(3,2),"Clip-View Up", &GlobalCmd::SeeThroughUp
+					,[](int,bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive(0) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
+				));
 
-			globalCommands.Append(GlobalCommand(int2(2,0),"Hide Objects", &GlobalCmd::ToggleObjectView, &CommonCmd::AlwaysEnabled<int>, &GlobalCmd::ObjectsAreHidden));
+			globalCommands.Append(GlobalCommand(int2(2,0),"Hide Objects", &GlobalCmd::ToggleObjectView
+					,GlobalPermaSwitch([](){return !objectView;})
+				));
 
 
 			globalCommands.Append(GlobalCommand(int2(0,1),"Show Resources", [](int)
-			{
-				resourceView = !resourceView;
-				for (int j = 0; j < BaseGrid::NumFamilies; j++)
-					Grid::low.family[j].normal.resourceOutdated = true;
+					{
+						resourceView = !resourceView;
+						for (int j = 0; j < BaseGrid::NumFamilies; j++)
+							Grid::low.family[j].normal.resourceOutdated = true;
 			
-			}, &CommonCmd::AlwaysEnabled<int>, [](int)->bool
-			{
-				return resourceView;
-			}));
+					}
+					,GlobalPermaSwitch(resourceView)
+				));
 
 			globalCommands.Append(GlobalCommand(int2(1,1),"Show Ranges", [](int)
-			{
-				showFriendlyRanges = !showFriendlyRanges;
-			}, &CommonCmd::AlwaysEnabled<int>, [](int)->bool
-			{
-				return showFriendlyRanges;
-			}));
+					{
+						showFriendlyRanges = !showFriendlyRanges;
+					}
+					, GlobalPermaSwitch(showFriendlyRanges)
+				));
 			globalCommands.Append(GlobalCommand(int2(2,1),"Show Hostile Ranges", [](int)
-			{
-				showHostileRanges = !showHostileRanges;
-			}, &CommonCmd::AlwaysEnabled<int>, [](int)->bool
-			{
-				return showHostileRanges;
-			}));
+					{
+						showHostileRanges = !showHostileRanges;
+					}
+					,GlobalPermaSwitch(showHostileRanges)
+				));
 
 			//ASSERT__(Grid::Resource::all.IsNotEmpty());	//wrong order if this fires
 			//for (index_t i = 0; i < Grid::Resource::all.Count(); i++)
@@ -298,8 +349,10 @@ namespace Objects
 	{
 		#ifdef HAS_WINDOW
 			Renderer::Destroy();
-			skyLinks.Clear();
 		//	hexGrid.Clear();
+		#endif
+		#ifdef CLIENT
+			skyLinks.Clear();
 		#endif
 		structures.Clear();
 		structurePrototypes.Clear();
@@ -727,7 +780,7 @@ namespace Objects
 
 	void			FlushAllData()
 	{
-		LogEvent(EventType::Notification,nullptr,"Flushing scene data");
+		LogEvent(EventClass::Preset::uncommon,"Flushing scene data");
 
 		#ifdef CLIENT	//temporary. once i figured out good values the limit will be restored from file and clearing is valid for server too
 			RuntimeConfig::UnitLimits::Reset();
@@ -745,18 +798,18 @@ namespace Objects
 		vehicleGrid.Fill(PVehicle());
 		structureGrid.Fill(PStructure());
 		#ifdef CLIENT
-			#ifdef HAS_WINDOW
-				skyLinks.Clear();
-			#endif
+			skyLinks.Clear();
 			Marker::FlushAll();
 			#ifndef NO_HIBERNATION
 				uplinkTraffic = 0;
 				onlineUplinkTraffic = 0;
 			#endif
 			#ifdef HAS_WINDOW
+				Renderer::Flush();
 				Deselect(false);
 				resourceView = false;
 				objectView = true;
+				anyCompoundsColored = false;
 				hasArrowCellTarget = false;
 				showArrow = false;
 				arrowFrom = float3();

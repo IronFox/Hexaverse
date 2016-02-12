@@ -25,6 +25,19 @@ Last verified to compile in both modes Aug 22 2015
 
 
 
+/** WIRELESS_VEHICLES
+Effective only if CONNECTOR_LESS is NOT defined.
+Indicates that most vehicles have no internal storage, and draw automatically from compounds within a certain
+range. Exceptions to this rule are transport vehicles which serve as compound-substitudes.
+Transport vehicles can transfer to and from any compound or transport vehicle within transfer range.
+If there is but one choice then transfer is done without additional interaction.
+Any active compound connection of vehicles is visualized in the scene, as are areas of influence it the
+respective visualization mode has been enabled.
+*/
+#define WIRELESS_VEHICLES
+
+
+
 /** NO_MUNITION
 If defined, the ammunition resource is removed from the system. Vehicles and towers that would previous
 require this resource type, now require no munition to fire.
@@ -71,5 +84,9 @@ Effective only if CONNECTOR_LESS is not defined.
 Define in the project settings, not here.
 */
 
+/* DEBUG_ACCESS_RESTRICTIONS
+If defined, activates visual controls on hostile entities and ghosts. Server must reject any such attempts.
+Define in the project settings, not here.
+*/
 
 #endif

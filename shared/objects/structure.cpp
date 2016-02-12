@@ -9,6 +9,7 @@
 	#include "rendering.h"
 	#include "visualCommands.h"
 	#include "../../client/components/dialog.h"
+	#include "interface.h"
 #endif
 
 #include "gridAndChoices.h"
@@ -21,6 +22,7 @@
 
 #ifndef CLIENT
 	#include "faction.h"
+	#include "../runtimeConfig.h"
 #endif
 
 namespace Objects
@@ -33,7 +35,7 @@ namespace Objects
 	it currently knows about.
 	*/
 	Buffer0<PStructure>			structures;
-	#ifdef HAS_WINDOW
+	#ifdef CLIENT
 		/**
 		Filter list containing only SkyPorts. Used to faster render certain effects.
 		*/
@@ -80,7 +82,8 @@ namespace Objects
 
 		/*static*/ IconCommand		VehicleStore::cmdLeft,
 									VehicleStore::cmdRight;
-		/*static*/ Geometry			VehicleStore::interConnector;
+		/*static*/ Geometry			VehicleStore::interConnector,
+									Generator::reactorConnector;
 
 		/*static*/ VehicleConstructionCommand	SkyPort::formerConstructionCommand;
 		/*static*/ SatelliteConstructionCommand	SkyPort::skyHubConstructionCommand;
@@ -149,10 +152,19 @@ namespace Objects
 
 	#ifndef CLIENT
 
+		void						WorkingStructure::SetEnabledOverride(bool b, bool registerChange/*=true*/)
+		{
+			isEnabled = b;
+			if (registerChange)
+				RegisterChange(EnableChanged,0);
+		
+		}
+
 	
 		/*virtual override*/ void Tower::Attack(float&attackTime)
 		{
 			//timeAt = attackTime;
+			attackTime = timeAt = std::max(attackTime,timeAt)+timeEpsilon;
 
 
 			ASSERT__(attackQueue.IsNotEmpty());
@@ -161,7 +173,7 @@ namespace Objects
 
 
 			//const Grid::LCellIdI target = task.foci.Pop();
-			float3 dir = Grid::low.cells[target.target.stackID].centerVertex.xyz * Grid::ToRadius(target.target.height) - this->system.w.xyz;
+			float3 dir = Grid::low.cells[target.target.stackID].centerVertex.xyz * Grid::ToRadius(target.target.height) - this->GetWorldPosition();
 			float3 innerDir;
 			Mat::rotate(this->inverse,dir,innerDir);
 			TVec3<> t0;
@@ -213,10 +225,10 @@ namespace Objects
 					ChangeStorage(*this,attackTime, turret->ammoType,-turret->ammoNeedPerShot);
 				else
 				{
-					ResourceVector change;
 					RefreshCompoundCoverageIfNeeded(timeAt);
-					change.level[turret->ammoType] = turret->ammoNeedPerShot;
-					GetCompound().Collect(change,timeAt);
+					ResourceVector change;
+					change.level[turret->ammoType] = -turret->ammoNeedPerShot;
+					GetCompound().ChangeStorage(change,timeAt);
 					//ASSERT__(change.IsEmpty());
 				}
 				
@@ -237,7 +249,7 @@ namespace Objects
 			}
 			else
 			{
-				LogEvent(EventType::EntityProcessFailed,this,"Unable to plot trajectory to target");
+				LogEvent(EventClass::Preset::operationAborted,this,"Unable to plot trajectory to target");
 			}
 
 
@@ -268,12 +280,12 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void			Tower::OnConstructionFinished(float atTime)
+		/*virtual override*/ void			Tower::OnConstructionFinished(float&atTime)
 		{
 			Super::OnConstructionFinished(atTime);
 			ChangeStorage(*this,atTime,turret->ammoType,GetMaxStorageCapacity().level[turret->ammoType] - storage.level[turret->ammoType]);
 			//storage.level[Resource::Munitions] = GetMaxStorageCapacity().level[Resource::Munitions];
-			//LogEvent(EventType::MinorEntityProcess,this,"Munition storage changed to "+String(storage.level[Resource::Munitions]));
+			//LogEvent(EventSignificance::Common,this,"Munition storage changed to "+String(storage.level[Resource::Munitions]));
 
 		}
 
@@ -283,7 +295,7 @@ namespace Objects
 		{
 			if (!HasAmmoForShot(entityTime) || empDamageLevel != 0 || IsHibernating())
 			{
-				//LogEvent(EventType::CommandRejected,this,"Insufficient ammunition");
+				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;
 			}
 
@@ -533,7 +545,7 @@ namespace Objects
 		{
 			changed = false;
 
-			LogEvent(EventType::MinorEntityProcess, this, "Recompiling geometry");
+			LogEvent(EventClass::Preset::common, this, "Recompiling geometry");
 			localMesh.ClearCompletely();
 
 			{
@@ -560,8 +572,8 @@ namespace Objects
 						//const float3&b0 = Grid::low.cells[this->location.stackID].cornerCenter;
 						//const float3&b1 = Grid::low.cells[(*c)->location.stackID].cornerCenter;
 
-						const TVec3<>&center0 = this->system.w.xyz,
-									&center1 = c->system.w.xyz;
+						const TVec3<>&center0 = this->GetWorldPosition(),
+									&center1 = c->GetWorldPosition();
 
 						const float height0 = Vec::length(center0),
 									height1 = Vec::length(center1),
@@ -631,7 +643,7 @@ namespace Objects
 		#endif
 	}
 	
-	void	Structure::DisconnectFromNeighborhood(float atTime)
+	void	Structure::DisconnectFromNeighborhood(float&atTime)
 	{
 		foreach (this->connectedTo,conn)
 		{
@@ -644,15 +656,12 @@ namespace Objects
 	}
 
 
-	void Structure::OnConstructionFinished(float atTime)
+	void Structure::OnConstructionFinished(float&atTime)
 	{
 		Super::OnConstructionFinished(atTime);
 
 
-		if (IsBroad())
-			CommonRegisterBroadStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
-		else
-			CommonRegisterNarrowStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
+		CommonRegisterStructure(location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
 
 		TStructureNeighborhood	neighborhood;
 		GetNeighborhood(owner,ConnectsToDifferentOwnership(), location, neighborhood);
@@ -666,7 +675,7 @@ namespace Objects
 		//String dbgStr;
 		//foreach (neighborhood,n)
 		//	dbgStr += ", "+ n->get()->GetName();
-		//LogEvent(EventType::Debug,nullptr, "Neighborhood of "+s->GetName()+"[owner "+s->owner.ToString()+"]@"+s->location.ToString()+": "+dbgStr);
+		//LogEvent(EventSignificance::Debug,nullptr, "Neighborhood of "+s->GetName()+"[owner "+s->owner.ToString()+"]@"+s->location.ToString()+": "+dbgStr);
 
 		//Structure&_s = *s;
 		}
@@ -694,7 +703,18 @@ namespace Objects
 				#ifdef HAS_WINDOW
 					changed = c->changed = Structure::anyChanged = true;
 				#endif
-				LogEvent(EventType::MinorEntityProcess,nullptr, "Connection established between "+GetName()+" and "+c->GetName());
+				c->OnNewConnection(_this, between, atTime);
+				if (!c->connectedTo.Contains(_this))
+				{
+					//this can happen when placing new structures and c is a nexus port that changes ownership as a result, and thus reconnects to all existing structures which this is not yet a part of
+					DBG_ASSERT__(!connectedTo.Contains(c));
+					connectedTo << c;
+					c->connectedTo << _this;
+					c->OnNewConnection(_this, between, atTime);
+					ASSERT__(c->connectedTo.Contains(_this));
+				}
+				_this->OnNewConnection(c, between, atTime);
+				LogEvent(EventSignificance::Common,nullptr, "Connection established between "+GetName()+" and "+c->GetName()+" at time "+String(atTime));
 				#ifdef HAS_WINDOW
 					if (c->changed)
 						c->Recompile();
@@ -765,16 +785,13 @@ namespace Objects
 
 
 
-	/*virtual*/ void Structure::OnDestroy(float atTime)
+	/*virtual*/ void Structure::OnDestroy(float&atTime)
 	{
 		Super::OnDestroy(atTime);
-		LogEvent(EventType::Debug,this,"Unregistering...");
-		if (IsBroad())
-			CommonUnregisterBroadStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
-		else
-			CommonUnregisterNarrowStructure(location,GetStructCountHeight(),HasFoundation(),atTime);
+		LogEvent(EventSignificance::Debug,this,"Unregistering at time="+String(atTime)+"...");
+		CommonUnregisterStructure(location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
 
-		LogEvent(EventType::Debug,this,"Disconnecting...");
+		LogEvent(EventClass::Preset::debug,this,"Disconnecting...");
 		DisconnectFromNeighborhood(atTime);
 
 		#ifdef HAS_WINDOW
@@ -798,15 +815,14 @@ namespace Objects
 					SignalRestoreCoreLink(mine->id);
 				}
 			},
-			[](const PWorldEntity&s, bool controlEnabled)->bool
+			[](const PWorldEntity&s, bool controlEnabled)
 			{
 				if (!controlEnabled)
-					return false;
+					return BaseCommand::Flags::None;
 				PMine mine = To<Mine>::DynamicCast(s);
-				return mine && !mine->IsLinkedToCore();
+				return mine && !mine->IsLinkedToCore() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 			},
-			&CommonCmd::AlwaysFalse<PWorldEntity const&>
-			,[](const PWorldEntity&, int&mineralCostOut, int&timeCostOut){mineralCostOut = 0; timeCostOut = 0;}
+			[](const PWorldEntity&, int&mineralCostOut, int&timeCostOut){mineralCostOut = 0; timeCostOut = 0;}
 			);
 		#endif
 	}
@@ -835,16 +851,16 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			geometry.Clear();
-			commands << IconCommand(int2(4,0), "Abort", &VehicleCmd::AbortOperation, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::AlwaysFalse<PWorldEntity const&>
+			commands << IconCommand(int2(4,0), "Abort", &VehicleCmd::AbortOperation, &CommonCmd::CommonButtonCheck
 						,NoCosts
 			);
-			commands << IconCommand(int2(4,1), "Undo", &VehicleCmd::UndoOperation, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::AlwaysFalse<PWorldEntity const&>
+			commands << IconCommand(int2(4,1), "Undo", &VehicleCmd::UndoOperation, &CommonCmd::CommonButtonCheck
 						,NoCosts
 			);
-			commands << IconCommand(int2(5,1), "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::AttackMode>
+			commands << IconCommand(int2(5,1), "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>
 						,NoCosts
 			);
-			commands << IconCommand(int2(5,0), "Demolish",&SignalRemoval,&CommonCmd::MostlyEnabled<PWorldEntity const&>,&CommonCmd::AlwaysFalse<PWorldEntity const&>
+			commands << IconCommand(int2(5,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck
 						,NoCosts
 			);
 		#endif
@@ -914,12 +930,12 @@ namespace Objects
 		{
 			if (attackQueue.Count() >= MaxStructureTasks)
 			{
-				LogEvent(EventType::CommandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
+				LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
 				return false;
 			}
 			if (!turret->CanAttack())
 			{
-				LogEvent(EventType::CommandRejected,this,"This tower cannot attack");
+				LogEvent(EventClass::Preset::commandRejected,this,"This tower cannot attack");
 				return false;
 			}
 
@@ -932,21 +948,22 @@ namespace Objects
 
 				if (!CanHit(target))
 				{
-					LogEvent(EventType::CommandRejected,this,"Destination out of range");
+					LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 					return false;
 				}
 			}
 
+			timeAt += timeEpsilon;
 			AttackTask&cmd = attackQueue.Push();
 //			cmd.id.Generate();
 			cmd.target = target;
 			cmd.autoTarget = autoTarget;
-			SignalChange(TasksChanged,0);
+			SignalChange(TasksChanged,timeAt);
 			return true;
 		}
 
 
-		/*virtual override*/ bool			Tower::DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			Tower::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 		
 			if (mode != Objects::CursorMode::AttackMode || !leftClick)
@@ -955,7 +972,7 @@ namespace Objects
 			{
 				if (!AttackNext(destination,false))
 					return false;
-				LogEvent(EventType::MinorEntityProcess,this,"Issued tower attack to "+destination.ToString());
+				LogEvent(EventSignificance::Common,this,"Issued tower attack to "+destination.ToString());
 			}
 			return true;
 		}
@@ -1050,7 +1067,7 @@ namespace Objects
 		return GetCompound().total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
 	}
 
-	bool	Tower::HasAmmoForShot() const
+	bool	Tower::HasAmmoForShot()
 	{
 		return GetCompound().total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
 		//compoundID < compounds.Count() && compounds[compoundID].total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
@@ -1140,35 +1157,9 @@ namespace Objects
 
 
 
-
-
-
-	/*static*/ void Structure::ChangeNarrowStructCount(const Grid::LCellIdI&location, int height, bool hasFoundation, int changeDirection, float atTime)
+	/*static*/ void Structure::ChangeStructCount(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime)
 	{
-		const int lowEdge = hasFoundation ? -1 : 0;
-		#ifdef HYBRID_GRID
-			const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-		#else
-			const UINT32 higher = location.cellID;
-		#endif
-		for (int h = lowEdge; h < height; h++)
-			Grid::actualWorld.cellStack[higher].ChangeStructureCounterI(location.height+h,changeDirection);
-		InvalidateTerrain(location,atTime);
-	}
-
-	/*static*/ void	Structure::CommonRegisterNarrowStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime)
-	{
-		ChangeNarrowStructCount(location,height,hasFoundation,+1,atTime);
-	}
-	/*static*/ void	Structure::CommonUnregisterNarrowStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime)
-	{
-		ChangeNarrowStructCount(location,height,hasFoundation,-1,atTime);
-	}
-
-
-	/*static*/ void Structure::ChangeBroadStructCount(const Grid::LCellIdI&location, int height, bool hasFoundation, int changeDirection, float atTime)
-	{
-		LogEvent(EventType::Debug,nullptr,"ChangeBroadStructCount("+location.ToString()+", height="+String(height)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
+		LogEvent(EventSignificance::Debug,nullptr,"ChangeStructCount("+location.ToString()+", broadHeight="+String(broadHeight)+", height="+String(totalHeight)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
 
 		{
 			const int lowEdge = hasFoundation ? -1 : 0;
@@ -1178,36 +1169,39 @@ namespace Objects
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
 					Grid::CellStack&stack = Grid::actualWorld.cellStack[n.neighborID[j]];
-					for (int h = lowEdge; h < height; h++)
+					for (int h = lowEdge; h < broadHeight; h++)
 						stack.ChangeStructureCounterI(location.height+h,changeDirection);
 				}
 				Grid::CellStack&stack = Grid::actualWorld.cellStack[higher];
 			#else
 				Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
 			#endif
-			for (int h = lowEdge; h < height; h++)
+			for (int h = lowEdge; h < broadHeight; h++)
 				stack.ChangeStructureCounterI(location.height+h,2*changeDirection);
+			for (int h = broadHeight; h < totalHeight; h++)
+				stack.ChangeStructureCounterI(location.height+h,changeDirection);
 		}
+
 		InvalidateTerrain(location,atTime);
 	}
 
-	/*static*/ void Structure::CommonRegisterBroadStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime)
+	/*static*/ void	Structure::CommonRegisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
 	{
-		ChangeBroadStructCount(location,height,hasFoundation,+1,atTime);
+		ChangeStructCount(location,broadHeight, totalHeight,hasFoundation,+1,atTime);
+	}
+	/*static*/ void	Structure::CommonUnregisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
+	{
+		ChangeStructCount(location,broadHeight, totalHeight,hasFoundation,-1,atTime);
 	}
 
-	/*static*/ void Structure::CommonUnregisterBroadStructure(const Grid::LCellIdI&location, int height, bool hasFoundation, float atTime)
-	{
-		ChangeBroadStructCount(location,height,hasFoundation,-1,atTime);
-	}
 
-	/*static*/	Structure::placement_t	Structure::CommonCheckStructurePlacement(const Grid::LCellIdI&location, int height, bool isBroad)
+
+	/*static*/	Structure::placement_t	Structure::CommonCheckStructurePlacement(const Grid::LCellIdI&location, int broadHeight, int totalHeight)
 	{
 		if (location.height == badHeight)
 			return BadHeight;
 		#ifdef HYBRID_GRID
 			const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-			if (isBroad)
 			{
 				const auto&n = Grid::high.grid.GetCell(higher).neighborhood;
 				for (int j = 0; j < n.numNeighbors; j++)
@@ -1217,7 +1211,7 @@ namespace Objects
 	//					return LacksFullFoundation;
 					if (stack.GetCellI(location.height).content != Grid::CellStack::Cell::Content::Clear)
 						return GroundLevelObstruction;
-					for (int h = 1; h < height; h++)
+					for (int h = 1; h < broadHeight; h++)
 						if (stack.GetCellI(location.height + h).content != Grid::CellStack::Cell::Content::Clear)
 							return UpperLevelObstruction;
 				}
@@ -1230,13 +1224,50 @@ namespace Objects
 		//	return LacksFullFoundation;
 		if (stack.GetCellI(location.height).content != Grid::CellStack::Cell::Content::Clear)
 			return GroundLevelObstruction;
-		for (int h = 1; h < height; h++)
+		for (int h = 1; h < totalHeight; h++)
 			if (stack.GetCellI(location.height + h).content != Grid::CellStack::Cell::Content::Clear)
 				return UpperLevelObstruction;
 
 
 
 		return CanPlace;
+	}
+
+	/*virtual override*/ void				Generator::OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime)
+	{
+		Super::OnNewConnection(other,acrossHighCell,atTime);
+		if (connectedToReactor.expired() && other->location.height == location.height)
+		{
+			PReactorCore reactor = To<ReactorCore>::DynamicCast(other);
+			if (reactor)
+			{
+				connectedToReactor = reactor;
+				#ifdef HAS_WINDOW
+					changed = anyChanged = true;
+				#endif
+			}
+		}
+	}
+
+	/*virtual override*/ void				Generator::OnConnectionLost(const PStructure&s, UINT32 acrossHighCell, float atTime)
+	{
+		Super::OnConnectionLost(s,acrossHighCell,atTime);
+		PReactorCore core = connectedToReactor.lock();
+		if (core == s || !core)
+		{
+			foreach (connectedTo,conn)
+			{
+				core = To<ReactorCore>::DynamicCast(*conn);
+				if (core && core->location.height == location.height)
+				{
+					connectedToReactor = core;
+					#ifdef HAS_WINDOW
+						changed = anyChanged = true;
+					#endif
+					return;
+				}
+			}
+		}
 	}
 
 
@@ -1395,7 +1426,7 @@ namespace Objects
 				RegisterNewOffGrid(v,atTime,setHealthToFullIfNew);
 			}
 		}
-		LogEvent(EventType::EntityProcess,v.get()," Now stored in "+GetNiceName());
+		LogEvent(EventSignificance::Common,v.get()," Now stored in "+GetNiceName());
 		v->storedIn = To<VehicleStore>::Cast(shared_from_this());
 		//v->location = location;
 		//#ifndef CLIENT
@@ -1413,12 +1444,16 @@ namespace Objects
 						deployingVehicle.reset();
 					else
 						deployingVehicle = w.lock();
-				},&CommonCmd::MostlyEnabled<const PWorldEntity&>,
-				[w](const PWorldEntity&storeEntity)
+				},
+				[w](const PWorldEntity&storeEntity, bool controlEnabled)
 				{
+					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(storeEntity,controlEnabled);
 					PVehicleStore s = To<VehicleStore>::DynamicCast(storeEntity);
-					return deployingVehicle && s == selectedEntity && deployingVehicle == w.lock() && deployingVehicle->health > 0;
-				});
+					if (deployingVehicle && s == selectedEntity && deployingVehicle == w.lock() && deployingVehicle->health > 0)
+						rs |= BaseCommand::Flags::IsPermaActive;
+					return rs;
+				}
+				);
 			this->localStore.last().deployCommand.RasterizeImage();
 		#endif
 
@@ -1460,6 +1495,14 @@ namespace Objects
 
 			interConnector.LoadFromObj("objects/vehicleStoreConnector.obj");
 		}
+
+		/*virtual override*/ void			Generator::PrototypeLoadGeometry()
+		{
+			Super::PrototypeLoadGeometry();
+
+			reactorConnector.LoadFromObj("objects/reactorCoreConnector.obj");
+		}
+
 	#endif
 
 
@@ -1486,11 +1529,11 @@ namespace Objects
 						RefreshCommands(true);
 					}
 				},
-				[](const PWorldEntity&, bool controlEnabled)->bool
+				[](const PWorldEntity&, bool controlEnabled)
 				{
-					return storeOffset > 0 && controlEnabled;
+					return storeOffset > 0 && controlEnabled
+						 ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 				},
-				[](const PWorldEntity&)->bool	{return false;},
 				NoCosts);
 
 			cmdRight = IconCommand(int2(),"Right",
@@ -1512,13 +1555,13 @@ namespace Objects
 					s->UpdateIconLocations();
 					RefreshCommands(true);
 				},
-				[](const PWorldEntity&store, bool controlEnabled)->bool
+				[](const PWorldEntity&store, bool controlEnabled)
 				{
 					PVehicleStore s = To<VehicleStore>::DynamicCast(store);
 					return s && s->CountVehiclesInPark() > storeOffset + MaxVisibleStoreItems
-					  && controlEnabled;
+					  && controlEnabled
+					   ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 				},
-				[](const PWorldEntity&)->bool	{return false;},
 				NoCosts);
 			cmdRight.coords = cmdLeft.coords + int2(MaxVisibleStoreItems+1,0);
 
@@ -1595,7 +1638,7 @@ namespace Objects
 			String error;
 			if (!owner->CanSpawnFromStorage(v,error))
 			{
-				LogEvent(EventType::CommandRejected,this,"Failed to check out "+v->GetNiceName()+": "+error);
+				LogEvent(EventClass::Preset::commandRejected,this,"Failed to check out "+v->GetNiceName()+": "+error);
 				return;
 			}
 		}
@@ -1607,7 +1650,7 @@ namespace Objects
 		#endif
 		ASSERT3__(v->storedIn.lock().get() == this, v->GetName(),v->storedIn.lock()->ToEntity().GetName(),GetName());
 		ASSERT2__(RemoveStored(v),v->GetName(),GetName());
-		LogEvent(EventType::Debug,this,"Checking out "+v->GetName()+" to "+targetLocation.ToString());
+		LogEvent(EventSignificance::Debug,this,"Checking out "+v->GetName()+" to "+targetLocation.ToString());
 		#ifndef CLIENT
 			
 		
@@ -1618,11 +1661,11 @@ namespace Objects
 			{
 				if (v->health <= 0)
 				{
-					LogEvent(EventType::Debug,this,v->GetName()+" did not survive checkout to "+targetLocation.ToString());
+					LogEvent(EventSignificance::Debug,this,v->GetName()+" did not survive checkout to "+targetLocation.ToString());
 				}
 				else
 				{
-					LogEvent(EventType::Fatal,this,"Checkout of "+v->GetName()+" failed unexpectedly: "+String(rs));
+					LogEvent(EventClass::Preset::fatal,this,"Checkout of "+v->GetName()+" failed unexpectedly: "+String(rs));
 					FATAL__("Checkout failed");
 				}
 			}
@@ -1727,7 +1770,7 @@ namespace Objects
 
 	#endif
 
-	/*virtual override*/ void				VehicleStore::OnDestroy(float atTime)
+	/*virtual override*/ void				VehicleStore::OnDestroy(float&atTime)
 	{
 		//Buffer0<WVehicleStore>	copy = sneighbors;
 		Super::OnDestroy(atTime);	//disconnects from neighborhood. sneighbors should be empty now
@@ -1796,7 +1839,7 @@ namespace Objects
 	#ifndef CLIENT
 
 	
-		/*static*/	void Structure::CommonFixTerrain(const WorldEntity*e, const Grid::LCellIdI&location,  const Grid::Content foundationType, int height, bool signalChange, float atTime, bool deep, bool requireCentralBlock, bool broadFoundation)
+		/*static*/	void Structure::CommonFixTerrain(const WorldEntity*e, const Grid::LCellIdI&location,  int broadHeight, int totalHeight, bool signalChange, float atTime)
 		{
 			#ifdef HYBRID_GRID
 				const UINT32 higher = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
@@ -1806,33 +1849,14 @@ namespace Objects
 			#endif
 			//const Grid::Content::type_t foundationType = s.GetFoundationType();
 			bool anyChanged = false;
-			const int needStrength = Grid::CellStack::Cell::typeStrength[foundationType];
 			#ifdef HYBRID_GRID
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
 					Grid::CellStack&stack = Grid::actualWorld.cellStack[n.neighborID[j]];
-					if (broadFoundation && stack.GetCellI(location.height - 1).GetStrength() < needStrength)
-					{
-						LogEvent(EventType::MinorEntityProcess,e,"Strengthening cell "+Grid::HCellIdI(n.neighborID[j],location.height-1).ToString());
-
-						anyChanged |= stack.LocalOverwrite(location.height - 1, foundationType);
-						if (deep)
-						{
-							int h = location.height-2;
-							int bottom = -Grid::CellStack::HalfRange;
-							if (!Grid::CellStack::bottom.IsClearOrWaterIgnoreStructure())
-								//bottom = h;
-								while (h >= bottom && stack.GetCellI(h).IsClearOrWater())
-								{
-									anyChanged |= stack.LocalOverwrite(h,  Grid::CellStack::Cell::Content::Earth);
-									h--;
-								}
-						}
-					}
-					for (int a = 0; a < height; a++)
+					for (int a = 0; a < broadHeight; a++)
 						if (stack.GetCellI(location.height+a).content != Grid::Content::Clear)
 						{
-							LogEvent(EventType::MinorEntityProcess,e,"Clearing cell "+Grid::HCellIdI(n.neighborID[j],location.height+a).ToString());
+							LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(n.neighborID[j],location.height+a).ToString());
 
 							anyChanged |= stack.MakeLocalHole(location.height+a);
 						}
@@ -1841,7 +1865,7 @@ namespace Objects
 			Grid::CellStack&stack = Grid::actualWorld.cellStack[higher];
 			//if (requireCentralBlock && stack.GetCellI(location.height - 1).GetStrength() < needStrength)
 			//{
-			//	LogEvent(EventType::MinorEntityProcess,e,"Strengthening cell "+Grid::HCellIdI(higher,location.height-1).ToString());
+			//	LogEvent(EventSignificance::Common,e,"Strengthening cell "+Grid::HCellIdI(higher,location.height-1).ToString());
 			//	anyChanged |= stack.LocalOverwrite(location.height - 1, foundationType);
 			//	if (deep)
 			//	{
@@ -1856,10 +1880,10 @@ namespace Objects
 			//			}
 			//	}
 			//}
-			for (int a = 0; a < height; a++)
+			for (int a = 0; a < totalHeight; a++)
 				if (stack.GetCellI(location.height+a).content != Grid::Content::Clear)
 				{
-					LogEvent(EventType::MinorEntityProcess,e,"Clearing cell "+Grid::HCellIdI(higher,location.height+a).ToString());
+					LogEvent(EventSignificance::Common,e,"Clearing cell "+Grid::HCellIdI(higher,location.height+a).ToString());
 
 					anyChanged |= stack.MakeLocalHole(location.height+a);
 				}
@@ -1887,25 +1911,12 @@ namespace Objects
 		}
 
 
-		void					Tower::CorrectTerrain(bool signalChange, float atTime, bool deep)
-		{
-			Structure::CommonFixTerrain(this,location, Grid::Content::Foundation,2,signalChange,atTime,deep,false,false);
-		}
 	#endif
 
 	
-	/*virtual override*/ bool				Tower::SignalEnvironmentChange(const TStructureNeighborhood&neighborhood,float atTime)
+	/*virtual*/ void				Structure::SignalLostNeighbor(const PStructure&other, float&atTime)
 	{
-		#ifndef CLIENT
-			CorrectTerrain(false,atTime,false);
-		#endif
-
-
-		return Super::SignalEnvironmentChange(neighborhood,atTime);
-	}
-
-	/*virtual*/ void				Structure::SignalLostNeighbor(const PStructure&other, float atTime)
-	{
+		atTime += timeEpsilon;
 		for (index_t i = 0; i < connectedTo.Count(); i++)
 		{
 			const Connection&conn = connectedTo[i];
@@ -1941,23 +1952,14 @@ namespace Objects
 
 	/*virtual*/ bool				Structure::SignalEnvironmentChange(const TStructureNeighborhood&neighborhood, float atTime)
 	{
+		#ifndef CLIENT
+			CorrectTerrain(false,atTime);
+		#endif
 		#ifdef HYBRID_GRID
 			const UINT32 high = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
 			const auto&n = Grid::high.grid.GetCell(high).neighborhood;
 		#endif
-		//if (!Grid::cellStack[high].GetCellI(location.height - 1).IsSolid() || Grid::cellStack[high].GetCellI(location.height).IsSolid())	//must be implemented by derivative structure, if necessary
-		//{
-		//	if (Grid::cellStack[high].GetCellI(location.height).IsSolid())
-		//	{
-		//		Grid::cellStack[high].Overwrite(location.height, Grid::CellStack::Cell::Content::LightStructure);
-		//	}
-		//	if (!Grid::cellStack[high].GetCellI(location.height - 1).IsSolid())
-		//		Grid::cellStack[high].Overwrite(location.height - 1, Grid::CellStack::Cell::Content::Foundation);
-
-		////	return false;
-		//}
-		//foreach(connectedTo, c)
-
+		
 		auto _this = To<Structure>::Cast(shared_from_this());
 		count_t limit = connectedTo.Count();
 		foreach(neighborhood, candidate)
@@ -1980,7 +1982,7 @@ namespace Objects
 					#ifdef HAS_WINDOW
 						changed = anyChanged = true;
 					#endif
-					LogEvent(EventType::MinorEntityProcess,nullptr, "Connection established between "+GetName()+" and "+c->GetName());
+					LogEvent(EventSignificance::Common,nullptr, "Connection established between "+GetName()+" and "+c->GetName());
 
 				}
 			}
@@ -2014,7 +2016,7 @@ namespace Objects
 				#endif
 				OnConnectionLost(Connection(c), between,atTime);
 				c->OnConnectionLost(Connection(_this),between,atTime);
-				LogEvent(EventType::MinorEntityProcess,nullptr, "Connection lost between "+GetName()+" and "+c->GetName());
+				LogEvent(EventSignificance::Common,nullptr, "Connection lost between "+GetName()+" and "+c->GetName());
 
 			}
 		}
@@ -2040,7 +2042,7 @@ namespace Objects
 
 
 	#ifndef CLIENT
-		/*virtual override*/ bool			VehiclePlant::DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			VehiclePlant::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			if (waypoints.Count() != 1)
 				return false;
@@ -2048,7 +2050,7 @@ namespace Objects
 			return true;
 		}
 
-		/*virtual override*/ bool			SkyPort::DirectTo(CursorMode::mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+		/*virtual override*/ bool			SkyPort::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			if (waypoints.Count() != 1)
 				return false;
@@ -2075,7 +2077,8 @@ namespace Objects
 		{
 			v.level[Resource::Energy] -= EnergyConsumption;
 
-			MobileEntityProducer::Tick(v);
+			float t = 0.f;	//buildings always come at the beginning
+			MobileEntityProducer::Tick(v,t);
 		}
 
 
@@ -2088,7 +2091,7 @@ namespace Objects
 			{
 				if (connectedToHub)
 				{
-					//LogEvent(EventType::EntityProcessFailed,this,"Connection to "+connectedTo->GetNiceName()+" lost");
+					//LogEvent(EventClass::Preset::operationAborted,this,"Connection to "+connectedTo->GetNiceName()+" lost");
 					connectedToHub->LoseGroundConnection();
 				}
 			}
@@ -2110,7 +2113,10 @@ namespace Objects
 		{
 			v.level[Resource::Energy] -= EnergyConsumption;
 			if (MobileEntityProducer::queue.IsNotEmpty())
-				MobileEntityProducer::Tick(v);
+			{
+				float t = 0;
+				MobileEntityProducer::Tick(v,t);
+			}
 
 
 
@@ -2296,14 +2302,16 @@ namespace Objects
 									SignalEnableStructure(*s2, !s2->IsEnabled());
 								}
 							}
-							,[](const PWorldEntity&e, bool controlEnabled)->bool
+							,[](const PWorldEntity&e, bool controlEnabled)
 							{
-								if (!controlEnabled)
-									return false;
+								BaseCommand::Flags rs = BaseCommand::Flags::None;
 								VehiclePlant*div = dynamic_cast<VehiclePlant*>(e.get());
-								return div != nullptr;// && div->CanEnable();
+								if (controlEnabled && div != nullptr)
+									rs |= BaseCommand::Flags::IsEnabled;
+								if (Cmd::IsEnabled(e))
+									rs |= BaseCommand::Flags::IsPermaActive;
+								return rs;
 							}
-							,&Cmd::IsEnabled
 							,NoCosts
 						);
 						break;
@@ -2329,14 +2337,15 @@ namespace Objects
 						}
 					}
 				},
-				[](const PWorldEntity&e, bool controlEnabled) -> bool
+				[](const PWorldEntity&e, bool controlEnabled)
 				{
 					if (!controlEnabled)
-						return false;
+						return BaseCommand::Flags::None;
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
-					return (plant != nullptr/* && plant->selectedBase && plant->selectedTurret*/);
-				}
-				,CommonCmd::AlwaysFalse<PWorldEntity const&>,
+					return (plant != nullptr/* && plant->selectedBase && plant->selectedTurret*/)
+						? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None
+						;
+				},
 				[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
 				{
 					PVehiclePlant p = To<VehiclePlant>::DynamicCast(e);
@@ -2363,10 +2372,13 @@ namespace Objects
 					if (plant)
 						plant->selectedBase = c;
 				}
-				,CommonCmd::MostlyEnabled<PWorldEntity const&>,[c](const PWorldEntity&e)
+				,[c](const PWorldEntity&e, bool controlEnabled)
 				{
+					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(e,controlEnabled);
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
-					return plant && plant->selectedBase == c;
+					if (plant && plant->selectedBase == c)
+						rs |= BaseCommand::Flags::IsPermaActive;
+					return rs;
 				});
 				at++;
 			}
@@ -2381,10 +2393,13 @@ namespace Objects
 					if (plant)
 						plant->selectedTurret = c;
 				}
-				,CommonCmd::MostlyEnabled<PWorldEntity const&>,[c](const PWorldEntity&e)
+				,[c](const PWorldEntity&e, bool controlEnabled)
 				{
+					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(e,controlEnabled);
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
-					return plant && plant->selectedTurret == c;
+					if (plant && plant->selectedTurret == c)
+						rs |= BaseCommand::Flags::IsPermaActive;
+					return rs;
 				});
 				at++;
 			}
@@ -2438,7 +2453,7 @@ namespace Objects
 						return;
 					SignalConstructionBegin(port->id, ConstName::VehicleBase_HoverBase, ConstName::Turret_Terraformer);
 				}
-				,CommonCmd::MostlyEnabled<PWorldEntity const&>,CommonCmd::AlwaysFalse<PWorldEntity const&>);
+				,CommonCmd::CommonButtonCheck);
 				
 				skyHubConstructionCommand = SatelliteConstructionCommand(int2(5,1), "Construct SkyHub", SkyHub::globalPrototype, [](const PWorldEntity&e)
 				{
@@ -2448,13 +2463,12 @@ namespace Objects
 					SignalConstructionBegin(port->id, ConstName::Type_SkyHub, ConstName::Empty);
 				}
 				,
-				[](const PWorldEntity&e, bool controlsEnabled)	->bool
+				[](const PWorldEntity&e, bool controlsEnabled)
 				{
 					if (!controlsEnabled)
-						return false;
-					return !GetSatellite(e->location.stackID);
-				},
-				CommonCmd::AlwaysFalse<PWorldEntity const&>);
+						return BaseCommand::Flags::None;
+					return !GetSatellite(e->location.stackID) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+				});
 			}
 		#endif
 
@@ -2477,6 +2491,7 @@ namespace Objects
 	/*virtual override*/ void				NexusPort::OnNewConnection(const Connection&other, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
+			//if (owner != other->owner && !RuntimeConfig::loadingPhase)
 			Super::OnNewConnection(other,acrossHighCell,atTime);
 			if (!IsWiredToAnything() && !other.wireless && owner != other.structure->owner)
 			{
@@ -2490,6 +2505,7 @@ namespace Objects
 	/*virtual override*/ void				NexusPort::OnConnectionLost(const Connection&c, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
+		//	if (connectedTo.IsEmpty() && owner != Faction::nexus && !RuntimeConfig::loadingPhase)
 			Super::OnConnectionLost(c,acrossHighCell,atTime);
 			if (!IsWiredToAnything() && owner != Faction::nexus)
 			{
@@ -2525,7 +2541,7 @@ namespace Objects
 					owner->acquiringNexusControl --;
 					DBG_ASSERT__(owner->acquiringNexusControl >= 0);
 					owner->nexusControl ++;
-					LogEvent(EventType::GameProgressRelated,this,"Control Acquired");
+					LogEvent( EventClass( EventSignificance::Important,EventFlavor::Gain ),this,"Control Acquired");
 					SignalNexusControlChange(owner);
 				}
 			}
@@ -2538,33 +2554,35 @@ namespace Objects
 
 		/*virtual override*/ void			NexusPort::OnEnabledChange()
 		{
-			if (owner != Faction::nexus)
+			if (!RuntimeConfig::loadingPhase)
 			{
-				if (!IsEnabled())
+				if (owner != Faction::nexus)
 				{
-					if (resistence > 0)
+					if (!IsEnabled())
 					{
-						DBG_ASSERT__(owner->acquiringNexusControl > 0);
-						owner->acquiringNexusControl--;
+						if (resistence > 0)
+						{
+							DBG_ASSERT__(owner->acquiringNexusControl > 0);
+							owner->acquiringNexusControl--;
+						}
+						else
+						{
+							DBG_ASSERT__(owner->nexusControl > 0);
+							owner->nexusControl--;
+						}
+						LogEvent(EventClass( RuntimeConfig::loadingPhase ? EventSignificance::Common : EventSignificance::Important,EventFlavor::Loss ),this,"Lost control");
 					}
 					else
 					{
-						DBG_ASSERT__(owner->nexusControl > 0);
-						owner->nexusControl--;
+						owner->acquiringNexusControl++;
+
+						LogEvent(EventClass( RuntimeConfig::loadingPhase ? EventSignificance::Common : EventSignificance::Uncommon,EventFlavor::Gain ),this,"Acquiring control");
+
 					}
-					LogEvent(EventType::GameProgressRelated,this,"Lost control");
+					resistence = ResistenceRounds;
+					RegisterChange(NexusControlChanged,0);
+					SignalNexusControlChange(owner);
 				}
-				else
-				{
-					owner->acquiringNexusControl++;
-
-					LogEvent(EventType::GameProgressRelated,this,"Acquiring control");
-
-				}
-
-				resistence = ResistenceRounds;
-				RegisterChange(NexusControlChanged,0);
-				SignalNexusControlChange(owner);
 			}
 		}
 	#endif
@@ -2590,7 +2608,7 @@ namespace Objects
 
 	void RefreshCompoundCoverage( float atTime) 
 	{
-		//LogEvent(EventType::Debug,nullptr,"Refreshing network coverage");
+		//LogEvent(EventSignificance::Debug,nullptr,"Refreshing network coverage");
 
 		#ifndef CONNECTOR_LESS
 
@@ -2656,6 +2674,9 @@ namespace Objects
 		#endif
 
 		RefreshCompoundStates(atTime);
+		#ifdef HAS_WINDOW
+			OnSelectionChange(true);
+		#endif
 	}
 
 
@@ -2691,15 +2712,25 @@ namespace Objects
 			);
 		}
 
+
+
 		/*virtual override*/ void			Generator::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
 			label.WrapAppendText("Enabled generators provide energy for the local compound."
 			" Since many structures consume "+String(ResourceTag(Resource::Energy))+" when enabled, generators are a crucial component of any active base."
+			" Combine with reactor cores for increased output."
 			);
 		}
 
+		/*virtual override*/ void			ReactorCore::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
+		{
+			Super::DescribeType(label,  descFlags);
+			label.MarkBriefEnd();
+			label.WrapAppendText("Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator, but multiple generators may be connected to the same reactor core."
+			);
+		}
 		/*virtual override*/ void			VehiclePlant::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{
 			Super::DescribeType(label,  descFlags);
@@ -2773,28 +2804,29 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ void				WorkingStructure::OnDestroy(float atTime)
+	/*virtual override*/ void				WorkingStructure::OnDestroy(float&atTime)
 	{
 		Super::OnDestroy(atTime);
 	}
 
 	#ifndef CLIENT
-		bool						WorkingStructure::SetEnabled(bool b, float atTime, bool refreshNetwork/*=true*/, force_t force/*=DontForce*/, bool signalStructure/*=true*/)
+		bool						WorkingStructure::SetEnabled(bool b, float&atTime, bool refreshNetwork/*=true*/, force_t force/*=DontForce*/, bool signalStructure/*=true*/)
 		{
 			if (isEnabled == b)
 			{
-				LogEvent(EventType::MinorEntityProcess,this,"Requested structure enable-state already set: "+String(b)+". Notifying client. Ignoring command.");
+				LogEvent(EventSignificance::Common,this,"Requested structure enable-state already set: "+String(b)+". Notifying client. Ignoring command.");
 				RegisterChange(EnableChanged,atTime);	//some state error, must be corrected
 				return true;
 			}
 			if (b && (force==EnableIfPossible && !CanEnable()))
 			{
-				LogEvent(EventType::EntityProcessFailed,this,"Cannot enable at this time");
+				LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable at this time");
 				RegisterChange(CanEnableChanged,atTime);	//might be off...
 				return false;
 			}
 			if (b && refreshNetwork)
 			{
+				Compound::lastDisabled = nullptr;
 				RefreshCompoundCoverageIfNeeded(atTime);
 //				if (compoundID < compounds.Count())
 				{
@@ -2802,16 +2834,21 @@ namespace Objects
 					String outWhy;
 					if (!network.CanEnable(this,outWhy))
 					{
-						LogEvent(EventType::EntityProcessFailed,this,"Cannot enable: Insufficient resource supply in compound ("+outWhy+")");
+						LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable: Insufficient resource supply in compound ("+outWhy+")");
 						return false;
 					}
 				}
 				//else
 				//{
-				//	LogEvent(EventType::InternalFault,this,"Compound ID out of bounds: "+String(compoundID)+"/"+String(compounds.Count()));
+				//	LogEvent(EventClass::Preset::error,this,"Compound ID out of bounds: "+String(compoundID)+"/"+String(compounds.Count()));
 				//	return false;
 				//}
 			}
+			atTime += timeEpsilon;
+			if (!b)
+				Compound::lastDisabled = this;
+			else
+				Compound::lastDisabled = nullptr;
 			isEnabled = b;
 			RegisterChange(EnableChanged,atTime);
 			if (signalStructure)
@@ -2824,20 +2861,18 @@ namespace Objects
 				//	compounds[compoundID].RefreshState(atTime);
 				//else
 				//{
-				//	LogEvent(EventType::InternalFault,this,"Compound ID out of bounds: "+String(compoundID)+"/"+String(compounds.Count()));
+				//	LogEvent(EventClass::Preset::error,this,"Compound ID out of bounds: "+String(compoundID)+"/"+String(compounds.Count()));
 				//}
 			}
 			return true;
 		}
+	#else
+		void					WorkingStructure::ApplyEnableChangeFromServer(bool b)
+		{
+			isEnabled = b;
+		}
+
 	#endif
-
-	void						WorkingStructure::SetEnabledOverride(bool b)
-	{
-		isEnabled = b;
-		
-	}
-
-
 
 
 }

@@ -57,7 +57,15 @@ namespace Objects
 	*/
 	namespace Component
 	{
+		enum operation_t
+		{
+			Construct,
+			Repair,
+			TerrainAdd,
+			TerrainRemove,
 
+			OperationCount
+		};
 
 		class Base 
 		{
@@ -117,7 +125,7 @@ namespace Objects
 
 			float							healthMultiplier = 1.f;
 			Resource						ammoType;
-			int								constructionSpeed,
+			int								operationSpeed[OperationCount],
 											weight,					//turret weight
 											damageLevel,
 											attacksPerRound,
@@ -129,7 +137,6 @@ namespace Objects
 				ResourceVector				baseStorageCapacity;
 			#endif
 			bool							ignoresVehicleMotion = false,	//indicates that the vehicle can fire and move at 100% each in the same round
-											canRepair = false,
 											dealsEMPDamage = false,
 											detectsResources = false,
 											continuousRotation = false,	//indicates that the turret should rotate continuously, regardless of server turret rotation commands
@@ -158,13 +165,15 @@ namespace Objects
 
 
 
-			/**/							Turret():constructionSpeed(0),weight(1),damageLevel(0),attacksPerRound(0),ammoNeedPerShot(1),
+			/**/							Turret():weight(1),damageLevel(0),attacksPerRound(0),ammoNeedPerShot(1),
 												#ifdef NO_MUNITION
 													ammoType(Resource::Minerals)
 												#else
 													ammoType(Resource::Munitions)
 												#endif
-												{}
+												{
+													memset(operationSpeed,0,sizeof(operationSpeed));
+												}
 
 			static void						TraceTrajectory(TrajectoryType, float flatRange, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps);
 			static TurretTrajectory			TraceTrajectory(TrajectoryType, float flatRange, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
@@ -272,6 +281,9 @@ namespace Objects
 			void							BuildBlastSystem(const TVec3<>&location, TMatrix4<>&system) const;
 
 			bool							CanAttack() const {return attacksPerRound > 0;}
+			bool							CanDo(operation_t op) const {return operationSpeed[op] > 0;}
+			bool							CanRepair() const {return CanDo(Repair);}
+			bool							CanConstruct() const {return CanDo(Construct);}
 			//bool							IsStandardOffensive() const
 			//{
 			//	return CanAttack() && 
@@ -288,6 +300,10 @@ namespace Objects
 				void						DescribeType(BaseCommand::Label&label, bool compound, const String&parentType, const OwnerParameter&owner);
 			#endif
 
+			/**
+			Checks whether or not the local turret could ever possibly consume resources
+			*/
+			bool							ConsumesResources(ResourceFlagSet&res) const;
 		};
 
 
@@ -306,7 +322,7 @@ namespace Objects
 			#endif
 
 			int								rangeModifier = 0,
-											constructionSpeedMultiplier,
+											operationSpeedMultiplier = 1,
 											baseMovementSpeed,		//ideal movement speed (if not encumbered)
 											carryingCapacity,		//turret weight tolerance before movement speed is reduced
 											baseHealth;			//!< Base health level
@@ -319,7 +335,7 @@ namespace Objects
 			Requirement						requirements;
 			bool							moveOnWater;
 	
-			/**/							VehicleBase():constructionSpeedMultiplier(1),baseHealth(2),ignoresVehicleAttacks(false)
+			/**/							VehicleBase():baseHealth(2),ignoresVehicleAttacks(false)
 			{
 				hindrance.road = 1;
 				hindrance.air = 2;
@@ -391,7 +407,7 @@ namespace Objects
 							return;
 						//if (vehicle->GetLastPointOfOrigin().height+1 >= Grid::CellStack::TopHeight)	//not the place of the client to decide
 						//{
-						//	LogEvent(EventType::CommandRejected
+						//	LogEvent(EventClass::Preset::commandRejected
 						//	return;
 						//}
 						SignalNewJob(vehicle, Command,ConstName::Empty);					
@@ -413,6 +429,7 @@ namespace Objects
 
 				void	CommitOperation(const PWorldEntity&);
 				bool	CommitIsPossibleC(const PWorldEntity&, bool);
+				BaseCommand::Flags CommitCheck(const PWorldEntity&, bool);
 		
 
 	//				bool	AbortIsPossible(const PWorldEntity&);

@@ -33,7 +33,7 @@ namespace Evolver
 			Objects::WMobileEntity	ref;
 			float			initiativeFactor;
 
-			/**/		TActionReference(const Objects::PMobileEntity&e):ref(e)	{initiativeFactor = e->localRandom.getFloat(0.95f,1.f); /*std::cout << e->GetName()<<": "<< initiativeFactor << std::endl;*/}
+			/**/		TActionReference(const Objects::PMobileEntity&e):ref(e)	{initiativeFactor = e->entityRandom.getFloat(0.95f,1.f); /*std::cout << e->GetName()<<": "<< initiativeFactor << std::endl;*/}
 
 			bool		IsAlive() const {return ref.lock() && ref.lock()->health >= 0;}
 
@@ -48,7 +48,7 @@ namespace Evolver
 			Objects::WWorldEntity			eref;
 			float			initiativeFactor;
 
-			/**/		TAttackReference(const Objects::PWorldEntity&we):eref(we)	{initiativeFactor = we->localRandom.getFloat(0.95f,1.f);/*std::cout << we->GetName()<<": "<< initiativeFactor << std::endl;*/}
+			/**/		TAttackReference(const Objects::PWorldEntity&we):eref(we)	{initiativeFactor = we->entityRandom.getFloat(0.95f,1.f);/*std::cout << we->GetName()<<": "<< initiativeFactor << std::endl;*/}
 
 			bool		IsAlive() const {Objects::PWorldEntity e = eref.lock(); return e && e->health >= 0;}
 
@@ -180,6 +180,7 @@ namespace Evolver
 
 		void	BeginRoundProcessing()
 		{
+			Objects::Compound::lastDisabled = nullptr;
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
 				f->DropPerRoundData();
@@ -208,8 +209,19 @@ namespace Evolver
 				v->BeginAttackPhase();
 
 				Objects::PTurretBase b = v->GetTurretBase();
+				if (!b || !b->turret->CanAttack() || !b->CountPossibleAttacks())
+					return;
 
-				if (v->NextTaskIsAttack() && b && b->CountPossibleAttacks())
+				if (v->IsSatellite() && To<Objects::Satellite>::Cast(v)->IsSentry())
+				{
+				//	Objects::PSatellite s = To<Objects::Satellite>::Cast(v);
+
+					if (v->myTasks.IsEmpty())
+						v->FillAttackQueue();
+				}
+
+
+				if (v->NextTaskIsAttack())
 				{
 					if (b->HasAmmoForShot())
 					{
@@ -219,7 +231,7 @@ namespace Evolver
 					}
 					else
 					{
-						LogEvent(EventType::CommandRejected,v.get(),"Insufficient ammunition. Attacks cancelled");
+						LogEvent(EventClass::Preset::commandRejected,v.get(),"Insufficient ammunition. Attacks cancelled");
 						v->EraseFirstTask();
 						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->timeAt);
 					}
@@ -245,7 +257,7 @@ namespace Evolver
 							continue;
 						if (!t->HasAmmoForShot(0))
 						{
-							LogEvent(EventType::CommandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
+							LogEvent(EventClass::Preset::commandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
 							t->attackQueue.Clear();
 							t->RegisterChange(Objects::WorldEntity::TasksChanged,t->timeAt);
 							continue;
@@ -271,13 +283,13 @@ namespace Evolver
 
 		void ProcessStructures1(float atTime)
 		{
-			#ifdef CONNECTOR_LESS
+			//#ifdef CONNECTOR_LESS
 				Objects::RefreshCompoundCoverageIfNeeded(atTime);
 				Objects::ForeachCompound([atTime](Objects::Compound&c)
 				{
 					c.TickEnd(atTime);
 				});
-			#endif
+			//#endif
 
 		}
 
@@ -288,7 +300,7 @@ namespace Evolver
 		{
 			Objects::RefreshSkyHubConnections();
 			if (terrainChanged)
-				LogEvent(EventType::Debug,nullptr,"Terrain changed, updating satellite ground-sensory");
+				LogEvent(EventSignificance::Debug,nullptr,"Terrain changed, updating satellite ground-sensory");
 			
 			static Buffer0<Objects::PSatellite>	waste;
 			for (index_t i = 0; i < Objects::satellites.Count(); i++)	//must be an integer loop (see ProcessRound())
@@ -303,14 +315,14 @@ namespace Evolver
 				{
 					if (sat->location.height <= Objects::Satellite::DeclinedResidenceHeight)
 					{
-						LogEvent(EventType::EntityProcessFailed,sat.get(),"Insufficient fuel supply. Satellite lost");
+						LogEvent(EventClass(EventSignificance::Important, EventFlavor::Loss),sat.get(),"Insufficient fuel supply. Satellite lost");
 						//t+= 0.025f;
 						sat->timeAt+=Objects::timeEpsilon;
 						waste << sat;
 					}
 					else
 					{
-						LogEvent(EventType::EntityProcessFailed,sat.get(),"Insufficient fuel supply. Satellite is declining");
+						LogEvent(EventClass(EventSignificance::Important, EventFlavor::Loss),sat.get(),"Insufficient fuel supply. Satellite is declining");
 						Grid::LCellIdI newLocation = sat->location;
 						newLocation.height = Objects::Satellite::DeclinedResidenceHeight;
 						//t+= 0.025f;
@@ -320,7 +332,7 @@ namespace Evolver
 				else
 					if (sat->location.height < Objects::Satellite::BaseResidenceHeight)
 					{
-						LogEvent(EventType::EntityProcess,sat.get(),"Satellite height restored");
+						LogEvent( EventClass(EventSignificance::Uncommon, EventFlavor::Gain),sat.get(),"Satellite height restored");
 						Grid::LCellIdI newLocation = sat->location;
 						newLocation.height = Objects::Satellite::BaseResidenceHeight;
 						sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);

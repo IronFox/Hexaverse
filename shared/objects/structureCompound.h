@@ -18,49 +18,58 @@ namespace Objects
 	
 	class Compound 
 	{
+		#ifndef CLIENT
+			static int				GetEnableChangeBalance(const ResourceVector&local);
+
+			bool					FindBestEnableCandidates(PWorkingStructure*bestOut, int&bestBalance, ResourceVector&balance,  index_t recursionDepth, int parentSum, const WWorkingStructure*parent) const;
+			bool					FindBestEnableCandidates(PWorkingStructure*bestOut, count_t bestOutCount) const;
+		#endif
 	public:
 		static const UINT32 InvalidNetwork = 0xFFFFFFFF;
 
-
-
-		Buffer0<WWorkingStructure>	containedStructures;
-		FullResourceVector			total;
-		#ifndef CLIENT
-			#ifdef CONNECTOR_LESS
-				ResourceVector		overproduction;	//set during initial phases, cleared before animation phase
-			#endif
+		#if defined WIRELESS_VEHICLES && defined CLIENT
+			float4					color;
 		#endif
+
+		Buffer0<WWorkingStructure>	workingStructures;
+		Buffer0<WStructure>			allStructures;
+		FullResourceVector			total;
 
 		bool						stable;
 		//ID							hashIdentifier;
 
+		#ifndef CLIENT
+			static WorkingStructure*lastDisabled;
+		#endif
+		static PWorkingStructure	Reference(const WWorkingStructure&_s);
+		count_t						CountWorkingStructures() const;
+
+		#ifndef CLIENT
+			ResourceVector	GetOverproduction() const;
+			int				GetOverproduction(Resource) const;
+			void			DistributeOverproduction(const ResourceVector&v);
+			void			ForceWithdrawOverproduction(Resource res ,int positiveAmount);
+			void			TryWithdrawOverproduction(ResourceVector&positiveVector);
+		#endif
 
 		void				Clear()
 		{
 			total = FullResourceVector();
-			containedStructures.Clear();
-			#ifndef CLIENT
-				#ifdef CONNECTOR_LESS
-					overproduction = ResourceVector();
-				#endif
-			#endif
+			workingStructures.Clear();
+			allStructures.Clear();
 		}
 
 		void				swap(Compound&other)
 		{
-			containedStructures.swap(other.containedStructures);
+			workingStructures.swap(other.workingStructures);
+			allStructures.swap(other.allStructures);
 			swp(total,other.total);
 			swp(stable,other.stable);
-			#ifndef CLIENT
-				#ifdef CONNECTOR_LESS
-					swp(overproduction,other.overproduction);
-				#endif
-			#endif
-			//swp(hashIdentifier,other.hashIdentifier);
 		}
 		void				Compact()
 		{
-			containedStructures.Compact();
+			workingStructures.Compact();
+			allStructures.Compact();
 		}
 
 		void				AppendStructure(Structure*s);
@@ -71,9 +80,8 @@ namespace Objects
 			void			FeedLeftovers(ResourceVector&vector, float atTime);
 
 
-			void			Collect(ResourceVector demand, float atTime);
-			void			Distribute(ResourceVector supply, float atTime);
-			bool			CanEnable(const WorkingStructure*, String&outWhy) const;
+			void			ChangeStorage(ResourceVector&supply, float atTime);
+			bool			CanEnable(WorkingStructure*, String&outWhy) const;
 			FullResourceVector	GetVector(const Array<bool>&virtualEnabled) const;
 		#endif
 		void				RefreshState(float atTime);

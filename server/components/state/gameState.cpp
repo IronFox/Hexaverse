@@ -8,12 +8,20 @@
 
 namespace Game
 {
+	UINT32				mostFactionsAlive=0;
 	Evolver::Abstract	*evolver = nullptr;
 	Objects::PFaction	winner;	//if set indicates game is over
 	Timer::Time			lastPhaseChange = timer.Now();
 	bool				roundTimerPaused = true;
 	float				factionStartMineralValue=1.f;	//determined during loading
 	float				effectiveAnimationLength = 1.f;
+
+
+
+	void			SignalFactionsChanged()
+	{
+		mostFactionsAlive = std::max(mostFactionsAlive,(UINT32)Objects::Faction::all.Count());
+	}
 
 
 	namespace Config
@@ -83,6 +91,7 @@ namespace Game
 		void		HandleSessionClosure()
 		{
 			roundTimerPaused = true;
+			mostFactionsAlive = 0;
 			winner.reset();
 			HandleSessionSuspension();
 		}
@@ -91,13 +100,14 @@ namespace Game
 		{
 			if (Config::Nexus::enableAI)
 				AIProcess::Begin(Objects::Faction::nexus->accessToken);
+			SignalFactionsChanged();
 		}
 
 
 		void	AssembleGameInfo(Protocol::GameInfo&info)
 		{
 			info.activePhase = RuntimeConfig::phase;
-			info.numFactionsOnline = (UINT16)::Network::activePlayers.Count();
+			info.numFactionsOnline = (UINT16)::Network::activePlayersAndSpectators.Count();
 			info.numFactionsCreated = (UINT16)Objects::Faction::all.Count() + (Config::Nexus::enableAI ? 1 : 0);
 			info.roundNumber = (UINT32)RuntimeConfig::roundNumber;
 			info.worldID = World::worldID;
@@ -118,7 +128,7 @@ namespace Game
 
 		void	ChangePhase(RuntimeConfig::Phase to, float timeWindow/* = -1*/)
 		{
-			LogEvent(EventType::Debug,"Changing RuntimeConfig::phase to "+String(to.ToString())+" with time window "+String(timeWindow));
+			LogEvent(EventSignificance::Debug,"Changing RuntimeConfig::phase to "+String(to.ToString())+" with time window "+String(timeWindow));
 			Protocol::PhaseChange	ph;
 			ph.newPhase = to;
 			ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
@@ -141,6 +151,13 @@ namespace Game
 			if (to == RuntimeConfig::Phase::AnimationPhase)
 			{
 				FileIO::CheckAutoSave(true);	//round number is formally incremented at the beginning of the command phase, but animation phase produces a delay anyways, so better save here
+			}
+			else if (RuntimeConfig::IsInAnyCommandPhase())
+			{
+				Objects::ForeachFaction([](const Objects::PFaction&f)
+				{
+					f->DropPerRoundData();	//make sure instantaneous destruction commands are processed with correct visibility information
+				});
 			}
 
 
@@ -175,7 +192,7 @@ namespace Game
 			task.foci.SetSize(t.foci.Count());
 			for (index_t i = 0; i < task.foci.Count(); i++)
 				task.foci[i] = t.foci[i].target;
-			task.mode = t.mode;
+			task.mode = (BYTE)t.mode;
 			task.name = t.name;
 			task.type = t.type;
 			if (t.job)
@@ -445,7 +462,7 @@ namespace Game
 			if (v.changeFlags)
 			{
 				//anythingChanged = true;
-				//LogEvent(EventType::MinorEntityProcess,&v,"State change detected");	//this says relatively little
+				//LogEvent(EventSignificance::Common,&v,"State change detected");	//this says relatively little
 
 				bool othersNeedToKnow = (v.changeFlags & Network::NotifyOthers) != 0;
 
@@ -460,7 +477,7 @@ namespace Game
 					::Network::SendToOwner(Channels::setMobileState,v,w1);
 				}
 				else
-					foreach(::Network::activePlayers,cl)
+					foreach(::Network::activePlayersAndSpectators,cl)
 					{
 						if (::Network::CanSeeAsOwner(*cl,v))
 							Channels::setMobileState.SendTo((*cl)->peer.lock(),w1);
@@ -478,7 +495,7 @@ namespace Game
 			if (s.changeFlags)
 			{
 				//anythingChanged = true;
-				LogEvent(EventType::MinorEntityProcess,&s,"State change detected");
+				LogEvent(EventSignificance::Common,&s,"State change detected");
 				
 				bool othersNeedToKnow = (s.changeFlags & Network::NotifyOthers) != 0;
 
@@ -494,7 +511,7 @@ namespace Game
 					::Network::SendToOwner(Channels::setStructureState,s,w1);
 				}
 				else
-					foreach(::Network::activePlayers,cl)
+					foreach(::Network::activePlayersAndSpectators,cl)
 					{
 						if (::Network::CanSeeAsOwner(*cl,s))
 							Channels::setStructureState.SendTo((*cl)->peer.lock(),w1);
@@ -519,7 +536,7 @@ namespace Game
 			});
 		}
 		else
-			foreach (::Network::activePlayers,cl)
+			foreach (::Network::activePlayersAndSpectators,cl)
 			{
 				//if ((*cl)->faction->global.coverageChanged)
 				{
@@ -655,7 +672,7 @@ namespace Game
 
 			Objects::ForeachCompound([](Objects::Compound&c)
 			{
-				if (c.containedStructures.IsEmpty())
+				if (c.workingStructures.IsEmpty())
 					return;	//pure technite factions don't have units. Also, depending on server settings, some factions might not either
 				bool hasFuelMine = false,
 					hasMineralMine = false,
@@ -668,11 +685,13 @@ namespace Game
 					hasMineralContainer = true;	//don't need
 				#endif
 				Objects::ResourceVector dummy,storage;
-				foreach (c.containedStructures,_s)
+				Objects::OwnerParameter o;
+				foreach (c.workingStructures,_s)
 				{
 					Objects::PWorkingStructure s = _s->lock();
 					if (!s)
 						continue;
+					o = s->owner;
 					Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 					if (mine && mine->IsLinkedToCore())
 					{
@@ -692,17 +711,20 @@ namespace Game
 					if (To<Objects::VehiclePlant>::DynamicCast(s))
 						hasVehiclePlant = true;
 				}
-				Objects::PFaction f = c.containedStructures.first().lock()->owner;
-				f->hasFuelMine = hasFuelMine;
-				f->hasMineralMine = hasMineralMine;
-				f->hasMineralContainer = hasMineralContainer;
-				f->hasGenerator = hasGenerator;
-				f->hasVehiclePlant = hasVehiclePlant;
+				Objects::PFaction f = o;//c.workingStructures.first().lock()->owner;
+				if (f)
+				{
+					f->hasFuelMine = hasFuelMine;
+					f->hasMineralMine = hasMineralMine;
+					f->hasMineralContainer = hasMineralContainer;
+					f->hasGenerator = hasGenerator;
+					f->hasVehiclePlant = hasVehiclePlant;
+				}
 			});
 
 			Objects::ForeachMobileEntityIncludingStored([](const Objects::PMobileEntity&v)
 			{
-				if (v->GetConstructionSpeed())
+				if (v->GetOperationSpeed(Objects::Component::Construct))
 				{
 					v->owner->hasTerraformer = true;
 				}
@@ -749,7 +771,7 @@ namespace Game
 								dead = true;
 								String name = client ? client->ToString() : "Faction "+faction->id.ToString();
 											
-								LogEvent(EventType::GameProgressRelated,name+" died: "+whyNot);
+								LogEvent(EventClass::Preset::factionDeath,name+" died: "+whyNot);
 
 								if (client)
 								{
@@ -761,8 +783,9 @@ namespace Game
 								}
 
 								Objects::Faction::Kill(faction);
+								SignalFactionsChanged();
 								if (client)
-									::Network::activePlayers.FindAndErase(client);
+									::Network::activePlayersAndSpectators.FindAndErase(client);
 								::Network::tokenMap.Unset(faction->accessToken);
 								::Network::playerMap.Unset(faction);
 								faction->online = false;
@@ -774,7 +797,7 @@ namespace Game
 								{
 									if (Objects::Faction::all.IsEmpty())
 									{
-										LogEvent(EventType::SessionRelated,"All factions destroyed. Application requires restart.");
+										LogEvent(EventClass::Preset::factionDeath,"All factions destroyed. Application requires restart.");
 										//application_shutting_down = true;
 									}
 									else
@@ -782,7 +805,7 @@ namespace Game
 									{
 										if (RuntimeConfig::phase != RuntimeConfig::Phase::EndOfGame)
 										{
-											LogEvent(EventType::SessionRelated,"Only one faction left. Declaring winner.");
+											LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),"Only one faction left. Declaring winner.");
 											Network::ChangePhase(RuntimeConfig::Phase::EndOfGame);
 											winner = Objects::Faction::all.first().lock();
 											::Network::PClient client;
@@ -815,7 +838,7 @@ namespace Game
 			if (Grid::AffectedByEMP(e->location))
 			{
 				if (e->empDamageLevel < 10)
-					LogEvent(EventType::EntityProcess,e.get(),"Entering EMP-Zone");
+					LogEvent(EventSignificance::Common,e.get(),"Entering EMP-Zone");
 				e->HandleEMPDamage(10,atTime);
 			}
 					
@@ -832,7 +855,7 @@ namespace Game
 	//void			SpawnNexusBaseAtPoleWithPort(int pole);
 	void			SpawnNexusPortAtPole(int pole)
 	{
-		LogEvent(EventType::SessionRelated,"Spawning Nexus Port at pole "+String(pole));
+		LogEvent(EventSignificance::Common,"Spawning Nexus Port at pole "+String(pole));
 
 		Grid::LCellIdI location((UINT32)pole,0);	//first 12 are corner cells
 		int h = Objects::FindApplicableGround(location,true);
@@ -844,12 +867,13 @@ namespace Game
 		location.height = h;
 		std::shared_ptr<Objects::NexusPort> port = To<Objects::NexusPort>::Cast(
 		Objects::NexusPort::globalPrototype->CreateNewInstance(Objects::Faction::nexus,location,0));
-		port->CorrectTerrain(false,0,true);
-		Objects::InsertConstructed(port,0);
+		port->CorrectTerrain(false,0);
+		float t = 0;
+		Objects::InsertConstructed(port,t);
 //		if (enableNexus)
 		{
-			port->SetEnabled(true,0,false,Objects::WorkingStructure::ForceEnable);
-			Objects::RefreshCompoundCoverageIfNeeded(0);
+			port->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
+			Objects::RefreshCompoundCoverageIfNeeded(t);
 			//ASSERT__(port->IsEnabled());
 		}
 //			const auto&n = Grid::low.grid.GetCell(i).neighborhood;
@@ -864,7 +888,7 @@ namespace Game
 
 	void SpawnNexusBaseAtPoleWithPort(int pole)
 	{
-		LogEvent(EventType::SessionRelated,"Spawning Nexus base at pole "+String(pole));
+		LogEvent(EventSignificance::Common,"Spawning Nexus base at pole "+String(pole));
 
 		ASSERT__(Config::Nexus::haveBases);
 
@@ -976,6 +1000,7 @@ namespace Game
 				int factoryCount = 0;
 				int generatorCount = 0,
 					connectorCount = 0;
+				float t = 0;
 				for (index_t i : distances)
 				{
 					//ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
@@ -984,25 +1009,25 @@ namespace Game
 					#if 1
 					if (Grid::low.grid.GetCell(i).family == 0)	//align of family members implies family zero members are along edges between nexus poles
 					{
-						if (field.distance[i] == 4)
+						if (field.distance[i] == 5)
 						{
 							#ifndef _DEBUG
 								std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
 									Objects::GetPrototypeByName(ConstName::Type_LauncherTower)->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								tower->CorrectTerrain(false,0,true);
-								Objects::InsertConstructed(tower,0);
+								tower->CorrectTerrain(false,0);
+								Objects::InsertConstructed(tower,t);
 							#endif
 						}
-						if (field.distance[i] == 5)
+						if (field.distance[i] == 4)
 						{
 							std::shared_ptr<Objects::Tower> tower = To<Objects::Tower>::Cast(
 								Objects::GetPrototypeByName(ConstName::Type_RadarTower)->CreateNewInstance(Objects::Faction::nexus,
 								Grid::LCellIdI(i,h),
 								0));
-							tower->CorrectTerrain(false,0,true);
-							Objects::InsertConstructed(tower,0);
+							tower->CorrectTerrain(false,0);
+							Objects::InsertConstructed(tower,t);
 						}
 
 						if (field.distance[i] == (2))
@@ -1013,9 +1038,9 @@ namespace Game
 									Objects::MunitionStorage::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								storage->CorrectTerrain(false,0,true);
+								storage->CorrectTerrain(false,0);
 								storage->storage = storage->maxStorage;
-								Objects::InsertConstructed(storage,0);
+								Objects::InsertConstructed(storage,t);
 								alwaysOn << storage;
 							}
 							else
@@ -1024,8 +1049,8 @@ namespace Game
 									Objects::Generator::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								generator->CorrectTerrain(false,0,true);
-								Objects::InsertConstructed(generator,0);
+								generator->CorrectTerrain(false,0);
+								Objects::InsertConstructed(generator,t);
 								generatorCount++;
 								if (generatorCount < 4)
 									alwaysOn << generator;	//only need three generators switched on
@@ -1039,8 +1064,8 @@ namespace Game
 									Objects::Connector::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								connector->CorrectTerrain(false,0,true);
-								Objects::InsertConstructed(connector,0);
+								connector->CorrectTerrain(false,0);
+								Objects::InsertConstructed(connector,t);
 								connectorCount++;
 							}
 						}
@@ -1052,8 +1077,8 @@ namespace Game
 									Objects::MunitionFactory::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								factory->CorrectTerrain(false,0,true);
-								Objects::InsertConstructed(factory,0);
+								factory->CorrectTerrain(false,0);
+								Objects::InsertConstructed(factory,t);
 								alwaysOn << factory;
 							}
 							else
@@ -1062,8 +1087,8 @@ namespace Game
 									Objects::VehiclePlant::globalPrototype->CreateNewInstance(Objects::Faction::nexus,
 									Grid::LCellIdI(i,h),
 									0));
-								plant->CorrectTerrain(false,0,true);
-								Objects::InsertConstructed(plant,0);
+								plant->CorrectTerrain(false,0);
+								Objects::InsertConstructed(plant,t);
 								factoryCount++;
 							}
 						}
@@ -1111,20 +1136,20 @@ namespace Game
 
 				for (auto ws : alwaysOn)
 				{
-					ws->SetEnabled(true,0,false,Objects::WorkingStructure::ForceEnable);
+					ws->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
 				}
 				enableNexus = alwaysOn.IsNotEmpty();
 
 
 				if (enableNexus)
 				{
-					port->SetEnabled(true,0,false,Objects::WorkingStructure::ForceEnable);
+					port->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
 
 				}
 
 
 				Objects::PSkyHub hub = To<Objects::SkyHub>::Cast( Objects::SkyHub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Satellite::BaseResidenceHeight),0) );
-				Objects::InsertConstructed(hub,0);
+				Objects::InsertConstructed(hub,t);
 				ASSERT__(hub->connectedTo.lock() == port);
 
 				for (index_t i : distances)
@@ -1136,7 +1161,7 @@ namespace Game
 					if (!noEdge && field.distance[i] == 2)
 					{
 						Objects::PSkyGuardian guard = To<Objects::SkyGuardian>::Cast( Objects::SkyGuardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Satellite::BaseResidenceHeight),0));
-						Objects::InsertConstructed(guard,0);
+						Objects::InsertConstructed(guard,t);
 					}
 				}
 
@@ -1180,7 +1205,7 @@ namespace Game
 			Grid::LCellIdI location(startLocation,0);	//first 12 are corner cells
 			int h = Objects::FindApplicableGround(location,true);
 			location.height = h;
-			static const int want = 20;
+			static const int want = 10;
 			static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);
 			Journal::currentRound.RegisterResourceCoverageChange(true,location.stackID,Objects::Resource::Fuel,stackHeight);
 			Journal::currentRound.RegisterResourceCoverageChange(true,location.stackID,Objects::Resource::Minerals,stackHeight);
@@ -1195,28 +1220,30 @@ namespace Game
 			Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],h);
 			Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],h);
 
+			float t = 0;
 			Objects::PMine mine = To<Objects::Mine>::Cast(
 				Objects::Mine::globalPrototype->CreateNewInstance(f,location,0));
-			mine->CorrectTerrain(false,0,true);
-			Objects::InsertConstructed(mine,0);
+			mine->CorrectTerrain(false,0);
+			Objects::InsertConstructed(mine,t);
 			mine->SetEnabledOverride(true);
 				
 			Objects::PGenerator generator = To<Objects::Generator>::Cast(
 				Objects::Generator::globalPrototype->CreateNewInstance(f,at1,0));
-			generator->CorrectTerrain(false,0,true);
-			Objects::InsertConstructed(generator,0);
+			generator->CorrectTerrain(false,0);
+			Objects::InsertConstructed(generator,t);
 			generator->SetEnabledOverride(true);
 				
 			std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
 				Objects::MineralContainer::globalPrototype->CreateNewInstance(f,at2,0));
-			container->CorrectTerrain(false,0,true);
-			Objects::InsertConstructed(container,0);
-			Objects::RefreshCompoundCoverage(0);
+			container->storage = container->maxStorage;
+			container->CorrectTerrain(false,0);
+			Objects::InsertConstructed(container,t);
+			Objects::RefreshCompoundCoverage(t);
 
 
-			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,0);
+			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
 
 		}
 		else
@@ -1227,12 +1254,13 @@ namespace Game
 			Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],0);
 			Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],0);
 
-			Objects::SpawnVehicle(f,Grid::LCellIdI((UINT32)startLocation,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-			Objects::SpawnVehicle(f,at1,Objects::Component::hoverbase, Objects::Component::radar,true,0);
-			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,0);
-			Objects::SpawnVehicle(f,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,0);
+			float t = 0;
+			Objects::SpawnVehicle(f,Grid::LCellIdI((UINT32)startLocation,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::SpawnVehicle(f,at1,Objects::Component::hoverbase, Objects::Component::radar,true,t);
+			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
+			Objects::SpawnVehicle(f,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,t);
 		}
 	}
 

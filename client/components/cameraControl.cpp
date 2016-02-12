@@ -10,6 +10,7 @@
 #include "clientRuntimeConfig.h"
 
 #include "../../shared/objects.h"
+#include "timelapse.h"
 
 
 float3							sunDirection;
@@ -140,7 +141,7 @@ namespace Camera
 
 	void Event::WheelAction(short param)					//handler for the mouse wheel
 	{
-	//	if (!controlCluster.OnMouseWheel(param) && gui.op && !gui.op->ShowingModalWindows())
+		if (!TimeLapse::enabled)
 		{
 			//negative is wheel down
 			scene.retraction.z /= pow(1.1f,param);
@@ -152,16 +153,22 @@ namespace Camera
 
 	void Event::ZoomIn()
 	{
-		scene.retraction.z *= 0.95f;
-		scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
-		scene.UpdateView();
+		if (!TimeLapse::enabled)
+		{
+			scene.retraction.z *= 0.95f;
+			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
+			scene.UpdateView();
+		}
 	}
 
 	void Event::ZoomOut()
 	{
-		scene.retraction.z /= 0.95f;
-		scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
-		scene.UpdateView();
+		if (!TimeLapse::enabled)
+		{
+			scene.retraction.z /= 0.95f;
+			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
+			scene.UpdateView();
+		}
 	}
 
 
@@ -190,9 +197,10 @@ namespace Camera
 			Camera::ToggleOrbit();
 		}
 
-		bool SkyGridIsEnabled(int)
+		Objects::BaseCommand::Flags Check(int,bool)
 		{
-			return Camera::SkyGridIsVisible();
+			return Objects::BaseCommand::Flags::IsEnabled | 
+					(Camera::SkyGridIsVisible() ? Objects::BaseCommand::Flags::IsPermaActive : Objects::BaseCommand::Flags::None);
 		}
 	}
 
@@ -209,7 +217,7 @@ namespace Camera
 
 		Objects::globalCommands.Append(
 			Objects::GlobalCommand(int2(1,0),"Show Sky Grid", 
-			&Cmd::ToggleSkyGrid, &Objects::CommonCmd::AlwaysEnabled<int>, &Cmd::SkyGridIsEnabled));
+			&Cmd::ToggleSkyGrid, &Cmd::Check));
 	}
 
 

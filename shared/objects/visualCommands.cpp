@@ -10,7 +10,9 @@
 #include "visualSelection.h"
 #include "visualChoices.h"
 #include "satellite.h"
+#include "faction.h"
 #include <image/converter/magic.h>
+#include "faction.h"
 
 extern Engine::Display<Engine::DirectX11>	display;
 //extern Engine::VectorCamera<>				scene;
@@ -30,15 +32,26 @@ namespace Objects
 
 	/*virtual override*/ void		EntityCommand::Refresh(bool controlEnabled)
 	{
-		ASSERT__(checkPermaActive);
-		permaActive = checkPermaActive(selectedEntity); 
-		isEnabled = checkEnabled(selectedEntity,controlEnabled);
+		ASSERT__(check);
+		state = check(selectedEntity,controlEnabled);
 	}
+	/*virtual override*/ void		GlobalCommand::Refresh(bool controlEnabled)
+	{
+		state = check(0,controlEnabled);
+	}
+
 	/*virtual override*/ void		EntityCommand::Execute() 
 	{
 		execute(selectedEntity);
 	}
 
+
+
+	float4 BackgroundColor(const PWorldEntity&e)
+	{
+		return float4(e->health > 0 && e->owner ? e->owner->activeEntityColor*0.4f : float3(),0.5f);
+
+	}
 
 
 	/*static*/ void		VehicleCommand::UpdateTexture(EntityCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
@@ -69,8 +82,10 @@ namespace Objects
 		if (v->health <= 0)
 			overallTint.Update(float4(0.25f));
 
-		if (v->health <= 0 && v->isMine)
-			keyColor.Update(float4(0.2,0.2,0.4,1));
+		if (v->health <= 0)
+			keyColor.Update(float4(0,0,0,1));
+		else
+			keyColor.Update(float4(v->owner->activeEntityColor,1));
 		#ifndef NO_HIBERNATION
 			if (v->ToHibernating()->IsHibernating())
 			{
@@ -85,7 +100,7 @@ namespace Objects
 
 	/*static*/ void		VehicleCommand::UpdateTexture(EntityCommand&target, const PVehicle&v, bool isPrototype, const float4&tone/* = float4(0)*/)
 	{
-		GeometryImage::BeginRendering(tone);
+		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(v));
 
 		TMatrix4<> sys = Matrix<>::eye4;
 		sys.x.x = sys.y.y = sys.z.z = 2.5f;
@@ -119,7 +134,8 @@ namespace Objects
 
 	/*static*/ void			StructureCommand::UpdateTexture(EntityCommand&target, const PStructure&structure, bool isPrototype, const float4&tone /*= float4(0)*/)
 	{
-		GeometryImage::BeginRendering(tone);
+		ASSERT_NOT_NULL__(structure->localizableShape);
+		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(structure));
 
 		UpdateStateColors(structure,tone,isPrototype);
 			
@@ -149,7 +165,7 @@ namespace Objects
 
 	/*static*/ void		SatelliteCommand::UpdateTexture(EntityCommand&target, const PSatellite&sat, bool isPrototype, const float4&tone/* = float4(0)*/)
 	{
-		GeometryImage::BeginRendering(tone,1.5f);
+		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(sat),1.5f);
 
 		//TMatrix4<> sys = Matrix<>::eye4;
 		//sys.x.x = sys.y.y = sys.z.z = 2.5f;
@@ -331,7 +347,7 @@ namespace Objects
 	}
 
 
-	/**/				DeployVehicleCommand::DeployVehicleCommand(int2 coords, const PVehicle&v,   OnExecute f, CheckEnabled a, IsPermaActive p) : Super(coords,v->GetNiceName(),v->base,v->turret,f,a,p), vehicle(v)
+	/**/				DeployVehicleCommand::DeployVehicleCommand(int2 coords, const PVehicle&v,   OnExecute f, Check c) : Super(coords,v->GetNiceName(),v->base,v->turret,f,c), vehicle(v)
 	{}
 
 
@@ -356,7 +372,7 @@ namespace Objects
 		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
 		ASSERT__(v);
 		int price = structure->GetConstructionCost();
-		UINT32 roundsToJobCompletion = v->GetConstructionRounds(price);
+		UINT32 roundsToJobCompletion = v->GetOperationRounds(price,Component::Construct);
 		//mineralCostLeft = actuallyConsumesMinerals ? mineralCosts : 0;
 
 		outResult << name;
@@ -491,23 +507,35 @@ namespace Objects
 		return !objectView;
 	}
 
+	void	GlobalCmd::ToggleCompoundHightlights(int)
+	{
+		anyCompoundsColored = !anyCompoundsColored;
+		if (anyCompoundsColored && !selectedMobileEntity)
+		{
+			Renderer::SelectCompoundAreas(selectedEntity ? selectedEntity->owner : Faction::mine);
+
+		}
+	}
+
+
+
 
 	
 
-	bool CommonCmd::IsModeActive(const PWorldEntity&e, CursorMode::mode_t mode)
+	bool CommonCmd::IsModeActive(const PWorldEntity&e, CursorMode mode)
 	{
-		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
-		return v && activeCursorMode == mode;
+		//PMobileEntity v = To<MobileEntity>::DynamicCast(e);
+		return /*v && */activeCursorMode == mode;
 	}
 		
-	bool CommonCmd::IsModeActiveOrIdle(const PWorldEntity&e, CursorMode::mode_t mode)
+	bool CommonCmd::IsModeActiveOrIdle(const PWorldEntity&e, CursorMode mode)
 	{
-		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
-		return v && (activeCursorMode == mode || activeCursorMode == CursorMode::Idle);
+		//PMobileEntity v = To<MobileEntity>::DynamicCast(e);
+		return /*v &&*/ (activeCursorMode == mode || activeCursorMode == CursorMode::Idle);
 	}
 	
 
-	void CommonCmd::ToggleMode(const PWorldEntity&e, CursorMode::mode_t mode)
+	void CommonCmd::ToggleMode(const PWorldEntity&e, CursorMode mode)
 	{
 		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
 		PTower t = To<Tower>::DynamicCast(e);
@@ -565,6 +593,15 @@ namespace Objects
 	{
 		PMobileEntity v= To<MobileEntity>::DynamicCast(e);
 		return v && v->isAutomated;
+	}
+
+
+	BaseCommand::Flags	VehicleCmd::AutomatedCheck(const PWorldEntity&e,bool controlEnabled)
+	{
+		BaseCommand::Flags f = CommonCmd::CommonButtonCheck(e,controlEnabled);
+		if (IsAutomated(e))
+			f |= BaseCommand::Flags::IsPermaActive;
+		return f;
 	}
 
 

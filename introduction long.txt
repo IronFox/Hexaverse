@@ -1,0 +1,95 @@
+steam greenlight format:
+[h1] Header text	[/h1]
+[b] Bold text	[/b]
+[u] Underlined text	[/u]
+[i] Italic text	[/i]
+[strike] Strikethrough text	[/strike]
+[spoiler] Spoiler text	[/spoiler]
+[noparse] Doesn't parse [b]tags[/b] [/noparse]
+[list]
+    [*]Bulleted list
+    [*]Bulleted list
+    [*]Bulleted list
+[/list]
+
+[olist]
+    [*]Ordered list
+    [*]Ordered list
+    [*]Ordered list
+[/olist]
+
+[quote=author] Quoted text	[/quote]
+[code] Fixed-width font, preserves spaces	[/code]
+
+
+
+eXplore, eXpand, eXploit, and eXterminate
+eXcavate
+
+
+
+[h1]Synopsis[/h1]
+Hexaverse is a turn based, 4X multiplayer strategy game.
+All matches take place on volumetric planets. Players are free to expand any way around the globe, or use their terraformers to reshape the terrain in various ways. Build walls and bridges, excavate tunnels, submerge your bases beneath mountains, or blow up those same mountains.
+Given infinite resources, you are limited only by the efficiency and speed at which you extract and use resources.
+
+
+[h1]Phases[/h1]
+In Hexaverse players act simultaneously. While you change the planed operations of your units, your opponents will do the same. Up to 16 operations can be queued up per unit, but rarely more than one is executed per round.
+During the various automated computation phases, attacks are generally processed first. Then motion.
+The order of competing operations (such as who shoots first) is determined by unit initiative values.
+
+
+[h1]Terrain[h1]
+The terrain is composed of 32 concentric spherical layers. Most units have a height of one layer (some high buildings require 2 layers). Players can neither climb beyond the top layer, nor dig into the bottom layer. It is thus not possible to dig through the core.
+The terrain is shaped by (mostly) hexagonal blocks that span across the globe. Each layer has the exact same composition of blocks, with higher blocks being slightly larger than lower blocks.
+All blocks can be empty, filled with solid matter such as grass, stone, or foundation tiles, or contain liquids like water or lava. The core can be filled by any of these types as well, including completely empty (thus forming a hollow-core planet).
+Player units exist on a more coarse grid than the terrain, thus allowing simplified unit control while maintaining terrain diversity. When moving across the terrain, all high resolution terrain blocks beneath a player vehicle affect the mobility of that vehicle. Units that try to move over lava or an empty core are instantly destroyed.
+Liquids are currently limited to simple expansion. As long as there is space horizontally or vertically, liquids will duplicate in that direction until all available and accessible space is filled up.
+
+
+[h1]Resources[/h1]
+There are currently three natural resources: Minerals, Fuel, and Uranium.
+Minerals are used for virtually all construction operations. Fuel is required by generators to produce electricity, and for the upkeep of satellites. Uranium, finally, is required for high-level weaponry.
+Natural resources are extracted by mines that vertically dig into the planetary core.
+Resources are height-independent, but can only be extracted by the lowest mine on a certain location. Mines are blocked by any lower vehicle or building, including other mines. It is quite possible to effectively undermine an existing hostile base.
+Natural resources are infinite. Once a mine has been activated atop a certain resource-rich location, that resource will be extracted continuously until the mine is switched off or destroyed.
+In this game you are not working with resources as a quantity, but with the rate at which they change.
+
+
+[h1]Buildings[/h1]
+
+
+Once built, buildings are locked in place. They currently do not actually require any ground underneath, and will float if the ground beneath is removed. They are destroyed by expanding lava, however.
+Neighboring buildings implicitly form supply network. Supply and demand are matched even without intermediate storage capacities available. A fuel mine and a generator, for instance, will supply each other even if there are no fuel containers connected to the supply network.
+Distant networks can be connected using cheap and non-obstructing connectors.
+
+
+[h1]Vehicles[/h1]
+Vehicles come in combinations of turrets and bases, and may behave very differently.
+Vehicle bases currently come in three flavors: hover, heavy, and catamaran. While being the most mobile, hover vehicles provide the least carrying capacity and armor rating. Heavy vehicles are ground-locked, but have significantly increased carrying capacity and armor rating. Catamarans, finally, feature the highest carrying capacity and armor rating, provide a weapon range bonus, and are second only to tanks on roads in regards to speed. They are water-locked, however, which makes them rather specific in their application.
+The different base types react differently to falling when leaping over a cliff, or terrain destruction. Hover-based vehicles can fall indefinitely, while the heavy and catamaran bases will take damage when falling too far.  
+Vehicle turrets come in various shapes, with the terraformer turret being the most prominent. Terraformers can change the landscape as well as build all building types. Their building speed is affected by the respective vehicle-base. Other turrets feature high scanning radii, detect natural resources, repair other units, or offer offensive capacities.
+Vehicles automatically draw from the resource network of buildings in the vicinity, possibly several at the same time.
+
+
+[h1]Satellites[/h1]
+Satellites hover on a fixed residual satellite layer high above the terrain. Depending on the type of satellite, they can scan the underlying terrain, construct ground buildings, attack other satellites, or vaporize hostile presences underneath. With the exception of connected hub satellites, however, all satellites require a continuous fuel supply, or they decline/crash.
+
+
+
+[h1]Sensory[/h1]
+All player units have varying sensor capacities to detect terrain changes, natural resources, and hostile units. Contacts and terrain information outside the current sensor range is recorded but will not be updated until some sensor unit is moved into the vicinity again.
+
+
+[h1]Weaponry[/h1]
+Offensive vehicles, buildings, and satellites feature any one of three attack types:
+[list]
+    [*]Straight line/radial (e.g. missiles/rays)
+    [*]Parabolic (artillery)
+    [*]Vertical beam (currently only Ragnarök satellite attack)
+[/list]
+Depending on the respective attack type, the available attack range can vary dramatically. Artillery vehicles benefit from being stationed on mountains while units of radial attack type are better off stationed near ground level.
+Offensive units feature different numbers of attacks per round. Additionally, vehicle turrets exhibit differences in how they react to vehicle motion. Some turrets (e.g. artillery/EMP) cannot fire when the respective vehicles have been moved in the previous round.
+Defense turrets behave mostly like stationary vehicles with the added capacity to fire at moving vehicles during their motion. This makes them considerably more dangerous than vehicles, albeit immobile, and more easy to avoid.
+EMP weaponry is capable of causing temporary damage to sensory, mobility, and attack range. While this may sound weak on its own, it has proven to be a devastating attack due to its high range, and impact when coupled with conventional attack units in range.

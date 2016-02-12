@@ -183,7 +183,8 @@ namespace Objects
 		//new overridables:
 		#ifndef CLIENT
 			virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const {return false;}
-			virtual bool		WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime) const	{return false;}
+			virtual bool		WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	{return false;}
+			virtual bool		IsSentry() const	{return false;}
 			/**
 			Performs all per-round operations the local satellite can. The base version handles fueling of the local satellite.
 			Any overriding class should call the base version of this method and return its result, unless fuel processing should not commence for whatever reason
@@ -195,7 +196,7 @@ namespace Objects
 
 		//TurretBase overrides:
 		virtual float			GetFlatAttackRange() const override {return EMPModify(turret->horizontalAttackRange,1.f);}
-		virtual bool			HasAmmoForShot() const override;
+		virtual bool			HasAmmoForShot() override;
 		#ifndef CLIENT
 			virtual bool		FillAttackQueue()override;
 		#endif
@@ -435,7 +436,6 @@ namespace Objects
 		//MobileEntity overrides:
 		virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return Grid::LCellIdI(focus.stackID,GetStructureBuildHeight(focus));}
 		virtual int				GetMovementStepsPerRound() const override {return 1;}
-		virtual int				GetConstructionSpeed() const override {return 10;}
 
 
 		//WorldEntity overrides:
@@ -443,8 +443,8 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual int			GetUplinkTraffic() const override {return 10;}
 		#endif
-		virtual void			OnDestroy(float atTime) override {OffsetTime(atTime); LoseGroundConnection();}
-		virtual void			OnConstructionFinished(float atTime) override;
+		virtual void			OnDestroy(float&atTime) override {OffsetTime(atTime); LoseGroundConnection();}
+		virtual void			OnConstructionFinished(float&atTime) override;
 		virtual bool			AwaitsUserInteraction() const override {return MobileEntityProducer::AwaitsUserInteraction();}
 		#ifdef HAS_WINDOW
 			virtual void		VisitAllCommands(FCommandVisitor visitor) override;
@@ -472,14 +472,14 @@ namespace Objects
 
 		#ifndef CLIENT
 			//Satellite overrides:
-			bool				WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	const override;
-			bool				ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const override;
+			virtual bool		WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	override;
+			virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const override;
+			virtual bool		IsSentry() const override {return true;}
 		#endif
 
 
 		//MobileEntity overrides:
 		virtual int				GetMovementStepsPerRound() const override {return 1;}
-		virtual int				GetConstructionSpeed() const override {return 0;}
 
 
 		//BaseEntity overrides:
@@ -517,7 +517,6 @@ namespace Objects
 	public:
 		//MobileEntity overrides:
 		virtual int				GetMovementStepsPerRound() const override {return 1;}
-		virtual int				GetConstructionSpeed() const override {return 0;}
 
 		//BaseEntity overrides:
 		virtual String			GetTypeName() const override {return "Ragnarök";}
@@ -554,7 +553,6 @@ namespace Objects
 
 		//MobileEntity overrides:
 		virtual int				GetMovementStepsPerRound() const override {return 1;}
-		virtual int				GetConstructionSpeed() const override {return ProductionSpeed;}
 
 		//BaseEntity overrides:
 		virtual String			GetTypeName() const override {return "Star Port";}

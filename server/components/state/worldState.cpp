@@ -62,7 +62,15 @@ namespace World
 					{
 						faction->visibility.families[family].coverageChanged = false;
 						at++;
-						Protocol::GenerateWorldDelta(&faction->visibility,&faction->currentState,delta,family,RuntimeConfig::IsInAnyCommandPhase(),at == numChanged,peer ? Protocol::WorldDeltaType::ProgressiveUpdate : Protocol::WorldDeltaType::ProgressiveUpdateNoDelta);
+						Protocol::GenerateWorldDelta(&faction->visibility,
+							&faction->currentState,
+							delta,family,
+							RuntimeConfig::IsInAnyCommandPhase(),
+							at == numChanged,
+							peer ? 
+								Protocol::WorldDeltaType::ProgressiveUpdate 
+								: Protocol::WorldDeltaType::ProgressiveUpdateNoDelta
+						);
 						if (peer)
 							Channels::updateWorld.SendTo(peer,delta);
 					}
@@ -304,11 +312,13 @@ namespace World
 				}
 			});
 			float t = timer.GetSecondsSince(t0);
-			LogEvent(EventType::PerformanceMeasurement,"Time needed to process water: "+String(t));
-
+			LogEvent(EventSignificance::PerformanceMeasurement,"Time needed to process water: "+String(t));
 
 			for (const auto&e:waste)
-				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,0,false);
+			{
+				float at = 0;
+				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,at,false);
+			}
 			waste.Clear();
 		}
 
@@ -319,8 +329,35 @@ namespace World
 		Grid::currentPlanetConfig.RandomizeSeeds(random);
 		Grid::currentPlanetConfig.RandomizeSun(random);
 		Grid::BuildWorld(Grid::currentPlanetConfig,Config::worldDiscovery);
-		if (Game::Config::Nexus::enableAI)
-			Objects::Faction::nexus->currentState = Grid::initialWorld;
+		Objects::Faction::nexus->currentState = Grid::initialWorld;
+
+
+		if (RuntimeConfig::gameGoal == Game::Config::Goal::EMPConquerNexus)
+		{
+			LogEvent(EventSignificance::Common, "Spawning Nexus Ports...");
+			for (int pole = 0; pole < 12; pole++)
+				Game::SpawnNexusPortAtPole(pole);
+			if (Game::Config::Nexus::haveBases)
+				for (int pole = 0; pole < 12; pole++)
+					if (BaseGrid::IsIsolatedCorner(pole))
+					{
+						Game::SpawnNexusBaseAtPoleWithPort(pole);
+					}
+		}
+		else
+		if (RuntimeConfig::gameGoal == Game::Config::Goal::ConquerNexus)
+		{
+			LogEvent(EventSignificance::Common, "Spawning Nexus Ports...");
+		
+			for (int pole = 0; pole < 12; pole++)
+				if (BaseGrid::IsIsolatedCorner(pole))
+				{
+					Game::SpawnNexusPortAtPole(pole);
+					if (Game::Config::Nexus::haveBases)
+						Game::SpawnNexusBaseAtPoleWithPort(pole);
+				}
+		}
+
 	}
 
 
@@ -397,6 +434,10 @@ namespace World
 						Objects::PTurretBase base = (*s)->GetTurretBase();
 						if (base)
 							d2 = sqr(sqrt(d2) - base->GetFlatAttackRange());	//fair enough here
+						if (Grid::AffectedByEMP((*s)->location))
+							d2 *= 4.f;
+						if ((*s)->owner != Objects::Faction::nexus)
+							d2 *= 0.25f;
 						dist2 = std::min(dist2, d2);
 					}
 					else
@@ -409,8 +450,8 @@ namespace World
 					float d2 = Vec::quadraticDistance(Grid::low.cells[(*v)->location.stackID].centerVertex.xyz,ref);
 					dist2 = std::min(dist2, d2);
 				}
-				if (/*Objects::structures.IsEmpty() &&*/ Objects::vehicles.IsEmpty())
-					dist2 = sqr(random.getFloat(1,2));
+				if (Objects::Faction::all.IsEmpty())
+					dist2 = dist2 > 0.35f ? sqr(random.getFloat(1,2)) : 0.f;
 				else
 					dist2 *= random.getFloat(0.9f,1.f / 0.9f);
 
@@ -441,7 +482,7 @@ namespace World
 	{
 		if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::EMPConquerNexus)
 		{
-			count_t numZones = Objects::Faction::all.Count()+temporaryFactionCountBonus;	//not counting nexus faction, but counting new faction(s)
+			count_t numZones = Game::mostFactionsAlive+temporaryFactionCountBonus;	//not counting nexus faction, but counting new faction(s)
 			numZones = (numZones/3) + !!(numZones % 3);
 
 			int unlocked = 0;
@@ -454,9 +495,7 @@ namespace World
 				unlocked++;
 			}
 				
-
-			unlockedEMPZones = ((1<<unlocked) - 1);
-			empZonesLocked = ((1 << 12)-1)  & ~unlockedEMPZones;
+			SetUnlockedEMPZones(unlocked);
 
 			Channels::lockEmpZones.SendTo(::Network::server,empZonesLocked,2);
 		}
@@ -464,5 +503,10 @@ namespace World
 	}
 
 
+	void		SetUnlockedEMPZones(int unlocked)
+	{
+		Grid::empZonesUnlocked = unlockedEMPZones = ((1<<unlocked) - 1);
+		Grid::empZonesLocked = empZonesLocked = ((1 << 12)-1)  & ~unlockedEMPZones;
+	}
 
 }

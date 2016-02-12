@@ -95,6 +95,8 @@ namespace Objects
 		TMatrix4<>					inverse;	//!< inverse of system
 
 
+		const TVec3<>&				GetWorldPosition() const {return system.w.xyz;}
+		static TVec3<>				GetWorldPosition(const Grid::LCellIdI&loc) {return Grid::ToWorld(loc);}	//might change in the future. Have to make sure that the various system build functions in systems.cpp match
 
 		/**
 		Assembles a name composed of the parent management class name and the local instance id
@@ -156,7 +158,7 @@ namespace Objects
 	public:
 		#ifndef CLIENT
 
-			Random					localRandom;
+			Random					entityRandom;
 			
 			void					ReSeedRandom();
 
@@ -286,14 +288,14 @@ namespace Objects
 		Structures should handle compound disconnections and struct count decreases.
 		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
 		*/
-		virtual void				OnDestroy(float atTime)	{};	
+		virtual void				OnDestroy(float&atTime)	{atTime += timeEpsilon;};	
 
 		/**
 		Signals that the local entity has been created.
 		Structures should handle compound disconnections and struct count decreases.
 		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
 		*/
-		virtual void				OnConstructionFinished(float atTime);
+		virtual void				OnConstructionFinished(float&atTime);
 
 		/**
 		Called exactly once on the prototype instance only, once instantiation of all prototype objects is completed (other prototypes may be references, but might not be set up yet).
@@ -335,7 +337,7 @@ namespace Objects
 
 
 		#ifndef CLIENT
-			virtual bool			DirectTo(CursorMode::mode_t, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
+			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
 		#endif
 
 

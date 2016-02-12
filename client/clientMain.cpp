@@ -58,6 +58,7 @@
 #include "components/world.h"
 #include "components/atmosphere.h"
 #include "components/guiHostList.h"
+#include "components/serverProcess.h"
 
 #include "rc/Resource.h"
 
@@ -98,29 +99,55 @@ SpinLock	eventLock;
 
 		/**/		VisualEvent():color(1.f),age(0)
 		{}
-		/**/		VisualEvent(const String&message, EventType type):message(message)
+
+		static float3 ToAverage(const float3&source, float level)
 		{
-			switch (type)
+			float3 avg = (float3)1.f;
+			//float3((source.r + source.g + source.b)/3.f);
+			Vec::interpolate(source,avg,level,avg);
+			return avg;
+		}
+
+		/**/		VisualEvent(const String&message, EventClass type):message(message)
+		{
+			color = float3(1.f);
+			switch (type.flavor)
 			{
-				case EventType::CommandRejected:
-				case EventType::InternalFault:
-				case EventType::OperationAborted:
-				case EventType::EntityProcessFailed:
-				case EventType::GameProgressRelated:
-					color = float3(1,0.5f,0.5f);
+				case EventFlavor::Gain:
+					color = float3(0,1,0);
+				break;
+				case EventFlavor::Loss:
+					color = float3(1,0.35,0.3);
+				break;
+				case EventFlavor::SystemError:
+				case EventFlavor::UserError:
+					color = float3(1,0.3,0.4);
+				break;
+				case EventFlavor::Neutral:
+					if (type.significance == EventSignificance::Important)
+						color = float3(0.5,0.5,1);
+				break;
+			}
+
+
+			switch (type.significance)
+			{
+				case EventSignificance::ClientFatal:
+				case EventSignificance::FactionFatal:
+				case EventSignificance::SystemFatal:
+				case EventSignificance::Important:
+				case EventSignificance::NonFatalError:
 					age = -MaxAge;
 				break;
-				case EventType::ChatMessage:
-					color = float3(0.9f,0.9f,1);
-					scale = 1.5f;
+				case EventSignificance::Uncommon:
+					color = ToAverage(color,0.65f);
+					color *= 0.85f;
 					age = -MaxAge/2.f;
 				break;
-				case EventType::CompoundProcess:
-					color = float3(0.5f,1,0.5f);
-					age = -MaxAge/4.f;
-				break;
 				default:
-					//color *= 0.8f;
+					color = ToAverage(color,0.75f);
+					color *= 0.7f;
+					age = -MaxAge/4.f;
 				break;
 			}
 		}
@@ -182,7 +209,7 @@ void	OnTutorialsChanged()
 
 
 
-void LogEvent(EventType type,  const Objects::WorldEntity*e, const String&_event);
+//void LogEvent(const EventClass&type,  const Objects::WorldEntity*e, const String&_event);
 
 
 
@@ -196,7 +223,7 @@ static void SendDirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCe
 {
 	Protocol::EntityDirectCommand	cmd;
 	cmd.id = v->id;
-	cmd.mode = mode;
+	cmd.mode = (UINT16)mode;
 	cmd.path = targets;
 	cmd.directFlags = 0;
 	if (detailedPath)
@@ -227,7 +254,7 @@ void	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 		}
 		if (!foundPath)
 		{
-			LogEvent(EventType::CommandRejected,v.get(),"Unable to find route to designated destination. Asking server");
+			LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to find route to designated destination. Asking server");
 			SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//maybe some error in the client
 			return;
 		}
@@ -235,7 +262,7 @@ void	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 			SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//all good
 		else
 		{
-			LogEvent(EventType::MinorEntityProcess,v.get(),"Splitting long path into parts");
+			LogEvent(EventSignificance::Common,v.get(),"Splitting long path into parts");
 			static Buffer0<Grid::LCellIdI>	waypoints;
 			waypoints.Clear();
 			bool open = true;
@@ -313,7 +340,7 @@ void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI
 {
 	Protocol::ChoiceIntersection	ch;
 	ch.id = e->id;
-	ch.mode = mode;
+	ch.mode = (UINT16)mode;
 	ch.target = c;
 	if (deployingWhat)
 		ch.deployingWhat.Set0().value = deployingWhat->id;
@@ -416,7 +443,7 @@ bool	HasSignalledRoundEnd()
 
 bool	CanChangeRoundState()
 {
-	return Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase;
+	return Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && !Network::amSpectator;
 }
 
 
@@ -430,7 +457,7 @@ void	SignalRoundEnd()
 		#ifdef HAS_WINDOW
 			Objects::UpdateChoices(Network::ControlEnabled());
 		#endif
-		LogEvent(EventType::SessionRelated,nullptr,"Requested new round");
+		LogEvent(EventClass::Preset::common,nullptr,"Requested new round");
 	}
 }
 
@@ -440,14 +467,14 @@ void	SignalUndoRoundEnd()
 	{
 		Network::client.SendSignal(Protocol::ChannelID::RequestContinueRound);
 		Network::newRoundRequested = false;
-		LogEvent(EventType::SessionRelated,nullptr,"Requested to continue new round");
+		LogEvent(EventClass::Preset::uncommon,nullptr,"Requested to continue new round");
 	}
 
 }
 
 #ifdef HAS_WINDOW
 
-	void VisualLogEvent( EventType type,  const Objects::WorldEntity*e, const String&_event)
+	void VisualLogEvent( EventClass type,  const Objects::WorldEntity*e, const String&_event)
 	{
 		String event = _event, outEvent = _event;
 		if (e)
@@ -456,11 +483,11 @@ void	SignalUndoRoundEnd()
 			outEvent = e->owner->GetLogName()+","+ e->GetName()+": "+event;
 		}
 		eventLock.lock();
-		if (type != EventType::Debug && type != EventType::PerformanceMeasurement && type != EventType::MinorEntityProcess)
+		if (type.significance > EventSignificance::Common)
 		{
 			#ifdef HAS_WINDOW
-				if (type == EventType::ChatMessage)
-					events << VisualEvent("",EventType::Debug);
+				if (type.flavor == EventFlavor::ChatMessage)
+					events << VisualEvent("",EventSignificance::Debug);
 				events << VisualEvent(event,type);
 			#else
 				std::cout << event << std::endl;
@@ -623,7 +650,7 @@ void	SignalTerrainModification(const Objects::PVehicle&v,Objects::Vehicle::mode_
 {
 	Protocol::TerrainMod	job;
 	job.id = v->id;
-	job.mode = activeCursorMode;
+	job.mode = (UINT16)activeCursorMode;
 	job.cells = selection;
 	Network::Channels::signalTerrainMod.SendTo(Network::client,job);
 }
@@ -738,846 +765,129 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 
 
+#ifdef HAS_WINDOW
+	bool saveScreenshot = false;
 
-
-#ifdef GAME_BLOB_SYSTEM
-
-
-namespace Network
-{
-	bool blobSystemReady = false;
-	static float metersPerLeafSector = 10;
-	static const count_t rootSize = count_t(1) << 10;
-	static const int maxSurfaceSize = (int)ceil(maxWorldSurfaceSize * 2 / metersPerLeafSector);
-
-	Space SpaceOf(const int4&sid)
+	namespace TimeLapse
 	{
-		return Space((float3)sid.xyz * metersPerLeafSector, (float)sid.w * metersPerLeafSector);
-	}
-
-	int4 IDOf(const Space&space)
-	{
-		float4 raw(space.GetBase(), space.GetSize());
-		raw /= metersPerLeafSector;
-		return int4(
-			(int)round(raw.x),
-			(int)round(raw.y),
-			(int)round(raw.z),
-			(int)round(raw.w)
-			);
+		index_t runningNumber = 0;
+		bool enabled = false;
+		float		frameDelaySeconds=0.2f;
+		PathString	basePath;
+		PathString	customBasePath;
+		bool		maxCompressionPNG=false;
 	}
 
 
-	bool GetHashValueTarget(const RevisionID&revisionID, Bit&result)
+	class StorageThread : public ThreadObject
 	{
-		if (revisionID == activeRevision[renderSource])
+	public:
+		//Image		image;
+		//Semaphore	semaphore;
+		//volatile bool	active;
+		Timer::Time	lastSubmission = timer.Now();
+		ProductionPipe<Image>	workPipe;
+
+		StorageThread()
+		{}
+
+		void ThreadMain() override
 		{
-			result = renderSource;
-			return true;
-		}
-		if (revisionID == activeRevision[constructionTarget])
-		{
-			result = constructionTarget;
-			return true;
-		}
-		return false;
-	}
-
-
-
-
-
-
-	ZMQ::Socket		worldSocket;
-
-	Buffer<zmq::pollitem_t>	pollItems;
-
-	void Terminate()
-	{
-		worldSocket.close();
-	}
-
-	void	ReportException(const String&msg)
-	{
-		FATAL__(msg);
-	}
-
-	void	ReportFormatError(const String&context)
-	{
-		ReportException("Format error: "+context);
-	}
-
-
-
-	void	WriteCommand(instruction_t instruction, ZMQ::Socket&socket, bool more)
-	{
-		UINT32 p = (UINT32)instruction;
-		socket.Write(p, more);
-	}
-
-
-	Timer::Time	lastRequest;
-
-	void	Setup()
-	{
-		worldSocket.Init(ZMQ::context,zmq::socket_t::dealer, "WorldSocket");
-		try
-		{
-			worldSocket.SetSendBufferSize(10000000);
-			worldSocket.SetReceiveBufferSize(10000000);
-		}
-		catch (zmq::error_t&err)
-		{
-			FATAL__(err.what());
-		}
-
-		//cacheSocket.ForceConnect(ZMQ::TCPAddr("localhost", Port::CacheRequest));
-//		worldDataSocket.ForceConnect(ZMQ::TCPAddr("localhost", Port::WorldRequest));
-		worldSocket.ForceConnect(ZMQ::TCPAddr("localhost", Port::WorldLink));
-
-		worldSocket.WriteSequence(__, (UINT32)Instruction::GetCurrentRevision);
-		lastRequest = timer.Now();
-	}
-
-	//void	CacheRequest(const SurfaceRequest&req, instruction_t inst, float priority)
-	//{
-	//	ASSERT__(cacheSocket.WriteSequence(__, (UINT32)inst, req, priority));
-	//}
-
-	//void	UpdatePriority(const RevisionID&revisionID, const Space&space,const BlobHash&hash,float priority)
-	//{
-	//	SurfaceRequest req;
-	//	req.space = space;
-	//	req.blobDataHash = hash;
-	//	req.revisionID = revisionID;
-	//	CacheRequest(req,Instruction::UpdateConstructionPriority,priority);
-	//}
-
-
-	//void	RequestDataHash(const RevisionID&revID, const int4&sid)
-	//{
-	//	ASSERT__(located);
-	//	ASSERT__(sid.w > 1);	//must be greater 1, because 1 ist the bottom level, and does not have data hashes - only data from parents
-	//	//LogEvent("requesting ")
-
-	//	ASSERT__(worldSocket.WriteSequence(__, (UINT32)Instruction::SectorDataHash, revID, SpaceOf(sid)));
-	//}
-
-	Timer::Time 				lastWorkResult = timer.Now();
-
-	bool	CreateSurface(Sector&sector, Bit target)
-	{
-		DBG_ASSERT_GREATER__(sector.sectorID.w, 1);
-		if (sector.state[target].CheckSaturation(sector.space.GetVolume()))
-		{
-			SurfaceData data;
-			data.sourceDataHash = sector.state[target].GetBlobHash();
-			sector.UpdateChildSurfaces(data, target);
-			return false;
-		}
-
-		if (sector.state[!target].BlobMatch(sector.state[target].GetBlobHash()))
-		{
-			if (WorkerConnectionModule::WorkerExists(sector.state[!target].childDataRequested))
-				return false;
-		}
-		ASSERT__(!sector.state[target].ChildrenHaveSurface());
-		if (!WorkerConnectionModule::WorkerExists(sector.state[target].childDataRequested) || (timer.GetSecondsSince(lastWorkResult) > 2.f && timer.GetSecondsSince(sector.state[target].surfaceRequested) > 2.f))
-		{
-			sector.state[target].surfaceRequested = timer.Now();
-			sector.state[target].childDataRequested =
-				WorkerConnectionModule::SendDirectRequest(DirectRequest(sector.space, sector.state[target].GetBlobHash()),
-				sector.state[target].containedBlobs, sector.GetChildPriority(target == renderSource));
-			if (!Sector::childDataRequested.Contains(&sector))
-				Sector::childDataRequested << &sector;
-			return true;
-		}
-		return false;
-	}
-
-	//bool haltBlobRequests = false;
-
-	Timer::Time		lastBlobCreation;
-	bool			waitingForCreatedBlobs = false;
-
-	bool	CreateBlobs(const WorldData::Blob*blob, count_t count)
-	{
-		if (constructionTarget != renderSource)
-			return false;
-
-		lastBlobCreation = timer.Now();
-		waitingForCreatedBlobs = true;
-
-		static Buffer<Sector*> affectedSectors;
-		affectedSectors.Clear();
-		constructionTarget = !constructionTarget;
-		activeRevision[constructionTarget] = activeRevision[renderSource];
-
-		rootSector.RecursivelyInsertNewBlobs(renderSource,constructionTarget, blob, count, affectedSectors);
-
-
-		ASSERT__(located);
-		worldSocket.WriteSequence(__, (UINT32)Instruction::CreateBlobs, activeRevision[constructionTarget], ZMQ::Reference(blob, count));
-		LogEvent("Sent blob creation request for " + String(count) + " blob(s)");
-
-		foreach(affectedSectors, sec)
-			CreateSurface(**sec,constructionTarget);
-
-		return true;
-		//haltBlobRequests = true;
-	}
-
-	void	RemoveBlobs(const WorldData::Blob*blob, count_t count)
-	{
-		if (constructionTarget != renderSource)
-			FATAL__("bad operation");
-
-		lastBlobCreation = timer.Now();
-		waitingForCreatedBlobs = true;
-
-		static Buffer<Sector*> affectedSectors;
-		affectedSectors.Clear();
-		constructionTarget = !constructionTarget;
-		activeRevision[constructionTarget] = activeRevision[renderSource];
-
-		rootSector.RecursivelyRemoveBlobs(renderSource,constructionTarget, blob, count, affectedSectors);
-
-		ASSERT__(located);
-		worldSocket.WriteSequence(__, (UINT32)Instruction::RemoveBlobs, activeRevision[constructionTarget], ZMQ::Reference(blob, count));
-		LogEvent("Sent blob removal request for " + String(count) + " blob(s)");
-
-		foreach(affectedSectors, sec)
-			CreateSurface(**sec,constructionTarget);
-		//haltBlobRequests = true;
-	}
-
-	void	CreateNewWorld(const WorldData::Blob*blob, count_t count)
-	{
-		lastBlobCreation = timer.Now();
-		waitingForCreatedBlobs = true;
-
-		static Buffer<Sector*> affectedSectors;
-		affectedSectors.Clear();
-		constructionTarget = !constructionTarget;
-		activeRevision[constructionTarget] = activeRevision[renderSource];
-
-		rootSector.RecursivelyInsertNewBlobs(renderSource,constructionTarget, blob, count, affectedSectors);
-
-
-		ASSERT__(located);
-		worldSocket.WriteSequence(__, (UINT32)Instruction::CreateNewWorld, ZMQ::Reference(blob, count));
-		LogEvent("Sent world creation request for " + String(count) + " blob(s)");
-
-		foreach(affectedSectors, sec)
-			CreateSurface(**sec,constructionTarget);
-		//haltBlobRequests = true;
-	}
-
-
-	void	QueryDelta()
-	{
-		ASSERT__(located && blobSystemReady && !activeRevision[constructionTarget].IsEmpty());
-		if (activeRevision[constructionTarget] != serverCurrenRevisionID)
-			worldSocket.WriteSequence(__, (UINT32)Instruction::GetChangedSpace,
-								activeRevision[constructionTarget],serverCurrenRevisionID);
-	}
-
-
-	void	_RequestData(const RevisionID&to, const int4&sectorID)
-	{
-		//ASSERT__(!haltBlobRequests);
-		ASSERT__(!to.IsEmpty());
-		try
-		{
-			worldSocket.WriteSequence(__, (UINT32)Instruction::SectorData, to, SpaceOf(sectorID));
-		}
-		catch (const zmq::error_t&err)
-		{
-			LogEvent(err.what());
-			worldSocket.close();
-
-			worldSocket.Init(ZMQ::context,zmq::socket_t::dealer, "WorldSocket2");
-			try
+			Array<std::shared_ptr<Image> >	images;
+			while (!application_shutting_down)
 			{
-				worldSocket.SetSendBufferSize(10000000);
-			}
-			catch (zmq::error_t&err)
-			{
-				FATAL__(err.what());
-			}
+				workPipe.WaitForContent();
+				if (application_shutting_down)
+					return;
+				workPipe.SignalRead();
 
-			//cacheSocket.ForceConnect(ZMQ::TCPAddr("localhost", Port::CacheRequest));
-	//		worldDataSocket.ForceConnect(ZMQ::TCPAddr("localhost", Port::WorldRequest));
-			worldSocket.ForceConnect(ZMQ::TCPAddr("localhost", Port::WorldLink));
-			_RequestData(to,sectorID);
-		}
-	}
-
-	void	RequestData(Sector&sector, Bit version)
-	{
-		if (sector.state[version].isShaded)
-			return;
-		_RequestData(activeRevision[version], sector.sectorID);
-		sector.RecursivelyShadeChildren(version);
-		sector.state[version].lastRequest = timer.Now();
-		sector.state[version].hashRequested = true;
-		//worldSocket.WriteSequence(__, (UINT32)Instruction::SectorDataHash, newRevisionID,sec->space);
-		if (!Sector::childDataRequested.Contains(&sector))
-			Sector::childDataRequested << &sector;
-	}
-
-
-	void	SignalNewServerRevision(bool wasDiverged)
-	{
-		if (serverCurrenRevisionID != activeRevision[constructionTarget] && !wasDiverged)
-		{
-			LogEvent("Received notification of new revision " + serverCurrenRevisionID.ToString(4));
-
-			newRevisionReceived = timer.Now();
-		}
-	}
-
-	void OnEvent(ZMQ::Socket&socket, instruction_t cmd)
-	{
-		//BlobRequest	blobRequest;
-		SurfaceData data;
-		Space space;
-		BlobHash hash;
-
-		switch (cmd)
-		{
-			case Instruction::DirectWorkResult:
-				lastWorkResult = timer.Now();
-				if (socket.ReadSequence(space,hash,data))
-				//if (blobRequest.Read(socket, true) && data.Read(socket, false))
+				const count_t numImages = workPipe.Count();
+				if (numImages > images.Count())
+					images.SetSize(numImages);
+				for (index_t i = 0; i < numImages; i++)
+					images[i].swap(workPipe[i]);
+				workPipe.ExitRead();
+				if (application_shutting_down)
+					return;
+	//
+	//			image.truncateToOpaque();
+	//
+	//			for (UINT32 x = 0; x < image.getWidth(); x++)
+	//				for (UINT32 y = 0; y < image.getHeight(); y++)
+	//				{
+	//					BYTE*pixel = image.getPixel(x,y);
+	//					if (pixel[3] > 0 && pixel[3] < 255)
+	//					{
+	//						//#ifdef WHITE_STYLE
+	//						//	TVec3<> intermediate;
+	//						//	Vec::mult(Vec::ref3(pixel),1.f / 255.f,intermediate);
+	//						//	float a = float(pixel[3])/255.f;
+	//						//	Vec::addVal(intermediate,a - 1.f);
+	//						//	Vec::div(intermediate,a);
+	//						//	Vec::clamp(intermediate,0,1);
+	//						//	Vec::mult(intermediate,255.f,Vec::ref3(pixel));
+	//
+	//						//#else
+	//							float scale = 1.f / (float(pixel[3])/255.f);
+	//							Vec::mult(Vec::ref3(pixel),scale);
+	////						#endif
+	//					}
+	//				}
+				for (index_t i = 0; i < numImages; i++)
 				{
-					//#ifdef SURFACE_INCLUDES_SPACE
-					//	DbgLog("received surface (" + data.ToString() + ") for sector " + data.space.ToString());
-					//#else
-					//	VerboseDbgLog("received surface (" + data.ToString() + ") as a response to " + blobRequest.ToString());
-					//#endif
-					int4 id = IDOf(space);
-					Sector*sector = rootSector.Lookup(id);
-					if (sector)
+					Image&image = *images[i];
+					image.setChannels(3);
+
+					if (!TimeLapse::enabled)
 					{
-						bool match[2] = { false, false };
-						for (int i = 0; i < 2; i++)
-							if (sector->state[i].BlobMatch(hash))
-							{
-								match[i] = true;
-							}
-						if (match[0] || match[1])
+						FileSystem::CreateFolder("screenshots");
+						index_t counter = 0;
+						PathString filename = PathString("screenshots/screenshot"+String(counter)+".png");
+						while (FileSystem::IsFile(filename))
 						{
-							if (match[0])
-								sector->UpdateChildSurfaces(data, 0);
-							if (match[1])
-								sector->UpdateChildSurfaces(data, 1);
+							counter++;
+							filename = PathString("screenshots/screenshot"+String(counter)+".png");
 						}
-						else
-							LogEvent("Bad surface data: Unknown source hash");
+						png.SaveToFile(image,filename);
+						LogEvent(EventClass::Preset::uncommon, nullptr, "Screenshot written to "+String(filename));
 					}
 					else
-						ReportException("Unable to locate sector " + id.ToString() + "/" + space.ToString());
+					{
+						String runningNumber = String(TimeLapse::runningNumber++);
+						while (runningNumber.length() < 4)
+							runningNumber = '0'+runningNumber;
+						String core = "capture"+runningNumber+".png";
+						PathString filename = TimeLapse::basePath + FOLDER_SLASH + core;
+
+						if (TimeLapse::maxCompressionPNG)
+							png.SaveToFile(image,filename);
+						else
+							png.SaveToFileQ(image,filename);
+						count_t remaining = numImages - i - 1 + workPipe.Count();
+						LogEvent(EventClass::Preset::uncommon, nullptr, "Time lapse frame written to "+String(core)+". "+String(remaining)+" remaining.");
+					}
 				}
-				else
-					ReportFormatError("WorkerSocket:WorkResult");
-			break;
-			default:
-				ZMQ::DumpRemaining(socket);
-				ReportFormatError("WorkerSocket:?");
-		}	//end of switch
-	}
-
-	void	Process();
-}
-
-
-bool	SignificantPriorityChange(float from, float to)
-{
-	float change = (0.01f + from) / (0.01f + to);
-	if (change < 1.f)
-		change = 1.f / change;
-	return change > 1.1f;
-}
-
-
-void UpdatePriority(Sector&sector, Bit target)
-{
-	Sector::State&state = sector.state[target];
-
-	if (!state.ChildrenHaveSurface() && state.HasAnyBlobs())
-	{
-		float priority = sector.GetChildPriority(target == renderSource);
-		if (!Network::CreateSurface(sector,target))
-		{
-			if (SignificantPriorityChange(state.lastRequestedPriority, priority))
-			{
-				float delta = fabs(priority - state.lastRequestedPriority);
-				state.lastRequestedPriority = priority;
-				WorkerConnectionModule::UpdateDirectPriority(state.childDataRequested, DirectRequest(sector.space, state.GetBlobHash()), priority);
-				//Network::UpdatePriority(activeRevision[target], Network::SpaceOf(sector.sectorID), state.GetBlobHash(), priority);
 			}
 		}
-	}
-}
 
-void CheckConstruction(Sector&sector, Bit target)
-{
-	Sector::State&state = sector.state[target];
-
-	DBG_ASSERT__(state.HasBlobHash() || !state.ChildrenHaveSurface());
-
-
-
-
-
-
-
-
-
-
-
-	if (!state.hashRequested)
-	{
-		Network::RequestData(sector,constructionTarget);
-		state.hashRequested = true;
-		//Network::RequestDataHash(activeRevision[target], sector.sectorID);
-	}
-	elif (state.HasAnyBlobs())
-		UpdatePriority(sector, target);
-
-}
-
-#endif
-
-bool saveScreenshot = false;
-
-
-class StorageThread : public ThreadObject
-{
-public:
-	Image		image;
-	Semaphore	semaphore;
-	volatile bool	active;
-
-	StorageThread():active(false)
-	{}
-
-	void ThreadMain() override
-	{
-		while (!application_shutting_down)
+		bool	CanRun() const {return timer.GetSecondsSince(lastSubmission) > TimeLapse::frameDelaySeconds;}
+		void	Run(const std::shared_ptr<Image>&image)
 		{
-			semaphore.enter();
-			if (application_shutting_down)
+			if (!CanRun())
 				return;
-//
-//			image.truncateToOpaque();
-//
-//			for (UINT32 x = 0; x < image.getWidth(); x++)
-//				for (UINT32 y = 0; y < image.getHeight(); y++)
-//				{
-//					BYTE*pixel = image.getPixel(x,y);
-//					if (pixel[3] > 0 && pixel[3] < 255)
-//					{
-//						//#ifdef WHITE_STYLE
-//						//	TVec3<> intermediate;
-//						//	Vec::mult(Vec::ref3(pixel),1.f / 255.f,intermediate);
-//						//	float a = float(pixel[3])/255.f;
-//						//	Vec::addVal(intermediate,a - 1.f);
-//						//	Vec::div(intermediate,a);
-//						//	Vec::clamp(intermediate,0,1);
-//						//	Vec::mult(intermediate,255.f,Vec::ref3(pixel));
-//
-//						//#else
-//							float scale = 1.f / (float(pixel[3])/255.f);
-//							Vec::mult(Vec::ref3(pixel),scale);
-////						#endif
-//					}
-//				}
-			image.setChannels(3);
 
-			FileSystem::CreateFolder("screenshots");
-			index_t counter = 0;
-			PathString filename = PathString("screenshots/screenshot"+String(counter)+".png");
-			while (FileSystem::IsFile(filename))
-			{
-				counter++;
-				filename = PathString("screenshots/screenshot"+String(counter)+".png");
-			}
-			png.SaveToFile(image,filename);
-			active = false;
-			LogEvent(EventType::Notification, nullptr, "Screenshot written to "+String(filename));
+	//		active = true;
+		//	semaphore.release();
+			workPipe << image;
+			lastSubmission = timer.Now();
 		}
-	}
-
-	bool	CanRun() const {return !active;}
-	void	Run()
-	{
-		if (active)
-			return;
-		active = true;
-		semaphore.release();
-	}
-	void	Terminate()
-	{
-		ASSERT__(application_shutting_down);
-		semaphore.release();
-	}
-
-}		storageThread;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#ifdef GAME_BLOB_SYSTEM
-
-
-void	Network::Process()
-{
-	Timer::Time started = timer.Now();
-
-	if (serverCurrenRevisionID != activeRevision[constructionTarget] && activeRevision[constructionTarget].IsNotEmpty())
-	{
-		if (constructionTarget == renderSource || timer.GetSecondsSince(newRevisionReceived) > 5.f)
+		void	Terminate()
 		{
-			newRevisionReceived = timer.Now();
-			QueryDelta();
-		}
-		//newRevisionReceived = timer.Now();
-	}
-
-
-
-	bool hasEvents = true;
-	while (hasEvents && timer.GetSecondsSince(started) < 0.1f)
-	{
-		if (WorkerConnectionModule::HasNewWorkers() || pollItems.IsEmpty())
-		{
-			pollItems << PollItem(worldSocket);
-			WorkerConnectionModule::AppendNewWorkers(pollItems);
+			ASSERT__(application_shutting_down);
+			workPipe.OverrideSignalNow();
 		}
 
-
-		hasEvents = false;
-		zmq_poll (pollItems.pointer(), (int)pollItems.Count(), 0);
-		if (pollItems[0].revents & ZMQ_POLLIN)
-		{
-			//worldSocket
-			hasEvents = true;
-			UINT32 cmd;
-			bool more;
-			if (worldSocket.Read(ZMQ::Empty(), true) && worldSocket.Read(cmd,&more))
-			{
-				switch (cmd)
-				{
-					case Instruction::GetCurrentRevision:
-					{
-						//-> HelloWorld, RevisionID, int4, Space: world scope
-						//Space		rootSpace;
-						//int4		rootID;
-
-						bool diverged = located && serverCurrenRevisionID != activeRevision[constructionTarget];
-						if (more && 
-							worldSocket.ReadSequence(serverCurrenRevisionID))
-							//myCurrenRevisionID.Read(worldSocket,true) && ReadPOD(rootID,worldSocket,true) && rootSpace.Read(worldSocket,false))
-						{
-							if (!located)
-							{
-
-								//blob network:
-								{
-									//ASSERT__(worldSocket.WriteSequence(__, (UINT32)Instruction::SectorData, serverCurrenRevisionID, BlobNetwork::areaOfInterest));
-								}
-
-
-								located = true;
-
-
-
-
-								//ShowMessage(myCurrenRevisionID.ToString());
-								int4 rootID = int4(-(int)rootSize / 2, -(int)rootSize / 2, -(int)rootSize / 2, rootSize);
-								Sector::childDataRequested.Clear();
-								rootSector.Locate(rootID, SpaceOf(rootID));
-								LogEvent("Located root to " + rootSector.sectorID.ToString() + " at revision " + serverCurrenRevisionID.ToString(4));
-
-								
-								CreateNewWorld(Grid::blobs.pointer(),Grid::blobs.Count());	//send blobs
-								//activeRevision[constructionTarget] = serverCurrenRevisionID;
-								//blobSystemReady = true;
-
-							}
-							else
-								SignalNewServerRevision(diverged);
-						}
-						else
-							ReportFormatError("WorldSocket:HelloWorld");
-					}
-					break;
-					case Instruction::CreateNewWorld:
-					case Instruction::CreateBlobs:
-					case Instruction::RemoveBlobs:
-					{
-						bool diverged = serverCurrenRevisionID != activeRevision[constructionTarget];
-						if (!more || !worldSocket.Read(serverCurrenRevisionID, false))
-						{
-							ReportFormatError("WorldSocket:HeardBeat");
-						}
-						else
-						{
-							SignalNewServerRevision(diverged);
-						}
-
-						blobSystemReady = true;
-						activeRevision[constructionTarget] = serverCurrenRevisionID;
-						//lastBeat = timer.Now();
-					}
-					break;
-					case Instruction::SectorData:
-					{
-						Space space;
-						Array <WorldData::Blob>	data;
-						RevisionID	revisionID;
-						//..., RevisionID, Space, THashValue
-						if (more && worldSocket.ReadSequence(revisionID, space, data))
-						{
-							//if (!BlobNetwork::Init(revisionID,space,data))
-							{
-								std::sort(data.begin(), data.end());
-								const int4 id = IDOf(space);
-								Sector*sec = rootSector.Lookup(id);
-								if (sec)
-								{
-									Bit target;
-									if (GetHashValueTarget(revisionID, target))
-									{
-										static Buffer<Sector*>	affectedSectors;
-										affectedSectors.Clear();
-										sec->RecursivelyFillBlobs(target,data,affectedSectors);
-										LogEvent("Filled "+String(data.Count())+" blob(s) into sector "+id.ToString()+". "+String(affectedSectors.Count())+ " sector(s) reported changes");
-										foreach(affectedSectors, sec_)
-										{
-											Sector&sec = (**sec_);
-											CreateSurface(sec, target);
-										}
-									}
-									else
-										ReportException("Bad revision id " + revisionID.ToString());
-								}
-								else
-									ReportException("Unable to locate sector " + id.ToString() + "/" + space.ToString());
-							}
-						}
-						else
-							ReportFormatError("WorldSocket:SectorData");
-					}
-					break;
-					//case Instruction::SectorDataHash:
-					//{
-					//	Space space;
-					//	BlobHash	dataHash;
-					//	RevisionID	revisionID;
-					//	//..., RevisionID, Space, THashValue
-					//	if (more && worldSocket.ReadSequence(revisionID,space, dataHash))
-					//	{
-					//		const int4 id = IDOf(space);
-					//		Sector*sec = rootSector.Lookup(id);
-					//		if (sec)
-					//		{
-					//			Bit target;
-					//			if (GetHashValueTarget(revisionID, target))
-					//			{
-					//				bool requiresSurface = sec->SetHash(dataHash, target);
-					//				if (requiresSurface)
-					//				{
-					//					SurfaceRequest req;
-					//					req.blobDataHash = dataHash;
-					//					req.revisionID = activeRevision[target];
-					//					req.space = SpaceOf(id);
-					//					if (id == int4(-64, -64, -64, 64))
-					//						LogEvent("Requesting surface of sector " + id.ToString() + " using data hash " + dataHash.ToString(4));
-					//					float p = sec->GetChildPriority(target == renderSource);
-					//					CacheRequest(req, Instruction::InitConstruction, p);
-					//					if (!Sector::childDataRequested.Contains(sec))
-					//						Sector::childDataRequested << sec;
-
-					//					sec->state[target].childDataRequested = true;
-					//					sec->state[target].lastRequestedPriority = p;
-					//				}
-					//				//else
-					//				//sec->UpdateChildren(SurfaceData(dataHash),constructionTarget);
-					//			}
-					//		}
-					//		else
-					//			ReportException("Unable to locate sector "+id.ToString()+"/"+space.ToString());
-					//	}
-					//	else
-					//		ReportFormatError("WorldSocket:SectorDataHash");
-					//}
-					//break;
-					case Instruction::GetChangedSpace:
-					{
-						//->GetChangedSpace, RevisionID from, RevisionID to, bool success, Box<> space
-
-						M::Box<> changedSpace;
-						bool visualsAreUpToDate = renderSource == constructionTarget;
-						RevisionID	from,to;
-						bool success;
-						if (more && worldSocket.ReadSequence(from,to,success, changedSpace))
-						{
-							if (success && to == serverCurrenRevisionID)
-							{
-								if (from == activeRevision[constructionTarget] || activeRevision[constructionTarget].IsEmpty())
-								{
-									activeRevision[constructionTarget] = from;
-									if (changedSpace.IsValid())
-									{
-										LogEvent("Moved to new revision " + to.ToString(4) + " with changed space=" + changedSpace.ToString());
-										constructionTarget = !constructionTarget;
-										activeRevision[constructionTarget] = to;
-
-
-										static Buffer<SectorPriorityPair>	affectedSectors;
-										affectedSectors.Clear();
-										rootSector.RecursivelyDuplicateOrInvalidate(changedSpace, renderSource, constructionTarget, affectedSectors);
-										rootSector.RecursivelyClearShadows(constructionTarget);
-
-										std::sort(affectedSectors.begin(), affectedSectors.end());
-										LogEvent(String(affectedSectors.Count()) + " sector(s) reported affected");
-
-										foreach(affectedSectors, sec_)
-										{
-											Sector*sec = sec_->sector;// rootSector.Lookup(sectorID->vector);
-											if (sec->sectorID.w < 2)
-												continue;	//dont ask for anything on these tinies. they are updated from parents
-											//Bit target = sec->SetHash(sectorID->GetDataHash());
-
-											if (Sector::BuildSurfaceForThisSize(sec->space.GetSize() / 2) && !sec->state[constructionTarget].isShaded)
-											{
-												RequestData(*sec,constructionTarget);
-
-											}
-											//sec->lastRequestedPriority = sec->GetPriority();
-										}
-
-									}
-									else
-										LogEvent("Moved to new trivial revision " + to.ToString(4));
-
-									//else leave it where it is
-									activeRevision[constructionTarget] = to;
-								}
-								else
-								{
-									//outdated request
-									QueryDelta();	//retry
-								}
-							}
-							else
-							{
-								LogEvent("Error: Server does not recognize path to revision " + to.ToString(4) + ". Clearing all data.");
-
-								int4 rootID = int4(-(int)rootSize / 2, -(int)rootSize / 2, -(int)rootSize / 2, rootSize);
-								Sector::childDataRequested.Clear();
-								rootSector.Locate(rootID, SpaceOf(rootID));
-								LogEvent("Located root to " + rootSector.sectorID.ToString() + " at revision " + serverCurrenRevisionID.ToString(4));
-								activeRevision[constructionTarget] = to;
-
-								//located = false;	//clear current state
-								//MoveToCurrentRevision();	//bullcrap
-							}
-						}
-						else
-							ReportException("Unable to read revision update");
-					}
-					break;
-					default:
-						if (more)
-							DumpRemaining(worldSocket);
-						ReportException("Invalid instruction code encountered: "+String(cmd));
-					break;
-				}
-			}
-			else
-				ReportFormatError("WorldSocket");
-		}
-
-		WorkerConnectionModule::Process(pollItems, OnEvent);
-
-		//if (pollItems [2].revents & ZMQ_POLLIN)
-		//{
-		//	//cacheSocket
-		//	hasEvents = true;
-		//	BlobRequest	blobRequest;
-		//	SurfaceData	surfaceData;
-		//	if (cacheSocket.ReadSequence(ZMQ::empty, blobRequest, surfaceData))
-		//		//ReadEmpty(cacheSocket) && sectorID.Read(cacheSocket,true) && surfaceData.Read(cacheSocket,false))
-		//	{
-		//		const int4 id = IDOf(blobRequest.space);
-		//		Sector*sec = rootSector.Lookup(id);
-		//		if (sec)
-		//		{
-		//			Bit target;
-		//			if (GetHashValueTarget(blobRequest.revisionID, target))
-		//			{
-		//				if (!sec->UpdateChildSurfaces(surfaceData, target))
-		//				{
-		//					LogEvent("Sector " + id.ToString() + " rejected data with blob data hash " + surfaceData.sourceDataHash.ToString(4)+". Resetting");
-		//				
-		//					if (sec->state[target].hashRequested && sec->state[target].HasHash())
-		//					{
-		//						LogEvent("Hash was set to " + sec->state[target].GeBlobHash().ToString(4));
-		//						sec->state[target].hashRequested = false;
-		//						sec->state[target].ClearHash();
-		//						RequestDataHash(activeRevision[target],id);
-		//					}
-		//				}
-		//				else
-		//				{
-		//					//LogEvent("Sector filled: " + id.ToString() + " from blob data hash " + surfaceData.sourceDataHash.ToString(4));
-		//					LogEvent("Sector filled: " + id.ToString() + " at priority "+String(sec->GetChildPriority(target==renderSource)) );
-		//					Sector::childDataRequested.FindAndErase(sec);
-		//				}
-		//			}
-		//			else
-		//				LogEvent("Target revision ID no longer exists");
-		//		}
-		//		else
-		//			ReportException("Unable to resolve sector "+id.ToString()+"/"+blobRequest.space.ToString());
-		//	}
-		//	else
-		//		ReportFormatError("CacheSocket");
-		//}
-
-
-	}
-
-	//#ifndef _DEBUG
-	//	if (timer.GetSecondsSince(lastBeat) > 5.f)
-	//		FATAL__("World server does not reply");
-	//#endif
-
-	static float timeSinceLastCheck = 0;
-	timeSinceLastCheck += Engine::timing.delta;
-	if (timeSinceLastCheck > 1)
-	{
-		timeSinceLastCheck = 0;
-
-		worldSocket.WriteSequence(__, (UINT32)Instruction::GetCurrentRevision);
-//			WriteCommand(Instruction::HeartBeat,worldSocket,false);
-	}
-}
+	}		storageThread;
 
 
 
@@ -1586,128 +896,21 @@ void	Network::Process()
 
 
 
-class Component
-{
-public:
-	Rect<>					location;
 
-	virtual bool			HandleClick()	{return false;};
-	virtual void			Render() = 0;
 
-};
 
-typedef std::shared_ptr<Component>	PComponent;
-//
-//class Label : public Component
-//{
-//public:
-//	enum orientation_t
-//	{
-//		ExpandLeft, ExpandRight, ExpandCenter
-//
-//	};
-//
-//
-//	String					text;
-//	float4					color;
-//	float					fontScale;
-//	//orientation_t			orientation;
-//
-//
-//	/**/					Label(float2 topLeft, orientation_t orientation, const String&msg, float fontScale, float4 color=float4(1)):text(msg),color(color),fontScale(fontScale)//,orientation(orientation)
-//	{
-//		
-//		#ifdef HAS_WINDOW
-//			textout.pushState();
-//
-//			textout.scale(fontScale,fontScale);
-//			switch (orientation)
-//			{
-//				case ExpandRight:
-//					location.x.min = topLeft.x;
-//					location.y.max = topLeft.y;
-//					location.x.max = location.x.min + textout.getScaledWidth(text);
-//					location.y.min = location.y.max - textout.getScaledHeight();
-//				break;
-//				case ExpandLeft:
-//					location.x.min = topLeft.x - textout.getScaledWidth(text);
-//					location.y.max = topLeft.y;
-//					location.x.max = topLeft.x;
-//					location.y.min = location.y.max - textout.getScaledHeight();
-//				break;
-//				case ExpandCenter:
-//				{
-//					float w = textout.getScaledWidth(text);
-//					location.x.min = topLeft.x - w/2.f;
-//					location.y.max = topLeft.y;
-//					location.x.max = topLeft.x + w/2.f;
-//					location.y.min = location.y.max - textout.getScaledHeight();
-//				}
-//				break;
-//			}
-//			textout.popState();
-//		#endif
-//	}
-//
-//	virtual void			Render()
-//	{
-//		#ifdef HAS_WINDOW
-//			textout.pushState();
-//			textout.color(color);
-//			textout.locate(location.x.min,location.y.min);
-//			textout.scale(fontScale,fontScale);
-//			textout << text;
-//			textout.popState();
-//		#endif
-//	}
-//
-//};
-//
-//
-//class Slider : public Component
-//{
-//public:
-//	const int				min,max;
-//	int						current;
-//
-//	/**/					Slider(const Rect<>&location, int min, int max):min(min),max(max),current(0)
-//	{
-//		this->location = location;
-//	}
-//
-//
-//	virtual bool			HandleClick()	{return false;};
-//	virtual void			Render() override
-//	{
-//		#ifdef HAS_WINDOW
-//			TVec2<> edges[6];
-//			static const float chamfer = 0.04f;
-//			float aspect = display.pixelAspect();
-//			edges[0] = float2(location.x.min,location.y.max);
-//			edges[1] = edges[0];
-//			edges[0].x += chamfer;
-//			edges[1].y -= chamfer * aspect;
-//
-//			edges[2] = float2(location.x.min,location.y.min);
-//
-//			edges[3] = float2(location.x.max,location.y.min);
-//			edges[4] = edges[3];
-//			edges[3].x -= chamfer;
-//			edges[4].y += chamfer * aspect;
-//
-//			edges[5] = float2(location.x.max,location.y.max);	
-//	
-//			SurfaceRenderer::SetColor(float4());
-//			SurfaceRenderer::RasterizeConvexPolygon(edges,ARRAYSIZE(edges));
-//		#endif
-//	}
-//};
+
+
+
+
+
 
 
 void FillMarker(Protocol::Marker&marker, const Objects::PWorldEntity&e, Protocol::MarkerReferenceEntity&outE)
 {
 	marker.location = e->location;
 	outE.id = e->id;
+	outE.owner = e->owner->id;
 	Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
 	if (!v)
 	{
@@ -1750,8 +953,21 @@ void	SignalMarkerTouch(Objects::Marker&marker)
 
 
 
+
+
 void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 {
+	#if 0
+	if (e->isMine && e->IsStructure())
+	{
+		Grid::actualWorld.ClearResourceDistanceField();
+		foreach (Objects::structures,s)
+			if ((*s)->isMine)
+				Grid::actualWorld.PaintResourceDistanceField(Sphere<>((*s)->GetWorldPosition(),Objects::WirelessTransferRange));
+	}
+	#endif /*0*/
+
+
 	if (t == Objects::RemovalType::UncontrolledExplosion && e->isMine)
 	{
 		Protocol::Marker marker;
@@ -1775,23 +991,33 @@ void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 				static_assert(Objects::Marker::Type::HostileContact == 1, "Please update marker logic");
 				FillMarker(marker, e, marker.data.Set1());
 				SignalMarkerCreation(marker);
+
+				LogEvent(EventSignificance::Debug,e.get(),"Created hostile contact marker for "+e->GetName()+" since original disappeared");
 			}
 		}
 }
 
 void	OnAppear(const Objects::PWorldEntity&e)
 {
-	if (!e->isMine)
+	//fix: doesn't matter if e->isMine is true or not. Must ALWAYS remove existing markers if we see the original again.
+	//reason for this problem: entity ownership change causes vanishing, and thus ghost creation, which was not removed here, because e was suddenly mine.
+	Objects::Marker*m = Objects::Marker::FindByReference(e->id);
+	if (m)
 	{
-		Objects::Marker*m = Objects::Marker::FindByReference(e->id);
-		if (m)
-		{
-			LogEvent(EventType::Debug,e.get(),"Deleting marker "+m->GetName()+" since original reappeared");
-			SignalMarkerDeletion(m->id);
-		}
+		LogEvent(EventSignificance::Debug,e.get(),"Deleting marker "+m->GetName()+" since original reappeared");
+		SignalMarkerDeletion(m->id);
 	}
-	else
+
+
+	if (e->isMine)
 	{
+		#if 0
+		if (e->IsStructure())
+		{
+			Grid::actualWorld.PaintResourceDistanceField(Sphere<>(e->GetWorldPosition(),Objects::WirelessTransferRange));
+		}
+		#endif /*0*/
+
 		if (To<Objects::Structure>::DynamicCast(e))
 		{
 			for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
@@ -1799,7 +1025,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 				Objects::Marker&m = Objects::Marker::all[i];
 				if (m.type == Objects::Marker::Type::EntityDeath && m.location == e->location)
 				{
-					LogEvent(EventType::Debug,e.get(),"Deleting marker "+m.GetName()+" since new structure constructed in its place");
+					LogEvent(EventSignificance::Debug,e.get(),"Deleting marker "+m.GetName()+" since new structure constructed in its place");
 					SignalMarkerDeletion(m.id);
 					i--;
 				}
@@ -1807,8 +1033,6 @@ void	OnAppear(const Objects::PWorldEntity&e)
 		}
 	}
 }
-
-
 
 
 
@@ -1864,66 +1088,130 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			//Grid::visibleOrbitGrid.StripColor();
 
 		#ifndef CONNECTOR_LESS
-		if (Objects::selectedVehicle)
-		{
-			//if (Objects::selectedVehicle->tasks.IsNotEmpty() && Objects::selectedVehicle->tasks.Peek().job && Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft)
-			Objects::ResourceVector change;
-			const Objects::ResourceVector&current = Objects::selectedVehicle->currentStorage;
-			const Objects::ResourceVector max = Objects::selectedVehicle->GetMaxStorageCapacity();
-			int sum = 0;
-			foreach (Objects::selectedVehicle->myTasks,t)
-				if (t->job)
-					sum += t->job->mineralCostLeft;
-			if (sum)
+			bool compoundSelectionUpdated = false;
+			if (!stateChangeOnly)
+				Objects::anyCompoundsColored = false;
+			if (Objects::selectedMobileEntity)
 			{
-				change.level[Objects::Resource::Minerals] -= sum;//-Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft;
-				UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedVehicle->GetUplinkTraffic(),	
-						#endif
-							current,max,change);
-			}
-			else
-				UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedVehicle->GetUplinkTraffic(),
-						#endif
-						current,max);
-		}
-		else if (Objects::selectedEntity && Objects::selectedEntity->IsMobile())
-		{
-			FATAL__("not implemented yet");
-		}
-		else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
-		{
-			if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
-			{
-				const Objects::Compound&n = Objects::compounds[To<Objects::Structure>::Cast(Objects::selectedEntity)->compoundID];
-				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
-				if (ws)
+				Objects::PTurretBase base = Objects::selectedMobileEntity->GetTurretBase();
+
+				Objects::ResourceFlagSet res;
+				Objects::ResourceVector change;
+				Objects::ResourceVector current = Objects::selectedMobileEntity->currentStorage,current2,max2;
+				Objects::ResourceVector max = Objects::selectedMobileEntity->GetMaxStorageCapacity();
+				if (base && base->turret->ConsumesResources(res))
 				{
-					Objects::ResourceVector change, storage, max;
-					ws->GetResourceVector(change, storage, max);
-					UI::Update(
-						#ifndef NO_HIBERNATION
-							Objects::selectedEntity->GetUplinkTraffic(), 
-						#endif
-						n.total.storage, n.total.storageMax, n.total.supply - n.total.demand, storage/*,change, ws->IsEnabled()*/);
+					if (!stateChangeOnly)
+						Objects::anyCompoundsColored = true;
+					Objects::OwnerParameter o = Objects::selectedMobileEntity->owner;
+					Objects::selectedMobileEntity->resourceEnvironment.CheckRefresh(*Objects::selectedMobileEntity);
+					Objects::Renderer::SelectCompoundAreas(o,res,Objects::selectedMobileEntity->GetWorldPosition(),Objects::selectedMobileEntity->resourceEnvironment);
+					compoundSelectionUpdated = true;
+
+
+
+					bool any = false;
+					foreach (Objects::selectedMobileEntity->resourceEnvironment.sourceCompounds,c)
+					{
+						if (c->first >= Objects::compounds.Count())
+							continue;
+						const auto&compound = Objects::compounds[c->first];
+						for (index_t i = 0; i < Objects::Resource::N; i++)
+							if (res & i)
+							{
+								current2.level[i] += compound.total.storage.level[i];
+								max2.level[i] += compound.total.storageMax.level[i];
+								change.level[i] += compound.total.supply.level[i];
+								change.level[i] -= compound.total.demand.level[i];
+							}
+						any = true;
+						if (res & Objects::Resource::Minerals)
+							for (const auto v : Objects::vehicles)
+								if (v->owner == o)
+								{
+									v->resourceEnvironment.CheckRefresh(*v);
+									if (v->resourceEnvironment.sourceCompounds.Contains(*c))
+									{
+										change.level[Objects::Resource::Minerals] -= v->GetCurrentMineralConsumption();
+									}
+								}
+						if (res & Objects::Resource::Fuel)
+							for (const auto v : Objects::satellites)
+								if (v->owner == o && v->RequiresFuel())
+								{
+									v->resourceEnvironment.CheckRefresh(*v);
+									if (v->resourceEnvironment.sourceCompounds.Contains(*c))
+									{
+										change.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound();
+									}
+								}
+					}
+					if (!any)
+					{
+						if (res & Objects::Resource::Minerals)
+							change.level[Objects::Resource::Minerals] -= Objects::selectedMobileEntity->GetCurrentMineralConsumption();
+						if (res & Objects::Resource::Fuel)
+						{
+							if (Objects::selectedMobileEntity->IsSatellite())
+							{
+								Objects::PSatellite sat = To<Objects::Satellite>::Cast(Objects::selectedMobileEntity);
+								if (sat->RequiresFuel())
+									change.level[Objects::Resource::Fuel] -= sat->GetFuelConsumptionPerRound();
+							}
+						}
+					}
 				}
-				else
+				{
+					UI::Update(
+							#ifndef NO_HIBERNATION
+								Objects::selectedVehicle->GetUplinkTraffic(),	
+							#endif
+								current,max,current2,max2, change);
+				}
+			}
+			else if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
+			{
+				if (Objects::selectedEntity->health > 0)	//ghosts have no health and no network
+				{
+					Objects::OwnerParameter o = Objects::selectedEntity->owner;
+					Objects::PStructure s = To<Objects::Structure>::Cast(Objects::selectedEntity);
+					const Objects::Compound&n = Objects::compounds[s->compoundID];
+					Objects::PWorkingStructure ws = s->IsWorkingStructure() ? To<Objects::WorkingStructure>::Cast(Objects::selectedEntity) : Objects::PWorkingStructure();
+					Objects::ResourceVector balance = n.total.supply;
+					balance -= n.total.demand;
+					for (const auto v : Objects::vehicles)
+						if (v->owner == o)
+						{
+							v->resourceEnvironment.CheckRefresh(*v);
+							if (v->resourceEnvironment.ContainsCompound(s->compoundID))
+							{
+								balance.level[Objects::Resource::Minerals] -= v->GetCurrentMineralConsumption();
+							}
+						}
+					for (const auto v : Objects::satellites)
+						if (v->owner == o && v->RequiresFuel())
+						{
+							v->resourceEnvironment.CheckRefresh(*v);
+							if (v->resourceEnvironment.ContainsCompound(s->compoundID))
+							{
+								balance.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound();
+							}
+						}
 					UI::Update(
 						#ifndef NO_HIBERNATION
 							Objects::selectedEntity->GetUplinkTraffic(),
 						#endif
-						n.total.storage, n.total.storageMax, n.total.supply - n.total.demand);
+						n.total.storage, n.total.storageMax, balance);
+				}
+				else
+					UI::HideExtraGauges();
+
+
 			}
 			else
 				UI::HideExtraGauges();
-
-
-		}
-		else
-			UI::HideExtraGauges();
+			if (!compoundSelectionUpdated && Objects::anyCompoundsColored)
+				Objects::Renderer::SelectCompoundAreas(Objects::selectedEntity ? Objects::selectedEntity->owner : Objects::Faction::mine);
 
 		#else
 			
@@ -1931,7 +1219,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			if (Objects::selectedEntity)
 				f = Objects::selectedEntity->owner;
 			else
-				f = Network::myFaction;
+				f = Objects::Faction::mine;
 			if (f)
 			{
 				if (f->compound.containedStructures.IsEmpty())
@@ -1947,11 +1235,12 @@ void	OnAppear(const Objects::PWorldEntity&e)
 				{
 					if (v->owner != f)
 						return;
-					if (!v->GetConstructionSpeed())
-						return;
 					if (v->myTasks.IsEmpty() || !v->myTasks.Peek().job)
 						return;
-					change.level[Objects::Resource::Minerals] -= std::min(v->GetConstructionSpeed(), v->myTasks.Peek().job->mineralCostLeft);
+					int opSpeed = v->GetOperationSpeed(v->myTasks.Peek().job->GetOperationAffinity());
+					if (!opSpeed)
+						return;
+					change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->mineralCostLeft);
 
 				});
 
@@ -2124,7 +1413,7 @@ bool loop()
 	
 		//bool rebuildCamera = false;
 
-		if (!Dialog::IsModal())
+		if (!Dialog::IsModal() && !TimeLapse::enabled)
 		{
 			{
 				if (Engine::mouse.buttons.right_down || Engine::mouse.buttons.middle_down)
@@ -2151,11 +1440,11 @@ bool loop()
 			}
 
 			float2 change;
-			if (Engine::input.pressed[Key::A])
+			if (Engine::input.pressed[Key::A] || Engine::input.pressed[Key::Q])
 			{
 				change.x --;
 			}
-			if (Engine::input.pressed[Key::D])
+			if (Engine::input.pressed[Key::D] || Engine::input.pressed[Key::E])
 			{
 				change.x++;
 			}
@@ -2272,7 +1561,7 @@ bool loop()
 			}
 
 
-
+			Objects::Renderer::RefreshFactionColors(!saveScreenshot);
 			Objects::Renderer::RenderScene();
 
 
@@ -2351,6 +1640,8 @@ bool loop()
 				}
 
 			}
+
+			Objects::Renderer::RenderCompoundAreas();
 		}
 			
 
@@ -2393,6 +1684,7 @@ bool loop()
 		LineRenderer::Flush();
 
 		#ifdef _DEBUG
+		if (!saveScreenshot)
 		{
 			LineRenderer::SetColor(float4(1,0,0,1));
 			display.SetDepthTest(false,false);
@@ -2421,14 +1713,11 @@ bool loop()
 					lastCheck = now;
 					UpdateServerChoice();
 				}
-
-		
-		
 			}
 
 
 			{
-				static const String line = "(C) Stefan Elsen; Open Beta; v" PRODUCT_VERSION "; Compiled "+String(__TIMESTAMP__);
+				static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__TIMESTAMP__);
 				//textout.locate(0.f,1.f - textout.getScaledHeight());
 				textout.pushState();
 				textout.scale(0.8f,0.8f);
@@ -2440,16 +1729,30 @@ bool loop()
 
 			if (saveScreenshot)
 			{
-				saveScreenshot = false;
+				if (!TimeLapse::enabled 
+					|| 
+					(
+						//RuntimeConfig::phase != RuntimeConfig::Phase::AnimationPhase 
+						Animation::AllDone() 
+						&& Explosions::NoneActive()
+					)
+					)
+				{
+					saveScreenshot = false;
+				}
 				//display.SetBackbufferClearColor(0,0,0,0);
 
 				//Image image;
 				if (storageThread.CanRun())
 				{
-					LogEvent(EventType::Notification, nullptr, "Writing screenshot to disk...");
-					display.Capture(storageThread.image);
+					if (!TimeLapse::enabled)
+						LogEvent(EventClass::Preset::uncommon,"Writing screenshot to disk...");
+					//else
+					//	LogEvent(EventClass::Preset::uncommon,"screenshot "+String(RuntimeConfig::phase.ToString())+", "+String(Animation::AllDone())+", "+String(Explosions::NoneActive()));
+					std::shared_ptr<Image> capture(new Image());
+					display.Capture(*capture);
 
-					storageThread.Run();
+					storageThread.Run(capture);
 				}
 
 			}
@@ -2601,7 +1904,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	file.Log(message+"\n",true);
 	file.Close();
 	application_shutting_down = true;	//prevent certain operations in Close()
-	LogEvent(EventType::Fatal, nullptr, message);
+	LogEvent(EventClass( EventSignificance::SystemFatal, EventFlavor::SystemError ), nullptr, message);
 	ErrMessage(message);
 	//NetworkConnection::Close();
 
@@ -2688,280 +1991,306 @@ void MyFatal(const FatalDescriptor&descriptor)
 		return false;
 	}
 
-#endif
 
-
-
-#ifdef HAS_WINDOW
-/**
-Primary entry point used when clicking anywhere on the window
-*/
-void Select()
-{
-	Tutorial::lastDelayingEvent = timer.Now();
-
-	if (Dialog::HandleMouseDown() || UI::HandleClick())
-		return;
-	if (Rect<>(0.f,0.97f,0.1f,1.f).Contains(Engine::mouse.location.windowRelative))
+	/**
+	Primary entry point used when clicking anywhere on the window
+	*/
+	void Select()
 	{
-		QueryNickname();
-		return;
-	}
-//	if (Engine::input.pressed[Key::Control])
-	//LogEvent(nullptr, "Select()");
+		Tutorial::lastDelayingEvent = timer.Now();
 
-	//if (Objects::Network::Transfer::isActive)
-	//{
-	//	TransferPanel::HandleClick();
-	//	return;
-	//}
-	//if (!Network::client.IsConnected())
-	//{
-	//	if (Engine::mouse.location.windowRelative.x < 0.1f || Engine::mouse.location.windowRelative.x > 0.9f)
-	//		return;
-	//	if (Network::client.IsAttemptingToConnect())
-	//		return;
-	//	if (RuntimeConfig::serverURL.IsNotEmpty())
-	//		return;
-	//	foreach (Network::servers,srv)
-	//	{
-	//		if (srv->rightVersion && srv->bottom < Engine::mouse.location.windowRelative.y && srv->top > Engine::mouse.location.windowRelative.y)
-	//		{
-	//			index_t best = 0;
-	//			float bestPing = srv->urls.first().second;
-	//			for (index_t i = 1; i < srv->urls.Count(); i++)
-	//				if (srv->urls[i].second < bestPing)
-	//				{
-	//					bestPing = srv->urls[i].second;
-	//					best = i;
-	//				}
-	//			srv->selected = true;
+		if (Dialog::HandleMouseDown() || UI::HandleClick())
+			return;
+		if (Rect<>(0.f,0.97f,0.1f,1.f).Contains(Engine::mouse.location.windowRelative))
+		{
+			QueryNickname();
+			return;
+		}
+	//	if (Engine::input.pressed[Key::Control])
+		//LogEvent(nullptr, "Select()");
 
-	//			Network::serverID = srv->id;
-	//			Network::serverIDString = Network::serverID.ToNiceString();
-	//			Network::worldID = srv->info.worldID;
-	//			Network::worldIDString = Network::worldID.ToNiceString();
-	//			Network::client.ConnectAsync(srv->urls[best].first + ":"+String(SERVICE_PORT));
-	//			return;
-	//		}
+		//if (Objects::Network::Transfer::isActive)
+		//{
+		//	TransferPanel::HandleClick();
+		//	return;
+		//}
+		//if (!Network::client.IsConnected())
+		//{
+		//	if (Engine::mouse.location.windowRelative.x < 0.1f || Engine::mouse.location.windowRelative.x > 0.9f)
+		//		return;
+		//	if (Network::client.IsAttemptingToConnect())
+		//		return;
+		//	if (RuntimeConfig::serverURL.IsNotEmpty())
+		//		return;
+		//	foreach (Network::servers,srv)
+		//	{
+		//		if (srv->rightVersion && srv->bottom < Engine::mouse.location.windowRelative.y && srv->top > Engine::mouse.location.windowRelative.y)
+		//		{
+		//			index_t best = 0;
+		//			float bestPing = srv->urls.first().second;
+		//			for (index_t i = 1; i < srv->urls.Count(); i++)
+		//				if (srv->urls[i].second < bestPing)
+		//				{
+		//					bestPing = srv->urls[i].second;
+		//					best = i;
+		//				}
+		//			srv->selected = true;
 
-	//	}
+		//			Network::serverID = srv->id;
+		//			Network::serverIDString = Network::serverID.ToNiceString();
+		//			Network::worldID = srv->info.worldID;
+		//			Network::worldIDString = Network::worldID.ToNiceString();
+		//			Network::client.ConnectAsync(srv->urls[best].first + ":"+String(SERVICE_PORT));
+		//			return;
+		//		}
+
+		//	}
 
 
-	//	return;
-	//}
+		//	return;
+		//}
 
 	
 
-	int oldVehicleHeight = Grid::SeeThrough::GetFocusPoint().height;
-	if (Objects::selectedEntity)
-		oldVehicleHeight = Objects::selectedEntity->location.height;
+		int oldVehicleHeight = Grid::SeeThrough::GetFocusPoint().height;
+		if (Objects::selectedEntity)
+			oldVehicleHeight = Objects::selectedEntity->location.height;
 
 	
 
 
-	//{
-	//	if (CommandPanel::HandleClick())
-	//	{
-	//		Objects::RefreshCommands(Network::ControlEnabled());
-	//		return;
-	//	}
-	//}
+		//{
+		//	if (CommandPanel::HandleClick())
+		//	{
+		//		Objects::RefreshCommands(Network::ControlEnabled());
+		//		return;
+		//	}
+		//}
 
 
 
-	if (Objects::selectedMobileEntity 
-		&& Objects::VehicleCanBeLeftClickDirected()	//also works for mobiles in general. TODO: rename/relocate
-		)
-	{
-		if (Objects::selectedMobileEntity)
+		if (Objects::selectedMobileEntity 
+			&& Objects::VehicleCanBeLeftClickDirected()	//also works for mobiles in general. TODO: rename/relocate
+			)
 		{
-			Grid::LCellIdI	target;
-			bool includeWater = false;
-			if (Objects::activeCursorMode == Objects::CursorMode::AttackMode)
-				includeWater = true;
-			else
-				//if (Objects::selectedVehicle->base->moveOnWater)
-					includeWater = true;
-
-			if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
-			{
-				if (Objects::selectedMobileEntity->IsSatellite())
-					target.height = Objects::selectedMobileEntity->location.height;
-				DirectTo(Objects::selectedMobileEntity,target,false,true);
-				return;
-			}
-		}
-		else
-		{
-			FATAL__("not implemented for non-mobiles yet" );
-		}
-	}
-	else
-		if (Objects::selectedEntity && Objects::activeCursorMode == Objects::CursorMode::AttackMode)
-		{
-			float h;
-			Objects::PTurretBase base = Objects::selectedEntity->GetTurretBase(h);
-			if (base)
+			if (Objects::selectedMobileEntity)
 			{
 				Grid::LCellIdI	target;
-				if (GetLowCellUnderCursor(target,true,true))
+				bool includeWater = false;
+				if (Objects::activeCursorMode == Objects::CursorMode::AttackMode)
+					includeWater = true;
+				else
+					//if (Objects::selectedVehicle->base->moveOnWater)
+						includeWater = true;
+
+				if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
 				{
-					DirectTo(Objects::selectedEntity,target,false,true);
+					if (Objects::selectedMobileEntity->IsSatellite())
+						target.height = Objects::selectedMobileEntity->location.height;
+					DirectTo(Objects::selectedMobileEntity,target,false,true);
 					return;
 				}
 			}
-		}
-
-	//selectedId = InvalidIndex;
-	{
-		float3 b,d;
-		Camera::scene.ScreenToVector(Engine::mouse.location.windowRelative * 2.f - 1.f,b,d);
-		if (!Vec::zero(d))
-		{
-			Vec::normalize(d);
-
-			float distance = std::numeric_limits<float>::max();
-
-
-			bool handledChoice = Objects::HandleChoiceIntersection(b, d, distance);
-			if (!handledChoice)
+			else
 			{
-				TVec3<> normal;
-				bool selectionDone = false;
-				if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity) || Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
+				FATAL__("not implemented for non-mobiles yet" );
+			}
+		}
+		else
+			if (Objects::selectedEntity && Objects::activeCursorMode == Objects::CursorMode::AttackMode)
+			{
+				float h;
+				Objects::PTurretBase base = Objects::selectedEntity->GetTurretBase(h);
+				if (base)
 				{
-					if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
+					Grid::LCellIdI	target;
+					if (GetLowCellUnderCursor(target,true,true))
 					{
-						if (Objects::selectedVehicle)
-						{
-							float3 p = b + d * distance;
-							float r = p.length();
-							float3 d = p / r;
-							UINT32 stackID;
-							int h;
-							if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity))
-							{
-								if (Vec::dot(d, normal) > 0.5f)	//flat selection
-								{
-									stackID = Grid::high.Locate(d);
-									h = Grid::FromRadius(r);
-								}
-								else
-								{
-									stackID = Grid::high.Locate(d + normal*0.001f);
-									h = Grid::FloorFromRadius(r);
-								}
-							}
-							else
-								if (Vec::dot(d, normal) > 0.5f)	//flat selection
-								{
-									stackID = Grid::high.Locate(d);
-									h = int(floor(Grid::FromRadiusf(r)-0.5f));
-								}
-								else
-								{
-									stackID = Grid::high.Locate(d - normal*0.01f);
-									h = Grid::FloorFromRadius(r);
-								}
-							String activity = "build";
-							if (Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
-								activity = "remove";
-							Grid::LCellIdI origin = Objects::selectedVehicle->GetLastPointOfOrigin();
-							if (h < -Grid::CellStack::HalfRange)
-							{
-								LogEvent(EventType::EntityProcess, Objects::selectedEntity.get(), "Cannot "+activity+" here: Cannot alter bottom-layer");
-							}
-							elif (abs(h - origin.height) > 1)
-							{
-								LogEvent(EventType::EntityProcess, Objects::selectedEntity.get(), "Cannot "+activity+" here: Height difference too big: Selected="+String(h)+", vehicle at: "+String(origin.height));
-							}
-							elif(Objects::vehicleDistanceField.distance[stackID] > 3)
-								LogEvent(EventType::EntityProcess, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too far away from vehicle");
-							elif(Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity) && h == origin.height && Objects::vehicleDistanceField.distance[stackID] <= 1)
-								LogEvent(EventType::EntityProcess, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too close to vehicle");
-							else
-							{
-								Grid::HCellIdI	cell = Grid::HCellIdI(stackID, h);
-								index_t current = Objects::cellSelection.GetIndexOf(cell);
-								if (current == InvalidIndex)
-									Objects::cellSelection << cell;
-								else
-									Objects::cellSelection.Erase(current);
-							}
-						}
-						else
-							FATAL__("vehicle selection lost");
-						selectionDone = true;
+						DirectTo(Objects::selectedEntity,target,false,true);
+						return;
 					}
 				}
-				if (!selectionDone)
-					if (Objects::Select(b, d, distance, Network::ControlEnabled()))
-					{
-						selectionDone = true;
-					}
-					else
-					{
-						distance = std::numeric_limits<float>::max();
+			}
 
+		//selectedId = InvalidIndex;
+		{
+			float3 b,d;
+			Camera::scene.ScreenToVector(Engine::mouse.location.windowRelative * 2.f - 1.f,b,d);
+			if (!Vec::zero(d))
+			{
+				Vec::normalize(d);
+
+				float distance = std::numeric_limits<float>::max();
+
+
+				bool handledChoice = Objects::HandleChoiceIntersection(b, d, distance);
+				if (!handledChoice)
+				{
+					TVec3<> normal;
+					bool selectionDone = false;
+					if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity) || Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
+					{
 						if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
 						{
-							float3 p = b + d * distance;
-							float height = p.Length();
-
+							if (Objects::selectedVehicle)
+							{
+								float3 p = b + d * distance;
+								float r = p.length();
+								float3 d = p / r;
+								UINT32 stackID;
+								int h;
+								if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity))
+								{
+									if (Vec::dot(d, normal) > 0.5f)	//flat selection
+									{
+										stackID = Grid::high.Locate(d);
+										h = Grid::FromRadius(r);
+									}
+									else
+									{
+										stackID = Grid::high.Locate(d + normal*0.001f);
+										h = Grid::FloorFromRadius(r);
+									}
+								}
+								else
+									if (Vec::dot(d, normal) > 0.5f)	//flat selection
+									{
+										stackID = Grid::high.Locate(d);
+										h = int(floor(Grid::FromRadiusf(r)-0.5f));
+									}
+									else
+									{
+										stackID = Grid::high.Locate(d - normal*0.01f);
+										h = Grid::FloorFromRadius(r);
+									}
+								String activity = "build";
+								if (Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
+									activity = "remove";
+								Grid::LCellIdI origin = Objects::selectedVehicle->GetLastPointOfOrigin();
+								if (h < -Grid::CellStack::HalfRange)
+								{
+									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot "+activity+" here: Cannot alter bottom-layer");
+								}
+								elif (abs(h - origin.height) > 1)
+								{
+									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot "+activity+" here: Height difference too big: Selected="+String(h)+", vehicle at: "+String(origin.height));
+								}
+								elif(Objects::vehicleDistanceField.distance[stackID] > 3)
+									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too far away from vehicle");
+								elif(Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity) && h == origin.height && Objects::vehicleDistanceField.distance[stackID] <= 1)
+									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too close to vehicle");
+								else
+								{
+									Grid::HCellIdI	cell = Grid::HCellIdI(stackID, h);
+									index_t current = Objects::cellSelection.GetIndexOf(cell);
+									if (current == InvalidIndex)
+										Objects::cellSelection << cell;
+									else
+										Objects::cellSelection.Erase(current);
+								}
+							}
+							else
+								FATAL__("vehicle selection lost");
+							selectionDone = true;
+						}
+					}
+					if (!selectionDone)
+						if (Objects::Select(b, d, distance, Network::ControlEnabled()))
+						{
+							selectionDone = true;
+						}
+						else
+						{
 							distance = std::numeric_limits<float>::max();
 
-							index_t stackID = Grid::low.TestGridIntersection(b, d, height, distance);
-							if (stackID != InvalidIndex)
+							if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
 							{
-								Grid::LCellIdI	target((UINT32)stackID,Grid::FromRadius(height));
-								if (target.height < Grid::CellStack::HalfRange && target.height >= -Grid::CellStack::HalfRange)
+								float3 p = b + d * distance;
+								float height = p.Length();
+
+								distance = std::numeric_limits<float>::max();
+
+								index_t stackID = Grid::low.TestGridIntersection(b, d, height, distance);
+								if (stackID != InvalidIndex)
 								{
-									Objects::PWorldEntity e = Objects::GetEntity(target);
-									Objects::Select(e,Network::ControlEnabled());
-									selectionDone = true;
-									#ifdef _DEBUG
-										if (Engine::input.pressed[Key::Shift])
-											ShowMessage(target.ToString());
-									#endif
+									Grid::LCellIdI	target((UINT32)stackID,Grid::FromRadius(height));
+									if (target.height < Grid::CellStack::HalfRange && target.height >= -Grid::CellStack::HalfRange)
+									{
+										Objects::PWorldEntity e = Objects::GetEntity(target);
+										Objects::Select(e,Network::ControlEnabled());
+										selectionDone = true;
+										#ifdef _DEBUG
+											if (Engine::input.pressed[Key::Shift])
+												ShowMessage(target.ToString());
+										#endif
+									}
 								}
 							}
 						}
-					}
-				if (!selectionDone)
-					Objects::Deselect(Network::ControlEnabled());
-				//else
-					//ShowMessage("nothing");
-			}
+					if (!selectionDone)
+						Objects::Deselect(Network::ControlEnabled());
+					//else
+						//ShowMessage("nothing");
+				}
 
+			}
 		}
 	}
-}
 
-#endif
-
-void SaveScreenshot()
-{
-	saveScreenshot =true;
-	//display.SetBackbufferClearColor(1,1,1,0);
+	void SaveScreenshot()
+	{
+		saveScreenshot =true;
+	}
 
 
-}
-//
-//void SelectNext()
-//{
-//	selectedFamily++;
-//	selectedFamily %= BaseGrid::NumFamilies;
-//}
-//void SelectPrev()
-//{
-//	if (selectedFamily > 0)
-//		selectedFamily--;
-//	else
-//		selectedFamily = BaseGrid::NumFamilies - 1;
-//}
 
-#ifdef HAS_WINDOW
+	void ToggleTimeLapse()
+	{
+		if (TimeLapse::enabled)
+		{
+			TimeLapse::enabled = false;
+			Dialog::SignalSituationChange();
+			LogEvent(EventClass::Preset::uncommon,"Time lapse disabled");
+		}
+		else
+		{
+			if (!Network::amSpectator || !Network::client.IsConnected())
+			{
+				LogEvent(EventClass(EventSignificance::Important,EventFlavor::UserError),"Time lapse recording cannot be enabled if the local client is not configured as spectator");
+			}
+			else
+			{
+				PathString outDirName = PathString(Logging::TimeStamp(true));
+				if (TimeLapse::customBasePath.IsNotEmpty())
+				{
+					FileSystem::Folder f = FileSystem::CreateDirectory(TimeLapse::customBasePath);
+					if (f.IsValidLocation())
+						outDirName = f.FindFile(outDirName,false)->GetLocation();
+					else
+					{
+						LogEvent( EventClass::Preset::commandRejected , "Unable to find folder '"+String(TimeLapse::customBasePath)+". Defaulting to default Documents folder");
+						outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
+					}
+				}
+				else
+					outDirName = RuntimeConfig::ConfigFile("timelapses/"+outDirName);
+
+				int framesPerSecond = (int)ceil(1.f / std::max(0.001f,TimeLapse::frameDelaySeconds));
+				Dialog::Confirm("Timelapse mode will capture roughly "+String(framesPerSecond)+" frame(s) per second during animation phase, but remain inactive during all other phases. The camera will be locked in place.\nProceed?",
+				[outDirName]()
+				{
+					TimeLapse::runningNumber = 0;
+					TimeLapse::enabled = true;
+					TimeLapse::basePath = outDirName;
+					FileSystem::CreateDirectory(outDirName);
+					LogEvent(EventClass::Preset::uncommon,"Time lapse enabled. Writing to "+String(outDirName));
+					Dialog::PermanentMessage("Time lapse recording is enabled. Camera is locked. Press F2 to end time lapse recording",[](){return TimeLapse::enabled ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
+				},[](){return Dialog::CheckResult::OkayContinue;});
+			}
+		}
+	}
+
+
 
 	void ViewDown()
 	{
@@ -3139,11 +2468,11 @@ String GenerateOreName(Random&random)
 //		outEvent = e->owner->GetLogName()+","+ e->GetName()+": "+event;
 //	}
 //	eventLock.lock();
-//	if (type != EventType::Debug && type != EventType::PerformanceMeasurement && type != EventType::MinorEntityProcess)
+//	if (type != EventSignificance::Debug && type != EventSignificance::PerformanceMeasurement && type != EventSignificance::Common)
 //	{
 //		#ifdef HAS_WINDOW
 //			if (type == EventType::ChatMessage)
-//				events << VisualEvent("",EventType::Debug);
+//				events << VisualEvent("",EventSignificance::Debug);
 //			events << VisualEvent(event,type);
 //		#else
 //			std::cout << event << std::endl;
@@ -3155,6 +2484,12 @@ String GenerateOreName(Random&random)
 
 
 #ifdef HAS_WINDOW
+
+	void ToggleControlGUI()
+	{
+		UI::showControlsAndContacts = !UI::showControlsAndContacts;
+		UI::HexGrid::Configure(Objects::selectedEntity);
+	}
 
 	void BeginCameraDrag()
 	{
@@ -3191,7 +2526,7 @@ String GenerateOreName(Random&random)
 						Objects::PWorldEntity possibleTarget = Objects::GetRayIntersection(b,d,distance);
 						if (possibleTarget && !possibleTarget->isMine)
 						{
-							DirectTo(Objects::selectedEntity,possibleTarget->location,true,Objects::CursorMode::AttackMode);
+							DirectTo(Objects::selectedEntity,possibleTarget->location,false,true, Objects::CursorMode::AttackMode);
 							return;
 						}
 					}
@@ -3199,7 +2534,7 @@ String GenerateOreName(Random&random)
 					{
 						if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 						{
-							DirectTo(Objects::selectedEntity,target,true,Objects::CursorMode::AttackMode);
+							DirectTo(Objects::selectedEntity,target,false,true,Objects::CursorMode::AttackMode);
 							return;
 						}
 					}
@@ -3210,7 +2545,7 @@ String GenerateOreName(Random&random)
 					{
 						//Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(Objects::selectedEntity);
 						//Objects::MobileEntityProducer*p = ws
-						if (Objects::selectedEntity->CastToProducer())
+						if (!Objects::selectedEntity->IsSatellite() && Objects::selectedEntity->CastToProducer())
 						{
 							if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 							{
@@ -3228,6 +2563,7 @@ String GenerateOreName(Random&random)
 				&& Objects::VehicleCanBeDirected()	//TODO: rename/relocate for mobile entities
 			)
 			{
+
 				if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 				{
 					//Grid::LCellIdI	target((UINT32)cellID,Grid::FromRadius(height));
@@ -3383,7 +2719,7 @@ String GenerateOreName(Random&random)
 		{
 			return false;
 		}
-		if (v->GetConstructionSpeed())
+		if (v->GetOperationSpeed(Objects::Component::Construct))
 			return true;
 		if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsNonAutomatedResourceDetector())
 			return true;
@@ -3410,12 +2746,22 @@ String GenerateOreName(Random&random)
 		return false;
 	}
 
-	bool	IsIdle(const Objects::PStructure&s)
+
+	bool	IsIdle(const Objects::PStructure&s, bool tagVisited)
 	{
 		#ifndef NO_HIBERNATION
 			if (s->ToHibernating()->IsHibernating())
 				return false;
 		#endif
+
+		if (!s->IsWorkingStructure())
+			return false;
+		Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
+		if (ws->visited)
+			return false;
+		if (tagVisited)
+			ws->visited = true;
+
 		Objects::PVehiclePlant vp = To<Objects::VehiclePlant>::DynamicCast(s);
 		if (vp)
 			return (vp->AwaitsUserInteraction() || /*vp->queue.IsEmpty() || */
@@ -3426,10 +2772,44 @@ String GenerateOreName(Random&random)
 			);
 		Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 		if (mine)
-			return !mine->IsEnabled()/* && mine->CouldEnable()*/;
+			return !mine->IsEnabled() && mine->CouldEnable();
 
 		return false;
 
+	}
+
+	bool	ShouldSignalRoundEnd()
+	{
+		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound || Network::amSpectator)
+			return false;
+		count_t total=0,requested=0;
+		Objects::ForeachFaction([&total,&requested](const Objects::PFaction&f)
+		{
+			total++;
+			if ((f->requestedNewRound || !f->online) && f != Objects::Faction::mine)
+				requested++;
+		});
+
+		if (requested+1 != total)
+			return false;
+
+		bool any = false;
+		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
+		{
+			if (any || !e->isMine)
+				return;
+			if (e->IsMobile())
+			{
+				if (IsIdle(To<Objects::MobileEntity>::Cast(e)))
+					any = true;
+			}
+			elif (e->IsStructure())
+			{
+				if (IsIdle(To<Objects::Structure>::Cast(e),false))
+					any = true;
+			}
+		});
+		return !any;
 	}
 	
 
@@ -3494,7 +2874,7 @@ String GenerateOreName(Random&random)
 					index_t at = to - Objects::vehicles.Count() - Objects::satellites.Count();
 					Objects::PStructure s = Objects::structures[at];
 
-					if (s->isMine && IsIdle(s))
+					if (s->isMine && IsIdle(s,true))
 					{
 						Objects::Select(s,Network::ControlEnabled());
 						Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -3543,7 +2923,7 @@ String GenerateOreName(Random&random)
 				to = total-1;
 			if (to < Objects::vehicles.Count())
 			{
-				if (Objects::vehicles[to]->owner == Network::myFaction)
+				if (Objects::vehicles[to]->owner == Objects::Faction::mine)
 				{
 					Objects::Select(Objects::vehicles[to],Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -3551,7 +2931,7 @@ String GenerateOreName(Random&random)
 				}
 			}
 			else
-				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Network::myFaction)
+				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Objects::Faction::mine)
 				{
 					Objects::Select(Objects::satellites[to - Objects::vehicles.Count()],Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -3592,7 +2972,7 @@ String GenerateOreName(Random&random)
 				to = 0;
 			if (to < Objects::vehicles.Count())
 			{
-				if (Objects::vehicles[to]->owner == Network::myFaction)
+				if (Objects::vehicles[to]->owner == Objects::Faction::mine)
 				{
 					Objects::Select(Objects::vehicles[to],Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -3600,7 +2980,7 @@ String GenerateOreName(Random&random)
 				}
 			}
 			else
-				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Network::myFaction)
+				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Objects::Faction::mine)
 				{
 					Objects::Select(Objects::satellites[to - Objects::vehicles.Count()],Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -3657,7 +3037,7 @@ void ParseKeyValue(const String&key, const String&value)
 {
 	try
 	{
-		LogEvent(EventType::ConfigRelated, nullptr, "Setting `" + key + "` = '" + value + "'");
+		LogEvent(EventClass::Preset::configuration, nullptr, "Setting `" + key + "` = '" + value + "'");
 		if (key == "aiAccessToken")
 		{
 			RuntimeConfig::aiMode = true;
@@ -3671,7 +3051,7 @@ void ParseKeyValue(const String&key, const String&value)
 		elif(key == "serverURL")
 		{
 			RuntimeConfig::serverAddress = Network::ServerAddress(value);
-			LogEvent(EventType::ConfigRelated, nullptr, "Server address set to "+RuntimeConfig::serverAddress.ToString());
+			LogEvent(EventClass::Preset::configuration, nullptr, "Server address set to "+RuntimeConfig::serverAddress.ToString());
 		}
 		else
 			throw Program::ParameterFault("`"+key+"` is not a recognized runtime parameter");
@@ -3779,7 +3159,7 @@ int main( int argc, const char* argv[])
 
 	try
 	{
-		LogEvent(EventType::SessionRelated,nullptr,"Starting client v" PRODUCT_VERSION);
+		LogEvent(EventClass::Preset::uncommon,nullptr,"Starting client v" PRODUCT_VERSION);
 
 	//	FileSystem::CreateDirectory(RuntimeConfig::ConfigDir());
 		
@@ -3796,7 +3176,7 @@ int main( int argc, const char* argv[])
 				FileSystem::CopyFile(PathString("./game.ini"),userConfigPath,false);
 			if (!config.LoadFromFile(userConfigPath))
 			{
-				LogEvent(EventType::ConfigRelated,nullptr,"Unable to load user configuration from '"+String(userConfigPath)+"': '"+config.Report()+"'. Attempting to load original config");
+				LogEvent(EventClass::Preset::configuration,nullptr,"Unable to load user configuration from '"+String(userConfigPath)+"': '"+config.Report()+"'. Attempting to load original config");
 				config.LoadFromFile("game.ini");
 			}
 
@@ -3811,6 +3191,10 @@ int main( int argc, const char* argv[])
 				display.config.fsaa_samples = config.GetInt("runtime/fsaa",4);
 
 				UI::resourcesAsList = config.GetBool("runtime/resourcesAsList",false);
+
+				TimeLapse::customBasePath = PathString(config.GetString("timelapse/outDirectory"));
+				TimeLapse::frameDelaySeconds = config.GetFloat("timelapse/frameDelaySeconds",0.2f);
+				TimeLapse::maxCompressionPNG = config.GetBool("timelapse/maxCompressionPNG");
 			#endif
 		}
 		LoadHosts();
@@ -3819,29 +3203,7 @@ int main( int argc, const char* argv[])
 		applicationStart = timer.Now();
 
 
-		//{
-		//	StringFile	oreNames;
-		//	oreNames.create("oreNames.txt");
 
-		//	Random random;
-
-		//	for (int i = 0; i < 100; i++)
-		//		oreNames << GenerateOreName(random) << nl;
-
-		//
-		//}
-
-
-
-#ifdef GAME_BLOB_SYSTEM
-
-		WorkerConnectionModule::Start(ModuleLog);
-		Network::Setup();
-#endif /*0*/
-
-
-
-		storageThread.start();
 
 		Engine::GlobalAspectConfiguration::worldZIsUp = true;
 		
@@ -3849,6 +3211,8 @@ int main( int argc, const char* argv[])
 		//display.create(Engine::DisplayConfig("TerraLab");
 
 		#ifdef HAS_WINDOW
+			storageThread.start();
+
 			Engine::CreateDisplay(display,
 				RuntimeConfig::ConfigDir(),
 				RuntimeConfig::aiMode ? "AI":
@@ -3864,15 +3228,8 @@ int main( int argc, const char* argv[])
 
 
 			textout.getActiveFont()->LoadFromFile("Font/font.xml");
-		#endif
-	
 
 
-
-	
-
-
-		#ifdef HAS_WINDOW
 			LineRenderer::Create();
 			SurfaceRenderer::Create();
 
@@ -3898,11 +3255,14 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::T,[](){}, QueryAndSendChatMessage);
 			Engine::input.bind(Key::R,ToggleResourceView);
 
+			Engine::input.bind(Key::H,ToggleControlGUI);
+
 			Engine::input.bind(Key::MouseButton0, Select, Dialog::HandleMouseUp);
 			Engine::input.bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
 			Engine::input.bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
 
 			Engine::input.bind(Key::F3, SaveScreenshot);
+			Engine::input.bind(Key::F2,ToggleTimeLapse);
 
 			#ifdef RAYTRACE
 				Engine::input.bind(Key::Up,ZoomIn);
@@ -3954,26 +3314,11 @@ int main( int argc, const char* argv[])
 
 			mainMenu.reset(new Dialog::Menu(0.25f,"Main"));
 			mainMenu->AddCommand("Change Nickname",QueryNickname);
-			mainMenu->AddCommand("Abandon faction",
-				[]()
-				{
-					Dialog::Confirm("Your current faction will be abandoned. Its access key will be preserved until you create a new faction in this world. Please confirm.",
-								Network::AbandonCurrentFaction,
-								[](){return Network::client.IsConnected() && Network::haveFaction ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
-				},
-				[](){return Network::amOnline && Network::haveFaction;});
+			mainMenu->AddCommand("Abandon faction",Network::AbandonCurrentFaction,[](){return Network::amOnline && Network::haveFaction;});
 			mainMenu->AddCommand("Disconnect",
 				[]()
 				{
-					Dialog::Confirm("You will be disconnected from the server and returned to the server selection screen.",
-						[]()
-						{ 
-							Network::client.Disconnect();
-						},
-						[]()
-						{
-							return Network::client.IsConnected() ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;
-						});
+					Network::client.Disconnect();
 				},
 				[](){return Network::client.IsConnected();});
 			mainMenu->AddCommand("Quit to Desktop",[](){Dialog::Confirm("Really quit? Any active faction will be preserved server-sided for you to continue later on.",[](){application_shutting_down = true;},[](){return Dialog::CheckResult::OkayContinue;});});
@@ -4068,14 +3413,14 @@ int main( int argc, const char* argv[])
 		application_shutting_down = true;
 
 
-		storageThread.Terminate();
 
 		#ifdef HAS_WINDOW
+			storageThread.Terminate();
 			display.destroy();
 		#endif
 
+		ServerProcess::Destroy();
 		Logging::End();
-
 
 		TerminateProcess(GetCurrentProcess(),0);	//self-terminate
 

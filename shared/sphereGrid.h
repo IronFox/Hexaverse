@@ -475,6 +475,19 @@ namespace Grid
 			extern DX11::ObjectBuffer<float4>	ParaboloidColor_FlatRadius;
 			extern DX11::ObjectBuffer<VecN<float,8> > atmosphereConfig;
 			extern DX11::ObjectBuffer<float4> sunDirection,sunColor;
+
+
+			struct THeightMapOrientation
+			{
+				TMatrix4<>	orientation0,
+							orientation1,
+							orientation2;
+			};
+
+			static_assert(sizeof(THeightMapOrientation)==sizeof(float)*16*3,"Sruct alignment out of wack");
+			extern DX11::ObjectBuffer<THeightMapOrientation>	heightMapOrientation;	//used for lava
+			extern DX11::Texture								cubeHeightMap;	//used for lava
+
 			
 			extern DX11::BaseInstructionBlock terrainBase, terrainSphereBase, 
 											terrainParaboloidBase, terrainShadowBase, 
@@ -483,12 +496,12 @@ namespace Grid
 		struct TerrainVertex
 		{
 			float4		vertex;
-			float4		normal;
+			sbyte4		normal_structure;
 			float4		color;
 
 			/**/		TerrainVertex()	{};
-			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float4&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal(n,structure), color(color){}
-			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float3&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal(n, structure), color(color,1.f){}
+			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float4&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f,structure*127.f), color(color){}
+			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float3&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f, structure*127.f), color(color,1.f){}
 		};
 	
 		struct ResourceVertex //! Temporarily the same layout as TerrainVertex
@@ -1463,7 +1476,7 @@ namespace Grid
 								TVec3<> normal;
 								for (index_t i = _i; i < _i + HullTestBatch*3 && i < dat.terrain.indices.Count(); i+=3)
 								{
-									if (Vec::dot(dat.terrain.vertices[indices[i]].normal.xyz,d) > 0.f)
+									if (Vec::dot(dat.terrain.vertices[indices[i]].normal_structure.xyz,d) > 0.f)
 										continue;
 									if (Obj::detectOpticalIntersection(
 										dat.terrain.vertices[indices[i]].vertex.xyz,
@@ -1472,7 +1485,8 @@ namespace Grid
 										b, d, dist))
 									{
 										any = true;
-										normal = dat.terrain.vertices[indices[i]].normal.xyz;	//correct enough
+										Vec::copy(dat.terrain.vertices[indices[i]].normal_structure.xyz,normal);	//correct enough
+										Vec::div(normal,127.f);
 									}
 								}
 								if (any)
@@ -1912,9 +1926,25 @@ namespace Grid
 					}
 				}
 
-				bool	IsVisible() const
+				/**
+				Checks whether or not the terrain contents of the local cell are currently visible,
+				either because it is currently in range, or has been in range at any given time during
+				the last processing round.
+				Use this method for terrain contents only. Not to be used for entity visibility.
+				Use IsCurrentlyVisible() instead!
+				*/
+				bool	TerrainIsVisible() const
 				{
 					return visibility > 0 || temporarilyVisible;
+				}
+
+				/**
+				Checks whether or not this cell is currently visible.
+				Should be used for entity visibility.
+				*/
+				bool	IsCurrentlyVisible() const
+				{
+					return visibility > 0;
 				}
 			};
 			Cell	volumeCell[Grid::CellStack::Range];
@@ -2003,9 +2033,11 @@ namespace Grid
 
 	};
 
-
+	
 	class WorldData
 	{
+	private:
+		static short			ResourceDistance(const Sphere<>&resourceSphere, const TVec3<>&cellCenter);
 	public:
 		Array<CellStack>		cellStack;
 		#ifdef HAS_WINDOW
@@ -2121,6 +2153,21 @@ namespace Grid
 				void			SignalLightingChange(const HCellIdI&cellID);
 			#endif
 			void				SignalLightingChange(const LCellIdI&cellID);
+
+
+			#if 0
+			void				ClearResourceDistanceField();
+			/**
+			Paints a sphere into the resource distance field, 2 units larger than the specified sphere.
+			This method uses static instances of classes and must not be called in parallel
+			*/
+			void				PaintResourceDistanceField(const Sphere<>&resourceSphere);
+
+			/**
+			Detailed version of the above. This version may be called in parallel
+			*/
+			void				PaintResourceDistanceField(const HighSetup::TVolumeDescriptor&desc, const Sphere<>&resourceSphere);
+			#endif /*0*/
 		#endif
 		void					InsertSensor(const HighSetup::TVolumeDescriptor&desc);
 		void					RemoveSensor(const HighSetup::TVolumeDescriptor&desc);
@@ -2139,6 +2186,7 @@ namespace Grid
 			void				ChangeSensorCoverage(const HighSetup::TVolumeDescriptor&state, signed char change);
 	};
 
+	
 	extern WorldData			actualWorld;
 	#ifndef CLIENT
 		extern WorldData		initialWorld;

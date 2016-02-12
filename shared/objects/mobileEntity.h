@@ -22,6 +22,61 @@ namespace Objects
 
 
 
+	
+
+	class MobileResourceEnvironment
+	{
+	public:
+		#ifdef WIRELESS_VEHICLES
+			Grid::LowSetup::TVolumeDescriptor desc;
+			Buffer0<std::pair<UINT32, PStructure> >		sourceCompounds;
+
+			bool				ContainsCompound(UINT32 compoundID)	const;
+
+			void				GetOwnCompoundsIn(const OwnerParameter&p, const Grid::LowSetup::TVolumeDescriptor&desc);
+
+			#ifndef CLIENT
+				static void		ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int&change);
+				static void		ForceChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int change);
+				static void		WithdrawOverproduction(Compound&compound, MobileEntity*originatingAt, Resource res, int&change);
+			#endif
+
+			void				AddCompound(const PStructure&ref);
+
+			struct TCacheID
+			{
+				UINT32			round=0xFFFFFFFF;
+				UINT16			stackID=0xFFFF,numCompounds=0;
+				UINT8			layerID=0xFF;
+				UINT8			phase=0xFF;
+
+				/**/			TCacheID()	{}
+				/**/			TCacheID(const MobileEntity&);
+				/**/			TCacheID(const MobileEntity&, const Grid::LCellIdI&);
+
+				bool			operator==(const TCacheID&other) const {return round == other.round && stackID == other.stackID && layerID == other.layerID && phase == other.phase && numCompounds == other.numCompounds;}
+				bool			operator!=(const TCacheID&other) const {return !operator==(other);}
+			};
+
+			TCacheID			cacheID;
+
+			void	CheckRefresh(const MobileEntity&);
+			void	CheckRefresh(const MobileEntity&, const Grid::LCellIdI&);
+		#else
+			inline void	CheckRefresh(const MobileEntity&)	{};
+
+		#endif
+
+		bool		CanWithdraw(const MobileEntity&owner, Resource res, int demand)	const;
+		#ifndef CLIENT
+			void	ChangeStorage(MobileEntity&owner, Resource res, int&change);
+			void	ForceChangeStorage(MobileEntity&owner, Resource res, int change);
+		#endif
+		int			GetStorage(const MobileEntity&owner, Resource res)	const;
+	};
+		
+
+
 	struct PathNode
 	{
 		Grid::LCellIdI	cell;
@@ -57,10 +112,12 @@ namespace Objects
 			, public Hibernating
 		#endif
 	{
+		typedef WorldEntity	Super;
 	protected:
 		void		HandleMotion(MobilePlacementResult&rs, bool signalEvent, const Grid::LCellIdI&oldLocation, float timeCost);
 	public:
-		typedef CursorMode::mode_t	mode_t;
+		MobileResourceEnvironment	resourceEnvironment;
+		typedef CursorMode	mode_t;
 
 		struct TaskData
 		{
@@ -71,7 +128,7 @@ namespace Objects
 				Mode,
 				Job,
 			}						type;
-			CursorMode::mode_t		mode;
+			CursorMode		mode;
 		
 			#ifdef HAS_WINDOW
 				DX11::InstructionBlock32			visualization;
@@ -267,7 +324,7 @@ namespace Objects
 
 		UINT32					constructionRoundCounter=0;	//!< Number of rounds that the entity has been busy building at its current location
 
-		/**/					MobileEntity(const OwnerParameter&owner, Component::Turret*turret, const Grid::LCellIdI&location) : WorldEntity(owner,location), TurretBase(turret)
+		/**/					MobileEntity(const OwnerParameter&owner, Component::Turret*turret, const Grid::LCellIdI&location) : Super(owner,location), TurretBase(turret)
 								#ifdef CLIENT
 									,preAnimationLocation(location)
 								#endif
@@ -322,7 +379,7 @@ namespace Objects
 										const PVehicleJob&job, const Grid::LCellIdI*focus);
 			void				RegisterNewFrontJob(
 										const String&localizableShapeIdentifier,
-										const PVehicleJob&job, const Grid::LCellIdI*focus);
+										const PVehicleJob&job, const PVehicleJob&parent, const Grid::LCellIdI*focus);
 
 
 			bool				DropLastTask();
@@ -370,23 +427,27 @@ namespace Objects
 			*/
 			bool				ClearAllTasks(bool isReaction, const TCodeLocation&caller)
 			{
+				LogEvent(EventSignificance::Debug,this,"ClearAllTasks("+String(isReaction)+", "+String(caller.ToString())+")");
 				if (TasksAreLocked())
 				{
 					if (flushTasksOnUnlock)
 						return false;
-					LogEvent(EventType::Debug,this,"Issued task clearing: "+String(caller.ToString()));
+					timeAt += timeEpsilon;
 					flushTasksOnUnlock = true;
+					LogEvent(EventSignificance::Debug,this," ...set to clear on unlock");
 					return true;
 				}
 				
 				if (myTasks.IsNotEmpty() || completeOnMove)
 				{
+					timeAt += timeEpsilon;
 					jobStarted = false;
 					if (!isReaction)
 						completeOnMove.reset();
 					RegisterChange(TasksChanged,timeAt);
 					//tasksChanged = true;
 					myTasks.Clear();
+					LogEvent(EventSignificance::Debug,this," ...cleared");
 					return true;
 				}
 				return false;
@@ -427,23 +488,27 @@ namespace Objects
 
 		#endif
 
-		UINT32					GetConstructionRounds(int jobCosts) const
+		UINT32					GetOperationRounds(int jobCosts, Component::operation_t op) const
 		{
-			int speed = GetConstructionSpeed();
+			if (!jobCosts)
+				return 0;
+			int speed = GetOperationSpeed(op);
+			if (!speed)
+				return 0xFFFFFFFF;
 			int rs = jobCosts / speed;
 			if (jobCosts % speed)
 				rs ++;
 			return rs;
 		}
-
 		Grid::LCellIdI			GetConstructionLocation() const {return GetConstructionLocation(location);}
 		float					GetMovementInitiative()const	{return GetBaseMovementInitiative() * movementActionLeft;}
 		bool					AttackIgnoresMotion() const {return turret->ignoresVehicleMotion;}
 		bool					AttackIsStationary() const {return turret->requiresStationaryVehicle;}
 		float					GetAttackExplosionRadius() const {return turret->explosionRadius;}
-		bool					CanRepair() const {return turret->canRepair;}
+		bool					CanRepair() const {return turret->CanRepair();}
 		bool					CanAttack() const {return turret->CanAttack();}
 
+		int						GetCurrentMineralConsumption() const;
 
 		/**
 		Updates @a system and @a invert based on @a location
@@ -455,7 +520,7 @@ namespace Objects
 		Retrieves the amount of minerals that can be converted into structure by the local entity
 		@return Amount of minerals that can be converted per round by the local entity. 0 for entities that cannot construct
 		*/
-		virtual int				GetConstructionSpeed() const=0;
+		virtual int				GetOperationSpeed(Component::operation_t op) const {return turret->operationSpeed[op];}
 		virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return focus;}
 		virtual bool			MotionIgnoresAttack() const=0;
 		virtual int				GetMovementStepsPerRound() const =0;
@@ -497,10 +562,12 @@ namespace Objects
 
 
 	protected:
-		inline void				OffsetTime(float t)
+		inline void				OffsetTime(float&t)
 		{
 			#ifndef CLIENT
 				timeAt = std::max(timeAt,t);
+				timeAt += timeEpsilon;
+				t = timeAt;
 			#endif
 		}
 	};

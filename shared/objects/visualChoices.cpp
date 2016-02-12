@@ -103,7 +103,7 @@ namespace Objects
 			return false;
 		PVehicle deployment = VehicleStore::deployingVehicle;
 		//VehicleStore::deployingVehicle.reset();
-		CursorMode::mode_t cursorMode = activeCursorMode;
+		CursorMode cursorMode = activeCursorMode;
 		activeCursorMode = CursorMode::Idle;
 
 		Grid::LCellIdI ch = movementChoices[choice];

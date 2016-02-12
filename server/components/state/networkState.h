@@ -62,7 +62,7 @@ namespace Network
 	};
 	
 
-	extern Buffer<PClient>	activePlayers,spectators;
+	extern Buffer<PClient>	activePlayersAndSpectators,spectators;
 	/**
 	Direct mapping from factions to online players. If a lookup fails, the respective player is not online. Only one entry per faction is allowed
 	*/
@@ -77,6 +77,7 @@ namespace Network
 	*/
 	void		HandleConnectionLoss(PClient);
 
+	bool		SessionIsStarted();
 	/**
 	Disconnects all clients, flushes the scene, and disables the TCP server systems.
 	Clients will not be able to connect unless RestartSession is called.
@@ -110,6 +111,14 @@ namespace Network
 	*/
 	void		SetupServer();
 
+	/**
+	Checks if the specified faction is currently controlled by a connected client
+	*/
+	bool		FactionIsActive(const Objects::PFaction&);
+	/**
+	Checks if at least one faction is controlled by a human player. The nexus faction does not count, and neither do spectators
+	*/
+	bool		AnyHumanPlayersActive();
 
 	/**
 	Configures the local server and starts it

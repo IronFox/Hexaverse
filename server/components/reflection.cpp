@@ -5,10 +5,11 @@
 #include "journalSaveGame.h"
 #include <io/config.h>
 #include <io/file_system.h>
+#include "aiProcess.h"
 
 namespace Reflection
 {
-	CLI::Interpretor	state;
+	CLI::Interpreter	state;
 
 	namespace Variable
 	{
@@ -193,6 +194,49 @@ namespace Reflection
 
 			};
 
+
+		class NexusAIEnabled : public Base
+		{
+			typedef Base	Super;
+		public:
+			String			defaultValue = "true";
+
+			/**/			NexusAIEnabled(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "bool",Persistence::RestoreFromSavegame,1,protection)	{}
+			virtual String	ToString()		const	override	{return String(Game::Config::Nexus::enableAI);}
+			virtual	bool	Set(const String&value)	override
+			{
+				String old = ToString();
+				bool val;
+				bool rs = convert(value.c_str(),val);
+				if (!rs)
+					return false;
+				Game::Config::Nexus::enableAI = val;
+				if (old != ToString())
+				{
+					if (Network::SessionIsStarted())
+					{
+						if (!val)
+							AIProcess::End();
+						else
+							AIProcess::Begin(Objects::Faction::nexus->accessToken);
+					}
+					OnChanged();
+				}
+				return rs;
+			}
+			virtual String		GetSupportedValues() const override 
+			{
+				return "[false,true]";
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = ToString();
+			}
+		};
 
 
 		class SupportedFactions : public Base
@@ -441,7 +485,7 @@ namespace Reflection
 			String name;
 			if (!child->Query("name",name))
 			{
-				LogEvent(EventType::ConfigRelated,"Unable to retrieve name attribute of XML variable node in "+context->GetPath());
+				LogEvent(EventClass::Preset::configuration,"Unable to retrieve name attribute of XML variable node in "+context->GetPath());
 				allGood = false;
 				continue;
 			}
@@ -450,7 +494,7 @@ namespace Reflection
 				CLI::PVariable v = context->variables.Query(name);
 				if (!v)
 				{
-					LogEvent(EventType::ConfigRelated,"Addressed variable '"+name+"' does not exist in "+context->GetPath());
+					LogEvent(EventClass::Preset::configuration,"Addressed variable '"+name+"' does not exist in "+context->GetPath());
 					allGood = false;
 					continue;
 				}
@@ -487,7 +531,7 @@ namespace Reflection
 						v->SetCurrentToDefault();
 					else
 					{
-						LogEvent(EventType::ConfigRelated,"Failed to set '"+v->name+"' to '"+value+"' in "+context->GetPath());
+						LogEvent(EventClass::Preset::configuration,"Failed to set '"+v->name+"' to '"+value+"' in "+context->GetPath());
 						allGood = false;
 					}
 				}
@@ -499,7 +543,7 @@ namespace Reflection
 				CLI::PCommand v = context->commands.Query(name);
 				if (!v)
 				{
-					LogEvent(EventType::ConfigRelated,"Addressed command '"+name+"' does not exist in "+context->GetPath());
+					LogEvent(EventClass::Preset::configuration,"Addressed command '"+name+"' does not exist in "+context->GetPath());
 					allGood = false;
 					continue;
 				}
@@ -514,7 +558,7 @@ namespace Reflection
 				CLI::PFolder f = context->folders.Query(name);
 				if (!f)
 				{
-					LogEvent(EventType::ConfigRelated,"Addressed context '"+name+"' does not exist in "+context->GetPath());
+					LogEvent(EventClass::Preset::configuration,"Addressed context '"+name+"' does not exist in "+context->GetPath());
 					allGood = false;
 					continue;
 				}
@@ -526,7 +570,7 @@ namespace Reflection
 			}
 
 			{
-				LogEvent(EventType::ConfigRelated,"Unexpected XML node type '"+child->name+"' found in "+context->GetPath());
+				LogEvent(EventClass::Preset::configuration,"Unexpected XML node type '"+child->name+"' found in "+context->GetPath());
 				continue;
 			}
 		}
@@ -589,7 +633,7 @@ namespace Reflection
 	
 	void PrintLn(const String&line)
 	{
-		LogEvent(EventType::RemoteControl,"Response: '"+line+"'");
+		LogEvent(EventClass::Preset::remoteControlCommand,"Response: '"+line+"'");
 	}
 
 
@@ -689,7 +733,8 @@ namespace Reflection
 
 			state.EnterNewFolder("Nexus");
 				VAR(haveBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
-				VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
+				state.SetVariable(CLI::PVariable(new Variable::NexusAIEnabled("enableAI")));
+				//VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
 				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::ConfigOverridesSavegame)
 				state.SetVariable(CLI::PVariable(new Variable::NexusVehicleTurrets("vehicleTurrets")));
 			state.ExitFolder();
@@ -713,7 +758,7 @@ namespace Reflection
 
 	}
 
-	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction);
+	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, bool readOriginal=false);
 
 	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction)
 	{
@@ -737,7 +782,7 @@ namespace Reflection
 					String support = var->GetSupportedValues();
 					if (support.IsNotEmpty())
 						support = "Supported values are "+var->GetSupportedValues()+". ";
-					LogEvent(EventType::ConfigRelated,"Unable to set "+folder->GetPath()+"/"+var->name+" to '"+attrib->value+"'. "+support+"Defaulting to "+var->GetDefault());
+					LogEvent(EventClass::Preset::configuration,"Unable to set "+folder->GetPath()+"/"+var->name+" to '"+attrib->value+"'. "+support+"Defaulting to "+var->GetDefault());
 					String varPath = folder->GetPath()+"/"+var->name;
 					ASSERT2__(var->Set(var->GetDefault()),varPath,var->GetDefault());
 					allGood = false;
@@ -748,7 +793,7 @@ namespace Reflection
 				String support = var->GetSupportedValues();
 				if (support.IsNotEmpty())
 					support = "Supported values are "+var->GetSupportedValues()+". ";
-				LogEvent(EventType::ConfigRelated,"Unable to read "+folder->GetPath()+"/"+var->name+". "+support+"Defaulting to "+var->GetDefault());
+				LogEvent(EventClass::Preset::configuration,"Unable to read "+folder->GetPath()+"/"+var->name+". "+support+"Defaulting to "+var->GetDefault());
 				String varPath = folder->GetPath()+"/"+var->name;
 				ASSERT2__(var->Set(var->GetDefault()),varPath,var->GetDefault());
 				allGood = false;
@@ -873,19 +918,19 @@ namespace Reflection
 		}
 	}
 
-	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction)
+	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, bool readOriginal/*=false*/)
 	{
 		Configuration	config;
 		Config::Context*	ctx = nullptr;
 		
-		PathString configName = RuntimeConfig::ConfigFile(PathString(subConfigName));
+		const PathString configName = readOriginal ? "./"+subConfigName :  RuntimeConfig::ConfigFile(PathString(subConfigName));
 
 		bool rewrite = true;
 		if (FileSystem::IsFile(configName))
 		{
 			if (!config.LoadFromFile(configName))
 			{
-				LogEvent(EventType::InternalFault,"Unable to parse "+String(configName)+":\n"+config.Report());
+				LogEvent(EventClass::Preset::error,"Unable to parse "+String(configName)+":\n"+config.Report());
 			}
 			else
 			{
@@ -897,12 +942,12 @@ namespace Reflection
 		{
 			if (FileSystem::IsFile(subConfigName))
 			{
-				LogEvent(EventType::ConfigRelated,"Restoring missing configuration file '"+String(subConfigName)+"' from base data");
+				LogEvent(EventClass::Preset::configuration,"Restoring missing configuration file '"+String(subConfigName)+"' from base data");
 				if (FileSystem::Copy(subConfigName,configName,true))
 				{
 					if (!config.LoadFromFile(configName))
 					{
-						LogEvent(EventType::InternalFault,"Unable to parse "+String(configName)+":\n"+config.Report());
+						LogEvent(EventClass::Preset::error,"Unable to parse "+String(configName)+":\n"+config.Report());
 					}
 					else
 					{
@@ -914,14 +959,15 @@ namespace Reflection
 		}
 
 		if (!ctx)
-			LogEvent(EventType::ConfigRelated,"Default configuration loaded");
+			LogEvent(EventClass::Preset::configuration,"Default configuration loaded");
 		bool allGood = InnerFeed(folder,ctx,testMode,filterFunction);
-		if (!allGood || rewrite)
+		if (!readOriginal && (!allGood || rewrite))
 		{
+			Feed(folder,subConfigName,testMode,filterFunction,true);
 			StringFile outFile;
 			if (!outFile.Create(configName))
 			{
-				LogEvent(EventType::ConfigRelated,"Unable to overwrite '"+String(configName)+"'");
+				LogEvent(EventClass::Preset::configuration,"Unable to overwrite '"+String(configName)+"'");
 			}
 			else
 			{
@@ -929,6 +975,11 @@ namespace Reflection
 				outFile.Close();
 			}
 		}
+		else
+			if (readOriginal && !allGood && !rewrite)
+			{
+				FATAL__("There were errors while trying to parse original configuration file "+String(configName)+". Fix the errors and restart the application.\nCheck your server logs (My Documents/My Games/Hexaverse/server/logs) for details. Redownloading the application should also fix the issue.")
+			}
 	}
 
 
@@ -953,7 +1004,9 @@ namespace Reflection
 
 	void Load(bool testMode)
 	{
-		FileSystem::Folder planetPrototypes = FileSystem::Folder().FindFolder("config/planets");
+		FileSystem::Folder	root;
+		ASSERT__(root.IsValidLocation());
+		FileSystem::Folder planetPrototypes = root.FindFolder("config/planets");
 		
 
 		if (planetPrototypes.IsValidLocation())
@@ -968,16 +1021,16 @@ namespace Reflection
 				{
 					if (!FileSystem::Copy(file.GetLocation(),dest,true))
 					{
-						LogEvent(EventType::InternalFault,"Warning: Unable to restore default planet type '"+String(file.GetInnerName())+"'");
+						LogEvent(EventClass::Preset::error,"Warning: Unable to restore default planet type '"+String(file.GetInnerName())+"'");
 					}
 					else
-						LogEvent(EventType::InternalFault,"Restored default planet type '"+String(file.GetInnerName())+"'");
+						LogEvent(EventClass::Preset::error,"Restored default planet type '"+String(file.GetInnerName())+"'");
 				}
 			}
 
 		}
 		else
-			LogEvent(EventType::InternalFault,"Warning: Unable to find base planet source folder");
+			LogEvent(EventClass::Preset::error,"Warning: Unable to find base planet source folder from '"+String(root.GetLocation()));
 
 
 		#ifdef _DEBUG

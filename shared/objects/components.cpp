@@ -48,6 +48,19 @@ namespace Objects
 		}
 
 
+		bool							Turret::ConsumesResources(ResourceFlagSet&res) const
+		{
+			if (this->isSatelliteRing)
+				res |= Resource::Fuel;
+			if (CanAttack())
+			{
+				res = ammoType;
+				return ammoNeedPerShot > 0 || this->isSatelliteRing;
+			}
+			res |= Resource::Minerals;
+			return CanDo(Component::Construct) || CanDo(Component::Repair) || CanDo(Component::TerrainAdd) || this->isSatelliteRing;
+		}
+
 
 		#ifdef HAS_WINDOW
 			/*static*/ float			Turret::CompileTrajectory(const Buffer0<TVec4<> >&v, bool schematic,Geometry&geo, float widthScale/*=1.f*/)
@@ -319,8 +332,8 @@ namespace Objects
 			{
 				if (velocity < 50.f)
 				{
-					LogEvent(EventType::InternalFault,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+Vec::toString(source)+", dest="+Vec::toString(dest)+". Increasing velocity and retrying.");
-					velocity *= 1.1f;
+					LogEvent(EventClass::Preset::error,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+Vec::toString(source)+", dest="+Vec::toString(dest)+". Increasing velocity and retrying.");
+					velocity = velocity > 0 ? velocity * 1.1f : 1.f;	//should not be zero, but it's better to handle this case here anyway. Otherwise we're causing a stack overflow in no-time
 					TraceArtilleryTrajectory(velocity,source,dest,outSteps);
 					return;
 				}
@@ -636,9 +649,9 @@ namespace Objects
 
 			CellCoords ConfigureStandardCommands(Turret&component)
 			{
-				component.iconCommands.Append(IconCommand(int2(4,0), "Abort", &VehicleCmd::AbortOperation, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::AlwaysFalse<PWorldEntity const&>,NoCosts));
-				component.iconCommands.Append(IconCommand(int2(4,1), "Undo", &VehicleCmd::UndoOperation, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::AlwaysFalse<PWorldEntity const&>,NoCosts));
-				component.iconCommands.Append(IconCommand(int2(5,0), "Demolish",&SignalRemoval,&CommonCmd::MostlyEnabled<PWorldEntity const&>,&CommonCmd::AlwaysFalse<PWorldEntity const&>,NoCosts));
+				component.iconCommands.Append(IconCommand(int2(4,0), "Abort", &VehicleCmd::AbortOperation, &CommonCmd::CommonButtonCheck,NoCosts));
+				component.iconCommands.Append(IconCommand(int2(4,1), "Undo", &VehicleCmd::UndoOperation, &CommonCmd::CommonButtonCheck,NoCosts));
+				component.iconCommands.Append(IconCommand(int2(5,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck,NoCosts));
 				return CellCoords(5,1);
 			}
 		#endif
@@ -651,80 +664,84 @@ namespace Objects
 				CellCoords offset = ConfigureStandardCommands(component);
 
 				component.iconCommands.Append(IconCommand(offset++, "Dig Horizontally", &Cmd::ToggleDigMode
-					, &CommonCmd::IsModeActiveOrIdleC<CursorMode::DigMode>
-					, &CommonCmd::IsModeActive<CursorMode::DigMode>
+					, &CommonCmd::ModeCheck<CursorMode::DigMode>
 					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
 					{
 						mineralCostOut = 0;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetConstructionRounds(VehicleJob::DigHorizontalMineralCosts);
+						timeCostOut = v->GetOperationRounds(VehicleJob::DigHorizontalMineralCosts,TerrainRemove);
 					}
 					));
-				component.iconCommands.Append(IconCommand(offset++, "Dig Down", &Cmd::DigDown, &CommonCmd::IsModeActiveC<CursorMode::Idle>, &CommonCmd::AlwaysFalse<PWorldEntity const&>
+				component.iconCommands.Append(IconCommand(offset++, "Dig Down", &Cmd::DigDown, 
+					&CommonCmd::IdleCheck
 					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
 					{
 						mineralCostOut = 0;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetConstructionRounds(VehicleJob::DigDownMineralCosts);
+						timeCostOut = v->GetOperationRounds(VehicleJob::DigDownMineralCosts,TerrainRemove);
 					}
 				));
-				component.iconCommands.Append(IconCommand(offset++, "Clear Above", &Cmd::ClearAbove, &CommonCmd::IsModeActiveOrIdleC<CursorMode::ClearAboveMode>, &Cmd::ClearAboveIsActive
+				component.iconCommands.Append(IconCommand(offset++, "Clear Above", &Cmd::ClearAbove
+					, &CommonCmd::ModeCheck<CursorMode::ClearAboveMode>
 					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
 					{
 						mineralCostOut = 0;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetConstructionRounds(VehicleJob::ClearAboveMineralCosts);
+						timeCostOut = v->GetOperationRounds(VehicleJob::ClearAboveMineralCosts,TerrainRemove);
 					}
 				));
 
-				component.iconCommands.Append(IconCommand(offset++, "Build Wall Up", &Cmd::IssueCommand<ConstName::Job_BuildWallUp>, &CommonCmd::IsModeActiveC<CursorMode::Idle>, &CommonCmd::AlwaysFalse<PWorldEntity const&>
+				component.iconCommands.Append(IconCommand(offset++, "Build Wall Up", &Cmd::IssueCommand<ConstName::Job_BuildWallUp>
+					,&CommonCmd::IdleCheck
 					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
 					{
 						mineralCostOut = VehicleJob::BuildWallMineralCosts;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetConstructionRounds(mineralCostOut);
+						timeCostOut = v->GetOperationRounds(mineralCostOut,TerrainAdd);
 					}
 				));
-				component.iconCommands.Append(IconCommand(offset++, "Build Horizontal Wall", &Cmd::IssueCommand<ConstName::Job_BuildHorizontalWall>, &CommonCmd::IsModeActiveC<CursorMode::Idle>, &CommonCmd::AlwaysFalse<PWorldEntity const&>
+				component.iconCommands.Append(IconCommand(offset++, "Build Horizontal Wall", &Cmd::IssueCommand<ConstName::Job_BuildHorizontalWall>
+					,&CommonCmd::IdleCheck
 					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
 					{
 						mineralCostOut = VehicleJob::BuildWallMineralCosts;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetConstructionRounds(mineralCostOut);
+						timeCostOut = v->GetOperationRounds(mineralCostOut,TerrainAdd);
 					}
 				));
-				component.iconCommands.Append(IconCommand(offset++, "Build Road", &Cmd::BuildRoad, &CommonCmd::IsModeActiveC<CursorMode::Idle>, &CommonCmd::AlwaysFalse<PWorldEntity const&>
+				component.iconCommands.Append(IconCommand(offset++, "Build Road", &Cmd::BuildRoad
+					,&CommonCmd::IdleCheck
 					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
 					{
 						mineralCostOut = VehicleJob::BuildRoadMineralCosts;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetConstructionRounds(mineralCostOut);
+						timeCostOut = v->GetOperationRounds(mineralCostOut,TerrainAdd);
 					}
 				));
 
 				#ifndef CONNECTOR_LESS
-					component.iconCommands.Append(IconCommand(offset++, "Withdraw Resources",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::IsModeActiveOrIdleC<CursorMode::RestockMode>, &CommonCmd::IsModeActive<CursorMode::RestockMode>,NoCosts));
-					component.iconCommands.Append(IconCommand(offset++, "Deposit Resources",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::IsModeActiveOrIdleC<CursorMode::DepositMode>, &CommonCmd::IsModeActive<CursorMode::DepositMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Withdraw Resources",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Deposit Resources",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 
-					component.iconCommands.Append(IconCommand(offset++, "Build Connectors to", &CommonCmd::ToggleMode<CursorMode::BuildConnectorChainMode>, &CommonCmd::IsModeActiveOrIdleC<CursorMode::BuildConnectorChainMode>, &CommonCmd::IsModeActive<CursorMode::BuildConnectorChainMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Build Connectors to", &CommonCmd::ToggleMode<CursorMode::BuildConnectorChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildConnectorChainMode>,NoCosts));
 				#else
 
 				#endif
-				component.iconCommands.Append(IconCommand(offset++, "Build Road to", &CommonCmd::ToggleMode<CursorMode::BuildRoadChainMode>, &CommonCmd::IsModeActiveOrIdleC<CursorMode::BuildRoadChainMode>, &CommonCmd::IsModeActive<CursorMode::BuildRoadChainMode>,NoCosts));
-				component.iconCommands.Append(IconCommand(offset++, "Build Bridge to", &CommonCmd::ToggleMode<CursorMode::BuildBridgeMode>, &CommonCmd::IsModeActiveOrIdleC<CursorMode::DigTunnelMode>, &CommonCmd::IsModeActive<CursorMode::BuildBridgeMode>,NoCosts));
-				component.iconCommands.Append(IconCommand(offset++, "Dig Tunnel to", &CommonCmd::ToggleMode<CursorMode::DigTunnelMode>, &CommonCmd::IsModeActiveOrIdleC<CursorMode::DigTunnelMode>, &CommonCmd::IsModeActive<CursorMode::DigTunnelMode>,NoCosts));
-				component.iconCommands.Append(IconCommand(offset++, "Build Wall to", &CommonCmd::ToggleMode<CursorMode::BuildWallChainMode>, &CommonCmd::IsModeActiveOrIdleC<CursorMode::BuildWallChainMode>, &CommonCmd::IsModeActive<CursorMode::BuildWallChainMode>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Build Road to", &CommonCmd::ToggleMode<CursorMode::BuildRoadChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildRoadChainMode>, NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Build Bridge to", &CommonCmd::ToggleMode<CursorMode::BuildBridgeMode>, &CommonCmd::ModeCheck<CursorMode::DigTunnelMode>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Dig Tunnel to", &CommonCmd::ToggleMode<CursorMode::DigTunnelMode>, &CommonCmd::ModeCheck<CursorMode::DigTunnelMode>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Build Wall to", &CommonCmd::ToggleMode<CursorMode::BuildWallChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildWallChainMode>,NoCosts));
 
 				offset++;offset++;
 
-				component.iconCommands.Append(IconCommand(offset++, "Build Blocks", &Cmd::BuildBlock, &CommonCmd::IsModeActiveOrIdleC<CursorMode::BuildBlockMode>, &Cmd::BuildBlockIsActive,NoCosts));
-				component.iconCommands.Append(IconCommand(offset++, "Commit", &Cmd::CommitOperation, &Cmd::CommitIsPossibleC, &CommonCmd::AlwaysFalse<PWorldEntity const&>
+				component.iconCommands.Append(IconCommand(offset++, "Build Blocks", &Cmd::BuildBlock, &CommonCmd::ModeCheck<CursorMode::BuildBlockMode>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Commit", &Cmd::CommitOperation, &Cmd::CommitCheck
 					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
 					{
 	//					if (activeCursorMode == CursorMode::BuildBlockMode)
@@ -733,12 +750,12 @@ namespace Objects
 						}
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetConstructionRounds(mineralCostOut);
+						timeCostOut = v->GetOperationRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? TerrainRemove : TerrainAdd);
 						if (activeCursorMode != CursorMode::BuildBlockMode)
 							mineralCostOut = 0;
 					}
 				));
-				component.iconCommands.Append(IconCommand(offset++, "Remove Blocks", &Cmd::RemoveBlock, &CommonCmd::IsModeActiveOrIdleC<CursorMode::RemoveBlockMode>, &Cmd::RemoveBlockIsActive,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Remove Blocks", &Cmd::RemoveBlock, &CommonCmd::ModeCheck<CursorMode::RemoveBlockMode>,NoCosts));
 
 				
 
@@ -771,8 +788,7 @@ namespace Objects
 					//	PVehicle v = To<Vehicle>::DynamicCast(e);
 					//	return v && Cmd::ConstructionIsPossible(e) && s->CanPlace(v->GetLastPointOfOrigin());
 					//},
-					&CommonCmd::IsModeActiveC<CursorMode::Idle>,
-					 &CommonCmd::AlwaysFalse<PWorldEntity const&>));
+					&CommonCmd::IdleCheck));
 					at++;
 				}
 			#endif
@@ -803,10 +819,12 @@ namespace Objects
 			component.constName = ConstName::Turret_Terraformer;
 
 			component.productionCosts = 40;
-			#ifndef CONNECTOR_LESS
+			#if !defined CONNECTOR_LESS
 				component.baseStorageCapacity.level[Resource::Minerals] = 200;
 			#endif
-			component.constructionSpeed = 10;
+			component.operationSpeed[Construct] = 10;
+			component.operationSpeed[TerrainRemove] = 10;
+			component.operationSpeed[TerrainAdd] = 10;
 			component.healthMultiplier = 1;
 			component.scanningRange = 4;
 			component.uplinkTraffic = 30;
@@ -830,11 +848,11 @@ namespace Objects
 				CellCoords offset = ConfigureStandardCommands(component);
 
 				#ifndef CONNECTOR_LESS
-					component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::RestockMode>,NoCosts));
-					component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::DepositMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
 	
-				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::AttackMode>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
 				component.parts.setSize(1);
 				component.parts.first().first.LoadFromObj("objects/tank.obj");
@@ -846,11 +864,10 @@ namespace Objects
 			component.constName = ConstName::Turret_Artillery;
 			component.constTowerName = ConstName::Type_ArtilleryTower;
 
-			component.productionCosts = 20;
+			component.productionCosts = 25;
 			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
-			component.constructionSpeed = 0;
 		
 			component.weight = 3;
 			component.healthMultiplier = 1.5f;
@@ -881,11 +898,11 @@ namespace Objects
 				CellCoords offset = ConfigureStandardCommands(component);
 
 				#ifndef CONNECTOR_LESS
-					component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::RestockMode>,NoCosts));
-					component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::DepositMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
 	
-				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::AttackMode>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
 				component.parts.setSize(1);
 				component.parts.first().first.LoadFromObj("objects/launcher.obj");
@@ -897,11 +914,10 @@ namespace Objects
 			component.constName = ConstName::Turret_Launcher;
 			component.constTowerName = ConstName::Type_LauncherTower;
 
-			component.productionCosts = 30;
+			component.productionCosts = 40;
 			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
-			component.constructionSpeed = 0;
 		
 			component.weight = 13;
 			component.healthMultiplier = 1.5f;
@@ -933,11 +949,11 @@ namespace Objects
 				CellCoords offset = ConfigureStandardCommands(component);
 
 				#ifndef CONNECTOR_LESS
-					component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::RestockMode>,NoCosts));
-					component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::DepositMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
 	
-				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::AttackMode>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
 				component.parts.setSize(1);
 				component.parts.first().first.LoadFromObj("objects/armored.obj");
@@ -953,7 +969,6 @@ namespace Objects
 			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
 			#endif
-			component.constructionSpeed = 0;
 		
 			component.weight = 3;
 			component.healthMultiplier = 2;
@@ -983,11 +998,11 @@ namespace Objects
 				CellCoords offset = ConfigureStandardCommands(component);
 
 				#ifndef CONNECTOR_LESS
-					component.iconCommands.Append(IconCommand(offset++, "Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::RestockMode>,NoCosts));
-					component.iconCommands.Append(IconCommand(offset++, "Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::DepositMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
 
-				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::AttackMode>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
 				component.parts.setSize(1);
 				component.parts.first().first.LoadFromObj("objects/emp.obj");
@@ -1000,10 +1015,9 @@ namespace Objects
 			component.constTowerName = ConstName::Type_EMPTower;
 
 			component.productionCosts = 100;
-			#ifndef CONNECTOR_LESS
+			#if !defined CONNECTOR_LESS
 				component.baseStorageCapacity.level[Resource::Uranium] = 150;
 			#endif
-			component.constructionSpeed = 0;
 		
 			component.weight = 5;
 			component.healthMultiplier = 1;
@@ -1044,11 +1058,11 @@ namespace Objects
 				CellCoords offset = ConfigureStandardCommands(component);
 
 				#ifndef CONNECTOR_LESS
-					component.iconCommands.Append(IconCommand(offset++, "Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::RestockMode>,NoCosts));
-					component.iconCommands.Append(IconCommand(offset++, "Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::DepositMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
 
-				component.iconCommands.Append(IconCommand(offset++, "Obliterate",&MyCmd::Obliterate, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::AlwaysFalse<PWorldEntity const&>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Obliterate",&MyCmd::Obliterate, &CommonCmd::CommonButtonCheck,NoCosts));
 
 				component.parts.setSize(1);
 				component.parts.first().first.LoadFromObj("objects/ragnarökRing.obj");
@@ -1068,7 +1082,6 @@ namespace Objects
 
 
 			component.productionCosts = 1;	//irrelevant
-			component.constructionSpeed = 0;
 		
 			component.weight = 1;	//irrelevant
 			component.healthMultiplier = 1;	//irrelevant
@@ -1105,11 +1118,11 @@ namespace Objects
 				CellCoords offset = ConfigureStandardCommands(component);
 
 				#ifndef CONNECTOR_LESS
-					component.iconCommands.Append(IconCommand(offset++, "Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::RestockMode>,NoCosts));
-					component.iconCommands.Append(IconCommand(offset++, "Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::DepositMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
 
-				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::AttackMode>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
 				component.parts.setSize(1);
 				component.parts.first().first.LoadFromObj("objects/skyGuardianRing.obj");
@@ -1124,10 +1137,9 @@ namespace Objects
 			component.isSatelliteRing = true;
 
 			component.productionCosts = 1;	//irrelevant
-			#ifndef CONNECTOR_LESS
-				component.baseStorageCapacity.level[Resource::Uranium] = 30;
-			#endif
-			component.constructionSpeed = 0;
+			//#ifndef CONNECTOR_LESS
+			//	component.baseStorageCapacity.level[Resource::Uranium] = 30;
+			//#endif
 		
 			component.weight = 1;	//irrelevant
 			component.healthMultiplier = 1;	//irrelevant
@@ -1154,7 +1166,7 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 				offset++;//remain on lower level
-				component.iconCommands.Append(IconCommand(offset++, "Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::RepairMode>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
 
 				component.parts.setSize(1);
 				component.parts.first().first.LoadFromObj("objects/skyHubTurret.obj");
@@ -1168,14 +1180,14 @@ namespace Objects
 			component.constTowerName = ConstName::Empty;	//not used
 
 			component.isSatelliteRing = true;
-			component.canRepair = true;
+			component.operationSpeed[Repair] = 10;
+			component.operationSpeed[Construct] = 5;
 			//component.fuelSupplyRadius = 20;
 
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = 0.25f;
 
 			component.productionCosts = 1;	//irrelevant
-			component.constructionSpeed = 5;
 		
 			component.weight = 1;	//irrelevant
 			component.healthMultiplier = 1;	//irrelevant
@@ -1194,7 +1206,7 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 				offset++;//remain on lower level
-				component.iconCommands.Append(IconCommand(offset++, "Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::RepairMode>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
 
 				component.parts.setSize(1);
 				component.parts.first().first.LoadFromObj("objects/starPortRing.obj");
@@ -1208,14 +1220,12 @@ namespace Objects
 			component.constTowerName = ConstName::Empty;	//not used
 
 			component.isSatelliteRing = true;
-			component.canRepair = false;
-			//component.fuelSupplyRadius = 20;
 
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = -0.05f;
 
 			component.productionCosts = 1;	//irrelevant
-			component.constructionSpeed = 5;
+			component.operationSpeed[Repair] = 10;
 		
 			component.weight = 1;	//irrelevant
 			component.healthMultiplier = 1;	//irrelevant
@@ -1234,8 +1244,8 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
-				component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::RestockMode>,NoCosts));
-				component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::DepositMode>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 
 				component.parts.setSize(1);
 				component.parts.first().first.LoadFromObj("objects/munitionTransporter.obj");
@@ -1250,7 +1260,6 @@ namespace Objects
 			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 100;
 			#endif
-			component.constructionSpeed = 0;
 		
 			component.weight = 4;
 			component.healthMultiplier = 1;
@@ -1273,11 +1282,11 @@ namespace Objects
 				CellCoords offset = ConfigureStandardCommands(component);
 
 				#ifndef CONNECTOR_LESS
-					component.iconCommands.Append(IconCommand(offset++, "Withdraw Resources",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::RestockMode>,NoCosts));
-					component.iconCommands.Append(IconCommand(offset++, "Deposit Resources",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::DepositMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Withdraw Resources",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Deposit Resources",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
 
-				component.iconCommands.Append(IconCommand(offset++, "Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &CommonCmd::IsModeActive<CursorMode::RepairMode>,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
 
 				component.parts.setSize(1);
 				component.parts.first().first.LoadFromObj("objects/constructor.obj");
@@ -1290,15 +1299,14 @@ namespace Objects
 			component.constTowerName = ConstName::Type_MechanicTower;
 
 			component.productionCosts = 30;
-			#ifndef CONNECTOR_LESS
+			#if !defined CONNECTOR_LESS
 				component.baseStorageCapacity.level[Resource::Minerals] = 100;
 			#endif
-			component.constructionSpeed = 0;
 		
 			component.weight = 2;
 			component.healthMultiplier = 1;
 			component.scanningRange = 3;
-			component.canRepair = true;
+			component.operationSpeed[Repair] = 10;
 			component.uplinkTraffic = 10;
 
 
@@ -1323,7 +1331,6 @@ namespace Objects
 			component.constTowerName = ConstName::Type_RadarTower;
 
 			component.productionCosts = 10;
-			component.constructionSpeed = 0;
 		
 			component.weight = 2;
 			component.healthMultiplier = 1;
@@ -1342,7 +1349,7 @@ namespace Objects
 		{
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
-				component.iconCommands.Append(IconCommand(offset++, "Automate", &VehicleCmd::Automate, &CommonCmd::MostlyEnabled<PWorldEntity const&>, &VehicleCmd::IsAutomated,NoCosts));
+				component.iconCommands.Append(IconCommand(offset++, "Automate", &VehicleCmd::Automate, &VehicleCmd::AutomatedCheck,NoCosts));
 
 				component.parts.setSize(1);
 				component.parts.first().first.LoadFromObj("objects/resourceScanner.obj");
@@ -1354,7 +1361,6 @@ namespace Objects
 			component.constName = ConstName::Turret_Surveyor;
 
 			component.productionCosts = 10;
-			component.constructionSpeed = 0;
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = -1.f;
 
@@ -1441,7 +1447,7 @@ namespace Objects
 			#ifndef CONNECTOR_LESS
 				component.storageMultiplier = 2;
 			#endif
-			component.constructionSpeedMultiplier = 2;
+			component.operationSpeedMultiplier = 2;
 
 			component.baseMovementSpeed = 15;
 			component.carryingCapacity = 10;
@@ -1489,7 +1495,7 @@ namespace Objects
 			#ifndef CONNECTOR_LESS
 				component.storageMultiplier = 2;
 			#endif
-			component.constructionSpeedMultiplier = 2;
+			component.operationSpeedMultiplier = 2;
 			component.rangeModifier = 1;
 
 			component.baseMovementSpeed = 8;
@@ -1580,6 +1586,12 @@ namespace Objects
 				return controlEnabled && 
 					(CommonCmd::IsModeActive(e,CursorMode::BuildBlockMode) || CommonCmd::IsModeActive(e,CursorMode::RemoveBlockMode));
 			}
+
+			BaseCommand::Flags Terraformer::Cmd::CommitCheck(const PWorldEntity&e, bool controlEnabled)
+			{
+				return CommitIsPossibleC(e,controlEnabled) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+			}
+
 	
 		/*	bool VehicleCmd::AbortIsPossible(const PWorldEntity&e)
 			{
@@ -1635,8 +1647,8 @@ namespace Objects
 				#endif
 				if (!compound)
 				{
-					if (constructionSpeedMultiplier != 1)
-						outResult << " Construction speed multiplied by "+String(constructionSpeedMultiplier);
+					if (operationSpeedMultiplier != 1)
+						outResult << " Operation speed multiplied by "+String(operationSpeedMultiplier);
 					outResult<<" Base speed: "+String(baseMovementSpeed);
 					if (requirements == Requirement::Water)
 						outResult.lines.last()+= " (naval)";
@@ -1669,7 +1681,8 @@ namespace Objects
 						+
 						Satellite::CountTurretOccurrences(owner,this);
 					limit = RuntimeConfig::UnitLimits::Get(constName);
-					outResult << " Deployed: "+String(cnt)+"/"+String(limit);
+					if (limit != 0xFFFF)
+						outResult << " Deployed: "+String(cnt)+"/"+String(limit);
 				}
 
 
@@ -1707,9 +1720,11 @@ namespace Objects
 					outResult << " "+String(attacksPerRound)+" attack(s) per round";
 				}
 
-				if (constructionSpeed && !compound)
-					outResult << " Construction: Converts "+String(ResourceTag(Resource::Minerals))+String(constructionSpeed)+" per round";
-				if (canRepair)
+				if (CanConstruct() && !compound)
+					outResult << " Construction: Converts "+String(ResourceTag(Resource::Minerals))+String(operationSpeed[Construct])+" per round";
+				if ((CanDo(TerrainRemove) || CanDo(TerrainAdd)) && !compound)
+					outResult << " Terraforming: Can shape the surrounding terrain";
+				if (CanRepair())
 					outResult <<" Can repair other vehicles/structures";
 				if (detectsResources)
 					outResult <<  " Detects natural resources";
@@ -1728,9 +1743,9 @@ namespace Objects
 				#endif
 				outResult.MarkBriefEnd();
 				outResult << "";
-				if (constructionSpeed)
+				if (CanConstruct())
 					outResult.WrapAppendText("This "+lowerName+" type can build structures in valid locations. It requires "+String(ResourceTag(Resource::Minerals))+" to initiate construction.");
-				if (canRepair)
+				if (CanRepair())
 					outResult.WrapAppendText("This "+lowerName+" type can repair other structures and vehicles. It requires "+String(ResourceTag(Resource::Minerals))+" to initiate repair.");
 				if (detectsResources)
 					outResult.WrapAppendText("This "+lowerName+" type detects all naturally occuring resources within its scanning range. It can be automated.");
