@@ -191,6 +191,7 @@ namespace Objects
 		int							empDamageLevel = 0;	//!< Number of rounds that scanners are disabled due to emp-damage. Also affects extend of damage
 
 		bool						unstable;	//!< Indicates that something is wrong with the consumption vector of the local network. Or the vehicle state is unstable. Again, DO NOT CHANGE.
+		bool						sleeping = false;	//!< Indicates that this entity is asleep. Sleeping entities are not considered in the client-side IsIdle() iteration. Sleeping mobile entities will not execute any jobs
 
 		#ifndef CLIENT
 			enum changeType_t
@@ -208,6 +209,7 @@ namespace Objects
 				CanEnableChanged = 0x200,
 				HibernationChanged = 0x400,
 				OrbitalConnectionChanged = 0x800,
+				SleepChange = 0x1000,
 			};
 			float					changeTimer;	//Earliest change time. Reduced if an earlier even occurs
 			UINT32					changeFlags;	//Everything that has changed since the last reset (usually once per server-frame)

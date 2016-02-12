@@ -673,46 +673,53 @@ namespace Objects
 				}
 				if (!hasConstructedThisRound && HasTasks() && myTasks.Peek().job)
 				{
-					hasConstructedThisRound = true;
-					constructionRoundCounter ++;
 					ASSERT__(jobStarted);	//supposedly it can happen that this is false
 					PVehicleJob job = myTasks.Peek().job;
-					switch (job->Continue(*this,myTasks.Peek().GetFocus(location),!hasMoved))
+					if (sleeping)
 					{
-						case VehicleJob::BaseJob::ContinueJob:
-						break;
-						case VehicleJob::BaseJob::JobDone:
-							LogEvent(EventSignificance::Common,this,"Job ended: '"+job->GetName()+"'");
-
-							EraseFirstTask();
-							RegisterChange(TasksChanged,timeAt);
-							while (HasTasks() && myTasks.Peek().job && myTasks.Peek().job->IsImplicitlyDone(*this,myTasks.Peek().GetFocus(location)))
-							{
-								LogEvent(EventSignificance::Common,this,"Job has implicitly ended: '"+myTasks.Peek().job->GetName()+"'");
+						LogEvent(EventSignificance::Common,this,"Job delayed: '"+job->GetName()+"'. Entity is sleeping");
+					}
+					else
+					{
+						hasConstructedThisRound = true;
+						constructionRoundCounter ++;
+						switch (job->Continue(*this,myTasks.Peek().GetFocus(location),!hasMoved))
+						{
+							case VehicleJob::BaseJob::ContinueJob:
+							break;
+							case VehicleJob::BaseJob::JobDone:
+								LogEvent(EventSignificance::Common,this,"Job ended: '"+job->GetName()+"'");
 
 								EraseFirstTask();
-							}
-							if (HasTasks() && myTasks.Peek().job)
-							{
-								LogEvent(EventSignificance::Common,this,"Next front job: '"+myTasks.Peek().job->GetName()+"'");
-							}
-							jobStarted = false;
+								RegisterChange(TasksChanged,timeAt);
+								while (HasTasks() && myTasks.Peek().job && myTasks.Peek().job->IsImplicitlyDone(*this,myTasks.Peek().GetFocus(location)))
+								{
+									LogEvent(EventSignificance::Common,this,"Job has implicitly ended: '"+myTasks.Peek().job->GetName()+"'");
 
-						return false;
-						case VehicleJob::BaseJob::TerminalFailureVehicleDestroyed:
-							LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped. Vehicle destroyed.");
-							jobStarted = false;
-							ClearAllTasks(true, CLOCATION);
-							unstable = false;
+									EraseFirstTask();
+								}
+								if (HasTasks() && myTasks.Peek().job)
+								{
+									LogEvent(EventSignificance::Common,this,"Next front job: '"+myTasks.Peek().job->GetName()+"'");
+								}
+								jobStarted = false;
 
-							Remove(shared_from_this(),RemovalType::UncontrolledExplosion,timeAt,false,false);
-						return false;
-						case VehicleJob::BaseJob::TerminalFailure:
-							LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped.");
-							jobStarted = false;
-							ClearAllTasks(true, CLOCATION);
-							unstable = false;
-						return false;
+							return false;
+							case VehicleJob::BaseJob::TerminalFailureVehicleDestroyed:
+								LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped. Vehicle destroyed.");
+								jobStarted = false;
+								ClearAllTasks(true, CLOCATION);
+								unstable = false;
+
+								Remove(shared_from_this(),RemovalType::UncontrolledExplosion,timeAt,false,false);
+							return false;
+							case VehicleJob::BaseJob::TerminalFailure:
+								LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped.");
+								jobStarted = false;
+								ClearAllTasks(true, CLOCATION);
+								unstable = false;
+							return false;
+						}
 					}
 				}
 				return true;

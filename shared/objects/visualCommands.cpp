@@ -591,6 +591,19 @@ namespace Objects
 		return f;
 	}
 
+	BaseCommand::Flags	VehicleCmd::SleepCheck(const PWorldEntity&e,bool controlEnabled)
+	{
+		BaseCommand::Flags f = CommonCmd::CommonButtonCheck(e,controlEnabled);
+		if (e && e->sleeping)
+			f |= BaseCommand::Flags::IsPermaActive;
+		return f;
+	}
+
+
+	void					VehicleCmd::Sleep(const PWorldEntity&e)
+	{
+		SignalSleep(e, !e->sleeping);
+	}
 
 	void					VehicleCmd::UndoOperation(const PWorldEntity&e)
 	{

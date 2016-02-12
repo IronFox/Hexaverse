@@ -32,7 +32,8 @@ namespace Channels
 	
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RestoreCoreLink>						restoreCoreLink(Receiver::RestoreCoreLink);
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RemoveEntity>							removeEntity(Receiver::RemoveEntity);
-	TCP::Channel<Protocol::Automate, FactionLevel, Protocol::ChannelID::Automate>							automate(Receiver::Automate);
+	TCP::Channel<Protocol::EntityStateUpdate, FactionLevel, Protocol::ChannelID::Automate>					automate(Receiver::Automate);
+	TCP::Channel<Protocol::EntityStateUpdate, FactionLevel, Protocol::ChannelID::Sleep>						sleep(Receiver::Sleep);
 	TCP::Channel<Protocol::Marker, FactionLevel, Protocol::ChannelID::CreateMarker>							createMarker(Receiver::CreateMarker);
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DestroyMarker>							destroyMarker(Receiver::DestroyMarker);
 	TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>					touchMarker(Receiver::TouchMarker);
@@ -899,9 +900,9 @@ namespace Receiver
 	}
 
 
-	void	Automate(Protocol::Automate&a, TCP::Peer&peer)
+	void	Automate(Protocol::EntityStateUpdate&a, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Automate ("+String(a.doAutomate)+") entity "+a.entityID.value.ToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Automate ("+String(a.doSet)+") entity "+a.entityID.value.ToString());
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(a.entityID,peer);
 		if (!e)
@@ -914,9 +915,23 @@ namespace Receiver
 			LogEvent(EventClass::Preset::commandRejected,peer,e,"Tried to automate immobile entity");
 			return;
 		}
-		if (v->isAutomated == a.doAutomate)
+		if (v->isAutomated == a.doSet)
 			return;
-		Journal::currentRound.RegisterAutomationChange(true,v,a.doAutomate);
+		Journal::currentRound.RegisterAutomationChange(true,v,a.doSet);
+	}
+
+	void	Sleep(Protocol::EntityStateUpdate&a, TCP::Peer&peer)
+	{
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Sleep ("+String(a.doSet)+") entity "+a.entityID.value.ToString());
+
+		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(a.entityID,peer);
+		if (!e)
+			return;
+
+
+		if (e->sleeping == a.doSet)
+			return;
+		Journal::currentRound.RegisterSleepChange(true,e,a.doSet);
 	}
 
 	void	EnableStructure(Protocol::EnableStructure&es, TCP::Peer&peer)
