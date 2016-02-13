@@ -464,21 +464,79 @@
 		bool			resourcesAsList = false;
 
 
+		namespace EventLog
+		{
+
+			void			Clear()
+			{
+				HexGrid::animationTimeLine.commands.Clear();
+				HexGrid::animationTimeLine.Refresh();
+			}
+
+			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const DX11::InstructionBlock32&trajectoryVisualization)
+			{
+				HexGrid::animationTimeLine.commands << HexGrid::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly);
+				HexGrid::animationTimeLine.Refresh();
+			}
+
+
+		}
+
+
+
 
 		namespace HexGrid
 		{
 
-			TemplateRow<Objects::PWorldEntity,GroupFocusCommand>			friendlyGroups(0),hostileGroups(1);
+			CollectionTemplateRow<Objects::PWorldEntity,GroupFocusCommand>			friendlyGroups(0),hostileGroups(1);
+			TemplateRow<AnimationEventFocusCommand>									animationTimeLine(2);
 
 			count_t					currentContactListWidth = 10;
+
+
+
+			Objects::PWorldEntity	AnimationEventFocusCommand::GetTarget()	const
+			{
+				if (focusTarget != TUniqueID::Empty())
+				{
+					Objects::PWorldEntity e = Objects::GetEntity(focusTarget);
+					if (e)
+						return e;
+					auto marker = Objects::Marker::FindByReference(focusTarget);
+					if (marker)
+						return marker->visualization;
+				}
+				return Objects::PWorldEntity();
+			}
+
+			/*virtual override*/ void				AnimationEventFocusCommand::Execute()
+			{
+				Camera::TranslateTo(focusLocation);
+				Objects::PWorldEntity e = GetTarget();
+				if (e)
+					Objects::Select(e,Network::ControlEnabled());
+//					Objects::Renderer::SetFocusedTrajectory(trajectory);
+			}
+
+			/*virtual override*/ void				AnimationEventFocusCommand::CompileLabel(const Objects::PWorldEntity&,Label&outResult)
+			{
+				Objects::PWorldEntity e = GetTarget();
+				String hostile = isFriendly? "" : "hostile ";
+				String t = " at t="+String(atTime)+" sec";
+				if (e)
+					outResult << "Focus on "+hostile + name+" of "+e->GetNiceName()+t;
+				else
+					outResult << "Focus on "+hostile + name+t;
+			}
+
 
 
 			void	DynamicRow::Create()
 			{
 				leftCommand.reset(new ArrowCommand(true,this));
-				leftCommand->coords = DynamicRowOffset;
+				leftCommand->coords = DynamicRowOffset + int2(0,rowIndex);
 				rightCommand.reset(new ArrowCommand(false,this));
-				rightCommand->coords = DynamicRowOffset + int2(currentContactListWidth+1,0);
+				rightCommand->coords = DynamicRowOffset + int2(currentContactListWidth+1,rowIndex);
 			}
 
 			void	DynamicRow::Scroll(bool left)
@@ -534,7 +592,7 @@
 				{
 					GridCell&cell = guiCells.Append();
 					cell.type = GridCell::ContactListRight;
-					rightCommand->coords = DynamicRowOffset + int2(currentContactListWidth+1,0);
+					rightCommand->coords = DynamicRowOffset + int2(currentContactListWidth+1,rowIndex);
 					cell.command = rightCommand.get();
 					cell.flipY = true;
 					cell.Update(camera);
@@ -964,6 +1022,7 @@
 
 				friendlyGroups.Create();
 				hostileGroups.Create();
+				animationTimeLine.Create();
 				tutorialCommand.reset(new TutorialCommand());
 				tutorialCommand->coords = int2(1);
 
@@ -1006,6 +1065,7 @@
 
 				friendlyGroups.Destroy();
 				hostileGroups.Destroy();
+				animationTimeLine.Destroy();
 
 				selectedVehicleFocus = VehicleFocusCommand();
 				selectedStructureFocus = StructureFocusCommand();
@@ -1260,7 +1320,7 @@
 				DeleteAllCellsOfType(GridCell::OwnedListRight);
 			}
 
-			static void CollectionToCommands(TemplateRow<Objects::PWorldEntity,GroupFocusCommand>&context)
+			static void CollectionToCommands(CollectionTemplateRow<Objects::PWorldEntity,GroupFocusCommand>&context)
 			{
 				context.commands.Clear();
 				context.collection.VisitAllValues([&context](Buffer0<Objects::PWorldEntity>&entries)
@@ -1274,6 +1334,7 @@
 				});
 				context.collection.Clear();
 				ByOperator::QuickSort(context.commands);
+				context.Refresh();
 			}
 
 			void					RefreshContacts()
@@ -1334,8 +1395,7 @@
 						Tutorial::ShowMessage("Hostile Contacts");
 				#endif
 
-				friendlyGroups.Refresh();
-				hostileGroups.Refresh();
+				animationTimeLine.Refresh();
 
 				RefreshTutorials();
 				//display.SetDepthTest(false,false);

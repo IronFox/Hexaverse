@@ -286,6 +286,29 @@ namespace UI
 				virtual void	CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
 			};
 
+			class AnimationEventFocusCommand : public Objects::BaseCommand
+			{
+			public:
+				typedef	Objects::BaseCommand	Super;
+				TVec3<>				focusLocation;
+				float				atTime;
+				bool				isFriendly;
+				TUniqueID			focusTarget;
+				DX11::InstructionBlock32	trajectory;
+			
+				/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, float atTime, bool isFriendly)
+									: Super(int2(), name),focusLocation(focusLocation),atTime(atTime),isFriendly(isFriendly),focusTarget(focusID)
+				{
+					LoadIcon(iconName);
+				}
+
+				Objects::PWorldEntity	GetTarget()	const;
+
+				virtual void	Execute()	override;
+				virtual void	Refresh(bool controlEnabled) override {}
+				virtual void	CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
+			};
+
 
 			static const float4 friendlyBackgroundColor(0,0,1,0);
 			static const float4 hostileBackgroundColor(1,0,0,0);
@@ -360,12 +383,11 @@ namespace UI
 				}
 			};
 
-			template <typename T, typename CommandT>
+			template <typename CommandT>
 			class TemplateRow : public DynamicRow
 			{
 			public:
 				Buffer0<CommandT>						commands;
-				StringTable<Buffer0<T>,Swap>			collection;
 
 				/**/									TemplateRow(int rowIndex) : DynamicRow(rowIndex)	{}
 				void									Clear()	{commands.Clear(); }
@@ -385,7 +407,19 @@ namespace UI
 				}
 			};
 
-			extern TemplateRow<Objects::PWorldEntity,GroupFocusCommand>	friendlyGroups,hostileGroups;
+			template <typename T, typename CommandT>
+			class CollectionTemplateRow : public TemplateRow<CommandT>
+			{
+				typedef TemplateRow<CommandT>	Super;
+			public:
+				StringTable<Buffer0<T>,Swap>			collection;
+
+				/**/									CollectionTemplateRow(int rowIndex) : Super(rowIndex)	{}
+				void									Clear()	{Super::Clear(); collection.Clear();}
+				void									Destroy() {Clear(); Super::Destroy();}
+			};
+			extern CollectionTemplateRow<Objects::PWorldEntity,GroupFocusCommand>	friendlyGroups,hostileGroups;
+			extern TemplateRow<AnimationEventFocusCommand> animationTimeLine;
 
 			extern VehicleFocusCommand					selectedVehicleFocus;
 			extern StructureFocusCommand				selectedStructureFocus;
@@ -498,6 +532,17 @@ namespace UI
 		}
 
 
+
+		namespace EventLog
+		{
+			void			Clear();
+			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const DX11::InstructionBlock32&trajectoryVisualization);
+
+
+
+		}
+
+
 		inline void OnWindowResize()
 		{
 			HexGrid::OnWindowResize();
@@ -513,6 +558,7 @@ namespace UI
 
 			return HexGrid::HandleClick();
 		}
+
 
 		void	Create();
 

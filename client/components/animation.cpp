@@ -1141,6 +1141,11 @@ namespace Animation
 			{
 			//	allocatedTarget = Objects::GetEntity(targetEntityID);
 				//if (allocatedTarget)
+				bool isFriendly = false;
+				bool doRegister = true;
+				#ifdef HAS_WINDOW
+					TUniqueID attackerID = TUniqueID::Empty();
+				#endif
 				if (!attackerTurret)
 				{
 					Objects::PWorldEntity attacker = Objects::GetEntity(targetEntityID);
@@ -1151,7 +1156,15 @@ namespace Animation
 					ASSERT_NOT_NULL1__(attackerTurret,attacker->GetName());
 					attackRange = base->GetFlatAttackRange();
 					attackerPosition = attacker->GetWorldPosition();
+					#ifdef HAS_WINDOW
+						attackerID = attacker->id;
+					#endif
+					doRegister = !attacker->isMine || isAutoTarget;
+					isFriendly = attacker->isMine;
 				}
+				#ifdef _DEBUG
+					doRegister = true;	//debug
+				#endif
 
 				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",loc="+location.ToString()+") at "+String(Animation::atTime)+"/"+String(this->time.min));
 				
@@ -1188,6 +1201,11 @@ namespace Animation
 						maxProjectileProjection = Objects::Component::Turret::CompileTrajectory(activeTrajectory,false,trajectoryGeometry,0.5f);
 						trajectoryVisualization.vbo.CreateFromStructs(trajectoryGeometry.GetLOD(0).vertices);
 						trajectoryVisualization.ibo.Create(trajectoryGeometry.GetLOD(0).indices);
+
+
+						//Objects::Renderer::RegisterSmokeTrail(trajectoryVisualization);
+						if (doRegister)
+							UI::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, trajectoryVisualization);
 					#endif
 
 

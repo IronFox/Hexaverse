@@ -54,6 +54,7 @@ namespace Objects
 		virtual void	RasterizeImage()	{}
 
 		void			LoadIcon();
+		void			LoadIcon(const String&name);
 
 
 		class Label
