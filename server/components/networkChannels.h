@@ -85,16 +85,17 @@ namespace Channels
 	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>						identifyUserRecv;
 	extern TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>				chatMessage;
 
-	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>		clientFactionResponse;
-	extern TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>	markerCreationFailedLimitReached;
-	extern TCP::ObjectSender<Protocol::WorldDelta,Protocol::ChannelID::WorldDelta>						updateWorld;
-	extern TCP::ObjectSender<Protocol::NewMobileEntity,Protocol::ChannelID::NewMobileEntity>			newMobileEntity;
-	extern TCP::ObjectSender<Protocol::StructureConstruction,Protocol::ChannelID::InstantiateStructure>	createStructure;
-	extern TCP::ObjectSender<Protocol::MobileState,Protocol::ChannelID::MobileState>					setMobileState;
-	extern TCP::ObjectSender<Protocol::MobileEntityMotion,Protocol::ChannelID::MobileEntityMotion>		mobileEntityMotion;
-	extern TCP::ObjectSender<Protocol::AttackTrajectory,Protocol::ChannelID::AttackTrajectory>			attackTrajectory;
-	extern TCP::ObjectSender<Protocol::EntityTurretRotation,Protocol::ChannelID::EntityTurretRotation>	entityTurretRotation;
-	extern TCP::ObjectSender<Protocol::Explosion,Protocol::ChannelID::Explosion>						explosion;
+	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>				clientFactionResponse;
+	extern TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>			markerCreationFailedLimitReached;
+	extern TCP::ObjectSender<Protocol::WorldDelta,Protocol::ChannelID::WorldDelta>								updateWorld;
+	extern TCP::ObjectSender<Protocol::NewMobileEntity,Protocol::ChannelID::NewMobileEntity>					newMobileEntity;
+	extern TCP::ObjectSender<Protocol::StructureConstruction,Protocol::ChannelID::InstantiateStructure>			createStructure;
+	extern TCP::ObjectSender<Protocol::MobileState,Protocol::ChannelID::MobileState>							setMobileState;
+	extern TCP::ObjectSender<Protocol::MobileEntityMotion,Protocol::ChannelID::MobileEntityMotion>				mobileEntityMotion;
+	extern TCP::ObjectSender<Protocol::VagueAttackTrajectory,Protocol::ChannelID::VagueAttackTrajectory>		vagueAttackTrajectory;
+	extern TCP::ObjectSender<Protocol::PreciseAttackTrajectory,Protocol::ChannelID::PreciseAttackTrajectory>	preciseAttackTrajectory;
+	extern TCP::ObjectSender<Protocol::EntityTurretRotation,Protocol::ChannelID::EntityTurretRotation>			entityTurretRotation;
+	extern TCP::ObjectSender<Protocol::Explosion,Protocol::ChannelID::Explosion>							explosion;
 	extern TCP::ObjectSender<Protocol::StructureState,Protocol::ChannelID::UpdateStructure>				setStructureState;
 	extern TCP::ObjectSender<Protocol::DestroyEntity,Protocol::ChannelID::DestroyEntity>				destroyEntity;
 	extern TCP::ObjectSender<Protocol::ControlMessage,Protocol::ChannelID::ControlMessage>				controlMessage;

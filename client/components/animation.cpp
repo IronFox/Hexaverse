@@ -942,20 +942,28 @@ namespace Animation
 		time.SetMinAndMax(e.timestamp.atTime/*+0.01f*/);
 		LogEvent(EventSignificance::Debug,nullptr,"Registered removal of entity "+e.id.value.ToString()+" ("+Objects::RemovalType::Reinterpret(e.type.value).ToString()+") at t="+time.ToString());
 	}
-	void					Primitive::Init(Protocol::AttackTrajectory&a)
+	void					Primitive::Init(Protocol::VagueAttackTrajectory&a)
 	{
 		type = Attack;
-		attacker = Objects::Component::GetTurretByName(a.turretType);
-		ASSERT_NOT_NULL1__(attacker,(int)a.turretType.value);
+		targetEntityID = TUniqueID::Empty();
+		attackerTurret = Objects::Component::GetTurretByName(a.turretType);
+		ASSERT_NOT_NULL1__(attackerTurret,(int)a.turretType.value);
 		attackRange = a.turretRange;
 		attackerPosition = a.sourcePosition;
 		explosionCenter = Grid::ToWorld(a.traceTo);
+		isAutoTarget = false;
 
-		//Objects::PWorldEntity e = Objects::GetEntity(a.id,true);
-		//Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
-		//Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
-		//ASSERT__(v || t);
-		//target = e;
+		location = a.traceTo;
+		time.Set(a.timestamp.atTime,a.timestamp.atTime+a.flightTime);
+	}
+	void					Primitive::Init(Protocol::PreciseAttackTrajectory&a)
+	{
+		type = Attack;
+		targetEntityID = a.attacker;
+		attackerTurret = nullptr;	//later
+		explosionCenter = Grid::ToWorld(a.traceTo);
+
+		isAutoTarget = a.isAutoAttack;
 		location = a.traceTo;
 		time.Set(a.timestamp.atTime,a.timestamp.atTime+a.flightTime);
 	}
@@ -1133,7 +1141,19 @@ namespace Animation
 			{
 			//	allocatedTarget = Objects::GetEntity(targetEntityID);
 				//if (allocatedTarget)
-				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attacker->typeName+",range="+String(attackRange)+",loc="+location.ToString()+") at "+String(Animation::atTime)+"/"+String(this->time.min));
+				if (!attackerTurret)
+				{
+					Objects::PWorldEntity attacker = Objects::GetEntity(targetEntityID);
+					ASSERT2__(attacker,targetEntityID.ToString(),this->time.ToString());
+					Objects::PTurretBase base= attacker->GetTurretBase();
+					ASSERT2__(base,attacker->GetName(),this->time.ToString());
+					attackerTurret = base->turret;
+					ASSERT_NOT_NULL1__(attackerTurret,attacker->GetName());
+					attackRange = base->GetFlatAttackRange();
+					attackerPosition = attacker->GetWorldPosition();
+				}
+
+				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",loc="+location.ToString()+") at "+String(Animation::atTime)+"/"+String(this->time.min));
 				
 				{
 					//Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
@@ -1155,8 +1175,8 @@ namespace Animation
 					}*/
 					Grid::HCellIdI			attackTargetCell;	//not needed
 					//TVec3<>					attackTarget;	//not needed
-					Objects::Component::Turret::TraceTrajectory(attacker->trajectoryType,attackRange, attackerPosition,Grid::ToWorld(location),activeTrajectory);
-					explosionRadius = attacker->explosionRadius;
+					Objects::Component::Turret::TraceTrajectory(attackerTurret->trajectoryType,attackRange, attackerPosition,Grid::ToWorld(location),activeTrajectory);
+					explosionRadius = attackerTurret->explosionRadius;
 					projectileAt = 0.f;
 					projectileActive = true;
 

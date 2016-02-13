@@ -18,7 +18,7 @@ namespace Channels
 	//TCP::ObjectSender<Protocol::Result,Protocol::ChannelID::
 
 
-	TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>										hello(Receiver::Hello);
+	TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>												hello(Receiver::Hello);
 	TCP::Channel<Protocol::EntityDirectCommand, FactionLevel, Protocol::ChannelID::EntityDirectCommand>		entityDirectCommand(Receiver::EntityDirectCommand);
 	TCP::Channel<Protocol::ChoiceIntersection, FactionLevel, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection(Receiver::ChoiceIntersection);
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DropLastTask>							dropLastTask(Receiver::DropLastTask);
@@ -48,8 +48,9 @@ namespace Channels
 	TCP::ObjectSender<Protocol::StructureConstruction,Protocol::ChannelID::InstantiateStructure>	createStructure;
 	TCP::ObjectSender<Protocol::MobileState,Protocol::ChannelID::MobileState>						setMobileState;
 	TCP::ObjectSender<Protocol::MobileEntityMotion,Protocol::ChannelID::MobileEntityMotion>			mobileEntityMotion;
-	TCP::ObjectSender<Protocol::AttackTrajectory,Protocol::ChannelID::AttackTrajectory>				attackTrajectory;
-	TCP::ObjectSender<Protocol::EntityTurretRotation,Protocol::ChannelID::EntityTurretRotation>		entityTurretRotation;
+	TCP::ObjectSender<Protocol::VagueAttackTrajectory,Protocol::ChannelID::VagueAttackTrajectory>		vagueAttackTrajectory;
+	TCP::ObjectSender<Protocol::PreciseAttackTrajectory,Protocol::ChannelID::PreciseAttackTrajectory>	preciseAttackTrajectory;
+	TCP::ObjectSender<Protocol::EntityTurretRotation,Protocol::ChannelID::EntityTurretRotation>			entityTurretRotation;
 	TCP::ObjectSender<Protocol::Explosion,Protocol::ChannelID::Explosion>							explosion;
 	TCP::ObjectSender<Protocol::StructureState,Protocol::ChannelID::UpdateStructure>				setStructureState;
 	TCP::ObjectSender<Protocol::DestroyEntity,Protocol::ChannelID::DestroyEntity>					destroyEntity;

@@ -437,7 +437,7 @@ void	SignalNexusControlChange(const Objects::PFaction&f)
 	*/
 
 
-void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, float flightTime)
+void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, float flightTime, bool isAutoAttack)
 {
 	if (!e)
 	{
@@ -445,21 +445,11 @@ void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, f
 		return;
 	}
 	LogEvent(EventSignificance::Common,e.get(),"Attacking "+traceTo.ToString()+" in "+String(flightTime)+" seconds");
-	Protocol::AttackTrajectory preciseAttack;
-	float zOffset;
-	Objects::PTurretBase base = e->GetTurretBase(zOffset);
-	ASSERT__(base);
-	preciseAttack.turretType = base->turret->constName;
+	Protocol::PreciseAttackTrajectory preciseAttack;
+	preciseAttack.attacker = e->id;
 	preciseAttack.traceTo = traceTo;
-	preciseAttack.turretRange = base->GetFlatAttackRange();
-
+	preciseAttack.isAutoAttack = isAutoAttack;
 	preciseAttack.timestamp.rightNow = false;
-	const float3 traceToWorld = Grid::ToWorld(traceTo);
-
-	const TVec3<>&d = Grid::low.cells[e->location.stackID].centerVertex.xyz;
-	preciseAttack.sourcePosition = d * (zOffset + Grid::ToRadius(e->location.height));
-	//float3 world = Grid::ToWorld(e->location);
-	//attack.timestamp.atTime = v->timeAt;
 	
 	{
 		if (e->IsMobile())
@@ -488,7 +478,7 @@ void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, f
 		if (!peer)
 			continue;
 		if (Network::CanSee(cl,e,preciseAttack.timestamp.atTime))
-			Channels::attackTrajectory.SendTo(peer,preciseAttack);
+			Channels::preciseAttackTrajectory.SendTo(peer,preciseAttack);
 	}
 }
 
@@ -546,7 +536,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 	
 
 
-	Protocol::AttackTrajectory	roughAttack;
+	Protocol::VagueAttackTrajectory	roughAttack;
 	bool hasTrajectory = false;
 	if (attackFrom)
 	{
@@ -588,7 +578,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 		if (peer)
 		{
 			if (!client->CanSee(attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
-				Channels::attackTrajectory.SendTo(peer,roughAttack);
+				Channels::vagueAttackTrajectory.SendTo(peer,roughAttack);
 			Channels::explosion.SendTo(peer,explosion);
 		}
 	}

@@ -683,7 +683,7 @@ namespace Network
 			}
 		}
 
-		void	AttackTrajectory(Protocol::AttackTrajectory&a)
+		void	VagueAttackTrajectory(Protocol::VagueAttackTrajectory&a)
 		{
 			ASSERT__(!eventsLocked);
 
@@ -694,7 +694,23 @@ namespace Network
 			else
 			{
 				Animation::primitives.Append().Init(a);
-				LogEvent(EventSignificance::Debug, "Appended 'trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime.value));
+				LogEvent(EventSignificance::Debug, "Appended 'vague trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime.value));
+			}
+			
+		}
+
+		void	PreciseAttackTrajectory(Protocol::PreciseAttackTrajectory&a)
+		{
+			ASSERT__(!eventsLocked);
+
+			if (a.timestamp.rightNow)
+			{
+				FATAL__("weird");
+			}
+			else
+			{
+				Animation::primitives.Append().Init(a);
+				LogEvent(EventSignificance::Debug, "Appended 'precise trajectory' primitive to animation sequence at t="+String(a.timestamp.atTime.value));
 			}
 			
 		}
@@ -860,7 +876,8 @@ namespace Network
 
 		TCP::Channel<Protocol::PhaseChange,0,Protocol::ChannelID::PhaseChange>						phaseChange(Receiver::PhaseChange);
 		TCP::Channel<Protocol::MobileEntityMotion,0,Protocol::ChannelID::MobileEntityMotion>		mobileEntityMotion(Receiver::MobileEntityMotion);
-		TCP::Channel<Protocol::AttackTrajectory,0,Protocol::ChannelID::AttackTrajectory>			attackTrajectory(Receiver::AttackTrajectory);
+		TCP::Channel<Protocol::VagueAttackTrajectory,0,Protocol::ChannelID::VagueAttackTrajectory>			vagueAttackTrajectory(Receiver::VagueAttackTrajectory);
+		TCP::Channel<Protocol::PreciseAttackTrajectory,0,Protocol::ChannelID::PreciseAttackTrajectory>		preciseAttackTrajectory(Receiver::PreciseAttackTrajectory);
 		TCP::Channel<Protocol::Explosion,0,Protocol::ChannelID::Explosion>							explosion(Receiver::Explosion);
 		TCP::Channel<Protocol::EntityTurretRotation,0,Protocol::ChannelID::EntityTurretRotation>	entityTurretRotation(Receiver::EntityTurretRotation);
 		TCP::Channel<Protocol::ResourceUpdate,0,Protocol::ChannelID::ResourceUpdate>				resourceUpdate(Receiver::ResourceUpdate);
@@ -1086,7 +1103,8 @@ namespace Network
 
 		client.InstallChannel(Channels::phaseChange);
 		client.InstallChannel(Channels::mobileEntityMotion);
-		client.InstallChannel(Channels::attackTrajectory);
+		client.InstallChannel(Channels::vagueAttackTrajectory);
+		client.InstallChannel(Channels::preciseAttackTrajectory);
 		client.InstallChannel(Channels::explosion);
 		client.InstallChannel(Channels::entityTurretRotation);
 		client.InstallChannel(Channels::resourceUpdate);

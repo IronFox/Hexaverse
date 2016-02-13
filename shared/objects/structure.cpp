@@ -218,7 +218,7 @@ namespace Objects
 				}
 
 
-				SignalAttack(shared_from_this(),target.target,flightTime);
+				SignalAttack(shared_from_this(),target.target,flightTime,target.autoTarget);
 
 				if (storage.level[turret->ammoType] >= turret->ammoNeedPerShot)
 					ChangeStorage(*this,attackTime, turret->ammoType,-turret->ammoNeedPerShot);
