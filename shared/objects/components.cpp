@@ -647,8 +647,9 @@ namespace Objects
 			{
 				component.iconCommands.Append(IconCommand(int2(4,0), "Abort", &VehicleCmd::AbortOperation, &CommonCmd::CommonButtonCheck,NoCosts));
 				component.iconCommands.Append(IconCommand(int2(4,1), "Undo", &VehicleCmd::UndoOperation, &CommonCmd::CommonButtonCheck,NoCosts));
+				component.iconCommands.Append(IconCommand(int2(5,1), "Sleep", &VehicleCmd::Sleep, &VehicleCmd::SleepCheck,NoCosts));
 				component.iconCommands.Append(IconCommand(int2(5,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck,NoCosts));
-				return CellCoords(5,1);
+				return CellCoords(6,0);
 			}
 		#endif
 

@@ -19,7 +19,8 @@ namespace Receiver
 	void	ClientFaction(Protocol::ClientFactionRequest&, TCP::Peer&peer);
 	void	RestoreCoreLink(NET(TUniqueID)&uuid, TCP::Peer&peer);
 	void	RemoveEntity(NET(TUniqueID)&uuid, TCP::Peer&peer);
-	void	Automate(Protocol::Automate&, TCP::Peer&peer);
+	void	Automate(Protocol::EntityStateUpdate&, TCP::Peer&peer);
+	void	Sleep(Protocol::EntityStateUpdate&, TCP::Peer&peer);
 	void	CreateMarker(Protocol::Marker&, TCP::Peer&peer);
 	void	DestroyMarker(NET(TUniqueID)&, TCP::Peer&peer);
 	void	TouchMarker(Protocol::TouchedMarker&, TCP::Peer&peer);
@@ -75,7 +76,8 @@ namespace Channels
 	
 	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RestoreCoreLink>						restoreCoreLink;
 	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RemoveEntity>						removeEntity;
-	extern TCP::Channel<Protocol::Automate, FactionLevel, Protocol::ChannelID::Automate>						automate;
+	extern TCP::Channel<Protocol::EntityStateUpdate, FactionLevel, Protocol::ChannelID::Automate>				automate;
+	extern TCP::Channel<Protocol::EntityStateUpdate, FactionLevel, Protocol::ChannelID::Sleep>					sleep;
 	extern TCP::Channel<Protocol::Marker, FactionLevel, Protocol::ChannelID::CreateMarker>						createMarker;
 	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DestroyMarker>						destroyMarker;
 	extern TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>				touchMarker;

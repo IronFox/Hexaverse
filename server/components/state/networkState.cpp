@@ -129,6 +129,7 @@ namespace Network
 		server.InstallChannel(Channels::removeEntity);
 		server.InstallChannel(Channels::restoreCoreLink);
 		server.InstallChannel(Channels::automate);
+		server.InstallChannel(Channels::sleep);
 		server.InstallChannel(Channels::createMarker);
 		server.InstallChannel(Channels::destroyMarker);
 		server.InstallChannel(Channels::touchMarker);
