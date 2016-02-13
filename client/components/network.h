@@ -214,9 +214,10 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::ConstructionAbort, Protocol::ChannelID::ConstructionAbort>	constructionAbort;
 		extern TCP::ObjectSender<Protocol::ConstructionBegin, Protocol::ChannelID::ConstructionBegin>	constructionBegin;
 		extern TCP::ObjectSender<Protocol::EnableStructure, Protocol::ChannelID::EnableStructure>		enableStructure;
-		extern TCP::ObjectSender<Protocol::Automate,Protocol::ChannelID::Automate>						automate;
+		extern TCP::ObjectSender<Protocol::EntityStateUpdate,Protocol::ChannelID::Automate>				automate;
 		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RestoreCoreLink>					restoreCoreLink;
 		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
+		extern TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>				sleep;
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
 

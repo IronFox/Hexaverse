@@ -503,6 +503,28 @@ namespace Journal
 			isNowAutomated = false;
 	}
 
+	/*virtual override*/ void			Round::ChangeSleep::Execute(const Objects::PWorldEntity&e)	const
+	{
+		float t = 0;
+		e->SetSleep(isNowSleeping,t);
+	}
+
+	/*virtual override*/ void			Round::ChangeSleep::Compile(Entry&e)	const
+	{
+		
+		if (isNowSleeping)
+			e.intParameters.Set("Sleep",1);
+	}
+
+	/*virtual override*/ void			Round::ChangeSleep::Decode(const Entry&e)
+	{
+		
+		int v;
+		if (e.intParameters.TryGet("Sleep",v))
+			isNowSleeping = v != 0;
+		else
+			isNowSleeping = false;
+	}
 
 
 	
@@ -1431,6 +1453,15 @@ namespace Journal
 			cmd->Execute(e);
 	}
 
+	void	Round::RegisterSleepChange(bool execute, const Objects::PWorldEntity&e, bool isNowSleeping)
+	{
+		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
+		PEntityEvent cmd(new ChangeSleep(isNowSleeping));
+		strand.Append(cmd);
+		if (execute)
+			cmd->Execute(e);
+	}
+
 
 	void	Round::LogFactionCreation(const Objects::PFaction&f, Round::CreateFaction::FactionType type)
 	{
@@ -2181,6 +2212,7 @@ namespace Journal
 		MAP_ADD(DestroyEntity);
 		MAP_ADD(EntityStateCheck);
 		MAP_ADD(ChangeAutomation);
+		MAP_ADD(ChangeSleep);
 		MAP_ADD(UpdateVariable);
 		MAP_ADD(ResourceCoverageChange);
 		MAP_ADD(ResourceCoverageKnowledgeLoss);

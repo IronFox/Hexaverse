@@ -153,6 +153,7 @@ namespace Objects
 		#endif
 
 	private:
+		bool						sleeping = false;	//!< Use SetSleep() instead. Indicates that this entity is asleep. Sleeping entities are not considered in the client-side IsIdle() iteration. Sleeping mobile entities will not execute any jobs
 
 	public:
 		#ifndef CLIENT
@@ -208,6 +209,7 @@ namespace Objects
 				CanEnableChanged = 0x200,
 				HibernationChanged = 0x400,
 				OrbitalConnectionChanged = 0x800,
+				SleepChange = 0x1000,
 			};
 			float					changeTimer;	//Earliest change time. Reduced if an earlier even occurs
 			UINT32					changeFlags;	//Everything that has changed since the last reset (usually once per server-frame)
@@ -230,10 +232,25 @@ namespace Objects
 
 			//Buffer0<PWorldEntity>	seenBy,
 				//					seeing;
+			void					SetSleep(bool doSleep, float&t, bool signalToStructure=true)
+			{
+				if (sleeping == doSleep)
+					return;
+				LogEvent(EventSignificance::Common,this,"Sleeping changed to "+String(doSleep)+" at t="+String(t));
+
+				sleeping = doSleep;
+				RegisterChange(SleepChange,t);
+				if (signalToStructure)
+					OnSleepChange(t);
+			}
 			
 
 
 			virtual void			SetupSystem()=0;	//used to setup the matrices once after creation
+
+			virtual void			OnSleepChange(float&t) {};
+		#else
+			void					ApplySleepChangeFromServer(bool doSleep)	{sleeping = doSleep;}
 		#endif
 		//virtual bool				CanSee(const PWorldEntity&other)	const;
 		//virtual bool				CanSee(const TVec3<>&center, float radius)	const;
@@ -241,8 +258,9 @@ namespace Objects
 
 		/**
 		Used for visualization: active entities have bright, pulsing key colors, dull dark colors otherwise.
+		@return 0 (completely inactive) to 1 (active)
 		*/
-		virtual bool				IsActive() const {return true;}
+		virtual float				GetActivityLevel() const {return IsHibernating() ? 0.f : (sleeping ? 0.5f : 1.f);}
 
 		/**
 		Retrieves the maximum possible health level
@@ -331,6 +349,7 @@ namespace Objects
 		*/
 		bool						CanHitSomehow(const TVec3<>&dest) const;
 		bool						CanHitSomehow(const Grid::LCellIdI&dest) const;
+		bool						IsSleeping() const {return sleeping;}
 
 		virtual bool				AwaitsUserInteraction() const {return false;}
 

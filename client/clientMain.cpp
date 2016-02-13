@@ -404,7 +404,7 @@ void	SignalRestoreCoreLink(const TUniqueID&mineId)
 
 void	SignalAutomation(const Objects::PWorldEntity&e, bool doAutomate)
 {
-	Network::Channels::automate.SendTo(Network::client,Protocol::Automate(e->id,doAutomate));
+	Network::Channels::automate.SendTo(Network::client,Protocol::EntityStateUpdate(e->id,doAutomate));
 }
 
 void	SignalRemoval(const Objects::PWorldEntity&entity)
@@ -665,6 +665,14 @@ void	SignalTerrainModification(const Objects::PVehicle&v,Objects::Vehicle::mode_
 	job.mode = (UINT16)activeCursorMode;
 	job.cells = selection;
 	Network::Channels::signalTerrainMod.SendTo(Network::client,job);
+}
+
+void	SignalSleep(const Objects::PWorldEntity&e, bool doSleep)
+{
+	Protocol::EntityStateUpdate update;
+	update.entityID = e->id;
+	update.doSet = doSleep;
+	Network::Channels::sleep.SendTo(Network::client,update);
 }
 
 void	SignalDropLastTask(const Objects::PWorldEntity&e)
@@ -2614,10 +2622,13 @@ String GenerateOreName(Random&random)
 		{
 			return false;
 		}
-		if (v->GetOperationSpeed(Objects::Component::Construct))
+		if (!v->IsSleeping())
 			return true;
-		if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsNonAutomatedResourceDetector())
-			return true;
+		//if (v->GetOperationSpeed(Objects::Component::Construct))
+		//	return true;
+		//if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsNonAutomatedResourceDetector())
+		//	return true;
+
 		if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())
 		{
 			bool emp = v->turret->dealsEMPDamage;
@@ -2656,7 +2667,7 @@ String GenerateOreName(Random&random)
 				return false;
 		#endif
 
-		if (!s->IsWorkingStructure())
+		if (!s->IsWorkingStructure() || s->IsSleeping())
 			return false;
 		Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
 		if (ws->visited)
