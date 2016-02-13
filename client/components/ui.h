@@ -129,12 +129,9 @@ namespace UI
 			static const float stepY = (0.5f + 1.f) * CellSize;
 			static const float stepX = 0.86602540378443864676372317075294f * CellSize;
 
-			extern index_t						hostileOffset,
-												friendlyOffset;
-			//static const count_t ContactListWidth = 10;
 			extern count_t					currentContactListWidth;
-			static const int2 ContactListOffset(5,2);
-			static const int2 FriendlyListOffset(5,1);
+			//static const int2 ContactListOffset(5,2);
+			static const int2 DynamicRowOffset(5,1);
 
 
 			class TutorialCommand : public Objects::IconCommand
@@ -172,41 +169,8 @@ namespace UI
 
 			};
 
-			template <bool Friendly>
-				inline void				ArrowOnExecute(bool left, const Objects::PWorldEntity&)
-				{
-					index_t&offset = Friendly?friendlyOffset:hostileOffset;
-					if (left)
-					{
-						if (offset > currentContactListWidth)
-							offset -= currentContactListWidth;
-						else
-							offset = 0;
-					}
-					else
-						offset += currentContactListWidth;
-					RefreshContacts();
-				}
 
-			class ArrowCommand : public Objects::IconCommand
-			{
-			public:
-				typedef Objects::IconCommand	Super;
 
-				//int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p, GetCosts c
-				/**/				ArrowCommand(bool left, bool friendly=false) : Super(int2(), left ? "Left":"Right",
-										std::bind(
-											(friendly ? (&ArrowOnExecute<true>) : (&ArrowOnExecute<false>))
-											,left,std::placeholders::_1),
-										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;},
-										Objects::NoCosts)
-					{}
-
-				virtual void			CompileLabel(const Objects::PWorldEntity&,Label&outResult) override
-				{
-					outResult << "Scroll "+name;
-				}
-			};
 
 			struct Group
 			{
@@ -347,19 +311,86 @@ namespace UI
 
 				virtual void		CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
 
+				bool				operator<(const GroupFocusCommand&other) const {return group->operator<(*other.group);}
+			};
+
+			class ArrowCommand;
+
+			class DynamicRow
+			{
+			public:
+				std::shared_ptr<ArrowCommand>			leftCommand,rightCommand;
+				index_t									offset=0;
+				TIntRange<index_t>						visibleRange;
+
+				const int								rowIndex;
+
+				/**/									DynamicRow(int rowIndex) : rowIndex(rowIndex)	{}
+				void									Refresh();
+				void									Create();
+				void									Destroy() {leftCommand.reset(); rightCommand.reset();}
+				void									Scroll(bool left);
+				virtual count_t							CountEntries() const =0;
+				virtual void							RebuildCommands() = 0;
 			};
 
 
-			//Buffer0<VehicleFocusCommand>		vehicleCommands;
-			//Buffer0<StructureFocusCommand>		structureCommands;
-			extern Buffer0<GroupFocusCommand>			groupFocusCommands;
+			class ArrowCommand : public Objects::BaseCommand
+			{
+			public:
+				typedef Objects::BaseCommand	Super;
+				const bool						left;
+				DynamicRow *const				row;
+
+				//int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p, GetCosts c
+				/**/				ArrowCommand(bool left, DynamicRow*row) : Super(int2(), left ? "Left":"Right"), left(left),row(row)
+									{
+										LoadIcon();
+									}
+				virtual void Execute() override
+				{
+					row->Scroll(left);
+				}
+
+				virtual void Refresh(bool controlEnabled) override {}
+
+				virtual void			CompileLabel(const Objects::PWorldEntity&,Label&outResult) override
+				{
+					outResult << "Scroll "+name;
+				}
+			};
+
+			template <typename T, typename CommandT>
+			class TemplateRow : public DynamicRow
+			{
+			public:
+				Buffer0<CommandT>						commands;
+				StringTable<Buffer0<T>,Swap>			collection;
+
+				/**/									TemplateRow(int rowIndex) : DynamicRow(rowIndex)	{}
+				void									Clear()	{commands.Clear(); }
+				void									Destroy() {Clear(); DynamicRow::Destroy();}
+				virtual count_t							CountEntries() const override {return commands.Count();}
+				virtual void							RebuildCommands() override
+				{
+					for (index_t i = 0; i < visibleRange.GetExtend(); i++)
+					{
+						GridCell&cell = guiCells.Append();
+						cell.type = GridCell::ContactListEntry;
+						cell.command = commands + i + visibleRange.start;
+						cell.command->coords = DynamicRowOffset + int2(i+1,rowIndex);
+						cell.flipY = true;
+						cell.Update(camera);
+					}
+				}
+			};
+
+			extern TemplateRow<Objects::PWorldEntity,GroupFocusCommand>	friendlyGroups,hostileGroups;
+
 			extern VehicleFocusCommand					selectedVehicleFocus;
 			extern StructureFocusCommand				selectedStructureFocus;
 
-			extern std::shared_ptr<ArrowCommand>		leftCommand,rightCommand,
-														friendlyLeftCommand,friendlyRightCommand;
 			extern std::shared_ptr<TutorialCommand>		tutorialCommand;
-			extern Buffer0<Objects::PWorldEntity>		hostileScope;
 
 
 		}
@@ -410,7 +441,6 @@ namespace UI
 			extern DX11::BaseInstructionBlock	instruction;
 			extern DX11::ObjectBuffer<float4>	center,color;
 			extern Engine::OrthographicAspect<> camera;
-			extern Buffer0<Group>	friendlyGroups,hostileGroups;
 
 
 

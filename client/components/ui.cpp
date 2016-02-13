@@ -468,12 +468,82 @@
 		namespace HexGrid
 		{
 
-			index_t								hostileOffset = 0,
-												friendlyOffset = 0;
-			//static const count_t ContactListWidth = 10;
+			TemplateRow<Objects::PWorldEntity,GroupFocusCommand>			friendlyGroups(0),hostileGroups(1);
+
 			count_t					currentContactListWidth = 10;
 
 
+			void	DynamicRow::Create()
+			{
+				leftCommand.reset(new ArrowCommand(true,this));
+				leftCommand->coords = DynamicRowOffset;
+				rightCommand.reset(new ArrowCommand(false,this));
+				rightCommand->coords = DynamicRowOffset + int2(currentContactListWidth+1,0);
+			}
+
+			void	DynamicRow::Scroll(bool left)
+			{
+				if (left)
+				{
+					if (offset > currentContactListWidth)
+						offset -= currentContactListWidth;
+					else
+						offset = 0;
+				}
+				else
+				{
+					offset += currentContactListWidth;
+				}
+
+				Refresh();
+			}
+
+			void	DynamicRow::Refresh()
+			{
+				bool moreRight;
+				{
+					//Buffer0<Group>&groups = hostileGroups.groups;
+					index_t newOffset = this->offset;
+
+					count_t scopeWidth = this->CountEntries();
+
+					if (newOffset > 0 && newOffset + currentContactListWidth > scopeWidth)
+					{
+						if (scopeWidth >= currentContactListWidth)
+							newOffset = scopeWidth - currentContactListWidth;
+						else
+							newOffset = 0;
+					}
+					visibleRange = IntRange(index_t(0),scopeWidth);
+					if (newOffset > 0)
+						visibleRange = IntRange(newOffset,scopeWidth);
+					moreRight = visibleRange.GetExtend() > currentContactListWidth;
+					if (moreRight)
+						visibleRange.end = visibleRange.start + currentContactListWidth;
+					this->offset = newOffset;
+				}
+				if (offset > 0)
+				{
+					GridCell&cell = guiCells.Append();
+					cell.type = GridCell::ContactListLeft;
+					cell.command = leftCommand.get();
+					cell.flipY = true;
+					cell.Update(camera);
+				}
+				if (moreRight)
+				{
+					GridCell&cell = guiCells.Append();
+					cell.type = GridCell::ContactListRight;
+					rightCommand->coords = DynamicRowOffset + int2(currentContactListWidth+1,0);
+					cell.command = rightCommand.get();
+					cell.flipY = true;
+					cell.Update(camera);
+				}
+
+//				rightCommand->coords.x = int(ContactListOffset.x + 1+currentContactListWidth);
+
+				RebuildCommands();
+			}
 
 
 			bool		Group::InitSelection()
@@ -767,11 +837,7 @@
 			StructureFocusCommand				selectedStructureFocus;
 			SatelliteFocusCommand				selectedSatelliteFocus;
 
-			std::shared_ptr<ArrowCommand>		leftCommand,rightCommand,
-												friendlyLeftCommand,friendlyRightCommand;
 			std::shared_ptr<TutorialCommand>	tutorialCommand;
-			Buffer0<Objects::PWorldEntity>			hostileScope;
-
 
 		}
 
@@ -864,7 +930,7 @@
 			DX11::BaseInstructionBlock	instruction;
 			DX11::ObjectBuffer<float4>	center,color;
 			Engine::OrthographicAspect<> camera;
-			Buffer0<Group>	friendlyGroups,hostileGroups;
+			//Buffer0<Group>	friendlyGroups,hostileGroups;
 
 
 
@@ -896,15 +962,8 @@
 				camera.UpdateProjection(-1,-1,-1+2.f * display.pixelAspect(),1,-1,1);
 				camera.depthTest = Engine::NoDepthTest;
 
-
-				leftCommand.reset(new ArrowCommand(true));
-				leftCommand->coords = ContactListOffset;
-				rightCommand.reset(new ArrowCommand(false));
-				rightCommand->coords = ContactListOffset + int2(currentContactListWidth+1,0);
-				friendlyLeftCommand.reset(new ArrowCommand(true, true));
-				friendlyLeftCommand->coords = FriendlyListOffset;
-				friendlyRightCommand.reset(new ArrowCommand(false, true));
-				friendlyRightCommand->coords = FriendlyListOffset + int2(currentContactListWidth+1,0);
+				friendlyGroups.Create();
+				hostileGroups.Create();
 				tutorialCommand.reset(new TutorialCommand());
 				tutorialCommand->coords = int2(1);
 
@@ -942,11 +1001,11 @@
 				groupFocusCommands.Clear();
 				//vehicleCommands.Clear();
 				//structureCommands.Clear();
-				leftCommand.reset();
-				rightCommand.reset();
+
 				tutorialCommand.reset();
-				friendlyGroups.Clear();
-				hostileGroups.Clear();
+
+				friendlyGroups.Destroy();
+				hostileGroups.Destroy();
 
 				selectedVehicleFocus = VehicleFocusCommand();
 				selectedStructureFocus = StructureFocusCommand();
@@ -1201,6 +1260,22 @@
 				DeleteAllCellsOfType(GridCell::OwnedListRight);
 			}
 
+			static void CollectionToCommands(TemplateRow<Objects::PWorldEntity,GroupFocusCommand>&context)
+			{
+				context.commands.Clear();
+				context.collection.VisitAllValues([&context](Buffer0<Objects::PWorldEntity>&entries)
+				{
+					PGroup group (new Group());
+					group->name = entries.first()->GetTypeName();
+					group->entries.adoptData(entries);
+					group->UpdateSignificance();
+
+					context.commands << GroupFocusCommand(group);
+				});
+				context.collection.Clear();
+				ByOperator::QuickSort(context.commands);
+			}
+
 			void					RefreshContacts()
 			{
 				//this is off:
@@ -1222,13 +1297,11 @@
 
 
 
-				if (rightCommand)
-					rightCommand->coords.x = int(ContactListOffset.x + 1+currentContactListWidth);
 				ClearContacts();
 
 				{
-					static StringTable<Buffer0<Objects::PWorldEntity>,Swap>	hostileCollection, friendlyCollection;
-					hostileCollection.Clear(); friendlyCollection.Clear();
+					hostileGroups.collection.Clear();
+					friendlyGroups.collection.Clear();
 
 
 					Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
@@ -1245,154 +1318,24 @@
 
 						if (e->isMine)
 						{
-							friendlyCollection.Set(key).Append(e);
+							friendlyGroups.collection.Set(key).Append(e);
 						}
 						else
-							hostileCollection.Set(key).Append(e);
+							hostileGroups.collection.Set(key).Append(e);
 					});
-					friendlyGroups.Clear();
-					friendlyCollection.VisitAllValues([](Buffer0<Objects::PWorldEntity>&entries)
-					{
-						Group&group = friendlyGroups.Append();
-						group.name = entries.first()->GetTypeName();
-						group.entries.adoptData(entries);
-						group.UpdateSignificance();
-					});
-					hostileGroups.Clear();
-					hostileCollection.VisitAllValues([](Buffer0<Objects::PWorldEntity>&entries)
-					{
-						Group&group = hostileGroups.Append();
-						group.name = entries.first()->GetTypeName();
-						group.entries.adoptData(entries);
-						group.UpdateSignificance();
-					});
-					hostileCollection.Clear(); friendlyCollection.Clear();
-
-
-					ByOperator::QuickSort(friendlyGroups);
-					ByOperator::QuickSort(hostileGroups);
-
+					CollectionToCommands(friendlyGroups);
+					CollectionToCommands(hostileGroups);
 				}
 				
 
 
 				#ifdef HAS_WINDOW
-					if (hostileGroups.IsNotEmpty())
+					if (hostileGroups.commands.IsNotEmpty())
 						Tutorial::ShowMessage("Hostile Contacts");
 				#endif
 
-				bool friendlyMoreRight, hostileMoreRight;
-				{
-					Buffer0<Group>&groups = hostileGroups;
-					index_t newOffset = hostileOffset;
-
-					count_t scopeWidth = groups.Count();
-
-					if (newOffset > 0 && newOffset + currentContactListWidth > scopeWidth)
-					{
-						if (scopeWidth >= currentContactListWidth)
-							newOffset = scopeWidth - currentContactListWidth;
-						else
-							newOffset = 0;
-					}
-					if (newOffset > 0)
-						groups.Erase(0,newOffset);
-					hostileMoreRight = groups.Count() > currentContactListWidth;
-					groups.Truncate(currentContactListWidth);
-					hostileOffset = newOffset;
-				}
-				{
-					Buffer0<Group>&groups = friendlyGroups;
-					index_t newOffset = friendlyOffset;
-
-					count_t scopeWidth = groups.Count();
-
-					if (newOffset > 0 && newOffset + currentContactListWidth > scopeWidth)
-					{
-						if (scopeWidth >= currentContactListWidth)
-							newOffset = scopeWidth - currentContactListWidth;
-						else
-							newOffset = 0;
-					}
-					if (newOffset > 0)
-						groups.Erase(0,newOffset);
-					friendlyMoreRight = groups.Count() > currentContactListWidth;
-					groups.Truncate(currentContactListWidth);
-					friendlyOffset = newOffset;
-				}
-				
-				if (hostileOffset > 0)
-				{
-					GridCell&cell = guiCells.Append();
-					cell.type = GridCell::ContactListLeft;
-					cell.command = leftCommand.get();
-					cell.flipY = true;
-					cell.Update(camera);
-				}
-				if (friendlyOffset > 0)
-				{
-					GridCell&cell = guiCells.Append();
-					cell.type = GridCell::OwnedListLeft;
-					cell.command = friendlyLeftCommand.get();
-					cell.flipY = true;
-					cell.Update(camera);
-				}
-				if (hostileMoreRight)
-				{
-					GridCell&cell = guiCells.Append();
-					cell.type = GridCell::ContactListRight;
-					rightCommand->coords = ContactListOffset + int2(currentContactListWidth+1,0);
-					cell.command = rightCommand.get();
-					cell.flipY = true;
-					cell.Update(camera);
-				}
-				if (friendlyMoreRight)
-				{
-					GridCell&cell = guiCells.Append();
-					cell.type = GridCell::OwnedListRight;
-					friendlyRightCommand->coords = FriendlyListOffset + int2(currentContactListWidth+1,0);
-				//friendlyLeftCommand.reset(new ArrowCommand(FriendlyListOffset, true, true));
-				//friendlyRightCommand.reset(new ArrowCommand(FriendlyListOffset + int2(currentContactListWidth+1,0), false, true));
-
-					cell.command = friendlyRightCommand.get();
-					cell.flipY = true;
-					cell.Update(camera);
-				}
-
-				groupFocusCommands.SetSize(hostileGroups.Count() + friendlyGroups.Count(),false);
-				index_t counter = 0;
-				for (auto&g : hostileGroups)
-				{
-					PGroup group(new Group());
-					group->swap(g);
-					groupFocusCommands.Append(GroupFocusCommand(group));
-					
-
-					GridCell&cell = guiCells.Append();
-					cell.type = GridCell::ContactListEntry;
-					cell.command = groupFocusCommands + counter;
-					cell.command->coords = ContactListOffset + int2(counter+1,0);
-					cell.flipY = true;
-					cell.Update(camera);
-
-					counter++;
-				}
-				counter = 0;
-				for (auto&g : friendlyGroups)
-				{
-					PGroup group(new Group());
-					group->swap(g);
-					groupFocusCommands.Append(GroupFocusCommand(group));
-
-					GridCell&cell = guiCells.Append();
-					cell.type = GridCell::OwnedListEntry;
-					cell.command = groupFocusCommands + counter + hostileGroups.Count();
-					cell.command->coords = FriendlyListOffset + int2(counter+1,0);
-					cell.flipY = true;
-					cell.Update(camera);
-
-					counter++;
-				}
+				friendlyGroups.Refresh();
+				hostileGroups.Refresh();
 
 				RefreshTutorials();
 				//display.SetDepthTest(false,false);
