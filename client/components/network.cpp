@@ -58,6 +58,7 @@ namespace Network
 	{
 		RuntimeConfig::phase = RuntimeConfig::Phase::Uninitialized;
 		gameHasBegun = false;
+
 		client.ConnectAsync(addr.host + ":"+String(addr.basePort + PortOffset::Session));
 	}
 
@@ -404,7 +405,7 @@ namespace Network
 				Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,false,true);
 
 				#ifdef HAS_WINDOW
-					World::allowRecompilation = last;
+					World::allowRecompilation = last && gameHasBegun;
 				#endif
 			}
 
@@ -992,6 +993,7 @@ namespace Network
 		{
 			case TCP::Event::ConnectionEstablished:
 			{
+				World::allowRecompilation = false;	//until game begins
 				Receiver::eventsLocked = false;
 
 
@@ -1026,6 +1028,7 @@ namespace Network
 			case TCP::Event::ConnectionFailed:
 			{
 				LogEvent(EventClass::Preset::networkError, nullptr, "Connection attempt failed");
+				World::allowRecompilation = true;
 				#ifdef HAS_WINDOW
 					Dialog::SignalSituationChange();
 				#endif
@@ -1036,6 +1039,7 @@ namespace Network
 			{
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, "Connection lost");
 				amOnline = false;
+				World::allowRecompilation = true;
 
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
@@ -1068,6 +1072,7 @@ namespace Network
 		switch (signal)
 		{
 			case Protocol::ChannelID::BeginGame:
+				World::allowRecompilation = true;
 				gameHasBegun = true;
 				LogEvent(EventClass::Preset::uncommon,nullptr,"Game has begun");
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Animation::AllDone())
