@@ -22,6 +22,7 @@ v0.3.16
 	> "Dig Tunnel To..." command now tries better to stay on the same level as the vehicle currently is.
 	+ Ghosts now memorize the owner of the referenced entity (if any).
 	+ Added option to use max compression for time lapse series PNG files.
+	+ Added puttons to put vehicles and vehicle plants to sleep. Sleeping vehicles will mostly not be considered idle, and pause building.
 
 v0.3.15		[Feb 7 2016]
 	* Fixed incorrect server IDs leading to client-side merging of different servers into one.

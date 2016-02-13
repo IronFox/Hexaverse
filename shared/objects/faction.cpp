@@ -685,7 +685,7 @@ namespace Objects
 					PSatellite sat = To<Satellite>::Cast(s);
 					if (sphere.Contains(sat->GetWorldPosition()))
 					{
-						float d = Vec::distance(sat->GetWorldPosition(),sphere.center);
+//						float d = Vec::distance(sat->GetWorldPosition(),sphere.center);
 //						LogEvent(EventSignificance::Debug,sat.get()," Reported in range of "+sphere.ToString()+", at distance="+String(d));
 						disappear << sat;
 					}

@@ -29,6 +29,7 @@
 	void	SignalRemoval(const Objects::PWorldEntity&);
 	void	SignalConstructTowerTurret(const TUniqueID&towerID,const Objects::Component::Turret*&newTurret);
 	void	SignalAutomation(const Objects::PWorldEntity&e, bool doAutomate);
+	void	SignalSleep(const Objects::PWorldEntity&v, bool doSleep);
 	void	SignalEnableStructure(Objects::Structure&s, bool enabled);
 	void	SignalTargetLessAttack(const Objects::PWorldEntity&e);
 
