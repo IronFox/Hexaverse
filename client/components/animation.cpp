@@ -496,7 +496,8 @@ namespace Animation
 			v->Relocate(vs.entityState.location,false);	//this moves sensors. not good during animation phase. however, this is a rare and isolated process (not part of a sequence of updates)
 		}
 		v->health = vs.entityState.health;
-		v->unstable = vs.entityState.unstable;
+		v->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsUnstable) != 0;
+		v->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsSleeping) != 0 );
 
 		v->UpdateEMPDamage(vs.entityState.empDamageLevel, !isNewForEMP);	//must remove visible sensory, must be linked to destructor
 		//v->roundsDisabled = vs.entityState.disabledRounds;
@@ -802,7 +803,9 @@ namespace Animation
 			
 			}
 		}
-		s->unstable = vs.entityState.unstable;
+		s->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsUnstable) != 0;
+		s->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsSleeping) != 0 );
+
 
 		s->health = vs.entityState.health;
 		s->empDamageLevel = vs.entityState.empDamageLevel;

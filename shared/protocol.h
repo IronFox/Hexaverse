@@ -1178,6 +1178,14 @@ namespace Protocol
 		, TypeDeltaArray, data0
 	)
 
+	namespace EntityStateFlag
+	{
+		enum flag_t
+		{
+			IsUnstable = 0x1,
+			IsSleeping = 0x2,
+		};
+	}
 
 	NETSTRUCT6(EntityState
 		, Timestamp, timestamp
@@ -1185,7 +1193,7 @@ namespace Protocol
 		, LCellIdI, location
 		, SerialUnsigned, health
 		, SerialUnsigned, empDamageLevel
-		, NET(bool), unstable
+		, NET(BYTE), entityStateFlags
 	)
 
 	NETSTRUCT9(MobileTask
@@ -1760,9 +1768,9 @@ namespace Protocol
 		, NET(TUniqueID), ownerID
 	)
 
-	NETSTRUCT2(Automate
+	NETSTRUCT2(EntityStateUpdate
 		, NET(TUniqueID), entityID
-		, NET(bool), doAutomate
+		, NET(bool), doSet
 	)
 
 	NETSTRUCT4(MarkerReferenceEntity
@@ -1858,7 +1866,8 @@ namespace Protocol
 
 			EnableStructure,	//c2s: EnableStructure
 
-			Automate,			//c2s: Automate
+			Automate,			//c2s: EntityStateUpdate
+			Sleep,				//c2s: EntityStateUpdate
 
 			ResourceUpdate,		//s2c: ResourceUpdate
 

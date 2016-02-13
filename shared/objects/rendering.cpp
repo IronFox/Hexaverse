@@ -646,15 +646,12 @@ namespace Objects
 	{
 		display.SetObjectMatrix(s.system);
 		{
-			if (!s.IsActive())
-			{
-				keyColor.Update(float4(s.owner->inactiveEntityColor, light));
-			}
-			else
+			TVec3<> color;
+			Vec::interpolate(s.owner->inactiveEntityColor,s.owner->activeEntityColor,s.GetActivityLevel(),color);
 			{
 				if (s.unstable)
 				{
-					keyColor.Update(float4(flip ? float3() : s.owner->activeEntityColor,light));
+					keyColor.Update(float4(flip ? float3() : color,light));
 						
 					if (!flip)
 					{
@@ -667,7 +664,7 @@ namespace Objects
 					}
 				}
 				else
-					keyColor.Update(float4(s.owner->activeEntityColor,light));
+					keyColor.Update(float4(color,light));
 			}
 		}
 		_RenderSimpleLocated(s,s.system);
@@ -679,15 +676,13 @@ namespace Objects
 		_Locate(s);
 		bool workingStructure = s.IsWorkingStructure();
 		{
-			if (!s.IsActive())
-			{
-				keyColor.Update(float4(flip && !s.maintained ? float3(0.5f,0,0) : s.owner->inactiveEntityColor, light));
-			}
-			else
+			TVec3<> color;
+			Vec::interpolate(s.owner->inactiveEntityColor,s.owner->activeEntityColor,s.GetActivityLevel(),color);
+
 			{
 				if (s.unstable)
 				{
-					keyColor.Update(float4(flip ? (s.maintained ? float3() : float3(0.5f,0,0)) : s.owner->activeEntityColor,light));
+					keyColor.Update(float4(flip ? (s.maintained ? float3() : float3(0.5f,0,0)) : color,light));
 						
 					if (!flip && workingStructure)
 					{
@@ -700,7 +695,7 @@ namespace Objects
 					}
 				}
 				else
-					keyColor.Update(float4(flip && !s.maintained ? float3(0.5f,0,0) : s.owner->activeEntityColor,light));
+					keyColor.Update(float4(flip && !s.maintained ? float3(0.5f,0,0) : color,light));
 			}
 		}
 		
@@ -762,18 +757,14 @@ namespace Objects
 
 	void Renderer::Render(const Vehicle&v, float light)
 	{
-		const float3&inactiveColor = v.owner->inactiveEntityColor;
-		const float3&activeColor = v.owner->activeEntityColor;
-
 		{
-			if (!v.IsActive())
-				keyColor.Update(float4(inactiveColor, light));
-			else
+			TVec3<> color;
+			Vec::interpolate(v.owner->inactiveEntityColor,v.owner->activeEntityColor,v.GetActivityLevel(),color);
 			{
 				if (v.unstable)
-					keyColor.Update(float4(flip ? float3() : activeColor,light));
+					keyColor.Update(float4(flip ? float3() : color,light));
 				else
-					keyColor.Update(float4(activeColor,light));
+					keyColor.Update(float4(color,light));
 			}
 		}
 		RenderSimple(v);
@@ -817,24 +808,29 @@ namespace Objects
 			}
 		#endif
 
-		if (e.IsWorkingStructure())
+		if (e.IsSleeping())
+			Vec::interpolate(effectiveTint,float4(0,0,0,1),0.7f,effectiveTint);
+		else
 		{
-			const WorkingStructure&ws = (const WorkingStructure&)(e);
-			if (ws.IsEnabled() && !ws.IsHibernating())
+			if (e.IsWorkingStructure())
 			{
-				float baseOpacity = (0.5f + 0.5f * (float)sin(Engine::timing.now*2.0));
+				const WorkingStructure&ws = (const WorkingStructure&)(e);
+				if (ws.IsEnabled() && !ws.IsHibernating())
+				{
+					float baseOpacity = (0.5f + 0.5f * (float)sin(Engine::timing.now*2.0));
 
-				Vec::interpolate(effectiveTint,float4(1),baseOpacity*0.6f,effectiveTint);
+					Vec::interpolate(effectiveTint,float4(1),baseOpacity*0.6f,effectiveTint);
+				}
+				else
+					Vec::interpolate(effectiveTint,float4(0,0,0,1),0.7f,effectiveTint);
 			}
 			else
-				Vec::interpolate(effectiveTint,float4(0,0,0,1),0.6f,effectiveTint);
+				if (e.IsVehicle())
+				{
+					if (((const Vehicle&)e).IsHibernating())
+						Vec::interpolate(effectiveTint,float4(0,0,0,1),0.6f,effectiveTint);
+				}
 		}
-		else
-			if (e.IsVehicle())
-			{
-				if (((const Vehicle&)e).IsHibernating())
-					Vec::interpolate(effectiveTint,float4(0,0,0,1),0.6f,effectiveTint);
-			}
 		if (e.IsStructure() && !((const Structure&)e).maintained)
 		{
 			if (flip)

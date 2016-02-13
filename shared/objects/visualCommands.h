@@ -365,10 +365,12 @@ namespace Objects
 		void	UndoOperation(const PWorldEntity&);
 		void	AbortOperation(const PWorldEntity&);
 		void	Automate(const PWorldEntity&);
+		void	Sleep(const PWorldEntity&);
 
 		bool	IsAutomated(const PWorldEntity&);
 
 		BaseCommand::Flags AutomatedCheck(const PWorldEntity&,bool controlEnabled);
+		BaseCommand::Flags SleepCheck(const PWorldEntity&,bool controlEnabled);
 
 	}
 

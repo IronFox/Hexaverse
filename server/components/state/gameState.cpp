@@ -239,7 +239,14 @@ namespace Game
 			state.id = e.id;
 			state.empDamageLevel = e.empDamageLevel;
 			state.location = (changeFlags & Objects::WorldEntity::PositionChanged) ? e.location : Grid::LCellIdI::Invalid;
-			state.unstable = owned && e.unstable;
+			state.entityStateFlags = 0;
+			if (owned)
+			{
+				if (e.unstable)
+					state.entityStateFlags |= Protocol::EntityStateFlag::IsUnstable;
+				if (e.IsSleeping())
+					state.entityStateFlags |= Protocol::EntityStateFlag::IsSleeping;
+			}
 			state.timestamp = timestamp;
 		}
 
@@ -308,7 +315,12 @@ namespace Game
 				state.flags.value |= Protocol::VehicleFlags::Hibernating;
 
 			Describe(state.entityState,v,owned,timestamp,changeFlags);
-			state.entityState.unstable = owned && ((v.myTasks.IsEmpty() && v.completeOnMove) || v.AwaitsUserInteraction());
+			if (owned)
+			{
+				if ((v.myTasks.IsEmpty() && v.completeOnMove) || v.AwaitsUserInteraction())
+					state.entityState.entityStateFlags |= Protocol::EntityStateFlag::IsUnstable;
+			}
+
 		}
 
 		void	Describe(Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)

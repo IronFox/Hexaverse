@@ -623,6 +623,20 @@ namespace Journal
 			virtual void	Compile(Entry&)	const override;
 		};
 
+		class ChangeSleep: public EntityEvent
+		{
+		public:
+			bool			isNowSleeping;
+
+			/**/			ChangeSleep(bool isNowSleeping=false):isNowSleeping(isNowSleeping)	{}
+			virtual Event*	Instantiate() const override {return new ChangeSleep();};
+			virtual void	Execute(const Objects::PWorldEntity&) const override;
+			virtual void	Decode(const Entry&e) override;
+
+		protected:
+			virtual void	Compile(Entry&)	const override;
+		};
+
 
 		/**
 		Place-holder for later
@@ -875,6 +889,7 @@ namespace Journal
 		void	RegisterEntityDestruction(bool execute, const Objects::PWorldEntity&, Objects::RemovalType t);
 		void	LogEntityCreation(const Objects::PWorldEntity&);
 		void	RegisterAutomationChange(bool execute, const Objects::PMobileEntity&, bool isNowAutomated);
+		void	RegisterSleepChange(bool execute, const Objects::PWorldEntity&, bool isNowSleeping);
 		void	RegisterPersistentVariableChange(bool execute, const Reflection::Variable::PBase&);
 		void	RegisterResourceCoverageChange(bool execute, UINT32 stackID, Objects::Resource res, Grid::Resource::coverage_t newCoverage);
 		void	RegisterResourceCoverageKnowledgeLoss(bool execute, const Objects::PFaction&, UINT32 stackID);

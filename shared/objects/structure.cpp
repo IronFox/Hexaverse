@@ -1979,6 +1979,28 @@ namespace Objects
 
 
 	#ifndef CLIENT
+		/*virtual override*/ void			SkyGate::OnSleepChange(float&t)
+		{
+			Super::OnSleepChange(t);
+
+			if (IsSleeping() && IsEnabled())
+			{
+				LogEvent(EventSignificance::Common,this,"Fell asleep. Disabling");
+				SetEnabled(false,t);
+			}
+		}
+
+		/*virtual override*/ void			VehiclePlant::OnSleepChange(float&t)
+		{
+			Super::OnSleepChange(t);
+
+			if (IsSleeping() && IsEnabled())
+			{
+				LogEvent(EventSignificance::Common,this,"Fell asleep. Disabling");
+				SetEnabled(false,t);
+			}
+		}
+
 		/*virtual override*/ bool			VehiclePlant::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			if (waypoints.Count() != 1)
@@ -2238,7 +2260,7 @@ namespace Objects
 
 
 
-				iconCommands << IconCommand(int2(5,1), "Construct Selected",[](const PWorldEntity&e)
+			iconCommands << IconCommand(int2(5,1), "Construct Selected",[](const PWorldEntity&e)
 				{
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
 					if (plant)
@@ -2279,6 +2301,8 @@ namespace Objects
 					timeCostOut = p->ProductionRounds(mineralCostOut,false);
 				}
 			);
+
+			iconCommands << IconCommand(int2(5,0), "Sleep",VehicleCmd::Sleep,VehicleCmd::SleepCheck,NoCosts);
 
 			int at = 0;
 			//vehicleConstructionCommands << VehicleConstructionCommand("Base:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
@@ -2764,7 +2788,18 @@ namespace Objects
 	}
 
 	#ifndef CLIENT
-		bool						WorkingStructure::SetEnabled(bool b, float&atTime, bool refreshNetwork/*=true*/, force_t force/*=DontForce*/, bool signalStructure/*=true*/)
+
+		/*virtual override*/ void			WorkingStructure::OnSleepChange(float&t)
+		{
+			if (!IsSleeping() && !isEnabled && CanEnable())
+			{
+				LogEvent(EventSignificance::Common,this,"Woke up disabled. Trying to enable");
+				SetEnabled(true,t);
+			}
+		}
+
+
+		bool						WorkingStructure::SetEnabled(bool b, float&atTime, bool refreshNetwork/*=true*/, force_t force/*=EnableIfPossible*/, bool signalStructure/*=true*/)
 		{
 			if (isEnabled == b)
 			{
@@ -2802,7 +2837,10 @@ namespace Objects
 			if (!b)
 				Compound::lastDisabled = this;
 			else
+			{
 				Compound::lastDisabled = nullptr;
+				SetSleep(false,atTime,false);
+			}
 			isEnabled = b;
 			RegisterChange(EnableChanged,atTime);
 			if (signalStructure)

@@ -556,7 +556,7 @@ namespace Objects
 
 		//WorldEntity overrides:
 		virtual void			GetUpkeep(ResourceVector&v) const override {Super::GetUpkeep(v); v.level[Resource::Minerals] = 0;}	//no mineral upkeep for mobiles
-		virtual bool			IsActive() const override {return !IsHibernating();}
+		//virtual bool			IsActive() const override {return !IsHibernating() && Super::IsActive();}
 		virtual bool			IsMobile() const override {return true;}
 		#ifndef NO_HIBERNATION
 			virtual const Hibernating*ToHibernating() const override {return this;}
