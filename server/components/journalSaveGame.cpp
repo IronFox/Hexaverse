@@ -505,9 +505,8 @@ namespace Journal
 
 	/*virtual override*/ void			Round::ChangeSleep::Execute(const Objects::PWorldEntity&e)	const
 	{
-		e->sleeping = isNowSleeping;
-		e->RegisterChange(Objects::WorldEntity::SleepChange,0);
-		LogEvent(EventSignificance::Common,e.get(),"Modified sleeping-state to "+String(e->sleeping));
+		float t = 0;
+		e->SetSleep(isNowSleeping,t);
 	}
 
 	/*virtual override*/ void			Round::ChangeSleep::Compile(Entry&e)	const

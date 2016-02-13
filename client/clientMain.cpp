@@ -2645,7 +2645,7 @@ String GenerateOreName(Random&random)
 		{
 			return false;
 		}
-		if (!v->sleeping)
+		if (!v->IsSleeping())
 			return true;
 		//if (v->GetOperationSpeed(Objects::Component::Construct))
 		//	return true;
@@ -2690,7 +2690,7 @@ String GenerateOreName(Random&random)
 				return false;
 		#endif
 
-		if (!s->IsWorkingStructure() || s->sleeping)
+		if (!s->IsWorkingStructure() || s->IsSleeping())
 			return false;
 		Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
 		if (ws->visited)

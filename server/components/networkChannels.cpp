@@ -928,9 +928,11 @@ namespace Receiver
 		if (!e)
 			return;
 
-
-		if (e->sleeping == a.doSet)
+		if (e->IsSleeping() == a.doSet)
+		{
+			e->RegisterChange(Objects::WorldEntity::SleepChange,0.f);
 			return;
+		}
 		Journal::currentRound.RegisterSleepChange(true,e,a.doSet);
 	}
 

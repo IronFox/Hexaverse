@@ -675,7 +675,7 @@ namespace Objects
 				{
 					ASSERT__(jobStarted);	//supposedly it can happen that this is false
 					PVehicleJob job = myTasks.Peek().job;
-					if (sleeping)
+					if (IsSleeping())
 					{
 						LogEvent(EventSignificance::Common,this,"Job delayed: '"+job->GetName()+"'. Entity is sleeping");
 					}

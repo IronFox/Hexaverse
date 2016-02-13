@@ -244,7 +244,7 @@ namespace Game
 			{
 				if (e.unstable)
 					state.entityStateFlags |= Protocol::EntityStateFlag::IsUnstable;
-				if (e.sleeping)
+				if (e.IsSleeping())
 					state.entityStateFlags |= Protocol::EntityStateFlag::IsSleeping;
 			}
 			state.timestamp = timestamp;

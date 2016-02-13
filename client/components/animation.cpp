@@ -492,7 +492,7 @@ namespace Animation
 		}
 		v->health = vs.entityState.health;
 		v->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsUnstable) != 0;
-		v->sleeping = (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsSleeping) != 0;
+		v->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsSleeping) != 0 );
 
 		v->UpdateEMPDamage(vs.entityState.empDamageLevel, !isNewForEMP);	//must remove visible sensory, must be linked to destructor
 		//v->roundsDisabled = vs.entityState.disabledRounds;
@@ -798,7 +798,7 @@ namespace Animation
 			}
 		}
 		s->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsUnstable) != 0;
-		s->sleeping = (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsSleeping) != 0;
+		s->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsSleeping) != 0 );
 
 
 		s->health = vs.entityState.health;

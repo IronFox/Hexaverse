@@ -731,7 +731,7 @@ namespace Objects
 			}
 		#endif
 
-		if (e.sleeping)
+		if (e.IsSleeping())
 			Vec::interpolate(effectiveTint,float4(0,0,0,1),0.7f,effectiveTint);
 		else
 		{
