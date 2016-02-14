@@ -360,6 +360,9 @@ namespace Network
 		}
 
 		#ifdef HAS_WINDOW
+			Objects::Renderer::ClearSmokeTrails();
+			UI::EventLog::Clear();
+
 			amLocated = false;
 			if (alsoFlushWorld)
 				Camera::Reset();
@@ -1354,6 +1357,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	{
 		case RuntimeConfig::Phase::AnimationPhase:
 			#ifdef HAS_WINDOW
+				Objects::Renderer::ClearSmokeTrails();
 				UI::EventLog::Clear();
 				if (TimeLapse::enabled)
 					saveScreenshot = true;

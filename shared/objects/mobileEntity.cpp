@@ -987,19 +987,6 @@ namespace Objects
 			task.name = job->GetName();
 			if (destination)
 				task.foci.Push().target = *destination;
-			#ifdef CLIENT
-				if (localizableShapeIdentifier.IsNotEmpty())
-				{
-					foreach (structurePrototypes,p)
-						if ((*p)->GetTypeName() == localizableShapeIdentifier)
-						{
-							((DX11::BaseInstructionBlock&) task.localizableShape) = jobShader;
-
-							task.localizableShape.vbo = (*p)->localizableShape->vbo;
-							task.localizableShape.ibo = (*p)->localizableShape->ibo;
-						}
-				}
-			#endif
 			task.job = job; 
 			if (!task.Replot(origin,this,FocusChangeType::FullChange,true))
 			{
@@ -1007,12 +994,7 @@ namespace Objects
 				myTasks.EraseBack();
 				return;
 			}
-			#ifdef CLIENT
-				if (selectedEntity.get() == this)
-					UpdateChoices();
-			#else
-				LogEvent(EventSignificance::Common,this,"Enqueued new job '"+job->GetName()+"'");
-			#endif
+			LogEvent(EventSignificance::Common,this,"Enqueued new job '"+job->GetName()+"'");
 		}
 	
 		void					MobileEntity::RegisterNewFrontJob(const String&localizableShapeIdentifier, const PVehicleJob&job, const PVehicleJob&parent, const Grid::LCellIdI*destination)
@@ -1025,32 +1007,13 @@ namespace Objects
 			task.name = job->GetName();
 			if (destination)
 				task.foci.Push().target = *destination;
-			#ifdef CLIENT
-				if (localizableShapeIdentifier.IsNotEmpty())
-				{
-					foreach (structurePrototypes,p)
-						if ((*p)->GetTypeName() == localizableShapeIdentifier)
-						{
-							((DX11::BaseInstructionBlock&) task.localizableShape) = jobShader;
-
-							task.localizableShape.vbo = (*p)->localizableShape->vbo;
-							task.localizableShape.ibo = (*p)->localizableShape->ibo;
-						}
-				}
-			#else
-				ASSERT__(parent);
-				job->parent = parent;
-			#endif
+			ASSERT__(parent);
+			job->parent = parent;
 
 			task.job = job; 
 			task.Replot(location,this,FocusChangeType::FullChange,true);
 
-			#ifdef CLIENT
-				if (selectedEntity.get() == this)
-					UpdateChoices();
-			#else
-				LogEvent(EventSignificance::Common,this,"Enqueued new front-job '"+job->GetName()+"'");
-			#endif
+			LogEvent(EventSignificance::Common,this,"Enqueued new front-job '"+job->GetName()+"'");
 		}
 
 
@@ -1687,7 +1650,7 @@ namespace Objects
 									Grid::HCellIdI dummy1;
 									if (parent->TraceTrajectoryFrom(Grid::actualWorld, pointOfOrigin,f->target,trajectory,dummy0,dummy1))
 									{
-										Component::Turret::CompileTrajectory(trajectory,true,geo,0.25f);
+										Component::Turret::CompileTrajectory(trajectory,Component::Turret::Schematic,geo,0.25f);
 
 										Shape&shape = localizableShapes.Append();
 										((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;

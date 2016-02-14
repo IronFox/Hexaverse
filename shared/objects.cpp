@@ -825,8 +825,7 @@ namespace Objects
 
 		#else
 			Faction::all.Clear();
-			Faction::nexus->online = false;
-			Faction::nexus->FlushData();
+			Faction::RecreateNexus();
 		#endif
 	}
 

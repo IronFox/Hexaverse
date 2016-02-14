@@ -2098,7 +2098,7 @@ namespace Objects
 					static Geometry geo;
 					geo.Clear();
 
-					Component::Turret::CompileTrajectory(trajectory,true,geo,0.25f);
+					Component::Turret::CompileTrajectory(trajectory,Component::Turret::Schematic,geo,0.25f);
 
 					if (task.trajectoryVisualization.shader.IsEmpty())
 						(DX11::BaseInstructionBlock&)task.trajectoryVisualization = pathShader;

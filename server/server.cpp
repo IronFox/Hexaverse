@@ -1365,6 +1365,20 @@ int main( int argc, const char* argv[])
 			FileIO::Load(PathString(path));
 		},CLI::FileCompletion);
 
+		Reflection::state.DefineCommand("/Server/loadAutoSave [index]",(CLI::Command::function1_t)[](const String&sindex)
+		{
+			index_t index;
+			if (sindex.IsEmpty())
+				index = 0;
+			else
+				if (!convert(sindex.c_str(),index))
+				{
+					LogEvent(EventClass::Preset::remoteControlError,"Unable to parse '"+sindex+"' to index");
+					return;
+				}
+			FileIO::Load(FileIO::GetAutoSavePath(index));
+		},CLI::FileCompletion);
+
 		Reflection::state.DefineCommand("/World/generate",(CLI::Command::function0_t)[]()
 		{
 			bool started = Network::CloseSession();
