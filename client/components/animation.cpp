@@ -1076,7 +1076,7 @@ namespace Animation
 				#ifdef HAS_WINDOW
 					Dialog::SignalSituationChange();
 					if (removalType == Objects::RemovalType::UncontrolledExplosion)
-						UI::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isMine,allocatedTarget->GetWorldPosition(), allocatedTarget->id);
+						UI::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isMine,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());
 
 				#endif
 			}

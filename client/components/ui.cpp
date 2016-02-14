@@ -483,11 +483,12 @@
 				HexGrid::animationTimeLine.Refresh();
 			}
 
-			void			RegisterEntityDestruction(float time, bool isMine,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID)
+			void			RegisterEntityDestruction(float time, bool isMine,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName)
 			{
 				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isMine);
 				if (isMine)	//flipped logic
 					cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
+				cmd->fallbackTargetName = entityName;
 				HexGrid::animationTimeLine.commands << Objects::PBaseCommand(cmd);
 				HexGrid::animationTimeLine.Refresh();
 			}
@@ -540,7 +541,10 @@
 				if (e)
 					outResult << "Focus on "+hostile + name+" of "+e->GetNiceName()+t;
 				else
-					outResult << "Focus on "+hostile + name+t;
+					if (fallbackTargetName.IsNotEmpty())
+						outResult << "Focus on "+hostile + name+" of "+fallbackTargetName+t;
+					else
+						outResult << "Focus on "+hostile + name+t;
 			}
 
 
