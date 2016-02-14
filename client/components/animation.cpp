@@ -1164,32 +1164,10 @@ namespace Animation
 					doRegister = !attacker->isMine || isAutoTarget;
 					isFriendly = attacker->isMine;
 				}
-				#ifdef _DEBUG
-					doRegister = true;	//debug
-				#endif
 
 				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",loc="+location.ToString()+") at "+String(Animation::atTime)+"/"+String(this->time.min));
 				
 				{
-					//Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
-					//Objects::PTower t = To<Objects::Tower>::DynamicCast(allocatedTarget);
-					//float dummy;
-					//Objects::PTurretBase b = allocatedTarget->GetTurretBase(dummy);
-					//ASSERT__(b);
-					//ASSERT__(v || t);
-
-					/*if (v && v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsMode(Objects::Vehicle::AttackMode)
-						&& v->myTasks.Peek().foci.IsNotEmpty() && v->myTasks.Peek().foci.Peek() == location)
-					{
-						v->myTasks.Peek().foci.Pop();
-						v->myTasks.Peek().Recompile(v->location,v.get());
-					}
-					if (t && t->attackQueue.IsNotEmpty() && t->attackQueue.first().target == location)
-					{
-						t->attackQueue.Erase(0U);
-					}*/
-					Grid::HCellIdI			attackTargetCell;	//not needed
-					//TVec3<>					attackTarget;	//not needed
 					Objects::Component::Turret::TraceTrajectory(attackerTurret->trajectoryType,attackRange, attackerPosition,Grid::ToWorld(location),activeTrajectory);
 					explosionRadius = attackerTurret->explosionRadius;
 					projectileAt = 0.f;
@@ -1214,11 +1192,6 @@ namespace Animation
 
 
 				}
-				/*else
-				{
-					LogEvent(EventClass::Preset::error,nullptr,"Warning: Unable to identify entity "+targetEntityID.ToString()+" for attack animation");
-
-				}*/
 			}
 			break;
 			case Explosion:
