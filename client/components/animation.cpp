@@ -1075,6 +1075,9 @@ namespace Animation
 					UI::HexGrid::RefreshContacts();
 				#ifdef HAS_WINDOW
 					Dialog::SignalSituationChange();
+					if (removalType == Objects::RemovalType::UncontrolledExplosion)
+						UI::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isMine,allocatedTarget->GetWorldPosition(), allocatedTarget->id);
+
 				#endif
 			}
 			break;
