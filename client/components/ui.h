@@ -294,7 +294,7 @@ namespace UI
 				float				atTime;
 				bool				isFriendly;
 				TUniqueID			focusTarget;
-				DX11::InstructionBlock32	trajectory;
+				index_t				smokeTrailIndex;
 			
 				/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, float atTime, bool isFriendly)
 									: Super(int2(), name),focusLocation(focusLocation),atTime(atTime),isFriendly(isFriendly),focusTarget(focusID)
@@ -582,7 +582,7 @@ namespace UI
 		namespace EventLog
 		{
 			void			Clear();
-			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const DX11::InstructionBlock32&trajectoryVisualization);
+			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, index_t smokeTrailIndex);
 
 
 

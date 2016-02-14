@@ -4,6 +4,7 @@
 #include <engine/aspect.h>
 #include "../../client/ExtRenderer/DirectX11.h"
 #include <math/vector.h>
+#include <image/converter/magic.h>
 #include "structure.h"
 #include "vehicle.h"
 #include "satellite.h"
@@ -43,6 +44,7 @@ namespace Objects
 								cylinderShader,
 								paraboloidShader,
 								arrowInstruction,
+								smokeTrailShader,
 								skyPortBeam;
 	DX11::StreamVBO				arrowBuffer;
 	DX11::VBO					sphereVBO[4],cylinderVBO[4];
@@ -53,6 +55,8 @@ namespace Objects
 								foundation,
 								userInteractionNotifier,
 								gatheringPoint;
+
+	DX11::Texture				smokeTexture;
 
 	static const float4			noTint;	//base constructor: (0,0,0,0)
 
@@ -68,7 +72,27 @@ namespace Objects
 		Engine::OrthographicAspect<>	shadowCamera;
 		DX11::ObjectBuffer<TMatrix4<> >	shadowMatrix;
 	#endif
-	DX11::BaseInstructionBlock		shadowInstruction;
+	DX11::BaseInstructionBlock			shadowInstruction;
+
+	Buffer0<DX11::InstructionBlock32>	smokeTrails;
+
+	index_t	Renderer::RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory)
+	{
+		index_t result = smokeTrails.Count();
+		DX11::InstructionBlock32&trail = smokeTrails.Append();
+		static Geometry geo;
+		geo.Clear();
+		Component::Turret::CompileTrajectory(trajectory,Component::Turret::SmokeTrail,geo,1.f);
+		((DX11::BaseInstructionBlock&)trail) = smokeTrailShader;
+		trail.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
+		trail.ibo.Create(geo.GetLOD(0).indices);
+		return result;
+	}
+
+	void	Renderer::ClearSmokeTrails()
+	{
+		smokeTrails.Clear();
+	}
 
 
 	void Renderer::RenderRangeSphere(const TVec3<>&center, float radius, const float4&color)
@@ -169,9 +193,12 @@ namespace Objects
 		beamBottomColor.Clear();
 		beamTopColor.Clear();
 
+		smokeTexture.Clear();
+
 		seeThroughShader = stdVehicleShader = DX11::BaseInstructionBlock();
 		Structure::standardCompiledShader = Structure::standardLocalizableShader =
 			pathShader = jobShader = cylinderShader = paraboloidShader = 
+			smokeTrailShader =
 			arrowInstruction = 
 			skyPortBeam = 
 			foundation = cordon = DX11::InstructionBlock32();
@@ -340,6 +367,26 @@ namespace Objects
 		Structure::standardLocalizableShader.shader.LoadFromFile("shaders/structureShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 		Structure::standardLocalizableShader.UpdateLayout();
 		Structure::standardLocalizableShader.SetTriangles();
+
+		{
+			Image smoke;
+			Magic::LoadFromFile(smoke,"resources/textures/smoke.png");
+			smokeTexture.Load(smoke);
+
+
+			DX11::Shader::Binding bindings[] =
+			{
+				DX11::Shader::Binding(overallTint, "Tint"),
+				DX11::Shader::Binding(Grid::Instruction::sunDirection,"Sun"),
+				DX11::Shader::Binding(Grid::Instruction::sunColor,"SunColor"),
+				DX11::Shader::Binding(smokeTexture,"SmokeTexture"),
+				DX11::Shader::SamplerBinding(false,Engine::TextureFilter::Trilinear,1,"SmokeSampler")
+			};
+			smokeTrailShader.binding = stdVehicleShader.binding;
+			smokeTrailShader.shader.LoadFromFile("shaders/smokeTrail.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			smokeTrailShader.UpdateLayout();
+			smokeTrailShader.SetTriangles();
+		}
 
 		{
 			DX11::Shader::Binding bindings[] =
@@ -1510,6 +1557,15 @@ namespace Objects
 
 				display.RenderVertices(arrowInstruction,0,(UINT32)vertices.Count());
 			}
+		}
+
+		display.SetDepthTest(true,false);
+		display.SetRasterizer(true,false);
+		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+
+		foreach (smokeTrails,t)
+		{
+			display.Render(*t,true);
 		}
 
 

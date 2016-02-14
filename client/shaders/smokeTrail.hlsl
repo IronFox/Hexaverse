@@ -1,0 +1,57 @@
+#include "common.inc.hlsl"
+#include "shadow.hlsli"
+
+cbuffer Tint
+{
+	float4 Tint;
+};
+
+cbuffer Time
+{
+	float Time;
+};
+
+Texture2D <float> SmokeTexture;
+SamplerState SmokeSampler;
+
+
+struct A2V
+{
+	float3 position : POSITION;
+	float3 normal : NORMAL;
+	float4 color : COLOR;
+};
+
+struct V2P
+{
+	float4 position : SV_POSITION;
+	float3 normal : Normal;
+	float4 color : COLOR;
+	float3 world : World;
+};
+
+
+void vsMain(A2V input, out V2P output)
+{
+	output.normal = input.normal;
+	output.world = input.position;
+	//input.position;
+	output.position = TransformAndProject(output.world);
+	output.color = input.color;
+}
+
+float4 psMain(V2P input) : SV_TARGET
+{
+	float2 uv = input.color.ga;
+	float dist = sqr((uv - 0.5) * 2.0);
+	float lengthOpacity = 1.0 - sqr(sqr((input.color.b-0.5) * 2.0));
+	//if (uv.x > 0.25 && uv.x < 0.75)
+	//	discard;
+	float tex = SmokeTexture.Sample(SmokeSampler,float2((uv.x+uv.y)*0.25, input.color.b*0.5) - Time*0.01);
+	//tex = smoothstep(0.1,0.6,tex);
+	tex = sqr(tex);
+	float light = max(dot(Sun.xyz,input.normal),0.0)*0.75 + 0.25;
+	return float4((float3)light,tex * sqr(sqr(sqr(sqr(1.0 - dist)))) * lengthOpacity);
+}
+
+

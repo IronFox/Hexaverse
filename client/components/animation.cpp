@@ -1205,9 +1205,11 @@ namespace Animation
 						trajectoryVisualization.ibo.Create(trajectoryGeometry.GetLOD(0).indices);
 
 
-						//Objects::Renderer::RegisterSmokeTrail(trajectoryVisualization);
+						index_t smokeTrailIndex = Objects::Renderer::RegisterSmokeTrail(activeTrajectory);
 						if (doRegister)
-							UI::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, trajectoryVisualization);
+						{
+							UI::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, smokeTrailIndex);
+						}
 					#endif
 
 

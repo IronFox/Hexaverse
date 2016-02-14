@@ -195,6 +195,17 @@ namespace Objects
 		@param pulse Set true to let active entity colors pulse, false to use time-invariant colors
 		*/
 		void	RefreshFactionColors(bool pulse);
+
+		/**
+		Registers a new smoke trail as created by a weapon discharge
+		@return Index to the newly created smoke trail. Valid until ClearSmokeTrails() is called.
+		*/
+		index_t	RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory);
+
+		/**
+		Removes all active smoke trails. May trigger gradual fading in the future
+		*/
+		void	ClearSmokeTrails();
 	}
 
 }

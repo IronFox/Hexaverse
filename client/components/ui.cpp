@@ -473,9 +473,11 @@
 				HexGrid::animationTimeLine.Refresh();
 			}
 
-			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const DX11::InstructionBlock32&trajectoryVisualization)
+			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, index_t smokeTrailIndex)
 			{
-				HexGrid::animationTimeLine.commands << Objects::PBaseCommand(new HexGrid::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly));
+				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly);
+				cmd->smokeTrailIndex = smokeTrailIndex;
+				HexGrid::animationTimeLine.commands << Objects::PBaseCommand(cmd);
 				HexGrid::animationTimeLine.Refresh();
 			}
 
