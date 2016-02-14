@@ -796,6 +796,7 @@ namespace Objects
 		{
 			markers.Clear();
 			markerMap.Clear();
+			referenceMap.Clear();
 			nexusControl = acquiringNexusControl = 0;
 			deathInRounds = 0;
 			this->satellites.Clear();
