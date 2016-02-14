@@ -294,7 +294,7 @@ namespace UI
 				float				atTime;
 				bool				isFriendly;
 				TUniqueID			focusTarget;
-				index_t				smokeTrailIndex;
+				index_t				smokeTrailIndex = InvalidIndex;
 			
 				/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, float atTime, bool isFriendly)
 									: Super(int2(), name),focusLocation(focusLocation),atTime(atTime),isFriendly(isFriendly),focusTarget(focusID)
@@ -583,7 +583,7 @@ namespace UI
 		{
 			void			Clear();
 			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, index_t smokeTrailIndex);
-
+			void			RegisterEntityDestruction(float time, bool isMine,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID);
 
 
 		}

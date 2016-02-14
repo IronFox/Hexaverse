@@ -483,6 +483,15 @@
 				HexGrid::animationTimeLine.Refresh();
 			}
 
+			void			RegisterEntityDestruction(float time, bool isMine,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID)
+			{
+				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isMine);
+				if (isMine)	//flipped logic
+					cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
+				HexGrid::animationTimeLine.commands << Objects::PBaseCommand(cmd);
+				HexGrid::animationTimeLine.Refresh();
+			}
+
 
 		}
 
