@@ -208,7 +208,9 @@ Triggered when entering command mode and animations have finished (whichever of 
 */
 void	OnPlayerControlBegin()
 {
-	UI::RefreshButtonState();
+	#ifdef HAS_WINDOW
+		UI::RefreshButtonState();
+	#endif
 	Objects::RefreshSkyHubConnections();
 	Animation::UpdateAutomation(CLOCATION);
 }
@@ -1052,6 +1054,8 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 	void OnSelectionChange(bool stateChangeOnly)
 	{
+		Objects::Renderer::HighlightSmokeTrail(InvalidIndex);
+
 		Tutorial::lastDelayingEvent = timer.Now();
 		//bool strip = true;
 		if (Objects::selectedEntity)

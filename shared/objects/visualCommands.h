@@ -54,6 +54,7 @@ namespace Objects
 		virtual void	RasterizeImage()	{}
 
 		void			LoadIcon();
+		void			LoadIcon(const String&name);
 
 
 		class Label
@@ -126,6 +127,8 @@ namespace Objects
 		using T = std::underlying_type_t <BaseCommand::Flags>;
 		return (((T)a)&((T)b)) != 0;
 	}
+
+	typedef std::shared_ptr<BaseCommand>	PBaseCommand;
 
 
 	template <class Target>

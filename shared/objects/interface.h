@@ -63,7 +63,7 @@
 	void	SignalNewStructure(const Objects::PStructure&s, float atTime);
 	void	SignalMotion(const Objects::PMobileEntity&v, const Grid::LCellIdI&from,const Grid::LCellIdI&to, float t0, float timeNeeded);
 	void	SignalTurretRotation(const Objects::PWorldEntity&v, const TVec3<>&toDirection, float rotationTime);
-	void	SignalAttack(const Objects::PWorldEntity&v, const Grid::LCellIdI&traceTo, float flightTime);
+	void	SignalAttack(const Objects::PWorldEntity&v, const Grid::LCellIdI&traceTo, float flightTime, bool isAutoAttack);
 	void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, const TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday,float atTime);
 	//void	SignalExplosion(const TVec3<>&center,float explosionRadius,bool isEMP, float atTime);
 	void	SignalDisappearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime);

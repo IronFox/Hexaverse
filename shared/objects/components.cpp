@@ -50,8 +50,10 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			/*static*/ float			Turret::CompileTrajectory(const Buffer0<TVec4<> >&v, bool schematic,Geometry&geo, float widthScale/*=1.f*/)
+			/*static*/ float			Turret::CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&geo, float widthScale/*=1.f*/)
 			{
+				bool schematic = type == Schematic;
+				bool smoke = type == SmokeTrail;
 				if (v.IsNotEmpty())
 				{
 					TVec3<> n;
@@ -59,7 +61,9 @@ namespace Objects
 					float3 back = v.last().xyz * v.last().w;
 					Vec::cross(front,back-front,n);
 					Vec::normalize(n);
-					n*= 0.5f * widthScale * v.first().w / Grid::VerticalBase;;
+					n*= 0.5f * widthScale;
+					if (!smoke)
+						n*= v.first().w / Grid::VerticalBase;;
 					float d = 0;
 					geo.SetVertexOffsetToCurrent();
 					TVec3<> lastB;
@@ -68,11 +72,36 @@ namespace Objects
 					float outerWhite = schematic ? 1.0f : 0.f;
 					float outerOpacity = schematic ? 0.5f : 0.f;
 
+					float topGreen = smoke ? 0.5f : outerWhite;
+					float bottomGreen = smoke ? 0.5f : outerWhite;
+					float rightGreen = smoke ? 1.f : outerWhite;
+					float leftGreen = smoke ? 0.f : outerWhite;
+					float centerGreen = smoke ? 0.5f : innerWhite;
+
+					float lengthScale = 1.f;
+					if (smoke)
+					{
+						for (index_t i = 0; i < v.Count(); i++)
+						{
+							const TVec4<>&_b = v[i];
+							TVec3<>b = _b.xyz * _b.w;
+
+
+							if (i)
+								d += Vec::distance(lastB,b);
+							lastB = b;
+						}
+						lengthScale = 1.f / d;
+						d = 0.f;
+					}
+
+
+
 					for (index_t i = 0; i < v.Count(); i++)
 					{
 						const TVec4<>&_b = v[i];
 						TVec3<>b = _b.xyz * _b.w;
-
+						TVec3<> upNormal;
 						if (i > 0)
 						{
 							if (schematic)
@@ -91,9 +120,24 @@ namespace Objects
 								geo.MakeQuad(1,4,9,6);
 								geo.MakeQuad(3,1,6,8);
 							}
+							if (smoke)
+							{
+								Vec::cross(n,b-lastB,upNormal);
+								Vec::normalize(upNormal);
+							}
 
+							d += Vec::distance(lastB,b) * lengthScale;
+						}
+						else
+						{
+							if (smoke)
+							{
+								const TVec4<>&_b2 = v[1];
+								TVec3<>b2 = _b2.xyz * _b2.w;
 
-							d += Vec::distance(lastB,b);
+								Vec::cross(n,b2-b,upNormal);
+								Vec::normalize(upNormal);
+							}
 						}
 						float oo = outerOpacity;
 						float io = innerOpacity;
@@ -106,14 +150,22 @@ namespace Objects
 
 						geo.SetVertexOffsetToCurrent();
 						{
-							geo.MakeVertex(b + n,n,float3(oo,outerWhite,d));	//red controls opacity [0,1], green controls whiteness [0,1], blue user for distance metric, alpha unused/constant 1.
+							geo.MakeVertex(b + n,n,float4(oo,rightGreen,d,0.5f));	//red controls opacity [0,1], green controls whiteness or U (smoke) in [0,1], blue user for distance metric, alpha controls V
 							//if (!schematic)
-							geo.MakeVertex(b,_b.xyz,float3(io,innerWhite,d));
-							geo.MakeVertex(b - n,-n,float3(oo,outerWhite,d));
+							geo.MakeVertex(b,_b.xyz,float4(io,centerGreen,d,0.5f));
+							geo.MakeVertex(b - n,-n,float4(oo,leftGreen,d,0.5f));
 							if (!schematic)
 							{
-								geo.MakeVertex(b +_b.xyz*0.5f*widthScale,_b.xyz,float3(oo,outerWhite,d));
-								geo.MakeVertex(b -_b.xyz*0.5f*widthScale,-_b.xyz,float3(oo,outerWhite,d));
+								if (smoke)
+								{
+									geo.MakeVertex(b +upNormal*0.5f*widthScale,upNormal,float4(oo,topGreen,d,1.f));
+									geo.MakeVertex(b -upNormal*0.5f*widthScale,-upNormal,float4(oo,bottomGreen,d,0.f));
+								}
+								else
+								{
+									geo.MakeVertex(b +_b.xyz*0.5f*widthScale,_b.xyz,float4(oo,topGreen,d,1.f));
+									geo.MakeVertex(b -_b.xyz*0.5f*widthScale,-_b.xyz,float4(oo,bottomGreen,d,0.f));
+								}
 							}
 						}
 						lastB = b;

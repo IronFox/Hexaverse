@@ -1551,13 +1551,21 @@ namespace Protocol
 		, NET(float), timeNeeded
 	)
 
-	NETSTRUCT6(AttackTrajectory
+	NETSTRUCT6(VagueAttackTrajectory
 		, Timestamp, timestamp
 		, NET(float), flightTime
 		, NET(TVec3<>), sourcePosition
 		, NET(ConstName), turretType
 		, NET(float), turretRange
 		, LCellIdI, traceTo
+	)
+
+	NETSTRUCT5(PreciseAttackTrajectory
+		, Timestamp, timestamp
+		, NET(float), flightTime
+		, NET(TUniqueID), attacker
+		, LCellIdI, traceTo
+		, NET(bool), isAutoAttack
 	)
 
 	NETSTRUCT4(EntityTurretRotation
@@ -1835,7 +1843,8 @@ namespace Protocol
 			NewMobileEntity,	//s2c: NewMobileEntity
 			MobileState,		//s2c: MobileState
 			MobileEntityMotion,		//s2c: MobileEntityMotion
-			AttackTrajectory,		//s2c: AttackTrajectory
+			PreciseAttackTrajectory,	//s2c: PreciseAttackTrajectory
+			VagueAttackTrajectory,		//s2c: VagueAttackTrajectory
 			EntityTurretRotation,	//s2c: EntityTurretRotation
 
 			ChangeEntityOwner,	//s2c: ChangeEntityOwner
