@@ -19,6 +19,11 @@ namespace Objects
 		/*static*/ Buffer0<WFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus(new Faction(TUniqueID::Empty(), "<Nexus>"));
 
+		void	Faction::RecreateNexus()
+		{
+			nexus.reset(new Faction(TUniqueID::Empty(), "<Nexus>"));
+		}
+
 		int		GetStorage(const MobileEntity&v, Resource res)
 		{
 			#ifndef CONNECTOR_LESS
@@ -766,68 +771,7 @@ namespace Objects
 		}
 
 
-		//void		Faction::ReplaceSensory(const Grid::SkySensorState&oldState, const Grid::SkySensorState&newState, float t, short change)
-		//{
-		//	Concurrency::parallel_for(index_t(0),oldState.coverage.Count(),[&oldState,&newState,this,change](index_t i)
-		//	{
-		//		const auto&c = oldState.coverage[i];
-		//		int newH;
-		//		if (newState.coverageMap.Query(c.hStackID,newH) && newH == c.downToHeight)
-		//			return;
-		//		
-		//		CellStack&stack = cellStack[c.hstackID];
-		//		UINT32 downTo = Grid::CellStack::ToLayer(c.downToHeight);
-		//		for (UINT32 layer = Grid::CellStack::HalfRange-1; layer >= downTo; layer--)
-		//		{
-		//			CellStack::Cell&cell1 = stack.volumeCell[layer];
-		//			cell1.visibility += change;
-		//			if (change > 0)
-		//			{
-		//				cell1.temporarilyVisible = true;
-		//			}
-		//		}
-		//		families[Grid::high.grid.GetCell(c.hStackID).family].changed = true;
-		//	});
-		//}
 
-
-
-		void		Faction::FlushData()
-		{
-			markers.Clear();
-			markerMap.Clear();
-			referenceMap.Clear();
-			nexusControl = acquiringNexusControl = 0;
-			deathInRounds = 0;
-			this->satellites.Clear();
-			skyHubs.Clear();
-			allMobiles.Clear();
-			structures.Clear();
-			towers.Clear();
-			storedMobiles.Clear();
-
-			#ifdef CONNECTOR_LESS
-				compound.Clear();
-			#endif
-
-			currentState.FlushAllData();
-			visibility.FlushAllData();
-
-		}
-
-
-
-		//void		Faction::SignalCoverageChange(const bool*familiesChanged, float atTime)
-		//{
-		//	for (BYTE f = 0; f < BaseGrid::NumFamilies; f++)
-		//	{
-		//		if (familiesChanged[f])
-		//		{
-		//			families[f].coverageChanged = true;
-		//			families[f].lastChange = atTime;
-		//		}
-		//	}
-		//}
 
 		void		Faction::CheckChanges(float t)
 		{
