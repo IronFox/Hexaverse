@@ -1200,7 +1200,7 @@ namespace Animation
 						#ifdef _DEBUG
 							LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Compiling trajectory with "+String(activeTrajectory.Count())+" steps, starting from "+Vec::toString(activeTrajectory.first())+", ending "+Vec::toString(activeTrajectory.last()));
 						#endif
-						maxProjectileProjection = Objects::Component::Turret::CompileTrajectory(activeTrajectory,false,trajectoryGeometry,0.5f);
+						maxProjectileProjection = Objects::Component::Turret::CompileTrajectory(activeTrajectory,Objects::Component::Turret::Animation,trajectoryGeometry,0.5f);
 						trajectoryVisualization.vbo.CreateFromStructs(trajectoryGeometry.GetLOD(0).vertices);
 						trajectoryVisualization.ibo.Create(trajectoryGeometry.GetLOD(0).indices);
 

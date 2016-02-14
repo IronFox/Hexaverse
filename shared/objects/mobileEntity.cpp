@@ -1421,7 +1421,7 @@ namespace Objects
 									Grid::HCellIdI dummy1;
 									if (parent->TraceTrajectoryFrom(Grid::actualWorld, pointOfOrigin,f->target,trajectory,dummy0,dummy1))
 									{
-										Component::Turret::CompileTrajectory(trajectory,true,geo,0.25f);
+										Component::Turret::CompileTrajectory(trajectory,Component::Turret::Schematic,geo,0.25f);
 
 										Shape&shape = localizableShapes.Append();
 										((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
