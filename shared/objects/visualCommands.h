@@ -128,6 +128,8 @@ namespace Objects
 		return (((T)a)&((T)b)) != 0;
 	}
 
+	typedef std::shared_ptr<BaseCommand>	PBaseCommand;
+
 
 	template <class Target>
 		class TemplateCommand : public BaseCommand

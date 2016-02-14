@@ -339,25 +339,66 @@ namespace UI
 
 			class ArrowCommand;
 
+			/**
+			Horizontal row of some commands. Its width is continuously adjusted via HexGrid::currentContactListWidth.
+			All dynamic rows share the same width and are located at the same horizontal coordinates, reaching from the top down.
+			Dynamic rows feature selective right and left arrows, depending on the current scroll position.
+			*/
 			class DynamicRow
 			{
-			public:
+			private:
+				Buffer0<Objects::PBaseCommand>			lastVisible;
 				std::shared_ptr<ArrowCommand>			leftCommand,rightCommand;
 				index_t									offset=0;
 				TIntRange<index_t>						visibleRange;
 
+				void									RebuildCommands();
+				void									RemoveCommandIcons();
+			public:
+
+				/**
+				Visible commands of this row. Can be freely edited by the client application.
+				Call Refresh() when done to make changes visible.
+				Only elements addressed by @a visibleRange will be shown on screen.
+				*/
+				Buffer0<Objects::PBaseCommand>			commands;
+
+				/**
+				Vertical position of this row with 0 being the top-most, and positive values iterating downwards
+				*/
 				const int								rowIndex;
 
 				/**/									DynamicRow(int rowIndex) : rowIndex(rowIndex)	{}
+				/**
+				Flushes and reallocates gui cells as necessary. Redetects horizontal scrolling constraints and shows arrow buttons as necessary
+				*/
 				void									Refresh();
+				/**
+				Allocates arrow commands. Must be called once at program start or row creation.
+				*/
 				void									Create();
+				/**
+				Object destruction command. Should be called once when the program terminates.
+				*/
 				void									Destroy() {leftCommand.reset(); rightCommand.reset();}
+				/**
+				Attempts to execute a scrolling operation by at most one element. Scrolling may fail.
+				Automatically refreshs the local icon composition.
+				@param left Set true to scroll left, false to scroll right. Only scrolls by one element
+				*/
 				void									Scroll(bool left);
-				virtual count_t							CountEntries() const =0;
-				virtual void							RebuildCommands() = 0;
+				/**
+				Removes all visible icons of this row from the GUI, including left and right arrow icons.
+				Call Refresh() to show them again.
+				*/
+				void									RemoveIcons();
 			};
 
 
+			/**
+			Horizontal arrow command pointing left or right.
+			Used by DynamicRow
+			*/
 			class ArrowCommand : public Objects::BaseCommand
 			{
 			public:
@@ -383,43 +424,20 @@ namespace UI
 				}
 			};
 
-			template <typename CommandT>
-			class TemplateRow : public DynamicRow
-			{
-			public:
-				Buffer0<CommandT>						commands;
 
-				/**/									TemplateRow(int rowIndex) : DynamicRow(rowIndex)	{}
-				void									Clear()	{commands.Clear(); }
-				void									Destroy() {Clear(); DynamicRow::Destroy();}
-				virtual count_t							CountEntries() const override {return commands.Count();}
-				virtual void							RebuildCommands() override
-				{
-					for (index_t i = 0; i < visibleRange.GetExtend(); i++)
-					{
-						GridCell&cell = guiCells.Append();
-						cell.type = GridCell::ContactListEntry;
-						cell.command = commands + i + visibleRange.start;
-						cell.command->coords = DynamicRowOffset + int2(i+1,rowIndex);
-						cell.flipY = true;
-						cell.Update(camera);
-					}
-				}
-			};
-
-			template <typename T, typename CommandT>
-			class CollectionTemplateRow : public TemplateRow<CommandT>
+			template <typename T>
+			class CollectionTemplateRow : public DynamicRow
 			{
-				typedef TemplateRow<CommandT>	Super;
+				typedef DynamicRow		Super;
 			public:
 				StringTable<Buffer0<T>,Swap>			collection;
 
 				/**/									CollectionTemplateRow(int rowIndex) : Super(rowIndex)	{}
-				void									Clear()	{Super::Clear(); collection.Clear();}
+				void									Clear()	{commands.Clear(); collection.Clear();}
 				void									Destroy() {Clear(); Super::Destroy();}
 			};
-			extern CollectionTemplateRow<Objects::PWorldEntity,GroupFocusCommand>	friendlyGroups,hostileGroups;
-			extern TemplateRow<AnimationEventFocusCommand> animationTimeLine;
+			extern CollectionTemplateRow<Objects::PWorldEntity>	friendlyGroups,hostileGroups;
+			extern DynamicRow							animationTimeLine;
 
 			extern VehicleFocusCommand					selectedVehicleFocus;
 			extern StructureFocusCommand				selectedStructureFocus;
@@ -434,41 +452,69 @@ namespace UI
 
 	namespace UI
 	{
+		/**
+		All methods and classes associated with the HUD hexagonal button grid
+		*/
 		namespace HexGrid
 		{
+			/**
+			Single visible hexagonal GUI button.
+			One instance exists per currently visible button.
+			All instances are stored in @a allGuiCells
+			*/
 			class GridCell
 			{
 			public:
-				Objects::BaseCommand*command;
-				//int2		cellCoords;
+				/**
+				Command to draw texture and callback functions from.
+				Used as a unique identifier for this cell.
+				Only at most one cell can exist per command (address)
+				*/
+				Objects::BaseCommand	*command;
+				/**
+				Location of this button on the current viewport (for faster click lookup).
+				Updated by Update()
+				*/
 				Rect<>		projectedRect;
+				/**
+				Configures button grid orientation.
+				Default orientation is left to right, and bottom to top.
+				Set flipX and flipY to alter this grid orientation, thus changing how command->coords are interpreted
+				*/
 				bool		flipY,flipX;
-				enum type_t
-				{
-							EntityCommand,
-							ContactListLeft,
-							ContactListRight,
-							ContactListEntry,
-							OwnedListLeft,
-							OwnedListRight,
-							OwnedListEntry,
-							Tutorial,
-
-				}			type = EntityCommand;
 
 				/**/		GridCell():command(nullptr),flipY(false),flipX(false)	{}
 
+				/**
+				Updates projectedRect
+				*/
 				void		Update(const Engine::Aspect<>&aspect);
+
+				/**
+				Determines the center floating point coordinates of this cell in the range [-1..-1+pixelAspect*2],[-1,+1]
+				*/
 				float2		ToFloatCoords() const;
 
 				static void Radial(float cellIndex, TVec2<>&rs);
+				/**
+				Determines whether the specified viewport coordinates lie inside the local cell button.
+				This calculation takes into account the hexagonal shape of the local button, accelerated by first querying @a projectedRect
+				*/
 				bool		Contains(const TVec2<>&p) const;
 			};
 
-			extern Buffer<GridCell>			guiCells;
 
-
-			void	DeleteAllCellsOfType(GridCell::type_t t);
+			/**
+			Allocates a new or existing cell based on the specified command.
+			Only one cell may be allocated per command. A second call with the same parameter yields the cell returned by the first call.
+			@return Reference to the newly allocated or existing cell. Valid only until the next call to AllocateCell() or FindAndDeleteCell(). Do not persistently store pointers or references to the returned cell
+			*/
+			GridCell&		AllocateCell(Objects::BaseCommand*);
+			/**
+			Attempts to locate and delete the first cell using the specified command.
+			Fails silently if no such cell exists.
+			*/
+			void			FindAndDeleteCell(Objects::BaseCommand*);
 
 
 
