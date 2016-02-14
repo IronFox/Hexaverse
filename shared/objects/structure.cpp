@@ -227,7 +227,7 @@ namespace Objects
 				}
 
 
-				SignalAttack(shared_from_this(),target.target,flightTime);
+				SignalAttack(shared_from_this(),target.target,flightTime,target.autoTarget);
 
 				if (storage.level[turret->ammoType] >= turret->ammoNeedPerShot)
 					ChangeStorage(*this,attackTime, turret->ammoType,-turret->ammoNeedPerShot);
@@ -756,7 +756,7 @@ namespace Objects
 	{
 		Super::PrototypeSetup();
 		#ifdef HAS_WINDOW
-			iconCommands << IconCommand(int2(5,0), "Restore Core Link",[](const PWorldEntity&s)
+			iconCommands << IconCommand(int2(5,1), "Restore Core Link",[](const PWorldEntity&s)
 			{
 				PMine mine = To<Mine>::DynamicCast(s);
 				if (mine)
@@ -2260,7 +2260,7 @@ namespace Objects
 
 
 
-			iconCommands << IconCommand(int2(5,1), "Construct Selected",[](const PWorldEntity&e)
+			iconCommands << IconCommand(int2(6,0), "Construct Selected",[](const PWorldEntity&e)
 				{
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
 					if (plant)
@@ -2270,11 +2270,11 @@ namespace Objects
 						else
 						{
 							if (plant->selectedBase)
-								SignalUserMessage(plant->GetNiceName()+" needs to know what turret you want to use in order to enqueue a new production job. Please select one in the list.");
+								SignalUserMessage(plant->GetNiceName()+" needs to know what turret you want to use in order to enqueue a new production job. Please select one in the top row.");
 							elif (plant->selectedTurret)
-								SignalUserMessage(plant->GetNiceName()+" needs to know what foundation you want to use in order to enqueue a new production job. Please select one in the list.");
+								SignalUserMessage(plant->GetNiceName()+" needs to know what foundation you want to use in order to enqueue a new production job. Please select one in the bottom row.");
 							else
-								SignalUserMessage(plant->GetNiceName()+" needs to know what turret and foundation you want to use in order to enqueue a new production job. Please select one in each list.");
+								SignalUserMessage(plant->GetNiceName()+" needs to know what turret and foundation you want to use in order to enqueue a new production job. Please select one in each top and bottom rows.");
 						}
 					}
 				},
@@ -2302,14 +2302,14 @@ namespace Objects
 				}
 			);
 
-			iconCommands << IconCommand(int2(5,0), "Sleep",VehicleCmd::Sleep,VehicleCmd::SleepCheck,NoCosts);
+			iconCommands << IconCommand(int2(5,1), "Sleep",VehicleCmd::Sleep,VehicleCmd::SleepCheck,NoCosts);
 
 			int at = 0;
 			//vehicleConstructionCommands << VehicleConstructionCommand("Base:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
 			foreach (baseComponents,comp)
 			{
 				Component::VehicleBase* c = *comp;
-				vehicleConstructionCommands << VehicleConstructionCommand(int2(6+at,0), c->typeName,c,nullptr,[c](const PWorldEntity&e)
+				vehicleConstructionCommands << VehicleConstructionCommand(int2(7+at,0), c->typeName,c,nullptr,[c](const PWorldEntity&e)
 				{
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
 					if (plant)

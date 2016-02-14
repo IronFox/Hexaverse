@@ -29,6 +29,8 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 void	Dispatch(const StringRef&);
 
 String targetHost = "localhost";
+Buffer0<String>	history;
+index_t historyAt=InvalidIndex;
 
 Timer::Time connectionAttemptStarted = timer.Now();
 std::thread connectionRetryThread;
@@ -249,6 +251,10 @@ void	Dispatch(const StringRef&line)
 		application_shutting_down = true;
 		return;
 	}
+	history.FindAndErase(line);
+	history << line;
+	historyAt = history.Count();
+
 	//Console::EchoCurrent();
 	if (client.IsConnected())
 	{
@@ -463,10 +469,18 @@ int main(int argc, char* argv[])
 				switch(next)
 				{
 					case 72:
-						//up
+						if (historyAt)
+						{
+							historyAt--;
+							Console::SetInput(history[historyAt]);
+						}
 					break;
 					case 80:
-						//down
+						if (historyAt < history.Count())
+						{
+							historyAt ++;
+							Console::SetInput(historyAt < history.Count() ? history[historyAt] : "");
+						}
 					break;
 					case 75:
 						//left

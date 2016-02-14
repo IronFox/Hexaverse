@@ -397,11 +397,16 @@ namespace Objects
 		//outResult << "Rounds: "+String(roundsToJobCompletion);
 	}
 
-
 	void			BaseCommand::LoadIcon()
+	{
+		LoadIcon(name);
+	}
+
+	void			BaseCommand::LoadIcon(const String&name)
 	{
 		String name2 = name;
 		name2.replace(' ','-');
+
 		PathString filename = PathString("resources/icons/"+name2+".png");
 		if (textureMap.query(filename,texture))
 			return;
