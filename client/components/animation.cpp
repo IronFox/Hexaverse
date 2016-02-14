@@ -1150,12 +1150,14 @@ namespace Animation
 				{
 					Objects::PWorldEntity attacker = Objects::GetEntity(targetEntityID);
 					ASSERT2__(attacker,targetEntityID.ToString(),this->time.ToString());
-					Objects::PTurretBase base= attacker->GetTurretBase();
+					float zOffset;
+					Objects::PTurretBase base= attacker->GetTurretBase(zOffset);
 					ASSERT2__(base,attacker->GetName(),this->time.ToString());
 					attackerTurret = base->turret;
 					ASSERT_NOT_NULL1__(attackerTurret,attacker->GetName());
 					attackRange = base->GetFlatAttackRange();
 					attackerPosition = attacker->GetWorldPosition();
+					attackerPosition += Grid::low.cells[attacker->location.stackID].cornerCenter * zOffset;
 					#ifdef HAS_WINDOW
 						attackerID = attacker->id;
 					#endif
