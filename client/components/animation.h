@@ -70,7 +70,7 @@ namespace Animation
 		TFloatRange<>			time;
 		Objects::PWorldEntity		allocatedTarget;	//for construction and motion. not to be used for other purposes as the original reference by id may change during animation
 		TUniqueID				targetEntityID;
-		Objects::Component::Turret*		attacker;
+		Objects::Component::Turret*		attackerTurret;	//reference targetEntityID to retrieve the identity of the attacker (precise attack only)
 		float					attackRange;
 		TVec3<>					attackerPosition;
 
@@ -82,7 +82,11 @@ namespace Animation
 		std::shared_ptr<Protocol::ResourceUpdate>	resourceUpdate;
 		TVec2<>					rotateTo,rotateFrom;
 		TVec3<>					rotateToWorld;
-		bool					explode;
+		union
+		{
+			bool				explode;
+			bool				isAutoTarget;
+		};
 		UINT8					removalType;
 
 		struct Path
@@ -126,7 +130,8 @@ namespace Animation
 		void					Init(Protocol::MobileEntityMotion&motion/*, const Objects::PVehicle&v*/);
 		void					Append(Protocol::MobileEntityMotion&motion);
 		void					Init(Protocol::DestroyEntity&e);
-		void					Init(Protocol::AttackTrajectory&a);
+		void					Init(Protocol::VagueAttackTrajectory&a);
+		void					Init(Protocol::PreciseAttackTrajectory&a);
 		void					Init(Protocol::Explosion&ex);
 
 		void					Init(Protocol::EntityTurretRotation&rot);

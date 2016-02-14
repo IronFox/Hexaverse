@@ -1048,6 +1048,7 @@ namespace FileIO
 
 		bool nexusFound = false, worldInfoFound = false;
 
+
 		GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>	factionMap;
 		for (int round = 0; round < 2; round++)
 		{
@@ -1220,7 +1221,6 @@ namespace FileIO
 									ASSERT__(!nexusFound);
 									nexusFound = true;
 									faction = Objects::Faction::nexus;
-									faction->FlushData();
 									LogEvent(EventSignificance::Common,"Loading nexus faction");
 									faction->UpdateID(factionID);
 								}

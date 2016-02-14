@@ -942,20 +942,28 @@ namespace Animation
 		time.SetMinAndMax(e.timestamp.atTime/*+0.01f*/);
 		LogEvent(EventSignificance::Debug,nullptr,"Registered removal of entity "+e.id.value.ToString()+" ("+Objects::RemovalType::Reinterpret(e.type.value).ToString()+") at t="+time.ToString());
 	}
-	void					Primitive::Init(Protocol::AttackTrajectory&a)
+	void					Primitive::Init(Protocol::VagueAttackTrajectory&a)
 	{
 		type = Attack;
-		attacker = Objects::Component::GetTurretByName(a.turretType);
-		ASSERT_NOT_NULL1__(attacker,(int)a.turretType.value);
+		targetEntityID = TUniqueID::Empty();
+		attackerTurret = Objects::Component::GetTurretByName(a.turretType);
+		ASSERT_NOT_NULL1__(attackerTurret,(int)a.turretType.value);
 		attackRange = a.turretRange;
 		attackerPosition = a.sourcePosition;
 		explosionCenter = Grid::ToWorld(a.traceTo);
+		isAutoTarget = false;
 
-		//Objects::PWorldEntity e = Objects::GetEntity(a.id,true);
-		//Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
-		//Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
-		//ASSERT__(v || t);
-		//target = e;
+		location = a.traceTo;
+		time.Set(a.timestamp.atTime,a.timestamp.atTime+a.flightTime);
+	}
+	void					Primitive::Init(Protocol::PreciseAttackTrajectory&a)
+	{
+		type = Attack;
+		targetEntityID = a.attacker;
+		attackerTurret = nullptr;	//later
+		explosionCenter = Grid::ToWorld(a.traceTo);
+
+		isAutoTarget = a.isAutoAttack;
 		location = a.traceTo;
 		time.Set(a.timestamp.atTime,a.timestamp.atTime+a.flightTime);
 	}
@@ -1067,6 +1075,9 @@ namespace Animation
 					UI::HexGrid::RefreshContacts();
 				#ifdef HAS_WINDOW
 					Dialog::SignalSituationChange();
+					if (removalType == Objects::RemovalType::UncontrolledExplosion)
+						UI::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isMine,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());
+
 				#endif
 			}
 			break;
@@ -1133,30 +1144,35 @@ namespace Animation
 			{
 			//	allocatedTarget = Objects::GetEntity(targetEntityID);
 				//if (allocatedTarget)
-				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attacker->typeName+",range="+String(attackRange)+",loc="+location.ToString()+") at "+String(Animation::atTime)+"/"+String(this->time.min));
+				bool isFriendly = false;
+				bool doRegister = true;
+				#ifdef HAS_WINDOW
+					TUniqueID attackerID = TUniqueID::Empty();
+				#endif
+				if (!attackerTurret)
+				{
+					Objects::PWorldEntity attacker = Objects::GetEntity(targetEntityID);
+					ASSERT2__(attacker,targetEntityID.ToString(),this->time.ToString());
+					float zOffset;
+					Objects::PTurretBase base= attacker->GetTurretBase(zOffset);
+					ASSERT2__(base,attacker->GetName(),this->time.ToString());
+					attackerTurret = base->turret;
+					ASSERT_NOT_NULL1__(attackerTurret,attacker->GetName());
+					attackRange = base->GetFlatAttackRange();
+					attackerPosition = attacker->GetWorldPosition();
+					attackerPosition += Grid::low.cells[attacker->location.stackID].cornerCenter * zOffset;
+					#ifdef HAS_WINDOW
+						attackerID = attacker->id;
+					#endif
+					doRegister = !attacker->isMine || isAutoTarget;
+					isFriendly = attacker->isMine;
+				}
+
+				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",loc="+location.ToString()+") at "+String(Animation::atTime)+"/"+String(this->time.min));
 				
 				{
-					//Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
-					//Objects::PTower t = To<Objects::Tower>::DynamicCast(allocatedTarget);
-					//float dummy;
-					//Objects::PTurretBase b = allocatedTarget->GetTurretBase(dummy);
-					//ASSERT__(b);
-					//ASSERT__(v || t);
-
-					/*if (v && v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsMode(Objects::Vehicle::AttackMode)
-						&& v->myTasks.Peek().foci.IsNotEmpty() && v->myTasks.Peek().foci.Peek() == location)
-					{
-						v->myTasks.Peek().foci.Pop();
-						v->myTasks.Peek().Recompile(v->location,v.get());
-					}
-					if (t && t->attackQueue.IsNotEmpty() && t->attackQueue.first().target == location)
-					{
-						t->attackQueue.Erase(0U);
-					}*/
-					Grid::HCellIdI			attackTargetCell;	//not needed
-					//TVec3<>					attackTarget;	//not needed
-					Objects::Component::Turret::TraceTrajectory(attacker->trajectoryType,attackRange, attackerPosition,Grid::ToWorld(location),activeTrajectory);
-					explosionRadius = attacker->explosionRadius;
+					Objects::Component::Turret::TraceTrajectory(attackerTurret->trajectoryType,attackRange, attackerPosition,Grid::ToWorld(location),activeTrajectory);
+					explosionRadius = attackerTurret->explosionRadius;
 					projectileAt = 0.f;
 					projectileActive = true;
 
@@ -1165,18 +1181,20 @@ namespace Animation
 						#ifdef _DEBUG
 							LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Compiling trajectory with "+String(activeTrajectory.Count())+" steps, starting from "+Vec::toString(activeTrajectory.first())+", ending "+Vec::toString(activeTrajectory.last()));
 						#endif
-						maxProjectileProjection = Objects::Component::Turret::CompileTrajectory(activeTrajectory,false,trajectoryGeometry,0.5f);
+						maxProjectileProjection = Objects::Component::Turret::CompileTrajectory(activeTrajectory,Objects::Component::Turret::Animation,trajectoryGeometry,0.5f);
 						trajectoryVisualization.vbo.CreateFromStructs(trajectoryGeometry.GetLOD(0).vertices);
 						trajectoryVisualization.ibo.Create(trajectoryGeometry.GetLOD(0).indices);
+
+
+						index_t smokeTrailIndex = Objects::Renderer::RegisterSmokeTrail(activeTrajectory);
+						if (doRegister)
+						{
+							UI::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, smokeTrailIndex);
+						}
 					#endif
 
 
 				}
-				/*else
-				{
-					LogEvent(EventClass::Preset::error,nullptr,"Warning: Unable to identify entity "+targetEntityID.ToString()+" for attack animation");
-
-				}*/
 			}
 			break;
 			case Explosion:

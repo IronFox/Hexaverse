@@ -216,6 +216,7 @@ namespace Objects
 			/**/						Faction(const TUniqueID&id) {UpdateID(id);}
 
 		#else
+
 			CryptographicID	accessToken;
 			Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
 										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
@@ -235,8 +236,6 @@ namespace Objects
 			Grid::WorldData			currentState;
 			Grid::VisibilityState	visibility;
 
-			//FamilyState			global;
-
 			count_t				nexusControl,
 								acquiringNexusControl;
 
@@ -255,21 +254,20 @@ namespace Objects
 			GenericHashTable<PWorldEntity,float,SharedPtrHash>	lostVisualAt,//!< Used for entities that dropped out of contact during the same round
 															gainedVisualAt;
 
-			void DropPerRoundData()
-			{
-				lostVisualAt.Clear();
-				gainedVisualAt.Clear();
-			}
-
-
 			struct SeeingReference
 			{
 				count_t			sightLevel=0;
 
 
 			};
-
 			GenericHashTable<PWorldEntity, SeeingReference, SharedPtrHash>	seeing;
+
+
+
+
+			static void			RecreateNexus();	//!< Creates a fresh nexus faction and assigns it to @a nexus
+
+
 
 			/**/		Faction(const TUniqueID&id, const String&name=""):name(name)
 			{
@@ -281,10 +279,13 @@ namespace Objects
 
 			}
 
-			/**
-			Completely clears the local state for this faction to be reused in a different game
-			*/
-			void		FlushData();
+
+			void DropPerRoundData()
+			{
+				lostVisualAt.Clear();
+				gainedVisualAt.Clear();
+			}
+
 
 			virtual bool	SurvivesByOtherMeans() const	{return false;}
 
@@ -325,7 +326,12 @@ namespace Objects
 
 			void		CheckGridVisibility(const PWorldEntity&,float&timeAt);
 
-			void		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true, index_t incStackBy=1);
+			/**
+			Processes a potentially new contact
+
+			@return True, if the contact was, indeed, new, false otherwise
+			*/
+			bool		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true, index_t incStackBy=1);
 			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false, bool signalConnectedClient=true);
 
 			void		RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
