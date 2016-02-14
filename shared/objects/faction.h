@@ -313,7 +313,12 @@ namespace Objects
 
 			void		CheckGridVisibility(const PWorldEntity&,float&timeAt);
 
-			void		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true, index_t incStackBy=1);
+			/**
+			Processes a potentially new contact
+
+			@return True, if the contact was, indeed, new, false otherwise
+			*/
+			bool		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true, index_t incStackBy=1);
 			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false, bool signalConnectedClient=true);
 
 			void		RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);

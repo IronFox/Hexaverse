@@ -455,7 +455,7 @@ namespace Objects
 		}
 
 
-		void		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/, bool stack/*=true*/, index_t incStackBy/*=1*/)
+		bool		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/, bool stack/*=true*/, index_t incStackBy/*=1*/)
 		{
 			SeeingReference&ref = seeing.Set(e);
 
@@ -468,7 +468,7 @@ namespace Objects
 			else
 			{
 				LogEvent(EventSignificance::Debug,e.get(),this->GetLogName()+": Sight level already set to "+String(ref.sightLevel));
-				return;
+				return false;
 			}
 
 
@@ -498,9 +498,9 @@ namespace Objects
 					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
 				else
 					t += timeEpsilon;
-			//	return true;
+				return true;
 			}
-			//return false;
+			return false;
 			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
 		}
 
@@ -660,8 +660,7 @@ namespace Objects
 							continue;
 						if (GridCanSee(e))
 						{
-							SignalAppearance(e,t,true,false);
-							if (newContacts)
+							if (SignalAppearance(e,t,true,false) && newContacts)
 								newContacts->Append(e);
 						}
 					}
@@ -676,9 +675,7 @@ namespace Objects
 					PSatellite sat = *s;
 					if (sat->owner.get() != this && sphere.Contains(sat->GetWorldPosition()))
 					{
-						bool wasSeeing = newContacts && seeing.IsSet(sat);
-						SignalAppearance(sat,t,true);
-						if (newContacts && !wasSeeing)
+						if (SignalAppearance(sat,t,true) && newContacts)
 							newContacts->Append(sat);
 					}
 				}
