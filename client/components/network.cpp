@@ -996,11 +996,11 @@ namespace Network
 		{
 			case TCP::Event::ConnectionEstablished:
 			{
-				World::allowRecompilation = false;	//until game begins
 				Receiver::eventsLocked = false;
 
 
 				#ifdef HAS_WINDOW
+					World::allowRecompilation = false;	//until game begins
 					Tutorial::HideMessage("Servers");
 					Tutorial::lastDelayingEvent = timer.Now();
 				#endif
@@ -1031,8 +1031,8 @@ namespace Network
 			case TCP::Event::ConnectionFailed:
 			{
 				LogEvent(EventClass::Preset::networkError, nullptr, "Connection attempt failed");
-				World::allowRecompilation = true;
 				#ifdef HAS_WINDOW
+					World::allowRecompilation = true;
 					Dialog::SignalSituationChange();
 				#endif
 			}
@@ -1042,10 +1042,10 @@ namespace Network
 			{
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, "Connection lost");
 				amOnline = false;
-				World::allowRecompilation = true;
 
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
+					World::allowRecompilation = true;
 					Dialog::CloseAllModal();
 				#endif
 
@@ -1075,7 +1075,9 @@ namespace Network
 		switch (signal)
 		{
 			case Protocol::ChannelID::BeginGame:
-				World::allowRecompilation = true;
+				#ifdef HAS_WINDOW
+					World::allowRecompilation = true;
+				#endif
 				gameHasBegun = true;
 				LogEvent(EventClass::Preset::uncommon,nullptr,"Game has begun");
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Animation::AllDone())

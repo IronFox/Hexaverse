@@ -205,7 +205,9 @@ Triggered when entering command mode and animations have finished (whichever of 
 */
 void	OnPlayerControlBegin()
 {
-	UI::RefreshButtonState();
+	#ifdef HAS_WINDOW
+		UI::RefreshButtonState();
+	#endif
 	Objects::RefreshSkyHubConnections();
 	Animation::UpdateAutomation(CLOCATION);
 }
