@@ -11,6 +11,7 @@ v0.3.16
 	* Possibly fixed rare case where a terraformer would not finish a construction job if its movement was only partially successful.
 	* Fixed hostile satellites showing up as ghosts while in radar range.
 	* Fixed access violation when handling outdated markers (ghosts).
+	* Fixed detection of new contacts when moving vehicles, thus reducing the number of false forced stops.
 	> Reduced height of uranium storage to better show resource marker on top.
 	> Improved faction coloring in spectator mode.
 	> Time lapse mode now locks the camera, and shows a gui message to indicate that recording is active.

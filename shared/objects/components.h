@@ -297,7 +297,13 @@ namespace Objects
 			//}
 
 			#ifdef HAS_WINDOW
-				static float				CompileTrajectory(const Buffer0<TVec4<> >&v, bool schematic, Geometry&outGeo, float widthScale=1.f);
+				enum geometryType_t
+				{
+					Schematic,
+					Animation,
+					SmokeTrail
+				};
+				static float				CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
 				void						DescribeType(BaseCommand::Label&label, bool compound, const String&parentType, const OwnerParameter&owner);
 			#endif
 

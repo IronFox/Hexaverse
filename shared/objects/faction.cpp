@@ -23,6 +23,10 @@ namespace Objects
 		/*static*/ Buffer0<WFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus(new Faction(TUniqueID::Empty(), "<Nexus>"));
 
+		void	Faction::RecreateNexus()
+		{
+			nexus.reset(new Faction(TUniqueID::Empty(), "<Nexus>"));
+		}
 
 
 		
@@ -449,7 +453,7 @@ namespace Objects
 		}
 
 
-		void		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/, bool stack/*=true*/, index_t incStackBy/*=1*/)
+		bool		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/, bool stack/*=true*/, index_t incStackBy/*=1*/)
 		{
 			if (e->IsOrbital())
 			{
@@ -468,7 +472,7 @@ namespace Objects
 			else
 			{
 				LogEvent(EventSignificance::Debug,e.get(),this->GetLogName()+": Sight level already set to "+String(ref.sightLevel));
-				return;
+				return false;
 			}
 
 
@@ -498,9 +502,9 @@ namespace Objects
 					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
 				else
 					t += timeEpsilon;
-			//	return true;
+				return true;
 			}
-			//return false;
+			return false;
 			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
 		}
 
@@ -674,8 +678,7 @@ namespace Objects
 							continue;
 						if (GridCanSee(e))
 						{
-							SignalAppearance(e,t,true,false);
-							if (newContacts)
+							if (SignalAppearance(e,t,true,false) && newContacts)
 								newContacts->Append(e);
 						}
 					}
@@ -689,9 +692,7 @@ namespace Objects
 				{
 					if (sat->owner.get() != this && sphere.Contains(sat->GetWorldPosition()))
 					{
-						bool wasSeeing = newContacts && seeing.IsSet(sat);
-						SignalAppearance(sat,t,true);
-						if (newContacts && !wasSeeing)
+						if (SignalAppearance(sat,t,true) && newContacts)
 							newContacts->Append(sat);
 					}
 				});
@@ -784,68 +785,7 @@ namespace Objects
 		}
 
 
-		//void		Faction::ReplaceSensory(const Grid::SkySensorState&oldState, const Grid::SkySensorState&newState, float t, short change)
-		//{
-		//	Concurrency::parallel_for(index_t(0),oldState.coverage.Count(),[&oldState,&newState,this,change](index_t i)
-		//	{
-		//		const auto&c = oldState.coverage[i];
-		//		int newH;
-		//		if (newState.coverageMap.Query(c.hStackID,newH) && newH == c.downToHeight)
-		//			return;
-		//		
-		//		CellStack&stack = cellStack[c.hstackID];
-		//		UINT32 downTo = Grid::CellStack::ToLayer(c.downToHeight);
-		//		for (UINT32 layer = Grid::CellStack::HalfRange-1; layer >= downTo; layer--)
-		//		{
-		//			CellStack::Cell&cell1 = stack.volumeCell[layer];
-		//			cell1.visibility += change;
-		//			if (change > 0)
-		//			{
-		//				cell1.temporarilyVisible = true;
-		//			}
-		//		}
-		//		families[Grid::high.grid.GetCell(c.hStackID).family].changed = true;
-		//	});
-		//}
 
-
-
-		void		Faction::FlushData()
-		{
-			markers.Clear();
-			markerMap.Clear();
-			nexusControl = acquiringNexusControl = 0;
-			deathInRounds = 0;
-			this->orbitalStations.Clear();
-			this->orbitalHubs.Clear();
-			this->orbitalShips.Clear();
-			allMobiles.Clear();
-			structures.Clear();
-			towers.Clear();
-			storedMobiles.Clear();
-
-			#ifdef CONNECTOR_LESS
-				compound.Clear();
-			#endif
-
-			currentState.FlushAllData();
-			visibility.FlushAllData();
-
-		}
-
-
-
-		//void		Faction::SignalCoverageChange(const bool*familiesChanged, float atTime)
-		//{
-		//	for (BYTE f = 0; f < BaseGrid::NumFamilies; f++)
-		//	{
-		//		if (familiesChanged[f])
-		//		{
-		//			families[f].coverageChanged = true;
-		//			families[f].lastChange = atTime;
-		//		}
-		//	}
-		//}
 
 		void		Faction::CheckChanges(float t)
 		{
