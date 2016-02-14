@@ -477,6 +477,8 @@
 			{
 				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly);
 				cmd->smokeTrailIndex = smokeTrailIndex;
+				if (!isFriendly)
+					cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
 				HexGrid::animationTimeLine.commands << Objects::PBaseCommand(cmd);
 				HexGrid::animationTimeLine.Refresh();
 			}
@@ -517,7 +519,8 @@
 				Objects::PWorldEntity e = GetTarget();
 				if (e)
 					Objects::Select(e,Network::ControlEnabled());
-//					Objects::Renderer::SetFocusedTrajectory(trajectory);
+				Objects::Renderer::HighlightSmokeTrail(smokeTrailIndex);
+				state = Objects::BaseCommand::Flags::IsEnabled;
 			}
 
 			/*virtual override*/ void				AnimationEventFocusCommand::CompileLabel(const Objects::PWorldEntity&,Label&outResult)

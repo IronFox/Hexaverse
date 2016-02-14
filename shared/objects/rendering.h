@@ -203,6 +203,12 @@ namespace Objects
 		index_t	RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory);
 
 		/**
+		Tints the specified smoke trail in pulsing red.
+		Passing an invalid index disables smoke trail highlighting.
+		*/
+		void	HighlightSmokeTrail(index_t smokeTrailIndex);
+
+		/**
 		Removes all active smoke trails. May trigger gradual fading in the future
 		*/
 		void	ClearSmokeTrails();

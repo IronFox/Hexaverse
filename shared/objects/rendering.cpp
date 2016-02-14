@@ -75,6 +75,7 @@ namespace Objects
 	DX11::BaseInstructionBlock			shadowInstruction;
 
 	Buffer0<DX11::InstructionBlock32>	smokeTrails;
+	index_t								selectedSmokeTrail = InvalidIndex;
 
 	index_t	Renderer::RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory)
 	{
@@ -86,12 +87,20 @@ namespace Objects
 		((DX11::BaseInstructionBlock&)trail) = smokeTrailShader;
 		trail.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
 		trail.ibo.Create(geo.GetLOD(0).indices);
+		selectedSmokeTrail = InvalidIndex;
 		return result;
 	}
+
+	void	Renderer::HighlightSmokeTrail(index_t smokeTrailIndex)
+	{
+		selectedSmokeTrail = smokeTrailIndex;
+	}
+
 
 	void	Renderer::ClearSmokeTrails()
 	{
 		smokeTrails.Clear();
+		selectedSmokeTrail = InvalidIndex;
 	}
 
 
@@ -1559,16 +1568,26 @@ namespace Objects
 			}
 		}
 
-		display.SetDepthTest(true,false);
-		display.SetRasterizer(true,false);
-		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-
-		foreach (smokeTrails,t)
+		if (smokeTrails.IsNotEmpty())
 		{
-			display.Render(*t,true);
+			display.SetDepthTest(true,false);
+			display.SetRasterizer(true,false);
+			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+
+		
+			overallTint.Update(float4());
+			foreach (smokeTrails,t)
+			{
+				display.Render(*t,true);
+			}
+
+			if (selectedSmokeTrail < smokeTrails.Count())
+			{
+				overallTint.Update(float4(1,0,0,GetPulse(now,0.5f,1.f)));
+				display.Render(smokeTrails[selectedSmokeTrail],true);
+			}
+
 		}
-
-
 		display.SetRasterizer(true,true);
 		display.SetDepthTest(true,true);
 

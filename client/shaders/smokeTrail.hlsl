@@ -47,11 +47,12 @@ float4 psMain(V2P input) : SV_TARGET
 	float lengthOpacity = 1.0 - sqr(sqr((input.color.b-0.5) * 2.0));
 	//if (uv.x > 0.25 && uv.x < 0.75)
 	//	discard;
-	float tex = SmokeTexture.Sample(SmokeSampler,float2((uv.x+uv.y)*0.25, input.color.b*0.5) - Time*0.01);
+	float tex = SmokeTexture.Sample(SmokeSampler,float2((uv.x+uv.y)*0.5, input.color.b));
+//	- Time*0.01);	//time does seem kind of stupid after thinking about for a while longer
 	//tex = smoothstep(0.1,0.6,tex);
-	tex = sqr(tex);
+	tex = 0.1 + 0.9 * sqr(tex);
 	float light = max(dot(Sun.xyz,input.normal),0.0)*0.75 + 0.25;
-	return float4((float3)light,tex * sqr(sqr(sqr(sqr(1.0 - dist)))) * lengthOpacity);
+	return float4(lerp((float3)light, Tint.rgb, Tint.a),tex * sqr(sqr(sqr(sqr(1.0 - dist)))) * lengthOpacity);
 }
 
 
