@@ -1349,7 +1349,7 @@ namespace Objects
 					flightTime =  timeEpsilon;// Times::Attack * 10;;
 
 
-				SignalAttack(To<Vehicle>::Cast(shared_from_this()),target,flightTime);
+				SignalAttack(To<Vehicle>::Cast(shared_from_this()),target,flightTime,false);
 
 				resourceEnvironment.CheckRefresh(*this);
 				resourceEnvironment.ForceChangeStorage(*this, turret->ammoType,-turret->ammoNeedPerShot);
