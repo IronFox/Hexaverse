@@ -289,41 +289,6 @@ namespace Objects
 			FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
 		}
 
-		void		Faction::RegisterGain(const PWorldEntity&e)
-		{
-			if (e->IsMobile())
-			{
-				if (To<MobileEntity>::Cast(e)->storedIn.expired())
-					RegisterActiveMobileGain(e);
-				else
-					RegisterStoredMobileGain(e);
-			}
-			else
-				if (e->IsStructure())
-					RegisterStructureGain(e);
-				else
-					FATAL__("WTF is this: "+e->GetName());
-
-		}
-		void		Faction::RegisterStructureGain(const PWorldEntity&e)
-		{
-			ASSERT1__(e->IsStructure(),e->GetName());
-			PStructure s = To<Structure>::Cast(e);
-			ASSERT1__(s,e->GetName());
-			structures << s;
-			PTower t = To<Tower>::DynamicCast(s);
-			if (t)
-				towers << t;
-			if (s->IsPylon())
-				pylons << To<Pylon>::Cast(s);
-			if (s->IsOrbital())
-			{
-				Orbital::PStation st = To<Orbital::Station>::Cast(s);
-				if (st->IsHub())
-					this->orbitalHubs << To<Orbital::Hub>::Cast(st);
-				this->orbitalStations << st;
-			}
-		}
 		void		Faction::RegisterActiveMobileGain(const PWorldEntity&e)
 		{
 			PMobileEntity v = To<MobileEntity>::DynamicCast(e);
@@ -336,19 +301,6 @@ namespace Objects
 				this->orbitalShips << sat;
 			}
 		}
-		void		Faction::RegisterStoredMobileGain(const PWorldEntity&e)
-		{
-			PMobileEntity v = To<MobileEntity>::DynamicCast(e);
-			ASSERT1__(v,e->GetName());
-			ASSERT1__(!v->storedIn.expired(),e->GetName());
-			storedMobiles << v;
-			if (v->IsOrbital())
-			{
-				Orbital::PShip sat = To<Orbital::Ship>::Cast(v);
-				this->orbitalShips << sat;
-			}
-		}
-
 
 		bool		Faction::HasActiveMobile(const PMobileEntity&v, bool forceDoNotCheckSatellites) const
 		{
