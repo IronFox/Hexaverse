@@ -147,7 +147,7 @@ namespace Objects
 
 
 			//MobileEntity overrides:
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				virtual ResourceVector		GetMaxStorageCapacity()	const override
 				{
 					return turret->baseStorageCapacity;

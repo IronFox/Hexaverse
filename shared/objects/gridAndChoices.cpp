@@ -1028,7 +1028,7 @@ namespace Objects
 				case CursorMode::BuildBlockMode:
 				case CursorMode::RemoveBlockMode:
 					break;
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					case CursorMode::RestockMode:
 					case CursorMode::DepositMode:
 					//case CursorMode::TransferMode:
@@ -2784,7 +2784,7 @@ namespace Objects
 			vehicle->PositionOnTop(baseLocation,false);
 		//	vehicle->UpdateSystem();
 		#endif
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			if (fillStorage)
 				vehicle->currentStorage = vehicle->GetMaxStorageCapacity();
 		#endif
@@ -3063,6 +3063,7 @@ namespace Objects
 					auto c = choice;
 					switch (mode)
 					{
+						#ifndef ONE_COMPOUND_PER_FACTION
 						case CursorMode::DepositMode:
 						case CursorMode::RestockMode:
 						{
@@ -3076,6 +3077,7 @@ namespace Objects
 							}
 						}
 						break;
+						#endif
 						case CursorMode::RepairMode:
 						{
 							//PWorldEntity target = GetEntity(c-1);

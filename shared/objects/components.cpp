@@ -733,7 +733,7 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				CellCoords offset = ConfigureStandardCommands(component);
 
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					component.iconCommands.Append(IconCommand(offset++, "Withdraw Resources",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Resources",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 
@@ -749,7 +749,7 @@ namespace Objects
 		
 				foreach (Objects::Orbital::stationPrototypes,p)
 					if (!(*p)->IsIndestructible())
-						#ifdef CONNECTOR_LESS
+						#ifdef ONE_COMPOUND_PER_FACTION
 							if (!To<Connector>::DynamicCast(*p))
 						#endif
 						#ifdef NO_MUNITION
@@ -790,7 +790,7 @@ namespace Objects
 			component.constName = ConstName::OrbitalTurret_Engineer;
 
 			component.productionCosts = 400;
-			#if !defined CONNECTOR_LESS
+			#if !defined ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Minerals] = 2000;
 				component.baseStorageCapacity.level[Resource::Fuel] = 500;
 			#endif
@@ -877,7 +877,7 @@ namespace Objects
 					}
 				));
 
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					component.iconCommands.Append(IconCommand(offset++, "Withdraw Resources",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Resources",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 
@@ -916,7 +916,7 @@ namespace Objects
 		
 				foreach (structurePrototypes,p)
 					if (!(*p)->IsIndestructible())
-						#ifdef CONNECTOR_LESS
+						#ifdef ONE_COMPOUND_PER_FACTION
 							if (!To<Connector>::DynamicCast(*p))
 						#endif
 						#ifdef NO_MUNITION
@@ -969,7 +969,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Terraformer;
 
 			component.productionCosts = 400;
-			#if !defined CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Minerals] = 2000;
 			#endif
 			component.operationSpeed[Construct] = 100;
@@ -996,7 +996,7 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
@@ -1014,7 +1014,7 @@ namespace Objects
 			component.constTowerName = ConstName::Type_ArtilleryTower;
 
 			component.productionCosts = 250;
-			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
+			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
 		
@@ -1046,7 +1046,7 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
@@ -1064,7 +1064,7 @@ namespace Objects
 			component.constTowerName = ConstName::Type_LauncherTower;
 
 			component.productionCosts = 400;
-			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
+			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 24;
 			#endif
 		
@@ -1097,7 +1097,7 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
@@ -1115,7 +1115,7 @@ namespace Objects
 			component.constTowerName = ConstName::Type_CannonTower;
 
 			component.productionCosts = 150;
-			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
+			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
 			#endif
 		
@@ -1146,7 +1146,7 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					component.iconCommands.Append(IconCommand(offset++, "Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
@@ -1164,7 +1164,7 @@ namespace Objects
 			component.constTowerName = ConstName::Type_EMPTower;
 
 			component.productionCosts = 1000;
-			#if !defined CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Uranium] = 1500;
 			#endif
 		
@@ -1209,7 +1209,7 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					component.iconCommands.Append(IconCommand(offset++, "Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
@@ -1250,7 +1250,7 @@ namespace Objects
 			#else
 				component.ammoNeedPerShot = 20000;
 			#endif
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Uranium] = component.ammoNeedPerShot;
 				component.baseStorageCapacity.level[Resource::Fuel] = 500;
 			#endif
@@ -1270,7 +1270,7 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					component.iconCommands.Append(IconCommand(offset++, "Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
@@ -1407,7 +1407,7 @@ namespace Objects
 			component.constName = ConstName::Turret_MunitionTransporter;
 
 			component.productionCosts = 500;
-			#if !defined CONNECTOR_LESS && !defined NO_MUNITION
+			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 100;
 			#endif
 		
@@ -1431,7 +1431,7 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					component.iconCommands.Append(IconCommand(offset++, "Withdraw Resources",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Resources",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
@@ -1449,7 +1449,7 @@ namespace Objects
 			component.constTowerName = ConstName::Type_MechanicTower;
 
 			component.productionCosts = 300;
-			#if !defined CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Minerals] = 100;
 			#endif
 		
@@ -1552,7 +1552,7 @@ namespace Objects
 			component.requirements = VehicleBase::Requirement::AnyBlock;
 			component.moveOnWater = true;
 			component.minClimbDown = -int(Grid::CellStack::Range);
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				component.storageMultiplier = 1;
 			#endif
 
@@ -1594,7 +1594,7 @@ namespace Objects
 			component.moveOnWater = false;
 			component.minClimbDown = -2;
 			//component.minClimbDown = -int(Grid::CellStack::Range);
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				component.storageMultiplier = 2;
 			#endif
 			component.operationSpeedMultiplier = 2;
@@ -1642,7 +1642,7 @@ namespace Objects
 			component.moveOnWater = true;
 			component.minClimbDown = -2;
 			//component.minClimbDown = -int(Grid::CellStack::Range);
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				component.storageMultiplier = 2;
 			#endif
 			component.operationSpeedMultiplier = 2;
@@ -1791,7 +1791,7 @@ namespace Objects
 			
 				//if ( minClimbDown > -int(Grid::CellStack::Range))
 				outResult << " Can safely fall down "+String(-minClimbDown)+" height level(s)";
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					if (storageMultiplier != 1)
 						outResult << " Storage capacity multiplied by "+String(storageMultiplier);
 				#endif
@@ -1878,7 +1878,7 @@ namespace Objects
 					outResult <<" Can repair other vehicles/structures";
 				if (detectsResources)
 					outResult <<  " Detects natural resources";
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					if (!compound && baseStorageCapacity.IsNotEmpty())
 					{
 						outResult << " Base storage capacity:";

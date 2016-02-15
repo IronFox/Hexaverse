@@ -267,7 +267,7 @@ namespace AI
 
 
 
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			if (attacker && !v->HasAmmoForShot())
 			{
 				LogEvent(EventSignificance::Debug,v.get(),"AI: Out of ammo: destroying vehicle");

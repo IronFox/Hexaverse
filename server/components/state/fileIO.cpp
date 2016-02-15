@@ -687,7 +687,7 @@ namespace FileIO
 			v.location = store->ToEntity().location;
 		}
 		Export(parent,(Objects::WorldEntity&)v,factions);
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			Export(parent,v.currentStorage);
 		#endif
 		Export(parent,v.completeOnMove);
@@ -750,7 +750,7 @@ namespace FileIO
 		 
 
 		Import(parent,(Objects::WorldEntity&)*v,factions);
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			Import(parent,v->currentStorage);
 			v->currentStorage.Cap(v->GetMaxStorageCapacity());
 		#endif
@@ -1224,7 +1224,7 @@ namespace FileIO
 													Objects::PMobileEntity v = Objects::AssembleMobileEntity(Objects::PFaction(),TUniqueID(),Grid::LCellIdI(0,Objects::Orbital::BaseHeight),base,turret);
 
 													bool doInsert = Import(child,vehicleChunk,v,factionMap);
-													#if defined CHEAT_FULL_STORAGE && !defined CONNECTOR_LESS
+													#if defined CHEAT_FULL_STORAGE && !defined ONE_COMPOUND_PER_FACTION
 														 v->currentStorage = v->GetMaxStorageCapacity();
 													#endif
 													if (doInsert)

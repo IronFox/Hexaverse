@@ -1701,32 +1701,35 @@ namespace Objects
 	}
 
 
-	static Buffer0<UINT32>	compoundScope;
-	static Buffer0<std::pair<TMatrix4<>, float3> >	resourceArrowSystems;
+	#ifndef ONE_COMPOUND_PER_FACTION
+		static Buffer0<UINT32>	compoundScope;
+		static Buffer0<std::pair<TMatrix4<>, float3> >	resourceArrowSystems;
+	#endif
 
 	void		Renderer::SelectCompoundAreas(const OwnerParameter&owner)
 	{
-		compoundScope.Clear();
-		resourceArrowSystems.Clear();
+		#ifndef ONE_COMPOUND_PER_FACTION
+			compoundScope.Clear();
+			resourceArrowSystems.Clear();
 				
-		foreach (compounds,c)
-		{
-			if (c->allStructures.IsEmpty())
-				continue;
-			PStructure s = c->allStructures.first().lock();
-			if (!s || (s->owner != owner && owner))
-				continue;
-			if (c->total.balance.IsNotEmpty())
+			foreach (compounds,c)
 			{
-				compoundScope << (UINT32)(c - compounds.pointer());
+				if (c->allStructures.IsEmpty())
+					continue;
+				PStructure s = c->allStructures.first().lock();
+				if (!s || (s->owner != owner && owner))
+					continue;
+				if (c->total.balance.IsNotEmpty())
+				{
+					compoundScope << (UINT32)(c - compounds.pointer());
+				}
 			}
-		}
 
-		for (auto c : compoundScope)
-		{
-			compounds[c].color = ColorCompoundInRange(c);
-		}
-
+			for (auto c : compoundScope)
+			{
+				compounds[c].color = ColorCompoundInRange(c);
+			}
+		#endif
 	}
 
 
@@ -1759,172 +1762,176 @@ namespace Objects
 
 	void		Renderer::SelectCompoundAreas(const OwnerParameter&owner, ResourceFlagSet producersOf, const TVec3<>&arrowTo, const MobileResourceEnvironment&env, bool orbital)
 	{
-		compoundScope.Clear();
-		resourceArrowSystems.Clear();
+		#ifndef ONE_COMPOUND_PER_FACTION
+			compoundScope.Clear();
+			resourceArrowSystems.Clear();
 		
 				
-		foreach (compounds,c)
-		{
-			if (c->allStructures.IsEmpty())
-				continue;
-			PStructure s = c->allStructures.first().lock();
-			if (!s || s->owner != owner)
-				continue;
-			if (c->total.balance.AnyIsSet(producersOf))
+			foreach (compounds,c)
 			{
-				compoundScope << c - compounds.pointer();
+				if (c->allStructures.IsEmpty())
+					continue;
+				PStructure s = c->allStructures.first().lock();
+				if (!s || s->owner != owner)
+					continue;
+				if (c->total.balance.AnyIsSet(producersOf))
+				{
+					compoundScope << c - compounds.pointer();
+				}
 			}
-		}
 
-		for (auto c : compoundScope)
-		{
-			compounds[c].color = ColorCompoundInRange((UINT32)(c));
-		}
+			for (auto c : compoundScope)
+			{
+				compounds[c].color = ColorCompoundInRange((UINT32)(c));
+			}
 
-		foreach (env.sourceCompounds,c)
-		{
-			if (!compounds[c->first].total.balance.AnyIsSet(producersOf))
-				continue;
-			auto&item = resourceArrowSystems.Append();
-			TMatrix4<>&mat = item.first;
-			mat.w.xyz = c->second->GetWorldPosition();
-			mat.z.xyz = Grid::low.cells[c->second->location.stackID].cornerCenter;
-			Vec::mad(mat.w.xyz,mat.z.xyz,Grid::SingleLayerHeight * c->second->GetHeight());
-			Vec::sub(arrowTo,mat.w.xyz,mat.y.xyz);
-			Vec::cross(mat.z.xyz,mat.y.xyz,mat.x.xyz);
-			Vec::setLen(mat.x.xyz,orbital ? 0.3f : 0.1f);
-			Mat::resetBottomRow(mat);
+			foreach (env.sourceCompounds,c)
+			{
+				if (!compounds[c->first].total.balance.AnyIsSet(producersOf))
+					continue;
+				auto&item = resourceArrowSystems.Append();
+				TMatrix4<>&mat = item.first;
+				mat.w.xyz = c->second->GetWorldPosition();
+				mat.z.xyz = Grid::low.cells[c->second->location.stackID].cornerCenter;
+				Vec::mad(mat.w.xyz,mat.z.xyz,Grid::SingleLayerHeight * c->second->GetHeight());
+				Vec::sub(arrowTo,mat.w.xyz,mat.y.xyz);
+				Vec::cross(mat.z.xyz,mat.y.xyz,mat.x.xyz);
+				Vec::setLen(mat.x.xyz,orbital ? 0.3f : 0.1f);
+				Mat::resetBottomRow(mat);
 
-			item.second = compounds[c->first].color.rgb*1.5f;
-		}
+				item.second = compounds[c->first].color.rgb*1.5f;
+			}
+		#endif
 	}
 
 
 	void		Renderer::Flush()
 	{
-		compoundScope.Clear();
+		#ifndef ONE_COMPOUND_PER_FACTION
+			compoundScope.Clear();
+		#endif
 	}
 
 
 	void		Renderer::RenderCompoundAreas()
 	{
-		if (!anyCompoundsColored || compoundScope.IsEmpty() || compounds.IsEmpty())
-			return;
+		#ifndef ONE_COMPOUND_PER_FACTION
+			if (!anyCompoundsColored || compoundScope.IsEmpty() || compounds.IsEmpty())
+				return;
 
 
-		display.StoreRendererState();
+			display.StoreRendererState();
 
 
 
 		
-		//if (doColorCompounds)
-		//if (false)
-		{
+			//if (doColorCompounds)
+			//if (false)
+			{
+				display.SetRasterizer(true,true);
+				display.SetDepthTest(true,false);
+				display.LinkShader(compoundShader,true,true);
+
+					display.SetObjectMatrix(Matrix<>::eye4);
+					for (auto ci : compoundScope)
+					{
+						const auto*c = compounds + ci;
+						const float4&color = c->color;
+						if (color.a == 0.f)
+							continue;
+						overallTint.Update(color);
+						foreach(c->allStructures, _s)
+						{
+							Structure&s = *_s->lock();
+							if (s.compiledShape.vbo.IsSet())
+							{
+								display.Render(s.compiledShape,true);
+							}
+						}
+					}
+					for (auto ci : compoundScope)
+					{
+						const auto*c = compounds + ci;
+						const float4&color = c->color;
+						if (color.a == 0.f)
+							continue;
+						overallTint.Update(color);
+						foreach(c->allStructures, _s)
+						{
+							Structure&s = *_s->lock();
+
+							if (s.localizableShape)
+							{
+								_Locate(s);
+								if (s.HasFoundation())
+									display.Render(foundation, true);
+								_RenderSimpleLocated(s);
+							}
+						}
+					}
+
+				display.UnlockShader();
+			}
+
+
+			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+			display.SetRasterizer(true,false);
+
+			foreach (resourceArrowSystems,sys)
+			{
+				display.SetObjectMatrix(sys->first);
+				overallTint.Update(float4(sys->second,0.75f));
+				display.Render(resourceArrowInstruction,true);
+			}
+
+
+			display.RestoreRendererState();
+
+
+
+
+
+			display.StoreRendererState();
+
+			display.SetDepthTest(true,true);
+			display.SetBlendMode(Engine::BlendMode::FlareBlend);
 			display.SetRasterizer(true,true);
-			display.SetDepthTest(true,false);
-			display.LinkShader(compoundShader,true,true);
 
-				display.SetObjectMatrix(Matrix<>::eye4);
+			for (int extendedShadow = 0; extendedShadow < 2; extendedShadow++)
+			{
+				if (extendedShadow)
+					display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+
+				float dr = extendedShadow ? RangeShadowExtension : 0.f;
+
 				for (auto ci : compoundScope)
 				{
 					const auto*c = compounds + ci;
-					const float4&color = c->color;
-					if (color.a == 0.f)
-						continue;
-					overallTint.Update(color);
+
 					foreach(c->allStructures, _s)
 					{
 						Structure&s = *_s->lock();
-						if (s.compiledShape.vbo.IsSet())
-						{
-							display.Render(s.compiledShape,true);
-						}
+						RenderRangeSphere(s.GetWorldPosition(),s.GetWirelessTransferRange()+dr,float4());
 					}
+
 				}
 				for (auto ci : compoundScope)
 				{
 					const auto*c = compounds + ci;
-					const float4&color = c->color;
-					if (color.a == 0.f)
-						continue;
-					overallTint.Update(color);
+					float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(c->color.rgb*1.5f,1.0f);
 					foreach(c->allStructures, _s)
 					{
 						Structure&s = *_s->lock();
-
-						if (s.localizableShape)
-						{
-							_Locate(s);
-							if (s.HasFoundation())
-								display.Render(foundation, true);
-							_RenderSimpleLocated(s);
-						}
+						RenderRangeSphere(s.GetWorldPosition(),s.GetWirelessTransferRange()+dr,color);
 					}
+
 				}
 
-			display.UnlockShader();
-		}
-
-
-		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-		display.SetRasterizer(true,false);
-
-		foreach (resourceArrowSystems,sys)
-		{
-			display.SetObjectMatrix(sys->first);
-			overallTint.Update(float4(sys->second,0.75f));
-			display.Render(resourceArrowInstruction,true);
-		}
-
-
-		display.RestoreRendererState();
-
-
-
-
-
-		display.StoreRendererState();
-
-		display.SetDepthTest(true,true);
-		display.SetBlendMode(Engine::BlendMode::FlareBlend);
-		display.SetRasterizer(true,true);
-
-		for (int extendedShadow = 0; extendedShadow < 2; extendedShadow++)
-		{
-			if (extendedShadow)
-				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-
-			float dr = extendedShadow ? RangeShadowExtension : 0.f;
-
-
-			for (auto ci : compoundScope)
-			{
-				const auto*c = compounds + ci;
-
-				foreach(c->allStructures, _s)
-				{
-					Structure&s = *_s->lock();
-					RenderRangeSphere(s.GetWorldPosition(),s.GetWirelessTransferRange()+dr,float4());
-				}
-
-			}
-			for (auto ci : compoundScope)
-			{
-				const auto*c = compounds + ci;
-				float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(c->color.rgb*1.5f,1.0f);
-				foreach(c->allStructures, _s)
-				{
-					Structure&s = *_s->lock();
-					RenderRangeSphere(s.GetWorldPosition(),s.GetWirelessTransferRange()+dr,color);
-				}
 
 			}
 
-
-		}
-
-		display.RestoreRendererState();
-
+			display.RestoreRendererState();
+		#endif
 	}
 
 	void	Renderer::RenderTranslucentBeams()

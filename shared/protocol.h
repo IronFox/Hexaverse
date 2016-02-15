@@ -37,8 +37,8 @@ namespace PortOffset
 
 
 
-#ifdef CONNECTOR_LESS
-	#define NAME_APPEND0	"c"
+#ifdef ONE_COMPOUND_PER_FACTION
+	#define NAME_APPEND0	"o"
 #else
 	#define NAME_APPEND0
 #endif
@@ -1491,7 +1491,7 @@ namespace Protocol
 	)
 
 
-	#ifndef CONNECTOR_LESS
+	#ifndef ONE_COMPOUND_PER_FACTION
 		NETSTRUCT5(MyMobileEntity
 			, NET(UINT16), constructionRoundCounter
 			, PositiveResourceVector, resourceVector

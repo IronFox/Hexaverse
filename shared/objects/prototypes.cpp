@@ -246,7 +246,7 @@ namespace Objects
 								<< &Orbital::hub << &Orbital::protonCannon << &Orbital::ragnarok << &Orbital::starPort << &Orbital::engineer
 								<< &armored << &artillery << &launcher << &emp
 								<< &terraformer << &resourceScanner
-								#if !defined CONNECTOR_LESS && !defined NO_MUNITION
+								#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 									<< &munitionTransporter
 								#endif
 								<< &mechanic;

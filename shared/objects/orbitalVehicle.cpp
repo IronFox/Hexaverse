@@ -186,7 +186,7 @@ namespace Objects
 
 
 
-		#ifdef CONNECTOR_LESS
+		#ifdef ONE_COMPOUND_PER_FACTION
 			#if defined HAS_WINDOW || !defined CLIENT
 				PSkyHub	Ship::GetClosestExternalSupplier(float&quadraticDistance)
 				{
@@ -445,7 +445,7 @@ namespace Objects
 
 		/*virtual override*/ bool					Ship::HasAmmoForShot()
 		{
-		#ifdef CONNECTOR_LESS
+		#ifdef ONE_COMPOUND_PER_FACTION
 			const Compound&compound = owner->compound;
 			return compound.total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
 		#else
@@ -461,7 +461,7 @@ namespace Objects
 					Grid::LCellIdI target;
 
 					const ResourceVector&storage = 
-						#ifndef CONNECTOR_LESS
+						#ifndef ONE_COMPOUND_PER_FACTION
 							this->currentStorage
 						#else
 							this->owner->compound.total.storage

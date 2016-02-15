@@ -156,7 +156,7 @@ namespace Objects
 			count_t	roundChangeNotifications=0;
 		#endif
 
-		#ifdef CONNECTOR_LESS
+		#ifdef ONE_COMPOUND_PER_FACTION
 			Compound	compound;
 		#endif
 
@@ -188,7 +188,7 @@ namespace Objects
 
 		void							UpdateID(const TUniqueID&toID, bool recomputeColor=true);
 
-		#ifdef CONNECTOR_LESS
+		#ifdef ONE_COMPOUND_PER_FACTION
 			//index_t		compoundIndex = InvalidIndex;
 		#endif
 
@@ -340,7 +340,7 @@ namespace Objects
 			void		RestoreMarkers(const ArrayData<Marker>&source);
 			Marker*		FindReferenceMarker(Marker::Type type, const TUniqueID&);
 
-			#ifdef CONNECTOR_LESS
+			#ifdef ONE_COMPOUND_PER_FACTION
 				/**
 				Refreshes the member WorkingStructures of the local compound
 				*/

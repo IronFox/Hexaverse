@@ -1739,7 +1739,7 @@ namespace Journal
 			throw Round::RoundException(CLOCATION,"Cannot enable '"+e->GetName()+"': Not a working structure");
 		}
 		Objects::PWorkingStructure w = To<Objects::WorkingStructure>::Cast(e);
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			if (w->compoundID == Objects::Compound::InvalidNetwork)
 			{
 				Objects::RefreshCompoundCoverage(0);
