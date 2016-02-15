@@ -1090,7 +1090,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 		//if (strip)
 			//Grid::visibleOrbitGrid.StripColor();
 
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 		if (Objects::selectedVehicle)
 		{
 			//if (Objects::selectedVehicle->tasks.IsNotEmpty() && Objects::selectedVehicle->tasks.Peek().job && Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft)

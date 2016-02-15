@@ -26,7 +26,7 @@ namespace Objects
 
 		int		GetStorage(const MobileEntity&v, Resource res)
 		{
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				return v.currentStorage.level[res];
 			#else
 				const Compound&compound = v.owner->compound;
@@ -72,7 +72,7 @@ namespace Objects
 		{
 			ResourceVector demand;
 
-			#ifdef CONNECTOR_LESS
+			#ifdef ONE_COMPOUND_PER_FACTION
 				if (change < 0 && compound.overproduction.level[res] > 0)
 				{
 					int production = compound.overproduction.level[res];
@@ -96,7 +96,7 @@ namespace Objects
 		{
 			if (change == 0)
 				return;
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				ChangeStorage(v,atTime,v.GetMaxStorageCapacity(),v.currentStorage,res,change);
 			#else
 				ChangeCompoundStorage(v.owner->compound, &v, atTime,res,change);
@@ -176,7 +176,7 @@ namespace Objects
 			LogEvent( EventClass(EventSignificance::Important,EventFlavor::Gain) ,e.get(),"Changed ownership ('"+oldOwner->GetName()+"' -> '"+newOwner->GetName()+"')");
 		}
 
-		#ifdef CONNECTOR_LESS
+		#ifdef ONE_COMPOUND_PER_FACTION
 			void Faction::UpdateCompoundCoverage()
 			{
 				compound.containedStructures.Clear();
@@ -750,7 +750,7 @@ namespace Objects
 		bool		Faction::CanLive(String&whyNot) const
 		{
 			bool hasMineralGeneratorCycle = hasFuelMine && hasMineralMine && hasGenerator;
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				if (!hasMineralContainer)
 					hasMineralGeneratorCycle = false;
 			#endif
@@ -768,7 +768,7 @@ namespace Objects
 					whyNot += "Mineral Mine";
 				}
 
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					if (!hasMineralContainer)
 					{
 						if (whyNot.IsNotEmpty())

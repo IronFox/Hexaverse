@@ -99,7 +99,7 @@ namespace Objects
 
 
 
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			UINT32					compoundID = 0xFFFFFFFF;	//!< ID of the compound this structure is part of. Do not change (is recomputed automatically). Cannot make private at this point
 		#endif
 
@@ -158,9 +158,9 @@ namespace Objects
 
 		/**
 		Retrieves a reference to the compound that this structure is part of.
-		Under normal circumstances all structures are part of some compound, but (when CONNECTOR_LESS is not defined)
+		Under normal circumstances all structures are part of some compound, but (when ONE_COMPOUND_PER_FACTION is not defined)
 		during transition phases this might not be the case.
-		When doubt (and with CONNECTOR_LESS not defined) first invoke RefreshCompoundCoverageIfNeeded()
+		When doubt (and with ONE_COMPOUND_PER_FACTION not defined) first invoke RefreshCompoundCoverageIfNeeded()
 		*/
 		Compound&					GetCompound() const;
 
@@ -287,7 +287,7 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 
-		//	#ifndef CONNECTOR_LESS
+		//	#ifndef ONE_COMPOUND_PER_FACTION
 
 			/**
 			Retrieves the geometry to use for a specific connection during standard recompilation
@@ -568,7 +568,7 @@ namespace Objects
 
 	/**
 	Minimal structure used to connect distant structures into a single compound.
-	Effective only if CONNECTOR_LESS is not defined.
+	Effective only if ONE_COMPOUND_PER_FACTION is not defined.
 	Otherwise instances are kept for backwards compatibility, but cannot be newly constructed, and are practically without function
 	*/
 	class Connector : public OtherStructure<Connector>
@@ -1282,7 +1282,7 @@ namespace Objects
 
 	public:
 		static const int			EnergyConsumption = 10;
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			static const int		MineralStorage = 10;
 		#else
 			static const int		MineralStorage = 0;
@@ -1612,7 +1612,7 @@ namespace Objects
 
 
 
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			ResourceVector			GetMaxStorageCapacity()	const	{return turret->baseStorageCapacity * 2;};
 		#else
 			ResourceVector			GetMaxStorageCapacity()	const	{return ResourceVector();};

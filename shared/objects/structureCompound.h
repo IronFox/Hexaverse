@@ -32,7 +32,7 @@ namespace Objects
 		Buffer0<WWorkingStructure>	containedStructures;
 		FullResourceVector			total;
 		#ifndef CLIENT
-			#ifdef CONNECTOR_LESS
+			#ifdef ONE_COMPOUND_PER_FACTION
 				ResourceVector		overproduction;	//set during initial phases, cleared before animation phase
 			#endif
 		#endif
@@ -49,7 +49,7 @@ namespace Objects
 			total = FullResourceVector();
 			containedStructures.Clear();
 			#ifndef CLIENT
-				#ifdef CONNECTOR_LESS
+				#ifdef ONE_COMPOUND_PER_FACTION
 					overproduction = ResourceVector();
 				#endif
 			#endif
@@ -61,7 +61,7 @@ namespace Objects
 			swp(total,other.total);
 			swp(stable,other.stable);
 			#ifndef CLIENT
-				#ifdef CONNECTOR_LESS
+				#ifdef ONE_COMPOUND_PER_FACTION
 					swp(overproduction,other.overproduction);
 				#endif
 			#endif
@@ -101,7 +101,7 @@ namespace Objects
 
 	};
 
-	#ifndef CONNECTOR_LESS
+	#ifndef ONE_COMPOUND_PER_FACTION
 		/**
 		Linear list of all compounds. This list is reconstructed whenever changes to the compound structure
 		are detected or at least assumed.

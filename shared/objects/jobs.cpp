@@ -50,7 +50,7 @@ namespace Objects
 			int withdrawNow = std::min(mineralCostLeft,v.GetOperationSpeed(GetOperationAffinity()));
 
 
-			#ifdef CONNECTOR_LESS
+			#ifdef ONE_COMPOUND_PER_FACTION
 				int storage = GetStorage(v,Resource::Minerals);
 				if (storage < withdrawNow)
 				{
@@ -64,7 +64,7 @@ namespace Objects
 			{
 				roundsToJobCompletion --;
 
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					if (!CanWithdrawFromStorage(v,Resource::Minerals,mineralCostLeft))
 					{
 						LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient minerals available (need "+String(withdrawNow)+"). Aborting operation.");
@@ -575,7 +575,7 @@ namespace Objects
 		//	return JobDone;
 		//}
 
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 
 			/*virtual override*/ bool	TransferJob::CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)
 			{

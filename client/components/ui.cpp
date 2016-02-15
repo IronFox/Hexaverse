@@ -2133,7 +2133,7 @@
 					}
 					textout.color(color);
 				}
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					const Objects::ResourceVector max = v->GetMaxStorageCapacity();
 					bool any = false;
 					for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
@@ -2253,7 +2253,7 @@
 				
 				textout.color(1,1,1);
 
-				#if defined _DEBUG && !defined CONNECTOR_LESS
+				#if defined _DEBUG && !defined ONE_COMPOUND_PER_FACTION
 					textout << " Compound ID: "<<s->compoundID << nl;
 				#endif
 				const Objects::Compound*net = nullptr;
