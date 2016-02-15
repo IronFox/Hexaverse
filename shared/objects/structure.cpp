@@ -219,7 +219,7 @@ namespace Objects
 				}
 
 
-				SignalAttack(shared_from_this(),target.target,flightTime);
+				SignalAttack(shared_from_this(),target.target,flightTime,target.autoTarget);
 
 				if (storage.level[turret->ammoType] >= turret->ammoNeedPerShot)
 					ChangeStorage(*this,attackTime, turret->ammoType,-turret->ammoNeedPerShot);
@@ -696,35 +696,23 @@ namespace Objects
 			#endif
 			if (ConnectionPossibleTo(c, between) && c->ConnectionPossibleTo(_this, between))
 			{
-				c->OnNewConnection(Connection(_this), between, atTime);
-				_this->OnNewConnection(Connection(c), between, atTime);
-				connectedTo << Connection(c);
-				c->connectedTo << Connection(_this);
-				#ifdef HAS_WINDOW
-					changed = c->changed = Structure::anyChanged = true;
-				#endif
-				c->OnNewConnection(_this, between, atTime);
-				if (!c->connectedTo.Contains(_this))
+				Connection	connectionToThis(_this);
+				if (!c->connectedTo.Contains(connectionToThis))
 				{
 					//this can happen when placing new structures and c is a nexus port that changes ownership as a result, and thus reconnects to all existing structures which this is not yet a part of
-					DBG_ASSERT__(!connectedTo.Contains(c));
-					connectedTo << c;
-					c->connectedTo << _this;
-					c->OnNewConnection(_this, between, atTime);
-					ASSERT__(c->connectedTo.Contains(_this));
+					Connection	connectionToThat(c);
+					connectedTo << connectionToThat;
+					c->connectedTo << connectionToThis;
+					c->OnNewConnection(connectionToThis, between, atTime);
+					_this->OnNewConnection(connectionToThat, between, atTime);
+					LogEvent(EventSignificance::Common,this, "Connection established to "+c->GetName()+" at time "+String(atTime));
+					#ifdef HAS_WINDOW
+						changed = c->changed = Structure::anyChanged = true;
+					#endif
 				}
-				_this->OnNewConnection(c, between, atTime);
-				LogEvent(EventSignificance::Common,nullptr, "Connection established between "+GetName()+" and "+c->GetName()+" at time "+String(atTime));
-				#ifdef HAS_WINDOW
-					if (c->changed)
-						c->Recompile();
-				#endif
 
 			}
 		}
-		#ifdef HAS_WINDOW
-			Recompile();
-		#endif
 	}
 
 
@@ -756,7 +744,7 @@ namespace Objects
 
 
 	
-	void Pylon::OnConstructionFinished(float atTime)
+	void Pylon::OnConstructionFinished(float&atTime)
 	{
 		Super::OnConstructionFinished(atTime);
 
@@ -770,13 +758,13 @@ namespace Objects
 			for (UINT32 layer = s->layerBegin; layer < s->layerEnd; layer++)
 			{
 				Objects::PStructure&other = GetStructure(Grid::LCellIdU(s->stackID,layer));
-				if (other && other->owner == owner && other.get() != this)
+				if (other && other->owner == owner && other.get() != this && other->IsPylon())
 				{
 					other->OnNewConnection(Connection(_this,true), 0, atTime);
 					_this->OnNewConnection(Connection(other,true), 0, atTime);
 					connectedTo << Connection(other,true);
 					other->connectedTo << Connection(_this,true);
-					LogEvent(EventType::MinorEntityProcess,nullptr, "Wireless Connection established between "+GetName()+" and "+other->GetName());
+					LogEvent(EventSignificance::Common,this, "Wireless Connection established to "+other->GetName());
 				}
 			}
 		}
@@ -807,7 +795,7 @@ namespace Objects
 	{
 		Super::PrototypeSetup();
 		#ifdef HAS_WINDOW
-			iconCommands << IconCommand(int2(5,0), "Restore Core Link",[](const PWorldEntity&s)
+			iconCommands << IconCommand(int2(5,1), "Restore Core Link",[](const PWorldEntity&s)
 			{
 				PMine mine = To<Mine>::DynamicCast(s);
 				if (mine)
@@ -1233,12 +1221,12 @@ namespace Objects
 		return CanPlace;
 	}
 
-	/*virtual override*/ void				Generator::OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime)
+	/*virtual override*/ void				Generator::OnNewConnection(const Connection&other, UINT32 acrossHighCell, float atTime)
 	{
 		Super::OnNewConnection(other,acrossHighCell,atTime);
-		if (connectedToReactor.expired() && other->location.height == location.height)
+		if (connectedToReactor.expired() && !other.wireless && other.structure->location.height == location.height)
 		{
-			PReactorCore reactor = To<ReactorCore>::DynamicCast(other);
+			PReactorCore reactor = To<ReactorCore>::DynamicCast(other.structure);
 			if (reactor)
 			{
 				connectedToReactor = reactor;
@@ -1249,15 +1237,17 @@ namespace Objects
 		}
 	}
 
-	/*virtual override*/ void				Generator::OnConnectionLost(const PStructure&s, UINT32 acrossHighCell, float atTime)
+	/*virtual override*/ void				Generator::OnConnectionLost(const Connection&s, UINT32 acrossHighCell, float atTime)
 	{
 		Super::OnConnectionLost(s,acrossHighCell,atTime);
 		PReactorCore core = connectedToReactor.lock();
-		if (core == s || !core)
+		if (core == s.structure || !core)
 		{
 			foreach (connectedTo,conn)
 			{
-				core = To<ReactorCore>::DynamicCast(*conn);
+				if (conn->wireless)
+					continue;
+				core = To<ReactorCore>::DynamicCast(conn->structure);
 				if (core && core->location.height == location.height)
 				{
 					connectedToReactor = core;
@@ -1923,7 +1913,7 @@ namespace Objects
 			if (conn.structure != other)
 				continue;
 
-			LogEvent(EventType::MinorEntityProcess,nullptr, String(conn.wireless ? "Wireless connection":"Direct connection")+" lost between "+GetName()+" and "+other->GetName());
+			LogEvent(EventSignificance::Common,this, String(conn.wireless ? "Wireless connection":"Direct connection")+" lost to "+other->GetName());
 			UINT32 between = 0;
 			#ifdef HYBRID_GRID
 				if (!conn.wireless)
@@ -2042,6 +2032,28 @@ namespace Objects
 
 
 	#ifndef CLIENT
+		/*virtual override*/ void			SkyPort::OnSleepChange(float&t)
+		{
+			Super::OnSleepChange(t);
+
+			if (IsSleeping() && IsEnabled())
+			{
+				LogEvent(EventSignificance::Common,this,"Fell asleep. Disabling");
+				SetEnabled(false,t);
+			}
+		}
+
+		/*virtual override*/ void			VehiclePlant::OnSleepChange(float&t)
+		{
+			Super::OnSleepChange(t);
+
+			if (IsSleeping() && IsEnabled())
+			{
+				LogEvent(EventSignificance::Common,this,"Fell asleep. Disabling");
+				SetEnabled(false,t);
+			}
+		}
+
 		/*virtual override*/ bool			VehiclePlant::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
 		{
 			if (waypoints.Count() != 1)
@@ -2154,7 +2166,7 @@ namespace Objects
 					static Geometry geo;
 					geo.Clear();
 
-					Component::Turret::CompileTrajectory(trajectory,true,geo,0.25f);
+					Component::Turret::CompileTrajectory(trajectory,Component::Turret::Schematic,geo,0.25f);
 
 					if (task.trajectoryVisualization.shader.IsEmpty())
 						(DX11::BaseInstructionBlock&)task.trajectoryVisualization = pathShader;
@@ -2319,7 +2331,7 @@ namespace Objects
 
 
 
-				iconCommands << IconCommand(int2(5,1), "Construct Selected",[](const PWorldEntity&e)
+			iconCommands << IconCommand(int2(6,0), "Construct Selected",[](const PWorldEntity&e)
 				{
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
 					if (plant)
@@ -2329,11 +2341,11 @@ namespace Objects
 						else
 						{
 							if (plant->selectedBase)
-								SignalUserMessage(plant->GetNiceName()+" needs to know what turret you want to use in order to enqueue a new production job. Please select one in the list.");
+								SignalUserMessage(plant->GetNiceName()+" needs to know what turret you want to use in order to enqueue a new production job. Please select one in the top row.");
 							elif (plant->selectedTurret)
-								SignalUserMessage(plant->GetNiceName()+" needs to know what foundation you want to use in order to enqueue a new production job. Please select one in the list.");
+								SignalUserMessage(plant->GetNiceName()+" needs to know what foundation you want to use in order to enqueue a new production job. Please select one in the bottom row.");
 							else
-								SignalUserMessage(plant->GetNiceName()+" needs to know what turret and foundation you want to use in order to enqueue a new production job. Please select one in each list.");
+								SignalUserMessage(plant->GetNiceName()+" needs to know what turret and foundation you want to use in order to enqueue a new production job. Please select one in each top and bottom rows.");
 						}
 					}
 				},
@@ -2361,12 +2373,14 @@ namespace Objects
 				}
 			);
 
+			iconCommands << IconCommand(int2(5,1), "Sleep",VehicleCmd::Sleep,VehicleCmd::SleepCheck,NoCosts);
+
 			int at = 0;
 			//vehicleConstructionCommands << VehicleConstructionCommand("Base:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
 			foreach (baseComponents,comp)
 			{
 				Component::VehicleBase* c = *comp;
-				vehicleConstructionCommands << VehicleConstructionCommand(int2(6+at,0), c->typeName,c,nullptr,[c](const PWorldEntity&e)
+				vehicleConstructionCommands << VehicleConstructionCommand(int2(7+at,0), c->typeName,c,nullptr,[c](const PWorldEntity&e)
 				{
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
 					if (plant)
@@ -2792,6 +2806,8 @@ namespace Objects
 	
 	bool						WorkingStructure::CouldEnable() const
 	{
+		if (health <= 0)
+			return false;
 		if (IsEnabled())
 			return true;
 
@@ -2810,7 +2826,18 @@ namespace Objects
 	}
 
 	#ifndef CLIENT
-		bool						WorkingStructure::SetEnabled(bool b, float&atTime, bool refreshNetwork/*=true*/, force_t force/*=DontForce*/, bool signalStructure/*=true*/)
+
+		/*virtual override*/ void			WorkingStructure::OnSleepChange(float&t)
+		{
+			if (!IsSleeping() && !isEnabled && CanEnable())
+			{
+				LogEvent(EventSignificance::Common,this,"Woke up disabled. Trying to enable");
+				SetEnabled(true,t);
+			}
+		}
+
+
+		bool						WorkingStructure::SetEnabled(bool b, float&atTime, bool refreshNetwork/*=true*/, force_t force/*=EnableIfPossible*/, bool signalStructure/*=true*/)
 		{
 			if (isEnabled == b)
 			{
@@ -2848,7 +2875,10 @@ namespace Objects
 			if (!b)
 				Compound::lastDisabled = this;
 			else
+			{
 				Compound::lastDisabled = nullptr;
+				SetSleep(false,atTime,false);
+			}
 			isEnabled = b;
 			RegisterChange(EnableChanged,atTime);
 			if (signalStructure)

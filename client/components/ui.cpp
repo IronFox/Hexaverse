@@ -473,16 +473,193 @@
 		bool			resourcesAsList = false;
 
 
+		namespace EventLog
+		{
+
+			void			Clear()
+			{
+				HexGrid::animationTimeLine.commands.Clear();
+				HexGrid::animationTimeLine.Refresh();
+			}
+
+			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, index_t smokeTrailIndex)
+			{
+				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly);
+				cmd->smokeTrailIndex = smokeTrailIndex;
+				if (!isFriendly)
+					cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
+				HexGrid::animationTimeLine.commands << Objects::PBaseCommand(cmd);
+				HexGrid::animationTimeLine.Refresh();
+			}
+
+			void			RegisterEntityDestruction(float time, bool isMine,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName)
+			{
+				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isMine);
+				if (isMine)	//flipped logic
+					cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
+				cmd->fallbackTargetName = entityName;
+				HexGrid::animationTimeLine.commands << Objects::PBaseCommand(cmd);
+				HexGrid::animationTimeLine.Refresh();
+			}
+
+
+		}
+
+
+
 
 		namespace HexGrid
 		{
 
-			index_t								hostileOffset = 0,
-												friendlyOffset = 0;
-			//static const count_t ContactListWidth = 10;
+			CollectionTemplateRow<Objects::PWorldEntity>			friendlyGroups(0),hostileGroups(1);
+			DynamicRow												animationTimeLine(2);
+
 			count_t					currentContactListWidth = 10;
 
 
+
+			Objects::PWorldEntity	AnimationEventFocusCommand::GetTarget()	const
+			{
+				if (focusTarget != TUniqueID::Empty())
+				{
+					Objects::PWorldEntity e = Objects::GetEntity(focusTarget);
+					if (e)
+						return e;
+					auto marker = Objects::Marker::FindByReference(focusTarget);
+					if (marker)
+						return marker->visualization;
+				}
+				return Objects::PWorldEntity();
+			}
+
+			/*virtual override*/ void				AnimationEventFocusCommand::Execute()
+			{
+				Camera::TranslateTo(focusLocation);
+				Objects::PWorldEntity e = GetTarget();
+				if (e)
+					Objects::Select(e,Network::ControlEnabled());
+				Objects::Renderer::HighlightSmokeTrail(smokeTrailIndex);
+				state = Objects::BaseCommand::Flags::IsEnabled;
+			}
+
+			/*virtual override*/ void				AnimationEventFocusCommand::CompileLabel(const Objects::PWorldEntity&,Label&outResult)
+			{
+				Objects::PWorldEntity e = GetTarget();
+				String hostile = isFriendly? "" : "hostile ";
+				String t = " at t="+String(atTime)+" sec";
+				if (e)
+					outResult << "Focus on "+hostile + name+" of "+e->GetNiceName()+t;
+				else
+					if (fallbackTargetName.IsNotEmpty())
+						outResult << "Focus on "+hostile + name+" of "+fallbackTargetName+t;
+					else
+						outResult << "Focus on "+hostile + name+t;
+			}
+
+
+
+			void	DynamicRow::Create()
+			{
+				leftCommand.reset(new ArrowCommand(true,this));
+				leftCommand->coords = DynamicRowOffset + int2(0,rowIndex);
+				rightCommand.reset(new ArrowCommand(false,this));
+				rightCommand->coords = DynamicRowOffset + int2(currentContactListWidth+1,rowIndex);
+			}
+
+			void	DynamicRow::Scroll(bool left)
+			{
+				if (left)
+				{
+					if (offset > currentContactListWidth)
+						offset -= currentContactListWidth;
+					else
+						offset = 0;
+				}
+				else
+				{
+					offset += currentContactListWidth;
+				}
+
+				Refresh();
+			}
+
+			void	DynamicRow::Refresh()
+			{
+				bool moreRight;
+				{
+					//Buffer0<Group>&groups = hostileGroups.groups;
+					index_t newOffset = this->offset;
+
+					const count_t scopeWidth = this->commands.Count();
+
+					if (newOffset > 0 && newOffset + currentContactListWidth > scopeWidth)
+					{
+						if (scopeWidth >= currentContactListWidth)
+							newOffset = scopeWidth - currentContactListWidth;
+						else
+							newOffset = 0;
+					}
+					visibleRange = IntRange(index_t(0),scopeWidth);
+					if (newOffset > 0)
+						visibleRange = IntRange(newOffset,scopeWidth);
+					moreRight = visibleRange.GetExtend() > currentContactListWidth;
+					if (moreRight)
+						visibleRange.end = visibleRange.start + currentContactListWidth;
+					this->offset = newOffset;
+				}
+				if (offset > 0)
+				{
+					GridCell&cell = AllocateCell(leftCommand.get());
+					//cell.type = GridCell::ContactListLeft;
+					cell.flipY = true;
+					cell.Update(camera);
+				}
+				else
+					FindAndDeleteCell(leftCommand.get());
+				if (moreRight)
+				{
+					GridCell&cell = AllocateCell(rightCommand.get());
+					//cell.type = GridCell::ContactListRight;
+					rightCommand->coords = DynamicRowOffset + int2(currentContactListWidth+1,rowIndex);
+					cell.flipY = true;
+					cell.Update(camera);
+				}
+				else
+					FindAndDeleteCell(rightCommand.get());
+
+//				rightCommand->coords.x = int(ContactListOffset.x + 1+currentContactListWidth);
+
+				RebuildCommands();
+			}
+
+			void	DynamicRow::RemoveCommandIcons()
+			{
+				foreach (lastVisible,v)
+					FindAndDeleteCell(v->get());
+				lastVisible.Clear();
+			}
+
+			void	DynamicRow::RemoveIcons()
+			{
+				RemoveCommandIcons();
+				FindAndDeleteCell(rightCommand.get());
+				FindAndDeleteCell(leftCommand.get());
+			}
+
+			void							DynamicRow::RebuildCommands()
+			{
+				RemoveCommandIcons();
+				for (index_t i = 0; i < visibleRange.GetExtend(); i++)
+				{
+					const Objects::PBaseCommand cmd = commands[i+visibleRange.start];
+					GridCell&cell = AllocateCell(cmd.get());
+					//cell.type = GridCell::ContactListEntry;
+					cell.command->coords = DynamicRowOffset + int2(i+1,rowIndex);
+					cell.flipY = true;
+					cell.Update(camera);
+					lastVisible << cmd;
+				}
+			}
 
 
 			bool		Group::InitSelection()
@@ -771,16 +948,12 @@
 
 			//Buffer0<VehicleFocusCommand>		vehicleCommands;
 			//Buffer0<StructureFocusCommand>		structureCommands;
-			Buffer0<GroupFocusCommand>			groupFocusCommands;
+			//Buffer0<GroupFocusCommand>			groupFocusCommands;
 			VehicleFocusCommand					selectedVehicleFocus;
 			StructureFocusCommand				selectedStructureFocus;
 			SatelliteFocusCommand				selectedSatelliteFocus;
 
-			std::shared_ptr<ArrowCommand>		leftCommand,rightCommand,
-												friendlyLeftCommand,friendlyRightCommand;
 			std::shared_ptr<TutorialCommand>	tutorialCommand;
-			Buffer0<Objects::PWorldEntity>			hostileScope;
-
 
 		}
 
@@ -855,25 +1028,47 @@
 				return true;
 			}
 
-			Buffer<GridCell>			guiCells;
+			Buffer<GridCell>			allGuiCells;
 
+			GridCell&		AllocateCell(Objects::BaseCommand*cmd)
+			{
+				foreach (allGuiCells,c)
+					if (c->command == cmd)
+						return *c;
+				GridCell&c = allGuiCells.Append();
+				c.command = cmd;
+				return c;
+			}
+
+			void			FindAndDeleteCell(Objects::BaseCommand*cmd)
+			{
+				foreach (allGuiCells,c)
+					if (c->command == cmd)
+					{
+						allGuiCells.erase(c);
+						return;
+					}
+
+			}
+
+/*
 
 			void	DeleteAllCellsOfType(GridCell::type_t t)
 			{
-				for (index_t i = 0; i < guiCells.Count(); i++)
-					if (guiCells[i].type == t)
+				for (index_t i = 0; i < allGuiCells.Count(); i++)
+					if (allGuiCells[i].type == t)
 					{
-						guiCells.Erase(i);
+						allGuiCells.Erase(i);
 						i--;
 					}
 			}
-
+*/
 
 
 			DX11::BaseInstructionBlock	instruction;
 			DX11::ObjectBuffer<float4>	center,color;
 			Engine::OrthographicAspect<> camera;
-			Buffer0<Group>	friendlyGroups,hostileGroups;
+			//Buffer0<Group>	friendlyGroups,hostileGroups;
 
 
 
@@ -905,15 +1100,9 @@
 				camera.UpdateProjection(-1,-1,-1+2.f * display.pixelAspect(),1,-1,1);
 				camera.depthTest = Engine::NoDepthTest;
 
-
-				leftCommand.reset(new ArrowCommand(true));
-				leftCommand->coords = ContactListOffset;
-				rightCommand.reset(new ArrowCommand(false));
-				rightCommand->coords = ContactListOffset + int2(currentContactListWidth+1,0);
-				friendlyLeftCommand.reset(new ArrowCommand(true, true));
-				friendlyLeftCommand->coords = FriendlyListOffset;
-				friendlyRightCommand.reset(new ArrowCommand(false, true));
-				friendlyRightCommand->coords = FriendlyListOffset + int2(currentContactListWidth+1,0);
+				friendlyGroups.Create();
+				hostileGroups.Create();
+				animationTimeLine.Create();
 				tutorialCommand.reset(new TutorialCommand());
 				tutorialCommand->coords = int2(1);
 
@@ -931,7 +1120,7 @@
 				//1.f / display.pixelAspect();
 
 				camera.UpdateProjection(-1,-1,-1+2.f * display.pixelAspect(),1,-1,1);
-				foreach (guiCells,cell)
+				foreach (allGuiCells,cell)
 					cell->Update(camera);
 				RefreshContacts();
 				if (hasFocusButton)
@@ -947,15 +1136,16 @@
 				center.Clear();
 				color.Clear();
 				instruction.Clear();
-				guiCells.Clear();
-				groupFocusCommands.Clear();
+				allGuiCells.Clear();
+				//groupFocusCommands.Clear();
 				//vehicleCommands.Clear();
 				//structureCommands.Clear();
-				leftCommand.reset();
-				rightCommand.reset();
+
 				tutorialCommand.reset();
-				friendlyGroups.Clear();
-				hostileGroups.Clear();
+
+				friendlyGroups.Destroy();
+				hostileGroups.Destroy();
+				animationTimeLine.Destroy();
 
 				selectedVehicleFocus = VehicleFocusCommand();
 				selectedStructureFocus = StructureFocusCommand();
@@ -964,7 +1154,7 @@
 
 			bool	HandleClick()
 			{
-				foreach (guiCells,c)
+				foreach (allGuiCells,c)
 				{
 					if (c->command->texture.IsNotEmpty())
 					{
@@ -972,9 +1162,11 @@
 						{
 							if (c->command->state & Objects::BaseCommand::Flags::IsEnabled)
 							{
+								String name = c->command->name;
 								c->command->Execute();
+								//c is not guaranteed to be valid past this point
 								Objects::UpdateChoices(Network::ControlEnabled());
-								Tutorial::ShowMessage(c->command->name);
+								Tutorial::ShowMessage(name);
 								Configure(Objects::selectedEntity);
 							}
 							return true;
@@ -1024,7 +1216,7 @@
 				hoveringOver = nullptr;
 				//Array<String>	hoveringText;
 
-				foreach (guiCells,c)
+				foreach (allGuiCells,c)
 				{
 					if (c->command->texture.IsNotEmpty())
 					{
@@ -1179,26 +1371,49 @@
 
 			}
 
-
+			Buffer0<Objects::BaseCommand*>	allocatedEntityCommands;
 			int2 at;
 			void	VisitCommand(Objects::BaseCommand&cmd)
 			{
-				GridCell&cell = guiCells.Append();
+				GridCell&cell = AllocateCell(&cmd);
 				cmd.Refresh(Network::ControlEnabled());
-				cell.type = GridCell::EntityCommand;
-				cell.command = &cmd;
 				cell.Update(camera);
+				allocatedEntityCommands<<&cmd;
 			}
 
-
-			void		ClearContacts()
+			void RefreshButtonState()
 			{
-				DeleteAllCellsOfType(GridCell::ContactListEntry);
-				DeleteAllCellsOfType(GridCell::ContactListLeft);
-				DeleteAllCellsOfType(GridCell::ContactListRight);
-				DeleteAllCellsOfType(GridCell::OwnedListEntry);
-				DeleteAllCellsOfType(GridCell::OwnedListLeft);
-				DeleteAllCellsOfType(GridCell::OwnedListRight);
+				foreach (allGuiCells,cell)
+				{
+					cell->command->Refresh(Network::ControlEnabled());
+				}
+
+			}
+
+			static int CollectionCommandCompare(const Objects::PBaseCommand&a,const Objects::PBaseCommand&b)
+			{
+				const GroupFocusCommand&g0 = *(GroupFocusCommand*)a.get();
+				const GroupFocusCommand&g1 = *(GroupFocusCommand*)b.get();
+				if (g0 < g1)
+					return -1;
+				return 1;
+			}
+
+			static void CollectionToCommands(CollectionTemplateRow<Objects::PWorldEntity>&context)
+			{
+				context.commands.Clear();
+				context.collection.VisitAllValues([&context](Buffer0<Objects::PWorldEntity>&entries)
+				{
+					PGroup group (new Group());
+					group->name = entries.first()->GetTypeName();
+					group->entries.adoptData(entries);
+					group->UpdateSignificance();
+
+					context.commands << Objects::PBaseCommand(new GroupFocusCommand(group));
+				});
+				context.collection.Clear();
+				ByComparator::QuickSort(context.commands,CollectionCommandCompare);
+				context.Refresh();
 			}
 
 			void					RefreshContacts()
@@ -1222,13 +1437,11 @@
 
 
 
-				if (rightCommand)
-					rightCommand->coords.x = int(ContactListOffset.x + 1+currentContactListWidth);
-				ClearContacts();
+				//ClearContacts();
 
 				{
-					static StringTable<Buffer0<Objects::PWorldEntity>,Swap>	hostileCollection, friendlyCollection;
-					hostileCollection.Clear(); friendlyCollection.Clear();
+					hostileGroups.collection.Clear();
+					friendlyGroups.collection.Clear();
 
 
 					Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
@@ -1245,154 +1458,23 @@
 
 						if (e->isMine)
 						{
-							friendlyCollection.Set(key).Append(e);
+							friendlyGroups.collection.Set(key).Append(e);
 						}
 						else
-							hostileCollection.Set(key).Append(e);
+							hostileGroups.collection.Set(key).Append(e);
 					});
-					friendlyGroups.Clear();
-					friendlyCollection.VisitAllValues([](Buffer0<Objects::PWorldEntity>&entries)
-					{
-						Group&group = friendlyGroups.Append();
-						group.name = entries.first()->GetTypeName();
-						group.entries.adoptData(entries);
-						group.UpdateSignificance();
-					});
-					hostileGroups.Clear();
-					hostileCollection.VisitAllValues([](Buffer0<Objects::PWorldEntity>&entries)
-					{
-						Group&group = hostileGroups.Append();
-						group.name = entries.first()->GetTypeName();
-						group.entries.adoptData(entries);
-						group.UpdateSignificance();
-					});
-					hostileCollection.Clear(); friendlyCollection.Clear();
-
-
-					ByOperator::QuickSort(friendlyGroups);
-					ByOperator::QuickSort(hostileGroups);
-
+					CollectionToCommands(friendlyGroups);
+					CollectionToCommands(hostileGroups);
 				}
 				
 
 
 				#ifdef HAS_WINDOW
-					if (hostileGroups.IsNotEmpty())
+					if (hostileGroups.commands.IsNotEmpty())
 						Tutorial::ShowMessage("Hostile Contacts");
 				#endif
 
-				bool friendlyMoreRight, hostileMoreRight;
-				{
-					Buffer0<Group>&groups = hostileGroups;
-					index_t newOffset = hostileOffset;
-
-					count_t scopeWidth = groups.Count();
-
-					if (newOffset > 0 && newOffset + currentContactListWidth > scopeWidth)
-					{
-						if (scopeWidth >= currentContactListWidth)
-							newOffset = scopeWidth - currentContactListWidth;
-						else
-							newOffset = 0;
-					}
-					if (newOffset > 0)
-						groups.Erase(0,newOffset);
-					hostileMoreRight = groups.Count() > currentContactListWidth;
-					groups.Truncate(currentContactListWidth);
-					hostileOffset = newOffset;
-				}
-				{
-					Buffer0<Group>&groups = friendlyGroups;
-					index_t newOffset = friendlyOffset;
-
-					count_t scopeWidth = groups.Count();
-
-					if (newOffset > 0 && newOffset + currentContactListWidth > scopeWidth)
-					{
-						if (scopeWidth >= currentContactListWidth)
-							newOffset = scopeWidth - currentContactListWidth;
-						else
-							newOffset = 0;
-					}
-					if (newOffset > 0)
-						groups.Erase(0,newOffset);
-					friendlyMoreRight = groups.Count() > currentContactListWidth;
-					groups.Truncate(currentContactListWidth);
-					friendlyOffset = newOffset;
-				}
-				
-				if (hostileOffset > 0)
-				{
-					GridCell&cell = guiCells.Append();
-					cell.type = GridCell::ContactListLeft;
-					cell.command = leftCommand.get();
-					cell.flipY = true;
-					cell.Update(camera);
-				}
-				if (friendlyOffset > 0)
-				{
-					GridCell&cell = guiCells.Append();
-					cell.type = GridCell::OwnedListLeft;
-					cell.command = friendlyLeftCommand.get();
-					cell.flipY = true;
-					cell.Update(camera);
-				}
-				if (hostileMoreRight)
-				{
-					GridCell&cell = guiCells.Append();
-					cell.type = GridCell::ContactListRight;
-					rightCommand->coords = ContactListOffset + int2(currentContactListWidth+1,0);
-					cell.command = rightCommand.get();
-					cell.flipY = true;
-					cell.Update(camera);
-				}
-				if (friendlyMoreRight)
-				{
-					GridCell&cell = guiCells.Append();
-					cell.type = GridCell::OwnedListRight;
-					friendlyRightCommand->coords = FriendlyListOffset + int2(currentContactListWidth+1,0);
-				//friendlyLeftCommand.reset(new ArrowCommand(FriendlyListOffset, true, true));
-				//friendlyRightCommand.reset(new ArrowCommand(FriendlyListOffset + int2(currentContactListWidth+1,0), false, true));
-
-					cell.command = friendlyRightCommand.get();
-					cell.flipY = true;
-					cell.Update(camera);
-				}
-
-				groupFocusCommands.SetSize(hostileGroups.Count() + friendlyGroups.Count(),false);
-				index_t counter = 0;
-				for (auto&g : hostileGroups)
-				{
-					PGroup group(new Group());
-					group->swap(g);
-					groupFocusCommands.Append(GroupFocusCommand(group));
-					
-
-					GridCell&cell = guiCells.Append();
-					cell.type = GridCell::ContactListEntry;
-					cell.command = groupFocusCommands + counter;
-					cell.command->coords = ContactListOffset + int2(counter+1,0);
-					cell.flipY = true;
-					cell.Update(camera);
-
-					counter++;
-				}
-				counter = 0;
-				for (auto&g : friendlyGroups)
-				{
-					PGroup group(new Group());
-					group->swap(g);
-					groupFocusCommands.Append(GroupFocusCommand(group));
-
-					GridCell&cell = guiCells.Append();
-					cell.type = GridCell::OwnedListEntry;
-					cell.command = groupFocusCommands + counter + hostileGroups.Count();
-					cell.command->coords = FriendlyListOffset + int2(counter+1,0);
-					cell.flipY = true;
-					cell.Update(camera);
-
-					counter++;
-				}
+				animationTimeLine.Refresh();
 
 				RefreshTutorials();
 				//display.SetDepthTest(false,false);
@@ -1403,10 +1485,8 @@
 			{
 				if (!tutorialCommand)
 					return;
-				DeleteAllCellsOfType(GridCell::Tutorial);
-				GridCell&cell = guiCells.Append();
-				cell.type = GridCell::Tutorial;
-				cell.command = tutorialCommand.get();
+
+				GridCell&cell = AllocateCell(tutorialCommand.get());
 				cell.flipX = true;
 				cell.Update(camera);
 				tutorialCommand->Refresh(Network::ControlEnabled());
@@ -1414,7 +1494,9 @@
 
 			void					Configure(const Objects::PWorldEntity&e)
 			{
-				DeleteAllCellsOfType(GridCell::EntityCommand);
+				foreach (allocatedEntityCommands,cmd)
+					FindAndDeleteCell(*cmd);
+				allocatedEntityCommands.Clear();
 
 				bool showControls = showControlsAndContacts && e
 						#ifndef DEBUG_ACCESS_RESTRICTIONS
@@ -1438,6 +1520,9 @@
 						e->VisitAllCommands(VisitCommand);
 					if (e->IsVehicle())
 					{
+						FindAndDeleteCell(&selectedStructureFocus);
+						FindAndDeleteCell(&selectedSatelliteFocus);
+
 						Objects::PVehicle v = To<Objects::Vehicle>::Cast(e);
 						selectedStructureFocus = StructureFocusCommand();
 						selectedSatelliteFocus = SatelliteFocusCommand();
@@ -1447,17 +1532,18 @@
 						selectedVehicleFocus.Refresh(true);//Network::ControlEnabled());
 						selectedVehicleFocus.UpdateTexture(v,false,v->isMine ? friendlyBackgroundColor : hostileBackgroundColor);
 
-						GridCell&cell = guiCells.Append();
-						cell.type = GridCell::EntityCommand;
-						cell.command = &selectedVehicleFocus;
+						GridCell&cell = AllocateCell(&selectedVehicleFocus);
 						cell.flipY = true;
 						cell.flipX = true;
 						cell.Update(camera);
 					}
 					else
 					{
+						FindAndDeleteCell(&selectedVehicleFocus);
 						if (e->IsStructure())
 						{
+							FindAndDeleteCell(&selectedSatelliteFocus);
+
 							selectedVehicleFocus = VehicleFocusCommand();
 							selectedSatelliteFocus = SatelliteFocusCommand();
 							Objects::PStructure s = To<Objects::Structure>::Cast(e);
@@ -1466,9 +1552,7 @@
 							selectedStructureFocus.Refresh(true);//Network::ControlEnabled());
 							selectedStructureFocus.UpdateTexture(s,false,s->isMine ? friendlyBackgroundColor : hostileBackgroundColor);
 
-							GridCell&cell = guiCells.Append();
-							cell.type = GridCell::EntityCommand;
-							cell.command = &selectedStructureFocus;
+							GridCell&cell = AllocateCell(&selectedStructureFocus);
 							cell.flipY = true;
 							cell.flipX = true;
 							cell.Update(camera);
@@ -1476,6 +1560,8 @@
 						else
 							if (e->IsSatellite())
 							{
+								FindAndDeleteCell(&selectedStructureFocus);
+
 								Objects::PSatellite s = To<Objects::Satellite>::Cast(e);
 								selectedVehicleFocus = VehicleFocusCommand();
 								selectedStructureFocus = StructureFocusCommand();
@@ -1485,9 +1571,7 @@
 								selectedSatelliteFocus.Refresh(true);//Network::ControlEnabled());
 								selectedSatelliteFocus.UpdateTexture(s,false,s->isMine ? friendlyBackgroundColor : hostileBackgroundColor);
 
-								GridCell&cell = guiCells.Append();
-								cell.type = GridCell::EntityCommand;
-								cell.command = &selectedSatelliteFocus;
+								GridCell&cell = AllocateCell(&selectedSatelliteFocus);
 								cell.flipY = true;
 								cell.flipX = true;
 								cell.Update(camera);
@@ -1503,6 +1587,10 @@
 				else
 				{
 					hasFocusButton = false;
+					FindAndDeleteCell(&selectedStructureFocus);
+					FindAndDeleteCell(&selectedVehicleFocus);
+					FindAndDeleteCell(&selectedSatelliteFocus);
+
 					selectedVehicleFocus = VehicleFocusCommand();
 					selectedStructureFocus = StructureFocusCommand();
 				}
@@ -1512,7 +1600,11 @@
 				if (showControlsAndContacts)
 					RefreshContacts();
 				else
-					ClearContacts();
+				{
+					friendlyGroups.RemoveIcons();
+					hostileGroups.RemoveIcons();
+					animationTimeLine.RemoveIcons();
+				}
 
 			}
 		}
@@ -1832,6 +1924,12 @@
 
 
 
+		
+		void	RefreshButtonState()
+		{
+			HexGrid::RefreshButtonState();
+		}
+
 
 
 
@@ -2089,7 +2187,7 @@
 					textout << " Connected to: "<<nl;
 					const Objects::Structure&s = (const Objects::Structure&)e;
 					foreach (s.connectedTo,c)
-						textout << "  "<<(*c)->GetName()<<nl;
+						textout << "  "<<c->structure->GetName()<<", wireless="<<c->wireless <<nl;
 				}
 				#endif
 				const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&e);
@@ -2384,7 +2482,6 @@
 			textout.popState();
 	
 		}
-
 
 
 	}

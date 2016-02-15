@@ -390,11 +390,16 @@ namespace Objects
 		//outResult << "Rounds: "+String(roundsToJobCompletion);
 	}
 
-
 	void			BaseCommand::LoadIcon()
+	{
+		LoadIcon(name);
+	}
+
+	void			BaseCommand::LoadIcon(const String&name)
 	{
 		String name2 = name;
 		name2.replace(' ','-');
+
 		PathString filename = PathString("resources/icons/"+name2+".png");
 		if (textureMap.query(filename,texture))
 			return;
@@ -604,6 +609,19 @@ namespace Objects
 		return f;
 	}
 
+	BaseCommand::Flags	VehicleCmd::SleepCheck(const PWorldEntity&e,bool controlEnabled)
+	{
+		BaseCommand::Flags f = CommonCmd::CommonButtonCheck(e,controlEnabled);
+		if (e && e->IsSleeping())
+			f |= BaseCommand::Flags::IsPermaActive;
+		return f;
+	}
+
+
+	void					VehicleCmd::Sleep(const PWorldEntity&e)
+	{
+		SignalSleep(e, !e->IsSleeping());
+	}
 
 	void					VehicleCmd::UndoOperation(const PWorldEntity&e)
 	{

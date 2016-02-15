@@ -46,7 +46,8 @@ namespace Objects
 								paraboloidShader,
 								arrowInstruction,
 								skyPortBeam,
-								compoundShader;
+								compoundShader,
+								smokeTrailShader;
 	DX11::StreamVBO				arrowBuffer;
 	DX11::VBO					sphereVBO[4],cylinderVBO[4];
 	DX11::IBO32					sphereIBO[4],cylinderIBO[4], attackIBO;
@@ -57,6 +58,8 @@ namespace Objects
 								userInteractionNotifier,
 								gatheringPoint;
 	DX11::InstructionBlock16	resourceArrowInstruction;
+
+	DX11::Texture				smokeTexture;
 
 	static const float4			noTint;	//base constructor: (0,0,0,0)
 
@@ -72,7 +75,36 @@ namespace Objects
 		Engine::OrthographicAspect<>	shadowCamera;
 		DX11::ObjectBuffer<TMatrix4<> >	shadowMatrix;
 	#endif
-	DX11::BaseInstructionBlock		shadowInstruction;
+	DX11::BaseInstructionBlock			shadowInstruction;
+
+	Buffer0<DX11::InstructionBlock32>	smokeTrails;
+	index_t								selectedSmokeTrail = InvalidIndex;
+
+	index_t	Renderer::RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory)
+	{
+		index_t result = smokeTrails.Count();
+		DX11::InstructionBlock32&trail = smokeTrails.Append();
+		static Geometry geo;
+		geo.Clear();
+		Component::Turret::CompileTrajectory(trajectory,Component::Turret::SmokeTrail,geo,1.f);
+		((DX11::BaseInstructionBlock&)trail) = smokeTrailShader;
+		trail.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
+		trail.ibo.Create(geo.GetLOD(0).indices);
+		selectedSmokeTrail = InvalidIndex;
+		return result;
+	}
+
+	void	Renderer::HighlightSmokeTrail(index_t smokeTrailIndex)
+	{
+		selectedSmokeTrail = smokeTrailIndex;
+	}
+
+
+	void	Renderer::ClearSmokeTrails()
+	{
+		smokeTrails.Clear();
+		selectedSmokeTrail = InvalidIndex;
+	}
 
 
 	void Renderer::RenderRangeSphere(const TVec3<>&center, float radius, const float4&color)
@@ -120,13 +152,16 @@ namespace Objects
 
 	void	Renderer::RenderRange(const Grid::LCellIdI&location, float zOffset, const PTurretBase&base, const float4&color, bool extended)
 	{
+		float explosionRadius = 0;//base->turret->explosionRadius;
+		if (extended)
+			explosionRadius += RangeShadowExtension;
 		switch (base->turret->trajectoryType)
 		{
 			case TrajectoryType::Artillery:
 			{
 				base->paraboloidBuffer.Render(location, 
 					zOffset,base->GetFlatAttackRange(),
-					base->turret->explosionRadius,color,
+					explosionRadius,color,
 					extended
 					);
 			}
@@ -134,9 +169,6 @@ namespace Objects
 			case TrajectoryType::Missile:
 			{
 				const TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
-				float explosionRadius = base->turret->explosionRadius;
-				if (extended)
-					explosionRadius += RangeShadowExtension;
 				RenderRangeSphere(d * (Grid::ToRadius(location.height)+zOffset),base->GetFlatAttackRange() + explosionRadius,color);
 			}
 			break;
@@ -146,9 +178,6 @@ namespace Objects
 				if (h != badHeight)
 				{
 					const TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
-					float explosionRadius = base->turret->explosionRadius;
-					if (extended)
-						explosionRadius += RangeShadowExtension;
 					RenderRangeSphere(d * (Grid::ToRadius(h)+zOffset),base->GetFlatAttackRange() + explosionRadius,color);
 				}
 
@@ -178,9 +207,12 @@ namespace Objects
 		resourceArrowTex.Clear();
 		resourceArrowInstruction.Clear();
 
+		smokeTexture.Clear();
+
 		seeThroughShader = stdVehicleShader = DX11::BaseInstructionBlock();
 		Structure::standardCompiledShader = Structure::standardLocalizableShader =
 			pathShader = jobShader = cylinderShader = paraboloidShader = 
+			smokeTrailShader =
 			arrowInstruction = 
 			skyPortBeam = 
 			compoundShader = 
@@ -350,6 +382,26 @@ namespace Objects
 		Structure::standardLocalizableShader.shader.LoadFromFile("shaders/structureShape.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 		Structure::standardLocalizableShader.UpdateLayout();
 		Structure::standardLocalizableShader.SetTriangles();
+
+		{
+			Image smoke;
+			Magic::LoadFromFile(smoke,"resources/textures/smoke.png");
+			smokeTexture.Load(smoke);
+
+
+			DX11::Shader::Binding bindings[] =
+			{
+				DX11::Shader::Binding(overallTint, "Tint"),
+				DX11::Shader::Binding(Grid::Instruction::sunDirection,"Sun"),
+				DX11::Shader::Binding(Grid::Instruction::sunColor,"SunColor"),
+				DX11::Shader::Binding(smokeTexture,"SmokeTexture"),
+				DX11::Shader::SamplerBinding(false,Engine::TextureFilter::Trilinear,1,"SmokeSampler")
+			};
+			smokeTrailShader.binding = stdVehicleShader.binding;
+			smokeTrailShader.shader.LoadFromFile("shaders/smokeTrail.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			smokeTrailShader.UpdateLayout();
+			smokeTrailShader.SetTriangles();
+		}
 
 		{
 			DX11::Shader::Binding bindings[] =
@@ -647,15 +699,12 @@ namespace Objects
 	{
 		display.SetObjectMatrix(s.system);
 		{
-			if (!s.IsActive())
-			{
-				keyColor.Update(float4(s.owner->inactiveEntityColor, light));
-			}
-			else
+			TVec3<> color;
+			Vec::interpolate(s.owner->inactiveEntityColor,s.owner->activeEntityColor,s.GetActivityLevel(),color);
 			{
 				if (s.unstable)
 				{
-					keyColor.Update(float4(flip ? float3() : s.owner->activeEntityColor,light));
+					keyColor.Update(float4(flip ? float3() : color,light));
 						
 					if (!flip)
 					{
@@ -668,7 +717,7 @@ namespace Objects
 					}
 				}
 				else
-					keyColor.Update(float4(s.owner->activeEntityColor,light));
+					keyColor.Update(float4(color,light));
 			}
 		}
 		_RenderSimpleLocated(s,s.system);
@@ -680,15 +729,13 @@ namespace Objects
 		_Locate(s);
 		bool workingStructure = s.IsWorkingStructure();
 		{
-			if (!s.IsActive())
-			{
-				keyColor.Update(float4(s.owner->inactiveEntityColor, light));
-			}
-			else
+			TVec3<> color;
+			Vec::interpolate(s.owner->inactiveEntityColor,s.owner->activeEntityColor,s.GetActivityLevel(),color);
+
 			{
 				if (s.unstable)
 				{
-					keyColor.Update(float4(flip ? float3() : s.owner->activeEntityColor,light));
+					keyColor.Update(float4(flip ? float3() : color,light));
 						
 					if (!flip && workingStructure)
 					{
@@ -701,7 +748,7 @@ namespace Objects
 					}
 				}
 				else
-					keyColor.Update(float4(s.owner->activeEntityColor,light));
+					keyColor.Update(float4(color,light));
 			}
 		}
 		if (s.HasFoundation())
@@ -755,18 +802,14 @@ namespace Objects
 
 	void Renderer::Render(const Vehicle&v, float light)
 	{
-		const float3&inactiveColor = v.owner->inactiveEntityColor;
-		const float3&activeColor = v.owner->activeEntityColor;
-
 		{
-			if (!v.IsActive())
-				keyColor.Update(float4(inactiveColor, light));
-			else
+			TVec3<> color;
+			Vec::interpolate(v.owner->inactiveEntityColor,v.owner->activeEntityColor,v.GetActivityLevel(),color);
 			{
 				if (v.unstable)
-					keyColor.Update(float4(flip ? float3() : activeColor,light));
+					keyColor.Update(float4(flip ? float3() : color,light));
 				else
-					keyColor.Update(float4(activeColor,light));
+					keyColor.Update(float4(color,light));
 			}
 		}
 		RenderSimple(v);
@@ -810,25 +853,29 @@ namespace Objects
 			}
 		#endif
 
-		if (e.IsWorkingStructure())
+		if (e.IsSleeping())
+			Vec::interpolate(effectiveTint,float4(0,0,0,1),0.7f,effectiveTint);
+		else
 		{
-			const WorkingStructure&ws = (const WorkingStructure&)(e);
-			if (ws.IsEnabled() && !ws.IsHibernating())
+			if (e.IsWorkingStructure())
 			{
-				float baseOpacity = (0.5f + 0.5f * (float)sin(Engine::timing.now*2.0));
+				const WorkingStructure&ws = (const WorkingStructure&)(e);
+				if (ws.IsEnabled() && !ws.IsHibernating())
+				{
+					float baseOpacity = (0.5f + 0.5f * (float)sin(Engine::timing.now*2.0));
 
-				Vec::interpolate(effectiveTint,float4(1),baseOpacity*0.6f,effectiveTint);
+					Vec::interpolate(effectiveTint,float4(1),baseOpacity*0.6f,effectiveTint);
+				}
+				else
+					Vec::interpolate(effectiveTint,float4(0,0,0,1),0.7f,effectiveTint);
 			}
 			else
-				Vec::interpolate(effectiveTint,float4(0,0,0,1),0.6f,effectiveTint);
+				if (e.IsVehicle())
+				{
+					if (((const Vehicle&)e).IsHibernating())
+						Vec::interpolate(effectiveTint,float4(0,0,0,1),0.6f,effectiveTint);
+				}
 		}
-		else
-			if (e.IsVehicle())
-			{
-				if (((const Vehicle&)e).IsHibernating())
-					Vec::interpolate(effectiveTint,float4(0,0,0,1),0.6f,effectiveTint);
-			}
-
 		overallTint.Update(effectiveTint);
 	}
 
@@ -1610,8 +1657,26 @@ namespace Objects
 			}
 		}
 
+		if (smokeTrails.IsNotEmpty())
+		{
+			display.SetDepthTest(true,false);
+			display.SetRasterizer(true,false);
+			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
+		
+			overallTint.Update(float4());
+			foreach (smokeTrails,t)
+			{
+				display.Render(*t,true);
+			}
 
+			if (selectedSmokeTrail < smokeTrails.Count())
+			{
+				overallTint.Update(float4(1,0,0,GetPulse(now,0.5f,1.f)));
+				display.Render(smokeTrails[selectedSmokeTrail],true);
+			}
+
+		}
 		display.SetRasterizer(true,true);
 		display.SetDepthTest(true,true);
 

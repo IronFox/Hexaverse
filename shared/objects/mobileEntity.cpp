@@ -457,15 +457,6 @@ namespace Objects
 										RegisterChange(ActionChanged,timeAt);
 										task.path.EraseLast();
 										cost = task.path.IsNotEmpty() ? task.path.last().movementCostsFromPrevNode : 1;
-
-										if (completeOnMove)
-										{
-											if (!CompleteOnMove(previousLocation))
-											{
-												UnlockTasks();
-												return true;
-											}
-										}
 									}
 									break;
 									case MobilePlacementResult::EnteredStructure:
@@ -507,6 +498,16 @@ namespace Objects
 									default:
 										FATAL__("Unexpected placement result "+String(rs));
 								}
+
+								if (completeOnMove && location != previousLocation)
+								{
+									if (!CompleteOnMove(previousLocation))
+									{
+										UnlockTasks();
+										return true;
+									}
+								}
+
 								if (stop)
 									break;
 							}
@@ -651,7 +652,7 @@ namespace Objects
 								}
 								if (badTask)
 								{
-									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected.");
+									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetName()+" at "+(*c)->location.ToString()+" detected.");
 									if (v2.get() == this)
 									{
 										ClearAllTasks(true,CLOCATION);
@@ -896,49 +897,56 @@ namespace Objects
 				}
 				if (!hasConstructedThisRound && HasTasks() && myTasks.Peek().job)
 				{
-					hasConstructedThisRound = true;
-					constructionRoundCounter ++;
 					ASSERT__(jobStarted);	//supposedly it can happen that this is false
 					PVehicleJob job = myTasks.Peek().job;
-					switch (job->Continue(*this,myTasks.Peek().GetFocus(location),!hasMoved))
+					if (IsSleeping())
 					{
-						case VehicleJob::BaseJob::ContinueJob:
-						break;
-						case VehicleJob::BaseJob::JobDelayed:
-							constructionRoundCounter --;
-						break;
-						case VehicleJob::BaseJob::JobDone:
-							LogEvent(EventSignificance::Common,this,"Job ended: '"+job->GetName()+"'");
-
-							EraseFirstTask();
-							RegisterChange(TasksChanged,timeAt);
-							while (HasTasks() && myTasks.Peek().job && myTasks.Peek().job->IsImplicitlyDone(*this,myTasks.Peek().GetFocus(location)))
-							{
-								LogEvent(EventSignificance::Common,this,"Job has implicitly ended: '"+myTasks.Peek().job->GetName()+"'");
+						LogEvent(EventSignificance::Common,this,"Job delayed: '"+job->GetName()+"'. Entity is sleeping");
+					}
+					else
+					{
+						hasConstructedThisRound = true;
+						constructionRoundCounter ++;
+						switch (job->Continue(*this,myTasks.Peek().GetFocus(location),!hasMoved))
+						{
+							case VehicleJob::BaseJob::ContinueJob:
+							break;
+							case VehicleJob::BaseJob::JobDelayed:
+								constructionRoundCounter --;
+							break;
+							case VehicleJob::BaseJob::JobDone:
+								LogEvent(EventSignificance::Common,this,"Job ended: '"+job->GetName()+"'");
 
 								EraseFirstTask();
-							}
-							if (HasTasks() && myTasks.Peek().job)
-							{
-								LogEvent(EventSignificance::Common,this,"Next front job: '"+myTasks.Peek().job->GetName()+"'");
-							}
-							jobStarted = false;
+								RegisterChange(TasksChanged,timeAt);
+								while (HasTasks() && myTasks.Peek().job && myTasks.Peek().job->IsImplicitlyDone(*this,myTasks.Peek().GetFocus(location)))
+								{
+									LogEvent(EventSignificance::Common,this,"Job has implicitly ended: '"+myTasks.Peek().job->GetName()+"'");
 
-						return false;
-						case VehicleJob::BaseJob::TerminalFailureVehicleDestroyed:
-							LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped. Vehicle destroyed.");
-							jobStarted = false;
-							ClearAllTasks(true, CLOCATION);
-							unstable = false;
+									EraseFirstTask();
+								}
+								if (HasTasks() && myTasks.Peek().job)
+								{
+									LogEvent(EventSignificance::Common,this,"Next front job: '"+myTasks.Peek().job->GetName()+"'");
+								}
+								jobStarted = false;
 
-							Remove(shared_from_this(),RemovalType::UncontrolledExplosion,timeAt,false,false);
-						return false;
-						case VehicleJob::BaseJob::TerminalFailure:
-							LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped.");
-							jobStarted = false;
-							ClearAllTasks(true, CLOCATION);
-							unstable = false;
-						return false;
+							return false;
+							case VehicleJob::BaseJob::TerminalFailureVehicleDestroyed:
+								LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped. Vehicle destroyed.");
+								jobStarted = false;
+								ClearAllTasks(true, CLOCATION);
+								unstable = false;
+
+								Remove(shared_from_this(),RemovalType::UncontrolledExplosion,timeAt,false,false);
+							return false;
+							case VehicleJob::BaseJob::TerminalFailure:
+								LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped.");
+								jobStarted = false;
+								ClearAllTasks(true, CLOCATION);
+								unstable = false;
+							return false;
+						}
 					}
 				}
 				return true;
@@ -979,19 +987,6 @@ namespace Objects
 			task.name = job->GetName();
 			if (destination)
 				task.foci.Push().target = *destination;
-			#ifdef CLIENT
-				if (localizableShapeIdentifier.IsNotEmpty())
-				{
-					foreach (structurePrototypes,p)
-						if ((*p)->GetTypeName() == localizableShapeIdentifier)
-						{
-							((DX11::BaseInstructionBlock&) task.localizableShape) = jobShader;
-
-							task.localizableShape.vbo = (*p)->localizableShape->vbo;
-							task.localizableShape.ibo = (*p)->localizableShape->ibo;
-						}
-				}
-			#endif
 			task.job = job; 
 			if (!task.Replot(origin,this,FocusChangeType::FullChange,true))
 			{
@@ -999,12 +994,7 @@ namespace Objects
 				myTasks.EraseBack();
 				return;
 			}
-			#ifdef CLIENT
-				if (selectedEntity.get() == this)
-					UpdateChoices();
-			#else
-				LogEvent(EventSignificance::Common,this,"Enqueued new job '"+job->GetName()+"'");
-			#endif
+			LogEvent(EventSignificance::Common,this,"Enqueued new job '"+job->GetName()+"'");
 		}
 	
 		void					MobileEntity::RegisterNewFrontJob(const String&localizableShapeIdentifier, const PVehicleJob&job, const PVehicleJob&parent, const Grid::LCellIdI*destination)
@@ -1017,32 +1007,13 @@ namespace Objects
 			task.name = job->GetName();
 			if (destination)
 				task.foci.Push().target = *destination;
-			#ifdef CLIENT
-				if (localizableShapeIdentifier.IsNotEmpty())
-				{
-					foreach (structurePrototypes,p)
-						if ((*p)->GetTypeName() == localizableShapeIdentifier)
-						{
-							((DX11::BaseInstructionBlock&) task.localizableShape) = jobShader;
-
-							task.localizableShape.vbo = (*p)->localizableShape->vbo;
-							task.localizableShape.ibo = (*p)->localizableShape->ibo;
-						}
-				}
-			#else
-				ASSERT__(parent);
-				job->parent = parent;
-			#endif
+			ASSERT__(parent);
+			job->parent = parent;
 
 			task.job = job; 
 			task.Replot(location,this,FocusChangeType::FullChange,true);
 
-			#ifdef CLIENT
-				if (selectedEntity.get() == this)
-					UpdateChoices();
-			#else
-				LogEvent(EventSignificance::Common,this,"Enqueued new front-job '"+job->GetName()+"'");
-			#endif
+			LogEvent(EventSignificance::Common,this,"Enqueued new front-job '"+job->GetName()+"'");
 		}
 
 
@@ -1341,7 +1312,7 @@ namespace Objects
 					flightTime =  timeEpsilon;// Times::Attack * 10;;
 
 
-				SignalAttack(To<Vehicle>::Cast(shared_from_this()),target,flightTime);
+				SignalAttack(To<Vehicle>::Cast(shared_from_this()),target,flightTime,false);
 
 				resourceEnvironment.CheckRefresh(*this);
 				resourceEnvironment.ForceChangeStorage(*this, turret->ammoType,-turret->ammoNeedPerShot);
@@ -1679,7 +1650,7 @@ namespace Objects
 									Grid::HCellIdI dummy1;
 									if (parent->TraceTrajectoryFrom(Grid::actualWorld, pointOfOrigin,f->target,trajectory,dummy0,dummy1))
 									{
-										Component::Turret::CompileTrajectory(trajectory,true,geo,0.25f);
+										Component::Turret::CompileTrajectory(trajectory,Component::Turret::Schematic,geo,0.25f);
 
 										Shape&shape = localizableShapes.Append();
 										((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;

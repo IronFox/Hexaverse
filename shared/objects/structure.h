@@ -134,6 +134,8 @@ namespace Objects
 
 			explicit				Connection(const PStructure&p, bool wireless=false):structure(p),wireless(wireless)	{}
 			/**/					Connection()	{}
+
+			bool					operator==(const Connection&other) const {return structure == other.structure && wireless == other.wireless;}
 		};
 
 		/**
@@ -250,6 +252,8 @@ namespace Objects
 		Obviously, a dynamic cast would do the same, but at much higher computation cost.
 		*/
 		virtual bool				IsSkyPort() const {return false;}
+
+		virtual bool				IsPylon() const {return false;}
 
 		virtual bool				IsSkyLinkStructure() const {return false;}
 
@@ -648,9 +652,12 @@ namespace Objects
 		#endif
 
 
+		//Structure overrides:
+		virtual bool				IsPylon() const override {return true;}
+
 		//WorldEntity overrides:
 		virtual bool				IsBroad() const override {return true;}
-		virtual void				OnConstructionFinished(float atTime) override;
+		virtual void				OnConstructionFinished(float&atTime) override;
 		virtual int					GetHeight() const override {return 2;}
 
 		#ifdef HAS_WINDOW
@@ -694,9 +701,6 @@ namespace Objects
 		#endif
 
 	public:
-		#ifdef HAS_WINDOW
-			bool					visited=false;
-		#endif
 
 		/**
 		Checks whether or not the conditions are given to enable the local structure
@@ -771,6 +775,8 @@ namespace Objects
 			@param v Current resource balance vector. Supply should be added, demand subraced. No checks to the current values should be performed
 			*/
 			virtual void			Tick(ResourceVector&v);
+
+			virtual void			OnSleepChange(float&t) override;
 		#else
 			#ifdef HAS_WINDOW
 				virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
@@ -799,7 +805,7 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual const Hibernating*	ToHibernating() const override {return this;}
 		#endif
-		virtual bool				IsActive() const override {return isEnabled && !IsHibernating();}
+		virtual float				GetActivityLevel() const override {float rs = isEnabled; if (IsSleeping()) rs = (rs + 0.5f) * 0.5f; return rs;}
 		virtual bool				IsWorkingStructure() const override {return true;}
 		virtual void				OnDestroy(float&atTime) override;
 	};
@@ -921,6 +927,7 @@ namespace Objects
 		virtual bool				AwaitsUserInteraction() const override;
 
 		#ifndef CLIENT
+			virtual void			OnSleepChange(float&t) override;
 			virtual void			OnEnabledChange() override;
 
 			//virtual void			OnConstructionFinished(float atTime) override;	//has to register with owner	//some day
@@ -1092,8 +1099,8 @@ namespace Objects
 
 		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Fuel] = -FuelCostPerRound; v.level[Resource::Energy] = GetEnergyProduction(); }
 
-		virtual void				OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime) override;
-		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
+		virtual void				OnNewConnection(const Connection&, UINT32 acrossHighCell, float atTime) override;
+		virtual void				OnConnectionLost(const Connection&, UINT32 acrossHighCell, float atTime) override;
 
 
 		#ifdef HAS_WINDOW
@@ -1210,6 +1217,7 @@ namespace Objects
 
 		//MobileEntityProducer overrides
 		#ifndef CLIENT
+			virtual void			OnSleepChange(float&t) override;
 			virtual void			SignalLastProductionDone(float&t) override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); SetEnabled(false,t);}
 			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
@@ -1862,7 +1870,7 @@ namespace Objects
 				,NoCosts
 				);
 				if (!IsIndestructible())
-					iconCommands << IconCommand(int2(4,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck
+					iconCommands << IconCommand(int2(5,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck
 							,NoCosts
 							);
 			#endif

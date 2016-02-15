@@ -140,7 +140,8 @@ namespace Network
 		void	SetFactionID(NET(TUniqueID)&id);
 		void	PhaseChange(Protocol::PhaseChange&c);
 		void	VehicleMotion(Protocol::MobileEntityMotion&m);
-		void	AttackTrajectory(Protocol::AttackTrajectory&a);
+		void	PreciseAttackTrajectory(Protocol::PreciseAttackTrajectory&a);
+		void	VagueAttackTrajectory(Protocol::VagueAttackTrajectory&a);
 
 		void	Explosion(Protocol::Explosion&ex);
 
@@ -182,7 +183,8 @@ namespace Network
 
 		extern TCP::Channel<Protocol::PhaseChange,0,Protocol::ChannelID::PhaseChange>					phaseChange;
 		extern TCP::Channel<Protocol::MobileEntityMotion,0,Protocol::ChannelID::MobileEntityMotion>		mobileEntityMotion;
-		extern TCP::Channel<Protocol::AttackTrajectory,0,Protocol::ChannelID::AttackTrajectory>			attackTrajectory;
+		extern TCP::Channel<Protocol::VagueAttackTrajectory,0,Protocol::ChannelID::VagueAttackTrajectory>			vagueAttackTrajectory;
+		extern TCP::Channel<Protocol::PreciseAttackTrajectory,0,Protocol::ChannelID::PreciseAttackTrajectory>		preciseAttackTrajectory;
 		extern TCP::Channel<Protocol::Explosion,0,Protocol::ChannelID::Explosion>						explosion;
 		extern TCP::Channel<Protocol::EntityTurretRotation,0,Protocol::ChannelID::EntityTurretRotation>	entityTurretRotation;
 		extern TCP::Channel<Protocol::ResourceUpdate,0,Protocol::ChannelID::ResourceUpdate>				resourceUpdate;
@@ -204,7 +206,7 @@ namespace Network
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		extern TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
-		extern TCP::ObjectSender<Protocol::Hello,Protocol::ChannelID::Hello>							hello;
+		extern TCP::ObjectSender<Protocol::Hello,Protocol::ChannelID::Hello>								hello;
 		extern TCP::ObjectSender<Protocol::EntityDirectCommand, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
 		extern TCP::ObjectSender<Protocol::ChoiceIntersection, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection;
 		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::DropLastTask>							dropLastTask;
@@ -214,9 +216,10 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::ConstructionAbort, Protocol::ChannelID::ConstructionAbort>	constructionAbort;
 		extern TCP::ObjectSender<Protocol::ConstructionBegin, Protocol::ChannelID::ConstructionBegin>	constructionBegin;
 		extern TCP::ObjectSender<Protocol::EnableStructure, Protocol::ChannelID::EnableStructure>		enableStructure;
-		extern TCP::ObjectSender<Protocol::Automate,Protocol::ChannelID::Automate>						automate;
+		extern TCP::ObjectSender<Protocol::EntityStateUpdate,Protocol::ChannelID::Automate>				automate;
 		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RestoreCoreLink>					restoreCoreLink;
 		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
+		extern TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>				sleep;
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
 

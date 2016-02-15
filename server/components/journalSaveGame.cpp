@@ -503,6 +503,28 @@ namespace Journal
 			isNowAutomated = false;
 	}
 
+	/*virtual override*/ void			Round::ChangeSleep::Execute(const Objects::PWorldEntity&e)	const
+	{
+		float t = 0;
+		e->SetSleep(isNowSleeping,t);
+	}
+
+	/*virtual override*/ void			Round::ChangeSleep::Compile(Entry&e)	const
+	{
+		
+		if (isNowSleeping)
+			e.intParameters.Set("Sleep",1);
+	}
+
+	/*virtual override*/ void			Round::ChangeSleep::Decode(const Entry&e)
+	{
+		
+		int v;
+		if (e.intParameters.TryGet("Sleep",v))
+			isNowSleeping = v != 0;
+		else
+			isNowSleeping = false;
+	}
 
 
 	
@@ -700,11 +722,15 @@ namespace Journal
 	{
 		if (!e->DirectTo(mode,targets,detailed,leftClick))
 		{
-			static StringBuffer buffer;
-			buffer.Clear();
-			foreach (targets,t)
-				buffer << ' '<<t->ToString();
-			throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to"+buffer.ToString()+" in mode "+String(int(mode)));
+			#ifdef _DEBUG
+				static StringBuffer buffer;
+				buffer.Clear();
+				foreach (targets,t)
+					buffer << ' '<<t->ToString();
+				throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to"+buffer.ToString()+" in mode "+String(int(mode)));
+			#else
+				throw RoundException(CLOCATION, "Unable to direct "+e->GetName()+" to destination");
+			#endif
 		}
 	}
 
@@ -1424,6 +1450,15 @@ namespace Journal
 	{
 		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
 		PEntityEvent cmd(new ChangeAutomation(isNowAutomated));
+		strand.Append(cmd);
+		if (execute)
+			cmd->Execute(e);
+	}
+
+	void	Round::RegisterSleepChange(bool execute, const Objects::PWorldEntity&e, bool isNowSleeping)
+	{
+		EntityStrand&strand = factionStrands.Set(e->owner->id).entityStrands.Set(e->id);
+		PEntityEvent cmd(new ChangeSleep(isNowSleeping));
 		strand.Append(cmd);
 		if (execute)
 			cmd->Execute(e);
@@ -2180,6 +2215,7 @@ namespace Journal
 		MAP_ADD(DestroyEntity);
 		MAP_ADD(EntityStateCheck);
 		MAP_ADD(ChangeAutomation);
+		MAP_ADD(ChangeSleep);
 		MAP_ADD(UpdateVariable);
 		MAP_ADD(ResourceCoverageChange);
 		MAP_ADD(ResourceCoverageKnowledgeLoss);

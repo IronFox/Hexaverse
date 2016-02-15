@@ -200,6 +200,17 @@ int2 rightMouseDragFrom;
 void							SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
 
 
+/**
+Triggered when entering command mode and animations have finished (whichever of those events happens later)
+*/
+void	OnPlayerControlBegin()
+{
+	#ifdef HAS_WINDOW
+		UI::RefreshButtonState();
+	#endif
+	Objects::RefreshSkyHubConnections();
+	Animation::UpdateAutomation(CLOCATION);
+}
 
 void	OnTutorialsChanged()
 {
@@ -392,7 +403,7 @@ void	SignalRestoreCoreLink(const TUniqueID&mineId)
 
 void	SignalAutomation(const Objects::PWorldEntity&e, bool doAutomate)
 {
-	Network::Channels::automate.SendTo(Network::client,Protocol::Automate(e->id,doAutomate));
+	Network::Channels::automate.SendTo(Network::client,Protocol::EntityStateUpdate(e->id,doAutomate));
 }
 
 void	SignalRemoval(const Objects::PWorldEntity&entity)
@@ -653,6 +664,14 @@ void	SignalTerrainModification(const Objects::PVehicle&v,Objects::Vehicle::mode_
 	job.mode = (UINT16)activeCursorMode;
 	job.cells = selection;
 	Network::Channels::signalTerrainMod.SendTo(Network::client,job);
+}
+
+void	SignalSleep(const Objects::PWorldEntity&e, bool doSleep)
+{
+	Protocol::EntityStateUpdate update;
+	update.entityID = e->id;
+	update.doSet = doSleep;
+	Network::Channels::sleep.SendTo(Network::client,update);
 }
 
 void	SignalDropLastTask(const Objects::PWorldEntity&e)
@@ -1050,6 +1069,8 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 	void OnSelectionChange(bool stateChangeOnly)
 	{
+		Objects::Renderer::HighlightSmokeTrail(InvalidIndex);
+
 		Tutorial::lastDelayingEvent = timer.Now();
 		//bool strip = true;
 		if (Objects::selectedEntity)
@@ -1223,7 +1244,14 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			if (f)
 			{
 				if (f->compound.containedStructures.IsEmpty())
-					Objects::RefreshCompoundCoverage(0);
+				{
+					bool any = false;
+					for (const auto& s : Objects::structures)
+						if (s->IsWorkingStructure() && s->owner == f)
+							any = true;
+					if (any)	//prevent stack overflow
+						Objects::RefreshCompoundCoverage(0);
+				}
 			}
 			if (f)
 			{
@@ -2069,31 +2097,17 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 
 
-		if (Objects::selectedMobileEntity 
-			&& Objects::VehicleCanBeLeftClickDirected()	//also works for mobiles in general. TODO: rename/relocate
-			)
+		if (Objects::selectedMobileEntity && Objects::CursorModeExpectsLeftClick())
 		{
-			if (Objects::selectedMobileEntity)
-			{
-				Grid::LCellIdI	target;
-				bool includeWater = false;
-				if (Objects::activeCursorMode == Objects::CursorMode::AttackMode)
-					includeWater = true;
-				else
-					//if (Objects::selectedVehicle->base->moveOnWater)
-						includeWater = true;
+			Grid::LCellIdI	target;
+			bool includeWater = true;
 
-				if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
-				{
-					if (Objects::selectedMobileEntity->IsSatellite())
-						target.height = Objects::selectedMobileEntity->location.height;
-					DirectTo(Objects::selectedMobileEntity,target,false,true);
-					return;
-				}
-			}
-			else
+			if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
 			{
-				FATAL__("not implemented for non-mobiles yet" );
+				if (Objects::selectedMobileEntity->IsSatellite())
+					target.height = Objects::selectedMobileEntity->location.height;
+				DirectTo(Objects::selectedMobileEntity,target,false,true);
+				return;
 			}
 		}
 		else
@@ -2719,24 +2733,34 @@ String GenerateOreName(Random&random)
 		{
 			return false;
 		}
-		if (v->GetOperationSpeed(Objects::Component::Construct))
+		if (!v->IsSleeping())
 			return true;
-		if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsNonAutomatedResourceDetector())
-			return true;
-		if (v->CanAttack())
+		//if (v->GetOperationSpeed(Objects::Component::Construct))
+		//	return true;
+		//if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsNonAutomatedResourceDetector())
+		//	return true;
+
+		if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())
 		{
+			bool emp = v->turret->dealsEMPDamage;
 			if (v->IsVehicle())
 			{
 				for (auto other : Objects::vehicles)
-					if (!other->isMine && v->CanHit(other->location))
-						return true;
+					if (!emp || !other->empDamageLevel)
+						if (!other->isMine && v->CanHit(other->location))
+							return true;
+				for (auto other : Objects::structures)
+					if (!emp || !other->empDamageLevel)
+						if (!other->isMine && v->CanHit(other->location))
+							return true;
 			}
 			else
 				if (v->IsSatellite())
 				{
 					for (auto other : Objects::satellites)
 						if (!other->isMine && v->CanHit(other->location))
-							return true;
+							if (!emp || !other->empDamageLevel)
+								return true;
 				}
 				else
 				{
@@ -2747,20 +2771,16 @@ String GenerateOreName(Random&random)
 	}
 
 
-	bool	IsIdle(const Objects::PStructure&s, bool tagVisited)
+	bool	IsIdle(const Objects::PStructure&s)
 	{
 		#ifndef NO_HIBERNATION
 			if (s->ToHibernating()->IsHibernating())
 				return false;
 		#endif
 
-		if (!s->IsWorkingStructure())
+		if (!s->IsWorkingStructure() || s->IsSleeping())
 			return false;
 		Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
-		if (ws->visited)
-			return false;
-		if (tagVisited)
-			ws->visited = true;
 
 		Objects::PVehiclePlant vp = To<Objects::VehiclePlant>::DynamicCast(s);
 		if (vp)
@@ -2805,7 +2825,7 @@ String GenerateOreName(Random&random)
 			}
 			elif (e->IsStructure())
 			{
-				if (IsIdle(To<Objects::Structure>::Cast(e),false))
+				if (IsIdle(To<Objects::Structure>::Cast(e)))
 					any = true;
 			}
 		});
@@ -2874,7 +2894,7 @@ String GenerateOreName(Random&random)
 					index_t at = to - Objects::vehicles.Count() - Objects::satellites.Count();
 					Objects::PStructure s = Objects::structures[at];
 
-					if (s->isMine && IsIdle(s,true))
+					if (s->isMine && IsIdle(s))
 					{
 						Objects::Select(s,Network::ControlEnabled());
 						Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);

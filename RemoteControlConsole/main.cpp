@@ -29,6 +29,8 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 void	Dispatch(const StringRef&);
 
 String targetHost = "localhost";
+Buffer0<String>	history;
+index_t historyAt=InvalidIndex;
 
 Timer::Time connectionAttemptStarted = timer.Now();
 std::thread connectionRetryThread;
@@ -79,13 +81,19 @@ namespace Console
 	//	mutex.unlock();
 	//}
 
+
+	void	_UpdateLastLine()
+	{
+		lastLine = Truncate(context.ref(),30);
+		lastLine += '>';
+		lastLine += Truncate(input.ToStringRef(),40);
+	}
+
 	void	Refresh()
 	{
 		mutex.lock();
 			ClearLine();
-			lastLine = Truncate(context.ref(),30);
-			lastLine += '>';
-			lastLine += Truncate(input.ToStringRef(),40);
+			_UpdateLastLine();
 			std::cout << lastLine;
 		mutex.unlock();
 	}
@@ -101,11 +109,19 @@ namespace Console
 	void	AddChar(char c)
 	{
 		mutex.lock();
+		bool refresh = true;
 		switch (c)
 		{
-			case 8:
+			case '\b':
 				if (input.IsNotEmpty())
+				{
+					if (input.last() != '\t')
+					{
+						std::cout << "\b \b";
+						refresh = false;
+					}
 					input.EraseLast();
+				}
 			break;
 			case '\t':
 			{
@@ -120,14 +136,21 @@ namespace Console
 			break;
 			default:
 				if (Package::NetString<1024>::IsValidChar(c))
+				{
 					input << c;
+					std::cout << c;
+					refresh = false;
+				}
 				else
 				{
 					mutex.unlock();
 					return;
 				}
 		}
-		Refresh();
+		if (refresh)
+			Refresh();
+		else
+			_UpdateLastLine();
 		mutex.unlock();
 	}
 }
@@ -228,6 +251,10 @@ void	Dispatch(const StringRef&line)
 		application_shutting_down = true;
 		return;
 	}
+	history.FindAndErase(line);
+	history << line;
+	historyAt = history.Count();
+
 	//Console::EchoCurrent();
 	if (client.IsConnected())
 	{
@@ -435,10 +462,36 @@ int main(int argc, char* argv[])
 		Console::Refresh();
 		while (!application_shutting_down)
 		{
-			char c = (char)(BYTE)(unsigned)_getch();
-//			std::cin.get(c);
-		//	if (client.IsConnected())
-			Console::AddChar(c);
+			int ch = _getch();
+			if (ch == 224 || ch == 0)
+			{
+				int next = _getch();
+				switch(next)
+				{
+					case 72:
+						if (historyAt)
+						{
+							historyAt--;
+							Console::SetInput(history[historyAt]);
+						}
+					break;
+					case 80:
+						if (historyAt < history.Count())
+						{
+							historyAt ++;
+							Console::SetInput(historyAt < history.Count() ? history[historyAt] : "");
+						}
+					break;
+					case 75:
+						//left
+					break;
+					case 77:
+						//right
+					break;
+				}
+			}
+			else
+				Console::AddChar((char)(BYTE)(unsigned)ch);
 		}
 		client.Disconnect();
 	}

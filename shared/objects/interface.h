@@ -29,6 +29,7 @@
 	void	SignalRemoval(const Objects::PWorldEntity&);
 	void	SignalConstructTowerTurret(const TUniqueID&towerID,const Objects::Component::Turret*&newTurret);
 	void	SignalAutomation(const Objects::PWorldEntity&e, bool doAutomate);
+	void	SignalSleep(const Objects::PWorldEntity&v, bool doSleep);
 	void	SignalEnableStructure(Objects::Structure&s, bool enabled);
 	void	SignalTargetLessAttack(const Objects::PWorldEntity&e);
 
@@ -42,7 +43,7 @@
 
 	extern UINT32			globalVersionOfCurrentFile;
 
-	static const UINT32	SupportedFileVersion = 1044;	//doubles as current file version to write to files
+	static const UINT32	SupportedFileVersion = 1045;	//doubles as current file version to write to files
 
 	struct FileVersions
 	{
@@ -52,6 +53,7 @@
 			FirstVersionWithVariables = 1042,
 			MarkersHaveOwner = 1043,
 			CurrentEntityHealthIsFloat = 1044,
+			EntitiesHaveFlags = 1045,
 		};
 	};
 
@@ -62,7 +64,7 @@
 	void	SignalNewStructure(const Objects::PStructure&s, float atTime);
 	void	SignalMotion(const Objects::PMobileEntity&v, const Grid::LCellIdI&from,const Grid::LCellIdI&to, float t0, float timeNeeded);
 	void	SignalTurretRotation(const Objects::PWorldEntity&v, const TVec3<>&toDirection, float rotationTime);
-	void	SignalAttack(const Objects::PWorldEntity&v, const Grid::LCellIdI&traceTo, float flightTime);
+	void	SignalAttack(const Objects::PWorldEntity&v, const Grid::LCellIdI&traceTo, float flightTime, bool isAutoAttack);
 	void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, const TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday,float atTime);
 	//void	SignalExplosion(const TVec3<>&center,float explosionRadius,bool isEMP, float atTime);
 	void	SignalDisappearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime);

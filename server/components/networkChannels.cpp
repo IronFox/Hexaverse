@@ -18,7 +18,7 @@ namespace Channels
 	//TCP::ObjectSender<Protocol::Result,Protocol::ChannelID::
 
 
-	TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>										hello(Receiver::Hello);
+	TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>												hello(Receiver::Hello);
 	TCP::Channel<Protocol::EntityDirectCommand, FactionLevel, Protocol::ChannelID::EntityDirectCommand>		entityDirectCommand(Receiver::EntityDirectCommand);
 	TCP::Channel<Protocol::ChoiceIntersection, FactionLevel, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection(Receiver::ChoiceIntersection);
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DropLastTask>							dropLastTask(Receiver::DropLastTask);
@@ -32,7 +32,8 @@ namespace Channels
 	
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RestoreCoreLink>						restoreCoreLink(Receiver::RestoreCoreLink);
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RemoveEntity>							removeEntity(Receiver::RemoveEntity);
-	TCP::Channel<Protocol::Automate, FactionLevel, Protocol::ChannelID::Automate>							automate(Receiver::Automate);
+	TCP::Channel<Protocol::EntityStateUpdate, FactionLevel, Protocol::ChannelID::Automate>					automate(Receiver::Automate);
+	TCP::Channel<Protocol::EntityStateUpdate, FactionLevel, Protocol::ChannelID::Sleep>						sleep(Receiver::Sleep);
 	TCP::Channel<Protocol::Marker, FactionLevel, Protocol::ChannelID::CreateMarker>							createMarker(Receiver::CreateMarker);
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DestroyMarker>							destroyMarker(Receiver::DestroyMarker);
 	TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>					touchMarker(Receiver::TouchMarker);
@@ -47,8 +48,9 @@ namespace Channels
 	TCP::ObjectSender<Protocol::StructureConstruction,Protocol::ChannelID::InstantiateStructure>	createStructure;
 	TCP::ObjectSender<Protocol::MobileState,Protocol::ChannelID::MobileState>						setMobileState;
 	TCP::ObjectSender<Protocol::MobileEntityMotion,Protocol::ChannelID::MobileEntityMotion>			mobileEntityMotion;
-	TCP::ObjectSender<Protocol::AttackTrajectory,Protocol::ChannelID::AttackTrajectory>				attackTrajectory;
-	TCP::ObjectSender<Protocol::EntityTurretRotation,Protocol::ChannelID::EntityTurretRotation>		entityTurretRotation;
+	TCP::ObjectSender<Protocol::VagueAttackTrajectory,Protocol::ChannelID::VagueAttackTrajectory>		vagueAttackTrajectory;
+	TCP::ObjectSender<Protocol::PreciseAttackTrajectory,Protocol::ChannelID::PreciseAttackTrajectory>	preciseAttackTrajectory;
+	TCP::ObjectSender<Protocol::EntityTurretRotation,Protocol::ChannelID::EntityTurretRotation>			entityTurretRotation;
 	TCP::ObjectSender<Protocol::Explosion,Protocol::ChannelID::Explosion>							explosion;
 	TCP::ObjectSender<Protocol::StructureState,Protocol::ChannelID::UpdateStructure>				setStructureState;
 	TCP::ObjectSender<Protocol::DestroyEntity,Protocol::ChannelID::DestroyEntity>					destroyEntity;
@@ -565,12 +567,14 @@ namespace Receiver
 			Protocol::Timestamp	timestamp;
 			timestamp.rightNow = true;
 
-
+			LogEvent(EventSignificance::Debug,"Sending known hostile contacts to "+ peer.ToString());
 			client->faction->seeing.VisitAllKeys([&peer,client,timestamp](const Objects::PWorldEntity&e)
 			{
+				LogEvent(EventSignificance::Debug,e.get(),"Sending contact (@"+String(e.get())+")");
 				if (e->health <= 0)
 				{
 					//weird...? weirder...
+					LogEvent(EventSignificance::Debug,e.get(),"Unit has bad health");
 					return;
 				}
 
@@ -899,9 +903,9 @@ namespace Receiver
 	}
 
 
-	void	Automate(Protocol::Automate&a, TCP::Peer&peer)
+	void	Automate(Protocol::EntityStateUpdate&a, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Automate ("+String(a.doAutomate)+") entity "+a.entityID.value.ToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Automate ("+String(a.doSet)+") entity "+a.entityID.value.ToString());
 
 		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(a.entityID,peer);
 		if (!e)
@@ -914,9 +918,25 @@ namespace Receiver
 			LogEvent(EventClass::Preset::commandRejected,peer,e,"Tried to automate immobile entity");
 			return;
 		}
-		if (v->isAutomated == a.doAutomate)
+		if (v->isAutomated == a.doSet)
 			return;
-		Journal::currentRound.RegisterAutomationChange(true,v,a.doAutomate);
+		Journal::currentRound.RegisterAutomationChange(true,v,a.doSet);
+	}
+
+	void	Sleep(Protocol::EntityStateUpdate&a, TCP::Peer&peer)
+	{
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Sleep ("+String(a.doSet)+") entity "+a.entityID.value.ToString());
+
+		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(a.entityID,peer);
+		if (!e)
+			return;
+
+		if (e->IsSleeping() == a.doSet)
+		{
+			e->RegisterChange(Objects::WorldEntity::SleepChange,0.f);
+			return;
+		}
+		Journal::currentRound.RegisterSleepChange(true,e,a.doSet);
 	}
 
 	void	EnableStructure(Protocol::EnableStructure&es, TCP::Peer&peer)
@@ -1611,9 +1631,9 @@ namespace Receiver
 				//	client->lastPing = timer.Now();
 				//}
 				peer.SendSignal(Protocol::ChannelID::Pong);
-				#ifdef _DEBUG
-					LogEvent(EventSignificance::Debug,"pong");
-				#endif
+				//#ifdef _DEBUG
+				//	LogEvent(EventSignificance::Debug,"pong");
+				//#endif
 			break;
 			case Protocol::ChannelID::RequestEverything:
 			{

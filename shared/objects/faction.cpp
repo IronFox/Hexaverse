@@ -22,6 +22,10 @@ namespace Objects
 		/*static*/ Buffer0<WFaction>	Faction::all;
 		/*static*/ PFaction				Faction::nexus(new Faction(TUniqueID::Empty(), "<Nexus>"));
 
+		void	Faction::RecreateNexus()
+		{
+			nexus.reset(new Faction(TUniqueID::Empty(), "<Nexus>"));
+		}
 
 
 		
@@ -423,7 +427,7 @@ namespace Objects
 		}
 
 
-		void		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/, bool stack/*=true*/, index_t incStackBy/*=1*/)
+		bool		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/, bool stack/*=true*/, index_t incStackBy/*=1*/)
 		{
 			SeeingReference&ref = seeing.Set(e);
 
@@ -434,7 +438,10 @@ namespace Objects
 
 			}
 			else
-				return;
+			{
+				LogEvent(EventSignificance::Debug,e.get(),this->GetLogName()+": Sight level already set to "+String(ref.sightLevel));
+				return false;
+			}
 
 
 			if (ref.sightLevel == incStackBy)
@@ -463,9 +470,9 @@ namespace Objects
 					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
 				else
 					t += timeEpsilon;
-			//	return true;
+				return true;
 			}
-			//return false;
+			return false;
 			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
 		}
 
@@ -627,8 +634,7 @@ namespace Objects
 							continue;
 						if (GridCanSee(e))
 						{
-							SignalAppearance(e,t,true,false);
-							if (newContacts)
+							if (SignalAppearance(e,t,true,false) && newContacts)
 								newContacts->Append(e);
 						}
 					}
@@ -637,15 +643,13 @@ namespace Objects
 			else
 			{
 				//count_t coverage = CountSatelliteCoverage(sat->system.w.xyz);
-
+				//LogEvent(EventSignificance::Debug,"Registering orbital sensor sphere "+sphere.ToString());
 				foreach (Objects::satellites,s)
 				{
 					PSatellite sat = *s;
 					if (sat->owner.get() != this && sphere.Contains(sat->GetWorldPosition()))
 					{
-						bool wasSeeing = newContacts && seeing.IsSet(sat);
-						SignalAppearance(sat,t,true);
-						if (newContacts && !wasSeeing)
+						if (SignalAppearance(sat,t,true) && newContacts)
 							newContacts->Append(sat);
 					}
 				}
@@ -664,30 +668,38 @@ namespace Objects
 					CheckChanges(t);
 			}
 //			float escaped = sqr(sphere.radius+2);
-			static Array<PWorldEntity>	seen;
-			seeing.exportKeys(seen);
-			foreach (seen,s)
+			//if (isSatellite)
+			//	LogEvent(EventSignificance::Debug,"Unregistering orbital sensor sphere "+sphere.ToString());
+
+			static Buffer<PWorldEntity>	disappear;
+
+			this->seeing.VisitAllKeys([this,isSatellite,sphere](const PWorldEntity&s)
 			{
 				
 				//float d2 = Vec::quadraticDistance(sphere.center,(*s)->system.w.xyz);
 				//if (d2 > escaped || (*s)->IsSatellite() != isSatellite)
 				//	continue;
-				if ((*s)->IsSatellite() != isSatellite)
-					continue;
-				if ((*s)->IsSatellite())
+				if (s->IsSatellite() != isSatellite)
+					return;
+				if (s->IsSatellite())
 				{
-					PSatellite sat = To<Satellite>::Cast(*s);
-					if (sphere.Contains(sat->system.w.xyz))
+					PSatellite sat = To<Satellite>::Cast(s);
+					if (sphere.Contains(sat->GetWorldPosition()))
 					{
-						SignalDisappearance(sat,t);
+//						float d = Vec::distance(sat->GetWorldPosition(),sphere.center);
+//						LogEvent(EventSignificance::Debug,sat.get()," Reported in range of "+sphere.ToString()+", at distance="+String(d));
+						disappear << sat;
 					}
 				}
 				else
-					if (!GridCanSee(*s))
+					if (!GridCanSee(s))
 					{
-						SignalDisappearance(*s,t);
+						disappear << s;
 					}
-			};
+			});
+			foreach (disappear,s)
+				SignalDisappearance(*s,t);
+			disappear.Clear();
 		}
 
 		void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
@@ -715,79 +727,22 @@ namespace Objects
 			if (checkChangesNow)
 				CheckChanges(t);
 
-			static Array<PWorldEntity>	seen;
-			this->seeing.exportKeys(seen);
-			foreach (seen,s)
+			static Buffer<PWorldEntity>	disappear;
+			this->seeing.VisitAllKeys([this](const PWorldEntity&s)
 			{
-				if (!GridCanSee(*s))
+				if (!s->IsSatellite() && !GridCanSee(s))
 				{
-					SignalDisappearance(*s,t);
+					disappear << s;
 				}
-			};
-		}
-
-
-		//void		Faction::ReplaceSensory(const Grid::SkySensorState&oldState, const Grid::SkySensorState&newState, float t, short change)
-		//{
-		//	Concurrency::parallel_for(index_t(0),oldState.coverage.Count(),[&oldState,&newState,this,change](index_t i)
-		//	{
-		//		const auto&c = oldState.coverage[i];
-		//		int newH;
-		//		if (newState.coverageMap.Query(c.hStackID,newH) && newH == c.downToHeight)
-		//			return;
-		//		
-		//		CellStack&stack = cellStack[c.hstackID];
-		//		UINT32 downTo = Grid::CellStack::ToLayer(c.downToHeight);
-		//		for (UINT32 layer = Grid::CellStack::HalfRange-1; layer >= downTo; layer--)
-		//		{
-		//			CellStack::Cell&cell1 = stack.volumeCell[layer];
-		//			cell1.visibility += change;
-		//			if (change > 0)
-		//			{
-		//				cell1.temporarilyVisible = true;
-		//			}
-		//		}
-		//		families[Grid::high.grid.GetCell(c.hStackID).family].changed = true;
-		//	});
-		//}
-
-
-
-		void		Faction::FlushData()
-		{
-			markers.Clear();
-			markerMap.Clear();
-			nexusControl = acquiringNexusControl = 0;
-			deathInRounds = 0;
-			this->satellites.Clear();
-			skyHubs.Clear();
-			allMobiles.Clear();
-			structures.Clear();
-			towers.Clear();
-			storedMobiles.Clear();
-
-			#ifdef CONNECTOR_LESS
-				compound.Clear();
-			#endif
-
-			currentState.FlushAllData();
-			visibility.FlushAllData();
+			});
+			foreach (disappear,s)
+				SignalDisappearance(*s,t);
+			disappear.Clear();
 
 		}
 
 
 
-		//void		Faction::SignalCoverageChange(const bool*familiesChanged, float atTime)
-		//{
-		//	for (BYTE f = 0; f < BaseGrid::NumFamilies; f++)
-		//	{
-		//		if (familiesChanged[f])
-		//		{
-		//			families[f].coverageChanged = true;
-		//			families[f].lastChange = atTime;
-		//		}
-		//	}
-		//}
 
 		void		Faction::CheckChanges(float t)
 		{
@@ -1119,7 +1074,7 @@ namespace Objects
 			}
 		}
 
-		/*static*/ void				Marker::GetOutdated(BasicBuffer<Marker*>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds)
+		/*static*/ void				Marker::GetOutdated(BasicBuffer<Marker>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds)
 		{
 			outOudated.Clear();
 			foreach(all, m)
@@ -1133,7 +1088,7 @@ namespace Objects
 						{
 							LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered outdated after "+String(m->age)+" round(s)");
 
-							outOudated << m;
+							outOudated << *m;
 						}
 					break;
 					case Type::HostileContact:
@@ -1166,7 +1121,7 @@ namespace Objects
 									break;
 								}*/
 						if (seen)
-							outOudated << m;
+							outOudated << *m;
 					}
 					break;
 

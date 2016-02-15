@@ -1178,6 +1178,14 @@ namespace Protocol
 		, TypeDeltaArray, data0
 	)
 
+	namespace EntityStateFlag
+	{
+		enum flag_t
+		{
+			IsUnstable = 0x1,
+			IsSleeping = 0x2,
+		};
+	}
 
 	NETSTRUCT6(EntityState
 		, Timestamp, timestamp
@@ -1185,7 +1193,7 @@ namespace Protocol
 		, LCellIdI, location
 		, SerialUnsigned, health
 		, SerialUnsigned, empDamageLevel
-		, NET(bool), unstable
+		, NET(BYTE), entityStateFlags
 	)
 
 	NETSTRUCT9(MobileTask
@@ -1543,13 +1551,21 @@ namespace Protocol
 		, NET(float), timeNeeded
 	)
 
-	NETSTRUCT6(AttackTrajectory
+	NETSTRUCT6(VagueAttackTrajectory
 		, Timestamp, timestamp
 		, NET(float), flightTime
 		, NET(TVec3<>), sourcePosition
 		, NET(ConstName), turretType
 		, NET(float), turretRange
 		, LCellIdI, traceTo
+	)
+
+	NETSTRUCT5(PreciseAttackTrajectory
+		, Timestamp, timestamp
+		, NET(float), flightTime
+		, NET(TUniqueID), attacker
+		, LCellIdI, traceTo
+		, NET(bool), isAutoAttack
 	)
 
 	NETSTRUCT4(EntityTurretRotation
@@ -1759,9 +1775,9 @@ namespace Protocol
 		, NET(TUniqueID), ownerID
 	)
 
-	NETSTRUCT2(Automate
+	NETSTRUCT2(EntityStateUpdate
 		, NET(TUniqueID), entityID
-		, NET(bool), doAutomate
+		, NET(bool), doSet
 	)
 
 	NETSTRUCT4(MarkerReferenceEntity
@@ -1827,7 +1843,8 @@ namespace Protocol
 			NewMobileEntity,	//s2c: NewMobileEntity
 			MobileState,		//s2c: MobileState
 			MobileEntityMotion,		//s2c: MobileEntityMotion
-			AttackTrajectory,		//s2c: AttackTrajectory
+			PreciseAttackTrajectory,	//s2c: PreciseAttackTrajectory
+			VagueAttackTrajectory,		//s2c: VagueAttackTrajectory
 			EntityTurretRotation,	//s2c: EntityTurretRotation
 
 			ChangeEntityOwner,	//s2c: ChangeEntityOwner
@@ -1857,7 +1874,8 @@ namespace Protocol
 
 			EnableStructure,	//c2s: EnableStructure
 
-			Automate,			//c2s: Automate
+			Automate,			//c2s: EntityStateUpdate
+			Sleep,				//c2s: EntityStateUpdate
 
 			ResourceUpdate,		//s2c: ResourceUpdate
 

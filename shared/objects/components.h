@@ -41,14 +41,15 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 		inline bool					VehicleCanBeDirected()  {return (activeCursorMode == CursorMode::Idle);}
-		inline bool					VehicleCanBeLeftClickDirected() {
+		inline bool					CursorModeExpectsLeftClick() {
 			return (
 			activeCursorMode == CursorMode::BuildConnectorChainMode 
 			|| activeCursorMode == CursorMode::BuildRoadChainMode
 			|| activeCursorMode == CursorMode::BuildBridgeMode
 			|| activeCursorMode == CursorMode::BuildWallChainMode
 			|| activeCursorMode == CursorMode::AttackMode 
-			|| activeCursorMode == CursorMode::DigTunnelMode);}
+			|| activeCursorMode == CursorMode::DigTunnelMode
+			);}
 	#endif
 
 
@@ -296,7 +297,13 @@ namespace Objects
 			//}
 
 			#ifdef HAS_WINDOW
-				static float				CompileTrajectory(const Buffer0<TVec4<> >&v, bool schematic, Geometry&outGeo, float widthScale=1.f);
+				enum geometryType_t
+				{
+					Schematic,
+					Animation,
+					SmokeTrail
+				};
+				static float				CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&outGeo, float widthScale=1.f);
 				void						DescribeType(BaseCommand::Label&label, bool compound, const String&parentType, const OwnerParameter&owner);
 			#endif
 

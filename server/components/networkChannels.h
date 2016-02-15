@@ -19,7 +19,8 @@ namespace Receiver
 	void	ClientFaction(Protocol::ClientFactionRequest&, TCP::Peer&peer);
 	void	RestoreCoreLink(NET(TUniqueID)&uuid, TCP::Peer&peer);
 	void	RemoveEntity(NET(TUniqueID)&uuid, TCP::Peer&peer);
-	void	Automate(Protocol::Automate&, TCP::Peer&peer);
+	void	Automate(Protocol::EntityStateUpdate&, TCP::Peer&peer);
+	void	Sleep(Protocol::EntityStateUpdate&, TCP::Peer&peer);
 	void	CreateMarker(Protocol::Marker&, TCP::Peer&peer);
 	void	DestroyMarker(NET(TUniqueID)&, TCP::Peer&peer);
 	void	TouchMarker(Protocol::TouchedMarker&, TCP::Peer&peer);
@@ -75,7 +76,8 @@ namespace Channels
 	
 	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RestoreCoreLink>						restoreCoreLink;
 	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::RemoveEntity>						removeEntity;
-	extern TCP::Channel<Protocol::Automate, FactionLevel, Protocol::ChannelID::Automate>						automate;
+	extern TCP::Channel<Protocol::EntityStateUpdate, FactionLevel, Protocol::ChannelID::Automate>				automate;
+	extern TCP::Channel<Protocol::EntityStateUpdate, FactionLevel, Protocol::ChannelID::Sleep>					sleep;
 	extern TCP::Channel<Protocol::Marker, FactionLevel, Protocol::ChannelID::CreateMarker>						createMarker;
 	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::DestroyMarker>						destroyMarker;
 	extern TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>				touchMarker;
@@ -83,16 +85,17 @@ namespace Channels
 	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>						identifyUserRecv;
 	extern TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>				chatMessage;
 
-	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>		clientFactionResponse;
-	extern TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>	markerCreationFailedLimitReached;
-	extern TCP::ObjectSender<Protocol::WorldDelta,Protocol::ChannelID::WorldDelta>						updateWorld;
-	extern TCP::ObjectSender<Protocol::NewMobileEntity,Protocol::ChannelID::NewMobileEntity>			newMobileEntity;
-	extern TCP::ObjectSender<Protocol::StructureConstruction,Protocol::ChannelID::InstantiateStructure>	createStructure;
-	extern TCP::ObjectSender<Protocol::MobileState,Protocol::ChannelID::MobileState>					setMobileState;
-	extern TCP::ObjectSender<Protocol::MobileEntityMotion,Protocol::ChannelID::MobileEntityMotion>		mobileEntityMotion;
-	extern TCP::ObjectSender<Protocol::AttackTrajectory,Protocol::ChannelID::AttackTrajectory>			attackTrajectory;
-	extern TCP::ObjectSender<Protocol::EntityTurretRotation,Protocol::ChannelID::EntityTurretRotation>	entityTurretRotation;
-	extern TCP::ObjectSender<Protocol::Explosion,Protocol::ChannelID::Explosion>						explosion;
+	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>				clientFactionResponse;
+	extern TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>			markerCreationFailedLimitReached;
+	extern TCP::ObjectSender<Protocol::WorldDelta,Protocol::ChannelID::WorldDelta>								updateWorld;
+	extern TCP::ObjectSender<Protocol::NewMobileEntity,Protocol::ChannelID::NewMobileEntity>					newMobileEntity;
+	extern TCP::ObjectSender<Protocol::StructureConstruction,Protocol::ChannelID::InstantiateStructure>			createStructure;
+	extern TCP::ObjectSender<Protocol::MobileState,Protocol::ChannelID::MobileState>							setMobileState;
+	extern TCP::ObjectSender<Protocol::MobileEntityMotion,Protocol::ChannelID::MobileEntityMotion>				mobileEntityMotion;
+	extern TCP::ObjectSender<Protocol::VagueAttackTrajectory,Protocol::ChannelID::VagueAttackTrajectory>		vagueAttackTrajectory;
+	extern TCP::ObjectSender<Protocol::PreciseAttackTrajectory,Protocol::ChannelID::PreciseAttackTrajectory>	preciseAttackTrajectory;
+	extern TCP::ObjectSender<Protocol::EntityTurretRotation,Protocol::ChannelID::EntityTurretRotation>			entityTurretRotation;
+	extern TCP::ObjectSender<Protocol::Explosion,Protocol::ChannelID::Explosion>							explosion;
 	extern TCP::ObjectSender<Protocol::StructureState,Protocol::ChannelID::UpdateStructure>				setStructureState;
 	extern TCP::ObjectSender<Protocol::DestroyEntity,Protocol::ChannelID::DestroyEntity>				destroyEntity;
 	extern TCP::ObjectSender<Protocol::ControlMessage,Protocol::ChannelID::ControlMessage>				controlMessage;
