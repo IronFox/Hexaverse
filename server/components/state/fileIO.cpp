@@ -229,6 +229,16 @@ namespace FileIO
 			return false;
 		}
 
+	namespace EntityFlag
+	{
+		enum EntityFlag : UINT8
+		{
+			IsUnstable = 0x1,
+			IsSleeping = 0x2,
+
+		};
+	}
+
 	static void Export(Riff::Chunk*parent, const Objects::WorldEntity&e, GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
 	{
 		factions.Set(e.owner);
@@ -239,7 +249,13 @@ namespace FileIO
 		stream.Append(e.id);
 		stream.Append(e.owner->id);
 		stream.Append(float(e.health) / float(e.GetMaxHealth()));
-		stream.Append(e.unstable);
+
+		UINT8 flags = 0;
+		if (e.unstable)
+			flags |= EntityFlag::IsUnstable;
+		if (e.IsSleeping())
+			flags |= EntityFlag::IsSleeping;
+		stream.Append(flags);
 		
 		parent->AppendBlock(RID::entity,stream.pointer(),stream.GetFillLevel());
 		parent->AppendBlock(RID::location)->SetPODData(e.location);
@@ -267,7 +283,18 @@ namespace FileIO
 			e.health = (int)round(float(e.GetMaxHealth()) * fhealth);
 		}
 		e.health = std::min(e.health,e.GetMaxHealth());
-		ASSERT__(source->Stream(e.unstable));
+		if (globalVersionOfCurrentFile < FileVersions::EntitiesHaveFlags)
+		{
+			ASSERT__(source->Stream(e.unstable));
+		}
+		else
+		{
+			UINT8 flags;
+			ASSERT__(source->Stream(flags));
+			e.unstable = (flags & EntityFlag::IsUnstable) != 0;
+			float t = 0;
+			e.SetSleep((flags&EntityFlag::IsSleeping) !=0,t,false);
+		}
 		ASSERT__(source->CloseStream());
 		ASSERT__(ownerMap.Query(ownerID,e.owner));
 

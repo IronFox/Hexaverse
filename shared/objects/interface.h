@@ -43,7 +43,7 @@
 
 	extern UINT32			globalVersionOfCurrentFile;
 
-	static const UINT32	SupportedFileVersion = 1044;	//doubles as current file version to write to files
+	static const UINT32	SupportedFileVersion = 1045;	//doubles as current file version to write to files
 
 	struct FileVersions
 	{
@@ -53,6 +53,7 @@
 			FirstVersionWithVariables = 1042,
 			MarkersHaveOwner = 1043,
 			CurrentEntityHealthIsFloat = 1044,
+			EntitiesHaveFlags = 1045,
 		};
 	};
 

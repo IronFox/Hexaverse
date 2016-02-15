@@ -1,5 +1,6 @@
 v0.3.17
 	+ Analogously to terrain blocks, attack ranges are now shown on water surfaces when manual attacks are issued.
+	* Fixed save games not persistently memorizing sleep-state of units.
 
 v0.3.16	[Feb 15 2016]
 	+ Ghosts now memorize the owner of the referenced entity (if any).
