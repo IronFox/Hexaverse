@@ -638,9 +638,6 @@ namespace Objects
 		#endif
 
 	public:
-		#ifdef HAS_WINDOW
-			bool					visited=false;
-		#endif
 
 		/**
 		Checks whether or not the conditions are given to enable the local structure

@@ -489,9 +489,10 @@ namespace Grid
 			extern DX11::Texture								cubeHeightMap;	//used for lava
 
 			
-			extern DX11::BaseInstructionBlock terrainBase, terrainSphereBase, 
-											terrainParaboloidBase, terrainShadowBase, 
-											waterBase, overlayBase, overlayShadowBase, resourceBase;// , terrainEdgeBase;
+			extern DX11::BaseInstructionBlock	terrainBase, terrainSphereBase, terrainParaboloidBase, 
+												terrainShadowBase, 
+												waterBase, waterSphereBase, waterParaboloidBase,
+												overlayBase, overlayShadowBase, resourceBase;// , terrainEdgeBase;
 		}
 		struct TerrainVertex
 		{
@@ -574,12 +575,13 @@ namespace Grid
 		};
 		struct TWaterHull : public THull<WaterVertex>
 		{
-			DX11::InstructionBlock32	instruction;
+			DX11::InstructionBlock32	instruction[3];
 
 			void						Destroy()
 			{
 				THull<WaterVertex>::Clear();
-				instruction = DX11::InstructionBlock32();
+				instruction[0] = instruction[1] = instruction[2]
+					= DX11::InstructionBlock32();
 			}
 		};
 
@@ -1315,7 +1317,9 @@ namespace Grid
 
 					(DX11::BaseInstructionBlock&)dat.overlay.instruction = Instruction::overlayBase;
 					(DX11::BaseInstructionBlock&)dat.overlay.shadowInstruction = Instruction::overlayShadowBase;
-					(DX11::BaseInstructionBlock&)dat.water.instruction = Instruction::waterBase;
+					(DX11::BaseInstructionBlock&)dat.water.instruction[0] = Instruction::waterBase;
+					(DX11::BaseInstructionBlock&)dat.water.instruction[1] = Instruction::waterParaboloidBase;
+					(DX11::BaseInstructionBlock&)dat.water.instruction[2] = Instruction::waterSphereBase;
 				}
 
 
@@ -1331,8 +1335,12 @@ namespace Grid
 				dat.overlay.instruction.ibo.Create(dat.overlay.indices);
 				dat.overlay.shadowInstruction.vbo = dat.overlay.instruction.vbo;
 				dat.overlay.shadowInstruction.ibo = dat.overlay.instruction.ibo;
-				dat.water.instruction.vbo.CreateFromStructs(dat.water.vertices);
-				dat.water.instruction.ibo.Create(dat.water.indices);
+				dat.water.instruction[0].vbo.CreateFromStructs(dat.water.vertices);
+				dat.water.instruction[0].ibo.Create(dat.water.indices);
+				dat.water.instruction[1].vbo = dat.water.instruction[0].vbo;
+				dat.water.instruction[1].ibo = dat.water.instruction[0].ibo;
+				dat.water.instruction[2].vbo = dat.water.instruction[0].vbo;
+				dat.water.instruction[2].ibo = dat.water.instruction[0].ibo;
 			}
 
 			void		BakeResourceInstruction(BYTE family, FClipHeight clipHeight,const Resource*resources, count_t numResources)
