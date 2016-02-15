@@ -2347,11 +2347,13 @@ namespace Objects
 	}
 
 	
-	bool AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion/*=true*/)
+	bool AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion/*=true*/, bool constrainVerticalMotion/*=true*/)
 	{
 		//Timer::Time t0 = timer.Now();
 
 		Grid::LCellIdI	possibilities[6 * 3 + 2];
+
+		const TIntRange<int> heightRange = IntRange(std::min(from.height,to.height),std::max(from.height,to.height)+1);
 
 		static const count_t cellCount = Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range;
 
@@ -2418,6 +2420,8 @@ namespace Objects
 
 			for (index_t i = 0; i < ways; i++)
 			{
+				if (constrainVerticalMotion && !heightRange.Contains(possibilities[i].height))
+					continue;
 				UINT32 option = IDOF(possibilities[i]);
 				TNode&n = buffer[option];
 				int cost = 1;
