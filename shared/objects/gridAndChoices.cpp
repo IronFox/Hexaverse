@@ -1036,19 +1036,20 @@ namespace Objects
 
 						v->resourceEnvironment.CheckRefresh(*v, location);
 						const TVec3<> world = WorldEntity::GetWorldPosition(location);
-						const int r2 = sqr(v->IsOrbital() ? OrbitalWirelessTransferRange : GroundWirelessTransferRange);
+//						const int r2 = sqr(v->IsOrbital() ? OrbitalWirelessTransferRange : GroundWirelessTransferRange);
 						foreach (v->resourceEnvironment.sourceCompounds,cmp)
 						{
 							const Compound&compound = compounds[cmp->first];
 							foreach (compound.allStructures,_s)
 							{
 								PStructure s = _s->lock();
-								if (s && Vec::quadraticDistance(world,s->GetWorldPosition()) <= r2)
+								if (s && Vec::quadraticDistance(world,s->GetWorldPosition()) <= sqr(s->GetWirelessTransferRange()))
 									movementChoices << s->location + 1;
 							}
 						}
 						#ifdef CLIENT
 							v->resourceEnvironment.CheckRefresh(*v);
+							const int r2 = sqr((v->IsOrbital() ? OrbitalRangeFactor : 1) * MobileWirelessTransferRange);
 							ForeachMobileWorldEntity([v,&movementChoices,world,r2](const PMobileEntity&m)
 							{
 								if (m->owner == v->owner && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= r2)
@@ -1058,7 +1059,7 @@ namespace Objects
 							foreach (v->owner->allMobiles,_m)
 							{
 								PMobileEntity m = _m->lock();
-								if (m && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= r2)
+								if (m && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= sqr(MobileWirelessTransferRange))
 									movementChoices << m->location + 1;
 							}
 						#endif
@@ -1360,6 +1361,8 @@ namespace Objects
 				PSkyLinkStructure link = To<SkyLinkStructure>::DynamicCast(s);
 				skyLinks << std::make_pair(link,To<WorkingStructure>::Cast(link->CastToStructure()->shared_from_this()));
 			}
+			if (s->IsPylon())
+				pylons << To<Pylon>::Cast(s);
 		#endif
 
 		if (s->IsOrbital())
@@ -1376,6 +1379,8 @@ namespace Objects
 			PTower t = To<Tower>::DynamicCast(s);
 			if (t)
 				s->owner->towers << t;
+			if (s->IsPylon())
+				s->owner->pylons << To<Pylon>::Cast(s);
 			if (!refreshNetworkNow)
 				compoundCoverageChanged = true;
 			else
@@ -1469,7 +1474,8 @@ namespace Objects
 			if (e->IsOrbital())
 				Orbital::stations.FindAndErase(e);
 			#ifdef CLIENT
-				if (To<Structure>::Cast(e)->IsSkyLinkStructure())
+				PStructure s = To<Structure>::Cast(e);
+				if (s->IsSkyLinkStructure())
 				{
 					foreach (skyLinks,link)
 						if (link->second == e)
@@ -1478,6 +1484,9 @@ namespace Objects
 							break;
 						}
 				}
+				if (s->IsPylon())
+					pylons.FindAndErase(s);
+
 			#endif
 
 
@@ -2568,11 +2577,13 @@ namespace Objects
 	}
 
 	
-	bool AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion/*=true*/)
+	bool AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion/*=true*/, bool constrainVerticalMotion/*=true*/)
 	{
 		//Timer::Time t0 = timer.Now();
 
 		Grid::LCellIdI	possibilities[6 * 3 + 2];
+
+		const TIntRange<int> heightRange = IntRange(std::min(from.height,to.height),std::max(from.height,to.height)+1);
 
 		static const count_t cellCount = Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range;
 
@@ -2639,6 +2650,8 @@ namespace Objects
 
 			for (index_t i = 0; i < ways; i++)
 			{
+				if (constrainVerticalMotion && !heightRange.Contains(possibilities[i].height))
+					continue;
 				UINT32 option = IDOF(possibilities[i]);
 				TNode&n = buffer[option];
 				int cost = 1;

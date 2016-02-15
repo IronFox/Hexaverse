@@ -210,6 +210,15 @@ namespace Objects
 						break;
 					}
 			}
+			if (To<Structure>::Cast(e)->IsPylon())
+			{
+				foreach (pylons,_p)
+					if (_p->lock() == e)
+					{
+						pylons.erase(_p);
+						break;
+					}
+			}
 			if (e->IsOrbital())
 			{
 				Orbital::PStation s = To<Orbital::Station>::Cast(e);
@@ -305,6 +314,8 @@ namespace Objects
 			PTower t = To<Tower>::DynamicCast(s);
 			if (t)
 				towers << t;
+			if (s->IsPylon())
+				pylons << To<Pylon>::Cast(s);
 			if (s->IsOrbital())
 			{
 				Orbital::PStation st = To<Orbital::Station>::Cast(s);

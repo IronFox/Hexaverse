@@ -1,49 +1,18 @@
-range on water!!!!!
-vehicle sentry toggle
+motions ending in cells occupied by vehicles with no tasks should abort
 
-smoke trail of last round attacks
 still possible to have negative compound power level when generator could be enable but isn't? i think this happened when enabling a skyport
 repair vehicle idle if something damaged?
 compound inefficieny
 wireless power? ... dedicated compounds?
-button to toggle offensive vehicles to also be considered idle if standing around
-button to toggle factories being considered idle
-
 have pylons (ft_pylon) connect to each other only, replace connectors	
 		
 
-
-	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 improve sky grid
 decrease max transparency of water (make it configurable?)
-all available generators are switched on when power is needed, and are never switched off again. always?
 
+make generators switch off it not needed
 
-
+split terraformers and constructors
 
 lava ship
 
@@ -65,15 +34,12 @@ faster digging
 
 
 
-visualize attack radius on water
 
 transfer build-state of terraformer to hostile factions
 	/see what hostile former is building currently
 
 better surveyor automation logic
 
-ability to pause construction (of terraformers)
-	/favorize certain vehicle construction jobs (this is actually the same as the former)
 
 
 
@@ -152,6 +118,12 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+smoke trail of last round attacks
+vehicle sentry toggle	// better: vehicles can sleep
+button to toggle offensive vehicles to also be considered idle if standing around // also done by sleep
+button to toggle factories being considered idle // also done by sleep
+ability to pause construction (of terraformers) // also done by sleep
+visualize attack radius on water
 hostile satellites show up as ghosts if in radar range
 possibly fixed:
 	terraformer moves with a finished construction but move on finish is not executed until vehicle moves again. then places building on the location the vehicle first moved to...

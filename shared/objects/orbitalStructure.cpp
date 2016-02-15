@@ -22,12 +22,12 @@ namespace Objects
 
 
 
-		/*virtual override*/ void		Hub::VisitAllConnected(const std::function<void(const PStructure&)>&visitor) const
+		/*virtual override*/ void		Hub::VisitAllConnected(const std::function<void(const Connection&)>&visitor) const
 		{
 			Super::VisitAllConnected(visitor);
 			PSkyLinkStructure s =  this->connectedToLink.lock();
 			if (s)
-				visitor(To<Structure>::Cast(s->CastToStructure()->shared_from_this()));
+				visitor(Connection(To<Structure>::Cast(s->CastToStructure()->shared_from_this()),true));
 		}
 
 		#ifndef CLIENT

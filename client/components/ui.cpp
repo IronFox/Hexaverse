@@ -2051,7 +2051,7 @@
 					textout << " Connected to: "<<nl;
 					const Objects::Structure&s = (const Objects::Structure&)e;
 					foreach (s.connectedTo,c)
-						textout << "  "<<(*c)->GetName()<<nl;
+						textout << "  "<<c->structure->GetName()<<", wireless="<<c->wireless <<nl;
 				}
 				#endif
 				const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&e);

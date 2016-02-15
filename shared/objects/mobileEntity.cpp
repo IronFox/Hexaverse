@@ -158,17 +158,26 @@ namespace Objects
 			cacheID = check;
 			#ifdef WIRELESS_VEHICLES
 				sourceCompounds.Clear();
-				if (m.IsVehicle())
-				{
-					Grid::low.GenerateVolume(Sphere<>(WorldEntity::GetWorldPosition(loc),GroundWirelessTransferRange),desc);
-					GetOwnCompoundsIn(m.owner,desc);
-				}
+				const float3 world = WorldEntity::GetWorldPosition(loc);
+				if (m.IsOrbital())
+					Grid::low.GenerateOrbitalDisk(Sphere<>(world,BaseWirelessTransferRange*OrbitalRangeFactor),Orbital::BaseHeight, desc);
 				else
-					if (m.IsOrbital())
+					Grid::low.GenerateVolume(Sphere<>(world,BaseWirelessTransferRange),desc);
+				GetOwnCompoundsIn(m.owner,desc);
+				#ifdef CLIENT
+					for (const auto&p : pylons)
 					{
-						Grid::low.GenerateOrbitalDisk(Sphere<>(m.system.w.xyz,OrbitalWirelessTransferRange),Orbital::BaseHeight, desc);
-						GetOwnCompoundsIn(m.owner,desc);
+						if (p && p->owner == m.owner && p->compoundID != Compound::InvalidNetwork && Vec::quadraticDistance(world,p->GetWorldPosition()) < sqr(PylonWirelessTransferRange))
+							AddCompound(p);
 					}
+				#else
+					foreach (m.owner->pylons,_p)
+					{
+						PPylon p = _p->lock();
+						if (p && p->compoundID != Compound::InvalidNetwork && Vec::quadraticDistance(world,p->GetWorldPosition()) < sqr(PylonWirelessTransferRange))
+							AddCompound(p);
+					}
+				#endif
 			#endif
 
 		}

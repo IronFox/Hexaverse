@@ -833,6 +833,8 @@ namespace Animation
 			#ifndef CONNECTOR_LESS
 				ASSERT__(s->compoundID != Objects::Compound::InvalidNetwork);
 			#endif
+			if (s->compoundID = 0xFFFFFFFF)
+				Objects::RefreshCompoundCoverage(0);
 			s->GetCompound().RefreshState(0);
 		}
 

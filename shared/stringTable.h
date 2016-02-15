@@ -45,6 +45,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Type_Marker,
 	Type_Vehicle,
 	Type_Connector,
+	Type_Pylon,
 	Type_NexusPort,
 	Type_Generator,
 	Type_ReactorCore,

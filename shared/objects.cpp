@@ -152,6 +152,7 @@ namespace Objects
 		structurePrototypes << MunitionFactory::globalPrototype;
 		structurePrototypes << VehiclePlant::globalPrototype;
 		structurePrototypes << Connector::globalPrototype;
+		structurePrototypes << Pylon::globalPrototype;
 		structurePrototypes << FuelContainer::globalPrototype;
 		structurePrototypes << MineralContainer::globalPrototype;
 		structurePrototypes << MunitionStorage::globalPrototype; //DO NOT COMMENT. Nexus bases feature these
@@ -356,6 +357,7 @@ namespace Objects
 		#endif
 		#ifdef CLIENT
 			skyLinks.Clear();
+			pylons.Clear();
 		#endif
 		structures.Clear();
 		vehicles.Clear();
@@ -779,6 +781,7 @@ namespace Objects
 		FlushGrids();
 		#ifdef CLIENT
 			skyLinks.Clear();
+			pylons.Clear();
 			Marker::FlushAll();
 			#ifndef NO_HIBERNATION
 				uplinkTraffic = 0;

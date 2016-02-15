@@ -48,6 +48,9 @@ namespace Objects
 			static int			GetStructureBuildHeight(const Grid::LCellIdI&satelliteLocation);
 			int					GetStructureBuildHeight() const;
 
+			//Structure overrides:
+			virtual int			GetWirelessTransferRange() const override {return Super::GetWirelessTransferRange() * OrbitalRangeFactor;}
+
 			//WorldEntity overrides:
 			virtual void		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr) override;
 			virtual void		UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true) override;
@@ -282,7 +285,7 @@ namespace Objects
 				#ifndef CLIENT
 					virtual void		OnConstructionFinished(float&atTime) override;
 				#endif
-				virtual void			VisitAllConnected(const std::function<void(const PStructure&)>&visitor) const override;
+				virtual void			VisitAllConnected(const std::function<void(const Connection&)>&visitor) const override;
 
 			};
 		
