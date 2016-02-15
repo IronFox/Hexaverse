@@ -1108,7 +1108,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 		//if (strip)
 			//Grid::visibleOrbitGrid.StripColor();
 
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			bool compoundSelectionUpdated = false;
 			if (!stateChangeOnly)
 				Objects::anyCompoundsColored = false;
@@ -1243,11 +1243,11 @@ void	OnAppear(const Objects::PWorldEntity&e)
 				f = Objects::Faction::mine;
 			if (f)
 			{
-				if (f->compound.containedStructures.IsEmpty())
+				if (f->compound.allStructures.IsEmpty())
 				{
 					bool any = false;
 					for (const auto& s : Objects::structures)
-						if (s->IsWorkingStructure() && s->owner == f)
+						if (s->owner == f)
 							any = true;
 					if (any)	//prevent stack overflow
 						Objects::RefreshCompoundCoverage(0);
@@ -1283,13 +1283,13 @@ void	OnAppear(const Objects::PWorldEntity&e)
 				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
 				if (ws)
 				{
-					Objects::ResourceVector _change, storage, _max;
+					Objects::ResourceVector _change, storage, _max,zero;
 					ws->GetResourceVector(_change, storage, _max);
 					UI::Update(
 						#ifndef NO_HIBERNATION
 							Objects::selectedEntity->GetUplinkTraffic(), 
 						#endif
-						current, max, change, storage/*,change, ws->IsEnabled()*/);
+						current, max, zero,zero,change);
 				}
 				else
 					UI::Update(

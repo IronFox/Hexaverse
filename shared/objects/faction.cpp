@@ -148,10 +148,11 @@ namespace Objects
 			LogEvent( EventClass(EventSignificance::Important,EventFlavor::Gain) ,e.get(),"Changed ownership ('"+oldOwner->GetName()+"' -> '"+newOwner->GetName()+"')");
 		}
 
-		#ifdef CONNECTOR_LESS
+		#ifdef ONE_COMPOUND_PER_FACTION
 			void Faction::UpdateCompoundCoverage()
 			{
-				compound.containedStructures.Clear();
+				compound.allStructures.Clear();
+				compound.workingStructures.Clear();
 				foreach (this->structures,s)
 				{
 					PStructure s1 = s->lock();
@@ -724,7 +725,7 @@ namespace Objects
 		bool		Faction::CanLive(String&whyNot) const
 		{
 			bool hasMineralGeneratorCycle = hasFuelMine && hasMineralMine && hasGenerator;
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				if (!hasMineralContainer)
 					hasMineralGeneratorCycle = false;
 			#endif
@@ -742,7 +743,7 @@ namespace Objects
 					whyNot += "Mineral Mine";
 				}
 
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					if (!hasMineralContainer)
 					{
 						if (whyNot.IsNotEmpty())

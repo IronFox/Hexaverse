@@ -70,36 +70,38 @@ namespace Objects
 	#ifdef WIRELESS_VEHICLES
 
 
-		bool				MobileResourceEnvironment::ContainsCompound(UINT32 compoundID)	const
-		{
-			foreach (this->sourceCompounds,c)
-				if (c->first == compoundID)
-					return true;
-			return false;
-		}
-
-		void				MobileResourceEnvironment::AddCompound(const PStructure&ref)
-		{
-			if (!ContainsCompound(ref->compoundID))	//we assume the number of compounds is very low here (usually 0..2), so this should be okay in regards to performance
-				sourceCompounds << std::make_pair(ref->compoundID,ref);
-		}
-
-		void	MobileResourceEnvironment::GetOwnCompoundsIn(const OwnerParameter&p, const Grid::LowSetup::TVolumeDescriptor&desc)
-		{
-			foreach (desc.coverage,c)
+		#ifndef ONE_COMPOUND_PER_FACTION
+			bool				MobileResourceEnvironment::ContainsCompound(UINT32 compoundID)	const
 			{
-				for (UINT l = c->layerBegin; l < c->layerEnd; l++)
+				foreach (this->sourceCompounds,c)
+					if (c->first == compoundID)
+						return true;
+				return false;
+			}
+
+			void				MobileResourceEnvironment::AddCompound(const PStructure&ref)
+			{
+				if (!ContainsCompound(ref->compoundID))	//we assume the number of compounds is very low here (usually 0..2), so this should be okay in regards to performance
+					sourceCompounds << std::make_pair(ref->compoundID,ref);
+			}
+
+			void	MobileResourceEnvironment::GetOwnCompoundsIn(const OwnerParameter&p, const Grid::LowSetup::TVolumeDescriptor&desc)
+			{
+				foreach (desc.coverage,c)
 				{
-					PStructure s = GetStructure(Grid::LCellIdU(c->stackID,l));
-					if (!s || s->owner != p)
-						continue;
-					if (s->compoundID == Compound::InvalidNetwork)
-						continue;
-					AddCompound(s);
+					for (UINT l = c->layerBegin; l < c->layerEnd; l++)
+					{
+						PStructure s = GetStructure(Grid::LCellIdU(c->stackID,l));
+						if (!s || s->owner != p)
+							continue;
+						if (s->compoundID == Compound::InvalidNetwork)
+							continue;
+						AddCompound(s);
+					}
 				}
 			}
-		}
 
+		#endif
 
 		MobileResourceEnvironment::TCacheID::TCacheID(const MobileEntity&m)
 		{
@@ -107,7 +109,11 @@ namespace Objects
 			stackID = (UINT16)m.location.stackID;
 			layerID = (UINT8)Grid::CellStack::ToLayer(m.location.height);
 			phase = (UINT8)RuntimeConfig::phase;
-			numCompounds = (UINT16)compounds.Count();
+			#ifndef ONE_COMPOUND_PER_FACTION
+				numCompounds = (UINT16)compounds.Count();
+			#else
+				numCompounds = 1;
+			#endif
 		}
 
 		MobileResourceEnvironment::TCacheID::TCacheID(const MobileEntity&m, const Grid::LCellIdI&loc)
@@ -116,7 +122,11 @@ namespace Objects
 			stackID = (UINT16)loc.stackID;
 			layerID = (UINT8)Grid::CellStack::ToLayer(loc.height);
 			phase = (UINT8)RuntimeConfig::phase;
-			numCompounds = (UINT16)compounds.Count();
+			#ifndef ONE_COMPOUND_PER_FACTION
+				numCompounds = (UINT16)compounds.Count();
+			#else
+				numCompounds = 1;
+			#endif
 		}
 
 		#ifndef CLIENT
@@ -149,41 +159,44 @@ namespace Objects
 	
 		void	MobileResourceEnvironment::CheckRefresh(const MobileEntity&m, const Grid::LCellIdI&loc)
 		{
-			TCacheID	check(m,loc);
-			if (cacheID == check)
-				return;
-			cacheID = check;
-			#ifdef WIRELESS_VEHICLES
-				sourceCompounds.Clear();
-				if (m.IsVehicle())
-				{
-					Grid::low.GenerateVolume(Sphere<>(WorldEntity::GetWorldPosition(loc),WirelessTransferRange),desc);
-					GetOwnCompoundsIn(m.owner,desc);
-				}
-				else
-					if (m.IsSatellite())
+			#ifndef ONE_COMPOUND_PER_FACTION
+
+				TCacheID	check(m,loc);
+				if (cacheID == check)
+					return;
+				cacheID = check;
+				#ifdef WIRELESS_VEHICLES
+					sourceCompounds.Clear();
+					if (m.IsVehicle())
 					{
-						#ifdef CLIENT
-							foreach (skyLinks,s)
-							{
-								if (s->second->owner == m.owner && s->first->connectedToHub)
-									AddCompound(s->second);
-							}
-						#else
-							foreach (m.owner->skyHubs,h)
-							{
-								PSkyHub hub = h->lock();
-								if (hub)
+						Grid::low.GenerateVolume(Sphere<>(WorldEntity::GetWorldPosition(loc),WirelessTransferRange),desc);
+						GetOwnCompoundsIn(m.owner,desc);
+					}
+					else
+						if (m.IsSatellite())
+						{
+							#ifdef CLIENT
+								foreach (skyLinks,s)
 								{
-									PSkyLinkStructure link = hub->connectedTo.lock();
-									if (link)
+									if (s->second->owner == m.owner && s->first->connectedToHub)
+										AddCompound(s->second);
+								}
+							#else
+								foreach (m.owner->skyHubs,h)
+								{
+									PSkyHub hub = h->lock();
+									if (hub)
 									{
-										AddCompound(To<Structure>::Cast( link->CastToStructure()->shared_from_this() ) );
+										PSkyLinkStructure link = hub->connectedTo.lock();
+										if (link)
+										{
+											AddCompound(To<Structure>::Cast( link->CastToStructure()->shared_from_this() ) );
+										}
 									}
 								}
-							}
-						#endif
-					}
+							#endif
+						}
+				#endif
 			#endif
 
 		}
@@ -231,7 +244,7 @@ namespace Objects
 		{
 			if (change == 0)
 				return;
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				#ifdef WIRELESS_VEHICLES
 					foreach (sourceCompounds,c)
 					{
@@ -257,7 +270,7 @@ namespace Objects
 					Objects::ChangeStorage(owner,owner.timeAt,owner.GetMaxStorageCapacity(),owner.currentStorage,res,change);
 				#endif
 			#else
-				ChangeCompoundStorage(owner.owner->compound, &owner, atTime,res,change);
+				ChangeCompoundStorage(owner.owner->compound, &owner, owner.timeAt,res,change);
 			#endif
 		}
 
@@ -272,7 +285,7 @@ namespace Objects
 
 	int			MobileResourceEnvironment::GetStorage(const MobileEntity&owner, Resource res)	const
 	{
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			#ifdef WIRELESS_VEHICLES
 				int rs = owner.currentStorage.level[res];
 				foreach (sourceCompounds,c)
@@ -287,7 +300,11 @@ namespace Objects
 			#endif
 		#else
 			const Compound&compound = owner.owner->compound;
-			return compound.total.storage.level[res] + compound.overproduction.level[res];
+			return compound.total.storage.level[res] 
+				#ifndef CLIENT
+					+ compound.GetOverproduction(res)
+				#endif
+				;
 		#endif
 	}
 

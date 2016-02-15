@@ -28,12 +28,15 @@ namespace Objects
 	{
 	public:
 		#ifdef WIRELESS_VEHICLES
-			Grid::LowSetup::TVolumeDescriptor desc;
-			Buffer0<std::pair<UINT32, PStructure> >		sourceCompounds;
+			#ifndef ONE_COMPOUND_PER_FACTION
+				Grid::LowSetup::TVolumeDescriptor desc;
+				Buffer0<std::pair<UINT32, PStructure> >		sourceCompounds;
 
-			bool				ContainsCompound(UINT32 compoundID)	const;
+				bool			ContainsCompound(UINT32 compoundID)	const;
 
-			void				GetOwnCompoundsIn(const OwnerParameter&p, const Grid::LowSetup::TVolumeDescriptor&desc);
+				void			GetOwnCompoundsIn(const OwnerParameter&p, const Grid::LowSetup::TVolumeDescriptor&desc);
+				void			AddCompound(const PStructure&ref);
+			#endif
 
 			#ifndef CLIENT
 				static void		ChangeCompoundStorage(Compound&compound, MobileEntity*originatingAt, float atTime, Resource res, int&change);
@@ -41,7 +44,6 @@ namespace Objects
 				static void		WithdrawOverproduction(Compound&compound, MobileEntity*originatingAt, Resource res, int&change);
 			#endif
 
-			void				AddCompound(const PStructure&ref);
 
 			struct TCacheID
 			{
@@ -271,7 +273,7 @@ namespace Objects
 
 		WHangarStructure		storedIn;
 
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			ResourceVector		currentStorage;
 		#endif
 
@@ -353,7 +355,7 @@ namespace Objects
 		#endif
 
 
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			/**
 			Calculates the maximum storage vector based on the local components
 			*/

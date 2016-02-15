@@ -66,7 +66,7 @@ namespace Objects
 				return distance < other.distance;
 			}
 		};
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			static Buffer0<THub>hubs;	//ordered for references, closest first
 
 			/**
@@ -237,7 +237,7 @@ namespace Objects
 			else
 				location.height = DeclinedResidenceHeight;
 		}
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			virtual ResourceVector		GetMaxStorageCapacity()	const override
 			{
 				return turret->baseStorageCapacity;
