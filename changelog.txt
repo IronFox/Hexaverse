@@ -1,3 +1,7 @@
+v0.5.0
+	> Reduced wireless transfer range of normal structures.
+	+ Added Pylon building that can wireless connect to other pylons, and vehicles over a long range.
+
 v0.4.0
 	+ Re-enabled compound system. Vehicles in the vicinity of compounds will implicitly draw from them.
 	+ Added compound visualization to show which compound a structure belongs to and/or which compounds a vehicle will draw from.
