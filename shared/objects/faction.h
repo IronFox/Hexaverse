@@ -303,10 +303,7 @@ namespace Objects
 			void		RegisterStructureLoss(const PWorldEntity&);
 			void		RegisterActiveMobileLoss(const PWorldEntity&);
 			void		RegisterStoredMobileLoss(const PWorldEntity&);
-			void		RegisterGain(const PWorldEntity&);
-			void		RegisterStructureGain(const PWorldEntity&);
 			void		RegisterActiveMobileGain(const PWorldEntity&);
-			void		RegisterStoredMobileGain(const PWorldEntity&);
 
 			bool		CanSee(const PWorldEntity&e, float t)	const;
 

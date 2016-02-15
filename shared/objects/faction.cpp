@@ -258,31 +258,6 @@ namespace Objects
 			FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
 		}
 
-		void		Faction::RegisterGain(const PWorldEntity&e)
-		{
-			if (e->IsMobile())
-			{
-				if (To<MobileEntity>::Cast(e)->storedIn.expired())
-					RegisterActiveMobileGain(e);
-				else
-					RegisterStoredMobileGain(e);
-			}
-			else
-				if (e->IsStructure())
-					RegisterStructureGain(e);
-				else
-					FATAL__("WTF is this: "+e->GetName());
-
-		}
-		void		Faction::RegisterStructureGain(const PWorldEntity&e)
-		{
-			PStructure s = To<Structure>::DynamicCast(e);
-			ASSERT1__(s,e->GetName());
-			structures << s;
-			PTower t = To<Tower>::DynamicCast(s);
-			if (t)
-				towers << t;
-		}
 		void		Faction::RegisterActiveMobileGain(const PWorldEntity&e)
 		{
 			PMobileEntity v = To<MobileEntity>::DynamicCast(e);
@@ -297,21 +272,6 @@ namespace Objects
 					this->skyHubs << To<SkyHub>::Cast(sat);
 			}
 		}
-		void		Faction::RegisterStoredMobileGain(const PWorldEntity&e)
-		{
-			PMobileEntity v = To<MobileEntity>::DynamicCast(e);
-			ASSERT1__(v,e->GetName());
-			ASSERT1__(!v->storedIn.expired(),e->GetName());
-			storedMobiles << v;
-			if (v->IsSatellite())
-			{
-				PSatellite sat = To<Satellite>::Cast(v);
-				this->satellites << sat;
-				if (sat->IsSkyHub())
-					this->skyHubs << To<SkyHub>::Cast(sat);
-			}
-		}
-
 
 		bool		Faction::HasActiveMobile(const PMobileEntity&v, bool forceDoNotCheckSatellites) const
 		{
