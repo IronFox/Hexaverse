@@ -2687,7 +2687,7 @@ String GenerateOreName(Random&random)
 	}
 
 
-	bool	IsIdle(const Objects::PStructure&s, bool tagVisited)
+	bool	IsIdle(const Objects::PStructure&s)
 	{
 		#ifndef NO_HIBERNATION
 			if (s->ToHibernating()->IsHibernating())
@@ -2697,10 +2697,6 @@ String GenerateOreName(Random&random)
 		if (!s->IsWorkingStructure() || s->IsSleeping())
 			return false;
 		Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
-		if (ws->visited)
-			return false;
-		if (tagVisited)
-			ws->visited = true;
 
 		Objects::PVehiclePlant vp = To<Objects::VehiclePlant>::DynamicCast(s);
 		if (vp)
@@ -2745,7 +2741,7 @@ String GenerateOreName(Random&random)
 			}
 			elif (e->IsStructure())
 			{
-				if (IsIdle(To<Objects::Structure>::Cast(e),false))
+				if (IsIdle(To<Objects::Structure>::Cast(e)))
 					any = true;
 			}
 		});
@@ -2814,7 +2810,7 @@ String GenerateOreName(Random&random)
 					index_t at = to - Objects::vehicles.Count() - Objects::satellites.Count();
 					Objects::PStructure s = Objects::structures[at];
 
-					if (s->isMine && IsIdle(s,true))
+					if (s->isMine && IsIdle(s))
 					{
 						Objects::Select(s,Network::ControlEnabled());
 						Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);

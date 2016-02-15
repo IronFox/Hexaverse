@@ -1391,7 +1391,6 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 					if (s->isMine && s->IsWorkingStructure() )
 					{
 						Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
-						ws->visited = false;
 						if (ws->AwaitsUserInteraction())
 							Tutorial::ShowMessage("Interaction");
 					}
