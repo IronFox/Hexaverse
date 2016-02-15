@@ -3,15 +3,12 @@ v0.4.0
 	+ Added compound visualization to show which compound a structure belongs to and/or which compounds a vehicle will draw from.
 	+ Volumetric spheres highlighting the draw-zones for the required resource of a selected mobile unit.
 
-v0.3.16
-	* Fixed ownership change of nexus port causing the undesired appearance of a ghost.
-	* Client now correctly closes down any started server before quitting.
-	* Fixed clients in visual range not always seeing instantaneous events as they should.
-	* Fixed artillery attack job trajectory not always being rendered correctly.
-	* Possibly fixed rare case where a terraformer would not finish a construction job if its movement was only partially successful.
-	* Fixed hostile satellites showing up as ghosts while in radar range.
-	* Fixed access violation when handling outdated markers (ghosts).
-	* Fixed detection of new contacts when moving vehicles, thus reducing the number of false forced stops.
+v0.3.16	[Feb 15 2016]
+	+ Ghosts now memorize the owner of the referenced entity (if any).
+	+ Added option to use max compression for time lapse series PNG files.
+	+ Added puttons to put vehicles and vehicle plants to sleep. Sleeping vehicles will mostly not be considered idle, and pause building.
+	+ Added visual event log of the last processing round, showing buttons of attacks and unit losses.
+	+ Added visible smoke trails of attacks that happened during the last processing round.
 	> Reduced height of uranium storage to better show resource marker on top.
 	> Improved faction coloring in spectator mode.
 	> Time lapse mode now locks the camera, and shows a gui message to indicate that recording is active.
@@ -21,9 +18,14 @@ v0.3.16
 	> Buildings walls (up or forward) now connects to any solid neighboring matter.
 	> Offensive vehicles are now considered idle only, if they actually can attack this round.
 	> "Dig Tunnel To..." command now tries better to stay on the same level as the vehicle currently is.
-	+ Ghosts now memorize the owner of the referenced entity (if any).
-	+ Added option to use max compression for time lapse series PNG files.
-	+ Added puttons to put vehicles and vehicle plants to sleep. Sleeping vehicles will mostly not be considered idle, and pause building.
+	* Fixed ownership change of nexus port causing the undesired appearance of a ghost.
+	* Client now correctly closes down any started server before quitting.
+	* Fixed clients in visual range not always seeing instantaneous events as they should.
+	* Fixed artillery attack job trajectory not always being rendered correctly.
+	* Possibly fixed rare case where a terraformer would not finish a construction job if its movement was only partially successful.
+	* Fixed hostile satellites showing up as ghosts while in radar range.
+	* Fixed access violation when handling outdated markers (ghosts).
+	* Fixed detection of new contacts when moving vehicles, thus reducing the number of false forced stops.
 
 v0.3.15		[Feb 7 2016]
 	* Fixed incorrect server IDs leading to client-side merging of different servers into one.
