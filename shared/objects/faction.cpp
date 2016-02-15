@@ -209,6 +209,15 @@ namespace Objects
 						break;
 					}
 			}
+			if (To<Structure>::Cast(e)->IsPylon())
+			{
+				foreach (pylons,_p)
+					if (_p->lock() == e)
+					{
+						pylons.erase(_p);
+						break;
+					}
+			}
 		}
 		void		Faction::RegisterActiveMobileLoss(const PWorldEntity&e)
 		{
@@ -282,6 +291,8 @@ namespace Objects
 			PTower t = To<Tower>::DynamicCast(s);
 			if (t)
 				towers << t;
+			if (s->IsPylon())
+				pylons << To<Pylon>::Cast(s);
 		}
 		void		Faction::RegisterActiveMobileGain(const PWorldEntity&e)
 		{

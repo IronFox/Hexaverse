@@ -157,8 +157,23 @@ namespace Objects
 				sourceCompounds.Clear();
 				if (m.IsVehicle())
 				{
-					Grid::low.GenerateVolume(Sphere<>(WorldEntity::GetWorldPosition(loc),WirelessTransferRange),desc);
+					const float3 world = WorldEntity::GetWorldPosition(loc);
+					Grid::low.GenerateVolume(Sphere<>(world,BaseWirelessTransferRange),desc);
 					GetOwnCompoundsIn(m.owner,desc);
+					#ifdef CLIENT
+						for (const auto&p : pylons)
+						{
+							if (p && p->owner == m.owner && p->compoundID != Compound::InvalidNetwork && Vec::quadraticDistance(world,p->GetWorldPosition()) < sqr(PylonWirelessTransferRange))
+								AddCompound(p);
+						}
+					#else
+						foreach (m.owner->pylons,_p)
+						{
+							PPylon p = _p->lock();
+							if (p && p->compoundID != Compound::InvalidNetwork && Vec::quadraticDistance(world,p->GetWorldPosition()) < sqr(PylonWirelessTransferRange))
+								AddCompound(p);
+						}
+					#endif
 				}
 				else
 					if (m.IsSatellite())

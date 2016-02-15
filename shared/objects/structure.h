@@ -1,6 +1,7 @@
 #ifndef objectStructureH
 #define objectStructureH
 
+#include "wirelessRanges.h"
 #include "entity.h"
 #ifdef HAS_WINDOW
 	#include "geometry.h"
@@ -254,6 +255,7 @@ namespace Objects
 		virtual bool				IsSkyPort() const {return false;}
 
 		virtual bool				IsPylon() const {return false;}
+		virtual int					GetWirelessTransferRange() const {return BaseWirelessTransferRange;}
 
 		virtual bool				IsSkyLinkStructure() const {return false;}
 
@@ -639,14 +641,12 @@ namespace Objects
 		/**/						Pylon() {}
 		/**/						Pylon(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
 	public:
-		static const int			maxConnectionRadius = 6;
 
 		virtual String				GetTypeName() const override { return "Pylon"; };
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Pylon;}
 
-		float						GetConnectionRadius() const {return maxConnectionRadius;}
 
-		virtual int					GetConstructionCost() const override {return 5 * maxConnectionRadius;}
+		virtual int					GetConstructionCost() const override {return 5 * GetWirelessTransferRange();}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return maxConnectionRadius;}
 		#endif
@@ -654,6 +654,7 @@ namespace Objects
 
 		//Structure overrides:
 		virtual bool				IsPylon() const override {return true;}
+		virtual int					GetWirelessTransferRange() const {return PylonWirelessTransferRange;}
 
 		//WorldEntity overrides:
 		virtual bool				IsBroad() const override {return true;}
@@ -1754,6 +1755,7 @@ namespace Objects
 	#ifdef CLIENT
 		typedef std::pair<PSkyLinkStructure,PWorkingStructure>	TLinkReference;
 		extern Buffer0<TLinkReference>		skyLinks;	//also included in structures, but filtered for quicker access
+		extern Buffer0<PPylon>				pylons;		//also included in structures, but filtered for quicker access
 	#endif
 
 

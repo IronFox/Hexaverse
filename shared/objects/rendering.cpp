@@ -1253,9 +1253,9 @@ namespace Objects
 
 		if (selectedEntity)
 		{
-			float r = WirelessTransferRange;
-			if (extendedShadow)
-				r += RangeShadowExtension;
+			//float r = WirelessTransferRange;
+			//if (extendedShadow)
+			//	r += RangeShadowExtension;
 
 			float scanningRange = selectedEntity->GetScanningRange();
 			if (extendedShadow)
@@ -1877,9 +1877,7 @@ namespace Objects
 			if (extendedShadow)
 				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
-			float r = WirelessTransferRange;
-			if (extendedShadow)
-				r += RangeShadowExtension;
+			float dr = extendedShadow ? RangeShadowExtension : 0.f;
 
 			for (auto ci : compoundScope)
 			{
@@ -1888,7 +1886,7 @@ namespace Objects
 				foreach(c->allStructures, _s)
 				{
 					Structure&s = *_s->lock();
-					RenderRangeSphere(s.GetWorldPosition(),r,float4());
+					RenderRangeSphere(s.GetWorldPosition(),s.GetWirelessTransferRange()+dr,float4());
 				}
 
 			}
@@ -1899,7 +1897,7 @@ namespace Objects
 				foreach(c->allStructures, _s)
 				{
 					Structure&s = *_s->lock();
-					RenderRangeSphere(s.GetWorldPosition(),r,color);
+					RenderRangeSphere(s.GetWorldPosition(),s.GetWirelessTransferRange()+dr,color);
 				}
 
 			}

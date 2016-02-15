@@ -353,6 +353,7 @@ namespace Objects
 		#endif
 		#ifdef CLIENT
 			skyLinks.Clear();
+			pylons.Clear();
 		#endif
 		structures.Clear();
 		structurePrototypes.Clear();
@@ -799,6 +800,7 @@ namespace Objects
 		structureGrid.Fill(PStructure());
 		#ifdef CLIENT
 			skyLinks.Clear();
+			pylons.Clear();
 			Marker::FlushAll();
 			#ifndef NO_HIBERNATION
 				uplinkTraffic = 0;

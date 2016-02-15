@@ -862,7 +862,7 @@ namespace Objects
 							foreach (compound.allStructures,_s)
 							{
 								PStructure s = _s->lock();
-								if (s && Vec::quadraticDistance(world,s->GetWorldPosition()) <= sqr(WirelessTransferRange))
+								if (s && Vec::quadraticDistance(world,s->GetWorldPosition()) <= sqr(s->GetWirelessTransferRange()))
 									movementChoices << s->location + 1;
 							}
 						}
@@ -870,14 +870,14 @@ namespace Objects
 							v->resourceEnvironment.CheckRefresh(*v);
 							ForeachMobileWorldEntity([v,&movementChoices,world](const PMobileEntity&m)
 							{
-								if (m->owner == v->owner && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= sqr(WirelessTransferRange))
+								if (m->owner == v->owner && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= sqr(MobileWirelessTransferRange))
 									movementChoices << m->location + 1;
 							});
 						#else
 							foreach (v->owner->allMobiles,_m)
 							{
 								PMobileEntity m = _m->lock();
-								if (m && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= sqr(WirelessTransferRange))
+								if (m && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= sqr(MobileWirelessTransferRange))
 									movementChoices << m->location + 1;
 							}
 						#endif
@@ -1178,6 +1178,8 @@ namespace Objects
 				PSkyLinkStructure link = To<SkyLinkStructure>::DynamicCast(s);
 				skyLinks << std::make_pair(link,To<WorkingStructure>::Cast(link->CastToStructure()->shared_from_this()));
 			}
+			if (s->IsPylon())
+				pylons << To<Pylon>::Cast(s);
 		#endif
 
 
@@ -1192,6 +1194,8 @@ namespace Objects
 			PTower t = To<Tower>::DynamicCast(s);
 			if (t)
 				s->owner->towers << t;
+			if (s->IsPylon())
+				s->owner->pylons << To<Pylon>::Cast(s);
 			if (!refreshNetworkNow)
 				compoundCoverageChanged = true;
 			else
@@ -1280,7 +1284,8 @@ namespace Objects
 
 			ASSERT1__(structures.FindAndErase(e),e->GetName());
 			#ifdef CLIENT
-				if (To<Structure>::Cast(e)->IsSkyLinkStructure())
+				PStructure s = To<Structure>::Cast(e);
+				if (s->IsSkyLinkStructure())
 				{
 					foreach (skyLinks,link)
 						if (link->second == e)
@@ -1289,6 +1294,9 @@ namespace Objects
 							break;
 						}
 				}
+				if (s->IsPylon())
+					pylons.FindAndErase(s);
+
 			#endif
 
 

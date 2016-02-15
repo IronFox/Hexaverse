@@ -39,7 +39,8 @@ namespace Objects
 		/**
 		Filter list containing only SkyPorts. Used to faster render certain effects.
 		*/
-		Buffer0<TLinkReference>	skyLinks;
+		Buffer0<TLinkReference>		skyLinks;
+		Buffer0<PPylon>				pylons;		//also included in structures, but filtered for quicker access
 	#endif
 
 	/**
@@ -748,26 +749,51 @@ namespace Objects
 	{
 		Super::OnConstructionFinished(atTime);
 
-		Grid::LowSetup::TVolumeDescriptor desc;
-		Grid::low.GenerateVolume(Sphere<>(system.w.xyz,GetConnectionRadius()),desc);
-
 		PStructure _this = To<Structure>::Cast(shared_from_this());
 
-		foreach (desc.coverage,s)
+		const float r2 = sqr(GetWirelessTransferRange());
+		#ifdef CLIENT
+		for (const auto&other : pylons)
 		{
-			for (UINT32 layer = s->layerBegin; layer < s->layerEnd; layer++)
+			if (other->owner != owner)
+				continue;
+
+		#else
+		foreach (owner->pylons,_p)
+		{
+			PPylon other = _p->lock();
+			if (!other)
+				continue;
+		#endif
+			if (other.get() != this && Vec::quadraticDistance(GetWorldPosition(),other->GetWorldPosition()) < r2)
 			{
-				Objects::PStructure&other = GetStructure(Grid::LCellIdU(s->stackID,layer));
-				if (other && other->owner == owner && other.get() != this && other->IsPylon())
-				{
-					other->OnNewConnection(Connection(_this,true), 0, atTime);
-					_this->OnNewConnection(Connection(other,true), 0, atTime);
-					connectedTo << Connection(other,true);
-					other->connectedTo << Connection(_this,true);
-					LogEvent(EventSignificance::Common,this, "Wireless Connection established to "+other->GetName());
-				}
+				other->OnNewConnection(Connection(_this,true), 0, atTime);
+				_this->OnNewConnection(Connection(other,true), 0, atTime);
+				connectedTo << Connection(other,true);
+				other->connectedTo << Connection(_this,true);
+				LogEvent(EventSignificance::Common,this, "Wireless Connection established to "+other->GetName());
 			}
 		}
+
+		//Grid::LowSetup::TVolumeDescriptor desc;
+		//Grid::low.GenerateVolume(Sphere<>(system.w.xyz,GetWirelessTransferRange()),desc);
+
+
+		//foreach (desc.coverage,s)
+		//{
+		//	for (UINT32 layer = s->layerBegin; layer < s->layerEnd; layer++)
+		//	{
+		//		Objects::PStructure&other = GetStructure(Grid::LCellIdU(s->stackID,layer));
+		//		if (other && other->owner == owner && other.get() != this && other->IsPylon())
+		//		{
+		//			other->OnNewConnection(Connection(_this,true), 0, atTime);
+		//			_this->OnNewConnection(Connection(other,true), 0, atTime);
+		//			connectedTo << Connection(other,true);
+		//			other->connectedTo << Connection(_this,true);
+		//			LogEvent(EventSignificance::Common,this, "Wireless Connection established to "+other->GetName());
+		//		}
+		//	}
+		//}
 	}
 
 

@@ -11,9 +11,6 @@ namespace Objects
 	//typedef std::shared_ptr<Faction>	PFaction;
 	//typedef std::weak_ptr<Faction>		WFaction;
 
-	#ifdef WIRELESS_VEHICLES
-		static const int			WirelessTransferRange = 6;
-	#endif
 
 	
 	/**
@@ -216,7 +213,8 @@ namespace Objects
 			Buffer0<WSkyHub>			skyHubs;	//overlaps with satellites
 			Buffer0<WStructure>			structures;
 
-			Buffer0<WTower>				towers;
+			Buffer0<WTower>				towers;	//subset of structures
+			Buffer0<WPylon>				pylons;	//subset of structures
 
 			static Buffer0<WFaction>	all;
 			static PFaction				nexus;
