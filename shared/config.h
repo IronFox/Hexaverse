@@ -14,14 +14,14 @@ Warning: hasn't been undefined in a long time. Some code sections might not comp
 #define HYBRID_GRID
 
 
-/** CONNECTOR_LESS
+/** ONE_COMPOUND_PER_FACTION
 If defined, connectors have no functionality. Resources are shared across all world entities
 of a faction. Vehicles have no storage capacity in this mode, and no commands to alter their storage.
 Vehicles (and satellites) can pull directly from the faction storage and overproduction.
 Connectors cannot be built but are maintained for backward compatibility
 Last verified to compile in both modes Aug 22 2015
 */
-#define CONNECTOR_LESS
+#define ONE_COMPOUND_PER_FACTION
 
 
 
@@ -67,7 +67,7 @@ Define in the project settings, not here.
 /* CHEAT_FULL_STORAGE
 Must be defined for the server.
 If defined, mobile entities loaded from file are filled to their respective storage maximum.
-Effective only if CONNECTOR_LESS is not defined.
+Effective only if ONE_COMPOUND_PER_FACTION is not defined.
 Define in the project settings, not here.
 */
 

@@ -5,7 +5,7 @@
 
 namespace Objects
 {
-	#ifndef CONNECTOR_LESS
+	#ifndef ONE_COMPOUND_PER_FACTION
 		Buffer0<Compound,Swap>		compounds;
 	#endif
 
@@ -98,7 +98,7 @@ namespace Objects
 
 		void				Compound::TickEnd(float atTime)
 		{
-			#ifdef CONNECTOR_LESS
+			#ifdef ONE_COMPOUND_PER_FACTION
 				if (stable)
 				{
 					FeedLeftovers(overproduction,atTime);
@@ -140,7 +140,7 @@ namespace Objects
 					events << std::make_pair(PStructure(), vector);
 				#endif
 
-				#ifdef CONNECTOR_LESS
+				#ifdef ONE_COMPOUND_PER_FACTION
 					ResourceVector localDemand;
 					vector.SeparateBySign(overproduction,localDemand);
 					FeedLeftovers(localDemand,0);
@@ -505,7 +505,7 @@ namespace Objects
 
 	void ForeachCompound(const std::function<void(Compound&)>&func)
 	{
-		#ifdef CONNECTOR_LESS
+		#ifdef ONE_COMPOUND_PER_FACTION
 			#ifdef CLIENT
 				for (const auto&f: Faction::allKnown)
 					func(f->compound);

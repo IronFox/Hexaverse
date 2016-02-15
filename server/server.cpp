@@ -954,7 +954,7 @@ void ProcessAICoverage()
 					}
 
 			
-					#ifdef CONNECTOR_LESS
+					#ifdef ONE_COMPOUND_PER_FACTION
 						break;	//only one compound for nexus faction. all done
 					#endif
 

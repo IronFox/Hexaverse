@@ -9,7 +9,7 @@ namespace Objects
 	Buffer0<PSatellite>	satellites;
 	//bool					satellitesAreLocked = false;
 
-	#ifndef CONNECTOR_LESS
+	#ifndef ONE_COMPOUND_PER_FACTION
 		/*static*/ Buffer0<Satellite::THub>	Satellite::hubs;
 	#endif
 
@@ -289,7 +289,7 @@ namespace Objects
 				lastExtraFuelDemand = 0;
 				return lastExtraFuelDemand;
 			}
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				UpdateHubMap();
 				bool hasAny = hubs.IsNotEmpty();
 				float distance = hasAny ? hubs.first().distance : 0;
@@ -503,7 +503,7 @@ namespace Objects
 	}
 
 
-	#ifdef CONNECTOR_LESS
+	#ifdef ONE_COMPOUND_PER_FACTION
 		#if defined HAS_WINDOW || !defined CLIENT
 			PSkyHub	Satellite::GetClosestExternalSupplier(float&quadraticDistance)
 			{
@@ -582,18 +582,18 @@ namespace Objects
 
 		PSkyLinkStructure				Satellite::RemoteSupplyFuel(float&atTime)
 		{
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				UpdateHubMap();
 			#endif
 			const int baseDemand = GetFuelConsumptionPerRound();
 			ASSERT2__(baseDemand > 0,baseDemand,GetName());
 
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				for (const auto&item : hubs)
 			#endif
 			{
 				float distance;
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					PSkyHub hub = item.hub.lock();
 					distance = item.distance;
 				#else
@@ -610,7 +610,7 @@ namespace Objects
 
 					Compound&compound = port->CastToStructure()->GetCompound();
 					int available = compound.total.storage.level[Resource::Fuel];
-					#ifdef CONNECTOR_LESS
+					#ifdef ONE_COMPOUND_PER_FACTION
 						available += compound.overproduction.level[Resource::Fuel];
 					#endif
 
@@ -861,7 +861,7 @@ namespace Objects
 
 	/*virtual override*/ bool					Satellite::HasAmmoForShot() const
 	{
-	#ifdef CONNECTOR_LESS
+	#ifdef ONE_COMPOUND_PER_FACTION
 		const Compound&compound = owner->compound;
 		return compound.total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
 	#else
@@ -884,7 +884,7 @@ namespace Objects
 				Grid::LCellIdI target;
 
 				const ResourceVector&storage = 
-					#ifndef CONNECTOR_LESS
+					#ifndef ONE_COMPOUND_PER_FACTION
 						this->currentStorage
 					#else
 						this->owner->compound.total.storage

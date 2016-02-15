@@ -245,7 +245,7 @@ namespace Test
 			}
 			Objects::PGenerator generator(CreateStructure<Objects::Generator>(faction0, generatorAt));
 
-			#ifdef CONNECTOR_LESS
+			#ifdef ONE_COMPOUND_PER_FACTION
 			{
 				Grid::LCellIdI	munitionStoreAt = RandomCell(random);
 				munitionStoreAt.height = Objects::FindApplicableGround(munitionStoreAt,true);
@@ -271,7 +271,7 @@ namespace Test
 
 			Objects::PVehicle v(new Objects::Vehicle(faction1,vehicleAt,&Objects::Component::hoverbase,turret));
 			Objects::InsertConstructed(v,0);
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				v->currentStorage.level[v->turret->ammoType] = v->GetMaxStorageCapacity().level[v->turret->ammoType];
 			#endif
 			float t = 0;
@@ -382,7 +382,7 @@ namespace Test
 		ASSERT_EQUAL__(&mine->GetCompound(), &mineralContainer->GetCompound());
 		ASSERT_EQUAL__(&mine->GetCompound(), &fuelContainer0->GetCompound());
 		ASSERT_EQUAL__(&mine->GetCompound(), &fuelContainer1->GetCompound());
-		//#ifndef CONNECTOR_LESS
+		//#ifndef ONE_COMPOUND_PER_FACTION
 		//	ASSERT_EQUAL__(Objects::compounds.Count(), 1);
 		//#else
 		//	ASSERT_EQUAL__(Objects::compounds.Count(), 2);	//+nexus
@@ -477,7 +477,7 @@ namespace Test
 
 		ASSERT_EQUAL__(&mine->GetCompound(), &generator->GetCompound());
 		ASSERT_EQUAL__(&mine->GetCompound(), &plant->GetCompound());
-		//#ifndef CONNECTOR_LESS
+		//#ifndef ONE_COMPOUND_PER_FACTION
 		//	ASSERT_EQUAL__(Objects::compounds.Count(), 1);
 		//#else
 		//	ASSERT_EQUAL__(Objects::compounds.Count(), 2);	//+nexus
@@ -597,7 +597,7 @@ namespace Test
 
 		ASSERT_EQUAL__(&mine->GetCompound(), &generator->GetCompound());
 		ASSERT_EQUAL__(&mine->GetCompound(), &plant->GetCompound());
-		//#ifndef CONNECTOR_LESS
+		//#ifndef ONE_COMPOUND_PER_FACTION
 		//	ASSERT_EQUAL__(Objects::compounds.Count(), 1);
 		//#else
 		//	ASSERT_EQUAL__(Objects::compounds.Count(), 2);	//+nexus

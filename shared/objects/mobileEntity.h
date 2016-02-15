@@ -215,7 +215,7 @@ namespace Objects
 
 		WHangarStructure		storedIn;
 
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			ResourceVector		currentStorage;
 		#endif
 
@@ -297,7 +297,7 @@ namespace Objects
 		#endif
 
 
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			/**
 			Calculates the maximum storage vector based on the local components
 			*/

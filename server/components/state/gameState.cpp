@@ -278,7 +278,7 @@ namespace Game
 					if (task.ContainsMovement())
 						loc = task.foci.GetNewest().target;
 				}
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					info.resourceVector = v.currentStorage;
 				#endif
 				if (v.isAutomated)
@@ -697,7 +697,7 @@ namespace Game
 					hasVehiclePlant = false;
 
 
-				#ifdef CONNECTOR_LESS
+				#ifdef ONE_COMPOUND_PER_FACTION
 					hasMineralContainer = true;	//don't need
 				#endif
 				Objects::ResourceVector dummy,storage;
@@ -717,7 +717,7 @@ namespace Game
 					if (To<Objects::Generator>::DynamicCast(s))
 						hasGenerator = true;
 
-					#ifndef CONNECTOR_LESS
+					#ifndef ONE_COMPOUND_PER_FACTION
 						s->GetResourceVector(dummy,dummy,storage);
 						if (storage.level[Objects::Resource::Minerals] > 0)
 							hasMineralContainer = true;

@@ -2,6 +2,31 @@
 #include "shadow.hlsli"
 
 
+#ifdef PARABOLOID_DISPLAY
+
+	cbuffer ParaboloidDirection_Height
+	{
+		float4		ParaboloidDirection_Height;
+	};
+	cbuffer ParaboloidColor_FlatRadius
+	{
+		float4		ParaboloidColor_FlatRadius;
+	};
+
+#endif
+
+#ifdef SPHERE_DISPLAY
+	cbuffer SphereDef
+	{
+		float4		SphereDef;
+	};
+	cbuffer SphereColor
+	{
+		float4		SphereColor;
+	};
+#endif
+
+
 static const float4 WaterColor = float4(0.5f, 0.6f, 1.f,0.6f);
 
 struct A2V
@@ -13,6 +38,9 @@ struct A2V
 
 struct V2P
 {
+	#if defined(SPHERE_DISPLAY) || defined(PARABOLOID_DISPLAY)
+		float radial : Radial;
+	#endif
 	float4 position : SV_POSITION;
 	float3 world : World;
 	float3 normal : Normal;
@@ -20,7 +48,6 @@ struct V2P
 	float2 visibility : COLOR;
 	float3 diffuseSpecularFresnel : DiffuseSpecular;
 	float4 atmosphere : Atmosphere;
-	//float4 directionalAtmosphere : DirectionalAtmosphere;
 };
 
 
@@ -56,6 +83,21 @@ void vsMain(A2V input, out V2P output)
 	//float3 dirFog = rawFog.rgb * rawFog.a;
 	output.atmosphere = lerp( CalculatePositionFog(output.world),rawFog,saturate(afres)*0.5);
 
+
+	#ifdef PARABOLOID_DISPLAY
+		float3 center = ParaboloidDirection_Height.xyz * ParaboloidDirection_Height.w;
+		float h2 = length(output.world);
+		float3 world = (output.world/h2) * ParaboloidDirection_Height.w;
+		float d = distance(center,world);
+
+		float maxH = -0.5 / ParaboloidColor_FlatRadius.w * sqr(d) + ParaboloidColor_FlatRadius.w * 0.5;
+		output.radial = maxH - (h2 - ParaboloidDirection_Height.w);
+	#endif
+	#ifdef SPHERE_DISPLAY
+		float d = distance(SphereDef.xyz,output.world);
+		output.radial = SphereDef.w-d;
+	#endif
+
 }
 
 
@@ -86,17 +128,30 @@ float4 psMain(V2P input) : SV_TARGET
 	rs.rg *= 0.5 + 0.5 * input.visibility.y;
 	rs.ab += 0.25  * (1.0 - input.visibility.y);
 
-	
-	rs.rgb = lerp(rs.rgb,input.atmosphere.rgb,input.atmosphere.a);
-//	rs.rgb = lerp(rs.rgb,input.atmosphere.rgb,1.0 - sqr(1.0 - input.atmosphere.a));
-
 	rs.rgb *= intensity;
 
-	//rs = input.atmosphere;
+	#if defined(SPHERE_DISPLAY) || defined(PARABOLOID_DISPLAY)
 
 
-	//rs.rgb = (float3)sqr(sqr(sqr(input.diffuseSpecularFresnel.z)));
-	//rs.a = 1.0;
+		float r = -input.radial + 1.0;
+			//return float4((float3)r,1.0);
+			//float3 sphereProjected = mul(SphereMatrix,float4(input.world,1.0)).xyz;
+		float sphereOpacity = (1.0 - smoothstep(0.95,1.05,r)) * (0.5 + 0.5 * smoothstep(0.8,0.95,r));
+		//float sphereOpacity = input.sphereOpacity;
+
+		#ifdef SPHERE_DISPLAY
+			float3 color = SphereColor.rgb;
+		#elif defined(PARABOLOID_DISPLAY)
+			float3 color = ParaboloidColor_FlatRadius.rgb;
+		#endif
+
+		rs.rgb = lerp(rs.rgb, color, sphereOpacity );
+
+	#endif
+
+	
+	rs.rgb = lerp(rs.rgb,input.atmosphere.rgb,input.atmosphere.a);
+
 
 	return rs;
 }

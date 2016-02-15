@@ -75,7 +75,15 @@ namespace Objects
 	bool			AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
 	bool			AppendShortestPathI(const Satellite*vehicle, const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
 	bool			AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, BasicBuffer<Grid::LCellIdI>&oPath);
-	bool			AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion=true);
+	/**
+	Attempts to find the shortest direct path to a destination. Does not check if the path is blocked by terrain or entities.
+	@param from Source location
+	@param to Destination location
+	@param oPath Resulting path. The passed path is not cleared before appending new elements
+	@param penaltizeVerticalMotion Increases the cost of vertical motion considerably, such that they are chosen only as a last resourt
+	@param constrainVerticalMotion Only chooses path nodes whoes height lies in the height range defined by @a from.height and @a to.height. If @a from and @a to lie on the same height, then path finding is restricted to 2d
+	*/
+	bool			AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion=true, bool constrainVerticalMotion=true);
 	bool			AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath);
 
 
