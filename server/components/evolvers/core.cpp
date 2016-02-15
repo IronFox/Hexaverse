@@ -283,7 +283,7 @@ namespace Evolver
 
 		void ProcessStructures1(float atTime)
 		{
-			//#ifdef CONNECTOR_LESS
+			//#ifdef ONE_COMPOUND_PER_FACTION
 				Objects::RefreshCompoundCoverageIfNeeded(atTime);
 				Objects::ForeachCompound([atTime](Objects::Compound&c)
 				{

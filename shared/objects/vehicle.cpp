@@ -75,7 +75,7 @@ namespace Objects
 			if (turret->CanAttack())
 			{
 				//leave munitions here. it seems fair that a new tank starts with full ammo, but an emp-tank should not start with full uranium...
-				#if !defined CONNECTOR_LESS && !defined NO_MUNITION
+				#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 					if (newVehiclesHaveFullAmmo)
 						ChangeStorage(*this,atTime,Resource::Munitions,GetMaxStorageCapacity().level[Resource::Munitions] - currentStorage.level[Resource::Munitions]);
 				#endif
@@ -99,7 +99,7 @@ namespace Objects
 				Grid::LCellIdI target;
 
 				const ResourceVector&storage = 
-					#ifndef CONNECTOR_LESS
+					#ifndef ONE_COMPOUND_PER_FACTION
 						this->currentStorage
 					#else
 						this->owner->compound.total.storage
@@ -125,7 +125,7 @@ namespace Objects
 	#endif
 
 	
-	#ifndef CONNECTOR_LESS
+	#ifndef ONE_COMPOUND_PER_FACTION
 
 	ResourceVector			Vehicle::GetMaxStorageCapacity()	const
 	{
@@ -506,7 +506,7 @@ namespace Objects
 			if (opSpeed)
 				outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(opSpeed)+" per round";
 
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				if (turret->baseStorageCapacity.IsNotEmpty())
 				{
 					outResult << "Effective storage capacity:";

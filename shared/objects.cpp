@@ -129,7 +129,7 @@ namespace Objects
 				<< PVehicleJob(new VehicleJob::BuildWallUp())
 				<< PVehicleJob(new VehicleJob::BuildHorizontalWall())
 				//<< PVehicleJob(new VehicleJob::BuildFoundation())
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					<< PVehicleJob(new VehicleJob::TransferJob())
 				#endif
 				<< PVehicleJob(new VehicleJob::RepairJob())
@@ -793,7 +793,7 @@ namespace Objects
 		vehicles.Clear();
 		structures.Clear();
 		idMap.Clear();
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			compounds.Clear();
 		#endif
 		vehicleGrid.Fill(PVehicle());

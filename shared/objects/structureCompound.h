@@ -100,7 +100,7 @@ namespace Objects
 
 	};
 
-	#ifndef CONNECTOR_LESS
+	#ifndef ONE_COMPOUND_PER_FACTION
 		/**
 		Linear list of all compounds. This list is reconstructed whenever changes to the compound structure
 		are detected or at least assumed.
