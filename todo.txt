@@ -1,3 +1,4 @@
+remote control: preserve working directory
 shadow edge
 
 motions ending in cells occupied by vehicles with no tasks should abort
