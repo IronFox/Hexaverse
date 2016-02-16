@@ -134,7 +134,7 @@ namespace Objects
 											uplinkTraffic = 5,
 											uplinkPriority = 950;	//before towers and storage structures
 
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				ResourceVector				baseStorageCapacity;
 			#endif
 			bool							ignoresVehicleMotion = false,	//indicates that the vehicle can fire and move at 100% each in the same round
@@ -320,7 +320,7 @@ namespace Objects
 											minClimbDown = -1;
 			float							height = 1.f;
 
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				int							storageMultiplier = 1;
 			#endif
 

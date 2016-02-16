@@ -140,7 +140,7 @@ namespace Objects
 
 	Compound&					Structure::GetCompound() const
 	{
-		#ifdef CONNECTOR_LESS
+		#ifdef ONE_COMPOUND_PER_FACTION
 			return owner->compound;
 		#else
 			return compounds[compoundID];
@@ -2545,7 +2545,7 @@ namespace Objects
 	{
 		//LogEvent(EventSignificance::Debug,nullptr,"Refreshing network coverage");
 
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 
 			compounds.Clear();
 			Queue<Structure*>	primary,secondary;

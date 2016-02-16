@@ -162,7 +162,7 @@ namespace Objects
 		virtual int				GetMovementStepsPerRound() const override;
 		virtual int				GetOperationSpeed(Component::operation_t op) const override;
 		virtual float			GetBaseMovementInitiative() const override {return base->initiative;}
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			virtual ResourceVector		GetMaxStorageCapacity()	const override;
 		#endif
 

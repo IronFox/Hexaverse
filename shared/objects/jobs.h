@@ -333,7 +333,7 @@ namespace Objects
 
 
 
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 
 				class TransferJob : public BaseJob
 				{

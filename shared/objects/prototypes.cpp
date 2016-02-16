@@ -150,7 +150,7 @@ namespace Objects
 								<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
 								<< &armored << &artillery << &launcher << &emp
 								<< &terraformer << &resourceScanner
-								#ifndef CONNECTOR_LESS
+								#ifndef ONE_COMPOUND_PER_FACTION
 									<< &munitionTransporter
 								#endif
 								<< &mechanic;

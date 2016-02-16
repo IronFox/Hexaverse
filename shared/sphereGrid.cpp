@@ -288,12 +288,12 @@ namespace Grid
 		{	
 			float4	lastColor;
 			displayMode_t				displayMode = NormalRendering;
-			DX11::BaseInstructionBlock	terrainBase, terrainSphereBase,
-										terrainParaboloidBase,
+			DX11::BaseInstructionBlock	terrainBase, terrainSphereBase, terrainParaboloidBase,
 										orbitGridBase,
-									 terrainShadowBase, 
-									 waterBase, overlayBase, 
-									 overlayShadowBase, resourceBase;// , terrainEdgeBase;
+										terrainShadowBase, 
+										waterBase, waterSphereBase, waterParaboloidBase,
+										overlayBase, 
+										overlayShadowBase, resourceBase;// , terrainEdgeBase;
 
 			DX11::ObjectBuffer<float4>	ParaboloidDirection_Height,SphereDef,SphereColor;
 			DX11::ObjectBuffer<float4>	ParaboloidColor_FlatRadius;
@@ -788,6 +788,14 @@ namespace Grid
 					base.UpdateLayout();
 					base.SetTriangles();
 				}
+
+
+				Instruction::waterSphereBase.binding = Instruction::waterBase.binding;
+				Instruction::waterSphereBase.SetTriangles();
+
+				Instruction::waterParaboloidBase.binding = Instruction::waterBase.binding;
+				Instruction::waterParaboloidBase.SetTriangles();
+
 			}
 			{
 				Engine::VertexBinding binding;
@@ -848,6 +856,29 @@ namespace Grid
 			Instruction::terrainParaboloidBase.shader.LoadFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
 			DX11::Shader::macroDefinitions.Clear();
 			Instruction::terrainParaboloidBase.UpdateLayout();
+			bindings.EraseLast();
+			bindings.EraseLast();
+
+
+
+			DX11::Shader::RedefineMacro(DX11::Shader::Macro("SPHERE_DISPLAY","1"));
+			bindings.Append(DX11::Shader::Binding(Instruction::SphereDef,"SphereDef"));
+			bindings.Append(DX11::Shader::Binding(Instruction::SphereColor,"SphereColor"));
+			Instruction::waterSphereBase.shader.LoadFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+			DX11::Shader::macroDefinitions.Clear();
+			Instruction::waterSphereBase.UpdateLayout();
+			bindings.EraseLast();
+			bindings.EraseLast();
+
+
+			DX11::Shader::RedefineMacro(DX11::Shader::Macro("PARABOLOID_DISPLAY","1"));
+			bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidDirection_Height,"ParaboloidDirection_Height"));
+			bindings.Append(DX11::Shader::Binding(Instruction::ParaboloidColor_FlatRadius,"ParaboloidColor_FlatRadius"));
+			Instruction::waterParaboloidBase.shader.LoadFromFile("shaders/gridTerrainWater.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
+			DX11::Shader::macroDefinitions.Clear();
+			Instruction::waterParaboloidBase.UpdateLayout();
+			bindings.EraseLast();
+			bindings.EraseLast();
 
 
 		#endif
@@ -975,20 +1006,6 @@ namespace Grid
 				for (UINT l = 0; l < CellStack::Range; l++)
 				{
 					if (stack.volumeCell[l].IsClearOrWater())
-					//{
-					//	for (int ni = 0; ni < n.numNeighbors; ni++)
-					//	{
-					//		auto&other = actualWorld.cellStack[n.neighborID[ni]].volumeCell[l];
-					//		if (other.IsClearOrWater())
-					//		{
-					//			//stack.volumeCell[l] = other;
-					//			other = stack.volumeCell[l];
-					//			//break;
-					//		}
-					//	}
-					//
-					//}
-					//else
 					{
 						int cnt = 0;
 						BYTE cont;
@@ -1014,6 +1031,12 @@ namespace Grid
 								auto&other = otherStack.volumeCell[l];
 								if (!other.IsClearOrWater())
 								{
+									cont = stack.volumeCell[l].content;
+									if (l > 0 && (cont == Content::Clear || cont == Content::Water))
+									{
+										otherStack.volumeCell[l-1].content = other.content;
+									}
+
 									cnt ++;
 									other.content = stack.volumeCell[l].content;
 								}
@@ -1053,6 +1076,10 @@ namespace Grid
 						}
 						if (cnt > 3)
 						{
+							if (l > 0 && (cont == Content::Clear || cont == Content::Water))
+							{
+								nStack.volumeCell[l-1].content = nStack.volumeCell[l].content;
+							}
 							nStack.volumeCell[l].content = cont;
 						}
 					}
@@ -1062,20 +1089,21 @@ namespace Grid
 
 
 			const bool solidProx = CellStack::Cell::IsSolid(config.liquidOutline) && CellStack::Cell::IsLiquid(config.liquidCoverage);
-			for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
-			{
-				auto&stack = actualWorld.cellStack[i];
-				for (UINT l = 0; l < CellStack::Range; l++)
-				{
-					const BYTE cont = stack.volumeCell[l].content;
-					if ((cont == Content::Water || cont == Content::Clear) && l > 0)
-					{
-						if (ReplaceTop(stack.volumeCell[l-1].content))
-							stack.volumeCell[l-1].content = 
-								GetTopTypeAtHeight(config,Grid::CellStack::ToHeight(l-1));
-					}
-				}
-			}
+			//the following tries to elimited exposed inner terrain types caused by the above terrain simplification
+			//for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
+			//{
+			//	auto&stack = actualWorld.cellStack[i];
+			//	for (UINT l = 0; l < CellStack::Range; l++)
+			//	{
+			//		const BYTE cont = stack.volumeCell[l].content;
+			//		if ((cont == Content::Water || cont == Content::Clear) && l > 0)
+			//		{
+			//			if (ReplaceTop(stack.volumeCell[l-1].content))
+			//				stack.volumeCell[l-1].content = 
+			//					GetTopTypeAtHeight(config,Grid::CellStack::ToHeight(l-1));
+			//		}
+			//	}
+			//}
 			if (solidProx)
 				for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
 				{
@@ -1365,12 +1393,11 @@ namespace Grid
 			transparentGridShader.Clear();
 			Instruction::overlayBase = Instruction::overlayShadowBase 
 				= Instruction::resourceBase = Instruction::terrainBase 
-				= Instruction::terrainSphereBase 
-				= Instruction::terrainParaboloidBase 
+				= Instruction::terrainSphereBase = Instruction::terrainParaboloidBase 
 				= Instruction::orbitGridBase
-				= Instruction::terrainShadowBase 
-				= Instruction::waterBase = 
-				DX11::BaseInstructionBlock();
+				= Instruction::terrainShadowBase
+				= Instruction::waterBase = Instruction::waterSphereBase = Instruction::waterParaboloidBase
+				= DX11::BaseInstructionBlock();
 			Instruction::atmosphereConfig .Clear();
 			Instruction::ParaboloidDirection_Height.Clear();
 			Instruction::ParaboloidColor_FlatRadius.Clear();

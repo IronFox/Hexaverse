@@ -515,7 +515,7 @@ namespace Animation
 		auto info = vs.myMobileEntity.Get0();
 		if (info)
 		{
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				v->currentStorage = info->resourceVector;
 			#endif
 			v->constructionRoundCounter = info->constructionRoundCounter;
@@ -824,7 +824,7 @@ namespace Animation
 
 		if (w && w->isInserted)
 		{
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				ASSERT__(s->compoundID != Objects::Compound::InvalidNetwork);
 			#endif
 			s->GetCompound().RefreshState(0);

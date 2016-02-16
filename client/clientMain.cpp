@@ -1093,7 +1093,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 		//if (strip)
 			//Grid::visibleOrbitGrid.StripColor();
 
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 		if (Objects::selectedVehicle)
 		{
 			//if (Objects::selectedVehicle->tasks.IsNotEmpty() && Objects::selectedVehicle->tasks.Peek().job && Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft)
@@ -1604,17 +1604,17 @@ bool loop()
 		}
 
 		LineRenderer::Flush();
-		#ifdef _DEBUG
-		if (!saveScreenshot)
-		{
-			LineRenderer::SetColor(float4(1,0,0,1));
-			display.SetDepthTest(false,false);
-			LineRenderer::Rasterize(Debug::lastClickPoint - float3(1,0,0),Debug::lastClickPoint + float3(1,0,0));
-			LineRenderer::Rasterize(Debug::lastClickPoint - float3(0,1,0),Debug::lastClickPoint + float3(0,1,0));
-			LineRenderer::Rasterize(Debug::lastClickPoint - float3(0,0,1),Debug::lastClickPoint + float3(0,0,1));
-			LineRenderer::Flush();
-		}
-		#endif
+		//#ifdef _DEBUG
+		//if (!saveScreenshot)
+		//{
+		//	LineRenderer::SetColor(float4(1,0,0,1));
+		//	display.SetDepthTest(false,false);
+		//	LineRenderer::Rasterize(Debug::lastClickPoint - float3(1,0,0),Debug::lastClickPoint + float3(1,0,0));
+		//	LineRenderer::Rasterize(Debug::lastClickPoint - float3(0,1,0),Debug::lastClickPoint + float3(0,1,0));
+		//	LineRenderer::Rasterize(Debug::lastClickPoint - float3(0,0,1),Debug::lastClickPoint + float3(0,0,1));
+		//	LineRenderer::Flush();
+		//}
+		//#endif
 
 		display.pick(Camera::hud);
 			display.SetRasterizer(true,false);
@@ -2620,7 +2620,7 @@ String GenerateOreName(Random&random)
 
 	bool	IsIdle(const Objects::PMobileEntity&v)
 	{
-		if (v->IsHibernating() || v->IsSatellite())
+		if (v->IsHibernating() || v->IsSatellite() || v->isAutomated)
 			return false;
 		if (v->myTasks.IsNotEmpty())
 		{
@@ -2664,7 +2664,7 @@ String GenerateOreName(Random&random)
 	}
 
 
-	bool	IsIdle(const Objects::PStructure&s, bool tagVisited)
+	bool	IsIdle(const Objects::PStructure&s)
 	{
 		#ifndef NO_HIBERNATION
 			if (s->ToHibernating()->IsHibernating())
@@ -2674,10 +2674,6 @@ String GenerateOreName(Random&random)
 		if (!s->IsWorkingStructure() || s->IsSleeping())
 			return false;
 		Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
-		if (ws->visited)
-			return false;
-		if (tagVisited)
-			ws->visited = true;
 
 		Objects::PVehiclePlant vp = To<Objects::VehiclePlant>::DynamicCast(s);
 		if (vp)
@@ -2710,7 +2706,7 @@ String GenerateOreName(Random&random)
 		if (requested+1 != total)
 			return false;
 
-		bool any = false;
+		Objects::PWorldEntity any;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
 		{
 			if (any || !e->isMine)
@@ -2718,14 +2714,18 @@ String GenerateOreName(Random&random)
 			if (e->IsMobile())
 			{
 				if (IsIdle(To<Objects::MobileEntity>::Cast(e)))
-					any = true;
+					any = e;
 			}
 			elif (e->IsStructure())
 			{
-				if (IsIdle(To<Objects::Structure>::Cast(e),false))
-					any = true;
+				if (IsIdle(To<Objects::Structure>::Cast(e)))
+					any = e;
 			}
 		});
+		//#ifdef _DEBUG
+		//if (any)
+		//	LogEvent(EventSignificance::Uncommon,any.get(),"not idle");
+		//#endif
 		return !any;
 	}
 	
@@ -2791,7 +2791,7 @@ String GenerateOreName(Random&random)
 					index_t at = to - Objects::vehicles.Count() - Objects::satellites.Count();
 					Objects::PStructure s = Objects::structures[at];
 
-					if (s->isMine && IsIdle(s,true))
+					if (s->isMine && IsIdle(s))
 					{
 						Objects::Select(s,Network::ControlEnabled());
 						Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);

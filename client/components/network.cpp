@@ -600,6 +600,10 @@ namespace Network
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);
 
+			#ifdef HAS_WINDOW
+				World::allowRecompilation = false;
+			#endif
+			gameHasBegun = false;
 
 
 			haveFaction = cr.startFactionTypes != 0;
@@ -1391,7 +1395,6 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 					if (s->isMine && s->IsWorkingStructure() )
 					{
 						Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
-						ws->visited = false;
 						if (ws->AwaitsUserInteraction())
 							Tutorial::ShowMessage("Interaction");
 					}
