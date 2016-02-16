@@ -1163,7 +1163,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 									v->resourceEnvironment.CheckRefresh(*v);
 									if (v->resourceEnvironment.sourceCompounds.Contains(*c))
 									{
-										change.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound();
+										change.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound() + v->GetExtraFuelDemand();
 									}
 								}
 					}
@@ -1177,7 +1177,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 							{
 								Objects::PSatellite sat = To<Objects::Satellite>::Cast(Objects::selectedMobileEntity);
 								if (sat->RequiresFuel())
-									change.level[Objects::Resource::Fuel] -= sat->GetFuelConsumptionPerRound();
+									change.level[Objects::Resource::Fuel] -= sat->GetFuelConsumptionPerRound() + sat->GetExtraFuelDemand();
 							}
 						}
 					}
@@ -1215,7 +1215,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 							v->resourceEnvironment.CheckRefresh(*v);
 							if (v->resourceEnvironment.ContainsCompound(s->compoundID))
 							{
-								balance.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound();
+								balance.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound() + v->GetExtraFuelDemand();
 							}
 						}
 					UI::Update(
