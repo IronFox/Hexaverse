@@ -13,7 +13,7 @@ namespace Reflection
 
 	namespace Variable
 	{
-	
+		PBase	planetType;	
 	
 		void	Walk(const CLI::PFolder&f, const Variable::FCallback&callback)
 		{
@@ -29,7 +29,7 @@ namespace Reflection
 				Walk(dir,callback);
 		}
 
-
+		
 
 		void				Base::OnChanged()
 		{
@@ -426,7 +426,7 @@ namespace Reflection
 		};
 
 
-		class FileReferenceAttachment : public CLI::Folder::Attachable
+		class FileReferenceAttachment: public CLI::Folder::Attachable
 		{
 		public:
 			const CLI::PVariable	sourceVariable;
@@ -632,7 +632,7 @@ namespace Reflection
 		xml.SaveToFile("./config/declaration.xml");
 	}
 
-	static CLI::PVariable planetType;
+	
 
 	
 	void PrintLn(const String&line)
@@ -667,8 +667,8 @@ namespace Reflection
 			state.ExitFolder();
 
 			state.EnterNewFolder("Planet");
-				planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::GameInvariant);
-				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("config/planets",planetType));
+				Variable::planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::GameInvariant);
+				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("config/planets",Variable::planetType));
 				{
 					Variable::Set("atmosphereDensity",Grid::currentPlanetConfig.atmosphereColor.a,0.f,1.f,Variable::Persistence::GameInvariant);
 					Variable::SetMappedEnum<Grid::Content,UINT32>("innerCoreType",Grid::currentPlanetConfig.innerCoreType,Variable::Persistence::GameInvariant);
@@ -766,6 +766,34 @@ namespace Reflection
 	}
 
 	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, bool readOriginal=false);
+	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction);
+
+	static bool FeedSubDirectory(const CLI::PFolder&dir, const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction)
+	{
+		bool allGood = true;
+		if (dir->attachment)
+		{
+			if (testMode)
+				Variable::planetType->Set("LushGreen");
+
+			std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(dir->attachment);
+			if (!ref)	//externally created
+				return true;
+			//PathString str = RuntimeConfig::ConfigFile( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"));
+			Feed(dir,PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"),testMode,filterFunction);
+		}
+		else
+		{
+			const Config::Context*sub = ctx ? ctx->GetContext(dir->name) : nullptr;
+			if (ctx && !sub)
+				allGood = false;
+			bool innerGood = InnerFeed(dir,sub,testMode,filterFunction);
+			if (!innerGood)
+				allGood = false;
+
+		}
+		return allGood;
+	}
 
 	static bool InnerFeed(const CLI::PFolder&folder,const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction)
 	{
@@ -809,28 +837,8 @@ namespace Reflection
 		}
 		for (const auto&dir : folder->folders)
 		{
-			if (dir->attachment)
-			{
-				if (testMode)
-					planetType->Set("LushGreen");
-
-				std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(dir->attachment);
-				if (!ref)	//externally created
-					continue;
-				//PathString str = RuntimeConfig::ConfigFile( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"));
-				Feed(dir,PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"),testMode,filterFunction);
-			}
-			else
-			{
-				const Config::Context*sub = ctx ? ctx->GetContext(dir->name) : nullptr;
-				if (ctx && !sub)
-					allGood = false;
-				bool innerGood = InnerFeed(dir,sub,testMode,filterFunction);
-				if (!innerGood)
-					allGood = false;
-
-			}
-
+			if (!FeedSubDirectory(dir,ctx,testMode,filterFunction))
+				allGood = false;
 		}
 		return allGood;
 	}
@@ -1008,6 +1016,40 @@ namespace Reflection
 
 
 	}
+
+	static CLI::PFolder FindFolderWithAttachmentSource(const CLI::PVariable&v, const CLI::PFolder&current)
+	{
+		if (current->attachment)
+		{
+			const Variable::FileReferenceAttachment*attach = (const Variable::FileReferenceAttachment*)current->attachment.get();
+			if (attach->sourceVariable == v)
+				return current;
+		}
+
+		for (const auto&f : current->folders)
+		{
+			CLI::PFolder rs = FindFolderWithAttachmentSource(v,f);
+			if (rs)
+				return rs;
+		}
+		return CLI::PFolder();
+
+	}
+
+	static CLI::PFolder FindFolderWithAttachmentSource(const CLI::PVariable&v)
+	{
+		return FindFolderWithAttachmentSource(v,state.GetRoot());
+	}
+
+	void	ReloadPlanet()
+	{
+		CLI::PFolder f = FindFolderWithAttachmentSource(Variable::planetType);
+		if (f)
+		{
+			FeedSubDirectory(f, nullptr, false, std::function<bool(const Variable::PBase&)>());
+		}
+	}
+
 
 	void Load(bool testMode)
 	{

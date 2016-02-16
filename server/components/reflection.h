@@ -66,6 +66,7 @@ namespace Reflection
 
 		typedef std::function<void(const PBase&)>	FCallback;
 
+		extern PBase	planetType;	
 	}
 
 
@@ -95,11 +96,17 @@ namespace Reflection
 	*/
 	void	LoadOverrides();
 
+	/**
+	Reloads all config settings from the respective ini file(s)
+	*/
+	void	ReloadPlanet();
+
 
 	/**
 	Visits all variables in the CLI state tree
 	*/
 	void	VisitAllVariables(const Variable::FCallback&);
+	
 
 	/**
 	Visits all variables and calls CheckChanges() on each. This checks for changes that happend outside the CLI state callback architecture
