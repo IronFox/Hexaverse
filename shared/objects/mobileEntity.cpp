@@ -169,33 +169,27 @@ namespace Objects
 					sourceCompounds.Clear();
 					if (m.IsVehicle())
 					{
-						Grid::low.GenerateVolume(Sphere<>(WorldEntity::GetWorldPosition(loc),WirelessTransferRange),desc);
-						GetOwnCompoundsIn(m.owner,desc);
-					}
-					else
-						if (m.IsSatellite())
-						{
-							#ifdef CLIENT
-								foreach (skyLinks,s)
+						#ifdef CLIENT
+							foreach (skyLinks,s)
+							{
+								if (s->second->owner == m.owner && s->first->connectedToHub)
+									AddCompound(s->second);
+							}
+						#else
+							foreach (m.owner->skyHubs,h)
+							{
+								PSkyHub hub = h->lock();
+								if (hub)
 								{
-									if (s->second->owner == m.owner && s->first->connectedToHub)
-										AddCompound(s->second);
-								}
-							#else
-								foreach (m.owner->skyHubs,h)
-								{
-									PSkyHub hub = h->lock();
-									if (hub)
+									PSkyLinkStructure link = hub->connectedTo.lock();
+									if (link)
 									{
-										PSkyLinkStructure link = hub->connectedTo.lock();
-										if (link)
-										{
-											AddCompound(To<Structure>::Cast( link->CastToStructure()->shared_from_this() ) );
-										}
+										AddCompound(To<Structure>::Cast( link->CastToStructure()->shared_from_this() ) );
 									}
 								}
-							#endif
-						}
+							}
+						#endif
+					}
 				#endif
 			#endif
 
