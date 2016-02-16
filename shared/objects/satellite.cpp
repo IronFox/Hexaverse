@@ -311,7 +311,7 @@ namespace Objects
 
 	/*static*/ int2	SkyHub::AllocateProductionSlot()
 	{
-		static int current = 0;
+		static int current = 2;
 		int at = current++;
 		return int2(5 + (at%9),1+at/9);
 	}
