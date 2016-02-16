@@ -54,7 +54,7 @@ namespace Objects
 				res |= Resource::Fuel;
 			if (CanAttack())
 			{
-				res = ammoType;
+				res |= ammoType;
 				return ammoNeedPerShot > 0 || this->isSatelliteRing;
 			}
 			res |= Resource::Minerals;
@@ -143,7 +143,7 @@ namespace Objects
 						}
 						else
 						{
-							if (smoke)
+							if (smoke && v.Count() > 1)
 							{
 								const TVec4<>&_b2 = v[1];
 								TVec3<>b2 = _b2.xyz * _b2.w;
