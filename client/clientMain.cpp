@@ -2643,7 +2643,7 @@ String GenerateOreName(Random&random)
 
 	bool	IsIdle(const Objects::PMobileEntity&v)
 	{
-		if (v->IsHibernating() || v->IsSatellite())
+		if (v->IsHibernating() || v->IsSatellite() || v->isAutomated)
 			return false;
 		if (v->myTasks.IsNotEmpty())
 		{
@@ -2729,7 +2729,7 @@ String GenerateOreName(Random&random)
 		if (requested+1 != total)
 			return false;
 
-		bool any = false;
+		Objects::PWorldEntity any;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
 		{
 			if (any || !e->isMine)
@@ -2737,14 +2737,18 @@ String GenerateOreName(Random&random)
 			if (e->IsMobile())
 			{
 				if (IsIdle(To<Objects::MobileEntity>::Cast(e)))
-					any = true;
+					any = e;
 			}
 			elif (e->IsStructure())
 			{
 				if (IsIdle(To<Objects::Structure>::Cast(e)))
-					any = true;
+					any = e;
 			}
 		});
+		#ifdef _DEBUG
+		if (any)
+			LogEvent(EventSignificance::Uncommon,any.get(),"not idle");
+		#endif
 		return !any;
 	}
 	
