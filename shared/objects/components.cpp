@@ -54,7 +54,7 @@ namespace Objects
 				res |= Resource::Fuel;
 			if (CanAttack())
 			{
-				res = ammoType;
+				res |= ammoType;
 				return ammoNeedPerShot > 0 || this->isSatelliteRing;
 			}
 			res |= Resource::Minerals;
