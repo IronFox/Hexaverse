@@ -1,3 +1,5 @@
+shadow edge
+
 motions ending in cells occupied by vehicles with no tasks should abort
 
 still possible to have negative compound power level when generator could be enable but isn't? i think this happened when enabling a skyport
