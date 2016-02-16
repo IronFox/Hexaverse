@@ -1377,14 +1377,56 @@ int main( int argc, const char* argv[])
 			FileIO::Load(FileIO::GetAutoSavePath(index));
 		},CLI::FileCompletion);
 
-		Reflection::state.DefineCommand("/World/generate",(CLI::Command::function0_t)[]()
+		Reflection::state.DefineCommand("/World/generate [planetType] [discovery]",(CLI::Command::function2_t)[](const String&planet, const String&discovery)
 		{
+			if (planet.IsNotEmpty())
+			{
+				if (!FileSystem::IsFile(RuntimeConfig::ConfigFile(PathString("config/planets/"+planet+".ini"))))
+				{
+					LogEvent(EventClass::Preset::remoteControlError,"'"+planet+"' is not a valid planet type");
+					return;
+				}
+			}
+
 			bool started = Network::CloseSession();
 			World::worldID.Generate();
+			if (planet.IsNotEmpty())
+			{
+				Reflection::Variable::planetType->Set(planet.trim());
+				Reflection::ReloadPlanet();
+			}
+			if (discovery.IsNotEmpty())
+			{
+				if (!World::Config::worldDiscovery.Decode(discovery.c_str()))
+				{
+					LogEvent(EventClass::Preset::remoteControlError,"'"+discovery+"' is not a valid planet discovery type. Check World/worldDiscovery for details");
+				}
+			}
+
 			World::BuildConfiguredWorld(random);
 			if (started)
 				Network::RestartSession();
 		},CLI::NoCompletion);
+
+		Reflection::state.DefineCommand("/World/showPlanetTypes",(CLI::Command::function0_t)[]()
+		{
+			FileSystem::Folder folder = RuntimeConfig::ConfigFile("config/planets");
+			if (!folder.IsValidLocation())
+			{
+				LogEvent(EventClass::Preset::remoteControlError,"Internal error: Unable to locate planets-directory");
+				return;
+			}
+			FileSystem::File file;
+			folder.Rewind();
+			CLI::println("-");
+			while (folder.NextFile("ini",file))
+			{
+				CLI::println(String(file.GetInnerName()));
+			}
+			CLI::println("-");
+		},CLI::NoCompletion);
+
+		
 
 
 		if (!inTestMode)
