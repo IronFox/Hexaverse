@@ -646,7 +646,7 @@ namespace Objects
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Pylon;}
 
 
-		virtual int					GetConstructionCost() const override {return 5 * GetWirelessTransferRange();}
+		virtual int					GetConstructionCost() const override {return 20;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return maxConnectionRadius;}
 		#endif
