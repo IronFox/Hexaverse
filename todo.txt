@@ -1,3 +1,5 @@
+shadow edge
+
 motions ending in cells occupied by vehicles with no tasks should abort
 
 still possible to have negative compound power level when generator could be enable but isn't? i think this happened when enabling a skyport
@@ -118,6 +120,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+remote control: preserve working directory
 smoke trail of last round attacks
 vehicle sentry toggle	// better: vehicles can sleep
 button to toggle offensive vehicles to also be considered idle if standing around // also done by sleep
