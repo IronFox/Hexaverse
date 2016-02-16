@@ -1049,7 +1049,7 @@ namespace Objects
 						}
 						#ifdef CLIENT
 							v->resourceEnvironment.CheckRefresh(*v);
-							const int r2 = sqr((v->IsOrbital() ? OrbitalRangeFactor : 1) * MobileWirelessTransferRange);
+							const int r2 = sqr((v->IsOrbital() ? OrbitalWirelessRangeMultiplier : 1) * MobileWirelessTransferRange);
 							ForeachMobileWorldEntity([v,&movementChoices,world,r2](const PMobileEntity&m)
 							{
 								if (m->owner == v->owner && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= r2)

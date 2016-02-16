@@ -172,7 +172,7 @@ namespace Objects
 					sourceCompounds.Clear();
 					const float3 world = WorldEntity::GetWorldPosition(loc);
 					if (m.IsOrbital())
-						Grid::low.GenerateOrbitalDisk(Sphere<>(world,BaseWirelessTransferRange*OrbitalRangeFactor),Orbital::BaseHeight, desc);
+						Grid::low.GenerateOrbitalDisk(Sphere<>(world,BaseWirelessTransferRange*OrbitalWirelessRangeMultiplier),Orbital::BaseHeight, desc);
 					else
 						Grid::low.GenerateVolume(Sphere<>(world,BaseWirelessTransferRange),desc);
 					GetOwnCompoundsIn(m.owner,desc);

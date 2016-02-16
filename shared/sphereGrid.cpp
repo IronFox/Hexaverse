@@ -1036,20 +1036,6 @@ namespace Grid
 				for (UINT l = 0; l < CellStack::Range; l++)
 				{
 					if (stack.volumeCell[l].IsClearOrWater())
-					//{
-					//	for (int ni = 0; ni < n.numNeighbors; ni++)
-					//	{
-					//		auto&other = actualWorld.cellStack[n.neighborID[ni]].volumeCell[l];
-					//		if (other.IsClearOrWater())
-					//		{
-					//			//stack.volumeCell[l] = other;
-					//			other = stack.volumeCell[l];
-					//			//break;
-					//		}
-					//	}
-					//
-					//}
-					//else
 					{
 						int cnt = 0;
 						BYTE cont;
@@ -1075,6 +1061,12 @@ namespace Grid
 								auto&other = otherStack.volumeCell[l];
 								if (!other.IsClearOrWater())
 								{
+									cont = stack.volumeCell[l].content;
+									if (l > 0 && (cont == Content::Clear || cont == Content::Water))
+									{
+										otherStack.volumeCell[l-1].content = other.content;
+									}
+
 									cnt ++;
 									other.content = stack.volumeCell[l].content;
 								}
@@ -1114,6 +1106,10 @@ namespace Grid
 						}
 						if (cnt > 3)
 						{
+							if (l > 0 && (cont == Content::Clear || cont == Content::Water))
+							{
+								nStack.volumeCell[l-1].content = nStack.volumeCell[l].content;
+							}
 							nStack.volumeCell[l].content = cont;
 						}
 					}
@@ -1123,20 +1119,21 @@ namespace Grid
 
 
 			const bool solidProx = CellStack::Cell::IsSolid(config.liquidOutline) && CellStack::Cell::IsLiquid(config.liquidCoverage);
-			for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
-			{
-				auto&stack = actualWorld.cellStack[i];
-				for (UINT l = 0; l < CellStack::Range; l++)
-				{
-					const BYTE cont = stack.volumeCell[l].content;
-					if ((cont == Content::Water || cont == Content::Clear) && l > 0)
-					{
-						if (ReplaceTop(stack.volumeCell[l-1].content))
-							stack.volumeCell[l-1].content = 
-								GetTopTypeAtHeight(config,Grid::CellStack::ToHeight(l-1));
-					}
-				}
-			}
+			//the following tries to elimited exposed inner terrain types caused by the above terrain simplification
+			//for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
+			//{
+			//	auto&stack = actualWorld.cellStack[i];
+			//	for (UINT l = 0; l < CellStack::Range; l++)
+			//	{
+			//		const BYTE cont = stack.volumeCell[l].content;
+			//		if ((cont == Content::Water || cont == Content::Clear) && l > 0)
+			//		{
+			//			if (ReplaceTop(stack.volumeCell[l-1].content))
+			//				stack.volumeCell[l-1].content = 
+			//					GetTopTypeAtHeight(config,Grid::CellStack::ToHeight(l-1));
+			//		}
+			//	}
+			//}
 			if (solidProx)
 				for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
 				{

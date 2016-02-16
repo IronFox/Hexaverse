@@ -49,7 +49,7 @@ namespace Objects
 			int					GetStructureBuildHeight() const;
 
 			//Structure overrides:
-			virtual int			GetWirelessTransferRange() const override {return Super::GetWirelessTransferRange() * OrbitalRangeFactor;}
+			virtual int			GetWirelessTransferRange() const override {return Super::GetWirelessTransferRange() * OrbitalWirelessRangeMultiplier;}
 
 			//WorldEntity overrides:
 			virtual void		RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr) override;

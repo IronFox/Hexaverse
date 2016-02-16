@@ -333,8 +333,7 @@ namespace Receiver
 
 			SendAllToSpectator(peer, firstSpectator);
 
-
-
+			peer.SendSignal(Protocol::ChannelID::BeginGame);
 			return;
 		}
 

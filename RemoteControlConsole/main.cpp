@@ -86,7 +86,7 @@ namespace Console
 	{
 		lastLine = Truncate(context.ref(),30);
 		lastLine += '>';
-		lastLine += Truncate(input.ToStringRef(),40);
+		lastLine += Truncate(input.ToStringRef(),getConsoleWidth() - lastLine.length());
 	}
 
 	void	Refresh()
@@ -115,7 +115,7 @@ namespace Console
 			case '\b':
 				if (input.IsNotEmpty())
 				{
-					if (input.last() != '\t')
+					if (input.last() != '\t' && lastLine.length() +2 < (count_t)getConsoleWidth())
 					{
 						std::cout << "\b \b";
 						refresh = false;
@@ -138,8 +138,11 @@ namespace Console
 				if (Package::NetString<1024>::IsValidChar(c))
 				{
 					input << c;
-					std::cout << c;
-					refresh = false;
+					if (lastLine.length()+1 < (count_t)getConsoleWidth())
+					{
+						std::cout << c;
+						refresh = false;
+					}
 				}
 				else
 				{
@@ -365,7 +368,11 @@ void OnEvent(TCP::event_t event, TCP::Peer&peer)
 		return;
 		case TCP::Event::ConnectionEstablished:
 			if (Handler::interactive)
+			{
 				Console::WriteLine("Connection established to "+peer.ToString()+" after "+String(timer.GetSecondsSince(connectionAttemptStarted)));
+				if (Console::context.IsNotEmpty())
+					Channels::command.SendTo(peer,"cd "+Console::context);
+			}
 			if (connectionRetryThread.joinable())
 			{
 				try

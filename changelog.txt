@@ -10,6 +10,11 @@ v0.4.0
 v0.3.17
 	+ Analogously to terrain blocks, attack ranges are now shown on water surfaces when manual attacks are issued.
 	* Fixed save games not persistently memorizing sleep-state of units.
+	* Fixed desert planet type.
+	* Fixed spectator terrain construction.
+	* Fixed automated surveyor being incorrectly determined as idle.
+	* Fixed calculation of smoke trail when Ragnarök fires.
+	* Fixed SkyHub UI button placement.
 
 v0.3.16	[Feb 15 2016]
 	+ Ghosts now memorize the owner of the referenced entity (if any).

@@ -602,6 +602,10 @@ namespace Network
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);
 
+			#ifdef HAS_WINDOW
+				World::allowRecompilation = false;
+			#endif
+			gameHasBegun = false;
 
 
 			haveFaction = cr.startFactionTypes != 0;
