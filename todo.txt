@@ -1,3 +1,5 @@
+building placement (shift+click etc)
+working structure replacement (replace one enable working structure with another that is better suited to stabilize the compound)
 shadow edge
 
 motions ending in cells occupied by vehicles with no tasks should abort
