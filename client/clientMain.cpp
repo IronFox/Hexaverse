@@ -1627,17 +1627,17 @@ bool loop()
 
 		LineRenderer::Flush();
 
-		#ifdef _DEBUG
-		if (!saveScreenshot)
-		{
-			LineRenderer::SetColor(float4(1,0,0,1));
-			display.SetDepthTest(false,false);
-			LineRenderer::Rasterize(Debug::lastClickPoint - float3(1,0,0),Debug::lastClickPoint + float3(1,0,0));
-			LineRenderer::Rasterize(Debug::lastClickPoint - float3(0,1,0),Debug::lastClickPoint + float3(0,1,0));
-			LineRenderer::Rasterize(Debug::lastClickPoint - float3(0,0,1),Debug::lastClickPoint + float3(0,0,1));
-			LineRenderer::Flush();
-		}
-		#endif
+		//#ifdef _DEBUG
+		//if (!saveScreenshot)
+		//{
+		//	LineRenderer::SetColor(float4(1,0,0,1));
+		//	display.SetDepthTest(false,false);
+		//	LineRenderer::Rasterize(Debug::lastClickPoint - float3(1,0,0),Debug::lastClickPoint + float3(1,0,0));
+		//	LineRenderer::Rasterize(Debug::lastClickPoint - float3(0,1,0),Debug::lastClickPoint + float3(0,1,0));
+		//	LineRenderer::Rasterize(Debug::lastClickPoint - float3(0,0,1),Debug::lastClickPoint + float3(0,0,1));
+		//	LineRenderer::Flush();
+		//}
+		//#endif
 
 		display.pick(Camera::hud);
 			display.SetRasterizer(true,false);
@@ -2745,10 +2745,10 @@ String GenerateOreName(Random&random)
 					any = e;
 			}
 		});
-		#ifdef _DEBUG
-		if (any)
-			LogEvent(EventSignificance::Uncommon,any.get(),"not idle");
-		#endif
+		//#ifdef _DEBUG
+		//if (any)
+		//	LogEvent(EventSignificance::Uncommon,any.get(),"not idle");
+		//#endif
 		return !any;
 	}
 	
