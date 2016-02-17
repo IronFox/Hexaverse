@@ -10,6 +10,7 @@
 
 
 #ifdef HAS_WINDOW
+	#include <al/openal.h>
 	#include "visualCommands.h"
 #endif
 
@@ -147,6 +148,7 @@ namespace Objects
 				ResetAllChange();
 			}
 			#endif
+
 		}
 
 		#ifdef HAS_WINDOW
@@ -174,6 +176,8 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			typedef Objects::EntityCommand	Command;
 			typedef Objects::FEntityCommandVisitor	FCommandVisitor;
+
+			OpenAL::Source			ambientSound;
 		#endif
 
 		/**
