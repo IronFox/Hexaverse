@@ -182,7 +182,7 @@
 		</context>
 		<context name="Nexus">Nexus faction settings
 			<variable name="haveBases" default="true">If enabled then Nexus bases are constructed around 3 of the 12 planet poles.</variable>
-			<variable name="enableAI" default="false">
+			<variable name="enableAI" default="true">
 				Enables the AI to process units of the Nexus faction.
 				Spawns nexus vehicles, and AI client to control nexus vehicles/structures (if any).
 				A client is separately launched to compute AI decisions.
