@@ -1472,6 +1472,9 @@ namespace Animation
 			Vec::resolveBezierCurvePoint(p0,c0,c1,p1,fj,p);
 
 			TMatrix4<>&sys = target->system;
+			#ifdef HAS_WINDOW
+				const TVec3<> prev = sys.w.xyz;
+			#endif
 			if (target->IsSatellite())
 			{
 				sys.z.xyz = p;
@@ -1498,6 +1501,10 @@ namespace Animation
 				Vec::cross(n,axis,sys.z.xyz);
 				Vec::normalize0(sys.z.xyz);
 			}
+			#ifdef HAS_WINDOW
+				target->ambientSound.SetPosition(sys.w.xyz);
+				target->ambientSound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
+			#endif
 
 			target->system.w.xyz = p;
 			Mat::resetBottomRow(target->system);

@@ -78,6 +78,13 @@ namespace Objects
 		TVec3<> y, x,z;
 		system.w.xyz = up * Grid::ToRadiusf(float(location.height) /*+ 0.025f*/);
 		z = oldLocation- system.w.xyz;
+
+		#ifdef HAS_WINDOW
+			ambientSound.SetPosition(system.w.xyz);
+			ambientSound.SetVelocity(float3());
+		#endif
+
+
 		if (Vec::zero(z))
 		{
 			z = float3(1,1,1);

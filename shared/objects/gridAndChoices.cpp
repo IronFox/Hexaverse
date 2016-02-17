@@ -997,6 +997,20 @@ namespace Objects
 				}
 			#endif
 		#endif
+		#ifdef HAS_WINDOW
+			OpenAL::WaveBuffer wbo = Renderer::GetAmbientSoundOf(e->GetTypeName(),e->GetCTypeName());
+			if (wbo.IsNotEmpty())
+			{
+				e->ambientSound.SetPosition(e->GetWorldPosition());
+				e->ambientSound.SetVelocity(float3());
+				e->ambientSound.ClearQueue();
+				e->ambientSound.SetGain(e->GetActivityLevel());
+				e->ambientSound.EnqueueWaveBuffer(wbo);
+				e->ambientSound.SetLooping(true);
+				e->ambientSound.Play();
+			}
+		#endif
+
 		bool restored = idMap.IsSet(e->id);
 		if (restored)
 			ASSERT1__(storedMobileEntities.FindAndErase(e),e->GetName());
@@ -1209,6 +1223,9 @@ namespace Objects
 		#ifdef CLIENT
 			if (t != RemovalType::DestroyedInStorage)
 			{
+				#ifdef HAS_WINDOW
+					e->ambientSound.Stop();
+				#endif
 				#ifndef NO_HIBERNATION
 					UINT32 t = e->GetUplinkTraffic();
 					uplinkTraffic -= t;

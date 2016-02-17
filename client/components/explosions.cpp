@@ -390,8 +390,11 @@ namespace Explosions
 	{
 		if (haveSound)
 		{
+			static TVec3<> last;
+			OpenAL::Listener::SetVelocity((aspect.GetAbsoluteLocation() - last) / Engine::timing.delta);
 			OpenAL::Listener::Locate(aspect.GetAbsoluteLocation());
 			OpenAL::Listener::SetOrientation(aspect.GetViewingDirection(),aspect.viewInvert.y.xyz,true,false);
+			last = aspect.GetAbsoluteLocation();
 		}
 
 		display.SetBlendMode(Engine::BlendMode::FlareBlend);

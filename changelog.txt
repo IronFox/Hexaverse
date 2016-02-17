@@ -1,5 +1,6 @@
 v0.3.17
 	+ Analogously to terrain blocks, attack ranges are now shown on water surfaces when manual attacks are issued.
+	+ Added ambient sound for generators.
 	* Fixed save games not persistently memorizing sleep-state of units.
 	* Fixed desert planet type.
 	* Fixed spectator terrain construction.
