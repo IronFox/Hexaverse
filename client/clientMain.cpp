@@ -3081,6 +3081,16 @@ bool ConfigureClient(const wchar_t*commandLine)
 	return true;
 }
 
+bool	IsTargetWorkingDirectory(const PathString&dir)
+{
+	PathString test = dir + "/resources";
+	bool rs = FileSystem::IsDirectory(test);
+	LogEvent(EventSignificance::Debug,"Checking server target directory candidate '"+String(dir)+"'=>'"+String(test)+"'. Result="+String(rs));
+
+
+	return rs;
+}
+
 
 int main( int argc, const char* argv[])
 {
@@ -3103,6 +3113,21 @@ int main( int argc, const char* argv[])
 
 	//	FileSystem::CreateDirectory(RuntimeConfig::ConfigDir());
 		
+		{
+			wchar_t path[MAX_PATH];
+			ASSERT__(GetModuleFileNameW(NULL,path,MAX_PATH));
+			StringW dir = FileSystem::ExtractFileDir(StringW(path));
+			while (dir.length() > 1 && !IsTargetWorkingDirectory(dir))
+			{
+				dir = FileSystem::ExtractFileDir(dir);
+				LogEvent(EventSignificance::Debug,"Walking up to "+String(dir.c_str()));
+			}
+			if (IsTargetWorkingDirectory(dir))
+				FileSystem::SetWorkingDirectory(dir);
+			else
+				FATAL__("Something is wrong. Unable to locate server executable, or config/declaration.xml is missing.");
+		}
+
 
 		NiceName::Load();
 
