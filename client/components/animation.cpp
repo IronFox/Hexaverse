@@ -25,7 +25,9 @@ namespace Animation
 		Objects::Geometry			trajectoryGeometry;
 		DX11::InstructionBlock32	trajectoryVisualization;
 		DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
+		OpenAL::Source				trajectoryFireSource[1];
 		float						maxProjectileProjection;
+		OpenAL::Wave				artilleryShot;
 	#endif
 
 	float						atTime = 0.f;
@@ -265,6 +267,15 @@ namespace Animation
 			trajectoryVisualization.shader.LoadFromFile("shaders/projectilePath.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 			trajectoryVisualization.UpdateLayout();
 			trajectoryVisualization.SetTriangles();
+
+			artilleryShot = OpenAL::Load("resources/objectSounds/artilleryShot.wav");
+			for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+			{
+				trajectoryFireSource[i].Create();
+				trajectoryFireSource[i].SetPitch(1.f - 0.01f * i);
+				trajectoryFireSource[i].SetReferenceDistance(10.f);
+			}
+
 		#endif
 	}
 
@@ -274,6 +285,8 @@ namespace Animation
 			trajectoryVisualization = DX11::InstructionBlock32();
 			trajectoryProgression.Clear();
 			trajectoryTint.Clear();
+			for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+				trajectoryFireSource[i].Destroy();
 		#endif
 	}
 
@@ -1201,6 +1214,19 @@ namespace Animation
 						{
 							UI::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, smokeTrailIndex);
 						}
+
+						if (attackerTurret->trajectoryType == Objects::TrajectoryType::Artillery)
+						{
+							for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+							{
+								OpenAL::Source&s = trajectoryFireSource[i];
+								s.ClearQueue();
+								s.SetPosition(attackerPosition);
+								s.EnqueueWaveBuffer(artilleryShot);
+								s.Play();
+							}
+						}
+
 					#endif
 
 

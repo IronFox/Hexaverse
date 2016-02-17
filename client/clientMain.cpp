@@ -3231,11 +3231,11 @@ int main( int argc, const char* argv[])
 		Objects::Create();
 		Grid::Create1();
 
-		Animation::Create();
 
 		#ifdef HAS_WINDOW
 			Explosions::Create();
 		#endif
+		Animation::Create();
 
 
 		Network::Setup();
