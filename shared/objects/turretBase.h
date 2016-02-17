@@ -6,6 +6,10 @@
 #include "../sphereGrid.h"
 #include "components.h"
 
+#ifdef HAS_WINDOW
+	#include <al/openal.h>
+#endif
+
 
 namespace Objects
 {
@@ -73,6 +77,9 @@ namespace Objects
 		#ifdef CLIENT
 			float				turretAngleX, turretAngleY;
 		#endif
+		#ifdef HAS_WINDOW
+			OpenAL::Source		rotationSound;
+		#endif
 									
 
 		#ifdef HAS_WINDOW
@@ -84,7 +91,11 @@ namespace Objects
 		#ifdef CLIENT
 												,turretAngleX(0), turretAngleY(0)
 		#endif
-								{}
+								{
+									#ifdef HAS_WINDOW
+									//	rotationSound.Create();
+									#endif
+								}
 		virtual					~TurretBase()	{}
 
 

@@ -537,6 +537,9 @@ namespace Objects
 		BuildStructureSystem(location,system);
 
 		Mat::invert(system,inverse);
+		#ifdef HAS_WINDOW
+			ambientSound.SetPosition(GetWorldPosition());
+		#endif
 	}
 
 
@@ -2927,6 +2930,10 @@ namespace Objects
 		void					WorkingStructure::ApplyEnableChangeFromServer(bool b)
 		{
 			isEnabled = b;
+			#ifdef HAS_WINDOW
+				ambientSound.SetGain(GetActivityLevel());
+			#endif
+
 		}
 
 	#endif

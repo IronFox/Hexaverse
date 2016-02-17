@@ -1117,6 +1117,16 @@ namespace Animation
 					Objects::PTurretBase b = allocatedTarget->GetTurretBase(dummy);
 					ASSERT__(b);
 
+					if (!b->rotationSound.IsCreated())
+					{
+						b->rotationSound.Create();
+						b->rotationSound.EnqueueWaveBuffer(Objects::Renderer::GetAmbientSoundOf("turretRotate",ConstName::Turret_Artillery));
+						b->rotationSound.SetLooping(true);
+					}
+					b->rotationSound.SetPosition(allocatedTarget->GetWorldPosition());
+					b->rotationSound.SetPitch(0.7f);
+					b->rotationSound.Play();
+
 					float3 dir = rotateToWorld;
 					float3 innerDir;
 					Mat::rotate(allocatedTarget->inverse,dir,innerDir);
@@ -1286,6 +1296,9 @@ namespace Animation
 					Objects::PTurretBase b = allocatedTarget->GetTurretBase(dummy);
 					b->turretAngleX = rotateTo.x;
 					b->turretAngleY = rotateTo.y;
+
+					b->rotationSound.Stop();
+
 				}
 			}
 			break;
@@ -1376,6 +1389,8 @@ namespace Animation
 					//Objects::PVehicle v = To<Objects::Vehicle>::Cast(target);
 					b->turretAngleX = angles.x;
 					b->turretAngleY = angles.y;
+					//b->rotationSound.SetPitch(0.5f + 0.3f * (sqrt((x))));
+
 				}
 			}
 			break;
@@ -1473,6 +1488,9 @@ namespace Animation
 			Vec::resolveBezierCurvePoint(p0,c0,c1,p1,fj,p);
 
 			TMatrix4<>&sys = target->system;
+			#ifdef HAS_WINDOW
+				const TVec3<> prev = sys.w.xyz;
+			#endif
 			if (target->IsSatellite())
 			{
 				sys.z.xyz = p;
@@ -1499,6 +1517,12 @@ namespace Animation
 				Vec::cross(n,axis,sys.z.xyz);
 				Vec::normalize0(sys.z.xyz);
 			}
+			#ifdef HAS_WINDOW
+				target->ambientSound.SetPosition(sys.w.xyz);
+				target->ambientSound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
+				target->rotationSound.SetPosition(sys.w.xyz);
+				target->rotationSound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
+			#endif
 
 			target->system.w.xyz = p;
 			Mat::resetBottomRow(target->system);
