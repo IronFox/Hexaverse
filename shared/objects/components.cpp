@@ -1584,18 +1584,11 @@ namespace Objects
 				PMobileEntity vehicle = To<MobileEntity>::DynamicCast(v);
 				if (!vehicle)
 					return;
-				SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());
-				//auto loc = vehicle->GetLastPointOfOrigin();
-				///*if (!p->CanPlace(loc))
-				//{
-				//	LogEvent("Unable to place " + p->GetTypeName() + " here");
-				//	return;
-				//}*/
 
-				//CursorMode::PJob job(new VehicleJob::Construct(*vehicle,p));
+				activeCursorMode = CursorMode::PlaceStructureMode;
+				activeStructureToPlace = p;
 
-				//vehicle->RegisterNewJob(p->GetTypeName(),job,&loc);
-		
+				//SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());
 			}
 
 
