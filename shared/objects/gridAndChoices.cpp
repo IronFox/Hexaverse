@@ -998,14 +998,21 @@ namespace Objects
 			#endif
 		#endif
 		#ifdef HAS_WINDOW
-			OpenAL::WaveBuffer wbo = Renderer::GetAmbientSoundOf(e->GetTypeName(),e->GetCTypeName());
-			if (wbo.IsNotEmpty())
+			if (!e->ambientSound.IsCreated())
+			{
+				OpenAL::WaveBuffer wbo = Renderer::GetAmbientSoundOf(e->GetTypeName(),e->GetCTypeName());
+				if (wbo.IsNotEmpty())
+				{
+					e->ambientSound.Create();
+					e->ambientSound.EnqueueWaveBuffer(wbo);
+				}
+			}
+
+			if (e->ambientSound.IsCreated())
 			{
 				e->ambientSound.SetPosition(e->GetWorldPosition());
 				e->ambientSound.SetVelocity(float3());
-				e->ambientSound.ClearQueue();
 				e->ambientSound.SetGain(e->GetActivityLevel());
-				e->ambientSound.EnqueueWaveBuffer(wbo);
 				e->ambientSound.SetLooping(true);
 				e->ambientSound.Play();
 			}
@@ -1224,7 +1231,8 @@ namespace Objects
 			if (t != RemovalType::DestroyedInStorage)
 			{
 				#ifdef HAS_WINDOW
-					e->ambientSound.Stop();
+					if (e->ambientSound.IsCreated())
+						e->ambientSound.Stop();
 				#endif
 				#ifndef NO_HIBERNATION
 					UINT32 t = e->GetUplinkTraffic();

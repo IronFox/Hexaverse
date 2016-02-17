@@ -306,6 +306,7 @@ namespace Objects
 
 
 
+
 		Grid::LCellIdI			GetLastPointOfOrigin() const;
 		Grid::LCellIdI			GetPrevPointOfOrigin() const;
 

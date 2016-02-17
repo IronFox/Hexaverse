@@ -148,10 +148,6 @@ namespace Objects
 			}
 			#endif
 
-			#ifdef HAS_WINDOW
-
-				ambientSound.Create();
-			#endif
 		}
 
 		#ifdef HAS_WINDOW

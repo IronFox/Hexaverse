@@ -82,6 +82,8 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			ambientSound.SetPosition(system.w.xyz);
 			ambientSound.SetVelocity(float3());
+			rotationSound.SetPosition(system.w.xyz);
+			rotationSound.SetVelocity(float3());
 		#endif
 
 
