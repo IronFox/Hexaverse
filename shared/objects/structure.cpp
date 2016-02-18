@@ -2824,7 +2824,7 @@ namespace Objects
 		{
 			isEnabled = b;
 			#ifdef HAS_WINDOW
-				ambientSound.SetGain(GetActivityLevel());
+				ambientSound.SetGain(GetSoundLevel());
 			#endif
 
 		}

@@ -1438,6 +1438,9 @@ namespace Objects
 				component.parts.first().first.LoadFromObj("objects/hoverbase.obj");
 				component.height = component.parts.first().first.GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
+
+				component.ambientSound = OpenAL::Load("resources/objectSounds/hoverBase.wav");
+
 			#else
 				component.height = staticHeight;
 			#endif

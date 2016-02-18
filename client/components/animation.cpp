@@ -1545,6 +1545,10 @@ namespace Animation
 			#ifdef HAS_WINDOW
 				target->ambientSound.SetPosition(sys.w.xyz);
 				target->ambientSound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
+				float x = t / rawPath.last().second;
+				float activity = 1.f - (sqr(((x - 0.5f)*2.f)));
+				target->ambientSound.SetPitch(1.f + activity * 0.5f);
+				target->ambientSound.SetGain(std::min(target->GetSoundLevel() + activity,1.f));
 				target->rotationSound.SetPosition(sys.w.xyz);
 				target->rotationSound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
 			#endif

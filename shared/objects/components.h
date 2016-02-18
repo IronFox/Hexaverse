@@ -4,6 +4,7 @@
 #ifdef HAS_WINDOW
 	#include "visualCommands.h"
 	#include "geometry.h"
+	#include <al/openal.h>
 //	#include "entity.h"
 #endif
 
@@ -331,6 +332,10 @@ namespace Objects
 											baseHealth;			//!< Base health level
 			bool							ignoresVehicleAttacks;
 			THindranceVector				hindrance;
+
+			#ifdef HAS_WINDOW
+				OpenAL::Wave				ambientSound;	//sound used for ambience (25% volume, normal pitch), or motion (100% volume, increased pitch)
+			#endif
 
 			//warning: none is broken in pathfinding
 			CONSTRUCT_ENUMERATION3(Requirement, None, AnyBlock ,Water);

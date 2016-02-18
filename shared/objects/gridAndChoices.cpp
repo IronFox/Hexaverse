@@ -1000,11 +1000,14 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			if (!e->ambientSound.IsCreated())
 			{
-				OpenAL::WaveBuffer wbo = Renderer::GetAmbientSoundOf(e->GetTypeName(),e->GetCTypeName());
+				OpenAL::WaveBuffer wbo = e->GetAmbientSound();
+				//Renderer::GetAmbientSoundOf(e->GetTypeName(),e->GetCTypeName());
 				if (wbo.IsNotEmpty())
 				{
 					e->ambientSound.Create();
 					e->ambientSound.EnqueueWaveBuffer(wbo);
+					e->ambientSound.SetReferenceDistance(3.f);
+					
 				}
 			}
 
@@ -1012,7 +1015,7 @@ namespace Objects
 			{
 				e->ambientSound.SetPosition(e->GetWorldPosition());
 				e->ambientSound.SetVelocity(float3());
-				e->ambientSound.SetGain(e->GetActivityLevel());
+				e->ambientSound.SetGain(e->GetSoundLevel());
 				e->ambientSound.SetLooping(true);
 				e->ambientSound.Play();
 			}
