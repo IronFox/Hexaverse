@@ -78,7 +78,7 @@ namespace Objects
 			float				turretAngleX, turretAngleY;
 		#endif
 		#ifdef HAS_WINDOW
-			OpenAL::Source		rotationSound;
+			OpenAL::Source		activitySound;	//used for rotation by offensive turrets, and arbitrary sounds by others
 		#endif
 									
 

@@ -613,6 +613,30 @@ namespace Animation
 			//{
 			//	AppendTask(v,t);
 			//}
+
+			#ifdef HAS_WINDOW
+			if (!v->turret->CanAttack())
+			{
+				if (v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsJob())
+				{
+					if (!v->activitySound.IsCreated())
+					{
+						v->activitySound.Create();
+						v->activitySound.SetLooping(true);
+						v->activitySound.SetReferenceDistance(3.f,3.f);
+						v->activitySound.EnqueueWaveBuffer(Objects::VehiclePlant::globalPrototype->GetAmbientSound());
+						static Random random;
+						v->activitySound.SetPitch(3.f + random.getFloat(-0.05f,0.05f));
+						v->activitySound.SetGain(0.25f);
+					}
+					v->activitySound.Play();
+					v->activitySound.SetPosition(v->GetWorldPosition());
+				}
+				else
+					v->activitySound.Stop();
+			}
+			#endif
+
 			auto id = info->storedIn.Get0();
 			if (id)
 			{
@@ -1136,15 +1160,16 @@ namespace Animation
 					Objects::PTurretBase b = allocatedTarget->GetTurretBase(dummy);
 					ASSERT__(b);
 
-					if (!b->rotationSound.IsCreated())
+					if (!b->activitySound.IsCreated())
 					{
-						b->rotationSound.Create();
-						b->rotationSound.EnqueueWaveBuffer(Objects::Renderer::GetAmbientSoundOf("turretRotate",ConstName::Turret_Artillery));
-						b->rotationSound.SetLooping(true);
+						b->activitySound.Create();
+						b->activitySound.SetLooping(true);
 					}
-					b->rotationSound.SetPosition(allocatedTarget->GetWorldPosition());
-					b->rotationSound.SetPitch(0.7f);
-					b->rotationSound.Play();
+					b->activitySound.ClearQueue();
+					b->activitySound.EnqueueWaveBuffer(Objects::Renderer::GetAmbientSoundOf("turretRotate",ConstName::Turret_Artillery));
+					b->activitySound.SetPosition(allocatedTarget->GetWorldPosition());
+					b->activitySound.SetPitch(0.7f);
+					b->activitySound.Play();
 
 					float3 dir = rotateToWorld;
 					float3 innerDir;
@@ -1343,7 +1368,7 @@ namespace Animation
 					b->turretAngleX = rotateTo.x;
 					b->turretAngleY = rotateTo.y;
 
-					b->rotationSound.Stop();
+					b->activitySound.Stop();
 
 				}
 			}
@@ -1576,8 +1601,8 @@ namespace Animation
 				float activity = 1.f - (sqr(((x - 0.5f)*2.f)));
 				target->ambientSound.SetPitch(1.f + activity * 0.5f);
 				target->ambientSound.SetGain(std::min(target->GetSoundLevel() + activity,1.f));
-				target->rotationSound.SetPosition(sys.w.xyz);
-				target->rotationSound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
+				target->activitySound.SetPosition(sys.w.xyz);
+				target->activitySound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
 			#endif
 
 			target->system.w.xyz = p;
