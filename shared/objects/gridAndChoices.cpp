@@ -1007,7 +1007,8 @@ namespace Objects
 					e->ambientSound.Create();
 					e->ambientSound.EnqueueWaveBuffer(wbo);
 					e->ambientSound.SetReferenceDistance(3.f);
-					
+					static Random random;
+					e->ambientSound.SetPitch(1.f + random.getFloat(-0.02f,0.02f));
 				}
 			}
 
