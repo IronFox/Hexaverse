@@ -25,9 +25,9 @@ namespace Animation
 		Objects::Geometry			trajectoryGeometry;
 		DX11::InstructionBlock32	trajectoryVisualization;
 		DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
-		OpenAL::Source				trajectoryFireSource[1];
+		OpenAL::Source				trajectoryFireSource[1],missileHissSource;
 		float						maxProjectileProjection;
-		OpenAL::Wave				artilleryShot;
+		OpenAL::Wave				artilleryShot,missileHiss;
 	#endif
 
 	float						atTime = 0.f;
@@ -276,6 +276,12 @@ namespace Animation
 				trajectoryFireSource[i].SetReferenceDistance(10.f);
 			}
 
+			missileHiss = OpenAL::Load("resources/objectSounds/missileHiss.wav");
+			missileHissSource.Create();
+			missileHissSource.SetReferenceDistance(10.f);
+			missileHissSource.EnqueueWaveBuffer(missileHiss);
+			missileHissSource.SetLooping(true);
+
 		#endif
 	}
 
@@ -287,6 +293,7 @@ namespace Animation
 			trajectoryTint.Clear();
 			for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
 				trajectoryFireSource[i].Destroy();
+			missileHissSource.Destroy();
 		#endif
 	}
 
@@ -1215,17 +1222,28 @@ namespace Animation
 							UI::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, smokeTrailIndex);
 						}
 
-						if (attackerTurret->trajectoryType == Objects::TrajectoryType::Artillery)
+						switch (attackerTurret->trajectoryType)
 						{
-							for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+							case Objects::TrajectoryType::Artillery:
 							{
-								OpenAL::Source&s = trajectoryFireSource[i];
-								s.ClearQueue();
-								s.SetPosition(attackerPosition);
-								s.EnqueueWaveBuffer(artilleryShot);
-								s.Play();
+								for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+								{
+									OpenAL::Source&s = trajectoryFireSource[i];
+									s.ClearQueue();
+									s.SetPosition(attackerPosition);
+									s.EnqueueWaveBuffer(artilleryShot);
+									s.Play();
+								}
+							}
+							break;
+							case Objects::TrajectoryType::Missile:
+							{
+								missileHissSource.SetPosition(attackerPosition);
+								missileHissSource.Play();
 							}
 						}
+
+						
 
 					#endif
 
@@ -1296,6 +1314,9 @@ namespace Animation
 						i--;
 					}
 				}
+				#ifdef HAS_WINDOW
+					missileHissSource.Stop();
+				#endif
 			break;
 			case Explosion:
 				for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
@@ -1395,6 +1416,12 @@ namespace Animation
 				projectileAt = y;
 				#ifdef HAS_WINDOW
 					trajectoryProgression.Update(float4(y * maxProjectileProjection,1.f,5.f,1.f));
+
+					index_t at = std::min(index_t(x * activeTrajectory.GetLength()),activeTrajectory.GetLength()-1);
+					const TVec4<>&v = activeTrajectory[at];
+					missileHissSource.SetPosition(v.xyz * v.w);
+					missileHissSource.SetGain(sqr(sqr(1.f - x))*0.75f + 0.25f);
+
 				#endif
 			}
 			break;
