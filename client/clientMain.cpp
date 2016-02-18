@@ -1408,6 +1408,14 @@ bool loop()
 				Vec::mult(change,Engine::timing.delta*100.f);
 				Camera::Rotate(change);
 			}
+			if (Engine::input.pressed[Key::Up])
+			{
+				Camera::Event::Zoom(Engine::timing.delta);
+			}
+			if (Engine::input.pressed[Key::Down])
+			{
+				Camera::Event::Zoom(-Engine::timing.delta);
+			}
 		}
 
 
@@ -3198,8 +3206,8 @@ int main( int argc, const char* argv[])
 			LineRenderer::Create();
 			SurfaceRenderer::Create();
 
-			Engine::input.bind(Key::Up, Camera::Event::ZoomIn);
-			Engine::input.bind(Key::Down, Camera::Event::ZoomOut);
+			//Engine::input.bind(Key::Up, Camera::Event::ZoomIn);
+			//Engine::input.bind(Key::Down, Camera::Event::ZoomOut);
 
 			Engine::input.bind(Key::Left, SelectAndFocusPrev);
 			Engine::input.bind(Key::Right, SelectAndFocusNext);
