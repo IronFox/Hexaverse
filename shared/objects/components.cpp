@@ -1481,6 +1481,8 @@ namespace Objects
 				component.parts.first().first.LoadFromObj("objects/heavyBase.obj");
 				component.height = component.parts.first().first.GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
+
+				component.ambientSound = OpenAL::Load("resources/objectSounds/heavyBase.wav");
 			#else
 				component.height = staticHeight;
 			#endif
