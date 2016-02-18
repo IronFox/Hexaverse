@@ -77,6 +77,19 @@ namespace Objects
 	Buffer0<DX11::InstructionBlock32>	smokeTrails;
 	index_t								selectedSmokeTrail = InvalidIndex;
 
+	OpenAL::WaveBuffer	Renderer::GetAmbientSoundOf(const String&entityTypeName, ConstName _entityType)
+	{
+		index_t key = (index_t)_entityType;
+		static IndexTable<OpenAL::Wave>	waveTable;
+		OpenAL::WaveBuffer result;
+		if (waveTable.Query(key,result))
+			return result;
+		result = OpenAL::Load("resources/objectSounds/"+entityTypeName+".wav");
+		waveTable.Set(key,result);	//don't care if it's empty
+		return result;
+	}
+
+
 	index_t	Renderer::RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory)
 	{
 		index_t result = smokeTrails.Count();
@@ -95,7 +108,6 @@ namespace Objects
 	{
 		selectedSmokeTrail = smokeTrailIndex;
 	}
-
 
 	void	Renderer::ClearSmokeTrails()
 	{
@@ -2033,6 +2045,9 @@ namespace Objects
 			//fbo.Clear();
 			return fbo.GetColorTarget();
 		}
+
+
+
 	}
 }
 

@@ -1408,6 +1408,14 @@ bool loop()
 				Vec::mult(change,Engine::timing.delta*100.f);
 				Camera::Rotate(change);
 			}
+			if (Engine::input.pressed[Key::Up])
+			{
+				Camera::Event::Zoom(Engine::timing.delta);
+			}
+			if (Engine::input.pressed[Key::Down])
+			{
+				Camera::Event::Zoom(-Engine::timing.delta);
+			}
 		}
 
 
@@ -2527,6 +2535,10 @@ String GenerateOreName(Random&random)
 				Network::Channels::dropLastTask.SendTo(Network::client, Objects::selectedMobileEntity->id);
 			}
 		}
+		else
+			if (Objects::selectedEntity)
+				Network::Channels::dropLastTask.SendTo(Network::client, Objects::selectedEntity->id);
+
 
 	}
 
@@ -3081,6 +3093,16 @@ bool ConfigureClient(const wchar_t*commandLine)
 	return true;
 }
 
+bool	IsTargetWorkingDirectory(const PathString&dir)
+{
+	PathString test = dir + "/resources";
+	bool rs = FileSystem::IsDirectory(test);
+	LogEvent(EventSignificance::Debug,"Checking server target directory candidate '"+String(dir)+"'=>'"+String(test)+"'. Result="+String(rs));
+
+
+	return rs;
+}
+
 
 int main( int argc, const char* argv[])
 {
@@ -3103,6 +3125,21 @@ int main( int argc, const char* argv[])
 
 	//	FileSystem::CreateDirectory(RuntimeConfig::ConfigDir());
 		
+		{
+			wchar_t path[MAX_PATH];
+			ASSERT__(GetModuleFileNameW(NULL,path,MAX_PATH));
+			StringW dir = FileSystem::ExtractFileDir(StringW(path));
+			while (dir.length() > 1 && !IsTargetWorkingDirectory(dir))
+			{
+				dir = FileSystem::ExtractFileDir(dir);
+				LogEvent(EventSignificance::Debug,"Walking up to "+String(dir.c_str()));
+			}
+			if (IsTargetWorkingDirectory(dir))
+				FileSystem::SetWorkingDirectory(dir);
+			else
+				FATAL__("Something is wrong. Unable to locate server executable, or config/declaration.xml is missing.");
+		}
+
 
 		NiceName::Load();
 
@@ -3173,8 +3210,8 @@ int main( int argc, const char* argv[])
 			LineRenderer::Create();
 			SurfaceRenderer::Create();
 
-			Engine::input.bind(Key::Up, Camera::Event::ZoomIn);
-			Engine::input.bind(Key::Down, Camera::Event::ZoomOut);
+			//Engine::input.bind(Key::Up, Camera::Event::ZoomIn);
+			//Engine::input.bind(Key::Down, Camera::Event::ZoomOut);
 
 			Engine::input.bind(Key::Left, SelectAndFocusPrev);
 			Engine::input.bind(Key::Right, SelectAndFocusNext);
@@ -3231,11 +3268,11 @@ int main( int argc, const char* argv[])
 		Objects::Create();
 		Grid::Create1();
 
-		Animation::Create();
 
 		#ifdef HAS_WINDOW
 			Explosions::Create();
 		#endif
+		Animation::Create();
 
 
 		Network::Setup();

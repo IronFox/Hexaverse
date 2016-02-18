@@ -10,6 +10,7 @@
 
 
 #ifdef HAS_WINDOW
+	#include <al/openal.h>
 	#include "visualCommands.h"
 #endif
 
@@ -146,6 +147,7 @@ namespace Objects
 				ResetAllChange();
 			}
 			#endif
+
 		}
 
 		#ifdef HAS_WINDOW
@@ -173,6 +175,8 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			typedef Objects::EntityCommand	Command;
 			typedef Objects::FEntityCommandVisitor	FCommandVisitor;
+
+			OpenAL::Source			ambientSound;
 		#endif
 
 		/**
@@ -250,7 +254,13 @@ namespace Objects
 
 			virtual void			OnSleepChange(float&t) {};
 		#else
-			void					ApplySleepChangeFromServer(bool doSleep)	{sleeping = doSleep;}
+			void					ApplySleepChangeFromServer(bool doSleep)
+			{
+				sleeping = doSleep;
+				#ifdef HAS_WINDOW
+					ambientSound.SetGain(GetSoundLevel());
+				#endif
+			}
 		#endif
 		//virtual bool				CanSee(const PWorldEntity&other)	const;
 		//virtual bool				CanSee(const TVec3<>&center, float radius)	const;
@@ -261,6 +271,10 @@ namespace Objects
 		@return 0 (completely inactive) to 1 (active)
 		*/
 		virtual float				GetActivityLevel() const {return IsHibernating() ? 0.f : (sleeping ? 0.5f : 1.f);}
+		#ifdef HAS_WINDOW
+			virtual float			GetSoundLevel() const {return GetActivityLevel()*0.35f;}
+			virtual OpenAL::Wave	GetAmbientSound() const;
+		#endif
 
 		/**
 		Retrieves the maximum possible health level

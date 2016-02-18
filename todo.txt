@@ -1,3 +1,5 @@
+surveyor that crosses planned paths with another (standing or moving) vehicle should consider that an invalid path
+
 building placement (shift+click etc)
 working structure replacement (replace one enable working structure with another that is better suited to stabilize the compound)
 shadow edge

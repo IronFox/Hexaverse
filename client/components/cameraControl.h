@@ -112,6 +112,7 @@ namespace Camera
 		void					WheelAction(short param);
 		void					ZoomIn();
 		void					ZoomOut();
+		void					Zoom(float outSpeed);
 	}
 
 }
