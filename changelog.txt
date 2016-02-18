@@ -4,6 +4,7 @@ v0.3.17
 	+ Added sounds for artillery shots and turret rotations.
 	+ Added ambient sound for mines and factories.
 	+ Added sound for missile attacks.
+	> Towers now allow backspace-undoing of attack tasks.
 	* Fixed save games not persistently memorizing sleep-state of units.
 	* Fixed desert planet type.
 	* Fixed spectator terrain construction.

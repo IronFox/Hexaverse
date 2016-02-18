@@ -2535,6 +2535,10 @@ String GenerateOreName(Random&random)
 				Network::Channels::dropLastTask.SendTo(Network::client, Objects::selectedMobileEntity->id);
 			}
 		}
+		else
+			if (Objects::selectedEntity)
+				Network::Channels::dropLastTask.SendTo(Network::client, Objects::selectedEntity->id);
+
 
 	}
 
