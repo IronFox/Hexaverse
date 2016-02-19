@@ -1606,10 +1606,15 @@ namespace Objects
 					return;
 				if (activeCursorMode != CursorMode::PlaceStructureMode)
 				{
-					activeCursorMode = CursorMode::PlaceStructureMode;
-					showArrow = true;
-					arrowFromCell = vehicle->GetLastPointOfOrigin();
-					arrowFrom = Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(arrowFromCell.height));
+					if (Engine::input.pressed[Key::Ctrl])
+					{
+						activeCursorMode = CursorMode::PlaceStructureMode;
+						showArrow = true;
+						arrowFromCell = vehicle->GetLastPointOfOrigin();
+						arrowFrom = Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(arrowFromCell.height));
+					}
+					else
+						SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());
 					activeStructureToPlace = p;
 				}
 				else

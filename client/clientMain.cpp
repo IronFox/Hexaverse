@@ -3263,6 +3263,7 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::H,ToggleControlGUI);
 
 			Engine::input.bind(Key::MouseButton0, Select, Dialog::HandleMouseUp);
+			Engine::input.bindCtrl(Key::MouseButton0, Select);
 			Engine::input.bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
 			Engine::input.bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
 
