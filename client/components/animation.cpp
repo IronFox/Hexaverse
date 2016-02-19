@@ -27,7 +27,7 @@ namespace Animation
 		DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
 		OpenAL::Source				trajectoryFireSource[1],missileHissSource;
 		float						maxProjectileProjection;
-		OpenAL::Wave				artilleryShot,missileHiss;
+		OpenAL::Wave				artilleryShot,missileHiss,constructSound;
 	#endif
 
 	float						atTime = 0.f;
@@ -276,6 +276,7 @@ namespace Animation
 				trajectoryFireSource[i].SetReferenceDistance(10.f);
 			}
 
+			constructSound = OpenAL::Load("resources/objectSounds/construct.wav");
 			missileHiss = OpenAL::Load("resources/objectSounds/missileHiss.wav");
 			missileHissSource.Create();
 			missileHissSource.SetReferenceDistance(10.f);
@@ -740,9 +741,9 @@ namespace Animation
 						v->activitySound.Create();
 						v->activitySound.SetLooping(true);
 						v->activitySound.SetReferenceDistance(3.f,3.f);
-						v->activitySound.EnqueueWaveBuffer(Objects::VehiclePlant::globalPrototype->GetAmbientSound());
+						v->activitySound.EnqueueWaveBuffer(constructSound);
 						static Random random;
-						v->activitySound.SetPitch(12.f + random.getFloat(-0.05f,0.05f));
+						v->activitySound.SetPitch(1.f + random.getFloat(-0.05f,0.05f));
 						v->activitySound.SetGain(0.25f);
 					}
 					if (!v->activitySound.IsPlaying())
