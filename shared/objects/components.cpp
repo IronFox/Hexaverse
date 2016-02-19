@@ -1606,15 +1606,15 @@ namespace Objects
 					return;
 				if (activeCursorMode != CursorMode::PlaceStructureMode)
 				{
-					if (Engine::input.pressed[Key::Ctrl])
+				//	if (Engine::input.pressed[Key::Ctrl])
 					{
 						activeCursorMode = CursorMode::PlaceStructureMode;
 						showArrow = true;
 						arrowFromCell = vehicle->GetLastPointOfOrigin();
 						arrowFrom = Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(arrowFromCell.height));
 					}
-					else
-						SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());
+					//else
+					//	SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());		//this still works, but seemed unintuitive rather quickly
 					activeStructureToPlace = p;
 				}
 				else
@@ -1622,6 +1622,7 @@ namespace Objects
 					activeCursorMode = CursorMode::Idle;
 					showArrow = false;
 				}
+
 
 				//SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());
 			}
