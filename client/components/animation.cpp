@@ -614,31 +614,6 @@ namespace Animation
 			//	AppendTask(v,t);
 			//}
 
-			#ifdef HAS_WINDOW
-			if (!v->turret->CanAttack())
-			{
-				if (v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsJob())
-				{
-					if (!v->activitySound.IsCreated())
-					{
-						v->activitySound.Create();
-						v->activitySound.SetLooping(true);
-						v->activitySound.SetReferenceDistance(3.f,3.f);
-						v->activitySound.EnqueueWaveBuffer(Objects::VehiclePlant::globalPrototype->GetAmbientSound());
-						static Random random;
-						v->activitySound.SetPitch(12.f + random.getFloat(-0.05f,0.05f));
-						v->activitySound.SetGain(0.25f);
-					}
-					if (!v->activitySound.IsPlaying())
-						v->activitySound.Play();
-					v->activitySound.SetPosition(v->GetWorldPosition());
-				}
-				else
-					if (v->activitySound.IsPlaying())
-						v->activitySound.Stop();
-			}
-			#endif
-
 			auto id = info->storedIn.Get0();
 			if (id)
 			{
@@ -754,6 +729,32 @@ namespace Animation
 				Objects::VehicleStore::StaticSignalDeployment();
 				UI::HexGrid::Configure(Objects::selectedEntity);
 			}
+
+
+			if (!v->turret->CanAttack())
+			{
+				if (v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsJob() && !v->IsSleeping())
+				{
+					if (!v->activitySound.IsCreated())
+					{
+						v->activitySound.Create();
+						v->activitySound.SetLooping(true);
+						v->activitySound.SetReferenceDistance(3.f,3.f);
+						v->activitySound.EnqueueWaveBuffer(Objects::VehiclePlant::globalPrototype->GetAmbientSound());
+						static Random random;
+						v->activitySound.SetPitch(12.f + random.getFloat(-0.05f,0.05f));
+						v->activitySound.SetGain(0.25f);
+					}
+					if (!v->activitySound.IsPlaying())
+						v->activitySound.Play();
+					v->activitySound.SetPosition(v->GetWorldPosition());
+					v->activitySound.SetGain(v->GetSoundLevel());
+				}
+				else
+					if (v->activitySound.IsPlaying())
+						v->activitySound.Stop();
+			}
+
 		#endif
 
 	}
