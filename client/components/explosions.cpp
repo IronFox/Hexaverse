@@ -242,6 +242,10 @@ namespace Explosions
 				LogEvent(EventClass::Preset::error,"Warning: Unable to initialize OpenAL. Sound will be disabled for this session.");
 		}
 		
+		if (haveSound)
+		{
+			OpenAL::Listener::SetGain(2.f);
+		}
 
 	//	Loading::postMessage("Preparing explosion resources");
 		Image  image(256,256,4);
