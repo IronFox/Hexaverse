@@ -2711,8 +2711,8 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		if (vp)
 			return (vp->AwaitsUserInteraction() || /*vp->queue.IsEmpty() || */
 			(!vp->IsEnabled()
-			//&&
-			//vp->CouldEnable()
+			&&
+			vp->CouldEnable()
 			)
 			);
 		Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
