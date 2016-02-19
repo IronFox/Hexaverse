@@ -1,7 +1,7 @@
 v0.4.0
 	+ Re-enabled compound system. Vehicles in the vicinity of compounds will implicitly draw from them.
 	+ Added compound visualization to show which compound a structure belongs to and/or which compounds a vehicle will draw from.
-	+ Volumetric spheres highlighting the draw-zones for the required resource of a selected mobile unit.
+	+ Volumetric spheres highlight the draw-zones for the required resource of a selected mobile unit.
 
 v0.3.17
 	+ Analogously to terrain blocks, attack ranges are now shown on water surfaces when manual attacks are issued.
