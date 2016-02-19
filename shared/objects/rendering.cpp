@@ -14,6 +14,7 @@
 #include "visualSelection.h"
 #include "gridAndChoices.h"
 #include "../runtimeConfig.h"
+#include "systems.h"
 
 namespace Camera
 {
@@ -1566,14 +1567,19 @@ namespace Objects
 		display.SetDepthTest(false,false);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
+
+		TVec4<> selectedTint;
+
 		if (selectedEntity)
 		{
 			const PMobileEntity&v = selectedMobileEntity;
 			//To<Vehicle>::DynamicCast(selectedEntity);
+
 			if (!selectedEntity->unstable)
-				overallTint.Update(float4(red,(float)sin(now*4.0)*0.4f + 0.4f));
+				selectedTint = float4(red,(float)sin(now*4.0)*0.4f + 0.4f);
 			else
-				overallTint.Update(float4(red,flip ? 0 : 0.8f));
+				selectedTint = float4(red,flip ? 0 : 0.8f);
+			overallTint.Update(selectedTint);
 			if (v)
 			{
 				foreach (v->myTasks,t)
@@ -1666,6 +1672,29 @@ namespace Objects
 				arrowBuffer.PartialUpdate(vertices.pointer(),vertices.Count(),sizeof(Vertex));
 
 				display.RenderVertices(arrowInstruction,0,(UINT32)vertices.Count());
+			}
+		}
+
+		if (showArrow && hasArrowCellTarget)
+		{
+			if (activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
+			{
+				display.SetDepthTest(true,true);
+				bool includeFoundation = false;//activeStructureToPlace->HasFoundation();	<- is correct but job visualization doesn't use foundations
+				display.LinkShader(jobShader,false,true);
+					TMatrix4<> sys;
+					BuildStructureSystem(arrowCellTarget,sys);
+					display.SetObjectMatrix(sys);
+					overallTint.Update(noTint);	//all zero tint makes shapes invisible
+					if (includeFoundation)
+						display.Render(foundation, true);
+					_RenderSimpleLocated(*activeStructureToPlace);
+					overallTint.Update(selectedTint);
+					if (includeFoundation)
+						display.Render(foundation, true);
+					_RenderSimpleLocated(*activeStructureToPlace);
+				display.UnlockShader();
+				display.SetObjectMatrix(Matrix<>::eye4);
 			}
 		}
 

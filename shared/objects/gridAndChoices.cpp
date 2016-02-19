@@ -801,12 +801,7 @@ namespace Objects
 		float h;
 		if (PTurretBase b = entity.GetTurretBase(h))
 		{
-			showArrow = activeCursorMode == CursorMode::BuildConnectorChainMode
-							 || activeCursorMode == CursorMode::BuildRoadChainMode 
-							 || activeCursorMode == CursorMode::BuildWallChainMode 
-							 || activeCursorMode == CursorMode::AttackMode
-							 || activeCursorMode == CursorMode::DigTunnelMode
-							 || activeCursorMode == CursorMode::BuildBridgeMode;
+			showArrow = CursorModeExpectsLeftClick(activeCursorMode);
 			if (showArrow)
 			{
 				arrowFromCell = v ? v->GetLastPointOfOrigin() : entity.location;
@@ -994,8 +989,8 @@ namespace Objects
 
 	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
 	{
-		showArrow = false;
-		hasArrowCellTarget = false;
+		//showArrow = false;		//why were these here...?
+		//hasArrowCellTarget = false;
 
 		movementChoices.Clear();
 		if (entity)
@@ -1028,11 +1023,15 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			if (!e->ambientSound.IsCreated())
 			{
-				OpenAL::WaveBuffer wbo = Renderer::GetAmbientSoundOf(e->GetTypeName(),e->GetCTypeName());
+				OpenAL::WaveBuffer wbo = e->GetAmbientSound();
+				//Renderer::GetAmbientSoundOf(e->GetTypeName(),e->GetCTypeName());
 				if (wbo.IsNotEmpty())
 				{
 					e->ambientSound.Create();
 					e->ambientSound.EnqueueWaveBuffer(wbo);
+					e->ambientSound.SetReferenceDistance(2.f,2.f - (e->IsMobile()? 1.f : 0.f));
+					static Random random;
+					e->ambientSound.SetPitch(1.f + random.getFloat(-0.02f,0.02f));
 				}
 			}
 
@@ -1040,7 +1039,7 @@ namespace Objects
 			{
 				e->ambientSound.SetPosition(e->GetWorldPosition());
 				e->ambientSound.SetVelocity(float3());
-				e->ambientSound.SetGain(e->GetActivityLevel());
+				e->ambientSound.SetGain(e->GetSoundLevel());
 				e->ambientSound.SetLooping(true);
 				e->ambientSound.Play();
 			}

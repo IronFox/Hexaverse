@@ -850,7 +850,20 @@ namespace Objects
 					//	PVehicle v = To<Vehicle>::DynamicCast(e);
 					//	return v && Cmd::ConstructionIsPossible(e) && s->CanPlace(v->GetLastPointOfOrigin());
 					//},
-					&CommonCmd::IdleCheck));
+					[s](const PWorldEntity&e, bool controlsEnabled)
+					{
+						bool constructingMe = (activeCursorMode == CursorMode::PlaceStructureMode
+								&& activeStructureToPlace == s);
+						BaseCommand::Flags rs = controlsEnabled && 
+							(activeCursorMode == CursorMode::Idle
+							|| constructingMe
+							)
+							? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+						if (constructingMe)
+							rs |= BaseCommand::Flags::IsPermaActive;
+						return rs;
+					}
+					));
 					at++;
 				}
 			#endif
@@ -1451,6 +1464,9 @@ namespace Objects
 				component.parts.first().first.LoadFromObj("objects/hoverbase.obj");
 				component.height = component.parts.first().first.GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
+
+				component.ambientSound = OpenAL::Load("resources/objectSounds/hoverBase.wav");
+
 			#else
 				component.height = staticHeight;
 			#endif
@@ -1491,6 +1507,8 @@ namespace Objects
 				component.parts.first().first.LoadFromObj("objects/heavyBase.obj");
 				component.height = component.parts.first().first.GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
+
+				component.ambientSound = OpenAL::Load("resources/objectSounds/heavyBase.wav");
 			#else
 				component.height = staticHeight;
 			#endif
@@ -1597,18 +1615,21 @@ namespace Objects
 				PMobileEntity vehicle = To<MobileEntity>::DynamicCast(v);
 				if (!vehicle)
 					return;
-				SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());
-				//auto loc = vehicle->GetLastPointOfOrigin();
-				///*if (!p->CanPlace(loc))
-				//{
-				//	LogEvent("Unable to place " + p->GetTypeName() + " here");
-				//	return;
-				//}*/
+				if (activeCursorMode != CursorMode::PlaceStructureMode)
+				{
+					activeCursorMode = CursorMode::PlaceStructureMode;
+					showArrow = true;
+					arrowFromCell = vehicle->GetLastPointOfOrigin();
+					arrowFrom = Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(arrowFromCell.height));
+					activeStructureToPlace = p;
+				}
+				else
+				{
+					activeCursorMode = CursorMode::Idle;
+					showArrow = false;
+				}
 
-				//CursorMode::PJob job(new VehicleJob::Construct(*vehicle,p));
-
-				//vehicle->RegisterNewJob(p->GetTypeName(),job,&loc);
-		
+				//SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());
 			}
 
 

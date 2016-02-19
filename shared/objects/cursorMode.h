@@ -1,5 +1,6 @@
 #ifndef objectCursorModeH
 #define objectCursorModeH
+#include "types.h"
 
 namespace Objects
 {
@@ -19,10 +20,12 @@ namespace Objects
 		BuildWallChainMode,
 		DigTunnelMode,
 		BuildBridgeMode,
+		PlaceStructureMode,
 	};
 
 	#ifdef HAS_WINDOW
 		extern CursorMode	activeCursorMode;
+		extern PStructure	activeStructureToPlace;
 	#endif
 
 }

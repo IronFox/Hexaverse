@@ -137,9 +137,9 @@ namespace Explosions
 		float relative = progress/executionTime;
 		if (haveSound)
 		{
-			source.setVolume(10.f *(1.f-relative));
+			source.setVolume(1.f *(1.f-relative));
 			for (index_t i = 0; i < ARRAYSIZE(auxiliarySources); i++)
-				auxiliarySources[i].setVolume(10.f *(1.f-relative));
+				auxiliarySources[i].setVolume(1.f *(1.f-relative));
 		}
 		if (relative > ExplosionDelay && relative <= ExplosionDelay+ParticleTime)
 		{
@@ -177,13 +177,14 @@ namespace Explosions
 			source.Locate(position);
 			source.EnqueueWaveBuffer(isEMP?empExplosionSound : explosionSound);
 			source.SetLooping(false);
+			source.SetReferenceDistance(10.f);
 			source.Play();
-			source.SetVolume(3.f);
+			source.SetVolume(1.f);
 			source.SetPitch(1.f/executionTime);
 			for (int i = 0; i < ARRAYSIZE(auxiliarySources); i++)
 			{
 				float pitch = (float)(pow(1.5f,i));
-				if (executionTime / pitch < 1.3f)
+				if (executionTime / pitch < 1.4f)
 					break;
 				OpenAL::Source&source = auxiliarySources[i];
 				source.Create();
@@ -191,8 +192,10 @@ namespace Explosions
 				source.EnqueueWaveBuffer(isEMP?empExplosionSound : explosionSound);
 				source.SetLooping(false);
 				source.Play();
-				source.SetVolume(3.f);
+				source.SetVolume(1.f);
 				source.SetPitch((pitch)/executionTime);
+				source.SetReferenceDistance(20.f);
+				this->source.SetReferenceDistance(20.f);
 			}
 
 		}
