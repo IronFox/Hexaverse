@@ -2437,16 +2437,18 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		return;
 	if (e->IsMobile())
 	{
-		if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(e))
-		{
-			Objects::buildCandidates.EraseLast();
-			return;
-		}
-		if (Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(e))
-		{
-			Objects::removeCandidates.EraseLast();
-			return;
-		}
+		#ifdef HAS_WINDOW
+			if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(e))
+			{
+				Objects::buildCandidates.EraseLast();
+				return;
+			}
+			if (Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(e))
+			{
+				Objects::removeCandidates.EraseLast();
+				return;
+			}
+		#endif
 		Objects::PMobileEntity m = To<Objects::MobileEntity>::Cast(e);
 		if (m->HasTasks())
 		{
@@ -3021,10 +3023,6 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		while (to != from);
 	}
 
-#endif
-
-
-#ifdef HAS_WINDOW
 	void AddFactionCreationChoice(const String&line, UINT32 typeFlags, UINT32 supportFactionFlag)
 	{
 		Dialog::loginMenu->AddCommand(line,
@@ -3058,6 +3056,39 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 				)
 			;},false);
 
+
+	}
+
+	void	ResumeBatchConstruction()
+	{
+
+		if (Objects::selectedMobileEntity && 
+			Objects::selectedMobileEntity->turret->CanConstruct() &&
+			Objects::activeStructureToPlace &&
+			(Objects::activeCursorMode == Objects::CursorMode::Idle
+			|| Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode
+			)
+		)
+		{
+			bool newly = Objects::activeCursorMode == Objects::CursorMode::Idle;
+			Objects::arrowFromCell = Objects::selectedMobileEntity->GetLastPointOfOrigin();
+			Objects::arrowFrom = Grid::low.cells[Objects::arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(Objects::arrowFromCell.height));
+			Objects::showArrow = true;
+			Objects::activeCursorMode = Objects::CursorMode::PlaceStructureMode;
+			if (newly)
+				UI::RefreshButtonState();
+		}
+
+	}
+
+	void	AbortBatchConstruction()
+	{
+		if (Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode)
+		{
+			Objects::activeCursorMode = Objects::CursorMode::Idle;
+			Objects::showArrow = false;
+			UI::RefreshButtonState();
+		}
 
 	}
 
@@ -3182,39 +3213,6 @@ bool	IsTargetWorkingDirectory(const PathString&dir)
 	return rs;
 }
 
-
-void	ResumeBatchConstruction()
-{
-
-	if (Objects::selectedMobileEntity && 
-		Objects::selectedMobileEntity->turret->CanConstruct() &&
-		Objects::activeStructureToPlace &&
-		(Objects::activeCursorMode == Objects::CursorMode::Idle
-		|| Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode
-		)
-	)
-	{
-		bool newly = Objects::activeCursorMode == Objects::CursorMode::Idle;
-		Objects::arrowFromCell = Objects::selectedMobileEntity->GetLastPointOfOrigin();
-		Objects::arrowFrom = Grid::low.cells[Objects::arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(Objects::arrowFromCell.height));
-		Objects::showArrow = true;
-		Objects::activeCursorMode = Objects::CursorMode::PlaceStructureMode;
-		if (newly)
-			UI::RefreshButtonState();
-	}
-
-}
-
-void	AbortBatchConstruction()
-{
-	if (Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode)
-	{
-		Objects::activeCursorMode = Objects::CursorMode::Idle;
-		Objects::showArrow = false;
-		UI::RefreshButtonState();
-	}
-
-}
 
 int main( int argc, const char* argv[])
 {

@@ -1160,16 +1160,18 @@ namespace Animation
 					Objects::PTurretBase b = allocatedTarget->GetTurretBase(dummy);
 					ASSERT__(b);
 
-					if (!b->activitySound.IsCreated())
-					{
-						b->activitySound.Create();
-						b->activitySound.SetLooping(true);
-					}
-					b->activitySound.ClearQueue();
-					b->activitySound.EnqueueWaveBuffer(Objects::Renderer::GetAmbientSoundOf("turretRotate",ConstName::Turret_Artillery));
-					b->activitySound.SetPosition(allocatedTarget->GetWorldPosition());
-					b->activitySound.SetPitch(0.7f);
-					b->activitySound.Play();
+					#ifdef HAS_WINDOW
+						if (!b->activitySound.IsCreated())
+						{
+							b->activitySound.Create();
+							b->activitySound.SetLooping(true);
+						}
+						b->activitySound.ClearQueue();
+						b->activitySound.EnqueueWaveBuffer(Objects::Renderer::GetAmbientSoundOf("turretRotate",ConstName::Turret_Artillery));
+						b->activitySound.SetPosition(allocatedTarget->GetWorldPosition());
+						b->activitySound.SetPitch(0.7f);
+						b->activitySound.Play();
+					#endif
 
 					float3 dir = rotateToWorld;
 					float3 innerDir;
@@ -1368,7 +1370,9 @@ namespace Animation
 					b->turretAngleX = rotateTo.x;
 					b->turretAngleY = rotateTo.y;
 
-					b->activitySound.Stop();
+					#ifdef HAS_WINDOW
+						b->activitySound.Stop();
+					#endif
 
 				}
 			}
