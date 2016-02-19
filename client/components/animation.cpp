@@ -626,14 +626,16 @@ namespace Animation
 						v->activitySound.SetReferenceDistance(3.f,3.f);
 						v->activitySound.EnqueueWaveBuffer(Objects::VehiclePlant::globalPrototype->GetAmbientSound());
 						static Random random;
-						v->activitySound.SetPitch(3.f + random.getFloat(-0.05f,0.05f));
+						v->activitySound.SetPitch(12.f + random.getFloat(-0.05f,0.05f));
 						v->activitySound.SetGain(0.25f);
 					}
-					v->activitySound.Play();
+					if (!v->activitySound.IsPlaying())
+						v->activitySound.Play();
 					v->activitySound.SetPosition(v->GetWorldPosition());
 				}
 				else
-					v->activitySound.Stop();
+					if (v->activitySound.IsPlaying())
+						v->activitySound.Stop();
 			}
 			#endif
 
