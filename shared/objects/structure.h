@@ -937,6 +937,7 @@ namespace Objects
 
 		#endif
 		#ifdef HAS_WINDOW
+			virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 			{
 				Super::DescribeType(label,descFlags);
@@ -1214,7 +1215,9 @@ namespace Objects
 		#endif
 		//virtual bool				IsVehiclePlant() const override {return true;}
 		virtual bool				AwaitsUserInteraction() const override;
-
+		#ifdef HAS_WINDOW
+			virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
+		#endif
 
 		//MobileEntityProducer overrides
 		#ifndef CLIENT

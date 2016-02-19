@@ -6,5 +6,6 @@ namespace Objects
 {
 	#ifdef HAS_WINDOW
 		CursorMode			activeCursorMode(CursorMode::Idle);
+		PStructure			activeStructureToPlace;
 	#endif
 }

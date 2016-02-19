@@ -25,7 +25,9 @@ namespace Animation
 		Objects::Geometry			trajectoryGeometry;
 		DX11::InstructionBlock32	trajectoryVisualization;
 		DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
+		OpenAL::Source				trajectoryFireSource[1],missileHissSource;
 		float						maxProjectileProjection;
+		OpenAL::Wave				artilleryShot,missileHiss;
 	#endif
 
 	float						atTime = 0.f;
@@ -265,6 +267,21 @@ namespace Animation
 			trajectoryVisualization.shader.LoadFromFile("shaders/projectilePath.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 			trajectoryVisualization.UpdateLayout();
 			trajectoryVisualization.SetTriangles();
+
+			artilleryShot = OpenAL::Load("resources/objectSounds/artilleryShot.wav");
+			for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+			{
+				trajectoryFireSource[i].Create();
+				trajectoryFireSource[i].SetPitch(1.f - 0.01f * i);
+				trajectoryFireSource[i].SetReferenceDistance(10.f);
+			}
+
+			missileHiss = OpenAL::Load("resources/objectSounds/missileHiss.wav");
+			missileHissSource.Create();
+			missileHissSource.SetReferenceDistance(10.f);
+			missileHissSource.EnqueueWaveBuffer(missileHiss);
+			missileHissSource.SetLooping(true);
+
 		#endif
 	}
 
@@ -274,6 +291,9 @@ namespace Animation
 			trajectoryVisualization = DX11::InstructionBlock32();
 			trajectoryProgression.Clear();
 			trajectoryTint.Clear();
+			for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+				trajectoryFireSource[i].Destroy();
+			missileHissSource.Destroy();
 		#endif
 	}
 
@@ -593,6 +613,30 @@ namespace Animation
 			//{
 			//	AppendTask(v,t);
 			//}
+
+			#ifdef HAS_WINDOW
+			if (!v->turret->CanAttack())
+			{
+				if (v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsJob())
+				{
+					if (!v->activitySound.IsCreated())
+					{
+						v->activitySound.Create();
+						v->activitySound.SetLooping(true);
+						v->activitySound.SetReferenceDistance(3.f,3.f);
+						v->activitySound.EnqueueWaveBuffer(Objects::VehiclePlant::globalPrototype->GetAmbientSound());
+						static Random random;
+						v->activitySound.SetPitch(3.f + random.getFloat(-0.05f,0.05f));
+						v->activitySound.SetGain(0.25f);
+					}
+					v->activitySound.Play();
+					v->activitySound.SetPosition(v->GetWorldPosition());
+				}
+				else
+					v->activitySound.Stop();
+			}
+			#endif
+
 			auto id = info->storedIn.Get0();
 			if (id)
 			{
@@ -1117,15 +1161,16 @@ namespace Animation
 					Objects::PTurretBase b = allocatedTarget->GetTurretBase(dummy);
 					ASSERT__(b);
 
-					if (!b->rotationSound.IsCreated())
+					if (!b->activitySound.IsCreated())
 					{
-						b->rotationSound.Create();
-						b->rotationSound.EnqueueWaveBuffer(Objects::Renderer::GetAmbientSoundOf("turretRotate",ConstName::Turret_Artillery));
-						b->rotationSound.SetLooping(true);
+						b->activitySound.Create();
+						b->activitySound.SetLooping(true);
 					}
-					b->rotationSound.SetPosition(allocatedTarget->GetWorldPosition());
-					b->rotationSound.SetPitch(0.7f);
-					b->rotationSound.Play();
+					b->activitySound.ClearQueue();
+					b->activitySound.EnqueueWaveBuffer(Objects::Renderer::GetAmbientSoundOf("turretRotate",ConstName::Turret_Artillery));
+					b->activitySound.SetPosition(allocatedTarget->GetWorldPosition());
+					b->activitySound.SetPitch(0.7f);
+					b->activitySound.Play();
 
 					float3 dir = rotateToWorld;
 					float3 innerDir;
@@ -1202,6 +1247,30 @@ namespace Animation
 						{
 							UI::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, smokeTrailIndex);
 						}
+
+						switch (attackerTurret->trajectoryType)
+						{
+							case Objects::TrajectoryType::Artillery:
+							{
+								for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+								{
+									OpenAL::Source&s = trajectoryFireSource[i];
+									s.ClearQueue();
+									s.SetPosition(attackerPosition);
+									s.EnqueueWaveBuffer(artilleryShot);
+									s.Play();
+								}
+							}
+							break;
+							case Objects::TrajectoryType::Missile:
+							{
+								missileHissSource.SetPosition(attackerPosition);
+								missileHissSource.Play();
+							}
+						}
+
+						
+
 					#endif
 
 
@@ -1271,6 +1340,9 @@ namespace Animation
 						i--;
 					}
 				}
+				#ifdef HAS_WINDOW
+					missileHissSource.Stop();
+				#endif
 			break;
 			case Explosion:
 				for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
@@ -1297,7 +1369,7 @@ namespace Animation
 					b->turretAngleX = rotateTo.x;
 					b->turretAngleY = rotateTo.y;
 
-					b->rotationSound.Stop();
+					b->activitySound.Stop();
 
 				}
 			}
@@ -1370,6 +1442,12 @@ namespace Animation
 				projectileAt = y;
 				#ifdef HAS_WINDOW
 					trajectoryProgression.Update(float4(y * maxProjectileProjection,1.f,5.f,1.f));
+
+					index_t at = std::min(index_t(x * activeTrajectory.GetLength()),activeTrajectory.GetLength()-1);
+					const TVec4<>&v = activeTrajectory[at];
+					missileHissSource.SetPosition(v.xyz * v.w);
+					missileHissSource.SetGain(sqr(sqr(1.f - x))*0.75f + 0.25f);
+
 				#endif
 			}
 			break;
@@ -1520,8 +1598,12 @@ namespace Animation
 			#ifdef HAS_WINDOW
 				target->ambientSound.SetPosition(sys.w.xyz);
 				target->ambientSound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
-				target->rotationSound.SetPosition(sys.w.xyz);
-				target->rotationSound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
+				float x = t / rawPath.last().second;
+				float activity = 1.f - (sqr(((x - 0.5f)*2.f)));
+				target->ambientSound.SetPitch(1.f + activity * 0.5f);
+				target->ambientSound.SetGain(std::min(target->GetSoundLevel() + activity,1.f));
+				target->activitySound.SetPosition(sys.w.xyz);
+				target->activitySound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
 			#endif
 
 			target->system.w.xyz = p;

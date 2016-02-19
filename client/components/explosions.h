@@ -137,7 +137,7 @@ namespace Explosions
 		float3						location,
 									normal1,
 									color;
-		OpenAL::Source				source,auxiliarySources[10];
+		OpenAL::Source				source,auxiliarySources[6];
 
 		static const float          ParticleSpeed,//=0.7f,
 									SmallerDelay,//=0.1f,

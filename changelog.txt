@@ -10,6 +10,12 @@ v0.4.0
 v0.3.17
 	+ Analogously to terrain blocks, attack ranges are now shown on water surfaces when manual attacks are issued.
 	+ Added ambient sound for generators.
+	+ Added sounds for artillery shots and turret rotations.
+	+ Added ambient sound for mines and factories.
+	+ Added sound for missile attacks.
+	+ Implemented structure placement. Clicking on a construction job now asks for a destination first.
+	+ Pressing shift will allow to repeat the last construction job in a different location.
+	> Towers now allow backspace-undoing of attack tasks.
 	* Fixed save games not persistently memorizing sleep-state of units.
 	* Fixed desert planet type.
 	* Fixed spectator terrain construction.

@@ -9,6 +9,7 @@
 	//#include "gridAndChoices.h"
 	#include "satellite.h"
 	#include "faction.h"
+	#include "rendering.h"
 #endif
 #ifndef CLIENT
 	#include "faction.h"
@@ -48,6 +49,11 @@ namespace Objects
 					/ 255.f)/**0.75f + 0.25f*/;	//quite the expression, no :P
 		}
 
+
+		/*virtual*/ OpenAL::Wave	WorldEntity::GetAmbientSound() const
+		{
+			return Objects::Renderer::GetAmbientSoundOf(GetTypeName(),GetCTypeName());
+		}
 
 
 

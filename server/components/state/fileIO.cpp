@@ -1130,7 +1130,7 @@ namespace FileIO
 										ASSERT__(tabAt);
 										if (tabAt)
 										{
-											String key = line->subStringRef(0,tabAt-1);
+											String key = "/"+line->subStringRef(0,tabAt-1);
 											StringRef value = line->subStringRef((int)tabAt);
 		
 											CLI::PVariable v = Reflection::state.FindVar(key);
