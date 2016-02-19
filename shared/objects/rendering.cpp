@@ -523,7 +523,7 @@ namespace Objects
 		display.SetObjectMatrix(s.system);
 	}
 
-	static void _RenderSimpleLocated(Structure&s)
+	static void _RenderSimpleLocated(Structure&s, const TMatrix4<>&system)
 	{
 		display.Render(*s.localizableShape, true);
 
@@ -532,7 +532,7 @@ namespace Objects
 		PTurretBase b = s.GetTurretBase(zOffset);
 		if (b)
 		{
-			Renderer::RenderScaledComponent(s.system, zOffset, 2.f, *b->turret, b->turretAngleX, b->turretAngleY);
+			Renderer::RenderScaledComponent(system, zOffset, 2.f, *b->turret, b->turretAngleX, b->turretAngleY);
 		}
 	}
 
@@ -541,7 +541,7 @@ namespace Objects
 		_Locate(s);
 		if (includeFoundation)
 			display.Render(foundation, true);
-		_RenderSimpleLocated(s);
+		_RenderSimpleLocated(s,s.system);
 	}
 
 	static void _RenderSimpleLocated(Satellite&s, const TMatrix4<>&system)
@@ -700,7 +700,7 @@ namespace Objects
 		}
 		if (s.HasFoundation())
 			display.Render(foundation, true);
-		_RenderSimpleLocated(s);
+		_RenderSimpleLocated(s,s.system);
 
 	}
 
@@ -1599,11 +1599,12 @@ namespace Objects
 					overallTint.Update(noTint);	//all zero tint makes shapes invisible
 					if (includeFoundation)
 						display.Render(foundation, true);
-					_RenderSimpleLocated(*activeStructureToPlace);
+					_RenderSimpleLocated(*activeStructureToPlace,sys);
+					display.SetObjectMatrix(sys);
 					overallTint.Update(selectedTint);
 					if (includeFoundation)
 						display.Render(foundation, true);
-					_RenderSimpleLocated(*activeStructureToPlace);
+					_RenderSimpleLocated(*activeStructureToPlace,sys);
 				display.UnlockShader();
 				display.SetObjectMatrix(Matrix<>::eye4);
 			}
