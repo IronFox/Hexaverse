@@ -1452,7 +1452,7 @@ namespace Objects
 				component.height = component.parts.first().first.GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
-				component.ambientSound = OpenAL::Load("resources/objectSounds/hoverBase.wav");
+				component.ambientSound = OpenAL::Load("resources/objectSounds/hoverbase.wav");
 
 			#else
 				component.height = staticHeight;
@@ -1495,7 +1495,7 @@ namespace Objects
 				component.height = component.parts.first().first.GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
-				component.ambientSound = OpenAL::Load("resources/objectSounds/heavyBase.wav");
+				component.ambientSound = OpenAL::Load("resources/objectSounds/heavybase.wav");
 			#else
 				component.height = staticHeight;
 			#endif
