@@ -1041,9 +1041,9 @@ namespace Receiver
 
 	void	SignalNewJob(Protocol::StandardJob&sjob, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering new Job #"+String(int(sjob.jobName.value))+" for vehicle "+sjob.id.value.ToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering new Job #"+String(int(sjob.jobName.value))+" for vehicle "+sjob.ownerID.value.ToString());
 
-		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(sjob.id,peer);
+		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(sjob.ownerID,peer);
 		if (!e)
 			return;
 		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);

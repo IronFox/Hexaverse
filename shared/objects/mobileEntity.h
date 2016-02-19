@@ -309,6 +309,7 @@ namespace Objects
 
 		Grid::LCellIdI			GetLastPointOfOrigin() const;
 		Grid::LCellIdI			GetPrevPointOfOrigin() const;
+		bool					ConstructingHere(const Grid::LCellIdI&loc) const;
 
 		#ifdef CLIENT
 			void				Relocate(const Grid::LCellIdI&newLocation, bool updateSystem);

@@ -801,12 +801,7 @@ namespace Objects
 		float h;
 		if (PTurretBase b = entity.GetTurretBase(h))
 		{
-			showArrow = activeCursorMode == CursorMode::BuildConnectorChainMode
-							 || activeCursorMode == CursorMode::BuildRoadChainMode 
-							 || activeCursorMode == CursorMode::BuildWallChainMode 
-							 || activeCursorMode == CursorMode::AttackMode
-							 || activeCursorMode == CursorMode::DigTunnelMode
-							 || activeCursorMode == CursorMode::BuildBridgeMode;
+			showArrow = CursorModeExpectsLeftClick(activeCursorMode);
 			if (showArrow)
 			{
 				arrowFromCell = v ? v->GetLastPointOfOrigin() : entity.location;
@@ -966,8 +961,8 @@ namespace Objects
 
 	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
 	{
-		showArrow = false;
-		hasArrowCellTarget = false;
+		//showArrow = false;		//why were these here...?
+		//hasArrowCellTarget = false;
 
 		movementChoices.Clear();
 		if (entity)

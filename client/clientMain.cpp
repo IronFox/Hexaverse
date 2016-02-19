@@ -245,8 +245,10 @@ static void SendDirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCe
 }
 
 
-void	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Grid::LCellIdI target)
+bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Grid::LCellIdI target)
 {
+	if (prev == target)
+		return true;
 	Buffer0<Objects::PathNode>		path;
 	{
 		bool tooLong;
@@ -265,9 +267,14 @@ void	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 		}
 		if (!foundPath)
 		{
-			LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to find route to designated destination. Asking server");
-			SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//maybe some error in the client
-			return;
+			if (!Grid::actualWorld.LowCellIsClearIgnoreStructure(target) && target.height+1 <= Grid::CellStack::TopHeight)
+			{
+				target++;
+				return MoveVehicleTo(v,prev,target);
+			}
+			LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to find route to designated destination");
+			//SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//maybe some error in the client
+			return false;
 		}
 		if (!tooLong)
 			SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//all good
@@ -295,13 +302,11 @@ void	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 			SendDirectTo(v,waypoints.ToRef(),false,false,Objects::CursorMode::Idle);
 		}
 	}
-
-
-
+	return true;
 }
 
 
-void	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode)
+bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode)
 {
 	DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
 	const bool moveTo = mode == Objects::CursorMode::Idle && !leftClick;
@@ -318,7 +323,8 @@ void	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targ
 			Grid::LCellIdI start = me->GetLastPointOfOrigin();
 			foreach (targets,t)
 			{
-				MoveVehicleTo(me,start,*t);
+				if (!MoveVehicleTo(me,start,*t))
+					return false;
 				start = *t;
 			}
 		}
@@ -335,10 +341,12 @@ void	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targ
 		if (moveTo)
 			Tutorial::ShowMessage("Move To");
 	#endif
+	return true;
 }
 
-void	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick)
+bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick)
 {
+	return
 	#ifdef HAS_WINDOW
 		DirectTo(v,targets, detailedPath,leftClick,Objects::activeCursorMode);
 	#else
@@ -591,23 +599,27 @@ void	SignalRoundEndOrMaximize()
 
 }
 
-void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName)
+
+void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName, const Grid::LCellIdI&overrideLocation)
 {
+	const Grid::LCellIdI targetLocation = overrideLocation != Grid::LCellIdI::Invalid ? overrideLocation : v->GetLastPointOfOrigin();
 	#ifdef HAS_WINDOW
 		if (jobName == ConstName::Job_Construct && parameterName != ConstName::Type_Connector)
 		{
 			Objects::NaturalResourceVector	res;
-			if (res.SampleWorld(v->GetLastPointOfOrigin().stackID))
+			if (res.SampleWorld(targetLocation.stackID))
 			{
-				String name = Objects::GetPrototypeByName(parameterName)->GetTypeName();
+				const auto& proto = Objects::GetPrototypeByName(parameterName);
+				ASSERT1__(proto,(int)parameterName);
+				String name = proto->GetTypeName();
 				TUniqueID id = v->id;
 				if (parameterName != ConstName::Type_Mine && res.IsNotEmpty())
 				{
 					Dialog::Confirm(v->GetNiceName()+" will construct a "+name+" on a location with known natural resources, which could be harvested by a Mine. Do you wish to continue building the "+name+"?",
-						[id,jobName,parameterName]()
+						[id,jobName,parameterName,targetLocation]()
 						{
 							Protocol::StandardJob	job;
-							job.id = id;
+							job.ownerID = id;
 							job.jobName = jobName;
 							job.parameterName = parameterName;	
 							Network::Channels::signalNewJob.SendTo(Network::client,job);
@@ -626,12 +638,12 @@ void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName p
 				if (parameterName == ConstName::Type_Mine && res.IsEmpty())
 				{
 					Dialog::Confirm(v->GetNiceName()+" will construct a Mine on a location that has no natural resources. Building a mine here seems like a waste of resources. Do you wish to continue building the Mine?",
-						[id,jobName,parameterName]()
+						[id,jobName,parameterName,targetLocation]()
 						{
 							Protocol::StandardJob	job;
-							job.id = id;
+							job.ownerID = id;
 							job.jobName = jobName;
-							job.parameterName = parameterName;	
+							job.parameterName = parameterName;
 							Network::Channels::signalNewJob.SendTo(Network::client,job);
 						},
 						[id,jobName,parameterName]()->Dialog::CheckResult
@@ -650,12 +662,18 @@ void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName p
 		}
 	#endif
 	Protocol::StandardJob	job;
-	job.id = v->id;
+	job.ownerID = v->id;
 	job.jobName = jobName;
 	job.parameterName = parameterName;	
 	Network::Channels::signalNewJob.SendTo(Network::client,job);
 
 }
+
+void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName)
+{
+	SignalNewJob(v,jobName,parameterName,Grid::LCellIdI::Invalid);
+}
+
 
 void	SignalTerrainModification(const Objects::PVehicle&v,Objects::Vehicle::mode_t activeCursorMode,const Array<Grid::HCellIdI>&selection)
 {
@@ -674,40 +692,11 @@ void	SignalSleep(const Objects::PWorldEntity&e, bool doSleep)
 	Network::Channels::sleep.SendTo(Network::client,update);
 }
 
+void	InnerUndoTask(const Objects::PWorldEntity&e, bool force);
+
 void	SignalDropLastTask(const Objects::PWorldEntity&e)
 {
-	#ifdef HAS_WINDOW
-	if (e->IsMobile())
-	{
-		Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
-		if (v->constructionRoundCounter > 0 
-			&& v->myTasks.Count() == 1
-			&& v->myTasks.GetNewest().IsJob() 
-			&& v->myTasks.GetNewest().job->mineralCostLeft > 0)
-		{
-			TUniqueID id = e->id;
-			Dialog::Confirm("Are you sure you wish to clear the current production tasks? The invested resources will be lost.",[id]()
-			{
-				Network::Channels::dropAllTasks.SendTo(Network::client,id);
-			},
-			[id]()->Dialog::CheckResult
-			{
-				if (!Network::client.IsConnected() || !Objects::GetEntity(id))
-					return Dialog::CheckResult::Abort;
-				if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase || Network::newRoundRequested)
-					return Dialog::CheckResult::OkayNotRightNow;
-				return Dialog::CheckResult::OkayContinue;
-			});
-			return;
-		}
-		else
-		{
-			
-		}
-		
-	}
-	#endif
-	Network::Channels::dropLastTask.SendTo(Network::client,e->id);
+	InnerUndoTask(e,false);
 }
 
 void	SignalDropAllTasks(const Objects::PWorldEntity&e)
@@ -1958,67 +1947,12 @@ void MyFatal(const FatalDescriptor&descriptor)
 			QueryNickname();
 			return;
 		}
-	//	if (Engine::input.pressed[Key::Control])
-		//LogEvent(nullptr, "Select()");
-
-		//if (Objects::Network::Transfer::isActive)
-		//{
-		//	TransferPanel::HandleClick();
-		//	return;
-		//}
-		//if (!Network::client.IsConnected())
-		//{
-		//	if (Engine::mouse.location.windowRelative.x < 0.1f || Engine::mouse.location.windowRelative.x > 0.9f)
-		//		return;
-		//	if (Network::client.IsAttemptingToConnect())
-		//		return;
-		//	if (RuntimeConfig::serverURL.IsNotEmpty())
-		//		return;
-		//	foreach (Network::servers,srv)
-		//	{
-		//		if (srv->rightVersion && srv->bottom < Engine::mouse.location.windowRelative.y && srv->top > Engine::mouse.location.windowRelative.y)
-		//		{
-		//			index_t best = 0;
-		//			float bestPing = srv->urls.first().second;
-		//			for (index_t i = 1; i < srv->urls.Count(); i++)
-		//				if (srv->urls[i].second < bestPing)
-		//				{
-		//					bestPing = srv->urls[i].second;
-		//					best = i;
-		//				}
-		//			srv->selected = true;
-
-		//			Network::serverID = srv->id;
-		//			Network::serverIDString = Network::serverID.ToNiceString();
-		//			Network::worldID = srv->info.worldID;
-		//			Network::worldIDString = Network::worldID.ToNiceString();
-		//			Network::client.ConnectAsync(srv->urls[best].first + ":"+String(SERVICE_PORT));
-		//			return;
-		//		}
-
-		//	}
-
-
-		//	return;
-		//}
-
-	
 
 		int oldVehicleHeight = Grid::SeeThrough::GetFocusPoint().height;
 		if (Objects::selectedEntity)
 			oldVehicleHeight = Objects::selectedEntity->location.height;
 
 	
-
-
-		//{
-		//	if (CommandPanel::HandleClick())
-		//	{
-		//		Objects::RefreshCommands(Network::ControlEnabled());
-		//		return;
-		//	}
-		//}
-
 
 
 		if (Objects::selectedMobileEntity && Objects::CursorModeExpectsLeftClick())
@@ -2028,9 +1962,25 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 			if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
 			{
-				if (Objects::selectedMobileEntity->IsSatellite())
+				if (Objects::selectedEntity->IsSatellite())
 					target.height = Objects::selectedMobileEntity->location.height;
-				DirectTo(Objects::selectedMobileEntity,target,false,true);
+
+				if (Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode)
+				{
+					
+					if (Objects::selectedMobileEntity->ConstructingHere(target))
+					{
+						LogEvent(EventClass::Preset::commandRejected,Objects::selectedMobileEntity.get(),"Can't build here, already trying to build something here");
+					}
+					else
+						if (DirectTo(Objects::selectedMobileEntity,target,false,false,Objects::CursorMode::Idle))
+						{
+							SignalNewJob(Objects::selectedMobileEntity,ConstName::Job_Construct,Objects::activeStructureToPlace->GetCTypeName(),target);
+							Objects::arrowFromCell = target;
+						}
+				}
+				else
+					DirectTo(Objects::selectedMobileEntity,target,false,true);
 				return;
 			}
 		}
@@ -2397,6 +2347,73 @@ String GenerateOreName(Random&random)
 
 }
 
+void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
+{
+	if (!e)
+		return;
+	if (e->IsMobile())
+	{
+		if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(e))
+		{
+			Objects::buildCandidates.EraseLast();
+			return;
+		}
+		if (Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(e))
+		{
+			Objects::removeCandidates.EraseLast();
+			return;
+		}
+		Objects::PMobileEntity m = To<Objects::MobileEntity>::Cast(e);
+		if (m->HasTasks())
+		{
+			#ifdef HAS_WINDOW
+			if (!force)
+			{
+				Objects::PMobileEntity v = m;
+				if (v->constructionRoundCounter > 0 
+					&& v->myTasks.Count() == 1
+					&& v->myTasks.GetNewest().IsJob() 
+					&& v->myTasks.GetNewest().job->mineralCostLeft > 0)
+				{
+					TUniqueID id = v->id;
+					Dialog::Confirm("Are you sure you wish to clear the current production task? The invested resources will be lost.",[id]()
+					{
+						InnerUndoTask(Objects::GetEntity(id),true);
+					},
+					[id]()->Dialog::CheckResult
+					{
+						if (!Network::client.IsConnected() || !Objects::GetEntity(id))
+							return Dialog::CheckResult::Abort;
+						if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase || Network::newRoundRequested)
+							return Dialog::CheckResult::OkayNotRightNow;
+						return Dialog::CheckResult::OkayContinue;
+					});
+					return;
+				}
+				else
+				{
+			
+				}
+		
+			}
+			#endif
+
+			//SignalDropLastTask(v);
+			//v->DropLastTask();
+			bool isJob = m->myTasks.GetNewest().IsJob();
+			Network::Channels::dropLastTask.SendTo(Network::client, m->id);
+			if (isJob && m->myTasks.Count() > 1 
+				&& m->myTasks[m->myTasks.Count() - 2].type == Objects::MobileEntity::Task::MoveTo)
+			{
+				Network::Channels::dropLastTask.SendTo(Network::client, e->id);
+			}
+		}
+	}
+	else
+		Network::Channels::dropLastTask.SendTo(Network::client, e->id);
+}
+
+
 //void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_event)
 //{
 //	String event = _event, outEvent = _event;
@@ -2516,29 +2533,7 @@ String GenerateOreName(Random&random)
 
 	void	UndoTask()
 	{
-		if (Objects::selectedMobileEntity)
-		{
-			if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity))
-			{
-				Objects::buildCandidates.EraseLast();
-				return;
-			}
-			if (Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
-			{
-				Objects::removeCandidates.EraseLast();
-				return;
-			}
-			if (Objects::selectedMobileEntity->HasTasks())
-			{
-				//SignalDropLastTask(v);
-				//v->DropLastTask();
-				Network::Channels::dropLastTask.SendTo(Network::client, Objects::selectedMobileEntity->id);
-			}
-		}
-		else
-			if (Objects::selectedEntity)
-				Network::Channels::dropLastTask.SendTo(Network::client, Objects::selectedEntity->id);
-
+		InnerUndoTask(Objects::selectedEntity,false);
 
 	}
 
@@ -3104,6 +3099,39 @@ bool	IsTargetWorkingDirectory(const PathString&dir)
 }
 
 
+void	ResumeBatchConstruction()
+{
+
+	if (Objects::selectedMobileEntity && 
+		Objects::selectedMobileEntity->turret->CanConstruct() &&
+		Objects::activeStructureToPlace &&
+		(Objects::activeCursorMode == Objects::CursorMode::Idle
+		|| Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode
+		)
+	)
+	{
+		bool newly = Objects::activeCursorMode == Objects::CursorMode::Idle;
+		Objects::arrowFromCell = Objects::selectedMobileEntity->GetLastPointOfOrigin();
+		Objects::arrowFrom = Grid::low.cells[Objects::arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(Objects::arrowFromCell.height));
+		Objects::showArrow = true;
+		Objects::activeCursorMode = Objects::CursorMode::PlaceStructureMode;
+		if (newly)
+			UI::RefreshButtonState();
+	}
+
+}
+
+void	AbortBatchConstruction()
+{
+	if (Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode)
+	{
+		Objects::activeCursorMode = Objects::CursorMode::Idle;
+		Objects::showArrow = false;
+		UI::RefreshButtonState();
+	}
+
+}
+
 int main( int argc, const char* argv[])
 {
 	onFatal = MyFatal;
@@ -3219,6 +3247,8 @@ int main( int argc, const char* argv[])
 
 			Engine::input.bind(Key::PageDown, ViewDown);
 			Engine::input.bind(Key::PageUp, ViewUp);
+
+			Engine::input.bind(Key::Shift, ResumeBatchConstruction, AbortBatchConstruction);
 			
 
 		//	Engine::input.bind(Key::PageDown, DeclineCamera);

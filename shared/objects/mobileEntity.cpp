@@ -1457,6 +1457,22 @@ namespace Objects
 
 
 
+	bool					MobileEntity::ConstructingHere(const Grid::LCellIdI&loc) const
+	{
+		if (!HasTasks())
+			return false;
+		Grid::LCellIdI at = location;
+		foreach (myTasks,t)
+		{
+			if (t->IsJob() && (at == loc || at+1 == loc || at-1 == loc))
+				return true;
+			if (t->ContainsMovement())
+				at = t->foci.GetNewest().target;
+		}
+		return false;
+	}
+
+
 	Grid::LCellIdI			MobileEntity::GetLastPointOfOrigin() const
 	{
 		if (!HasTasks())

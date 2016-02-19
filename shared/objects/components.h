@@ -39,18 +39,22 @@ namespace Objects
 
 	CONSTRUCT_ENUMERATION3(TrajectoryType, Artillery, Missile, VerticalBeam);
 
+	inline bool					CursorModeExpectsLeftClick(CursorMode activeCursorMode)
+	{
+		return (
+		activeCursorMode == CursorMode::BuildConnectorChainMode 
+		|| activeCursorMode == CursorMode::BuildRoadChainMode
+		|| activeCursorMode == CursorMode::BuildBridgeMode
+		|| activeCursorMode == CursorMode::BuildWallChainMode
+		|| activeCursorMode == CursorMode::AttackMode 
+		|| activeCursorMode == CursorMode::DigTunnelMode
+		|| activeCursorMode == CursorMode::PlaceStructureMode
+		);
+	}
 
 	#ifdef HAS_WINDOW
 		inline bool					VehicleCanBeDirected()  {return (activeCursorMode == CursorMode::Idle);}
-		inline bool					CursorModeExpectsLeftClick() {
-			return (
-			activeCursorMode == CursorMode::BuildConnectorChainMode 
-			|| activeCursorMode == CursorMode::BuildRoadChainMode
-			|| activeCursorMode == CursorMode::BuildBridgeMode
-			|| activeCursorMode == CursorMode::BuildWallChainMode
-			|| activeCursorMode == CursorMode::AttackMode 
-			|| activeCursorMode == CursorMode::DigTunnelMode
-			);}
+		inline bool					CursorModeExpectsLeftClick() {return CursorModeExpectsLeftClick(activeCursorMode);}
 	#endif
 
 

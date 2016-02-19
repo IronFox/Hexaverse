@@ -837,7 +837,20 @@ namespace Objects
 					//	PVehicle v = To<Vehicle>::DynamicCast(e);
 					//	return v && Cmd::ConstructionIsPossible(e) && s->CanPlace(v->GetLastPointOfOrigin());
 					//},
-					&CommonCmd::IdleCheck));
+					[s](const PWorldEntity&e, bool controlsEnabled)
+					{
+						bool constructingMe = (activeCursorMode == CursorMode::PlaceStructureMode
+								&& activeStructureToPlace == s);
+						BaseCommand::Flags rs = controlsEnabled && 
+							(activeCursorMode == CursorMode::Idle
+							|| constructingMe
+							)
+							? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+						if (constructingMe)
+							rs |= BaseCommand::Flags::IsPermaActive;
+						return rs;
+					}
+					));
 					at++;
 				}
 			#endif
@@ -1589,9 +1602,19 @@ namespace Objects
 				PMobileEntity vehicle = To<MobileEntity>::DynamicCast(v);
 				if (!vehicle)
 					return;
-
-				activeCursorMode = CursorMode::PlaceStructureMode;
-				activeStructureToPlace = p;
+				if (activeCursorMode != CursorMode::PlaceStructureMode)
+				{
+					activeCursorMode = CursorMode::PlaceStructureMode;
+					showArrow = true;
+					arrowFromCell = vehicle->GetLastPointOfOrigin();
+					arrowFrom = Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(arrowFromCell.height));
+					activeStructureToPlace = p;
+				}
+				else
+				{
+					activeCursorMode = CursorMode::Idle;
+					showArrow = false;
+				}
 
 				//SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());
 			}
