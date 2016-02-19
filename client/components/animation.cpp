@@ -279,7 +279,7 @@ namespace Animation
 			constructSound = OpenAL::Load("resources/objectSounds/construct.wav");
 			missileHiss = OpenAL::Load("resources/objectSounds/missileHiss.wav");
 			missileHissSource.Create();
-			missileHissSource.SetReferenceDistance(10.f);
+			missileHissSource.SetReferenceDistance(10.f,0.5f);
 			missileHissSource.EnqueueWaveBuffer(missileHiss);
 			missileHissSource.SetLooping(true);
 
@@ -740,16 +740,16 @@ namespace Animation
 					{
 						v->activitySound.Create();
 						v->activitySound.SetLooping(true);
-						v->activitySound.SetReferenceDistance(3.f,3.f);
+						v->activitySound.SetReferenceDistance(3.f,1.f);
 						v->activitySound.EnqueueWaveBuffer(constructSound);
 						static Random random;
 						v->activitySound.SetPitch(1.f + random.getFloat(-0.05f,0.05f));
-						v->activitySound.SetGain(0.25f);
+						v->activitySound.SetGain(0.5f);
 					}
 					if (!v->activitySound.IsPlaying())
 						v->activitySound.Play();
 					v->activitySound.SetPosition(v->GetWorldPosition());
-					v->activitySound.SetGain(v->GetSoundLevel());
+					v->activitySound.SetGain(sqrt(v->GetSoundLevel()));
 				}
 				else
 					if (v->activitySound.IsPlaying())
