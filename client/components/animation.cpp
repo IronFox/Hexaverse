@@ -1453,7 +1453,9 @@ namespace Animation
 					index_t at = std::min(index_t(x * activeTrajectory.GetLength()),activeTrajectory.GetLength()-1);
 					const TVec4<>&v = activeTrajectory[at];
 					missileHissSource.SetPosition(v.xyz * v.w);
-					missileHissSource.SetGain(sqr(sqr(1.f - x))*0.75f + 0.25f);
+					float volume = sqr(sqr(1.f - x))*0.75f + 0.25f;
+					//missileHissSource.SetGain(volume);
+					missileHissSource.SetPitch(0.75f + x);
 
 				#endif
 			}
