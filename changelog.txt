@@ -2,6 +2,7 @@ v0.3.17
 	+ Analogously to terrain blocks, attack ranges are now shown on water surfaces when manual attacks are issued.
 	+ Added ambient sound for generators.
 	+ Added sounds for artillery shots and turret rotations.
+	+ Added ambient sounds for all three vehicle base types.
 	+ Added ambient sound for mines and factories.
 	+ Added sound for missile attacks.
 	+ Implemented structure placement. Clicking on a construction job now asks for a destination first.
