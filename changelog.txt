@@ -108,7 +108,7 @@ v0.3.9		[Nov 20 2015]
 v0.3.8		[Nov 9 2015]
 	+ Added option to undo round-end request.
 	> Auto-savegames are created at the beginning of the animation phase now to reduce noticable delay.
-	* Fixed towers now firing due to self-obstruction.
+	* Fixed towers not firing due to self-obstruction.
 
 v0.3.7		[Nov 8 2015]
 	* Replaced outdated d3dcompiler_43.dll with d3dcompiler_47.dll. On systems running win8.1+ this is not necessary.
