@@ -1001,7 +1001,7 @@ namespace Objects
 				{
 					e->ambientSound.Create();
 					e->ambientSound.EnqueueWaveBuffer(wbo);
-					e->ambientSound.SetReferenceDistance(2.f,2.f - (e->IsMobile()? 1.f : 0.f));
+					e->ambientSound.SetReferenceDistance(3.f,1.5f - (e->IsMobile()? 0.5f : 0.f));
 					static Random random;
 					e->ambientSound.SetPitch(1.f + random.getFloat(-0.02f,0.02f));
 				}
