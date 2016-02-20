@@ -130,10 +130,10 @@ namespace Animation
 					bool canDo = true;
 					foreach (v->myTasks.GetNewest().path,node)
 					{
-						if (!EstimateThreatLevel(v,node->cell,competition,ally,ghost))
+						if (!EstimateThreatLevel(v,node->cell,competition,ally,ghost) || Objects::GetEntity(node->cell))
 						{
 							canDo = false;
-							return;
+							break;
 						}
 					}
 					if (sqrt(ghost) < 16.f)
