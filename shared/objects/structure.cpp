@@ -2728,7 +2728,7 @@ namespace Objects
 
 
 	
-	bool						WorkingStructure::CouldEnable() const
+	bool						WorkingStructure::CouldEnable(bool ignoreCanEnable/*=false*/)
 	{
 		if (health <= 0)
 			return false;
@@ -2736,11 +2736,8 @@ namespace Objects
 			return true;
 
 		const Compound&n = GetCompound();
-		FullResourceVector copy = n.total;
-		ResourceVector v, storage,max,empty;
-		this->GetResourceVector(v,storage,max);
-		copy.Include(v,empty,empty);
-		return copy.balance.IsStable();
+		String dummy;
+		return n.CanEnable(this,dummy,ignoreCanEnable);
 	}
 
 
