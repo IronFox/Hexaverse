@@ -1098,7 +1098,7 @@ namespace Network
 					Dialog::SignalSituationChange();
 				#endif
 				#ifdef _DEBUG
-					LogEvent(EventSignificance::Debug,nullptr,"Got pong from server");
+					//LogEvent(EventSignificance::Debug,nullptr,"Got pong from server");
 				#endif
 			break;
 		}

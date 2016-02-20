@@ -59,6 +59,7 @@
 #include "components/atmosphere.h"
 #include "components/guiHostList.h"
 #include "components/serverProcess.h"
+#include "components/audioInterface.h"
 
 #include "rc/Resource.h"
 
@@ -1516,7 +1517,7 @@ bool loop()
 			Objects::Renderer::EndShadowRendering();
 		}
 
-
+		AudioInterface::UpdateListener(Camera::scene);
 		display.pick(Camera::scene);
 		static Engine::Frustum<> frustum;
 		Camera::scene.GetFrustum(frustum);
@@ -2619,6 +2620,9 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	void	UndoTask()
 	{
+		if (Objects::DisableModes(Network::ControlEnabled()))
+			return;
+
 		InnerUndoTask(Objects::selectedEntity,false);
 
 	}
@@ -2795,8 +2799,8 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		if (vp)
 			return (vp->AwaitsUserInteraction() || /*vp->queue.IsEmpty() || */
 			(!vp->IsEnabled()
-			//&&
-			//vp->CouldEnable()
+			&&
+			vp->CouldEnable(true)
 			)
 			);
 		Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
@@ -3282,6 +3286,13 @@ int main( int argc, const char* argv[])
 				TimeLapse::customBasePath = PathString(config.GetString("timelapse/outDirectory"));
 				TimeLapse::frameDelaySeconds = config.GetFloat("timelapse/frameDelaySeconds",0.2f);
 				TimeLapse::maxCompressionPNG = config.GetBool("timelapse/maxCompressionPNG");
+
+				if (config.GetBool("runtime/soundEnabled",true))
+				{
+					AudioInterface::Create();
+					AudioInterface::SetMasterVolume(config.GetFloat("runtime/soundVolume",1.f));
+				}
+
 			#endif
 		}
 		LoadHosts();
@@ -3347,6 +3358,7 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::H,ToggleControlGUI);
 
 			Engine::input.bind(Key::MouseButton0, Select, Dialog::HandleMouseUp);
+			Engine::input.bindCtrl(Key::MouseButton0, Select);
 			Engine::input.bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
 			Engine::input.bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
 
@@ -3382,6 +3394,8 @@ int main( int argc, const char* argv[])
 
 
 		#ifdef HAS_WINDOW
+
+
 			Explosions::Create();
 		#endif
 		Animation::Create();
@@ -3494,6 +3508,7 @@ int main( int argc, const char* argv[])
 			Explosions::Destroy();
 			LineRenderer::Destroy();
 			SurfaceRenderer::Destroy();
+			AudioInterface::Destroy();
 		#endif
 		Grid::Destroy();
 		Objects::Destroy();

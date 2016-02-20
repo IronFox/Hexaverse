@@ -14,6 +14,7 @@ del %rs1% /Q
 %zip% a %rs% "client/objects/*.cgs"
 %zip% a %rs% "client/resources/*.wav"
 %zip% a %rs% "client/resources/objectSounds/*.wav"
+%zip% a %rs% "client/resources/objectSounds/sources.txt"
 %zip% a %rs% "client/resources/*.png"
 %zip% a %rs% "client/resources/nice/*.txt"
 %zip% a %rs% "client/resources/icons/*.png"
