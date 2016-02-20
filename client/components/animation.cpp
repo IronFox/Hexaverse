@@ -283,7 +283,7 @@ namespace Animation
 				missileHissSource.name = "missileHiss";
 			#endif
 			missileHissSource.SetReferenceDistance(10.f,0.5f);
-			missileHissSource.EnqueueWaveBuffer(missileHiss);
+			missileHissSource.SetWaveBuffer(missileHiss);
 			missileHissSource.SetLooping(true);
 
 		#endif
@@ -1182,8 +1182,7 @@ namespace Animation
 								b->activitySound.name = allocatedTarget->GetName()+".turretRotate";
 							#endif
 						}
-						b->activitySound.ClearQueue();
-						b->activitySound.EnqueueWaveBuffer(Objects::Renderer::GetAmbientSoundOf("turretRotate",ConstName::Turret_Artillery));
+						b->activitySound.SetWaveBuffer(Objects::Renderer::GetAmbientSoundOf("turretRotate",ConstName::Turret_Artillery));
 						b->activitySound.SetPosition(allocatedTarget->GetWorldPosition());
 						b->activitySound.SetPitch(0.7f);
 						b->activitySound.Play();
