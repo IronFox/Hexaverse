@@ -758,7 +758,7 @@ namespace Animation
 					if (!v->activitySound.IsPlaying())
 						v->activitySound.Play();
 					v->activitySound.SetPosition(v->GetWorldPosition());
-					v->activitySound.SetGain(sqrt(v->GetSoundLevel()));
+					v->activitySound.SetGain((v->GetSoundLevel()));
 				}
 				else
 					if (v->activitySound.IsPlaying())
