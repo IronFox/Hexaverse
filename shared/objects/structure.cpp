@@ -2440,6 +2440,7 @@ namespace Objects
 	/*virtual override*/ void				NexusPort::OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
+			Super::OnNewConnection(other,acrossHighCell,atTime);
 			if (owner != other->owner && !RuntimeConfig::loadingPhase)
 			{
 				resistence = ResistenceRounds;
@@ -2449,9 +2450,10 @@ namespace Objects
 		#endif
 	}
 
-	/*virtual override*/ void				NexusPort::OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime)
+	/*virtual override*/ void				NexusPort::OnConnectionLost(const PStructure&other, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
+			Super::OnConnectionLost(other,acrossHighCell,atTime);
 			if (connectedTo.IsEmpty() && owner != Faction::nexus && !RuntimeConfig::loadingPhase)
 			{
 				SetEnabled(false,atTime,false);
