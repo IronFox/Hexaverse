@@ -698,16 +698,16 @@ namespace Objects
 			#else
 				UINT32 between = 0;
 			#endif
-			if (ConnectionPossibleTo(c, between) && c->ConnectionPossibleTo(_this, between))
+			Connection	connectionToThis(_this);
+			Connection	connectionToThat(c);
+			if (ConnectionPossible(connectionToThat, between) && c->ConnectionPossible(connectionToThis, between))
 			{
-				Connection	connectionToThis(_this);
 				if (!c->connectedTo.Contains(connectionToThis))
 				{
 					//this can happen when placing new structures and c is a nexus port that changes ownership as a result, and thus reconnects to all existing structures which this is not yet a part of
-					Connection	connectionToThat(c);
+					c->OnNewConnection(connectionToThis, between, atTime);
 					connectedTo << connectionToThat;
 					c->connectedTo << connectionToThis;
-					c->OnNewConnection(connectionToThis, between, atTime);
 					_this->OnNewConnection(connectionToThat, between, atTime);
 					LogEvent(EventSignificance::Common,this, "Connection established to "+c->GetName()+" at time "+String(atTime));
 					#ifdef HAS_WINDOW
@@ -1992,12 +1992,14 @@ namespace Objects
 				#else
 					UINT32 between = 0;
 				#endif
-				if (ConnectionPossibleTo(c, between) && c->ConnectionPossibleTo(_this,between))
+				Connection	connectionToThat(c),
+							connectionToThis(_this);
+				if (ConnectionPossible(connectionToThat, between) && c->ConnectionPossible(connectionToThis,between))
 				{
-					OnNewConnection(Connection(c), between,atTime);
-					c->OnNewConnection(Connection(_this),between,atTime);
-					c->connectedTo << Connection(_this);
-					connectedTo << Connection(c);
+					OnNewConnection(connectionToThat, between,atTime);
+					c->OnNewConnection(connectionToThis,between,atTime);
+					c->connectedTo << connectionToThis;
+					connectedTo << connectionToThat;
 					#ifdef HAS_WINDOW
 						changed = anyChanged = true;
 					#endif
@@ -2019,7 +2021,10 @@ namespace Objects
 			#else
 				UINT32 between = 0;
 			#endif
-			if (!ConnectionPossibleTo(c, between) || !c->ConnectionPossibleTo(_this,between))
+			Connection	connectionToThat(c),
+						connectionToThis(_this);
+
+			if (!ConnectionPossible(connectionToThat, between) || !c->ConnectionPossible(connectionToThis,between))
 			{
 				
 				foreach (c->connectedTo,cc)
@@ -2522,10 +2527,10 @@ namespace Objects
 
 
 	
-	/*virtual override*/ bool				NexusPort::ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)
+	/*virtual override*/ bool				NexusPort::ConnectionPossible(const Connection&c, UINT32 acrossHighCell)
 	{
 		#ifndef CLIENT
-			return (connectedTo.IsEmpty() || other->owner == connectedTo.first().structure->owner);
+			return !c.wireless && (connectedTo.IsEmpty() || c.structure->owner == connectedTo.first().structure->owner);
 		#else
 			return true;
 		#endif
@@ -2547,7 +2552,7 @@ namespace Objects
 	/*virtual override*/ void				NexusPort::OnConnectionLost(const Connection&c, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
-			Super::OnConnectionLost(other,acrossHighCell,atTime);
+			Super::OnConnectionLost(c,acrossHighCell,atTime);
 			if (!IsWiredToAnything() && owner != Faction::nexus && !RuntimeConfig::loadingPhase)
 			{
 				SetEnabled(false,atTime,false);

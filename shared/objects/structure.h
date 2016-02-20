@@ -208,7 +208,7 @@ namespace Objects
 		#endif
 		/**
 		Signals that a new neighbor has been constructed in proximity of the local instance.
-		Typical behavior is to check validity of a connection (via ConnectionPossibleTo()) and then insert the a new link into @a connectedTo
+		Typical behavior is to check validity of a connection (via ConnectionPossible()) and then insert the a new link into @a connectedTo
 		Invokes OnNewConnection() on the local and remote instance, if a new connection was established.
 		@deprecated
 		*/
@@ -240,7 +240,7 @@ namespace Objects
 		@param other Pointer to the neighboring structure. Must be an immediate neighbor, but can be one level above or below the local instance
 		@param acrossHighCell CellId of the high-resolution cell between the local instance and the specified other instance. May be used to detect terrain intersections. Invalid/0 when not using hybrid grid
 		*/
-		virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	{ return false; }
+		virtual bool				ConnectionPossible(const Connection&, UINT32 acrossHighCell)	{ return false; }
 		/**
 		Checks if the local structure is currently building anything, and queries its progress
 		@param outProgress Building progress, if any. Remains unchanged if not building
@@ -377,7 +377,7 @@ namespace Objects
 				virtual void			VisitAllCommands(FCommandVisitor visitor) override {foreach (commands,cmd) visitor(*cmd);};
 
 			#endif
-			virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
+			virtual bool				ConnectionPossible(const Connection&, UINT32 acrossHighCell)	override	{return true;}
 
 
 
@@ -863,7 +863,7 @@ namespace Objects
 			#endif
 
 
-			virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override;
+			virtual bool				ConnectionPossible(const Connection&, UINT32 acrossHighCell)	override;
 			virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override;
 			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override;
 
@@ -1008,7 +1008,7 @@ namespace Objects
 
 
 		virtual bool				WouldLikeToEnable() const override {return true;}
-		virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override;
+		virtual bool				ConnectionPossible(const Connection&, UINT32 acrossHighCell)	override;
 		virtual void				OnNewConnection(const Connection&other, UINT32 acrossHighCell, float atTime) override;
 		virtual void				OnConnectionLost(const Connection&, UINT32 acrossHighCell, float atTime) override;
 		#ifndef CLIENT
@@ -1712,7 +1712,7 @@ namespace Objects
 			virtual int				GetUplinkPriority() const override {return 1000;}
 		#endif
 
-		virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
+		virtual bool				ConnectionPossible(const Connection&, UINT32 acrossHighCell)	override	{return true;}
 
 		#ifndef CLIENT
 
@@ -1933,7 +1933,7 @@ namespace Objects
 
 
 	template <typename Derivative>
-		/*virtual override*/ bool				CommonStructure<Derivative>::ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)
+		/*virtual override*/ bool				CommonStructure<Derivative>::ConnectionPossible(const Connection&, UINT32 acrossHighCell)
 		{
 			return true;
 			//return other->location.height == this->location.height;// && dynamic_cast<Mine*>(other.get()) != nullptr;
