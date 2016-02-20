@@ -25,7 +25,7 @@ namespace Animation
 		Objects::Geometry			trajectoryGeometry;
 		DX11::InstructionBlock32	trajectoryVisualization;
 		DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
-		OpenAL::Source				trajectoryFireSource[1],missileHissSource;
+		OpenAL::Source				/*trajectoryFireSource[1],*/missileHissSource;
 		float						maxProjectileProjection;
 		OpenAL::Wave				artilleryShot,missileHiss,constructSound;
 	#endif
@@ -269,12 +269,12 @@ namespace Animation
 			trajectoryVisualization.SetTriangles();
 
 			artilleryShot = OpenAL::Load("resources/objectSounds/artilleryShot.wav");
-			for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
-			{
-				trajectoryFireSource[i].Create();
-				trajectoryFireSource[i].SetPitch(1.f - 0.01f * i);
-				trajectoryFireSource[i].SetReferenceDistance(10.f);
-			}
+			//for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+			//{
+			//	trajectoryFireSource[i].Create();
+			//	trajectoryFireSource[i].SetPitch(1.f - 0.01f * i);
+			//	trajectoryFireSource[i].SetReferenceDistance(10.f);
+			//}
 
 			constructSound = OpenAL::Load("resources/objectSounds/construct.wav");
 			missileHiss = OpenAL::Load("resources/objectSounds/missileHiss.wav");
@@ -295,8 +295,8 @@ namespace Animation
 			trajectoryVisualization = DX11::InstructionBlock32();
 			trajectoryProgression.Clear();
 			trajectoryTint.Clear();
-			for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
-				trajectoryFireSource[i].Destroy();
+			//for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+			//	trajectoryFireSource[i].Destroy();
 			missileHissSource.Destroy();
 			OpenAL::Discard(missileHiss);
 			OpenAL::Discard(constructSound);
@@ -1268,14 +1268,14 @@ namespace Animation
 						{
 							case Objects::TrajectoryType::Artillery:
 							{
-								for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
-								{
-									OpenAL::Source&s = trajectoryFireSource[i];
-									s.ClearQueue();
-									s.SetPosition(attackerPosition);
-									s.EnqueueWaveBuffer(artilleryShot);
-									s.Play();
-								}
+								OpenAL::PlayOnce(attackerPosition,artilleryShot);
+								//for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+								//{
+								//	OpenAL::Source&s = trajectoryFireSource[i];
+								//	s.SetPosition(attackerPosition);
+								//	s.SetWaveBuffer(artilleryShot);
+								//	s.Play();
+								//}
 							}
 							break;
 							case Objects::TrajectoryType::Missile:
