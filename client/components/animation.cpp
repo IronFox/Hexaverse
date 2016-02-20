@@ -1268,7 +1268,7 @@ namespace Animation
 						{
 							case Objects::TrajectoryType::Artillery:
 							{
-								OpenAL::PlayOnce(attackerPosition,artilleryShot);
+								OpenAL::PlayOnce(attackerPosition,artilleryShot,1.f,10.f);
 								//for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
 								//{
 								//	OpenAL::Source&s = trajectoryFireSource[i];
