@@ -1601,7 +1601,7 @@ namespace Objects
 						display.Render(foundation, true);
 					_RenderSimpleLocated(*activeStructureToPlace,sys);
 					display.SetObjectMatrix(sys);
-					overallTint.Update(selectedTint);
+					overallTint.Update(float4(selectedTint.rgb,selectedTint.a * 0.5f + 0.5f));
 					if (includeFoundation)
 						display.Render(foundation, true);
 					_RenderSimpleLocated(*activeStructureToPlace,sys);
