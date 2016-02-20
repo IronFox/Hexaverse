@@ -1606,15 +1606,31 @@ namespace Objects
 					return;
 				if (activeCursorMode != CursorMode::PlaceStructureMode)
 				{
-				//	if (Engine::input.pressed[Key::Ctrl])
+					bool directPlace = !Engine::input.pressed[Key::Ctrl] && vehicle->myTasks.IsNotEmpty() && vehicle->myTasks.GetNewest().type == MobileEntity::Task::MoveTo;
+					if (directPlace)
+					{
+						const Grid::LCellIdI last = vehicle->GetLastPointOfOrigin();
+						const Grid::LCellIdI prev = vehicle->GetPrevPointOfOrigin();
+						const auto&n = Grid::low.grid.GetCell(last.stackID).neighborhood;
+						
+						for (int k = 0; k < n.numNeighbors; k++)
+							if (n.neighborID[k] == prev.stackID)
+							{
+								directPlace = false;
+								break;
+							}
+					}
+
+					if (!directPlace)
 					{
 						activeCursorMode = CursorMode::PlaceStructureMode;
 						showArrow = true;
 						arrowFromCell = vehicle->GetLastPointOfOrigin();
 						arrowFrom = Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(arrowFromCell.height));
 					}
-					//else
-					//	SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());		//this still works, but seemed unintuitive rather quickly
+					else
+						SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());	
+							//this still works, but seemed unintuitive rather quickly
 					activeStructureToPlace = p;
 				}
 				else
