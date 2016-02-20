@@ -2536,7 +2536,8 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	void	UndoTask()
 	{
-		Objects::DisableModes(Network::ControlEnabled());
+		if (Objects::DisableModes(Network::ControlEnabled()))
+			return;
 
 		InnerUndoTask(Objects::selectedEntity,false);
 
