@@ -12,6 +12,7 @@ namespace AudioInterface
 	void	Create();
 	void	Destroy();
 	void	UpdateListener(const Engine::Aspect<>&);
+	void	SetMasterVolume(float volume);
 }
 
 #endif

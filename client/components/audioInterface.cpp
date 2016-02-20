@@ -73,6 +73,13 @@ namespace AudioInterface
 		}
 	}
 
+	void	SetMasterVolume(float volume)
+	{
+		if (isActive)
+			OpenAL::Listener::SetGain(2.f * volume);
+	}
+
+
 	void		Destroy()
 	{
 		OpenAL::Shutdown();
