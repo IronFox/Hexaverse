@@ -801,6 +801,8 @@ namespace Objects
 				onlineUplinkTraffic = 0;
 			#endif
 			#ifdef HAS_WINDOW
+				Renderer::animatedTurrets.Clear();	//maaan, until i found this little bugger...
+
 				Deselect(false);
 				resourceView = true;
 				objectView = true;
