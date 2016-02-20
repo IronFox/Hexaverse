@@ -25,9 +25,9 @@ namespace Animation
 		Objects::Geometry			trajectoryGeometry;
 		DX11::InstructionBlock32	trajectoryVisualization;
 		DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
-		OpenAL::Source				trajectoryFireSource[1],missileHissSource;
+		OpenAL::Source				/*trajectoryFireSource[1],*/missileHissSource;
 		float						maxProjectileProjection;
-		OpenAL::Wave				artilleryShot,missileHiss;
+		OpenAL::Wave				artilleryShot,missileHiss,constructSound;
 	#endif
 
 	float						atTime = 0.f;
@@ -269,17 +269,21 @@ namespace Animation
 			trajectoryVisualization.SetTriangles();
 
 			artilleryShot = OpenAL::Load("resources/objectSounds/artilleryShot.wav");
-			for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
-			{
-				trajectoryFireSource[i].Create();
-				trajectoryFireSource[i].SetPitch(1.f - 0.01f * i);
-				trajectoryFireSource[i].SetReferenceDistance(10.f);
-			}
+			//for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+			//{
+			//	trajectoryFireSource[i].Create();
+			//	trajectoryFireSource[i].SetPitch(1.f - 0.01f * i);
+			//	trajectoryFireSource[i].SetReferenceDistance(10.f);
+			//}
 
+			constructSound = OpenAL::Load("resources/objectSounds/construct.wav");
 			missileHiss = OpenAL::Load("resources/objectSounds/missileHiss.wav");
 			missileHissSource.Create();
-			missileHissSource.SetReferenceDistance(10.f);
-			missileHissSource.EnqueueWaveBuffer(missileHiss);
+			#ifdef _DEBUG
+				missileHissSource.name = "missileHiss";
+			#endif
+			missileHissSource.SetReferenceDistance(10.f,0.5f);
+			missileHissSource.SetWaveBuffer(missileHiss);
 			missileHissSource.SetLooping(true);
 
 		#endif
@@ -291,9 +295,12 @@ namespace Animation
 			trajectoryVisualization = DX11::InstructionBlock32();
 			trajectoryProgression.Clear();
 			trajectoryTint.Clear();
-			for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
-				trajectoryFireSource[i].Destroy();
+			//for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+			//	trajectoryFireSource[i].Destroy();
 			missileHissSource.Destroy();
+			OpenAL::Discard(missileHiss);
+			OpenAL::Discard(constructSound);
+			OpenAL::Discard(artilleryShot);
 		#endif
 	}
 
@@ -614,29 +621,6 @@ namespace Animation
 			//	AppendTask(v,t);
 			//}
 
-			#ifdef HAS_WINDOW
-			if (!v->turret->CanAttack())
-			{
-				if (v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsJob())
-				{
-					if (!v->activitySound.IsCreated())
-					{
-						v->activitySound.Create();
-						v->activitySound.SetLooping(true);
-						v->activitySound.SetReferenceDistance(3.f,3.f);
-						v->activitySound.EnqueueWaveBuffer(Objects::VehiclePlant::globalPrototype->GetAmbientSound());
-						static Random random;
-						v->activitySound.SetPitch(3.f + random.getFloat(-0.05f,0.05f));
-						v->activitySound.SetGain(0.25f);
-					}
-					v->activitySound.Play();
-					v->activitySound.SetPosition(v->GetWorldPosition());
-				}
-				else
-					v->activitySound.Stop();
-			}
-			#endif
-
 			auto id = info->storedIn.Get0();
 			if (id)
 			{
@@ -752,6 +736,35 @@ namespace Animation
 				Objects::VehicleStore::StaticSignalDeployment();
 				UI::HexGrid::Configure(Objects::selectedEntity);
 			}
+
+
+			if (!v->turret->CanAttack())
+			{
+				if (v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsJob() && !v->IsSleeping())
+				{
+					if (!v->activitySound.IsCreated())
+					{
+						v->activitySound.Create();
+						#ifdef _DEBUG
+							v->activitySound.name = v->GetName()+".activity";
+						#endif
+						v->activitySound.SetLooping(true);
+						v->activitySound.SetReferenceDistance(3.f,1.f);
+						v->activitySound.EnqueueWaveBuffer(constructSound);
+						static Random random;
+						v->activitySound.SetPitch(1.f + random.getFloat(-0.05f,0.05f));
+						v->activitySound.SetGain(0.5f);
+					}
+					if (!v->activitySound.IsPlaying())
+						v->activitySound.Play();
+					v->activitySound.SetPosition(v->GetWorldPosition());
+					v->activitySound.SetGain((v->GetSoundLevel()));
+				}
+				else
+					if (v->activitySound.IsPlaying())
+						v->activitySound.Stop();
+			}
+
 		#endif
 
 	}
@@ -1165,9 +1178,11 @@ namespace Animation
 						{
 							b->activitySound.Create();
 							b->activitySound.SetLooping(true);
+							#ifdef _DEBUG
+								b->activitySound.name = allocatedTarget->GetName()+".turretRotate";
+							#endif
 						}
-						b->activitySound.ClearQueue();
-						b->activitySound.EnqueueWaveBuffer(Objects::Renderer::GetAmbientSoundOf("turretRotate",ConstName::Turret_Artillery));
+						b->activitySound.SetWaveBuffer(Objects::Renderer::GetAmbientSoundOf("turretRotate",ConstName::Turret_Artillery));
 						b->activitySound.SetPosition(allocatedTarget->GetWorldPosition());
 						b->activitySound.SetPitch(0.7f);
 						b->activitySound.Play();
@@ -1253,14 +1268,14 @@ namespace Animation
 						{
 							case Objects::TrajectoryType::Artillery:
 							{
-								for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
-								{
-									OpenAL::Source&s = trajectoryFireSource[i];
-									s.ClearQueue();
-									s.SetPosition(attackerPosition);
-									s.EnqueueWaveBuffer(artilleryShot);
-									s.Play();
-								}
+								OpenAL::PlayOnce(attackerPosition,artilleryShot);
+								//for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+								//{
+								//	OpenAL::Source&s = trajectoryFireSource[i];
+								//	s.SetPosition(attackerPosition);
+								//	s.SetWaveBuffer(artilleryShot);
+								//	s.Play();
+								//}
 							}
 							break;
 							case Objects::TrajectoryType::Missile:
@@ -1449,7 +1464,9 @@ namespace Animation
 					index_t at = std::min(index_t(x * activeTrajectory.GetLength()),activeTrajectory.GetLength()-1);
 					const TVec4<>&v = activeTrajectory[at];
 					missileHissSource.SetPosition(v.xyz * v.w);
-					missileHissSource.SetGain(sqr(sqr(1.f - x))*0.75f + 0.25f);
+					float volume = sqr(sqr(1.f - x))*0.75f + 0.25f;
+					//missileHissSource.SetGain(volume);
+					missileHissSource.SetPitch(0.75f + x);
 
 				#endif
 			}

@@ -806,7 +806,7 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				Renderer::Flush();
 				Deselect(false);
-				resourceView = false;
+				resourceView = true;
 				objectView = true;
 				anyCompoundsColored = false;
 				hasArrowCellTarget = false;

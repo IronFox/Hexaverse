@@ -662,7 +662,7 @@ namespace Objects
 			bool					SetEnabled(bool b, float&atTime, bool refreshCompounds=true, force_t force=EnableIfPossible, bool signalStructure=true);
 			void					SetEnabledOverride(bool b, bool registerChange=true);
 		#else
-			void					ApplyEnableChangeFromServer(bool b);
+			void					ApplyEnableChangeFromServer(bool b,bool temporary=false);
 		#endif
 
 		bool						IsEnabled() const {return isEnabled;}
@@ -693,9 +693,10 @@ namespace Objects
 		/**
 		Checks whether or not the local structure could be enabled at this time.
 		Returns true, if it already is, otherwise checks whether the local compound resource vector can supply the local structure.
-		Balancing is not performed. No changes are performed on any compound to retrieve the result.
+		Can't be const because extensive check temporarly enables the local structure.
+		@param ignoreCanEnable If set, CouldEnable() will ignore the result of the local CanEnable() method. This can be useful when determining whether a structure is idle
 		*/
-		bool						CouldEnable() const;
+		bool						CouldEnable(bool ignoreCanEnable=false);
 
 		#ifndef CLIENT
 			static const index_t	FinalLeftoverIteration = 4;	//!< Index of the final iteration during ProcessLeftovers()

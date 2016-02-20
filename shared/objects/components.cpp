@@ -1465,7 +1465,7 @@ namespace Objects
 				component.height = component.parts.first().first.GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
-				component.ambientSound = OpenAL::Load("resources/objectSounds/hoverBase.wav");
+				component.ambientSound = OpenAL::Load("resources/objectSounds/hoverbase.wav");
 
 			#else
 				component.height = staticHeight;
@@ -1508,7 +1508,7 @@ namespace Objects
 				component.height = component.parts.first().first.GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
-				component.ambientSound = OpenAL::Load("resources/objectSounds/heavyBase.wav");
+				component.ambientSound = OpenAL::Load("resources/objectSounds/heavybase.wav");
 			#else
 				component.height = staticHeight;
 			#endif
@@ -1557,6 +1557,8 @@ namespace Objects
 				component.parts.first().first.LoadFromObj("objects/catBase.obj");
 				component.height = component.parts.first().first.GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
+
+				component.ambientSound = OpenAL::Load("resources/objectSounds/catbase.wav");
 			#else
 				component.height = staticHeight;
 			#endif
@@ -1617,10 +1619,15 @@ namespace Objects
 					return;
 				if (activeCursorMode != CursorMode::PlaceStructureMode)
 				{
-					activeCursorMode = CursorMode::PlaceStructureMode;
-					showArrow = true;
-					arrowFromCell = vehicle->GetLastPointOfOrigin();
-					arrowFrom = Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(arrowFromCell.height));
+				//	if (Engine::input.pressed[Key::Ctrl])
+					{
+						activeCursorMode = CursorMode::PlaceStructureMode;
+						showArrow = true;
+						arrowFromCell = vehicle->GetLastPointOfOrigin();
+						arrowFrom = Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(arrowFromCell.height));
+					}
+					//else
+					//	SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());		//this still works, but seemed unintuitive rather quickly
 					activeStructureToPlace = p;
 				}
 				else
@@ -1628,6 +1635,7 @@ namespace Objects
 					activeCursorMode = CursorMode::Idle;
 					showArrow = false;
 				}
+
 
 				//SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());
 			}
