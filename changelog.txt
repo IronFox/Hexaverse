@@ -8,6 +8,7 @@ v0.3.17
 	+ Implemented structure placement. Clicking on a construction job now asks for a destination first.
 	+ Pressing shift will allow to repeat the last construction job in a different location.
 	> Towers now allow backspace-undoing of attack tasks.
+	> Resource view is now enabled by default.
 	* Fixed save games not persistently memorizing sleep-state of units.
 	* Fixed desert planet type.
 	* Fixed spectator terrain construction.

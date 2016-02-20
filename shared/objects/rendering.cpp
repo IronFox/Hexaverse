@@ -27,7 +27,7 @@ extern Engine::Display<Engine::DirectX11>	display;
 namespace Objects
 {
 
-	bool						resourceView = false,
+	bool						resourceView = true,
 								showHostileRanges = false,
 								showFriendlyRanges = false,
 								objectView = true;

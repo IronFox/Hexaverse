@@ -802,7 +802,7 @@ namespace Objects
 			#endif
 			#ifdef HAS_WINDOW
 				Deselect(false);
-				resourceView = false;
+				resourceView = true;
 				objectView = true;
 				hasArrowCellTarget = false;
 				showArrow = false;
