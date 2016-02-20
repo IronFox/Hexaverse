@@ -2534,9 +2534,8 @@ namespace Objects
 	/*virtual override*/ void				NexusPort::OnNewConnection(const Connection&other, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
-			//if (owner != other->owner && !RuntimeConfig::loadingPhase)
 			Super::OnNewConnection(other,acrossHighCell,atTime);
-			if (!IsWiredToAnything() && !other.wireless && owner != other.structure->owner)
+			if (owner != other.structure->owner && !other.wireless && !RuntimeConfig::loadingPhase)
 			{
 				resistence = ResistenceRounds;
 				SetEnabled(false,atTime,false);
@@ -2548,9 +2547,8 @@ namespace Objects
 	/*virtual override*/ void				NexusPort::OnConnectionLost(const Connection&c, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
-		//	if (connectedTo.IsEmpty() && owner != Faction::nexus && !RuntimeConfig::loadingPhase)
-			Super::OnConnectionLost(c,acrossHighCell,atTime);
-			if (!IsWiredToAnything() && owner != Faction::nexus)
+			Super::OnConnectionLost(other,acrossHighCell,atTime);
+			if (!IsWiredToAnything() && owner != Faction::nexus && !RuntimeConfig::loadingPhase)
 			{
 				SetEnabled(false,atTime,false);
 				OwnerParameter old = owner;
