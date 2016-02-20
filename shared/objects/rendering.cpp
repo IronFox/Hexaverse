@@ -1705,13 +1705,14 @@ namespace Objects
 			{
 				bool render = false;
 				int h1;
-				if (link->connectedToHub)
+				PSkyHub hub = link->connectedToHub.lock();
+				if (hub)
 				{
 					render = true;
 
 					beamBottomColor.Update(float4(0.5,0.6,1.0,2.5));
 					beamTopColor.Update(float4(0.5,0.6,1.0,2.5));
-					h1 = link->connectedToHub->location.height;
+					h1 = hub->location.height;
 
 				}
 				else

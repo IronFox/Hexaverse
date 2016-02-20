@@ -511,9 +511,9 @@ namespace Objects
 				PSkyHub found;
 				#ifdef CLIENT
 					for (const auto&port : skyLinks)
-						if (port.second->owner == owner && port.first->connectedToHub)
+						if (port.second->owner == owner && !port.first->connectedToHub.expired())
 						{
-							PSkyHub hub = port.first->connectedToHub;
+							PSkyHub hub = port.first->connectedToHub.lock();
 							if (hub.get() != this)
 							{
 								float d2 = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
@@ -1001,7 +1001,9 @@ namespace Objects
 			if (port && port->CastToStructure()->location.stackID == location.stackID)
 			{
 				#ifndef CLIENT
-					LogEvent(EventClass::Preset::operationAborted,this,"Cannot connect to "+port->CastToStructure()->GetNiceName()+": Already connected to "+port->connectedToHub->GetNiceName());
+					PSkyHub other = port->connectedToHub.lock();
+					ASSERT2__(other,GetName(),port->CastToStructure()->GetName());
+					LogEvent(EventClass::Preset::operationAborted,this,"Cannot connect to "+port->CastToStructure()->GetNiceName()+": Already connected to "+other->GetNiceName());
 				#endif
 				return false;
 			}
