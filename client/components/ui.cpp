@@ -502,7 +502,7 @@
 		namespace HexGrid
 		{
 
-			CollectionTemplateRow<Objects::PWorldEntity>			friendlyGroups(0),hostileGroups(1);
+			CollectionTemplateRow<Objects::WWorldEntity>			friendlyGroups(0),hostileGroups(1);
 			DynamicRow												animationTimeLine(2);
 
 			count_t					currentContactListWidth = 10;
@@ -657,7 +657,13 @@
 			{
 				if (currentSelection == InvalidIndex)
 				{
-					currentSelection = entries.GetIndexOf(Objects::selectedEntity);
+					currentSelection = InvalidIndex;
+					foreach (entries,e)
+						if (e->lock() == Objects::selectedEntity)
+						{
+							currentSelection = e - entries.pointer();
+							break;
+						}
 					if (currentSelection == InvalidIndex)
 					{
 						float distance = std::numeric_limits<float>::max();
@@ -665,7 +671,9 @@
 						index_t at = 0;
 						for (const auto&entry : entries)
 						{
-							float d = Vec::quadraticDistance(entry->system.w.xyz,Camera::scene.location);
+							Objects::PWorldEntity e = entry.lock();
+							DBG_ASSERT__(e);
+							float d = Vec::quadraticDistance(e->system.w.xyz,Camera::scene.location);
 							if (d < distance)
 							{
 								distance = d;
@@ -682,7 +690,8 @@
 
 			void		Group::UpdateSignificance()
 			{
-				const Objects::PWorldEntity&e = entries.first();
+				Objects::PWorldEntity e = entries.first().lock();
+				DBG_ASSERT__(e);
 				significance = e->GetConstructionCost();
 
 
@@ -715,6 +724,9 @@
 			/*virtual override*/ void	VehicleFocusCommand::CompileLabel(const Objects::PWorldEntity&,Label&outResult)
 			{
 				outResult << name;
+				Objects::PVehicle target = this->target.lock();
+				if (!target)
+					return;
 				if (target->isMine)
 				{
 					outResult << "Owner: me";
@@ -750,6 +762,11 @@
 			/*virtual override*/ void	SatelliteFocusCommand::CompileLabel(const Objects::PWorldEntity&,Label&outResult)
 			{
 				outResult << name;
+
+				Objects::PSatellite target = this->sat.lock();
+				if (!target)
+					return;
+
 				if (target->isMine)
 				{
 					outResult << "Owner: me";
@@ -787,6 +804,10 @@
 			/*virtual override*/ void	StructureFocusCommand::CompileLabel(const Objects::PWorldEntity&,Label&outResult)
 			{
 				//Objects::PStructure target = structure;
+				Objects::PStructure structure = this->structure.lock();
+				if (!structure)
+					return;
+
 				Objects::PTurretBase target = structure->GetTurretBase();
 				outResult << name;
 				if (structure->isMine)
@@ -842,19 +863,23 @@
 
 			/*virtual override*/ void	GroupFocusCommand::RasterizeImage()
 			{
-				const float4&background = group->entries.first()->isMine ? friendlyBackgroundColor : hostileBackgroundColor;
-				if (group->entries.first()->IsVehicle())
+				Objects::PWorldEntity e = group->entries.first().lock();
+				if (!e)
+					return;
+
+				const float4&background = e->isMine ? friendlyBackgroundColor : hostileBackgroundColor;
+				if (e->IsVehicle())
 				{
-					Objects::VehicleCommand::UpdateTexture(*this,To<Objects::Vehicle>::Cast(group->entries.first()),false,background);
+					Objects::VehicleCommand::UpdateTexture(*this,To<Objects::Vehicle>::Cast(e),false,background);
 				}
 				else
 				{
-					if (group->entries.first()->IsStructure())
+					if (e->IsStructure())
 					{
-						Objects::StructureCommand::UpdateTexture(*this,To<Objects::Structure>::Cast(group->entries.first()),false,background);
+						Objects::StructureCommand::UpdateTexture(*this,To<Objects::Structure>::Cast(e),false,background);
 					}
-					elif (group->entries.first()->IsSatellite())
-						Objects::SatelliteCommand::UpdateTexture(*this,To<Objects::Satellite>::Cast(group->entries.first()),false,background);
+					elif (e->IsSatellite())
+						Objects::SatelliteCommand::UpdateTexture(*this,To<Objects::Satellite>::Cast(e),false,background);
 
 				}
 			}
@@ -862,13 +887,14 @@
 
 			/*static*/ void				GroupFocusCommand::OnExecute(PGroup const&group, Objects::PWorldEntity const&_e)	//must be static because it may move before being executed
 			{
-				if (!group->InitSelection() || group->entries[group->currentSelection] == Objects::selectedEntity)
+				if (!group->InitSelection() || group->entries[group->currentSelection].lock() == Objects::selectedEntity)
 					group->currentSelection = (group->currentSelection+1) % group->entries.Count();
-				Objects::PWorldEntity e = group->entries[group->currentSelection];
-	
-				Camera::TranslateTo(e->system.w.xyz);
-				//if (e->isMine && e->health > 0)
+				Objects::PWorldEntity e = group->entries[group->currentSelection].lock();
+				if (e)
+				{
+					Camera::TranslateTo(e->system.w.xyz);
 					Objects::Select(e,Network::ControlEnabled());
+				}
 			}
 
 
@@ -877,7 +903,10 @@
 				//group->InitSelection();
 
 				Objects::PWorldEntity proto = group->GetPrototype();
-				Objects::PWorldEntity instance = group->entries.first();
+				Objects::PWorldEntity instance = group->entries.first().lock();
+
+				if (!instance)
+					return;
 					
 				outResult << name;
 				if (instance->isMine)
@@ -885,7 +914,7 @@
 //					outResult << "Owner: me";
 					if (instance->health > 0)
 					{
-						proto->AppendDeploymentCount(outResult, group->entries.first()->owner);
+						proto->AppendDeploymentCount(outResult, instance->owner);
 					}
 				}
 				else
@@ -917,7 +946,7 @@
 
 				outResult.MarkBriefEnd();
 				Objects::OwnerParameter old = proto->owner;
-				proto->owner = group->entries.first()->owner;	//crude, but either it's set already, or this is a global prototype in which case ownership don't matter
+				proto->owner = instance->owner;	//crude, but either it's set already, or this is a global prototype in which case ownership don't matter
 				proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice /*| Objects::WorldEntity::DescIncludeUnitCount*/);
 				proto->owner = old;
 
@@ -1390,17 +1419,21 @@
 				return 1;
 			}
 
-			static void CollectionToCommands(CollectionTemplateRow<Objects::PWorldEntity>&context)
+			static void CollectionToCommands(CollectionTemplateRow<Objects::WWorldEntity>&context)
 			{
 				context.commands.Clear();
-				context.collection.VisitAllValues([&context](Buffer0<Objects::PWorldEntity>&entries)
+				context.collection.VisitAllValues([&context](Buffer0<Objects::WWorldEntity>&entries)
 				{
-					PGroup group (new Group());
-					group->name = entries.first()->GetTypeName();
-					group->entries.adoptData(entries);
-					group->UpdateSignificance();
+					Objects::PWorldEntity e = entries.first().lock();
+					if (e)
+					{
+						PGroup group (new Group());
+						group->name = e->GetTypeName();
+						group->entries.adoptData(entries);
+						group->UpdateSignificance();
 
-					context.commands << Objects::PBaseCommand(new GroupFocusCommand(group));
+						context.commands << Objects::PBaseCommand(new GroupFocusCommand(group));
+					}
 				});
 				context.collection.Clear();
 				ByComparator::QuickSort(context.commands,CollectionCommandCompare);
@@ -2162,7 +2195,7 @@
 					textout << " Connected to: "<<nl;
 					const Objects::Structure&s = (const Objects::Structure&)e;
 					foreach (s.connectedTo,c)
-						textout << "  "<<(*c)->GetName()<<nl;
+						textout << "  "<<c->lock()->GetName()<<nl;
 				}
 				#endif
 				const Objects::Tower*t = dynamic_cast<const Objects::Tower*>(&e);

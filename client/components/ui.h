@@ -175,7 +175,7 @@ namespace UI
 			struct Group
 			{
 				String		name;
-				Buffer0<Objects::PWorldEntity>	entries;
+				Buffer0<Objects::WWorldEntity>	entries;
 				index_t		currentSelection = InvalidIndex;
 				float		significance = 0;
 				
@@ -187,9 +187,11 @@ namespace UI
 
 				Objects::PWorldEntity	GetPrototype() const
 				{
-					if (entries.first()->IsStructure())
-						return Objects::GetPrototypeByName(entries.first()->GetCTypeName());
-					return entries.first();	//good enough
+					Objects::PWorldEntity e = entries.first().lock();
+					ASSERT__(e);
+					if (e->IsStructure())
+						return Objects::GetPrototypeByName(e->GetCTypeName());
+					return e;	//good enough
 
 				}
 
@@ -213,7 +215,7 @@ namespace UI
 			{
 			public:
 				typedef	Objects::VehicleCommand	Super;
-				Objects::PVehicle		target;
+				Objects::WVehicle		target;
 
 				//int2 coords, const String&name, const VehicleBase*&base, const Turret*&turret,   OnExecute f, CheckEnabled a, IsPermaActive p
 				/**/				VehicleFocusCommand()	{}
@@ -240,7 +242,6 @@ namespace UI
 			{
 			public:
 				typedef	Objects::SatelliteCommand	Super;
-				Objects::PSatellite		target;
 
 				//int2 coords, const String&name, const VehicleBase*&base, const Turret*&turret,   OnExecute f, CheckEnabled a, IsPermaActive p
 				/**/				SatelliteFocusCommand()	{}
@@ -248,8 +249,7 @@ namespace UI
 									: Super(int2(), target->GetNiceName(),target,
 										std::bind(&SatelliteFocusCommand::OnExecute,target,std::placeholders::_1),
 										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;},
-										false), 
-										target(target)
+										false)
 				{}
 
 				static void				OnExecute(Objects::PSatellite const&target, Objects::PWorldEntity const&)	//must be static because it may move before being executed
@@ -267,7 +267,6 @@ namespace UI
 			public:
 				typedef	Objects::StructureCommand	Super;
 			
-				//int2 coords, const String&name, const VehicleBase*&base, const Turret*&turret,   OnExecute f, CheckEnabled a, IsPermaActive p
 				/**/				StructureFocusCommand()	{}
 				/**/				StructureFocusCommand(const Objects::PStructure&target) 
 									: Super(int2(), target->GetNiceName(),target,
@@ -320,8 +319,6 @@ namespace UI
 			public:
 				typedef Objects::EntityCommand	Super;
 				
-				//VehicleFocusCommand	vcommand;
-				//StructureFocusCommand	scommand;
 				PGroup					group;
 
 				/**/				GroupFocusCommand()
@@ -437,7 +434,7 @@ namespace UI
 				void									Clear()	{commands.Clear(); collection.Clear();}
 				void									Destroy() {Clear(); Super::Destroy();}
 			};
-			extern CollectionTemplateRow<Objects::PWorldEntity>	friendlyGroups,hostileGroups;
+			extern CollectionTemplateRow<Objects::WWorldEntity>	friendlyGroups,hostileGroups;
 			extern DynamicRow							animationTimeLine;
 
 			extern VehicleFocusCommand					selectedVehicleFocus;
