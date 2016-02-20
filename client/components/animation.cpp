@@ -279,6 +279,9 @@ namespace Animation
 			constructSound = OpenAL::Load("resources/objectSounds/construct.wav");
 			missileHiss = OpenAL::Load("resources/objectSounds/missileHiss.wav");
 			missileHissSource.Create();
+			#ifdef _DEBUG
+				missileHissSource.name = "missileHiss";
+			#endif
 			missileHissSource.SetReferenceDistance(10.f,0.5f);
 			missileHissSource.EnqueueWaveBuffer(missileHiss);
 			missileHissSource.SetLooping(true);
@@ -742,6 +745,9 @@ namespace Animation
 					if (!v->activitySound.IsCreated())
 					{
 						v->activitySound.Create();
+						#ifdef _DEBUG
+							v->activitySound.name = v->GetName()+".activity";
+						#endif
 						v->activitySound.SetLooping(true);
 						v->activitySound.SetReferenceDistance(3.f,1.f);
 						v->activitySound.EnqueueWaveBuffer(constructSound);
@@ -1172,6 +1178,9 @@ namespace Animation
 						{
 							b->activitySound.Create();
 							b->activitySound.SetLooping(true);
+							#ifdef _DEBUG
+								b->activitySound.name = allocatedTarget->GetName()+".turretRotate";
+							#endif
 						}
 						b->activitySound.ClearQueue();
 						b->activitySound.EnqueueWaveBuffer(Objects::Renderer::GetAmbientSoundOf("turretRotate",ConstName::Turret_Artillery));
