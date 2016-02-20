@@ -2820,11 +2820,12 @@ namespace Objects
 			return true;
 		}
 	#else
-		void					WorkingStructure::ApplyEnableChangeFromServer(bool b)
+		void					WorkingStructure::ApplyEnableChangeFromServer(bool b, bool temporary)
 		{
 			isEnabled = b;
 			#ifdef HAS_WINDOW
-				ambientSound.SetGain(GetSoundLevel());
+				if (!temporary)
+					ambientSound.SetGain(GetSoundLevel());
 			#endif
 
 		}

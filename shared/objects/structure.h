@@ -657,7 +657,7 @@ namespace Objects
 			bool					SetEnabled(bool b, float atTime, bool refreshCompounds=true, force_t force=EnableIfPossible, bool signalStructure=true);
 			void					SetEnabledOverride(bool b, bool registerChange=true);
 		#else
-			void					ApplyEnableChangeFromServer(bool b);
+			void					ApplyEnableChangeFromServer(bool b,bool temporary=false);
 		#endif
 
 		bool						IsEnabled() const {return isEnabled;}
