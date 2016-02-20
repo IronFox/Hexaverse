@@ -59,6 +59,7 @@
 #include "components/atmosphere.h"
 #include "components/guiHostList.h"
 #include "components/serverProcess.h"
+#include "components/audioInterface.h"
 
 #include "rc/Resource.h"
 
@@ -1434,7 +1435,7 @@ bool loop()
 			Objects::Renderer::EndShadowRendering();
 		}
 
-
+		AudioInterface::UpdateListener(Camera::scene);
 		display.pick(Camera::scene);
 		static Engine::Frustum<> frustum;
 		Camera::scene.GetFrustum(frustum);
@@ -2535,6 +2536,8 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	void	UndoTask()
 	{
+		Objects::DisableModes(Network::ControlEnabled());
+
 		InnerUndoTask(Objects::selectedEntity,false);
 
 	}
@@ -3299,6 +3302,9 @@ int main( int argc, const char* argv[])
 
 
 		#ifdef HAS_WINDOW
+			AudioInterface::Create();
+
+
 			Explosions::Create();
 		#endif
 		Animation::Create();
@@ -3411,6 +3417,7 @@ int main( int argc, const char* argv[])
 			Explosions::Destroy();
 			LineRenderer::Destroy();
 			SurfaceRenderer::Destroy();
+			AudioInterface::Destroy();
 		#endif
 		Grid::Destroy();
 		Objects::Destroy();
