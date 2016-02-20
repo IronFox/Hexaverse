@@ -295,6 +295,9 @@ namespace Animation
 			for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
 				trajectoryFireSource[i].Destroy();
 			missileHissSource.Destroy();
+			OpenAL::Discard(missileHiss);
+			OpenAL::Discard(constructSound);
+			OpenAL::Discard(artilleryShot);
 		#endif
 	}
 
