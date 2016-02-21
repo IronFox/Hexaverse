@@ -671,14 +671,22 @@ namespace Objects
 			
 			//VerifyVisibilityNetwork();
 			timeAt = std::max(minTimeOffset,timeAt);
-			if ((location.stackID != cell && !NoSatelliteHere(cell)))
+
+			if (location.stackID != cell) 
 			{
-				if (failIsFatal)
+				PSatellite v = GetSatellite(cell);
+				if (v)
 				{
-					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
-					FATAL__("Critical abort");
+					if (failIsFatal)
+					{
+						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
+						FATAL__("Critical abort");
+					}
+					if (!v->HasMotionTasks() || v->ConstructingHere(v->location))
+						return MobilePlacementResult::PlacementFailedPermanentlyObstructed;
+					else
+						return MobilePlacementResult::PlacementFailedTemporarilyObstructed;
 				}
-				return MobilePlacementResult::PlacementFailedObstructed;
 			}
 			const Grid::LCellIdI old = location;
 

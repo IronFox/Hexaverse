@@ -130,7 +130,14 @@ namespace Objects
 	void			InsertVehicleIntoGrid(const PVehicle&v,const Grid::LCellIdI&location);
 
 
-	inline bool		Failed(MobilePlacementResult rs)	{return rs == MobilePlacementResult::PlacementFailedHarmfulOrBlocked || rs == MobilePlacementResult::PlacementFailedMobileDestroyed || rs == MobilePlacementResult::PlacementFailedObstructed;}
+	inline bool		Failed(MobilePlacementResult rs)
+					{
+						return rs == MobilePlacementResult::PlacementFailedHarmfulOrBlocked
+							|| rs == MobilePlacementResult::PlacementFailedMobileDestroyed
+							|| rs == MobilePlacementResult::PlacementFailedTemporarilyObstructed
+							|| rs == MobilePlacementResult::PlacementFailedPermanentlyObstructed
+							;
+					}
 
 
 

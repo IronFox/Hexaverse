@@ -258,7 +258,10 @@ namespace Objects
 									break;
 									case MobilePlacementResult::PlacementFailedHarmfulOrBlocked:
 										this->ClearAllTasks(true, CLOCATION);
-									case MobilePlacementResult::PlacementFailedObstructed:
+									case MobilePlacementResult::PlacementFailedPermanentlyObstructed:
+										dropRemaining = true;
+										//bleed into next case:
+									case MobilePlacementResult::PlacementFailedTemporarilyObstructed:
 									{
 										LogEvent(EventClass::Preset::operationAborted,this,"Unable to complete movement.");
 										if (health <= 0)
