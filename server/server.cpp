@@ -469,7 +469,7 @@ void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, f
 			}
 		}
 	}
-	LogEvent(EventSignificance::Debug,e.get(),"Commencing attack at t="+preciseAttack.timestamp.atTime);
+	LogEvent(EventSignificance::Debug,e.get(),"Commencing attack at t="+String(preciseAttack.timestamp.atTime));
 
 
 	preciseAttack.flightTime = flightTime;
