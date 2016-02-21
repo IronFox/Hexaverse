@@ -3260,7 +3260,7 @@ int main( int argc, const char* argv[])
 				TimeLapse::frameDelaySeconds = config.GetFloat("timelapse/frameDelaySeconds",0.2f);
 				TimeLapse::maxCompressionPNG = config.GetBool("timelapse/maxCompressionPNG");
 
-				if (config.GetBool("runtime/soundEnabled",true))
+				if (!RuntimeConfig::aiMode && config.GetBool("runtime/soundEnabled",true))
 				{
 					AudioInterface::Create();
 					AudioInterface::SetMasterVolume(config.GetFloat("runtime/soundVolume",1.f));
