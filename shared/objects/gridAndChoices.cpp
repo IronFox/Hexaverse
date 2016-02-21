@@ -1032,6 +1032,10 @@ namespace Objects
 					e->ambientSound.SetReferenceDistance(3.f,1.5f - (e->IsMobile()? 0.5f : 0.f));
 					static Random random;
 					e->ambientSound.SetPitch(1.f + random.getFloat(-0.02f,0.02f));
+					#ifdef _DEBUG
+						e->ambientSound.name = e->GetName()+".ambient";
+						e->ambientSound.reference = e.get();
+					#endif
 				}
 			}
 

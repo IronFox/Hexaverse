@@ -1342,7 +1342,7 @@ int main( int argc, const char* argv[])
 
 		Reflection::Create();
 		Reflection::state.PushFocus();
-		Reflection::state.EnterNewFolder("/ServiceOnline");
+		Reflection::state.EnterNewFolder("/Online");
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start();})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return InformationProvider::server.IsOnline();},InformationProvider::Stop,[](){InformationProvider::Start(ParameterConfig::basePort);})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},Network::RestartSession)));
@@ -1354,30 +1354,35 @@ int main( int argc, const char* argv[])
 		{
 			application_shutting_down = true;
 		})->SetUniqueHelp("Shuts down the service and terminates the application");
-		Reflection::state.DefineCommand("/Server/autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
-		Reflection::state.DefineCommand("/Server/saveTo fileName",(CLI::Command::function1_t)[](const String&path)
-		{
-			FileIO::Save(PathString(path));
-		},CLI::FileCompletion);
 
-		Reflection::state.DefineCommand("/Server/loadFrom fileName",(CLI::Command::function1_t)[](const String&path)
-		{
-			FileIO::Load(PathString(path));
-		},CLI::FileCompletion);
+		Reflection::state.PushFocus();
+			Reflection::state.EnterNewFolder("/IO");
+			Reflection::state.DefineCommand("autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
+			Reflection::state.DefineCommand("saveTo fileName",(CLI::Command::function1_t)[](const String&path)
+			{
+				FileIO::Save(PathString(path));
+			},CLI::FileCompletion);
 
-		Reflection::state.DefineCommand("/Server/loadAutoSave [index]",(CLI::Command::function1_t)[](const String&sindex)
-		{
-			index_t index;
-			if (sindex.IsEmpty())
-				index = 0;
-			else
-				if (!convert(sindex.c_str(),index))
-				{
-					LogEvent(EventClass::Preset::remoteControlError,"Unable to parse '"+sindex+"' to index");
-					return;
-				}
-			FileIO::Load(FileIO::GetAutoSavePath(index));
-		},CLI::FileCompletion);
+			Reflection::state.DefineCommand("loadFrom fileName",(CLI::Command::function1_t)[](const String&path)
+			{
+				FileIO::Load(PathString(path));
+			},CLI::FileCompletion);
+
+			Reflection::state.DefineCommand("loadAutoSave [index]",(CLI::Command::function1_t)[](const String&sindex)
+			{
+				index_t index;
+				if (sindex.IsEmpty())
+					index = 0;
+				else
+					if (!convert(sindex.c_str(),index))
+					{
+						LogEvent(EventClass::Preset::remoteControlError,"Unable to parse '"+sindex+"' to index");
+						return;
+					}
+				FileIO::Load(FileIO::GetAutoSavePath(index));
+			},CLI::FileCompletion);
+		Reflection::state.PopFocus();
+
 
 		Reflection::state.DefineCommand("/World/generate [planetType] [discovery]",(CLI::Command::function2_t)[](const String&planet, const String&discovery)
 		{

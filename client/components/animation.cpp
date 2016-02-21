@@ -130,10 +130,10 @@ namespace Animation
 					bool canDo = true;
 					foreach (v->myTasks.GetNewest().path,node)
 					{
-						if (!EstimateThreatLevel(v,node->cell,competition,ally,ghost))
+						if (!EstimateThreatLevel(v,node->cell,competition,ally,ghost) || !Objects::NothingBlockingHere(node->cell,true))
 						{
 							canDo = false;
-							return;
+							break;
 						}
 					}
 					if (sqrt(ghost) < 16.f)
@@ -187,11 +187,29 @@ namespace Animation
 
 				if (!competition || !canDo || !ghost)
 					continue;
-				const auto &n = Grid::low.grid.GetCell(node->cell.stackID).neighborhood;
+				//const auto &n = Grid::low.grid.GetCell(node->cell.stackID).neighborhood;
 				int score = 0;
-				for (int i = 0; i < n.numNeighbors; i++)
-					if (!known[n.neighborID[i]])
-						score++;
+				Objects::ReachabilityMapper::MapNode*at = node;
+				for (;;)
+				{
+					if (at->customScore < 0)
+					{
+						at->customScore = 0;
+						const auto &n = Grid::low.grid.GetCell(at->cell.stackID).neighborhood;
+						for (int i = 0; i < n.numNeighbors; i++)
+							if (!known[n.neighborID[i]])
+							{
+								at->customScore++;
+							}
+					}
+					if (at == node || at->predecessor == InvalidIndex)	//first or last
+						score += CeilDiv(at->customScore,2);	//consider half
+					else
+						score += CeilDiv(at->customScore,3);	//consider one third
+					if (at->predecessor == InvalidIndex)
+						break;
+					at = mapper.result + at->predecessor;
+				}
 				float ghostFear = sqr(maxGhost) / ((ghost));
 				float dist = float(node->movementCostsFromRoot) * sqrt(ally) / sqrt(competition) / float(score+1) * ghostFear;
 				if (dist > closestDistance)
@@ -1268,7 +1286,7 @@ namespace Animation
 						{
 							case Objects::TrajectoryType::Artillery:
 							{
-								OpenAL::PlayOnce(attackerPosition,artilleryShot);
+								OpenAL::PlayOnce(attackerPosition,artilleryShot,1.f,10.f);
 								//for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
 								//{
 								//	OpenAL::Source&s = trajectoryFireSource[i];

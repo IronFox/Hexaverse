@@ -375,14 +375,21 @@ namespace Objects
 
 				return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
 			}
-			if ((location != cell && !NoVehicleHere(cell)))
+			if (location != cell) 
 			{
-				if (failIsFatal)
+				PVehicle v = GetVehicle(cell);
+				if (v)
 				{
-					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by vehicle");
-					FATAL__("Critical abort");
+					if (failIsFatal)
+					{
+						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by vehicle");
+						FATAL__("Critical abort");
+					}
+					if (!v->HasMotionTasks() || v->ConstructingHere(v->location))
+						return MobilePlacementResult::PlacementFailedPermanentlyObstructed;
+					else
+						return MobilePlacementResult::PlacementFailedTemporarilyObstructed;
 				}
-				return MobilePlacementResult::PlacementFailedObstructed;
 			}
 			const Grid::LCellIdI old = location;
 

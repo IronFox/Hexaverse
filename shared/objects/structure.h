@@ -46,6 +46,10 @@ namespace Objects
 		static void					CommonRegisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
 		static void					CommonUnregisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
 
+		bool						RemoveConnectionTo(const PStructure&);
+		bool						RemoveConnectionTo(Structure*);
+
+
 	protected:
 		typedef WorldEntity			Super;
 		/**/						Structure():Super(OwnerParameter(),Grid::LCellIdI(0, 0))
@@ -130,7 +134,7 @@ namespace Objects
 		/**
 		List of all structures, the local structure is connected to. Symmetric. The connected structures must have a link back to the local structure.
 		*/
-		Buffer0<PStructure>			connectedTo;
+		Buffer0<WStructure>			connectedTo;
 		#ifdef HAS_WINDOW
 			/**
 			Indicates whether or not the local structure has changed since the last Recompile() call
@@ -155,6 +159,8 @@ namespace Objects
 		*/
 		void						UpdateAutomaticSystem();
 
+		bool						IsConnectedTo(const PStructure&)	const;
+		bool						IsConnectedTo(const Structure*) const;
 
 		/**
 		Retrieves a reference to the compound that this structure is part of.
@@ -815,7 +821,7 @@ namespace Objects
 	class SkyLinkStructure
 	{
 	public:
-		PSkyHub						connectedToHub;
+		WSkyHub						connectedToHub;
 
 		virtual WorkingStructure*	CastToStructure() = 0;
 	};

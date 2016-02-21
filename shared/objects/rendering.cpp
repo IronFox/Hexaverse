@@ -1690,7 +1690,7 @@ namespace Objects
 						display.Render(foundation, true);
 					_RenderSimpleLocated(*activeStructureToPlace,sys);
 					display.SetObjectMatrix(sys);
-					overallTint.Update(selectedTint);
+					overallTint.Update(float4(selectedTint.rgb,selectedTint.a * 0.5f + 0.5f));
 					if (includeFoundation)
 						display.Render(foundation, true);
 					_RenderSimpleLocated(*activeStructureToPlace,sys);
@@ -1836,6 +1836,7 @@ namespace Objects
 		#ifndef ONE_COMPOUND_PER_FACTION
 			compoundScope.Clear();
 		#endif
+		animatedTurrets.Clear();
 	}
 
 
@@ -2032,13 +2033,14 @@ namespace Objects
 			{
 				bool render = false;
 				int h1;
-				if (link->connectedToHub)
+				PSkyHub hub = link->connectedToHub.lock();
+				if (hub)
 				{
 					render = true;
 
 					beamBottomColor.Update(float4(0.5,0.6,1.0,2.5));
 					beamTopColor.Update(float4(0.5,0.6,1.0,2.5));
-					h1 = link->connectedToHub->location.height;
+					h1 = hub->location.height;
 
 				}
 				else

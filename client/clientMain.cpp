@@ -307,8 +307,10 @@ bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 }
 
 
-bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode)
+bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode, bool interactive)
 {
+	if (!v)
+		return false;
 	DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
 	const bool moveTo = mode == Objects::CursorMode::Idle && !leftClick;
 	if (moveTo && v->IsSatellite())
@@ -319,6 +321,42 @@ bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targ
 	if (v->IsMobile() && moveTo)
 	{
 		Objects::PMobileEntity me = To<Objects::MobileEntity>::Cast(v);
+
+		#ifdef HAS_WINDOW
+			if (interactive && me->IsSatellite() && !me->HasMotionTasks())
+			{
+				Objects::PSatellite sat = To<Objects::Satellite>::Cast(me);
+				if (sat->IsSkyHub())
+				{
+					Objects::PSkyHub hub = To<Objects::SkyHub>::Cast(me);
+					if (!hub->connectedTo.expired())
+					{
+						TUniqueID vid = v->id;
+						Array<Grid::LCellIdI> pathCopy = targets;
+						Grid::LCellIdI sourceLoc = me->GetLastPointOfOrigin();
+						Grid::LCellIdI originLoc = me->location;
+						Dialog::Confirm(me->GetNiceName()+" is currently tethered to "+hub->connectedTo.lock()->CastToStructure()->GetNiceName()+". The link keeps it afloat for free, and supplies fuel to distribute to other nearby satellites."
+										" Moving the satellite will sever this link, and require it to be supplied by another hub satellite. Please confirm.",[vid,pathCopy,detailedPath,leftClick,mode]()
+										{
+											DirectTo(Objects::GetEntity(vid),pathCopy,detailedPath,leftClick,mode,false);
+										},[vid,sourceLoc,originLoc]()->Dialog::CheckResult
+										{
+											Objects::PWorldEntity e = Objects::GetEntity(vid);
+											if (!e || !e->IsMobile())
+												return Dialog::CheckResult::Abort;
+											Objects::PMobileEntity me = To<Objects::MobileEntity>::Cast(e);
+											if (e->location != originLoc || me->GetLastPointOfOrigin() != sourceLoc)
+												return Dialog::CheckResult::Abort;
+											if (!RuntimeConfig::IsInAnyCommandPhase() || Objects::Faction::mine->requestedNewRound)
+												return Dialog::CheckResult::OkayNotRightNow;
+											return Dialog::CheckResult::OkayContinue;
+										});
+						return false;
+					}
+				}
+			}
+		#endif
+
 		if (!detailedPath)
 		{
 			Grid::LCellIdI start = me->GetLastPointOfOrigin();
@@ -343,6 +381,11 @@ bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targ
 			Tutorial::ShowMessage("Move To");
 	#endif
 	return true;
+}
+
+bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode)
+{
+	return DirectTo(v, targets, detailedPath, leftClick, mode, true);
 }
 
 bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick)
@@ -2058,7 +2101,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 						LogEvent(EventClass::Preset::commandRejected,Objects::selectedMobileEntity.get(),"Can't build here, already trying to build something here");
 					}
 					else
-						if (DirectTo(Objects::selectedMobileEntity,target,false,false,Objects::CursorMode::Idle))
+						if (DirectTo(Objects::selectedMobileEntity,target,false,false,Objects::CursorMode::Idle,false))
 						{
 							SignalNewJob(Objects::selectedMobileEntity,ConstName::Job_Construct,Objects::activeStructureToPlace->GetCTypeName(),target);
 							Objects::arrowFromCell = target;
@@ -2740,7 +2783,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	bool	IsIdle(const Objects::PMobileEntity&v)
 	{
-		if (v->IsHibernating() || v->IsSatellite() || v->isAutomated)
+		if (v->IsHibernating() || v->isAutomated)
 			return false;
 		if (v->myTasks.IsNotEmpty())
 		{
@@ -2752,7 +2795,10 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		//	return true;
 		//if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsNonAutomatedResourceDetector())
 		//	return true;
-
+		bool satellite = v->IsSatellite();
+		const Objects::MobileEntityProducer*p =  v->CastToProducer();
+		if (p && p->queue.IsEmpty())
+			return true;
 		if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())
 		{
 			bool emp = v->turret->dealsEMPDamage;
@@ -2806,7 +2852,20 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 		if (mine)
 			return !mine->IsEnabled() && mine->CouldEnable();
-
+		if (s->IsSkyLinkStructure())
+		{
+			Objects::PSkyLinkStructure st = To<Objects::SkyLinkStructure>::DynamicCast(s);	//around a inheritance corner, prolly required to use dynamic cast here
+			if (!st->connectedToHub.expired())
+			{
+				return !To<Objects::WorkingStructure>::Cast(s)->IsEnabled();
+			}
+			if (s->IsSkyPort())
+			{
+				Objects::PSkyPort p = To<Objects::SkyPort>::Cast(s);
+				if (p->queue.IsEmpty() || (!p->IsEnabled() && p->CouldEnable()))
+					return true;
+			}
+		}
 		return false;
 
 	}

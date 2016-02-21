@@ -172,7 +172,7 @@ namespace Objects
 						#ifdef CLIENT
 							foreach (skyLinks,s)
 							{
-								if (s->second->owner == m.owner && s->first->connectedToHub)
+								if (s->second->owner == m.owner && !s->first->connectedToHub.expired())
 									AddCompound(s->second);
 							}
 						#else
@@ -493,7 +493,10 @@ namespace Objects
 									break;
 									case MobilePlacementResult::PlacementFailedHarmfulOrBlocked:
 										this->ClearAllTasks(true, CLOCATION);
-									case MobilePlacementResult::PlacementFailedObstructed:
+									case MobilePlacementResult::PlacementFailedPermanentlyObstructed:
+										dropRemaining = true;
+										//bleed into next case:
+									case MobilePlacementResult::PlacementFailedTemporarilyObstructed:
 									{
 										LogEvent(EventClass::Preset::operationAborted,this,"Unable to complete movement.");
 										if (health <= 0)
@@ -1693,6 +1696,19 @@ namespace Objects
 			break;
 		}
 		return true;
+	}
+
+
+	bool					MobileEntity::HasMotionTasks() const
+	{
+		if (!HasTasks())
+			return false;
+		foreach (myTasks,t)
+		{
+			if (t->ContainsMovement())
+				return true;
+		}
+		return false;
 	}
 
 
