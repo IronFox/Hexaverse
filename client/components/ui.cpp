@@ -256,13 +256,15 @@
 					textout.color(color * 0.5f + float3(0.5f));
 				}
 			if (max > 0)
-			{
 				textout.scale(1.2f,1.2f);
+			if (max > 0)
+			{
 				textout << ' ';
 				Write(current);
 				textout.scale(0.6f,0.6f);
 				textout <<'/';
 				Write(max);
+				textout.scale(1.f/0.6f,1.f/0.6f);
 			}
 			if (max2 > 0)
 			{
