@@ -2699,48 +2699,59 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	bool	IsIdle(const Objects::PMobileEntity&v)
 	{
-		if (v->IsHibernating() || v->isAutomated || v->IsSleeping())
+		//okay, clarification:
+		//1: if hibernating: NOT IDLE, EVER
+		if (v->IsHibernating())
 			return false;
-		if (v->myTasks.IsNotEmpty())
-		{
+		//2: if automated, then some other logic takes care of everything. NOT IDLE, EVER
+		if (v->isAutomated)
 			return false;
-		}
-		//if (v->GetOperationSpeed(Objects::Component::Construct))
-		//	return true;
-		//if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsNonAutomatedResourceDetector())
-		//	return true;
-		bool satellite = v->IsSatellite();
-		const Objects::MobileEntityProducer*p =  v->CastToProducer();
-		if (p && p->queue.IsEmpty())
-			return true;
-		if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())
+
+		//3: if SLEEPING not idle UNLESS the local entity can attack, and has something to attack:
+		if (v->IsSleeping())
 		{
-			bool emp = v->turret->dealsEMPDamage;
-			if (v->IsVehicle())
+			if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())	//check that its turret can attack, there's ammo for the shot, and it has any shots left this round
 			{
-				for (auto other : Objects::vehicles)
-					if (!emp || !other->empDamageLevel)
-						if (!other->isMine && v->CanHit(other->location))
-							return true;
-				for (auto other : Objects::structures)
-					if (!emp || !other->empDamageLevel)
-						if (!other->isMine && v->CanHit(other->location))
-							return true;
-			}
-			else
-				if (v->IsSatellite())
+				bool emp = v->turret->dealsEMPDamage;
+				if (v->IsVehicle())
 				{
-					for (auto other : Objects::satellites)
-						if (!other->isMine && v->CanHit(other->location))
-							if (!emp || !other->empDamageLevel)
+					for (auto other : Objects::vehicles)
+						if (!emp || !other->empDamageLevel)
+							if (!other->isMine && v->CanHit(other->location))
+								return true;
+					for (auto other : Objects::structures)
+						if (!emp || !other->empDamageLevel)
+							if (!other->isMine && v->CanHit(other->location))
 								return true;
 				}
 				else
-				{
-					FATAL__("Unknown mobile entity type "+v->GetTypeName());
-				}
+					if (v->IsSatellite())
+					{
+						for (auto other : Objects::satellites)
+							if (!other->isMine && v->CanHit(other->location))
+								if (!emp || !other->empDamageLevel)
+									return true;
+					}
+					else
+					{
+						FATAL__("Unknown mobile entity type "+v->GetTypeName());
+					}
+			}
+			return false;	//cannot attack or has nothing to attack: NOT IDLE since it is SLEEPING
 		}
-		return false;
+
+		//4: if not sleeping IDLE unless it has tasks of any sorts:
+
+
+		if (v->myTasks.IsNotEmpty())
+			return false;
+
+		const Objects::MobileEntityProducer*p =  v->CastToProducer();
+		if (p && p->queue.IsNotEmpty())
+			return false;
+
+
+		return true;	//has no tasks and is either not a mobile entity producer or has no tasks in that
 	}
 
 
