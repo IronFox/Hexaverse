@@ -1456,6 +1456,19 @@ namespace Objects
 	}
 
 
+	bool					MobileEntity::HasMotionTasks() const
+	{
+		if (!HasTasks())
+			return false;
+		foreach (myTasks,t)
+		{
+			if (t->ContainsMovement())
+				return true;
+		}
+		return false;
+	}
+
+
 
 	bool					MobileEntity::ConstructingHere(const Grid::LCellIdI&loc) const
 	{
