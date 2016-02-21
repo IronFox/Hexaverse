@@ -2722,7 +2722,20 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 		if (mine)
 			return !mine->IsEnabled() && mine->CouldEnable();
-
+		if (s->IsSkyLinkStructure())
+		{
+			Objects::PSkyLinkStructure st = To<Objects::SkyLinkStructure>::DynamicCast(s);	//around a inheritance corner, prolly required to use dynamic cast here
+			if (!st->connectedToHub.expired())
+			{
+				return !To<Objects::WorkingStructure>::Cast(s)->IsEnabled();
+			}
+			if (s->IsSkyPort())
+			{
+				Objects::PSkyPort p = To<Objects::SkyPort>::Cast(s);
+				if (p->queue.IsEmpty() || (!p->IsEnabled() && p->CouldEnable()))
+					return true;
+			}
+		}
 		return false;
 
 	}
