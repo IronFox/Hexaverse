@@ -508,7 +508,7 @@ namespace Objects
 							{
 								if (s->AttackNext(loc,true))
 								{
-									LogEvent(EventSignificance::Debug,s.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString());
+									LogEvent(EventSignificance::Debug,s.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(timeAt));
 									LogEvent(EventSignificance::Important,s.get(),"Auto-targeting moving "+GetNiceName());
 
 									s->Attack(timeAt);
@@ -532,10 +532,11 @@ namespace Objects
 							{
 								if (t->AttackNext(loc,true))
 								{
-									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString());
+									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(timeAt));
 									LogEvent(EventSignificance::Important,t.get(),"Auto-targeting moving "+GetNiceName());
 
 									t->Attack(timeAt);
+									LogEvent(EventSignificance::Debug,t.get(),"t is now "+String(timeAt));
 									if (health <= 0)
 									{
 										doBreak = true;
