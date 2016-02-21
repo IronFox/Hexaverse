@@ -699,6 +699,9 @@ namespace Objects
 						{
 							case VehicleJob::BaseJob::ContinueJob:
 							break;
+							case VehicleJob::BaseJob::JobDelayed:
+								constructionRoundCounter --;
+							break;
 							case VehicleJob::BaseJob::JobDone:
 								LogEvent(EventSignificance::Common,this,"Job ended: '"+job->GetName()+"'");
 

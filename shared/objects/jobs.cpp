@@ -55,7 +55,7 @@ namespace Objects
 				if (storage < withdrawNow)
 				{
 					LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient minerals available ("+String(storage)+"/"+String(withdrawNow)+"). Delaying operation.");
-					return ContinueJob;
+					return JobDelayed;
 				}
 
 			#endif
@@ -785,7 +785,7 @@ namespace Objects
 			if (!canRepair)
 			{
 				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient minerals in storage to repair '"+target->GetNiceName()+"'");
-				return JobDone;
+				return JobDelayed;
 			}
 			LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient minerals in storage to fully repair '"+target->GetNiceName()+"'. Repairing "+String(canRepair)+" health...");
 			target->health += canRepair;
