@@ -2749,55 +2749,65 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	bool	IsIdle(const Objects::PMobileEntity&v)
 	{
-		if (v->IsHibernating() || v->isAutomated || v->IsSleeping())
+		//okay, clarification:
+		//1: if hibernating: NOT IDLE, EVER
+		if (v->IsHibernating())
 			return false;
-		if (v->myTasks.IsNotEmpty())
-		{
+		//2: if automated, then some other logic takes care of everything. NOT IDLE
+		if (v->isAutomated)
 			return false;
-		}
-		//if (v->GetOperationSpeed(Objects::Component::Construct))
-		//	return true;
-		//if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsNonAutomatedResourceDetector())
-		//	return true;
-		bool satellite = v->IsOrbital();
+
+		//3: if it already IS doing something, anything really, then it is NOT IDLE
+		if (v->myTasks.IsNotEmpty())	//if it already is doing normal vehicle stuff, then it's not IDLE (duh)
+			return false;
 		const Objects::EntityFactory*p =  v->CastToFactory();
-		if (p && p->queue.IsEmpty())
-			return true;
-		if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())
+		if (p && p->queue.IsNotEmpty())	//if it's a factory and has any task, then it's not IDLE
+			return false;
+
+
+		//4: if it's SLEEPING then it's not idle, UNLESS the local entity can attack, and has something to attack:
+		if (v->IsSleeping())
 		{
-			bool emp = v->turret->dealsEMPDamage;
-			if (v->IsVehicle())
+
+			if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())	//check that its turret can attack, there's ammo for the shot, and it has any shots left this round
 			{
-				for (auto other : Objects::vehicles)
-					if (!emp || !other->empDamageLevel)
-						if (!other->isMine && v->CanHit(other->location))
-							return true;
-				for (auto other : Objects::structures)
-					if (!emp || !other->empDamageLevel)
-						if (!other->isMine && v->CanHit(other->location))
-							return true;
-			}
-			else
-				if (v->IsOrbital())
+				bool emp = v->turret->dealsEMPDamage;
+				if (v->IsVehicle())
 				{
-					bool found = false;
-					Objects::ForeachOrbitalWorldEntity([v,&found,emp](const Objects::PWorldEntity&other)
-					{
-						if (found)
-							return;
+					for (auto other : Objects::vehicles)
 						if (!emp || !other->empDamageLevel)
 							if (!other->isMine && v->CanHit(other->location))
-								found = true;
-					});
-					if (found)
-						return true;
+								return true;
+					for (auto other : Objects::structures)
+						if (!emp || !other->empDamageLevel)
+							if (!other->isMine && v->CanHit(other->location))
+								return true;
 				}
 				else
-				{
-					FATAL__("Unknown mobile entity type "+v->GetTypeName());
-				}
+					if (v->IsOrbital())
+					{
+						bool found = false;
+						Objects::ForeachOrbitalWorldEntity([v,&found,emp](const Objects::PWorldEntity&other)
+						{
+							if (found)
+								return;
+							if (!emp || !other->empDamageLevel)
+								if (!other->isMine && v->CanHit(other->location))
+									found = true;
+						});
+						if (found)
+							return true;
+					}
+					else
+					{
+						FATAL__("Unknown mobile entity type "+v->GetTypeName());
+					}
+			}
+			return false;	//cannot attack or has nothing to attack: NOT IDLE since it is SLEEPING
 		}
-		return false;
+
+		//not sleeping, no tasks, not producing, not automated, not hibernating:
+		return true;	//yes, IDLE
 	}
 
 
@@ -2951,6 +2961,8 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 				}
 		}
 		while (to != from);
+
+		UI::RefreshButtonState();	//just in case
 	}
 
 

@@ -89,11 +89,11 @@ namespace AudioInterface
 	{
 		if (isActive)
 		{
-			static TVec3<> last;
-			OpenAL::Listener::SetVelocity((aspect.GetAbsoluteLocation() - last) / Engine::timing.delta);
+			//static TVec3<> last;
+			//OpenAL::Listener::SetVelocity((aspect.GetAbsoluteLocation() - last) / Engine::timing.delta);
+			//last = aspect.GetAbsoluteLocation();
 			OpenAL::Listener::SetPosition(aspect.GetAbsoluteLocation());
 			OpenAL::Listener::SetOrientation(aspect.GetViewingDirection(),aspect.viewInvert.y.xyz,true,false);
-			last = aspect.GetAbsoluteLocation();
 		}
 	}
 

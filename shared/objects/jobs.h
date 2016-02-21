@@ -73,7 +73,7 @@ namespace Objects
 					Delayed,
 					CannotStartAbort
 				};
-
+			
 				enum continue_t
 				{
 					JobDone,
