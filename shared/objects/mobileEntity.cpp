@@ -170,10 +170,20 @@ namespace Objects
 					if (m.IsVehicle())
 					{
 						#ifdef CLIENT
-							foreach (skyLinks,s)
+							for (index_t i = 0; i < skyLinks.Count(); i++)
 							{
-								if (s->second->owner == m.owner && !s->first->connectedToHub.expired())
-									AddCompound(s->second);
+								TLinkReference&ref = skyLinks[i];
+								PSkyLinkStructure link = ref.first.lock();
+								PStructure st = ref.second.lock();
+								if (!link || !st)
+								{
+									LogEvent(EventClass::Preset::internalError,&m, "Link reference lost");
+									skyLinks.Erase(i);
+									i--;
+									continue;
+								}
+								if (st->owner == m.owner && !link->connectedToHub.expired())
+									AddCompound(st);
 							}
 						#else
 							foreach (m.owner->skyHubs,h)

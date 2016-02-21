@@ -550,16 +550,25 @@ namespace Objects
 		{
 			hubs.Clear();
 			#ifdef CLIENT
-				for (const auto&port : skyLinks)
-					if (port.second->owner == owner && port.first->connectedToHub)
+				for (index_t i = 0; i < skyLinks.Count(); i++)
+				{
+					TLinkReference&ref = skyLinks[i];
+					PSkyLinkStructure link = ref.first.lock();
+					PStructure st = ref.second.lock();
+					if (!link || !st)
 					{
-						PSkyHub hub = port.first->connectedToHub;
-						if (hub.get() != this)
-						{
-							hubs.Append().hub = hub;
-							hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
-						}
+						LogEvent(EventClass::Preset::internalError,this, "Link reference lost");
+						skyLinks.Erase(i);
+						i--;
+						continue;
 					}
+					PSkyHub hub = link->connectedToHub.lock();
+					if (hub && hub.get() != this)
+					{
+						hubs.Append().hub = hub;
+						hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
+					}
+				}
 			#else
 				for (const auto&sat : owner->skyHubs)
 				{

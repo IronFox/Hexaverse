@@ -1699,7 +1699,7 @@ namespace Objects
 
 	extern Buffer0<PStructure>			structures;
 	#ifdef CLIENT
-		typedef std::pair<PSkyLinkStructure,PWorkingStructure>	TLinkReference;
+		typedef std::pair<WSkyLinkStructure,WWorkingStructure>	TLinkReference;
 		extern Buffer0<TLinkReference>		skyLinks;	//also included in structures, but filtered for quicker access
 	#endif
 

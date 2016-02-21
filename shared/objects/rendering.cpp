@@ -2024,8 +2024,10 @@ namespace Objects
 
 		foreach(skyLinks, _s)
 		{
-			const PSkyLinkStructure&link = _s->first;
-			const PWorkingStructure&ws = _s->second;
+			const PSkyLinkStructure link = _s->first.lock();
+			const PWorkingStructure ws = _s->second.lock();
+			if (!link || !ws)
+				continue;
 			if (ws->location.stackID < 12)
 				nexusSet[ws->location.stackID] = true;
 
