@@ -2783,14 +2783,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	bool	IsIdle(const Objects::PMobileEntity&v)
 	{
-		if (v->IsHibernating() || v->isAutomated)
+		if (v->IsHibernating() || v->isAutomated || v->IsSleeping())
 			return false;
 		if (v->myTasks.IsNotEmpty())
 		{
 			return false;
 		}
-		if (!v->IsSleeping())
-			return true;
 		//if (v->GetOperationSpeed(Objects::Component::Construct))
 		//	return true;
 		//if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsNonAutomatedResourceDetector())
@@ -3346,7 +3344,7 @@ int main( int argc, const char* argv[])
 				TimeLapse::frameDelaySeconds = config.GetFloat("timelapse/frameDelaySeconds",0.2f);
 				TimeLapse::maxCompressionPNG = config.GetBool("timelapse/maxCompressionPNG");
 
-				if (config.GetBool("runtime/soundEnabled",true))
+				if (!RuntimeConfig::aiMode && config.GetBool("runtime/soundEnabled",true))
 				{
 					AudioInterface::Create();
 					AudioInterface::SetMasterVolume(config.GetFloat("runtime/soundVolume",1.f));
