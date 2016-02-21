@@ -223,6 +223,9 @@ namespace Objects
 		{
 			Grid::LCellIdI	cell;
 			int				movementCostsFromRoot=0;
+			#ifdef CLIENT
+				int			customScore=-1;	//!< Custom variable usable by client
+			#endif
 			index_t			predecessor=InvalidIndex;
 
 			MapNode()	{}
