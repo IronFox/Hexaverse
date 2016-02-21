@@ -2699,14 +2699,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	bool	IsIdle(const Objects::PMobileEntity&v)
 	{
-		if (v->IsHibernating() || v->isAutomated)
+		if (v->IsHibernating() || v->isAutomated || v->IsSleeping())
 			return false;
 		if (v->myTasks.IsNotEmpty())
 		{
 			return false;
 		}
-		if (!v->IsSleeping())
-			return true;
 		//if (v->GetOperationSpeed(Objects::Component::Construct))
 		//	return true;
 		//if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsNonAutomatedResourceDetector())
