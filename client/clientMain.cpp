@@ -2703,13 +2703,22 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		//1: if hibernating: NOT IDLE, EVER
 		if (v->IsHibernating())
 			return false;
-		//2: if automated, then some other logic takes care of everything. NOT IDLE, EVER
+		//2: if automated, then some other logic takes care of everything. NOT IDLE
 		if (v->isAutomated)
 			return false;
 
-		//3: if SLEEPING not idle UNLESS the local entity can attack, and has something to attack:
+		//3: if it already IS doing something, anything really, then it is NOT IDLE
+		if (v->myTasks.IsNotEmpty())	//if it already is doing normal vehicle stuff, then it's not IDLE (duh)
+			return false;
+		const Objects::MobileEntityProducer*p =  v->CastToProducer();
+		if (p && p->queue.IsNotEmpty())	//if it's a factory and has any task, then it's not IDLE
+			return false;
+
+
+		//4: if it's SLEEPING then it's not idle, UNLESS the local entity can attack, and has something to attack:
 		if (v->IsSleeping())
 		{
+
 			if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())	//check that its turret can attack, there's ammo for the shot, and it has any shots left this round
 			{
 				bool emp = v->turret->dealsEMPDamage;
@@ -2740,18 +2749,8 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			return false;	//cannot attack or has nothing to attack: NOT IDLE since it is SLEEPING
 		}
 
-		//4: if not sleeping IDLE unless it has tasks of any sorts:
-
-
-		if (v->myTasks.IsNotEmpty())
-			return false;
-
-		const Objects::MobileEntityProducer*p =  v->CastToProducer();
-		if (p && p->queue.IsNotEmpty())
-			return false;
-
-
-		return true;	//has no tasks and is either not a mobile entity producer or has no tasks in that
+		//not sleeping, no tasks, not producing, not automated, not hibernating:
+		return true;	//yes, IDLE
 	}
 
 
@@ -2905,6 +2904,8 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 				}
 		}
 		while (to != from);
+
+		UI::RefreshButtonState();	//just in case
 	}
 
 
