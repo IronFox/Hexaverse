@@ -251,14 +251,27 @@ namespace Objects
 			
 				//VerifyVisibilityNetwork();
 				timeAt = std::max(minTimeOffset,timeAt);
-				if ((location.stackID != cell && !Orbital::NothingHere(cell)))
+				if (location.stackID != cell)
 				{
-					if (failIsFatal)
+					Orbital::PShip s =  Orbital::GetShip(cell);
+					Orbital::PStation st = Orbital::GetStation(cell);
+					if (s || st)
 					{
-						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+String(cell)+") is obstructed by orbital");
-						FATAL__("Critical abort");
+						if (failIsFatal)
+						{
+							LogEvent(EventClass::Preset::fatal,this,"Target cell ("+String(cell)+") is obstructed by orbital");
+							FATAL__("Critical abort");
+						}
+						if (st)
+							return MobilePlacementResult::PlacementFailedPermanentlyObstructed;
+						else
+						{
+							if (!s->HasMotionTasks() || s->ConstructingHere(s->location))
+								return MobilePlacementResult::PlacementFailedPermanentlyObstructed;
+							else
+								return MobilePlacementResult::PlacementFailedTemporarilyObstructed;
+						}
 					}
-					return MobilePlacementResult::PlacementFailedObstructed;
 				}
 				const Grid::LCellIdI old = location;
 

@@ -369,7 +369,9 @@ namespace Objects
 				if (port && port->CastToStructure()->location.stackID == location.stackID)
 				{
 					#ifndef CLIENT
-						LogEvent(EventClass::Preset::operationAborted,this,"Cannot connect to "+port->CastToStructure()->GetNiceName()+": Already connected to "+port->connectedToHub->GetNiceName());
+						Orbital::PHub hub = port->connectedToHub.lock();
+						ASSERT1__(hub,this->GetName());
+						LogEvent(EventClass::Preset::operationAborted,this,"Cannot connect to "+port->CastToStructure()->GetNiceName()+": Already connected to "+hub->GetNiceName());
 					#endif
 					return false;
 				}

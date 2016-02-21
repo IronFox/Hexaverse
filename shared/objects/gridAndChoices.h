@@ -99,6 +99,7 @@ namespace Objects
 	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
 	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
 
+	bool			NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient);
 
 
 	inline float	ExplosionTime(float size)
@@ -153,7 +154,14 @@ namespace Objects
 	void			InsertIntoGrid(const PMobileEntity&,const Grid::LCellIdI&location);
 
 
-	inline bool		Failed(MobilePlacementResult rs)	{return rs == MobilePlacementResult::PlacementFailedHarmfulOrBlocked || rs == MobilePlacementResult::PlacementFailedMobileDestroyed || rs == MobilePlacementResult::PlacementFailedObstructed;}
+	inline bool		Failed(MobilePlacementResult rs)
+					{
+						return rs == MobilePlacementResult::PlacementFailedHarmfulOrBlocked
+							|| rs == MobilePlacementResult::PlacementFailedMobileDestroyed
+							|| rs == MobilePlacementResult::PlacementFailedTemporarilyObstructed
+							|| rs == MobilePlacementResult::PlacementFailedPermanentlyObstructed
+							;
+					}
 
 
 
@@ -243,6 +251,9 @@ namespace Objects
 		{
 			Grid::LCellIdI	cell;
 			int				movementCostsFromRoot=0;
+			#ifdef CLIENT
+				int			customScore=-1;	//!< Custom variable usable by client
+			#endif
 			index_t			predecessor=InvalidIndex;
 
 			MapNode()	{}

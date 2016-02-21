@@ -37,6 +37,8 @@ namespace Objects
 	*/
 	class Structure : public WorldEntity
 	{
+	public:
+		struct StrongConnection;
 	private:
 		/*
 		New concept:
@@ -46,6 +48,11 @@ namespace Objects
 		static void					ChangeStructCount(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime);
 		static void					CommonRegisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
 		static void					CommonUnregisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
+
+		bool						RemoveConnectionTo(const PStructure&, bool wireless);
+		bool						RemoveConnectionTo(Structure*, bool wireless);
+		bool						RemoveConnection(const StrongConnection&);
+
 
 	protected:
 		typedef WorldEntity			Super;
@@ -129,16 +136,34 @@ namespace Objects
 		*/
 		//TIntRange<UINT32>			compiledSection;
 	
+		struct StrongConnection;
 
 		struct Connection
 		{
-			PStructure				structure;
+			WStructure				structure;
 			bool					wireless=false;
 
 			explicit				Connection(const PStructure&p, bool wireless=false):structure(p),wireless(wireless)	{}
 			/**/					Connection()	{}
+			/**/					Connection(const StrongConnection&);
 
-			bool					operator==(const Connection&other) const {return structure == other.structure && wireless == other.wireless;}
+			bool					operator==(const Connection&other) const {return structure.lock() == other.structure.lock() && wireless == other.wireless;}
+			bool					operator==(const StrongConnection&other) const;
+		};
+
+		struct StrongConnection
+		{
+			PStructure				structure;
+			bool					wireless=false;
+
+			explicit				StrongConnection(const PStructure&p, bool wireless=false):structure(p),wireless(wireless)	{}
+			explicit				StrongConnection(const Connection&c) : structure(c.structure.lock()),wireless(c.wireless)	{}
+
+			/**/					StrongConnection()	{}
+
+			bool					operator==(const Connection&other) const {return structure == other.structure.lock() && wireless == other.wireless;}
+			bool					operator==(const StrongConnection&other) const {return structure == other.structure && wireless == other.wireless;}
+			bool					IsEmpty() const {return !structure;}
 		};
 
 		/**
@@ -162,16 +187,17 @@ namespace Objects
 		#endif
 
 		virtual void				VisitAllConnected(const std::function<void(const Connection&)>&visitor) const;
-		bool						IsConnectedTo(const Objects::PStructure&other)	const;
-		bool						IsWiredTo(const Objects::PStructure&other)	const;
-		bool						IsWiredToAnything() const;
-
 
 		/**
 		Updates the internal system and inverse matrices. Usually not necessary unless the structure somehow relocated
 		*/
 		void						UpdateAutomaticSystem();
 
+		bool						IsConnectedTo(const PStructure&)	const;
+		bool						IsConnectedTo(const Structure*) const;
+		bool						IsConnectedTo(const StrongConnection&)	const;
+		bool						IsWiredTo(const PStructure&other)	const;
+		bool						IsWiredToAnything() const;
 
 		/**
 		Retrieves a reference to the compound that this structure is part of.
@@ -211,7 +237,7 @@ namespace Objects
 		#endif
 		/**
 		Signals that a new neighbor has been constructed in proximity of the local instance.
-		Typical behavior is to check validity of a connection (via ConnectionPossibleTo()) and then insert the a new link into @a connectedTo
+		Typical behavior is to check validity of a connection (via ConnectionPossible()) and then insert the a new link into @a connectedTo
 		Invokes OnNewConnection() on the local and remote instance, if a new connection was established.
 		@deprecated
 		*/
@@ -227,13 +253,13 @@ namespace Objects
 		Invoked whenever a new direct or wireless connection has been established. Called before the new connection is inserted into @a connectedTo
 		@param acrossHighCell CellId of the high-resolution cell between the local instance and the specified other instance. May be used to detect terrain state. 0 if the new connection is wireless
 		*/
-		virtual void				OnNewConnection(const Connection&, UINT32 acrossHighCell, float atTime) {};
+		virtual void				OnNewConnection(const StrongConnection&, UINT32 acrossHighCell, float atTime) {};
 		/**
 		Signalling method invoked by default implementations of SignalEnvironmentChange() and SignalLostNeighbor()
 		Invoked whenever an existing connection (direct or wireless) has been lost. Called after the connection has been removed from @a connectedTo
 		@param acrossHighCell CellId of the high-resolution cell between the local instance and the specified other instance. May be used to detect terrain state. 0 if the removed connection is wireless
 		*/
-		virtual void				OnConnectionLost(const Connection&, UINT32 acrossHighCell, float atTime) {};
+		virtual void				OnConnectionLost(const StrongConnection&, UINT32 acrossHighCell, float atTime) {};
 		/**
 		Updates possible connections, and checks if the building survives the terra-forming operation
 		*/
@@ -243,7 +269,7 @@ namespace Objects
 		@param other Pointer to the neighboring structure. Must be an immediate neighbor, but can be one level above or below the local instance
 		@param acrossHighCell CellId of the high-resolution cell between the local instance and the specified other instance. May be used to detect terrain intersections. Invalid/0 when not using hybrid grid
 		*/
-		virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	{ return false; }
+		virtual bool				ConnectionPossible(const StrongConnection&, UINT32 acrossHighCell)	{ return false; }
 		/**
 		Checks if the local structure is currently building anything, and queries its progress
 		@param outProgress Building progress, if any. Remains unchanged if not building
@@ -391,7 +417,7 @@ namespace Objects
 				virtual void			VisitAllCommands(FCommandVisitor visitor) override {foreach (commands,cmd) visitor(*cmd);};
 
 			#endif
-			virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
+			virtual bool				ConnectionPossible(const StrongConnection&, UINT32 acrossHighCell)	override	{return true;}
 
 
 
@@ -559,8 +585,8 @@ namespace Objects
 
 
 		//Structure overrides:
-		virtual void				OnNewConnection(const Connection&, UINT32 acrossHighCell, float atTime) override;
-		virtual void				OnConnectionLost(const Connection&, UINT32 acrossHighCell, float atTime) override;
+		virtual void				OnNewConnection(const StrongConnection&, UINT32 acrossHighCell, float atTime) override;
+		virtual void				OnConnectionLost(const StrongConnection&, UINT32 acrossHighCell, float atTime) override;
 		virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) override;
 
 
@@ -741,7 +767,7 @@ namespace Objects
 			bool					SetEnabled(bool b, float&atTime, bool refreshCompounds=true, force_t force=EnableIfPossible, bool signalStructure=true);
 			void					SetEnabledOverride(bool b, bool registerChange=true);
 		#else
-			void					ApplyEnableChangeFromServer(bool b);
+			void					ApplyEnableChangeFromServer(bool b,bool temporary=false);
 		#endif
 
 		bool						IsEnabled() const {return isEnabled;}
@@ -772,9 +798,10 @@ namespace Objects
 		/**
 		Checks whether or not the local structure could be enabled at this time.
 		Returns true, if it already is, otherwise checks whether the local compound resource vector can supply the local structure.
-		Balancing is not performed. No changes are performed on any compound to retrieve the result.
+		Can't be const because extensive check temporarly enables the local structure.
+		@param ignoreCanEnable If set, CouldEnable() will ignore the result of the local CanEnable() method. This can be useful when determining whether a structure is idle
 		*/
-		bool						CouldEnable() const;
+		bool						CouldEnable(bool ignoreCanEnable=false);
 
 		#ifndef CLIENT
 			static const index_t	FinalLeftoverIteration = 4;	//!< Index of the final iteration during ProcessLeftovers()
@@ -878,7 +905,7 @@ namespace Objects
 			#endif
 
 
-			virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override;
+			virtual bool				ConnectionPossible(const StrongConnection&, UINT32 acrossHighCell)	override;
 			virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override;
 			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override;
 
@@ -894,7 +921,7 @@ namespace Objects
 	class SkyLinkStructure
 	{
 	public:
-		Orbital::PHub					connectedToHub;
+		Orbital::WHub					connectedToHub;
 
 		virtual WorkingStructure*		CastToStructure() = 0;
 		#ifndef CLIENT
@@ -956,6 +983,7 @@ namespace Objects
 
 		#endif
 		#ifdef HAS_WINDOW
+			virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 			{
 				Super::DescribeType(label,descFlags);
@@ -1026,9 +1054,9 @@ namespace Objects
 
 
 		virtual bool				WouldLikeToEnable() const override {return true;}
-		virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override;
-		virtual void				OnNewConnection(const Connection&other, UINT32 acrossHighCell, float atTime) override;
-		virtual void				OnConnectionLost(const Connection&, UINT32 acrossHighCell, float atTime) override;
+		virtual bool				ConnectionPossible(const StrongConnection&, UINT32 acrossHighCell)	override;
+		virtual void				OnNewConnection(const StrongConnection&other, UINT32 acrossHighCell, float atTime) override;
+		virtual void				OnConnectionLost(const StrongConnection&, UINT32 acrossHighCell, float atTime) override;
 		#ifndef CLIENT
 			virtual bool			ConnectsToDifferentOwnership() const override;
 			void					OnLoad();
@@ -1123,8 +1151,8 @@ namespace Objects
 
 		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Fuel] = -FuelCostPerRound; v.level[Resource::Energy] = GetEnergyProduction(); }
 
-		virtual void				OnNewConnection(const Connection&, UINT32 acrossHighCell, float atTime) override;
-		virtual void				OnConnectionLost(const Connection&, UINT32 acrossHighCell, float atTime) override;
+		virtual void				OnNewConnection(const StrongConnection&, UINT32 acrossHighCell, float atTime) override;
+		virtual void				OnConnectionLost(const StrongConnection&, UINT32 acrossHighCell, float atTime) override;
 
 
 		#ifdef HAS_WINDOW
@@ -1237,7 +1265,9 @@ namespace Objects
 		#endif
 		//virtual bool				IsVehiclePlant() const override {return true;}
 		virtual bool				AwaitsUserInteraction() const override;
-
+		#ifdef HAS_WINDOW
+			virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
+		#endif
 
 		//EntityFactory overrides
 		#ifndef CLIENT
@@ -1731,7 +1761,7 @@ namespace Objects
 			virtual int				GetUplinkPriority() const override {return 1000;}
 		#endif
 
-		virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
+		virtual bool				ConnectionPossible(const StrongConnection&, UINT32 acrossHighCell)	override	{return true;}
 
 		#ifndef CLIENT
 
@@ -1776,7 +1806,7 @@ namespace Objects
 
 	extern Buffer0<PStructure>			structures;
 	#ifdef CLIENT
-		typedef std::pair<PSkyLinkStructure,PWorkingStructure>	TLinkReference;
+		typedef std::pair<WSkyLinkStructure,WWorkingStructure>	TLinkReference;
 		extern Buffer0<TLinkReference>		skyLinks;	//also included in structures, but filtered for quicker access
 		extern Buffer0<PPylon>				pylons;		//also included in structures, but filtered for quicker access
 	#endif
@@ -1952,7 +1982,7 @@ namespace Objects
 
 
 	template <typename Derivative>
-		/*virtual override*/ bool				CommonStructure<Derivative>::ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)
+		/*virtual override*/ bool				CommonStructure<Derivative>::ConnectionPossible(const StrongConnection&, UINT32 acrossHighCell)
 		{
 			return true;
 			//return other->location.height == this->location.height;// && dynamic_cast<Mine*>(other.get()) != nullptr;

@@ -5,10 +5,22 @@ v0.5.0
 v0.4.0
 	+ Re-enabled compound system. Vehicles in the vicinity of compounds will implicitly draw from them.
 	+ Added compound visualization to show which compound a structure belongs to and/or which compounds a vehicle will draw from.
-	+ Volumetric spheres highlighting the draw-zones for the required resource of a selected mobile unit.
+	+ Volumetric spheres highlight the draw-zones for the required resource of a selected mobile unit.
 
 v0.3.17
 	+ Analogously to terrain blocks, attack ranges are now shown on water surfaces when manual attacks are issued.
+	+ Added ambient sound for generators.
+	+ Added sounds for artillery shots and turret rotations.
+	+ Added ambient sounds for all three vehicle base types.
+	+ Added ambient sound for mines and factories.
+	+ Added sound for missile attacks.
+	+ Implemented structure placement. Clicking on a construction job now asks for a destination first.
+	+ Pressing shift will allow to repeat the last construction job in a different location.
+	> Improved search behavior of automated surveyors.
+	> Towers now allow backspace-undoing of attack tasks.
+	> Resource view is now enabled by default.
+	> SkyPorts are now considered idle if they have no hub connected, and an empty queue.
+	> Included satellites into the IsIdle() loop.
 	* Fixed save games not persistently memorizing sleep-state of units.
 	* Fixed desert planet type.
 	* Fixed spectator terrain construction.
@@ -110,7 +122,7 @@ v0.3.9		[Nov 20 2015]
 v0.3.8		[Nov 9 2015]
 	+ Added option to undo round-end request.
 	> Auto-savegames are created at the beginning of the animation phase now to reduce noticable delay.
-	* Fixed towers now firing due to self-obstruction.
+	* Fixed towers not firing due to self-obstruction.
 
 v0.3.7		[Nov 8 2015]
 	* Replaced outdated d3dcompiler_43.dll with d3dcompiler_47.dll. On systems running win8.1+ this is not necessary.

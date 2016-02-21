@@ -39,10 +39,14 @@ namespace Logging
 		if (toPeer)
 		{
 			out.message = "[private] "+out.message;
+			out.message.Truncate(out.message.MaxSize);
 			Channels::controlMessage.SendTo(*toPeer,out);
 		}
 		else
+		{
+			out.message.Truncate(out.message.MaxSize);
 			Channels::controlMessage.SendTo(Network::server,out,2);
+		}
 	}
 }
 

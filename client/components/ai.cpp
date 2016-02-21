@@ -2,7 +2,7 @@
 #include "ai.h"
 
 void	SignalDropAllTasks(const Objects::PWorldEntity&v);
-void	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode);
+bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode);
 void	SignalRemoval(const Objects::PWorldEntity&entity);
 void	SignalMarkerCreation(Protocol::Marker&marker);
 void	SignalMarkerDeletion(TUniqueID markerID);

@@ -229,13 +229,17 @@ namespace Objects
 	{
 	public:
 		typedef EntityCommand	Super;
-		PWorldEntity		target;
+		WWorldEntity		target;
 
 		/**/				VisualEntityCommand()	{}
 		/**/				VisualEntityCommand(int2 coords, const String&name, const PWorldEntity&e,   OnExecute f, Check c, bool rasterize=true) : Super(coords,name,f,c),target(e)
 		{
 			if (rasterize)
-				UpdateTexture(target,true);
+			{
+				PWorldEntity e = target.lock();
+				if (e)
+					UpdateTexture(e,true);
+			}
 		}
 
 
@@ -291,7 +295,7 @@ namespace Objects
 	public:
 		typedef VehicleCommand	Super;
 		typedef DeployVehicleCommand	This;
-		PVehicle			vehicle;
+		WVehicle			vehicle;
 
 
 		/**/				This()	{}
@@ -308,7 +312,7 @@ namespace Objects
 		typedef EntityCommand	Super;
 		typedef StructureCommand	This;
 
-		PStructure			structure;
+		WStructure			structure;
 
 		/**/				StructureCommand()	{}
 		/**/				StructureCommand(int2 coords, const String&name, const PStructure&structure,   OnExecute f, Check c) : Super(coords,name,f,c),structure(structure)
@@ -316,7 +320,7 @@ namespace Objects
 			//UpdateTexture(structure);
 		}
 
-		virtual void		RasterizeImage() override	{UpdateTexture(structure,true);}
+		virtual void		RasterizeImage() override	{PStructure s = structure.lock(); if (s) UpdateTexture(s,true);}
 		void				UpdateTexture(const PStructure&structure, bool isPrototype, const float4&backgroundColor = float4(0));
 		static void			UpdateTexture(EntityCommand&target, const PStructure&structure, bool isPrototype, const float4&backgroundColor = float4(0));
 
