@@ -2640,8 +2640,14 @@ namespace Objects
 					s->compoundID = compoundID;
 					network.AppendStructure(s);
 					foreach (s->connectedTo,c)
-						if ((*c)->compoundID == Compound::InvalidNetwork)
-							primary << c->get();
+					{
+						PStructure st = c->lock();
+						if (st)
+						{
+							if (st->compoundID == Compound::InvalidNetwork)
+								primary << st.get();
+						}
+					}
 				}
 				network.Compact();
 			}

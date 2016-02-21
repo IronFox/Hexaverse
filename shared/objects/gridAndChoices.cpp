@@ -1282,7 +1282,7 @@ namespace Objects
 				if (To<Structure>::Cast(e)->IsSkyLinkStructure())
 				{
 					foreach (skyLinks,link)
-						if (link->second == e)
+						if (link->second.lock() == e)
 						{
 							skyLinks.erase(link);
 							break;
