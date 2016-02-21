@@ -416,11 +416,26 @@ namespace Objects
 					t = std::max(t0,t) + timeEpsilon;
 				}
 
-				PMobileEntity v= To<MobileEntity>::DynamicCast(e);
-				if (v)
+				PMobileEntity v;
+				PTower tower;
+				if (e->IsMobile())
+				{
+					v= To<MobileEntity>::Cast(e);
 					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
+					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual of mobile entity, time updated to "+String(t));
+				}
 				else
-					t += timeEpsilon;
+				{
+					tower = To<Tower>::DynamicCast(e);
+					if (tower)
+					{
+						t = tower->timeAt = std::max(tower->timeAt,t) + timeEpsilon;
+						LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual of tower, time updated to "+String(t));
+					}
+					else
+						t += timeEpsilon;
+				}
+
 
 				ASSERT1__(gainedVisualAt.SetNew(e,t),e->id.ToString());
 
@@ -429,6 +444,8 @@ namespace Objects
 
 				if (v)
 					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
+				elif (tower)
+					t = tower->timeAt = std::max(tower->timeAt,t) + timeEpsilon;
 				else
 					t += timeEpsilon;
 				return true;
@@ -466,17 +483,24 @@ namespace Objects
 					t = std::max(t0,t);	//permissive. whatever. seriously
 					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual, time updated to "+String(t));
 				}
-				PMobileEntity v= To<MobileEntity>::DynamicCast(e);
-				//if (v)
-				//	t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
-				//else
-				//	t += timeEpsilon;
-				//	
-				if (v)
+				PMobileEntity v;
+				PTower tower;
+				if (e->IsMobile())
 				{
+					v= To<MobileEntity>::Cast(e);
 					t = v->timeAt = std::max(v->timeAt,t);
-					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual, time updated to "+String(t));
+					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual of mobile entity, time updated to "+String(t));
 				}
+				else
+				{
+					tower = To<Tower>::DynamicCast(e);
+					if (tower)
+					{
+						t = tower->timeAt = std::max(tower->timeAt,t);
+						LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual of tower, time updated to "+String(t));
+					}
+				}
+
 				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),e->id.ToString());
 				seeing.Unset(e);
 				if (signalConnectedClient)
@@ -484,6 +508,8 @@ namespace Objects
 
 				if (v)
 					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
+				elif (tower)
+					t = tower->timeAt = std::max(tower->timeAt,t) + timeEpsilon;
 				else
 					t += timeEpsilon;
 			}
