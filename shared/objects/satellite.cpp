@@ -510,10 +510,22 @@ namespace Objects
 				float distance = std::numeric_limits<float>::max();
 				PSkyHub found;
 				#ifdef CLIENT
-					for (const auto&port : skyLinks)
-						if (port.second->owner == owner && !port.first->connectedToHub.expired())
+					for (index_t i = 0; i < skyLinks.Count(); i++)
+					{
+						//WSkyLinkStructure,WWorkingStructure
+						PSkyLinkStructure link = skyLinks[i].first.lock();
+						PWorkingStructure str = skyLinks[i].second.lock();
+						if (!link || !str)
 						{
-							PSkyHub hub = port.first->connectedToHub.lock();
+							LogEvent(EventClass::Preset::error,this,"Removing lost sky link #"+String(i));
+							skyLinks.Erase(i);
+							i--;
+							continue;
+						}
+						
+						if (str->owner == owner && !link->connectedToHub.expired())
+						{
+							PSkyHub hub = link->connectedToHub.lock();
 							if (hub.get() != this)
 							{
 								float d2 = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
@@ -524,6 +536,7 @@ namespace Objects
 								}
 							}
 						}
+					}
 				#else
 					for (const auto&sat : owner->skyHubs)
 					{
