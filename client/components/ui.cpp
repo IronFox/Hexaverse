@@ -255,7 +255,7 @@
 					Write(changePerRound);
 					textout.color(color * 0.5f + float3(0.5f));
 				}
-			if (max > 0)
+			if (max > 0 || max2 > 0)
 				textout.scale(1.2f,1.2f);
 			if (max > 0)
 			{
@@ -268,12 +268,12 @@
 			}
 			if (max2 > 0)
 			{
-				textout.scale(1.f/0.6f,1.f/0.6f);
 				textout << " +";
 				Write(current2);
 				textout.scale(0.6f,0.6f);
 				textout <<'/';
 				Write(max2);
+				textout.scale(1.f/0.6f,1.f/0.6f);
 			}
 			//textout << max;
 			textout.popState();
