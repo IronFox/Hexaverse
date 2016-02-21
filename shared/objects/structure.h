@@ -46,6 +46,10 @@ namespace Objects
 		static void					CommonRegisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
 		static void					CommonUnregisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
 
+		bool						RemoveConnectionTo(const PStructure&);
+		bool						RemoveConnectionTo(Structure*);
+
+
 	protected:
 		typedef WorldEntity			Super;
 		/**/						Structure():Super(OwnerParameter(),Grid::LCellIdI(0, 0))
@@ -130,7 +134,7 @@ namespace Objects
 		/**
 		List of all structures, the local structure is connected to. Symmetric. The connected structures must have a link back to the local structure.
 		*/
-		Buffer0<PStructure>			connectedTo;
+		Buffer0<WStructure>			connectedTo;
 		#ifdef HAS_WINDOW
 			/**
 			Indicates whether or not the local structure has changed since the last Recompile() call
@@ -155,6 +159,8 @@ namespace Objects
 		*/
 		void						UpdateAutomaticSystem();
 
+		bool						IsConnectedTo(const PStructure&)	const;
+		bool						IsConnectedTo(const Structure*) const;
 
 		/**
 		Retrieves a reference to the compound that this structure is part of.
@@ -657,7 +663,7 @@ namespace Objects
 			bool					SetEnabled(bool b, float atTime, bool refreshCompounds=true, force_t force=EnableIfPossible, bool signalStructure=true);
 			void					SetEnabledOverride(bool b, bool registerChange=true);
 		#else
-			void					ApplyEnableChangeFromServer(bool b);
+			void					ApplyEnableChangeFromServer(bool b,bool temporary=false);
 		#endif
 
 		bool						IsEnabled() const {return isEnabled;}
@@ -688,9 +694,10 @@ namespace Objects
 		/**
 		Checks whether or not the local structure could be enabled at this time.
 		Returns true, if it already is, otherwise checks whether the local compound resource vector can supply the local structure.
-		Balancing is not performed. No changes are performed on any compound to retrieve the result.
+		Can't be const because extensive check temporarly enables the local structure.
+		@param ignoreCanEnable If set, CouldEnable() will ignore the result of the local CanEnable() method. This can be useful when determining whether a structure is idle
 		*/
-		bool						CouldEnable() const;
+		bool						CouldEnable(bool ignoreCanEnable=false);
 
 		#ifndef CLIENT
 			static const index_t	FinalLeftoverIteration = 4;	//!< Index of the final iteration during ProcessLeftovers()
@@ -810,7 +817,7 @@ namespace Objects
 	class SkyLinkStructure
 	{
 	public:
-		PSkyHub						connectedToHub;
+		WSkyHub						connectedToHub;
 
 		virtual WorkingStructure*	CastToStructure() = 0;
 	};
@@ -869,6 +876,7 @@ namespace Objects
 
 		#endif
 		#ifdef HAS_WINDOW
+			virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 			{
 				Super::DescribeType(label,descFlags);
@@ -1146,7 +1154,9 @@ namespace Objects
 		#endif
 		//virtual bool				IsVehiclePlant() const override {return true;}
 		virtual bool				AwaitsUserInteraction() const override;
-
+		#ifdef HAS_WINDOW
+			virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
+		#endif
 
 		//MobileEntityProducer overrides
 		#ifndef CLIENT
@@ -1689,7 +1699,7 @@ namespace Objects
 
 	extern Buffer0<PStructure>			structures;
 	#ifdef HAS_WINDOW
-		typedef std::pair<PSkyLinkStructure,PWorkingStructure>	TLinkReference;
+		typedef std::pair<WSkyLinkStructure,WWorkingStructure>	TLinkReference;
 		extern Buffer0<TLinkReference>		skyLinks;	//also included in structures, but filtered for quicker access
 	#endif
 

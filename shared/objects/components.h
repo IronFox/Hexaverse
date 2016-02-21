@@ -4,6 +4,7 @@
 #ifdef HAS_WINDOW
 	#include "visualCommands.h"
 	#include "geometry.h"
+	#include <al/openal.h>
 //	#include "entity.h"
 #endif
 
@@ -38,18 +39,22 @@ namespace Objects
 
 	CONSTRUCT_ENUMERATION3(TrajectoryType, Artillery, Missile, VerticalBeam);
 
+	inline bool					CursorModeExpectsLeftClick(CursorMode activeCursorMode)
+	{
+		return (
+		activeCursorMode == CursorMode::BuildConnectorChainMode 
+		|| activeCursorMode == CursorMode::BuildRoadChainMode
+		|| activeCursorMode == CursorMode::BuildBridgeMode
+		|| activeCursorMode == CursorMode::BuildWallChainMode
+		|| activeCursorMode == CursorMode::AttackMode 
+		|| activeCursorMode == CursorMode::DigTunnelMode
+		|| activeCursorMode == CursorMode::PlaceStructureMode
+		);
+	}
 
 	#ifdef HAS_WINDOW
 		inline bool					VehicleCanBeDirected()  {return (activeCursorMode == CursorMode::Idle);}
-		inline bool					CursorModeExpectsLeftClick() {
-			return (
-			activeCursorMode == CursorMode::BuildConnectorChainMode 
-			|| activeCursorMode == CursorMode::BuildRoadChainMode
-			|| activeCursorMode == CursorMode::BuildBridgeMode
-			|| activeCursorMode == CursorMode::BuildWallChainMode
-			|| activeCursorMode == CursorMode::AttackMode 
-			|| activeCursorMode == CursorMode::DigTunnelMode
-			);}
+		inline bool					CursorModeExpectsLeftClick() {return CursorModeExpectsLeftClick(activeCursorMode);}
 	#endif
 
 
@@ -331,6 +336,10 @@ namespace Objects
 											baseHealth;			//!< Base health level
 			bool							ignoresVehicleAttacks;
 			THindranceVector				hindrance;
+
+			#ifdef HAS_WINDOW
+				OpenAL::Wave				ambientSound;	//sound used for ambience (25% volume, normal pitch), or motion (100% volume, increased pitch)
+			#endif
 
 			//warning: none is broken in pathfinding
 			CONSTRUCT_ENUMERATION3(Requirement, None, AnyBlock ,Water);

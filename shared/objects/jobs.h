@@ -73,10 +73,11 @@ namespace Objects
 					Delayed,
 					CannotStartAbort
 				};
-
+			
 				enum continue_t
 				{
 					JobDone,
+					JobDelayed,
 					ContinueJob,
 					TerminalFailure,
 					TerminalFailureVehicleDestroyed
@@ -343,8 +344,9 @@ namespace Objects
 					CursorMode		mode;
 
 					/**/					TransferJob():Super(Autocomplete::Always,false)	{}
-					/**/					TransferJob(MobileEntity&v, CursorMode mode) : BaseJob(0,v,false,Autocomplete::Always,false),mode(mode) {}
-					virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft(0,v,false);}
+					/**/					TransferJob(MobileEntity&v, CursorMode mode) : BaseJob(0,v,GetOperationAffinity(),Autocomplete::Always,false),mode(mode) {}
+					virtual void			Restart(const MobileEntity&v) override {Super::ResetMineralsAndRoundsLeft(0,v,GetOperationAffinity());}
+					virtual Component::operation_t	GetOperationAffinity() const {return Component::Construct;}
 
 					virtual String			GetName() const override {return mode == CursorMode::RestockMode ? "Restock from complex/vehicle" : "Transfer to complex/vehicle";}
 					virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)	override;

@@ -6,6 +6,7 @@
 #include "../sphereGrid.h"
 #include "turretBase.h"
 #include <engine/display.h>
+#include <al/openal.h>
 
 
 
@@ -212,6 +213,10 @@ namespace Objects
 		Removes all active smoke trails. May trigger gradual fading in the future
 		*/
 		void	ClearSmokeTrails();
+
+
+
+		OpenAL::WaveBuffer	GetAmbientSoundOf(const String&entityTypeName, ConstName entityType);
 	}
 
 }

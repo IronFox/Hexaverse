@@ -1185,7 +1185,7 @@ namespace Network
 					Dialog::SignalSituationChange();
 				#endif
 				#ifdef _DEBUG
-					LogEvent(EventSignificance::Debug,nullptr,"Got pong from server");
+					//LogEvent(EventSignificance::Debug,nullptr,"Got pong from server");
 				#endif
 			break;
 		}
@@ -1528,16 +1528,16 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 
 		LogEvent(EventClass::Preset::important, nullptr, "Begin round " + String(RuntimeConfig::roundNumber));
 
-		if (gameHasBegun && Animation::AllDone())
-		{
-			OnPlayerControlBegin();
-		}
+
 	}
-	for (const auto&f : Objects::Faction::allKnown)
-	{
-		f->requestedNewRound = false;
-		f->roundChangeNotifications = 0;
-	};
+	if (gameHasBegun)
+		for (const auto&f : Objects::Faction::allKnown)
+		{
+			f->requestedNewRound = false;
+			f->roundChangeNotifications = 0;
+		};
+	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && gameHasBegun && Animation::AllDone())
+		OnPlayerControlBegin();
 	#ifdef HAS_WINDOW
 		Dialog::SignalSituationChange();
 	#endif
@@ -1608,6 +1608,7 @@ void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
 		LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is done thinking");
 		#ifdef HAS_WINDOW
 			UI::RefreshSessionView();
+			UI::RefreshButtonState();
 		#endif
 	}
 }
@@ -1622,6 +1623,7 @@ void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 		LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is thinking some more");
 		#ifdef HAS_WINDOW
 			UI::RefreshSessionView();
+			UI::RefreshButtonState();
 		#endif
 	}
 }

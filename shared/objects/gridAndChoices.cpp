@@ -801,12 +801,7 @@ namespace Objects
 		float h;
 		if (PTurretBase b = entity.GetTurretBase(h))
 		{
-			showArrow = activeCursorMode == CursorMode::BuildConnectorChainMode
-							 || activeCursorMode == CursorMode::BuildRoadChainMode 
-							 || activeCursorMode == CursorMode::BuildWallChainMode 
-							 || activeCursorMode == CursorMode::AttackMode
-							 || activeCursorMode == CursorMode::DigTunnelMode
-							 || activeCursorMode == CursorMode::BuildBridgeMode;
+			showArrow = CursorModeExpectsLeftClick(activeCursorMode);
 			if (showArrow)
 			{
 				arrowFromCell = v ? v->GetLastPointOfOrigin() : entity.location;
@@ -966,8 +961,8 @@ namespace Objects
 
 	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
 	{
-		showArrow = false;
-		hasArrowCellTarget = false;
+		//showArrow = false;		//why were these here...?
+		//hasArrowCellTarget = false;
 
 		movementChoices.Clear();
 		if (entity)
@@ -997,6 +992,35 @@ namespace Objects
 				}
 			#endif
 		#endif
+		#ifdef HAS_WINDOW
+			if (!e->ambientSound.IsCreated())
+			{
+				OpenAL::WaveBuffer wbo = e->GetAmbientSound();
+				//Renderer::GetAmbientSoundOf(e->GetTypeName(),e->GetCTypeName());
+				if (wbo.IsNotEmpty())
+				{
+					e->ambientSound.Create();
+					e->ambientSound.EnqueueWaveBuffer(wbo);
+					e->ambientSound.SetReferenceDistance(3.f,1.5f - (e->IsMobile()? 0.5f : 0.f));
+					static Random random;
+					e->ambientSound.SetPitch(1.f + random.getFloat(-0.02f,0.02f));
+					#ifdef _DEBUG
+						e->ambientSound.name = e->GetName()+".ambient";
+						e->ambientSound.reference = e.get();
+					#endif
+				}
+			}
+
+			if (e->ambientSound.IsCreated())
+			{
+				e->ambientSound.SetPosition(e->GetWorldPosition());
+				e->ambientSound.SetVelocity(float3());
+				e->ambientSound.SetGain(e->GetSoundLevel());
+				e->ambientSound.SetLooping(true);
+				e->ambientSound.Play();
+			}
+		#endif
+
 		bool restored = idMap.IsSet(e->id);
 		if (restored)
 			ASSERT1__(storedMobileEntities.FindAndErase(e),e->GetName());
@@ -1209,6 +1233,10 @@ namespace Objects
 		#ifdef CLIENT
 			if (t != RemovalType::DestroyedInStorage)
 			{
+				#ifdef HAS_WINDOW
+					if (e->ambientSound.IsCreated())
+						e->ambientSound.Stop();
+				#endif
 				#ifndef NO_HIBERNATION
 					UINT32 t = e->GetUplinkTraffic();
 					uplinkTraffic -= t;
@@ -1254,7 +1282,7 @@ namespace Objects
 				if (To<Structure>::Cast(e)->IsSkyLinkStructure())
 				{
 					foreach (skyLinks,link)
-						if (link->second == e)
+						if (link->second.lock() == e)
 						{
 							skyLinks.erase(link);
 							break;

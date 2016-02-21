@@ -171,6 +171,15 @@ namespace Camera
 		}
 	}
 
+	void	Event::Zoom(float outSpeed)
+	{
+		scene.retraction.z *= pow(3.f,-outSpeed);
+		scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
+		scene.UpdateView();
+
+	}
+
+
 
 	void Reset()
 	{

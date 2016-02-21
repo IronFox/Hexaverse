@@ -78,6 +78,15 @@ namespace Objects
 		TVec3<> y, x,z;
 		system.w.xyz = up * Grid::ToRadiusf(float(location.height) /*+ 0.025f*/);
 		z = oldLocation- system.w.xyz;
+
+		#ifdef HAS_WINDOW
+			ambientSound.SetPosition(system.w.xyz);
+			ambientSound.SetVelocity(float3());
+			activitySound.SetPosition(system.w.xyz);
+			activitySound.SetVelocity(float3());
+		#endif
+
+
 		if (Vec::zero(z))
 		{
 			z = float3(1,1,1);
@@ -249,7 +258,10 @@ namespace Objects
 									break;
 									case MobilePlacementResult::PlacementFailedHarmfulOrBlocked:
 										this->ClearAllTasks(true, CLOCATION);
-									case MobilePlacementResult::PlacementFailedObstructed:
+									case MobilePlacementResult::PlacementFailedPermanentlyObstructed:
+										dropRemaining = true;
+										//bleed into next case:
+									case MobilePlacementResult::PlacementFailedTemporarilyObstructed:
 									{
 										LogEvent(EventClass::Preset::operationAborted,this,"Unable to complete movement.");
 										if (health <= 0)
@@ -496,7 +508,7 @@ namespace Objects
 							{
 								if (s->AttackNext(loc,true))
 								{
-									LogEvent(EventSignificance::Debug,s.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString());
+									LogEvent(EventSignificance::Debug,s.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(timeAt));
 									LogEvent(EventSignificance::Important,s.get(),"Auto-targeting moving "+GetNiceName());
 
 									s->Attack(timeAt);
@@ -520,10 +532,11 @@ namespace Objects
 							{
 								if (t->AttackNext(loc,true))
 								{
-									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString());
+									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(timeAt));
 									LogEvent(EventSignificance::Important,t.get(),"Auto-targeting moving "+GetNiceName());
 
 									t->Attack(timeAt);
+									LogEvent(EventSignificance::Debug,t.get(),"t is now "+String(timeAt));
 									if (health <= 0)
 									{
 										doBreak = true;
@@ -686,6 +699,9 @@ namespace Objects
 						switch (job->Continue(*this,myTasks.Peek().GetFocus(location),!hasMoved))
 						{
 							case VehicleJob::BaseJob::ContinueJob:
+							break;
+							case VehicleJob::BaseJob::JobDelayed:
+								constructionRoundCounter --;
 							break;
 							case VehicleJob::BaseJob::JobDone:
 								LogEvent(EventSignificance::Common,this,"Job ended: '"+job->GetName()+"'");
@@ -1446,6 +1462,35 @@ namespace Objects
 		return true;
 	}
 
+
+	bool					MobileEntity::HasMotionTasks() const
+	{
+		if (!HasTasks())
+			return false;
+		foreach (myTasks,t)
+		{
+			if (t->ContainsMovement())
+				return true;
+		}
+		return false;
+	}
+
+
+
+	bool					MobileEntity::ConstructingHere(const Grid::LCellIdI&loc) const
+	{
+		if (!HasTasks())
+			return false;
+		Grid::LCellIdI at = location;
+		foreach (myTasks,t)
+		{
+			if (t->IsJob() && (at == loc || at+1 == loc || at-1 == loc))
+				return true;
+			if (t->ContainsMovement())
+				at = t->foci.GetNewest().target;
+		}
+		return false;
+	}
 
 
 	Grid::LCellIdI			MobileEntity::GetLastPointOfOrigin() const

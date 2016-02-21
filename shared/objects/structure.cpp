@@ -535,6 +535,48 @@ namespace Objects
 		BuildStructureSystem(location,system);
 
 		Mat::invert(system,inverse);
+		#ifdef HAS_WINDOW
+			ambientSound.SetPosition(GetWorldPosition());
+		#endif
+	}
+
+	bool			Structure::RemoveConnectionTo(const PStructure&s)
+	{
+		foreach (connectedTo,c)
+			if (c->lock() == s)
+			{
+				connectedTo.erase(c);
+				return true;
+			}
+		return false;
+	}
+
+	bool			Structure::RemoveConnectionTo(Structure*s)
+	{
+		foreach (connectedTo,c)
+			if (c->lock().get() == s)
+			{
+				connectedTo.erase(c);
+				return true;
+			}
+		return false;
+	}
+
+
+	bool			Structure::IsConnectedTo(const PStructure&s)	const
+	{
+		foreach (connectedTo,c)
+			if (c->lock() == s)
+				return true;
+		return false;
+	}
+
+	bool			Structure::IsConnectedTo(const Structure*s) const
+	{
+		foreach (connectedTo,c)
+			if (c->lock().get() == s)
+				return true;
+		return false;
 	}
 
 
@@ -548,9 +590,17 @@ namespace Objects
 			localMesh.ClearCompletely();
 
 			{
-				for (const auto&c : this->connectedTo)
-				//foreach(this->connectedTo, c)
+				for (index_t i = 0; i < this->connectedTo.Count(); i++)
 				{
+					PStructure c = this->connectedTo[i].lock();
+					if (!c)
+					{
+						LogEvent(EventClass::Preset::error,this,"Removing lost neighbor connection #"+String(i));
+						connectedTo.Erase(i);
+						i--;
+						continue;
+					}
+					
 					if (c->location.stackID > location.stackID)
 						continue;	//only one direction
 
@@ -642,9 +692,15 @@ namespace Objects
 	
 	void	Structure::DisconnectFromNeighborhood(float atTime)
 	{
-		foreach (this->connectedTo,conn)
+		for (index_t i = 0; i < this->connectedTo.Count(); i++)
 		{
-			(*conn)->SignalLostNeighbor(To<Structure>::Cast(shared_from_this()),atTime);
+			PStructure c = this->connectedTo[i].lock();
+			if (!c)
+			{
+				LogEvent(EventClass::Preset::error,this,"DisconnectFromNeighborhood(): Lost neighbor connection #"+String(i));
+				continue;
+			}
+			c->SignalLostNeighbor(To<Structure>::Cast(shared_from_this()),atTime);
 		}
 		this->connectedTo.Clear();
 		#ifdef HAS_WINDOW
@@ -699,14 +755,14 @@ namespace Objects
 					changed = c->changed = Structure::anyChanged = true;
 				#endif
 				c->OnNewConnection(_this, between, atTime);
-				if (!c->connectedTo.Contains(_this))
+				if (!c->IsConnectedTo(_this))
 				{
 					//this can happen when placing new structures and c is a nexus port that changes ownership as a result, and thus reconnects to all existing structures which this is not yet a part of
-					DBG_ASSERT__(!connectedTo.Contains(c));
+					DBG_ASSERT__(!IsConnectedTo(c));
 					connectedTo << c;
 					c->connectedTo << _this;
 					c->OnNewConnection(_this, between, atTime);
-					ASSERT__(c->connectedTo.Contains(_this));
+					ASSERT__(c->IsConnectedTo(_this));
 				}
 				_this->OnNewConnection(c, between, atTime);
 				LogEvent(EventClass::Preset::common,"Connection established between "+GetName()+" and "+c->GetName());
@@ -1198,7 +1254,7 @@ namespace Objects
 		{
 			foreach (connectedTo,conn)
 			{
-				core = To<ReactorCore>::DynamicCast(*conn);
+				core = To<ReactorCore>::DynamicCast(conn->lock());
 				if (core && core->location.height == location.height)
 				{
 					connectedToReactor = core;
@@ -1853,7 +1909,7 @@ namespace Objects
 	
 	/*virtual*/ void				Structure::SignalLostNeighbor(const PStructure&other, float atTime)
 	{
-		if (connectedTo.FindAndErase(other))
+		if (RemoveConnectionTo(other))
 		{
 			LogEvent(EventSignificance::Common,nullptr, "Connection lost between "+GetName()+" and "+other->GetName());
 			#ifdef HYBRID_GRID
@@ -1891,7 +1947,7 @@ namespace Objects
 		auto _this = To<Structure>::Cast(shared_from_this());
 		count_t limit = connectedTo.Count();
 		foreach(neighborhood, candidate)
-			if (!connectedTo.Contains(*candidate))
+			if (!IsConnectedTo(*candidate))
 			{
 				const PStructure c = *candidate;
 				#ifdef HYBRID_GRID
@@ -1917,7 +1973,14 @@ namespace Objects
 
 		for (index_t i = 0; i < limit; i++)
 		{
-			const PStructure c = connectedTo[i];
+			const PStructure c = connectedTo[i].lock();
+			if (!c)
+			{
+				LogEvent(EventClass::Preset::error,this,"SignalEnvironmentChange(): Removing lost neighbor connection #"+String(i));
+				connectedTo.Erase(i);
+				i--;
+				continue;
+			}
 			#ifdef HYBRID_GRID
 				const UINT32 high2 = Grid::low.grid.GetCell((c)->location.stackID).higherEquivalent;
 				const auto&n2 = Grid::high.grid.GetCell(high2).neighborhood;
@@ -1927,7 +1990,7 @@ namespace Objects
 			#endif
 			if (!ConnectionPossibleTo(c, between) || !c->ConnectionPossibleTo(_this,between))
 			{
-				c->connectedTo.FindAndErase(_this);
+				c->RemoveConnectionTo(_this);
 				connectedTo.Erase(i--);
 				limit--;
 				#ifdef HAS_WINDOW
@@ -2027,23 +2090,23 @@ namespace Objects
 
 		/*virtual override*/ void			SkyPort::OnEnabledChange()
 		{
+			PSkyHub hub = connectedToHub.lock();
 			if (!this->IsEnabled())
 			{
-				if (connectedToHub)
+				if (hub)
 				{
 					//LogEvent(EventClass::Preset::operationAborted,this,"Connection to "+connectedTo->GetNiceName()+" lost");
-					connectedToHub->LoseGroundConnection();
+					hub->LoseGroundConnection();
 				}
 			}
 			else
-				if (!connectedToHub)
+				if (!hub)
 				{
-					PSkyHub hub = To<SkyHub>::DynamicCast(GetSatellite(location.stackID));
-					if (hub && hub->owner == owner)
+					PSkyHub otherHub = To<SkyHub>::DynamicCast(GetSatellite(location.stackID));
+					if (otherHub && otherHub->owner == owner)
 					{
-						if (hub->GainGroundConnection(To<SkyPort>::Cast(shared_from_this())))
-							ASSERT__(hub == connectedToHub);
-
+						if (otherHub->GainGroundConnection(To<SkyPort>::Cast(shared_from_this())))
+							ASSERT__(otherHub == connectedToHub.lock());
 					}
 				}
 		}
@@ -2421,7 +2484,11 @@ namespace Objects
 	/*virtual override*/ bool				NexusPort::ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)
 	{
 		#ifndef CLIENT
-			return (connectedTo.IsEmpty() || other->owner == connectedTo.first()->owner);
+			if (connectedTo.IsEmpty())
+				return true;
+			PStructure s = connectedTo.first().lock();
+			ASSERT__(s);
+			return other->owner == s->owner;
 		#else
 			return true;
 		#endif
@@ -2430,6 +2497,7 @@ namespace Objects
 	/*virtual override*/ void				NexusPort::OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
+			Super::OnNewConnection(other,acrossHighCell,atTime);
 			if (owner != other->owner && !RuntimeConfig::loadingPhase)
 			{
 				resistence = ResistenceRounds;
@@ -2439,9 +2507,10 @@ namespace Objects
 		#endif
 	}
 
-	/*virtual override*/ void				NexusPort::OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime)
+	/*virtual override*/ void				NexusPort::OnConnectionLost(const PStructure&other, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
+			Super::OnConnectionLost(other,acrossHighCell,atTime);
 			if (connectedTo.IsEmpty() && owner != Faction::nexus && !RuntimeConfig::loadingPhase)
 			{
 				SetEnabled(false,atTime,false);
@@ -2571,8 +2640,14 @@ namespace Objects
 					s->compoundID = compoundID;
 					network.AppendStructure(s);
 					foreach (s->connectedTo,c)
-						if ((*c)->compoundID == Compound::InvalidNetwork)
-							primary << c->get();
+					{
+						PStructure st = c->lock();
+						if (st)
+						{
+							if (st->compoundID == Compound::InvalidNetwork)
+								primary << st.get();
+						}
+					}
 				}
 				network.Compact();
 			}
@@ -2725,7 +2800,7 @@ namespace Objects
 
 
 	
-	bool						WorkingStructure::CouldEnable() const
+	bool						WorkingStructure::CouldEnable(bool ignoreCanEnable/*=false*/)
 	{
 		if (health <= 0)
 			return false;
@@ -2733,11 +2808,8 @@ namespace Objects
 			return true;
 
 		const Compound&n = GetCompound();
-		FullResourceVector copy = n.total;
-		ResourceVector v, storage,max,empty;
-		this->GetResourceVector(v,storage,max);
-		copy.Include(v,empty,empty);
-		return copy.balance.IsStable();
+		String dummy;
+		return n.CanEnable(this,dummy,ignoreCanEnable);
 	}
 
 
@@ -2817,9 +2889,14 @@ namespace Objects
 			return true;
 		}
 	#else
-		void					WorkingStructure::ApplyEnableChangeFromServer(bool b)
+		void					WorkingStructure::ApplyEnableChangeFromServer(bool b, bool temporary)
 		{
 			isEnabled = b;
+			#ifdef HAS_WINDOW
+				if (!temporary)
+					ambientSound.SetGain(GetSoundLevel());
+			#endif
+
 		}
 
 	#endif

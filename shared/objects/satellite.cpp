@@ -510,10 +510,22 @@ namespace Objects
 				float distance = std::numeric_limits<float>::max();
 				PSkyHub found;
 				#ifdef CLIENT
-					for (const auto&port : skyLinks)
-						if (port.second->owner == owner && port.first->connectedToHub)
+					for (index_t i = 0; i < skyLinks.Count(); i++)
+					{
+						//WSkyLinkStructure,WWorkingStructure
+						PSkyLinkStructure link = skyLinks[i].first.lock();
+						PWorkingStructure str = skyLinks[i].second.lock();
+						if (!link || !str)
 						{
-							PSkyHub hub = port.first->connectedToHub;
+							LogEvent(EventClass::Preset::error,this,"Removing lost sky link #"+String(i));
+							skyLinks.Erase(i);
+							i--;
+							continue;
+						}
+						
+						if (str->owner == owner && !link->connectedToHub.expired())
+						{
+							PSkyHub hub = link->connectedToHub.lock();
 							if (hub.get() != this)
 							{
 								float d2 = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
@@ -524,6 +536,7 @@ namespace Objects
 								}
 							}
 						}
+					}
 				#else
 					for (const auto&sat : owner->skyHubs)
 					{
@@ -549,16 +562,25 @@ namespace Objects
 		{
 			hubs.Clear();
 			#ifdef CLIENT
-				for (const auto&port : skyLinks)
-					if (port.second->owner == owner && port.first->connectedToHub)
+				for (index_t i = 0; i < skyLinks.Count(); i++)
+				{
+					TLinkReference&ref = skyLinks[i];
+					PSkyLinkStructure link = ref.first.lock();
+					PStructure st = ref.second.lock();
+					if (!link || !st)
 					{
-						PSkyHub hub = port.first->connectedToHub;
-						if (hub.get() != this)
-						{
-							hubs.Append().hub = hub;
-							hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
-						}
+						LogEvent(EventClass::Preset::internalError,this, "Link reference lost");
+						skyLinks.Erase(i);
+						i--;
+						continue;
 					}
+					PSkyHub hub = link->connectedToHub.lock();
+					if (hub && hub.get() != this)
+					{
+						hubs.Append().hub = hub;
+						hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
+					}
+				}
 			#else
 				for (const auto&sat : owner->skyHubs)
 				{
@@ -671,14 +693,22 @@ namespace Objects
 			
 			//VerifyVisibilityNetwork();
 			timeAt = std::max(minTimeOffset,timeAt);
-			if ((location.stackID != cell && !NoSatelliteHere(cell)))
+
+			if (location.stackID != cell) 
 			{
-				if (failIsFatal)
+				PSatellite v = GetSatellite(cell);
+				if (v)
 				{
-					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
-					FATAL__("Critical abort");
+					if (failIsFatal)
+					{
+						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
+						FATAL__("Critical abort");
+					}
+					if (!v->HasMotionTasks() || v->ConstructingHere(v->location))
+						return MobilePlacementResult::PlacementFailedPermanentlyObstructed;
+					else
+						return MobilePlacementResult::PlacementFailedTemporarilyObstructed;
 				}
-				return MobilePlacementResult::PlacementFailedObstructed;
 			}
 			const Grid::LCellIdI old = location;
 
@@ -1001,7 +1031,9 @@ namespace Objects
 			if (port && port->CastToStructure()->location.stackID == location.stackID)
 			{
 				#ifndef CLIENT
-					LogEvent(EventClass::Preset::operationAborted,this,"Cannot connect to "+port->CastToStructure()->GetNiceName()+": Already connected to "+port->connectedToHub->GetNiceName());
+					PSkyHub other = port->connectedToHub.lock();
+					ASSERT2__(other,GetName(),port->CastToStructure()->GetName());
+					LogEvent(EventClass::Preset::operationAborted,this,"Cannot connect to "+port->CastToStructure()->GetNiceName()+": Already connected to "+other->GetNiceName());
 				#endif
 				return false;
 			}

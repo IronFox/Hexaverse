@@ -229,7 +229,7 @@ namespace Objects
 	{
 	public:
 		typedef EntityCommand	Super;
-		PSatellite			sat;
+		WSatellite			sat;
 
 		/**/				SatelliteCommand()	{}
 		/**/				SatelliteCommand(int2 coords, const String&name, const PSatellite&sat,   OnExecute f, Check c, bool rasterize=true) : Super(coords,name,f,c),sat(sat)
@@ -288,7 +288,7 @@ namespace Objects
 	public:
 		typedef VehicleCommand	Super;
 		typedef DeployVehicleCommand	This;
-		PVehicle			vehicle;
+		WVehicle			vehicle;
 
 
 		/**/				This()	{}
@@ -305,7 +305,7 @@ namespace Objects
 		typedef EntityCommand	Super;
 		typedef StructureCommand	This;
 
-		PStructure			structure;
+		WStructure			structure;
 
 		/**/				StructureCommand()	{}
 		/**/				StructureCommand(int2 coords, const String&name, const PStructure&structure,   OnExecute f, Check c) : Super(coords,name,f,c),structure(structure)
@@ -313,7 +313,7 @@ namespace Objects
 			//UpdateTexture(structure);
 		}
 
-		virtual void		RasterizeImage() override	{UpdateTexture(structure,true);}
+		virtual void		RasterizeImage() override	{PStructure s = structure.lock(); if (s) UpdateTexture(s,true);}
 		void				UpdateTexture(const PStructure&structure, bool isPrototype, const float4&backgroundColor = float4(0));
 		static void			UpdateTexture(EntityCommand&target, const PStructure&structure, bool isPrototype, const float4&backgroundColor = float4(0));
 

@@ -14,6 +14,7 @@
 #include "visualSelection.h"
 #include "gridAndChoices.h"
 #include "../runtimeConfig.h"
+#include "systems.h"
 
 namespace Camera
 {
@@ -26,7 +27,7 @@ extern Engine::Display<Engine::DirectX11>	display;
 namespace Objects
 {
 
-	bool						resourceView = false,
+	bool						resourceView = true,
 								showHostileRanges = false,
 								showFriendlyRanges = false,
 								objectView = true;
@@ -77,6 +78,19 @@ namespace Objects
 	Buffer0<DX11::InstructionBlock32>	smokeTrails;
 	index_t								selectedSmokeTrail = InvalidIndex;
 
+	OpenAL::WaveBuffer	Renderer::GetAmbientSoundOf(const String&entityTypeName, ConstName _entityType)
+	{
+		index_t key = (index_t)_entityType;
+		static IndexTable<OpenAL::Wave>	waveTable;
+		OpenAL::WaveBuffer result;
+		if (waveTable.Query(key,result))
+			return result;
+		result = OpenAL::Load("resources/objectSounds/"+entityTypeName+".wav");
+		waveTable.Set(key,result);	//don't care if it's empty
+		return result;
+	}
+
+
 	index_t	Renderer::RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory)
 	{
 		index_t result = smokeTrails.Count();
@@ -95,7 +109,6 @@ namespace Objects
 	{
 		selectedSmokeTrail = smokeTrailIndex;
 	}
-
 
 	void	Renderer::ClearSmokeTrails()
 	{
@@ -510,7 +523,7 @@ namespace Objects
 		display.SetObjectMatrix(s.system);
 	}
 
-	static void _RenderSimpleLocated(Structure&s)
+	static void _RenderSimpleLocated(Structure&s, const TMatrix4<>&system)
 	{
 		display.Render(*s.localizableShape, true);
 
@@ -519,7 +532,7 @@ namespace Objects
 		PTurretBase b = s.GetTurretBase(zOffset);
 		if (b)
 		{
-			Renderer::RenderScaledComponent(s.system, zOffset, 2.f, *b->turret, b->turretAngleX, b->turretAngleY);
+			Renderer::RenderScaledComponent(system, zOffset, 2.f, *b->turret, b->turretAngleX, b->turretAngleY);
 		}
 	}
 
@@ -528,7 +541,7 @@ namespace Objects
 		_Locate(s);
 		if (includeFoundation)
 			display.Render(foundation, true);
-		_RenderSimpleLocated(s);
+		_RenderSimpleLocated(s,s.system);
 	}
 
 	static void _RenderSimpleLocated(Satellite&s, const TMatrix4<>&system)
@@ -687,7 +700,7 @@ namespace Objects
 		}
 		if (s.HasFoundation())
 			display.Render(foundation, true);
-		_RenderSimpleLocated(s);
+		_RenderSimpleLocated(s,s.system);
 
 	}
 
@@ -1466,14 +1479,19 @@ namespace Objects
 		display.SetDepthTest(false,false);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
+
+		TVec4<> selectedTint;
+
 		if (selectedEntity)
 		{
 			const PMobileEntity&v = selectedMobileEntity;
 			//To<Vehicle>::DynamicCast(selectedEntity);
+
 			if (!selectedEntity->unstable)
-				overallTint.Update(float4(red,(float)sin(now*4.0)*0.4f + 0.4f));
+				selectedTint = float4(red,(float)sin(now*4.0)*0.4f + 0.4f);
 			else
-				overallTint.Update(float4(red,flip ? 0 : 0.8f));
+				selectedTint = float4(red,flip ? 0 : 0.8f);
+			overallTint.Update(selectedTint);
 			if (v)
 			{
 				foreach (v->myTasks,t)
@@ -1568,6 +1586,30 @@ namespace Objects
 			}
 		}
 
+		if (showArrow && hasArrowCellTarget)
+		{
+			if (activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
+			{
+				display.SetDepthTest(true,true);
+				bool includeFoundation = false;//activeStructureToPlace->HasFoundation();	<- is correct but job visualization doesn't use foundations
+				display.LinkShader(jobShader,false,true);
+					TMatrix4<> sys;
+					BuildStructureSystem(arrowCellTarget,sys);
+					display.SetObjectMatrix(sys);
+					overallTint.Update(noTint);	//all zero tint makes shapes invisible
+					if (includeFoundation)
+						display.Render(foundation, true);
+					_RenderSimpleLocated(*activeStructureToPlace,sys);
+					display.SetObjectMatrix(sys);
+					overallTint.Update(float4(selectedTint.rgb,selectedTint.a * 0.5f + 0.5f));
+					if (includeFoundation)
+						display.Render(foundation, true);
+					_RenderSimpleLocated(*activeStructureToPlace,sys);
+				display.UnlockShader();
+				display.SetObjectMatrix(Matrix<>::eye4);
+			}
+		}
+
 		if (smokeTrails.IsNotEmpty())
 		{
 			display.SetDepthTest(true,false);
@@ -1654,8 +1696,10 @@ namespace Objects
 
 		foreach(skyLinks, _s)
 		{
-			const PSkyLinkStructure&link = _s->first;
-			const PWorkingStructure&ws = _s->second;
+			const PSkyLinkStructure link = _s->first.lock();
+			const PWorkingStructure ws = _s->second.lock();
+			if (!link || !ws)
+				continue;
 			if (ws->location.stackID < 12)
 				nexusSet[ws->location.stackID] = true;
 
@@ -1663,13 +1707,14 @@ namespace Objects
 			{
 				bool render = false;
 				int h1;
-				if (link->connectedToHub)
+				PSkyHub hub = link->connectedToHub.lock();
+				if (hub)
 				{
 					render = true;
 
 					beamBottomColor.Update(float4(0.5,0.6,1.0,2.5));
 					beamTopColor.Update(float4(0.5,0.6,1.0,2.5));
-					h1 = link->connectedToHub->location.height;
+					h1 = hub->location.height;
 
 				}
 				else
@@ -2033,6 +2078,9 @@ namespace Objects
 			//fbo.Clear();
 			return fbo.GetColorTarget();
 		}
+
+
+
 	}
 }
 

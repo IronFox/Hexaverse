@@ -306,8 +306,18 @@ namespace Objects
 
 
 
+
 		Grid::LCellIdI			GetLastPointOfOrigin() const;
 		Grid::LCellIdI			GetPrevPointOfOrigin() const;
+		/**
+		Checks whether or not the local entity has any constructing jobs queued for the specified location
+		*/
+		bool					ConstructingHere(const Grid::LCellIdI&loc) const;
+		/**
+		Checks whether or not any of the queued tasks involves moving away from the current location.
+		This does not include any automatic movements performed at the end of a construction job
+		*/
+		bool					HasMotionTasks() const;
 
 		#ifdef CLIENT
 			void				Relocate(const Grid::LCellIdI&newLocation, bool updateSystem);

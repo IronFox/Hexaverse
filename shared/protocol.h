@@ -1770,7 +1770,7 @@ namespace Protocol
 	)
 	
 	NETSTRUCT3(StandardJob
-		, NET(TUniqueID), id
+		, NET(TUniqueID), ownerID
 		, NET(ConstName), jobName
 		, NET(ConstName), parameterName
 		)
