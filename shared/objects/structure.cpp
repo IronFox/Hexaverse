@@ -115,6 +115,13 @@ namespace Objects
 	}
 
 
+	bool					Structure::Connection::operator==(const StrongConnection&other) const
+	{
+		return structure.lock() == other.structure && wireless == other.wireless;
+	}
+
+	Structure::Connection::Connection(const StrongConnection&c):structure(c.structure),wireless(c.wireless)	{}
+
 
 
 	/*static*/ String				Structure::ToString(placement_t p)
@@ -542,6 +549,66 @@ namespace Objects
 		#endif
 	}
 
+	bool			Structure::RemoveConnection(const StrongConnection&c2)
+	{
+		foreach (connectedTo,c)
+			if (*c == c2)
+			{
+				connectedTo.erase(c);
+				return true;
+			}
+		return false;
+	}
+
+
+	bool			Structure::RemoveConnectionTo(const PStructure&s, bool wireless)
+	{
+		foreach (connectedTo,c)
+			if (c->structure.lock() == s && c->wireless == wireless)
+			{
+				connectedTo.erase(c);
+				return true;
+			}
+		return false;
+	}
+
+	bool			Structure::RemoveConnectionTo(Structure*s, bool wireless)
+	{
+		foreach (connectedTo,c)
+			if (c->structure.lock().get() == s && c->wireless == wireless)
+			{
+				connectedTo.erase(c);
+				return true;
+			}
+		return false;
+	}
+
+
+	bool			Structure::IsConnectedTo(const PStructure&s)	const
+	{
+		foreach (connectedTo,c)
+			if (c->structure.lock() == s)
+				return true;
+		return false;
+	}
+
+	bool			Structure::IsConnectedTo(const Structure*s) const
+	{
+		foreach (connectedTo,c)
+			if (c->structure.lock().get() == s)
+				return true;
+		return false;
+	}
+
+	bool			Structure::IsConnectedTo(const StrongConnection&c2)	const
+	{
+		foreach (connectedTo,c)
+			if (*c == c2)
+				return true;
+		return false;
+	}
+
+
 
 	#ifdef HAS_WINDOW
 	
@@ -553,11 +620,21 @@ namespace Objects
 			localMesh.ClearCompletely();
 
 			{
-				for (const auto&conn : this->connectedTo)
+				for (index_t i = 0; i < this->connectedTo.Count(); i++)
 				{
+					Connection&conn = this->connectedTo[i];
+					PStructure s = conn.structure.lock();
+					if (!s)
+					{
+						LogEvent(EventClass::Preset::error,this,"Removing lost neighbor connection #"+String(i));
+						connectedTo.Erase(i);
+						i--;
+						continue;
+					}
+					
 					if (conn.wireless)
 						continue;
-					const auto&c = conn.structure;
+					const auto&c = s;
 					if (c->location.stackID > location.stackID)
 						continue;	//only one direction
 
@@ -649,9 +726,15 @@ namespace Objects
 	
 	void	Structure::DisconnectFromNeighborhood(float&atTime)
 	{
-		foreach (this->connectedTo,conn)
+		for (index_t i = 0; i < this->connectedTo.Count(); i++)
 		{
-			conn->structure->SignalLostNeighbor(To<Structure>::Cast(shared_from_this()),atTime);
+			PStructure c = this->connectedTo[i].structure.lock();
+			if (!c)
+			{
+				LogEvent(EventClass::Preset::error,this,"DisconnectFromNeighborhood(): Lost neighbor connection #"+String(i));
+				continue;
+			}
+			c->SignalLostNeighbor(To<Structure>::Cast(shared_from_this()),atTime);
 		}
 		this->connectedTo.Clear();
 		#ifdef HAS_WINDOW
@@ -698,11 +781,11 @@ namespace Objects
 			#else
 				UINT32 between = 0;
 			#endif
-			Connection	connectionToThis(_this);
-			Connection	connectionToThat(c);
+			StrongConnection	connectionToThis(_this);
+			StrongConnection	connectionToThat(c);
 			if (ConnectionPossible(connectionToThat, between) && c->ConnectionPossible(connectionToThis, between))
 			{
-				if (!c->connectedTo.Contains(connectionToThis))
+				if (!c->IsConnectedTo(connectionToThis))
 				{
 					//this can happen when placing new structures and c is a nexus port that changes ownership as a result, and thus reconnects to all existing structures which this is not yet a part of
 					c->OnNewConnection(connectionToThis, between, atTime);
@@ -728,19 +811,10 @@ namespace Objects
 		return false;
 	}
 
-
-	bool	Structure::IsConnectedTo(const Objects::PStructure&other)	const
-	{
-		foreach (connectedTo,c)
-			if (c->structure == other)
-				return true;
-		return false;
-	}
-
 	bool	Structure::IsWiredTo(const Objects::PStructure&other)	const
 	{
 		foreach (connectedTo,c)
-			if (c->structure == other && !c->wireless)
+			if (c->structure.lock() == other && !c->wireless)
 				return true;
 		return false;
 	}
@@ -770,8 +844,8 @@ namespace Objects
 		#endif
 			if (other.get() != this && Vec::quadraticDistance(GetWorldPosition(),other->GetWorldPosition()) < r2)
 			{
-				other->OnNewConnection(Connection(_this,true), 0, atTime);
-				_this->OnNewConnection(Connection(other,true), 0, atTime);
+				other->OnNewConnection(StrongConnection(_this,true), 0, atTime);
+				_this->OnNewConnection(StrongConnection(other,true), 0, atTime);
 				connectedTo << Connection(other,true);
 				other->connectedTo << Connection(_this,true);
 				LogEvent(EventSignificance::Common,this, "Wireless Connection established to "+other->GetName());
@@ -1250,7 +1324,7 @@ namespace Objects
 		return CanPlace;
 	}
 
-	/*virtual override*/ void				Generator::OnNewConnection(const Connection&other, UINT32 acrossHighCell, float atTime)
+	/*virtual override*/ void				Generator::OnNewConnection(const StrongConnection&other, UINT32 acrossHighCell, float atTime)
 	{
 		Super::OnNewConnection(other,acrossHighCell,atTime);
 		if (connectedToReactor.expired() && !other.wireless && other.structure->location.height == location.height)
@@ -1266,17 +1340,17 @@ namespace Objects
 		}
 	}
 
-	/*virtual override*/ void				Generator::OnConnectionLost(const Connection&s, UINT32 acrossHighCell, float atTime)
+	/*virtual override*/ void				Generator::OnConnectionLost(const StrongConnection&c, UINT32 acrossHighCell, float atTime)
 	{
-		Super::OnConnectionLost(s,acrossHighCell,atTime);
+		Super::OnConnectionLost(c,acrossHighCell,atTime);
 		PReactorCore core = connectedToReactor.lock();
-		if (core == s.structure || !core)
+		if (core == c.structure || !core)
 		{
 			foreach (connectedTo,conn)
 			{
 				if (conn->wireless)
 					continue;
-				core = To<ReactorCore>::DynamicCast(conn->structure);
+				core = To<ReactorCore>::DynamicCast(conn->structure.lock());
 				if (core && core->location.height == location.height)
 				{
 					connectedToReactor = core;
@@ -1327,7 +1401,7 @@ namespace Objects
 
 
 
-	/*virtual override*/ void				VehicleStore::OnNewConnection(const Connection&c, UINT32 acrossHighCell, float atTime)
+	/*virtual override*/ void				VehicleStore::OnNewConnection(const StrongConnection&c, UINT32 acrossHighCell, float atTime)
 	{
 		Super::OnNewConnection(c,acrossHighCell,atTime);
 
@@ -1360,7 +1434,7 @@ namespace Objects
 
 
 	}
-	/*virtual override*/ void				VehicleStore::OnConnectionLost(const Connection&c, UINT32 acrossHighCell, float atTime)
+	/*virtual override*/ void				VehicleStore::OnConnectionLost(const StrongConnection&c, UINT32 acrossHighCell, float atTime)
 	{
 		Super::OnConnectionLost(c,acrossHighCell,atTime);
 		if (c.wireless)
@@ -1938,8 +2012,17 @@ namespace Objects
 		atTime += timeEpsilon;
 		for (index_t i = 0; i < connectedTo.Count(); i++)
 		{
-			const Connection&conn = connectedTo[i];
-			if (conn.structure != other)
+			StrongConnection conn = StrongConnection(connectedTo[i]);
+			const PStructure&s = conn.structure;
+			if (!s)
+			{
+				LogEvent(EventClass::Preset::error,this,"DisconnectFromNeighborhood(): Lost neighbor connection #"+String(i));
+				connectedTo.Erase(i);
+				i--;
+				continue;
+			}
+
+			if (s != other)
 				continue;
 
 			LogEvent(EventSignificance::Common,this, String(conn.wireless ? "Wireless connection":"Direct connection")+" lost to "+other->GetName());
@@ -1992,8 +2075,8 @@ namespace Objects
 				#else
 					UINT32 between = 0;
 				#endif
-				Connection	connectionToThat(c),
-							connectionToThis(_this);
+				StrongConnection	connectionToThat(c),
+									connectionToThis(_this);
 				if (ConnectionPossible(connectionToThat, between) && c->ConnectionPossible(connectionToThis,between))
 				{
 					OnNewConnection(connectionToThat, between,atTime);
@@ -2013,7 +2096,14 @@ namespace Objects
 			const auto&connection = connectedTo[i];
 			if (connection.wireless)
 				continue;
-			const PStructure c = connection.structure;
+			const PStructure c = connection.structure.lock();
+			if (!c)
+			{
+				LogEvent(EventClass::Preset::error,this,"SignalEnvironmentChange(): Removing lost neighbor connection #"+String(i));
+				connectedTo.Erase(i);
+				i--;
+				continue;
+			}
 			#ifdef HYBRID_GRID
 				const UINT32 high2 = Grid::low.grid.GetCell((c)->location.stackID).higherEquivalent;
 				const auto&n2 = Grid::high.grid.GetCell(high2).neighborhood;
@@ -2021,25 +2111,19 @@ namespace Objects
 			#else
 				UINT32 between = 0;
 			#endif
-			Connection	connectionToThat(c),
-						connectionToThis(_this);
+			StrongConnection	connectionToThat(c),
+								connectionToThis(_this);
 
 			if (!ConnectionPossible(connectionToThat, between) || !c->ConnectionPossible(connectionToThis,between))
 			{
-				
-				foreach (c->connectedTo,cc)
-					if (!cc->wireless && cc->structure == _this)
-					{
-						c->connectedTo.erase(cc);
-						break;
-					}
+				c->RemoveConnection(connectionToThis);
 				connectedTo.Erase(i--);
 				limit--;
 				#ifdef HAS_WINDOW
 					c->changed = changed = anyChanged = true;
 				#endif
-				OnConnectionLost(Connection(c), between,atTime);
-				c->OnConnectionLost(Connection(_this),between,atTime);
+				OnConnectionLost(connectionToThat, between,atTime);
+				c->OnConnectionLost(connectionToThis,between,atTime);
 				LogEvent(EventSignificance::Common,nullptr, "Connection lost between "+GetName()+" and "+c->GetName());
 
 			}
@@ -2133,23 +2217,23 @@ namespace Objects
 
 		/*virtual override*/ void			SkyPort::OnEnabledChange()
 		{
+			PSkyHub hub = connectedToHub.lock();
 			if (!this->IsEnabled())
 			{
-				if (connectedToHub)
+				if (hub)
 				{
 					//LogEvent(EventClass::Preset::operationAborted,this,"Connection to "+connectedTo->GetNiceName()+" lost");
-					connectedToHub->LoseGroundConnection();
+					hub->LoseGroundConnection();
 				}
 			}
 			else
-				if (!connectedToHub)
+				if (!hub)
 				{
-					PSkyHub hub = To<SkyHub>::DynamicCast(GetSatellite(location.stackID));
-					if (hub && hub->owner == owner)
+					PSkyHub otherHub = To<SkyHub>::DynamicCast(GetSatellite(location.stackID));
+					if (otherHub && otherHub->owner == owner)
 					{
-						if (hub->GainGroundConnection(To<SkyPort>::Cast(shared_from_this())))
-							ASSERT__(hub == connectedToHub);
-
+						if (otherHub->GainGroundConnection(To<SkyPort>::Cast(shared_from_this())))
+							ASSERT__(otherHub == connectedToHub.lock());
 					}
 				}
 		}
@@ -2527,19 +2611,26 @@ namespace Objects
 
 
 	
-	/*virtual override*/ bool				NexusPort::ConnectionPossible(const Connection&c, UINT32 acrossHighCell)
+	/*virtual override*/ bool				NexusPort::ConnectionPossible(const StrongConnection&c, UINT32 acrossHighCell)
 	{
 		#ifndef CLIENT
-			return !c.wireless && (connectedTo.IsEmpty() || c.structure->owner == connectedTo.first().structure->owner);
+			if (c.wireless)
+				return false;
+			if (connectedTo.IsEmpty())
+				return true;
+			PStructure s = connectedTo.first().structure.lock();
+			ASSERT__(s);
+			return s && c.structure->owner == s->owner;
 		#else
 			return true;
 		#endif
 	}
 
-	/*virtual override*/ void				NexusPort::OnNewConnection(const Connection&other, UINT32 acrossHighCell, float atTime)
+	/*virtual override*/ void				NexusPort::OnNewConnection(const StrongConnection&other, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
 			Super::OnNewConnection(other,acrossHighCell,atTime);
+
 			if (owner != other.structure->owner && !other.wireless && !RuntimeConfig::loadingPhase)
 			{
 				resistence = ResistenceRounds;
@@ -2549,7 +2640,7 @@ namespace Objects
 		#endif
 	}
 
-	/*virtual override*/ void				NexusPort::OnConnectionLost(const Connection&c, UINT32 acrossHighCell, float atTime)
+	/*virtual override*/ void				NexusPort::OnConnectionLost(const StrongConnection&c, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
 			Super::OnConnectionLost(c,acrossHighCell,atTime);
@@ -2682,8 +2773,14 @@ namespace Objects
 					s->compoundID = compoundID;
 					network.AppendStructure(s);
 					foreach (s->connectedTo,c)
-						if (c->structure->compoundID == Compound::InvalidNetwork)
-							primary << c->structure.get();
+					{
+						PStructure st = c->structure.lock();
+						if (st)
+						{
+							if (st->compoundID == Compound::InvalidNetwork)
+								primary << st.get();
+						}
+					}
 				}
 				network.Compact();
 			}

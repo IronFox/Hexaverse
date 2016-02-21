@@ -191,10 +191,20 @@ namespace Objects
 					if (m.IsSatellite())
 					{
 						#ifdef CLIENT
-							foreach (skyLinks,s)
+							for (index_t i = 0; i < skyLinks.Count(); i++)
 							{
-								if (s->second->owner == m.owner && s->first->connectedToHub)
-									AddCompound(s->second);
+								TLinkReference&ref = skyLinks[i];
+								PSkyLinkStructure link = ref.first.lock();
+								PStructure st = ref.second.lock();
+								if (!link || !st)
+								{
+									LogEvent(EventClass::Preset::internalError,&m, "Link reference lost");
+									skyLinks.Erase(i);
+									i--;
+									continue;
+								}
+								if (st->owner == m.owner && !link->connectedToHub.expired())
+									AddCompound(st);
 							}
 						#else
 							foreach (m.owner->skyHubs,h)
@@ -514,7 +524,10 @@ namespace Objects
 									break;
 									case MobilePlacementResult::PlacementFailedHarmfulOrBlocked:
 										this->ClearAllTasks(true, CLOCATION);
-									case MobilePlacementResult::PlacementFailedObstructed:
+									case MobilePlacementResult::PlacementFailedPermanentlyObstructed:
+										dropRemaining = true;
+										//bleed into next case:
+									case MobilePlacementResult::PlacementFailedTemporarilyObstructed:
 									{
 										LogEvent(EventClass::Preset::operationAborted,this,"Unable to complete movement.");
 										if (health <= 0)
@@ -1714,6 +1727,19 @@ namespace Objects
 			break;
 		}
 		return true;
+	}
+
+
+	bool					MobileEntity::HasMotionTasks() const
+	{
+		if (!HasTasks())
+			return false;
+		foreach (myTasks,t)
+		{
+			if (t->ContainsMovement())
+				return true;
+		}
+		return false;
 	}
 
 

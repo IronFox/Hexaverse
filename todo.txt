@@ -1,10 +1,6 @@
-surveyor that crosses planned paths with another (standing or moving) vehicle should consider that an invalid path
-
-building placement (shift+click etc)
 working structure replacement (replace one enable working structure with another that is better suited to stabilize the compound)
 shadow edge
 
-motions ending in cells occupied by vehicles with no tasks should abort
 
 still possible to have negative compound power level when generator could be enable but isn't? i think this happened when enabling a skyport
 repair vehicle idle if something damaged?
@@ -124,6 +120,9 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+motions ending in cells occupied by vehicles with no tasks should abort
+building placement (shift+click etc)
+surveyor that crosses planned paths with another (standing or moving) vehicle should consider that an invalid path
 remote control: preserve working directory
 smoke trail of last round attacks
 vehicle sentry toggle	// better: vehicles can sleep

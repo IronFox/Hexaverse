@@ -269,6 +269,9 @@ namespace Objects
 		PMobileEntityProducer p = To<MobileEntityProducer>::DynamicCast(e);
 		ASSERT__(p);
 		UINT32 rounds = 0;
+		PSatellite sat = this->sat.lock();
+		if (!sat)
+			return;
 		int price = sat->GetConstructionCost();
 
 		rounds = (unsigned)p->ProductionRounds(price,false);
@@ -296,6 +299,9 @@ namespace Objects
 		PMobileEntityProducer p = To<MobileEntityProducer>::DynamicCast(e);
 		ASSERT__(p);
 		UINT32 rounds = 0,rawRounds = 0;
+		PSatellite sat = this->sat.lock();
+		if (!sat)
+			return;
 		int rawPrice = sat ? sat->GetConstructionCost() : Vehicle::GetPrice(base,turret);
 		int price = (int)std::min(mineralsLeft, (unsigned)rawPrice);
 
@@ -356,6 +362,7 @@ namespace Objects
 	{
 		PVehicleStore p = To<VehicleStore>::DynamicCast(e);
 		ASSERT__(p);
+		PVehicle vehicle = this->vehicle.lock();
 		if (vehicle)
 		{
 			outResult << "Deploy vehicle: "+name;
@@ -371,6 +378,10 @@ namespace Objects
 	{
 		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
 		ASSERT__(v);
+		PStructure structure = this->structure.lock();
+		if (!structure)
+			return;
+
 		int price = structure->GetConstructionCost();
 		UINT32 roundsToJobCompletion = v->GetOperationRounds(price,Component::Construct);
 		//mineralCostLeft = actuallyConsumesMinerals ? mineralCosts : 0;
