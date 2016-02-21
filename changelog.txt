@@ -11,6 +11,7 @@ v0.3.17
 	> Towers now allow backspace-undoing of attack tasks.
 	> Resource view is now enabled by default.
 	> SkyPorts are now considered idle if they have no hub connected, and an empty queue.
+	> Included satellites into the IsIdle() loop.
 	* Fixed save games not persistently memorizing sleep-state of units.
 	* Fixed desert planet type.
 	* Fixed spectator terrain construction.

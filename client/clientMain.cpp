@@ -2699,7 +2699,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	bool	IsIdle(const Objects::PMobileEntity&v)
 	{
-		if (v->IsHibernating() || v->IsSatellite() || v->isAutomated)
+		if (v->IsHibernating() || v->isAutomated)
 			return false;
 		if (v->myTasks.IsNotEmpty())
 		{
@@ -2711,7 +2711,10 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		//	return true;
 		//if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsNonAutomatedResourceDetector())
 		//	return true;
-
+		bool satellite = v->IsSatellite();
+		const Objects::MobileEntityProducer*p =  v->CastToProducer();
+		if (p && p->queue.IsEmpty())
+			return true;
 		if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())
 		{
 			bool emp = v->turret->dealsEMPDamage;
