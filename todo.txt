@@ -1,3 +1,15 @@
+auto relocation fails if some other non-move task immediately follows (e.g. transfer resources)
+potentially undo last task if build job is rejected
+
+The new round button is sometimes not flashing when a round starts and there is nothing to do
+
+Visualization of number of attacks left
+
+still have loss of initial AI world state. easy to reproduce: new planet with ai (all seems good) -> save anywhere -> immediately load -> bamm
+
+water has no bottom cap, and the bounding box/sphere/w/e is sometimes off by a little
+
+
 working structure replacement (replace one enable working structure with another that is better suited to stabilize the compound)
 shadow edge
 
