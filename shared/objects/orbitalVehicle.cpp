@@ -250,7 +250,7 @@ namespace Objects
 				}
 			
 				//VerifyVisibilityNetwork();
-				timeAt = std::max(minTimeOffset,timeAt);
+				SyncTime(minTimeOffset);
 				if (location.stackID != cell)
 				{
 					Orbital::PShip s =  Orbital::GetShip(cell);
@@ -293,7 +293,7 @@ namespace Objects
 						if (constructionRoundCounter)
 						{
 							constructionRoundCounter = 0;
-							RegisterChange(WorldEntity::TasksChanged,timeAt);
+							RegisterChange(WorldEntity::TasksChanged,motionTime);
 						}
 					}
 					Super::HandleMotion(result,signalEvent,old,timeCost);

@@ -379,10 +379,10 @@ namespace Objects
 
 			connectedToLink = to;
 			#ifndef CLIENT
-				timeAt+=timeEpsilon;
-				SignalChange(OrbitalConnectionChanged,timeAt);
 				WorkingStructure*ws = to->CastToStructure();
-				ws->SignalChange(OrbitalConnectionChanged,timeAt);
+				SyncTime(ws->motionTime,timeEpsilon);
+				SignalChange(OrbitalConnectionChanged,motionTime);
+				ws->SignalChange(OrbitalConnectionChanged,motionTime);
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ),this,"Connection to "+ws->GetNiceName()+" established");
 			#endif
 
@@ -402,12 +402,12 @@ namespace Objects
 				#endif
 
 
-				connectedTo.reset();
 				#ifndef CLIENT
-					timeAt+=timeEpsilon;
-					SignalChange(OrbitalConnectionChanged,timeAt);
-					ws->SignalChange(OrbitalConnectionChanged,timeAt);
+					SyncTime(ws->motionTime,timeEpsilon);
+					SignalChange(OrbitalConnectionChanged,motionTime);
+					ws->SignalChange(OrbitalConnectionChanged,motionTime);
 				#endif
+				connectedToLink.reset();
 
 				port->connectedToHub.reset();
 			}

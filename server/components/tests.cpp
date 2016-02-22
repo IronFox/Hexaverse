@@ -128,6 +128,7 @@ namespace Test
 
 	/*virtual override*/ void	Serialization::Run(Random&random)
 	{
+		globalVersionOfCurrentFile = SupportedFileVersion;
 		for (index_t i = 0; i < 3000; i++)
 		{
 			Objects::Marker m;
@@ -616,7 +617,6 @@ namespace Test
 
 		net.TickBegin();
 		net.TickEnd(0);
-
 		generator->SetEnabled(true, t);
 		ASSERT__(generator->IsEnabled());
 		ASSERT__(mine->IsEnabled());

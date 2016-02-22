@@ -1430,6 +1430,8 @@ namespace Animation
 					ASSERT1__(allocatedTarget,targetEntityID.ToString());
 					ApplyState(To<Objects::MobileEntity>::DynamicCast(allocatedTarget),*vehicleState,false,false);
 				}
+				else
+					LogEvent(EventSignificance::NonFatalError,"Unable to update mobile entity "+targetEntityID.ToString()+" at t="+String(t));
 			return Done;
 			case StructureState:
 				allocatedTarget = Objects::GetEntity(targetEntityID);
@@ -1438,6 +1440,8 @@ namespace Animation
 					ASSERT1__(allocatedTarget,targetEntityID.ToString());
 					UpdateState(To<Objects::Structure>::DynamicCast(allocatedTarget),*structureState);
 				}
+				else
+					LogEvent(EventSignificance::NonFatalError,"Unable to structure "+targetEntityID.ToString()+" at t="+String(t));
 			return Done;
 			case Construction:
 			return Done;

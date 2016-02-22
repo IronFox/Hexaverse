@@ -157,19 +157,35 @@ namespace Objects
 			bool					TestIntersection(const Geometry&geo, const TVec3<>&b, const TVec3<>&d, float & distance) const;
 		#endif
 
+
 	private:
 		bool						sleeping = false;	//!< Use SetSleep() instead. Indicates that this entity is asleep. Sleeping entities are not considered in the client-side IsIdle() iteration. Sleeping mobile entities will not execute any jobs
 
 	public:
 		#ifndef CLIENT
 
+			float					motionTime=0.f;		//!< Time (in seconds) into the motion phase to calculate event times
+
 			Random					entityRandom;
 			
 			void					ReSeedRandom();
 
-
+			void					ResetMotionTime()	{motionTime = 0;}
 
 		#endif
+
+		inline void					SyncTime(float&remoteTime, float timeOffset)
+		{
+			#ifndef CLIENT
+				remoteTime = motionTime = std::max(motionTime,remoteTime) + timeOffset;
+			#endif
+		}
+		inline void					SyncTime(float&remoteTime)
+		{
+			#ifndef CLIENT
+				remoteTime = motionTime = std::max(motionTime,remoteTime);
+			#endif
+		}
 
 
 

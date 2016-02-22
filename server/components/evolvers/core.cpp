@@ -65,8 +65,8 @@ namespace Evolver
 			/**/		TMovementReference(const Objects::PMobileEntity&e):TActionReference(e)	{}
 			float		GetInitiative() const {return IsAlive() ? initiativeFactor * float(ref.lock()->GetMovementInitiative()) : -1.f;}
 
-			bool		operator>(const TMovementReference&other) const {return GetInitiative() > other.GetInitiative();}
-			bool		operator<(const TMovementReference&other) const {return GetInitiative() < other.GetInitiative();}
+			bool		operator<(const TMovementReference&other) const {return GetInitiative() > other.GetInitiative();}
+			bool		operator>(const TMovementReference&other) const {return GetInitiative() < other.GetInitiative();}
 		};
 
 		
@@ -196,7 +196,10 @@ namespace Evolver
 			float t = 0.f;
 			CheckMobileSupply(t);
 
-
+			Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
+			{
+				e->ResetMotionTime();
+			});
 
 			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&v)
 			{
@@ -230,7 +233,7 @@ namespace Evolver
 					{
 						LogEvent(EventClass::Preset::commandRejected,v.get(),"Insufficient ammunition. Attacks cancelled");
 						v->EraseFirstTask();
-						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->timeAt);
+						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->motionTime);
 					}
 					//ref.initiative = v->GetAttackInitiative();
 					//ref.attacksLeft = v->CountPossibleAttacks();
@@ -247,7 +250,7 @@ namespace Evolver
 						continue;
 					attackTime = 0;
 					t->BeginAttackPhase();
-					//t->BeginAttackPhase();
+
 					if (t->turret->CanAttack())
 					{
 						if (t->attackQueue.IsEmpty() && !t->FillAttackQueue())
@@ -256,7 +259,7 @@ namespace Evolver
 						{
 							LogEvent(EventClass::Preset::commandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
 							t->attackQueue.Clear();
-							t->RegisterChange(Objects::WorldEntity::TasksChanged,t->timeAt);
+							t->RegisterChange(Objects::WorldEntity::TasksChanged,t->motionTime);
 							continue;
 						}
 
@@ -401,9 +404,9 @@ namespace Evolver
 						#endif
 
 						animationLength = 0.f;
-						Objects::ForeachMobileEntityIncludingStored([&animationLength](const Objects::PMobileEntity&m)
+						Objects::ForeachWorldEntityIncludingStored([&animationLength](const Objects::PWorldEntity&m)
 						{
-							animationLength = std::max(m->timeAt,animationLength);
+							animationLength = std::max(m->motionTime,animationLength);
 						});
 						Game::PerformNewRoundLogic(animationLength);
 						ResetTowerAttackAction(animationLength);

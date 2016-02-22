@@ -288,11 +288,8 @@ namespace Objects
 			ASSERT_EQUAL__(0,ProductionRounds(v,true));
 			v->health = v->GetMaxHealth();	//must set to max here, or positioning will fail
 			t+= timeEpsilon;
-			if (v->IsMobile())
-			{
-				To<MobileEntity>::Cast(v)->timeAt = t;
-				t+= timeEpsilon;
-			}
+			v->motionTime = t;
+			t+= timeEpsilon;
 
 			queue.Erase(0);
 			productionDone = 0;	//must be before ProductionRounds() or calculation will produce invalid results
