@@ -70,8 +70,8 @@ namespace Evolver
 			/**/		TMovementReference(const Objects::PMobileEntity&e):TActionReference(e)	{}
 			float		GetInitiative() const {return IsAlive() ? initiativeFactor * float(ref.lock()->GetMovementInitiative()) : -1.f;}
 
-			bool		operator<(const TMovementReference&other) const {return GetInitiative() > other.GetInitiative();}
-			bool		operator>(const TMovementReference&other) const {return GetInitiative() < other.GetInitiative();}
+			bool		operator>(const TMovementReference&other) const {return GetInitiative() > other.GetInitiative();}
+			bool		operator<(const TMovementReference&other) const {return GetInitiative() < other.GetInitiative();}
 		};
 
 		
