@@ -313,25 +313,7 @@ void	SignalTurretRotation(const Objects::PWorldEntity&e, const TVec3<>&toWorld, 
 	rot.toWorld = toWorld;
 	rot.rotationTime = rotationTime;
 	rot.timestamp.rightNow = false;
-
-	{
-		if (e->IsMobile())
-		{
-			Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
-			rot.timestamp.atTime = v->timeAt;
-		}
-		else
-		{
-			Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
-			if (t)
-				rot.timestamp.atTime = t->timeAt;
-			else
-			{
-				LogEvent(EventClass::Preset::commandRejected,e.get(), "Trying to let incompatible entity attack");
-				return;	
-			}
-		}
-	}
+	rot.timestamp.atTime = e->motionTime;
 
 	foreach (Network::activePlayersAndSpectators,cl)
 	{
@@ -450,25 +432,8 @@ void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, f
 	preciseAttack.traceTo = traceTo;
 	preciseAttack.isAutoAttack = isAutoAttack;
 	preciseAttack.timestamp.rightNow = false;
+	preciseAttack.timestamp.atTime = e->motionTime;
 	
-	{
-		if (e->IsMobile())
-		{
-			Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
-			preciseAttack.timestamp.atTime = v->timeAt;
-		}
-		else
-		{
-			Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
-			if (t)
-				preciseAttack.timestamp.atTime = t->timeAt;
-			else
-			{
-				LogEvent(EventClass::Preset::commandRejected,e.get(), "Incompatible entity attempting attack");
-				return;	
-			}
-		}
-	}
 	LogEvent(EventSignificance::Debug,e.get(),"Commencing attack at t="+String(preciseAttack.timestamp.atTime));
 
 

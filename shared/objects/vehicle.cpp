@@ -354,7 +354,8 @@ namespace Objects
 			}
 			
 			//VerifyVisibilityNetwork();
-			timeAt = std::max(minTimeOffset,timeAt);
+			SyncTime(minTimeOffset);
+
 			if (!Grid::actualWorld.LowCellIsClear(cell))
 			{
 				PHangarStructure s = MobileDestinationStructureHere(cell,*this);
@@ -362,7 +363,7 @@ namespace Objects
 				{
 					PVehicleStore st = To<VehicleStore>::DynamicCast(s);
 					ASSERT1__(st,s->ToEntity().GetName());
-					if (st && st->StoreInPark(To<Vehicle>::Cast(shared_from_this()),timeAt))
+					if (st && st->StoreInPark(To<Vehicle>::Cast(shared_from_this()),motionTime))
 					{
 						return MobilePlacementResult::EnteredStructure;
 					}
@@ -428,9 +429,9 @@ namespace Objects
 						//InsertIntoGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 
 						if (timeCost > 0)
-							SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,timeAt,timeCost);
+							SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,motionTime,timeCost);
 
-						timeAt += timeCost;
+						motionTime += timeCost;
 						InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
 						//RemoveFromGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 					}
@@ -462,7 +463,7 @@ namespace Objects
 					if (constructionRoundCounter)
 					{
 						constructionRoundCounter = 0;
-						RegisterChange(WorldEntity::TasksChanged,timeAt);
+						RegisterChange(WorldEntity::TasksChanged,motionTime);
 					}
 				}
 

@@ -632,7 +632,8 @@ namespace Journal
 				Objects::PStructure s = To<Objects::Structure>::Cast(e);
 				s->CorrectTerrain(false,0);
 			}
-			Objects::InsertConstructed(To<Objects::Structure>::Cast(e),0);
+			float t = 0;
+			Objects::InsertConstructed(To<Objects::Structure>::Cast(e),t);
 
 			if (e->IsWorkingStructure())
 			{
@@ -640,7 +641,7 @@ namespace Journal
 				if (m)
 					m->LinkToCore(0);
 				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(e);
-				ws->SetEnabled(enableWorkingStructure,0,false,Objects::WorkingStructure::ForceEnable,false);
+				ws->SetEnabled(enableWorkingStructure,t,false,Objects::WorkingStructure::ForceEnable,false);
 			}
 		}
 	}
@@ -834,7 +835,8 @@ namespace Journal
 				Objects::PWorkingStructure&ws = To<Objects::WorkingStructure>::Cast(e);
 				if (!ws->IsEnabled())
 				{
-					ws->SetEnabled(true,0.f);
+					float t = 0;
+					ws->SetEnabled(true,t);
 				}
 
 			}
@@ -1747,7 +1749,8 @@ namespace Journal
 
 	/*virtual override*/ void	Round::EnableStructure::Execute(const Objects::PWorldEntity&e) const
 	{
-		Objects::RefreshCompoundCoverageIfNeeded(0);
+		float t = 0;
+		Objects::RefreshCompoundCoverageIfNeeded(t);
 		if (!e->IsWorkingStructure())
 		{
 			throw Round::RoundException(CLOCATION,"Cannot enable '"+e->GetName()+"': Not a working structure");
@@ -1761,7 +1764,7 @@ namespace Journal
 			}
 		#endif
 
-		if (w->SetEnabled(doEnable,0))
+		if (w->SetEnabled(doEnable,t))
 			LogEvent(EventSignificance::Common,e.get(),"Modified enabled-state "+String(doEnable));
 		else
 			throw RoundException(CLOCATION,"Cannot enable structure at this time");

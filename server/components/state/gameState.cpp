@@ -878,8 +878,9 @@ namespace Game
 		Objects::InsertConstructed(port,0);
 //		if (enableNexus)
 		{
-			port->SetEnabled(true,0,false,Objects::WorkingStructure::ForceEnable);
-			Objects::RefreshCompoundCoverageIfNeeded(0);
+			float t = 0;
+			port->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
+			Objects::RefreshCompoundCoverageIfNeeded(t);
 			//ASSERT__(port->IsEnabled());
 		}
 //			const auto&n = Grid::low.grid.GetCell(i).neighborhood;
@@ -1139,16 +1140,17 @@ namespace Game
 				//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,h2-1));
 				}
 
+				float t = 0;
 				for (auto ws : alwaysOn)
 				{
-					ws->SetEnabled(true,0,false,Objects::WorkingStructure::ForceEnable);
+					ws->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
 				}
 				enableNexus = alwaysOn.IsNotEmpty();
 
 
 				if (enableNexus)
 				{
-					port->SetEnabled(true,0,false,Objects::WorkingStructure::ForceEnable);
+					port->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
 
 				}
 

@@ -392,17 +392,18 @@ namespace Test
 		Objects::Compound&net = mine->GetCompound();
 		//Objects::compounds[mine->compoundID];
 
-		generator->SetEnabled(false, 0, false);
-		mine->SetEnabled(false, 0, false);
+		float t = 0;
+		generator->SetEnabled(false, t, false);
+		mine->SetEnabled(false, t, false);
 
-		mineralContainer->SetEnabled(true, 0, false);
-		fuelContainer0->SetEnabled(true, 0, false);
-		fuelContainer1->SetEnabled(false, 0, false);
+		mineralContainer->SetEnabled(true, t, false);
+		fuelContainer0->SetEnabled(true, t, false);
+		fuelContainer1->SetEnabled(false, t, false);
 
 		net.TickBegin();
 		net.TickEnd(0);
 
-		generator->SetEnabled(true, 0);
+		generator->SetEnabled(true, t);
 		ASSERT__(generator->IsEnabled());
 		ASSERT__(mine->IsEnabled());
 
@@ -485,16 +486,17 @@ namespace Test
 		//#endif
 		Objects::Compound&net = mine->GetCompound();
 
-		generator->SetEnabled(false, 0, false);
-		mine->SetEnabled(false, 0, false);
-		plant->SetEnabled(false, 0, false);
+		float t = 0;
+		generator->SetEnabled(false, t, false);
+		mine->SetEnabled(false, t, false);
+		plant->SetEnabled(false, t, false);
 
 
 
 		net.TickBegin();
 		net.TickEnd(0);
 
-		generator->SetEnabled(true, 0);
+		generator->SetEnabled(true, t);
 		ASSERT__(generator->IsEnabled());
 		ASSERT__(mine->IsEnabled());
 		ASSERT__(!plant->IsEnabled());
@@ -605,16 +607,16 @@ namespace Test
 		//#endif
 		Objects::Compound&net = mine->GetCompound();
 
-		generator->SetEnabled(false, 0, false);
-		mine->SetEnabled(false, 0, false);
-		plant->SetEnabled(false, 0, false);
+		float t = 0;
+		generator->SetEnabled(false, t, false);
+		mine->SetEnabled(false, t, false);
+		plant->SetEnabled(false, t, false);
 
 
 
 		net.TickBegin();
 		net.TickEnd(0);
-
-		generator->SetEnabled(true, 0);
+		generator->SetEnabled(true, t);
 		ASSERT__(generator->IsEnabled());
 		ASSERT__(mine->IsEnabled());
 		ASSERT__(!plant->IsEnabled());
