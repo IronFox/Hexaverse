@@ -275,7 +275,7 @@ namespace Objects
 	void			SkyHub::OnConstructionFinished(float&atTime)
 	{
 		Super::OnConstructionFinished(atTime);
-		OffsetTime(atTime);
+		SyncTime(atTime);
 		UpdateConnections();
 	}
 
@@ -693,7 +693,7 @@ namespace Objects
 			}
 			
 			//VerifyVisibilityNetwork();
-			timeAt = std::max(minTimeOffset,timeAt);
+			SyncTime(minTimeOffset);
 
 			if (location.stackID != cell) 
 			{
@@ -727,7 +727,7 @@ namespace Objects
 					if (constructionRoundCounter)
 					{
 						constructionRoundCounter = 0;
-						RegisterChange(WorldEntity::TasksChanged,timeAt);
+						RegisterChange(WorldEntity::TasksChanged,motionTime);
 					}
 				}
 				Super::HandleMotion(result,signalEvent,old,timeCost);
@@ -1012,7 +1012,7 @@ namespace Objects
 			return		//owner->ExtCanSee(target,entityTime)
 					/*&&	*/
 						turret->CanAttack() 
-					&& timeAt <= entityTime 
+					&& motionTime <= entityTime 
 					&& CountPossibleAttacks() > 0 
 					&& ExtCanHit(location,target->location,outTarget)
 					//&& d2 > sqr(turret->explosionRadius)
@@ -1042,10 +1042,10 @@ namespace Objects
 
 		connectedTo = to;
 		#ifndef CLIENT
-			timeAt+=timeEpsilon;
-			SignalChange(OrbitalConnectionChanged,timeAt);
+			motionTime+=timeEpsilon;
+			SignalChange(OrbitalConnectionChanged,motionTime);
 			WorkingStructure*ws = to->CastToStructure();
-			ws->SignalChange(OrbitalConnectionChanged,timeAt);
+			ws->SignalChange(OrbitalConnectionChanged,motionTime);
 			LogEvent(EventSignificance::Common,this,"Connection to "+ws->GetNiceName()+" established");
 		#endif
 
@@ -1067,9 +1067,10 @@ namespace Objects
 
 			connectedTo.reset();
 			#ifndef CLIENT
-				timeAt+=timeEpsilon;
-				SignalChange(OrbitalConnectionChanged,timeAt);
-				ws->SignalChange(OrbitalConnectionChanged,timeAt);
+				SyncTime(ws->motionTime,timeEpsilon);
+				motionTime += timeEpsilon;
+				SignalChange(OrbitalConnectionChanged,motionTime);
+				ws->SignalChange(OrbitalConnectionChanged,motionTime);
 			#endif
 
 			port->connectedToHub.reset();

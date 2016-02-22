@@ -247,7 +247,7 @@ namespace Objects
 			ASSERT_EQUAL__(0,ProductionRounds(v,true));
 			v->health = v->GetMaxHealth();	//must set to max here, or positioning will fail
 			t+= timeEpsilon;
-			v->timeAt = t;
+			v->motionTime = t;
 			t+= timeEpsilon;
 
 			queue.Erase(0);

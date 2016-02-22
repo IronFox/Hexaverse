@@ -1750,7 +1750,8 @@ namespace Journal
 
 	/*virtual override*/ void	Round::EnableStructure::Execute(const Objects::PWorldEntity&e) const
 	{
-		Objects::RefreshCompoundCoverageIfNeeded(0);
+		float t = 0;
+		Objects::RefreshCompoundCoverageIfNeeded(t);
 		if (!e->IsWorkingStructure())
 		{
 			throw Round::RoundException(CLOCATION,"Cannot enable '"+e->GetName()+"': Not a working structure");
@@ -1763,7 +1764,7 @@ namespace Journal
 				ASSERT__(w->compoundID != Objects::Compound::InvalidNetwork);
 			}
 		#endif
-		float t = 0;
+
 		if (w->SetEnabled(doEnable,t))
 			LogEvent(EventSignificance::Common,e.get(),"Modified enabled-state "+String(doEnable));
 		else

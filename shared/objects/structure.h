@@ -1683,10 +1683,9 @@ namespace Objects
 			void					AppendTask(const Grid::LCellIdI&attackTarget);
 		#else
 			Queue<AttackTask>		attackQueue;
-			float					timeAt;
 
 
-			void					BeginAttackPhase()	{timeAt = 0;}
+			void					BeginAttackPhase()	{}
 
 			bool					AttackNext(const Grid::LCellIdI&target, bool autoTarget);
 			bool					ClearTasks();

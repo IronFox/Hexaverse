@@ -901,11 +901,13 @@ namespace FileIO
 			Riff::Chunk*enabled = parent->FindFirst(RID::structureEnabled);
 			ASSERT_NOT_NULL__(enabled);
 			bool isEnabled = *(const bool*)enabled->pointer();
-			float t = 0;
-			if (isEnabled)
-				w->SetEnabled(isEnabled,t,false,Objects::WorkingStructure::ForceEnable,false);
-			else
-				w->SetEnabledOverride(false);
+			{
+				float t =0;
+				if (isEnabled)
+					w->SetEnabled(isEnabled,t,false,Objects::WorkingStructure::ForceEnable,false);
+				else
+					w->SetEnabledOverride(false);
+			}
 			Objects::MobileEntityProducer*p = dynamic_cast<Objects::MobileEntityProducer*>(w);
 	//		Objects::MobileEntityProducer*p = w->ToProducer();
 			//Objects::VehiclePlant*p = dynamic_cast<Objects::VehiclePlant*>(rs.get());
