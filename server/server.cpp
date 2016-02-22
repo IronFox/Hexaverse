@@ -1114,9 +1114,9 @@ namespace ParameterConfig
 	{
 		std::cout << std::endl << "usage: "<<programName<<" ..."<<std::endl;
 		std::cout << "  --load/-l [filename]\tload savegame"<<std::endl;
-		std::cout << "  --loadAuto/-a [number]\tload previously created auto-savegame. number=0 => most recent"<<std::endl;
+		std::cout << "  --loadAuto/-a [number]\tload auto-savegame. number=0 => most recent"<<std::endl;
 		std::cout << "  --offline/-o \tstart offline"<<std::endl;
-		std::cout << "  --port/-p [basePort]\tuse a non-default base port"<<std::endl;
+		std::cout << "  --port/-p [basePort]\tuse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default)"<<std::endl;
 		std::cout << "  --noRemote/-r \tdisable remote control service"<<std::endl;
 		std::cout << "  --test/-t \trun self-tests, then quit"<<std::endl;
 		std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
@@ -1163,6 +1163,7 @@ namespace ParameterConfig
 				elif (!strcmp(arg,"--help"))
 				{
 					PrintHelp();
+					exit(0);
 				}
 				elif (!strcmp(arg,"--world") || !strcmp(arg,"-w"))
 					mode = ExpectWorldID;
