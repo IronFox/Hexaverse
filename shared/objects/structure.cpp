@@ -163,9 +163,6 @@ namespace Objects
 	
 		/*virtual override*/ void Tower::Attack(float&attackTime)
 		{
-			//timeAt = attackTime;
-
-
 			ASSERT__(attackQueue.IsNotEmpty());
 
 			const auto target = attackQueue.Pop();
