@@ -99,7 +99,7 @@ void	SignalNewStructure(const Objects::PStructure&s, float atTime)
 	//if (!cl)
 	//	return;
 
-
+	LogEvent(EventSignificance::Common,s.get(),"Signalling new structure to owner at t="+String(atTime));
 	Protocol::StructureConstruction	w;
 	Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
 	Game::Network::Describe(w,*s,true,timestamp);

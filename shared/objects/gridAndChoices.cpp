@@ -1026,11 +1026,7 @@ namespace Objects
 			ASSERT1__(storedMobileEntities.FindAndErase(e),e->GetName());
 		if (!restored)
 			e->OnConstructionFinished(atTime);
-		#ifdef _DEBUG
-			LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+e->location.ToString());
-		#else
-			LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed"));
-		#endif
+		LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+e->location.ToString()+" at t="+String(atTime));
 		if (!restored)
 		{
 			if (setHealthToFull)
