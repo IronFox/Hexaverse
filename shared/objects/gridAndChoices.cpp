@@ -1297,7 +1297,7 @@ namespace Objects
 			{
 				PMobileEntity v = To<MobileEntity>::Cast(e);
 				#ifdef CLIENT
-					ASSERT__(v->location==v->preAnimationLocation);
+					ASSERT1__(v->location==v->preAnimationLocation,v->GetName());
 					//inequality means that we are in an animation stream right now.
 					//bad stuff happens when we delete now.
 					//must fix timing issues. some deletion event did not have enough temporal
