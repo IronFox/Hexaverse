@@ -2700,6 +2700,9 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	bool	IsIdle(const Objects::PMobileEntity&v)
 	{
 		//okay, clarification:
+		//0: if dead: NOT IDLE (duh)
+		if (v->health <= 0)
+			return false;	//yes, this can happen if badly called
 		//1: if hibernating: NOT IDLE, EVER
 		if (v->IsHibernating())
 			return false;
@@ -2756,6 +2759,8 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	bool	IsIdle(const Objects::PStructure&s)
 	{
+		if (s->health <= 0)
+			return false;
 		#ifndef NO_HIBERNATION
 			if (s->ToHibernating()->IsHibernating())
 				return false;
@@ -2812,7 +2817,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		Objects::PWorldEntity any;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
 		{
-			if (any || !e->isMine)
+			if (any || !e->isMine || e->health <= 0)
 				return;
 			if (e->IsMobile())
 			{
