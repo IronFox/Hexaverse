@@ -660,7 +660,7 @@ namespace Objects
 			@return true if the local structure could be enabled. Failure may happen if CanEnable() returns false and force is set to EnableIfPossible, 
 				or if refreshCompounds is set and the local compounds cannot supply required resources
 			*/
-			bool					SetEnabled(bool b, float atTime, bool refreshCompounds=true, force_t force=EnableIfPossible, bool signalStructure=true);
+			bool					SetEnabled(bool b, float&atTime, bool refreshCompounds=true, force_t force=EnableIfPossible, bool signalStructure=true);
 			void					SetEnabledOverride(bool b, bool registerChange=true);
 		#else
 			void					ApplyEnableChangeFromServer(bool b,bool temporary=false);
@@ -894,7 +894,7 @@ namespace Objects
 
 		//MobileEntityProducer overrides
 		#ifndef CLIENT
-			virtual void			SignalNewProductionEnqueued() override {SetEnabled(true,0);}
+			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 
@@ -1161,8 +1161,8 @@ namespace Objects
 		//MobileEntityProducer overrides
 		#ifndef CLIENT
 			virtual void			OnSleepChange(float&t) override;
-			virtual void			SignalLastProductionDone() override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); SetEnabled(false,0);}
-			virtual void			SignalNewProductionEnqueued() override {SetEnabled(true,0);}
+			virtual void			SignalLastProductionDone() override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); float t = 0; SetEnabled(false,t);}
+			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 
@@ -1599,10 +1599,9 @@ namespace Objects
 			void					AppendTask(const Grid::LCellIdI&attackTarget);
 		#else
 			Queue<AttackTask>		attackQueue;
-			float					timeAt;
 
 
-			void					BeginAttackPhase()	{timeAt = 0;}
+			void					BeginAttackPhase()	{}
 
 			bool					AttackNext(const Grid::LCellIdI&target, bool autoTarget);
 			bool					ClearTasks();

@@ -443,7 +443,7 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual int			GetUplinkTraffic() const override {return 10;}
 		#endif
-		virtual void			OnDestroy(float atTime) override {OffsetTime(atTime); LoseGroundConnection();}
+		virtual void			OnDestroy(float atTime) override {SyncTime(atTime); LoseGroundConnection();}
 		virtual void			OnConstructionFinished(float atTime) override;
 		virtual bool			AwaitsUserInteraction() const override {return MobileEntityProducer::AwaitsUserInteraction();}
 		#ifdef HAS_WINDOW

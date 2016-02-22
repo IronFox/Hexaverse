@@ -497,7 +497,7 @@ namespace Objects
 		PVehicle vh = GetVehicle(cellID);
 		return !vh || vh.get() == v 
 			#ifndef CLIENT
-				|| !v->owner->CanSee(vh,v->timeAt)
+				|| !v->owner->CanSee(vh,v->motionTime)
 			#endif
 		;
 	}
@@ -511,7 +511,7 @@ namespace Objects
 		PSatellite vh = GetSatellite(stackID);
 		return !vh || vh.get() == v
 			#ifndef CLIENT
-				|| !v->owner->CanSee(vh,v->timeAt)
+				|| !v->owner->CanSee(vh,v->motionTime)
 			#endif
 		;
 	}
@@ -979,6 +979,8 @@ namespace Objects
 	{
 		ASSERT1__(!e->isInserted, e->GetName());
 		#ifndef CLIENT
+			e->SyncTime(atTime);
+
 			ASSERT2__(To<Connector>::DynamicCast(e) || NothingBlockingHere(e->location,false),e->GetName(),e->location.ToString());
 			e->ResetAllChange();
 		#else
@@ -1026,11 +1028,7 @@ namespace Objects
 			ASSERT1__(storedMobileEntities.FindAndErase(e),e->GetName());
 		if (!restored)
 			e->OnConstructionFinished(atTime);
-		#ifdef _DEBUG
-			LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+e->location.ToString());
-		#else
-			LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed"));
-		#endif
+		LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+e->location.ToString()+" at t="+String(atTime));
 		if (!restored)
 		{
 			if (setHealthToFull)
@@ -1089,7 +1087,6 @@ namespace Objects
 			v->storedIn.reset();
 		}
 		#ifndef CLIENT
-			v->timeAt = std::max(v->timeAt,atTime);
 			if (restored)
 			{
 				v->owner->RegisterStoredMobileLoss(v);
@@ -1134,7 +1131,7 @@ namespace Objects
 
 
 		#ifndef CLIENT
-			v->timeAt = std::max(v->timeAt,atTime);
+			v->SyncTime(atTime);
 			v->owner->storedMobiles.Append(v);
 		#endif
 	}
@@ -1297,7 +1294,7 @@ namespace Objects
 			{
 				PMobileEntity v = To<MobileEntity>::Cast(e);
 				#ifdef CLIENT
-					ASSERT__(v->location==v->preAnimationLocation);
+					ASSERT1__(v->location==v->preAnimationLocation,v->GetName());
 					//inequality means that we are in an animation stream right now.
 					//bad stuff happens when we delete now.
 					//must fix timing issues. some deletion event did not have enough temporal
@@ -1504,7 +1501,7 @@ namespace Objects
 								if (!NoHostileVehicleHere(cell,v->owner))
 									continue;
 							#else
-								if (!NoHostileVehicleHere(cell,v->owner,v->timeAt))
+								if (!NoHostileVehicleHere(cell,v->owner,v->motionTime))
 									continue;
 							#endif
 					}
@@ -1552,7 +1549,7 @@ namespace Objects
 							if (!NoHostileSatelliteHere(cell,v->owner))
 								continue;
 						#else
-							if (!NoHostileSatelliteHere(cell,v->owner,v->timeAt))
+							if (!NoHostileSatelliteHere(cell,v->owner,v->motionTime))
 								continue;
 						#endif
 				}
