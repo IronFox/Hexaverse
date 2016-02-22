@@ -418,36 +418,16 @@ namespace Objects
 
 				PMobileEntity v;
 				PTower tower;
-				if (e->IsMobile())
-				{
-					v= To<MobileEntity>::Cast(e);
-					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
-					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual of mobile entity, time updated to "+String(t));
-				}
-				else
-				{
-					tower = To<Tower>::DynamicCast(e);
-					if (tower)
-					{
-						t = tower->timeAt = std::max(tower->timeAt,t) + timeEpsilon;
-						LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual of tower, time updated to "+String(t));
-					}
-					else
-						t += timeEpsilon;
-				}
-
+				e->SyncTime(t,timeEpsilon);
+				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual of entity, time updated to "+String(t));
 
 				ASSERT1__(gainedVisualAt.SetNew(e,t),e->id.ToString());
 
 				if (cascade)
 					SignalAppearanceToHostileFaction(shared_from_this(),e,t);
 
-				if (v)
-					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
-				elif (tower)
-					t = tower->timeAt = std::max(tower->timeAt,t) + timeEpsilon;
-				else
-					t += timeEpsilon;
+				e->SyncTime(t,timeEpsilon);
+
 				return true;
 			}
 			return false;
@@ -485,33 +465,14 @@ namespace Objects
 				}
 				PMobileEntity v;
 				PTower tower;
-				if (e->IsMobile())
-				{
-					v= To<MobileEntity>::Cast(e);
-					t = v->timeAt = std::max(v->timeAt,t);
-					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual of mobile entity, time updated to "+String(t));
-				}
-				else
-				{
-					tower = To<Tower>::DynamicCast(e);
-					if (tower)
-					{
-						t = tower->timeAt = std::max(tower->timeAt,t);
-						LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual of tower, time updated to "+String(t));
-					}
-				}
+				e->SyncTime(t,timeEpsilon);
 
 				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),e->id.ToString());
 				seeing.Unset(e);
 				if (signalConnectedClient)
 					SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
 
-				if (v)
-					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
-				elif (tower)
-					t = tower->timeAt = std::max(tower->timeAt,t) + timeEpsilon;
-				else
-					t += timeEpsilon;
+				e->SyncTime(t,timeEpsilon);
 			}
 			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
 

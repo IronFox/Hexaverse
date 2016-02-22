@@ -163,10 +163,6 @@ namespace Objects
 	
 		/*virtual override*/ void Tower::Attack(float&attackTime)
 		{
-			//timeAt = attackTime;
-			attackTime = timeAt = std::max(attackTime,timeAt)+timeEpsilon;
-
-
 			ASSERT__(attackQueue.IsNotEmpty());
 
 			const auto target = attackQueue.Pop();
@@ -203,19 +199,21 @@ namespace Objects
 
 				const float flightTime =  Times::Attack * len;
 
-				timeAt = std::max(timeAt,attackTime - flightTime - Times::TurretRotation);
-
+				{
+					float beginT = attackTime - flightTime - Times::TurretRotation;
+					SyncTime(beginT);
+				}
 
 
 				
 				float change = 1.f / float(GetAttacksPerRound());
 				attackActionLeft -= change;
-				RegisterChange(ActionChanged,timeAt);
+				RegisterChange(ActionChanged,motionTime);
 
 				{
 					//float delta = std::max(fabs(angles.x - turretAngleX), fabs(angles.y - turretAngleY));
 					SignalTurretRotation(shared_from_this(),(ToWorld(trajectory[1]) - ToWorld(trajectory.first())).Normalized0(),Times::TurretRotation);
-					timeAt += Times::TurretRotation;
+					motionTime += Times::TurretRotation;
 				}
 
 
@@ -225,27 +223,27 @@ namespace Objects
 					ChangeStorage(*this,attackTime, turret->ammoType,-turret->ammoNeedPerShot);
 				else
 				{
-					RefreshCompoundCoverageIfNeeded(timeAt);
+					RefreshCompoundCoverageIfNeeded(motionTime);
 					ResourceVector change;
 					change.level[turret->ammoType] = -turret->ammoNeedPerShot;
-					GetCompound().ChangeStorage(change,timeAt);
+					GetCompound().ChangeStorage(change,motionTime);
 					//ASSERT__(change.IsEmpty());
 				}
 				
 
 				
-				timeAt += flightTime;
+				motionTime += flightTime;
 
 				if (turret->dealsEMPDamage)
 					ExplodeEMP(shared_from_this(),target.target,flightTime,
-								t1, t0, turret->explosionRadius, turret->damageLevel,timeAt);
+								t1, t0, turret->explosionRadius, turret->damageLevel,motionTime);
 				else
 					Explode(shared_from_this(),target.target,flightTime,
-							t1, t0, turret->explosionRadius, turret->damageLevel,turret->isDoomsday, timeAt);
+							t1, t0, turret->explosionRadius, turret->damageLevel,turret->isDoomsday, motionTime);
 
-				RegisterChange((changeType_t)(TasksChanged),timeAt);
+				RegisterChange((changeType_t)(TasksChanged),motionTime);
 				//stateChangedAt = attackTime;	//problematic
-				attackTime = timeAt;
+				attackTime = motionTime;
 			}
 			else
 			{
@@ -309,7 +307,7 @@ namespace Objects
 
 			return		//owner->canSee.IsSet(target)
 					/*&&	*/turret->CanAttack() 
-					&& timeAt <= entityTime 
+					&& motionTime <= entityTime 
 					&& CountPossibleAttacks() > 0 
 					&& ExtCanHit(owner,location,foundationHeight, target->location,outTarget)
 					//&& d2 > sqr(turret->explosionRadius)
@@ -950,12 +948,12 @@ namespace Objects
 				}
 			}
 
-			timeAt += timeEpsilon;
+			motionTime += timeEpsilon;
 			AttackTask&cmd = attackQueue.Push();
 //			cmd.id.Generate();
 			cmd.target = target;
 			cmd.autoTarget = autoTarget;
-			SignalChange(TasksChanged,timeAt);
+			SignalChange(TasksChanged,motionTime);
 			return true;
 		}
 
@@ -1404,8 +1402,7 @@ namespace Objects
 		if (LocalIsFull() || v->owner != owner || v->health <= 0)
 			return false;
 		#ifndef CLIENT
-			atTime = std::max(atTime,v->timeAt) + 0.05f;
-			v->timeAt = atTime;
+			v->motionTime = atTime = std::max(atTime,v->motionTime) + timeEpsilon;
 		#endif
 		if (v->isInserted)
 		{
@@ -2880,6 +2877,8 @@ namespace Objects
 				Compound::lastDisabled = nullptr;
 				SetSleep(false,atTime,false);
 			}
+			atTime = motionTime = std::max(motionTime,atTime)+timeEpsilon;
+			LogEvent(EventClass::Preset::common,this,"Enabled-state changed "+String(isEnabled)+"->"+String(b)+" at t="+String(atTime)+", given signalStructure="+String(signalStructure)+", refreshNetwork="+String(refreshNetwork));
 			isEnabled = b;
 			RegisterChange(EnableChanged,atTime);
 			if (signalStructure)

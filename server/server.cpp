@@ -99,7 +99,7 @@ void	SignalNewStructure(const Objects::PStructure&s, float atTime)
 	//if (!cl)
 	//	return;
 
-
+	LogEvent(EventSignificance::Common,s.get(),"Signalling new structure to owner at t="+String(atTime));
 	Protocol::StructureConstruction	w;
 	Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
 	Game::Network::Describe(w,*s,true,timestamp);
@@ -313,25 +313,7 @@ void	SignalTurretRotation(const Objects::PWorldEntity&e, const TVec3<>&toWorld, 
 	rot.toWorld = toWorld;
 	rot.rotationTime = rotationTime;
 	rot.timestamp.rightNow = false;
-
-	{
-		if (e->IsMobile())
-		{
-			Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
-			rot.timestamp.atTime = v->timeAt;
-		}
-		else
-		{
-			Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
-			if (t)
-				rot.timestamp.atTime = t->timeAt;
-			else
-			{
-				LogEvent(EventClass::Preset::commandRejected,e.get(), "Trying to let incompatible entity attack");
-				return;	
-			}
-		}
-	}
+	rot.timestamp.atTime = e->motionTime;
 
 	foreach (Network::activePlayersAndSpectators,cl)
 	{
@@ -450,25 +432,8 @@ void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, f
 	preciseAttack.traceTo = traceTo;
 	preciseAttack.isAutoAttack = isAutoAttack;
 	preciseAttack.timestamp.rightNow = false;
+	preciseAttack.timestamp.atTime = e->motionTime;
 	
-	{
-		if (e->IsMobile())
-		{
-			Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
-			preciseAttack.timestamp.atTime = v->timeAt;
-		}
-		else
-		{
-			Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
-			if (t)
-				preciseAttack.timestamp.atTime = t->timeAt;
-			else
-			{
-				LogEvent(EventClass::Preset::commandRejected,e.get(), "Incompatible entity attempting attack");
-				return;	
-			}
-		}
-	}
 	LogEvent(EventSignificance::Debug,e.get(),"Commencing attack at t="+String(preciseAttack.timestamp.atTime));
 
 
@@ -1116,9 +1081,9 @@ namespace ParameterConfig
 	{
 		std::cout << std::endl << "usage: "<<programName<<" ..."<<std::endl;
 		std::cout << "  --load/-l [filename]\tload savegame"<<std::endl;
-		std::cout << "  --loadAuto/-a [number]\tload previously created auto-savegame. number=0 => most recent"<<std::endl;
+		std::cout << "  --loadAuto/-a [number]\tload auto-savegame. number=0 => most recent"<<std::endl;
 		std::cout << "  --offline/-o \tstart offline"<<std::endl;
-		std::cout << "  --port/-p [basePort]\tuse a non-default base port"<<std::endl;
+		std::cout << "  --port/-p [basePort]\tuse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default)"<<std::endl;
 		std::cout << "  --noRemote/-r \tdisable remote control service"<<std::endl;
 		std::cout << "  --test/-t \trun self-tests, then quit"<<std::endl;
 		std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
@@ -1165,6 +1130,7 @@ namespace ParameterConfig
 				elif (!strcmp(arg,"--help"))
 				{
 					PrintHelp();
+					exit(0);
 				}
 				elif (!strcmp(arg,"--world") || !strcmp(arg,"-w"))
 					mode = ExpectWorldID;

@@ -312,7 +312,6 @@ namespace Objects
 			bool				hasTriedPlottingOnMoveAutoMotion=false;
 			bool				jobStarted=false;
 			bool				hasMoved=false;
-			float				timeAt=0.f;		//!< Time (in seconds) into the motion phase to calculate event times
 			bool				hasConstructedThisRound=false;
 		#else
 		#endif
@@ -398,9 +397,9 @@ namespace Objects
 
 			void				BeginMotionPhase(float timeOffset)
 			{
-				timeAt = std::max(timeAt, timeOffset);	//timeAt is usually 0, but may be bigger if the vehicle fell as a result of an explosion. in that case it might be further along the timeline
+				motionTime = std::max(motionTime, timeOffset);	//timeAt is usually 0, but may be bigger if the vehicle fell as a result of an explosion. in that case it might be further along the timeline
 				if (attackActionLeft < 1.f)
-					RegisterChange(ActionChanged,timeAt);
+					RegisterChange(ActionChanged,motionTime);
 				attackActionLeft = 1.f;
 
 				hasMoved = false;
@@ -408,22 +407,21 @@ namespace Objects
 				if (MotionIgnoresAttack())
 				{
 					if (movementActionLeft < 1.f)
-						RegisterChange(ActionChanged,timeAt);
+						RegisterChange(ActionChanged,motionTime);
 					movementActionLeft = 1.f;
 				}
 			}
 			void				BeginAttackPhase()	//executed before BeginMotionPhase this round
 			{
 				hasConstructedThisRound = false;
-				timeAt = 0;
 				if (movementActionLeft < 1.f)
-					RegisterChange(ActionChanged,timeAt);
+					RegisterChange(ActionChanged,motionTime);
 				movementActionLeft = 1.f;
 
 				if (AttackIgnoresMotion())
 				{
 					if (attackActionLeft < 1.f)
-						RegisterChange(ActionChanged,timeAt);
+						RegisterChange(ActionChanged,motionTime);
 					attackActionLeft = 1.f;
 
 				}
@@ -444,7 +442,7 @@ namespace Objects
 				{
 					if (flushTasksOnUnlock)
 						return false;
-					timeAt += timeEpsilon;
+					motionTime += timeEpsilon;
 					flushTasksOnUnlock = true;
 					LogEvent(EventSignificance::Debug,this," ...set to clear on unlock");
 					return true;
@@ -452,11 +450,11 @@ namespace Objects
 				
 				if (myTasks.IsNotEmpty() || completeOnMove)
 				{
-					timeAt += timeEpsilon;
+					motionTime += timeEpsilon;
 					jobStarted = false;
 					if (!isReaction)
 						completeOnMove.reset();
-					RegisterChange(TasksChanged,timeAt);
+					RegisterChange(TasksChanged,motionTime);
 					//tasksChanged = true;
 					myTasks.Clear();
 					LogEvent(EventSignificance::Debug,this," ...cleared");
@@ -574,14 +572,6 @@ namespace Objects
 
 
 	protected:
-		inline void				OffsetTime(float&t)
-		{
-			#ifndef CLIENT
-				timeAt = std::max(timeAt,t);
-				timeAt += timeEpsilon;
-				t = timeAt;
-			#endif
-		}
 	};
 
 

@@ -262,12 +262,12 @@ namespace Objects
 					{
 						Compound&compound = Objects::compounds[c->first];
 						demand.level[res] = change;
-						compound.ChangeStorage(demand,owner.timeAt);
+						compound.ChangeStorage(demand,owner.motionTime);
 						change = demand.level[res];
 						if (change == 0)
 							return;
 					}
-					Objects::ChangeStorage(owner,owner.timeAt,owner.GetMaxStorageCapacity(),owner.currentStorage,res,change);
+					Objects::ChangeStorage(owner,owner.motionTime,owner.GetMaxStorageCapacity(),owner.currentStorage,res,change);
 					if (!change)
 						return;
 				#else
@@ -484,7 +484,7 @@ namespace Objects
 										if (AttackIsStationary())
 											attackActionLeft = 0;
 
-										RegisterChange(ActionChanged,timeAt);
+										RegisterChange(ActionChanged,motionTime);
 										task.path.EraseLast();
 										cost = task.path.IsNotEmpty() ? task.path.last().movementCostsFromPrevNode : 1;
 									}
@@ -522,7 +522,7 @@ namespace Objects
 										//if (completeOnMove)
 										//{
 										//	unstable = true;
-										//	RegisterChange(TasksChanged,timeAt);
+										//	RegisterChange(TasksChanged,motionTime);
 										//}
 
 										stop = true;
@@ -552,7 +552,7 @@ namespace Objects
 								if (HasTasks() && To<VehicleJob::PathJob>::DynamicCast(myTasks.Peek().job))
 									myTasks.Peek().Replot(location,this,FocusChangeType::SituationChanged,true);
 								#ifndef CLIENT
-									RegisterChange(TasksChanged,timeAt);
+									RegisterChange(TasksChanged,motionTime);
 								#endif
 								return remaining == 0;
 							}
@@ -566,7 +566,7 @@ namespace Objects
 										if (!AttackIgnoresMotion())
 											attackActionLeft = 0;
 										movementActionLeft = 0;
-										RegisterChange(ActionChanged,timeAt);
+										RegisterChange(ActionChanged,motionTime);
 									}
 
 									hasMoved = true;
@@ -603,7 +603,7 @@ namespace Objects
 
 		bool			MobileEntity::CompleteOnMove(const Grid::LCellIdI&referenceLocation)
 		{
-			LogEvent(EventSignificance::Common,this,"Completing on-move job '"+completeOnMove->GetName()+ "'");
+			LogEvent(EventSignificance::Common,this,"Completing on-move job '"+completeOnMove->GetName()+ "' at t="+String(motionTime));
 			VehicleJob::BaseJob::continue_t rs = completeOnMove->Finish(*this,referenceLocation);
 			completeOnMove.reset();
 			unstable = false;
@@ -613,7 +613,7 @@ namespace Objects
 				jobStarted = false;
 				ClearAllTasks(true, CLOCATION);
 				unstable = false;
-				Remove(shared_from_this(),RemovalType::UncontrolledExplosion,timeAt,false,false);
+				Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
 				return false;
 			}
 			if (rs == VehicleJob::BaseJob::TerminalFailure)
@@ -641,13 +641,13 @@ namespace Objects
 				//checkCanStillSee.Clear();
 				//checkStillBeeingSeenBy.Clear();
 
-				float oldTime = timeAt;
-				timeAt += timeCost;
+				float oldTime = motionTime;
+				motionTime += timeCost;
 
 				static Buffer0<PWorldEntity> newContacts;
 				newContacts.Clear();
-				this->RegisterSensory(location,timeAt,false,&newContacts);
-				this->UnregisterSensory(oldLocation,timeAt,true);
+				this->RegisterSensory(location,motionTime,false,&newContacts);
+				this->UnregisterSensory(oldLocation,motionTime,true);
 				foreach (newContacts,c)
 				{
 					float zOffset;
@@ -702,8 +702,8 @@ namespace Objects
 										}
 										if (anyChanged)
 										{
-											timeAt += timeEpsilon;
-											v2->RegisterChange(TasksChanged,timeAt);
+											motionTime += timeEpsilon;
+											v2->RegisterChange(TasksChanged,motionTime);
 										}
 									}
 									break;
@@ -728,12 +728,12 @@ namespace Objects
 					#endif
 					RegisterChange(PositionChanged,oldTime);
 				}
-				//timeAt += timeCost;
+				//motionTime += timeCost;
 
 				const auto _this = shared_from_this();
 				ForeachFaction([this,_this](const PFaction&f)
 				{
-					f->CheckGridVisibility(_this,timeAt);
+					f->CheckGridVisibility(_this,motionTime);
 				});
 
 				bool doBreak = false;
@@ -741,7 +741,7 @@ namespace Objects
 				{
 					if (doBreak)
 						return;
-					if (!f->CanSee(_this,timeAt))
+					if (!f->CanSee(_this,motionTime))
 						return;
 					Grid::LCellIdI loc;
 					if (IsSatellite())
@@ -749,14 +749,14 @@ namespace Objects
 						foreach (f->satellites, _s)
 						{
 							PSatellite s = _s->lock();
-							if (s && s->WouldAttack(_this,loc,timeAt))
+							if (s && s->WouldAttack(_this,loc,motionTime))
 							{
 								if (s->AttackNext(loc,true))
 								{
-									LogEvent(EventSignificance::Debug,s.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(timeAt));
+									LogEvent(EventSignificance::Debug,s.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(motionTime));
 									LogEvent(EventSignificance::Important,s.get(),"Auto-targeting moving "+GetNiceName());
 
-									s->Attack(timeAt);
+									s->Attack(motionTime);
 									if (health <= 0)
 									{
 										doBreak = true;
@@ -773,15 +773,15 @@ namespace Objects
 						foreach (f->towers, _t)
 						{
 							PTower t = _t->lock();
-							if (t && t->WouldAttack(_this,loc,timeAt))
+							if (t && t->WouldAttack(_this,loc,motionTime))
 							{
 								if (t->AttackNext(loc,true))
 								{
-									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(timeAt));
+									LogEvent(EventSignificance::Debug,t.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(motionTime));
 									LogEvent(EventSignificance::Important,t.get(),"Auto-targeting moving "+GetNiceName());
 
-									t->Attack(timeAt);
-									LogEvent(EventSignificance::Debug,t.get(),"t is now "+String(timeAt));
+									t->Attack(motionTime);
+									LogEvent(EventSignificance::Debug,t.get(),"t is now "+String(motionTime));
 									if (health <= 0)
 									{
 										doBreak = true;
@@ -808,7 +808,7 @@ namespace Objects
 			}
 			else
 			{
-				timeAt += timeCost;
+				motionTime += timeCost;
 				#ifndef CLIENT
 					LogEvent(EventSignificance::Common,this,"Silent motion completed");
 				#endif
@@ -858,7 +858,7 @@ namespace Objects
 			//LockTasks();
 
 			//Task&task = myTasks.Peek();
-			RegisterChange(TasksChanged,timeAt);
+			RegisterChange(TasksChanged,motionTime);
 
 			if (myTasks.Peek().job)
 			{
@@ -910,7 +910,7 @@ namespace Objects
 									else
 										LogEvent(EventClass::Preset::error,this,"Cannot find parent job '"+parent->GetName()+"'");
 								}
-								RegisterChange(TasksChanged,timeAt);
+								RegisterChange(TasksChanged,motionTime);
 							}
 							break;
 						}
@@ -952,7 +952,7 @@ namespace Objects
 								LogEvent(EventSignificance::Common,this,"Job ended: '"+job->GetName()+"'");
 
 								EraseFirstTask();
-								RegisterChange(TasksChanged,timeAt);
+								RegisterChange(TasksChanged,motionTime);
 								while (HasTasks() && myTasks.Peek().job && myTasks.Peek().job->IsImplicitlyDone(*this,myTasks.Peek().GetFocus(location)))
 								{
 									LogEvent(EventSignificance::Common,this,"Job has implicitly ended: '"+myTasks.Peek().job->GetName()+"'");
@@ -972,7 +972,7 @@ namespace Objects
 								ClearAllTasks(true, CLOCATION);
 								unstable = false;
 
-								Remove(shared_from_this(),RemovalType::UncontrolledExplosion,timeAt,false,false);
+								Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
 							return false;
 							case VehicleJob::BaseJob::TerminalFailure:
 								LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped.");
@@ -1009,7 +1009,7 @@ namespace Objects
 
 			Grid::LCellIdI origin = this->GetLastPointOfOrigin();
 		
-			RegisterChange(TasksChanged,timeAt);
+			RegisterChange(TasksChanged,motionTime);
 
 			if (myTasks.IsEmpty())
 			{
@@ -1035,7 +1035,7 @@ namespace Objects
 		{
 			ASSERT__(!TasksAreLocked());
 
-			RegisterChange(TasksChanged,timeAt);
+			RegisterChange(TasksChanged,motionTime);
 			Task&task = myTasks.PushFront();
 			task.type = Task::Job;
 			task.name = job->GetName();
@@ -1241,7 +1241,7 @@ namespace Objects
 
 				myTasks.PushFront(Task("Move To",destination,detailedPath,Task::MoveTo));
 				myTasks.GetOldest().Replot(location, this, FocusChangeType::FullChange,true);
-				RegisterChange(TasksChanged,timeAt);
+				RegisterChange(TasksChanged,motionTime);
 			}
 
 			return true;
@@ -1279,7 +1279,7 @@ namespace Objects
 				else
 					myTasks.EraseBack();
 			}
-			RegisterChange(TasksChanged,timeAt);
+			RegisterChange(TasksChanged,motionTime);
 			return true;
 		}
 
@@ -1294,8 +1294,8 @@ namespace Objects
 			if (!HasAmmoForShot())
 				return;
 
-			LogEvent(EventSignificance::Debug,this,"Setting local time ("+String(timeAt)+") to attack time="+String(attackTime));
-			timeAt = attackTime;
+			LogEvent(EventSignificance::Debug,this,"Setting local time ("+String(motionTime)+") to attack time="+String(attackTime));
+			SyncTime(attackTime,timeEpsilon);
 
 			Task&task = LockedPeekTask();
 
@@ -1314,7 +1314,7 @@ namespace Objects
 				attackActionLeft -= change;
 				if (!turret->ignoresVehicleMotion)
 					movementActionLeft -= change;
-				RegisterChange(ActionChanged,timeAt);
+				RegisterChange(ActionChanged,motionTime);
 
 				float flightTime;
 
@@ -1331,7 +1331,7 @@ namespace Objects
 						//float delta = std::max(fabs(angles.x - turretAngleX), fabs(angles.y - turretAngleY));
 						float rotTime = Times::TurretRotation/**delta*/;
 						SignalTurretRotation(To<Vehicle>::Cast(shared_from_this()),(ToWorld(trajectory[1]) - ToWorld(trajectory.first())).Normalized0(),rotTime);
-						timeAt += rotTime;
+						motionTime += rotTime;
 
 					//	TVec3<> t0;
 					//	Grid::HCellIdI t1;
@@ -1351,14 +1351,14 @@ namespace Objects
 				resourceEnvironment.CheckRefresh(*this);
 				resourceEnvironment.ForceChangeStorage(*this, turret->ammoType,-turret->ammoNeedPerShot);
 				
-				timeAt += flightTime;
+				motionTime += flightTime;
 
 				if (turret->dealsEMPDamage)
 					ExplodeEMP(To<Vehicle>::Cast(shared_from_this()),target,flightTime,
-								t1, t0, turret->explosionRadius, turret->damageLevel,timeAt);
+								t1, t0, turret->explosionRadius, turret->damageLevel,motionTime);
 				else
 					Explode(To<Vehicle>::Cast(shared_from_this()),target,flightTime,
-							t1, t0, turret->explosionRadius, turret->damageLevel,turret->isDoomsday, timeAt);
+							t1, t0, turret->explosionRadius, turret->damageLevel,turret->isDoomsday, motionTime);
 			}
 
 			if (task.foci.IsEmpty())
@@ -1371,9 +1371,9 @@ namespace Objects
 				task.Replot(location,this,FocusChangeType::FirstFocusDropped,true);
 				UnlockTasks();
 			}
-			RegisterChange(TasksChanged,timeAt);
+			RegisterChange(TasksChanged,motionTime);
 			//stateChangedAt = attackTime;	//problematic
-			attackTime = timeAt;
+			attackTime = motionTime;
 		}
 
 
