@@ -1308,7 +1308,7 @@ int main( int argc, const char* argv[])
 
 		Reflection::Create();
 		Reflection::state.PushFocus();
-		Reflection::state.EnterNewFolder("/Online")->attachment.reset(new Reflection::FunctionalAttachment());
+		Reflection::state.EnterNewFolder("/Online");
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start();})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return InformationProvider::server.IsOnline();},InformationProvider::Stop,[](){InformationProvider::Start(ParameterConfig::basePort);})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},Network::RestartSession)));
@@ -1322,7 +1322,7 @@ int main( int argc, const char* argv[])
 		})->SetUniqueHelp("Shuts down the service and terminates the application");
 
 		Reflection::state.PushFocus();
-			Reflection::state.EnterNewFolder("/IO")->attachment.reset(new Reflection::FunctionalAttachment());
+			Reflection::state.EnterNewFolder("/IO");
 			Reflection::state.DefineCommand("autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
 			Reflection::state.DefineCommand("saveTo fileName",(CLI::Command::function1_t)[](const String&path)
 			{
