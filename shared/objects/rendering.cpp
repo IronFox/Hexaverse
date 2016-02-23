@@ -42,6 +42,7 @@ namespace Objects
 								seeThroughShader,
 								pathShader,
 								jobShader,
+								attackRingShader,
 								cylinderShader,
 								paraboloidShader,
 								arrowInstruction,
@@ -55,6 +56,7 @@ namespace Objects
 	DX11::InstructionBlock32	cordon,
 								foundation,
 								userInteractionNotifier,
+								attackRing,
 								gatheringPoint;
 
 	DX11::Texture				smokeTexture;
@@ -220,11 +222,13 @@ namespace Objects
 		seeThroughShader = stdVehicleShader = DX11::BaseInstructionBlock();
 		Structure::standardCompiledShader = Structure::standardLocalizableShader =
 			pathShader = jobShader = cylinderShader = paraboloidShader = 
+			attackRingShader = 
 			smokeTrailShader =
 			arrowInstruction = 
 			skyPortBeam = 
 			foundation = cordon = DX11::InstructionBlock32();
 		userInteractionNotifier.Clear();
+		attackRing.Clear();
 		gatheringPoint.Clear();
 		arrowBuffer.Clear();
 		attackIBO.Clear();
@@ -279,6 +283,25 @@ namespace Objects
 		ibo.Create(indices);
 	}
 
+
+	void Renderer::CompileFlatDisc(Geometry&geo, int resolution, float r0, float r1, const float4&color0,const float4&color1)
+	{
+		geo.Clear();
+		for (int i = 0; i < resolution; i++)
+		{
+			float fi = float(i) / float(resolution);
+			float a = fi * M_PIF * 2.f;
+			float x = cos(a);
+			float y = sin(a);
+
+			geo.MakeVertex(float3(x*r0,y*r0,0.1),float3(0,0,1),color0);
+			geo.MakeVertex(float3(x*r1,y*r1,0.1),float3(0,0,1),color1);
+
+			geo.MakeQuad(i*2,i*2+1,((i+1)%resolution)*2+1,((i+1)%resolution)*2);
+
+		}
+
+	}
 
 	void Renderer::Create()
 	{
@@ -427,6 +450,10 @@ namespace Objects
 			jobShader.UpdateLayout();
 			jobShader.SetTriangles();
 
+			attackRingShader.binding = stdVehicleShader.binding;
+			attackRingShader.shader.LoadFromFile("shaders/attackRing.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			attackRingShader.UpdateLayout();
+			attackRingShader.SetTriangles();
 
 
 
@@ -488,6 +515,33 @@ namespace Objects
 				Load(mesh,cylinderVBO[k],cylinderIBO[k]);
 			}
 		}
+
+
+		{
+			Geometry geo;
+			static const int Resolution = 50;
+			static const float r0 = 1,
+								r1 = 2;
+			CompileFlatDisc(geo,Resolution,r0,r1, float4(1,0,0,0), float4(1,0,0,0));	//red = key-color
+
+			(DX11::BaseInstructionBlock&)userInteractionNotifier = stdVehicleShader;
+			userInteractionNotifier.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
+			userInteractionNotifier.ibo.Create(geo.GetLOD(0).indices);
+
+			CompileFlatDisc(geo,Resolution,0.7f,0.8f,float4(1,1,1,0), float4(1,1,1,1));
+
+			(DX11::BaseInstructionBlock&)attackRing = attackRingShader;
+			attackRing.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
+			attackRing.ibo.Create(geo.GetLOD(0).indices);
+
+			geo.LoadFromObj("objects/gatheringPoint.obj");
+
+			(DX11::BaseInstructionBlock&)gatheringPoint = stdVehicleShader;
+			gatheringPoint.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
+			gatheringPoint.ibo.Create(geo.GetLOD(0).indices);
+
+		}
+		
 	}
 
 
@@ -1239,6 +1293,19 @@ namespace Objects
 		display.SetObjectMatrix(Matrix<>::eye4);
 	}
 
+
+	static void _RenderAttackRing(TMatrix4<>&sys, int i)
+	{
+		float fc = 1.f + float(i) * 0.15f;
+		sys.x.xyz *= fc;
+		sys.y.xyz *= fc;
+		display.SetObjectMatrix(sys);
+		display.Render(attackRing,true);
+
+		sys.x.xyz /= fc;
+		sys.y.xyz /= fc;
+	}
+
 	void	Renderer::RenderTranslucent()
 	{
 		if (!objectView)
@@ -1415,7 +1482,6 @@ namespace Objects
 
 
 
-		overallTint.Update(noTint);
 			
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
@@ -1423,6 +1489,42 @@ namespace Objects
 
 		
 
+		display.SetDepthTest(true,true);
+
+
+		for (const auto&at : attackers)
+		{
+			TMatrix4<> sys;
+			const TVec3<>&up = Grid::low.cells[at->location.stackID].cornerCenter;
+			Mat::makeAxisSystem(at->system.w.xyz, up,2,sys);
+			const PTurretBase base = at->GetTurretBase();
+			//DBG_ASSERT__(base);
+			int rings = base->GetAttacksPerRound();
+			int activeRings = base->CountPossibleAttacks();
+
+			if (activeRings)
+			{
+				overallTint.Update(float4(1,0.5f,0.4f,1.f));
+				for (int i = 0; i < activeRings; i++)
+				{
+					_RenderAttackRing(sys,i);
+				}
+			}
+
+			if (activeRings != rings)
+			{
+				overallTint.Update(float4(float3(1),0.5f));
+				for (int i = activeRings; i < rings; i++)
+				{
+					_RenderAttackRing(sys,i);
+				}
+			}
+
+		}
+
+		display.SetObjectMatrix(Matrix<>::eye4);
+		overallTint.Update(noTint);
+	
 		display.SetDepthTest(false,false);
 
 
@@ -1998,6 +2100,7 @@ namespace Objects
 
 
 	Buffer0<PTurretBase>	Renderer::animatedTurrets;
+	Buffer0<PWorldEntity>	Renderer::attackers;	//!< everything that has a base and can attack goes in here
 	
 
 	void			Renderer::AdvanceTurretAnimations()
