@@ -70,6 +70,13 @@ namespace Reflection
 	}
 
 
+	/**
+	To be used for purely functional folders in the reflection tree. Not processed when importing or exporting
+	*/
+	class FunctionalAttachment: public CLI::Folder::Attachable
+	{};
+
+
 
 
 	/**

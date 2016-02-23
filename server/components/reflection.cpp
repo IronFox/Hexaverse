@@ -485,7 +485,7 @@ namespace Reflection
 			String name;
 			if (!child->Query("name",name))
 			{
-				LogEvent(EventClass::Preset::configuration,"Unable to retrieve name attribute of XML variable node in "+context->GetPath());
+				LogEvent(EventClass::Preset::configurationError,"Unable to retrieve name attribute of XML variable node in "+context->GetPath());
 				allGood = false;
 				continue;
 			}
@@ -494,7 +494,7 @@ namespace Reflection
 				CLI::PVariable v = context->variables.Query(name);
 				if (!v)
 				{
-					LogEvent(EventClass::Preset::configuration,"Addressed variable '"+name+"' does not exist in "+context->GetPath());
+					LogEvent(EventClass::Preset::configurationError,"Addressed variable '"+name+"' does not exist in "+context->GetPath());
 					allGood = false;
 					continue;
 				}
@@ -779,7 +779,9 @@ namespace Reflection
 		{
 			const Config::Context*sub = ctx ? ctx->GetContext(dir->name) : nullptr;
 			if (ctx && !sub)
+			{
 				allGood = false;
+			}
 			bool innerGood = InnerFeed(dir,sub,testMode,filterFunction);
 			if (!innerGood)
 				allGood = false;
@@ -810,7 +812,7 @@ namespace Reflection
 					String support = var->GetSupportedValues();
 					if (support.IsNotEmpty())
 						support = "Supported values are "+var->GetSupportedValues()+". ";
-					LogEvent(EventClass::Preset::configuration,"Unable to set "+folder->GetPath()+"/"+var->name+" to '"+attrib->value+"'. "+support+"Defaulting to "+var->GetDefault());
+					LogEvent(EventClass::Preset::configurationError,"Unable to set configuration "+folder->GetPath()+"/"+var->name+" to '"+attrib->value+"'. "+support+"Defaulting to "+var->GetDefault());
 					String varPath = folder->GetPath()+"/"+var->name;
 					ASSERT2__(var->Set(var->GetDefault()),varPath,var->GetDefault());
 					allGood = false;
@@ -818,10 +820,8 @@ namespace Reflection
 			}
 			else
 			{
-				String support = var->GetSupportedValues();
-				if (support.IsNotEmpty())
-					support = "Supported values are "+var->GetSupportedValues()+". ";
-				LogEvent(EventClass::Preset::configuration,"Unable to read "+folder->GetPath()+"/"+var->name+". "+support+"Defaulting to "+var->GetDefault());
+				if (ctx)
+					LogEvent(EventClass::Preset::configurationError,"Attribute missing in configuration: "+folder->GetPath()+"/"+var->name+". Defaulting to "+var->GetDefault());
 				String varPath = folder->GetPath()+"/"+var->name;
 				ASSERT2__(var->Set(var->GetDefault()),varPath,var->GetDefault());
 				allGood = false;
@@ -928,6 +928,8 @@ namespace Reflection
 
 	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, bool readOriginal/*=false*/)
 	{
+		if (!readOriginal)
+			Feed(folder,subConfigName,testMode,filterFunction,true);	//read original first
 		Configuration	config;
 		Config::Context*	ctx = nullptr;
 		
@@ -938,7 +940,7 @@ namespace Reflection
 		{
 			if (!config.LoadFromFile(configName))
 			{
-				LogEvent(EventClass::Preset::error,"Unable to parse "+String(configName)+":\n"+config.Report());
+				LogEvent(EventClass::Preset::configurationError,"Unable to parse "+String(configName)+":\n"+config.Report());
 			}
 			else
 			{
@@ -950,12 +952,12 @@ namespace Reflection
 		{
 			if (FileSystem::IsFile(subConfigName))
 			{
-				LogEvent(EventClass::Preset::configuration,"Restoring missing configuration file '"+String(subConfigName)+"' from base data");
+				LogEvent(EventClass::Preset::configurationPrint,"Restoring missing configuration file '"+String(subConfigName)+"' from base data");
 				if (FileSystem::Copy(subConfigName,configName,true))
 				{
 					if (!config.LoadFromFile(configName))
 					{
-						LogEvent(EventClass::Preset::error,"Unable to parse "+String(configName)+":\n"+config.Report());
+						LogEvent(EventClass::Preset::configurationError,"Unable to parse "+String(configName)+":\n"+config.Report());
 					}
 					else
 					{
@@ -971,11 +973,11 @@ namespace Reflection
 		bool allGood = InnerFeed(folder,ctx,testMode,filterFunction);
 		if (!readOriginal && (!allGood || rewrite))
 		{
-			Feed(folder,subConfigName,testMode,filterFunction,true);
+			//Feed(folder,subConfigName,testMode,filterFunction,true);
 			StringFile outFile;
 			if (!outFile.Create(configName))
 			{
-				LogEvent(EventClass::Preset::configuration,"Unable to overwrite '"+String(configName)+"'");
+				LogEvent(EventClass::Preset::configurationError,"Unable to overwrite '"+String(configName)+"'");
 			}
 			else
 			{
@@ -1063,16 +1065,16 @@ namespace Reflection
 				{
 					if (!FileSystem::Copy(file.GetLocation(),dest,true))
 					{
-						LogEvent(EventClass::Preset::error,"Warning: Unable to restore default planet type '"+String(file.GetInnerName())+"'");
+						LogEvent(EventClass::Preset::configurationError,"Warning: Unable to restore default planet type '"+String(file.GetInnerName())+"'");
 					}
 					else
-						LogEvent(EventClass::Preset::error,"Restored default planet type '"+String(file.GetInnerName())+"'");
+						LogEvent(EventClass::Preset::configurationError,"Restored default planet type '"+String(file.GetInnerName())+"'");
 				}
 			}
 
 		}
 		else
-			LogEvent(EventClass::Preset::error,"Warning: Unable to find base planet source folder from '"+String(root.GetLocation()));
+			LogEvent(EventClass::Preset::configurationError,"Warning: Unable to find base planet source folder from '"+String(root.GetLocation()));
 
 
 		#ifdef _DEBUG

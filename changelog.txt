@@ -19,6 +19,7 @@ v0.3.17
 	* Fixed automated surveyor being incorrectly determined as idle.
 	* Fixed calculation of smoke trail when Ragnarök fires.
 	* Fixed SkyHub UI button placement.
+	* Fixed user configuration loading.
 
 v0.3.16	[Feb 15 2016]
 	+ Ghosts now memorize the owner of the referenced entity (if any).
