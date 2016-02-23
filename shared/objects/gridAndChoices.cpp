@@ -1075,6 +1075,8 @@ namespace Objects
 					#endif
 				)
 					Renderer::animatedTurrets << b;
+				if (b && b->turret->CanAttack())
+					Renderer::attackers << e;
 			#endif
 			OnAppear(e);
 		#else
@@ -1287,7 +1289,12 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			PTurretBase b = e->GetTurretBase();
 			if (b)
-				Renderer::animatedTurrets.FindAndErase(b);
+			{
+				if (b->turret->continuousRotation)
+					Renderer::animatedTurrets.FindAndErase(b);
+				if (b->turret->CanAttack())
+					Renderer::attackers.FindAndErase(e);
+			}
 		#endif
 
 

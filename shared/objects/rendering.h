@@ -76,6 +76,7 @@ namespace Objects
 	namespace Renderer
 	{
 		extern Buffer0<PTurretBase>		animatedTurrets;
+		extern Buffer0<PWorldEntity>	attackers;	//!< everything that has a base and can attack goes in here
 		extern double					now; //double-precision seconds since program start. Updated during RefreshFactionColors()
 
 		/**
@@ -91,6 +92,8 @@ namespace Objects
 		void	Create();
 		void	Destroy();	//!< Frees all commonly used rendering resources
 		
+
+		void	CompileFlatDisc(Geometry&geo, int resolution, float r0, float r1, const float4&color0,const float4&color1);
 
 
 		void	AdvanceTurretAnimations();
