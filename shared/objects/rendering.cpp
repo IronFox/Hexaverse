@@ -528,7 +528,7 @@ namespace Objects
 			userInteractionNotifier.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
 			userInteractionNotifier.ibo.Create(geo.GetLOD(0).indices);
 
-			CompileFlatDisc(geo,Resolution,0.7f,0.8f,float4(1,1,1,0), float4(1,1,1,1));
+			CompileFlatDisc(geo,Resolution,0.7f,0.8f,float4(1,1,1,0.5), float4(1,1,1,1));
 
 			(DX11::BaseInstructionBlock&)attackRing = attackRingShader;
 			attackRing.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
@@ -1296,7 +1296,7 @@ namespace Objects
 
 	static void _RenderAttackRing(TMatrix4<>&sys, int i)
 	{
-		float fc = 1.f + float(i) * 0.15f;
+		float fc = 1.f + float(i) * 0.175f;
 		sys.x.xyz *= fc;
 		sys.y.xyz *= fc;
 		display.SetObjectMatrix(sys);
@@ -1502,12 +1502,14 @@ namespace Objects
 			int rings = base->GetAttacksPerRound();
 			int activeRings = base->CountPossibleAttacks();
 
+			int delta = at->IsMobile() ? -1 : 0;
+
 			if (activeRings)
 			{
-				overallTint.Update(float4(1,0.5f,0.4f,1.f));
+				overallTint.Update(at == selectedEntity ? float4(red,(float)sin(now*4.0)*0.2f + 0.6f) :   float4(at->owner->color,0.6f));
 				for (int i = 0; i < activeRings; i++)
 				{
-					_RenderAttackRing(sys,i);
+					_RenderAttackRing(sys,i+delta);
 				}
 			}
 
@@ -1516,7 +1518,7 @@ namespace Objects
 				overallTint.Update(float4(float3(1),0.5f));
 				for (int i = activeRings; i < rings; i++)
 				{
-					_RenderAttackRing(sys,i);
+					_RenderAttackRing(sys,i+delta);
 				}
 			}
 
