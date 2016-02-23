@@ -381,6 +381,7 @@ namespace Game
 				if (t)
 				{
 					Protocol::TowerState&subState = state.selective.Set3();
+					subState.attackActionLeft = t->attackActionLeft;
 					subState.attackTasks.SetSize(t->attackQueue.Count());
 					for (index_t i = 0; i < subState.attackTasks.Count(); i++)
 					{

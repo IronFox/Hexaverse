@@ -16,6 +16,7 @@ v0.3.17
 	+ Added sound for missile attacks.
 	+ Implemented structure placement. Clicking on a construction job now asks for a destination first.
 	+ Pressing shift will allow to repeat the last construction job in a different location.
+	+ Rings now indicate the number of attacks units have left during the next attack phase.
 	> Improved search behavior of automated surveyors.
 	> Towers now allow backspace-undoing of attack tasks.
 	> Resource view is now enabled by default.
@@ -27,6 +28,7 @@ v0.3.17
 	* Fixed automated surveyor being incorrectly determined as idle.
 	* Fixed calculation of smoke trail when Ragnarök fires.
 	* Fixed SkyHub UI button placement.
+	* Fixed user configuration loading.
 
 v0.3.16	[Feb 15 2016]
 	+ Ghosts now memorize the owner of the referenced entity (if any).
