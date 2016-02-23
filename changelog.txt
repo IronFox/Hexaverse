@@ -8,6 +8,7 @@ v0.3.17
 	+ Implemented structure placement. Clicking on a construction job now asks for a destination first.
 	+ Pressing shift will allow to repeat the last construction job in a different location.
 	+ Rings now indicate the number of attacks units have left during the next attack phase.
+	+ Added configuration option to specify whether nexus bases should have satellites.
 	> Improved search behavior of automated surveyors.
 	> Towers now allow backspace-undoing of attack tasks.
 	> Resource view is now enabled by default.

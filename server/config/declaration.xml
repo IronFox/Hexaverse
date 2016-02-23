@@ -181,7 +181,12 @@
 			</context>
 		</context>
 		<context name="Nexus">Nexus faction settings
-			<variable name="haveBases" default="true">If enabled then Nexus bases are constructed around 3 of the 12 planet poles.</variable>
+			<variable name="haveBases" default="true">If enabled then Nexus bases are constructed around 3 of the 12 planet poles. Only affects newly created worlds.</variable>
+			<variable name="haveSatellitesAtopBases" default="true">
+				If enabled then Nexus bases have satellites hovering atop, providing orbital defense.
+				Effective only if haveBases is set true.
+				Only affects newly created worlds.
+			</variable>
 			<variable name="enableAI" default="false">
 				Enables the AI to process units of the Nexus faction.
 				Spawns nexus vehicles, and AI client to control nexus vehicles/structures (if any).
