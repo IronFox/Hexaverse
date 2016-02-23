@@ -70,6 +70,7 @@ struct EventClass
 							commandRejected,
 							operationAborted,
 							configuration,
+							configurationPrint,
 							configurationError,
 							fileError,
 							network,
