@@ -368,7 +368,8 @@ namespace Objects
 				jobStarted = false;
 				ClearAllTasks(true, CLOCATION);
 				unstable = false;
-				Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
+				if (health > 0)
+					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
 				return false;
 			}
 			if (rs == VehicleJob::BaseJob::TerminalFailure)
@@ -726,8 +727,8 @@ namespace Objects
 								jobStarted = false;
 								ClearAllTasks(true, CLOCATION);
 								unstable = false;
-
-								Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
+								if (health > 0)
+									Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
 							return false;
 							case VehicleJob::BaseJob::TerminalFailure:
 								LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped.");
@@ -753,7 +754,7 @@ namespace Objects
 		void					MobileEntity::RegisterNewJob(const String&localizableShapeIdentifier, const PVehicleJob&job, const Grid::LCellIdI*destination)
 		{
 			/*{
-				if (job->mineralCostLeft > this->currentStorage.level[Resource::Minerals])
+				if (job->resourceCostLeft > this->currentStorage.level[Resource::Minerals])
 				{
 					LogEvent(GetName()+": Unable to comply. Insufficient minerals left in storage.");
 					return;
@@ -1532,9 +1533,37 @@ namespace Objects
 	#ifdef HAS_WINDOW
 
 
-	void					MobileEntity::Task::SetLocalizableShape(ConstName structureIdentifier, const Grid::LCellIdI&location)
+	void					MobileEntity::Task::SetLocalizableShape(ConstName shape, const Grid::LCellIdI&location)
 	{
-		PStructure p = 	GetPrototypeByName(structureIdentifier);
+		if (shape == ConstName::DetonationSize_Regular)
+		{
+			localizableShapes.SetSize(1,true);
+			Shape&shape = localizableShapes.first();
+			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
+			shape.instruction.vbo = sphereVBO[0];
+			shape.instruction.ibo = sphereIBO[0];
+			shape.depthTest = true;
+
+			float r = Component::Bomb::GetRadius(false);
+			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
+			return;
+		}
+
+		if (shape == ConstName::DetonationSize_Doomsday)
+		{
+			localizableShapes.SetSize(1,true);
+			Shape&shape = localizableShapes.first();
+			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
+			shape.instruction.vbo = sphereVBO[0];
+			shape.instruction.ibo = sphereIBO[0];
+			shape.depthTest = true;
+
+			float r = Component::Bomb::GetRadius(true);
+			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
+			return;
+		}
+
+		PStructure p = 	GetPrototypeByName(shape);
 
 		if (p)
 		{

@@ -1035,6 +1035,8 @@ namespace Receiver
 				return Objects::Component::TerrainRemove;
 			case ConstName::Job_Construct:
 				return Objects::Component::Construct;
+			case ConstName::Job_SelfDetonate:
+				return Objects::Component::SelfDetonate;
 		}
 		return Objects::Component::TerrainRemove;	//shouldn't happen, but not our case to handle here
 	}
@@ -1115,12 +1117,6 @@ namespace Receiver
 			break;
 			case ConstName::Job_BuildHorizontalWall:
 			{
-				//Grid::LCellIdI target = v->GetLastPointOfOrigin()+1;
-				//if (target.height+1 >= Grid::CellStack::HalfRange)
-				//{
-				//	LogEvent(EventClass::Preset::commandRejected,peer,e,"Cannot build wall on top layer");
-				//	return;
-				//}
 				job.reset(new VehicleJob::BuildHorizontalWall(*v));
 				v->RegisterNewJob("", job,nullptr);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
@@ -1171,6 +1167,14 @@ namespace Receiver
 					LogEvent(EventClass::Preset::commandRejected,peer,v,"Unable to construct structure type");
 					Network::InvalidOperation(peer);
 				}
+			}
+			break;
+			case ConstName::Job_SelfDetonate:
+			{
+				job.reset(new VehicleJob::SelfDetonate(*v,sjob.parameterName));
+				target = v->GetLastPointOfOrigin();
+				v->RegisterNewJob("", job,&target);
+				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 			}
 			break;
 			default:

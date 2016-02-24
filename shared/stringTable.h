@@ -44,7 +44,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Job_SelfDetonate,
 
 	DetonationSize_Regular,	//Used in conjunction with Job_SelfDetonate
-	DetonationSize_Dommsday,	//Used in conjunction with Job_SelfDetonate
+	DetonationSize_Doomsday,	//Used in conjunction with Job_SelfDetonate
 
 	Type_Marker,
 	Type_Vehicle,

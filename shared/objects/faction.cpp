@@ -399,6 +399,8 @@ namespace Objects
 
 		bool		Faction::CanSee(const PWorldEntity&e, float t)	const
 		{
+			if (!e)
+				return false;
 			if ( e->owner.get() == this )
 				return true;
 			if (!seeing.IsSet(e))

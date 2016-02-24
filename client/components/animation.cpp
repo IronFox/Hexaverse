@@ -499,19 +499,19 @@ namespace Animation
 			}
 			t1.job->movesToFocusWhenDone = sourceTask.visualizePathToFocus;
 			t1.job->roundsToJobCompletion = sourceTask.roundsToJobCompletion;
-			t1.job->mineralCostLeft = sourceTask.mineralCostLeft;
+			t1.job->resourceCostLeft = sourceTask.resourceCostLeft;
 			#ifdef HAS_WINDOW
 				if (sourceTask.foci.Count())
 				{
 					Grid::LCellIdI loc = sourceTask.foci.first();
-					if (sourceTask.visualizationStructureName != ConstName::Empty && e.IsSatellite())
+					if (sourceTask.visualizationName != ConstName::Empty && e.IsSatellite())
 					{
 						int h = Objects::SkyHub::GetStructureBuildHeight(loc);
 						if (h != Objects::badHeight)
 							loc.height = h;
 					}
 
-					t1.SetLocalizableShape(sourceTask.visualizationStructureName,loc);
+					t1.SetLocalizableShape(sourceTask.visualizationName,loc);
 				}
 			#endif
 		}

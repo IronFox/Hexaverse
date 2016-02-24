@@ -202,13 +202,13 @@ namespace Game
 				Objects::VehicleJob::PSequence seq = To<Objects::VehicleJob::Sequence>::DynamicCast(t.job);
 				if (!seq)
 				{
-					task.mineralCostLeft = t.job->mineralCostLeft > 0 ? t.job->mineralCostLeft : 0;
+					task.resourceCostLeft = t.job->resourceCostLeft > 0 ? t.job->resourceCostLeft : 0;
 					task.roundsToJobCompletion = t.job->roundsToJobCompletion;
 				}
 				else
 				{
 				
-					seq->Guess(v, origin, taskIndex, task.roundsToJobCompletion.value,task.mineralCostLeft.value);
+					seq->Guess(v, origin, taskIndex, task.roundsToJobCompletion.value,task.resourceCostLeft.value);
 				}
 				task.visualizePathToFocus = t.job->movesToFocusWhenDone;
 			
@@ -225,8 +225,18 @@ namespace Game
 				std::shared_ptr<Objects::VehicleJob::Construct> constJob = To<Objects::VehicleJob::Construct>::DynamicCast(t.job);
 				if (constJob)
 				{
-					task.visualizationStructureName = constJob->constructWhat->GetCTypeName();
+					task.visualizationName = constJob->constructWhat->GetCTypeName();
 				}
+				else
+				{
+					std::shared_ptr<Objects::VehicleJob::SelfDetonate> detonate = To<Objects::VehicleJob::SelfDetonate>::DynamicCast(t.job);
+
+					if (detonate)
+					{
+						task.visualizationName = detonate->doomsday ? ConstName::DetonationSize_Doomsday : ConstName::DetonationSize_Regular;
+					}
+				}
+
 			}
 			else
 			{

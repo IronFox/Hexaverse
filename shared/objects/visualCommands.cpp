@@ -384,7 +384,7 @@ namespace Objects
 
 		int price = structure->GetConstructionCost();
 		UINT32 roundsToJobCompletion = v->GetOperationRounds(price,Component::Construct);
-		//mineralCostLeft = actuallyConsumesMinerals ? mineralCosts : 0;
+		//resourceCostLeft = actuallyConsumesMinerals ? mineralCosts : 0;
 
 		outResult << name;
 		outResult << String(ResourceTag(Resource::Minerals))+ " "+String(price)+ "  ";

@@ -752,7 +752,7 @@ void	SignalDropAllTasks(const Objects::PWorldEntity&e)
 		if (v->constructionRoundCounter > 0 
 		&& v->myTasks.IsNotEmpty() 
 		&& v->myTasks.Peek().IsJob() 
-		&& v->myTasks.Peek().job->mineralCostLeft > 0)
+		&& v->myTasks.Peek().job->resourceCostLeft > 0)
 		{
 			TUniqueID id = e->id;
 			Dialog::Confirm("Are you sure you wish to clear all tasks? The resources invested in the leading production job will be lost.",[id]()
@@ -1219,7 +1219,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 					int opSpeed = v->GetOperationSpeed(v->myTasks.Peek().job->GetOperationAffinity());
 					if (!opSpeed)
 						return;
-					change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->mineralCostLeft);
+					change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->resourceCostLeft);
 
 				});
 
@@ -2419,7 +2419,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 				if (v->constructionRoundCounter > 0 
 					&& v->myTasks.Count() == 1
 					&& v->myTasks.GetNewest().IsJob() 
-					&& v->myTasks.GetNewest().job->mineralCostLeft > 0)
+					&& v->myTasks.GetNewest().job->resourceCostLeft > 0)
 				{
 					TUniqueID id = v->id;
 					Dialog::Confirm("Are you sure you wish to clear the current production task? The invested resources will be lost.",[id]()

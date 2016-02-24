@@ -473,6 +473,10 @@ namespace Objects
 
 
 			void		Configure(Turret&);
+
+
+			float		GetRadius(bool doomsday);
+			int			GetDamageLevel(bool doomsday);
 		};
 
 	

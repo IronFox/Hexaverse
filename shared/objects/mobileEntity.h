@@ -442,6 +442,7 @@ namespace Objects
 		{
 			if (!jobCosts)
 				return 0;
+			jobCosts = abs(jobCosts);
 			int speed = GetOperationSpeed(op);
 			if (!speed)
 				return 0xFFFFFFFF;

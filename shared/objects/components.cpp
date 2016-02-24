@@ -905,6 +905,17 @@ namespace Objects
 		}
 
 
+
+		float		Bomb::GetRadius(bool doomsday)
+		{
+			return doomsday ? ragnarok.explosionRadius-3 : artillery.explosionRadius*2;
+		}
+
+		int			Bomb::GetDamageLevel(bool doomsday)
+		{
+			return doomsday ? ragnarok.damageLevel / 2 : artillery.damageLevel*2;
+		}
+
 	
 		void			Bomb::Configure(Turret&component)
 		{
@@ -923,7 +934,7 @@ namespace Objects
 					}
 					));
 
-				component.iconCommands.Append(IconCommand(offset++, "Obliterate", &Cmd::IssueCommand<ConstName::DetonationSize_Regular>
+				component.iconCommands.Append(IconCommand(offset++, "Obliterate", &Cmd::IssueCommand<ConstName::DetonationSize_Doomsday>
 					, &CommonCmd::IdleCheck
 					,[](const PWorldEntity&e, int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
