@@ -1506,7 +1506,7 @@ namespace Objects
 
 			if (activeRings)
 			{
-				overallTint.Update(at == selectedEntity ? float4(red,(float)sin(now*4.0)*0.2f + 0.6f) :   float4(at->owner->color,0.6f));
+				overallTint.Update(at == selectedEntity ? float4(red,(float)sin(now*4.0)*0.2f + 0.6f) :   float4(at->owner->activeEntityColor,1.f));
 				for (int i = 0; i < activeRings; i++)
 				{
 					_RenderAttackRing(sys,i+delta);
