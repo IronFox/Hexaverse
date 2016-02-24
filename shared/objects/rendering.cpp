@@ -679,7 +679,7 @@ namespace Objects
 			foreach (Faction::allKnown,_f)
 			{
 				Faction&f = **_f;
-				if (f.isMine)
+				if (f.isOwnedByMe)
 				{
 					f.activeEntityColor = mine;
 					f.inactiveEntityColor = inactiveColorMine;
@@ -888,11 +888,11 @@ namespace Objects
 
 
 
-	void					UpdateSeeThroughColor(bool isMine, bool isSelected)
+	void					UpdateSeeThroughColor(bool isOwnedByMe, bool isSelected)
 	{
 		static const float4 mySeeThroughColor(0.6,0.7,1,1);
 		static const float4 hostileSeeThroughColor(1,0.7,0.6,1);
-		float4 color = isMine ? mySeeThroughColor : hostileSeeThroughColor;
+		float4 color = isOwnedByMe ? mySeeThroughColor : hostileSeeThroughColor;
 		if (isSelected)
 			color.rgb *= Renderer::GetActiveColor(Renderer::now*5.0);
 		overallTint.Update(color);
@@ -923,8 +923,8 @@ namespace Objects
 			foreach(vehicles, _v)
 			{
 				PVehicle&v = *_v;
-				UpdateSeeThroughColor(v->isMine, v==selectedEntity);
-				//overallTint.Update(v->isMine ? mySeeThroughColor : hostileSeeThroughColor);
+				UpdateSeeThroughColor(v->isOwnedByMe, v==selectedEntity);
+				//overallTint.Update(v->isOwnedByMe ? mySeeThroughColor : hostileSeeThroughColor);
 				Renderer::RenderSimple(*v);
 			}
 
@@ -936,7 +936,7 @@ namespace Objects
 			//	//	s.Recompile();
 			//	//	s.changed = false;
 			//	//}
-			//	UpdateSeeThroughColor(s.isMine, &s==selectedEntity.get());
+			//	UpdateSeeThroughColor(s.isOwnedByMe, &s==selectedEntity.get());
 			//	
 			//	//if (s.compiledShape.vbo.IsSet())
 			//	//{
@@ -1231,7 +1231,7 @@ namespace Objects
 		{
 			float zOffset;
 			PTurretBase base = e->GetTurretBase(zOffset);		
-			if (base && base->turret->CanAttack() && (!e->isMine || !base->turret->dealsEMPDamage))
+			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage))
 				RenderRange(e->location,zOffset,base,color,extendedShadow);
 		}
 	}
@@ -1280,7 +1280,7 @@ namespace Objects
 				{
 					if (e != selectedEntity)
 					{
-						if ((e->isMine && showFriendlyRanges && e->health > 0) || (!e->isMine && showHostileRanges))
+						if ((e->isOwnedByMe && showFriendlyRanges && e->health > 0) || (!e->isOwnedByMe && showHostileRanges))
 						{
 							RenderAttackRangeOf(e,color,extendedShadow);
 						}
@@ -1347,7 +1347,7 @@ namespace Objects
 		foreach(Marker::mobileGhosts, _v)
 		{
 			const PMobileEntity&m = *_v;
-			if (m->isMine)
+			if (m->isOwnedByMe)
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
 				overallTint.Update(float4(1, 0, 0, 1));
@@ -1368,7 +1368,7 @@ namespace Objects
 		foreach(Marker::structureGhosts, _s)
 		{
 			const PStructure&s = *_s;
-			if (s->isMine)
+			if (s->isOwnedByMe)
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
 				overallTint.Update(float4(1, 0, 0, 1));
@@ -1753,7 +1753,7 @@ namespace Objects
 		{
 			const PSatellite&sat = *_s;
 			TVec3<> color;
-			if (sat->isMine)
+			if (sat->isOwnedByMe)
 			{
 				color= float3(0.5,0.6,1.0);
 			}

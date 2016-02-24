@@ -1141,7 +1141,7 @@ namespace Objects
 			LogEvent(EventSignificance::Common,this,"Relocating to "+toLocation.ToString()+" ("+String(updateSystem)+")");
 			static Grid::HighSetup::TVolumeDescriptor desc;
 			float t = 0.f;
-			if (isMine)
+			if (isOwnedByMe)
 			{
 				UnregisterSensory(t);
 			}
@@ -1154,12 +1154,12 @@ namespace Objects
 			{
 				Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(shared_from_this()),location);
 			}
-			if (isMine)
+			if (isOwnedByMe)
 			{
 				RegisterSensory(t);
 			}
 			#ifdef THOROUGLY_DEBUG_SENSORY
-				if (isMine)
+				if (isOwnedByMe)
 					VerifySensory();
 			#endif
 

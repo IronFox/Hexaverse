@@ -88,7 +88,7 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			if (v->ToHibernating()->IsHibernating())
 			{
-				if (v->isMine)
+				if (v->isOwnedByMe)
 					keyColor.Update(float4(0,0,0,1));
 				else
 					keyColor.Update(float4(tone.rgb*0.5f,1));

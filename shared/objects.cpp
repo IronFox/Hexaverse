@@ -45,10 +45,10 @@ namespace Objects
 				foreach (Grid::cellStack,stack)
 					stack->ClearDbgSensory();
 				foreach (structures,s)
-					if ((*s)->isMine)
+					if ((*s)->isOwnedByMe)
 						Grid::InsertDbgSensor((*s)->location,(*s)->GetScanningRange());
 				foreach (vehicles,s)
-					if ((*s)->isMine)
+					if ((*s)->isOwnedByMe)
 						Grid::InsertDbgSensor((*s)->location,(*s)->GetScanningRange());
 				foreach (Grid::cellStack,stack)
 					stack->CheckDbgSensory();
