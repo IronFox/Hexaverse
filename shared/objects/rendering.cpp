@@ -80,6 +80,9 @@ namespace Objects
 	Buffer0<DX11::InstructionBlock32>	smokeTrails;
 	index_t								selectedSmokeTrail = InvalidIndex;
 
+	TMatrix4<>							structureToPlaceSystem;
+
+
 	OpenAL::WaveBuffer	Renderer::GetAmbientSoundOf(const String&entityTypeName, ConstName _entityType)
 	{
 		index_t key = (index_t)_entityType;
@@ -1234,43 +1237,65 @@ namespace Objects
 			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage))
 				RenderRange(e->location,zOffset,base,color,extendedShadow);
 		}
+
+		void RenderAttackRangeOf(const PWorldEntity&e, const Grid::LCellIdI&at,const float4&color, bool extendedShadow)
+		{
+			float zOffset;
+			PTurretBase base = e->GetTurretBase(zOffset);		
+			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage))
+				RenderRange(at,zOffset,base,color,extendedShadow);
+		}
 	}
 
 	void Renderer::RenderRanges(bool extendedShadow)
 	{
-		if (selectedEntity)
 		{
-			float scanningRange = selectedEntity->GetScanningRange();
-			if (extendedShadow)
-				scanningRange += RangeShadowExtension;
-
 			float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,1,0,0.8f);
-
-			Renderer::RenderRangeSphere(selectedEntity->GetWorldPosition(),scanningRange,
-				color
-				);
-			float zOffset;
-			PTurretBase base = selectedEntity->GetTurretBase(zOffset);		
-			if (base && base->turret->groundScanningRange > 0.f)
+			if (selectedEntity)
 			{
-				scanningRange = selectedEntity->EMPModify(base->turret->groundScanningRange,2);
-				float refHeight = Grid::ToRadius(selectedEntity->location.height);
-				float top = Grid::ToRadius(/*selectedEntity->location.height*/Grid::CellStack::HalfRange);
-				float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
-				float topR = scanningRange*top/refHeight;
-				float bottomR = scanningRange *bottom/refHeight;
+				float scanningRange = selectedEntity->GetScanningRange();
 				if (extendedShadow)
+					scanningRange += RangeShadowExtension;
+
+
+				Renderer::RenderRangeSphere(selectedEntity->GetWorldPosition(),scanningRange,
+					color
+					);
+				float zOffset;
+				PTurretBase base = selectedEntity->GetTurretBase(zOffset);		
+				if (base && base->turret->groundScanningRange > 0.f)
 				{
-					topR += RangeShadowExtension;
-					bottomR += RangeShadowExtension;
+					scanningRange = selectedEntity->EMPModify(base->turret->groundScanningRange,2);
+					float refHeight = Grid::ToRadius(selectedEntity->location.height);
+					float top = Grid::ToRadius(/*selectedEntity->location.height*/Grid::CellStack::HalfRange);
+					float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
+					float topR = scanningRange*top/refHeight;
+					float bottomR = scanningRange *bottom/refHeight;
+					if (extendedShadow)
+					{
+						topR += RangeShadowExtension;
+						bottomR += RangeShadowExtension;
+					}
+					RenderRangeCylinder(selectedEntity->system.z.xyz,bottomR,topR,bottom,top,color);
 				}
-				RenderRangeCylinder(selectedEntity->system.z.xyz,bottomR,topR,bottom,top,color);
+
 			}
 
+			if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
+			{
+				float scanningRange = activeStructureToPlace->GetScanningRange();
+				if (extendedShadow)
+					scanningRange += RangeShadowExtension;
+				Renderer::RenderRangeSphere(structureToPlaceSystem.w.xyz,scanningRange,
+					color
+					);
+			}
 		}
 		float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,0,0,0.8f);
 		if (selectedEntity)
 			RenderAttackRangeOf(selectedEntity,color,extendedShadow);
+		if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
+			RenderAttackRangeOf(activeStructureToPlace,arrowCellTarget,color,extendedShadow);
 		
 
 		if (showHostileRanges || showFriendlyRanges)
@@ -1690,29 +1715,27 @@ namespace Objects
 			}
 		}
 
-		if (showArrow && hasArrowCellTarget)
+		if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
 		{
-			if (activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
-			{
-				display.SetDepthTest(true,true);
-				bool includeFoundation = false;//activeStructureToPlace->HasFoundation();	<- is correct but job visualization doesn't use foundations
-				display.LinkShader(jobShader,false,true);
-					TMatrix4<> sys;
-					BuildStructureSystem(arrowCellTarget,sys);
-					display.SetObjectMatrix(sys);
-					overallTint.Update(noTint);	//all zero tint makes shapes invisible
-					if (includeFoundation)
-						display.Render(foundation, true);
-					_RenderSimpleLocated(*activeStructureToPlace,sys);
-					display.SetObjectMatrix(sys);
-					overallTint.Update(float4(selectedTint.rgb,selectedTint.a * 0.5f + 0.5f));
-					if (includeFoundation)
-						display.Render(foundation, true);
-					_RenderSimpleLocated(*activeStructureToPlace,sys);
-				display.UnlockShader();
-				display.SetObjectMatrix(Matrix<>::eye4);
-			}
+			display.SetDepthTest(true,true);
+			bool includeFoundation = false;//activeStructureToPlace->HasFoundation();	<- is correct but job visualization doesn't use foundations
+			display.LinkShader(jobShader,false,true);
+				//TMatrix4<> sys;
+				BuildStructureSystem(arrowCellTarget,structureToPlaceSystem);
+				display.SetObjectMatrix(structureToPlaceSystem);
+				overallTint.Update(noTint);	//all zero tint makes shapes invisible
+				if (includeFoundation)
+					display.Render(foundation, true);
+				_RenderSimpleLocated(*activeStructureToPlace,structureToPlaceSystem);
+				display.SetObjectMatrix(structureToPlaceSystem);
+				overallTint.Update(float4(selectedTint.rgb,selectedTint.a * 0.5f + 0.5f));
+				if (includeFoundation)
+					display.Render(foundation, true);
+				_RenderSimpleLocated(*activeStructureToPlace,structureToPlaceSystem);
+			display.UnlockShader();
+			display.SetObjectMatrix(Matrix<>::eye4);
 		}
+	
 
 		if (smokeTrails.IsNotEmpty())
 		{
