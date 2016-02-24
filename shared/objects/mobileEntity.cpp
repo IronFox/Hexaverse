@@ -368,7 +368,7 @@ namespace Objects
 				jobStarted = false;
 				ClearAllTasks(true, CLOCATION);
 				unstable = false;
-				if (health > 0)
+				if (isInserted)	//otherwise already killed by Finish() operation
 					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
 				return false;
 			}
@@ -727,7 +727,7 @@ namespace Objects
 								jobStarted = false;
 								ClearAllTasks(true, CLOCATION);
 								unstable = false;
-								if (health > 0)
+								if (isInserted)	//otherwise already killed by Continue() operation
 									Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
 							return false;
 							case VehicleJob::BaseJob::TerminalFailure:
