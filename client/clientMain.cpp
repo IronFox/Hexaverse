@@ -474,7 +474,7 @@ void	SignalRemoval(const Objects::PWorldEntity&entity)
 			if (!Network::client.IsConnected())
 				return Dialog::CheckResult::Abort;
 			Objects::PWorldEntity e = Objects::GetEntity(id);
-			if (!e || !e->isMine)
+			if (!e || !e->isOwnedByMe)
 				return Dialog::CheckResult::Abort;
 			if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
 				return Dialog::CheckResult::OkayNotRightNow;
@@ -760,7 +760,7 @@ void	SignalDropAllTasks(const Objects::PWorldEntity&e)
 		if (v->constructionRoundCounter > 0 
 		&& v->myTasks.IsNotEmpty() 
 		&& v->myTasks.Peek().IsJob() 
-		&& v->myTasks.Peek().job->mineralCostLeft > 0)
+		&& v->myTasks.Peek().job->resourceCostLeft > 0)
 		{
 			TUniqueID id = e->id;
 			Dialog::Confirm("Are you sure you wish to clear all tasks? The resources invested in the leading production job will be lost.",[id]()
@@ -1015,7 +1015,7 @@ void	SignalMarkerTouch(Objects::Marker&marker)
 
 void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 {
-	if (t == Objects::RemovalType::UncontrolledExplosion && e->isMine)
+	if (t == Objects::RemovalType::UncontrolledExplosion && e->isOwnedByMe)
 	{
 		Protocol::Marker marker;
 		static_assert(Objects::Marker::Type::EntityDeath == 0, "Please update marker logic");
@@ -1024,7 +1024,7 @@ void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 		SignalMarkerCreation(marker);
 	}
 	else
-		if (t == Objects::RemovalType::Vanished && !e->isMine)
+		if (t == Objects::RemovalType::Vanished && !e->isOwnedByMe)
 		{
 			//this event can be high-frequency, happen several times per round for the same entity,
 			//and happen, in fact, so rapidly, the creation event hasn't been confirmed yet
@@ -1046,7 +1046,7 @@ void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 
 void	OnAppear(const Objects::PWorldEntity&e)
 {
-	//fix: doesn't matter if e->isMine is true or not. Must ALWAYS remove existing markers if we see the original again.
+	//fix: doesn't matter if e->isOwnedByMe is true or not. Must ALWAYS remove existing markers if we see the original again.
 	//reason for this problem: entity ownership change causes vanishing, and thus ghost creation, which was not removed here, because e was suddenly mine.
 	Objects::Marker*m = Objects::Marker::FindByReference(e->id);
 	if (m)
@@ -1056,7 +1056,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 	}
 
 
-	if (e->isMine)
+	if (e->isOwnedByMe)
 	{
 		if (To<Objects::Structure>::DynamicCast(e))
 		{
@@ -1109,7 +1109,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 				Tutorial::ShowMessage(Objects::selectedEntity->GetTypeName());
 			if (Objects::selectedEntity->health <= 0)
 			{
-				if (Objects::selectedEntity->isMine)
+				if (Objects::selectedEntity->isOwnedByMe)
 					Tutorial::ShowMessage("Friendly Ghosts");
 				else
 					Tutorial::ShowMessage("Hostile Ghosts");
@@ -1227,7 +1227,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 					int opSpeed = v->GetOperationSpeed(v->myTasks.Peek().job->GetOperationAffinity());
 					if (!opSpeed)
 						return;
-					change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->mineralCostLeft);
+					change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->resourceCostLeft);
 
 				});
 
@@ -1345,7 +1345,7 @@ bool loop()
 
 		if (!Engine::mouse.buttons.pressed)		
 		{
-			if (!Tutorial::movementTutorialIssued && Objects::selectedEntity && Objects::selectedEntity->isMine && Objects::selectedEntity->IsMobile() && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 3.f)
+			if (!Tutorial::movementTutorialIssued && Objects::selectedEntity && Objects::selectedEntity->isOwnedByMe && Objects::selectedEntity->IsMobile() && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 3.f)
 			{
 				Tutorial::movementTutorialIssued = true;
 				Tutorial::ShowMessage("Move To");
@@ -2430,7 +2430,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 				if (v->constructionRoundCounter > 0 
 					&& v->myTasks.Count() == 1
 					&& v->myTasks.GetNewest().IsJob() 
-					&& v->myTasks.GetNewest().job->mineralCostLeft > 0)
+					&& v->myTasks.GetNewest().job->resourceCostLeft > 0)
 				{
 					TUniqueID id = v->id;
 					Dialog::Confirm("Are you sure you wish to clear the current production task? The invested resources will be lost.",[id]()
@@ -2536,7 +2536,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 						float distance = std::numeric_limits<float>::max();
 
 						Objects::PWorldEntity possibleTarget = Objects::GetRayIntersection(b,d,distance);
-						if (possibleTarget && !possibleTarget->isMine)
+						if (possibleTarget && !possibleTarget->isOwnedByMe)
 						{
 							DirectTo(Objects::selectedEntity,possibleTarget->location,false,true, Objects::CursorMode::AttackMode);
 							return;
@@ -2740,18 +2740,18 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 				{
 					for (auto other : Objects::vehicles)
 						if (!emp || !other->empDamageLevel)
-							if (!other->isMine && v->CanHit(other->location))
+							if (!other->isOwnedByMe && v->CanHit(other->location))
 								return true;
 					for (auto other : Objects::structures)
 						if (!emp || !other->empDamageLevel)
-							if (!other->isMine && v->CanHit(other->location))
+							if (!other->isOwnedByMe && v->CanHit(other->location))
 								return true;
 				}
 				else
 					if (v->IsSatellite())
 					{
 						for (auto other : Objects::satellites)
-							if (!other->isMine && v->CanHit(other->location))
+							if (!other->isOwnedByMe && v->CanHit(other->location))
 								if (!emp || !other->empDamageLevel)
 									return true;
 					}
@@ -2828,7 +2828,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		Objects::PWorldEntity any;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
 		{
-			if (any || !e->isMine || e->health <= 0)
+			if (any || !e->isOwnedByMe || e->health <= 0)
 				return;
 			if (e->IsMobile())
 			{
@@ -2886,7 +2886,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			if (to < Objects::vehicles.Count())
 			{
 				Objects::PVehicle v = Objects::vehicles[to];
-				if (v->isMine && IsIdle(v))
+				if (v->isOwnedByMe && IsIdle(v))
 				{
 					Objects::Select(v,Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -2898,7 +2898,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 				{
 					index_t at = to - Objects::vehicles.Count();
 					Objects::PMobileEntity v = Objects::satellites[at];
-					if (v->isMine && IsIdle(v))
+					if (v->isOwnedByMe && IsIdle(v))
 					{
 						Objects::Select(v,Network::ControlEnabled());
 						Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -2910,7 +2910,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 					index_t at = to - Objects::vehicles.Count() - Objects::satellites.Count();
 					Objects::PStructure s = Objects::structures[at];
 
-					if (s->isMine && IsIdle(s))
+					if (s->isOwnedByMe && IsIdle(s))
 					{
 						Objects::Select(s,Network::ControlEnabled());
 						Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);

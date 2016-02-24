@@ -402,6 +402,8 @@ namespace Objects
 
 		bool		Faction::CanSee(const PWorldEntity&e, float t)	const
 		{
+			if (!e)
+				return false;
 			if ( e->owner.get() == this )
 				return true;
 			if (!seeing.IsSet(e))
@@ -925,7 +927,7 @@ namespace Objects
 		{
 			PStructure s = To<Structure>::DynamicCast(e);
 			#ifdef CLIENT
-				if (e->isMine)
+				if (e->isOwnedByMe)
 				{
 					float t = 0.f;
 					if (!s && e->IsMobile())
@@ -943,10 +945,10 @@ namespace Objects
 				s->DisconnectFromNeighborhood(0);
 			}
 			e->owner = newOwner;
-			e->isMine = isNowMine;
+			e->isOwnedByMe = isNowMine;
 
 			#ifdef CLIENT
-				if (e->isMine)
+				if (e->isOwnedByMe)
 				{
 					float t = 0.f;
 					if (!s && e->IsMobile())
@@ -1091,7 +1093,7 @@ namespace Objects
 						bool seen = m->age > 1 &&	//don't delete hostile markers in round <2. grid might be outdated
 									 m->visualization && Grid::actualWorld.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
 						/*foreach(structures, s)
-							if ((*s)->isMine && (*s)->CanSee(center, 0))
+							if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
 							{
 								LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
 								seen = true;
@@ -1099,7 +1101,7 @@ namespace Objects
 							}
 						if (!seen)
 							foreach(vehicles, s)
-								if ((*s)->isMine && (*s)->CanSee(center, 0))
+								if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
 								{
 									LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
 									seen = true;
@@ -1107,7 +1109,7 @@ namespace Objects
 								}
 						if (!seen)
 							foreach(satellites, s)
-								if ((*s)->isMine && (*s)->CanSee(center, 0))
+								if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
 								{
 									LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
 									seen = true;
@@ -1182,7 +1184,7 @@ namespace Objects
 					m.visualization->id = referenceID;
 					m.visualization->owner = referenceOwnerID == TUniqueID::Empty() ? PFaction() : Faction::GetOrCreate(referenceOwnerID,0);
 					m.visualization->health = -(int)m.age;
-					m.visualization->isMine = (m.visualization->owner && m.visualization->owner->isMine) || (!m.visualization->owner && m.type == Type::EntityDeath);
+					m.visualization->isOwnedByMe = (m.visualization->owner && m.visualization->owner->isOwnedByMe) || (!m.visualization->owner && m.type == Type::EntityDeath);
 					m.visualization->UpdateNiceName();
 				}
 			}

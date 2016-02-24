@@ -53,7 +53,7 @@ namespace Animation
 			if (e == self)
 				return;
 
-			if (!e->isMine)
+			if (!e->isOwnedByMe)
 			{
 				float d2 = Vec::quadraticDistance(world,e->system.w.xyz);
 				if (d2 < sqr(e->GetScanningRange()))
@@ -113,7 +113,7 @@ namespace Animation
 		static const float maxGhost = 30.f;
 
 		ASSERT__(v);
-		ASSERT__(v->isMine);
+		ASSERT__(v->isOwnedByMe);
 		ASSERT__(v->turret->detectsResources);
 		if (v->IsHibernating())
 			return;
@@ -247,7 +247,7 @@ namespace Animation
 		foreach(Objects::vehicles, _v)
 		{
 			Objects::PVehicle v = *_v;
-			if (v->isMine)
+			if (v->isOwnedByMe)
 			{
 				if (v->isAutomated && v->turret->detectsResources)
 					UpdateAutomation(v);
@@ -499,19 +499,19 @@ namespace Animation
 			}
 			t1.job->movesToFocusWhenDone = sourceTask.visualizePathToFocus;
 			t1.job->roundsToJobCompletion = sourceTask.roundsToJobCompletion;
-			t1.job->mineralCostLeft = sourceTask.mineralCostLeft;
+			t1.job->resourceCostLeft = sourceTask.resourceCostLeft;
 			#ifdef HAS_WINDOW
 				if (sourceTask.foci.Count())
 				{
 					Grid::LCellIdI loc = sourceTask.foci.first();
-					if (sourceTask.visualizationStructureName != ConstName::Empty && e.IsSatellite())
+					if (sourceTask.visualizationName != ConstName::Empty && e.IsSatellite())
 					{
 						int h = Objects::SkyHub::GetStructureBuildHeight(loc);
 						if (h != Objects::badHeight)
 							loc.height = h;
 					}
 
-					t1.SetLocalizableShape(sourceTask.visualizationStructureName,loc);
+					t1.SetLocalizableShape(sourceTask.visualizationName,loc);
 				}
 			#endif
 		}
@@ -743,7 +743,7 @@ namespace Animation
 			}
 		#endif
 
-		if (automationChange && v->isMine && v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsAutomatedResourceDetector())
+		if (automationChange && v->isOwnedByMe && v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsAutomatedResourceDetector())
 		{
 			UpdateAutomation(To<Objects::Vehicle>::Cast(v));
 		}
@@ -1095,7 +1095,7 @@ namespace Animation
 			{
 				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing structure entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
 				Objects::Place(To<Objects::Structure>::DynamicCast(allocatedTarget));
-				if (!allocatedTarget->isMine)
+				if (!allocatedTarget->isOwnedByMe)
 					UI::HexGrid::RefreshContacts();
 			}
 			break;
@@ -1110,7 +1110,7 @@ namespace Animation
 					Objects::PlaceMobileEntity(v,false);
 					if (v->IsVehicle())	//only vehicles get to be inserted anyhow
 						insertIntoGridLater.Set(v->id);
-					if (!allocatedTarget->isMine)
+					if (!allocatedTarget->isOwnedByMe)
 						UI::HexGrid::RefreshContacts();
 				}
 			}
@@ -1146,12 +1146,12 @@ namespace Animation
 
 
 				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),0,Network::ControlEnabled(),removed);
-				if (!allocatedTarget->isMine)
+				if (!allocatedTarget->isOwnedByMe)
 					UI::HexGrid::RefreshContacts();
 				#ifdef HAS_WINDOW
 					Dialog::SignalSituationChange();
 					if (removalType == Objects::RemovalType::UncontrolledExplosion)
-						UI::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isMine,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());
+						UI::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isOwnedByMe,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());
 
 				#endif
 			}
@@ -1168,7 +1168,7 @@ namespace Animation
 				{
 					ASSERT2__(v->preAnimationLocation == v->location ,v->preAnimationLocation.ToString(),v->location.ToString());
 					//#ifdef HAS_WINDOW
-					//	if (v->isMine && v->IsVehicle())
+					//	if (v->isOwnedByMe && v->IsVehicle())
 					//		ASSERT1__(Grid::actualWorld.HasSensor(v->location,v->GetScanningRange()),v->id.ToString());
 					//#endif
 					v->preAnimationLocation = v->location;
@@ -1254,8 +1254,8 @@ namespace Animation
 					#ifdef HAS_WINDOW
 						attackerID = attacker->id;
 					#endif
-					doRegister = !attacker->isMine || isAutoTarget;
-					isFriendly = attacker->isMine;
+					doRegister = !attacker->isOwnedByMe || isAutoTarget;
+					isFriendly = attacker->isOwnedByMe;
 				}
 
 				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",loc="+location.ToString()+") at "+String(Animation::atTime)+"/"+String(this->time.min));
@@ -1336,7 +1336,7 @@ namespace Animation
 				//v->Relocate(path->rawPath.last().first,false);
 				v->location = path->rawPath.last().first;
 				//Objects::InsertVehicleIntoGrid(v,v->location);	will be done later
-				if (v->isMine && v->preAnimationLocation != v->location)
+				if (v->isOwnedByMe && v->preAnimationLocation != v->location)
 				{
 					float t = 0.f;
 					v->MoveSensory(v->preAnimationLocation,v->location,t);
@@ -1774,7 +1774,7 @@ namespace Animation
 				{
 					//if ((*v)->preAnimationLocation != (*v)->location)
 						//Objects::RemoveVehicleFromGrid(*v,(*v)->preAnimationLocation);
-					if (e->isMine && !Animation::insertIntoGridLater.IsSet(e->id))
+					if (e->isOwnedByMe && !Animation::insertIntoGridLater.IsSet(e->id))
 					{
 						float t = 0.f;
 						e->MoveSensory(e->preAnimationLocation,e->location,t);
@@ -1788,7 +1788,7 @@ namespace Animation
 					Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(Objects::GetEntity(key));
 					if (v)
 					{
-						if (v->isMine)
+						if (v->isOwnedByMe)
 						{
 							float t = 0.f;
 							v->MoveSensory(v->preAnimationLocation,v->location,t);

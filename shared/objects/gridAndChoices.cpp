@@ -1047,6 +1047,8 @@ namespace Objects
 					#endif
 				)
 					Renderer::animatedTurrets << b;
+				if (b && b->turret->CanAttack())
+					Renderer::attackers << e;
 			#endif
 			OnAppear(e);
 		#else
@@ -1258,7 +1260,12 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			PTurretBase b = e->GetTurretBase();
 			if (b)
-				Renderer::animatedTurrets.FindAndErase(b);
+			{
+				if (b->turret->continuousRotation)
+					Renderer::animatedTurrets.FindAndErase(b);
+				if (b->turret->CanAttack())
+					Renderer::attackers.FindAndErase(e);
+			}
 		#endif
 
 
@@ -2589,7 +2596,7 @@ namespace Objects
 
 
 	#ifdef CLIENT
-		PVehicle		SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isMine)
+		PVehicle		SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe)
 	#else
 		PVehicle		AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret)
 	#endif
@@ -2604,7 +2611,7 @@ namespace Objects
 		vehicle->UpdateSystem();
 		#ifdef CLIENT
 			vehicle->UpdateNiceName();
-			vehicle->isMine = isMine;
+			vehicle->isOwnedByMe = isOwnedByMe;
 			if (placeNow)
 				Place(vehicle);
 			//else
@@ -2635,14 +2642,14 @@ namespace Objects
 
 	#else
 
-		PMobileEntity		SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isMine)
+		PMobileEntity		SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe)
 		{
 			if (turret != ConstName::Empty)
-				return Objects::SpawnVehicle(owner,  id,baseLocation,base,turret,placeNow,isMine);
-			return Objects::SpawnSatellite(owner,  id,baseLocation,base,placeNow,isMine);
+				return Objects::SpawnVehicle(owner,  id,baseLocation,base,turret,placeNow,isOwnedByMe);
+			return Objects::SpawnSatellite(owner,  id,baseLocation,base,placeNow,isOwnedByMe);
 		}
 
-		PSatellite		SpawnSatellite(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isMine)
+		PSatellite		SpawnSatellite(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isOwnedByMe)
 		{
 			PSatellite	proto = GetSatellitePrototypeByName(type);
 			ASSERT1__(proto,(int)type);
@@ -2652,13 +2659,13 @@ namespace Objects
 			s->UpdateSystem();
 			ASSERT_GREATER_OR_EQUAL1__(baseLocation.height, Grid::CellStack::HalfRange,s->GetName());
 			s->UpdateNiceName();
-			s->isMine = isMine;
+			s->isOwnedByMe = isOwnedByMe;
 			if (placeNow)
 				Place(s);
 			return s;
 		}
 
-		PStructure		SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,ConstName type, bool placeNow, bool isMine)
+		PStructure		SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,ConstName type, bool placeNow, bool isOwnedByMe)
 		{
 			foreach (structurePrototypes,p)
 				if ((*p)->GetCTypeName() == type)
@@ -2668,7 +2675,7 @@ namespace Objects
 					s->health = s->GetMaxHealth();
 					s->id = id;
 					s->UpdateNiceName();
-					s->isMine = isMine;
+					s->isOwnedByMe = isOwnedByMe;
 					//LogEvent(EventSignificance::Common, s.get(),"Constructed " + s->GetName());
 					if (placeNow)
 					{

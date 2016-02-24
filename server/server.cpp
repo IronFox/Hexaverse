@@ -1034,7 +1034,7 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 
 void LogConfig(const String&msg)
 {
-	Logging::WriteEvent(EventClass::Preset::configuration,msg,nullptr,nullptr);
+	Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr);
 }
 
 

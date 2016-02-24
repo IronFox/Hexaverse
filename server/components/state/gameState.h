@@ -121,7 +121,8 @@ namespace Game
 
 		namespace Nexus
 		{
-			extern bool		haveBases/* = false*/;
+			extern bool		haveBases/* = false*/,
+							haveSatellitesAtopBases/* = true*/;
 			extern bool		startBases/* = false*/,
 							enableAI/* = false*/;
 			extern float	threatEstimationFactor/* = 1.f*/;

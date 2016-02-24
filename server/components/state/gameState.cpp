@@ -40,7 +40,9 @@ namespace Game
 
 		namespace Nexus
 		{
-			bool		haveBases = false;
+			bool		haveBases = false,
+						haveSatellitesAtopBases = true;
+
 			bool		enableAI = false;
 			float		threatEstimationFactor = 1.f;
 			Array<Objects::Component::Turret*>	vehicleTurrets;
@@ -204,13 +206,13 @@ namespace Game
 				Objects::VehicleJob::PSequence seq = To<Objects::VehicleJob::Sequence>::DynamicCast(t.job);
 				if (!seq)
 				{
-					task.mineralCostLeft = t.job->mineralCostLeft > 0 ? t.job->mineralCostLeft : 0;
+					task.resourceCostLeft = t.job->resourceCostLeft > 0 ? t.job->resourceCostLeft : 0;
 					task.roundsToJobCompletion = t.job->roundsToJobCompletion;
 				}
 				else
 				{
 				
-					seq->Guess(v, origin, taskIndex, task.roundsToJobCompletion.value,task.mineralCostLeft.value);
+					seq->Guess(v, origin, taskIndex, task.roundsToJobCompletion.value,task.resourceCostLeft.value);
 				}
 				task.visualizePathToFocus = t.job->movesToFocusWhenDone;
 			
@@ -227,8 +229,18 @@ namespace Game
 				std::shared_ptr<Objects::VehicleJob::Construct> constJob = To<Objects::VehicleJob::Construct>::DynamicCast(t.job);
 				if (constJob)
 				{
-					task.visualizationStructureName = constJob->constructWhat->GetCTypeName();
+					task.visualizationName = constJob->constructWhat->GetCTypeName();
 				}
+				else
+				{
+					std::shared_ptr<Objects::VehicleJob::SelfDetonate> detonate = To<Objects::VehicleJob::SelfDetonate>::DynamicCast(t.job);
+
+					if (detonate)
+					{
+						task.visualizationName = detonate->doomsday ? ConstName::DetonationSize_Doomsday : ConstName::DetonationSize_Regular;
+					}
+				}
+
 			}
 			else
 			{
@@ -385,6 +397,7 @@ namespace Game
 				if (t)
 				{
 					Protocol::TowerState&subState = state.selective.Set3();
+					subState.attackActionLeft = t->attackActionLeft;
 					subState.attackTasks.SetSize(t->attackQueue.Count());
 					for (index_t i = 0; i < subState.attackTasks.Count(); i++)
 					{
@@ -1159,23 +1172,25 @@ namespace Game
 				}
 
 
-				Objects::PSkyHub hub = To<Objects::SkyHub>::Cast( Objects::SkyHub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Satellite::BaseResidenceHeight),0) );
-				Objects::InsertConstructed(hub,0);
-				ASSERT__(hub->connectedTo.lock() == port);
-
-				for (index_t i : distances)
+				if (Config::Nexus::haveSatellitesAtopBases)
 				{
-					ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-					UINT32 d1 = (R - field.distance[i]);
+					Objects::PSkyHub hub = To<Objects::SkyHub>::Cast( Objects::SkyHub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Satellite::BaseResidenceHeight),0) );
+					Objects::InsertConstructed(hub,0);
+					ASSERT__(hub->connectedTo.lock() == port);
 
-					bool noEdge = Grid::low.grid.GetCell(i).family != 0;
-					if (!noEdge && field.distance[i] == 2)
+					for (index_t i : distances)
 					{
-						Objects::PSkyGuardian guard = To<Objects::SkyGuardian>::Cast( Objects::SkyGuardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Satellite::BaseResidenceHeight),0));
-						Objects::InsertConstructed(guard,0);
+						ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
+						UINT32 d1 = (R - field.distance[i]);
+
+						bool noEdge = Grid::low.grid.GetCell(i).family != 0;
+						if (!noEdge && field.distance[i] == 2)
+						{
+							Objects::PSkyGuardian guard = To<Objects::SkyGuardian>::Cast( Objects::SkyGuardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Satellite::BaseResidenceHeight),0));
+							Objects::InsertConstructed(guard,0);
+						}
 					}
 				}
-
 
 			}
 

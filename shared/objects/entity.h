@@ -204,7 +204,7 @@ namespace Objects
 									isInsertedIntoGrid = false;//tracks if the local entity has been inserted into the grid
 
 		#ifdef CLIENT
-			bool					isMine;
+			bool					isOwnedByMe;
 			int						ignoreThreatRounds = 0;	//used by ai to ignore threat level if the ai assumes it can win
 		#endif
 

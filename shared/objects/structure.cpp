@@ -817,7 +817,7 @@ namespace Objects
 				PMine mine = To<Mine>::DynamicCast(s);
 				return mine && !mine->IsLinkedToCore() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 			},
-			[](const PWorldEntity&, int&mineralCostOut, int&timeCostOut){mineralCostOut = 0; timeCostOut = 0;}
+			NoCosts
 			);
 		#endif
 	}
@@ -1044,6 +1044,7 @@ namespace Objects
 			if (success)
 			{
 				naturalResources.SampleWorld(location.stackID);
+				naturalResources *= GetEfficiency();
 			}
 			if (success)
 				RegisterChange(WorldEntity::CanEnableChanged,atTime);
@@ -2344,8 +2345,9 @@ namespace Objects
 						? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None
 						;
 				},
-				[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+				[](const PWorldEntity&e, int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
+					costTypeOut = Resource::Minerals;
 					PVehiclePlant p = To<VehiclePlant>::DynamicCast(e);
 					ASSERT__(p);
 					if (!p->selectedBase || !p->selectedTurret)
@@ -2715,7 +2717,7 @@ namespace Objects
 			label.MarkBriefEnd();
 			label.WrapAppendText("Enabled mines extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures in the network."
 			" Mines should be build only on known occurrences of natural resources."
-			" They cannot be constructed atop each other, since they require a working link to the core in order to operate."
+			" They cannot be constructed atop each other, since they require a working link to the core in order to operate. Mines constructed on a height level of -8 or lower are twice as effective."
 			" Mines, like many structures, require "+String(ResourceTag(Resource::Energy))+" from generators to operate."
 			);
 		}

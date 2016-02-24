@@ -426,7 +426,12 @@ namespace Reflection
 		};
 
 
-		class FileReferenceAttachment: public CLI::Folder::Attachable
+		class PersistenceAttachment :public CLI::Folder::Attachable
+		{
+
+		};
+
+		class FileReferenceAttachment: public PersistenceAttachment
 		{
 		public:
 			const CLI::PVariable	sourceVariable;
@@ -489,7 +494,7 @@ namespace Reflection
 			String name;
 			if (!child->Query("name",name))
 			{
-				LogEvent(EventClass::Preset::configuration,"Unable to retrieve name attribute of XML variable node in "+context->GetPath());
+				LogEvent(EventClass::Preset::configurationError,"Unable to retrieve name attribute of XML variable node in "+context->GetPath());
 				allGood = false;
 				continue;
 			}
@@ -498,7 +503,7 @@ namespace Reflection
 				CLI::PVariable v = context->variables.Query(name);
 				if (!v)
 				{
-					LogEvent(EventClass::Preset::configuration,"Addressed variable '"+name+"' does not exist in "+context->GetPath());
+					LogEvent(EventClass::Preset::configurationError,"Addressed variable '"+name+"' does not exist in "+context->GetPath());
 					allGood = false;
 					continue;
 				}
@@ -650,15 +655,15 @@ namespace Reflection
 
 		CLI::InitDefaults(state,PrintLn);
 
-		state.EnterNewFolder("World");
+		state.EnterNewFolder("World")->attachment.reset(new Variable::PersistenceAttachment());
 			VAR(simulateLiquids,World::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::GameInvariant)
 
-			state.EnterNewFolder("Resources");
+			state.EnterNewFolder("Resources")->attachment.reset(new Variable::PersistenceAttachment());
 				for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
 				{
 					Objects::Resource res = Objects::Resource::Reinterpret(i);
-					state.EnterNewFolder(res.ToString());
+					state.EnterNewFolder(res.ToString())->attachment.reset(new Variable::PersistenceAttachment());
 						Variable::Set("density",Grid::Resource::density[i],0.f,1.f,Variable::Persistence::GameInvariant);
 						//Variable::Set("probability",Grid::Resource::probability[i],0.f,1.f,Variable::Persistence::GameInvariant);
 						Variable::Set("max",Grid::Resource::maximum[i],(Grid::Resource::coverage_t)1,(Grid::Resource::coverage_t)32,Variable::Persistence::GameInvariant);
@@ -666,24 +671,25 @@ namespace Reflection
 				}
 			state.ExitFolder();
 
-			state.EnterNewFolder("Planet");
+			state.EnterNewFolder("Planet")->attachment.reset(new Variable::PersistenceAttachment());
 				Variable::planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::GameInvariant);
 				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("config/planets",Variable::planetType));
 				{
 					Variable::Set("atmosphereDensity",Grid::currentPlanetConfig.atmosphereColor.a,0.f,1.f,Variable::Persistence::GameInvariant);
 					Variable::SetMappedEnum<Grid::Content,UINT32>("innerCoreType",Grid::currentPlanetConfig.innerCoreType,Variable::Persistence::GameInvariant);
-					state.EnterNewFolder("ExtendedCore");
+					state.EnterNewFolder("ExtendedCore")->attachment.reset(new Variable::PersistenceAttachment());
 						Variable::SetEnum("type",Grid::currentPlanetConfig.extendedCoreType,Variable::Persistence::GameInvariant);
 					state.ExitFolder();
 					
 					
 					CLI::PFolder mountains = state.EnterNewFolder("Mountains");
+						mountains->attachment.reset(new Variable::PersistenceAttachment());
 						Variable::SetEnum("top",Grid::currentPlanetConfig.topType,Variable::Persistence::GameInvariant)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 						Variable::SetEnum("type",Grid::currentPlanetConfig.innerType,Variable::Persistence::GameInvariant)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 						Variable::Set("snowHeight",Grid::currentPlanetConfig.snowHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight,Variable::Persistence::GameInvariant)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 					state.ExitFolder();
 
-					state.EnterNewFolder("Liquid");
+					state.EnterNewFolder("Liquid")->attachment.reset(new Variable::PersistenceAttachment());
 						Variable::SetEnum("type",Grid::currentPlanetConfig.liquidCoverage,Variable::Persistence::GameInvariant)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 						Variable::Set("level",Grid::currentPlanetConfig.liquidHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight,Variable::Persistence::GameInvariant)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 						Variable::SetEnum("outline",Grid::currentPlanetConfig.liquidOutline,Variable::Persistence::GameInvariant);
@@ -696,7 +702,7 @@ namespace Reflection
 				state.ExitFolder();
 			state.ExitFolder();
 		state.ExitFolder();
-		state.EnterNewFolder("Rules");
+		state.EnterNewFolder("Rules")->attachment.reset(new Variable::PersistenceAttachment());
 
 			ENUMVAR(gameGoal,RuntimeConfig,Variable::Persistence::RestoreFromSavegame)
 
@@ -714,12 +720,12 @@ namespace Reflection
 			VAR(limitTechniteLife,Technites,false,true,Variable::Persistence::ConfigOverridesSavegame);
 			VAR(extraTechniteRounds,Game::Config,0U,UINT_MAX,Variable::Persistence::ConfigOverridesSavegame);
 
-			state.EnterNewFolder("UnitLimits");
+			state.EnterNewFolder("UnitLimits")->attachment.reset(new Variable::PersistenceAttachment());
 				RuntimeConfig::UnitLimits::Reset();
 
 				state.SetVariable(CLI::PVariable(new Variable::UnitLimitEnabled("Enabled")));
 
-				state.EnterNewFolder("Structures");
+				state.EnterNewFolder("Structures")->attachment.reset(new Variable::PersistenceAttachment());
 					for (const Objects::PStructure&p:Objects::structurePrototypes)
 					{
 						String key = p->GetTypeName();
@@ -728,7 +734,7 @@ namespace Reflection
 					}
 				state.ExitFolder();
 
-				state.EnterNewFolder("MobileTurrets");
+				state.EnterNewFolder("MobileTurrets")->attachment.reset(new Variable::PersistenceAttachment());
 					for (const auto&c:Objects::Component::allTurretComponents)
 					{
 						String key = c->typeName;
@@ -738,8 +744,9 @@ namespace Reflection
 				state.ExitFolder();
 			state.ExitFolder();
 
-			state.EnterNewFolder("Nexus");
+			state.EnterNewFolder("Nexus")->attachment.reset(new Variable::PersistenceAttachment());
 				VAR(haveBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
+				VAR(haveSatellitesAtopBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
 				state.SetVariable(CLI::PVariable(new Variable::NexusAIEnabled("enableAI")));
 				//VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
 				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::ConfigOverridesSavegame)
@@ -747,7 +754,7 @@ namespace Reflection
 			state.ExitFolder();
 		state.ExitFolder();
 
-		state.EnterNewFolder("Server");
+		state.EnterNewFolder("Server")->attachment.reset(new Variable::PersistenceAttachment());
 			VAR(saveEveryNRounds,FileIO::Config,-1,100,Variable::Persistence::ConfigOnly);
 			VAR(saveWhenAllQuit,FileIO::Config,false,true,Variable::Persistence::ConfigOnly);
 		state.ExitFolder();
@@ -771,14 +778,16 @@ namespace Reflection
 	static bool FeedSubDirectory(const CLI::PFolder&dir, const Config::Context*ctx, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction)
 	{
 		bool allGood = true;
-		if (dir->attachment)
+		std::shared_ptr<Variable::PersistenceAttachment> a = To<Variable::PersistenceAttachment>::DynamicCast(dir->attachment);
+		if (!a)	//externally created
+			return true;
+
+		std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(dir->attachment);
+		if (ref)
 		{
 			if (testMode)
 				Variable::planetType->Set("LushGreen");
 
-			std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(dir->attachment);
-			if (!ref)	//externally created
-				return true;
 			//PathString str = RuntimeConfig::ConfigFile( PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"));
 			Feed(dir,PathString(ref->base + FOLDER_SLASH + ref->sourceVariable->ToString() + ".ini"),testMode,filterFunction);
 		}
@@ -786,7 +795,9 @@ namespace Reflection
 		{
 			const Config::Context*sub = ctx ? ctx->GetContext(dir->name) : nullptr;
 			if (ctx && !sub)
+			{
 				allGood = false;
+			}
 			bool innerGood = InnerFeed(dir,sub,testMode,filterFunction);
 			if (!innerGood)
 				allGood = false;
@@ -817,7 +828,7 @@ namespace Reflection
 					String support = var->GetSupportedValues();
 					if (support.IsNotEmpty())
 						support = "Supported values are "+var->GetSupportedValues()+". ";
-					LogEvent(EventClass::Preset::configuration,"Unable to set "+folder->GetPath()+"/"+var->name+" to '"+attrib->value+"'. "+support+"Defaulting to "+var->GetDefault());
+					LogEvent(EventClass::Preset::configurationError,"Unable to set configuration "+folder->GetPath()+"/"+var->name+" to '"+attrib->value+"'. "+support+"Defaulting to "+var->GetDefault());
 					String varPath = folder->GetPath()+"/"+var->name;
 					ASSERT2__(var->Set(var->GetDefault()),varPath,var->GetDefault());
 					allGood = false;
@@ -825,10 +836,8 @@ namespace Reflection
 			}
 			else
 			{
-				String support = var->GetSupportedValues();
-				if (support.IsNotEmpty())
-					support = "Supported values are "+var->GetSupportedValues()+". ";
-				LogEvent(EventClass::Preset::configuration,"Unable to read "+folder->GetPath()+"/"+var->name+". "+support+"Defaulting to "+var->GetDefault());
+				if (ctx)
+					LogEvent(EventClass::Preset::configurationError,"Attribute missing in configuration: "+folder->GetPath()+"/"+var->name+". Defaulting to "+var->GetDefault());
 				String varPath = folder->GetPath()+"/"+var->name;
 				ASSERT2__(var->Set(var->GetDefault()),varPath,var->GetDefault());
 				allGood = false;
@@ -924,7 +933,12 @@ namespace Reflection
 		}
 		for (const auto&dir : folder->folders)
 		{
-			if (dir->attachment)
+			std::shared_ptr<Variable::PersistenceAttachment> a = To<Variable::PersistenceAttachment>::DynamicCast(dir->attachment);
+			if (!a)	//externally created
+				continue;
+
+			std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(dir->attachment);
+			if (ref)	//file-reference
 				continue;
 			WriteHelp(outFile,dir,indent,"");
 			WriteIndent(outFile,indent);
@@ -935,6 +949,8 @@ namespace Reflection
 
 	static void Feed(const CLI::PFolder&folder, const PathString&subConfigName, bool testMode, const std::function<bool(const Variable::PBase&)>&filterFunction, bool readOriginal/*=false*/)
 	{
+		if (!readOriginal)
+			Feed(folder,subConfigName,testMode,filterFunction,true);	//read original first
 		Configuration	config;
 		Config::Context*	ctx = nullptr;
 		
@@ -945,7 +961,7 @@ namespace Reflection
 		{
 			if (!config.LoadFromFile(configName))
 			{
-				LogEvent(EventClass::Preset::error,"Unable to parse "+String(configName)+":\n"+config.Report());
+				LogEvent(EventClass::Preset::configurationError,"Unable to parse "+String(configName)+":\n"+config.Report());
 			}
 			else
 			{
@@ -957,12 +973,12 @@ namespace Reflection
 		{
 			if (FileSystem::IsFile(subConfigName))
 			{
-				LogEvent(EventClass::Preset::configuration,"Restoring missing configuration file '"+String(subConfigName)+"' from base data");
+				LogEvent(EventClass::Preset::configurationPrint,"Restoring missing configuration file '"+String(subConfigName)+"' from base data");
 				if (FileSystem::Copy(subConfigName,configName,true))
 				{
 					if (!config.LoadFromFile(configName))
 					{
-						LogEvent(EventClass::Preset::error,"Unable to parse "+String(configName)+":\n"+config.Report());
+						LogEvent(EventClass::Preset::configurationError,"Unable to parse "+String(configName)+":\n"+config.Report());
 					}
 					else
 					{
@@ -978,14 +994,15 @@ namespace Reflection
 		bool allGood = InnerFeed(folder,ctx,testMode,filterFunction);
 		if (!readOriginal && (!allGood || rewrite))
 		{
-			Feed(folder,subConfigName,testMode,filterFunction,true);
+			//Feed(folder,subConfigName,testMode,filterFunction,true);
 			StringFile outFile;
 			if (!outFile.Create(configName))
 			{
-				LogEvent(EventClass::Preset::configuration,"Unable to overwrite '"+String(configName)+"'");
+				LogEvent(EventClass::Preset::configurationError,"Unable to overwrite '"+String(configName)+"'");
 			}
 			else
 			{
+				LogEvent(EventClass::Preset::configurationPrint,"Writing '"+String(configName)+"'...");
 				DefineConfig(outFile,folder, 0);
 				outFile.Close();
 			}
@@ -1019,12 +1036,13 @@ namespace Reflection
 
 	static CLI::PFolder FindFolderWithAttachmentSource(const CLI::PVariable&v, const CLI::PFolder&current)
 	{
-		if (current->attachment)
-		{
-			const Variable::FileReferenceAttachment*attach = (const Variable::FileReferenceAttachment*)current->attachment.get();
-			if (attach->sourceVariable == v)
-				return current;
-		}
+		std::shared_ptr<Variable::PersistenceAttachment> a = To<Variable::PersistenceAttachment>::DynamicCast(current->attachment);
+		if (!a)	//externally created
+			return CLI::PFolder();
+
+		std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(current->attachment);
+		if (ref && ref->sourceVariable == v)
+			return current;
 
 		for (const auto&f : current->folders)
 		{
@@ -1070,16 +1088,16 @@ namespace Reflection
 				{
 					if (!FileSystem::Copy(file.GetLocation(),dest,true))
 					{
-						LogEvent(EventClass::Preset::error,"Warning: Unable to restore default planet type '"+String(file.GetInnerName())+"'");
+						LogEvent(EventClass::Preset::configurationError,"Warning: Unable to restore default planet type '"+String(file.GetInnerName())+"'");
 					}
 					else
-						LogEvent(EventClass::Preset::error,"Restored default planet type '"+String(file.GetInnerName())+"'");
+						LogEvent(EventClass::Preset::configurationError,"Restored default planet type '"+String(file.GetInnerName())+"'");
 				}
 			}
 
 		}
 		else
-			LogEvent(EventClass::Preset::error,"Warning: Unable to find base planet source folder from '"+String(root.GetLocation()));
+			LogEvent(EventClass::Preset::configurationError,"Warning: Unable to find base planet source folder from '"+String(root.GetLocation()));
 
 
 		#ifdef _DEBUG

@@ -426,7 +426,7 @@ namespace FileIO
 			Riff::Chunk*baseChunk = taskChunk->AppendBlock(RID::baseJob);
 			static ByteStream	stream;
 			stream.Clear();
-			stream << job->roundsToJobCompletion << job->mineralCostLeft;// << job->jobAutoCompletion << job->movesToFocusWhenDone;
+			stream << job->roundsToJobCompletion << job->resourceCostLeft;// << job->jobAutoCompletion << job->movesToFocusWhenDone;
 			stream << job->ioID;
 			baseChunk->SetData(stream);
 
@@ -460,7 +460,7 @@ namespace FileIO
 
 				source0->OpenStream();
 				ASSERT__(source0->Stream(job->roundsToJobCompletion));
-				ASSERT__(source0->Stream(job->mineralCostLeft));
+				ASSERT__(source0->Stream(job->resourceCostLeft));
 				if (source0->size() == 12)
 				{
 					ASSERT__(source0->Stream(job->ioID));

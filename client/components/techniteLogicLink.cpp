@@ -84,7 +84,7 @@ namespace TechniteLogicLink
 		obj.height = (BYTE)e->GetHeight();
 		obj.id.location = EncodeLocation(e->location);
 		obj.isBroad = e->IsBroad();
-		obj.isMine = e->isMine;
+		obj.isMine = e->isOwnedByMe;
 		obj.className = e->GetTypeName();
 		if (e->IsSatellite())
 			obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Satellite;

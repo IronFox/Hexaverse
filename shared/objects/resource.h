@@ -64,6 +64,13 @@ namespace Objects
 			this->uranium = vec.level[Resource::Uranium];
 		}
 
+
+		void	operator*=(float fc)
+		{
+			fuel *= fc;
+			minerals *= fc;
+			uranium *= fc;
+		}
 		bool	SampleWorld(index_t lowCellID);
 		bool	IsNotEmpty() const {return fuel != 0 || minerals != 0 || uranium != 0;}
 		bool	IsEmpty() const {return fuel == 0 && minerals == 0 && uranium == 0;}

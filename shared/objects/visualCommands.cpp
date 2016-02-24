@@ -88,7 +88,7 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			if (v->ToHibernating()->IsHibernating())
 			{
-				if (v->isMine)
+				if (v->isOwnedByMe)
 					keyColor.Update(float4(0,0,0,1));
 				else
 					keyColor.Update(float4(tone.rgb*0.5f,1));
@@ -190,8 +190,9 @@ namespace Objects
 
 	/*virtual override*/ void		IconCommand::CompileLabel(const PWorldEntity&e, Label&outResult)
 	{
-		int mineralCost, timeCost;
-		getCosts(e,mineralCost,timeCost);
+		int resourceCost, timeCost;
+		Resource resourceType;
+		getCosts(e,resourceCost,resourceType,timeCost);
 
 		if (timeCost == 0)
 		{
@@ -200,9 +201,9 @@ namespace Objects
 		}
 
 		outResult << name;
-		if (mineralCost > 0)
+		if (resourceCost > 0)
 		{
-			outResult << " "+String(ResourceTag(Resource::Minerals))+ " "+String(mineralCost) + "  ";
+			outResult << " "+String(ResourceTag(resourceType))+ " "+String(resourceCost) + "  ";
 		}
 		else
 			outResult<<" ";
@@ -383,7 +384,7 @@ namespace Objects
 
 		int price = structure->GetConstructionCost();
 		UINT32 roundsToJobCompletion = v->GetOperationRounds(price,Component::Construct);
-		//mineralCostLeft = actuallyConsumesMinerals ? mineralCosts : 0;
+		//resourceCostLeft = actuallyConsumesMinerals ? mineralCosts : 0;
 
 		outResult << name;
 		outResult << String(ResourceTag(Resource::Minerals))+ " "+String(price)+ "  ";

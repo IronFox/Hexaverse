@@ -24,9 +24,9 @@ namespace Evolver
 		float GetBaseAnimationLength()
 		{
 			float animationLength = 0.f;
-			Objects::ForeachMobileEntityIncludingStored([&animationLength](const Objects::PMobileEntity&m)
+			Objects::ForeachWorldEntityIncludingStored([&animationLength](const Objects::PWorldEntity&m)
 			{
-				animationLength = std::max(m->timeAt,animationLength);
+				animationLength = std::max(m->motionTime,animationLength);
 			});
 			return animationLength;
 		}

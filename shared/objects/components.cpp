@@ -20,6 +20,7 @@ namespace Objects
 	{
 		Turret			terraformer,mechanic,
 						artillery,launcher,emp,armored,
+						bomb,
 						munitionTransporter,
 						radar,resourceScanner,
 						protonCannon,skyHubTurret,ragnarok,starPort;
@@ -714,8 +715,9 @@ namespace Objects
 
 				component.iconCommands.Append(IconCommand(offset++, "Dig Horizontally", &Cmd::ToggleDigMode
 					, &CommonCmd::ModeCheck<CursorMode::DigMode>
-					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+					,[](const PWorldEntity&e, int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
+						costTypeOut = Resource::Minerals;
 						mineralCostOut = 0;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
@@ -724,8 +726,9 @@ namespace Objects
 					));
 				component.iconCommands.Append(IconCommand(offset++, "Dig Down", &Cmd::DigDown, 
 					&CommonCmd::IdleCheck
-					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+					,[](const PWorldEntity&e, int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
+						costTypeOut = Resource::Minerals;
 						mineralCostOut = 0;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
@@ -734,8 +737,9 @@ namespace Objects
 				));
 				component.iconCommands.Append(IconCommand(offset++, "Clear Above", &Cmd::ClearAbove
 					, &CommonCmd::ModeCheck<CursorMode::ClearAboveMode>
-					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+					,[](const PWorldEntity&e, int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
+						costTypeOut = Resource::Minerals;
 						mineralCostOut = 0;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
@@ -745,8 +749,9 @@ namespace Objects
 
 				component.iconCommands.Append(IconCommand(offset++, "Build Wall Up", &Cmd::IssueCommand<ConstName::Job_BuildWallUp>
 					,&CommonCmd::IdleCheck
-					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+					,[](const PWorldEntity&e, int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
+						costTypeOut = Resource::Minerals;
 						mineralCostOut = VehicleJob::BuildWallMineralCosts;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
@@ -755,8 +760,9 @@ namespace Objects
 				));
 				component.iconCommands.Append(IconCommand(offset++, "Build Horizontal Wall", &Cmd::IssueCommand<ConstName::Job_BuildHorizontalWall>
 					,&CommonCmd::IdleCheck
-					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+					,[](const PWorldEntity&e, int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
+						costTypeOut = Resource::Minerals;
 						mineralCostOut = VehicleJob::BuildWallMineralCosts;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
@@ -765,8 +771,9 @@ namespace Objects
 				));
 				component.iconCommands.Append(IconCommand(offset++, "Build Road", &Cmd::BuildRoad
 					,&CommonCmd::IdleCheck
-					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+					,[](const PWorldEntity&e, int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
+						costTypeOut = Resource::Minerals;
 						mineralCostOut = VehicleJob::BuildRoadMineralCosts;
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
@@ -791,12 +798,10 @@ namespace Objects
 
 				component.iconCommands.Append(IconCommand(offset++, "Build Blocks", &Cmd::BuildBlock, &CommonCmd::ModeCheck<CursorMode::BuildBlockMode>,NoCosts));
 				component.iconCommands.Append(IconCommand(offset++, "Commit", &Cmd::CommitOperation, &Cmd::CommitCheck
-					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+					,[](const PWorldEntity&e, int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
-	//					if (activeCursorMode == CursorMode::BuildBlockMode)
-						{
-							mineralCostOut = (int)cellSelection.Count();
-						}
+						costTypeOut = Resource::Minerals;
+						mineralCostOut = (int)cellSelection.Count();
 						ASSERT__(e->IsVehicle());
 						PVehicle v = To<Vehicle>::Cast(e);
 						timeCostOut = v->GetOperationRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? TerrainRemove : TerrainAdd);
@@ -882,7 +887,7 @@ namespace Objects
 
 			component.productionCosts = 40;
 			#ifndef ONE_COMPOUND_PER_FACTION
-				component.baseStorageCapacity.level[Resource::Minerals] = 200;
+				component.baseStorageCapacity.level[Resource::Uranium] = 200;
 			#endif
 			component.operationSpeed[Construct] = 10;
 			component.operationSpeed[TerrainRemove] = 10;
@@ -900,6 +905,81 @@ namespace Objects
 		}
 
 
+
+		float		Bomb::GetRadius(bool doomsday)
+		{
+			return doomsday ? ragnarok.explosionRadius-3 : artillery.explosionRadius*2;
+		}
+
+		int			Bomb::GetDamageLevel(bool doomsday)
+		{
+			return doomsday ? ragnarok.damageLevel / 2 : artillery.damageLevel*2;
+		}
+
+	
+		void			Bomb::Configure(Turret&component)
+		{
+
+			#ifdef HAS_WINDOW
+				CellCoords offset = ConfigureStandardCommands(component);
+
+				component.iconCommands.Append(IconCommand(offset++, "Self Detonate", &Cmd::IssueCommand<ConstName::DetonationSize_Regular>
+					, &CommonCmd::IdleCheck
+					,[](const PWorldEntity&e, int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
+					{
+						resourceCostOut = 0;
+						ASSERT__(e->IsVehicle());
+						PVehicle v = To<Vehicle>::Cast(e);
+						timeCostOut = v->GetOperationRounds(VehicleJob::RegularSelfDetonationCosts,SelfDetonate);
+					}
+					));
+
+				component.iconCommands.Append(IconCommand(offset++, "Obliterate", &Cmd::IssueCommand<ConstName::DetonationSize_Doomsday>
+					, &CommonCmd::IdleCheck
+					,[](const PWorldEntity&e, int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
+					{
+						resourceCostOut = VehicleJob::DoomsdaySelfDetonationCosts;
+						costTypeOut = Resource::Uranium;
+						ASSERT__(e->IsVehicle());
+						PVehicle v = To<Vehicle>::Cast(e);
+						timeCostOut = v->GetOperationRounds(VehicleJob::DoomsdaySelfDetonationCosts,SelfDetonate);
+					}
+					));
+
+				#ifndef ONE_COMPOUND_PER_FACTION
+					component.iconCommands.Append(IconCommand(offset++, "Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+				#endif
+
+				component.parts.setSize(1);
+
+				component.parts.first().first.LoadFromObj("objects/bomb.obj");
+			#endif
+
+			component.typeName = "Bomb";
+			component.shortName = "bomb";
+			component.constName = ConstName::Turret_Bomb;
+
+			component.productionCosts = 40;
+			#ifndef ONE_COMPOUND_PER_FACTION
+				component.baseStorageCapacity.level[Resource::Minerals] = VehicleJob::DoomsdaySelfDetonationCosts;
+			#endif
+			component.operationSpeed[SelfDetonate] = 50;
+			component.healthMultiplier = 1;
+			component.scanningRange = 1;
+			component.uplinkTraffic = 30;
+			component.uplinkPriority = 200;	//fairly early
+
+			component.continuousRotation = true;
+			component.continuousRotationSpeed = 0.125f;
+
+		
+			component.weight = 5;					//turret weight
+
+			component.FinishCreation();
+		}
+
+
 	
 
 
@@ -909,9 +989,11 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
+				#ifndef NO_MUNITION
 				#ifndef ONE_COMPOUND_PER_FACTION
 					component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+				#endif
 				#endif
 	
 				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
@@ -959,9 +1041,11 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
+				#ifndef NO_MUNITION
 				#ifndef ONE_COMPOUND_PER_FACTION
 					component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+				#endif
 				#endif
 	
 				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
@@ -1010,9 +1094,11 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
+				#ifndef NO_MUNITION
 				#ifndef ONE_COMPOUND_PER_FACTION
 					component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+				#endif
 				#endif
 	
 				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));

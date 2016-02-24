@@ -163,7 +163,7 @@ namespace Objects
 			float3	activeEntityColor,
 					inactiveEntityColor;
 			bool	requestedNewRound = false;
-			bool	isMine = false;
+			bool	isOwnedByMe = false;
 			count_t	roundChangeNotifications=0;
 		#endif
 

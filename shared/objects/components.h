@@ -17,7 +17,7 @@
 namespace Objects
 {
 	static const float			vehicleScale = 0.01f * WorldScale;
-	inline void NoCosts(const PWorldEntity&, int&mineralCostOut, int&timeCostOut){mineralCostOut = 0; timeCostOut = 0;}
+	inline void NoCosts(const PWorldEntity&, int&mineralCostOut, Resource&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
 
 
 	struct THindranceVector
@@ -69,6 +69,7 @@ namespace Objects
 			Repair,
 			TerrainAdd,
 			TerrainRemove,
+			SelfDetonate,
 
 			OperationCount
 		};
@@ -395,7 +396,7 @@ namespace Objects
 
 
 
-		namespace Terraformer // : public Vehicle
+		namespace Terraformer
 		{
 			#ifdef HAS_WINDOW
 			namespace Cmd
@@ -443,9 +444,6 @@ namespace Objects
 				bool	CommitIsPossibleC(const PWorldEntity&, bool);
 				BaseCommand::Flags CommitCheck(const PWorldEntity&, bool);
 		
-
-	//				bool	AbortIsPossible(const PWorldEntity&);
-
 				bool	ConstructionIsPossible(const PWorldEntity&e);
 				void	Construct(const PStructure&p, const PWorldEntity&);
 			};
@@ -454,13 +452,37 @@ namespace Objects
 
 
 			void		Configure(Turret&);
-			//void DefineTurret(Base&component);
 		};
 
+		namespace Bomb
+		{
+			#ifdef HAS_WINDOW
+			namespace Cmd
+			{
+				template <ConstName DetonationSize>
+					void	IssueCommand(const PWorldEntity&v)
+					{
+						PMobileEntity vehicle = To<MobileEntity>::DynamicCast(v);
+						if (!vehicle)
+							return;
+						SignalNewJob(vehicle, ConstName::Job_SelfDetonate,DetonationSize);					
+					}
+
+			};
+			#endif
+
+
+			void		Configure(Turret&);
+
+
+			float		GetRadius(bool doomsday);
+			int			GetDamageLevel(bool doomsday);
+		};
 
 	
 		extern Turret	terraformer,mechanic,
 						artillery,launcher,emp,armored,
+						bomb,
 						munitionTransporter,
 						radar,resourceScanner,
 						protonCannon,skyHubTurret,ragnarok,starPort;

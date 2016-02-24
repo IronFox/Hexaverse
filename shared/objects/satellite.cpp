@@ -76,7 +76,7 @@ namespace Objects
 	{
 		Super::RegisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0, newContacts);
 		#ifdef CLIENT
-			if (isMine)
+			if (isOwnedByMe)
 				Grid::visibleOrbitGrid.ChangeSensory(loc,GetScanningRange(),+1);
 		#endif
 		if (turret->groundScanningRange > 0.f)
@@ -85,7 +85,7 @@ namespace Objects
 			Grid::actualWorld.MapSensorState(loc.stackID,range,loc.height,turret->groundScannerPenetration,skySensorState);
 			Grid::actualWorld.UpdateSensorState(skySensorState);
 			#ifdef CLIENT
-				if (isMine)
+				if (isOwnedByMe)
 				{
 					Grid::actualWorld.InsertSensorCoverage(skySensorState);
 				}
@@ -99,13 +99,13 @@ namespace Objects
 	{
 		Super::UnregisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0);
 		#ifdef CLIENT
-			if (isMine)
+			if (isOwnedByMe)
 				Grid::visibleOrbitGrid.ChangeSensory(loc,GetScanningRange(),-1);
 		#endif
 		if (turret->groundScanningRange > 0.f)
 		{
 			#ifdef CLIENT
-				if (isMine)
+				if (isOwnedByMe)
 				{
 					Grid::actualWorld.RemoveSensorCoverage(skySensorState);
 				}

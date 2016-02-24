@@ -1327,7 +1327,7 @@ namespace Technites
 
 		void				Faction::ClearTechnites()
 		{
-			if (isMine)
+			if (isOwnedByMe)
 			{
 				#ifdef HAS_WINDOW
 					foreach (technites,t)
@@ -1357,7 +1357,7 @@ namespace Technites
 				ASSERT__(success);
 				ASSERT_EQUAL__(test,at);
 				#ifdef HAS_WINDOW
-					if (isMine)
+					if (isOwnedByMe)
 						ChangeVision(nt.location.GetU(),+1);
 				#endif
 			}

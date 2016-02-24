@@ -485,10 +485,10 @@
 				HexGrid::animationTimeLine.Refresh();
 			}
 
-			void			RegisterEntityDestruction(float time, bool isMine,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName)
+			void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName)
 			{
-				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isMine);
-				if (isMine)	//flipped logic
+				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe);
+				if (isOwnedByMe)	//flipped logic
 					cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
 				cmd->fallbackTargetName = entityName;
 				HexGrid::animationTimeLine.commands << Objects::PBaseCommand(cmd);
@@ -707,7 +707,7 @@
 					significance *= 10.f;
 				if (e->health <= 0)
 				{
-					if (e->isMine)
+					if (e->isOwnedByMe)
 						significance *= 15.f / (1.f + sqr(e->health));
 					else
 						significance *= 0.8f;
@@ -729,7 +729,7 @@
 				Objects::PVehicle target = this->target.lock();
 				if (!target)
 					return;
-				if (target->isMine)
+				if (target->isOwnedByMe)
 				{
 					outResult << "Owner: me";
 					target->AppendDeploymentCount(outResult, target->owner);
@@ -769,7 +769,7 @@
 				if (!target)
 					return;
 
-				if (target->isMine)
+				if (target->isOwnedByMe)
 				{
 					outResult << "Owner: me";
 					target->AppendDeploymentCount(outResult, target->owner);
@@ -812,7 +812,7 @@
 
 				Objects::PTurretBase target = structure->GetTurretBase();
 				outResult << name;
-				if (structure->isMine)
+				if (structure->isOwnedByMe)
 				{
 					outResult << "Owner: me";
 					structure->AppendDeploymentCount(outResult, structure->owner);
@@ -869,7 +869,7 @@
 				if (!e)
 					return;
 
-				const float4&background = e->isMine ? friendlyBackgroundColor : hostileBackgroundColor;
+				const float4&background = e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor;
 				if (e->IsVehicle())
 				{
 					Objects::VehicleCommand::UpdateTexture(*this,To<Objects::Vehicle>::Cast(e),false,background);
@@ -911,7 +911,7 @@
 					return;
 					
 				outResult << name;
-				if (instance->isMine)
+				if (instance->isOwnedByMe)
 				{
 //					outResult << "Owner: me";
 					if (instance->health > 0)
@@ -1482,7 +1482,7 @@
 								key += "|hibernating";
 						#endif
 
-						if (e->isMine)
+						if (e->isOwnedByMe)
 						{
 							friendlyGroups.collection.Set(key).Append(e);
 						}
@@ -1526,7 +1526,7 @@
 
 				bool showControls = showControlsAndContacts && e
 						#ifndef DEBUG_ACCESS_RESTRICTIONS
-							&& e->isMine && e->health > 0
+							&& e->isOwnedByMe && e->health > 0
 						#endif
 					 ;
 
@@ -1556,7 +1556,7 @@
 						selectedVehicleFocus.coords = GetFocusLocation();
 
 						selectedVehicleFocus.Refresh(true);//Network::ControlEnabled());
-						selectedVehicleFocus.UpdateTexture(v,false,v->isMine ? friendlyBackgroundColor : hostileBackgroundColor);
+						selectedVehicleFocus.UpdateTexture(v,false,v->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor);
 
 						GridCell&cell = AllocateCell(&selectedVehicleFocus);
 						cell.flipY = true;
@@ -1576,7 +1576,7 @@
 							selectedStructureFocus = StructureFocusCommand(s);
 							selectedStructureFocus.coords = GetFocusLocation();
 							selectedStructureFocus.Refresh(true);//Network::ControlEnabled());
-							selectedStructureFocus.UpdateTexture(s,false,s->isMine ? friendlyBackgroundColor : hostileBackgroundColor);
+							selectedStructureFocus.UpdateTexture(s,false,s->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor);
 
 							GridCell&cell = AllocateCell(&selectedStructureFocus);
 							cell.flipY = true;
@@ -1595,7 +1595,7 @@
 								selectedSatelliteFocus = SatelliteFocusCommand(s);
 								selectedSatelliteFocus.coords = GetFocusLocation();
 								selectedSatelliteFocus.Refresh(true);//Network::ControlEnabled());
-								selectedSatelliteFocus.UpdateTexture(s,false,s->isMine ? friendlyBackgroundColor : hostileBackgroundColor);
+								selectedSatelliteFocus.UpdateTexture(s,false,s->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor);
 
 								GridCell&cell = AllocateCell(&selectedSatelliteFocus);
 								cell.flipY = true;
@@ -2016,10 +2016,12 @@
 				TVec3<> wz = e.system.w.xyz;
 				Vec::normalize(wz);
 				textout << " w1: "<<wz<<nl;
+			#else
+				textout << " Height: "<<e.location.height<<nl;
 			#endif
 
 			textout << " Owner: "<<e.owner->GetName();
-			if (e.isMine)
+			if (e.isOwnedByMe)
 			{
 				textout<<" (me)";
 				if (e.health > 0)
@@ -2300,11 +2302,11 @@
 					if (!network.stable)
 					{
 						textout.PushColorState();
-						if (e.isMine)
+						if (e.isOwnedByMe)
 							textout.Tint(1, 0.2, 0.2);
 
 						textout << "  UNSTABLE";
-						if (!e.isMine)
+						if (!e.isOwnedByMe)
 							textout << " (?)";
 						textout << nl;
 						textout.PopColorState();
@@ -2314,7 +2316,7 @@
 					for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
 					{
 						textout.PushColorState();
-						if (e.isMine && network.total.demand.level[i] > network.total.supply.level[i])
+						if (e.isOwnedByMe && network.total.demand.level[i] > network.total.supply.level[i])
 							textout.Tint(1, 0.2, 0.2);
 						textout << "   " << (char)(tagOffset+i) << " " << network.total.demand.level[i] << "/" << network.total.supply.level[i] << nl;
 						textout.PopColorState();
@@ -2375,17 +2377,19 @@
 
 
 					{
-						const Objects::Mine*ms = dynamic_cast<const Objects::Mine*>(&e);
-						if (ms)
+						
+						if (ws->IsMine())
 						{
+							const Objects::Mine*ms = (const Objects::Mine*)(ws);
+							textout << "  Efficiency: "<<  int(ms->GetEfficiency()*100) << "%"  << nl;
 							if (ms->IsLinkedToCore())
 								textout << "  Linked to Core" << nl;
 							else
 							{
-								if (e.isMine)
+								if (e.isOwnedByMe)
 									textout.Tint(1,0.5,0.4);
 								textout << "  Disconnected from Core";
-								if (!e.isMine)
+								if (!e.isOwnedByMe)
 									textout << " (?)";
 								textout << nl;
 
@@ -2397,7 +2401,7 @@
 							const Objects::NexusPort*np = dynamic_cast<const Objects::NexusPort*>(&e);
 							if (np)
 							{
-								if (np->isMine)
+								if (np->isOwnedByMe)
 								{
 									if (np->resistence)
 										textout << "  Remaining resistence: "<<np->resistence << nl;
