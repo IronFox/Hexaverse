@@ -190,8 +190,9 @@ namespace Objects
 
 	/*virtual override*/ void		IconCommand::CompileLabel(const PWorldEntity&e, Label&outResult)
 	{
-		int mineralCost, timeCost;
-		getCosts(e,mineralCost,timeCost);
+		int resourceCost, timeCost;
+		Resource resourceType;
+		getCosts(e,resourceCost,resourceType,timeCost);
 
 		if (timeCost == 0)
 		{
@@ -200,9 +201,9 @@ namespace Objects
 		}
 
 		outResult << name;
-		if (mineralCost > 0)
+		if (resourceCost > 0)
 		{
-			outResult << " "+String(ResourceTag(Resource::Minerals))+ " "+String(mineralCost) + "  ";
+			outResult << " "+String(ResourceTag(resourceType))+ " "+String(resourceCost) + "  ";
 		}
 		else
 			outResult<<" ";

@@ -22,7 +22,9 @@ namespace Objects
 							DigDownMineralCosts = 15,//virtual costs for time calculation. not actually consumed
 							BuildFoundationMineralCosts = 14,
 							BuildRoadMineralCosts = 7,
-							BuildWallMineralCosts = 2;
+							BuildWallMineralCosts = 2,
+							RegularSelfDetonationCosts = 100,
+							DoomsdaySelfDetonationCosts = 200;
 
 
 		class BaseJob;

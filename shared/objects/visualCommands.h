@@ -9,6 +9,7 @@
 #include "../../client/ExtRenderer/DirectX11.h"
 #include "cursorMode.h"
 #include "types.h"
+#include "resource.h"
 
 namespace Objects
 {
@@ -175,7 +176,8 @@ namespace Objects
 		typedef EntityCommand	Super;
 		typedef IconCommand	This;
 
-		typedef std::function<void(const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)>	GetCosts;
+		//typedef std::function<void(const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)>	GetCosts;
+		typedef std::function<void(const PWorldEntity&e, int&costOut, Resource&costTypeOut, int&timeCostOut)>	GetCosts;
 
 		GetCosts			getCosts;
 

@@ -817,7 +817,7 @@ namespace Objects
 				PMine mine = To<Mine>::DynamicCast(s);
 				return mine && !mine->IsLinkedToCore() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 			},
-			[](const PWorldEntity&, int&mineralCostOut, int&timeCostOut){mineralCostOut = 0; timeCostOut = 0;}
+			NoCosts
 			);
 		#endif
 	}
@@ -2344,8 +2344,9 @@ namespace Objects
 						? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None
 						;
 				},
-				[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+				[](const PWorldEntity&e, int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
+					costTypeOut = Resource::Minerals;
 					PVehiclePlant p = To<VehiclePlant>::DynamicCast(e);
 					ASSERT__(p);
 					if (!p->selectedBase || !p->selectedTurret)
