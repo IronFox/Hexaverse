@@ -10,6 +10,7 @@ v0.3.17
 	+ Rings now indicate the number of attacks units have left during the next attack phase.
 	+ Added configuration option to specify whether nexus bases should have satellites.
 	+ New Bomb turret type can be used to blow up large areas (ideally from beneath ground).
+	+ Mines provide twice as much output when built below height level -7 (shown in UI panel now).
 	> Improved search behavior of automated surveyors.
 	> Towers now allow backspace-undoing of attack tasks.
 	> Resource view is now enabled by default.

@@ -747,6 +747,9 @@ namespace Objects
 		virtual float				GetActivityLevel() const override {float rs = isEnabled; if (IsSleeping()) rs = (rs + 0.5f) * 0.5f; return rs;}
 		virtual bool				IsWorkingStructure() const override {return true;}
 		virtual void				OnDestroy(float atTime) override;
+
+
+		virtual bool				IsMine() const {return false;}
 	};
 
 	/**
@@ -1311,6 +1314,7 @@ namespace Objects
 
 		NaturalResourceVector		naturalResources;
 
+		float						GetEfficiency() const {return location.height <= -8 ? 2.f : 1.f;}
 
 
 		virtual bool				WouldLikeToEnable() const override {return true;}
@@ -1356,6 +1360,9 @@ namespace Objects
 			return Super::SignalEnvironmentChange(neighborhood,atTime);
 
 		}
+
+
+		virtual bool				IsMine() const {return true;}
 
 	};
 
