@@ -110,9 +110,8 @@ namespace Objects
 
 		void	Render(Satellite&s, float light);
 
-		void	RenderSimple(Structure&s, bool includeFoundation = false);
-		void	RenderSimple(Satellite&s);
-		void	RenderSimpleIdentity(Satellite&s);
+		void	RenderSimple(WorldEntity&e, bool includeFoundationIfStructure=false);
+		void	RenderSimpleIdentity(WorldEntity&e, bool includeFoundationIfStructure=false);
 
 
 		/**

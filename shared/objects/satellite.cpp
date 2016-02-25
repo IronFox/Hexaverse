@@ -14,8 +14,7 @@ namespace Objects
 	#endif
 
 	#ifdef HAS_WINDOW
-		/*static*/ Buffer<StructureConstructionCommand>	SkyHub::structureConstructionCommands;
-		/*static*/ Buffer<SatelliteConstructionCommand>	SkyHub::satelliteConstructionCommands;
+		/*static*/ Buffer<EntityConstructionCommand>	SkyHub::constructionCommands;
 
 
 	#endif
@@ -157,9 +156,7 @@ namespace Objects
 		/*virtual override*/ void		SkyHub::VisitAllCommands(FCommandVisitor visitor)
 		{
 			Super::VisitAllCommands(visitor);
-			foreach (structureConstructionCommands,cmd)
-				visitor(*cmd);
-			foreach (satelliteConstructionCommands,cmd)
+			foreach (constructionCommands,cmd)
 				visitor(*cmd);
 			MobileEntityProducer::VisitAllCommands(visitor);
 		}
@@ -354,12 +351,13 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 
-		/*static*/ bool			SkyHub::MyCmd::CanBuild(const PStructure&what, const PWorldEntity&who)
+		/*static*/ bool			SkyHub::MyCmd::CanBuild(const PStructure&what)
 		{
-			PSkyHub hub = To<SkyHub>::DynamicCast(who);
-			ASSERT1__(hub,who->GetName());
+			ASSERT__(selectedMobileEntity);
+			PSkyHub hub = To<SkyHub>::DynamicCast(selectedMobileEntity);
+			ASSERT1__(hub,selectedMobileEntity->GetName());
 		
-			if (!CommonCmd::IsModeActiveC<CursorMode::Idle>(who,true)
+			if (!CommonCmd::IsModeActiveC<CursorMode::Idle>(true)
 				||
 				!hub->connectedTo.expired())
 				return false;
@@ -371,9 +369,9 @@ namespace Objects
 
 
 
-		/*static*/ void SkyHub::MyCmd::Build(const PSatellite&p, const PWorldEntity&v)
+		/*static*/ void SkyHub::MyCmd::Build(const PSatellite&p)
 		{
-			PMobileEntity mob = To<MobileEntity>::DynamicCast(v);
+			PMobileEntity mob = To<MobileEntity>::DynamicCast(selectedMobileEntity);
 			if (!mob)
 				return;
 			SignalConstructionBegin(mob->id, p->GetCTypeName(), ConstName::Empty);
@@ -413,15 +411,15 @@ namespace Objects
 	{
 		#ifdef HAS_WINDOW
 			int2 at = AllocateProductionSlot();
-			structureConstructionCommands.Append(
-				StructureConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
-				std::bind(&Component::Terraformer::Cmd::Construct, s, std::placeholders::_1),
-				[s](const PWorldEntity&e, bool controlEnabled)->BaseCommand::Flags
+			constructionCommands.Append(
+				EntityConstructionCommand(at, /*"Build " + */s->GetTypeName(), nullptr,nullptr, s,
+				std::bind(&Component::Terraformer::Cmd::Construct, s),
+				[s](bool controlEnabled)->BaseCommand::Flags
 				{
-					return MyCmd::CanBuild(s,e) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+					return MyCmd::CanBuild(s) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 				}
 				));
-			structureConstructionCommands.last().RasterizeImage();
+			constructionCommands.last().RasterizeImage();
 		#endif
 	}
 
@@ -429,9 +427,9 @@ namespace Objects
 	{
 		#ifdef HAS_WINDOW
 			int2 at = AllocateProductionSlot();
-			satelliteConstructionCommands.Append(
-				SatelliteConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
-				std::bind(&MyCmd::Build, s, std::placeholders::_1),
+			constructionCommands.Append(
+				EntityConstructionCommand(at, /*"Build " + */s->GetTypeName(), nullptr,nullptr,s,
+				std::bind(&MyCmd::Build, s),
 				&CommonCmd::IdleCheck));
 		#endif
 	}

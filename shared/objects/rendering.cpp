@@ -575,30 +575,23 @@ namespace Objects
 
 	}
 
-	static void _Locate(Structure&s)
+	static void _Locate(const WorldEntity&e)
 	{
-		display.SetObjectMatrix(s.system);
+		display.SetObjectMatrix(e.system);
 	}
 
 	static void _RenderSimpleLocated(Structure&s, const TMatrix4<>&system)
 	{
 		display.Render(*s.localizableShape, true);
-
+		DBG_ASSERT__(s.localizableShape->ibo.IsSet());
 
 		float zOffset;
 		PTurretBase b = s.GetTurretBase(zOffset);
 		if (b)
 		{
 			Renderer::RenderScaledComponent(system, zOffset, 2.f, *b->turret, b->turretAngleX, b->turretAngleY);
+			//display.SetObjectMatrix(system);
 		}
-	}
-
-	void Renderer::RenderSimple(Structure&s, bool includeFoundation /*= false*/)
-	{
-		_Locate(s);
-		if (includeFoundation)
-			display.Render(foundation, true);
-		_RenderSimpleLocated(s,s.system);
 	}
 
 	static void _RenderSimpleLocated(Satellite&s, const TMatrix4<>&system)
@@ -607,20 +600,51 @@ namespace Objects
 		Renderer::RenderComponent(system, 0.f, *s.turret, s.turretAngleX, s.turretAngleY);
 	}
 
-
-
-	void	Renderer::RenderSimple(Satellite&s)
+	static void _RenderSimpleLocated(Vehicle&v, const TMatrix4<>&system)
 	{
-		//float scale = Vec::length(s.system.x.xyz);
-		display.SetObjectMatrix(s.system);
-		_RenderSimpleLocated(s,s.system);
+		Renderer::RenderComponent(system,0,*v.base,0,0);
+		Renderer::RenderComponent(system,v.base->height,*v.turret,v.turretAngleX,v.turretAngleY);
 	}
 
-	void	Renderer::RenderSimpleIdentity(Satellite&s)
+
+	static void _RenderSimpleLocated(WorldEntity&e, const TMatrix4<>&system)
 	{
-		//float scale = Vec::length(s.system.x.xyz);
+		if (e.IsStructure())
+		{
+			_RenderSimpleLocated((Structure&)e,system);
+			return;
+		}
+		if (e.IsSatellite())
+		{
+			_RenderSimpleLocated((Satellite&)e,system);
+			return;
+		}
+		if (e.IsVehicle())
+		{
+			_RenderSimpleLocated((Vehicle&)e,system);
+			return;
+		}
+	}
+
+	void Renderer::RenderSimple(WorldEntity&e, bool includeFoundation /*= false*/)
+	{
+		_Locate(e);
+		if (e.IsStructure() && includeFoundation)
+			display.Render(foundation, true);
+		_RenderSimpleLocated(e,e.system);
+	}
+
+
+
+
+
+	void	Renderer::RenderSimpleIdentity(WorldEntity&e, bool includeFoundationIfStructure/*=false*/)
+	{
 		display.SetObjectMatrix(Matrix<>::eye4);
-		_RenderSimpleLocated(s,Matrix<>::eye4);
+		if (e.IsStructure() )
+			if (includeFoundationIfStructure)
+				display.Render(foundation, true);
+		_RenderSimpleLocated(e,Matrix<>::eye4);
 	}
 
 

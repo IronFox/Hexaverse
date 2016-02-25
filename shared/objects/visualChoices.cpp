@@ -25,7 +25,7 @@ namespace Objects
 
 
 	template <bool ControlEnabled>
-		void RefreshCommand(EntityCommand&cmd)
+		void RefreshCommand(BaseCommand&cmd)
 		{
 			cmd.Refresh(ControlEnabled);
 		}

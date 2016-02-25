@@ -377,13 +377,12 @@ namespace Objects
 		static void				RegisterProduction(const PStructure&);
 
 		#ifdef HAS_WINDOW
-			static Buffer<StructureConstructionCommand>	structureConstructionCommands;
-			static Buffer<SatelliteConstructionCommand>	satelliteConstructionCommands;
+			static Buffer<EntityConstructionCommand>	constructionCommands;
 
 			struct MyCmd
 			{
-				static bool		CanBuild(const PStructure&what, const PWorldEntity&who);
-				static void		Build(const PSatellite&what, const PWorldEntity&who);
+				static bool		CanBuild(const PStructure&what);
+				static void		Build(const PSatellite&what);
 
 			};
 		#endif

@@ -140,28 +140,28 @@ namespace UI
 
 			public:
 				/**/				TutorialCommand() : Super(int2(1,1),"Tutorial",
-										TutorialCommand::OnExecute,
-										[](const Objects::PWorldEntity&e, bool b)->BaseCommand::Flags
+										[](){},
+										[](bool b)->BaseCommand::Flags
 										{
-											return TutorialCommand::IsEnabled(e,b) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+											return TutorialCommand::IsEnabled(b) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 										},
 										Objects::NoCosts)
 										{}
 
 
-				static bool				IsEnabled(const Objects::PWorldEntity&, bool)
+				static bool				IsEnabled(bool)
 				{
 					return Dialog::HasMoreTutorials() && !Dialog::IsModal();
 
 
 				}
 
-				static void				OnExecute(const Objects::PWorldEntity&)
+				virtual void			Execute() override
 				{
 					Dialog::ShowNextTutorial();
 				}
 
-				virtual void			CompileLabel(const Objects::PWorldEntity&,Label&outResult) override
+				virtual void			CompileLabel(Label&outResult) override
 				{
 					outResult << (Dialog::HasMoreTutorials() ? "New Tutorial Messages" : "No Messages");
 				}
@@ -211,80 +211,30 @@ namespace UI
 			typedef std::shared_ptr<Group>				PGroup;
 
 
-			class VehicleFocusCommand : public Objects::VehicleCommand
+			class EntityFocusCommand : public Objects::EntityCommand
 			{
 			public:
-				typedef	Objects::VehicleCommand	Super;
-				Objects::WVehicle		target;
+				typedef	Objects::EntityCommand	Super;
 
 				//int2 coords, const String&name, const VehicleBase*&base, const Turret*&turret,   OnExecute f, CheckEnabled a, IsPermaActive p
-				/**/				VehicleFocusCommand()	{}
-				/**/				VehicleFocusCommand(const Objects::PVehicle&target) 
-									: Super(int2(), target->GetNiceName(),target->base,
-										target->turret,
-										std::bind(&VehicleFocusCommand::OnExecute,target,std::placeholders::_1),
-										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;},
-										false), 
-										target(target)
+				/**/				EntityFocusCommand()	{}
+				/**/				EntityFocusCommand(const Objects::PWorldEntity&target) 
+									: Super(target->GetNiceName(),target,[](){FATAL__("WTF");},
+										[](bool) {return Objects::BaseCommand::Flags::IsEnabled;})
 				{}
 
-				static void				OnExecute(Objects::PVehicle const&target, Objects::PWorldEntity const&)	//must be static because it may move before being executed
+				void				Execute()	override
 				{
-					//Objects::PVehicle target = To<Objects::Vehicle>::Cast(t);
-					Camera::TranslateTo(target->system.w.xyz);
+					Objects::PWorldEntity target = reference.lock();
+					if (target)
+						Camera::TranslateTo(target->system.w.xyz);
 				}
 
 
-				virtual void	CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
+				virtual void	CompileLabel(Label&outResult) override;
 			};
 
-			class SatelliteFocusCommand : public Objects::SatelliteCommand
-			{
-			public:
-				typedef	Objects::SatelliteCommand	Super;
-
-				//int2 coords, const String&name, const VehicleBase*&base, const Turret*&turret,   OnExecute f, CheckEnabled a, IsPermaActive p
-				/**/				SatelliteFocusCommand()	{}
-				/**/				SatelliteFocusCommand(const Objects::PSatellite&target) 
-									: Super(int2(), target->GetNiceName(),target,
-										std::bind(&SatelliteFocusCommand::OnExecute,target,std::placeholders::_1),
-										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;},
-										false)
-				{}
-
-				static void				OnExecute(Objects::PSatellite const&target, Objects::PWorldEntity const&)	//must be static because it may move before being executed
-				{
-					//Objects::PVehicle target = To<Objects::Vehicle>::Cast(t);
-					Camera::TranslateTo(target->system.w.xyz);
-				}
-
-
-				virtual void	CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
-			};
-
-			class StructureFocusCommand : public Objects::StructureCommand
-			{
-			public:
-				typedef	Objects::StructureCommand	Super;
-			
-				/**/				StructureFocusCommand()	{}
-				/**/				StructureFocusCommand(const Objects::PStructure&target) 
-									: Super(int2(), target->GetNiceName(),target,
-										std::bind(&StructureFocusCommand::OnExecute,target,std::placeholders::_1),
-										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;}
-										)
-				{}
-
-				static void				OnExecute(Objects::PStructure const&target, Objects::PWorldEntity const&)	//must be static because it may move before being executed
-				{
-					//Objects::PStructure target = To<Objects::Structure>::Cast(t);
-					Camera::TranslateTo(target->system.w.xyz);
-				}
-
-
-				virtual void	CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
-			};
-
+		
 			class AnimationEventFocusCommand : public Objects::BaseCommand
 			{
 			public:
@@ -297,7 +247,7 @@ namespace UI
 				String				fallbackTargetName;
 			
 				/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, float atTime, bool isFriendly)
-									: Super(int2(), name),focusLocation(focusLocation),atTime(atTime),isFriendly(isFriendly),focusTarget(focusID)
+									: Super(name),focusLocation(focusLocation),atTime(atTime),isFriendly(isFriendly),focusTarget(focusID)
 				{
 					LoadIcon(iconName);
 				}
@@ -306,7 +256,7 @@ namespace UI
 
 				virtual void	Execute()	override;
 				virtual void	Refresh(bool controlEnabled) override {}
-				virtual void	CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
+				virtual void	CompileLabel(Label&outResult) override;
 			};
 
 
@@ -314,23 +264,23 @@ namespace UI
 			static const float4 hostileBackgroundColor(1,0,0,0);
 
 
-			class GroupFocusCommand : public Objects::EntityCommand
+			class GroupFocusCommand : public Objects::BaseCommand
 			{
 			public:
-				typedef Objects::EntityCommand	Super;
+				typedef Objects::BaseCommand	Super;
 				
-				PGroup					group;
+				PGroup				group;
 
-				/**/				GroupFocusCommand()
-				{}
-
+				/**/				GroupFocusCommand() {}
 				/**/				GroupFocusCommand(PGroup&group);
+
 				virtual void		RasterizeImage() override;
 
+				virtual void		Refresh(bool)	override {};
 
-				static void			OnExecute(PGroup const&group, Objects::PWorldEntity const&_e);
+				virtual void		Execute()	override;
 
-				virtual void		CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
+				virtual void		CompileLabel(Label&outResult) override;
 
 				bool				operator<(const GroupFocusCommand&other) const {return group->operator<(*other.group);}
 			};
@@ -405,7 +355,7 @@ namespace UI
 				DynamicRow *const				row;
 
 				//int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p, GetCosts c
-				/**/				ArrowCommand(bool left, DynamicRow*row) : Super(int2(), left ? "Left":"Right"), left(left),row(row)
+				/**/				ArrowCommand(bool left, DynamicRow*row) : Super(left ? "Left":"Right"), left(left),row(row)
 									{
 										LoadIcon();
 									}
@@ -416,7 +366,7 @@ namespace UI
 
 				virtual void Refresh(bool controlEnabled) override {}
 
-				virtual void			CompileLabel(const Objects::PWorldEntity&,Label&outResult) override
+				virtual void			CompileLabel(Label&outResult) override
 				{
 					outResult << "Scroll "+name;
 				}
@@ -437,8 +387,7 @@ namespace UI
 			extern CollectionTemplateRow<Objects::WWorldEntity>	friendlyGroups,hostileGroups;
 			extern DynamicRow							animationTimeLine;
 
-			extern VehicleFocusCommand					selectedVehicleFocus;
-			extern StructureFocusCommand				selectedStructureFocus;
+			extern EntityFocusCommand					selectedFocus;
 
 			extern std::shared_ptr<TutorialCommand>		tutorialCommand;
 

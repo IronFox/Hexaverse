@@ -2060,7 +2060,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 				{
 					TVec3<> normal;
 					bool selectionDone = false;
-					if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity) || Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
+					if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) || Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 					{
 						if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
 						{
@@ -2071,7 +2071,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 								float3 d = p / r;
 								UINT32 stackID;
 								int h;
-								if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity))
+								if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode))
 								{
 									if (Vec::dot(d, normal) > 0.5f)	//flat selection
 									{
@@ -2096,7 +2096,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 										h = Grid::FloorFromRadius(r);
 									}
 								String activity = "build";
-								if (Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
+								if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 									activity = "remove";
 								Grid::LCellIdI origin = Objects::selectedVehicle->GetLastPointOfOrigin();
 								if (h < -Grid::CellStack::HalfRange)
@@ -2109,7 +2109,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 								}
 								elif(Objects::vehicleDistanceField.distance[stackID] > 3)
 									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too far away from vehicle");
-								elif(Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity) && h == origin.height && Objects::vehicleDistanceField.distance[stackID] <= 1)
+								elif(Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) && h == origin.height && Objects::vehicleDistanceField.distance[stackID] <= 1)
 									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too close to vehicle");
 								else
 								{
@@ -2398,12 +2398,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	if (e->IsMobile())
 	{
 		#ifdef HAS_WINDOW
-			if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(e))
+			if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode))
 			{
 				Objects::buildCandidates.EraseLast();
 				return;
 			}
-			if (Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(e))
+			if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 			{
 				Objects::removeCandidates.EraseLast();
 				return;
