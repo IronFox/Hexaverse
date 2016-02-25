@@ -45,10 +45,10 @@ namespace Objects
 				foreach (Grid::cellStack,stack)
 					stack->ClearDbgSensory();
 				foreach (structures,s)
-					if ((*s)->isMine)
+					if ((*s)->isOwnedByMe)
 						Grid::InsertDbgSensor((*s)->location,(*s)->GetScanningRange());
 				foreach (vehicles,s)
-					if ((*s)->isMine)
+					if ((*s)->isOwnedByMe)
 						Grid::InsertDbgSensor((*s)->location,(*s)->GetScanningRange());
 				foreach (Grid::cellStack,stack)
 					stack->CheckDbgSensory();
@@ -95,7 +95,7 @@ namespace Objects
 			{}
 
 
-			BaseCommand::Flags	operator()(int, bool)
+			BaseCommand::Flags	operator()(bool)
 			{
 				return getState() ? BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::IsEnabled;
 			}
@@ -223,8 +223,8 @@ namespace Objects
 			foreach (Component::baseComponents,bc)
 				(*bc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();});
 
-			globalCommands.Append(GlobalCommand(int2(0,0),"End Round", [](int){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
-			[](int, bool controlEnabled)->BaseCommand::Flags
+			globalCommands.Append(GlobalCommand(int2(0,0),"End Round", [](){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
+			[](bool controlEnabled)->BaseCommand::Flags
 			{
 				BaseCommand::Flags rs = BaseCommand::Flags::None;
 				if (CanChangeRoundState())
@@ -245,10 +245,10 @@ namespace Objects
 					,GlobalPermaSwitch(Grid::SeeThrough::IsEnabled)
 				));
 			globalCommands.Append(GlobalCommand(int2(2,2),"Clip-View Down", &GlobalCmd::SeeThroughDown
-					,[](int,bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive(0) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
+					,[](bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
 				));
 			globalCommands.Append(GlobalCommand(int2(3,2),"Clip-View Up", &GlobalCmd::SeeThroughUp
-					,[](int,bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive(0) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
+					,[](bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
 				));
 
 			globalCommands.Append(GlobalCommand(int2(2,0),"Hide Objects", &GlobalCmd::ToggleObjectView
@@ -256,7 +256,7 @@ namespace Objects
 				));
 
 
-			globalCommands.Append(GlobalCommand(int2(0,1),"Show Resources", [](int)
+			globalCommands.Append(GlobalCommand(int2(0,1),"Show Resources", []()
 					{
 						resourceView = !resourceView;
 						for (int j = 0; j < BaseGrid::NumFamilies; j++)
@@ -266,13 +266,13 @@ namespace Objects
 					,GlobalPermaSwitch(resourceView)
 				));
 
-			globalCommands.Append(GlobalCommand(int2(1,1),"Show Ranges", [](int)
+			globalCommands.Append(GlobalCommand(int2(1,1),"Show Ranges", []()
 					{
 						showFriendlyRanges = !showFriendlyRanges;
 					}
 					, GlobalPermaSwitch(showFriendlyRanges)
 				));
-			globalCommands.Append(GlobalCommand(int2(2,1),"Show Hostile Ranges", [](int)
+			globalCommands.Append(GlobalCommand(int2(2,1),"Show Hostile Ranges", []()
 					{
 						showHostileRanges = !showHostileRanges;
 					}

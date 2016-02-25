@@ -86,8 +86,9 @@ namespace Objects
 		/*static*/ Geometry			VehicleStore::interConnector,
 									Generator::reactorConnector;
 
-		/*static*/ VehicleConstructionCommand	SkyPort::formerConstructionCommand;
-		/*static*/ SatelliteConstructionCommand	SkyPort::skyHubConstructionCommand;
+		/*static*/ EntityConstructionCommand	
+									SkyPort::formerConstructionCommand,
+									SkyPort::skyHubConstructionCommand;
 
 
 	#endif
@@ -896,22 +897,22 @@ namespace Objects
 	{
 		Super::PrototypeSetup();
 		#ifdef HAS_WINDOW
-			iconCommands << IconCommand(int2(5,1), "Restore Core Link",[](const PWorldEntity&s)
+			iconCommands << IconCommand(int2(5,1), "Restore Core Link",[]()
 			{
-				PMine mine = To<Mine>::DynamicCast(s);
+				PMine mine = ToMine(selectedEntity);
 				if (mine)
 				{
 					SignalRestoreCoreLink(mine->id);
 				}
 			},
-			[](const PWorldEntity&s, bool controlEnabled)
+			[](bool controlEnabled)
 			{
 				if (!controlEnabled)
 					return BaseCommand::Flags::None;
-				PMine mine = To<Mine>::DynamicCast(s);
+				PMine mine = ToMine(selectedEntity);
 				return mine && !mine->IsLinkedToCore() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 			},
-			[](const PWorldEntity&, int&mineralCostOut, int&timeCostOut){mineralCostOut = 0; timeCostOut = 0;}
+			NoCosts
 			);
 		#endif
 	}
@@ -949,7 +950,7 @@ namespace Objects
 			commands << IconCommand(int2(5,1), "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>
 						,NoCosts
 			);
-			commands << IconCommand(int2(5,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck
+			commands << IconCommand(int2(5,0), "Demolish",&CommonCmd::DemolishSelected,&CommonCmd::CommonButtonCheck
 						,NoCosts
 			);
 		#endif
@@ -1139,6 +1140,7 @@ namespace Objects
 			if (success)
 			{
 				naturalResources.SampleWorld(location.stackID);
+				naturalResources *= GetEfficiency();
 			}
 			if (success)
 				RegisterChange(WorldEntity::CanEnableChanged,atTime);
@@ -1497,7 +1499,7 @@ namespace Objects
 
 	bool	VehicleStore::StoreLocally(const PVehicle&v, float&atTime, bool setHealthToFullIfNew/*=true*/)
 	{
-		if (LocalIsFull() || v->owner != owner || v->health <= 0)
+		if (LocalIsFull() || !v || v->owner != owner || v->health <= 0)
 			return false;
 		#ifndef CLIENT
 			v->motionTime = atTime = std::max(atTime,v->motionTime) + timeEpsilon;
@@ -1526,8 +1528,8 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			WVehicle w = v;
-			this->localStore.last().deployCommand = DeployVehicleCommand(int2(),v,
-				[w](const PWorldEntity&storeEntity)
+			this->localStore.last().deployCommand = DeployMobileCommand(v,
+				[w]()
 				{
 					//focus = To<VehicleStore>::DynamicCast(storeEntity).get();
 					if (deployingVehicle)
@@ -1535,10 +1537,10 @@ namespace Objects
 					else
 						deployingVehicle = w.lock();
 				},
-				[w](const PWorldEntity&storeEntity, bool controlEnabled)
+				[w](bool controlEnabled)
 				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(storeEntity,controlEnabled);
-					PVehicleStore s = To<VehicleStore>::DynamicCast(storeEntity);
+					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
+					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
 					if (deployingVehicle && s == selectedEntity && deployingVehicle == w.lock() && deployingVehicle->health > 0)
 						rs |= BaseCommand::Flags::IsPermaActive;
 					return rs;
@@ -1571,7 +1573,7 @@ namespace Objects
 	bool						VehicleStore::HasStoredLocally(const PVehicle&v) const
 	{
 		for (const auto&s : localStore)
-			if (s.vehicle == v)
+			if (s.vehicle.lock() == v)
 				return true;
 		return false;
 	}
@@ -1605,9 +1607,9 @@ namespace Objects
 
 
 			cmdLeft = IconCommand(int2(4,1),"Left",
-				[](const PWorldEntity&store)
+				[]()
 				{
-					PVehicleStore s = To<VehicleStore>::DynamicCast(store);
+					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
 					if (storeOffset > 0)
 					{
 						if (storeOffset > MaxVisibleStoreItems)
@@ -1619,7 +1621,7 @@ namespace Objects
 						RefreshCommands(true);
 					}
 				},
-				[](const PWorldEntity&, bool controlEnabled)
+				[](bool controlEnabled)
 				{
 					return storeOffset > 0 && controlEnabled
 						 ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
@@ -1627,9 +1629,9 @@ namespace Objects
 				NoCosts);
 
 			cmdRight = IconCommand(int2(),"Right",
-				[](const PWorldEntity&store)
+				[]()
 				{
-					PVehicleStore s = To<VehicleStore>::DynamicCast(store);
+					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
 					if (!s)
 						return;
 					if (s->CountVehiclesInPark() <= storeOffset)
@@ -1645,15 +1647,15 @@ namespace Objects
 					s->UpdateIconLocations();
 					RefreshCommands(true);
 				},
-				[](const PWorldEntity&store, bool controlEnabled)
+				[](bool controlEnabled)
 				{
-					PVehicleStore s = To<VehicleStore>::DynamicCast(store);
+					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
 					return s && s->CountVehiclesInPark() > storeOffset + MaxVisibleStoreItems
 					  && controlEnabled
 					   ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 				},
 				NoCosts);
-			cmdRight.coords = cmdLeft.coords + int2(MaxVisibleStoreItems+1,0);
+			cmdRight.gridCoords = cmdLeft.gridCoords + int2(MaxVisibleStoreItems+1,0);
 
 //			bool b = true;
 		#endif
@@ -1700,7 +1702,7 @@ namespace Objects
 					{
 						if (at >= storeOffset)
 						{
-							s2->deployCommand.coords = cmdLeft.coords + int2(at - storeOffset+1 ,0);
+							s2->deployCommand.gridCoords = cmdLeft.gridCoords + int2(at - storeOffset+1 ,0);
 							visitor(s2->deployCommand);
 						}
 
@@ -1812,7 +1814,7 @@ namespace Objects
 						foreach (s->localStore, st)
 						{
 							if (current >= storeOffset)
-								st->deployCommand.coords = cmdLeft.coords + int2(1 + current,0);
+								st->deployCommand.gridCoords = cmdLeft.gridCoords + int2(1 + current,0);
 							current ++;
 						}
 					}
@@ -1823,7 +1825,7 @@ namespace Objects
 				foreach (localStore, st)
 				{
 					if (current >= storeOffset)
-						st->deployCommand.coords = cmdLeft.coords + int2(1 + current,0);
+						st->deployCommand.gridCoords = cmdLeft.gridCoords + int2(1 + current,0);
 					current ++;
 				}
 			}
@@ -1875,7 +1877,7 @@ namespace Objects
 				{
 					s->park.reset();
 					#ifndef CLIENT
-						while (localStore.IsNotEmpty() && s->StoreLocally(localStore.last().vehicle,atTime))
+						while (localStore.IsNotEmpty() && s->StoreLocally(localStore.last().vehicle.lock(),atTime))
 						{
 							localStore.EraseLast();
 						}
@@ -1895,7 +1897,8 @@ namespace Objects
 		#ifndef CLIENT
 			for(const auto&v:localStore)
 			{
-				Remove(v.vehicle,RemovalType::DestroyedInStorage,atTime,false,true);
+				ASSERT1__(!v.vehicle.expired(),id.ToString());
+				Remove(v.vehicle.lock(),RemovalType::DestroyedInStorage,atTime,false,true);
 			}
 		#endif
 		localStore.Clear();
@@ -2415,10 +2418,10 @@ namespace Objects
 					if (iconCommands[i].name == "Enable")
 					{
 						iconCommands[i] = IconCommand(int2(4,1), "Enable",
-							[](const PWorldEntity&e)
+							[]()
 							{
 
-								VehiclePlant*s2 = dynamic_cast<VehiclePlant*>(e.get());
+								VehiclePlant*s2 = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 								if (s2)
 								{
 									if (!s2->IsEnabled() && !s2->CanEnable())
@@ -2429,13 +2432,13 @@ namespace Objects
 									SignalEnableStructure(*s2, !s2->IsEnabled());
 								}
 							}
-							,[](const PWorldEntity&e, bool controlEnabled)
+							,[](bool controlEnabled)
 							{
 								BaseCommand::Flags rs = BaseCommand::Flags::None;
-								VehiclePlant*div = dynamic_cast<VehiclePlant*>(e.get());
+								VehiclePlant*div = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 								if (controlEnabled && div != nullptr)
 									rs |= BaseCommand::Flags::IsEnabled;
-								if (Cmd::IsEnabled(e))
+								if (Cmd::IsEnabled())
 									rs |= BaseCommand::Flags::IsPermaActive;
 								return rs;
 							}
@@ -2446,9 +2449,9 @@ namespace Objects
 
 
 
-			iconCommands << IconCommand(int2(6,0), "Construct Selected",[](const PWorldEntity&e)
+			iconCommands << IconCommand(int2(6,0), "Construct Selected",[]()
 				{
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
+					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
 					{
 						if (plant->selectedBase && plant->selectedTurret)
@@ -2464,18 +2467,19 @@ namespace Objects
 						}
 					}
 				},
-				[](const PWorldEntity&e, bool controlEnabled)
+				[](bool controlEnabled)
 				{
 					if (!controlEnabled)
 						return BaseCommand::Flags::None;
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
+					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					return (plant != nullptr/* && plant->selectedBase && plant->selectedTurret*/)
 						? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None
 						;
 				},
-				[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+				[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
-					PVehiclePlant p = To<VehiclePlant>::DynamicCast(e);
+					costTypeOut = Resource::Minerals;
+					PVehiclePlant p = To<VehiclePlant>::DynamicCast(selectedEntity);
 					ASSERT__(p);
 					if (!p->selectedBase || !p->selectedTurret)
 					{
@@ -2495,20 +2499,21 @@ namespace Objects
 			foreach (baseComponents,comp)
 			{
 				Component::VehicleBase* c = *comp;
-				vehicleConstructionCommands << VehicleConstructionCommand(int2(7+at,0), c->typeName,c,nullptr,[c](const PWorldEntity&e)
+				vehicleConstructionCommands << EntityConstructionCommand(int2(7+at,0), c->typeName,c,nullptr,PWorldEntity(),[c]()
 				{
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
+					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
 						plant->selectedBase = c;
 				}
-				,[c](const PWorldEntity&e, bool controlEnabled)
+				,[c](bool controlEnabled)
 				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(e,controlEnabled);
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
+					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
+					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant && plant->selectedBase == c)
 						rs |= BaseCommand::Flags::IsPermaActive;
 					return rs;
 				});
+				vehicleConstructionCommands.last().RasterizeImage();
 				at++;
 			}
 			at = 0;
@@ -2516,20 +2521,21 @@ namespace Objects
 			foreach (turretComponents,comp)
 			{
 				Component::Turret* c = *comp;
-				vehicleConstructionCommands << VehicleConstructionCommand(int2(6+at,1), c->typeName,nullptr,c,[c](const PWorldEntity&e)
+				vehicleConstructionCommands << EntityConstructionCommand(int2(6+at,1), c->typeName,nullptr,c,PWorldEntity(),[c]()
 				{
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
+					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
 						plant->selectedTurret = c;
 				}
-				,[c](const PWorldEntity&e, bool controlEnabled)
+				,[c](bool controlEnabled)
 				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(e,controlEnabled);
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
+					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
+					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant && plant->selectedTurret == c)
 						rs |= BaseCommand::Flags::IsPermaActive;
 					return rs;
 				});
+				vehicleConstructionCommands.last().RasterizeImage();
 				at++;
 			}
 		#endif
@@ -2575,29 +2581,31 @@ namespace Objects
 			//foreach (baseComponents,comp)
 			{
 				//VehicleBase* c = *comp;
-				formerConstructionCommand = VehicleConstructionCommand(int2(5,0), "Construct Hover-Former", &Component::hoverbase,&Component::terraformer, [](const PWorldEntity&e)
+				formerConstructionCommand = EntityConstructionCommand(int2(5,0), "Construct Hover-Former", &Component::hoverbase,&Component::terraformer, PWorldEntity(),[]()
 				{
-					PSkyPort port = To<SkyPort>::DynamicCast(e);
+					PSkyPort port = To<SkyPort>::DynamicCast(selectedEntity);
 					if (!port)
 						return;
 					SignalConstructionBegin(port->id, ConstName::VehicleBase_HoverBase, ConstName::Turret_Terraformer);
 				}
 				,CommonCmd::CommonButtonCheck);
-				
-				skyHubConstructionCommand = SatelliteConstructionCommand(int2(5,1), "Construct SkyHub", SkyHub::globalPrototype, [](const PWorldEntity&e)
+				formerConstructionCommand.RasterizeImage();
+
+				skyHubConstructionCommand = EntityConstructionCommand(int2(5,1), "Construct SkyHub", nullptr,nullptr, SkyHub::globalPrototype, []()
 				{
-					PSkyPort port = To<SkyPort>::DynamicCast(e);
+					PSkyPort port = To<SkyPort>::DynamicCast(selectedEntity);
 					if (!port)
 						return;
 					SignalConstructionBegin(port->id, ConstName::Type_SkyHub, ConstName::Empty);
 				}
 				,
-				[](const PWorldEntity&e, bool controlsEnabled)
+				[](bool controlsEnabled)
 				{
 					if (!controlsEnabled)
 						return BaseCommand::Flags::None;
-					return !GetSatellite(e->location.stackID) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+					return selectedEntity && !GetSatellite(selectedEntity->location.stackID) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 				});
+				skyHubConstructionCommand.RasterizeImage();
 			}
 		#endif
 
@@ -2848,7 +2856,7 @@ namespace Objects
 			label.MarkBriefEnd();
 			label.WrapAppendText("Enabled mines extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures in the network."
 			" Mines should be build only on known occurrences of natural resources."
-			" They cannot be constructed atop each other, since they require a working link to the core in order to operate."
+			" They cannot be constructed atop each other, since they require a working link to the core in order to operate. Mines constructed on a height level of -8 or lower are twice as effective."
 			" Mines, like many structures, require "+String(ResourceTag(Resource::Energy))+" from generators to operate."
 			);
 		}

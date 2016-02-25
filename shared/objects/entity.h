@@ -190,8 +190,8 @@ namespace Objects
 		virtual						~WorldEntity();
 
 		#ifdef HAS_WINDOW
-			typedef Objects::EntityCommand	Command;
-			typedef Objects::FEntityCommandVisitor	FCommandVisitor;
+			typedef Objects::CallbackCommand	Command;
+			typedef Objects::FCommandVisitor	FCommandVisitor;
 
 			OpenAL::Source			ambientSound;
 		#endif
@@ -205,7 +205,7 @@ namespace Objects
 									isInsertedIntoGrid = false;//tracks if the local entity has been inserted into the grid
 
 		#ifdef CLIENT
-			bool					isMine;
+			bool					isOwnedByMe;
 			int						ignoreThreatRounds = 0;	//used by ai to ignore threat level if the ai assumes it can win
 		#endif
 

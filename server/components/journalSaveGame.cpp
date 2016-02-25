@@ -398,7 +398,7 @@ namespace Journal
 		const Objects::MobileEntity&m = (const Objects::MobileEntity&)e;
 		if (m.myTasks.IsEmpty() || !m.myTasks.Peek().job)
 			return 0;
-		return m.myTasks.Peek().job->mineralCostLeft;
+		return m.myTasks.Peek().job->resourceCostLeft;
 	}
 
 

@@ -634,7 +634,8 @@ namespace Objects
 				jobStarted = false;
 				ClearAllTasks(true, CLOCATION);
 				unstable = false;
-				Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
+				if (isInserted)	//otherwise already killed by Finish() operation
+					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
 				return false;
 			}
 			if (rs == VehicleJob::BaseJob::TerminalFailure)
@@ -992,8 +993,8 @@ namespace Objects
 								jobStarted = false;
 								ClearAllTasks(true, CLOCATION);
 								unstable = false;
-
-								Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
+								if (isInserted)	//otherwise already killed by Continue() operation
+									Remove(shared_from_this(),RemovalType::UncontrolledExplosion,motionTime,false,false);
 							return false;
 							case VehicleJob::BaseJob::TerminalFailure:
 								LogEvent(EventSignificance::Common,this,"Terminal failure. Remaining tasks dropped.");
@@ -1019,7 +1020,7 @@ namespace Objects
 		void					MobileEntity::RegisterNewJob(const String&localizableShapeIdentifier, const PVehicleJob&job, const Grid::LCellIdI*destination)
 		{
 			/*{
-				if (job->mineralCostLeft > this->currentStorage.level[Resource::Minerals])
+				if (job->resourceCostLeft > this->currentStorage.level[Resource::Minerals])
 				{
 					LogEvent(GetName()+": Unable to comply. Insufficient minerals left in storage.");
 					return;
@@ -1408,7 +1409,7 @@ namespace Objects
 			LogEvent(EventSignificance::Common,this,"Relocating to "+toLocation.ToString()+" ("+String(updateSystem)+")");
 			static Grid::HighSetup::TVolumeDescriptor desc;
 			float t = 0.f;
-			if (isMine)
+			if (isOwnedByMe)
 			{
 				UnregisterSensory(t);
 			}
@@ -1421,12 +1422,12 @@ namespace Objects
 			{
 				Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(shared_from_this()),location);
 			}
-			if (isMine)
+			if (isOwnedByMe)
 			{
 				RegisterSensory(t);
 			}
 			#ifdef THOROUGLY_DEBUG_SENSORY
-				if (isMine)
+				if (isOwnedByMe)
 					VerifySensory();
 			#endif
 
@@ -1800,9 +1801,37 @@ namespace Objects
 	#ifdef HAS_WINDOW
 
 
-	void					MobileEntity::Task::SetLocalizableShape(ConstName structureIdentifier, const Grid::LCellIdI&location)
+	void					MobileEntity::Task::SetLocalizableShape(ConstName shape, const Grid::LCellIdI&location)
 	{
-		PStructure p = 	GetPrototypeByName(structureIdentifier);
+		if (shape == ConstName::DetonationSize_Regular)
+		{
+			localizableShapes.SetSize(1,true);
+			Shape&shape = localizableShapes.first();
+			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
+			shape.instruction.vbo = sphereVBO[0];
+			shape.instruction.ibo = sphereIBO[0];
+			shape.depthTest = true;
+
+			float r = Component::Bomb::GetRadius(false);
+			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
+			return;
+		}
+
+		if (shape == ConstName::DetonationSize_Doomsday)
+		{
+			localizableShapes.SetSize(1,true);
+			Shape&shape = localizableShapes.first();
+			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
+			shape.instruction.vbo = sphereVBO[0];
+			shape.instruction.ibo = sphereIBO[0];
+			shape.depthTest = true;
+
+			float r = Component::Bomb::GetRadius(true);
+			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
+			return;
+		}
+
+		PStructure p = 	GetPrototypeByName(shape);
 
 		if (p)
 		{
@@ -1963,7 +1992,7 @@ namespace Objects
 	int MobileEntity::GetCurrentMineralConsumption() const
 	{
 		if (myTasks.IsNotEmpty() && myTasks.Peek().job)
-			return std::min(myTasks.Peek().job->mineralCostLeft,GetOperationSpeed(myTasks.Peek().job->GetOperationAffinity())) ;
+			return std::min(myTasks.Peek().job->resourceCostLeft,GetOperationSpeed(myTasks.Peek().job->GetOperationAffinity())) ;
 		return 0;
 	}
 

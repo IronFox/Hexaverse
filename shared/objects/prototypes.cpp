@@ -133,6 +133,7 @@ namespace Objects
 			Ragnarok::Configure(ragnarok);
 			StarPort::Configure(starPort);
 
+			Bomb::Configure(bomb);
 			Armored::Configure(armored);
 			Radar::Configure(radar);
 			MunitionTransporter::Configure(munitionTransporter);
@@ -149,6 +150,7 @@ namespace Objects
 			allTurretComponents << &radar 
 								<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
 								<< &armored << &artillery << &launcher << &emp
+								<< &bomb
 								<< &terraformer << &resourceScanner
 								#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 									<< &munitionTransporter

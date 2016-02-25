@@ -20,6 +20,7 @@ namespace Objects
 	{
 		Turret			terraformer,mechanic,
 						artillery,launcher,emp,armored,
+						bomb,
 						munitionTransporter,
 						radar,resourceScanner,
 						protonCannon,skyHubTurret,ragnarok,starPort;
@@ -648,7 +649,7 @@ namespace Objects
 			{	
 				foreach (iconCommands,cmd) 
 					visitor(*cmd);
-				foreach (structureConstructionCommands,cmd) 
+				foreach (constructionCommands,cmd) 
 					visitor(*cmd);
 			}
 		#endif
@@ -713,7 +714,7 @@ namespace Objects
 				component.iconCommands.Append(IconCommand(int2(4,0), "Abort", &VehicleCmd::AbortOperation, &CommonCmd::CommonButtonCheck,NoCosts));
 				component.iconCommands.Append(IconCommand(int2(4,1), "Undo", &VehicleCmd::UndoOperation, &CommonCmd::CommonButtonCheck,NoCosts));
 				component.iconCommands.Append(IconCommand(int2(5,1), "Sleep", &VehicleCmd::Sleep, &VehicleCmd::SleepCheck,NoCosts));
-				component.iconCommands.Append(IconCommand(int2(5,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck,NoCosts));
+				component.iconCommands.Append(IconCommand(int2(5,0), "Demolish",&CommonCmd::DemolishSelected,&CommonCmd::CommonButtonCheck,NoCosts));
 				return CellCoords(6,0);
 			}
 		#endif
@@ -725,65 +726,71 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				CellCoords offset = ConfigureStandardCommands(component);
 
-				component.iconCommands.Append(IconCommand(offset++, "Dig Horizontally", &Cmd::ToggleDigMode
+				component.iconCommands.Append(IconCommand(offset++, "Dig Horizontally", &CommonCmd::ToggleMode<CursorMode::DigMode>
 					, &CommonCmd::ModeCheck<CursorMode::DigMode>
-					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
+						costTypeOut = Resource::Minerals;
 						mineralCostOut = 0;
-						ASSERT__(e->IsVehicle());
-						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetOperationRounds(VehicleJob::DigHorizontalMineralCosts,TerrainRemove);
+						ASSERT__(selectedMobileEntity);
+						//PVehicle v = To<Vehicle>::Cast(e);
+						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DigHorizontalMineralCosts,TerrainRemove);
 					}
 					));
 				component.iconCommands.Append(IconCommand(offset++, "Dig Down", &Cmd::DigDown, 
 					&CommonCmd::IdleCheck
-					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
+						costTypeOut = Resource::Minerals;
 						mineralCostOut = 0;
-						ASSERT__(e->IsVehicle());
-						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetOperationRounds(VehicleJob::DigDownMineralCosts,TerrainRemove);
+						ASSERT__(selectedMobileEntity);
+//						PVehicle v = To<Vehicle>::Cast(selectedMobileEntity);
+						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DigDownMineralCosts,TerrainRemove);
 					}
 				));
-				component.iconCommands.Append(IconCommand(offset++, "Clear Above", &Cmd::ClearAbove
+				component.iconCommands.Append(IconCommand(offset++, "Clear Above", &CommonCmd::ToggleMode<CursorMode::ClearAboveMode>
 					, &CommonCmd::ModeCheck<CursorMode::ClearAboveMode>
-					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
+						costTypeOut = Resource::Minerals;
 						mineralCostOut = 0;
-						ASSERT__(e->IsVehicle());
-						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetOperationRounds(VehicleJob::ClearAboveMineralCosts,TerrainRemove);
+						ASSERT__(selectedMobileEntity);
+//						PVehicle v = To<Vehicle>::Cast(e);
+						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::ClearAboveMineralCosts,TerrainRemove);
 					}
 				));
 
 				component.iconCommands.Append(IconCommand(offset++, "Build Wall Up", &Cmd::IssueCommand<ConstName::Job_BuildWallUp>
 					,&CommonCmd::IdleCheck
-					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
+						costTypeOut = Resource::Minerals;
 						mineralCostOut = VehicleJob::BuildWallMineralCosts;
-						ASSERT__(e->IsVehicle());
-						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetOperationRounds(mineralCostOut,TerrainAdd);
+						ASSERT__(selectedMobileEntity);
+						//PVehicle v = To<Vehicle>::Cast(e);
+						timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,TerrainAdd);
 					}
 				));
 				component.iconCommands.Append(IconCommand(offset++, "Build Horizontal Wall", &Cmd::IssueCommand<ConstName::Job_BuildHorizontalWall>
 					,&CommonCmd::IdleCheck
-					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
+						costTypeOut = Resource::Minerals;
 						mineralCostOut = VehicleJob::BuildWallMineralCosts;
-						ASSERT__(e->IsVehicle());
-						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetOperationRounds(mineralCostOut,TerrainAdd);
+						ASSERT__(selectedMobileEntity);
+						//PVehicle v = To<Vehicle>::Cast(e);
+						timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,TerrainAdd);
 					}
 				));
 				component.iconCommands.Append(IconCommand(offset++, "Build Road", &Cmd::BuildRoad
 					,&CommonCmd::IdleCheck
-					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
+						costTypeOut = Resource::Minerals;
 						mineralCostOut = VehicleJob::BuildRoadMineralCosts;
-						ASSERT__(e->IsVehicle());
-						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetOperationRounds(mineralCostOut,TerrainAdd);
+						ASSERT__(selectedMobileEntity);
+						//PVehicle v = To<Vehicle>::Cast(e);
+						timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,TerrainAdd);
 					}
 				));
 
@@ -804,15 +811,13 @@ namespace Objects
 
 				component.iconCommands.Append(IconCommand(offset++, "Build Blocks", &Cmd::BuildBlock, &CommonCmd::ModeCheck<CursorMode::BuildBlockMode>,NoCosts));
 				component.iconCommands.Append(IconCommand(offset++, "Commit", &Cmd::CommitOperation, &Cmd::CommitCheck
-					,[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
+					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
-	//					if (activeCursorMode == CursorMode::BuildBlockMode)
-						{
-							mineralCostOut = (int)cellSelection.Count();
-						}
-						ASSERT__(e->IsVehicle());
-						PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = v->GetOperationRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? TerrainRemove : TerrainAdd);
+						costTypeOut = Resource::Minerals;
+						mineralCostOut = (int)cellSelection.Count();
+						ASSERT__(selectedMobileEntity);
+						//PVehicle v = To<Vehicle>::Cast(e);
+						timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,activeCursorMode != CursorMode::BuildBlockMode ? TerrainRemove : TerrainAdd);
 						if (activeCursorMode != CursorMode::BuildBlockMode)
 							mineralCostOut = 0;
 					}
@@ -844,13 +849,8 @@ namespace Objects
 				foreach(canBuild, b)
 				{
 					PStructure s = *b;
-					component.structureConstructionCommands.Append(StructureConstructionCommand(int2(5 + (at%9),2+at/9), /*"Build " + */(*b)->GetTypeName(), *b,std::bind(&Cmd::Construct, *b, std::placeholders::_1),
-					//[s](const PWorldEntity&e)->bool
-					//{
-					//	PVehicle v = To<Vehicle>::DynamicCast(e);
-					//	return v && Cmd::ConstructionIsPossible(e) && s->CanPlace(v->GetLastPointOfOrigin());
-					//},
-					[s](const PWorldEntity&e, bool controlsEnabled)
+					component.constructionCommands.Append(EntityConstructionCommand(int2(5 + (at%9),2+at/9), /*"Build " + */(*b)->GetTypeName(), nullptr,nullptr,*b,std::bind(&Cmd::Construct, *b),
+					[s](bool controlsEnabled)
 					{
 						bool constructingMe = (activeCursorMode == CursorMode::PlaceStructureMode
 								&& activeStructureToPlace == s);
@@ -895,7 +895,7 @@ namespace Objects
 
 			component.productionCosts = 40;
 			#ifndef ONE_COMPOUND_PER_FACTION
-				component.baseStorageCapacity.level[Resource::Minerals] = 200;
+				component.baseStorageCapacity.level[Resource::Uranium] = 200;
 			#endif
 			component.operationSpeed[Construct] = 10;
 			component.operationSpeed[TerrainRemove] = 10;
@@ -913,6 +913,81 @@ namespace Objects
 		}
 
 
+
+		float		Bomb::GetRadius(bool doomsday)
+		{
+			return doomsday ? ragnarok.explosionRadius-3 : artillery.explosionRadius*2;
+		}
+
+		int			Bomb::GetDamageLevel(bool doomsday)
+		{
+			return doomsday ? ragnarok.damageLevel / 2 : artillery.damageLevel*2;
+		}
+
+	
+		void			Bomb::Configure(Turret&component)
+		{
+
+			#ifdef HAS_WINDOW
+				CellCoords offset = ConfigureStandardCommands(component);
+
+				component.iconCommands.Append(IconCommand(offset++, "Self Detonate", &Cmd::IssueCommand<ConstName::DetonationSize_Regular>
+					, &CommonCmd::IdleCheck
+					,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
+					{
+						resourceCostOut = 0;
+						ASSERT__(selectedMobileEntity);
+						//PVehicle v = To<Vehicle>::Cast(e);
+						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::RegularSelfDetonationCosts,SelfDetonate);
+					}
+					));
+
+				component.iconCommands.Append(IconCommand(offset++, "Obliterate", &Cmd::IssueCommand<ConstName::DetonationSize_Doomsday>
+					, &CommonCmd::IdleCheck
+					,[](int&resourceCostOut, Resource&costTypeOut, int&timeCostOut)
+					{
+						resourceCostOut = VehicleJob::DoomsdaySelfDetonationCosts;
+						costTypeOut = Resource::Uranium;
+						ASSERT__(selectedMobileEntity);
+						//PVehicle v = To<Vehicle>::Cast(e);
+						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DoomsdaySelfDetonationCosts,SelfDetonate);
+					}
+					));
+
+				#ifndef ONE_COMPOUND_PER_FACTION
+					component.iconCommands.Append(IconCommand(offset++, "Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+					component.iconCommands.Append(IconCommand(offset++, "Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+				#endif
+
+				component.parts.setSize(1);
+
+				component.parts.first().first.LoadFromObj("objects/bomb.obj");
+			#endif
+
+			component.typeName = "Bomb";
+			component.shortName = "bomb";
+			component.constName = ConstName::Turret_Bomb;
+
+			component.productionCosts = 40;
+			#ifndef ONE_COMPOUND_PER_FACTION
+				component.baseStorageCapacity.level[Resource::Minerals] = VehicleJob::DoomsdaySelfDetonationCosts;
+			#endif
+			component.operationSpeed[SelfDetonate] = 50;
+			component.healthMultiplier = 1;
+			component.scanningRange = 1;
+			component.uplinkTraffic = 30;
+			component.uplinkPriority = 200;	//fairly early
+
+			component.continuousRotation = true;
+			component.continuousRotationSpeed = 0.125f;
+
+		
+			component.weight = 5;					//turret weight
+
+			component.FinishCreation();
+		}
+
+
 	
 
 
@@ -922,9 +997,11 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
+				#ifndef NO_MUNITION
 				#ifndef ONE_COMPOUND_PER_FACTION
 					component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+				#endif
 				#endif
 	
 				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
@@ -972,9 +1049,11 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
+				#ifndef NO_MUNITION
 				#ifndef ONE_COMPOUND_PER_FACTION
 					component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+				#endif
 				#endif
 	
 				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
@@ -1023,9 +1102,11 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
+				#ifndef NO_MUNITION
 				#ifndef ONE_COMPOUND_PER_FACTION
 					component.iconCommands.Append(IconCommand(offset++, "Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.iconCommands.Append(IconCommand(offset++, "Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+				#endif
 				#endif
 	
 				component.iconCommands.Append(IconCommand(offset++, "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
@@ -1119,9 +1200,9 @@ namespace Objects
 			{
 				namespace MyCmd
 				{
-					void		Obliterate(const PWorldEntity&entity)
+					void		Obliterate()
 					{
-						SignalTargetLessAttack(entity);
+						SignalTargetLessAttack(selectedEntity);
 					}
 				}
 			}
@@ -1606,15 +1687,15 @@ namespace Objects
 				return activeCursorMode != CursorMode::BuildBlockMode && activeCursorMode != CursorMode::RemoveBlockMode;
 			}
 
-			/*static*/ bool Terraformer::Cmd::NotBuilding(const PWorldEntity&e)
+			/*static*/ bool Terraformer::Cmd::NotBuilding()
 			{
-				PMobileEntity v = To<MobileEntity>::DynamicCast(e);
+				PMobileEntity v = selectedMobileEntity;
 				return v && (!v->HasTasks() || !v->myTasks.Peek().IsJob());
 			}
 
-			/*static*/ void Terraformer::Cmd::Construct(const PStructure&p, const PWorldEntity&v)
+			/*static*/ void Terraformer::Cmd::Construct(const PStructure&p)
 			{
-				PMobileEntity vehicle = To<MobileEntity>::DynamicCast(v);
+				PMobileEntity vehicle = selectedMobileEntity;
 				if (!vehicle)
 					return;
 				if (activeCursorMode != CursorMode::PlaceStructureMode)
@@ -1633,6 +1714,8 @@ namespace Objects
 								break;
 							}
 					}
+					if (selectedEntity->IsSatellite())	//don't convert to IsOrbital()
+						directPlace = true;
 
 					if (!directPlace)
 					{
@@ -1656,47 +1739,47 @@ namespace Objects
 				//SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());
 			}
 
+/*
 
-
-			void Terraformer::Cmd::ToggleDigMode(const PWorldEntity&e)
+			void Terraformer::Cmd::ToggleDigMode()
 			{
-				CommonCmd::ToggleMode(e,CursorMode::DigMode);
-				}
-
-
-			void Terraformer::Cmd::ClearAbove(const PWorldEntity&e)
-			{
-				CommonCmd::ToggleMode(e, CursorMode::ClearAboveMode);
+				CommonCmd::ToggleMode(CursorMode::DigMode);
 			}
+*/
 
-			bool Terraformer::Cmd::ClearAboveIsActive(const PWorldEntity&e)
-			{
-				return CommonCmd::IsModeActive(e,CursorMode::ClearAboveMode);
-			}
+			//void Terraformer::Cmd::ClearAbove()
+			//{
+			//	CommonCmd::ToggleMode(CursorMode::ClearAboveMode);
+			//}
+
+			//bool Terraformer::Cmd::ClearAboveIsActive(const PWorldEntity&e)
+			//{
+			//	return CommonCmd::IsModeActive(e,CursorMode::ClearAboveMode);
+			//}
 	
-			bool Terraformer::Cmd::BuildBlockIsActive(const PWorldEntity&e)
-			{
-				return CommonCmd::IsModeActive(e,CursorMode::BuildBlockMode);
-			}
+			//bool Terraformer::Cmd::BuildBlockIsActive(const PWorldEntity&e)
+			//{
+			//	return CommonCmd::IsModeActive(e,CursorMode::BuildBlockMode);
+			//}
 
 
 
-			bool Terraformer::Cmd::RemoveBlockIsActive(const PWorldEntity&e)	
-			{
-				return CommonCmd::IsModeActive(e,CursorMode::RemoveBlockMode);
-			}
+			//bool Terraformer::Cmd::RemoveBlockIsActive(const PWorldEntity&e)	
+			//{
+			//	return CommonCmd::IsModeActive(e,CursorMode::RemoveBlockMode);
+			//}
 	 
 
 
-			bool Terraformer::Cmd::CommitIsPossibleC(const PWorldEntity&e, bool controlEnabled)
+			bool Terraformer::Cmd::CommitIsPossibleC(bool controlEnabled)
 			{
 				return controlEnabled && 
-					(CommonCmd::IsModeActive(e,CursorMode::BuildBlockMode) || CommonCmd::IsModeActive(e,CursorMode::RemoveBlockMode));
+					(CommonCmd::IsModeActive(CursorMode::BuildBlockMode) || CommonCmd::IsModeActive(CursorMode::RemoveBlockMode));
 			}
 
-			BaseCommand::Flags Terraformer::Cmd::CommitCheck(const PWorldEntity&e, bool controlEnabled)
+			BaseCommand::Flags Terraformer::Cmd::CommitCheck(bool controlEnabled)
 			{
-				return CommitIsPossibleC(e,controlEnabled) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+				return CommitIsPossibleC(controlEnabled) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 			}
 
 	
@@ -1706,31 +1789,24 @@ namespace Objects
 				return (activeCursorMode != CursorMode::Idle || (v && v->tasks.IsNotEmpty()));
 			}*/
 
-			bool Terraformer::Cmd::ConstructionIsPossible(const PWorldEntity&e)
+			bool Terraformer::Cmd::ConstructionIsPossible()
 			{
-				return CommonCmd::IsModeActive(e,CursorMode::Idle) && NotBuilding(e); 
+				return CommonCmd::IsModeActive(CursorMode::Idle) && NotBuilding(); 
 			}
 		
 	
-			/*static*/ void					Terraformer::Cmd::DigDown(const PWorldEntity&v)
+			/*static*/ void					Terraformer::Cmd::DigDown()
 			{
-				if (v->location.height < -Grid::CellStack::HalfRange+2)
-					return;
-				PVehicle vehicle = To<Vehicle>::DynamicCast(v);
+				PVehicle vehicle = To<Vehicle>::DynamicCast(selectedMobileEntity);
 				if (!vehicle)
 					return;
+				if (vehicle->location.height < -Grid::CellStack::HalfRange+2)
+					return;
 				SignalNewJob(vehicle, ConstName::Job_DigDown, ConstName::Empty);
-
-				//Grid::LCellIdI target = vehicle->GetLastPointOfOrigin()-1;
-				//
-				//CursorMode::PJob job(new VehicleJob::DigDown(*vehicle));
-
-				//vehicle->RegisterNewJob("",job,&target);
 			}
 
 			void			Base::DescribeType(BaseCommand::Label&label, bool compound)
 			{
-			//	label << typeName;
 				if (!compound)
 					label << " Cost: "+String(ResourceTag(Resource::Minerals))+String(productionCosts);
 				label.MarkBriefEnd();
@@ -1885,28 +1961,26 @@ namespace Objects
 			//}
 
 
-			void					Terraformer::Cmd::BuildRoad(const PWorldEntity&v)
+			void					Terraformer::Cmd::BuildRoad()
 			{
-				if (v->location.height <= -Grid::CellStack::HalfRange)
-					return;
-				PVehicle vehicle = To<Vehicle>::DynamicCast(v);
+				PVehicle vehicle = To<Vehicle>::DynamicCast(selectedMobileEntity);
 				if (!vehicle)
 					return;
+				if (vehicle->location.height <= Grid::CellStack::BottomHeight)
+					return;
 				SignalNewJob(vehicle, ConstName::Job_BuildRoad,ConstName::Empty);
-				//Vehicle::PJob job(new Job::BuildRoad(*vehicle));
-				//vehicle->RegisterNewJob("", job,nullptr);
 			}
 
 
 
 
 
-			void	Terraformer::Cmd::RemoveBlock(const PWorldEntity&e)
+			void	Terraformer::Cmd::RemoveBlock()
 			{
-				PVehicle v = To<Vehicle>::DynamicCast(e);
+				PVehicle v = To<Vehicle>::DynamicCast(selectedMobileEntity);
 				if (!v)
 					return;
-				CommonCmd::ToggleMode(e,CursorMode::RemoveBlockMode);
+				CommonCmd::ToggleMode(CursorMode::RemoveBlockMode);
 
 				cellSelection.Clear();
 				removeCandidates.Clear();
@@ -1954,12 +2028,12 @@ namespace Objects
 			}
 
 
-			void	Terraformer::Cmd::BuildBlock(const PWorldEntity&e)
+			void	Terraformer::Cmd::BuildBlock()
 			{
-				PVehicle v = To<Vehicle>::DynamicCast(e);
+				PVehicle v = To<Vehicle>::DynamicCast(selectedMobileEntity);
 				if (!v)
 					return;
-				CommonCmd::ToggleMode(e,CursorMode::BuildBlockMode);
+				CommonCmd::ToggleMode(CursorMode::BuildBlockMode);
 				cellSelection.Clear();
 				buildCandidates.Clear();
 				const int height = v->GetLastPointOfOrigin().height;
@@ -2007,9 +2081,9 @@ namespace Objects
 					UpdateChoices(true);
 			}
 
-			void					Terraformer::Cmd::CommitOperation(const PWorldEntity&e)
+			void					Terraformer::Cmd::CommitOperation()
 			{
-				PVehicle v = To<Vehicle>::DynamicCast(e);
+				PVehicle v = To<Vehicle>::DynamicCast(selectedMobileEntity);
 				if (!v)
 					return;
 				Array<Grid::HCellIdI>	selection;
@@ -2018,9 +2092,7 @@ namespace Objects
 				buildCandidates.Clear();
 
 				SignalTerrainModification(v,activeCursorMode,selection );
-				//Vehicle::PJob job(new Job::AlterTerrain(*v,activeCursorMode,selection));
 
-				//v->RegisterNewJob("",job,nullptr);
 				activeCursorMode = CursorMode::Idle;
 			}
 

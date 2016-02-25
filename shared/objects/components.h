@@ -17,7 +17,7 @@
 namespace Objects
 {
 	static const float			vehicleScale = 0.01f * WorldScale;
-	inline void NoCosts(const PWorldEntity&, int&mineralCostOut, int&timeCostOut){mineralCostOut = 0; timeCostOut = 0;}
+	inline void NoCosts(int&mineralCostOut, Resource&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
 
 
 	struct THindranceVector
@@ -69,6 +69,7 @@ namespace Objects
 			Repair,
 			TerrainAdd,
 			TerrainRemove,
+			SelfDetonate,
 
 			OperationCount
 		};
@@ -91,7 +92,7 @@ namespace Objects
 			#ifdef HAS_WINDOW
 	//			typedef Objects::IconCommand	Command;
 				Buffer0<IconCommand>			iconCommands;
-				Buffer0<StructureConstructionCommand>			structureConstructionCommands;
+				Buffer0<EntityConstructionCommand>	constructionCommands;
 
 				Array<std::pair<Geometry,DX11::InstructionBlock32> >	parts;
 			#endif
@@ -106,7 +107,7 @@ namespace Objects
 			void							GetSubSystem(index_t geometryIndex, float angle, TMatrix4<>&outSystem)	const;
 
 			#ifdef HAS_WINDOW
-				typedef std::function<void(EntityCommand&cmd)>	FCommandVisitor;
+				//typedef std::function<void(EntityCommand&cmd)>	FCommandVisitor;
 
 				void						VisitAllCommands(FCommandVisitor visitor);
 			#endif
@@ -399,7 +400,7 @@ namespace Objects
 
 
 
-		namespace Terraformer // : public Vehicle
+		namespace Terraformer
 		{
 			#ifdef HAS_WINDOW
 			namespace Cmd
@@ -409,62 +410,75 @@ namespace Objects
 				bool	BuildFoundationJob(const Vehicle&v);
 
 
-				void	ToggleDigMode(const PWorldEntity&);
+				//void	ToggleDigMode();
 
-				void	DigDown(const PWorldEntity&);
-				//bool	CanDigDown(const PWorldEntity&);
+				void	DigDown();
+				//bool	CanDigDown();
 
 
 				template <ConstName Command>
-					void	IssueCommand(const PWorldEntity&v)
+					void	IssueCommand()
 					{
-						PMobileEntity vehicle = To<MobileEntity>::DynamicCast(v);
-						if (!vehicle)
+						if (!selectedMobileEntity)
 							return;
-						//if (vehicle->GetLastPointOfOrigin().height+1 >= Grid::CellStack::TopHeight)	//not the place of the client to decide
-						//{
-						//	LogEvent(EventClass::Preset::commandRejected
-						//	return;
-						//}
-						SignalNewJob(vehicle, Command,ConstName::Empty);					
+						SignalNewJob(selectedMobileEntity, Command,ConstName::Empty);					
 					}
 
-				void	BuildRoad(const PWorldEntity&);
+				void	BuildRoad();
+				bool	NotBuilding();
 
+				//void	ClearAbove();
+				//bool	ClearAboveIsActive();
 
-				bool	NotBuilding(const PWorldEntity&e);
+				void	BuildBlock();
+				//bool	BuildBlockIsActive();
 
-				void	ClearAbove(const PWorldEntity&);
-				bool	ClearAboveIsActive(const PWorldEntity&);
+				void	RemoveBlock();
+				//bool	RemoveBlockIsActive();
 
-				void	BuildBlock(const PWorldEntity&v);
-				bool	BuildBlockIsActive(const PWorldEntity&);
-
-				void	RemoveBlock(const PWorldEntity&v);
-				bool	RemoveBlockIsActive(const PWorldEntity&e);
-
-				void	CommitOperation(const PWorldEntity&);
-				bool	CommitIsPossibleC(const PWorldEntity&, bool);
-				BaseCommand::Flags CommitCheck(const PWorldEntity&, bool);
+				void	CommitOperation();
+				bool	CommitIsPossibleC(bool);
+				BaseCommand::Flags CommitCheck(bool);
 		
-
-	//				bool	AbortIsPossible(const PWorldEntity&);
-
-				bool	ConstructionIsPossible(const PWorldEntity&e);
-				void	Construct(const PStructure&p, const PWorldEntity&);
+				bool	ConstructionIsPossible();
+				void	Construct(const PStructure&p);
 			};
 			#endif
 
 
 
 			void		Configure(Turret&);
-			//void DefineTurret(Base&component);
 		};
 
+		namespace Bomb
+		{
+			#ifdef HAS_WINDOW
+			namespace Cmd
+			{
+				template <ConstName DetonationSize>
+					void	IssueCommand()
+					{
+						PMobileEntity vehicle = selectedMobileEntity;
+						if (!vehicle)
+							return;
+						SignalNewJob(vehicle, ConstName::Job_SelfDetonate,DetonationSize);					
+					}
+
+			};
+			#endif
+
+
+			void		Configure(Turret&);
+
+
+			float		GetRadius(bool doomsday);
+			int			GetDamageLevel(bool doomsday);
+		};
 
 	
 		extern Turret	terraformer,mechanic,
 						artillery,launcher,emp,armored,
+						bomb,
 						munitionTransporter,
 						radar,resourceScanner,
 						protonCannon,skyHubTurret,ragnarok,starPort;

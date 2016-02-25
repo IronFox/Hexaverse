@@ -1203,10 +1203,9 @@ namespace Protocol
 		, NETA(LCellIdI), foci
 		, Package::NetString<256>, name
 		, NET(USHORT), roundsToJobCompletion
-		, NET(USHORT), mineralCostLeft
+		, NET(USHORT), resourceCostLeft
 		, NETA(LCellIdI), buildPath
-		//, Package::NetString<256>, visualizationStructureName
-		, NET(ConstName), visualizationStructureName
+		, NET(ConstName), visualizationName	//can also be DetonationSize_Regular or DetonationSize_Doomsday
 	)
 
 	//class ResourceVector : public Objects::ResourceVector, public SerializableObject

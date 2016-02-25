@@ -459,23 +459,27 @@ namespace Objects
 				item.roundsToCompletion = rounds;
 
 				#ifdef HAS_WINDOW
-					item.commandToTerminate = MobileEntityConstructionAbortCommand(int2(5+index,2), JobName(index,item.name,rounds),base,turret,sat,[id,index](const PWorldEntity&e)
+					item.commandToTerminate = EntityConstructionCommand(int2(5+index,2), JobName(index,item.name,rounds),base,turret,sat,[id,index]()
 					{
 //						PWorkingStructure s = To<WorkingStructure>::DynamicCast(e);
 	//					ASSERT__(s);
-						PMobileEntityProducer p = To<MobileEntityProducer>::DynamicCast(e);
+						PMobileEntityProducer p = To<MobileEntityProducer>::DynamicCast(selectedEntity);
 						ASSERT__(p);
 						if (!index && p->productionDone)
 						{
+							WWorldEntity e = selectedEntity;
 							Dialog::Confirm("Confirm cancellation of production job "+p->queue.first().name+". Material has been invested into this production, which will be lost.",
 							[e,id]()
 							{
-								SignalConstructionAbort(e->id,id);
+								PWorldEntity e1 = e.lock();
+								if (e1)
+									SignalConstructionAbort(e1->id,id);
 							}
 							,
 							[e,p,id]()->Dialog::CheckResult
 							{
-								if (e->health <= 0)
+								PWorldEntity e1 = e.lock();
+								if (!e1 || e1->health <= 0)
 									return Dialog::CheckResult::Abort;
 								if (p->queue.IsEmpty() || p->queue.first().id != id)
 									return Dialog::CheckResult::Abort;
@@ -487,7 +491,7 @@ namespace Objects
 
 						}
 						else
-							SignalConstructionAbort(e->id,id);	//lossless
+							SignalConstructionAbort(selectedEntity->id,id);	//lossless
 
 					},CommonCmd::CommonButtonCheck);
 					if (!index)

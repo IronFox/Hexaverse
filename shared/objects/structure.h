@@ -6,6 +6,7 @@
 #ifdef HAS_WINDOW
 	#include "geometry.h"
 	#include "../../client/ExtRenderer/DirectX11.h"
+	#include "visualSelection.h"
 
 #endif
 
@@ -438,7 +439,7 @@ namespace Objects
 		bool						RemoveStored(const PVehicle&v)
 		{
 			foreach (localStore,s)
-				if (s->vehicle == v)
+				if (s->vehicle.lock() == v)
 				{
 					localStore.erase(s);
 					return true;
@@ -486,9 +487,9 @@ namespace Objects
 
 		struct Stored
 		{
-			PVehicle				vehicle;
+			WVehicle				vehicle;
 			#ifdef HAS_WINDOW
-				DeployVehicleCommand	deployCommand;
+				DeployMobileCommand	deployCommand;
 			#endif
 		};
 
@@ -836,6 +837,10 @@ namespace Objects
 		virtual float				GetActivityLevel() const override {float rs = isEnabled; if (IsSleeping()) rs = (rs + 0.5f) * 0.5f; return rs;}
 		virtual bool				IsWorkingStructure() const override {return true;}
 		virtual void				OnDestroy(float&atTime) override;
+
+
+		virtual bool				IsMine() const {return false;}
+		virtual bool				IsTower() const {return false;}
 	};
 
 	/**
@@ -860,18 +865,18 @@ namespace Objects
 
 		protected:
 
-			#ifdef CLIENT
+			#ifdef HAS_WINDOW
 				struct Cmd
 				{
-					static void				Enable(const PWorldEntity&);
-					static bool				IsEnabled(const PWorldEntity&);
+					static void				Enable();
+					static bool				IsEnabled();
 				};
 			#endif
 		public:
 			static const std::shared_ptr<CommonStructure<Derivative> >		globalPrototype;
 			#ifdef HAS_WINDOW
 				static Buffer0<IconCommand>		iconCommands;
-				static Buffer0<VehicleConstructionCommand>	vehicleConstructionCommands;
+				static Buffer0<EntityConstructionCommand>	vehicleConstructionCommands;
 				/**
 				Render-ready, object-space instruction to be used for all instances of this structure type
 				*/
@@ -926,8 +931,7 @@ namespace Objects
 	public:
 
 		#ifdef HAS_WINDOW
-			static VehicleConstructionCommand	formerConstructionCommand;
-			static SatelliteConstructionCommand	skyHubConstructionCommand;
+			static EntityConstructionCommand	formerConstructionCommand,	skyHubConstructionCommand;
 		#endif
 
 
@@ -1399,6 +1403,7 @@ namespace Objects
 
 		NaturalResourceVector		naturalResources;
 
+		float						GetEfficiency() const {return location.height <= -8 ? 2.f : 1.f;}
 
 
 		virtual bool				WouldLikeToEnable() const override {return true;}
@@ -1444,6 +1449,9 @@ namespace Objects
 			return Super::SignalEnvironmentChange(neighborhood,atTime);
 
 		}
+
+
+		virtual bool				IsMine() const {return true;}
 
 	};
 
@@ -1751,8 +1759,11 @@ namespace Objects
 			#endif
 		#endif
 
+		//WorkingStructure overrides:
+		virtual bool				IsTower() const override {return true;}
+
 		//structure overrides:
-		virtual int					GetBroadHeight() const {return std::max(1,GetHeight()-1);}
+		virtual int					GetBroadHeight() const override {return std::max(1,GetHeight()-1);}
 
 
 		//turret base overrides:
@@ -1827,7 +1838,7 @@ namespace Objects
 		template <typename Derivative>
 		/*static*/ Buffer0<IconCommand>		OtherStructure<Derivative>::commands;
 		template <typename Derivative>
-		/*static*/ Buffer0<VehicleConstructionCommand>		CommonStructure<Derivative>::vehicleConstructionCommands;
+		/*static*/ Buffer0<EntityConstructionCommand>		CommonStructure<Derivative>::vehicleConstructionCommands;
 	#endif
 
 
@@ -1883,10 +1894,10 @@ namespace Objects
 			#ifdef HAS_WINDOW
 
 				iconCommands << IconCommand(int2(4,1), "Enable",&Cmd::Enable,
-				[](const PWorldEntity&e, bool controlEnabled)->BaseCommand::Flags
+				[](bool controlEnabled)->BaseCommand::Flags
 				{
 					BaseCommand::Flags rs = BaseCommand::Flags::None;
-					CommonStructure<Derivative>*div = dynamic_cast<CommonStructure<Derivative>*>(e.get());
+					CommonStructure<Derivative>*div = dynamic_cast<CommonStructure<Derivative>*>(selectedEntity.get());
 					if (controlEnabled)
 					{
 						if (div && div->CanEnable())
@@ -1901,7 +1912,7 @@ namespace Objects
 				,NoCosts
 				);
 				if (!IsIndestructible())
-					iconCommands << IconCommand(int2(5,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck
+					iconCommands << IconCommand(int2(5,0), "Demolish",&CommonCmd::DemolishSelected,&CommonCmd::CommonButtonCheck
 							,NoCosts
 							);
 			#endif
@@ -1927,7 +1938,7 @@ namespace Objects
 			#ifdef HAS_WINDOW
 
 				if (!IsIndestructible())
-					commands << IconCommand(int2(4,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck
+					commands << IconCommand(int2(4,0), "Demolish",&CommonCmd::DemolishSelected,&CommonCmd::CommonButtonCheck
 							,NoCosts
 							);
 			#endif
@@ -1969,12 +1980,12 @@ namespace Objects
 			return CommonCheckStructurePlacement(location,GetBroadHeight(), GetHeight());
 		}
 
-	#ifdef CLIENT
+	#ifdef HAS_WINDOW
 
 		template <typename Derivative>
-			/*static*/ void				CommonStructure<Derivative>::Cmd::Enable(const PWorldEntity&s)
+			/*static*/ void				CommonStructure<Derivative>::Cmd::Enable()
 			{
-				CommonStructure<Derivative>*s2 = dynamic_cast<CommonStructure<Derivative>*>(s.get());
+				CommonStructure<Derivative>*s2 = dynamic_cast<CommonStructure<Derivative>*>(selectedEntity.get());
 				if (s2)
 				{
 					SignalEnableStructure(*s2, !s2->IsEnabled());
@@ -1982,9 +1993,9 @@ namespace Objects
 				}
 			}
 		template <typename Derivative>
-			/*static*/ bool				CommonStructure<Derivative>::Cmd::IsEnabled(const PWorldEntity&s)
+			/*static*/ bool				CommonStructure<Derivative>::Cmd::IsEnabled()
 			{
-				CommonStructure<Derivative>*s2 = dynamic_cast<CommonStructure<Derivative>*>(s.get());
+				CommonStructure<Derivative>*s2 = dynamic_cast<CommonStructure<Derivative>*>(selectedEntity.get());
 				return s2 && s2->IsEnabled();
 			};
 
@@ -1994,8 +2005,35 @@ namespace Objects
 	#endif
 
 
+	inline PStructure		ToStructure(const PWorldEntity&e)
+	{
+		if (!e || !e->IsStructure())
+			return PStructure();
+		return To<Structure>::Cast(e);
+	}
 
+	inline PWorkingStructure		ToWorkingStructure(const PWorldEntity&e)
+	{
+		if (!e || !e->IsWorkingStructure())
+			return PWorkingStructure();
+		return To<WorkingStructure>::Cast(e);
+	}
 
+	inline PTower		ToTower(const PWorldEntity&e)
+	{
+		PWorkingStructure ws = ToWorkingStructure(e);
+		if (!ws || !ws->IsTower())
+			return PTower();
+		return To<Tower>::Cast(ws);
+	}
+
+	inline PMine		ToMine(const PWorldEntity&e)
+	{
+		PWorkingStructure ws = ToWorkingStructure(e);
+		if (!ws || !ws->IsMine())
+			return PMine();
+		return To<Mine>::Cast(ws);
+	}
 
 }
 

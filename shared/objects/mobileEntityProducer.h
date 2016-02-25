@@ -52,8 +52,7 @@ namespace Objects
 			TUniqueID				id;
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
-					MobileEntityConstructionAbortCommand		
-									commandToTerminate;	//works for mobiles in general
+					EntityConstructionCommand	commandToTerminate;
 				#endif
 				String				name;
 				int					cost, roundsToCompletion;
@@ -94,8 +93,8 @@ namespace Objects
 		void						AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName);
 
 		#ifdef HAS_WINDOW
-			void					VisitAllCommands(FEntityCommandVisitor visitor);
-			void					VisitAllCommands_Reverse(FEntityCommandVisitor visitor);
+			void					VisitAllCommands(FCommandVisitor visitor);
+			void					VisitAllCommands_Reverse(FCommandVisitor visitor);
 		#endif
 		bool						AwaitsUserInteraction() const;
 

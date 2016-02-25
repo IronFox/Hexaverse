@@ -83,6 +83,9 @@ namespace Objects
 	Buffer0<DX11::InstructionBlock32>	smokeTrails;
 	index_t								selectedSmokeTrail = InvalidIndex;
 
+	TMatrix4<>							structureToPlaceSystem;
+
+
 	OpenAL::WaveBuffer	Renderer::GetAmbientSoundOf(const String&entityTypeName, ConstName _entityType)
 	{
 		index_t key = (index_t)_entityType;
@@ -638,30 +641,23 @@ namespace Objects
 
 	}
 
-	static void _Locate(Structure&s)
+	static void _Locate(const WorldEntity&e)
 	{
-		display.SetObjectMatrix(s.system);
+		display.SetObjectMatrix(e.system);
 	}
 
 	static void _RenderSimpleLocated(Structure&s, const TMatrix4<>&system)
 	{
 		display.Render(*s.localizableShape, true);
-
+		DBG_ASSERT__(s.localizableShape->ibo.IsSet());
 
 		float zOffset;
 		PTurretBase b = s.GetTurretBase(zOffset);
 		if (b)
 		{
 			Renderer::RenderScaledComponent(system, zOffset, 2.f, *b->turret, b->turretAngleX, b->turretAngleY);
+			//display.SetObjectMatrix(system);
 		}
-	}
-
-	void Renderer::RenderSimple(Structure&s, bool includeFoundation /*= false*/)
-	{
-		_Locate(s);
-		if (includeFoundation)
-			display.Render(foundation, true);
-		_RenderSimpleLocated(s,s.system);
 	}
 
 	static void _RenderSimpleLocated(Satellite&s, const TMatrix4<>&system)
@@ -670,20 +666,51 @@ namespace Objects
 		Renderer::RenderComponent(system, 0.f, *s.turret, s.turretAngleX, s.turretAngleY);
 	}
 
-
-
-	void	Renderer::RenderSimple(Satellite&s)
+	static void _RenderSimpleLocated(Vehicle&v, const TMatrix4<>&system)
 	{
-		//float scale = Vec::length(s.system.x.xyz);
-		display.SetObjectMatrix(s.system);
-		_RenderSimpleLocated(s,s.system);
+		Renderer::RenderComponent(system,0,*v.base,0,0);
+		Renderer::RenderComponent(system,v.base->height,*v.turret,v.turretAngleX,v.turretAngleY);
 	}
 
-	void	Renderer::RenderSimpleIdentity(Satellite&s)
+
+	static void _RenderSimpleLocated(WorldEntity&e, const TMatrix4<>&system)
 	{
-		//float scale = Vec::length(s.system.x.xyz);
+		if (e.IsStructure())
+		{
+			_RenderSimpleLocated((Structure&)e,system);
+			return;
+		}
+		if (e.IsSatellite())
+		{
+			_RenderSimpleLocated((Satellite&)e,system);
+			return;
+		}
+		if (e.IsVehicle())
+		{
+			_RenderSimpleLocated((Vehicle&)e,system);
+			return;
+		}
+	}
+
+	void Renderer::RenderSimple(WorldEntity&e, bool includeFoundation /*= false*/)
+	{
+		_Locate(e);
+		if (e.IsStructure() && includeFoundation)
+			display.Render(foundation, true);
+		_RenderSimpleLocated(e,e.system);
+	}
+
+
+
+
+
+	void	Renderer::RenderSimpleIdentity(WorldEntity&e, bool includeFoundationIfStructure/*=false*/)
+	{
 		display.SetObjectMatrix(Matrix<>::eye4);
-		_RenderSimpleLocated(s,Matrix<>::eye4);
+		if (e.IsStructure() )
+			if (includeFoundationIfStructure)
+				display.Render(foundation, true);
+		_RenderSimpleLocated(e,Matrix<>::eye4);
 	}
 
 
@@ -745,7 +772,7 @@ namespace Objects
 			foreach (Faction::allKnown,_f)
 			{
 				Faction&f = **_f;
-				if (f.isMine)
+				if (f.isOwnedByMe)
 				{
 					f.activeEntityColor = mine;
 					f.inactiveEntityColor = inactiveColorMine;
@@ -969,11 +996,11 @@ namespace Objects
 	}
 
 
-	void					UpdateSeeThroughColor(bool isMine, bool isSelected)
+	void					UpdateSeeThroughColor(bool isOwnedByMe, bool isSelected)
 	{
 		static const float4 mySeeThroughColor(0.6,0.7,1,1);
 		static const float4 hostileSeeThroughColor(1,0.7,0.6,1);
-		float4 color = isMine ? mySeeThroughColor : hostileSeeThroughColor;
+		float4 color = isOwnedByMe ? mySeeThroughColor : hostileSeeThroughColor;
 		if (isSelected)
 			color.rgb *= Renderer::GetActiveColor(Renderer::now*5.0);
 		overallTint.Update(color);
@@ -1004,8 +1031,8 @@ namespace Objects
 			foreach(vehicles, _v)
 			{
 				PVehicle&v = *_v;
-				UpdateSeeThroughColor(v->isMine, v==selectedEntity);
-				//overallTint.Update(v->isMine ? mySeeThroughColor : hostileSeeThroughColor);
+				UpdateSeeThroughColor(v->isOwnedByMe, v==selectedEntity);
+				//overallTint.Update(v->isOwnedByMe ? mySeeThroughColor : hostileSeeThroughColor);
 				Renderer::RenderSimple(*v);
 			}
 
@@ -1017,7 +1044,7 @@ namespace Objects
 			//	//	s.Recompile();
 			//	//	s.changed = false;
 			//	//}
-			//	UpdateSeeThroughColor(s.isMine, &s==selectedEntity.get());
+			//	UpdateSeeThroughColor(s.isOwnedByMe, &s==selectedEntity.get());
 			//	
 			//	//if (s.compiledShape.vbo.IsSet())
 			//	//{
@@ -1310,54 +1337,68 @@ namespace Objects
 		{
 			float zOffset;
 			PTurretBase base = e->GetTurretBase(zOffset);		
-			if (base && base->turret->CanAttack() && (!e->isMine || !base->turret->dealsEMPDamage))
+			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage))
 				RenderRange(e->location,zOffset,base,color,extendedShadow);
+		}
+
+		void RenderAttackRangeOf(const PWorldEntity&e, const Grid::LCellIdI&at,const float4&color, bool extendedShadow)
+		{
+			float zOffset;
+			PTurretBase base = e->GetTurretBase(zOffset);		
+			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage))
+				RenderRange(at,zOffset,base,color,extendedShadow);
 		}
 	}
 
 	void Renderer::RenderRanges(bool extendedShadow)
 	{
-
-		if (selectedEntity)
 		{
-			//float r = WirelessTransferRange;
-			//if (extendedShadow)
-			//	r += RangeShadowExtension;
-
-			float scanningRange = selectedEntity->GetScanningRange();
-			if (extendedShadow)
-				scanningRange += RangeShadowExtension;
-
 			float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,1,0,0.8f);
-
-			Renderer::RenderRangeSphere(selectedEntity->GetWorldPosition(),scanningRange,
-				color
-				);
-			float zOffset;
-			PTurretBase base = selectedEntity->GetTurretBase(zOffset);		
-			if (base && base->turret->groundScanningRange > 0.f)
+			if (selectedEntity)
 			{
-				scanningRange = selectedEntity->EMPModify(base->turret->groundScanningRange,2);
-				float refHeight = Grid::ToRadius(selectedEntity->location.height);
-				float top = Grid::ToRadius(/*selectedEntity->location.height*/Grid::CellStack::HalfRange);
-				float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
-				float topR = scanningRange*top/refHeight;
-				float bottomR = scanningRange *bottom/refHeight;
+				float scanningRange = selectedEntity->GetScanningRange();
 				if (extendedShadow)
+					scanningRange += RangeShadowExtension;
+
+
+				Renderer::RenderRangeSphere(selectedEntity->GetWorldPosition(),scanningRange,
+					color
+					);
+				float zOffset;
+				PTurretBase base = selectedEntity->GetTurretBase(zOffset);		
+				if (base && base->turret->groundScanningRange > 0.f)
 				{
-					topR += RangeShadowExtension;
-					bottomR += RangeShadowExtension;
+					scanningRange = selectedEntity->EMPModify(base->turret->groundScanningRange,2);
+					float refHeight = Grid::ToRadius(selectedEntity->location.height);
+					float top = Grid::ToRadius(/*selectedEntity->location.height*/Grid::CellStack::HalfRange);
+					float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
+					float topR = scanningRange*top/refHeight;
+					float bottomR = scanningRange *bottom/refHeight;
+					if (extendedShadow)
+					{
+						topR += RangeShadowExtension;
+						bottomR += RangeShadowExtension;
+					}
+					RenderRangeCylinder(selectedEntity->system.z.xyz,bottomR,topR,bottom,top,color);
 				}
-				RenderRangeCylinder(selectedEntity->system.z.xyz,bottomR,topR,bottom,top,color);
+
 			}
 
-
-
-
+			if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
+			{
+				float scanningRange = activeStructureToPlace->GetScanningRange();
+				if (extendedShadow)
+					scanningRange += RangeShadowExtension;
+				Renderer::RenderRangeSphere(structureToPlaceSystem.w.xyz,scanningRange,
+					color
+					);
+			}
 		}
 		float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,0,0,0.8f);
 		if (selectedEntity)
 			RenderAttackRangeOf(selectedEntity,color,extendedShadow);
+		if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
+			RenderAttackRangeOf(activeStructureToPlace,arrowCellTarget,color,extendedShadow);
 		
 
 		if (showHostileRanges || showFriendlyRanges)
@@ -1367,7 +1408,7 @@ namespace Objects
 				{
 					if (e != selectedEntity)
 					{
-						if ((e->isMine && showFriendlyRanges && e->health > 0) || (!e->isMine && showHostileRanges))
+						if ((e->isOwnedByMe && showFriendlyRanges && e->health > 0) || (!e->isOwnedByMe && showHostileRanges))
 						{
 							RenderAttackRangeOf(e,color,extendedShadow);
 						}
@@ -1435,7 +1476,7 @@ namespace Objects
 		foreach(Marker::mobileGhosts, _v)
 		{
 			const PMobileEntity&m = *_v;
-			if (m->isMine)
+			if (m->isOwnedByMe)
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
 				overallTint.Update(float4(1, 0, 0, 1));
@@ -1456,7 +1497,7 @@ namespace Objects
 		foreach(Marker::structureGhosts, _s)
 		{
 			const PStructure&s = *_s;
-			if (s->isMine)
+			if (s->isOwnedByMe)
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
 				overallTint.Update(float4(1, 0, 0, 1));
@@ -1594,7 +1635,7 @@ namespace Objects
 
 			if (activeRings)
 			{
-				overallTint.Update(at == selectedEntity ? float4(red,(float)sin(now*4.0)*0.2f + 0.6f) :   float4(at->owner->color,0.6f));
+				overallTint.Update(at == selectedEntity ? float4(red,(float)sin(now*4.0)*0.2f + 0.6f) :   float4(at->owner->activeEntityColor,1.f));
 				for (int i = 0; i < activeRings; i++)
 				{
 					_RenderAttackRing(sys,i+delta);
@@ -1779,29 +1820,27 @@ namespace Objects
 			}
 		}
 
-		if (showArrow && hasArrowCellTarget)
+		if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
 		{
-			if (activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
-			{
-				display.SetDepthTest(true,true);
-				bool includeFoundation = false;//activeStructureToPlace->HasFoundation();	<- is correct but job visualization doesn't use foundations
-				display.LinkShader(jobShader,false,true);
-					TMatrix4<> sys;
-					BuildStructureSystem(arrowCellTarget,sys);
-					display.SetObjectMatrix(sys);
-					overallTint.Update(noTint);	//all zero tint makes shapes invisible
-					if (includeFoundation)
-						display.Render(foundation, true);
-					_RenderSimpleLocated(*activeStructureToPlace,sys);
-					display.SetObjectMatrix(sys);
-					overallTint.Update(float4(selectedTint.rgb,selectedTint.a * 0.5f + 0.5f));
-					if (includeFoundation)
-						display.Render(foundation, true);
-					_RenderSimpleLocated(*activeStructureToPlace,sys);
-				display.UnlockShader();
-				display.SetObjectMatrix(Matrix<>::eye4);
-			}
+			display.SetDepthTest(true,true);
+			bool includeFoundation = false;//activeStructureToPlace->HasFoundation();	<- is correct but job visualization doesn't use foundations
+			display.LinkShader(jobShader,false,true);
+				//TMatrix4<> sys;
+				BuildStructureSystem(arrowCellTarget,structureToPlaceSystem);
+				display.SetObjectMatrix(structureToPlaceSystem);
+				overallTint.Update(noTint);	//all zero tint makes shapes invisible
+				if (includeFoundation)
+					display.Render(foundation, true);
+				_RenderSimpleLocated(*activeStructureToPlace,structureToPlaceSystem);
+				display.SetObjectMatrix(structureToPlaceSystem);
+				overallTint.Update(float4(selectedTint.rgb,selectedTint.a * 0.5f + 0.5f));
+				if (includeFoundation)
+					display.Render(foundation, true);
+				_RenderSimpleLocated(*activeStructureToPlace,structureToPlaceSystem);
+			display.UnlockShader();
+			display.SetObjectMatrix(Matrix<>::eye4);
 		}
+	
 
 		if (smokeTrails.IsNotEmpty())
 		{
@@ -2079,7 +2118,7 @@ namespace Objects
 		{
 			const PSatellite&sat = *_s;
 			TVec3<> color;
-			if (sat->isMine)
+			if (sat->isOwnedByMe)
 			{
 				color= float3(0.5,0.6,1.0);
 			}

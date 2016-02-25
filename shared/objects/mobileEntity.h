@@ -502,6 +502,7 @@ namespace Objects
 		{
 			if (!jobCosts)
 				return 0;
+			jobCosts = abs(jobCosts);
 			int speed = GetOperationSpeed(op);
 			if (!speed)
 				return 0xFFFFFFFF;
@@ -575,6 +576,13 @@ namespace Objects
 	};
 
 
+
+	inline PMobileEntity		ToMobileEntity(const PWorldEntity&e)
+	{
+		if (!e || !e->IsMobile())
+			return PMobileEntity();
+		return To<MobileEntity>::Cast(e);
+	}
 }
 
 
