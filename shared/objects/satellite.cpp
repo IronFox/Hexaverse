@@ -351,25 +351,25 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 
-		/*static*/ bool			SkyHub::MyCmd::CanBuild(const PStructure&what)
+		/*static*/ bool			SkyHub::MyCmd::CanBuildStructure()
 		{
 			ASSERT__(selectedMobileEntity);
 			PSkyHub hub = To<SkyHub>::DynamicCast(selectedMobileEntity);
 			ASSERT1__(hub,selectedMobileEntity->GetName());
 		
+			Grid::LCellIdI loc = hub->GetLastPointOfOrigin();
 			if (!CommonCmd::IsModeActiveC<CursorMode::Idle>(true)
 				||
-				!hub->connectedTo.expired())
+				(!hub->connectedTo.expired() && loc.stackID == hub->location.stackID))	//connected and not moving away
 				return false;
 
-			Grid::LCellIdI loc = hub->GetLastPointOfOrigin();
 			int h = GetStructureBuildHeight(loc);
 			return h != badHeight && !GetVehicle(Grid::LCellIdI(loc.stackID,h));
 		}
 
 
 
-		/*static*/ void SkyHub::MyCmd::Build(const PSatellite&p)
+		/*static*/ void SkyHub::MyCmd::Build(const PWorldEntity&p)
 		{
 			PMobileEntity mob = To<MobileEntity>::DynamicCast(selectedMobileEntity);
 			if (!mob)
@@ -407,32 +407,28 @@ namespace Objects
 		return h <= Grid::CellStack::TopHeight ? h : badHeight;
 	}
 
-	/*static*/ void SkyHub::RegisterProduction(const PStructure&s)
+	/*static*/ void SkyHub::RegisterProduction(const PWorldEntity&s)
 	{
 		#ifdef HAS_WINDOW
 			int2 at = AllocateProductionSlot();
+			CallbackCommand::FOnExecute exec = s->IsStructure() 
+											? CallbackCommand::FOnExecute(std::bind(&Component::Terraformer::Cmd::Construct, To<Structure>::Cast(s))) 
+											: CallbackCommand::FOnExecute(std::bind(&MyCmd::Build, s));
+			bool isStructure = s->IsStructure();
 			constructionCommands.Append(
 				EntityConstructionCommand(at, /*"Build " + */s->GetTypeName(), nullptr,nullptr, s,
-				std::bind(&Component::Terraformer::Cmd::Construct, s),
-				[s](bool controlEnabled)->BaseCommand::Flags
+				exec,
+				[isStructure](bool controlEnabled)->BaseCommand::Flags
 				{
-					return MyCmd::CanBuild(s) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+					if (!isStructure)
+						return CommonCmd::IdleCheck(controlEnabled);
+					return MyCmd::CanBuildStructure() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 				}
 				));
 			constructionCommands.last().RasterizeImage();
 		#endif
 	}
 
-	/*static*/ void SkyHub::RegisterProduction(const PSatellite&s)
-	{
-		#ifdef HAS_WINDOW
-			int2 at = AllocateProductionSlot();
-			constructionCommands.Append(
-				EntityConstructionCommand(at, /*"Build " + */s->GetTypeName(), nullptr,nullptr,s,
-				std::bind(&MyCmd::Build, s),
-				&CommonCmd::IdleCheck));
-		#endif
-	}
 
 
 	/*virtual override*/ void			SkyHub::PrototypeSetup()

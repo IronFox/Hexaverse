@@ -1701,6 +1701,8 @@ namespace Objects
 								break;
 							}
 					}
+					if (selectedEntity->IsSatellite())	//don't convert to IsOrbital()
+						directPlace = true;
 
 					if (!directPlace)
 					{

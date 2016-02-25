@@ -373,16 +373,15 @@ namespace Objects
 
 		static int2				AllocateProductionSlot();
 
-		static void				RegisterProduction(const PSatellite&);
-		static void				RegisterProduction(const PStructure&);
+		static void				RegisterProduction(const PWorldEntity&);
 
 		#ifdef HAS_WINDOW
 			static Buffer<EntityConstructionCommand>	constructionCommands;
 
 			struct MyCmd
 			{
-				static bool		CanBuild(const PStructure&what);
-				static void		Build(const PSatellite&what);
+				static bool		CanBuildStructure();
+				static void		Build(const PWorldEntity&what);
 
 			};
 		#endif

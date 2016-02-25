@@ -80,26 +80,6 @@ namespace Objects
 		//else
 	}
 
-	///*static*/ void		EntityConstructionCommand::UpdateTexture(BaseCommand&target, const PVehicle&v, bool isPrototype, const float4&tone/* = float4(0)*/)
-	//{
-	//	GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(v));
-
-	//	TMatrix4<> sys = Matrix<>::eye4;
-	//	sys.x.x = sys.y.y = sys.z.z = 2.5f;
-
-	//	UpdateStateColors(v,tone,isPrototype);
-	//		//keyColor.Update(float4(0.5f,0.5f,1,1));
-
-	//		
-	//	display.SetObjectMatrix(sys);
-	//	if (v->base)
-	//		Renderer::RenderComponent(sys,0,*v->base,0,0);
-	//	if (v->turret)
-	//		Renderer::RenderComponent(sys,v->base->height ,*v->turret,0,0);
-
-
-	//	target.texture = GeometryImage::EndRendering();
-	//}
 
 	void				EntityConstructionCommand::UpdateTexture(Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor /*= float4(0)*/)
 	{
@@ -107,40 +87,18 @@ namespace Objects
 	
 	}
 
-	///*static*/ void			StructureCommand::UpdateTexture(BaseCommand&target, const PStructure&structure, bool isPrototype, const float4&tone /*= float4(0)*/)
-	//{
-	//	ASSERT_NOT_NULL__(structure->localizableShape);
-	//	GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(structure));
 
-	//	UpdateStateColors(structure,tone,isPrototype);
-	//		
-	//	display.SetObjectMatrix(Matrix<>::eye4);
-	//	display.Render(*structure->localizableShape);	
-	//	//_Render(*structure,float3(1),float3(1));
-
-	//	float zOffset;
-	//	PTurretBase b = structure->GetTurretBase(zOffset);
-	//	if (b)
-	//	{
-	//		Renderer::RenderScaledComponent(Matrix<>::eye4, zOffset, 2.f, *b->turret, b->turretAngleX, b->turretAngleY);
-	//		display.SetObjectMatrix(Matrix<>::eye4);
-	//	}
-
-
-
-	//	target.texture = GeometryImage::EndRendering();
-	//}
-
-
-	//void				StructureCommand::UpdateTexture(const PStructure&structure, bool isPrototype, const float4&backgroundColor /*= float4(0)*/)
-	//{
-	//	UpdateTexture(*this,structure,isPrototype,backgroundColor);
-	//}
 
 
 	/*static*/ void		EntityCommand::UpdateTexture(BaseCommand&target, const PWorldEntity&e, bool isPrototype, const float4&tone/* = float4(0)*/)
 	{
-		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(e),1.f);
+		float distanceFactor = 1.f;
+		if (e->IsStructure())
+			distanceFactor += 0.1f * To<Structure>::Cast(e)->GetHeight();
+		if (e->IsSatellite())
+			distanceFactor *= 1.5f;
+
+		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(e),distanceFactor);
 
 		UpdateStateColors(e,tone,isPrototype);
 
@@ -264,42 +222,6 @@ namespace Objects
 	}
 
 
-	///**/				StructureCommand::StructureCommand(const String&name, const PStructure&structure,   FOnExecute f, FCheck c) : Super(name,structure,f,c)
-	//{}
-
-	//PStructure			StructureCommand::GetReference() const
-	//{
-	//	return ToStructure(reference.lock());
-	//}
-
-
-	///*virtual override*/ void		StructureConstructionCommand::CompileLabel(Label&outResult)
-	//{
-	//	PMobileEntity v = selectedMobileEntity;
-	//	ASSERT__(v);
-	//	PStructure structure = ToStructure(this->reference.lock());
-	//	if (!structure)
-	//		return;
-
-	//	int price = structure->GetConstructionCost();
-	//	UINT32 roundsToJobCompletion = v->GetOperationRounds(price,Component::Construct);
-	//	//resourceCostLeft = actuallyConsumesMinerals ? mineralCosts : 0;
-
-	//	outResult << name;
-	//	outResult << String(ResourceTag(Resource::Minerals))+ " "+String(price)+ "  ";
-	//	outResult.lines.last() += TimeResourceTag() + String(roundsToJobCompletion);
-
-	//	structure->AppendDeploymentCount(outResult, selectedEntity->owner);
-
-	//	outResult.MarkBriefEnd();
-	//	outResult << "";
-
-
-	//	structure->DescribeType(outResult,0);
-
-	//	//outResult << "Rounds: "+String(roundsToJobCompletion);
-	//}
-
 	void			BaseCommand::LoadIcon()
 	{
 		LoadIcon(name);
@@ -322,11 +244,7 @@ namespace Objects
 			if (image.channels() < 4)
 			{
 				image.setChannels(4,BaseImage::CA_REPEAT);
-//						Image image2(image.getWidth(),image.getHeight(),0);
-////						image2.Fill(255,255,255);
-//						image2.appendAlpha(&image);
-//						image2.setChannels(4,BaseImage::CA_REPEAT);
-//						image.swap(image2);
+
 			}
 			else
 			{
@@ -341,24 +259,7 @@ namespace Objects
 				});
 
 			}
-			//float3 fadeTo(0,0,255);
-			//Concurrency::parallel_for(UINT32(0),image.getWidth(),[&image,fadeTo](UINT32 x)
-			//{
-			//	for (UINT32 y = 0; y < image.getHeight(); y++)
-			//	{
-			//		float fy = float(y) / float(image.getHeight()-1);
-			//		BYTE*pixel = image.get(x,y);
 
-			//		float3 px(Vec::ref3(pixel));
-			//		Vec::interpolate(px,fadeTo,sqr(1.f - fy) * 0.5f * float(pixel[3])/255.f,px);
-			//		Vec::clamp(px,0,255);
-			//		Vec::copy(px,Vec::ref3(pixel));
-
-			//		//color = lerp(color,float3(0,0,1),sqr(1.0 - input.uv.y)*0.5 * s.a);
-
-
-			//	}
-			//});
 			image.flipVertical();
 			texture.Load(image);
 			textureMap.Set(filename,texture);
