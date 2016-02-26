@@ -1030,7 +1030,7 @@ namespace Reflection
 	static CLI::PFolder FindFolderWithAttachmentSource(const CLI::PVariable&v, const CLI::PFolder&current)
 	{
 		std::shared_ptr<Variable::PersistenceAttachment> a = To<Variable::PersistenceAttachment>::DynamicCast(current->attachment);
-		if (!a)	//externally created
+		if (!a && current != state.GetRoot())	//externally created
 			return CLI::PFolder();
 
 		std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(current->attachment);
@@ -1055,6 +1055,7 @@ namespace Reflection
 	void	ReloadPlanet()
 	{
 		CLI::PFolder f = FindFolderWithAttachmentSource(Variable::planetType);
+		ASSERT__(f);
 		if (f)
 		{
 			FeedSubDirectory(f, nullptr, false, std::function<bool(const Variable::PBase&)>());
