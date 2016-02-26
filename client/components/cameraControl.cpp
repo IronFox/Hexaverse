@@ -20,6 +20,7 @@ namespace Camera
 
 	Engine::VectorCamera<>			scene;
 	Engine::OrthographicAspect<>	hud;
+	bool							autoRotation = false;
 
 	namespace 
 	{
@@ -268,8 +269,37 @@ namespace Camera
 		moveToTarget = false;
 	}
 
+
+	void							StopAutoRotation()
+	{
+		autoRotation = false;
+		Reset();
+	}
+
 	void							ProgressRotation()
 	{
+		if (autoRotation)
+		{
+			static const count_t CameraRotations = 2;
+			static const count_t SunRotations = 5;
+			TVec3<> dir;
+			double at = Grid::GetAcceleratedSunDirection(dir,-float(CameraRotations) / SunRotations);
+			if (fabs(at) >= M_PI*2.0 * CameraRotations)
+			{
+				StopAutoRotation();
+				return;
+			}
+			//scene.location = dir * Grid::ToRadius(180);
+			scene.location = float3();
+			scene.retraction.z = -WorldScale * 3.5f;
+			scene.direction = -dir;
+			scene.upAxis = Grid::GetSunSystem().z;
+			scene.UpdateView();
+
+			return;
+		}
+
+
 		if (fabs(targetOrbit - orbit) > 0.1f)
 		{
 			DebugCheckCamera();

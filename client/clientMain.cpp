@@ -1384,6 +1384,12 @@ bool loop()
 
 
 	#ifdef HAS_WINDOW
+		bool alwaysDay = RuntimeConfig::FromFile::alwaysDay && !Camera::autoRotation;
+
+		if (!alwaysDay)
+			Grid::PerFrameUpdateSunDirection();
+
+
 		Camera::ProgressRotation();
 
 
@@ -1452,10 +1458,8 @@ bool loop()
 		}
 
 
-		if (RuntimeConfig::FromFile::alwaysDay)
+		if (alwaysDay)
 			Grid::UpdateSunDirection(sunDirection);
-		else
-			Grid::PerFrameUpdateSunDirection();
 
 
 		Objects::Renderer::AdvanceTurretAnimations();
@@ -2491,6 +2495,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
 		UI::showControlsAndContacts = !UI::showControlsAndContacts;
 		UI::HexGrid::Configure(Objects::selectedEntity);
+		UI::HexGrid::RefreshTutorials();
 	}
 
 	void BeginCameraDrag()
@@ -2694,7 +2699,17 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	void ToggleResourceView()
 	{
 		UI::resourcesAsList = !UI::resourcesAsList;
+	}
 
+	void	ToggleCameraAutoRotation()
+	{
+		if (!Camera::autoRotation)
+		{
+			Camera::autoRotation = true;
+			Grid::ResetSunRotation();
+		}
+		else
+			Camera::StopAutoRotation();
 	}
 
 
@@ -3344,7 +3359,8 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::Return, SignalRoundEndOrMaximize);
 			Engine::input.bind(Key::Tab, UI::ShowSession);
 			Engine::input.bind(Key::T,[](){}, QueryAndSendChatMessage);
-			Engine::input.bind(Key::R,ToggleResourceView);
+			Engine::input.bind(Key::R,ToggleCameraAutoRotation);
+//			Engine::input.bind(Key::R,ToggleResourceView);
 
 			Engine::input.bind(Key::H,ToggleControlGUI);
 
