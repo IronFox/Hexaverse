@@ -291,7 +291,7 @@ namespace Camera
 			}
 			//scene.location = dir * Grid::ToRadius(180);
 			scene.location = float3();
-			scene.retraction.z = -WorldScale * 3.5f;
+			scene.retraction.z = -WorldScale * 3.75f;
 			scene.direction = -dir;
 			scene.upAxis = Grid::GetSunSystem().z;
 			scene.UpdateView();
