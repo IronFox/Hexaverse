@@ -71,6 +71,7 @@
 	void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime);
 	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::OwnerParameter&target, float t);
 	void	SignalNexusControlChange(const Objects::PFaction&f);
+	void	SignalChainReactionExplosion(const Grid::LCellIdI&center, float radius, int damageLevel, float atTime);
 
 #endif
 
