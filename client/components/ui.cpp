@@ -1643,6 +1643,8 @@
 			//{
 			//	return;
 			//}
+			if (!showControlsAndContacts && !Objects::selectedEntity)
+				return;
 			display.StoreRendererState();
 			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 			display.SetRasterizer(true,true);
