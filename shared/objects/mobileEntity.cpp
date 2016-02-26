@@ -7,6 +7,7 @@
 #include "satellite.h"
 #include "systems.h"
 #include "prototypes.h"
+#include "../runtimeConfig.h"
 
 namespace Objects
 {
@@ -124,6 +125,15 @@ namespace Objects
 
 
 	#ifndef CLIENT
+
+		/*virtual override*/ void		MobileEntity::OnDestroy(RemovalType t, float atTime)
+		{
+			if (t == RemovalType::UncontrolledExplosion && RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
+			{
+				SignalChainReactionExplosion(location, Component::Bomb::GetRadius(false),Component::Bomb::GetDamageLevel(false),atTime);
+			}
+
+		}
 
 		void			MobileEntity::UnlockTasks()
 		{

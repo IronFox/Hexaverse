@@ -1,4 +1,5 @@
 v0.3.18
+	> Bombs can now be configured to self-detonate with a regular explosion when destroyed by some outside force.
 	> When placing new buildings, the scanning and possibly attack ranges are shown ahead of actually placing them.
 
 v0.3.17	[Feb 24 2016]
