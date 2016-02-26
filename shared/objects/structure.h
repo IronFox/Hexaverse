@@ -275,7 +275,7 @@ namespace Objects
 		Base version also notifies all connected structures of the removal, so Super::OnDestroy()
 		should be called by overriding implementations at some point.
 		*/
-		virtual void				OnDestroy(float atTime) override;
+		virtual void				OnDestroy(RemovalType, float atTime) override;
 		virtual void				OnConstructionFinished(float atTime) override;
 
 		/**
@@ -543,7 +543,7 @@ namespace Objects
 		//HangarStructure overrides:
 		const WorldEntity&			ToEntity() const override {return *this;}
 		WorldEntity&				ToEntity() override {return *this;}
-		virtual void				OnDestroy(float atTime) override;
+		virtual void				OnDestroy(RemovalType, float atTime) override;
 
 
 		//WorldEntity overrides:
@@ -598,9 +598,6 @@ namespace Objects
 			virtual int				GetUplinkTraffic() const override {return 1;}
 		#endif
 
-
-
-		virtual void				OnDestroy(float atTime) override;
 		#ifdef HAS_WINDOW
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 			{
@@ -747,7 +744,6 @@ namespace Objects
 		#endif
 		virtual float				GetActivityLevel() const override {float rs = isEnabled; if (IsSleeping()) rs = (rs + 0.5f) * 0.5f; return rs;}
 		virtual bool				IsWorkingStructure() const override {return true;}
-		virtual void				OnDestroy(float atTime) override;
 
 
 		virtual bool				IsMine() const {return false;}
@@ -809,7 +805,6 @@ namespace Objects
 			virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override;
 			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override;
 
-			virtual void				OnDestroy(float atTime) override;
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
 					virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
@@ -1545,11 +1540,6 @@ namespace Objects
 		bool						WouldLikeToEnable() const override {return true;}
 
 
-		virtual  void				OnDestroy(float atTime) override
-		{
-			Super::OnDestroy(atTime);
-		}
-
 	public:
 
 		static Buffer0<PTower>		globalPrototypes;
@@ -1883,11 +1873,6 @@ namespace Objects
 			#endif
 		}
 
-	template <typename Derivative>
-		/*virtual override*/ void				CommonStructure<Derivative>::OnDestroy(float atTime)
-		{
-			Super::OnDestroy(atTime);
-		}
 
 
 

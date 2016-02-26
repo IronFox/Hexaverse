@@ -335,7 +335,7 @@ namespace Objects
 		Structures should handle compound disconnections and struct count decreases.
 		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
 		*/
-		virtual void				OnDestroy(float atTime)	{};	
+		virtual void				OnDestroy(RemovalType, float atTime)	{};	
 
 		/**
 		Signals that the local entity has been created.

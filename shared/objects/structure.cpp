@@ -781,9 +781,9 @@ namespace Objects
 
 
 
-	/*virtual*/ void Structure::OnDestroy(float atTime)
+	/*virtual*/ void Structure::OnDestroy(RemovalType t, float atTime)
 	{
-		Super::OnDestroy(atTime);
+		Super::OnDestroy(t,atTime);
 		LogEvent(EventClass::Preset::debug,this,"Unregistering...");
 		CommonUnregisterStructure(location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
 
@@ -1140,11 +1140,6 @@ namespace Objects
 
 	Connector::Connector(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true, atTime)
 	{}
-
-	/*virtual override*/ void				Connector::OnDestroy(float atTime)
-	{
-		Super::OnDestroy(atTime);
-	}
 
 
 
@@ -1763,10 +1758,10 @@ namespace Objects
 
 	#endif
 
-	/*virtual override*/ void				VehicleStore::OnDestroy(float atTime)
+	/*virtual override*/ void				VehicleStore::OnDestroy(RemovalType t, float atTime)
 	{
 		//Buffer0<WVehicleStore>	copy = sneighbors;
-		Super::OnDestroy(atTime);	//disconnects from neighborhood. sneighbors should be empty now
+		Super::OnDestroy(t, atTime);	//disconnects from neighborhood. sneighbors should be empty now
 
 
 		if (park)
@@ -2818,11 +2813,6 @@ namespace Objects
 		return n.CanEnable(this,dummy,ignoreCanEnable);
 	}
 
-
-	/*virtual override*/ void				WorkingStructure::OnDestroy(float atTime)
-	{
-		Super::OnDestroy(atTime);
-	}
 
 	#ifndef CLIENT
 

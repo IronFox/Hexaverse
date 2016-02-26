@@ -1356,7 +1356,7 @@ namespace Objects
 		if (!move)
 		{
 			LogEvent(EventSignificance::Debug,e.get(),"OnDestroy()");
-			e->OnDestroy(timestamp);
+			e->OnDestroy(t,timestamp);
 		}
 		#ifdef CLIENT
 			if (isStructure)
