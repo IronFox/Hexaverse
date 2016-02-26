@@ -28,7 +28,7 @@ struct SharedPtrHash
 namespace Objects
 {
 
-	static const float timeEpsilon = 0.01f;	//time in seconds between subsequent events such that they are sorted correctly on the client
+	static const float timeEpsilon = 0.001f;	//time in seconds between subsequent events such that they are sorted correctly on the client
 	typedef SharedPtrHash	OwnerHash;
 
 	extern GenericHashTable<TUniqueID,PWorldEntity,TUniqueID,Strategy::POD,Strategy::Swap>	idMap;
