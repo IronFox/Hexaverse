@@ -773,7 +773,10 @@ namespace Reflection
 		bool allGood = true;
 		std::shared_ptr<Variable::PersistenceAttachment> a = To<Variable::PersistenceAttachment>::DynamicCast(dir->attachment);
 		if (!a)	//externally created
+		{
+			DBG_ASSERT__(dir != state.GetRoot());	//should never be in here for root
 			return true;
+		}
 
 		std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(dir->attachment);
 		if (ref)
