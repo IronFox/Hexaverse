@@ -958,6 +958,8 @@
 
 			void			FindAndDeleteCell(Objects::BaseCommand*cmd)
 			{
+				if (!cmd)
+					return;
 				foreach (allGuiCells,c)
 					if (c->command == cmd)
 					{
@@ -1399,6 +1401,11 @@
 
 			void			RefreshTutorials()
 			{
+				if (!showControlsAndContacts)
+				{
+					FindAndDeleteCell(tutorialCommand.get());
+					return;
+				}
 				if (!tutorialCommand)
 					return;
 

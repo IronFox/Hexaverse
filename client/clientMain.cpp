@@ -1755,6 +1755,7 @@ bool loop()
 				//	TransferPanel::Invalidate();
 			}
 
+			if (UI::showControlsAndContacts)
 			{
 				textout.pushState();
 				textout.scale(0.9f, 0.9f);
@@ -1788,78 +1789,78 @@ bool loop()
 					}
 				textout.popState();
 				eventLock.unlock();
-			}
 
-			textout.color(1,1,1);
-			textout.locate(0,1);
-			textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFaction ? "logged in" : "not logged in")<< nl;
-			textout << "Hello "<<Network::chosenNickname<<nl;
-			if (Network::amOnline)
-			{
-				textout << "Server ID: " << Network::serverIDString<<nl;
-				textout << "World ID: " << Network::worldIDString<<nl;
-				textout << "Game Goal: "<<RuntimeConfig::gameGoal.ToString() << nl;
+				textout.color(1,1,1);
+				textout.locate(0,1);
+				textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFaction ? "logged in" : "not logged in")<< nl;
+				textout << "Hello "<<Network::chosenNickname<<nl;
+				if (Network::amOnline)
+				{
+					textout << "Server ID: " << Network::serverIDString<<nl;
+					textout << "World ID: " << Network::worldIDString<<nl;
+					textout << "Game Goal: "<<RuntimeConfig::gameGoal.ToString() << nl;
+					#ifdef _DEBUG
+						textout << "Access ID: " << Network::activeTokenString<<nl;
+					#endif
+					textout << "Phase: "<<RuntimeConfig::phase.ToString()<<nl;
+					textout << "Round Number: "<<RuntimeConfig::roundNumber<<nl;
+					if (!Network::gameProgress.gameOver)
+					{
+						if (Network::gameProgress.status.IsNotEmpty())
+							textout << "Progress: "<<Network::gameProgress.status<<nl;
+						if (Network::gameProgress.warning.IsNotEmpty())
+						{
+							textout.color(1,0,0);
+							textout << "Warning: "<<Network::gameProgress.warning<<nl;
+							textout.color(1,1,1);
+						}
+					}
+					else
+						if (Network::gameProgress.gameOver)
+						{
+							if (Network::gameProgress.gameWon)
+							{
+								textout.color(0.4,0.5,1);
+								textout << "YOU WIN"<<nl;
+							}
+							else
+							{
+								textout.color(1,0.5,0.4);
+								textout << "GAME OVER"<<nl;
+							}
+							textout.color(1,1,1);
+						}
+				}
 				#ifdef _DEBUG
-					textout << "Access ID: " << Network::activeTokenString<<nl;
+					if (Network::haveID)
+						textout << "My ID: "<<Network::myIDString<<nl;
+					textout << -Camera::scene.retraction.z/WorldScale << nl;
 				#endif
-				textout << "Phase: "<<RuntimeConfig::phase.ToString()<<nl;
-				textout << "Round Number: "<<RuntimeConfig::roundNumber<<nl;
-				if (!Network::gameProgress.gameOver)
+				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::roundTimer > 0)
 				{
-					if (Network::gameProgress.status.IsNotEmpty())
-						textout << "Progress: "<<Network::gameProgress.status<<nl;
-					if (Network::gameProgress.warning.IsNotEmpty())
+					textout.pushState();
+					float remaining = std::max(Network::roundTimer - timer.GetSecondsSince(Network::phaseStarted),0.f);
+					textout << "Remaining seconds: "<<nl;
+					textout.scale(2.f,2.f);
+					if (remaining <= 10.f && !Network::newRoundRequested)
 					{
-						textout.color(1,0,0);
-						textout << "Warning: "<<Network::gameProgress.warning<<nl;
-						textout.color(1,1,1);
+						textout.scale(1.2f,1.2f);
+						bool blinkOn = ((timer.Now()/(timer.GetTicksPerSecond()/5))%2) != 0;
+						textout.color(1,0.2,0.2,blinkOn ? 0.5f : 1.f);
 					}
+					textout<<Round(remaining)<<nl;
+					textout.popState();
 				}
-				else
-					if (Network::gameProgress.gameOver)
-					{
-						if (Network::gameProgress.gameWon)
-						{
-							textout.color(0.4,0.5,1);
-							textout << "YOU WIN"<<nl;
-						}
-						else
-						{
-							textout.color(1,0.5,0.4);
-							textout << "GAME OVER"<<nl;
-						}
-						textout.color(1,1,1);
-					}
+
+
+				textout.locate(0.0f,0.05f);
+				textout.color(1,1,1);
+				textout << "FPS: "<<1.f / Engine::timing.delta << nl;
+				#ifdef _DEBUG
+					textout << "last remote message: "<<timer.GetSecondsSince(Network::client.GetLastPackageTime());
+				#endif
+
 			}
-			#ifdef _DEBUG
-				if (Network::haveID)
-					textout << "My ID: "<<Network::myIDString<<nl;
-				textout << -Camera::scene.retraction.z/WorldScale << nl;
-			#endif
-			if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::roundTimer > 0)
-			{
-				textout.pushState();
-				float remaining = std::max(Network::roundTimer - timer.GetSecondsSince(Network::phaseStarted),0.f);
-				textout << "Remaining seconds: "<<nl;
-				textout.scale(2.f,2.f);
-				if (remaining <= 10.f && !Network::newRoundRequested)
-				{
-					textout.scale(1.2f,1.2f);
-					bool blinkOn = ((timer.Now()/(timer.GetTicksPerSecond()/5))%2) != 0;
-					textout.color(1,0.2,0.2,blinkOn ? 0.5f : 1.f);
-				}
-				textout<<Round(remaining)<<nl;
-				textout.popState();
-			}
-
-
-			textout.locate(0.0f,0.05f);
-			textout.color(1,1,1);
-			textout << "FPS: "<<1.f / Engine::timing.delta << nl;
-			#ifdef _DEBUG
-				textout << "last remote message: "<<timer.GetSecondsSince(Network::client.GetLastPackageTime());
-			#endif
-
 	
 
 			DebugCheckVector(scene.location,-1000,1000);
