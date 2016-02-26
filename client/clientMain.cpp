@@ -1705,6 +1705,7 @@ bool loop()
 			}
 
 
+			if (UI::showControlsAndContacts && !saveScreenshot)
 			{
 				static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__TIMESTAMP__);
 				//textout.locate(0.f,1.f - textout.getScaledHeight());
