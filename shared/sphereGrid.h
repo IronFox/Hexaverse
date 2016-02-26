@@ -1844,6 +1844,9 @@ namespace Grid
 	TVec3<> ToWorld(const LCellIdU&);
 	TVec3<> ToWorld(const LCellIdI&);
 
+	inline HCellIdI	ToHigh(const LCellIdI&cellID)	{return HCellIdI(low.grid.GetCell(cellID.stackID).higherEquivalent,cellID.height); }
+	inline HCellIdU	ToHigh(const LCellIdU&cellID)	{return HCellIdU(low.grid.GetCell(cellID.stackID).higherEquivalent,cellID.layer); }
+
 
 	#pragma pack(push)
 	#pragma pack(1)
