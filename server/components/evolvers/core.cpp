@@ -11,7 +11,7 @@ namespace Evolver
 
 	namespace CoreDetails
 	{
-		Buffer0<TExplosion>	pendingExplosions;
+		Queue<TExplosion>	pendingExplosions;
 
 		/**
 		Like vehicles, towers have an attack action floation point value. Unlike vehicles, they are not part of the
@@ -356,12 +356,10 @@ namespace Evolver
 
 		bool ContinueRoundProcessing(float&animationLength)
 		{
-			if (pendingExplosions.IsNotEmpty())
-			{
-				foreach (pendingExplosions,e)
-					Objects::Explode(Objects::PWorldEntity(),e->center,0.f,Grid::ToHigh(e->center),Grid::ToWorld(e->center),e->radius,e->damageLevel,false,e->atTime);
-				pendingExplosions.Clear();
-			}
+			static TExplosion exp;
+			while (pendingExplosions >> exp)
+				Objects::Explode(Objects::PWorldEntity(),exp.center,0.f,Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,exp.atTime);
+
 			switch (RuntimeConfig::phase)
 			{
 				case RuntimeConfig::Phase::AttackPhase:
