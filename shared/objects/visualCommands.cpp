@@ -98,7 +98,7 @@ namespace Objects
 		if (e->IsStructure())
 			distanceFactor += 0.1f * To<Structure>::Cast(e)->GetHeight();
 		if (e->IsSatellite())
-			distanceFactor *= 1.5f;
+			distanceFactor *= 3.f;
 
 		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(e),distanceFactor);
 
