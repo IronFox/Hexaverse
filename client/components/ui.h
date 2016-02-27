@@ -225,7 +225,7 @@ namespace UI
 					virtual void			CompileLabel(Label&outResult) override
 					{
 						String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
-						outResult << "Abort current operation or clear all scheduled operations of "+name;
+						outResult << "Abort any currently active operation and clear all scheduled operations of "+name;
 					}
 				};
 
