@@ -93,8 +93,7 @@ namespace Objects
 		void						AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName);
 
 		#ifdef HAS_WINDOW
-			void					VisitAllCommands(FCommandVisitor visitor);
-			void					VisitAllCommands_Reverse(FCommandVisitor visitor);
+			void					VisitAllCommands(FCommandVisitor visitor,bool force);
 		#endif
 		bool						AwaitsUserInteraction() const;
 

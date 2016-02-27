@@ -392,6 +392,7 @@ namespace Objects
 		//various type check methods. technically, a dynamic cast into the respective structure would be sufficient but i am led to believe that these are faster
 		virtual bool				IsWorkingStructure() const {return false;}
 		virtual bool				IsMobile() const {return false;}
+		virtual bool				IsTower() const {return false;}
 		virtual bool				IsVehicle() const {return false;}
 		virtual bool				IsSatellite() const {return false;}
 		virtual bool				IsStructure() const {return false;}
@@ -458,8 +459,12 @@ namespace Objects
 				void				AppendDeploymentCount(BaseCommand::Label&outResult, const OwnerParameter&overrideOwner)	const;
 				String				CompileDeploymentCount(const OwnerParameter&overrideOwner)	const;
 
-
-				virtual void		VisitAllCommands(FCommandVisitor visitor) {};
+				/**
+				Visits each visual command the local entity provides
+				@param visitor Callback function to call for every command
+				@param force Set true to also visit commands that are currently hidden. False will visit only the currently selected command tree branch
+				*/
+				virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) {};
 				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const=0;
 			#endif
 	

@@ -869,7 +869,46 @@
 			//Buffer0<GroupFocusCommand>			groupFocusCommands;
 			EntityFocusCommand					selectedFocus;
 
-			std::shared_ptr<TutorialCommand>	tutorialCommand;
+			namespace BottomRightPanel
+			{
+				Buffer0<Objects::PBaseCommand>				commands;
+
+				void Create()
+				{
+					commands << Objects::PBaseCommand( new TutorialCommand() );
+
+					commands << Objects::PBaseCommand( new DemolishCommand() );
+					commands << Objects::PBaseCommand( new SleepCommand() );
+					commands << Objects::PBaseCommand( new AbortCommand() );
+					commands << Objects::PBaseCommand( new UndoCommand() );
+
+				}
+
+				void Destroy()
+				{
+					commands.Clear();
+				}
+
+				static void Add(const Objects::PBaseCommand&cmd)
+				{
+					GridCell&cell = AllocateCell(cmd.get());
+					cell.flipX = true;
+					cell.Update(camera);
+					cmd->Refresh(Network::ControlEnabled());
+				}
+
+				void			Refresh()
+				{
+					if (!showControlsAndContacts)
+					{
+						foreach (commands,c)
+							FindAndDeleteCell(c->get());
+						return;
+					}
+					foreach (commands,c)
+						Add(*c);
+				}
+			}
 
 		}
 
@@ -1021,8 +1060,8 @@
 				friendlyGroups.Create();
 				hostileGroups.Create();
 				animationTimeLine.Create();
-				tutorialCommand.reset(new TutorialCommand());
-				tutorialCommand->gridCoords = int2(1);
+
+				BottomRightPanel::Create();
 
 				Configure(Objects::selectedEntity);	//very likely not set
 
@@ -1057,7 +1096,7 @@
 				//vehicleCommands.Clear();
 				//structureCommands.Clear();
 
-				tutorialCommand.reset();
+				BottomRightPanel::Destroy();
 
 				friendlyGroups.Destroy();
 				hostileGroups.Destroy();
@@ -1394,26 +1433,12 @@
 
 				animationTimeLine.Refresh();
 
-				RefreshTutorials();
+				BottomRightPanel::Refresh();
 				//display.SetDepthTest(false,false);
 				//display.SetRasterizer(true,false);
 			}
 
-			void			RefreshTutorials()
-			{
-				if (!showControlsAndContacts)
-				{
-					FindAndDeleteCell(tutorialCommand.get());
-					return;
-				}
-				if (!tutorialCommand)
-					return;
 
-				GridCell&cell = AllocateCell(tutorialCommand.get());
-				cell.flipX = true;
-				cell.Update(camera);
-				tutorialCommand->Refresh(Network::ControlEnabled());
-			}
 
 			void					Configure(const Objects::PWorldEntity&e)
 			{
@@ -1430,8 +1455,7 @@
 				if (showControlsAndContacts)
 				{
 					at = int2(5,1);
-					foreach (Objects::globalCommands,cmd)
-						VisitCommand(*cmd);
+					Objects::globalCommands.VisitMembers(VisitCommand,false);
 					Next();
 					Next();
 				}
@@ -1440,7 +1464,7 @@
 				{
 					hasFocusButton = true;
 					if (showControls)
-						e->VisitAllCommands(VisitCommand);
+						e->VisitAllCommands(VisitCommand,false);
 
 					selectedFocus = EntityFocusCommand(e);
 					selectedFocus.gridCoords = GetFocusLocation();

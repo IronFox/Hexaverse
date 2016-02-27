@@ -62,7 +62,7 @@ namespace Objects
 		bool						Structure::anyChanged = false;
 
 //		/*static*/ Buffer0<IconCommand>		Connector::commands;
-		/*static*/ Buffer0<IconCommand>		Tower::commands;
+		/*static*/ CommandContainer			Tower::commands;
 
 		/*static*/ DX11::InstructionBlock32	Mine::shape;
 		///*static*/ DX11::InstructionBlock32	Connector::shape;
@@ -803,7 +803,7 @@ namespace Objects
 	{
 		Super::PrototypeSetup();
 		#ifdef HAS_WINDOW
-			iconCommands << IconCommand(int2(5,1), "Restore Core Link",[]()
+			commands.Add( new IconCommand("Restore Core Link",[]()
 			{
 				PMine mine = ToMine(selectedEntity);
 				if (mine)
@@ -819,16 +819,18 @@ namespace Objects
 				return mine && !mine->IsLinkedToCore() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 			},
 			NoCosts
-			);
+			));
 		#endif
 	}
 
 	#ifdef HAS_WINDOW
-		/*virtual override*/ void				Tower::VisitAllCommands(FCommandVisitor visitor)
+		/*virtual override*/ void				Tower::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
-			foreach (commands,cmd)
-				if (turret->CanAttack() || cmd->name!="Attack")
-					visitor(*cmd);
+			commands.VisitMembers([visitor,this](BaseCommand&cmd)
+			{
+				if (turret->CanAttack() || cmd.name!="Attack")
+					visitor(cmd);
+			},force);
 		}
 
 	#endif
@@ -847,18 +849,6 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			geometry.Clear();
-			commands << IconCommand(int2(4,0), "Abort", &VehicleCmd::AbortOperation, &CommonCmd::CommonButtonCheck
-						,NoCosts
-			);
-			commands << IconCommand(int2(4,1), "Undo", &VehicleCmd::UndoOperation, &CommonCmd::CommonButtonCheck
-						,NoCosts
-			);
-			commands << IconCommand(int2(5,1), "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>
-						,NoCosts
-			);
-			commands << IconCommand(int2(5,0), "Demolish",&CommonCmd::DemolishSelected,&CommonCmd::CommonButtonCheck
-						,NoCosts
-			);
 		#endif
 
 		static const float staticHeight = 1.005f;
@@ -1502,7 +1492,7 @@ namespace Objects
 
 
 
-			cmdLeft = IconCommand(int2(4,1),"Left",
+			cmdLeft = IconCommand("Left",
 				[]()
 				{
 					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
@@ -1523,8 +1513,9 @@ namespace Objects
 						 ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 				},
 				NoCosts);
+			cmdLeft.SetCoords(int2(4,1));
 
-			cmdRight = IconCommand(int2(),"Right",
+			cmdRight = IconCommand("Right",
 				[]()
 				{
 					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
@@ -1576,17 +1567,17 @@ namespace Objects
 			UpdateIconLocations();
 		}
 
-		/*virtual override*/ void		VehicleStore::VisitAllCommands(FCommandVisitor visitor)
+		/*virtual override*/ void		VehicleStore::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
-			Super::VisitAllCommands(visitor);
+			Super::VisitAllCommands(visitor,force);
 			if (!park)
 			{
 				foreach (localStore,v)
-					visitor(v->deployCommand);
+					v->deployCommand.VisitMembers(visitor,force);
 				return;
 			}
-			if (storeOffset > 0)
-				visitor(cmdLeft);
+			if (storeOffset > 0 || force)
+				cmdLeft.VisitMembers(visitor,force);
 			index_t at = 0;
 			foreach (park->members,m)
 			{
@@ -1596,22 +1587,23 @@ namespace Objects
 				{
 					foreach (s->localStore,s2)
 					{
-						if (at >= storeOffset)
+						if (at >= storeOffset || force)
 						{
-							s2->deployCommand.gridCoords = cmdLeft.gridCoords + int2(at - storeOffset+1 ,0);
-							visitor(s2->deployCommand);
+							if (at >= storeOffset)
+								s2->deployCommand.gridCoords = cmdLeft.gridCoords + int2(at - storeOffset+1 ,0);
+							s2->deployCommand.VisitMembers(visitor,force);
 						}
 
 						at++;
-						if (at >= storeOffset + MaxVisibleStoreItems)
+						if (at >= storeOffset + MaxVisibleStoreItems && !force)
 							break;
 					}
 				}
 				if (at >= storeOffset + MaxVisibleStoreItems)
 					break;
 			}
-			if (this->park->vehiclesStored - storeOffset > MaxVisibleStoreItems)
-				visitor(cmdRight);
+			if (this->park->vehiclesStored - storeOffset > MaxVisibleStoreItems || force)
+				cmdRight.VisitMembers(visitor,force);
 		}
 
 	#endif
@@ -2280,92 +2272,91 @@ namespace Objects
 		turretComponents = Objects::Component::vehicleTurretComponents;
 
 		#ifdef HAS_WINDOW
-				for (index_t i = 0; i < iconCommands.Count(); i++)
-					if (iconCommands[i].name == "Enable")
-					{
-						iconCommands[i] = IconCommand(int2(4,1), "Enable",
-							[]()
-							{
-
-								VehiclePlant*s2 = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-								if (s2)
-								{
-									if (!s2->IsEnabled() && !s2->CanEnable())
-									{
-										SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job using the 'Construct Selected' button. You must first select both a foundation and a turret, however.");
-										return;
-									}
-									SignalEnableStructure(*s2, !s2->IsEnabled());
-								}
-							}
-							,[](bool controlEnabled)
-							{
-								BaseCommand::Flags rs = BaseCommand::Flags::None;
-								VehiclePlant*div = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-								if (controlEnabled && div != nullptr)
-									rs |= BaseCommand::Flags::IsEnabled;
-								if (Cmd::IsEnabled())
-									rs |= BaseCommand::Flags::IsPermaActive;
-								return rs;
-							}
-							,NoCosts
-						);
-						break;
-					}
-
-
-
-			iconCommands << IconCommand(int2(6,0), "Construct Selected",[]()
+			commands.VisitMembers([](BaseCommand&cmd)
+			{
+				if (cmd.name == "Enable")
 				{
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					if (plant)
-					{
-						if (plant->selectedBase && plant->selectedTurret)
-							plant->EnqueueSelectedConstruction();
-						else
+					cmd = IconCommand("Enable",
+						[]()
 						{
-							if (plant->selectedBase)
-								SignalUserMessage(plant->GetNiceName()+" needs to know what turret you want to use in order to enqueue a new production job. Please select one in the top row.");
-							elif (plant->selectedTurret)
-								SignalUserMessage(plant->GetNiceName()+" needs to know what foundation you want to use in order to enqueue a new production job. Please select one in the bottom row.");
-							else
-								SignalUserMessage(plant->GetNiceName()+" needs to know what turret and foundation you want to use in order to enqueue a new production job. Please select one in each top and bottom rows.");
-						}
-					}
-				},
-				[](bool controlEnabled)
-				{
-					if (!controlEnabled)
-						return BaseCommand::Flags::None;
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					return (plant != nullptr/* && plant->selectedBase && plant->selectedTurret*/)
-						? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None
-						;
-				},
-				[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
-				{
-					costTypeOut = Resource::Minerals;
-					PVehiclePlant p = To<VehiclePlant>::DynamicCast(selectedEntity);
-					ASSERT__(p);
-					if (!p->selectedBase || !p->selectedTurret)
-					{
-						mineralCostOut = 0;
-						timeCostOut = 0;
-						return;
-					}
-					mineralCostOut = Vehicle::GetPrice(p->selectedBase,p->selectedTurret);
-					timeCostOut = p->ProductionRounds(mineralCostOut,false);
-				}
-			);
 
-			iconCommands << IconCommand(int2(5,1), "Sleep",VehicleCmd::Sleep,VehicleCmd::SleepCheck,NoCosts);
+							VehiclePlant*s2 = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+							if (s2)
+							{
+								if (!s2->IsEnabled() && !s2->CanEnable())
+								{
+									SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job using the 'Construct Selected' button. You must first select both a foundation and a turret, however.");
+									return;
+								}
+								SignalEnableStructure(*s2, !s2->IsEnabled());
+							}
+						}
+						,[](bool controlEnabled)
+						{
+							BaseCommand::Flags rs = BaseCommand::Flags::None;
+							VehiclePlant*div = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+							if (controlEnabled && div != nullptr)
+								rs |= BaseCommand::Flags::IsEnabled;
+							if (Cmd::IsEnabled())
+								rs |= BaseCommand::Flags::IsPermaActive;
+							return rs;
+						}
+						,NoCosts
+					);
+				}
+			},true);
+
+
+			commands.Add(new IconCommand("Construct Selected",[]()
+			{
+				VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+				if (plant)
+				{
+					if (plant->selectedBase && plant->selectedTurret)
+						plant->EnqueueSelectedConstruction();
+					else
+					{
+						if (plant->selectedBase)
+							SignalUserMessage(plant->GetNiceName()+" needs to know what turret you want to use in order to enqueue a new production job. Please select one in the top row.");
+						elif (plant->selectedTurret)
+							SignalUserMessage(plant->GetNiceName()+" needs to know what foundation you want to use in order to enqueue a new production job. Please select one in the bottom row.");
+						else
+							SignalUserMessage(plant->GetNiceName()+" needs to know what turret and foundation you want to use in order to enqueue a new production job. Please select one in each top and bottom rows.");
+					}
+				}
+			},
+			[](bool controlEnabled)
+			{
+				if (!controlEnabled)
+					return BaseCommand::Flags::None;
+				VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+				return (plant != nullptr/* && plant->selectedBase && plant->selectedTurret*/)
+					? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None
+					;
+			},
+			[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+			{
+				costTypeOut = Resource::Minerals;
+				PVehiclePlant p = To<VehiclePlant>::DynamicCast(selectedEntity);
+				ASSERT__(p);
+				if (!p->selectedBase || !p->selectedTurret)
+				{
+					mineralCostOut = 0;
+					timeCostOut = 0;
+					return;
+				}
+				mineralCostOut = Vehicle::GetPrice(p->selectedBase,p->selectedTurret);
+				timeCostOut = p->ProductionRounds(mineralCostOut,false);
+			}
+		))->SetCoords(int2(6,0));
+
 
 			int at = 0;
 			//vehicleConstructionCommands << VehicleConstructionCommand("Base:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
 			foreach (baseComponents,comp)
 			{
 				Component::VehicleBase* c = *comp;
-				vehicleConstructionCommands << EntityConstructionCommand(int2(7+at,0), c->typeName,c,nullptr,PWorldEntity(),[c]()
+				commands.Add(new EntityConstructionCommand(c->typeName,c,nullptr,PWorldEntity(),[c]()
 				{
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
@@ -2378,8 +2369,8 @@ namespace Objects
 					if (plant && plant->selectedBase == c)
 						rs |= BaseCommand::Flags::IsPermaActive;
 					return rs;
-				});
-				vehicleConstructionCommands.last().RasterizeImage();
+				}))->SetCoords(int2(7+at,0));
+				commands.GetLast()->RasterizeImage();
 				at++;
 			}
 			at = 0;
@@ -2387,7 +2378,7 @@ namespace Objects
 			foreach (turretComponents,comp)
 			{
 				Component::Turret* c = *comp;
-				vehicleConstructionCommands << EntityConstructionCommand(int2(6+at,1), c->typeName,nullptr,c,PWorldEntity(),[c]()
+				commands.Add(new EntityConstructionCommand(c->typeName,nullptr,c,PWorldEntity(),[c]()
 				{
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
@@ -2400,8 +2391,8 @@ namespace Objects
 					if (plant && plant->selectedTurret == c)
 						rs |= BaseCommand::Flags::IsPermaActive;
 					return rs;
-				});
-				vehicleConstructionCommands.last().RasterizeImage();
+				}))->SetCoords(int2(6+at,1));
+				commands.GetLast()->RasterizeImage();
 				at++;
 			}
 		#endif
@@ -2410,17 +2401,17 @@ namespace Objects
 
 	}
 	#ifdef HAS_WINDOW
-		/*virtual override*/ void				VehiclePlant::VisitAllCommands(FCommandVisitor visitor)
+		/*virtual override*/ void				VehiclePlant::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
-			MobileEntityProducer::VisitAllCommands(visitor);
-			Super::VisitAllCommands(visitor);
+			MobileEntityProducer::VisitAllCommands(visitor,force);
+			Super::VisitAllCommands(visitor,force);
 		}
-		/*virtual override*/ void				SkyPort::VisitAllCommands(FCommandVisitor visitor)
+		/*virtual override*/ void				SkyPort::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
-			MobileEntityProducer::VisitAllCommands(visitor);
-			visitor(skyHubConstructionCommand);
-			visitor(formerConstructionCommand);
-			Super::VisitAllCommands(visitor);
+			MobileEntityProducer::VisitAllCommands(visitor,force);
+			skyHubConstructionCommand.VisitMembers(visitor,force);
+			formerConstructionCommand.VisitMembers(visitor,force);
+			Super::VisitAllCommands(visitor,force);
 		}
 
 	#endif

@@ -95,10 +95,10 @@ namespace Objects
 				selected = Grid::LCellIdI::Invalid;
 		}
 
-		void				MobileEntityProducer::VisitAllCommands(WorldEntity::FCommandVisitor visitor)
+		void				MobileEntityProducer::VisitAllCommands(WorldEntity::FCommandVisitor visitor,bool force)
 		{
 			for (index_t i = 0; i < queue.Count(); i++)
-				visitor(queue[i].commandToTerminate);
+				queue[i].commandToTerminate.VisitMembers(visitor,force);
 		}
 
 		

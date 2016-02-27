@@ -153,12 +153,12 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void		SkyHub::VisitAllCommands(FCommandVisitor visitor)
+		/*virtual override*/ void		SkyHub::VisitAllCommands(FCommandVisitor visitor,bool force)
 		{
-			Super::VisitAllCommands(visitor);
+			Super::VisitAllCommands(visitor,force);
 			foreach (constructionCommands,cmd)
-				visitor(*cmd);
-			MobileEntityProducer::VisitAllCommands(visitor);
+				cmd ->VisitMembers(visitor,force);
+			MobileEntityProducer::VisitAllCommands(visitor,force);
 		}
 
 

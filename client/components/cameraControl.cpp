@@ -221,9 +221,9 @@ namespace Camera
 		hud.UpdateProjection(0,0,1,1,-1,1);
 
 
-		Objects::globalCommands.Append(
-			Objects::GlobalCommand(int2(1,0),"Show Sky Grid", 
-			&Camera::ToggleOrbit, &Cmd::Check));
+		Objects::globalCommands.Add( new 
+			Objects::GlobalCommand("Show Sky Grid", 
+			&Camera::ToggleOrbit, &Cmd::Check)) ->SetCoords(int2(1,0));
 	}
 
 

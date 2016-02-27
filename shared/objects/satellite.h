@@ -213,7 +213,7 @@ namespace Objects
 			//virtual void		RegisterWorldSensory() override;
 			//virtual void		UnregisterWorldSensory() override;
 //			virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to) override;
-			virtual void		VisitAllCommands(FCommandVisitor visitor) override {turret->VisitAllCommands(visitor);};
+			virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {turret->VisitAllCommands(visitor,force);};
 
 		#endif
 
@@ -299,7 +299,7 @@ namespace Objects
 				virtual void		PrototypeLoadGeometry() override;
 
 				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
-				virtual void		VisitAllCommands(FCommandVisitor visitor) override {Super::VisitAllCommands(visitor); foreach (iconCommands,cmd) visitor(*cmd);};
+				virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {Super::VisitAllCommands(visitor,force); foreach (iconCommands,cmd) cmd->VisitMembers(visitor,force);};
 			#endif
 
 		};
@@ -445,7 +445,7 @@ namespace Objects
 		virtual void			OnConstructionFinished(float atTime) override;
 		virtual bool			AwaitsUserInteraction() const override {return MobileEntityProducer::AwaitsUserInteraction();}
 		#ifdef HAS_WINDOW
-			virtual void		VisitAllCommands(FCommandVisitor visitor) override;
+			virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override;
 			virtual void		OnSelect() override;
 			virtual void		OnDeselect() override;
 		#endif

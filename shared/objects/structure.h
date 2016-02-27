@@ -31,6 +31,8 @@ namespace Objects
 
 	struct TStructureNeighborhood;
 
+
+
 	/**
 	Structure representation class. This class is instanciated exactly once per occurence in the world
 	plus once for its prototype.
@@ -64,6 +66,9 @@ namespace Objects
 
 
 	public:
+
+		CONSTRUCT_ENUMERATION5(Category, Defense, Resources, Factories, Infrastructure, Hangar);
+
 		/**
 		Structure placement result, returned by CommonCheckStructurePlacement() and CheckPlacement()
 		*/
@@ -292,6 +297,11 @@ namespace Objects
 		*/
 		void						DisconnectFromNeighborhood(float atTime);
 
+		/**
+		Fetches the category of the local structure
+		*/
+		virtual Category			GetCategory() const = 0;
+
 		#ifdef HAS_WINDOW
 
 		//	#ifndef ONE_COMPOUND_PER_FACTION
@@ -341,8 +351,7 @@ namespace Objects
 		public:
 			static const std::shared_ptr<Derivative>		globalPrototype;
 			#ifdef HAS_WINDOW
-				static Buffer0<IconCommand>	commands;
-
+				static CommandContainer	commands;
 
 				/**
 				Render-ready, object-space instruction to be used for all instances of this structure type
@@ -364,7 +373,7 @@ namespace Objects
 			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override { return PWorldEntity(new Derivative(owner, location,atTime)); }
 			#ifdef HAS_WINDOW
 				virtual bool			TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
-				virtual void			VisitAllCommands(FCommandVisitor visitor) override {foreach (commands,cmd) visitor(*cmd);};
+				virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override {commands.VisitMembers(visitor,force);};
 
 			#endif
 			virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
@@ -538,6 +547,7 @@ namespace Objects
 		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) override;
 		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
 		virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) override;
+		virtual Category			GetCategory() const override {return Category::Hangar;}
 
 
 		//HangarStructure overrides:
@@ -565,7 +575,7 @@ namespace Objects
 				label.WrapAppendText("Vehicle stores can be used to store vehicles which will then enter hibernation until deployed. This structure shares storage with nearby structures of the same type."
 									" A vehicle store can deploy any vehicle found within the vehicle store compound.");			
 			}
-			virtual void			VisitAllCommands(FCommandVisitor visitor) override;
+			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 		#endif
 
 
@@ -611,6 +621,7 @@ namespace Objects
 		//Structure overrides
 		virtual int					GetBroadHeight() const {return 0;}
 		virtual bool				HasFoundation() const override {return false;}
+		virtual Category			GetCategory() const override {return Category::Infrastructure;}
 	};
 
 	/**
@@ -747,7 +758,6 @@ namespace Objects
 
 
 		virtual bool				IsMine() const {return false;}
-		virtual bool				IsTower() const {return false;}
 	};
 
 	/**
@@ -782,8 +792,8 @@ namespace Objects
 		public:
 			static const std::shared_ptr<CommonStructure<Derivative> >		globalPrototype;
 			#ifdef HAS_WINDOW
-				static Buffer0<IconCommand>		iconCommands;
-				static Buffer0<EntityConstructionCommand>	vehicleConstructionCommands;
+				static CommandContainer	commands;
+
 				/**
 				Render-ready, object-space instruction to be used for all instances of this structure type
 				*/
@@ -808,7 +818,7 @@ namespace Objects
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
 					virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
-					virtual void		VisitAllCommands(FCommandVisitor visitor) override {foreach (iconCommands,cmd) visitor(*cmd);foreach (vehicleConstructionCommands,cmd) visitor(*cmd);};
+					virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override {commands.VisitMembers(visitor,force);};
 				#endif
 			#endif
 		};
@@ -884,7 +894,7 @@ namespace Objects
 				label.WrapAppendText("Sky ports provide a foundation for each one sky hub. Periodically, "+String(ResourceTag(Resource::Fuel))+"fuel is transferred up, to supply the hub and its satellites."
 									" Failure to supply the required "+String(ResourceTag(Resource::Fuel))+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection");
 			}
-			virtual void			VisitAllCommands(FCommandVisitor visitor) override;
+			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 			virtual void			OnSelect()	override;
 			virtual void			OnDeselect() override;
 
@@ -906,6 +916,7 @@ namespace Objects
 		}
 		virtual bool				IsSkyPort() const override {return true;}
 		virtual bool				IsSkyLinkStructure() const override {return true;}
+		virtual Category			GetCategory() const override {return Category::Factories;}
 
 
 		//SkyLinkStructure overrides:
@@ -998,8 +1009,7 @@ namespace Objects
 
 		//Structure overrides:
 		virtual bool				IsSkyLinkStructure() const override {return true;}
-
-
+		virtual Category			GetCategory() const override {return Category::Resources;}	//not needed
 
 		//SkyLinkStructure overrides:
 		virtual WorkingStructure*	CastToStructure() override {return this;}
@@ -1041,6 +1051,7 @@ namespace Objects
 
 		virtual void				OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime) override;
 		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
+		virtual Category			GetCategory() const override {return Category::Resources;}
 
 
 		#ifdef HAS_WINDOW
@@ -1067,6 +1078,7 @@ namespace Objects
 		virtual int					GetHeight() const override {return 2;}
 		virtual String				GetTypeName() const override { return "Reactor Core"; };
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_ReactorCore;}
+		virtual Category			GetCategory() const override {return Category::Resources;}
 
 		#ifdef HAS_WINDOW
 			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {PGenerator gen = To<Generator>::DynamicCast(connected); return gen && gen->connectedToReactor.lock().get() == this ? &Generator::reactorConnector : &standardConnector;}
@@ -1139,10 +1151,8 @@ namespace Objects
 
 
 		//Structure overrides:
-		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override
-		{
-			return MobileEntityProducer::IsBuilding(outProgress);
-		}
+		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override { return MobileEntityProducer::IsBuilding(outProgress); }
+		virtual Category			GetCategory() const override {return Category::Factories;}
 
 
 		//WorldEntity overrides:
@@ -1176,7 +1186,7 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			virtual void			VisitAllCommands(FCommandVisitor visitor) override;
+			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 			virtual void			OnSelect()	override;
 			virtual void			OnDeselect() override;
 		#endif
@@ -1269,6 +1279,8 @@ namespace Objects
 			virtual int				GetUplinkTraffic() const override {return 2;}
 			virtual int				GetUplinkPriority() const override {return 1000;};
 		#endif
+		virtual Category			GetCategory() const override {return Category::Resources;}
+
 
 	};
 
@@ -1359,7 +1371,7 @@ namespace Objects
 
 
 		virtual bool				IsMine() const {return true;}
-
+		virtual Category			GetCategory() const override {return Category::Resources;}
 	};
 
 
@@ -1406,6 +1418,7 @@ namespace Objects
 			#endif
 			Super::GetResourceVector(v,storage,max);
 		}
+		virtual Category			GetCategory() const override {return Category::Resources;}
 
 		virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
@@ -1445,7 +1458,7 @@ namespace Objects
 		/**/						FuelContainer()	{maxStorage.level[Resource::Fuel] = 400; }	//global prototype
 	public:
 		virtual String				GetTypeName() const override { return "Fuel Container"; };
-		virtual ConstName		GetCTypeName() const override {return ConstName::Type_FuelContainer;}
+		virtual ConstName			GetCTypeName() const override {return ConstName::Type_FuelContainer;}
 
 	};
 
@@ -1583,7 +1596,7 @@ namespace Objects
 			Buffer0<AttackTask>			attackQueue;
 
 			#ifdef HAS_WINDOW
-				static Buffer0<IconCommand>		commands;
+				static CommandContainer	commands;
 				/**
 				Render-ready, object-space instruction to be used for all instances of this structure type
 				*/
@@ -1659,17 +1672,18 @@ namespace Objects
 			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime) override;
 		#else
 			#ifdef HAS_WINDOW
-				virtual void		VisitAllCommands(FCommandVisitor visitor) override;
+				virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override;
 
 				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
 			#endif
 		#endif
 
-		//WorkingStructure overrides:
+		//WorldEntity overrides:
 		virtual bool				IsTower() const override {return true;}
 
 		//structure overrides:
 		virtual int					GetBroadHeight() const override {return std::max(1,GetHeight()-1);}
+		virtual Category			GetCategory() const override {return Category::Defense;}
 
 
 		//turret base overrides:
@@ -1741,11 +1755,9 @@ namespace Objects
 		/*static*/ Geometry				OtherStructure<Derivative>::geometry;
 
 		template <typename Derivative>
-		/*static*/ Buffer0<IconCommand>		CommonStructure<Derivative>::iconCommands;
+		/*static*/ CommandContainer	CommonStructure<Derivative>::commands;
 		template <typename Derivative>
-		/*static*/ Buffer0<IconCommand>		OtherStructure<Derivative>::commands;
-		template <typename Derivative>
-		/*static*/ Buffer0<EntityConstructionCommand>		CommonStructure<Derivative>::vehicleConstructionCommands;
+		/*static*/ CommandContainer	OtherStructure<Derivative>::commands;
 	#endif
 
 
@@ -1760,6 +1772,11 @@ namespace Objects
 			/*virtual override*/	void			CommonStructure<Derivative>::PrototypeLoadGeometry()
 			{
 				Super::PrototypeLoadGeometry();
+
+				#ifdef HAS_WINDOW
+					commands.baseCoords = int2(4,0)+BaseCommand::coordOffset;
+				#endif
+
 
 				geometry.Clear();
 				String name = GetTypeName();
@@ -1799,8 +1816,9 @@ namespace Objects
 			Super::PrototypeSetup();
 
 			#ifdef HAS_WINDOW
+				commands.baseCoords = int2(4,0)+BaseCommand::coordOffset;
 
-				iconCommands << IconCommand(int2(4,1), "Enable",&Cmd::Enable,
+				commands.Add(new IconCommand("Enable",&Cmd::Enable,
 				[](bool controlEnabled)->BaseCommand::Flags
 				{
 					BaseCommand::Flags rs = BaseCommand::Flags::None;
@@ -1817,11 +1835,7 @@ namespace Objects
 					return rs;
 				}
 				,NoCosts
-				);
-				if (!IsIndestructible())
-					iconCommands << IconCommand(int2(5,0), "Demolish",&CommonCmd::DemolishSelected,&CommonCmd::CommonButtonCheck
-							,NoCosts
-							);
+				));
 			#endif
 
 			String name = GetTypeName();
@@ -1843,11 +1857,7 @@ namespace Objects
 		{
 			Super::PrototypeSetup();
 			#ifdef HAS_WINDOW
-
-				if (!IsIndestructible())
-					commands << IconCommand(int2(4,0), "Demolish",&CommonCmd::DemolishSelected,&CommonCmd::CommonButtonCheck
-							,NoCosts
-							);
+				commands.baseCoords = int2(4,0)+BaseCommand::coordOffset;
 			#endif
 
 			String name = GetTypeName();

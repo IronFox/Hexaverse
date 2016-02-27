@@ -213,10 +213,14 @@ void	OnPlayerControlBegin()
 	Animation::UpdateAutomation(CLOCATION);
 }
 
-void	OnTutorialsChanged()
-{
-	UI::HexGrid::RefreshTutorials();
-}
+#ifdef HAS_WINDOW
+
+	void	OnTutorialsChanged()
+	{
+		UI::HexGrid::BottomRightPanel::Refresh();
+	}
+
+#endif
 
 
 
@@ -1084,6 +1088,8 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 	void OnSelectionChange(bool stateChangeOnly)
 	{
+		if (!stateChangeOnly)
+			Objects::CommandGroup::CollapseAll();
 		Objects::Renderer::HighlightSmokeTrail(InvalidIndex);
 
 		Tutorial::lastDelayingEvent = timer.Now();
@@ -2496,7 +2502,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
 		UI::showControlsAndContacts = !UI::showControlsAndContacts;
 		UI::HexGrid::Configure(Objects::selectedEntity);
-		UI::HexGrid::RefreshTutorials();
+		OnTutorialsChanged();
 	}
 
 	void BeginCameraDrag()
@@ -2587,10 +2593,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	void	UndoTask()
 	{
 		if (Objects::DisableModes(Network::ControlEnabled()))
+		{
+			OnTutorialsChanged();
 			return;
+		}
 
 		InnerUndoTask(Objects::selectedEntity,false);
-
 	}
 
 	void	QueryAndSendChatMessage()
