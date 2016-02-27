@@ -67,7 +67,7 @@ namespace Objects
 
 	public:
 
-		CONSTRUCT_ENUMERATION5(Category, Defense, Resources, Factories, Infrastructure, Hangar);
+		CONSTRUCT_ENUMERATION5(Category, Defense, Resources, Factories, Infrastructure, Miscellaneous);
 
 		/**
 		Structure placement result, returned by CommonCheckStructurePlacement() and CheckPlacement()
@@ -547,7 +547,7 @@ namespace Objects
 		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) override;
 		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
 		virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) override;
-		virtual Category			GetCategory() const override {return Category::Hangar;}
+		virtual Category			GetCategory() const override {return Category::Miscellaneous;}
 
 
 		//HangarStructure overrides:
