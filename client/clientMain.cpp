@@ -1139,7 +1139,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 		#ifndef ONE_COMPOUND_PER_FACTION
 			bool compoundSelectionUpdated = false;
 			if (!stateChangeOnly)
-				Objects::anyCompoundsColored = false;
+				Objects::anyCompoundsColored = Objects::selectedEntity && Objects::selectedEntity->IsStructure() && To<Objects::Structure>::Cast(Objects::selectedEntity)->IsPylon();
 			if (Objects::selectedMobileEntity)
 			{
 				Objects::PTurretBase base = Objects::selectedMobileEntity->GetTurretBase();
