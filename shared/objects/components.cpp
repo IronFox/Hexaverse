@@ -51,15 +51,31 @@ namespace Objects
 
 		bool							Turret::ConsumesResources(ResourceFlagSet&res) const
 		{
+			bool rs = false;
 			if (this->isSatelliteRing)
+			{
 				res |= Resource::Fuel;
+				rs = true;
+			}
 			if (CanAttack())
 			{
-				res |= ammoType;
-				return ammoNeedPerShot > 0 || this->isSatelliteRing;
+				if (ammoNeedPerShot > 0)
+				{
+					res |= ammoType;
+					rs = true;
+				}
 			}
-			res |= Resource::Minerals;
-			return CanDo(Component::Construct) || CanDo(Component::Repair) || CanDo(Component::TerrainAdd) || this->isSatelliteRing;
+			if (CanDo(Component::Construct) || CanDo(Component::Repair) || CanDo(Component::TerrainAdd))
+			{
+				res |= Resource::Minerals;
+				rs = true;
+			}
+			if (CanDo(Component::Nuclear))
+			{
+				res |= Resource::Uranium;
+				rs = true;
+			}
+			return rs;
 		}
 
 
