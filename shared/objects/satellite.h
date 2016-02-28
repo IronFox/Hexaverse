@@ -277,8 +277,7 @@ namespace Objects
 		public:
 			static const std::shared_ptr<Derivative>	globalPrototype;
 			#ifdef HAS_WINDOW
-				static Buffer0<IconCommand>		iconCommands;
-
+				static CommandContainer	commands;
 				/**
 				Render-ready, object-space instruction to be used for all instances of this structure type
 				*/
@@ -299,7 +298,7 @@ namespace Objects
 				virtual void		PrototypeLoadGeometry() override;
 
 				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
-				virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {Super::VisitAllCommands(visitor,force); foreach (iconCommands,cmd) cmd->VisitMembers(visitor,force);};
+				virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {Super::VisitAllCommands(visitor,force); commands.VisitMembers(visitor,force);};
 			#endif
 
 		};
@@ -309,7 +308,7 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 		template <typename Derivative>
-			/*static*/ Buffer0<IconCommand>		SatelliteTemplate<Derivative>::iconCommands;
+			/*static*/ CommandContainer		SatelliteTemplate<Derivative>::commands;
 		template <typename Derivative>
 			/*static*/ DX11::InstructionBlock32	SatelliteTemplate<Derivative>::shape;
 		template <typename Derivative>
@@ -336,7 +335,9 @@ namespace Objects
 		/*virtual override*/	void			SatelliteTemplate<Derivative>::PrototypeSetup()
 		{
 			turret = GetTurretType();
-
+			#ifdef HAS_WINDOW
+				commands.baseCoords = int2(4,0)+BaseCommand::coordOffset;
+			#endif
 		}
 
 	#ifdef HAS_WINDOW
@@ -367,16 +368,15 @@ namespace Objects
 		static const int		ProductionSpeed = 10;
 
 		/**/					SkyHub(const OwnerParameter&owner, const Grid::LCellIdI&location):Super(owner,GetTurretType(),location),MobileEntityProducer(ProductionSpeed)
-								{}
+								{MobileEntityProducer::SetCommandOffset(int2(3,1));}
 		/**/					SkyHub():Super(GetTurretType()),MobileEntityProducer(ProductionSpeed)
-								{}	//global prototype
+								{MobileEntityProducer::SetCommandOffset(int2(3,1));}	//global prototype
 
 		static int2				AllocateProductionSlot();
 
 		static void				RegisterProduction(const PWorldEntity&);
 
 		#ifdef HAS_WINDOW
-			static Buffer<EntityConstructionCommand>	constructionCommands;
 
 			struct MyCmd
 			{

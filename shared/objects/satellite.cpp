@@ -13,12 +13,6 @@ namespace Objects
 		/*static*/ Buffer0<Satellite::THub>	Satellite::hubs;
 	#endif
 
-	#ifdef HAS_WINDOW
-		/*static*/ Buffer<EntityConstructionCommand>	SkyHub::constructionCommands;
-
-
-	#endif
-
 	/*static*/ count_t			Satellite::CountTurretOccurrences(const OwnerParameter&o,Component::Turret*t)
 	{
 		count_t rs = 0;
@@ -156,8 +150,6 @@ namespace Objects
 		/*virtual override*/ void		SkyHub::VisitAllCommands(FCommandVisitor visitor,bool force)
 		{
 			Super::VisitAllCommands(visitor,force);
-			foreach (constructionCommands,cmd)
-				cmd ->VisitMembers(visitor,force);
 			MobileEntityProducer::VisitAllCommands(visitor,force);
 		}
 
@@ -410,13 +402,13 @@ namespace Objects
 	/*static*/ void SkyHub::RegisterProduction(const PWorldEntity&s)
 	{
 		#ifdef HAS_WINDOW
-			int2 at = AllocateProductionSlot();
+			//int2 at = AllocateProductionSlot();
 			CallbackCommand::FOnExecute exec = s->IsStructure() 
 											? CallbackCommand::FOnExecute(std::bind(&Component::Terraformer::Cmd::Construct, To<Structure>::Cast(s))) 
 											: CallbackCommand::FOnExecute(std::bind(&MyCmd::Build, s));
 			bool isStructure = s->IsStructure();
-			constructionCommands.Append(
-				EntityConstructionCommand(at, /*"Build " + */s->GetTypeName(), nullptr,nullptr, s,
+			commands.Add(new
+				EntityConstructionCommand(s->GetTypeName(), nullptr,nullptr, s,
 				exec,
 				[isStructure](bool controlEnabled)->BaseCommand::Flags
 				{
@@ -424,8 +416,7 @@ namespace Objects
 						return CommonCmd::IdleCheck(controlEnabled);
 					return MyCmd::CanBuildStructure() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 				}
-				));
-			constructionCommands.last().RasterizeImage();
+				))->RasterizeImage();
 		#endif
 	}
 
