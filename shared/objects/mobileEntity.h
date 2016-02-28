@@ -251,7 +251,7 @@ namespace Objects
 			void				EraseFirstTask();
 
 			PVehicleJob			completeOnMove;
-			bool				hasTriedPlottingOnMoveAutoMotion=false;
+			BYTE				numTriedPlottingOnMoveAutoMotion=0;
 			bool				jobStarted=false;
 			bool				hasMoved=false;
 			bool				hasConstructedThisRound=false;
@@ -345,7 +345,7 @@ namespace Objects
 				attackActionLeft = 1.f;
 
 				hasMoved = false;
-				hasTriedPlottingOnMoveAutoMotion = false;
+				numTriedPlottingOnMoveAutoMotion = 0;
 				if (MotionIgnoresAttack())
 				{
 					if (movementActionLeft < 1.f)
