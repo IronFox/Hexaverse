@@ -629,7 +629,7 @@ void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName p
 				ASSERT1__(proto,(int)parameterName);
 				String name = proto->GetTypeName();
 				TUniqueID id = v->id;
-				if (parameterName != ConstName::Type_Mine && res.IsNotEmpty())
+				if (parameterName != ConstName::Type_Mine && res.IsNotEmpty() && targetLocation.height <= Grid::CellStack::TopHeight)
 				{
 					Dialog::Confirm(v->GetNiceName()+" will construct a "+name+" on a location with known natural resources, which could be harvested by a Mine. Do you wish to continue building the "+name+"?",
 						[id,jobName,parameterName,targetLocation]()
