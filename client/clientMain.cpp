@@ -2102,11 +2102,44 @@ void MyFatal(const FatalDescriptor&descriptor)
 						LogEvent(EventClass::Preset::commandRejected,Objects::selectedMobileEntity.get(),"Can't build here, already trying to build something here");
 					}
 					else
-						if (DirectTo(Objects::selectedMobileEntity,target,false,false,Objects::CursorMode::Idle,false))
+					{
+						bool dont=false;
+						if (Objects::selectedMobileEntity->currentStorage.level[Objects::Resource::Minerals] < Objects::activeStructureToPlace->GetConstructionCost())
+						{
+							Objects::selectedMobileEntity->resourceEnvironment.CheckRefresh(*Objects::selectedMobileEntity,target);
+							if (!Objects::selectedMobileEntity->resourceEnvironment.Generates(*Objects::selectedMobileEntity,Objects::Resource::Minerals))
+							{
+								Objects::PMobileEntity m = Objects::selectedMobileEntity;
+								Objects::PStructure s = Objects::activeStructureToPlace;
+								Dialog::Confirm(Objects::selectedMobileEntity->GetNiceName()+" does not have sufficient minerals in its storage to construct "+Objects::activeStructureToPlace->GetTypeName()
+													+" outside wireless compound range. Without transfer or additional pylons the job will abort. Continue?",
+													[m,s,target]()
+													{
+														Grid::LCellIdI t = target;
+														if (DirectTo(m,t,false,false,Objects::CursorMode::Idle,false))
+														{
+															SignalNewJob(m,ConstName::Job_Construct,s->GetCTypeName(),target);
+															Objects::arrowFromCell = target;
+														}
+													},
+													[m,s]()->Dialog::CheckResult
+													{
+														if (m != Objects::selectedMobileEntity || s != Objects::activeStructureToPlace || Objects::activeCursorMode != Objects::CursorMode::PlaceStructureMode)
+															return Dialog::CheckResult::Abort;
+														if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
+															return Dialog::CheckResult::OkayNotRightNow;
+														return Dialog::CheckResult::OkayContinue;
+													});
+								dont = true;
+							//	Objects::showArrow = false;
+							}
+						}
+						if (!dont && DirectTo(Objects::selectedMobileEntity,target,false,false,Objects::CursorMode::Idle,false))
 						{
 							SignalNewJob(Objects::selectedMobileEntity,ConstName::Job_Construct,Objects::activeStructureToPlace->GetCTypeName(),target);
 							Objects::arrowFromCell = target;
 						}
+					}
 				}
 				else
 					DirectTo(Objects::selectedMobileEntity,target,false,true);
