@@ -3,6 +3,7 @@ v0.3.18
 	> When placing new buildings, the scanning and possibly attack ranges are shown ahead of actually placing them.
 	> Reorganized buttons into a command tree.
 	* Fixed zoom-factor on contact icons.
+	* Fixed size of attack rings for satellites.
 	
 v0.3.17	[Feb 24 2016]
 	+ Analogously to terrain blocks, attack ranges are now shown on water surfaces when manual attacks are issued.
