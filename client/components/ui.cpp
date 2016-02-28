@@ -2070,6 +2070,29 @@
 				#endif
 			}
 
+			{
+				Objects::ResourceVector upkeep;
+				e.GetUpkeep(upkeep);
+
+				textout.color(color);
+				bool notMaintained = e.IsStructure() && !((const Objects::Structure&)e).maintained;
+				if (notMaintained)
+					textout.color(1,0.5,0.5);
+				textout << " Upkeep";
+				if (notMaintained)
+					textout << " (disabled)";
+				textout <<':'<<nl;
+					
+
+				for (index_t i = 0; i < upkeep.NumEntries; i++)
+					{
+						if (upkeep.level[i])
+							textout << "  "<<(char)(tagOffset+i)<<" "<<upkeep.level[i] << nl;
+					}
+				textout.color(color);
+			}
+
+
 			if (e.IsStructure())
 			{
 				#ifdef _DEBUG
