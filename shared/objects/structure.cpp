@@ -2350,7 +2350,7 @@ namespace Objects
 				mineralCostOut = Vehicle::GetPrice(p->selectedBase,p->selectedTurret);
 				timeCostOut = p->ProductionRounds(mineralCostOut,false);
 			}
-		))->SetCoords(int2(5,0));
+		))->SetCoords(int2(4,0));
 
 
 			int at = 0;
@@ -2371,7 +2371,7 @@ namespace Objects
 					if (plant && plant->selectedBase == c)
 						rs |= BaseCommand::Flags::IsPermaActive;
 					return rs;
-				}))->SetCoords(int2(6+at,0));
+				}))->SetCoords(int2(5+at,0));
 				commands.GetLast()->RasterizeImage();
 				at++;
 			}
@@ -2393,7 +2393,7 @@ namespace Objects
 					if (plant && plant->selectedTurret == c)
 						rs |= BaseCommand::Flags::IsPermaActive;
 					return rs;
-				}))->SetCoords(int2(4+at,1));
+				}))->SetCoords(int2(3+at,1));
 				commands.GetLast()->RasterizeImage();
 				at++;
 			}

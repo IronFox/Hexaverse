@@ -936,7 +936,7 @@
 			{
 				int2 cellCoords = command->gridCoords;
 				if (!flipX && !flipY)
-					cellCoords += int2(5,1);
+					cellCoords += int2(3,1);
 				float x;
 				if (flipX)
 					x = (-1+2.f * display.pixelAspect()) - stepX *2 * cellCoords.x - float(1 - (cellCoords.y % 2)) * stepX;

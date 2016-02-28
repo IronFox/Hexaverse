@@ -695,8 +695,8 @@ namespace Objects
 
 			CellCoords ConfigureStandardCommands(Turret&component)
 			{
-				component.commands.baseCoords = int2(4,0)+BaseCommand::coordOffset;
-				return CellCoords(4,0);
+				component.commands.baseCoords = int2(3,0)+BaseCommand::coordOffset;
+				return CellCoords(3,0);
 			}
 		#endif
 

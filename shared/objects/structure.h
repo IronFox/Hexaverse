@@ -1774,7 +1774,7 @@ namespace Objects
 				Super::PrototypeLoadGeometry();
 
 				#ifdef HAS_WINDOW
-					commands.baseCoords = int2(4,0)+BaseCommand::coordOffset;
+					commands.baseCoords = int2(3,0)+BaseCommand::coordOffset;
 				#endif
 
 
@@ -1816,7 +1816,7 @@ namespace Objects
 			Super::PrototypeSetup();
 
 			#ifdef HAS_WINDOW
-				commands.baseCoords = int2(4,0)+BaseCommand::coordOffset;
+				commands.baseCoords = int2(3,0)+BaseCommand::coordOffset;
 
 				commands.Add(new IconCommand("Enable",&Cmd::Enable,
 				[](bool controlEnabled)->BaseCommand::Flags
@@ -1857,7 +1857,7 @@ namespace Objects
 		{
 			Super::PrototypeSetup();
 			#ifdef HAS_WINDOW
-				commands.baseCoords = int2(4,0)+BaseCommand::coordOffset;
+				commands.baseCoords = int2(3,0)+BaseCommand::coordOffset;
 			#endif
 
 			String name = GetTypeName();
