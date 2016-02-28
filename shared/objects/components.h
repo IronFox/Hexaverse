@@ -66,10 +66,10 @@ namespace Objects
 		enum operation_t
 		{
 			Construct,
+			Nuclear,
 			Repair,
 			TerrainAdd,
 			TerrainRemove,
-			SelfDetonate,
 
 			OperationCount
 		};
