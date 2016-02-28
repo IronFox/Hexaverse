@@ -69,7 +69,14 @@ namespace Objects
 
 		#endif
 
+		/**
+		Checks whether or not the specified amount of resource can be withdrawn now
+		*/
 		bool		CanWithdraw(const MobileEntity&owner, Resource res, int demand)	const;
+		/**
+		Checks whether or not any compound in the environment generates the specified type of resource
+		*/
+		bool		Generates(const MobileEntity&owner, Resource res)	const;
 		#ifndef CLIENT
 			void	ChangeStorage(MobileEntity&owner, Resource res, int&change);
 			void	ForceChangeStorage(MobileEntity&owner, Resource res, int change);

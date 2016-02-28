@@ -335,6 +335,23 @@ namespace Objects
 
 
 
+	bool			MobileResourceEnvironment::Generates(const MobileEntity&owner, Resource res)	const
+	{
+		#ifndef ONE_COMPOUND_PER_FACTION
+			#ifdef WIRELESS_VEHICLES
+				foreach (sourceCompounds,c)
+					if (Objects::compounds[c->first].total.supply.level[res] > 0)
+						return true;
+			#endif
+			return false;
+		#else
+			const Compound&compound = owner.owner->compound;
+			return compound.total.supply.level[res] > 0;
+		#endif
+	}
+
+
+
 	void MobileEntity::UpdateSystem()
 	{
 		ASSERT_LESS__(location.stackID, Grid::LowSetup::GridType::CellCount);
