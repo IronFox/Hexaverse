@@ -75,15 +75,13 @@ namespace Objects
 			*/
 			void				UpdateHubMap();
 		#else
-			#if defined HAS_WINDOW || !defined CLIENT
-				/**
-				Fetches the closest connected SkyHub (that is not this), belonging to the same faction
-				@param[out] quadraticDistance Quadratic distance to the found SkyHub.
-				@return Found SkyHub instance or NULL, if the local faction does not own (or is not known to have)
-				any other connected SkyHubs
-				*/
-				PSkyHub			GetClosestExternalSupplier(float&quadraticDistance);
-			#endif
+			/**
+			Fetches the closest connected SkyHub (that is not this), belonging to the same faction
+			@param[out] quadraticDistance Quadratic distance to the found SkyHub.
+			@return Found SkyHub instance or NULL, if the local faction does not own (or is not known to have)
+			any other connected SkyHubs
+			*/
+			PSkyHub				GetClosestExternalSupplier(float&quadraticDistance);
 		#endif
 
 

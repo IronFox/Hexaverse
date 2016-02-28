@@ -1704,7 +1704,7 @@ namespace Objects
 
 
 	extern Buffer0<PStructure>			structures;
-	#ifdef HAS_WINDOW
+	#ifdef CLIENT
 		typedef std::pair<WSkyLinkStructure,WWorkingStructure>	TLinkReference;
 		extern Buffer0<TLinkReference>		skyLinks;	//also included in structures, but filtered for quicker access
 	#endif

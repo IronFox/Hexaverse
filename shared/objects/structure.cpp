@@ -35,7 +35,7 @@ namespace Objects
 	it currently knows about.
 	*/
 	Buffer0<PStructure>			structures;
-	#ifdef HAS_WINDOW
+	#ifdef CLIENT
 		/**
 		Filter list containing only SkyPorts. Used to faster render certain effects.
 		*/

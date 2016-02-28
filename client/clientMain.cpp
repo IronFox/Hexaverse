@@ -1139,7 +1139,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			int sum = 0;
 			foreach (Objects::selectedVehicle->myTasks,t)
 				if (t->job)
-					sum += t->job->mineralCostLeft;
+					sum += t->job->resourceCostLeft;
 			if (sum)
 			{
 				change.level[Objects::Resource::Minerals] -= sum;//-Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft;
