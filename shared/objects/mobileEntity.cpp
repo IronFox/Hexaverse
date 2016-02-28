@@ -1496,7 +1496,14 @@ namespace Objects
 		foreach (myTasks,t)
 		{
 			if (t->IsJob() && (at == loc || at+1 == loc || at-1 == loc))
+			{
+				#ifdef CLIENT
+					if (t->name.beginsWithCaseIgnore("construct "))
+				#else
+					if (To<VehicleJob::Construct>::DynamicCast(t->job))
+				#endif
 				return true;
+			}
 			if (t->ContainsMovement())
 				at = t->foci.GetNewest().target;
 		}
