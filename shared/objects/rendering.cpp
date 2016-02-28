@@ -1633,6 +1633,11 @@ namespace Objects
 			TMatrix4<> sys;
 			const TVec3<>&up = Grid::low.cells[at->location.stackID].cornerCenter;
 			Mat::makeAxisSystem(at->system.w.xyz, up,2,sys);
+			if (at->IsSatellite())
+			{
+				sys.x.xyz *= 2.f;
+				sys.y.xyz *= 2.f;
+			}
 			const PTurretBase base = at->GetTurretBase();
 			//DBG_ASSERT__(base);
 			int rings = base->GetAttacksPerRound();

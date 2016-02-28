@@ -872,7 +872,7 @@ namespace Objects
 			{
 				if (completeOnMove)
 				{
-					if (!hasTriedPlottingOnMoveAutoMotion)
+					if (numTriedPlottingOnMoveAutoMotion < 5)
 					{
 						Grid::LCellIdI	ways[6 * 3];
 
@@ -884,7 +884,7 @@ namespace Objects
 							index_t target = entityRandom.getIndex(numWays-1);
 							if (PlotCourse(ways[target],true,false))
 							{
-								hasTriedPlottingOnMoveAutoMotion = true;
+								numTriedPlottingOnMoveAutoMotion ++;
 								LogEvent(EventSignificance::Common,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
 								return false;	//retry
 							}
@@ -893,7 +893,7 @@ namespace Objects
 						for (index_t i = 0; i < numWays; i++)
 							if (PlotCourse(ways[i],true, false))
 							{
-								hasTriedPlottingOnMoveAutoMotion = true;
+								numTriedPlottingOnMoveAutoMotion ++;
 								LogEvent(EventSignificance::Common,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
 								return false;	//retry
 							}
