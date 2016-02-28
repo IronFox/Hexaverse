@@ -98,12 +98,12 @@ namespace Objects
 	/*static*/ void		EntityCommand::UpdateTexture(BaseCommand&target, const PWorldEntity&e, bool isPrototype, const float4&tone/* = float4(0)*/)
 	{
 		float distanceFactor = 1.f;
-		if (e->IsMobile())
+		if (e->IsMobile() || e->IsOrbital())
 			distanceFactor *= 0.5f;
 		if (e->IsStructure())
 			distanceFactor += 0.1f * To<Structure>::Cast(e)->GetHeight();
 		if (e->IsOrbital())
-			distanceFactor *= 3.f;
+			distanceFactor *= 2.5f;
 
 		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(e),distanceFactor);
 
