@@ -1167,11 +1167,11 @@ namespace Objects
 				{
 					Grid::LCellIdI&dest = destination[i];
 
-					while (!world.LowCellIsClear(dest) && !MobileDestinationStructureHere(dest,*this))
+					while (!owner->currentState.LowCellIsClear(dest) && !MobileDestinationStructureHere(dest,*this))
 						dest++;
-					while (world.LowCellIsClear(dest-1) || MobileDestinationStructureHere(dest-1,*this))
+					while (owner->currentState.LowCellIsClear(dest-1) || MobileDestinationStructureHere(dest-1,*this))
 						dest--;
-					if (!virtualPlatformMode && !((Vehicle*)this)->CanStandOn(world,dest -1,false,false))
+					if (!virtualPlatformMode && !((Vehicle*)this)->CanStandOn(owner->currentState,dest -1,false,false))
 						return false;
 				}
 			}
