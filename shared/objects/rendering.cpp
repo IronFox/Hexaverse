@@ -1658,7 +1658,7 @@ namespace Objects
 			TMatrix4<> sys;
 			const TVec3<>&up = Grid::low.cells[at->location.stackID].cornerCenter;
 			Mat::makeAxisSystem(at->system.w.xyz, up,2,sys);
-			if (at->IsSatellite())
+			if (at->IsOrbital())
 			{
 				sys.x.xyz *= 2.f;
 				sys.y.xyz *= 2.f;
