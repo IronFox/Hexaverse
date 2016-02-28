@@ -904,7 +904,7 @@ namespace Objects
 
 			component.productionCosts = 40;
 			#ifndef ONE_COMPOUND_PER_FACTION
-				component.baseStorageCapacity.level[Resource::Uranium] = 200;
+				component.baseStorageCapacity.level[Resource::Minerals] = 200;
 			#endif
 			component.operationSpeed[Construct] = 10;
 			component.operationSpeed[TerrainRemove] = 10;
@@ -979,7 +979,7 @@ namespace Objects
 
 			component.productionCosts = 40;
 			#ifndef ONE_COMPOUND_PER_FACTION
-				component.baseStorageCapacity.level[Resource::Minerals] = VehicleJob::DoomsdaySelfDetonationCosts;
+				component.baseStorageCapacity.level[Resource::Uranium] = VehicleJob::DoomsdaySelfDetonationCosts;
 			#endif
 			component.operationSpeed[SelfDetonate] = 50;
 			component.healthMultiplier = 1;
