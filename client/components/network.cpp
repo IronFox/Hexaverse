@@ -1087,10 +1087,7 @@ namespace Network
 				gameHasBegun = true;
 				LogEvent(EventClass::Preset::uncommon,nullptr,"Game has begun");
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Animation::AllDone())
-				{
-					Objects::RefreshSkyHubConnections();
-					Animation::UpdateAutomation(CLOCATION);
-				}
+					OnPlayerControlBegin();
 			break;
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();

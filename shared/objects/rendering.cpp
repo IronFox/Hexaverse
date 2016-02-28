@@ -60,7 +60,7 @@ namespace Objects
 								userInteractionNotifier,
 								attackRing,
 								gatheringPoint;
-	DX11::InstructionBlock16	resourceArrowInstruction;
+	DX11::InstructionBlock16	resourceArrowInstruction,interResourceArrowInstruction;
 
 	DX11::Texture				smokeTexture;
 
@@ -224,6 +224,7 @@ namespace Objects
 		beamTopColor.Clear();
 		resourceArrowTex.Clear();
 		resourceArrowInstruction.Clear();
+		interResourceArrowInstruction.Clear();
 
 		smokeTexture.Clear();
 
@@ -513,6 +514,7 @@ namespace Objects
 
 
 			resourceArrowInstruction.binding.Append("POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			interResourceArrowInstruction.binding = resourceArrowInstruction.binding;
 
 			DX11::Shader::Binding bindings[] =
 			{
@@ -524,6 +526,9 @@ namespace Objects
 			resourceArrowInstruction.shader.LoadFromFile("shaders/resourceArrow.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings));
 			resourceArrowInstruction.UpdateLayout();
 			resourceArrowInstruction.SetTriangles();
+			interResourceArrowInstruction.shader.LoadFromFile("shaders/interResourceArrow.hlsl","vsMain","psMain",bindings,ARRAYSIZE(bindings));
+			interResourceArrowInstruction.UpdateLayout();
+			interResourceArrowInstruction.SetTriangles();
 
 
 			{
@@ -550,6 +555,8 @@ namespace Objects
 				}
 				resourceArrowInstruction.ibo.Create(indexBuffer);
 				resourceArrowInstruction.vbo.CreateFromStructs(vertexBuffer);
+				interResourceArrowInstruction.ibo = resourceArrowInstruction.ibo;
+				interResourceArrowInstruction.vbo = resourceArrowInstruction.vbo;
 			}
 		}
 
@@ -1870,7 +1877,61 @@ namespace Objects
 
 	#ifndef ONE_COMPOUND_PER_FACTION
 		static Buffer0<UINT32>	compoundScope;
-		static Buffer0<std::pair<TMatrix4<>, float3> >	resourceArrowSystems;
+		typedef std::pair<TMatrix4<>, float3>	Arrow;
+		static Buffer0<Arrow>	resourceArrowSystems,interPylonArrows;
+
+		static void		MakeResourceArrow(Arrow&item, const Grid::LCellIdI&loc, const TVec3<>&arrowTo, const TVec3<>&color)
+		{
+			TMatrix4<>&mat = item.first;
+			mat.z.xyz = Grid::low.cells[loc.stackID].cornerCenter;
+			mat.w.xyz = mat.z.xyz * Grid::ToRadius(loc.height);
+			//Vec::mad(mat.w.xyz,mat.z.xyz,Grid::SingleLayerHeight * c->second->GetHeight());
+			Vec::sub(arrowTo,mat.w.xyz,mat.y.xyz);
+			Vec::cross(mat.z.xyz,mat.y.xyz,mat.x.xyz);
+			Vec::setLen(mat.x.xyz,0.1f);
+			Mat::resetBottomRow(mat);
+
+			item.second = color;;
+		}
+
+		static void		MakeResourceArrow(Arrow&item, const Grid::LCellIdI&from, const Grid::LCellIdI&to, const TVec3<>&color)
+		{
+			MakeResourceArrow(item,from,Grid::ToWorld(to),color);
+		}
+
+		void		Renderer::UpdateInterPylonArrows()
+		{
+			interPylonArrows.Clear();
+
+			RefreshFactionColors(false);
+//			if (anyCompoundsColored)
+			//for (UINT32 i = 0; i < compounds.Count(); i++)
+			//	compounds[i].color = ColorCompoundInRange(i);
+
+
+			for (const auto&p:pylons)
+			{
+				const TVec3<> color = (anyCompoundsColored && p->compoundID < compounds.Count() && !Vec::zero(compounds[p->compoundID].color)
+										?
+										compounds[p->compoundID].color.rgb
+										:
+										p->owner->activeEntityColor) * 1.5f;
+				foreach (p->connectedTo,c)
+				{
+					if (!c->wireless)
+						continue;
+					PStructure s = c->structure.lock();
+					if (s < p)
+						continue;
+
+
+					MakeResourceArrow(interPylonArrows.Append(),p->location+p->GetHeight(),s->location+p->GetHeight(),color);
+				}
+			}
+		}
+	#else
+		void		Renderer::UpdateInterPylonArrows()
+		{}
 	#endif
 
 	void		Renderer::SelectCompoundAreas(const OwnerParameter&owner)
@@ -1896,6 +1957,8 @@ namespace Objects
 			{
 				compounds[c].color = ColorCompoundInRange(c);
 			}
+			anyCompoundsColored = true;
+			UpdateInterPylonArrows();
 		#endif
 	}
 
@@ -1926,6 +1989,9 @@ namespace Objects
 	//		compounds[c].color = ColorCompoundInRange((UINT32)(c));
 	//	}
 	//}
+
+
+	
 
 	void		Renderer::SelectCompoundAreas(const OwnerParameter&owner, ResourceFlagSet producersOf, const TVec3<>&arrowTo, const MobileResourceEnvironment&env)
 	{
@@ -1958,18 +2024,22 @@ namespace Objects
 				if (!compounds[c->first].total.balance.AnyIsSet(producersOf))
 					continue;
 				auto&item = resourceArrowSystems.Append();
-				TMatrix4<>&mat = item.first;
-				mat.w.xyz = c->second->GetWorldPosition();
-				mat.z.xyz = Grid::low.cells[c->second->location.stackID].cornerCenter;
-				Vec::mad(mat.w.xyz,mat.z.xyz,Grid::SingleLayerHeight * c->second->GetHeight());
-				Vec::sub(arrowTo,mat.w.xyz,mat.y.xyz);
-				Vec::cross(mat.z.xyz,mat.y.xyz,mat.x.xyz);
-				Vec::setLen(mat.x.xyz,0.1f);
-				Mat::resetBottomRow(mat);
-
-				item.second = compounds[c->first].color.rgb*1.5f;
+				MakeResourceArrow(item,c->second->location+c->second->GetHeight(),arrowTo,compounds[c->first].color.rgb*1.5f);
 			}
+			anyCompoundsColored = true;
+			UpdateInterPylonArrows();
+
 		#endif
+	}
+
+	bool		Renderer::CompoundsAreHighlighted()
+	{
+		return anyCompoundsColored;
+	}
+
+	void		Renderer::EnableCompoundHighlightingNoUpdate()
+	{
+		anyCompoundsColored = true;
 	}
 
 
@@ -1977,23 +2047,45 @@ namespace Objects
 	{
 		#ifndef ONE_COMPOUND_PER_FACTION
 			compoundScope.Clear();
+			interPylonArrows.Clear();
 		#endif
 		animatedTurrets.Clear();
 		attackers.Clear();
+		anyCompoundsColored = false;
 	}
 
+
+	void		Renderer::DeselectCompoundAreas()
+	{
+		#ifndef ONE_COMPOUND_PER_FACTION
+			compoundScope.Clear();
+			anyCompoundsColored = false;
+			UpdateInterPylonArrows();
+		#endif
+	}
 
 	void		Renderer::RenderCompoundAreas()
 	{
 		#ifndef ONE_COMPOUND_PER_FACTION
 			if (!anyCompoundsColored || compoundScope.IsEmpty() || compounds.IsEmpty())
+			{
+				display.StoreRendererState();
+				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+				display.SetRasterizer(true,false);
+
+				foreach (interPylonArrows,sys)
+				{
+					display.SetObjectMatrix(sys->first);
+					overallTint.Update(float4(sys->second,0.75f));
+					display.Render(interResourceArrowInstruction,true);
+				}
+
+				display.RestoreRendererState();
 				return;
+			}
 
 
 			display.StoreRendererState();
-
-
-
 		
 			//if (doColorCompounds)
 			//if (false)
@@ -2054,6 +2146,12 @@ namespace Objects
 				display.Render(resourceArrowInstruction,true);
 			}
 
+			foreach (interPylonArrows,sys)
+			{
+				display.SetObjectMatrix(sys->first);
+				overallTint.Update(float4(sys->second,0.75f));
+				display.Render(interResourceArrowInstruction,true);
+			}
 
 			display.RestoreRendererState();
 

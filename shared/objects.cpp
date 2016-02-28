@@ -242,7 +242,7 @@ namespace Objects
 			viewCommands->SetCoords(int2(1,0));
 
 			viewCommands->Add( new GlobalCommand("Highlight Compounds", &GlobalCmd::ToggleCompoundHightlights
-					, GlobalPermaSwitch(anyCompoundsColored)
+					, GlobalPermaSwitch(Renderer::CompoundsAreHighlighted)
 				));
 
 			viewCommands->Add( new GlobalCommand("Clip Terrain", &GlobalCmd::ToggleSeeThrough
@@ -785,7 +785,6 @@ namespace Objects
 				Deselect(false);
 				resourceView = true;
 				objectView = true;
-				anyCompoundsColored = false;
 				hasArrowCellTarget = false;
 				showArrow = false;
 				arrowFrom = float3();

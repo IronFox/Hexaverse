@@ -19,8 +19,7 @@ namespace Objects
 	extern bool					resourceView, 
 								showFriendlyRanges,
 								showHostileRanges,
-								objectView,
-								anyCompoundsColored;
+								objectView;
 
 
 	extern DX11::ObjectBuffer<float4>	keyColor, overallTint;
@@ -187,6 +186,15 @@ namespace Objects
 		@param owner Faction to select compounds of. Passing an empty parameter results in all compounds with a non-0 balance being selected
 		*/
 		void	SelectCompoundAreas(const OwnerParameter&owner);
+
+		void	DeselectCompoundAreas();
+		void	EnableCompoundHighlightingNoUpdate();
+		bool	CompoundsAreHighlighted();
+
+		/**
+		Updates arrows between connected pylons
+		*/
+		void	UpdateInterPylonArrows();
 
 
 		/**

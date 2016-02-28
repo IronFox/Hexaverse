@@ -211,6 +211,7 @@ void	OnPlayerControlBegin()
 	#endif
 	Objects::RefreshSkyHubConnections();
 	Animation::UpdateAutomation(CLOCATION);
+	Objects::Renderer::UpdateInterPylonArrows();
 }
 
 #ifdef HAS_WINDOW
@@ -1138,8 +1139,9 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 		#ifndef ONE_COMPOUND_PER_FACTION
 			bool compoundSelectionUpdated = false;
+			bool colorCompounds = false;
 			if (!stateChangeOnly)
-				Objects::anyCompoundsColored = Objects::selectedEntity && Objects::selectedEntity->IsStructure() && To<Objects::Structure>::Cast(Objects::selectedEntity)->IsPylon();
+				colorCompounds = Objects::selectedEntity && Objects::selectedEntity->IsStructure() && To<Objects::Structure>::Cast(Objects::selectedEntity)->IsPylon();
 			if (Objects::selectedMobileEntity)
 			{
 				Objects::PTurretBase base = Objects::selectedMobileEntity->GetTurretBase();
@@ -1150,8 +1152,8 @@ void	OnAppear(const Objects::PWorldEntity&e)
 				Objects::ResourceVector max = Objects::selectedMobileEntity->GetMaxStorageCapacity();
 				if (base && base->turret->ConsumesResources(res))
 				{
-					if (!stateChangeOnly)
-						Objects::anyCompoundsColored = true;
+					//if (!stateChangeOnly)
+					//	Objects::anyCompoundsColored = true;
 					Objects::OwnerParameter o = Objects::selectedMobileEntity->owner;
 					Objects::selectedMobileEntity->resourceEnvironment.CheckRefresh(*Objects::selectedMobileEntity);
 					Objects::Renderer::SelectCompoundAreas(o,res,Objects::selectedMobileEntity->GetWorldPosition(),Objects::selectedMobileEntity->resourceEnvironment);
@@ -1259,8 +1261,16 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			}
 			else
 				UI::HideExtraGauges();
-			if (!compoundSelectionUpdated && Objects::anyCompoundsColored)
-				Objects::Renderer::SelectCompoundAreas(Objects::selectedEntity ? Objects::selectedEntity->owner : Objects::Faction::mine);
+			if (!stateChangeOnly)
+			{
+				if (!compoundSelectionUpdated)
+				{
+					if (colorCompounds)
+						Objects::Renderer::SelectCompoundAreas(Objects::selectedEntity ? Objects::selectedEntity->owner : Objects::Faction::mine);
+					else
+						Objects::Renderer::DeselectCompoundAreas();
+				}
+			}
 
 		#else
 			

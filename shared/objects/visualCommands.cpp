@@ -331,12 +331,19 @@ namespace Objects
 
 	void	GlobalCmd::ToggleCompoundHightlights()
 	{
-		anyCompoundsColored = !anyCompoundsColored;
-		if (anyCompoundsColored && !selectedMobileEntity)
+		if (Renderer::CompoundsAreHighlighted())
 		{
-			Renderer::SelectCompoundAreas(selectedEntity ? selectedEntity->owner : Faction::mine);
-
+			Renderer::DeselectCompoundAreas();
 		}
+		else
+			if (!selectedMobileEntity)
+			{
+				Renderer::SelectCompoundAreas(selectedEntity ? selectedEntity->owner : Faction::mine);
+			}
+			else
+			{
+				Renderer::EnableCompoundHighlightingNoUpdate();
+			}
 	}
 
 
