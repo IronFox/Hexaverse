@@ -19,7 +19,7 @@ If defined, connectors have no functionality. Resources are shared across all wo
 of a faction. Vehicles have no storage capacity in this mode, and no commands to alter their storage.
 Vehicles (and satellites) can pull directly from the faction storage and overproduction.
 Connectors cannot be built but are maintained for backward compatibility
-Last verified to compile in both modes Aug 22 2015
+Last verified to compile in both modes Feb 28 2016
 */
 //#define ONE_COMPOUND_PER_FACTION
 
@@ -43,7 +43,7 @@ If defined, the ammunition resource is removed from the system. Vehicles and tow
 require this resource type, now require no munition to fire.
 If compiled in combination with connectors then vehicles that would store munition now store nothing.
 MunitionFactory and MunitionStorage structures cannot be built but are maintained for backward compatibility
-Last verified to compile in both modes Aug 22 2015
+Last verified to compile in both modes Feb 28 2016
 */
 #define NO_MUNITION
 

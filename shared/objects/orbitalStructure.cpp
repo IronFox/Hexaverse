@@ -103,7 +103,7 @@ namespace Objects
 		{
 			Super::RegisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0, newContacts);
 			#ifdef CLIENT
-				if (isMine)
+				if (isOwnedByMe)
 					Grid::visibleOrbitGrid.ChangeSensory(loc,GetScanningRange(),+1);
 			#endif
 			if (turret->groundScanningRange > 0.f)
@@ -112,7 +112,7 @@ namespace Objects
 				Grid::actualWorld.MapSensorState(loc.stackID,range,loc.height,turret->groundScannerPenetration,skySensorState);
 				Grid::actualWorld.UpdateSensorState(skySensorState);
 				#ifdef CLIENT
-					if (isMine)
+					if (isOwnedByMe)
 					{
 						Grid::actualWorld.InsertSensorCoverage(skySensorState);
 					}
@@ -126,13 +126,13 @@ namespace Objects
 		{
 			Super::UnregisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0);
 			#ifdef CLIENT
-				if (isMine)
+				if (isOwnedByMe)
 					Grid::visibleOrbitGrid.ChangeSensory(loc,GetScanningRange(),-1);
 			#endif
 			if (turret->groundScanningRange > 0.f)
 			{
 				#ifdef CLIENT
-					if (isMine)
+					if (isOwnedByMe)
 					{
 						Grid::actualWorld.RemoveSensorCoverage(skySensorState);
 					}
@@ -216,12 +216,11 @@ namespace Objects
 		/*static*/ void Hub::RegisterProduction(const PShip&s)
 		{
 			#ifdef HAS_WINDOW
-				int2 at = AllocateProductionSlot();
-				constructionCommands.Append(
-					EntityConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
-					std::bind(&MyCmd::Build, s, std::placeholders::_1),
-					&CommonCmd::IdleCheck));
-				constructionCommands.last().RasterizeImage();
+				commands.Add( new
+					EntityConstructionCommand(s->GetTypeName(), nullptr,nullptr,s,
+						std::bind(&MyCmd::Build, s),
+						&CommonCmd::IdleCheck)
+				)->RasterizeImage();
 			#endif
 		}
 
@@ -258,11 +257,11 @@ namespace Objects
 		/*virtual override*/ void			Hub::PrototypeSetup()
 		{
 			#ifdef HAS_WINDOW
-			commands << IconCommand(int2(4,1), "Enable",
-				[](const PWorldEntity&e)
+			commands.Add( new IconCommand("Enable",
+				[]()
 				{
 
-					Hub*s2 = dynamic_cast<Hub*>(e.get());
+					Hub*s2 = dynamic_cast<Hub*>(selectedEntity.get());
 					if (s2)
 					{
 						if (!s2->IsEnabled() && !s2->CanEnable())
@@ -273,10 +272,10 @@ namespace Objects
 						SignalEnableStructure(*s2, !s2->IsEnabled());
 					}
 				}
-				,[](const PWorldEntity&e, bool controlEnabled)
+				,[](bool controlEnabled)
 				{
 					BaseCommand::Flags rs = BaseCommand::Flags::None;
-					Hub*div = dynamic_cast<Hub*>(e.get());
+					Hub*div = dynamic_cast<Hub*>(selectedEntity.get());
 					if (controlEnabled && div != nullptr)
 						rs |= BaseCommand::Flags::IsEnabled;
 					if (div && div->IsEnabled())
@@ -284,7 +283,7 @@ namespace Objects
 					return rs;
 				}
 				,NoCosts
-			);
+			));
 			#endif
 			Super::PrototypeSetup();
 			RegisterProduction(Ragnarok::globalPrototype);
@@ -323,19 +322,19 @@ namespace Objects
 			}
 
 
-			/*virtual override*/ void		Hub::VisitAllCommands(FCommandVisitor visitor)
+			/*virtual override*/ void		Hub::VisitAllCommands(FCommandVisitor visitor, bool force)
 			{
-				Super::VisitAllCommands(visitor);
-				EntityFactory::VisitAllCommands(visitor);
+				Super::VisitAllCommands(visitor,force);
+				EntityFactory::VisitAllCommands(visitor,force);
 			}
 
 			
-			/*static*/ bool			Hub::MyCmd::CanBuild(const PStructure&what, const PWorldEntity&who)
+			/*static*/ bool			Hub::MyCmd::CanBuild(const PStructure&what)
 			{
-				PHub hub = To<Hub>::DynamicCast(who);
-				ASSERT1__(hub,who->GetName());
+				PHub hub = To<Hub>::DynamicCast(selectedEntity);
+				//ASSERT1__(hub,who->GetName());
 		
-				if (!CommonCmd::IsModeActiveC<CursorMode::Idle>(who,true)
+				if (!CommonCmd::IsModeActiveC<CursorMode::Idle>(true)
 					||
 					!hub->connectedToLink.expired())
 					return false;
@@ -347,15 +346,15 @@ namespace Objects
 
 
 
-			/*static*/ void Hub::MyCmd::Build(const PShip&p, const PWorldEntity&v)
+			/*static*/ void Hub::MyCmd::Build(const PShip&p)
 			{
-				if (!v->IsOrbital())
+				if (!selectedEntity->IsOrbital() || !selectedEntity->IsStructure())
 					return;
-				PStation s = To<Station>::Cast(v);
+				PStation s = To<Station>::Cast(selectedEntity);
 				if (!s->IsHub())
 					return;
 
-				SignalConstructionBegin(v->id, p->GetCTypeName(), ConstName::Empty);
+				SignalConstructionBegin(s->id, p->GetCTypeName(), ConstName::Empty);
 			}
 
 		#endif

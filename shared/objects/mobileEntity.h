@@ -69,7 +69,14 @@ namespace Objects
 
 		#endif
 
+		/**
+		Checks whether or not the specified amount of resource can be withdrawn now
+		*/
 		bool		CanWithdraw(const MobileEntity&owner, Resource res, int demand)	const;
+		/**
+		Checks whether or not any compound in the environment generates the specified type of resource
+		*/
+		bool		Generates(const MobileEntity&owner, Resource res)	const;
 		#ifndef CLIENT
 			void	ChangeStorage(MobileEntity&owner, Resource res, int&change);
 			void	ForceChangeStorage(MobileEntity&owner, Resource res, int change);
@@ -502,6 +509,7 @@ namespace Objects
 		{
 			if (!jobCosts)
 				return 0;
+			jobCosts = abs(jobCosts);
 			int speed = GetOperationSpeed(op);
 			if (!speed)
 				return 0xFFFFFFFF;
@@ -573,11 +581,21 @@ namespace Objects
 		#endif
 		virtual float			GetMaxScanningRange() const override	{return turret->scanningRange;};	//returns the effective scanning range of the local entity
 
+		#ifndef CLIENT
+			virtual void		OnDestroy(RemovalType, float&atTime) override;	
+		#endif
 
 	protected:
 	};
 
 
+
+	inline PMobileEntity		ToMobileEntity(const PWorldEntity&e)
+	{
+		if (!e || !e->IsMobile())
+			return PMobileEntity();
+		return To<MobileEntity>::Cast(e);
+	}
 }
 
 

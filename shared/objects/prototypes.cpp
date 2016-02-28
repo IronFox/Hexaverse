@@ -229,6 +229,7 @@ namespace Objects
 			Orbital::StarPort::Configure(Orbital::starPort);
 			Orbital::Engineer::Configure(Orbital::engineer);
 
+			Bomb::Configure(bomb);
 			Armored::Configure(armored);
 			Radar::Configure(radar);
 			MunitionTransporter::Configure(munitionTransporter);
@@ -245,6 +246,7 @@ namespace Objects
 			allTurretComponents << &radar 
 								<< &Orbital::hub << &Orbital::protonCannon << &Orbital::ragnarok << &Orbital::starPort << &Orbital::engineer
 								<< &armored << &artillery << &launcher << &emp
+								<< &bomb
 								<< &terraformer << &resourceScanner
 								#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 									<< &munitionTransporter

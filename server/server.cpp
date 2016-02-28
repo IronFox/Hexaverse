@@ -38,6 +38,11 @@ Random		random;
 #endif
 
 
+void	SignalChainReactionExplosion(const Grid::LCellIdI&center, float radius, int damageLevel, float atTime)
+{
+	Game::evolver->HandleChainReactionExplosion(Evolver::TExplosion( center, radius, damageLevel, atTime ));
+}
+
 
 void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromStorage, float atTime)
 {
@@ -1040,7 +1045,7 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 
 void LogConfig(const String&msg)
 {
-	Logging::WriteEvent(EventClass::Preset::configuration,msg,nullptr,nullptr);
+	Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr);
 }
 
 

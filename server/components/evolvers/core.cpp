@@ -13,6 +13,8 @@ namespace Evolver
 
 	namespace CoreDetails
 	{
+		Queue<TExplosion>	pendingExplosions;
+
 		/**
 		Like vehicles, towers have an attack action floation point value. Unlike vehicles, they are not part of the
 		movement phase. Therefore, once per round, this function must be called to reset their attack action.
@@ -388,6 +390,10 @@ namespace Evolver
 
 		bool ContinueRoundProcessing(float&animationLength)
 		{
+			static TExplosion exp;
+			while (pendingExplosions >> exp)
+				Objects::Explode(Objects::PWorldEntity(),exp.center,0.f,Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,exp.atTime);
+
 			switch (RuntimeConfig::phase)
 			{
 				case RuntimeConfig::Phase::AttackPhase:
@@ -440,6 +446,12 @@ namespace Evolver
 		RuntimeConfig::roundNumber++;
 
 		Game::Network::ChangePhase(RuntimeConfig::Phase::CommandPhase,Game::Config::roundTimer > 0 && !Game::roundTimerPaused ? Game::Config::roundTimer : -1);
+	}
+
+	/*virtual override*/ void		Core::HandleChainReactionExplosion(const TExplosion&explosion)
+	{
+		CoreDetails::pendingExplosions << explosion;
+
 	}
 
 }

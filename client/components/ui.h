@@ -9,10 +9,10 @@ namespace UI
 	{
 		#ifdef HAS_WINDOW
 			void		RefreshContacts();
-			void		RefreshTutorials();
+			//void		RefreshTutorials();
 		#else
 			inline void	RefreshContacts()	{}
-			inline void	RefreshTutorials()	{}
+			//inline void	RefreshTutorials()	{}
 		#endif
 	}
 }
@@ -135,42 +135,170 @@ namespace UI
 			static const int2 DynamicRowOffset(5,1);
 
 
-			class TutorialCommand : public Objects::IconCommand
+			namespace BottomRightPanel
 			{
-				typedef Objects::IconCommand	Super;
 
-			public:
-				/**/				TutorialCommand() : Super(int2(1,1),"Tutorial",
-										TutorialCommand::OnExecute,
-										[](const Objects::PWorldEntity&e, bool b)->BaseCommand::Flags
-										{
-											return TutorialCommand::IsEnabled(e,b) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
-										},
-										Objects::NoCosts)
-										{}
-
-
-				static bool				IsEnabled(const Objects::PWorldEntity&, bool)
+				class Icon : public Objects::BaseCommand
 				{
-					return Dialog::HasMoreTutorials() && !Dialog::IsModal();
+					typedef Objects::BaseCommand	Super;
+				public:
+					/**/					Icon(const int2&coords, const String&name) : Super(name)
+											{
+												LoadIcon();
+												gridCoords = coords;
+											}
+				};
 
-
-				}
-
-				static void				OnExecute(const Objects::PWorldEntity&)
+				class TutorialCommand : public Icon
 				{
-					Dialog::ShowNextTutorial();
-				}
+					typedef Icon			Super;
+				public:
+					/**/					TutorialCommand() : Super(int2(1,1),"Tutorial") {}
 
-				virtual void			CompileLabel(const Objects::PWorldEntity&,Label&outResult) override
+					virtual void			Refresh(bool)
+					{
+						state = Dialog::HasMoreTutorials() && !Dialog::IsModal() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+					}
+
+					virtual void			Execute() override
+					{
+						Dialog::ShowNextTutorial();
+					}
+
+					virtual void			CompileLabel(Label&outResult) override
+					{
+						outResult << (Dialog::HasMoreTutorials() ? "New Tutorial Messages" : "No Messages");
+					}
+				};
+
+				class UndoCommand : public Icon
 				{
-					outResult << (Dialog::HasMoreTutorials() ? "New Tutorial Messages" : "No Messages");
-				}
+					typedef Icon			Super;
+				public:
+					/**/					UndoCommand() : Super(int2(5,1),"Undo") {}
+					/**/					UndoCommand(const int2&coords, const String&name) : Super(coords,name) {}
+
+					virtual void			Refresh(bool controlsEnabled) override
+					{
+						state = BaseCommand::Flags::None;
+						if (Dialog::IsModal() || !controlsEnabled || !Objects::selectedEntity)
+							return;
+						if (Objects::selectedMobileEntity)
+						{
+							if (Objects::selectedMobileEntity->myTasks.IsEmpty() && Objects::activeCursorMode == Objects::CursorMode::Idle)
+								return;
+						}
+						else
+							if (Objects::selectedEntity->IsTower())
+							{
+								if (To<Objects::Tower>::Cast( Objects::selectedEntity )->attackQueue.IsEmpty()  && Objects::activeCursorMode == Objects::CursorMode::Idle)
+									return;
+							}
+							else
+								return;
+
+						state |= BaseCommand::Flags::IsEnabled;
+					}
+
+					virtual void			Execute() override
+					{
+						Objects::VehicleCmd::UndoOperation();
+					}
+
+					virtual void			CompileLabel(Label&outResult) override
+					{
+						String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
+						outResult << "Abort current operation or undo last operation of "+name;
+					}
+				};
+
+				class AbortCommand : public UndoCommand
+				{
+					typedef UndoCommand		Super;
+				public:
+					/**/					AbortCommand() : Super(int2(4,1),"Abort") {}
+
+					virtual void			Execute() override
+					{
+						Objects::VehicleCmd::AbortOperation();
+					}
+
+					virtual void			CompileLabel(Label&outResult) override
+					{
+						String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
+						outResult << "Abort any currently active operation and clear all scheduled operations of "+name;
+					}
+				};
+
+				class DemolishCommand : public Icon
+				{
+					typedef Icon			Super;
+				public:
+					/**/					DemolishCommand() : Super(int2(2,1),"Demolish") {}
+					/**/					DemolishCommand(const int2&coords, const String&name) : Super(coords,name) {}
+
+					virtual void			Refresh(bool controlsEnabled) override
+					{
+						state = BaseCommand::Flags::None;
+						if (Dialog::IsModal() || !controlsEnabled || !Objects::selectedEntity || Objects::selectedEntity->IsIndestructible())
+							return;
+
+						state |= BaseCommand::Flags::IsEnabled;
+					}
+
+					virtual void			Execute() override
+					{
+						Objects::CommonCmd::DemolishSelected();
+					}
+
+					virtual void			CompileLabel(Label&outResult) override
+					{
+						String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
+						outResult << "Permanently destroy "+name;
+					}
+				};
+
+				class SleepCommand : public Icon
+				{
+					typedef Icon			Super;
+				public:
+					/**/					SleepCommand() : Super(int2(3,1),"Sleep") {}
+					/**/					SleepCommand(const int2&coords, const String&name) : Super(coords,name) {}
+
+					virtual void			Refresh(bool controlsEnabled) override
+					{
+						state = BaseCommand::Flags::None;
+						if (Dialog::IsModal() || !controlsEnabled || !Objects::selectedEntity)
+							return;
+
+						state |= BaseCommand::Flags::IsEnabled;
+
+						if (Objects::selectedEntity->IsSleeping())
+							state |= BaseCommand::Flags::IsPermaActive;
+					}
+
+					virtual void			Execute() override
+					{
+						Objects::VehicleCmd::Sleep();
+					}
+
+					virtual void			CompileLabel(Label&outResult) override
+					{
+						String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
+						if (Objects::selectedEntity && Objects::selectedEntity->IsSleeping())
+							outResult << "Wake "+name;
+						else
+							outResult << "Put "+name+" to sleep";
+					}
+				};
 
 
-			};
 
-
+				/**
+				Updates state and presence of all buttons of this panel
+				*/
+				void		Refresh();
+			}
 
 
 			struct Group
@@ -190,9 +318,9 @@ namespace UI
 				{
 					Objects::PWorldEntity e = entries.first().lock();
 					ASSERT__(e);
-					if (e->IsVehicle())
-						return e;	//good enough
-					return Objects::GetAnyNonVehiclePrototypeByName(e->GetCTypeName());
+					if (e->IsStructure())
+						return Objects::GetPrototypeByName(e->GetCTypeName());
+					return e;	//good enough
 
 				}
 
@@ -212,32 +340,30 @@ namespace UI
 			typedef std::shared_ptr<Group>				PGroup;
 
 
-			class EntityFocusCommand : public Objects::VisualEntityCommand
+			class EntityFocusCommand : public Objects::EntityCommand
 			{
 			public:
-				typedef	Objects::VisualEntityCommand	Super;
-				Objects::WWorldEntity		target;
+				typedef	Objects::EntityCommand	Super;
 
 				//int2 coords, const String&name, const VehicleBase*&base, const Turret*&turret,   OnExecute f, CheckEnabled a, IsPermaActive p
 				/**/				EntityFocusCommand()	{}
 				/**/				EntityFocusCommand(const Objects::PWorldEntity&target) 
-									: Super(int2(), target->GetNiceName(),target,
-										std::bind(&EntityFocusCommand::OnExecute,target,std::placeholders::_1),
-										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;},
-										false)
+									: Super(target->GetNiceName(),target,[](){FATAL__("WTF");},
+										[](bool) {return Objects::BaseCommand::Flags::IsEnabled;})
 				{}
 
-				static void				OnExecute(Objects::PWorldEntity const&target, Objects::PWorldEntity const&)	//must be static because it may move before being executed
+				void				Execute()	override
 				{
-					//Objects::PVehicle target = To<Objects::Vehicle>::Cast(t);
-					Camera::TranslateTo(target->system.w.xyz);
+					Objects::PWorldEntity target = reference.lock();
+					if (target)
+						Camera::TranslateTo(target->system.w.xyz);
 				}
 
 
-				virtual void	CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
+				virtual void	CompileLabel(Label&outResult) override;
 			};
 
-
+		
 			class AnimationEventFocusCommand : public Objects::BaseCommand
 			{
 			public:
@@ -250,7 +376,7 @@ namespace UI
 				String				fallbackTargetName;
 			
 				/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, float atTime, bool isFriendly)
-									: Super(int2(), name),focusLocation(focusLocation),atTime(atTime),isFriendly(isFriendly),focusTarget(focusID)
+									: Super(name),focusLocation(focusLocation),atTime(atTime),isFriendly(isFriendly),focusTarget(focusID)
 				{
 					LoadIcon(iconName);
 				}
@@ -259,7 +385,7 @@ namespace UI
 
 				virtual void	Execute()	override;
 				virtual void	Refresh(bool controlEnabled) override {}
-				virtual void	CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
+				virtual void	CompileLabel(Label&outResult) override;
 			};
 
 
@@ -267,23 +393,23 @@ namespace UI
 			static const float4 hostileBackgroundColor(1,0,0,0);
 
 
-			class GroupFocusCommand : public Objects::EntityCommand
+			class GroupFocusCommand : public Objects::BaseCommand
 			{
 			public:
-				typedef Objects::EntityCommand	Super;
+				typedef Objects::BaseCommand	Super;
 				
-				PGroup					group;
+				PGroup				group;
 
-				/**/				GroupFocusCommand()
-				{}
-
+				/**/				GroupFocusCommand() {}
 				/**/				GroupFocusCommand(PGroup&group);
+
 				virtual void		RasterizeImage() override;
 
+				virtual void		Refresh(bool)	override {};
 
-				static void			OnExecute(PGroup const&group, Objects::PWorldEntity const&_e);
+				virtual void		Execute()	override;
 
-				virtual void		CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
+				virtual void		CompileLabel(Label&outResult) override;
 
 				bool				operator<(const GroupFocusCommand&other) const {return group->operator<(*other.group);}
 			};
@@ -358,7 +484,7 @@ namespace UI
 				DynamicRow *const				row;
 
 				//int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p, GetCosts c
-				/**/				ArrowCommand(bool left, DynamicRow*row) : Super(int2(), left ? "Left":"Right"), left(left),row(row)
+				/**/				ArrowCommand(bool left, DynamicRow*row) : Super(left ? "Left":"Right"), left(left),row(row)
 									{
 										LoadIcon();
 									}
@@ -369,7 +495,7 @@ namespace UI
 
 				virtual void Refresh(bool controlEnabled) override {}
 
-				virtual void			CompileLabel(const Objects::PWorldEntity&,Label&outResult) override
+				virtual void			CompileLabel(Label&outResult) override
 				{
 					outResult << "Scroll "+name;
 				}
@@ -392,7 +518,6 @@ namespace UI
 
 			extern EntityFocusCommand					selectedFocus;
 
-			extern std::shared_ptr<TutorialCommand>		tutorialCommand;
 
 
 		}
@@ -523,7 +648,6 @@ namespace UI
 
 
 			void		RefreshContacts();
-			void		RefreshTutorials();
 			void		Configure(const Objects::PWorldEntity&e);
 		}
 
@@ -533,7 +657,7 @@ namespace UI
 		{
 			void			Clear();
 			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, index_t smokeTrailIndex);
-			void			RegisterEntityDestruction(float time, bool isMine,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName);
+			void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName);
 
 
 		}

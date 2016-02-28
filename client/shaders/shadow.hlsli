@@ -61,14 +61,14 @@ float ShadeSample(float3 projCoords, float3 duvdist_dx, float3 duvdist_dy, Textu
 	// |ddist/dv| |dv/dx dv/dy| |ddist/dy|
 	//Multiply ddist/dx and ddist/dy by inverse transpose of Jacobian
 	float div = ((duvdist_dx.x * duvdist_dy.y) - (duvdist_dx.y * duvdist_dy.x) );
-	//if (abs(div) < 0.000000001)
-	//{
-	//	float dist = projCoords.z - Tolerance;// - (ddist_duv.x * (float) x) - (ddist_duv.y * (float) y);
-	//	float s = ShadowMap.SampleLevel( ShadowSampler,
-	//							projCoords.xy,0.0);
-	//	return float(s >= dist);
-	//}
-	//else
+	if (abs(div) < 0.000000001)
+	{
+		float dist = projCoords.z - Tolerance;// - (ddist_duv.x * (float) x) - (ddist_duv.y * (float) y);
+		float s = shadowMap.SampleLevel( ShadowSampler,
+								projCoords.xy,0.0);
+		return float(s >= dist);
+	}
+	else
 	{
 		float invDet = 1.0 / div;
 		//Top row of 2x2

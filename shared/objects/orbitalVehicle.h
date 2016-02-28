@@ -139,7 +139,7 @@ namespace Objects
 
 			#ifdef HAS_WINDOW
 				virtual void		DescribeType(BaseCommand::Label&outResult, UINT32 descFlags) override;
-				virtual void		VisitAllCommands(FCommandVisitor visitor) override {turret->VisitAllCommands(visitor);};
+				virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override {turret->VisitAllCommands(visitor,force);};
 			#endif
 
 			virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr) override;
@@ -187,7 +187,7 @@ namespace Objects
 			public:
 				static const std::shared_ptr<Derivative>	globalPrototype;
 				#ifdef HAS_WINDOW
-					static Buffer0<IconCommand>		iconCommands;
+					static CommandContainer		commands;
 
 					/**
 					Render-ready, object-space instruction to be used for all instances of this structure type
@@ -209,7 +209,7 @@ namespace Objects
 					virtual void		PrototypeLoadGeometry() override;
 
 					virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
-					virtual void		VisitAllCommands(FCommandVisitor visitor) override {Super::VisitAllCommands(visitor); foreach (iconCommands,cmd) visitor(*cmd);};
+					virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override {Super::VisitAllCommands(visitor, force); commands.VisitMembers(visitor,force);};
 				#endif
 
 			};
@@ -219,7 +219,7 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			template <typename Derivative>
-				/*static*/ Buffer0<IconCommand>		ShipTemplate<Derivative>::iconCommands;
+				/*static*/ CommandContainer		ShipTemplate<Derivative>::commands;
 			template <typename Derivative>
 				/*static*/ DX11::InstructionBlock32	ShipTemplate<Derivative>::shape;
 			template <typename Derivative>

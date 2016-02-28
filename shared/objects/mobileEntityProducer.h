@@ -41,6 +41,11 @@ namespace Objects
 	class EntityFactory
 	{
 	protected:
+		
+		#ifdef HAS_WINDOW
+			int2					commandOffset = int2(4,2);
+		#endif
+		
 		String						JobName(index_t index, const String&itemName, UINT32 roundsLeft)const;
 		UINT32						ProductionRounds( const PWorldEntity&v, bool isActive) const;
 
@@ -53,8 +58,7 @@ namespace Objects
 			TUniqueID				id;
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
-					FactoryConstructionAbortCommand		
-									commandToTerminate;	//works for mobiles in general
+					EntityConstructionCommand	commandToTerminate;
 				#endif
 				String				name;
 				int					cost, roundsToCompletion;
@@ -94,11 +98,15 @@ namespace Objects
 			return true;
 		}
 
+
 		void						AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName);
 
 		#ifdef HAS_WINDOW
-			void					VisitAllCommands(FEntityCommandVisitor visitor);
-			void					VisitAllCommands_Reverse(FEntityCommandVisitor visitor);
+			void					VisitAllCommands(FCommandVisitor visitor,bool force);
+			void					SetCommandOffset(const int2&);
+		#else
+			void					SetCommandOffset(const int2&)	{};
+
 		#endif
 		bool						AwaitsUserInteraction() const;
 

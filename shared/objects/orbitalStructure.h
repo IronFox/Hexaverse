@@ -100,11 +100,7 @@ namespace Objects
 			public:
 				static const std::shared_ptr<Derivative>		globalPrototype;
 				#ifdef HAS_WINDOW
-					static Buffer0<IconCommand>					commands;
-					static Buffer0<EntityConstructionCommand>	constructionCommands;
-
-
-
+					static CommandContainer						commands;
 					/**
 					Render-ready, object-space instruction to be used for all instances of this structure type
 					*/
@@ -126,7 +122,7 @@ namespace Objects
 				#else
 					#ifdef HAS_WINDOW
 						virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
-						virtual void		VisitAllCommands(FCommandVisitor visitor) override {foreach (commands,cmd) visitor(*cmd); foreach (constructionCommands,cmd) visitor(*cmd);};
+						virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override {commands.VisitMembers(visitor,force);};
 					#endif
 				#endif
 			};
@@ -135,6 +131,9 @@ namespace Objects
 			template <typename Derivative>
 				/*virtual override*/	void			FloatingStructureT<Derivative>::PrototypeSetup()
 				{
+					#ifdef HAS_WINDOW
+						commands.baseCoords = int2(3,0)+BaseCommand::coordOffset;
+					#endif
 					Super::PrototypeSetup();
 				}
 
@@ -152,9 +151,7 @@ namespace Objects
 				template <typename Derivative>
 					/*static*/ Geometry				FloatingStructureT<Derivative>::geometry;
 				template <typename Derivative>
-					/*static*/ Buffer0<IconCommand>		FloatingStructureT<Derivative>::commands;
-				template <typename Derivative>
-					/*static*/ Buffer0<EntityConstructionCommand>		FloatingStructureT<Derivative>::constructionCommands;
+					/*static*/ CommandContainer		FloatingStructureT<Derivative>::commands;
 			#endif
 
 		
@@ -211,8 +208,8 @@ namespace Objects
 				#ifdef HAS_WINDOW
 					struct MyCmd
 					{
-						static bool		CanBuild(const PStructure&what, const PWorldEntity&who);
-						static void		Build(const PShip&what, const PWorldEntity&who);
+						static bool		CanBuild(const PStructure&what);
+						static void		Build(const PShip&what);
 					};
 				#endif
 		
@@ -273,10 +270,10 @@ namespace Objects
 				#ifndef NO_HIBERNATION
 					virtual int			GetUplinkTraffic() const override {return 10;}
 				#endif
-				virtual void			OnDestroy(float&atTime) override {LoseGroundConnection();Super::OnDestroy(atTime);}
+				virtual void			OnDestroy(RemovalType t, float&atTime) override {SyncTime(atTime); LoseGroundConnection();Super::OnDestroy(t, atTime);}
 				virtual bool			AwaitsUserInteraction() const override {return EntityFactory::AwaitsUserInteraction();}
 				#ifdef HAS_WINDOW
-					virtual void		VisitAllCommands(FCommandVisitor visitor) override;
+					virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override;
 					virtual void		OnSelect() override;
 					virtual void		OnDeselect() override;
 				#endif

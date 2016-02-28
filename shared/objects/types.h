@@ -71,6 +71,7 @@ namespace Objects
 	class EntityFactory;
 	class MobileResourceEnvironment;
 
+	DECLARE_POINTER_CLASS(CommandGroup)
 
 	CONSTRUCT_ENUMERATION7(MobilePlacementResult,
 		PlacementOkay,

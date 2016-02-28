@@ -9,7 +9,7 @@
 #include "structure.h"
 #include "visualSelection.h"
 #include "visualChoices.h"
-#include "orbitalVehicle.h"
+//#include "satellite.h"
 #include "faction.h"
 #include <image/converter/magic.h>
 #include "faction.h"
@@ -21,31 +21,18 @@ namespace Objects
 {
 	extern PWorldEntity selectedEntity;
 
-	Buffer0<GlobalCommand>globalCommands;
+	CommandContainer	globalCommands;
+	PCommandGroup		viewCommands;
+
+	/*static*/ Buffer0<CommandGroup*>		CommandGroup::activeGroupPath;
+
 
 	/*static*/ GenericHashTable<PathString, DX11::Texture>	BaseCommand::textureMap;
 
 
 	/*static*/ const int2 BaseCommand::coordOffset(1,0);
 
-
-
-	/*virtual override*/ void		EntityCommand::Refresh(bool controlEnabled)
-	{
-		ASSERT__(check);
-		state = check(selectedEntity,controlEnabled);
-	}
-	/*virtual override*/ void		GlobalCommand::Refresh(bool controlEnabled)
-	{
-		state = check(0,controlEnabled);
-	}
-
-	/*virtual override*/ void		EntityCommand::Execute() 
-	{
-		execute(selectedEntity);
-	}
-
-
+	
 
 	float4 BackgroundColor(const PWorldEntity&e)
 	{
@@ -54,7 +41,7 @@ namespace Objects
 	}
 
 
-	/*static*/ void		VehicleCommand::UpdateTexture(EntityCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
+	/*static*/ void		EntityConstructionCommand::UpdateTexture(BaseCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
 	{
 		GeometryImage::BeginRendering(backgroundColor);
 
@@ -89,7 +76,7 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			if (v->ToHibernating()->IsHibernating())
 			{
-				if (v->isMine)
+				if (v->isOwnedByMe)
 					keyColor.Update(float4(0,0,0,1));
 				else
 					keyColor.Update(float4(tone.rgb*0.5f,1));
@@ -98,108 +85,48 @@ namespace Objects
 		//else
 	}
 
-	/*static*/ void		VehicleCommand::UpdateTexture(EntityCommand&target, const PVehicle&v, bool isPrototype, const float4&tone/* = float4(0)*/)
-	{
-		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(v));
 
-		TMatrix4<> sys = Matrix<>::eye4;
-		sys.x.x = sys.y.y = sys.z.z = 2.5f;
-
-		UpdateStateColors(v,tone,isPrototype);
-			//keyColor.Update(float4(0.5f,0.5f,1,1));
-
-			
-		display.SetObjectMatrix(sys);
-		if (v->base)
-			Renderer::RenderComponent(sys,0,*v->base,0,0);
-		if (v->turret)
-			Renderer::RenderComponent(sys,v->base->height ,*v->turret,0,0);
-
-
-		target.texture = GeometryImage::EndRendering();
-	}
-
-	void				VehicleCommand::UpdateTexture(const PVehicle&v, bool isPrototype, const float4&backgroundColor/* = float4(0)*/)
-	{
-		UpdateTexture(*this,v,isPrototype, backgroundColor);
-
-	}
-
-
-	void				VehicleCommand::UpdateTexture(Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor /*= float4(0)*/)
+	void				EntityConstructionCommand::UpdateTexture(Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor /*= float4(0)*/)
 	{
 		UpdateTexture(*this,base,turret,backgroundColor);
 	
 	}
 
-	/*static*/ void			StructureCommand::UpdateTexture(EntityCommand&target, const PStructure&structure, bool isPrototype, const float4&tone /*= float4(0)*/)
+
+
+
+	/*static*/ void		EntityCommand::UpdateTexture(BaseCommand&target, const PWorldEntity&e, bool isPrototype, const float4&tone/* = float4(0)*/)
 	{
-		ASSERT_NOT_NULL__(structure->localizableShape);
+		float distanceFactor = 1.f;
+		if (e->IsMobile())
+			distanceFactor *= 0.5f;
+		if (e->IsStructure())
+			distanceFactor += 0.1f * To<Structure>::Cast(e)->GetHeight();
+		if (e->IsOrbital())
+			distanceFactor *= 3.f;
 
-		float distanceFactor = 1.f + 0.1f * structure->GetHeight();
-		if (structure->IsOrbital())
-			distanceFactor *= 3;
-		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(structure),distanceFactor);
+		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(e),distanceFactor);
 
-		UpdateStateColors(structure,tone,isPrototype);
-			
-		display.SetObjectMatrix(Matrix<>::eye4);
-		display.Render(*structure->localizableShape);	
-		//_Render(*structure,float3(1),float3(1));
+		UpdateStateColors(e,tone,isPrototype);
 
-		float zOffset;
-		PTurretBase b = structure->GetTurretBase(zOffset);
-		if (b)
-		{
-			Renderer::RenderScaledComponent(Matrix<>::eye4, zOffset, 2.f, *b->turret, b->turretAngleX, b->turretAngleY);
-			display.SetObjectMatrix(Matrix<>::eye4);
-		}
-
-
+		Renderer::RenderSimpleIdentity(*e);
 
 		target.texture = GeometryImage::EndRendering();
 	}
 
 
-	void				StructureCommand::UpdateTexture(const PStructure&structure, bool isPrototype, const float4&backgroundColor /*= float4(0)*/)
-	{
-		UpdateTexture(*this,structure,isPrototype,backgroundColor);
-	}
-
-
-	/*static*/ void		VisualEntityCommand::UpdateTexture(EntityCommand&target, const PWorldEntity&entity, bool isPrototype, const float4&tone/* = float4(0)*/)
-	{
-		if (entity->IsMobile())
-		{
-			if (entity->IsVehicle())
-				VehicleCommand::UpdateTexture(target,To<Vehicle>::Cast(entity),isPrototype,tone);
-			else
-				if (entity->IsOrbital())
-				{
-					GeometryImage::BeginRendering(tone,1.5f);
-					UpdateStateColors(entity,tone,isPrototype);
-					Renderer::RenderSimpleIdentity(*To<Orbital::Ship>::Cast(entity));
-					target.texture = GeometryImage::EndRendering();
-				}
-		}
-		elif (entity->IsStructure())
-		{
-			StructureCommand::UpdateTexture(target,To<Structure>::Cast(entity),isPrototype,tone);
-		}
-	}
-
-	void				VisualEntityCommand::UpdateTexture(const PWorldEntity&v, bool isPrototype, const float4&backgroundColor/* = float4(0)*/)
+	void				EntityCommand::UpdateTexture(const PWorldEntity&v, bool isPrototype, const float4&backgroundColor/* = float4(0)*/)
 	{
 		UpdateTexture(*this,v,isPrototype, backgroundColor);
-
 	}
 
 
 
-	/*virtual override*/ void		IconCommand::CompileLabel(const PWorldEntity&e, Label&outResult)
+	/*virtual override*/ void		BaseCommand::CompileLabel(Label&outResult)
 	{
-		int mineralCost, timeCost;
-		getCosts(e,mineralCost,timeCost);
+		int resourceCost, timeCost;
+		Resource resourceType;
+		GetCosts(resourceCost,resourceType,timeCost);
 
 		if (timeCost == 0)
 		{
@@ -208,9 +135,9 @@ namespace Objects
 		}
 
 		outResult << name;
-		if (mineralCost > 0)
+		if (resourceCost > 0)
 		{
-			outResult << " "+String(ResourceTag(Resource::Minerals))+ " "+String(mineralCost) + "  ";
+			outResult << " "+String(ResourceTag(resourceType))+ " "+String(resourceCost) + "  ";
 		}
 		else
 			outResult<<" ";
@@ -219,22 +146,28 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ void		VehicleConstructionCommand::CompileLabel(const PWorldEntity&e, Label&outResult)
+	/*virtual override*/ void		EntityConstructionCommand::CompileLabel(Label&outResult)
 	{
-		
-		const EntityFactory*p = e->CastToFactory();
+		const EntityFactory*p = selectedEntity ? selectedEntity->CastToFactory() : nullptr;
 		//PWorkingStructure ws = To<WorkingStructure>::DynamicCast(e);
-		ASSERT__(p);
-		UINT32 rounds = 0,rawRounds = 0;
-		int rawPrice = Vehicle::GetPrice(base,turret);
+
+		PWorldEntity ref = reference.lock();
+		int rawPrice = ref ? ref->GetConstructionCost() : Vehicle::GetPrice(base,turret);
 		int price = (int)std::min(mineralsLeft, (unsigned)rawPrice);
-		if (base && turret)
+
+		if (ref || (base && turret))
 		{
-			rawRounds = (unsigned)p->ProductionRounds(rawPrice,false);
+			UINT32 rounds = 0,rawRounds = 0;
+
+			if (p)
+				rawRounds = (unsigned)p->ProductionRounds(rawPrice,false);
+			else
+			{
+				ASSERT__(selectedMobileEntity && selectedMobileEntity->turret->CanConstruct());
+				rawRounds = selectedMobileEntity->GetOperationRounds(rawPrice,Objects::Component::Construct);
+			}
 			rounds = (int)std::min(roundsLeft, rawRounds);
-		}
-		if (base && turret)
-		{
+
 			outResult << name;
 			outResult << String(ResourceTag(Resource::Minerals))+ " "+String(price);
 			if (price != rawPrice)
@@ -250,10 +183,16 @@ namespace Objects
 			outResult << "";
 		}
 
+		if (ref)
+		{
+			ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth|WorldEntity::DescIncludeUnitCount);
+			return;
+		}
+
 		if (base && turret)
 		{
 
-			PVehicle v(new Vehicle(e->owner, e->location, base,turret));
+			PVehicle v(new Vehicle(selectedEntity->owner, selectedEntity->location, base,turret));
 			v->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth|WorldEntity::DescIncludeUnitCount);
 		}
 		else
@@ -264,113 +203,24 @@ namespace Objects
 				base->DescribeType(outResult,false);
 			}			
 			if (turret)
-				turret->DescribeType(outResult,false, "Vehicle",e->owner);
+				turret->DescribeType(outResult,false, "Vehicle",selectedEntity->owner);
+
 		}
-
-//			outResult << "Rounds: "+String(rounds);
-	}
-
-	/*virtual override*/ void		EntityConstructionCommand::CompileLabel(const PWorldEntity&e, Label&outResult)
-	{
-		
-		const EntityFactory*p = e->CastToFactory();
-		ASSERT__(p);
-		UINT32 rounds = 0;
-		PWorldEntity target = this->target.lock();
-		if (!target)
-			return;
-		int price = target->GetConstructionCost();
-
-		rounds = (unsigned)p->ProductionRounds(price,false);
-
-
-		outResult << name;
-		outResult << String(ResourceTag(Resource::Minerals))+ " "+String(price);
-		if (rounds)
-			outResult.lines.last() += "  "+String(TimeResourceTag()) + String(rounds);
-
-		target->AppendDeploymentCount(outResult, e->owner);
-
-
-		outResult.MarkBriefEnd();
-		outResult << "";
-
-		target->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
-
-	}
-
-	/*virtual override*/ void		FactoryConstructionAbortCommand::CompileLabel(const PWorldEntity&e, Label&outResult)
-	{
-		
-		//PWorkingStructure ws = To<WorkingStructure>::DynamicCast(e);
-		EntityFactory*p = e->CastToMutableFactory();
-		ASSERT__(p);
-		UINT32 rounds = 0,rawRounds = 0;
-		PWorldEntity target = this->target.lock();
-		int rawPrice = target ? target->GetConstructionCost() : Vehicle::GetPrice(base,turret);
-		int price = (int)std::min(mineralsLeft, (unsigned)rawPrice);
-
-		rawRounds = (unsigned)p->ProductionRounds(rawPrice,false);
-		rounds = (int)std::min(roundsLeft, rawRounds);
-
-
-		if (target || (base && turret))
-		{
-			outResult << "Active construction: "+name;
-			outResult << String(ResourceTag(Resource::Minerals))+ " "+String(price);
-			if (price != rawPrice)
-				outResult.lines.last() += "/"+String(rawPrice);
-			if (rounds)
-			{
-				outResult.lines.last() += "  "+String(TimeResourceTag()) + String(rounds);
-				if (rounds != rawRounds)
-					outResult.lines.last() += "/"+String(rawRounds);
-			}
-
-			outResult.MarkBriefEnd();
-			outResult << "";
-		}
-
-		if (target)
-		{
-			target->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth|WorldEntity::DescIncludeUnitCount);
-		}
-		else
-		{
-			if (base && turret)
-			{
-
-				PVehicle v(new Vehicle(e->owner, e->location, base,turret));
-				v->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth|WorldEntity::DescIncludeUnitCount);
-			}
-			else
-			{
-				if (base)
-				{
-					//PVehicle v(new Vehicle(p->owner, p->location, base,turret));
-					base->DescribeType(outResult,false);
-				}			
-				if (turret)
-					turret->DescribeType(outResult,false,"Vehicle",e->owner);
-			}
-		}
-//			outResult << "Rounds: "+String(rounds);
 	}
 
 
-	/**/				DeployVehicleCommand::DeployVehicleCommand(int2 coords, const PVehicle&v,   OnExecute f, Check c) : Super(coords,v->GetNiceName(),v->base,v->turret,f,c), vehicle(v)
-	{}
+	/**/				DeployMobileCommand::DeployMobileCommand(const PMobileEntity&v,   FOnExecute f, FCheck c) : Super(v->GetNiceName(),v,f,c)	{}
 
 
 
-	/*virtual override*/ void		DeployVehicleCommand::CompileLabel(const PWorldEntity&e, Label&outResult)
+	/*virtual override*/ void		DeployMobileCommand::CompileLabel(Label&outResult)
 	{
-		PVehicleStore p = To<VehicleStore>::DynamicCast(e);
+		PVehicleStore p = To<VehicleStore>::DynamicCast(selectedEntity);
 		ASSERT__(p);
-		PVehicle vehicle = this->vehicle.lock();
+		PMobileEntity vehicle = ToMobileEntity( this->reference.lock() );
 		if (vehicle)
 		{
-			outResult << "Deploy vehicle: "+name;
+			outResult << "Deploy mobile unit: "+name;
 			outResult.MarkBriefEnd();
 			outResult << "";
 
@@ -378,33 +228,6 @@ namespace Objects
 		}
 	}
 
-
-	/*virtual override*/ void		StructureConstructionCommand::CompileLabel(const PWorldEntity&e, Label&outResult)
-	{
-		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
-		ASSERT__(v);
-		PStructure structure = this->structure.lock();
-		if (!structure)
-			return;
-
-		int price = structure->GetConstructionCost();
-		UINT32 roundsToJobCompletion = v->GetOperationRounds(price,Component::Construct);
-		//mineralCostLeft = actuallyConsumesMinerals ? mineralCosts : 0;
-
-		outResult << name;
-		outResult << String(ResourceTag(Resource::Minerals))+ " "+String(price)+ "  ";
-		outResult.lines.last() += TimeResourceTag() + String(roundsToJobCompletion);
-
-		structure->AppendDeploymentCount(outResult, e->owner);
-
-		outResult.MarkBriefEnd();
-		outResult << "";
-
-
-		structure->DescribeType(outResult,0);
-
-		//outResult << "Rounds: "+String(roundsToJobCompletion);
-	}
 
 	void			BaseCommand::LoadIcon()
 	{
@@ -417,6 +240,8 @@ namespace Objects
 		name2.replace(' ','-');
 
 		PathString filename = PathString("resources/icons/"+name2+".png");
+		if (!FileSystem::IsFile(filename))
+			filename = PathString("resources/icons/Question-Mark.png");
 		if (textureMap.query(filename,texture))
 			return;
 		try
@@ -426,11 +251,7 @@ namespace Objects
 			if (image.channels() < 4)
 			{
 				image.setChannels(4,BaseImage::CA_REPEAT);
-//						Image image2(image.getWidth(),image.getHeight(),0);
-////						image2.Fill(255,255,255);
-//						image2.appendAlpha(&image);
-//						image2.setChannels(4,BaseImage::CA_REPEAT);
-//						image.swap(image2);
+
 			}
 			else
 			{
@@ -445,24 +266,7 @@ namespace Objects
 				});
 
 			}
-			//float3 fadeTo(0,0,255);
-			//Concurrency::parallel_for(UINT32(0),image.getWidth(),[&image,fadeTo](UINT32 x)
-			//{
-			//	for (UINT32 y = 0; y < image.getHeight(); y++)
-			//	{
-			//		float fy = float(y) / float(image.getHeight()-1);
-			//		BYTE*pixel = image.get(x,y);
 
-			//		float3 px(Vec::ref3(pixel));
-			//		Vec::interpolate(px,fadeTo,sqr(1.f - fy) * 0.5f * float(pixel[3])/255.f,px);
-			//		Vec::clamp(px,0,255);
-			//		Vec::copy(px,Vec::ref3(pixel));
-
-			//		//color = lerp(color,float3(0,0,1),sqr(1.0 - input.uv.y)*0.5 * s.a);
-
-
-			//	}
-			//});
 			image.flipVertical();
 			texture.Load(image);
 			textureMap.Set(filename,texture);
@@ -470,28 +274,25 @@ namespace Objects
 		catch (const std::exception&e)
 		{
 			FATAL__(e.what());
-		//	return false;
-
 		}
-		//return true;
 	}
 
 
 
 	
-	void	GlobalCmd::SeeThroughUp(int)
+	void	GlobalCmd::SeeThroughUp()
 	{
 		if (Grid::SeeThrough::GetFocusPoint().height < Grid::CellStack::HalfRange)
 			Grid::SeeThrough::Update(true, Grid::SeeThrough::LocateCamera() + 1);
 	}
-	void	GlobalCmd::SeeThroughDown(int)
+	void	GlobalCmd::SeeThroughDown()
 	{
 		if (Grid::SeeThrough::GetFocusPoint().height > -Grid::CellStack::HalfRange)
 			Grid::SeeThrough::Update(true, Grid::SeeThrough::LocateCamera()-1);
 	}
 
 
-	void	GlobalCmd::ToggleSeeThrough(int)
+	void	GlobalCmd::ToggleSeeThrough()
 	{
 		if (selectedEntity)
 		{
@@ -507,59 +308,70 @@ namespace Objects
 		}
 	}
 
-	bool	GlobalCmd::SeeThroughIsActive(int)
+	bool	GlobalCmd::SeeThroughIsActive()
 	{
 		return Grid::SeeThrough::IsEnabled();
 	}
-	bool	GlobalCmd::SeeThroughIsActive2(int, bool)
+	bool	GlobalCmd::SeeThroughIsActive2(bool)
 	{
 		return Grid::SeeThrough::IsEnabled();
 	}
 
 
 
-	void	GlobalCmd::ToggleObjectView(int)
+	void	GlobalCmd::ToggleObjectView()
 	{
 		objectView = !objectView;
 	}
 
-	bool	GlobalCmd::ObjectsAreHidden(int)
+	bool	GlobalCmd::ObjectsAreHidden()
 	{
 		return !objectView;
 	}
 
-	void	GlobalCmd::ToggleCompoundHightlights(int)
+	void	GlobalCmd::ToggleCompoundHightlights()
 	{
-		anyCompoundsColored = !anyCompoundsColored;
-		if (anyCompoundsColored && !selectedMobileEntity)
+		if (Renderer::CompoundsAreHighlighted())
 		{
-			Renderer::SelectCompoundAreas(selectedEntity ? selectedEntity->owner : Faction::mine);
-
+			Renderer::DeselectCompoundAreas();
 		}
+		else
+			if (!selectedMobileEntity)
+			{
+				Renderer::SelectCompoundAreas(selectedEntity ? selectedEntity->owner : Faction::mine);
+			}
+			else
+			{
+				Renderer::EnableCompoundHighlightingNoUpdate();
+			}
 	}
 
 
 
 
 	
+	void	CommonCmd::DemolishSelected()
+	{
+		SignalRemoval(selectedEntity);
+	}
 
-	bool CommonCmd::IsModeActive(const PWorldEntity&e, CursorMode mode)
+	bool CommonCmd::IsModeActive(CursorMode mode)
 	{
 		//PMobileEntity v = To<MobileEntity>::DynamicCast(e);
 		return /*v && */activeCursorMode == mode;
 	}
 		
-	bool CommonCmd::IsModeActiveOrIdle(const PWorldEntity&e, CursorMode mode)
+	bool CommonCmd::IsModeActiveOrIdle(CursorMode mode)
 	{
 		//PMobileEntity v = To<MobileEntity>::DynamicCast(e);
 		return /*v &&*/ (activeCursorMode == mode || activeCursorMode == CursorMode::Idle);
 	}
 	
 
-	void CommonCmd::ToggleMode(const PWorldEntity&e, CursorMode mode)
+	void CommonCmd::ToggleMode(CursorMode mode)
 	{
-		PMobileEntity v = To<MobileEntity>::DynamicCast(e);
-		PTower t = To<Tower>::DynamicCast(e);
+		PMobileEntity v = selectedMobileEntity;
+		PTower t = ToTower(selectedEntity);
 		if (v || (mode == CursorMode::AttackMode && t))
 		{
 			if (activeCursorMode == mode)
@@ -574,10 +386,10 @@ namespace Objects
 	}
 
 
-	void					VehicleCmd::AbortOperation(const PWorldEntity&e)
+	void					VehicleCmd::AbortOperation()
 	{
 		#ifdef CLIENT
-			if (Component::Terraformer::Cmd::BuildBlockIsActive(e) || Component::Terraformer::Cmd::RemoveBlockIsActive(e))
+			if (CommonCmd::IsModeActive(CursorMode::BuildBlockMode) || CommonCmd::IsModeActive(CursorMode::RemoveBlockMode))
 			{
 				buildCandidates.Clear();
 				removeCandidates.Clear();
@@ -589,9 +401,9 @@ namespace Objects
 
 		#endif
 
-		if (e->IsMobile() || To<Tower>::DynamicCast(e))
+		if (selectedMobileEntity || ToTower(selectedEntity))
 		{
-			SignalDropAllTasks(e);
+			SignalDropAllTasks(selectedEntity);
 			//v->ClearTasks();
 		}
 
@@ -600,60 +412,59 @@ namespace Objects
 		#endif*/
 	}
 
-	void					VehicleCmd::Automate(const PWorldEntity&e)
+	void					VehicleCmd::Automate()
 	{
-		PMobileEntity v= To<MobileEntity>::DynamicCast(e);
-		if (v)
+		if (selectedMobileEntity)
 		{
-			SignalAutomation(e,!v->isAutomated);
+			SignalAutomation(selectedMobileEntity,!selectedMobileEntity->isAutomated);
 			//v->ClearTasks();
 		}
 	}
 
-	bool					VehicleCmd::IsAutomated(const PWorldEntity&e)
+	bool					VehicleCmd::IsAutomated()
 	{
-		PMobileEntity v= To<MobileEntity>::DynamicCast(e);
-		return v && v->isAutomated;
+		return selectedMobileEntity && selectedMobileEntity->isAutomated;
 	}
 
 
-	BaseCommand::Flags	VehicleCmd::AutomatedCheck(const PWorldEntity&e,bool controlEnabled)
+	BaseCommand::Flags	VehicleCmd::AutomatedCheck(bool controlEnabled)
 	{
-		BaseCommand::Flags f = CommonCmd::CommonButtonCheck(e,controlEnabled);
-		if (IsAutomated(e))
+		BaseCommand::Flags f = CommonCmd::CommonButtonCheck(controlEnabled);
+		if (IsAutomated())
 			f |= BaseCommand::Flags::IsPermaActive;
 		return f;
 	}
 
-	BaseCommand::Flags	VehicleCmd::SleepCheck(const PWorldEntity&e,bool controlEnabled)
+	BaseCommand::Flags	VehicleCmd::SleepCheck(bool controlEnabled)
 	{
-		BaseCommand::Flags f = CommonCmd::CommonButtonCheck(e,controlEnabled);
-		if (e && e->IsSleeping())
+		BaseCommand::Flags f = CommonCmd::CommonButtonCheck(controlEnabled);
+		if (selectedEntity && selectedEntity->IsSleeping())
 			f |= BaseCommand::Flags::IsPermaActive;
 		return f;
 	}
 
 
-	void					VehicleCmd::Sleep(const PWorldEntity&e)
+	void					VehicleCmd::Sleep()
 	{
-		SignalSleep(e, !e->IsSleeping());
+		if (selectedEntity)
+			SignalSleep(selectedEntity, !selectedEntity->IsSleeping());
 	}
 
-	void					VehicleCmd::UndoOperation(const PWorldEntity&e)
+	void					VehicleCmd::UndoOperation()
 	{
-		if (Component::Terraformer::Cmd::BuildBlockIsActive(e))
+		if (CommonCmd::IsModeActive(CursorMode::BuildBlockMode))
 		{
 			Objects::buildCandidates.EraseLast();
 			return;
 		}
-		if (Component::Terraformer::Cmd::RemoveBlockIsActive(e))
+		if (CommonCmd::IsModeActive(CursorMode::RemoveBlockMode))
 		{
 			Objects::removeCandidates.EraseLast();
 			return;
 		}
 
-		if (e->IsMobile() || To<Tower>::DynamicCast(e))
-			SignalDropLastTask(e);
+		if (selectedMobileEntity || ToTower(selectedEntity))
+			SignalDropLastTask(selectedEntity);
 	//		v->DropLastTask();
 		//#ifdef CLIENT
 		//	UpdateChoices(true);
@@ -661,6 +472,71 @@ namespace Objects
 	}
 
 
+	/*virtual override*/ void	CommandGroup::Execute()
+	{
+		bool doHide = state & Flags::IsPermaActive;
+
+		//ASSERT__(activeGroupPath.IsEmpty() || activeGroupPath.Contains(this));
+
+		index_t at = activeGroupPath.GetIndexOf(this);
+		if (at != InvalidIndex)
+		{
+			for (index_t i = at+1; i < activeGroupPath.Count(); i++)
+				activeGroupPath[i]->Collapse();
+			if (doHide)
+			{
+				activeGroupPath[at]->Collapse();
+			}
+			activeGroupPath.Truncate(at+1);
+			ASSERT_EQUAL__(at+1,activeGroupPath.Count());
+		}
+		else
+		{
+			at = activeGroupPath.GetIndexOf(parent);
+			if (at == InvalidIndex)
+			{
+				for (index_t i = 0; i < activeGroupPath.Count(); i++)
+					activeGroupPath[i]->Collapse();
+				activeGroupPath.Clear();
+			}
+			else
+			{
+				for (index_t i = at+1; i < activeGroupPath.Count(); i++)
+					activeGroupPath[i]->Collapse();
+				activeGroupPath.Truncate(at+1);
+			}
+			activeGroupPath << this;
+		}
+
+
+		if (!doHide)
+			Expand();
+
+		//SignalButtonTreeChange();
+	}
+
+	PCommandGroup	CommandContainer::AddChild(const String&name)
+	{
+		PCommandGroup rs (new CommandGroup(name));
+		Add(rs );
+		return rs;
+	}
+	PBaseCommand			CommandContainer::Add(const PBaseCommand&newCommand)
+	{
+		DBG_ASSERT__(!members.Contains(newCommand));
+		newCommand->gridCoords = baseCoords+int2((int)members.Count(),0);
+		members << newCommand;
+		if (newCommand->IsGroup())
+		{
+			PCommandGroup group = To<CommandGroup>::Cast(newCommand);
+			group->baseCoords = baseCoords;
+			group->baseCoords.y = newCommand->gridCoords.y+1;
+			group->baseCoords.x += group->baseCoords.y/2;
+			group->parent = this;
+
+		}
+		return newCommand;
+	}
 
 
 

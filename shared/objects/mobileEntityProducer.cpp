@@ -104,10 +104,10 @@ namespace Objects
 				selected = Grid::LCellIdI::Invalid;
 		}
 
-		void				EntityFactory::VisitAllCommands(WorldEntity::FCommandVisitor visitor)
+		void				EntityFactory::VisitAllCommands(WorldEntity::FCommandVisitor visitor, bool force)
 		{
 			for (index_t i = 0; i < queue.Count(); i++)
-				visitor(queue[i].commandToTerminate);
+				queue[i].commandToTerminate.VisitMembers(visitor,force);
 		}
 
 		
@@ -467,6 +467,17 @@ namespace Objects
 			return "#"+String(index)+" "+itemName+ " ("+String(roundsLeft)+")";
 		}
 
+		#ifdef HAS_WINDOW
+		void				EntityFactory::SetCommandOffset(const int2&c)
+		{
+			if (commandOffset == c)
+				return;
+			commandOffset = c;
+			int index = 0;
+			foreach (queue,item)
+				item->commandToTerminate.SetCoords(commandOffset + int2(index++,0));
+		}
+		#endif
 		void				EntityFactory::AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName)
 		{
 			//PSatellite	satellite;
@@ -517,23 +528,27 @@ namespace Objects
 
 
 				#ifdef HAS_WINDOW
-					item.commandToTerminate = FactoryConstructionAbortCommand(int2(5+index,2), JobName(index,item.name,rounds),base,turret,other,[id,index](const PWorldEntity&e)
+					item.commandToTerminate = EntityConstructionCommand(commandOffset + int2(index,0), JobName(index,item.name,rounds),base,turret,other,[id,index]()
 					{
 //						PWorkingStructure s = To<WorkingStructure>::DynamicCast(e);
 	//					ASSERT__(s);
-						EntityFactory*p = e->CastToMutableFactory();
+						EntityFactory*p = selectedEntity->CastToMutableFactory();
 						ASSERT__(p);
 						if (!index && p->productionDone)
 						{
+							WWorldEntity e = selectedEntity;
 							Dialog::Confirm("Confirm cancellation of production job "+p->queue.first().name+". Material has been invested into this production, which will be lost.",
 							[e,id]()
 							{
-								SignalConstructionAbort(e->id,id);
+								PWorldEntity e1 = e.lock();
+								if (e1)
+									SignalConstructionAbort(e1->id,id);
 							}
 							,
 							[e,p,id]()->Dialog::CheckResult
 							{
-								if (e->health <= 0)
+								PWorldEntity e1 = e.lock();
+								if (!e1 || e1->health <= 0)
 									return Dialog::CheckResult::Abort;
 								if (p->queue.IsEmpty() || p->queue.first().id != id)
 									return Dialog::CheckResult::Abort;
@@ -545,7 +560,7 @@ namespace Objects
 
 						}
 						else
-							SignalConstructionAbort(e->id,id);	//lossless
+							SignalConstructionAbort(selectedEntity->id,id);	//lossless
 
 					},CommonCmd::CommonButtonCheck);
 					if (!index)

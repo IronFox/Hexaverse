@@ -267,7 +267,7 @@ namespace Objects
 			float terrainExplosionRadius = float(explosionRadius)-0.5f;
 			//float coreRadius = core*core;
 			float outerRadius = explosionRadius*explosionRadius;
-			static Buffer0<PWorldEntity>	toDestroy;
+			static Buffer0<PWorldEntity>	toDestroy,allLivingAffected;
 			static Buffer0<PStructure>		affectedStructures;
 			static Buffer0<PVehicle>		affectedVehicles;
 			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime](const PWorldEntity e)
@@ -293,6 +293,7 @@ namespace Objects
 				{
 					if (d2 <= outerRadius)
 					{
+						atTime = std::max(atTime,e->motionTime);
 						e->TakeDamage(damageLevel,atTime);
 						if (e->health <= 0)
 							toDestroy << e;
@@ -300,7 +301,7 @@ namespace Objects
 				}
 				if (e->health <= 0)
 					return;	//prevent being added to affect*
-
+				allLivingAffected << e;
 				{
 					Vec::mult(c,Grid::ToRadius(e->location.height -1),p);	//include own lower level
 					float d3 = Vec::quadraticDistance(p,center);
@@ -331,12 +332,15 @@ namespace Objects
 					}
 				}
 			});
-
+			atTime += timeEpsilon;
 			foreach (toDestroy,d)
 			{
+				(*d)->SyncTime(atTime);
 				Remove(*d,Objects::RemovalType::UncontrolledExplosion,atTime,false);
 			}
 			toDestroy.Clear();
+
+
 
 			if (terrainExplosionRadius > 0)
 			{
@@ -372,6 +376,11 @@ namespace Objects
 					}
 				}
 			}
+			foreach (allLivingAffected,d)
+			{
+				(*d)->SyncTime(atTime);
+			}
+			allLivingAffected.Clear();
 			affectedStructures.Clear();
 			affectedVehicles.Clear();
 		}
@@ -400,13 +409,15 @@ namespace Objects
 				}
 				if (d2 <= outerRadius)
 				{
+					atTime = std::max(atTime,e->motionTime);
 					toDisable << e;
 				}
 			});
-
+			atTime += timeEpsilon;
 			foreach (toDisable,_d)
 			{
 				PWorldEntity d = *_d;
+				d->SyncTime(atTime);
 				d->HandleEMPDamage(damageLevel, atTime);
 			}
 			toDisable.Clear();
@@ -1257,6 +1268,8 @@ namespace Objects
 					#endif
 				)
 					Renderer::animatedTurrets << b;
+				if (b && b->turret->CanAttack())
+					Renderer::attackers << e;
 			#endif
 			OnAppear(e);
 		#else
@@ -1475,7 +1488,12 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			PTurretBase b = e->GetTurretBase();
 			if (b)
-				Renderer::animatedTurrets.FindAndErase(b);
+			{
+				if (b->turret->continuousRotation)
+					Renderer::animatedTurrets.FindAndErase(b);
+				if (b->turret->CanAttack())
+					Renderer::attackers.FindAndErase(e);
+			}
 		#endif
 
 
@@ -1578,7 +1596,7 @@ namespace Objects
 		if (!move)
 		{
 			LogEvent(EventSignificance::Debug,e.get(),"OnDestroy()");
-			e->OnDestroy(timestamp);
+			e->OnDestroy(t,timestamp);
 		}
 		#ifdef CLIENT
 			if (isStructure)
@@ -2818,7 +2836,7 @@ namespace Objects
 
 
 	#ifdef CLIENT
-		PVehicle		SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isMine)
+		PVehicle		SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe)
 	#else
 		PVehicle		AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret)
 	#endif
@@ -2833,7 +2851,7 @@ namespace Objects
 		vehicle->UpdateSystem();
 		#ifdef CLIENT
 			vehicle->UpdateNiceName();
-			vehicle->isMine = isMine;
+			vehicle->isOwnedByMe = isOwnedByMe;
 			if (placeNow)
 				Place(vehicle);
 			//else
@@ -2862,16 +2880,16 @@ namespace Objects
 
 	#else
 
-		PMobileEntity		SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isMine)
+		PMobileEntity		SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe)
 		{
 			if (turret != ConstName::Empty)
-				return Objects::SpawnVehicle(owner,  id,baseLocation,base,turret,placeNow,isMine);
-			return Orbital::SpawnShip(owner,  id,baseLocation,base,placeNow,isMine);
+				return Objects::SpawnVehicle(owner,  id,baseLocation,base,turret,placeNow,isOwnedByMe);
+			return Orbital::SpawnShip(owner,  id,baseLocation,base,placeNow,isOwnedByMe);
 		}
 
 		namespace Orbital
 		{
-			Orbital::PShip		SpawnShip(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isMine)
+			Orbital::PShip		SpawnShip(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isOwnedByMe)
 			{
 				Orbital::PShip	proto = Orbital::GetShipPrototypeByName(type);
 				ASSERT1__(proto,(int)type);
@@ -2881,14 +2899,14 @@ namespace Objects
 				s->UpdateSystem();
 				ASSERT_GREATER_OR_EQUAL1__(baseLocation.height, Grid::CellStack::HalfRange,s->GetName());
 				s->UpdateNiceName();
-				s->isMine = isMine;
+				s->isOwnedByMe = isOwnedByMe;
 				if (placeNow)
 					Place(s);
 				return s;
 			}
 		}
 
-		PStructure		SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,ConstName type, bool placeNow, bool isMine)
+		PStructure		SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,ConstName type, bool placeNow, bool isOwnedByMe)
 		{
 			PStructure proto = GetAnyStructurePrototypeByName(type);
 			if (proto)
@@ -2903,7 +2921,7 @@ namespace Objects
 				s->health = s->GetMaxHealth();
 				s->id = id;
 				s->UpdateNiceName();
-				s->isMine = isMine;
+				s->isOwnedByMe = isOwnedByMe;
 				//LogEvent(EventSignificance::Common, s.get(),"Constructed " + s->GetName());
 				if (placeNow)
 				{

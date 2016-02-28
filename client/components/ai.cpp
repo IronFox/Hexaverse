@@ -67,7 +67,7 @@ namespace AI
 
 	static void EstimateThreatLevelFrom(Objects::WorldEntity&e, const TVec3<>&reference, bool ignoreHostiles, bool canIgnoreThreat, TThreatEstimation &current)
 	{
-		if (e.isMine)
+		if (e.isOwnedByMe)
 		{
 			if (e.health <= 0)	//ghost
 			{
@@ -174,7 +174,7 @@ namespace AI
 
 	static float ProcessAttackPriority(Objects::WorldEntity&e,const TVec3<>&explosionCenter,float explosionRadius)
 	{
-		if (e.isMine || Vec::quadraticDistance(explosionCenter,e.system.w.xyz) > sqr(explosionRadius))
+		if (e.isOwnedByMe || Vec::quadraticDistance(explosionCenter,e.system.w.xyz) > sqr(explosionRadius))
 			return 0.f;
 		Objects::PTurretBase b = e.GetTurretBase();
 		float rs = e.GetMaxScanningRange();
@@ -186,7 +186,7 @@ namespace AI
 
 	static void ProcessAttackTarget(const Objects::Vehicle&source, const Objects::WorldEntity&candidate,  BasicBuffer<TAttackTarget>&attackTarget)
 	{
-		if (candidate.isMine || candidate.IsIndestructible())
+		if (candidate.isOwnedByMe || candidate.IsIndestructible())
 			return;
 		//float distance = Vec::quadraticDistance(source.system.w.xyz,candidate.system.w.xyz);
 		//const float range = source.GetAttackRange();
@@ -346,7 +346,7 @@ namespace AI
 				bool conflict = false;
 				foreach (Objects::vehicles,_v)
 				{
-					if ((*_v)->isMine)
+					if ((*_v)->isOwnedByMe)
 					{
 						float distance = Vec::quadraticDistance((*_v)->system.w.xyz,ref);
 						if ( distance < sqr(v->turret->explosionRadius))
@@ -358,7 +358,7 @@ namespace AI
 				}
 				foreach (Objects::structures,_v)
 				{
-					if ((*_v)->isMine)
+					if ((*_v)->isOwnedByMe)
 					{
 						float distance = Vec::quadraticDistance((*_v)->system.w.xyz,ref);
 						if ( distance < sqr(v->turret->explosionRadius))
@@ -393,7 +393,7 @@ namespace AI
 			count_t proximityPresence = 0,
 					radarProximity = 0;
 			foreach (Objects::vehicles,_v2)
-				if ((*_v2)->isMine && Vec::quadraticDistance(v->system.w.xyz,(*_v2)->system.w.xyz) < 25.f)
+				if ((*_v2)->isOwnedByMe && Vec::quadraticDistance(v->system.w.xyz,(*_v2)->system.w.xyz) < 25.f)
 				{
 					if ((*_v2)->turret->CanAttack())
 						proximityPresence++;
@@ -438,7 +438,7 @@ namespace AI
 				float badWeight = 0;
 				Objects::ForeachWorldEntity([&goodWeight,&badWeight,reference](const Objects::PWorldEntity&e)
 				{
-					if (e->isMine || e->IsOrbital())
+					if (e->isOwnedByMe || e->IsOrbital())
 					{
 						//if (distance < 16.f)
 						//	badWeight += 100.f / (1.f + distance);	//repell close vehicles a bit
@@ -503,7 +503,7 @@ namespace AI
 
 	static void	ProcessIgnorance(Objects::WorldEntity&e)
 	{
-		if (e.isMine)
+		if (e.isOwnedByMe)
 			return;
 		e.ignoreThreatRounds --;
 		if (e.ignoreThreatRounds < 0)
@@ -518,7 +518,7 @@ namespace AI
 			foreach (Objects::vehicles,_v)
 			{
 				Objects::PVehicle v = *_v;
-				if (v->isMine && v->turret->CanAttack() && !v->turret->dealsEMPDamage)
+				if (v->isOwnedByMe && v->turret->CanAttack() && !v->turret->dealsEMPDamage)
 				{
 					float d2 = Vec::quadraticDistance(v->system.w.xyz,ref);
 					if (d2 < sqr(r*1.2f))	//might be okay anyway

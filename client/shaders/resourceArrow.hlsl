@@ -52,7 +52,7 @@ float4 psMain(V2P input) : SV_TARGET
 {
 	float2 uv = float2(input.uvw.x,abs(0.5 - input.uvw.y)*2.0);
 
-	float b = ArrowTex.Sample(ArrowTexSampler,uv);
+	float b = ArrowTex.SampleBias(ArrowTexSampler,uv,-1.0);
 
 	b *= 1.0 - smoothstep(0.4,0.9,abs(input.uvw.z*2.0 - 1.0));
 	return Tint * b;

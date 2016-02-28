@@ -974,6 +974,27 @@ namespace Grid
 				UpdateSunDirection(SunDetails::sunDirection,true);
 			}
 
+			double	GetAcceleratedSunDirection(TVec3<>&outDir, float speedFactor/*=1.f*/)
+			{
+				double angle = SunDetails::progression*speedFactor;
+				Vec::def(outDir,cos(angle),sin(angle),0);
+				Mat::mult(SunDetails::sunSystem,outDir);
+				return angle;
+			}
+
+
+			const TMatrix3<>& GetSunSystem()
+			{
+				return SunDetails::sunSystem;
+			}
+
+
+			void	ResetSunRotation()
+			{
+				SunDetails::progression = 0;
+			}
+
+
 
 			void	SetOrientation(TMatrix4<>&m, const float3&axis, double t, const float3&seedAxis, double seedRot)
 			{
@@ -4048,6 +4069,10 @@ namespace Grid
 		actualWorld.FlushAllData();
 		#ifndef CLIENT
 			initialWorld.FlushAllData();
+		#endif
+
+		#ifdef HAS_WINDOW
+			ResetSunRotation();
 		#endif
 			
 		#ifdef CLIENT

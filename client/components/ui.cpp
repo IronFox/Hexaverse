@@ -494,10 +494,10 @@
 				HexGrid::animationTimeLine.Refresh();
 			}
 
-			void			RegisterEntityDestruction(float time, bool isMine,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName)
+			void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName)
 			{
-				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isMine);
-				if (isMine)	//flipped logic
+				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Entity Death","Entity Death",focusLocation,focusEntityID,time,isOwnedByMe);
+				if (isOwnedByMe)	//flipped logic
 					cmd->state |= Objects::BaseCommand::Flags::IsFlashing;
 				cmd->fallbackTargetName = entityName;
 				HexGrid::animationTimeLine.commands << Objects::PBaseCommand(cmd);
@@ -544,7 +544,7 @@
 				state = Objects::BaseCommand::Flags::IsEnabled;
 			}
 
-			/*virtual override*/ void				AnimationEventFocusCommand::CompileLabel(const Objects::PWorldEntity&,Label&outResult)
+			/*virtual override*/ void				AnimationEventFocusCommand::CompileLabel(Label&outResult)
 			{
 				Objects::PWorldEntity e = GetTarget();
 				String hostile = isFriendly? "" : "hostile ";
@@ -563,9 +563,9 @@
 			void	DynamicRow::Create()
 			{
 				leftCommand.reset(new ArrowCommand(true,this));
-				leftCommand->coords = DynamicRowOffset + int2(0,rowIndex);
+				leftCommand->gridCoords = DynamicRowOffset + int2(0,rowIndex);
 				rightCommand.reset(new ArrowCommand(false,this));
-				rightCommand->coords = DynamicRowOffset + int2(currentContactListWidth+1,rowIndex);
+				rightCommand->gridCoords = DynamicRowOffset + int2(currentContactListWidth+1,rowIndex);
 			}
 
 			void	DynamicRow::Scroll(bool left)
@@ -622,14 +622,14 @@
 				{
 					GridCell&cell = AllocateCell(rightCommand.get());
 					//cell.type = GridCell::ContactListRight;
-					rightCommand->coords = DynamicRowOffset + int2(currentContactListWidth+1,rowIndex);
+					rightCommand->gridCoords = DynamicRowOffset + int2(currentContactListWidth+1,rowIndex);
 					cell.flipY = true;
 					cell.Update(camera);
 				}
 				else
 					FindAndDeleteCell(rightCommand.get());
 
-//				rightCommand->coords.x = int(ContactListOffset.x + 1+currentContactListWidth);
+//				rightCommand->gridCoords.x = int(ContactListOffset.x + 1+currentContactListWidth);
 
 				RebuildCommands();
 			}
@@ -656,7 +656,7 @@
 					const Objects::PBaseCommand cmd = commands[i+visibleRange.start];
 					GridCell&cell = AllocateCell(cmd.get());
 					//cell.type = GridCell::ContactListEntry;
-					cell.command->coords = DynamicRowOffset + int2(i+1,rowIndex);
+					cell.command->gridCoords = DynamicRowOffset + int2(i+1,rowIndex);
 					cell.flipY = true;
 					cell.Update(camera);
 					lastVisible << cmd;
@@ -716,7 +716,7 @@
 					significance *= 10.f;
 				if (e->health <= 0)
 				{
-					if (e->isMine)
+					if (e->isOwnedByMe)
 						significance *= 15.f / (1.f + sqr(e->health));
 					else
 						significance *= 0.8f;
@@ -731,13 +731,14 @@
 
 
 
-			/*virtual override*/ void	EntityFocusCommand::CompileLabel(const Objects::PWorldEntity&,Label&outResult)
+
+			/*virtual override*/ void	EntityFocusCommand::CompileLabel(Label&outResult)
 			{
 				outResult << name;
-				Objects::PWorldEntity target = this->target.lock();
+				Objects::PWorldEntity target = this->reference.lock();
 				if (!target)
 					return;
-				if (target->isMine)
+				if (target->isOwnedByMe)
 				{
 					outResult << "Owner: me";
 					target->AppendDeploymentCount(outResult, target->owner);
@@ -759,34 +760,22 @@
 				}
 
 				//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
-				Objects::PConstTurretBase b =  target->GetTurretBase();
-				if (b && b->turret->CanAttack())
-				{
-					Objects::Component::Turret* turret = b->turret;
-					outResult << "Offensive ("+String(turret->attacksPerRound)+"x"+String(turret->damageLevel)+")";
-				}
+				Objects::PTurretBase base = target->GetTurretBase();
+				if (base && base->turret->CanAttack())
+					outResult << "Offensive ("+String(base->GetAttacksPerRound())+"x"+String(base->turret->damageLevel)+")";
 				if (target->empDamageLevel)
 					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
 
 				outResult.MarkBriefEnd();
-				target->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice | Objects::WorldEntity::DescIncludeUpkeep /*| Objects::WorldEntity::DescIncludeUnitCount*/);
+				target->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice/* | Objects::WorldEntity::DescIncludeUnitCount*/);
+
 			}
 
 
 
-
-
-			/**/				GroupFocusCommand::GroupFocusCommand(PGroup&group):
-				group(group),
-				//vcommand(coords,group->entries[group->currentSelection]->IsVehicle() 
-				//			? To<Objects::Vehicle>::Cast(group->entries[group->currentSelection]) : Objects::PVehicle()),
-				//scommand(coords,group->entries[group->currentSelection]->IsStructure() 
-				//			? To<Objects::Structure>::Cast(group->entries[group->currentSelection]) : Objects::PStructure()),
-				Super(int2(), group->name+" ("+String(group->entries.Count())+")",
-									std::bind(&GroupFocusCommand::OnExecute,group,std::placeholders::_1),
-										[](const Objects::PWorldEntity&,bool) {return Objects::BaseCommand::Flags::IsEnabled;}
-										)
-				//that's no constructor. that's a spacestation
+			/**/	GroupFocusCommand::GroupFocusCommand(PGroup&group):
+									Super(group->name+" ("+String(group->entries.Count())+")"),
+									group(group)
 			{
 				RasterizeImage();
 				
@@ -795,15 +784,15 @@
 			/*virtual override*/ void	GroupFocusCommand::RasterizeImage()
 			{
 				Objects::PWorldEntity e = group->entries.first().lock();
-				if (e)
-				{
-					const float4&background = e->isMine ? friendlyBackgroundColor : hostileBackgroundColor;
-					Objects::VisualEntityCommand::UpdateTexture(*this,e,false,background);
-				}
+				if (!e)
+					return;
+
+				const float4&background = e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor;
+				Objects::EntityCommand::UpdateTexture(*this,e,false,background);
 			}
 
 
-			/*static*/ void				GroupFocusCommand::OnExecute(PGroup const&group, Objects::PWorldEntity const&_e)	//must be static because it may move before being executed
+			/*virtual override*/ void				GroupFocusCommand::Execute()
 			{
 				if (!group->InitSelection() || group->entries[group->currentSelection].lock() == Objects::selectedEntity)
 					group->currentSelection = (group->currentSelection+1) % group->entries.Count();
@@ -816,7 +805,7 @@
 			}
 
 
-			/*virtual override*/ void	GroupFocusCommand::CompileLabel(const Objects::PWorldEntity&,Label&outResult)
+			/*virtual override*/ void	GroupFocusCommand::CompileLabel(Label&outResult)
 			{
 				//group->InitSelection();
 
@@ -827,7 +816,7 @@
 					return;
 					
 				outResult << name;
-				if (instance->isMine)
+				if (instance->isOwnedByMe)
 				{
 //					outResult << "Owner: me";
 					if (instance->health > 0)
@@ -870,13 +859,13 @@
 
 				//if (e->IsVehicle())
 				//{
-				//	VehicleFocusCommand vcommand(coords,To<Objects::Vehicle>::Cast(e));
+				//	VehicleFocusCommand vcommand(gridCoords,To<Objects::Vehicle>::Cast(e));
 				//	vcommand.CompileLabel(outResult);
 				//	return;
 				//}
 				//if (e->IsStructure())
 				//{
-				//	StructureFocusCommand scommand(coords,To<Objects::Structure>::Cast(e));
+				//	StructureFocusCommand scommand(gridCoords,To<Objects::Structure>::Cast(e));
 				//	scommand.CompileLabel(outResult);
 				//	return;
 				//}
@@ -889,7 +878,46 @@
 			//Buffer0<GroupFocusCommand>			groupFocusCommands;
 			EntityFocusCommand					selectedFocus;
 
-			std::shared_ptr<TutorialCommand>	tutorialCommand;
+			namespace BottomRightPanel
+			{
+				Buffer0<Objects::PBaseCommand>				commands;
+
+				void Create()
+				{
+					commands << Objects::PBaseCommand( new TutorialCommand() );
+
+					commands << Objects::PBaseCommand( new DemolishCommand() );
+					commands << Objects::PBaseCommand( new SleepCommand() );
+					commands << Objects::PBaseCommand( new AbortCommand() );
+					commands << Objects::PBaseCommand( new UndoCommand() );
+
+				}
+
+				void Destroy()
+				{
+					commands.Clear();
+				}
+
+				static void Add(const Objects::PBaseCommand&cmd)
+				{
+					GridCell&cell = AllocateCell(cmd.get());
+					cell.flipX = true;
+					cell.Update(camera);
+					cmd->Refresh(Network::ControlEnabled());
+				}
+
+				void			Refresh()
+				{
+					if (!showControlsAndContacts)
+					{
+						foreach (commands,c)
+							FindAndDeleteCell(c->get());
+						return;
+					}
+					foreach (commands,c)
+						Add(*c);
+				}
+			}
 
 		}
 
@@ -915,9 +943,9 @@
 			}
 			float2		GridCell::ToFloatCoords() const
 			{
-				int2 cellCoords = command->coords;
+				int2 cellCoords = command->gridCoords;
 				if (!flipX && !flipY)
-					cellCoords += int2(5,1);
+					cellCoords += int2(3,1);
 				float x;
 				if (flipX)
 					x = (-1+2.f * display.pixelAspect()) - stepX *2 * cellCoords.x - float(1 - (cellCoords.y % 2)) * stepX;
@@ -978,6 +1006,8 @@
 
 			void			FindAndDeleteCell(Objects::BaseCommand*cmd)
 			{
+				if (!cmd)
+					return;
 				foreach (allGuiCells,c)
 					if (c->command == cmd)
 					{
@@ -1039,8 +1069,8 @@
 				friendlyGroups.Create();
 				hostileGroups.Create();
 				animationTimeLine.Create();
-				tutorialCommand.reset(new TutorialCommand());
-				tutorialCommand->coords = int2(1);
+
+				BottomRightPanel::Create();
 
 				Configure(Objects::selectedEntity);	//very likely not set
 
@@ -1061,7 +1091,7 @@
 				RefreshContacts();
 				if (hasFocusButton)
 				{
-					selectedFocus.coords = GetFocusLocation();
+					selectedFocus.gridCoords = GetFocusLocation();
 				}
 			}
 
@@ -1075,11 +1105,12 @@
 				//vehicleCommands.Clear();
 				//structureCommands.Clear();
 
-				tutorialCommand.reset();
+				BottomRightPanel::Destroy();
 
 				friendlyGroups.Destroy();
 				hostileGroups.Destroy();
 				animationTimeLine.Destroy();
+
 				selectedFocus = EntityFocusCommand();
 			}
 
@@ -1201,7 +1232,7 @@
 					lastHovering = hoveringOver;
 					hoveringText.Clear();
 					if (hoveringOver)
-						hoveringOver->command->CompileLabel(Objects::selectedEntity, hoveringText);
+						hoveringOver->command->CompileLabel(hoveringText);
 					hoveringText.briefEndAt = std::min(hoveringText.briefEndAt,hoveringText.lines.Count());
 					hoveringWidth = 0;
 					hoveringBrief = true;
@@ -1391,7 +1422,7 @@
 								key += "|hibernating";
 						#endif
 
-						if (e->isMine)
+						if (e->isOwnedByMe)
 						{
 							friendlyGroups.collection.Set(key).Append(e);
 						}
@@ -1411,21 +1442,12 @@
 
 				animationTimeLine.Refresh();
 
-				RefreshTutorials();
+				BottomRightPanel::Refresh();
 				//display.SetDepthTest(false,false);
 				//display.SetRasterizer(true,false);
 			}
 
-			void			RefreshTutorials()
-			{
-				if (!tutorialCommand)
-					return;
 
-				GridCell&cell = AllocateCell(tutorialCommand.get());
-				cell.flipX = true;
-				cell.Update(camera);
-				tutorialCommand->Refresh(Network::ControlEnabled());
-			}
 
 			void					Configure(const Objects::PWorldEntity&e)
 			{
@@ -1435,15 +1457,14 @@
 
 				bool showControls = showControlsAndContacts && e
 						#ifndef DEBUG_ACCESS_RESTRICTIONS
-							&& e->isMine && e->health > 0
+							&& e->isOwnedByMe && e->health > 0
 						#endif
 					 ;
 
 				if (showControlsAndContacts)
 				{
 					at = int2(5,1);
-					foreach (Objects::globalCommands,cmd)
-						VisitCommand(*cmd);
+					Objects::globalCommands.VisitMembers(VisitCommand,false);
 					Next();
 					Next();
 				}
@@ -1452,19 +1473,18 @@
 				{
 					hasFocusButton = true;
 					if (showControls)
-						e->VisitAllCommands(VisitCommand);
+						e->VisitAllCommands(VisitCommand,false);
 
 					selectedFocus = EntityFocusCommand(e);
-					selectedFocus.coords = GetFocusLocation();
+					selectedFocus.gridCoords = GetFocusLocation();
 
 					selectedFocus.Refresh(true);//Network::ControlEnabled());
-					selectedFocus.UpdateTexture(e,false,e->isMine ? friendlyBackgroundColor : hostileBackgroundColor);
+					selectedFocus.UpdateTexture(e,false,e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor);
 
 					GridCell&cell = AllocateCell(&selectedFocus);
 					cell.flipY = true;
 					cell.flipX = true;
 					cell.Update(camera);
-
 				}
 				else
 				{
@@ -1672,6 +1692,8 @@
 			//{
 			//	return;
 			//}
+			if (!showControlsAndContacts && !Objects::selectedEntity)
+				return;
 			display.StoreRendererState();
 			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 			display.SetRasterizer(true,true);
@@ -1884,10 +1906,12 @@
 				TVec3<> wz = e.system.w.xyz;
 				Vec::normalize(wz);
 				textout << " w1: "<<wz<<nl;
+			#else
+				textout << " Height: "<<e.location.height<<nl;
 			#endif
 
 			textout << " Owner: "<<e.owner->GetName();
-			if (e.isMine)
+			if (e.isOwnedByMe)
 			{
 				textout<<" (me)";
 				if (e.health > 0)
@@ -1971,7 +1995,6 @@
 					textout << " Turret-Overweight: "<<std::max(0,veh->turret->weight - veh->base->carryingCapacity) << nl;
 					textout << " Movement Initiative: "<<(int)v->GetMovementInitiative()<<"/"<<(int)veh->base->initiative<<nl;
 				}
-
 				textout << " Attack Initiative: "<<(int)v->GetAttackInitiative()<<"/"<<(int)v->turret->initiative<<nl;
 				textout << " Speed: "<<v->GetMovementStepsPerRound() << nl;
 				if (v->turret->CanAttack())
@@ -2047,29 +2070,6 @@
 				#endif
 			}
 
-			{
-				Objects::ResourceVector upkeep;
-				e.GetUpkeep(upkeep);
-
-				textout.color(color);
-				bool notMaintained = e.IsStructure() && !((const Objects::Structure&)e).maintained;
-				if (notMaintained)
-					textout.color(1,0.5,0.5);
-				textout << " Upkeep";
-				if (notMaintained)
-					textout << " (disabled)";
-				textout <<':'<<nl;
-					
-
-				for (index_t i = 0; i < upkeep.NumEntries; i++)
-					{
-						if (upkeep.level[i])
-							textout << "  "<<(char)(tagOffset+i)<<" "<<upkeep.level[i] << nl;
-					}
-				textout.color(color);
-			}
-
-
 			if (e.IsStructure())
 			{
 				#ifdef _DEBUG
@@ -2130,12 +2130,14 @@
 							const Objects::VehicleStore *other = st;
 							for (const auto&v : other->localStore)
 							{
+								Objects::PVehicle v1 = v.vehicle.lock();
+								ASSERT1__(v1,st->ToEntity().id.ToString());
 								if (++cnt > 10)
 								{
 									textout << "..."<<nl;
 									break;
 								}
-								textout << "  "<<v.vehicle->GetNiceName() <<" (local)"<< nl;
+								textout << "  "<<v1->GetNiceName() <<" (local)"<< nl;
 							}
 						}
 
@@ -2148,12 +2150,14 @@
 								continue;
 							for (const auto&v : other->localStore)
 							{
+								Objects::PVehicle v1 = v.vehicle.lock();
+								ASSERT1__(v1,st->ToEntity().id.ToString());
 								if (++cnt > 10)
 								{
 									textout << "..."<<nl;
 									break;
 								}
-								textout << "  "<<v.vehicle->GetNiceName() << nl;
+								textout << "  "<<v1->GetNiceName() << nl;
 							}
 							if (cnt > 10)
 								break;
@@ -2164,7 +2168,11 @@
 					{
 						textout << " Vehicles stored ("<<st->localStore.Count()<<"/"<<Objects::VehicleStore::MaxVehiclesPerStore<<"):"<<nl;
 						for (const auto&v : st->localStore)
-							textout << "  "<<v.vehicle->GetNiceName() << nl;
+						{
+							Objects::PVehicle v1 = v.vehicle.lock();
+							ASSERT1__(v1,st->ToEntity().id.ToString());
+							textout << "  "<<v1->GetNiceName() << nl;
+						}
 					}
 				}
 
@@ -2185,11 +2193,11 @@
 					if (!network.stable)
 					{
 						textout.PushColorState();
-						if (e.isMine)
+						if (e.isOwnedByMe)
 							textout.Tint(1, 0.2, 0.2);
 
 						textout << "  UNSTABLE";
-						if (!e.isMine)
+						if (!e.isOwnedByMe)
 							textout << " (?)";
 						textout << nl;
 						textout.PopColorState();
@@ -2199,7 +2207,7 @@
 					for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
 					{
 						textout.PushColorState();
-						if (e.isMine && network.total.demand.level[i] > network.total.supply.level[i])
+						if (e.isOwnedByMe && network.total.demand.level[i] > network.total.supply.level[i])
 							textout.Tint(1, 0.2, 0.2);
 						textout << "   " << (char)(tagOffset+i) << " " << network.total.demand.level[i] << "/" << network.total.supply.level[i] << nl;
 						textout.PopColorState();
@@ -2260,17 +2268,19 @@
 
 
 					{
-						const Objects::Mine*ms = dynamic_cast<const Objects::Mine*>(&e);
-						if (ms)
+						
+						if (ws->IsMine())
 						{
+							const Objects::Mine*ms = (const Objects::Mine*)(ws);
+							textout << "  Efficiency: "<<  int(ms->GetEfficiency()*100) << "%"  << nl;
 							if (ms->IsLinkedToCore())
 								textout << "  Linked to Core" << nl;
 							else
 							{
-								if (e.isMine)
+								if (e.isOwnedByMe)
 									textout.Tint(1,0.5,0.4);
 								textout << "  Disconnected from Core";
-								if (!e.isMine)
+								if (!e.isOwnedByMe)
 									textout << " (?)";
 								textout << nl;
 
@@ -2282,7 +2292,7 @@
 							const Objects::NexusPort*np = dynamic_cast<const Objects::NexusPort*>(&e);
 							if (np)
 							{
-								if (np->isMine)
+								if (np->isOwnedByMe)
 								{
 									if (np->resistence)
 										textout << "  Remaining resistence: "<<np->resistence << nl;

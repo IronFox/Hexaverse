@@ -4,8 +4,8 @@
 
 	#define MAJOR_VERSION		0
 	#define MAJOR_VERSION_STR	"0"
-	#define MINOR_VERSION		5
-	#define MINOR_VERSION_STR	"5"
+	#define MINOR_VERSION		4
+	#define MINOR_VERSION_STR	"4"
 	#define MICRO_VERSION		0
 	#define MICRO_VERSION_STR	"0"
 

@@ -72,6 +72,7 @@ namespace Reflection
 
 
 
+
 	/**
 	Initializes all variables to their respective addresses.
 	Must be called after all object prototypes have been created, but before any world is generated/populated

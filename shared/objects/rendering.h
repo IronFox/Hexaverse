@@ -19,8 +19,7 @@ namespace Objects
 	extern bool					resourceView, 
 								showFriendlyRanges,
 								showHostileRanges,
-								objectView,
-								anyCompoundsColored;
+								objectView;
 
 
 	extern DX11::ObjectBuffer<float4>	keyColor, overallTint;
@@ -76,6 +75,7 @@ namespace Objects
 	namespace Renderer
 	{
 		extern Buffer0<PTurretBase>		animatedTurrets;
+		extern Buffer0<PWorldEntity>	attackers;	//!< everything that has a base and can attack goes in here
 		extern double					now; //double-precision seconds since program start. Updated during RefreshFactionColors()
 
 		/**
@@ -91,6 +91,8 @@ namespace Objects
 		void	Create();
 		void	Destroy();	//!< Frees all commonly used rendering resources
 		
+
+		void	CompileFlatDisc(Geometry&geo, int resolution, float r0, float r1, const float4&color0,const float4&color1);
 
 
 		void	AdvanceTurretAnimations();
@@ -111,10 +113,8 @@ namespace Objects
 		void	Render(Orbital::Ship&s, float light);
 		void	Render(Orbital::Station&s, float light);
 
-		void	RenderSimple(Structure&s, bool includeFoundation = false);
-		void	RenderSimple(Orbital::Ship&s);
-		void	RenderSimpleIdentity(Orbital::Ship&s);	//can't make const because of GetTurretBase
-		void	RenderSimpleIdentity(const Vehicle&v);
+		void	RenderSimple(WorldEntity&e, bool includeFoundationIfStructure=false);
+		void	RenderSimpleIdentity(WorldEntity&e, bool includeFoundationIfStructure=false);
 
 
 		/**
@@ -186,6 +186,15 @@ namespace Objects
 		@param owner Faction to select compounds of. Passing an empty parameter results in all compounds with a non-0 balance being selected
 		*/
 		void	SelectCompoundAreas(const OwnerParameter&owner);
+
+		void	DeselectCompoundAreas();
+		void	EnableCompoundHighlightingNoUpdate();
+		bool	CompoundsAreHighlighted();
+
+		/**
+		Updates arrows between connected pylons
+		*/
+		void	UpdateInterPylonArrows();
 
 
 		/**

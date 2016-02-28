@@ -11,7 +11,6 @@ water has no bottom cap, and the bounding box/sphere/w/e is sometimes off by a l
 
 
 working structure replacement (replace one enable working structure with another that is better suited to stabilize the compound)
-shadow edge
 
 
 still possible to have negative compound power level when generator could be enable but isn't? i think this happened when enabling a skyport
@@ -142,6 +141,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+shadow edge
 motions ending in cells occupied by vehicles with no tasks should abort
 building placement (shift+click etc)
 surveyor that crosses planned paths with another (standing or moving) vehicle should consider that an invalid path

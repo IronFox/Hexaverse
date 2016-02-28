@@ -25,6 +25,8 @@ namespace RuntimeConfig
 	extern Phase	phase;
 
 	extern bool hibernationSystemEnabled;
+	extern bool bombsExplodeWhenDestroyed;
+
 	extern UINT32 roundNumber/*=0*/;
 	namespace UnitLimits
 	{

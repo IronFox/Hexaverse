@@ -450,12 +450,12 @@ namespace Network
 			Objects::PMobileEntity v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,vc.state.entityState.timestamp.rightNow,Network::haveID && Network::myID == vc.owner);
 			if (vc.state.entityState.timestamp.rightNow)
 				LogEvent(EventSignificance::Common,v.get(),  "Placed vehicle entity outside animation");
-			bool isMine = v->isMine;
+			bool isOwnedByMe = v->isOwnedByMe;
 
 			//v->id = vc.state.entityState.id;
 			Animation::ApplyState(v,vc.state,true, !vc.state.entityState.timestamp.rightNow);
 			#ifdef HAS_WINDOW
-				if (v->isMine && !amLocated)
+				if (v->isOwnedByMe && !amLocated)
 				{
 					amLocated = true;
 					Camera::TranslateTo(v->system.w.xyz);
@@ -463,7 +463,7 @@ namespace Network
 			#endif
 			if (vc.state.entityState.timestamp.rightNow)
 			{
-				if (!isMine)
+				if (!isOwnedByMe)
 					UI::HexGrid::RefreshContacts();
 			}
 			else
@@ -498,7 +498,7 @@ namespace Network
 			}
 			else
 			{
-				if (!s->isMine)
+				if (!s->isOwnedByMe)
 					UI::HexGrid::RefreshContacts();
 			}
 		}
@@ -564,7 +564,7 @@ namespace Network
 					#endif
 				}
 
-				if (!e->isMine)
+				if (!e->isOwnedByMe)
 					UI::HexGrid::RefreshContacts();
 			}
 			else
@@ -654,7 +654,7 @@ namespace Network
 			myID = id;
 			Objects::Faction::mine = ResolveFaction(myID);
 			myIDString = myID.ToString();
-			Objects::Faction::mine->isMine = true;
+			Objects::Faction::mine->isOwnedByMe = true;
 		}
 
 		void	PhaseChange(Protocol::PhaseChange&c);
@@ -1087,10 +1087,7 @@ namespace Network
 				gameHasBegun = true;
 				LogEvent(EventClass::Preset::uncommon,nullptr,"Game has begun");
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Animation::AllDone())
-				{
-					Objects::RefreshSkyHubConnections(0.f);
-					Animation::UpdateAutomation(CLOCATION);
-				}
+					OnPlayerControlBegin();
 			break;
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();
@@ -1384,7 +1381,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 
 			Objects::ForeachMobileWorldEntity([](const Objects::PWorldEntity&e)
 			{
-				if (e->health <= 0 || !e->isMine)
+				if (e->health <= 0 || !e->isOwnedByMe)
 					return;
 				Objects::Marker *m = Objects::Marker::Find(e->location);
 				if (m)
@@ -1394,7 +1391,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			#ifdef HAS_WINDOW
 				for (const auto&s : Objects::structures)
 				{
-					if (s->isMine && s->IsWorkingStructure() )
+					if (s->isOwnedByMe && s->IsWorkingStructure() )
 					{
 						Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
 						if (ws->AwaitsUserInteraction())
