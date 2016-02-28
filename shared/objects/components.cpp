@@ -709,14 +709,23 @@ namespace Objects
 
 
 				PCommandGroup	buildGroup = component.commands.AddChild("Build"),
-								transferGroup = component.commands.AddChild("Transfer"),
 								terraformGroup = component.commands.AddChild("Terraform"),
 								terraformRemoveGround = terraformGroup->AddChild("Remove Ground"),
 								terraformAddGround = terraformGroup->AddChild("Add Ground"),
 								structureGroup[Structure::Category::N];
 
+				#ifndef ONE_COMPOUND_PER_FACTION
+					PCommandGroup	transferGroup = component.commands.AddChild("Transfer");
+				#endif
+
 				for (index_t i = 0; i < Structure::Category::N; i++)
+				{
+					#ifdef ONE_COMPOUND_PER_FACTION
+						if (i == Structure::Category::Infrastructure)
+							continue;
+					#endif
 					structureGroup[i] =	buildGroup->AddChild(Structure::Category::Reinterpret(i).ToString());
+				}
 
 			
 
