@@ -2544,7 +2544,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 							return;
 						}
 					}
-					if (To<Objects::Tower>::DynamicCast(Objects::selectedEntity))
+					if (Objects::selectedEntity->IsTower())
 					{
 						if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 						{
