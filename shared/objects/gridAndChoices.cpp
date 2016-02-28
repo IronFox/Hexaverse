@@ -453,14 +453,11 @@ namespace Objects
 		const auto& n = Grid::low.grid.GetCell(cellID.stackID).neighborhood;
 
 		#ifndef CLIENT
-			int lower = clamp(cellID.height - 1, -Grid::CellStack::HalfRange, Grid::CellStack::HalfRange -1),
-				upper = clamp(cellID.height + 1, -Grid::CellStack::HalfRange, Grid::CellStack::HalfRange -1);
-			for (int h = lower; h <= upper; h++)
+			if (cellID.height > Grid::CellStack::TopHeight)
 			{
-				UINT32 layer = Grid::CellStack::ToLayer(h);
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
-					PStructure s = GetStructure(Grid::LCellIdI(n.neighborID[j],h));
+					PStructure s = Orbital::GetStation(n.neighborID[j]);
 					if (!s)
 						continue;
 					if (
@@ -477,6 +474,35 @@ namespace Objects
 
 					//if (_IsNeighbor(cellID, n, (*s)->location))
 					outNeighborhood.Append(s);
+				}
+			}
+			else
+			{
+				int lower = clamp(cellID.height - 1, -Grid::CellStack::HalfRange, Grid::CellStack::HalfRange -1),
+					upper = clamp(cellID.height + 1, -Grid::CellStack::HalfRange, Grid::CellStack::HalfRange -1);
+				for (int h = lower; h <= upper; h++)
+				{
+					UINT32 layer = Grid::CellStack::ToLayer(h);
+					for (int j = 0; j < n.numNeighbors; j++)
+					{
+						PStructure s = GetStructure(Grid::LCellIdI(n.neighborID[j],h));
+						if (!s)
+							continue;
+						if (
+								#ifndef CLIENT
+									!ignoreOwnership && 
+									!s->ConnectsToDifferentOwnership() &&
+								#endif
+								s->owner != referenceOwner 
+							)
+						{
+							//LogEvent(EventSignificance::Debug,s->get(),"Rejected due to ownership: "+referenceOwner.ToString()+" != "+(*s)->owner.ToString());
+							continue;
+						}
+
+						//if (_IsNeighbor(cellID, n, (*s)->location))
+						outNeighborhood.Append(s);
+					}
 				}
 			}
 		#else
