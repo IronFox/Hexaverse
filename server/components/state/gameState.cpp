@@ -1239,7 +1239,7 @@ namespace Game
 			Grid::LCellIdI location(startLocation,0);	//first 12 are corner cells
 			int h = Objects::FindApplicableGround(location,true);
 			location.height = h;
-			static const int want = 10;
+			static const int want = 100;
 			static const int stackHeight = want / Objects::NaturalResourceVector::TranslationFactor + (want % Objects::NaturalResourceVector::TranslationFactor ? 1 : 0);
 			Journal::currentRound.RegisterResourceCoverageChange(true,location.stackID,Objects::Resource::Fuel,stackHeight);
 			Journal::currentRound.RegisterResourceCoverageChange(true,location.stackID,Objects::Resource::Minerals,stackHeight);
