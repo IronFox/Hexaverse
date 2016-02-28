@@ -40,6 +40,11 @@ namespace Objects
 	class MobileEntityProducer
 	{
 	protected:
+		
+		#ifdef HAS_WINDOW
+			int2					commandOffset = int2(4,2);
+		#endif
+		
 		String						JobName(index_t index, const String&itemName, UINT32 roundsLeft)const;
 		UINT32						ProductionRounds( const PMobileEntity&v, bool isActive) const;
 
@@ -90,10 +95,15 @@ namespace Objects
 			return true;
 		}
 
+
 		void						AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName);
 
 		#ifdef HAS_WINDOW
 			void					VisitAllCommands(FCommandVisitor visitor,bool force);
+			void					SetCommandOffset(const int2&);
+		#else
+			void					SetCommandOffset(const int2&)	{};
+
 		#endif
 		bool						AwaitsUserInteraction() const;
 
