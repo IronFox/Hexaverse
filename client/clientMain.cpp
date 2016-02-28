@@ -1682,7 +1682,7 @@ bool loop()
 
 			Objects::Renderer::RenderProgressBars();
 
-			if (Objects::showArrow)
+			if (Objects::showArrow && !Dialog::IsModal())
 			{
 	//			display.SetDepthTest(false, false);
 				bool includeWater = false;
