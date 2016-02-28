@@ -1030,7 +1030,7 @@ namespace Receiver
 			case ConstName::Job_Construct:
 				return Objects::Component::Construct;
 			case ConstName::Job_SelfDetonate:
-				return Objects::Component::SelfDetonate;
+				return Objects::Component::Nuclear;
 		}
 		return Objects::Component::TerrainRemove;	//shouldn't happen, but not our case to handle here
 	}

@@ -59,15 +59,31 @@ namespace Objects
 
 		bool							Turret::ConsumesResources(ResourceFlagSet&res) const
 		{
+			bool rs = false;
 			if (this->isOrbital)
+			{
 				res |= Resource::Fuel;
+				rs = true;
+			}
 			if (CanAttack())
 			{
-				res |= ammoType;
-				return ammoNeedPerShot > 0 || this->isOrbital;
+				if (ammoNeedPerShot > 0)
+				{
+					res |= ammoType;
+					rs = true;
+				}
 			}
-			res |= Resource::Minerals;
-			return CanDo(Component::Construct) || CanDo(Component::Repair) || CanDo(Component::TerrainAdd) || this->isOrbital;
+			if (CanDo(Component::Construct) || CanDo(Component::Repair) || CanDo(Component::TerrainAdd))
+			{
+				res |= Resource::Minerals;
+				rs = true;
+			}
+			if (CanDo(Component::Nuclear))
+			{
+				res |= Resource::Uranium;
+				rs = true;
+			}
+			return rs;
 		}
 
 
@@ -1056,7 +1072,7 @@ namespace Objects
 						resourceCostOut = 0;
 						ASSERT__(selectedMobileEntity);
 						//PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::RegularSelfDetonationCosts,SelfDetonate);
+						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::RegularSelfDetonationCosts,Nuclear);
 					}
 					));
 
@@ -1068,7 +1084,7 @@ namespace Objects
 						costTypeOut = Resource::Uranium;
 						ASSERT__(selectedMobileEntity);
 						//PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DoomsdaySelfDetonationCosts,SelfDetonate);
+						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DoomsdaySelfDetonationCosts,Nuclear);
 					}
 					));
 
@@ -1090,7 +1106,7 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Uranium] = VehicleJob::DoomsdaySelfDetonationCosts;
 			#endif
-			component.operationSpeed[SelfDetonate] = 50;
+			component.operationSpeed[Nuclear] = 50;
 			component.healthMultiplier = 1;
 			component.scanningRange = 1;
 			component.uplinkTraffic = 30;
