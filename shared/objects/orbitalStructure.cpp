@@ -256,36 +256,37 @@ namespace Objects
 
 		/*virtual override*/ void			Hub::PrototypeSetup()
 		{
-			#ifdef HAS_WINDOW
-			commands.Add( new IconCommand("Enable",
-				[]()
-				{
-
-					Hub*s2 = dynamic_cast<Hub*>(selectedEntity.get());
-					if (s2)
-					{
-						if (!s2->IsEnabled() && !s2->CanEnable())
-						{
-							SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job using the respective buttons.");
-							return;
-						}
-						SignalEnableStructure(*s2, !s2->IsEnabled());
-					}
-				}
-				,[](bool controlEnabled)
-				{
-					BaseCommand::Flags rs = BaseCommand::Flags::None;
-					Hub*div = dynamic_cast<Hub*>(selectedEntity.get());
-					if (controlEnabled && div != nullptr)
-						rs |= BaseCommand::Flags::IsEnabled;
-					if (div && div->IsEnabled())
-						rs |= BaseCommand::Flags::IsPermaActive;
-					return rs;
-				}
-				,NoCosts
-			));
-			#endif
 			Super::PrototypeSetup();
+			#ifdef HAS_WINDOW
+				
+				commands.Add( new IconCommand("Enable",
+					[]()
+					{
+
+						Hub*s2 = dynamic_cast<Hub*>(selectedEntity.get());
+						if (s2)
+						{
+							if (!s2->IsEnabled() && !s2->CanEnable())
+							{
+								SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job using the respective buttons.");
+								return;
+							}
+							SignalEnableStructure(*s2, !s2->IsEnabled());
+						}
+					}
+					,[](bool controlEnabled)
+					{
+						BaseCommand::Flags rs = BaseCommand::Flags::None;
+						Hub*div = dynamic_cast<Hub*>(selectedEntity.get());
+						if (controlEnabled && div != nullptr)
+							rs |= BaseCommand::Flags::IsEnabled;
+						if (div && div->IsEnabled())
+							rs |= BaseCommand::Flags::IsPermaActive;
+						return rs;
+					}
+					,NoCosts
+				));
+			#endif
 			RegisterProduction(Ragnarok::globalPrototype);
 			RegisterProduction(Engineer::globalPrototype);
 		}

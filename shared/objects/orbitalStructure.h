@@ -197,8 +197,8 @@ namespace Objects
 				static const int		ProductionSpeed = 100;
 				static const int		EnergyConsumption = 10;
 
-				/**/					Hub(const OwnerParameter&owner, const Grid::LCellIdI&location, float time):Super(GetTurretType(),owner,location,time),EntityFactory(ProductionSpeed) {}
-				/**/					Hub():Super(GetTurretType()),EntityFactory(ProductionSpeed){}	//global prototype
+				/**/					Hub(const OwnerParameter&owner, const Grid::LCellIdI&location, float time):Super(GetTurretType(),owner,location,time),EntityFactory(ProductionSpeed) {EntityFactory::SetCommandOffset(int2(3,1));}
+				/**/					Hub():Super(GetTurretType()),EntityFactory(ProductionSpeed){EntityFactory::SetCommandOffset(int2(3,1));}	//global prototype
 
 				static int2				AllocateProductionSlot();
 
