@@ -67,8 +67,16 @@ namespace Objects
 				#ifndef ONE_COMPOUND_PER_FACTION
 					if (!v.resourceEnvironment.CanWithdraw(v,this->GetConsumedResourceType(),withdrawNow))
 					{
-						LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient "+String(this->GetConsumedResourceType().ToString())+" available (need "+String(withdrawNow)+"). Delaying operation.");
-						return JobDelayed;
+						if (v.resourceEnvironment.Generates(v,this->GetConsumedResourceType()))
+						{
+							LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient "+String(this->GetConsumedResourceType().ToString())+" available (need "+String(withdrawNow)+"). Delaying operation.");
+							return JobDelayed;
+						}
+						else
+						{
+							LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage. No compound to pull from. Aborting operation.");
+							return TerminalFailure;
+						}
 					}
 				//	session.ForceChangeStorage(Resource::Minerals,-withdrawNow);
 				#endif
