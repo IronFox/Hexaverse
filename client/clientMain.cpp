@@ -210,10 +210,10 @@ void	OnPlayerControlBegin()
 {
 	#ifdef HAS_WINDOW
 		UI::RefreshButtonState();
+		Objects::Renderer::UpdateInterPylonArrows();
 	#endif
 	Objects::RefreshSkyHubConnections(0.f);
 	Animation::UpdateAutomation(CLOCATION);
-	Objects::Renderer::UpdateInterPylonArrows();
 }
 
 #ifdef HAS_WINDOW
