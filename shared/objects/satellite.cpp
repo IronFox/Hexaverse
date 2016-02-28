@@ -13,12 +13,6 @@ namespace Objects
 		/*static*/ Buffer0<Satellite::THub>	Satellite::hubs;
 	#endif
 
-	#ifdef HAS_WINDOW
-		/*static*/ Buffer<EntityConstructionCommand>	SkyHub::constructionCommands;
-
-
-	#endif
-
 	/*static*/ count_t			Satellite::CountTurretOccurrences(const OwnerParameter&o,Component::Turret*t)
 	{
 		count_t rs = 0;
@@ -153,12 +147,10 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void		SkyHub::VisitAllCommands(FCommandVisitor visitor)
+		/*virtual override*/ void		SkyHub::VisitAllCommands(FCommandVisitor visitor,bool force)
 		{
-			Super::VisitAllCommands(visitor);
-			foreach (constructionCommands,cmd)
-				visitor(*cmd);
-			MobileEntityProducer::VisitAllCommands(visitor);
+			Super::VisitAllCommands(visitor,force);
+			MobileEntityProducer::VisitAllCommands(visitor,force);
 		}
 
 
@@ -411,13 +403,13 @@ namespace Objects
 	/*static*/ void SkyHub::RegisterProduction(const PWorldEntity&s)
 	{
 		#ifdef HAS_WINDOW
-			int2 at = AllocateProductionSlot();
+			//int2 at = AllocateProductionSlot();
 			CallbackCommand::FOnExecute exec = s->IsStructure() 
 											? CallbackCommand::FOnExecute(std::bind(&Component::Terraformer::Cmd::Construct, To<Structure>::Cast(s))) 
 											: CallbackCommand::FOnExecute(std::bind(&MyCmd::Build, s));
 			bool isStructure = s->IsStructure();
-			constructionCommands.Append(
-				EntityConstructionCommand(at, /*"Build " + */s->GetTypeName(), nullptr,nullptr, s,
+			commands.Add(new
+				EntityConstructionCommand(s->GetTypeName(), nullptr,nullptr, s,
 				exec,
 				[isStructure](bool controlEnabled)->BaseCommand::Flags
 				{
@@ -425,8 +417,7 @@ namespace Objects
 						return CommonCmd::IdleCheck(controlEnabled);
 					return MyCmd::CanBuildStructure() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 				}
-				));
-			constructionCommands.last().RasterizeImage();
+				))->RasterizeImage();
 		#endif
 	}
 
@@ -499,44 +490,28 @@ namespace Objects
 
 
 	#ifdef ONE_COMPOUND_PER_FACTION
-		#if defined HAS_WINDOW || !defined CLIENT
-			PSkyHub	Satellite::GetClosestExternalSupplier(float&quadraticDistance)
-			{
-				float distance = std::numeric_limits<float>::max();
-				PSkyHub found;
-				#ifdef CLIENT
-					for (index_t i = 0; i < skyLinks.Count(); i++)
+		PSkyHub	Satellite::GetClosestExternalSupplier(float&quadraticDistance)
+		{
+			float distance = std::numeric_limits<float>::max();
+			PSkyHub found;
+			#ifdef CLIENT
+				for (index_t i = 0; i < skyLinks.Count(); i++)
+				{
+					//WSkyLinkStructure,WWorkingStructure
+					PSkyLinkStructure link = skyLinks[i].first.lock();
+					PWorkingStructure str = skyLinks[i].second.lock();
+					if (!link || !str)
 					{
-						//WSkyLinkStructure,WWorkingStructure
-						PSkyLinkStructure link = skyLinks[i].first.lock();
-						PWorkingStructure str = skyLinks[i].second.lock();
-						if (!link || !str)
-						{
-							LogEvent(EventClass::Preset::error,this,"Removing lost sky link #"+String(i));
-							skyLinks.Erase(i);
-							i--;
-							continue;
-						}
-						
-						if (str->owner == owner && !link->connectedToHub.expired())
-						{
-							PSkyHub hub = link->connectedToHub.lock();
-							if (hub.get() != this)
-							{
-								float d2 = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
-								if (d2 < distance)
-								{
-									distance = d2;
-									found = hub;
-								}
-							}
-						}
+						LogEvent(EventClass::Preset::error,this,"Removing lost sky link #"+String(i));
+						skyLinks.Erase(i);
+						i--;
+						continue;
 					}
-				#else
-					for (const auto&sat : owner->skyHubs)
+						
+					if (str->owner == owner && !link->connectedToHub.expired())
 					{
-						PSkyHub hub = sat.lock();
-						if (hub && hub.get() != this && !hub->connectedTo.expired())
+						PSkyHub hub = link->connectedToHub.lock();
+						if (hub.get() != this)
 						{
 							float d2 = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 							if (d2 < distance)
@@ -546,11 +521,25 @@ namespace Objects
 							}
 						}
 					}
-				#endif
-				quadraticDistance = distance;
-				return found;
-			}
-		#endif
+				}
+			#else
+				for (const auto&sat : owner->skyHubs)
+				{
+					PSkyHub hub = sat.lock();
+					if (hub && hub.get() != this && !hub->connectedTo.expired())
+					{
+						float d2 = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
+						if (d2 < distance)
+						{
+							distance = d2;
+							found = hub;
+						}
+					}
+				}
+			#endif
+			quadraticDistance = distance;
+			return found;
+		}
 	#else
 
 		void	Satellite::UpdateHubMap()

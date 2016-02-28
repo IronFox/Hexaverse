@@ -90,9 +90,7 @@ namespace Objects
 			};
 		public:
 			#ifdef HAS_WINDOW
-	//			typedef Objects::IconCommand	Command;
-				Buffer0<IconCommand>			iconCommands;
-				Buffer0<EntityConstructionCommand>	constructionCommands;
+				CommandContainer			commands;
 
 				Array<std::pair<Geometry,DX11::InstructionBlock32> >	parts;
 			#endif
@@ -109,7 +107,7 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				//typedef std::function<void(EntityCommand&cmd)>	FCommandVisitor;
 
-				void						VisitAllCommands(FCommandVisitor visitor);
+				void						VisitAllCommands(FCommandVisitor visitor, bool force);
 			#endif
 
 			bool							TestIntersection(float zOffset, float x, float y, const TVec3<>&b, const TVec3<>&d, float & distance);

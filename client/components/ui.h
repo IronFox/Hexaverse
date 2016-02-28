@@ -9,10 +9,10 @@ namespace UI
 	{
 		#ifdef HAS_WINDOW
 			void		RefreshContacts();
-			void		RefreshTutorials();
+			//void		RefreshTutorials();
 		#else
 			inline void	RefreshContacts()	{}
-			inline void	RefreshTutorials()	{}
+			//inline void	RefreshTutorials()	{}
 		#endif
 	}
 }
@@ -135,42 +135,170 @@ namespace UI
 			static const int2 DynamicRowOffset(5,1);
 
 
-			class TutorialCommand : public Objects::IconCommand
+			namespace BottomRightPanel
 			{
-				typedef Objects::IconCommand	Super;
 
-			public:
-				/**/				TutorialCommand() : Super(int2(1,1),"Tutorial",
-										[](){},
-										[](bool b)->BaseCommand::Flags
-										{
-											return TutorialCommand::IsEnabled(b) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
-										},
-										Objects::NoCosts)
-										{}
-
-
-				static bool				IsEnabled(bool)
+				class Icon : public Objects::BaseCommand
 				{
-					return Dialog::HasMoreTutorials() && !Dialog::IsModal();
+					typedef Objects::BaseCommand	Super;
+				public:
+					/**/					Icon(const int2&coords, const String&name) : Super(name)
+											{
+												LoadIcon();
+												gridCoords = coords;
+											}
+				};
 
-
-				}
-
-				virtual void			Execute() override
+				class TutorialCommand : public Icon
 				{
-					Dialog::ShowNextTutorial();
-				}
+					typedef Icon			Super;
+				public:
+					/**/					TutorialCommand() : Super(int2(1,1),"Tutorial") {}
 
-				virtual void			CompileLabel(Label&outResult) override
+					virtual void			Refresh(bool)
+					{
+						state = Dialog::HasMoreTutorials() && !Dialog::IsModal() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+					}
+
+					virtual void			Execute() override
+					{
+						Dialog::ShowNextTutorial();
+					}
+
+					virtual void			CompileLabel(Label&outResult) override
+					{
+						outResult << (Dialog::HasMoreTutorials() ? "New Tutorial Messages" : "No Messages");
+					}
+				};
+
+				class UndoCommand : public Icon
 				{
-					outResult << (Dialog::HasMoreTutorials() ? "New Tutorial Messages" : "No Messages");
-				}
+					typedef Icon			Super;
+				public:
+					/**/					UndoCommand() : Super(int2(5,1),"Undo") {}
+					/**/					UndoCommand(const int2&coords, const String&name) : Super(coords,name) {}
+
+					virtual void			Refresh(bool controlsEnabled) override
+					{
+						state = BaseCommand::Flags::None;
+						if (Dialog::IsModal() || !controlsEnabled || !Objects::selectedEntity)
+							return;
+						if (Objects::selectedMobileEntity)
+						{
+							if (Objects::selectedMobileEntity->myTasks.IsEmpty() && Objects::activeCursorMode == Objects::CursorMode::Idle)
+								return;
+						}
+						else
+							if (Objects::selectedEntity->IsTower())
+							{
+								if (To<Objects::Tower>::Cast( Objects::selectedEntity )->attackQueue.IsEmpty()  && Objects::activeCursorMode == Objects::CursorMode::Idle)
+									return;
+							}
+							else
+								return;
+
+						state |= BaseCommand::Flags::IsEnabled;
+					}
+
+					virtual void			Execute() override
+					{
+						Objects::VehicleCmd::UndoOperation();
+					}
+
+					virtual void			CompileLabel(Label&outResult) override
+					{
+						String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
+						outResult << "Abort current operation or undo last operation of "+name;
+					}
+				};
+
+				class AbortCommand : public UndoCommand
+				{
+					typedef UndoCommand		Super;
+				public:
+					/**/					AbortCommand() : Super(int2(4,1),"Abort") {}
+
+					virtual void			Execute() override
+					{
+						Objects::VehicleCmd::AbortOperation();
+					}
+
+					virtual void			CompileLabel(Label&outResult) override
+					{
+						String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
+						outResult << "Abort any currently active operation and clear all scheduled operations of "+name;
+					}
+				};
+
+				class DemolishCommand : public Icon
+				{
+					typedef Icon			Super;
+				public:
+					/**/					DemolishCommand() : Super(int2(2,1),"Demolish") {}
+					/**/					DemolishCommand(const int2&coords, const String&name) : Super(coords,name) {}
+
+					virtual void			Refresh(bool controlsEnabled) override
+					{
+						state = BaseCommand::Flags::None;
+						if (Dialog::IsModal() || !controlsEnabled || !Objects::selectedEntity || Objects::selectedEntity->IsIndestructible())
+							return;
+
+						state |= BaseCommand::Flags::IsEnabled;
+					}
+
+					virtual void			Execute() override
+					{
+						Objects::CommonCmd::DemolishSelected();
+					}
+
+					virtual void			CompileLabel(Label&outResult) override
+					{
+						String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
+						outResult << "Permanently destroy "+name;
+					}
+				};
+
+				class SleepCommand : public Icon
+				{
+					typedef Icon			Super;
+				public:
+					/**/					SleepCommand() : Super(int2(3,1),"Sleep") {}
+					/**/					SleepCommand(const int2&coords, const String&name) : Super(coords,name) {}
+
+					virtual void			Refresh(bool controlsEnabled) override
+					{
+						state = BaseCommand::Flags::None;
+						if (Dialog::IsModal() || !controlsEnabled || !Objects::selectedEntity)
+							return;
+
+						state |= BaseCommand::Flags::IsEnabled;
+
+						if (Objects::selectedEntity->IsSleeping())
+							state |= BaseCommand::Flags::IsPermaActive;
+					}
+
+					virtual void			Execute() override
+					{
+						Objects::VehicleCmd::Sleep();
+					}
+
+					virtual void			CompileLabel(Label&outResult) override
+					{
+						String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
+						if (Objects::selectedEntity && Objects::selectedEntity->IsSleeping())
+							outResult << "Wake "+name;
+						else
+							outResult << "Put "+name+" to sleep";
+					}
+				};
 
 
-			};
 
-
+				/**
+				Updates state and presence of all buttons of this panel
+				*/
+				void		Refresh();
+			}
 
 
 			struct Group
@@ -390,7 +518,6 @@ namespace UI
 
 			extern EntityFocusCommand					selectedFocus;
 
-			extern std::shared_ptr<TutorialCommand>		tutorialCommand;
 
 
 		}
@@ -521,7 +648,6 @@ namespace UI
 
 
 			void		RefreshContacts();
-			void		RefreshTutorials();
 			void		Configure(const Objects::PWorldEntity&e);
 		}
 

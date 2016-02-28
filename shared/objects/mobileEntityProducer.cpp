@@ -95,10 +95,10 @@ namespace Objects
 				selected = Grid::LCellIdI::Invalid;
 		}
 
-		void				MobileEntityProducer::VisitAllCommands(WorldEntity::FCommandVisitor visitor)
+		void				MobileEntityProducer::VisitAllCommands(WorldEntity::FCommandVisitor visitor,bool force)
 		{
 			for (index_t i = 0; i < queue.Count(); i++)
-				visitor(queue[i].commandToTerminate);
+				queue[i].commandToTerminate.VisitMembers(visitor,force);
 		}
 
 		
@@ -414,6 +414,18 @@ namespace Objects
 			return "#"+String(index)+" "+itemName+ " ("+String(roundsLeft)+")";
 		}
 
+		#ifdef HAS_WINDOW
+		void				MobileEntityProducer::SetCommandOffset(const int2&c)
+		{
+			if (commandOffset == c)
+				return;
+			commandOffset = c;
+			int index = 0;
+			foreach (queue,item)
+				item->commandToTerminate.SetCoords(commandOffset + int2(index++,0));
+		}
+		#endif
+
 		void				MobileEntityProducer::AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName)
 		{
 			//PSatellite	satellite;
@@ -459,7 +471,7 @@ namespace Objects
 				item.roundsToCompletion = rounds;
 
 				#ifdef HAS_WINDOW
-					item.commandToTerminate = EntityConstructionCommand(int2(5+index,2), JobName(index,item.name,rounds),base,turret,sat,[id,index]()
+					item.commandToTerminate = EntityConstructionCommand(commandOffset + int2(index,0), JobName(index,item.name,rounds),base,turret,sat,[id,index]()
 					{
 //						PWorkingStructure s = To<WorkingStructure>::DynamicCast(e);
 	//					ASSERT__(s);

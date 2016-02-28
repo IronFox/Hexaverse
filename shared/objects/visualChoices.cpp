@@ -33,12 +33,11 @@ namespace Objects
 	void		RefreshCommands(bool controlEnabled)
 	{
 		controlIsEnabled = controlEnabled;
-		foreach (globalCommands, cmd)
-			(*cmd).Refresh(controlEnabled);
+		globalCommands.Refresh(controlEnabled);
 	
 		if (selectedEntity)
 		{
-			selectedEntity->VisitAllCommands(controlEnabled ? RefreshCommand<true> : RefreshCommand<false>);
+			selectedEntity->VisitAllCommands(controlEnabled ? RefreshCommand<true> : RefreshCommand<false>,false);
 		}
 	}
 

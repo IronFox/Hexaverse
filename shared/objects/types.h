@@ -64,6 +64,7 @@ namespace Objects
 	class Compound;
 	class MobileResourceEnvironment;
 
+	DECLARE_POINTER_CLASS(CommandGroup)
 
 
 	CONSTRUCT_ENUMERATION7(MobilePlacementResult,

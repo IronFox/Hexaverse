@@ -571,6 +571,9 @@ namespace Objects
 		#endif
 		virtual float			GetMaxScanningRange() const override	{return turret->scanningRange;};	//returns the effective scanning range of the local entity
 
+		#ifndef CLIENT
+			virtual void		OnDestroy(RemovalType, float&atTime) override;	
+		#endif
 
 	protected:
 	};

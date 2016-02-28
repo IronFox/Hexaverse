@@ -21,7 +21,11 @@ namespace Objects
 {
 	extern PWorldEntity selectedEntity;
 
-	Buffer0<GlobalCommand>globalCommands;
+	CommandContainer	globalCommands;
+	PCommandGroup		viewCommands;
+
+	/*static*/ Buffer0<CommandGroup*>		CommandGroup::activeGroupPath;
+
 
 	/*static*/ GenericHashTable<PathString, DX11::Texture>	BaseCommand::textureMap;
 
@@ -94,10 +98,12 @@ namespace Objects
 	/*static*/ void		EntityCommand::UpdateTexture(BaseCommand&target, const PWorldEntity&e, bool isPrototype, const float4&tone/* = float4(0)*/)
 	{
 		float distanceFactor = 1.f;
+		if (e->IsMobile())
+			distanceFactor *= 0.5f;
 		if (e->IsStructure())
 			distanceFactor += 0.1f * To<Structure>::Cast(e)->GetHeight();
 		if (e->IsSatellite())
-			distanceFactor *= 1.5f;
+			distanceFactor *= 3.f;
 
 		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(e),distanceFactor);
 
@@ -459,6 +465,71 @@ namespace Objects
 	}
 
 
+	/*virtual override*/ void	CommandGroup::Execute()
+	{
+		bool doHide = state & Flags::IsPermaActive;
+
+		//ASSERT__(activeGroupPath.IsEmpty() || activeGroupPath.Contains(this));
+
+		index_t at = activeGroupPath.GetIndexOf(this);
+		if (at != InvalidIndex)
+		{
+			for (index_t i = at+1; i < activeGroupPath.Count(); i++)
+				activeGroupPath[i]->Collapse();
+			if (doHide)
+			{
+				activeGroupPath[at]->Collapse();
+			}
+			activeGroupPath.Truncate(at+1);
+			ASSERT_EQUAL__(at+1,activeGroupPath.Count());
+		}
+		else
+		{
+			at = activeGroupPath.GetIndexOf(parent);
+			if (at == InvalidIndex)
+			{
+				for (index_t i = 0; i < activeGroupPath.Count(); i++)
+					activeGroupPath[i]->Collapse();
+				activeGroupPath.Clear();
+			}
+			else
+			{
+				for (index_t i = at+1; i < activeGroupPath.Count(); i++)
+					activeGroupPath[i]->Collapse();
+				activeGroupPath.Truncate(at+1);
+			}
+			activeGroupPath << this;
+		}
+
+
+		if (!doHide)
+			Expand();
+
+		//SignalButtonTreeChange();
+	}
+
+	PCommandGroup	CommandContainer::AddChild(const String&name)
+	{
+		PCommandGroup rs (new CommandGroup(name));
+		Add(rs );
+		return rs;
+	}
+	PBaseCommand			CommandContainer::Add(const PBaseCommand&newCommand)
+	{
+		DBG_ASSERT__(!members.Contains(newCommand));
+		newCommand->gridCoords = baseCoords+int2((int)members.Count(),0);
+		members << newCommand;
+		if (newCommand->IsGroup())
+		{
+			PCommandGroup group = To<CommandGroup>::Cast(newCommand);
+			group->baseCoords = baseCoords;
+			group->baseCoords.y = newCommand->gridCoords.y+1;
+			group->baseCoords.x += group->baseCoords.y/2;
+			group->parent = this;
+
+		}
+		return newCommand;
+	}
 
 
 

@@ -706,6 +706,7 @@ namespace Reflection
 
 			VAR(closedGame,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame)
 			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::ConfigOverridesSavegame)
+			VAR(bombsExplodeWhenDestroyed,RuntimeConfig,false,true,Variable::Persistence::ConfigOverridesSavegame)
 			VAR(startBases,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame)
 			VAR(basesRequired,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame)
 			VAR(exposeActionLeftToHostileFactions,Game::Config,false,true,Variable::Persistence::ConfigOverridesSavegame)
@@ -773,7 +774,10 @@ namespace Reflection
 		bool allGood = true;
 		std::shared_ptr<Variable::PersistenceAttachment> a = To<Variable::PersistenceAttachment>::DynamicCast(dir->attachment);
 		if (!a)	//externally created
+		{
+			DBG_ASSERT__(dir != state.GetRoot());	//should never be in here for root
 			return true;
+		}
 
 		std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(dir->attachment);
 		if (ref)
@@ -1030,7 +1034,7 @@ namespace Reflection
 	static CLI::PFolder FindFolderWithAttachmentSource(const CLI::PVariable&v, const CLI::PFolder&current)
 	{
 		std::shared_ptr<Variable::PersistenceAttachment> a = To<Variable::PersistenceAttachment>::DynamicCast(current->attachment);
-		if (!a)	//externally created
+		if (!a && current != state.GetRoot())	//externally created
 			return CLI::PFolder();
 
 		std::shared_ptr<Variable::FileReferenceAttachment> ref = To<Variable::FileReferenceAttachment>::DynamicCast(current->attachment);
@@ -1055,6 +1059,7 @@ namespace Reflection
 	void	ReloadPlanet()
 	{
 		CLI::PFolder f = FindFolderWithAttachmentSource(Variable::planetType);
+		ASSERT__(f);
 		if (f)
 		{
 			FeedSubDirectory(f, nullptr, false, std::function<bool(const Variable::PBase&)>());

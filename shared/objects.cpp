@@ -219,11 +219,12 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			foreach (Component::vehicleTurretComponents,tc)
-				(*tc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();});
+				(*tc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();},true);
 			foreach (Component::baseComponents,bc)
-				(*bc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();});
+				(*bc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();},true);
 
-			globalCommands.Append(GlobalCommand(int2(0,0),"End Round", [](){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
+			globalCommands.baseCoords = BaseCommand::coordOffset;
+			globalCommands.Add(new GlobalCommand("End Round", [](){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
 			[](bool controlEnabled)->BaseCommand::Flags
 			{
 				BaseCommand::Flags rs = BaseCommand::Flags::None;
@@ -235,28 +236,31 @@ namespace Objects
 					if (ShouldSignalRoundEnd())
 						rs |= BaseCommand::Flags::IsFlashing;
 				return rs;
-			}));
+			})) ->SetCoords(int2());
 
+			viewCommands = globalCommands.AddChild("View");
+			viewCommands->SetCoords(int2(1,0));
 
-			globalCommands.Append(GlobalCommand(int2(0,2),"Highlight Compounds", &GlobalCmd::ToggleCompoundHightlights
+			viewCommands->Add( new GlobalCommand("Highlight Compounds", &GlobalCmd::ToggleCompoundHightlights
 					, GlobalPermaSwitch(anyCompoundsColored)
 				));
-			globalCommands.Append(GlobalCommand(int2(1,2),"Clip Terrain", &GlobalCmd::ToggleSeeThrough
+
+			viewCommands->Add( new GlobalCommand("Clip Terrain", &GlobalCmd::ToggleSeeThrough
 					,GlobalPermaSwitch(Grid::SeeThrough::IsEnabled)
 				));
-			globalCommands.Append(GlobalCommand(int2(2,2),"Clip-View Down", &GlobalCmd::SeeThroughDown
+			viewCommands->Add( new GlobalCommand("Clip-View Down", &GlobalCmd::SeeThroughDown
 					,[](bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
 				));
-			globalCommands.Append(GlobalCommand(int2(3,2),"Clip-View Up", &GlobalCmd::SeeThroughUp
+			viewCommands->Add( new GlobalCommand("Clip-View Up", &GlobalCmd::SeeThroughUp
 					,[](bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
 				));
 
-			globalCommands.Append(GlobalCommand(int2(2,0),"Hide Objects", &GlobalCmd::ToggleObjectView
+			viewCommands->Add( new GlobalCommand("Hide Objects", &GlobalCmd::ToggleObjectView
 					,GlobalPermaSwitch([](){return !objectView;})
 				));
 
 
-			globalCommands.Append(GlobalCommand(int2(0,1),"Show Resources", []()
+			viewCommands->Add( new GlobalCommand("Show Resources", []()
 					{
 						resourceView = !resourceView;
 						for (int j = 0; j < BaseGrid::NumFamilies; j++)
@@ -266,13 +270,13 @@ namespace Objects
 					,GlobalPermaSwitch(resourceView)
 				));
 
-			globalCommands.Append(GlobalCommand(int2(1,1),"Show Ranges", []()
+			viewCommands->Add( new GlobalCommand("Show Ranges", []()
 					{
 						showFriendlyRanges = !showFriendlyRanges;
 					}
 					, GlobalPermaSwitch(showFriendlyRanges)
 				));
-			globalCommands.Append(GlobalCommand(int2(2,1),"Show Hostile Ranges", []()
+			viewCommands->Add( new GlobalCommand("Show Hostile Ranges", []()
 					{
 						showHostileRanges = !showHostileRanges;
 					}

@@ -2504,17 +2504,16 @@ namespace Objects
 				camera.angle.x = 45.f;
 				camera.angle.z = 45.f;
 				//camera.angle.y = 180.f;	//counters direct3d v-flipping during sampling
-				camera.location.z = 0.5f;
 				camera.UpdateProjection2(1,0.001f,100000.f,30.f);
-				camera.UpdateView();
 			}
 			else
 			{
 				fbo.RecreateColorTarget(0,DXGI_FORMAT_R8G8B8A8_UNORM);	//previous one is in use
 
 				camera.retraction = float3(0,0,-6 * distanceFactor);
-				camera.UpdateView();
 			}
+			camera.location.z = 0.5f*distanceFactor;
+			camera.UpdateView();
 			display.TargetFBO(fbo);
 			display.ClearTarget(fbo,float4(tone.rgb*0.5f,tone.a));//, float4(0,1,0,1));
 

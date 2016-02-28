@@ -234,7 +234,7 @@ namespace Objects
 			float terrainExplosionRadius = float(explosionRadius)-0.5f;
 			//float coreRadius = core*core;
 			float outerRadius = explosionRadius*explosionRadius;
-			static Buffer0<PWorldEntity>	toDestroy;
+			static Buffer0<PWorldEntity>	toDestroy,allLivingAffected;
 			static Buffer0<PStructure>		affectedStructures;
 			static Buffer0<PVehicle>		affectedVehicles;
 			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime](const PWorldEntity e)
@@ -260,6 +260,7 @@ namespace Objects
 				{
 					if (d2 <= outerRadius)
 					{
+						atTime = std::max(atTime,e->motionTime);
 						e->TakeDamage(damageLevel);
 						if (e->health <= 0)
 						{
@@ -273,7 +274,7 @@ namespace Objects
 				}
 				if (e->health <= 0)
 					return;	//prevent being added to affect*
-
+				allLivingAffected << e;
 				{
 					Vec::mult(c,Grid::ToRadius(e->location.height -1),p);	//include own lower level
 					float d3 = Vec::quadraticDistance(p,center);
@@ -304,12 +305,15 @@ namespace Objects
 					}
 				}
 			});
-
+			atTime += timeEpsilon;
 			foreach (toDestroy,d)
 			{
+				(*d)->SyncTime(atTime);
 				Remove(*d,Objects::RemovalType::UncontrolledExplosion,atTime,false);
 			}
 			toDestroy.Clear();
+
+
 
 			if (terrainExplosionRadius > 0)
 			{
@@ -345,6 +349,11 @@ namespace Objects
 					}
 				}
 			}
+			foreach (allLivingAffected,d)
+			{
+				(*d)->SyncTime(atTime);
+			}
+			allLivingAffected.Clear();
 			affectedStructures.Clear();
 			affectedVehicles.Clear();
 		}
@@ -373,13 +382,15 @@ namespace Objects
 				}
 				if (d2 <= outerRadius)
 				{
+					atTime = std::max(atTime,e->motionTime);
 					toDisable << e;
 				}
 			});
-
+			atTime += timeEpsilon;
 			foreach (toDisable,_d)
 			{
 				PWorldEntity d = *_d;
+				d->SyncTime(atTime);
 				d->HandleEMPDamage(damageLevel, atTime);
 			}
 			toDisable.Clear();
@@ -1393,7 +1404,7 @@ namespace Objects
 		if (!move)
 		{
 			LogEvent(EventSignificance::Debug,e.get(),"OnDestroy()");
-			e->OnDestroy(timestamp);
+			e->OnDestroy(t,timestamp);
 		}
 		#ifdef CLIENT
 			if (isStructure)

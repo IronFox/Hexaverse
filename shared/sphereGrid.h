@@ -1844,6 +1844,9 @@ namespace Grid
 	TVec3<> ToWorld(const LCellIdU&);
 	TVec3<> ToWorld(const LCellIdI&);
 
+	inline HCellIdI	ToHigh(const LCellIdI&cellID)	{return HCellIdI(low.grid.GetCell(cellID.stackID).higherEquivalent,cellID.height); }
+	inline HCellIdU	ToHigh(const LCellIdU&cellID)	{return HCellIdU(low.grid.GetCell(cellID.stackID).higherEquivalent,cellID.layer); }
+
 
 	#pragma pack(push)
 	#pragma pack(1)
@@ -2229,6 +2232,21 @@ namespace Grid
 			const float3&	GetSunDirection();
 			void	PerFrameUpdateSunDirection();
 			void	UpdateSunDirection(const float3&, bool shadows = true);
+			/**
+			Retrieves a directional vector of the sun at an altered rotation speed.
+			Given speed-factor 1, the result exactly matches the current direction of the sun.
+			@param[out] outDir Resulting sun direction. Normalized.
+			@param speedFactor Factor to accelerate (or slow down) regular sun speed by. Any non-NaN, non-INF value is good.
+			@return Angle used to compute the resulting outDir. Depending on game progression and @a speedFactor,
+					this value can be large.
+			*/
+			double	GetAcceleratedSunDirection(TVec3<>&outDir, float speedFactor=1.f);
+			void	ResetSunRotation();
+			/**
+			Retrieves the orientation system of the sun.
+			The z-axis is the rotation axis, the other two axes are orthogonal to each other and the z-axis but otherwise arbitrary.
+			*/
+			const TMatrix3<>& GetSunSystem();
 		#endif
 	#else
 

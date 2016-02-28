@@ -10,6 +10,7 @@
 #include "cursorMode.h"
 #include "types.h"
 #include "resource.h"
+#include "../cast.h"
 
 namespace Objects
 {
@@ -28,7 +29,7 @@ namespace Objects
 
 
 
-	class BaseCommand
+	class BaseCommand : public std::enable_shared_from_this<BaseCommand>
 	{
 	public:
 		enum class Flags
@@ -50,15 +51,8 @@ namespace Objects
 		static const int2 coordOffset;
 
 
-		void			swap(BaseCommand&other)
-		{
-			name.swap(other.name);
-			swp(state,other.state);
-			swp(gridCoords,other.gridCoords);
-			texture.swap(other.texture);
-			swp(screenRect,other.screenRect);
-		}
 		/**/			BaseCommand(const String&name):name(name) {}
+		/**/			BaseCommand(const int2&coords, const String&name):name(name) {SetCoords(coords);}
 		/**/			BaseCommand()	{}
 
 		/**
@@ -80,7 +74,7 @@ namespace Objects
 
 		virtual void	RasterizeImage()	{}
 		virtual bool	IsGroup() const {return false;}
-		virtual void	VisitChildren(const FCommandVisitor&visitor) {visitor(*this);}
+		virtual void	VisitMembers(const FCommandVisitor&visitor, bool force) {visitor(*this);}
 
 		void			LoadIcon();
 		void			LoadIcon(const String&name);
@@ -206,16 +200,49 @@ namespace Objects
 		/**/			IconCommand()	{}
 		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name,exec,check,getCosts)	{LoadIcon();}
 		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check):Super(name,exec,check)	{LoadIcon();}
-		/**/			IconCommand(const int2&coords, const String&name, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name,exec,check,getCosts)	{LoadIcon(); SetCoords(coords);}
-		/**/			IconCommand(const int2&coords, const String&name, const FOnExecute&exec, const FCheck&check):Super(name,exec,check)	{LoadIcon(); SetCoords(coords);}
+	//	/**/			IconCommand(const int2&coords, const String&name, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name,exec,check,getCosts)	{LoadIcon(); SetCoords(coords);}
+		///**/			IconCommand(const int2&coords, const String&name, const FOnExecute&exec, const FCheck&check):Super(name,exec,check)	{LoadIcon(); SetCoords(coords);}
+	};
+
+	class CommandContainer
+	{
+	protected:
+		Buffer0<PBaseCommand>		members;
+		const CommandContainer		*parent = nullptr;	//!< Must not access members
+
+	public:
+		int2						baseCoords;
+
+		PCommandGroup	AddChild(const String&name);
+
+		void			VisitMembers(const FCommandVisitor&visitor, bool force)	const
+		{
+			foreach (members,m)
+				(*m)->VisitMembers(visitor,force);
+		}
+
+		void			Refresh(bool controlEnabled)
+		{
+			foreach (members,m)
+				(*m)->Refresh(controlEnabled);
+		}
+
+		PBaseCommand	Add(BaseCommand*newCommand)	{ return Add(PBaseCommand(newCommand));}
+		PBaseCommand	Add(const PBaseCommand&newCommand);
+		PBaseCommand	GetLast() const {return members.last();}
 	};
 
 
-	class BaseGroup : public IconCommand	//for size/compatibility reasons
+	/**
+	Button that represents a whole group of other buttons (including tabs)
+	Only one branch of groups can be visible at any time.
+	This version of Group must hold copies of one type of command. It cannot be used to store shared_ptr of commands!
+	*/
+	class CommandGroup : public BaseCommand, public CommandContainer	//for size/compatibility reasons
 	{
-		typedef IconCommand Super;
+		typedef BaseCommand Super;
 
-		static Buffer0<BaseGroup*>		activeGroupPath;
+		static Buffer0<CommandGroup*>		activeGroupPath;
 
 		void	Collapse()
 		{
@@ -231,77 +258,29 @@ namespace Objects
 			state |= Flags::IsPermaActive;
 		}
 
+
 	public:
-		/**/			BaseGroup(const String&name) : Super(name)	{}
+		/**/			CommandGroup(const String&name) : Super(name)	{LoadIcon();}
+		
 
-		virtual void	Execute() override
+		virtual void	Execute() override;
+		virtual void	VisitMembers(const FCommandVisitor&visitor, bool force)	override
 		{
-			bool doHide = state & Flags::IsPermaActive;
-
-			ASSERT__(activeGroupPath.IsEmpty() || activeGroupPath.Contains(this));
-
-			index_t at = activeGroupPath.GetIndexOf(this);
-			if (at != InvalidIndex)
+			Super::VisitMembers(visitor,force);
+			if (force || state & Flags::IsPermaActive)
 			{
-				if (doHide)
-				{
-					for (index_t i = at; i < activeGroupPath.Count(); i++)
-						activeGroupPath[i]->Collapse();
-					activeGroupPath.Truncate(at+1);
-				}
-				else
-					ASSERT_EQUAL__(at+1,activeGroupPath.Count());
-			}
-			else
-				activeGroupPath.Clear();
-
-
-			if (!doHide)
-				Expand();
-		}
-		virtual	void	Refresh(bool controlEnabled) override							{}
-
-	};
-
-	/**
-	Button that represents a whole group of other buttons (including tabs)
-	Only one branch of groups can be visible at any time.
-	This version of Group must hold copies of one type of command. It cannot be used to store shared_ptr of commands!
-	*/
-	template <typename MemberCommand>
-	class Group : public BaseGroup
-	{
-		typedef BaseGroup Super;
-
-		void			VisitGroupChildren(const FCommandVisitor&visitor, bool expand)
-		{
-			Super::VisitChildren(visitor);
-			if (expand)
-			{
-				foreach (children,c)
-					c->VisitChildren(visitor);
-				foreach (subGroups,c)
-					c->VisitChildren(visitor);
+				CommandContainer::VisitMembers(visitor,force);
 			}
 		}
 
-	public:
-		/**/			Group(const String&name):Super(name)
-		{}
-
-
-		Buffer0<MemberCommand>		children;
-		Buffer0<Group<MemberCommand>,Swap>			subGroups;
-
-
+		virtual	void	Refresh(bool controlEnabled) override {/*CommandContainer::Refresh(controlEnabled);*/}
 		virtual bool	IsGroup() const override {return true;}
-		virtual void	VisitChildren(const FCommandVisitor&visitor) {VisitGroupChildren(visitor, state & Flags::IsPermaActive); }
 
-		void			swap(Group&other)
+		static void		CollapseAll()
 		{
-			Super::swap(other);
-			children.swap(other.children);
-			subGroups.swap(other.subGroups);
+			foreach (activeGroupPath,p)
+				(*p)->Collapse();
+			activeGroupPath.Clear();
 		}
 	};
 
@@ -422,7 +401,8 @@ namespace Objects
 
 
 
-	extern Buffer0<GlobalCommand>			globalCommands;
+	extern CommandContainer	globalCommands;
+	extern PCommandGroup	viewCommands;
 
 
 

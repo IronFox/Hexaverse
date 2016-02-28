@@ -123,6 +123,9 @@
 			EMPConquerNexus: NexusPorts are spawned on all of the 12 pole points, but only three are expanded to full AI stations. EMP fields are created depending on the number of player factions.
 			Depending on the number of active factions, two or three of all NexusPorts must be conquered to win the game. It does not matter whether these NexusPorts are surrounded by stations.
 		</variable>
+		<variable name="bombsExplodeWhenDestroyed" default="true">
+			If set true, then any unit carrying a Bomb-turret will trigger self-detonation on uncontrolled death. Self-detonation is not triggered by Demolish commands.
+		</variable>
 		<variable name="supportedFactions" default="Spectator, Regular">Comma-separated list of supported faction types.</variable>
 		<variable name="closedGame" default="false">Indicates that new factions can be created only during round 0.</variable>
 		<variable name="roundTimer" default="60">
