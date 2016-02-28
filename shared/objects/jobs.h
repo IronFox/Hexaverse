@@ -597,7 +597,7 @@ namespace Objects
 				virtual	bool			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override;
 
 				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(doomsday ? DoomsdaySelfDetonationCosts  : RegularSelfDetonationCosts,v,GetOperationAffinity());}
-				virtual Component::operation_t	GetOperationAffinity() const override {return Component::SelfDetonate;}
+				virtual Component::operation_t	GetOperationAffinity() const override {return Component::Nuclear;}
 				virtual Resource		GetConsumedResourceType() const override {return Resource::Uranium;}
 			};
 

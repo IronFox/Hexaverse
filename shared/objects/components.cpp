@@ -947,7 +947,7 @@ namespace Objects
 						resourceCostOut = 0;
 						ASSERT__(selectedMobileEntity);
 						//PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::RegularSelfDetonationCosts,SelfDetonate);
+						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::RegularSelfDetonationCosts,Nuclear);
 					}
 					));
 
@@ -959,7 +959,7 @@ namespace Objects
 						costTypeOut = Resource::Uranium;
 						ASSERT__(selectedMobileEntity);
 						//PVehicle v = To<Vehicle>::Cast(e);
-						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DoomsdaySelfDetonationCosts,SelfDetonate);
+						timeCostOut = selectedMobileEntity->GetOperationRounds(VehicleJob::DoomsdaySelfDetonationCosts,Nuclear);
 					}
 					));
 
@@ -981,7 +981,7 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Uranium] = VehicleJob::DoomsdaySelfDetonationCosts;
 			#endif
-			component.operationSpeed[SelfDetonate] = 50;
+			component.operationSpeed[Nuclear] = 50;
 			component.healthMultiplier = 1;
 			component.scanningRange = 1;
 			component.uplinkTraffic = 30;
