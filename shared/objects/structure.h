@@ -67,7 +67,7 @@ namespace Objects
 
 	public:
 
-		CONSTRUCT_ENUMERATION5(Category, Defense, Resources, Factories, Infrastructure, Miscellaneous);
+		CONSTRUCT_ENUMERATION5(Category, Resources, Defense, Factories, Infrastructure, Miscellaneous);
 
 		/**
 		Structure placement result, returned by CommonCheckStructurePlacement() and CheckPlacement()
@@ -843,17 +843,9 @@ namespace Objects
 		#endif
 
 		friend class Super;
-		/**/						SkyPort():MobileEntityProducer(ConstructionSpeed) {}
-		/**/						SkyPort(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), MobileEntityProducer(ConstructionSpeed){}
+		/**/						SkyPort():MobileEntityProducer(ConstructionSpeed) {MobileEntityProducer::SetCommandOffset(int2(3,1));}
+		/**/						SkyPort(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), MobileEntityProducer(ConstructionSpeed){MobileEntityProducer::SetCommandOffset(int2(3,1));}
 	public:
-
-		#ifdef HAS_WINDOW
-			static EntityConstructionCommand	formerConstructionCommand,	skyHubConstructionCommand;
-		#endif
-
-
-
-
 		static const int			ConstructionSpeed = 5;
 		static const int			EnergyConsumption = 10;
 

@@ -85,10 +85,6 @@ namespace Objects
 		/*static*/ Geometry			VehicleStore::interConnector,
 									Generator::reactorConnector;
 
-		/*static*/ EntityConstructionCommand	
-									SkyPort::formerConstructionCommand,
-									SkyPort::skyHubConstructionCommand;
-
 
 	#endif
 
@@ -2411,8 +2407,6 @@ namespace Objects
 		/*virtual override*/ void				SkyPort::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
 			MobileEntityProducer::VisitAllCommands(visitor,force);
-			skyHubConstructionCommand.VisitMembers(visitor,force);
-			formerConstructionCommand.VisitMembers(visitor,force);
 			Super::VisitAllCommands(visitor,force);
 		}
 
@@ -2440,17 +2434,17 @@ namespace Objects
 			//foreach (baseComponents,comp)
 			{
 				//VehicleBase* c = *comp;
-				formerConstructionCommand = EntityConstructionCommand(int2(5,0), "Construct Hover-Former", &Component::hoverbase,&Component::terraformer, PWorldEntity(),[]()
+				commands.Add(new EntityConstructionCommand("Construct Hover-Former", &Component::hoverbase,&Component::terraformer, PWorldEntity(),[]()
 				{
 					PSkyPort port = To<SkyPort>::DynamicCast(selectedEntity);
 					if (!port)
 						return;
 					SignalConstructionBegin(port->id, ConstName::VehicleBase_HoverBase, ConstName::Turret_Terraformer);
 				}
-				,CommonCmd::CommonButtonCheck);
-				formerConstructionCommand.RasterizeImage();
+				,CommonCmd::CommonButtonCheck));
+				commands.GetLast()->RasterizeImage();
 
-				skyHubConstructionCommand = EntityConstructionCommand(int2(5,1), "Construct SkyHub", nullptr,nullptr, SkyHub::globalPrototype, []()
+				commands.Add(new EntityConstructionCommand("Construct SkyHub", nullptr,nullptr, SkyHub::globalPrototype, []()
 				{
 					PSkyPort port = To<SkyPort>::DynamicCast(selectedEntity);
 					if (!port)
@@ -2463,8 +2457,8 @@ namespace Objects
 					if (!controlsEnabled)
 						return BaseCommand::Flags::None;
 					return selectedEntity && !GetSatellite(selectedEntity->location.stackID) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
-				});
-				skyHubConstructionCommand.RasterizeImage();
+				}));
+				commands.GetLast()->RasterizeImage();
 			}
 		#endif
 
