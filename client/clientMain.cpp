@@ -2117,7 +2117,8 @@ void MyFatal(const FatalDescriptor&descriptor)
 						if (Objects::selectedMobileEntity->currentStorage.level[Objects::Resource::Minerals] < Objects::activeStructureToPlace->GetConstructionCost())
 						{
 							Objects::selectedMobileEntity->resourceEnvironment.CheckRefresh(*Objects::selectedMobileEntity,target);
-							if (!Objects::selectedMobileEntity->resourceEnvironment.Generates(*Objects::selectedMobileEntity,Objects::Resource::Minerals))
+							static void*lastWarning = nullptr;
+							if (!Objects::selectedMobileEntity->resourceEnvironment.Generates(*Objects::selectedMobileEntity,Objects::Resource::Minerals) && lastWarning != Objects::selectedMobileEntity.get())
 							{
 								Objects::PMobileEntity m = Objects::selectedMobileEntity;
 								Objects::PStructure s = Objects::activeStructureToPlace;
@@ -2125,6 +2126,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 													+" outside wireless compound range. Without transfer or additional pylons the job will abort. Continue?",
 													[m,s,target]()
 													{
+														lastWarning = Objects::selectedMobileEntity.get();
 														Grid::LCellIdI t = target;
 														if (DirectTo(m,t,false,false,Objects::CursorMode::Idle,false))
 														{
