@@ -319,7 +319,11 @@ namespace UI
 					Objects::PWorldEntity e = entries.first().lock();
 					ASSERT__(e);
 					if (e->IsStructure())
-						return Objects::GetPrototypeByName(e->GetCTypeName());
+					{
+						Objects::PWorldEntity proto = Objects::GetAnyNonVehiclePrototypeByName(e->GetCTypeName());
+						ASSERT1__(proto,e->GetName());
+						return proto;
+					}
 					return e;	//good enough
 
 				}
