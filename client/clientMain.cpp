@@ -3386,7 +3386,6 @@ int main( int argc, const char* argv[])
 				Engine::input.bind(Key::Down,ZoomOut);
 			#endif
 
-			Camera::Setup(display.pixelAspect());
 
 
 
@@ -3410,6 +3409,7 @@ int main( int argc, const char* argv[])
 
 
 		#ifdef HAS_WINDOW
+			Camera::Setup(display.pixelAspect());	//creates a menu item, for which Objects::Create() must have been called
 
 
 			Explosions::Create();

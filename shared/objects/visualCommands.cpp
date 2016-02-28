@@ -21,6 +21,8 @@ namespace Objects
 	extern PWorldEntity selectedEntity;
 
 	CommandContainer	globalCommands;
+	PCommandGroup		viewCommands;
+
 	/*static*/ Buffer0<CommandGroup*>		CommandGroup::activeGroupPath;
 
 

@@ -237,23 +237,26 @@ namespace Objects
 				return rs;
 			})) ->SetCoords(int2());
 
+			viewCommands = globalCommands.AddChild("View");
+			viewCommands->SetCoords(int2(1,0));
 
-			globalCommands.Add( new GlobalCommand("Clip Terrain", &GlobalCmd::ToggleSeeThrough
+
+			viewCommands->Add( new GlobalCommand("Clip Terrain", &GlobalCmd::ToggleSeeThrough
 					,GlobalPermaSwitch(Grid::SeeThrough::IsEnabled)
-				)) ->SetCoords(int2(1,2));
-			globalCommands.Add( new GlobalCommand("Clip-View Down", &GlobalCmd::SeeThroughDown
+				));
+			viewCommands->Add( new GlobalCommand("Clip-View Down", &GlobalCmd::SeeThroughDown
 					,[](bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
-				))->SetCoords(int2(2,2));
-			globalCommands.Add( new GlobalCommand("Clip-View Up", &GlobalCmd::SeeThroughUp
+				));
+			viewCommands->Add( new GlobalCommand("Clip-View Up", &GlobalCmd::SeeThroughUp
 					,[](bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
-				))->SetCoords(int2(3,2));
+				));
 
-			globalCommands.Add( new GlobalCommand("Hide Objects", &GlobalCmd::ToggleObjectView
+			viewCommands->Add( new GlobalCommand("Hide Objects", &GlobalCmd::ToggleObjectView
 					,GlobalPermaSwitch([](){return !objectView;})
-				))->SetCoords(int2(2,0));
+				));
 
 
-			globalCommands.Add( new GlobalCommand("Show Resources", []()
+			viewCommands->Add( new GlobalCommand("Show Resources", []()
 					{
 						resourceView = !resourceView;
 						for (int j = 0; j < BaseGrid::NumFamilies; j++)
@@ -261,20 +264,20 @@ namespace Objects
 			
 					}
 					,GlobalPermaSwitch(resourceView)
-				))->SetCoords(int2(0,1));
+				));
 
-			globalCommands.Add( new GlobalCommand("Show Ranges", []()
+			viewCommands->Add( new GlobalCommand("Show Ranges", []()
 					{
 						showFriendlyRanges = !showFriendlyRanges;
 					}
 					, GlobalPermaSwitch(showFriendlyRanges)
-				))->SetCoords(int2(1,1));
-			globalCommands.Add( new GlobalCommand("Show Hostile Ranges", []()
+				));
+			viewCommands->Add( new GlobalCommand("Show Hostile Ranges", []()
 					{
 						showHostileRanges = !showHostileRanges;
 					}
 					,GlobalPermaSwitch(showHostileRanges)
-				))->SetCoords(int2(2,1));
+				));
 
 			//ASSERT__(Grid::Resource::all.IsNotEmpty());	//wrong order if this fires
 			//for (index_t i = 0; i < Grid::Resource::all.Count(); i++)

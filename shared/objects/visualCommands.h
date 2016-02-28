@@ -402,6 +402,7 @@ namespace Objects
 
 
 	extern CommandContainer	globalCommands;
+	extern PCommandGroup	viewCommands;
 
 
 
