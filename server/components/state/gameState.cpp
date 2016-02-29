@@ -487,7 +487,7 @@ namespace Game
 			if (v.changeFlags)
 			{
 				//anythingChanged = true;
-				//LogEvent(EventSignificance::Common,&v,"State change detected");	//this says relatively little
+				LogEvent(EventSignificance::Common,&v,"State change detected ("+String(v.changeFlags)+")");
 
 				bool othersNeedToKnow = (v.changeFlags & Network::NotifyOthers) != 0;
 
