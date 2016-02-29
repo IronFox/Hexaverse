@@ -668,7 +668,7 @@ namespace Objects
 				}
 				else
 				{
-					PVehicle vTarget = GetVehicle(focus);
+					PMobileEntity vTarget = GetMobileEntity(focus);
 					if (!vTarget || !v.owner->CanSee(vTarget,v.motionTime))
 					{
 						LogEvent(EventClass::Preset::commandRejected,&v,"Nothing here");

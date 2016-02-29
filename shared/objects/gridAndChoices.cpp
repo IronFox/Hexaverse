@@ -596,11 +596,15 @@ namespace Objects
 
 	PStructure GetStructure(const Grid::LCellIdI&stackID)
 	{
+		if (stackID.height > Grid::CellStack::TopHeight)
+			return PStructure();
 		return QueryGrid(structureGrid,stackID);
 	}
 
 	PStructure GetStructure(const Grid::LCellIdU&stackID)
 	{
+		if (stackID.layer >= Grid::CellStack::Range)
+			return PStructure();
 		return QueryGrid(structureGrid,stackID);
 	}
 
@@ -611,7 +615,7 @@ namespace Objects
 
 	PMobileEntity GetMobileEntity(const Grid::LCellIdI&cellID)
 	{
-		if (cellID.height < Grid::CellStack::HalfRange)
+		if (cellID.height <= Grid::CellStack::TopHeight)
 			return QueryGrid(vehicleGrid,cellID);
 		return GetSatellite(cellID.stackID);
 	}
@@ -2859,7 +2863,7 @@ namespace Objects
 						case CursorMode::RestockMode:
 						{
 							PStructure target = GetStructure(c-1);
-							PVehicle vTarget = GetVehicle(c-1);
+							PMobileEntity vTarget = GetMobileEntity(c-1);
 							if ((target && target->owner == e->owner) || (vTarget && vTarget->owner == e->owner))
 							{
 								c--;
