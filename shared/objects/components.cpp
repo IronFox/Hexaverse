@@ -1251,7 +1251,7 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
-				#ifndef ONE_COMPOUND_PER_FACTION
+				#if !defined ONE_COMPOUND_PER_FACTION && !defined WIRELESS_VEHICLES
 					component.commands.Add( new IconCommand("Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.commands.Add( new IconCommand("Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
