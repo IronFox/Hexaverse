@@ -167,7 +167,7 @@ namespace Console
 
 namespace Handler
 {
-	bool	interactive = false;
+	bool	interactive = true;
 
 	void	OnContext(Package::NetString<1024>&ctx)
 	{
@@ -308,7 +308,7 @@ namespace ParameterConfig
 
 	const char*program = "";
 	StringBuffer	command;
-	bool	interactive = false;
+	bool	interactive = true;
 
 
 	void	Process(const char*arg)
@@ -320,20 +320,32 @@ namespace ParameterConfig
 				command << ' '<<arg;
 			return;
 			case Idle:
-				if (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
-					mode = ExpectPort;
-				elif (!strcmp(arg,"--interactive") || !strcmp(arg,"-i"))
-					Handler::interactive = interactive = true;
-				elif (!strcmp(arg,"--help") || !strcmp(arg,"-i"))
+				if (*arg == '-')
 				{
-					std::cout << "usage: "<<program<<" [-p basePort] [-i] [command(s)]"<<std::endl;
-					std::cout << " -i/--interactive\tOpen a shell to enter commands interactively"<<std::endl;
-					std::cout << " -p/--port [port]\tUse a non-default base port"<<std::endl;
+					if (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
+						mode = ExpectPort;
+					elif (!strcmp(arg,"--command") || !strcmp(arg,"-c"))
+					{
+						mode = ReadCommand;
+						Handler::interactive = interactive = false;
+					}
+					elif (!strcmp(arg,"--help") || !strcmp(arg,"-h"))
+					{
+						std::cout << "usage: "<<program<<" [-p basePort] [-i] [command(s)]"<<std::endl;
+						std::cout << " -c/--command [cmd]\tExecute command"<<std::endl;
+						std::cout << " -p/--port [port]\tUse a non-default base port"<<std::endl;
+						std::cout << " *\t\tExecute command"<<std::endl;
+						std::cout << " [no parameters]\tStart in interactive mode"<<std::endl;
+					}
+					else
+						std::cerr << "Unsupported parameter: "<<arg<<std::endl;
+
 				}
 				else
 				{
 					command << arg;
 					mode = ReadCommand;
+					Handler::interactive = interactive = false;
 				}
 			return;
 			case ExpectPort:
