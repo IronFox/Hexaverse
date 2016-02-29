@@ -8,6 +8,7 @@ v0.3.18
 	* Fixed zoom-factor on contact icons.
 	* Fixed size of attack rings for satellites.
 	* Fixed failure of terraformer automatic relocation after finishing construction.
+	* Fixed digging down to the bottom layer.
 	
 v0.3.17	[Feb 24 2016]
 	+ Analogously to terrain blocks, attack ranges are now shown on water surfaces when manual attacks are issued.

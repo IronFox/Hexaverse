@@ -1802,7 +1802,7 @@ namespace Objects
 				PVehicle vehicle = To<Vehicle>::DynamicCast(selectedMobileEntity);
 				if (!vehicle)
 					return;
-				if (vehicle->location.height < -Grid::CellStack::HalfRange+2)
+				if (vehicle->location.height < Grid::CellStack::BottomHeight+1)
 					return;
 				SignalNewJob(vehicle, ConstName::Job_DigDown, ConstName::Empty);
 			}
