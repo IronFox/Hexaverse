@@ -10,6 +10,7 @@ v0.3.18
 	* Fixed failure of terraformer automatic relocation after finishing construction.
 	* Fixed digging down to the bottom layer.
 	* Fixed timing error causing the client to sometimes ignore relocation motion after job completion.
+	* Fixed visualization of EMP attack ranges.
 	
 v0.3.17	[Feb 24 2016]
 	+ Analogously to terrain blocks, attack ranges are now shown on water surfaces when manual attacks are issued.
