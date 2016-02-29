@@ -2814,19 +2814,21 @@ namespace Objects
 					auto c = choice;
 					switch (mode)
 					{
-						//case CursorMode::DepositMode:
-						//case CursorMode::RestockMode:
-						//{
-						//	PStructure target = GetStructure(c-1);
-						//	PVehicle vTarget = GetVehicle(c-1);
-						//	if ((target && target->owner == e->owner) || (vTarget && vTarget->owner == e->owner))
-						//	{
-						//		c--;
-						//		PVehicleJob job(new VehicleJob::TransferJob(*v,mode));
-						//		v->RegisterNewJob("", job,&c);
-						//	}
-						//}
-						//break;
+						#ifndef ONE_COMPOUND_PER_FACTION
+						case CursorMode::DepositMode:
+						case CursorMode::RestockMode:
+						{
+							PStructure target = GetStructure(c-1);
+							PMobileEntity vTarget = GetMobileEntity(c-1);
+							if ((target && target->owner == e->owner) || (vTarget && vTarget->owner == e->owner))
+							{
+								c--;
+								PVehicleJob job(new VehicleJob::TransferJob(*v,mode));
+								v->RegisterNewJob("", job,&c);
+							}
+						}
+						break;
+						#endif
 						case CursorMode::RepairMode:
 						{
 							//PWorldEntity target = GetEntity(c-1);
