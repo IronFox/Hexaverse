@@ -2828,16 +2828,18 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
 		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound || Network::amSpectator)
 			return false;
-		count_t total=0,requested=0;
-		Objects::ForeachFaction([&total,&requested](const Objects::PFaction&f)
-		{
-			total++;
-			if ((f->requestedNewRound || !f->online) && f != Objects::Faction::mine)
-				requested++;
-		});
+		#if 0
+			count_t total=0,requested=0;
+			Objects::ForeachFaction([&total,&requested](const Objects::PFaction&f)
+			{
+				total++;
+				if ((f->requestedNewRound || !f->online) && f != Objects::Faction::mine)
+					requested++;
+			});
 
-		if (requested+1 != total)
-			return false;
+			if (requested+1 != total)
+				return false;
+		#endif /*0*/
 
 		Objects::PWorldEntity any;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)

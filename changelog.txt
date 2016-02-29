@@ -3,6 +3,7 @@ v0.3.18
 	> Bombs can now be configured to self-detonate with a regular explosion when destroyed by some outside force.
 	> When placing new buildings, the scanning and possibly attack ranges are shown ahead of actually placing them.
 	> Reorganized buttons into a command tree.
+	> The new-round button now flashes even when the local player is not the last to press it.
 	* Fixed zoom-factor on contact icons.
 	* Fixed size of attack rings for satellites.
 	* Fixed failure of terraformer automatic relocation after finishing construction.
