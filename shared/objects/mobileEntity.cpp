@@ -903,19 +903,16 @@ namespace Objects
 				return true;
 			}
 			bool rs = false;
-			//LockTasks();
-
-			//Task&task = myTasks.Peek();
-			RegisterChange(TasksChanged,motionTime);
-
+			
 			if (myTasks.Peek().job)
 			{
+
 				if (this->empDamageLevel)
 				{
 					LogEvent(EventClass::Preset::operationAborted,this,"EMP damage: Unable to continue job at this time.");
 					return true;
 				}
-				//const Grid::LCellIdI loc = task.foci.IsNotEmpty() ? task.foci.Peek() : location;
+				RegisterChange(TasksChanged,motionTime);
 				if (!jobStarted)
 				{
 					//jobStarted = true;
@@ -1036,8 +1033,9 @@ namespace Objects
 			else
 			{
 				if (HasTasks() && myTasks.Peek().IsMode(CursorMode::AttackMode))
-					return false;
+					return true;
 
+				RegisterChange(TasksChanged,motionTime);
 				return HandleNormalTask();
 			}
 			return true;
