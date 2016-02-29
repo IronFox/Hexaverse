@@ -10,6 +10,9 @@
 #include <general/timer.h>
 #include "../shared/protocol.h"
 
+
+HANDLE mainThreadHandle = nullptr;
+
 BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 {
 	switch (dwCtrlType)
@@ -19,7 +22,11 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 		case CTRL_SHUTDOWN_EVENT:
 			//TerminateNow(false);
 			application_shutting_down = true;
-			exit(0);
+			if (cancelSynchronousIo)
+				cancelSynchronousIo(mainThreadHandle);
+			else
+				TerminateProcess(GetCurrentProcess(),0);
+			//exit(0);
 		return TRUE;
 	
 	}
@@ -440,6 +447,8 @@ int main(int argc, char* argv[])
 {
 	
 	SetConsoleCtrlHandler(MyHandlerRoutine,TRUE);
+
+	ASSERT__(DuplicateHandle(GetCurrentProcess(),GetCurrentThread(),GetCurrentProcess(),&mainThreadHandle,DUPLICATE_SAME_ACCESS,FALSE,0));
 
 	ParameterConfig::program = argc > 0 ? argv[0] : "";
 	for (int i = 1; i < argc; i++)
