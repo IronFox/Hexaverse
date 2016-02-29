@@ -51,7 +51,10 @@ namespace Objects
 				minerals,
 				uranium;
 
-		static const int TranslationFactor = 2;	//!< Translation factor used to scale resource vectors samples from the world
+		/*
+		Minimum stack height is 2. Translation <3 = 2 means that there are only 4 yield on those areas. As a result a fuel mine on such a location cannot pay for itself.
+		*/
+		static const int TranslationFactor = 3;	//!< Translation factor used to scale resource vectors samples from the world
 
 		/**/	NaturalResourceVector():fuel(0),minerals(0),uranium(0)	{}
 
