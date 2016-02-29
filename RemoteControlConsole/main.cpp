@@ -479,7 +479,7 @@ int main(int argc, char* argv[])
 	client.onIgnorePackage = OnIgnorePackage;
 	client.onSignal = OnSignal;
 
-	if (!ParameterConfig::interactive && bufferedCommands.IsEmpty())
+	if (!ParameterConfig::interactive && ParameterConfig::command.IsEmpty())
 		return 0;
 	connectionAttemptStarted = timer.Now();
 	client.ConnectAsync(targetHost+":"+String(ParameterConfig::basePort+PortOffset::Control));
