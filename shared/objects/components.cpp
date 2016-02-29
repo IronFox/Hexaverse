@@ -1292,7 +1292,7 @@ namespace Objects
 			#else
 				component.ammoNeedPerShot = 2000;
 			#endif
-			#ifndef ONE_COMPOUND_PER_FACTION
+			#if !defined ONE_COMPOUND_PER_FACTION && !defined WIRELESS_VEHICLES
 				component.baseStorageCapacity.level[Resource::Uranium] = component.ammoNeedPerShot;
 			#endif
 			component.ammoType = Resource::Uranium;
