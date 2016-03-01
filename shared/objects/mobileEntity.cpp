@@ -7,6 +7,7 @@
 #include "satellite.h"
 #include "systems.h"
 #include "prototypes.h"
+#include "../runtimeConfig.h"
 
 namespace Objects
 {
@@ -124,6 +125,15 @@ namespace Objects
 
 
 	#ifndef CLIENT
+
+		/*virtual override*/ void		MobileEntity::OnDestroy(RemovalType t, float atTime)
+		{
+			if (t == RemovalType::UncontrolledExplosion && RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
+			{
+				SignalChainReactionExplosion(location, Component::Bomb::GetRadius(false),Component::Bomb::GetDamageLevel(false),atTime);
+			}
+
+		}
 
 		void			MobileEntity::UnlockTasks()
 		{
@@ -580,7 +590,7 @@ namespace Objects
 			{
 				if (completeOnMove)
 				{
-					if (!hasTriedPlottingOnMoveAutoMotion)
+					if (numTriedPlottingOnMoveAutoMotion < 5)
 					{
 						Grid::LCellIdI	ways[6 * 3];
 
@@ -592,7 +602,7 @@ namespace Objects
 							index_t target = entityRandom.getIndex(numWays-1);
 							if (PlotCourse(ways[target],true,false))
 							{
-								hasTriedPlottingOnMoveAutoMotion = true;
+								numTriedPlottingOnMoveAutoMotion ++;
 								LogEvent(EventSignificance::Common,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
 								return false;	//retry
 							}
@@ -601,7 +611,7 @@ namespace Objects
 						for (index_t i = 0; i < numWays; i++)
 							if (PlotCourse(ways[i],true, false))
 							{
-								hasTriedPlottingOnMoveAutoMotion = true;
+								numTriedPlottingOnMoveAutoMotion ++;
 								LogEvent(EventSignificance::Common,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
 								return false;	//retry
 							}
@@ -611,19 +621,16 @@ namespace Objects
 				return true;
 			}
 			bool rs = false;
-			//LockTasks();
-
-			//Task&task = myTasks.Peek();
-			RegisterChange(TasksChanged,motionTime);
-
+			
 			if (myTasks.Peek().job)
 			{
+
 				if (this->empDamageLevel)
 				{
 					LogEvent(EventClass::Preset::operationAborted,this,"EMP damage: Unable to continue job at this time.");
 					return true;
 				}
-				//const Grid::LCellIdI loc = task.foci.IsNotEmpty() ? task.foci.Peek() : location;
+				RegisterChange(TasksChanged,motionTime);
 				if (!jobStarted)
 				{
 					//jobStarted = true;
@@ -744,8 +751,9 @@ namespace Objects
 			else
 			{
 				if (HasTasks() && myTasks.Peek().IsMode(CursorMode::AttackMode))
-					return false;
+					return true;
 
+				RegisterChange(TasksChanged,motionTime);
 				return HandleNormalTask();
 			}
 			return true;
@@ -875,11 +883,11 @@ namespace Objects
 				{
 					Grid::LCellIdI&dest = destination[i];
 
-					while (!world.LowCellIsClear(dest) && !MobileDestinationStructureHere(dest,*this))
+					while (!owner->currentState.LowCellIsClear(dest) && !MobileDestinationStructureHere(dest,*this))
 						dest++;
-					while (world.LowCellIsClear(dest-1) || MobileDestinationStructureHere(dest-1,*this))
+					while (owner->currentState.LowCellIsClear(dest-1) || MobileDestinationStructureHere(dest-1,*this))
 						dest--;
-					if (!virtualPlatformMode && !((Vehicle*)this)->CanStandOn(world,dest -1,false,false))
+					if (!virtualPlatformMode && !((Vehicle*)this)->CanStandOn(owner->currentState,dest -1,false,false))
 						return false;
 				}
 			}
@@ -1486,7 +1494,14 @@ namespace Objects
 		foreach (myTasks,t)
 		{
 			if (t->IsJob() && (at == loc || at+1 == loc || at-1 == loc))
+			{
+				#ifdef CLIENT
+					if (t->name.beginsWithCaseIgnore("construct "))
+				#else
+					if (To<VehicleJob::Construct>::DynamicCast(t->job))
+				#endif
 				return true;
+			}
 			if (t->ContainsMovement())
 				at = t->foci.GetNewest().target;
 		}

@@ -69,7 +69,7 @@ namespace World
 
 	void		RenderBuildBlocks()
 	{
-		if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity))
+		if ( Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) )
 		{
 			display.SetDepthTest(false, false);
 			LineRenderer::SetColor(float4(1,1, 1.f, 0.25f));
@@ -129,7 +129,7 @@ namespace World
 			}
 		}
 
-		if (Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
+		if ( Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode) )
 		{
 			display.SetDepthTest(false, false);
 			LineRenderer::SetColor(float4(1,1, 1.f, 0.25f));

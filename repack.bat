@@ -33,3 +33,5 @@ del %rs1% /Q
 %zip% a %rs% "server/Server*.exe"
 %zip% a %rs% "server/config/planets/*.ini"
 %zip% a %rs% "server/config/declaration.xml"
+
+%zip% a %rs% "ControlConsole/ControlConsole*.exe"

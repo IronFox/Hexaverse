@@ -182,10 +182,10 @@ namespace Objects
 		void		SignalClusterAndNeighborsChange(const Grid::LCellIdI&location, float atTime, const WorldEntity*except = nullptr);
 		void		Explode(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, 
 						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
-						float atTime
+						float&atTime
 						);
 		void		ExplodeEMP(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, 
-						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float atTime);
+						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float&atTime);
 
 
 		/**

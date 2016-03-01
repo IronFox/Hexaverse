@@ -475,7 +475,17 @@ namespace FileIO
 				return;
 			}
 		}
-		FATAL__("Unable to find matching job implementation");
+		String found;
+		Riff::Chunk*f = taskChunk->First();
+		if (f)
+			do
+			{
+				if (f->IsID(RID::baseJob))
+					continue;
+				found += " "+String(f->GetID().ToString());
+			}
+			while (f = taskChunk->Next());
+		FATAL__("Unable to find matching job implementation. Found"+found);
 	}
 
 	static void Export(Riff::Chunk*parent, const Riff::TID&id, const String&outString)

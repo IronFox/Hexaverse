@@ -215,10 +215,14 @@ void	OnPlayerControlBegin()
 	Animation::UpdateAutomation(CLOCATION);
 }
 
-void	OnTutorialsChanged()
-{
-	UI::HexGrid::RefreshTutorials();
-}
+#ifdef HAS_WINDOW
+
+	void	OnTutorialsChanged()
+	{
+		UI::HexGrid::BottomRightPanel::Refresh();
+	}
+
+#endif
 
 
 
@@ -1092,6 +1096,8 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 	void OnSelectionChange(bool stateChangeOnly)
 	{
+		if (!stateChangeOnly)
+			Objects::CommandGroup::CollapseAll();
 		Objects::Renderer::HighlightSmokeTrail(InvalidIndex);
 
 		Tutorial::lastDelayingEvent = timer.Now();
@@ -1141,7 +1147,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			int sum = 0;
 			foreach (Objects::selectedVehicle->myTasks,t)
 				if (t->job)
-					sum += t->job->mineralCostLeft;
+					sum += t->job->resourceCostLeft;
 			if (sum)
 			{
 				change.level[Objects::Resource::Minerals] -= sum;//-Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft;
@@ -1395,6 +1401,12 @@ bool loop()
 
 
 	#ifdef HAS_WINDOW
+		bool alwaysDay = RuntimeConfig::FromFile::alwaysDay && !Camera::autoRotation;
+
+		if (!alwaysDay)
+			Grid::PerFrameUpdateSunDirection();
+
+
 		Camera::ProgressRotation();
 
 
@@ -1463,10 +1475,8 @@ bool loop()
 		}
 
 
-		if (RuntimeConfig::FromFile::alwaysDay)
+		if (alwaysDay)
 			Grid::UpdateSunDirection(sunDirection);
-		else
-			Grid::PerFrameUpdateSunDirection();
 
 
 		Objects::Renderer::AdvanceTurretAnimations();
@@ -1712,6 +1722,7 @@ bool loop()
 			}
 
 
+			if (UI::showControlsAndContacts && !saveScreenshot)
 			{
 				static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__TIMESTAMP__);
 				//textout.locate(0.f,1.f - textout.getScaledHeight());
@@ -1766,6 +1777,7 @@ bool loop()
 				//	TransferPanel::Invalidate();
 			}
 
+			if (UI::showControlsAndContacts)
 			{
 				textout.pushState();
 				textout.scale(0.9f, 0.9f);
@@ -1799,78 +1811,78 @@ bool loop()
 					}
 				textout.popState();
 				eventLock.unlock();
-			}
 
-			textout.color(1,1,1);
-			textout.locate(0,1);
-			textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFaction ? "logged in" : "not logged in")<< nl;
-			textout << "Hello "<<Network::chosenNickname<<nl;
-			if (Network::amOnline)
-			{
-				textout << "Server ID: " << Network::serverIDString<<nl;
-				textout << "World ID: " << Network::worldIDString<<nl;
-				textout << "Game Goal: "<<RuntimeConfig::gameGoal.ToString() << nl;
+				textout.color(1,1,1);
+				textout.locate(0,1);
+				textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFaction ? "logged in" : "not logged in")<< nl;
+				textout << "Hello "<<Network::chosenNickname<<nl;
+				if (Network::amOnline)
+				{
+					textout << "Server ID: " << Network::serverIDString<<nl;
+					textout << "World ID: " << Network::worldIDString<<nl;
+					textout << "Game Goal: "<<RuntimeConfig::gameGoal.ToString() << nl;
+					#ifdef _DEBUG
+						textout << "Access ID: " << Network::activeTokenString<<nl;
+					#endif
+					textout << "Phase: "<<RuntimeConfig::phase.ToString()<<nl;
+					textout << "Round Number: "<<RuntimeConfig::roundNumber<<nl;
+					if (!Network::gameProgress.gameOver)
+					{
+						if (Network::gameProgress.status.IsNotEmpty())
+							textout << "Progress: "<<Network::gameProgress.status<<nl;
+						if (Network::gameProgress.warning.IsNotEmpty())
+						{
+							textout.color(1,0,0);
+							textout << "Warning: "<<Network::gameProgress.warning<<nl;
+							textout.color(1,1,1);
+						}
+					}
+					else
+						if (Network::gameProgress.gameOver)
+						{
+							if (Network::gameProgress.gameWon)
+							{
+								textout.color(0.4,0.5,1);
+								textout << "YOU WIN"<<nl;
+							}
+							else
+							{
+								textout.color(1,0.5,0.4);
+								textout << "GAME OVER"<<nl;
+							}
+							textout.color(1,1,1);
+						}
+				}
 				#ifdef _DEBUG
-					textout << "Access ID: " << Network::activeTokenString<<nl;
+					if (Network::haveID)
+						textout << "My ID: "<<Network::myIDString<<nl;
+					textout << -Camera::scene.retraction.z/WorldScale << nl;
 				#endif
-				textout << "Phase: "<<RuntimeConfig::phase.ToString()<<nl;
-				textout << "Round Number: "<<RuntimeConfig::roundNumber<<"/"<<RuntimeConfig::techniteSubRoundNumber <<nl;
-				if (!Network::gameProgress.gameOver)
+				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::roundTimer > 0)
 				{
-					if (Network::gameProgress.status.IsNotEmpty())
-						textout << "Progress: "<<Network::gameProgress.status<<nl;
-					if (Network::gameProgress.warning.IsNotEmpty())
+					textout.pushState();
+					float remaining = std::max(Network::roundTimer - timer.GetSecondsSince(Network::phaseStarted),0.f);
+					textout << "Remaining seconds: "<<nl;
+					textout.scale(2.f,2.f);
+					if (remaining <= 10.f && !Network::newRoundRequested)
 					{
-						textout.color(1,0,0);
-						textout << "Warning: "<<Network::gameProgress.warning<<nl;
-						textout.color(1,1,1);
+						textout.scale(1.2f,1.2f);
+						bool blinkOn = ((timer.Now()/(timer.GetTicksPerSecond()/5))%2) != 0;
+						textout.color(1,0.2,0.2,blinkOn ? 0.5f : 1.f);
 					}
+					textout<<Round(remaining)<<nl;
+					textout.popState();
 				}
-				else
-					if (Network::gameProgress.gameOver)
-					{
-						if (Network::gameProgress.gameWon)
-						{
-							textout.color(0.4,0.5,1);
-							textout << "YOU WIN"<<nl;
-						}
-						else
-						{
-							textout.color(1,0.5,0.4);
-							textout << "GAME OVER"<<nl;
-						}
-						textout.color(1,1,1);
-					}
+
+
+				textout.locate(0.0f,0.05f);
+				textout.color(1,1,1);
+				textout << "FPS: "<<1.f / Engine::timing.delta << nl;
+				#ifdef _DEBUG
+					textout << "last remote message: "<<timer.GetSecondsSince(Network::client.GetLastPackageTime());
+				#endif
+
 			}
-			#ifdef _DEBUG
-				if (Network::haveID)
-					textout << "My ID: "<<Network::myIDString<<nl;
-				textout << -Camera::scene.retraction.z/WorldScale << nl;
-			#endif
-			if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::roundTimer > 0)
-			{
-				textout.pushState();
-				float remaining = std::max(Network::roundTimer - timer.GetSecondsSince(Network::phaseStarted),0.f);
-				textout << "Remaining seconds: "<<nl;
-				textout.scale(2.f,2.f);
-				if (remaining <= 10.f && !Network::newRoundRequested)
-				{
-					textout.scale(1.2f,1.2f);
-					bool blinkOn = ((timer.Now()/(timer.GetTicksPerSecond()/5))%2) != 0;
-					textout.color(1,0.2,0.2,blinkOn ? 0.5f : 1.f);
-				}
-				textout<<Round(remaining)<<nl;
-				textout.popState();
-			}
-
-
-			textout.locate(0.0f,0.05f);
-			textout.color(1,1,1);
-			textout << "FPS: "<<1.f / Engine::timing.delta << nl;
-			#ifdef _DEBUG
-				textout << "last remote message: "<<timer.GetSecondsSince(Network::client.GetLastPackageTime());
-			#endif
-
 	
 
 			DebugCheckVector(scene.location,-1000,1000);
@@ -2071,7 +2083,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 				{
 					TVec3<> normal;
 					bool selectionDone = false;
-					if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity) || Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
+					if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) || Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 					{
 						if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
 						{
@@ -2082,7 +2094,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 								float3 d = p / r;
 								UINT32 stackID;
 								int h;
-								if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity))
+								if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode))
 								{
 									if (Vec::dot(d, normal) > 0.5f)	//flat selection
 									{
@@ -2107,7 +2119,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 										h = Grid::FloorFromRadius(r);
 									}
 								String activity = "build";
-								if (Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
+								if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 									activity = "remove";
 								Grid::LCellIdI origin = Objects::selectedVehicle->GetLastPointOfOrigin();
 								if (h < -Grid::CellStack::HalfRange)
@@ -2120,7 +2132,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 								}
 								elif(Objects::vehicleDistanceField.distance[stackID] > 3)
 									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too far away from vehicle");
-								elif(Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity) && h == origin.height && Objects::vehicleDistanceField.distance[stackID] <= 1)
+								elif(Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) && h == origin.height && Objects::vehicleDistanceField.distance[stackID] <= 1)
 									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too close to vehicle");
 								else
 								{
@@ -2409,12 +2421,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	if (e->IsMobile())
 	{
 		#ifdef HAS_WINDOW
-			if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(e))
+			if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode))
 			{
 				Objects::buildCandidates.EraseLast();
 				return;
 			}
-			if (Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(e))
+			if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 			{
 				Objects::removeCandidates.EraseLast();
 				return;
@@ -2501,6 +2513,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
 		UI::showControlsAndContacts = !UI::showControlsAndContacts;
 		UI::HexGrid::Configure(Objects::selectedEntity);
+		OnTutorialsChanged();
 	}
 
 	void BeginCameraDrag()
@@ -2542,7 +2555,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 							return;
 						}
 					}
-					if (To<Objects::Tower>::DynamicCast(Objects::selectedEntity))
+					if (Objects::selectedEntity->IsTower())
 					{
 						if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 						{
@@ -2591,10 +2604,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	void	UndoTask()
 	{
 		if (Objects::DisableModes(Network::ControlEnabled()))
+		{
+			OnTutorialsChanged();
 			return;
+		}
 
 		InnerUndoTask(Objects::selectedEntity,false);
-
 	}
 
 	void	QueryAndSendChatMessage()
@@ -2704,7 +2719,17 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	void ToggleResourceView()
 	{
 		UI::resourcesAsList = !UI::resourcesAsList;
+	}
 
+	void	ToggleCameraAutoRotation()
+	{
+		if (!Camera::autoRotation)
+		{
+			Camera::autoRotation = true;
+			Grid::ResetSunRotation();
+		}
+		else
+			Camera::StopAutoRotation();
 	}
 
 
@@ -2814,16 +2839,18 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
 		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound || Network::amSpectator)
 			return false;
-		count_t total=0,requested=0;
-		Objects::ForeachFaction([&total,&requested](const Objects::PFaction&f)
-		{
-			total++;
-			if ((f->requestedNewRound || !f->online) && f != Objects::Faction::mine)
-				requested++;
-		});
+		#if 0
+			count_t total=0,requested=0;
+			Objects::ForeachFaction([&total,&requested](const Objects::PFaction&f)
+			{
+				total++;
+				if ((f->requestedNewRound || !f->online) && f != Objects::Faction::mine)
+					requested++;
+			});
 
-		if (requested+1 != total)
-			return false;
+			if (requested+1 != total)
+				return false;
+		#endif /*0*/
 
 		Objects::PWorldEntity any;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
@@ -3365,7 +3392,8 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::Return, SignalRoundEndOrMaximize);
 			Engine::input.bind(Key::Tab, UI::ShowSession);
 			Engine::input.bind(Key::T,[](){}, QueryAndSendChatMessage);
-			Engine::input.bind(Key::R,ToggleResourceView);
+			Engine::input.bind(Key::R,ToggleCameraAutoRotation);
+//			Engine::input.bind(Key::R,ToggleResourceView);
 
 			Engine::input.bind(Key::H,ToggleControlGUI);
 
@@ -3382,7 +3410,6 @@ int main( int argc, const char* argv[])
 				Engine::input.bind(Key::Down,ZoomOut);
 			#endif
 
-			Camera::Setup(display.pixelAspect());
 
 
 
@@ -3406,6 +3433,7 @@ int main( int argc, const char* argv[])
 
 
 		#ifdef HAS_WINDOW
+			Camera::Setup(display.pixelAspect());	//creates a menu item, for which Objects::Create() must have been called
 
 
 			Explosions::Create();

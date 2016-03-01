@@ -13,24 +13,6 @@
 			&apos;Liquids&apos; will expose all liquids in general (currently water and lava).
 			&apos;FullTerrain&apos; exposes all initial terrain information to all clients (excluding terrain modifications caused by subsequent changes, e.g. nexus base construction).
 		</variable>
-		<context name="Resources">
-			<context name="Fuel">
-				<variable name="density" default="0.08">Average number of fuel units per world cell. Forced similar for each surface chunk</variable>
-				<variable name="max" default="8" />
-			</context>
-			<context name="Minerals">
-				<variable name="density" default="0.06">Average number of mineral units per world cell. Forced similar for each surface chunk</variable>
-				<variable name="max" default="12" />
-			</context>
-			<context name="Energy">
-				<variable name="density" default="0" />
-				<variable name="max" default="1" />
-			</context>
-			<context name="Uranium">
-				<variable name="density" default="0.02">Average number of uranium units per world cell. Forced similar for each surface chunk</variable>
-				<variable name="max" default="6" />
-			</context>
-		</context>
 		<context name="Planet">
 			<variable name="Type" default="LushGreen">
 				The following defines which planet type to use.
@@ -113,6 +95,24 @@
 					<variable name="level" default="0" />
 					<variable name="outline" default="Unknown" />
 				</context>
+				<context name="Resources">
+					<context name="Fuel">
+						<variable name="density" default="0.04" />
+						<variable name="max" default="12" />
+					</context>
+					<context name="Minerals">
+						<variable name="density" default="0.06" />
+						<variable name="max" default="12" />
+					</context>
+					<context name="Energy">
+						<variable name="density" default="0" />
+						<variable name="max" default="0" />
+					</context>
+					<context name="Uranium">
+						<variable name="density" default="0.02" />
+						<variable name="max" default="6" />
+					</context>
+				</context>
 			</context>
 		</context>
 	</context>
@@ -131,6 +131,7 @@
 			Time in seconds that players can remain in command phase. once the deadline is reached, rounds will be progressed.
 			Set negative or zero to deactivate.
 		</variable>
+		<variable name="bombsExplodeWhenDestroyed" default="true">If set true, then any unit carrying a Bomb-turret will trigger self-detonation on uncontrolled death. Self-detonation is not triggered by Demolish commands.</variable>
 		<variable name="startBases" default="true">New players are given minimal bases (that meet the constraints of basesRequired)</variable>
 		<variable name="basesRequired" default="false">Indicates that players must maintain minimal bases to be considered &apos;alive&apos;. Minimal bases include a mandatory compound capable of generating infinite amounts of minerals. Such a compound includes a live mine that can deliver at least 10 units of fuel, one that can deliver at least 5 units of minerals, and a generator. Additionally, the player must own at least one terraformer or a vehicle plant that can be switched on. If any one of these conditions is not met, a death counter will count down each round for the respective faction, until it reaches zero. If it does, all vehicles and structures of that faction are destroyed. If the game is closed and only one faction remains, that faction is declared victor.</variable>
 		<variable name="exposeActionLeftToHostileFactions" default="true">Sends effective vehicle initiative to hostile factions</variable>
@@ -160,11 +161,13 @@
 			<context name="Structures">Limits for buildings
 				<variable name="Mine" default="8" />
 				<variable name="Generator" default="8" />
+				<variable name="Reactor_Core" default="0" />
 				<variable name="Munition_Factory" default="4" />
 				<variable name="Vehicle_Plant" default="4" />
 				<variable name="Connector" default="1024" />
 				<variable name="Fuel_Container" default="8" />
 				<variable name="Mineral_Container" default="8" />
+				<variable name="Munition_Storage" default="0" />
 				<variable name="Uranium_Storage" default="8" />
 				<variable name="Nexus_Port" default="0" />
 				<variable name="Vehicle_Store" default="8" />
@@ -183,6 +186,7 @@
 				<variable name="Artillery" default="5" />
 				<variable name="Missile_Launcher" default="3" />
 				<variable name="EMP" default="3" />
+				<variable name="Bomb" default="0" />
 				<variable name="Terraformer" default="4" />
 				<variable name="Surveyor" default="16" />
 				<variable name="Mechanic" default="4" />

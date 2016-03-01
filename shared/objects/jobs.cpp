@@ -92,8 +92,12 @@ namespace Objects
 						return rs;
 					ASSERT__(rs != ContinueJob);
 					if (movesToFocusWhenDone)
-						if (v.PlaceExactlyAt(focus,0,0) == MobilePlacementResult::PlacementFailedMobileDestroyed)
+					{
+						v.motionTime += timeEpsilon;
+						if (v.PlaceExactlyAt(focus,0.1f,0) == MobilePlacementResult::PlacementFailedMobileDestroyed)
 							return BaseJob::TerminalFailureVehicleDestroyed;
+						v.motionTime += timeEpsilon;
+					}
 			
 				}
 				else
@@ -652,7 +656,7 @@ namespace Objects
 				}
 				else
 				{
-					PVehicle vTarget = GetVehicle(focus);
+					PMobileEntity vTarget = GetMobileEntity(focus);
 					if (!vTarget || !v.owner->CanSee(vTarget,v.motionTime))
 					{
 						LogEvent(EventClass::Preset::commandRejected,&v,"Nothing here");

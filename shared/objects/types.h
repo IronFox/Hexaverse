@@ -62,6 +62,7 @@ namespace Objects
 
 	class Compound;
 
+	DECLARE_POINTER_CLASS(CommandGroup)
 
 
 	CONSTRUCT_ENUMERATION7(MobilePlacementResult,

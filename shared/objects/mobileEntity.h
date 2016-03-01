@@ -251,7 +251,7 @@ namespace Objects
 			void				EraseFirstTask();
 
 			PVehicleJob			completeOnMove;
-			bool				hasTriedPlottingOnMoveAutoMotion=false;
+			BYTE				numTriedPlottingOnMoveAutoMotion=0;
 			bool				jobStarted=false;
 			bool				hasMoved=false;
 			bool				hasConstructedThisRound=false;
@@ -345,7 +345,7 @@ namespace Objects
 				attackActionLeft = 1.f;
 
 				hasMoved = false;
-				hasTriedPlottingOnMoveAutoMotion = false;
+				numTriedPlottingOnMoveAutoMotion = 0;
 				if (MotionIgnoresAttack())
 				{
 					if (movementActionLeft < 1.f)
@@ -510,11 +510,21 @@ namespace Objects
 		#endif
 		virtual float			GetMaxScanningRange() const override	{return turret->scanningRange;};	//returns the effective scanning range of the local entity
 
+		#ifndef CLIENT
+			virtual void		OnDestroy(RemovalType, float atTime) override;	
+		#endif
 
 	protected:
 	};
 
 
+
+	inline PMobileEntity		ToMobileEntity(const PWorldEntity&e)
+	{
+		if (!e || !e->IsMobile())
+			return PMobileEntity();
+		return To<MobileEntity>::Cast(e);
+	}
 }
 
 
