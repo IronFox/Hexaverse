@@ -4,7 +4,9 @@ v0.4.0
 	+ Added compound visualization to show which compound a structure belongs to and/or which compounds a vehicle will draw from.
 	+ Volumetric spheres highlight the draw-zones for the required resource(s) of a selected mobile unit.
 
-v0.3.18
+v0.3.19
+
+v0.3.18	[Mar 1 2016]
 	+ Included control console for interactive command-line server configuration.
 	> Bombs can now be configured to self-detonate with a regular explosion when destroyed by some outside force.
 	> When placing new buildings, the scanning and possibly attack ranges are shown ahead of actually placing them.
