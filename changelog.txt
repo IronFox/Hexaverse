@@ -1,11 +1,9 @@
 v0.4.0
-	+ Added Pylon building that can wireless connect to other pylons, and vehicles over a long range.
 	+ Re-enabled compound system. Vehicles in the vicinity of compounds will implicitly draw from them.
+	+ Added Pylon building that can wirelessly connect to other pylons, and vehicles over a larger distance.
 	+ Added compound visualization to show which compound a structure belongs to and/or which compounds a vehicle will draw from.
-	+ Volumetric spheres highlight the draw-zones for the required resource of a selected mobile unit.
-	> Reduced wireless transfer range of normal structures.
+	+ Volumetric spheres highlight the draw-zones for the required resource(s) of a selected mobile unit.
 
-v0.3.17
 v0.3.18
 	+ Included control console for interactive command-line server configuration.
 	> Bombs can now be configured to self-detonate with a regular explosion when destroyed by some outside force.
