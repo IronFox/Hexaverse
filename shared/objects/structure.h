@@ -1404,7 +1404,7 @@ namespace Objects
 
 		NaturalResourceVector		naturalResources;
 
-		float						GetEfficiency() const {return location.height <= -8 ? 2.f : 1.f;}
+		float						GetEfficiency() const {return 1.f;/*location.height <= -8 ? 2.f : 1.f;*/}
 
 
 		virtual bool				WouldLikeToEnable() const override {return true;}

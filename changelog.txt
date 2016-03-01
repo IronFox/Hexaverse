@@ -11,9 +11,16 @@ v0.3.18
 	> Bombs can now be configured to self-detonate with a regular explosion when destroyed by some outside force.
 	> When placing new buildings, the scanning and possibly attack ranges are shown ahead of actually placing them.
 	> Reorganized buttons into a command tree.
+	> The new-round button now flashes even when the local player is not the last to press it.
+	> It's now possible to build on the bottom layer, if the ground beneath is not clear.
+	> Resources are now configured per planet type.
 	* Fixed zoom-factor on contact icons.
 	* Fixed size of attack rings for satellites.
 	* Fixed failure of terraformer automatic relocation after finishing construction.
+	* Fixed digging down to the bottom layer.
+	* Fixed timing error causing the client to sometimes ignore relocation motion after job completion.
+	* Fixed visualization of EMP attack ranges.
+	- Mines no longer provide twice as much output when built below height level -7.
 	
 v0.3.17	[Feb 24 2016]
 	+ Analogously to terrain blocks, attack ranges are now shown on water surfaces when manual attacks are issued.

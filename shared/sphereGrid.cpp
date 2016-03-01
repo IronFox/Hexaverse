@@ -346,13 +346,19 @@ namespace Grid
 
 	bool				CellStack::FindTopOccupied(int&outHeight) const
 	{
+		bool rs = false;
+		if (bottom.content != Content::Clear && bottom.content != Content::Lava)
+		{
+			outHeight = BottomHeight;
+			rs = true;
+		}
 		for (UINT32 j = Range - 1; j < Range; j--)
 			if (volumeCell[j].IsOccupied())
 			{
 				outHeight = int(j) - HalfRange;
 				return true;
 			}
-		return false;
+		return rs;
 	}
 
 
@@ -2943,7 +2949,8 @@ namespace Grid
 				if (layer != 0)
 					layer++;
 				else
-					continue;
+					if (CellStack::bottom.content == Content::Clear)
+						continue;
 			/*	else
 					if (CellStack::bottom.content == Content::Clear)
 						continue;*/
