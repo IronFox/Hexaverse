@@ -172,8 +172,6 @@ namespace Objects
 
 		//TurretBase overrides:
 		virtual float			GetFlatAttackRange() const override {return EMPModify(turret->horizontalAttackRange + base->rangeModifier,1.f);}
-		virtual bool			HasAmmoForShot() override;
-
 
 		//Hibernating overrides:
 		#ifndef NO_HIBERNATION

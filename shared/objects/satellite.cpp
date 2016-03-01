@@ -873,21 +873,6 @@ namespace Objects
 	#endif /*0*/
 
 
-	/*virtual override*/ bool					Satellite::HasAmmoForShot()
-	{
-		if (!turret->ammoNeedPerShot)
-			return true;
-		resourceEnvironment.CheckRefresh(*this);
-		return resourceEnvironment.CanWithdraw(*this,turret->ammoType,turret->ammoNeedPerShot);
-
-	//#ifdef ONE_COMPOUND_PER_FACTION
-	//	const Compound&compound = owner->compound;
-	//	return compound.total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	//#else
-	//	return currentStorage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	//#endif
-	}
-
 	
 	#ifndef CLIENT
 		/*virtual override*/ bool					Satellite::FillAttackQueue()

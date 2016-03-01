@@ -2028,5 +2028,13 @@ namespace Objects
 	}
 
 
+	/*virtual override*/bool				MobileEntity::HasAmmoForShot() 
+	{
+		if (!turret->ammoNeedPerShot)
+			return true;
+		resourceEnvironment.CheckRefresh(*this);
+		return resourceEnvironment.CanWithdraw(*this,turret->ammoType,turret->ammoNeedPerShot);
+	}
+
 }
 
