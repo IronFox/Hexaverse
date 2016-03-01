@@ -1095,6 +1095,8 @@ namespace Grid
 		{
 			static Random random;
 
+			CellStack::bottom.content = (BYTE)config.innerCoreType;
+
 			foreach (Resource::all,res)
 				res->Fill(random);
 
@@ -3397,7 +3399,7 @@ namespace Grid
 				if (layer != 0)
 					layer++;
 				else
-					if (CellStack::bottom.content == Content::Clear)
+					if (CellStack::bottom.content == Content::Clear || CellStack::bottom.content == Content::Lava)
 						continue;
 			/*	else
 					if (CellStack::bottom.content == Content::Clear)

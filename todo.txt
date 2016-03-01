@@ -1,4 +1,7 @@
-﻿emp independent of goal
+﻿surveyors move along revertable paths only
+reduce hoverbase safe falling height
+
+emp independent of goal
 hostile ghosts die after one round
 cluster natural resources
 
