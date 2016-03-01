@@ -1069,6 +1069,7 @@ namespace ParameterConfig
 	bool	customWorldID = false;
 	bool	enableRemoteControl = true;
 	const char*	programName="";
+	TCP::Server::Protocol controlProtocol = TCP::Server::Protocol::IPv6;
 
 	void	SetProgramName(const char*base)
 	{
@@ -1088,6 +1089,7 @@ namespace ParameterConfig
 		std::cout << "  --offline/-o \tstart offline"<<std::endl;
 		std::cout << "  --port/-p [basePort]\tuse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default)"<<std::endl;
 		std::cout << "  --noRemote/-r \tdisable remote control service"<<std::endl;
+		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
 		std::cout << "  --test/-t \trun self-tests, then quit"<<std::endl;
 		std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
 	}
@@ -1124,6 +1126,8 @@ namespace ParameterConfig
 			case Idle:
 				if (!strcmp(arg,"--test") || !strcmp(arg,"-t"))
 					inTestMode = true;
+				elif (!strcmp(arg,"--rv4"))
+					controlProtocol = TCP::Server::Protocol::IPv4;
 				elif (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
 					mode = ExpectPort;
 				elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
@@ -1296,7 +1300,7 @@ int main( int argc, const char* argv[])
 		UDPBroadCast::Create(ParameterConfig::basePort,Network::serverID);
 
 		if (ParameterConfig::enableRemoteControl)
-			RemoteControl::Start(ParameterConfig::basePort);
+			RemoteControl::Start(ParameterConfig::basePort,ParameterConfig::controlProtocol);
 
 
 
