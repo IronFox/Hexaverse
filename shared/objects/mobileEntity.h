@@ -570,6 +570,7 @@ namespace Objects
 		#ifndef CLIENT
 			virtual void		Attack(float&currentTime)	override;
 		#endif
+		virtual	bool			HasAmmoForShot() override;
 
 
 		//WorldEntity overrides:
