@@ -399,6 +399,8 @@ namespace Objects
 
 		bool		Faction::CanSee(const PWorldEntity&e, float t)	const
 		{
+			if (!e)
+				return false;
 			if ( e->owner.get() == this )
 				return true;
 			if (!seeing.IsSet(e))
@@ -443,21 +445,18 @@ namespace Objects
 					t = std::max(t0,t) + timeEpsilon;
 				}
 
-				PMobileEntity v= To<MobileEntity>::DynamicCast(e);
-				if (v)
-					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
-				else
-					t += timeEpsilon;
+				PMobileEntity v;
+				PTower tower;
+				e->SyncTime(t,timeEpsilon);
+				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual of entity, time updated to "+String(t));
 
 				ASSERT1__(gainedVisualAt.SetNew(e,t),e->id.ToString());
 
 				if (cascade)
 					SignalAppearanceToHostileFaction(shared_from_this(),e,t);
 
-				if (v)
-					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
-				else
-					t += timeEpsilon;
+				e->SyncTime(t,timeEpsilon);
+
 				return true;
 			}
 			return false;
@@ -493,26 +492,16 @@ namespace Objects
 					t = std::max(t0,t);	//permissive. whatever. seriously
 					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual, time updated to "+String(t));
 				}
-				PMobileEntity v= To<MobileEntity>::DynamicCast(e);
-				//if (v)
-				//	t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
-				//else
-				//	t += timeEpsilon;
-				//	
-				if (v)
-				{
-					t = v->timeAt = std::max(v->timeAt,t);
-					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual, time updated to "+String(t));
-				}
+				PMobileEntity v;
+				PTower tower;
+				e->SyncTime(t,timeEpsilon);
+
 				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),e->id.ToString());
 				seeing.Unset(e);
 				if (signalConnectedClient)
 					SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
 
-				if (v)
-					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
-				else
-					t += timeEpsilon;
+				e->SyncTime(t,timeEpsilon);
 			}
 			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
 
@@ -917,7 +906,7 @@ namespace Objects
 		{
 			PStructure s = To<Structure>::DynamicCast(e);
 			#ifdef CLIENT
-				if (e->isMine)
+				if (e->isOwnedByMe)
 				{
 					float t = 0.f;
 					if (!s && e->IsMobile())
@@ -935,10 +924,10 @@ namespace Objects
 				s->DisconnectFromNeighborhood(0);
 			}
 			e->owner = newOwner;
-			e->isMine = isNowMine;
+			e->isOwnedByMe = isNowMine;
 
 			#ifdef CLIENT
-				if (e->isMine)
+				if (e->isOwnedByMe)
 				{
 					float t = 0.f;
 					if (!s && e->IsMobile())
@@ -1083,7 +1072,7 @@ namespace Objects
 						bool seen = m->age > 1 &&	//don't delete hostile markers in round <2. grid might be outdated
 									 m->visualization && Grid::actualWorld.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
 						/*foreach(structures, s)
-							if ((*s)->isMine && (*s)->CanSee(center, 0))
+							if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
 							{
 								LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
 								seen = true;
@@ -1091,7 +1080,7 @@ namespace Objects
 							}
 						if (!seen)
 							foreach(vehicles, s)
-								if ((*s)->isMine && (*s)->CanSee(center, 0))
+								if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
 								{
 									LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
 									seen = true;
@@ -1099,7 +1088,7 @@ namespace Objects
 								}
 						if (!seen)
 							foreach(satellites, s)
-								if ((*s)->isMine && (*s)->CanSee(center, 0))
+								if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
 								{
 									LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
 									seen = true;
@@ -1174,7 +1163,7 @@ namespace Objects
 					m.visualization->id = referenceID;
 					m.visualization->owner = referenceOwnerID == TUniqueID::Empty() ? PFaction() : Faction::GetOrCreate(referenceOwnerID);
 					m.visualization->health = -(int)m.age;
-					m.visualization->isMine = (m.visualization->owner && m.visualization->owner->isMine) || (!m.visualization->owner && m.type == Type::EntityDeath);
+					m.visualization->isOwnedByMe = (m.visualization->owner && m.visualization->owner->isOwnedByMe) || (!m.visualization->owner && m.type == Type::EntityDeath);
 					m.visualization->UpdateNiceName();
 				}
 			}

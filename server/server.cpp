@@ -38,6 +38,11 @@ Random		random;
 #endif
 
 
+void	SignalChainReactionExplosion(const Grid::LCellIdI&center, float radius, int damageLevel, float atTime)
+{
+	Game::evolver->HandleChainReactionExplosion(Evolver::TExplosion( center, radius, damageLevel, atTime ));
+}
+
 
 void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromStorage, float atTime)
 {
@@ -99,7 +104,7 @@ void	SignalNewStructure(const Objects::PStructure&s, float atTime)
 	//if (!cl)
 	//	return;
 
-
+	LogEvent(EventSignificance::Common,s.get(),"Signalling new structure to owner at t="+String(atTime));
 	Protocol::StructureConstruction	w;
 	Protocol::Timestamp timestamp(RuntimeConfig::IsInAnyCommandPhase(),atTime);
 	Game::Network::Describe(w,*s,true,timestamp);
@@ -313,25 +318,7 @@ void	SignalTurretRotation(const Objects::PWorldEntity&e, const TVec3<>&toWorld, 
 	rot.toWorld = toWorld;
 	rot.rotationTime = rotationTime;
 	rot.timestamp.rightNow = false;
-
-	{
-		if (e->IsMobile())
-		{
-			Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
-			rot.timestamp.atTime = v->timeAt;
-		}
-		else
-		{
-			Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
-			if (t)
-				rot.timestamp.atTime = t->timeAt;
-			else
-			{
-				LogEvent(EventClass::Preset::commandRejected,e.get(), "Trying to let incompatible entity attack");
-				return;	
-			}
-		}
-	}
+	rot.timestamp.atTime = e->motionTime;
 
 	foreach (Network::activePlayersAndSpectators,cl)
 	{
@@ -450,25 +437,10 @@ void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, f
 	preciseAttack.traceTo = traceTo;
 	preciseAttack.isAutoAttack = isAutoAttack;
 	preciseAttack.timestamp.rightNow = false;
+	preciseAttack.timestamp.atTime = e->motionTime;
 	
-	{
-		if (e->IsMobile())
-		{
-			Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
-			preciseAttack.timestamp.atTime = v->timeAt;
-		}
-		else
-		{
-			Objects::PTower t = To<Objects::Tower>::DynamicCast(e);
-			if (t)
-				preciseAttack.timestamp.atTime = t->timeAt;
-			else
-			{
-				LogEvent(EventClass::Preset::commandRejected,e.get(), "Incompatible entity attempting attack");
-				return;	
-			}
-		}
-	}
+	LogEvent(EventSignificance::Debug,e.get(),"Commencing attack at t="+String(preciseAttack.timestamp.atTime));
+
 
 	preciseAttack.flightTime = flightTime;
 
@@ -1067,7 +1039,7 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 
 void LogConfig(const String&msg)
 {
-	Logging::WriteEvent(EventClass::Preset::configuration,msg,nullptr,nullptr);
+	Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr);
 }
 
 
@@ -1097,6 +1069,7 @@ namespace ParameterConfig
 	bool	customWorldID = false;
 	bool	enableRemoteControl = true;
 	const char*	programName="";
+	TCP::Server::Protocol controlProtocol = TCP::Server::Protocol::IPv6;
 
 	void	SetProgramName(const char*base)
 	{
@@ -1112,10 +1085,11 @@ namespace ParameterConfig
 	{
 		std::cout << std::endl << "usage: "<<programName<<" ..."<<std::endl;
 		std::cout << "  --load/-l [filename]\tload savegame"<<std::endl;
-		std::cout << "  --loadAuto/-a [number]\tload previously created auto-savegame. number=0 => most recent"<<std::endl;
+		std::cout << "  --loadAuto/-a [number]\tload auto-savegame. number=0 => most recent"<<std::endl;
 		std::cout << "  --offline/-o \tstart offline"<<std::endl;
-		std::cout << "  --port/-p [basePort]\tuse a non-default base port"<<std::endl;
+		std::cout << "  --port/-p [basePort]\tuse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default)"<<std::endl;
 		std::cout << "  --noRemote/-r \tdisable remote control service"<<std::endl;
+		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
 		std::cout << "  --test/-t \trun self-tests, then quit"<<std::endl;
 		std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
 	}
@@ -1152,6 +1126,8 @@ namespace ParameterConfig
 			case Idle:
 				if (!strcmp(arg,"--test") || !strcmp(arg,"-t"))
 					inTestMode = true;
+				elif (!strcmp(arg,"--rv4"))
+					controlProtocol = TCP::Server::Protocol::IPv4;
 				elif (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
 					mode = ExpectPort;
 				elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
@@ -1161,6 +1137,7 @@ namespace ParameterConfig
 				elif (!strcmp(arg,"--help"))
 				{
 					PrintHelp();
+					exit(0);
 				}
 				elif (!strcmp(arg,"--world") || !strcmp(arg,"-w"))
 					mode = ExpectWorldID;
@@ -1323,7 +1300,7 @@ int main( int argc, const char* argv[])
 		UDPBroadCast::Create(ParameterConfig::basePort,Network::serverID);
 
 		if (ParameterConfig::enableRemoteControl)
-			RemoteControl::Start(ParameterConfig::basePort);
+			RemoteControl::Start(ParameterConfig::basePort,ParameterConfig::controlProtocol);
 
 
 
@@ -1340,7 +1317,7 @@ int main( int argc, const char* argv[])
 
 		Reflection::Create();
 		Reflection::state.PushFocus();
-		Reflection::state.EnterNewFolder("/ServiceOnline");
+		Reflection::state.EnterNewFolder("/Online");
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start();})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return InformationProvider::server.IsOnline();},InformationProvider::Stop,[](){InformationProvider::Start(ParameterConfig::basePort);})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},Network::RestartSession)));
@@ -1352,30 +1329,35 @@ int main( int argc, const char* argv[])
 		{
 			application_shutting_down = true;
 		})->SetUniqueHelp("Shuts down the service and terminates the application");
-		Reflection::state.DefineCommand("/Server/autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
-		Reflection::state.DefineCommand("/Server/saveTo fileName",(CLI::Command::function1_t)[](const String&path)
-		{
-			FileIO::Save(PathString(path));
-		},CLI::FileCompletion);
 
-		Reflection::state.DefineCommand("/Server/loadFrom fileName",(CLI::Command::function1_t)[](const String&path)
-		{
-			FileIO::Load(PathString(path));
-		},CLI::FileCompletion);
+		Reflection::state.PushFocus();
+			Reflection::state.EnterNewFolder("/IO");
+			Reflection::state.DefineCommand("autoSaveNow",FileIO::AutoSave,CLI::NoCompletion);
+			Reflection::state.DefineCommand("saveTo fileName",(CLI::Command::function1_t)[](const String&path)
+			{
+				FileIO::Save(PathString(path));
+			},CLI::FileCompletion);
 
-		Reflection::state.DefineCommand("/Server/loadAutoSave [index]",(CLI::Command::function1_t)[](const String&sindex)
-		{
-			index_t index;
-			if (sindex.IsEmpty())
-				index = 0;
-			else
-				if (!convert(sindex.c_str(),index))
-				{
-					LogEvent(EventClass::Preset::remoteControlError,"Unable to parse '"+sindex+"' to index");
-					return;
-				}
-			FileIO::Load(FileIO::GetAutoSavePath(index));
-		},CLI::FileCompletion);
+			Reflection::state.DefineCommand("loadFrom fileName",(CLI::Command::function1_t)[](const String&path)
+			{
+				FileIO::Load(PathString(path));
+			},CLI::FileCompletion);
+
+			Reflection::state.DefineCommand("loadAutoSave [index]",(CLI::Command::function1_t)[](const String&sindex)
+			{
+				index_t index;
+				if (sindex.IsEmpty())
+					index = 0;
+				else
+					if (!convert(sindex.c_str(),index))
+					{
+						LogEvent(EventClass::Preset::remoteControlError,"Unable to parse '"+sindex+"' to index");
+						return;
+					}
+				FileIO::Load(FileIO::GetAutoSavePath(index));
+			},CLI::FileCompletion);
+		Reflection::state.PopFocus();
+
 
 		Reflection::state.DefineCommand("/World/generate [planetType] [discovery]",(CLI::Command::function2_t)[](const String&planet, const String&discovery)
 		{

@@ -16,6 +16,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Turret_Cannon,
 	Turret_Surveyor,
 	Turret_EMP,
+	Turret_Bomb,
 	Turret_ProtonCannon,
 	Turret_SkyHub,
 	Turret_StarPort,
@@ -40,6 +41,10 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Job_Repair,
 	Job_ClearAbove,
 	Job_Sequence,
+	Job_SelfDetonate,
+
+	DetonationSize_Regular,	//Used in conjunction with Job_SelfDetonate
+	DetonationSize_Doomsday,	//Used in conjunction with Job_SelfDetonate
 
 	Type_Marker,
 	Type_Vehicle,

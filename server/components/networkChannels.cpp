@@ -1035,15 +1035,17 @@ namespace Receiver
 				return Objects::Component::TerrainRemove;
 			case ConstName::Job_Construct:
 				return Objects::Component::Construct;
+			case ConstName::Job_SelfDetonate:
+				return Objects::Component::Nuclear;
 		}
 		return Objects::Component::TerrainRemove;	//shouldn't happen, but not our case to handle here
 	}
 
 	void	SignalNewJob(Protocol::StandardJob&sjob, TCP::Peer&peer)
 	{
-		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering new Job #"+String(int(sjob.jobName.value))+" for vehicle "+sjob.id.value.ToString());
+		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Registering new Job #"+String(int(sjob.jobName.value))+" for vehicle "+sjob.ownerID.value.ToString());
 
-		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(sjob.id,peer);
+		Objects::PWorldEntity e = CheckCommandModeGetAccessibleEntity(sjob.ownerID,peer);
 		if (!e)
 			return;
 		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
@@ -1115,12 +1117,6 @@ namespace Receiver
 			break;
 			case ConstName::Job_BuildHorizontalWall:
 			{
-				//Grid::LCellIdI target = v->GetLastPointOfOrigin()+1;
-				//if (target.height+1 >= Grid::CellStack::HalfRange)
-				//{
-				//	LogEvent(EventClass::Preset::commandRejected,peer,e,"Cannot build wall on top layer");
-				//	return;
-				//}
 				job.reset(new VehicleJob::BuildHorizontalWall(*v));
 				v->RegisterNewJob("", job,nullptr);
 				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
@@ -1144,9 +1140,9 @@ namespace Receiver
 			break;
 			case ConstName::Job_Construct:
 			{
-				if (v->GetLastPointOfOrigin().height <= -Grid::CellStack::HalfRange)
+				if (v->GetLastPointOfOrigin().height < Grid::CellStack::BottomHeight)
 				{
-					LogEvent(EventClass::Preset::commandRejected,peer,e,"Cannot build on bottom layer");
+					LogEvent(EventClass::Preset::commandRejected,peer,e,"Cannot build below bottom layer");	//would be weird, but okay
 					return;
 				}
 
@@ -1171,6 +1167,14 @@ namespace Receiver
 					LogEvent(EventClass::Preset::commandRejected,peer,v,"Unable to construct structure type");
 					Network::InvalidOperation(peer);
 				}
+			}
+			break;
+			case ConstName::Job_SelfDetonate:
+			{
+				job.reset(new VehicleJob::SelfDetonate(*v,sjob.parameterName));
+				target = v->GetLastPointOfOrigin();
+				v->RegisterNewJob("", job,&target);
+				LogEvent(EventSignificance::Common,peer,e,"Registered new job "+job->GetName());
 			}
 			break;
 			default:

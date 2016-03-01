@@ -25,6 +25,7 @@ bool		inTestMode = false;
 
 
 EventClass	EventClass::Preset::error = EventClass(EventSignificance::NonFatalError),
+			EventClass::Preset::internalError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),
 			EventClass::Preset::fatal = EventClass(EventSignificance::SystemFatal, EventFlavor::SystemError),
 			EventClass::Preset::unexpectedBehavior = EventClass(EventSignificance::ClientFatal, EventFlavor::SystemError),
 			EventClass::Preset::common = EventClass(EventSignificance::Common),
@@ -33,6 +34,7 @@ EventClass	EventClass::Preset::error = EventClass(EventSignificance::NonFatalErr
 			EventClass::Preset::commandRejected = EventClass(EventSignificance::NonFatalError,EventFlavor::UserError),
 			EventClass::Preset::operationAborted = EventClass(EventSignificance::NonFatalError,EventFlavor::Loss),
 			EventClass::Preset::configuration = EventClass(EventSignificance::Common,EventFlavor::Neutral),
+			EventClass::Preset::configurationPrint = EventClass(EventSignificance::Uncommon,EventFlavor::Neutral),
 			EventClass::Preset::configurationError = EventClass(EventSignificance::NonFatalError,EventFlavor::UserError),
 			EventClass::Preset::fileError = EventClass(EventSignificance::NonFatalError,EventFlavor::SystemError),
 			EventClass::Preset::network = EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),

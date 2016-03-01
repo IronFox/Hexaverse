@@ -435,10 +435,24 @@ namespace Network
 					Animation::whenDone.Append().Init(vs);
 				else
 				{
+					foreach (Animation::primitives,p)
+					{
+						if (p->type == Animation::Primitive::MobileState
+							&&
+							p->targetEntityID == vs.entityState.id
+							&&
+							p->time.min == vs.entityState.timestamp.atTime)
+						{
+							p->Init(vs);
+							p->overwritten++;
+							if (p->overwritten==1 || !(p->overwritten %100000))
+								LogEvent(EventSignificance::Debug, "Rewrote 'mobile state("+vs.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value)+" n="+String(p->overwritten));
+							return;
+						}
+					}
 					Animation::primitives.Append().Init(vs);
-					LogEvent(EventSignificance::Debug, "Appended mobile state primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended 'mobile state("+vs.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
 				}
-
 			}
 		}
 
@@ -450,12 +464,12 @@ namespace Network
 			Objects::PMobileEntity v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,vc.state.entityState.timestamp.rightNow,Network::haveID && Network::myID == vc.owner);
 			if (vc.state.entityState.timestamp.rightNow)
 				LogEvent(EventSignificance::Common,v.get(),  "Placed vehicle entity outside animation");
-			bool isMine = v->isMine;
+			bool isOwnedByMe = v->isOwnedByMe;
 
 			//v->id = vc.state.entityState.id;
 			Animation::ApplyState(v,vc.state,true, !vc.state.entityState.timestamp.rightNow);
 			#ifdef HAS_WINDOW
-				if (v->isMine && !amLocated)
+				if (v->isOwnedByMe && !amLocated)
 				{
 					amLocated = true;
 					Camera::TranslateTo(v->system.w.xyz);
@@ -463,7 +477,7 @@ namespace Network
 			#endif
 			if (vc.state.entityState.timestamp.rightNow)
 			{
-				if (!isMine)
+				if (!isOwnedByMe)
 					UI::HexGrid::RefreshContacts();
 			}
 			else
@@ -498,7 +512,7 @@ namespace Network
 			}
 			else
 			{
-				if (!s->isMine)
+				if (!s->isOwnedByMe)
 					UI::HexGrid::RefreshContacts();
 			}
 		}
@@ -523,7 +537,7 @@ namespace Network
 				else
 				{
 					Animation::primitives.Append().Init(vs);
-					LogEvent(EventSignificance::Debug, "Appended 'structure state' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
+					LogEvent(EventSignificance::Debug, "Appended 'structure state("+vs.entityState.id.value.ToString()+")' primitive to animation sequence at t="+String(vs.entityState.timestamp.atTime.value));
 				}
 			}
 
@@ -562,7 +576,7 @@ namespace Network
 					#endif
 				}
 
-				if (!e->isMine)
+				if (!e->isOwnedByMe)
 					UI::HexGrid::RefreshContacts();
 			}
 			else
@@ -652,7 +666,7 @@ namespace Network
 			myID = id;
 			Objects::Faction::mine = ResolveFaction(myID);
 			myIDString = myID.ToString();
-			Objects::Faction::mine->isMine = true;
+			Objects::Faction::mine->isOwnedByMe = true;
 		}
 
 		void	PhaseChange(Protocol::PhaseChange&c);
@@ -1096,7 +1110,7 @@ namespace Network
 					Dialog::SignalSituationChange();
 				#endif
 				#ifdef _DEBUG
-					LogEvent(EventSignificance::Debug,nullptr,"Got pong from server");
+					//LogEvent(EventSignificance::Debug,nullptr,"Got pong from server");
 				#endif
 			break;
 		}
@@ -1382,7 +1396,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 
 			Objects::ForeachMobileWorldEntity([](const Objects::PWorldEntity&e)
 			{
-				if (e->health <= 0 || !e->isMine)
+				if (e->health <= 0 || !e->isOwnedByMe)
 					return;
 				Objects::Marker *m = Objects::Marker::Find(e->location);
 				if (m)
@@ -1392,7 +1406,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			#ifdef HAS_WINDOW
 				for (const auto&s : Objects::structures)
 				{
-					if (s->isMine && s->IsWorkingStructure() )
+					if (s->isOwnedByMe && s->IsWorkingStructure() )
 					{
 						Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
 						if (ws->AwaitsUserInteraction())
@@ -1435,16 +1449,16 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 
 		LogEvent(EventClass::Preset::important, nullptr, "Begin round " + String(RuntimeConfig::roundNumber));
 
-		if (gameHasBegun && Animation::AllDone())
-		{
-			OnPlayerControlBegin();
-		}
+
 	}
-	for (const auto&f : Objects::Faction::allKnown)
-	{
-		f->requestedNewRound = false;
-		f->roundChangeNotifications = 0;
-	};
+	if (gameHasBegun)
+		for (const auto&f : Objects::Faction::allKnown)
+		{
+			f->requestedNewRound = false;
+			f->roundChangeNotifications = 0;
+		};
+	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && gameHasBegun && Animation::AllDone())
+		OnPlayerControlBegin();
 	#ifdef HAS_WINDOW
 		Dialog::SignalSituationChange();
 	#endif
@@ -1492,6 +1506,7 @@ void	Network::Receiver::FactionRequestedNewRound(NET(TUniqueID)&id)
 	LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is done thinking");
 	#ifdef HAS_WINDOW
 		UI::RefreshSessionView();
+		UI::RefreshButtonState();
 	#endif
 }
 
@@ -1503,6 +1518,7 @@ void	Network::Receiver::FactionContinuedRound(NET(TUniqueID)&id)
 	LogEvent(faction->roundChangeNotifications < 3 ? EventSignificance::Uncommon : EventSignificance::Common,nullptr,faction->GetName()+" is thinking some more");
 	#ifdef HAS_WINDOW
 		UI::RefreshSessionView();
+		UI::RefreshButtonState();
 	#endif
 }
 

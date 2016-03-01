@@ -6,6 +6,7 @@
 #include "../sphereGrid.h"
 #include "turretBase.h"
 #include <engine/display.h>
+#include <al/openal.h>
 
 
 
@@ -72,6 +73,7 @@ namespace Objects
 	namespace Renderer
 	{
 		extern Buffer0<PTurretBase>		animatedTurrets;
+		extern Buffer0<PWorldEntity>	attackers;	//!< everything that has a base and can attack goes in here
 		extern double					now; //double-precision seconds since program start. Updated during RefreshFactionColors()
 
 		/**
@@ -87,6 +89,8 @@ namespace Objects
 		void	Create();
 		void	Destroy();	//!< Frees all commonly used rendering resources
 		
+
+		void	CompileFlatDisc(Geometry&geo, int resolution, float r0, float r1, const float4&color0,const float4&color1);
 
 
 		void	AdvanceTurretAnimations();
@@ -106,9 +110,8 @@ namespace Objects
 
 		void	Render(Satellite&s, float light);
 
-		void	RenderSimple(Structure&s, bool includeFoundation = false);
-		void	RenderSimple(Satellite&s);
-		void	RenderSimpleIdentity(Satellite&s);
+		void	RenderSimple(WorldEntity&e, bool includeFoundationIfStructure=false);
+		void	RenderSimpleIdentity(WorldEntity&e, bool includeFoundationIfStructure=false);
 
 
 		/**
@@ -212,6 +215,10 @@ namespace Objects
 		Removes all active smoke trails. May trigger gradual fading in the future
 		*/
 		void	ClearSmokeTrails();
+
+
+
+		OpenAL::WaveBuffer	GetAmbientSoundOf(const String&entityTypeName, ConstName entityType);
 	}
 
 }

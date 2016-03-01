@@ -423,7 +423,7 @@ namespace FileIO
 			Riff::Chunk*baseChunk = taskChunk->AppendBlock(RID::baseJob);
 			static ByteStream	stream;
 			stream.Clear();
-			stream << job->roundsToJobCompletion << job->mineralCostLeft;// << job->jobAutoCompletion << job->movesToFocusWhenDone;
+			stream << job->roundsToJobCompletion << job->resourceCostLeft;// << job->jobAutoCompletion << job->movesToFocusWhenDone;
 			stream << job->ioID;
 			baseChunk->SetData(stream);
 
@@ -457,7 +457,7 @@ namespace FileIO
 
 				source0->OpenStream();
 				ASSERT__(source0->Stream(job->roundsToJobCompletion));
-				ASSERT__(source0->Stream(job->mineralCostLeft));
+				ASSERT__(source0->Stream(job->resourceCostLeft));
 				if (source0->size() == 12)
 				{
 					ASSERT__(source0->Stream(job->ioID));
@@ -472,7 +472,17 @@ namespace FileIO
 				return;
 			}
 		}
-		FATAL__("Unable to find matching job implementation");
+		String found;
+		Riff::Chunk*f = taskChunk->First();
+		if (f)
+			do
+			{
+				if (f->IsID(RID::baseJob))
+					continue;
+				found += " "+String(f->GetID().ToString());
+			}
+			while (f = taskChunk->Next());
+		FATAL__("Unable to find matching job implementation. Found"+found);
 	}
 
 	static void Export(Riff::Chunk*parent, const Riff::TID&id, const String&outString)
@@ -901,10 +911,13 @@ namespace FileIO
 			Riff::Chunk*enabled = parent->FindFirst(RID::structureEnabled);
 			ASSERT_NOT_NULL__(enabled);
 			bool isEnabled = *(const bool*)enabled->pointer();
-			if (isEnabled)
-				w->SetEnabled(isEnabled,0,false,Objects::WorkingStructure::ForceEnable,false);
-			else
-				w->SetEnabledOverride(false);
+			{
+				float t =0;
+				if (isEnabled)
+					w->SetEnabled(isEnabled,t,false,Objects::WorkingStructure::ForceEnable,false);
+				else
+					w->SetEnabledOverride(false);
+			}
 			Objects::MobileEntityProducer*p = dynamic_cast<Objects::MobileEntityProducer*>(w);
 	//		Objects::MobileEntityProducer*p = w->ToProducer();
 			//Objects::VehiclePlant*p = dynamic_cast<Objects::VehiclePlant*>(rs.get());
@@ -1129,7 +1142,7 @@ namespace FileIO
 										ASSERT__(tabAt);
 										if (tabAt)
 										{
-											String key = line->subStringRef(0,tabAt-1);
+											String key = "/"+line->subStringRef(0,tabAt-1);
 											StringRef value = line->subStringRef((int)tabAt);
 		
 											CLI::PVariable v = Reflection::state.FindVar(key);

@@ -10,6 +10,7 @@
 
 
 #ifdef HAS_WINDOW
+	#include <al/openal.h>
 	#include "visualCommands.h"
 #endif
 
@@ -27,7 +28,7 @@ struct SharedPtrHash
 namespace Objects
 {
 
-	static const float timeEpsilon = 0.01f;	//time in seconds between subsequent events such that they are sorted correctly on the client
+	static const float timeEpsilon = 0.001f;	//time in seconds between subsequent events such that they are sorted correctly on the client
 	typedef SharedPtrHash	OwnerHash;
 
 	extern GenericHashTable<TUniqueID,PWorldEntity,TUniqueID,Strategy::POD,Strategy::Swap>	idMap;
@@ -146,11 +147,13 @@ namespace Objects
 				ResetAllChange();
 			}
 			#endif
+
 		}
 
 		#ifdef HAS_WINDOW
 			bool					TestIntersection(const Geometry&geo, const TVec3<>&b, const TVec3<>&d, float & distance) const;
 		#endif
+
 
 	private:
 		bool						sleeping = false;	//!< Use SetSleep() instead. Indicates that this entity is asleep. Sleeping entities are not considered in the client-side IsIdle() iteration. Sleeping mobile entities will not execute any jobs
@@ -158,21 +161,38 @@ namespace Objects
 	public:
 		#ifndef CLIENT
 
+			float					motionTime=0.f;		//!< Time (in seconds) into the motion phase to calculate event times
+
 			Random					entityRandom;
 			
 			void					ReSeedRandom();
 
-
+			void					ResetMotionTime()	{motionTime = 0;}
 
 		#endif
+
+		inline void					SyncTime(float&remoteTime, float timeOffset)
+		{
+			#ifndef CLIENT
+				remoteTime = motionTime = std::max(motionTime,remoteTime) + timeOffset;
+			#endif
+		}
+		inline void					SyncTime(float&remoteTime)
+		{
+			#ifndef CLIENT
+				remoteTime = motionTime = std::max(motionTime,remoteTime);
+			#endif
+		}
 
 
 
 		virtual						~WorldEntity();
 
 		#ifdef HAS_WINDOW
-			typedef Objects::EntityCommand	Command;
-			typedef Objects::FEntityCommandVisitor	FCommandVisitor;
+			typedef Objects::CallbackCommand	Command;
+			typedef Objects::FCommandVisitor	FCommandVisitor;
+
+			OpenAL::Source			ambientSound;
 		#endif
 
 		/**
@@ -184,7 +204,7 @@ namespace Objects
 									isInsertedIntoGrid = false;//tracks if the local entity has been inserted into the grid
 
 		#ifdef CLIENT
-			bool					isMine;
+			bool					isOwnedByMe;
 			int						ignoreThreatRounds = 0;	//used by ai to ignore threat level if the ai assumes it can win
 		#endif
 
@@ -250,7 +270,13 @@ namespace Objects
 
 			virtual void			OnSleepChange(float&t) {};
 		#else
-			void					ApplySleepChangeFromServer(bool doSleep)	{sleeping = doSleep;}
+			void					ApplySleepChangeFromServer(bool doSleep)
+			{
+				sleeping = doSleep;
+				#ifdef HAS_WINDOW
+					ambientSound.SetGain(GetSoundLevel());
+				#endif
+			}
 		#endif
 		//virtual bool				CanSee(const PWorldEntity&other)	const;
 		//virtual bool				CanSee(const TVec3<>&center, float radius)	const;
@@ -261,6 +287,10 @@ namespace Objects
 		@return 0 (completely inactive) to 1 (active)
 		*/
 		virtual float				GetActivityLevel() const {return IsHibernating() ? 0.f : (sleeping ? 0.5f : 1.f);}
+		#ifdef HAS_WINDOW
+			virtual float			GetSoundLevel() const {return GetActivityLevel()*0.35f;}
+			virtual OpenAL::Wave	GetAmbientSound() const;
+		#endif
 
 		/**
 		Retrieves the maximum possible health level
@@ -305,7 +335,7 @@ namespace Objects
 		Structures should handle compound disconnections and struct count decreases.
 		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
 		*/
-		virtual void				OnDestroy(float atTime)	{};	
+		virtual void				OnDestroy(RemovalType, float atTime)	{};	
 
 		/**
 		Signals that the local entity has been created.
@@ -362,6 +392,7 @@ namespace Objects
 		//various type check methods. technically, a dynamic cast into the respective structure would be sufficient but i am led to believe that these are faster
 		virtual bool				IsWorkingStructure() const {return false;}
 		virtual bool				IsMobile() const {return false;}
+		virtual bool				IsTower() const {return false;}
 		virtual bool				IsVehicle() const {return false;}
 		virtual bool				IsSatellite() const {return false;}
 		virtual bool				IsStructure() const {return false;}
@@ -428,8 +459,12 @@ namespace Objects
 				void				AppendDeploymentCount(BaseCommand::Label&outResult, const OwnerParameter&overrideOwner)	const;
 				String				CompileDeploymentCount(const OwnerParameter&overrideOwner)	const;
 
-
-				virtual void		VisitAllCommands(FCommandVisitor visitor) {};
+				/**
+				Visits each visual command the local entity provides
+				@param visitor Callback function to call for every command
+				@param force Set true to also visit commands that are currently hidden. False will visit only the currently selected command tree branch
+				*/
+				virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) {};
 				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const=0;
 			#endif
 	

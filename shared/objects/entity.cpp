@@ -9,6 +9,7 @@
 	//#include "gridAndChoices.h"
 	#include "satellite.h"
 	#include "faction.h"
+	#include "rendering.h"
 #endif
 #ifndef CLIENT
 	#include "faction.h"
@@ -49,6 +50,11 @@ namespace Objects
 		}
 
 
+		/*virtual*/ OpenAL::Wave	WorldEntity::GetAmbientSound() const
+		{
+			return Objects::Renderer::GetAmbientSoundOf(GetTypeName(),GetCTypeName());
+		}
+
 
 
 	#endif
@@ -60,12 +66,12 @@ namespace Objects
 			return;
 		float t=0.f;
 
-		if (isMine && isCreated)
+		if (isOwnedByMe && isCreated)
 			UnregisterSensory(t);
 
 		empDamageLevel = damageLevel;
 
-		if (isMine && isCreated)
+		if (isOwnedByMe && isCreated)
 			RegisterSensory(t);
 
 	}
@@ -422,7 +428,7 @@ namespace Objects
 		
 		LogEvent(EventClass::Preset::common,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+")");
 		#ifdef CLIENT
-			if (isMine)
+			if (isOwnedByMe)
 			{
 				Grid::HighSetup::TVolumeDescriptor desc;
 				Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
@@ -446,7 +452,7 @@ namespace Objects
 		#endif
 
 		#ifdef CLIENT
-			if (isMine)
+			if (isOwnedByMe)
 			{
 				Grid::HighSetup::TVolumeDescriptor desc;
 				Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);

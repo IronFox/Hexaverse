@@ -82,7 +82,7 @@ namespace Encryption
 			dest.SetSize(source.GetLength());
 			if (lastDirection != MBEDTLS_AES_DECRYPT)
 			{
-				mbedtls_aes_setkey_dec( &aes_ctx, aes_key, aes_keylen_bytes * 8 );
+				mbedtls_aes_setkey_dec( &aes_ctx, aes_key, (unsigned)aes_keylen_bytes * 8 );
 				lastDirection = MBEDTLS_AES_DECRYPT;
 			}
 			Crypt(source.pointer(),dest.pointer(),dest.GetContentSize(),MBEDTLS_AES_DECRYPT);
@@ -99,7 +99,7 @@ namespace Encryption
 				if (lastDirection != MBEDTLS_AES_ENCRYPT)
 				{
 					lastDirection = MBEDTLS_AES_ENCRYPT;
-					mbedtls_aes_setkey_enc( &aes_ctx, aes_key, aes_keylen_bytes * 8 );
+					mbedtls_aes_setkey_enc( &aes_ctx, aes_key, (unsigned)aes_keylen_bytes * 8 );
 				}
 				Crypt(source.pointer(),dest.pointer(),dest.GetContentSize(),MBEDTLS_AES_ENCRYPT);
 				return;
@@ -113,7 +113,7 @@ namespace Encryption
 			if (lastDirection != MBEDTLS_AES_ENCRYPT)
 			{
 				lastDirection = MBEDTLS_AES_ENCRYPT;
-				mbedtls_aes_setkey_enc( &aes_ctx, aes_key, aes_keylen_bytes * 8 );
+				mbedtls_aes_setkey_enc( &aes_ctx, aes_key, (unsigned)aes_keylen_bytes * 8 );
 			}
 			Crypt(temp.pointer(),dest.pointer(),dest.GetContentSize(),MBEDTLS_AES_ENCRYPT);
 			Wipe(temp.pointer(),temp.GetLength());
@@ -127,7 +127,7 @@ namespace Encryption
 			ASSERT__(!randomIV);
 			if (lastDirection != MBEDTLS_AES_DECRYPT)
 			{
-				mbedtls_aes_setkey_dec( &aes_ctx, aes_key, aes_keylen_bytes * 8 );
+				mbedtls_aes_setkey_dec( &aes_ctx, aes_key, (unsigned)aes_keylen_bytes * 8 );
 				lastDirection = MBEDTLS_AES_DECRYPT;
 			}
 			Crypt(data,dataSize,MBEDTLS_AES_DECRYPT);
@@ -139,7 +139,7 @@ namespace Encryption
 			if (lastDirection != MBEDTLS_AES_ENCRYPT)
 			{
 				lastDirection = MBEDTLS_AES_ENCRYPT;
-				mbedtls_aes_setkey_enc( &aes_ctx, aes_key, aes_keylen_bytes * 8 );
+				mbedtls_aes_setkey_enc( &aes_ctx, aes_key, (unsigned)aes_keylen_bytes * 8 );
 			}
 			Crypt(data,dataSize,MBEDTLS_AES_ENCRYPT);
 		}

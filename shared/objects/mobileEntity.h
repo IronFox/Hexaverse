@@ -251,10 +251,9 @@ namespace Objects
 			void				EraseFirstTask();
 
 			PVehicleJob			completeOnMove;
-			bool				hasTriedPlottingOnMoveAutoMotion=false;
+			BYTE				numTriedPlottingOnMoveAutoMotion=0;
 			bool				jobStarted=false;
 			bool				hasMoved=false;
-			float				timeAt=0.f;		//!< Time (in seconds) into the motion phase to calculate event times
 			bool				hasConstructedThisRound=false;
 		#else
 		#endif
@@ -306,8 +305,18 @@ namespace Objects
 
 
 
+
 		Grid::LCellIdI			GetLastPointOfOrigin() const;
 		Grid::LCellIdI			GetPrevPointOfOrigin() const;
+		/**
+		Checks whether or not the local entity has any constructing jobs queued for the specified location
+		*/
+		bool					ConstructingHere(const Grid::LCellIdI&loc) const;
+		/**
+		Checks whether or not any of the queued tasks involves moving away from the current location.
+		This does not include any automatic movements performed at the end of a construction job
+		*/
+		bool					HasMotionTasks() const;
 
 		#ifdef CLIENT
 			void				Relocate(const Grid::LCellIdI&newLocation, bool updateSystem);
@@ -330,32 +339,31 @@ namespace Objects
 
 			void				BeginMotionPhase(float timeOffset)
 			{
-				timeAt = std::max(timeAt, timeOffset);	//timeAt is usually 0, but may be bigger if the vehicle fell as a result of an explosion. in that case it might be further along the timeline
+				motionTime = std::max(motionTime, timeOffset);	//timeAt is usually 0, but may be bigger if the vehicle fell as a result of an explosion. in that case it might be further along the timeline
 				if (attackActionLeft < 1.f)
-					RegisterChange(ActionChanged,timeAt);
+					RegisterChange(ActionChanged,motionTime);
 				attackActionLeft = 1.f;
 
 				hasMoved = false;
-				hasTriedPlottingOnMoveAutoMotion = false;
+				numTriedPlottingOnMoveAutoMotion = 0;
 				if (MotionIgnoresAttack())
 				{
 					if (movementActionLeft < 1.f)
-						RegisterChange(ActionChanged,timeAt);
+						RegisterChange(ActionChanged,motionTime);
 					movementActionLeft = 1.f;
 				}
 			}
 			void				BeginAttackPhase()	//executed before BeginMotionPhase this round
 			{
 				hasConstructedThisRound = false;
-				timeAt = 0;
 				if (movementActionLeft < 1.f)
-					RegisterChange(ActionChanged,timeAt);
+					RegisterChange(ActionChanged,motionTime);
 				movementActionLeft = 1.f;
 
 				if (AttackIgnoresMotion())
 				{
 					if (attackActionLeft < 1.f)
-						RegisterChange(ActionChanged,timeAt);
+						RegisterChange(ActionChanged,motionTime);
 					attackActionLeft = 1.f;
 
 				}
@@ -386,7 +394,7 @@ namespace Objects
 					jobStarted = false;
 					if (!isReaction)
 						completeOnMove.reset();
-					RegisterChange(TasksChanged,timeAt);
+					RegisterChange(TasksChanged,motionTime);
 					//tasksChanged = true;
 					myTasks.Clear();
 					LogEvent(EventSignificance::Debug,this," ...cleared");
@@ -434,6 +442,7 @@ namespace Objects
 		{
 			if (!jobCosts)
 				return 0;
+			jobCosts = abs(jobCosts);
 			int speed = GetOperationSpeed(op);
 			if (!speed)
 				return 0xFFFFFFFF;
@@ -501,17 +510,21 @@ namespace Objects
 		#endif
 		virtual float			GetMaxScanningRange() const override	{return turret->scanningRange;};	//returns the effective scanning range of the local entity
 
+		#ifndef CLIENT
+			virtual void		OnDestroy(RemovalType, float atTime) override;	
+		#endif
 
 	protected:
-		inline void				OffsetTime(float t)
-		{
-			#ifndef CLIENT
-				timeAt = std::max(timeAt,t);
-			#endif
-		}
 	};
 
 
+
+	inline PMobileEntity		ToMobileEntity(const PWorldEntity&e)
+	{
+		if (!e || !e->IsMobile())
+			return PMobileEntity();
+		return To<MobileEntity>::Cast(e);
+	}
 }
 
 

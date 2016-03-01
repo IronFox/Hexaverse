@@ -346,13 +346,19 @@ namespace Grid
 
 	bool				CellStack::FindTopOccupied(int&outHeight) const
 	{
+		bool rs = false;
+		if (bottom.content != Content::Clear && bottom.content != Content::Lava)
+		{
+			outHeight = BottomHeight;
+			rs = true;
+		}
 		for (UINT32 j = Range - 1; j < Range; j--)
 			if (volumeCell[j].IsOccupied())
 			{
 				outHeight = int(j) - HalfRange;
 				return true;
 			}
-		return false;
+		return rs;
 	}
 
 
@@ -944,6 +950,27 @@ namespace Grid
 				UpdateSunDirection(SunDetails::sunDirection,true);
 			}
 
+			double	GetAcceleratedSunDirection(TVec3<>&outDir, float speedFactor/*=1.f*/)
+			{
+				double angle = SunDetails::progression*speedFactor;
+				Vec::def(outDir,cos(angle),sin(angle),0);
+				Mat::mult(SunDetails::sunSystem,outDir);
+				return angle;
+			}
+
+
+			const TMatrix3<>& GetSunSystem()
+			{
+				return SunDetails::sunSystem;
+			}
+
+
+			void	ResetSunRotation()
+			{
+				SunDetails::progression = 0;
+			}
+
+
 
 			void	SetOrientation(TMatrix4<>&m, const float3&axis, double t, const float3&seedAxis, double seedRot)
 			{
@@ -987,6 +1014,8 @@ namespace Grid
 		void BuildWorld(const TPlanetConfig&config, WorldDiscovery discovery)
 		{
 			static Random random;
+
+			CellStack::bottom.content = (BYTE)config.innerCoreType;
 
 			foreach (Resource::all,res)
 				res->Fill(random);
@@ -2922,7 +2951,8 @@ namespace Grid
 				if (layer != 0)
 					layer++;
 				else
-					continue;
+					if (CellStack::bottom.content == Content::Clear || CellStack::bottom.content == Content::Lava)
+						continue;
 			/*	else
 					if (CellStack::bottom.content == Content::Clear)
 						continue;*/
@@ -3942,6 +3972,10 @@ namespace Grid
 		actualWorld.FlushAllData();
 		#ifndef CLIENT
 			initialWorld.FlushAllData();
+		#endif
+
+		#ifdef HAS_WINDOW
+			ResetSunRotation();
 		#endif
 			
 		#ifdef CLIENT

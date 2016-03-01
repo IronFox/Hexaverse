@@ -25,7 +25,9 @@ namespace Animation
 		Objects::Geometry			trajectoryGeometry;
 		DX11::InstructionBlock32	trajectoryVisualization;
 		DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
+		OpenAL::Source				/*trajectoryFireSource[1],*/missileHissSource;
 		float						maxProjectileProjection;
+		OpenAL::Wave				artilleryShot,missileHiss,constructSound;
 	#endif
 
 	float						atTime = 0.f;
@@ -51,7 +53,7 @@ namespace Animation
 			if (e == self)
 				return;
 
-			if (!e->isMine)
+			if (!e->isOwnedByMe)
 			{
 				float d2 = Vec::quadraticDistance(world,e->system.w.xyz);
 				if (d2 < sqr(e->GetScanningRange()))
@@ -111,7 +113,7 @@ namespace Animation
 		static const float maxGhost = 30.f;
 
 		ASSERT__(v);
-		ASSERT__(v->isMine);
+		ASSERT__(v->isOwnedByMe);
 		ASSERT__(v->turret->detectsResources);
 		if (v->IsHibernating())
 			return;
@@ -128,10 +130,10 @@ namespace Animation
 					bool canDo = true;
 					foreach (v->myTasks.GetNewest().path,node)
 					{
-						if (!EstimateThreatLevel(v,node->cell,competition,ally,ghost))
+						if (!EstimateThreatLevel(v,node->cell,competition,ally,ghost) || !Objects::NothingBlockingHere(node->cell,true))
 						{
 							canDo = false;
-							return;
+							break;
 						}
 					}
 					if (sqrt(ghost) < 16.f)
@@ -185,11 +187,29 @@ namespace Animation
 
 				if (!competition || !canDo || !ghost)
 					continue;
-				const auto &n = Grid::low.grid.GetCell(node->cell.stackID).neighborhood;
+				//const auto &n = Grid::low.grid.GetCell(node->cell.stackID).neighborhood;
 				int score = 0;
-				for (int i = 0; i < n.numNeighbors; i++)
-					if (!known[n.neighborID[i]])
-						score++;
+				Objects::ReachabilityMapper::MapNode*at = node;
+				for (;;)
+				{
+					if (at->customScore < 0)
+					{
+						at->customScore = 0;
+						const auto &n = Grid::low.grid.GetCell(at->cell.stackID).neighborhood;
+						for (int i = 0; i < n.numNeighbors; i++)
+							if (!known[n.neighborID[i]])
+							{
+								at->customScore++;
+							}
+					}
+					if (at == node || at->predecessor == InvalidIndex)	//first or last
+						score += CeilDiv(at->customScore,2);	//consider half
+					else
+						score += CeilDiv(at->customScore,3);	//consider one third
+					if (at->predecessor == InvalidIndex)
+						break;
+					at = mapper.result + at->predecessor;
+				}
 				float ghostFear = sqr(maxGhost) / ((ghost));
 				float dist = float(node->movementCostsFromRoot) * sqrt(ally) / sqrt(competition) / float(score+1) * ghostFear;
 				if (dist > closestDistance)
@@ -227,7 +247,7 @@ namespace Animation
 		foreach(Objects::vehicles, _v)
 		{
 			Objects::PVehicle v = *_v;
-			if (v->isMine)
+			if (v->isOwnedByMe)
 			{
 				if (v->isAutomated && v->turret->detectsResources)
 					UpdateAutomation(v);
@@ -265,6 +285,25 @@ namespace Animation
 			trajectoryVisualization.shader.LoadFromFile("shaders/projectilePath.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 			trajectoryVisualization.UpdateLayout();
 			trajectoryVisualization.SetTriangles();
+
+			artilleryShot = OpenAL::Load("resources/objectSounds/artilleryShot.wav");
+			//for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+			//{
+			//	trajectoryFireSource[i].Create();
+			//	trajectoryFireSource[i].SetPitch(1.f - 0.01f * i);
+			//	trajectoryFireSource[i].SetReferenceDistance(10.f);
+			//}
+
+			constructSound = OpenAL::Load("resources/objectSounds/construct.wav");
+			missileHiss = OpenAL::Load("resources/objectSounds/missileHiss.wav");
+			missileHissSource.Create();
+			#ifdef _DEBUG
+				missileHissSource.name = "missileHiss";
+			#endif
+			missileHissSource.SetReferenceDistance(10.f,0.5f);
+			missileHissSource.SetWaveBuffer(missileHiss);
+			missileHissSource.SetLooping(true);
+
 		#endif
 	}
 
@@ -274,6 +313,12 @@ namespace Animation
 			trajectoryVisualization = DX11::InstructionBlock32();
 			trajectoryProgression.Clear();
 			trajectoryTint.Clear();
+			//for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+			//	trajectoryFireSource[i].Destroy();
+			missileHissSource.Destroy();
+			OpenAL::Discard(missileHiss);
+			OpenAL::Discard(constructSound);
+			OpenAL::Discard(artilleryShot);
 		#endif
 	}
 
@@ -454,19 +499,19 @@ namespace Animation
 			}
 			t1.job->movesToFocusWhenDone = sourceTask.visualizePathToFocus;
 			t1.job->roundsToJobCompletion = sourceTask.roundsToJobCompletion;
-			t1.job->mineralCostLeft = sourceTask.mineralCostLeft;
+			t1.job->resourceCostLeft = sourceTask.resourceCostLeft;
 			#ifdef HAS_WINDOW
 				if (sourceTask.foci.Count())
 				{
 					Grid::LCellIdI loc = sourceTask.foci.first();
-					if (sourceTask.visualizationStructureName != ConstName::Empty && e.IsSatellite())
+					if (sourceTask.visualizationName != ConstName::Empty && e.IsSatellite())
 					{
 						int h = Objects::SkyHub::GetStructureBuildHeight(loc);
 						if (h != Objects::badHeight)
 							loc.height = h;
 					}
 
-					t1.SetLocalizableShape(sourceTask.visualizationStructureName,loc);
+					t1.SetLocalizableShape(sourceTask.visualizationName,loc);
 				}
 			#endif
 		}
@@ -593,6 +638,7 @@ namespace Animation
 			//{
 			//	AppendTask(v,t);
 			//}
+
 			auto id = info->storedIn.Get0();
 			if (id)
 			{
@@ -697,7 +743,7 @@ namespace Animation
 			}
 		#endif
 
-		if (automationChange && v->isMine && v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsAutomatedResourceDetector())
+		if (automationChange && v->isOwnedByMe && v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsAutomatedResourceDetector())
 		{
 			UpdateAutomation(To<Objects::Vehicle>::Cast(v));
 		}
@@ -708,6 +754,35 @@ namespace Animation
 				Objects::VehicleStore::StaticSignalDeployment();
 				UI::HexGrid::Configure(Objects::selectedEntity);
 			}
+
+
+			if (!v->turret->CanAttack())
+			{
+				if (v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsJob() && !v->IsSleeping())
+				{
+					if (!v->activitySound.IsCreated())
+					{
+						v->activitySound.Create();
+						#ifdef _DEBUG
+							v->activitySound.name = v->GetName()+".activity";
+						#endif
+						v->activitySound.SetLooping(true);
+						v->activitySound.SetReferenceDistance(3.f,1.f);
+						v->activitySound.EnqueueWaveBuffer(constructSound);
+						static Random random;
+						v->activitySound.SetPitch(1.f + random.getFloat(-0.05f,0.05f));
+						v->activitySound.SetGain(0.5f);
+					}
+					if (!v->activitySound.IsPlaying())
+						v->activitySound.Play();
+					v->activitySound.SetPosition(v->GetWorldPosition());
+					v->activitySound.SetGain((v->GetSoundLevel()));
+				}
+				else
+					if (v->activitySound.IsPlaying())
+						v->activitySound.Stop();
+			}
+
 		#endif
 
 	}
@@ -1020,7 +1095,7 @@ namespace Animation
 			{
 				LogEvent(EventSignificance::Common,allocatedTarget.get(),  "Placing structure entity during animation at time "+String(Animation::atTime)+"/"+this->time.ToString());
 				Objects::Place(To<Objects::Structure>::DynamicCast(allocatedTarget));
-				if (!allocatedTarget->isMine)
+				if (!allocatedTarget->isOwnedByMe)
 					UI::HexGrid::RefreshContacts();
 			}
 			break;
@@ -1035,7 +1110,7 @@ namespace Animation
 					Objects::PlaceMobileEntity(v,false);
 					if (v->IsVehicle())	//only vehicles get to be inserted anyhow
 						insertIntoGridLater.Set(v->id);
-					if (!allocatedTarget->isMine)
+					if (!allocatedTarget->isOwnedByMe)
 						UI::HexGrid::RefreshContacts();
 				}
 			}
@@ -1071,12 +1146,12 @@ namespace Animation
 
 
 				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),0,Network::ControlEnabled(),removed);
-				if (!allocatedTarget->isMine)
+				if (!allocatedTarget->isOwnedByMe)
 					UI::HexGrid::RefreshContacts();
 				#ifdef HAS_WINDOW
 					Dialog::SignalSituationChange();
 					if (removalType == Objects::RemovalType::UncontrolledExplosion)
-						UI::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isMine,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());
+						UI::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isOwnedByMe,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());
 
 				#endif
 			}
@@ -1093,7 +1168,7 @@ namespace Animation
 				{
 					ASSERT2__(v->preAnimationLocation == v->location ,v->preAnimationLocation.ToString(),v->location.ToString());
 					//#ifdef HAS_WINDOW
-					//	if (v->isMine && v->IsVehicle())
+					//	if (v->isOwnedByMe && v->IsVehicle())
 					//		ASSERT1__(Grid::actualWorld.HasSensor(v->location,v->GetScanningRange()),v->id.ToString());
 					//#endif
 					v->preAnimationLocation = v->location;
@@ -1115,6 +1190,21 @@ namespace Animation
 					float dummy;
 					Objects::PTurretBase b = allocatedTarget->GetTurretBase(dummy);
 					ASSERT__(b);
+
+					#ifdef HAS_WINDOW
+						if (!b->activitySound.IsCreated())
+						{
+							b->activitySound.Create();
+							b->activitySound.SetLooping(true);
+							#ifdef _DEBUG
+								b->activitySound.name = allocatedTarget->GetName()+".turretRotate";
+							#endif
+						}
+						b->activitySound.SetWaveBuffer(Objects::Renderer::GetAmbientSoundOf("turretRotate",ConstName::Turret_Artillery));
+						b->activitySound.SetPosition(allocatedTarget->GetWorldPosition());
+						b->activitySound.SetPitch(0.7f);
+						b->activitySound.Play();
+					#endif
 
 					float3 dir = rotateToWorld;
 					float3 innerDir;
@@ -1164,8 +1254,8 @@ namespace Animation
 					#ifdef HAS_WINDOW
 						attackerID = attacker->id;
 					#endif
-					doRegister = !attacker->isMine || isAutoTarget;
-					isFriendly = attacker->isMine;
+					doRegister = !attacker->isOwnedByMe || isAutoTarget;
+					isFriendly = attacker->isOwnedByMe;
 				}
 
 				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",loc="+location.ToString()+") at "+String(Animation::atTime)+"/"+String(this->time.min));
@@ -1191,6 +1281,30 @@ namespace Animation
 						{
 							UI::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, smokeTrailIndex);
 						}
+
+						switch (attackerTurret->trajectoryType)
+						{
+							case Objects::TrajectoryType::Artillery:
+							{
+								OpenAL::PlayOnce(attackerPosition,artilleryShot,1.f,10.f);
+								//for (index_t i = 0; i < ARRAYSIZE(trajectoryFireSource); i++)
+								//{
+								//	OpenAL::Source&s = trajectoryFireSource[i];
+								//	s.SetPosition(attackerPosition);
+								//	s.SetWaveBuffer(artilleryShot);
+								//	s.Play();
+								//}
+							}
+							break;
+							case Objects::TrajectoryType::Missile:
+							{
+								missileHissSource.SetPosition(attackerPosition);
+								missileHissSource.Play();
+							}
+						}
+
+						
+
 					#endif
 
 
@@ -1222,7 +1336,7 @@ namespace Animation
 				//v->Relocate(path->rawPath.last().first,false);
 				v->location = path->rawPath.last().first;
 				//Objects::InsertVehicleIntoGrid(v,v->location);	will be done later
-				if (v->isMine && v->preAnimationLocation != v->location)
+				if (v->isOwnedByMe && v->preAnimationLocation != v->location)
 				{
 					float t = 0.f;
 					v->MoveSensory(v->preAnimationLocation,v->location,t);
@@ -1260,6 +1374,9 @@ namespace Animation
 						i--;
 					}
 				}
+				#ifdef HAS_WINDOW
+					missileHissSource.Stop();
+				#endif
 			break;
 			case Explosion:
 				for (index_t i = 0; i < Objects::Marker::all.Count(); i++)
@@ -1285,6 +1402,11 @@ namespace Animation
 					Objects::PTurretBase b = allocatedTarget->GetTurretBase(dummy);
 					b->turretAngleX = rotateTo.x;
 					b->turretAngleY = rotateTo.y;
+
+					#ifdef HAS_WINDOW
+						b->activitySound.Stop();
+					#endif
+
 				}
 			}
 			break;
@@ -1303,6 +1425,8 @@ namespace Animation
 					ASSERT1__(allocatedTarget,targetEntityID.ToString());
 					ApplyState(To<Objects::MobileEntity>::DynamicCast(allocatedTarget),*vehicleState,false,false);
 				}
+				else
+					LogEvent(EventSignificance::NonFatalError,"Unable to update mobile entity "+targetEntityID.ToString()+" at t="+String(t));
 			return Done;
 			case StructureState:
 				allocatedTarget = Objects::GetEntity(targetEntityID);
@@ -1311,6 +1435,8 @@ namespace Animation
 					ASSERT1__(allocatedTarget,targetEntityID.ToString());
 					UpdateState(To<Objects::Structure>::DynamicCast(allocatedTarget),*structureState);
 				}
+				else
+					LogEvent(EventSignificance::NonFatalError,"Unable to structure "+targetEntityID.ToString()+" at t="+String(t));
 			return Done;
 			case Construction:
 			return Done;
@@ -1356,6 +1482,14 @@ namespace Animation
 				projectileAt = y;
 				#ifdef HAS_WINDOW
 					trajectoryProgression.Update(float4(y * maxProjectileProjection,1.f,5.f,1.f));
+
+					index_t at = std::min(index_t(x * activeTrajectory.GetLength()),activeTrajectory.GetLength()-1);
+					const TVec4<>&v = activeTrajectory[at];
+					missileHissSource.SetPosition(v.xyz * v.w);
+					float volume = sqr(sqr(1.f - x))*0.75f + 0.25f;
+					//missileHissSource.SetGain(volume);
+					missileHissSource.SetPitch(0.75f + x);
+
 				#endif
 			}
 			break;
@@ -1375,6 +1509,8 @@ namespace Animation
 					//Objects::PVehicle v = To<Objects::Vehicle>::Cast(target);
 					b->turretAngleX = angles.x;
 					b->turretAngleY = angles.y;
+					//b->rotationSound.SetPitch(0.5f + 0.3f * (sqrt((x))));
+
 				}
 			}
 			break;
@@ -1472,6 +1608,9 @@ namespace Animation
 			Vec::resolveBezierCurvePoint(p0,c0,c1,p1,fj,p);
 
 			TMatrix4<>&sys = target->system;
+			#ifdef HAS_WINDOW
+				const TVec3<> prev = sys.w.xyz;
+			#endif
 			if (target->IsSatellite())
 			{
 				sys.z.xyz = p;
@@ -1498,6 +1637,16 @@ namespace Animation
 				Vec::cross(n,axis,sys.z.xyz);
 				Vec::normalize0(sys.z.xyz);
 			}
+			#ifdef HAS_WINDOW
+				target->ambientSound.SetPosition(sys.w.xyz);
+				target->ambientSound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
+				float x = t / rawPath.last().second;
+				float activity = 1.f - (sqr(((x - 0.5f)*2.f)));
+				target->ambientSound.SetPitch(1.f + activity * 0.5f);
+				target->ambientSound.SetGain(std::min(target->GetSoundLevel() + activity,1.f));
+				target->activitySound.SetPosition(sys.w.xyz);
+				target->activitySound.SetVelocity((sys.w.xyz - prev) / Engine::timing.delta);
+			#endif
 
 			target->system.w.xyz = p;
 			Mat::resetBottomRow(target->system);
@@ -1625,7 +1774,7 @@ namespace Animation
 				{
 					//if ((*v)->preAnimationLocation != (*v)->location)
 						//Objects::RemoveVehicleFromGrid(*v,(*v)->preAnimationLocation);
-					if (e->isMine && !Animation::insertIntoGridLater.IsSet(e->id))
+					if (e->isOwnedByMe && !Animation::insertIntoGridLater.IsSet(e->id))
 					{
 						float t = 0.f;
 						e->MoveSensory(e->preAnimationLocation,e->location,t);
@@ -1639,7 +1788,7 @@ namespace Animation
 					Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(Objects::GetEntity(key));
 					if (v)
 					{
-						if (v->isMine)
+						if (v->isOwnedByMe)
 						{
 							float t = 0.f;
 							v->MoveSensory(v->preAnimationLocation,v->location,t);

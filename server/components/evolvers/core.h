@@ -2,7 +2,7 @@
 #define kernelCoreH
 
 #include "../evolver.h"
-
+#include <math/vector.h>
 
 namespace Evolver
 {
@@ -11,13 +11,15 @@ namespace Evolver
 	{
 		typedef Abstract	Super;
 	protected:
-		/**/	Core(const char*derivativeName):Super(derivativeName)	{}
+		/**/				Core(const char*derivativeName):Super(derivativeName)	{}
 	public:
-		/**/	Core():Super("Core v1.0")	{}
+		/**/				Core():Super("Core v1.0")	{}
 
-		void	BeginRoundProcessing() override;
-		bool	ContinueRoundProcessing() override;
-		void	FinishRoundProcessing() override;
+		virtual void		BeginRoundProcessing() override;
+		virtual bool		ContinueRoundProcessing() override;
+		virtual void		FinishRoundProcessing() override;
+
+		virtual void		HandleChainReactionExplosion(const TExplosion&) override;
 	};
 
 }

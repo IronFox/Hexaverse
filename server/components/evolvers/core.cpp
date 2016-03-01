@@ -11,6 +11,8 @@ namespace Evolver
 
 	namespace CoreDetails
 	{
+		Queue<TExplosion>	pendingExplosions;
+
 		/**
 		Like vehicles, towers have an attack action floation point value. Unlike vehicles, they are not part of the
 		movement phase. Therefore, once per round, this function must be called to reset their attack action.
@@ -199,7 +201,10 @@ namespace Evolver
 			});
 
 
-
+			Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
+			{
+				e->ResetMotionTime();
+			});
 
 			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&v)
 			{
@@ -233,7 +238,7 @@ namespace Evolver
 					{
 						LogEvent(EventClass::Preset::commandRejected,v.get(),"Insufficient ammunition. Attacks cancelled");
 						v->EraseFirstTask();
-						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->timeAt);
+						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->motionTime);
 					}
 					//ref.initiative = v->GetAttackInitiative();
 					//ref.attacksLeft = v->CountPossibleAttacks();
@@ -250,7 +255,7 @@ namespace Evolver
 						continue;
 					attackTime = 0;
 					t->BeginAttackPhase();
-					//t->BeginAttackPhase();
+
 					if (t->turret->CanAttack())
 					{
 						if (t->attackQueue.IsEmpty() && !t->FillAttackQueue())
@@ -259,7 +264,7 @@ namespace Evolver
 						{
 							LogEvent(EventClass::Preset::commandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
 							t->attackQueue.Clear();
-							t->RegisterChange(Objects::WorldEntity::TasksChanged,t->timeAt);
+							t->RegisterChange(Objects::WorldEntity::TasksChanged,t->motionTime);
 							continue;
 						}
 
@@ -317,7 +322,7 @@ namespace Evolver
 					{
 						LogEvent(EventClass(EventSignificance::Important, EventFlavor::Loss),sat.get(),"Insufficient fuel supply. Satellite lost");
 						//t+= 0.025f;
-						sat->timeAt+=Objects::timeEpsilon;
+						sat->motionTime+=Objects::timeEpsilon;
 						waste << sat;
 					}
 					else
@@ -341,7 +346,7 @@ namespace Evolver
 			//satellitesAreLocked = false;
 
 			for (const auto&sat : waste)
-				Objects::Remove(sat, Objects::RemovalType::UncontrolledExplosion, sat->timeAt, true);
+				Objects::Remove(sat, Objects::RemovalType::UncontrolledExplosion, sat->motionTime, true);
 			waste.Clear();
 		};
 
@@ -351,6 +356,10 @@ namespace Evolver
 
 		bool ContinueRoundProcessing(float&animationLength)
 		{
+			static TExplosion exp;
+			while (pendingExplosions >> exp)
+				Objects::Explode(Objects::PWorldEntity(),exp.center,0.f,Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,exp.atTime);
+
 			switch (RuntimeConfig::phase)
 			{
 				case RuntimeConfig::Phase::AttackPhase:
@@ -367,9 +376,9 @@ namespace Evolver
 						#endif
 
 						animationLength = 0.f;
-						Objects::ForeachMobileEntityIncludingStored([&animationLength](const Objects::PMobileEntity&m)
+						Objects::ForeachWorldEntityIncludingStored([&animationLength](const Objects::PWorldEntity&m)
 						{
-							animationLength = std::max(m->timeAt,animationLength);
+							animationLength = std::max(m->motionTime,animationLength);
 						});
 						Game::PerformNewRoundLogic(animationLength);
 						ResetTowerAttackAction(animationLength);
@@ -402,6 +411,12 @@ namespace Evolver
 		RuntimeConfig::roundNumber++;
 
 		Game::Network::ChangePhase(RuntimeConfig::Phase::CommandPhase,Game::Config::roundTimer > 0 && !Game::roundTimerPaused ? Game::Config::roundTimer : -1);
+	}
+
+	/*virtual override*/ void		Core::HandleChainReactionExplosion(const TExplosion&explosion)
+	{
+		CoreDetails::pendingExplosions << explosion;
+
 	}
 
 }

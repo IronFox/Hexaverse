@@ -208,7 +208,7 @@ namespace Objects
 		
 		void Explode(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, 
 					 const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
-					 float atTime)
+					 float&atTime)
 		{
 			if (doomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Disallow)
 			{
@@ -234,10 +234,10 @@ namespace Objects
 			float terrainExplosionRadius = float(explosionRadius)-0.5f;
 			//float coreRadius = core*core;
 			float outerRadius = explosionRadius*explosionRadius;
-			static Buffer0<PWorldEntity>	toDestroy;
+			static Buffer0<PWorldEntity>	toDestroy,allLivingAffected;
 			static Buffer0<PStructure>		affectedStructures;
 			static Buffer0<PVehicle>		affectedVehicles;
-			ForeachWorldEntity([center,outerRadius,damageLevel,atTime](const PWorldEntity e)
+			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime](const PWorldEntity e)
 			{
 				if (e->IsIndestructible())
 					return;
@@ -260,6 +260,7 @@ namespace Objects
 				{
 					if (d2 <= outerRadius)
 					{
+						atTime = std::max(atTime,e->motionTime);
 						e->TakeDamage(damageLevel);
 						if (e->health <= 0)
 						{
@@ -273,7 +274,7 @@ namespace Objects
 				}
 				if (e->health <= 0)
 					return;	//prevent being added to affect*
-
+				allLivingAffected << e;
 				{
 					Vec::mult(c,Grid::ToRadius(e->location.height -1),p);	//include own lower level
 					float d3 = Vec::quadraticDistance(p,center);
@@ -304,12 +305,15 @@ namespace Objects
 					}
 				}
 			});
-
+			atTime += timeEpsilon;
 			foreach (toDestroy,d)
 			{
+				(*d)->SyncTime(atTime);
 				Remove(*d,Objects::RemovalType::UncontrolledExplosion,atTime,false);
 			}
 			toDestroy.Clear();
+
+
 
 			if (terrainExplosionRadius > 0)
 			{
@@ -345,12 +349,17 @@ namespace Objects
 					}
 				}
 			}
+			foreach (allLivingAffected,d)
+			{
+				(*d)->SyncTime(atTime);
+			}
+			allLivingAffected.Clear();
 			affectedStructures.Clear();
 			affectedVehicles.Clear();
 		}
 	
 		void ExplodeEMP(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, 
-						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float atTime)
+						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float&atTime)
 		{
 			SignalExplosion(attackFrom, traceTo, flightTime, 
 							center,explosionRadius,true,false,atTime);
@@ -359,7 +368,7 @@ namespace Objects
 			static Buffer0<PWorldEntity>	toDisable;
 
 
-			ForeachWorldEntity([center,outerRadius,damageLevel,atTime](const PWorldEntity e)
+			ForeachWorldEntity([center,outerRadius,damageLevel,&atTime](const PWorldEntity e)
 			{
 				float d2 = std::numeric_limits<float>::max();
 				const int h = e->GetHeight();
@@ -373,13 +382,15 @@ namespace Objects
 				}
 				if (d2 <= outerRadius)
 				{
+					atTime = std::max(atTime,e->motionTime);
 					toDisable << e;
 				}
 			});
-
+			atTime += timeEpsilon;
 			foreach (toDisable,_d)
 			{
 				PWorldEntity d = *_d;
+				d->SyncTime(atTime);
 				d->HandleEMPDamage(damageLevel, atTime);
 			}
 			toDisable.Clear();
@@ -497,7 +508,7 @@ namespace Objects
 		PVehicle vh = GetVehicle(cellID);
 		return !vh || vh.get() == v 
 			#ifndef CLIENT
-				|| !v->owner->CanSee(vh,v->timeAt)
+				|| !v->owner->CanSee(vh,v->motionTime)
 			#endif
 		;
 	}
@@ -511,7 +522,7 @@ namespace Objects
 		PSatellite vh = GetSatellite(stackID);
 		return !vh || vh.get() == v
 			#ifndef CLIENT
-				|| !v->owner->CanSee(vh,v->timeAt)
+				|| !v->owner->CanSee(vh,v->motionTime)
 			#endif
 		;
 	}
@@ -585,11 +596,15 @@ namespace Objects
 
 	PStructure GetStructure(const Grid::LCellIdI&stackID)
 	{
+		if (stackID.height > Grid::CellStack::TopHeight)
+			return PStructure();
 		return QueryGrid(structureGrid,stackID);
 	}
 
 	PStructure GetStructure(const Grid::LCellIdU&stackID)
 	{
+		if (stackID.layer >= Grid::CellStack::Range)
+			return PStructure();
 		return QueryGrid(structureGrid,stackID);
 	}
 
@@ -600,7 +615,7 @@ namespace Objects
 
 	PMobileEntity GetMobileEntity(const Grid::LCellIdI&cellID)
 	{
-		if (cellID.height < Grid::CellStack::HalfRange)
+		if (cellID.height <= Grid::CellStack::TopHeight)
 			return QueryGrid(vehicleGrid,cellID);
 		return GetSatellite(cellID.stackID);
 	}
@@ -801,12 +816,7 @@ namespace Objects
 		float h;
 		if (PTurretBase b = entity.GetTurretBase(h))
 		{
-			showArrow = activeCursorMode == CursorMode::BuildConnectorChainMode
-							 || activeCursorMode == CursorMode::BuildRoadChainMode 
-							 || activeCursorMode == CursorMode::BuildWallChainMode 
-							 || activeCursorMode == CursorMode::AttackMode
-							 || activeCursorMode == CursorMode::DigTunnelMode
-							 || activeCursorMode == CursorMode::BuildBridgeMode;
+			showArrow = CursorModeExpectsLeftClick(activeCursorMode);
 			if (showArrow)
 			{
 				arrowFromCell = v ? v->GetLastPointOfOrigin() : entity.location;
@@ -966,8 +976,8 @@ namespace Objects
 
 	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
 	{
-		showArrow = false;
-		hasArrowCellTarget = false;
+		//showArrow = false;		//why were these here...?
+		//hasArrowCellTarget = false;
 
 		movementChoices.Clear();
 		if (entity)
@@ -984,6 +994,8 @@ namespace Objects
 	{
 		ASSERT1__(!e->isInserted, e->GetName());
 		#ifndef CLIENT
+			e->SyncTime(atTime);
+
 			ASSERT2__(To<Connector>::DynamicCast(e) || NothingBlockingHere(e->location,false),e->GetName(),e->location.ToString());
 			e->ResetAllChange();
 		#else
@@ -997,16 +1009,41 @@ namespace Objects
 				}
 			#endif
 		#endif
+		#ifdef HAS_WINDOW
+			if (!e->ambientSound.IsCreated())
+			{
+				OpenAL::WaveBuffer wbo = e->GetAmbientSound();
+				//Renderer::GetAmbientSoundOf(e->GetTypeName(),e->GetCTypeName());
+				if (wbo.IsNotEmpty())
+				{
+					e->ambientSound.Create();
+					e->ambientSound.EnqueueWaveBuffer(wbo);
+					e->ambientSound.SetReferenceDistance(3.f,1.5f - (e->IsMobile()? 0.5f : 0.f));
+					static Random random;
+					e->ambientSound.SetPitch(1.f + random.getFloat(-0.02f,0.02f));
+					#ifdef _DEBUG
+						e->ambientSound.name = e->GetName()+".ambient";
+						e->ambientSound.reference = e.get();
+					#endif
+				}
+			}
+
+			if (e->ambientSound.IsCreated())
+			{
+				e->ambientSound.SetPosition(e->GetWorldPosition());
+				e->ambientSound.SetVelocity(float3());
+				e->ambientSound.SetGain(e->GetSoundLevel());
+				e->ambientSound.SetLooping(true);
+				e->ambientSound.Play();
+			}
+		#endif
+
 		bool restored = idMap.IsSet(e->id);
 		if (restored)
 			ASSERT1__(storedMobileEntities.FindAndErase(e),e->GetName());
 		if (!restored)
 			e->OnConstructionFinished(atTime);
-		#ifdef _DEBUG
-			LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+e->location.ToString());
-		#else
-			LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed"));
-		#endif
+		LogEvent(EventSignificance::Common, e.get(),String(restored ? "Redeployed" : "Deployed")+" to "+e->location.ToString()+" at t="+String(atTime));
 		if (!restored)
 		{
 			if (setHealthToFull)
@@ -1025,6 +1062,8 @@ namespace Objects
 					#endif
 				)
 					Renderer::animatedTurrets << b;
+				if (b && b->turret->CanAttack())
+					Renderer::attackers << e;
 			#endif
 			OnAppear(e);
 		#else
@@ -1065,13 +1104,15 @@ namespace Objects
 			v->storedIn.reset();
 		}
 		#ifndef CLIENT
-			v->timeAt = std::max(v->timeAt,atTime);
 			if (restored)
 			{
 				v->owner->RegisterStoredMobileLoss(v);
 			}
 			v->owner->RegisterActiveMobileGain(v);
+			float signalTime = atTime;
 		#endif
+
+		atTime += timeEpsilon;
 		InsertConstructedEntity(v,atTime,setHealthToFull);
 		if (v->IsVehicle())
 		{
@@ -1092,7 +1133,7 @@ namespace Objects
 				FATAL__("Cannot insert. Unexpected mobile: "+v->GetName());
 
 		#ifndef CLIENT
-			SignalNewMobileEntity(v,restored,atTime);
+			SignalNewMobileEntity(v,restored,signalTime);
 		#endif
 	}
 
@@ -1110,7 +1151,7 @@ namespace Objects
 
 
 		#ifndef CLIENT
-			v->timeAt = std::max(v->timeAt,atTime);
+			v->SyncTime(atTime);
 			v->owner->storedMobiles.Append(v);
 		#endif
 	}
@@ -1144,7 +1185,7 @@ namespace Objects
 
 		structures << s;
 
-		#ifdef HAS_WINDOW
+		#ifdef CLIENT
 			if (s->IsSkyLinkStructure())
 			{
 				PSkyLinkStructure link = To<SkyLinkStructure>::DynamicCast(s);
@@ -1209,6 +1250,10 @@ namespace Objects
 		#ifdef CLIENT
 			if (t != RemovalType::DestroyedInStorage)
 			{
+				#ifdef HAS_WINDOW
+					if (e->ambientSound.IsCreated())
+						e->ambientSound.Stop();
+				#endif
 				#ifndef NO_HIBERNATION
 					UINT32 t = e->GetUplinkTraffic();
 					uplinkTraffic -= t;
@@ -1233,7 +1278,12 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			PTurretBase b = e->GetTurretBase();
 			if (b)
-				Renderer::animatedTurrets.FindAndErase(b);
+			{
+				if (b->turret->continuousRotation)
+					Renderer::animatedTurrets.FindAndErase(b);
+				if (b->turret->CanAttack())
+					Renderer::attackers.FindAndErase(e);
+			}
 		#endif
 
 
@@ -1250,11 +1300,11 @@ namespace Objects
 				RemoveFromGrid(structureGrid,e->location,To<Structure>::Cast(e));
 
 			ASSERT1__(structures.FindAndErase(e),e->GetName());
-			#ifdef HAS_WINDOW
+			#ifdef CLIENT
 				if (To<Structure>::Cast(e)->IsSkyLinkStructure())
 				{
 					foreach (skyLinks,link)
-						if (link->second == e)
+						if (link->second.lock() == e)
 						{
 							skyLinks.erase(link);
 							break;
@@ -1269,7 +1319,7 @@ namespace Objects
 			{
 				PMobileEntity v = To<MobileEntity>::Cast(e);
 				#ifdef CLIENT
-					ASSERT__(v->location==v->preAnimationLocation);
+					ASSERT1__(v->location==v->preAnimationLocation,v->GetName());
 					//inequality means that we are in an animation stream right now.
 					//bad stuff happens when we delete now.
 					//must fix timing issues. some deletion event did not have enough temporal
@@ -1324,7 +1374,7 @@ namespace Objects
 		if (!move)
 		{
 			LogEvent(EventSignificance::Debug,e.get(),"OnDestroy()");
-			e->OnDestroy(timestamp);
+			e->OnDestroy(t,timestamp);
 		}
 		#ifdef CLIENT
 			if (isStructure)
@@ -1476,7 +1526,7 @@ namespace Objects
 								if (!NoHostileVehicleHere(cell,v->owner))
 									continue;
 							#else
-								if (!NoHostileVehicleHere(cell,v->owner,v->timeAt))
+								if (!NoHostileVehicleHere(cell,v->owner,v->motionTime))
 									continue;
 							#endif
 					}
@@ -1524,7 +1574,7 @@ namespace Objects
 							if (!NoHostileSatelliteHere(cell,v->owner))
 								continue;
 						#else
-							if (!NoHostileSatelliteHere(cell,v->owner,v->timeAt))
+							if (!NoHostileSatelliteHere(cell,v->owner,v->motionTime))
 								continue;
 						#endif
 				}
@@ -2564,7 +2614,7 @@ namespace Objects
 
 
 	#ifdef CLIENT
-		PVehicle		SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isMine)
+		PVehicle		SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe)
 	#else
 		PVehicle		AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret)
 	#endif
@@ -2579,7 +2629,7 @@ namespace Objects
 		vehicle->UpdateSystem();
 		#ifdef CLIENT
 			vehicle->UpdateNiceName();
-			vehicle->isMine = isMine;
+			vehicle->isOwnedByMe = isOwnedByMe;
 			if (placeNow)
 				Place(vehicle);
 			//else
@@ -2610,14 +2660,14 @@ namespace Objects
 
 	#else
 
-		PMobileEntity		SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isMine)
+		PMobileEntity		SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe)
 		{
 			if (turret != ConstName::Empty)
-				return Objects::SpawnVehicle(owner,  id,baseLocation,base,turret,placeNow,isMine);
-			return Objects::SpawnSatellite(owner,  id,baseLocation,base,placeNow,isMine);
+				return Objects::SpawnVehicle(owner,  id,baseLocation,base,turret,placeNow,isOwnedByMe);
+			return Objects::SpawnSatellite(owner,  id,baseLocation,base,placeNow,isOwnedByMe);
 		}
 
-		PSatellite		SpawnSatellite(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isMine)
+		PSatellite		SpawnSatellite(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isOwnedByMe)
 		{
 			PSatellite	proto = GetSatellitePrototypeByName(type);
 			ASSERT1__(proto,(int)type);
@@ -2627,13 +2677,13 @@ namespace Objects
 			s->UpdateSystem();
 			ASSERT_GREATER_OR_EQUAL1__(baseLocation.height, Grid::CellStack::HalfRange,s->GetName());
 			s->UpdateNiceName();
-			s->isMine = isMine;
+			s->isOwnedByMe = isOwnedByMe;
 			if (placeNow)
 				Place(s);
 			return s;
 		}
 
-		PStructure		SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,ConstName type, bool placeNow, bool isMine)
+		PStructure		SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,ConstName type, bool placeNow, bool isOwnedByMe)
 		{
 			foreach (structurePrototypes,p)
 				if ((*p)->GetCTypeName() == type)
@@ -2643,7 +2693,7 @@ namespace Objects
 					s->health = s->GetMaxHealth();
 					s->id = id;
 					s->UpdateNiceName();
-					s->isMine = isMine;
+					s->isOwnedByMe = isOwnedByMe;
 					//LogEvent(EventSignificance::Common, s.get(),"Constructed " + s->GetName());
 					if (placeNow)
 					{
@@ -2767,19 +2817,21 @@ namespace Objects
 					auto c = choice;
 					switch (mode)
 					{
-						//case CursorMode::DepositMode:
-						//case CursorMode::RestockMode:
-						//{
-						//	PStructure target = GetStructure(c-1);
-						//	PVehicle vTarget = GetVehicle(c-1);
-						//	if ((target && target->owner == e->owner) || (vTarget && vTarget->owner == e->owner))
-						//	{
-						//		c--;
-						//		PVehicleJob job(new VehicleJob::TransferJob(*v,mode));
-						//		v->RegisterNewJob("", job,&c);
-						//	}
-						//}
-						//break;
+						#ifndef ONE_COMPOUND_PER_FACTION
+						case CursorMode::DepositMode:
+						case CursorMode::RestockMode:
+						{
+							PStructure target = GetStructure(c-1);
+							PMobileEntity vTarget = GetMobileEntity(c-1);
+							if ((target && target->owner == e->owner) || (vTarget && vTarget->owner == e->owner))
+							{
+								c--;
+								PVehicleJob job(new VehicleJob::TransferJob(*v,mode));
+								v->RegisterNewJob("", job,&c);
+							}
+						}
+						break;
+						#endif
 						case CursorMode::RepairMode:
 						{
 							//PWorldEntity target = GetEntity(c-1);

@@ -39,7 +39,7 @@ namespace Camera
 	extern Engine::VectorCamera<>	scene;
 	extern Engine::OrthographicAspect<>	hud;
 
-
+	extern bool					autoRotation;
 
 
 	/**
@@ -76,6 +76,7 @@ namespace Camera
 	*/
 	void						ProgressRotation();
 
+	void						StopAutoRotation();
 	/**
 	Queries the current camera orbit radius
 	*/
@@ -112,6 +113,7 @@ namespace Camera
 		void					WheelAction(short param);
 		void					ZoomIn();
 		void					ZoomOut();
+		void					Zoom(float outSpeed);
 	}
 
 }

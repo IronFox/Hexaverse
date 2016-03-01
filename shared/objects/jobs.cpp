@@ -9,6 +9,7 @@
 #endif
 #include "vehicle.h"
 #include "gridAndChoices.h"
+#include "../runtimeConfig.h"
 
 
 namespace Objects
@@ -19,16 +20,16 @@ namespace Objects
 	{
 
 		/**/					BaseJob::BaseJob(int mineralCosts, const MobileEntity&v, Component::operation_t op, Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):
-										roundsToJobCompletion(-1),mineralCostLeft(0),
+										roundsToJobCompletion(-1),resourceCostLeft(0),
 										jobAutoCompletion(jobAutoCompletion),movesToFocusWhenDone(movesToFocusWhenDone)
 		{
-			ResetMineralsAndRoundsLeft(mineralCosts,v,op);
+			ResetResourceAndRoundsLeft(mineralCosts,v,op);
 		}
 
-		void BaseJob::ResetMineralsAndRoundsLeft(int mineralCosts, const MobileEntity&v, Component::operation_t op)
+		void BaseJob::ResetResourceAndRoundsLeft(int cost, const MobileEntity&v, Component::operation_t op)
 		{
-			roundsToJobCompletion = v.GetOperationRounds(mineralCosts,op);
-			mineralCostLeft = op != Component::TerrainRemove ? mineralCosts : 0;
+			roundsToJobCompletion = v.GetOperationRounds(abs(cost),op);
+			resourceCostLeft = std::max(cost,0);
 		}
 
 
@@ -47,15 +48,15 @@ namespace Objects
 				return TerminalFailure;
 			}
 
-			int withdrawNow = std::min(mineralCostLeft,v.GetOperationSpeed(GetOperationAffinity()));
+			int withdrawNow = std::min(resourceCostLeft,v.GetOperationSpeed(GetOperationAffinity()));
 
 
 			#ifdef ONE_COMPOUND_PER_FACTION
-				int storage = GetStorage(v,Resource::Minerals);
+				int storage = GetStorage(v,this->GetConsumedResourceType());
 				if (storage < withdrawNow)
 				{
-					LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient minerals available ("+String(storage)+"/"+String(withdrawNow)+"). Delaying operation.");
-					return ContinueJob;
+					LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient "+String(this->GetConsumedResourceType().ToString())+" available ("+String(storage)+"/"+String(withdrawNow)+"). Delaying operation.");
+					return JobDelayed;
 				}
 
 			#endif
@@ -65,9 +66,9 @@ namespace Objects
 				roundsToJobCompletion --;
 
 				#ifndef ONE_COMPOUND_PER_FACTION
-					if (!CanWithdrawFromStorage(v,Resource::Minerals,mineralCostLeft))
+					if (!CanWithdrawFromStorage(v,this->GetConsumedResourceType(),resourceCostLeft))
 					{
-						LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient minerals available (need "+String(withdrawNow)+"). Aborting operation.");
+						LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient "+String(this->GetConsumedResourceType().ToString())+" available (need "+String(withdrawNow)+"). Aborting operation.");
 						return TerminalFailure;
 					}
 				#endif
@@ -78,9 +79,9 @@ namespace Objects
 			{
 
 				LogEvent(EventSignificance::Common,&v,"'"+GetName()+"' completed");
-				ChangeStorage(v,v.timeAt, Resource::Minerals,-mineralCostLeft);
+				ChangeStorage(v,v.motionTime, this->GetConsumedResourceType(),-resourceCostLeft);
 
-				mineralCostLeft = 0;
+				resourceCostLeft = 0;
 
 				if (jobAutoCompletion == BaseJob::Autocomplete::Always || 
 					(jobAutoCompletion == BaseJob::Autocomplete::IfSatellite && v.IsSatellite())
@@ -91,8 +92,12 @@ namespace Objects
 						return rs;
 					ASSERT__(rs != ContinueJob);
 					if (movesToFocusWhenDone)
-						if (v.PlaceExactlyAt(focus,0,0) == MobilePlacementResult::PlacementFailedMobileDestroyed)
+					{
+						v.motionTime += timeEpsilon;
+						if (v.PlaceExactlyAt(focus,0.1f,0) == MobilePlacementResult::PlacementFailedMobileDestroyed)
 							return BaseJob::TerminalFailureVehicleDestroyed;
+						v.motionTime += timeEpsilon;
+					}
 			
 				}
 				else
@@ -104,11 +109,11 @@ namespace Objects
 			}
 			else
 			{
-				if (mineralCostLeft > 0 && isNewRound)
+				if (resourceCostLeft > 0 && isNewRound)
 				{
 					int capacity = v.GetOperationSpeed(GetOperationAffinity());
-					ChangeStorage(v,v.timeAt,Resource::Minerals,-capacity);
-					mineralCostLeft -= capacity;
+					ChangeStorage(v,v.motionTime,this->GetConsumedResourceType(),-capacity);
+					resourceCostLeft -= capacity;
 				}
 			}
 			#ifdef CLIENT
@@ -143,23 +148,23 @@ namespace Objects
 
 		/*virtual override*/ BaseJob::continue_t	DigHorizontal::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{			
-			Grid::actualWorld.Clear(focus,v.timeAt);
+			Grid::actualWorld.Clear(focus,v.motionTime);
 			if (v.IsVehicle() && ((Vehicle&)v).base->requirements == Component::VehicleBase::Requirement::Water)
-					Grid::actualWorld.Overwrite(focus-1,Grid::Content::Water,v.timeAt);
-			SignalClusterAndNeighborsChange(focus,v.timeAt);
+					Grid::actualWorld.Overwrite(focus-1,Grid::Content::Water,v.motionTime);
+			SignalClusterAndNeighborsChange(focus,v.motionTime);
 			if (Grid::actualWorld.LowCellIsClear(focus))
 			{
-				if (v.PlaceExactlyAt(focus,Times::Dig,v.timeAt) == MobilePlacementResult::PlacementFailedMobileDestroyed)
+				if (v.PlaceExactlyAt(focus,Times::Dig,v.motionTime) == MobilePlacementResult::PlacementFailedMobileDestroyed)
 					return BaseJob::TerminalFailureVehicleDestroyed;
 			}
 			return JobDone;
-			//v.timeAt += Times::Dig;
+			//v.motionTime += Times::Dig;
 		}
 
 		/*virtual override*/ BaseJob::continue_t	BuildRoad::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{
 			//can't use this because it doesn't understand directions:
-			//	Structure::CommonFixTerrain(&v,focus,Grid::CellStack::Cell::Content::Road,0,true,v.timeAt,true,true,true);
+			//	Structure::CommonFixTerrain(&v,focus,Grid::CellStack::Cell::Content::Road,0,true,v.motionTime,true,true,true);
 
 			const Grid::LCellIdI target = focus;
 			//ASSERT__(prevCell != target.stackID);
@@ -235,12 +240,12 @@ namespace Objects
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 				if (rebuild[k])
 				{
-					Grid::high.family[k].SetOutdated(v.timeAt);
-					Grid::low.family[k].SetOutdated(v.timeAt);
+					Grid::high.family[k].SetOutdated(v.motionTime);
+					Grid::low.family[k].SetOutdated(v.motionTime);
 				}
 			//	Grid::SeeThrough::Update(Grid::SeeThrough::IsEnabled(), v->atCell, v->atHeight);	//don't change cutoff mode
 			for (int h = hChangedDownTo; h < target.height; h++)
-				SignalClusterAndNeighborsChange(Grid::LCellIdI(target.stackID, h),v.timeAt);
+				SignalClusterAndNeighborsChange(Grid::LCellIdI(target.stackID, h),v.motionTime);
 			return JobDone;
 		}
 
@@ -366,14 +371,14 @@ namespace Objects
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 				if (rebuild[k])
 				{
-					Grid::high.family[k].SetOutdated(v.timeAt);
-					Grid::low.family[k].SetOutdated(v.timeAt);
+					Grid::high.family[k].SetOutdated(v.motionTime);
+					Grid::low.family[k].SetOutdated(v.motionTime);
 				}
 
 
 
 
-			//SignalClusterAndNeighborsChange(target,v.timeAt);
+			//SignalClusterAndNeighborsChange(target,v.motionTime);
 			return JobDone;
 		}
 
@@ -452,11 +457,11 @@ namespace Objects
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 				if (rebuild[k])
 				{
-					Grid::high.family[k].SetOutdated(v.timeAt);
-					Grid::low.family[k].SetOutdated(v.timeAt);
+					Grid::high.family[k].SetOutdated(v.motionTime);
+					Grid::low.family[k].SetOutdated(v.motionTime);
 				}
 
-			SignalClusterAndNeighborsChange(target,v.timeAt);
+			SignalClusterAndNeighborsChange(target,v.motionTime);
 			return JobDone;
 		}
 
@@ -481,8 +486,8 @@ namespace Objects
 
 		/*virtual override*/ BaseJob::continue_t	ClearAbove::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{
-			Grid::actualWorld.Clear(focus,v.timeAt);
-			SignalClusterAndNeighborsChange(focus,v.timeAt);
+			Grid::actualWorld.Clear(focus,v.motionTime);
+			SignalClusterAndNeighborsChange(focus,v.motionTime);
 			return JobDone;
 		}
 
@@ -506,7 +511,7 @@ namespace Objects
 
 		///*virtual override*/ BaseJob::continue_t	BuildFoundation::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		//{
-		//	Structure::CommonFixTerrain(&v,focus,Grid::CellStack::Cell::Content::Foundation,0,true,v.timeAt,true);
+		//	Structure::CommonFixTerrain(&v,focus,Grid::CellStack::Cell::Content::Foundation,0,true,v.motionTime,true);
 
 		//	//const Grid::LCellIdI target = focus;
 		//	//
@@ -565,13 +570,13 @@ namespace Objects
 		//	//for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		//	//	if (rebuild[k])
 		//	//	{
-		//	//		Grid::high.family[k].SetOutdated(v.timeAt);
-		//	//		Grid::low.family[k].SetOutdated(v.timeAt);
+		//	//		Grid::high.family[k].SetOutdated(v.motionTime);
+		//	//		Grid::low.family[k].SetOutdated(v.motionTime);
 		//	//	}
 		//	////	Grid::SeeThrough::Update(Grid::SeeThrough::IsEnabled(), v->atCell, v->atHeight);	//don't change cutoff mode
 		//	////if (vehicle == selectedEntity)
 		//	//for (int h = lowest; h <= target.height-1; h++)
-		//	//	SignalClusterAndNeighborsChange(Grid::LCellIdI(target.stackID,h),v.timeAt);
+		//	//	SignalClusterAndNeighborsChange(Grid::LCellIdI(target.stackID,h),v.motionTime);
 		//	return JobDone;
 		//}
 
@@ -581,7 +586,7 @@ namespace Objects
 			{
 				PWorldEntity e = GetEntity(focus);
 			
-				if (!e || !v.owner->CanSee(e,v.timeAt) || e.get() == &v)
+				if (!e || !v.owner->CanSee(e,v.motionTime) || e.get() == &v)
 				{
 					outError = "Nothing in focus cell "+focus.ToString();
 					return false;
@@ -615,9 +620,9 @@ namespace Objects
 							if (demand.IsNotEmpty())
 							{
 								LogEvent(EventSignificance::Common,&v,"Restocking vehicle: transferred "+demand.ToString());
-								n.Collect(demand,v.timeAt);
+								n.Collect(demand,v.motionTime);
 								v.currentStorage += demand;
-								v.RegisterChange(WorldEntity::StorageChanged,v.timeAt);
+								v.RegisterChange(WorldEntity::StorageChanged,v.motionTime);
 							}
 							else
 								LogEvent(EventClass::Preset::commandRejected,&v, "Compound: Nothing to withdraw");
@@ -640,9 +645,9 @@ namespace Objects
 							{
 								LogEvent(EventSignificance::Common,&v,"Deposition: transferred "+supply.ToString());
 
-								n.Distribute(supply,v.timeAt);
+								n.Distribute(supply,v.motionTime);
 								v.currentStorage -= supply;
-								v.RegisterChange(WorldEntity::StorageChanged,v.timeAt);
+								v.RegisterChange(WorldEntity::StorageChanged,v.motionTime);
 							}
 							else
 								LogEvent(EventClass::Preset::commandRejected,&v,"Compound: Insufficient resource storage capacity at destination to complete operation");
@@ -651,8 +656,8 @@ namespace Objects
 				}
 				else
 				{
-					PVehicle vTarget = GetVehicle(focus);
-					if (!vTarget || !v.owner->CanSee(vTarget,v.timeAt))
+					PMobileEntity vTarget = GetMobileEntity(focus);
+					if (!vTarget || !v.owner->CanSee(vTarget,v.motionTime))
 					{
 						LogEvent(EventClass::Preset::commandRejected,&v,"Nothing here");
 						return JobDone;
@@ -678,8 +683,8 @@ namespace Objects
 								LogEvent(EventSignificance::Common,&v,"Restocking vehicle: transferred "+demand.ToString());
 								vTarget->currentStorage -= demand;
 								v.currentStorage += demand;
-								vTarget->RegisterChange(WorldEntity::StorageChanged,v.timeAt);
-								v.RegisterChange(WorldEntity::StorageChanged,v.timeAt);
+								vTarget->RegisterChange(WorldEntity::StorageChanged,v.motionTime);
+								v.RegisterChange(WorldEntity::StorageChanged,v.motionTime);
 							}
 							else
 								LogEvent(EventClass::Preset::commandRejected,&v, vTarget->GetNiceName()+": Insufficient resource availability to complete operation");
@@ -704,8 +709,8 @@ namespace Objects
 
 								vTarget->currentStorage += supply;
 								v.currentStorage -= supply;
-								vTarget->RegisterChange(WorldEntity::StorageChanged,v.timeAt);
-								v.RegisterChange(WorldEntity::StorageChanged,v.timeAt);
+								vTarget->RegisterChange(WorldEntity::StorageChanged,v.motionTime);
+								v.RegisterChange(WorldEntity::StorageChanged,v.motionTime);
 							}
 							else
 								LogEvent(EventClass::Preset::commandRejected,&v,vTarget->GetNiceName()+ ": Insufficient resource storage capacity at destination to complete operation");
@@ -718,6 +723,70 @@ namespace Objects
 
 		#endif
 
+
+
+		/*virtual override*/ bool	SelfDetonate::CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)
+		{
+			PWorldEntity e = GetEntity(focus);
+			
+			if (!e)
+			{
+				outError = "Self is empty";
+				return false;
+			}
+			return true;
+		}
+
+
+		/*virtual override*/ BaseJob::continue_t	SelfDetonate::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
+		{
+			float radius = Component::Bomb::GetRadius(doomsday);
+			int damageLevel = Component::Bomb::GetDamageLevel(doomsday);
+
+			Remove(v.shared_from_this(),Objects::RemovalType::ControlledExplosion,v.motionTime,true);
+			v.motionTime += timeEpsilon;
+
+			Explode(PWorldEntity(),v.location,0.f,Grid::HCellIdI(Grid::low.grid.GetCell(v.location.stackID).higherEquivalent,v.location.height),v.GetWorldPosition(),radius,damageLevel,doomsday,v.motionTime);
+
+			return TerminalFailureVehicleDestroyed;
+		}
+
+
+
+		
+		/*virtual override*/	bool			SelfDetonate::Serialize(IWriteStream&outStream, bool exportSize) const 
+		{
+			return outStream.WritePrimitive(doomsday);
+		}
+
+		/*virtual override*/	serial_size_t	SelfDetonate::GetSerialSize(bool exportSize) const 
+		{
+			return 1;
+		}
+
+		/*virtual override*/	bool			SelfDetonate::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
+		{
+			return inStream.ReadPrimitive(doomsday);
+		}		
+		
+		/**/					SelfDetonate::SelfDetonate(MobileEntity&v, ConstName p)	
+			: Super(
+				p == ConstName::DetonationSize_Doomsday && RuntimeConfig::doomsdayWeapons != RuntimeConfig::DoomsdayWeapons::Disallow 
+					? DoomsdaySelfDetonationCosts 
+					: RegularSelfDetonationCosts,
+				v,GetOperationAffinity(),Autocomplete::Always,false
+			),
+			doomsday(p == ConstName::DetonationSize_Doomsday && RuntimeConfig::doomsdayWeapons != RuntimeConfig::DoomsdayWeapons::Disallow)
+		{}
+
+		/*virtual override*/ String			SelfDetonate::GetName() const
+		{
+			return doomsday?"Obliterate (DOOMSDAY)" : "Self-Denotate";
+		}
+
+
+
+
 		/*virtual override*/ bool	RepairJob::CanContinue(MobileEntity&v, const Grid::LCellIdI&focus, String&outError)
 		{
 			if (!v.CanRepair())
@@ -727,7 +796,7 @@ namespace Objects
 			}
 			PWorldEntity e = GetEntity(focus);
 			
-			if (!e || !v.owner->CanSee(e,v.timeAt) || e.get() == &v)
+			if (!e || !v.owner->CanSee(e,v.motionTime) || e.get() == &v)
 			{
 				outError = "Nothing in focus cell "+focus.ToString();
 				return false;
@@ -751,7 +820,7 @@ namespace Objects
 			if (!v.CanRepair())
 				return JobDone;
 			PWorldEntity target = GetEntity(focus);
-			if (!target || !v.owner->CanSee(target,v.timeAt) || target.get() == &v)
+			if (!target || !v.owner->CanSee(target,v.motionTime) || target.get() == &v)
 			{
 				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Nothing in focus cell "+focus.ToString());
 				return JobDone;
@@ -772,26 +841,26 @@ namespace Objects
 
 			int cost = (int)ceil(float(target->GetConstructionCost()) * relative);
 
-			if (CanWithdrawFromStorage(v,Resource::Minerals,cost))
+			if (CanWithdrawFromStorage(v,this->GetConsumedResourceType(),cost))
 			{
 				target->health = maxHealth;
-				target->RegisterChange(WorldEntity::HealthChanged,v.timeAt);
-				ChangeStorage(v,v.timeAt, Resource::Minerals,-cost);
+				target->RegisterChange(WorldEntity::HealthChanged,v.motionTime);
+				ChangeStorage(v,v.motionTime, this->GetConsumedResourceType(),-cost);
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ) ,&v,this->GetName()+ ": '"+target->GetNiceName()+"' repaired");
 				return JobDone;
 			}
 
-			int canRepair = (int)floor(float(maxHealth) * float(GetStorage(v,Resource::Minerals)) / float(target->GetConstructionCost()));
+			int canRepair = (int)floor(float(maxHealth) * float(GetStorage(v,this->GetConsumedResourceType())) / float(target->GetConstructionCost()));
 			if (!canRepair)
 			{
-				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient minerals in storage to repair '"+target->GetNiceName()+"'");
-				return JobDone;
+				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to repair '"+target->GetNiceName()+"'");
+				return JobDelayed;
 			}
-			LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient minerals in storage to fully repair '"+target->GetNiceName()+"'. Repairing "+String(canRepair)+" health...");
+			LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to fully repair '"+target->GetNiceName()+"'. Repairing "+String(canRepair)+" health...");
 			target->health += canRepair;
-			target->RegisterChange(WorldEntity::HealthChanged,v.timeAt);
+			target->RegisterChange(WorldEntity::HealthChanged,v.motionTime);
 
-			ChangeStorage(v,v.timeAt, Resource::Minerals,-(int)ceil(float(canRepair) * float(target->GetConstructionCost()) / float(maxHealth)));
+			ChangeStorage(v,v.motionTime, this->GetConsumedResourceType(),-(int)ceil(float(canRepair) * float(target->GetConstructionCost()) / float(maxHealth)));
 			return JobDone;
 
 		}
@@ -855,16 +924,16 @@ namespace Objects
 				if (rebuild[k])
 				{
 				//Grid::high.BakeBlockInstruction(Grid::cellStack,k,0,0);
-					Grid::high.family[k].SetOutdated(v.timeAt);
-					Grid::low.family[k].SetOutdated(v.timeAt);
+					Grid::high.family[k].SetOutdated(v.motionTime);
+					Grid::low.family[k].SetOutdated(v.motionTime);
 				}
-			SignalClusterAndNeighborsChange(target,v.timeAt-Times::Dig,&v);
-			MobilePlacementResult rc = v.PlaceExactlyAt(target, Times::Dig,v.timeAt);
+			SignalClusterAndNeighborsChange(target,v.motionTime-Times::Dig,&v);
+			MobilePlacementResult rc = v.PlaceExactlyAt(target, Times::Dig,v.motionTime);
 			if (!Succeeded(rc))
 			{
 				if (rc == MobilePlacementResult::PlacementFailedMobileDestroyed)
 					return TerminalFailureVehicleDestroyed;
-				if (!Succeeded(v.PlaceExactlyAt(v.location,0,v.timeAt)))
+				if (!Succeeded(v.PlaceExactlyAt(v.location,0,v.motionTime)))
 					return TerminalFailureVehicleDestroyed;
 			}
 					//or else it falls, breaking the task list. HOWEVER: must be done AFTER signalling neighbors because they must have a chance to Fill the hole again.
@@ -918,7 +987,7 @@ namespace Objects
 
 		/*virtual override*/ void			Construct::Restart(const MobileEntity&v)
 		{
-			Super::ResetMineralsAndRoundsLeft(constructWhat?constructWhat->GetConstructionCost():0,v,GetOperationAffinity());
+			Super::ResetResourceAndRoundsLeft(constructWhat?constructWhat->GetConstructionCost():0,v,GetOperationAffinity());
 		}
 
 
@@ -1119,8 +1188,8 @@ namespace Objects
 			{
 				if (dynamic_cast<Connector*>(existing.get()))
 				{
-					Remove(existing,Objects::RemovalType::BeingReplaced,v.timeAt,false);
-					v.timeAt += 0.025f;
+					Remove(existing,Objects::RemovalType::BeingReplaced,v.motionTime,false);
+					v.motionTime += 0.025f;
 					existing.reset();
 					DBG_ASSERT__(!GetStructure(target));
 				}
@@ -1131,10 +1200,10 @@ namespace Objects
 				}
 			}
 
-			PStructure s = To<Structure>::Cast(constructWhat->CreateNewInstance(v.owner, target, v.timeAt));
+			PStructure s = To<Structure>::Cast(constructWhat->CreateNewInstance(v.owner, target, v.motionTime));
 			s->id = useID;
 			LogEvent(EventSignificance::Common,&v,"Constructed " + s->GetName()+" at "+s->location.ToString());
-			InsertConstructed(s,v.timeAt,true);
+			InsertConstructed(s,v.motionTime,true);
 			return JobDone;
 		}
 
@@ -1202,10 +1271,10 @@ namespace Objects
 			return true;
 		}
 
-		void			Sequence::Guess(const MobileEntity&v, const Grid::LCellIdI&origin, index_t myJobIndex, UINT16&roundsToJobCompletion, UINT16&mineralCostLeft)	const
+		void			Sequence::Guess(const MobileEntity&v, const Grid::LCellIdI&origin, index_t myJobIndex, UINT16&roundsToJobCompletion, UINT16&resourceCostLeft)	const
 		{
 			roundsToJobCompletion = 0;
-			mineralCostLeft = 0;
+			resourceCostLeft = 0;
 
 			const Grid::WorldData&world = v.owner->currentState;
 			int speed = v.GetOperationSpeed(GetOperationAffinity());
@@ -1243,7 +1312,7 @@ namespace Objects
 							}
 							if (!found)
 								cost = BuildRoadMineralCosts;
-							mineralCostLeft += cost;
+							resourceCostLeft += cost;
 							roundsToJobCompletion += cost / speed + (cost % speed ? 1 : 0);
 						}
 						break;
@@ -1262,7 +1331,7 @@ namespace Objects
 							}
 							if (!found)
 								cost = Connector::globalPrototype->GetConstructionCost();
-							mineralCostLeft += cost;
+							resourceCostLeft += cost;
 							roundsToJobCompletion += cost / speed + (cost % speed ? 1 : 0);
 						}
 						break;
@@ -1289,7 +1358,7 @@ namespace Objects
 								}
 							}
 							cost = BuildWallMineralCosts;
-							mineralCostLeft += cost * (2 - found);
+							resourceCostLeft += cost * (2 - found);
 							roundsToJobCompletion += (cost / speed + (cost % speed ? 1 : 0))  * (2 - found);
 						}
 						break;
@@ -1316,19 +1385,19 @@ namespace Objects
 							case CursorMode::BuildRoadChainMode:
 							case CursorMode::BuildBridgeMode:
 								cost = BuildRoadMineralCosts;
-								mineralCostLeft += cost;
+								resourceCostLeft += cost;
 								roundsToJobCompletion += cost / speed + (cost % speed ? 1 : 0);
 							break;
 							case CursorMode::BuildConnectorChainMode:
 							{
 								cost = Connector::globalPrototype->GetConstructionCost();
-								mineralCostLeft += cost;
+								resourceCostLeft += cost;
 								roundsToJobCompletion += cost / speed + (cost % speed ? 1 : 0);
 							}
 							break;
 							case CursorMode::BuildWallChainMode:
 								cost = BuildWallMineralCosts;
-								mineralCostLeft += 2 * cost;
+								resourceCostLeft += 2 * cost;
 								roundsToJobCompletion += 2*(cost / speed + (cost % speed ? 1 : 0));
 							break;
 						}

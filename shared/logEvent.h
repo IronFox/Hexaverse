@@ -60,6 +60,7 @@ struct EventClass
 	struct Preset
 	{
 		static EventClass	error,	//!< Non-fatal error that should be logged and displayed on the console
+							internalError,	//!< Non-fatal error that should be logged and displayed on the console. Not distributed to clients
 							fatal,
 							unexpectedBehavior,
 							uncommon,
@@ -69,6 +70,7 @@ struct EventClass
 							commandRejected,
 							operationAborted,
 							configuration,
+							configurationPrint,
 							configurationError,
 							fileError,
 							network,

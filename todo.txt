@@ -1,12 +1,25 @@
-shadow edge
+﻿surveyors move along revertable paths only
+reduce hoverbase safe falling height
 
-motions ending in cells occupied by vehicles with no tasks should abort
+emp independent of goal
+hostile ghosts die after one round
+cluster natural resources
 
-still possible to have negative compound power level when generator could be enable but isn't? i think this happened when enabling a skyport
+auto relocation fails if some other non-move task immediately follows (e.g. transfer resources)
+potentially undo last (movement) task if build job is rejected
+
+
+still have loss of initial AI world state. easy to reproduce: new planet with ai (all seems good) -> save anywhere -> immediately load -> bamm
+
+water has no bottom cap, and the bounding box/sphere/w/e is sometimes off by a little
+
+
+working structure replacement (replace one enable working structure with another that is better suited to stabilize the compound)
+
+
 repair vehicle idle if something damaged?
 compound inefficieny
 wireless power? ... dedicated compounds?
-have pylons (ft_pylon) connect to each other only, replace connectors	
 		
 
 improve sky grid
@@ -40,7 +53,6 @@ faster digging
 transfer build-state of terraformer to hostile factions
 	/see what hostile former is building currently
 
-better surveyor automation logic
 
 
 
@@ -57,25 +69,16 @@ spy-satellite
 
 
 
-
-
-...later...
-
-button to hide paths of non-selected entity
 better customization for goal specification. currently ConquerNexus and EMPConquerNexus have implied, rather specific characteristics that should be exposed as settings
 
 better scoring
 general resource transporter vehicles
-
-planed foundation (and road) building should block required cells
 
 let foundation blocks (and granite) explode into stone first // maybe later
 
 
 
 
-
-client-sided structure count doesn't seem to update if destroying a faction ends game. disconnecting and re-connecting fixes it. works fine if game does not end
 
 
 hover beam	//elevator
@@ -120,6 +123,16 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+button to hide paths of non-selected entity
+better surveyor automation logic
+have pylons (ft_pylon) connect to each other only, replace connectors	
+still possible to have negative compound power level when generator could be enable but isn't? i think this happened when enabling a skyport
+Visualization of number of attacks left
+The new round button is sometimes not flashing when a round starts and there is nothing to do
+shadow edge
+motions ending in cells occupied by vehicles with no tasks should abort
+building placement (shift+click etc)
+surveyor that crosses planned paths with another (standing or moving) vehicle should consider that an invalid path
 remote control: preserve working directory
 smoke trail of last round attacks
 vehicle sentry toggle	// better: vehicles can sleep
@@ -129,6 +142,7 @@ ability to pause construction (of terraformers) // also done by sleep
 visualize attack radius on water
 hostile satellites show up as ghosts if in radar range
 possibly fixed:
+	client-sided structure count doesn't seem to update if destroying a faction ends game. disconnecting and re-connecting fixes it. works fine if game does not end
 	terraformer moves with a finished construction but move on finish is not executed until vehicle moves again. then places building on the location the vehicle first moved to...
 	building was two floors high. no occulsion on second floor
 		see below:

@@ -35,7 +35,7 @@ namespace Objects
 	it currently knows about.
 	*/
 	Buffer0<PStructure>			structures;
-	#ifdef HAS_WINDOW
+	#ifdef CLIENT
 		/**
 		Filter list containing only SkyPorts. Used to faster render certain effects.
 		*/
@@ -62,7 +62,7 @@ namespace Objects
 		bool						Structure::anyChanged = false;
 
 //		/*static*/ Buffer0<IconCommand>		Connector::commands;
-		/*static*/ Buffer0<IconCommand>		Tower::commands;
+		/*static*/ CommandContainer			Tower::commands;
 
 		/*static*/ DX11::InstructionBlock32	Mine::shape;
 		///*static*/ DX11::InstructionBlock32	Connector::shape;
@@ -84,9 +84,6 @@ namespace Objects
 									VehicleStore::cmdRight;
 		/*static*/ Geometry			VehicleStore::interConnector,
 									Generator::reactorConnector;
-
-		/*static*/ VehicleConstructionCommand	SkyPort::formerConstructionCommand;
-		/*static*/ SatelliteConstructionCommand	SkyPort::skyHubConstructionCommand;
 
 
 	#endif
@@ -163,9 +160,6 @@ namespace Objects
 	
 		/*virtual override*/ void Tower::Attack(float&attackTime)
 		{
-			//timeAt = attackTime;
-
-
 			ASSERT__(attackQueue.IsNotEmpty());
 
 			const auto target = attackQueue.Pop();
@@ -202,19 +196,21 @@ namespace Objects
 
 				const float flightTime =  Times::Attack * len;
 
-				timeAt = std::max(timeAt,attackTime - flightTime - Times::TurretRotation);
-
+				{
+					float beginT = attackTime - flightTime - Times::TurretRotation;
+					SyncTime(beginT);
+				}
 
 
 				
 				float change = 1.f / float(GetAttacksPerRound());
 				attackActionLeft -= change;
-				RegisterChange(ActionChanged,timeAt);
+				RegisterChange(ActionChanged,motionTime);
 
 				{
 					//float delta = std::max(fabs(angles.x - turretAngleX), fabs(angles.y - turretAngleY));
 					SignalTurretRotation(shared_from_this(),(ToWorld(trajectory[1]) - ToWorld(trajectory.first())).Normalized0(),Times::TurretRotation);
-					timeAt += Times::TurretRotation;
+					motionTime += Times::TurretRotation;
 				}
 
 
@@ -225,26 +221,26 @@ namespace Objects
 				else
 				{
 					ResourceVector change;
-					RefreshCompoundCoverageIfNeeded(timeAt);
+					RefreshCompoundCoverageIfNeeded(motionTime);
 					change.level[turret->ammoType] = turret->ammoNeedPerShot;
-					GetCompound().Collect(change,timeAt);
+					GetCompound().Collect(change,motionTime);
 					//ASSERT__(change.IsEmpty());
 				}
 				
 
 				
-				timeAt += flightTime;
+				motionTime += flightTime;
 
 				if (turret->dealsEMPDamage)
 					ExplodeEMP(shared_from_this(),target.target,flightTime,
-								t1, t0, turret->explosionRadius, turret->damageLevel,timeAt);
+								t1, t0, turret->explosionRadius, turret->damageLevel,motionTime);
 				else
 					Explode(shared_from_this(),target.target,flightTime,
-							t1, t0, turret->explosionRadius, turret->damageLevel,turret->isDoomsday, timeAt);
+							t1, t0, turret->explosionRadius, turret->damageLevel,turret->isDoomsday, motionTime);
 
-				RegisterChange((changeType_t)(TasksChanged),timeAt);
+				RegisterChange((changeType_t)(TasksChanged),motionTime);
 				//stateChangedAt = attackTime;	//problematic
-				attackTime = timeAt;
+				attackTime = motionTime;
 			}
 			else
 			{
@@ -308,7 +304,7 @@ namespace Objects
 
 			return		//owner->canSee.IsSet(target)
 					/*&&	*/turret->CanAttack() 
-					&& timeAt <= entityTime 
+					&& motionTime <= entityTime 
 					&& CountPossibleAttacks() > 0 
 					&& ExtCanHit(owner,location,foundationHeight, target->location,outTarget)
 					//&& d2 > sqr(turret->explosionRadius)
@@ -535,6 +531,48 @@ namespace Objects
 		BuildStructureSystem(location,system);
 
 		Mat::invert(system,inverse);
+		#ifdef HAS_WINDOW
+			ambientSound.SetPosition(GetWorldPosition());
+		#endif
+	}
+
+	bool			Structure::RemoveConnectionTo(const PStructure&s)
+	{
+		foreach (connectedTo,c)
+			if (c->lock() == s)
+			{
+				connectedTo.erase(c);
+				return true;
+			}
+		return false;
+	}
+
+	bool			Structure::RemoveConnectionTo(Structure*s)
+	{
+		foreach (connectedTo,c)
+			if (c->lock().get() == s)
+			{
+				connectedTo.erase(c);
+				return true;
+			}
+		return false;
+	}
+
+
+	bool			Structure::IsConnectedTo(const PStructure&s)	const
+	{
+		foreach (connectedTo,c)
+			if (c->lock() == s)
+				return true;
+		return false;
+	}
+
+	bool			Structure::IsConnectedTo(const Structure*s) const
+	{
+		foreach (connectedTo,c)
+			if (c->lock().get() == s)
+				return true;
+		return false;
 	}
 
 
@@ -548,9 +586,17 @@ namespace Objects
 			localMesh.ClearCompletely();
 
 			{
-				for (const auto&c : this->connectedTo)
-				//foreach(this->connectedTo, c)
+				for (index_t i = 0; i < this->connectedTo.Count(); i++)
 				{
+					PStructure c = this->connectedTo[i].lock();
+					if (!c)
+					{
+						LogEvent(EventClass::Preset::error,this,"Removing lost neighbor connection #"+String(i));
+						connectedTo.Erase(i);
+						i--;
+						continue;
+					}
+					
 					if (c->location.stackID > location.stackID)
 						continue;	//only one direction
 
@@ -642,9 +688,15 @@ namespace Objects
 	
 	void	Structure::DisconnectFromNeighborhood(float atTime)
 	{
-		foreach (this->connectedTo,conn)
+		for (index_t i = 0; i < this->connectedTo.Count(); i++)
 		{
-			(*conn)->SignalLostNeighbor(To<Structure>::Cast(shared_from_this()),atTime);
+			PStructure c = this->connectedTo[i].lock();
+			if (!c)
+			{
+				LogEvent(EventClass::Preset::error,this,"DisconnectFromNeighborhood(): Lost neighbor connection #"+String(i));
+				continue;
+			}
+			c->SignalLostNeighbor(To<Structure>::Cast(shared_from_this()),atTime);
 		}
 		this->connectedTo.Clear();
 		#ifdef HAS_WINDOW
@@ -699,14 +751,14 @@ namespace Objects
 					changed = c->changed = Structure::anyChanged = true;
 				#endif
 				c->OnNewConnection(_this, between, atTime);
-				if (!c->connectedTo.Contains(_this))
+				if (!c->IsConnectedTo(_this))
 				{
 					//this can happen when placing new structures and c is a nexus port that changes ownership as a result, and thus reconnects to all existing structures which this is not yet a part of
-					DBG_ASSERT__(!connectedTo.Contains(c));
+					DBG_ASSERT__(!IsConnectedTo(c));
 					connectedTo << c;
 					c->connectedTo << _this;
 					c->OnNewConnection(_this, between, atTime);
-					ASSERT__(c->connectedTo.Contains(_this));
+					ASSERT__(c->IsConnectedTo(_this));
 				}
 				_this->OnNewConnection(c, between, atTime);
 				LogEvent(EventClass::Preset::common,"Connection established between "+GetName()+" and "+c->GetName());
@@ -725,9 +777,9 @@ namespace Objects
 
 
 
-	/*virtual*/ void Structure::OnDestroy(float atTime)
+	/*virtual*/ void Structure::OnDestroy(RemovalType t, float atTime)
 	{
-		Super::OnDestroy(atTime);
+		Super::OnDestroy(t,atTime);
 		LogEvent(EventClass::Preset::debug,this,"Unregistering...");
 		CommonUnregisterStructure(location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
 
@@ -747,32 +799,34 @@ namespace Objects
 	{
 		Super::PrototypeSetup();
 		#ifdef HAS_WINDOW
-			iconCommands << IconCommand(int2(5,1), "Restore Core Link",[](const PWorldEntity&s)
+			commands.Add( new IconCommand("Restore Core Link",[]()
 			{
-				PMine mine = To<Mine>::DynamicCast(s);
+				PMine mine = ToMine(selectedEntity);
 				if (mine)
 				{
 					SignalRestoreCoreLink(mine->id);
 				}
 			},
-			[](const PWorldEntity&s, bool controlEnabled)
+			[](bool controlEnabled)
 			{
 				if (!controlEnabled)
 					return BaseCommand::Flags::None;
-				PMine mine = To<Mine>::DynamicCast(s);
+				PMine mine = ToMine(selectedEntity);
 				return mine && !mine->IsLinkedToCore() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 			},
-			[](const PWorldEntity&, int&mineralCostOut, int&timeCostOut){mineralCostOut = 0; timeCostOut = 0;}
-			);
+			NoCosts
+			));
 		#endif
 	}
 
 	#ifdef HAS_WINDOW
-		/*virtual override*/ void				Tower::VisitAllCommands(FCommandVisitor visitor)
+		/*virtual override*/ void				Tower::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
-			foreach (commands,cmd)
-				if (turret->CanAttack() || cmd->name!="Attack")
-					visitor(*cmd);
+			commands.VisitMembers([visitor,this](BaseCommand&cmd)
+			{
+				if (turret->CanAttack() || cmd.name!="Attack")
+					visitor(cmd);
+			},force);
 		}
 
 	#endif
@@ -791,18 +845,6 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			geometry.Clear();
-			commands << IconCommand(int2(4,0), "Abort", &VehicleCmd::AbortOperation, &CommonCmd::CommonButtonCheck
-						,NoCosts
-			);
-			commands << IconCommand(int2(4,1), "Undo", &VehicleCmd::UndoOperation, &CommonCmd::CommonButtonCheck
-						,NoCosts
-			);
-			commands << IconCommand(int2(5,1), "Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>
-						,NoCosts
-			);
-			commands << IconCommand(int2(5,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck
-						,NoCosts
-			);
 		#endif
 
 		static const float staticHeight = 1.005f;
@@ -989,6 +1031,7 @@ namespace Objects
 			if (success)
 			{
 				naturalResources.SampleWorld(location.stackID);
+				naturalResources *= GetEfficiency();
 			}
 			if (success)
 				RegisterChange(WorldEntity::CanEnableChanged,atTime);
@@ -1083,11 +1126,6 @@ namespace Objects
 
 	Connector::Connector(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true, atTime)
 	{}
-
-	/*virtual override*/ void				Connector::OnDestroy(float atTime)
-	{
-		Super::OnDestroy(atTime);
-	}
 
 
 
@@ -1198,7 +1236,7 @@ namespace Objects
 		{
 			foreach (connectedTo,conn)
 			{
-				core = To<ReactorCore>::DynamicCast(*conn);
+				core = To<ReactorCore>::DynamicCast(conn->lock());
 				if (core && core->location.height == location.height)
 				{
 					connectedToReactor = core;
@@ -1343,11 +1381,10 @@ namespace Objects
 
 	bool	VehicleStore::StoreLocally(const PVehicle&v, float&atTime, bool setHealthToFullIfNew/*=true*/)
 	{
-		if (LocalIsFull() || v->owner != owner || v->health <= 0)
+		if (LocalIsFull() || !v || v->owner != owner || v->health <= 0)
 			return false;
 		#ifndef CLIENT
-			atTime = std::max(atTime,v->timeAt) + 0.05f;
-			v->timeAt = atTime;
+			v->motionTime = atTime = std::max(atTime,v->motionTime) + timeEpsilon;
 		#endif
 		if (v->isInserted)
 		{
@@ -1373,8 +1410,8 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			WVehicle w = v;
-			this->localStore.last().deployCommand = DeployVehicleCommand(int2(),v,
-				[w](const PWorldEntity&storeEntity)
+			this->localStore.last().deployCommand = DeployMobileCommand(v,
+				[w]()
 				{
 					//focus = To<VehicleStore>::DynamicCast(storeEntity).get();
 					if (deployingVehicle)
@@ -1382,10 +1419,10 @@ namespace Objects
 					else
 						deployingVehicle = w.lock();
 				},
-				[w](const PWorldEntity&storeEntity, bool controlEnabled)
+				[w](bool controlEnabled)
 				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(storeEntity,controlEnabled);
-					PVehicleStore s = To<VehicleStore>::DynamicCast(storeEntity);
+					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
+					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
 					if (deployingVehicle && s == selectedEntity && deployingVehicle == w.lock() && deployingVehicle->health > 0)
 						rs |= BaseCommand::Flags::IsPermaActive;
 					return rs;
@@ -1418,7 +1455,7 @@ namespace Objects
 	bool						VehicleStore::HasStoredLocally(const PVehicle&v) const
 	{
 		for (const auto&s : localStore)
-			if (s.vehicle == v)
+			if (s.vehicle.lock() == v)
 				return true;
 		return false;
 	}
@@ -1451,10 +1488,10 @@ namespace Objects
 
 
 
-			cmdLeft = IconCommand(int2(4,1),"Left",
-				[](const PWorldEntity&store)
+			cmdLeft = IconCommand("Left",
+				[]()
 				{
-					PVehicleStore s = To<VehicleStore>::DynamicCast(store);
+					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
 					if (storeOffset > 0)
 					{
 						if (storeOffset > MaxVisibleStoreItems)
@@ -1466,17 +1503,18 @@ namespace Objects
 						RefreshCommands(true);
 					}
 				},
-				[](const PWorldEntity&, bool controlEnabled)
+				[](bool controlEnabled)
 				{
 					return storeOffset > 0 && controlEnabled
 						 ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 				},
 				NoCosts);
+			cmdLeft.SetCoords(int2(4,1));
 
-			cmdRight = IconCommand(int2(),"Right",
-				[](const PWorldEntity&store)
+			cmdRight = IconCommand("Right",
+				[]()
 				{
-					PVehicleStore s = To<VehicleStore>::DynamicCast(store);
+					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
 					if (!s)
 						return;
 					if (s->CountVehiclesInPark() <= storeOffset)
@@ -1492,15 +1530,15 @@ namespace Objects
 					s->UpdateIconLocations();
 					RefreshCommands(true);
 				},
-				[](const PWorldEntity&store, bool controlEnabled)
+				[](bool controlEnabled)
 				{
-					PVehicleStore s = To<VehicleStore>::DynamicCast(store);
+					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
 					return s && s->CountVehiclesInPark() > storeOffset + MaxVisibleStoreItems
 					  && controlEnabled
 					   ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 				},
 				NoCosts);
-			cmdRight.coords = cmdLeft.coords + int2(MaxVisibleStoreItems+1,0);
+			cmdRight.gridCoords = cmdLeft.gridCoords + int2(MaxVisibleStoreItems+1,0);
 
 //			bool b = true;
 		#endif
@@ -1525,17 +1563,17 @@ namespace Objects
 			UpdateIconLocations();
 		}
 
-		/*virtual override*/ void		VehicleStore::VisitAllCommands(FCommandVisitor visitor)
+		/*virtual override*/ void		VehicleStore::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
-			Super::VisitAllCommands(visitor);
+			Super::VisitAllCommands(visitor,force);
 			if (!park)
 			{
 				foreach (localStore,v)
-					visitor(v->deployCommand);
+					v->deployCommand.VisitMembers(visitor,force);
 				return;
 			}
-			if (storeOffset > 0)
-				visitor(cmdLeft);
+			if (storeOffset > 0 || force)
+				cmdLeft.VisitMembers(visitor,force);
 			index_t at = 0;
 			foreach (park->members,m)
 			{
@@ -1545,22 +1583,23 @@ namespace Objects
 				{
 					foreach (s->localStore,s2)
 					{
-						if (at >= storeOffset)
+						if (at >= storeOffset || force)
 						{
-							s2->deployCommand.coords = cmdLeft.coords + int2(at - storeOffset+1 ,0);
-							visitor(s2->deployCommand);
+							if (at >= storeOffset)
+								s2->deployCommand.gridCoords = cmdLeft.gridCoords + int2(at - storeOffset+1 ,0);
+							s2->deployCommand.VisitMembers(visitor,force);
 						}
 
 						at++;
-						if (at >= storeOffset + MaxVisibleStoreItems)
+						if (at >= storeOffset + MaxVisibleStoreItems && !force)
 							break;
 					}
 				}
 				if (at >= storeOffset + MaxVisibleStoreItems)
 					break;
 			}
-			if (this->park->vehiclesStored - storeOffset > MaxVisibleStoreItems)
-				visitor(cmdRight);
+			if (this->park->vehiclesStored - storeOffset > MaxVisibleStoreItems || force)
+				cmdRight.VisitMembers(visitor,force);
 		}
 
 	#endif
@@ -1659,7 +1698,7 @@ namespace Objects
 						foreach (s->localStore, st)
 						{
 							if (current >= storeOffset)
-								st->deployCommand.coords = cmdLeft.coords + int2(1 + current,0);
+								st->deployCommand.gridCoords = cmdLeft.gridCoords + int2(1 + current,0);
 							current ++;
 						}
 					}
@@ -1670,7 +1709,7 @@ namespace Objects
 				foreach (localStore, st)
 				{
 					if (current >= storeOffset)
-						st->deployCommand.coords = cmdLeft.coords + int2(1 + current,0);
+						st->deployCommand.gridCoords = cmdLeft.gridCoords + int2(1 + current,0);
 					current ++;
 				}
 			}
@@ -1707,10 +1746,10 @@ namespace Objects
 
 	#endif
 
-	/*virtual override*/ void				VehicleStore::OnDestroy(float atTime)
+	/*virtual override*/ void				VehicleStore::OnDestroy(RemovalType t, float atTime)
 	{
 		//Buffer0<WVehicleStore>	copy = sneighbors;
-		Super::OnDestroy(atTime);	//disconnects from neighborhood. sneighbors should be empty now
+		Super::OnDestroy(t, atTime);	//disconnects from neighborhood. sneighbors should be empty now
 
 
 		if (park)
@@ -1722,7 +1761,7 @@ namespace Objects
 				{
 					s->park.reset();
 					#ifndef CLIENT
-						while (localStore.IsNotEmpty() && s->StoreLocally(localStore.last().vehicle,atTime))
+						while (localStore.IsNotEmpty() && s->StoreLocally(localStore.last().vehicle.lock(),atTime))
 						{
 							localStore.EraseLast();
 						}
@@ -1742,7 +1781,8 @@ namespace Objects
 		#ifndef CLIENT
 			for(const auto&v:localStore)
 			{
-				Remove(v.vehicle,RemovalType::DestroyedInStorage,atTime,false,true);
+				ASSERT1__(!v.vehicle.expired(),id.ToString());
+				Remove(v.vehicle.lock(),RemovalType::DestroyedInStorage,atTime,false,true);
 			}
 		#endif
 		localStore.Clear();
@@ -1853,7 +1893,7 @@ namespace Objects
 	
 	/*virtual*/ void				Structure::SignalLostNeighbor(const PStructure&other, float atTime)
 	{
-		if (connectedTo.FindAndErase(other))
+		if (RemoveConnectionTo(other))
 		{
 			LogEvent(EventSignificance::Common,nullptr, "Connection lost between "+GetName()+" and "+other->GetName());
 			#ifdef HYBRID_GRID
@@ -1891,7 +1931,7 @@ namespace Objects
 		auto _this = To<Structure>::Cast(shared_from_this());
 		count_t limit = connectedTo.Count();
 		foreach(neighborhood, candidate)
-			if (!connectedTo.Contains(*candidate))
+			if (!IsConnectedTo(*candidate))
 			{
 				const PStructure c = *candidate;
 				#ifdef HYBRID_GRID
@@ -1917,7 +1957,14 @@ namespace Objects
 
 		for (index_t i = 0; i < limit; i++)
 		{
-			const PStructure c = connectedTo[i];
+			const PStructure c = connectedTo[i].lock();
+			if (!c)
+			{
+				LogEvent(EventClass::Preset::error,this,"SignalEnvironmentChange(): Removing lost neighbor connection #"+String(i));
+				connectedTo.Erase(i);
+				i--;
+				continue;
+			}
 			#ifdef HYBRID_GRID
 				const UINT32 high2 = Grid::low.grid.GetCell((c)->location.stackID).higherEquivalent;
 				const auto&n2 = Grid::high.grid.GetCell(high2).neighborhood;
@@ -1927,7 +1974,7 @@ namespace Objects
 			#endif
 			if (!ConnectionPossibleTo(c, between) || !c->ConnectionPossibleTo(_this,between))
 			{
-				c->connectedTo.FindAndErase(_this);
+				c->RemoveConnectionTo(_this);
 				connectedTo.Erase(i--);
 				limit--;
 				#ifdef HAS_WINDOW
@@ -2027,23 +2074,23 @@ namespace Objects
 
 		/*virtual override*/ void			SkyPort::OnEnabledChange()
 		{
+			PSkyHub hub = connectedToHub.lock();
 			if (!this->IsEnabled())
 			{
-				if (connectedToHub)
+				if (hub)
 				{
 					//LogEvent(EventClass::Preset::operationAborted,this,"Connection to "+connectedTo->GetNiceName()+" lost");
-					connectedToHub->LoseGroundConnection();
+					hub->LoseGroundConnection();
 				}
 			}
 			else
-				if (!connectedToHub)
+				if (!hub)
 				{
-					PSkyHub hub = To<SkyHub>::DynamicCast(GetSatellite(location.stackID));
-					if (hub && hub->owner == owner)
+					PSkyHub otherHub = To<SkyHub>::DynamicCast(GetSatellite(location.stackID));
+					if (otherHub && otherHub->owner == owner)
 					{
-						if (hub->GainGroundConnection(To<SkyPort>::Cast(shared_from_this())))
-							ASSERT__(hub == connectedToHub);
-
+						if (otherHub->GainGroundConnection(To<SkyPort>::Cast(shared_from_this())))
+							ASSERT__(otherHub == connectedToHub.lock());
 					}
 				}
 		}
@@ -2221,104 +2268,107 @@ namespace Objects
 		turretComponents = Objects::Component::vehicleTurretComponents;
 
 		#ifdef HAS_WINDOW
-				for (index_t i = 0; i < iconCommands.Count(); i++)
-					if (iconCommands[i].name == "Enable")
-					{
-						iconCommands[i] = IconCommand(int2(4,1), "Enable",
-							[](const PWorldEntity&e)
-							{
-
-								VehiclePlant*s2 = dynamic_cast<VehiclePlant*>(e.get());
-								if (s2)
-								{
-									if (!s2->IsEnabled() && !s2->CanEnable())
-									{
-										SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job using the 'Construct Selected' button. You must first select both a foundation and a turret, however.");
-										return;
-									}
-									SignalEnableStructure(*s2, !s2->IsEnabled());
-								}
-							}
-							,[](const PWorldEntity&e, bool controlEnabled)
-							{
-								BaseCommand::Flags rs = BaseCommand::Flags::None;
-								VehiclePlant*div = dynamic_cast<VehiclePlant*>(e.get());
-								if (controlEnabled && div != nullptr)
-									rs |= BaseCommand::Flags::IsEnabled;
-								if (Cmd::IsEnabled(e))
-									rs |= BaseCommand::Flags::IsPermaActive;
-								return rs;
-							}
-							,NoCosts
-						);
-						break;
-					}
-
-
-
-			iconCommands << IconCommand(int2(6,0), "Construct Selected",[](const PWorldEntity&e)
+			commands.VisitMembers([](BaseCommand&cmd)
+			{
+				if (cmd.name == "Enable")
 				{
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
-					if (plant)
-					{
-						if (plant->selectedBase && plant->selectedTurret)
-							plant->EnqueueSelectedConstruction();
-						else
+					int2 coords = cmd.gridCoords;
+					cmd = IconCommand("Enable",
+						[]()
 						{
-							if (plant->selectedBase)
-								SignalUserMessage(plant->GetNiceName()+" needs to know what turret you want to use in order to enqueue a new production job. Please select one in the top row.");
-							elif (plant->selectedTurret)
-								SignalUserMessage(plant->GetNiceName()+" needs to know what foundation you want to use in order to enqueue a new production job. Please select one in the bottom row.");
-							else
-								SignalUserMessage(plant->GetNiceName()+" needs to know what turret and foundation you want to use in order to enqueue a new production job. Please select one in each top and bottom rows.");
-						}
-					}
-				},
-				[](const PWorldEntity&e, bool controlEnabled)
-				{
-					if (!controlEnabled)
-						return BaseCommand::Flags::None;
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
-					return (plant != nullptr/* && plant->selectedBase && plant->selectedTurret*/)
-						? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None
-						;
-				},
-				[](const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)
-				{
-					PVehiclePlant p = To<VehiclePlant>::DynamicCast(e);
-					ASSERT__(p);
-					if (!p->selectedBase || !p->selectedTurret)
-					{
-						mineralCostOut = 0;
-						timeCostOut = 0;
-						return;
-					}
-					mineralCostOut = Vehicle::GetPrice(p->selectedBase,p->selectedTurret);
-					timeCostOut = p->ProductionRounds(mineralCostOut,false);
-				}
-			);
 
-			iconCommands << IconCommand(int2(5,1), "Sleep",VehicleCmd::Sleep,VehicleCmd::SleepCheck,NoCosts);
+							VehiclePlant*s2 = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+							if (s2)
+							{
+								if (!s2->IsEnabled() && !s2->CanEnable())
+								{
+									SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job using the 'Construct Selected' button. You must first select both a foundation and a turret, however.");
+									return;
+								}
+								SignalEnableStructure(*s2, !s2->IsEnabled());
+							}
+						}
+						,[](bool controlEnabled)
+						{
+							BaseCommand::Flags rs = BaseCommand::Flags::None;
+							VehiclePlant*div = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+							if (controlEnabled && div != nullptr)
+								rs |= BaseCommand::Flags::IsEnabled;
+							if (Cmd::IsEnabled())
+								rs |= BaseCommand::Flags::IsPermaActive;
+							return rs;
+						}
+						,NoCosts
+					);
+					cmd.gridCoords = coords;
+				}
+			},true);
+
+
+			commands.Add(new IconCommand("Construct Selected",[]()
+			{
+				VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+				if (plant)
+				{
+					if (plant->selectedBase && plant->selectedTurret)
+						plant->EnqueueSelectedConstruction();
+					else
+					{
+						if (plant->selectedBase)
+							SignalUserMessage(plant->GetNiceName()+" needs to know what turret you want to use in order to enqueue a new production job. Please select one in the top row.");
+						elif (plant->selectedTurret)
+							SignalUserMessage(plant->GetNiceName()+" needs to know what foundation you want to use in order to enqueue a new production job. Please select one in the bottom row.");
+						else
+							SignalUserMessage(plant->GetNiceName()+" needs to know what turret and foundation you want to use in order to enqueue a new production job. Please select one in each top and bottom rows.");
+					}
+				}
+			},
+			[](bool controlEnabled)
+			{
+				if (!controlEnabled)
+					return BaseCommand::Flags::None;
+				VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
+				return (plant != nullptr/* && plant->selectedBase && plant->selectedTurret*/)
+					? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None
+					;
+			},
+			[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
+			{
+				costTypeOut = Resource::Minerals;
+				PVehiclePlant p = To<VehiclePlant>::DynamicCast(selectedEntity);
+				ASSERT__(p);
+				if (!p->selectedBase || !p->selectedTurret)
+				{
+					mineralCostOut = 0;
+					timeCostOut = 0;
+					return;
+				}
+				mineralCostOut = Vehicle::GetPrice(p->selectedBase,p->selectedTurret);
+				timeCostOut = p->ProductionRounds(mineralCostOut,false);
+			}
+		))->SetCoords(int2(4,0));
+
 
 			int at = 0;
 			//vehicleConstructionCommands << VehicleConstructionCommand("Base:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
 			foreach (baseComponents,comp)
 			{
 				Component::VehicleBase* c = *comp;
-				vehicleConstructionCommands << VehicleConstructionCommand(int2(7+at,0), c->typeName,c,nullptr,[c](const PWorldEntity&e)
+				commands.Add(new EntityConstructionCommand(c->typeName,c,nullptr,PWorldEntity(),[c]()
 				{
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
+					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
 						plant->selectedBase = c;
 				}
-				,[c](const PWorldEntity&e, bool controlEnabled)
+				,[c](bool controlEnabled)
 				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(e,controlEnabled);
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
+					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
+					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant && plant->selectedBase == c)
 						rs |= BaseCommand::Flags::IsPermaActive;
 					return rs;
-				});
+				}))->SetCoords(int2(5+at,0));
+				commands.GetLast()->RasterizeImage();
 				at++;
 			}
 			at = 0;
@@ -2326,20 +2376,21 @@ namespace Objects
 			foreach (turretComponents,comp)
 			{
 				Component::Turret* c = *comp;
-				vehicleConstructionCommands << VehicleConstructionCommand(int2(6+at,1), c->typeName,nullptr,c,[c](const PWorldEntity&e)
+				commands.Add(new EntityConstructionCommand(c->typeName,nullptr,c,PWorldEntity(),[c]()
 				{
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
+					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant)
 						plant->selectedTurret = c;
 				}
-				,[c](const PWorldEntity&e, bool controlEnabled)
+				,[c](bool controlEnabled)
 				{
-					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(e,controlEnabled);
-					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(e.get());
+					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
+					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
 					if (plant && plant->selectedTurret == c)
 						rs |= BaseCommand::Flags::IsPermaActive;
 					return rs;
-				});
+				}))->SetCoords(int2(3+at,1));
+				commands.GetLast()->RasterizeImage();
 				at++;
 			}
 		#endif
@@ -2348,17 +2399,15 @@ namespace Objects
 
 	}
 	#ifdef HAS_WINDOW
-		/*virtual override*/ void				VehiclePlant::VisitAllCommands(FCommandVisitor visitor)
+		/*virtual override*/ void				VehiclePlant::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
-			MobileEntityProducer::VisitAllCommands(visitor);
-			Super::VisitAllCommands(visitor);
+			MobileEntityProducer::VisitAllCommands(visitor,force);
+			Super::VisitAllCommands(visitor,force);
 		}
-		/*virtual override*/ void				SkyPort::VisitAllCommands(FCommandVisitor visitor)
+		/*virtual override*/ void				SkyPort::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
-			MobileEntityProducer::VisitAllCommands(visitor);
-			visitor(skyHubConstructionCommand);
-			visitor(formerConstructionCommand);
-			Super::VisitAllCommands(visitor);
+			MobileEntityProducer::VisitAllCommands(visitor,force);
+			Super::VisitAllCommands(visitor,force);
 		}
 
 	#endif
@@ -2385,29 +2434,31 @@ namespace Objects
 			//foreach (baseComponents,comp)
 			{
 				//VehicleBase* c = *comp;
-				formerConstructionCommand = VehicleConstructionCommand(int2(5,0), "Construct Hover-Former", &Component::hoverbase,&Component::terraformer, [](const PWorldEntity&e)
+				commands.Add(new EntityConstructionCommand("Construct Hover-Former", &Component::hoverbase,&Component::terraformer, PWorldEntity(),[]()
 				{
-					PSkyPort port = To<SkyPort>::DynamicCast(e);
+					PSkyPort port = To<SkyPort>::DynamicCast(selectedEntity);
 					if (!port)
 						return;
 					SignalConstructionBegin(port->id, ConstName::VehicleBase_HoverBase, ConstName::Turret_Terraformer);
 				}
-				,CommonCmd::CommonButtonCheck);
-				
-				skyHubConstructionCommand = SatelliteConstructionCommand(int2(5,1), "Construct SkyHub", SkyHub::globalPrototype, [](const PWorldEntity&e)
+				,CommonCmd::CommonButtonCheck));
+				commands.GetLast()->RasterizeImage();
+
+				commands.Add(new EntityConstructionCommand("Construct SkyHub", nullptr,nullptr, SkyHub::globalPrototype, []()
 				{
-					PSkyPort port = To<SkyPort>::DynamicCast(e);
+					PSkyPort port = To<SkyPort>::DynamicCast(selectedEntity);
 					if (!port)
 						return;
 					SignalConstructionBegin(port->id, ConstName::Type_SkyHub, ConstName::Empty);
 				}
 				,
-				[](const PWorldEntity&e, bool controlsEnabled)
+				[](bool controlsEnabled)
 				{
 					if (!controlsEnabled)
 						return BaseCommand::Flags::None;
-					return !GetSatellite(e->location.stackID) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
-				});
+					return selectedEntity && !GetSatellite(selectedEntity->location.stackID) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+				}));
+				commands.GetLast()->RasterizeImage();
 			}
 		#endif
 
@@ -2421,7 +2472,11 @@ namespace Objects
 	/*virtual override*/ bool				NexusPort::ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)
 	{
 		#ifndef CLIENT
-			return (connectedTo.IsEmpty() || other->owner == connectedTo.first()->owner);
+			if (connectedTo.IsEmpty())
+				return true;
+			PStructure s = connectedTo.first().lock();
+			ASSERT__(s);
+			return other->owner == s->owner;
 		#else
 			return true;
 		#endif
@@ -2430,6 +2485,7 @@ namespace Objects
 	/*virtual override*/ void				NexusPort::OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
+			Super::OnNewConnection(other,acrossHighCell,atTime);
 			if (owner != other->owner && !RuntimeConfig::loadingPhase)
 			{
 				resistence = ResistenceRounds;
@@ -2439,9 +2495,10 @@ namespace Objects
 		#endif
 	}
 
-	/*virtual override*/ void				NexusPort::OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime)
+	/*virtual override*/ void				NexusPort::OnConnectionLost(const PStructure&other, UINT32 acrossHighCell, float atTime)
 	{
 		#ifndef CLIENT
+			Super::OnConnectionLost(other,acrossHighCell,atTime);
 			if (connectedTo.IsEmpty() && owner != Faction::nexus && !RuntimeConfig::loadingPhase)
 			{
 				SetEnabled(false,atTime,false);
@@ -2571,8 +2628,14 @@ namespace Objects
 					s->compoundID = compoundID;
 					network.AppendStructure(s);
 					foreach (s->connectedTo,c)
-						if ((*c)->compoundID == Compound::InvalidNetwork)
-							primary << c->get();
+					{
+						PStructure st = c->lock();
+						if (st)
+						{
+							if (st->compoundID == Compound::InvalidNetwork)
+								primary << st.get();
+						}
+					}
 				}
 				network.Compact();
 			}
@@ -2643,6 +2706,7 @@ namespace Objects
 			label.WrapAppendText("Enabled mines extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures in the network."
 			" Mines should be build only on known occurrences of natural resources."
 			" They cannot be constructed atop each other, since they require a working link to the core in order to operate."
+			//" Mines constructed on a height level of -8 or lower are twice as effective."
 			" Mines, like many structures, require "+String(ResourceTag(Resource::Energy))+" from generators to operate."
 			);
 		}
@@ -2725,7 +2789,7 @@ namespace Objects
 
 
 	
-	bool						WorkingStructure::CouldEnable() const
+	bool						WorkingStructure::CouldEnable(bool ignoreCanEnable/*=false*/)
 	{
 		if (health <= 0)
 			return false;
@@ -2733,18 +2797,10 @@ namespace Objects
 			return true;
 
 		const Compound&n = GetCompound();
-		FullResourceVector copy = n.total;
-		ResourceVector v, storage,max,empty;
-		this->GetResourceVector(v,storage,max);
-		copy.Include(v,empty,empty);
-		return copy.balance.IsStable();
+		String dummy;
+		return n.CanEnable(this,dummy,ignoreCanEnable);
 	}
 
-
-	/*virtual override*/ void				WorkingStructure::OnDestroy(float atTime)
-	{
-		Super::OnDestroy(atTime);
-	}
 
 	#ifndef CLIENT
 
@@ -2758,7 +2814,7 @@ namespace Objects
 		}
 
 
-		bool						WorkingStructure::SetEnabled(bool b, float atTime, bool refreshNetwork/*=true*/, force_t force/*=EnableIfPossible*/, bool signalStructure/*=true*/)
+		bool						WorkingStructure::SetEnabled(bool b, float&atTime, bool refreshNetwork/*=true*/, force_t force/*=EnableIfPossible*/, bool signalStructure/*=true*/)
 		{
 			if (isEnabled == b)
 			{
@@ -2799,6 +2855,8 @@ namespace Objects
 				Compound::lastDisabled = nullptr;
 				SetSleep(false,atTime,false);
 			}
+			atTime = motionTime = std::max(motionTime,atTime)+timeEpsilon;
+			LogEvent(EventClass::Preset::common,this,"Enabled-state changed "+String(isEnabled)+"->"+String(b)+" at t="+String(atTime)+", given signalStructure="+String(signalStructure)+", refreshNetwork="+String(refreshNetwork));
 			isEnabled = b;
 			RegisterChange(EnableChanged,atTime);
 			if (signalStructure)
@@ -2817,9 +2875,14 @@ namespace Objects
 			return true;
 		}
 	#else
-		void					WorkingStructure::ApplyEnableChangeFromServer(bool b)
+		void					WorkingStructure::ApplyEnableChangeFromServer(bool b, bool temporary)
 		{
 			isEnabled = b;
+			#ifdef HAS_WINDOW
+				if (!temporary)
+					ambientSound.SetGain(GetSoundLevel());
+			#endif
+
 		}
 
 	#endif

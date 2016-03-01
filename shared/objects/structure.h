@@ -5,6 +5,7 @@
 #ifdef HAS_WINDOW
 	#include "geometry.h"
 	#include "../../client/ExtRenderer/DirectX11.h"
+	#include "visualSelection.h"
 
 #endif
 
@@ -30,6 +31,8 @@ namespace Objects
 
 	struct TStructureNeighborhood;
 
+
+
 	/**
 	Structure representation class. This class is instanciated exactly once per occurence in the world
 	plus once for its prototype.
@@ -46,6 +49,10 @@ namespace Objects
 		static void					CommonRegisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
 		static void					CommonUnregisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
 
+		bool						RemoveConnectionTo(const PStructure&);
+		bool						RemoveConnectionTo(Structure*);
+
+
 	protected:
 		typedef WorldEntity			Super;
 		/**/						Structure():Super(OwnerParameter(),Grid::LCellIdI(0, 0))
@@ -59,6 +66,9 @@ namespace Objects
 
 
 	public:
+
+		CONSTRUCT_ENUMERATION5(Category, Resources, Defense, Factories, Infrastructure, Miscellaneous);
+
 		/**
 		Structure placement result, returned by CommonCheckStructurePlacement() and CheckPlacement()
 		*/
@@ -130,7 +140,7 @@ namespace Objects
 		/**
 		List of all structures, the local structure is connected to. Symmetric. The connected structures must have a link back to the local structure.
 		*/
-		Buffer0<PStructure>			connectedTo;
+		Buffer0<WStructure>			connectedTo;
 		#ifdef HAS_WINDOW
 			/**
 			Indicates whether or not the local structure has changed since the last Recompile() call
@@ -155,6 +165,8 @@ namespace Objects
 		*/
 		void						UpdateAutomaticSystem();
 
+		bool						IsConnectedTo(const PStructure&)	const;
+		bool						IsConnectedTo(const Structure*) const;
 
 		/**
 		Retrieves a reference to the compound that this structure is part of.
@@ -268,7 +280,7 @@ namespace Objects
 		Base version also notifies all connected structures of the removal, so Super::OnDestroy()
 		should be called by overriding implementations at some point.
 		*/
-		virtual void				OnDestroy(float atTime) override;
+		virtual void				OnDestroy(RemovalType, float atTime) override;
 		virtual void				OnConstructionFinished(float atTime) override;
 
 		/**
@@ -284,6 +296,11 @@ namespace Objects
 		alter the ownership of entities.
 		*/
 		void						DisconnectFromNeighborhood(float atTime);
+
+		/**
+		Fetches the category of the local structure
+		*/
+		virtual Category			GetCategory() const = 0;
 
 		#ifdef HAS_WINDOW
 
@@ -334,8 +351,7 @@ namespace Objects
 		public:
 			static const std::shared_ptr<Derivative>		globalPrototype;
 			#ifdef HAS_WINDOW
-				static Buffer0<IconCommand>	commands;
-
+				static CommandContainer	commands;
 
 				/**
 				Render-ready, object-space instruction to be used for all instances of this structure type
@@ -357,7 +373,7 @@ namespace Objects
 			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override { return PWorldEntity(new Derivative(owner, location,atTime)); }
 			#ifdef HAS_WINDOW
 				virtual bool			TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
-				virtual void			VisitAllCommands(FCommandVisitor visitor) override {foreach (commands,cmd) visitor(*cmd);};
+				virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override {commands.VisitMembers(visitor,force);};
 
 			#endif
 			virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
@@ -395,7 +411,7 @@ namespace Objects
 		bool						RemoveStored(const PVehicle&v)
 		{
 			foreach (localStore,s)
-				if (s->vehicle == v)
+				if (s->vehicle.lock() == v)
 				{
 					localStore.erase(s);
 					return true;
@@ -443,9 +459,9 @@ namespace Objects
 
 		struct Stored
 		{
-			PVehicle				vehicle;
+			WVehicle				vehicle;
 			#ifdef HAS_WINDOW
-				DeployVehicleCommand	deployCommand;
+				DeployMobileCommand	deployCommand;
 			#endif
 		};
 
@@ -531,12 +547,13 @@ namespace Objects
 		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) override;
 		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
 		virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) override;
+		virtual Category			GetCategory() const override {return Category::Miscellaneous;}
 
 
 		//HangarStructure overrides:
 		const WorldEntity&			ToEntity() const override {return *this;}
 		WorldEntity&				ToEntity() override {return *this;}
-		virtual void				OnDestroy(float atTime) override;
+		virtual void				OnDestroy(RemovalType, float atTime) override;
 
 
 		//WorldEntity overrides:
@@ -558,7 +575,7 @@ namespace Objects
 				label.WrapAppendText("Vehicle stores can be used to store vehicles which will then enter hibernation until deployed. This structure shares storage with nearby structures of the same type."
 									" A vehicle store can deploy any vehicle found within the vehicle store compound.");			
 			}
-			virtual void			VisitAllCommands(FCommandVisitor visitor) override;
+			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 		#endif
 
 
@@ -591,9 +608,6 @@ namespace Objects
 			virtual int				GetUplinkTraffic() const override {return 1;}
 		#endif
 
-
-
-		virtual void				OnDestroy(float atTime) override;
 		#ifdef HAS_WINDOW
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 			{
@@ -607,6 +621,7 @@ namespace Objects
 		//Structure overrides
 		virtual int					GetBroadHeight() const {return 0;}
 		virtual bool				HasFoundation() const override {return false;}
+		virtual Category			GetCategory() const override {return Category::Infrastructure;}
 	};
 
 	/**
@@ -654,10 +669,10 @@ namespace Objects
 			@return true if the local structure could be enabled. Failure may happen if CanEnable() returns false and force is set to EnableIfPossible, 
 				or if refreshCompounds is set and the local compounds cannot supply required resources
 			*/
-			bool					SetEnabled(bool b, float atTime, bool refreshCompounds=true, force_t force=EnableIfPossible, bool signalStructure=true);
+			bool					SetEnabled(bool b, float&atTime, bool refreshCompounds=true, force_t force=EnableIfPossible, bool signalStructure=true);
 			void					SetEnabledOverride(bool b, bool registerChange=true);
 		#else
-			void					ApplyEnableChangeFromServer(bool b);
+			void					ApplyEnableChangeFromServer(bool b,bool temporary=false);
 		#endif
 
 		bool						IsEnabled() const {return isEnabled;}
@@ -688,9 +703,10 @@ namespace Objects
 		/**
 		Checks whether or not the local structure could be enabled at this time.
 		Returns true, if it already is, otherwise checks whether the local compound resource vector can supply the local structure.
-		Balancing is not performed. No changes are performed on any compound to retrieve the result.
+		Can't be const because extensive check temporarly enables the local structure.
+		@param ignoreCanEnable If set, CouldEnable() will ignore the result of the local CanEnable() method. This can be useful when determining whether a structure is idle
 		*/
-		bool						CouldEnable() const;
+		bool						CouldEnable(bool ignoreCanEnable=false);
 
 		#ifndef CLIENT
 			static const index_t	FinalLeftoverIteration = 4;	//!< Index of the final iteration during ProcessLeftovers()
@@ -739,7 +755,9 @@ namespace Objects
 		#endif
 		virtual float				GetActivityLevel() const override {float rs = isEnabled; if (IsSleeping()) rs = (rs + 0.5f) * 0.5f; return rs;}
 		virtual bool				IsWorkingStructure() const override {return true;}
-		virtual void				OnDestroy(float atTime) override;
+
+
+		virtual bool				IsMine() const {return false;}
 	};
 
 	/**
@@ -764,18 +782,18 @@ namespace Objects
 
 		protected:
 
-			#ifdef CLIENT
+			#ifdef HAS_WINDOW
 				struct Cmd
 				{
-					static void				Enable(const PWorldEntity&);
-					static bool				IsEnabled(const PWorldEntity&);
+					static void				Enable();
+					static bool				IsEnabled();
 				};
 			#endif
 		public:
 			static const std::shared_ptr<CommonStructure<Derivative> >		globalPrototype;
 			#ifdef HAS_WINDOW
-				static Buffer0<IconCommand>		iconCommands;
-				static Buffer0<VehicleConstructionCommand>	vehicleConstructionCommands;
+				static CommandContainer	commands;
+
 				/**
 				Render-ready, object-space instruction to be used for all instances of this structure type
 				*/
@@ -797,11 +815,10 @@ namespace Objects
 			virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override;
 			virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override;
 
-			virtual void				OnDestroy(float atTime) override;
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
 					virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override {return Super::TestIntersection(geometry,b,d,distance);}
-					virtual void		VisitAllCommands(FCommandVisitor visitor) override {foreach (iconCommands,cmd) visitor(*cmd);foreach (vehicleConstructionCommands,cmd) visitor(*cmd);};
+					virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override {commands.VisitMembers(visitor,force);};
 				#endif
 			#endif
 		};
@@ -810,7 +827,7 @@ namespace Objects
 	class SkyLinkStructure
 	{
 	public:
-		PSkyHub						connectedToHub;
+		WSkyHub						connectedToHub;
 
 		virtual WorkingStructure*	CastToStructure() = 0;
 	};
@@ -826,18 +843,9 @@ namespace Objects
 		#endif
 
 		friend class Super;
-		/**/						SkyPort():MobileEntityProducer(ConstructionSpeed) {}
-		/**/						SkyPort(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), MobileEntityProducer(ConstructionSpeed){}
+		/**/						SkyPort():MobileEntityProducer(ConstructionSpeed) {MobileEntityProducer::SetCommandOffset(int2(3,1));}
+		/**/						SkyPort(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), MobileEntityProducer(ConstructionSpeed){MobileEntityProducer::SetCommandOffset(int2(3,1));}
 	public:
-
-		#ifdef HAS_WINDOW
-			static VehicleConstructionCommand	formerConstructionCommand;
-			static SatelliteConstructionCommand	skyHubConstructionCommand;
-		#endif
-
-
-
-
 		static const int			ConstructionSpeed = 5;
 		static const int			EnergyConsumption = 10;
 
@@ -869,6 +877,7 @@ namespace Objects
 
 		#endif
 		#ifdef HAS_WINDOW
+			virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
 			{
 				Super::DescribeType(label,descFlags);
@@ -877,7 +886,7 @@ namespace Objects
 				label.WrapAppendText("Sky ports provide a foundation for each one sky hub. Periodically, "+String(ResourceTag(Resource::Fuel))+"fuel is transferred up, to supply the hub and its satellites."
 									" Failure to supply the required "+String(ResourceTag(Resource::Fuel))+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection");
 			}
-			virtual void			VisitAllCommands(FCommandVisitor visitor) override;
+			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 			virtual void			OnSelect()	override;
 			virtual void			OnDeselect() override;
 
@@ -886,7 +895,7 @@ namespace Objects
 
 		//MobileEntityProducer overrides
 		#ifndef CLIENT
-			virtual void			SignalNewProductionEnqueued() override {SetEnabled(true,0);}
+			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 
@@ -899,6 +908,7 @@ namespace Objects
 		}
 		virtual bool				IsSkyPort() const override {return true;}
 		virtual bool				IsSkyLinkStructure() const override {return true;}
+		virtual Category			GetCategory() const override {return Category::Factories;}
 
 
 		//SkyLinkStructure overrides:
@@ -991,8 +1001,7 @@ namespace Objects
 
 		//Structure overrides:
 		virtual bool				IsSkyLinkStructure() const override {return true;}
-
-
+		virtual Category			GetCategory() const override {return Category::Resources;}	//not needed
 
 		//SkyLinkStructure overrides:
 		virtual WorkingStructure*	CastToStructure() override {return this;}
@@ -1034,6 +1043,7 @@ namespace Objects
 
 		virtual void				OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime) override;
 		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
+		virtual Category			GetCategory() const override {return Category::Resources;}
 
 
 		#ifdef HAS_WINDOW
@@ -1060,6 +1070,7 @@ namespace Objects
 		virtual int					GetHeight() const override {return 2;}
 		virtual String				GetTypeName() const override { return "Reactor Core"; };
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_ReactorCore;}
+		virtual Category			GetCategory() const override {return Category::Resources;}
 
 		#ifdef HAS_WINDOW
 			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {PGenerator gen = To<Generator>::DynamicCast(connected); return gen && gen->connectedToReactor.lock().get() == this ? &Generator::reactorConnector : &standardConnector;}
@@ -1132,10 +1143,8 @@ namespace Objects
 
 
 		//Structure overrides:
-		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override
-		{
-			return MobileEntityProducer::IsBuilding(outProgress);
-		}
+		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override { return MobileEntityProducer::IsBuilding(outProgress); }
+		virtual Category			GetCategory() const override {return Category::Factories;}
 
 
 		//WorldEntity overrides:
@@ -1146,13 +1155,15 @@ namespace Objects
 		#endif
 		//virtual bool				IsVehiclePlant() const override {return true;}
 		virtual bool				AwaitsUserInteraction() const override;
-
+		#ifdef HAS_WINDOW
+			virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
+		#endif
 
 		//MobileEntityProducer overrides
 		#ifndef CLIENT
 			virtual void			OnSleepChange(float&t) override;
-			virtual void			SignalLastProductionDone() override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); SetEnabled(false,0);}
-			virtual void			SignalNewProductionEnqueued() override {SetEnabled(true,0);}
+			virtual void			SignalLastProductionDone() override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); float t = 0; SetEnabled(false,t);}
+			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
 
@@ -1167,7 +1178,7 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			virtual void			VisitAllCommands(FCommandVisitor visitor) override;
+			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
 			virtual void			OnSelect()	override;
 			virtual void			OnDeselect() override;
 		#endif
@@ -1260,6 +1271,8 @@ namespace Objects
 			virtual int				GetUplinkTraffic() const override {return 2;}
 			virtual int				GetUplinkPriority() const override {return 1000;};
 		#endif
+		virtual Category			GetCategory() const override {return Category::Resources;}
+
 
 	};
 
@@ -1301,6 +1314,7 @@ namespace Objects
 
 		NaturalResourceVector		naturalResources;
 
+		float						GetEfficiency() const {return 1.f;/*location.height <= -8 ? 2.f : 1.f;*/}
 
 
 		virtual bool				WouldLikeToEnable() const override {return true;}
@@ -1347,6 +1361,9 @@ namespace Objects
 
 		}
 
+
+		virtual bool				IsMine() const {return true;}
+		virtual Category			GetCategory() const override {return Category::Resources;}
 	};
 
 
@@ -1393,6 +1410,7 @@ namespace Objects
 			#endif
 			Super::GetResourceVector(v,storage,max);
 		}
+		virtual Category			GetCategory() const override {return Category::Resources;}
 
 		virtual int					GetConstructionCost() const override {return 40;}
 		#ifndef NO_HIBERNATION
@@ -1432,7 +1450,7 @@ namespace Objects
 		/**/						FuelContainer()	{maxStorage.level[Resource::Fuel] = 400; }	//global prototype
 	public:
 		virtual String				GetTypeName() const override { return "Fuel Container"; };
-		virtual ConstName		GetCTypeName() const override {return ConstName::Type_FuelContainer;}
+		virtual ConstName			GetCTypeName() const override {return ConstName::Type_FuelContainer;}
 
 	};
 
@@ -1527,11 +1545,6 @@ namespace Objects
 		bool						WouldLikeToEnable() const override {return true;}
 
 
-		virtual  void				OnDestroy(float atTime) override
-		{
-			Super::OnDestroy(atTime);
-		}
-
 	public:
 
 		static Buffer0<PTower>		globalPrototypes;
@@ -1575,7 +1588,7 @@ namespace Objects
 			Buffer0<AttackTask>			attackQueue;
 
 			#ifdef HAS_WINDOW
-				static Buffer0<IconCommand>		commands;
+				static CommandContainer	commands;
 				/**
 				Render-ready, object-space instruction to be used for all instances of this structure type
 				*/
@@ -1589,10 +1602,9 @@ namespace Objects
 			void					AppendTask(const Grid::LCellIdI&attackTarget);
 		#else
 			Queue<AttackTask>		attackQueue;
-			float					timeAt;
 
 
-			void					BeginAttackPhase()	{timeAt = 0;}
+			void					BeginAttackPhase()	{}
 
 			bool					AttackNext(const Grid::LCellIdI&target, bool autoTarget);
 			bool					ClearTasks();
@@ -1652,14 +1664,18 @@ namespace Objects
 			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime) override;
 		#else
 			#ifdef HAS_WINDOW
-				virtual void		VisitAllCommands(FCommandVisitor visitor) override;
+				virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override;
 
 				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
 			#endif
 		#endif
 
+		//WorldEntity overrides:
+		virtual bool				IsTower() const override {return true;}
+
 		//structure overrides:
-		virtual int					GetBroadHeight() const {return std::max(1,GetHeight()-1);}
+		virtual int					GetBroadHeight() const override {return std::max(1,GetHeight()-1);}
+		virtual Category			GetCategory() const override {return Category::Defense;}
 
 
 		//turret base overrides:
@@ -1688,8 +1704,8 @@ namespace Objects
 
 
 	extern Buffer0<PStructure>			structures;
-	#ifdef HAS_WINDOW
-		typedef std::pair<PSkyLinkStructure,PWorkingStructure>	TLinkReference;
+	#ifdef CLIENT
+		typedef std::pair<WSkyLinkStructure,WWorkingStructure>	TLinkReference;
 		extern Buffer0<TLinkReference>		skyLinks;	//also included in structures, but filtered for quicker access
 	#endif
 
@@ -1731,11 +1747,9 @@ namespace Objects
 		/*static*/ Geometry				OtherStructure<Derivative>::geometry;
 
 		template <typename Derivative>
-		/*static*/ Buffer0<IconCommand>		CommonStructure<Derivative>::iconCommands;
+		/*static*/ CommandContainer	CommonStructure<Derivative>::commands;
 		template <typename Derivative>
-		/*static*/ Buffer0<IconCommand>		OtherStructure<Derivative>::commands;
-		template <typename Derivative>
-		/*static*/ Buffer0<VehicleConstructionCommand>		CommonStructure<Derivative>::vehicleConstructionCommands;
+		/*static*/ CommandContainer	OtherStructure<Derivative>::commands;
 	#endif
 
 
@@ -1750,6 +1764,11 @@ namespace Objects
 			/*virtual override*/	void			CommonStructure<Derivative>::PrototypeLoadGeometry()
 			{
 				Super::PrototypeLoadGeometry();
+
+				#ifdef HAS_WINDOW
+					commands.baseCoords = int2(3,0)+BaseCommand::coordOffset;
+				#endif
+
 
 				geometry.Clear();
 				String name = GetTypeName();
@@ -1789,12 +1808,13 @@ namespace Objects
 			Super::PrototypeSetup();
 
 			#ifdef HAS_WINDOW
+				commands.baseCoords = int2(3,0)+BaseCommand::coordOffset;
 
-				iconCommands << IconCommand(int2(4,1), "Enable",&Cmd::Enable,
-				[](const PWorldEntity&e, bool controlEnabled)->BaseCommand::Flags
+				commands.Add(new IconCommand("Enable",&Cmd::Enable,
+				[](bool controlEnabled)->BaseCommand::Flags
 				{
 					BaseCommand::Flags rs = BaseCommand::Flags::None;
-					CommonStructure<Derivative>*div = dynamic_cast<CommonStructure<Derivative>*>(e.get());
+					CommonStructure<Derivative>*div = dynamic_cast<CommonStructure<Derivative>*>(selectedEntity.get());
 					if (controlEnabled)
 					{
 						if (div && div->CanEnable())
@@ -1807,11 +1827,7 @@ namespace Objects
 					return rs;
 				}
 				,NoCosts
-				);
-				if (!IsIndestructible())
-					iconCommands << IconCommand(int2(5,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck
-							,NoCosts
-							);
+				));
 			#endif
 
 			String name = GetTypeName();
@@ -1833,11 +1849,7 @@ namespace Objects
 		{
 			Super::PrototypeSetup();
 			#ifdef HAS_WINDOW
-
-				if (!IsIndestructible())
-					commands << IconCommand(int2(4,0), "Demolish",&SignalRemoval,&CommonCmd::CommonButtonCheck
-							,NoCosts
-							);
+				commands.baseCoords = int2(3,0)+BaseCommand::coordOffset;
 			#endif
 
 			String name = GetTypeName();
@@ -1863,11 +1875,6 @@ namespace Objects
 			#endif
 		}
 
-	template <typename Derivative>
-		/*virtual override*/ void				CommonStructure<Derivative>::OnDestroy(float atTime)
-		{
-			Super::OnDestroy(atTime);
-		}
 
 
 
@@ -1883,12 +1890,12 @@ namespace Objects
 			return CommonCheckStructurePlacement(location,GetBroadHeight(), GetHeight());
 		}
 
-	#ifdef CLIENT
+	#ifdef HAS_WINDOW
 
 		template <typename Derivative>
-			/*static*/ void				CommonStructure<Derivative>::Cmd::Enable(const PWorldEntity&s)
+			/*static*/ void				CommonStructure<Derivative>::Cmd::Enable()
 			{
-				CommonStructure<Derivative>*s2 = dynamic_cast<CommonStructure<Derivative>*>(s.get());
+				CommonStructure<Derivative>*s2 = dynamic_cast<CommonStructure<Derivative>*>(selectedEntity.get());
 				if (s2)
 				{
 					SignalEnableStructure(*s2, !s2->IsEnabled());
@@ -1896,9 +1903,9 @@ namespace Objects
 				}
 			}
 		template <typename Derivative>
-			/*static*/ bool				CommonStructure<Derivative>::Cmd::IsEnabled(const PWorldEntity&s)
+			/*static*/ bool				CommonStructure<Derivative>::Cmd::IsEnabled()
 			{
-				CommonStructure<Derivative>*s2 = dynamic_cast<CommonStructure<Derivative>*>(s.get());
+				CommonStructure<Derivative>*s2 = dynamic_cast<CommonStructure<Derivative>*>(selectedEntity.get());
 				return s2 && s2->IsEnabled();
 			};
 
@@ -1908,8 +1915,35 @@ namespace Objects
 	#endif
 
 
+	inline PStructure		ToStructure(const PWorldEntity&e)
+	{
+		if (!e || !e->IsStructure())
+			return PStructure();
+		return To<Structure>::Cast(e);
+	}
 
+	inline PWorkingStructure		ToWorkingStructure(const PWorldEntity&e)
+	{
+		if (!e || !e->IsWorkingStructure())
+			return PWorkingStructure();
+		return To<WorkingStructure>::Cast(e);
+	}
 
+	inline PTower		ToTower(const PWorldEntity&e)
+	{
+		PWorkingStructure ws = ToWorkingStructure(e);
+		if (!ws || !ws->IsTower())
+			return PTower();
+		return To<Tower>::Cast(ws);
+	}
+
+	inline PMine		ToMine(const PWorldEntity&e)
+	{
+		PWorkingStructure ws = ToWorkingStructure(e);
+		if (!ws || !ws->IsMine())
+			return PMine();
+		return To<Mine>::Cast(ws);
+	}
 
 }
 

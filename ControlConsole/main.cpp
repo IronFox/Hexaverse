@@ -10,6 +10,9 @@
 #include <general/timer.h>
 #include "../shared/protocol.h"
 
+
+HANDLE mainThreadHandle = nullptr;
+
 BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 {
 	switch (dwCtrlType)
@@ -19,7 +22,11 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 		case CTRL_SHUTDOWN_EVENT:
 			//TerminateNow(false);
 			application_shutting_down = true;
-			exit(0);
+			if (cancelSynchronousIo)
+				cancelSynchronousIo(mainThreadHandle);
+			else
+				TerminateProcess(GetCurrentProcess(),0);
+			//exit(0);
 		return TRUE;
 	
 	}
@@ -160,7 +167,7 @@ namespace Console
 
 namespace Handler
 {
-	bool	interactive = false;
+	bool	interactive = true;
 
 	void	OnContext(Package::NetString<1024>&ctx)
 	{
@@ -301,7 +308,7 @@ namespace ParameterConfig
 
 	const char*program = "";
 	StringBuffer	command;
-	bool	interactive = false;
+	bool	interactive = true;
 
 
 	void	Process(const char*arg)
@@ -313,20 +320,32 @@ namespace ParameterConfig
 				command << ' '<<arg;
 			return;
 			case Idle:
-				if (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
-					mode = ExpectPort;
-				elif (!strcmp(arg,"--interactive") || !strcmp(arg,"-i"))
-					Handler::interactive = interactive = true;
-				elif (!strcmp(arg,"--help") || !strcmp(arg,"-i"))
+				if (*arg == '-')
 				{
-					std::cout << "usage: "<<program<<" [-p basePort] [-i] [command(s)]"<<std::endl;
-					std::cout << " -i/--interactive\tOpen a shell to enter commands interactively"<<std::endl;
-					std::cout << " -p/--port [port]\tUse a non-default base port"<<std::endl;
+					if (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
+						mode = ExpectPort;
+					elif (!strcmp(arg,"--command") || !strcmp(arg,"-c"))
+					{
+						mode = ReadCommand;
+						Handler::interactive = interactive = false;
+					}
+					elif (!strcmp(arg,"--help") || !strcmp(arg,"-h"))
+					{
+						std::cout << "usage: "<<program<<" [-p basePort] [[-c] command(s)]"<<std::endl;
+						std::cout << " -p/--port [port]\tUse a non-default base port"<<std::endl;
+						std::cout << " -c/--command [cmd]\tExecute command"<<std::endl;
+						std::cout << " *\t\tExecute command"<<std::endl;
+						std::cout << " [no parameters]\tStart in interactive mode"<<std::endl;
+					}
+					else
+						std::cerr << "Unsupported parameter: "<<arg<<std::endl;
+
 				}
 				else
 				{
 					command << arg;
 					mode = ReadCommand;
+					Handler::interactive = interactive = false;
 				}
 			return;
 			case ExpectPort:
@@ -441,6 +460,8 @@ int main(int argc, char* argv[])
 	
 	SetConsoleCtrlHandler(MyHandlerRoutine,TRUE);
 
+	ASSERT__(DuplicateHandle(GetCurrentProcess(),GetCurrentThread(),GetCurrentProcess(),&mainThreadHandle,DUPLICATE_SAME_ACCESS,FALSE,0));
+
 	ParameterConfig::program = argc > 0 ? argv[0] : "";
 	for (int i = 1; i < argc; i++)
 		ParameterConfig::Process(argv[i]);
@@ -458,7 +479,7 @@ int main(int argc, char* argv[])
 	client.onIgnorePackage = OnIgnorePackage;
 	client.onSignal = OnSignal;
 
-	if (!ParameterConfig::interactive && bufferedCommands.IsEmpty())
+	if (!ParameterConfig::interactive && ParameterConfig::command.IsEmpty())
 		return 0;
 	connectionAttemptStarted = timer.Now();
 	client.ConnectAsync(targetHost+":"+String(ParameterConfig::basePort+PortOffset::Control));

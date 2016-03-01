@@ -14,6 +14,7 @@
 #include "visualSelection.h"
 #include "gridAndChoices.h"
 #include "../runtimeConfig.h"
+#include "systems.h"
 
 namespace Camera
 {
@@ -26,7 +27,7 @@ extern Engine::Display<Engine::DirectX11>	display;
 namespace Objects
 {
 
-	bool						resourceView = false,
+	bool						resourceView = true,
 								showHostileRanges = false,
 								showFriendlyRanges = false,
 								objectView = true;
@@ -41,6 +42,7 @@ namespace Objects
 								seeThroughShader,
 								pathShader,
 								jobShader,
+								attackRingShader,
 								cylinderShader,
 								paraboloidShader,
 								arrowInstruction,
@@ -54,6 +56,7 @@ namespace Objects
 	DX11::InstructionBlock32	cordon,
 								foundation,
 								userInteractionNotifier,
+								attackRing,
 								gatheringPoint;
 
 	DX11::Texture				smokeTexture;
@@ -77,6 +80,22 @@ namespace Objects
 	Buffer0<DX11::InstructionBlock32>	smokeTrails;
 	index_t								selectedSmokeTrail = InvalidIndex;
 
+	TMatrix4<>							structureToPlaceSystem;
+
+
+	OpenAL::WaveBuffer	Renderer::GetAmbientSoundOf(const String&entityTypeName, ConstName _entityType)
+	{
+		index_t key = (index_t)_entityType;
+		static IndexTable<OpenAL::Wave>	waveTable;
+		OpenAL::WaveBuffer result;
+		if (waveTable.Query(key,result))
+			return result;
+		result = OpenAL::Load("resources/objectSounds/"+entityTypeName+".wav");
+		waveTable.Set(key,result);	//don't care if it's empty
+		return result;
+	}
+
+
 	index_t	Renderer::RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory)
 	{
 		index_t result = smokeTrails.Count();
@@ -95,7 +114,6 @@ namespace Objects
 	{
 		selectedSmokeTrail = smokeTrailIndex;
 	}
-
 
 	void	Renderer::ClearSmokeTrails()
 	{
@@ -207,11 +225,13 @@ namespace Objects
 		seeThroughShader = stdVehicleShader = DX11::BaseInstructionBlock();
 		Structure::standardCompiledShader = Structure::standardLocalizableShader =
 			pathShader = jobShader = cylinderShader = paraboloidShader = 
+			attackRingShader = 
 			smokeTrailShader =
 			arrowInstruction = 
 			skyPortBeam = 
 			foundation = cordon = DX11::InstructionBlock32();
 		userInteractionNotifier.Clear();
+		attackRing.Clear();
 		gatheringPoint.Clear();
 		arrowBuffer.Clear();
 		attackIBO.Clear();
@@ -266,6 +286,25 @@ namespace Objects
 		ibo.Create(indices);
 	}
 
+
+	void Renderer::CompileFlatDisc(Geometry&geo, int resolution, float r0, float r1, const float4&color0,const float4&color1)
+	{
+		geo.Clear();
+		for (int i = 0; i < resolution; i++)
+		{
+			float fi = float(i) / float(resolution);
+			float a = fi * M_PIF * 2.f;
+			float x = cos(a);
+			float y = sin(a);
+
+			geo.MakeVertex(float3(x*r0,y*r0,0.1),float3(0,0,1),color0);
+			geo.MakeVertex(float3(x*r1,y*r1,0.1),float3(0,0,1),color1);
+
+			geo.MakeQuad(i*2,i*2+1,((i+1)%resolution)*2+1,((i+1)%resolution)*2);
+
+		}
+
+	}
 
 	void Renderer::Create()
 	{
@@ -414,6 +453,10 @@ namespace Objects
 			jobShader.UpdateLayout();
 			jobShader.SetTriangles();
 
+			attackRingShader.binding = stdVehicleShader.binding;
+			attackRingShader.shader.LoadFromFile("shaders/attackRing.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			attackRingShader.UpdateLayout();
+			attackRingShader.SetTriangles();
 
 
 
@@ -475,6 +518,33 @@ namespace Objects
 				Load(mesh,cylinderVBO[k],cylinderIBO[k]);
 			}
 		}
+
+
+		{
+			Geometry geo;
+			static const int Resolution = 50;
+			static const float r0 = 1,
+								r1 = 2;
+			CompileFlatDisc(geo,Resolution,r0,r1, float4(1,0,0,0), float4(1,0,0,0));	//red = key-color
+
+			(DX11::BaseInstructionBlock&)userInteractionNotifier = stdVehicleShader;
+			userInteractionNotifier.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
+			userInteractionNotifier.ibo.Create(geo.GetLOD(0).indices);
+
+			CompileFlatDisc(geo,Resolution,0.7f,0.8f,float4(1,1,1,0.5), float4(1,1,1,1));
+
+			(DX11::BaseInstructionBlock&)attackRing = attackRingShader;
+			attackRing.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
+			attackRing.ibo.Create(geo.GetLOD(0).indices);
+
+			geo.LoadFromObj("objects/gatheringPoint.obj");
+
+			(DX11::BaseInstructionBlock&)gatheringPoint = stdVehicleShader;
+			gatheringPoint.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
+			gatheringPoint.ibo.Create(geo.GetLOD(0).indices);
+
+		}
+		
 	}
 
 
@@ -505,30 +575,23 @@ namespace Objects
 
 	}
 
-	static void _Locate(Structure&s)
+	static void _Locate(const WorldEntity&e)
 	{
-		display.SetObjectMatrix(s.system);
+		display.SetObjectMatrix(e.system);
 	}
 
-	static void _RenderSimpleLocated(Structure&s)
+	static void _RenderSimpleLocated(Structure&s, const TMatrix4<>&system)
 	{
 		display.Render(*s.localizableShape, true);
-
+		DBG_ASSERT__(s.localizableShape->ibo.IsSet());
 
 		float zOffset;
 		PTurretBase b = s.GetTurretBase(zOffset);
 		if (b)
 		{
-			Renderer::RenderScaledComponent(s.system, zOffset, 2.f, *b->turret, b->turretAngleX, b->turretAngleY);
+			Renderer::RenderScaledComponent(system, zOffset, 2.f, *b->turret, b->turretAngleX, b->turretAngleY);
+			//display.SetObjectMatrix(system);
 		}
-	}
-
-	void Renderer::RenderSimple(Structure&s, bool includeFoundation /*= false*/)
-	{
-		_Locate(s);
-		if (includeFoundation)
-			display.Render(foundation, true);
-		_RenderSimpleLocated(s);
 	}
 
 	static void _RenderSimpleLocated(Satellite&s, const TMatrix4<>&system)
@@ -537,20 +600,51 @@ namespace Objects
 		Renderer::RenderComponent(system, 0.f, *s.turret, s.turretAngleX, s.turretAngleY);
 	}
 
-
-
-	void	Renderer::RenderSimple(Satellite&s)
+	static void _RenderSimpleLocated(Vehicle&v, const TMatrix4<>&system)
 	{
-		//float scale = Vec::length(s.system.x.xyz);
-		display.SetObjectMatrix(s.system);
-		_RenderSimpleLocated(s,s.system);
+		Renderer::RenderComponent(system,0,*v.base,0,0);
+		Renderer::RenderComponent(system,v.base->height,*v.turret,v.turretAngleX,v.turretAngleY);
 	}
 
-	void	Renderer::RenderSimpleIdentity(Satellite&s)
+
+	static void _RenderSimpleLocated(WorldEntity&e, const TMatrix4<>&system)
 	{
-		//float scale = Vec::length(s.system.x.xyz);
+		if (e.IsStructure())
+		{
+			_RenderSimpleLocated((Structure&)e,system);
+			return;
+		}
+		if (e.IsSatellite())
+		{
+			_RenderSimpleLocated((Satellite&)e,system);
+			return;
+		}
+		if (e.IsVehicle())
+		{
+			_RenderSimpleLocated((Vehicle&)e,system);
+			return;
+		}
+	}
+
+	void Renderer::RenderSimple(WorldEntity&e, bool includeFoundation /*= false*/)
+	{
+		_Locate(e);
+		if (e.IsStructure() && includeFoundation)
+			display.Render(foundation, true);
+		_RenderSimpleLocated(e,e.system);
+	}
+
+
+
+
+
+	void	Renderer::RenderSimpleIdentity(WorldEntity&e, bool includeFoundationIfStructure/*=false*/)
+	{
 		display.SetObjectMatrix(Matrix<>::eye4);
-		_RenderSimpleLocated(s,Matrix<>::eye4);
+		if (e.IsStructure() )
+			if (includeFoundationIfStructure)
+				display.Render(foundation, true);
+		_RenderSimpleLocated(e,Matrix<>::eye4);
 	}
 
 
@@ -612,7 +706,7 @@ namespace Objects
 			foreach (Faction::allKnown,_f)
 			{
 				Faction&f = **_f;
-				if (f.isMine)
+				if (f.isOwnedByMe)
 				{
 					f.activeEntityColor = mine;
 					f.inactiveEntityColor = inactiveColorMine;
@@ -687,7 +781,7 @@ namespace Objects
 		}
 		if (s.HasFoundation())
 			display.Render(foundation, true);
-		_RenderSimpleLocated(s);
+		_RenderSimpleLocated(s,s.system);
 
 	}
 
@@ -821,11 +915,11 @@ namespace Objects
 
 
 
-	void					UpdateSeeThroughColor(bool isMine, bool isSelected)
+	void					UpdateSeeThroughColor(bool isOwnedByMe, bool isSelected)
 	{
 		static const float4 mySeeThroughColor(0.6,0.7,1,1);
 		static const float4 hostileSeeThroughColor(1,0.7,0.6,1);
-		float4 color = isMine ? mySeeThroughColor : hostileSeeThroughColor;
+		float4 color = isOwnedByMe ? mySeeThroughColor : hostileSeeThroughColor;
 		if (isSelected)
 			color.rgb *= Renderer::GetActiveColor(Renderer::now*5.0);
 		overallTint.Update(color);
@@ -856,8 +950,8 @@ namespace Objects
 			foreach(vehicles, _v)
 			{
 				PVehicle&v = *_v;
-				UpdateSeeThroughColor(v->isMine, v==selectedEntity);
-				//overallTint.Update(v->isMine ? mySeeThroughColor : hostileSeeThroughColor);
+				UpdateSeeThroughColor(v->isOwnedByMe, v==selectedEntity);
+				//overallTint.Update(v->isOwnedByMe ? mySeeThroughColor : hostileSeeThroughColor);
 				Renderer::RenderSimple(*v);
 			}
 
@@ -869,7 +963,7 @@ namespace Objects
 			//	//	s.Recompile();
 			//	//	s.changed = false;
 			//	//}
-			//	UpdateSeeThroughColor(s.isMine, &s==selectedEntity.get());
+			//	UpdateSeeThroughColor(s.isOwnedByMe, &s==selectedEntity.get());
 			//	
 			//	//if (s.compiledShape.vbo.IsSet())
 			//	//{
@@ -1160,50 +1254,72 @@ namespace Objects
 
 	namespace Renderer
 	{
-		void RenderAttackRangeOf(const PWorldEntity&e, const float4&color, bool extendedShadow)
+		void RenderAttackRangeOf(const PWorldEntity&e, const float4&color, bool extendedShadow, bool includeEMPIfOwnedByMe)
 		{
 			float zOffset;
 			PTurretBase base = e->GetTurretBase(zOffset);		
-			if (base && base->turret->CanAttack() && (!e->isMine || !base->turret->dealsEMPDamage))
+			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage || includeEMPIfOwnedByMe))
 				RenderRange(e->location,zOffset,base,color,extendedShadow);
+		}
+
+		void RenderAttackRangeOf(const PWorldEntity&e, const Grid::LCellIdI&at,const float4&color, bool extendedShadow, bool includeEMPIfOwnedByMe)
+		{
+			float zOffset;
+			PTurretBase base = e->GetTurretBase(zOffset);		
+			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage || includeEMPIfOwnedByMe))
+				RenderRange(at,zOffset,base,color,extendedShadow);
 		}
 	}
 
 	void Renderer::RenderRanges(bool extendedShadow)
 	{
-		if (selectedEntity)
 		{
-			float scanningRange = selectedEntity->GetScanningRange();
-			if (extendedShadow)
-				scanningRange += RangeShadowExtension;
-
 			float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,1,0,0.8f);
-
-			Renderer::RenderRangeSphere(selectedEntity->GetWorldPosition(),scanningRange,
-				color
-				);
-			float zOffset;
-			PTurretBase base = selectedEntity->GetTurretBase(zOffset);		
-			if (base && base->turret->groundScanningRange > 0.f)
+			if (selectedEntity)
 			{
-				scanningRange = selectedEntity->EMPModify(base->turret->groundScanningRange,2);
-				float refHeight = Grid::ToRadius(selectedEntity->location.height);
-				float top = Grid::ToRadius(/*selectedEntity->location.height*/Grid::CellStack::HalfRange);
-				float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
-				float topR = scanningRange*top/refHeight;
-				float bottomR = scanningRange *bottom/refHeight;
+				float scanningRange = selectedEntity->GetScanningRange();
 				if (extendedShadow)
+					scanningRange += RangeShadowExtension;
+
+
+				Renderer::RenderRangeSphere(selectedEntity->GetWorldPosition(),scanningRange,
+					color
+					);
+				float zOffset;
+				PTurretBase base = selectedEntity->GetTurretBase(zOffset);		
+				if (base && base->turret->groundScanningRange > 0.f)
 				{
-					topR += RangeShadowExtension;
-					bottomR += RangeShadowExtension;
+					scanningRange = selectedEntity->EMPModify(base->turret->groundScanningRange,2);
+					float refHeight = Grid::ToRadius(selectedEntity->location.height);
+					float top = Grid::ToRadius(/*selectedEntity->location.height*/Grid::CellStack::HalfRange);
+					float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
+					float topR = scanningRange*top/refHeight;
+					float bottomR = scanningRange *bottom/refHeight;
+					if (extendedShadow)
+					{
+						topR += RangeShadowExtension;
+						bottomR += RangeShadowExtension;
+					}
+					RenderRangeCylinder(selectedEntity->system.z.xyz,bottomR,topR,bottom,top,color);
 				}
-				RenderRangeCylinder(selectedEntity->system.z.xyz,bottomR,topR,bottom,top,color);
+
 			}
 
+			if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
+			{
+				float scanningRange = activeStructureToPlace->GetScanningRange();
+				if (extendedShadow)
+					scanningRange += RangeShadowExtension;
+				Renderer::RenderRangeSphere(structureToPlaceSystem.w.xyz,scanningRange,
+					color
+					);
+			}
 		}
 		float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,0,0,0.8f);
 		if (selectedEntity)
-			RenderAttackRangeOf(selectedEntity,color,extendedShadow);
+			RenderAttackRangeOf(selectedEntity,color,extendedShadow,true);
+		if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
+			RenderAttackRangeOf(activeStructureToPlace,arrowCellTarget,color,extendedShadow,true);
 		
 
 		if (showHostileRanges || showFriendlyRanges)
@@ -1213,9 +1329,9 @@ namespace Objects
 				{
 					if (e != selectedEntity)
 					{
-						if ((e->isMine && showFriendlyRanges && e->health > 0) || (!e->isMine && showHostileRanges))
+						if ((e->isOwnedByMe && showFriendlyRanges && e->health > 0) || (!e->isOwnedByMe && showHostileRanges))
 						{
-							RenderAttackRangeOf(e,color,extendedShadow);
+							RenderAttackRangeOf(e,color,extendedShadow,false);
 						}
 					}
 				}
@@ -1224,6 +1340,19 @@ namespace Objects
 
 		}
 		display.SetObjectMatrix(Matrix<>::eye4);
+	}
+
+
+	static void _RenderAttackRing(TMatrix4<>&sys, int i)
+	{
+		float fc = 1.f + float(i) * 0.175f;
+		sys.x.xyz *= fc;
+		sys.y.xyz *= fc;
+		display.SetObjectMatrix(sys);
+		display.Render(attackRing,true);
+
+		sys.x.xyz /= fc;
+		sys.y.xyz /= fc;
 	}
 
 	void	Renderer::RenderTranslucent()
@@ -1267,7 +1396,7 @@ namespace Objects
 		foreach(Marker::mobileGhosts, _v)
 		{
 			const PMobileEntity&m = *_v;
-			if (m->isMine)
+			if (m->isOwnedByMe)
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
 				overallTint.Update(float4(1, 0, 0, 1));
@@ -1288,7 +1417,7 @@ namespace Objects
 		foreach(Marker::structureGhosts, _s)
 		{
 			const PStructure&s = *_s;
-			if (s->isMine)
+			if (s->isOwnedByMe)
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
 				overallTint.Update(float4(1, 0, 0, 1));
@@ -1402,7 +1531,6 @@ namespace Objects
 
 
 
-		overallTint.Update(noTint);
 			
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
@@ -1410,6 +1538,49 @@ namespace Objects
 
 		
 
+		display.SetDepthTest(true,true);
+
+
+		for (const auto&at : attackers)
+		{
+			TMatrix4<> sys;
+			const TVec3<>&up = Grid::low.cells[at->location.stackID].cornerCenter;
+			Mat::makeAxisSystem(at->system.w.xyz, up,2,sys);
+			if (at->IsSatellite())
+			{
+				sys.x.xyz *= 2.f;
+				sys.y.xyz *= 2.f;
+			}
+			const PTurretBase base = at->GetTurretBase();
+			//DBG_ASSERT__(base);
+			int rings = base->GetAttacksPerRound();
+			int activeRings = base->CountPossibleAttacks();
+
+			int delta = at->IsMobile() ? -1 : 0;
+
+			if (activeRings)
+			{
+				overallTint.Update(at == selectedEntity ? float4(red,(float)sin(now*4.0)*0.2f + 0.6f) :   float4(at->owner->activeEntityColor,1.f));
+				for (int i = 0; i < activeRings; i++)
+				{
+					_RenderAttackRing(sys,i+delta);
+				}
+			}
+
+			if (activeRings != rings)
+			{
+				overallTint.Update(float4(float3(1),0.5f));
+				for (int i = activeRings; i < rings; i++)
+				{
+					_RenderAttackRing(sys,i+delta);
+				}
+			}
+
+		}
+
+		display.SetObjectMatrix(Matrix<>::eye4);
+		overallTint.Update(noTint);
+	
 		display.SetDepthTest(false,false);
 
 
@@ -1466,14 +1637,19 @@ namespace Objects
 		display.SetDepthTest(false,false);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);
 
+
+		TVec4<> selectedTint;
+
 		if (selectedEntity)
 		{
 			const PMobileEntity&v = selectedMobileEntity;
 			//To<Vehicle>::DynamicCast(selectedEntity);
+
 			if (!selectedEntity->unstable)
-				overallTint.Update(float4(red,(float)sin(now*4.0)*0.4f + 0.4f));
+				selectedTint = float4(red,(float)sin(now*4.0)*0.4f + 0.4f);
 			else
-				overallTint.Update(float4(red,flip ? 0 : 0.8f));
+				selectedTint = float4(red,flip ? 0 : 0.8f);
+			overallTint.Update(selectedTint);
 			if (v)
 			{
 				foreach (v->myTasks,t)
@@ -1568,6 +1744,28 @@ namespace Objects
 			}
 		}
 
+		if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
+		{
+			display.SetDepthTest(true,true);
+			bool includeFoundation = false;//activeStructureToPlace->HasFoundation();	<- is correct but job visualization doesn't use foundations
+			display.LinkShader(jobShader,false,true);
+				//TMatrix4<> sys;
+				BuildStructureSystem(arrowCellTarget,structureToPlaceSystem);
+				display.SetObjectMatrix(structureToPlaceSystem);
+				overallTint.Update(noTint);	//all zero tint makes shapes invisible
+				if (includeFoundation)
+					display.Render(foundation, true);
+				_RenderSimpleLocated(*activeStructureToPlace,structureToPlaceSystem);
+				display.SetObjectMatrix(structureToPlaceSystem);
+				overallTint.Update(float4(selectedTint.rgb,selectedTint.a * 0.5f + 0.5f));
+				if (includeFoundation)
+					display.Render(foundation, true);
+				_RenderSimpleLocated(*activeStructureToPlace,structureToPlaceSystem);
+			display.UnlockShader();
+			display.SetObjectMatrix(Matrix<>::eye4);
+		}
+	
+
 		if (smokeTrails.IsNotEmpty())
 		{
 			display.SetDepthTest(true,false);
@@ -1607,7 +1805,7 @@ namespace Objects
 		{
 			const PSatellite&sat = *_s;
 			TVec3<> color;
-			if (sat->isMine)
+			if (sat->isOwnedByMe)
 			{
 				color= float3(0.5,0.6,1.0);
 			}
@@ -1654,8 +1852,10 @@ namespace Objects
 
 		foreach(skyLinks, _s)
 		{
-			const PSkyLinkStructure&link = _s->first;
-			const PWorkingStructure&ws = _s->second;
+			const PSkyLinkStructure link = _s->first.lock();
+			const PWorkingStructure ws = _s->second.lock();
+			if (!link || !ws)
+				continue;
 			if (ws->location.stackID < 12)
 				nexusSet[ws->location.stackID] = true;
 
@@ -1663,13 +1863,14 @@ namespace Objects
 			{
 				bool render = false;
 				int h1;
-				if (link->connectedToHub)
+				PSkyHub hub = link->connectedToHub.lock();
+				if (hub)
 				{
 					render = true;
 
 					beamBottomColor.Update(float4(0.5,0.6,1.0,2.5));
 					beamTopColor.Update(float4(0.5,0.6,1.0,2.5));
-					h1 = link->connectedToHub->location.height;
+					h1 = hub->location.height;
 
 				}
 				else
@@ -1953,6 +2154,7 @@ namespace Objects
 
 
 	Buffer0<PTurretBase>	Renderer::animatedTurrets;
+	Buffer0<PWorldEntity>	Renderer::attackers;	//!< everything that has a base and can attack goes in here
 	
 
 	void			Renderer::AdvanceTurretAnimations()
@@ -1989,17 +2191,16 @@ namespace Objects
 				camera.angle.x = 45.f;
 				camera.angle.z = 45.f;
 				//camera.angle.y = 180.f;	//counters direct3d v-flipping during sampling
-				camera.location.z = 0.5f;
 				camera.UpdateProjection2(1,0.001f,100000.f,30.f);
-				camera.UpdateView();
 			}
 			else
 			{
 				fbo.RecreateColorTarget(0,DXGI_FORMAT_R8G8B8A8_UNORM);	//previous one is in use
 
 				camera.retraction = float3(0,0,-6 * distanceFactor);
-				camera.UpdateView();
 			}
+			camera.location.z = 0.5f*distanceFactor;
+			camera.UpdateView();
 			display.TargetFBO(fbo);
 			display.ClearTarget(fbo,float4(tone.rgb*0.5f,tone.a));//, float4(0,1,0,1));
 
@@ -2033,6 +2234,9 @@ namespace Objects
 			//fbo.Clear();
 			return fbo.GetColorTarget();
 		}
+
+
+
 	}
 }
 

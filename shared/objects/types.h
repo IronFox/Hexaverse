@@ -62,12 +62,14 @@ namespace Objects
 
 	class Compound;
 
+	DECLARE_POINTER_CLASS(CommandGroup)
 
 
-	CONSTRUCT_ENUMERATION6(MobilePlacementResult,
+	CONSTRUCT_ENUMERATION7(MobilePlacementResult,
 		PlacementOkay,
 		PlacementOkayFellDown,
-		PlacementFailedObstructed,		//!< Something possibly temporary is in the way
+		PlacementFailedTemporarilyObstructed,		//!< Something temporary is in the way
+		PlacementFailedPermanentlyObstructed,		//!< Something permanently is in the way. This includes mobile entities without motion tasks
 		PlacementFailedHarmfulOrBlocked,	//!< Either moving there would hurt or something permanently blocking is in the way
 		PlacementFailedMobileDestroyed,	//!< Movement failed, vehicle cannot be returned automatically to any save location, and should be destroyed by the caller
 		EnteredStructure

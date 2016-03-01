@@ -126,7 +126,7 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
 
-			virtual void		VisitAllCommands(FCommandVisitor visitor) override {Component::Turret* turret = this->turret; Component::VehicleBase* base = this->base;  base->VisitAllCommands(visitor); turret->VisitAllCommands(visitor);};
+			virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {Component::Turret* turret = this->turret; Component::VehicleBase* base = this->base;  base->VisitAllCommands(visitor,force); turret->VisitAllCommands(visitor,force);};
 		#endif
 
 		int						GetPrice() const	{return GetPrice(base,turret);}
@@ -155,6 +155,9 @@ namespace Objects
 		virtual bool			IsVehicle() const override {return true;}
 		#ifdef HAS_WINDOW
 			virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+			virtual float		GetSoundLevel() const {return GetActivityLevel()*0.25f;}	//save 75% for motion
+			virtual OpenAL::Wave	GetAmbientSound() const {return base->ambientSound;}
+
 		#endif
 
 		//MobileEntity overrides:

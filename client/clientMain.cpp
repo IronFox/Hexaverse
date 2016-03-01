@@ -62,6 +62,7 @@
 #include "components/guiHostList.h"
 #include "components/net/consensusLink.h"
 #include "components/serverProcess.h"
+#include "components/audioInterface.h"
 
 #include "rc/Resource.h"
 
@@ -215,10 +216,14 @@ void	OnPlayerControlBegin()
 	Animation::UpdateAutomation(CLOCATION);
 }
 
-void	OnTutorialsChanged()
-{
-	UI::HexGrid::RefreshTutorials();
-}
+#ifdef HAS_WINDOW
+
+	void	OnTutorialsChanged()
+	{
+		UI::HexGrid::BottomRightPanel::Refresh();
+	}
+
+#endif
 
 
 
@@ -248,8 +253,10 @@ static void SendDirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCe
 }
 
 
-void	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Grid::LCellIdI target)
+bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Grid::LCellIdI target)
 {
+	if (prev == target)
+		return true;
 	Buffer0<Objects::PathNode>		path;
 	{
 		bool tooLong;
@@ -268,9 +275,14 @@ void	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 		}
 		if (!foundPath)
 		{
-			LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to find route to designated destination. Asking server");
-			SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//maybe some error in the client
-			return;
+			if (!Grid::actualWorld.LowCellIsClearIgnoreStructure(target) && target.height+1 <= Grid::CellStack::TopHeight)
+			{
+				target++;
+				return MoveVehicleTo(v,prev,target);
+			}
+			LogEvent(EventClass::Preset::commandRejected,v.get(),"Unable to find route to designated destination");
+			//SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//maybe some error in the client
+			return false;
 		}
 		if (!tooLong)
 			SendDirectTo(v,target,false,false,Objects::CursorMode::Idle);	//all good
@@ -298,14 +310,14 @@ void	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 			SendDirectTo(v,waypoints.ToRef(),false,false,Objects::CursorMode::Idle);
 		}
 	}
-
-
-
+	return true;
 }
 
 
-void	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode)
+bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode, bool interactive)
 {
+	if (!v)
+		return false;
 	DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
 	const bool moveTo = mode == Objects::CursorMode::Idle && !leftClick;
 	if (moveTo && v->IsSatellite())
@@ -316,12 +328,49 @@ void	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targ
 	if (v->IsMobile() && moveTo)
 	{
 		Objects::PMobileEntity me = To<Objects::MobileEntity>::Cast(v);
+
+		#ifdef HAS_WINDOW
+			if (interactive && me->IsSatellite() && !me->HasMotionTasks())
+			{
+				Objects::PSatellite sat = To<Objects::Satellite>::Cast(me);
+				if (sat->IsSkyHub())
+				{
+					Objects::PSkyHub hub = To<Objects::SkyHub>::Cast(me);
+					if (!hub->connectedTo.expired())
+					{
+						TUniqueID vid = v->id;
+						Array<Grid::LCellIdI> pathCopy = targets;
+						Grid::LCellIdI sourceLoc = me->GetLastPointOfOrigin();
+						Grid::LCellIdI originLoc = me->location;
+						Dialog::Confirm(me->GetNiceName()+" is currently tethered to "+hub->connectedTo.lock()->CastToStructure()->GetNiceName()+". The link keeps it afloat for free, and supplies fuel to distribute to other nearby satellites."
+										" Moving the satellite will sever this link, and require it to be supplied by another hub satellite. Please confirm.",[vid,pathCopy,detailedPath,leftClick,mode]()
+										{
+											DirectTo(Objects::GetEntity(vid),pathCopy,detailedPath,leftClick,mode,false);
+										},[vid,sourceLoc,originLoc]()->Dialog::CheckResult
+										{
+											Objects::PWorldEntity e = Objects::GetEntity(vid);
+											if (!e || !e->IsMobile())
+												return Dialog::CheckResult::Abort;
+											Objects::PMobileEntity me = To<Objects::MobileEntity>::Cast(e);
+											if (e->location != originLoc || me->GetLastPointOfOrigin() != sourceLoc)
+												return Dialog::CheckResult::Abort;
+											if (!RuntimeConfig::IsInAnyCommandPhase() || Objects::Faction::mine->requestedNewRound)
+												return Dialog::CheckResult::OkayNotRightNow;
+											return Dialog::CheckResult::OkayContinue;
+										});
+						return false;
+					}
+				}
+			}
+		#endif
+
 		if (!detailedPath)
 		{
 			Grid::LCellIdI start = me->GetLastPointOfOrigin();
 			foreach (targets,t)
 			{
-				MoveVehicleTo(me,start,*t);
+				if (!MoveVehicleTo(me,start,*t))
+					return false;
 				start = *t;
 			}
 		}
@@ -338,10 +387,17 @@ void	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targ
 		if (moveTo)
 			Tutorial::ShowMessage("Move To");
 	#endif
+	return true;
 }
 
-void	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick)
+bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode)
 {
+	return DirectTo(v, targets, detailedPath, leftClick, mode, true);
+}
+
+bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick)
+{
+	return
 	#ifdef HAS_WINDOW
 		DirectTo(v,targets, detailedPath,leftClick,Objects::activeCursorMode);
 	#else
@@ -423,7 +479,7 @@ void	SignalRemoval(const Objects::PWorldEntity&entity)
 			if (!Network::client.IsConnected())
 				return Dialog::CheckResult::Abort;
 			Objects::PWorldEntity e = Objects::GetEntity(id);
-			if (!e || !e->isMine)
+			if (!e || !e->isOwnedByMe)
 				return Dialog::CheckResult::Abort;
 			if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
 				return Dialog::CheckResult::OkayNotRightNow;
@@ -594,23 +650,27 @@ void	SignalRoundEndOrMaximize()
 
 }
 
-void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName)
+
+void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName, const Grid::LCellIdI&overrideLocation)
 {
+	const Grid::LCellIdI targetLocation = overrideLocation != Grid::LCellIdI::Invalid ? overrideLocation : v->GetLastPointOfOrigin();
 	#ifdef HAS_WINDOW
 		if (jobName == ConstName::Job_Construct && parameterName != ConstName::Type_Connector)
 		{
 			Objects::NaturalResourceVector	res;
-			if (res.SampleWorld(v->GetLastPointOfOrigin().stackID))
+			if (res.SampleWorld(targetLocation.stackID))
 			{
-				String name = Objects::GetPrototypeByName(parameterName)->GetTypeName();
+				const auto& proto = Objects::GetPrototypeByName(parameterName);
+				ASSERT1__(proto,(int)parameterName);
+				String name = proto->GetTypeName();
 				TUniqueID id = v->id;
 				if (parameterName != ConstName::Type_Mine && res.IsNotEmpty())
 				{
 					Dialog::Confirm(v->GetNiceName()+" will construct a "+name+" on a location with known natural resources, which could be harvested by a Mine. Do you wish to continue building the "+name+"?",
-						[id,jobName,parameterName]()
+						[id,jobName,parameterName,targetLocation]()
 						{
 							Protocol::StandardJob	job;
-							job.id = id;
+							job.ownerID = id;
 							job.jobName = jobName;
 							job.parameterName = parameterName;	
 							Network::Channels::signalNewJob.SendTo(Network::client,job);
@@ -629,12 +689,12 @@ void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName p
 				if (parameterName == ConstName::Type_Mine && res.IsEmpty())
 				{
 					Dialog::Confirm(v->GetNiceName()+" will construct a Mine on a location that has no natural resources. Building a mine here seems like a waste of resources. Do you wish to continue building the Mine?",
-						[id,jobName,parameterName]()
+						[id,jobName,parameterName,targetLocation]()
 						{
 							Protocol::StandardJob	job;
-							job.id = id;
+							job.ownerID = id;
 							job.jobName = jobName;
-							job.parameterName = parameterName;	
+							job.parameterName = parameterName;
 							Network::Channels::signalNewJob.SendTo(Network::client,job);
 						},
 						[id,jobName,parameterName]()->Dialog::CheckResult
@@ -653,12 +713,18 @@ void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName p
 		}
 	#endif
 	Protocol::StandardJob	job;
-	job.id = v->id;
+	job.ownerID = v->id;
 	job.jobName = jobName;
 	job.parameterName = parameterName;	
 	Network::Channels::signalNewJob.SendTo(Network::client,job);
 
 }
+
+void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName)
+{
+	SignalNewJob(v,jobName,parameterName,Grid::LCellIdI::Invalid);
+}
+
 
 void	SignalTerrainModification(const Objects::PVehicle&v,Objects::Vehicle::mode_t activeCursorMode,const Array<Grid::HCellIdI>&selection)
 {
@@ -677,40 +743,11 @@ void	SignalSleep(const Objects::PWorldEntity&e, bool doSleep)
 	Network::Channels::sleep.SendTo(Network::client,update);
 }
 
+void	InnerUndoTask(const Objects::PWorldEntity&e, bool force);
+
 void	SignalDropLastTask(const Objects::PWorldEntity&e)
 {
-	#ifdef HAS_WINDOW
-	if (e->IsMobile())
-	{
-		Objects::PMobileEntity v = To<Objects::MobileEntity>::Cast(e);
-		if (v->constructionRoundCounter > 0 
-			&& v->myTasks.Count() == 1
-			&& v->myTasks.GetNewest().IsJob() 
-			&& v->myTasks.GetNewest().job->mineralCostLeft > 0)
-		{
-			TUniqueID id = e->id;
-			Dialog::Confirm("Are you sure you wish to clear the current production tasks? The invested resources will be lost.",[id]()
-			{
-				Network::Channels::dropAllTasks.SendTo(Network::client,id);
-			},
-			[id]()->Dialog::CheckResult
-			{
-				if (!Network::client.IsConnected() || !Objects::GetEntity(id))
-					return Dialog::CheckResult::Abort;
-				if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase || Network::newRoundRequested)
-					return Dialog::CheckResult::OkayNotRightNow;
-				return Dialog::CheckResult::OkayContinue;
-			});
-			return;
-		}
-		else
-		{
-			
-		}
-		
-	}
-	#endif
-	Network::Channels::dropLastTask.SendTo(Network::client,e->id);
+	InnerUndoTask(e,false);
 }
 
 void	SignalDropAllTasks(const Objects::PWorldEntity&e)
@@ -722,7 +759,7 @@ void	SignalDropAllTasks(const Objects::PWorldEntity&e)
 		if (v->constructionRoundCounter > 0 
 		&& v->myTasks.IsNotEmpty() 
 		&& v->myTasks.Peek().IsJob() 
-		&& v->myTasks.Peek().job->mineralCostLeft > 0)
+		&& v->myTasks.Peek().job->resourceCostLeft > 0)
 		{
 			TUniqueID id = e->id;
 			Dialog::Confirm("Are you sure you wish to clear all tasks? The resources invested in the leading production job will be lost.",[id]()
@@ -977,7 +1014,7 @@ void	SignalMarkerTouch(Objects::Marker&marker)
 
 void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 {
-	if (t == Objects::RemovalType::UncontrolledExplosion && e->isMine)
+	if (t == Objects::RemovalType::UncontrolledExplosion && e->isOwnedByMe)
 	{
 		Protocol::Marker marker;
 		static_assert(Objects::Marker::Type::EntityDeath == 0, "Please update marker logic");
@@ -986,7 +1023,7 @@ void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 		SignalMarkerCreation(marker);
 	}
 	else
-		if (t == Objects::RemovalType::Vanished && !e->isMine)
+		if (t == Objects::RemovalType::Vanished && !e->isOwnedByMe)
 		{
 			//this event can be high-frequency, happen several times per round for the same entity,
 			//and happen, in fact, so rapidly, the creation event hasn't been confirmed yet
@@ -1008,7 +1045,7 @@ void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 
 void	OnAppear(const Objects::PWorldEntity&e)
 {
-	//fix: doesn't matter if e->isMine is true or not. Must ALWAYS remove existing markers if we see the original again.
+	//fix: doesn't matter if e->isOwnedByMe is true or not. Must ALWAYS remove existing markers if we see the original again.
 	//reason for this problem: entity ownership change causes vanishing, and thus ghost creation, which was not removed here, because e was suddenly mine.
 	Objects::Marker*m = Objects::Marker::FindByReference(e->id);
 	if (m)
@@ -1018,7 +1055,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 	}
 
 
-	if (e->isMine)
+	if (e->isOwnedByMe)
 	{
 		if (To<Objects::Structure>::DynamicCast(e))
 		{
@@ -1054,6 +1091,8 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 	void OnSelectionChange(bool stateChangeOnly)
 	{
+		if (!stateChangeOnly)
+			Objects::CommandGroup::CollapseAll();
 		Objects::Renderer::HighlightSmokeTrail(InvalidIndex);
 
 		Tutorial::lastDelayingEvent = timer.Now();
@@ -1071,7 +1110,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 				Tutorial::ShowMessage(Objects::selectedEntity->GetTypeName());
 			if (Objects::selectedEntity->health <= 0)
 			{
-				if (Objects::selectedEntity->isMine)
+				if (Objects::selectedEntity->isOwnedByMe)
 					Tutorial::ShowMessage("Friendly Ghosts");
 				else
 					Tutorial::ShowMessage("Hostile Ghosts");
@@ -1103,7 +1142,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			int sum = 0;
 			foreach (Objects::selectedVehicle->myTasks,t)
 				if (t->job)
-					sum += t->job->mineralCostLeft;
+					sum += t->job->resourceCostLeft;
 			if (sum)
 			{
 				change.level[Objects::Resource::Minerals] -= sum;//-Objects::selectedVehicle->tasks.Peek().job->mineralCostLeft;
@@ -1189,7 +1228,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 					int opSpeed = v->GetOperationSpeed(v->myTasks.Peek().job->GetOperationAffinity());
 					if (!opSpeed)
 						return;
-					change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->mineralCostLeft);
+					change.level[Objects::Resource::Minerals] -= std::min(opSpeed, v->myTasks.Peek().job->resourceCostLeft);
 
 				});
 
@@ -1305,7 +1344,7 @@ bool loop()
 
 		if (!Engine::mouse.buttons.pressed)		
 		{
-			if (!Tutorial::movementTutorialIssued && Objects::selectedEntity && Objects::selectedEntity->isMine && Objects::selectedEntity->IsMobile() && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 3.f)
+			if (!Tutorial::movementTutorialIssued && Objects::selectedEntity && Objects::selectedEntity->isOwnedByMe && Objects::selectedEntity->IsMobile() && timer.GetSecondsSince(Tutorial::lastDelayingEvent) > 3.f)
 			{
 				Tutorial::movementTutorialIssued = true;
 				Tutorial::ShowMessage("Move To");
@@ -1357,6 +1396,12 @@ bool loop()
 
 
 	#ifdef HAS_WINDOW
+		bool alwaysDay = RuntimeConfig::FromFile::alwaysDay && !Camera::autoRotation;
+
+		if (!alwaysDay)
+			Grid::PerFrameUpdateSunDirection();
+
+
 		Camera::ProgressRotation();
 
 
@@ -1414,13 +1459,19 @@ bool loop()
 				Vec::mult(change,Engine::timing.delta*100.f);
 				Camera::Rotate(change);
 			}
+			if (Engine::input.pressed[Key::Up])
+			{
+				Camera::Event::Zoom(Engine::timing.delta);
+			}
+			if (Engine::input.pressed[Key::Down])
+			{
+				Camera::Event::Zoom(-Engine::timing.delta);
+			}
 		}
 
 
-		if (RuntimeConfig::FromFile::alwaysDay)
+		if (alwaysDay)
 			Grid::UpdateSunDirection(sunDirection);
-		else
-			Grid::PerFrameUpdateSunDirection();
 
 
 		Objects::Renderer::AdvanceTurretAnimations();
@@ -1443,7 +1494,7 @@ bool loop()
 			Objects::Renderer::EndShadowRendering();
 		}
 
-
+		AudioInterface::UpdateListener(Camera::scene);
 		display.pick(Camera::scene);
 		static Engine::Frustum<> frustum;
 		Camera::scene.GetFrustum(frustum);
@@ -1637,6 +1688,7 @@ bool loop()
 			}
 
 
+			if (UI::showControlsAndContacts && !saveScreenshot)
 			{
 				static const String line = "(C) Stefan Elsen; v" PRODUCT_VERSION "; Compiled "+String(__TIMESTAMP__);
 				//textout.locate(0.f,1.f - textout.getScaledHeight());
@@ -1691,6 +1743,7 @@ bool loop()
 				//	TransferPanel::Invalidate();
 			}
 
+			if (UI::showControlsAndContacts)
 			{
 				textout.pushState();
 				textout.scale(0.9f, 0.9f);
@@ -1724,78 +1777,78 @@ bool loop()
 					}
 				textout.popState();
 				eventLock.unlock();
-			}
 
-			textout.color(1,1,1);
-			textout.locate(0,1);
-			textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFaction ? "logged in" : "not logged in")<< nl;
-			textout << "Hello "<<Network::chosenNickname<<nl;
-			if (Network::amOnline)
-			{
-				textout << "Server ID: " << Network::serverIDString<<nl;
-				textout << "World ID: " << Network::worldIDString<<nl;
-				textout << "Game Goal: "<<RuntimeConfig::gameGoal.ToString() << nl;
+				textout.color(1,1,1);
+				textout.locate(0,1);
+				textout << (Network::amOnline? "online" : "offline")<<", "<< (Network::haveFaction ? "logged in" : "not logged in")<< nl;
+				textout << "Hello "<<Network::chosenNickname<<nl;
+				if (Network::amOnline)
+				{
+					textout << "Server ID: " << Network::serverIDString<<nl;
+					textout << "World ID: " << Network::worldIDString<<nl;
+					textout << "Game Goal: "<<RuntimeConfig::gameGoal.ToString() << nl;
+					#ifdef _DEBUG
+						textout << "Access ID: " << Network::activeTokenString<<nl;
+					#endif
+					textout << "Phase: "<<RuntimeConfig::phase.ToString()<<nl;
+					textout << "Round Number: "<<RuntimeConfig::roundNumber<<nl;
+					if (!Network::gameProgress.gameOver)
+					{
+						if (Network::gameProgress.status.IsNotEmpty())
+							textout << "Progress: "<<Network::gameProgress.status<<nl;
+						if (Network::gameProgress.warning.IsNotEmpty())
+						{
+							textout.color(1,0,0);
+							textout << "Warning: "<<Network::gameProgress.warning<<nl;
+							textout.color(1,1,1);
+						}
+					}
+					else
+						if (Network::gameProgress.gameOver)
+						{
+							if (Network::gameProgress.gameWon)
+							{
+								textout.color(0.4,0.5,1);
+								textout << "YOU WIN"<<nl;
+							}
+							else
+							{
+								textout.color(1,0.5,0.4);
+								textout << "GAME OVER"<<nl;
+							}
+							textout.color(1,1,1);
+						}
+				}
 				#ifdef _DEBUG
-					textout << "Access ID: " << Network::activeTokenString<<nl;
+					if (Network::haveID)
+						textout << "My ID: "<<Network::myIDString<<nl;
+					textout << -Camera::scene.retraction.z/WorldScale << nl;
 				#endif
-				textout << "Phase: "<<RuntimeConfig::phase.ToString()<<nl;
-				textout << "Round Number: "<<RuntimeConfig::roundNumber<<nl;
-				if (!Network::gameProgress.gameOver)
+				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::roundTimer > 0)
 				{
-					if (Network::gameProgress.status.IsNotEmpty())
-						textout << "Progress: "<<Network::gameProgress.status<<nl;
-					if (Network::gameProgress.warning.IsNotEmpty())
+					textout.pushState();
+					float remaining = std::max(Network::roundTimer - timer.GetSecondsSince(Network::phaseStarted),0.f);
+					textout << "Remaining seconds: "<<nl;
+					textout.scale(2.f,2.f);
+					if (remaining <= 10.f && !Network::newRoundRequested)
 					{
-						textout.color(1,0,0);
-						textout << "Warning: "<<Network::gameProgress.warning<<nl;
-						textout.color(1,1,1);
+						textout.scale(1.2f,1.2f);
+						bool blinkOn = ((timer.Now()/(timer.GetTicksPerSecond()/5))%2) != 0;
+						textout.color(1,0.2,0.2,blinkOn ? 0.5f : 1.f);
 					}
+					textout<<Round(remaining)<<nl;
+					textout.popState();
 				}
-				else
-					if (Network::gameProgress.gameOver)
-					{
-						if (Network::gameProgress.gameWon)
-						{
-							textout.color(0.4,0.5,1);
-							textout << "YOU WIN"<<nl;
-						}
-						else
-						{
-							textout.color(1,0.5,0.4);
-							textout << "GAME OVER"<<nl;
-						}
-						textout.color(1,1,1);
-					}
+
+
+				textout.locate(0.0f,0.05f);
+				textout.color(1,1,1);
+				textout << "FPS: "<<1.f / Engine::timing.delta << nl;
+				#ifdef _DEBUG
+					textout << "last remote message: "<<timer.GetSecondsSince(Network::client.GetLastPackageTime());
+				#endif
+
 			}
-			#ifdef _DEBUG
-				if (Network::haveID)
-					textout << "My ID: "<<Network::myIDString<<nl;
-				textout << -Camera::scene.retraction.z/WorldScale << nl;
-			#endif
-			if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::roundTimer > 0)
-			{
-				textout.pushState();
-				float remaining = std::max(Network::roundTimer - timer.GetSecondsSince(Network::phaseStarted),0.f);
-				textout << "Remaining seconds: "<<nl;
-				textout.scale(2.f,2.f);
-				if (remaining <= 10.f && !Network::newRoundRequested)
-				{
-					textout.scale(1.2f,1.2f);
-					bool blinkOn = ((timer.Now()/(timer.GetTicksPerSecond()/5))%2) != 0;
-					textout.color(1,0.2,0.2,blinkOn ? 0.5f : 1.f);
-				}
-				textout<<Round(remaining)<<nl;
-				textout.popState();
-			}
-
-
-			textout.locate(0.0f,0.05f);
-			textout.color(1,1,1);
-			textout << "FPS: "<<1.f / Engine::timing.delta << nl;
-			#ifdef _DEBUG
-				textout << "last remote message: "<<timer.GetSecondsSince(Network::client.GetLastPackageTime());
-			#endif
-
 	
 
 			DebugCheckVector(scene.location,-1000,1000);
@@ -1927,67 +1980,12 @@ void MyFatal(const FatalDescriptor&descriptor)
 			QueryNickname();
 			return;
 		}
-	//	if (Engine::input.pressed[Key::Control])
-		//LogEvent(nullptr, "Select()");
-
-		//if (Objects::Network::Transfer::isActive)
-		//{
-		//	TransferPanel::HandleClick();
-		//	return;
-		//}
-		//if (!Network::client.IsConnected())
-		//{
-		//	if (Engine::mouse.location.windowRelative.x < 0.1f || Engine::mouse.location.windowRelative.x > 0.9f)
-		//		return;
-		//	if (Network::client.IsAttemptingToConnect())
-		//		return;
-		//	if (RuntimeConfig::serverURL.IsNotEmpty())
-		//		return;
-		//	foreach (Network::servers,srv)
-		//	{
-		//		if (srv->rightVersion && srv->bottom < Engine::mouse.location.windowRelative.y && srv->top > Engine::mouse.location.windowRelative.y)
-		//		{
-		//			index_t best = 0;
-		//			float bestPing = srv->urls.first().second;
-		//			for (index_t i = 1; i < srv->urls.Count(); i++)
-		//				if (srv->urls[i].second < bestPing)
-		//				{
-		//					bestPing = srv->urls[i].second;
-		//					best = i;
-		//				}
-		//			srv->selected = true;
-
-		//			Network::serverID = srv->id;
-		//			Network::serverIDString = Network::serverID.ToNiceString();
-		//			Network::worldID = srv->info.worldID;
-		//			Network::worldIDString = Network::worldID.ToNiceString();
-		//			Network::client.ConnectAsync(srv->urls[best].first + ":"+String(SERVICE_PORT));
-		//			return;
-		//		}
-
-		//	}
-
-
-		//	return;
-		//}
-
-	
 
 		int oldVehicleHeight = Grid::SeeThrough::GetFocusPoint().height;
 		if (Objects::selectedEntity)
 			oldVehicleHeight = Objects::selectedEntity->location.height;
 
 	
-
-
-		//{
-		//	if (CommandPanel::HandleClick())
-		//	{
-		//		Objects::RefreshCommands(Network::ControlEnabled());
-		//		return;
-		//	}
-		//}
-
 
 
 		if (Objects::selectedMobileEntity && Objects::CursorModeExpectsLeftClick())
@@ -1997,9 +1995,25 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 			if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
 			{
-				if (Objects::selectedMobileEntity->IsSatellite())
+				if (Objects::selectedEntity->IsSatellite())
 					target.height = Objects::selectedMobileEntity->location.height;
-				DirectTo(Objects::selectedMobileEntity,target,false,true);
+
+				if (Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode)
+				{
+					
+					if (Objects::selectedMobileEntity->ConstructingHere(target))
+					{
+						LogEvent(EventClass::Preset::commandRejected,Objects::selectedMobileEntity.get(),"Can't build here, already trying to build something here");
+					}
+					else
+						if (DirectTo(Objects::selectedMobileEntity,target,false,false,Objects::CursorMode::Idle,false))
+						{
+							SignalNewJob(Objects::selectedMobileEntity,ConstName::Job_Construct,Objects::activeStructureToPlace->GetCTypeName(),target);
+							Objects::arrowFromCell = target;
+						}
+				}
+				else
+					DirectTo(Objects::selectedMobileEntity,target,false,true);
 				return;
 			}
 		}
@@ -2035,7 +2049,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 				{
 					TVec3<> normal;
 					bool selectionDone = false;
-					if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity) || Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
+					if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) || Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 					{
 						if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
 						{
@@ -2046,7 +2060,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 								float3 d = p / r;
 								UINT32 stackID;
 								int h;
-								if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity))
+								if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode))
 								{
 									if (Vec::dot(d, normal) > 0.5f)	//flat selection
 									{
@@ -2071,7 +2085,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 										h = Grid::FloorFromRadius(r);
 									}
 								String activity = "build";
-								if (Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
+								if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 									activity = "remove";
 								Grid::LCellIdI origin = Objects::selectedVehicle->GetLastPointOfOrigin();
 								if (h < -Grid::CellStack::HalfRange)
@@ -2084,7 +2098,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 								}
 								elif(Objects::vehicleDistanceField.distance[stackID] > 3)
 									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too far away from vehicle");
-								elif(Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity) && h == origin.height && Objects::vehicleDistanceField.distance[stackID] <= 1)
+								elif(Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) && h == origin.height && Objects::vehicleDistanceField.distance[stackID] <= 1)
 									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too close to vehicle");
 								else
 								{
@@ -2366,6 +2380,75 @@ String GenerateOreName(Random&random)
 
 }
 
+void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
+{
+	if (!e)
+		return;
+	if (e->IsMobile())
+	{
+		#ifdef HAS_WINDOW
+			if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode))
+			{
+				Objects::buildCandidates.EraseLast();
+				return;
+			}
+			if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
+			{
+				Objects::removeCandidates.EraseLast();
+				return;
+			}
+		#endif
+		Objects::PMobileEntity m = To<Objects::MobileEntity>::Cast(e);
+		if (m->HasTasks())
+		{
+			#ifdef HAS_WINDOW
+			if (!force)
+			{
+				Objects::PMobileEntity v = m;
+				if (v->constructionRoundCounter > 0 
+					&& v->myTasks.Count() == 1
+					&& v->myTasks.GetNewest().IsJob() 
+					&& v->myTasks.GetNewest().job->resourceCostLeft > 0)
+				{
+					TUniqueID id = v->id;
+					Dialog::Confirm("Are you sure you wish to clear the current production task? The invested resources will be lost.",[id]()
+					{
+						InnerUndoTask(Objects::GetEntity(id),true);
+					},
+					[id]()->Dialog::CheckResult
+					{
+						if (!Network::client.IsConnected() || !Objects::GetEntity(id))
+							return Dialog::CheckResult::Abort;
+						if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase || Network::newRoundRequested)
+							return Dialog::CheckResult::OkayNotRightNow;
+						return Dialog::CheckResult::OkayContinue;
+					});
+					return;
+				}
+				else
+				{
+			
+				}
+		
+			}
+			#endif
+
+			//SignalDropLastTask(v);
+			//v->DropLastTask();
+			bool isJob = m->myTasks.GetNewest().IsJob();
+			Network::Channels::dropLastTask.SendTo(Network::client, m->id);
+			if (isJob && m->myTasks.Count() > 1 
+				&& m->myTasks[m->myTasks.Count() - 2].type == Objects::MobileEntity::Task::MoveTo)
+			{
+				Network::Channels::dropLastTask.SendTo(Network::client, e->id);
+			}
+		}
+	}
+	else
+		Network::Channels::dropLastTask.SendTo(Network::client, e->id);
+}
+
+
 //void LogEvent( EventType type,  const Objects::WorldEntity*e, const String&_event)
 //{
 //	String event = _event, outEvent = _event;
@@ -2396,6 +2479,7 @@ String GenerateOreName(Random&random)
 	{
 		UI::showControlsAndContacts = !UI::showControlsAndContacts;
 		UI::HexGrid::Configure(Objects::selectedEntity);
+		OnTutorialsChanged();
 	}
 
 	void BeginCameraDrag()
@@ -2431,13 +2515,13 @@ String GenerateOreName(Random&random)
 						float distance = std::numeric_limits<float>::max();
 
 						Objects::PWorldEntity possibleTarget = Objects::GetRayIntersection(b,d,distance);
-						if (possibleTarget && !possibleTarget->isMine)
+						if (possibleTarget && !possibleTarget->isOwnedByMe)
 						{
 							DirectTo(Objects::selectedEntity,possibleTarget->location,false,true, Objects::CursorMode::AttackMode);
 							return;
 						}
 					}
-					if (To<Objects::Tower>::DynamicCast(Objects::selectedEntity))
+					if (Objects::selectedEntity->IsTower())
 					{
 						if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 						{
@@ -2485,26 +2569,13 @@ String GenerateOreName(Random&random)
 
 	void	UndoTask()
 	{
-		if (Objects::selectedMobileEntity)
+		if (Objects::DisableModes(Network::ControlEnabled()))
 		{
-			if (Objects::Component::Terraformer::Cmd::BuildBlockIsActive(Objects::selectedEntity))
-			{
-				Objects::buildCandidates.EraseLast();
-				return;
-			}
-			if (Objects::Component::Terraformer::Cmd::RemoveBlockIsActive(Objects::selectedEntity))
-			{
-				Objects::removeCandidates.EraseLast();
-				return;
-			}
-			if (Objects::selectedMobileEntity->HasTasks())
-			{
-				//SignalDropLastTask(v);
-				//v->DropLastTask();
-				Network::Channels::dropLastTask.SendTo(Network::client, Objects::selectedMobileEntity->id);
-			}
+			OnTutorialsChanged();
+			return;
 		}
 
+		InnerUndoTask(Objects::selectedEntity,false);
 	}
 
 	void	QueryAndSendChatMessage()
@@ -2614,58 +2685,84 @@ String GenerateOreName(Random&random)
 	void ToggleResourceView()
 	{
 		UI::resourcesAsList = !UI::resourcesAsList;
+	}
 
+	void	ToggleCameraAutoRotation()
+	{
+		if (!Camera::autoRotation)
+		{
+			Camera::autoRotation = true;
+			Grid::ResetSunRotation();
+		}
+		else
+			Camera::StopAutoRotation();
 	}
 
 
 	bool	IsIdle(const Objects::PMobileEntity&v)
 	{
-		if (v->IsHibernating() || v->IsSatellite() || v->isAutomated)
+		//okay, clarification:
+		//0: if dead: NOT IDLE (duh)
+		if (v->health <= 0)
+			return false;	//yes, this can happen if badly called
+		//1: if hibernating: NOT IDLE, EVER
+		if (v->IsHibernating())
 			return false;
-		if (v->myTasks.IsNotEmpty())
-		{
+		//2: if automated, then some other logic takes care of everything. NOT IDLE
+		if (v->isAutomated)
 			return false;
-		}
-		if (!v->IsSleeping())
-			return true;
-		//if (v->GetOperationSpeed(Objects::Component::Construct))
-		//	return true;
-		//if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsNonAutomatedResourceDetector())
-		//	return true;
 
-		if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())
+		//3: if it already IS doing something, anything really, then it is NOT IDLE
+		if (v->myTasks.IsNotEmpty())	//if it already is doing normal vehicle stuff, then it's not IDLE (duh)
+			return false;
+		const Objects::MobileEntityProducer*p =  v->CastToProducer();
+		if (p && p->queue.IsNotEmpty())	//if it's a factory and has any task, then it's not IDLE
+			return false;
+
+
+		//4: if it's SLEEPING then it's not idle, UNLESS the local entity can attack, and has something to attack:
+		if (v->IsSleeping())
 		{
-			bool emp = v->turret->dealsEMPDamage;
-			if (v->IsVehicle())
+
+			if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())	//check that its turret can attack, there's ammo for the shot, and it has any shots left this round
 			{
-				for (auto other : Objects::vehicles)
-					if (!emp || !other->empDamageLevel)
-						if (!other->isMine && v->CanHit(other->location))
-							return true;
-				for (auto other : Objects::structures)
-					if (!emp || !other->empDamageLevel)
-						if (!other->isMine && v->CanHit(other->location))
-							return true;
-			}
-			else
-				if (v->IsSatellite())
+				bool emp = v->turret->dealsEMPDamage;
+				if (v->IsVehicle())
 				{
-					for (auto other : Objects::satellites)
-						if (!other->isMine && v->CanHit(other->location))
-							if (!emp || !other->empDamageLevel)
+					for (auto other : Objects::vehicles)
+						if (!emp || !other->empDamageLevel)
+							if (!other->isOwnedByMe && v->CanHit(other->location))
+								return true;
+					for (auto other : Objects::structures)
+						if (!emp || !other->empDamageLevel)
+							if (!other->isOwnedByMe && v->CanHit(other->location))
 								return true;
 				}
 				else
-				{
-					FATAL__("Unknown mobile entity type "+v->GetTypeName());
-				}
+					if (v->IsSatellite())
+					{
+						for (auto other : Objects::satellites)
+							if (!other->isOwnedByMe && v->CanHit(other->location))
+								if (!emp || !other->empDamageLevel)
+									return true;
+					}
+					else
+					{
+						FATAL__("Unknown mobile entity type "+v->GetTypeName());
+					}
+			}
+			return false;	//cannot attack or has nothing to attack: NOT IDLE since it is SLEEPING
 		}
-		return false;
+
+		//not sleeping, no tasks, not producing, not automated, not hibernating:
+		return true;	//yes, IDLE
 	}
 
 
 	bool	IsIdle(const Objects::PStructure&s)
 	{
+		if (s->health <= 0)
+			return false;
 		#ifndef NO_HIBERNATION
 			if (s->ToHibernating()->IsHibernating())
 				return false;
@@ -2679,14 +2776,27 @@ String GenerateOreName(Random&random)
 		if (vp)
 			return (vp->AwaitsUserInteraction() || /*vp->queue.IsEmpty() || */
 			(!vp->IsEnabled()
-			//&&
-			//vp->CouldEnable()
+			&&
+			vp->CouldEnable(true)
 			)
 			);
 		Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 		if (mine)
 			return !mine->IsEnabled() && mine->CouldEnable();
-
+		if (s->IsSkyLinkStructure())
+		{
+			Objects::PSkyLinkStructure st = To<Objects::SkyLinkStructure>::DynamicCast(s);	//around a inheritance corner, prolly required to use dynamic cast here
+			if (!st->connectedToHub.expired())
+			{
+				return !To<Objects::WorkingStructure>::Cast(s)->IsEnabled();
+			}
+			if (s->IsSkyPort())
+			{
+				Objects::PSkyPort p = To<Objects::SkyPort>::Cast(s);
+				if (p->queue.IsEmpty() || (!p->IsEnabled() && p->CouldEnable()))
+					return true;
+			}
+		}
 		return false;
 
 	}
@@ -2695,21 +2805,23 @@ String GenerateOreName(Random&random)
 	{
 		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound || Network::amSpectator)
 			return false;
-		count_t total=0,requested=0;
-		Objects::ForeachFaction([&total,&requested](const Objects::PFaction&f)
-		{
-			total++;
-			if ((f->requestedNewRound || !f->online) && f != Objects::Faction::mine)
-				requested++;
-		});
+		#if 0
+			count_t total=0,requested=0;
+			Objects::ForeachFaction([&total,&requested](const Objects::PFaction&f)
+			{
+				total++;
+				if ((f->requestedNewRound || !f->online) && f != Objects::Faction::mine)
+					requested++;
+			});
 
-		if (requested+1 != total)
-			return false;
+			if (requested+1 != total)
+				return false;
+		#endif /*0*/
 
 		Objects::PWorldEntity any;
 		Objects::ForeachWorldEntity([&any](const Objects::PWorldEntity&e)
 		{
-			if (any || !e->isMine)
+			if (any || !e->isOwnedByMe || e->health <= 0)
 				return;
 			if (e->IsMobile())
 			{
@@ -2767,7 +2879,7 @@ String GenerateOreName(Random&random)
 			if (to < Objects::vehicles.Count())
 			{
 				Objects::PVehicle v = Objects::vehicles[to];
-				if (v->isMine && IsIdle(v))
+				if (v->isOwnedByMe && IsIdle(v))
 				{
 					Objects::Select(v,Network::ControlEnabled());
 					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -2779,7 +2891,7 @@ String GenerateOreName(Random&random)
 				{
 					index_t at = to - Objects::vehicles.Count();
 					Objects::PMobileEntity v = Objects::satellites[at];
-					if (v->isMine && IsIdle(v))
+					if (v->isOwnedByMe && IsIdle(v))
 					{
 						Objects::Select(v,Network::ControlEnabled());
 						Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -2791,7 +2903,7 @@ String GenerateOreName(Random&random)
 					index_t at = to - Objects::vehicles.Count() - Objects::satellites.Count();
 					Objects::PStructure s = Objects::structures[at];
 
-					if (s->isMine && IsIdle(s))
+					if (s->isOwnedByMe && IsIdle(s))
 					{
 						Objects::Select(s,Network::ControlEnabled());
 						Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
@@ -2801,6 +2913,8 @@ String GenerateOreName(Random&random)
 				}
 		}
 		while (to != from);
+
+		UI::RefreshButtonState();	//just in case
 	}
 
 
@@ -2907,10 +3021,6 @@ String GenerateOreName(Random&random)
 		while (to != from);
 	}
 
-#endif
-
-
-#ifdef HAS_WINDOW
 	void AddFactionCreationChoice(const String&line, UINT32 typeFlags, UINT32 supportFactionFlag)
 	{
 		Dialog::loginMenu->AddCommand(line,
@@ -2944,6 +3054,39 @@ String GenerateOreName(Random&random)
 				)
 			;},false);
 
+
+	}
+
+	void	ResumeBatchConstruction()
+	{
+
+		if (Objects::selectedMobileEntity && 
+			Objects::selectedMobileEntity->turret->CanConstruct() &&
+			Objects::activeStructureToPlace &&
+			(Objects::activeCursorMode == Objects::CursorMode::Idle
+			|| Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode
+			)
+		)
+		{
+			bool newly = Objects::activeCursorMode == Objects::CursorMode::Idle;
+			Objects::arrowFromCell = Objects::selectedMobileEntity->GetLastPointOfOrigin();
+			Objects::arrowFrom = Grid::low.cells[Objects::arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(Objects::arrowFromCell.height));
+			Objects::showArrow = true;
+			Objects::activeCursorMode = Objects::CursorMode::PlaceStructureMode;
+			if (newly)
+				UI::RefreshButtonState();
+		}
+
+	}
+
+	void	AbortBatchConstruction()
+	{
+		if (Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode)
+		{
+			Objects::activeCursorMode = Objects::CursorMode::Idle;
+			Objects::showArrow = false;
+			UI::RefreshButtonState();
+		}
 
 	}
 
@@ -3058,6 +3201,16 @@ bool ConfigureClient(const wchar_t*commandLine)
 	return true;
 }
 
+bool	IsTargetWorkingDirectory(const PathString&dir)
+{
+	PathString test = dir + "/resources";
+	bool rs = FileSystem::IsDirectory(test);
+	LogEvent(EventSignificance::Debug,"Checking server target directory candidate '"+String(dir)+"'=>'"+String(test)+"'. Result="+String(rs));
+
+
+	return rs;
+}
+
 
 int main( int argc, const char* argv[])
 {
@@ -3080,7 +3233,20 @@ int main( int argc, const char* argv[])
 
 	//	FileSystem::CreateDirectory(RuntimeConfig::ConfigDir());
 		
-
+		{
+			wchar_t path[MAX_PATH];
+			ASSERT__(GetModuleFileNameW(NULL,path,MAX_PATH));
+			StringW dir = FileSystem::ExtractFileDir(StringW(path));
+			while (dir.length() > 1 && !IsTargetWorkingDirectory(dir))
+			{
+				dir = FileSystem::ExtractFileDir(dir);
+				LogEvent(EventSignificance::Debug,"Walking up to "+String(dir.c_str()));
+			}
+			if (IsTargetWorkingDirectory(dir))
+				FileSystem::SetWorkingDirectory(dir);
+			else
+				FATAL__("Something is wrong. Unable to locate server executable, or config/declaration.xml is missing.");
+		}
 
 
 		NiceName::Load();
@@ -3116,6 +3282,13 @@ int main( int argc, const char* argv[])
 				TimeLapse::customBasePath = PathString(config.GetString("timelapse/outDirectory"));
 				TimeLapse::frameDelaySeconds = config.GetFloat("timelapse/frameDelaySeconds",0.2f);
 				TimeLapse::maxCompressionPNG = config.GetBool("timelapse/maxCompressionPNG");
+
+				if (!RuntimeConfig::aiMode && config.GetBool("runtime/soundEnabled",true))
+				{
+					AudioInterface::Create();
+					AudioInterface::SetMasterVolume(config.GetFloat("runtime/soundVolume",1.f));
+				}
+
 			#endif
 
 
@@ -3156,8 +3329,8 @@ int main( int argc, const char* argv[])
 			LineRenderer::Create();
 			SurfaceRenderer::Create();
 
-			Engine::input.bind(Key::Up, Camera::Event::ZoomIn);
-			Engine::input.bind(Key::Down, Camera::Event::ZoomOut);
+			//Engine::input.bind(Key::Up, Camera::Event::ZoomIn);
+			//Engine::input.bind(Key::Down, Camera::Event::ZoomOut);
 
 			Engine::input.bind(Key::Left, SelectAndFocusPrev);
 			Engine::input.bind(Key::Right, SelectAndFocusNext);
@@ -3165,6 +3338,8 @@ int main( int argc, const char* argv[])
 
 			Engine::input.bind(Key::PageDown, ViewDown);
 			Engine::input.bind(Key::PageUp, ViewUp);
+
+			Engine::input.bind(Key::Shift, ResumeBatchConstruction, AbortBatchConstruction);
 			
 
 		//	Engine::input.bind(Key::PageDown, DeclineCamera);
@@ -3176,11 +3351,13 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::Return, SignalRoundEndOrMaximize);
 			Engine::input.bind(Key::Tab, UI::ShowSession);
 			Engine::input.bind(Key::T,[](){}, QueryAndSendChatMessage);
-			Engine::input.bind(Key::R,ToggleResourceView);
+			Engine::input.bind(Key::R,ToggleCameraAutoRotation);
+//			Engine::input.bind(Key::R,ToggleResourceView);
 
 			Engine::input.bind(Key::H,ToggleControlGUI);
 
 			Engine::input.bind(Key::MouseButton0, Select, Dialog::HandleMouseUp);
+			Engine::input.bindCtrl(Key::MouseButton0, Select);
 			Engine::input.bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
 			Engine::input.bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
 
@@ -3192,7 +3369,6 @@ int main( int argc, const char* argv[])
 				Engine::input.bind(Key::Down,ZoomOut);
 			#endif
 
-			Camera::Setup(display.pixelAspect());
 
 
 
@@ -3217,11 +3393,14 @@ int main( int argc, const char* argv[])
 		Galaxy::Build(0);
 
 
-		Animation::Create();
 
 		#ifdef HAS_WINDOW
+			Camera::Setup(display.pixelAspect());	//creates a menu item, for which Objects::Create() must have been called
+
+
 			Explosions::Create();
 		#endif
+		Animation::Create();
 
 
 		Network::Setup();
@@ -3333,6 +3512,7 @@ int main( int argc, const char* argv[])
 			Explosions::Destroy();
 			LineRenderer::Destroy();
 			SurfaceRenderer::Destroy();
+			AudioInterface::Destroy();
 		#endif
 		Grid::Destroy();
 		Objects::Destroy();

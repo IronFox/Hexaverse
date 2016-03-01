@@ -1,11 +1,46 @@
-v0.3.17
+v0.3.19
+
+v0.3.18	[Mar 1 2016]
+	+ Included control console for interactive command-line server configuration.
+	> Bombs can now be configured to self-detonate with a regular explosion when destroyed by some outside force.
+	> When placing new buildings, the scanning and possibly attack ranges are shown ahead of actually placing them.
+	> Reorganized buttons into a command tree.
+	> The new-round button now flashes even when the local player is not the last to press it.
+	> It's now possible to build on the bottom layer, if the ground beneath is not clear.
+	> Resources are now configured per planet type.
+	* Fixed zoom-factor on contact icons.
+	* Fixed size of attack rings for satellites.
+	* Fixed failure of terraformer automatic relocation after finishing construction.
+	* Fixed digging down to the bottom layer.
+	* Fixed timing error causing the client to sometimes ignore relocation motion after job completion.
+	* Fixed visualization of EMP attack ranges.
+	- Mines no longer provide twice as much output when built below height level -7.
+	
+v0.3.17	[Feb 24 2016]
 	+ Analogously to terrain blocks, attack ranges are now shown on water surfaces when manual attacks are issued.
+	+ Added ambient sound for generators.
+	+ Added sounds for artillery shots and turret rotations.
+	+ Added ambient sounds for all three vehicle base types.
+	+ Added ambient sound for mines and factories.
+	+ Added sound for missile attacks.
+	+ Implemented structure placement. Clicking on a construction job now asks for a destination first.
+	+ Pressing shift will allow to repeat the last construction job in a different location.
+	+ Rings now indicate the number of attacks units have left during the next attack phase.
+	+ Added configuration option to specify whether nexus bases should have satellites.
+	+ New Bomb turret type can be used to blow up large areas (ideally from beneath ground).
+	+ Mines provide twice as much output when built below height level -7 (shown in UI panel now).
+	> Improved search behavior of automated surveyors.
+	> Towers now allow backspace-undoing of attack tasks.
+	> Resource view is now enabled by default.
+	> SkyPorts are now considered idle if they have no hub connected, and an empty queue.
+	> Included satellites into the IsIdle() loop.
 	* Fixed save games not persistently memorizing sleep-state of units.
 	* Fixed desert planet type.
 	* Fixed spectator terrain construction.
 	* Fixed automated surveyor being incorrectly determined as idle.
 	* Fixed calculation of smoke trail when Ragnarök fires.
 	* Fixed SkyHub UI button placement.
+	* Fixed user configuration loading.
 
 v0.3.16	[Feb 15 2016]
 	+ Ghosts now memorize the owner of the referenced entity (if any).
@@ -101,7 +136,7 @@ v0.3.9		[Nov 20 2015]
 v0.3.8		[Nov 9 2015]
 	+ Added option to undo round-end request.
 	> Auto-savegames are created at the beginning of the animation phase now to reduce noticable delay.
-	* Fixed towers now firing due to self-obstruction.
+	* Fixed towers not firing due to self-obstruction.
 
 v0.3.7		[Nov 8 2015]
 	* Replaced outdated d3dcompiler_43.dll with d3dcompiler_47.dll. On systems running win8.1+ this is not necessary.

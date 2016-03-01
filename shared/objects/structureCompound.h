@@ -18,12 +18,11 @@ namespace Objects
 	
 	class Compound 
 	{
-		#ifndef CLIENT
-			static int				GetEnableChangeBalance(const ResourceVector&local);
+		static int					GetEnableChangeBalance(const ResourceVector&local);
+		bool						FindBestEnableCandidates(PWorkingStructure*bestOut, int&bestBalance, ResourceVector&balance,  index_t recursionDepth, int parentSum, const WWorkingStructure*parent) const;
+		bool						FindBestEnableCandidates(PWorkingStructure*bestOut, count_t bestOutCount) const;
 
-			bool					FindBestEnableCandidates(PWorkingStructure*bestOut, int&bestBalance, ResourceVector&balance,  index_t recursionDepth, int parentSum, const WWorkingStructure*parent) const;
-			bool					FindBestEnableCandidates(PWorkingStructure*bestOut, count_t bestOutCount) const;
-		#endif
+		static void					TempSetEnabled(WorkingStructure*,bool);
 	public:
 		static const UINT32 InvalidNetwork = 0xFFFFFFFF;
 
@@ -82,9 +81,9 @@ namespace Objects
 
 			void			Collect(ResourceVector demand, float atTime);
 			void			Distribute(ResourceVector supply, float atTime);
-			bool			CanEnable(WorkingStructure*, String&outWhy) const;
 			FullResourceVector	GetVector(const Array<bool>&virtualEnabled) const;
 		#endif
+		bool				CanEnable(WorkingStructure*, String&outWhy, bool ignoreCanEnable=false) const;
 		void				RefreshState(float atTime);
 		FullResourceVector	GetVector() const;
 

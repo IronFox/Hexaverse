@@ -306,7 +306,7 @@ namespace ConsensusLink
 				FileStream outStream;
 				outStream.OpenCreate(filename.c_str());
 				outStream.Write(payloadHash.bytes,payloadHash.NumBytes);
-				outStream.Write(data,dataSize);
+				outStream.Write(data,(serial_size_t)dataSize);
 				outStream.Close();
 				PathString backup = filename+"2";
 				FileSystem::Copy(filename,backup,true);
@@ -442,7 +442,7 @@ namespace ConsensusLink
 						return;
 					}
 					Array<BYTE> innerKey(keyStream.GetRemainingBytes());
-					if (!(keyStream.Read(innerKey.pointer(),innerKey.GetContentSize())))
+					if (!(keyStream.Read(innerKey.pointer(),(serial_size_t)innerKey.GetContentSize())))
 					{
 						LogEvent(EventClass::Preset::networkError,"Consensus RSA key: IO fault reading encrypted RSA key");
 						return;
@@ -461,7 +461,7 @@ namespace ConsensusLink
 					return;
 				}
 				Array<BYTE> innerKey(keyStream.GetRemainingBytes());
-				if (!(keyStream.Read(innerKey.pointer(),innerKey.GetContentSize())))
+				if (!(keyStream.Read(innerKey.pointer(),(serial_size_t)innerKey.GetContentSize())))
 				{
 					LogEvent(EventClass::Preset::networkError,"Consensus RSA key: IO fault reading un-encrypted RSA key");
 					return;

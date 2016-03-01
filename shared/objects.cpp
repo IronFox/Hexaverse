@@ -45,10 +45,10 @@ namespace Objects
 				foreach (Grid::cellStack,stack)
 					stack->ClearDbgSensory();
 				foreach (structures,s)
-					if ((*s)->isMine)
+					if ((*s)->isOwnedByMe)
 						Grid::InsertDbgSensor((*s)->location,(*s)->GetScanningRange());
 				foreach (vehicles,s)
-					if ((*s)->isMine)
+					if ((*s)->isOwnedByMe)
 						Grid::InsertDbgSensor((*s)->location,(*s)->GetScanningRange());
 				foreach (Grid::cellStack,stack)
 					stack->CheckDbgSensory();
@@ -95,7 +95,7 @@ namespace Objects
 			{}
 
 
-			BaseCommand::Flags	operator()(int, bool)
+			BaseCommand::Flags	operator()(bool)
 			{
 				return getState() ? BaseCommand::Flags::IsEnabled | BaseCommand::Flags::IsPermaActive : BaseCommand::Flags::IsEnabled;
 			}
@@ -138,6 +138,7 @@ namespace Objects
 				<< PVehicleJob(new VehicleJob::DigDown())
 				<< PVehicleJob(new VehicleJob::Construct())
 				<< PVehicleJob(new VehicleJob::Sequence())
+				<< PVehicleJob(new VehicleJob::SelfDetonate())
 				;
 
 		#endif
@@ -195,36 +196,6 @@ namespace Objects
 				foundation.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
 				foundation.ibo.Create(geo.GetLOD(0).indices);
 			}
-			{
-				Geometry geo;
-				static const int Resolution = 50;
-				static const float r0 = 1,
-									r1 = 2;
-				for (int i = 0; i < Resolution; i++)
-				{
-					float fi = float(i) / float(Resolution);
-					float a = fi * M_PIF * 2.f;
-					float x = cos(a);
-					float y = sin(a);
-
-					geo.MakeVertex(float3(x*r0,y*r0,0.1),float3(0,0,1),float3(1,0,0));
-					geo.MakeVertex(float3(x*r1,y*r1,0.1),float3(0,0,1),float3(1,0,0));
-
-					geo.MakeQuad(i*2,i*2+1,((i+1)%Resolution)*2+1,((i+1)%Resolution)*2);
-
-				}
-				(DX11::BaseInstructionBlock&)userInteractionNotifier = stdVehicleShader;
-				userInteractionNotifier.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
-				userInteractionNotifier.ibo.Create(geo.GetLOD(0).indices);
-
-
-				geo.LoadFromObj("objects/gatheringPoint.obj");
-
-				(DX11::BaseInstructionBlock&)gatheringPoint = stdVehicleShader;
-				gatheringPoint.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
-				gatheringPoint.ibo.Create(geo.GetLOD(0).indices);
-
-			}
 			LogEvent(EventSignificance::Debug,nullptr,"Loading prototype geometry");
 			foreach(satellitePrototypes, p)
 				(*p)->PrototypeLoadGeometry();
@@ -248,12 +219,13 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			foreach (Component::vehicleTurretComponents,tc)
-				(*tc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();});
+				(*tc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();},true);
 			foreach (Component::baseComponents,bc)
-				(*bc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();});
+				(*bc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();},true);
 
-			globalCommands.Append(GlobalCommand(int2(0,0),"End Round", [](int){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
-			[](int, bool controlEnabled)->BaseCommand::Flags
+			globalCommands.baseCoords = BaseCommand::coordOffset;
+			globalCommands.Add(new GlobalCommand("End Round", [](){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
+			[](bool controlEnabled)->BaseCommand::Flags
 			{
 				BaseCommand::Flags rs = BaseCommand::Flags::None;
 				if (CanChangeRoundState())
@@ -264,25 +236,28 @@ namespace Objects
 					if (ShouldSignalRoundEnd())
 						rs |= BaseCommand::Flags::IsFlashing;
 				return rs;
-			}));
+			})) ->SetCoords(int2());
+
+			viewCommands = globalCommands.AddChild("View");
+			viewCommands->SetCoords(int2(1,0));
 
 
-			globalCommands.Append(GlobalCommand(int2(1,2),"Clip Terrain", &GlobalCmd::ToggleSeeThrough
+			viewCommands->Add( new GlobalCommand("Clip Terrain", &GlobalCmd::ToggleSeeThrough
 					,GlobalPermaSwitch(Grid::SeeThrough::IsEnabled)
 				));
-			globalCommands.Append(GlobalCommand(int2(2,2),"Clip-View Down", &GlobalCmd::SeeThroughDown
-					,[](int,bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive(0) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
+			viewCommands->Add( new GlobalCommand("Clip-View Down", &GlobalCmd::SeeThroughDown
+					,[](bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
 				));
-			globalCommands.Append(GlobalCommand(int2(3,2),"Clip-View Up", &GlobalCmd::SeeThroughUp
-					,[](int,bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive(0) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
+			viewCommands->Add( new GlobalCommand("Clip-View Up", &GlobalCmd::SeeThroughUp
+					,[](bool)->BaseCommand::Flags{return GlobalCmd::SeeThroughIsActive() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
 				));
 
-			globalCommands.Append(GlobalCommand(int2(2,0),"Hide Objects", &GlobalCmd::ToggleObjectView
+			viewCommands->Add( new GlobalCommand("Hide Objects", &GlobalCmd::ToggleObjectView
 					,GlobalPermaSwitch([](){return !objectView;})
 				));
 
 
-			globalCommands.Append(GlobalCommand(int2(0,1),"Show Resources", [](int)
+			viewCommands->Add( new GlobalCommand("Show Resources", []()
 					{
 						resourceView = !resourceView;
 						for (int j = 0; j < BaseGrid::NumFamilies; j++)
@@ -292,13 +267,13 @@ namespace Objects
 					,GlobalPermaSwitch(resourceView)
 				));
 
-			globalCommands.Append(GlobalCommand(int2(1,1),"Show Ranges", [](int)
+			viewCommands->Add( new GlobalCommand("Show Ranges", []()
 					{
 						showFriendlyRanges = !showFriendlyRanges;
 					}
 					, GlobalPermaSwitch(showFriendlyRanges)
 				));
-			globalCommands.Append(GlobalCommand(int2(2,1),"Show Hostile Ranges", [](int)
+			viewCommands->Add( new GlobalCommand("Show Hostile Ranges", []()
 					{
 						showHostileRanges = !showHostileRanges;
 					}
@@ -345,8 +320,10 @@ namespace Objects
 	{
 		#ifdef HAS_WINDOW
 			Renderer::Destroy();
-			skyLinks.Clear();
 		//	hexGrid.Clear();
+		#endif
+		#ifdef CLIENT
+			skyLinks.Clear();
 		#endif
 		structures.Clear();
 		structurePrototypes.Clear();
@@ -792,17 +769,18 @@ namespace Objects
 		vehicleGrid.Fill(PVehicle());
 		structureGrid.Fill(PStructure());
 		#ifdef CLIENT
-			#ifdef HAS_WINDOW
-				skyLinks.Clear();
-			#endif
+			skyLinks.Clear();
 			Marker::FlushAll();
 			#ifndef NO_HIBERNATION
 				uplinkTraffic = 0;
 				onlineUplinkTraffic = 0;
 			#endif
 			#ifdef HAS_WINDOW
+				Renderer::animatedTurrets.Clear();
+				Renderer::attackers.Clear();
+
 				Deselect(false);
-				resourceView = false;
+				resourceView = true;
 				objectView = true;
 				hasArrowCellTarget = false;
 				showArrow = false;
