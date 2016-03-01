@@ -138,6 +138,7 @@ namespace Objects
 				<< PVehicleJob(new VehicleJob::DigDown())
 				<< PVehicleJob(new VehicleJob::Construct())
 				<< PVehicleJob(new VehicleJob::Sequence())
+				<< PVehicleJob(new VehicleJob::SelfDetonate())
 				;
 
 		#endif

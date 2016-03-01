@@ -1350,7 +1350,7 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
-				#ifndef ONE_COMPOUND_PER_FACTION
+				#if !defined ONE_COMPOUND_PER_FACTION && !defined WIRELESS_VEHICLES
 					component.commands.Add( new IconCommand("Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					component.commands.Add( new IconCommand("Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
@@ -1391,7 +1391,7 @@ namespace Objects
 			#else
 				component.ammoNeedPerShot = 20000;
 			#endif
-			#ifndef ONE_COMPOUND_PER_FACTION
+			#if !defined ONE_COMPOUND_PER_FACTION && !defined WIRELESS_VEHICLES
 				component.baseStorageCapacity.level[Resource::Uranium] = component.ammoNeedPerShot;
 				component.baseStorageCapacity.level[Resource::Fuel] = 500;
 			#endif
@@ -1929,7 +1929,7 @@ namespace Objects
 				PVehicle vehicle = To<Vehicle>::DynamicCast(selectedMobileEntity);
 				if (!vehicle)
 					return;
-				if (vehicle->location.height < -Grid::CellStack::HalfRange+2)
+				if (vehicle->location.height < Grid::CellStack::BottomHeight+1)
 					return;
 				SignalNewJob(vehicle, ConstName::Job_DigDown, ConstName::Empty);
 			}

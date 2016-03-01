@@ -1134,9 +1134,9 @@ namespace Receiver
 			break;
 			case ConstName::Job_Construct:
 			{
-				if (v->GetLastPointOfOrigin().height <= -Grid::CellStack::HalfRange)
+				if (v->GetLastPointOfOrigin().height < Grid::CellStack::BottomHeight)
 				{
-					LogEvent(EventClass::Preset::commandRejected,peer,e,"Cannot build on bottom layer");
+					LogEvent(EventClass::Preset::commandRejected,peer,e,"Cannot build below bottom layer");	//would be weird, but okay
 					return;
 				}
 

@@ -2876,7 +2876,8 @@ namespace Objects
 			label.MarkBriefEnd();
 			label.WrapAppendText("Enabled mines extract any natural resources available in the planet-core beneath their location. They are essential in supplying other structures in the network."
 			" Mines should be build only on known occurrences of natural resources."
-			" They cannot be constructed atop each other, since they require a working link to the core in order to operate. Mines constructed on a height level of -8 or lower are twice as effective."
+			" They cannot be constructed atop each other, since they require a working link to the core in order to operate."
+			//" Mines constructed on a height level of -8 or lower are twice as effective."
 			" Mines, like many structures, require "+String(ResourceTag(Resource::Energy))+" from generators to operate."
 			);
 		}

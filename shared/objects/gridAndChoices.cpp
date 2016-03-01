@@ -1327,7 +1327,10 @@ namespace Objects
 				v->owner->RegisterStoredMobileLoss(v);
 			}
 			v->owner->RegisterActiveMobileGain(v);
+			float signalTime = atTime;
 		#endif
+
+		atTime += timeEpsilon;
 		InsertConstructedEntity(v,atTime,setHealthToFull);
 		if (v->IsVehicle())
 		{
@@ -1353,7 +1356,7 @@ namespace Objects
 				FATAL__("Cannot insert. Unexpected mobile: "+v->GetName());
 
 		#ifndef CLIENT
-			SignalNewMobileEntity(v,restored,atTime);
+			SignalNewMobileEntity(v,restored,signalTime);
 		#endif
 	}
 
@@ -3136,7 +3139,7 @@ namespace Objects
 						case CursorMode::RestockMode:
 						{
 							PStructure target = GetStructure(c-1);
-							PVehicle vTarget = GetVehicle(c-1);
+							PMobileEntity vTarget = GetMobileEntity(c-1);
 							if ((target && target->owner == e->owner) || (vTarget && vTarget->owner == e->owner))
 							{
 								c--;

@@ -655,17 +655,6 @@ namespace Reflection
 			VAR(simulateLiquids,World::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::GameInvariant)
 
-			state.EnterNewFolder("Resources")->attachment.reset(new Variable::PersistenceAttachment());
-				for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
-				{
-					Objects::Resource res = Objects::Resource::Reinterpret(i);
-					state.EnterNewFolder(res.ToString())->attachment.reset(new Variable::PersistenceAttachment());
-						Variable::Set("density",Grid::Resource::density[i],0.f,1.f,Variable::Persistence::GameInvariant);
-						//Variable::Set("probability",Grid::Resource::probability[i],0.f,1.f,Variable::Persistence::GameInvariant);
-						Variable::Set("max",Grid::Resource::maximum[i],(Grid::Resource::coverage_t)1,(Grid::Resource::coverage_t)32,Variable::Persistence::GameInvariant);
-					state.ExitFolder();
-				}
-			state.ExitFolder();
 
 			state.EnterNewFolder("Planet")->attachment.reset(new Variable::PersistenceAttachment());
 				Variable::planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::GameInvariant);
@@ -694,6 +683,17 @@ namespace Reflection
 					MapConfig(Grid::currentPlanetConfig.extendedCore,state.GetFocus()->CreateOrGetChild("ExtendedCore"));
 					MapConfig(Grid::currentPlanetConfig.mountains,mountains);
 
+					state.EnterNewFolder("Resources")->attachment.reset(new Variable::PersistenceAttachment());
+						for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+						{
+							Objects::Resource res = Objects::Resource::Reinterpret(i);
+							state.EnterNewFolder(res.ToString())->attachment.reset(new Variable::PersistenceAttachment());
+								Variable::Set("density",Grid::Resource::density[i],0.f,1.f,Variable::Persistence::GameInvariant);
+								//Variable::Set("probability",Grid::Resource::probability[i],0.f,1.f,Variable::Persistence::GameInvariant);
+								Variable::Set("max",Grid::Resource::maximum[i],(Grid::Resource::coverage_t)1,(Grid::Resource::coverage_t)32,Variable::Persistence::GameInvariant);
+							state.ExitFolder();
+						}
+					state.ExitFolder();
 				}
 				state.ExitFolder();
 			state.ExitFolder();

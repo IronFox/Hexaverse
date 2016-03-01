@@ -1365,19 +1365,19 @@ namespace Objects
 
 	namespace Renderer
 	{
-		void RenderAttackRangeOf(const PWorldEntity&e, const float4&color, bool extendedShadow)
+		void RenderAttackRangeOf(const PWorldEntity&e, const float4&color, bool extendedShadow, bool includeEMPIfOwnedByMe)
 		{
 			float zOffset;
 			PTurretBase base = e->GetTurretBase(zOffset);		
-			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage))
+			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage || includeEMPIfOwnedByMe))
 				RenderRange(e->location,zOffset,base,color,extendedShadow);
 		}
 
-		void RenderAttackRangeOf(const PWorldEntity&e, const Grid::LCellIdI&at,const float4&color, bool extendedShadow)
+		void RenderAttackRangeOf(const PWorldEntity&e, const Grid::LCellIdI&at,const float4&color, bool extendedShadow, bool includeEMPIfOwnedByMe)
 		{
 			float zOffset;
 			PTurretBase base = e->GetTurretBase(zOffset);		
-			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage))
+			if (base && base->turret->CanAttack() && (!e->isOwnedByMe || !base->turret->dealsEMPDamage || includeEMPIfOwnedByMe))
 				RenderRange(at,zOffset,base,color,extendedShadow);
 		}
 	}
@@ -1428,9 +1428,9 @@ namespace Objects
 		}
 		float4 color = extendedShadow ? float4(0,0,0,RangeShadowOpacity) : float4(1,0,0,0.8f);
 		if (selectedEntity)
-			RenderAttackRangeOf(selectedEntity,color,extendedShadow);
+			RenderAttackRangeOf(selectedEntity,color,extendedShadow,true);
 		if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
-			RenderAttackRangeOf(activeStructureToPlace,arrowCellTarget,color,extendedShadow);
+			RenderAttackRangeOf(activeStructureToPlace,arrowCellTarget,color,extendedShadow,true);
 		
 
 		if (showHostileRanges || showFriendlyRanges)
@@ -1442,7 +1442,7 @@ namespace Objects
 					{
 						if ((e->isOwnedByMe && showFriendlyRanges && e->health > 0) || (!e->isOwnedByMe && showHostileRanges))
 						{
-							RenderAttackRangeOf(e,color,extendedShadow);
+							RenderAttackRangeOf(e,color,extendedShadow,false);
 						}
 					}
 				}
