@@ -1469,12 +1469,14 @@ namespace Objects
 	count_t GetWays(	const Grid::WorldData&world,
 							const Vehicle*v,  const Grid::LCellIdI&location, 
 							Grid::LCellIdI*outChoices, const Grid::LCellIdI&destination, 
-							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute)
+							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible)
 	{
 		index_t rs = 0;
 		const auto&n = Grid::low.grid.GetCell(location.stackID).neighborhood;
 
 		int maxWayDown = std::min(location.height + Grid::CellStack::HalfRange, v->GetMaxFallingHeight());
+		if (forceRevertible)
+			maxWayDown = std::min(maxWayDown,v->GetMaxClimbingHeight());
 		for (int j = -maxWayDown; j <= v->GetMaxClimbingHeight(); j++)
 		{
 			//if (!v->CanClimb(j))	//now redundant
@@ -1597,7 +1599,7 @@ namespace Objects
 	{
 		if (v->IsVehicle())
 		{
-			return GetWays(world,(const Vehicle*)v, location, outChoices, destination,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute);
+			return GetWays(world,(const Vehicle*)v, location, outChoices, destination,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute,false);
 		}
 		if (v->IsSatellite())
 		{
@@ -1981,7 +1983,7 @@ namespace Objects
 				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
 			}
-			count_t ways = GetWays(world,vehicle,  cellID, possibilities, to, true, ignoreFriendlyVehiclesOnRoute);
+			count_t ways = GetWays(world,vehicle,  cellID, possibilities, to, true, ignoreFriendlyVehiclesOnRoute,false);
 			ASSERT_LESS_OR_EQUAL__(ways,6*3);
 
 
@@ -2106,7 +2108,7 @@ namespace Objects
 		return false;
 	}
 
-	void ReachabilityMapper::Map(const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange/*=0xFFFFFFFF*/)
+	void ReachabilityMapper::Map(const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange/*=0xFFFFFFFF*/, bool forceRevertible/*=false*/)
 	{
 		const Grid::WorldData&world = 
 		#ifdef CLIENT
@@ -2163,7 +2165,7 @@ namespace Objects
 
 			touched << current;
 
-			count_t ways = GetWays(world,vehicle,  cellID, possibilities, Grid::LCellIdI::Invalid, true, false);
+			count_t ways = GetWays(world,vehicle,  cellID, possibilities, Grid::LCellIdI::Invalid, true, false,forceRevertible);
 			ASSERT_LESS_OR_EQUAL__(ways,6*3);
 
 
