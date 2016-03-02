@@ -1477,33 +1477,31 @@ namespace Objects
 		int maxWayDown = std::min(location.height + Grid::CellStack::HalfRange, v->GetMaxFallingHeight());
 		if (forceRevertible)
 			maxWayDown = std::min(maxWayDown,v->GetMaxClimbingHeight());
-		for (int j = -maxWayDown; j <= v->GetMaxClimbingHeight(); j++)
+		bool canWalk[6] = {true,true,true,true,true,true};
+//		for (int j = -maxWayDown; j <= v->GetMaxClimbingHeight(); j++)
+
+		for (int j = v->GetMaxClimbingHeight(); j >= -maxWayDown; j--)
 		{
-			//if (!v->CanClimb(j))	//now redundant
-				//continue;
+			if (j > 0 && !world.LowCellIsClear(Grid::LCellIdI(location.stackID, location.height+j)))
+				continue;
+			bool anyCanWalk = false;
 			for (int i = 0; i < n.numNeighbors; i++)
 			{
+				if (!canWalk[i])
+					continue;
+				anyCanWalk = true;
 				const Grid::LCellIdI	cell(n.neighborID[i], location.height + j);
 
 				bool okay = cell.height < Grid::CellStack::HalfRange && cell.height >= -Grid::CellStack::HalfRange;
 				if (okay)
 				{
-					if (j < 0)
+					if (!world.LowCellIsClear(cell))
 					{
-						for (int j = cell.height + 1; j <= location.height; j++)
-							if (!world.LowCellIsClear(Grid::LCellIdI(n.neighborID[i], j)))
-							{
-								okay = false;
-								break;
-							}
+						if (j <= 0)
+							canWalk[i] = false;
+						okay = false;
+						continue;
 					}
-					else
-						for (int j = cell.height; j > location.height; j--)
-							if (!world.LowCellIsClear(Grid::LCellIdI(location.stackID, j)))
-							{
-								okay = false;
-								break;
-							}
 				}
 				if (!okay)
 					continue;
@@ -1537,7 +1535,9 @@ namespace Objects
 					(*outChoices++) = cell;
 					rs++;
 				}
-			}	
+			}
+			if (!anyCanWalk)
+				break;
 		}
 		return rs;
 
@@ -2156,7 +2156,7 @@ namespace Objects
 			TReachableNode&tn = buffer[current];
 			if (!tn.nodeCosts)
 			{
-				tn.isBlocked = isBlocked(cellID);
+				tn.isBlocked = isBlocked && isBlocked(cellID);
 				tn.nodeCosts = tn.isBlocked ? 1000000 :
 								GetCellMovementCosts(world,cellID,hindrance,speed);
 			}
@@ -2178,7 +2178,7 @@ namespace Objects
 				TReachableNode&n = buffer[option];
 				if (!n.nodeCosts)
 				{
-					n.isBlocked = isBlocked(possibilities[i]);
+					n.isBlocked = isBlocked && isBlocked(possibilities[i]);
 					n.nodeCosts = n.isBlocked ? 1000000 :
 									GetCellMovementCosts(world,possibilities[i],hindrance,speed);
 				}
