@@ -1,42 +1,35 @@
-hexaverse modulation:
+social concept
 
 
-sovereignity (control set of planets, gain ownership of core planets)
 
-terrain imprints for owned planets:
-	layered modifications (terrain subset that alter the terrain based on other modifications)
-		adaptation logic (translate or reshape alteration based on base)?
-		sequences
-	whole planet, triangular, or corner-based? volumetric equations?
 
-	stackable planet-generator code?
+
+
+
+
+
+
+
+additional vehicle state 'virtual'
+	not part of the physical reality of the planet
+	block each other. avoid byt are not blocked by rw vehicles
+	are blocked by rw buildings and walls
+	can move at increased pace, with special computation phases executed during regular command phase
+	can see each other and everything within the visible world of the access node they connected to
+	are invisible to regular factions
 	
-	special management buildings that must/may be build on home planet to reflect universe expansion?
 	
+additional building type 'access node'
+	broadcasted to nearby systems
+	players can dispatch 'virtual' vehicles into the visible world space of the owning faction
+	function as spawn points for these vehicles
+	large numbers of virtual vehicles require more access nodes
+
 	
-automation arena:
-	define set of planets, each faction given minimal setup, tasked to maximize dominated area
-	observation:
-		read-only clients: observe all, cannot control units.
-		competition clients: sensor-observation, can control units.
-		how to keep separate?
-		delay observation by n rounds?
-		delay until end of match?
-		distributed match recording?
-	control:
-		ai-routines per unit?
-		unit-cooperation/-communication network?
-		git version control on ai-script?
-		script-languages?
-		feed ai back into regular game?
-		terrain-shaping units (e.g. a special terraformer that can only be tasked to build a specific shape)
-		
-	players vs ai-systems in one world?
-		cooperation?
-		
+interactive building types accessible by virtual vehicles
 	
-		
-role separation:
-	ai programming
-	expansion
-	world creation
+
+
+planet leases
+	interactive buildings allow leasing a predefined area within the domain of another faction
+	allows free alteration of that area, including the creation of space for virtual vehicles and interactive structures
