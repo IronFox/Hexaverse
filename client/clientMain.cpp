@@ -2236,6 +2236,14 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 
 
+	void ToggleSeeThrough()
+	{
+		bool enable = !Grid::SeeThrough::IsEnabled();
+		Grid::SeeThrough::Update(enable, Grid::SeeThrough::LocateCamera()-1);
+		if (enable)
+			Tutorial::ShowMessage("Clip Terrain");
+	}
+
 	void ViewDown()
 	{
 		if (Grid::SeeThrough::GetFocusPoint().height > -Grid::CellStack::HalfRange)
@@ -3372,6 +3380,7 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::T,[](){}, QueryAndSendChatMessage);
 			Engine::input.bind(Key::R,ToggleCameraAutoRotation);
 //			Engine::input.bind(Key::R,ToggleResourceView);
+			Engine::input.bind(Key::Ctrl,ToggleSeeThrough);
 
 			Engine::input.bind(Key::H,ToggleControlGUI);
 
