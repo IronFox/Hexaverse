@@ -1466,12 +1466,12 @@ namespace Objects
 
 
 
-	count_t GetWays(	const Grid::WorldData&world,
+	void GetWays(	const Grid::WorldData&world,
 							const Vehicle*v,  const Grid::LCellIdI&location, 
-							Grid::LCellIdI*outChoices, const Grid::LCellIdI&destination, 
+							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible)
 	{
-		count_t rs = 0;
+		outWays.Clear();
 		const auto&n = Grid::low.grid.GetCell(location.stackID).neighborhood;
 
 		int maxWayDown = std::min(location.height + Grid::CellStack::HalfRange, v->GetMaxFallingHeight());
@@ -1483,7 +1483,7 @@ namespace Objects
 		{
 			if (j > 0 && !world.LowCellIsClear(Grid::LCellIdI(location.stackID, location.height+j)))
 			{
-				rs = 0;	//discard any previously found (upper) ways, which are now considered inaccessible. this is only relevant with vehicles that can climb more than 1 height level up
+				outWays.Clear();	//discard any previously found (upper) ways, which are now considered inaccessible. this is only relevant with vehicles that can climb more than 1 height level up
 				continue;
 			}
 
@@ -1535,23 +1535,20 @@ namespace Objects
 					}
 
 					//DBG_ASSERT__(!GetStructure(cell));//should be implied by LowCellIsClear (except if it's a connector, then not, so don't check this)
-					outChoices[rs] = cell;
-					rs++;
+					outWays.Add(cell);
 				}
 			}
 			if (!anyCanWalk)
 				break;
 		}
-		return rs;
-
 	}
 
 
-	count_t GetWays(		const Satellite*v,  UINT32 location, 
-							UINT32*outChoices, UINT32 destination, 
+	void GetWays(		const Satellite*v,  UINT32 location, 
+							TOrbitalWays&outWays, UINT32 destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute)
 	{
-		index_t rs = 0;
+		outWays.Clear();
 		const auto&n = Grid::low.grid.GetCell(location).neighborhood;
 
 		{
@@ -1585,39 +1582,36 @@ namespace Objects
 				}
 
 				//DBG_ASSERT__(!GetStructure(cell));//should be implied by LowCellIsClear (except if it's a connector, then not, so don't check this)
-				(*outChoices++) = cell;
-				rs++;
+				outWays.Add(cell);
 			}	
 		}
-		return rs;
-
 	}
 
 
 	
-	count_t			GetMobileWays(	const Grid::WorldData&world,
+	void			GetMobileWays(	const Grid::WorldData&world,
 							const MobileEntity*v,  const Grid::LCellIdI&location, 
-							Grid::LCellIdI*outChoices, const Grid::LCellIdI&destination, 
+							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute)
 	{
 		if (v->IsVehicle())
 		{
-			return GetWays(world,(const Vehicle*)v, location, outChoices, destination,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute,false);
+			GetWays(world,(const Vehicle*)v, location, outWays, destination,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute,false);
+			return;
 		}
+		outWays.Clear();
 		if (v->IsSatellite())
 		{
-			UINT32	ways[6 * 3];
-			count_t rs = GetWays((const Satellite*)v,location.stackID,ways,destination.stackID,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute);
-			for (index_t i = 0; i < rs; i++)
+			TOrbitalWays ways;
+			GetWays((const Satellite*)v,location.stackID,ways,destination.stackID,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute);
+			for (index_t i = 0; i < ways.numWays; i++)
 			{
-				outChoices[i].stackID = ways[i];
-				outChoices[i].height = location.height;
+				outWays.Add(Grid::LCellIdI(ways.way[i],location.height));
 			}
-			return rs;
+			return;
 		}
 
 		DBG_FATAL__("Unexpected mobile type used to determine ways");
-		return 0;
 	}
 
 
@@ -1912,7 +1906,7 @@ namespace Objects
 	//	Timer::Time t0 = timer.Now();
 		const THindranceVector&hindrance = vehicle->base->hindrance;
 		const int speed = vehicle->GetMovementStepsPerRound();
-		Grid::LCellIdI	possibilities[6 * 3];
+		TWays	possibilities;
 
 		static const count_t cellCount = Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range;
 
@@ -1986,21 +1980,17 @@ namespace Objects
 				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
 			}
-			count_t ways = GetWays(world,vehicle,  cellID, possibilities, to, true, ignoreFriendlyVehiclesOnRoute,false);
-			ASSERT_LESS_OR_EQUAL__(ways,6*3);
+			GetWays(world,vehicle,  cellID, possibilities, to, true, ignoreFriendlyVehiclesOnRoute,false);
 
 
-
-
-
-			for (index_t i = 0; i < ways; i++)
+			for (index_t i = 0; i < possibilities.numWays; i++)
 			{
-				UINT32 option = IDOF(possibilities[i]);
+				UINT32 option = IDOF(possibilities.way[i]);
 				TNode&n = buffer[option];
 				if (!n.nodeCosts)
-					n.nodeCosts = GetCellMovementCosts(world,possibilities[i],hindrance,speed);
+					n.nodeCosts = GetCellMovementCosts(world,possibilities.way[i],hindrance,speed);
 				int cost = std::max(tn.nodeCosts,n.nodeCosts);
-				int hCosts = std::max(0, possibilities[i].height - cellID.height );
+				int hCosts = std::max(0, possibilities.way[i].height - cellID.height );
 				cost += hCosts;
 				if (tn.minDistance + cost < n.minDistance)
 				{
@@ -2023,7 +2013,7 @@ namespace Objects
 		if (outWouldFailDueToLimitReached)
 			(*outWouldFailDueToLimitReached) = false;
 		const int speed = sat->GetMovementStepsPerRound();
-		UINT32	possibilities[6];
+		TOrbitalWays	possibilities;
 
 		static const count_t cellCount = Grid::LowSetup::GridType::CellCount;
 
@@ -2087,16 +2077,11 @@ namespace Objects
 				//LogEvent(EventSignificance::PerformanceMeasurement,nullptr,__func__": Time needed for "+String(iterations)+" iterations: "+String(timer.GetSecondsSince(t0)));
 				return true;
 			}
-			count_t ways = GetWays(sat,  current, possibilities, to, true, ignoreFriendlyVehiclesOnRoute);
-			ASSERT_LESS_OR_EQUAL__(ways,6);
+			GetWays(sat,  current, possibilities, to, true, ignoreFriendlyVehiclesOnRoute);
 
-
-
-
-
-			for (index_t i = 0; i < ways; i++)
+			for (index_t i = 0; i < possibilities.numWays; i++)
 			{
-				UINT32 option = possibilities[i];
+				UINT32 option = possibilities.way[i];
 				TNode&n = buffer[option];
 				if (tn.minDistance + 1 < n.minDistance)
 				{
@@ -2122,7 +2107,7 @@ namespace Objects
 		//Timer::Time t0 = timer.Now();
 		const THindranceVector&hindrance = vehicle->base->hindrance;
 		const int speed = vehicle->GetMovementStepsPerRound();
-		Grid::LCellIdI	possibilities[6 * 3];
+		TWays	possibilities;
 
 		static const count_t cellCount = Grid::LowSetup::GridType::CellCount * Grid::CellStack::Range;
 
@@ -2168,28 +2153,27 @@ namespace Objects
 
 			touched << current;
 
-			count_t ways = GetWays(world,vehicle,  cellID, possibilities, Grid::LCellIdI::Invalid, true, false,forceRevertible);
-			ASSERT_LESS_OR_EQUAL__(ways,6*3);
+			GetWays(world,vehicle,  cellID, possibilities, Grid::LCellIdI::Invalid, true, false,forceRevertible);
 
 
 
 
 
-			for (index_t i = 0; i < ways; i++)
+			for (index_t i = 0; i < possibilities.numWays; i++)
 			{
-				UINT32 option = IDOF(possibilities[i]);
+				UINT32 option = IDOF(possibilities.way[i]);
 				TReachableNode&n = buffer[option];
 				if (!n.nodeCosts)
 				{
-					n.isBlocked = isBlocked && isBlocked(possibilities[i]);
+					n.isBlocked = isBlocked && isBlocked(possibilities.way[i]);
 					n.nodeCosts = n.isBlocked ? 1000000 :
-									GetCellMovementCosts(world,possibilities[i],hindrance,speed);
+									GetCellMovementCosts(world,possibilities.way[i],hindrance,speed);
 				}
 				if (n.isBlocked)
 					continue;
 
 				int cost = std::max(tn.nodeCosts,n.nodeCosts);
-				int hCosts = std::max(0, possibilities[i].height - cellID.height );
+				int hCosts = std::max(0, possibilities.way[i].height - cellID.height );
 				cost += hCosts;
 				if (tn.minDistance + cost < n.minDistance)
 				{

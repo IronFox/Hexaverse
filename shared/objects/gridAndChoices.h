@@ -110,16 +110,44 @@ namespace Objects
 	*/
 	void			GetProductionChoices(const WorldEntity*producer,Component::VehicleBase*production,
 							BasicBuffer<Grid::LCellIdI>&choices);
-	count_t			GetWays(const Grid::WorldData&world,
+
+
+	template <typename T, count_t MaxLevels>
+		struct TWaysTemplate
+		{
+			static const count_t	MaxWays = 6 * MaxLevels;
+
+			T						way[MaxWays];
+			count_t					numWays = 0;
+
+			void					Clear()	{numWays = 0;}
+			void					Add(const T&way)
+			{
+				DBG_ASSERT_LESS__(numWays,MaxWays);
+				this->way[numWays] = way;
+				numWays++;
+			}
+		};
+
+	/*
+	Currently there is no way that, given a specific location, a vehicle can move to two locations above each other in one step.
+	So MaxLevels can stay at 1 for TWays, but must be increased to the max number of levels any vehicle can climb up, should that
+	be ever more than 1.
+	*/
+	typedef TWaysTemplate<Grid::LCellIdI,1>	TWays;	//TWays MaxLevels must always be >= 1
+	typedef TWaysTemplate<UINT32,1>			TOrbitalWays;	//TOrbitalWays MaxLevels must always be == 1
+
+
+	void			GetWays(const Grid::WorldData&world,
 							const Vehicle*v,  const Grid::LCellIdI&location, 
-							Grid::LCellIdI*outChoices, const Grid::LCellIdI&destination, 
+							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible);
-	count_t			GetWays(const Satellite*v,  UINT32 location, 
-							UINT32*outChoices, UINT32 destination, 
+	void			GetWays(const Satellite*v,  UINT32 location, 
+							TOrbitalWays&outWays, UINT32 destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
-	count_t			GetMobileWays(	const Grid::WorldData&world,
+	void			GetMobileWays(	const Grid::WorldData&world,
 							const MobileEntity*v,  const Grid::LCellIdI&location, 
-							Grid::LCellIdI*outChoices, const Grid::LCellIdI&destination, 
+							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
 
 	bool			NoVehicleHere(const Grid::LCellIdI&cellID);
