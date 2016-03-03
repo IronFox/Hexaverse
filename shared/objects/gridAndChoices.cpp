@@ -1471,19 +1471,22 @@ namespace Objects
 							Grid::LCellIdI*outChoices, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible)
 	{
-		index_t rs = 0;
+		count_t rs = 0;
 		const auto&n = Grid::low.grid.GetCell(location.stackID).neighborhood;
 
 		int maxWayDown = std::min(location.height + Grid::CellStack::HalfRange, v->GetMaxFallingHeight());
 		if (forceRevertible)
 			maxWayDown = std::min(maxWayDown,v->GetMaxClimbingHeight());
 		bool canWalk[6] = {true,true,true,true,true,true};
-//		for (int j = -maxWayDown; j <= v->GetMaxClimbingHeight(); j++)
 
 		for (int j = v->GetMaxClimbingHeight(); j >= -maxWayDown; j--)
 		{
 			if (j > 0 && !world.LowCellIsClear(Grid::LCellIdI(location.stackID, location.height+j)))
+			{
+				rs = 0;	//discard any previously found (upper) ways, which are now considered inaccessible. this is only relevant with vehicles that can climb more than 1 height level up
 				continue;
+			}
+
 			bool anyCanWalk = false;
 			for (int i = 0; i < n.numNeighbors; i++)
 			{
@@ -1532,7 +1535,7 @@ namespace Objects
 					}
 
 					//DBG_ASSERT__(!GetStructure(cell));//should be implied by LowCellIsClear (except if it's a connector, then not, so don't check this)
-					(*outChoices++) = cell;
+					outChoices[rs] = cell;
 					rs++;
 				}
 			}
