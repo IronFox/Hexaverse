@@ -115,7 +115,7 @@ namespace Objects
 	count_t			GetWays(const Grid::WorldData&world,
 							const Vehicle*v,  const Grid::LCellIdI&location, 
 							Grid::LCellIdI*outChoices, const Grid::LCellIdI&destination, 
-							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
+							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible);
 	count_t			GetWays(const Satellite*v,  UINT32 location, 
 							UINT32*outChoices, UINT32 destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
@@ -253,8 +253,10 @@ namespace Objects
 		@brief Maps all server-reachable cells of the given vehicle from the specified location
 		@param vehicle Vehicle to use for reference. Must not be NULL
 		@param from Specifies the starting location
+		@param isBlocked Function callback to determine whether units can move to a given cell. Can be empty, considering all cells non-blocked
+		@param forceRevertible Forces that only steps are considered that are possible in both directions
 		*/
-		void			Map(const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange=0xFFFFFFFF);
+		void			Map(const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange=0xFFFFFFFF, bool forceRevertible=false);
 
 
 

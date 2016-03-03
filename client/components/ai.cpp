@@ -420,12 +420,14 @@ namespace AI
 
 		Objects::Component::VehicleBase::canStandOnUnknown = false;
 
-		mapper.Map(v.get(), v->location, BlockTest, referenceSpeed);
+		mapper.Map(v.get(), v->location, BlockTest, referenceSpeed,true);
 		if (mapper.result.IsEmpty())
 		{
 			//no chance to get out of danger
 			EstimateThreatFromAll(v->system.w.xyz, false,currentCanIgnoreThreat,currentThreat);
-			mapper.Map(v.get(), v->location, BlockTest, referenceSpeed);
+			mapper.Map(v.get(), v->location, BlockTest, referenceSpeed,true);
+			if (mapper.result.IsEmpty())
+				mapper.Map(v.get(), v->location, BlockTest, referenceSpeed,false);
 		}
 
 		Objects::Component::VehicleBase::canStandOnUnknown = true;
