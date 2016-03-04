@@ -3182,7 +3182,7 @@ namespace Grid
 	//	}
 	//}
 
-	/*static*/ Resource::coverage_t		Resource::GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max)
+	/*static*/ Resource::coverage_t		Resource::GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max, float scale)
 	{
 		#ifdef GRID_INDEPENDENT_RANDOM
 			static Random random;
@@ -3194,33 +3194,41 @@ namespace Grid
 		#else
 		//	{0.08,0.08,0,0,0.008 } ;
 
+			static const int reduce = 5;
 
-			float t0 = fabs(noise.Get(direction + seed,8.f));	//wide areas
-			float t1 = fabs(noise.Get(direction + seed,M_PIF*5.f));	//small areas
-			float t2 = fabs(noise.Get(direction + seed+3.f,9.f));	//cutout
+			//float t0 = fabs(noise.Get(direction + seed,8.f));	//wide areas
+			float t1 = (noise.Get(direction + seed,M_PIF*2.5f));	//small areas
 
-			float common = std::min(1.f,(p/0.06f));
-			t0 = std::min(1.f,t0*(t0*1.9f)*common);
-			t1 = std::min(1.f,t1*(t1*1.9f)*(1.1f-0.2f * common));
-
-
-			float t = std::max(t0,t1);
-
-			t *= smoothstep(0.2f,0.3f,t2);
-
-
-			//float t = t0 * (0.3f + 0.7f * t1);
-//			float q = 0.26f-sqrt(p) * 0.5f;
-			float q = 0.9f-sqrt(p) * 1.5f;
-			p = 0.30f;// + 0.1f * t0;
-
-			float h = 0.15f + (1.f - t0)*0.85f;
-			//p = 0.75f;
-			//float q = 1.f - p;
-			coverage_t rs (Round(/*sqr*/(/*sqr*/(/*sqr*/(clamp((t-q)/p *h,0,1)))) * (max-1)));
-			if (rs)
-				rs++;
+			int rs = std::min(1.f,scale * t1) * (reduce + max);
+			rs -= reduce;
+			if (rs < 3)
+				rs = 0;
 			return rs;
+//
+//			float t2 = fabs(noise.Get(direction + seed+3.f,9.f));	//cutout
+//
+//			float common = std::min(1.f,(p/0.06f));
+//			t0 = std::min(1.f,t0*(t0*1.9f)*common);
+//			t1 = std::min(1.f,t1*(t1*1.9f)*(1.1f-0.2f * common));
+//
+//
+//			float t = std::max(t0,t1);
+//
+//			t *= smoothstep(0.2f,0.3f,t2);
+//
+//
+//			//float t = t0 * (0.3f + 0.7f * t1);
+////			float q = 0.26f-sqrt(p) * 0.5f;
+//			float q = 0.9f-sqrt(p) * 1.5f;
+//			p = 0.30f;// + 0.1f * t0;
+//
+//			float h = 0.15f + (1.f - t0)*0.85f;
+//			//p = 0.75f;
+//			//float q = 1.f - p;
+//			coverage_t rs (Round(/*sqr*/(/*sqr*/(/*sqr*/(clamp((t-q)/p *h,0,1)))) * (max-1)));
+//			if (rs)
+//				rs++;
+//			return rs;
 		#endif
 	}
 
@@ -3244,7 +3252,7 @@ namespace Grid
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 		{
 			#ifndef CLIENT
-				coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p0,max);
+				coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p0,max,1.f);
 			#else
 				coverage[i] = 0;
 				known[i] = false;
@@ -3271,7 +3279,7 @@ namespace Grid
 //			float avgPerCell = float(total) / float(LowSetup::GridType::CellCount);
 			for (int k = 0; k < BaseGrid::NumFamilies; k++)
 			{
-				float p = p0;
+				float p = 1.f;
 				LogEvent(EventSignificance::Debug,nullptr,"Processing family "+String(k));
 				const count_t count = Grid::low.grid.CountFamilyMembers(k);
 				const index_t offset = Grid::low.grid.GetFamilyOffset(k);
@@ -3285,7 +3293,7 @@ namespace Grid
 						float magnitude = log(factor);
 						factor = pow(4.f,float(sign(factor-1.f))/(retries*2 + 1));
 						p *= factor;
-						p = clamp(p,0.0001f,0.999f);
+						p = clamp(p,0.0001f,10000.f);
 						LogEvent(EventSignificance::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
 									+"), p adjusted by "+String(factor)+" to "+String(p)+". Randomizing...");
 					}
@@ -3300,11 +3308,10 @@ namespace Grid
 //					factor = 1.f + clamp(magnitude,-0.5f,2.f);
 					//clamp((factor-1.f)*0.4f + 1.f,0.25f,4.f);
 	//				p *= factor;
-					float3 seed = float3(random.getFloat(-10.f,10.f),random.getFloat(-10.f,10.f),random.getFloat(-10.f,10.f));
 					familyTotal[k] = 0;
 					for (index_t i = offset; i < offset + count; i++)
 					{
-						coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p,max);
+						coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p0,max, p);
 						familyTotal[k]+=coverage[i];
 					}
 					if (++retries > 10)
@@ -3331,22 +3338,6 @@ namespace Grid
 		rc.resourceIndex = resIndex;
 	}
 
-	/*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 stackID))
-	{
-		// low.cells[i].centerVertex.xyz,
-		Resource&rc = Resource::all.Append();
-		rc.Name(name,cname,color);
-		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
-		{
-			#ifndef CLIENT
-				rc.coverage[i] = func((UINT32)i);
-			#else
-				rc.coverage[i] = 0;
-				rc.known[i] = false;
-			#endif
-
-		}
-	}
 
 
 	#ifdef HAS_WINDOW

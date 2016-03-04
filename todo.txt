@@ -1,6 +1,5 @@
 ﻿
 hostile ghosts die after one round
-cluster natural resources
 
 auto relocation fails if some other non-move task immediately follows (e.g. transfer resources)
 potentially undo last (movement) task if build job is rejected
@@ -120,6 +119,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+cluster natural resources
 emp independent of goal
 reduce hoverbase safe falling height
 surveyors move along revertable paths only
