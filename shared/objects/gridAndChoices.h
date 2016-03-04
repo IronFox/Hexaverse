@@ -133,6 +133,7 @@ namespace Objects
 	Currently there is no way that, given a specific location, a vehicle can move to two locations above each other in one step.
 	So MaxLevels can stay at 1 for TWays, but must be increased to the max number of levels any vehicle can climb up, should that
 	be ever more than 1.
+	It must also be increased if vehicle types can ever float freely.
 	*/
 	typedef TWaysTemplate<Grid::LCellIdI,1>	TWays;	//TWays MaxLevels must always be >= 1
 	typedef TWaysTemplate<UINT32,1>			TOrbitalWays;	//TOrbitalWays MaxLevels must always be == 1

@@ -1562,7 +1562,7 @@ namespace Objects
 			component.productionCosts = 40;
 			component.requirements = VehicleBase::Requirement::AnyBlock;
 			component.moveOnWater = true;
-			component.minClimbDown = -int(Grid::CellStack::Range);
+			component.minClimbDown = -5;	//-int(Grid::CellStack::Range);
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.storageMultiplier = 1;
 			#endif
@@ -1606,7 +1606,6 @@ namespace Objects
 			component.requirements = VehicleBase::Requirement::AnyBlock;	//none is broken...
 			component.moveOnWater = false;
 			component.minClimbDown = -2;
-			//component.minClimbDown = -int(Grid::CellStack::Range);
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.storageMultiplier = 2;
 			#endif
@@ -1656,7 +1655,6 @@ namespace Objects
 			component.requirements = VehicleBase::Requirement::Water;	//none is broken...
 			component.moveOnWater = true;
 			component.minClimbDown = -2;
-			//component.minClimbDown = -int(Grid::CellStack::Range);
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.storageMultiplier = 2;
 			#endif
@@ -1824,7 +1822,6 @@ namespace Objects
 				Base::DescribeType(outResult,compound);
 				outResult << " Can climb "+String(maxClimbUp)+" height level(s) up";
 			
-				//if ( minClimbDown > -int(Grid::CellStack::Range))
 				outResult << " Can safely fall down "+String(-minClimbDown)+" height level(s)";
 				#ifndef ONE_COMPOUND_PER_FACTION
 					if (storageMultiplier != 1)
