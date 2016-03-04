@@ -2049,11 +2049,12 @@ namespace Protocol
 			BasesRequired = 0x2,
 			StartBases = 0x4,
 			NexusAI = 0x8,
+			EMPZones = 0x10,
 
-			SupportSpectatorFactions = 0x10,
-			SupportRegularFactions = 0x20,
-			SupportTechniteFactions = 0x40,
-			SupportHybridFactions = 0x80,
+			SupportSpectatorFactions = 0x100,
+			SupportRegularFactions = 0x200,
+			SupportTechniteFactions = 0x400,
+			SupportHybridFactions = 0x800,
 
 		};
 

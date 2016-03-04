@@ -114,7 +114,7 @@ namespace Game
 
 		inline count_t	GetTargetNexusCount()
 		{
-			return RuntimeConfig::gameGoal == Goal::EMPConquerNexus 
+			return RuntimeConfig::empZones
 						? std::min<count_t>(std::max<count_t>(2,CountAccessibleZones()),3) 
 						: 2;	//should be 2 here, because in normal ConquerNexus mode, only nexus bases are spawned, whereas in EMP ConsquerNexus mode ports are spawned on all of the 12 poles
 		}

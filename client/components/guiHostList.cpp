@@ -84,15 +84,14 @@ void	SaveHosts()
 			case RuntimeConfig::GameGoal::ConquerNexus:
 				result="Conquer Nexus";
 			break;
-			case RuntimeConfig::GameGoal::EMPConquerNexus:
-				result="Conquer Nexus, EMP-Zones";
-			break;
 			case RuntimeConfig::GameGoal::None:
 				result="No Goal";
 			break;
 		}
 		if (info.gameInfo.gameFlags & Protocol::GameFlag::ClosedGame)
 			result += ", Closed Game";
+		if (info.gameInfo.gameFlags & Protocol::GameFlag::EMPZones)
+			result += ", EMP Zones";
 		if (info.gameInfo.gameFlags & Protocol::GameFlag::BasesRequired)
 			result += ", Require Bases";
 		if (info.gameInfo.gameFlags & Protocol::GameFlag::StartBases)

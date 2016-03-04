@@ -1825,7 +1825,7 @@ bool loop()
 						textout << "Access ID: " << Network::activeTokenString<<nl;
 					#endif
 					textout << "Phase: "<<RuntimeConfig::phase.ToString()<<nl;
-					textout << "Round Number: "<<RuntimeConfig::roundNumber<<nl;
+					textout << "Round Number: "<<RuntimeConfig::roundNumber<<", "<<RuntimeConfig::techniteSubRoundNumber<<nl;
 					if (!Network::gameProgress.gameOver)
 					{
 						if (Network::gameProgress.status.IsNotEmpty())

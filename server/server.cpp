@@ -334,7 +334,7 @@ void	SignalNexusControlChange(const Objects::PFaction&f)
 {
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		return;
-	if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus || RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::EMPConquerNexus)
+	if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
 	{
 		if (f->nexusControl >= Game::Config::GetTargetNexusCount())
 		{
@@ -1561,15 +1561,12 @@ int main( int argc, const char* argv[])
 			LogConfig(" -Liquids: Static.");
 		switch (RuntimeConfig::gameGoal)
 		{
-			case RuntimeConfig::GameGoal::EMPConquerNexus:
-				LogConfig(" -Goal: Connect and enable 2+ Nexus Ports. Watch out for EMP fields.");
-			break;
 			case RuntimeConfig::GameGoal::None:
 				LogConfig(" -Goal: None.");
 			break;
 			case RuntimeConfig::GameGoal::ConquerNexus:
 				static_assert(BaseGrid::IsolatedCornerCount==3,"Unexpected count");
-				LogConfig(" -Goal: Connect and enable 2 of 3 Nexus Ports.");
+				LogConfig(" -Goal: Connect and enable 2+ Nexus Ports.");
 			break;
 		}
 		if (Game::Config::closedGame)
@@ -1617,6 +1614,10 @@ int main( int argc, const char* argv[])
 			LogConfig(" -Expose Vehicle Initiative: Vehicle initiative is exposed to hostile factions.");
 		else
 			LogConfig(" -Private Vehicle Action: Vehicle movement is not exposed to hostile factions.");
+		if (RuntimeConfig::empZones)
+			LogConfig(" -EMP Zones: Vehicles enterting residual EMP fields will suffer extensive EMP damage.");
+		else
+			LogConfig(" -No EMP Zones: The entire planet is freely accessible.");
 
 		if (FileIO::Config::saveEveryNRounds > 0)
 			LogConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");

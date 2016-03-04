@@ -580,17 +580,17 @@ namespace Objects
 						const Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 
 						Buffer0<PathNode> path;
-						Grid::LCellIdI	possibilities[6 * 3];
+						TWays	possibilities;
 						if (detailedPath)
 						{
 							Grid::LCellIdI prev = pointOfOrigin;
 							for (const auto&dest : waypoints)
 							{
-								count_t numWays = Objects::GetWays(owner->currentState,this,prev,possibilities,dest,true,true,false);
+								Objects::GetWays(owner->currentState,this,prev,possibilities,dest,true,true,false);
 								bool found = false;
-								for (index_t j = 0; j < numWays; j++)
+								for (index_t j = 0; j < possibilities.numWays; j++)
 								{
-									if (possibilities[j] == dest)
+									if (possibilities.way[j] == dest)
 									{
 										found = true;
 										break;
