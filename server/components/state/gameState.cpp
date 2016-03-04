@@ -117,6 +117,8 @@ namespace Game
 			info.gameFlags = 0;
 			if (Config::closedGame)
 				info.gameFlags |= Protocol::GameFlag::ClosedGame;
+			if (RuntimeConfig::empZones)
+				info.gameFlags |= Protocol::GameFlag::EMPZones;
 			if (Config::basesRequired)
 				info.gameFlags |= Protocol::GameFlag::BasesRequired;
 			if (Config::startBases)

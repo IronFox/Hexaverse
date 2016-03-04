@@ -1288,7 +1288,7 @@ namespace Journal
 		bool ai = Game::Config::Nexus::enableAI;
 		Game::Config::Nexus::enableAI = false;
 
-		if (RuntimeConfig::gameGoal == Game::Config::Goal::EMPConquerNexus)
+		if (RuntimeConfig::empZones)
 		{
 			count_t numZones = Game::Config::CountAccessibleZones();
 

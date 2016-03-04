@@ -18,6 +18,7 @@ namespace RuntimeConfig
 	#endif
 
 	DoomsdayWeapons doomsdayWeapons;
+	bool empZones = true;
 	GameGoal gameGoal;
 
 	bool hibernationSystemEnabled = false;

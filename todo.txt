@@ -1,5 +1,4 @@
 ﻿
-emp independent of goal
 hostile ghosts die after one round
 cluster natural resources
 
@@ -121,6 +120,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+emp independent of goal
 reduce hoverbase safe falling height
 surveyors move along revertable paths only
 button to hide paths of non-selected entity

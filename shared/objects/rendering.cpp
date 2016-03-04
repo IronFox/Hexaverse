@@ -1910,23 +1910,6 @@ namespace Objects
 
 		switch (RuntimeConfig::gameGoal)
 		{
-			case RuntimeConfig::GameGoal::EMPConquerNexus:
-				for (int i = 0; i < 12; i++)
-				{
-					if (nexusSet[i])
-						continue;
-					TVec3<> color;
-					if (BaseGrid::IsIsolatedCorner(i))
-					{
-						color= float3(1.0,0.6,0.5);
-					}
-					else
-						color= float3(0.5,0.6,1.0);
-					SetBeamColor(float4(color,0.75),
-								float4(color,0.75));
-					RenderPoleBeam(i,0.2f);
-				}
-			break;
 			case RuntimeConfig::GameGoal::ConquerNexus:
 				for (int i = 0; i < 12; i++)
 				{
@@ -1938,7 +1921,10 @@ namespace Objects
 						color= float3(1.0,0.6,0.5);
 					}
 					else
-						continue;
+						if (RuntimeConfig::empZones)
+							color= float3(0.5,0.6,1.0);
+						else
+							continue;
 					SetBeamColor(float4(color,0.75),
 								float4(color,0.75));
 					RenderPoleBeam(i,0.2f);

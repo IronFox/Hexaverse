@@ -1928,9 +1928,10 @@ namespace Protocol
 			BasesRequired = 0x2,
 			StartBases = 0x4,
 			NexusAI = 0x8,
+			EMPZones = 0x10,
 
-			SupportSpectatorFactions = 0x10,
-			SupportRegularFactions = 0x20,
+			SupportSpectatorFactions = 0x100,
+			SupportRegularFactions = 0x200,
 
 
 		};

@@ -1108,6 +1108,7 @@ namespace FileIO
 								GetOptionalPOD(list,RID::mostFactionsAlive,Game::mostFactionsAlive,(UINT32)0);
 
 								Game::Config::Nexus::enableAI = list->FindFirst(RID::nexusAI) != nullptr;
+								RuntimeConfig::empZones = false;
 
 								if (globalVersionOfCurrentFile < FileVersions::FirstVersionWithVariables)
 								{
@@ -1115,7 +1116,19 @@ namespace FileIO
 									GetOptionalPOD(list,RID::nexusBases,Game::Config::Nexus::haveBases,false);
 									UINT16 goal;
 									GetPOD(list,RID::goal,goal);
-									RuntimeConfig::gameGoal = Game::Config::Goal::Reinterpret(goal);
+									if (!RuntimeConfig::gameGoal.Load(goal))
+									{
+										if (goal == 2)
+										{
+											RuntimeConfig::empZones = true;
+											RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::ConquerNexus;
+										}
+										else
+										{
+											LogEvent(EventSignificance::NonFatalError,"Loaded unexpected goal index "+String(goal));
+											RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::None;
+										}
+									}
 									GetPOD(list,RID::startBases,Game::Config::startBases);
 									GetPOD(list,RID::basesRequired,Game::Config::basesRequired );
 									GetOptionalPOD(list,RID::newVehiclesHaveFullAmmo,Objects::newVehiclesHaveFullAmmo,true);
@@ -1154,6 +1167,11 @@ namespace FileIO
 											if (!v->Set(value))
 											{
 												LogEvent(EventClass::Preset::error,"State::Load(): Unable to update variable '"+key+"' to '"+value+"'. Supported values are "+v->GetSupportedValues());
+												if (v->name == "gameGoal" && value == "EMPConquerNexus")
+												{
+													RuntimeConfig::empZones = true;
+													RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::ConquerNexus;
+												}
 											}
 										}
 									}
@@ -1380,7 +1398,7 @@ namespace FileIO
 
 
 
-		if (RuntimeConfig::gameGoal == Game::Config::Goal::EMPConquerNexus)
+		if (RuntimeConfig::empZones)
 		{
 			count_t numZones = Game::Config::CountAccessibleZones();
 

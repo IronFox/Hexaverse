@@ -710,6 +710,7 @@ namespace Reflection
 			VAR(startBases,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame)
 			VAR(basesRequired,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame)
 			VAR(exposeActionLeftToHostileFactions,Game::Config,false,true,Variable::Persistence::ConfigOverridesSavegame)
+			VAR(empZones,RuntimeConfig,false,true,Variable::Persistence::RestoreFromSavegame)
 			VAR(newVehiclesHaveFullAmmo,Objects,false,true,Variable::Persistence::RestoreFromSavegame)
 			VAR(uplinkBandwidth,Game::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame)
 			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::ConfigOverridesSavegame)

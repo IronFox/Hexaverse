@@ -1,5 +1,6 @@
 v0.3.19
 	+ The Ctrl-key can now be used to toggle terrain see-through.
+	+ EMP zones can now be declared independent of game goal.
 	> Surveyors no longer take routes that they cannot drive in both directions.
 	> Improved performance of path finding.
 	> Reduced safe falling distance of hovercraft vehicles to 5 (was basically infinite).

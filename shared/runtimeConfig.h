@@ -8,7 +8,7 @@
 
 namespace RuntimeConfig
 {
-	CONSTRUCT_ENUMERATION3(GameGoal, None, ConquerNexus, EMPConquerNexus);
+	CONSTRUCT_ENUMERATION2(GameGoal, None, ConquerNexus);
 	CONSTRUCT_ENUMERATION3(DoomsdayWeapons, Expose, Conceal, Disallow);
 	CONSTRUCT_ENUMERATION7(Phase, 
 							CommandPhase,
@@ -22,6 +22,7 @@ namespace RuntimeConfig
 
 	extern DoomsdayWeapons doomsdayWeapons;
 	extern GameGoal gameGoal;
+	extern bool		empZones;
 	extern Phase	phase;
 
 	extern bool hibernationSystemEnabled;

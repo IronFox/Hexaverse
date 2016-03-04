@@ -216,11 +216,11 @@ namespace Objects
 				return;
 			}
 
-			if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::EMPConquerNexus && Grid::AffectedByEMP(targetCell))
-			{
-				LogEvent(EventClass::Preset::commandRejected,nullptr,"Explosion dissipated due to EMP field in target area");
-				return;
-			}
+			//if (RuntimeConfig::empZones && Grid::AffectedByEMP(targetCell))
+			//{
+			//	LogEvent(EventClass::Preset::commandRejected,nullptr,"Explosion dissipated due to EMP field in target area");
+			//	return;
+			//}
 
 			SignalExplosion(attackFrom, traceTo, flightTime, 
 							center,explosionRadius,false,
