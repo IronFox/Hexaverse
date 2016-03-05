@@ -267,7 +267,7 @@ namespace Objects
 		}
 
 
-	/*virtual*/ void				WorkingStructure::Tick(ResourceVector&v)
+		/*virtual*/ void				WorkingStructure::Tick(ResourceVector&v)
 		{
 			ResourceVector v1, s, m;
 			GetResourceVector(v1,s,m);
@@ -834,14 +834,14 @@ namespace Objects
 	bool	Tower::setup = false;
 	/*virtual override*/	void			Tower::PrototypeSetup()
 	{
+		if (turret == &Component::artillery)
+		{
+			ResearchState::RegisterUnlockCost(this,15);
+		}
 		if (setup)
 			return;
 		setup = true;
 		Super::PrototypeSetup();
-		//turretComponents << artillery;
-		//turretComponents << Armored::component;
-		//turretComponents << radar;
-		//turretComponents << MunitionTransporter::component;
 
 		#ifdef HAS_WINDOW
 			geometry.Clear();
@@ -865,8 +865,24 @@ namespace Objects
 		#else
 			foundationHeight = staticHeight;
 		#endif
-
 	}
+
+
+	
+	/*virtual override*/ float			Tower::GetFlatAttackRange() const 
+	{
+		if (turret->horizontalAttackRange <= 0)
+			return 0.f;
+		float rawRange = turret->horizontalAttackRange + 2.f;
+		return EMPModify(rawRange * owner->researchState.GetFactorFor(turret->constTowerName,Component::Attribute::AttackRange),2.f);
+	}
+
+
+	/*virtual override*/ float				Tower::GetScanningRangeResearchFactor() const
+	{
+		return owner->researchState.GetFactorFor(turret->constName,Component::Attribute::ScanningRange);	//may change this later. for now same as vehicles
+	}
+
 
 	#ifndef CLIENT
 		/*virtual override*/ void			Tower::ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime)
@@ -2007,7 +2023,40 @@ namespace Objects
 	}
 
 
+
+		//	virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+		//#endif
+
+
+		////WorldEntity overrides:
+		//virtual void				PrototypeSetup()	override;
+
+	/*virtual override*/ void			Laboratory::PrototypeSetup()
+	{
+		Super::PrototypeSetup();
+
+
+		#ifdef HAS_WINDOW
+			//later
+
+
+
+
+		#endif
+
+	}
+
+
+
 	#ifndef CLIENT
+
+		/*virtual override*/ void			Laboratory::Tick(ResourceVector&vec)
+		{
+			Super::Tick(vec);
+
+			owner->researchState.Contribute();
+		}
+	
 		/*virtual override*/ void			SkyPort::OnSleepChange(float&t)
 		{
 			Super::OnSleepChange(t);
@@ -2398,6 +2447,13 @@ namespace Objects
 		//commands << Command("Queue:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
 
 	}
+
+	/*virtual override*/ void				ReactorCore::PrototypeSetup()
+	{
+		Super::PrototypeSetup();
+		ResearchState::RegisterUnlockCost(this,10);
+	}
+
 	#ifdef HAS_WINDOW
 		/*virtual override*/ void				VehiclePlant::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
@@ -2427,6 +2483,7 @@ namespace Objects
 	/*virtual override*/ void				SkyPort::PrototypeSetup()
 	{
 		Super::PrototypeSetup();
+		ResearchState::RegisterUnlockCost(this,20);
 
 		#ifdef HAS_WINDOW
 	
@@ -2681,6 +2738,19 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 	
+		/*virtual override*/ void			Laboratory::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
+		{
+			Super::DescribeType(label,  descFlags);
+			label.MarkBriefEnd();
+			label.WrapAppendText("Laboratories research new components and buildings, or improve their attributes."
+			" Each enabled laboratory contributes 1 research point per round to the currently selected faction research goal."
+			" Research aimed at unlocking new components requires a number of research points to be accumulated."
+			" Research aimed at improvement will continuously improve the selected property, but become increasingly less efficient the further research has progressed."
+			" As a result, research facilities are a continuous construction effort and you will most likely never have enough."
+			);
+		}
+
+
 
 		/*virtual override*/ void			NexusPort::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
 		{

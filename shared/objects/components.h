@@ -63,6 +63,23 @@ namespace Objects
 	*/
 	namespace Component
 	{
+
+		CONSTRUCT_ENUMERATION10(Attribute, 
+			Health,
+			ScanningRange,
+			AttacksPerRound,
+			AttackRange,
+			ExplosionRadius,
+			DamageLevel,
+			MovementSpeed,
+			ConstructionSpeed,
+			FuelDemand,
+			YieldEfficiency
+			);
+
+
+
+
 		enum operation_t
 		{
 			Construct,
@@ -77,7 +94,7 @@ namespace Objects
 		class Base 
 		{
 		protected:
-			/**/							Base():productionCosts(1),initiative(100)	{}
+			/**/							Base():productionCosts(1),initiative(100)	{for (index_t i = 0; i < ARRAYSIZE(researchSlot); i++) researchSlot[i] = InvalidIndex;}
 
 			struct Detail
 			{
@@ -94,6 +111,8 @@ namespace Objects
 
 				Array<std::pair<Geometry,DX11::InstructionBlock32> >	parts;
 			#endif
+
+			index_t							researchSlot[Attribute::N+1];
 
 			String							typeName,shortName;
 			ConstName						constName;

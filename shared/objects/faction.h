@@ -128,7 +128,57 @@ namespace Objects
 
 
 
+	/**
+	@brief Research progress of a given faction
 
+	Serialization is used only to communicate with clients.
+	IO export/import must use string names instead
+	*/
+	class ResearchState : public SerializableObject
+	{
+	public:
+		ConstName				currentResearch = ConstName::Empty;
+		Component::Attribute	currentResearchAttribute;	//ignored if targeted research is not unlocked
+
+		Array<UINT32>			unlockProgress,improveProgress;
+		bool					changed = false;
+		
+		//struct Progress
+		//{
+		//	int			unlockingProgress=0;
+		//	int			level[Component::Attribute::N];
+
+		//	/**/		Progress()	{memset(level,0,sizeof(level));}
+		//};
+
+
+		/**/			ResearchState();
+
+		virtual	serial_size_t	GetSerialSize(bool export_size) const override;
+		virtual	bool			Serialize(IWriteStream&out_stream, bool export_size) const override;
+		virtual	bool			Deserialize(IReadStream&in_stream, serial_size_t fixed_size) override;
+		virtual	bool			HasFixedSize() const override {return true;}
+
+
+		static void		RegisterUnlockCost(Structure*, Component::Attribute);
+		static void		RegisterUnlockCost(Structure*, int researchCost);
+		static void		RegisterUnlockCost(Component::Base&component, int researchCost);
+		static void		RegisterResearch(Component::Base&component, Component::Attribute);
+		static void		RegisterDependency(Component::Base&component, Component::Base&dependentOn);
+		static void		RegisterDependency(Component::Base&component, const PStructure&dependentOn);
+
+		bool			CheckUnlocked(const Component::Base&,String&errorOut)	const;
+		bool			CheckUnlocked(ConstName,String&errorOut)	const;
+		bool			IsUnlocked(ConstName) const;
+
+		float			GetFactorFor(ConstName, Component::Attribute);
+
+		static void		StaticCreate();
+		static bool		IsResearchable(ConstName);
+		static bool		IsResearchable(ConstName, Component::Attribute);
+
+		void			Contribute();
+	};
 
 	
 
@@ -149,6 +199,7 @@ namespace Objects
 		String		name;
 		bool		online = false;
 		float3		color;
+		ResearchState	researchState;
 		#ifdef CLIENT
 			float3	activeEntityColor,
 					inactiveEntityColor;

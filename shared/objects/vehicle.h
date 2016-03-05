@@ -143,6 +143,7 @@ namespace Objects
 
 
 		//WorldEntity overrides:
+		virtual float			GetScanningRangeResearchFactor() const override;
 		virtual int				GetConstructionCost() const override {return GetPrice();}
 		#ifndef NO_HIBERNATION
 			virtual int			GetUplinkTraffic() const override;
@@ -171,7 +172,7 @@ namespace Objects
 
 
 		//TurretBase overrides:
-		virtual float			GetFlatAttackRange() const override {return EMPModify(turret->horizontalAttackRange + base->rangeModifier,1.f);}
+		virtual float			GetFlatAttackRange() const override;
 		virtual bool			HasAmmoForShot() const override;
 
 

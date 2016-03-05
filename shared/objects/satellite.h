@@ -193,7 +193,7 @@ namespace Objects
 		virtual bool			IsSkyHub() const {return false;}
 
 		//TurretBase overrides:
-		virtual float			GetFlatAttackRange() const override {return EMPModify(turret->horizontalAttackRange,1.f);}
+		virtual float			GetFlatAttackRange() const override;
 		virtual bool			HasAmmoForShot() const override;
 		#ifndef CLIENT
 			virtual bool		FillAttackQueue()override;

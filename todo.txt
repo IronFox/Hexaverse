@@ -4,6 +4,15 @@
 			some arranged in a tree, others available right away
 			
 		improved unlocked turret/base/building (very expensive, end game, all in percentage, exponentially increasing costs)
+		
+			anyValue(B,L,D,C) = max(1, B * ln(max(1, e+(R-D)*C)))
+				where
+					B = base value (e.g. radar range 11)
+					R = research level (>=0, 0 = not researched). each enabled laboratory generates one research point per round
+					D = planetary difficulty value (>=0, 0 = none)
+					C = scaling constant. Maybe 0.01 - 0.1
+	
+		
 			* scanning range
 			* attacks per round (towers/offensive vehicles)
 			* attack range (towers/offensive vehicles)

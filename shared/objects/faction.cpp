@@ -799,12 +799,20 @@ namespace Objects
 				return true;
 			if (e->IsMobile())
 			{
-				ConstName type = To<MobileEntity>::Cast(e)->turret->constName;
-				return CheckLimit(CountMobileType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
+				if (e->IsVehicle())
+				{
+					const Component::VehicleBase*base = To<Vehicle>::Cast(e)->base;
+
+					if (!researchState.CheckUnlocked(*base,errorOut))
+						return false;
+				}
+				const Component::Turret*turret = To<MobileEntity>::Cast(e)->turret;
+				ConstName type = turret->constName;
+				return researchState.CheckUnlocked(*turret,errorOut) && CheckLimit(CountMobileType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
 			}
 			ConstName type = e->GetCTypeName();
 			if (e->IsStructure())
-				return CheckLimit(CountStructureType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
+				return researchState.CheckUnlocked(type,errorOut) && CheckLimit(CountStructureType(type), RuntimeConfig::UnitLimits::Get(type), errorOut);
 			FATAL__("Unknown type: "+e->GetName());
 			return false;
 		}
@@ -1624,5 +1632,268 @@ namespace Objects
 		if (recomputeColor)
 			IDToColor(color,id);
 	}
+
+
+
+	namespace ResearchStateDetail
+	{
+		struct TTypeEntry
+		{
+			UINT32 researchCost = 0;
+			index_t	attributeAt[Component::Attribute::N],unlockableAt=InvalidIndex;
+			Component::Base* componentReference = nullptr;
+			ConstName dependentOn = ConstName::Empty;
+			String	name;
+
+			/**/	TTypeEntry()
+			{
+				for (index_t i = 0; i < ARRAYSIZE(attributeAt); i++)
+					attributeAt[i] = InvalidIndex;
+			}
+		};
+		count_t		numUnlockables = 0;
+		index_t		attributeCounter = 0;
+
+		index_t		typeMap[(count_t)ConstName::NumTypes];
+		Buffer0<TTypeEntry>	types;
+
+
+		index_t		Register(ConstName cname,Component::Base* componentReference, const String&name)
+		{
+			if (typeMap[(index_t)cname] != InvalidIndex)
+				return typeMap[(index_t)cname];
+			index_t rs = types.Count();
+			typeMap[(index_t)cname] = rs;
+			types.Append().name = name;
+			types.last().componentReference = componentReference;
+			if (componentReference)
+				componentReference->researchSlot[0] = rs;
+			return rs;
+		}
+	}
+
+
+
+	/*static*/ void		ResearchState::StaticCreate()
+	{
+		using namespace ResearchStateDetail;
+		for (index_t i = 0; i < ARRAYSIZE(typeMap); i++)
+			typeMap[i] = InvalidIndex;
+
+	}
+	/*static*/ void		ResearchState::RegisterUnlockCost(Structure*s, int researchCost)
+	{
+		using namespace ResearchStateDetail;
+
+		index_t at = Register(s->GetCTypeName(),nullptr,s->GetTypeName());
+		types[at].researchCost = researchCost;
+		types[at].unlockableAt = numUnlockables++;
+
+	}
+
+	/*static*/ void		ResearchState::RegisterUnlockCost(Structure*s, Component::Attribute a)
+	{
+		using namespace ResearchStateDetail;
+
+		index_t at = ResearchStateDetail::Register(s->GetCTypeName(),nullptr,s->GetTypeName());
+		types[at].attributeAt[a] = attributeCounter;
+		attributeCounter++;
+	}
+
+
+	/*static*/ void		ResearchState::RegisterUnlockCost(Component::Base&component, int researchCost)
+	{
+		using namespace ResearchStateDetail;
+
+		index_t at = component.researchSlot[0];
+		if (at == InvalidIndex)
+		{
+			at = ResearchStateDetail::Register(component.constName,&component,component.typeName);
+		}
+		types[at].researchCost = researchCost;
+		types[at].unlockableAt = numUnlockables++;
+	}
+
+	/*static*/ void		ResearchState::RegisterResearch(Component::Base&component, Component::Attribute a)
+	{
+		using namespace ResearchStateDetail;
+
+		index_t at = component.researchSlot[0];
+		if (at == InvalidIndex)
+		{
+			at = ResearchStateDetail::Register(component.constName,&component,component.typeName);
+		}
+		types[at].attributeAt[a] = component.researchSlot[at+1] = attributeCounter;
+		attributeCounter++;
+	}
+
+	/*static*/ void		ResearchState::RegisterDependency(Component::Base&component, Component::Base&dependentOn)
+	{
+		using namespace ResearchStateDetail;
+
+		index_t at = component.researchSlot[0];
+		if (at == InvalidIndex)
+		{
+			at = ResearchStateDetail::Register(component.constName,&component,component.typeName);
+		}
+		types[at].dependentOn = dependentOn.constName;
+	}
+
+	/*static*/ void		ResearchState::RegisterDependency(Component::Base&component, const PStructure&dependentOn)
+	{
+		using namespace ResearchStateDetail;
+
+		index_t at = component.researchSlot[0];
+		if (at == InvalidIndex)
+		{
+			at = ResearchStateDetail::Register(component.constName,&component,component.typeName);
+		}
+		types[at].dependentOn = dependentOn->GetCTypeName();
+	}
+
+
+	/**/			ResearchState::ResearchState()
+	{
+		ASSERT__(ResearchStateDetail::attributeCounter > 0);
+		unlockProgress.SetSize(ResearchStateDetail::numUnlockables);
+		unlockProgress.Fill(0);
+		improveProgress.SetSize(ResearchStateDetail::attributeCounter);
+		improveProgress.Fill(0);
+	}
+
+	bool			ResearchState::CheckUnlocked(const Component::Base&b,String&errorOut)	const
+	{
+		if (b.researchSlot[0] == InvalidIndex)
+			return true;
+		const auto&t = ResearchStateDetail::types[b.researchSlot[0]];
+		index_t at = t.unlockableAt;
+		if (at == InvalidIndex)
+			return true;
+		if (unlockProgress[at] >= t.researchCost)
+			return true;
+		errorOut = t.name+" has not been unlocked yet. Research progress: "+String(unlockProgress[at])+"/"+String(t.researchCost);
+		return false;
+	}
+
+
+	bool			ResearchState::CheckUnlocked(ConstName name,String&errorOut)	const
+	{
+		if (ResearchStateDetail::typeMap[(index_t)name] == InvalidIndex)
+			return true;
+		const auto&t = ResearchStateDetail::types[ResearchStateDetail::typeMap[(index_t)name]];
+		index_t at = t.unlockableAt;
+		if (at == InvalidIndex)
+			return true;
+		if (unlockProgress[at] >= t.researchCost)
+			return true;
+		errorOut = t.name+" has not been unlocked yet. Research progress: "+String(unlockProgress[at])+"/"+String(t.researchCost);
+		return false;
+	}
+
+	bool			ResearchState::IsUnlocked(ConstName name) const
+	{
+		if (ResearchStateDetail::typeMap[(index_t)name] == InvalidIndex)
+			return true;
+		const auto&t = ResearchStateDetail::types[ResearchStateDetail::typeMap[(index_t)name]];
+		index_t at = t.unlockableAt;
+		if (at == InvalidIndex)
+			return true;
+		if (unlockProgress[at] >= t.researchCost)
+			return true;
+		return false;
+	}
+
+
+	float			ResearchState::GetFactorFor(ConstName name, Component::Attribute attrib)
+	{
+		if (ResearchStateDetail::typeMap[(index_t)name] == InvalidIndex)
+			return 1.f;
+		const auto&t = ResearchStateDetail::types[ResearchStateDetail::typeMap[(index_t)name]];
+		index_t at = t.attributeAt[attrib];
+		if (at == InvalidIndex)
+			return 1.f;
+		int level = improveProgress[at];
+		if (level == 0)
+			return 1.f;
+		return log(std::max(1.f,M_EF+0.1f*(level)));
+	}
+
+	/*static*/ bool		ResearchState::IsResearchable(ConstName name)
+	{
+		if (ResearchStateDetail::typeMap[(index_t)name] == InvalidIndex)
+			return false;
+		const auto&t = ResearchStateDetail::types[ResearchStateDetail::typeMap[(index_t)name]];
+		return t.researchCost > 0;
+	}
+
+	/*static*/ bool		ResearchState::IsResearchable(ConstName name, Component::Attribute attrib)
+	{
+		if (ResearchStateDetail::typeMap[(index_t)name] == InvalidIndex)
+			return false;
+		const auto&t = ResearchStateDetail::types[ResearchStateDetail::typeMap[(index_t)name]];
+		return t.attributeAt[attrib] != InvalidIndex;
+	}
+
+	void			ResearchState::Contribute()
+	{
+		if (currentResearch == ConstName::Empty)
+			return;
+		namespace D = ResearchStateDetail;
+		index_t tAt = D::typeMap[(index_t)currentResearch];
+		if (tAt == InvalidIndex)
+			return;
+		const auto&t = D::types[tAt];
+		if (t.unlockableAt != InvalidIndex)
+		{
+			if (unlockProgress[t.unlockableAt] < t.researchCost)
+			{
+				if (t.dependentOn != ConstName::Empty)
+					if (!IsUnlocked(t.dependentOn))
+						return;
+				unlockProgress[t.unlockableAt] ++;
+				changed = true;
+				return;
+			}
+		}
+		index_t aAt = t.attributeAt[currentResearchAttribute];
+		if (aAt == InvalidIndex)
+			return;
+		improveProgress[aAt] ++;
+		changed = true;
+	}
+
+
+	/*virtual override*/	serial_size_t	ResearchState::GetSerialSize(bool export_size) const
+	{
+		return 1 /*current type*/
+				+1 /*current attribute*/
+				+unlockProgress.GetContentSize()
+				+improveProgress.GetContentSize();
+	}
+
+	/*virtual override*/	bool			ResearchState::Serialize(IWriteStream&outStream, bool export_size) const
+	{
+		return outStream.WritePrimitive((BYTE)currentResearch) && outStream.WritePrimitive((BYTE)currentResearchAttribute)
+			&& outStream.Write(unlockProgress.pointer(),unlockProgress.GetContentSize())
+			&& outStream.Write(improveProgress.pointer(),improveProgress.GetContentSize());
+	}
+
+	/*virtual override*/	bool			ResearchState::Deserialize(IReadStream&inStream, serial_size_t fixed_size)
+	{
+		BYTE currentRes,currentResAttrib;
+		if (
+		 inStream.ReadPrimitive(currentRes) && inStream.ReadPrimitive(currentResAttrib)
+			&& inStream.Read(unlockProgress.pointer(),unlockProgress.GetContentSize())
+			&& inStream.Read(improveProgress.pointer(),improveProgress.GetContentSize()))
+		{
+			if ((count_t)currentRes >= (count_t)ConstName::NumTypes)
+				return false;
+			currentResearch = (ConstName)currentRes;
+			return currentResearchAttribute.Load(currentResAttrib);
+		}
+		return false;
+	}
+
+
 
 }

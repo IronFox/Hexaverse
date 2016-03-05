@@ -1078,6 +1078,8 @@ namespace Objects
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
 		#endif
 
+		//WorldEntity overrides:
+		virtual void				PrototypeSetup()	override;
 	};
 
 
@@ -1191,7 +1193,55 @@ namespace Objects
 	};
 
 
+	class Laboratory : public CommonStructure<Laboratory>
+	{
+		typedef CommonStructure<Laboratory>	Super;
+		friend class Super;
 
+        /**/						Laboratory(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner, location, atTime)	{};
+		/**/						Laboratory() {}//global prototype
+	protected:
+		//virtual bool				CanEnable() const override {return MobileEntityProducer::queue.IsNotEmpty();}
+
+	public:
+		static const int			EnergyConsumption = 10;
+
+
+		#ifdef HAS_WINDOW
+			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+		#endif
+
+
+		//Structure overrides:
+		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override { return false; }	//place holder for later
+		virtual Category			GetCategory() const override {return Category::Miscellaneous;}
+
+
+		//WorldEntity overrides:
+		virtual void				PrototypeSetup()	override;
+		virtual int					GetConstructionCost() const override {return 80;}
+		#ifndef NO_HIBERNATION
+			virtual int				GetUplinkTraffic() const override {return 20;}
+		#endif
+		virtual bool				AwaitsUserInteraction() const override {return false;} //place holder for later
+
+		#ifndef NO_HIBERNATION
+			//Hibernating overrides:
+			virtual int				GetUplinkPriority() const override {return 800;};
+		#endif
+
+		//BaseEntity overrides:
+		virtual String				GetTypeName() const override { return "Laboratory"; };
+		virtual ConstName			GetCTypeName() const override {return ConstName::Type_Laboratory;}
+
+
+		//WorkingStructure overrides:
+		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Energy] = -EnergyConsumption;}
+		virtual bool				WouldLikeToEnable() const {return true;}
+		#ifndef CLIENT
+			virtual void			Tick(ResourceVector&) override;
+		#endif
+	};
 	
 
 	void	ChangeStorage(WorkingStructure&ws, float atTime, Resource res, int change);	//defined in faction.h/.cpp
@@ -1672,6 +1722,7 @@ namespace Objects
 
 		//WorldEntity overrides:
 		virtual bool				IsTower() const override {return true;}
+		virtual float				GetScanningRangeResearchFactor() const override;
 
 		//structure overrides:
 		virtual int					GetBroadHeight() const override {return std::max(1,GetHeight()-1);}
@@ -1681,7 +1732,7 @@ namespace Objects
 		//turret base overrides:
 		virtual bool				NextTaskIsAttack() const override {return health > 0 && attackQueue.IsNotEmpty();}
 		virtual float				GetAttackActionLeft() const override {return attackActionLeft;};
-		virtual float				GetFlatAttackRange() const override {return turret->horizontalAttackRange > 0 ? EMPModify(float(turret->horizontalAttackRange) + 2.f,2.f) : 0.f;}
+		virtual float				GetFlatAttackRange() const override;
 
 	};
 

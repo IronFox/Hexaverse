@@ -64,6 +64,12 @@ namespace Objects
 	}
 
 
+	/*virtual override*/ float				Vehicle::GetScanningRangeResearchFactor() const
+	{
+		return owner->researchState.GetFactorFor(turret->constName,Component::Attribute::ScanningRange);
+	}
+
+
 
 
 	
@@ -146,6 +152,13 @@ namespace Objects
 	}
 
 	
+	/*virtual override*/ float			Vehicle::GetFlatAttackRange() const 
+	{
+		float rawRange = turret->horizontalAttackRange + base->rangeModifier;
+
+		return EMPModify(rawRange * owner->researchState.GetFactorFor(turret->constName,Component::Attribute::AttackRange),1.f);
+	}
+
 
 	#ifdef CLIENT
 	#else
@@ -158,187 +171,6 @@ namespace Objects
 			ClearAllTasks(true,CLOCATION);
 		}
 
-
-
-		///*virtual override*/ MobilePlacementResult	Satellite::PlaceExactlyAt(const Grid::LCellIdI&_cell, float timeCost, float minTimeOffset, bool signalEvent/*=true*/, bool isCreated/*=true*/, bool failIsFatal/*=false*/)
-		//{
-		//	UINT32 cell = _cell.stackID;
-		//	if (health <= 0)
-		//	{
-		//		if (failIsFatal)
-		//		{
-		//			LogEvent(EventClass::Preset::fatal,this,"Dead");
-		//			FATAL__("Critical abort");
-		//		}
-		//		return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
-		//	}
-		//	
-		//	//VerifyVisibilityNetwork();
-		//	timeAt = std::max(minTimeOffset,timeAt);
-		//	if ((location.stackID != cell && !NoSatelliteHere(cell)))
-		//	{
-		//		if (failIsFatal)
-		//		{
-		//			LogEvent(EventClass::Preset::fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
-		//			FATAL__("Critical abort");
-		//		}
-		//		return MobilePlacementResult::PlacementFailedObstructed;
-		//	}
-		//	const Grid::LCellIdI old = location;
-
-		//	#ifdef _DEBUG
-		//		bool hadTasks = HasTasks();
-		//	#endif
-		//	
-		//	location = _cell;
-	
-		//	MobilePlacementResult result = MobilePlacementResult::PlacementOkay;
-		//	if (old != location)
-		//	{
-		//		if (isCreated)
-		//		{
-		//			if (constructionRoundCounter)
-		//			{
-		//				constructionRoundCounter = 0;
-		//				RegisterChange(WorldEntity::TasksChanged,timeAt);
-		//			}
-		//		}
-		//		this->UpdateSystem();
-		//		if (signalEvent)
-		//		{
-		//			static GenericHashSet<OwnerParameter,OwnerHash>	checkStillBeeingSeenBy;
-		//			static Buffer0<PWorldEntity> checkCanStillSee;
-		//			checkCanStillSee.Clear();
-		//			checkStillBeeingSeenBy.Clear();
-
-		//			float oldTime = timeAt;
-		//			timeAt += timeCost;
-
-		//			this->UnregisterSensory(old,timeAt);
-		//			this->RegisterSensory(location,timeAt);
-		//			owner->seeing.VisitAllKeys([this,&result](const PWorldEntity&e)
-		//			{
-		//				if (!e->IsMobile())
-		//					return;
-		//				PMobileEntity&m = To<MobileEntity>::Cast(e);
-		//				if (m->CanAttack())
-		//				{
-		//					for (WMobileEntity w : owner->satellites)
-		//					{
-		//						PMobileEntity v2 = w.lock();
-		//						if (!v2->IsSatellite())
-		//							continue;
-
-		//						for (index_t i = 0; i < v2->myTasks.Count(); i++)
-		//						{
-		//							const Task&task = v2->myTasks[i];
-		//							bool badTask = false;
-		//							if (task.type == Task::MoveTo)
-		//							{
-		//								for (const auto&node : task.path)
-		//								{
-		//									//TVec3<> world = Grid::ToWorld(node.cell);
-		//									float zOffset;
-		//									const auto&base = m->GetTurretBase(zOffset);
-		//									Grid::LCellIdI actual;
-		//									if (m->ExtCanHit(m->owner,m->location,zOffset,node.cell, actual))
-		//									{
-		//										badTask = true;
-		//										break;
-		//									}
-
-		//								}
-		//							}
-		//							if (badTask)
-		//							{
-		//								LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+m->GetNiceName()+" detected. Dropping task(s).");
-		//								if (v2.get() == this)
-		//								{
-		//									ClearAllTasks(true,CLOCATION);
-		//									result = MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
-		//								}
-		//								else
-		//								{
-		//									while (v2->myTasks.Count() > i)
-		//										v2->myTasks.EraseBack();
-		//								}
-		//								break;
-		//							}
-
-		//						}
-		//					}
-		//				}
-		//			});
-
-		//			//if (result == MobilePlacementResult::PlacementFailedHarmfulOrBlocked)
-		//			//{
-		//			//	this->UnregisterSensory(location,timeAt);
-		//			//	this->RegisterSensory(old,timeAt);
-		//			//	location = old;
-		//			//	return result;
-		//			//}
-		//
-
-
-		//			if (timeCost > 0)
-		//			{
-		//				SignalMotion(To<Satellite>::Cast(shared_from_this()),old,location,oldTime,timeCost);
-		//			}
-		//			else
-		//			{
-		//				#ifndef CLIENT
-		//					LogEvent(EventSignificance::Common,this,"Time cost is "+String(timeCost)+". Warping satellite at time "+String(oldTime));
-		//				#endif
-		//				RegisterChange(PositionChanged,oldTime);
-		//			}
-		//			//timeAt += timeCost;
-
-		//			bool doBreak = false;
-		//			ForeachFaction([this,&doBreak](const PFaction&f)
-		//			{
-		//				if (doBreak)
-		//					return;
-		//				if (!f->ExtCanSee(shared_from_this(),timeAt))
-		//					return;
-		//				Grid::LCellIdI loc;
-		//				for (const auto& _s:f->satellites)
-		//				{
-		//					PSatellite s = _s.lock();
-		//					if (s->WouldAttack(shared_from_this(),loc,timeAt))
-		//					{
-		//						if (s->AttackNext(loc,true))
-		//						{
-		//							LogEvent(EventSignificance::Common,s.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
-		//							s->Attack(timeAt);
-		//							if (health <= 0)
-		//							{
-		//								doBreak = true;
-		//							}
-		//						}
-		//					}
-		//				}
-		//			});
-		//			if (doBreak)
-		//				return MobilePlacementResult::PlacementFailedMobileDestroyed;
-
-		//			#ifndef CLIENT
-		//				LogEvent(EventSignificance::Common,this,"Motion completed");
-		//			#endif
-		//		}
-		//		else
-		//		{
-		//			timeAt += timeCost;
-		//			#ifndef CLIENT
-		//				LogEvent(EventSignificance::Common,this,"Silent motion completed");
-		//			#endif
-		//		}
-		//	}
-		//	#ifdef _DEBUG
-		//		ASSERT__(Failed(result) || hadTasks == HasTasks());
-		//	#endif
-		//	return result;
-
-		//}
 
 
 		/*virtual override*/ MobilePlacementResult Vehicle::PlaceExactlyAt(const Grid::LCellIdI&cell, float timeCost, float minTimeOffset, bool signalEvent/*=true*/, bool isCreated/*=true*/, bool failIsFatal/*=false*/)

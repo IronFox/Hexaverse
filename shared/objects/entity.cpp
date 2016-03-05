@@ -234,9 +234,15 @@ namespace Objects
 		return min + window * Grid::powi(0.25f,(UINT)empDamageLevel);
 	}
 
+	/*virtual*/ float				WorldEntity::GetScanningRangeResearchFactor() const
+	{
+		return owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::ScanningRange);
+	}
+
+
 	float		WorldEntity::GetScanningRange() const
 	{
-		return EMPModify(GetMaxScanningRange(), 2.f);
+		return EMPModify(GetMaxScanningRange() * GetScanningRangeResearchFactor(), 2.f);
 	}
 
 

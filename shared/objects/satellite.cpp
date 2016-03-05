@@ -23,6 +23,16 @@ namespace Objects
 	}
 
 
+	/*virtual override*/ float			Satellite::GetFlatAttackRange() const 
+	{
+		if (turret->horizontalAttackRange <= 0)
+			return 0.f;
+		float rawRange = turret->horizontalAttackRange + 2.f;
+		return EMPModify(rawRange * owner->researchState.GetFactorFor(turret->constName,Component::Attribute::AttackRange),2.f);
+	}
+
+
+
 
 	///*virtual override*/ bool				Satellite::CanSee(const PWorldEntity&other)	const
 	//{

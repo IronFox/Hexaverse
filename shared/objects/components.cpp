@@ -13,6 +13,7 @@
 #include "satellite.h"
 #include "gridAndChoices.h"
 #include "../runtimeConfig.h"
+#include "faction.h"
 
 namespace Objects
 {
@@ -918,6 +919,9 @@ namespace Objects
 			component.weight = 2;					//turret weight
 
 
+			ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
+			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+
 			component.FinishCreation();
 		}
 
@@ -993,6 +997,9 @@ namespace Objects
 		
 			component.weight = 5;					//turret weight
 
+			ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
+			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+
 			component.FinishCreation();
 		}
 
@@ -1049,6 +1056,14 @@ namespace Objects
 				component.ammoNeedPerShot = 6;
 			#endif
 
+			ResearchState::RegisterDependency(component,armored);
+			ResearchState::RegisterUnlockCost(component,5);
+			ResearchState::RegisterResearch(component,Attribute::AttackRange);
+			ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);
+			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
+			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
+			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+
 			component.FinishCreation();
 		}
 
@@ -1102,6 +1117,14 @@ namespace Objects
 				component.ammoNeedPerShot = 8;
 			#endif
 
+			ResearchState::RegisterDependency(component,armored);
+			ResearchState::RegisterUnlockCost(component,15);
+			ResearchState::RegisterResearch(component,Attribute::AttackRange);
+			ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);
+			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
+			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
+			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+
 			component.FinishCreation();
 		}
 
@@ -1151,6 +1174,12 @@ namespace Objects
 
 			component.ignoresVehicleMotion = true;
 
+			ResearchState::RegisterResearch(component,Attribute::AttackRange);
+			ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);
+			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
+			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
+			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+
 
 			component.FinishCreation();
 		}
@@ -1199,6 +1228,14 @@ namespace Objects
 			component.requiresStationaryVehicle = true;
 			component.uplinkTraffic = 10;
 
+			ResearchState::RegisterDependency(component,armored);
+			ResearchState::RegisterDependency(component,launcher);
+			ResearchState::RegisterUnlockCost(component,50);
+			ResearchState::RegisterResearch(component,Attribute::AttackRange);
+			ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);
+			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
+			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
+			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
 
 			component.FinishCreation();
 		}
@@ -1272,6 +1309,14 @@ namespace Objects
 			component.trajectoryType = TrajectoryType::VerticalBeam;
 
 
+			ResearchState::RegisterDependency(component,emp);
+			ResearchState::RegisterDependency(component,SkyPort::globalPrototype);
+			ResearchState::RegisterUnlockCost(component,100);
+			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
+			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
+			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+
+
 			component.FinishCreation(false);
 		}
 
@@ -1316,6 +1361,16 @@ namespace Objects
 			component.trajectoryType = TrajectoryType::Missile;
 
 
+			ResearchState::RegisterDependency(component,emp);
+			ResearchState::RegisterDependency(component,SkyPort::globalPrototype);
+			ResearchState::RegisterUnlockCost(component,10);
+			ResearchState::RegisterResearch(component,Attribute::AttackRange);
+			ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);
+			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
+			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
+			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+
+
 			component.FinishCreation(false);
 		}
 
@@ -1356,6 +1411,9 @@ namespace Objects
 			component.initiative = 60;
 			component.uplinkTraffic = 20;
 
+			ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
+			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+
 			component.FinishCreation(false);
 		}
 
@@ -1394,6 +1452,8 @@ namespace Objects
 			component.initiative = 30;
 			component.uplinkTraffic = 1;	//irrelevant
 
+			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+
 			component.FinishCreation(false);
 		}
 
@@ -1429,6 +1489,7 @@ namespace Objects
 			//component.ammoNeedPerShot = 2;
 
 			//component.ignoresVehicleMotion = true;
+			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
 
 
 			component.FinishCreation();
@@ -1468,6 +1529,9 @@ namespace Objects
 			component.uplinkTraffic = 10;
 
 
+			ResearchState::RegisterUnlockCost(component,5);
+			ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
+			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
 
 			component.FinishCreation();
 		}
@@ -1496,6 +1560,9 @@ namespace Objects
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = 2.f;
 			component.uplinkTraffic = 10;
+
+			ResearchState::RegisterUnlockCost(component,1);
+			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
 
 
 			component.FinishCreation();
@@ -1572,6 +1639,10 @@ namespace Objects
 			component.baseHealth = 4;
 
 
+			ResearchState::RegisterResearch(component,Attribute::MovementSpeed);
+			ResearchState::RegisterResearch(component,Attribute::Health);
+
+
 			component.FinishCreation();
 
 			#ifdef CLIENT	
@@ -1619,6 +1690,11 @@ namespace Objects
 			component.hindrance.air = 10;
 			component.hindrance.water = 10;
 			component.hindrance.other = 4;
+
+			ResearchState::RegisterDependency(component,hoverbase);
+			ResearchState::RegisterUnlockCost(component,10);
+			ResearchState::RegisterResearch(component,Attribute::MovementSpeed);
+			ResearchState::RegisterResearch(component,Attribute::Health);
 
 
 			component.FinishCreation();
@@ -1669,6 +1745,11 @@ namespace Objects
 			component.hindrance.air = 2;
 			component.hindrance.water = 1;
 			component.hindrance.other = 10;
+
+			ResearchState::RegisterDependency(component,hoverbase);
+			ResearchState::RegisterUnlockCost(component,10);
+			ResearchState::RegisterResearch(component,Attribute::MovementSpeed);
+			ResearchState::RegisterResearch(component,Attribute::Health);
 
 
 			component.FinishCreation();

@@ -153,6 +153,7 @@ namespace Objects
 		structurePrototypes << ReactorCore::globalPrototype;
 		structurePrototypes << MunitionFactory::globalPrototype;
 		structurePrototypes << VehiclePlant::globalPrototype;
+		structurePrototypes << Laboratory::globalPrototype;
 		structurePrototypes << Connector::globalPrototype;
 		structurePrototypes << FuelContainer::globalPrototype;
 		structurePrototypes << MineralContainer::globalPrototype;
@@ -207,6 +208,8 @@ namespace Objects
 		LogEvent(EventSignificance::Debug, nullptr, "Structure static setup");
 
 		Structure::StaticSetup();
+
+		ResearchState::StaticCreate();
 
 		Component::ConfigureAll();
 
