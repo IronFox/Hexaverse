@@ -281,6 +281,7 @@ namespace Objects
 		should be called by overriding implementations at some point.
 		*/
 		virtual void				OnDestroy(RemovalType, float atTime) override;
+		virtual void				PrototypeSetup() override;
 		virtual void				OnConstructionFinished(float atTime) override;
 
 		/**

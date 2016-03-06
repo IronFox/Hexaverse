@@ -214,7 +214,7 @@ namespace Objects
 
 
 			float							GetOperationSpeed(operation_t op, const OwnerParameter&owner) const;
-			float							GetDamageLevel(const OwnerParameter&owner) const;
+			int								GetDamageLevel(const OwnerParameter&owner) const;
 			float							GetExplosionRadius(const OwnerParameter&owner) const;
 			int								GetAttacksPerRound(const OwnerParameter&owner) const;
 			int								GetAmmoNeedPerShot(const OwnerParameter&owner) const;

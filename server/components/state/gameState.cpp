@@ -137,7 +137,7 @@ namespace Game
 			ph.newPhase = to;
 			ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
 			ph.timeFactor = timeWindow;
-			Channels::phaseChange.SendTo(::Network::server,ph,1);
+			Channels::phaseChange.SendTo(::Network::server,ph,(UINT32)::Network::UserLevel::PreFaction);
 			RuntimeConfig::phase = to;
 			lastPhaseChange = timer.Now();
 
@@ -161,6 +161,13 @@ namespace Game
 				Objects::ForeachFaction([](const Objects::PFaction&f)
 				{
 					f->DropPerRoundData();	//make sure instantaneous destruction commands are processed with correct visibility information
+
+					if (f->researchState.changed)
+					{
+						f->researchState.changed = false;
+						Channels::researchState.SendTo(::Network::server,f->researchState,(UINT32)::Network::UserLevel::CommonFaction);
+
+					}
 				});
 			}
 

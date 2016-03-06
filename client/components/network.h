@@ -202,6 +202,7 @@ namespace Network
 		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionContinuedRound>				factionContinuedRound;
 		extern TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>							lockEmpZones;
 		extern TCP::Channel<NET(int32_t), 0, Protocol::ChannelID::UplinkBandwidth>						uplinkBandwidth;
+		extern TCP::Channel<Objects::ResearchState, 0, Protocol::ChannelID::ResearchState>				researchState;
 
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;

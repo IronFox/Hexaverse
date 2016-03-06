@@ -837,6 +837,7 @@ namespace Objects
 	bool	Tower::setup = false;
 	/*virtual override*/	void			Tower::PrototypeSetup()
 	{
+		Super::PrototypeSetup();
 		if (turret == &Component::artillery)
 		{
 			ResearchState::RegisterUnlockCost(this,15);
@@ -844,7 +845,6 @@ namespace Objects
 		if (setup)
 			return;
 		setup = true;
-		Super::PrototypeSetup();
 
 		#ifdef HAS_WINDOW
 			geometry.Clear();
@@ -2027,7 +2027,7 @@ namespace Objects
 
 	/*virtual override*/ String		Tower::DescribeScanningRange() const
 	{
-		return owner->researchState.Describe(GetCTypeName(),turret->baseScanningRange+(turret->CanAttack() ? - 2.f : 2.f),Component::Attribute::ScanningRange, ResearchState::ModulationType::DefaultFloat,std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2));
+		return owner->researchState.Describe(*turret,turret->baseScanningRange+(turret->CanAttack() ? - 2.f : 2.f),Component::Attribute::ScanningRange, ResearchState::ModulationType::DefaultFloat,std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2));
 	}
 
 	/*virtual override*/ int				Tower::GetMaxHealth() const
@@ -2041,6 +2041,11 @@ namespace Objects
 	}
 
 
+	/*virtual*/ void				Structure::PrototypeSetup()
+	{
+		Super::PrototypeSetup();
+		ResearchState::RegisterResearch(this,Component::Attribute::Health);
+	}
 
 
 

@@ -21,7 +21,7 @@ namespace Objects
 
 		void	Faction::RecreateNexus()
 		{
-			nexus.reset(new Faction(TUniqueID::Empty(), "<Nexus>"));
+			nexus.reset(new Faction(TUniqueID::Empty(), "<Nexus>",true));
 		}
 
 		int		GetStorage(const MobileEntity&v, Resource res)
@@ -1629,6 +1629,7 @@ namespace Objects
 			id.Generate();
 		else
 			id = toID;
+		researchState.ownerID = id;
 		if (recomputeColor)
 			IDToColor(color,id);
 	}
@@ -1690,7 +1691,16 @@ namespace Objects
 
 	}
 
-	/*static*/ void		ResearchState::RegisterUnlockCost(Structure*s, Component::Attribute a)
+	/*static*/ void		ResearchState::RegisterResearch(Structure*s, Component::Attribute a)
+	{
+		using namespace ResearchStateDetail;
+
+		index_t at = ResearchStateDetail::Register(s->GetCTypeName(),nullptr,s->GetTypeName());
+		types[at].attributeAt[a] = attributeCounter;
+		attributeCounter++;
+	}
+
+	/*static*/ void		ResearchState::RegisterResearch(Satellite*s, Component::Attribute a)
 	{
 		using namespace ResearchStateDetail;
 
@@ -1750,14 +1760,23 @@ namespace Objects
 		types[at].dependentOn = dependentOn->GetCTypeName();
 	}
 
-
 	/**/			ResearchState::ResearchState()
 	{
 		ASSERT__(ResearchStateDetail::attributeCounter > 0);
 		unlockProgress.SetSize(ResearchStateDetail::numUnlockables);
 		unlockProgress.Fill(0);
 		improveProgress.SetSize(ResearchStateDetail::attributeCounter);
-		improveProgress.Fill(10);
+		improveProgress.Fill(0);
+	}
+
+	/**/			ResearchState::ResearchState(const TUniqueID&parentID,bool isNexus)
+	{
+		ASSERT__(ResearchStateDetail::attributeCounter > 0);
+		ownerID = parentID;
+		unlockProgress.SetSize(ResearchStateDetail::numUnlockables);
+		unlockProgress.Fill(isNexus ? 0xFFFFFFFF : 0);
+		improveProgress.SetSize(ResearchStateDetail::attributeCounter);
+		improveProgress.Fill(isNexus ? 10 : 0);
 	}
 
 	bool			ResearchState::CheckUnlocked(const Component::Base&b,String&errorOut)	const
@@ -1802,14 +1821,13 @@ namespace Objects
 		return false;
 	}
 
-	String			ResearchState::Describe(ConstName constName, float baseValue, Component::Attribute attrib, ModulationType type/*=ModulationType::DefaultFloat*/, ExtraModulationFunction mod/*=ExtraModulationFunction()*/)	const
+
+	/*static*/ String		ResearchState::_Describe(float fc, float baseValue, ModulationType type/*=ModulationType::DefaultFloat*/, ExtraModulationFunction mod/*=ExtraModulationFunction()*/)
 	{
 		String rs(mod ? mod(baseValue) : baseValue);
-					
-		float fc = GetFactorFor(constName,attrib);
 		if (fc != 1.f)
 		{
-			if (type == ModulationType::InvertedFloat)
+			if (type == ModulationType::InvertedFloat || type == ModulationType::InvertedCeilInt)
 				fc = 1.f / fc;
 
 			float modulated = fc * baseValue;
@@ -1818,35 +1836,27 @@ namespace Objects
 			if (type == ModulationType::FloorInt)
 				modulated = floor(modulated);
 			else
-				modulated = round(modulated * 10)/10;
-			rs =  String(modulated)+ " ("+rs+"x"+String(round(fc*10)/10)+")";
-		}
-		return rs;
-	}
-
-	String			ResearchState::Describe(const Component::Base&base, float baseValue, Component::Attribute attrib, ModulationType type/*=ModulationType::DefaultFloat*/, ExtraModulationFunction mod/*=ExtraModulationFunction()*/)	const
-	{
-		String rs(mod ? mod(baseValue) : baseValue);
-					
-		float fc = GetFactorFor(base,attrib);
-		if (fc != 1.f)
-		{
-			if (type == ModulationType::InvertedFloat)
-				fc = 1.f / fc;
-
-			float modulated = fc * baseValue;
-			if (mod)
-				modulated = mod(modulated);
-			if (type == ModulationType::FloorInt)
-				modulated = floor(modulated);
-			else
-				if (type == ModulationType::CeilInt)
+				if (type == ModulationType::CeilInt || type == ModulationType::InvertedCeilInt)
 					modulated = ceil(modulated);
 				else
 					modulated = round(modulated * 10)/10;
 			rs =  String(modulated)+ " ("+rs+"x"+String(round(fc*10)/10)+")";
 		}
 		return rs;
+	}
+
+	String			ResearchState::Describe(ConstName constName, float baseValue, Component::Attribute attrib, ModulationType type/*=ModulationType::DefaultFloat*/, ExtraModulationFunction mod/*=ExtraModulationFunction()*/)	const
+	{
+					
+		float fc = GetFactorFor(constName,attrib);
+		return _Describe(fc, baseValue,type,mod);
+		
+	}
+
+	String			ResearchState::Describe(const Component::Base&base, float baseValue, Component::Attribute attrib, ModulationType type/*=ModulationType::DefaultFloat*/, ExtraModulationFunction mod/*=ExtraModulationFunction()*/)	const
+	{
+		float fc = GetFactorFor(base,attrib);
+		return _Describe(fc, baseValue,type,mod);
 	}
 
 
@@ -1928,9 +1938,11 @@ namespace Objects
 	}
 
 
+
 	/*virtual override*/	serial_size_t	ResearchState::GetSerialSize(bool export_size) const
 	{
-		return 1 /*current type*/
+		return	sizeof(ownerID)
+				+1 /*current type*/
 				+1 /*current attribute*/
 				+unlockProgress.GetContentSize()
 				+improveProgress.GetContentSize();
@@ -1938,7 +1950,8 @@ namespace Objects
 
 	/*virtual override*/	bool			ResearchState::Serialize(IWriteStream&outStream, bool export_size) const
 	{
-		return outStream.WritePrimitive((BYTE)currentResearch) && outStream.WritePrimitive((BYTE)currentResearchAttribute)
+		return outStream.WritePrimitive(ownerID)
+			&& outStream.WritePrimitive((BYTE)currentResearch) && outStream.WritePrimitive((BYTE)currentResearchAttribute)
 			&& outStream.Write(unlockProgress.pointer(),unlockProgress.GetContentSize())
 			&& outStream.Write(improveProgress.pointer(),improveProgress.GetContentSize());
 	}
@@ -1946,8 +1959,8 @@ namespace Objects
 	/*virtual override*/	bool			ResearchState::Deserialize(IReadStream&inStream, serial_size_t fixed_size)
 	{
 		BYTE currentRes,currentResAttrib;
-		if (
-		 inStream.ReadPrimitive(currentRes) && inStream.ReadPrimitive(currentResAttrib)
+		if (	inStream.ReadPrimitive(ownerID)
+			&& inStream.ReadPrimitive(currentRes) && inStream.ReadPrimitive(currentResAttrib)
 			&& inStream.Read(unlockProgress.pointer(),unlockProgress.GetContentSize())
 			&& inStream.Read(improveProgress.pointer(),improveProgress.GetContentSize()))
 		{

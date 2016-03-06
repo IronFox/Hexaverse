@@ -351,7 +351,7 @@ bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targ
 											Objects::PMobileEntity me = To<Objects::MobileEntity>::Cast(e);
 											if (e->location != originLoc || me->GetLastPointOfOrigin() != sourceLoc)
 												return Dialog::CheckResult::Abort;
-											if (!RuntimeConfig::IsInAnyCommandPhase() || Objects::Faction::mine->requestedNewRound)
+											if (!RuntimeConfig::IsInAnyCommandPhase() || (Objects::Faction::mine && Objects::Faction::mine->requestedNewRound))
 												return Dialog::CheckResult::OkayNotRightNow;
 											return Dialog::CheckResult::OkayContinue;
 										});

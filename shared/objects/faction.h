@@ -133,7 +133,8 @@ namespace Objects
 		DefaultFloat,
 		InvertedFloat,
 		FloorInt,
-		CeilInt
+		CeilInt,
+		InvertedCeilInt
 	};
 
 	/**
@@ -144,14 +145,20 @@ namespace Objects
 	*/
 	class ResearchState : public SerializableObject
 	{
+	public:
+		typedef std::function<float(float)>	ExtraModulationFunction;
+	private:
 		static float			GetFactor(int level);
+		static String			_Describe(float fc, float baseValue, ResearchSateModulation type/*=ModulationType::DefaultFloat*/, ExtraModulationFunction mod/*=ExtraModulationFunction()*/);
 	public:
 		ConstName				currentResearch = ConstName::Empty;
 		Component::Attribute	currentResearchAttribute;	//ignored if targeted research is not unlocked
 
 		Array<UINT32>			unlockProgress,improveProgress;
 		bool					changed = false;
+		TUniqueID				ownerID;
 
+		/**/					ResearchState(const TUniqueID&id, bool isNexus);
 		/**/					ResearchState();
 
 		virtual	serial_size_t	GetSerialSize(bool export_size) const override;
@@ -160,10 +167,11 @@ namespace Objects
 		virtual	bool			HasFixedSize() const override {return true;}
 
 
-		static void		RegisterUnlockCost(Structure*, Component::Attribute);
+		static void		RegisterResearch(Structure*, Component::Attribute);
+		static void		RegisterResearch(Component::Base&component, Component::Attribute);
+		static void		RegisterResearch(Satellite*, Component::Attribute);
 		static void		RegisterUnlockCost(Structure*, int researchCost);
 		static void		RegisterUnlockCost(Component::Base&component, int researchCost);
-		static void		RegisterResearch(Component::Base&component, Component::Attribute);
 		static void		RegisterDependency(Component::Base&component, Component::Base&dependentOn);
 		static void		RegisterDependency(Component::Base&component, const PStructure&dependentOn);
 
@@ -183,7 +191,6 @@ namespace Objects
 
 		typedef ResearchSateModulation ModulationType;
 
-		typedef std::function<float(float)>	ExtraModulationFunction;
 
 
 		String			Describe(ConstName, float baseValue, Component::Attribute attrib, ModulationType type=ModulationType::DefaultFloat, ExtraModulationFunction mod=ExtraModulationFunction())	const;
@@ -264,7 +271,7 @@ namespace Objects
 			static PFaction				FindByID(const TUniqueID&id);
 			static PFaction				GetOrCreate(const TUniqueID&id);
 
-			/**/						Faction(const TUniqueID&id) {UpdateID(id);}
+			/**/						Faction(const TUniqueID&id):researchState(id,false) {UpdateID(id);}
 
 		#else
 
@@ -320,7 +327,7 @@ namespace Objects
 
 
 
-			/**/		Faction(const TUniqueID&id, const String&name=""):name(name)
+			/**/		Faction(const TUniqueID&id, const String&name="", bool isNexus=false):researchState(id,isNexus), name(name)
 			{
 				nexusControl = acquiringNexusControl = 0;
 				deathInRounds = 0;

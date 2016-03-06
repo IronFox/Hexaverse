@@ -23,6 +23,22 @@ namespace Objects
 	}
 
 
+	/*virtual override*/ int				Satellite::GetFuelConsumptionPerRound() const
+	{
+		return owner ? 
+				(int)ceil(float(GetBaseFuelConsumptionPerRound()) / owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::YieldEfficiency))
+				: GetBaseFuelConsumptionPerRound();
+	};
+
+	/*virtual override*/ String				Satellite::DescribeFuelConsumptionPerRound() const
+	{
+		if (!RequiresFuel())
+			return "0";
+		return owner ? 
+				owner->researchState.Describe(GetCTypeName(),GetBaseFuelConsumptionPerRound(), Component::Attribute::YieldEfficiency,ResearchSateModulation::InvertedCeilInt)
+				: String(GetBaseFuelConsumptionPerRound());
+	};
+
 	/*virtual override*/ float			Satellite::GetFlatAttackRange() const 
 	{
 		if (!turret->CanAttack())
@@ -257,16 +273,16 @@ namespace Objects
 
 			const String fuel (ResourceTag(Resource::Fuel));
 
-			int demand = this->GetFuelConsumptionPerRound();
-			if ((descFlags & DescIncludeFuelDemandModifier) && !this->RequiresFuel())
-				demand = 0;
-			if ((descFlags & DescIncludeFuelDemandModifier) && demand)
+			String demand = this->DescribeFuelConsumptionPerRound();
+			//if ((descFlags & DescIncludeFuelDemandModifier) && !this->RequiresFuel())
+			//	demand = 0;
+			if ((descFlags & DescIncludeFuelDemandModifier) && demand != "0")
 			{
-				outResult << "Consumes"+fuel+String(demand)+'+'+String(GetExtraFuelDemand())+" per round";
+				outResult << "Consumes"+fuel+demand+'+'+String(GetExtraFuelDemand())+" per round";
 			}
 			else
 			{
-				outResult << "Consumes"+fuel+String(demand)+" per round";
+				outResult << "Consumes"+fuel+demand+" per round";
 			}
 
 
@@ -442,6 +458,11 @@ namespace Objects
 		#endif
 	}
 
+	/*virtual override*/ void			Satellite::PrototypeSetup()
+	{
+		Super::PrototypeSetup();
+		ResearchState::RegisterResearch(this,Component::Attribute::YieldEfficiency);
+	}
 
 
 	/*virtual override*/ void			SkyHub::PrototypeSetup()

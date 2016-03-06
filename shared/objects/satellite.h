@@ -171,7 +171,9 @@ namespace Objects
 		SkyPort connection status.
 		The return value is expected to be independent of the state of the local instance.
 		*/
-		virtual int				GetFuelConsumptionPerRound() const {return GetConstructionCost()/4;};
+		virtual int				GetFuelConsumptionPerRound() const;
+		virtual String			DescribeFuelConsumptionPerRound() const;
+		virtual int				GetBaseFuelConsumptionPerRound() const {return GetConstructionCost()/4;}
 		/**
 		Tests whether or not the local instance currently requires fuel at all.
 		SkyHubs do not require fuel when hovering atop an enabled SkyPort, and will then return false.
@@ -250,6 +252,9 @@ namespace Objects
 			bool				DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 			MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) override;
 		#endif
+
+		//WorldEntity overrides:
+		virtual void			PrototypeSetup() override;
 	};
 
 
@@ -334,6 +339,7 @@ namespace Objects
 	template <typename Derivative>
 		/*virtual override*/	void			SatelliteTemplate<Derivative>::PrototypeSetup()
 		{
+			Super::PrototypeSetup();
 			turret = GetTurretType();
 			#ifdef HAS_WINDOW
 				commands.baseCoords = int2(4,0)+BaseCommand::coordOffset;

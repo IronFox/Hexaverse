@@ -1975,11 +1975,11 @@
 				elif (e.IsSatellite())
 				{
 					Objects::Satellite*sat = (Objects::Satellite*)(&e);
-					int demand = sat->GetFuelConsumptionPerRound();
+					String demand = sat->DescribeFuelConsumptionPerRound();
 					if (!sat->RequiresFuel())
 						demand = 0;
 					textout << " Fuel-Consumption: "<<(char)(tagOffset+Objects::Resource::Fuel)<<demand;
-					if (demand > 0)
+					if (demand != "0")
 						textout <<'+'<<sat->GetExtraFuelDemand();
 						
 					textout<<nl;
@@ -1991,8 +1991,8 @@
 					//textout << " Range: "<<v->GetAttackRange() << nl;
 					//textout << " Damage: "<<v->turret->damageLevel << nl;
 					//textout << " Ammo-Usage: "<<v->turret->ammoNeedPerShot<<nl;
-					textout << " Hrz. Range: "<<v->GetFlatAttackRange();
-					textout << '+'<<v->turret->GetExplosionRadius(e.owner)<< nl;
+					textout << " Hrz. Range: "<<0.1f * round(10.f * v->GetFlatAttackRange());
+					textout << '+'<<0.1f * round(10.f * v->turret->GetExplosionRadius(e.owner))<< nl;
 					textout << " Damage: "<<v->turret->GetDamageLevel(e.owner) << nl;
 					int ammoNeed = v->turret->GetAmmoNeedPerShot(e.owner);
 					if (ammoNeed > 0)
@@ -2084,7 +2084,7 @@
 					if (t->turret->CanAttack())
 					{
 						const Objects::Tower*v = t;	//rename
-						textout << " Hrz. Range: "<<v->GetFlatAttackRange();
+						textout << " Hrz. Range: "<<0.1f * round(10.f * v->GetFlatAttackRange());
 						textout << '+'<<v->turret->GetExplosionRadius(e.owner)<< nl;
 						textout << " Damage: "<<v->turret->GetDamageLevel(e.owner) << nl;
 						textout << " "<<(char)(tagOffset+v->turret->ammoType)<<"Ammo-Usage: "<<v->turret->GetAmmoNeedPerShot(e.owner)<<nl;

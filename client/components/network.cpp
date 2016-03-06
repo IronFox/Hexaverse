@@ -879,6 +879,11 @@ namespace Network
 			#endif
 
 		}
+
+		void	ResearchState(Objects::ResearchState&state)
+		{
+			ResolveFaction(state.ownerID)->researchState = state;
+		}
 	}
 
 
@@ -919,6 +924,7 @@ namespace Network
 		TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>								lockEmpZones(Receiver::LockEmpZones);
 		TCP::Channel<NET(INT32), 0, Protocol::ChannelID::UplinkBandwidth>							uplinkBandwidth(Receiver::UplinkBandwidth);
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
+		TCP::Channel<Objects::ResearchState, 0, Protocol::ChannelID::ResearchState>					researchState(Receiver::ResearchState);
 
 
 
@@ -1144,6 +1150,7 @@ namespace Network
 		client.InstallChannel(Channels::markerCreationFailedLimitReached);
 		client.InstallChannel(Channels::destroyMarker);
 		client.InstallChannel(Channels::identifyUser);
+		client.InstallChannel(Channels::researchState);
 		client.InstallChannel(Channels::factionOnline);
 		client.InstallChannel(Channels::factionOffline);
 		client.InstallChannel(Channels::factionRequestedNewRound);

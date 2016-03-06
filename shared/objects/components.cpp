@@ -55,9 +55,11 @@ namespace Objects
 			return owner ? owner->researchState.GetFactorFor(*this,Attribute::ConstructionSpeed) * baseOperationSpeed[op] : baseOperationSpeed[op];
 		}
 
-		float							Turret::GetDamageLevel(const OwnerParameter&owner) const
+		int							Turret::GetDamageLevel(const OwnerParameter&owner) const
 		{
-			return owner ? owner->researchState.GetFactorFor(*this,Attribute::DamageLevel) * baseDamageLevel : baseDamageLevel;
+			if (baseDamageLevel == 0)
+				return 0;
+			return owner ? std::max(1,(int)floor(owner->researchState.GetFactorFor(*this,Attribute::DamageLevel) * baseDamageLevel) ): baseDamageLevel;
 		}
 
 		float							Turret::GetExplosionRadius(const OwnerParameter&owner) const
@@ -2043,9 +2045,9 @@ namespace Objects
 						outResult << " Consumes "+String(ResourceTag(ammoType))+ModulateByResearch(baseAmmoNeedPerShot,Attribute::YieldEfficiency,owner,ResearchState::ModulationType::InvertedFloat)+" per shot";
 					outResult << " Explosion radius: "+ModulateByResearch(baseExplosionRadius, Attribute::ExplosionRadius,owner,ResearchState::ModulationType::DefaultFloat);
 					if (dealsEMPDamage)
-						outResult << " EMP damage: "+ModulateByResearch(baseDamageLevel,Attribute::DamageLevel,owner,ResearchState::ModulationType::DefaultFloat);
+						outResult << " EMP damage: "+ModulateByResearch(baseDamageLevel,Attribute::DamageLevel,owner,ResearchState::ModulationType::FloorInt);
 					else
-						outResult << " Damage: "+ModulateByResearch(baseDamageLevel,Attribute::DamageLevel,owner,ResearchState::ModulationType::DefaultFloat);
+						outResult << " Damage: "+ModulateByResearch(baseDamageLevel,Attribute::DamageLevel,owner,ResearchState::ModulationType::FloorInt);
 					outResult << " "+ModulateByResearch(baseAttacksPerRound,Attribute::DamageLevel,owner,ResearchState::ModulationType::FloorInt)+" attack(s) per round";
 				}
 
