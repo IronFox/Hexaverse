@@ -1757,7 +1757,7 @@ namespace Objects
 		unlockProgress.SetSize(ResearchStateDetail::numUnlockables);
 		unlockProgress.Fill(0);
 		improveProgress.SetSize(ResearchStateDetail::attributeCounter);
-		improveProgress.Fill(0);
+		improveProgress.Fill(10);
 	}
 
 	bool			ResearchState::CheckUnlocked(const Component::Base&b,String&errorOut)	const
@@ -1801,6 +1801,54 @@ namespace Objects
 			return true;
 		return false;
 	}
+
+	String			ResearchState::Describe(ConstName constName, float baseValue, Component::Attribute attrib, ModulationType type/*=ModulationType::DefaultFloat*/, ExtraModulationFunction mod/*=ExtraModulationFunction()*/)	const
+	{
+		String rs(mod ? mod(baseValue) : baseValue);
+					
+		float fc = GetFactorFor(constName,attrib);
+		if (fc != 1.f)
+		{
+			if (type == ModulationType::InvertedFloat)
+				fc = 1.f / fc;
+
+			float modulated = fc * baseValue;
+			if (mod)
+				modulated = mod(modulated);
+			if (type == ModulationType::FloorInt)
+				modulated = floor(modulated);
+			else
+				modulated = round(modulated * 10)/10;
+			rs =  String(modulated)+ " ("+rs+"x"+String(round(fc*10)/10)+")";
+		}
+		return rs;
+	}
+
+	String			ResearchState::Describe(const Component::Base&base, float baseValue, Component::Attribute attrib, ModulationType type/*=ModulationType::DefaultFloat*/, ExtraModulationFunction mod/*=ExtraModulationFunction()*/)	const
+	{
+		String rs(mod ? mod(baseValue) : baseValue);
+					
+		float fc = GetFactorFor(base,attrib);
+		if (fc != 1.f)
+		{
+			if (type == ModulationType::InvertedFloat)
+				fc = 1.f / fc;
+
+			float modulated = fc * baseValue;
+			if (mod)
+				modulated = mod(modulated);
+			if (type == ModulationType::FloorInt)
+				modulated = floor(modulated);
+			else
+				if (type == ModulationType::CeilInt)
+					modulated = ceil(modulated);
+				else
+					modulated = round(modulated * 10)/10;
+			rs =  String(modulated)+ " ("+rs+"x"+String(round(fc*10)/10)+")";
+		}
+		return rs;
+	}
+
 
 
 	/*static*/ float			ResearchState::GetFactor(int level)

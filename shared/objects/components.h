@@ -107,13 +107,7 @@ namespace Objects
 				static bool					MissileCanHit(float flatRange, const TVec3<>&originNormal, const TVec3<>&origin, const TVec3<>&destination);
 			};
 
-			enum class ModulationType
-			{
-				DefaultFloat,
-				InvertedFloat,
-				FloorInt
-			};
-			String							ModulateByResearch(float baseValue, Attribute attrib, const OwnerParameter&owner, ModulationType type=ModulationType::DefaultFloat)	const;
+			String							ModulateByResearch(float baseValue, Attribute attrib, const OwnerParameter&owner, ResearchSateModulation type)	const;
 
 		public:
 			#ifdef HAS_WINDOW

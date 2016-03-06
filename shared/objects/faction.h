@@ -128,6 +128,14 @@ namespace Objects
 
 
 
+	enum class ResearchSateModulation
+	{
+		DefaultFloat,
+		InvertedFloat,
+		FloorInt,
+		CeilInt
+	};
+
 	/**
 	@brief Research progress of a given faction
 
@@ -171,6 +179,15 @@ namespace Objects
 		static bool		IsResearchable(ConstName, Component::Attribute);
 
 		void			Contribute();
+
+
+		typedef ResearchSateModulation ModulationType;
+
+		typedef std::function<float(float)>	ExtraModulationFunction;
+
+
+		String			Describe(ConstName, float baseValue, Component::Attribute attrib, ModulationType type=ModulationType::DefaultFloat, ExtraModulationFunction mod=ExtraModulationFunction())	const;
+		String			Describe(const Component::Base&, float baseValue, Component::Attribute attrib, ModulationType type=ModulationType::DefaultFloat, ExtraModulationFunction mod=ExtraModulationFunction())	const;
 	};
 
 	

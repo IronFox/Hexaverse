@@ -37,61 +37,61 @@ namespace Objects
 
 		float							VehicleBase::GetBaseMovementSpeed(const OwnerParameter&owner) const
 		{
-			return owner->researchState.GetFactorFor(*this,Attribute::MovementSpeed) * unmodulatedMovementSpeed;
+			return owner ? owner->researchState.GetFactorFor(*this,Attribute::MovementSpeed) * unmodulatedMovementSpeed : unmodulatedMovementSpeed;
 		}
 		float							VehicleBase::GetCarryingCapacity(const OwnerParameter&owner) const
 		{
-			return owner->researchState.GetFactorFor(*this,Attribute::CarryWeight) * baseCarryingCapacity;
+			return owner ? owner->researchState.GetFactorFor(*this,Attribute::CarryWeight) * baseCarryingCapacity : baseCarryingCapacity;
 		}
 		float							VehicleBase::GetBaseHealth(const OwnerParameter&owner) const
 		{
-			return owner->researchState.GetFactorFor(*this,Attribute::Health) * unmodulatedHealth;
+			return owner ? owner->researchState.GetFactorFor(*this,Attribute::Health) * unmodulatedHealth : unmodulatedHealth;
 		}
 
 
 
 		float							Turret::GetOperationSpeed(operation_t op, const OwnerParameter&owner) const
 		{
-			return owner->researchState.GetFactorFor(*this,Attribute::ConstructionSpeed) * baseOperationSpeed[op];
+			return owner ? owner->researchState.GetFactorFor(*this,Attribute::ConstructionSpeed) * baseOperationSpeed[op] : baseOperationSpeed[op];
 		}
 
 		float							Turret::GetDamageLevel(const OwnerParameter&owner) const
 		{
-			return owner->researchState.GetFactorFor(*this,Attribute::DamageLevel) * baseDamageLevel;
+			return owner ? owner->researchState.GetFactorFor(*this,Attribute::DamageLevel) * baseDamageLevel : baseDamageLevel;
 		}
 
 		float							Turret::GetExplosionRadius(const OwnerParameter&owner) const
 		{
-			return owner->researchState.GetFactorFor(*this,Attribute::ExplosionRadius) * baseExplosionRadius;
+			return owner ? owner->researchState.GetFactorFor(*this,Attribute::ExplosionRadius) * baseExplosionRadius : baseExplosionRadius;
 		}
 
 		int								Turret::GetAttacksPerRound(const OwnerParameter&owner) const
 		{
-			return (int)floor(owner->researchState.GetFactorFor(*this,Attribute::AttacksPerRound) * baseAttacksPerRound);
+			return owner ? (int)floor(owner->researchState.GetFactorFor(*this,Attribute::AttacksPerRound) * baseAttacksPerRound) : baseAttacksPerRound;
 		}		
 
 		int								Turret::GetAmmoNeedPerShot(const OwnerParameter&owner) const
 		{
 			if (baseAmmoNeedPerShot == 0)
 				return 0;
-			return (int)ceil(float(baseAmmoNeedPerShot) / owner->researchState.GetFactorFor(*this,Attribute::YieldEfficiency));
+			return owner ? (int)ceil(float(baseAmmoNeedPerShot) / owner->researchState.GetFactorFor(*this,Attribute::YieldEfficiency)) : baseAmmoNeedPerShot;
 		}	
 
 		float							Turret::GetHorizontalAttackRange(const OwnerParameter&owner, int bonus/*=0*/) const
 		{
 			if (baseHorizontalAttackRange == 0)
 				return 0;
-			return owner->researchState.GetFactorFor(*this,Attribute::AttackRange) * (baseHorizontalAttackRange + bonus);
+			return owner ? owner->researchState.GetFactorFor(*this,Attribute::AttackRange) * (baseHorizontalAttackRange + bonus) : (baseHorizontalAttackRange + bonus);
 		}
 
 		float							Turret::GetScanningRange(const OwnerParameter&owner, int bonus/*=0*/) const
 		{
-			return owner->researchState.GetFactorFor(*this,Attribute::ScanningRange) * (baseScanningRange + bonus);
+			return owner ? owner->researchState.GetFactorFor(*this,Attribute::ScanningRange) * (baseScanningRange + bonus) : (baseScanningRange + bonus);
 		}
 
 		float							Turret::GetGroundScanningRange(const OwnerParameter&owner) const
 		{
-			return owner->researchState.GetFactorFor(*this,Attribute::ScanningRange) * baseGroundScanningRange;
+			return owner ? owner->researchState.GetFactorFor(*this,Attribute::ScanningRange) * baseGroundScanningRange : baseGroundScanningRange;
 		}
 
 
@@ -1970,14 +1970,14 @@ namespace Objects
 				{
 					if (operationSpeedMultiplier != 1)
 						outResult << " Operation speed multiplied by "+String(operationSpeedMultiplier);
-					outResult<<" Base speed: "+ModulateByResearch(unmodulatedMovementSpeed,Attribute::MovementSpeed,owner);
+					outResult<<" Base speed: "+ModulateByResearch(unmodulatedMovementSpeed,Attribute::MovementSpeed,owner,ResearchState::ModulationType::DefaultFloat);
 					if (requirements == Requirement::Water)
 						outResult.lines.last()+= " (naval)";
 					else
 						if (moveOnWater)
 							outResult.lines.last()+= " (moves over water)";
-					outResult<<" Base health: "+ModulateByResearch(unmodulatedHealth,Attribute::Health,owner,ModulationType::FloorInt);
-					outResult<<" Turret carrying capacity: "+ModulateByResearch(baseCarryingCapacity,Attribute::CarryWeight,owner,ModulationType::FloorInt);
+					outResult<<" Base health: "+ModulateByResearch(unmodulatedHealth,Attribute::Health,owner,ResearchState::ModulationType::FloorInt);
+					outResult<<" Turret carrying capacity: "+ModulateByResearch(baseCarryingCapacity,Attribute::CarryWeight,owner,ResearchState::ModulationType::FloorInt);
 					if (rangeModifier != 0)
 						outResult<<" Turret range modifier: "+String(rangeModifier);
 				}
@@ -1986,26 +1986,13 @@ namespace Objects
 			}
 
 
-			String Base::ModulateByResearch(float baseValue, Attribute attrib, const OwnerParameter&owner, ModulationType type/*=ModulationType::DefaultFloat*/)	const
+			String Base::ModulateByResearch(float baseValue, Attribute attrib, const OwnerParameter&owner, ResearchState::ModulationType type/*=ModulationType::DefaultFloat*/)	const
 			{
-				String rs(baseValue);
-					
 				if (owner)
-				{
-					float fc = owner->researchState.GetFactorFor(constName,Attribute::ScanningRange);
-					if (type == ModulationType::InvertedFloat)
-						fc = 1.f / fc;
-					if (fc > 1.f)
-					{
-						float modulated = fc * baseValue;
-						if (type == ModulationType::FloorInt)
-							modulated = floor(modulated);
-						else
-							modulated = round(modulated * 10)/10;
-						rs += "x"+String(round(fc*10)/10)+" -> "+String(modulated);
-					}
-				}
-				return rs;
+					return owner->researchState.Describe(*this, baseValue,attrib,type);
+				else
+					return String(baseValue);
+				
 			}
 
 			void Turret::DescribeType(BaseCommand::Label&outResult, bool compound, const String&parentType, const OwnerParameter&owner)
@@ -2031,7 +2018,7 @@ namespace Objects
 				if (!compound)
 				{
 					outResult << " Weight: "+String(weight);
-					outResult << " Base scanning range: "+ModulateByResearch(baseScanningRange,Attribute::ScanningRange,owner);
+					outResult << " Base scanning range: "+ModulateByResearch(baseScanningRange,Attribute::ScanningRange,owner,ResearchState::ModulationType::DefaultFloat);
 					if (healthMultiplier != 1)
 						outResult << " Health: x"+String(healthMultiplier);
 					if (RuntimeConfig::hibernationSystemEnabled)
@@ -2048,22 +2035,22 @@ namespace Objects
 					elif (requiresStationaryVehicle)
 						outResult << " Vehicle must remain stationary to fire";
 					if (!compound)
-						outResult << " Base horizontal attack range: "+ModulateByResearch(baseHorizontalAttackRange,Attribute::AttackRange,owner);
+						outResult << " Base horizontal attack range: "+ModulateByResearch(baseHorizontalAttackRange,Attribute::AttackRange,owner,ResearchState::ModulationType::DefaultFloat);
 
 					if (baseAmmoNeedPerShot == 0)
 						outResult << "Does not require ammunition";
 					else
-						outResult << " Consumes "+String(ResourceTag(ammoType))+ModulateByResearch(baseAmmoNeedPerShot,Attribute::YieldEfficiency,owner,ModulationType::InvertedFloat)+" per shot";
-					outResult << " Explosion radius: "+ModulateByResearch(baseExplosionRadius, Attribute::ExplosionRadius,owner);
+						outResult << " Consumes "+String(ResourceTag(ammoType))+ModulateByResearch(baseAmmoNeedPerShot,Attribute::YieldEfficiency,owner,ResearchState::ModulationType::InvertedFloat)+" per shot";
+					outResult << " Explosion radius: "+ModulateByResearch(baseExplosionRadius, Attribute::ExplosionRadius,owner,ResearchState::ModulationType::DefaultFloat);
 					if (dealsEMPDamage)
-						outResult << " EMP damage: "+ModulateByResearch(baseDamageLevel,Attribute::DamageLevel,owner);
+						outResult << " EMP damage: "+ModulateByResearch(baseDamageLevel,Attribute::DamageLevel,owner,ResearchState::ModulationType::DefaultFloat);
 					else
-						outResult << " Damage: "+ModulateByResearch(baseDamageLevel,Attribute::DamageLevel,owner);
-					outResult << " "+ModulateByResearch(baseAttacksPerRound,Attribute::DamageLevel,owner,ModulationType::FloorInt)+" attack(s) per round";
+						outResult << " Damage: "+ModulateByResearch(baseDamageLevel,Attribute::DamageLevel,owner,ResearchState::ModulationType::DefaultFloat);
+					outResult << " "+ModulateByResearch(baseAttacksPerRound,Attribute::DamageLevel,owner,ResearchState::ModulationType::FloorInt)+" attack(s) per round";
 				}
 
 				if (CanConstruct() && !compound)
-					outResult << " Construction: Converts "+String(ResourceTag(Resource::Minerals))+ModulateByResearch(baseOperationSpeed[Construct],Attribute::ConstructionSpeed,owner,ModulationType::FloorInt)+" per round";
+					outResult << " Construction: Converts "+String(ResourceTag(Resource::Minerals))+ModulateByResearch(baseOperationSpeed[Construct],Attribute::ConstructionSpeed,owner,ResearchState::ModulationType::FloorInt)+" per round";
 				if ((CanDo(TerrainRemove) || CanDo(TerrainAdd)) && !compound)
 					outResult << " Terraforming: Can shape the surrounding terrain";
 				if (CanRepair())

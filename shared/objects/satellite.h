@@ -243,6 +243,7 @@ namespace Objects
 		#endif
 
 		virtual int				GetMovementStepsPerRound() const override;
+		virtual String			DescribeMovementStepsPerRound()	const override;
 		virtual bool			MotionIgnoresAttack() const override {return false;}
 		virtual float			GetPathSize() const override {return 1.f;}
 		#ifndef CLIENT

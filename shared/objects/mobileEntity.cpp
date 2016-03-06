@@ -70,6 +70,19 @@ namespace Objects
 
 
 
+	/*virtual override*/ float		MobileEntity::GetScanningRange() const
+	{
+		return EMPModify(turret->GetScanningRange(owner), 2.f);
+	}
+
+	/*virtual override*/ String		MobileEntity::DescribeScanningRange() const
+	{
+		return owner
+			?owner->researchState.Describe(GetCTypeName(),turret->baseScanningRange,Component::Attribute::ScanningRange, ResearchState::ModulationType::DefaultFloat,std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2))
+			:String(GetScanningRange());
+	}
+
+
 	void MobileEntity::UpdateSystem()
 	{
 		ASSERT_LESS__(location.stackID, Grid::LowSetup::GridType::CellCount);

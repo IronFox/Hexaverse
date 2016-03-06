@@ -2020,6 +2020,29 @@ namespace Objects
 
 	}
 
+	/*virtual override*/ float		Tower::GetScanningRange() const
+	{
+		return EMPModify(turret->GetScanningRange(owner,turret->CanAttack() ? - 2.f : 2.f), 2.f);
+	}
+
+	/*virtual override*/ String		Tower::DescribeScanningRange() const
+	{
+		return owner->researchState.Describe(GetCTypeName(),turret->baseScanningRange+(turret->CanAttack() ? - 2.f : 2.f),Component::Attribute::ScanningRange, ResearchState::ModulationType::DefaultFloat,std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2));
+	}
+
+	/*virtual override*/ int				Tower::GetMaxHealth() const
+	{
+		return std::max(1,(int)floor(float(Super::GetBaseMaxHealth()) * turret->healthMultiplier * owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::Health)));
+	}
+
+	/*virtual override*/ String				Tower::DescribeMaxHealth() const
+	{
+		return owner->researchState.Describe(GetCTypeName(),float(Super::GetBaseMaxHealth()) * turret->healthMultiplier,Component::Attribute::Health,ResearchSateModulation::FloorInt);
+	}
+
+
+
+
 
 
 		//	virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;

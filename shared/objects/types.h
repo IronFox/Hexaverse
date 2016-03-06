@@ -49,6 +49,7 @@ namespace Objects
 
 	typedef PFaction		OwnerParameter;
 
+	enum class ResearchSateModulation;
 
 	CONSTRUCT_ENUMERATION7(RemovalType,
 		Vanished,

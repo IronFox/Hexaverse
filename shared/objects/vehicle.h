@@ -136,6 +136,8 @@ namespace Objects
 		int						GetMaxFallingHeight() const {return -base->minClimbDown;}
 
 
+		int						GetTurretOverweight() const;
+		float					GetTurretOverweightFactor() const;
 
 		//BaseEntity overrides:
 		virtual String			GetTypeName() const override {return GetTypeName(base,turret);}
@@ -143,14 +145,15 @@ namespace Objects
 
 
 		//WorldEntity overrides:
-		virtual float			GetScanningRangeResearchFactor() const override;
 		virtual int				GetConstructionCost() const override {return GetPrice();}
 		#ifndef NO_HIBERNATION
 			virtual int			GetUplinkTraffic() const override;
 		#endif
-		virtual int				GetMaxHealth() const override {return std::max(1,(int)floor(base->GetBaseHealth(owner) * turret->healthMultiplier));};
+		virtual int				GetMaxHealth() const override;
+		virtual String			DescribeMaxHealth() const override;
 		virtual PWorldEntity	CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Vehicle(owner,location,base,turret));};
-		virtual float			GetMaxScanningRange() const override;
+		virtual float			GetScanningRange() const override;
+		virtual String			DescribeScanningRange() const override;
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = base->height; return To<Vehicle>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = base->height; return To<const Vehicle>::Cast(shared_from_this());}
 		virtual bool			IsVehicle() const override {return true;}
@@ -164,6 +167,7 @@ namespace Objects
 		//MobileEntity overrides:
 		virtual bool			MotionIgnoresAttack() const override {return base->ignoresVehicleAttacks;}
 		virtual int				GetMovementStepsPerRound() const override;
+		virtual String			DescribeMovementStepsPerRound() const override;
 		virtual int				GetOperationSpeed(Component::operation_t op) const override;
 		virtual float			GetBaseMovementInitiative() const override {return base->initiative;}
 		#ifndef ONE_COMPOUND_PER_FACTION

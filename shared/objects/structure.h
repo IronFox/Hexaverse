@@ -1692,9 +1692,10 @@ namespace Objects
 
 		//WorldEntity overrides:
 		virtual bool				IsTower() const override {return true;}
-		virtual float				GetMaxScanningRange() const override	{return turret->GetScanningRange(owner, turret->CanAttack() ? - 2.f : 2.f);};	//returns the effective scanning range of the local entity
-		virtual float				GetScanningRangeResearchFactor() const override {return 1.f;}
-		virtual int					GetMaxHealth() const override {return int(ceil(float(Super::GetMaxHealth()) * turret->healthMultiplier));}
+		virtual float				GetScanningRange() const override;
+		virtual String				DescribeScanningRange() const override;
+		virtual int					GetMaxHealth() const override;
+		virtual String				DescribeMaxHealth() const override;
 		virtual void				PrototypeSetup()	override;
 		#ifdef HAS_WINDOW
 			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;

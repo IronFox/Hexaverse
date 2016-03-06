@@ -234,23 +234,33 @@ namespace Objects
 		return min + window * Grid::powi(0.25f,(UINT)empDamageLevel);
 	}
 
-	/*virtual*/ float				WorldEntity::GetHealthResearchFactor() const
+	/*virtual*/ int				WorldEntity::GetMaxHealth() const
 	{
-		return owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::Health);
+		float fc = owner ? owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::Health) : 1.f;
+		return std::max(1, (int)floor( fc * GetConstructionCost()/5) );
+	}
+
+	/*virtual*/ String				WorldEntity::DescribeMaxHealth() const
+	{
+		return owner 
+					?owner->researchState.Describe(GetCTypeName(),GetConstructionCost()/5,Component::Attribute::Health,ResearchSateModulation::FloorInt)
+					:String(GetMaxHealth());
 	}
 
 
-	/*virtual*/ float				WorldEntity::GetScanningRangeResearchFactor() const
+
+	/*virtual*/ float		WorldEntity::GetScanningRange() const
 	{
-		return owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::ScanningRange);
+		float fc = owner ? owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::ScanningRange) : 1.f;
+		return EMPModify(2.f * fc, 2.f);
 	}
 
-
-	float		WorldEntity::GetScanningRange() const
+	/*virtual*/ String		WorldEntity::DescribeScanningRange() const
 	{
-		return EMPModify(GetMaxScanningRange() * GetScanningRangeResearchFactor(), 2.f);
+		return owner
+				?owner->researchState.Describe(GetCTypeName(),2.f,Component::Attribute::ScanningRange, ResearchState::ModulationType::DefaultFloat,std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2))
+				:String(GetScanningRange());
 	}
-
 
 	//bool		WorldEntity::CanSee(const PWorldEntity&other) const
 	//{
@@ -320,9 +330,9 @@ namespace Objects
 				if (descFlags & DescIncludeMaxHealth)
 				{
 					if ((descFlags & DescIncludeCurrentHealth))
-						outResult << " Health: " +String(this->health)+"/"+String( this->GetMaxHealth() );
+						outResult << " Health: " +String(this->health)+"/"+this->DescribeMaxHealth();
 					else
-						outResult << " Health: " +String( this->GetMaxHealth() );
+						outResult << " Health: " + this->DescribeMaxHealth();
 				}
 				else
 					if ((descFlags & DescIncludeCurrentHealth))
@@ -334,8 +344,7 @@ namespace Objects
 			{
 				AppendDeploymentCount(outResult,owner);
 			}
-
-			outResult << " Scanning range: "+String(GetMaxScanningRange());
+			outResult << " Scanning range: "+DescribeScanningRange();
 			#ifndef NO_HIBERNATION
 					outResult << " "+String(TrafficResourceTag()) +String(GetUplinkTraffic());
 

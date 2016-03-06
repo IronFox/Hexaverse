@@ -177,7 +177,7 @@ namespace AI
 		if (e.isOwnedByMe || Vec::quadraticDistance(explosionCenter,e.system.w.xyz) > sqr(maxExplosionRadius))
 			return 0.f;
 		Objects::PTurretBase b = e.GetTurretBase();
-		float rs = e.GetMaxScanningRange();
+		float rs = e.GetScanningRange();
 		if (b)
 			rs = std::max(rs, b->GetFlatAttackRange() + b->turret->GetExplosionRadius(e.owner));
 		int health = e.health >0 ? e.health : e.GetMaxHealth();

@@ -35,6 +35,13 @@ namespace Objects
 		return (int)floor(owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::MovementSpeed));
 	}
 
+	/*virtual override*/String			Satellite::DescribeMovementStepsPerRound()	const
+	{
+		return owner ?
+				owner->researchState.Describe(GetCTypeName(),1.f,Component::Attribute::MovementSpeed,ResearchSateModulation::CeilInt,BindEMPModifyFunction())
+				:
+				String(GetMovementStepsPerRound());
+	}
 
 
 

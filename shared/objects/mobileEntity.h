@@ -474,6 +474,7 @@ namespace Objects
 		virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return focus;}
 		virtual bool			MotionIgnoresAttack() const=0;
 		virtual int				GetMovementStepsPerRound() const =0;
+		virtual String			DescribeMovementStepsPerRound() const =0;
 		virtual float			GetBaseMovementInitiative() const {return 100;}
 		/**
 		Retrieves the visual breath of compiled paths. Purely cosmetic.
@@ -509,8 +510,8 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual const Hibernating*ToHibernating() const override {return this;}
 		#endif
-		virtual float			GetMaxScanningRange() const override	{return turret->GetScanningRange(owner);};	//returns the effective scanning range of the local entity
-		virtual float			GetScanningRangeResearchFactor() const override {return 1.f;}	//factor already processed
+		virtual float			GetScanningRange() const override;
+		virtual String			DescribeScanningRange() const override;
 		#ifndef CLIENT
 			virtual void		OnDestroy(RemovalType, float atTime) override;	
 		#endif

@@ -293,11 +293,18 @@ namespace Objects
 		#endif
 
 
-		virtual float				GetHealthResearchFactor() const;
 		/**
-		Retrieves the maximum possible health level
+		Retrieves the maximum possible health level.
+		Currently this is overridden by Vehicles and Towers
 		*/
-		virtual int					GetMaxHealth() const {return std::max(1, (int)floor(GetHealthResearchFactor() * GetConstructionCost()/5));}
+		virtual int					GetMaxHealth() const;
+		/**
+		Generates a printout of current max health including explicit factor due to research
+		*/
+		virtual String				DescribeMaxHealth() const;
+
+
+		virtual int					GetBaseMaxHealth() const	{return GetConstructionCost()/5;}
 
 		virtual int					GetConstructionCost() const = 0;	//!< Retrieves the minerals required to construct a new instance of this structure
 
@@ -359,10 +366,17 @@ namespace Objects
 			virtual void			PrototypeLoadGeometry() {};
 		#endif
 
-		virtual float				GetMaxScanningRange() const	{return 2.f;};	//returns the effective scanning range of the local entity
-		virtual float				GetScanningRangeResearchFactor() const;
-		float						GetScanningRange() const;
+		/**
+		Queries the current scanning radius of the local entity, including research and EMP effects.
+		Currently this is overridden by MobileEntity, Vehicle, and Tower
+		*/
+		virtual float				GetScanningRange() const;
+		/**
+		Explicitly describes how the scanning range is computed (only has to explicitly name research, not EMP, but has to include EMP in the resulting numbers)
+		*/
+		virtual String				DescribeScanningRange() const;
 		float						EMPModify(float raw, float min) const;
+		std::function<float(float)>	BindEMPModifyFunction() const {return std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2);}
 		
 		virtual PTurretBase			GetTurretBase(float &zOffset) { zOffset = 0; return PTurretBase();}
 		inline PTurretBase			GetTurretBase() { float dummy; return GetTurretBase(dummy);}

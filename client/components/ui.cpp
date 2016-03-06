@@ -741,7 +741,7 @@
 					if (target->IsIndestructible())
 						outResult << " Indestructible";
 					else
-						outResult << String(" Health: " +String( target->health) + "/" + String(target->GetMaxHealth()));
+						outResult << String(" Health: " +String( target->health) + "/" + target->DescribeMaxHealth());
 					if (target->IsHibernating())
 						outResult << " Hibernating";
 				}
@@ -1912,7 +1912,7 @@
 
 			}
 			textout << nl;
-			textout << " Scanning-Range: "<<e.GetScanningRange() << nl;
+			textout << " Scanning-Range: "<<e.DescribeScanningRange() << nl;
 			#ifndef NO_HIBERNATION
 				textout << " "<<Objects::TrafficResourceTag()  <<e.GetUplinkTraffic() << nl;
 				if (h)
@@ -1933,7 +1933,7 @@
 					elif (e.health < maxHealth)
 						textout.Tint(0.2,1,0.2);
 
-					textout << " Health: " << e.health << "/" << e.GetMaxHealth() << nl;
+					textout << " Health: " << e.health << "/" << e.DescribeMaxHealth() << nl;
 				}
 			}
 			else
@@ -1985,7 +1985,7 @@
 					textout<<nl;
 				}
 				textout << " Attack Initiative: "<<(int)v->GetAttackInitiative()<<"/"<<(int)v->turret->initiative<<nl;
-				textout << " Speed: "<<v->GetMovementStepsPerRound() << nl;
+				textout << " Speed: " << v->DescribeMovementStepsPerRound() << nl;
 				if (v->turret->CanAttack())
 				{
 					//textout << " Range: "<<v->GetAttackRange() << nl;
@@ -2006,12 +2006,19 @@
 					if (v->turret->ignoresVehicleMotion)
 						textout << "  (ignores movement)"<<nl;
 				}
-				int opSpeed = v->GetOperationSpeed(Objects::Component::Construct);
-				if (opSpeed)
+				int baseConstSpeed = v->turret->baseOperationSpeed[Objects::Component::Construct];
+//				v->GetOperationSpeed(Objects::Component::Construct);
+				if (baseConstSpeed)
+				{
+					String opSpeed = v->owner ? v->owner->researchState.Describe(*v->turret,baseConstSpeed,Objects::Component::Attribute::ConstructionSpeed,Objects::ResearchSateModulation::FloorInt) : baseConstSpeed;
 					textout << " Converts "<<Objects::ResourceTag(Objects::Resource::Minerals)<<opSpeed<<" per round"<<nl;
-				opSpeed = v->GetOperationSpeed(Objects::Component::Repair);
-				if (opSpeed)
+				}
+				baseConstSpeed = v->GetOperationSpeed(Objects::Component::Repair);
+				if (baseConstSpeed)
+				{
+					String opSpeed = v->owner ? v->owner->researchState.Describe(*v->turret,baseConstSpeed,Objects::Component::Attribute::ConstructionSpeed,Objects::ResearchSateModulation::FloorInt) : baseConstSpeed;
 					textout << " Repairs "<<Objects::ResourceTag(Objects::Resource::Minerals)<<opSpeed<<" per round"<<nl;
+				}
 
 				textout << " Tasks:" << nl;
 				if (v->myTasks.IsEmpty())

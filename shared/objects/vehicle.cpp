@@ -64,13 +64,31 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ float				Vehicle::GetScanningRangeResearchFactor() const
+
+	/*virtual override*/ float		Vehicle::GetScanningRange() const
 	{
-		return owner->researchState.GetFactorFor(turret->constName,Component::Attribute::ScanningRange);
+		return EMPModify(turret->GetScanningRange(owner,turret->CanAttack() ? 0 : base->rangeModifier), 2.f);
 	}
 
+	/*virtual override*/ String		Vehicle::DescribeScanningRange() const
+	{
+		return owner
+				?
+				owner->researchState.Describe(*turret,turret->baseScanningRange+(turret->CanAttack() ? 0 : base->rangeModifier),Component::Attribute::ScanningRange, ResearchState::ModulationType::DefaultFloat,BindEMPModifyFunction())
+				:
+				String(GetScanningRange())
+				;
+	}
 
+	/*virtual override*/ int				Vehicle::GetMaxHealth() const
+	{
+		return std::max(1,(int)floor(base->GetBaseHealth(owner) * turret->healthMultiplier));
+	}
 
+	/*virtual override*/ String				Vehicle::DescribeMaxHealth() const
+	{
+		return owner ? owner->researchState.Describe(*base,base->unmodulatedHealth * turret->healthMultiplier,Component::Attribute::Health,ResearchSateModulation::FloorInt) : String(GetMaxHealth());
+	}
 
 	
 	#ifndef CLIENT
@@ -142,19 +160,33 @@ namespace Objects
 
 	#endif
 
-
-	/*virtual override*/ float		Vehicle::GetMaxScanningRange() const 
+	int						Vehicle::GetTurretOverweight() const
 	{
-		return turret->GetScanningRange(owner,turret->CanAttack() ? 0 : base->rangeModifier);
+		return std::max(0, turret->weight - (int)floor(base->GetCarryingCapacity(owner)));
 	}
+
+	float					Vehicle::GetTurretOverweightFactor() const
+	{
+		return Grid::powi(0.75f,GetTurretOverweight());
+	}
+
+
 
 
 	/*virtual override*/int			Vehicle::GetMovementStepsPerRound()	const
 	{
 		return (int)ceil(EMPModify(
 				base->GetBaseMovementSpeed(owner) 
-				* Grid::powi(0.75f,std::max(0, turret->weight - (int)floor(base->GetCarryingCapacity(owner)))  ),
+				* GetTurretOverweightFactor(),
 				1.f));
+	}
+
+	/*virtual override*/String			Vehicle::DescribeMovementStepsPerRound()	const
+	{
+		return owner ?
+				owner->researchState.Describe(*base,GetTurretOverweightFactor() * base->unmodulatedMovementSpeed,Component::Attribute::MovementSpeed,ResearchSateModulation::CeilInt,BindEMPModifyFunction())
+				:
+				String(GetMovementStepsPerRound());
 	}
 
 	
