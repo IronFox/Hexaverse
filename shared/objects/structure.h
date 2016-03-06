@@ -1592,7 +1592,8 @@ namespace Objects
 			#endif
 		}
 
-		bool						WouldLikeToEnable() const override {return true;}
+		//WorkingEntity overrides (private):
+		virtual bool				WouldLikeToEnable() const override {return true;}
 
 
 	public:
@@ -1619,17 +1620,9 @@ namespace Objects
 
 		};
 
-		virtual void				SetResourceStorage(const ResourceVector&storage)override
-		{
-			this->storage = storage;
-			this->storage.Cap(this->GetMaxStorageCapacity());
-		};
 
 		static float				foundationHeight;	//unscaled height of the base geometry, and vertical offset to position turret
-		virtual PTurretBase			GetTurretBase(float&zOffset) override { zOffset = foundationHeight; return To<Tower>::Cast(shared_from_this());}
-		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = foundationHeight; return To<const Tower>::Cast(shared_from_this());}
 
-		virtual int					GetHeight() const override {return 2;}
 
 
 		float						attackActionLeft=1.f;
@@ -1660,17 +1653,11 @@ namespace Objects
 			bool					ClearTasks();
 			bool					DropLastTask();
 
-			virtual void			Attack(float&)	override;
-			virtual bool			FillAttackQueue() override;
 			bool					WouldAttack(const PWorldEntity&e, Grid::LCellIdI&outTarget, float entityTime)	const;
 			bool					IsIdleButCouldAttack(float atTime) const {return attackQueue.IsEmpty() && HasAmmoForShot(atTime);}
 
-
-			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
-
 		#endif
 		bool						HasAmmoForShot(float atTime) const;
-		bool						HasAmmoForShot() const override;
 
 
 
@@ -1682,58 +1669,64 @@ namespace Objects
 
 
 
+
+		//WorkingStructure overrides:
 		virtual void				GetResourceVector(ResourceVector&, ResourceVector&storage, ResourceVector&max) const override	{storage = this->storage; max = GetMaxStorageCapacity();}
-
-
-
-		virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override
+		#ifndef CLIENT
+			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime) override;
+		#endif
+		virtual void				SetResourceStorage(const ResourceVector&storage)override
 		{
-			return CommonCheckStructurePlacement(location,2,true);
-		}
+			this->storage = storage;
+			this->storage.Cap(this->GetMaxStorageCapacity());
+		};
 
-		virtual PWorldEntity				CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Tower(turret,owner,location,atTime));};
+		//Structure overrides:
+		virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
+		virtual placement_t			CheckPlacement(const Grid::LCellIdI&location) override { return CommonCheckStructurePlacement(location,2,true); }
+		virtual int					GetHeight() const override {return 2;}
 
-
-		virtual float				GetMaxScanningRange() const override	{return turret->CanAttack() ? turret->scanningRange - 2.f : turret->scanningRange + 2.f;};	//returns the effective scanning range of the local entity
-		virtual int					GetMaxHealth() const override {return int(ceil(float(Super::GetMaxHealth()) * turret->healthMultiplier));}
-		virtual void				PrototypeSetup()	override;
+		//BaseEntity overrides:
 		virtual String				GetTypeName() const override { return turret->typeName+" Tower"; };
 		virtual ConstName			GetCTypeName() const override {return turret->constTowerName;}
 
+		//WorldEntity overrides:
+		virtual bool				IsTower() const override {return true;}
+		virtual float				GetMaxScanningRange() const override	{return turret->GetScanningRange(owner, turret->CanAttack() ? - 2.f : 2.f);};	//returns the effective scanning range of the local entity
+		virtual float				GetScanningRangeResearchFactor() const override {return 1.f;}
+		virtual int					GetMaxHealth() const override {return int(ceil(float(Super::GetMaxHealth()) * turret->healthMultiplier));}
+		virtual void				PrototypeSetup()	override;
+		#ifdef HAS_WINDOW
+			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
+			virtual bool			TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
+		#endif
+		#ifndef CLIENT
+			virtual void			OnConstructionFinished(float atTime) override;
+			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+		#endif
 		virtual int					GetConstructionCost() const override {return 40 + turret->productionCosts;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return turret->uplinkTraffic;}
 			virtual int				GetUplinkPriority() const override {return 1000;}
 		#endif
+		virtual PWorldEntity		CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Tower(turret,owner,location,atTime));};
+		virtual PTurretBase			GetTurretBase(float&zOffset) override { zOffset = foundationHeight; return To<Tower>::Cast(shared_from_this());}
+		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = foundationHeight; return To<const Tower>::Cast(shared_from_this());}
 
-		virtual bool				ConnectionPossibleTo(const PStructure&other, UINT32 acrossHighCell)	override	{return true;}
-
-		#ifndef CLIENT
-
-			virtual void			OnConstructionFinished(float atTime) override;
-			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime) override;
-		#else
-			#ifdef HAS_WINDOW
-				virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override;
-
-				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
-			#endif
-		#endif
-
-		//WorldEntity overrides:
-		virtual bool				IsTower() const override {return true;}
-		virtual float				GetScanningRangeResearchFactor() const override;
-
-		//structure overrides:
+		//Structure overrides:
 		virtual int					GetBroadHeight() const override {return std::max(1,GetHeight()-1);}
 		virtual Category			GetCategory() const override {return Category::Defense;}
 
-
-		//turret base overrides:
+		//TurretBase overrides:
+		virtual OwnerParameter		GetOwner() const override {return owner;};
 		virtual bool				NextTaskIsAttack() const override {return health > 0 && attackQueue.IsNotEmpty();}
 		virtual float				GetAttackActionLeft() const override {return attackActionLeft;};
 		virtual float				GetFlatAttackRange() const override;
-
+		virtual bool				HasAmmoForShot() const override;
+		#ifndef CLIENT
+			virtual void			Attack(float&)	override;
+			virtual bool			FillAttackQueue() override;
+		#endif
 	};
 
 

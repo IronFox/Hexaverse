@@ -25,7 +25,7 @@ namespace AI
 		
 		if (base && base->turret->CanAttack())
 		{
-			rs /= (1.f + float(base->turret->damageLevel * base->GetAttacksPerRound() * base->GetFlatAttackRange()) * 0.1f);
+			rs /= (1.f + float(base->turret->GetDamageLevel(base->GetOwner()) * base->GetAttacksPerRound() * base->GetFlatAttackRange()) * 0.1f);
 		}
 		return rs * 3.f;
 	}
@@ -89,10 +89,10 @@ namespace AI
 
 		//if (b->CanHit(e.owner,e.location,))
 		if (e.CanHit(reference))
-		//if (distance < sqr(b->GetAttackRange() + b->turret->explosionRadius - 1))
+		//if (distance < sqr(b->GetAttackRange() + b->turret->GetExplosionRadius(e.owner) - 1))
 		{
 			Objects::PTurretBase b = e.GetTurretBase();
-			current.damageThreat += b->turret->damageLevel * b->GetAttacksPerRound();
+			current.damageThreat += b->turret->GetDamageLevel(e.owner) * b->GetAttacksPerRound();
 		}
 	}
 
@@ -172,14 +172,14 @@ namespace AI
 	};
 
 
-	static float ProcessAttackPriority(Objects::WorldEntity&e,const TVec3<>&explosionCenter,float explosionRadius)
+	static float ProcessAttackPriority(Objects::WorldEntity&e,const TVec3<>&explosionCenter,float maxExplosionRadius)
 	{
-		if (e.isOwnedByMe || Vec::quadraticDistance(explosionCenter,e.system.w.xyz) > sqr(explosionRadius))
+		if (e.isOwnedByMe || Vec::quadraticDistance(explosionCenter,e.system.w.xyz) > sqr(maxExplosionRadius))
 			return 0.f;
 		Objects::PTurretBase b = e.GetTurretBase();
 		float rs = e.GetMaxScanningRange();
 		if (b)
-			rs = std::max(rs, b->GetFlatAttackRange() + b->turret->explosionRadius);
+			rs = std::max(rs, b->GetFlatAttackRange() + b->turret->GetExplosionRadius(e.owner));
 		int health = e.health >0 ? e.health : e.GetMaxHealth();
 		return rs / health;
 	}
@@ -193,7 +193,7 @@ namespace AI
 		Grid::LCellIdI target;
 		if (source.ExtCanHit(source.owner, source.location,source.base->height,candidate.location,target))
 		{
-
+			const float explosionRadius = source.turret->GetExplosionRadius(source.owner);
 
 			TVec3<> detonationAt;
 			Objects::TurretTrajectory rs = source.TraceTrajectory(Grid::actualWorld,target,detonationAt);
@@ -207,9 +207,9 @@ namespace AI
 			if (rs != Objects::TurretTrajectory::ReachesTarget)
 			{
 				float distanceToTarget = Vec::distance(detonationAt,candidate.system.w.xyz);
-				if (distanceToTarget > source.turret->explosionRadius)
+				if (distanceToTarget > explosionRadius)
 				{
-					LogEvent(EventSignificance::Debug,&source,"Cannot trace good trajectory to destination. Final distance is "+String(distanceToTarget)+"/"+String(source.turret->explosionRadius));
+					LogEvent(EventSignificance::Debug,&source,"Cannot trace good trajectory to destination. Final distance is "+String(distanceToTarget)+"/"+String(explosionRadius));
 					return;
 				}
 			}
@@ -217,22 +217,22 @@ namespace AI
 			//Objects::Turret::MaxRangeToVelocity(source.GetFlatAttackRange()),
 				//									Grid::actualWorld, source.location,target,detonationAt);
 			//if (rs == Objects::TurretTrajectory::ReachesTarget
-			// || (rs == Objects::TurretTrajectory::MidFlightImpact && source.turret->explosionRadius > 1 && !source.turret->dealsEMPDamage))
+			// || (rs == Objects::TurretTrajectory::MidFlightImpact && source.turret->GetExplosionRadius(e.owner) > 1 && !source.turret->dealsEMPDamage))
 			{
 				LogEvent(EventSignificance::Debug,&source,"Trajectory checks out");
-				count_t needAttacks = ceil(float(std::max(1,candidate.health)) / source.turret->damageLevel);
+				count_t needAttacks = ceil(float(std::max(1,candidate.health)) / source.turret->GetDamageLevel(source.owner));
 				if (rs != Objects::TurretTrajectory::ReachesTarget)
 					needAttacks ++;
 				//if (rs == Objects::Turret::ReachesTarget)
 				float priority = 0.f;
 				foreach (Objects::vehicles,_v)
-					priority += ProcessAttackPriority(**_v,detonationAt,source.turret->explosionRadius);
+					priority += ProcessAttackPriority(**_v,detonationAt,explosionRadius);
 				foreach (Objects::structures,_v)
-					priority += ProcessAttackPriority(**_v,detonationAt,source.turret->explosionRadius);
+					priority += ProcessAttackPriority(**_v,detonationAt,explosionRadius);
 				foreach (Objects::Marker::structureGhosts,_v)
-					priority += ProcessAttackPriority(**_v,detonationAt,source.turret->explosionRadius);
+					priority += ProcessAttackPriority(**_v,detonationAt,explosionRadius);
 				foreach (Objects::Marker::mobileGhosts,_v)
-					priority += ProcessAttackPriority(**_v,detonationAt,source.turret->explosionRadius);
+					priority += ProcessAttackPriority(**_v,detonationAt,explosionRadius);
 				LogEvent(EventSignificance::Debug,&source,"Base Priority considered "+String(priority));
 				for (index_t i = 0; i < needAttacks; i++)
 				{
@@ -263,7 +263,7 @@ namespace AI
 		Objects::ReachabilityMapper::MapNode*best = nullptr;
 		float bestScore = 0.f;
 		bool attacker = t->CanAttack();
-//		const float myRange = t->maxRange + t->explosionRadius - 1;
+//		const float myRange = t->maxRange + t->GetExplosionRadius(e.owner) - 1;
 
 
 
@@ -325,6 +325,7 @@ namespace AI
 			String id = v->id.ToString();
 			static Buffer0<TAttackTarget>	attackTarget;
 			attackTarget.Clear();
+			const float explosionRadius = v->turret->GetExplosionRadius(v->owner);
 
 			foreach (Objects::vehicles,_v)
 			{
@@ -349,7 +350,7 @@ namespace AI
 					if ((*_v)->isOwnedByMe)
 					{
 						float distance = Vec::quadraticDistance((*_v)->system.w.xyz,ref);
-						if ( distance < sqr(v->turret->explosionRadius))
+						if ( distance < sqr(explosionRadius))
 						{
 							conflict = true;
 							break;
@@ -361,7 +362,7 @@ namespace AI
 					if ((*_v)->isOwnedByMe)
 					{
 						float distance = Vec::quadraticDistance((*_v)->system.w.xyz,ref);
-						if ( distance < sqr(v->turret->explosionRadius))
+						if ( distance < sqr(explosionRadius))
 						{
 							conflict = true;
 							break;
@@ -375,7 +376,7 @@ namespace AI
 				}
 			}
 			std::sort(attackTarget.begin(),attackTarget.end());
-			attackTarget.Truncate(v->turret->attacksPerRound);
+			attackTarget.Truncate(v->turret->GetAttacksPerRound(v->owner));
 			static Array<Grid::LCellIdI>	targets;
 			targets.SetSize(attackTarget.Count());
 			foreach (attackTarget,t)
@@ -449,7 +450,7 @@ namespace AI
 					float distance = Vec::quadraticDistance(e->system.w.xyz,reference);
 					float fc = EstimateInterest(e->GetTurretBase(),e->location.height,
 								e->GetConstructionCost(),distance);
-					if (distance < Objects::Component::artillery.explosionRadius)
+					if (distance < Objects::Component::artillery.GetExplosionRadius(e->owner))
 						badWeight += 20 / (1.f + distance);
 					else
 						goodWeight += fc / (1.f + distance);

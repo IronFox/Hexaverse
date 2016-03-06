@@ -136,23 +136,15 @@ namespace Objects
 	*/
 	class ResearchState : public SerializableObject
 	{
+		static float			GetFactor(int level);
 	public:
 		ConstName				currentResearch = ConstName::Empty;
 		Component::Attribute	currentResearchAttribute;	//ignored if targeted research is not unlocked
 
 		Array<UINT32>			unlockProgress,improveProgress;
 		bool					changed = false;
-		
-		//struct Progress
-		//{
-		//	int			unlockingProgress=0;
-		//	int			level[Component::Attribute::N];
 
-		//	/**/		Progress()	{memset(level,0,sizeof(level));}
-		//};
-
-
-		/**/			ResearchState();
+		/**/					ResearchState();
 
 		virtual	serial_size_t	GetSerialSize(bool export_size) const override;
 		virtual	bool			Serialize(IWriteStream&out_stream, bool export_size) const override;
@@ -171,7 +163,8 @@ namespace Objects
 		bool			CheckUnlocked(ConstName,String&errorOut)	const;
 		bool			IsUnlocked(ConstName) const;
 
-		float			GetFactorFor(ConstName, Component::Attribute);
+		float			GetFactorFor(ConstName, Component::Attribute)	const;
+		float			GetFactorFor(const Component::Base&, Component::Attribute)	const;
 
 		static void		StaticCreate();
 		static bool		IsResearchable(ConstName);

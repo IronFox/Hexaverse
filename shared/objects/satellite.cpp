@@ -25,11 +25,16 @@ namespace Objects
 
 	/*virtual override*/ float			Satellite::GetFlatAttackRange() const 
 	{
-		if (turret->horizontalAttackRange <= 0)
+		if (!turret->CanAttack())
 			return 0.f;
-		float rawRange = turret->horizontalAttackRange + 2.f;
-		return EMPModify(rawRange * owner->researchState.GetFactorFor(turret->constName,Component::Attribute::AttackRange),2.f);
+		return EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
 	}
+
+	/*virtual override*/ int			Satellite::GetMovementStepsPerRound() const 
+	{
+		return (int)floor(owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::MovementSpeed));
+	}
+
 
 
 
@@ -77,14 +82,14 @@ namespace Objects
 
 	/*virtual override*/ void		Satellite::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 	{
-		Super::RegisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0, newContacts);
+		Super::RegisterSensory(loc,atTime,checkChangesNow && turret->baseGroundScanningRange <= 0, newContacts);
 		#ifdef CLIENT
 			if (isOwnedByMe)
 				Grid::visibleOrbitGrid.ChangeSensory(loc,GetScanningRange(),+1);
 		#endif
-		if (turret->groundScanningRange > 0.f)
+		if (turret->baseGroundScanningRange > 0.f)
 		{
-			float range = EMPModify(turret->groundScanningRange,2);
+			float range = EMPModify(turret->GetGroundScanningRange(owner),2);
 			Grid::actualWorld.MapSensorState(loc.stackID,range,loc.height,turret->groundScannerPenetration,skySensorState);
 			Grid::actualWorld.UpdateSensorState(skySensorState);
 			#ifdef CLIENT
@@ -100,12 +105,12 @@ namespace Objects
 
 	/*virtual override*/ void		Satellite::UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/)
 	{
-		Super::UnregisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0);
+		Super::UnregisterSensory(loc,atTime,checkChangesNow && turret->baseGroundScanningRange <= 0);
 		#ifdef CLIENT
 			if (isOwnedByMe)
 				Grid::visibleOrbitGrid.ChangeSensory(loc,GetScanningRange(),-1);
 		#endif
-		if (turret->groundScanningRange > 0.f)
+		if (turret->baseGroundScanningRange > 0.f)
 		{
 			#ifdef CLIENT
 				if (isOwnedByMe)
@@ -123,7 +128,7 @@ namespace Objects
 
 		bool					Satellite::RefreshGroundSensor(float&atTime)
 		{
-			if (turret->groundScanningRange > 0.f)
+			if (turret->baseGroundScanningRange > 0.f)
 			{
 				Grid::SkySensorState state = skySensorState;
 				if (Grid::actualWorld.UpdateSensorState(skySensorState))
@@ -886,9 +891,9 @@ namespace Objects
 	{
 	#ifdef ONE_COMPOUND_PER_FACTION
 		const Compound&compound = owner->compound;
-		return compound.total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
+		return compound.total.storage.level[turret->ammoType] >= turret->GetAmmoNeedPerShot(owner);
 	#else
-		return currentStorage.level[turret->ammoType] >= turret->ammoNeedPerShot;
+		return currentStorage.level[turret->ammoType] >= turret->GetAmmoNeedPerShot(owner);
 	#endif
 	}
 

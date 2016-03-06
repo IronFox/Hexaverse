@@ -199,7 +199,7 @@ namespace Objects
 			if (base)
 			{
 				//PVehicle v(new Vehicle(p->owner, p->location, base,turret));
-				base->DescribeType(outResult,false);
+				base->DescribeType(outResult,false,OwnerParameter());
 			}			
 			if (turret)
 				turret->DescribeType(outResult,false, "Vehicle",selectedEntity->owner);

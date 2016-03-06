@@ -148,9 +148,9 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual int			GetUplinkTraffic() const override;
 		#endif
-		virtual int				GetMaxHealth() const override {return base->baseHealth * turret->healthMultiplier;};
+		virtual int				GetMaxHealth() const override {return std::max(1,(int)floor(base->GetBaseHealth(owner) * turret->healthMultiplier));};
 		virtual PWorldEntity	CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) override {return PWorldEntity(new Vehicle(owner,location,base,turret));};
-		virtual float			GetMaxScanningRange() const override	{return turret->scanningRange + (turret->CanAttack() ? 0 : base->rangeModifier);};	//returns the effective scanning range of the local entity
+		virtual float			GetMaxScanningRange() const override;
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = base->height; return To<Vehicle>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = base->height; return To<const Vehicle>::Cast(shared_from_this());}
 		virtual bool			IsVehicle() const override {return true;}

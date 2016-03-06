@@ -292,10 +292,12 @@ namespace Objects
 			virtual OpenAL::Wave	GetAmbientSound() const;
 		#endif
 
+
+		virtual float				GetHealthResearchFactor() const;
 		/**
 		Retrieves the maximum possible health level
 		*/
-		virtual int					GetMaxHealth() const {return std::max(1,GetConstructionCost()/5);}
+		virtual int					GetMaxHealth() const {return std::max(1, (int)floor(GetHealthResearchFactor() * GetConstructionCost()/5));}
 
 		virtual int					GetConstructionCost() const = 0;	//!< Retrieves the minerals required to construct a new instance of this structure
 

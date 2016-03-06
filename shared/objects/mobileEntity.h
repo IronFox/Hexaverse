@@ -134,7 +134,7 @@ namespace Objects
 
 				Buffer0<Shape>		localizableShapes;
 
-				void				SetLocalizableShape(ConstName structureIdentifier, const Grid::LCellIdI&location);
+				void				SetLocalizableShape(ConstName structureIdentifier, const Grid::LCellIdI&location, const OwnerParameter&);
 			#endif
 
 
@@ -455,7 +455,7 @@ namespace Objects
 		float					GetMovementInitiative()const	{return GetBaseMovementInitiative() * movementActionLeft;}
 		bool					AttackIgnoresMotion() const {return turret->ignoresVehicleMotion;}
 		bool					AttackIsStationary() const {return turret->requiresStationaryVehicle;}
-		float					GetAttackExplosionRadius() const {return turret->explosionRadius;}
+		float					GetAttackExplosionRadius() const {return turret->GetExplosionRadius(owner);}
 		bool					CanRepair() const {return turret->CanRepair();}
 		bool					CanAttack() const {return turret->CanAttack();}
 
@@ -470,7 +470,7 @@ namespace Objects
 		Retrieves the amount of minerals that can be converted into structure by the local entity
 		@return Amount of minerals that can be converted per round by the local entity. 0 for entities that cannot construct
 		*/
-		virtual int				GetOperationSpeed(Component::operation_t op) const {return turret->operationSpeed[op];}
+		virtual int				GetOperationSpeed(Component::operation_t op) const {return turret->GetOperationSpeed(op,owner);}
 		virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return focus;}
 		virtual bool			MotionIgnoresAttack() const=0;
 		virtual int				GetMovementStepsPerRound() const =0;
@@ -495,6 +495,7 @@ namespace Objects
 
 
 		//TurretBase overrides:
+		virtual OwnerParameter	GetOwner() const override {return owner;};
 		virtual float			GetAttackActionLeft() const override {return attackActionLeft;};
 		virtual bool			NextTaskIsAttack() const override {return health > 0 && HasTasks() && myTasks.Peek().IsMode(CursorMode::AttackMode);}
 		#ifndef CLIENT
@@ -508,8 +509,8 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual const Hibernating*ToHibernating() const override {return this;}
 		#endif
-		virtual float			GetMaxScanningRange() const override	{return turret->scanningRange;};	//returns the effective scanning range of the local entity
-
+		virtual float			GetMaxScanningRange() const override	{return turret->GetScanningRange(owner);};	//returns the effective scanning range of the local entity
+		virtual float			GetScanningRangeResearchFactor() const override {return 1.f;}	//factor already processed
 		#ifndef CLIENT
 			virtual void		OnDestroy(RemovalType, float atTime) override;	
 		#endif

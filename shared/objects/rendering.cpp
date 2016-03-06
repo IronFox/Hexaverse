@@ -1287,9 +1287,9 @@ namespace Objects
 					);
 				float zOffset;
 				PTurretBase base = selectedEntity->GetTurretBase(zOffset);		
-				if (base && base->turret->groundScanningRange > 0.f)
+				if (base && base->turret->baseGroundScanningRange > 0.f)
 				{
-					scanningRange = selectedEntity->EMPModify(base->turret->groundScanningRange,2);
+					scanningRange = selectedEntity->EMPModify(base->turret->GetGroundScanningRange(selectedEntity->owner),2);
 					float refHeight = Grid::ToRadius(selectedEntity->location.height);
 					float top = Grid::ToRadius(/*selectedEntity->location.height*/Grid::CellStack::HalfRange);
 					float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);

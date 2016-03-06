@@ -524,6 +524,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 		roughAttack.timestamp.atTime = atTime - flightTime;
 		roughAttack.flightTime = flightTime;
 		roughAttack.turretRange = base->GetFlatAttackRange();
+		roughAttack.explosionRadius = base->turret->GetExplosionRadius(attackFrom->owner);
 
 		const float3 traceToWorld = Grid::ToWorld(traceTo);
 
@@ -1446,6 +1447,7 @@ int main( int argc, const char* argv[])
 
 
 		//Reflection::CreatePrototypeDeclaration();
+		Objects::Faction::RecreateNexus();
 
 		if (!ParameterConfig::customWorldID)
 		{

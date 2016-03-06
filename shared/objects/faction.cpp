@@ -17,7 +17,7 @@ namespace Objects
 	#ifndef CLIENT
 
 		/*static*/ Buffer0<WFaction>	Faction::all;
-		/*static*/ PFaction				Faction::nexus(new Faction(TUniqueID::Empty(), "<Nexus>"));
+		/*static*/ PFaction				Faction::nexus;
 
 		void	Faction::RecreateNexus()
 		{
@@ -1640,21 +1640,21 @@ namespace Objects
 		struct TTypeEntry
 		{
 			UINT32 researchCost = 0;
-			index_t	attributeAt[Component::Attribute::N],unlockableAt=InvalidIndex;
+			FixedArray<index_t,Component::Attribute::N>	attributeAt;
+			index_t	unlockableAt=InvalidIndex;
 			Component::Base* componentReference = nullptr;
 			ConstName dependentOn = ConstName::Empty;
 			String	name;
 
 			/**/	TTypeEntry()
 			{
-				for (index_t i = 0; i < ARRAYSIZE(attributeAt); i++)
-					attributeAt[i] = InvalidIndex;
+				attributeAt.Fill(InvalidIndex);
 			}
 		};
 		count_t		numUnlockables = 0;
 		index_t		attributeCounter = 0;
 
-		index_t		typeMap[(count_t)ConstName::NumTypes];
+		FixedArray<index_t,(count_t)ConstName::NumTypes>	typeMap;
 		Buffer0<TTypeEntry>	types;
 
 
@@ -1677,8 +1677,7 @@ namespace Objects
 	/*static*/ void		ResearchState::StaticCreate()
 	{
 		using namespace ResearchStateDetail;
-		for (index_t i = 0; i < ARRAYSIZE(typeMap); i++)
-			typeMap[i] = InvalidIndex;
+		typeMap.Fill(InvalidIndex);
 
 	}
 	/*static*/ void		ResearchState::RegisterUnlockCost(Structure*s, int researchCost)
@@ -1723,7 +1722,7 @@ namespace Objects
 		{
 			at = ResearchStateDetail::Register(component.constName,&component,component.typeName);
 		}
-		types[at].attributeAt[a] = component.researchSlot[at+1] = attributeCounter;
+		types[at].attributeAt[a] = component.researchSlot[a+1] = attributeCounter;
 		attributeCounter++;
 	}
 
@@ -1804,7 +1803,13 @@ namespace Objects
 	}
 
 
-	float			ResearchState::GetFactorFor(ConstName name, Component::Attribute attrib)
+	/*static*/ float			ResearchState::GetFactor(int level)
+	{
+		return log(std::max(1.f,M_EF+0.1f*(level)));
+	}
+
+
+	float			ResearchState::GetFactorFor(ConstName name, Component::Attribute attrib)	const
 	{
 		if (ResearchStateDetail::typeMap[(index_t)name] == InvalidIndex)
 			return 1.f;
@@ -1815,7 +1820,19 @@ namespace Objects
 		int level = improveProgress[at];
 		if (level == 0)
 			return 1.f;
-		return log(std::max(1.f,M_EF+0.1f*(level)));
+		return GetFactor(level);
+	}
+
+
+	float			ResearchState::GetFactorFor(const Component::Base&base, Component::Attribute attrib)	const
+	{
+		index_t at = base.researchSlot[attrib+1];
+		if (at == InvalidIndex)
+			return 1.f;
+		int level = improveProgress[at];
+		if (level == 0)
+			return 1.f;
+		return GetFactor(level);
 	}
 
 	/*static*/ bool		ResearchState::IsResearchable(ConstName name)

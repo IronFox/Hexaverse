@@ -64,9 +64,10 @@ namespace Objects
 	namespace Component
 	{
 
-		CONSTRUCT_ENUMERATION10(Attribute, 
+		CONSTRUCT_ENUMERATION11(Attribute, 
 			Health,
 			ScanningRange,
+			CarryWeight,
 			AttacksPerRound,
 			AttackRange,
 			ExplosionRadius,
@@ -94,7 +95,7 @@ namespace Objects
 		class Base 
 		{
 		protected:
-			/**/							Base():productionCosts(1),initiative(100)	{for (index_t i = 0; i < ARRAYSIZE(researchSlot); i++) researchSlot[i] = InvalidIndex;}
+			/**/							Base():productionCosts(1),initiative(100)	{researchSlot.Fill(InvalidIndex);}
 
 			struct Detail
 			{
@@ -105,6 +106,15 @@ namespace Objects
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance);
 				static bool					MissileCanHit(float flatRange, const TVec3<>&originNormal, const TVec3<>&origin, const TVec3<>&destination);
 			};
+
+			enum class ModulationType
+			{
+				DefaultFloat,
+				InvertedFloat,
+				FloorInt
+			};
+			String							ModulateByResearch(float baseValue, Attribute attrib, const OwnerParameter&owner, ModulationType type=ModulationType::DefaultFloat)	const;
+
 		public:
 			#ifdef HAS_WINDOW
 				CommandContainer			commands;
@@ -112,7 +122,7 @@ namespace Objects
 				Array<std::pair<Geometry,DX11::InstructionBlock32> >	parts;
 			#endif
 
-			index_t							researchSlot[Attribute::N+1];
+			FixedArray<index_t,Attribute::N+1>	researchSlot;
 
 			String							typeName,shortName;
 			ConstName						constName;
@@ -132,7 +142,7 @@ namespace Objects
 			bool							TestIntersection(float zOffset, float x, float y, const TVec3<>&b, const TVec3<>&d, float & distance);
 
 			#ifdef HAS_WINDOW
-				void						DescribeType(BaseCommand::Label&label, bool compound);
+				void						DescribeType(BaseCommand::Label&label,bool compound, const OwnerParameter&);
 			#endif
 
 		};
@@ -149,11 +159,11 @@ namespace Objects
 
 			float							healthMultiplier = 1.f;
 			Resource						ammoType;
-			int								operationSpeed[OperationCount],
-											weight,					//turret weight
-											damageLevel,
-											attacksPerRound,
-											ammoNeedPerShot,
+			FixedArray<int,OperationCount>	baseOperationSpeed;
+			int								weight,					//turret weight
+											baseDamageLevel=0,
+											baseAttacksPerRound=0,
+											baseAmmoNeedPerShot=0,
 											uplinkTraffic = 5,
 											uplinkPriority = 950;	//before towers and storage structures
 
@@ -168,7 +178,7 @@ namespace Objects
 											isSatelliteRing = false,
 											isDoomsday = false;	//server may reject their deployment
 
-			float							explosionRadius = 0.f;
+			float							baseExplosionRadius = 0.f;
 			TrajectoryType					trajectoryType;
 			//int								fuelSupplyRadius = 0;	//!< Satellites only (in fact, SkyHub only): Maximum radius that friendly satellites will be supplied in
 
@@ -181,22 +191,22 @@ namespace Objects
 			//	Linear,
 			//	Missile,
 			//}								trajectory;
-			float							horizontalAttackRange = 0,	//geometric firing range
-											scanningRange = 10,	//geometric scanning range
-											groundScanningRange = -1.f,//>0 indicates that this turret can scan from orbit down to the ground (effective only if used by a satellite)
+			float							baseHorizontalAttackRange = 0,	//geometric firing range
+											baseScanningRange = 10,	//geometric scanning range
+											baseGroundScanningRange = -1.f,//>0 indicates that this turret can scan from orbit down to the ground (effective only if used by a satellite)
 											groundScannerPenetration = 1,	//number of blocks the ground-scanner can penetrate into solid ground (effective only if used by a satellite)
 											continuousRotationSpeed = 1;	//angles per second rotation speed, effective only, if continuousRotation is set true
 
 
 
-			/**/							Turret():weight(1),damageLevel(0),attacksPerRound(0),ammoNeedPerShot(1),
+			/**/							Turret():weight(1),
 												#ifdef NO_MUNITION
 													ammoType(Resource::Minerals)
 												#else
 													ammoType(Resource::Munitions)
 												#endif
 												{
-													memset(operationSpeed,0,sizeof(operationSpeed));
+													baseOperationSpeed.Fill(0);
 												}
 
 			static void						TraceTrajectory(TrajectoryType, float flatRange, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps);
@@ -208,7 +218,15 @@ namespace Objects
 				return TraceTrajectory(type, flatRange,world,source,zOffset, dest,outSteps,impactAt,impactCell);
 			}
 
-		
+
+			float							GetOperationSpeed(operation_t op, const OwnerParameter&owner) const;
+			float							GetDamageLevel(const OwnerParameter&owner) const;
+			float							GetExplosionRadius(const OwnerParameter&owner) const;
+			int								GetAttacksPerRound(const OwnerParameter&owner) const;
+			int								GetAmmoNeedPerShot(const OwnerParameter&owner) const;
+			float							GetHorizontalAttackRange(const OwnerParameter&owner, int bonus=0) const;
+			float							GetScanningRange(const OwnerParameter&owner, int bonus=0) const;
+			float							GetGroundScanningRange(const OwnerParameter&owner) const;
 
 			static float					MaxRangeToVelocity(float range)
 			{
@@ -304,8 +322,8 @@ namespace Objects
 			void							BuildBlastSystem(const Grid::LCellIdI&location, TMatrix4<>&system) const;
 			void							BuildBlastSystem(const TVec3<>&location, TMatrix4<>&system) const;
 
-			bool							CanAttack() const {return attacksPerRound > 0;}
-			bool							CanDo(operation_t op) const {return operationSpeed[op] > 0;}
+			bool							CanAttack() const {return baseAttacksPerRound > 0;}
+			bool							CanDo(operation_t op) const {return baseOperationSpeed[op] > 0;}
 			bool							CanRepair() const {return CanDo(Repair);}
 			bool							CanConstruct() const {return CanDo(Construct);}
 			//bool							IsStandardOffensive() const
@@ -349,9 +367,9 @@ namespace Objects
 
 			int								rangeModifier = 0,
 											operationSpeedMultiplier = 1,
-											baseMovementSpeed,		//ideal movement speed (if not encumbered)
-											carryingCapacity,		//turret weight tolerance before movement speed is reduced
-											baseHealth;			//!< Base health level
+											unmodulatedMovementSpeed,		//ideal movement speed (if not encumbered)
+											baseCarryingCapacity,		//turret weight tolerance before movement speed is reduced
+											unmodulatedHealth=2;			//!< Base health level
 			bool							ignoresVehicleAttacks;
 			THindranceVector				hindrance;
 
@@ -365,13 +383,20 @@ namespace Objects
 			Requirement						requirements;
 			bool							moveOnWater;
 	
-			/**/							VehicleBase():baseHealth(2),ignoresVehicleAttacks(false)
+			/**/							VehicleBase():ignoresVehicleAttacks(false)
 			{
 				hindrance.road = 1;
 				hindrance.air = 2;
 				hindrance.water = 5;
 				hindrance.other = 4;
 			}
+
+
+
+			float							GetBaseMovementSpeed(const OwnerParameter&owner) const;
+			float							GetCarryingCapacity(const OwnerParameter&owner) const;
+			float							GetBaseHealth(const OwnerParameter&owner) const;
+
 
 			bool							CanClimb(int inclination) const { if (inclination < 0) return inclination >= minClimbDown; return inclination <= maxClimbUp;}
 
@@ -385,7 +410,7 @@ namespace Objects
 			bool							CanStandOn(const Grid::WorldData&world, const Grid::LCellIdI&, bool ignoreWater, bool doFloat);
 
 			#ifdef HAS_WINDOW
-				void						DescribeType(BaseCommand::Label&label, bool compound);
+				void						DescribeType(BaseCommand::Label&label, bool compound, const OwnerParameter&);
 			#endif
 
 	
@@ -484,8 +509,8 @@ namespace Objects
 			void		Configure(Turret&);
 
 
-			float		GetRadius(bool doomsday);
-			int			GetDamageLevel(bool doomsday);
+			float		GetRadius(bool doomsday, const OwnerParameter&);
+			int			GetDamageLevel(bool doomsday, const OwnerParameter&);
 		};
 
 	

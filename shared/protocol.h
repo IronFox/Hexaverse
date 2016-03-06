@@ -1550,12 +1550,13 @@ namespace Protocol
 		, NET(float), timeNeeded
 	)
 
-	NETSTRUCT6(VagueAttackTrajectory
+	NETSTRUCT7(VagueAttackTrajectory
 		, Timestamp, timestamp
 		, NET(float), flightTime
 		, NET(TVec3<>), sourcePosition
 		, NET(ConstName), turretType
 		, NET(float), turretRange
+		, NET(float), explosionRadius
 		, LCellIdI, traceTo
 	)
 

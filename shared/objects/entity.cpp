@@ -8,7 +8,6 @@
 	#include "visualCommands.h"
 	//#include "gridAndChoices.h"
 	#include "satellite.h"
-	#include "faction.h"
 	#include "rendering.h"
 #endif
 #ifndef CLIENT
@@ -17,6 +16,7 @@
 #endif
 #include "vehicle.h"
 #include "structure.h"
+#include "faction.h"
 
 
 namespace Objects
@@ -234,6 +234,12 @@ namespace Objects
 		return min + window * Grid::powi(0.25f,(UINT)empDamageLevel);
 	}
 
+	/*virtual*/ float				WorldEntity::GetHealthResearchFactor() const
+	{
+		return owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::Health);
+	}
+
+
 	/*virtual*/ float				WorldEntity::GetScanningRangeResearchFactor() const
 	{
 		return owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::ScanningRange);
@@ -342,7 +348,7 @@ namespace Objects
 			if (b)
 			{
 				if (b->turret->CanAttack())
-					outResult << " Hrz. Attack range: "+String(b->GetFlatAttackRange()) + "+"+String(b->turret->explosionRadius);
+					outResult << " Hrz. Attack range: "+String(b->GetFlatAttackRange()) + "+"+String(b->turret->GetExplosionRadius(owner));
 				outResult << "";
 				b->turret->DescribeType(outResult,true, IsSatellite() ? "Satellite" : (IsVehicle() ? "Vehicle":"Tower"),owner);
 			}

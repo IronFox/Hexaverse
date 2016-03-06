@@ -130,7 +130,7 @@ namespace Objects
 		{
 			if (t == RemovalType::UncontrolledExplosion && RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
 			{
-				SignalChainReactionExplosion(location, Component::Bomb::GetRadius(false),Component::Bomb::GetDamageLevel(false),atTime);
+				SignalChainReactionExplosion(location, Component::Bomb::GetRadius(false,owner),Component::Bomb::GetDamageLevel(false,owner),atTime);
 			}
 
 		}
@@ -1110,16 +1110,17 @@ namespace Objects
 
 
 				SignalAttack(To<Vehicle>::Cast(shared_from_this()),target,flightTime,false);
-				ChangeStorage(*this,motionTime,turret->ammoType,-turret->ammoNeedPerShot);
+				ChangeStorage(*this,motionTime,turret->ammoType,-turret->GetAmmoNeedPerShot(owner));
 				
 				motionTime += flightTime;
 
+				const int damageLevel = (int)floor(turret->GetDamageLevel(owner));
 				if (turret->dealsEMPDamage)
 					ExplodeEMP(To<Vehicle>::Cast(shared_from_this()),target,flightTime,
-								t1, t0, turret->explosionRadius, turret->damageLevel,motionTime);
+								t1, t0, turret->GetExplosionRadius(owner), damageLevel,motionTime);
 				else
 					Explode(To<Vehicle>::Cast(shared_from_this()),target,flightTime,
-							t1, t0, turret->explosionRadius, turret->damageLevel,turret->isDoomsday, motionTime);
+							t1, t0, turret->GetExplosionRadius(owner), damageLevel,turret->isDoomsday, motionTime);
 			}
 
 			if (task.foci.IsEmpty())
@@ -1547,7 +1548,7 @@ namespace Objects
 	#ifdef HAS_WINDOW
 
 
-	void					MobileEntity::Task::SetLocalizableShape(ConstName shape, const Grid::LCellIdI&location)
+	void					MobileEntity::Task::SetLocalizableShape(ConstName shape, const Grid::LCellIdI&location, const OwnerParameter&owner)
 	{
 		if (shape == ConstName::DetonationSize_Regular)
 		{
@@ -1558,7 +1559,7 @@ namespace Objects
 			shape.instruction.ibo = sphereIBO[0];
 			shape.depthTest = true;
 
-			float r = Component::Bomb::GetRadius(false);
+			float r = Component::Bomb::GetRadius(false,owner);
 			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
 			return;
 		}
@@ -1572,7 +1573,7 @@ namespace Objects
 			shape.instruction.ibo = sphereIBO[0];
 			shape.depthTest = true;
 
-			float r = Component::Bomb::GetRadius(true);
+			float r = Component::Bomb::GetRadius(true,owner);
 			BuildSystem(Grid::ToWorld(location),r, r,shape.system);
 			return;
 		}

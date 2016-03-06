@@ -44,7 +44,7 @@ namespace Objects
 	
 	int						Vehicle::GetOperationSpeed(Component::operation_t op)  const
 	{
-		return base->operationSpeedMultiplier *  turret->operationSpeed[op];
+		return (int)floor(turret->GetOperationSpeed(op,owner) * base->operationSpeedMultiplier);
 	}
 
 
@@ -143,20 +143,24 @@ namespace Objects
 	#endif
 
 
+	/*virtual override*/ float		Vehicle::GetMaxScanningRange() const 
+	{
+		return turret->GetScanningRange(owner,turret->CanAttack() ? 0 : base->rangeModifier);
+	}
+
+
 	/*virtual override*/int			Vehicle::GetMovementStepsPerRound()	const
 	{
 		return (int)ceil(EMPModify(
-				float(base->baseMovementSpeed) 
-				* Grid::powi(0.75f,std::max(0, turret->weight - base->carryingCapacity)),
+				base->GetBaseMovementSpeed(owner) 
+				* Grid::powi(0.75f,std::max(0, turret->weight - (int)floor(base->GetCarryingCapacity(owner)))  ),
 				1.f));
 	}
 
 	
 	/*virtual override*/ float			Vehicle::GetFlatAttackRange() const 
 	{
-		float rawRange = turret->horizontalAttackRange + base->rangeModifier;
-
-		return EMPModify(rawRange * owner->researchState.GetFactorFor(turret->constName,Component::Attribute::AttackRange),1.f);
+		return EMPModify(turret->GetHorizontalAttackRange(owner,base->rangeModifier),1.f);
 	}
 
 
@@ -316,9 +320,9 @@ namespace Objects
 	{
 	#ifdef ONE_COMPOUND_PER_FACTION
 		const Compound&compound = owner->compound;
-		return compound.total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
+		return compound.total.storage.level[turret->ammoType] >= turret->GetAmmoNeedPerShot(owner);
 	#else
-		return currentStorage.level[turret->ammoType] >= turret->ammoNeedPerShot;
+		return currentStorage.level[turret->ammoType] >= turret->GetAmmoNeedPerShot(owner);
 	#endif
 	}
 	
@@ -328,14 +332,16 @@ namespace Objects
 		{
 			Super::DescribeType(outResult,descFlags);
 			outResult << "";
-			base->DescribeType(outResult,true);
+			base->DescribeType(outResult,true,owner);
 			outResult << "";
 
-			if (turret->weight > base->carryingCapacity)
-				outResult << "Overweight: "+String(turret->weight - base->carryingCapacity);
+			const int capacity = (int)floor(base->GetCarryingCapacity(owner));
+			if (turret->weight > capacity)
+				outResult << "Overweight: "+String(turret->weight - capacity);
 			String speed = "Effective speed: "+String(this->GetMovementStepsPerRound());
-			if (GetMovementStepsPerRound() != base->baseMovementSpeed)
-				speed += " /"+String(this->base->baseMovementSpeed);
+			const int baseMovement = (int)floor(base->GetBaseMovementSpeed(owner));
+			if (GetMovementStepsPerRound() != baseMovement)
+				speed += " /"+String(baseMovement);
 
 			outResult << speed;
 			if (base->requirements == Component::VehicleBase::Requirement::Water)

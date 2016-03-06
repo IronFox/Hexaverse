@@ -511,7 +511,7 @@ namespace Animation
 							loc.height = h;
 					}
 
-					t1.SetLocalizableShape(sourceTask.visualizationName,loc);
+					t1.SetLocalizableShape(sourceTask.visualizationName,loc,e.owner);
 				}
 			#endif
 		}
@@ -1026,6 +1026,7 @@ namespace Animation
 		attackRange = a.turretRange;
 		attackerPosition = a.sourcePosition;
 		explosionCenter = Grid::ToWorld(a.traceTo);
+		explosionRadius = a.explosionRadius;
 		isAutoTarget = false;
 
 		location = a.traceTo;
@@ -1249,6 +1250,7 @@ namespace Animation
 					attackerTurret = base->turret;
 					ASSERT_NOT_NULL1__(attackerTurret,attacker->GetName());
 					attackRange = base->GetFlatAttackRange();
+					explosionRadius = base->turret->GetExplosionRadius(attacker->owner);
 					attackerPosition = attacker->GetWorldPosition();
 					attackerPosition += Grid::low.cells[attacker->location.stackID].cornerCenter * zOffset;
 					#ifdef HAS_WINDOW
@@ -1262,7 +1264,7 @@ namespace Animation
 				
 				{
 					Objects::Component::Turret::TraceTrajectory(attackerTurret->trajectoryType,attackRange, attackerPosition,Grid::ToWorld(location),activeTrajectory);
-					explosionRadius = attackerTurret->explosionRadius;
+					//explosionRadius = attackerTurret->GetExplosionRadius;
 					projectileAt = 0.f;
 					projectileActive = true;
 

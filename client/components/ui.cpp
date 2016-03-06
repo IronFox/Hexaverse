@@ -753,7 +753,7 @@
 				//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
 				Objects::PTurretBase base = target->GetTurretBase();
 				if (base && base->turret->CanAttack())
-					outResult << "Offensive ("+String(base->GetAttacksPerRound())+"x"+String(base->turret->damageLevel)+")";
+					outResult << "Offensive ("+String(base->GetAttacksPerRound())+"x"+String(base->turret->GetDamageLevel(target->owner))+")";
 				if (target->empDamageLevel)
 					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
 
@@ -838,7 +838,7 @@
 				//outResult << "Health: "+String(target->health)+"/"+String(target->GetMaxHealth());
 				Objects::PTurretBase b = proto->GetTurretBase();
 				if (b && b->turret->CanAttack())
-					outResult << "Offensive ("+String(b->GetAttacksPerRound())+"x"+String(b->turret->damageLevel)+")";
+					outResult << "Offensive ("+String(b->GetAttacksPerRound())+"x"+String(b->turret->GetDamageLevel(instance->owner))+")";
 //					if (target->empDamageLevel)
 //					outResult << "EMP-Damage detected ("+String(target->empDamageLevel)+")";
 
@@ -1969,7 +1969,7 @@
 				if (e.IsVehicle())
 				{
 					const Objects::Vehicle*veh = (const Objects::Vehicle*)(&e);
-					textout << " Turret-Overweight: "<<std::max(0,veh->turret->weight - veh->base->carryingCapacity) << nl;
+					textout << " Turret-Overweight: "<<std::max(0,veh->turret->weight - (int)floor(veh->base->GetCarryingCapacity(e.owner))) << nl;
 					textout << " Movement Initiative: "<<(int)v->GetMovementInitiative()<<"/"<<(int)veh->base->initiative<<nl;
 				}
 				elif (e.IsSatellite())
@@ -1992,10 +1992,11 @@
 					//textout << " Damage: "<<v->turret->damageLevel << nl;
 					//textout << " Ammo-Usage: "<<v->turret->ammoNeedPerShot<<nl;
 					textout << " Hrz. Range: "<<v->GetFlatAttackRange();
-					textout << '+'<<v->turret->explosionRadius<< nl;
-					textout << " Damage: "<<v->turret->damageLevel << nl;
-					if (v->turret->ammoNeedPerShot > 0)
-						textout << " "<<(char)(tagOffset+v->turret->ammoType)<<"Ammo-Usage: "<<v->turret->ammoNeedPerShot<<nl;
+					textout << '+'<<v->turret->GetExplosionRadius(e.owner)<< nl;
+					textout << " Damage: "<<v->turret->GetDamageLevel(e.owner) << nl;
+					int ammoNeed = v->turret->GetAmmoNeedPerShot(e.owner);
+					if (ammoNeed > 0)
+						textout << " "<<(char)(tagOffset+v->turret->ammoType)<<"Ammo-Usage: "<<ammoNeed<<nl;
 
 				}
 				if (v->turret->CanAttack())
@@ -2077,9 +2078,9 @@
 					{
 						const Objects::Tower*v = t;	//rename
 						textout << " Hrz. Range: "<<v->GetFlatAttackRange();
-						textout << '+'<<v->turret->explosionRadius<< nl;
-						textout << " Damage: "<<v->turret->damageLevel << nl;
-						textout << " "<<(char)(tagOffset+v->turret->ammoType)<<"Ammo-Usage: "<<v->turret->ammoNeedPerShot<<nl;
+						textout << '+'<<v->turret->GetExplosionRadius(e.owner)<< nl;
+						textout << " Damage: "<<v->turret->GetDamageLevel(e.owner) << nl;
+						textout << " "<<(char)(tagOffset+v->turret->ammoType)<<"Ammo-Usage: "<<v->turret->GetAmmoNeedPerShot(e.owner)<<nl;
 					}
 					if (t->GetAttacksPerRound() > 0)
 						textout << " Attacks left: "<<int(t->CountPossibleAttacks())<<"/"<<t->GetAttacksPerRound() << nl;

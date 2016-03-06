@@ -35,18 +35,76 @@ namespace Objects
 
 
 
+		float							VehicleBase::GetBaseMovementSpeed(const OwnerParameter&owner) const
+		{
+			return owner->researchState.GetFactorFor(*this,Attribute::MovementSpeed) * unmodulatedMovementSpeed;
+		}
+		float							VehicleBase::GetCarryingCapacity(const OwnerParameter&owner) const
+		{
+			return owner->researchState.GetFactorFor(*this,Attribute::CarryWeight) * baseCarryingCapacity;
+		}
+		float							VehicleBase::GetBaseHealth(const OwnerParameter&owner) const
+		{
+			return owner->researchState.GetFactorFor(*this,Attribute::Health) * unmodulatedHealth;
+		}
+
+
+
+		float							Turret::GetOperationSpeed(operation_t op, const OwnerParameter&owner) const
+		{
+			return owner->researchState.GetFactorFor(*this,Attribute::ConstructionSpeed) * baseOperationSpeed[op];
+		}
+
+		float							Turret::GetDamageLevel(const OwnerParameter&owner) const
+		{
+			return owner->researchState.GetFactorFor(*this,Attribute::DamageLevel) * baseDamageLevel;
+		}
+
+		float							Turret::GetExplosionRadius(const OwnerParameter&owner) const
+		{
+			return owner->researchState.GetFactorFor(*this,Attribute::ExplosionRadius) * baseExplosionRadius;
+		}
+
+		int								Turret::GetAttacksPerRound(const OwnerParameter&owner) const
+		{
+			return (int)floor(owner->researchState.GetFactorFor(*this,Attribute::AttacksPerRound) * baseAttacksPerRound);
+		}		
+
+		int								Turret::GetAmmoNeedPerShot(const OwnerParameter&owner) const
+		{
+			if (baseAmmoNeedPerShot == 0)
+				return 0;
+			return (int)ceil(float(baseAmmoNeedPerShot) / owner->researchState.GetFactorFor(*this,Attribute::YieldEfficiency));
+		}	
+
+		float							Turret::GetHorizontalAttackRange(const OwnerParameter&owner, int bonus/*=0*/) const
+		{
+			if (baseHorizontalAttackRange == 0)
+				return 0;
+			return owner->researchState.GetFactorFor(*this,Attribute::AttackRange) * (baseHorizontalAttackRange + bonus);
+		}
+
+		float							Turret::GetScanningRange(const OwnerParameter&owner, int bonus/*=0*/) const
+		{
+			return owner->researchState.GetFactorFor(*this,Attribute::ScanningRange) * (baseScanningRange + bonus);
+		}
+
+		float							Turret::GetGroundScanningRange(const OwnerParameter&owner) const
+		{
+			return owner->researchState.GetFactorFor(*this,Attribute::ScanningRange) * baseGroundScanningRange;
+		}
 
 
 
 		void		Turret::BuildBlastSystem(const TVec3<>&location, TMatrix4<>&system) const
 		{
-			BuildSystem(location,explosionRadius,explosionRadius,system);
+			BuildSystem(location,baseExplosionRadius,baseExplosionRadius,system);
 		}
 
 
 		void		Turret::BuildBlastSystem(const Grid::LCellIdI&location, TMatrix4<>&system)	const
 		{
-			BuildSystem(location,explosionRadius,explosionRadius,system);
+			BuildSystem(location,baseExplosionRadius,baseExplosionRadius,system);
 		}
 
 
@@ -907,11 +965,11 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Minerals] = 200;
 			#endif
-			component.operationSpeed[Construct] = 10;
-			component.operationSpeed[TerrainRemove] = 10;
-			component.operationSpeed[TerrainAdd] = 10;
+			component.baseOperationSpeed[Construct] = 10;
+			component.baseOperationSpeed[TerrainRemove] = 10;
+			component.baseOperationSpeed[TerrainAdd] = 10;
 			component.healthMultiplier = 1;
-			component.scanningRange = 4;
+			component.baseScanningRange = 4;
 			component.uplinkTraffic = 30;
 			component.uplinkPriority = 200;	//fairly early
 
@@ -927,14 +985,14 @@ namespace Objects
 
 
 
-		float		Bomb::GetRadius(bool doomsday)
+		float		Bomb::GetRadius(bool doomsday, const OwnerParameter& owner)
 		{
-			return doomsday ? ragnarok.explosionRadius-3 : artillery.explosionRadius*2;
+			return doomsday ? ragnarok.GetExplosionRadius(owner)-3 : artillery.GetExplosionRadius(owner)*2;
 		}
 
-		int			Bomb::GetDamageLevel(bool doomsday)
+		int			Bomb::GetDamageLevel(bool doomsday, const OwnerParameter& owner)
 		{
-			return doomsday ? ragnarok.damageLevel / 2 : artillery.damageLevel*2;
+			return doomsday ? ragnarok.GetDamageLevel(owner) / 2 : artillery.GetDamageLevel(owner)*2;
 		}
 
 	
@@ -985,9 +1043,9 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				component.baseStorageCapacity.level[Resource::Uranium] = VehicleJob::DoomsdaySelfDetonationCosts;
 			#endif
-			component.operationSpeed[Nuclear] = 50;
+			component.baseOperationSpeed[Nuclear] = 50;
 			component.healthMultiplier = 1;
-			component.scanningRange = 1;
+			component.baseScanningRange = 1;
 			component.uplinkTraffic = 30;
 			component.uplinkPriority = 200;	//fairly early
 
@@ -1039,21 +1097,21 @@ namespace Objects
 		
 			component.weight = 3;
 			component.healthMultiplier = 1.5f;
-			component.horizontalAttackRange = 7;
-			component.scanningRange = 4;
+			component.baseHorizontalAttackRange = 7;
+			component.baseScanningRange = 4;
 
 			#ifndef HYBRID_GRID
-				component.explosionRadius = 3.5f;
+				component.baseExplosionRadius = 3.5f;
 			#else
-				component.explosionRadius = 2;
+				component.baseExplosionRadius = 2;
 			#endif
-			component.damageLevel = 7;
-			component.attacksPerRound = 1;
+			component.baseDamageLevel = 7;
+			component.baseAttacksPerRound = 1;
 			component.initiative = 80;
 			#ifdef NO_MUNITION
-				component.ammoNeedPerShot = 0;
+				component.baseAmmoNeedPerShot = 0;
 			#else
-				component.ammoNeedPerShot = 6;
+				component.baseAmmoNeedPerShot = 6;
 			#endif
 
 			ResearchState::RegisterDependency(component,armored);
@@ -1099,22 +1157,22 @@ namespace Objects
 		
 			component.weight = 13;
 			component.healthMultiplier = 1.5f;
-			component.horizontalAttackRange = 8;
-			component.scanningRange = 4;
+			component.baseHorizontalAttackRange = 8;
+			component.baseScanningRange = 4;
 
 			#ifndef HYBRID_GRID
-				component.explosionRadius = 1.5f;
+				component.baseExplosionRadius = 1.5f;
 			#else
-				component.explosionRadius = 1;
+				component.baseExplosionRadius = 1;
 			#endif
 			component.trajectoryType = TrajectoryType::Missile;
-			component.damageLevel = 10;
-			component.attacksPerRound = 1;
+			component.baseDamageLevel = 10;
+			component.baseAttacksPerRound = 1;
 			component.initiative = 70;
 			#ifdef NO_MUNITION
-				component.ammoNeedPerShot = 0;
+				component.baseAmmoNeedPerShot = 0;
 			#else
-				component.ammoNeedPerShot = 8;
+				component.baseAmmoNeedPerShot = 8;
 			#endif
 
 			ResearchState::RegisterDependency(component,armored);
@@ -1160,16 +1218,16 @@ namespace Objects
 		
 			component.weight = 3;
 			component.healthMultiplier = 2;
-			component.horizontalAttackRange = 5;
-			component.scanningRange = 5;
+			component.baseHorizontalAttackRange = 5;
+			component.baseScanningRange = 5;
 
-			component.explosionRadius = 1;
-			component.damageLevel = 3;
-			component.attacksPerRound = 2;
+			component.baseExplosionRadius = 1;
+			component.baseDamageLevel = 3;
+			component.baseAttacksPerRound = 2;
 			#ifdef NO_MUNITION
-				component.ammoNeedPerShot = 0;
+				component.baseAmmoNeedPerShot = 0;
 			#else
-				component.ammoNeedPerShot = 2;
+				component.baseAmmoNeedPerShot = 2;
 			#endif
 
 			component.ignoresVehicleMotion = true;
@@ -1215,15 +1273,15 @@ namespace Objects
 		
 			component.weight = 5;
 			component.healthMultiplier = 1;
-			component.horizontalAttackRange = 17;
-			component.scanningRange = 3;
+			component.baseHorizontalAttackRange = 17;
+			component.baseScanningRange = 3;
 
-			component.explosionRadius = 3;
-			component.damageLevel = 5;
+			component.baseExplosionRadius = 3;
+			component.baseDamageLevel = 5;
 			component.dealsEMPDamage = true;
-			component.attacksPerRound = 1;
+			component.baseAttacksPerRound = 1;
 			component.initiative = 30;
-			component.ammoNeedPerShot = 50;
+			component.baseAmmoNeedPerShot = 50;
 			component.ammoType = Resource::Uranium;
 			component.requiresStationaryVehicle = true;
 			component.uplinkTraffic = 10;
@@ -1287,21 +1345,21 @@ namespace Objects
 		
 			component.weight = 1;	//irrelevant
 			component.healthMultiplier = 1;	//irrelevant
-			component.horizontalAttackRange = 0;
-			component.scanningRange = 1;
+			component.baseHorizontalAttackRange = 0;
+			component.baseScanningRange = 1;
 
-			component.explosionRadius = 10;
-			component.damageLevel = 100;
+			component.baseExplosionRadius = 10;
+			component.baseDamageLevel = 100;
 			component.dealsEMPDamage = false;
-			component.attacksPerRound = 1;
+			component.baseAttacksPerRound = 1;
 			component.initiative = 10;
 			#ifdef _DEBUG
-				component.ammoNeedPerShot = 0;//1000;
+				component.baseAmmoNeedPerShot = 0;//1000;
 			#else
-				component.ammoNeedPerShot = 2000;
+				component.baseAmmoNeedPerShot = 2000;
 			#endif
 			#ifndef ONE_COMPOUND_PER_FACTION
-				component.baseStorageCapacity.level[Resource::Uranium] = component.ammoNeedPerShot;
+				component.baseStorageCapacity.level[Resource::Uranium] = component.baseAmmoNeedPerShot;
 			#endif
 			component.ammoType = Resource::Uranium;
 			component.requiresStationaryVehicle = true;
@@ -1346,15 +1404,15 @@ namespace Objects
 		
 			component.weight = 1;	//irrelevant
 			component.healthMultiplier = 1;	//irrelevant
-			component.horizontalAttackRange = 30;
-			component.scanningRange = 10;
+			component.baseHorizontalAttackRange = 30;
+			component.baseScanningRange = 10;
 
-			component.explosionRadius = 2;	//in space, 2 is 1
-			component.damageLevel = 5;
+			component.baseExplosionRadius = 2;	//in space, 2 is 1
+			component.baseDamageLevel = 5;
 			component.dealsEMPDamage = false;
-			component.attacksPerRound = 1;
+			component.baseAttacksPerRound = 1;
 			component.initiative = 60;
-			component.ammoNeedPerShot = 0;//10;
+			component.baseAmmoNeedPerShot = 0;//10;
 			component.ammoType = Resource::Uranium;
 			component.requiresStationaryVehicle = true;
 			component.uplinkTraffic = 10;
@@ -1393,8 +1451,8 @@ namespace Objects
 			component.constTowerName = ConstName::Empty;	//not used
 
 			component.isSatelliteRing = true;
-			component.operationSpeed[Repair] = 10;
-			component.operationSpeed[Construct] = 5;
+			component.baseOperationSpeed[Repair] = 10;
+			component.baseOperationSpeed[Construct] = 5;
 			//component.fuelSupplyRadius = 20;
 
 			component.continuousRotation = true;
@@ -1404,10 +1462,10 @@ namespace Objects
 		
 			component.weight = 1;	//irrelevant
 			component.healthMultiplier = 1;	//irrelevant
-			component.scanningRange = 35;	//temporary. Once orbital scanners are introduced, reduce this value again
-			component.groundScanningRange = 10;
+			component.baseScanningRange = 35;	//temporary. Once orbital scanners are introduced, reduce this value again
+			component.baseGroundScanningRange = 10;
 
-			component.attacksPerRound = 0;
+			component.baseAttacksPerRound = 0;
 			component.initiative = 60;
 			component.uplinkTraffic = 20;
 
@@ -1441,14 +1499,14 @@ namespace Objects
 			component.continuousRotationSpeed = -0.05f;
 
 			component.productionCosts = 1;	//irrelevant
-			component.operationSpeed[Repair] = 10;
+			component.baseOperationSpeed[Repair] = 10;
 		
 			component.weight = 1;	//irrelevant
 			component.healthMultiplier = 1;	//irrelevant
-			component.scanningRange = 10;
-			component.groundScanningRange = 0;
+			component.baseScanningRange = 10;
+			component.baseGroundScanningRange = 0;
 
-			component.attacksPerRound = 0;
+			component.baseAttacksPerRound = 0;
 			component.initiative = 30;
 			component.uplinkTraffic = 1;	//irrelevant
 
@@ -1481,12 +1539,12 @@ namespace Objects
 		
 			component.weight = 4;
 			component.healthMultiplier = 1;
-			component.scanningRange = 3;
+			component.baseScanningRange = 3;
 
-			//component.explosionRadius = 1;
-			//component.damageLevel = 3;
-			//component.attacksPerRound = 2;
-			//component.ammoNeedPerShot = 2;
+			//component.baseExplosionRadius = 1;
+			//component.baseDamageLevel = 3;
+			//component.baseAttacksPerRound = 2;
+			//component.baseAmmoNeedPerShot = 2;
 
 			//component.ignoresVehicleMotion = true;
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
@@ -1524,8 +1582,8 @@ namespace Objects
 		
 			component.weight = 2;
 			component.healthMultiplier = 1;
-			component.scanningRange = 3;
-			component.operationSpeed[Repair] = 10;
+			component.baseScanningRange = 3;
+			component.baseOperationSpeed[Repair] = 10;
 			component.uplinkTraffic = 10;
 
 
@@ -1556,7 +1614,7 @@ namespace Objects
 		
 			component.weight = 2;
 			component.healthMultiplier = 1;
-			component.scanningRange = 12;
+			component.baseScanningRange = 12;
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = 2.f;
 			component.uplinkTraffic = 10;
@@ -1592,7 +1650,7 @@ namespace Objects
 			component.weight = 1;
 			component.healthMultiplier = 1;
 			component.detectsResources = true;
-			component.scanningRange = 4;
+			component.baseScanningRange = 4;
 			component.uplinkPriority = 180;	//fairly early
 
 
@@ -1634,9 +1692,9 @@ namespace Objects
 				component.storageMultiplier = 1;
 			#endif
 
-			component.baseMovementSpeed = 20;
-			component.carryingCapacity = 1;
-			component.baseHealth = 4;
+			component.unmodulatedMovementSpeed = 20;
+			component.baseCarryingCapacity = 1;
+			component.unmodulatedHealth = 4;
 
 
 			ResearchState::RegisterResearch(component,Attribute::MovementSpeed);
@@ -1682,9 +1740,9 @@ namespace Objects
 			#endif
 			component.operationSpeedMultiplier = 2;
 
-			component.baseMovementSpeed = 15;
-			component.carryingCapacity = 10;
-			component.baseHealth = 12;
+			component.unmodulatedMovementSpeed = 15;
+			component.baseCarryingCapacity = 10;
+			component.unmodulatedHealth = 12;
 
 			component.hindrance.road = 1;
 			component.hindrance.air = 10;
@@ -1737,9 +1795,9 @@ namespace Objects
 			component.operationSpeedMultiplier = 2;
 			component.rangeModifier = 1;
 
-			component.baseMovementSpeed = 8;
-			component.carryingCapacity = 15;
-			component.baseHealth = 12;
+			component.unmodulatedMovementSpeed = 8;
+			component.baseCarryingCapacity = 15;
+			component.unmodulatedHealth = 12;
 
 			component.hindrance.road = 10;
 			component.hindrance.air = 2;
@@ -1886,7 +1944,7 @@ namespace Objects
 				SignalNewJob(vehicle, ConstName::Job_DigDown, ConstName::Empty);
 			}
 
-			void			Base::DescribeType(BaseCommand::Label&label, bool compound)
+			void			Base::DescribeType(BaseCommand::Label&label, bool compound, const OwnerParameter&)
 			{
 				if (!compound)
 					label << " Cost: "+String(ResourceTag(Resource::Minerals))+String(productionCosts);
@@ -1897,10 +1955,10 @@ namespace Objects
 
 
 
-			void VehicleBase::DescribeType(BaseCommand::Label&outResult, bool compound)
+			void VehicleBase::DescribeType(BaseCommand::Label&outResult, bool compound, const OwnerParameter&owner)
 			{
 				outResult << typeName + " (Base)";
-				Base::DescribeType(outResult,compound);
+				Base::DescribeType(outResult,compound,owner);
 				outResult << " Can climb "+String(maxClimbUp)+" height level(s) up";
 			
 				outResult << " Can safely fall down "+String(-minClimbDown)+" height level(s)";
@@ -1912,14 +1970,14 @@ namespace Objects
 				{
 					if (operationSpeedMultiplier != 1)
 						outResult << " Operation speed multiplied by "+String(operationSpeedMultiplier);
-					outResult<<" Base speed: "+String(baseMovementSpeed);
+					outResult<<" Base speed: "+ModulateByResearch(unmodulatedMovementSpeed,Attribute::MovementSpeed,owner);
 					if (requirements == Requirement::Water)
 						outResult.lines.last()+= " (naval)";
 					else
 						if (moveOnWater)
 							outResult.lines.last()+= " (moves over water)";
-					outResult<<" Base health: "+String(baseHealth);
-					outResult<<" Turret carrying capacity: "+String(carryingCapacity);
+					outResult<<" Base health: "+ModulateByResearch(unmodulatedHealth,Attribute::Health,owner,ModulationType::FloorInt);
+					outResult<<" Turret carrying capacity: "+ModulateByResearch(baseCarryingCapacity,Attribute::CarryWeight,owner,ModulationType::FloorInt);
 					if (rangeModifier != 0)
 						outResult<<" Turret range modifier: "+String(rangeModifier);
 				}
@@ -1928,7 +1986,27 @@ namespace Objects
 			}
 
 
-
+			String Base::ModulateByResearch(float baseValue, Attribute attrib, const OwnerParameter&owner, ModulationType type/*=ModulationType::DefaultFloat*/)	const
+			{
+				String rs(baseValue);
+					
+				if (owner)
+				{
+					float fc = owner->researchState.GetFactorFor(constName,Attribute::ScanningRange);
+					if (type == ModulationType::InvertedFloat)
+						fc = 1.f / fc;
+					if (fc > 1.f)
+					{
+						float modulated = fc * baseValue;
+						if (type == ModulationType::FloorInt)
+							modulated = floor(modulated);
+						else
+							modulated = round(modulated * 10)/10;
+						rs += "x"+String(round(fc*10)/10)+" -> "+String(modulated);
+					}
+				}
+				return rs;
+			}
 
 			void Turret::DescribeType(BaseCommand::Label&outResult, bool compound, const String&parentType, const OwnerParameter&owner)
 			{
@@ -1949,11 +2027,11 @@ namespace Objects
 				}
 
 
-				Base::DescribeType(outResult,compound);
+				Base::DescribeType(outResult,compound,owner);
 				if (!compound)
 				{
 					outResult << " Weight: "+String(weight);
-					outResult << " Base scanning range: "+String(scanningRange);
+					outResult << " Base scanning range: "+ModulateByResearch(baseScanningRange,Attribute::ScanningRange,owner);
 					if (healthMultiplier != 1)
 						outResult << " Health: x"+String(healthMultiplier);
 					if (RuntimeConfig::hibernationSystemEnabled)
@@ -1970,21 +2048,22 @@ namespace Objects
 					elif (requiresStationaryVehicle)
 						outResult << " Vehicle must remain stationary to fire";
 					if (!compound)
-						outResult << " Base horizontal attack range: "+String(horizontalAttackRange);
-					if (ammoNeedPerShot == 0)
+						outResult << " Base horizontal attack range: "+ModulateByResearch(baseHorizontalAttackRange,Attribute::AttackRange,owner);
+
+					if (baseAmmoNeedPerShot == 0)
 						outResult << "Does not require ammunition";
 					else
-						outResult << " Consumes "+String(ResourceTag(ammoType))+String(ammoNeedPerShot)+" per shot";
-					outResult << " Explosion radius: "+String(explosionRadius);
+						outResult << " Consumes "+String(ResourceTag(ammoType))+ModulateByResearch(baseAmmoNeedPerShot,Attribute::YieldEfficiency,owner,ModulationType::InvertedFloat)+" per shot";
+					outResult << " Explosion radius: "+ModulateByResearch(baseExplosionRadius, Attribute::ExplosionRadius,owner);
 					if (dealsEMPDamage)
-						outResult << " EMP damage: "+String(damageLevel);
+						outResult << " EMP damage: "+ModulateByResearch(baseDamageLevel,Attribute::DamageLevel,owner);
 					else
-						outResult << " Damage: "+String(damageLevel);
-					outResult << " "+String(attacksPerRound)+" attack(s) per round";
+						outResult << " Damage: "+ModulateByResearch(baseDamageLevel,Attribute::DamageLevel,owner);
+					outResult << " "+ModulateByResearch(baseAttacksPerRound,Attribute::DamageLevel,owner,ModulationType::FloorInt)+" attack(s) per round";
 				}
 
 				if (CanConstruct() && !compound)
-					outResult << " Construction: Converts "+String(ResourceTag(Resource::Minerals))+String(operationSpeed[Construct])+" per round";
+					outResult << " Construction: Converts "+String(ResourceTag(Resource::Minerals))+ModulateByResearch(baseOperationSpeed[Construct],Attribute::ConstructionSpeed,owner,ModulationType::FloorInt)+" per round";
 				if ((CanDo(TerrainRemove) || CanDo(TerrainAdd)) && !compound)
 					outResult << " Terraforming: Can shape the surrounding terrain";
 				if (CanRepair())
@@ -2019,7 +2098,7 @@ namespace Objects
 						outResult.WrapAppendText("This "+lowerName+" deals EMP damage. EMP damage temporarily reduces scanning range. Does not cause any permanent damage.");
 				}
 				else
-					if (scanningRange > 10)
+					if (baseScanningRange > 10)
 						outResult.WrapAppendText("This "+lowerName+" type is especially suited for detecting hostile entities. Such turret types are manadatory in order to see hostile forces approaching, as well as their attacks. Offensive turrets usually lack the necessary scanning range to see where they are shooting and depend on this turret type to reside in the vicinity.");
 				//if (isDoomsday)
 				//{

@@ -203,7 +203,7 @@ namespace Objects
 		//if (Turret::GetAngleForDistance(velocity,source,destIn))
 		//if (distance2 > extRange2)
 		//	return false;
-		const float explosionRadius = turret->explosionRadius;
+		const float explosionRadius = turret->GetExplosionRadius(myFaction);
 		const float explosionRadius2 = sqr(explosionRadius);
 		if (Component::Turret::CanHit(turret->trajectoryType, range,source,zOffset,destIn)
 			&& CheckArea(myFaction,destIn,explosionRadius))
@@ -229,7 +229,7 @@ namespace Objects
 		{
 			TVec3<> world = Grid::ToWorld(current);
 			float fromDest2 = Vec::quadraticDistance(dest3,world);
-			if (fromDest2 > sqr(turret->explosionRadius))
+			if (fromDest2 > explosionRadius2)
 				continue;
 			if (!Grid::actualWorld.LowCellIsClear(current) || 
 				!Component::Turret::CanHit(turret->trajectoryType, range,source,zOffset,current))

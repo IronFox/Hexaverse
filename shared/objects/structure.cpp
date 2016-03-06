@@ -216,13 +216,14 @@ namespace Objects
 
 				SignalAttack(shared_from_this(),target.target,flightTime,target.autoTarget);
 
-				if (storage.level[turret->ammoType] >= turret->ammoNeedPerShot)
-					ChangeStorage(*this,attackTime, turret->ammoType,-turret->ammoNeedPerShot);
+				const int ammoNeed = turret->GetAmmoNeedPerShot(owner);
+				if (storage.level[turret->ammoType] >= ammoNeed)
+					ChangeStorage(*this,attackTime, turret->ammoType,-ammoNeed);
 				else
 				{
 					ResourceVector change;
 					RefreshCompoundCoverageIfNeeded(motionTime);
-					change.level[turret->ammoType] = turret->ammoNeedPerShot;
+					change.level[turret->ammoType] = ammoNeed;
 					GetCompound().Collect(change,motionTime);
 					//ASSERT__(change.IsEmpty());
 				}
@@ -230,13 +231,15 @@ namespace Objects
 
 				
 				motionTime += flightTime;
+				const int damageLevel = (int)floor(turret->GetDamageLevel(owner));
+				const float explosionRadius = turret->GetExplosionRadius(owner);
 
 				if (turret->dealsEMPDamage)
 					ExplodeEMP(shared_from_this(),target.target,flightTime,
-								t1, t0, turret->explosionRadius, turret->damageLevel,motionTime);
+								t1, t0, explosionRadius, damageLevel,motionTime);
 				else
 					Explode(shared_from_this(),target.target,flightTime,
-							t1, t0, turret->explosionRadius, turret->damageLevel,turret->isDoomsday, motionTime);
+							t1, t0, explosionRadius, damageLevel,turret->isDoomsday, motionTime);
 
 				RegisterChange((changeType_t)(TasksChanged),motionTime);
 				//stateChangedAt = attackTime;	//problematic
@@ -253,7 +256,7 @@ namespace Objects
 
 		/*virtual override*/ bool Tower::FillAttackQueue()
 		{
-			if (this->storage.level[turret->ammoType] < turret->ammoNeedPerShot)
+			if (!HasAmmoForShot())
 				return false;
 			//index_t freeSlots = attackQueue.Count() < t->GetAttacksPerRound() <  t->GetAttacksPerRound() - t->attackQueue.Count() : 0;
 			if ((int)attackQueue.Count() < CountPossibleAttacks())
@@ -871,17 +874,12 @@ namespace Objects
 	
 	/*virtual override*/ float			Tower::GetFlatAttackRange() const 
 	{
-		if (turret->horizontalAttackRange <= 0)
+		if (!turret->CanAttack())
 			return 0.f;
-		float rawRange = turret->horizontalAttackRange + 2.f;
-		return EMPModify(rawRange * owner->researchState.GetFactorFor(turret->constTowerName,Component::Attribute::AttackRange),2.f);
+		return EMPModify(turret->GetHorizontalAttackRange(owner,2.f),2.f);
 	}
 
 
-	/*virtual override*/ float				Tower::GetScanningRangeResearchFactor() const
-	{
-		return owner->researchState.GetFactorFor(turret->constName,Component::Attribute::ScanningRange);	//may change this later. for now same as vehicles
-	}
 
 
 	#ifndef CLIENT
@@ -1062,12 +1060,12 @@ namespace Objects
 		#ifndef CLIENT
 			RefreshCompoundCoverageIfNeeded(atTime);
 		#endif
-		return GetCompound().total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
+		return GetCompound().total.storage.level[turret->ammoType] >= turret->GetAmmoNeedPerShot(owner);
 	}
 
 	bool	Tower::HasAmmoForShot() const
 	{
-		return GetCompound().total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
+		return GetCompound().total.storage.level[turret->ammoType] >= turret->GetAmmoNeedPerShot(owner);
 		//compoundID < compounds.Count() && compounds[compoundID].total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
 	}
 
