@@ -2063,8 +2063,78 @@ namespace Objects
 
 
 		#ifdef HAS_WINDOW
-			//later
+			
+			PCommandGroup unlockGroup = commands.AddChild("Unlock");
+			PCommandGroup improveGroup = commands.AddChild("Improve");
+			FixedArray<PCommandGroup,Component::Attribute::N> improveSubGroups;
+			foreach (improveSubGroups,sub)
+				(*sub) = improveGroup->AddChild(Component::Attribute::Reinterpret(sub - improveSubGroups.begin()).ToString());
 
+			foreach (ResearchState::globalState.types,t)
+			{
+				if (t->researchCost > 0)
+				{
+					if (t->prototypeReference)
+						unlockGroup->Add(new EntityCommand(t->name,t->prototypeReference->shared_from_this(),[](){},
+							[](bool)->BaseCommand::Flags
+							{
+								return BaseCommand::Flags::IsEnabled;
+							}))->RasterizeImage();
+					elif (t->componentReference)
+					{
+						Component::Turret*turret = nullptr;
+						Component::VehicleBase*base = nullptr;
+						if (t->componentReference->IsTurret())
+							turret = (Component::Turret*)t->componentReference;
+						elif (t->componentReference->IsBase())
+							base = (Component::VehicleBase*)t->componentReference;
+						unlockGroup->Add(new EntityConstructionCommand(t->name,base,turret,PWorldEntity(),[](){},
+							[](bool)->BaseCommand::Flags
+							{
+								return BaseCommand::Flags::IsEnabled;
+
+
+							}))->RasterizeImage();
+					}
+					else
+					{
+						bool brk = true;
+					}
+				}
+
+				for (index_t i = 0; i < Component::Attribute::N; i++)
+					if (t->attributeAt[i] != InvalidIndex)
+					{
+						if (t->prototypeReference)
+							improveSubGroups[i]->Add(new EntityCommand(t->name,t->prototypeReference->shared_from_this(),[](){},
+								[](bool)->BaseCommand::Flags
+								{
+									return BaseCommand::Flags::IsEnabled;
+
+
+								}))->RasterizeImage();
+						elif (t->componentReference)
+						{
+							Component::Turret*turret = nullptr;
+							Component::VehicleBase*base = nullptr;
+							if (t->componentReference->IsTurret())
+								turret = (Component::Turret*)t->componentReference;
+							elif (t->componentReference->IsBase())
+								base = (Component::VehicleBase*)t->componentReference;
+							improveSubGroups[i]->Add(new EntityConstructionCommand(t->name,base,turret,PWorldEntity(),[](){},
+								[](bool)->BaseCommand::Flags
+								{
+									return BaseCommand::Flags::IsEnabled;
+
+								}))->RasterizeImage();
+						}
+						else
+						{
+							bool brk = true;
+						}
+
+					}
+			}
 
 
 

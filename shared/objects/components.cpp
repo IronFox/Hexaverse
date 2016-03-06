@@ -76,7 +76,7 @@ namespace Objects
 		{
 			if (baseAmmoNeedPerShot == 0)
 				return 0;
-			return owner ? (int)ceil(float(baseAmmoNeedPerShot) / owner->researchState.GetFactorFor(*this,Attribute::YieldEfficiency)) : baseAmmoNeedPerShot;
+			return owner ? (int)ceil(float(baseAmmoNeedPerShot) / owner->researchState.GetFactorFor(*this,Attribute::AmmoNeed)) : baseAmmoNeedPerShot;
 		}	
 
 		float							Turret::GetHorizontalAttackRange(const OwnerParameter&owner, int bonus/*=0*/) const
@@ -1296,6 +1296,8 @@ namespace Objects
 			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
 			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+			if (component.baseAmmoNeedPerShot > 0)
+				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
 
 			component.FinishCreation();
 		}
@@ -1375,7 +1377,8 @@ namespace Objects
 			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
 			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-
+			if (component.baseAmmoNeedPerShot > 0)
+				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
 
 			component.FinishCreation(false);
 		}
@@ -1429,7 +1432,8 @@ namespace Objects
 			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
 			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-
+			if (component.baseAmmoNeedPerShot > 0)
+				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
 
 			component.FinishCreation(false);
 		}
@@ -1473,6 +1477,8 @@ namespace Objects
 
 			ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+			if (component.baseAmmoNeedPerShot > 0)
+				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
 
 			component.FinishCreation(false);
 		}
@@ -1513,6 +1519,8 @@ namespace Objects
 			component.uplinkTraffic = 1;	//irrelevant
 
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+			if (component.baseAmmoNeedPerShot > 0)
+				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
 
 			component.FinishCreation(false);
 		}
@@ -1550,7 +1558,8 @@ namespace Objects
 
 			//component.ignoresVehicleMotion = true;
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-
+			if (component.baseAmmoNeedPerShot > 0)
+				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
 
 			component.FinishCreation();
 		}
@@ -1592,6 +1601,8 @@ namespace Objects
 			ResearchState::RegisterUnlockCost(component,5);
 			ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+			if (component.baseAmmoNeedPerShot > 0)
+				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
 
 			component.FinishCreation();
 		}
@@ -1623,7 +1634,8 @@ namespace Objects
 
 			ResearchState::RegisterUnlockCost(component,1);
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-
+			if (component.baseAmmoNeedPerShot > 0)
+				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
 
 			component.FinishCreation();
 		}
@@ -1655,7 +1667,8 @@ namespace Objects
 			component.baseScanningRange = 4;
 			component.uplinkPriority = 180;	//fairly early
 
-
+			if (component.baseAmmoNeedPerShot > 0)
+				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
 
 			component.FinishCreation();
 		}
@@ -2042,7 +2055,7 @@ namespace Objects
 					if (baseAmmoNeedPerShot == 0)
 						outResult << "Does not require ammunition";
 					else
-						outResult << " Consumes "+String(ResourceTag(ammoType))+ModulateByResearch(baseAmmoNeedPerShot,Attribute::YieldEfficiency,owner,ResearchState::ModulationType::InvertedFloat)+" per shot";
+						outResult << " Consumes "+String(ResourceTag(ammoType))+ModulateByResearch(baseAmmoNeedPerShot,Attribute::AmmoNeed,owner,ResearchState::ModulationType::InvertedFloat)+" per shot";
 					outResult << " Explosion radius: "+ModulateByResearch(baseExplosionRadius, Attribute::ExplosionRadius,owner,ResearchState::ModulationType::DefaultFloat);
 					if (dealsEMPDamage)
 						outResult << " EMP damage: "+ModulateByResearch(baseDamageLevel,Attribute::DamageLevel,owner,ResearchState::ModulationType::FloorInt);

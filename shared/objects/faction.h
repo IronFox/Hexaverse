@@ -4,6 +4,7 @@
 #include "entity.h"
 #include "types.h"
 #include "structureCompound.h"
+#include "../stringTable.h"
 
 namespace Objects
 {
@@ -137,6 +138,9 @@ namespace Objects
 		InvertedCeilInt
 	};
 
+	
+
+
 	/**
 	@brief Research progress of a given faction
 
@@ -151,6 +155,38 @@ namespace Objects
 		static float			GetFactor(int level);
 		static String			_Describe(float fc, float baseValue, ResearchSateModulation type/*=ModulationType::DefaultFloat*/, ExtraModulationFunction mod/*=ExtraModulationFunction()*/);
 	public:
+
+		struct GlobalState
+		{
+			struct TTypeEntry
+			{
+				UINT32 researchCost = 0;
+				FixedArray<index_t,Component::Attribute::N>	attributeAt;
+				index_t	unlockableAt=InvalidIndex;
+				Component::Base* componentReference = nullptr;
+				WorldEntity*	prototypeReference = nullptr;
+				ConstName dependentOn = ConstName::Empty;
+				String	name;
+
+				/**/	TTypeEntry()
+				{
+					attributeAt.Fill(InvalidIndex);
+				}
+			};
+			count_t		numUnlockables = 0;
+			index_t		attributeCounter = 0;
+
+			FixedArray<index_t,(count_t)ConstName::NumTypes>	typeMap;
+			Buffer0<TTypeEntry>	types;
+
+
+			index_t		Register(ConstName cname,Component::Base* componentReference, WorldEntity*prototype, const String&name);
+		};
+
+		static GlobalState		globalState;
+
+
+
 		ConstName				currentResearch = ConstName::Empty;
 		Component::Attribute	currentResearchAttribute;	//ignored if targeted research is not unlocked
 

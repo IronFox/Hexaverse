@@ -75,7 +75,7 @@ namespace Objects
 			MovementSpeed,
 			ConstructionSpeed,
 			FuelDemand,
-			YieldEfficiency
+			AmmoNeed
 			);
 
 
@@ -126,6 +126,8 @@ namespace Objects
 			void							FinishCreation(bool scaleToVehicleSize=true);
 
 			void							GetSubSystem(index_t geometryIndex, float angle, TMatrix4<>&outSystem)	const;
+			virtual bool					IsTurret() const {return false;}
+			virtual bool					IsBase() const {return false;}
 
 			#ifdef HAS_WINDOW
 				//typedef std::function<void(EntityCommand&cmd)>	FCommandVisitor;
@@ -211,6 +213,7 @@ namespace Objects
 				Grid::HCellIdI impactCell;
 				return TraceTrajectory(type, flatRange,world,source,zOffset, dest,outSteps,impactAt,impactCell);
 			}
+			virtual bool					IsTurret() const override {return true;}
 
 
 			float							GetOperationSpeed(operation_t op, const OwnerParameter&owner) const;
@@ -393,6 +396,8 @@ namespace Objects
 
 
 			bool							CanClimb(int inclination) const { if (inclination < 0) return inclination >= minClimbDown; return inclination <= maxClimbUp;}
+
+			virtual bool					IsBase() const override {return true;}
 
 			/**
 			Global flag that states whether or not any base should be able to stand on unknown blocks.

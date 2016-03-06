@@ -26,7 +26,7 @@ namespace Objects
 	/*virtual override*/ int				Satellite::GetFuelConsumptionPerRound() const
 	{
 		return owner ? 
-				(int)ceil(float(GetBaseFuelConsumptionPerRound()) / owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::YieldEfficiency))
+				(int)ceil(float(GetBaseFuelConsumptionPerRound()) / owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::FuelDemand))
 				: GetBaseFuelConsumptionPerRound();
 	};
 
@@ -35,7 +35,7 @@ namespace Objects
 		if (!RequiresFuel())
 			return "0";
 		return owner ? 
-				owner->researchState.Describe(GetCTypeName(),GetBaseFuelConsumptionPerRound(), Component::Attribute::YieldEfficiency,ResearchSateModulation::InvertedCeilInt)
+				owner->researchState.Describe(GetCTypeName(),GetBaseFuelConsumptionPerRound(), Component::Attribute::FuelDemand,ResearchSateModulation::InvertedCeilInt)
 				: String(GetBaseFuelConsumptionPerRound());
 	};
 
@@ -461,7 +461,7 @@ namespace Objects
 	/*virtual override*/ void			Satellite::PrototypeSetup()
 	{
 		Super::PrototypeSetup();
-		ResearchState::RegisterResearch(this,Component::Attribute::YieldEfficiency);
+		ResearchState::RegisterResearch(this,Component::Attribute::FuelDemand);
 	}
 
 

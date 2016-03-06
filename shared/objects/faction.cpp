@@ -1635,155 +1635,133 @@ namespace Objects
 	}
 
 
+	/*static*/ ResearchState::GlobalState		ResearchState::globalState;
 
-	namespace ResearchStateDetail
+	
+	index_t		ResearchState::GlobalState::Register(ConstName cname,Component::Base* componentReference, WorldEntity*prototype, const String&name)
 	{
-		struct TTypeEntry
+		if (typeMap[(index_t)cname] != InvalidIndex)
+			return typeMap[(index_t)cname];
+		index_t rs = types.Count();
+		typeMap[(index_t)cname] = rs;
+		auto&t = types.Append();
+		t.name = name;
+		if (prototype)
+			t.prototypeReference = prototype;
+		if (componentReference)
 		{
-			UINT32 researchCost = 0;
-			FixedArray<index_t,Component::Attribute::N>	attributeAt;
-			index_t	unlockableAt=InvalidIndex;
-			Component::Base* componentReference = nullptr;
-			ConstName dependentOn = ConstName::Empty;
-			String	name;
-
-			/**/	TTypeEntry()
+			t.componentReference = componentReference;
+			if (!prototype && componentReference->IsTurret() && ((Component::Turret*)componentReference)->isSatelliteRing)
 			{
-				attributeAt.Fill(InvalidIndex);
+				foreach (satellitePrototypes,sat)
+					if ((*sat)->turret == componentReference)
+					{
+						t.prototypeReference = sat->get();
+						break;
+					}
+
 			}
-		};
-		count_t		numUnlockables = 0;
-		index_t		attributeCounter = 0;
-
-		FixedArray<index_t,(count_t)ConstName::NumTypes>	typeMap;
-		Buffer0<TTypeEntry>	types;
-
-
-		index_t		Register(ConstName cname,Component::Base* componentReference, const String&name)
-		{
-			if (typeMap[(index_t)cname] != InvalidIndex)
-				return typeMap[(index_t)cname];
-			index_t rs = types.Count();
-			typeMap[(index_t)cname] = rs;
-			types.Append().name = name;
-			types.last().componentReference = componentReference;
-			if (componentReference)
-				componentReference->researchSlot[0] = rs;
-			return rs;
 		}
+		if (componentReference)
+			componentReference->researchSlot[0] = rs;
+		return rs;
 	}
-
-
 
 	/*static*/ void		ResearchState::StaticCreate()
 	{
-		using namespace ResearchStateDetail;
-		typeMap.Fill(InvalidIndex);
-
+		//using namespace ResearchStateDetail;
+		globalState.typeMap.Fill(InvalidIndex);
 	}
+
 	/*static*/ void		ResearchState::RegisterUnlockCost(Structure*s, int researchCost)
 	{
-		using namespace ResearchStateDetail;
-
-		index_t at = Register(s->GetCTypeName(),nullptr,s->GetTypeName());
-		types[at].researchCost = researchCost;
-		types[at].unlockableAt = numUnlockables++;
+		index_t at = globalState.Register(s->GetCTypeName(),nullptr,s,s->GetTypeName());
+		globalState.types[at].researchCost = researchCost;
+		globalState.types[at].unlockableAt = globalState.numUnlockables++;
 
 	}
 
 	/*static*/ void		ResearchState::RegisterResearch(Structure*s, Component::Attribute a)
 	{
-		using namespace ResearchStateDetail;
-
-		index_t at = ResearchStateDetail::Register(s->GetCTypeName(),nullptr,s->GetTypeName());
-		types[at].attributeAt[a] = attributeCounter;
-		attributeCounter++;
+		index_t at = globalState.Register(s->GetCTypeName(),nullptr,s,s->GetTypeName());
+		globalState.types[at].attributeAt[a] = globalState.attributeCounter;
+		globalState.attributeCounter++;
 	}
 
 	/*static*/ void		ResearchState::RegisterResearch(Satellite*s, Component::Attribute a)
 	{
-		using namespace ResearchStateDetail;
-
-		index_t at = ResearchStateDetail::Register(s->GetCTypeName(),nullptr,s->GetTypeName());
-		types[at].attributeAt[a] = attributeCounter;
-		attributeCounter++;
+		index_t at = globalState.Register(s->GetCTypeName(),nullptr,s,s->GetTypeName());
+		globalState.types[at].attributeAt[a] = globalState.attributeCounter;
+		globalState.attributeCounter++;
 	}
 
 
 	/*static*/ void		ResearchState::RegisterUnlockCost(Component::Base&component, int researchCost)
 	{
-		using namespace ResearchStateDetail;
-
 		index_t at = component.researchSlot[0];
 		if (at == InvalidIndex)
 		{
-			at = ResearchStateDetail::Register(component.constName,&component,component.typeName);
+			at = globalState.Register(component.constName,&component,nullptr,component.typeName);
 		}
-		types[at].researchCost = researchCost;
-		types[at].unlockableAt = numUnlockables++;
+		globalState.types[at].researchCost = researchCost;
+		globalState.types[at].unlockableAt = globalState.numUnlockables++;
 	}
 
 	/*static*/ void		ResearchState::RegisterResearch(Component::Base&component, Component::Attribute a)
 	{
-		using namespace ResearchStateDetail;
-
 		index_t at = component.researchSlot[0];
 		if (at == InvalidIndex)
 		{
-			at = ResearchStateDetail::Register(component.constName,&component,component.typeName);
+			at = globalState.Register(component.constName,&component,nullptr,component.typeName);
 		}
-		types[at].attributeAt[a] = component.researchSlot[a+1] = attributeCounter;
-		attributeCounter++;
+		globalState.types[at].attributeAt[a] = component.researchSlot[a+1] = globalState.attributeCounter;
+		globalState.attributeCounter++;
 	}
 
 	/*static*/ void		ResearchState::RegisterDependency(Component::Base&component, Component::Base&dependentOn)
 	{
-		using namespace ResearchStateDetail;
-
 		index_t at = component.researchSlot[0];
 		if (at == InvalidIndex)
 		{
-			at = ResearchStateDetail::Register(component.constName,&component,component.typeName);
+			at = globalState.Register(component.constName,&component,nullptr,component.typeName);
 		}
-		types[at].dependentOn = dependentOn.constName;
+		globalState.types[at].dependentOn = dependentOn.constName;
 	}
 
 	/*static*/ void		ResearchState::RegisterDependency(Component::Base&component, const PStructure&dependentOn)
 	{
-		using namespace ResearchStateDetail;
-
 		index_t at = component.researchSlot[0];
 		if (at == InvalidIndex)
 		{
-			at = ResearchStateDetail::Register(component.constName,&component,component.typeName);
+			at = globalState.Register(component.constName,&component,nullptr,component.typeName);
 		}
-		types[at].dependentOn = dependentOn->GetCTypeName();
+		globalState.types[at].dependentOn = dependentOn->GetCTypeName();
 	}
 
 	/**/			ResearchState::ResearchState()
 	{
-		ASSERT__(ResearchStateDetail::attributeCounter > 0);
-		unlockProgress.SetSize(ResearchStateDetail::numUnlockables);
+		ASSERT__(globalState.attributeCounter > 0);
+		unlockProgress.SetSize(globalState.numUnlockables);
 		unlockProgress.Fill(0);
-		improveProgress.SetSize(ResearchStateDetail::attributeCounter);
+		improveProgress.SetSize(globalState.attributeCounter);
 		improveProgress.Fill(0);
 	}
 
 	/**/			ResearchState::ResearchState(const TUniqueID&parentID,bool isNexus)
 	{
-		ASSERT__(ResearchStateDetail::attributeCounter > 0);
+		ASSERT__(globalState.attributeCounter > 0);
 		ownerID = parentID;
-		unlockProgress.SetSize(ResearchStateDetail::numUnlockables);
+		unlockProgress.SetSize(globalState.numUnlockables);
 		unlockProgress.Fill(isNexus ? 0xFFFFFFFF : 0);
-		improveProgress.SetSize(ResearchStateDetail::attributeCounter);
-		improveProgress.Fill(isNexus ? 10 : 0);
+		improveProgress.SetSize(globalState.attributeCounter);
+		improveProgress.Fill(0);
 	}
 
 	bool			ResearchState::CheckUnlocked(const Component::Base&b,String&errorOut)	const
 	{
 		if (b.researchSlot[0] == InvalidIndex)
 			return true;
-		const auto&t = ResearchStateDetail::types[b.researchSlot[0]];
+		const auto&t = globalState.types[b.researchSlot[0]];
 		index_t at = t.unlockableAt;
 		if (at == InvalidIndex)
 			return true;
@@ -1796,9 +1774,9 @@ namespace Objects
 
 	bool			ResearchState::CheckUnlocked(ConstName name,String&errorOut)	const
 	{
-		if (ResearchStateDetail::typeMap[(index_t)name] == InvalidIndex)
+		if (globalState.typeMap[(index_t)name] == InvalidIndex)
 			return true;
-		const auto&t = ResearchStateDetail::types[ResearchStateDetail::typeMap[(index_t)name]];
+		const auto&t = globalState.types[globalState.typeMap[(index_t)name]];
 		index_t at = t.unlockableAt;
 		if (at == InvalidIndex)
 			return true;
@@ -1810,9 +1788,9 @@ namespace Objects
 
 	bool			ResearchState::IsUnlocked(ConstName name) const
 	{
-		if (ResearchStateDetail::typeMap[(index_t)name] == InvalidIndex)
+		if (globalState.typeMap[(index_t)name] == InvalidIndex)
 			return true;
-		const auto&t = ResearchStateDetail::types[ResearchStateDetail::typeMap[(index_t)name]];
+		const auto&t = globalState.types[globalState.typeMap[(index_t)name]];
 		index_t at = t.unlockableAt;
 		if (at == InvalidIndex)
 			return true;
@@ -1869,9 +1847,9 @@ namespace Objects
 
 	float			ResearchState::GetFactorFor(ConstName name, Component::Attribute attrib)	const
 	{
-		if (ResearchStateDetail::typeMap[(index_t)name] == InvalidIndex)
+		if (globalState.typeMap[(index_t)name] == InvalidIndex)
 			return 1.f;
-		const auto&t = ResearchStateDetail::types[ResearchStateDetail::typeMap[(index_t)name]];
+		const auto&t = globalState.types[globalState.typeMap[(index_t)name]];
 		index_t at = t.attributeAt[attrib];
 		if (at == InvalidIndex)
 			return 1.f;
@@ -1895,17 +1873,17 @@ namespace Objects
 
 	/*static*/ bool		ResearchState::IsResearchable(ConstName name)
 	{
-		if (ResearchStateDetail::typeMap[(index_t)name] == InvalidIndex)
+		if (globalState.typeMap[(index_t)name] == InvalidIndex)
 			return false;
-		const auto&t = ResearchStateDetail::types[ResearchStateDetail::typeMap[(index_t)name]];
+		const auto&t = globalState.types[globalState.typeMap[(index_t)name]];
 		return t.researchCost > 0;
 	}
 
 	/*static*/ bool		ResearchState::IsResearchable(ConstName name, Component::Attribute attrib)
 	{
-		if (ResearchStateDetail::typeMap[(index_t)name] == InvalidIndex)
+		if (globalState.typeMap[(index_t)name] == InvalidIndex)
 			return false;
-		const auto&t = ResearchStateDetail::types[ResearchStateDetail::typeMap[(index_t)name]];
+		const auto&t = globalState.types[globalState.typeMap[(index_t)name]];
 		return t.attributeAt[attrib] != InvalidIndex;
 	}
 
@@ -1913,11 +1891,10 @@ namespace Objects
 	{
 		if (currentResearch == ConstName::Empty)
 			return;
-		namespace D = ResearchStateDetail;
-		index_t tAt = D::typeMap[(index_t)currentResearch];
+		index_t tAt = globalState.typeMap[(index_t)currentResearch];
 		if (tAt == InvalidIndex)
 			return;
-		const auto&t = D::types[tAt];
+		const auto&t = globalState.types[tAt];
 		if (t.unlockableAt != InvalidIndex)
 		{
 			if (unlockProgress[t.unlockableAt] < t.researchCost)
