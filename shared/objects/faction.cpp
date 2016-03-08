@@ -1651,6 +1651,8 @@ namespace Objects
 						prototype = sat->get();
 						break;
 					}
+				if (!prototype)
+					return InvalidIndex;
 			}
 
 			if (componentReference->IsBase() && !Component::baseComponents.Contains(componentReference))
