@@ -1,42 +1,125 @@
-hexaverse modulation:
+technites v2.0:
 
 
-sovereignity (control set of planets, gain ownership of core planets)
 
-terrain imprints for owned planets:
-	layered modifications (terrain subset that alter the terrain based on other modifications)
-		adaptation logic (translate or reshape alteration based on base)?
-		sequences
-	whole planet, triangular, or corner-based? volumetric equations?
 
-	stackable planet-generator code?
+code per technite
+	-> some thread somewhere evaluates this technite
+	-> technite state must be preserved, either automatically or explicitly
+		* upon world hibernation
+		* upon load balancing
+	-> terrain and state updates specific to one technite
+	-> no factions other than what is stored in technite state
+	-> technites can spawn other technites by specifying a location, and an assembly name
+		* optionally restricted to some queen technite
 	
-	special management buildings that must/may be build on home planet to reflect universe expansion?
+implementation
+	convert technite faction into single-technite 'faction', possibly stored in some other form
+	pure server feature.
 	
+
+
+	Instantiate [assembly] [message] -> GUID,
+		conflict potential
+	TransferEnergyTo,
+		layers:
+			1) check+remove from storage -> buffer (either locally or remotely, but not in actual storage)
+			2) add to remote technite. excess energy is dumped
+	ChangeTerrain
+	SelfTransformToType,
+	Scan,
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+server constraints:
+	deterministic
+
+
+concept:
+	code per technite, available to server.
+	one client per technite, hosted remotely, or replicated by server.
+	shield server acts as client to game server. accepts connections by technite clients, and takes over when a client disconnects.
+
+automatic technite abilities:
+	see two blocks far.
+	collect residual light energy.
+	serve as foundation for other technites to stand on.
+	heat resistance (lava does not damage technite).
+
 	
-automation arena:
-	define set of planets, each faction given minimal setup, tasked to maximize dominated area
-	observation:
-		read-only clients: observe all, cannot control units.
-		competition clients: sensor-observation, can control units.
-		how to keep separate?
-		delay observation by n rounds?
-		delay until end of match?
-		distributed match recording?
-	control:
-		ai-routines per unit?
-		unit-cooperation/-communication network?
-		git version control on ai-script?
-		script-languages?
-		feed ai back into regular game?
-		terrain-shaping units (e.g. a special terraformer that can only be tasked to build a specific shape)
+commands are executed in top-level layers:
+	0: messages, scan
+	1: transfer
+		1.1: check+remove from storage -> buffer (either locally or remotely, but not in actual storage)
+		1.2: add to remote technite. excess energy is lost
+	2: end
+	3: kill
+		3.1 accumulate damage on target cell
+		3.2 apply damage levels
+	4: replace/move/spawn
+		4.1 check if still alive, increase target cell change-counter
+		4.2 check target cell change-counter: if 1 then perform operation. if >1 then fail
 		
-	players vs ai-systems in one world?
-		cooperation?
 		
 	
+technite commands:
+	scan [radius:float]
+		detect technites, grid cells, player units in sphere of given radius.
+		energy demand depends on radius.
+	message [toTechnite:TUniqueID] [message:json string(1-1024)]
+		send arbitrary json object to specified technite.
+		range limited.
+	move [toCell:HCellIdU]
+		relocate local technite. consumes energy.
+		can only move to neighboring cells.
+		may fail if target location is occupied by technite, or non-liquid.
+		motion may be involuntarily, but falling does not damage technite.
+		resolution partially in parallel via layers:
+			1) increase target cell change-counter
+			2) check target cell change-counter: if 1 then perform operation. if >1 then fail
+	transfer [toTechnite:TUniqueID] [amount:int]
+		transfer specified amount of energy to targeted technite.
+		range limited
+		resolution in parallel via layers (executed first):
+			1) check+remove from storage -> buffer (either locally or remotely, but not in actual storage)
+			2) add to remote technite. excess energy is lost
+	replace [cell:HCellIdU] [content:Content]
+		remove/create any non-technite matter at specified cell.
+		only non-technites can be replaced.
+		energy cost/yield depends on matter type removed/created.
+		resolution partially in parallel via layers (see move)
+	end [replaceMeWith:Content]
+		terminate local technite, and replace block with specified content.
+	spawn [cell::HCellIdU] [repoURL] [branch/tag/commit] [message:json string(1-1024)]
+	kill [TUniqueID] [damage level: energy amount]
+
+
+
+
+
 		
-role separation:
-	ai programming
-	expansion
-	world creation
+		
+		
+		
+	voteKick [technite:TUniqueID]
+		vote to kick target technite from server.
+		if actually kicked is replaced by clear content.
+		requires >=50% of the technites on a planet to agree.
+
