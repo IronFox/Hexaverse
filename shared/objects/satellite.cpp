@@ -465,6 +465,14 @@ namespace Objects
 	}
 
 
+	/*static*/ bool						SkyHub::CanProduce(const Satellite*satPrototype)
+	{
+		return satPrototype == SkyGuardian::globalPrototype.get()
+			|| satPrototype == SkyHub::globalPrototype.get()
+			|| satPrototype == Ragnarok::globalPrototype.get();
+	}
+
+
 	/*virtual override*/ void			SkyHub::PrototypeSetup()
 	{
 		Super::PrototypeSetup();

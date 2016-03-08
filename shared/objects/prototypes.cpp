@@ -125,6 +125,29 @@ namespace Objects
 
 		void ConfigureAll()
 		{
+			/*order change: by moving registration of applicable turret and base components before Configure() calls,
+			research registration can check whether a congigured component should be able to register research at all
+			*/
+			allTurretComponents << &radar 
+								<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
+								<< &armored << &artillery << &launcher << &emp
+								<< &bomb
+								<< &terraformer << &resourceScanner
+								#ifndef ONE_COMPOUND_PER_FACTION
+									<< &munitionTransporter
+								#endif
+								<< &mechanic;
+								;
+			for (auto t: allTurretComponents)
+				if (!t->isSatelliteRing)
+					vehicleTurretComponents << t;
+			baseComponents << &hoverbase << &heavybase << &catbase;
+
+
+
+
+
+
 			Artillery::Configure(artillery);
 			Launcher::Configure(launcher);
 			EMP::Configure(emp);
@@ -144,23 +167,6 @@ namespace Objects
 			Hoverbase::Configure(hoverbase);
 			Heavybase::Configure(heavybase);
 			Catbase::Configure(catbase);
-
-
-
-			allTurretComponents << &radar 
-								<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
-								<< &armored << &artillery << &launcher << &emp
-								<< &bomb
-								<< &terraformer << &resourceScanner
-								#ifndef ONE_COMPOUND_PER_FACTION
-									<< &munitionTransporter
-								#endif
-								<< &mechanic;
-								;
-			for (auto t: allTurretComponents)
-				if (!t->isSatelliteRing)
-					vehicleTurretComponents << t;
-			baseComponents << &hoverbase << &heavybase << &catbase;
 		}
 
 		void DestroyAll()

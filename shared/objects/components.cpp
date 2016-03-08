@@ -761,9 +761,20 @@ namespace Objects
 			}
 		#endif
 
+		Buffer<PStructure> Terraformer::canBuild;
 
 		void			Terraformer::Configure(Turret&component)
 		{
+
+			foreach (structurePrototypes,p)
+				if (!(*p)->IsIndestructible())
+					#ifdef ONE_COMPOUND_PER_FACTION
+						if (!To<Connector>::DynamicCast(*p))
+					#endif
+					#ifdef NO_MUNITION
+						if (!To<MunitionFactory>::DynamicCast(*p) && !To<MunitionStorage>::DynamicCast(*p))
+					#endif
+					canBuild << *p;
 
 			#ifdef HAS_WINDOW
 				CellCoords offset = ConfigureStandardCommands(component);
@@ -903,17 +914,8 @@ namespace Objects
 				
 
 
-				Buffer<PStructure> canBuild;
 		
-				foreach (structurePrototypes,p)
-					if (!(*p)->IsIndestructible())
-						#ifdef ONE_COMPOUND_PER_FACTION
-							if (!To<Connector>::DynamicCast(*p))
-						#endif
-						#ifdef NO_MUNITION
-							if (!To<MunitionFactory>::DynamicCast(*p) && !To<MunitionStorage>::DynamicCast(*p))
-						#endif
-						canBuild << *p;
+
 
 				int at = 0;
 

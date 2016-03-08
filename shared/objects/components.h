@@ -439,6 +439,8 @@ namespace Objects
 
 		namespace Terraformer
 		{
+			extern Buffer<PStructure> canBuild;
+
 			#ifdef HAS_WINDOW
 			namespace Cmd
 			{

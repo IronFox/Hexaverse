@@ -10,6 +10,7 @@
 #include "vehicle.h"
 #include "../sphereGridHelper.h"
 #include "../runtimeConfig.h"
+#include "prototypes.h"
 
 namespace Objects
 {
@@ -1640,28 +1641,54 @@ namespace Objects
 	
 	index_t		ResearchState::GlobalState::Register(ConstName cname,Component::Base* componentReference, WorldEntity*prototype, const String&name)
 	{
+		if (componentReference)
+		{
+			if (!prototype && componentReference->IsTurret() && ((Component::Turret*)componentReference)->isSatelliteRing)
+			{
+				foreach (satellitePrototypes,sat)
+					if ((*sat)->turret == componentReference)
+					{
+						prototype = sat->get();
+						break;
+					}
+			}
+
+			if (componentReference->IsBase() && !Component::baseComponents.Contains(componentReference))
+				return InvalidIndex;
+			if (componentReference->IsTurret() && !Component::allTurretComponents.Contains(componentReference))
+				return InvalidIndex;
+		}
+		if (prototype)
+		{
+			if (prototype->IsStructure())
+			{
+				bool found = false;
+				foreach (Component::Terraformer::canBuild,cb)
+					if (cb->get() == prototype)
+					{
+						found = true;
+						break;
+					}
+				if (!found)
+					return InvalidIndex;
+			}
+			else
+				if (prototype->IsSatellite())
+				{
+					if (!SkyHub::CanProduce((const Satellite*)prototype))
+						return InvalidIndex;
+				}
+		}
+
 		if (typeMap[(index_t)cname] != InvalidIndex)
 			return typeMap[(index_t)cname];
 		index_t rs = types.Count();
 		typeMap[(index_t)cname] = rs;
 		auto&t = types.Append();
 		t.name = name;
-		if (prototype)
-			t.prototypeReference = prototype;
-		if (componentReference)
-		{
-			t.componentReference = componentReference;
-			if (!prototype && componentReference->IsTurret() && ((Component::Turret*)componentReference)->isSatelliteRing)
-			{
-				foreach (satellitePrototypes,sat)
-					if ((*sat)->turret == componentReference)
-					{
-						t.prototypeReference = sat->get();
-						break;
-					}
+		t.prototypeReference = prototype;
+		t.componentReference = componentReference;
 
-			}
-		}
 		if (componentReference)
 			componentReference->researchSlot[0] = rs;
 		return rs;
@@ -1676,6 +1703,8 @@ namespace Objects
 	/*static*/ void		ResearchState::RegisterUnlockCost(Structure*s, int researchCost)
 	{
 		index_t at = globalState.Register(s->GetCTypeName(),nullptr,s,s->GetTypeName());
+		if (at == InvalidIndex)
+			return;
 		globalState.types[at].researchCost = researchCost;
 		globalState.types[at].unlockableAt = globalState.numUnlockables++;
 
@@ -1684,6 +1713,8 @@ namespace Objects
 	/*static*/ void		ResearchState::RegisterResearch(Structure*s, Component::Attribute a)
 	{
 		index_t at = globalState.Register(s->GetCTypeName(),nullptr,s,s->GetTypeName());
+		if (at == InvalidIndex)
+			return;
 		globalState.types[at].attributeAt[a] = globalState.attributeCounter;
 		globalState.attributeCounter++;
 	}
@@ -1691,6 +1722,8 @@ namespace Objects
 	/*static*/ void		ResearchState::RegisterResearch(Satellite*s, Component::Attribute a)
 	{
 		index_t at = globalState.Register(s->GetCTypeName(),nullptr,s,s->GetTypeName());
+		if (at == InvalidIndex)
+			return;
 		globalState.types[at].attributeAt[a] = globalState.attributeCounter;
 		globalState.attributeCounter++;
 	}
@@ -1702,6 +1735,8 @@ namespace Objects
 		if (at == InvalidIndex)
 		{
 			at = globalState.Register(component.constName,&component,nullptr,component.typeName);
+			if (at == InvalidIndex)
+				return;
 		}
 		globalState.types[at].researchCost = researchCost;
 		globalState.types[at].unlockableAt = globalState.numUnlockables++;
@@ -1713,6 +1748,8 @@ namespace Objects
 		if (at == InvalidIndex)
 		{
 			at = globalState.Register(component.constName,&component,nullptr,component.typeName);
+			if (at == InvalidIndex)
+				return;
 		}
 		globalState.types[at].attributeAt[a] = component.researchSlot[a+1] = globalState.attributeCounter;
 		globalState.attributeCounter++;
@@ -1724,6 +1761,8 @@ namespace Objects
 		if (at == InvalidIndex)
 		{
 			at = globalState.Register(component.constName,&component,nullptr,component.typeName);
+			if (at == InvalidIndex)
+				return;
 		}
 		globalState.types[at].dependentOn = dependentOn.constName;
 	}
@@ -1734,6 +1773,8 @@ namespace Objects
 		if (at == InvalidIndex)
 		{
 			at = globalState.Register(component.constName,&component,nullptr,component.typeName);
+			if (at == InvalidIndex)
+				return;
 		}
 		globalState.types[at].dependentOn = dependentOn->GetCTypeName();
 	}

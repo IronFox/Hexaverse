@@ -401,7 +401,7 @@ namespace Objects
 		void					UpdateConnections();
 
 
-
+		static bool				CanProduce(const Satellite*satPrototype);
 
 
 
