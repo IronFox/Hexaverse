@@ -1751,6 +1751,11 @@ namespace Journal
 	{
 		f->researchState.currentResearch = target;
 		f->researchState.currentResearchAttribute = attribute;
+		Network::PClient cl;
+		if (Network::playerMap.Query(f,cl))
+		{
+			Channels::selectResearch.SendTo(cl->peer.lock(),Protocol::SelectResearch(target,(BYTE)attribute));
+		}
 		LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research updated to "+Objects::ComponentOrPrototypeToString(target)+"/"+attribute.ToString());
 	}
 
