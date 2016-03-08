@@ -26,6 +26,7 @@ namespace Receiver
 	void	TouchMarker(Protocol::TouchedMarker&, TCP::Peer&peer);
 	void	ChangeMyName(Protocol::ClientName&, TCP::Peer&peer);
 	void	IdentifyUser(NET(TUniqueID)&, TCP::Peer&peer);
+	void	SelectResearch(Protocol::SelectResearch&, TCP::Peer&peer);
 	void	ChatMessage(Package::NetString<256>&, TCP::Peer&peer);
 
 
@@ -83,6 +84,7 @@ namespace Channels
 	extern TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>				touchMarker;
 	extern TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>					changeMyName;
 	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>						identifyUserRecv;
+	extern TCP::Channel<Protocol::SelectResearch, FactionLevel, Protocol::ChannelID::SelectResearch>			selectResearch;
 	extern TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>				chatMessage;
 
 	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>				clientFactionResponse;

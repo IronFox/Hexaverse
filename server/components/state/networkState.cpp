@@ -135,6 +135,7 @@ namespace Network
 		server.InstallChannel(Channels::touchMarker);
 		server.InstallChannel(Channels::changeMyName);
 		server.InstallChannel(Channels::identifyUserRecv);
+		server.InstallChannel(Channels::selectResearch);
 		server.InstallChannel(Channels::chatMessage);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);

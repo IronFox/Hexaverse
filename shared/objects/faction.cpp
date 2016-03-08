@@ -1686,6 +1686,7 @@ namespace Objects
 		typeMap[(index_t)cname] = rs;
 		auto&t = types.Append();
 		t.name = name;
+		t.targetName = cname;
 		t.prototypeReference = prototype;
 		t.componentReference = componentReference;
 

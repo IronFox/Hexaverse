@@ -1747,6 +1747,34 @@ namespace Journal
 		e.uuidParameters.Set("MarkerID",markerID);
 	}
 
+	/*virtual override*/ void Round::SelectResearch::Execute(const Objects::PFaction&f) const
+	{
+		f->researchState.currentResearch = target;
+		f->researchState.currentResearchAttribute = attribute;
+		LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research updated to "+Objects::ComponentOrPrototypeToString(target)+"/"+attribute.ToString());
+	}
+
+	/*virtual override*/ void Round::SelectResearch::Decode(const Entry&e)
+	{
+		String targetName;
+		e.stringParameters.Require(CLOCATION,"Target",targetName);
+		target = Objects::ComponentOrPrototypeToCName(targetName);
+		if (target == ConstName::Empty)
+		{
+			throw Except::Program::FunctionalityNotImplemented(CLOCATION,"Unknown research target '"+targetName+"'");
+		}			
+		String attributeName;
+		e.stringParameters.Require(CLOCATION,"Attribute",attributeName);
+		if (!attribute.Decode(attributeName.c_str()))
+			throw Except::Program::FunctionalityNotImplemented(CLOCATION,"Unknown research attribute '"+attributeName+"'");
+	}
+	/*virtual override*/ void Round::SelectResearch::Compile(Entry&e)	const
+	{
+		e.stringParameters.Set("Target",Objects::ComponentOrPrototypeToString(target));
+		e.stringParameters.Set("Attribute",attribute.ToString());
+	}
+
+
 	/*virtual override*/ void	Round::EnableStructure::Execute(const Objects::PWorldEntity&e) const
 	{
 		float t = 0;
@@ -2224,6 +2252,7 @@ namespace Journal
 		MAP_ADD(DestroyMarker);
 		MAP_ADD(RestoreCoreLink);
 		MAP_ADD(ConstructionAbort);
+		MAP_ADD(SelectResearch);
 	}
 
 	void	Create()

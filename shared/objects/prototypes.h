@@ -21,7 +21,8 @@ namespace Objects
 
 
 
-	
+	ConstName		ComponentOrPrototypeToCName(const String&name);
+	String			ComponentOrPrototypeToString(ConstName name);
 
 
 

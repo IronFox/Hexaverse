@@ -17,6 +17,42 @@ namespace Objects
 	}
 
 
+	ConstName		ComponentOrPrototypeToCName(const String&name)
+	{
+		PWorldEntity e = GetSatellitePrototypeByName(name);
+		if (e)
+			return e->GetCTypeName();
+		e = GetPrototypeByName(name);
+		if (e)
+			return e->GetCTypeName();
+		Component::Base*b = Component::GetTurretByName(name);
+		if (b)
+			return b->constName;
+		b = Component::GetVehicleBaseByName(name);
+		if (b)
+			return b->constName;
+		return ConstName::Empty;
+	}
+
+
+	String			ComponentOrPrototypeToString(ConstName name)
+	{
+		if (name == ConstName::Empty)
+			return "";
+		PWorldEntity e = GetSatellitePrototypeByName(name);
+		if (e)
+			return e->GetTypeName();
+		e = GetPrototypeByName(name);
+		if (e)
+			return e->GetTypeName();
+		Component::Base*b = Component::GetTurretByName(name);
+		if (b)
+			return b->typeName;
+		b = Component::GetVehicleBaseByName(name);
+		if (b)
+			return b->typeName;
+		return "";
+	}
 
 	
 

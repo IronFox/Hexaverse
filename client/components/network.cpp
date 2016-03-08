@@ -884,6 +884,16 @@ namespace Network
 		{
 			ResolveFaction(state.ownerID)->researchState = state;
 		}
+
+		void	SelectResearch(Protocol::SelectResearch&research)
+		{
+			if (Objects::Faction::mine)
+			{
+				Objects::Faction::mine->researchState.currentResearch = research.target;
+				Objects::Faction::mine->researchState.currentResearchAttribute.Load(research.attribute);
+			}
+
+		}
 	}
 
 
@@ -925,6 +935,7 @@ namespace Network
 		TCP::Channel<NET(INT32), 0, Protocol::ChannelID::UplinkBandwidth>							uplinkBandwidth(Receiver::UplinkBandwidth);
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
 		TCP::Channel<Objects::ResearchState, 0, Protocol::ChannelID::ResearchState>					researchState(Receiver::ResearchState);
+		TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
 
 
 
@@ -1151,6 +1162,7 @@ namespace Network
 		client.InstallChannel(Channels::destroyMarker);
 		client.InstallChannel(Channels::identifyUser);
 		client.InstallChannel(Channels::researchState);
+		client.InstallChannel(Channels::selectResearch);
 		client.InstallChannel(Channels::factionOnline);
 		client.InstallChannel(Channels::factionOffline);
 		client.InstallChannel(Channels::factionRequestedNewRound);

@@ -1807,6 +1807,11 @@ namespace Protocol
 		, Package::NetString<32>, name
 	)
 
+	NETSTRUCT2(SelectResearch
+		, NET(ConstName), target
+		, NET(BYTE), attribute
+	)
+
 	typedef std::pair<UINT16,UINT16>	TUnitLimit;
 
 	typedef NETA(TUnitLimit)	UnitLimits;
@@ -1891,6 +1896,7 @@ namespace Protocol
 			FactionRequestedNewRound,	// s2c: TUniqueID
 			FactionContinuedRound,		// s2c: TUniqueID
 			ResearchState,		// s2c : ResearchState
+			SelectResearch,		// c2s : SelectResearch -> s2c : SelectResearch
 
 			LockEMPZones,		// s2c : UINT16
 			UplinkBandwidth,	// s2c : int, can be negative to indicate it's disabled

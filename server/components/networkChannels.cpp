@@ -39,6 +39,7 @@ namespace Channels
 	TCP::Channel<Protocol::TouchedMarker, FactionLevel, Protocol::ChannelID::TouchMarker>					touchMarker(Receiver::TouchMarker);
 	TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>							identifyUserRecv(Receiver::IdentifyUser);
+	TCP::Channel<Protocol::SelectResearch, FactionLevel, Protocol::ChannelID::SelectResearch>				selectResearch(Receiver::SelectResearch);
 	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
@@ -837,6 +838,15 @@ namespace Receiver
 
 	}
 
+	void	SelectResearch(Protocol::SelectResearch&research, TCP::Peer&peer)
+	{
+		if (!peer.attachment)
+			return;
+		Network::PClient client = To<Network::Client>::Cast(peer.attachment);
+		if (!client->faction)
+			return;
+		Journal::currentRound.Register(true,client->faction,new Journal::Round::SelectResearch(research.target,Objects::Component::Attribute::Reinterpret(research.attribute)));
+	}
 
 	void	IdentifyUser(NET(TUniqueID)&id, TCP::Peer&peer)
 	{

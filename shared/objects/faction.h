@@ -165,7 +165,8 @@ namespace Objects
 				index_t	unlockableAt=InvalidIndex;
 				Component::Base* componentReference = nullptr;
 				WorldEntity*	prototypeReference = nullptr;
-				ConstName dependentOn = ConstName::Empty;
+				ConstName	targetName,
+							dependentOn = ConstName::Empty;
 				String	name;
 
 				/**/	TTypeEntry()

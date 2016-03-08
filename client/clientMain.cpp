@@ -648,6 +648,12 @@ void	SignalRoundEndOrMaximize()
 }
 
 
+void	SignalResearch(ConstName target, BYTE attribute)
+{
+	Network::Channels::selectResearch.SendTo(Network::client,Protocol::SelectResearch(target,attribute));
+}
+
+
 void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName, const Grid::LCellIdI&overrideLocation)
 {
 	const Grid::LCellIdI targetLocation = overrideLocation != Grid::LCellIdI::Invalid ? overrideLocation : v->GetLastPointOfOrigin();

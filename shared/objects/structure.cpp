@@ -2072,10 +2072,13 @@ namespace Objects
 
 			foreach (ResearchState::globalState.types,t)
 			{
+				ConstName target = t->targetName;
 				if (t->researchCost > 0)
 				{
+
+
 					if (t->prototypeReference)
-						unlockGroup->Add(new EntityCommand(t->name,t->prototypeReference->shared_from_this(),[](){},
+						unlockGroup->Add(new EntityCommand(t->name,t->prototypeReference->shared_from_this(),[target](){SignalResearch(target,0); },
 							[](bool)->BaseCommand::Flags
 							{
 								return BaseCommand::Flags::IsEnabled;
@@ -2088,7 +2091,7 @@ namespace Objects
 							turret = (Component::Turret*)t->componentReference;
 						elif (t->componentReference->IsBase())
 							base = (Component::VehicleBase*)t->componentReference;
-						unlockGroup->Add(new EntityConstructionCommand(t->name,base,turret,PWorldEntity(),[](){},
+						unlockGroup->Add(new EntityConstructionCommand(t->name,base,turret,PWorldEntity(),[target](){SignalResearch(target,0);},
 							[](bool)->BaseCommand::Flags
 							{
 								return BaseCommand::Flags::IsEnabled;
@@ -2106,7 +2109,7 @@ namespace Objects
 					if (t->attributeAt[i] != InvalidIndex)
 					{
 						if (t->prototypeReference)
-							improveSubGroups[i]->Add(new EntityCommand(t->name,t->prototypeReference->shared_from_this(),[](){},
+							improveSubGroups[i]->Add(new EntityCommand(t->name,t->prototypeReference->shared_from_this(),[target,i](){SignalResearch(target,i);},
 								[](bool)->BaseCommand::Flags
 								{
 									return BaseCommand::Flags::IsEnabled;
@@ -2121,7 +2124,7 @@ namespace Objects
 								turret = (Component::Turret*)t->componentReference;
 							elif (t->componentReference->IsBase())
 								base = (Component::VehicleBase*)t->componentReference;
-							improveSubGroups[i]->Add(new EntityConstructionCommand(t->name,base,turret,PWorldEntity(),[](){},
+							improveSubGroups[i]->Add(new EntityConstructionCommand(t->name,base,turret,PWorldEntity(),[target,i](){SignalResearch(target,i);},
 								[](bool)->BaseCommand::Flags
 								{
 									return BaseCommand::Flags::IsEnabled;

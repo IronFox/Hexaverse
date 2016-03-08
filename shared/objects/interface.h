@@ -32,6 +32,7 @@
 	void	SignalSleep(const Objects::PWorldEntity&v, bool doSleep);
 	void	SignalEnableStructure(Objects::Structure&s, bool enabled);
 	void	SignalTargetLessAttack(const Objects::PWorldEntity&e);
+	void	SignalResearch(ConstName target, BYTE attribute);
 
 	#ifdef HAS_WINDOW
 		void	OnSelectionChange(bool stateChangeOnly);

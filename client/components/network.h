@@ -203,6 +203,7 @@ namespace Network
 		extern TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>							lockEmpZones;
 		extern TCP::Channel<NET(int32_t), 0, Protocol::ChannelID::UplinkBandwidth>						uplinkBandwidth;
 		extern TCP::Channel<Objects::ResearchState, 0, Protocol::ChannelID::ResearchState>				researchState;
+		extern TCP::Channel<Protocol::SelectResearch, 0, Protocol::ChannelID::SelectResearch>			selectResearch;
 
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;

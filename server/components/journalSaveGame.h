@@ -782,7 +782,21 @@ namespace Journal
 
 		protected:
 			virtual void	Compile(Entry&)	const override;
+		};
 
+		class SelectResearch : public FactionEventT<SelectResearch>
+		{
+		public:
+			ConstName		target = ConstName::Empty;
+			Objects::Component::Attribute attribute;
+
+			/**/			SelectResearch() {}
+			/**/			SelectResearch(ConstName target, Objects::Component::Attribute attribute) : target(target),attribute(attribute) {}
+			virtual void	Decode(const Entry&e) override;
+			virtual void	Execute(const Objects::PFaction&) const override;
+
+		protected:
+			virtual void	Compile(Entry&)	const override;
 		};
 		
 
