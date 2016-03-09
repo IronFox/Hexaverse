@@ -7,6 +7,8 @@
 #include "typeDecl.h"
 #include "uniqueID.h"
 
+#include <net/tcp.h>
+
 
 namespace Technites
 {
@@ -39,7 +41,8 @@ namespace Technites
 	{
 		enum T
 		{
-			MessagesScan,
+			Messages,
+			Scan,
 			Transfer,
 			End,
 			Kill,
@@ -50,7 +53,7 @@ namespace Technites
 	};
 
 
-	class Technite
+	class Technite : public TCP::Peer::Attachment
 	{
 	public:
 
@@ -280,6 +283,8 @@ namespace Technites
 		bool				DecodeAbsoluteTarget(Grid::HCellIdU&target) const;
 		bool				DecodeAbsoluteTarget(Grid::HCellIdU&myLocation, Grid::HCellIdU&target) const;
 
+		std::shared_ptr<std::thread>	dockerProcessThread;
+		TCP::WPeer			peer;
 		Instruction			nextInstruction;
 		TUniqueID			id;									// 16
 		CryptographicID		secret;								// 32
@@ -296,6 +301,8 @@ namespace Technites
 		#ifdef CLIENT
 			void			CompileTendency(TVec3<>&outDirection, float&outMagnitude, TVec3<>&inOutColor) const;
 		#endif
+
+		String				GetDockerName() const {return "tech"+id.ToFullString();}
 
 		void				ExportState(TCompactState&outState) const
 		{
@@ -440,10 +447,8 @@ namespace Technites
 
 	extern Buffer0<PFaction>	allTechniteFactions;
 
-	Technite&					Create(const Grid::HCellIdU&, const String&sourceRepo, const String&branch, const String&initMessage);
-	Technite&					Create(const Technite::TCompactState&);
+	index_t						Create(const Technite::TCompactState&, const String&repo, const String&initMessage, float t);
 
-	index_t						CreateSingleTechnite(const Grid::HCellIdU&, float t);
 	bool						ValidTechniteLocation(const Grid::HCellIdU&location);
 
 

@@ -1,6 +1,7 @@
 #include <global_root.h>
 #include "technite.h"
 #include <ppl.h>
+#include <io/file_system.h>
 
 
 namespace Technites
@@ -9,6 +10,9 @@ namespace Technites
 	Buffer<Technite>			technites;
 	Buffer0<TSensor>			sensors;
 	BroadTechniteMap			techniteMap;
+
+	TCP::Server					serviceHost;
+	String						serviceURL="localhost";
 	
 
 	Buffer0<Technite*>			layers[ExecutionLayer::Count];
@@ -49,10 +53,20 @@ namespace Technites
 
 		switch (currentLayer)
 		{
-			case ExecutionLayer::MessagesScan:
-
-
-
+			case ExecutionLayer::Scan:
+				for (const auto&t : layers[currentLayer])
+				{
+					Technite::Resources cost = GetCost(t->nextInstruction.nextTask,t->nextInstruction.taskParameter,Grid::Content::Technite);
+					if (!(t->resources -= cost))
+					{
+						t->taskResult = Technite::TaskResult::InsufficientResources;
+						continue;
+					}
+					float radius = sqrt(float(cost.energy));
+					TSensor	sensor(Grid::ToWorld(t->location.GetU()),radius);
+					sensors.Append(sensor);
+					RegisterSensorCreation(sensor,false,t,false);
+				}
 			break;
 			case ExecutionLayer::End:
 				::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
@@ -228,9 +242,106 @@ namespace Technites
 
 
 
+	void					ProcessLighting(Technite&technite)
+	{
+		bool lit = true;
 
 
+		unsigned layer = technite.location.GetLayer()+1;
+		//Grid::CellStack::ToLayer(technite.location.height + 1);
+		for (; layer < Grid::CellStack::Range; layer++)
+		{
+			BYTE top = Grid::actualWorld.cellStack[technite.location.GetStackID()].volumeCell[layer].content;
+			if (top != Grid::Content::Clear && top != Grid::Content::Water)
+			{
+				lit = false;
+				break;
+			}
+		}
+		technite.state.SetLit(lit);
 
+		if (lit)
+		{
+			Technite::Resources::Increase(technite.resources.energy, technite.GetLightEnergyYield());
+		}
+	}
+
+	static void TryDocker(const String&cmd)
+	{
+		FileSystem::TempFile file;
+		if (!file.Create())
+			throw IO::DriveAccess::FileOpenFault(CLOCATION,"Unable to create temporary file for command output");
+		const String instruction = "docker "+cmd+" > "+String(file.GetLocation())+" 2>&1";
+		int rs = system(instruction);
+		if (rs != 0)
+		{
+			FILE*f = FOPEN(file.GetLocation().c_str(),"rb");
+			if (!f)
+			{
+				throw IO::DriveAccess::FileOpenFault(CLOCATION,instruction+"\n failed but could not open temporary output file for printout");
+			}
+			fseek(f,0,SEEK_END);
+			size_t size = (size_t)ftell(f);
+			fseek(f,0,SEEK_SET);
+			String output = String(TStringLength(size));
+			fread(output.mutablePointer(),1,size,f);
+			fclose(f);
+			throw IO::DriveAccess::FileOpenFault(CLOCATION,instruction+"\n failed: "+output);
+		}
+	}
+
+	
+	index_t				Create(const Technite::TCompactState&st, const String&repo, const String&initMessage, float t)
+	{
+		Grid::HCellIdU location = st.location.GetU();
+		if (location.layer>=Grid::CellStack::Range)
+			return InvalidIndex;
+
+		if (techniteMap.IsSet(location))
+			return InvalidIndex;
+		if (!CanStandHere(location))
+			return InvalidIndex;
+
+		index_t at = technites.Count();
+		Technite&tech = technites.Append();
+		tech.secret.Generate();
+		tech.id = st.id;
+		techniteMap.Set(location, at);
+		tech.location = location;
+		tech.resources = st.resources;
+		tech.state = st.state;
+		ProcessLighting(tech);
+
+		Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
+		ASSERT__(stack.LocalOverwrite(location.layer, Grid::Content::Technite));
+
+		index_t family = Grid::high.grid.GetCell(location.stackID).family;
+
+		Grid::low.family[family].SetOutdated(t);
+		Grid::high.family[family].SetOutdated(t);
+
+		#ifndef CLIENT
+			RegisterTechniteSensory(tech.location.GetU(),t);
+		#endif
+
+		LogEvent(EventSignificance::Uncommon,"Launching new technite container");
+
+		CryptographicID secret = tech.secret;
+		String dockerName = tech.GetDockerName();
+		tech.dockerProcessThread.reset(new std::thread([secret,repo,initMessage,dockerName]()
+		{
+			try
+			{
+				TryDocker("pull "+repo);
+				TryDocker("run --rm --name "+dockerName+" "+repo+" technite --url="+serviceURL+":"+String(serviceHost.GetPort())+" --secret="+ secret.ToFullString()+" "+initMessage);
+			}
+			catch (const std::exception&ex)
+			{
+				LogEvent(EventSignificance::NonFatalError,"Failed to launch technite process: "+String(ex.what()));
+			}
+		}));
+		return at;
+	}
 
 
 
