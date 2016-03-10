@@ -834,6 +834,194 @@ namespace Technites
 	}
 
 
+	bool	Technite::DecodeAbsoluteTarget(Grid::HCellIdU & outTarget) const
+	{
+		Grid::HCellIdU loc;
+		return DecodeAbsoluteTarget(loc, outTarget);
+	}
+
+
+	bool	Technite::DecodeAbsoluteTarget(Grid::HCellIdU & loc, Grid::HCellIdU & outTarget) const
+	{
+		const int heightDelta = this->nextInstruction.taskTarget.GetHeightDelta();
+		const UINT32 nIndex = this->nextInstruction.taskTarget.GetNeighborIndex();
+
+		if (heightDelta < -1 || heightDelta > 1)
+			return false;
+		loc = location.GetU();
+		if (loc.stackID >= Grid::high.grid.CellCount)
+			return false;
+		if (loc.layer >= Grid::CellStack::Range)
+			return false;
+		if (loc.layer == 0 && heightDelta < 0)
+			return false;
+		if (loc.layer+heightDelta >= Grid::CellStack::Range)
+			return false;
+
+		if (nIndex == CompressedTarget::SelfNeighbor)
+		{
+			outTarget = Grid::HCellIdU(loc.stackID, loc.layer + heightDelta);
+		}
+		else
+		{
+			const auto&n = Grid::high.grid.GetCell(loc.stackID).neighborhood;
+			if (nIndex >= n.numNeighbors)
+			{
+				return false;
+			}
+			outTarget = Grid::HCellIdU(n.neighborID[nIndex], loc.layer + heightDelta);
+		}
+		return outTarget.layer < Grid::CellStack::Range;
+	}
+
+	
+		index_t					BroadTechniteMap::MapCluster(const Grid::HCellIdU&loc, index_t&outFamily, UINT32&heightRemainder) const
+	{
+		outFamily = Grid::high.grid.GetCell(loc.stackID).family;
+		heightRemainder = loc.layer % SectionLayers;
+		return outFamily * HeightSections
+			+ loc.layer / SectionLayers;
+	}
+
+	//index_t					BroadTechniteMap::Map(const Grid::HCellIdU&location, Cluster*&outCluster, bool initIfEmpty)
+	//{
+	//	return Map(Grid::HCellIdU(location.stackID,Grid::CellStack::ToLayer(location.height)),outCluster,initIfEmpty);
+	//}
+	index_t					BroadTechniteMap::Map(const Grid::HCellIdU&location, Cluster*&outCluster, bool initIfEmpty)
+	{
+		index_t family;
+		UINT32 heightRemainder;
+		index_t clusterIndex = MapCluster(location, family, heightRemainder);
+		//ASSERT_LESS__(heightRemainder, SectionLayers);
+		//ASSERT_LESS__(clusterIndex, ARRAYSIZE(cluster));
+		outCluster = cluster + clusterIndex;
+		count_t range = Grid::high.grid.CountFamilyMembers((BYTE)family);
+		index_t inner = (location.stackID - Grid::high.grid.GetFamilyOffset((BYTE)family));
+		//ASSERT_LESS__(inner, range);
+		if (initIfEmpty && outCluster->volumeCells.IsEmpty())
+		{
+			outCluster->volumeCells.SetSize(range * SectionLayers);
+			outCluster->volumeCells.Fill(Empty);
+		}
+		return inner + range * heightRemainder;
+	}
+
+	//index_t					BroadTechniteMap::Map(const Grid::HCellIdU&location, const Cluster*&outCluster) const
+	//{
+	//	return Map(Grid::HCellIdU(location.stackID,Grid::CellStack::ToLayer(location.height)),outCluster);
+	//}
+	index_t					BroadTechniteMap::Map(const Grid::HCellIdU&location, const Cluster*&outCluster) const
+	{
+		//UINT32 layer = Grid::CellStack::ToLayer(location.height);
+		index_t family;
+		UINT32 heightRemainder;
+		index_t clusterIndex = MapCluster(location, family,heightRemainder);
+		//ASSERT_LESS__(heightRemainder, SectionLayers);
+		//ASSERT_LESS__(clusterIndex, ARRAYSIZE(cluster));
+		outCluster = cluster + clusterIndex;
+		//const count_t numFamilies = BaseGrid::NumFamilies;
+		index_t inner = (location.stackID - Grid::high.grid.GetFamilyOffset((BYTE)family));
+		count_t range = Grid::high.grid.CountFamilyMembers((BYTE)family);
+		//ASSERT_EQUAL__(family, Grid::high.grid.GetCell(location.stackID).family);
+		//ASSERT_LESS__(inner, range);
+		return inner + range * heightRemainder;
+	}
+
+	void					BroadTechniteMap::Unset(const Grid::HCellIdU& id)
+	{
+		Cluster*cluster;
+		index_t inner = Map(id, cluster,false);
+		if (cluster->numEntries == 0)
+		{
+			FATAL__("Failed to unset " + id.ToString());
+			return;
+		}
+		if (cluster->volumeCells[inner] != Empty)
+		{
+			cluster->volumeCells[inner] = Empty;
+			cluster->numEntries--;
+			totalEntries--;
+		}
+		else
+		{
+			FATAL__("Failed to unset " + id.ToString());
+		}
+
+	}
+
+	void					BroadTechniteMap::Set(const Grid::HCellIdU&id, index_t to)
+	{
+		Cluster*cluster;
+		index_t inner = Map(id, cluster,true);
+		if (cluster->volumeCells[inner] == Empty)
+		{
+			cluster->numEntries++;
+			totalEntries++;
+		}
+		cluster->volumeCells[inner] = (UINT32)to;
+	}
+
+	bool					BroadTechniteMap::Query(const Grid::HCellIdU&id, index_t&out) const
+	{
+		const Cluster*cluster;
+		index_t inner = Map(id, cluster);
+		if (cluster->numEntries == 0)
+		{
+			out = InvalidIndex;
+			return false;
+		}
+		UINT32 v = cluster->volumeCells[inner];
+		if (v == Empty)
+		{
+			out = InvalidIndex;
+			return false;
+		}
+		out = (index_t)v;
+		return true;
+	}
+	
+	bool					BroadTechniteMap::IsSet(const Grid::HCellIdU&id) const
+	{
+		const Cluster*cluster;
+		index_t inner = Map(id, cluster);
+		if (cluster->numEntries == 0)
+			return false;
+		UINT32 v = cluster->volumeCells[inner];
+		return v != Empty;
+	}
+
+	//bool					BroadTechniteMap::SetNew(const Grid::HCellIdU&id, index_t to)
+	//{
+	//	return SetNew(Grid::HCellIdU(id.stackID,Grid::CellStack::ToLayer(id.height)),to);
+	//}
+	bool					BroadTechniteMap::SetNew(const Grid::HCellIdU&id, index_t to)
+	{
+		Cluster*cluster;
+		index_t inner = Map(id, cluster, true);
+		UINT32&v = cluster->volumeCells[inner];
+		if (v != Empty)
+			return false;
+		cluster->numEntries++;
+		totalEntries++;
+		v = (UINT32)to;
+		return true;
+	}
+
+
+	count_t					BroadTechniteMap::Count() const
+	{
+		return totalEntries;
+	}
+
+	count_t					BroadTechniteMap::ThoroughCount() const
+	{
+		count_t rs = 0;
+		for (index_t i = 0; i < ClusterCount; i++)
+			rs += cluster[i].numEntries;
+		ASSERT_EQUAL__(rs,totalEntries);
+		return rs;
+	}	
+
 }
 
 
