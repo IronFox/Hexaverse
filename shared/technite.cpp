@@ -834,6 +834,18 @@ namespace Technites
 	}
 
 
+	void				Technite::SetStandardFieldOfVision()
+	{
+		Grid::high.GenerateStep2Volume(location.GetU(),hFieldOfVision);
+
+		Grid::low.GenerateStep1MultiVolume(Grid::highToLowMap[location.GetStackID()].lowCells
+
+	}
+			Grid::HighSetup::TVolumeDescriptor	hFieldOfVision;
+		Grid::LowSetup::TVolumeDescriptor	lFieldOfVision;
+		float				visionRadius = -1.f;
+
+
 	bool	Technite::DecodeAbsoluteTarget(Grid::HCellIdU & outTarget) const
 	{
 		Grid::HCellIdU loc;

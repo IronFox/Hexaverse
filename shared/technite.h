@@ -287,13 +287,7 @@ namespace Technites
 		Instruction			nextInstruction;
 		Grid::HighSetup::TVolumeDescriptor	hFieldOfVision;
 		Grid::LowSetup::TVolumeDescriptor	lFieldOfVision;
-		enum class VisionType
-		{
-			None,
-			Standard,
-			Spherical
-		}					visionType;
-		float				visionRadius;
+		float				visionRadius = -1.f;
 
 		TUniqueID			id;									// 16
 		CryptographicID		secret;								// 32
