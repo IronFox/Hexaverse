@@ -57,6 +57,39 @@ namespace Technites
 
 	}
 
+	namespace Receiver
+	{
+		void OnDeserializationFailed(UINT32 channel, TCP::Peer&origin)
+		{
+			LogEvent(EventClass::Preset::networkError,nullptr,"Technite service: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
+		}
+
+
+
+		void OnIgnorePackage(UINT32 channel,UINT32 size, TCP::Peer&origin)
+		{
+			LogEvent(EventClass::Preset::networkError,nullptr,"Technite service: "+origin.ToString()+": Package of size "+String(size)+" ignored on channel "+String(channel));
+		}
+
+		void OnSignal(UINT32 channel, TCP::Peer&origin)
+		{
+			LogEvent(EventSignificance::Debug,nullptr,"Technite service: "+origin.ToString()+": Signal on channel "+String(channel));
+		}
+
+		void OnEvent(TCP::event_t event, TCP::Peer&origin)
+		{
+			LogEvent(EventSignificance::Debug,nullptr,"RemoteControl: "+origin.ToString()+": "+TCP::event2str(event));
+			switch (event)
+			{
+				case TCP::Event::ConnectionEstablished:
+					//maybe init here later
+				break;
+
+			}
+		}
+
+	}
+
 	namespace Channels
 	{
 		enum channel_t
@@ -113,7 +146,6 @@ namespace Technites
 
 	AtomicGrid					atomicGrid;
 	Buffer<Technite>			technites;
-	Buffer0<TSensor>			sensors;
 	BroadTechniteMap			techniteMap;
 
 
@@ -746,6 +778,49 @@ namespace Technites
 		return Technite::Resources((BYTE)clamp(rs,0,255));
 	}
 
+
+	void					SetupAndStartService()
+	{
+
+		static bool setup = false;
+		if (!setup)
+		{
+			setup = true;
+			
+			//server.InstallChannel(...);
+			//server.OpenSignalChannel(...);
+
+			serviceHost.onSignal = Receiver::OnSignal;
+			serviceHost.SetAsync(false);
+			serviceHost.onEvent = Receiver::OnEvent;
+			serviceHost.onIgnorePackage = Receiver::OnIgnorePackage;
+			serviceHost.onDeserializationFailed = Receiver::OnDeserializationFailed;
+		}
+		serviceHost.Start();
+	}
+
+	void					Clear()
+	{
+		LogEvent(EventSignificance::Uncommon,"Clearing out technites");
+		foreach (technites,t)
+		{
+			t->ShutdownClient();
+		}
+		technites.Clear();
+		techniteMap.Clear();
+
+	}
+
+	void					StopService()
+	{
+		Clear();
+		serviceHost.Shutdown();
+	}
+
+	void					Resolve()
+	{
+		serviceHost.Resolve();
+	}
 
 
 }

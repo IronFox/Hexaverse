@@ -452,11 +452,7 @@ namespace Technites
 
 	extern AtomicGrid			atomicGrid;
 	extern Buffer<Technite>		technites;
-	extern Buffer0<TSensor>		sensors;
-
 	extern BroadTechniteMap		techniteMap;
-
-	extern Buffer0<PFaction>	allTechniteFactions;
 
 	struct TNewTechnite : public Technite::StartOptions
 	{
@@ -491,11 +487,12 @@ namespace Technites
 	void					ProcessLighting();
 
 
+	void					Clear();
 
-	void					Create();
-	void					Destroy();
+	void					SetupAndStartService();
+	void					StopService();
 
-
+	void					Resolve();
 
 
 
