@@ -75,8 +75,8 @@ namespace Technites
 		static const count_t TaskCount = (count_t)Task::Count;
 
 
-		static BYTE					energyCost[TaskCount];
-		static ExecutionLayer::T	layer[TaskCount];
+		static FixedArray<BYTE,TaskCount>				energyCost;
+		static FixedArray<ExecutionLayer::T,TaskCount>	layer;
 
 		static const count_t NumGroundTypes = 13;
 		static_assert(NumGroundTypes == Grid::Content::NumberOfPossibilities, "Count mismatch. Adjust array size");
@@ -308,6 +308,10 @@ namespace Technites
 
 		/**/				Technite() {}
 
+		/**/				Technite(const Technite&) = delete;
+		/**/				Technite(Technite&&) = default;
+		Technite&			operator=(const Technite&) = delete;
+
 		#ifdef CLIENT
 			void			CompileTendency(TVec3<>&outDirection, float&outMagnitude, TVec3<>&inOutColor) const;
 		#endif
@@ -352,6 +356,9 @@ namespace Technites
 			return (BYTE) (layer * layer / Grid::CellStack::Range/4) + 1;
 				//(BYTE)std::max(height, 0)+1;
 		}
+
+		void			StartClient();
+		void			ShutdownClient();
 	};
 
 
@@ -467,15 +474,7 @@ namespace Technites
 	};
 
 	index_t						Create(const TNewTechnite&, float t);
-
-	bool						ValidTechniteLocation(const Grid::HCellIdU&location);
-
-
-	void						RegisterTechniteSensory(const Grid::HCellIdU&tecLoc, float&t, bool checkNow=true);
-	void						UnregisterTechniteSensory(const Grid::HCellIdU&tecLoc, float&t, bool checkNow=true);
-
 	bool						CanStandHere(const Grid::HCellIdU&tecLoc);
-
 
 	void						VerifyIntegrity();
 

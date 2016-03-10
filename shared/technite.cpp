@@ -81,6 +81,36 @@ namespace Technites
 	}
 
 
+	/*static*/ FixedArray<BYTE,Technite::TaskCount>		Technite::energyCost =
+	{
+		0,	//None
+		0,	//Scan
+		1,	//Message
+		1,	//Move
+		0,	//Transfer
+		0,	//Replace
+		0,	//End
+		0,	//Spawn
+		1,	//Kill
+	};
+
+
+
+	/*static*/ FixedArray<ExecutionLayer::T,Technite::TaskCount>	Technite::layer= 
+	{
+		ExecutionLayer::Count,	//None
+		ExecutionLayer::Scan,	//Scan
+		ExecutionLayer::Messages,	//Message
+		ExecutionLayer::ReplaceMoveSpawn,	//Move
+		ExecutionLayer::Transfer,	//Transfer
+		ExecutionLayer::ReplaceMoveSpawn,	//Replace
+		ExecutionLayer::End,	//End
+		ExecutionLayer::ReplaceMoveSpawn,	//Spawn
+		ExecutionLayer::Kill,	//Kill
+	};
+
+
+
 	AtomicGrid					atomicGrid;
 	Buffer<Technite>			technites;
 	Buffer0<TSensor>			sensors;
@@ -94,7 +124,6 @@ namespace Technites
 	Buffer0<Technite*>			layers[ExecutionLayer::Count];
 
 	index_t						currentLayer = 0;
-	bool						foundationChanged = false;	//a technite changed anything in the world such that a technite could potentially fall
 	bool						anyDied = false;
 	WorkPipe<TNewTechnite>		newTechnites;
 
@@ -113,7 +142,6 @@ namespace Technites
 		atomicGrid.Fill(0);
 		currentLayer = 0;
 		anyDied = false;
-		foundationChanged = false;
 
 		foreach (technites,t)
 		{
@@ -132,6 +160,8 @@ namespace Technites
 		CheckTechniteFoundations();
 
 	}
+
+	bool familyChanged[BaseGrid::NumFamilies] = {false};
 
 	bool						ProcessNextLayer()
 	{
@@ -192,6 +222,13 @@ namespace Technites
 					}
 					t->isDead = true;
 					anyDied = true;
+
+					UINT32 stackID = t->location.GetStackID();
+					Grid::actualWorld.cellStack[stackID].volumeCell[t->location.GetLayer()].content = t->nextInstruction.taskParameter;
+
+					index_t family1 = Grid::high.grid.GetCell(stackID).family;
+					familyChanged[family1] = true;
+
 				});
 			break;
 			case ExecutionLayer::Kill:
@@ -269,6 +306,7 @@ namespace Technites
 					});
 			break;
 			case ExecutionLayer::ReplaceMoveSpawn:
+			{
 				::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
 				{
 					if (t->isDead)
@@ -322,16 +360,22 @@ namespace Technites
 						{
 							swp(Grid::actualWorld.cellStack[t->location.GetStackID()]	.volumeCell[t->location.GetLayer()].content, 
 								Grid::actualWorld.cellStack[target.stackID]				.volumeCell[target.layer].content);
+
+							index_t family0 = Grid::high.grid.GetCell(t->location.GetStackID()).family,
+									family1 = Grid::high.grid.GetCell(target.stackID).family;
+							familyChanged[family0] = true;
+							familyChanged[family1] = true;
+
 							t->location = target;
 							t->SetStandardFieldOfVision();
-							foundationChanged = true;
+
 						}
 						break;
 						case Technite::Task::Replace:
 						{
 							Grid::actualWorld.cellStack[target.stackID].volumeCell[target.layer].content = t->nextInstruction.taskParameter;
-							if (!Grid::CellStack::Cell::IsSolid( t->nextInstruction.taskParameter))
-								foundationChanged = true;
+							index_t family1 = Grid::high.grid.GetCell(target.stackID).family;
+							familyChanged[family1] = true;
 						}
 						break;
 						case Technite::Task::Spawn:
@@ -370,9 +414,18 @@ namespace Technites
 					ASSERT__(t->DecodeAbsoluteTarget(target));
 					atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content = 0;
 				});
+			}
 			break;
 		}
-
+		for (index_t i = 0; i < ARRAYSIZE(familyChanged); i++)
+		{
+			if (familyChanged[i])
+			{
+				Grid::low.family[i].SetOutdated(timeStamp);
+				Grid::high.family[i].SetOutdated(timeStamp);
+				familyChanged[i] = false;
+			}
+		}
 
 		currentLayer++;
 
@@ -384,18 +437,7 @@ namespace Technites
 				foreach (technites,t)
 					if (t->isDead)
 					{
-						TCP::PPeer peer = t->peer.lock();
-						if (peer)
-						{
-							Channels::isDead.SendTo(peer);
-						}
-						try
-						{
-							if (t->dockerProcessThread.joinable())
-								t->dockerProcessThread.join();
-						}
-						catch (...)
-						{}
+						t->ShutdownClient();
 					}
 					else
 						survivors << std::move(*t);
@@ -624,30 +666,85 @@ namespace Technites
 		Grid::low.family[family].SetOutdated(t);
 		Grid::high.family[family].SetOutdated(t);
 
-		#ifndef CLIENT
-			RegisterTechniteSensory(tech.location.GetU(),t);
-		#endif
+		tech.StartClient();
 
-		LogEvent(EventSignificance::Uncommon,"Launching new technite container");
+		return at;
+	}
 
-		CryptographicID secret = tech.secret;
-		String dockerName = tech.GetDockerName();
-		tech.dockerProcessThread.swap(std::thread([secret,init,dockerName]()
+
+
+	void	Technite::ShutdownClient()
+	{
+		TCP::PPeer peer = this->peer.lock();
+		if (peer)
+		{
+			LogEvent(EventSignificance::Uncommon,id.ToString()+": Shutting down technite system");
+			Channels::isDead.SendTo(peer);
+		}
+		try
+		{
+			if (this->dockerProcessThread.joinable())
+				this->dockerProcessThread.join();
+		}
+		catch (...)
+		{}
+
+	}
+
+
+	void Technite::StartClient()
+	{
+		LogEvent(EventSignificance::Uncommon,id.ToString()+": Launching new technite system");
+
+		dockerProcessThread.swap(std::thread([this]()
 		{
 			try
 			{
-				TryDocker("pull "+init.repo);
-				TryDocker("run --rm --name "+dockerName+" "+init.repo+" technite --id="+init.id.ToFullString()+" --parent="+init.parent.ToFullString()+" --url="+serviceURL+":"+String(serviceHost.GetPort())+" --secret="+ secret.ToFullString()+" "+init.initMessage);
+				TryDocker("pull "+startOptions.repo);
+				TryDocker("run --rm --name "+GetDockerName()+" "+startOptions.repo+" technite --id="+id.ToFullString()+" --parent="+startOptions.parent.ToFullString()+" --url="+serviceURL+":"+String(serviceHost.GetPort())+" --secret="+ secret.ToFullString()+" "+startOptions.initMessage);
 			}
 			catch (const std::exception&ex)
 			{
 				LogEvent(EventSignificance::NonFatalError,"Failed to launch technite process: "+String(ex.what()));
 			}
+			LogEvent(EventSignificance::Uncommon,id.ToString()+": Technite system thread exit");
 		}));
-
-		return at;
 	}
 
+
+	int EnergyCost(BYTE content)
+	{
+		DBG_ASSERT_LESS__(content,Grid::Content::N);
+		return Grid::CellStack::Cell::typeStrength[content];
+	}
+
+	int EnergyYield(BYTE content)
+	{
+		return EnergyCost(content)/2;
+	}
+
+	Technite::Resources			GetCost(Technite::Task task, BYTE parameter, BYTE currentGridContent)
+	{
+		int rs = Technite::energyCost[(int)task];
+		switch (task)
+		{
+			case Technite::Task::Replace:
+				rs += EnergyCost(parameter) - EnergyYield(currentGridContent);
+			break;
+			case Technite::Task::End:
+				rs += EnergyCost(parameter) - EnergyYield(Grid::Content::Technite);
+			break;
+			case Technite::Task::Spawn:
+				rs += EnergyCost(Grid::Content::Technite) - EnergyYield(currentGridContent);
+			break;
+			case Technite::Task::Kill:
+				FATAL__("Should not call GetCost for enum type "+String(int(task)));
+			break;
+		}
+
+
+		return Technite::Resources((BYTE)clamp(rs,0,255));
+	}
 
 
 
