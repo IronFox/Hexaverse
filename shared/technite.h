@@ -83,7 +83,7 @@ namespace Technites
 
 
 
-		static bool			CanSupport(Grid::Content content)
+		static bool			SupportedBy(Grid::Content content)
 		{
 			return content != Grid::Content::Clear && content != Grid::Content::Water && content != Grid::Content::Lava;
 		}
@@ -451,6 +451,16 @@ namespace Technites
 		Grid::HCellIdU			location;
 		String					repo,
 								initMessage;
+
+
+		bool					operator<(const TNewTechnite&other)	const
+		{
+			return parent < other.parent;
+		}
+		bool					operator>(const TNewTechnite&other)	const
+		{
+			return parent > other.parent;
+		}
 	};
 
 	index_t						Create(const TNewTechnite&, float t);

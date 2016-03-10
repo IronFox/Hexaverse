@@ -4,6 +4,7 @@
 #include <io/file_system.h>
 #include "objects/gridAndChoices.h"
 #include "protocol.h"
+#include "../server/components/journalSaveGame.h"
 
 
 namespace Technites
@@ -344,7 +345,7 @@ namespace Technites
 							{
 								ntech.repo = t->nextInstruction.payload;
 							}
-							ntech.id.Generate();
+							ntech.id = t->nextInstruction.targetTechnite;
 							ntech.location = target;
 							ntech.parent = t->id;
 							newTechnites << ntech;
@@ -386,8 +387,15 @@ namespace Technites
 			}
 
 			newTechnites.SignalRead();
+				ByOperator::QuickSort(newTechnites);
 				foreach (newTechnites,tech)
-					Create(*tech,timeStamp);
+				{
+					if (Create(*tech,timeStamp) == InvalidIndex)
+					{
+						LogEvent(EventClass::Preset::internalError,"Failed to spawn technite");	//this should not happen. if verified that it does not happen the quicksort operation can be avoided
+
+					}
+				}
 			newTechnites.ExitRead();
 
 			CheckTechniteFoundations();
@@ -527,15 +535,51 @@ namespace Technites
 		}
 	}
 
+	Grid::Content GetContent(const Grid::HCellIdU&location)
+	{
+		return Grid::Content::Reinterpret(Grid::actualWorld.cellStack[location.stackID].GetCellU(location.layer).content);
+	}
+
+	bool CanStandHere(const Grid::HCellIdU&location)
+	{
+//		Grid::Content local = GetContent(location);
+		//if (local != Grid::Content::Clear && local != Grid::Content::Water)
+		//	return false;
+		if (location.layer == 0)
+		{
+			return Technite::SupportedBy(Grid::Content::Reinterpret(Grid::CellStack::bottom.content));
+		}
+		if (!Technite::SupportedBy(GetContent(location - 1)))
+		{
+			const auto&n = Grid::high.grid.GetCell(location.stackID).neighborhood;
+			bool anyGood = false;
+			for (int k = 0; k < n.numNeighbors; k++)
+			{
+				if (Technite::SupportedBy(GetContent(Grid::HCellIdU(n.neighborID[k], location.layer)))
+					&&
+					Technite::SupportedBy(GetContent(Grid::HCellIdU(n.neighborID[k], location.layer - 1)))
+					)
+				{
+					anyGood = true;
+					break;
+				}
+			}
+			return anyGood;
+		}
+		return true;
+	}
+
+
 	
 	index_t				Create( const TNewTechnite& init, float t)
 	{
 		Grid::HCellIdU location = init.location;
 		if (location.layer>=Grid::CellStack::Range)
 			return InvalidIndex;
-
-		if (techniteMap.IsSet(location))
+		if (GetContent(location) == Grid::Content::Technite)
 			return InvalidIndex;
+		//if (techniteMap.IsSet(location))
+		//	return InvalidIndex;
 		if (!CanStandHere(location))
 			return InvalidIndex;
 
