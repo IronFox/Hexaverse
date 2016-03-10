@@ -970,6 +970,14 @@ namespace Grid
 				coverage.Clear();
 			}
 
+			count_t					GetVolume() const
+			{
+				count_t rs = 0;
+				foreach (coverage,c)
+					rs += c->layerEnd - c->layerBegin;
+				return rs;
+			}
+
 
 			struct Operator
 			{
