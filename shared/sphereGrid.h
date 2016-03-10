@@ -11,6 +11,11 @@
 	#include "../client/ExtRenderer/DirectX11.h"
 #endif
 
+namespace Technites
+{
+	class Technite;
+	class Faction;
+};
 
 
 static const float WorldScale = 40.f;
@@ -114,35 +119,42 @@ namespace Grid
 		static const int	TopHeight = HalfRange-1,
 							BottomHeight = -HalfRange;
 
+		#define MAKE_NAMED_DELTA(TYPE_NAME,VALUE_NAME)\
+			struct TYPE_NAME\
+			{\
+				BYTE		VALUE_NAME;\
+				bool		operator!=(const TYPE_NAME&other) const\
+				{\
+					return VALUE_NAME != other.VALUE_NAME;\
+				}\
+				bool		operator==(const TYPE_NAME&other) const\
+				{\
+					return VALUE_NAME == other.VALUE_NAME;\
+				}\
+				bool		IsSet() const {return VALUE_NAME != 0;}\
+			};\
+			static_assert(sizeof(TYPE_NAME) == 1, "Struct-alignment out of whack");
 
-		struct TTypeDelta
-		{
-			BYTE		newType;	//0 = Bedrock = no change. Bedrock cannot be applied to normal cells
 
-			bool		operator!=(const TTypeDelta&other) const
-			{
-				return newType != other.newType;
-			}
-			bool		operator==(const TTypeDelta&other) const
-			{
-				return newType == other.newType;
-			}
-			bool		IsSet() const {return newType != 0;}
-		};
 
-		static_assert(sizeof(TTypeDelta) == 1, "Struct-alignment out of whack");
+		MAKE_NAMED_DELTA (TTypeDelta,newType);	//0 = Bedrock = no change. Bedrock cannot be applied to normal cells
+
 
 		#pragma pack(push)
 		#pragma pack(1)
-		struct TTypeDeltaBlock
-		{
-			UINT32				repitition;
-			TTypeDelta			value;
-			bool		operator!=(const TTypeDeltaBlock&other) const
+		template <typename T>
+			struct TDeltaBlock
 			{
-				return repitition != other.repitition || value != other.value;
-			}
-		};
+				UINT32				repitition;
+				T					value;
+				bool		operator!=(const TDeltaBlock<T>&other) const
+				{
+					return repitition != other.repitition || value != other.value;
+				}
+			};
+		typedef TDeltaBlock<TTypeDelta>	TTypeDeltaBlock;
+		static_assert(sizeof(TTypeDeltaBlock) == 5, "Struct-alignment out of whack");
+
 		#pragma pack(pop)
 
 		class CompactCell
@@ -165,14 +177,14 @@ namespace Grid
 			)
 
 
-			BYTE	content;
-			BYTE	structureCounter;	//number of structures (density) that occupy this block
+			BYTE	content = Content::Clear;
+			BYTE	structureCounter = 0;	//number of structures (density) that occupy this block
 			#ifdef CLIENT
 				short	visible=0;	//indicates levels of visibility. should not fall below 0. might make it unsigned when i am convinced it works. values >= 1 indicate this cell is visible
 			#endif
 
-			/**/	CompactCell() :content(Content::Clear), structureCounter(0) {}
-			/**/	CompactCell(Content t) :content(t), structureCounter(0)	{}
+			/**/	CompactCell() {}
+			/**/	CompactCell(Content t) :content(t)	{}
 
 
 			#ifdef CLIENT
@@ -221,16 +233,7 @@ namespace Grid
 				}
 				return false;
 			}
-			//bool	ApplyDelta(const TStructCountDelta&sdelta)
-			//{
-			//	if (sdelta.newStructureCounter)
-			//	{
-			//		structureCounter = sdelta.newStructureCounter-1;
-			//		DBG_ASSERT_LESS__(structureCounter,3);
-			//		return true;
-			//	}
-			//	return false;
-			//}
+			
 		};
 
 		class Cell : public CompactCell
@@ -332,7 +335,9 @@ namespace Grid
 				UINT	GetIncreasedSubmergence() const;
 				float	GetStructureFactor() const	{ return typeStructureFactor[content]; }
 				float3	GetBaseColor() const;
+
 			#endif
+			static void	ToneInvisibleCellColor(TVec3<>&color);
 		};
 
 		Cell			volumeCell[Range];		//All contained cells
@@ -341,7 +346,7 @@ namespace Grid
 			BYTE			lowestOpenCell,
 							highestOpaqueCell,
 							lightingChangedTo;
-			TIntRange<BYTE>	waterRange;
+			TIntRange<BYTE>	waterRange,techniteRange;
 		#endif
 
 
@@ -351,7 +356,7 @@ namespace Grid
 
 		#ifdef HAS_WINDOW
 		bool			HasWater() const { return waterRange.IsNotEmpty(); }
-
+		bool			HasTechnites() const { return techniteRange.IsNotEmpty(); }
 
 		void			DebugCheckRange()
 		{
@@ -366,11 +371,16 @@ namespace Grid
 		{
 			waterRange.start = 0xFF;
 			waterRange.end = 0x0;
+			techniteRange = waterRange;
 			lowestOpenCell = 0xFF;
 			highestOpaqueCell = 0;
 			for (unsigned i = 0; i < Range; i++)
 				if (volumeCell[i].IsSolid())
+				{
 					highestOpaqueCell = (BYTE)i;
+					if (volumeCell[i].IsTechnite())
+						techniteRange.Include(i);
+				}
 				else
 				{
 					lowestOpenCell = std::min(lowestOpenCell, (BYTE)i);
@@ -461,6 +471,23 @@ namespace Grid
 	#endif
 
 	#ifdef HAS_WINDOW
+
+		/**
+		Technite rendering info structure. Contains all information necessary during geometry compilation
+		*/
+		struct TechInfo
+		{
+			float3		direction, color;
+			float		activity = 0.f;
+			bool		empty = true;
+
+			/**/		TechInfo()	{};
+			/**/		TechInfo(const Technites::Faction*f, const Technites::Technite*t, bool isSet, bool isVisible);
+			/**/		TechInfo(const CellStack&stack, index_t stackIndex, UINT layer);
+			/**/		TechInfo(const CellStack*stacks, index_t stackIndex, UINT layer)	{*this = TechInfo(stacks[stackIndex],stackIndex,layer);};
+		};
+
+
 		namespace Instruction
 		{	
 			enum displayMode_t
@@ -492,7 +519,9 @@ namespace Grid
 			extern DX11::BaseInstructionBlock	terrainBase, terrainSphereBase, terrainParaboloidBase, 
 												terrainShadowBase, 
 												waterBase, waterSphereBase, waterParaboloidBase,
-												overlayBase, overlayShadowBase, resourceBase;// , terrainEdgeBase;
+												overlayBase, overlayShadowBase, resourceBase,
+												techniteBase, techniteShadowBase;// , terrainEdgeBase;
+			extern DX11::Texture			techniteTexture;
 		}
 		struct TerrainVertex
 		{
@@ -536,6 +565,26 @@ namespace Grid
 			/**/		WaterVertex()	{};
 			/**/		WaterVertex(const float4&vtx, float h, const float3&n,float light, int emp) : vertex(vtx.xyz*h, vtx.w), normal(n),light((float(emp) + 0.05f + light*0.9f) * 0.25f ){}
 		};
+
+
+		struct TechniteVertex
+		{
+			TVec3<>		vertex;
+			TVec4<signed char>	normal,directionXYZ_factor;
+			TVec4<unsigned char>	colorRGB_lightLevel;
+
+			/**/		TechniteVertex()	{}
+			/**/		TechniteVertex(const float3&vtx, float h, const float3&normal, float light, const TechInfo&info) 
+			{
+				Vec::mult(vtx,h,vertex);
+				Vec::mult(normal,127.f,this->normal.xyz);
+				Vec::mult(info.color,255.f,this->colorRGB_lightLevel.rgb);
+				this->colorRGB_lightLevel.a = (BYTE)clamp(light*255.f,0,255);
+				Vec::mult(info.direction,127.f,directionXYZ_factor.xyz);
+				directionXYZ_factor.w = clamp(info.activity,-128,127);
+			}
+		};
+		static_assert(sizeof(TechniteVertex) == 12+4+4+4, "Check struct alignment");
 	
 
 		template <typename Vtx>
@@ -595,6 +644,19 @@ namespace Grid
 				shadowInstruction = instruction = DX11::InstructionBlock32();
 			}
 		};
+
+		struct TTechniteHull : public THull<TechniteVertex>
+		{
+			typedef THull<TechniteVertex>	Super;
+			DX11::InstructionBlock32	instruction,shadowInstruction;
+
+			void						Destroy()
+			{
+				Super::Clear();
+				shadowInstruction = instruction = DX11::InstructionBlock32();
+			}
+		};
+
 		/**
 		Stack-stored mesh container with constant capacity
 		*/
@@ -789,6 +851,7 @@ namespace Grid
 				TOverlayHull			overlay;	//!< high-resolution overhanging terrain overlay, transparent
 				TWaterHull				water;		//!< high-resolution overhanging terrain water, transparent, shaded
 				TResourceHull			resources;	//!< low-resolution resource visualization. Similar to @a overlay, but uses different shader
+				TTechniteHull			technites;	//!< high-resolution technite mesh, textured, animated, opaque, shaded
 			#endif 
 			Box<>						boundingBox;
 			Sphere<>					boundingSphere;
@@ -804,6 +867,7 @@ namespace Grid
 					overlay.Destroy();
 					water.Destroy();
 					resources.Destroy();
+					technites.Destroy();
 				#endif
 			}
 		};
@@ -918,9 +982,72 @@ namespace Grid
 										const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack, bool empThis);
 		};
 
+
+		class TechniteCompiler
+		{
+		public:
+			static const count_t BatchSize = 16;	//the bigger, the less parallelism, but the less the overhead during locking (since more work per locking)
+
+			StaticMesh<TechniteVertex,BatchSize * CellStack::Range * (7 + 7 + 4 * 6),BatchSize * CellStack::Range * 3 * (7 * 2 + 2 * 7)>	solidMesh;
+		
+
+			const CellStack * stacks;
+			const BaseGrid::TCell*  gridCells;
+			const BaseGrid::TNetCell*  netCells;
+//			FClipHeight	clipHeight;	//technites are not clipped for the moment, maybe never
+			bool	wasEmpty;
+			float	cornerLightLevel[6];
+
+
+			void	Setup(const CellStack *stacks,const BaseGrid::TCell*cells, const BaseGrid::TNetCell*netCells/*,FClipHeight clipHeight*/)
+			{
+				solidMesh.Reset();
+				this->stacks = stacks;
+				this->netCells = netCells;
+				this->gridCells = cells;
+			//	this->clipHeight = clipHeight;
+				wasEmpty = true;
+			}
+
+
+			//float4	GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const;
+			//float4	GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const;
+			//static void ApplyEMP(float intensity,TVec3<>&rs);
+			//static bool FlagsAffectedByEMP(UINT16 cornerFlags) {return !(cornerFlags & empZonesUnlocked);}
+			//static bool AffectedByEMP(index_t stackIndex);
+
+
+
+			void	Compile(const index_t offset, const index_t end, THull<TechniteVertex>&techniteHull, SpinLock&lock);
+			void	CompileLayer(const UINT layer, const TechInfo&lowerT, const TechInfo&thisT, const TechInfo&upperT, const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighborhood, const CellStack&stack);
+			void	CompileCap(const UINT layer, const TechInfo&thisT, const TFloatRange<>&range,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack);
+			void	CompileDownCap(const UINT layer,const TechInfo&upperT, const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack);
+			void	CompileFaceToNeighbor(const int j, const UINT layer, const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,float newCornerLightLevel[6], 
+											const TechInfo&lowerT, const TechInfo&thisT, const TFloatRange<>&range);
+		};
+
+
 	#endif
 
 	class Resource;
+
+
+	struct THighToLowCell
+	{
+		static const UINT32 Empty = 0xFFFFFFFF;
+		UINT32				lowCells[2];
+
+		/**/				THighToLowCell()
+		{
+			lowCells[0] = lowCells[1] = Empty;
+		}
+
+		void				Include(UINT32 cell)
+		{
+			lowCells[lowCells[0] != Empty] = cell;
+		}
+
+	};
 
 
 	template <unsigned Exponent>
@@ -978,13 +1105,12 @@ namespace Grid
 				return rs;
 			}
 
-
-			struct Operator
+			static struct _Operator
 			{
 				bool	stackVisited[GridType::CellCount];
 				Queue<UINT32>	stacksLeft;
 
-				/**/		Operator()
+				/**/		_Operator()
 				{
 					memset(stackVisited,false,sizeof(stackVisited));
 				}
@@ -995,7 +1121,7 @@ namespace Grid
 						stackVisited[c->stackID] = false;
 
 				}
-			};
+			}		op;
 		};
 
 
@@ -1215,22 +1341,90 @@ namespace Grid
 
 	
 
+		void	GenerateStep2Volume(const typename GridType::CellIdU&center, TVolumeDescriptor&volume)
+		{
+			volume.Clear();
+			unsigned bottom = center.layer > 1 ? center.layer - 2 : 0;
+			unsigned top = std::min(Grid::CellStack::Range-1, center.layer + 2);
+
+			const auto&c = grid.GetCell(center.stackID);
+			for (int k = 0; k < c.neighborhood.numNeighbors; k++)
+			{
+				const auto&c2 = grid.GetCell(c.neighborhood.neighborID[k]);
+				for (int j = 0; j < c2.neighborhood.numNeighbors; j++)
+				{
+					const UINT32 id = c2.neighborhood.neighborID[j];
+					if (TVolumeDescriptor::op.stackVisited[id])
+						continue;
+					TVolumeDescriptor::op.stackVisited[id] = true;
+					//const auto&c3 = grid.GetCell(id);
+					TVolumeDescriptor::TStack&st = volume.coverage.Append();
+					st.stackID = id;
+					st.layerBegin = bottom;
+					st.layerEnd = top+1;
+				}
+			}
+			TVolumeDescriptor::op.ResetVisited(volume);
+		}
+
+		void	GenerateStep1MultiVolume(const THighToLowCell&c, UINT32 layer, TVolumeDescriptor&volume)
+		{
+			GenerateStep1MultiVolume(c.lowCells,c.lowCells[1] == THighToLowCell::Empty ? 1 : 2,layer,volume);
+		}
+		void	GenerateStep1MultiVolume(const UINT32*centerStacks, count_t numCenterStacks,UINT32 layer, TVolumeDescriptor&volume)
+		{
+			volume.Clear();
+			unsigned bottom = layer > 1 ? layer - 2 : 0;
+			unsigned top = std::min(Grid::CellStack::Range-1, layer + 2);
+			//unsigned bottom = layer > 0 ? layer - 1 : 0;
+			//unsigned top = std::min(Grid::CellStack::Range-1, layer + 1);
+
+			for (index_t i = 0; i < numCenterStacks; i++)
+			{
+				{
+					const UINT32 id = centerStacks[i];
+					if (TVolumeDescriptor::op.stackVisited[id])
+						continue;
+					TVolumeDescriptor::op.stackVisited[id] = true;
+					//const auto&c3 = grid.GetCell(id);
+					TVolumeDescriptor::TStack&st = volume.coverage.Append();
+					st.stackID = id;
+					st.layerBegin = bottom;
+					st.layerEnd = top+1;
+				}
+				const auto&c = grid.GetCell(centerStacks[i]);
+				for (int k = 0; k < c.neighborhood.numNeighbors; k++)
+				{
+					{
+						const UINT32 id = c.neighborhood.neighborID[k];
+						if (TVolumeDescriptor::op.stackVisited[id])
+							continue;
+						TVolumeDescriptor::op.stackVisited[id] = true;
+						//const auto&c3 = grid.GetCell(id);
+						TVolumeDescriptor::TStack&st = volume.coverage.Append();
+						st.stackID = id;
+						st.layerBegin = bottom;
+						st.layerEnd = top+1;
+					}
+				}
+			}
+			TVolumeDescriptor::op.ResetVisited(volume);
+		}
 
 		void	GenerateVolume(const Sphere<>&sphere,TVolumeDescriptor&volume) const
 		{
-			static TVolumeDescriptor::Operator op;
 			volume.Clear();
 			UINT32 centerStack = Locate(sphere.center);
-			op.stacksLeft << centerStack;
+			TVolumeDescriptor::op.stacksLeft << centerStack;
 
 			const float br = ToRadius(CellStack::BottomHeight);
 			const float tr = ToRadius(CellStack::TopHeight);
 			UINT32 next;
-			while (op.stacksLeft >> next)
+			while (TVolumeDescriptor::op.stacksLeft >> next)
 			{
-				if (op.stackVisited[next])
+				if (TVolumeDescriptor::op.stackVisited[next])
 					continue;
-				op.stackVisited[next] = true;
+				TVolumeDescriptor::op.stackVisited[next] = true;
 				const TVec3<>&dir = cells[next].cornerCenter;
 				TVec2<> distances;
 				TVec3<> bottom,top;
@@ -1248,9 +1442,9 @@ namespace Grid
 				st.layerEnd = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
 				const auto&n = grid.GetCell(next).neighborhood;
 				for (int i = 0; i < n.numNeighbors; i++)
-					op.stacksLeft << n.neighborID[i];
+					TVolumeDescriptor::op.stacksLeft << n.neighborID[i];
 			}
-			op.ResetVisited(volume);
+			TVolumeDescriptor::op.ResetVisited(volume);
 		}
 
 		#ifdef HAS_WINDOW
@@ -1283,6 +1477,19 @@ namespace Grid
 			}
 
 
+			void		CompileTechnites(const Array<CellStack>&stacks, THull<TechniteVertex>&cover, index_t offset, count_t count)
+			{
+				const index_t end = offset + count;
+				SpinLock lock;
+				Concurrency::parallel_for(offset, end, WaterCompiler::BatchSize,[this, end,&lock, &cover, &stacks](index_t i)	//looks good - at least in release
+				{
+					BYTE data[sizeof(TechniteCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...
+					TechniteCompiler&compiler = *(TechniteCompiler*)data;
+					compiler.Setup(stacks.pointer(),grid.GetCells(),this->cells.pointer());
+					compiler.Compile(i,end,cover,lock);
+				});
+			}
+
 
 
 
@@ -1299,8 +1506,12 @@ namespace Grid
 				dat.terrain.Clear();
 				dat.overlay.Clear();
 				dat.water.Clear();
-				Compile(stacks, dat.terrain, dat.overlay, grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight);
-				CompileWater(stacks, dat.water, grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight);
+				dat.technites.Clear();
+				const index_t offset = grid.GetFamilyOffset(family);
+				const count_t members = grid.CountFamilyMembers(family);
+				Compile(stacks, dat.terrain, dat.overlay, offset, members, clipHeight);
+				CompileWater(stacks, dat.water, offset, members, clipHeight);
+				CompileTechnites(stacks, dat.technites, offset,members);
 
 				Box<> box = Box<>::Invalid();
 
@@ -1308,11 +1519,15 @@ namespace Grid
 					box.Include(vtx->vertex.xyz);
 				foreach(dat.water.vertices, vtx)
 					box.Include(vtx->vertex.xyz);
+				foreach(dat.technites.vertices, vtx)
+					box.Include(vtx->vertex);
 				dat.boundingBox = box;
 				dat.boundingSphere.center = box.GetCenter();
 				dat.boundingSphere.radius = 0.f;
 				foreach(dat.terrain.vertices, vtx)
 					dat.boundingSphere.IncludeSquare(vtx->vertex.xyz);
+				foreach(dat.technites.vertices, vtx)
+					dat.boundingSphere.IncludeSquare(vtx->vertex);
 				dat.boundingSphere.radius = sqrt(dat.boundingSphere.radius);
 
 
@@ -1328,6 +1543,9 @@ namespace Grid
 					(DX11::BaseInstructionBlock&)dat.water.instruction[0] = Instruction::waterBase;
 					(DX11::BaseInstructionBlock&)dat.water.instruction[1] = Instruction::waterParaboloidBase;
 					(DX11::BaseInstructionBlock&)dat.water.instruction[2] = Instruction::waterSphereBase;
+
+					(DX11::BaseInstructionBlock&)dat.technites.instruction = Instruction::techniteBase;
+					(DX11::BaseInstructionBlock&)dat.technites.shadowInstruction = Instruction::techniteShadowBase;
 				}
 
 
@@ -1349,6 +1567,11 @@ namespace Grid
 				dat.water.instruction[1].ibo = dat.water.instruction[0].ibo;
 				dat.water.instruction[2].vbo = dat.water.instruction[0].vbo;
 				dat.water.instruction[2].ibo = dat.water.instruction[0].ibo;
+				dat.technites.instruction.vbo.CreateFromStructs(dat.technites.vertices);
+				dat.technites.instruction.ibo.Create(dat.technites.indices);
+				dat.technites.shadowInstruction.vbo = dat.technites.instruction.vbo;
+				dat.technites.shadowInstruction.ibo = dat.technites.instruction.ibo;
+
 			}
 
 			void		BakeResourceInstruction(BYTE family, FClipHeight clipHeight,const Resource*resources, count_t numResources)
@@ -1519,6 +1742,82 @@ namespace Grid
 
 							});
 						}
+
+						{
+							const auto*indices = dat.technites.indices.pointer();
+
+							Concurrency::parallel_for(index_t(0), dat.technites.indices.Count(), index_t(3) * HullTestBatch, [this, &lock, &distance, b, d, &rs, &dat, indices, &outNormal](index_t _i)
+								//for (index_t i = 0; i < hullIndices.Count(); i += 3)
+							{
+								float dist = distance;
+								bool any = false;
+								TVec3<> normal;
+								for (index_t i = _i; i < _i + HullTestBatch*3 && i < dat.technites.indices.Count(); i+=3)
+								{
+									if (Vec::dot(dat.technites.vertices[indices[i]].normal.xyz,d) > 0.f)
+										continue;
+									if (Obj::detectOpticalIntersection(
+										dat.technites.vertices[indices[i]].vertex,
+										dat.technites.vertices[indices[i + 1]].vertex,
+										dat.technites.vertices[indices[i + 2]].vertex,
+										b, d, dist))
+									{
+										any = true;
+										normal = float3(dat.technites.vertices[indices[i]].normal.xyz)/127.f;	//correct enough
+									}
+								}
+								if (any)
+								{
+									lock.lock();
+									if (dist < distance)
+									{
+										rs = true;
+										distance = dist;
+										outNormal = normal;	//correct enough
+									}
+									lock.unlock();
+								}
+
+							});
+						}
+
+						{
+							const auto*indices = dat.technites.indices.pointer();
+
+							Concurrency::parallel_for(index_t(0), dat.technites.indices.Count(), index_t(3) * HullTestBatch, [this, &lock, &distance, b, d, &rs, &dat, indices, &outNormal](index_t _i)
+								//for (index_t i = 0; i < hullIndices.Count(); i += 3)
+							{
+								float dist = distance;
+								bool any = false;
+								TVec3<> normal;
+								for (index_t i = _i; i < _i + HullTestBatch*3 && i < dat.technites.indices.Count(); i+=3)
+								{
+									if (Vec::dot(dat.technites.vertices[indices[i]].normal.xyz,d) > 0.f)
+										continue;
+									if (Obj::detectOpticalIntersection(
+										dat.technites.vertices[indices[i]].vertex,
+										dat.technites.vertices[indices[i + 1]].vertex,
+										dat.technites.vertices[indices[i + 2]].vertex,
+										b, d, dist))
+									{
+										any = true;
+										normal = float3(dat.technites.vertices[indices[i]].normal.xyz)/127.f;	//correct enough
+									}
+								}
+								if (any)
+								{
+									lock.lock();
+									if (dist < distance)
+									{
+										rs = true;
+										distance = dist;
+										outNormal = normal;	//correct enough
+									}
+									lock.unlock();
+								}
+
+							});
+						}
 					}
 				}
 				return rs;
@@ -1581,6 +1880,10 @@ namespace Grid
 		#endif
 	};
 
+	template <unsigned Exponent>
+		/*static*/ typename Setup<Exponent>::TVolumeDescriptor::_Operator Setup<Exponent>::TVolumeDescriptor::op;
+
+
 	typedef Setup<5>	LowSetup;
 
 	#ifdef HYBRID_GRID
@@ -1599,6 +1902,15 @@ namespace Grid
 
 	extern HighSetup		high;
 	extern LowSetup			low;
+
+
+
+
+	extern Array<THighToLowCell>	highToLowMap;
+	
+
+
+
 
 	//extern DX11::ObjectBuffer<float4>	terrainColor;
 
@@ -1626,7 +1938,7 @@ namespace Grid
 		/**
 		Computes the coverage for a given location
 		*/
-		static coverage_t		GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max, float scale);
+		static coverage_t		GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max);
 
 		static float			probability[],density[];
 		static coverage_t		maximum[];
@@ -1645,7 +1957,7 @@ namespace Grid
 		//}
 
 		static Buffer0<Resource>all;
-		//static void				Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 cellID));
+		static void				Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 cellID));
 //		static void				Create(const String&name, ConstName cname, const float3&color/*, float p, coverage_t*/);
 		static void				Create(const String&name, ConstName cname, const float3&color, index_t);
 		//static void				Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield);
@@ -1851,6 +2163,7 @@ namespace Grid
 	TVec3<> ToWorld(const HCellIdI&);
 	TVec3<> ToWorld(const LCellIdU&);
 	TVec3<> ToWorld(const LCellIdI&);
+	void	GetWorldDelta(const HCellIdU&a, const HCellIdU&b, TVec3<>&outDelta);
 
 	inline HCellIdI	ToHigh(const LCellIdI&cellID)	{return HCellIdI(low.grid.GetCell(cellID.stackID).higherEquivalent,cellID.height); }
 	inline HCellIdU	ToHigh(const LCellIdU&cellID)	{return HCellIdU(low.grid.GetCell(cellID.stackID).higherEquivalent,cellID.layer); }
@@ -2007,11 +2320,6 @@ namespace Grid
 			resourcesDiscovered.SetSize(Grid::Resource::NumEntries);
 			resourcesDiscovered.Fill(false);
 		}
-		/**
-		Affects the cell and its immediate neighbors only
-		*/
-		void				ChangeSensory(const Grid::HCellIdU&center, float t, short changeBy);
-//		void				ChangeSensory(const Grid::LCellIdI&center, float radius, float t, short changeBy);
 		void				ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy);
 		void				ChangeSensory(const Grid::SkySensorState&state, float t, short changeBy);
 		void				RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);
@@ -2094,9 +2402,8 @@ namespace Grid
 				cellStack[i].ResetStructureCounters();
 			}
 		}
-		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, bool initialization);
+
 		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, bool initialization, bool actualWorld);
-		//void					ApplyFamilyDelta(Array<CellStack>&stacks, BYTE family, const Array<CellStack::TTypeDeltaBlock>&data0, const Array<CellStack::TStructCountDeltaBlock>&data1, bool initialization);
 
 		/**
 			Signals that the fine geometry in and on the edge of the specified cell has changed.

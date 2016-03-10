@@ -4,7 +4,10 @@
 #include <io/file_system.h>
 #include "objects/gridAndChoices.h"
 #include "protocol.h"
-#include "../server/components/journalSaveGame.h"
+
+#ifndef CLIENT
+	#include "../server/components/journalSaveGame.h"
+#endif
 
 
 namespace Technites
@@ -177,7 +180,7 @@ namespace Technites
 
 		foreach (technites,t)
 		{
-			if (t->visionType != Technite::VisionType::Standard)
+			if (t->visionRadius >= 0.f)
 				t->SetStandardFieldOfVision();
 			ProcessLighting(*t);
 			ExecutionLayer::T layer = Technite::layer[(index_t)t->nextInstruction.nextTask];
@@ -837,13 +840,19 @@ namespace Technites
 	void				Technite::SetStandardFieldOfVision()
 	{
 		Grid::high.GenerateStep2Volume(location.GetU(),hFieldOfVision);
+		Grid::low.GenerateStep1MultiVolume(Grid::highToLowMap[location.GetStackID()],location.GetLayer(),lFieldOfVision);
 
-		Grid::low.GenerateStep1MultiVolume(Grid::highToLowMap[location.GetStackID()].lowCells
-
+		visionRadius = -1.f;
 	}
-			Grid::HighSetup::TVolumeDescriptor	hFieldOfVision;
-		Grid::LowSetup::TVolumeDescriptor	lFieldOfVision;
-		float				visionRadius = -1.f;
+
+	void				Technite::SetSphericalFieldOfVision(float radius)
+	{
+		Sphere<> sphere(Grid::ToWorld(location.GetU()),radius);
+		Grid::high.GenerateVolume(sphere,hFieldOfVision);
+		Grid::low.GenerateVolume(sphere,lFieldOfVision);
+
+		visionRadius = radius;
+	}
 
 
 	bool	Technite::DecodeAbsoluteTarget(Grid::HCellIdU & outTarget) const

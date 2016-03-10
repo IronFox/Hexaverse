@@ -6,6 +6,10 @@
 #include <objects/types.h>
 #include "../evolver.h"
 
+#ifdef CLIENT
+	#error should not be here
+#endif
+
 namespace Game
 {
 
