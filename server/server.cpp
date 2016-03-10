@@ -25,6 +25,7 @@
 #include "components/networkChannels.h"
 #include "components/journalSaveGame.h"
 #include "components/reflection.h"
+#include <technite.h>
 
 UINT32 globalVersionOfCurrentFile = 0;	//file version being loaded right now
 
@@ -997,6 +998,7 @@ void TerminateNow(bool isMain)
 
 		Logging::WriteEvent(EventSignificance::Uncommon,"Closing down",nullptr,nullptr);
 		Network::server.Shutdown();
+		Technites::DestroyService();
 
 		if (Game::Config::Nexus::enableAI)
 			AIProcess::End();
@@ -1314,6 +1316,8 @@ int main( int argc, const char* argv[])
 		Objects::Create();
 		Grid::Create1();
 
+		Technites::SetupAndStartService();
+
 
 		Reflection::Create();
 		Reflection::state.PushFocus();
@@ -1321,6 +1325,7 @@ int main( int argc, const char* argv[])
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start();})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return InformationProvider::server.IsOnline();},InformationProvider::Stop,[](){InformationProvider::Start(ParameterConfig::basePort);})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},Network::RestartSession)));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("technites",&Technites::ServiceIsOnline,&Technites::StopService,&Technites::SetupAndStartService)));
 		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
 
 		Reflection::state.PopFocus();
@@ -1639,6 +1644,7 @@ int main( int argc, const char* argv[])
 			if (RuntimeConfig::IsInAnyCommandPhase() || RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
 				Sleep(1);
 			Network::server.Resolve();
+			Technites::Resolve();
 			RemoteControl::Resolve();
 			if (Game::Config::Nexus::enableAI)
 				AIProcess::Check();

@@ -813,13 +813,24 @@ namespace Technites
 
 	void					StopService()
 	{
-		Clear();
 		serviceHost.Shutdown();
 	}
+
+	void					DestroyService()
+	{
+		Clear();
+		StopService();
+	}
+
 
 	void					Resolve()
 	{
 		serviceHost.Resolve();
+	}
+
+	bool					ServiceIsOnline()
+	{
+		return serviceHost.IsOnline();
 	}
 
 

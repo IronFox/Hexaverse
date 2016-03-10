@@ -491,6 +491,8 @@ namespace Technites
 
 	void					SetupAndStartService();
 	void					StopService();
+	bool					ServiceIsOnline();
+	void					DestroyService();
 
 	void					Resolve();
 
