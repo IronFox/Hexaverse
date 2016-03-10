@@ -61,13 +61,13 @@ namespace Technites
 		{
 			None,		//->TaskResult::Success
 			Scan,		//->TaskResult::Success/InsufficientResources
-			Message,	//->TaskResult::Success/TargetOutOfRange
+			Message,	//->TaskResult::Success/TargetOutOfRange/TargetNoTechnite/TargetOffline
 			Move,		//->TaskResult::Success/TargetBlocked/TargetOutOfRange/InsufficientResources/CannotStandHere
-			Transfer,	//->TaskResult::Success/TargetOutOfRange/InsufficientResources
+			Transfer,	//->TaskResult::Success/TargetOutOfRange/TargetNoTechnite/InsufficientResources
 			Replace,	//->TaskResult::Success/TargetBlocked/TargetOutOfRange/InsufficientResources
 			End,		//->TaskResult::Success/InsufficientResources
 			Spawn,		//->TaskResult::Success/TargetBlocked/InsufficientResources
-			Kill,		//->TaskResult::Success
+			Kill,		//->TaskResult::Success/TargetOutOfRange/TargetNoTechnite
 
 			Count
 		};
@@ -185,7 +185,9 @@ namespace Technites
 			BadCommand,
 			CannotStandThere,
 			TargetOutOfRange,
+			TargetNoTechnite,
 			TargetBlocked,
+			TargetOffline,
 			InsufficientResources,
 			NoTechniteAtDestination,
 		};
@@ -258,18 +260,6 @@ namespace Technites
 			}
 		};
 
-		struct TCompactState
-		{
-			TUniqueID			id;			//16 bytes
-			CompressedLocation	location;	//4 bytes
-			Resources		resources;		//2 bytes
-			TaskResult		lastResult;		//1 byte
-			CompressedState	state;			//1 byte
-			/**
-			<= 0 if using normal vision, > 0 if using scan-vision
-			*/
-			float			visionRadius;	//4 bytes
-		};	//28 bytes
 
 
 		struct Instruction
@@ -317,25 +307,6 @@ namespace Technites
 		#endif
 
 		String				GetDockerName() const {return "tech"+id.ToFullString();}
-
-		void				ExportState(TCompactState&outState) const
-		{
-			outState.id = id;
-			outState.location = location;
-			outState.resources = resources;
-			outState.lastResult = taskResult;
-			outState.state = state;
-			outState.visionRadius = visionType == VisionType::Spherical ? visionRadius : -1.f;
-		}
-
-		void				ImportState(const TCompactState&inState)
-		{
-			DBG_ASSERT__(id == inState.id);
-			location = inState.location;
-			resources = inState.resources;
-			taskResult = inState.lastResult;
-			state = inState.state;
-		}
 
 		/**
 		Configures fieldOfVision to default technite vision.
@@ -474,7 +445,15 @@ namespace Technites
 
 	extern Buffer0<PFaction>	allTechniteFactions;
 
-	index_t						Create(const Technite::TCompactState&, const String&repo, const String&initMessage, float t);
+	struct TNewTechnite
+	{
+		TUniqueID				id,parent;
+		Grid::HCellIdU			location;
+		String					repo,
+								initMessage;
+	};
+
+	index_t						Create(const TNewTechnite&, float t);
 
 	bool						ValidTechniteLocation(const Grid::HCellIdU&location);
 
