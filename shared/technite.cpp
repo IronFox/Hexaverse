@@ -67,10 +67,12 @@ namespace Technites
 			OtherTechniteState,	//	s2c : OtherState
 			TerrainState,		//	s2c : NETA<BYTE>
 			Message,			//	s2c : Message
+			IsDead,				//	s2c : <signal>
 		};
 
 
 		TCP::SignalSender<StateUpdateBegin>	stateUpdateBegin;
+		TCP::SignalSender<IsDead>			isDead;
 		TCP::ObjectSender<Protocol::EntityContact,EntityContact>	entityContact;
 		TCP::ObjectSender<Protocol::OwnState,OwnTechniteState>	ownTechniteState;
 		TCP::ObjectSender<Protocol::OtherState,OtherTechniteState>	otherTechniteState;
@@ -380,7 +382,22 @@ namespace Technites
 			{
 				static Buffer<Technite>	survivors;
 				foreach (technites,t)
-					if (!t->isDead)
+					if (t->isDead)
+					{
+						TCP::PPeer peer = t->peer.lock();
+						if (peer)
+						{
+							Channels::isDead.SendTo(peer);
+						}
+						try
+						{
+							if (t->dockerProcessThread.joinable())
+								t->dockerProcessThread.join();
+						}
+						catch (...)
+						{}
+					}
+					else
 						survivors << std::move(*t);
 				technites.swap(survivors);
 				survivors.Clear();
@@ -513,6 +530,9 @@ namespace Technites
 
 	static void TryDocker(const String&cmd)
 	{
+		LogEvent(EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),cmd);
+		return;
+
 		FileSystem::TempFile file;
 		if (!file.Create())
 			throw IO::DriveAccess::FileOpenFault(CLOCATION,"Unable to create temporary file for command output");
@@ -593,6 +613,7 @@ namespace Technites
 		tech.location = location;
 		techniteMap.Set(location, at);
 		tech.isDead = false;
+		tech.startOptions = init;
 		ProcessLighting(tech);
 
 		Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
@@ -611,13 +632,12 @@ namespace Technites
 
 		CryptographicID secret = tech.secret;
 		String dockerName = tech.GetDockerName();
-		TUniqueID id = tech.id;
-		tech.dockerProcessThread.reset(new std::thread([secret,init,dockerName,id]()
+		tech.dockerProcessThread.swap(std::thread([secret,init,dockerName]()
 		{
 			try
 			{
 				TryDocker("pull "+init.repo);
-				TryDocker("run --rm --name "+dockerName+" "+init.repo+" technite --id="+id.ToFullString()+" --url="+serviceURL+":"+String(serviceHost.GetPort())+" --secret="+ secret.ToFullString()+" "+init.initMessage);
+				TryDocker("run --rm --name "+dockerName+" "+init.repo+" technite --id="+init.id.ToFullString()+" --parent="+init.parent.ToFullString()+" --url="+serviceURL+":"+String(serviceHost.GetPort())+" --secret="+ secret.ToFullString()+" "+init.initMessage);
 			}
 			catch (const std::exception&ex)
 			{

@@ -271,13 +271,18 @@ namespace Technites
 			BYTE				taskParameter;	//1 byte
 		};
 
-
+		struct StartOptions
+		{
+			String				repo,
+								initMessage;
+			TUniqueID			parent;
+		};
 
 
 		bool				DecodeAbsoluteTarget(Grid::HCellIdU&target) const;
 		bool				DecodeAbsoluteTarget(Grid::HCellIdU&myLocation, Grid::HCellIdU&target) const;
 
-		std::shared_ptr<std::thread>	dockerProcessThread;
+		std::thread			dockerProcessThread;
 		TCP::WPeer			peer;
 		Instruction			nextInstruction;
 		Grid::HighSetup::TVolumeDescriptor	hFieldOfVision;
@@ -297,7 +302,8 @@ namespace Technites
 		CompressedLocation	location;							// 4
 		CompressedState		state = CompressedState(false,64);	// 1
 		AtomicBool			isDead = false;						// 1
-		TVec3<BYTE>			color = Vector<BYTE>::one;			// 3
+//		TVec3<BYTE>			color = Vector<BYTE>::one;			// 3
+		StartOptions		startOptions;
 
 
 		/**/				Technite() {}
@@ -445,13 +451,10 @@ namespace Technites
 
 	extern Buffer0<PFaction>	allTechniteFactions;
 
-	struct TNewTechnite
+	struct TNewTechnite : public Technite::StartOptions
 	{
-		TUniqueID				id,parent;
+		TUniqueID				id;
 		Grid::HCellIdU			location;
-		String					repo,
-								initMessage;
-
 
 		bool					operator<(const TNewTechnite&other)	const
 		{
