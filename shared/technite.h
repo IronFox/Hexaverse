@@ -265,7 +265,11 @@ namespace Technites
 			Resources		resources;		//2 bytes
 			TaskResult		lastResult;		//1 byte
 			CompressedState	state;			//1 byte
-		};	//8 bytes
+			/**
+			<= 0 if using normal vision, > 0 if using scan-vision
+			*/
+			float			visionRadius;	//4 bytes
+		};	//28 bytes
 
 
 		struct Instruction
@@ -286,6 +290,16 @@ namespace Technites
 		std::shared_ptr<std::thread>	dockerProcessThread;
 		TCP::WPeer			peer;
 		Instruction			nextInstruction;
+		Grid::HighSetup::TVolumeDescriptor	hFieldOfVision;
+		Grid::LowSetup::TVolumeDescriptor	lFieldOfVision;
+		enum class VisionType
+		{
+			None,
+			Standard,
+			Spherical
+		}					visionType;
+		float				visionRadius;
+
 		TUniqueID			id;									// 16
 		CryptographicID		secret;								// 32
 		Resources			resources;							// 2
@@ -311,6 +325,7 @@ namespace Technites
 			outState.resources = resources;
 			outState.lastResult = taskResult;
 			outState.state = state;
+			outState.visionRadius = visionType == VisionType::Spherical ? visionRadius : -1.f;
 		}
 
 		void				ImportState(const TCompactState&inState)
@@ -321,6 +336,18 @@ namespace Technites
 			taskResult = inState.lastResult;
 			state = inState.state;
 		}
+
+		/**
+		Configures fieldOfVision to default technite vision.
+		Update does NOT try and check whether the current field of vision already matches
+		*/
+		void				SetStandardFieldOfVision();
+		/**
+		Configures fieldOfVision to map a spherical area around the local technite.
+		Update does NOT try and check whether the current field of vision already matches
+		*/
+		void				SetSphericalFieldOfVision(float radius);
+
 
 		BYTE				GetInitialTTL() const
 		{

@@ -2,10 +2,57 @@
 #include "technite.h"
 #include <ppl.h>
 #include <io/file_system.h>
+#include "objects/gridAndChoices.h"
+#include "protocol.h"
 
 
 namespace Technites
 {
+	namespace Protocol
+	{
+		NETSTRUCT6(EntityContact
+			, NET(TUniqueID), id
+			, Package::NetString<256>, type
+			, NET(BYTE), height
+			, ::Protocol::LCellIdI, location
+			, NET(UINT16), currentHealth
+			, NET(UINT16), maxHealth
+		);
+
+	}
+
+
+
+	namespace UserLevel
+	{
+		enum t
+		{
+			None,
+			Authenticated
+
+
+		};
+
+	}
+
+	namespace Channels
+	{
+		enum channel_t
+		{
+			StateUpdateBegin,	//	s2c : <signal>
+			EntityContact,		//	s2c : EntityContact
+			TechniteState,		//	s2c : Technite::TCompactState
+			TerrainState,		//	s2c : NETA<BYTE>
+		};
+
+
+		TCP::SignalSender<StateUpdateBegin>	stateUpdateBegin;
+		TCP::ObjectSender<Protocol::EntityContact,EntityContact>	entityContact;
+		TCP::ObjectSender<NET(Technite::TCompactState),TechniteState>	techniteState;
+		TCP::ObjectSender<NETA(BYTE),TerrainState>	terrainState;
+	}
+
+
 	AtomicGrid					atomicGrid;
 	Buffer<Technite>			technites;
 	Buffer0<TSensor>			sensors;
@@ -34,6 +81,8 @@ namespace Technites
 
 		foreach (technites,t)
 		{
+			if (t->visionType != Technite::VisionType::Standard)
+				t->SetStandardFieldOfVision();
 			ExecutionLayer::T layer = Technite::layer[(index_t)t->nextInstruction.nextTask];
 			if (layer == ExecutionLayer::Count)
 			{
@@ -63,9 +112,7 @@ namespace Technites
 						continue;
 					}
 					float radius = sqrt(float(cost.energy));
-					TSensor	sensor(Grid::ToWorld(t->location.GetU()),radius);
-					sensors.Append(sensor);
-					RegisterSensorCreation(sensor,false,t,false);
+					t->SetSphericalFieldOfVision(radius);
 				}
 			break;
 			case ExecutionLayer::End:
@@ -176,6 +223,7 @@ namespace Technites
 							swp(Grid::actualWorld.cellStack[t->location.GetStackID()]	.volumeCell[t->location.GetLayer()].content, 
 								Grid::actualWorld.cellStack[target.stackID]				.volumeCell[target.layer].content);
 							t->location = target;
+							t->SetStandardFieldOfVision();
 							foundationChanged = true;
 						}
 						break;
@@ -226,6 +274,76 @@ namespace Technites
 			}
 
 			CheckTechniteFoundations();
+
+
+			Channels::stateUpdateBegin.SendTo(serviceHost,UserLevel::Authenticated);
+
+			Concurrency::parallel_for_each(technites.begin(),technites.end(),[](Technite&t)
+			{
+				TCP::PPeer peer = t.peer.lock();
+				if (!peer)
+					return;
+				Technite::TCompactState state;
+				t.ExportState(state);
+				Channels::techniteState.SendTo(peer,state);
+
+				count_t volume = t.hFieldOfVision.GetVolume();
+				if (volume < 32768)
+				{
+					NETA(BYTE) cellContent;
+					cellContent.SetSize(volume);
+					BYTE*at = cellContent.pointer();
+					index_t techniteAt;
+
+					foreach (t.hFieldOfVision.coverage,c)
+					{
+						const Grid::CellStack&stack = Grid::actualWorld.cellStack[c->stackID];
+						for (UINT l = c->layerBegin; l < c->layerEnd; l++)
+						{
+							*at = stack.volumeCell[l].content;
+
+							if (*at == Grid::Content::Technite)
+							{
+								if (techniteMap.Query(Grid::HCellIdU(c->stackID,l),techniteAt))
+								{
+									technites[techniteAt].ExportState(state);
+									Channels::techniteState.SendTo(peer,state);
+								}
+								else
+								{
+									bool brk = true;
+								}
+							}
+							at++;
+						}
+					}
+					ASSERT_CONCLUSION(cellContent,at);
+					Channels::terrainState.SendTo(peer,cellContent);
+				}
+				foreach (t.lFieldOfVision.coverage,c)
+				{
+					for (UINT l = c->layerBegin; l < c->layerEnd; l++)
+					{
+						Objects::PWorldEntity e = Objects::GetEntity(Grid::LCellIdI(c->stackID,Grid::CellStack::ToHeight(l)));
+
+						if (e)
+						{
+							Protocol::EntityContact contact;
+							contact.currentHealth = e->health;
+							contact.maxHealth = e->GetMaxHealth();
+							contact.id = e->id;
+							contact.location = e->location;
+							contact.type = e->GetTypeName();
+							contact.height = e->GetHeight();
+
+
+							Channels::entityContact.SendTo(peer,contact);
+						}
+					}
+				}
+
+			});
+
 		}
 
 		return currentLayer < ExecutionLayer::Count;
@@ -328,12 +446,13 @@ namespace Technites
 
 		CryptographicID secret = tech.secret;
 		String dockerName = tech.GetDockerName();
-		tech.dockerProcessThread.reset(new std::thread([secret,repo,initMessage,dockerName]()
+		TUniqueID id = tech.id;
+		tech.dockerProcessThread.reset(new std::thread([secret,repo,initMessage,dockerName,id]()
 		{
 			try
 			{
 				TryDocker("pull "+repo);
-				TryDocker("run --rm --name "+dockerName+" "+repo+" technite --url="+serviceURL+":"+String(serviceHost.GetPort())+" --secret="+ secret.ToFullString()+" "+initMessage);
+				TryDocker("run --rm --name "+dockerName+" "+repo+" technite --id="+id.ToFullString()+" --url="+serviceURL+":"+String(serviceHost.GetPort())+" --secret="+ secret.ToFullString()+" "+initMessage);
 			}
 			catch (const std::exception&ex)
 			{
