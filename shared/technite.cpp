@@ -545,6 +545,8 @@ namespace Technites
 //		Grid::Content local = GetContent(location);
 		//if (local != Grid::Content::Clear && local != Grid::Content::Water)
 		//	return false;
+		if (location.layer >= Grid::CellStack::Range)
+			return false;
 		if (location.layer == 0)
 		{
 			return Technite::SupportedBy(Grid::Content::Reinterpret(Grid::CellStack::bottom.content));
