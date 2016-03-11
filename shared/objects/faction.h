@@ -186,7 +186,9 @@ namespace Objects
 
 		static GlobalState		globalState;
 
-
+		#ifndef CLIENT
+			UINT32				contribution=0;
+		#endif
 
 		ConstName				currentResearch = ConstName::Empty;
 		Component::Attribute	currentResearchAttribute;	//ignored if targeted research is not unlocked
@@ -223,11 +225,15 @@ namespace Objects
 		void			GetResearchOf(ConstName, UINT32&current, UINT32&max)	const;
 
 		static void		StaticCreate();
-		static bool		IsResearchable(ConstName);
-		static bool		IsResearchable(ConstName, Component::Attribute);
+		static bool		IsGenerallyResearchable(ConstName);
+		static bool		IsGenerallyResearchable(ConstName, Component::Attribute);
+		bool			IsCurrentlyResearchable(ConstName name, Component::Attribute attrib) const;
+		bool			IsCurrentlyResearchable(ConstName name) const;
 
-		void			Contribute();
-
+		#ifndef CIENT
+			void		Contribute();
+			void		FinalizeRound(const PFaction&parent);
+		#endif
 
 		typedef ResearchSateModulation ModulationType;
 

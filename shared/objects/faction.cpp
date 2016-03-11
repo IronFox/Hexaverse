@@ -1953,7 +1953,7 @@ namespace Objects
 		return GetFactor(level);
 	}
 
-	/*static*/ bool		ResearchState::IsResearchable(ConstName name)
+	/*static*/ bool		ResearchState::IsGenerallyResearchable(ConstName name)
 	{
 		if (globalState.typeMap[(index_t)name] == InvalidIndex)
 			return false;
@@ -1961,7 +1961,7 @@ namespace Objects
 		return t.researchCost > 0;
 	}
 
-	/*static*/ bool		ResearchState::IsResearchable(ConstName name, Component::Attribute attrib)
+	/*static*/ bool		ResearchState::IsGenerallyResearchable(ConstName name, Component::Attribute attrib)
 	{
 		if (globalState.typeMap[(index_t)name] == InvalidIndex)
 			return false;
@@ -1969,33 +1969,84 @@ namespace Objects
 		return t.attributeAt[attrib] != InvalidIndex;
 	}
 
-	void			ResearchState::Contribute()
+	bool		ResearchState::IsCurrentlyResearchable(ConstName name) const
 	{
-		if (currentResearch == ConstName::Empty)
-			return;
-		index_t tAt = globalState.typeMap[(index_t)currentResearch];
-		if (tAt == InvalidIndex)
-			return;
-		const auto&t = globalState.types[tAt];
-		if (t.unlockableAt != InvalidIndex)
+		if (!IsGenerallyResearchable(name))
+			return false;
+
+		const auto&t = globalState.types[globalState.typeMap[(index_t)name]];
+		if (t.dependentOn != ConstName::Empty)
 		{
-			if (unlockProgress[t.unlockableAt] < t.researchCost)
-			{
-				if (t.dependentOn != ConstName::Empty)
-					if (!IsUnlocked(t.dependentOn))
-						return;
-				unlockProgress[t.unlockableAt] ++;
-				changed = true;
-				return;
-			}
+			if (!IsUnlocked(t.dependentOn))
+				return false;
 		}
-		index_t aAt = t.attributeAt[currentResearchAttribute];
-		if (aAt == InvalidIndex)
-			return;
-		improveProgress[aAt] ++;
-		changed = true;
+		index_t at = t.unlockableAt;
+		if (at == InvalidIndex
+			&& unlockProgress[at] >= t.researchCost)
+			return false;
+		return true;
 	}
 
+	bool		ResearchState::IsCurrentlyResearchable(ConstName name, Component::Attribute attrib) const
+	{
+		if (!IsUnlocked(name))
+			return false;
+		return IsGenerallyResearchable(name,attrib);
+	}
+
+	#ifndef CLIENT
+		void			ResearchState::Contribute()
+		{
+			contribution++;
+		}
+
+		void			ResearchState::FinalizeRound(const PFaction&parent)
+		{
+			if (!contribution)
+				return;
+			if (currentResearch == ConstName::Empty)
+			{
+				LogEvent(EventClass::Preset::error,parent,"No research goal configured. "+String(contribution)+" research point(s) lost");
+				contribution = 0;
+				return;
+			}
+			index_t tAt = globalState.typeMap[(index_t)currentResearch];
+			if (tAt == InvalidIndex)
+			{
+				LogEvent(EventClass::Preset::error,parent,"Invalid research goal configured. "+String(contribution)+" research point(s) lost");
+				contribution = 0;
+				return;
+			}
+			const auto&t = globalState.types[tAt];
+			if (t.unlockableAt != InvalidIndex)
+			{
+				if (unlockProgress[t.unlockableAt] < t.researchCost)
+				{
+					if (t.dependentOn != ConstName::Empty)
+						if (!IsUnlocked(t.dependentOn))
+						{
+							LogEvent(EventClass::Preset::error,parent,"Research requirements not met. "+String(contribution)+" research point(s) lost");
+							contribution = 0;
+							return;
+						}
+					unlockProgress[t.unlockableAt] += contribution;
+					changed = true;
+					contribution = 0;
+					return;
+				}
+			}
+			index_t aAt = t.attributeAt[currentResearchAttribute];
+			if (aAt == InvalidIndex)
+			{
+				LogEvent(EventClass::Preset::error,parent,"Invalid improvement goal configured. "+String(contribution)+" research point(s) lost");
+				contribution = 0;
+				return;
+			}
+			improveProgress[aAt] +=contribution;
+			changed = true;
+			contribution = 0;
+		}
+	#endif
 
 
 	/*virtual override*/	serial_size_t	ResearchState::GetSerialSize(bool export_size) const

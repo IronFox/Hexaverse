@@ -219,7 +219,7 @@ namespace Objects
 		//if (ref || (base && turret))
 		{
 			outResult << "Unlock "+name;
-			if (current)
+			if (max)
 			{
 				outResult.lines.last() += "  "+/*String(TimeResourceTag()) + */String(current);
 				if (current != max)

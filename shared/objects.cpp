@@ -218,9 +218,9 @@ namespace Objects
 		foreach(structurePrototypes, p)
 			(*p)->PrototypeSetup();
 
-		
 
 		#ifdef HAS_WINDOW
+			Laboratory::ConfigureResearchButtons();
 			foreach (Component::vehicleTurretComponents,tc)
 				(*tc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();},true);
 			foreach (Component::baseComponents,bc)

@@ -2063,9 +2063,10 @@ namespace Objects
 			BaseCommand::Flags rs = BaseCommand::Flags::None;
 			if (selectedEntity && selectedEntity->owner->researchState.currentResearch == target && !selectedEntity->owner->researchState.IsUnlocked(target))
 				rs |= BaseCommand::Flags::IsPermaActive;
-			if (!controlEnabled || !selectedEntity || !selectedEntity->owner->researchState.IsResearchable(target))
+			if (!controlEnabled || !selectedEntity || !selectedEntity->owner->researchState.IsCurrentlyResearchable(target))
 				return rs;
-			return BaseCommand::Flags::IsEnabled;
+			rs |= BaseCommand::Flags::IsEnabled;
+			return rs;
 		}
 
 		static BaseCommand::Flags GetResearchButtonCheckFlags(ConstName target, Component::Attribute attrib, bool controlEnabled)
@@ -2073,9 +2074,10 @@ namespace Objects
 			BaseCommand::Flags rs = BaseCommand::Flags::None;
 			if (selectedEntity && selectedEntity->owner->researchState.currentResearch == target && selectedEntity->owner->researchState.IsUnlocked(target) && selectedEntity->owner->researchState.currentResearchAttribute == attrib)
 				rs |= BaseCommand::Flags::IsPermaActive;
-			if (!controlEnabled || !selectedEntity || !selectedEntity->owner->researchState.IsResearchable(target,attrib))
+			if (!controlEnabled || !selectedEntity || !selectedEntity->owner->researchState.IsCurrentlyResearchable(target,attrib))
 				return rs;
-			return BaseCommand::Flags::IsEnabled;
+			rs |= BaseCommand::Flags::IsEnabled;
+			return rs;
 		}
 
 	#endif
@@ -2084,8 +2086,11 @@ namespace Objects
 	{
 		Super::PrototypeSetup();
 
+	}
 
-		#ifdef HAS_WINDOW
+	#ifdef HAS_WINDOW
+		/*static*/	void Laboratory::ConfigureResearchButtons()
+		{
 			
 			PCommandGroup unlockGroup = commands.AddChild("Unlock");
 			PCommandGroup improveGroup = commands.AddChild("Improve");
@@ -2160,9 +2165,9 @@ namespace Objects
 
 
 
-		#endif
 
-	}
+		}
+	#endif
 
 
 

@@ -1208,7 +1208,9 @@ namespace Objects
 		static const int			EnergyConsumption = 10;
 
 
+
 		#ifdef HAS_WINDOW
+			static void				ConfigureResearchButtons();
 			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
 		#endif
 

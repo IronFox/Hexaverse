@@ -891,6 +891,8 @@ namespace Network
 			{
 				Objects::Faction::mine->researchState.currentResearch = research.target;
 				Objects::Faction::mine->researchState.currentResearchAttribute.Load(research.attribute);
+				//Dialog::SignalSituationChange();
+				UI::RefreshButtonState();
 			}
 
 		}

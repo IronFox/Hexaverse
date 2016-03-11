@@ -199,6 +199,10 @@ namespace Evolver
 				c.TickBegin();
 				c.RefreshState(0);
 			});
+			Objects::ForeachFaction([](const Objects::PFaction&f)
+			{
+				f->researchState.FinalizeRound(f);
+			});
 
 
 			Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
