@@ -304,10 +304,6 @@ namespace Technites
 		/**/				Technite(Technite&&) = default;
 		Technite&			operator=(const Technite&) = delete;
 
-		#ifdef CLIENT
-			void			CompileTendency(TVec3<>&outDirection, float&outMagnitude, TVec3<>&inOutColor) const;
-		#endif
-
 		String				GetDockerName() const {return "tech"+id.ToFullString();}
 
 		/**

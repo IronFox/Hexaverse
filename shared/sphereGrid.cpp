@@ -3176,8 +3176,8 @@ namespace Grid
 
 		TechInfo::TechInfo(const Technites::Faction*f, const Technites::Technite*t, bool isSet, bool isVisible) : color(0.5f,1,1) , empty(!isSet)
 		{
-			if (t)
-				t->CompileTendency(direction,activity,color);
+			//if (t)
+			//	t->CompileTendency(direction,activity,color);
 			if (isSet && !isVisible)
 				CellStack::Cell::ToneInvisibleCellColor(color);
 
