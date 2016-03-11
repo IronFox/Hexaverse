@@ -219,13 +219,18 @@ namespace Objects
 		//if (ref || (base && turret))
 		{
 			outResult << "Unlock "+name;
-			if (max)
+			String dependentOn;
+			//else
 			{
-				outResult.lines.last() += "  "+/*String(TimeResourceTag()) + */String(current);
 				if (current != max)
-					outResult.lines.last() += "/"+String(max);
+				{
+					outResult << "Research progress "+String(current) + "/"+String(max);
+				}
+				else
+					outResult << "Research completed";
 			}
-
+			if (!selectedEntity->owner->researchState.IsCurrentlyResearchable(target,&dependentOn) && dependentOn.IsNotEmpty())
+				outResult << "Depends on "+dependentOn;
 			outResult.MarkBriefEnd();
 			outResult << "";
 		}
@@ -270,11 +275,14 @@ namespace Objects
 
 		//if (ref || (base && turret))
 		{
-			outResult << "Improve "+String(attrib.ToString())+" of " +name;
-			if (current)
-			{
-				outResult.lines.last() += ", research level "+/*String(TimeResourceTag()) + */String(current);
-			}
+			outResult << "Improve "+name;
+			if (!selectedEntity->owner->researchState.IsCurrentlyResearchable(target,attrib))
+				outResult << "LOCKED" ;
+			else
+				if (current)
+				{
+					outResult << "Research level "+/*String(TimeResourceTag()) + */String(current) +" (x"+String(0.01f * round(selectedEntity->owner->researchState.GetFactorFor(target,attrib)*100.f))+")";
+				}
 
 			outResult.MarkBriefEnd();
 			outResult << "";

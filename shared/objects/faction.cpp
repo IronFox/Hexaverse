@@ -1969,7 +1969,7 @@ namespace Objects
 		return t.attributeAt[attrib] != InvalidIndex;
 	}
 
-	bool		ResearchState::IsCurrentlyResearchable(ConstName name) const
+	bool		ResearchState::IsCurrentlyResearchable(ConstName name, String*dependentOnOut/*=nullptr*/) const
 	{
 		if (!IsGenerallyResearchable(name))
 			return false;
@@ -1978,10 +1978,18 @@ namespace Objects
 		if (t.dependentOn != ConstName::Empty)
 		{
 			if (!IsUnlocked(t.dependentOn))
+			{
+				if (dependentOnOut)
+				{
+					index_t depAt = globalState.typeMap[(index_t)t.dependentOn];
+					if (depAt != InvalidIndex)
+						*dependentOnOut = globalState.types[depAt].name;
+				}
 				return false;
+			}
 		}
 		index_t at = t.unlockableAt;
-		if (at == InvalidIndex
+		if (at != InvalidIndex
 			&& unlockProgress[at] >= t.researchCost)
 			return false;
 		return true;

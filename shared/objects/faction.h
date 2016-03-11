@@ -228,7 +228,7 @@ namespace Objects
 		static bool		IsGenerallyResearchable(ConstName);
 		static bool		IsGenerallyResearchable(ConstName, Component::Attribute);
 		bool			IsCurrentlyResearchable(ConstName name, Component::Attribute attrib) const;
-		bool			IsCurrentlyResearchable(ConstName name) const;
+		bool			IsCurrentlyResearchable(ConstName name, String*dependentOnOut=nullptr) const;
 
 		#ifndef CIENT
 			void		Contribute();
