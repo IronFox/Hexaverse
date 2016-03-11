@@ -1830,6 +1830,44 @@ namespace Objects
 		return false;
 	}
 
+	void			ResearchState::GetResearchOf(ConstName name, Component::Attribute attrib, UINT32&current)	const
+	{
+		if (globalState.typeMap[(index_t)name] == InvalidIndex)
+		{
+			current = 0;
+			return;
+		}
+		const auto&t = globalState.types[globalState.typeMap[(index_t)name]];
+		index_t at = t.attributeAt[attrib];
+		if (at == InvalidIndex)
+		{
+			current = 0;
+			return;
+		}
+		current = improveProgress[at];
+	}
+
+	void			ResearchState::GetResearchOf(ConstName name, UINT32&current, UINT32&max)	const
+	{
+		if (globalState.typeMap[(index_t)name] == InvalidIndex)
+		{
+			current = 0;
+			max = 0;
+			return;
+		}
+		const auto&t = globalState.types[globalState.typeMap[(index_t)name]];
+		index_t at = t.unlockableAt;
+		if (at == InvalidIndex)
+		{
+			current = 0;
+			max = 0;
+			return;
+		}
+		current = unlockProgress[at];
+		max = t.researchCost;
+	}
+
+
 	bool			ResearchState::IsUnlocked(ConstName name) const
 	{
 		if (globalState.typeMap[(index_t)name] == InvalidIndex)

@@ -11,6 +11,7 @@
 #include "visualChoices.h"
 #include "satellite.h"
 #include "faction.h"
+#include "components.h"
 #include <image/converter/magic.h>
 
 extern Engine::Display<Engine::DirectX11>	display;
@@ -154,7 +155,7 @@ namespace Objects
 		int rawPrice = ref ? ref->GetConstructionCost() : Vehicle::GetPrice(base,turret);
 		int price = (int)std::min(mineralsLeft, (unsigned)rawPrice);
 
-		if (ref || (base && turret))
+		//if (ref || (base && turret))
 		{
 			UINT32 rounds = 0,rawRounds = 0;
 
@@ -206,6 +207,104 @@ namespace Objects
 
 		}
 	}
+
+
+	/*virtual override*/ void		UnlockResearchCommand::CompileLabel(Label&outResult)
+	{
+		const MobileEntityProducer*p = selectedEntity ? selectedEntity->CastToProducer() : nullptr;
+		PWorldEntity ref = reference.lock();
+		UINT32 current,max;
+		selectedEntity->owner->researchState.GetResearchOf(target,current,max);
+
+		//if (ref || (base && turret))
+		{
+			outResult << "Unlock "+name;
+			if (current)
+			{
+				outResult.lines.last() += "  "+/*String(TimeResourceTag()) + */String(current);
+				if (current != max)
+					outResult.lines.last() += "/"+String(max);
+			}
+
+			outResult.MarkBriefEnd();
+			outResult << "";
+		}
+
+		if (ref)
+		{
+			ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
+			return;
+		}
+
+		if (base && turret)
+		{
+
+			PVehicle v(new Vehicle(selectedEntity->owner, selectedEntity->location, base,turret));
+			v->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
+		}
+		else
+		{
+			if (base)
+			{
+				//PVehicle v(new Vehicle(p->owner, p->location, base,turret));
+				base->DescribeType(outResult,false,OwnerParameter());
+			}			
+			if (turret)
+				turret->DescribeType(outResult,false, "Vehicle",selectedEntity->owner);
+
+		}
+	}
+
+	ImproveResearchCommand::ImproveResearchCommand(const String&name,ConstName target,Component::Attribute attrib):Super(name,target),attrib(attrib)	{}
+	ImproveResearchCommand::ImproveResearchCommand(ConstName target,Component::Attribute attrib):Super(target),attrib(attrib)	{}
+	ImproveResearchCommand::ImproveResearchCommand(const String&name,ConstName target, Component::Attribute attrib, Component::VehicleBase*base, Component::Turret*turret, const PWorldEntity&e,   FOnExecute f, FCheck c)
+						: Super(name,target,base,turret, e,f,c),attrib(attrib) {}
+
+
+	/*virtual override*/ void		ImproveResearchCommand::CompileLabel(Label&outResult)
+	{
+		const MobileEntityProducer*p = selectedEntity ? selectedEntity->CastToProducer() : nullptr;
+		PWorldEntity ref = reference.lock();
+		UINT32 current;
+		selectedEntity->owner->researchState.GetResearchOf(target,attrib, current);
+
+		//if (ref || (base && turret))
+		{
+			outResult << "Improve "+String(attrib.ToString())+" of " +name;
+			if (current)
+			{
+				outResult.lines.last() += ", research level "+/*String(TimeResourceTag()) + */String(current);
+			}
+
+			outResult.MarkBriefEnd();
+			outResult << "";
+		}
+
+		if (ref)
+		{
+			ref->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
+			return;
+		}
+
+		if (base && turret)
+		{
+
+			PVehicle v(new Vehicle(selectedEntity->owner, selectedEntity->location, base,turret));
+			v->DescribeType(outResult,WorldEntity::DescIncludeMaxHealth);
+		}
+		else
+		{
+			if (base)
+			{
+				//PVehicle v(new Vehicle(p->owner, p->location, base,turret));
+				base->DescribeType(outResult,false,OwnerParameter());
+			}			
+			if (turret)
+				turret->DescribeType(outResult,false, "Vehicle",selectedEntity->owner);
+
+		}
+	}
+
 
 
 	/**/				DeployMobileCommand::DeployMobileCommand(const PMobileEntity&v,   FOnExecute f, FCheck c) : Super(v->GetNiceName(),v,f,c)	{}

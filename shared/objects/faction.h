@@ -219,6 +219,9 @@ namespace Objects
 		float			GetFactorFor(ConstName, Component::Attribute)	const;
 		float			GetFactorFor(const Component::Base&, Component::Attribute)	const;
 
+		void			GetResearchOf(ConstName, Component::Attribute, UINT32&current)	const;
+		void			GetResearchOf(ConstName, UINT32&current, UINT32&max)	const;
+
 		static void		StaticCreate();
 		static bool		IsResearchable(ConstName);
 		static bool		IsResearchable(ConstName, Component::Attribute);

@@ -2057,6 +2057,29 @@ namespace Objects
 		////WorldEntity overrides:
 		//virtual void				PrototypeSetup()	override;
 
+	#ifdef HAS_WINDOW
+		static BaseCommand::Flags GetResearchButtonCheckFlags(ConstName target, bool controlEnabled)
+		{
+			BaseCommand::Flags rs = BaseCommand::Flags::None;
+			if (selectedEntity && selectedEntity->owner->researchState.currentResearch == target && !selectedEntity->owner->researchState.IsUnlocked(target))
+				rs |= BaseCommand::Flags::IsPermaActive;
+			if (!controlEnabled || !selectedEntity || !selectedEntity->owner->researchState.IsResearchable(target))
+				return rs;
+			return BaseCommand::Flags::IsEnabled;
+		}
+
+		static BaseCommand::Flags GetResearchButtonCheckFlags(ConstName target, Component::Attribute attrib, bool controlEnabled)
+		{
+			BaseCommand::Flags rs = BaseCommand::Flags::None;
+			if (selectedEntity && selectedEntity->owner->researchState.currentResearch == target && selectedEntity->owner->researchState.IsUnlocked(target) && selectedEntity->owner->researchState.currentResearchAttribute == attrib)
+				rs |= BaseCommand::Flags::IsPermaActive;
+			if (!controlEnabled || !selectedEntity || !selectedEntity->owner->researchState.IsResearchable(target,attrib))
+				return rs;
+			return BaseCommand::Flags::IsEnabled;
+		}
+
+	#endif
+
 	/*virtual override*/ void			Laboratory::PrototypeSetup()
 	{
 		Super::PrototypeSetup();
@@ -2078,10 +2101,10 @@ namespace Objects
 
 
 					if (t->prototypeReference)
-						unlockGroup->Add(new EntityCommand(t->name,t->prototypeReference->shared_from_this(),[target](){SignalResearch(target,0); },
-							[](bool)->BaseCommand::Flags
+						unlockGroup->Add(new UnlockResearchCommand(t->name,target,nullptr, nullptr,t->prototypeReference->shared_from_this(),[target](){SignalResearch(target,0); },
+							[target](bool controlEnabled)->BaseCommand::Flags
 							{
-								return BaseCommand::Flags::IsEnabled;
+								return GetResearchButtonCheckFlags(target,controlEnabled);
 							}))->RasterizeImage();
 					elif (t->componentReference)
 					{
@@ -2091,12 +2114,10 @@ namespace Objects
 							turret = (Component::Turret*)t->componentReference;
 						elif (t->componentReference->IsBase())
 							base = (Component::VehicleBase*)t->componentReference;
-						unlockGroup->Add(new EntityConstructionCommand(t->name,base,turret,PWorldEntity(),[target](){SignalResearch(target,0);},
-							[](bool)->BaseCommand::Flags
+						unlockGroup->Add(new UnlockResearchCommand(t->name,target,base,turret,PWorldEntity(),[target](){SignalResearch(target,0);},
+							[target](bool controlEnabled)->BaseCommand::Flags
 							{
-								return BaseCommand::Flags::IsEnabled;
-
-
+								return GetResearchButtonCheckFlags(target,controlEnabled);
 							}))->RasterizeImage();
 					}
 					else
@@ -2108,13 +2129,12 @@ namespace Objects
 				for (index_t i = 0; i < Component::Attribute::N; i++)
 					if (t->attributeAt[i] != InvalidIndex)
 					{
+						Component::Attribute attrib = Component::Attribute::Reinterpret(i);
 						if (t->prototypeReference)
-							improveSubGroups[i]->Add(new EntityCommand(t->name,t->prototypeReference->shared_from_this(),[target,i](){SignalResearch(target,i);},
-								[](bool)->BaseCommand::Flags
+							improveSubGroups[i]->Add(new ImproveResearchCommand(t->name,target,attrib,nullptr,nullptr,t->prototypeReference->shared_from_this(),[target,i](){SignalResearch(target,(BYTE)i);},
+								[target,attrib](bool controlEnabled)->BaseCommand::Flags
 								{
-									return BaseCommand::Flags::IsEnabled;
-
-
+									return GetResearchButtonCheckFlags(target,attrib,controlEnabled);
 								}))->RasterizeImage();
 						elif (t->componentReference)
 						{
@@ -2124,11 +2144,10 @@ namespace Objects
 								turret = (Component::Turret*)t->componentReference;
 							elif (t->componentReference->IsBase())
 								base = (Component::VehicleBase*)t->componentReference;
-							improveSubGroups[i]->Add(new EntityConstructionCommand(t->name,base,turret,PWorldEntity(),[target,i](){SignalResearch(target,i);},
-								[](bool)->BaseCommand::Flags
+							improveSubGroups[i]->Add(new ImproveResearchCommand(t->name,target,attrib,base,turret,PWorldEntity(),[target,i](){SignalResearch(target,(BYTE)i);},
+								[target,attrib](bool controlEnabled)->BaseCommand::Flags
 								{
-									return BaseCommand::Flags::IsEnabled;
-
+									return GetResearchButtonCheckFlags(target,attrib,controlEnabled);
 								}))->RasterizeImage();
 						}
 						else
