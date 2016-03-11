@@ -9,9 +9,13 @@
 	#include "../server/components/journalSaveGame.h"
 #endif
 
+void CheckSendTerrain();
 
 namespace Technites
 {
+
+	const EventClass techniteError = EventClass(EventSignificance::NonFatalError, EventFlavor::SystemError);
+
 	namespace Protocol
 	{
 		NETSTRUCT2(CommonTechniteState
@@ -1099,7 +1103,155 @@ namespace Technites
 			rs += cluster[i].numEntries;
 		ASSERT_EQUAL__(rs,totalEntries);
 		return rs;
-	}	
+	}
+
+
+
+	void			VerifyGrid()
+	{
+		std::atomic<count_t>	abandonedCounter = 0,
+								totalCounter = 0;
+
+		//bool familyChanged[BaseGrid::NumFamilies] = {false};
+
+		Concurrency::parallel_for(index_t(0),Grid::HighSetup::GridType::CellCount,[&abandonedCounter,&totalCounter](index_t stackIndex)
+		{
+			Grid::CellStack&stack = Grid::actualWorld.cellStack[stackIndex];
+
+			bool anyChanged = false;
+			for (UINT32 layer = 0; layer < Grid::CellStack::Range; layer++)
+			{
+				if (stack.volumeCell[layer].content == Grid::Content::Technite)
+				{
+					totalCounter++;
+					index_t techniteIndex;
+					
+					
+					const Grid::HCellIdU loc(stackIndex,layer);
+					if (!techniteMap.Query(loc,techniteIndex))
+					{
+						//LogEvent(EventType::TechniteLogic,nullptr,"Found homeless technite in "+loc.ToString()+", clearing cell");
+
+						stack.MakeLocalHole(Grid::CellStack::ToHeight(layer));
+						abandonedCounter++;
+						anyChanged = true;
+						continue;
+					}
+					const Technite&t = technites[techniteIndex];
+					if (t.isDead)
+					{
+						foreach (technites,t2)
+							if (t2->location.GetU() == loc)
+							{
+								FATAL__("Map inconsistency found with technite at location "+loc.ToString());
+							}
+
+						//LogEvent(EventType::TechniteLogic,nullptr,"Found abandoned technite of faction "+f->GetLogName()+" in "+loc.ToString()+", clearing cell");
+						stack.MakeLocalHole(Grid::CellStack::ToHeight(layer));
+						abandonedCounter++;
+						anyChanged = true;
+						continue;
+					}
+
+				}
+			}
+			if (anyChanged)
+				familyChanged[Grid::high.grid.GetCell(stackIndex).family] = true;
+		});
+		ApplyFamilyChange(0.f);
+
+
+		const count_t shouldBeTechniteCount = technites.Count();
+
+		count_t gridTechniteCount = totalCounter - abandonedCounter;
+		if (gridTechniteCount < shouldBeTechniteCount)
+		{
+			LogEvent(techniteError,"Encountered "+String(shouldBeTechniteCount-gridTechniteCount)+" technite ghost(s). Ignoring");
+			//ignore this case, won't last long anyways
+		}
+		else
+			ASSERT_EQUAL__(gridTechniteCount,shouldBeTechniteCount);
+
+		if (abandonedCounter > 0)
+		{
+			LogEvent(techniteError,"Cleared "+String(abandonedCounter)+"/"+String(totalCounter)+" abandoned technite cell(s), "+String(shouldBeTechniteCount)+" technite(s) left");
+
+			
+			CheckSendTerrain();
+
+			//RemapFaction(Objects::Faction::nexus);
+			//foreach (Faction::all,f)
+			//	RemapFaction(f->lock())
+		}
+
+
+		//std::atomic<count_t>	visibilityErrors = 0;
+
+		//Concurrency::parallel_for(index_t(0),Grid::HighSetup::GridType::CellCount,[&visibilityErrors](index_t stackIndex)
+		//{
+		//	Grid::CellStack&stack = Grid::actualWorld.cellStack[stackIndex];
+		//	const auto&n = Grid::high.grid.GetCell(stackIndex).neighborhood;
+		//	for (UINT32 layer = 0; layer < Grid::CellStack::Range; layer++)
+		//	{
+		//		if (stack.volumeCell[layer].content == Grid::Content::Technite)
+		//		{
+		//			PFaction f = Faction::GetFactionOf(stack.volumeCell[layer].techniteFaction);
+		//			const Grid::HCellIdU loc(stackIndex,layer);
+		//			Technite*t = f->GetOwnTechnite(loc);
+
+		//			//live technite must have visibility field of 1 around it
+		//			for (int hd = -1; hd <= 1; hd++)
+		//			{
+		//				if (layer == 0 && hd < 0)
+		//					continue;
+		//				if (layer + hd >= Grid::CellStack::Range)
+		//					continue;
+		//				UINT32 layer2 = layer+hd;
+		//				for (int k = 0; k < n.numNeighbors; k++)
+		//				{
+		//					UINT32 stackID = n.neighborID[k];
+		//					if (!VerifyIsVisibleAndMatches(f,Grid::HCellIdU(stackID,layer2)))
+		//						visibilityErrors++;
+		//				}
+		//				if (!VerifyIsVisibleAndMatches(f,Grid::HCellIdU(stackIndex,layer2)))
+		//					visibilityErrors++;
+
+		//			}
+		//		}
+		//	}
+		//});
+		//if (visibilityErrors > 0)
+		//{
+		//	LogEvent(techniteError,"Detected "+String(visibilityErrors)+" visibility error(s). Rebuilding visibility grid");
+
+		//	for (const auto&tf : Faction::allTechniteFactions)
+		//	{
+		//		tf->visibility.FlushAllData(false);
+		//		tf->visibility.LockChangeChecking();
+		//		float t= 0.f;
+		//		foreach (tf->allMobiles,_m)
+		//			_m->lock()->RegisterSensory(t,false);
+		//		foreach (tf->structures,_s)
+		//			_s->lock()->RegisterSensory(t,false);
+		//		foreach (tf->satellites,_sat)
+		//			_sat->lock()->Objects::WorldEntity::RegisterSensory(t,false);
+		//		foreach (tf->technites,tc)
+		//			tf->RegisterTechniteSensory(tc->location.GetU(), t,false);
+		//		tf->visibility.UnlockChangeChecking(0.f);
+		//		ApplyCoverageChange(tf);
+
+		//		Objects::ForeachWorldEntity([tf,&t](const Objects::PWorldEntity&e)
+		//		{
+		//			tf->CheckGridVisibility(e,t);
+		//		});
+		//	}
+
+		//	VerifyGrid();
+
+		//}
+
+	}
+
 
 }
 

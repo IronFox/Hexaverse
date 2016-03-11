@@ -206,6 +206,7 @@ namespace Network
 		Objects::CheckMobileEntitySanity();
 		Objects::VerifyGrid();
 		Technites::VerifyGrid();
+		Technites::SetupAndStartService();
 	}
 
 
@@ -259,7 +260,8 @@ namespace Network
 		RuntimeConfig::techniteSubRoundNumber = 0;
 		RuntimeConfig::phase = RuntimeConfig::Phase::CommandPhase;
 
-
+		Technites::Clear();
+		Technites::StopService();
 		Objects::FlushAllData();
 		Grid::FlushAllData();
 
