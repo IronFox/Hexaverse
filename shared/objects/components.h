@@ -12,6 +12,7 @@
 #include "resource.h"
 #include "cursorMode.h"
 #include "types.h"
+#include "componentAttribute.h"
 
 
 namespace Objects
@@ -64,19 +65,6 @@ namespace Objects
 	namespace Component
 	{
 
-		CONSTRUCT_ENUMERATION11(Attribute, 
-			Health,
-			ScanningRange,
-			CarryWeight,
-			AttacksPerRound,
-			AttackRange,
-			ExplosionRadius,
-			DamageLevel,
-			MovementSpeed,
-			ConstructionSpeed,
-			FuelDemand,
-			AmmoNeed
-			);
 
 
 
