@@ -1996,7 +1996,10 @@ namespace Objects
 					outResult<<" Base health: "+ModulateByResearch(unmodulatedHealth,Attribute::Health,owner,ResearchState::ModulationType::FloorInt);
 					outResult<<" Turret carrying capacity: "+ModulateByResearch(baseCarryingCapacity,Attribute::CarryWeight,owner,ResearchState::ModulationType::FloorInt);
 					if (rangeModifier != 0)
-						outResult<<" Turret range modifier: "+String(rangeModifier);
+						if (rangeModifier < 0)
+							outResult<<" Turret range modifier: "+String(rangeModifier);
+						else
+							outResult<<" Turret range modifier: +"+String(rangeModifier);
 				}
 				if (ignoresVehicleAttacks)
 					outResult<<" Can move independently of attack action";
