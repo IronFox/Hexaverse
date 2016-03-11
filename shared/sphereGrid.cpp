@@ -624,6 +624,11 @@ namespace Grid
 	bool			CellStack::LocalOverwrite(int h, Cell::Content type)
 	{
 		UINT uh = ToLayer(h);
+		return LocalOverwriteU(uh,type);
+	}
+
+	bool			CellStack::LocalOverwriteU(UINT uh, Cell::Content type)
+	{
 		if (uh < Range)
 		{
 			if (volumeCell[uh].content != type)

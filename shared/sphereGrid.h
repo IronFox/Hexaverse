@@ -428,6 +428,7 @@ namespace Grid
 		bool			MakeLocalHole(int h);
 
 		bool			LocalOverwrite(int h, Cell::Content type);
+		bool			LocalOverwriteU(UINT h, Cell::Content type);
 
 		/**
 		Attempts to find the most applicable ground relative to the given location.

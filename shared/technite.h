@@ -381,6 +381,8 @@ namespace Technites
 			{
 				memset(volumeCell, 0, sizeof(volumeCell));
 			}
+
+			void	Fill(Content content)	{for (index_t i = 0; i < Grid::CellStack::Range; i++) volumeCell[i].content = content;}
 		};
 		Array<CellStack>	cellStack;
 
@@ -393,7 +395,7 @@ namespace Technites
 		//void				Import(const Grid::WorldData&data);
 		//void				ExportChanged(Grid::WorldData&outData, float t);
 		//void				SignalStackChange(UINT32 stackID);
-		void				Fill(Content);
+		void				Fill(Content content)	{foreach (cellStack,stack) stack->Fill(content);}
 	};
 
 

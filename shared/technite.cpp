@@ -159,17 +159,38 @@ namespace Technites
 	Buffer0<Technite*>			layers[ExecutionLayer::Count];
 
 	index_t						currentLayer = 0;
-	bool						anyDied = false;
+	volatile bool				anyDied = false;
+	volatile bool				familyChanged[BaseGrid::NumFamilies] = {false};
 	WorkPipe<TNewTechnite>		newTechnites;
 
 	Technite::Resources			GetCost(Technite::Task, BYTE parameter, BYTE currentGridContent);
 
-	void						CheckTechniteFoundations();
+	void						CheckTechniteFoundations(float t);
 
 
 	float						timeStamp=0;
 
 	void						ProcessLighting(Technite&technite);
+
+
+	void GC()
+	{
+		if (anyDied)
+		{
+			anyDied = false;
+			static Buffer<Technite>	survivors;
+			foreach (technites,t)
+				if (t->isDead)
+				{
+					t->ShutdownClient();
+				}
+				else
+					survivors << std::move(*t);
+			technites.swap(survivors);
+			survivors.Clear();
+		}
+
+	}
 
 	void						BeginProcessing(float t0)
 	{
@@ -192,11 +213,41 @@ namespace Technites
 			layers[layer] << t;
 		}
 
-		CheckTechniteFoundations();
+		CheckTechniteFoundations(t0);
 
 	}
 
-	bool familyChanged[BaseGrid::NumFamilies] = {false};
+
+	void ChangeGrid(const Grid::HCellIdU&target, Grid::Content content)
+	{
+		if (Grid::actualWorld.cellStack[target.stackID].LocalOverwrite(target.layer,content))
+		{
+			index_t family1 = Grid::high.grid.GetCell(target.stackID).family;
+			familyChanged[family1] = true;
+		}
+	}
+
+	void MoveTechnite(Technite&t, const Grid::HCellIdU&target)
+	{
+		ChangeGrid(t.location.GetU(),Grid::Content::Clear);
+		ChangeGrid(target,Grid::Content::Technite);
+
+		t.location = target;
+		t.SetStandardFieldOfVision();
+	}
+
+	void ApplyFamilyChange(float t)
+	{
+		for (index_t i = 0; i < ARRAYSIZE(familyChanged); i++)
+		{
+			if (familyChanged[i])
+			{
+				Grid::low.family[i].SetOutdated(t);
+				Grid::high.family[i].SetOutdated(t);
+				familyChanged[i] = false;
+			}
+		}
+	}
 
 	bool						ProcessNextLayer()
 	{
@@ -258,12 +309,7 @@ namespace Technites
 					t->isDead = true;
 					anyDied = true;
 
-					UINT32 stackID = t->location.GetStackID();
-					Grid::actualWorld.cellStack[stackID].volumeCell[t->location.GetLayer()].content = t->nextInstruction.taskParameter;
-
-					index_t family1 = Grid::high.grid.GetCell(stackID).family;
-					familyChanged[family1] = true;
-
+					ChangeGrid(t->location.GetU(),Grid::Content::Reinterpret(t->nextInstruction.taskParameter));
 				});
 			break;
 			case ExecutionLayer::Kill:
@@ -393,24 +439,13 @@ namespace Technites
 					{
 						case Technite::Task::Move:
 						{
-							swp(Grid::actualWorld.cellStack[t->location.GetStackID()]	.volumeCell[t->location.GetLayer()].content, 
-								Grid::actualWorld.cellStack[target.stackID]				.volumeCell[target.layer].content);
-
-							index_t family0 = Grid::high.grid.GetCell(t->location.GetStackID()).family,
-									family1 = Grid::high.grid.GetCell(target.stackID).family;
-							familyChanged[family0] = true;
-							familyChanged[family1] = true;
-
-							t->location = target;
-							t->SetStandardFieldOfVision();
+							MoveTechnite(*t,target);
 
 						}
 						break;
 						case Technite::Task::Replace:
 						{
-							Grid::actualWorld.cellStack[target.stackID].volumeCell[target.layer].content = t->nextInstruction.taskParameter;
-							index_t family1 = Grid::high.grid.GetCell(target.stackID).family;
-							familyChanged[family1] = true;
+							ChangeGrid(target,Grid::Content::Reinterpret(t->nextInstruction.taskParameter));
 						}
 						break;
 						case Technite::Task::Spawn:
@@ -452,33 +487,15 @@ namespace Technites
 			}
 			break;
 		}
-		for (index_t i = 0; i < ARRAYSIZE(familyChanged); i++)
-		{
-			if (familyChanged[i])
-			{
-				Grid::low.family[i].SetOutdated(timeStamp);
-				Grid::high.family[i].SetOutdated(timeStamp);
-				familyChanged[i] = false;
-			}
-		}
+		ApplyFamilyChange(timeStamp);
 
 		currentLayer++;
 
 		if (currentLayer == ExecutionLayer::Count)
 		{
-			if (anyDied)
-			{
-				static Buffer<Technite>	survivors;
-				foreach (technites,t)
-					if (t->isDead)
-					{
-						t->ShutdownClient();
-					}
-					else
-						survivors << std::move(*t);
-				technites.swap(survivors);
-				survivors.Clear();
-			}
+			GC();
+			CheckTechniteFoundations(timeStamp);
+			
 
 			newTechnites.SignalRead();
 				ByOperator::QuickSort(newTechnites);
@@ -492,7 +509,6 @@ namespace Technites
 				}
 			newTechnites.ExitRead();
 
-			CheckTechniteFoundations();
 
 
 			Channels::stateUpdateBegin.SendTo(serviceHost,UserLevel::Authenticated);
@@ -837,6 +853,51 @@ namespace Technites
 	}
 
 
+	void				CheckTechniteFoundations(float t)
+	{
+		static WorkPipe<std::pair<Technite*, Grid::HCellIdU> >	falling;
+		bool anyBad = false;
+		count_t numIterations = 0, numFallen = 0;
+		do
+		{
+			numIterations++;
+			anyBad = false;
+			Concurrency::parallel_for_each(technites.begin(),technites.end(),[&anyBad](Technite&t)
+			{
+				Grid::HCellIdU loc = t.location.GetU();
+				if (CanStandHere(loc))
+					return;
+				anyBad = true;
+				loc--;
+				while (loc.layer > 0 && !CanStandHere(loc))
+					loc--;
+				if (loc.layer == 0 && !CanStandHere(loc))
+				{
+					t.isDead = true;
+				}
+				else
+					falling << std::make_pair(&t,loc);
+			});
+			if (anyBad)
+			{
+				falling.SignalRead();
+					numFallen += falling.Count();
+					Concurrency::parallel_for_each(falling.begin(),falling.end(),[](const std::pair<Technite*, Grid::HCellIdU>&t)
+					{
+						MoveTechnite(*t.first,t.second);
+					});
+				falling.ExitRead();
+
+				GC();
+			}
+		}
+		while (anyBad);
+		LogEvent(EventSignificance::Debug,String(numFallen)+" falling technite(s) processed in "+String(numIterations)+" iteration(s)");
+
+		ApplyFamilyChange(t);
+	}
+
+
 	void				Technite::SetStandardFieldOfVision()
 	{
 		Grid::high.GenerateStep2Volume(location.GetU(),hFieldOfVision);
@@ -896,7 +957,7 @@ namespace Technites
 	}
 
 	
-		index_t					BroadTechniteMap::MapCluster(const Grid::HCellIdU&loc, index_t&outFamily, UINT32&heightRemainder) const
+	index_t					BroadTechniteMap::MapCluster(const Grid::HCellIdU&loc, index_t&outFamily, UINT32&heightRemainder) const
 	{
 		outFamily = Grid::high.grid.GetCell(loc.stackID).family;
 		heightRemainder = loc.layer % SectionLayers;
@@ -904,10 +965,7 @@ namespace Technites
 			+ loc.layer / SectionLayers;
 	}
 
-	//index_t					BroadTechniteMap::Map(const Grid::HCellIdU&location, Cluster*&outCluster, bool initIfEmpty)
-	//{
-	//	return Map(Grid::HCellIdU(location.stackID,Grid::CellStack::ToLayer(location.height)),outCluster,initIfEmpty);
-	//}
+
 	index_t					BroadTechniteMap::Map(const Grid::HCellIdU&location, Cluster*&outCluster, bool initIfEmpty)
 	{
 		index_t family;
