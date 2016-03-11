@@ -10,6 +10,7 @@
 #include "grid.h"
 #include "objects.h"
 #include "stringTable.h"
+#include "technite.h"
 
 
 #pragma comment(lib,"ws2_32.lib")
@@ -49,8 +50,11 @@ namespace PortOffset
 	#define NAME_APPEND1
 #endif
 
+#define NAME_APPEND2	"T"
 
-#define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION NAME_APPEND0 NAME_APPEND1
+#define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION NAME_APPEND0 NAME_APPEND1 NAME_APPEND2
+
+
 #include "objects/resource.h"
 
 namespace Protocol
@@ -1187,6 +1191,7 @@ namespace Protocol
 		};
 	}
 
+
 	NETSTRUCT6(EntityState
 		, Timestamp, timestamp
 		, NET(TUniqueID), id
@@ -1533,6 +1538,73 @@ namespace Protocol
 
 
 
+	template <typename T, count_t MaxElementCount>
+		class SmartPODReferenceField : public NetArray<T,MaxElementCount>
+		{
+			typedef NetArray<T,MaxElementCount>	Super;
+		private:
+			const T*		sourceField=nullptr;
+			count_t			sourceCount=0;
+			bool			hasAssignedSource = false;
+
+			void			_Assign(const T*field, count_t maxCount, index_t offset)
+			{
+				sourceField = field + offset;
+				if (maxCount > offset)
+					sourceCount = std::min(maxCount - offset,MaxElementCount);
+				else
+					sourceCount = 0;
+				hasAssignedSource = true;
+			}
+
+		public:
+			template <typename Strategy>
+				void		AssignSection(const BasicBuffer<T,Strategy>&field, index_t offset = 0)
+				{
+					_Assign(field.pointer(),field.Count(),offset);
+				}
+			void			AssignSection(const ArrayData<T>&field, index_t offset = 0)
+			{
+				_Assign(field.pointer(),field.Count(),offset);
+			}
+
+			virtual	bool			HasFixedSize() const	override
+			{
+				return false;
+			}
+
+			virtual	serial_size_t	GetSerialSize(bool exportSize) const	override
+			{
+				if (hasAssignedSource)
+				{
+					serial_size_t memberSize = (serial_size_t)(sizeof(T)*sourceCount);
+					if (exportSize)
+						memberSize += GetSerialSizeOfSize((serial_size_t)sourceCount);
+					return memberSize;
+				}
+				return Super::GetSerialSize(exportSize);
+			}
+			virtual	bool		Serialize(IWriteStream&outStream, bool exportSize) const	override
+			{
+				if (hasAssignedSource)
+				{
+					if (exportSize && !outStream.WriteSize((serial_size_t)sourceCount))
+						return false;
+					return outStream.WritePrimitives(sourceField,sourceCount);
+				}
+				return Super::Serialize(outStream,exportSize);
+			}
+			virtual	bool		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override
+			{
+				hasAssignedSource = false;
+				return Super::Deserialize(inStream,fixedSize);
+			}
+		};
+
+
+
+	typedef NetArray<TVec3<BYTE>,0xFF>	TechniteColors;
+	static_assert(sizeof(TVec3<BYTE>)==3,"Size expectations not met");
 
 	NETSTRUCT5(MobileState
 		, EntityState, entityState
@@ -1709,10 +1781,10 @@ namespace Protocol
 
 
 
-
-	NETSTRUCT3(PhaseChange
+	NETSTRUCT4(PhaseChange
 		, NET(UINT8), newPhase
 		, NET(UINT32), roundNumber
+		, NET(UINT32), techniteSubRoundNumber
 		, NET(float), timeFactor
 	)
 
@@ -1786,7 +1858,7 @@ namespace Protocol
 		, NET(ConstName), type1
 	)
 
-	static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic");
+	static_assert(Objects::Marker::Type::NumberOfPossibilities == 3, "Please adjust marker logic (MarkerData)");
 	typedef Selective3<MarkerReferenceEntity, MarkerReferenceEntity, NoData>	MarkerData;
 
 	NETSTRUCT4(Marker
@@ -1814,6 +1886,9 @@ namespace Protocol
 
 	namespace ChannelID
 	{
+		//c2s: client to server
+		//s2c: server to client
+
 		enum id_t
 		{
 			Unused,

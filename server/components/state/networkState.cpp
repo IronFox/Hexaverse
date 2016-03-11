@@ -20,7 +20,7 @@ namespace Network
 	Buffer<PClient>	activePlayersAndSpectators,spectators;
 	GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
 	GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
-
+	count_t			techniteFactionsOnline=0;
 
 	namespace Config
 	{
@@ -205,6 +205,7 @@ namespace Network
 //		Objects::VerifyVisibilityNetwork();
 		Objects::CheckMobileEntitySanity();
 		Objects::VerifyGrid();
+		Technites::VerifyGrid();
 	}
 
 
@@ -248,11 +249,14 @@ namespace Network
 
 		RuntimeConfig::doomsdayWeapons = RuntimeConfig::DoomsdayWeapons();	//load default value
 		tokenMap.Clear();
+		
+		techniteFactionsOnline = 0;
 
 		World::Network::HandleSessionClosure();
 		Game::Network::HandleSessionClosure();
 		FileIO::Network::HandleSessionClosure();
 		RuntimeConfig::roundNumber = 0;
+		RuntimeConfig::techniteSubRoundNumber = 0;
 		RuntimeConfig::phase = RuntimeConfig::Phase::CommandPhase;
 
 

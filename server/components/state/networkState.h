@@ -66,8 +66,9 @@ namespace Network
 	/**
 	Direct mapping from factions to online players. If a lookup fails, the respective player is not online. Only one entry per faction is allowed
 	*/
-	extern GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>		playerMap;
-	extern GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>		tokenMap;
+	extern GenericHashTable<Objects::OwnerParameter,PClient,Objects::OwnerHash>	playerMap;
+	extern GenericHashTable<CryptographicID,Objects::PFaction,CryptographicID>	tokenMap;
+	extern count_t																techniteFactionsOnline/*=0*/;
 
 
 
