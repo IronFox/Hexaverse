@@ -3,6 +3,7 @@
 
 #include <container/hashtable.h>
 #include "evolvers/core.h"
+#include "evolvers/techniteEvolver.h"
 
 namespace Evolver
 {
@@ -12,8 +13,9 @@ namespace Evolver
 		namespace Evolvers
 		{
 			Core		core;
+			Technite	technite;
 
-			Abstract	*def = &core;
+			Abstract	*def = &technite;
 		}
 
 
@@ -33,6 +35,7 @@ namespace Evolver
 	void			Create()
 	{
 		Details::Register(&Details::Evolvers::core);
+		Details::Register(&Details::Evolvers::technite);
 	}
 
 	Abstract*		Get(const String&name)
