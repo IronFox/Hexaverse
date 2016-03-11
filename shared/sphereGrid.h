@@ -1106,6 +1106,7 @@ namespace Grid
 				return rs;
 			}
 
+
 			static struct _Operator
 			{
 				bool	stackVisited[GridType::CellCount];
