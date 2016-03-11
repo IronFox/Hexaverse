@@ -11,6 +11,7 @@
 
 #include "runtimeConfig.h"
 #include "./objects/faction.h"
+#include "objects/types.h"
 
 #ifndef CLIENT
 	#include "../server/components/state.h"
@@ -162,7 +163,7 @@ namespace Logging
 
 
 
-	void WriteEvent( const EventClass&evClass, const String&message, TCP::Peer*peer, const Objects::WorldEntity*e)
+	void WriteEvent( const EventClass&evClass, const String&message, TCP::Peer*peer, const Objects::WorldEntity*e, const Objects::OwnerParameter&owner)
 	{
 		bool printToConsole = evClass.significance >= EventSignificance::Uncommon;
 		//type != EventSignificance::Debug
@@ -225,7 +226,10 @@ namespace Logging
 		}
 		else
 			if (!inTestMode)
-				logFile << tab << tab<<tab<<tab;
+				if (owner)
+					logFile << tab << tab<<tab<<owner->GetLogName() <<tab;
+				else
+					logFile << tab << tab<<tab<<tab;
 
 		if (message.contains('\n') || message.contains('\r'))
 		{
@@ -262,11 +266,18 @@ namespace Logging
 void LogEvent( const EventClass&type, const Objects::WorldEntity*e, const String&msg)
 {
 	#ifndef CLIENT
-		Logging::SendEntityEvent(nullptr,type,e,msg);
+		Logging::SendEntityEvent(nullptr,type,e,Objects::OwnerParameter(),msg);
 	#endif
-	Logging::WriteEvent(type,msg,nullptr,e);
+	Logging::WriteEvent(type,msg,nullptr,e,Objects::OwnerParameter());
 }
 
+void		LogEvent(const EventClass&type, const Objects::OwnerParameter&owner, const String&msg)
+{
+	#ifndef CLIENT
+		Logging::SendEntityEvent(nullptr,type,nullptr,owner,msg);
+	#endif
+	Logging::WriteEvent(type,msg,nullptr,nullptr,owner);
+}
 
 
 

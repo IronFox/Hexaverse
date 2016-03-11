@@ -647,7 +647,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	file.Log(message+"\n",true);
 	file.Close();
 
-	Logging::WriteEvent(EventClass::Preset::fatal,message,nullptr,nullptr);
+	Logging::WriteEvent(EventClass::Preset::fatal,message,nullptr,nullptr, Objects::OwnerParameter());
 
 	application_shutting_down = true;	//prevent certain operations in Close()
 	DisplayMessage(PRODUCT_NAME" Server Error",message,false);
@@ -996,7 +996,7 @@ void TerminateNow(bool isMain)
 		}
 
 
-		Logging::WriteEvent(EventSignificance::Uncommon,"Closing down",nullptr,nullptr);
+		Logging::WriteEvent(EventSignificance::Uncommon,"Closing down",nullptr,nullptr,Objects::OwnerParameter());
 		Network::server.Shutdown();
 
 		if (Game::Config::Nexus::enableAI)
@@ -1011,7 +1011,7 @@ void TerminateNow(bool isMain)
 		RemoteControl::Destroy();
 
 
-		Logging::WriteEvent(EventSignificance::Uncommon,"Terminating process",nullptr,nullptr);
+		Logging::WriteEvent(EventSignificance::Uncommon,"Terminating process",nullptr,nullptr,Objects::OwnerParameter());
 		Logging::End();
 
 	mutex.release();
@@ -1040,7 +1040,7 @@ BOOL WINAPI MyHandlerRoutine(_In_  DWORD dwCtrlType)
 
 void LogConfig(const String&msg)
 {
-	Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr);
+	Logging::WriteEvent(EventClass::Preset::configurationPrint,msg,nullptr,nullptr,Objects::OwnerParameter());
 }
 
 
@@ -1506,7 +1506,7 @@ int main( int argc, const char* argv[])
 
 		if (false)
 		{
-			Logging::WriteEvent(EventSignificance::Uncommon,"Testing server.",nullptr,nullptr);
+			Logging::WriteEvent(EventSignificance::Uncommon,"Testing server.",nullptr,nullptr,Objects::OwnerParameter());
 
 			FileIO::Save(PathString("test0."+FileIO::savFileExtension));
 			FileIO::Load(PathString("test0."+FileIO::savFileExtension));
@@ -1529,14 +1529,14 @@ int main( int argc, const char* argv[])
 				FileIO::Load(filename);
 			}
 			else
-				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr);
+				Logging::WriteEvent(EventClass::Preset::fileError,"Specified file ("+String(filename)+") does not exist. Skipping loading operation.",nullptr,nullptr,Objects::OwnerParameter());
 		}
 
 		//Journal::globalWriter.InitNew(RuntimeConfig::ConfigFile("saves/log"));
 		//Journal::globalWriter.ContinueExisting(RuntimeConfig::ConfigFile("saves/log"));
 
-		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + World::worldID.ToString() + " completed.", nullptr, nullptr);
-		Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr);
+		Logging::WriteEvent(EventSignificance::Uncommon, "Preparation of world '"+World::worldID.ToNiceString()+"'/" + World::worldID.ToString() + " completed.", nullptr, nullptr,Objects::OwnerParameter());
+		Logging::WriteEvent(EventSignificance::Important,"Server "+Network::serverID.ToString()+"/"+UDPBroadCast::packet.version+" is online.",nullptr,nullptr,Objects::OwnerParameter());
 		FileIO::RefreshWindowTitle();
 
 	
