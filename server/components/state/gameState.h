@@ -6,10 +6,6 @@
 #include <objects/types.h>
 #include "../evolver.h"
 
-#ifdef CLIENT
-	#error should not be here
-#endif
-
 namespace Game
 {
 
@@ -36,7 +32,9 @@ namespace Game
 
 	namespace Config
 	{
-		extern int		roundTimer/* = -1*/;
+		extern int		roundTimer/* = -1*/,
+						extraTechniteRoundTimer/* = -1*/;
+		extern UINT32	extraTechniteRounds/* = 0*/;		
 		extern UINT32	uplinkBandwidth/* = 500*/;
 		extern bool		closedGame/* = false*/,
 						startBases /*= false*/,
@@ -182,6 +180,8 @@ namespace Game
 
 	}
 
+
+    inline bool		CurrentRoundIsExtraTechniteRound()    {return RuntimeConfig::techniteSubRoundNumber > 0 && RuntimeConfig::techniteSubRoundNumber <= Config::extraTechniteRounds;}
 
 
 	void			PerformNewRoundLogic(float &atTime);	//includes UpdateHibernation()

@@ -26,7 +26,10 @@ namespace Game
 
 	namespace Config
 	{
-		int			roundTimer = -1;
+		int			roundTimer = -1,
+					extraTechniteRoundTimer = -1;
+		UINT32		extraTechniteRounds = 0;		
+		
 		UINT32		uplinkBandwidth = 500;
 
 		bool		closedGame = false,
@@ -136,6 +139,7 @@ namespace Game
 			Protocol::PhaseChange	ph;
 			ph.newPhase = to;
 			ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
+			ph.techniteSubRoundNumber = (UINT32)RuntimeConfig::techniteSubRoundNumber;
 			ph.timeFactor = timeWindow;
 			Channels::phaseChange.SendTo(::Network::server,ph,1);
 			RuntimeConfig::phase = to;

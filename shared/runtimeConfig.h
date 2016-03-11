@@ -10,15 +10,18 @@ namespace RuntimeConfig
 {
 	CONSTRUCT_ENUMERATION2(GameGoal, None, ConquerNexus);
 	CONSTRUCT_ENUMERATION3(DoomsdayWeapons, Expose, Conceal, Disallow);
-	CONSTRUCT_ENUMERATION7(Phase, 
+
+	CONSTRUCT_ENUMERATION9(Phase, 
 							CommandPhase,
+							TechniteCommandPhase,
 							StructurePhase,
 							AttackPhase,
 							MovementPhase,
+							TechnitePhase,
 							AnimationPhase, 
 							EndOfGame,
 							Uninitialized
-							);
+		);
 
 	extern DoomsdayWeapons doomsdayWeapons;
 	extern GameGoal gameGoal;
@@ -29,6 +32,7 @@ namespace RuntimeConfig
 	extern bool bombsExplodeWhenDestroyed;
 
 	extern UINT32 roundNumber/*=0*/;
+	extern UINT32 techniteSubRoundNumber/*=0*/;
 	namespace UnitLimits
 	{
 		bool		IsEnabled();
@@ -51,7 +55,7 @@ namespace RuntimeConfig
 	void		InitConfigDir(const String&subDir);
 	PathString	ConfigDir();
 
-	inline bool IsInAnyCommandPhase()	{return phase == Phase::CommandPhase;}
+	inline bool IsInAnyCommandPhase()	{return phase == Phase::CommandPhase || phase == Phase::TechniteCommandPhase;}
 
 
 }

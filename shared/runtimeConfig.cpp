@@ -24,6 +24,7 @@ namespace RuntimeConfig
 	bool hibernationSystemEnabled = false;
 	bool bombsExplodeWhenDestroyed = true;
 	UINT32 roundNumber =0;
+	UINT32 techniteSubRoundNumber =0;
 	Phase	phase;
 
 	FileSystem::Folder base,actual;

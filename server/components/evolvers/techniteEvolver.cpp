@@ -53,18 +53,9 @@ namespace Evolver
 		{
 			case RuntimeConfig::Phase::TechnitePhase:
 
-				if (!Technites::ProcessNext())
+				if (!Technites::ProcessNextLayer())
 				{
 					CheckSendTerrain();
-					for (const auto&tf : Technites::Faction::allTechniteFactions)
-					{
-						Network::PClient client;
-						if (!Network::playerMap.query(tf,client))
-							continue;
-						TCP::PPeer peer = client->peer.lock();
-						if (peer)
-							SendTechniteStateTo(tf,*peer);
-					}
 					return false;
 				}
 				return true;
