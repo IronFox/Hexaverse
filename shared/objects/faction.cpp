@@ -1919,9 +1919,11 @@ namespace Objects
 
 
 
-	/*static*/ float			ResearchState::GetFactor(int level)
+	/*static*/ float			ResearchState::GetFactor(int x)
 	{
-		return log(std::max(1.f,M_EF+0.1f*(level)));
+		//return log(std::max(1.f,M_EF+0.1f*(level)));
+		static const float fc = 0.15f;	//level >3000 = x2, level 1 = x1.02, level 175 = x1.5
+		return (x > 0 ? log((float(x)* fc+1.f))*fc : exp(float(x)* fc * fc) -1) + 1.f;
 	}
 
 
