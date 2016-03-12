@@ -200,6 +200,12 @@ namespace Objects
 		/**/					ResearchState(const TUniqueID&id, bool isNexus);
 		/**/					ResearchState();
 
+		void					operator=(const ResearchState&) = delete;
+
+		#ifdef CLIENT
+			void				Update(const ResearchState&, const PFaction&parent);
+		#endif
+
 		virtual	serial_size_t	GetSerialSize(bool export_size) const override;
 		virtual	bool			Serialize(IWriteStream&out_stream, bool export_size) const override;
 		virtual	bool			Deserialize(IReadStream&in_stream, serial_size_t fixed_size) override;
@@ -221,7 +227,7 @@ namespace Objects
 		float			GetFactorFor(ConstName, Component::Attribute)	const;
 		float			GetFactorFor(const Component::Base&, Component::Attribute)	const;
 
-		void			GetResearchOf(ConstName, Component::Attribute, UINT32&current)	const;
+		UINT32			GetResearchOf(ConstName, Component::Attribute)	const;
 		void			GetResearchOf(ConstName, UINT32&current, UINT32&max)	const;
 
 		static void		StaticCreate();

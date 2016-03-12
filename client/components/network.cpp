@@ -882,7 +882,8 @@ namespace Network
 
 		void	ResearchState(Objects::ResearchState&state)
 		{
-			ResolveFaction(state.ownerID)->researchState = state;
+			Objects::PFaction f = ResolveFaction(state.ownerID);
+			f->researchState.Update( state, f);
 		}
 
 		void	SelectResearch(Protocol::SelectResearch&research)

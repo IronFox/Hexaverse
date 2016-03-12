@@ -270,8 +270,7 @@ namespace Objects
 	{
 		const MobileEntityProducer*p = selectedEntity ? selectedEntity->CastToProducer() : nullptr;
 		PWorldEntity ref = reference.lock();
-		UINT32 current;
-		selectedEntity->owner->researchState.GetResearchOf(target,attrib, current);
+		UINT32 current = selectedEntity->owner->researchState.GetResearchOf(target,attrib);
 
 		//if (ref || (base && turret))
 		{

@@ -1830,21 +1830,19 @@ namespace Objects
 		return false;
 	}
 
-	void			ResearchState::GetResearchOf(ConstName name, Component::Attribute attrib, UINT32&current)	const
+	UINT32			ResearchState::GetResearchOf(ConstName name, Component::Attribute attrib)	const
 	{
 		if (globalState.typeMap[(index_t)name] == InvalidIndex)
 		{
-			current = 0;
-			return;
+			return 0;
 		}
 		const auto&t = globalState.types[globalState.typeMap[(index_t)name]];
 		index_t at = t.attributeAt[attrib];
 		if (at == InvalidIndex)
 		{
-			current = 0;
-			return;
+			return 0;
 		}
-		current = improveProgress[at];
+		return improveProgress[at];
 	}
 
 	void			ResearchState::GetResearchOf(ConstName name, UINT32&current, UINT32&max)	const
@@ -2002,7 +2000,94 @@ namespace Objects
 		return IsGenerallyResearchable(name,attrib);
 	}
 
-	#ifndef CLIENT
+	#ifdef CLIENT
+		void		ResearchState::Update(const ResearchState&update, const PFaction&parent)
+		{
+			currentResearch = update.currentResearch;
+			currentResearchAttribute = update.currentResearchAttribute;
+
+			bool changed = GetFactorFor(currentResearch,currentResearchAttribute) != update.GetFactorFor(currentResearch,currentResearchAttribute);
+
+			float t =0;
+			Component::Turret*turret = nullptr;
+			if (changed && currentResearchAttribute == Component::Attribute::ScanningRange)
+			{
+				turret = Component::GetTurretByName(currentResearch);
+				if (turret)
+				{
+					for (const auto&s : structures)
+					{
+						if (s->owner == parent && s->IsTower())
+						{
+							PTower tower = To<Tower>::Cast(s);
+							if (tower->turret == turret)
+							{
+								tower->UnregisterSensory(t,false);
+							}
+						}
+					}
+					for (const auto&m : vehicles)
+					{
+						if (m->owner == parent && m->turret == turret)
+							m->UnregisterSensory(t,false);
+					}
+					for (const auto&m : satellites)
+					{
+						if (m->owner == parent && m->turret == turret)
+							m->UnregisterSensory(m->location,t,false);
+					}
+				}
+				else
+					for (const auto&s : structures)
+					{
+						if (s->GetCTypeName() == currentResearch)
+							s->UnregisterSensory(t,false);
+					}
+			}
+
+			unlockProgress = update.unlockProgress;
+			improveProgress = update.improveProgress;
+
+
+			if (changed && currentResearchAttribute == Component::Attribute::ScanningRange)
+			{
+				turret = Component::GetTurretByName(currentResearch);
+				if (turret)
+				{
+					for (const auto&s : structures)
+					{
+						if (s->owner == parent && s->IsTower())
+						{
+							PTower tower = To<Tower>::Cast(s);
+							if (tower->turret == turret)
+							{
+								tower->RegisterSensory(t,false);
+							}
+						}
+					}
+					for (const auto&m : vehicles)
+					{
+						if (m->owner == parent && m->turret == turret)
+							m->RegisterSensory(t,false);
+					}
+					for (const auto&m : satellites)
+					{
+						if (m->owner == parent && m->turret == turret)
+							m->RegisterSensory(m->location,t,false);
+					}
+				}
+				else
+					for (const auto&s : structures)
+					{
+						if (s->GetCTypeName() == currentResearch)
+							s->RegisterSensory(t,false);
+					}
+			}
+
+		}
+
+	#else
+
 		void			ResearchState::Contribute()
 		{
 			contribution++;
@@ -2092,7 +2177,6 @@ namespace Objects
 			if (currentResearchAttribute == Component::Attribute::ScanningRange)
 			{
 				t += timeEpsilon;
-				turret = Component::GetTurretByName(currentResearch);
 				if (turret)
 				{
 					foreach (parent->towers,_t)
