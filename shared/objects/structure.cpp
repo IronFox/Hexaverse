@@ -2027,17 +2027,24 @@ namespace Objects
 
 	/*virtual override*/ String		Tower::DescribeScanningRange() const
 	{
-		return owner->researchState.Describe(*turret,turret->baseScanningRange+(turret->CanAttack() ? - 2.f : 2.f),Component::Attribute::ScanningRange, ResearchState::ModulationType::DefaultFloat,std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2));
+		return 
+				owner ?
+				owner->researchState.Describe(*turret,turret->baseScanningRange+(turret->CanAttack() ? - 2.f : 2.f),Component::Attribute::ScanningRange, ResearchState::ModulationType::DefaultFloat,std::bind(&WorldEntity::EMPModify,this,std::placeholders::_1,2))
+				:
+				String(GetScanningRange());
 	}
 
 	/*virtual override*/ int				Tower::GetMaxHealth() const
 	{
-		return std::max(1,(int)floor(float(Super::GetBaseMaxHealth()) * turret->healthMultiplier * owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::Health)));
+		float base = float(Super::GetBaseMaxHealth()) * turret->healthMultiplier;
+		if (owner)
+			base *= owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::Health);
+		return std::max(1,(int)floor(base));
 	}
 
 	/*virtual override*/ String				Tower::DescribeMaxHealth() const
 	{
-		return owner->researchState.Describe(GetCTypeName(),float(Super::GetBaseMaxHealth()) * turret->healthMultiplier,Component::Attribute::Health,ResearchSateModulation::FloorInt);
+		return owner ? owner->researchState.Describe(GetCTypeName(),float(Super::GetBaseMaxHealth()) * turret->healthMultiplier,Component::Attribute::Health,ResearchSateModulation::FloorInt) : String(GetMaxHealth());
 	}
 
 
