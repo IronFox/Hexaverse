@@ -252,6 +252,8 @@ namespace Objects
 	{
 	private:
 		#ifndef CLIENT
+			friend class ResearchState;
+
 			void		ChangeSensory(const Grid::HighSetup::TVolumeDescriptor&desc, float t, short changeBy);
 			void		ChangeSensory(const Grid::SkySensorState&state, float t, short changeBy);
 //			void		ReplaceSensory(const Grid::SkySensorState&oldState, const Grid::SkySensorState&newState, float t, short changeBy);

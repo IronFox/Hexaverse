@@ -2025,34 +2025,101 @@ namespace Objects
 				contribution = 0;
 				return;
 			}
-			const auto&t = globalState.types[tAt];
-			if (t.unlockableAt != InvalidIndex)
+			index_t aAt = InvalidIndex;
 			{
-				if (unlockProgress[t.unlockableAt] < t.researchCost)
+				const auto&t = globalState.types[tAt];
+				if (t.unlockableAt != InvalidIndex)
 				{
-					if (t.dependentOn != ConstName::Empty)
-						if (!IsUnlocked(t.dependentOn))
-						{
-							LogEvent(EventClass::Preset::error,parent,"Research requirements not met. "+String(contribution)+" research point(s) lost");
-							contribution = 0;
-							return;
-						}
-					unlockProgress[t.unlockableAt] += contribution;
-					changed = true;
+					if (unlockProgress[t.unlockableAt] < t.researchCost)
+					{
+						if (t.dependentOn != ConstName::Empty)
+							if (!IsUnlocked(t.dependentOn))
+							{
+								LogEvent(EventClass::Preset::error,parent,"Research requirements not met. "+String(contribution)+" research point(s) lost");
+								contribution = 0;
+								return;
+							}
+						unlockProgress[t.unlockableAt] += contribution;
+						changed = true;
+						contribution = 0;
+						return;
+					}
+				}
+				aAt = t.attributeAt[currentResearchAttribute];
+				if (aAt == InvalidIndex)
+				{
+					LogEvent(EventClass::Preset::error,parent,"Invalid improvement goal configured. "+String(contribution)+" research point(s) lost");
 					contribution = 0;
 					return;
 				}
 			}
-			index_t aAt = t.attributeAt[currentResearchAttribute];
-			if (aAt == InvalidIndex)
+			float t = 0;
+
+			Component::Turret*turret = nullptr;
+			if (currentResearchAttribute == Component::Attribute::ScanningRange)
 			{
-				LogEvent(EventClass::Preset::error,parent,"Invalid improvement goal configured. "+String(contribution)+" research point(s) lost");
-				contribution = 0;
-				return;
+				turret = Component::GetTurretByName(currentResearch);
+				if (turret)
+				{
+					foreach (parent->towers,_t)
+					{
+						PTower tower = _t->lock();
+						if (tower && tower->turret == turret)
+						{
+							tower->UnregisterSensory(t,false);
+						}
+					}
+					foreach (parent->allMobiles,_m)
+					{
+						PMobileEntity m = _m->lock();
+						if (m && m->turret == turret)
+							m->UnregisterSensory(t,false);
+					}
+				}
+				else
+					foreach (parent->structures,_s)
+					{
+						PStructure s = _s->lock();
+						if (s && s->GetCTypeName() == currentResearch)
+							s->UnregisterSensory(t,false);
+					}
 			}
+
 			improveProgress[aAt] +=contribution;
 			changed = true;
 			contribution = 0;
+
+			if (currentResearchAttribute == Component::Attribute::ScanningRange)
+			{
+				t += timeEpsilon;
+				turret = Component::GetTurretByName(currentResearch);
+				if (turret)
+				{
+					foreach (parent->towers,_t)
+					{
+						PTower tower = _t->lock();
+						if (tower && tower->turret == turret)
+						{
+							tower->RegisterSensory(t,false);
+						}
+					}
+					foreach (parent->allMobiles,_m)
+					{
+						PMobileEntity m = _m->lock();
+						if (m && m->turret == turret)
+							m->RegisterSensory(t,false);
+					}
+				}
+				else
+					foreach (parent->structures,_s)
+					{
+						PStructure s = _s->lock();
+						if (s && s->GetCTypeName() == currentResearch)
+							s->RegisterSensory(t,false);
+					}
+				parent->CheckChanges(t);
+			}
+
 		}
 	#endif
 
