@@ -874,15 +874,14 @@ namespace Objects
 				{
 					if (numTriedPlottingOnMoveAutoMotion < 5)
 					{
-						Grid::LCellIdI	ways[6 * 3];
+						TWays	ways;
 
-						count_t numWays = GetMobileWays(owner->currentState, this,  location, ways, Grid::LCellIdI::Invalid, false,false);
-						ASSERT_LESS__(numWays,ARRAYSIZE(ways));
+						GetMobileWays(owner->currentState, this,  location, ways, Grid::LCellIdI::Invalid, false,false);
 						//random first to maybe not make the same mistake twice
-						for (index_t i = 0; i < numWays; i++)
+						for (index_t i = 0; i < ways.numWays; i++)
 						{
-							index_t target = entityRandom.getIndex(numWays-1);
-							if (PlotCourse(ways[target],true,false))
+							index_t target = entityRandom.getIndex(ways.numWays-1);
+							if (PlotCourse(ways.way[target],true,false))
 							{
 								numTriedPlottingOnMoveAutoMotion ++;
 								LogEvent(EventSignificance::Common,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
@@ -890,8 +889,8 @@ namespace Objects
 							}
 						}
 						//iterative, in case random missed some option
-						for (index_t i = 0; i < numWays; i++)
-							if (PlotCourse(ways[i],true, false))
+						for (index_t i = 0; i < ways.numWays; i++)
+							if (PlotCourse(ways.way[i],true, false))
 							{
 								numTriedPlottingOnMoveAutoMotion ++;
 								LogEvent(EventSignificance::Common,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");

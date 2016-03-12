@@ -1,9 +1,36 @@
-﻿surveyors move along revertable paths only
-reduce hoverbase safe falling height
+﻿research concept:
+	two types of research:
+		acquire locked turret/base/building
+			some arranged in a tree, others available right away
+			
+		improved unlocked turret/base/building (very expensive, end game, all in percentage, exponentially increasing costs)
+			* scanning range
+			* attacks per round (towers/offensive vehicles)
+			* attack range (towers/offensive vehicles)
+			* explosion radius (towers/offensive vehicles)
+			* damage level (towers/offensive vehicles)
+			* movement speed (vehicles)
+			* construction speed (vehicles/factories) - for vehicles mostly only makes sense with multi job execution per round
+			* health
+			* health factor (vehicle turrets)
+			* emp resistance?
+			* fuel demand (satellites, generators)
+			* yield efficiency (mines/generators produce more)
+			
+		
 
-emp independent of goal
+
+new mine system:
+	have mines multiply resource availability with number of solid natural blocks beneath mine. if >5/10, mine works at 100%
+	underwater mines:
+		1) water evaporator towers, that remove water in a fixed radius or shape
+		2) have special swimming platform mines that make block-links to the next lower natural ground
+			introduce link block type (structured, not gray)
+		3) have buildings ignore water (not displace it), and a special water-ignoring vehicle base type
+		
+
+
 hostile ghosts die after one round
-cluster natural resources
 
 auto relocation fails if some other non-move task immediately follows (e.g. transfer resources)
 potentially undo last (movement) task if build job is rejected
@@ -14,7 +41,7 @@ still have loss of initial AI world state. easy to reproduce: new planet with ai
 water has no bottom cap, and the bounding box/sphere/w/e is sometimes off by a little
 
 
-working structure replacement (replace one enable working structure with another that is better suited to stabilize the compound)
+working structure enable-replacement (replace one enable working structure with another that is better suited to stabilize the compound)
 
 
 repair vehicle idle if something damaged?
@@ -123,6 +150,10 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+cluster natural resources
+emp independent of goal
+reduce hoverbase safe falling height
+surveyors move along revertable paths only
 button to hide paths of non-selected entity
 better surveyor automation logic
 have pylons (ft_pylon) connect to each other only, replace connectors	

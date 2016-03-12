@@ -1899,6 +1899,8 @@
 
 			#ifdef _DEBUG
 				textout << " Location: "<<e.location.ToString()<<nl;
+				if (e.IsMobile())
+					textout << " Last point of origin: "<<((const Objects::MobileEntity&)e).GetLastPointOfOrigin().ToString()<<nl;
 				textout << " x: "<<e.system.x.xyz<<nl;
 				textout << " y: "<<e.system.y.xyz<<nl;
 				textout << " z: "<<e.system.z.xyz<<nl;

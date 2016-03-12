@@ -177,11 +177,11 @@ namespace RemoteControl
 
 
 	
-	void	Start(UINT16 serverBasePort /*= DEFAULT_SERVER_ROOT_PORT*/)
+	void	Start(UINT16 serverBasePort, TCP::Server::Protocol proto)
 	{
 		Detail::Create(); 
 		UINT16 port = serverBasePort + PortOffset::Control;
-		if (Detail::server.ExtStartService(port,TCP::Server::Protocol::IPv6, true))
+		if (Detail::server.ExtStartService(port,proto, true))
 		{
 			LogEvent(EventClass::Preset::remoteControlCommand,"Remote control server online on port "+String(port));
 		}

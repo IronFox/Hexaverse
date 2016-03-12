@@ -613,6 +613,7 @@ namespace Network
 			myIDString = myID.ToString();
 
 			Network::gameFlags = cr.info.gameFlags;
+			RuntimeConfig::empZones = (Network::gameFlags & Protocol::GameFlag::EMPZones) != 0;
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);
 

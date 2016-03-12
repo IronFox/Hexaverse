@@ -152,7 +152,7 @@ namespace Animation
 	//	static Buffer<Objects::MapNode>	nodes;
 		static Objects::ReachabilityMapper mapper(false);
 		Objects::Component::VehicleBase::canStandOnUnknown = false;
-		mapper.Map(v.get(),v->location,AI::BlockTest);
+		mapper.Map(v.get(),v->location,AI::BlockTest,referenceSpeed*5,true);
 		Objects::Component::VehicleBase::canStandOnUnknown = true;
 
 

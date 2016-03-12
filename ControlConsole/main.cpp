@@ -331,9 +331,9 @@ namespace ParameterConfig
 					}
 					elif (!strcmp(arg,"--help") || !strcmp(arg,"-h"))
 					{
-						std::cout << "usage: "<<program<<" [-p basePort] [-i] [command(s)]"<<std::endl;
-						std::cout << " -c/--command [cmd]\tExecute command"<<std::endl;
+						std::cout << "usage: "<<program<<" [-p basePort] [[-c] command(s)]"<<std::endl;
 						std::cout << " -p/--port [port]\tUse a non-default base port"<<std::endl;
+						std::cout << " -c/--command [cmd]\tExecute command"<<std::endl;
 						std::cout << " *\t\tExecute command"<<std::endl;
 						std::cout << " [no parameters]\tStart in interactive mode"<<std::endl;
 					}

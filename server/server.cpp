@@ -334,7 +334,7 @@ void	SignalNexusControlChange(const Objects::PFaction&f)
 {
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		return;
-	if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus || RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::EMPConquerNexus)
+	if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
 	{
 		if (f->nexusControl >= Game::Config::GetTargetNexusCount())
 		{
@@ -1071,6 +1071,7 @@ namespace ParameterConfig
 	bool	customWorldID = false;
 	bool	enableRemoteControl = true;
 	const char*	programName="";
+	TCP::Server::Protocol controlProtocol = TCP::Server::Protocol::IPv6;
 
 	void	SetProgramName(const char*base)
 	{
@@ -1090,6 +1091,7 @@ namespace ParameterConfig
 		std::cout << "  --offline/-o \tstart offline"<<std::endl;
 		std::cout << "  --port/-p [basePort]\tuse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default)"<<std::endl;
 		std::cout << "  --noRemote/-r \tdisable remote control service"<<std::endl;
+		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
 		std::cout << "  --test/-t \trun self-tests, then quit"<<std::endl;
 		std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
 	}
@@ -1126,6 +1128,8 @@ namespace ParameterConfig
 			case Idle:
 				if (!strcmp(arg,"--test") || !strcmp(arg,"-t"))
 					inTestMode = true;
+				elif (!strcmp(arg,"--rv4"))
+					controlProtocol = TCP::Server::Protocol::IPv4;
 				elif (!strcmp(arg,"--port") || !strcmp(arg,"-p"))
 					mode = ExpectPort;
 				elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
@@ -1298,7 +1302,7 @@ int main( int argc, const char* argv[])
 		UDPBroadCast::Create(ParameterConfig::basePort,Network::serverID);
 
 		if (ParameterConfig::enableRemoteControl)
-			RemoteControl::Start(ParameterConfig::basePort);
+			RemoteControl::Start(ParameterConfig::basePort,ParameterConfig::controlProtocol);
 
 
 
@@ -1559,15 +1563,12 @@ int main( int argc, const char* argv[])
 			LogConfig(" -Liquids: Static.");
 		switch (RuntimeConfig::gameGoal)
 		{
-			case RuntimeConfig::GameGoal::EMPConquerNexus:
-				LogConfig(" -Goal: Connect and enable 2+ Nexus Ports. Watch out for EMP fields.");
-			break;
 			case RuntimeConfig::GameGoal::None:
 				LogConfig(" -Goal: None.");
 			break;
 			case RuntimeConfig::GameGoal::ConquerNexus:
 				static_assert(BaseGrid::IsolatedCornerCount==3,"Unexpected count");
-				LogConfig(" -Goal: Connect and enable 2 of 3 Nexus Ports.");
+				LogConfig(" -Goal: Connect and enable 2+ Nexus Ports.");
 			break;
 		}
 		if (Game::Config::closedGame)
@@ -1615,6 +1616,10 @@ int main( int argc, const char* argv[])
 			LogConfig(" -Expose Vehicle Initiative: Vehicle initiative is exposed to hostile factions.");
 		else
 			LogConfig(" -Private Vehicle Action: Vehicle movement is not exposed to hostile factions.");
+		if (RuntimeConfig::empZones)
+			LogConfig(" -EMP Zones: Vehicles enterting residual EMP fields will suffer extensive EMP damage.");
+		else
+			LogConfig(" -No EMP Zones: The entire planet is freely accessible.");
 
 		if (FileIO::Config::saveEveryNRounds > 0)
 			LogConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");
