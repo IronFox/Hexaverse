@@ -245,19 +245,17 @@ namespace Objects
 		typedef BaseCommand Super;
 
 		static Buffer0<CommandGroup*>		activeGroupPath;
+		bool	isCollapsed  = true;
 
 		void	Collapse()
 		{
-			if (state & Flags::IsPermaActive)
-			{
-				state -= Flags::IsPermaActive;
-			}
+			isCollapsed = true;
 		}
 
 
 		void	Expand()
 		{
-			state |= Flags::IsPermaActive;
+			isCollapsed = false;
 		}
 
 
@@ -275,7 +273,7 @@ namespace Objects
 			}
 		}
 
-		virtual	void	Refresh(bool controlEnabled) override {/*CommandContainer::Refresh(controlEnabled);*/}
+		virtual	void	Refresh(bool controlEnabled) override {state = Flags::IsEnabled; if (!isCollapsed) state |= Flags::IsPermaActive; }
 		virtual bool	IsGroup() const override {return true;}
 
 		static void		CollapseAll()
@@ -286,6 +284,19 @@ namespace Objects
 		}
 	};
 
+
+	class ResearchCommandGroup : public CommandGroup
+	{
+		typedef CommandGroup	Super;
+	public:
+		ResearchTask	task;
+		const bool		hasAttrib;
+		const Component::Attribute	attrib;
+		/**/			ResearchCommandGroup(const String&name, ResearchTask	task, Component::Attribute attrib) : Super(name),task(task),attrib(attrib),hasAttrib(true)	{}
+		/**/			ResearchCommandGroup(const String&name, ResearchTask	task) : Super(name),task(task),hasAttrib(false)	{}
+
+		virtual	void	Refresh(bool controlEnabled) override;
+	};
 
 
 

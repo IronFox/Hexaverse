@@ -2099,11 +2099,14 @@ namespace Objects
 		/*static*/	void Laboratory::ConfigureResearchButtons()
 		{
 			
-			PCommandGroup unlockGroup = commands.AddChild("Unlock");
-			PCommandGroup improveGroup = commands.AddChild("Improve");
+			PCommandGroup unlockGroup = To<CommandGroup>::Cast( commands.Add(new ResearchCommandGroup( "Unlock", ResearchTask::Unlock)));
+			PCommandGroup improveGroup = To<CommandGroup>::Cast( commands.Add(new ResearchCommandGroup( "Improve", ResearchTask::Improve)));
 			FixedArray<PCommandGroup,Component::Attribute::N> improveSubGroups;
 			foreach (improveSubGroups,sub)
-				(*sub) = improveGroup->AddChild(Component::Attribute::Reinterpret(sub - improveSubGroups.begin()).ToString());
+			{
+				Component::Attribute attrib = Component::Attribute::Reinterpret(sub - improveSubGroups.begin());
+				(*sub) = To<CommandGroup>::Cast(improveGroup->Add(new ResearchCommandGroup( attrib.ToString(), ResearchTask::Improve,  attrib)) );
+			}
 
 			foreach (ResearchState::globalState.types,t)
 			{

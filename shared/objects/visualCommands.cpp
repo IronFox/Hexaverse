@@ -40,6 +40,16 @@ namespace Objects
 
 	}
 
+	/*virtual override*/	void	ResearchCommandGroup::Refresh(bool controlEnabled)
+	{
+		Super::Refresh(controlEnabled);
+
+		if (!(state & Flags::IsPermaActive) &&
+			selectedEntity && selectedEntity->owner->researchState.GetCurrentTask() == task && (!hasAttrib || selectedEntity->owner->researchState.currentResearchAttribute == attrib))
+			state |= Flags::IsFlashing;
+	}
+
+
 
 	/*static*/ void		EntityConstructionCommand::UpdateTexture(BaseCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
 	{

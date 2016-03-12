@@ -138,7 +138,13 @@ namespace Objects
 		InvertedCeilInt
 	};
 
-	
+	enum class ResearchTask
+	{
+		None,
+		Unlock,
+		Improve
+	};
+
 
 
 	/**
@@ -190,6 +196,8 @@ namespace Objects
 			UINT32				contribution=0;
 		#endif
 
+		typedef ResearchTask Task;
+
 		ConstName				currentResearch = ConstName::Empty;
 		Component::Attribute	currentResearchAttribute;	//ignored if targeted research is not unlocked
 
@@ -229,6 +237,8 @@ namespace Objects
 
 		UINT32			GetResearchOf(ConstName, Component::Attribute)	const;
 		void			GetResearchOf(ConstName, UINT32&current, UINT32&max)	const;
+
+		Task			GetCurrentTask() const;
 
 		static void		StaticCreate();
 		static bool		IsGenerallyResearchable(ConstName);

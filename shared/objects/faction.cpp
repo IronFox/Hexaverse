@@ -2000,6 +2000,16 @@ namespace Objects
 		return IsGenerallyResearchable(name,attrib);
 	}
 
+	ResearchState::Task			ResearchState::GetCurrentTask() const
+	{
+		if (IsCurrentlyResearchable(currentResearch, currentResearchAttribute))
+			return Task::Improve;
+		if (IsCurrentlyResearchable(currentResearch))
+			return Task::Unlock;
+		return Task::None;
+	}
+
+
 	#ifdef CLIENT
 		void		ResearchState::Update(const ResearchState&update, const PFaction&parent)
 		{
