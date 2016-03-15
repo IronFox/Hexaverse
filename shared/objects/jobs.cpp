@@ -1619,7 +1619,10 @@ namespace Objects
 						if (c != v.location && !DoneHere(Grid::actualWorld,c, next == path.end() ? c : *next))
 							break;
 					}
-
+					if (c == v.location)
+					{
+						return CannotStartAbort;
+					}
 					if (!v.PlotFrontCourse(c,false))
 					{
 						//bool abort = true;
