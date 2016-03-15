@@ -39,7 +39,7 @@ namespace Camera
 	extern Engine::VectorCamera<>	scene;
 	extern Engine::OrthographicAspect<>	hud;
 
-	extern bool					autoRotation;
+	extern bool					autoRotation, locked;
 
 
 	/**
@@ -70,6 +70,12 @@ namespace Camera
 	Stops any ongoing targeted translation
 	*/
 	void						AbortTargetedTranslation();
+	/**
+	Toggles between on and off for auto-rotation. Auto-rotation follows the sun plane in reverse direction at fixed speed.
+	Good for recording views of planets in spectator mode. Not so good for any other use.
+	*/
+	void						ToggleAutoRotation();
+
 
 	/**
 	Smoothly updates ongoing camera animations. Must be called once per frame
