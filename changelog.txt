@@ -5,6 +5,7 @@ v0.3.19
 	> Improved performance of path finding.
 	> Reduced safe falling distance of hovercraft vehicles to 5 (was basically infinite).
 	> Natural resources are more clustered now.
+	> Path jobs (build roads etc) will now tolerate structures at their destination.
 
 v0.3.18	[Mar 1 2016]
 	+ Included control console for interactive command-line server configuration.

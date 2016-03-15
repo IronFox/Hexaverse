@@ -1454,11 +1454,11 @@ namespace Objects
 	
 	}
 
-
+	template <bool IgnoreStructuresAtDestination>
 	bool ValidDestinationOf(const Grid::WorldData&world,const Vehicle&v, const Grid::LCellIdI&location, bool isDestination, bool ignoreWater, bool doFloat)
 	{
 		return 
-			(world.LowCellIsClear(location) || (isDestination && MobileDestinationStructureHere(location,v)))
+			(world.LowCellIsClear(location) || (isDestination && (IgnoreStructuresAtDestination || MobileDestinationStructureHere(location,v))))
 			&&
 			(v.CanStandOn(world,location-1,ignoreWater,doFloat));
 
@@ -1510,7 +1510,7 @@ namespace Objects
 					continue;
 
 
-				if ( ValidDestinationOf(world,*v,cell, cell == destination, false, false) )
+				if ( ValidDestinationOf<false>(world,*v,cell, cell == destination, false, false) )
 				{
 					if (cell==destination)
 					{
@@ -1643,7 +1643,7 @@ namespace Objects
 				if (!okay)
 					continue;
 
-				if ( ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, true) )
+				if ( ValidDestinationOf<true>(world,*v,cell, cell == destination, ignoreWater, true) )
 				{
 					(*outChoices++) = cell;
 					rs++;
@@ -1684,7 +1684,7 @@ namespace Objects
 				if (!okay)
 					continue;
 
-				if ( ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, false) )
+				if ( ValidDestinationOf<true>(world,*v,cell, cell == destination, ignoreWater, false) )
 //				if ((cell == destination || world.LowCellIsClear(cell)) && (v->CanStandOn(world,cell-1,ignoreWater)))
 				{
 					(*outChoices++) = cell;
@@ -1718,7 +1718,7 @@ namespace Objects
 							break;
 						}
 			}
-			if ( okay && ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, false) )
+			if ( okay && ValidDestinationOf<true>(world,*v,cell, cell == destination, ignoreWater, false) )
 //				if ((cell == destination || world.LowCellIsClear(cell)) && (v->CanStandOn(world,cell-1,ignoreWater)))
 			{
 				(*outChoices++) = cell;
@@ -1897,7 +1897,7 @@ namespace Objects
 			vehicle->owner->currentState;
 		#endif
 
-		if (!ValidDestinationOf(world,*vehicle,to,true,false, false))
+		if (!ValidDestinationOf<false>(world,*vehicle,to,true,false, false))
 			return false;
 
 		//if (!vehicle->CanStandOn(world,to -1,false) || 
