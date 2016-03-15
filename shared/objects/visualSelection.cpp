@@ -43,6 +43,7 @@ namespace Objects
 		PWorldEntity e = selectedEntity;
 		selectedEntity.reset();	
 		selectedVehicle.reset();
+		selectedMobileEntity.reset();
 		activeCursorMode = CursorMode::Idle;
 
 		if (e)
