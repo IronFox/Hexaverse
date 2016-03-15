@@ -1488,7 +1488,7 @@ namespace Objects
 			const Grid::WorldData&world = v.owner->currentState;
 			Grid::LCellIdI destination = _destination;
 			if (mode != CursorMode::BuildBridgeMode)
-				while (!world.LowCellIsClear(destination))
+				while (!world.LowCellIsClearIgnoreStructure(destination))
 					destination++;
 			else
 				if (v.IsVehicle() && !((Vehicle&)v).CanStandOn(world,destination,false,true))
