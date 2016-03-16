@@ -456,9 +456,6 @@ namespace Objects
 			return false;
 		}
 
-		#ifdef HAS_WINDOW
-			void					UpdateIconLocations();
-		#endif
 
 		friend class Super;
 		/**/						VehicleStore() {}
@@ -510,10 +507,12 @@ namespace Objects
 			static index_t			storeOffset;				//!< Button offset (kinda like a scrollbar position)
 			static const count_t	MaxVisibleStoreItems = 8;	//!< Maximum number of vehicle buttons that can be shown before arrow buttons are added to scroll
 
+			static int2				cmdLeftCoords,
+									cmdRightCoords;
 			static IconCommand		cmdLeft,		//!< Arrow button to scroll left
 									cmdRight;		//!< Arrow button to scroll right
 
-			virtual void			OnSelect()	override {UpdateIconLocations();deployingVehicle.reset();};
+			virtual void			OnSelect()	override {deployingVehicle.reset();};
 			virtual void			OnDeselect() override {deployingVehicle.reset();}
 
 			/**
@@ -928,9 +927,6 @@ namespace Objects
 	protected:
 		typedef CommonStructure<SkyPort>	Super;
 
-		#ifdef HAS_WINDOW
-			void					UpdateIconLocations();
-		#endif
 
 		friend class Super;
 		/**/						SkyPort():MobileEntityProducer(ConstructionSpeed) {MobileEntityProducer::SetCommandOffset(int2(3,1));}
@@ -1855,7 +1851,7 @@ namespace Objects
 				Super::PrototypeLoadGeometry();
 
 				#ifdef HAS_WINDOW
-					commands.baseCoords = int2(3,0)+BaseCommand::coordOffset;
+					commands.baseCoords = int2(3,0);
 				#endif
 
 
@@ -1897,7 +1893,7 @@ namespace Objects
 			Super::PrototypeSetup();
 
 			#ifdef HAS_WINDOW
-				commands.baseCoords = int2(3,0)+BaseCommand::coordOffset;
+				commands.baseCoords = int2(3,0);
 
 				commands.Add(new IconCommand("Enable",&Cmd::Enable,
 				[](bool controlEnabled)->BaseCommand::Flags
@@ -1938,7 +1934,7 @@ namespace Objects
 		{
 			Super::PrototypeSetup();
 			#ifdef HAS_WINDOW
-				commands.baseCoords = int2(3,0)+BaseCommand::coordOffset;
+				commands.baseCoords = int2(3,0);
 			#endif
 
 			String name = GetTypeName();

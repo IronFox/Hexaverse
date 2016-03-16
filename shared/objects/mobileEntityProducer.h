@@ -57,7 +57,7 @@ namespace Objects
 			TUniqueID				id;
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
-					EntityConstructionCommand	commandToTerminate;
+					std::pair<int2,EntityConstructionCommand>	commandToTerminate;
 				#endif
 				String				name;
 				int					cost, roundsToCompletion;

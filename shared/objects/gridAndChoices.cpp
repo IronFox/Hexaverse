@@ -1532,48 +1532,44 @@ namespace Objects
 				anyCanWalk = true;
 				const Grid::LCellIdI	cell(n.neighborID[i], location.height + j);
 
-				bool okay = cell.height < Grid::CellStack::HalfRange && cell.height >= -Grid::CellStack::HalfRange;
-				if (okay)
 				{
-					if (!world.LowCellIsClear(cell))
-					{
-						if (j <= 0)
-							canWalk[i] = false;
-						okay = false;
+					bool okay = cell.height < Grid::CellStack::HalfRange && cell.height >= -Grid::CellStack::HalfRange;
+					if (!okay)
 						continue;
-					}
 				}
-				if (!okay)
-					continue;
-
-
-				if ( ValidDestinationOf<false>(world,*v,cell, cell == destination, false, false) )
+				bool valid = ValidDestinationOf<false>(world,*v,cell, cell == destination, false, false);
+				if (!valid)
 				{
-					if (cell==destination)
+					if (j <= 0)
+						canWalk[i] = false;
+					continue;
+				}
+
+
+				if (cell==destination)
+				{
+					if (!ignoreVehiclesOnDestination && !NoVehicleHereExcept(cell,v))
+						continue;
+				}
+				else
+				{
+					if (!ignoreFriendlyVehiclesOnRoute)
 					{
-						if (!ignoreVehiclesOnDestination && !NoVehicleHereExcept(cell,v))
+						if (!NoVehicleHereExcept(cell,v))
 							continue;
 					}
 					else
-					{
-						if (!ignoreFriendlyVehiclesOnRoute)
-						{
-							if (!NoVehicleHereExcept(cell,v))
+						#ifdef CLIENT
+							if (!NoHostileVehicleHere(cell,v->owner))
 								continue;
-						}
-						else
-							#ifdef CLIENT
-								if (!NoHostileVehicleHere(cell,v->owner))
-									continue;
-							#else
-								if (!NoHostileVehicleHere(cell,v->owner,v->motionTime))
-									continue;
-							#endif
-					}
-
-					//DBG_ASSERT__(!GetStructure(cell));//should be implied by LowCellIsClear (except if it's a connector, then not, so don't check this)
-					outWays.Add(cell);
+						#else
+							if (!NoHostileVehicleHere(cell,v->owner,v->motionTime))
+								continue;
+						#endif
 				}
+
+				//DBG_ASSERT__(!GetStructure(cell));//should be implied by LowCellIsClear (except if it's a connector, then not, so don't check this)
+				outWays.Add(cell);
 			}
 			if (!anyCanWalk)
 				break;

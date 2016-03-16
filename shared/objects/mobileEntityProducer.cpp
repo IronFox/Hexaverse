@@ -98,7 +98,7 @@ namespace Objects
 		void				MobileEntityProducer::VisitAllCommands(WorldEntity::FCommandVisitor visitor,bool force)
 		{
 			for (index_t i = 0; i < queue.Count(); i++)
-				queue[i].commandToTerminate.VisitMembers(visitor,force);
+				queue[i].commandToTerminate.second.VisitMembers(visitor,force,queue[i].commandToTerminate.first);
 		}
 
 		
@@ -422,7 +422,7 @@ namespace Objects
 			commandOffset = c;
 			int index = 0;
 			foreach (queue,item)
-				item->commandToTerminate.SetCoords(commandOffset + int2(index++,0));
+				item->commandToTerminate.first = commandOffset + int2(index++,0);
 		}
 		#endif
 
@@ -471,7 +471,7 @@ namespace Objects
 				item.roundsToCompletion = rounds;
 
 				#ifdef HAS_WINDOW
-					item.commandToTerminate = EntityConstructionCommand(commandOffset + int2(index,0), JobName(index,item.name,rounds),base,turret,sat,[id,index]()
+					item.commandToTerminate.second = EntityConstructionCommand(JobName(index,item.name,rounds),base,turret,sat,[id,index]()
 					{
 //						PWorkingStructure s = To<WorkingStructure>::DynamicCast(e);
 	//					ASSERT__(s);
@@ -506,18 +506,19 @@ namespace Objects
 							SignalConstructionAbort(selectedEntity->id,id);	//lossless
 
 					},CommonCmd::CommonButtonCheck);
+					item.commandToTerminate.first = commandOffset + int2(index,0);
 					if (!index)
 					{
-						item.commandToTerminate.roundsLeft = rounds;
-						item.commandToTerminate.mineralsLeft = price - productionDone;
+						item.commandToTerminate.second.roundsLeft = rounds;
+						item.commandToTerminate.second.mineralsLeft = price - productionDone;
 					}
 					else
 					{
-						item.commandToTerminate.roundsLeft = 0xFFFFFFFF;
-						item.commandToTerminate.mineralsLeft = 0xFFFFFFFF;
+						item.commandToTerminate.second.roundsLeft = 0xFFFFFFFF;
+						item.commandToTerminate.second.mineralsLeft = 0xFFFFFFFF;
 					}
 
-					item.commandToTerminate.RasterizeImage();
+					item.commandToTerminate.second.RasterizeImage();
 				#endif
 
 			}

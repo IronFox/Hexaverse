@@ -220,12 +220,12 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			foreach (Component::vehicleTurretComponents,tc)
-				(*tc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();},true);
+				(*tc)->VisitAllCommands([](const int2&,BaseCommand&cmd){cmd.RasterizeImage();},true);
 			foreach (Component::baseComponents,bc)
-				(*bc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();},true);
+				(*bc)->VisitAllCommands([](const int2&,BaseCommand&cmd){cmd.RasterizeImage();},true);
 
 			globalCommands.baseCoords = BaseCommand::coordOffset;
-			globalCommands.Add(new GlobalCommand("End Round", [](){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
+			globalCommands.Add(int2(),false,new GlobalCommand("End Round", [](){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
 			[](bool controlEnabled)->BaseCommand::Flags
 			{
 				BaseCommand::Flags rs = BaseCommand::Flags::None;
@@ -237,10 +237,9 @@ namespace Objects
 					if (ShouldSignalRoundEnd())
 						rs |= BaseCommand::Flags::IsFlashing;
 				return rs;
-			})) ->SetCoords(int2());
+			}));
 
-			viewCommands = globalCommands.AddChild("View");
-			viewCommands->SetCoords(int2(1,0));
+			viewCommands = globalCommands.AddChild(int2(1,0),false,"View");
 
 			viewCommands->Add( new GlobalCommand("Highlight Compounds", &GlobalCmd::ToggleCompoundHightlights
 					, GlobalPermaSwitch(Renderer::CompoundsAreHighlighted)

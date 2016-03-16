@@ -612,7 +612,7 @@
 				if (offset > 0)
 				{
 					GridCell&cell = AllocateCell(leftCommand.get());
-					//cell.type = GridCell::ContactListLeft;
+					cell.gridCoords = leftCommand->gridCoords;
 					cell.flipY = true;
 					cell.Update(camera);
 				}
@@ -621,8 +621,7 @@
 				if (moreRight)
 				{
 					GridCell&cell = AllocateCell(rightCommand.get());
-					//cell.type = GridCell::ContactListRight;
-					rightCommand->gridCoords = DynamicRowOffset + int2(currentContactListWidth+1,rowIndex);
+					cell.gridCoords = DynamicRowOffset + int2(currentContactListWidth+1,rowIndex);
 					cell.flipY = true;
 					cell.Update(camera);
 				}
@@ -655,8 +654,7 @@
 				{
 					const Objects::PBaseCommand cmd = commands[i+visibleRange.start];
 					GridCell&cell = AllocateCell(cmd.get());
-					//cell.type = GridCell::ContactListEntry;
-					cell.command->gridCoords = DynamicRowOffset + int2(i+1,rowIndex);
+					cell.gridCoords = DynamicRowOffset + int2(i+1,rowIndex);
 					cell.flipY = true;
 					cell.Update(camera);
 					lastVisible << cmd;
@@ -880,16 +878,17 @@
 
 			namespace BottomRightPanel
 			{
-				Buffer0<Objects::PBaseCommand>				commands;
+				typedef std::shared_ptr<Icon>	PIcon;
+				Buffer0<PIcon >				commands;
 
 				void Create()
 				{
-					commands << Objects::PBaseCommand( new TutorialCommand() );
+					commands << PIcon( new TutorialCommand() );
 
-					commands << Objects::PBaseCommand( new DemolishCommand() );
-					commands << Objects::PBaseCommand( new SleepCommand() );
-					commands << Objects::PBaseCommand( new AbortCommand() );
-					commands << Objects::PBaseCommand( new UndoCommand() );
+					commands << PIcon( new DemolishCommand() );
+					commands << PIcon( new SleepCommand() );
+					commands << PIcon( new AbortCommand() );
+					commands << PIcon( new UndoCommand() );
 
 				}
 
@@ -898,9 +897,10 @@
 					commands.Clear();
 				}
 
-				static void Add(const Objects::PBaseCommand&cmd)
+				static void Add(const int2&coords, const Objects::PBaseCommand&cmd)
 				{
 					GridCell&cell = AllocateCell(cmd.get());
+					cell.gridCoords = coords;
 					cell.flipX = true;
 					cell.Update(camera);
 					cmd->Refresh(Network::ControlEnabled());
@@ -915,7 +915,7 @@
 						return;
 					}
 					foreach (commands,c)
-						Add(*c);
+						Add((*c)->gridCoords, *c);
 				}
 			}
 
@@ -943,7 +943,7 @@
 			}
 			float2		GridCell::ToFloatCoords() const
 			{
-				int2 cellCoords = command->gridCoords;
+				int2 cellCoords = gridCoords;
 				if (!flipX && !flipY)
 					cellCoords += int2(3,1);
 				float x;
@@ -1089,10 +1089,10 @@
 				foreach (allGuiCells,cell)
 					cell->Update(camera);
 				RefreshContacts();
-				if (hasFocusButton)
-				{
-					selectedFocus.gridCoords = GetFocusLocation();
-				}
+				//if (hasFocusButton)
+				//{
+				//	selectedFocus.gridCoords = GetFocusLocation();
+				//}
 			}
 
 			void						Destroy()
@@ -1335,10 +1335,11 @@
 
 			Buffer0<Objects::BaseCommand*>	allocatedEntityCommands;
 			int2 at;
-			void	VisitCommand(Objects::BaseCommand&cmd)
+			void	VisitCommand(const int2&coords,Objects::BaseCommand&cmd)
 			{
 				GridCell&cell = AllocateCell(&cmd);
 				cmd.Refresh(Network::ControlEnabled());
+				cell.gridCoords = coords;
 				cell.Update(camera);
 				allocatedEntityCommands<<&cmd;
 			}
@@ -1476,12 +1477,11 @@
 						e->VisitAllCommands(VisitCommand,false);
 
 					selectedFocus = EntityFocusCommand(e);
-					selectedFocus.gridCoords = GetFocusLocation();
-
 					selectedFocus.Refresh(true);//Network::ControlEnabled());
 					selectedFocus.UpdateTexture(e,false,e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor);
 
 					GridCell&cell = AllocateCell(&selectedFocus);
+					cell.gridCoords = GetFocusLocation();
 					cell.flipY = true;
 					cell.flipX = true;
 					cell.Update(camera);

@@ -724,7 +724,7 @@ namespace Objects
 
 			CellCoords ConfigureStandardCommands(Turret&component)
 			{
-				component.commands.baseCoords = int2(3,0)+BaseCommand::coordOffset;
+				component.commands.baseCoords = int2(3,0);
 				return CellCoords(3,0);
 			}
 		#endif
@@ -815,7 +815,8 @@ namespace Objects
 						timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,TerrainAdd);
 					}
 				));
-				terraformAddGround->Add( new IconCommand("Build Road", &Cmd::BuildRoad
+
+				PBaseCommand buildRoad(new IconCommand("Build Road", &Cmd::BuildRoad
 					,&CommonCmd::IdleCheck
 					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
@@ -827,6 +828,10 @@ namespace Objects
 					}
 				));
 
+				terraformAddGround->Add( buildRoad );
+				if (structureGroup[Structure::Category::Infrastructure])
+					structureGroup[Structure::Category::Infrastructure]->Add(buildRoad);
+
 				#ifndef ONE_COMPOUND_PER_FACTION
 					transferGroup->Add(new IconCommand("Withdraw Resources",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					transferGroup->Add(new IconCommand("Deposit Resources",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
@@ -835,8 +840,18 @@ namespace Objects
 				#else
 
 				#endif
-				terraformAddGround->Add( new IconCommand("Build Road to", &CommonCmd::ToggleMode<CursorMode::BuildRoadChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildRoadChainMode>, NoCosts));
-				terraformAddGround->Add( new IconCommand("Build Bridge to", &CommonCmd::ToggleMode<CursorMode::BuildBridgeMode>, &CommonCmd::ModeCheck<CursorMode::BuildBridgeMode>,NoCosts));
+
+				PBaseCommand buildRoadTo(new IconCommand("Build Road to", &CommonCmd::ToggleMode<CursorMode::BuildRoadChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildRoadChainMode>, NoCosts));
+				PBaseCommand buildBridgeTo( new IconCommand("Build Bridge to", &CommonCmd::ToggleMode<CursorMode::BuildBridgeMode>, &CommonCmd::ModeCheck<CursorMode::BuildBridgeMode>,NoCosts) );
+
+				terraformAddGround->Add( buildRoadTo);
+				terraformAddGround->Add( buildBridgeTo);
+				if (structureGroup[Structure::Category::Infrastructure])
+				{
+					structureGroup[Structure::Category::Infrastructure]->Add(buildRoadTo);
+					structureGroup[Structure::Category::Infrastructure]->Add(buildBridgeTo);
+				}
+
 				terraformRemoveGround->Add( new IconCommand("Dig Tunnel to", &CommonCmd::ToggleMode<CursorMode::DigTunnelMode>, &CommonCmd::ModeCheck<CursorMode::DigTunnelMode>,NoCosts));
 				terraformAddGround->Add( new IconCommand("Build Wall to", &CommonCmd::ToggleMode<CursorMode::BuildWallChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildWallChainMode>,NoCosts));
 
