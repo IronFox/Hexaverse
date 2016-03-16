@@ -865,6 +865,37 @@ namespace Objects
 		}
 
 
+		bool MobileEntity::AutoMoveComplete()
+		{
+			if (numTriedPlottingOnMoveAutoMotion < 5)
+			{
+				TWays	ways;
+
+				GetMobileWays(owner->currentState, this,  location, ways, Grid::LCellIdI::Invalid, false,false);
+				//random first to maybe not make the same mistake twice
+				for (index_t i = 0; i < ways.numWays; i++)
+				{
+					index_t target = entityRandom.getIndex(ways.numWays-1);
+					if (PlotCourse(ways.way[target],true,false))
+					{
+						numTriedPlottingOnMoveAutoMotion ++;
+						LogEvent(EventSignificance::Common,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
+						return true;	//retry
+					}
+				}
+				//iterative, in case random missed some option
+				for (index_t i = 0; i < ways.numWays; i++)
+					if (PlotCourse(ways.way[i],true, false))
+					{
+						numTriedPlottingOnMoveAutoMotion ++;
+						LogEvent(EventSignificance::Common,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
+						return true;	//retry
+					}
+			}
+			LogEvent(EventClass::Preset::operationAborted,this,"Unable to automatically relocate. Move manually to finish '"+completeOnMove->GetName()+"'");
+			return false;
+		}
+
 
 		bool			MobileEntity::PerformNonAttack()
 		{
@@ -872,32 +903,8 @@ namespace Objects
 			{
 				if (completeOnMove)
 				{
-					if (numTriedPlottingOnMoveAutoMotion < 5)
-					{
-						TWays	ways;
-
-						GetMobileWays(owner->currentState, this,  location, ways, Grid::LCellIdI::Invalid, false,false);
-						//random first to maybe not make the same mistake twice
-						for (index_t i = 0; i < ways.numWays; i++)
-						{
-							index_t target = entityRandom.getIndex(ways.numWays-1);
-							if (PlotCourse(ways.way[target],true,false))
-							{
-								numTriedPlottingOnMoveAutoMotion ++;
-								LogEvent(EventSignificance::Common,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
-								return false;	//retry
-							}
-						}
-						//iterative, in case random missed some option
-						for (index_t i = 0; i < ways.numWays; i++)
-							if (PlotCourse(ways.way[i],true, false))
-							{
-								numTriedPlottingOnMoveAutoMotion ++;
-								LogEvent(EventSignificance::Common,this,"Automatically moving to finish '"+completeOnMove->GetName()+"'");
-								return false;	//retry
-							}
-					}
-					LogEvent(EventClass::Preset::operationAborted,this,"Unable to automatically relocate. Move manually to finish '"+completeOnMove->GetName()+"'");
+					if (AutoMoveComplete())
+						return false;
 				}
 				return true;
 			}
@@ -955,6 +962,13 @@ namespace Objects
 										LogEvent(EventClass::Preset::error,this,"Cannot find parent job '"+parent->GetName()+"'");
 								}
 								RegisterChange(TasksChanged,motionTime);
+
+								if (completeOnMove && !HasTasks())
+								{
+									if (AutoMoveComplete())
+										return false;
+								}
+
 							}
 							break;
 						}

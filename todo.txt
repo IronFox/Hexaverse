@@ -1,4 +1,12 @@
-﻿research concept:
+﻿having small compound spheres within larger ones become visible if the camera is inside these spheres
+shift+click should work on terraforming operations, too
+
+
+
+
+
+
+research concept:
 	two types of research:
 		acquire locked turret/base/building
 			some arranged in a tree, others available right away
@@ -150,6 +158,7 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+enabling see-through via ctrl somehow lowers focus height further each time, even beneath lowest possible height
 cluster natural resources
 emp independent of goal
 reduce hoverbase safe falling height

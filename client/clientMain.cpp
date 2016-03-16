@@ -2089,9 +2089,9 @@ void MyFatal(const FatalDescriptor&descriptor)
 			return;
 		}
 
-		int oldVehicleHeight = Grid::SeeThrough::GetFocusPoint().height;
-		if (Objects::selectedEntity)
-			oldVehicleHeight = Objects::selectedEntity->location.height;
+		//int oldVehicleHeight = Grid::SeeThrough::GetFocusPoint().height;
+		//if (Objects::selectedEntity)
+		//	oldVehicleHeight = Objects::selectedEntity->location.height;
 
 	
 
@@ -2377,7 +2377,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	void ToggleSeeThrough()
 	{
 		bool enable = !Grid::SeeThrough::IsEnabled();
-		Grid::SeeThrough::Update(enable, Grid::SeeThrough::LocateCamera()-1);
+		Grid::SeeThrough::Update(enable, Grid::SeeThrough::LocateCamera());
 		if (enable)
 			Tutorial::ShowMessage("Clip Terrain");
 	}
