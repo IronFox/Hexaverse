@@ -1540,7 +1540,7 @@ namespace Objects
 				bool valid = ValidDestinationOf<false>(world,*v,cell, cell == destination, false, false);
 				if (!valid)
 				{
-					if (j <= 0)
+					if (j <= 0 && !world.LowCellIsClear(cell))
 						canWalk[i] = false;
 					continue;
 				}
