@@ -295,8 +295,12 @@ namespace Objects
 			total.storage += added;
 			total.balance += added;
 			ASSERT2__(total.storage <= total.storageMax, total.storage.ToString(), total.storageMax.ToString());
-			ASSERT__(total.storage.IsStable());
-			ASSERT__(total.balance.IsStable());
+			ASSERT1__(total.storage.IsStable(), total.storage.ToString());
+			if (!total.balance.IsStable())
+			{
+				LogEvent(EventClass::Preset::internalError, "Compound balance is not stable: balance="+total.balance.ToString()+", storage="+total.storage.ToString()+", change="+added.ToString());
+				RefreshState(atTime);
+			}
 		}
 
 
