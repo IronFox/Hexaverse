@@ -370,7 +370,8 @@ namespace Objects
 				}
 				if (failIsFatal)
 				{
-					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure");
+					PStructure st = GetStructure(cell);
+					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure "+(st ? st->GetName(): "<>")+": "+Grid::actualWorld.LowCellReport(cell));
 					FATAL__("Critical abort");
 				}
 

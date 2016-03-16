@@ -2870,7 +2870,7 @@ namespace Objects
 							if (s && actualStore && actualStore->park == s->park)
 							{
 								float t = 0.f;
-								actualStore->LocalCheckout(To<Vehicle>::Cast(deployWhat),choice,t);
+								actualStore->LocalCheckout(To<Vehicle>::Cast(deployWhat),choice-1,t);
 							}
 							else
 							{
