@@ -1,0 +1,2 @@
+The package includes both server and client executables. No installation is required, but during first execution, the client may attempt OpenAL installation once.
+This version of Hexaverse features Pylons as a wireless connection mechanism between distant compounds. It does not provide Technite-functionality.
