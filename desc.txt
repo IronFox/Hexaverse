@@ -1,0 +1,4 @@
+This version of Hexaverse shares most features with the main prototype. Pylons are not available and buildings of one faction implicitly connect across any distance.
+The game rules allow the creation and processing of technite factions, tiny programmable life-forms that can cover and reshape the globe, as well as wreak havoc among player factions.
+A special client is required to program their behavior. A C# base implementation of such a client can be found here:
+<a href="https://github.com/SystemSoftware/TechniteLogic">https://github.com/SystemSoftware/TechniteLogic</a>
