@@ -341,6 +341,7 @@ namespace Network
 	{
 		#ifdef HAS_WINDOW
 			TimeLapse::enabled = false;
+			Camera::locked = false;
 		#endif
 
 		haveFaction = false;

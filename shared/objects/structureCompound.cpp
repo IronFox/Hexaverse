@@ -173,8 +173,13 @@ namespace Objects
 			total.storage += supply;
 			ASSERT2__(total.storage <= total.storageMax, total.storage.ToString(), total.storageMax.ToString());
 			total.balance += supply;
+			ASSERT1__(total.storage.IsStable(), total.storage.ToString());
 			ASSERT__(total.storage.IsStable());
-			ASSERT__(total.balance.IsStable());
+			if (!total.balance.IsStable())
+			{
+				LogEvent(EventClass::Preset::internalError, "Compound balance is not stable: balance="+total.balance.ToString()+", storage="+total.storage.ToString()+", change="+supply.ToString());
+				RefreshState(atTime);
+			}
 			FeedLeftovers(supply, atTime);
 
 		}

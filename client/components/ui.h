@@ -141,6 +141,8 @@ namespace UI
 				{
 					typedef Objects::BaseCommand	Super;
 				public:
+					int2					gridCoords;
+
 					/**/					Icon(const int2&coords, const String&name) : Super(name)
 											{
 												LoadIcon();
@@ -481,6 +483,7 @@ namespace UI
 				typedef Objects::BaseCommand	Super;
 				const bool						left;
 				DynamicRow *const				row;
+				int2							gridCoords;
 
 				//int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p, GetCosts c
 				/**/				ArrowCommand(bool left, DynamicRow*row) : Super(left ? "Left":"Right"), left(left),row(row)
@@ -556,6 +559,7 @@ namespace UI
 				Set flipX and flipY to alter this grid orientation, thus changing how command->coords are interpreted
 				*/
 				bool		flipY,flipX;
+				int2		gridCoords;
 
 				/**/		GridCell():command(nullptr),flipY(false),flipX(false)	{}
 
@@ -641,7 +645,7 @@ namespace UI
 
 			}
 
-			void		VisitCommand(Objects::BaseCommand&cmd);
+			void		VisitCommand(const int2&,Objects::BaseCommand&cmd);
 
 			void		RefreshButtonState();
 

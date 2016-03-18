@@ -1111,6 +1111,14 @@ namespace Grid
 				coverage.Clear();
 			}
 
+			count_t					GetVolume() const
+			{
+				count_t rs = 0;
+				foreach (coverage,c)
+					rs += c->layerEnd - c->layerBegin;
+				return rs;
+			}
+
 
 			static struct _Operator
 			{
@@ -1956,7 +1964,7 @@ namespace Grid
 		/**
 		Computes the coverage for a given location
 		*/
-		static coverage_t		GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max);
+		static coverage_t		GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max, float scale);
 
 		static float			probability[],density[];
 		static coverage_t		maximum[];
@@ -1975,7 +1983,7 @@ namespace Grid
 		//}
 
 		static Buffer0<Resource>all;
-		static void				Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 cellID));
+		//static void				Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 cellID));
 //		static void				Create(const String&name, ConstName cname, const float3&color/*, float p, coverage_t*/);
 		static void				Create(const String&name, ConstName cname, const float3&color, index_t);
 		//static void				Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield);
@@ -2394,6 +2402,7 @@ namespace Grid
 		Checks if the specified low-resolution cell is not at all covered (not even partially)
 		*/
 		bool					LowCellIsClear(const LCellIdI&cell)const;
+		String					LowCellReport(const LCellIdI&cell)const;
 		bool					LowCellIsClearOrWater(const LCellIdI&cell)const;
 		bool					LowCellHasStructure(const LCellIdI&cell)const;
 		bool					LowCellIsClearIgnoreStructure(const LCellIdI&cell)const;

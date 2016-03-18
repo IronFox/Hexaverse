@@ -413,6 +413,7 @@ void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI
 	ch.target = c;
 	if (deployingWhat)
 		ch.deployingWhat.Set0().value = deployingWhat->id;
+	LogEvent(EventSignificance::Common,"Signalling choice intersection with "+ch.target.ToString());
 	Network::Channels::choiceIntersection.SendTo(Network::client,ch);
 
 	#ifdef HAS_WINDOW
@@ -1415,7 +1416,7 @@ bool loop()
 	
 		//bool rebuildCamera = false;
 
-		if (!Dialog::IsModal() && !TimeLapse::enabled)
+		if (!Dialog::IsModal() && !Camera::locked)
 		{
 			{
 				if (Engine::mouse.buttons.right_down || Engine::mouse.buttons.middle_down)
@@ -1878,6 +1879,8 @@ bool loop()
 				textout.locate(0.0f,0.05f);
 				textout.color(1,1,1);
 				textout << "FPS: "<<1.f / Engine::timing.delta << nl;
+				if (Camera::locked && !TimeLapse::enabled)
+					textout << "Camera locked. Press F4 to unlock" << nl;
 				#ifdef _DEBUG
 					textout << "last remote message: "<<timer.GetSecondsSince(Network::client.GetLastPackageTime());
 				#endif
@@ -2015,9 +2018,9 @@ void MyFatal(const FatalDescriptor&descriptor)
 			return;
 		}
 
-		int oldVehicleHeight = Grid::SeeThrough::GetFocusPoint().height;
-		if (Objects::selectedEntity)
-			oldVehicleHeight = Objects::selectedEntity->location.height;
+		//int oldVehicleHeight = Grid::SeeThrough::GetFocusPoint().height;
+		//if (Objects::selectedEntity)
+		//	oldVehicleHeight = Objects::selectedEntity->location.height;
 
 	
 
@@ -2197,6 +2200,22 @@ void MyFatal(const FatalDescriptor&descriptor)
 		saveScreenshot =true;
 	}
 
+	void ToggleCameraLock()
+	{
+		if (TimeLapse::enabled)
+		{
+			LogEvent(EventClass::Preset::error,"Cannot alter camera lock while time-lapse is active");
+			return;
+		}
+		if (!Camera::locked)
+		{
+			Dialog::Confirm("Enabling camera lock will disallow all changes to the active perspective until unlocked."
+							"Press F4 again to unlock. Commence camera lock?",[](){Camera::locked=true;},
+							[]()->Dialog::CheckResult {if (!Network::client.IsConnected()) return Dialog::CheckResult::Abort; return Dialog::CheckResult::OkayContinue;});
+		}
+		else
+			Camera::locked = false;
+	}
 
 
 	void ToggleTimeLapse()
@@ -2204,6 +2223,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 		if (TimeLapse::enabled)
 		{
 			TimeLapse::enabled = false;
+			Camera::locked = false;
 			Dialog::SignalSituationChange();
 			LogEvent(EventClass::Preset::uncommon,"Time lapse disabled");
 		}
@@ -2236,6 +2256,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 				{
 					TimeLapse::runningNumber = 0;
 					TimeLapse::enabled = true;
+					Camera::locked = true;
 					TimeLapse::basePath = outDirName;
 					FileSystem::CreateDirectory(outDirName);
 					LogEvent(EventClass::Preset::uncommon,"Time lapse enabled. Writing to "+String(outDirName));
@@ -2250,7 +2271,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	void ToggleSeeThrough()
 	{
 		bool enable = !Grid::SeeThrough::IsEnabled();
-		Grid::SeeThrough::Update(enable, Grid::SeeThrough::LocateCamera()-1);
+		Grid::SeeThrough::Update(enable, Grid::SeeThrough::LocateCamera());
 		if (enable)
 			Tutorial::ShowMessage("Clip Terrain");
 	}
@@ -2729,16 +2750,6 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		UI::resourcesAsList = !UI::resourcesAsList;
 	}
 
-	void	ToggleCameraAutoRotation()
-	{
-		if (!Camera::autoRotation)
-		{
-			Camera::autoRotation = true;
-			Grid::ResetSunRotation();
-		}
-		else
-			Camera::StopAutoRotation();
-	}
 
 
 	bool	IsIdle(const Objects::PMobileEntity&v)
@@ -3400,7 +3411,7 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::Return, SignalRoundEndOrMaximize);
 			Engine::input.bind(Key::Tab, UI::ShowSession);
 			Engine::input.bind(Key::T,[](){}, QueryAndSendChatMessage);
-			Engine::input.bind(Key::R,ToggleCameraAutoRotation);
+			Engine::input.bind(Key::R,Camera::ToggleAutoRotation);
 //			Engine::input.bind(Key::R,ToggleResourceView);
 			Engine::input.bind(Key::Ctrl,ToggleSeeThrough);
 
@@ -3411,6 +3422,7 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
 			Engine::input.bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
 
+			Engine::input.bind(Key::F4, ToggleCameraLock);
 			Engine::input.bind(Key::F3, SaveScreenshot);
 			Engine::input.bind(Key::F2,ToggleTimeLapse);
 

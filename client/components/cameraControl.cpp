@@ -20,7 +20,8 @@ namespace Camera
 
 	Engine::VectorCamera<>			scene;
 	Engine::OrthographicAspect<>	hud;
-	bool							autoRotation = false;
+	bool							autoRotation = false,
+									locked = false;
 
 	namespace 
 	{
@@ -142,7 +143,7 @@ namespace Camera
 
 	void Event::WheelAction(short param)					//handler for the mouse wheel
 	{
-		if (!TimeLapse::enabled)
+		if (!locked)
 		{
 			//negative is wheel down
 			scene.retraction.z /= pow(1.1f,param);
@@ -154,7 +155,7 @@ namespace Camera
 
 	void Event::ZoomIn()
 	{
-		if (!TimeLapse::enabled)
+		if (!locked)
 		{
 			scene.retraction.z *= 0.95f;
 			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
@@ -164,7 +165,7 @@ namespace Camera
 
 	void Event::ZoomOut()
 	{
-		if (!TimeLapse::enabled)
+		if (!locked)
 		{
 			scene.retraction.z /= 0.95f;
 			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
@@ -259,6 +260,8 @@ namespace Camera
 
 	void							TranslateTo(const float3&direction)
 	{
+		if (locked)
+			return;
 		moveToTarget = true;
 		targetDirection = direction.Normalized0();
 		cameraSpeed = 0;
@@ -269,6 +272,20 @@ namespace Camera
 		moveToTarget = false;
 	}
 
+	
+	void	ToggleAutoRotation()
+	{
+		if (!autoRotation)
+		{
+			if (!locked)
+			{
+				autoRotation = true;
+				Grid::ResetSunRotation();
+			}
+		}
+		else
+			StopAutoRotation();
+	}
 
 	void							StopAutoRotation()
 	{

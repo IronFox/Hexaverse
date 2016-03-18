@@ -1454,11 +1454,11 @@ namespace Objects
 	
 	}
 
-
+	template <bool IgnoreStructuresAtDestination>
 	bool ValidDestinationOf(const Grid::WorldData&world,const Vehicle&v, const Grid::LCellIdI&location, bool isDestination, bool ignoreWater, bool doFloat)
 	{
 		return 
-			(world.LowCellIsClear(location) || (isDestination && MobileDestinationStructureHere(location,v)))
+			(world.LowCellIsClear(location) || (isDestination && (IgnoreStructuresAtDestination || MobileDestinationStructureHere(location,v))))
 			&&
 			(v.CanStandOn(world,location-1,ignoreWater,doFloat));
 
@@ -1495,48 +1495,44 @@ namespace Objects
 				anyCanWalk = true;
 				const Grid::LCellIdI	cell(n.neighborID[i], location.height + j);
 
-				bool okay = cell.height < Grid::CellStack::HalfRange && cell.height >= -Grid::CellStack::HalfRange;
-				if (okay)
 				{
-					if (!world.LowCellIsClear(cell))
-					{
-						if (j <= 0)
-							canWalk[i] = false;
-						okay = false;
+					bool okay = cell.height < Grid::CellStack::HalfRange && cell.height >= -Grid::CellStack::HalfRange;
+					if (!okay)
 						continue;
-					}
 				}
-				if (!okay)
-					continue;
-
-
-				if ( ValidDestinationOf(world,*v,cell, cell == destination, false, false) )
+				bool valid = ValidDestinationOf<false>(world,*v,cell, cell == destination, false, false);
+				if (!valid)
 				{
-					if (cell==destination)
+					if (j <= 0 && !world.LowCellIsClear(cell))
+						canWalk[i] = false;
+					continue;
+				}
+
+
+				if (cell==destination)
+				{
+					if (!ignoreVehiclesOnDestination && !NoVehicleHereExcept(cell,v))
+						continue;
+				}
+				else
+				{
+					if (!ignoreFriendlyVehiclesOnRoute)
 					{
-						if (!ignoreVehiclesOnDestination && !NoVehicleHereExcept(cell,v))
+						if (!NoVehicleHereExcept(cell,v))
 							continue;
 					}
 					else
-					{
-						if (!ignoreFriendlyVehiclesOnRoute)
-						{
-							if (!NoVehicleHereExcept(cell,v))
+						#ifdef CLIENT
+							if (!NoHostileVehicleHere(cell,v->owner))
 								continue;
-						}
-						else
-							#ifdef CLIENT
-								if (!NoHostileVehicleHere(cell,v->owner))
-									continue;
-							#else
-								if (!NoHostileVehicleHere(cell,v->owner,v->motionTime))
-									continue;
-							#endif
-					}
-
-					//DBG_ASSERT__(!GetStructure(cell));//should be implied by LowCellIsClear (except if it's a connector, then not, so don't check this)
-					outWays.Add(cell);
+						#else
+							if (!NoHostileVehicleHere(cell,v->owner,v->motionTime))
+								continue;
+						#endif
 				}
+
+				//DBG_ASSERT__(!GetStructure(cell));//should be implied by LowCellIsClear (except if it's a connector, then not, so don't check this)
+				outWays.Add(cell);
 			}
 			if (!anyCanWalk)
 				break;
@@ -1643,7 +1639,7 @@ namespace Objects
 				if (!okay)
 					continue;
 
-				if ( ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, true) )
+				if ( ValidDestinationOf<true>(world,*v,cell, cell == destination, ignoreWater, true) )
 				{
 					(*outChoices++) = cell;
 					rs++;
@@ -1684,7 +1680,7 @@ namespace Objects
 				if (!okay)
 					continue;
 
-				if ( ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, false) )
+				if ( ValidDestinationOf<true>(world,*v,cell, cell == destination, ignoreWater, false) )
 //				if ((cell == destination || world.LowCellIsClear(cell)) && (v->CanStandOn(world,cell-1,ignoreWater)))
 				{
 					(*outChoices++) = cell;
@@ -1718,7 +1714,7 @@ namespace Objects
 							break;
 						}
 			}
-			if ( okay && ValidDestinationOf(world,*v,cell, cell == destination, ignoreWater, false) )
+			if ( okay && ValidDestinationOf<true>(world,*v,cell, cell == destination, ignoreWater, false) )
 //				if ((cell == destination || world.LowCellIsClear(cell)) && (v->CanStandOn(world,cell-1,ignoreWater)))
 			{
 				(*outChoices++) = cell;
@@ -1897,7 +1893,7 @@ namespace Objects
 			vehicle->owner->currentState;
 		#endif
 
-		if (!ValidDestinationOf(world,*vehicle,to,true,false, false))
+		if (!ValidDestinationOf<false>(world,*vehicle,to,true,false, false))
 			return false;
 
 		//if (!vehicle->CanStandOn(world,to -1,false) || 
@@ -2874,7 +2870,7 @@ namespace Objects
 							if (s && actualStore && actualStore->park == s->park)
 							{
 								float t = 0.f;
-								actualStore->LocalCheckout(To<Vehicle>::Cast(deployWhat),choice,t);
+								actualStore->LocalCheckout(To<Vehicle>::Cast(deployWhat),choice-1,t);
 							}
 							else
 							{
