@@ -897,13 +897,14 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 					if (!TimeLapse::enabled)
 					{
-						FileSystem::CreateFolder("screenshots");
+						PathString screenshotsAt = RuntimeConfig::ConfigFile("screenshots");
+						FileSystem::CreateFolder(screenshotsAt);
 						index_t counter = 0;
-						PathString filename = PathString("screenshots/screenshot"+String(counter)+".png");
+						PathString filename = screenshotsAt + FOLDER_SLASH_STR + PathString("screenshot"+String(counter)+".png");
 						while (FileSystem::IsFile(filename))
 						{
 							counter++;
-							filename = PathString("screenshots/screenshot"+String(counter)+".png");
+							filename = screenshotsAt + FOLDER_SLASH_STR + PathString("screenshot"+String(counter)+".png");
 						}
 						png.SaveToFile(image,filename);
 						LogEvent(EventClass::Preset::uncommon, nullptr, "Screenshot written to "+String(filename));
