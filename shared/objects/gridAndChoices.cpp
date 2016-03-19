@@ -426,8 +426,8 @@ namespace Objects
 		const auto& n = Grid::low.grid.GetCell(cellID.stackID).neighborhood;
 
 		#ifndef CLIENT
-			int lower = clamp(cellID.height - 1, -Grid::CellStack::HalfRange, Grid::CellStack::HalfRange -1),
-				upper = clamp(cellID.height + 1, -Grid::CellStack::HalfRange, Grid::CellStack::HalfRange -1);
+			int lower = clamp(cellID.height - 1, Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight),
+				upper = clamp(cellID.height + 1, Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight);
 			for (int h = lower; h <= upper; h++)
 			{
 				UINT32 layer = Grid::CellStack::ToLayer(h);
@@ -674,7 +674,7 @@ namespace Objects
 
 
 	void	GetProductionChoices(const WorldEntity*producer,Component::VehicleBase*production,
-									BasicBuffer<Grid::LCellIdI>&choices)
+									BasicBuffer<Choice>&choices)
 	{
 		choices.Clear();	
 		const auto&n = Grid::low.grid.GetCell(producer->location.stackID).neighborhood;
@@ -717,7 +717,7 @@ namespace Objects
 				if (Grid::actualWorld.LowCellIsClear(cell) && NothingBlockingHere(cell,true) && 
 						production->CanStandOn(Grid::actualWorld,cell-1,false,false)
 				)
-				choices << cell;
+				choices << Choice(cell,0);
 			}
 		}
 
@@ -725,7 +725,7 @@ namespace Objects
 
 
 	
-	void		GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
+	void		GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
 	{
 		const Grid::WorldData&world = 
 		#ifdef CLIENT
@@ -767,7 +767,7 @@ namespace Objects
 							{
 								UINT32 stackID = n.neighborID[i];
 								if (!GetSatellite(stackID))
-									movementChoices << Grid::LCellIdI(stackID, Satellite::BaseResidenceHeight);
+									movementChoices << Choice(Grid::LCellIdI(stackID, Satellite::BaseResidenceHeight),0);
 							}
 						}
 						else
@@ -776,7 +776,7 @@ namespace Objects
 							//in time, mobile entities will be producers, too, but for here we can conclude this is a bottom-up production
 							//thus: vertical
 							if (!GetSatellite(entity.location.stackID))
-								movementChoices << Grid::LCellIdI(entity.location.stackID,Satellite::BaseResidenceHeight);
+								movementChoices << Choice(Grid::LCellIdI(entity.location.stackID,Satellite::BaseResidenceHeight),0);
 						}
 					}
 			}
@@ -794,7 +794,7 @@ namespace Objects
 				//const auto&c = Grid::low.grid.GetCell(location.stackID);
 				for (int h = location.height -1; h <= location.height+1; h++)
 				{
-					if (h >= -Grid::CellStack::HalfRange && h < Grid::CellStack::HalfRange-1)
+					if (h >= Grid::CellStack::BottomHeight && h <= Grid::CellStack::TopHeight)
 					{
 						for (int j = 0; j < n.numNeighbors; j++)
 						{
@@ -802,7 +802,7 @@ namespace Objects
 							if (Grid::actualWorld.LowCellIsClear(candidate) && NothingBlockingHere(candidate,true))
 							{
 								if (!deploying->IsVehicle() || To<Vehicle>::Cast(deploying)->CanStandOn(Grid::actualWorld,candidate-1,false,false))
-									movementChoices << (candidate+1);
+									movementChoices << Choice(candidate,1);
 							}
 						}
 					}
@@ -891,7 +891,7 @@ namespace Objects
 						PWorldEntity other = GetEntity(candidate);
 						if (!other || other.get() == v || other->health == other->GetMaxHealth())	//no owner-check (for now)
 							continue;
-						movementChoices << (candidate+1);
+						movementChoices << Choice(candidate,1);
 					}
 				}
 				break;
@@ -900,13 +900,13 @@ namespace Objects
 					{
 						const auto&c = Grid::low.grid.GetCell(location.stackID);
 						if (!world.LowCellIsClear(location + 1))
-							movementChoices << location + 1;
+							movementChoices << Choice(location + 1,0);
 						else
 							for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 							{
 								Grid::LCellIdI c2(c.neighborhood.neighborID[j], location.height + 1);
 								if (!world.LowCellIsClear(c2))
-									movementChoices << c2;
+									movementChoices << Choice(c2,0);
 							}
 					}
 				break;
@@ -922,7 +922,7 @@ namespace Objects
 								&& NothingHere(cell-1))
 								)
 								&& NothingHere(cell))
-								movementChoices << cell + 1;
+								movementChoices << Choice(cell,1);
 						}
 				break;
 				case CursorMode::Idle:
@@ -974,7 +974,7 @@ namespace Objects
 
 
 
-	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
+	void					GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell)
 	{
 		//showArrow = false;		//why were these here...?
 		//hasArrowCellTarget = false;
@@ -2760,7 +2760,7 @@ namespace Objects
 	#else
 		bool					ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  Vehicle::mode_t mode, const PMobileEntity&deployWhat)
 		{
-			Buffer0<Grid::LCellIdI>	movementChoices;
+			Buffer0<Choice>	movementChoices;
 			bool showArrow, hasArrowCellTarget;
 			TVec3<>arrowFrom;
 			Grid::LCellIdI arrowFromCell;
@@ -2806,11 +2806,10 @@ namespace Objects
 						case CursorMode::DepositMode:
 						case CursorMode::RestockMode:
 						{
-							PStructure target = GetStructure(c-1);
-							PMobileEntity vTarget = GetMobileEntity(c-1);
+							PStructure target = GetStructure(c);
+							PMobileEntity vTarget = GetMobileEntity(c);
 							if ((target && target->owner == e->owner) || (vTarget && vTarget->owner == e->owner))
 							{
-								c--;
 								PVehicleJob job(new VehicleJob::TransferJob(*v,mode));
 								v->RegisterNewJob("", job,&c);
 							}
@@ -2819,11 +2818,10 @@ namespace Objects
 						#endif
 						case CursorMode::RepairMode:
 						{
-							//PWorldEntity target = GetEntity(c-1);
+							//PWorldEntity target = GetEntity(c);
 							//if (target && target->health < target->GetMaxHealth() && target != v && v->CanRepair())
 							//for consistency reasons with journal-saves no check here. just put it in there, and have the job figure out if it's good to execute
 							{
-								c--;
 								PVehicleJob job(new VehicleJob::RepairJob(*v));
 								v->RegisterNewJob("", job,&c);
 							}
@@ -2843,7 +2841,6 @@ namespace Objects
 								return false;
 
 							auto copy = c;
-							c--;
 							PVehicleJob job(new VehicleJob::DigHorizontal(*v));
 							//std::weak_ptr<Vehicle> v2 = v;
 							v->RegisterNewJob("", job, &c);
@@ -2870,7 +2867,7 @@ namespace Objects
 							if (s && actualStore && actualStore->park == s->park)
 							{
 								float t = 0.f;
-								actualStore->LocalCheckout(To<Vehicle>::Cast(deployWhat),choice-1,t);
+								actualStore->LocalCheckout(To<Vehicle>::Cast(deployWhat),choice,t);
 							}
 							else
 							{

@@ -1663,15 +1663,14 @@ bool loop()
 
 			foreach(Objects::movementChoices, choice)
 			{
-				Grid::UpdatePlanetRenderingParameters(Grid::ToRadius(choice->height));
-				//if (choice->height >= Grid::CellStack::TopHeight)
-					Grid::low.RenderTransparentCell(choice->stackID);
-				//else
+				Grid::UpdatePlanetRenderingParameters(Grid::ToRadius(choice->location.height + choice->visualVerticalOffset));
+				Grid::low.RenderTransparentCell(choice->location.stackID);
 			}
 			if (choice != InvalidIndex)
 			{
-				Grid::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(Objects::movementChoices[choice].height) + 0.2f));
-				Grid::low.RenderCell(Objects::movementChoices[choice].stackID);
+				const Objects::Choice&ch = Objects::movementChoices[choice];
+				Grid::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(ch.location.height + ch.visualVerticalOffset) + 0.2f));
+				Grid::low.RenderCell(ch.location.stackID);
 			}
 		}
 

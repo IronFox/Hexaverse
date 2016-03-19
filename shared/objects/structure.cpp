@@ -2156,7 +2156,7 @@ namespace Objects
 		{
 			if (selectedBase && selectedTurret)
 			{
-				static Buffer0<Grid::LCellIdI>	choices;
+				static Buffer0<Choice>	choices;
 				GetProductionChoices(this,selectedBase,choices);
 				static bool ignoreWarnings = false;
 				if (choices.IsNotEmpty() || ignoreWarnings)

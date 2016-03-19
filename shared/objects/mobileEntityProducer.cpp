@@ -113,7 +113,7 @@ namespace Objects
 		{
 			if (!AwaitsUserInteraction())
 				return PMobileEntity();
-			Buffer0<Grid::LCellIdI>	movementChoices;
+			Buffer0<Choice>	movementChoices;
 			bool showArrow, hasArrowCellTarget;
 			TVec3<>arrowFrom;
 			Grid::LCellIdI arrowFromCell;
@@ -141,7 +141,7 @@ namespace Objects
 
 			PMobileEntity v = CompleteProduction();
 			//static Random random;
-			Grid::LCellIdI c = movementChoices[parent->entityRandom.getIndex(movementChoices.Count()-1)];
+			Grid::LCellIdI c = movementChoices[parent->entityRandom.getIndex(movementChoices.Count()-1)].location;
 
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))

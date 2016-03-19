@@ -85,8 +85,20 @@ namespace Objects
 	bool			AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath);
 
 
-	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
-	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+
+	struct Choice
+	{
+		Grid::LCellIdI	location = Grid::LCellIdI::Invalid;
+		int			visualVerticalOffset=0;
+
+		/**/		Choice()	{}
+		/**/		Choice(const Grid::LCellIdI&loc, int visualOffset):location(loc),visualVerticalOffset(visualOffset)	{}
+		bool		operator==(const Choice&other) const {return location == other.location;}
+		bool		operator==(const Grid::LCellIdI&other) const {return location == other;}
+	};
+
+	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
 
 	bool			NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient);
 
@@ -109,7 +121,7 @@ namespace Objects
 	@param production Base type of the vehicle that was produced
 	*/
 	void			GetProductionChoices(const WorldEntity*producer,Component::VehicleBase*production,
-							BasicBuffer<Grid::LCellIdI>&choices);
+							BasicBuffer<Choice>&choices);
 
 
 	template <typename T, count_t MaxLevels>
