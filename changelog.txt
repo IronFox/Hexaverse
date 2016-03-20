@@ -1,4 +1,4 @@
-v0.4.0
+v0.4.0	[Mar 20 2016]
 	+ Re-enabled compound system. Vehicles in the vicinity of compounds will implicitly draw from them.
 	+ Added Pylon building that can wirelessly connect to other pylons, and vehicles over a larger distance.
 	+ Added compound visualization to show which compound a structure belongs to and/or which compounds a vehicle will draw from.
