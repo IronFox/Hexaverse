@@ -2139,7 +2139,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 													},
 													[m,s]()->Dialog::CheckResult
 													{
-														if (m != Objects::selectedMobileEntity || s != Objects::activeStructureToPlace || Objects::activeCursorMode != Objects::CursorMode::PlaceStructureMode)
+														if (m != Objects::selectedMobileEntity || s != Objects::activeStructureToPlace /*|| Objects::activeCursorMode != Objects::CursorMode::PlaceStructureMode*/)
 															return Dialog::CheckResult::Abort;
 														if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase)
 															return Dialog::CheckResult::OkayNotRightNow;
