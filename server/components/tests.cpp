@@ -502,7 +502,7 @@ namespace Test
 		ASSERT__(mine->IsEnabled());
 		ASSERT__(!plant->IsEnabled());
 
-		Buffer0<Grid::LCellIdI> choices;
+		Buffer0<Objects::Choice> choices;
 		bool showArrow, hasArrowCellTarget;
 		TVec3<> arrowFrom;
 		Grid::LCellIdI arrowFromCell;
@@ -527,7 +527,7 @@ namespace Test
 					Objects::GetChoices(plant, Objects::PVehicle(),Objects::CursorMode::Idle, choices, showArrow, hasArrowCellTarget, arrowFrom, arrowFromCell);
 					ASSERT__(choices.IsNotEmpty());
 					Objects::PVehicle v = plant->GetProduction();
-					Grid::LCellIdI choice = choices[random.getIndex(choices.Count() - 1)];
+					Grid::LCellIdI choice = choices[random.getIndex(choices.Count() - 1)].location;
 					Objects::ProcessChoiceIntersection(plant, choice, Objects::CursorMode::Idle, Objects::PVehicle());
 					ASSERT_EQUAL__(v->health, v->GetMaxHealth());
 					ASSERT2__(v->location == choice, v->location.ToString(), choice.ToString());
@@ -622,7 +622,7 @@ namespace Test
 		ASSERT__(mine->IsEnabled());
 		ASSERT__(!plant->IsEnabled());
 
-		Buffer0<Grid::LCellIdI> choices;
+		Buffer0<Objects::Choice> choices;
 		bool showArrow, hasArrowCellTarget;
 		TVec3<> arrowFrom;
 		Grid::LCellIdI arrowFromCell;
@@ -681,7 +681,7 @@ namespace Test
 					}
 					//ASSERT__(choices.IsNotEmpty());
 					Objects::PMobileEntity v = plant->GetActiveProduction();
-					Grid::LCellIdI choice = choices[random.getIndex(choices.Count() - 1)];
+					Grid::LCellIdI choice = choices[random.getIndex(choices.Count() - 1)].location;
 					Objects::ProcessChoiceIntersection(plant, choice, Objects::CursorMode::Idle, Objects::PVehicle());
 					ASSERT_EQUAL__(v->health, v->GetMaxHealth());
 					ASSERT2__(v->location == choice, v->location.ToString(), choice.ToString());

@@ -898,13 +898,14 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 					if (!TimeLapse::enabled)
 					{
-						FileSystem::CreateFolder("screenshots");
+						PathString screenshotsAt = RuntimeConfig::ConfigFile("screenshots");
+						FileSystem::CreateFolder(screenshotsAt);
 						index_t counter = 0;
-						PathString filename = PathString("screenshots/screenshot"+String(counter)+".png");
+						PathString filename = screenshotsAt + FOLDER_SLASH_STR + PathString("screenshot"+String(counter)+".png");
 						while (FileSystem::IsFile(filename))
 						{
 							counter++;
-							filename = PathString("screenshots/screenshot"+String(counter)+".png");
+							filename = screenshotsAt + FOLDER_SLASH_STR + PathString("screenshot"+String(counter)+".png");
 						}
 						png.SaveToFile(image,filename);
 						LogEvent(EventClass::Preset::uncommon, nullptr, "Screenshot written to "+String(filename));
@@ -1746,15 +1747,14 @@ bool loop()
 
 			foreach(Objects::movementChoices, choice)
 			{
-				Grid::UpdatePlanetRenderingParameters(Grid::ToRadius(choice->height));
-				//if (choice->height >= Grid::CellStack::TopHeight)
-					Grid::low.RenderTransparentCell(choice->stackID);
-				//else
+				Grid::UpdatePlanetRenderingParameters(Grid::ToRadius(choice->location.height + choice->visualVerticalOffset));
+				Grid::low.RenderTransparentCell(choice->location.stackID);
 			}
 			if (choice != InvalidIndex)
 			{
-				Grid::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(Objects::movementChoices[choice].height) + 0.2f));
-				Grid::low.RenderCell(Objects::movementChoices[choice].stackID);
+				const Objects::Choice&ch = Objects::movementChoices[choice];
+				Grid::UpdatePlanetRenderingParameters(Grid::ToRadiusf(float(ch.location.height + ch.visualVerticalOffset) + 0.2f));
+				Grid::low.RenderCell(ch.location.stackID);
 			}
 		}
 

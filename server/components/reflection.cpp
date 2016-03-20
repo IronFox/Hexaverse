@@ -252,12 +252,12 @@ namespace Reflection
 			virtual	bool	Set(const String&value)	override
 			{
 				String old = ToString();
-				bool rs = Game::Config::SetFactionSupportFlagString(value);
+				Game::Config::SetFactionSupportFlagString(value);
 				if (old != ToString())
 				{
 					OnChanged();
 				}
-				return rs;
+				return true;
 			}
 			virtual String		GetSupportedValues() const override 
 			{

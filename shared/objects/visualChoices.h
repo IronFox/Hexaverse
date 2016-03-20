@@ -7,8 +7,10 @@
 
 namespace Objects
 {
+	struct Choice;
+
 	extern bool		controlIsEnabled /*= false*/;
-	extern Buffer0<Grid::LCellIdI>	movementChoices;
+	extern Buffer0<Choice>			movementChoices;
 	extern bool						hasArrowCellTarget,
 									showArrow;
 	extern float3					arrowFrom;	//arrow visualization point of origin. Might be the location of a vehicle, or any of the locations in its task queue. Only relevant if showArrow is true

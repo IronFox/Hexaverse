@@ -75,12 +75,12 @@ namespace Game
 			return rs;
 		}
 
-		inline bool		SetFactionSupportFlagString(const String&supp)
+		inline void		SetFactionSupportFlagString(const String&supp)
 		{
 			factionSupportFlags = 0;
 			Array<String>	segs;
 			explode(',',supp,segs);
-			bool allGood = true;
+			//bool allGood = true;
 			foreach (segs,seg)
 			{
 				seg->trimThis();
@@ -92,10 +92,11 @@ namespace Game
 				else
 				{
 					LogEvent(EventClass::Preset::configurationError,nullptr,"Warning: Unsupported faction type for this build: '"+*seg+"'. Ignoring");
-					allGood = false;
+					//allGood = false;
 				}
 			}
-			return allGood;
+			//no longer returning success, or failure, since different branches may allow different factions. So a warning is valid, but no handling of this case
+			//return allGood;
 		}
 
 
