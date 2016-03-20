@@ -873,7 +873,7 @@ namespace Objects
 							{
 								PStructure s = _s->lock();
 								if (s && Vec::quadraticDistance(world,s->GetWorldPosition()) <= sqr(s->GetWirelessTransferRange()))
-									movementChoices << s->location + 1;
+									movementChoices << Choice(s->location,s->GetHeight());
 							}
 						}
 						#ifdef CLIENT
@@ -881,14 +881,14 @@ namespace Objects
 							ForeachMobileWorldEntity([v,&movementChoices,world](const PMobileEntity&m)
 							{
 								if (m->owner == v->owner && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= sqr(MobileWirelessTransferRange))
-									movementChoices << m->location + 1;
+									movementChoices << Choice(m->location,m->GetHeight());
 							});
 						#else
 							foreach (v->owner->allMobiles,_m)
 							{
 								PMobileEntity m = _m->lock();
 								if (m && v != m.get() && Vec::quadraticDistance(world,m->GetWorldPosition()) <= sqr(MobileWirelessTransferRange))
-									movementChoices << m->location + 1;
+									movementChoices << Choice(m->location,m->GetHeight());
 							}
 						#endif
 						//const auto&c = Grid::low.grid.GetCell(location.stackID);
