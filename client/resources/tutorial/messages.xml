@@ -119,13 +119,11 @@
 	</message>
 	<message name='Mine' image='mine.png'>
 		Mines serve a crucial role in providing your compound with resources. Mines require %ENERGY%(energy) to operate, and provide whatever resources are available at the respective location.
-		In connector-less mode, resources are magically transferred by invisible elves, so you need not worry about building connectors. But you will need Generators to provide the necessary %ENERGY%
-		<!--You should directly or indirectly connect them with a Generator.-->
+		You should directly or indirectly connect them with a Generator.
 	</message>
 	<message name='Generator' image='generator.jpg'>
 		Generators serve a crucial role in providing your structure networks with %ENERGY%(energy), while consuming %FUEL%(fuel). Mines-as well as most other buildings-require %ENERGY% to operate.
-		In connector-less mode, resources are magically transferred by invisible elves, so you need not worry about building connectors. But you will need Mines to provide the necessary %FUEL%
-		<!--You should directly or indirectly connect them with a Mine that provides %FUEL%.-->
+		You should directly or indirectly connect them with a Mine that provides %FUEL%.
 	</message>
 	<message name='Vehicle Plant' image='vehiclePlant.jpg'>
 		Vehicle Plants are responsible for producing all kinds of vehicles in %PRODUCT_NAME%. Once enabled, they consume a fixed amount of %ENERGY%(energy) and %MINERALS%(minerals) per round.
