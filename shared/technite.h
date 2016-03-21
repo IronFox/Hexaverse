@@ -420,7 +420,7 @@ namespace Technites
 	public:
 		/**/					BroadTechniteMap() {}
 
-		void					Unset(const Grid::HCellIdU& id);
+		index_t					Unset(const Grid::HCellIdU& id);
 		void					Set(const Grid::HCellIdU&id, index_t to);
 		bool					Query(const Grid::HCellIdU&id, index_t&out) const;
 		bool					IsSet(const Grid::HCellIdU&id) const;
@@ -486,7 +486,8 @@ namespace Technites
 
 	void					Resolve();
 
-
+	index_t					GetTechniteIndex(const TUniqueID&);
+	Technite*				GetTechnite(const TUniqueID&);
 
 }
 

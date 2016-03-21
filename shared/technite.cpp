@@ -16,8 +16,36 @@ namespace Technites
 
 	const EventClass techniteError = EventClass(EventSignificance::NonFatalError, EventFlavor::SystemError);
 
+	namespace Attachment
+	{
+		class Challenge : public TCP::Peer::Attachment
+		{
+		public:
+			CryptographicID		challenge;
+
+			/**/				Challenge()
+			{
+				challenge.Generate();
+			}
+		};
+
+		class Technite :  public TCP::Peer::Attachment
+		{
+		public:
+			const TUniqueID		techniteID;
+
+			/**/				Technite(const TUniqueID&uuid):techniteID(uuid)
+			{}
+		};
+
+
+	}
+
 	namespace Protocol
 	{
+
+
+
 		NETSTRUCT2(CommonTechniteState
 			, NET(Technite::CompressedLocation),	location
 			, NET(Technite::Resources),			resources
@@ -48,6 +76,26 @@ namespace Technites
 			, NET(TUniqueID), sender
 			, Package::NetString<1024>, message
 		);
+
+		NETSTRUCT2(Authenticate
+			, NET(TUniqueID), myID
+			, NET(SHA256::HashContainer), challengeResponse
+		);
+
+		NETSTRUCT4(RegularInstruction
+			, NET(TUniqueID), myID
+			, NET(BYTE), nextTask
+			, NET(BYTE), relativeTarget
+			, NET(BYTE), taskParameter
+		);
+
+		NETSTRUCT4(MessageInstruction
+			, NET(TUniqueID), myID
+			, NET(TUniqueID), receiver
+			, NET(BYTE), receiverLocation
+			, Package::NetString<1024>, message
+		);
+
 	}
 
 
@@ -66,6 +114,12 @@ namespace Technites
 
 	namespace Receiver
 	{
+		namespace Handler
+		{
+			void	Authenticate(Protocol::Authenticate&authenticate, TCP::Peer&origin);
+		}
+
+
 		void OnDeserializationFailed(UINT32 channel, TCP::Peer&origin)
 		{
 			LogEvent(EventClass::Preset::networkError,nullptr,"Technite service: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
@@ -83,17 +137,7 @@ namespace Technites
 			LogEvent(EventSignificance::Debug,nullptr,"Technite service: "+origin.ToString()+": Signal on channel "+String(channel));
 		}
 
-		void OnEvent(TCP::event_t event, TCP::Peer&origin)
-		{
-			LogEvent(EventSignificance::Debug,nullptr,"RemoteControl: "+origin.ToString()+": "+TCP::event2str(event));
-			switch (event)
-			{
-				case TCP::Event::ConnectionEstablished:
-					//maybe init here later
-				break;
-
-			}
-		}
+		void OnEvent(TCP::event_t event, TCP::Peer&origin);
 
 	}
 
@@ -101,6 +145,9 @@ namespace Technites
 	{
 		enum channel_t
 		{
+			Challenge,			//	s2c : CryptographicID
+			Authenticate,		//	c2s : Authenticate
+			Authenticated,		//	s2c : <signal>
 			StateUpdateBegin,	//	s2c : <signal>
 			EntityContact,		//	s2c : EntityContact
 			OwnTechniteState,	//	s2c : OwnState
@@ -108,16 +155,24 @@ namespace Technites
 			TerrainState,		//	s2c : NETA<BYTE>
 			Message,			//	s2c : Message
 			IsDead,				//	s2c : <signal>
+			RegularInstruction,	//	c2s: RegularInstruction
+			MessageInstruction,	//	c2s: MessageInstruction
 		};
 
 
 		TCP::SignalSender<StateUpdateBegin>	stateUpdateBegin;
 		TCP::SignalSender<IsDead>			isDead;
+		TCP::SignalSender<Authenticated>	authenticated;
 		TCP::ObjectSender<Protocol::EntityContact,EntityContact>	entityContact;
 		TCP::ObjectSender<Protocol::OwnState,OwnTechniteState>	ownTechniteState;
 		TCP::ObjectSender<Protocol::OtherState,OtherTechniteState>	otherTechniteState;
 		TCP::ObjectSender<NETA(BYTE),TerrainState>	terrainState;
 		TCP::ObjectSender<Protocol::Message, Message> message;
+		TCP::ObjectSender<NET(CryptographicID), Challenge> challenge;
+
+		TCP::Channel<Protocol::MessageInstruction, UserLevel::Authenticated, MessageInstruction>	messageInstruction;
+		TCP::Channel<Protocol::RegularInstruction, UserLevel::Authenticated, RegularInstruction>	regularInstruction;
+		TCP::Channel<Protocol::Authenticate, UserLevel::None, Authenticate>							authenticate(Receiver::Handler::Authenticate);
 	}
 
 
@@ -153,6 +208,7 @@ namespace Technites
 
 	AtomicGrid					atomicGrid;
 	Buffer<Technite>			technites;
+	GenericHashTable<TUniqueID,index_t,TUniqueID>	techniteIDMap;
 	BroadTechniteMap			techniteMap;
 
 
@@ -177,6 +233,76 @@ namespace Technites
 	void						ProcessLighting(Technite&technite);
 
 
+	void Receiver::OnEvent(TCP::event_t event, TCP::Peer&origin)
+	{
+		LogEvent(EventSignificance::Debug,nullptr,"TechniteControl: "+origin.ToString()+": "+TCP::event2str(event));
+		switch (event)
+		{
+			case TCP::Event::ConnectionEstablished:
+			{
+				Attachment::Challenge * attach = new Attachment::Challenge();
+				origin.attachment.reset(attach);
+				Channels::challenge.SendTo(origin,attach->challenge);
+			}
+			break;
+
+		}
+	}
+	
+	void	Receiver::Handler::Authenticate(Protocol::Authenticate&authenticate, TCP::Peer&origin)
+	{
+		Attachment::Challenge*attach = dynamic_cast<Attachment::Challenge*>(origin.attachment.get());
+		if (!attach)
+		{
+			LogEvent(EventClass::Preset::unexpectedBehavior,origin.ToString()+ " attempted authentication without challenge peer attachment");
+			origin.DisconnectPeer();
+			return;
+		}
+		SHA256::HashContainer	shouldBe;
+		SHA256 sha;
+		Technite*t = GetTechnite(authenticate.myID);
+		if (!t)
+		{
+			LogEvent(EventClass::Preset::unexpectedBehavior,origin.ToString()+ " attempted authentication on unknown technite "+authenticate.myID.value.ToString());
+			origin.DisconnectPeer();
+			return;
+		}
+		sha.AppendPOD(t->secret);
+		sha.AppendPOD(attach->challenge);
+		sha.Finish(shouldBe);
+		attach = nullptr;
+		if (shouldBe == authenticate.challengeResponse)
+		{
+			origin.attachment.reset(new Attachment::Technite(t->id));
+			origin.userLevel = UserLevel::Authenticated;
+			Channels::authenticated.SendTo(origin,0);
+		}
+		else
+		{
+			LogEvent(EventClass::Preset::unexpectedBehavior,origin.ToString()+ " failed authentication on technite "+t->id.ToString());
+			origin.DisconnectPeer();
+		}
+	}
+
+
+	index_t					GetTechniteIndex(const TUniqueID&id)
+	{
+		index_t rs;
+		if (!techniteIDMap.Query(id,rs))
+			return InvalidIndex;
+		return rs;
+	}
+
+	Technite*				GetTechnite(const TUniqueID&id)
+	{
+		index_t index = GetTechniteIndex(id);
+		if (index == InvalidIndex)
+			return nullptr;
+		ASSERT_LESS__(index,technites.Count());
+		return technites + index;
+	}
+
+
 	void GC()
 	{
 		if (anyDied)
@@ -187,11 +313,20 @@ namespace Technites
 				if (t->isDead)
 				{
 					t->ShutdownClient();
+					techniteMap.Unset(t->location.GetU());
 				}
 				else
 					survivors << std::move(*t);
 			technites.swap(survivors);
 			survivors.Clear();
+
+			techniteIDMap.Clear();
+			techniteMap.Clear();
+			for (index_t i = 0; i < technites.Count(); i++)
+			{
+				techniteMap.Set(technites[i].location.GetU(),i);
+				techniteIDMap.Set(technites[i].id,i);
+			}
 		}
 
 	}
@@ -235,6 +370,11 @@ namespace Technites
 	{
 		ChangeGrid(t.location.GetU(),Grid::Content::Clear);
 		ChangeGrid(target,Grid::Content::Technite);
+
+		
+		index_t index = techniteMap.Unset(t.location.GetU());
+		ASSERT__(index != InvalidIndex);
+		techniteMap.Set(target,index);
 
 		t.location = target;
 		t.SetStandardFieldOfVision();
@@ -702,13 +842,14 @@ namespace Technites
 		if (!CanStandHere(location))
 			return InvalidIndex;
 
-		index_t at = technites.Count();
+		const index_t at = technites.Count();
 
 		Technite&tech = technites.Append();
 		tech.secret.Generate();
 		tech.id = init.id;
 		tech.location = location;
 		techniteMap.Set(location, at);
+		techniteIDMap.Set(tech.id,at);
 		tech.isDead = false;
 		tech.startOptions = init;
 		ProcessLighting(tech);
@@ -813,6 +954,11 @@ namespace Technites
 			//server.InstallChannel(...);
 			//server.OpenSignalChannel(...);
 
+			serviceHost.InstallChannel( Channels::messageInstruction );
+			serviceHost.InstallChannel( Channels::regularInstruction );
+			serviceHost.InstallChannel( Channels::authenticate );
+
+
 			serviceHost.onSignal = Receiver::OnSignal;
 			serviceHost.SetAsync(false);
 			serviceHost.onEvent = Receiver::OnEvent;
@@ -831,6 +977,7 @@ namespace Technites
 		}
 		technites.Clear();
 		techniteMap.Clear();
+		techniteIDMap.Clear();
 
 	}
 
@@ -1010,24 +1157,28 @@ namespace Technites
 		return inner + range * heightRemainder;
 	}
 
-	void					BroadTechniteMap::Unset(const Grid::HCellIdU& id)
+	index_t					BroadTechniteMap::Unset(const Grid::HCellIdU& id)
 	{
 		Cluster*cluster;
 		index_t inner = Map(id, cluster,false);
 		if (cluster->numEntries == 0)
 		{
 			FATAL__("Failed to unset " + id.ToString());
-			return;
+			return InvalidIndex;
 		}
-		if (cluster->volumeCells[inner] != Empty)
+		auto&cell = cluster->volumeCells[inner];
+		if (cell != Empty)
 		{
-			cluster->volumeCells[inner] = Empty;
+			index_t rs = cell;
+			cell = Empty;
 			cluster->numEntries--;
 			totalEntries--;
+			return rs;
 		}
 		else
 		{
 			FATAL__("Failed to unset " + id.ToString());
+			return InvalidIndex;
 		}
 
 	}
