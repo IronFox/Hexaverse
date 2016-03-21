@@ -7,9 +7,9 @@
 
 #ifndef CLIENT
 	#include "../server/components/journalSaveGame.h"
+	void CheckSendTerrain();
 #endif
 
-void CheckSendTerrain();
 
 namespace Technites
 {
@@ -1327,8 +1327,9 @@ namespace Technites
 		{
 			LogEvent(techniteError,"Cleared "+String(abandonedCounter)+"/"+String(totalCounter)+" abandoned technite cell(s), "+String(shouldBeTechniteCount)+" technite(s) left");
 
-			
-			CheckSendTerrain();
+			#ifndef CLIENT
+				CheckSendTerrain();
+			#endif
 
 			//RemapFaction(Objects::Faction::nexus);
 			//foreach (Faction::all,f)
