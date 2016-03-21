@@ -1336,7 +1336,7 @@ namespace Grid
 			lineTex.Load(img, true);
 
 
-			Magic::LoadFromFile(img, "resources/technite.png");
+			Magic::LoadFromFile(img, "resources/textures/technite.png");
 			Instruction::techniteTexture.Load(img);
 
 			//blockConfig.Create(TMatrix4<>());
