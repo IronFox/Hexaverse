@@ -3,6 +3,7 @@
 #include "visualSelection.h"
 #include "visualChoices.h"
 #include "interface.h"
+#include "gridAndChoices.h"
 
 namespace Objects
 {
@@ -43,6 +44,7 @@ namespace Objects
 		PWorldEntity e = selectedEntity;
 		selectedEntity.reset();	
 		selectedVehicle.reset();
+		selectedMobileEntity.reset();
 		activeCursorMode = CursorMode::Idle;
 
 		if (e)

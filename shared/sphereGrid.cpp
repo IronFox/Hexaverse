@@ -1700,9 +1700,9 @@ namespace Grid
 
 	bool					WorldData::LowCellIsClear(const LCellIdI&cell)	const
 	{
-		if (cell.height >= CellStack::HalfRange)
+		if (cell.height > CellStack::TopHeight)
 			return true;
-		if (cell.height < -CellStack::HalfRange)
+		if (cell.height < CellStack::BottomHeight)
 			return false;
 		#ifdef HYBRID_GRID
 			index_t finer = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
@@ -1717,6 +1717,39 @@ namespace Grid
 			return !cellStack[cell.stackID].GetCellI(cell.height).IsOccupied();
 
 		#endif
+	}
+
+	String					WorldData::LowCellReport(const LCellIdI&cell)	const
+	{
+		if (cell.height > CellStack::TopHeight)
+			return "Clear: Over max height";
+		if (cell.height < CellStack::BottomHeight)
+			return "Not clear: Below bottom height";
+		#ifdef HYBRID_GRID
+			index_t finer = Grid::low.grid.GetCell(cell.stackID).higherEquivalent;
+			const auto&c = Grid::high.grid.GetCell(finer);
+			const auto&vcell = cellStack[finer].GetCellI(cell.height);
+			if (vcell.content != Content::Clear)
+				return "Not clear: Central stack content is '"+String(Content::Reinterpret(vcell.content).ToString())+"'";
+			if (vcell.structureCounter > 1)
+				return "Not clear: Central stack struct count is  "+String(vcell.structureCounter);
+			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
+			{
+				const auto&vcell = cellStack[c.neighborhood.neighborID[j]].GetCellI(cell.height);
+				if (vcell.content != Content::Clear)
+					return "Not clear: Neighbor "+String(j)+" stack content is '"+String(Content::Reinterpret(vcell.content).ToString())+"'";
+				if (vcell.structureCounter > 1)
+					return "Not clear: Neighbor "+String(j)+" stack struct count is  "+String(vcell.structureCounter);
+			}
+		#else
+			const auto&vcell = cellStack[cell.stackID].GetCellI(cell.height);
+			if (vcell.content != Content::Clear)
+				return "Not clear: Central stack content is '"+String(Content::Reinterpret(vcell.content).ToString())+"'";
+			if (vcell.structureCounter > 1)
+				return "Not clear: Central stack struct count is  "+String(vcell.structureCounter);
+
+		#endif
+		return "Clear";
 	}
 
 	bool					WorldData::LowCellIsClearOrWater(const LCellIdI&cell)	const

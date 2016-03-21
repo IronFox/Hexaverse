@@ -2378,6 +2378,7 @@ namespace Grid
 		Checks if the specified low-resolution cell is not at all covered (not even partially)
 		*/
 		bool					LowCellIsClear(const LCellIdI&cell)const;
+		String					LowCellReport(const LCellIdI&cell)const;
 		bool					LowCellIsClearOrWater(const LCellIdI&cell)const;
 		bool					LowCellHasStructure(const LCellIdI&cell)const;
 		bool					LowCellIsClearIgnoreStructure(const LCellIdI&cell)const;

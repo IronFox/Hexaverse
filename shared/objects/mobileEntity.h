@@ -434,6 +434,8 @@ namespace Objects
 			//bool				ProcessVisibilityOfS(const PWorldEntity&e, float&t);
 		private:
 			bool				HandleNormalTask();
+			bool				AutoMoveComplete();
+
 		public:
 
 		#endif

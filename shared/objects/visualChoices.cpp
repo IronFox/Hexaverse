@@ -12,7 +12,7 @@ namespace Objects
 {
 
 	bool						controlIsEnabled = false;
-	Buffer0<Grid::LCellIdI>		movementChoices;
+	Buffer0<Choice>				movementChoices;
 	bool						hasArrowCellTarget=false,
 								showArrow = false;
 	float3						arrowFrom;	//arrow visualization point of origin. Might be the location of a vehicle, or any of the locations in its task queue. Only relevant if showArrow is true
@@ -25,7 +25,7 @@ namespace Objects
 
 
 	template <bool ControlEnabled>
-		void RefreshCommand(BaseCommand&cmd)
+		void RefreshCommand(const int2&, BaseCommand&cmd)
 		{
 			cmd.Refresh(ControlEnabled);
 		}
@@ -75,8 +75,8 @@ namespace Objects
 		index_t rs = InvalidIndex;
 		foreach(movementChoices, choice)
 		{
-			float h = Grid::ToRadius(choice->height);
-			const auto&c = Grid::low.cells[choice->stackID];
+			float h = Grid::ToRadius(choice->location.height + choice->visualVerticalOffset);
+			const auto&c = Grid::low.cells[choice->location.stackID];
 			for (int i = 0; i < c.numCorners; i++)
 			{
 				if (Obj::detectOpticalIntersection(
@@ -105,7 +105,7 @@ namespace Objects
 		CursorMode cursorMode = activeCursorMode;
 		activeCursorMode = CursorMode::Idle;
 
-		Grid::LCellIdI ch = movementChoices[choice];
+		Grid::LCellIdI ch = movementChoices[choice].location;
 		PVehicleStore st = To<VehicleStore>::DynamicCast(selectedEntity);
 		if (st)
 			st->SignalDeployment();
