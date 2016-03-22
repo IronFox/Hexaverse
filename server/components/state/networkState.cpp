@@ -25,6 +25,7 @@ namespace Network
 	namespace Config
 	{
 		UINT16		sessionPort = DEFAULT_SERVER_BASE_PORT + PortOffset::Session;
+		UINT16		technitePort = DEFAULT_SERVER_BASE_PORT + PortOffset::Technite;
 	}
 
 
@@ -206,7 +207,7 @@ namespace Network
 		Objects::CheckMobileEntitySanity();
 		Objects::VerifyGrid();
 		Technites::VerifyGrid();
-		Technites::SetupAndStartService();
+		Technites::SetupAndStartService(Config::technitePort);
 	}
 
 

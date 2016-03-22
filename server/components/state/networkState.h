@@ -18,7 +18,8 @@ namespace Network
 
 	namespace Config
 	{
-		extern UINT16	sessionPort;
+		extern UINT16	sessionPort,
+						technitePort;
 	}
 
 

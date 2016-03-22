@@ -25,6 +25,7 @@ namespace UI
 	#include "../../shared/objects.h"
 	#include "dialog.h"
 	#include "cameraControl.h"
+	#include <technite.h>
 
 	namespace UI 
 	{
@@ -754,6 +755,7 @@ namespace UI
 		}
 
 		void		Render( const Objects::WorldEntity&e);
+		void		Render(const Technites::Technite*t);
 
 	}
 #endif

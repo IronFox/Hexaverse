@@ -1168,6 +1168,7 @@ namespace ParameterConfig
 				else
 				{
 					Network::Config::sessionPort = basePort + PortOffset::Session;
+					Network::Config::technitePort = basePort + PortOffset::Technite;
 					LogEvent(EventClass::Preset::configuration,"Base port redefined as "+String(basePort)+", session port set to "+String(Network::Config::sessionPort));
 				}
 				mode = Idle;
@@ -1316,7 +1317,7 @@ int main( int argc, const char* argv[])
 		Objects::Create();
 		Grid::Create1();
 
-		Technites::SetupAndStartService();
+		Technites::SetupAndStartService(ParameterConfig::basePort + PortOffset::Technite);
 
 
 		Reflection::Create();
@@ -1325,7 +1326,7 @@ int main( int argc, const char* argv[])
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start();})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return InformationProvider::server.IsOnline();},InformationProvider::Stop,[](){InformationProvider::Start(ParameterConfig::basePort);})));
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},Network::RestartSession)));
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("technites",&Technites::ServiceIsOnline,&Technites::StopService,&Technites::SetupAndStartService)));
+		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("technites",&Technites::ServiceIsOnline,&Technites::StopService,[](){Technites::SetupAndStartService(ParameterConfig::basePort + PortOffset::Technite);})));
 		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
 
 		Reflection::state.PopFocus();

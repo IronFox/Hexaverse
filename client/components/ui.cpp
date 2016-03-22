@@ -1838,6 +1838,19 @@
 			//;*2.f/display.pixelAspect();
 		}
 
+		void		Render(const Technites::Technite*t)
+		{
+			textout.pushState();
+			
+			float len = 300.f / display.clientWidth();
+			textout.locate(1.f - len,0.95f);
+
+			textout.color(1,1,1);
+			foreach (Technites::supportedTypes,type)
+				textout << *type << nl;
+
+			textout.popState();
+		}
 
 		void		Render(const Objects::WorldEntity&e)
 		{
@@ -1851,8 +1864,6 @@
 
 
 			float len = 300.f / display.clientWidth();
-			//if (len == 0)
-				//len = textout.scaledWidth("012345678901234567890123456789012345");
 			textout.locate(1.f - len,0.95f);
 			const String&name= e.GetNiceName();
 			if (name.length() < 20)

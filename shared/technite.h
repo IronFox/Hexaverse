@@ -444,6 +444,10 @@ namespace Technites
 	extern Buffer<Technite>		technites;
 	extern BroadTechniteMap		techniteMap;
 
+	#ifdef CLIENT
+		extern Array<String>	supportedTypes;
+	#endif
+
 	struct TNewTechnite : public Technite::StartOptions
 	{
 		TUniqueID				id;
@@ -479,7 +483,7 @@ namespace Technites
 
 	void					Clear();
 
-	void					SetupAndStartService();
+	void					SetupAndStartService(USHORT port);
 	void					StopService();
 	bool					ServiceIsOnline();
 	void					DestroyService();

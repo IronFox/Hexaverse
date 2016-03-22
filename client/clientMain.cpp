@@ -1760,6 +1760,9 @@ bool loop()
 
 				if (Objects::selectedEntity)
 					StatePanel::Render(*Objects::selectedEntity);
+				else
+					if (Network::amSpectator)
+						StatePanel::Render(nullptr);
 
 				//if (Objects::Network::Transfer::isActive)
 				//	TransferPanel::Render(Objects::Network::Transfer::fromVehicle, Objects::Network::Transfer::toNetwork);
@@ -3318,6 +3321,15 @@ int main( int argc, const char* argv[])
 				display.config.fsaa_samples = config.GetInt("runtime/fsaa",4);
 
 				UI::resourcesAsList = config.GetBool("runtime/resourcesAsList",false);
+
+				{
+					String type = config.RequireString("technites/types");
+					Array<String>	list;
+					explode(',',type,list);
+					foreach (list,t)
+						t->trimThis();
+					Technites::supportedTypes = std::move(list);
+				}
 
 				TimeLapse::customBasePath = PathString(config.GetString("timelapse/outDirectory"));
 				TimeLapse::frameDelaySeconds = config.GetFloat("timelapse/frameDelaySeconds",0.2f);

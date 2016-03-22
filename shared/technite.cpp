@@ -13,6 +13,11 @@
 
 namespace Technites
 {
+	#ifdef CLIENT
+		Array<String>			supportedTypes;
+	#endif
+
+
 
 	const EventClass techniteError = EventClass(EventSignificance::NonFatalError, EventFlavor::SystemError);
 
@@ -943,7 +948,7 @@ namespace Technites
 	}
 
 
-	void					SetupAndStartService()
+	void					SetupAndStartService(USHORT port)
 	{
 
 		static bool setup = false;
@@ -965,7 +970,7 @@ namespace Technites
 			serviceHost.onIgnorePackage = Receiver::OnIgnorePackage;
 			serviceHost.onDeserializationFailed = Receiver::OnDeserializationFailed;
 		}
-		serviceHost.Start();
+		serviceHost.StartService(port);
 	}
 
 	void					Clear()

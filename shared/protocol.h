@@ -31,7 +31,8 @@ namespace PortOffset
 		Info,
 		Session,
 		BroadcastFrom,
-		Control
+		Control,
+		Technite
 	};
 }
 
