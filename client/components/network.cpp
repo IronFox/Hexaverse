@@ -626,6 +626,10 @@ namespace Network
 			if (haveFaction)
 			{
 				amSpectator = cr.startFactionTypes == Protocol::FactionType::SpectatorFaction;
+
+				Objects::resourceView = !amSpectator;
+				UI::RefreshButtonState();
+
 				activeToken = cr.factionToken;
 				activeTokenString = activeToken.ToString();
 				if (!RuntimeConfig::aiMode && !amSpectator)
