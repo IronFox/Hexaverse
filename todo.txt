@@ -1,9 +1,12 @@
 ﻿having small compound spheres within larger ones become visible if the camera is inside these spheres
 shift+click should work on terraforming operations, too
 
+alloy? resource type that is required for some constructions, and requires a special factory to make
 
 
-
+change scanning ranges from pure spheres to paraboloids:
+	horizontal radius, vertical radius (up), vertical radius (down)
+	make down significantly less than up
 
 
 research concept:

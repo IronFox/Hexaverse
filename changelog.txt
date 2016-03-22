@@ -1,3 +1,7 @@
+v0.4.1
+	> Resources stacks are now hidden by default, when connecting as spectator.
+	> Improved initial terrain simplification algorithm to produce cleaner terrains.
+
 v0.4.0	[Mar 20 2016]
 	+ Re-enabled compound system. Vehicles in the vicinity of compounds will implicitly draw from them.
 	+ Added Pylon building that can wirelessly connect to other pylons, and vehicles over a larger distance.

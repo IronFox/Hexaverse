@@ -425,8 +425,10 @@ namespace Grid
 		*/
 		UINT		CellStack::Cell::GetIncreasedSubmergence()	const
 		{
-			if (IsSolid())
+			if (content == Content::Lava)
 				return 0;
+			if (IsSolid())
+				return submergence;
 			UINT rs = submergence;
 			if (content == Content::Water && rs < 0xFF)
 				rs ++;
@@ -453,7 +455,7 @@ namespace Grid
 		}
 
 
-		void			CellStack::Init(float2 heights, const TPlanetConfig&config)
+		void			CellStack::InitUnknown(float2 heights, const TPlanetConfig&config)
 		{
 			//float topHeight = heights.y;
 			//based on this, h could go up to 40, though chances for that are excessively rare
@@ -479,45 +481,73 @@ namespace Grid
 				lowestOpenCell = (BYTE)uh + 1;
 				highestOpaqueCell = (BYTE)uh;
 			#endif
-			if (config.innerType == Content::Unknown)
-			{
-				bool hasEarth = Cell::typeStrength[config.topType] <= Cell::typeStrength[Content::Earth];
-				UINT rockHeight = h > 3 ? uh : uh - (3 - h);
-				if (!hasEarth)
-					rockHeight = Range;
+			if (config.innerType != Content::Clear)
 				for (UINT i = 0; i <= uh; i++)
-				{
-			
-					volumeCell[i].content = i <= rockHeight ? Cell::Content::Rock : Cell::Content::Earth;
-
-					#ifdef CLIENT
-						volumeCell[i].intLightLevel = 0;
-						volumeCell[i].submergence = h < 0 && i == uh ? (BYTE)clamp(HalfRange - int(i),0,255) : 0;
-					#endif
-				}
-			}
+					volumeCell[i].content = Cell::IsLiquid(config.innerType) ? Cell::Content::Water : Cell::Content::Unknown;
 			else
-			{
 				for (UINT i = 0; i <= uh; i++)
-				{
-			
-					volumeCell[i].content = config.innerType;
+					volumeCell[i].content = Cell::Content::Clear;
 
-					#ifdef CLIENT
-						volumeCell[i].intLightLevel = 0;
-						volumeCell[i].submergence = h < 0 && i == uh ? (BYTE)clamp(HalfRange - int(i),0,255) : 0;
-					#endif
-				}
-			}
-			volumeCell[uh].content = GetTopTypeAtHeight(config,h);
 
 			for (UINT l = uh+1; l < Range; l++)
 				volumeCell[l].content = Content::Clear;
 
+			//if (Cell::IsLiquid(config.extendedCoreType ) || config.extendedCoreType == Content::Clear)
+			//	for (UINT i = 0; i < coreLayer; i++)
+			//		volumeCell[i].content = Content::Clear;
+			//else
+			if (config.extendedCoreType != Content::Clear)
+				for (UINT i = 0; i < coreLayer; i++)
+					volumeCell[i].content = Cell::IsLiquid(config.innerType) ? Cell::Content::Lava : Cell::Content::Granite;
+			else
+				for (UINT i = 0; i < coreLayer; i++)
+					volumeCell[i].content = Content::Clear;
+		}
 
-			for (UINT i = 0; i < coreLayer; i++)
+		void			CellStack::FillTypes(const TPlanetConfig&config)
+		{
+			UINT top = 0;
+			int h = BottomHeight;
+			for (UINT layer = Range-1; layer < Range; layer--)
 			{
-				volumeCell[i].content = config.extendedCoreType;
+				BYTE&content = volumeCell[layer].content;
+				if (content == Content::Clear)
+				{
+					continue;
+				}
+				if (!top)
+				{
+					bool isSolid = true;
+					isSolid = Cell::IsSolid(content);
+
+					if (isSolid)
+					{
+						top = layer;
+						h = ToHeight(top);
+
+						content = GetTopTypeAtHeight(config,h);
+						continue;
+					}
+				}
+				if (content == Content::Unknown || content == Content::Water)	//mountain layer
+				{
+					if (config.innerType == Content::Unknown)
+					{
+						bool hasEarth = Cell::typeStrength[config.topType] <= Cell::typeStrength[Content::Earth];
+						UINT rockHeight = h > 3 ? top : top - (3 - h);
+						if (!hasEarth)
+							rockHeight = Range;
+					
+						content = layer <= rockHeight ? Cell::Content::Rock : Cell::Content::Earth;
+					}
+					else
+						content = config.innerType;
+				}
+				else if (content == Content::Granite || content == Content::Lava)
+					content = config.extendedCoreType;
+				
+					
+
 			}
 
 
@@ -525,31 +555,11 @@ namespace Grid
 			{
 				UINT top = std::min(ToLayer(config.liquidHeight),Range-1);
 				for (UINT i = 0; i <= top; i++)
-				{
 					if (volumeCell[i].content == Content::Clear)
-					{
 						volumeCell[i].content = config.liquidCoverage;
-						#ifdef CLIENT
-							volumeCell[i].submergence = (BYTE)clamp(HalfRange - int(i),0,255);
-						#endif
-					}
-					#ifdef CLIENT
-						volumeCell[i].intLightLevel = 0xFF;
-					#endif
-				}
 			}
-
-			#ifdef CLIENT
-				if (h < 0)
-					waterRange = IntRange<BYTE>(uh, HalfRange+1);
-				else
-					waterRange.SetEmpty(0);
-
-				lightingChangedTo = uh+1;
-			#endif
-
-
 		}
+
 	#endif
 	
 
@@ -1021,10 +1031,10 @@ namespace Grid
 				res->Fill(random);
 
 
-			for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
+			Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[config](index_t i)
 			{
-				actualWorld.cellStack[i].Init(RandomHeight(high.cells[i].centerVertex.xyz,config),config);
-			}
+				actualWorld.cellStack[i].InitUnknown(RandomHeight(high.cells[i].centerVertex.xyz,config),config);
+			});
 
 
 			for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
@@ -1034,14 +1044,14 @@ namespace Grid
 				const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
 				for (UINT l = 0; l < CellStack::Range; l++)
 				{
-					if (stack.volumeCell[l].IsClearOrWater())
+					if (stack.volumeCell[l].IsClearOrLiquidIgnoreStructure())
 					{
 						int cnt = 0;
 						BYTE cont;
 						for (int ni = 0; ni < n.numNeighbors; ni++)
 						{
 							auto&other = actualWorld.cellStack[n.neighborID[ni]].volumeCell[l];
-							if (!other.IsClearOrWater())
+							if (!other.IsClearOrLiquidIgnoreStructure())
 							{
 								cnt ++;
 								cont = other.content;
@@ -1058,13 +1068,13 @@ namespace Grid
 							{
 								auto&otherStack = actualWorld.cellStack[n.neighborID[ni]];
 								auto&other = otherStack.volumeCell[l];
-								if (!other.IsClearOrWater())
+								if (!other.IsClearOrLiquidIgnoreStructure())
 								{
 									cont = stack.volumeCell[l].content;
-									if (l > 0 && (cont == Content::Clear || cont == Content::Water))
-									{
-										otherStack.volumeCell[l-1].content = other.content;
-									}
+									//if (l > 0 && (cont == Content::Clear || cont == Content::Water || cont == Content::Lava))
+									//{
+									//	otherStack.volumeCell[l-1].content = other.content;
+									//}
 
 									cnt ++;
 									other.content = stack.volumeCell[l].content;
@@ -1091,13 +1101,13 @@ namespace Grid
 					auto&nStack = actualWorld.cellStack[n.neighborID[ni]];
 					for (UINT l = 0; l < CellStack::Range; l++)
 					{
-						if (!nStack.volumeCell[l].IsClearOrWaterIgnoreStructure())
+						if (!nStack.volumeCell[l].IsClearOrLiquidIgnoreStructure())
 							continue;
 						count_t cnt = 0;
 						BYTE cont = 0;
 						for (int nj = 0; nj < n2.numNeighbors; nj++)
 						{
-							if (!actualWorld.cellStack[n2.neighborID[nj]].volumeCell[l].IsClearOrWaterIgnoreStructure())
+							if (!actualWorld.cellStack[n2.neighborID[nj]].volumeCell[l].IsClearOrLiquidIgnoreStructure())
 							{
 								cnt ++;
 								cont = actualWorld.cellStack[n2.neighborID[nj]].volumeCell[l].content;
@@ -1105,10 +1115,10 @@ namespace Grid
 						}
 						if (cnt > 3)
 						{
-							if (l > 0 && (cont == Content::Clear || cont == Content::Water))
-							{
-								nStack.volumeCell[l-1].content = nStack.volumeCell[l].content;
-							}
+							//if (l > 0 && (cont == Content::Clear || cont == Content::Water || cont == Content::Lava))
+							//{
+							//	nStack.volumeCell[l-1].content = nStack.volumeCell[l].content;
+							//}
 							nStack.volumeCell[l].content = cont;
 						}
 					}
@@ -1117,22 +1127,39 @@ namespace Grid
 			});
 
 
-			const bool solidProx = CellStack::Cell::IsSolid(config.liquidOutline) && CellStack::Cell::IsLiquid(config.liquidCoverage);
+			Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[config](index_t i)
+			{
+				actualWorld.cellStack[i].FillTypes(config);
+			});
+
 			//the following tries to elimited exposed inner terrain types caused by the above terrain simplification
-			//for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
-			//{
-			//	auto&stack = actualWorld.cellStack[i];
-			//	for (UINT l = 0; l < CellStack::Range; l++)
-			//	{
-			//		const BYTE cont = stack.volumeCell[l].content;
-			//		if ((cont == Content::Water || cont == Content::Clear) && l > 0)
-			//		{
-			//			if (ReplaceTop(stack.volumeCell[l-1].content))
-			//				stack.volumeCell[l-1].content = 
-			//					GetTopTypeAtHeight(config,Grid::CellStack::ToHeight(l-1));
-			//		}
-			//	}
-			//}
+//			Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [](index_t i)
+//			{
+//				auto&stack = actualWorld.cellStack[i];
+//				UINT32 stackTop = 0;
+//				for (UINT l = CellStack::Range-1; l < CellStack::Range; l--)
+//				{
+//					if (stack.volumeCell[l].IsClearOrWaterIgnoreStructure())
+//					{
+//						if (!stackTop)
+//							stackTop = l;
+//						continue;
+//					}
+//				}
+//				for (UINT l = 0; l < CellStack::Range; l++)
+//				{
+//					const BYTE cont = stack.volumeCell[l].content;
+//					if ((cont == Content::Water || cont == Content::Clear) && l > 0)
+//					{
+////						if (ReplaceTop(stack.volumeCell[l-1].content))
+//							stack.volumeCell[l-1].content = 
+//								GetTypeAtHeight(config,Grid::CellStack::ToHeight(l-1));
+//					}
+//				}
+//			});
+
+
+			const bool solidProx = CellStack::Cell::IsSolid(config.liquidOutline) && CellStack::Cell::IsLiquid(config.liquidCoverage);
 			if (solidProx)
 				for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
 				{
@@ -2290,12 +2317,17 @@ namespace Grid
 						lowerColor1 = wasEmpty ? newCornerColor[j] : cornerColor[j],
 						lowerColor2 = wasEmpty ? newCornerColor[(j + 1) % cell.numCorners] : cornerColor[(j + 1) % cell.numCorners];
 
+
 				if (ncutoff && filled)
 				{
-					color1 = float4();
-					color2 = float4();
-					lowerColor1 = float4();
-					lowerColor2 = float4();
+					CapColor(color1);
+					CapColor(color2);
+					CapColor(lowerColor1);
+					CapColor(lowerColor2);
+					//color1 = float4();
+					//color2 = float4();
+					//lowerColor1 = float4();
+					//lowerColor2 = float4();
 				}
 				if (!thisCell.Mixes() || !lastCell.Mixes())
 				{

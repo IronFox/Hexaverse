@@ -286,6 +286,10 @@ namespace Grid
 				return (content == Content::Clear || content == Content::Water);
 			}
 
+			bool	IsClearOrLiquidIgnoreStructure() const
+			{
+				return (content == Content::Clear || IsLiquid(content));
+			}
 
 			static bool IsDead(BYTE cnt)
 			{
@@ -297,7 +301,7 @@ namespace Grid
 			}
 			static bool IsSolid(BYTE cnt)
 			{
-				return cnt < Content::Water;
+				return cnt < Content::Water && cnt != Content::Lava;
 			}
 			static bool IsLiquid(BYTE cnt)
 			{
@@ -402,7 +406,8 @@ namespace Grid
 
 
 		#ifndef CLIENT
-			void		Init(float2 heights, const TPlanetConfig&);
+			void		InitUnknown(float2 heights, const TPlanetConfig&);
+			void		FillTypes(const TPlanetConfig&);
 		#endif
 
 		void			ZeroInit();
