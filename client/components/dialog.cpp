@@ -548,6 +548,33 @@ namespace Dialog
 		return d;
 	}
 
+	WDialog	CheckedQuery(const String&query, const String&initial, const String&allowChars, const FCheckState&check, const FFetchInput&fetch)
+	{
+		VerifyIntegrity(CLOCATION);
+		GUIElements::Input::onChange = Detail::OnInput;
+		GUIElements::Input::onDone = Detail::OnDone;
+
+
+		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton | Detail::ComponentFlags::CancelButton | Detail::ComponentFlags::Input, "OK", false);
+		d->textField->SetText(query);
+
+		ASSERT__(!d->isTutorial);
+
+
+		d->fetchInput = fetch;
+		d->check = check;
+
+		d->userInput->SetCurrent(initial);
+		d->userInput->SetAllowed(allowChars);
+
+		d->confirmButton->DetectEnabledState();
+
+		d->ReLayout();
+		VerifyIntegrity(CLOCATION);
+
+		return d;
+	}
+
 	String	WordForThinking(UINT32 roundNumber, const void*factionPointer)
 	{
 		static String words[] = {

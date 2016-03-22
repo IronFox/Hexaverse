@@ -155,6 +155,7 @@ namespace Dialog
 	Creates a new modal dialog on top of any other active modal dialogs that attempts to read a string from the user
 	*/
 	WDialog	Query(const String&query, const String&initial, const String&allowChars, const FCheckInput&, const FFetchInput&);
+	WDialog	CheckedQuery(const String&query, const String&initial, const String&allowChars, const FCheckState&, const FFetchInput&);
 
 	/**
 	Queues a tutorial message. Allows hiding all following tutorials
