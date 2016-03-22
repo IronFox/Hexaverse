@@ -15,12 +15,24 @@ namespace World
 
 	void		Render(const Engine::Frustum<>&frustum)
 	{
+		bool wasVisible[BaseGrid::NumFamilies];
 		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 		{
 			Grid::TFamily::TData&dat = Grid::high.family[k].normal;
-			if (frustum.IsVisible(dat.boundingSphere))
+			bool visible = frustum.IsVisible(dat.boundingSphere);
+			wasVisible[k] = visible;
+			if (visible)
 				display.Render(dat.terrain.instruction[Grid::Instruction::displayMode],true);
 		}
+		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+		{
+			if (wasVisible[k])
+			{
+				Grid::TFamily::TData&dat = Grid::high.family[k].normal;
+				display.Render(dat.technites.instruction,true);
+			}
+		}
+
 	}
 
 	void		RenderWater(const Engine::Frustum<>&frustum)

@@ -1308,6 +1308,8 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			Grid::TFamily::TData&dat = Grid::high.family[k].normal;
 			if (dat.terrain.shadowInstruction.shader.IsSet())
 				display.Render(dat.terrain.shadowInstruction);
+			if (dat.technites.shadowInstruction.shader.IsSet())
+				display.Render(dat.technites.shadowInstruction);
 			if (dat.overlay.shadowInstruction.shader.IsSet())
 				display.Render(dat.overlay.shadowInstruction);
 		}
