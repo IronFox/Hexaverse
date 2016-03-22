@@ -3508,7 +3508,7 @@ int main( int argc, const char* argv[])
 				{
 					Grid::HCellIdU loc(Objects::cellSelection.first().stackID,Grid::CellStack::ToLayer(Objects::cellSelection.first().height));
 					String type = Objects::activeTechniteTypeToPlace;
-					static const String allowed = "abcdefghijklmnopqrstuvwxyzï¿½ï¿½ï¿½ABCDEFGHIJKLMNOPQRSTUVWXYZï¿½ï¿½ï¿½0123456789_- <>!'\"'$%^&*()=+.,/\\#@?{}[]";
+					static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_- <>!'\"'$%^&*()=+.,/\\#@?{}[]";
 
 					Dialog::CheckedQuery("Init message for new technite of type '"+type+"':","{}",allowed,[]()->Dialog::CheckResult
 					{
