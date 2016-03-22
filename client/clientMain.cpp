@@ -2439,14 +2439,9 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	if (e->IsMobile())
 	{
 		#ifdef HAS_WINDOW
-			if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode))
+			if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) || Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 			{
-				Objects::buildCandidates.EraseLast();
-				return;
-			}
-			if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
-			{
-				Objects::removeCandidates.EraseLast();
+				Objects::cellSelection.EraseLast();
 				return;
 			}
 		#endif
