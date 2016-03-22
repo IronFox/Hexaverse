@@ -1092,6 +1092,8 @@ namespace Journal
 
 
 
+
+
 	void	Round::RegisterResourceCoverageChange(bool execute, UINT32 stackID, Objects::Resource res, Grid::Resource::coverage_t newCoverage)
 	{
 		PGlobalEvent ev(new ResourceCoverageChange(stackID,res,newCoverage));
@@ -1111,6 +1113,43 @@ namespace Journal
 			ev->Execute(f);
 	}
 
+
+	/*virtual override*/ void			Round::SpawnTechnite::Decode(const Entry&e)
+	{
+		this->loc.stackID = (UINT32)e.intParameters.Require(CLOCATION,"StackID");
+		this->loc.layer = (UINT32)e.intParameters.Require(CLOCATION,"Layer");
+		this->type = e.stringParameters.Require(CLOCATION,"Type");
+		this->techniteID = e.uuidParameters.Require(CLOCATION,"ID");
+		this->initMessage = e.stringParameters.Require(CLOCATION,"InitMessage");
+		if (this->loc.stackID >= Grid::LowSetup::GridType::CellCount)
+		{
+			throw Program::DataConsistencyFault( CLOCATION,"Stack ID out of range '"+String(loc.stackID)+"'");
+		}
+		if (this->loc.layer >= Grid::CellStack::Range)
+		{
+			throw Program::DataConsistencyFault( CLOCATION,"Layer out of range '"+String(loc.layer)+"'");
+		}
+	}
+
+	/*virtual override*/ void			Round::SpawnTechnite::Execute() const
+	{
+		Technites::TNewTechnite tech;
+		tech.id = techniteID;
+		tech.initMessage = initMessage;
+		tech.location = loc;
+		tech.parent = TUniqueID::Empty();
+		tech.repo = type;
+		Technites::Create(tech,0.f);
+	}
+
+	/*virtual override*/ void			Round::SpawnTechnite::Compile(Entry&e)	const
+	{
+		e.intParameters.Set("StackID",(int)loc.stackID);
+		e.intParameters.Set("Layer",(int)loc.layer);
+		e.stringParameters.Set("Type",type);
+		e.uuidParameters.Set("ID",techniteID);
+		e.stringParameters.Set("InitMessage",initMessage);
+	}
 
 
 	/*virtual override*/void			Round::ResourceCoverageChange::Compile(Entry&e)	const
@@ -2224,6 +2263,7 @@ namespace Journal
 		MAP_ADD(DestroyMarker);
 		MAP_ADD(RestoreCoreLink);
 		MAP_ADD(ConstructionAbort);
+		MAP_ADD(SpawnTechnite);
 	}
 
 	void	Create()

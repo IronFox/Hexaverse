@@ -223,6 +223,7 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
 
+		extern TCP::ObjectSender<Protocol::SpawnTechnite,Protocol::ChannelID::SpawnTechnite>			spawnTechnite;
 		
 	}
 

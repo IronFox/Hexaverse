@@ -137,6 +137,7 @@ namespace Network
 		server.InstallChannel(Channels::changeMyName);
 		server.InstallChannel(Channels::identifyUserRecv);
 		server.InstallChannel(Channels::chatMessage);
+		server.InstallChannel(Channels::spawnTechnite);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);

@@ -41,6 +41,8 @@ namespace Channels
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>							identifyUserRecv(Receiver::IdentifyUser);
 	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
 
+	TCP::Channel<Protocol::SpawnTechnite, SpectatorLevel, Protocol::ChannelID::SpawnTechnite>				spawnTechnite(Receiver::SpawnTechnite);
+
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
 	TCP::ObjectSender<Protocol::WorldDelta,Protocol::ChannelID::WorldDelta>							updateWorld;
@@ -823,6 +825,18 @@ namespace Receiver
 
 		Journal::currentRound.Register(true,f,new Journal::Round::DestroyMarker(id));
 	}
+
+	void	SpawnTechnite(Protocol::SpawnTechnite&tech, TCP::Peer&peer)
+	{
+		LogEvent(EventSignificance::Common, peer, nullptr, "Begin: " __func__);
+		if (tech.location.value.stackID >= Grid::HighSetup::GridType::CellCount || tech.location.value.layer >= Grid::CellStack::Range)
+		{
+			LogEvent(EventClass::Preset::commandRejected,peer,"Invalid technite spawning location");
+			return;
+		}
+		Journal::currentRound.Register(true, new Journal::Round::SpawnTechnite(tech.type, tech.location, tech.initMessage));
+	}
+
 
 	void	ChatMessage(Package::NetString<256>&message, TCP::Peer&peer)
 	{

@@ -1879,6 +1879,13 @@ namespace Protocol
 		, Package::NetString<32>, name
 	)
 
+
+	NETSTRUCT3(SpawnTechnite
+		, Package::NetString<64>, type
+		, NET(Grid::HCellIdU), location
+		, Package::NetString<1024>, initMessage
+	);
+
 	typedef std::pair<UINT16,UINT16>	TUnitLimit;
 
 	typedef NETA(TUnitLimit)	UnitLimits;
@@ -1977,6 +1984,10 @@ namespace Protocol
 			RC_Lockdown,				//c2s: bool -> s2c: bool
 			RC_Kick,					//c2s: pair<TUniqueID,bool>	(kick / kick and ban)
 			RC_KickAllNonPrivileged,	//c2s: <signal>
+
+
+			//technite controls
+			SpawnTechnite,
 		};
 	}
 

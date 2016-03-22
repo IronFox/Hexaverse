@@ -59,7 +59,7 @@ namespace World
 
 	void		RenderBuildBlocks()
 	{
-		if ( Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) )
+		if ( Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) || Objects::activeTechniteTypeToPlace.IsNotEmpty() )
 		{
 			display.SetDepthTest(false, false);
 			LineRenderer::SetColor(float4(1,1, 1.f, 0.25f));

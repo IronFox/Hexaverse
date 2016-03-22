@@ -1760,9 +1760,6 @@ bool loop()
 
 				if (Objects::selectedEntity)
 					StatePanel::Render(*Objects::selectedEntity);
-				else
-					if (Network::amSpectator)
-						StatePanel::Render(nullptr);
 
 				//if (Objects::Network::Transfer::isActive)
 				//	TransferPanel::Render(Objects::Network::Transfer::fromVehicle, Objects::Network::Transfer::toNetwork);
@@ -2078,6 +2075,47 @@ void MyFatal(const FatalDescriptor&descriptor)
 				{
 					TVec3<> normal;
 					bool selectionDone = false;
+
+					if (Objects::activeTechniteTypeToPlace.IsNotEmpty())
+					{
+						if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
+						{
+							float3 p = b + d * distance;
+							float r = p.length();
+							float3 d = p / r;
+							UINT32 stackID;
+							int h;
+							if (Vec::dot(d, normal) > 0.5f)	//flat selection
+							{
+								stackID = Grid::high.Locate(d);
+								h = Grid::FromRadius(r);
+							}
+							else
+							{
+								stackID = Grid::high.Locate(d + normal*0.001f);
+								h = Grid::FloorFromRadius(r);
+							}
+
+							if (h < Grid::CellStack::BottomHeight)
+							{
+								LogEvent(EventSignificance::NonFatalError, "Cannot place technite here: Cannot alter bottom-layer");
+							}
+							else
+							{
+								Grid::HCellIdI	cell = Grid::HCellIdI(stackID, h);
+								index_t current = Objects::cellSelection.GetIndexOf(cell);
+								if (current == InvalidIndex)
+								{
+									Objects::cellSelection.Clear();
+									Objects::cellSelection << cell;
+								}
+								else
+									Objects::cellSelection.Erase(current);
+							}
+						}
+
+					}
+					else
 					if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) || Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 					{
 						if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
@@ -3441,6 +3479,73 @@ int main( int argc, const char* argv[])
 		Grid::Create0();
 		Objects::Create();
 		Grid::Create1();
+
+		{
+			Objects::PCommandGroup grp = Objects::globalCommands.AddChild(int2(2,0),false, "Spawn Technites");
+			foreach (Technites::supportedTypes,_t)
+			{
+				String t = *_t;;
+				grp->Add(new Objects::IconCommand("Spawn "+t,[t]()
+				{
+					if (Objects::activeTechniteTypeToPlace == t)
+						Objects::activeTechniteTypeToPlace = "";
+					else
+						Objects::activeTechniteTypeToPlace = t;
+					Objects::buildCandidates.Clear();
+					Objects::cellSelection.Clear();
+				},[t](bool controlsEnabled)->Objects::BaseCommand::Flags
+				{
+					Objects::BaseCommand::Flags rs = Objects::BaseCommand::Flags::None;
+					if (controlsEnabled && Network::amSpectator && Network::client.IsConnected())
+					{
+						rs |= Objects::BaseCommand::Flags::IsEnabled;
+						if (Objects::activeTechniteTypeToPlace == t)
+							rs |= Objects::BaseCommand::Flags::IsPermaActive;
+					}
+					return rs;
+
+				}));
+			}
+
+			grp->Add(new Objects::IconCommand("Commit",[]()
+			{
+				if (Objects::cellSelection.IsNotEmpty() && Objects::activeTechniteTypeToPlace.IsNotEmpty())
+				{
+					Grid::HCellIdU loc(Objects::cellSelection.first().stackID,Grid::CellStack::ToLayer(Objects::cellSelection.first().height));
+					String type = Objects::activeTechniteTypeToPlace;
+					static const String allowed = "abcdefghijklmnopqrstuvwxyz���ABCDEFGHIJKLMNOPQRSTUVWXYZ���0123456789_- <>!'\"'$%^&*()=+.,/\\#@?{}[]";
+
+					Dialog::CheckedQuery("Init message for new technite of type '"+type+"':","{}",allowed,[]()->Dialog::CheckResult
+					{
+						if (Network::ControlEnabled() && Network::amSpectator && Network::client.IsConnected())
+							return Dialog::CheckResult::OkayContinue;
+						if (Network::amSpectator && Network::client.IsConnected())
+							return Dialog::CheckResult::OkayNotRightNow;
+						return Dialog::CheckResult::Abort;
+					},[loc,type](const String&initMessage)
+					{
+						Protocol::SpawnTechnite spawn;
+						spawn.initMessage = initMessage;
+						spawn.location = loc;
+						spawn.type = type;
+						Network::Channels::spawnTechnite.SendTo(Network::client,spawn);
+					});
+					
+				}
+
+				Objects::activeTechniteTypeToPlace = "";
+				Objects::buildCandidates.Clear();
+				Objects::cellSelection.Clear();
+			},[](bool controlsEnabled)->Objects::BaseCommand::Flags
+			{
+				Objects::BaseCommand::Flags rs = Objects::BaseCommand::Flags::None;
+				if (controlsEnabled && Network::amSpectator && Network::client.IsConnected() && Objects::cellSelection.IsNotEmpty() && Objects::activeTechniteTypeToPlace.IsNotEmpty())
+				{
+					rs |= Objects::BaseCommand::Flags::IsEnabled;
+				}
+				return rs;
+			}));
+		}
 
 
 		#ifdef HAS_WINDOW

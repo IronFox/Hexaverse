@@ -1838,19 +1838,6 @@
 			//;*2.f/display.pixelAspect();
 		}
 
-		void		Render(const Technites::Technite*t)
-		{
-			textout.pushState();
-			
-			float len = 300.f / display.clientWidth();
-			textout.locate(1.f - len,0.95f);
-
-			textout.color(1,1,1);
-			foreach (Technites::supportedTypes,type)
-				textout << *type << nl;
-
-			textout.popState();
-		}
 
 		void		Render(const Objects::WorldEntity&e)
 		{

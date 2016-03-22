@@ -389,6 +389,24 @@ namespace Journal
 			};
 
 
+		class SpawnTechnite : public GlobalEvent
+		{
+		public:
+			String			type,initMessage;
+			Grid::HCellIdU	loc;
+			TUniqueID		techniteID;
+
+			/**/			SpawnTechnite()	{}
+			/**/			SpawnTechnite(const String&type, const Grid::HCellIdU&loc, const String&initMessage): type(type),initMessage(initMessage),loc(loc)	{techniteID.Generate();}
+			Event*			Instantiate() const override {return new SpawnTechnite();}
+			virtual void	Decode(const Entry&e) override;
+			virtual void	Execute() const override;
+
+		protected:
+			virtual void	Compile(Entry&)	const override;
+		};
+		
+
 		class ResourceCoverageChange : public GlobalEvent
 		{
 		public:
@@ -784,7 +802,6 @@ namespace Journal
 			virtual void	Compile(Entry&)	const override;
 
 		};
-		
 
 		/**
 		General-purpose storage for round events

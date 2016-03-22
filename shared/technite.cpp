@@ -362,13 +362,15 @@ namespace Technites
 	}
 
 
-	void ChangeGrid(const Grid::HCellIdU&target, Grid::Content content)
+	bool ChangeGrid(const Grid::HCellIdU&target, Grid::Content content)
 	{
-		if (Grid::actualWorld.cellStack[target.stackID].LocalOverwrite(target.layer,content))
+		if (Grid::actualWorld.cellStack[target.stackID].LocalOverwriteU(target.layer,content))
 		{
 			index_t family1 = Grid::high.grid.GetCell(target.stackID).family;
 			familyChanged[family1] = true;
+			return true;
 		}
+		return false;
 	}
 
 	void MoveTechnite(Technite&t, const Grid::HCellIdU&target)
@@ -859,13 +861,8 @@ namespace Technites
 		tech.startOptions = init;
 		ProcessLighting(tech);
 
-		Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
-		ASSERT__(stack.LocalOverwrite(location.layer, Grid::Content::Technite));
-
-		index_t family = Grid::high.grid.GetCell(location.stackID).family;
-
-		Grid::low.family[family].SetOutdated(t);
-		Grid::high.family[family].SetOutdated(t);
+		ASSERT__(ChangeGrid(location,Grid::Content::Technite));
+		ApplyFamilyChange(t);
 
 		tech.StartClient();
 
