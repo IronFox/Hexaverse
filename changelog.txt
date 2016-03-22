@@ -1,5 +1,6 @@
 v0.3.20
 	> Resources stacks are now hidden by default, when connecting as spectator.
+	> Improved initial terrain simplification algorithm to produce cleaner terrains.
 
 v0.3.19	[Mar 20 2016]
 	+ The Ctrl-key can now be used to toggle terrain see-through.
