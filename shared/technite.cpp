@@ -264,7 +264,9 @@ namespace Technites
 			if (!attach)
 			{
 				LogEvent(EventClass::Preset::unexpectedBehavior,origin.ToString()+ " attempted authentication without challenge peer attachment");
-				origin.DisconnectPeer();
+				#ifndef _DEBUG
+					origin.DisconnectPeer();
+				#endif
 				return;
 			}
 			SHA256::HashContainer	shouldBe;
@@ -273,7 +275,9 @@ namespace Technites
 			if (!t)
 			{
 				LogEvent(EventClass::Preset::unexpectedBehavior,origin.ToString()+ " attempted authentication on unknown technite "+authenticate.myID.value.ToString());
-				origin.DisconnectPeer();
+				#ifndef _DEBUG
+					origin.DisconnectPeer();
+				#endif
 				return;
 			}
 			sha.AppendPOD(t->secret);
