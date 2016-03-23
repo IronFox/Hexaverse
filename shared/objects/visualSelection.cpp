@@ -4,6 +4,7 @@
 #include "visualChoices.h"
 #include "interface.h"
 #include "gridAndChoices.h"
+#include "../technite.h"
 
 namespace Objects
 {
@@ -11,10 +12,20 @@ namespace Objects
 	PVehicle				selectedVehicle;
 	PWorldEntity			selectedEntity;
 	PMobileEntity			selectedMobileEntity;
+	bool					techniteIsSelected = false;
+	Technites::Technite		selectedTechnite;
+
+
+	void					Select(const Technites::Technite&tech, bool controlEnabled)
+	{
+		techniteIsSelected = true;
+		selectedTechnite = tech;
+	}
+
 
 	void					Select(const PWorldEntity&entity, bool controlEnabled)
 	{
-			
+		techniteIsSelected = false;
 		movementChoices.Clear();
 //		bool changed = selectedEntity != entity;
 		PWorldEntity e = selectedEntity;
@@ -40,6 +51,7 @@ namespace Objects
 
 	void					Deselect(bool controlEnabled)
 	{
+		techniteIsSelected = false;
 		movementChoices.Clear();
 		PWorldEntity e = selectedEntity;
 		selectedEntity.reset();	

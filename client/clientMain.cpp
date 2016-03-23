@@ -2184,6 +2184,32 @@ void MyFatal(const FatalDescriptor&descriptor)
 							selectionDone = true;
 						}
 					}
+					else
+					if (Network::amSpectator)
+					{
+						if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
+						{
+							float3 p = b + d * distance;
+							float r = p.length();
+							float3 d = p / r;
+							UINT32 stackID;
+							int h;
+							stackID = Grid::high.Locate(d - normal*0.001f);
+							h = Grid::FloorFromRadius(r);
+							if (Grid::actualWorld.cellStack[stackID].GetCellI(h).content == Grid::Content::Technite)
+							{
+								selectionDone = true;
+								const Technites::Technite*t = Technites::GetTechnite(Grid::HCellIdU(stackID,Grid::CellStack::ToLayer(h)));
+								if (t)
+									Objects::Select(*t,Network::ControlEnabled());
+								else
+									LogEvent(EventSignificance::NonFatalError,"No information available about this technite. Cannot select");
+							}
+						}
+
+
+					}
+
 					if (!selectionDone)
 						if (Objects::Select(b, d, distance, Network::ControlEnabled()))
 						{

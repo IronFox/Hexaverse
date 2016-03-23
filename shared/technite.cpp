@@ -21,165 +21,168 @@ namespace Technites
 
 	const EventClass techniteError = EventClass(EventSignificance::NonFatalError, EventFlavor::SystemError);
 
-	namespace Attachment
-	{
-		class Challenge : public TCP::Peer::Attachment
-		{
-		public:
-			CryptographicID		challenge;
+	#ifndef CLIENT
 
-			/**/				Challenge()
+		namespace Attachment
+		{
+			class Challenge : public TCP::Peer::Attachment
 			{
-				challenge.Generate();
-			}
-		};
+			public:
+				CryptographicID		challenge;
 
-		class Technite :  public TCP::Peer::Attachment
+				/**/				Challenge()
+				{
+					challenge.Generate();
+				}
+			};
+
+			class Technite :  public TCP::Peer::Attachment
+			{
+			public:
+				const TUniqueID		techniteID;
+
+				/**/				Technite(const TUniqueID&uuid):techniteID(uuid)
+				{}
+			};
+
+
+		}
+
+		namespace Protocol
 		{
-		public:
-			const TUniqueID		techniteID;
-
-			/**/				Technite(const TUniqueID&uuid):techniteID(uuid)
-			{}
-		};
-
-
-	}
-
-	namespace Protocol
-	{
 
 
 
-		NETSTRUCT2(CommonTechniteState
-			, NET(Technite::CompressedLocation),	location
-			, NET(Technite::Resources),			resources
-		);
+			NETSTRUCT2(CommonTechniteState
+				, NET(Technite::CompressedLocation),	location
+				, NET(Technite::Resources),			resources
+			);
 		
-		NETSTRUCT4(OwnState
-			, CommonTechniteState, commonState
-			, NET(Technite::TaskResult), taskResult
-			, NET(Technite::CompressedState), state
-			, NET(float), visionRadius
-		);
+			NETSTRUCT4(OwnState
+				, CommonTechniteState, commonState
+				, NET(Technite::TaskResult), taskResult
+				, NET(Technite::CompressedState), state
+				, NET(float), visionRadius
+			);
 
-		NETSTRUCT2(OtherState
-			, NET(TUniqueID), id
-			, CommonTechniteState, commonState
-		);
-
-
-		NETSTRUCT6(EntityContact
-			, NET(TUniqueID), id
-			, Package::NetString<256>, type
-			, NET(BYTE), height
-			, ::Protocol::LCellIdI, location
-			, NET(UINT16), currentHealth
-			, NET(UINT16), maxHealth
-		);
-		NETSTRUCT2(Message
-			, NET(TUniqueID), sender
-			, Package::NetString<1024>, message
-		);
-
-		NETSTRUCT2(Authenticate
-			, NET(TUniqueID), myID
-			, NET(SHA256::HashContainer), challengeResponse
-		);
-
-		NETSTRUCT4(RegularInstruction
-			, NET(TUniqueID), myID
-			, NET(BYTE), nextTask
-			, NET(BYTE), relativeTarget
-			, NET(BYTE), taskParameter
-		);
-
-		NETSTRUCT4(MessageInstruction
-			, NET(TUniqueID), myID
-			, NET(TUniqueID), receiver
-			, NET(BYTE), receiverLocation
-			, Package::NetString<1024>, message
-		);
-
-	}
+			NETSTRUCT2(OtherState
+				, NET(TUniqueID), id
+				, CommonTechniteState, commonState
+			);
 
 
+			NETSTRUCT6(EntityContact
+				, NET(TUniqueID), id
+				, Package::NetString<256>, type
+				, NET(BYTE), height
+				, ::Protocol::LCellIdI, location
+				, NET(UINT16), currentHealth
+				, NET(UINT16), maxHealth
+			);
+			NETSTRUCT2(Message
+				, NET(TUniqueID), sender
+				, Package::NetString<1024>, message
+			);
 
-	namespace UserLevel
-	{
-		enum t
-		{
-			None,
-			Authenticated
+			NETSTRUCT2(Authenticate
+				, NET(TUniqueID), myID
+				, NET(SHA256::HashContainer), challengeResponse
+			);
 
+			NETSTRUCT4(RegularInstruction
+				, NET(TUniqueID), myID
+				, NET(BYTE), nextTask
+				, NET(BYTE), relativeTarget
+				, NET(BYTE), taskParameter
+			);
 
-		};
+			NETSTRUCT4(MessageInstruction
+				, NET(TUniqueID), myID
+				, NET(TUniqueID), receiver
+				, NET(BYTE), receiverLocation
+				, Package::NetString<1024>, message
+			);
 
-	}
-
-	namespace Receiver
-	{
-		namespace Handler
-		{
-			void	Authenticate(Protocol::Authenticate&authenticate, TCP::Peer&origin);
-		}
-
-
-		void OnDeserializationFailed(UINT32 channel, TCP::Peer&origin)
-		{
-			LogEvent(EventClass::Preset::networkError,nullptr,"Technite service: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
 		}
 
 
 
-		void OnIgnorePackage(UINT32 channel,UINT32 size, TCP::Peer&origin)
+		namespace UserLevel
 		{
-			LogEvent(EventClass::Preset::networkError,nullptr,"Technite service: "+origin.ToString()+": Package of size "+String(size)+" ignored on channel "+String(channel));
+			enum t
+			{
+				None,
+				Authenticated
+
+
+			};
+
 		}
 
-		void OnSignal(UINT32 channel, TCP::Peer&origin)
+		namespace Receiver
 		{
-			LogEvent(EventSignificance::Debug,nullptr,"Technite service: "+origin.ToString()+": Signal on channel "+String(channel));
+			namespace Handler
+			{
+				void	Authenticate(Protocol::Authenticate&authenticate, TCP::Peer&origin);
+			}
+
+
+			void OnDeserializationFailed(UINT32 channel, TCP::Peer&origin)
+			{
+				LogEvent(EventClass::Preset::networkError,nullptr,"Technite service: "+origin.ToString()+": Deserialization failed on channel "+String(channel));
+			}
+
+
+
+			void OnIgnorePackage(UINT32 channel,UINT32 size, TCP::Peer&origin)
+			{
+				LogEvent(EventClass::Preset::networkError,nullptr,"Technite service: "+origin.ToString()+": Package of size "+String(size)+" ignored on channel "+String(channel));
+			}
+
+			void OnSignal(UINT32 channel, TCP::Peer&origin)
+			{
+				LogEvent(EventSignificance::Debug,nullptr,"Technite service: "+origin.ToString()+": Signal on channel "+String(channel));
+			}
+
+			void OnEvent(TCP::event_t event, TCP::Peer&origin);
+
 		}
 
-		void OnEvent(TCP::event_t event, TCP::Peer&origin);
-
-	}
-
-	namespace Channels
-	{
-		enum channel_t
+		namespace Channels
 		{
-			Challenge,			//	s2c : CryptographicID
-			Authenticate,		//	c2s : Authenticate
-			Authenticated,		//	s2c : <signal>
-			StateUpdateBegin,	//	s2c : <signal>
-			EntityContact,		//	s2c : EntityContact
-			OwnTechniteState,	//	s2c : OwnState
-			OtherTechniteState,	//	s2c : OtherState
-			TerrainState,		//	s2c : NETA<BYTE>
-			Message,			//	s2c : Message
-			IsDead,				//	s2c : <signal>
-			RegularInstruction,	//	c2s: RegularInstruction
-			MessageInstruction,	//	c2s: MessageInstruction
-		};
+			enum channel_t
+			{
+				Challenge,			//	s2c : CryptographicID
+				Authenticate,		//	c2s : Authenticate
+				Authenticated,		//	s2c : <signal>
+				StateUpdateBegin,	//	s2c : <signal>
+				EntityContact,		//	s2c : EntityContact
+				OwnTechniteState,	//	s2c : OwnState
+				OtherTechniteState,	//	s2c : OtherState
+				TerrainState,		//	s2c : NETA<BYTE>
+				Message,			//	s2c : Message
+				IsDead,				//	s2c : <signal>
+				RegularInstruction,	//	c2s: RegularInstruction
+				MessageInstruction,	//	c2s: MessageInstruction
+			};
 
 
-		TCP::SignalSender<StateUpdateBegin>	stateUpdateBegin;
-		TCP::SignalSender<IsDead>			isDead;
-		TCP::SignalSender<Authenticated>	authenticated;
-		TCP::ObjectSender<Protocol::EntityContact,EntityContact>	entityContact;
-		TCP::ObjectSender<Protocol::OwnState,OwnTechniteState>	ownTechniteState;
-		TCP::ObjectSender<Protocol::OtherState,OtherTechniteState>	otherTechniteState;
-		TCP::ObjectSender<NETA(BYTE),TerrainState>	terrainState;
-		TCP::ObjectSender<Protocol::Message, Message> message;
-		TCP::ObjectSender<NET(CryptographicID), Challenge> challenge;
+			TCP::SignalSender<StateUpdateBegin>	stateUpdateBegin;
+			TCP::SignalSender<IsDead>			isDead;
+			TCP::SignalSender<Authenticated>	authenticated;
+			TCP::ObjectSender<Protocol::EntityContact,EntityContact>	entityContact;
+			TCP::ObjectSender<Protocol::OwnState,OwnTechniteState>	ownTechniteState;
+			TCP::ObjectSender<Protocol::OtherState,OtherTechniteState>	otherTechniteState;
+			TCP::ObjectSender<NETA(BYTE),TerrainState>	terrainState;
+			TCP::ObjectSender<Protocol::Message, Message> message;
+			TCP::ObjectSender<NET(CryptographicID), Challenge> challenge;
 
-		TCP::Channel<Protocol::MessageInstruction, UserLevel::Authenticated, MessageInstruction>	messageInstruction;
-		TCP::Channel<Protocol::RegularInstruction, UserLevel::Authenticated, RegularInstruction>	regularInstruction;
-		TCP::Channel<Protocol::Authenticate, UserLevel::None, Authenticate>							authenticate(Receiver::Handler::Authenticate);
-	}
+			TCP::Channel<Protocol::MessageInstruction, UserLevel::Authenticated, MessageInstruction>	messageInstruction;
+			TCP::Channel<Protocol::RegularInstruction, UserLevel::Authenticated, RegularInstruction>	regularInstruction;
+			TCP::Channel<Protocol::Authenticate, UserLevel::None, Authenticate>							authenticate(Receiver::Handler::Authenticate);
+		}
 
+	#endif
 
 	/*static*/ FixedArray<BYTE,Technite::TaskCount>		Technite::energyCost =
 	{
@@ -216,79 +219,80 @@ namespace Technites
 	GenericHashTable<TUniqueID,index_t,TUniqueID>	techniteIDMap;
 	BroadTechniteMap			techniteMap;
 
+	#ifndef CLIENT
+		TCP::Server				serviceHost;
+		String					serviceURL="localhost";
 
-	TCP::Server					serviceHost;
-	String						serviceURL="localhost";
-	
+		Buffer0<Technite*>		layers[ExecutionLayer::Count];
 
-	Buffer0<Technite*>			layers[ExecutionLayer::Count];
-
-	index_t						currentLayer = 0;
-	volatile bool				anyDied = false;
-	volatile bool				familyChanged[BaseGrid::NumFamilies] = {false};
-	WorkPipe<TNewTechnite>		newTechnites;
+		index_t					currentLayer = 0;
+		volatile bool			anyDied = false;
+		volatile bool			familyChanged[BaseGrid::NumFamilies] = {false};
+		WorkPipe<TNewTechnite>	newTechnites;
+	#endif
 
 	Technite::Resources			GetCost(Technite::Task, BYTE parameter, BYTE currentGridContent);
 
 	void						CheckTechniteFoundations(float t);
 
 
-	float						timeStamp=0;
+	#ifndef CLIENT
+		float						timeStamp=0;
 
-	void						ProcessLighting(Technite&technite);
+		void						ProcessLighting(Technite&technite);
 
 
-	void Receiver::OnEvent(TCP::event_t event, TCP::Peer&origin)
-	{
-		LogEvent(EventSignificance::Debug,nullptr,"TechniteControl: "+origin.ToString()+": "+TCP::event2str(event));
-		switch (event)
+		void Receiver::OnEvent(TCP::event_t event, TCP::Peer&origin)
 		{
-			case TCP::Event::ConnectionEstablished:
+			LogEvent(EventSignificance::Debug,nullptr,"TechniteControl: "+origin.ToString()+": "+TCP::event2str(event));
+			switch (event)
 			{
-				Attachment::Challenge * attach = new Attachment::Challenge();
-				origin.attachment.reset(attach);
-				Channels::challenge.SendTo(origin,attach->challenge);
+				case TCP::Event::ConnectionEstablished:
+				{
+					Attachment::Challenge * attach = new Attachment::Challenge();
+					origin.attachment.reset(attach);
+					Channels::challenge.SendTo(origin,attach->challenge);
+				}
+				break;
+
 			}
-			break;
-
 		}
-	}
 	
-	void	Receiver::Handler::Authenticate(Protocol::Authenticate&authenticate, TCP::Peer&origin)
-	{
-		Attachment::Challenge*attach = dynamic_cast<Attachment::Challenge*>(origin.attachment.get());
-		if (!attach)
+		void	Receiver::Handler::Authenticate(Protocol::Authenticate&authenticate, TCP::Peer&origin)
 		{
-			LogEvent(EventClass::Preset::unexpectedBehavior,origin.ToString()+ " attempted authentication without challenge peer attachment");
-			origin.DisconnectPeer();
-			return;
+			Attachment::Challenge*attach = dynamic_cast<Attachment::Challenge*>(origin.attachment.get());
+			if (!attach)
+			{
+				LogEvent(EventClass::Preset::unexpectedBehavior,origin.ToString()+ " attempted authentication without challenge peer attachment");
+				origin.DisconnectPeer();
+				return;
+			}
+			SHA256::HashContainer	shouldBe;
+			SHA256 sha;
+			Technite*t = GetTechnite(authenticate.myID);
+			if (!t)
+			{
+				LogEvent(EventClass::Preset::unexpectedBehavior,origin.ToString()+ " attempted authentication on unknown technite "+authenticate.myID.value.ToString());
+				origin.DisconnectPeer();
+				return;
+			}
+			sha.AppendPOD(t->secret);
+			sha.AppendPOD(attach->challenge);
+			sha.Finish(shouldBe);
+			attach = nullptr;
+			if (shouldBe == authenticate.challengeResponse)
+			{
+				origin.attachment.reset(new Attachment::Technite(t->id));
+				origin.userLevel = UserLevel::Authenticated;
+				Channels::authenticated.SendTo(origin,0);
+			}
+			else
+			{
+				LogEvent(EventClass::Preset::unexpectedBehavior,origin.ToString()+ " failed authentication on technite "+t->id.ToString());
+				origin.DisconnectPeer();
+			}
 		}
-		SHA256::HashContainer	shouldBe;
-		SHA256 sha;
-		Technite*t = GetTechnite(authenticate.myID);
-		if (!t)
-		{
-			LogEvent(EventClass::Preset::unexpectedBehavior,origin.ToString()+ " attempted authentication on unknown technite "+authenticate.myID.value.ToString());
-			origin.DisconnectPeer();
-			return;
-		}
-		sha.AppendPOD(t->secret);
-		sha.AppendPOD(attach->challenge);
-		sha.Finish(shouldBe);
-		attach = nullptr;
-		if (shouldBe == authenticate.challengeResponse)
-		{
-			origin.attachment.reset(new Attachment::Technite(t->id));
-			origin.userLevel = UserLevel::Authenticated;
-			Channels::authenticated.SendTo(origin,0);
-		}
-		else
-		{
-			LogEvent(EventClass::Preset::unexpectedBehavior,origin.ToString()+ " failed authentication on technite "+t->id.ToString());
-			origin.DisconnectPeer();
-		}
-	}
-
+	#endif
 
 	index_t					GetTechniteIndex(const TUniqueID&id)
 	{
@@ -307,497 +311,516 @@ namespace Technites
 		return technites + index;
 	}
 
-
-	void GC()
+	index_t					GetTechniteIndex(const Grid::HCellIdU&id)
 	{
-		if (anyDied)
+		index_t rs;
+		if (!techniteMap.Query(id,rs))
+			return InvalidIndex;
+		return rs;
+	}
+
+	Technite*				GetTechnite(const Grid::HCellIdU&id)
+	{
+		index_t index = GetTechniteIndex(id);
+		if (index == InvalidIndex)
+			return nullptr;
+		ASSERT_LESS__(index,technites.Count());
+		return technites + index;
+	}
+
+
+	#ifndef CLIENT
+		void GC()
 		{
-			anyDied = false;
-			static Buffer<Technite>	survivors;
-			foreach (technites,t)
-				if (t->isDead)
+			if (anyDied)
+			{
+				anyDied = false;
+				static Buffer<Technite>	survivors;
+				foreach (technites,t)
+					if (t->isDead)
+					{
+						t->ShutdownClient();
+						techniteMap.Unset(t->location.GetU());
+					}
+					else
+						survivors << std::move(*t);
+				technites.swap(survivors);
+				survivors.Clear();
+
+				techniteIDMap.Clear();
+				techniteMap.Clear();
+				for (index_t i = 0; i < technites.Count(); i++)
 				{
-					t->ShutdownClient();
-					techniteMap.Unset(t->location.GetU());
+					techniteMap.Set(technites[i].location.GetU(),i);
+					techniteIDMap.Set(technites[i].id,i);
 				}
-				else
-					survivors << std::move(*t);
-			technites.swap(survivors);
-			survivors.Clear();
-
-			techniteIDMap.Clear();
-			techniteMap.Clear();
-			for (index_t i = 0; i < technites.Count(); i++)
-			{
-				techniteMap.Set(technites[i].location.GetU(),i);
-				techniteIDMap.Set(technites[i].id,i);
 			}
+
 		}
 
-	}
-
-	void						BeginProcessing(float t0)
-	{
-		timeStamp = t0;
-		atomicGrid.Fill(0);
-		currentLayer = 0;
-		anyDied = false;
-
-		foreach (technites,t)
+		void						BeginProcessing(float t0)
 		{
-			if (t->visionRadius >= 0.f)
-				t->SetStandardFieldOfVision();
-			ProcessLighting(*t);
-			ExecutionLayer::T layer = Technite::layer[(index_t)t->nextInstruction.nextTask];
-			if (layer == ExecutionLayer::Count)
+			timeStamp = t0;
+			atomicGrid.Fill(0);
+			currentLayer = 0;
+			anyDied = false;
+
+			foreach (technites,t)
 			{
-				t->taskResult = Technite::TaskResult::Success;
-				continue;
+				if (t->visionRadius >= 0.f)
+					t->SetStandardFieldOfVision();
+				ProcessLighting(*t);
+				ExecutionLayer::T layer = Technite::layer[(index_t)t->nextInstruction.nextTask];
+				if (layer == ExecutionLayer::Count)
+				{
+					t->taskResult = Technite::TaskResult::Success;
+					continue;
+				}
+				layers[layer] << t;
 			}
-			layers[layer] << t;
+
+			CheckTechniteFoundations(t0);
+
 		}
 
-		CheckTechniteFoundations(t0);
 
-	}
-
-
-	bool ChangeGrid(const Grid::HCellIdU&target, Grid::Content content)
-	{
-		if (Grid::actualWorld.cellStack[target.stackID].LocalOverwriteU(target.layer,content))
+		bool ChangeGrid(const Grid::HCellIdU&target, Grid::Content content)
 		{
-			index_t family1 = Grid::high.grid.GetCell(target.stackID).family;
-			familyChanged[family1] = true;
-			return true;
+			if (Grid::actualWorld.cellStack[target.stackID].LocalOverwriteU(target.layer,content))
+			{
+				index_t family1 = Grid::high.grid.GetCell(target.stackID).family;
+				familyChanged[family1] = true;
+				return true;
+			}
+			return false;
 		}
-		return false;
-	}
 
-	void MoveTechnite(Technite&t, const Grid::HCellIdU&target)
-	{
-		ChangeGrid(t.location.GetU(),Grid::Content::Clear);
-		ChangeGrid(target,Grid::Content::Technite);
+		void MoveTechnite(Technite&t, const Grid::HCellIdU&target)
+		{
+			ChangeGrid(t.location.GetU(),Grid::Content::Clear);
+			ChangeGrid(target,Grid::Content::Technite);
 
 		
-		index_t index = techniteMap.Unset(t.location.GetU());
-		ASSERT__(index != InvalidIndex);
-		techniteMap.Set(target,index);
+			index_t index = techniteMap.Unset(t.location.GetU());
+			ASSERT__(index != InvalidIndex);
+			techniteMap.Set(target,index);
 
-		t.location = target;
-		t.SetStandardFieldOfVision();
-	}
+			t.location = target;
+			t.SetStandardFieldOfVision();
+		}
 
-	void ApplyFamilyChange(float t)
-	{
-		for (index_t i = 0; i < ARRAYSIZE(familyChanged); i++)
+		void ApplyFamilyChange(float t)
 		{
-			if (familyChanged[i])
+			for (index_t i = 0; i < ARRAYSIZE(familyChanged); i++)
 			{
-				Grid::low.family[i].SetOutdated(t);
-				Grid::high.family[i].SetOutdated(t);
-				familyChanged[i] = false;
+				if (familyChanged[i])
+				{
+					Grid::low.family[i].SetOutdated(t);
+					Grid::high.family[i].SetOutdated(t);
+					familyChanged[i] = false;
+				}
 			}
 		}
-	}
 
-	bool						ProcessNextLayer()
-	{
-		switch (currentLayer)
+		bool						ProcessNextLayer()
 		{
-			case ExecutionLayer::Scan:
-				::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
-				{
-					Technite::Resources cost = GetCost(t->nextInstruction.nextTask,t->nextInstruction.taskParameter,Grid::Content::Technite);
-					if (!(t->resources -= cost))
+			switch (currentLayer)
+			{
+				case ExecutionLayer::Scan:
+					::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
 					{
-						t->taskResult = Technite::TaskResult::InsufficientResources;
-						return;
-					}
-					float radius = sqrt(float(cost.energy));
-					t->SetSphericalFieldOfVision(radius);
-				});
-			break;
-			case ExecutionLayer::Messages:
-				::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
-				{
-					Technite::Resources cost = GetCost(t->nextInstruction.nextTask,t->nextInstruction.taskParameter,Grid::Content::Technite);
-					if (!(t->resources -= cost))
-					{
-						t->taskResult = Technite::TaskResult::InsufficientResources;
-						return;
-					}
-					Grid::HCellIdU target;
-					if (!t->DecodeAbsoluteTarget(target))
-					{
-						t->taskResult = Technite::TaskResult::TargetOutOfRange;
-						return;
-					}
-					index_t tIndex;
-					if (!techniteMap.Query(target,tIndex) || technites[tIndex].id != t->nextInstruction.targetTechnite)
-					{
-						t->taskResult = Technite::TaskResult::TargetNoTechnite;
-						return;
-					}
-					const Technite&other = technites[tIndex];
-
-					TCP::PPeer peer = other.peer.lock();
-					if (!peer || !Channels::message.SendTo(peer,Protocol::Message(t->id,t->nextInstruction.payload)))
-					{
-						t->taskResult = Technite::TaskResult::TargetOffline;
-						return;
-					}
-				});
-			break;
-			case ExecutionLayer::End:
-				::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
-				{
-					Technite::Resources cost = GetCost(t->nextInstruction.nextTask,t->nextInstruction.taskParameter,Grid::Content::Technite);
-					if (! (t->resources -= cost))
-					{
-						t->taskResult = Technite::TaskResult::InsufficientResources;
-						return;
-					}
-					t->isDead = true;
-					anyDied = true;
-
-					ChangeGrid(t->location.GetU(),Grid::Content::Reinterpret(t->nextInstruction.taskParameter));
-				});
-			break;
-			case ExecutionLayer::Kill:
-				::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
-				{
-					if (t->isDead)
-						return;
-					Grid::HCellIdU target;
-					if (!t->DecodeAbsoluteTarget(target))
-					{
-						t->taskResult = Technite::TaskResult::TargetOutOfRange;
-						return;
-					}
-					index_t tIndex;
-					if (!techniteMap.Query(target,tIndex) || technites[tIndex].id != t->nextInstruction.targetTechnite)
-					{
-						t->taskResult = Technite::TaskResult::TargetNoTechnite;
-						return;
-					}
-					Technite&other = technites[tIndex];
-					Technite::Resources cost = other.resources;
-					if (! (t->resources -= cost))
-					{
-						t->taskResult = Technite::TaskResult::InsufficientResources;
-						return;
-					}
-					if (other.isDead.Set(false,true))
-						anyDied = true;
-					//else
-						//t->resources += cost;	//do not refund: otherwise inconsistent
-				});
-			break;
-			case ExecutionLayer::Transfer:
-				::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
-				{
-					if (t->isDead)
-						return;
-					if (!t->nextInstruction.taskParameter)
-					{
-						t->taskResult = Technite::TaskResult::Success;
-						return;
-					}
-					if (t->resources.energy < t->nextInstruction.taskParameter)
-					{
-						t->taskResult = Technite::TaskResult::InsufficientResources;
-						return;
-					}
-					Grid::HCellIdU target;
-					if (!t->DecodeAbsoluteTarget(target))
-					{
-						t->taskResult = Technite::TaskResult::TargetOutOfRange;
-						return;
-					}
-					index_t tIndex;
-					if (!techniteMap.Query(target,tIndex) || technites[tIndex].id != t->nextInstruction.targetTechnite || technites[tIndex].isDead)
-					{
-						t->taskResult = Technite::TaskResult::TargetNoTechnite;
-						return;
-					}
-					atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content += t->nextInstruction.taskParameter;
-					t->resources -= Technite::Resources(t->nextInstruction.taskParameter);
-					t->taskResult = Technite::TaskResult::Success;
-				});
-				if (layers[currentLayer].IsNotEmpty())
-					::Concurrency::parallel_for_each(technites.begin(),technites.end(),[](Technite&t)
-					{
-						if (t.isDead)
-							return;
-						Grid::HCellIdU target = t.location.GetU();
-						if (atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content)
+						Technite::Resources cost = GetCost(t->nextInstruction.nextTask,t->nextInstruction.taskParameter,Grid::Content::Technite);
+						if (!(t->resources -= cost))
 						{
-							t.resources += Technite::Resources(atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content);
-							atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content = 0;
+							t->taskResult = Technite::TaskResult::InsufficientResources;
+							return;
+						}
+						float radius = sqrt(float(cost.energy));
+						t->SetSphericalFieldOfVision(radius);
+					});
+				break;
+				case ExecutionLayer::Messages:
+					::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
+					{
+						Technite::Resources cost = GetCost(t->nextInstruction.nextTask,t->nextInstruction.taskParameter,Grid::Content::Technite);
+						if (!(t->resources -= cost))
+						{
+							t->taskResult = Technite::TaskResult::InsufficientResources;
+							return;
+						}
+						Grid::HCellIdU target;
+						if (!t->DecodeAbsoluteTarget(target))
+						{
+							t->taskResult = Technite::TaskResult::TargetOutOfRange;
+							return;
+						}
+						index_t tIndex;
+						if (!techniteMap.Query(target,tIndex) || technites[tIndex].id != t->nextInstruction.targetTechnite)
+						{
+							t->taskResult = Technite::TaskResult::TargetNoTechnite;
+							return;
+						}
+						const Technite&other = technites[tIndex];
+
+						TCP::PPeer peer = other.peer.lock();
+						if (!peer || !Channels::message.SendTo(peer,Protocol::Message(t->id,t->nextInstruction.payload)))
+						{
+							t->taskResult = Technite::TaskResult::TargetOffline;
+							return;
 						}
 					});
-			break;
-			case ExecutionLayer::ReplaceMoveSpawn:
-			{
-				::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
+				break;
+				case ExecutionLayer::End:
+					::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
+					{
+						Technite::Resources cost = GetCost(t->nextInstruction.nextTask,t->nextInstruction.taskParameter,Grid::Content::Technite);
+						if (! (t->resources -= cost))
+						{
+							t->taskResult = Technite::TaskResult::InsufficientResources;
+							return;
+						}
+						t->isDead = true;
+						anyDied = true;
+
+						ChangeGrid(t->location.GetU(),Grid::Content::Reinterpret(t->nextInstruction.taskParameter));
+					});
+				break;
+				case ExecutionLayer::Kill:
+					::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
+					{
+						if (t->isDead)
+							return;
+						Grid::HCellIdU target;
+						if (!t->DecodeAbsoluteTarget(target))
+						{
+							t->taskResult = Technite::TaskResult::TargetOutOfRange;
+							return;
+						}
+						index_t tIndex;
+						if (!techniteMap.Query(target,tIndex) || technites[tIndex].id != t->nextInstruction.targetTechnite)
+						{
+							t->taskResult = Technite::TaskResult::TargetNoTechnite;
+							return;
+						}
+						Technite&other = technites[tIndex];
+						Technite::Resources cost = other.resources;
+						if (! (t->resources -= cost))
+						{
+							t->taskResult = Technite::TaskResult::InsufficientResources;
+							return;
+						}
+						if (other.isDead.Set(false,true))
+							anyDied = true;
+						//else
+							//t->resources += cost;	//do not refund: otherwise inconsistent
+					});
+				break;
+				case ExecutionLayer::Transfer:
+					::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
+					{
+						if (t->isDead)
+							return;
+						if (!t->nextInstruction.taskParameter)
+						{
+							t->taskResult = Technite::TaskResult::Success;
+							return;
+						}
+						if (t->resources.energy < t->nextInstruction.taskParameter)
+						{
+							t->taskResult = Technite::TaskResult::InsufficientResources;
+							return;
+						}
+						Grid::HCellIdU target;
+						if (!t->DecodeAbsoluteTarget(target))
+						{
+							t->taskResult = Technite::TaskResult::TargetOutOfRange;
+							return;
+						}
+						index_t tIndex;
+						if (!techniteMap.Query(target,tIndex) || technites[tIndex].id != t->nextInstruction.targetTechnite || technites[tIndex].isDead)
+						{
+							t->taskResult = Technite::TaskResult::TargetNoTechnite;
+							return;
+						}
+						atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content += t->nextInstruction.taskParameter;
+						t->resources -= Technite::Resources(t->nextInstruction.taskParameter);
+						t->taskResult = Technite::TaskResult::Success;
+					});
+					if (layers[currentLayer].IsNotEmpty())
+						::Concurrency::parallel_for_each(technites.begin(),technites.end(),[](Technite&t)
+						{
+							if (t.isDead)
+								return;
+							Grid::HCellIdU target = t.location.GetU();
+							if (atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content)
+							{
+								t.resources += Technite::Resources(atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content);
+								atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content = 0;
+							}
+						});
+				break;
+				case ExecutionLayer::ReplaceMoveSpawn:
 				{
-					if (t->isDead)
-						return;
-					Grid::HCellIdU target;
-					if (!t->DecodeAbsoluteTarget(target))
+					::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
 					{
-						t->taskResult = Technite::TaskResult::TargetOutOfRange;
-						return;
-					}
-					const auto&cell = Grid::actualWorld.cellStack[target.stackID].GetCellU(target.layer);
-					if (cell.structureCounter > 0 || cell.content == Grid::Content::Technite)	//these tasks cannot target structures or technites
+						if (t->isDead)
+							return;
+						Grid::HCellIdU target;
+						if (!t->DecodeAbsoluteTarget(target))
+						{
+							t->taskResult = Technite::TaskResult::TargetOutOfRange;
+							return;
+						}
+						const auto&cell = Grid::actualWorld.cellStack[target.stackID].GetCellU(target.layer);
+						if (cell.structureCounter > 0 || cell.content == Grid::Content::Technite)	//these tasks cannot target structures or technites
+						{
+							t->taskResult = Technite::TaskResult::TargetBlocked;
+							return;
+						}
+						if (t->resources < GetCost(t->nextInstruction.nextTask,t->nextInstruction.taskParameter, cell.content))
+						{
+							t->taskResult = Technite::TaskResult::InsufficientResources;
+							return;
+						}
+						if ((t->nextInstruction.nextTask == Technite::Task::Spawn || t->nextInstruction.nextTask == Technite::Task::Move) && !CanStandHere(target))
+						{
+							t->taskResult = Technite::TaskResult::CannotStandThere;
+							return;
+						}
+						atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content ++;
+					});
+					::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
 					{
-						t->taskResult = Technite::TaskResult::TargetBlocked;
-						return;
-					}
-					if (t->resources < GetCost(t->nextInstruction.nextTask,t->nextInstruction.taskParameter, cell.content))
-					{
-						t->taskResult = Technite::TaskResult::InsufficientResources;
-						return;
-					}
-					if ((t->nextInstruction.nextTask == Technite::Task::Spawn || t->nextInstruction.nextTask == Technite::Task::Move) && !CanStandHere(target))
-					{
-						t->taskResult = Technite::TaskResult::CannotStandThere;
-						return;
-					}
-					atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content ++;
-				});
-				::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
-				{
-					if (t->isDead)
-						return;
-					if (t->taskResult != Technite::TaskResult::Success)
-						return;
-					Grid::HCellIdU target;
-					ASSERT__(t->DecodeAbsoluteTarget(target));
-					const auto&content = atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content;
-					//can't reset here :S
-					if (content != 1)
-					{
-						t->taskResult = Technite::TaskResult::TargetBlocked;
-						return;
-					}
-					const auto&cell = Grid::actualWorld.cellStack[target.stackID].GetCellU(target.layer);
-					t->resources -= GetCost(t->nextInstruction.nextTask,t->nextInstruction.taskParameter,cell.content);
+						if (t->isDead)
+							return;
+						if (t->taskResult != Technite::TaskResult::Success)
+							return;
+						Grid::HCellIdU target;
+						ASSERT__(t->DecodeAbsoluteTarget(target));
+						const auto&content = atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content;
+						//can't reset here :S
+						if (content != 1)
+						{
+							t->taskResult = Technite::TaskResult::TargetBlocked;
+							return;
+						}
+						const auto&cell = Grid::actualWorld.cellStack[target.stackID].GetCellU(target.layer);
+						t->resources -= GetCost(t->nextInstruction.nextTask,t->nextInstruction.taskParameter,cell.content);
 					
 
-					switch (t->nextInstruction.nextTask)
-					{
-						case Technite::Task::Move:
+						switch (t->nextInstruction.nextTask)
 						{
-							MoveTechnite(*t,target);
-
-						}
-						break;
-						case Technite::Task::Replace:
-						{
-							ChangeGrid(target,Grid::Content::Reinterpret(t->nextInstruction.taskParameter));
-						}
-						break;
-						case Technite::Task::Spawn:
-						{
-							TNewTechnite ntech;
-							index_t separatorAt = t->nextInstruction.payload.find('|');
-							if (separatorAt)
+							case Technite::Task::Move:
 							{
-								ntech.repo = t->nextInstruction.payload.subStringRef(0,separatorAt-1);
-								ntech.initMessage = t->nextInstruction.payload.subStringRef((int)separatorAt);
+								MoveTechnite(*t,target);
+
 							}
-							else
+							break;
+							case Technite::Task::Replace:
 							{
-								ntech.repo = t->nextInstruction.payload;
+								ChangeGrid(target,Grid::Content::Reinterpret(t->nextInstruction.taskParameter));
 							}
-							ntech.id = t->nextInstruction.targetTechnite;
-							ntech.location = target;
-							ntech.parent = t->id;
-							newTechnites << ntech;
-							/*
-							hurgh, can't just add to technites because of parallel-for.
-							have to add to some other lock-protected list.
-							then spawn new process somewhere, pass on source/assembly location, access secret, init parameter, etc
-							*/
-						}
-						break;
-					};
-				});
-				::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
-				{
-					if (t->isDead)
-						return;
-					if (t->taskResult != Technite::TaskResult::Success && t->taskResult != Technite::TaskResult::TargetBlocked)
-						return;
-					Grid::HCellIdU target;
-					ASSERT__(t->DecodeAbsoluteTarget(target));
-					atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content = 0;
-				});
-			}
-			break;
-		}
-		ApplyFamilyChange(timeStamp);
-
-		currentLayer++;
-
-		if (currentLayer == ExecutionLayer::Count)
-		{
-			GC();
-			CheckTechniteFoundations(timeStamp);
-			
-
-			newTechnites.SignalRead();
-				ByOperator::QuickSort(newTechnites);
-				foreach (newTechnites,tech)
-				{
-					if (Create(*tech,timeStamp) == InvalidIndex)
-					{
-						LogEvent(EventClass::Preset::internalError,"Failed to spawn technite");	//this should not happen. if verified that it does not happen the quicksort operation can be avoided
-
-					}
-				}
-			newTechnites.ExitRead();
-
-
-
-			Channels::stateUpdateBegin.SendTo(serviceHost,UserLevel::Authenticated);
-
-			Concurrency::parallel_for_each(technites.begin(),technites.end(),[](Technite&t)
-			{
-				TCP::PPeer peer = t.peer.lock();
-				if (!peer)
-					return;
-				Protocol::OwnState state;
-				state.commonState.location = t.location;
-				state.commonState.resources = t.resources;
-				state.state = t.state;
-				state.taskResult = t.taskResult;
-				state.visionRadius = t.visionRadius;
-				Channels::ownTechniteState.SendTo(peer,state);
-
-				const count_t volume = t.hFieldOfVision.GetVolume();
-				if (volume < 32768)
-				{
-					NETA(BYTE) cellContent;
-					cellContent.SetSize(volume);
-					BYTE*at = cellContent.pointer();
-					index_t techniteAt;
-
-					foreach (t.hFieldOfVision.coverage,c)
-					{
-						const Grid::CellStack&stack = Grid::actualWorld.cellStack[c->stackID];
-						for (UINT l = c->layerBegin; l < c->layerEnd; l++)
-						{
-							*at = stack.volumeCell[l].content;
-
-							if (*at == Grid::Content::Technite)
+							break;
+							case Technite::Task::Spawn:
 							{
-								if (techniteMap.Query(Grid::HCellIdU(c->stackID,l),techniteAt))
+								TNewTechnite ntech;
+								index_t separatorAt = t->nextInstruction.payload.find('|');
+								if (separatorAt)
 								{
-									const Technite&other = technites[techniteAt];
-									Protocol::OtherState state;
-									state.commonState.location = other.location;
-									state.commonState.resources = other.resources;
-									state.id = other.id;
-									Channels::otherTechniteState.SendTo(peer,state);
+									ntech.repo = t->nextInstruction.payload.subStringRef(0,separatorAt-1);
+									ntech.initMessage = t->nextInstruction.payload.subStringRef((int)separatorAt);
 								}
 								else
 								{
-									bool brk = true;
+									ntech.repo = t->nextInstruction.payload;
 								}
+								ntech.id = t->nextInstruction.targetTechnite;
+								ntech.location = target;
+								ntech.parent = t->id;
+								newTechnites << ntech;
+								/*
+								hurgh, can't just add to technites because of parallel-for.
+								have to add to some other lock-protected list.
+								then spawn new process somewhere, pass on source/assembly location, access secret, init parameter, etc
+								*/
 							}
-							at++;
-						}
-					}
-					ASSERT_CONCLUSION(cellContent,at);
-					Channels::terrainState.SendTo(peer,cellContent);
-				}
-				foreach (t.lFieldOfVision.coverage,c)
-				{
-					for (UINT l = c->layerBegin; l < c->layerEnd; l++)
+							break;
+						};
+					});
+					::Concurrency::parallel_for_each(layers[currentLayer].begin(),layers[currentLayer].end(),[](Technite*t)
 					{
-						Objects::PWorldEntity e = Objects::GetEntity(Grid::LCellIdI(c->stackID,Grid::CellStack::ToHeight(l)));
-
-						if (e)
-						{
-							Protocol::EntityContact contact;
-							contact.currentHealth = e->health;
-							contact.maxHealth = e->GetMaxHealth();
-							contact.id = e->id;
-							contact.location = e->location;
-							contact.type = e->GetTypeName();
-							contact.height = e->GetHeight();
-
-
-							Channels::entityContact.SendTo(peer,contact);
-						}
-					}
+						if (t->isDead)
+							return;
+						if (t->taskResult != Technite::TaskResult::Success && t->taskResult != Technite::TaskResult::TargetBlocked)
+							return;
+						Grid::HCellIdU target;
+						ASSERT__(t->DecodeAbsoluteTarget(target));
+						atomicGrid.cellStack[target.stackID].volumeCell[target.layer].content = 0;
+					});
 				}
-
-			});
-
-		}
-
-		return currentLayer < ExecutionLayer::Count;
-	}
-
-
-
-
-
-
-	void					ProcessLighting(Technite&technite)
-	{
-		bool lit = true;
-
-
-		unsigned layer = technite.location.GetLayer()+1;
-		//Grid::CellStack::ToLayer(technite.location.height + 1);
-		for (; layer < Grid::CellStack::Range; layer++)
-		{
-			BYTE top = Grid::actualWorld.cellStack[technite.location.GetStackID()].volumeCell[layer].content;
-			if (top != Grid::Content::Clear && top != Grid::Content::Water)
-			{
-				lit = false;
 				break;
 			}
-		}
-		technite.state.SetLit(lit);
+			ApplyFamilyChange(timeStamp);
 
-		if (lit)
-		{
-			Technite::Resources::Increase(technite.resources.energy, technite.GetLightEnergyYield());
-		}
-	}
+			currentLayer++;
 
-	static void TryDocker(const String&cmd)
-	{
-		LogEvent(EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),cmd);
-		return;
-
-		FileSystem::TempFile file;
-		if (!file.Create())
-			throw IO::DriveAccess::FileOpenFault(CLOCATION,"Unable to create temporary file for command output");
-		const String instruction = "docker "+cmd+" > "+String(file.GetLocation())+" 2>&1";
-		int rs = system(instruction);
-		if (rs != 0)
-		{
-			FILE*f = FOPEN(file.GetLocation().c_str(),"rb");
-			if (!f)
+			if (currentLayer == ExecutionLayer::Count)
 			{
-				throw IO::DriveAccess::FileOpenFault(CLOCATION,instruction+"\n failed but could not open temporary output file for printout");
+				GC();
+				CheckTechniteFoundations(timeStamp);
+			
+
+				newTechnites.SignalRead();
+					ByOperator::QuickSort(newTechnites);
+					foreach (newTechnites,tech)
+					{
+						if (Create(*tech,timeStamp) == InvalidIndex)
+						{
+							LogEvent(EventClass::Preset::internalError,"Failed to spawn technite");	//this should not happen. if verified that it does not happen the quicksort operation can be avoided
+
+						}
+					}
+				newTechnites.ExitRead();
+
+
+
+				Channels::stateUpdateBegin.SendTo(serviceHost,UserLevel::Authenticated);
+
+				Concurrency::parallel_for_each(technites.begin(),technites.end(),[](Technite&t)
+				{
+					TCP::PPeer peer = t.peer.lock();
+					if (!peer)
+						return;
+					Protocol::OwnState state;
+					state.commonState.location = t.location;
+					state.commonState.resources = t.resources;
+					state.state = t.state;
+					state.taskResult = t.taskResult;
+					state.visionRadius = t.visionRadius;
+					Channels::ownTechniteState.SendTo(peer,state);
+
+					const count_t volume = t.hFieldOfVision.GetVolume();
+					if (volume < 32768)
+					{
+						NETA(BYTE) cellContent;
+						cellContent.SetSize(volume);
+						BYTE*at = cellContent.pointer();
+						index_t techniteAt;
+
+						foreach (t.hFieldOfVision.coverage,c)
+						{
+							const Grid::CellStack&stack = Grid::actualWorld.cellStack[c->stackID];
+							for (UINT l = c->layerBegin; l < c->layerEnd; l++)
+							{
+								*at = stack.volumeCell[l].content;
+
+								if (*at == Grid::Content::Technite)
+								{
+									if (techniteMap.Query(Grid::HCellIdU(c->stackID,l),techniteAt))
+									{
+										const Technite&other = technites[techniteAt];
+										Protocol::OtherState state;
+										state.commonState.location = other.location;
+										state.commonState.resources = other.resources;
+										state.id = other.id;
+										Channels::otherTechniteState.SendTo(peer,state);
+									}
+									else
+									{
+										bool brk = true;
+									}
+								}
+								at++;
+							}
+						}
+						ASSERT_CONCLUSION(cellContent,at);
+						Channels::terrainState.SendTo(peer,cellContent);
+					}
+					foreach (t.lFieldOfVision.coverage,c)
+					{
+						for (UINT l = c->layerBegin; l < c->layerEnd; l++)
+						{
+							Objects::PWorldEntity e = Objects::GetEntity(Grid::LCellIdI(c->stackID,Grid::CellStack::ToHeight(l)));
+
+							if (e)
+							{
+								Protocol::EntityContact contact;
+								contact.currentHealth = e->health;
+								contact.maxHealth = e->GetMaxHealth();
+								contact.id = e->id;
+								contact.location = e->location;
+								contact.type = e->GetTypeName();
+								contact.height = e->GetHeight();
+
+
+								Channels::entityContact.SendTo(peer,contact);
+							}
+						}
+					}
+
+				});
+
 			}
-			fseek(f,0,SEEK_END);
-			size_t size = (size_t)ftell(f);
-			fseek(f,0,SEEK_SET);
-			String output = String(TStringLength(size));
-			fread(output.mutablePointer(),1,size,f);
-			fclose(f);
-			throw IO::DriveAccess::FileOpenFault(CLOCATION,instruction+"\n failed: "+output);
+
+			return currentLayer < ExecutionLayer::Count;
 		}
-	}
+
+
+
+
+
+
+		void					ProcessLighting(Technite&technite)
+		{
+			bool lit = true;
+
+
+			unsigned layer = technite.location.GetLayer()+1;
+			//Grid::CellStack::ToLayer(technite.location.height + 1);
+			for (; layer < Grid::CellStack::Range; layer++)
+			{
+				BYTE top = Grid::actualWorld.cellStack[technite.location.GetStackID()].volumeCell[layer].content;
+				if (top != Grid::Content::Clear && top != Grid::Content::Water)
+				{
+					lit = false;
+					break;
+				}
+			}
+			technite.state.SetLit(lit);
+
+			if (lit)
+			{
+				Technite::Resources::Increase(technite.resources.energy, technite.GetLightEnergyYield());
+			}
+		}
+
+		static void TryDocker(const String&cmd)
+		{
+			LogEvent(EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),cmd);
+			return;
+
+			FileSystem::TempFile file;
+			if (!file.Create())
+				throw IO::DriveAccess::FileOpenFault(CLOCATION,"Unable to create temporary file for command output");
+			const String instruction = "docker "+cmd+" > "+String(file.GetLocation())+" 2>&1";
+			int rs = system(instruction);
+			if (rs != 0)
+			{
+				FILE*f = FOPEN(file.GetLocation().c_str(),"rb");
+				if (!f)
+				{
+					throw IO::DriveAccess::FileOpenFault(CLOCATION,instruction+"\n failed but could not open temporary output file for printout");
+				}
+				fseek(f,0,SEEK_END);
+				size_t size = (size_t)ftell(f);
+				fseek(f,0,SEEK_SET);
+				String output = String(TStringLength(size));
+				fread(output.mutablePointer(),1,size,f);
+				fclose(f);
+				throw IO::DriveAccess::FileOpenFault(CLOCATION,instruction+"\n failed: "+output);
+			}
+		}
+	#endif
 
 	Grid::Content GetContent(const Grid::HCellIdU&location)
 	{
@@ -836,79 +859,79 @@ namespace Technites
 	}
 
 
-	
-	index_t				Create( const TNewTechnite& init, float t)
-	{
-		Grid::HCellIdU location = init.location;
-		if (location.layer>=Grid::CellStack::Range)
-			return InvalidIndex;
-		if (GetContent(location) == Grid::Content::Technite)
-			return InvalidIndex;
-		//if (techniteMap.IsSet(location))
-		//	return InvalidIndex;
-		if (!CanStandHere(location))
-			return InvalidIndex;
-
-		const index_t at = technites.Count();
-
-		Technite&tech = technites.Append();
-		tech.secret.Generate();
-		tech.id = init.id;
-		tech.location = location;
-		techniteMap.Set(location, at);
-		techniteIDMap.Set(tech.id,at);
-		tech.isDead = false;
-		tech.startOptions = init;
-		ProcessLighting(tech);
-
-		ASSERT__(ChangeGrid(location,Grid::Content::Technite));
-		ApplyFamilyChange(t);
-
-		tech.StartClient();
-
-		return at;
-	}
-
-
-
-	void	Technite::ShutdownClient()
-	{
-		TCP::PPeer peer = this->peer.lock();
-		if (peer)
+	#ifndef CLIENT
+		index_t				Create( const TNewTechnite& init, float t)
 		{
-			LogEvent(EventSignificance::Uncommon,id.ToString()+": Shutting down technite system");
-			Channels::isDead.SendTo(peer);
+			Grid::HCellIdU location = init.location;
+			if (location.layer>=Grid::CellStack::Range)
+				return InvalidIndex;
+			if (GetContent(location) == Grid::Content::Technite)
+				return InvalidIndex;
+			//if (techniteMap.IsSet(location))
+			//	return InvalidIndex;
+			if (!CanStandHere(location))
+				return InvalidIndex;
+
+			const index_t at = technites.Count();
+
+			Technite&tech = technites.Append();
+			tech.secret.Generate();
+			tech.id = init.id;
+			tech.location = location;
+			techniteMap.Set(location, at);
+			techniteIDMap.Set(tech.id,at);
+			tech.isDead = false;
+			tech.startOptions = init;
+			ProcessLighting(tech);
+
+			ASSERT__(ChangeGrid(location,Grid::Content::Technite));
+			ApplyFamilyChange(t);
+
+			tech.StartClient();
+
+			return at;
 		}
-		try
+
+
+
+		void	Technite::ShutdownClient()
 		{
-			if (this->dockerProcessThread.joinable())
-				this->dockerProcessThread.join();
-		}
-		catch (...)
-		{}
-
-	}
-
-
-	void Technite::StartClient()
-	{
-		LogEvent(EventSignificance::Uncommon,id.ToString()+": Launching new technite system");
-
-		dockerProcessThread.swap(std::thread([this]()
-		{
+			TCP::PPeer peer = this->peer.lock();
+			if (peer)
+			{
+				LogEvent(EventSignificance::Uncommon,id.ToString()+": Shutting down technite system");
+				Channels::isDead.SendTo(peer);
+			}
 			try
 			{
-				TryDocker("pull "+startOptions.repo);
-				TryDocker("run --rm --name "+GetDockerName()+" "+startOptions.repo+" technite --id="+id.ToFullString()+" --parent="+startOptions.parent.ToFullString()+" --url="+serviceURL+":"+String(serviceHost.GetPort())+" --secret="+ secret.ToFullString()+" "+startOptions.initMessage);
+				if (this->dockerProcessThread.joinable())
+					this->dockerProcessThread.join();
 			}
-			catch (const std::exception&ex)
-			{
-				LogEvent(EventSignificance::NonFatalError,"Failed to launch technite process: "+String(ex.what()));
-			}
-			LogEvent(EventSignificance::Uncommon,id.ToString()+": Technite system thread exit");
-		}));
-	}
+			catch (...)
+			{}
 
+		}
+
+
+		void Technite::StartClient()
+		{
+			LogEvent(EventSignificance::Uncommon,id.ToString()+": Launching new technite system");
+
+			dockerProcessThread.swap(std::thread([this]()
+			{
+				try
+				{
+					TryDocker("pull "+startOptions.repo);
+					TryDocker("run --rm --name "+GetDockerName()+" "+startOptions.repo+" technite --id="+id.ToFullString()+" --parent="+startOptions.parent.ToFullString()+" --url="+serviceURL+":"+String(serviceHost.GetPort())+" --secret="+ secret.ToFullString()+" "+startOptions.initMessage);
+				}
+				catch (const std::exception&ex)
+				{
+					LogEvent(EventSignificance::NonFatalError,"Failed to launch technite process: "+String(ex.what()));
+				}
+				LogEvent(EventSignificance::Uncommon,id.ToString()+": Technite system thread exit");
+			}));
+		}
+	#endif
 
 	int EnergyCost(BYTE content)
 	{
@@ -945,129 +968,134 @@ namespace Technites
 	}
 
 
-	void					SetupAndStartService(USHORT port)
-	{
-
-		static bool setup = false;
-		if (!setup)
-		{
-			setup = true;
-			
-			//server.InstallChannel(...);
-			//server.OpenSignalChannel(...);
-
-			serviceHost.InstallChannel( Channels::messageInstruction );
-			serviceHost.InstallChannel( Channels::regularInstruction );
-			serviceHost.InstallChannel( Channels::authenticate );
-
-
-			serviceHost.onSignal = Receiver::OnSignal;
-			serviceHost.SetAsync(false);
-			serviceHost.onEvent = Receiver::OnEvent;
-			serviceHost.onIgnorePackage = Receiver::OnIgnorePackage;
-			serviceHost.onDeserializationFailed = Receiver::OnDeserializationFailed;
-		}
-		serviceHost.StartService(port);
-	}
-
 	void					Clear()
 	{
 		LogEvent(EventSignificance::Uncommon,"Clearing out technites");
-		foreach (technites,t)
-		{
-			t->ShutdownClient();
-		}
+		#ifndef CLIENT
+			foreach (technites,t)
+			{
+				t->ShutdownClient();
+			}
+		#endif
 		technites.Clear();
 		techniteMap.Clear();
 		techniteIDMap.Clear();
 
 	}
 
-	void					StopService()
-	{
-		serviceHost.Shutdown();
-	}
+	#ifndef CLIENT
 
-	void					DestroyService()
-	{
-		Clear();
-		StopService();
-	}
-
-
-	void					Resolve()
-	{
-		serviceHost.Resolve();
-	}
-
-	bool					ServiceIsOnline()
-	{
-		return serviceHost.IsOnline();
-	}
-
-
-	void				CheckTechniteFoundations(float t)
-	{
-		static WorkPipe<std::pair<Technite*, Grid::HCellIdU> >	falling;
-		bool anyBad = false;
-		count_t numIterations = 0, numFallen = 0;
-		do
+		void					SetupAndStartService(USHORT port)
 		{
-			numIterations++;
-			anyBad = false;
-			Concurrency::parallel_for_each(technites.begin(),technites.end(),[&anyBad](Technite&t)
-			{
-				Grid::HCellIdU loc = t.location.GetU();
-				if (CanStandHere(loc))
-					return;
-				anyBad = true;
-				loc--;
-				while (loc.layer > 0 && !CanStandHere(loc))
-					loc--;
-				if (loc.layer == 0 && !CanStandHere(loc))
-				{
-					t.isDead = true;
-				}
-				else
-					falling << std::make_pair(&t,loc);
-			});
-			if (anyBad)
-			{
-				falling.SignalRead();
-					numFallen += falling.Count();
-					Concurrency::parallel_for_each(falling.begin(),falling.end(),[](const std::pair<Technite*, Grid::HCellIdU>&t)
-					{
-						MoveTechnite(*t.first,t.second);
-					});
-				falling.ExitRead();
 
-				GC();
+			static bool setup = false;
+			if (!setup)
+			{
+				setup = true;
+			
+				//server.InstallChannel(...);
+				//server.OpenSignalChannel(...);
+
+				serviceHost.InstallChannel( Channels::messageInstruction );
+				serviceHost.InstallChannel( Channels::regularInstruction );
+				serviceHost.InstallChannel( Channels::authenticate );
+
+
+				serviceHost.onSignal = Receiver::OnSignal;
+				serviceHost.SetAsync(false);
+				serviceHost.onEvent = Receiver::OnEvent;
+				serviceHost.onIgnorePackage = Receiver::OnIgnorePackage;
+				serviceHost.onDeserializationFailed = Receiver::OnDeserializationFailed;
 			}
+			serviceHost.StartService(port);
 		}
-		while (anyBad);
-		LogEvent(EventSignificance::Debug,String(numFallen)+" falling technite(s) processed in "+String(numIterations)+" iteration(s)");
 
-		ApplyFamilyChange(t);
-	}
+		void					StopService()
+		{
+			serviceHost.Shutdown();
+		}
+
+		void					DestroyService()
+		{
+			Clear();
+			StopService();
+		}
 
 
-	void				Technite::SetStandardFieldOfVision()
-	{
-		Grid::high.GenerateStep2Volume(location.GetU(),hFieldOfVision);
-		Grid::low.GenerateStep1MultiVolume(Grid::highToLowMap[location.GetStackID()],location.GetLayer(),lFieldOfVision);
+		void					Resolve()
+		{
+			serviceHost.Resolve();
+		}
 
-		visionRadius = -1.f;
-	}
+		bool					ServiceIsOnline()
+		{
+			return serviceHost.IsOnline();
+		}
 
-	void				Technite::SetSphericalFieldOfVision(float radius)
-	{
-		Sphere<> sphere(Grid::ToWorld(location.GetU()),radius);
-		Grid::high.GenerateVolume(sphere,hFieldOfVision);
-		Grid::low.GenerateVolume(sphere,lFieldOfVision);
 
-		visionRadius = radius;
-	}
+		void				CheckTechniteFoundations(float t)
+		{
+			static WorkPipe<std::pair<Technite*, Grid::HCellIdU> >	falling;
+			bool anyBad = false;
+			count_t numIterations = 0, numFallen = 0;
+			do
+			{
+				numIterations++;
+				anyBad = false;
+				Concurrency::parallel_for_each(technites.begin(),technites.end(),[&anyBad](Technite&t)
+				{
+					Grid::HCellIdU loc = t.location.GetU();
+					if (CanStandHere(loc))
+						return;
+					anyBad = true;
+					loc--;
+					while (loc.layer > 0 && !CanStandHere(loc))
+						loc--;
+					if (loc.layer == 0 && !CanStandHere(loc))
+					{
+						t.isDead = true;
+					}
+					else
+						falling << std::make_pair(&t,loc);
+				});
+				if (anyBad)
+				{
+					falling.SignalRead();
+						numFallen += falling.Count();
+						Concurrency::parallel_for_each(falling.begin(),falling.end(),[](const std::pair<Technite*, Grid::HCellIdU>&t)
+						{
+							MoveTechnite(*t.first,t.second);
+						});
+					falling.ExitRead();
 
+					GC();
+				}
+			}
+			while (anyBad);
+			LogEvent(EventSignificance::Debug,String(numFallen)+" falling technite(s) processed in "+String(numIterations)+" iteration(s)");
+
+			ApplyFamilyChange(t);
+		}
+
+
+		void				Technite::SetStandardFieldOfVision()
+		{
+			Grid::high.GenerateStep2Volume(location.GetU(),hFieldOfVision);
+			Grid::low.GenerateStep1MultiVolume(Grid::highToLowMap[location.GetStackID()],location.GetLayer(),lFieldOfVision);
+
+			visionRadius = -1.f;
+		}
+
+		void				Technite::SetSphericalFieldOfVision(float radius)
+		{
+			Sphere<> sphere(Grid::ToWorld(location.GetU()),radius);
+			Grid::high.GenerateVolume(sphere,hFieldOfVision);
+			Grid::low.GenerateVolume(sphere,lFieldOfVision);
+
+			visionRadius = radius;
+		}
+
+	#endif
 
 	bool	Technite::DecodeAbsoluteTarget(Grid::HCellIdU & outTarget) const
 	{
@@ -1258,155 +1286,154 @@ namespace Technites
 		return rs;
 	}
 
-
-
-	void			VerifyGrid()
-	{
-		std::atomic<count_t>	abandonedCounter = 0,
-								totalCounter = 0;
-
-		//bool familyChanged[BaseGrid::NumFamilies] = {false};
-
-		Concurrency::parallel_for(index_t(0),Grid::HighSetup::GridType::CellCount,[&abandonedCounter,&totalCounter](index_t stackIndex)
+	#ifndef CLIENT
+		void			VerifyGrid()
 		{
-			Grid::CellStack&stack = Grid::actualWorld.cellStack[stackIndex];
+			std::atomic<count_t>	abandonedCounter = 0,
+									totalCounter = 0;
 
-			bool anyChanged = false;
-			for (UINT32 layer = 0; layer < Grid::CellStack::Range; layer++)
+			//bool familyChanged[BaseGrid::NumFamilies] = {false};
+
+			Concurrency::parallel_for(index_t(0),Grid::HighSetup::GridType::CellCount,[&abandonedCounter,&totalCounter](index_t stackIndex)
 			{
-				if (stack.volumeCell[layer].content == Grid::Content::Technite)
+				Grid::CellStack&stack = Grid::actualWorld.cellStack[stackIndex];
+
+				bool anyChanged = false;
+				for (UINT32 layer = 0; layer < Grid::CellStack::Range; layer++)
 				{
-					totalCounter++;
-					index_t techniteIndex;
+					if (stack.volumeCell[layer].content == Grid::Content::Technite)
+					{
+						totalCounter++;
+						index_t techniteIndex;
 					
 					
-					const Grid::HCellIdU loc(stackIndex,layer);
-					if (!techniteMap.Query(loc,techniteIndex))
-					{
-						//LogEvent(EventType::TechniteLogic,nullptr,"Found homeless technite in "+loc.ToString()+", clearing cell");
+						const Grid::HCellIdU loc(stackIndex,layer);
+						if (!techniteMap.Query(loc,techniteIndex))
+						{
+							//LogEvent(EventType::TechniteLogic,nullptr,"Found homeless technite in "+loc.ToString()+", clearing cell");
 
-						stack.MakeLocalHole(Grid::CellStack::ToHeight(layer));
-						abandonedCounter++;
-						anyChanged = true;
-						continue;
+							stack.MakeLocalHole(Grid::CellStack::ToHeight(layer));
+							abandonedCounter++;
+							anyChanged = true;
+							continue;
+						}
+						const Technite&t = technites[techniteIndex];
+						if (t.isDead)
+						{
+							foreach (technites,t2)
+								if (t2->location.GetU() == loc)
+								{
+									FATAL__("Map inconsistency found with technite at location "+loc.ToString());
+								}
+
+							//LogEvent(EventType::TechniteLogic,nullptr,"Found abandoned technite of faction "+f->GetLogName()+" in "+loc.ToString()+", clearing cell");
+							stack.MakeLocalHole(Grid::CellStack::ToHeight(layer));
+							abandonedCounter++;
+							anyChanged = true;
+							continue;
+						}
+
 					}
-					const Technite&t = technites[techniteIndex];
-					if (t.isDead)
-					{
-						foreach (technites,t2)
-							if (t2->location.GetU() == loc)
-							{
-								FATAL__("Map inconsistency found with technite at location "+loc.ToString());
-							}
-
-						//LogEvent(EventType::TechniteLogic,nullptr,"Found abandoned technite of faction "+f->GetLogName()+" in "+loc.ToString()+", clearing cell");
-						stack.MakeLocalHole(Grid::CellStack::ToHeight(layer));
-						abandonedCounter++;
-						anyChanged = true;
-						continue;
-					}
-
 				}
+				if (anyChanged)
+					familyChanged[Grid::high.grid.GetCell(stackIndex).family] = true;
+			});
+			ApplyFamilyChange(0.f);
+
+
+			const count_t shouldBeTechniteCount = technites.Count();
+
+			count_t gridTechniteCount = totalCounter - abandonedCounter;
+			if (gridTechniteCount < shouldBeTechniteCount)
+			{
+				LogEvent(techniteError,"Encountered "+String(shouldBeTechniteCount-gridTechniteCount)+" technite ghost(s). Ignoring");
+				//ignore this case, won't last long anyways
 			}
-			if (anyChanged)
-				familyChanged[Grid::high.grid.GetCell(stackIndex).family] = true;
-		});
-		ApplyFamilyChange(0.f);
+			else
+				ASSERT_EQUAL__(gridTechniteCount,shouldBeTechniteCount);
+
+			if (abandonedCounter > 0)
+			{
+				LogEvent(techniteError,"Cleared "+String(abandonedCounter)+"/"+String(totalCounter)+" abandoned technite cell(s), "+String(shouldBeTechniteCount)+" technite(s) left");
+
+				#ifndef CLIENT
+					CheckSendTerrain();
+				#endif
+
+				//RemapFaction(Objects::Faction::nexus);
+				//foreach (Faction::all,f)
+				//	RemapFaction(f->lock())
+			}
 
 
-		const count_t shouldBeTechniteCount = technites.Count();
+			//std::atomic<count_t>	visibilityErrors = 0;
 
-		count_t gridTechniteCount = totalCounter - abandonedCounter;
-		if (gridTechniteCount < shouldBeTechniteCount)
-		{
-			LogEvent(techniteError,"Encountered "+String(shouldBeTechniteCount-gridTechniteCount)+" technite ghost(s). Ignoring");
-			//ignore this case, won't last long anyways
+			//Concurrency::parallel_for(index_t(0),Grid::HighSetup::GridType::CellCount,[&visibilityErrors](index_t stackIndex)
+			//{
+			//	Grid::CellStack&stack = Grid::actualWorld.cellStack[stackIndex];
+			//	const auto&n = Grid::high.grid.GetCell(stackIndex).neighborhood;
+			//	for (UINT32 layer = 0; layer < Grid::CellStack::Range; layer++)
+			//	{
+			//		if (stack.volumeCell[layer].content == Grid::Content::Technite)
+			//		{
+			//			PFaction f = Faction::GetFactionOf(stack.volumeCell[layer].techniteFaction);
+			//			const Grid::HCellIdU loc(stackIndex,layer);
+			//			Technite*t = f->GetOwnTechnite(loc);
+
+			//			//live technite must have visibility field of 1 around it
+			//			for (int hd = -1; hd <= 1; hd++)
+			//			{
+			//				if (layer == 0 && hd < 0)
+			//					continue;
+			//				if (layer + hd >= Grid::CellStack::Range)
+			//					continue;
+			//				UINT32 layer2 = layer+hd;
+			//				for (int k = 0; k < n.numNeighbors; k++)
+			//				{
+			//					UINT32 stackID = n.neighborID[k];
+			//					if (!VerifyIsVisibleAndMatches(f,Grid::HCellIdU(stackID,layer2)))
+			//						visibilityErrors++;
+			//				}
+			//				if (!VerifyIsVisibleAndMatches(f,Grid::HCellIdU(stackIndex,layer2)))
+			//					visibilityErrors++;
+
+			//			}
+			//		}
+			//	}
+			//});
+			//if (visibilityErrors > 0)
+			//{
+			//	LogEvent(techniteError,"Detected "+String(visibilityErrors)+" visibility error(s). Rebuilding visibility grid");
+
+			//	for (const auto&tf : Faction::allTechniteFactions)
+			//	{
+			//		tf->visibility.FlushAllData(false);
+			//		tf->visibility.LockChangeChecking();
+			//		float t= 0.f;
+			//		foreach (tf->allMobiles,_m)
+			//			_m->lock()->RegisterSensory(t,false);
+			//		foreach (tf->structures,_s)
+			//			_s->lock()->RegisterSensory(t,false);
+			//		foreach (tf->satellites,_sat)
+			//			_sat->lock()->Objects::WorldEntity::RegisterSensory(t,false);
+			//		foreach (tf->technites,tc)
+			//			tf->RegisterTechniteSensory(tc->location.GetU(), t,false);
+			//		tf->visibility.UnlockChangeChecking(0.f);
+			//		ApplyCoverageChange(tf);
+
+			//		Objects::ForeachWorldEntity([tf,&t](const Objects::PWorldEntity&e)
+			//		{
+			//			tf->CheckGridVisibility(e,t);
+			//		});
+			//	}
+
+			//	VerifyGrid();
+
+			//}
+
 		}
-		else
-			ASSERT_EQUAL__(gridTechniteCount,shouldBeTechniteCount);
 
-		if (abandonedCounter > 0)
-		{
-			LogEvent(techniteError,"Cleared "+String(abandonedCounter)+"/"+String(totalCounter)+" abandoned technite cell(s), "+String(shouldBeTechniteCount)+" technite(s) left");
-
-			#ifndef CLIENT
-				CheckSendTerrain();
-			#endif
-
-			//RemapFaction(Objects::Faction::nexus);
-			//foreach (Faction::all,f)
-			//	RemapFaction(f->lock())
-		}
-
-
-		//std::atomic<count_t>	visibilityErrors = 0;
-
-		//Concurrency::parallel_for(index_t(0),Grid::HighSetup::GridType::CellCount,[&visibilityErrors](index_t stackIndex)
-		//{
-		//	Grid::CellStack&stack = Grid::actualWorld.cellStack[stackIndex];
-		//	const auto&n = Grid::high.grid.GetCell(stackIndex).neighborhood;
-		//	for (UINT32 layer = 0; layer < Grid::CellStack::Range; layer++)
-		//	{
-		//		if (stack.volumeCell[layer].content == Grid::Content::Technite)
-		//		{
-		//			PFaction f = Faction::GetFactionOf(stack.volumeCell[layer].techniteFaction);
-		//			const Grid::HCellIdU loc(stackIndex,layer);
-		//			Technite*t = f->GetOwnTechnite(loc);
-
-		//			//live technite must have visibility field of 1 around it
-		//			for (int hd = -1; hd <= 1; hd++)
-		//			{
-		//				if (layer == 0 && hd < 0)
-		//					continue;
-		//				if (layer + hd >= Grid::CellStack::Range)
-		//					continue;
-		//				UINT32 layer2 = layer+hd;
-		//				for (int k = 0; k < n.numNeighbors; k++)
-		//				{
-		//					UINT32 stackID = n.neighborID[k];
-		//					if (!VerifyIsVisibleAndMatches(f,Grid::HCellIdU(stackID,layer2)))
-		//						visibilityErrors++;
-		//				}
-		//				if (!VerifyIsVisibleAndMatches(f,Grid::HCellIdU(stackIndex,layer2)))
-		//					visibilityErrors++;
-
-		//			}
-		//		}
-		//	}
-		//});
-		//if (visibilityErrors > 0)
-		//{
-		//	LogEvent(techniteError,"Detected "+String(visibilityErrors)+" visibility error(s). Rebuilding visibility grid");
-
-		//	for (const auto&tf : Faction::allTechniteFactions)
-		//	{
-		//		tf->visibility.FlushAllData(false);
-		//		tf->visibility.LockChangeChecking();
-		//		float t= 0.f;
-		//		foreach (tf->allMobiles,_m)
-		//			_m->lock()->RegisterSensory(t,false);
-		//		foreach (tf->structures,_s)
-		//			_s->lock()->RegisterSensory(t,false);
-		//		foreach (tf->satellites,_sat)
-		//			_sat->lock()->Objects::WorldEntity::RegisterSensory(t,false);
-		//		foreach (tf->technites,tc)
-		//			tf->RegisterTechniteSensory(tc->location.GetU(), t,false);
-		//		tf->visibility.UnlockChangeChecking(0.f);
-		//		ApplyCoverageChange(tf);
-
-		//		Objects::ForeachWorldEntity([tf,&t](const Objects::PWorldEntity&e)
-		//		{
-		//			tf->CheckGridVisibility(e,t);
-		//		});
-		//	}
-
-		//	VerifyGrid();
-
-		//}
-
-	}
-
-
+	#endif
 }
 
 

@@ -279,30 +279,34 @@ namespace Technites
 
 		bool				DecodeAbsoluteTarget(Grid::HCellIdU&target) const;
 		bool				DecodeAbsoluteTarget(Grid::HCellIdU&myLocation, Grid::HCellIdU&target) const;
+		
+		#ifndef CLIENT
+			std::thread		dockerProcessThread;
+			TCP::WPeer		peer;
+			AtomicBool		isDead = false;						// 1
+			CryptographicID	secret;								// 32
+		#endif
 
-		std::thread			dockerProcessThread;
-		TCP::WPeer			peer;
 		Instruction			nextInstruction;
 		Grid::HighSetup::TVolumeDescriptor	hFieldOfVision;
 		Grid::LowSetup::TVolumeDescriptor	lFieldOfVision;
 		float				visionRadius = -1.f;
 
 		TUniqueID			id;									// 16
-		CryptographicID		secret;								// 32
 		Resources			resources;							// 2
 		TaskResult			taskResult = TaskResult::Success;	// 1
 		CompressedLocation	location;							// 4
 		CompressedState		state = CompressedState(false,64);	// 1
-		AtomicBool			isDead = false;						// 1
-//		TVec3<BYTE>			color = Vector<BYTE>::one;			// 3
 		StartOptions		startOptions;
 
 
 		/**/				Technite() {}
 
-		/**/				Technite(const Technite&) = delete;
-		/**/				Technite(Technite&&) = default;
-		Technite&			operator=(const Technite&) = delete;
+		#ifndef CLIENT
+			/**/			Technite(Technite&&) = default;
+			/**/			Technite(const Technite&) = delete;
+			Technite&		operator=(const Technite&) = delete;
+		#endif
 
 		String				GetDockerName() const {return "tech"+id.ToFullString();}
 
@@ -345,8 +349,10 @@ namespace Technites
 				//(BYTE)std::max(height, 0)+1;
 		}
 
-		void			StartClient();
-		void			ShutdownClient();
+		#ifndef CLIENT
+			void		StartClient();
+			void		ShutdownClient();
+		#endif
 	};
 
 
@@ -493,6 +499,8 @@ namespace Technites
 	index_t					GetTechniteIndex(const TUniqueID&);
 	Technite*				GetTechnite(const TUniqueID&);
 
+	index_t					GetTechniteIndex(const Grid::HCellIdU&);
+	Technite*				GetTechnite(const Grid::HCellIdU&);
 }
 
 
