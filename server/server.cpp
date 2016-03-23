@@ -1672,12 +1672,17 @@ int main( int argc, const char* argv[])
 
 			if (!newRoundNow)
 			{
-				count_t numFactions=0, wantNewRound = 0;
+				count_t numFactions=0, wantNewRound = 0, spectatorsWantNewRound = 0, numSpectators = 0;
 				bool hasNexus = false,nexusWantsNewRound = false;
 				foreach(Network::activePlayersAndSpectators, p)
 				{
 					if ((*p)->isSpectator)	//doesn't count towards new round
+					{
+						numSpectators ++;
+						if ((*p)->wantNewRound)
+							spectatorsWantNewRound ++;
 						continue;
+					}
 					if ((*p)->faction == Objects::Faction::nexus)
 					{
 						ASSERT__(!hasNexus);
@@ -1691,9 +1696,14 @@ int main( int argc, const char* argv[])
 						wantNewRound++;
 				}
 
-					newRoundNow = wantNewRound >= numFactions
+					newRoundNow = 
+								(
+									wantNewRound >= numFactions
 								&& wantNewRound > 0
-								&& (!hasNexus || nexusWantsNewRound);
+								&& (!hasNexus || nexusWantsNewRound)
+								)
+								||
+								(numFactions == 0 && spectatorsWantNewRound > 0 && spectatorsWantNewRound >= numSpectators);
 				if (newRoundNow)
 				{
 					LogEvent(EventSignificance::Common,"All players have requested a new round. Commencing...");
