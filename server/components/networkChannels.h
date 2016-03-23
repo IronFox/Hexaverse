@@ -119,6 +119,7 @@ namespace Channels
 	#endif
 	extern TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>						unitLimits;
 
+	extern TCP::ObjectSender<Protocol::TechniteStates,Protocol::ChannelID::TechniteStates>				techniteStates;
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
 
 }

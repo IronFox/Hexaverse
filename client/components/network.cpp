@@ -925,7 +925,7 @@ namespace Network
 		TCP::Channel<NET(INT32), 0, Protocol::ChannelID::UplinkBandwidth>							uplinkBandwidth(Receiver::UplinkBandwidth);
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
 
-
+		TCP::Channel<Protocol::TechniteStates,0,Protocol::ChannelID::TechniteStates>				techniteStates(Receiver::TechniteStates);
 
 		TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
@@ -1159,6 +1159,8 @@ namespace Network
 		client.InstallChannel(Channels::lockEmpZones);
 		client.InstallChannel(Channels::uplinkBandwidth);
 		client.InstallChannel(Channels::unitLimits);
+
+		client.InstallChannel(Channels::techniteStates);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
@@ -1488,6 +1490,17 @@ void	Network::Receiver::LockEmpZones(NET(UINT16)&zones)
 	Grid::visibleOrbitGrid.Invalidate();
 	//SpaceGrid::Invalidate();
 }
+
+void	Network::Receiver::TechniteStates(Protocol::TechniteStates&st)
+{
+	if (st.clearTechnites)
+		Technites::Clear();
+
+
+	foreach (st.technites,t)
+		Technites::Add(*t);
+}
+
 
 
 void	Network::Receiver::FactionOnline(NET(TUniqueID)&id)

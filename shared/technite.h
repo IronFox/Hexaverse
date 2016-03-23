@@ -50,11 +50,9 @@ namespace Technites
 		};
 	};
 
-
-	class Technite : public TCP::Peer::Attachment
+	class Base : public SerializableObject
 	{
 	public:
-
 		enum class Task : BYTE
 		{
 			None,		//->TaskResult::Success
@@ -93,6 +91,7 @@ namespace Technites
 			static_assert(Grid::HighSetup::GridType::CellCount < 0x1000000, "Number of grid possibilities exceeds compression capacity");
 			static_assert(Grid::CellStack::Range < 0x100, "Number of grid layers exceeds compression capacity");
 		public:
+			bool			operator==(const CompressedLocation&other) const {return data == other.data;}
 
 			UINT32			GetData() const {return data;}
 
@@ -138,7 +137,7 @@ namespace Technites
 			/**/		Resources() {}
 			/**/		Resources(BYTE energy) :energy(energy) {}
 
-
+			bool		operator==(const Resources&other) const {return energy == other.energy;}
 
 			Resources	operator/(int div) const
 			{
@@ -197,6 +196,8 @@ namespace Technites
 		public:
 			static const BYTE SelfNeighbor = 0xF;
 
+			bool		operator==(const CompressedTarget&other) const {return data == other.data;}
+
 			/**/		CompressedTarget()	{}
 			/**/		CompressedTarget(BYTE neighborIndex, int heightDelta)
 			{
@@ -223,6 +224,7 @@ namespace Technites
 		private:
 			BYTE		data = 0;
 		public:
+			bool		operator==(const CompressedState&other) const {return data == other.data;}
 			/**/		CompressedState(){}
 			/**/		CompressedState(bool lit, BYTE ttl)
 			{
@@ -280,12 +282,6 @@ namespace Technites
 		bool				DecodeAbsoluteTarget(Grid::HCellIdU&target) const;
 		bool				DecodeAbsoluteTarget(Grid::HCellIdU&myLocation, Grid::HCellIdU&target) const;
 		
-		#ifndef CLIENT
-			std::thread		dockerProcessThread;
-			TCP::WPeer		peer;
-			AtomicBool		isDead = false;						// 1
-			CryptographicID	secret;								// 32
-		#endif
 
 		Instruction			nextInstruction;
 		Grid::HighSetup::TVolumeDescriptor	hFieldOfVision;
@@ -297,18 +293,10 @@ namespace Technites
 		TaskResult			taskResult = TaskResult::Success;	// 1
 		CompressedLocation	location;							// 4
 		CompressedState		state = CompressedState(false,64);	// 1
-		StartOptions		startOptions;
 
 
-		/**/				Technite() {}
 
-		#ifndef CLIENT
-			/**/			Technite(Technite&&) = default;
-			/**/			Technite(const Technite&) = delete;
-			Technite&		operator=(const Technite&) = delete;
-		#endif
 
-		String				GetDockerName() const {return "tech"+id.ToFullString();}
 
 		/**
 		Configures fieldOfVision to default technite vision.
@@ -349,9 +337,35 @@ namespace Technites
 				//(BYTE)std::max(height, 0)+1;
 		}
 
+		static const serial_size_t	ConstSize;
+
+		virtual serial_size_t	GetSerialSize(bool exportSize) const override;
+		virtual	bool			Serialize(IWriteStream&outStream, bool exportSize) const override;
+		virtual	bool			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override;
+		bool					operator==(const Base&other) const;
+
+	};
+
+	class Technite : public TCP::Peer::Attachment, public Base
+	{
+	public:
+		/**/				Technite()	{}
+
+
 		#ifndef CLIENT
-			void		StartClient();
-			void		ShutdownClient();
+			/**/			Technite(Technite&&) = default;
+			/**/			Technite(const Technite&) = delete;
+			Technite&		operator=(const Technite&) = delete;
+
+			std::thread		dockerProcessThread;
+			TCP::WPeer		peer;
+			AtomicBool		isDead = false;						// 1
+			CryptographicID	secret;								// 32
+			StartOptions	startOptions;
+
+			String			GetDockerName() const {return "tech"+id.ToFullString();}
+			void			StartClient();
+			void			ShutdownClient();
 		#endif
 	};
 
@@ -501,6 +515,10 @@ namespace Technites
 
 	index_t					GetTechniteIndex(const Grid::HCellIdU&);
 	Technite*				GetTechnite(const Grid::HCellIdU&);
+
+	#ifdef CLIENT
+		void				Add(const Base&);
+	#endif
 }
 
 

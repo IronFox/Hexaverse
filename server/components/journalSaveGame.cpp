@@ -1140,6 +1140,17 @@ namespace Journal
 		tech.parent = TUniqueID::Empty();
 		tech.repo = type;
 		Technites::Create(tech,0.f);
+
+		if (Network::spectators.IsEmpty())
+			return;
+
+		Protocol::TechniteStates states;
+		states.clearTechnites = false;
+		states.technites.AssignSection(Technites::technites,Technites::technites.Count()-1);
+		foreach (Network::spectators,spec)
+		{
+			Channels::techniteStates.SendTo((*spec)->peer.lock(),states);
+		}
 	}
 
 	/*virtual override*/ void			Round::SpawnTechnite::Compile(Entry&e)	const

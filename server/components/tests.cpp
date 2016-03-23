@@ -1,5 +1,6 @@
 #include <global_root.h>
 #include "tests.h"
+#include <technite.h>
 
 
 
@@ -156,6 +157,8 @@ namespace Test
 			}
 			Protocol::VerifySerialization(m);
 		}
+
+		Protocol::VerifySerialization(Technites::Base());
 
 		{
 			Protocol::VerifySerialization(Protocol::LCellIdI(Grid::LCellIdI::Invalid));

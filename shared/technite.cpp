@@ -980,7 +980,6 @@ namespace Technites
 		technites.Clear();
 		techniteMap.Clear();
 		techniteIDMap.Clear();
-
 	}
 
 	#ifndef CLIENT
@@ -1078,7 +1077,7 @@ namespace Technites
 		}
 
 
-		void				Technite::SetStandardFieldOfVision()
+		void				Base::SetStandardFieldOfVision()
 		{
 			Grid::high.GenerateStep2Volume(location.GetU(),hFieldOfVision);
 			Grid::low.GenerateStep1MultiVolume(Grid::highToLowMap[location.GetStackID()],location.GetLayer(),lFieldOfVision);
@@ -1086,7 +1085,7 @@ namespace Technites
 			visionRadius = -1.f;
 		}
 
-		void				Technite::SetSphericalFieldOfVision(float radius)
+		void				Base::SetSphericalFieldOfVision(float radius)
 		{
 			Sphere<> sphere(Grid::ToWorld(location.GetU()),radius);
 			Grid::high.GenerateVolume(sphere,hFieldOfVision);
@@ -1097,14 +1096,91 @@ namespace Technites
 
 	#endif
 
-	bool	Technite::DecodeAbsoluteTarget(Grid::HCellIdU & outTarget) const
+	bool			Base::operator==(const Base&other) const
+	{
+		return id == other.id 
+			&& location == other.location 
+			&& state == other.state 
+			&& resources == other.resources 
+			&& taskResult == other.taskResult 
+			&& visionRadius == other.visionRadius
+			&& nextInstruction.nextTask == other.nextInstruction.nextTask
+			&& nextInstruction.taskParameter == other.nextInstruction.taskParameter 
+			&& nextInstruction.taskTarget == other.nextInstruction.taskTarget;
+	}
+
+
+	/*static*/ const serial_size_t	Base::ConstSize = 
+				(serial_size_t)( 
+					sizeof(id) 
+					+ sizeof(location) 
+					+ sizeof(state) 
+					+ sizeof(resources) 
+					+ sizeof(taskResult) 
+					+ sizeof(visionRadius)
+					+ sizeof(nextInstruction.nextTask)
+//					+ sizeof(nextInstruction.targetTechnite)
+					+ sizeof(nextInstruction.taskParameter)
+					+ sizeof(nextInstruction.taskTarget)
+				);
+
+	/*virtual override*/ serial_size_t	Base::GetSerialSize(bool exportSize) const
+	{
+		return ConstSize + nextInstruction.payload.GetSerialSize(exportSize);
+	}
+
+	/*virtual override*/ bool			Base::Serialize(IWriteStream&outStream, bool exportSize) const
+	{
+		return 
+					outStream.WritePrimitive(id) 
+					&& outStream.WritePrimitive(location) 
+					&& outStream.WritePrimitive(state) 
+					&& outStream.WritePrimitive(resources) 
+					&& outStream.WritePrimitive(taskResult) 
+					&& outStream.WritePrimitive(visionRadius)
+					&& outStream.WritePrimitive(nextInstruction.nextTask)
+//					&& outStream.WritePrimitive(nextInstruction.targetTechnite)
+					&& outStream.WritePrimitive(nextInstruction.taskParameter)
+					&& outStream.WritePrimitive(nextInstruction.taskTarget)
+					&& nextInstruction.payload.Serialize(outStream,exportSize)
+		;
+	}
+
+	/*virtual override*/ bool			Base::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
+	{
+		if (fixedSize != EmbeddedSize)
+		{
+			if (fixedSize < ConstSize)
+				return false;
+			fixedSize -= ConstSize;
+		}
+
+		return 
+					inStream.ReadPrimitive(id) 
+					&& inStream.ReadPrimitive(location) 
+					&& inStream.ReadPrimitive(state) 
+					&& inStream.ReadPrimitive(resources) 
+					&& inStream.ReadPrimitive(taskResult) 
+					&& inStream.ReadPrimitive(visionRadius)
+					&& inStream.ReadPrimitive(nextInstruction.nextTask)
+//					&& inStream.ReadPrimitive(nextInstruction.targetTechnite)
+					&& inStream.ReadPrimitive(nextInstruction.taskParameter)
+					&& inStream.ReadPrimitive(nextInstruction.taskTarget)
+					&& nextInstruction.payload.Deserialize(inStream,fixedSize)
+		;
+
+
+	}
+
+
+	bool	Base::DecodeAbsoluteTarget(Grid::HCellIdU & outTarget) const
 	{
 		Grid::HCellIdU loc;
 		return DecodeAbsoluteTarget(loc, outTarget);
 	}
 
 
-	bool	Technite::DecodeAbsoluteTarget(Grid::HCellIdU & loc, Grid::HCellIdU & outTarget) const
+	bool	Base::DecodeAbsoluteTarget(Grid::HCellIdU & loc, Grid::HCellIdU & outTarget) const
 	{
 		const int heightDelta = this->nextInstruction.taskTarget.GetHeightDelta();
 		const UINT32 nIndex = this->nextInstruction.taskTarget.GetNeighborIndex();
@@ -1431,6 +1507,16 @@ namespace Technites
 
 			//}
 
+		}
+
+	#else
+
+		void				Add(const Base&t)
+		{
+			index_t at = technites.Count();
+			((Base&)technites.Append()) = t;
+			techniteMap.Set(t.location.GetU(),at);
+			techniteIDMap.Set(t.id,at);
 		}
 
 	#endif

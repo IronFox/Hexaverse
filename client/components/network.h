@@ -164,6 +164,8 @@ namespace Network
 		void	FactionRequestedNewRound(NET(TUniqueID)&);
 		void	FactionContinuedRound(NET(TUniqueID)&);
 		void	LockEmpZones(NET(UINT16)&);
+
+		void	TechniteStates(Protocol::TechniteStates&);
 	}
 
 
@@ -203,6 +205,7 @@ namespace Network
 		extern TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>							lockEmpZones;
 		extern TCP::Channel<NET(int32_t), 0, Protocol::ChannelID::UplinkBandwidth>						uplinkBandwidth;
 
+		extern TCP::Channel<Protocol::TechniteStates,0,Protocol::ChannelID::TechniteStates>				techniteStates;
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		extern TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;

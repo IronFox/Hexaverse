@@ -1559,6 +1559,8 @@ namespace Protocol
 			}
 
 		public:
+			static const count_t MaxElements = MaxElementCount;
+
 			template <typename Strategy>
 				void		AssignSection(const BasicBuffer<T,Strategy>&field, index_t offset = 0)
 				{
@@ -1603,6 +1605,86 @@ namespace Protocol
 		};
 
 
+	template <typename T, count_t MaxElementCount>
+		class SmartArrayReferenceField : public NetArray<T,MaxElementCount>
+		{
+			typedef NetArray<T,MaxElementCount>	Super;
+		private:
+			const void*		sourceField=nullptr;
+			size_t			sourceFieldStride = 0;
+			count_t			sourceCount=0;
+			bool			hasAssignedSource = false;
+
+			template <typename T2>
+				void			_Assign(const T2*field, count_t maxCount, index_t offset)
+				{
+					sourceField = static_cast<const T*>(field + offset);	//cast: account for derivation offset shift. also make sure it's a derivative at all
+					if (maxCount > offset)
+						sourceCount = std::min(maxCount - offset,MaxElementCount);
+					else
+						sourceCount = 0;
+					hasAssignedSource = true;
+					sourceFieldStride = sizeof(T2);
+				}
+
+		public:
+			static const count_t MaxElements = MaxElementCount;
+
+			template <typename T2, typename Strategy>
+				void		AssignSection(const BasicBuffer<T2,Strategy>&field, index_t offset = 0)
+				{
+					_Assign(field.pointer(),field.Count(),offset);
+				}
+			template <typename T2>
+				void		AssignSection(const ArrayData<T2>&field, index_t offset = 0)
+				{
+					_Assign(field.pointer(),field.Count(),offset);
+				}
+
+			virtual	bool			HasFixedSize() const	override
+			{
+				return false;
+			}
+
+			virtual	serial_size_t	GetSerialSize(bool exportSize) const	override
+			{
+				if (hasAssignedSource)
+				{
+					serial_size_t memberSize = GetSerialSizeOfSize((serial_size_t)sourceCount);
+					const BYTE*at = (const BYTE*)sourceField;
+					for (index_t i = 0; i < sourceCount; i++)
+					{
+						memberSize += GetSerialSizeOf((const T*)at,sizeof(T),true);
+						at += sourceFieldStride;
+					}
+					
+					return memberSize;
+				}
+				return Super::GetSerialSize(exportSize);
+			}
+			virtual	bool		Serialize(IWriteStream&outStream, bool exportSize) const	override
+			{
+				if (hasAssignedSource)
+				{
+					if (!outStream.WriteSize((serial_size_t)sourceCount))
+						return false;
+					const BYTE*at = (const BYTE*)sourceField;
+					for (index_t i = 0; i < sourceCount; i++)
+					{
+						if (!SerializeObject((const T*)at, sizeof(T),outStream,true))
+							return false;
+						at += sourceFieldStride;
+					}
+					return true;
+				}
+				return Super::Serialize(outStream,exportSize);
+			}
+			virtual	bool		Deserialize(IReadStream&inStream, serial_size_t fixedSize)	override
+			{
+				hasAssignedSource = false;
+				return Super::Deserialize(inStream,fixedSize);
+			}
+		};
 
 	typedef NetArray<TVec3<BYTE>,0xFF>	TechniteColors;
 	static_assert(sizeof(TVec3<BYTE>)==3,"Size expectations not met");
@@ -1886,6 +1968,13 @@ namespace Protocol
 		, Package::NetString<1024>, initMessage
 	);
 
+	typedef SmartArrayReferenceField<Technites::Base,256>	TechniteField;
+
+	NETSTRUCT2(TechniteStates
+		, TechniteField, technites
+		, NET(bool), clearTechnites
+	);
+
 	typedef std::pair<UINT16,UINT16>	TUnitLimit;
 
 	typedef NETA(TUnitLimit)	UnitLimits;
@@ -1987,7 +2076,9 @@ namespace Protocol
 
 
 			//technite controls
-			SpawnTechnite,
+			SpawnTechnite,		// c2s : SpawnTechnite
+			TechniteStates,		// s2c : TechniteStates
+
 		};
 	}
 

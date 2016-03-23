@@ -74,6 +74,9 @@ namespace Channels
 	#endif
 
 	TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>							unitLimits;
+	
+	TCP::ObjectSender<Protocol::TechniteStates,Protocol::ChannelID::TechniteStates>					techniteStates;
+
 
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
 
@@ -188,6 +191,31 @@ namespace Receiver
 			Protocol::NewMobileEntity st;
 			Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
 			Channels::newMobileEntity.SendTo(peer,st);
+		}
+
+		static const count_t TechnitesPerBlock = Protocol::TechniteField::MaxElements;
+		count_t frames = CeilDiv(Technites::technites.Count(),TechnitesPerBlock);
+
+		Protocol::TechniteStates techs;
+		techs.clearTechnites = true;
+		if (frames == 0)
+		{
+			Channels::techniteStates.SendTo(peer,techs);
+		}
+		for (index_t i = 0; i < frames; i++)
+		{
+			index_t offset = TechnitesPerBlock * i;
+//			count_t numTechs = std::min(TechnitesPerBlock,Technites::technites.Count()-offset);
+			techs.technites.AssignSection(Technites::technites,offset);
+			Channels::techniteStates.SendTo(peer,techs);
+			techs.clearTechnites = false;
+		}
+
+		for (const auto&t : Technites::technites)
+		{
+			
+
+
 		}
 
 		{
