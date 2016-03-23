@@ -1498,7 +1498,11 @@ void	Network::Receiver::TechniteStates(Protocol::TechniteStates&st)
 
 
 	foreach (st.technites,t)
+	{
 		Technites::Add(*t);
+		if (Objects::techniteIsSelected && t->id == Objects::selectedTechnite.id)
+			Objects::selectedTechnite = *t;
+	}
 }
 
 

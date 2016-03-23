@@ -14,6 +14,7 @@
 namespace Technites
 {
 	class Technite;
+	class Base;
 	class Faction;
 };
 

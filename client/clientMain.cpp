@@ -1762,6 +1762,8 @@ bool loop()
 
 				if (Objects::selectedEntity)
 					StatePanel::Render(*Objects::selectedEntity);
+				elif (Objects::techniteIsSelected)
+					StatePanel::Render(Objects::selectedTechnite);
 
 				//if (Objects::Network::Transfer::isActive)
 				//	TransferPanel::Render(Objects::Network::Transfer::fromVehicle, Objects::Network::Transfer::toNetwork);

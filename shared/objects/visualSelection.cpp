@@ -13,13 +13,16 @@ namespace Objects
 	PWorldEntity			selectedEntity;
 	PMobileEntity			selectedMobileEntity;
 	bool					techniteIsSelected = false;
-	Technites::Technite		selectedTechnite;
+	Technites::Base			selectedTechnite;
 
 
 	void					Select(const Technites::Technite&tech, bool controlEnabled)
 	{
+		Deselect(controlEnabled);
 		techniteIsSelected = true;
 		selectedTechnite = tech;
+		OnSelectionChange(false);
+		UpdateChoices(controlEnabled);
 	}
 
 

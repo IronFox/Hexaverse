@@ -754,6 +754,7 @@ namespace UI
 		}
 
 		void		Render( const Objects::WorldEntity&e);
+		void		Render( const Technites::Base&t );
 
 	}
 #endif

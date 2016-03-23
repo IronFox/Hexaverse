@@ -2370,6 +2370,39 @@
 	
 		}
 
+		
+
+		void		Render(const Technites::Base&t)
+		{
+			textout.pushState();
+			float3 color (1);
+			textout.color(color);
+			
+
+
+			float len = 300.f / display.clientWidth();
+			textout.locate(1.f - len,0.95f);
+
+
+			textout << "Technite "<<t.id.ToString()<<nl;
+			textout << " location="<<t.location.GetI().ToString()<<nl;
+			textout << " resources="<<t.resources.ToString()<<nl;
+			textout << " TTL="<<t.state.GetTTL()<<nl;
+			textout << " lit="<<t.state.IsLit()<<nl;
+			textout << " taskResult="<<(int)t.taskResult<<nl;
+			textout << " vision radius="<<t.visionRadius<<nl;
+			textout << " next task="<<(int)t.nextInstruction.nextTask<<nl;
+			textout << " task payload="<<t.nextInstruction.payload<<nl;
+			textout << " tech target="<<t.nextInstruction.targetTechnite.ToString()<<nl;
+			textout << " task para="<<t.nextInstruction.taskParameter<<nl;
+			Grid::HCellIdU target;
+			if (t.DecodeAbsoluteTarget(target))
+				textout << " task target="<<target.ToString()<<nl;
+
+			textout.popState();
+	
+		}
+
 
 	}
 #endif
