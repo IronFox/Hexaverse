@@ -1731,6 +1731,8 @@ int main( int argc, const char* argv[])
 					if (Network::AnyHumanPlayersActive())
 						Game::roundTimerPaused = false;
 					Game::evolver->FinishRoundProcessing();
+					Channels::SendTechniteStatesTo(Network::server);
+
 				}
 			}
 			else if (!RuntimeConfig::IsInAnyCommandPhase())

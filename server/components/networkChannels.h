@@ -122,6 +122,7 @@ namespace Channels
 	extern TCP::ObjectSender<Protocol::TechniteStates,Protocol::ChannelID::TechniteStates>				techniteStates;
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
 
+	void	SendTechniteStatesTo(TCP::Destination&dest);
 }
 
 

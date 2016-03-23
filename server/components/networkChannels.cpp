@@ -78,7 +78,29 @@ namespace Channels
 	TCP::ObjectSender<Protocol::TechniteStates,Protocol::ChannelID::TechniteStates>					techniteStates;
 
 
-//	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
+
+	void	SendTechniteStatesTo(TCP::Destination&dest)
+	{
+		static const count_t TechnitesPerBlock = Protocol::TechniteField::MaxElements;
+		
+		count_t frames = CeilDiv(Technites::technites.Count(),TechnitesPerBlock);
+
+		Protocol::TechniteStates techs;
+		techs.clearTechnites = true;
+		if (frames == 0)
+		{
+			Channels::techniteStates.SendTo(dest,techs,SpectatorLevel);
+		}
+		for (index_t i = 0; i < frames; i++)
+		{
+			index_t offset = TechnitesPerBlock * i;
+			techs.technites.AssignSection(Technites::technites,offset);
+			Channels::techniteStates.SendTo(dest,techs,SpectatorLevel);
+			techs.clearTechnites = false;
+		}
+	}
+
+
 
 }
 
@@ -193,30 +215,8 @@ namespace Receiver
 			Channels::newMobileEntity.SendTo(peer,st);
 		}
 
-		static const count_t TechnitesPerBlock = Protocol::TechniteField::MaxElements;
-		count_t frames = CeilDiv(Technites::technites.Count(),TechnitesPerBlock);
 
-		Protocol::TechniteStates techs;
-		techs.clearTechnites = true;
-		if (frames == 0)
-		{
-			Channels::techniteStates.SendTo(peer,techs);
-		}
-		for (index_t i = 0; i < frames; i++)
-		{
-			index_t offset = TechnitesPerBlock * i;
-//			count_t numTechs = std::min(TechnitesPerBlock,Technites::technites.Count()-offset);
-			techs.technites.AssignSection(Technites::technites,offset);
-			Channels::techniteStates.SendTo(peer,techs);
-			techs.clearTechnites = false;
-		}
-
-		for (const auto&t : Technites::technites)
-		{
-			
-
-
-		}
+		Channels::SendTechniteStatesTo(peer);
 
 		{
 			Protocol::ResourceUpdate	package;
@@ -1660,11 +1660,15 @@ namespace Receiver
 				
 				//Objects::Tick();
 				Network::PClient client = To<Network::Client>::Cast(peer.attachment);
-				if (client && client->faction && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && !client->wantNewRound)
+				if (client && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && !client->wantNewRound)
 				{
-					client->wantNewRound = true;
-					LogEvent(EventSignificance::Common,peer,"Requested new round");
-					Channels::factionRequestedNewRound.SendTo(Network::server,client->faction->id,2);
+					if (client->faction || client->isSpectator)
+					{
+						client->wantNewRound = true;
+						LogEvent(EventSignificance::Common,peer,"Requested new round");
+						if (client->faction)
+							Channels::factionRequestedNewRound.SendTo(Network::server,client->faction->id,2);
+					}
 				}
 
 			}

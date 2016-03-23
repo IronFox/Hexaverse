@@ -264,11 +264,11 @@ namespace Technites
 
 		struct Instruction
 		{
-			TUniqueID			targetTechnite;
+			TUniqueID			targetTechnite = TUniqueID::Empty();
 			String				payload;
-			Task				nextTask;	//1 byte
-			CompressedTarget	taskTarget;	//1 byte
-			BYTE				taskParameter;	//1 byte
+			Task				nextTask = Task::None;	//1 byte
+			CompressedTarget	taskTarget = CompressedTarget(CompressedTarget::SelfNeighbor,0);	//1 byte
+			BYTE				taskParameter = 0;	//1 byte
 		};
 
 		struct StartOptions
