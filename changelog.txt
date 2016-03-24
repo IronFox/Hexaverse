@@ -1,5 +1,5 @@
 v0.4.1
-	> Resources stacks are now hidden by default, when connecting as spectator.
+	> Resource stacks are now hidden by default, when connecting as spectator.
 	> Improved initial terrain simplification algorithm to produce cleaner terrains.
 
 v0.4.0	[Mar 20 2016]

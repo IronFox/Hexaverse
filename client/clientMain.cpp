@@ -2232,18 +2232,18 @@ void MyFatal(const FatalDescriptor&descriptor)
 								if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 									activity = "remove";
 								Grid::LCellIdI origin = Objects::selectedVehicle->GetLastPointOfOrigin();
-								if (h < -Grid::CellStack::HalfRange)
+								if (h < Grid::CellStack::BottomHeight)
 								{
-									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot "+activity+" here: Cannot alter bottom-layer");
+									LogEvent(EventSignificance::NonFatalError, Objects::selectedEntity.get(), "Cannot "+activity+" here: Cannot alter bottom-layer");
 								}
 								elif (abs(h - origin.height) > 1)
 								{
-									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot "+activity+" here: Height difference too big: Selected="+String(h)+", vehicle at: "+String(origin.height));
+									LogEvent(EventSignificance::NonFatalError, Objects::selectedEntity.get(), "Cannot "+activity+" here: Height difference too big: Selected="+String(h)+", vehicle at: "+String(origin.height));
 								}
 								elif(Objects::vehicleDistanceField.distance[stackID] > 3)
-									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too far away from vehicle");
+									LogEvent(EventSignificance::NonFatalError, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too far away from vehicle");
 								elif(Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) && h == origin.height && Objects::vehicleDistanceField.distance[stackID] <= 1)
-									LogEvent(EventSignificance::Common, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too close to vehicle");
+									LogEvent(EventSignificance::NonFatalError, Objects::selectedEntity.get(), "Cannot " + activity + " here: Too close to vehicle");
 								else
 								{
 									Grid::HCellIdI	cell = Grid::HCellIdI(stackID, h);
@@ -2557,14 +2557,9 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	if (e->IsMobile())
 	{
 		#ifdef HAS_WINDOW
-			if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode))
+			if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) || Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 			{
-				Objects::buildCandidates.EraseLast();
-				return;
-			}
-			if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
-			{
-				Objects::removeCandidates.EraseLast();
+				Objects::cellSelection.EraseLast();
 				return;
 			}
 		#endif
