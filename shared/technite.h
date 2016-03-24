@@ -518,6 +518,8 @@ namespace Technites
 
 	#ifdef CLIENT
 		void				Add(const Base&);
+	#else
+		void				SignalCommandPhase();
 	#endif
 }
 

@@ -85,6 +85,8 @@ namespace Evolver
 
 			Game::Network::ChangePhase(RuntimeConfig::Phase::CommandPhase,Game::Config::roundTimer > 0 && !Game::roundTimerPaused ? Game::Config::roundTimer : -1);
 		}
+
+		Technites::SignalCommandPhase();
 	}
 
 	/*virtual override*/ void Technite::BeginRoundProcessing()

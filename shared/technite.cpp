@@ -51,6 +51,19 @@ namespace Technites
 		namespace Protocol
 		{
 
+			#pragma pack(push)  /* push current alignment to stack */
+			#pragma pack(1)     /* set alignment to 1 byte boundary */
+
+			ALIGN1
+			struct TerrainStateCell
+			{
+				UINT32		compressedLocation;
+				BYTE		content;
+			};
+			#pragma pack(pop)  /* push current alignment to stack */
+
+			static_assert(sizeof(TerrainStateCell)==5,"Fix struct alignment");
+
 
 
 			NETSTRUCT2(CommonTechniteState
@@ -75,7 +88,7 @@ namespace Technites
 				, NET(TUniqueID), id
 				, Package::NetString<256>, type
 				, NET(BYTE), height
-				, ::Protocol::LCellIdI, location
+				, NET(Technite::CompressedLocation), location
 				, NET(UINT16), currentHealth
 				, NET(UINT16), maxHealth
 			);
@@ -84,23 +97,27 @@ namespace Technites
 				, Package::NetString<1024>, message
 			);
 
-			NETSTRUCT2(Authenticate
+			NETSTRUCT3(Authenticate
 				, NET(TUniqueID), myID
 				, NET(SHA256::HashContainer), challengeResponse
+				, Package::NetString<256>, protocolVersion
 			);
 
-			NETSTRUCT4(RegularInstruction
-				, NET(TUniqueID), myID
+			NETSTRUCT3(RegularInstruction
 				, NET(BYTE), nextTask
 				, NET(BYTE), relativeTarget
 				, NET(BYTE), taskParameter
 			);
 
-			NETSTRUCT4(MessageInstruction
-				, NET(TUniqueID), myID
+			NETSTRUCT3(MessageInstruction
 				, NET(TUniqueID), receiver
 				, NET(BYTE), receiverLocation
 				, Package::NetString<1024>, message
+			);
+
+			NETSTRUCT2(ProcessRound
+				, NET(UINT32), roundNumber
+				, NET(UINT32), techniteSubRoundNumber
 			);
 
 		}
@@ -152,6 +169,7 @@ namespace Technites
 		{
 			enum channel_t
 			{
+				Unused,
 				Challenge,			//	s2c : CryptographicID
 				Authenticate,		//	c2s : Authenticate
 				Authenticated,		//	s2c : <signal>
@@ -162,8 +180,11 @@ namespace Technites
 				TerrainState,		//	s2c : NETA<BYTE>
 				Message,			//	s2c : Message
 				IsDead,				//	s2c : <signal>
-				RegularInstruction,	//	c2s: RegularInstruction
-				MessageInstruction,	//	c2s: MessageInstruction
+				RegularInstruction,	//	c2s : RegularInstruction
+				MessageInstruction,	//	c2s : MessageInstruction
+				ProcessRound,		//	s2c : ProcessRound
+
+				ChannelCount
 			};
 
 
@@ -173,9 +194,10 @@ namespace Technites
 			TCP::ObjectSender<Protocol::EntityContact,EntityContact>	entityContact;
 			TCP::ObjectSender<Protocol::OwnState,OwnTechniteState>	ownTechniteState;
 			TCP::ObjectSender<Protocol::OtherState,OtherTechniteState>	otherTechniteState;
-			TCP::ObjectSender<NETA(BYTE),TerrainState>	terrainState;
+			TCP::ObjectSender<NETA(Protocol::TerrainStateCell),TerrainState>	terrainState;
 			TCP::ObjectSender<Protocol::Message, Message> message;
 			TCP::ObjectSender<NET(CryptographicID), Challenge> challenge;
+			TCP::ObjectSender<Protocol::ProcessRound, ProcessRound> processRound;
 
 			TCP::Channel<Protocol::MessageInstruction, UserLevel::Authenticated, MessageInstruction>	messageInstruction;
 			TCP::Channel<Protocol::RegularInstruction, UserLevel::Authenticated, RegularInstruction>	regularInstruction;
@@ -706,19 +728,22 @@ namespace Technites
 					const count_t volume = t.hFieldOfVision.GetVolume();
 					if (volume < 32768)
 					{
-						NETA(BYTE) cellContent;
+						NETA(Protocol::TerrainStateCell) cellContent;
 						cellContent.SetSize(volume);
-						BYTE*at = cellContent.pointer();
+						Protocol::TerrainStateCell*at = cellContent.pointer();
 						index_t techniteAt;
 
+						Technite::CompressedLocation loc;
 						foreach (t.hFieldOfVision.coverage,c)
 						{
 							const Grid::CellStack&stack = Grid::actualWorld.cellStack[c->stackID];
 							for (UINT l = c->layerBegin; l < c->layerEnd; l++)
 							{
-								*at = stack.volumeCell[l].content;
+								loc = Grid::HCellIdU(c->stackID,l);
+								at->compressedLocation = loc.GetData();
+								at->content = stack.volumeCell[l].content;
 
-								if (*at == Grid::Content::Technite)
+								if (at->content == Grid::Content::Technite)
 								{
 									if (techniteMap.Query(Grid::HCellIdU(c->stackID,l),techniteAt))
 									{
@@ -752,7 +777,9 @@ namespace Technites
 								contact.currentHealth = e->health;
 								contact.maxHealth = e->GetMaxHealth();
 								contact.id = e->id;
-								contact.location = e->location;
+								Base::CompressedLocation loc;
+								loc = Grid::HCellIdU(Grid::low.grid.GetCell( e->location.stackID ).higherEquivalent,Grid::CellStack::ToLayer(e->location.height));
+								contact.location = loc;
 								contact.type = e->GetTypeName();
 								contact.height = e->GetHeight();
 
@@ -1517,6 +1544,15 @@ namespace Technites
 
 			//}
 
+		}
+
+		void	SignalCommandPhase()
+		{
+			Protocol::ProcessRound process;
+			process.roundNumber = RuntimeConfig::roundNumber;
+			process.techniteSubRoundNumber = RuntimeConfig::techniteSubRoundNumber;
+
+			Channels::processRound.SendTo(serviceHost,process,UserLevel::Authenticated);
 		}
 
 	#else
