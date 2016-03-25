@@ -40,12 +40,31 @@ namespace Objects
 	bool					MobileEntityProducer::WorkItem::IsSatellite() const
 	{
 		#ifdef CLIENT
-			return !base;
+			return !base && prototype && prototype->IsSatellite();
 		#else
 			return producing->IsSatellite();
 		#endif
-
 	}
+
+
+	bool					MobileEntityProducer::WorkItem::IsVehicle() const
+	{
+		#ifdef CLIENT
+			return base != nullptr;
+		#else
+			return producing->IsVehicle();
+		#endif
+	}
+
+	Component::VehicleBase*	MobileEntityProducer::WorkItem::GetVehicleBase() const
+	{
+		#ifdef CLIENT
+			return base;
+		#else
+			return producing->IsVehicle() ? To<Vehicle>::Cast( producing )->base : nullptr;
+		#endif
+	}
+
 
 	bool				MobileEntityProducer::AwaitsUserInteraction() const 
 	{
@@ -227,7 +246,6 @@ namespace Objects
 		PMobileEntity				MobileEntityProducer::GetActiveProduction() const
 		{
 			return queue.IsNotEmpty() ? queue.first().producing : PMobileEntity();
-
 		}
 
 
@@ -430,7 +448,7 @@ namespace Objects
 			String name;
 			Component::VehicleBase* base = nullptr;
 			Component::Turret* turret = nullptr;
-			PSatellite sat;
+			PWorldEntity prototype;
 			if (turretName != ConstName::Empty)
 			{
 				base = Component::GetVehicleBaseByName(baseName);
@@ -443,10 +461,10 @@ namespace Objects
 			}
 			else
 			{
-				sat = GetSatellitePrototypeByName(baseName);
-				ASSERT1__(sat, (int)baseName);
-				price = sat->GetConstructionCost();
-				name = sat->GetTypeName();
+				prototype = GetNonVehiclePrototypeByName(baseName);
+				ASSERT1__(prototype, (int)baseName);
+				price = prototype->GetConstructionCost();
+				name = prototype->GetTypeName();
 			}
 
 			{
@@ -463,10 +481,15 @@ namespace Objects
 				item.name = name;
 				item.cost = price;
 				item.base = base;
+				if (prototype)
+				{
+					ASSERT1__(prototype->IsMobile(), prototype->GetName());
+					item.prototype = To<MobileEntity>::Cast(prototype);
+				}
 				item.roundsToCompletion = rounds;
 
 				#ifdef HAS_WINDOW
-					item.commandToTerminate.second = EntityConstructionCommand(JobName(index,item.name,rounds),base,turret,sat,[id,index]()
+					item.commandToTerminate.second = EntityConstructionCommand(JobName(index,item.name,rounds),base,turret,prototype,[id,index]()
 					{
 //						PWorkingStructure s = To<WorkingStructure>::DynamicCast(e);
 	//					ASSERT__(s);
