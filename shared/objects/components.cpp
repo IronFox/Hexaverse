@@ -1254,7 +1254,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Ragnarok;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.mountType = Turret::MountType::Satellite;
 			component.isDoomsday = true;
 
 			component.continuousRotation = true;
@@ -1309,7 +1309,7 @@ namespace Objects
 			component.constName = ConstName::Turret_ProtonCannon;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.mountType = Turret::MountType::Satellite;
 
 			component.productionCosts = 1;	//irrelevant
 
@@ -1352,7 +1352,7 @@ namespace Objects
 			component.constName = ConstName::Turret_SkyHub;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.mountType = Turret::MountType::Satellite;
 			component.operationSpeed[Repair] = 10;
 			component.operationSpeed[Construct] = 5;
 			//component.fuelSupplyRadius = 20;
@@ -1392,7 +1392,7 @@ namespace Objects
 			component.constName = ConstName::Turret_StarPort;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.mountType = Turret::MountType::Satellite;
 
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = -0.05f;

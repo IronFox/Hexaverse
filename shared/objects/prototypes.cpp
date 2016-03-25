@@ -188,7 +188,7 @@ namespace Objects
 								<< &mechanic;
 								;
 			for (auto t: allTurretComponents)
-				if (!t->isSatelliteRing)
+				if (t->mountType == Turret::MountType::Vehicle)
 					vehicleTurretComponents << t;
 			baseComponents << &hoverbase << &heavybase << &catbase;
 		}

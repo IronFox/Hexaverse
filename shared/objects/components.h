@@ -126,6 +126,14 @@ namespace Objects
 		class Turret : public Base
 		{
 		public:
+			enum class MountType
+			{
+				Vehicle,
+				Satellite,
+				Plane,
+			};
+
+
 			ConstName						constTowerName;
 
 			float							healthMultiplier = 1.f;
@@ -146,8 +154,9 @@ namespace Objects
 											detectsResources = false,
 											continuousRotation = false,	//indicates that the turret should rotate continuously, regardless of server turret rotation commands
 											requiresStationaryVehicle = false,	//cannot fire if vehicle moved last round
-											isSatelliteRing = false,
 											isDoomsday = false;	//server may reject their deployment
+
+			MountType						mountType = MountType::Vehicle;
 
 			float							explosionRadius = 0.f;
 			TrajectoryType					trajectoryType;
