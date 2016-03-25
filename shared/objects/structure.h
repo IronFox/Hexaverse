@@ -894,6 +894,7 @@ namespace Objects
 			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
+		virtual bool				CanProduce(const PWorldEntity&e) const override;
 
 
 		//Structure overrides:
@@ -1002,6 +1003,78 @@ namespace Objects
 		//SkyLinkStructure overrides:
 		virtual WorkingStructure*	CastToStructure() override {return this;}
 
+	};
+
+
+	class PlaneFactory : public CommonStructure<PlaneFactory>, public MobileEntityProducer
+	{
+	public:
+	protected:
+		typedef CommonStructure<PlaneFactory>	Super;
+
+
+		friend class Super;
+		/**/						PlaneFactory():MobileEntityProducer(ConstructionSpeed) {MobileEntityProducer::SetCommandOffset(int2(3,1));}
+		/**/						PlaneFactory(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), MobileEntityProducer(ConstructionSpeed){MobileEntityProducer::SetCommandOffset(int2(3,1));}
+	public:
+		static const int			ConstructionSpeed = 20;
+		static const int			EnergyConsumption = 20;
+
+		static Buffer0<ConstName>	prototypes;
+
+
+		//BaseEntity overrides:
+		virtual String				GetTypeName() const override { return "Plane Factory"; };
+		virtual ConstName			GetCTypeName() const override {return ConstName::Type_PlaneFactory;}
+
+		//WorkingStructure overrides:
+		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override;
+
+		//WorldEntity overrides:
+		virtual int					GetHeight() const override {return 2;}
+		virtual void				PrototypeSetup() override;
+		virtual int					GetConstructionCost() const override {return 200;}
+		#ifndef NO_HIBERNATION
+			virtual int				GetUplinkTraffic() const override {return 10;}
+			virtual int				GetUplinkPriority() const override {return 750;};	//not much point going far beyond generators. if they shut off, this thing shuts off, too
+		#endif
+		virtual bool				AwaitsUserInteraction() const override;
+
+		#ifndef CLIENT
+			virtual void			OnSleepChange(float&t) override;
+
+			//virtual void			OnConstructionFinished(float atTime) override;	//has to register with owner	//some day
+			//virtual void			OnDestroy(float atTime) override;	//has to unregister with owner	//some day
+			virtual void			Tick(ResourceVector&) override;
+			virtual void			SignalLastProductionDone() override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); float t = 0; SetEnabled(false,t);}
+
+		#endif
+		#ifdef HAS_WINDOW
+			virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
+			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
+			{
+				Super::DescribeType(label,descFlags);
+				//label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
+				label.MarkBriefEnd();
+				label.WrapAppendText("Plane factories produce planes");
+			}
+			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
+		#endif
+		virtual const MobileEntityProducer*CastToProducer() const override {return this;}
+
+		//MobileEntityProducer overrides
+		#ifndef CLIENT
+			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
+		#endif
+		virtual bool				CanProduce(const PWorldEntity&e) const override;
+
+
+		//Structure overrides:
+		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override
+		{
+			return MobileEntityProducer::IsBuilding(outProgress);
+		}
+		virtual Category			GetCategory() const override {return Category::Factories;}
 	};
 	
 	class Generator : public CommonStructure<Generator>
@@ -1162,6 +1235,7 @@ namespace Objects
 			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
+		virtual bool				CanProduce(const PWorldEntity&e) const override;
 
 		#ifndef NO_HIBERNATION
 			//Hibernating overrides:

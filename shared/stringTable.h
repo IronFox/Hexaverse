@@ -53,6 +53,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Type_Generator,
 	Type_ReactorCore,
 	Type_VehiclePlant,
+	Type_PlaneFactory,
 	Type_Mine,
 	Type_MunitionFactory,
 	Type_FuelContainer,

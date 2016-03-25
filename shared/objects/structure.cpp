@@ -18,6 +18,7 @@
 #include "faction.h"
 #include "satellite.h"
 #include "vehicle.h"
+#include "subOrbital.h"
 #include "structureCompound.h"
 
 #ifndef CLIENT
@@ -47,6 +48,8 @@ namespace Objects
 	Tower types that are not contained in this list can not be constructed cleanly
 	*/
 	Buffer0<PTower>				Tower::globalPrototypes;
+
+	Buffer0<ConstName>			PlaneFactory::prototypes;
 
 	/*static*/ Buffer0<Component::VehicleBase*>	VehiclePlant::baseComponents;
 	/*static*/ Buffer0<Component::Turret*>			VehiclePlant::turretComponents;
@@ -1951,6 +1954,15 @@ namespace Objects
 
 
 
+	/*virtual override*/ void		PlaneFactory::GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&)	const
+	{
+		v.level[Resource::Energy] = -EnergyConsumption;
+		if (MobileEntityProducer::queue.IsNotEmpty())
+			v.level[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;
+	}
+
+
+
 	/*virtual override*/ bool		SkyPort::WouldLikeToEnable() const
 	{
 		return !!GetSatellite(location.stackID);
@@ -1980,6 +1992,17 @@ namespace Objects
 		}
 
 		/*virtual override*/ void			VehiclePlant::OnSleepChange(float&t)
+		{
+			Super::OnSleepChange(t);
+
+			if (IsSleeping() && IsEnabled())
+			{
+				LogEvent(EventSignificance::Common,this,"Fell asleep. Disabling");
+				SetEnabled(false,t);
+			}
+		}
+
+		/*virtual override*/ void			PlaneFactory::OnSleepChange(float&t)
 		{
 			Super::OnSleepChange(t);
 
@@ -2020,6 +2043,13 @@ namespace Objects
 
 	
 	#ifndef CLIENT
+
+		/*virtual override*/ void				PlaneFactory::Tick(ResourceVector&v)
+		{
+			v.level[Resource::Energy] -= EnergyConsumption;
+
+			MobileEntityProducer::Tick(v);
+		}
 
 		/*virtual override*/ void				VehiclePlant::Tick(ResourceVector&v)
 		{
@@ -2221,6 +2251,38 @@ namespace Objects
 
 
 	#endif
+
+
+	/*virtual override*/ void				PlaneFactory::PrototypeSetup()
+	{
+		Super::PrototypeSetup();
+
+		Objects::SubOrbital::prototypes;
+
+
+
+	
+			//vehicleConstructionCommands << VehicleConstructionCommand("Base:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
+		foreach (Objects::SubOrbital::prototypes,proto)
+		{
+			auto p = *proto;
+			prototypes << p->GetCTypeName();
+			#ifdef HAS_WINDOW
+				commands.Add(new EntityConstructionCommand("Construct "+p->GetTypeName(), nullptr,nullptr, p,[p]()
+				{
+					PPlaneFactory factory = To<PlaneFactory>::DynamicCast(selectedEntity);
+					if (!factory)
+						return;
+					SignalConstructionBegin(factory->id, p->GetCTypeName(), ConstName::Empty);
+				}
+				,CommonCmd::CommonButtonCheck));
+				commands.GetLast().second->RasterizeImage();
+
+			#endif
+		}
+
+	}
+
 	/*virtual override*/ void				VehiclePlant::PrototypeSetup()
 	{
 		Super::PrototypeSetup();
@@ -2357,6 +2419,11 @@ namespace Objects
 
 	}
 	#ifdef HAS_WINDOW
+		/*virtual override*/ void				PlaneFactory::VisitAllCommands(FCommandVisitor visitor, bool force)
+		{
+			MobileEntityProducer::VisitAllCommands(visitor,force);
+			Super::VisitAllCommands(visitor,force);
+		}
 		/*virtual override*/ void				VehiclePlant::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
 			MobileEntityProducer::VisitAllCommands(visitor,force);
@@ -2369,6 +2436,12 @@ namespace Objects
 		}
 
 	#endif
+
+	/*virtual override*/ bool				PlaneFactory::AwaitsUserInteraction() const 
+	{
+		return  MobileEntityProducer::AwaitsUserInteraction();
+	}
+
 	/*virtual override*/ bool				VehiclePlant::AwaitsUserInteraction() const 
 	{
 		return  MobileEntityProducer::AwaitsUserInteraction();
@@ -2378,6 +2451,24 @@ namespace Objects
 	/*virtual override*/ bool				SkyPort::AwaitsUserInteraction() const 
 	{
 		return MobileEntityProducer::AwaitsUserInteraction();
+	}
+
+	/*virtual override*/ bool				SkyPort::CanProduce(const PWorldEntity&e) const 
+	{
+		return (e->IsVehicle() && To<Vehicle>::Cast(e)->base == &Component::hoverbase && To<Vehicle>::Cast(e)->turret == &Component::terraformer)
+			||
+			(e->IsSatellite() && e->GetCTypeName() == ConstName::Type_SkyHub)
+		;
+	}
+
+	/*virtual override*/ bool				VehiclePlant::CanProduce(const PWorldEntity&e) const 
+	{
+		return e->IsVehicle() && baseComponents.Contains(To<Vehicle>::Cast(e)->base)  && turretComponents.Contains(To<Vehicle>::Cast(e)->turret);
+	}
+
+	/*virtual override*/ bool				PlaneFactory::CanProduce(const PWorldEntity&e) const 
+	{
+		return e->IsPlane() && prototypes.Contains(e->GetCTypeName());
 	}
 
 

@@ -163,6 +163,7 @@ namespace Objects
 		structurePrototypes << NexusPort::globalPrototype;
 		structurePrototypes << VehicleStore::globalPrototype;
 		structurePrototypes << SkyPort::globalPrototype;
+		structurePrototypes << PlaneFactory::globalPrototype;
 
 		satellitePrototypes << SkyHub::globalPrototype;
 		satellitePrototypes << SkyGuardian::globalPrototype;

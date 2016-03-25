@@ -21,6 +21,7 @@ namespace Objects
 				DECLARE_POINTER_CLASS(WorkingStructure)
 					DECLARE_POINTER_CLASS(SkyPort)
 					DECLARE_POINTER_CLASS(VehiclePlant)
+					DECLARE_POINTER_CLASS(PlaneFactory)
 					DECLARE_POINTER_CLASS(VehicleStore)
 					DECLARE_POINTER_CLASS(Mine)
 					DECLARE_POINTER_CLASS(NexusPort)

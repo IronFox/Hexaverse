@@ -329,8 +329,11 @@ namespace Objects
 
 			PSatellite sat = To<Satellite>::Cast(proto->CreateNewInstance(parent->owner,parent->location,0.f));
 			WorkItem*rs = EnqueueProductionOf(sat);
-			parent->RegisterChange(WorldEntity::TasksChanged,-1);
-			SignalNewProductionEnqueued();
+			if (rs)
+			{
+				parent->RegisterChange(WorldEntity::TasksChanged,-1);
+				SignalNewProductionEnqueued();
+			}
 			return rs;
 		}
 
@@ -338,6 +341,12 @@ namespace Objects
 
 		MobileEntityProducer::WorkItem*				MobileEntityProducer::EnqueueProductionOf(const PMobileEntity&e, index_t at /*= InvalidIndex*/)
 		{
+			if (!CanProduce(e))
+			{
+				WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
+				LogEvent(EventClass::Preset::commandRejected,parent,"Cannot produce "+e->GetName());
+				return nullptr;
+			}
 			index_t index = std::min(at,queue.Count());
 			//productionRoundsLeft
 			UINT32 rounds = ProductionRounds(e,!index);
@@ -371,8 +380,11 @@ namespace Objects
 					return nullptr;
 				}
 				WorkItem*rs = EnqueueProductionOf(vehicle);
-				parent->RegisterChange(WorldEntity::TasksChanged,-1);
-				SignalNewProductionEnqueued();
+				if (rs)
+				{
+					parent->RegisterChange(WorldEntity::TasksChanged,-1);
+					SignalNewProductionEnqueued();
+				}
 				return rs;
 			}
 			return nullptr;
