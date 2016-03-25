@@ -42,7 +42,6 @@ namespace Objects
 			ASSERT1__(v->storedIn.expired(), v->GetName());
 			#ifndef CLIENT
 				ASSERT2__(!v->owner->HasMobileInStorage(v),v->GetName(),v->owner->GetName());
-				ASSERT2__(v->owner->HasActiveMobile(v,true),v->GetName(),v->owner->GetName());
 				ASSERT2__(v->owner->HasActiveMobile(v),v->GetName(),v->owner->GetName());
 			#endif
 		}

@@ -1553,7 +1553,7 @@ namespace Animation
 			//Vec::makeNormalTo(nodes.first().dir,nodes.first().position);
 			Vec::makeNormalTo(nodes.last().dir,nodes.last().position);
 		}
-		if (!target->IsSatellite())
+		if (target->IsVehicle())
 			nodes.first().dir = -target->system.y.xyz;
 		foreach (nodes, n)
 		{
@@ -1611,7 +1611,7 @@ namespace Animation
 			#ifdef HAS_WINDOW
 				const TVec3<> prev = sys.w.xyz;
 			#endif
-			if (target->IsSatellite())
+			if (!target->IsVehicle())
 			{
 				sys.z.xyz = p;
 				Vec::normalize0(sys.z.xyz);
@@ -1799,10 +1799,10 @@ namespace Animation
 				});
 				Animation::insertIntoGridLater.Clear();
 
-				foreach (Objects::vehicles, v)
-					(*v)->preAnimationLocation = (*v)->location;
-				foreach (Objects::satellites, v)
-					(*v)->preAnimationLocation = (*v)->location;
+				Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&e)
+				{
+					e->preAnimationLocation = e->location;
+				});
 
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::gameHasBegun)
 				{
