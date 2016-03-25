@@ -1243,7 +1243,7 @@ namespace Receiver
 			return;
 
 
-		if (!Grid::ValidCell(ch.target, Objects::Satellite::BaseResidenceHeight, Objects::Satellite::DeclinedResidenceHeight))
+		if (!Grid::ValidCell(ch.target, Objects::SubOrbital::Height, Objects::Satellite::BaseResidenceHeight, Objects::Satellite::DeclinedResidenceHeight))
 		{
 			LogEvent(EventClass::Preset::commandRejected,peer,e,"Parameter fault");
 			return;
@@ -1363,7 +1363,7 @@ namespace Receiver
 		if (!e)
 			return;
 		foreach (cmd.path,n)
-			if (!Grid::ValidCell(*n, Objects::Satellite::BaseResidenceHeight,Objects::Satellite::DeclinedResidenceHeight))
+			if (!Grid::ValidCell(*n, Objects::SubOrbital::Height, Objects::Satellite::BaseResidenceHeight,Objects::Satellite::DeclinedResidenceHeight))
 			{
 				LogEvent(EventClass::Preset::commandRejected, peer, e, "Parameter fault ("+n->ToString()+")");
 				return;

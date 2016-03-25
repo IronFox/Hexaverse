@@ -1831,10 +1831,12 @@ namespace Grid
 	bool	IsHighPartOfLow(UINT32 highCell, UINT32 lowCell);
 
 
-	inline bool	ValidCell(const LCellIdI&cell, int satHeight, int decSatHeight)	{return cell.stackID < LowSetup::GridType::CellCount 
+	inline bool	ValidCell(const LCellIdI&cell, int subOrbitalHeight, int satHeight, int decSatHeight)	{return cell.stackID < LowSetup::GridType::CellCount 
 													&& 
 													(
 														(cell.height >= -CellStack::HalfRange && cell.height < CellStack::HalfRange)
+														||
+														(cell.height == subOrbitalHeight)
 														||
 														(cell.height == satHeight || cell.height == satHeight+1)
 														||
