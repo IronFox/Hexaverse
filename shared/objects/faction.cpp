@@ -301,15 +301,9 @@ namespace Objects
 			}
 		}
 
-		bool		Faction::HasActiveMobile(const PMobileEntity&v, bool forceDoNotCheckSatellites) const
+		bool		Faction::HasActiveMobile(const PMobileEntity&v) const
 		{
-			if (!forceDoNotCheckSatellites && v->IsSatellite())
-			{
-				foreach (this->satellites,_v)
-					if (_v->lock() == v)
-						return true;
-				return false;
-			}
+
 			foreach (allMobiles,_v)
 				if (_v->lock() == v)
 					return true;
