@@ -3,6 +3,7 @@
 #include "satellite.h"
 #include "vehicle.h"
 #include "structure.h"
+#include "subOrbital.h"
 
 
 namespace Objects
@@ -16,7 +17,33 @@ namespace Objects
 									allTurretComponents;
 	}
 
+	namespace SubOrbital
+	{
+		Buffer0<PPlane>			prototypes;
 
+
+		PPlane		GetPrototypeByName(ConstName name)
+		{
+			if (name != ConstName::Empty)
+			{
+				foreach (prototypes,p)
+					if ((*p)->GetCTypeName() == name)
+						return *p;
+			}
+			return PPlane();
+		}
+
+		PPlane		GetPrototypeByName(const String& name)
+		{
+			if (name.IsNotEmpty())
+			{
+				foreach (prototypes,p)
+					if ((*p)->GetTypeName() == name)
+						return *p;
+			}
+			return PPlane();
+		}	
+	}
 
 	
 
@@ -78,6 +105,9 @@ namespace Objects
 		rs = GetSatellitePrototypeByName(typeName);
 		if (rs)
 			return rs;
+		rs = SubOrbital::GetPrototypeByName(typeName);
+		if (rs)
+			return rs;
 		return PWorldEntity();
 	}
 
@@ -90,6 +120,9 @@ namespace Objects
 		if (rs)
 			return rs;
 		rs = GetSatellitePrototypeByName(typeName);
+		if (rs)
+			return rs;
+		rs = SubOrbital::GetPrototypeByName(typeName);
 		if (rs)
 			return rs;
 		return PWorldEntity();
@@ -175,6 +208,8 @@ namespace Objects
 			Heavybase::Configure(heavybase);
 			Catbase::Configure(catbase);
 
+
+			SubOrbital::Raptor::Configure(SubOrbital::raptor);
 
 
 			allTurretComponents << &radar 

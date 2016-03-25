@@ -18,6 +18,7 @@
 #include "objects/structure.h"
 #include "objects/vehicle.h"
 #include "objects/satellite.h"
+#include "objects/subOrbital.h"
 #include "objects/faction.h"
 #include "objects/prototypes.h"
 #include "objects/gridAndChoices.h"

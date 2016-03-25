@@ -46,6 +46,14 @@ namespace Objects
 		#endif
 	}
 
+	bool					MobileEntityProducer::WorkItem::IsPlane() const
+	{
+		#ifdef CLIENT
+			return !base && prototype && prototype->IsPlane();
+		#else
+			return producing->IsPlane();
+		#endif
+	}
 
 	bool					MobileEntityProducer::WorkItem::IsVehicle() const
 	{

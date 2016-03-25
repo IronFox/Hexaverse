@@ -31,6 +31,10 @@ namespace Objects
 						catbase;
 
 
+		namespace SubOrbital
+		{
+			Turret		raptor;
+		}
 
 
 
@@ -1546,6 +1550,59 @@ namespace Objects
 
 
 			component.FinishCreation();
+		}
+
+
+
+		namespace SubOrbital
+		{
+
+	
+			void			Raptor::Configure(Turret&component)
+			{
+				#ifdef HAS_WINDOW		
+					CellCoords offset = ConfigureStandardCommands(component);
+
+					component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
+
+					//component.parts.setSize(1);
+					//component.parts.first().first.LoadFromObj("objects/skyGuardianRing.obj");
+				#endif
+
+
+				component.typeName = "Raptor";
+				component.shortName = " Raptor";
+				component.constName = ConstName::Type_Raptor;	//let's see if i can use the same name here
+				component.constTowerName = ConstName::Empty;	//not used
+
+				component.mountType = Turret::MountType::Plane;
+
+				component.productionCosts = 1;	//irrelevant
+
+		
+				component.weight = 1;	//irrelevant
+				component.healthMultiplier = 1;	//irrelevant
+				component.horizontalAttackRange = 13;
+				component.scanningRange = 13;
+				component.groundScanningRange = 10;
+				component.groundScannerPenetration = 2;
+
+				component.explosionRadius = 1;
+				component.damageLevel = 5;
+				component.dealsEMPDamage = false;
+				component.attacksPerRound = 2;
+				component.initiative = 60;
+				component.ammoNeedPerShot = 0;//10;
+				component.ammoType = Resource::Uranium;
+				component.requiresStationaryVehicle = false;
+				component.uplinkTraffic = 10;
+				component.trajectoryType = TrajectoryType::Missile;
+
+
+				component.FinishCreation(false);
+			}
+
+
 		}
 
 

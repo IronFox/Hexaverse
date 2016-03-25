@@ -486,6 +486,11 @@ namespace Objects
 						radar,resourceScanner,
 						protonCannon,skyHubTurret,ragnarok,starPort;
 
+		namespace SubOrbital
+		{
+			extern Turret	raptor;
+		}
+
 	
 		namespace Artillery
 		{
@@ -560,6 +565,15 @@ namespace Objects
 
 
 
+		namespace SubOrbital
+		{
+			namespace Raptor
+			{
+				void	Configure(Turret&);
+			};
+
+
+		}
 
 	
 

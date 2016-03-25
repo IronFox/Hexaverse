@@ -34,6 +34,11 @@ namespace Objects
 					DECLARE_POINTER_CLASS(SkyHub)
 					DECLARE_POINTER_CLASS(SkyGuardian)
 					DECLARE_POINTER_CLASS(Ragnarok)
+				namespace SubOrbital
+				{
+					DECLARE_POINTER_CLASS(Plane)
+						DECLARE_POINTER_CLASS(Raptor)
+				}
 				DECLARE_POINTER_CLASS(Vehicle)
 
 	namespace Component

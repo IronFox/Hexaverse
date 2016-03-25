@@ -263,13 +263,13 @@ bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 		{
 			foundPath = Objects::AppendShortestPathI((const Objects::Vehicle*)v.get(),prev,target,path,false,&tooLong);
 		}
-		else
-		{
-			if (v->IsSatellite())
+		else if (v->IsSatellite())
 				foundPath = Objects::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
-			else
-				FATAL__("Routing not implemented for "+v->GetTypeName());
-		}
+		else if (v->IsPlane())
+				foundPath = Objects::SubOrbital::AppendShortestPathI((const Objects::SubOrbital::Plane*)v.get(),prev,target.stackID,path,false,&tooLong);
+		else
+			FATAL__("Routing not implemented for "+v->GetTypeName());
+		
 		if (!foundPath)
 		{
 			if (!Grid::actualWorld.LowCellIsClearIgnoreStructure(target) && target.height+1 <= Grid::CellStack::TopHeight)
@@ -317,9 +317,21 @@ bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targ
 		return false;
 	DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
 	const bool moveTo = mode == Objects::CursorMode::Idle && !leftClick;
-	if (moveTo && v->IsSatellite())
-		foreach (targets,t)
-			ASSERT_EQUAL__(t->height,v->location.height);
+	if (moveTo)
+	{
+		if (v->IsSatellite())
+		{
+			foreach (targets,t)
+				ASSERT_EQUAL__(t->height,v->location.height);
+		}
+		else
+		if (v->IsPlane())
+		{
+			foreach (targets,t)
+				ASSERT_EQUAL__(t->height,Objects::SubOrbital::Height);
+		}
+	}
+
 
 
 	if (v->IsMobile() && moveTo)
@@ -1124,7 +1136,10 @@ void	OnAppear(const Objects::PWorldEntity&e)
 					Camera::TargetSkyOrbit();
 				}
 				else
-					Camera::TargetGroundOrbit();
+					if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsPlane())
+						Camera::TargetSubOrbit();
+					else
+						Camera::TargetGroundOrbit();
 
 			}
 		}
@@ -1592,6 +1607,8 @@ bool loop()
 				//Grid::low.RenderGrid(Grid::ToRadius(Objects::Satellite::BaseResidenceHeight));
 
 			}
+			if (Camera::SubOrbitalGridIsVisible())
+				Grid::visibleSubOrbitGrid.Render(frustum);
 
 			Objects::Renderer::RenderTranslucent();
 
@@ -1961,6 +1978,15 @@ void MyFatal(const FatalDescriptor&descriptor)
 				}
 			}
 
+			if (Camera::SubOrbitalGridIsVisible())
+			{
+				index_t stackID = Grid::low.TestGridIntersection(b, d, Grid::visibleSubOrbitGrid.orbit, distance);
+				if (stackID != InvalidIndex && Vec::dot(Grid::low.cells[stackID].centerVertex.xyz,d) < 0.f)
+				{
+					result = Grid::LCellIdI((UINT32)stackID,Objects::SubOrbital::Height);
+					return true;
+				}
+			}
 			{
 				TVec3<> normal;
 				if (Grid::high.TestHullIntersection(b, d, distance, normal, includeWater))
@@ -2023,6 +2049,8 @@ void MyFatal(const FatalDescriptor&descriptor)
 			{
 				if (Objects::selectedEntity->IsSatellite())
 					target.height = Objects::selectedMobileEntity->location.height;
+				else if (Objects::selectedEntity->IsPlane())
+					target.height = Objects::SubOrbital::Height;
 
 				if (Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode)
 				{
@@ -2607,6 +2635,9 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 					//Grid::LCellIdI	target((UINT32)cellID,Grid::FromRadius(height));
 					if (Objects::selectedMobileEntity->IsSatellite())
 						target.height = Objects::selectedMobileEntity->location.height;
+					else
+					if (Objects::selectedMobileEntity->IsPlane())
+						target.height = Objects::SubOrbital::Height;
 					DirectTo(Objects::selectedMobileEntity,target,false,false);
 				}
 			}
@@ -2781,6 +2812,22 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 						for (auto other : Objects::satellites)
 							if (!other->isOwnedByMe && v->CanHit(other->location))
 								if (!emp || !other->empDamageLevel)
+									return true;
+					}
+					else
+					if (v->IsPlane())
+					{
+						for (auto other : Objects::SubOrbital::planes)
+							if (!other->isOwnedByMe && v->CanHit(other->location))
+								if (!emp || !other->empDamageLevel)
+									return true;
+						for (auto other : Objects::vehicles)
+							if (!emp || !other->empDamageLevel)
+								if (!other->isOwnedByMe && v->CanHit(other->location))
+									return true;
+						for (auto other : Objects::structures)
+							if (!emp || !other->empDamageLevel)
+								if (!other->isOwnedByMe && v->CanHit(other->location))
 									return true;
 					}
 					else

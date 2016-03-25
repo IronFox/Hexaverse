@@ -395,6 +395,7 @@ namespace Objects
 		virtual bool				IsTower() const {return false;}
 		virtual bool				IsVehicle() const {return false;}
 		virtual bool				IsSatellite() const {return false;}
+		virtual bool				IsPlane() const {return false;}
 		virtual bool				IsStructure() const {return false;}
 		//virtual bool				IsVehiclePlant() const {return false;}
 		//these are performance optimizations. Some visualizations may behave unexpectedly if they are not

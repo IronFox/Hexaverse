@@ -73,6 +73,7 @@ namespace Objects
 			#endif
 
 			bool					IsSatellite() const;
+			bool					IsPlane() const;
 			bool					IsVehicle() const;
 			Component::VehicleBase*	GetVehicleBase() const;
 		};

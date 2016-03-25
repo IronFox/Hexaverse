@@ -5,6 +5,7 @@
 #include "rendering.h"
 #include "vehicle.h"
 #include "satellite.h"
+#include "subOrbital.h"
 #include "systems.h"
 #include "prototypes.h"
 #include "../runtimeConfig.h"
@@ -36,6 +37,19 @@ namespace Objects
 		{
 			ASSERT1__(v->isInserted,v->GetName());
 			ASSERT1__(!v->isInsertedIntoGrid,v->GetName());	//satellites are never inserted into grid
+			ASSERT1__(v->health > 0,v->GetName());
+			ASSERT1__(GetEntity(v->id) == v, v->GetName());
+			ASSERT1__(!storedMobileEntities.Contains(v), v->GetName());
+			ASSERT1__(v->storedIn.expired(), v->GetName());
+			#ifndef CLIENT
+				ASSERT2__(!v->owner->HasMobileInStorage(v),v->GetName(),v->owner->GetName());
+				ASSERT2__(v->owner->HasActiveMobile(v),v->GetName(),v->owner->GetName());
+			#endif
+		}
+		for (const auto&v : SubOrbital::planes)
+		{
+			ASSERT1__(v->isInserted,v->GetName());
+			ASSERT1__(!v->isInsertedIntoGrid,v->GetName());	//planes are never inserted into grid
 			ASSERT1__(v->health > 0,v->GetName());
 			ASSERT1__(GetEntity(v->id) == v, v->GetName());
 			ASSERT1__(!storedMobileEntities.Contains(v), v->GetName());
@@ -1218,6 +1232,22 @@ namespace Objects
 		}
 		else
 		{
+			if (v->IsPlane())
+			{
+				{
+					count_t offset = path.Count();
+					if (!SubOrbital::AppendShortestPathI((const SubOrbital::Plane*)v,prev,target.target.stackID,path))
+						return false;
+					#ifndef CLIENT
+						if (target.isDetailed && path.Count() - offset != 1)
+						{
+							path.Truncate(offset);
+							return false;
+						}
+					#endif
+				}
+			}
+			else
 			if (v->IsSatellite())
 			{
 				//would be faster, but too complicated to extract cost
@@ -1363,6 +1393,14 @@ namespace Objects
 			if (v->IsVehicle())
 			{
 				if (!AppendShortestDirectPath(pointOfOrigin,foci.Peek().target,path,false))
+				{
+					return false;	//this would be weird, but happens
+				}
+			}
+			else
+			if (v->IsPlane())
+			{
+				if (!SubOrbital::AppendShortestDirectPath(pointOfOrigin,foci.Peek().target.stackID,path))
 				{
 					return false;	//this would be weird, but happens
 				}

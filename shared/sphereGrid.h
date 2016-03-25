@@ -2415,7 +2415,7 @@ namespace Grid
 
 	#ifdef CLIENT
 
-		extern OrbitGrid	visibleOrbitGrid;
+		extern OrbitGrid	visibleOrbitGrid,visibleSubOrbitGrid;
 
 	#endif
 }

@@ -8,6 +8,7 @@
 #include "visualSelection.h"
 #include "satellite.h"
 #include "vehicle.h"
+#include "subOrbital.h"
 #include "../sphereGridHelper.h"
 #include "../runtimeConfig.h"
 
@@ -261,7 +262,17 @@ namespace Objects
 									this->skyHubs.erase(sat);
 									break;
 								}
-						}
+					}
+					if (e->IsPlane())
+					{
+						foreach (this->planes,sat)
+							if (sat->lock() == e)
+							{
+								this->planes.erase(sat);
+								break;
+							}
+					}
+
 					return;
 				}
 			}
@@ -299,6 +310,8 @@ namespace Objects
 				if (sat->IsSkyHub())
 					this->skyHubs << To<SkyHub>::Cast(sat);
 			}
+			if (v->IsPlane())
+				this->planes << To<SubOrbital::Plane>::Cast(v);
 		}
 
 		bool		Faction::HasActiveMobile(const PMobileEntity&v) const
@@ -975,6 +988,8 @@ namespace Objects
 			func(e);
 		for (const PMobileEntity&e : satellites)
 			func(e);
+		for (const PMobileEntity&e : SubOrbital::planes)
+			func(e);
 	}
 
 	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func)
@@ -982,6 +997,8 @@ namespace Objects
 		for (const PMobileEntity&e : vehicles)
 			func(e);
 		for (const PMobileEntity&e : satellites)
+			func(e);
+		for (const PMobileEntity&e : SubOrbital::planes)
 			func(e);
 		for (const PMobileEntity&e : storedMobileEntities)
 			func(e);
@@ -995,6 +1012,8 @@ namespace Objects
 		for (const PWorldEntity&e : storedMobileEntities)
 			func(e);
 		for (const PWorldEntity&e : satellites)
+			func(e);
+		for (const PMobileEntity&e : SubOrbital::planes)
 			func(e);
 		for (const PWorldEntity&e : structures)
 			func(e);
@@ -1013,6 +1032,8 @@ namespace Objects
 		for (const PWorldEntity&e : vehicles)
 			func(e);
 		for (const PWorldEntity&e : satellites)
+			func(e);
+		for (const PWorldEntity&e : SubOrbital::planes)
 			func(e);
 		for (const PWorldEntity&e : structures)
 			func(e);
