@@ -100,7 +100,7 @@ namespace Objects
 			#endif
 
 			virtual bool			MotionIgnoresAttack() const override {return true;}
-			virtual float			GetPathSize() const override {return 1.2f;}
+			virtual float			GetPathSize() const override {return 0.6f;}
 			#ifndef CLIENT
 				bool				DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 				MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) override;
@@ -204,6 +204,7 @@ namespace Objects
 					name.set(0, ::Template::tolower(name.firstChar()));
 					name.replace(' ',"");
 					geometry.LoadFromObj(PathString("objects/"+name+".obj"));
+					geometry.Scale(vehicleScale);
 					if (shape.shader.IsEmpty())
 						(DX11::BaseInstructionBlock&)shape = stdVehicleShader;
 					shape.vbo.CreateFromStructs(geometry.GetLOD(0).vertices);
