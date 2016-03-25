@@ -8,6 +8,7 @@
 	#include "visualCommands.h"
 	//#include "gridAndChoices.h"
 	#include "satellite.h"
+	#include "subOrbital.h"
 	#include "faction.h"
 	#include "rendering.h"
 #endif
@@ -270,8 +271,10 @@ namespace Objects
 						cnt = Vehicle::CountTurretOccurrences(overrideOwner,t);
 					elif (IsSatellite())
 						cnt = Satellite::CountTurretOccurrences(overrideOwner,t);
+					elif (IsPlane())
+						cnt = SubOrbital::Plane::CountTurretOccurrences(overrideOwner,t);
 					else
-						FATAL__("Unexpected mobile entity type: "+GetName());
+						FATAL__("Unexpected mobile entity type: "+GetTypeName());
 					limit = RuntimeConfig::UnitLimits::Get(t->constName);
 				}
 				elif (IsStructure())

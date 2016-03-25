@@ -436,6 +436,13 @@ namespace Objects
 						newSel = *v;
 					}
 				}
+				foreach(SubOrbital::planes, v)
+				{
+					if ((*v)->TestIntersection(b, d, distance))
+					{
+						newSel = *v;
+					}
+				}
 				foreach(satellites, v)
 				{
 					if ((*v)->TestIntersection(b, d, distance))
@@ -768,6 +775,7 @@ namespace Objects
 		storedMobileEntities.Clear();
 		satellites.Clear();
 		vehicles.Clear();
+		SubOrbital::planes.Clear();
 		structures.Clear();
 		idMap.Clear();
 		#ifndef ONE_COMPOUND_PER_FACTION

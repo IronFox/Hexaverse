@@ -577,8 +577,9 @@ namespace FileIO
 		}
 		else
 		{
-			Objects::PSatellite proto = Objects::GetSatellitePrototypeByName(helper.baseName);
+			Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(helper.baseName);
 			ASSERT1__(proto,helper.baseName);
+			ASSERT1__(proto->IsMobile(),proto->GetTypeName());
 			item.producing = To<Objects::MobileEntity>::Cast(proto->CreateNewInstance(owner,Grid::LCellIdI(0,0),0));
 		}
 		item.id = helper.id;
