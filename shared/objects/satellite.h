@@ -150,6 +150,7 @@ namespace Objects
 			*/
 			bool				RefreshGroundSensor(float&atTime);
 			bool				AttackNext(Grid::LCellIdI target, bool autoTarget);
+			virtual void		MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/) override;
 		#endif
 
 		#ifdef HAS_WINDOW

@@ -1553,7 +1553,7 @@ namespace Animation
 			//Vec::makeNormalTo(nodes.first().dir,nodes.first().position);
 			Vec::makeNormalTo(nodes.last().dir,nodes.last().position);
 		}
-		if (target->IsVehicle())
+		if (!target->IsSatellite())
 			nodes.first().dir = -target->system.y.xyz;
 		foreach (nodes, n)
 		{
@@ -1611,7 +1611,7 @@ namespace Animation
 			#ifdef HAS_WINDOW
 				const TVec3<> prev = sys.w.xyz;
 			#endif
-			if (!target->IsVehicle())
+			if (target->IsSatellite())
 			{
 				sys.z.xyz = p;
 				Vec::normalize0(sys.z.xyz);

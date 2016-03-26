@@ -4353,6 +4353,7 @@ namespace Grid
 	void		OrbitGrid::ChangeSensory(const LCellIdI&center, float radius, signed char change)
 	{
 		Timer::Time t0 = timer.Now();
+		LogEvent(EventSignificance::Debug,nullptr,"Processing orbital sensor change around center "+center.ToString()+", radius="+String(radius)+", change="+String(change));
 
 		Math::Box<> test;
 		const TVec3<> worldCenter = ToWorld(center);

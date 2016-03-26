@@ -497,7 +497,7 @@ int main(int argc, char* argv[])
 				switch(next)
 				{
 					case 72:
-						if (historyAt)
+						if (historyAt && history.IsNotEmpty())
 						{
 							historyAt--;
 							Console::SetInput(history[historyAt]);

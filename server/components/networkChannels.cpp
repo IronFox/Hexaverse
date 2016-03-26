@@ -174,19 +174,13 @@ namespace Receiver
 			Channels::createStructure.SendTo(peer,st);
 		}
 
-		for (const auto&v : Objects::vehicles)
+		Objects::ForeachMobileWorldEntity([&peer, timestamp](const Objects::PMobileEntity&v)
 		{
 			Protocol::NewMobileEntity st;
 			Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
 			Channels::newMobileEntity.SendTo(peer,st);
-		}
+		});
 
-		for (const auto&v : Objects::satellites)
-		{
-			Protocol::NewMobileEntity st;
-			Game::Network::Describe(st,*v,true,timestamp,0xFFFFFFFF);
-			Channels::newMobileEntity.SendTo(peer,st);
-		}
 
 		{
 			Protocol::ResourceUpdate	package;
