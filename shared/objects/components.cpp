@@ -1582,8 +1582,8 @@ namespace Objects
 		
 				component.weight = 1;	//irrelevant
 				component.healthMultiplier = 1;	//irrelevant
-				component.horizontalAttackRange = 13;
-				component.scanningRange = 13;
+				component.horizontalAttackRange = 9;
+				component.scanningRange = 9;
 				component.groundScanningRange = 10;
 				component.groundScannerPenetration = 2;
 
@@ -1595,6 +1595,7 @@ namespace Objects
 				component.ammoNeedPerShot = 0;//10;
 				component.ammoType = Resource::Uranium;
 				component.requiresStationaryVehicle = false;
+				component.ignoresVehicleMotion = true;
 				component.uplinkTraffic = 10;
 				component.trajectoryType = TrajectoryType::Missile;
 
