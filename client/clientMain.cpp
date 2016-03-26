@@ -1137,7 +1137,9 @@ void	OnAppear(const Objects::PWorldEntity&e)
 				}
 				else
 					if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsPlane())
-						Camera::TargetSubOrbit();
+					{
+					//	Camera::TargetSubOrbit();
+					}
 					else
 						Camera::TargetGroundOrbit();
 
