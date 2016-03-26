@@ -6,6 +6,7 @@
 namespace Objects
 {
 
+	/*static*/ Buffer0<PWorldEntity>	SkyHub::prototypes;
 	Buffer0<PSatellite>	satellites;
 	//bool					satellitesAreLocked = false;
 
@@ -401,6 +402,7 @@ namespace Objects
 
 	/*static*/ void SkyHub::RegisterProduction(const PWorldEntity&s)
 	{
+		prototypes << s;
 		#ifdef HAS_WINDOW
 			//int2 at = AllocateProductionSlot();
 			CallbackCommand::FOnExecute exec = s->IsStructure() 

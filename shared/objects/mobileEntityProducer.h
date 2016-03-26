@@ -135,6 +135,7 @@ namespace Objects
 		//new overriables:
 		virtual void				SignalLastProductionDone() {}
 		virtual void				SignalNewProductionEnqueued() {}
+		virtual bool				CanProduce(const PWorldEntity&proto) const=0;
 
 	};
 
