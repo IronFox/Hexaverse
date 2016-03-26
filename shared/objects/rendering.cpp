@@ -1866,41 +1866,24 @@ namespace Objects
 
 	}
 
-	void	Renderer::RenderTranslucentBeams()
+	namespace Renderer
 	{
-	/*	if (!objectView)
-			return;
-	*/	
-
-		display.SetRasterizer(true,false);	//some shafts are flipped, but culling makes no sense anyways
-		display.SetDepthTest(true,false);
-		display.SetBlendMode(Engine::BlendMode::Add);
-
-		foreach (satellites,_s)
+		void RenderFlyingUnitBeams(const Objects::PMobileEntity&e)
 		{
-			const PSatellite&sat = *_s;
-			TVec3<> color;
-			if (sat->isOwnedByMe)
-			{
-				color= float3(0.5,0.6,1.0);
-			}
-			else
-			{
-				color= float3(1.0,0.6,0.5);
-			}
+			TVec3<> color = e->owner ? e->owner->activeEntityColor : float3();
 			SetBeamColor(float4(color,0.25),
 						float4(color,0.25));
 			const float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
 			{
 				//display.SetBlendMode(Engine::BlendMode::Add);
-				RenderBeam(sat->GetWorldPosition(),-(Grid::ToRadius(sat->location.height) 
+				RenderBeam(e->GetWorldPosition(),-(Grid::ToRadius(e->location.height) 
 								- bottom) /
 								Grid::SingleLayerHeight,
 								0.1f
 								);
 			}
 			bool first = true;
-			for (const auto&t : sat->myTasks)
+			for (const auto&t : e->myTasks)
 			{
 				if (t.ContainsMovement())
 				{
@@ -1918,11 +1901,27 @@ namespace Objects
 										Grid::SingleLayerHeight,
 										0.05f);
 					}
-
 				}
 			}
 		}
+	}
 
+	void	Renderer::RenderTranslucentBeams()
+	{
+	/*	if (!objectView)
+			return;
+	*/	
+
+		display.SetRasterizer(true,false);	//some shafts are flipped, but culling makes no sense anyways
+		display.SetDepthTest(true,false);
+		display.SetBlendMode(Engine::BlendMode::Add);
+		
+		foreach (satellites,_s)
+			RenderFlyingUnitBeams(*_s);
+		foreach (SubOrbital::planes,_p)
+			RenderFlyingUnitBeams(*_p);
+
+		
 		bool nexusSet[12] = {false};
 
 		foreach(skyLinks, _s)
