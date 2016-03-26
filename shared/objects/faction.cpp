@@ -529,30 +529,52 @@ namespace Objects
 			visibility.ChangeSensory(state, t, change);
 		}
 
-
-		count_t		Faction::CountSatelliteCoverage(const TVec3<>&center)	const
+		template <typename T>
+		count_t		CountRawSensorCoverage(const TVec3<>&center, const BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
-			foreach (satellites,s)
+			foreach (scope,s)
 			{
-				PSatellite sat = s->lock();
+				auto sat = s->lock();
 				if (sat && Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Contains(center))
 					rs++;
 			}
 			return rs;
 		}
 
-		count_t		Faction::CountSatelliteCoverage(const Sphere<>&sphere)	const
+		template <typename T>
+		count_t		CountRawSensorCoverage(const Sphere<>&sphere, const BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
-			foreach (satellites,s)
+			foreach (scope,s)
 			{
-				PSatellite sat = s->lock();
+				auto sat = s->lock();
 				if (sat && Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Intersects(sphere))
 					rs++;
 			}
 			return rs;
 		}
+
+		count_t		Faction::CountSatelliteCoverage(const TVec3<>&center)	const
+		{
+			return CountRawSensorCoverage(center,satellites);
+		}
+
+		count_t		Faction::CountSatelliteCoverage(const Sphere<>&sphere)	const
+		{
+			return CountRawSensorCoverage(sphere,satellites);
+		}
+
+		count_t		Faction::CountPlaneCoverage(const TVec3<>&center)	const
+		{
+			return CountRawSensorCoverage(center,planes);
+		}
+
+		count_t		Faction::CountPlaneCoverage(const Sphere<>&sphere)	const
+		{
+			return CountRawSensorCoverage(sphere,planes);
+		}
+
 
 
 		void		Faction::CheckGridVisibility(const PWorldEntity&e,float&timeAt)
@@ -570,6 +592,15 @@ namespace Objects
 						seeing[e].sightLevel = cover;
 				}
 				else
+				if (e->IsPlane())
+				{
+					count_t cover = CountPlaneCoverage(e->GetWorldPosition());
+					if (cover == 0)
+						SignalDisappearance(e,timeAt,true);
+					else
+						seeing[e].sightLevel = cover;
+				}
+				else
 					if (!GridCanSee(e))
 					{
 						SignalDisappearance(e,timeAt,true);
@@ -580,6 +611,13 @@ namespace Objects
 				if (e->IsSatellite())
 				{
 					count_t cover = CountSatelliteCoverage(e->GetWorldPosition());
+					if (cover > 0)
+						SignalAppearance(e,timeAt,true,false,cover);
+				}
+				else
+				if (e->IsPlane())
+				{
+					count_t cover = CountPlaneCoverage(e->GetWorldPosition());
 					if (cover > 0)
 						SignalAppearance(e,timeAt,true,false,cover);
 				}

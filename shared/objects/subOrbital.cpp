@@ -37,6 +37,7 @@ namespace Objects
 				#ifdef CLIENT
 					if (isOwnedByMe)
 					{
+						LogEvent(EventSignificance::Debug,this,"Registering sky sensory centered on "+loc.ToString()+", range="+String(range));
 						Grid::actualWorld.InsertSensorCoverage(skySensorState);
 					}
 				#else
@@ -57,6 +58,7 @@ namespace Objects
 				#ifdef CLIENT
 					if (isOwnedByMe)
 					{
+						LogEvent(EventSignificance::Debug,this,"Unregistering sky sensory, hopefully centered on "+loc.ToString());
 						Grid::actualWorld.RemoveSensorCoverage(skySensorState);
 					}
 				#else
@@ -65,31 +67,6 @@ namespace Objects
 			}
 		}
 
-		#ifndef CLIENT
-
-
-			bool					Plane::RefreshGroundSensor(float&atTime)
-			{
-				if (turret->groundScanningRange > 0.f)
-				{
-					Grid::SkySensorState state = skySensorState;
-					if (Grid::actualWorld.UpdateSensorState(skySensorState))
-					{
-						LogEvent(EventSignificance::Common,this,"Ground-sensor change detected");
-
-						owner->RegisterSensorCreation(skySensorState,atTime,false);
-						atTime += timeEpsilon;
-						owner->RegisterSensorRemoval(state,atTime,true);
-						atTime += timeEpsilon;
-						return true;
-					}
-
-				}
-				return false;
-			}
-
-
-		#endif
 
 		
 		#ifdef HAS_WINDOW
@@ -196,7 +173,47 @@ namespace Objects
 
 
 		#ifndef CLIENT
+			bool					Plane::RefreshGroundSensor(float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
+			{
+				if (turret->groundScanningRange > 0.f)
+				{
+					Grid::SkySensorState state = skySensorState;
+					if (Grid::actualWorld.UpdateSensorState(skySensorState))
+					{
+						LogEvent(EventSignificance::Common,this,"Ground-sensor change detected");
 
+						owner->RegisterSensorCreation(skySensorState,atTime,false, newContacts);
+						atTime += timeEpsilon;
+						owner->RegisterSensorRemoval(state,atTime,checkChangesNow);
+						atTime += timeEpsilon;
+						return true;
+					}
+
+				}
+				return false;
+			}
+
+			/*virtual override*/ void		Plane::MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
+			{
+				if (oldLocation == newLocation)
+					return;
+				Super::RegisterSensory(location,motionTime,false,newContacts);
+				Super::UnregisterSensory(oldLocation,motionTime,false);
+				if (turret->groundScanningRange > 0)
+				{
+					ASSERT__(newLocation == location);
+					Grid::SkySensorState state = skySensorState;
+					LogEvent(EventSignificance::Common,this,"Processing ground-sensor motion");
+					float range = EMPModify(turret->groundScanningRange,2);
+					Grid::actualWorld.MapSensorState(newLocation.stackID,range,newLocation.height,turret->groundScannerPenetration,skySensorState);
+					Grid::actualWorld.UpdateSensorState(skySensorState);
+
+					owner->RegisterSensorCreation(skySensorState,atTime,false, newContacts);
+					atTime += timeEpsilon;
+					owner->RegisterSensorRemoval(state,atTime,checkChangesNow);
+					atTime += timeEpsilon;
+				}
+			}
 
 
 			/*virtual override*/ bool		Plane::ProcessRound(float&atTime)

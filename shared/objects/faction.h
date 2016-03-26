@@ -327,6 +327,8 @@ namespace Objects
 
 			count_t		CountSatelliteCoverage(const TVec3<>&center)	const;
 			count_t		CountSatelliteCoverage(const Sphere<>&)	const;
+			count_t		CountPlaneCoverage(const TVec3<>&center)	const;
+			count_t		CountPlaneCoverage(const Sphere<>&)	const;
 
 			/**
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater

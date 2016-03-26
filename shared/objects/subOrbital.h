@@ -61,8 +61,8 @@ namespace Objects
 				Adjust to ground changes. Should be called once per round to account for 
 				@return true, if changes were detected and applied, false otherwise
 				*/
-				bool				RefreshGroundSensor(float&atTime);
 				bool				AttackNext(Grid::LCellIdI target, bool autoTarget);
+				bool				RefreshGroundSensor(float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
 			#endif
 
 			//new overridables:
@@ -90,6 +90,9 @@ namespace Objects
 
 			virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr) override;
 			virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true) override;
+			#ifndef CLIENT
+				virtual void		MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/) override;
+			#endif
 
 			//MobileEntity overrides:
 			#ifndef ONE_COMPOUND_PER_FACTION

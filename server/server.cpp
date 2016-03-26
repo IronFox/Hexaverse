@@ -486,7 +486,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 
 		Objects::ForeachFaction([explosionSphere](const Objects::PFaction&f)
 		{
-			if (f->GridCanSee(volume) || f->CountSatelliteCoverage(explosionSphere))
+			if (f->GridCanSee(volume) || f->CountSatelliteCoverage(explosionSphere) || f->CountPlaneCoverage(explosionSphere))
 			{
 				canSee.Append(f);
 			};
