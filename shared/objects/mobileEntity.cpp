@@ -411,8 +411,7 @@ namespace Objects
 
 				static Buffer0<PWorldEntity> newContacts;
 				newContacts.Clear();
-				this->RegisterSensory(location,motionTime,false,&newContacts);
-				this->UnregisterSensory(oldLocation,motionTime,true);
+				this->MoveSensory(oldLocation,location,motionTime,true,&newContacts);
 				foreach (newContacts,c)
 				{
 					float zOffset;
