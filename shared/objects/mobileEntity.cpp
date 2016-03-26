@@ -505,6 +505,8 @@ namespace Objects
 				{
 					if (doBreak)
 						return;
+					if (f == owner)
+						return;
 					if (!f->CanSee(_this,motionTime))
 						return;
 					Grid::LCellIdI loc;
