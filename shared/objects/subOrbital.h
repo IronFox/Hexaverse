@@ -254,7 +254,9 @@ namespace Objects
 									GetTurretType() const override	{return &Component::SubOrbital::raptor;}
 
 			//WorldEntity overrides:
-			virtual int				GetConstructionCost() const override {return 15;}
+			virtual int				GetConstructionCost() const override {return 80;}
+			virtual int				GetMaxHealth() const {return 5;}
+
 			#ifndef NO_HIBERNATION
 				virtual int			GetUplinkTraffic() const override {return 4;}
 			#endif
