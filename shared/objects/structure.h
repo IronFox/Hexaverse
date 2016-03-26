@@ -1018,6 +1018,7 @@ namespace Objects
 		/**/						PlaneFactory(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), MobileEntityProducer(ConstructionSpeed){MobileEntityProducer::SetCommandOffset(int2(3,1));}
 	public:
 		static const int			ConstructionSpeed = 20;
+		static const int			FuelDemand = 20;
 		static const int			EnergyConsumption = 20;
 
 		static Buffer0<ConstName>	prototypes;

@@ -1957,8 +1957,8 @@ namespace Objects
 	/*virtual override*/ void		PlaneFactory::GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&)	const
 	{
 		v.level[Resource::Energy] = -EnergyConsumption;
-		if (MobileEntityProducer::queue.IsNotEmpty())
-			v.level[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;
+		v.level[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;
+		v.level[Resource::Fuel] = -FuelDemand;
 	}
 
 
@@ -1974,8 +1974,6 @@ namespace Objects
 		v.level[Resource::Energy] = -EnergyConsumption;
 		if (MobileEntityProducer::queue.IsNotEmpty())
 			v.level[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;
-
-
 	}
 
 
@@ -2047,7 +2045,7 @@ namespace Objects
 		/*virtual override*/ void				PlaneFactory::Tick(ResourceVector&v)
 		{
 			v.level[Resource::Energy] -= EnergyConsumption;
-
+			v.level[Resource::Fuel] -= FuelDemand;
 			MobileEntityProducer::Tick(v);
 		}
 
