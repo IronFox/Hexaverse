@@ -360,7 +360,7 @@ namespace Objects
 
 	class SkyHub : public SatelliteTemplate<SkyHub>, public MobileEntityProducer
 	{
-		static Buffer0<PWorldEntity>	prototypes;
+		static Buffer0<ConstName>	supportsProduction;
 	protected:
 		typedef SatelliteTemplate<SkyHub>	Super;
 		friend class Super;
@@ -375,7 +375,7 @@ namespace Objects
 		static int2				AllocateProductionSlot();
 
 		static void				RegisterProduction(const PWorldEntity&);
-		virtual bool			CanProduce(const PWorldEntity&e) const override {return prototypes.Contains(e);}
+		virtual bool			CanProduce(const PWorldEntity&e) const override {return supportsProduction.Contains(e->GetCTypeName());}
 
 		#ifdef HAS_WINDOW
 
