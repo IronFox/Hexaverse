@@ -96,7 +96,7 @@ namespace Objects
 
 				outResult.MarkBriefEnd();
 				outResult<<"";
-				outResult<< "Sub orbital planes hover high above the surface on a singular residual height level."
+				outResult<< "Sub orbital planes move above the regular terrain. They can scan the surface, and are invisible to ordinary radar."
 					;
 			}
 		
