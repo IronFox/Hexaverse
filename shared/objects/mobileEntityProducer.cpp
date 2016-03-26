@@ -344,7 +344,7 @@ namespace Objects
 			if (!CanProduce(e))
 			{
 				WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
-				LogEvent(EventClass::Preset::commandRejected,parent,"Cannot produce "+e->GetName());
+				LogEvent(EventClass::Preset::commandRejected,parent,"Cannot produce "+e->GetTypeName());
 				return nullptr;
 			}
 			index_t index = std::min(at,queue.Count());
