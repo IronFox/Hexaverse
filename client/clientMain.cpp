@@ -2570,7 +2570,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 					}
 					if (Objects::selectedEntity->IsTower())
 					{
-						if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
+						if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,true))
 						{
 							DirectTo(Objects::selectedEntity,target,false,true,Objects::CursorMode::AttackMode);
 							return;
