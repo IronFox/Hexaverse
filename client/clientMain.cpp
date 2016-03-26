@@ -2051,7 +2051,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 			{
 				if (Objects::selectedEntity->IsSatellite())
 					target.height = Objects::selectedMobileEntity->location.height;
-				else if (Objects::selectedEntity->IsPlane())
+				else if (Objects::selectedEntity->IsPlane() && Objects::activeCursorMode != Objects::CursorMode::AttackMode)
 					target.height = Objects::SubOrbital::Height;
 
 				if (Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode)
