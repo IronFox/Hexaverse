@@ -59,7 +59,7 @@ namespace Objects
 	PMobileEntity	GetMobileEntity(const Grid::LCellIdU&cellID);
 	namespace SubOrbital
 	{
-		PPlane		GetPlane(UINT32 stackID);
+		PPlane		GetPlane(UINT32 stackID, bool airBorneOnly);
 	}
 
 
@@ -77,11 +77,11 @@ namespace Objects
 	{
 
 		bool AppendShortestPath(const Plane*sat, const Grid::LCellIdI&from,
-								const UINT32 to, BasicBuffer<PathNode>&oPath,
+								const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath,
 								bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
 
 		bool AppendShortestPathI(const Plane*sat, const Grid::LCellIdI&from,
-								const UINT32 to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
+								const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
 		bool AppendShortestDirectPath(const Grid::LCellIdI&from, const UINT32 to, BasicBuffer<PathNode>&oPath);
 
 	}

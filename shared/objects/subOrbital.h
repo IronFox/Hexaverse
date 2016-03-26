@@ -7,6 +7,7 @@
 #include "mobileEntity.h"
 #include "interface.h"
 #include "mobileEntityProducer.h"
+#include "vehicle.h"
 
 namespace Objects
 {
@@ -19,11 +20,11 @@ namespace Objects
 		static const int			Height = Grid::CellStack::TopHeight +2;
 		static const UINT			Layer = (UINT)(Height + Grid::CellStack::HalfRange);
 
-		class Plane : public MobileEntity
+		class Plane : public Vehicle
 		{
 		protected:
-			typedef MobileEntity	Super;
-			/**/					Plane(const OwnerParameter&owner, Component::Turret*turret, const Grid::LCellIdI&location):Super(owner,turret,location)
+			typedef Vehicle			Super;
+			/**/					Plane(const OwnerParameter&owner, Component::Turret*turret, const Grid::LCellIdI&location):Super(owner,location,&Component::SubOrbital::planeBase,turret)
 									{}
 
 			struct Detail
@@ -256,6 +257,8 @@ namespace Objects
 			//WorldEntity overrides:
 			virtual int				GetConstructionCost() const override {return 80;}
 			virtual int				GetMaxHealth() const {return 5;}
+			virtual bool			IsVehicle() const {return location.height <= Grid::CellStack::TopHeight;}	//landed
+			virtual bool			IsPureVehicle() const override {return false;}
 
 			#ifndef NO_HIBERNATION
 				virtual int			GetUplinkTraffic() const override {return 4;}

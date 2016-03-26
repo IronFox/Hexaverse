@@ -49,7 +49,12 @@ namespace Objects
 		for (const auto&v : SubOrbital::planes)
 		{
 			ASSERT1__(v->isInserted,v->GetName());
-			ASSERT1__(!v->isInsertedIntoGrid,v->GetName());	//planes are never inserted into grid
+			if (v->location.height > Grid::CellStack::TopHeight)
+			{
+				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());	//non-landed planes are never inserted into grid
+			}
+			else
+				ASSERT1__(v->isInsertedIntoGrid,v->GetName());
 			ASSERT1__(v->health > 0,v->GetName());
 			ASSERT1__(GetEntity(v->id) == v, v->GetName());
 			ASSERT1__(!storedMobileEntities.Contains(v), v->GetName());
@@ -904,7 +909,10 @@ namespace Objects
 		bool			MobileEntity::PlotCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/)
 		{
 			const Grid::WorldData&world = owner->currentState;
-			if (IsVehicle())
+
+			const Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
+			
+			if (IsPureVehicle())
 			{
 				for (index_t i = 0; i < destination.length(); i++)
 				{
@@ -919,7 +927,6 @@ namespace Objects
 				}
 			}
 
-			Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 
 			while (destination.IsNotEmpty() && destination.First() == pointOfOrigin)
 			{
@@ -929,6 +936,9 @@ namespace Objects
 			{
 				return false;
 			}
+
+
+
 
 			if (!HasTasks() || myTasks.GetNewest().type != Task::MoveTo)
 			{
@@ -1007,7 +1017,7 @@ namespace Objects
 		{
 			const Grid::WorldData&world = owner->currentState;
 
-			if (IsVehicle())
+			if (IsPureVehicle())
 			{
 				for (auto&dest : destination)
 				{
@@ -1207,7 +1217,9 @@ namespace Objects
 
 	bool	MobileEntity::Task::AppendPathSegment(const MobileEntity*v, const Grid::LCellIdI&prev, const Task::Focus&target)
 	{
-		if (v->IsVehicle())
+
+
+		if (v->IsPureVehicle())
 		{
 			//would be faster, but too complicated to extract cost
 			//if (target.isExplicit)
@@ -1237,7 +1249,7 @@ namespace Objects
 			{
 				{
 					count_t offset = path.Count();
-					if (!SubOrbital::AppendShortestPathI((const SubOrbital::Plane*)v,prev,target.target.stackID,path))
+					if (!SubOrbital::AppendShortestPathI((const SubOrbital::Plane*)v,prev,target.target,path))
 						return false;
 					#ifndef CLIENT
 						if (target.isDetailed && path.Count() - offset != 1)

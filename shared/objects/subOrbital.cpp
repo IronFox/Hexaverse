@@ -221,9 +221,9 @@ namespace Objects
 				return true;
 			}
 
-			/*virtual override*/ MobilePlacementResult	Plane::PlaceExactlyAt(const Grid::LCellIdI&_cell, float timeCost, float minTimeOffset, bool signalEvent/*=true*/, bool isCreated/*=true*/, bool failIsFatal/*=false*/)
+			/*virtual override*/ MobilePlacementResult	Plane::PlaceExactlyAt(const Grid::LCellIdI&cell, float timeCost, float minTimeOffset, bool signalEvent/*=true*/, bool isCreated/*=true*/, bool failIsFatal/*=false*/)
 			{
-				UINT32 cell = _cell.stackID;
+			//	UINT32 cell = _cell.stackID;
 				if (health <= 0)
 				{
 					if (failIsFatal)
@@ -236,15 +236,37 @@ namespace Objects
 			
 				//VerifyVisibilityNetwork();
 				SyncTime(minTimeOffset);
-
-				if (location.stackID != cell) 
+				
+				if (cell.height <= Grid::CellStack::TopHeight && !Grid::actualWorld.LowCellIsClear(cell))
 				{
-					PPlane v = GetPlane(cell);
+					PHangarStructure s = MobileDestinationStructureHere(cell,*this);
+					if (s)
+					{
+						PVehicleStore st = To<VehicleStore>::DynamicCast(s);
+						ASSERT1__(st,s->ToEntity().GetName());
+						if (st && st->StoreInPark(To<Vehicle>::Cast(shared_from_this()),motionTime))
+						{
+							return MobilePlacementResult::EnteredStructure;
+						}
+					}
+					if (failIsFatal)
+					{
+						PStructure st = GetStructure(cell);
+						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure "+(st ? st->GetName(): "<>")+": "+Grid::actualWorld.LowCellReport(cell));
+						FATAL__("Critical abort");
+					}
+
+					return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
+				}
+
+				if (location != cell) 
+				{
+					PMobileEntity v = GetMobileEntity(cell);
 					if (v)
 					{
 						if (failIsFatal)
 						{
-							LogEvent(EventClass::Preset::fatal,this,"Target cell ("+String(cell)+") is obstructed by plane");
+							LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by "+v->GetName());
 							FATAL__("Critical abort");
 						}
 						if (!v->HasMotionTasks() || v->ConstructingHere(v->location))
@@ -259,13 +281,18 @@ namespace Objects
 					bool hadTasks = HasTasks();
 				#endif
 			
-				location = _cell;
+				location = cell;
 	
 				MobilePlacementResult result = MobilePlacementResult::PlacementOkay;
 				if (old != location)
 				{
 					if (isCreated)
 					{
+						if (old.height != Height)
+							RemoveVehicleFromGrid(To<Vehicle>::Cast(shared_from_this()),old);
+						if (location.height != Height)
+							InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
+
 						if (constructionRoundCounter)
 						{
 							constructionRoundCounter = 0;

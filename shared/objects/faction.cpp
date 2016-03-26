@@ -592,7 +592,7 @@ namespace Objects
 						seeing[e].sightLevel = cover;
 				}
 				else
-				if (e->IsPlane())
+				if (e->IsPlane() && !e->IsVehicle())
 				{
 					count_t cover = CountPlaneCoverage(e->GetWorldPosition());
 					if (cover == 0)
@@ -615,7 +615,7 @@ namespace Objects
 						SignalAppearance(e,timeAt,true,false,cover);
 				}
 				else
-				if (e->IsPlane())
+				if (e->IsPlane() && !e->IsVehicle())
 				{
 					count_t cover = CountPlaneCoverage(e->GetWorldPosition());
 					if (cover > 0)

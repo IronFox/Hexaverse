@@ -394,6 +394,7 @@ namespace Objects
 		virtual bool				IsMobile() const {return false;}
 		virtual bool				IsTower() const {return false;}
 		virtual bool				IsVehicle() const {return false;}
+		virtual bool				IsPureVehicle() const {return false;}
 		virtual bool				IsSatellite() const {return false;}
 		virtual bool				IsPlane() const {return false;}
 		virtual bool				IsStructure() const {return false;}

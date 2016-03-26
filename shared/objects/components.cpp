@@ -11,6 +11,7 @@
 #include "visualChoices.h"
 #include "rendering.h"
 #include "satellite.h"
+#include "subOrbital.h"
 #include "gridAndChoices.h"
 #include "../runtimeConfig.h"
 
@@ -34,6 +35,7 @@ namespace Objects
 		namespace SubOrbital
 		{
 			Turret		raptor;
+			VehicleBase	planeBase;
 		}
 
 
@@ -1556,15 +1558,69 @@ namespace Objects
 
 		namespace SubOrbital
 		{
+			namespace Base
+			{
+				void	Configure(VehicleBase&component)
+				{
+					component.height = 0;	//for now, maybe forever
 
-	
+					//MakeBox(component.parts.first().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
+					component.typeName = "Plane";
+					component.shortName = "Plane";
+					component.constName = ConstName::VehicleBase_Plane;
+
+					component.productionCosts = 40;
+					component.requirements = VehicleBase::Requirement::AnyBlock;
+					component.moveOnWater = true;
+					component.minClimbDown = -1;	//-int(Grid::CellStack::Range);
+					#ifndef ONE_COMPOUND_PER_FACTION
+						component.storageMultiplier = 1;
+					#endif
+
+					component.baseMovementSpeed = 0;
+					component.carryingCapacity = 1;
+					component.baseHealth = 1;
+
+
+					component.FinishCreation();
+
+					#ifdef CLIENT	
+						component.height *= vehicleScale;
+					#endif
+				}
+			}
+
+			#ifdef HAS_WINDOW
+			namespace Cmd
+			{
+				void	Land()
+				{
+					if (!selectedMobileEntity || !selectedMobileEntity->IsPlane() || selectedMobileEntity->GetLastPointOfOrigin().height <= Grid::CellStack::TopHeight)
+						return;
+					Objects::SubOrbital::PPlane plane = To<Objects::SubOrbital::Plane>::Cast(selectedMobileEntity);
+					auto loc = plane->GetLastPointOfOrigin();
+					int h = plane->GetLandingHeight(loc);
+					if (h != badHeight)
+						DirectTo(selectedMobileEntity,Grid::LCellIdI(loc.stackID,h),false,false);
+				}
+
+				void	TakeOff()
+				{
+					if (!selectedMobileEntity || !selectedMobileEntity->IsPlane() || selectedMobileEntity->GetLastPointOfOrigin().height > Grid::CellStack::TopHeight)
+						return;
+					DirectTo(selectedMobileEntity,Grid::LCellIdI(selectedMobileEntity->GetLastPointOfOrigin().stackID,Objects::SubOrbital::Height),false,false);
+				}
+			}
+			#endif
+
 			void			Raptor::Configure(Turret&component)
 			{
 				#ifdef HAS_WINDOW		
 					CellCoords offset = ConfigureStandardCommands(component);
 
 					component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
-
+					component.commands.Add( new IconCommand("Take Off",&Cmd::TakeOff, &CommonCmd::CommonButtonCheck,NoCosts));
+					component.commands.Add( new IconCommand("Land",&Cmd::Land, &CommonCmd::CommonButtonCheck,NoCosts));
 					//component.parts.setSize(1);
 					//component.parts.first().first.LoadFromObj("objects/skyGuardianRing.obj");
 				#endif

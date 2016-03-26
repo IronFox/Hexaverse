@@ -267,12 +267,12 @@ namespace Objects
 				if (IsMobile())
 				{
 					Component::Turret* t = ((const MobileEntity*)this)->turret;
-					if (IsVehicle())
+					if (IsPlane())
+						cnt = SubOrbital::Plane::CountTurretOccurrences(overrideOwner,t);
+					elif (IsVehicle())
 						cnt = Vehicle::CountTurretOccurrences(overrideOwner,t);
 					elif (IsSatellite())
 						cnt = Satellite::CountTurretOccurrences(overrideOwner,t);
-					elif (IsPlane())
-						cnt = SubOrbital::Plane::CountTurretOccurrences(overrideOwner,t);
 					else
 						FATAL__("Unexpected mobile entity type: "+GetTypeName());
 					limit = RuntimeConfig::UnitLimits::Get(t->constName);

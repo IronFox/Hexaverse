@@ -37,7 +37,7 @@ namespace Objects
 		/**/					Vehicle(const OwnerParameter&owner, const Grid::LCellIdI&location, Component::VehicleBase*base, Component::Turret*turret) :
 									MobileEntity(owner,turret,location),base(base)
 								{
-									ASSERT__(base); ASSERT__(turret); ASSERT__(turret->mountType == Component::Turret::MountType::Vehicle);
+									ASSERT__(base); ASSERT__(turret); //ASSERT__(turret->mountType == Component::Turret::MountType::Vehicle);
 								}
 
 		Component::VehicleBase*	base;
@@ -153,6 +153,7 @@ namespace Objects
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = base->height; return To<Vehicle>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = base->height; return To<const Vehicle>::Cast(shared_from_this());}
 		virtual bool			IsVehicle() const override {return true;}
+		virtual bool			IsPureVehicle() const override {return true;}
 		#ifdef HAS_WINDOW
 			virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
 			virtual float		GetSoundLevel() const {return GetActivityLevel()*0.25f;}	//save 75% for motion

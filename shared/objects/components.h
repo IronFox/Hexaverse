@@ -489,6 +489,7 @@ namespace Objects
 		namespace SubOrbital
 		{
 			extern Turret	raptor;
+			extern VehicleBase	planeBase;
 		}
 
 	
@@ -567,12 +568,23 @@ namespace Objects
 
 		namespace SubOrbital
 		{
+			#ifdef HAS_WINDOW
+			namespace Cmd
+			{
+				void	Land();
+				void	TakeOff();
+			}
+			#endif
+
 			namespace Raptor
 			{
 				void	Configure(Turret&);
 			};
 
-
+			namespace Base
+			{
+				void	Configure(VehicleBase&);
+			}
 		}
 
 	

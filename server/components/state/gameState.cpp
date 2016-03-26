@@ -176,7 +176,7 @@ namespace Game
 
 		void	Describe(Protocol::ProductionTask&task, const Objects::MobileEntityProducer::WorkItem&element)
 		{
-			if (element.producing->IsVehicle())
+			if (element.producing->IsPureVehicle())
 			{
 				Objects::PVehicle v = To<Objects::Vehicle>::Cast(element.producing);
 				task.parameters.SetSize(2);
@@ -339,7 +339,7 @@ namespace Game
 
 		void	Describe(Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
 		{
-			if (v.IsVehicle())
+			if (v.IsPureVehicle())
 			{
 				const Objects::Vehicle&veh = (const Objects::Vehicle&)v;
 				cnst.baseName = veh.base->constName;

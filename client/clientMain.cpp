@@ -259,14 +259,17 @@ bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 		bool tooLong;
 		bool foundPath;
 
-		if (v->IsVehicle())
+		if (v->IsPlane())
 		{
-			foundPath = Objects::AppendShortestPathI((const Objects::Vehicle*)v.get(),prev,target,path,false,&tooLong);
+			//if (prev.stackID == target.stackID)
+			foundPath = true;
+			tooLong = false;
+			//Objects::SubOrbital::AppendShortestPathI((const Objects::SubOrbital::Plane*)v.get(),prev,target.stackID,path,false,&tooLong);
 		}
+		else if (v->IsVehicle())
+			foundPath = Objects::AppendShortestPathI((const Objects::Vehicle*)v.get(),prev,target,path,false,&tooLong);
 		else if (v->IsSatellite())
-				foundPath = Objects::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
-		else if (v->IsPlane())
-				foundPath = Objects::SubOrbital::AppendShortestPathI((const Objects::SubOrbital::Plane*)v.get(),prev,target.stackID,path,false,&tooLong);
+			foundPath = Objects::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
 		else
 			FATAL__("Routing not implemented for "+v->GetTypeName());
 		
@@ -327,8 +330,11 @@ bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targ
 		else
 		if (v->IsPlane())
 		{
-			foreach (targets,t)
-				ASSERT_EQUAL__(t->height,Objects::SubOrbital::Height);
+			if (targets.Count() != 1 || targets.First().stackID != To<Objects::SubOrbital::Plane>::Cast(v)->GetLastPointOfOrigin().stackID)
+			{
+				foreach (targets,t)
+					ASSERT_EQUAL__(t->height,Objects::SubOrbital::Height);
+			}
 		}
 	}
 

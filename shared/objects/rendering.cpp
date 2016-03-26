@@ -1144,20 +1144,19 @@ namespace Objects
 				Renderer::Render(*struc);
 			}
 			else
-				if (selectedVehicle)
-					Renderer::Render(*selectedVehicle,GetLowLighting(selectedEntity->location));
-				else
-					if (selectedMobileEntity)
-					{
-						if (selectedMobileEntity->IsSatellite())
-							Renderer::Render(*To<Satellite>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
-						elif (selectedMobileEntity->IsPlane())
-							Renderer::Render(*To<SubOrbital::Plane>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
-						else
-							FATAL__("Can't render this: "+selectedEntity->GetName());
-					}
+				if (selectedMobileEntity)
+				{
+					if (selectedMobileEntity->IsPlane())
+						Renderer::Render(*To<SubOrbital::Plane>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
+					elif (selectedVehicle)
+						Renderer::Render(*selectedVehicle,GetLowLighting(selectedEntity->location));
+					elif (selectedMobileEntity->IsSatellite())
+						Renderer::Render(*To<Satellite>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
 					else
 						FATAL__("Can't render this: "+selectedEntity->GetName());
+				}
+				else
+					FATAL__("Can't render this: "+selectedEntity->GetName());
 
 			if (GatheringPoint::selected != Grid::LCellIdI::Invalid)
 			{
@@ -1435,21 +1434,21 @@ namespace Objects
 		foreach(Marker::mobileGhosts, _v)
 		{
 			const PMobileEntity&m = *_v;
-			if (m->IsVehicle())
+			if (m->IsPlane())
 			{
-				PVehicle v = To<Vehicle>::Cast(m);
-				Renderer::RenderSimple(*v);
+				SubOrbital::PPlane s = To<SubOrbital::Plane>::Cast(m);
+				Renderer::RenderSimple(*s);
 			}
 			else
-				if (m->IsSatellite())
+				if (m->IsVehicle())
 				{
-					PSatellite s = To<Satellite>::Cast(m);
-					Renderer::RenderSimple(*s);
+					PVehicle v = To<Vehicle>::Cast(m);
+					Renderer::RenderSimple(*v);
 				}
 				else
-					if (m->IsPlane())
+					if (m->IsSatellite())
 					{
-						SubOrbital::PPlane s = To<SubOrbital::Plane>::Cast(m);
+						PSatellite s = To<Satellite>::Cast(m);
 						Renderer::RenderSimple(*s);
 					}
 					else
@@ -1469,21 +1468,21 @@ namespace Objects
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
 				overallTint.Update(float4(1, 0, 0, 1));
-			if (m->IsVehicle())
+			if (m->IsPlane())
 			{
-				PVehicle v = To<Vehicle>::Cast(m);
-				Renderer::RenderSimple(*v);
+				SubOrbital::PPlane s = To<SubOrbital::Plane>::Cast(m);
+				Renderer::RenderSimple(*s);
 			}
 			else
-				if (m->IsSatellite())
+				if (m->IsVehicle())
 				{
-					PSatellite s = To<Satellite>::Cast(m);
-					Renderer::RenderSimple(*s);
+					PVehicle v = To<Vehicle>::Cast(m);
+					Renderer::RenderSimple(*v);
 				}
 				else
-					if (m->IsPlane())
+					if (m->IsSatellite())
 					{
-						SubOrbital::PPlane s = To<SubOrbital::Plane>::Cast(m);
+						PSatellite s = To<Satellite>::Cast(m);
 						Renderer::RenderSimple(*s);
 					}
 					else

@@ -207,6 +207,7 @@ namespace Objects
 			Hoverbase::Configure(hoverbase);
 			Heavybase::Configure(heavybase);
 			Catbase::Configure(catbase);
+			SubOrbital::Base::Configure(SubOrbital::planeBase);
 
 
 			SubOrbital::Raptor::Configure(SubOrbital::raptor);

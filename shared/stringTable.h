@@ -28,7 +28,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	VehicleBase_HeavyBase,
 	VehicleBase_HoverBase,
 	VehicleBase_CatBase,
-	
+	VehicleBase_Plane,
 
 	Job_BuildHorizontalWall,
 	Job_BuildWallUp,
