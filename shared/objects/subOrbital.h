@@ -104,7 +104,7 @@ namespace Objects
 			#endif
 
 			virtual bool			MotionIgnoresAttack() const override {return true;}
-			virtual float			GetPathSize() const override {return 0.6f;}
+			//virtual float			GetPathSize() const override {return 0.6f;}
 			#ifndef CLIENT
 				bool				DirectTo(mode_t mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 				MobilePlacementResult	PlaceExactlyAt(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true, bool failIsFatal=false) override;
@@ -257,7 +257,7 @@ namespace Objects
 			//WorldEntity overrides:
 			virtual int				GetConstructionCost() const override {return 80;}
 			virtual int				GetMaxHealth() const {return 5;}
-			virtual bool			IsVehicle() const {return location.height <= Grid::CellStack::TopHeight;}	//landed
+			virtual bool			IsGroundBoundVehicle() const {return location.height <= Grid::CellStack::TopHeight;}	//landed
 			virtual bool			IsPureVehicle() const override {return false;}
 
 			#ifndef NO_HIBERNATION

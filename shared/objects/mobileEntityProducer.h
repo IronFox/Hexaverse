@@ -75,6 +75,7 @@ namespace Objects
 			bool					IsSatellite() const;
 			bool					IsPlane() const;
 			bool					IsVehicle() const;
+			bool					IsPureVehicle() const;
 			Component::VehicleBase*	GetVehicleBase() const;
 		};
 		//typedef std::pair<PVehicle,Command>		WorkItem;

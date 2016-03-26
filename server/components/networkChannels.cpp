@@ -708,23 +708,11 @@ namespace Receiver
 		}
 
 		{
-			if (e->IsVehicle())
+			if (e->IsHibernating())
 			{
-				if (To<Objects::Vehicle>::Cast(e)->IsHibernating())
-				{
-					LogEvent(EventClass::Preset::commandRejected,peer,e,"No reaction. Vehicle is hibernating.");
-					return Objects::PWorldEntity();
-				}
+				LogEvent(EventClass::Preset::commandRejected,peer,e,"No reaction. Entity is hibernating.");
+				return Objects::PWorldEntity();
 			}
-			else
-				if (e->IsWorkingStructure())
-				{
-					if (To<Objects::WorkingStructure>::Cast(e)->IsHibernating())
-					{
-						LogEvent(EventClass::Preset::commandRejected,peer,e,"No reaction. Structure is hibernating.");
-						return Objects::PWorldEntity();
-					}
-				}
 		}
 
 

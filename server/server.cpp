@@ -69,7 +69,7 @@ void	SignalNewMobileEntity(const Objects::PMobileEntity&_v, bool restoredFromSto
 		}
 	}
 
-	if (_v->IsVehicle() && To<Objects::Vehicle>::Cast(_v)->turret->detectsResources)
+	if (_v->IsGroundBoundVehicle() && To<Objects::Vehicle>::Cast(_v)->turret->detectsResources)
 	{
 		Game::Network::UpdateResourceCoverage(_v->owner, _v->location,_v->GetScanningRange(),timestamp);
 	}
@@ -288,7 +288,7 @@ void	SignalMotion(const Objects::PMobileEntity&v, const Grid::LCellIdI&from,cons
 	motion.timestamp.rightNow = false;
 	motion.timestamp.atTime = t0;
 
-	if (v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->turret->detectsResources)
+	if (v->IsGroundBoundVehicle() && To<Objects::Vehicle>::Cast(v)->turret->detectsResources)
 	{
 		Game::Network::UpdateResourceCoverage(v->owner,v->location,v->GetScanningRange(),motion.timestamp);
 	}
@@ -736,7 +736,7 @@ void EstimatePresence(Objects::WorldEntity&e, const Grid::LCellIdI&location, flo
 					}
 					else
 					{
-						if (e.IsVehicle())
+						if (e.IsMobile())
 							friendlyNearNexus[i] += opacity * impact;
 					}
 				}

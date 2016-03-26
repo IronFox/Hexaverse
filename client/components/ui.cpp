@@ -701,7 +701,7 @@
 				{
 					significance *= 3.f;
 				}
-				if (e->IsVehicle())
+				if (e->IsGroundBoundVehicle())
 					significance *= 10.f;
 				if (e->health <= 0)
 				{
@@ -846,7 +846,7 @@
 				proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice /*| Objects::WorldEntity::DescIncludeUnitCount*/);
 				proto->owner = old;
 
-				//if (e->IsVehicle())
+				//if (e->IsGroundBoundVehicle())
 				//{
 				//	VehicleFocusCommand vcommand(gridCoords,To<Objects::Vehicle>::Cast(e));
 				//	vcommand.CompileLabel(outResult);
@@ -1966,7 +1966,7 @@
 
 				//if (!v->storedIn.expired())
 					//textout << " Stored in: "<<v->storedIn.lock()->GetName()<<nl;	//probably never happens
-				if (e.IsVehicle())
+				if (e.IsGroundBoundVehicle())
 				{
 					const Objects::Vehicle*veh = (const Objects::Vehicle*)(&e);
 					textout << " Turret-Overweight: "<<std::max(0,veh->turret->weight - veh->base->carryingCapacity) << nl;

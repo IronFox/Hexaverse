@@ -59,7 +59,7 @@ namespace Objects
 	PMobileEntity	GetMobileEntity(const Grid::LCellIdU&cellID);
 	namespace SubOrbital
 	{
-		PPlane		GetPlane(UINT32 stackID, bool airBorneOnly);
+		PPlane		GetPlane(UINT32 stackID, bool airborneOnly);
 	}
 
 

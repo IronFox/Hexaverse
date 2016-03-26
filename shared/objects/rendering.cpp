@@ -631,7 +631,7 @@ namespace Objects
 			_RenderSimpleLocated((SubOrbital::Plane&)e,system);
 			return;
 		}
-		if (e.IsVehicle())
+		if (e.IsPureVehicle())
 		{
 			_RenderSimpleLocated((Vehicle&)e,system);
 			return;
@@ -1440,7 +1440,7 @@ namespace Objects
 				Renderer::RenderSimple(*s);
 			}
 			else
-				if (m->IsVehicle())
+				if (m->IsPureVehicle())
 				{
 					PVehicle v = To<Vehicle>::Cast(m);
 					Renderer::RenderSimple(*v);
@@ -1474,7 +1474,7 @@ namespace Objects
 				Renderer::RenderSimple(*s);
 			}
 			else
-				if (m->IsVehicle())
+				if (m->IsPureVehicle())
 				{
 					PVehicle v = To<Vehicle>::Cast(m);
 					Renderer::RenderSimple(*v);

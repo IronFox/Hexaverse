@@ -1190,12 +1190,12 @@ namespace Objects
 			{
 				UnregisterSensory(t);
 			}
-			if (IsVehicle())
+			if (IsGroundBoundVehicle())
 			{
 				Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(shared_from_this()),location);
 			}
 			preAnimationLocation = location = toLocation;
-			if (IsVehicle())
+			if (IsGroundBoundVehicle())
 			{
 				Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(shared_from_this()),location);
 			}
@@ -1403,7 +1403,7 @@ namespace Objects
 		{
 			path.Clear();
 			path << PathNode(pointOfOrigin,0);
-			if (v->IsVehicle())
+			if (v->IsGroundBoundVehicle())
 			{
 				if (!AppendShortestDirectPath(pointOfOrigin,foci.Peek().target,path,false))
 				{

@@ -266,7 +266,7 @@ bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 			tooLong = false;
 			//Objects::SubOrbital::AppendShortestPathI((const Objects::SubOrbital::Plane*)v.get(),prev,target.stackID,path,false,&tooLong);
 		}
-		else if (v->IsVehicle())
+		else if (v->IsGroundBoundVehicle())
 			foundPath = Objects::AppendShortestPathI((const Objects::Vehicle*)v.get(),prev,target,path,false,&tooLong);
 		else if (v->IsSatellite())
 			foundPath = Objects::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
@@ -2598,7 +2598,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 						float distance = std::numeric_limits<float>::max();
 
 						Objects::PWorldEntity possibleTarget = Objects::GetRayIntersection(b,d,distance);
-						if (possibleTarget && !possibleTarget->isOwnedByMe)
+						if (possibleTarget && !possibleTarget->isOwnedByMe && Objects::selectedEntity->CanHit(possibleTarget->location))
 						{
 							DirectTo(Objects::selectedEntity,possibleTarget->location,false,true, Objects::CursorMode::AttackMode);
 							return;
@@ -2803,7 +2803,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())	//check that its turret can attack, there's ammo for the shot, and it has any shots left this round
 			{
 				bool emp = v->turret->dealsEMPDamage;
-				if (v->IsVehicle())
+				if (v->IsGroundBoundVehicle())
 				{
 					for (auto other : Objects::vehicles)
 						if (!emp || !other->empDamageLevel)

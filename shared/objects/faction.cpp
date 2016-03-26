@@ -592,13 +592,11 @@ namespace Objects
 						seeing[e].sightLevel = cover;
 				}
 				else
-				if (e->IsPlane() && !e->IsVehicle())
+				if (e->IsPlane() && !e->IsGroundBoundVehicle())
 				{
 					count_t cover = CountPlaneCoverage(e->GetWorldPosition());
 					if (cover == 0)
 						SignalDisappearance(e,timeAt,true);
-					else
-						seeing[e].sightLevel = cover;
 				}
 				else
 					if (!GridCanSee(e))
@@ -615,11 +613,11 @@ namespace Objects
 						SignalAppearance(e,timeAt,true,false,cover);
 				}
 				else
-				if (e->IsPlane() && !e->IsVehicle())
+				if (e->IsPlane() && !e->IsGroundBoundVehicle())
 				{
 					count_t cover = CountPlaneCoverage(e->GetWorldPosition());
 					if (cover > 0)
-						SignalAppearance(e,timeAt,true,false,cover);
+						SignalAppearance(e,timeAt,true,false);
 				}
 				else
 					if (GridCanSee(e))

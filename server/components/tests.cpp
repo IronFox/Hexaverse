@@ -696,24 +696,12 @@ namespace Test
 			//ASSERT__(!plant->IsEnabled());	//SkyPort does not switch off
 			ASSERT__(v0);
 			//ASSERT__(v1);
-			if (v0->IsVehicle())
-			{
-				ASSERT__(Objects::GetVehicle(v0->location) == v0);
-			}
-			else
-				if (v0->IsSatellite())
-					ASSERT__(Objects::GetSatellite(v0->location.stackID) == v0);
+			ASSERT__(Objects::GetMobileEntity(v0->location) == v0);
 			Objects::Remove(v0,	Objects::RemovalType::ControlledExplosion,0,false);
 			if (v1)
 			{
 				twoCount++;
-				if (v1->IsVehicle())
-				{
-					ASSERT__(Objects::GetVehicle(v1->location) == v1);
-				}
-				else
-					if (v1->IsSatellite())
-						ASSERT__(Objects::GetSatellite(v1->location.stackID) == v1);
+				ASSERT__(Objects::GetMobileEntity(v1->location) == v1);
 				Objects::Remove(v1, Objects::RemovalType::ControlledExplosion,0, false);
 			}
 			ASSERT__(Objects::vehicles.IsEmpty());

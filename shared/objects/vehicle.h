@@ -152,8 +152,9 @@ namespace Objects
 		virtual float			GetMaxScanningRange() const override	{return turret->scanningRange + (turret->CanAttack() ? 0 : base->rangeModifier);};	//returns the effective scanning range of the local entity
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = base->height; return To<Vehicle>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = base->height; return To<const Vehicle>::Cast(shared_from_this());}
-		virtual bool			IsVehicle() const override {return true;}
+		virtual bool			IsGroundBoundVehicle() const override {return true;}
 		virtual bool			IsPureVehicle() const override {return true;}
+		virtual bool			IsVehicle() const override {return true;}
 		#ifdef HAS_WINDOW
 			virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
 			virtual float		GetSoundLevel() const {return GetActivityLevel()*0.25f;}	//save 75% for motion

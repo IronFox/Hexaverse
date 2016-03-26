@@ -655,7 +655,7 @@ namespace Game
 					{
 						if (item.wasHibernating != item.hibernating)
 						{
-							if (item.target->IsVehicle())
+							if (item.target->IsGroundBoundVehicle())
 							{
 								To<Objects::Vehicle>::Cast(item.target)->Hibernate(item.hibernating,0);
 							}

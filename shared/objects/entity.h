@@ -393,8 +393,18 @@ namespace Objects
 		virtual bool				IsWorkingStructure() const {return false;}
 		virtual bool				IsMobile() const {return false;}
 		virtual bool				IsTower() const {return false;}
-		virtual bool				IsVehicle() const {return false;}
+		/**
+		Checks whether the local type is a derivative of the Vehicle class, and currently part of the regular world grid (a landed plane would be such, an airborne one not)
+		*/
+		virtual bool				IsGroundBoundVehicle() const {return false;}
+		/**
+		Checks whether the local type is of the Vehicle class, and not any derivatives
+		*/
 		virtual bool				IsPureVehicle() const {return false;}
+		/**
+		Checks whether the local type is of the Vehicle class or any derivative
+		*/
+		virtual bool				IsVehicle() const {return false;}
 		virtual bool				IsSatellite() const {return false;}
 		virtual bool				IsPlane() const {return false;}
 		virtual bool				IsStructure() const {return false;}

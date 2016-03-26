@@ -269,7 +269,7 @@ namespace Objects
 					Component::Turret* t = ((const MobileEntity*)this)->turret;
 					if (IsPlane())
 						cnt = SubOrbital::Plane::CountTurretOccurrences(overrideOwner,t);
-					elif (IsVehicle())
+					elif (IsPureVehicle())
 						cnt = Vehicle::CountTurretOccurrences(overrideOwner,t);
 					elif (IsSatellite())
 						cnt = Satellite::CountTurretOccurrences(overrideOwner,t);
@@ -341,7 +341,7 @@ namespace Objects
 				if (b->turret->CanAttack())
 					outResult << " Hrz. Attack range: "+String(b->GetFlatAttackRange()) + "+"+String(b->turret->explosionRadius);
 				outResult << "";
-				b->turret->DescribeType(outResult,true, IsPlane() ? "Plane" : (IsSatellite() ? "Satellite" : (IsVehicle() ? "Vehicle":"Tower")),owner);
+				b->turret->DescribeType(outResult,true, IsPlane() ? "Plane" : (IsSatellite() ? "Satellite" : (IsPureVehicle() ? "Vehicle":"Tower")),owner);
 			}
 		}
 	#endif

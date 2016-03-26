@@ -2453,7 +2453,7 @@ namespace Objects
 
 	/*virtual override*/ bool				SkyPort::CanProduce(const PWorldEntity&e) const 
 	{
-		return (e->IsVehicle() && To<Vehicle>::Cast(e)->base == &Component::hoverbase && To<Vehicle>::Cast(e)->turret == &Component::terraformer)
+		return (e->IsPureVehicle() && To<Vehicle>::Cast(e)->base == &Component::hoverbase && To<Vehicle>::Cast(e)->turret == &Component::terraformer)
 			||
 			(e->IsSatellite() && e->GetCTypeName() == ConstName::Type_SkyHub)
 		;
@@ -2461,7 +2461,7 @@ namespace Objects
 
 	/*virtual override*/ bool				VehiclePlant::CanProduce(const PWorldEntity&e) const 
 	{
-		return e->IsVehicle() && baseComponents.Contains(To<Vehicle>::Cast(e)->base)  && turretComponents.Contains(To<Vehicle>::Cast(e)->turret);
+		return e->IsPureVehicle() && baseComponents.Contains(To<Vehicle>::Cast(e)->base)  && turretComponents.Contains(To<Vehicle>::Cast(e)->turret);
 	}
 
 	/*virtual override*/ bool				PlaneFactory::CanProduce(const PWorldEntity&e) const 

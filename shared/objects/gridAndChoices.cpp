@@ -303,7 +303,7 @@ namespace Objects
 					d2 = std::min(d2,d3);
 				}
 
-				if (e->IsVehicle())
+				if (e->IsGroundBoundVehicle())
 				{
 					if (d2 <= outerRadius)
 					{
@@ -682,10 +682,10 @@ namespace Objects
 
 	namespace SubOrbital
 	{
-		PPlane		GetPlane(UINT32 flatCellID, bool airBorneOnly)
+		PPlane		GetPlane(UINT32 flatCellID, bool airborneOnly)
 		{
 			for (const auto&s : planes)
-				if (s->location.stackID == flatCellID && (!airBorneOnly || s->location.height == Height))
+				if (s->location.stackID == flatCellID && (!airborneOnly || s->location.height == Height))
 					return s;
 			return PPlane();
 		}
@@ -863,7 +863,7 @@ namespace Objects
 							const Grid::LCellIdI candidate(n.neighborID[j],h);
 							if (Grid::actualWorld.LowCellIsClear(candidate) && NothingBlockingHere(candidate,true))
 							{
-								if (!deploying->IsVehicle() || To<Vehicle>::Cast(deploying)->CanStandOn(Grid::actualWorld,candidate-1,false,false))
+								if (!deploying->IsGroundBoundVehicle() || To<Vehicle>::Cast(deploying)->CanStandOn(Grid::actualWorld,candidate-1,false,false))
 									movementChoices << Choice(candidate,1);
 							}
 						}
@@ -958,7 +958,7 @@ namespace Objects
 				}
 				break;
 				case CursorMode::ClearAboveMode:
-					if (v->IsVehicle())
+					if (v->IsGroundBoundVehicle())
 					{
 						const auto&c = Grid::low.grid.GetCell(location.stackID);
 						if (!world.LowCellIsClear(location + 1))
@@ -973,7 +973,7 @@ namespace Objects
 					}
 				break;
 				case CursorMode::DigMode:
-					if (v->IsVehicle())
+					if (v->IsGroundBoundVehicle())
 						for (int i = 0; i < n.numNeighbors; i++)
 						{
 							const Grid::LCellIdI	cell(n.neighborID[i], location.height);
@@ -1182,13 +1182,13 @@ namespace Objects
 			//ASSERT__(!satellitesAreLocked);
 			auto plane = To<SubOrbital::Plane>::Cast(v);
 			SubOrbital::planes << plane;
-			if (insertIntoGrid && plane->IsVehicle())
+			if (insertIntoGrid && plane->IsGroundBoundVehicle())
 			{
 				InsertIntoGrid(vehicleGrid,v->location,To<Vehicle>::Cast(plane));
 			}
 		}
 		else
-			if (v->IsVehicle())
+			if (v->IsPureVehicle())
 			{
 				PVehicle veh = To<Vehicle>::Cast(v);
 				vehicles << veh;
@@ -1409,7 +1409,7 @@ namespace Objects
 						e->owner->RegisterStoredMobileLoss(e);
 
 				#endif
-				if (v->IsVehicle() && !isRemovedFromGrid)
+				if (v->IsGroundBoundVehicle() && !isRemovedFromGrid)
 				{
 					RemoveFromGrid(vehicleGrid,v->location,To<Objects::Vehicle>::Cast(v));
 				}
@@ -1423,7 +1423,7 @@ namespace Objects
 						SubOrbital::planes.FindAndErase(e);
 					}
 					else
-						if (e->IsVehicle())
+						if (e->IsPureVehicle())
 							vehicles.FindAndErase(e);
 						else
 							if (e->IsSatellite())
@@ -1738,7 +1738,7 @@ namespace Objects
 							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute)
 	{
-		if (v->IsVehicle())
+		if (v->IsGroundBoundVehicle())
 		{
 			GetWays(world,(const Vehicle*)v, location, outWays, destination,ignoreVehiclesOnDestination,ignoreFriendlyVehiclesOnRoute,false);
 			return;
@@ -3187,7 +3187,7 @@ namespace Objects
 					ASSERT1__(SubOrbital::planes.Contains(m),m->GetName());
 				}
 				else
-					if (m->IsVehicle())
+					if (m->IsPureVehicle())
 					{
 						ASSERT1__(vehicles.Contains(m),m->GetName());
 					}
@@ -3319,7 +3319,7 @@ namespace Objects
 					//PWorkingStructure ws = To<WorkingStructure>::DynamicCast(e);
 
 					{
-						if (deployWhat && deployWhat->IsVehicle())
+						if (deployWhat && deployWhat->IsGroundBoundVehicle())
 						{
 							PVehicleStore s = To<VehicleStore>::DynamicCast(e);
 							PHangarStructure actual = deployWhat->storedIn.lock();

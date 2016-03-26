@@ -189,7 +189,7 @@ namespace Journal
 
 	Round::PureEntityDescriptor::PureEntityDescriptor(const Objects::PWorldEntity&we)
 	{
-		if (we->IsVehicle())
+		if (we->IsPureVehicle())
 		{
 			Objects::PVehicle v = To<Objects::Vehicle>::Cast(we);
 			this->baseType = v->base->typeName;
