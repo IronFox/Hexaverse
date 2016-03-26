@@ -2006,7 +2006,7 @@ namespace Objects
 					outResult.WrapAppendText("This "+lowerName+" type detects all naturally occuring resources within its scanning range. It can be automated.");
 				if (CanAttack())
 				{
-					outResult.WrapAppendText("This "+lowerName+" type can attack objects in range. It must typically be accompanied by a radar tower or vehicle.");
+					outResult.WrapAppendText("This "+lowerName+" type can attack objects in range.");
 					if (dealsEMPDamage)
 						outResult.WrapAppendText("This "+lowerName+" deals EMP damage. EMP damage temporarily reduces scanning range. Does not cause any permanent damage.");
 				}
