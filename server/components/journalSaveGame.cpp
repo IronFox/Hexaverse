@@ -1574,13 +1574,10 @@ namespace Journal
 			return true;
 		if (dest.referencedType[1] == ConstName::Empty)
 		{
-			if (!Objects::GetPrototypeByName(dest.referencedType[0]))
+			if (!Objects::GetNonVehiclePrototypeByName(dest.referencedType[0]))
 			{
-				if (!Objects::GetSatellitePrototypeByName(dest.referencedType[0]))
-				{
-					LogEvent(EventClass::Preset::commandRejected, "Unknown structure type #" + String(int(dest.referencedType[0])));
-					return false;
-				}
+				LogEvent(EventClass::Preset::commandRejected, "Unknown structure type #" + String(int(dest.referencedType[0])));
+				return false;
 			}
 			return true;
 		}
