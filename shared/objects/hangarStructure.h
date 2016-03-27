@@ -18,6 +18,7 @@ namespace Objects
 		virtual bool	CanStoreType(const MobileEntity&e) const = 0;
 		virtual bool	HasStoredLocally(const PMobileEntity&e) const = 0;
 		virtual void	StoreLocallyFromImport(const PMobileEntity&e) = 0;
+		virtual bool	Store(const PMobileEntity&e, float&atTime) = 0;
 	};
 
 }

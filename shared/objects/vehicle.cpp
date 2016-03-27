@@ -359,15 +359,9 @@ namespace Objects
 			if (!Grid::actualWorld.LowCellIsClear(cell))
 			{
 				PHangarStructure s = MobileDestinationStructureHere(cell,*this);
-				if (s)
-				{
-					PVehicleStore st = To<VehicleStore>::DynamicCast(s);
-					ASSERT1__(st,s->ToEntity().GetName());
-					if (st && st->StoreInPark(To<Vehicle>::Cast(shared_from_this()),motionTime))
-					{
-						return MobilePlacementResult::EnteredStructure;
-					}
-				}
+				if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+					return MobilePlacementResult::EnteredStructure;
+
 				if (failIsFatal)
 				{
 					PStructure st = GetStructure(cell);
@@ -382,6 +376,10 @@ namespace Objects
 				PVehicle v = GetVehicle(cell);
 				if (v)
 				{
+					PHangarStructure s = v->CastToDestinationForType(*this);
+					if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+						return MobilePlacementResult::EnteredStructure;
+
 					if (failIsFatal)
 					{
 						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by vehicle");

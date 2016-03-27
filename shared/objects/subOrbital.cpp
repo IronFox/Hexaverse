@@ -2,6 +2,7 @@
 #include "subOrbital.h"
 #include "gridAndChoices.h"
 #include "faction.h"
+#include "hangarStructure.h"
 
 namespace Objects
 {
@@ -240,15 +241,9 @@ namespace Objects
 				if (cell.height <= Grid::CellStack::TopHeight && !Grid::actualWorld.LowCellIsClear(cell))
 				{
 					PHangarStructure s = MobileDestinationStructureHere(cell,*this);
-					if (s)
-					{
-						PVehicleStore st = To<VehicleStore>::DynamicCast(s);
-						ASSERT1__(st,s->ToEntity().GetName());
-						if (st && st->StoreInPark(To<Vehicle>::Cast(shared_from_this()),motionTime))
-						{
-							return MobilePlacementResult::EnteredStructure;
-						}
-					}
+					if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+						return MobilePlacementResult::EnteredStructure;
+
 					if (failIsFatal)
 					{
 						PStructure st = GetStructure(cell);
@@ -264,6 +259,10 @@ namespace Objects
 					PMobileEntity v = GetMobileEntity(cell);
 					if (v)
 					{
+						PHangarStructure s = v->CastToDestinationForType(*this);
+						if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+							return MobilePlacementResult::EnteredStructure;
+						
 						if (failIsFatal)
 						{
 							LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by "+v->GetName());
@@ -385,8 +384,83 @@ namespace Objects
 		#endif
 		}
 
+		/*virtual override*/ PHangarStructure	CargoPlane::CastToDestinationForType(const MobileEntity&e)
+		{
+			if (CanStoreType(e))
+			{
+				return To<CargoPlane>::Cast(shared_from_this());
+			}
+			return PHangarStructure();
+		}
 	
+		/*virtual override*/ bool	CargoPlane::Store(const PMobileEntity&e, float&atTime)
+		{
+			if (!e || !CanStoreType(*e) || stored.Count() >= MaxStorage)
+				return false;
+
+			#ifndef CLIENT
+				e->SyncTime(atTime,timeEpsilon);
+			#endif
+
+			if (e->isInserted)
+			{
+				Remove(e,RemovalType::EnteredStorage,atTime,false,!e->isInsertedIntoGrid,true);
+				#ifndef NO_HIBERNATION
+					e->Hibernate(false,atTime);
+				#endif
+			}
+			else
+			{
+				if (!GetEntity(e->id))
+				{
+					RegisterNewOffGrid(e,atTime,true);
+				}
+			}
+			LogEvent(EventSignificance::Common,e.get()," Now stored in "+GetName());
+			e->storedIn = To<CargoPlane>::Cast(shared_from_this());
+
+			stored.Append().entity = e;
+
+			#ifdef HAS_WINDOW
+				WMobileEntity w = e;
+				stored.last().deployCommand = DeployMobileCommand(e,
+					[w]()
+					{
+						//focus = To<VehicleStore>::DynamicCast(storeEntity).get();
+						if (deployingVehicle)
+							deployingVehicle.reset();
+						else
+							deployingVehicle = w.lock();
+					},
+					[w](bool controlEnabled)
+					{
+						BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
+						PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
+						if (deployingVehicle && s == selectedEntity && deployingVehicle == w.lock() && deployingVehicle->health > 0)
+							rs |= BaseCommand::Flags::IsPermaActive;
+						return rs;
+					}
+					);
+				stored.last().deployCommand.RasterizeImage();
+			#endif
+
+			#ifndef CLIENT
+				//RegisterChange(StorageChanged,atTime);	might be irrelevant. let's see
+				e->RegisterChange(StorageChanged,atTime);
+			#endif
+
+			ASSERT2__(!e->isInsertedIntoGrid,GetName(), e->GetName());
+
+			#ifdef _DEBUG
+				CheckMobileEntitySanity();
+			#endif
+
+
+			return true;
+		}
+
 		#ifndef CLIENT
+
 			/*virtual override*/ bool					Plane::FillAttackQueue()
 			{
 				if (!turret->CanAttack() || !HasAmmoForShot())

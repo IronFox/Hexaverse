@@ -19,6 +19,8 @@ namespace Objects
 	extern Buffer0<Grid::HCellIdI>	cellSelection;	//actually selected cells in either build or remove block mode
 	extern Buffer0<Grid::HCellIdU>	buildCandidates, removeCandidates;	//possible cells to build or remove - used for visualization purposes only
 
+	extern PMobileEntity			deployingMobileEntity;
+
 
 	void				UpdateChoices(bool controlEnabled);
 	/**

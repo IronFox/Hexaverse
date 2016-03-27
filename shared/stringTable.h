@@ -72,6 +72,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Type_SkyHub,
 	Type_SkyGuardian,
 	Type_Raptor,
+	Type_CargoPlane,
 	Type_Ragnarok,
 	Type_StarPort,
 

@@ -22,6 +22,7 @@ namespace Objects
 								removeCandidates;
 	Buffer0<Grid::HCellIdI>		cellSelection;
 
+	PMobileEntity				deployingMobileEntity;
 
 
 	template <bool ControlEnabled>

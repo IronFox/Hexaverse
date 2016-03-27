@@ -177,13 +177,6 @@ namespace Objects
 		Compound&					GetCompound() const;
 
 
-		/**
-		Casts the local entity to an appropriate hangar structure if it can store the given mobile entity @a e
-		If storage is not possible due to type constraints (NOT capacity constraints), the return value must be
-		a shared null pointer.
-		*/
-		virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) {return PHangarStructure();}
-
 		virtual bool				IsStructure() const override {return true;}
 
 		/**
@@ -466,7 +459,6 @@ namespace Objects
 		Buffer0<Stored>				localStore;	//!< Locally stored vehicles
 		#ifdef HAS_WINDOW
 			static Geometry			interConnector;
-			static PVehicle			deployingVehicle;	//vehicle being checked out
 			static index_t			storeOffset;				//!< Button offset (kinda like a scrollbar position)
 			static const count_t	MaxVisibleStoreItems = 8;	//!< Maximum number of vehicle buttons that can be shown before arrow buttons are added to scroll
 
@@ -475,19 +467,9 @@ namespace Objects
 			static IconCommand		cmdLeft,		//!< Arrow button to scroll left
 									cmdRight;		//!< Arrow button to scroll right
 
-			virtual void			OnSelect()	override {deployingVehicle.reset();};
-			virtual void			OnDeselect() override {deployingVehicle.reset();}
+			virtual void			OnSelect()	override;
+			virtual void			OnDeselect() override;
 
-			/**
-			Notifies the local VehicleStore (which should be selected) that a vehicle in the storage of its park (or locally) has been checked out
-			and the GUI should be updated accordingly.
-			*/
-			void					SignalDeployment();
-			
-			/**
-			Invokes SignalDeployment() on the selected entity, if this entity is a vehicle store
-			*/
-			static void				StaticSignalDeployment();
 
 			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return To<VehicleStore>::DynamicCast(connected) && connected->location.height == location.height ? &interConnector : &standardConnector;}
 
@@ -540,6 +522,9 @@ namespace Objects
 		virtual bool				CanStoreType(const MobileEntity&e) const override;
 		virtual bool				HasStoredLocally(const PMobileEntity&e) const override;
 		virtual void				StoreLocallyFromImport(const PMobileEntity&e) override;
+		#ifndef CLIENT
+			virtual bool			Store(const PMobileEntity&e, float&atTime) override {return e && CanStoreType(*e) && StoreInPark(To<Vehicle>::Cast(e),atTime);}
+		#endif
 
 
 		//Structure overrides:

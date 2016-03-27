@@ -80,6 +80,8 @@ namespace Objects
 			#endif
 
 			//WorldEntity overrides:
+			virtual bool			IsGroundBoundVehicle() const {return location.height <= Grid::CellStack::TopHeight;}	//landed
+			virtual bool			IsPureVehicle() const override {return false;}
 			virtual bool			IsPlane() const override {return true;}
 			virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = 0.f; return To<MobileEntity>::Cast(shared_from_this());}
 			virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = 0.f; return To<const MobileEntity>::Cast(shared_from_this());}
@@ -258,8 +260,6 @@ namespace Objects
 			//WorldEntity overrides:
 			virtual int				GetConstructionCost() const override {return 80;}
 			virtual int				GetMaxHealth() const {return 5;}
-			virtual bool			IsGroundBoundVehicle() const {return location.height <= Grid::CellStack::TopHeight;}	//landed
-			virtual bool			IsPureVehicle() const override {return false;}
 
 			#ifndef NO_HIBERNATION
 				virtual int			GetUplinkTraffic() const override {return 4;}
@@ -271,6 +271,74 @@ namespace Objects
 			#endif
 		};
 
+		class CargoPlane : public Template<CargoPlane>, public HangarStructure
+		{
+		protected:
+			typedef Template<CargoPlane>	Super;
+			friend class Super;
+
+			/**/					CargoPlane(const OwnerParameter&owner, const Grid::LCellIdI&location):Super(owner,GetTurretType(),location)
+									{}
+			/**/					CargoPlane():Super(GetTurretType())
+									{}	//global prototype
+		public:
+			struct TStored
+			{
+				PMobileEntity		entity;
+				#ifdef HAS_WINDOW
+					DeployMobileCommand	deployCommand;
+				#endif
+
+				/**/				TStored(const PMobileEntity&e):entity(e)	{}
+
+				bool				operator==(const PMobileEntity&e) const {return entity == e;}
+			};
+
+			Buffer0<TStored>		stored;
+			static const count_t	MaxStorage = 4;
+
+			//MobileEntity overrides:
+			virtual int				GetMovementStepsPerRound() const override
+			{
+				return (int)ceil(EMPModify(8.f,1.f));
+			}
+
+
+			//BaseEntity overrides:
+			virtual String			GetTypeName() const override {return "Cargo Plane";}
+			virtual ConstName		GetCTypeName() const override {return ConstName::Type_CargoPlane;}
+
+			//SatelliteTemplate overrides:
+			virtual Component::Turret*
+									GetTurretType() const override	{return &Component::SubOrbital::cargoPlane;}
+
+			//WorldEntity overrides:
+			virtual int				GetConstructionCost() const override {return 40;}
+			virtual int				GetMaxHealth() const {return 15;}
+			#ifdef HAS_WINDOW
+				virtual void		OnSelect()	override {deployingMobileEntity.reset();};
+				virtual void		OnDeselect() override {deployingMobileEntity.reset();}
+			#endif
+			virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) override;
+
+			#ifndef NO_HIBERNATION
+				virtual int			GetUplinkTraffic() const override {return 4;}
+			#endif
+
+			//Hibernating overrides:
+			#ifndef NO_HIBERNATION
+				virtual int			GetUplinkPriority() const override {return 900;}
+			#endif
+
+			//HangarStructure overrides:
+			virtual const WorldEntity&	ToEntity() const override {return *this;}
+			virtual WorldEntity&		ToEntity() override {return *this;}
+
+			virtual bool	CanStoreType(const MobileEntity&e) const override {return e.IsVehicle();}
+			virtual bool	HasStoredLocally(const PMobileEntity&e) const override {return stored.Contains(e);}
+			virtual void	StoreLocallyFromImport(const PMobileEntity&e) override {ASSERT2__(e->IsVehicle(),GetName(),e->GetName()); stored << e;}
+			virtual bool	Store(const PMobileEntity&e, float&atTime) override;
+		};
 
 
 		extern Buffer0<PPlane>		planes;

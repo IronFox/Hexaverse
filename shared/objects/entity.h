@@ -416,6 +416,14 @@ namespace Objects
 		virtual const MobileEntityProducer*	CastToProducer() const {return nullptr;}
 
 
+		/**
+		Casts the local entity to an appropriate hangar structure if it can store the given mobile entity @a e
+		If storage is not possible due to type constraints (NOT capacity constraints), the return value must be
+		empty.
+		*/
+		virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) {return PHangarStructure();}
+
+
 		virtual bool				IsIndestructible() const	{return false;};
 
 		#ifdef HAS_WINDOW

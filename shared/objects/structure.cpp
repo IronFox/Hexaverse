@@ -78,7 +78,6 @@ namespace Objects
 											Structure::standardLocalizableShader;
 
 
-		/*static*/ PVehicle			VehicleStore::deployingVehicle;
 		/*static*/ index_t			VehicleStore::storeOffset;
 		
 		static IconCommand			cmdLeft,cmdRight;
@@ -583,6 +582,16 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 	
+		/*virtual override*/ void			VehicleStore::OnSelect()
+		{
+			deployingMobileEntity.reset();
+		}
+
+		/*virtual override*/ void			VehicleStore::OnDeselect()
+		{
+			deployingMobileEntity.reset();
+		}
+
 		/*virtual override*/ void				Structure::Recompile()
 		{
 			changed = false;
@@ -1389,7 +1398,7 @@ namespace Objects
 		if (LocalIsFull() || !v || v->owner != owner || v->health <= 0)
 			return false;
 		#ifndef CLIENT
-			v->motionTime = atTime = std::max(atTime,v->motionTime) + timeEpsilon;
+			v->SyncTime(atTime,timeEpsilon);
 		#endif
 		if (v->isInserted)
 		{
@@ -1405,7 +1414,7 @@ namespace Objects
 				RegisterNewOffGrid(v,atTime,setHealthToFullIfNew);
 			}
 		}
-		LogEvent(EventSignificance::Common,v.get()," Now stored in "+GetNiceName());
+		LogEvent(EventSignificance::Common,v.get()," Now stored in "+GetName());
 		v->storedIn = To<VehicleStore>::Cast(shared_from_this());
 		//v->location = location;
 		//#ifndef CLIENT
@@ -1419,16 +1428,16 @@ namespace Objects
 				[w]()
 				{
 					//focus = To<VehicleStore>::DynamicCast(storeEntity).get();
-					if (deployingVehicle)
-						deployingVehicle.reset();
+					if (deployingMobileEntity)
+						deployingMobileEntity.reset();
 					else
-						deployingVehicle = w.lock();
+						deployingMobileEntity = w.lock();
 				},
 				[w](bool controlEnabled)
 				{
 					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
 					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
-					if (deployingVehicle && s == selectedEntity && deployingVehicle == w.lock() && deployingVehicle->health > 0)
+					if (deployingMobileEntity && s == selectedEntity && deployingMobileEntity == w.lock() && deployingMobileEntity->health > 0)
 						rs |= BaseCommand::Flags::IsPermaActive;
 					return rs;
 				}
@@ -1445,7 +1454,7 @@ namespace Objects
 			v->RegisterChange(StorageChanged,atTime);
 		#endif
 
-		ASSERT1__(!v->isInsertedIntoGrid,v->GetNiceName());
+		ASSERT1__(!v->isInsertedIntoGrid,GetName(),v->GetName());
 
 		#ifdef _DEBUG
 			CheckMobileEntitySanity();
@@ -1547,19 +1556,19 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 
-		/*static*/ void				VehicleStore::StaticSignalDeployment()
-		{
-			PVehicleStore st = To<VehicleStore>::DynamicCast(selectedEntity);
-			if (st)
-				st->SignalDeployment();
-		}
+		///*static*/ void				VehicleStore::StaticSignalDeployment()
+		//{
+		//	PVehicleStore st = To<VehicleStore>::DynamicCast(selectedEntity);
+		//	if (st)
+		//		st->SignalDeployment();
+		//}
 
-		
+		//
 
-		void					VehicleStore::SignalDeployment()
-		{
-			deployingVehicle.reset();	//might be unset before this method is called, too
-		}
+		//void					VehicleStore::SignalDeployment()
+		//{
+		//	deployingMobileEntity.reset();	//might be unset before this method is called, too
+		//}
 
 		/*virtual override*/ void		VehicleStore::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
