@@ -78,14 +78,9 @@ namespace Objects
 											Structure::standardLocalizableShader;
 
 
-		/*static*/ index_t			VehicleStore::storeOffset;
 		
 		static IconCommand			cmdLeft,cmdRight;
 
-		/*static*/ IconCommand		VehicleStore::cmdLeft,
-									VehicleStore::cmdRight;
-		/*static*/ int2				VehicleStore::cmdLeftCoords,
-									VehicleStore::cmdRightCoords;
 		/*static*/ Geometry			VehicleStore::interConnector,
 									Generator::reactorConnector;
 
@@ -582,15 +577,7 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 	
-		/*virtual override*/ void			VehicleStore::OnSelect()
-		{
-			deployingMobileEntity.reset();
-		}
 
-		/*virtual override*/ void			VehicleStore::OnDeselect()
-		{
-			deployingMobileEntity.reset();
-		}
 
 		/*virtual override*/ void				Structure::Recompile()
 		{
@@ -1272,27 +1259,23 @@ namespace Objects
 	{
 		return e.IsVehicle();
 	}
-	/*virtual override*/ bool				VehicleStore::HasStoredLocally(const PMobileEntity&e) const 
-	{
-		return e->IsVehicle() && VehicleStore::HasStoredLocally(To<Vehicle>::Cast(e));
-	}
 
 	/*virtual override*/ void				VehicleStore::StoreLocallyFromImport(const PMobileEntity&e)
 	{
 		ASSERT__(e);
 		ASSERT1__(e->IsVehicle(),e->GetName());
 		float t = 0.f;
-		ASSERT__(VehicleStore::StoreLocally(To<Vehicle>::Cast(e),t,false));
+		ASSERT__(Hangar::StoreLocally(e,t,false,To<VehicleStore>::Cast(shared_from_this())));
 	}
 
 
-	/*virtual override*/ PHangarStructure			VehicleStore::CastToDestinationForType(const MobileEntity&e)
+	/*virtual override*/ PHangar			VehicleStore::CastToDestinationForType(const MobileEntity&e)
 	{
 		if (CanStoreType(e))
 		{
 			return To<VehicleStore>::Cast(shared_from_this());
 		}
-		return PHangarStructure();
+		return PHangar();
 	}
 
 
@@ -1388,11 +1371,11 @@ namespace Objects
 			{
 				park = other;
 				park->members.Append(To<VehicleStore>::Cast(shared_from_this()));
-				park->vehiclesStored += localStore.Count();
+				park->vehiclesStored += stored.Count();
 			}
 		}
 	}
-
+	#if 0
 	bool	VehicleStore::StoreLocally(const PVehicle&v, float&atTime, bool setHealthToFullIfNew/*=true*/)
 	{
 		if (LocalIsFull() || !v || v->owner != owner || v->health <= 0)
@@ -1462,15 +1445,7 @@ namespace Objects
 
 		return true;
 	}
-
-	bool						VehicleStore::HasStoredLocally(const PVehicle&v) const
-	{
-		for (const auto&s : localStore)
-			if (s.vehicle.lock() == v)
-				return true;
-		return false;
-	}
-
+	#endif /*0*/
 
 
 	#ifdef HAS_WINDOW
@@ -1495,61 +1470,6 @@ namespace Objects
 	{
 		Super::PrototypeSetup();
 
-		#ifdef HAS_WINDOW
-
-
-			cmdLeftCoords = int2(4,1) + BaseCommand::coordOffset;
-			cmdRightCoords = cmdLeftCoords + int2(MaxVisibleStoreItems+1,0);
-
-
-			cmdLeft = IconCommand("Left",
-				[]()
-				{
-					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
-					if (storeOffset > 0)
-					{
-						if (storeOffset > MaxVisibleStoreItems)
-							storeOffset -= MaxVisibleStoreItems;
-						else
-							storeOffset = 0;
-						RefreshCommands(true);
-					}
-				},
-				[](bool controlEnabled)
-				{
-					return storeOffset > 0 && controlEnabled
-						 ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
-				},
-				NoCosts);
-
-			cmdRight = IconCommand("Right",
-				[]()
-				{
-					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
-					if (!s)
-						return;
-					if (s->CountVehiclesInPark() <= storeOffset)
-						storeOffset = 0;
-					else
-					{
-						count_t remaining = s->CountVehiclesInPark() - (storeOffset);
-						if (remaining > MaxVisibleStoreItems)
-							storeOffset += MaxVisibleStoreItems;
-						//else
-							//storeOffset = s->CountVehiclesInPark() - MaxVehiclesPerStore;
-					}
-					RefreshCommands(true);
-				},
-				[](bool controlEnabled)
-				{
-					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
-					return s && s->CountVehiclesInPark() > storeOffset + MaxVisibleStoreItems
-					  && controlEnabled
-					   ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
-				},
-				NoCosts);
-
-		#endif
 
 	}
 
@@ -1578,7 +1498,7 @@ namespace Objects
 			index_t at = 0;
 			if (!park)
 			{
-				foreach (localStore,s2)
+				foreach (stored,s2)
 				{
 					if (at >= storeOffset || force)
 					{
@@ -1592,6 +1512,8 @@ namespace Objects
 					if (at >= storeOffset + MaxVisibleStoreItems && !force)
 						break;
 				}
+				if (stored.Count() - storeOffset > MaxVisibleStoreItems || force)
+					cmdRight.VisitMembers(visitor,force);
 				return;
 			}
 			foreach (park->members,m)
@@ -1600,7 +1522,7 @@ namespace Objects
 				DBG_ASSERT__(s);
 				if (s)
 				{
-					foreach (s->localStore,s2)
+					foreach (s->stored,s2)
 					{
 						if (at >= storeOffset || force)
 						{
@@ -1625,78 +1547,26 @@ namespace Objects
 	#endif
 
 
-	void	VehicleStore::LocalCheckout(const PVehicle&v, const Grid::LCellIdI&targetLocation, float&atTime)
+	/*virtual override*/ bool VehicleStore::SharesStorageWith(const PHangar&other) const
 	{
-		ASSERT1__(v,GetName());
+		if (!other)
+			return false;
+		PVehicleStore store = To<VehicleStore>::DynamicCast( other->ToEntity().shared_from_this() );
+		return store && /*store->owner == owner && */store->park == park;
+	}
 
-		#ifndef CLIENT
-		{
-			String error;
-			if (!owner->CanSpawnFromStorage(v,error))
-			{
-				LogEvent(EventClass::Preset::commandRejected,this,"Failed to check out "+v->GetNiceName()+": "+error);
-				return;
-			}
-		}
-		#endif
-
-		ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
-		#ifdef _DEBUG
-			CheckMobileEntitySanity();
-		#endif
-		ASSERT3__(v->storedIn.lock().get() == this, v->GetName(),v->storedIn.lock()->ToEntity().GetName(),GetName());
-		ASSERT2__(RemoveStored(v),v->GetName(),GetName());
-		LogEvent(EventSignificance::Debug,this,"Checking out "+v->GetName()+" to "+targetLocation.ToString());
-		#ifndef CLIENT
-			
-		
-
-
-			MobilePlacementResult rs = v->PlaceExactlyAt(targetLocation,0.f,0.f,false,false,true);
-			if (rs != MobilePlacementResult::PlacementOkay && rs != MobilePlacementResult::PlacementOkayFellDown)
-			{
-				if (v->health <= 0)
-				{
-					LogEvent(EventSignificance::Debug,this,v->GetName()+" did not survive checkout to "+targetLocation.ToString());
-				}
-				else
-				{
-					LogEvent(EventClass::Preset::fatal,this,"Checkout of "+v->GetName()+" failed unexpectedly: "+String(rs));
-					FATAL__("Checkout failed");
-				}
-			}
-			else
-			{
-				v->RegisterChange(PositionChanged,atTime);
-				ASSERT3__(v->location.stackID == targetLocation.stackID,GetName(),v->GetName(),targetLocation.ToString());
-			}
-		#else
-			v->location = targetLocation;
-		#endif
-		if (v->health > 0)
-		{
-			InsertConstructed(v,atTime);
-			#ifndef CLIENT
-				v->SignalDeployment();
-			#endif
-		}
-		else
-			v->storedIn.reset();
-		ASSERT__(v->storedIn.expired());
+	/*virtual override*/ void	VehicleStore::LocalCheckout(const PMobileEntity&e, const Grid::LCellIdI&targetLocation, float&atTime)
+	{
+		Hangar::LocalCheckout(e,targetLocation,atTime);
 		if (park)
 			park->vehiclesStored --;
-		#ifdef _DEBUG
-			CheckMobileEntitySanity();
-		#endif
 	}
 
 
 	#ifdef CLIENT
-		void	VehicleStore::Lose(const PVehicle&v)
+		/*virtual override*/ void	VehicleStore::Lose(const PMobileEntity&v)
 		{
-			ASSERT3__(v->storedIn.lock().get() == this,v->GetName(),v->storedIn.lock()->ToEntity().GetName(),GetName());
-			v->storedIn.reset();
-			ASSERT2__(RemoveStored(v),v->GetName(),GetName());
+			Hangar::Lose(v);
 			if (park)
 				park->vehiclesStored--;
 		}
@@ -1704,14 +1574,14 @@ namespace Objects
 	#else
 
 
-		bool						VehicleStore::StoreInPark(const PVehicle&v, float&atTime)
+		bool						VehicleStore::StoreInPark(const PMobileEntity&v, float&atTime)
 		{
-			if (StoreLocally(v,atTime))
+			if (StoreLocally(v,atTime,false,To<VehicleStore>::Cast(shared_from_this())))
 				return true;
 			if (!park)
 				return false;
 			foreach (park->members,m)
-				if (m->lock()->StoreLocally(v,atTime))
+				if (m->lock()->StoreLocally(v,atTime,false,To<VehicleStore>::Cast(shared_from_this())))
 					return true;
 			return false;
 		}
@@ -1733,9 +1603,9 @@ namespace Objects
 				{
 					s->park.reset();
 					#ifndef CLIENT
-						while (localStore.IsNotEmpty() && s->StoreLocally(localStore.last().vehicle.lock(),atTime))
+						while (stored.IsNotEmpty() && s->StoreLocally(stored.last().entity.lock(),atTime,false,To<VehicleStore>::Cast(shared_from_this())))
 						{
-							localStore.EraseLast();
+							stored.EraseLast();
 						}
 					#endif
 				}
@@ -1751,13 +1621,13 @@ namespace Objects
 
 		}
 		#ifndef CLIENT
-			for(const auto&v:localStore)
+			for(const auto&v:stored)
 			{
-				ASSERT1__(!v.vehicle.expired(),id.ToString());
-				Remove(v.vehicle.lock(),RemovalType::DestroyedInStorage,atTime,false,true);
+				ASSERT1__(!v.entity.expired(),id.ToString());
+				Remove(v.entity.lock(),RemovalType::DestroyedInStorage,atTime,false,true);
 			}
 		#endif
-		localStore.Clear();
+		stored.Clear();
 
 	}
 

@@ -275,7 +275,7 @@ namespace Game
 			if (owned)
 			{
 				auto&info = state.myMobileEntity.Set0();
-				Objects::PHangarStructure h = v.storedIn.lock();
+				Objects::PHangar h = v.storedIn.lock();
 				//Objects::PVehicleStore storedIn = To<Objects::VehicleStore>::DynamicCast(v.storedIn.lock());
 				if (h)
 					info.storedIn.Set0() = h->ToEntity().id;

@@ -358,7 +358,7 @@ namespace Objects
 
 			if (!Grid::actualWorld.LowCellIsClear(cell))
 			{
-				PHangarStructure s = MobileDestinationStructureHere(cell,*this);
+				PHangar s = MobileDestinationStructureHere(cell,*this);
 				if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
 					return MobilePlacementResult::EnteredStructure;
 
@@ -376,9 +376,12 @@ namespace Objects
 				PVehicle v = GetVehicle(cell);
 				if (v)
 				{
-					PHangarStructure s = v->CastToDestinationForType(*this);
-					if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
-						return MobilePlacementResult::EnteredStructure;
+					if (v->owner == owner)
+					{
+						PHangar s = v->CastToDestinationForType(*this);
+						if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+							return MobilePlacementResult::EnteredStructure;
+					}
 
 					if (failIsFatal)
 					{

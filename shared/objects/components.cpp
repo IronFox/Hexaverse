@@ -34,7 +34,7 @@ namespace Objects
 
 		namespace SubOrbital
 		{
-			Turret		raptor;
+			Turret		raptor,cargoPlane;
 			VehicleBase	planeBase;
 		}
 
@@ -1569,7 +1569,7 @@ namespace Objects
 					#endif
 					//MakeBox(component.parts.first().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 					component.typeName = "Plane";
-					component.shortName = "Plane";
+					component.shortName = "Airborne";
 					component.constName = ConstName::VehicleBase_Plane;
 
 					component.productionCosts = 40;
@@ -1650,7 +1650,7 @@ namespace Objects
 				component.damageLevel = 5;
 				component.dealsEMPDamage = false;
 				component.attacksPerRound = 2;
-				component.initiative = 60;
+				component.initiative = 100;
 				component.ammoNeedPerShot = 0;//10;
 				component.ammoType = Resource::Uranium;
 				component.requiresStationaryVehicle = false;
@@ -1663,8 +1663,39 @@ namespace Objects
 			}
 
 
-		}
 
+			void			CargoPlane::Configure(Turret&component)
+			{
+				#ifdef HAS_WINDOW		
+					CellCoords offset = ConfigureStandardCommands(component);
+
+					component.commands.Add( new IconCommand("Take Off",&Cmd::TakeOff, &CommonCmd::CommonButtonCheck,NoCosts));
+					component.commands.Add( new IconCommand("Land",&Cmd::Land, &CommonCmd::CommonButtonCheck,NoCosts));
+				#endif
+
+
+				component.typeName = "Cargo Plane";
+				component.shortName = " Cargo";
+				component.constName = ConstName::Type_CargoPlane;	//let's see if i can use the same name here
+				component.constTowerName = ConstName::Empty;	//not used
+
+				component.mountType = Turret::MountType::Plane;
+
+				component.productionCosts = 1;	//irrelevant
+
+		
+				component.weight = 1;	//irrelevant
+				component.healthMultiplier = 1;	//irrelevant
+				component.scanningRange = 6;
+
+				component.initiative = 60;
+				component.uplinkTraffic = 10;
+
+				component.FinishCreation(false);
+			}
+
+
+		}
 
 
 		void			Hoverbase::Configure(VehicleBase&component)

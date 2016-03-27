@@ -216,6 +216,8 @@ namespace Objects
 
 		Component::ConfigureAll();
 
+		Hangar::StaticSetup();
+
 		foreach(satellitePrototypes, p)
 			(*p)->PrototypeSetup();
 		foreach(structurePrototypes, p)

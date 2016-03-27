@@ -8,6 +8,8 @@
 #include "interface.h"
 #include "mobileEntityProducer.h"
 #include "vehicle.h"
+#include "hangar.h"
+
 
 namespace Objects
 {
@@ -271,7 +273,7 @@ namespace Objects
 			#endif
 		};
 
-		class CargoPlane : public Template<CargoPlane>, public HangarStructure
+		class CargoPlane : public Template<CargoPlane>, public Hangar
 		{
 		protected:
 			typedef Template<CargoPlane>	Super;
@@ -282,19 +284,6 @@ namespace Objects
 			/**/					CargoPlane():Super(GetTurretType())
 									{}	//global prototype
 		public:
-			struct TStored
-			{
-				PMobileEntity		entity;
-				#ifdef HAS_WINDOW
-					DeployMobileCommand	deployCommand;
-				#endif
-
-				/**/				TStored(const PMobileEntity&e):entity(e)	{}
-
-				bool				operator==(const PMobileEntity&e) const {return entity == e;}
-			};
-
-			Buffer0<TStored>		stored;
 			static const count_t	MaxStorage = 4;
 
 			//MobileEntity overrides:
@@ -315,12 +304,10 @@ namespace Objects
 			//WorldEntity overrides:
 			virtual int				GetConstructionCost() const override {return 40;}
 			virtual int				GetMaxHealth() const {return 15;}
+			virtual PHangar			CastToDestinationForType(const MobileEntity&e) override;
 			#ifdef HAS_WINDOW
-				virtual void		OnSelect()	override {deployingMobileEntity.reset();};
-				virtual void		OnDeselect() override {deployingMobileEntity.reset();}
+				virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override;
 			#endif
-			virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) override;
-
 			#ifndef NO_HIBERNATION
 				virtual int			GetUplinkTraffic() const override {return 4;}
 			#endif
@@ -335,9 +322,11 @@ namespace Objects
 			virtual WorldEntity&		ToEntity() override {return *this;}
 
 			virtual bool	CanStoreType(const MobileEntity&e) const override {return e.IsVehicle();}
-			virtual bool	HasStoredLocally(const PMobileEntity&e) const override {return stored.Contains(e);}
-			virtual void	StoreLocallyFromImport(const PMobileEntity&e) override {ASSERT2__(e->IsVehicle(),GetName(),e->GetName()); stored << e;}
-			virtual bool	Store(const PMobileEntity&e, float&atTime) override;
+			virtual void	StoreLocallyFromImport(const PMobileEntity&e) override;
+			#ifndef CLIENT
+				virtual bool	Store(const PMobileEntity&e, float&atTime) override;
+			#endif
+			virtual count_t	GetMaxStorage() const override {return MaxStorage;}
 		};
 
 

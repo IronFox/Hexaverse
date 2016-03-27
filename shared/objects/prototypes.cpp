@@ -211,6 +211,7 @@ namespace Objects
 
 
 			SubOrbital::Raptor::Configure(SubOrbital::raptor);
+			SubOrbital::CargoPlane::Configure(SubOrbital::cargoPlane);
 
 
 			allTurretComponents << &radar 

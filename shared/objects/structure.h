@@ -401,16 +401,6 @@ namespace Objects
 		void						PropagatePark(const PPark&compound);
 		void						MergePark(const PPark&other);
 
-		bool						RemoveStored(const PVehicle&v)
-		{
-			foreach (localStore,s)
-				if (s->vehicle.lock() == v)
-				{
-					localStore.erase(s);
-					return true;
-				}
-			return false;
-		}
 
 
 		friend class Super;
@@ -447,28 +437,10 @@ namespace Objects
 			}
 		};
 
-		struct Stored
-		{
-			WVehicle				vehicle;
-			#ifdef HAS_WINDOW
-				DeployMobileCommand	deployCommand;
-			#endif
-		};
 
 		PPark						park;	//!< Shared state. Should not be set if the local VehicleStore is not connected to any other VehicleStore instances
-		Buffer0<Stored>				localStore;	//!< Locally stored vehicles
 		#ifdef HAS_WINDOW
 			static Geometry			interConnector;
-			static index_t			storeOffset;				//!< Button offset (kinda like a scrollbar position)
-			static const count_t	MaxVisibleStoreItems = 8;	//!< Maximum number of vehicle buttons that can be shown before arrow buttons are added to scroll
-
-			static int2				cmdLeftCoords,
-									cmdRightCoords;
-			static IconCommand		cmdLeft,		//!< Arrow button to scroll left
-									cmdRight;		//!< Arrow button to scroll right
-
-			virtual void			OnSelect()	override;
-			virtual void			OnDeselect() override;
 
 
 			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return To<VehicleStore>::DynamicCast(connected) && connected->location.height == location.height ? &interConnector : &standardConnector;}
@@ -482,49 +454,36 @@ namespace Objects
 
 
 
-		count_t						CountVehiclesInPark() const {return park? park->vehiclesStored : localStore.Count();}
+		count_t						CountVehiclesInPark() const {return park? park->vehiclesStored : stored.Count();}
 		count_t						GetParkVehicleCapacity() const {return park ? park->members.Count() * MaxVehiclesPerStore : MaxVehiclesPerStore;}
 
 
 
-		void						LocalCheckout(const PVehicle&v, const Grid::LCellIdI&targetLocation, float&atTime);
 		#ifndef CLIENT
-			bool					StoreInPark(const PVehicle&v, float&atTime);
+			bool					StoreInPark(const PMobileEntity&v, float&atTime);
 		#else
 			void					Lose(const PVehicle&v);
 		#endif
 
-		/**
-		Attempts to store the specified vehicle in the local store (not the park)
-		This method is frequently called by the server and should not be called by the client
-		unless as a response to a server notification.
-		@param v Vehicle to store
-		@param atTime Current server time
-		@param setHealthToFullIfNew If the specified vehicle has not been registered in the world so far, this value is passed to RegisterNewOffGrid()
-		@return true, if the specified vehicle could be stored in the local storage,
-				false, if anything (capacity, ownership, etc) prevented storage.
-		*/
-		bool						StoreLocally(const PVehicle&v, float&atTime, bool setHealthToFullIfNew=true);
 
-		/**
-		Thoroughly checks if the local structure (not the park) has the specified vehicle in store.
-		Checks the actual storage, not the @a storedIn member of @a v
-		*/
-		bool						HasStoredLocally(const PVehicle&v) const;
 
 		/**
 		Checks if the local structure (not the park) is full (i.e. cannot store any additional vehicles)
 		*/
-		bool						LocalIsFull() const {return localStore.Count() >= MaxVehiclesPerStore;}
+		bool						LocalIsFull() const {return stored.Count() >= MaxVehiclesPerStore;}
 
 
-		//HangarStructure overrides:
+		//Hangar overrides:
 		virtual bool				CanStoreType(const MobileEntity&e) const override;
-		virtual bool				HasStoredLocally(const PMobileEntity&e) const override;
 		virtual void				StoreLocallyFromImport(const PMobileEntity&e) override;
 		#ifndef CLIENT
-			virtual bool			Store(const PMobileEntity&e, float&atTime) override {return e && CanStoreType(*e) && StoreInPark(To<Vehicle>::Cast(e),atTime);}
+			virtual bool			Store(const PMobileEntity&e, float&atTime) override {return e && CanStoreType(*e) && StoreInPark(e,atTime);}
+		#else
+			virtual void			Lose(const PMobileEntity&v)	override;
 		#endif
+		virtual bool				SharesStorageWith(const PHangar&other)	const override;
+		virtual void				LocalCheckout(const PMobileEntity&v, const Grid::LCellIdI&targetLocation, float&atTime) override;
+		virtual count_t				GetMaxStorage() const override {return MaxVehiclesPerStore;}
 
 
 		//Structure overrides:

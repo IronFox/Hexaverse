@@ -847,7 +847,7 @@ namespace Objects
 
 		if (deploying)
 		{
-			const HangarStructure*s = dynamic_cast<HangarStructure*>(&entity);
+			const Hangar*s = dynamic_cast<Hangar*>(&entity);
 			if (s)
 			{
 				Grid::LCellIdI location = s->ToEntity().location;
@@ -2074,10 +2074,10 @@ namespace Objects
 		}
 	}
 
-	PHangarStructure		MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&m)
+	PHangar		MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&m)
 	{
 		PStructure s = GetStructure(location);
-		return s && s->owner == m.owner ? s->CastToDestinationForType(m) : PHangarStructure();
+		return s && s->owner == m.owner ? s->CastToDestinationForType(m) : PHangar();
 	}
 
 
@@ -3321,13 +3321,13 @@ namespace Objects
 					{
 						if (deployWhat && deployWhat->IsGroundBoundVehicle())
 						{
-							PVehicleStore s = To<VehicleStore>::DynamicCast(e);
-							PHangarStructure actual = deployWhat->storedIn.lock();
-							PVehicleStore actualStore = To<VehicleStore>::DynamicCast(actual);
-							if (s && actualStore && actualStore->park == s->park)
+							PHangar s = To<Hangar>::DynamicCast(e);
+							PHangar actual = deployWhat->storedIn.lock();
+							//PVehicleStore actualStore = To<VehicleStore>::DynamicCast(actual);
+							if (s && s->SharesStorageWith(actual))
 							{
 								float t = 0.f;
-								actualStore->LocalCheckout(To<Vehicle>::Cast(deployWhat),choice,t);
+								actual->LocalCheckout(deployWhat,choice,t);
 							}
 							else
 							{
@@ -3336,18 +3336,18 @@ namespace Objects
 									if (deployWhat)
 									{
 										if (!actual)
-											LogEvent(EventClass::Preset::fatal,s.get(),"Attempting to re-checkout "+deployWhat->GetName());
+											LogEvent(EventClass::Preset::fatal,&s->ToEntity(),"Attempting to re-checkout "+deployWhat->GetName());
 										else
-											if (actualStore->park != s->park)
+											if (!s->SharesStorageWith(actual))
 											{
-												LogEvent(EventClass::Preset::fatal,s.get(),"Unable to checkout "+deployWhat->GetName()+" from this store: stored in a different park");
+												LogEvent(EventClass::Preset::fatal,&s->ToEntity(),"Unable to checkout "+deployWhat->GetName()+" from this store: stored in a different park");
 											}
 											else
 												FATAL__("Equation evaluation error. Did the compiler fuck up?");
 									}
 									else
 									{
-										LogEvent(EventClass::Preset::fatal,s.get(),"Nothing to deploy (reference is null)");
+										LogEvent(EventClass::Preset::fatal,&s->ToEntity(),"Nothing to deploy (reference is null)");
 									}
 								}
 

@@ -658,7 +658,7 @@ namespace FileIO
 
 	static void Export(Riff::Chunk*parent, Objects::MobileEntity&v, GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
 	{
-		Objects::PHangarStructure store = v.storedIn.lock();
+		Objects::PHangar store = v.storedIn.lock();
 		if (store)
 		{
 			v.location = store->ToEntity().location;
@@ -1382,7 +1382,7 @@ namespace FileIO
 
 		for (const Objects::PMobileEntity&v : insertIntoHangar)
 		{
-			Objects::PHangarStructure s = To<Objects::HangarStructure>::DynamicCast(Objects::GetEntity(v->location));
+			Objects::PHangar s = To<Objects::Hangar>::DynamicCast(Objects::GetEntity(v->location));
 			ASSERT2__(s,v->GetName(),v->location.ToString());
 			s->StoreLocallyFromImport(v);
 		}

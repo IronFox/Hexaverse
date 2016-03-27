@@ -22,7 +22,6 @@ namespace Objects
 								removeCandidates;
 	Buffer0<Grid::HCellIdI>		cellSelection;
 
-	PMobileEntity				deployingMobileEntity;
 
 
 	template <bool ControlEnabled>
@@ -52,7 +51,7 @@ namespace Objects
 
 		if (controlEnabled)
 			GetChoices(selectedEntity,
-				Objects::VehicleStore::deployingVehicle, 
+				deployingMobileEntity, 
 				activeCursorMode,movementChoices,showArrow,hasArrowCellTarget,arrowFrom,arrowFromCell);
 		else
 		{
@@ -101,15 +100,14 @@ namespace Objects
 		index_t choice = DetectChoiceIntersection(b, d, distance);
 		if (choice == InvalidIndex)
 			return false;
-		PVehicle deployment = VehicleStore::deployingVehicle;
+		PMobileEntity deployment = deployingMobileEntity;
 		//VehicleStore::deployingVehicle.reset();
 		CursorMode cursorMode = activeCursorMode;
 		activeCursorMode = CursorMode::Idle;
 
 		Grid::LCellIdI ch = movementChoices[choice].location;
-		PVehicleStore st = To<VehicleStore>::DynamicCast(selectedEntity);
-		if (st)
-			st->SignalDeployment();
+		if (To<Hangar>::DynamicCast(selectedEntity))
+			deployingMobileEntity.reset();
 
 		UpdateChoices(true);
 
