@@ -184,6 +184,19 @@ namespace Objects
 			#endif
 		}
 
+		inline void					SyncTime(WorldEntity&other, float&remoteTime, float timeOffset)
+		{
+			#ifndef CLIENT
+				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime)) + timeOffset;
+			#endif
+		}
+		inline void					SyncTime(WorldEntity&other, float&remoteTime)
+		{
+			#ifndef CLIENT
+				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime));
+			#endif
+		}
+
 
 
 		virtual						~WorldEntity();
@@ -421,7 +434,7 @@ namespace Objects
 		If storage is not possible due to type constraints (NOT capacity constraints), the return value must be
 		empty.
 		*/
-		virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) {return PHangarStructure();}
+		virtual PHangar				CastToDestinationForType(const MobileEntity&e) {return PHangar();}
 
 
 		virtual bool				IsIndestructible() const	{return false;};

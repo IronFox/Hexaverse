@@ -13,7 +13,7 @@
 #include "../cast.h"
 #include "interface.h"
 #include "hibernating.h"
-#include "hangarStructure.h"
+#include "hangar.h"
 #include "mobileEntityProducer.h"
 
 /*
@@ -383,7 +383,7 @@ namespace Objects
 	Vehicle storage class.
 	Instances of this class can permanently store vehicles
 	*/
-	class VehicleStore : public OtherStructure<VehicleStore>, public HangarStructure
+	class VehicleStore : public OtherStructure<VehicleStore>, public Hangar
 	{
 	public:
 		struct Park;
@@ -530,7 +530,7 @@ namespace Objects
 		//Structure overrides:
 		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) override;
 		virtual void				OnConnectionLost(const PStructure&, UINT32 acrossHighCell, float atTime) override;
-		virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) override;
+		virtual PHangar				CastToDestinationForType(const MobileEntity&e) override;
 		virtual Category			GetCategory() const override {return Category::Miscellaneous;}
 
 

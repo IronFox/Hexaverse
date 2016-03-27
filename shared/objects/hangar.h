@@ -8,10 +8,26 @@
 
 namespace Objects
 {
-	class HangarStructure
+	class Hangar
 	{
 	public:
-		virtual			~HangarStructure()	{}
+		struct TStored
+		{
+			WMobileEntity	entity;
+			#ifdef HAS_WINDOW
+				DeployMobileCommand	deployCommand;
+			#endif
+
+			/**/			TStored()	{}
+			/**/			TStored(const PMobileEntity&e):entity(e)	{}
+
+			bool			operator==(const PMobileEntity&e) const {return entity.lock() == e;}
+		};
+		Buffer0<TStored>	stored;
+
+		virtual			~Hangar()	{}
+		bool			StoreLocally(const PMobileEntity&e, float&atTime, count_t maxStorage, const PHangar&sharedSelf);
+
 		virtual const WorldEntity&	ToEntity() const = 0;
 		virtual WorldEntity&		ToEntity() = 0;
 
