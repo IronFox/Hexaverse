@@ -1564,6 +1564,9 @@ namespace Objects
 				{
 					component.height = 0;	//for now, maybe forever
 
+					#ifdef HAS_WINDOW
+						component.ambientSound = OpenAL::Load("resources/objectSounds/plane.wav");
+					#endif
 					//MakeBox(component.parts.first().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 					component.typeName = "Plane";
 					component.shortName = "Plane";

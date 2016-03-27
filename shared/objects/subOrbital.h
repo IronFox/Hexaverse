@@ -87,6 +87,7 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				virtual void		DescribeType(BaseCommand::Label&outResult, UINT32 descFlags) override;
 				virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {turret->VisitAllCommands(visitor,force);};
+				virtual float		GetSoundLevel() const {return IsGroundBoundVehicle() ? 0.f : GetActivityLevel()*0.25f;}	//save 75% for motion
 			#endif
 
 			virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr) override;
