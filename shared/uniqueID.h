@@ -167,7 +167,7 @@ public:
 	{
 		static HCRYPTPROV provider = NULL;
 		if (provider == NULL)
-			ASSERT1__(CryptAcquireContext (&provider,NULL,NULL,PROV_RSA_AES,0),GetLastError());
+			ASSERT1__(CryptAcquireContext (&provider,NULL,NULL,PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT),GetLastError());
 		ASSERT__(CryptGenRandom(provider,ARRAYSIZE(bytes),bytes));
 	}
 
