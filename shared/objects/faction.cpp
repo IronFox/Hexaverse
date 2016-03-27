@@ -17,7 +17,7 @@ namespace Objects
 	#ifndef CLIENT
 
 		/*static*/ Buffer0<WFaction>	Faction::all;
-		/*static*/ PFaction				Faction::nexus(new Faction(TUniqueID::Empty(), "<Nexus>"));
+		/*static*/ PFaction				Faction::nexus;
 
 		void	Faction::RecreateNexus()
 		{
@@ -952,7 +952,8 @@ namespace Objects
 				func(*a);
 		#else
 			
-			func(Faction::nexus);
+			if (Faction::nexus)
+				func(Faction::nexus);
 			for (index_t i = 0; i < Faction::all.Count(); i++)
 			{
 				PFaction f = Faction::all[i].lock();
