@@ -1723,6 +1723,8 @@ namespace Objects
 				component.weight = 1;	//irrelevant
 				component.healthMultiplier = 1;	//irrelevant
 				component.scanningRange = 6;
+				component.groundScanningRange = 3;
+				component.groundScannerPenetration = 0;
 
 				component.initiative = 60;
 				component.uplinkTraffic = 10;
