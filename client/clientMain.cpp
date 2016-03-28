@@ -207,6 +207,7 @@ Triggered when entering command mode and animations have finished (whichever of 
 void	OnPlayerControlBegin()
 {
 	#ifdef HAS_WINDOW
+		OnSelectionChange(true);
 		UI::RefreshButtonState();
 	#endif
 	Objects::RefreshSkyHubConnections();
@@ -1090,7 +1091,12 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 	void OnSelectionChange(bool stateChangeOnly)
 	{
-		if (!stateChangeOnly)
+		if (stateChangeOnly)
+		{
+			if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase || !Animation::AllDone())
+				return;
+		}
+		else
 			Objects::CommandGroup::CollapseAll();
 		Objects::Renderer::HighlightSmokeTrail(InvalidIndex);
 
