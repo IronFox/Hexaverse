@@ -987,14 +987,14 @@ void FillMarker(Protocol::Marker&marker, const Objects::PWorldEntity&e, Protocol
 	marker.location = e->location;
 	outE.id = e->id;
 	outE.owner = e->owner->id;
-	Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
-	if (!v)
+	if (!e->IsPureVehicle())
 	{
 		outE.type0 = e->GetCTypeName();
 		outE.type1 = ConstName::Empty;
 	}
 	else
 	{
+		Objects::PVehicle v = To<Objects::Vehicle>::Cast(e);
 		outE.type0 = v->base->constName;
 		outE.type1 = v->turret->constName;
 	}
@@ -1038,6 +1038,7 @@ void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 		marker.id.value.Generate();
 		FillMarker(marker, e, marker.data.Set0());
 		SignalMarkerCreation(marker);
+		LogEvent(EventSignificance::Debug,e.get(),"Created friendly loss marker for "+e->GetName());
 	}
 	else
 		if (t == Objects::RemovalType::Vanished && !e->isOwnedByMe)
