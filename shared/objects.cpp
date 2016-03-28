@@ -171,6 +171,7 @@ namespace Objects
 		//satellitePrototypes << StarPort::globalPrototype;
 
 		SubOrbital::prototypes << SubOrbital::Raptor::globalPrototype;
+		SubOrbital::prototypes << SubOrbital::CargoPlane::globalPrototype;
 
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::launcher));
 		//Tower::globalPrototypes.Append().reset(new Tower(artillery));

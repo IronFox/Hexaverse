@@ -3257,7 +3257,7 @@ namespace Objects
 			else
 			{
 				PMobileEntity v = To<MobileEntity>::DynamicCast(e);
-				if (v)
+				if (v && !deployWhat)
 				{
 					auto c = choice;
 					switch (mode)

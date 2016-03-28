@@ -1242,8 +1242,8 @@ namespace Receiver
 			ASSERT1__(deployingWhat,deploying->value.ToString());
 		}
 
-		if (To<Objects::VehicleStore>::DynamicCast(e))
-			ASSERT_NOT_NULL__(deploying);
+		if (To<Objects::Hangar>::DynamicCast(e))
+			ASSERT_NOT_NULL1__(deploying,e->GetName());
 
 		Journal::currentRound.RegisterChoiceIntersection(true,e,ch.target,(Objects::Vehicle::mode_t)ch.mode.value,deployingWhat);
 
