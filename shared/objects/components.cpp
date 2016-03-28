@@ -1643,8 +1643,8 @@ namespace Objects
 				component.healthMultiplier = 1;	//irrelevant
 				component.horizontalAttackRange = 9;
 				component.scanningRange = 9;
-				component.groundScanningRange = 10;
-				component.groundScannerPenetration = 2;
+				component.groundScanningRange = 9;
+				component.groundScannerPenetration = 0;
 
 				component.explosionRadius = 1;
 				component.damageLevel = 5;
