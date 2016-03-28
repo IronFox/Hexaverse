@@ -327,6 +327,43 @@ namespace Objects
 		};
 
 
+		class SensorDrone : public Template<SensorDrone>
+		{
+		protected:
+			typedef Template<SensorDrone>	Super;
+			friend class Super;
+
+			/**/					SensorDrone(const OwnerParameter&owner, const Grid::LCellIdI&location):Super(owner,GetTurretType(),location)
+									{}
+			/**/					SensorDrone():Super(GetTurretType())
+									{}	//global prototype
+		public:
+
+			//Plane overrides:
+			virtual int				GetMaxAirSpeed() const override {return 9;}
+
+
+			//BaseEntity overrides:
+			virtual String			GetTypeName() const override {return "Sensor Drone";}
+			virtual ConstName		GetCTypeName() const override {return ConstName::Type_SensorDrone;}
+
+			//SatelliteTemplate overrides:
+			virtual Component::Turret*
+									GetTurretType() const override	{return &Component::SubOrbital::sensorDrone;}
+
+			//WorldEntity overrides:
+			virtual int				GetMaxHealth() const {return 4;}
+			#ifndef NO_HIBERNATION
+				virtual int			GetUplinkTraffic() const override {return 4;}
+			#endif
+
+			//Hibernating overrides:
+			#ifndef NO_HIBERNATION
+				virtual int			GetUplinkPriority() const override {return 900;}
+			#endif
+		};
+
+
 		extern Buffer0<PPlane>		planes;
 	}
 }

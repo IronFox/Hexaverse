@@ -488,7 +488,7 @@ namespace Objects
 
 		namespace SubOrbital
 		{
-			extern Turret		raptor,cargoPlane;
+			extern Turret		raptor,cargoPlane,sensorDrone;
 			extern VehicleBase	planeBase;
 		}
 
@@ -579,12 +579,17 @@ namespace Objects
 			namespace Raptor
 			{
 				void	Configure(Turret&);
-			};
+			}
 
 			namespace CargoPlane
 			{
 				void	Configure(Turret&);
-			};
+			}
+
+			namespace SensorDrone
+			{
+				void	Configure(Turret&);
+			}
 
 			namespace Base
 			{

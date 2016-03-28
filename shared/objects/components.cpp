@@ -34,7 +34,7 @@ namespace Objects
 
 		namespace SubOrbital
 		{
-			Turret		raptor,cargoPlane;
+			Turret		raptor,cargoPlane,sensorDrone;
 			VehicleBase	planeBase;
 		}
 
@@ -1661,6 +1661,42 @@ namespace Objects
 
 				component.FinishCreation(false);
 			}
+
+
+			void			SensorDrone::Configure(Turret&component)
+			{
+				#ifdef HAS_WINDOW		
+					CellCoords offset = ConfigureStandardCommands(component);
+
+					component.commands.Add( new IconCommand("Take Off",&Cmd::TakeOff, &CommonCmd::CommonButtonCheck,NoCosts));
+					component.commands.Add( new IconCommand("Land",&Cmd::Land, &CommonCmd::CommonButtonCheck,NoCosts));
+					//component.parts.setSize(1);
+					//component.parts.first().first.LoadFromObj("objects/skyGuardianRing.obj");
+				#endif
+
+
+				component.typeName = "Sensor Drone";
+				component.shortName = " Sensor";
+				component.constName = ConstName::Type_SensorDrone;
+				component.constTowerName = ConstName::Empty;
+
+				component.mountType = Turret::MountType::Plane;
+
+				component.productionCosts = 10;
+
+		
+				component.weight = 1;	//irrelevant
+				component.healthMultiplier = 1;	//irrelevant
+				component.scanningRange = 11;
+				component.groundScanningRange = 11;
+				component.groundScannerPenetration = 1;
+
+				component.initiative = 110;
+				component.uplinkTraffic = 10;
+
+				component.FinishCreation(false);
+			}
+
 
 
 
