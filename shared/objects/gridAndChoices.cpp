@@ -3319,7 +3319,7 @@ namespace Objects
 					//PWorkingStructure ws = To<WorkingStructure>::DynamicCast(e);
 
 					{
-						if (deployWhat && deployWhat->IsGroundBoundVehicle())
+						if (deployWhat)
 						{
 							PHangar s = To<Hangar>::DynamicCast(e);
 							PHangar actual = deployWhat->storedIn.lock();
@@ -3359,7 +3359,7 @@ namespace Objects
 						}
 						else
 						{
-							FATAL__("Trying to check out non-vehicle");
+							FATAL__("deployWhat must be set when checking out from "+e->GetName());
 						}
 					}
 				}
