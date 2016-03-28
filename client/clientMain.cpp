@@ -1372,9 +1372,9 @@ bool loop()
 
 			TVec3<> at = Grid::ToWorld(s.location);
 			double offset = (((UINT32)s.id.bytes[1]<<16) | ((UINT32)s.id.bytes[2]<<8) | ((UINT32)s.id.bytes[3]));
-			at.x += (sin(offset + Engine::timing.now))*0.0125f;
-			at.y += (sin(offset + Engine::timing.now*1.2784))*0.0125f;
-			at.z += (sin(offset + Engine::timing.now*1.43485))*0.0125f;
+			at.x += (sin(offset + Engine::timing.now))*0.025f;
+			at.y += (sin(offset + Engine::timing.now*1.2784))*0.025f;
+			at.z += (sin(offset + Engine::timing.now*1.43485))*0.025f;
 			s.system.w.xyz = at;
 		}
 
