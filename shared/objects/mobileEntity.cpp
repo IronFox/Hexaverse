@@ -435,6 +435,10 @@ namespace Objects
 				{
 					float zOffset;
 					PTurretBase b = (*c)->GetTurretBase(zOffset);
+					bool thisIsGrounded = !this->IsPlane() || this->IsGroundBoundVehicle();
+					bool thatIsGrounded = !(*c)->IsPlane() || (*c)->IsGroundBoundVehicle();
+					if (!thisIsGrounded && thatIsGrounded)
+						continue;
 					if (!b)
 						continue;
 					if (b->turret->CanAttack())
@@ -469,6 +473,7 @@ namespace Objects
 								if (badTask)
 								{
 									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetName()+" at "+(*c)->location.ToString()+" detected.");
+									LogEvent(EventSignificance::Uncommon,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected.");
 									if (v2.get() == this)
 									{
 										ClearAllTasks(true,CLOCATION);
