@@ -73,6 +73,7 @@ namespace Objects
 				virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const {return false;}
 				virtual bool		ProcessRound(float&atTime);
 			#endif
+			virtual int				GetMaxAirSpeed() const = 0;
 
 			//TurretBase overrides:
 			virtual float			GetFlatAttackRange() const override {return EMPModify(turret->horizontalAttackRange,1.f);}
@@ -101,6 +102,10 @@ namespace Objects
 			#endif
 
 			//MobileEntity overrides:
+			virtual int				GetMovementStepsPerRound() const override
+			{
+				return (int)ceil(EMPModify(GetMaxAirSpeed(),1.f));
+			}
 			#ifndef ONE_COMPOUND_PER_FACTION
 				virtual ResourceVector		GetMaxStorageCapacity()	const override
 				{
@@ -244,12 +249,8 @@ namespace Objects
 			#endif
 
 
-			//MobileEntity overrides:
-			virtual int				GetMovementStepsPerRound() const override
-			{
-				return (int)ceil(EMPModify(10.f,1.f));
-			}
-
+			//Plane overrides:
+			virtual int				GetMaxAirSpeed() const override {return 10;}
 
 			//BaseEntity overrides:
 			virtual String			GetTypeName() const override {return "Raptor";}
@@ -286,12 +287,8 @@ namespace Objects
 		public:
 			static const count_t	MaxStorage = 4;
 
-			//MobileEntity overrides:
-			virtual int				GetMovementStepsPerRound() const override
-			{
-				return (int)ceil(EMPModify(8.f,1.f));
-			}
-
+			//Plane overrides:
+			virtual int				GetMaxAirSpeed() const override {return 8;}
 
 			//BaseEntity overrides:
 			virtual String			GetTypeName() const override {return "Cargo Plane";}
