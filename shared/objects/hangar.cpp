@@ -151,7 +151,7 @@ namespace Objects
 				ASSERT3__(v->location.stackID == targetLocation.stackID,self.GetName(),v->GetName(),targetLocation.ToString());
 			}
 		#else
-			v->location = targetLocation;
+			v->preAnimationLocation = v->location = targetLocation;
 		#endif
 		if (v->health > 0)
 		{
