@@ -1629,6 +1629,12 @@ namespace Animation
 			{
 				TVec3<> n,d,axis;
 				Vec::resolveBezierCurveAxis(p0,c0,c1,p1,fj,axis);
+
+				if (target->IsPlane())
+				{
+					Vec::makeNormalTo(axis,float3::Reinterpret(p).Normalized0());
+				}
+
 				Vec::normalize0(axis);
 				axis = -axis;
 
