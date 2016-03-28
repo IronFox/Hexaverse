@@ -484,7 +484,9 @@ namespace Objects
 		virtual bool				SharesStorageWith(const PHangar&other)	const override;
 		virtual void				LocalCheckout(const PMobileEntity&v, const Grid::LCellIdI&targetLocation, float&atTime) override;
 		virtual count_t				GetMaxStorage() const override {return MaxVehiclesPerStore;}
-
+		const WorldEntity&			ToEntity() const override {return *this;}
+		WorldEntity&				ToEntity() override {return *this;}
+		virtual void				OnDestroy(RemovalType, float atTime) override;
 
 		//Structure overrides:
 		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) override;
@@ -493,13 +495,8 @@ namespace Objects
 		virtual Category			GetCategory() const override {return Category::Miscellaneous;}
 
 
-		//HangarStructure overrides:
-		const WorldEntity&			ToEntity() const override {return *this;}
-		WorldEntity&				ToEntity() override {return *this;}
-		virtual void				OnDestroy(RemovalType, float atTime) override;
-
-
 		//WorldEntity overrides:
+		virtual bool				IsHangar() const {return true;}
 		virtual String				GetTypeName() const override { return "Vehicle Store"; };
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_VehicleStore;}
 		virtual int					GetHeight() const override {return 2;}

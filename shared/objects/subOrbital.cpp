@@ -258,21 +258,31 @@ namespace Objects
 					PMobileEntity v = GetMobileEntity(cell);
 					if (v)
 					{
+						bool isGood = false;
 						if (v->owner == owner)
 						{
 							PHangar s = v->CastToDestinationForType(*this);
-							if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
-								return MobilePlacementResult::EnteredStructure;
+							PHangar t = CastToDestinationForType(*v);
+							if (!s != !t)
+							{
+								if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+									return MobilePlacementResult::EnteredStructure;
+								else if (t && t->Store(v,motionTime))
+									isGood = true;
+							}
 						}
-						if (failIsFatal)
+						if (!isGood)
 						{
-							LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by "+v->GetName());
-							FATAL__("Critical abort");
+							if (failIsFatal)
+							{
+								LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by "+v->GetName());
+								FATAL__("Critical abort");
+							}
+							if (!v->HasMotionTasks() || v->ConstructingHere(v->location))
+								return MobilePlacementResult::PlacementFailedPermanentlyObstructed;
+							else
+								return MobilePlacementResult::PlacementFailedTemporarilyObstructed;
 						}
-						if (!v->HasMotionTasks() || v->ConstructingHere(v->location))
-							return MobilePlacementResult::PlacementFailedPermanentlyObstructed;
-						else
-							return MobilePlacementResult::PlacementFailedTemporarilyObstructed;
 					}
 				}
 				const Grid::LCellIdI old = location;

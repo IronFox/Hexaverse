@@ -302,6 +302,7 @@ namespace Objects
 									GetTurretType() const override	{return &Component::SubOrbital::cargoPlane;}
 
 			//WorldEntity overrides:
+			virtual bool			IsHangar() const {return true;}
 			virtual int				GetConstructionCost() const override {return 40;}
 			virtual int				GetMaxHealth() const {return 15;}
 			virtual PHangar			CastToDestinationForType(const MobileEntity&e) override;
@@ -321,7 +322,7 @@ namespace Objects
 			virtual const WorldEntity&	ToEntity() const override {return *this;}
 			virtual WorldEntity&		ToEntity() override {return *this;}
 
-			virtual bool	CanStoreType(const MobileEntity&e) const override {return e.IsVehicle();}
+			virtual bool	CanStoreType(const MobileEntity&e) const override {return e.IsVehicle() && !e.IsHangar();}
 			virtual void	StoreLocallyFromImport(const PMobileEntity&e) override;
 			#ifndef CLIENT
 				virtual bool	Store(const PMobileEntity&e, float&atTime) override;

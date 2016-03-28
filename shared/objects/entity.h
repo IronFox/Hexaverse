@@ -435,7 +435,7 @@ namespace Objects
 		empty.
 		*/
 		virtual PHangar				CastToDestinationForType(const MobileEntity&e) {return PHangar();}
-
+		virtual bool				IsHangar() const {return false;}
 
 		virtual bool				IsIndestructible() const	{return false;};
 
