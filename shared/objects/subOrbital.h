@@ -83,6 +83,7 @@ namespace Objects
 			#endif
 
 			//WorldEntity overrides:
+			virtual int				GetConstructionCost() const override {return turret->productionCosts;}
 			virtual bool			IsGroundBoundVehicle() const {return location.height <= Grid::CellStack::TopHeight;}	//landed
 			virtual bool			IsPureVehicle() const override {return false;}
 			virtual bool			IsPlane() const override {return true;}
@@ -261,7 +262,6 @@ namespace Objects
 									GetTurretType() const override	{return &Component::SubOrbital::raptor;}
 
 			//WorldEntity overrides:
-			virtual int				GetConstructionCost() const override {return 80;}
 			virtual int				GetMaxHealth() const {return 5;}
 
 			#ifndef NO_HIBERNATION
@@ -300,7 +300,6 @@ namespace Objects
 
 			//WorldEntity overrides:
 			virtual bool			IsHangar() const {return true;}
-			virtual int				GetConstructionCost() const override {return 40;}
 			virtual int				GetMaxHealth() const {return 15;}
 			virtual PHangar			CastToDestinationForType(const MobileEntity&e) override;
 			#ifdef HAS_WINDOW

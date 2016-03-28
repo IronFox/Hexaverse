@@ -1636,7 +1636,7 @@ namespace Objects
 
 				component.mountType = Turret::MountType::Plane;
 
-				component.productionCosts = 1;	//irrelevant
+				component.productionCosts = 80;
 
 		
 				component.weight = 1;	//irrelevant
@@ -1681,7 +1681,7 @@ namespace Objects
 
 				component.mountType = Turret::MountType::Plane;
 
-				component.productionCosts = 1;	//irrelevant
+				component.productionCosts = 40;
 
 		
 				component.weight = 1;	//irrelevant
