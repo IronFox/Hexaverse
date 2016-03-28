@@ -1133,24 +1133,22 @@ namespace Objects
 				else
 				{
 					//structure
-					PStructure prototype = Objects::GetPrototypeByName(referenceType[0]);
+					PWorldEntity prototype = Objects::GetNonVehiclePrototypeByName(referenceType[0]);
 					if (prototype)
 					{
 						ASSERT1__(prototype, referenceType);
-						m.visualization = To<Structure>::Cast(prototype->CreateNewInstance(OwnerParameter(), location, 0));
-						structureGhosts << To<Structure>::Cast(m.visualization);
+						m.visualization = (prototype->CreateNewInstance(OwnerParameter(), location, 0));
+						if (prototype->IsStructure())
+							structureGhosts << To<Structure>::Cast(m.visualization);
+						else
+							if (prototype->IsMobile())
+								mobileGhosts << To<MobileEntity>::Cast( m.visualization);
+							else
+								LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+prototype->GetTypeName()+"'");
 					}
 					else
-					{
-						PSatellite prototype = Objects::GetSatellitePrototypeByName(referenceType[0]);
-						if (prototype)
-						{
-							//satellite
-							m.visualization = To<MobileEntity>::Cast(prototype->CreateNewInstance(OwnerParameter(), location, 0.f));
-							To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
-							mobileGhosts << To<MobileEntity>::Cast( m.visualization);
-						}
-					}
+						LogEvent(EventSignificance::NonFatalError,"Unable to create ghost for type #"+String((int)referenceType[0]));
+
 				}
 
 				if (m.visualization)
