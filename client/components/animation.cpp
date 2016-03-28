@@ -723,7 +723,7 @@ namespace Animation
 				LogEvent(EventSignificance::Debug,v.get(),"Checked out to "+vs.entityState.location.ToString());
 				ASSERT1__(v->location == vs.entityState.location,v->GetName());
 				ASSERT1__(v->isInserted,v->GetName());
-				ASSERT1__(Objects::vehicles.Contains(v),v->GetName());
+				ASSERT1__(Objects::vehicles.Contains(v) || Objects::SubOrbital::planes.Contains(v),v->GetName());
 				v->UpdateSystem();
 				#ifdef HAS_WINDOW
 					UI::UpdateTraffic();
