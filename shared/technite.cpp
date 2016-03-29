@@ -376,6 +376,7 @@ namespace Technites
 				origin.attachment.reset(new Attachment::Technite(t->id));
 				origin.userLevel = UserLevel::Authenticated;
 				Channels::authenticated.SendTo(origin,0);
+				LogEvent(EventClass::Preset::uncommon,origin.ToString()+ " authenticated on technite "+authenticate.myID.value.ToString());
 				SendWorldStructure(origin);
 			}
 			else
