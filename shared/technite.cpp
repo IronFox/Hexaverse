@@ -162,6 +162,8 @@ namespace Technites
 			namespace Handler
 			{
 				void	Authenticate(Protocol::Authenticate&authenticate, TCP::Peer&origin);
+				void	RegularInstruction(Protocol::RegularInstruction&, TCP::Peer&origin);
+				void	MessageInstruction(Protocol::MessageInstruction&, TCP::Peer&origin);
 			}
 
 
@@ -224,8 +226,8 @@ namespace Technites
 			TCP::ObjectSender<Protocol::NodeChunk, NodeChunk> nodeChunk;
 			TCP::ObjectSender<Protocol::GridConfig, GridConfig> gridConfig;
 
-			TCP::Channel<Protocol::MessageInstruction, UserLevel::Authenticated, MessageInstruction>	messageInstruction;
-			TCP::Channel<Protocol::RegularInstruction, UserLevel::Authenticated, RegularInstruction>	regularInstruction;
+			TCP::Channel<Protocol::MessageInstruction, UserLevel::Authenticated, MessageInstruction>	messageInstruction(Receiver::Handler::MessageInstruction);
+			TCP::Channel<Protocol::RegularInstruction, UserLevel::Authenticated, RegularInstruction>	regularInstruction(Receiver::Handler::RegularInstruction);
 			TCP::Channel<Protocol::Authenticate, UserLevel::None, Authenticate>							authenticate(Receiver::Handler::Authenticate);
 		}
 
@@ -345,6 +347,61 @@ namespace Technites
 			}
 		}
 	
+		void	Receiver::Handler::RegularInstruction(Protocol::RegularInstruction&inst, TCP::Peer&origin)
+		{
+			Attachment::Technite*attach = dynamic_cast<Attachment::Technite*>(origin.attachment.get());
+			if (!attach)
+			{
+				LogEvent(EventClass::Preset::unexpectedBehavior,origin.ToString()+ " attempted to instruct technite without challenge peer attachment");
+				#ifndef _DEBUG
+					origin.DisconnectPeer();
+				#endif
+				return;
+			}
+			Technite*t = GetTechnite(attach->techniteID);
+			if (!t)
+			{
+				LogEvent(EventClass::Preset::unexpectedBehavior,origin.ToString()+ " attempted to instruct dead technite "+attach->techniteID.ToString());
+				#ifndef _DEBUG
+					origin.DisconnectPeer();
+				#endif
+				return;
+			}
+
+			t->nextInstruction.nextTask = (Technite::Task) inst.nextTask.value;
+			t->nextInstruction.payload = "";
+			t->nextInstruction.targetTechnite = TUniqueID::Empty();
+			t->nextInstruction.taskTarget = Technite::CompressedTarget(inst.relativeTarget.value);
+			t->nextInstruction.taskParameter = inst.taskParameter;
+		}
+
+		void	Receiver::Handler::MessageInstruction(Protocol::MessageInstruction&msg, TCP::Peer&origin)
+		{
+			Attachment::Technite*attach = dynamic_cast<Attachment::Technite*>(origin.attachment.get());
+			if (!attach)
+			{
+				LogEvent(EventClass::Preset::unexpectedBehavior,origin.ToString()+ " attempted to instruct technite without challenge peer attachment");
+				#ifndef _DEBUG
+					origin.DisconnectPeer();
+				#endif
+				return;
+			}
+			Technite*t = GetTechnite(attach->techniteID);
+			if (!t)
+			{
+				LogEvent(EventClass::Preset::unexpectedBehavior,origin.ToString()+ " attempted to instruct dead technite "+attach->techniteID.ToString());
+				#ifndef _DEBUG
+					origin.DisconnectPeer();
+				#endif
+				return;
+			}
+
+			t->nextInstruction.nextTask = Technite::Task::Message;
+			t->nextInstruction.payload = msg.message;
+			t->nextInstruction.targetTechnite = msg.receiver;
+			t->nextInstruction.taskTarget = Technite::CompressedTarget(msg.receiverLocation.value);
+		}
+
 		void	Receiver::Handler::Authenticate(Protocol::Authenticate&authenticate, TCP::Peer&origin)
 		{
 			Attachment::Challenge*attach = dynamic_cast<Attachment::Challenge*>(origin.attachment.get());
