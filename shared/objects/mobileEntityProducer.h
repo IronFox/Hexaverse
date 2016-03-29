@@ -62,6 +62,7 @@ namespace Objects
 				String				name;
 				int					cost, roundsToCompletion;
 				Component::VehicleBase*		base=nullptr;	//set for vehicles only
+				PMobileEntity		prototype;	//set for non-vehicles only
 			#else
 				PMobileEntity		producing;
 
@@ -72,6 +73,8 @@ namespace Objects
 			#endif
 
 			bool					IsSatellite() const;
+			bool					IsVehicle() const;
+			Component::VehicleBase*	GetVehicleBase() const;
 		};
 		//typedef std::pair<PVehicle,Command>		WorkItem;
 		Buffer0<WorkItem>			queue;	//must use buffer here, because elements can be erased and changes are rare
@@ -132,6 +135,7 @@ namespace Objects
 		//new overriables:
 		virtual void				SignalLastProductionDone(float&t) {}
 		virtual void				SignalNewProductionEnqueued() {}
+		virtual bool				CanProduce(const PWorldEntity&proto) const=0;
 
 	};
 

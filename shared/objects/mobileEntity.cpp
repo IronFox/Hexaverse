@@ -42,7 +42,6 @@ namespace Objects
 			ASSERT1__(v->storedIn.expired(), v->GetName());
 			#ifndef CLIENT
 				ASSERT2__(!v->owner->HasMobileInStorage(v),v->GetName(),v->owner->GetName());
-				ASSERT2__(v->owner->HasActiveMobile(v,true),v->GetName(),v->owner->GetName());
 				ASSERT2__(v->owner->HasActiveMobile(v),v->GetName(),v->owner->GetName());
 			#endif
 		}
@@ -694,8 +693,7 @@ namespace Objects
 
 				static Buffer0<PWorldEntity> newContacts;
 				newContacts.Clear();
-				this->RegisterSensory(location,motionTime,false,&newContacts);
-				this->UnregisterSensory(oldLocation,motionTime,true);
+				this->MoveSensory(oldLocation,location,motionTime,true,&newContacts);
 				foreach (newContacts,c)
 				{
 					float zOffset;
@@ -788,6 +786,8 @@ namespace Objects
 				ForeachFaction([this,&doBreak,_this](const PFaction&f)
 				{
 					if (doBreak)
+						return;
+					if (f == owner)
 						return;
 					if (!f->CanSee(_this,motionTime))
 						return;

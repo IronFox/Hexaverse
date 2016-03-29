@@ -1800,10 +1800,10 @@ namespace Animation
 				});
 				Animation::insertIntoGridLater.Clear();
 
-				foreach (Objects::vehicles, v)
-					(*v)->preAnimationLocation = (*v)->location;
-				foreach (Objects::satellites, v)
-					(*v)->preAnimationLocation = (*v)->location;
+				Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&e)
+				{
+					e->preAnimationLocation = e->location;
+				});
 
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::gameHasBegun)
 				{

@@ -66,6 +66,36 @@ namespace Objects
 		return PStructure();
 	}
 
+
+	PWorldEntity	GetNonVehiclePrototypeByName(ConstName typeName)
+	{
+		if (typeName == ConstName::Empty)
+			return PWorldEntity();
+		PWorldEntity rs;
+		rs = GetPrototypeByName(typeName);
+		if (rs)
+			return rs;
+		rs = GetSatellitePrototypeByName(typeName);
+		if (rs)
+			return rs;
+		return PWorldEntity();
+	}
+
+	PWorldEntity	GetNonVehiclePrototypeByName(const String&typeName)
+	{
+		if (typeName.IsEmpty())
+			return PWorldEntity();
+		PWorldEntity rs;
+		rs = GetPrototypeByName(typeName);
+		if (rs)
+			return rs;
+		rs = GetSatellitePrototypeByName(typeName);
+		if (rs)
+			return rs;
+		return PWorldEntity();
+	}
+
+
 	namespace Component
 	{
 

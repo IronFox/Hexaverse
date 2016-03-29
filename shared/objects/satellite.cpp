@@ -6,6 +6,7 @@
 namespace Objects
 {
 
+	/*static*/ Buffer0<ConstName>	SkyHub::supportsProduction;
 	Buffer0<PSatellite>	satellites;
 	//bool					satellitesAreLocked = false;
 
@@ -402,6 +403,7 @@ namespace Objects
 
 	/*static*/ void SkyHub::RegisterProduction(const PWorldEntity&s)
 	{
+		supportsProduction << s->GetCTypeName();
 		#ifdef HAS_WINDOW
 			//int2 at = AllocateProductionSlot();
 			CallbackCommand::FOnExecute exec = s->IsStructure() 
@@ -584,7 +586,27 @@ namespace Objects
 
 	#ifndef CLIENT
 
+		/*virtual override*/ void		Satellite::MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
+		{
+			if (oldLocation == newLocation)
+				return;
+			Super::RegisterSensory(location,motionTime,false,newContacts);
+			Super::UnregisterSensory(oldLocation,motionTime,false);
+			if (turret->groundScanningRange > 0)
+			{
+				ASSERT__(newLocation == location);
+				Grid::SkySensorState state = skySensorState;
+				LogEvent(EventSignificance::Common,this,"Processing ground-sensor motion");
+				float range = EMPModify(turret->groundScanningRange,2);
+				Grid::actualWorld.MapSensorState(newLocation.stackID,range,newLocation.height,turret->groundScannerPenetration,skySensorState);
+				Grid::actualWorld.UpdateSensorState(skySensorState);
 
+				owner->RegisterSensorCreation(skySensorState,atTime,false, newContacts);
+				atTime += timeEpsilon;
+				owner->RegisterSensorRemoval(state,atTime,checkChangesNow);
+				atTime += timeEpsilon;
+			}
+		}
 
 		PSkyLinkStructure				Satellite::RemoteSupplyFuel(float&atTime)
 		{

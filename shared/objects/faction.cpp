@@ -20,7 +20,7 @@ namespace Objects
 	#ifndef CLIENT
 
 		/*static*/ Buffer0<WFaction>	Faction::all;
-		/*static*/ PFaction				Faction::nexus(new Faction(TUniqueID::Empty(), "<Nexus>"));
+		/*static*/ PFaction				Faction::nexus;
 
 		void	Faction::RecreateNexus()
 		{
@@ -283,15 +283,9 @@ namespace Objects
 			}
 		}
 
-		bool		Faction::HasActiveMobile(const PMobileEntity&v, bool forceDoNotCheckSatellites) const
+		bool		Faction::HasActiveMobile(const PMobileEntity&v) const
 		{
-			if (!forceDoNotCheckSatellites && v->IsSatellite())
-			{
-				foreach (this->satellites,_v)
-					if (_v->lock() == v)
-						return true;
-				return false;
-			}
+
 			foreach (allMobiles,_v)
 				if (_v->lock() == v)
 					return true;
@@ -943,7 +937,8 @@ namespace Objects
 				func(*a);
 		#else
 			
-			func(Faction::nexus);
+			if (Faction::nexus)
+				func(Faction::nexus);
 			for (index_t i = 0; i < Faction::all.Count(); i++)
 			{
 				PFaction f = Faction::all[i].lock();
@@ -1123,24 +1118,22 @@ namespace Objects
 				else
 				{
 					//structure
-					PStructure prototype = Objects::GetPrototypeByName(referenceType[0]);
+					PWorldEntity prototype = Objects::GetNonVehiclePrototypeByName(referenceType[0]);
 					if (prototype)
 					{
 						ASSERT1__(prototype, referenceType);
-						m.visualization = To<Structure>::Cast(prototype->CreateNewInstance(OwnerParameter(), location, 0));
-						structureGhosts << To<Structure>::Cast(m.visualization);
+						m.visualization = (prototype->CreateNewInstance(OwnerParameter(), location, 0));
+						if (prototype->IsStructure())
+							structureGhosts << To<Structure>::Cast(m.visualization);
+						else
+							if (prototype->IsMobile())
+								mobileGhosts << To<MobileEntity>::Cast( m.visualization);
+							else
+								LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+prototype->GetTypeName()+"'");
 					}
 					else
-					{
-						PSatellite prototype = Objects::GetSatellitePrototypeByName(referenceType[0]);
-						if (prototype)
-						{
-							//satellite
-							m.visualization = To<MobileEntity>::Cast(prototype->CreateNewInstance(OwnerParameter(), location, 0.f));
-							To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
-							mobileGhosts << To<MobileEntity>::Cast( m.visualization);
-						}
-					}
+						LogEvent(EventSignificance::NonFatalError,"Unable to create ghost for type #"+String((int)referenceType[0]));
+
 				}
 
 				if (m.visualization)

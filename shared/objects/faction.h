@@ -295,7 +295,7 @@ namespace Objects
 
 			//void		SignalCoverageChange(const bool*familiesChanges, float atTime);
 
-			bool		HasActiveMobile(const PMobileEntity&v, bool forceDoNotCheckSatellites=false) const;
+			bool		HasActiveMobile(const PMobileEntity&v) const;
 			bool		HasMobileInStorage(const PMobileEntity&v) const;
 			void		RegisterLoss(const PWorldEntity&);
 			void		RegisterStructureLoss(const PWorldEntity&);

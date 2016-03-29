@@ -329,7 +329,8 @@ namespace World
 		Grid::currentPlanetConfig.RandomizeSeeds(random);
 		Grid::currentPlanetConfig.RandomizeSun(random);
 		Grid::BuildWorld(Grid::currentPlanetConfig,Config::worldDiscovery);
-		Objects::Faction::nexus->currentState = Grid::initialWorld;
+		if (Objects::Faction::nexus)
+			Objects::Faction::nexus->currentState = Grid::initialWorld;
 
 		if (RuntimeConfig::gameGoal == Game::Config::Goal::ConquerNexus)
 		{

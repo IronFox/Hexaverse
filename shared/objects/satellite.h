@@ -150,6 +150,7 @@ namespace Objects
 			*/
 			bool				RefreshGroundSensor(float&atTime);
 			bool				AttackNext(Grid::LCellIdI target, bool autoTarget);
+			virtual void		MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/) override;
 		#endif
 
 		#ifdef HAS_WINDOW
@@ -358,6 +359,7 @@ namespace Objects
 
 	class SkyHub : public SatelliteTemplate<SkyHub>, public MobileEntityProducer
 	{
+		static Buffer0<ConstName>	supportsProduction;
 	protected:
 		typedef SatelliteTemplate<SkyHub>	Super;
 		friend class Super;
@@ -372,6 +374,7 @@ namespace Objects
 		static int2				AllocateProductionSlot();
 
 		static void				RegisterProduction(const PWorldEntity&);
+		virtual bool			CanProduce(const PWorldEntity&e) const override {return supportsProduction.Contains(e->GetCTypeName());}
 
 		#ifdef HAS_WINDOW
 

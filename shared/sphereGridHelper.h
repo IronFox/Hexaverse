@@ -30,7 +30,9 @@ namespace Grid
 				}
 				familyChanged[Grid::high.grid.GetCell(c.hStackID).family] = true;
 			});
-			LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sky sensory change processed in "+String(timer.GetSecondsSince(t0)));
+
+			LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sky sensory change ("+String(change)+") processed on "+String(state.coverage.Count())+" stack(s) in "+String(timer.GetSecondsSince(t0)));
+
 		}
 
 

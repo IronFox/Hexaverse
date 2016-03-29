@@ -1,6 +1,7 @@
 v0.4.1
 	> Resource stacks are now hidden by default, when connecting as spectator.
 	> Improved initial terrain simplification algorithm to produce cleaner terrains.
+	* Fixed server-side random key generation on some systems.
 
 v0.4.0	[Mar 20 2016]
 	+ Re-enabled compound system. Vehicles in the vicinity of compounds will implicitly draw from them.
