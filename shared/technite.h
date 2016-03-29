@@ -203,6 +203,7 @@ namespace Technites
 			{
 				Set(neighborIndex, heightDelta);
 			}
+			explicit	CompressedTarget(BYTE compressed):data(compressed)	{}
 
 			unsigned	GetNeighborIndex() const
 			{
