@@ -1,4 +1,6 @@
 v0.3.20
+	+ Added plane factory building type.
+	+ Added raptor, cargo plane, and sensor drone.
 	> Resource stacks are now hidden by default, when connecting as spectator.
 	> Improved initial terrain simplification algorithm to produce cleaner terrains.
 	* Fixed server-side random key generation on some systems.
