@@ -20,6 +20,7 @@ namespace Technites
 
 
 	const EventClass techniteError = EventClass(EventSignificance::NonFatalError, EventFlavor::SystemError);
+	const EventClass regularEvent = EventClass(EventSignificance::Common, EventFlavor::ServerPrivate);
 
 	#ifndef CLIENT
 
@@ -120,6 +121,26 @@ namespace Technites
 				, NET(UINT32), techniteSubRoundNumber
 			);
 
+			
+			NETSTRUCT3(GridNode
+                , NETA(UINT32), neighbors
+                , NET(TVec3<>), stackBase
+				, NET(TVec3<>), stackDirection
+            );
+
+			NETSTRUCT5(GridConfig
+				, NET(float), heightPerLayer
+				, NET(INT32), numLayersPerStack
+				, NETA(BYTE), initialTTLAtLayer
+				, NETA(BYTE), energyYieldAtLayer
+				, NET(BYTE), coreType
+			);
+
+			NETSTRUCT2(NodeChunk
+				, NET(bool), isLast
+				, NETA(GridNode), nodes
+			);
+
 		}
 
 
@@ -173,6 +194,8 @@ namespace Technites
 				Challenge,			//	s2c : CryptographicID
 				Authenticate,		//	c2s : Authenticate
 				Authenticated,		//	s2c : <signal>
+				NodeChunk,			//	s2c : NodeChunk
+				GridConfig,			//	s2c : GridConfig
 				StateUpdateBegin,	//	s2c : <signal>
 				EntityContact,		//	s2c : EntityContact
 				OwnTechniteState,	//	s2c : OwnState
@@ -198,10 +221,52 @@ namespace Technites
 			TCP::ObjectSender<Protocol::Message, Message> message;
 			TCP::ObjectSender<NET(CryptographicID), Challenge> challenge;
 			TCP::ObjectSender<Protocol::ProcessRound, ProcessRound> processRound;
+			TCP::ObjectSender<Protocol::NodeChunk, NodeChunk> nodeChunk;
+			TCP::ObjectSender<Protocol::GridConfig, GridConfig> gridConfig;
 
 			TCP::Channel<Protocol::MessageInstruction, UserLevel::Authenticated, MessageInstruction>	messageInstruction;
 			TCP::Channel<Protocol::RegularInstruction, UserLevel::Authenticated, RegularInstruction>	regularInstruction;
 			TCP::Channel<Protocol::Authenticate, UserLevel::None, Authenticate>							authenticate(Receiver::Handler::Authenticate);
+		}
+
+
+
+		static void SendWorldStructure(TCP::Peer&peer)
+		{
+			LogEvent(regularEvent,peer.ToString()+ ": Technite logic: Sending grid layout to client");
+			Protocol::NodeChunk chunk;
+			for (int i = 0; i < BaseGrid::NumFamilies; i++)
+			{
+				count_t range = Grid::high.grid.CountFamilyMembers(i);
+				index_t offset = Grid::high.grid.GetFamilyOffset(i);
+				chunk.isLast = i+1 == BaseGrid::NumFamilies;
+				chunk.nodes.SetSize(range);
+				for (index_t j = 0; j < range; j++)
+				{
+					auto&out = chunk.nodes[j];
+					const auto&in = Grid::high.grid.GetCell(j+offset);
+
+					out.neighbors.SetSize(in.neighborhood.numNeighbors);
+					out.stackBase = in.center * Grid::ToRadius(Grid::CellStack::BottomHeight);
+					out.stackDirection = in.center;
+					for (int k = 0; k < in.neighborhood.numNeighbors; k++)
+						out.neighbors[k] = in.neighborhood.neighborID[k];
+				}
+				Channels::nodeChunk.SendTo(peer,chunk);
+			}
+			Protocol::GridConfig cfg;
+			cfg.heightPerLayer = Grid::SingleLayerHeight;
+			cfg.numLayersPerStack = Grid::CellStack::Range;
+			cfg.energyYieldAtLayer.SetSize(Grid::CellStack::Range);
+			cfg.initialTTLAtLayer.SetSize(Grid::CellStack::Range);
+			for (UINT32 layer = 0; layer < Grid::CellStack::Range; layer++)
+			{
+				int h = Grid::CellStack::ToHeight(layer);
+				cfg.energyYieldAtLayer[layer] = Technites::Technite::GetLightEnergyYieldAtHeight(h);
+				cfg.initialTTLAtLayer[layer] = Technites::Technite::GetInitialTTLAtLayer(layer);
+			}
+			cfg.coreType = Grid::CellStack::bottom.content;
+			Channels::gridConfig.SendTo(peer,cfg);
 		}
 
 	#endif
@@ -311,6 +376,7 @@ namespace Technites
 				origin.attachment.reset(new Attachment::Technite(t->id));
 				origin.userLevel = UserLevel::Authenticated;
 				Channels::authenticated.SendTo(origin,0);
+				SendWorldStructure(origin);
 			}
 			else
 			{
