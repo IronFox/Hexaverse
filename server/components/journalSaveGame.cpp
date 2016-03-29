@@ -1145,7 +1145,7 @@ namespace Journal
 			return;
 
 		Protocol::TechniteStates states;
-		states.clearTechnites = false;
+		states.chunkEndFlags = 0;
 		states.technites.AssignSection(Technites::technites,Technites::technites.Count()-1);
 		foreach (Network::spectators,spec)
 		{

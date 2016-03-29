@@ -166,6 +166,7 @@ namespace Network
 		void	LockEmpZones(NET(UINT16)&);
 
 		void	TechniteStates(Protocol::TechniteStates&);
+		void	TechniteMessage(Protocol::TechniteMessage&);
 	}
 
 
@@ -206,6 +207,7 @@ namespace Network
 		extern TCP::Channel<NET(int32_t), 0, Protocol::ChannelID::UplinkBandwidth>						uplinkBandwidth;
 
 		extern TCP::Channel<Protocol::TechniteStates,0,Protocol::ChannelID::TechniteStates>				techniteStates;
+		extern TCP::Channel<Protocol::TechniteMessage,0,Protocol::ChannelID::TechniteMessage>			techniteMessage;
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		extern TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
@@ -227,7 +229,6 @@ namespace Network
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
 
 		extern TCP::ObjectSender<Protocol::SpawnTechnite,Protocol::ChannelID::SpawnTechnite>			spawnTechnite;
-		
 	}
 
 

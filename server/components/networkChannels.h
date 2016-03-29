@@ -28,6 +28,7 @@ namespace Receiver
 	void	IdentifyUser(NET(TUniqueID)&, TCP::Peer&peer);
 	void	ChatMessage(Package::NetString<256>&, TCP::Peer&peer);
 	void	SpawnTechnite(Protocol::SpawnTechnite&, TCP::Peer&peer);
+	void	TechniteMessage(Protocol::TechniteMessage&, TCP::Peer&peer);
 
 
 
@@ -87,6 +88,7 @@ namespace Channels
 	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>						identifyUserRecv;
 	extern TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>				chatMessage;
 	extern TCP::Channel<Protocol::SpawnTechnite, SpectatorLevel, Protocol::ChannelID::SpawnTechnite>			spawnTechnite;
+	extern TCP::Channel<Protocol::TechniteMessage,SpectatorLevel,Protocol::ChannelID::TechniteMessage>			techniteMessage;
 
 	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>				clientFactionResponse;
 	extern TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>			markerCreationFailedLimitReached;

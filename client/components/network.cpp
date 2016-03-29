@@ -11,6 +11,7 @@
 #include "ai.h"
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
+#include "techniteTarget.h"
 
 
 void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
@@ -336,6 +337,7 @@ namespace Network
 
 		roundTimer = -1;
 
+		TechniteTarget::FlushAll();
 		Objects::FlushAllData();
 		Network::gameProgress.gameOver = false;
 		Network::gameProgress.gameWon = false;
@@ -927,6 +929,7 @@ namespace Network
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
 
 		TCP::Channel<Protocol::TechniteStates,0,Protocol::ChannelID::TechniteStates>				techniteStates(Receiver::TechniteStates);
+		TCP::Channel<Protocol::TechniteMessage,0,Protocol::ChannelID::TechniteMessage>				techniteMessage(Receiver::TechniteMessage);
 
 		TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
@@ -1162,6 +1165,7 @@ namespace Network
 		client.InstallChannel(Channels::unitLimits);
 
 		client.InstallChannel(Channels::techniteStates);
+		client.InstallChannel(Channels::techniteMessage);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
@@ -1492,17 +1496,46 @@ void	Network::Receiver::LockEmpZones(NET(UINT16)&zones)
 	//SpaceGrid::Invalidate();
 }
 
+void	Network::Receiver::TechniteMessage(Protocol::TechniteMessage&msg)
+{
+//	Technites::Technite*tech = Technites::GetTechnite(msg.techniteID);
+	LogEvent(EventSignificance::Uncommon,"Technite "+msg.techniteID.value.ToString()+": '"+msg.message+"'");
+}
+
 void	Network::Receiver::TechniteStates(Protocol::TechniteStates&st)
 {
-	if (st.clearTechnites)
+	#ifdef HAS_WINDOW
+		static GenericHashSet<TUniqueID,TUniqueID>	wereAlive;
+	#endif
+	if (st.chunkEndFlags & Protocol::ChunkEnd::FirstChunk)
+	{
+		#ifdef HAS_WINDOW
+			foreach (Technites::technites,t)
+				wereAlive.Set(t->id);
+		#endif
 		Technites::Clear();
+	}
 
 
 	foreach (st.technites,t)
 	{
 		Technites::Add(*t);
-		if (Objects::techniteIsSelected && t->id == Objects::selectedTechnite.id)
-			Objects::selectedTechnite = *t;
+		#ifdef HAS_WINDOW
+			wereAlive.Unset(t->id);
+			if (Objects::techniteIsSelected && t->id == Objects::selectedTechnite.id)
+				Objects::selectedTechnite = *t;
+		#endif
+	}
+
+	if (st.chunkEndFlags & Protocol::ChunkEnd::LastChunk)
+	{
+		#ifdef HAS_WINDOW
+			wereAlive.VisitAllKeys([](const TUniqueID&id)
+			{
+				TechniteTarget::Unset(id);
+			});
+			wereAlive.Clear();
+		#endif
 	}
 }
 

@@ -60,6 +60,7 @@
 #include "components/guiHostList.h"
 #include "components/serverProcess.h"
 #include "components/audioInterface.h"
+#include "components/techniteTarget.h"
 
 #include "rc/Resource.h"
 
@@ -1097,7 +1098,11 @@ void	OnAppear(const Objects::PWorldEntity&e)
 				return;
 		}
 		else
+		{
 			Objects::CommandGroup::CollapseAll();
+
+			TechniteTarget::SignalSelection(Objects::techniteIsSelected ? Objects::selectedTechnite.id : TUniqueID::Empty());
+		}
 		Objects::Renderer::HighlightSmokeTrail(InvalidIndex);
 
 		Tutorial::lastDelayingEvent = timer.Now();
@@ -2687,6 +2692,14 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 					DirectTo(Objects::selectedMobileEntity,target,false,false);
 				}
 			}
+
+			if (Objects::techniteIsSelected)
+			{
+				if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
+				{
+					TechniteTarget::Set(Objects::selectedTechnite.id, target);
+				}
+			}
 		}
 
 	}
@@ -3494,75 +3507,76 @@ int main( int argc, const char* argv[])
 		Objects::Create();
 		Grid::Create1();
 
-		{
-			Objects::PCommandGroup grp = Objects::globalCommands.AddChild(int2(2,0),false, "Spawn Technites");
-			foreach (Technites::supportedTypes,_t)
+		#ifdef HAS_WINDOW
 			{
-				String t = *_t;;
-				grp->Add(new Objects::IconCommand("Spawn "+t,[t]()
+				Objects::PCommandGroup grp = Objects::globalCommands.AddChild(int2(2,0),false, "Spawn Technites");
+				foreach (Technites::supportedTypes,_t)
 				{
-					if (Objects::activeTechniteTypeToPlace == t)
-						Objects::activeTechniteTypeToPlace = "";
-					else
-						Objects::activeTechniteTypeToPlace = t;
+					String t = *_t;;
+					grp->Add(new Objects::IconCommand("Spawn "+t,[t]()
+					{
+						if (Objects::activeTechniteTypeToPlace == t)
+							Objects::activeTechniteTypeToPlace = "";
+						else
+							Objects::activeTechniteTypeToPlace = t;
+						Objects::buildCandidates.Clear();
+						Objects::cellSelection.Clear();
+					},[t](bool controlsEnabled)->Objects::BaseCommand::Flags
+					{
+						Objects::BaseCommand::Flags rs = Objects::BaseCommand::Flags::None;
+						if (controlsEnabled && Network::amSpectator && Network::client.IsConnected())
+						{
+							rs |= Objects::BaseCommand::Flags::IsEnabled;
+							if (Objects::activeTechniteTypeToPlace == t)
+								rs |= Objects::BaseCommand::Flags::IsPermaActive;
+						}
+						return rs;
+
+					}));
+				}
+
+				grp->Add(new Objects::IconCommand("Commit",[]()
+				{
+					if (Objects::cellSelection.IsNotEmpty() && Objects::activeTechniteTypeToPlace.IsNotEmpty())
+					{
+						Grid::HCellIdU loc(Objects::cellSelection.first().stackID,Grid::CellStack::ToLayer(Objects::cellSelection.first().height));
+						String type = Objects::activeTechniteTypeToPlace;
+						static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_- <>!'\"'$%^&*()=+.,/\\#@?{}[]";
+
+						Dialog::CheckedQuery("Init message for new technite of type '"+type+"':","{}",allowed,[]()->Dialog::CheckResult
+						{
+							if (Network::ControlEnabled() && Network::amSpectator && Network::client.IsConnected())
+								return Dialog::CheckResult::OkayContinue;
+							if (Network::amSpectator && Network::client.IsConnected())
+								return Dialog::CheckResult::OkayNotRightNow;
+							return Dialog::CheckResult::Abort;
+						},[loc,type](const String&initMessage)
+						{
+							Protocol::SpawnTechnite spawn;
+							spawn.initMessage = initMessage;
+							spawn.location = loc;
+							spawn.type = type;
+							Network::Channels::spawnTechnite.SendTo(Network::client,spawn);
+						});
+					
+					}
+
+					Objects::activeTechniteTypeToPlace = "";
 					Objects::buildCandidates.Clear();
 					Objects::cellSelection.Clear();
-				},[t](bool controlsEnabled)->Objects::BaseCommand::Flags
+				},[](bool controlsEnabled)->Objects::BaseCommand::Flags
 				{
 					Objects::BaseCommand::Flags rs = Objects::BaseCommand::Flags::None;
-					if (controlsEnabled && Network::amSpectator && Network::client.IsConnected())
+					if (controlsEnabled && Network::amSpectator && Network::client.IsConnected() && Objects::cellSelection.IsNotEmpty() && Objects::activeTechniteTypeToPlace.IsNotEmpty())
 					{
 						rs |= Objects::BaseCommand::Flags::IsEnabled;
-						if (Objects::activeTechniteTypeToPlace == t)
-							rs |= Objects::BaseCommand::Flags::IsPermaActive;
 					}
 					return rs;
-
 				}));
 			}
 
-			grp->Add(new Objects::IconCommand("Commit",[]()
-			{
-				if (Objects::cellSelection.IsNotEmpty() && Objects::activeTechniteTypeToPlace.IsNotEmpty())
-				{
-					Grid::HCellIdU loc(Objects::cellSelection.first().stackID,Grid::CellStack::ToLayer(Objects::cellSelection.first().height));
-					String type = Objects::activeTechniteTypeToPlace;
-					static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_- <>!'\"'$%^&*()=+.,/\\#@?{}[]";
 
-					Dialog::CheckedQuery("Init message for new technite of type '"+type+"':","{}",allowed,[]()->Dialog::CheckResult
-					{
-						if (Network::ControlEnabled() && Network::amSpectator && Network::client.IsConnected())
-							return Dialog::CheckResult::OkayContinue;
-						if (Network::amSpectator && Network::client.IsConnected())
-							return Dialog::CheckResult::OkayNotRightNow;
-						return Dialog::CheckResult::Abort;
-					},[loc,type](const String&initMessage)
-					{
-						Protocol::SpawnTechnite spawn;
-						spawn.initMessage = initMessage;
-						spawn.location = loc;
-						spawn.type = type;
-						Network::Channels::spawnTechnite.SendTo(Network::client,spawn);
-					});
-					
-				}
-
-				Objects::activeTechniteTypeToPlace = "";
-				Objects::buildCandidates.Clear();
-				Objects::cellSelection.Clear();
-			},[](bool controlsEnabled)->Objects::BaseCommand::Flags
-			{
-				Objects::BaseCommand::Flags rs = Objects::BaseCommand::Flags::None;
-				if (controlsEnabled && Network::amSpectator && Network::client.IsConnected() && Objects::cellSelection.IsNotEmpty() && Objects::activeTechniteTypeToPlace.IsNotEmpty())
-				{
-					rs |= Objects::BaseCommand::Flags::IsEnabled;
-				}
-				return rs;
-			}));
-		}
-
-
-		#ifdef HAS_WINDOW
+		
 			Camera::Setup(display.pixelAspect());	//creates a menu item, for which Objects::Create() must have been called
 
 

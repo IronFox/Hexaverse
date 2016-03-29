@@ -367,6 +367,7 @@ namespace Technites
 			String			GetDockerName() const {return "tech"+id.ToFullString();}
 			void			StartClient();
 			void			ShutdownClient();
+			bool			RelayMessage(const Technite*sender, const String&msg);
 		#endif
 	};
 

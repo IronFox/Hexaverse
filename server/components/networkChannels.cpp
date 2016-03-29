@@ -42,6 +42,7 @@ namespace Channels
 	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
 
 	TCP::Channel<Protocol::SpawnTechnite, SpectatorLevel, Protocol::ChannelID::SpawnTechnite>				spawnTechnite(Receiver::SpawnTechnite);
+	TCP::Channel<Protocol::TechniteMessage,SpectatorLevel,Protocol::ChannelID::TechniteMessage>				techniteMessage(Receiver::TechniteMessage);
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
@@ -86,7 +87,9 @@ namespace Channels
 		count_t frames = CeilDiv(Technites::technites.Count(),TechnitesPerBlock);
 
 		Protocol::TechniteStates techs;
-		techs.clearTechnites = true;
+		techs.chunkEndFlags = Protocol::ChunkEnd::FirstChunk;
+		if (frames <= 1)
+			techs.chunkEndFlags |= Protocol::ChunkEnd::LastChunk;
 		if (frames == 0)
 		{
 			Channels::techniteStates.SendTo(dest,techs,SpectatorLevel);
@@ -96,7 +99,9 @@ namespace Channels
 			index_t offset = TechnitesPerBlock * i;
 			techs.technites.AssignSection(Technites::technites,offset);
 			Channels::techniteStates.SendTo(dest,techs,SpectatorLevel);
-			techs.clearTechnites = false;
+			techs.chunkEndFlags = 0;
+			if (i+2 == frames)
+				techs.chunkEndFlags |= Protocol::ChunkEnd::LastChunk;
 		}
 	}
 
@@ -846,6 +851,30 @@ namespace Receiver
 		}
 
 		Journal::currentRound.Register(true,f,new Journal::Round::DestroyMarker(id));
+	}
+
+	void	TechniteMessage(Protocol::TechniteMessage&msg, TCP::Peer&peer)
+	{
+		LogEvent(EventSignificance::Common, peer, nullptr, "Begin: " __func__);
+
+		Technites::Technite*t = Technites::GetTechnite(msg.techniteID);
+		if (!t)
+		{
+			LogEvent(Technites::techniteError,peer,"Unable to relay message. Technite "+msg.techniteID.value.ToString()+" does not exist");
+			return;
+		}
+		if (!t->RelayMessage(nullptr,msg.message))
+		{
+			LogEvent(Technites::techniteError,peer,"Unable to relay message. Technite "+msg.techniteID.value.ToString()+" is offline");
+			return;
+		}
+
+		//if (tech.location.value.stackID >= Grid::HighSetup::GridType::CellCount || tech.location.value.layer >= Grid::CellStack::Range)
+		//{
+		//	LogEvent(EventClass::Preset::commandRejected,peer,"Invalid technite spawning location");
+		//	return;
+		//}
+		//Journal::currentRound.Register(true, new Journal::Round::SpawnTechnite(tech.type, tech.location, tech.initMessage));
 	}
 
 	void	SpawnTechnite(Protocol::SpawnTechnite&tech, TCP::Peer&peer)

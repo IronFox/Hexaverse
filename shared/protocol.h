@@ -1968,11 +1968,26 @@ namespace Protocol
 		, Package::NetString<1024>, initMessage
 	);
 
+	NETSTRUCT2(TechniteMessage
+		, NET(TUniqueID), techniteID
+		, Package::NetString<1024>, message
+	);
+
 	typedef SmartArrayReferenceField<Technites::Base,256>	TechniteField;
+
+
+	namespace ChunkEnd
+	{
+		enum flag_t
+		{
+			FirstChunk = 0x1,
+			LastChunk = 0x2,
+		};
+	};
 
 	NETSTRUCT2(TechniteStates
 		, TechniteField, technites
-		, NET(bool), clearTechnites
+		, NET(BYTE), chunkEndFlags
 	);
 
 	typedef std::pair<UINT16,UINT16>	TUnitLimit;
@@ -2078,7 +2093,7 @@ namespace Protocol
 			//technite controls
 			SpawnTechnite,		// c2s : SpawnTechnite
 			TechniteStates,		// s2c : TechniteStates
-
+			TechniteMessage,	// both : TechniteMessage
 		};
 	}
 

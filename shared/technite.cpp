@@ -302,11 +302,22 @@ namespace Technites
 	};
 
 
+	struct TMessage
+	{
+		TUniqueID				sender;
+		String					message;
+		TCP::WPeer				targetPeer;
+
+		/**/					TMessage()	{}
+		/**/					TMessage(const TCP::PPeer&targetPeer, const TUniqueID&sender, const String&message):sender(sender),message(message),targetPeer(targetPeer)
+		{}
+	};
 
 	AtomicGrid					atomicGrid;
 	Buffer<Technite>			technites;
 	GenericHashTable<TUniqueID,index_t,TUniqueID>	techniteIDMap;
 	BroadTechniteMap			techniteMap;
+	Buffer0<TMessage>			delayedMessages;
 
 	#ifndef CLIENT
 		TCP::Server				serviceHost;
@@ -449,7 +460,17 @@ namespace Technites
 	{
 		index_t rs;
 		if (!techniteIDMap.Query(id,rs))
+		{
+			//String keyStrings;
+			//Array<TUniqueID>	keys;
+			//techniteIDMap.exportKeys(keys);
+			//foreach (keys,k)
+			//	keyStrings += ", "+k->ToFullString();
+			//ShowMessage(keyStrings + " <> "+id.ToFullString());
+
+
 			return InvalidIndex;
+		}
 		return rs;
 	}
 
@@ -839,6 +860,14 @@ namespace Technites
 
 				Channels::stateUpdateBegin.SendTo(serviceHost,UserLevel::Authenticated);
 
+				foreach (delayedMessages,msg)
+				{
+					TCP::PPeer peer = msg->targetPeer.lock();
+					if (peer)
+						Channels::message.SendTo(peer,Protocol::Message(msg->sender,msg->message));
+				}
+				delayedMessages.Clear();
+
 				Concurrency::parallel_for_each(technites.begin(),technites.end(),[](Technite&t)
 				{
 					TCP::PPeer peer = t.peer.lock();
@@ -981,6 +1010,16 @@ namespace Technites
 				throw IO::DriveAccess::FileOpenFault(CLOCATION,instruction+"\n failed: "+output);
 			}
 		}
+
+		bool			Technite::RelayMessage(const Technite*sender, const String&msg)
+		{
+			TCP::PPeer peer = this->peer.lock();
+			if (!peer)
+				return false;
+			delayedMessages.Append(TMessage(peer,sender ? sender->id : TUniqueID::Empty(),msg));
+			return true;
+		}
+
 	#endif
 
 	Grid::Content GetContent(const Grid::HCellIdU&location)
