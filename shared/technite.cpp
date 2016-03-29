@@ -1083,14 +1083,17 @@ namespace Technites
 			{
 				try
 				{
-					TryDocker("pull "+startOptions.repo);
-					TryDocker("run --rm --name "+GetDockerName()+" "+startOptions.repo+" technite"
-						" --id "+id.ToFullString()+
+					String config = " --id "+id.ToFullString()+
 						" --at "+String(location.GetStackID())+'.'+String(location.GetLayer())+
 						" --parent "+startOptions.parent.ToFullString()+
 						" --url "+serviceURL+":"+String(serviceHost.GetPort())+
 						" --secret "+ secret.ToFullString()+
-						" "+startOptions.initMessage);
+						" "+startOptions.initMessage;
+					System::copyToClipboard(NULL,config.c_str());
+					TryDocker("pull "+startOptions.repo);
+					TryDocker("run --rm --name "+GetDockerName()+" "+startOptions.repo+" technite"
+						+ config
+						);
 				}
 				catch (const std::exception&ex)
 				{
