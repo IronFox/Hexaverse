@@ -423,11 +423,14 @@ namespace Objects
 
 		virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
 		virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true);
-		void					MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow=true);
 		#ifdef CLIENT
+			void				MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow=true);
 			virtual void		RegisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
 			virtual void		UnregisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
 			//virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to);
+		#else
+			virtual void		MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
+
 		#endif
 
 

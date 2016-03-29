@@ -207,6 +207,7 @@ Triggered when entering command mode and animations have finished (whichever of 
 void	OnPlayerControlBegin()
 {
 	#ifdef HAS_WINDOW
+		OnSelectionChange(true);
 		UI::RefreshButtonState();
 	#endif
 	Objects::RefreshSkyHubConnections();
@@ -1090,7 +1091,12 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 	void OnSelectionChange(bool stateChangeOnly)
 	{
-		if (!stateChangeOnly)
+		if (stateChangeOnly)
+		{
+			if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase || !Animation::AllDone())
+				return;
+		}
+		else
 			Objects::CommandGroup::CollapseAll();
 		Objects::Renderer::HighlightSmokeTrail(InvalidIndex);
 
@@ -2641,7 +2647,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 					}
 					if (Objects::selectedEntity->IsTower())
 					{
-						if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
+						if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,true))
 						{
 							DirectTo(Objects::selectedEntity,target,false,true,Objects::CursorMode::AttackMode);
 							return;
@@ -2909,6 +2915,16 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	}
 
+	bool	IsIdle(const Objects::PWorldEntity&e)
+	{
+		if (e->IsStructure())
+			return IsIdle(To<Objects::Structure>::Cast(e));
+		if (e->IsMobile())
+			return IsIdle(To<Objects::MobileEntity>::Cast(e));
+		return false;
+	}
+
+
 	bool	ShouldSignalRoundEnd()
 	{
 		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound || Network::amSpectator)
@@ -2948,33 +2964,72 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		//#endif
 		return !any;
 	}
+
+
+	template <typename T>
+	void GetIterateableEntity(Objects::PWorldEntity&rs, index_t&i, const BasicBuffer<T>&list)
+	{
+		if (rs)
+			return;
+		if (i < list.Count())
+		{
+			rs = list[i];
+			return;
+		}
+		i -= list.Count();
+	}
+
 	
+
+	template <typename T>
+	void FindIterateableEntity(index_t&offset,index_t&rs, const Objects::PWorldEntity&e, const BasicBuffer<T>&list)
+	{
+		if (rs != InvalidIndex)
+			return;
+		rs = list.GetIndexOf(e);
+		if (rs == InvalidIndex)
+			offset += list.Count();
+		else
+			rs += offset;
+	}
+
+
+	count_t		CountIterateableEntities()
+	{
+		return
+			Objects::vehicles.Count() 
+			+ Objects::satellites.Count() 
+			+ Objects::structures.Count();
+	}
+
+	Objects::PWorldEntity	GetIterateableEntity(index_t i)
+	{
+		Objects::PWorldEntity rs;
+		GetIterateableEntity(rs,i,Objects::vehicles);
+		GetIterateableEntity(rs,i,Objects::satellites);
+		GetIterateableEntity(rs,i,Objects::structures);
+		return rs;
+	}
+	
+	index_t	FindIterateableEntity(const Objects::PWorldEntity&e)
+	{
+		index_t rs = InvalidIndex, offset=0;
+		FindIterateableEntity(offset,rs,e,Objects::vehicles);
+		FindIterateableEntity(offset,rs,e,Objects::satellites);
+		FindIterateableEntity(offset,rs,e,Objects::structures);
+		return rs;
+
+	}
 
 	void	SelectAndFocusNextIdle()
 	{
 		if (Dialog::ConfirmCurrent(true))
 			return;
 
-		const count_t total = Objects::vehicles.Count() + Objects::satellites.Count() + Objects::structures.Count();
+		const count_t total = CountIterateableEntities();
 		if ((total == 0) || !Network::haveID)
 			return;
-		index_t from = 0;
-		if (Objects::selectedVehicle)
-			from = Objects::vehicles.GetIndexOf(Objects::selectedVehicle);
-		else
-			if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsSatellite())
-			{
-				from = Objects::satellites.GetIndexOf(Objects::selectedMobileEntity);
-				if (from != InvalidIndex)
-					from += Objects::vehicles.Count();
-			}
-			else
-				if (Objects::selectedEntity && Objects::selectedEntity->IsStructure())
-				{
-					from = Objects::structures.GetIndexOf(Objects::selectedEntity);
-					if (from != InvalidIndex)
-						from += Objects::vehicles.Count() + Objects::satellites.Count();
-				}
+		index_t from = FindIterateableEntity(Objects::selectedEntity);
 		if (from == InvalidIndex)
 			from = 0;
 
@@ -2984,41 +3039,14 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			to ++;
 			if (to >= total)
 				to = 0;
-			if (to < Objects::vehicles.Count())
-			{
-				Objects::PVehicle v = Objects::vehicles[to];
-				if (v->isOwnedByMe && IsIdle(v))
-				{
-					Objects::Select(v,Network::ControlEnabled());
-					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
-					return;
-				}
-			}
-			else
-				if (to < Objects::vehicles.Count() + Objects::satellites.Count())
-				{
-					index_t at = to - Objects::vehicles.Count();
-					Objects::PMobileEntity v = Objects::satellites[at];
-					if (v->isOwnedByMe && IsIdle(v))
-					{
-						Objects::Select(v,Network::ControlEnabled());
-						Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
-						return;
-					}
-				}
-				else
-				{
-					index_t at = to - Objects::vehicles.Count() - Objects::satellites.Count();
-					Objects::PStructure s = Objects::structures[at];
 
-					if (s->isOwnedByMe && IsIdle(s))
-					{
-						Objects::Select(s,Network::ControlEnabled());
-						Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
-						return;
-					}
-		
-				}
+			Objects::PWorldEntity v = GetIterateableEntity(to);
+			if (v->isOwnedByMe && IsIdle(v))
+			{
+				Objects::Select(v,Network::ControlEnabled());
+				Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
+				return;
+			}
 		}
 		while (to != from);
 
@@ -3031,26 +3059,13 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	
 	void	SelectAndFocusPrev()
 	{
-		const count_t total = Objects::vehicles.Count() + Objects::satellites.Count();
+		const count_t total = CountIterateableEntities();
 		if ((total == 0) || !Network::haveID)
 			return;
-		index_t from = 0;
-		if (Objects::selectedMobileEntity)
-		{
-			if (Objects::selectedMobileEntity->IsVehicle())
-				from = Objects::vehicles.GetIndexOf(Objects::selectedMobileEntity);
-			else
-				if (Objects::selectedMobileEntity->IsSatellite())
-				{
-					from = Objects::satellites.GetIndexOf(Objects::selectedMobileEntity);
-					if (from != InvalidIndex)
-						from +=  Objects::vehicles.Count();
-				}
-			if (from == InvalidIndex)
-				from = 0;
-
-		}
-		
+		index_t from = FindIterateableEntity(Objects::selectedEntity);
+		if (from == InvalidIndex)
+			from = 0;
+			
 		index_t to = from;
 		do
 		{
@@ -3060,22 +3075,15 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			}
 			else
 				to = total-1;
-			if (to < Objects::vehicles.Count())
+
+			Objects::PWorldEntity v = GetIterateableEntity(to);
+
+			if (v->owner == Objects::Faction::mine)
 			{
-				if (Objects::vehicles[to]->owner == Objects::Faction::mine)
-				{
-					Objects::Select(Objects::vehicles[to],Network::ControlEnabled());
-					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
-					return;
-				}
+				Objects::Select(v,Network::ControlEnabled());
+				Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
+				return;
 			}
-			else
-				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Objects::Faction::mine)
-				{
-					Objects::Select(Objects::satellites[to - Objects::vehicles.Count()],Network::ControlEnabled());
-					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
-					return;
-				}
 		}
 		while (to != from);
 
@@ -3084,47 +3092,28 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	void	SelectAndFocusNext()
 	{
-		const count_t total = Objects::vehicles.Count() + Objects::satellites.Count();
+		const count_t total = CountIterateableEntities();
 		if ((total == 0) || !Network::haveID)
 			return;
-		index_t from = 0;
-		if (Objects::selectedMobileEntity)
-		{
-			if (Objects::selectedMobileEntity->IsVehicle())
-				from = Objects::vehicles.GetIndexOf(Objects::selectedMobileEntity);
-			else
-				if (Objects::selectedMobileEntity->IsSatellite())
-				{
-					from = Objects::satellites.GetIndexOf(Objects::selectedMobileEntity);
-					if (from != InvalidIndex)
-						from +=  Objects::vehicles.Count();
-				}
-			if (from == InvalidIndex)
-				from = 0;
+		index_t from = FindIterateableEntity(Objects::selectedEntity);
+		if (from == InvalidIndex)
+			from = 0;
 
-		}
 		index_t to = from;
 		do
 		{
 			to ++;
 			if (to >= total)
 				to = 0;
-			if (to < Objects::vehicles.Count())
+
+			Objects::PWorldEntity v = GetIterateableEntity(to);
+
+			if (v->owner == Objects::Faction::mine)
 			{
-				if (Objects::vehicles[to]->owner == Objects::Faction::mine)
-				{
-					Objects::Select(Objects::vehicles[to],Network::ControlEnabled());
-					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
-					return;
-				}
+				Objects::Select(v,Network::ControlEnabled());
+				Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
+				return;
 			}
-			else
-				if (Objects::satellites[to - Objects::vehicles.Count()]->owner == Objects::Faction::mine)
-				{
-					Objects::Select(Objects::satellites[to - Objects::vehicles.Count()],Network::ControlEnabled());
-					Camera::TranslateTo(Objects::selectedEntity->system.w.xyz);
-					return;
-				}
 		}
 		while (to != from);
 	}

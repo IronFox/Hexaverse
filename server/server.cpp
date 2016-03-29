@@ -1452,7 +1452,7 @@ int main( int argc, const char* argv[])
 
 
 		//Reflection::CreatePrototypeDeclaration();
-
+		Objects::Faction::RecreateNexus();
 		if (!ParameterConfig::customWorldID)
 		{
 			World::BuildConfiguredWorld(random);

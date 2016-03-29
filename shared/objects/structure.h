@@ -894,6 +894,7 @@ namespace Objects
 			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
+		virtual bool				CanProduce(const PWorldEntity&e) const override;
 
 
 		//Structure overrides:
@@ -1162,6 +1163,7 @@ namespace Objects
 			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
+		virtual bool				CanProduce(const PWorldEntity&e) const override;
 
 		#ifndef NO_HIBERNATION
 			//Hibernating overrides:

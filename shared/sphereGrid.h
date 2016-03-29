@@ -606,6 +606,21 @@ namespace Grid
 					vertices.Clear();
 					indices.Clear();
 				}
+
+				void		AppendTo(THull<Vtx>&hull) const
+				{
+					UINT32 offset = (UINT32)hull.vertices.Count();
+					hull.vertices.Append(vertices);
+					const UINT32*iFrom = indices.pointer();
+					UINT32*iTo = hull.indices.AppendRow(this->indices.Count());
+					while (iFrom != this->indices.end())
+					{
+						(*iTo) = (*iFrom) + offset;
+						iFrom++;
+						iTo++;
+					}
+					DBG_ASSERT__(iTo == hull.indices.end());
+				}
 			};
 
 		struct TTerrainHull : public THull<TerrainVertex>
@@ -939,7 +954,7 @@ namespace Grid
 			static bool AffectedByEMP(index_t stackIndex);
 
 
-			void	Compile(const index_t offset, const index_t end, THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull, SpinLock&lock);
+			void	Compile(const index_t offset, const index_t end);
 			void	CompileLayer(const UINT ih, const CellStack&stack, const int clipH,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighborhood);
 			void	CompileBottomLayer(const CellStack&stack, const int clipH,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighborhood);
 			void	CompileAboveTerrainOutline(const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors);
@@ -947,6 +962,7 @@ namespace Grid
 			void	CompileDownCap(const UINT ih,const BaseGrid::TNetCell&cell, const CellStack::Cell&thisCell, const int ir,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack);
 			void	CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,TVec4<> newCornerColor[6], 
 											const CellStack::Cell&thisCell, const CellStack::Cell&lastCell, const TFloatRange<>&range);
+			void	DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull);
 		};
 
 
@@ -1459,14 +1475,36 @@ namespace Grid
 			void		Compile(const Array<CellStack>&stacks, THull<TerrainVertex>&solid, THull<OverlayVertex>&cover, index_t offset, count_t count, FClipHeight clipHeight)
 			{
 				const index_t end = offset + count;
-				SpinLock lock;
-				Concurrency::parallel_for(offset, end, TerrainCompiler::BatchSize,[this, end,&lock, &solid, &cover, &stacks, clipHeight](index_t i)	//looks good - at least in release
+				//SpinLock lock;
+				const count_t numBatches = CeilDiv(count,TerrainCompiler::BatchSize);
+				static Array<THull<TerrainVertex> >	hulls;
+				static Array<THull<OverlayVertex> >	covers;
+				count_t numWorkers = System::ParallelLoop::global_instance.getWorkerCount();
+				if (hulls.Count() < numWorkers)
+				{
+					hulls.SetSize(numWorkers);
+					covers.SetSize(numWorkers);
+				}
+				
+				
+
+
+				System::parallelFor(numBatches,8,[this, end,offset, &stacks, clipHeight](index_t i, index_t workerIndex)
 				{
 					BYTE data[sizeof(TerrainCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...
 					TerrainCompiler&compiler = *(TerrainCompiler*)data;
 					compiler.Setup(stacks.pointer(),grid.GetCells(),this->cells.pointer(),clipHeight);
-					compiler.Compile(i,end,solid,cover,lock);
+					compiler.Compile(offset + i*TerrainCompiler::BatchSize,end);
+					compiler.DeliverResults(hulls[workerIndex],covers[workerIndex]);
 				});
+				for (index_t i = 0; i < numWorkers; i++)
+				{
+					hulls[i].AppendTo(solid);
+					covers[i].AppendTo(cover);
+					hulls[i].Clear();
+					covers[i].Clear();
+				}
+
 			}
 
 

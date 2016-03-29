@@ -412,16 +412,23 @@ namespace Objects
 		{
 			Grid::actualWorld.RemoveSensor(desc);
 		}
+
+		void					WorldEntity::MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow/*=true*/)
+		{
+			if (from == to)
+				return;
+			UnregisterSensory(from,atTime,false);
+			RegisterSensory(to,atTime,checkChangesNow);	//MUST BE IN THIS ORDER, or sky sensory of satellites and planes breaks
+		}
+	#else
+		/*virtual*/ void		WorldEntity::MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
+		{
+			this->RegisterSensory(location,motionTime,false,newContacts);
+			this->UnregisterSensory(oldLocation,motionTime,checkChangesNow);
+		}
+
 	#endif
 
-
-	void					WorldEntity::MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow/*=true*/)
-	{
-		if (from == to)
-			return;
-		RegisterSensory(to,atTime,false);
-		UnregisterSensory(from,atTime,checkChangesNow);
-	}
 
 	/*virtual override*/	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 	{

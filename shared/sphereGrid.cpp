@@ -2594,7 +2594,7 @@ namespace Grid
 		}
 
 
-		void	TerrainCompiler::Compile(const index_t offset, const index_t end, THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull, SpinLock&lock)
+		void	TerrainCompiler::Compile(const index_t offset, const index_t end)
 		{
 			for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
 			{
@@ -2641,10 +2641,13 @@ namespace Grid
 					CompileLayer(ih,stack,clipH,cell,neighbors);
 				}
 			}
+		}
 
+		void TerrainCompiler::DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull)
+		{
 			if (solidMesh.IsNotEmpty() || coverMesh.IsNotEmpty())
 			{
-				lock.lock();
+				//lock.lock();
 
 				if (solidMesh.IsNotEmpty())
 				{
@@ -2656,7 +2659,7 @@ namespace Grid
 					coverMesh.AppendTo(coverHull);
 				}
 
-				lock.unlock();
+				//lock.unlock();
 			}
 		
 		}
@@ -4687,6 +4690,7 @@ namespace Grid
 	void		OrbitGrid::ChangeSensory(const LCellIdI&center, float radius, signed char change)
 	{
 		Timer::Time t0 = timer.Now();
+		LogEvent(EventSignificance::Debug,nullptr,"Processing orbital sensor change around center "+center.ToString()+", radius="+String(radius)+", change="+String(change));
 
 		Math::Box<> test;
 		const TVec3<> worldCenter = ToWorld(center);

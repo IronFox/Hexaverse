@@ -30,6 +30,8 @@ namespace Objects
 	PSatellite		GetSatellitePrototypeByName(const String&name);
 	PSatellite		GetSatellitePrototypeByName(ConstName name);
 
+	PWorldEntity	GetNonVehiclePrototypeByName(ConstName typeName);
+	PWorldEntity	GetNonVehiclePrototypeByName(const String&typeName);
 	namespace Component
 	{
 		VehicleBase*	GetVehicleBaseByName(ConstName name);
