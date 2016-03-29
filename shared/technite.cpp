@@ -1020,11 +1020,11 @@ namespace Technites
 				{
 					TryDocker("pull "+startOptions.repo);
 					TryDocker("run --rm --name "+GetDockerName()+" "+startOptions.repo+" technite"
-						" --id="+id.ToFullString()+
-						" --at="+String(location.GetStackID())+'.'+String(location.GetLayer())+
-						" --parent="+startOptions.parent.ToFullString()+
-						" --url="+serviceURL+":"+String(serviceHost.GetPort())+
-						" --secret="+ secret.ToFullString()+
+						" --id "+id.ToFullString()+
+						" --at "+String(location.GetStackID())+'.'+String(location.GetLayer())+
+						" --parent "+startOptions.parent.ToFullString()+
+						" --url "+serviceURL+":"+String(serviceHost.GetPort())+
+						" --secret "+ secret.ToFullString()+
 						" "+startOptions.initMessage);
 				}
 				catch (const std::exception&ex)
