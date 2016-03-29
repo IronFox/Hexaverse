@@ -875,11 +875,14 @@ namespace Technites
 									if (techniteMap.Query(Grid::HCellIdU(c->stackID,l),techniteAt))
 									{
 										const Technite&other = technites[techniteAt];
-										Protocol::OtherState state;
-										state.commonState.location = other.location;
-										state.commonState.resources = other.resources;
-										state.id = other.id;
-										Channels::otherTechniteState.SendTo(peer,state);
+										if (&other != &t)
+										{
+											Protocol::OtherState state;
+											state.commonState.location = other.location;
+											state.commonState.resources = other.resources;
+											state.id = other.id;
+											Channels::otherTechniteState.SendTo(peer,state);
+										}
 									}
 									else
 									{
