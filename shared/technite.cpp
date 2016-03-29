@@ -1043,6 +1043,7 @@ namespace Technites
 			techniteIDMap.Set(tech.id,at);
 			tech.isDead = false;
 			tech.startOptions = init;
+			tech.SetStandardFieldOfVision();
 			ProcessLighting(tech);
 
 			ASSERT__(ChangeGrid(location,Grid::Content::Technite));
