@@ -312,7 +312,7 @@ namespace Technites
 		TCP::Server				serviceHost;
 		String					serviceURL="localhost";
 
-		Buffer0<Technite*>		layers[ExecutionLayer::Count];
+		FixedArray<Buffer0<Technite*>,ExecutionLayer::Count>	layers;
 
 		index_t					currentLayer = 0;
 		volatile bool			anyDied = false;
@@ -515,6 +515,8 @@ namespace Technites
 			currentLayer = 0;
 			anyDied = false;
 
+			foreach (layers,layer)
+				layer->Clear();
 			foreach (technites,t)
 			{
 				if (t->visionRadius >= 0.f)
