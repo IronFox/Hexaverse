@@ -458,7 +458,7 @@ namespace Objects
 		{
 			WVehicle				vehicle;
 			#ifdef HAS_WINDOW
-				DeployMobileCommand	deployCommand;
+				PDeployMobileCommand	deployCommand;
 			#endif
 		};
 

@@ -1412,7 +1412,7 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			WVehicle w = v;
-			this->localStore.last().deployCommand = DeployMobileCommand(v,
+			this->localStore.last().deployCommand.reset(new DeployMobileCommand(v,
 				[w]()
 				{
 					//focus = To<VehicleStore>::DynamicCast(storeEntity).get();
@@ -1429,8 +1429,8 @@ namespace Objects
 						rs |= BaseCommand::Flags::IsPermaActive;
 					return rs;
 				}
-				);
-			this->localStore.last().deployCommand.RasterizeImage();
+				));
+			this->localStore.last().deployCommand->RasterizeImage();
 		#endif
 
 		if (park)
@@ -1573,7 +1573,7 @@ namespace Objects
 						int2 coords;
 						if (at >= storeOffset)
 							coords = cmdLeftCoords + int2(at - storeOffset+1 ,0);
-						s2->deployCommand.VisitMembers(visitor,force,coords);
+						s2->deployCommand->VisitMembers(visitor,force,coords);
 					}
 
 					at++;
@@ -1595,7 +1595,7 @@ namespace Objects
 							int2 coords;
 							if (at >= storeOffset)
 								coords = cmdLeftCoords + int2(at - storeOffset+1 ,0);
-							s2->deployCommand.VisitMembers(visitor,force,coords);
+							s2->deployCommand->VisitMembers(visitor,force,coords);
 						}
 
 						at++;
