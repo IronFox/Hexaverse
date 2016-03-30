@@ -272,7 +272,7 @@ namespace Objects
 					elif (IsSatellite())
 						cnt = Satellite::CountTurretOccurrences(overrideOwner,t);
 					else
-						FATAL__("Unexpected mobile entity type: "+GetName());
+						FATAL__("Unexpected mobile entity type: "+GetTypeName());
 					limit = RuntimeConfig::UnitLimits::Get(t->constName);
 				}
 				elif (IsStructure())

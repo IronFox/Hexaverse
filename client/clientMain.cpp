@@ -1024,6 +1024,7 @@ void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 		marker.id.value.Generate();
 		FillMarker(marker, e, marker.data.Set0());
 		SignalMarkerCreation(marker);
+		LogEvent(EventSignificance::Debug,e.get(),"Created friendly loss marker for "+e->GetName());
 	}
 	else
 		if (t == Objects::RemovalType::Vanished && !e->isOwnedByMe)
@@ -2686,7 +2687,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 						float distance = std::numeric_limits<float>::max();
 
 						Objects::PWorldEntity possibleTarget = Objects::GetRayIntersection(b,d,distance);
-						if (possibleTarget && !possibleTarget->isOwnedByMe)
+						if (possibleTarget && !possibleTarget->isOwnedByMe && Objects::selectedEntity->CanHit(possibleTarget->location))
 						{
 							DirectTo(Objects::selectedEntity,possibleTarget->location,false,true, Objects::CursorMode::AttackMode);
 							return;

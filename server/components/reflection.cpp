@@ -304,7 +304,7 @@ namespace Reflection
 				{
 					t->trimThis();
 					Objects::Component::Turret*ct = Objects::Component::GetTurretByName(*t);
-					if (!ct || ct->isSatelliteRing)
+					if (!ct || ct->mountType != Objects::Component::Turret::MountType::Vehicle)
 						return false;
 				}
 				Game::Config::Nexus::vehicleTurrets.SetSize(vehicleTurretNames.Count());
@@ -321,7 +321,7 @@ namespace Reflection
 			{
 				String rs;
 				foreach (Objects::Component::allTurretComponents,tc)
-					if (!(*tc)->isSatelliteRing)
+					if ((*tc)->mountType == Objects::Component::Turret::MountType::Vehicle)
 					{
 						if (rs.IsNotEmpty())
 							rs += ",";

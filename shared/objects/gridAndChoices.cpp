@@ -638,7 +638,7 @@ namespace Objects
 
 	PWorldEntity					GetEntity(const Grid::LCellIdI&cellID)
 	{
-		if (cellID.height >= Grid::CellStack::HalfRange)
+		if (cellID.height > Grid::CellStack::TopHeight)
 		{
 			return GetSatellite(cellID.stackID);	//if there is no satellite here, there is nothing else here either
 		}
@@ -652,7 +652,7 @@ namespace Objects
 
 	bool NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient)
 	{
-		if (cellID.height >= Grid::CellStack::HalfRange)
+		if (cellID.height > Grid::CellStack::TopHeight)
 		{
 			#ifdef CLIENT
 				return !checkVehiclesOnClient || !GetSatellite(cellID.stackID);	//timing issues may cause problems with getVehicle, but sometimes it wont matter
@@ -741,20 +741,12 @@ namespace Objects
 		if (p && p->AwaitsUserInteraction())
 		{
 			{
+				ASSERT1__(p->queue.IsNotEmpty(),entity.GetName());
 				Component::VehicleBase* base = nullptr;
-				#ifdef CLIENT
-					base = p->GetActiveProductionBase();
-				#else
-					const PMobileEntity production = p->GetActiveProduction();
-					if (production->IsVehicle())
-					{
-						base = To<Vehicle>::Cast(production)->base;
-					}
-					else
-						ASSERT1__(production->IsSatellite(),production->GetName());
-				#endif
-					if (base)
-						GetProductionChoices(&entity,base,movementChoices);
+				const auto&current = p->queue.first();
+
+					if (current.IsVehicle())
+						GetProductionChoices(&entity,current.GetVehicleBase(),movementChoices);
 					else
 					{
 						if (entity.IsSatellite())
@@ -772,11 +764,11 @@ namespace Objects
 						}
 						else
 						{
-							//must be producing a satellite
-							//in time, mobile entities will be producers, too, but for here we can conclude this is a bottom-up production
-							//thus: vertical
-							if (!GetSatellite(entity.location.stackID))
-								movementChoices << Choice(Grid::LCellIdI(entity.location.stackID,Satellite::BaseResidenceHeight),0);
+							if (current.IsSatellite())
+							{
+								if (!GetSatellite(entity.location.stackID))
+									movementChoices << Choice(Grid::LCellIdI(entity.location.stackID,Satellite::BaseResidenceHeight),0);
+							}
 						}
 					}
 			}
@@ -785,7 +777,7 @@ namespace Objects
 
 		if (deploying)
 		{
-			const HangarStructure*s = dynamic_cast<HangarStructure*>(&entity);
+			const Hangar*s = dynamic_cast<Hangar*>(&entity);
 			if (s)
 			{
 				Grid::LCellIdI location = s->ToEntity().location;
@@ -1908,10 +1900,10 @@ namespace Objects
 
 	}
 
-	PHangarStructure		MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&m)
+	PHangar		MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&m)
 	{
 		PStructure s = GetStructure(location);
-		return s && s->owner == m.owner ? s->CastToDestinationForType(m) : PHangarStructure();
+		return s && s->owner == m.owner ? s->CastToDestinationForType(m) : PHangar();
 	}
 
 
@@ -2841,7 +2833,7 @@ namespace Objects
 			else
 			{
 				PMobileEntity v = To<MobileEntity>::DynamicCast(e);
-				if (v)
+				if (v && !deployWhat)
 				{
 					auto c = choice;
 					switch (mode)
@@ -2903,15 +2895,15 @@ namespace Objects
 					//PWorkingStructure ws = To<WorkingStructure>::DynamicCast(e);
 
 					{
-						if (deployWhat && deployWhat->IsVehicle())
+						if (deployWhat)
 						{
-							PVehicleStore s = To<VehicleStore>::DynamicCast(e);
-							PHangarStructure actual = deployWhat->storedIn.lock();
-							PVehicleStore actualStore = To<VehicleStore>::DynamicCast(actual);
-							if (s && actualStore && actualStore->park == s->park)
+							PHangar s = To<Hangar>::DynamicCast(e);
+							PHangar actual = deployWhat->storedIn.lock();
+							//PVehicleStore actualStore = To<VehicleStore>::DynamicCast(actual);
+							if (s && s->SharesStorageWith(actual))
 							{
 								float t = 0.f;
-								actualStore->LocalCheckout(To<Vehicle>::Cast(deployWhat),choice,t);
+								actual->LocalCheckout(deployWhat,choice,t);
 							}
 							else
 							{
@@ -2920,18 +2912,18 @@ namespace Objects
 									if (deployWhat)
 									{
 										if (!actual)
-											LogEvent(EventClass::Preset::fatal,s.get(),"Attempting to re-checkout "+deployWhat->GetName());
+											LogEvent(EventClass::Preset::fatal,&s->ToEntity(),"Attempting to re-checkout "+deployWhat->GetName());
 										else
-											if (actualStore->park != s->park)
+											if (!s->SharesStorageWith(actual))
 											{
-												LogEvent(EventClass::Preset::fatal,s.get(),"Unable to checkout "+deployWhat->GetName()+" from this store: stored in a different park");
+												LogEvent(EventClass::Preset::fatal,&s->ToEntity(),"Unable to checkout "+deployWhat->GetName()+" from this store: stored in a different park");
 											}
 											else
 												FATAL__("Equation evaluation error. Did the compiler fuck up?");
 									}
 									else
 									{
-										LogEvent(EventClass::Preset::fatal,s.get(),"Nothing to deploy (reference is null)");
+										LogEvent(EventClass::Preset::fatal,&s->ToEntity(),"Nothing to deploy (reference is null)");
 									}
 								}
 
@@ -2943,7 +2935,7 @@ namespace Objects
 						}
 						else
 						{
-							FATAL__("Trying to check out non-vehicle");
+							FATAL__("deployWhat must be set when checking out from "+e->GetName());
 						}
 					}
 				}

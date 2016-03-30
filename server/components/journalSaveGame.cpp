@@ -568,11 +568,7 @@ namespace Journal
 
 	Objects::PWorldEntity Round::PureEntityDescriptor::Instantiate(const Objects::PFaction&f, const TUniqueID&id, const Grid::LCellIdI&loc) const
 	{
-		Objects::PWorldEntity proto = Objects::GetPrototypeByName(baseType);
-		if (!proto)
-		{
-			proto = Objects::GetSatellitePrototypeByName(baseType);
-		}
+		Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(baseType);
 		Objects::PWorldEntity e;
 		if (proto)
 		{
@@ -2000,8 +1996,8 @@ namespace Journal
 			break;
 			case 1:
 			{
-				Objects::PSatellite proto = Objects::GetSatellitePrototypeByName(parameters[0]);
-				if (!proto)
+				Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(parameters[0]);
+				if (!proto || !proto->IsMobile())
 				{
 					LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
 					return;

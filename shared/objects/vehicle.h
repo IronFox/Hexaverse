@@ -37,7 +37,7 @@ namespace Objects
 		/**/					Vehicle(const OwnerParameter&owner, const Grid::LCellIdI&location, Component::VehicleBase*base, Component::Turret*turret) :
 									MobileEntity(owner,turret,location),base(base)
 								{
-									ASSERT__(base); ASSERT__(turret); ASSERT__(!turret->isSatelliteRing);
+									ASSERT__(base); ASSERT__(turret); //ASSERT__(turret->mountType == Component::Turret::MountType::Vehicle);
 								}
 
 		Component::VehicleBase*	base;

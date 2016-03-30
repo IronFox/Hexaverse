@@ -227,7 +227,7 @@ namespace Objects
 					if (v)
 					{
 						LogEvent(EventSignificance::Common,parent,"Auto-spawned mobile entity "+v->GetName());
-						if (!v->IsSatellite())
+						if (v->IsVehicle())
 						{
 							LogEvent(EventSignificance::Common,v.get(),"Directing vehicle to gathering point");
 							v->PlotCourse(gatheringPoint.current,false);
@@ -482,6 +482,11 @@ namespace Objects
 				ASSERT1__(prototype, (int)baseName);
 				price = prototype->GetConstructionCost();
 				name = prototype->GetTypeName();
+				if (prototype->IsVehicle())
+				{
+					base = To<Vehicle>::Cast(prototype)->base;
+					turret = To<Vehicle>::Cast(prototype)->turret;
+				}
 			}
 
 			{

@@ -871,10 +871,11 @@ namespace Objects
 
 	void	Renderer::RenderComponent(TMatrix4<> system, float h, const Component::Base&comp, float x, float y)
 	{
-		system.w.xyz += system.z.xyz * h;
 		TMatrix4<> sub;
 		if (comp.parts.Count() > 0)
 		{
+			system.w.xyz += system.z.xyz * h;
+
 			comp.GetSubSystem(0,x,sub);
 			Mat::transformSystem(system,sub);
 			system = sub;
@@ -1176,15 +1177,17 @@ namespace Objects
 				Renderer::Render(*struc);
 			}
 			else
-				if (selectedVehicle)
-					Renderer::Render(*selectedVehicle,GetLowLighting(selectedEntity->location));
-				else
-					if (selectedMobileEntity && selectedMobileEntity->IsSatellite())
-					{
+				if (selectedMobileEntity)
+				{
+					if (selectedVehicle)
+						Renderer::Render(*selectedVehicle,GetLowLighting(selectedEntity->location));
+					elif (selectedMobileEntity->IsSatellite())
 						Renderer::Render(*To<Satellite>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
-					}
 					else
 						FATAL__("Can't render this: "+selectedEntity->GetName());
+				}
+				else
+					FATAL__("Can't render this: "+selectedEntity->GetName());
 
 			if (GatheringPoint::selected != Grid::LCellIdI::Invalid)
 			{
@@ -2207,41 +2210,26 @@ namespace Objects
 		#endif
 	}
 
-	void	Renderer::RenderTranslucentBeams()
+
+	
+	namespace Renderer
 	{
-	/*	if (!objectView)
-			return;
-	*/	
-
-		display.SetRasterizer(true,false);	//some shafts are flipped, but culling makes no sense anyways
-		display.SetDepthTest(true,false);
-		display.SetBlendMode(Engine::BlendMode::Add);
-
-		foreach (satellites,_s)
+		void RenderFlyingUnitBeams(const Objects::PMobileEntity&e)
 		{
-			const PSatellite&sat = *_s;
-			TVec3<> color;
-			if (sat->isOwnedByMe)
-			{
-				color= float3(0.5,0.6,1.0);
-			}
-			else
-			{
-				color= float3(1.0,0.6,0.5);
-			}
+			TVec3<> color = e->owner ? e->owner->activeEntityColor : float3();
 			SetBeamColor(float4(color,0.25),
 						float4(color,0.25));
 			const float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
 			{
 				//display.SetBlendMode(Engine::BlendMode::Add);
-				RenderBeam(sat->GetWorldPosition(),-(Grid::ToRadius(sat->location.height) 
+				RenderBeam(e->GetWorldPosition(),-(Grid::ToRadius(e->location.height) 
 								- bottom) /
 								Grid::SingleLayerHeight,
 								0.1f
 								);
 			}
 			bool first = true;
-			for (const auto&t : sat->myTasks)
+			for (const auto&t : e->myTasks)
 			{
 				if (t.ContainsMovement())
 				{
@@ -2263,7 +2251,20 @@ namespace Objects
 				}
 			}
 		}
+	}
 
+	void	Renderer::RenderTranslucentBeams()
+	{
+	/*	if (!objectView)
+			return;
+	*/	
+
+		display.SetRasterizer(true,false);	//some shafts are flipped, but culling makes no sense anyways
+		display.SetDepthTest(true,false);
+		display.SetBlendMode(Engine::BlendMode::Add);
+		
+		foreach (satellites,_s)
+			RenderFlyingUnitBeams(*_s);
 		bool nexusSet[12] = {false};
 
 		foreach(skyLinks, _s)
@@ -2396,14 +2397,15 @@ namespace Objects
 		
 	static void _RenderShadowS(TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y)
 	{
-		system.w.xyz += system.z.xyz * h;
 		TMatrix4<> sub;
-		system.x.xyz *= scale;
-		system.y.xyz *= scale;
-		system.z.xyz *= scale;
 
 		if (comp.parts.Count() > 0)
 		{
+			system.w.xyz += system.z.xyz * h;
+			system.x.xyz *= scale;
+			system.y.xyz *= scale;
+			system.z.xyz *= scale;
+
 			comp.GetSubSystem(0,x,sub);
 			Mat::transformSystem(system,sub);
 			system = sub;

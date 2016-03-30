@@ -185,6 +185,19 @@ namespace Objects
 			#endif
 		}
 
+		inline void					SyncTime(WorldEntity&other, float&remoteTime, float timeOffset)
+		{
+			#ifndef CLIENT
+				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime)) + timeOffset;
+			#endif
+		}
+		inline void					SyncTime(WorldEntity&other, float&remoteTime)
+		{
+			#ifndef CLIENT
+				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime));
+			#endif
+		}
+
 
 
 		virtual						~WorldEntity();
@@ -404,6 +417,14 @@ namespace Objects
 		//http://stackoverflow.com/questions/9959315/why-virtual-function-call-is-faster-than-dynamic-cast
 		virtual const MobileEntityProducer*	CastToProducer() const {return nullptr;}
 
+
+		/**
+		Casts the local entity to an appropriate hangar structure if it can store the given mobile entity @a e
+		If storage is not possible due to type constraints (NOT capacity constraints), the return value must be
+		empty.
+		*/
+		virtual PHangar				CastToDestinationForType(const MobileEntity&e) {return PHangar();}
+		virtual bool				IsHangar() const {return false;}
 
 		virtual bool				IsIndestructible() const	{return false;};
 

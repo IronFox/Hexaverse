@@ -736,7 +736,7 @@ void EstimatePresence(Objects::WorldEntity&e, const Grid::LCellIdI&location, flo
 					}
 					else
 					{
-						if (e.IsVehicle())
+						if (e.IsMobile())
 							friendlyNearNexus[i] += opacity * impact;
 					}
 				}

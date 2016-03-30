@@ -66,7 +66,7 @@ namespace Objects
 	/**
 	Checks if there is a structure in the given location that can handle a given mobile entity moving in
 	*/
-	PHangarStructure	MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&);
+	PHangar			MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&);
 
 
 
