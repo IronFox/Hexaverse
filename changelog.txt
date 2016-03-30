@@ -1,9 +1,11 @@
-v0.4.1
+v0.4.1	[Mar 30 2016]
 	+ Added plane factory building type.
 	+ Added raptor, cargo plane, and sensor drone.
 	> Resource stacks are now hidden by default, when connecting as spectator.
 	> Improved initial terrain simplification algorithm to produce cleaner terrains.
 	* Fixed server-side random key generation on some systems.
+	* Fixed rare UI crashes.
+	* Fixed console crashes when pressing up without an existing input history.
 
 v0.4.0	[Mar 20 2016]
 	+ Re-enabled compound system. Vehicles in the vicinity of compounds will implicitly draw from them.
