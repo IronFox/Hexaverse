@@ -528,6 +528,7 @@ namespace Technites
 				layer->Clear();
 			foreach (technites,t)
 			{
+				t->taskResult = Technite::TaskResult::Success;
 				if (t->visionRadius >= 0.f)
 					t->SetStandardFieldOfVision();
 				ProcessLighting(*t);
