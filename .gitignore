@@ -3,7 +3,6 @@ bin/
 obj/
 *.opensdf
 *.sdf
-*.cgs
 *.exp
 *.iobj
 *.ipdb
