@@ -2281,6 +2281,8 @@ namespace Objects
 		#endif
 	}
 
+
+	
 	namespace Renderer
 	{
 		void RenderFlyingUnitBeams(const Objects::PMobileEntity&e)
