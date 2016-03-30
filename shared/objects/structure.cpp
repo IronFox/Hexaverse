@@ -918,9 +918,9 @@ namespace Objects
 	#ifdef HAS_WINDOW
 		/*virtual override*/ void				Tower::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
-			commands.VisitMembers([visitor,this](const int2&coords, BaseCommand&cmd)
+			commands.VisitMembers([visitor,this](const int2&coords, const PBaseCommand&cmd)
 			{
-				if (turret->CanAttack() || cmd.name!="Attack")
+				if (turret->CanAttack() || cmd->name!="Attack")
 					visitor(coords,cmd);
 			},force);
 		}
@@ -1515,7 +1515,7 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			WVehicle w = v;
-			this->localStore.last().deployCommand = DeployMobileCommand(v,
+			this->localStore.last().deployCommand.reset(new DeployMobileCommand(v,
 				[w]()
 				{
 					//focus = To<VehicleStore>::DynamicCast(storeEntity).get();
@@ -1532,8 +1532,8 @@ namespace Objects
 						rs |= BaseCommand::Flags::IsPermaActive;
 					return rs;
 				}
-				);
-			this->localStore.last().deployCommand.RasterizeImage();
+				));
+			this->localStore.last().deployCommand->RasterizeImage();
 		#endif
 
 		if (park)
@@ -1676,7 +1676,7 @@ namespace Objects
 						int2 coords;
 						if (at >= storeOffset)
 							coords = cmdLeftCoords + int2(at - storeOffset+1 ,0);
-						s2->deployCommand.VisitMembers(visitor,force,coords);
+						s2->deployCommand->VisitMembers(visitor,force,coords);
 					}
 
 					at++;
@@ -1698,7 +1698,7 @@ namespace Objects
 							int2 coords;
 							if (at >= storeOffset)
 								coords = cmdLeftCoords + int2(at - storeOffset+1 ,0);
-							s2->deployCommand.VisitMembers(visitor,force,coords);
+							s2->deployCommand->VisitMembers(visitor,force,coords);
 						}
 
 						at++;
@@ -2361,11 +2361,11 @@ namespace Objects
 		turretComponents = Objects::Component::vehicleTurretComponents;
 
 		#ifdef HAS_WINDOW
-			commands.VisitMembers([](const int2&coords,BaseCommand&cmd)
+			commands.VisitMembers([](const int2&coords,const PBaseCommand&cmd)
 			{
-				if (cmd.name == "Enable")
+				if (cmd->name == "Enable")
 				{
-					cmd = IconCommand("Enable",
+					(*cmd) = IconCommand("Enable",
 						[]()
 						{
 

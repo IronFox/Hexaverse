@@ -519,7 +519,7 @@ namespace UI
 			extern CollectionTemplateRow<Objects::WWorldEntity>	friendlyGroups,hostileGroups;
 			extern DynamicRow							animationTimeLine;
 
-			extern EntityFocusCommand					selectedFocus;
+			extern std::shared_ptr<EntityFocusCommand>	selectedFocus;
 
 
 
@@ -548,7 +548,7 @@ namespace UI
 				Used as a unique identifier for this cell.
 				Only at most one cell can exist per command (address)
 				*/
-				Objects::BaseCommand	*command;
+				Objects::PBaseCommand	command;
 				/**
 				Location of this button on the current viewport (for faster click lookup).
 				Updated by Update()
@@ -588,12 +588,12 @@ namespace UI
 			Only one cell may be allocated per command. A second call with the same parameter yields the cell returned by the first call.
 			@return Reference to the newly allocated or existing cell. Valid only until the next call to AllocateCell() or FindAndDeleteCell(). Do not persistently store pointers or references to the returned cell
 			*/
-			GridCell&		AllocateCell(Objects::BaseCommand*);
+			GridCell&		AllocateCell(const Objects::PBaseCommand&);
 			/**
 			Attempts to locate and delete the first cell using the specified command.
 			Fails silently if no such cell exists.
 			*/
-			void			FindAndDeleteCell(Objects::BaseCommand*);
+			void			FindAndDeleteCell(const Objects::PBaseCommand&);
 
 
 
@@ -646,7 +646,7 @@ namespace UI
 
 			}
 
-			void		VisitCommand(const int2&,Objects::BaseCommand&cmd);
+			void		VisitCommand(const int2&,const Objects::PBaseCommand&cmd);
 
 			void		RefreshButtonState();
 
