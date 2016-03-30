@@ -1607,11 +1607,30 @@ namespace Objects
 						DirectTo(selectedMobileEntity,Grid::LCellIdI(loc.stackID,h),false,false);
 				}
 
+				BaseCommand::Flags LandCheck(bool controlEnabled)
+				{
+					if (!controlEnabled || !selectedMobileEntity || !selectedMobileEntity->IsPlane() || selectedMobileEntity->GetLastPointOfOrigin().height <= Grid::CellStack::TopHeight)
+						return BaseCommand::Flags::None;
+					Objects::SubOrbital::PPlane plane = To<Objects::SubOrbital::Plane>::Cast(selectedMobileEntity);
+					auto loc = plane->GetLastPointOfOrigin();
+					int h = plane->GetLandingHeight(loc);
+					if (h != badHeight)
+						return BaseCommand::Flags::IsEnabled;
+					return BaseCommand::Flags::None;
+				}
+
 				void	TakeOff()
 				{
 					if (!selectedMobileEntity || !selectedMobileEntity->IsPlane() || selectedMobileEntity->GetLastPointOfOrigin().height > Grid::CellStack::TopHeight)
 						return;
 					DirectTo(selectedMobileEntity,Grid::LCellIdI(selectedMobileEntity->GetLastPointOfOrigin().stackID,Objects::SubOrbital::Height),false,false);
+				}
+
+				BaseCommand::Flags TakeOffCheck(bool controlEnabled)
+				{
+					if (!controlEnabled || !selectedMobileEntity || !selectedMobileEntity->IsPlane() || selectedMobileEntity->GetLastPointOfOrigin().height > Grid::CellStack::TopHeight)
+						return BaseCommand::Flags::None;
+					return BaseCommand::Flags::IsEnabled;
 				}
 			}
 			#endif
@@ -1622,8 +1641,8 @@ namespace Objects
 					CellCoords offset = ConfigureStandardCommands(component);
 
 					component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
-					component.commands.Add( new IconCommand("Take Off",&Cmd::TakeOff, &CommonCmd::CommonButtonCheck,NoCosts));
-					component.commands.Add( new IconCommand("Land",&Cmd::Land, &CommonCmd::CommonButtonCheck,NoCosts));
+					component.commands.Add( new IconCommand("Take Off",&Cmd::TakeOff, &Cmd::TakeOffCheck,NoCosts));
+					component.commands.Add( new IconCommand("Land",&Cmd::Land, &Cmd::LandCheck,NoCosts));
 					//component.parts.setSize(1);
 					//component.parts.first().first.LoadFromObj("objects/skyGuardianRing.obj");
 				#endif
@@ -1668,8 +1687,8 @@ namespace Objects
 				#ifdef HAS_WINDOW		
 					CellCoords offset = ConfigureStandardCommands(component);
 
-					component.commands.Add( new IconCommand("Take Off",&Cmd::TakeOff, &CommonCmd::CommonButtonCheck,NoCosts));
-					component.commands.Add( new IconCommand("Land",&Cmd::Land, &CommonCmd::CommonButtonCheck,NoCosts));
+					component.commands.Add( new IconCommand("Take Off",&Cmd::TakeOff, &Cmd::TakeOffCheck,NoCosts));
+					component.commands.Add( new IconCommand("Land",&Cmd::Land, &Cmd::LandCheck,NoCosts));
 					//component.parts.setSize(1);
 					//component.parts.first().first.LoadFromObj("objects/skyGuardianRing.obj");
 				#endif
@@ -1705,8 +1724,8 @@ namespace Objects
 				#ifdef HAS_WINDOW		
 					CellCoords offset = ConfigureStandardCommands(component);
 
-					component.commands.Add( new IconCommand("Take Off",&Cmd::TakeOff, &CommonCmd::CommonButtonCheck,NoCosts));
-					component.commands.Add( new IconCommand("Land",&Cmd::Land, &CommonCmd::CommonButtonCheck,NoCosts));
+					component.commands.Add( new IconCommand("Take Off",&Cmd::TakeOff, &Cmd::TakeOffCheck,NoCosts));
+					component.commands.Add( new IconCommand("Land",&Cmd::Land, &Cmd::LandCheck,NoCosts));
 				#endif
 
 
