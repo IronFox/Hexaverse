@@ -55,6 +55,35 @@ namespace Objects
 		}
 
 
+		bool							Turret::ConsumesResources(ResourceFlagSet&res) const
+		{
+			bool rs = false;
+			if (this->mountType == Component::Turret::MountType::Satellite)
+			{
+				res |= Resource::Fuel;
+				rs = true;
+			}
+			if (CanAttack())
+			{
+				if (ammoNeedPerShot > 0)
+				{
+					res |= ammoType;
+					rs = true;
+				}
+			}
+			if (CanDo(Component::Construct) || CanDo(Component::Repair) || CanDo(Component::TerrainAdd))
+			{
+				res |= Resource::Minerals;
+				rs = true;
+			}
+			if (CanDo(Component::Nuclear))
+			{
+				res |= Resource::Uranium;
+				rs = true;
+			}
+			return rs;
+		}
+
 
 		#ifdef HAS_WINDOW
 			/*static*/ float			Turret::CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&geo, float widthScale/*=1.f*/)

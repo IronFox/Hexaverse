@@ -195,7 +195,6 @@ namespace Objects
 
 		//TurretBase overrides:
 		virtual float			GetFlatAttackRange() const override {return EMPModify(turret->horizontalAttackRange,1.f);}
-		virtual bool			HasAmmoForShot() const override;
 		#ifndef CLIENT
 			virtual bool		FillAttackQueue()override;
 		#endif
@@ -442,8 +441,8 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual int			GetUplinkTraffic() const override {return 10;}
 		#endif
-		virtual void			OnDestroy(RemovalType t, float atTime) override {SyncTime(atTime); Super::OnDestroy(t,atTime); LoseGroundConnection();}
-		virtual void			OnConstructionFinished(float atTime) override;
+		virtual void			OnDestroy(RemovalType t, float&atTime) override {SyncTime(atTime); Super::OnDestroy(t,atTime); LoseGroundConnection();}
+		virtual void			OnConstructionFinished(float&atTime) override;
 		virtual bool			AwaitsUserInteraction() const override {return MobileEntityProducer::AwaitsUserInteraction();}
 		#ifdef HAS_WINDOW
 			virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override;

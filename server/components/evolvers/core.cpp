@@ -289,13 +289,13 @@ namespace Evolver
 
 		void ProcessStructures1(float atTime)
 		{
-			#ifdef ONE_COMPOUND_PER_FACTION
+			//#ifdef ONE_COMPOUND_PER_FACTION
 				Objects::RefreshCompoundCoverageIfNeeded(atTime);
 				Objects::ForeachCompound([atTime](Objects::Compound&c)
 				{
 					c.TickEnd(atTime);
 				});
-			#endif
+			//#endif
 
 		}
 

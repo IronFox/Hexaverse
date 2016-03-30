@@ -40,7 +40,7 @@ namespace Objects
 		/**
 		Filter list containing only SkyPorts. Used to faster render certain effects.
 		*/
-		Buffer0<TLinkReference>	skyLinks;
+		Buffer0<TLinkReference>		skyLinks;
 	#endif
 
 	/**
@@ -219,10 +219,10 @@ namespace Objects
 					ChangeStorage(*this,attackTime, turret->ammoType,-turret->ammoNeedPerShot);
 				else
 				{
-					ResourceVector change;
 					RefreshCompoundCoverageIfNeeded(motionTime);
-					change.level[turret->ammoType] = turret->ammoNeedPerShot;
-					GetCompound().Collect(change,motionTime);
+					ResourceVector change;
+					change.level[turret->ammoType] = -turret->ammoNeedPerShot;
+					GetCompound().ChangeStorage(change,motionTime);
 					//ASSERT__(change.IsEmpty());
 				}
 				
@@ -274,7 +274,7 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void			Tower::OnConstructionFinished(float atTime)
+		/*virtual override*/ void			Tower::OnConstructionFinished(float&atTime)
 		{
 			Super::OnConstructionFinished(atTime);
 			ChangeStorage(*this,atTime,turret->ammoType,GetMaxStorageCapacity().level[turret->ammoType] - storage.level[turret->ammoType]);
@@ -687,7 +687,7 @@ namespace Objects
 		#endif
 	}
 	
-	void	Structure::DisconnectFromNeighborhood(float atTime)
+	void	Structure::DisconnectFromNeighborhood(float&atTime)
 	{
 		for (index_t i = 0; i < this->connectedTo.Count(); i++)
 		{
@@ -706,7 +706,7 @@ namespace Objects
 	}
 
 
-	void Structure::OnConstructionFinished(float atTime)
+	void Structure::OnConstructionFinished(float&atTime)
 	{
 		Super::OnConstructionFinished(atTime);
 
@@ -778,7 +778,7 @@ namespace Objects
 
 
 
-	/*virtual*/ void Structure::OnDestroy(RemovalType t, float atTime)
+	/*virtual*/ void Structure::OnDestroy(RemovalType t, float&atTime)
 	{
 		Super::OnDestroy(t,atTime);
 		LogEvent(EventClass::Preset::debug,this,"Unregistering...");
@@ -936,11 +936,12 @@ namespace Objects
 				}
 			}
 
+			motionTime += timeEpsilon;
 			AttackTask&cmd = attackQueue.Push();
 //			cmd.id.Generate();
 			cmd.target = target;
 			cmd.autoTarget = autoTarget;
-			SignalChange(TasksChanged,0);
+			SignalChange(TasksChanged,motionTime);
 			return true;
 		}
 
@@ -1050,7 +1051,7 @@ namespace Objects
 		return GetCompound().total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
 	}
 
-	bool	Tower::HasAmmoForShot() const
+	bool	Tower::HasAmmoForShot()
 	{
 		return GetCompound().total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
 		//compoundID < compounds.Count() && compounds[compoundID].total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
@@ -1588,7 +1589,7 @@ namespace Objects
 
 	#endif
 
-	/*virtual override*/ void				VehicleStore::OnDestroy(RemovalType t, float atTime)
+	/*virtual override*/ void				VehicleStore::OnDestroy(RemovalType t, float&atTime)
 	{
 		//Buffer0<WVehicleStore>	copy = sneighbors;
 		Super::OnDestroy(t, atTime);	//disconnects from neighborhood. sneighbors should be empty now
@@ -1733,8 +1734,9 @@ namespace Objects
 	#endif
 
 	
-	/*virtual*/ void				Structure::SignalLostNeighbor(const PStructure&other, float atTime)
+	/*virtual*/ void				Structure::SignalLostNeighbor(const PStructure&other, float&atTime)
 	{
+		atTime += timeEpsilon;
 		if (RemoveConnectionTo(other))
 		{
 			LogEvent(EventSignificance::Common,nullptr, "Connection lost between "+GetName()+" and "+other->GetName());
@@ -1925,14 +1927,17 @@ namespace Objects
 		{
 			v.level[Resource::Energy] -= EnergyConsumption;
 			v.level[Resource::Fuel] -= FuelDemand;
-			MobileEntityProducer::Tick(v);
+
+			float t = 0.f;	//buildings always come at the beginning
+			MobileEntityProducer::Tick(v,t);
 		}
 
 		/*virtual override*/ void				VehiclePlant::Tick(ResourceVector&v)
 		{
 			v.level[Resource::Energy] -= EnergyConsumption;
 
-			MobileEntityProducer::Tick(v);
+			float t = 0.f;	//buildings always come at the beginning
+			MobileEntityProducer::Tick(v,t);
 		}
 
 
@@ -1967,7 +1972,10 @@ namespace Objects
 		{
 			v.level[Resource::Energy] -= EnergyConsumption;
 			if (MobileEntityProducer::queue.IsNotEmpty())
-				MobileEntityProducer::Tick(v);
+			{
+				float t = 0;
+				MobileEntityProducer::Tick(v,t);
+			}
 
 
 
@@ -2571,7 +2579,8 @@ namespace Objects
 
 				for (const auto&faction : Faction::allKnown)
 				{
-					faction->compound.containedStructures.Clear();
+					faction->compound.allStructures.Clear();
+					faction->compound.workingStructures.Clear();
 				}
 
 				for (const auto&s:structures)
@@ -2774,6 +2783,7 @@ namespace Objects
 				//	return false;
 				//}
 			}
+			atTime += timeEpsilon;
 			if (!b)
 				Compound::lastDisabled = this;
 			else

@@ -254,6 +254,7 @@
 				{
 					textout.color(1,0.6,0.5);
 					Write(changePerRound);
+					textout.color(color * 0.5f + float3(0.5f));
 				}
 			if (max > 0)
 				textout.scale(1.2f,1.2f);

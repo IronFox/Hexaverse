@@ -5,9 +5,7 @@
 #include "prototypes.h"
 #include "systems.h"
 #include "gridAndChoices.h"
-#if !defined CLIENT || defined ONE_COMPOUND_PER_FACTION
-	#include "faction.h"
-#endif
+#include "faction.h"
 
 namespace Objects
 {
@@ -70,8 +68,10 @@ namespace Objects
 	#ifndef CLIENT
 
 
-		/*virtual override*/ void		Vehicle::OnConstructionFinished(float atTime)
+		/*virtual override*/ void		Vehicle::OnConstructionFinished(float&atTime)
 		{
+			Super::OnConstructionFinished(atTime);
+			motionTime = atTime;
 			if (turret->CanAttack())
 			{
 				//leave munitions here. it seems fair that a new tank starts with full ammo, but an emp-tank should not start with full uranium...
@@ -481,16 +481,6 @@ namespace Objects
 	#endif
 
 
-
-	/*virtual override*/bool				Vehicle::HasAmmoForShot() const 
-	{
-	#ifdef ONE_COMPOUND_PER_FACTION
-		const Compound&compound = owner->compound;
-		return compound.total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	#else
-		return currentStorage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	#endif
-	}
 	
 	#ifdef HAS_WINDOW
 

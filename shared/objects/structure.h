@@ -209,11 +209,11 @@ namespace Objects
 		Typical behavior is to check for existing connections and remove them from @a connectedTo where necessary
 		Invokes OnConnectionLost() on the local instance, if a connection was removed.
 		*/
-		virtual void				SignalLostNeighbor(const PStructure&, float atTime);
+		virtual void				SignalLostNeighbor(const PStructure&, float&atTime);
 		/**
 		Signalling method invoked by default implementations of SignalEnvironmentChange() and SignalNewNeighbor()
-		Invoked whenever a new connection has been established.
-		@param acrossHighCell CellId of the high-resolution cell between the local instance and the specified other instance. May be used to detect terrain state.
+		Invoked whenever a new direct or wireless connection has been established. Called before the new connection is inserted into @a connectedTo
+		@param acrossHighCell CellId of the high-resolution cell between the local instance and the specified other instance. May be used to detect terrain state. 0 if the new connection is wireless
 		*/
 		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) {};
 		/**
@@ -273,8 +273,8 @@ namespace Objects
 		Base version also notifies all connected structures of the removal, so Super::OnDestroy()
 		should be called by overriding implementations at some point.
 		*/
-		virtual void				OnDestroy(RemovalType, float atTime) override;
-		virtual void				OnConstructionFinished(float atTime) override;
+		virtual void				OnDestroy(RemovalType, float&atTime) override;
+		virtual void				OnConstructionFinished(float&atTime) override;
 
 		/**
 		Retrieves the height of the local structure that it is broad in. The remainder of GetHeight() is considered narrow.
@@ -288,7 +288,7 @@ namespace Objects
 		generally not recommended to call this method manually. OnDestroy() will call this method, as will methods that
 		alter the ownership of entities.
 		*/
-		void						DisconnectFromNeighborhood(float atTime);
+		void						DisconnectFromNeighborhood(float&atTime);
 
 		/**
 		Fetches the category of the local structure
@@ -486,7 +486,7 @@ namespace Objects
 		virtual count_t				GetMaxStorage() const override {return MaxVehiclesPerStore;}
 		const WorldEntity&			ToEntity() const override {return *this;}
 		WorldEntity&				ToEntity() override {return *this;}
-		virtual void				OnDestroy(RemovalType, float atTime) override;
+		virtual void				OnDestroy(RemovalType, float&atTime) override;
 
 		//Structure overrides:
 		virtual void				OnNewConnection(const PStructure&, UINT32 acrossHighCell, float atTime) override;
@@ -577,6 +577,11 @@ namespace Objects
 	{
 		typedef Structure			Super;
 		bool						isEnabled;
+
+		#ifndef CLIENT
+			ResourceVector			overproduction;
+			friend class Compound;
+		#endif
 
 	protected:
 		/**/						WorkingStructure() : isEnabled(false)	{ }	//global prototype
@@ -894,7 +899,7 @@ namespace Objects
 			void					OnLoad();
 
 			virtual void			Tick(ResourceVector&) override;
-			virtual void			OnConstructionFinished(float atTime)	{Super::OnConstructionFinished(atTime); SetEnabled(false,atTime,false);}
+			virtual void			OnConstructionFinished(float&atTime)	{Super::OnConstructionFinished(atTime); SetEnabled(false,atTime,false);}
 		#else
 			#ifdef HAS_WINDOW
 				virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
@@ -988,7 +993,7 @@ namespace Objects
 			//virtual void			OnConstructionFinished(float atTime) override;	//has to register with owner	//some day
 			//virtual void			OnDestroy(float atTime) override;	//has to unregister with owner	//some day
 			virtual void			Tick(ResourceVector&) override;
-			virtual void			SignalLastProductionDone() override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); float t = 0; SetEnabled(false,t);}
+			virtual void			SignalLastProductionDone(float&t) override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); SetEnabled(false,t);}
 
 		#endif
 		#ifdef HAS_WINDOW
@@ -1173,7 +1178,7 @@ namespace Objects
 		//MobileEntityProducer overrides
 		#ifndef CLIENT
 			virtual void			OnSleepChange(float&t) override;
-			virtual void			SignalLastProductionDone() override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); float t = 0; SetEnabled(false,t);}
+			virtual void			SignalLastProductionDone(float&t) override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); SetEnabled(false,t);}
 			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
 			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
 		#endif
@@ -1632,7 +1637,7 @@ namespace Objects
 
 		#endif
 		bool						HasAmmoForShot(float atTime) const;
-		bool						HasAmmoForShot() const override;
+		bool						HasAmmoForShot() override;
 
 
 
@@ -1672,7 +1677,7 @@ namespace Objects
 
 		#ifndef CLIENT
 
-			virtual void			OnConstructionFinished(float atTime) override;
+			virtual void			OnConstructionFinished(float&atTime) override;
 			virtual void			ProcessLeftovers(ResourceVector&v, index_t iteration, float atTime) override;
 		#else
 			#ifdef HAS_WINDOW

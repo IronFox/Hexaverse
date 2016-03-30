@@ -226,7 +226,7 @@ namespace Objects
 								<< &mechanic;
 								;
 			for (auto t: allTurretComponents)
-				if (t->mountType == Turret::MountType::Vehicle)
+				if (t->mountType == Component::Turret::MountType::Vehicle)
 					vehicleTurretComponents << t;
 			baseComponents << &hoverbase << &heavybase << &catbase;
 		}

@@ -107,7 +107,13 @@ namespace Objects
 		int						CountPossibleAttacks() const {return GetAttacksPerRound() * GetAttackActionLeft();}
 		virtual bool			NextTaskIsAttack() const = 0;
 		virtual float			GetFlatAttackRange() const = 0;
-		virtual bool			HasAmmoForShot() const = 0;
+
+		/**
+		Checks if there are enough resources available for a single shot.
+		Cannot be const due to the complexity of resource allocation of mobile entities.
+		Must not persistently alter the local entity, however.
+		*/
+		virtual bool			HasAmmoForShot() = 0;
 		
 		/**
 		Determines whether or not the local turret base can hit a given location.

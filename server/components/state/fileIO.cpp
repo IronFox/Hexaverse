@@ -926,13 +926,13 @@ namespace FileIO
 			{
 				Import(parent,*p,rs);
 			}
-			Objects::Tower*t = dynamic_cast<Objects::Tower*>(rs.get());
-			if (t)
+			Objects::Tower*tower = dynamic_cast<Objects::Tower*>(rs.get());
+			if (tower)
 			{
 				Riff::Chunk*towerActionChunk = parent->FindFirst(RID::towerActionLeft);
 				ASSERT_NOT_NULL__(towerActionChunk);
-				ASSERT_EQUAL__(towerActionChunk->size(),sizeof(t->attackActionLeft));
-				towerActionChunk->Get(&(t->attackActionLeft));
+				ASSERT_EQUAL__(towerActionChunk->size(),sizeof(tower->attackActionLeft));
+				towerActionChunk->Get(&(tower->attackActionLeft));
 				Riff::Chunk*list = parent->FindFirst(RIFF_LIST);
 				if (list)
 				{
@@ -940,7 +940,7 @@ namespace FileIO
 					if (entry)
 						do
 						{
-							Import(entry,t->attackQueue.Push());
+							Import(entry,tower->attackQueue.Push());
 						}
 						while (entry = list->Next());
 				}
@@ -1212,7 +1212,10 @@ namespace FileIO
 													 v->currentStorage = v->GetMaxStorageCapacity();
 												#endif
 												if (doInsert)
-													Objects::InsertConstructed(v,0,true,false);
+												{
+													float t =0;
+													Objects::InsertConstructed(v,t,true,false);
+												}
 												else
 												{
 													//Objects::storedVehicles << v;
@@ -1226,7 +1229,10 @@ namespace FileIO
 												//child->FindFirst(RID::vehiclePlant),child->FindFirst(RID::towerActionLeft)
 												Objects::PStructure s = Import(child,factionMap);
 												if (s)
-													Objects::InsertConstructed(s,0,false,false);
+												{
+													float t =0;
+													Objects::InsertConstructed(s,t,false,false);
+												}
 											}
 										}
 										else

@@ -262,8 +262,9 @@ namespace Objects
 
 
 
-	void			SkyHub::OnConstructionFinished(float atTime)
+	void			SkyHub::OnConstructionFinished(float&atTime)
 	{
+		Super::OnConstructionFinished(atTime);
 		SyncTime(atTime);
 		UpdateConnections();
 	}
@@ -637,9 +638,9 @@ namespace Objects
 
 					Compound&compound = port->CastToStructure()->GetCompound();
 					int available = compound.total.storage.level[Resource::Fuel];
-					#ifdef ONE_COMPOUND_PER_FACTION
-						available += compound.overproduction.level[Resource::Fuel];
-					#endif
+					//#ifdef ONE_COMPOUND_PER_FACTION
+					available += compound.GetOverproduction(Resource::Fuel);
+					//#endif
 
 					if (available >= demand)
 					{
@@ -674,7 +675,7 @@ namespace Objects
 				Compound&cmp = port->CastToStructure()->GetCompound();
 				if (cmp.total.balance.level[Resource::Minerals] >= (int)MobileEntityProducer::productionPerRound)
 				{
-					MobileEntityProducer::Tick(cmp.total.balance);
+					MobileEntityProducer::Tick(cmp.total.balance,atTime);
 				}
 				else
 					LogEvent(EventClass::Preset::operationAborted,this,"Insufficient resources available in "+port->CastToStructure()->GetNiceName()+". Delaying production");
@@ -893,16 +894,6 @@ namespace Objects
 
 	#endif /*0*/
 
-
-	/*virtual override*/ bool					Satellite::HasAmmoForShot() const
-	{
-	#ifdef ONE_COMPOUND_PER_FACTION
-		const Compound&compound = owner->compound;
-		return compound.total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	#else
-		return currentStorage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	#endif
-	}
 
 	
 	#ifndef CLIENT

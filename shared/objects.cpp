@@ -796,9 +796,7 @@ namespace Objects
 				onlineUplinkTraffic = 0;
 			#endif
 			#ifdef HAS_WINDOW
-				Renderer::animatedTurrets.Clear();
-				Renderer::attackers.Clear();
-
+				Renderer::Flush();
 				Deselect(false);
 				resourceView = true;
 				objectView = true;

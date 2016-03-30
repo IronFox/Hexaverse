@@ -31,7 +31,7 @@ namespace Objects
 				return v.currentStorage.level[res];
 			#else
 				const Compound&compound = v.owner->compound;
-				return compound.total.storage.level[res] + compound.overproduction.level[res];
+				return compound.total.storage.level[res] + compound.GetOverproduction(res);
 			#endif
 
 		}
@@ -73,23 +73,17 @@ namespace Objects
 		{
 			ResourceVector demand;
 
-			#ifdef ONE_COMPOUND_PER_FACTION
-				if (change < 0 && compound.overproduction.level[res] > 0)
-				{
-					int production = compound.overproduction.level[res];
-					int overproductionTransfer = std::min(production,-change);
-					LogEvent(EventSignificance::Common,originatingAt,String(res.ToString())+ " overproduction ("+String(production)+") redirected for demand ("+String(change)+"): "+String(overproductionTransfer)+" transferred");
-					change += overproductionTransfer;
-					compound.overproduction.level[res]-= overproductionTransfer;
-					if (change == 0)
-						return;
-				}
-			#endif
-			demand.level[res] = abs(change);
-			if (change < 0)
-				compound.Collect(demand,atTime);
-			else
-				compound.Distribute(demand,atTime);
+			if (change < 0 )
+			{
+				ResourceVector withdraw;
+				withdraw.level[res] = -change;
+				compound.TryWithdrawOverproduction(withdraw);
+				change = -withdraw.level[res];
+				if (change == 0)
+					return;
+			}
+			demand.level[res] = change;
+			compound.ChangeStorage(demand,atTime);
 		}
 
 
@@ -180,7 +174,8 @@ namespace Objects
 		#ifdef ONE_COMPOUND_PER_FACTION
 			void Faction::UpdateCompoundCoverage()
 			{
-				compound.containedStructures.Clear();
+				compound.allStructures.Clear();
+				compound.workingStructures.Clear();
 				foreach (this->structures,s)
 				{
 					PStructure s1 = s->lock();
@@ -443,7 +438,7 @@ namespace Objects
 
 			if (ref.sightLevel == incStackBy)
 			{
-				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual");
+				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual at time="+String(t));
 				float t0;
 				if (lostVisualAt.QueryAndUnset(e,t0))
 				{
@@ -581,6 +576,7 @@ namespace Objects
 		{
 			if (!e || e->owner.get() == this)
 				return;
+			LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+ ": CheckGridVisibility at time "+String(timeAt));
 			if (seeing.IsSet(e))
 			{
 				if (e->IsSatellite())
@@ -622,6 +618,7 @@ namespace Objects
 				else
 					if (GridCanSee(e))
 					{
+						LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+ ": SignalAppearance at time "+String(timeAt));
 						SignalAppearance(e,timeAt,true,false);
 					}
 			}
@@ -964,7 +961,8 @@ namespace Objects
 			LogEvent(EventSignificance::Important, e.get(),"Changed ownership to "+newOwner->GetName());	//this is also notified from the server, hence: common
 			if (s)
 			{
-				s->DisconnectFromNeighborhood(0);
+				float t = 0;
+				s->DisconnectFromNeighborhood(t);
 			}
 			e->owner = newOwner;
 			e->isOwnedByMe = isNowMine;
@@ -1571,8 +1569,9 @@ namespace Objects
 				{
 					toDelete << f->allMobiles[i].lock();
 				}
+			float t=0;
 			foreach (toDelete,del)
-				Remove(*del,Objects::RemovalType::ControlledExplosion,0,false);
+				Remove(*del,Objects::RemovalType::ControlledExplosion,t,false);
 			toDelete.Clear();
 
 			for (index_t i = 0; i < all.Count(); i++)

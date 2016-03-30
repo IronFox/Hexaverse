@@ -89,7 +89,7 @@ namespace Objects
 			RelocationResult	RelocateTo(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true);
 */
 
-			virtual void		OnConstructionFinished(float atTime) override;
+			virtual void		OnConstructionFinished(float&atTime) override;
 
 		#else
 
@@ -174,8 +174,6 @@ namespace Objects
 
 		//TurretBase overrides:
 		virtual float			GetFlatAttackRange() const override {return EMPModify(turret->horizontalAttackRange + base->rangeModifier,1.f);}
-		virtual bool			HasAmmoForShot() const override;
-
 
 		//Hibernating overrides:
 		#ifndef NO_HIBERNATION

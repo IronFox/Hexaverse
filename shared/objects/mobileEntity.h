@@ -384,6 +384,7 @@ namespace Objects
 				{
 					if (flushTasksOnUnlock)
 						return false;
+					motionTime += timeEpsilon;
 					flushTasksOnUnlock = true;
 					LogEvent(EventSignificance::Debug,this," ...set to clear on unlock");
 					return true;
@@ -391,6 +392,7 @@ namespace Objects
 				
 				if (myTasks.IsNotEmpty() || completeOnMove)
 				{
+					motionTime += timeEpsilon;
 					jobStarted = false;
 					if (!isReaction)
 						completeOnMove.reset();
@@ -461,6 +463,7 @@ namespace Objects
 		bool					CanRepair() const {return turret->CanRepair();}
 		bool					CanAttack() const {return turret->CanAttack();}
 
+		int						GetCurrentMineralConsumption() const;
 
 		/**
 		Updates @a system and @a invert based on @a location
@@ -502,6 +505,7 @@ namespace Objects
 		#ifndef CLIENT
 			virtual void		Attack(float&currentTime)	override;
 		#endif
+		virtual	bool			HasAmmoForShot() override;
 
 
 		//WorldEntity overrides:
@@ -513,7 +517,7 @@ namespace Objects
 		virtual float			GetMaxScanningRange() const override	{return turret->scanningRange;};	//returns the effective scanning range of the local entity
 
 		#ifndef CLIENT
-			virtual void		OnDestroy(RemovalType, float atTime) override;	
+			virtual void		OnDestroy(RemovalType, float&atTime) override;	
 		#endif
 
 	protected:

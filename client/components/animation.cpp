@@ -904,7 +904,8 @@ namespace Animation
 		if (w && w->isInserted)
 		{
 			#ifndef ONE_COMPOUND_PER_FACTION
-				ASSERT__(s->compoundID != Objects::Compound::InvalidNetwork);
+				if (s->compoundID = 0xFFFFFFFF)
+					Objects::RefreshCompoundCoverage(0);
 			#endif
 			s->GetCompound().RefreshState(0);
 		}
@@ -1148,8 +1149,8 @@ namespace Animation
 					}
 				}
 
-
-				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),0,Network::ControlEnabled(),removed);
+				float t = 0;
+				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t,Network::ControlEnabled(),removed);
 				if (!allocatedTarget->isOwnedByMe)
 					UI::HexGrid::RefreshContacts();
 				#ifdef HAS_WINDOW

@@ -461,11 +461,7 @@ namespace Objects
 
 
 
-		/*	Image img;
-			Magic::LoadFromFile(img,"resources/hexgrid.png");
-
-			hexGrid.Load(img);*/
-
+	
 			DX11::Shader::Binding bindings2[] =
 			{
 				DX11::Shader::Binding(overallTint, "Tint"),
@@ -1127,11 +1123,10 @@ namespace Objects
 					continue;
 				ApplyStateTint(s,baseTint,false);
 				Renderer::Render(s);
-				ApplyBaseTint(s,baseTint);
+				//ApplyBaseTint(s,baseTint);	//why?
 
 			}
 		}
-
 
 		if (selectedEntity && selectedEntity->health > 0)
 		{
@@ -1172,10 +1167,6 @@ namespace Objects
 			}
 			ApplyBaseTint(*selectedEntity, tint);
 		}
-
-
-
-
 
 
 
@@ -1398,9 +1389,10 @@ namespace Objects
 					}
 				}
 			);
-
-
 		}
+
+
+
 		display.SetObjectMatrix(Matrix<>::eye4);
 	}
 
@@ -1732,8 +1724,9 @@ namespace Objects
 				}
 			}
 
-			float dummy;
-			if (!v && selectedEntity->GetTurretBase(dummy))
+			float zOffset;
+			PTurretBase base = selectedEntity->GetTurretBase(zOffset);
+			if (!v && base)
 			{
 				PTower t = To<Tower>::DynamicCast(selectedEntity);
 				ASSERT__(t);
@@ -1865,6 +1858,19 @@ namespace Objects
 
 	}
 
+
+
+	void		Renderer::Flush()
+	{
+		#ifndef ONE_COMPOUND_PER_FACTION
+			compoundScope.Clear();
+			interPylonArrows.Clear();
+		#endif
+		animatedTurrets.Clear();
+		attackers.Clear();
+	}
+
+	
 	namespace Renderer
 	{
 		void RenderFlyingUnitBeams(const Objects::PMobileEntity&e)

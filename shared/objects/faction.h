@@ -12,7 +12,6 @@ namespace Objects
 	//typedef std::weak_ptr<Faction>		WFaction;
 
 
-
 	
 	/**
 	Persistent scene markers added/removed by the client.

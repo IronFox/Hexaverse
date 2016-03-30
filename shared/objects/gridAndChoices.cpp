@@ -6,9 +6,9 @@
 #include "prototypes.h"
 #include "vehicle.h"
 #include "satellite.h"
+#include "faction.h"
 #include "subOrbital.h"
 #ifndef CLIENT
-	#include "faction.h"
 	#include "../runtimeConfig.h"
 #endif
 
@@ -874,7 +874,7 @@ namespace Objects
 		
 
 //		const PVehicle v = To<Vehicle>::DynamicCast(entity);
-		const MobileEntity*v = dynamic_cast<MobileEntity*>(&entity);
+		 MobileEntity*v = dynamic_cast<MobileEntity*>(&entity);
 		float h;
 		if (PTurretBase b = entity.GetTurretBase(h))
 		{
@@ -1052,7 +1052,7 @@ namespace Objects
 	}
 
 	
-	static void	InsertConstructedEntity(const PWorldEntity&e, float atTime, bool setHealthToFull)
+	static void	InsertConstructedEntity(const PWorldEntity&e, float&atTime, bool setHealthToFull)
 	{
 		ASSERT1__(!e->isInserted, e->GetName());
 		#ifndef CLIENT
@@ -1154,7 +1154,7 @@ namespace Objects
 	#endif
 
 
-	void	InsertConstructed( const PMobileEntity&v, float atTime, bool insertIntoGrid/*= true*/, bool setHealthToFull/*=true*/)
+	void	InsertConstructed( const PMobileEntity&v, float&atTime, bool insertIntoGrid/*= true*/, bool setHealthToFull/*=true*/)
 	{
 		//if (insertIntoGrid)
 		v->UpdateSystem();
@@ -1211,7 +1211,7 @@ namespace Objects
 		#endif
 	}
 
-	void			RegisterNewOffGrid(const PMobileEntity&v, float atTime, bool setHealthToFull/*=true*/)
+	void			RegisterNewOffGrid(const PMobileEntity&v, float&atTime, bool setHealthToFull/*=true*/)
 	{
 		ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 		ASSERT1__(!v->isInserted,v->GetName());
@@ -1231,7 +1231,7 @@ namespace Objects
 	}
 
 
-	void InsertConstructed( const PStructure&s, float atTime, bool refreshNetworkNow/*=false*/, bool setHealthToFull/*=true*/)
+	void InsertConstructed( const PStructure&s, float&atTime, bool refreshNetworkNow/*=false*/, bool setHealthToFull/*=true*/)
 	{
 		ASSERT__(s);
 
@@ -1317,8 +1317,9 @@ namespace Objects
 
 
 
-	void					Remove( const PWorldEntity&e, RemovalType t, float timestamp, bool controlEnabled, bool isRemovedFromGrid/*=false*/, bool ignoreIndestructible/*=false*/)
+	void					Remove( const PWorldEntity&e, RemovalType t, float&timestamp, bool controlEnabled, bool isRemovedFromGrid/*=false*/, bool ignoreIndestructible/*=false*/)
 	{
+		timestamp += timeEpsilon;
 		ASSERT__(e);
 		ASSERT1__(e->isInserted != ( t == RemovalType::DestroyedInStorage ),e->GetName());
 		#ifdef CLIENT
@@ -1340,7 +1341,7 @@ namespace Objects
 		#else
 			ASSERT1__(ignoreIndestructible || !e->IsIndestructible(), e->GetName());
 		#endif
-		LogEvent(EventSignificance::Common, e.get(),"Removing entity ("+String(t.ToString())+")");
+		LogEvent(EventSignificance::Common, e.get(),"Removing entity ("+String(t.ToString())+") at time="+String(timestamp));
 		const bool move = t==RemovalType::EnteredStorage;
 		if (!move)
 		{
@@ -1375,7 +1376,8 @@ namespace Objects
 
 			ASSERT1__(structures.FindAndErase(e),e->GetName());
 			#ifdef CLIENT
-				if (To<Structure>::Cast(e)->IsSkyLinkStructure())
+				PStructure s = To<Structure>::Cast(e);
+				if (s->IsSkyLinkStructure())
 				{
 					foreach (skyLinks,link)
 						if (link->second.lock() == e)
@@ -2985,12 +2987,12 @@ namespace Objects
 	}
 
 
-	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float atTime)
+	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float&atTime)
 	{
 		return SpawnVehicle(owner,baseLocation,&base,&turret,fillStorage,atTime);
 	}
 
-	PVehicle SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float atTime)
+	PVehicle SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float&atTime)
 	{
 		PVehicle vehicle(new Vehicle(owner, baseLocation,base,turret));
 		#ifdef CLIENT
@@ -3143,22 +3145,24 @@ namespace Objects
 		}
 		void			Place( const PStructure&s)
 		{
-			InsertConstructed(s,0);
+			float t = 0;
+			InsertConstructed(s,t);
 		}
 		void			Place( const PVehicle&vehicle, bool insertIntoGrid/*=true*/)
 		{
 			ASSERT__(vehicle);
 			ASSERT3__(vehicle->preAnimationLocation == vehicle->location,vehicle->preAnimationLocation.ToString(),vehicle->location.ToString(),vehicle->GetName());
-
+			float t = 0;
 			//vehicle->preAnimationLocation = vehicle->location;
-			InsertConstructed(vehicle,0,insertIntoGrid);
+			InsertConstructed(vehicle,t,insertIntoGrid);
 			ASSERT1__(vehicles.Contains(vehicle),vehicle->GetName());
 		}
 		void			Place( const PSatellite&s)
 		{
 			ASSERT__(s);
 			ASSERT3__(s->preAnimationLocation == s->location,s->preAnimationLocation.ToString(),s->location.ToString(),s->GetName());
-			InsertConstructed(s,0);
+			float t = 0;
+			InsertConstructed(s,t);
 			ASSERT1__(satellites.Contains(s),s->GetName());
 
 			if (s->IsSkyHub())
@@ -3168,7 +3172,8 @@ namespace Objects
 		{
 			ASSERT__(s);
 			ASSERT3__(s->preAnimationLocation == s->location,s->preAnimationLocation.ToString(),s->location.ToString(),s->GetName());
-			InsertConstructed(s,0);
+			float t = 0;
+			InsertConstructed(s,t);
 			ASSERT1__(SubOrbital::planes.Contains(s),s->GetName());
 		}
 
@@ -3176,7 +3181,8 @@ namespace Objects
 		{
 			ASSERT__(m);
 			ASSERT3__(m->preAnimationLocation == m->location,m->preAnimationLocation.ToString(),m->location.ToString(),m->GetName());
-			InsertConstructed(m,0,insertIntoGridIfVehicle);
+			float t = 0;
+			InsertConstructed(m,t,insertIntoGridIfVehicle);
 			if (m->IsSatellite())
 			{
 				ASSERT1__(satellites.Contains(m),m->GetName());
@@ -3235,7 +3241,8 @@ namespace Objects
 			if (e->AwaitsUserInteraction() && p)
 			{
 				auto c = choice;
-				PMobileEntity v = p->CompleteProduction();
+				float t= 0;
+				PMobileEntity v = p->CompleteProduction(t);
 				if (!v)
 				{
 					return false;
@@ -3246,7 +3253,10 @@ namespace Objects
 					FATAL__(v->GetName()+": Failed to position non-constructed at "+c.ToString());
 				}
 				if (result == MobilePlacementResult::PlacementOkay || result == MobilePlacementResult::PlacementOkayFellDown)
-					InsertConstructed(v,0);
+				{
+					float t = 0;
+					InsertConstructed(v,t);
+				}
 
 				if (e->IsStructure())
 				{
