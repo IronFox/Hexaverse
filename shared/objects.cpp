@@ -210,6 +210,8 @@ namespace Objects
 
 		Component::ConfigureAll();
 
+		Hangar::StaticSetup();
+
 		foreach(satellitePrototypes, p)
 			(*p)->PrototypeSetup();
 		foreach(structurePrototypes, p)
@@ -219,9 +221,9 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			foreach (Component::vehicleTurretComponents,tc)
-				(*tc)->VisitAllCommands([](const int2&,BaseCommand&cmd){cmd.RasterizeImage();},true);
+				(*tc)->VisitAllCommands([](const int2&,const PBaseCommand&cmd){cmd->RasterizeImage();},true);
 			foreach (Component::baseComponents,bc)
-				(*bc)->VisitAllCommands([](const int2&,BaseCommand&cmd){cmd.RasterizeImage();},true);
+				(*bc)->VisitAllCommands([](const int2&,const PBaseCommand&cmd){cmd->RasterizeImage();},true);
 
 			globalCommands.baseCoords = BaseCommand::coordOffset;
 			globalCommands.Add(int2(),false,new GlobalCommand("End Round", [](){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
@@ -775,9 +777,7 @@ namespace Objects
 				onlineUplinkTraffic = 0;
 			#endif
 			#ifdef HAS_WINDOW
-				Renderer::animatedTurrets.Clear();
-				Renderer::attackers.Clear();
-
+				Renderer::Flush();
 				Deselect(false);
 				resourceView = true;
 				objectView = true;

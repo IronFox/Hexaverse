@@ -252,8 +252,9 @@ namespace Objects
 
 
 
-	/*virtual*/ void	WorldEntity::OnConstructionFinished( float atTime)
+	/*virtual*/ void	WorldEntity::OnConstructionFinished(float&atTime)
 	{
+		atTime += timeEpsilon;
 	}
 
 	#ifdef HAS_WINDOW
@@ -271,7 +272,7 @@ namespace Objects
 					elif (IsSatellite())
 						cnt = Satellite::CountTurretOccurrences(overrideOwner,t);
 					else
-						FATAL__("Unexpected mobile entity type: "+GetName());
+						FATAL__("Unexpected mobile entity type: "+GetTypeName());
 					limit = RuntimeConfig::UnitLimits::Get(t->constName);
 				}
 				elif (IsStructure())
@@ -433,7 +434,7 @@ namespace Objects
 	/*virtual override*/	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 	{
 		
-		LogEvent(EventClass::Preset::common,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+")");
+		LogEvent(EventSignificance::Common,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
 		#ifdef CLIENT
 			if (isOwnedByMe)
 			{

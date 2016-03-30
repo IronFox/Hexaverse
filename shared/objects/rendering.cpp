@@ -460,11 +460,7 @@ namespace Objects
 
 
 
-		/*	Image img;
-			Magic::LoadFromFile(img,"resources/hexgrid.png");
-
-			hexGrid.Load(img);*/
-
+	
 			DX11::Shader::Binding bindings2[] =
 			{
 				DX11::Shader::Binding(overallTint, "Tint"),
@@ -798,10 +794,11 @@ namespace Objects
 
 	void	Renderer::RenderComponent(TMatrix4<> system, float h, const Component::Base&comp, float x, float y)
 	{
-		system.w.xyz += system.z.xyz * h;
 		TMatrix4<> sub;
 		if (comp.parts.Count() > 0)
 		{
+			system.w.xyz += system.z.xyz * h;
+
 			comp.GetSubSystem(0,x,sub);
 			Mat::transformSystem(system,sub);
 			system = sub;
@@ -1069,11 +1066,10 @@ namespace Objects
 					continue;
 				ApplyStateTint(s,baseTint,false);
 				Renderer::Render(s);
-				ApplyBaseTint(s,baseTint);
+				//ApplyBaseTint(s,baseTint);	//why?
 
 			}
 		}
-
 
 		if (selectedEntity && selectedEntity->health > 0)
 		{
@@ -1086,15 +1082,17 @@ namespace Objects
 				Renderer::Render(*struc);
 			}
 			else
-				if (selectedVehicle)
-					Renderer::Render(*selectedVehicle,GetLowLighting(selectedEntity->location));
-				else
-					if (selectedMobileEntity && selectedMobileEntity->IsSatellite())
-					{
+				if (selectedMobileEntity)
+				{
+					if (selectedVehicle)
+						Renderer::Render(*selectedVehicle,GetLowLighting(selectedEntity->location));
+					elif (selectedMobileEntity->IsSatellite())
 						Renderer::Render(*To<Satellite>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
-					}
 					else
 						FATAL__("Can't render this: "+selectedEntity->GetName());
+				}
+				else
+					FATAL__("Can't render this: "+selectedEntity->GetName());
 
 			if (GatheringPoint::selected != Grid::LCellIdI::Invalid)
 			{
@@ -1110,10 +1108,6 @@ namespace Objects
 			}
 			ApplyBaseTint(*selectedEntity, tint);
 		}
-
-
-
-
 
 
 
@@ -1336,9 +1330,10 @@ namespace Objects
 					}
 				}
 			);
-
-
 		}
+
+
+
 		display.SetObjectMatrix(Matrix<>::eye4);
 	}
 
@@ -1658,8 +1653,9 @@ namespace Objects
 				}
 			}
 
-			float dummy;
-			if (!v && selectedEntity->GetTurretBase(dummy))
+			float zOffset;
+			PTurretBase base = selectedEntity->GetTurretBase(zOffset);
+			if (!v && base)
 			{
 				PTower t = To<Tower>::DynamicCast(selectedEntity);
 				ASSERT__(t);
@@ -1791,41 +1787,37 @@ namespace Objects
 
 	}
 
-	void	Renderer::RenderTranslucentBeams()
+
+
+	void		Renderer::Flush()
 	{
-	/*	if (!objectView)
-			return;
-	*/	
+		#ifndef ONE_COMPOUND_PER_FACTION
+			compoundScope.Clear();
+			interPylonArrows.Clear();
+		#endif
+		animatedTurrets.Clear();
+		attackers.Clear();
+	}
 
-		display.SetRasterizer(true,false);	//some shafts are flipped, but culling makes no sense anyways
-		display.SetDepthTest(true,false);
-		display.SetBlendMode(Engine::BlendMode::Add);
-
-		foreach (satellites,_s)
+	
+	namespace Renderer
+	{
+		void RenderFlyingUnitBeams(const Objects::PMobileEntity&e)
 		{
-			const PSatellite&sat = *_s;
-			TVec3<> color;
-			if (sat->isOwnedByMe)
-			{
-				color= float3(0.5,0.6,1.0);
-			}
-			else
-			{
-				color= float3(1.0,0.6,0.5);
-			}
+			TVec3<> color = e->owner ? e->owner->activeEntityColor : float3();
 			SetBeamColor(float4(color,0.25),
 						float4(color,0.25));
 			const float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
 			{
 				//display.SetBlendMode(Engine::BlendMode::Add);
-				RenderBeam(sat->GetWorldPosition(),-(Grid::ToRadius(sat->location.height) 
+				RenderBeam(e->GetWorldPosition(),-(Grid::ToRadius(e->location.height) 
 								- bottom) /
 								Grid::SingleLayerHeight,
 								0.1f
 								);
 			}
 			bool first = true;
-			for (const auto&t : sat->myTasks)
+			for (const auto&t : e->myTasks)
 			{
 				if (t.ContainsMovement())
 				{
@@ -1847,7 +1839,20 @@ namespace Objects
 				}
 			}
 		}
+	}
 
+	void	Renderer::RenderTranslucentBeams()
+	{
+	/*	if (!objectView)
+			return;
+	*/	
+
+		display.SetRasterizer(true,false);	//some shafts are flipped, but culling makes no sense anyways
+		display.SetDepthTest(true,false);
+		display.SetBlendMode(Engine::BlendMode::Add);
+		
+		foreach (satellites,_s)
+			RenderFlyingUnitBeams(*_s);
 		bool nexusSet[12] = {false};
 
 		foreach(skyLinks, _s)
@@ -1980,14 +1985,15 @@ namespace Objects
 		
 	static void _RenderShadowS(TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y)
 	{
-		system.w.xyz += system.z.xyz * h;
 		TMatrix4<> sub;
-		system.x.xyz *= scale;
-		system.y.xyz *= scale;
-		system.z.xyz *= scale;
 
 		if (comp.parts.Count() > 0)
 		{
+			system.w.xyz += system.z.xyz * h;
+			system.x.xyz *= scale;
+			system.y.xyz *= scale;
+			system.z.xyz *= scale;
+
 			comp.GetSubSystem(0,x,sub);
 			Mat::transformSystem(system,sub);
 			system = sub;

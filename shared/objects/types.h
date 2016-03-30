@@ -7,9 +7,11 @@
 
 namespace Objects
 {
+	DECLARE_POINTER_CLASS(BaseCommand)
+		DECLARE_POINTER_CLASS(DeployMobileCommand)
+		DECLARE_POINTER_CLASS(EntityConstructionCommand)
 
-
-	DECLARE_POINTER_CLASS(HangarStructure)
+	DECLARE_POINTER_CLASS(Hangar)
 	DECLARE_POINTER_CLASS(MobileEntityProducer)
 	DECLARE_POINTER_CLASS(SkyLinkStructure)
 

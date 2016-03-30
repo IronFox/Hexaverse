@@ -12,6 +12,7 @@ namespace Objects
 	PVehicle				selectedVehicle;
 	PWorldEntity			selectedEntity;
 	PMobileEntity			selectedMobileEntity;
+	PMobileEntity			deployingMobileEntity;
 	bool					techniteIsSelected = false;
 	Technites::Base			selectedTechnite;
 
@@ -30,6 +31,7 @@ namespace Objects
 	{
 		bool wasTechnite = techniteIsSelected; 
 		techniteIsSelected = false;
+		deployingMobileEntity.reset();
 		movementChoices.Clear();
 //		bool changed = selectedEntity != entity;
 		PWorldEntity e = selectedEntity;
@@ -57,6 +59,7 @@ namespace Objects
 	{
 		bool wasTechnite = techniteIsSelected; 
 		techniteIsSelected = false;
+		deployingMobileEntity.reset();
 		movementChoices.Clear();
 		PWorldEntity e = selectedEntity;
 		selectedEntity.reset();	

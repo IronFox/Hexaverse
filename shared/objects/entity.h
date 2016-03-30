@@ -97,6 +97,7 @@ namespace Objects
 
 
 		const TVec3<>&				GetWorldPosition() const {return system.w.xyz;}
+		static TVec3<>				GetWorldPosition(const Grid::LCellIdI&loc) {return Grid::ToWorld(loc);}	//might change in the future. Have to make sure that the various system build functions in systems.cpp match
 
 		/**
 		Assembles a name composed of the parent management class name and the local instance id
@@ -181,6 +182,19 @@ namespace Objects
 		{
 			#ifndef CLIENT
 				remoteTime = motionTime = std::max(motionTime,remoteTime);
+			#endif
+		}
+
+		inline void					SyncTime(WorldEntity&other, float&remoteTime, float timeOffset)
+		{
+			#ifndef CLIENT
+				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime)) + timeOffset;
+			#endif
+		}
+		inline void					SyncTime(WorldEntity&other, float&remoteTime)
+		{
+			#ifndef CLIENT
+				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime));
 			#endif
 		}
 
@@ -335,14 +349,14 @@ namespace Objects
 		Structures should handle compound disconnections and struct count decreases.
 		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
 		*/
-		virtual void				OnDestroy(RemovalType, float atTime)	{};	
+		virtual void				OnDestroy(RemovalType, float&atTime)	{};	
 
 		/**
 		Signals that the local entity has been created.
 		Structures should handle compound disconnections and struct count decreases.
 		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
 		*/
-		virtual void				OnConstructionFinished(float atTime);
+		virtual void				OnConstructionFinished(float&atTime);
 
 		/**
 		Called exactly once on the prototype instance only, once instantiation of all prototype objects is completed (other prototypes may be references, but might not be set up yet).
@@ -403,6 +417,14 @@ namespace Objects
 		//http://stackoverflow.com/questions/9959315/why-virtual-function-call-is-faster-than-dynamic-cast
 		virtual const MobileEntityProducer*	CastToProducer() const {return nullptr;}
 
+
+		/**
+		Casts the local entity to an appropriate hangar structure if it can store the given mobile entity @a e
+		If storage is not possible due to type constraints (NOT capacity constraints), the return value must be
+		empty.
+		*/
+		virtual PHangar				CastToDestinationForType(const MobileEntity&e) {return PHangar();}
+		virtual bool				IsHangar() const {return false;}
 
 		virtual bool				IsIndestructible() const	{return false;};
 

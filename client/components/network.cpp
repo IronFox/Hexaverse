@@ -464,7 +464,11 @@ namespace Network
 			ASSERT__(!eventsLocked);
 			ASSERT__(Network::haveID || Network::amSpectator);
 
-			Objects::PMobileEntity v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,vc.state.entityState.timestamp.rightNow,Network::haveID && Network::myID == vc.owner);
+
+			Objects::PMobileEntity v;
+			auto m = vc.state.myMobileEntity.Get0();
+			bool place = vc.state.entityState.timestamp.rightNow && (!m || m->storedIn.Get0() == 0);
+			v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,place,Network::haveID && Network::myID == vc.owner);
 			if (vc.state.entityState.timestamp.rightNow)
 				LogEvent(EventSignificance::Common,v.get(),  "Placed vehicle entity outside animation");
 			bool isOwnedByMe = v->isOwnedByMe;
@@ -564,8 +568,9 @@ namespace Network
 				{
 					Animation::ExplodeEntity(e,[e,type]()
 					{
+						float t = 0;
 						if (Objects::GetEntity(e->id))
-							Objects::Remove(e,type, 0,Network::ControlEnabled());
+							Objects::Remove(e,type, t,Network::ControlEnabled());
 						#ifdef HAS_WINDOW
 							Dialog::SignalSituationChange();
 						#endif
@@ -573,7 +578,8 @@ namespace Network
 				}
 				else
 				{
-					Objects::Remove(e,type, 0,Network::ControlEnabled());
+					float t = 0;
+					Objects::Remove(e,type, t,Network::ControlEnabled());
 					#ifdef HAS_WINDOW
 						Dialog::SignalSituationChange();
 					#endif
@@ -1111,10 +1117,7 @@ namespace Network
 				gameHasBegun = true;
 				LogEvent(EventClass::Preset::uncommon,nullptr,"Game has begun");
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Animation::AllDone())
-				{
-					Objects::RefreshSkyHubConnections();
-					Animation::UpdateAutomation(CLOCATION);
-				}
+					OnPlayerControlBegin();
 			break;
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();

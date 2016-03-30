@@ -11,6 +11,7 @@ namespace Objects
 	extern PVehicle			selectedVehicle;
 	extern bool				techniteIsSelected;
 	extern Technites::Base	selectedTechnite;
+	extern PMobileEntity	deployingMobileEntity;
 
 
 	void					Select(const PWorldEntity&entity, bool controlEnabled);
