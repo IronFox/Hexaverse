@@ -201,7 +201,7 @@ namespace Grid
 			const Cell&cell = this->volumeCell[layer - 1],
 				&upper = this->volumeCell[layer];
 			float light = upper.GetLightLevel();
-			if (!cell.IsSolidDead() || upper.IsSolidDead())
+			if (!cell.IsOpaque() || upper.IsOpaque())
 			{
 				sumBrightnessTo += light * 1.3f;
 				outContent = Content::Clear;
@@ -242,7 +242,7 @@ namespace Grid
 			const Cell&cell = this->volumeCell[layer - 1],
 				&upper = this->volumeCell[layer];
 			float light = cell.GetLightLevel();
-			if (cell.IsSolidDead() || !upper.IsSolidDead())
+			if (cell.IsOpaque() || !upper.IsOpaque())
 			{
 				sumBrightnessTo += light * 1.3f;
 				outContent = Content::Clear;
@@ -378,7 +378,7 @@ namespace Grid
 	#ifdef HAS_WINDOW
 		float	CellStack::Cell::GetLightLevel() const
 		{
-			if (IsSolid())
+			if (IsOpaque())
 				return 0.f;
 			float rs = float(intLightLevel ) / float(0xFF);//*0.75f + 0.25f;
 				//rs *= 0.1f;
@@ -398,7 +398,7 @@ namespace Grid
 		void	CellStack::Cell::SetLightLevel(float v)
 		{
 			BYTE val = BYTE(clamped(v * 0xFF,0,0xFF));
-			if (IsSolid())
+			if (IsOpaque())
 				val = 0;
 			else
 				val = Degrade(val,64 * structureCounter);
@@ -411,7 +411,7 @@ namespace Grid
 		void	CellStack::Cell::SetIntLightLevel(int v)
 		{
 			BYTE val = BYTE(clamped(v,0,0xFF));
-			if (IsSolid())
+			if (IsOpaque())
 				val = 0;
 			else
 				val = Degrade(val,64 * structureCounter);
@@ -431,7 +431,7 @@ namespace Grid
 		{
 			if (content == Content::Lava)
 				return 0;
-			if (IsSolid())
+			if (IsOpaque())
 				return submergence;
 			UINT rs = submergence;
 			if (content == Content::Water && rs < 0xFF)
@@ -618,7 +618,7 @@ namespace Grid
 					lowestOpenCell = std::min(lowestOpenCell, (BYTE)uh);
 					if (highestOpaqueCell == (BYTE)uh)
 					{
-						while (!volumeCell[highestOpaqueCell].IsSolid() && highestOpaqueCell > 0)
+						while (!volumeCell[highestOpaqueCell].IsOpaque() && highestOpaqueCell > 0)
 							highestOpaqueCell--;
 					}
 					actualWorld.lightingOutdated = true;
@@ -655,26 +655,26 @@ namespace Grid
 					}
 					#endif
 				#endif /*0*/
-				bool wasSolid = volumeCell[uh].IsSolid();
+				bool wasSolid = volumeCell[uh].IsOpaque();
 				volumeCell[uh].content = type;
 
 			
 				#ifdef HAS_WINDOW
-					if (!wasSolid && volumeCell[uh].IsSolid())
+					if (!wasSolid && volumeCell[uh].IsOpaque())
 					{
 						if (lowestOpenCell == (BYTE)uh)
-							while (volumeCell[lowestOpenCell].IsSolid() && lowestOpenCell < (BYTE)Range)
+							while (volumeCell[lowestOpenCell].IsOpaque() && lowestOpenCell < (BYTE)Range)
 								lowestOpenCell++;
 
 						highestOpaqueCell = std::max(highestOpaqueCell, (BYTE)uh);
 					}
 					else
-						if (wasSolid && !volumeCell[uh].IsSolid())
+						if (wasSolid && !volumeCell[uh].IsOpaque())
 						{
 							lowestOpenCell = std::min(lowestOpenCell, (BYTE)uh);
 							if (highestOpaqueCell == (BYTE)uh)
 							{
-								while (!volumeCell[highestOpaqueCell].IsSolid() && highestOpaqueCell > 0)
+								while (!volumeCell[highestOpaqueCell].IsOpaque() && highestOpaqueCell > 0)
 									highestOpaqueCell--;
 							}
 						}
@@ -2158,7 +2158,7 @@ namespace Grid
 				const UINT32 n0 = neighbors.neighborID[j];
 				const UINT32 n1 = neighbors.neighborID[(j + 1) % cell.numCorners];
 				const UINT32 n2 = neighbors.neighborID[(j + 2) % cell.numCorners];
-				bool anyOpen = !stacks[n0].GetCellU(ih + 1).IsSolidDead() || !stacks[n1].GetCellU(ih + 1).IsSolidDead();
+				bool anyOpen = !stacks[n0].GetCellU(ih + 1).IsOpaque() || !stacks[n1].GetCellU(ih + 1).IsOpaque();
 
 				coverMesh << OverlayVertex(cell.cornerVertex[j], h, anyOpen ? 0.45f : 0.f);
 
@@ -2369,7 +2369,7 @@ namespace Grid
 			const UINT32 n1 = neighbors.neighborID[(j + 1) % cell.numCorners];
 			const UINT32 n2 = neighbors.neighborID[(j + 2) % cell.numCorners];
 			const CellStack&sn = stacks[n1];
-			const bool filled = sn.GetCellU(ih).IsSolidDead();
+			const bool filled = sn.GetCellU(ih).IsOpaque();
 			//bool wasEmpty = false;
 			const bool ncutoff = IsClipped(clipHeight, n1, ir);
 			{
@@ -2443,12 +2443,12 @@ namespace Grid
 
 			
 
-			if (!thisCell.IsSolidDead())
+			if (!thisCell.IsOpaque())
 			{
 				wasEmpty = true;
 				//for (int j = 0; j < cell.numCorners; j++)
 					//cornerColor[j] = float4(1);
-				const bool capped = nextCell.IsSolidDead();
+				const bool capped = nextCell.IsOpaque();
 				if (capped
 				
 					)
@@ -2474,10 +2474,10 @@ namespace Grid
 
 				TVec3<> baseColor = thisCell.GetBaseColor();
 				ApplyEMP(FlagsAffectedByEMP( cell.cornerFlags), baseColor);
-				TVec3<> nextColor = nextCell.IsSolidDead() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
+				TVec3<> nextColor = nextCell.IsOpaque() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
 				ApplyEMP(FlagsAffectedByEMP( cell.cornerFlags), nextColor);
 
-				const bool capped = nextCell.IsSolidDead();
+				const bool capped = nextCell.IsOpaque();
 				if (!capped
 					|| ir+1 >= clipH
 					)
@@ -2580,8 +2580,8 @@ namespace Grid
 				solidMesh.SetOffset();
 
 				const TVec3<> baseColor = thisCell.GetBaseColor();
-				const TVec3<> nextColor = nextCell.IsSolidDead() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
-				const bool capped = nextCell.IsSolidDead();
+				const TVec3<> nextColor = nextCell.IsOpaque() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
+				const bool capped = nextCell.IsOpaque();
 				if (!capped
 					)
 				{
@@ -2693,8 +2693,8 @@ namespace Grid
 				//mesh.SetOffset();
 
 				//const TVec3<> baseColor = thisCell.GetBaseColor();
-				//const TVec3<> nextColor = nextCell.IsSolid() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
-				//const bool capped = nextCell.IsSolid();
+				//const TVec3<> nextColor = nextCell.IsOpaque() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
+				//const bool capped = nextCell.IsOpaque();
 				//if (!capped
 					//)
 				{
@@ -2749,7 +2749,7 @@ namespace Grid
 	//		const UINT32 n2 = neighbors.neighborID[(j + 2) % cell.numCorners];
 			const CellStack&sn = stacks[n1];
 			const bool filled = sn.GetCellU(ih).content == CellStack::Cell::Content::Water;
-			//const bool filled = sn.GetCellU(ih).IsSolid();
+			//const bool filled = sn.GetCellU(ih).IsOpaque();
 			//bool wasEmpty = false;
 			const bool ncutoff = IsClipped(clipHeight, n1, ir);
 			{
@@ -3278,11 +3278,11 @@ namespace Grid
 
 
 
-				UINT32 begin = stack.lowestOpenCell ? (UINT32)stack.lowestOpenCell - 1 : 0;
+				UINT32 begin = stack.techniteRange.start ? (UINT32)stack.techniteRange.start - 1 : 0;
 				//begin = std::min(begin, CellStack::ToLayer(clipHeight(i)-1));
 				//while (begin > 0 && clipped(i, begin))
 					//begin--;
-				UINT32 end = (UINT32)stack.highestOpaqueCell + 1;
+				UINT32 end = (UINT32)stack.techniteRange.end + 1;
 
 				//TVec4<> cornerColor[6];
 
@@ -3290,11 +3290,13 @@ namespace Grid
 				{
 					UINT32 n = neighbors.neighborID[j];
 					const ::Grid::CellStack&stack = stacks[n];
-					UINT32 _begin = stack.lowestOpenCell ? (UINT32)stack.lowestOpenCell - 1 : 0;
+					if (!stack.HasTechnites())
+						continue;
+					UINT32 _begin = stack.techniteRange.start ? (UINT32)stack.techniteRange.start - 1 : 0;
 					//_begin = std::min(_begin, CellStack::ToLayer(clipHeight(n)-1));
 					//while (_begin > 0 && clipped(n, _begin))
 					//	_begin--;
-					UINT32 _end = (UINT32)stack.highestOpaqueCell + 1;
+					UINT32 _end = (UINT32)stack.techniteRange.end + 1;
 					begin = std::min(begin, _begin);
 					end = std::max(end, _end);
 
@@ -3404,7 +3406,7 @@ namespace Grid
 				const int clipH = clipHeight(fine);
 				const UINT clipL = CellStack::ToLayer(clipH);
 				layer = std::min(layer, clipL-1);
-				while (layer > 0 && !fineStack.volumeCell[layer].IsSolidDead() && !fineStack.volumeCell[layer].IsWater())
+				while (layer > 0 && fineStack.volumeCell[layer].content != Content::Clear)
 					layer--;
 				bool structureCenter = false;
 				while (layer+1 < CellStack::Range && (fineStack.volumeCell[layer+1].structureCounter > 0 /*|| fineStack.volumeCell[layer].structureCounter > 0*/))
@@ -3866,7 +3868,6 @@ namespace Grid
 					}
 					thisStack.volumeCell[h].SetIntLightLevel(l);
 					BYTE next = h < CellStack::Range-1 ? thisStack.volumeCell[h+1].GetIncreasedSubmergence() : 0;
-					//ASSERT__(h >= CellStack::Range-1 || h >= CellStack::HalfRange || next || thisStack.volumeCell[h+1].IsSolid());
 					thisStack.volumeCell[h].SetSubmergence(next);
 				});
 			}
@@ -4398,12 +4399,12 @@ namespace Grid
 
 				for (unsigned layer = 0; layer < CellStack::Range; layer++)
 				{
-					int cnt = cellStack[high].volumeCell[layer].IsSolid() ? 1 : 0;
+					int cnt = cellStack[high].volumeCell[layer].IsOpaque() ? 1 : 0;
 					cellStack[high].volumeCell[layer].visible = target.volumeCell[layer].visibility;
 					for (BYTE k = 0; k < n.numNeighbors; k++)
 					{
 						cellStack[n.neighborID[k]].volumeCell[layer].visible = target.volumeCell[layer].visibility;	//race-condition - dont care
-						if (cellStack[n.neighborID[k]].volumeCell[layer].IsSolid())
+						if (cellStack[n.neighborID[k]].volumeCell[layer].IsOpaque())
 							cnt ++;
 					}
 					target.volumeCell[layer].IsEmpty = cnt == 0;

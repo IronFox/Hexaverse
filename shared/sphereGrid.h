@@ -307,11 +307,16 @@ namespace Grid
 			{
 				return cnt < Content::Water && cnt != Content::Lava;
 			}
+			static bool IsOpaque(BYTE cnt)
+			{
+				return cnt < Content::Technite;
+			}
 			static bool IsLiquid(BYTE cnt)
 			{
 				return cnt == Content::Water || cnt == Content::Lava;
 			}
 
+			bool	IsOpaque() const {return IsOpaque(content);}
 			bool	IsLiquid() const {return IsLiquid(content);}
 
 			bool	IsSolid() const
@@ -380,17 +385,17 @@ namespace Grid
 			lowestOpenCell = 0xFF;
 			highestOpaqueCell = 0;
 			for (unsigned i = 0; i < Range; i++)
-				if (volumeCell[i].IsSolid())
+				if (volumeCell[i].IsOpaque())
 				{
 					highestOpaqueCell = (BYTE)i;
-					if (volumeCell[i].IsTechnite())
-						techniteRange.Include(i);
 				}
 				else
 				{
 					lowestOpenCell = std::min(lowestOpenCell, (BYTE)i);
 					if (volumeCell[i].IsWater())
 						waterRange.Include(i);
+					if (volumeCell[i].IsTechnite())
+						techniteRange.Include(i);
 				}
 		}
 		#endif
