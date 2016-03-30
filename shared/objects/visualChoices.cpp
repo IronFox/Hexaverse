@@ -25,9 +25,9 @@ namespace Objects
 
 
 	template <bool ControlEnabled>
-		void RefreshCommand(const int2&, BaseCommand&cmd)
+		void RefreshCommand(const int2&, const PBaseCommand&cmd)
 		{
-			cmd.Refresh(ControlEnabled);
+			cmd->Refresh(ControlEnabled);
 		}
 
 	void		RefreshCommands(bool controlEnabled)

@@ -3002,12 +3002,13 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			return false;
 		Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(s);
 
-		Objects::PVehiclePlant vp = To<Objects::VehiclePlant>::DynamicCast(s);
-		if (vp)
-			return (vp->AwaitsUserInteraction() || /*vp->queue.IsEmpty() || */
-			(!vp->IsEnabled()
+		
+		//Objects::PVehiclePlant vp = To<Objects::VehiclePlant>::DynamicCast(s);
+		if (s->CastToProducer())
+			return (s->AwaitsUserInteraction() || /*vp->queue.IsEmpty() || */
+			(!ws->IsEnabled()
 			&&
-			vp->CouldEnable(true)
+			ws->CouldEnable(true)
 			)
 			);
 		Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
@@ -3023,7 +3024,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			if (s->IsSkyPort())
 			{
 				Objects::PSkyPort p = To<Objects::SkyPort>::Cast(s);
-				if (p->queue.IsEmpty() || (!p->IsEnabled() && p->CouldEnable()))
+				if ((p->queue.IsEmpty() || !p->IsEnabled()) && p->CouldEnable(true))
 					return true;
 			}
 		}
