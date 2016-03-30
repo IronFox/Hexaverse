@@ -9,8 +9,6 @@ obj/
 *.ipdb
 client/screenshots/
 client/Debug/
-client/Font/compiled/
-client/shaders/compiled/
 client/config/
 client/.projector/
 server/.projector/
