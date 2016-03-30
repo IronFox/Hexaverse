@@ -199,7 +199,7 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			WMobileEntity w = e;
-			stored.last().deployCommand = DeployMobileCommand(e,
+			stored.last().deployCommand.reset(new DeployMobileCommand(e,
 				[w]()
 				{
 					//focus = To<VehicleStore>::DynamicCast(storeEntity).get();
@@ -216,8 +216,8 @@ namespace Objects
 						rs |= BaseCommand::Flags::IsPermaActive;
 					return rs;
 				}
-				);
-			stored.last().deployCommand.RasterizeImage();
+				));
+			stored.last().deployCommand->RasterizeImage();
 		#endif
 
 		#ifndef CLIENT

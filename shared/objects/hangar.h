@@ -30,7 +30,7 @@ namespace Objects
 		{
 			WMobileEntity	entity;
 			#ifdef HAS_WINDOW
-				DeployMobileCommand	deployCommand;
+				PDeployMobileCommand	deployCommand;
 			#endif
 
 			/**/			TStored()	{}
