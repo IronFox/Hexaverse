@@ -736,7 +736,7 @@ void EstimatePresence(Objects::WorldEntity&e, const Grid::LCellIdI&location, flo
 					}
 					else
 					{
-						if (e.IsVehicle())
+						if (e.IsMobile())
 							friendlyNearNexus[i] += opacity * impact;
 					}
 				}
@@ -856,7 +856,7 @@ void ProcessAICoverage()
 					Objects::Compound&n = p->GetCompound();
 					count_t producing = 0,
 							existing = 0;
-					for (Objects::WWorkingStructure _ws : n.containedStructures)
+					for (Objects::WWorkingStructure _ws : n.workingStructures)
 					{
 						Objects::PWorkingStructure	ws = _ws.lock();
 						if (!ws)
@@ -875,7 +875,8 @@ void ProcessAICoverage()
 							existing++;
 							if (plant->AwaitsUserInteraction())
 							{
-								Objects::PMobileEntity v = plant->SpawnFinishedProductionAnywhere();
+								float t = 0;
+								Objects::PMobileEntity v = plant->SpawnFinishedProductionAnywhere(t);
 								if (!v)
 								{
 									producing++;	//dont count
@@ -897,7 +898,7 @@ void ProcessAICoverage()
 					{
 						while (producing < existing && (friendlyNearNexus[i] < threatLevel || (constructorNearNexus[i] > 0.2f && friendlyNearNexus[i] < Game::factionStartMineralValue + 20.f)))
 						{
-							for (Objects::WWorkingStructure _ws : n.containedStructures)
+							for (Objects::WWorkingStructure _ws : n.workingStructures)
 							{
 								Objects::PWorkingStructure ws = _ws.lock();
 								if (!ws)
@@ -957,7 +958,8 @@ void ProcessAICoverage()
 					if (location != Grid::LCellIdI::Invalid)
 					{
 						Objects::Component::Turret* turret = Game::Config::Nexus::vehicleTurrets[random.getIndex(Game::Config::Nexus::vehicleTurrets.Count() - 1)];
-						Objects::PVehicle v = Objects::SpawnVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, 0);
+						float t = 0;
+						Objects::PVehicle v = Objects::SpawnVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, t);
 						Journal::currentRound.LogEntityCreation(v);
 						EstimatePresence(*v,v->location, hostileNearNexus,constructorNearNexus, friendlyNearNexus);
 					//	Objects::VerifyVisibilityNetwork();

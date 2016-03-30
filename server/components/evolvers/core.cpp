@@ -25,7 +25,7 @@ namespace Evolver
 		@param t Server time
 		@param terrainChanged Set true if the terrain changed sind the last invocation of this function. If in doubt pass true. 
 		*/
-		void			CheckSatelliteSupplyAndSensory(float&t, bool terrainChanged);
+		void			CheckOrbitalSupplyAndSensory(float&t, bool terrainChanged);
 
 
 
@@ -288,20 +288,20 @@ namespace Evolver
 
 		void ProcessStructures1(float atTime)
 		{
-			#ifdef ONE_COMPOUND_PER_FACTION
+			//#ifdef ONE_COMPOUND_PER_FACTION
 				Objects::RefreshCompoundCoverageIfNeeded(atTime);
 				Objects::ForeachCompound([atTime](Objects::Compound&c)
 				{
 					c.TickEnd(atTime);
 				});
-			#endif
+			//#endif
 
 		}
 
 
 
 
-		void CheckSatelliteSupplyAndSensory(float&t, bool terrainChanged)
+		void CheckOrbitalSupplyAndSensory(float&t, bool terrainChanged)
 		{
 			Objects::RefreshSkyHubConnections();
 			if (terrainChanged)
@@ -382,7 +382,7 @@ namespace Evolver
 						});
 						Game::PerformNewRoundLogic(animationLength);
 						ResetTowerAttackAction(animationLength);
-						CheckSatelliteSupplyAndSensory(animationLength,World::terrainChanged);
+						CheckOrbitalSupplyAndSensory(animationLength,World::terrainChanged);
 						World::terrainChanged = false;
 						ProcessStructures1(animationLength);//clears overproduction: must be called after CheckSatelliteSupply()
 						return false;

@@ -20,6 +20,7 @@ namespace Objects
 	extern Buffer0<Grid::HCellIdU>	buildCandidates, removeCandidates;	//possible cells to build or remove - used for visualization purposes only
 
 
+
 	void				UpdateChoices(bool controlEnabled);
 	/**
 	Detects the ray-intersection with currently visible choices (in movementChoices)

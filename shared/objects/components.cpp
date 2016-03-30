@@ -49,6 +49,35 @@ namespace Objects
 		}
 
 
+		bool							Turret::ConsumesResources(ResourceFlagSet&res) const
+		{
+			bool rs = false;
+			if (this->mountType == Component::Turret::MountType::Satellite)
+			{
+				res |= Resource::Fuel;
+				rs = true;
+			}
+			if (CanAttack())
+			{
+				if (ammoNeedPerShot > 0)
+				{
+					res |= ammoType;
+					rs = true;
+				}
+			}
+			if (CanDo(Component::Construct) || CanDo(Component::Repair) || CanDo(Component::TerrainAdd))
+			{
+				res |= Resource::Minerals;
+				rs = true;
+			}
+			if (CanDo(Component::Nuclear))
+			{
+				res |= Resource::Uranium;
+				rs = true;
+			}
+			return rs;
+		}
+
 
 		#ifdef HAS_WINDOW
 			/*static*/ float			Turret::CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&geo, float widthScale/*=1.f*/)
@@ -1254,7 +1283,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Ragnarok;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.mountType = Turret::MountType::Satellite;
 			component.isDoomsday = true;
 
 			component.continuousRotation = true;
@@ -1309,7 +1338,7 @@ namespace Objects
 			component.constName = ConstName::Turret_ProtonCannon;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.mountType = Turret::MountType::Satellite;
 
 			component.productionCosts = 1;	//irrelevant
 
@@ -1352,7 +1381,7 @@ namespace Objects
 			component.constName = ConstName::Turret_SkyHub;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.mountType = Turret::MountType::Satellite;
 			component.operationSpeed[Repair] = 10;
 			component.operationSpeed[Construct] = 5;
 			//component.fuelSupplyRadius = 20;
@@ -1392,7 +1421,7 @@ namespace Objects
 			component.constName = ConstName::Turret_StarPort;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.mountType = Turret::MountType::Satellite;
 
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = -0.05f;
@@ -1948,7 +1977,7 @@ namespace Objects
 					outResult.WrapAppendText("This "+lowerName+" type detects all naturally occuring resources within its scanning range. It can be automated.");
 				if (CanAttack())
 				{
-					outResult.WrapAppendText("This "+lowerName+" type can attack objects in range. It must typically be accompanied by a radar tower or vehicle.");
+					outResult.WrapAppendText("This "+lowerName+" type can attack objects in range.");
 					if (dealsEMPDamage)
 						outResult.WrapAppendText("This "+lowerName+" deals EMP damage. EMP damage temporarily reduces scanning range. Does not cause any permanent damage.");
 				}

@@ -214,8 +214,8 @@ namespace Objects
 
 	/*virtual override*/ void		DeployMobileCommand::CompileLabel(Label&outResult)
 	{
-		PVehicleStore p = To<VehicleStore>::DynamicCast(selectedEntity);
-		ASSERT__(p);
+		PHangar h = To<Hangar>::DynamicCast(selectedEntity);
+		ASSERT__(h);
 		PMobileEntity vehicle = ToMobileEntity( this->reference.lock() );
 		if (vehicle)
 		{

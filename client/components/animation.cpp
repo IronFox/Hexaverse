@@ -556,7 +556,8 @@ namespace Animation
 			veh->isAutomated = newAutomated;
 		}
 
-		Objects::PVehicleStore storedIn;
+		Objects::PWorldEntity storeIn;
+		Objects::PHangar storeInHangar;
 		auto info = vs.myMobileEntity.Get0();
 		if (info)
 		{
@@ -642,10 +643,10 @@ namespace Animation
 			auto id = info->storedIn.Get0();
 			if (id)
 			{
-				storedIn = To<Objects::VehicleStore>::DynamicCast(Objects::GetEntity(id->value));
-				ASSERT1__(storedIn,id->value.ToString());
-
-				
+				storeIn = Objects::GetEntity(id->value);
+				storeInHangar = To<Objects::Hangar>::DynamicCast(storeIn);
+				ASSERT1__(storeIn,id->value.ToString());
+				ASSERT1__(storeInHangar,storeIn->GetName());
 			}
 
 			Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(v);
@@ -687,22 +688,25 @@ namespace Animation
 		{
 			//v->currentStorage
 		}
-		Objects::PVehicleStore currentlyStoredIn = To<Objects::VehicleStore>::DynamicCast(v->storedIn.lock());
-		if (storedIn != currentlyStoredIn)
+		Objects::PHangar currentlyStoredIn = v->storedIn.lock();
+		if (storeInHangar != currentlyStoredIn)
 		{
-			LogEvent(EventSignificance::Debug,v.get(),"StoredIn-change ("+currentlyStoredIn->GetName()+" -> "+storedIn->GetName()+")");
+			if (currentlyStoredIn)
+				LogEvent(EventSignificance::Debug,v.get(),"StoredIn-change ("+currentlyStoredIn->ToEntity().GetName()+" -> "+storeIn->GetName()+")");
+			else
+				LogEvent(EventSignificance::Debug,v.get(),"StoredIn-change ( -> "+storeIn->GetName()+")");
 			float f = 0;
 
 			Objects::PVehicle veh = To<Objects::Vehicle>::DynamicCast(v);
 			ASSERT1__(veh,v->GetName());
 
-			if (storedIn)
+			if (storeIn)
 			{
 				if (currentlyStoredIn)
 					currentlyStoredIn->Lose(veh);
 				else
 					insertIntoGridLater.Unset(v->id);
-				storedIn->StoreLocally(veh,f);
+				storeInHangar->StoreLocally(veh,f,false,storeInHangar);
 				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 
 				#ifdef HAS_WINDOW
@@ -749,9 +753,9 @@ namespace Animation
 		}
 
 		#ifdef HAS_WINDOW
-			if (storedIn != currentlyStoredIn)
+			if (storeInHangar != currentlyStoredIn)
 			{
-				Objects::VehicleStore::StaticSignalDeployment();
+				Objects::deployingMobileEntity.reset();
 				UI::HexGrid::Configure(Objects::selectedEntity);
 			}
 
@@ -900,7 +904,8 @@ namespace Animation
 		if (w && w->isInserted)
 		{
 			#ifndef ONE_COMPOUND_PER_FACTION
-				ASSERT__(s->compoundID != Objects::Compound::InvalidNetwork);
+				if (s->compoundID = 0xFFFFFFFF)
+					Objects::RefreshCompoundCoverage(0);
 			#endif
 			s->GetCompound().RefreshState(0);
 		}
@@ -1144,8 +1149,8 @@ namespace Animation
 					}
 				}
 
-
-				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),0,Network::ControlEnabled(),removed);
+				float t = 0;
+				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t,Network::ControlEnabled(),removed);
 				if (!allocatedTarget->isOwnedByMe)
 					UI::HexGrid::RefreshContacts();
 				#ifdef HAS_WINDOW

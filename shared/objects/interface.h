@@ -13,6 +13,7 @@
 		extern Engine::Display<Engine::DirectX11>	display;
 
 	#endif
+	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick);
 	void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI&c, Objects::CursorMode mode, const Objects::PMobileEntity&deployingWhat);
 	void	SignalRoundEnd();
 	void	SignalUndoRoundEnd();

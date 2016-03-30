@@ -52,7 +52,7 @@ namespace Objects
 			ASSERT1__(v->health > 0,v->GetName());
 			ASSERT1__(GetEntity(v->id) == v, v->GetName());
 			ASSERT1__(!vehicles.Contains(v),v->GetName());
-			PHangarStructure hangar = v->storedIn.lock();
+			PHangar hangar = v->storedIn.lock();
 			//PVehicleStore storedIn = To<VehicleStore>::DynamicCast( v->storedIn.lock());
 			ASSERT1__(hangar,v->GetName());
 			ASSERT2__(hangar->HasStoredLocally(v),v->GetName(),hangar->ToEntity().GetName());
@@ -125,7 +125,7 @@ namespace Objects
 
 	#ifndef CLIENT
 
-		/*virtual override*/ void		MobileEntity::OnDestroy(RemovalType t, float atTime)
+		/*virtual override*/ void		MobileEntity::OnDestroy(RemovalType t, float&atTime)
 		{
 			if (t == RemovalType::UncontrolledExplosion && RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
 			{
@@ -450,6 +450,7 @@ namespace Objects
 								if (badTask)
 								{
 									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetName()+" at "+(*c)->location.ToString()+" detected.");
+									LogEvent(EventSignificance::Uncommon,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected.");
 									if (v2.get() == this)
 									{
 										ClearAllTasks(true,CLOCATION);
@@ -1749,6 +1750,26 @@ namespace Objects
 
 	
 
+	int MobileEntity::GetCurrentMineralConsumption() const
+	{
+		if (myTasks.IsNotEmpty() && myTasks.Peek().job)
+			return std::min(myTasks.Peek().job->resourceCostLeft,GetOperationSpeed(myTasks.Peek().job->GetOperationAffinity())) ;
+		return 0;
+	}
+
+
+	/*virtual override*/bool				MobileEntity::HasAmmoForShot() 
+	{
+		if (!turret->ammoNeedPerShot)
+			return true;
+
+		#ifdef ONE_COMPOUND_PER_FACTION
+			const Compound&compound = owner->compound;
+			return compound.total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
+		#else
+			return currentStorage.level[turret->ammoType] >= turret->ammoNeedPerShot;
+		#endif
+	}
 
 }
 

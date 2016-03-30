@@ -254,6 +254,7 @@
 				{
 					textout.color(1,0.6,0.5);
 					Write(changePerRound);
+					textout.color(color * 0.5f + float3(0.5f));
 				}
 			if (max > 0)
 				textout.scale(1.2f,1.2f);
@@ -2112,9 +2113,9 @@
 
 						{
 							const Objects::VehicleStore *other = st;
-							for (const auto&v : other->localStore)
+							for (const auto&v : other->stored)
 							{
-								Objects::PVehicle v1 = v.vehicle.lock();
+								Objects::PMobileEntity v1 = v.entity.lock();
 								ASSERT1__(v1,st->ToEntity().id.ToString());
 								if (++cnt > 10)
 								{
@@ -2132,9 +2133,9 @@
 							Objects::PVehicleStore other = _s.lock();
 							if (other.get() == st)
 								continue;
-							for (const auto&v : other->localStore)
+							for (const auto&v : other->stored)
 							{
-								Objects::PVehicle v1 = v.vehicle.lock();
+								Objects::PMobileEntity v1 = v.entity.lock();
 								ASSERT1__(v1,st->ToEntity().id.ToString());
 								if (++cnt > 10)
 								{
@@ -2150,10 +2151,10 @@
 					}
 					else
 					{
-						textout << " Vehicles stored ("<<st->localStore.Count()<<"/"<<Objects::VehicleStore::MaxVehiclesPerStore<<"):"<<nl;
-						for (const auto&v : st->localStore)
+						textout << " Vehicles stored ("<<st->stored.Count()<<"/"<<Objects::VehicleStore::MaxVehiclesPerStore<<"):"<<nl;
+						for (const auto&v : st->stored)
 						{
-							Objects::PVehicle v1 = v.vehicle.lock();
+							Objects::PMobileEntity v1 = v.entity.lock();
 							ASSERT1__(v1,st->ToEntity().id.ToString());
 							textout << "  "<<v1->GetNiceName() << nl;
 						}
