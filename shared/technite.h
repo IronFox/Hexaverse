@@ -358,6 +358,7 @@ namespace Technites
 			/**/			Technite(const Technite&) = delete;
 			Technite&		operator=(const Technite&) = delete;
 
+			String			spectatorMessage;
 			std::thread		dockerProcessThread;
 			TCP::WPeer		peer;
 			AtomicBool		isDead = false;						// 1
@@ -367,7 +368,7 @@ namespace Technites
 			String			GetDockerName() const {return "tech"+id.ToFullString();}
 			void			StartClient();
 			void			ShutdownClient();
-			bool			RelayMessage(const Technite*sender, const String&msg);
+			bool			RelaySpectatorMessage(const String&msg);
 		#endif
 	};
 

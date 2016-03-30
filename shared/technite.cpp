@@ -301,23 +301,10 @@ namespace Technites
 		ExecutionLayer::Kill,	//Kill
 	};
 
-
-	struct TMessage
-	{
-		TUniqueID				sender;
-		String					message;
-		TCP::WPeer				targetPeer;
-
-		/**/					TMessage()	{}
-		/**/					TMessage(const TCP::PPeer&targetPeer, const TUniqueID&sender, const String&message):sender(sender),message(message),targetPeer(targetPeer)
-		{}
-	};
-
 	AtomicGrid					atomicGrid;
 	Buffer<Technite>			technites;
 	GenericHashTable<TUniqueID,index_t,TUniqueID>	techniteIDMap;
 	BroadTechniteMap			techniteMap;
-	Buffer0<TMessage>			delayedMessages;
 
 	#ifndef CLIENT
 		TCP::Server				serviceHost;
@@ -860,19 +847,17 @@ namespace Technites
 
 				Channels::stateUpdateBegin.SendTo(serviceHost,UserLevel::Authenticated);
 
-				foreach (delayedMessages,msg)
-				{
-					TCP::PPeer peer = msg->targetPeer.lock();
-					if (peer)
-						Channels::message.SendTo(peer,Protocol::Message(msg->sender,msg->message));
-				}
-				delayedMessages.Clear();
-
 				Concurrency::parallel_for_each(technites.begin(),technites.end(),[](Technite&t)
 				{
 					TCP::PPeer peer = t.peer.lock();
 					if (!peer)
 						return;
+					if (t.spectatorMessage.IsNotEmpty())
+					{
+						Channels::message.SendTo(peer,Protocol::Message(TUniqueID::Empty(),t.spectatorMessage));
+						t.spectatorMessage = "";
+					}
+
 					Protocol::OwnState state;
 					state.commonState.location = t.location;
 					state.commonState.resources = t.resources;
@@ -1011,12 +996,12 @@ namespace Technites
 			}
 		}
 
-		bool			Technite::RelayMessage(const Technite*sender, const String&msg)
+		bool			Technite::RelaySpectatorMessage(const String&msg)
 		{
 			TCP::PPeer peer = this->peer.lock();
 			if (!peer)
 				return false;
-			delayedMessages.Append(TMessage(peer,sender ? sender->id : TUniqueID::Empty(),msg));
+			spectatorMessage = msg;
 			return true;
 		}
 

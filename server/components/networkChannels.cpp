@@ -851,7 +851,7 @@ namespace Receiver
 			LogEvent(Technites::techniteError,peer,"Unable to relay message. Technite "+msg.techniteID.value.ToString()+" does not exist");
 			return;
 		}
-		if (!t->RelayMessage(nullptr,msg.message))
+		if (!t->RelaySpectatorMessage(msg.message))
 		{
 			LogEvent(Technites::techniteError,peer,"Unable to relay message. Technite "+msg.techniteID.value.ToString()+" is offline");
 			return;
