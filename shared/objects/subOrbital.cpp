@@ -434,7 +434,7 @@ namespace Objects
 						int2 coords;
 						if (at >= storeOffset)
 							coords = cmdLeftCoords + int2(at - storeOffset+1 ,0);
-						s2->deployCommand.VisitMembers(visitor,force,coords);
+						s2->deployCommand->VisitMembers(visitor,force,coords);
 					}
 
 					at++;
