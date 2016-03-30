@@ -824,9 +824,9 @@ namespace Objects
 	#ifdef HAS_WINDOW
 		/*virtual override*/ void				Tower::VisitAllCommands(FCommandVisitor visitor, bool force)
 		{
-			commands.VisitMembers([visitor,this](const int2&coords, BaseCommand&cmd)
+			commands.VisitMembers([visitor,this](const int2&coords, const PBaseCommand&cmd)
 			{
-				if (turret->CanAttack() || cmd.name!="Attack")
+				if (turret->CanAttack() || cmd->name!="Attack")
 					visitor(coords,cmd);
 			},force);
 		}
@@ -2228,11 +2228,11 @@ namespace Objects
 		turretComponents = Objects::Component::vehicleTurretComponents;
 
 		#ifdef HAS_WINDOW
-			commands.VisitMembers([](const int2&coords,BaseCommand&cmd)
+			commands.VisitMembers([](const int2&coords,const PBaseCommand&cmd)
 			{
-				if (cmd.name == "Enable")
+				if (cmd->name == "Enable")
 				{
-					cmd = IconCommand("Enable",
+					(*cmd) = IconCommand("Enable",
 						[]()
 						{
 

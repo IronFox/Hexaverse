@@ -7,6 +7,7 @@
 
 namespace Objects
 {
+	DECLARE_POINTER_CLASS(BaseCommand)
 
 
 	DECLARE_POINTER_CLASS(HangarStructure)

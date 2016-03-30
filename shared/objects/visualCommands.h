@@ -23,7 +23,7 @@ namespace Objects
 
 	class BaseCommand;
 
-	typedef std::function<void(const int2&,BaseCommand&cmd)>	FCommandVisitor;
+	typedef std::function<void(const int2&,const PBaseCommand&cmd)>	FCommandVisitor;
 
 
 
@@ -73,7 +73,7 @@ namespace Objects
 
 		virtual void	RasterizeImage()	{}
 		virtual bool	IsGroup() const {return false;}
-		virtual void	VisitMembers(const FCommandVisitor&visitor, bool force, const int2&parentGridCoords) {visitor(parentGridCoords,*this);}
+		virtual void	VisitMembers(const FCommandVisitor&visitor, bool force, const int2&parentGridCoords) {visitor(parentGridCoords,shared_from_this());}
 		void			VisitMembers(const FCommandVisitor&visitor, bool force) {VisitMembers(visitor,force,coordOffset);}
 
 		void			LoadIcon();
