@@ -57,6 +57,10 @@ namespace Objects
 	PSatellite		GetSatellite(UINT32 flatCellID);
 	PMobileEntity	GetMobileEntity(const Grid::LCellIdI&cellID);
 	PMobileEntity	GetMobileEntity(const Grid::LCellIdU&cellID);
+	namespace SubOrbital
+	{
+		PPlane		GetPlane(UINT32 stackID, bool airborneOnly);
+	}
 
 
 	//void			InjectIntoNeighborhood(const PStructure&s, float atTime);
@@ -66,8 +70,21 @@ namespace Objects
 	/**
 	Checks if there is a structure in the given location that can handle a given mobile entity moving in
 	*/
-	PHangarStructure	MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&);
+	PHangar			MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&);
 
+
+	namespace SubOrbital
+	{
+
+		bool AppendShortestPath(const Plane*sat, const Grid::LCellIdI&from,
+								const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath,
+								bool ignoreFriendlyVehiclesOnRoute, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
+
+		bool AppendShortestPathI(const Plane*sat, const Grid::LCellIdI&from,
+								const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
+		bool AppendShortestDirectPath(const Grid::LCellIdI&from, const UINT32 to, BasicBuffer<PathNode>&oPath);
+
+	}
 
 
 	bool			AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
@@ -148,7 +165,7 @@ namespace Objects
 	It must also be increased if vehicle types can ever float freely.
 	*/
 	typedef TWaysTemplate<Grid::LCellIdI,1>	TWays;	//TWays MaxLevels must always be >= 1
-	typedef TWaysTemplate<UINT32,1>			TOrbitalWays;	//TOrbitalWays MaxLevels must always be == 1
+	typedef TWaysTemplate<UINT32,1>			TOrbitalWays,TSubOrbitalWays;	//TOrbitalWays MaxLevels must always be == 1
 
 
 	void			GetWays(const Grid::WorldData&world,
@@ -199,6 +216,7 @@ namespace Objects
 		void		Place( const PStructure&s);
 		void		Place( const PVehicle&vehicle, bool insertIntoGrid=true);
 		void		Place( const PSatellite&s);
+		void		Place( const SubOrbital::PPlane&s);
 		void		PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGridIfVehicle=true);
 
 

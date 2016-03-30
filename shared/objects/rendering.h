@@ -112,6 +112,8 @@ namespace Objects
 
 		void	Render(Satellite&s, float light);
 
+		void	Render(SubOrbital::Plane&p, float light);
+
 		void	RenderSimple(WorldEntity&e, bool includeFoundationIfStructure=false);
 		void	RenderSimpleIdentity(WorldEntity&e, bool includeFoundationIfStructure=false);
 

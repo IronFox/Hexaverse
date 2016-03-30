@@ -210,6 +210,7 @@ namespace Objects
 			Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
 										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
 			Buffer0<WSatellite>			satellites;
+			Buffer0<SubOrbital::WPlane>	planes;
 			Buffer0<WSkyHub>			skyHubs;	//overlaps with satellites
 			Buffer0<WStructure>			structures;
 
@@ -326,6 +327,8 @@ namespace Objects
 
 			count_t		CountSatelliteCoverage(const TVec3<>&center)	const;
 			count_t		CountSatelliteCoverage(const Sphere<>&)	const;
+			count_t		CountPlaneCoverage(const TVec3<>&center)	const;
+			count_t		CountPlaneCoverage(const Sphere<>&)	const;
 
 			/**
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater

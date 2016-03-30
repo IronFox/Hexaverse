@@ -8,8 +8,7 @@
 namespace Objects
 {
 
-
-	DECLARE_POINTER_CLASS(HangarStructure)
+	DECLARE_POINTER_CLASS(Hangar)
 	DECLARE_POINTER_CLASS(MobileEntityProducer)
 	DECLARE_POINTER_CLASS(SkyLinkStructure)
 
@@ -22,6 +21,7 @@ namespace Objects
 				DECLARE_POINTER_CLASS(WorkingStructure)
 					DECLARE_POINTER_CLASS(SkyPort)
 					DECLARE_POINTER_CLASS(VehiclePlant)
+					DECLARE_POINTER_CLASS(PlaneFactory)
 					DECLARE_POINTER_CLASS(VehicleStore)
 					DECLARE_POINTER_CLASS(Mine)
 					DECLARE_POINTER_CLASS(NexusPort)
@@ -35,6 +35,11 @@ namespace Objects
 					DECLARE_POINTER_CLASS(SkyHub)
 					DECLARE_POINTER_CLASS(SkyGuardian)
 					DECLARE_POINTER_CLASS(Ragnarok)
+				namespace SubOrbital
+				{
+					DECLARE_POINTER_CLASS(Plane)
+						DECLARE_POINTER_CLASS(Raptor)
+				}
 				DECLARE_POINTER_CLASS(Vehicle)
 
 	namespace Component

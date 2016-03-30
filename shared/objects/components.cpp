@@ -11,6 +11,7 @@
 #include "visualChoices.h"
 #include "rendering.h"
 #include "satellite.h"
+#include "subOrbital.h"
 #include "gridAndChoices.h"
 #include "../runtimeConfig.h"
 
@@ -31,6 +32,11 @@ namespace Objects
 						catbase;
 
 
+		namespace SubOrbital
+		{
+			Turret		raptor,cargoPlane,sensorDrone;
+			VehicleBase	planeBase;
+		}
 
 
 
@@ -52,7 +58,7 @@ namespace Objects
 		bool							Turret::ConsumesResources(ResourceFlagSet&res) const
 		{
 			bool rs = false;
-			if (this->isSatelliteRing)
+			if (this->mountType == Component::Turret::MountType::Satellite)
 			{
 				res |= Resource::Fuel;
 				rs = true;
@@ -1283,7 +1289,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Ragnarok;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.mountType = Turret::MountType::Satellite;
 			component.isDoomsday = true;
 
 			component.continuousRotation = true;
@@ -1338,7 +1344,7 @@ namespace Objects
 			component.constName = ConstName::Turret_ProtonCannon;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.mountType = Turret::MountType::Satellite;
 
 			component.productionCosts = 1;	//irrelevant
 
@@ -1381,7 +1387,7 @@ namespace Objects
 			component.constName = ConstName::Turret_SkyHub;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.mountType = Turret::MountType::Satellite;
 			component.operationSpeed[Repair] = 10;
 			component.operationSpeed[Construct] = 5;
 			//component.fuelSupplyRadius = 20;
@@ -1421,7 +1427,7 @@ namespace Objects
 			component.constName = ConstName::Turret_StarPort;
 			component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+			component.mountType = Turret::MountType::Satellite;
 
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = -0.05f;
@@ -1577,6 +1583,205 @@ namespace Objects
 			component.FinishCreation();
 		}
 
+
+
+		namespace SubOrbital
+		{
+			namespace Base
+			{
+				void	Configure(VehicleBase&component)
+				{
+					component.height = 0;	//for now, maybe forever
+
+					#ifdef HAS_WINDOW
+						component.ambientSound = OpenAL::Load("resources/objectSounds/plane.wav");
+					#endif
+					//MakeBox(component.parts.first().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
+					component.typeName = "Plane";
+					component.shortName = "Airborne";
+					component.constName = ConstName::VehicleBase_Plane;
+
+					component.productionCosts = 40;
+					component.requirements = VehicleBase::Requirement::AnyBlock;
+					component.moveOnWater = true;
+					component.minClimbDown = -1;	//-int(Grid::CellStack::Range);
+					#ifndef ONE_COMPOUND_PER_FACTION
+						component.storageMultiplier = 1;
+					#endif
+
+					component.baseMovementSpeed = 0;
+					component.carryingCapacity = 1;
+					component.baseHealth = 1;
+
+
+					component.FinishCreation();
+
+					#ifdef CLIENT	
+						component.height *= vehicleScale;
+					#endif
+				}
+			}
+
+			#ifdef HAS_WINDOW
+			namespace Cmd
+			{
+				void	Land()
+				{
+					if (!selectedMobileEntity || !selectedMobileEntity->IsPlane() || selectedMobileEntity->GetLastPointOfOrigin().height <= Grid::CellStack::TopHeight)
+						return;
+					Objects::SubOrbital::PPlane plane = To<Objects::SubOrbital::Plane>::Cast(selectedMobileEntity);
+					auto loc = plane->GetLastPointOfOrigin();
+					int h = plane->GetLandingHeight(loc);
+					if (h != badHeight)
+						DirectTo(selectedMobileEntity,Grid::LCellIdI(loc.stackID,h),false,false);
+				}
+
+				BaseCommand::Flags LandCheck(bool controlEnabled)
+				{
+					if (!controlEnabled || !selectedMobileEntity || !selectedMobileEntity->IsPlane() || selectedMobileEntity->GetLastPointOfOrigin().height <= Grid::CellStack::TopHeight)
+						return BaseCommand::Flags::None;
+					Objects::SubOrbital::PPlane plane = To<Objects::SubOrbital::Plane>::Cast(selectedMobileEntity);
+					auto loc = plane->GetLastPointOfOrigin();
+					int h = plane->GetLandingHeight(loc);
+					if (h != badHeight)
+						return BaseCommand::Flags::IsEnabled;
+					return BaseCommand::Flags::None;
+				}
+
+				void	TakeOff()
+				{
+					if (!selectedMobileEntity || !selectedMobileEntity->IsPlane() || selectedMobileEntity->GetLastPointOfOrigin().height > Grid::CellStack::TopHeight)
+						return;
+					DirectTo(selectedMobileEntity,Grid::LCellIdI(selectedMobileEntity->GetLastPointOfOrigin().stackID,Objects::SubOrbital::Height),false,false);
+				}
+
+				BaseCommand::Flags TakeOffCheck(bool controlEnabled)
+				{
+					if (!controlEnabled || !selectedMobileEntity || !selectedMobileEntity->IsPlane() || selectedMobileEntity->GetLastPointOfOrigin().height > Grid::CellStack::TopHeight)
+						return BaseCommand::Flags::None;
+					return BaseCommand::Flags::IsEnabled;
+				}
+			}
+			#endif
+
+			void			Raptor::Configure(Turret&component)
+			{
+				#ifdef HAS_WINDOW		
+					CellCoords offset = ConfigureStandardCommands(component);
+
+					component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
+					component.commands.Add( new IconCommand("Take Off",&Cmd::TakeOff, &Cmd::TakeOffCheck,NoCosts));
+					component.commands.Add( new IconCommand("Land",&Cmd::Land, &Cmd::LandCheck,NoCosts));
+					//component.parts.setSize(1);
+					//component.parts.first().first.LoadFromObj("objects/skyGuardianRing.obj");
+				#endif
+
+
+				component.typeName = "Raptor";
+				component.shortName = " Raptor";
+				component.constName = ConstName::Type_Raptor;	//let's see if i can use the same name here
+				component.constTowerName = ConstName::Empty;	//not used
+
+				component.mountType = Turret::MountType::Plane;
+
+				component.productionCosts = 80;
+
+		
+				component.weight = 1;	//irrelevant
+				component.healthMultiplier = 1;	//irrelevant
+				component.horizontalAttackRange = 9;
+				component.scanningRange = 9;
+				component.groundScanningRange = 9;
+				component.groundScannerPenetration = 0;
+
+				component.explosionRadius = 1;
+				component.damageLevel = 5;
+				component.dealsEMPDamage = false;
+				component.attacksPerRound = 2;
+				component.initiative = 100;
+				component.ammoNeedPerShot = 0;//10;
+				component.ammoType = Resource::Uranium;
+				component.requiresStationaryVehicle = false;
+				component.ignoresVehicleMotion = true;
+				component.uplinkTraffic = 10;
+				component.trajectoryType = TrajectoryType::Missile;
+
+
+				component.FinishCreation(false);
+			}
+
+
+			void			SensorDrone::Configure(Turret&component)
+			{
+				#ifdef HAS_WINDOW		
+					CellCoords offset = ConfigureStandardCommands(component);
+
+					component.commands.Add( new IconCommand("Take Off",&Cmd::TakeOff, &Cmd::TakeOffCheck,NoCosts));
+					component.commands.Add( new IconCommand("Land",&Cmd::Land, &Cmd::LandCheck,NoCosts));
+					//component.parts.setSize(1);
+					//component.parts.first().first.LoadFromObj("objects/skyGuardianRing.obj");
+				#endif
+
+
+				component.typeName = "Sensor Drone";
+				component.shortName = " Sensor";
+				component.constName = ConstName::Type_SensorDrone;
+				component.constTowerName = ConstName::Empty;
+
+				component.mountType = Turret::MountType::Plane;
+
+				component.productionCosts = 10;
+
+		
+				component.weight = 1;	//irrelevant
+				component.healthMultiplier = 1;	//irrelevant
+				component.scanningRange = 11;
+				component.groundScanningRange = 11;
+				component.groundScannerPenetration = 1;
+
+				component.initiative = 110;
+				component.uplinkTraffic = 10;
+
+				component.FinishCreation(false);
+			}
+
+
+
+
+			void			CargoPlane::Configure(Turret&component)
+			{
+				#ifdef HAS_WINDOW		
+					CellCoords offset = ConfigureStandardCommands(component);
+
+					component.commands.Add( new IconCommand("Take Off",&Cmd::TakeOff, &Cmd::TakeOffCheck,NoCosts));
+					component.commands.Add( new IconCommand("Land",&Cmd::Land, &Cmd::LandCheck,NoCosts));
+				#endif
+
+
+				component.typeName = "Cargo Plane";
+				component.shortName = " Cargo";
+				component.constName = ConstName::Type_CargoPlane;	//let's see if i can use the same name here
+				component.constTowerName = ConstName::Empty;	//not used
+
+				component.mountType = Turret::MountType::Plane;
+
+				component.productionCosts = 40;
+
+		
+				component.weight = 1;	//irrelevant
+				component.healthMultiplier = 1;	//irrelevant
+				component.scanningRange = 6;
+				component.groundScanningRange = 3;
+				component.groundScannerPenetration = 0;
+
+				component.initiative = 60;
+				component.uplinkTraffic = 10;
+
+				component.FinishCreation(false);
+			}
+
+
+		}
 
 
 		void			Hoverbase::Configure(VehicleBase&component)
@@ -1977,7 +2182,7 @@ namespace Objects
 					outResult.WrapAppendText("This "+lowerName+" type detects all naturally occuring resources within its scanning range. It can be automated.");
 				if (CanAttack())
 				{
-					outResult.WrapAppendText("This "+lowerName+" type can attack objects in range. It must typically be accompanied by a radar tower or vehicle.");
+					outResult.WrapAppendText("This "+lowerName+" type can attack objects in range.");
 					if (dealsEMPDamage)
 						outResult.WrapAppendText("This "+lowerName+" deals EMP damage. EMP damage temporarily reduces scanning range. Does not cause any permanent damage.");
 				}

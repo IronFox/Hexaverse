@@ -46,6 +46,14 @@ namespace Objects
 		#endif
 	}
 
+	bool					MobileEntityProducer::WorkItem::IsPlane() const
+	{
+		#ifdef CLIENT
+			return !base && prototype && prototype->IsPlane();
+		#else
+			return producing->IsPlane();
+		#endif
+	}
 
 	bool					MobileEntityProducer::WorkItem::IsVehicle() const
 	{
@@ -53,6 +61,15 @@ namespace Objects
 			return base != nullptr;
 		#else
 			return producing->IsVehicle();
+		#endif
+	}
+
+	bool					MobileEntityProducer::WorkItem::IsPureVehicle() const
+	{
+		#ifdef CLIENT
+			return base != nullptr && (!prototype || prototype->IsPureVehicle());
+		#else
+			return producing->IsPureVehicle();
 		#endif
 	}
 
@@ -220,14 +237,14 @@ namespace Objects
 				LogEvent(EventSignificance::Debug,parent,"Construction of "+queue.first().producing->GetName()+" completed");
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ) ,parent,"Construction of "+queue.first().producing->GetNiceName()+" completed");
 
-				if (gatheringPoint.current != Grid::LCellIdI::Invalid || queue.first().IsSatellite())
+				if (gatheringPoint.current != Grid::LCellIdI::Invalid || !queue.first().IsPureVehicle())
 				{
 					LogEvent(EventSignificance::Common,parent,"Auto-spawning mobile entity...");
 					Objects::PMobileEntity v = SpawnFinishedProductionAnywhere(t);
 					if (v)
 					{
 						LogEvent(EventSignificance::Common,parent,"Auto-spawned mobile entity "+v->GetName());
-						if (!v->IsSatellite())
+						if (v->IsPureVehicle())
 						{
 							LogEvent(EventSignificance::Common,v.get(),"Directing vehicle to gathering point");
 							v->PlotCourse(gatheringPoint.current,false);
@@ -482,6 +499,11 @@ namespace Objects
 				ASSERT1__(prototype, (int)baseName);
 				price = prototype->GetConstructionCost();
 				name = prototype->GetTypeName();
+				if (prototype->IsVehicle())
+				{
+					base = To<Vehicle>::Cast(prototype)->base;
+					turret = To<Vehicle>::Cast(prototype)->turret;
+				}
 			}
 
 			{

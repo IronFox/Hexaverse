@@ -5,6 +5,7 @@
 #include "rendering.h"
 #include "vehicle.h"
 #include "satellite.h"
+#include "subOrbital.h"
 #include "systems.h"
 #include "prototypes.h"
 #include "../runtimeConfig.h"
@@ -45,6 +46,24 @@ namespace Objects
 				ASSERT2__(v->owner->HasActiveMobile(v),v->GetName(),v->owner->GetName());
 			#endif
 		}
+		for (const auto&v : SubOrbital::planes)
+		{
+			ASSERT1__(v->isInserted,v->GetName());
+			if (v->location.height > Grid::CellStack::TopHeight)
+			{
+				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());	//non-landed planes are never inserted into grid
+			}
+			else
+				ASSERT1__(v->isInsertedIntoGrid,v->GetName());
+			ASSERT1__(v->health > 0,v->GetName());
+			ASSERT1__(GetEntity(v->id) == v, v->GetName());
+			ASSERT1__(!storedMobileEntities.Contains(v), v->GetName());
+			ASSERT1__(v->storedIn.expired(), v->GetName());
+			#ifndef CLIENT
+				ASSERT2__(!v->owner->HasMobileInStorage(v),v->GetName(),v->owner->GetName());
+				ASSERT2__(v->owner->HasActiveMobile(v),v->GetName(),v->owner->GetName());
+			#endif
+		}
 		for (const auto&v : storedMobileEntities)
 		{
 			ASSERT1__(!v->isInserted,v->GetName());
@@ -52,7 +71,7 @@ namespace Objects
 			ASSERT1__(v->health > 0,v->GetName());
 			ASSERT1__(GetEntity(v->id) == v, v->GetName());
 			ASSERT1__(!vehicles.Contains(v),v->GetName());
-			PHangarStructure hangar = v->storedIn.lock();
+			PHangar hangar = v->storedIn.lock();
 			//PVehicleStore storedIn = To<VehicleStore>::DynamicCast( v->storedIn.lock());
 			ASSERT1__(hangar,v->GetName());
 			ASSERT2__(hangar->HasStoredLocally(v),v->GetName(),hangar->ToEntity().GetName());
@@ -698,6 +717,10 @@ namespace Objects
 				{
 					float zOffset;
 					PTurretBase b = (*c)->GetTurretBase(zOffset);
+					bool thisIsGrounded = !this->IsPlane() || this->IsGroundBoundVehicle();
+					bool thatIsGrounded = !(*c)->IsPlane() || (*c)->IsGroundBoundVehicle();
+					if (!thisIsGrounded && thatIsGrounded)
+						continue;
 					if (!b)
 						continue;
 					if (b->turret->CanAttack())
@@ -732,6 +755,7 @@ namespace Objects
 								if (badTask)
 								{
 									LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+(*c)->GetName()+" at "+(*c)->location.ToString()+" detected.");
+									LogEvent(EventSignificance::Uncommon,v2.get(),"Dangerous movement into range of "+(*c)->GetNiceName()+" detected.");
 									if (v2.get() == this)
 									{
 										ClearAllTasks(true,CLOCATION);
@@ -1172,7 +1196,10 @@ namespace Objects
 		bool			MobileEntity::PlotCourse(ArrayRef<Grid::LCellIdI> destination, bool detailedPath, bool virtualPlatformMode/*=false*/)
 		{
 			const Grid::WorldData&world = owner->currentState;
-			if (IsVehicle())
+
+			const Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
+			
+			if (IsPureVehicle())
 			{
 				for (index_t i = 0; i < destination.length(); i++)
 				{
@@ -1187,7 +1214,6 @@ namespace Objects
 				}
 			}
 
-			Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 
 			while (destination.IsNotEmpty() && destination.First() == pointOfOrigin)
 			{
@@ -1197,6 +1223,9 @@ namespace Objects
 			{
 				return false;
 			}
+
+
+
 
 			if (!HasTasks() || myTasks.GetNewest().type != Task::MoveTo)
 			{
@@ -1275,7 +1304,7 @@ namespace Objects
 		{
 			const Grid::WorldData&world = owner->currentState;
 
-			if (IsVehicle())
+			if (IsPureVehicle())
 			{
 				for (auto&dest : destination)
 				{
@@ -1450,12 +1479,12 @@ namespace Objects
 			{
 				UnregisterSensory(t);
 			}
-			if (IsVehicle())
+			if (IsGroundBoundVehicle())
 			{
 				Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(shared_from_this()),location);
 			}
 			preAnimationLocation = location = toLocation;
-			if (IsVehicle())
+			if (IsGroundBoundVehicle())
 			{
 				Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(shared_from_this()),location);
 			}
@@ -1477,7 +1506,9 @@ namespace Objects
 
 	bool	MobileEntity::Task::AppendPathSegment(const MobileEntity*v, const Grid::LCellIdI&prev, const Task::Focus&target)
 	{
-		if (v->IsVehicle())
+
+
+		if (v->IsPureVehicle())
 		{
 			//would be faster, but too complicated to extract cost
 			//if (target.isExplicit)
@@ -1503,6 +1534,22 @@ namespace Objects
 		}
 		else
 		{
+			if (v->IsPlane())
+			{
+				{
+					count_t offset = path.Count();
+					if (!SubOrbital::AppendShortestPathI((const SubOrbital::Plane*)v,prev,target.target,path))
+						return false;
+					#ifndef CLIENT
+						if (target.isDetailed && path.Count() - offset != 1)
+						{
+							path.Truncate(offset);
+							return false;
+						}
+					#endif
+				}
+			}
+			else
 			if (v->IsSatellite())
 			{
 				//would be faster, but too complicated to extract cost
@@ -1645,9 +1692,17 @@ namespace Objects
 		{
 			path.Clear();
 			path << PathNode(pointOfOrigin,0);
-			if (v->IsVehicle())
+			if (v->IsGroundBoundVehicle())
 			{
 				if (!AppendShortestDirectPath(pointOfOrigin,foci.Peek().target,path,false))
+				{
+					return false;	//this would be weird, but happens
+				}
+			}
+			else
+			if (v->IsPlane())
+			{
+				if (!SubOrbital::AppendShortestDirectPath(pointOfOrigin,foci.Peek().target.stackID,path))
 				{
 					return false;	//this would be weird, but happens
 				}

@@ -8,6 +8,7 @@
 	#include "visualCommands.h"
 	//#include "gridAndChoices.h"
 	#include "satellite.h"
+	#include "subOrbital.h"
 	#include "faction.h"
 	#include "rendering.h"
 #endif
@@ -267,12 +268,14 @@ namespace Objects
 				if (IsMobile())
 				{
 					Component::Turret* t = ((const MobileEntity*)this)->turret;
-					if (IsVehicle())
+					if (IsPlane())
+						cnt = SubOrbital::Plane::CountTurretOccurrences(overrideOwner,t);
+					elif (IsPureVehicle())
 						cnt = Vehicle::CountTurretOccurrences(overrideOwner,t);
 					elif (IsSatellite())
 						cnt = Satellite::CountTurretOccurrences(overrideOwner,t);
 					else
-						FATAL__("Unexpected mobile entity type: "+GetName());
+						FATAL__("Unexpected mobile entity type: "+GetTypeName());
 					limit = RuntimeConfig::UnitLimits::Get(t->constName);
 				}
 				elif (IsStructure())
@@ -339,7 +342,7 @@ namespace Objects
 				if (b->turret->CanAttack())
 					outResult << " Hrz. Attack range: "+String(b->GetFlatAttackRange()) + "+"+String(b->turret->explosionRadius);
 				outResult << "";
-				b->turret->DescribeType(outResult,true, IsSatellite() ? "Satellite" : (IsVehicle() ? "Vehicle":"Tower"),owner);
+				b->turret->DescribeType(outResult,true, IsPlane() ? "Plane" : (IsSatellite() ? "Satellite" : (IsPureVehicle() ? "Vehicle":"Tower")),owner);
 			}
 		}
 	#endif

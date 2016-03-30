@@ -14,7 +14,7 @@
 #include "stringTable.h"
 #include "logEvent.h"
 #include "runtimeConfig.h"
-
+#include "objects/subOrbital.h"
 
 
 namespace Objects
@@ -113,6 +113,8 @@ namespace Objects
 		#ifdef CLIENT
 			Grid::visibleOrbitGrid.orbit = Grid::ToRadius(Satellite::BaseResidenceHeight);
 			Grid::visibleOrbitGrid.Clear();
+			Grid::visibleSubOrbitGrid.orbit = Grid::ToRadius(SubOrbital::Height);
+			Grid::visibleSubOrbitGrid.Clear();
 			#ifdef HAS_WINDOW
 				Renderer::Create();
 			#endif
@@ -162,12 +164,16 @@ namespace Objects
 		structurePrototypes << NexusPort::globalPrototype;
 		structurePrototypes << VehicleStore::globalPrototype;
 		structurePrototypes << SkyPort::globalPrototype;
+		structurePrototypes << PlaneFactory::globalPrototype;
 
 		satellitePrototypes << SkyHub::globalPrototype;
 		satellitePrototypes << SkyGuardian::globalPrototype;
 		satellitePrototypes << Ragnarok::globalPrototype;
 		//satellitePrototypes << StarPort::globalPrototype;
 
+		SubOrbital::prototypes << SubOrbital::Raptor::globalPrototype;
+		SubOrbital::prototypes << SubOrbital::CargoPlane::globalPrototype;
+		SubOrbital::prototypes << SubOrbital::SensorDrone::globalPrototype;
 
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::launcher));
 		//Tower::globalPrototypes.Append().reset(new Tower(artillery));
@@ -202,6 +208,8 @@ namespace Objects
 				(*p)->PrototypeLoadGeometry();
 			foreach(structurePrototypes, p)
 				(*p)->PrototypeLoadGeometry();
+			foreach(SubOrbital::prototypes, p)
+				(*p)->PrototypeLoadGeometry();
 		}
 		#endif
 
@@ -211,9 +219,13 @@ namespace Objects
 
 		Component::ConfigureAll();
 
+		Hangar::StaticSetup();
+
 		foreach(satellitePrototypes, p)
 			(*p)->PrototypeSetup();
 		foreach(structurePrototypes, p)
+			(*p)->PrototypeSetup();
+		foreach(SubOrbital::prototypes, p)
 			(*p)->PrototypeSetup();
 
 		
@@ -331,6 +343,7 @@ namespace Objects
 		#endif
 		structures.Clear();
 		structurePrototypes.Clear();
+		SubOrbital::prototypes.Clear();
 		Component::DestroyAll();
 
 
@@ -427,6 +440,13 @@ namespace Objects
 			{
 				PWorldEntity newSel;
 				foreach(vehicles, v)
+				{
+					if ((*v)->TestIntersection(b, d, distance))
+					{
+						newSel = *v;
+					}
+				}
+				foreach(SubOrbital::planes, v)
 				{
 					if ((*v)->TestIntersection(b, d, distance))
 					{
@@ -765,6 +785,7 @@ namespace Objects
 		storedMobileEntities.Clear();
 		satellites.Clear();
 		vehicles.Clear();
+		SubOrbital::planes.Clear();
 		structures.Clear();
 		idMap.Clear();
 		#ifndef ONE_COMPOUND_PER_FACTION

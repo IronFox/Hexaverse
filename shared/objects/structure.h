@@ -14,7 +14,7 @@
 #include "../cast.h"
 #include "interface.h"
 #include "hibernating.h"
-#include "hangarStructure.h"
+#include "hangar.h"
 #include "mobileEntityProducer.h"
 
 /*
@@ -210,13 +210,6 @@ namespace Objects
 		*/
 		Compound&					GetCompound() const;
 
-
-		/**
-		Casts the local entity to an appropriate hangar structure if it can store the given mobile entity @a e
-		If storage is not possible due to type constraints (NOT capacity constraints), the return value must be
-		a shared null pointer.
-		*/
-		virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) {return PHangarStructure();}
 
 		virtual bool				IsStructure() const override {return true;}
 
@@ -427,7 +420,7 @@ namespace Objects
 	Vehicle storage class.
 	Instances of this class can permanently store vehicles
 	*/
-	class VehicleStore : public OtherStructure<VehicleStore>, public HangarStructure
+	class VehicleStore : public OtherStructure<VehicleStore>, public Hangar
 	{
 	public:
 		struct Park;
@@ -445,16 +438,6 @@ namespace Objects
 		void						PropagatePark(const PPark&compound);
 		void						MergePark(const PPark&other);
 
-		bool						RemoveStored(const PVehicle&v)
-		{
-			foreach (localStore,s)
-				if (s->vehicle.lock() == v)
-				{
-					localStore.erase(s);
-					return true;
-				}
-			return false;
-		}
 
 
 		friend class Super;
@@ -491,40 +474,11 @@ namespace Objects
 			}
 		};
 
-		struct Stored
-		{
-			WVehicle				vehicle;
-			#ifdef HAS_WINDOW
-				DeployMobileCommand	deployCommand;
-			#endif
-		};
 
 		PPark						park;	//!< Shared state. Should not be set if the local VehicleStore is not connected to any other VehicleStore instances
-		Buffer0<Stored>				localStore;	//!< Locally stored vehicles
 		#ifdef HAS_WINDOW
 			static Geometry			interConnector;
-			static PVehicle			deployingVehicle;	//vehicle being checked out
-			static index_t			storeOffset;				//!< Button offset (kinda like a scrollbar position)
-			static const count_t	MaxVisibleStoreItems = 8;	//!< Maximum number of vehicle buttons that can be shown before arrow buttons are added to scroll
 
-			static int2				cmdLeftCoords,
-									cmdRightCoords;
-			static IconCommand		cmdLeft,		//!< Arrow button to scroll left
-									cmdRight;		//!< Arrow button to scroll right
-
-			virtual void			OnSelect()	override {deployingVehicle.reset();};
-			virtual void			OnDeselect() override {deployingVehicle.reset();}
-
-			/**
-			Notifies the local VehicleStore (which should be selected) that a vehicle in the storage of its park (or locally) has been checked out
-			and the GUI should be updated accordingly.
-			*/
-			void					SignalDeployment();
-			
-			/**
-			Invokes SignalDeployment() on the selected entity, if this entity is a vehicle store
-			*/
-			static void				StaticSignalDeployment();
 
 			virtual const Geometry*	GetSourceForConnection(const PStructure&connected)	override {return To<VehicleStore>::DynamicCast(connected) && connected->location.height == location.height ? &interConnector : &standardConnector;}
 
@@ -537,62 +491,49 @@ namespace Objects
 
 
 
-		count_t						CountVehiclesInPark() const {return park? park->vehiclesStored : localStore.Count();}
+		count_t						CountVehiclesInPark() const {return park? park->vehiclesStored : stored.Count();}
 		count_t						GetParkVehicleCapacity() const {return park ? park->members.Count() * MaxVehiclesPerStore : MaxVehiclesPerStore;}
 
 
 
-		void						LocalCheckout(const PVehicle&v, const Grid::LCellIdI&targetLocation, float&atTime);
 		#ifndef CLIENT
-			bool					StoreInPark(const PVehicle&v, float&atTime);
+			bool					StoreInPark(const PMobileEntity&v, float&atTime);
 		#else
 			void					Lose(const PVehicle&v);
 		#endif
 
-		/**
-		Attempts to store the specified vehicle in the local store (not the park)
-		This method is frequently called by the server and should not be called by the client
-		unless as a response to a server notification.
-		@param v Vehicle to store
-		@param atTime Current server time
-		@param setHealthToFullIfNew If the specified vehicle has not been registered in the world so far, this value is passed to RegisterNewOffGrid()
-		@return true, if the specified vehicle could be stored in the local storage,
-				false, if anything (capacity, ownership, etc) prevented storage.
-		*/
-		bool						StoreLocally(const PVehicle&v, float&atTime, bool setHealthToFullIfNew=true);
 
-		/**
-		Thoroughly checks if the local structure (not the park) has the specified vehicle in store.
-		Checks the actual storage, not the @a storedIn member of @a v
-		*/
-		bool						HasStoredLocally(const PVehicle&v) const;
 
 		/**
 		Checks if the local structure (not the park) is full (i.e. cannot store any additional vehicles)
 		*/
-		bool						LocalIsFull() const {return localStore.Count() >= MaxVehiclesPerStore;}
+		bool						LocalIsFull() const {return stored.Count() >= MaxVehiclesPerStore;}
 
 
-		//HangarStructure overrides:
+		//Hangar overrides:
 		virtual bool				CanStoreType(const MobileEntity&e) const override;
-		virtual bool				HasStoredLocally(const PMobileEntity&e) const override;
 		virtual void				StoreLocallyFromImport(const PMobileEntity&e) override;
-
-
-		//Structure overrides:
-		virtual void				OnNewConnection(const StrongConnection&, UINT32 acrossHighCell, float atTime) override;
-		virtual void				OnConnectionLost(const StrongConnection&, UINT32 acrossHighCell, float atTime) override;
-		virtual PHangarStructure	CastToDestinationForType(const MobileEntity&e) override;
-		virtual Category			GetCategory() const override {return Category::Miscellaneous;}
-
-
-		//HangarStructure overrides:
+		#ifndef CLIENT
+			virtual bool			Store(const PMobileEntity&e, float&atTime) override {return e && CanStoreType(*e) && StoreInPark(e,atTime);}
+		#else
+			virtual void			Lose(const PMobileEntity&v)	override;
+		#endif
+		virtual bool				SharesStorageWith(const PHangar&other)	const override;
+		virtual void				LocalCheckout(const PMobileEntity&v, const Grid::LCellIdI&targetLocation, float&atTime) override;
+		virtual count_t				GetMaxStorage() const override {return MaxVehiclesPerStore;}
 		const WorldEntity&			ToEntity() const override {return *this;}
 		WorldEntity&				ToEntity() override {return *this;}
 		virtual void				OnDestroy(RemovalType, float&atTime) override;
 
+		//Structure overrides:
+		virtual void				OnNewConnection(const StrongConnection&, UINT32 acrossHighCell, float atTime) override;
+		virtual void				OnConnectionLost(const StrongConnection&, UINT32 acrossHighCell, float atTime) override;
+		virtual PHangar				CastToDestinationForType(const MobileEntity&e) override;
+		virtual Category			GetCategory() const override {return Category::Miscellaneous;}
+
 
 		//WorldEntity overrides:
+		virtual bool				IsHangar() const {return true;}
 		virtual String				GetTypeName() const override { return "Vehicle Store"; };
 		virtual ConstName			GetCTypeName() const override {return ConstName::Type_VehicleStore;}
 		virtual int					GetHeight() const override {return 2;}
@@ -1093,6 +1034,79 @@ namespace Objects
 		//SkyLinkStructure overrides:
 		virtual WorkingStructure*	CastToStructure() override {return this;}
 
+	};
+
+
+	class PlaneFactory : public CommonStructure<PlaneFactory>, public MobileEntityProducer
+	{
+	public:
+	protected:
+		typedef CommonStructure<PlaneFactory>	Super;
+
+
+		friend class Super;
+		/**/						PlaneFactory():MobileEntityProducer(ConstructionSpeed) {MobileEntityProducer::SetCommandOffset(int2(3,1));}
+		/**/						PlaneFactory(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), MobileEntityProducer(ConstructionSpeed){MobileEntityProducer::SetCommandOffset(int2(3,1));}
+	public:
+		static const int			ConstructionSpeed = 20;
+		static const int			FuelDemand = 20;
+		static const int			EnergyConsumption = 20;
+
+		static Buffer0<ConstName>	prototypes;
+
+
+		//BaseEntity overrides:
+		virtual String				GetTypeName() const override { return "Plane Factory"; };
+		virtual ConstName			GetCTypeName() const override {return ConstName::Type_PlaneFactory;}
+
+		//WorkingStructure overrides:
+		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override;
+
+		//WorldEntity overrides:
+		virtual int					GetHeight() const override {return 2;}
+		virtual void				PrototypeSetup() override;
+		virtual int					GetConstructionCost() const override {return 200;}
+		#ifndef NO_HIBERNATION
+			virtual int				GetUplinkTraffic() const override {return 10;}
+			virtual int				GetUplinkPriority() const override {return 750;};	//not much point going far beyond generators. if they shut off, this thing shuts off, too
+		#endif
+		virtual bool				AwaitsUserInteraction() const override;
+
+		#ifndef CLIENT
+			virtual void			OnSleepChange(float&t) override;
+
+			//virtual void			OnConstructionFinished(float atTime) override;	//has to register with owner	//some day
+			//virtual void			OnDestroy(float atTime) override;	//has to unregister with owner	//some day
+			virtual void			Tick(ResourceVector&) override;
+			virtual void			SignalLastProductionDone(float&t) override {LogEvent(EventSignificance::Common, this, "Queue is empty. Shutting off"); SetEnabled(false,t);}
+
+		#endif
+		#ifdef HAS_WINDOW
+			virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
+			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
+			{
+				Super::DescribeType(label,descFlags);
+				//label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
+				label.MarkBriefEnd();
+				label.WrapAppendText("Plane factories produce planes");
+			}
+			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
+		#endif
+		virtual const MobileEntityProducer*CastToProducer() const override {return this;}
+
+		//MobileEntityProducer overrides
+		#ifndef CLIENT
+			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
+		#endif
+		virtual bool				CanProduce(const PWorldEntity&e) const override;
+
+
+		//Structure overrides:
+		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override
+		{
+			return MobileEntityProducer::IsBuilding(outProgress);
+		}
+		virtual Category			GetCategory() const override {return Category::Factories;}
 	};
 	
 	class Generator : public CommonStructure<Generator>

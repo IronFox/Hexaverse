@@ -37,7 +37,7 @@ namespace Objects
 		/**/					Vehicle(const OwnerParameter&owner, const Grid::LCellIdI&location, Component::VehicleBase*base, Component::Turret*turret) :
 									MobileEntity(owner,turret,location),base(base)
 								{
-									ASSERT__(base); ASSERT__(turret); ASSERT__(!turret->isSatelliteRing);
+									ASSERT__(base); ASSERT__(turret); //ASSERT__(turret->mountType == Component::Turret::MountType::Vehicle);
 								}
 
 		Component::VehicleBase*	base;
@@ -152,6 +152,8 @@ namespace Objects
 		virtual float			GetMaxScanningRange() const override	{return turret->scanningRange + (turret->CanAttack() ? 0 : base->rangeModifier);};	//returns the effective scanning range of the local entity
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = base->height; return To<Vehicle>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = base->height; return To<const Vehicle>::Cast(shared_from_this());}
+		virtual bool			IsGroundBoundVehicle() const override {return true;}
+		virtual bool			IsPureVehicle() const override {return true;}
 		virtual bool			IsVehicle() const override {return true;}
 		#ifdef HAS_WINDOW
 			virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;

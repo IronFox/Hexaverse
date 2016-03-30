@@ -549,7 +549,7 @@ namespace FileIO
 	static void Export(Riff::Chunk*parent, const Objects::MobileEntityProducer::WorkItem&item)
 	{
 		WorkItemSerializable helper;
-		if (item.producing->IsVehicle())
+		if (item.producing->IsPureVehicle())
 		{
 			Objects::PVehicle v = To<Objects::Vehicle>::Cast(item.producing);
 			helper.baseName = v->base->typeName;
@@ -577,8 +577,9 @@ namespace FileIO
 		}
 		else
 		{
-			Objects::PSatellite proto = Objects::GetSatellitePrototypeByName(helper.baseName);
+			Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(helper.baseName);
 			ASSERT1__(proto,helper.baseName);
+			ASSERT1__(proto->IsMobile(),proto->GetTypeName());
 			item.producing = To<Objects::MobileEntity>::Cast(proto->CreateNewInstance(owner,Grid::LCellIdI(0,0),0));
 		}
 		item.id = helper.id;
@@ -657,7 +658,7 @@ namespace FileIO
 
 	static void Export(Riff::Chunk*parent, Objects::MobileEntity&v, GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
 	{
-		Objects::PHangarStructure store = v.storedIn.lock();
+		Objects::PHangar store = v.storedIn.lock();
 		if (store)
 		{
 			v.location = store->ToEntity().location;
@@ -706,7 +707,7 @@ namespace FileIO
 		//stream.Append(v.hasMoved);
 		
 		parent->AppendBlock(RID::vehicle,stream.pointer(),stream.GetFillLevel());
-		if (v.IsVehicle())
+		if (v.IsPureVehicle())
 		{
 			Objects::Vehicle&veh = (Objects::Vehicle&)v;
 			Export(parent,RID::vehicleTurret,veh.turret->typeName);
@@ -1387,7 +1388,7 @@ namespace FileIO
 
 		for (const Objects::PMobileEntity&v : insertIntoHangar)
 		{
-			Objects::PHangarStructure s = To<Objects::HangarStructure>::DynamicCast(Objects::GetEntity(v->location));
+			Objects::PHangar s = To<Objects::Hangar>::DynamicCast(Objects::GetEntity(v->location));
 			ASSERT2__(s,v->GetName(),v->location.ToString());
 			s->StoreLocallyFromImport(v);
 		}

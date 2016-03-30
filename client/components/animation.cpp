@@ -73,7 +73,7 @@ namespace Animation
 			if (e->IsMobile() && e->health > 0)
 			{
 				Objects::PMobileEntity o = To<Objects::MobileEntity>::Cast(e);
-				bool surveyor = o->IsVehicle() && To<Objects::Vehicle>::Cast(o)->IsAutomatedResourceDetector();
+				bool surveyor = o->IsGroundBoundVehicle() && To<Objects::Vehicle>::Cast(o)->IsAutomatedResourceDetector();
 				bool constructor = o->GetOperationSpeed(Objects::Component::Construct) > 0;
 				if (!surveyor && !constructor)
 					return;
@@ -548,7 +548,7 @@ namespace Animation
 		#endif
 
 		bool automationChange = false;
-		if (v->IsVehicle())
+		if (v->IsGroundBoundVehicle())
 		{
 			Objects::PVehicle&veh = To<Objects::Vehicle>::Cast(v);
 			bool newAutomated = (vs.flags.value & Protocol::VehicleFlags::Automated) != 0;
@@ -556,7 +556,8 @@ namespace Animation
 			veh->isAutomated = newAutomated;
 		}
 
-		Objects::PVehicleStore storedIn;
+		Objects::PWorldEntity storeIn;
+		Objects::PHangar storeInHangar;
 		auto info = vs.myMobileEntity.Get0();
 		if (info)
 		{
@@ -642,10 +643,10 @@ namespace Animation
 			auto id = info->storedIn.Get0();
 			if (id)
 			{
-				storedIn = To<Objects::VehicleStore>::DynamicCast(Objects::GetEntity(id->value));
-				ASSERT1__(storedIn,id->value.ToString());
-
-				
+				storeIn = Objects::GetEntity(id->value);
+				storeInHangar = To<Objects::Hangar>::DynamicCast(storeIn);
+				ASSERT1__(storeIn,id->value.ToString());
+				ASSERT1__(storeInHangar,storeIn->GetName());
 			}
 
 			Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(v);
@@ -687,22 +688,25 @@ namespace Animation
 		{
 			//v->currentStorage
 		}
-		Objects::PVehicleStore currentlyStoredIn = To<Objects::VehicleStore>::DynamicCast(v->storedIn.lock());
-		if (storedIn != currentlyStoredIn)
+		Objects::PHangar currentlyStoredIn = v->storedIn.lock();
+		if (storeInHangar != currentlyStoredIn)
 		{
-			LogEvent(EventSignificance::Debug,v.get(),"StoredIn-change ("+currentlyStoredIn->GetName()+" -> "+storedIn->GetName()+")");
+			if (currentlyStoredIn)
+				LogEvent(EventSignificance::Debug,v.get(),"StoredIn-change ("+currentlyStoredIn->ToEntity().GetName()+" -> "+storeIn->GetName()+")");
+			else
+				LogEvent(EventSignificance::Debug,v.get(),"StoredIn-change ( -> "+storeIn->GetName()+")");
 			float f = 0;
 
 			Objects::PVehicle veh = To<Objects::Vehicle>::DynamicCast(v);
 			ASSERT1__(veh,v->GetName());
 
-			if (storedIn)
+			if (storeIn)
 			{
 				if (currentlyStoredIn)
 					currentlyStoredIn->Lose(veh);
 				else
 					insertIntoGridLater.Unset(v->id);
-				storedIn->StoreLocally(veh,f);
+				storeInHangar->StoreLocally(veh,f,false,storeInHangar);
 				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 
 				#ifdef HAS_WINDOW
@@ -719,7 +723,7 @@ namespace Animation
 				LogEvent(EventSignificance::Debug,v.get(),"Checked out to "+vs.entityState.location.ToString());
 				ASSERT1__(v->location == vs.entityState.location,v->GetName());
 				ASSERT1__(v->isInserted,v->GetName());
-				ASSERT1__(Objects::vehicles.Contains(v),v->GetName());
+				ASSERT1__(Objects::vehicles.Contains(v) || Objects::SubOrbital::planes.Contains(v),v->GetName());
 				v->UpdateSystem();
 				#ifdef HAS_WINDOW
 					UI::UpdateTraffic();
@@ -743,15 +747,15 @@ namespace Animation
 			}
 		#endif
 
-		if (automationChange && v->isOwnedByMe && v->IsVehicle() && To<Objects::Vehicle>::Cast(v)->IsAutomatedResourceDetector())
+		if (automationChange && v->isOwnedByMe && v->IsGroundBoundVehicle() && To<Objects::Vehicle>::Cast(v)->IsAutomatedResourceDetector())
 		{
 			UpdateAutomation(To<Objects::Vehicle>::Cast(v));
 		}
 
 		#ifdef HAS_WINDOW
-			if (storedIn != currentlyStoredIn)
+			if (storeInHangar != currentlyStoredIn)
 			{
-				Objects::VehicleStore::StaticSignalDeployment();
+				Objects::deployingMobileEntity.reset();
 				UI::HexGrid::Configure(Objects::selectedEntity);
 			}
 
@@ -1109,7 +1113,7 @@ namespace Animation
 					//MoveSensor(v->preAnimationLocation,v->location,v->turret->scanningRange);
 					v->preAnimationLocation = v->location;
 					Objects::PlaceMobileEntity(v,false);
-					if (v->IsVehicle())	//only vehicles get to be inserted anyhow
+					if (v->IsGroundBoundVehicle())	//only vehicles get to be inserted anyhow
 						insertIntoGridLater.Set(v->id);
 					if (!allocatedTarget->isOwnedByMe)
 						UI::HexGrid::RefreshContacts();
@@ -1169,11 +1173,11 @@ namespace Animation
 				{
 					ASSERT2__(v->preAnimationLocation == v->location ,v->preAnimationLocation.ToString(),v->location.ToString());
 					//#ifdef HAS_WINDOW
-					//	if (v->isOwnedByMe && v->IsVehicle())
+					//	if (v->isOwnedByMe && v->IsGroundBoundVehicle())
 					//		ASSERT1__(Grid::actualWorld.HasSensor(v->location,v->GetScanningRange()),v->id.ToString());
 					//#endif
 					v->preAnimationLocation = v->location;
-					if (v->IsVehicle())
+					if (v->IsGroundBoundVehicle())
 						Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(v),v->location);
 					insertIntoGridLater.Set(v->id);
 				}
@@ -1626,6 +1630,12 @@ namespace Animation
 			{
 				TVec3<> n,d,axis;
 				Vec::resolveBezierCurveAxis(p0,c0,c1,p1,fj,axis);
+
+				if (target->IsPlane())
+				{
+					Vec::makeNormalTo(axis,float3::Reinterpret(p).Normalized0());
+				}
+
 				Vec::normalize0(axis);
 				axis = -axis;
 
@@ -1794,7 +1804,7 @@ namespace Animation
 							float t = 0.f;
 							v->MoveSensory(v->preAnimationLocation,v->location,t);
 						}
-						if (v->IsVehicle())
+						if (v->IsGroundBoundVehicle())
 							Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(v),v->location);
 					}
 				});

@@ -8,6 +8,7 @@
 #include "structure.h"
 #include "vehicle.h"
 #include "satellite.h"
+#include "subOrbital.h"
 #include "faction.h"
 #include "../../client/components/progressBar.h"
 #include "visualChoices.h"
@@ -673,6 +674,12 @@ namespace Objects
 		Renderer::RenderComponent(system, 0.f, *s.turret, s.turretAngleX, s.turretAngleY);
 	}
 
+	static void _RenderSimpleLocated(SubOrbital::Plane&p, const TMatrix4<>&system)
+	{
+		display.Render(*p.baseRenderingInstruction, true);
+		Renderer::RenderComponent(system, 0.f, *p.turret, p.turretAngleX, p.turretAngleY);
+	}
+
 	static void _RenderSimpleLocated(Vehicle&v, const TMatrix4<>&system)
 	{
 		Renderer::RenderComponent(system,0,*v.base,0,0);
@@ -692,7 +699,12 @@ namespace Objects
 			_RenderSimpleLocated((Satellite&)e,system);
 			return;
 		}
-		if (e.IsVehicle())
+		if (e.IsPlane())
+		{
+			_RenderSimpleLocated((SubOrbital::Plane&)e,system);
+			return;
+		}
+		if (e.IsPureVehicle())
 		{
 			_RenderSimpleLocated((Vehicle&)e,system);
 			return;
@@ -824,6 +836,33 @@ namespace Objects
 		_RenderSimpleLocated(s,s.system);
 	}
 
+	void	Renderer::Render(SubOrbital::Plane&s, float light)
+	{
+		display.SetObjectMatrix(s.system);
+		{
+			TVec3<> color;
+			Vec::interpolate(s.owner->inactiveEntityColor,s.owner->activeEntityColor,s.GetActivityLevel(),color);
+			{
+				if (s.unstable)
+				{
+					keyColor.Update(float4(flip ? float3() : color,light));
+						
+					if (!flip)
+					{
+
+						//WorkingStructure*ws = static_cast<WorkingStructure*>(&s);
+						if (s.AwaitsUserInteraction())
+						{
+							display.Render(userInteractionNotifier,true);
+						}
+					}
+				}
+				else
+					keyColor.Update(float4(color,light));
+			}
+		}
+		_RenderSimpleLocated(s,s.system);
+	}
 
 	void	Renderer::Render(Structure&s, float light)
 	{
@@ -871,10 +910,11 @@ namespace Objects
 
 	void	Renderer::RenderComponent(TMatrix4<> system, float h, const Component::Base&comp, float x, float y)
 	{
-		system.w.xyz += system.z.xyz * h;
 		TMatrix4<> sub;
 		if (comp.parts.Count() > 0)
 		{
+			system.w.xyz += system.z.xyz * h;
+
 			comp.GetSubSystem(0,x,sub);
 			Mat::transformSystem(system,sub);
 			system = sub;
@@ -1109,7 +1149,25 @@ namespace Objects
 				ApplyBaseTint(*v,baseTint);
 			}
 		}
+		foreach(SubOrbital::planes, _v)
+		{
+			const SubOrbital::PPlane&v = *_v;
+			const float light = GetLowLighting(v->location);
 
+			bool isBuilding = v->IsBuilding();
+			if (isBuilding)
+			{
+				display.SetObjectMatrix(v->system);
+				keyColor.Update(float4(v->owner->activeEntityColor,light));
+				display.Render(cordon,true);
+			}
+			if (v != selectedEntity)
+			{
+				ApplyStateTint(*v,baseTint,false);
+				Renderer::Render(*v,light);
+				ApplyBaseTint(*v,baseTint);
+			}
+		}
 
 		if (Marker::visitedSystems.IsNotEmpty())
 		{
@@ -1176,15 +1234,19 @@ namespace Objects
 				Renderer::Render(*struc);
 			}
 			else
-				if (selectedVehicle)
-					Renderer::Render(*selectedVehicle,GetLowLighting(selectedEntity->location));
-				else
-					if (selectedMobileEntity && selectedMobileEntity->IsSatellite())
-					{
+				if (selectedMobileEntity)
+				{
+					if (selectedMobileEntity->IsPlane())
+						Renderer::Render(*To<SubOrbital::Plane>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
+					elif (selectedVehicle)
+						Renderer::Render(*selectedVehicle,GetLowLighting(selectedEntity->location));
+					elif (selectedMobileEntity->IsSatellite())
 						Renderer::Render(*To<Satellite>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
-					}
 					else
 						FATAL__("Can't render this: "+selectedEntity->GetName());
+				}
+				else
+					FATAL__("Can't render this: "+selectedEntity->GetName());
 
 			if (GatheringPoint::selected != Grid::LCellIdI::Invalid)
 			{
@@ -1459,19 +1521,25 @@ namespace Objects
 		foreach(Marker::mobileGhosts, _v)
 		{
 			const PMobileEntity&m = *_v;
-			if (m->IsVehicle())
+			if (m->IsPlane())
 			{
-				PVehicle v = To<Vehicle>::Cast(m);
-				Renderer::RenderSimple(*v);
+				SubOrbital::PPlane s = To<SubOrbital::Plane>::Cast(m);
+				Renderer::RenderSimple(*s);
 			}
 			else
-				if (m->IsSatellite())
+				if (m->IsPureVehicle())
 				{
-					PSatellite s = To<Satellite>::Cast(m);
-					Renderer::RenderSimple(*s);
+					PVehicle v = To<Vehicle>::Cast(m);
+					Renderer::RenderSimple(*v);
 				}
 				else
-					FATAL__("Unsupported ghost type "+m->GetTypeName());
+					if (m->IsSatellite())
+					{
+						PSatellite s = To<Satellite>::Cast(m);
+						Renderer::RenderSimple(*s);
+					}
+					else
+						FATAL__("Unsupported ghost type "+m->GetTypeName());
 		}
 		foreach(Marker::structureGhosts, _s)
 		{
@@ -1487,19 +1555,25 @@ namespace Objects
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
 				overallTint.Update(float4(1, 0, 0, 1));
-			if (m->IsVehicle())
+			if (m->IsPlane())
 			{
-				PVehicle v = To<Vehicle>::Cast(m);
-				Renderer::RenderSimple(*v);
+				SubOrbital::PPlane s = To<SubOrbital::Plane>::Cast(m);
+				Renderer::RenderSimple(*s);
 			}
 			else
-				if (m->IsSatellite())
+				if (m->IsPureVehicle())
 				{
-					PSatellite s = To<Satellite>::Cast(m);
-					Renderer::RenderSimple(*s);
+					PVehicle v = To<Vehicle>::Cast(m);
+					Renderer::RenderSimple(*v);
 				}
 				else
-					FATAL__("Unsupported ghost type "+m->GetTypeName());
+					if (m->IsSatellite())
+					{
+						PSatellite s = To<Satellite>::Cast(m);
+						Renderer::RenderSimple(*s);
+					}
+					else
+						FATAL__("Unsupported ghost type "+m->GetTypeName());
 		}
 		foreach(Marker::structureGhosts, _s)
 		{
@@ -2207,41 +2281,24 @@ namespace Objects
 		#endif
 	}
 
-	void	Renderer::RenderTranslucentBeams()
+	namespace Renderer
 	{
-	/*	if (!objectView)
-			return;
-	*/	
-
-		display.SetRasterizer(true,false);	//some shafts are flipped, but culling makes no sense anyways
-		display.SetDepthTest(true,false);
-		display.SetBlendMode(Engine::BlendMode::Add);
-
-		foreach (satellites,_s)
+		void RenderFlyingUnitBeams(const Objects::PMobileEntity&e)
 		{
-			const PSatellite&sat = *_s;
-			TVec3<> color;
-			if (sat->isOwnedByMe)
-			{
-				color= float3(0.5,0.6,1.0);
-			}
-			else
-			{
-				color= float3(1.0,0.6,0.5);
-			}
+			TVec3<> color = e->owner ? e->owner->activeEntityColor : float3();
 			SetBeamColor(float4(color,0.25),
 						float4(color,0.25));
 			const float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
 			{
 				//display.SetBlendMode(Engine::BlendMode::Add);
-				RenderBeam(sat->GetWorldPosition(),-(Grid::ToRadius(sat->location.height) 
+				RenderBeam(e->GetWorldPosition(),-(Grid::ToRadius(e->location.height) 
 								- bottom) /
 								Grid::SingleLayerHeight,
 								0.1f
 								);
 			}
 			bool first = true;
-			for (const auto&t : sat->myTasks)
+			for (const auto&t : e->myTasks)
 			{
 				if (t.ContainsMovement())
 				{
@@ -2259,11 +2316,27 @@ namespace Objects
 										Grid::SingleLayerHeight,
 										0.05f);
 					}
-
 				}
 			}
 		}
+	}
 
+	void	Renderer::RenderTranslucentBeams()
+	{
+	/*	if (!objectView)
+			return;
+	*/	
+
+		display.SetRasterizer(true,false);	//some shafts are flipped, but culling makes no sense anyways
+		display.SetDepthTest(true,false);
+		display.SetBlendMode(Engine::BlendMode::Add);
+		
+		foreach (satellites,_s)
+			RenderFlyingUnitBeams(*_s);
+		foreach (SubOrbital::planes,_p)
+			RenderFlyingUnitBeams(*_p);
+
+		
 		bool nexusSet[12] = {false};
 
 		foreach(skyLinks, _s)
@@ -2396,14 +2469,15 @@ namespace Objects
 		
 	static void _RenderShadowS(TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y)
 	{
-		system.w.xyz += system.z.xyz * h;
 		TMatrix4<> sub;
-		system.x.xyz *= scale;
-		system.y.xyz *= scale;
-		system.z.xyz *= scale;
 
 		if (comp.parts.Count() > 0)
 		{
+			system.w.xyz += system.z.xyz * h;
+			system.x.xyz *= scale;
+			system.y.xyz *= scale;
+			system.z.xyz *= scale;
+
 			comp.GetSubSystem(0,x,sub);
 			Mat::transformSystem(system,sub);
 			system = sub;
@@ -2431,6 +2505,16 @@ namespace Objects
 		_RenderShadow(v.system,v.base->height,*v.turret,v.turretAngleX,v.turretAngleY);
 	}
 	static void _RenderShadow(const Satellite&s)
+	{
+		display.SetObjectMatrix(s.system);
+		if (s.IsBuilding())
+		{
+			_RenderShadow(cordon);	//not sure if a cordon is appropriate here, but whatever
+		}
+		_RenderShadow(*s.baseRenderingInstruction);	
+		_RenderShadow(s.system,0.f,*s.turret,s.turretAngleX,s.turretAngleY);
+	}
+	static void _RenderShadow(const SubOrbital::Plane&s)
 	{
 		display.SetObjectMatrix(s.system);
 		if (s.IsBuilding())
@@ -2504,6 +2588,8 @@ namespace Objects
 					_RenderShadow(**v);
 				}
 				foreach (satellites, s)
+					_RenderShadow(**s);
+				foreach (SubOrbital::planes, s)
 					_RenderShadow(**s);
 				display.SetObjectMatrix(Matrix<>::eye4);
 

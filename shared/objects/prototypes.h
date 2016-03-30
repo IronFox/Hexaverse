@@ -32,6 +32,14 @@ namespace Objects
 
 	PWorldEntity	GetNonVehiclePrototypeByName(ConstName typeName);
 	PWorldEntity	GetNonVehiclePrototypeByName(const String&typeName);
+
+	namespace SubOrbital
+	{
+		extern Buffer0<PPlane>	prototypes;
+		PPlane		GetPrototypeByName(ConstName structureTypeName);
+		PPlane		GetPrototypeByName(const String&structureTypeName);
+	}
+
 	namespace Component
 	{
 		VehicleBase*	GetVehicleBaseByName(ConstName name);

@@ -278,7 +278,7 @@ namespace Objects
 		#endif
 		Queue<Task,Swap>		myTasks;
 
-		WHangarStructure		storedIn;
+		WHangar					storedIn;
 
 		#ifndef ONE_COMPOUND_PER_FACTION
 			ResourceVector		currentStorage;

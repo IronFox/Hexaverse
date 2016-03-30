@@ -126,6 +126,14 @@ namespace Objects
 		class Turret : public Base
 		{
 		public:
+			enum class MountType
+			{
+				Vehicle,
+				Satellite,
+				Plane,
+			};
+
+
 			ConstName						constTowerName;
 
 			float							healthMultiplier = 1.f;
@@ -146,8 +154,9 @@ namespace Objects
 											detectsResources = false,
 											continuousRotation = false,	//indicates that the turret should rotate continuously, regardless of server turret rotation commands
 											requiresStationaryVehicle = false,	//cannot fire if vehicle moved last round
-											isSatelliteRing = false,
 											isDoomsday = false;	//server may reject their deployment
+
+			MountType						mountType = MountType::Vehicle;
 
 			float							explosionRadius = 0.f;
 			TrajectoryType					trajectoryType;
@@ -481,6 +490,12 @@ namespace Objects
 						radar,resourceScanner,
 						protonCannon,skyHubTurret,ragnarok,starPort;
 
+		namespace SubOrbital
+		{
+			extern Turret		raptor,cargoPlane,sensorDrone;
+			extern VehicleBase	planeBase;
+		}
+
 	
 		namespace Artillery
 		{
@@ -555,6 +570,36 @@ namespace Objects
 
 
 
+		namespace SubOrbital
+		{
+			#ifdef HAS_WINDOW
+			namespace Cmd
+			{
+				void	Land();
+				void	TakeOff();
+			}
+			#endif
+
+			namespace Raptor
+			{
+				void	Configure(Turret&);
+			}
+
+			namespace CargoPlane
+			{
+				void	Configure(Turret&);
+			}
+
+			namespace SensorDrone
+			{
+				void	Configure(Turret&);
+			}
+
+			namespace Base
+			{
+				void	Configure(VehicleBase&);
+			}
+		}
 
 	
 

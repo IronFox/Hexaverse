@@ -710,7 +710,7 @@
 				{
 					significance *= 3.f;
 				}
-				if (e->IsVehicle())
+				if (e->IsGroundBoundVehicle())
 					significance *= 10.f;
 				if (e->health <= 0)
 				{
@@ -855,7 +855,7 @@
 				proto->DescribeType(outResult,Objects::WorldEntity::DescIncludePrice /*| Objects::WorldEntity::DescIncludeUnitCount*/);
 				proto->owner = old;
 
-				//if (e->IsVehicle())
+				//if (e->IsGroundBoundVehicle())
 				//{
 				//	VehicleFocusCommand vcommand(gridCoords,To<Objects::Vehicle>::Cast(e));
 				//	vcommand.CompileLabel(outResult);
@@ -1991,7 +1991,7 @@
 
 				//if (!v->storedIn.expired())
 					//textout << " Stored in: "<<v->storedIn.lock()->GetName()<<nl;	//probably never happens
-				if (e.IsVehicle())
+				if (e.IsGroundBoundVehicle())
 				{
 					const Objects::Vehicle*veh = (const Objects::Vehicle*)(&e);
 					textout << " Turret-Overweight: "<<std::max(0,veh->turret->weight - veh->base->carryingCapacity) << nl;
@@ -2142,9 +2142,9 @@
 
 						{
 							const Objects::VehicleStore *other = st;
-							for (const auto&v : other->localStore)
+							for (const auto&v : other->stored)
 							{
-								Objects::PVehicle v1 = v.vehicle.lock();
+								Objects::PMobileEntity v1 = v.entity.lock();
 								ASSERT1__(v1,st->ToEntity().id.ToString());
 								if (++cnt > 10)
 								{
@@ -2162,9 +2162,9 @@
 							Objects::PVehicleStore other = _s.lock();
 							if (other.get() == st)
 								continue;
-							for (const auto&v : other->localStore)
+							for (const auto&v : other->stored)
 							{
-								Objects::PVehicle v1 = v.vehicle.lock();
+								Objects::PMobileEntity v1 = v.entity.lock();
 								ASSERT1__(v1,st->ToEntity().id.ToString());
 								if (++cnt > 10)
 								{
@@ -2180,10 +2180,10 @@
 					}
 					else
 					{
-						textout << " Vehicles stored ("<<st->localStore.Count()<<"/"<<Objects::VehicleStore::MaxVehiclesPerStore<<"):"<<nl;
-						for (const auto&v : st->localStore)
+						textout << " Vehicles stored ("<<st->stored.Count()<<"/"<<Objects::VehicleStore::MaxVehiclesPerStore<<"):"<<nl;
+						for (const auto&v : st->stored)
 						{
-							Objects::PVehicle v1 = v.vehicle.lock();
+							Objects::PMobileEntity v1 = v.entity.lock();
 							ASSERT1__(v1,st->ToEntity().id.ToString());
 							textout << "  "<<v1->GetNiceName() << nl;
 						}

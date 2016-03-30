@@ -708,23 +708,11 @@ namespace Receiver
 		}
 
 		{
-			if (e->IsVehicle())
+			if (e->IsHibernating())
 			{
-				if (To<Objects::Vehicle>::Cast(e)->IsHibernating())
-				{
-					LogEvent(EventClass::Preset::commandRejected,peer,e,"No reaction. Vehicle is hibernating.");
-					return Objects::PWorldEntity();
-				}
+				LogEvent(EventClass::Preset::commandRejected,peer,e,"No reaction. Entity is hibernating.");
+				return Objects::PWorldEntity();
 			}
-			else
-				if (e->IsWorkingStructure())
-				{
-					if (To<Objects::WorkingStructure>::Cast(e)->IsHibernating())
-					{
-						LogEvent(EventClass::Preset::commandRejected,peer,e,"No reaction. Structure is hibernating.");
-						return Objects::PWorldEntity();
-					}
-				}
 		}
 
 
@@ -1237,7 +1225,7 @@ namespace Receiver
 			return;
 
 
-		if (!Grid::ValidCell(ch.target, Objects::Satellite::BaseResidenceHeight, Objects::Satellite::DeclinedResidenceHeight))
+		if (!Grid::ValidCell(ch.target, Objects::SubOrbital::Height, Objects::Satellite::BaseResidenceHeight, Objects::Satellite::DeclinedResidenceHeight))
 		{
 			LogEvent(EventClass::Preset::commandRejected,peer,e,"Parameter fault");
 			return;
@@ -1254,8 +1242,8 @@ namespace Receiver
 			ASSERT1__(deployingWhat,deploying->value.ToString());
 		}
 
-		if (To<Objects::VehicleStore>::DynamicCast(e))
-			ASSERT_NOT_NULL__(deploying);
+		if (To<Objects::Hangar>::DynamicCast(e))
+			ASSERT_NOT_NULL1__(deploying,e->GetName());
 
 		Journal::currentRound.RegisterChoiceIntersection(true,e,ch.target,(Objects::Vehicle::mode_t)ch.mode.value,deployingWhat);
 
@@ -1357,7 +1345,7 @@ namespace Receiver
 		if (!e)
 			return;
 		foreach (cmd.path,n)
-			if (!Grid::ValidCell(*n, Objects::Satellite::BaseResidenceHeight,Objects::Satellite::DeclinedResidenceHeight))
+			if (!Grid::ValidCell(*n, Objects::SubOrbital::Height, Objects::Satellite::BaseResidenceHeight,Objects::Satellite::DeclinedResidenceHeight))
 			{
 				LogEvent(EventClass::Preset::commandRejected, peer, e, "Parameter fault ("+n->ToString()+")");
 				return;

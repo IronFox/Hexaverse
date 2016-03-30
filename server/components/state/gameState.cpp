@@ -176,7 +176,7 @@ namespace Game
 
 		void	Describe(Protocol::ProductionTask&task, const Objects::MobileEntityProducer::WorkItem&element)
 		{
-			if (element.producing->IsVehicle())
+			if (element.producing->IsPureVehicle())
 			{
 				Objects::PVehicle v = To<Objects::Vehicle>::Cast(element.producing);
 				task.parameters.SetSize(2);
@@ -275,7 +275,7 @@ namespace Game
 			if (owned)
 			{
 				auto&info = state.myMobileEntity.Set0();
-				Objects::PHangarStructure h = v.storedIn.lock();
+				Objects::PHangar h = v.storedIn.lock();
 				//Objects::PVehicleStore storedIn = To<Objects::VehicleStore>::DynamicCast(v.storedIn.lock());
 				if (h)
 					info.storedIn.Set0() = h->ToEntity().id;
@@ -339,7 +339,7 @@ namespace Game
 
 		void	Describe(Protocol::NewMobileEntity&cnst, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
 		{
-			if (v.IsVehicle())
+			if (v.IsPureVehicle())
 			{
 				const Objects::Vehicle&veh = (const Objects::Vehicle&)v;
 				cnst.baseName = veh.base->constName;
@@ -655,7 +655,7 @@ namespace Game
 					{
 						if (item.wasHibernating != item.hibernating)
 						{
-							if (item.target->IsVehicle())
+							if (item.target->IsGroundBoundVehicle())
 							{
 								To<Objects::Vehicle>::Cast(item.target)->Hibernate(item.hibernating,0);
 							}

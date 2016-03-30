@@ -158,8 +158,8 @@ namespace Objects
 		/*virtual override*/ BaseJob::continue_t	DigHorizontal::Finish(MobileEntity&v, const Grid::LCellIdI&focus)
 		{			
 			Grid::actualWorld.Clear(focus,v.motionTime);
-			if (v.IsVehicle() && ((Vehicle&)v).base->requirements == Component::VehicleBase::Requirement::Water)
-					Grid::actualWorld.Overwrite(focus-1,Grid::Content::Water,v.motionTime);
+			if (v.IsGroundBoundVehicle() && ((Vehicle&)v).base->requirements == Component::VehicleBase::Requirement::Water)
+				Grid::actualWorld.Overwrite(focus-1,Grid::Content::Water,v.motionTime);
 			SignalClusterAndNeighborsChange(focus,v.motionTime);
 			if (Grid::actualWorld.LowCellIsClear(focus))
 			{
@@ -1429,13 +1429,13 @@ namespace Objects
 		{
 			const Grid::WorldData&world = v.owner->currentState;
 //			Grid::LCellIdI destination = _destination;
-			if (v.IsVehicle())
+			if (v.IsGroundBoundVehicle())
 			{
 				while (!world.LowCellIsClearIgnoreStructure(destination))
 					destination++;
 				//if (mode == CursorMode::BuildBridgeMode
 				//	&&
-				//	v.IsVehicle()
+				//	v.IsGroundBoundVehicle()
 				//	&& !((Vehicle&)v).CanStandOn(world,destination-1,false,true))
 				//		destination++;
 				if (mode != CursorMode::BuildBridgeMode)
@@ -1458,7 +1458,7 @@ namespace Objects
 					destination.height = origin.height;
 
 
-				if (v.IsVehicle())
+				if (v.IsGroundBoundVehicle())
 				{
 					if (!AppendShortestConstructionPath((const Vehicle*)&v,
 														this->mode == CursorMode::BuildRoadChainMode || this->mode == CursorMode::BuildBridgeMode,
@@ -1482,7 +1482,7 @@ namespace Objects
 		{
 			const Grid::WorldData&world = v.owner->currentState;
 			Grid::LCellIdI destination = _destination;
-			if (v.IsVehicle())
+			if (v.IsGroundBoundVehicle())
 			{
 				while (!world.LowCellIsClear(destination))
 					destination++;
@@ -1508,7 +1508,7 @@ namespace Objects
 				while (!world.LowCellIsClearIgnoreStructure(destination))
 					destination++;
 			else
-				if (v.IsVehicle() && !((Vehicle&)v).CanStandOn(world,destination,false,true))
+				if (v.IsGroundBoundVehicle() && !((Vehicle&)v).CanStandOn(world,destination,false,true))
 					destination++;
 			while (world.LowCellIsClear(destination-1))
 				destination--;

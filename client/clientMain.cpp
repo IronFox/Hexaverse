@@ -261,17 +261,20 @@ bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 		bool tooLong;
 		bool foundPath;
 
-		if (v->IsVehicle())
+		if (v->IsPlane())
 		{
+			//if (prev.stackID == target.stackID)
+			foundPath = true;
+			tooLong = false;
+			//Objects::SubOrbital::AppendShortestPathI((const Objects::SubOrbital::Plane*)v.get(),prev,target.stackID,path,false,&tooLong);
+		}
+		else if (v->IsGroundBoundVehicle())
 			foundPath = Objects::AppendShortestPathI((const Objects::Vehicle*)v.get(),prev,target,path,false,&tooLong);
-		}
+		else if (v->IsSatellite())
+			foundPath = Objects::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
 		else
-		{
-			if (v->IsSatellite())
-				foundPath = Objects::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
-			else
-				FATAL__("Routing not implemented for "+v->GetTypeName());
-		}
+			FATAL__("Routing not implemented for "+v->GetTypeName());
+		
 		if (!foundPath)
 		{
 			if (!Grid::actualWorld.LowCellIsClearIgnoreStructure(target) && target.height+1 <= Grid::CellStack::TopHeight)
@@ -319,9 +322,24 @@ bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targ
 		return false;
 	DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
 	const bool moveTo = mode == Objects::CursorMode::Idle && !leftClick;
-	if (moveTo && v->IsSatellite())
-		foreach (targets,t)
-			ASSERT_EQUAL__(t->height,v->location.height);
+	if (moveTo)
+	{
+		if (v->IsSatellite())
+		{
+			foreach (targets,t)
+				ASSERT_EQUAL__(t->height,v->location.height);
+		}
+		else
+		if (v->IsPlane())
+		{
+			if (targets.Count() != 1 || targets.First().stackID != To<Objects::SubOrbital::Plane>::Cast(v)->GetLastPointOfOrigin().stackID)
+			{
+				foreach (targets,t)
+					ASSERT_EQUAL__(t->height,Objects::SubOrbital::Height);
+			}
+		}
+	}
+
 
 
 	if (v->IsMobile() && moveTo)
@@ -971,14 +989,14 @@ void FillMarker(Protocol::Marker&marker, const Objects::PWorldEntity&e, Protocol
 	marker.location = e->location;
 	outE.id = e->id;
 	outE.owner = e->owner->id;
-	Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(e);
-	if (!v)
+	if (!e->IsPureVehicle())
 	{
 		outE.type0 = e->GetCTypeName();
 		outE.type1 = ConstName::Empty;
 	}
 	else
 	{
+		Objects::PVehicle v = To<Objects::Vehicle>::Cast(e);
 		outE.type0 = v->base->constName;
 		outE.type1 = v->turret->constName;
 	}
@@ -1024,6 +1042,7 @@ void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 		marker.id.value.Generate();
 		FillMarker(marker, e, marker.data.Set0());
 		SignalMarkerCreation(marker);
+		LogEvent(EventSignificance::Debug,e.get(),"Created friendly loss marker for "+e->GetName());
 	}
 	else
 		if (t == Objects::RemovalType::Vanished && !e->isOwnedByMe)
@@ -1138,7 +1157,12 @@ void	OnAppear(const Objects::PWorldEntity&e)
 					Camera::TargetSkyOrbit();
 				}
 				else
-					Camera::TargetGroundOrbit();
+					if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsPlane())
+					{
+					//	Camera::TargetSubOrbit();
+					}
+					else
+						Camera::TargetGroundOrbit();
 
 			}
 		}
@@ -1427,6 +1451,19 @@ bool loop()
 		DebugCheckCamera();
 		Explosions::Update(Engine::timing.delta);
 
+		for (const auto&plane : Objects::SubOrbital::planes)
+		{
+			auto&s = *plane;
+			if (s.IsGroundBoundVehicle())
+				continue;
+
+			TVec3<> at = Grid::ToWorld(s.location);
+			double offset = (((UINT32)s.id.bytes[1]<<16) | ((UINT32)s.id.bytes[2]<<8) | ((UINT32)s.id.bytes[3]));
+			at.x += (sin(offset + Engine::timing.now))*0.025f;
+			at.y += (sin(offset + Engine::timing.now*1.2784))*0.025f;
+			at.z += (sin(offset + Engine::timing.now*1.43485))*0.025f;
+			s.system.w.xyz = at;
+		}
 
 		if (!Engine::mouse.buttons.pressed)		
 		{
@@ -1679,6 +1716,8 @@ bool loop()
 				//Grid::low.RenderGrid(Grid::ToRadius(Objects::Satellite::BaseResidenceHeight));
 
 			}
+			if (Camera::SubOrbitalGridIsVisible())
+				Grid::visibleSubOrbitGrid.Render(frustum);
 
 			Objects::Renderer::RenderTranslucent();
 
@@ -2050,6 +2089,15 @@ void MyFatal(const FatalDescriptor&descriptor)
 				}
 			}
 
+			if (Camera::SubOrbitalGridIsVisible())
+			{
+				index_t stackID = Grid::low.TestGridIntersection(b, d, Grid::visibleSubOrbitGrid.orbit, distance);
+				if (stackID != InvalidIndex && Vec::dot(Grid::low.cells[stackID].centerVertex.xyz,d) < 0.f)
+				{
+					result = Grid::LCellIdI((UINT32)stackID,Objects::SubOrbital::Height);
+					return true;
+				}
+			}
 			{
 				TVec3<> normal;
 				if (Grid::high.TestHullIntersection(b, d, distance, normal, includeWater))
@@ -2112,6 +2160,8 @@ void MyFatal(const FatalDescriptor&descriptor)
 			{
 				if (Objects::selectedEntity->IsSatellite())
 					target.height = Objects::selectedMobileEntity->location.height;
+				else if (Objects::selectedEntity->IsPlane() && Objects::activeCursorMode != Objects::CursorMode::AttackMode)
+					target.height = Objects::SubOrbital::Height;
 
 				if (Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode)
 				{
@@ -2686,7 +2736,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 						float distance = std::numeric_limits<float>::max();
 
 						Objects::PWorldEntity possibleTarget = Objects::GetRayIntersection(b,d,distance);
-						if (possibleTarget && !possibleTarget->isOwnedByMe)
+						if (possibleTarget && !possibleTarget->isOwnedByMe && Objects::selectedEntity->CanHit(possibleTarget->location))
 						{
 							DirectTo(Objects::selectedEntity,possibleTarget->location,false,true, Objects::CursorMode::AttackMode);
 							return;
@@ -2731,6 +2781,9 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 					//Grid::LCellIdI	target((UINT32)cellID,Grid::FromRadius(height));
 					if (Objects::selectedMobileEntity->IsSatellite())
 						target.height = Objects::selectedMobileEntity->location.height;
+					else
+					if (Objects::selectedMobileEntity->IsPlane())
+						target.height = Objects::SubOrbital::Height;
 					DirectTo(Objects::selectedMobileEntity,target,false,false);
 				}
 			}
@@ -2888,7 +2941,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			if (v->CanAttack() && v->HasAmmoForShot() && v->CountPossibleAttacks())	//check that its turret can attack, there's ammo for the shot, and it has any shots left this round
 			{
 				bool emp = v->turret->dealsEMPDamage;
-				if (v->IsVehicle())
+				if (v->IsGroundBoundVehicle())
 				{
 					for (auto other : Objects::vehicles)
 						if (!emp || !other->empDamageLevel)
@@ -2905,6 +2958,22 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 						for (auto other : Objects::satellites)
 							if (!other->isOwnedByMe && v->CanHit(other->location))
 								if (!emp || !other->empDamageLevel)
+									return true;
+					}
+					else
+					if (v->IsPlane())
+					{
+						for (auto other : Objects::SubOrbital::planes)
+							if (!other->isOwnedByMe && v->CanHit(other->location))
+								if (!emp || !other->empDamageLevel)
+									return true;
+						for (auto other : Objects::vehicles)
+							if (!emp || !other->empDamageLevel)
+								if (!other->isOwnedByMe && v->CanHit(other->location))
+									return true;
+						for (auto other : Objects::structures)
+							if (!emp || !other->empDamageLevel)
+								if (!other->isOwnedByMe && v->CanHit(other->location))
 									return true;
 					}
 					else
@@ -3046,6 +3115,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		return
 			Objects::vehicles.Count() 
 			+ Objects::satellites.Count() 
+			+ Objects::SubOrbital::planes.Count() 
 			+ Objects::structures.Count();
 	}
 
@@ -3054,6 +3124,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		Objects::PWorldEntity rs;
 		GetIterateableEntity(rs,i,Objects::vehicles);
 		GetIterateableEntity(rs,i,Objects::satellites);
+		GetIterateableEntity(rs,i,Objects::SubOrbital::planes);
 		GetIterateableEntity(rs,i,Objects::structures);
 		return rs;
 	}
@@ -3063,6 +3134,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		index_t rs = InvalidIndex, offset=0;
 		FindIterateableEntity(offset,rs,e,Objects::vehicles);
 		FindIterateableEntity(offset,rs,e,Objects::satellites);
+		FindIterateableEntity(offset,rs,e,Objects::SubOrbital::planes);
 		FindIterateableEntity(offset,rs,e,Objects::structures);
 		return rs;
 

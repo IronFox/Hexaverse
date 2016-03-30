@@ -31,8 +31,8 @@ namespace Camera
 		float3							targetDirection;			//!< Target camera direction (of the focus position from planet core)
 		float							cameraSpeed = 0;			//!< Direction animation camera speed. Starts off at 0 and accelerates as animation progresses
 		bool							moveToTarget = false;		//!< Set true to animate scene camera to given target. Does not affect @a orbit / @a targetOrbit
-		bool							skyGrid = false;
-		bool							skyOrbitBase = false;
+		bool							skyGrid = false,subOrbitGrid = false;
+		//bool							skyOrbitBase = false;
 		float							orbitBaseFactor = 1.f;
 	}
 
@@ -46,13 +46,18 @@ namespace Camera
 		sunDirection.Normalize0();
 	}
 
+	void						TargetSubOrbit()
+	{
+		skyGrid = false;
+		subOrbitGrid = true;
+	}
 
 	void						TargetSkyOrbit()
 	{
-		skyGrid = true;
-		if (skyOrbitBase)
+		subOrbitGrid = false;
+		if (skyGrid)
 			return;
-		skyOrbitBase = true;
+		skyGrid = true;
 		return;
 
 		groundTargetOrbit = targetOrbit;
@@ -92,10 +97,10 @@ namespace Camera
 
 	void						TargetGroundOrbit()
 	{
-		skyGrid = false;
-		if (!skyOrbitBase)
+		subOrbitGrid = false;
+		if (!skyGrid)
 			return;
-		skyOrbitBase = false;
+		skyGrid = false;
 		return;
 		targetOrbit = groundTargetOrbit;
 		orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
@@ -103,11 +108,12 @@ namespace Camera
 
 	void						ToggleOrbit()
 	{
-		if (skyOrbitBase)
+		if (subOrbitGrid)
+			TargetSkyOrbit();
+		elif (skyGrid)
 			TargetGroundOrbit();
 		else
-			TargetSkyOrbit();
-
+			TargetSubOrbit();
 	}
 
 	bool						SkyGridIsVisible()
@@ -115,13 +121,16 @@ namespace Camera
 		return skyGrid;
 	}
 
-
+	bool						SubOrbitalGridIsVisible()
+	{
+		return subOrbitGrid;
+	}
 
 
 
 	void						TargetOrbit(float _targetOrbit)
 	{
-		if (skyOrbitBase)
+		if (skyGrid)
 			groundTargetOrbit = _targetOrbit;
 		else
 		{
@@ -190,8 +199,8 @@ namespace Camera
 		orbitBaseFactor = 1.f;
 
 		moveToTarget = false;
-		skyOrbitBase = false;
 		skyGrid = false;
+		subOrbitGrid = false;
 
 		scene.retraction = float3(0,0,-4 * WorldScale);
 		scene.location = float3(0, orbit, 0);

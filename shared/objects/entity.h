@@ -185,6 +185,19 @@ namespace Objects
 			#endif
 		}
 
+		inline void					SyncTime(WorldEntity&other, float&remoteTime, float timeOffset)
+		{
+			#ifndef CLIENT
+				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime)) + timeOffset;
+			#endif
+		}
+		inline void					SyncTime(WorldEntity&other, float&remoteTime)
+		{
+			#ifndef CLIENT
+				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime));
+			#endif
+		}
+
 
 
 		virtual						~WorldEntity();
@@ -394,8 +407,20 @@ namespace Objects
 		virtual bool				IsWorkingStructure() const {return false;}
 		virtual bool				IsMobile() const {return false;}
 		virtual bool				IsTower() const {return false;}
+		/**
+		Checks whether the local type is a derivative of the Vehicle class, and currently part of the regular world grid (a landed plane would be such, an airborne one not)
+		*/
+		virtual bool				IsGroundBoundVehicle() const {return false;}
+		/**
+		Checks whether the local type is of the Vehicle class, and not any derivatives
+		*/
+		virtual bool				IsPureVehicle() const {return false;}
+		/**
+		Checks whether the local type is of the Vehicle class or any derivative
+		*/
 		virtual bool				IsVehicle() const {return false;}
 		virtual bool				IsSatellite() const {return false;}
+		virtual bool				IsPlane() const {return false;}
 		virtual bool				IsStructure() const {return false;}
 		//virtual bool				IsVehiclePlant() const {return false;}
 		//these are performance optimizations. Some visualizations may behave unexpectedly if they are not
@@ -404,6 +429,14 @@ namespace Objects
 		//http://stackoverflow.com/questions/9959315/why-virtual-function-call-is-faster-than-dynamic-cast
 		virtual const MobileEntityProducer*	CastToProducer() const {return nullptr;}
 
+
+		/**
+		Casts the local entity to an appropriate hangar structure if it can store the given mobile entity @a e
+		If storage is not possible due to type constraints (NOT capacity constraints), the return value must be
+		empty.
+		*/
+		virtual PHangar				CastToDestinationForType(const MobileEntity&e) {return PHangar();}
+		virtual bool				IsHangar() const {return false;}
 
 		virtual bool				IsIndestructible() const	{return false;};
 

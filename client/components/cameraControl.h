@@ -99,6 +99,10 @@ namespace Camera
 	*/
 	void						TargetSkyOrbit();
 	/**
+	Switches to sub-orbital plane orbit
+	*/
+	void						TargetSubOrbit();
+	/**
 	Switches to ground orbit
 	*/
 	void						TargetGroundOrbit();
@@ -108,6 +112,7 @@ namespace Camera
 	void						ToggleOrbit();
 
 	bool						SkyGridIsVisible();
+	bool						SubOrbitalGridIsVisible();
 
 
 

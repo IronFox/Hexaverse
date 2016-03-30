@@ -28,7 +28,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	VehicleBase_HeavyBase,
 	VehicleBase_HoverBase,
 	VehicleBase_CatBase,
-	
+	VehicleBase_Plane,
 
 	Job_BuildHorizontalWall,
 	Job_BuildWallUp,
@@ -54,6 +54,7 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Type_Generator,
 	Type_ReactorCore,
 	Type_VehiclePlant,
+	Type_PlaneFactory,
 	Type_Mine,
 	Type_MunitionFactory,
 	Type_FuelContainer,
@@ -71,6 +72,9 @@ enum class ConstName : ConstNameRootType	//DO NOT WRITE TO PERSISTENT STORAGE!!!
 	Type_SkyPort,
 	Type_SkyHub,
 	Type_SkyGuardian,
+	Type_Raptor,
+	Type_CargoPlane,
+	Type_SensorDrone,
 	Type_Ragnarok,
 	Type_StarPort,
 

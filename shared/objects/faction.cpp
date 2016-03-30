@@ -8,6 +8,7 @@
 #include "visualSelection.h"
 #include "satellite.h"
 #include "vehicle.h"
+#include "subOrbital.h"
 #include "../sphereGridHelper.h"
 #include "../runtimeConfig.h"
 
@@ -243,7 +244,17 @@ namespace Objects
 									this->skyHubs.erase(sat);
 									break;
 								}
-						}
+					}
+					if (e->IsPlane())
+					{
+						foreach (this->planes,sat)
+							if (sat->lock() == e)
+							{
+								this->planes.erase(sat);
+								break;
+							}
+					}
+
 					return;
 				}
 			}
@@ -281,6 +292,8 @@ namespace Objects
 				if (sat->IsSkyHub())
 					this->skyHubs << To<SkyHub>::Cast(sat);
 			}
+			if (v->IsPlane())
+				this->planes << To<SubOrbital::Plane>::Cast(v);
 		}
 
 		bool		Faction::HasActiveMobile(const PMobileEntity&v) const
@@ -498,30 +511,52 @@ namespace Objects
 			visibility.ChangeSensory(state, t, change);
 		}
 
-
-		count_t		Faction::CountSatelliteCoverage(const TVec3<>&center)	const
+		template <typename T>
+		count_t		CountRawSensorCoverage(const TVec3<>&center, const BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
-			foreach (satellites,s)
+			foreach (scope,s)
 			{
-				PSatellite sat = s->lock();
+				auto sat = s->lock();
 				if (sat && Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Contains(center))
 					rs++;
 			}
 			return rs;
 		}
 
-		count_t		Faction::CountSatelliteCoverage(const Sphere<>&sphere)	const
+		template <typename T>
+		count_t		CountRawSensorCoverage(const Sphere<>&sphere, const BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
-			foreach (satellites,s)
+			foreach (scope,s)
 			{
-				PSatellite sat = s->lock();
+				auto sat = s->lock();
 				if (sat && Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Intersects(sphere))
 					rs++;
 			}
 			return rs;
 		}
+
+		count_t		Faction::CountSatelliteCoverage(const TVec3<>&center)	const
+		{
+			return CountRawSensorCoverage(center,satellites);
+		}
+
+		count_t		Faction::CountSatelliteCoverage(const Sphere<>&sphere)	const
+		{
+			return CountRawSensorCoverage(sphere,satellites);
+		}
+
+		count_t		Faction::CountPlaneCoverage(const TVec3<>&center)	const
+		{
+			return CountRawSensorCoverage(center,planes);
+		}
+
+		count_t		Faction::CountPlaneCoverage(const Sphere<>&sphere)	const
+		{
+			return CountRawSensorCoverage(sphere,planes);
+		}
+
 
 
 		void		Faction::CheckGridVisibility(const PWorldEntity&e,float&timeAt)
@@ -540,6 +575,13 @@ namespace Objects
 						seeing[e].sightLevel = cover;
 				}
 				else
+				if (e->IsPlane() && !e->IsGroundBoundVehicle())
+				{
+					count_t cover = CountPlaneCoverage(e->GetWorldPosition());
+					if (cover == 0)
+						SignalDisappearance(e,timeAt,true);
+				}
+				else
 					if (!GridCanSee(e))
 					{
 						SignalDisappearance(e,timeAt,true);
@@ -552,6 +594,13 @@ namespace Objects
 					count_t cover = CountSatelliteCoverage(e->GetWorldPosition());
 					if (cover > 0)
 						SignalAppearance(e,timeAt,true,false,cover);
+				}
+				else
+				if (e->IsPlane() && !e->IsGroundBoundVehicle())
+				{
+					count_t cover = CountPlaneCoverage(e->GetWorldPosition());
+					if (cover > 0)
+						SignalAppearance(e,timeAt,true,false);
 				}
 				else
 					if (GridCanSee(e))
@@ -961,6 +1010,8 @@ namespace Objects
 			func(e);
 		for (const PMobileEntity&e : satellites)
 			func(e);
+		for (const PMobileEntity&e : SubOrbital::planes)
+			func(e);
 	}
 
 	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func)
@@ -968,6 +1019,8 @@ namespace Objects
 		for (const PMobileEntity&e : vehicles)
 			func(e);
 		for (const PMobileEntity&e : satellites)
+			func(e);
+		for (const PMobileEntity&e : SubOrbital::planes)
 			func(e);
 		for (const PMobileEntity&e : storedMobileEntities)
 			func(e);
@@ -981,6 +1034,8 @@ namespace Objects
 		for (const PWorldEntity&e : storedMobileEntities)
 			func(e);
 		for (const PWorldEntity&e : satellites)
+			func(e);
+		for (const PMobileEntity&e : SubOrbital::planes)
 			func(e);
 		for (const PWorldEntity&e : structures)
 			func(e);
@@ -999,6 +1054,8 @@ namespace Objects
 		for (const PWorldEntity&e : vehicles)
 			func(e);
 		for (const PWorldEntity&e : satellites)
+			func(e);
+		for (const PWorldEntity&e : SubOrbital::planes)
 			func(e);
 		for (const PWorldEntity&e : structures)
 			func(e);

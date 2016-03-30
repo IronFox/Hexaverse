@@ -11,6 +11,7 @@
 #include "visualChoices.h"
 #include "satellite.h"
 #include "faction.h"
+#include "gridAndChoices.h"
 #include <image/converter/magic.h>
 #include "faction.h"
 
@@ -215,8 +216,8 @@ namespace Objects
 
 	/*virtual override*/ void		DeployMobileCommand::CompileLabel(Label&outResult)
 	{
-		PVehicleStore p = To<VehicleStore>::DynamicCast(selectedEntity);
-		ASSERT__(p);
+		PHangar h = To<Hangar>::DynamicCast(selectedEntity);
+		ASSERT__(h);
 		PMobileEntity vehicle = ToMobileEntity( this->reference.lock() );
 		if (vehicle)
 		{

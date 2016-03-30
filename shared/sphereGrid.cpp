@@ -51,7 +51,7 @@ namespace Grid
 
 
 	#ifdef CLIENT
-		OrbitGrid	visibleOrbitGrid;
+		OrbitGrid	visibleOrbitGrid,visibleSubOrbitGrid;
 	#else
 
 	#endif
@@ -4115,6 +4115,7 @@ namespace Grid
 			
 		#ifdef CLIENT
 			visibleOrbitGrid.Clear();
+			visibleSubOrbitGrid.Clear();
 			#ifdef HAS_WINDOW
 				for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 				{
