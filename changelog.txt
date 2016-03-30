@@ -1,7 +1,9 @@
-v0.3.20
+v0.3.20	[Mar 30 2016]
 	> Resource stacks are now hidden by default, when connecting as spectator.
 	> Improved initial terrain simplification algorithm to produce cleaner terrains.
 	* Fixed server-side random key generation on some systems.
+	* Fixed rare UI crashes.
+	* Fixed console crashes when pressing up without an existing input history.
 
 v0.3.19	[Mar 20 2016]
 	+ The Ctrl-key can now be used to toggle terrain see-through.
