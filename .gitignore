@@ -3,14 +3,11 @@ bin/
 obj/
 *.opensdf
 *.sdf
-*.cgs
 *.exp
 *.iobj
 *.ipdb
 client/screenshots/
 client/Debug/
-client/Font/compiled/
-client/shaders/compiled/
 client/config/
 client/.projector/
 server/.projector/
