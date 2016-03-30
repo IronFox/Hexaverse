@@ -384,17 +384,6 @@ namespace Objects
 		#endif
 
 
-
-		/*virtual override*/ bool					Plane::HasAmmoForShot()
-		{
-		#ifdef ONE_COMPOUND_PER_FACTION
-			const Compound&compound = owner->compound;
-			return compound.total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-		#else
-			return currentStorage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-		#endif
-		}
-
 		/*virtual override*/ PHangar	CargoPlane::CastToDestinationForType(const MobileEntity&e)
 		{
 			if (CanStoreType(e))

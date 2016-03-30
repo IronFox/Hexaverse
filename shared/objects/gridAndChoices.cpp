@@ -6,8 +6,8 @@
 #include "prototypes.h"
 #include "vehicle.h"
 #include "satellite.h"
-#include "subOrbital.h"
 #include "faction.h"
+#include "subOrbital.h"
 #ifndef CLIENT
 	#include "../runtimeConfig.h"
 #endif
@@ -3207,7 +3207,7 @@ namespace Objects
 		{
 			ASSERT__(s);
 			ASSERT3__(s->preAnimationLocation == s->location,s->preAnimationLocation.ToString(),s->location.ToString(),s->GetName());
-			float t = 0.f;
+			float t = 0;
 			InsertConstructed(s,t);
 			ASSERT1__(SubOrbital::planes.Contains(s),s->GetName());
 		}

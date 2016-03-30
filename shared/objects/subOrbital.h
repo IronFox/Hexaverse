@@ -77,7 +77,6 @@ namespace Objects
 
 			//TurretBase overrides:
 			virtual float			GetFlatAttackRange() const override {return EMPModify(turret->horizontalAttackRange,1.f);}
-			virtual bool			HasAmmoForShot() override;
 			#ifndef CLIENT
 				virtual bool		FillAttackQueue()override;
 			#endif
