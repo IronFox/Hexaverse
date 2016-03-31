@@ -4,6 +4,7 @@ v0.3.21
 	> Reduced price of cannon turret.
 	> Increased damage level of cannon turret.
 	> Reduced construction costs of all vehicle bases.
+	> Artillery can no longer hit destinations above ground (needs ground impact).
 	> Artillery explosions no longer dig away whole spheres, but remove softer terrain one layer at a time.
 	* Fixed terrain resource visualization.
 
