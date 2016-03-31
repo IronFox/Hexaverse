@@ -317,7 +317,7 @@ namespace Objects
 
 			if (terrainExplosionRadius > 0)
 			{
-				Grid::actualWorld.Explode(targetCell,terrainExplosionRadius, atTime);
+				Grid::actualWorld.Explode(targetCell,terrainExplosionRadius, atTime,doomsday);
 				if (doomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose)
 					foreach (Faction::all,f)
 					{
