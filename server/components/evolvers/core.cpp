@@ -202,7 +202,7 @@ namespace Evolver
 			});
 
 
-			Objects::ForeachWorldEntity([](const Objects::PWorldEntity&e)
+			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
 			{
 				e->ResetMotionTime();
 			});
