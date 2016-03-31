@@ -1616,15 +1616,7 @@ namespace Objects
 			}
 
 		}
-		#ifndef CLIENT
-			for(const auto&v:stored)
-			{
-				ASSERT1__(!v.entity.expired(),id.ToString());
-				Remove(v.entity.lock(),RemovalType::DestroyedInStorage,atTime,false,true);
-			}
-		#endif
-		stored.Clear();
-
+		Hangar::OnDestroy(atTime);
 	}
 
 

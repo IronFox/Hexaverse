@@ -60,6 +60,12 @@ namespace Objects
 		*/
 		bool			HasStoredLocally(const PMobileEntity&e) const;
 
+		/**
+		Must be called from the WorldEntity::OnDestroy() override.
+		Signals destruction of any remaining entities in local storage.
+		*/
+		void			OnDestroy(float&t);
+
 		static void		StaticSetup();
 
 		virtual void	LocalCheckout(const PMobileEntity&v, const Grid::LCellIdI&targetLocation, float&atTime);
