@@ -1,3 +1,6 @@
+v0.4.2
+	* Fixed units loaded in cargo planes not being properly destroyed when the plane goes down.
+
 v0.4.1	[Mar 30 2016]
 	+ Added plane factory building type.
 	+ Added raptor, cargo plane, and sensor drone.

@@ -301,6 +301,7 @@ namespace Objects
 			virtual bool			IsHangar() const {return true;}
 			virtual int				GetMaxHealth() const {return 15;}
 			virtual PHangar			CastToDestinationForType(const MobileEntity&e) override;
+			virtual void			OnDestroy(RemovalType, float&) override;
 			#ifdef HAS_WINDOW
 				virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) override;
 			#endif

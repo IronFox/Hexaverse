@@ -400,6 +400,11 @@ namespace Objects
 			ASSERT__(Hangar::StoreLocally(e,t,false,To<CargoPlane>::Cast(shared_from_this())));
 
 		}
+		/*virtual override*/ void	CargoPlane::OnDestroy(RemovalType type, float&t)
+		{
+			Super::OnDestroy(type,t);
+			Hangar::OnDestroy(t);
+		}
 
 
 		#ifndef CLIENT
