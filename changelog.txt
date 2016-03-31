@@ -5,6 +5,7 @@ v0.3.21
 	> Increased damage level of cannon turret.
 	> Reduced construction costs of all vehicle bases.
 	> Artillery explosions no longer dig away whole spheres, but remove softer terrain one layer at a time.
+	* Fixed terrain resource visualization.
 
 v0.3.20	[Mar 30 2016]
 	> Resource stacks are now hidden by default, when connecting as spectator.
