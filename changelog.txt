@@ -1,4 +1,5 @@
 v0.3.21
+	* Fixed terrain resource visualization.
 
 v0.3.20	[Mar 30 2016]
 	> Resource stacks are now hidden by default, when connecting as spectator.
