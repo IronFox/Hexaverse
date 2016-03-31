@@ -1076,10 +1076,10 @@ namespace Objects
 		
 			component.weight = 3;
 			component.healthMultiplier = 1.5f;
-			component.horizontalAttackRange = 16;
+			component.horizontalAttackRange = 21;
 			component.scanningRange = 4;
 
-			component.explosionRadius = 5;
+			component.explosionRadius = 4;
 
 			component.damageLevel = 3;
 			component.attacksPerRound = 1;
