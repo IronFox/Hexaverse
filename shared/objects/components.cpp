@@ -1076,14 +1076,11 @@ namespace Objects
 		
 			component.weight = 3;
 			component.healthMultiplier = 1.5f;
-			component.horizontalAttackRange = 7;
+			component.horizontalAttackRange = 16;
 			component.scanningRange = 4;
 
-			#ifndef HYBRID_GRID
-				component.explosionRadius = 3.5f;
-			#else
-				component.explosionRadius = 2;
-			#endif
+			component.explosionRadius = 5;
+
 			component.damageLevel = 7;
 			component.attacksPerRound = 1;
 			component.initiative = 80;
