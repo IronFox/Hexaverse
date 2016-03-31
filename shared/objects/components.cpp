@@ -1171,7 +1171,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Cannon;
 			component.constTowerName = ConstName::Type_CannonTower;
 
-			component.productionCosts = 15;
+			component.productionCosts = 10;
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
 			#endif
