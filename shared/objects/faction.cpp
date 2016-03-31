@@ -360,7 +360,7 @@ namespace Objects
 			foreach (v.coverage,st)
 			{
 				DBG_ASSERT_LESS__(st->layerBegin,Grid::CellStack::Range);
-				DBG_ASSERT_LESS__(st->layerEnd,Grid::CellStack::Range);
+				DBG_ASSERT_LESS_OR_EQUAL__(st->layerEnd,Grid::CellStack::Range);
 				DBG_ASSERT_LESS_OR_EQUAL__(st->layerBegin,st->layerEnd);
 				const auto&stack = visibility.cellStack[st->stackID];
 				for (UINT32 layer = st->layerBegin; layer < st->layerEnd; layer++)
