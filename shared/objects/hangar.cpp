@@ -97,6 +97,20 @@ namespace Objects
 		return false;
 	}
 
+	void	Hangar::OnDestroy(float&t)
+	{
+		ToEntity().SyncTime(t);
+		#ifndef CLIENT
+			for(const auto&v:stored)
+			{
+				ASSERT1__(!v.entity.expired(),ToEntity().GetName());
+				Remove(v.entity.lock(),RemovalType::DestroyedInStorage,t,false,true);
+			}
+		#endif
+		stored.Clear();
+	}
+
+
 	#ifdef CLIENT
 		/*virtual*/ void	Hangar::Lose(const PMobileEntity&v)
 		{
