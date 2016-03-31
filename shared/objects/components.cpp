@@ -1600,7 +1600,7 @@ namespace Objects
 			component.shortName = "Hover";
 			component.constName = ConstName::VehicleBase_HoverBase;
 
-			component.productionCosts = 40;
+			component.productionCosts = 30;
 			component.requirements = VehicleBase::Requirement::AnyBlock;
 			component.moveOnWater = true;
 			component.minClimbDown = -5;	//-int(Grid::CellStack::Range);
@@ -1643,7 +1643,7 @@ namespace Objects
 			component.shortName = "Heavy";
 			component.constName = ConstName::VehicleBase_HeavyBase;
 
-			component.productionCosts = 80;
+			component.productionCosts = 45;
 			component.requirements = VehicleBase::Requirement::AnyBlock;	//none is broken...
 			component.moveOnWater = false;
 			component.minClimbDown = -2;
@@ -1692,7 +1692,7 @@ namespace Objects
 			component.shortName = "Cat";
 			component.constName = ConstName::VehicleBase_CatBase;
 
-			component.productionCosts = 100;
+			component.productionCosts = 60;
 			component.requirements = VehicleBase::Requirement::Water;	//none is broken...
 			component.moveOnWater = true;
 			component.minClimbDown = -2;
