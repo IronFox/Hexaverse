@@ -20,12 +20,19 @@ namespace TechniteTarget
 			ConstName empty[2] = {ConstName::Empty,ConstName::Empty};
 			Objects::Marker::Create(techniteID,Objects::Marker::Type::Visited,selectedTarget,RuntimeConfig::roundNumber,techniteID,TUniqueID::Empty(),empty,RuntimeConfig::roundNumber);
 		}
+		Technites::Technite*t = Technites::GetTechnite(selectedTechnite);
+		if (t)
+			Grid::high.family[Grid::high.grid.GetCell(t->location.GetStackID()).family].SetOutdated(0.f);
+
 	}
 
 	static void UnsetSelected()
 	{
 		if (Objects::Marker::Find(selectedTechnite))
 			Objects::Marker::Destroy(selectedTechnite,Network::ControlEnabled());
+		Technites::Technite*t = Technites::GetTechnite(selectedTechnite);
+		if (t)
+			Grid::high.family[Grid::high.grid.GetCell(t->location.GetStackID()).family].SetOutdated(0.f);
 		selectedTechnite = TUniqueID::Empty();
 	}
 

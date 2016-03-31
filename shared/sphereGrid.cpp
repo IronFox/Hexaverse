@@ -3244,6 +3244,8 @@ namespace Grid
 
 		TechInfo::TechInfo(const Technites::Faction*f, const Technites::Technite*t, bool isSet, bool isVisible) : color(0.5f,1,1) , empty(!isSet)
 		{
+			if (isSet && Objects::techniteIsSelected && t && t->id == Objects::selectedTechnite.id)
+				color = float3(1,0.5,0.5);
 			//if (t)
 			//	t->CompileTendency(direction,activity,color);
 			if (isSet && !isVisible)
@@ -3259,7 +3261,7 @@ namespace Grid
 			}
 			const CellStack::Cell&vc = stack.volumeCell[layer];
 			bool isTechnite = vc.content == Content::Technite;
-			Technites::Technite*t = nullptr;
+			Technites::Technite*t = isTechnite ? Technites::GetTechnite(Grid::HCellIdU(stackIndex,layer)) : nullptr;
 			Technites::Faction*f = nullptr;
 			*this = TechInfo(f,t,isTechnite,vc.visible > 0);
 		}
