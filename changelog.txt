@@ -1,5 +1,6 @@
 v0.3.21
 	> Considerably increased firing range and blast radius of artillery turret.
+	> Decreased damage level of artillery.
 
 v0.3.20	[Mar 30 2016]
 	> Resource stacks are now hidden by default, when connecting as spectator.

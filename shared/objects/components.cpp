@@ -1081,7 +1081,7 @@ namespace Objects
 
 			component.explosionRadius = 5;
 
-			component.damageLevel = 7;
+			component.damageLevel = 3;
 			component.attacksPerRound = 1;
 			component.initiative = 80;
 			#ifdef NO_MUNITION
