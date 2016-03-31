@@ -1182,7 +1182,7 @@ namespace Objects
 			component.scanningRange = 5;
 
 			component.explosionRadius = 1;
-			component.damageLevel = 3;
+			component.damageLevel = 7;
 			component.attacksPerRound = 2;
 			#ifdef NO_MUNITION
 				component.ammoNeedPerShot = 0;
