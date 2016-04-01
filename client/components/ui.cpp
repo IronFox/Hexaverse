@@ -1476,6 +1476,7 @@
 					if (showControls)
 						e->VisitAllCommands(VisitCommand,false);
 
+					FindAndDeleteCell(selectedFocus);
 					selectedFocus.reset(new EntityFocusCommand(e) );
 					selectedFocus->Refresh(true);//Network::ControlEnabled());
 					selectedFocus->UpdateTexture(e,false,e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor);
