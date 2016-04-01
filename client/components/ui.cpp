@@ -1141,8 +1141,8 @@
 			void						Render()
 			{
 				//static int2 lastMouse;
-				float flashOpacity = //float(sin(Engine::timing.now*2.0*M_PI)*0.5+0.5);
-										((UINT64)floor(Engine::timing.now*2.0))%2;
+				float flashOpacity = 	((UINT64)floor(Engine::timing.now*2.0))%2;
+				float softFlashOpacity = float(sin(Engine::timing.now*2.0*M_PI)*0.5+0.5);
 
 
 				static float stationaryCounter = 0;
@@ -1195,7 +1195,7 @@
 							else
 								if (cmd.state & Objects::BaseCommand::Flags::IsFlashing)
 								{
-									code.r = flashOpacity;
+									code.r = (cmd.state & Objects::BaseCommand::Flags::SoftFlashing) ? softFlashOpacity : flashOpacity;
 								}
 							
 							if (cmd.state & Objects::BaseCommand::Flags::IsPermaActive)
