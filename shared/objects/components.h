@@ -29,11 +29,12 @@ namespace Objects
 	};
 
 
-	CONSTRUCT_ENUMERATION3(
+	CONSTRUCT_ENUMERATION4(
 		TurretTrajectory,
 			InvalidTrajectory,
 			ReachesTarget,
-			MidFlightImpact
+			MidFlightImpact,
+			OvershotTarget
 	);
 	static const float g = 9.80665f;
 
@@ -83,8 +84,8 @@ namespace Objects
 			{
 				static void					TraceArtilleryTrajectory(float velocity, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps);
 				static void					TraceMissileTrajectory(float range, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps);
-				static TurretTrajectory		TraceArtilleryTrajectory(float velocity, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
-				static TurretTrajectory		TraceMissileTrajectory(float range, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
+				static TurretTrajectory		TraceArtilleryTrajectory(float velocity, bool requiresGroundImpact, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
+				static TurretTrajectory		TraceMissileTrajectory(float range, bool requiresGroundImpact, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance);
 				static bool					MissileCanHit(float flatRange, const TVec3<>&originNormal, const TVec3<>&origin, const TVec3<>&destination);
 			};
@@ -145,7 +146,7 @@ namespace Objects
 											ammoNeedPerShot,
 											uplinkTraffic = 5,
 											uplinkPriority = 950;	//before towers and storage structures
-
+			bool							requiresGroundImpact = false;
 			#ifndef ONE_COMPOUND_PER_FACTION
 				ResourceVector				baseStorageCapacity;
 			#endif
@@ -190,12 +191,12 @@ namespace Objects
 												}
 
 			static void						TraceTrajectory(TrajectoryType, float flatRange, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps);
-			static TurretTrajectory			TraceTrajectory(TrajectoryType, float flatRange, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
-			static TurretTrajectory			TraceTrajectory(TrajectoryType type, float flatRange, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, TVec3<>&impactAt)
+			static TurretTrajectory			TraceTrajectory(TrajectoryType, float flatRange, bool requiresGroundImpact, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
+			static TurretTrajectory			TraceTrajectory(TrajectoryType type, float flatRange, bool requiresGroundImpact, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, TVec3<>&impactAt)
 			{
 				Buffer0<TVec4<> > outSteps;
 				Grid::HCellIdI impactCell;
-				return TraceTrajectory(type, flatRange,world,source,zOffset, dest,outSteps,impactAt,impactCell);
+				return TraceTrajectory(type, flatRange,requiresGroundImpact,world,source,zOffset, dest,outSteps,impactAt,impactCell);
 			}
 
 		

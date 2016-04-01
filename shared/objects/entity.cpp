@@ -154,7 +154,7 @@ namespace Objects
 			outSteps.Clear();
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),world,location,zOffset,dest,outSteps,impactAt,impactCell);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),b->turret->requiresGroundImpact, world,location,zOffset,dest,outSteps,impactAt,impactCell);
 	}
 
 	TurretTrajectory		WorldEntity::TraceTrajectory(const Grid::WorldData&world, const Grid::LCellIdI&dest, TVec3<>&impactAt) const
@@ -165,7 +165,7 @@ namespace Objects
 		{
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),world,location,zOffset,dest,impactAt);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),b->turret->requiresGroundImpact,world,location,zOffset,dest,impactAt);
 	}
 
 
@@ -180,7 +180,7 @@ namespace Objects
 			outSteps.Clear();
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),world,source,zOffset,dest,outSteps,impactAt,impactCell);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),b->turret->requiresGroundImpact,world,source,zOffset,dest,outSteps,impactAt,impactCell);
 	}
 
 	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::WorldData&world, const Grid::LCellIdI&source, const Grid::LCellIdI&dest, TVec3<>&impactAt) const
@@ -191,7 +191,7 @@ namespace Objects
 		{
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),world,source,zOffset,dest,impactAt);
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),b->turret->requiresGroundImpact,world,source,zOffset,dest,impactAt);
 	}
 
 	bool						WorldEntity::CanHitFrom(const Grid::LCellIdI&origin, const TVec3<>&dest) const

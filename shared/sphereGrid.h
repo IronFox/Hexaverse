@@ -2106,6 +2106,7 @@ namespace Grid
 	class WorldData
 	{
 	private:
+		bool					AffectedByExplosion(const Grid::HCellIdU&)	const;
 		static short			ResourceDistance(const Sphere<>&resourceSphere, const TVec3<>&cellCenter);
 	public:
 		Array<CellStack>		cellStack;
@@ -2180,8 +2181,8 @@ namespace Grid
 		*/
 		bool					ClearNonLava(const LCellIdI&ch, float atTime);
 		bool					Overwrite(const LCellIdI&ch, Content with,  float atTime);
-		void					Explode(const HCellIdI&,float radius, float atTime);
-		void					Explode(const HCellIdI&id,float radius, bool*familyChanged);
+		void					Explode(const HCellIdI&,float radius, float atTime, bool blastThrough);
+		void					Explode(const HCellIdI&id,float radius, bool*familyChanged, bool blastThrough);
 
 
 

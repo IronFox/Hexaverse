@@ -3609,15 +3609,67 @@ namespace Grid
 	#endif
 
 
-	void	WorldData::Explode(const HCellIdI&id,float radius, bool*familyChanged)
+	namespace
+	{
+		static const BYTE SolidPlaceholderContent = 0xFF,
+						LiquidPlaceholderContent = 0xFE;
+
+	
+
+
+	}
+
+	bool	WorldData::AffectedByExplosion(const Grid::HCellIdU&loc)	const
+	{
+		{
+			BYTE test = cellStack[loc.stackID].volumeCell[loc.layer].content;
+			if (CellStack::Cell::IsLiquid(test))
+				return true;
+			if (CellStack::Cell::typeStrength[test] >= 5)
+				return false;
+		}
+		const auto&n = high.grid.GetCell(loc.stackID).neighborhood;
+		for (BYTE k = 0; k < n.numNeighbors; k++)
+		{
+			BYTE test = cellStack[n.neighborID[k]].volumeCell[loc.layer].content;
+
+			if (/*test == LiquidPlaceholderContent || */test == Content::Clear/* || CellStack::Cell::IsLiquid(test)*/)
+				return true;
+		}
+
+		if (loc.layer > 0)
+		{
+			for (BYTE k = 0; k < n.numNeighbors; k++)
+			{
+				BYTE test = cellStack[n.neighborID[k]].volumeCell[loc.layer-1].content;
+
+			if (/*test == LiquidPlaceholderContent || */test == Content::Clear/* || CellStack::Cell::IsLiquid(test)*/)
+					return true;
+			}
+		}	
+
+		if (loc.layer+1 < CellStack::Range)
+		{
+			for (BYTE k = 0; k < n.numNeighbors; k++)
+			{
+				BYTE test = cellStack[n.neighborID[k]].volumeCell[loc.layer+1].content;
+
+			if (/*test == LiquidPlaceholderContent || */test == Content::Clear/* || CellStack::Cell::IsLiquid(test)*/)
+					return true;
+			}
+		}
+		return false;
+	}
+
+
+	void	WorldData::Explode(const HCellIdI&id,float radius, bool*familyChanged, bool blastThrough)
 	{
 		const float3 center = high.cells[id.stackID].centerVertex.xyz * ToRadiusf(0.5f + id.height);
 		const float r2 = sqr(radius);
 		Queue<UINT32> queue;
 		
-		#ifdef HAS_WINDOW
-			Queue<UINT32> changed;
-		#endif
+		Queue<UINT32> changed;
+
 		queue << id.stackID;
 
 		Box<> b;
@@ -3639,29 +3691,29 @@ namespace Grid
 			if (b.Contains(lower) || b.Contains(upper) || _oDetectOpticalBoxIntersection(b,lower,(upper-lower)/dummy,dummy))
 			{
 				bool anyChanged = false;
-				for (int h = -CellStack::HalfRange; h < CellStack::HalfRange; h++)
+				for (int h = CellStack::BottomHeight; h <= CellStack::TopHeight; h++)
 				{
+					UINT32 layer = CellStack::ToLayer(h);
 					TVec3<> at = dir * ToRadius(h);
 					if (Vec::quadraticDistance(center,at) < r2)
 					{
-						if (cellStack[current].MakeLocalHole(h))
+						auto&cell = cellStack[current].volumeCell[layer];
+						if (cell.content != Content::Clear && (blastThrough || AffectedByExplosion(HCellIdU(current,layer))))
 						{
-							UINT layer = CellStack::ToLayer(h);
+							if (cell.IsLiquid())
+								cell.content = LiquidPlaceholderContent;
+							else
+								cell.content = SolidPlaceholderContent;
 							#ifdef HAS_WINDOW
 								cellStack[current].lightingChangedTo = std::max<BYTE>(cellStack[current].lightingChangedTo, layer);
 							#endif
-							//ASSERT_LESS__(layer,CellStack::Range);
-
-							//SignalLightingChange(HCellIdI(current,h+1));
 							anyChanged = true;
 						}
 					}
 				}
 				if (anyChanged)
 				{
-					#ifdef HAS_WINDOW
-						changed << current;
-					#endif
+					changed << current;
 					familyChanged[high.grid.GetCell(current).family] = true;
 				}
 
@@ -3672,11 +3724,16 @@ namespace Grid
 				}
 			}
 		}
-		//count_t counter = 0;
-		//BYTE smallest = 0xff;
-		#ifdef HAS_WINDOW
-			while (changed >> current)
+		while (changed >> current)
+		{
+			for (UINT32 layer = 0; layer < CellStack::Range; layer++)
 			{
+				auto&cell = cellStack[current].volumeCell[layer];
+				if (cell.content == LiquidPlaceholderContent || cell.content == SolidPlaceholderContent)
+					cell.content = Grid::Content::Clear;
+			}
+			
+			#ifdef HAS_WINDOW
 				BYTE h = cellStack[current].lightingChangedTo;
 				//ASSERT_LESS__(h,CellStack::Range);
 				//if (h+1 >= cellStack[current].lowestOpenCell)
@@ -3697,18 +3754,16 @@ namespace Grid
 						changed << nid;
 					}
 				}
-			}
-		#endif
-		//ShowMessage(counter);
-		//ShowMessage(smallest);
+			#endif
+		}
 
 	
 	}
 
-	void	WorldData::Explode(const HCellIdI&id,float radius, float atTime)
+	void	WorldData::Explode(const HCellIdI&id,float radius, float atTime, bool blastThrough)
 	{
 		bool familyChanged[BaseGrid::NumFamilies] = {false};
-		Explode(id,radius,familyChanged);
+		Explode(id,radius,familyChanged, blastThrough);
 		for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
 			if (familyChanged[i])
 			{

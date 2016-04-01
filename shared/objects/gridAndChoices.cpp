@@ -203,7 +203,7 @@ namespace Objects
 				static Buffer0<TVec4<> > trajectory;
 				Grid::HCellIdI ic;
 				TVec3<> iat;
-				if (Component::Turret::TraceTrajectory(base.turret->trajectoryType,base.GetFlatAttackRange(),   
+				if (Component::Turret::TraceTrajectory(base.turret->trajectoryType,base.GetFlatAttackRange(), base.turret->requiresGroundImpact,
 							world, sourceLocation,zOffset,loc,trajectory,iat,ic) != TurretTrajectory::ReachesTarget)
 					return;
 				float d2 = Grid::GetQuadraticGeometricDistance(sourceLocation,loc);
@@ -339,7 +339,7 @@ namespace Objects
 
 			if (terrainExplosionRadius > 0)
 			{
-				Grid::actualWorld.Explode(targetCell,terrainExplosionRadius, atTime);
+				Grid::actualWorld.Explode(targetCell,terrainExplosionRadius, atTime,doomsday);
 				if (doomsday && RuntimeConfig::doomsdayWeapons == RuntimeConfig::DoomsdayWeapons::Expose)
 					foreach (Faction::all,f)
 					{

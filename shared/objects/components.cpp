@@ -453,17 +453,17 @@ namespace Objects
 
 			}
 		}
-		/*static*/ TurretTrajectory			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
+		/*static*/ TurretTrajectory			Turret::TraceTrajectory(TrajectoryType t, float flatRange, bool requiresGroundImpact, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
 		{
 			outSteps.Clear();
 
 			switch (t)
 			{
 				case TrajectoryType::Artillery:
-					return Detail::TraceArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),world,source, zOffset, dest, outSteps,impactAt, impactCell);
+					return Detail::TraceArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),requiresGroundImpact, world,source, zOffset, dest, outSteps,impactAt, impactCell);
 				break;
 				case TrajectoryType::Missile:
-					return Detail::TraceMissileTrajectory(flatRange,world,source, zOffset, dest, outSteps,impactAt, impactCell);
+					return Detail::TraceMissileTrajectory(flatRange,requiresGroundImpact, world,source, zOffset, dest, outSteps,impactAt, impactCell);
 				break;
 				case TrajectoryType::VerticalBeam:
 				{
@@ -485,7 +485,7 @@ namespace Objects
 
 		}
 
-		/*static*/ TurretTrajectory			Turret::Detail::TraceArtilleryTrajectory(float velocity, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
+		/*static*/ TurretTrajectory			Turret::Detail::TraceArtilleryTrajectory(float velocity, bool requiresGroundImpact, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
 		{
 			Turret::TAngles angles = Turret::GetAngleForDistance(velocity,source,zOffset,dest);
 			if (angles.numAngles == 0)
@@ -494,7 +494,7 @@ namespace Objects
 				{
 					LogEvent(EventClass::Preset::error,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+source.ToString()+", dest="+dest.ToString()+". Increasing velocity and retrying.");
 					velocity = velocity > 0 ? velocity * 1.1f : 1.f;	//should not be zero, but it's better to handle this case here anyway. Otherwise we're causing a stack overflow in no-time
-					return TraceArtilleryTrajectory(velocity,world,source,zOffset, dest,outSteps,impactAt,impactCell);
+					return TraceArtilleryTrajectory(velocity,requiresGroundImpact, world,source,zOffset, dest,outSteps,impactAt,impactCell);
 				}
 
 				return TurretTrajectory::InvalidTrajectory;
@@ -571,8 +571,34 @@ namespace Objects
 						break;
 					}
 				}
+
 				if (loop)
 					continue;
+
+				if (requiresGroundImpact)
+				{
+					for (int i = resolution+1; i < 10000; i++)
+					{
+						float t01 = float(i) / float(resolution);
+						const float t = t01 * tEnd;
+						float fy = h0 + (velocity * t*sn - 0.5f * g * sqr(t));
+						TVec3<> b;
+						Vec::interpolate(here,there,t01,b);
+						Vec::normalize(b);
+						outSteps << float4(b,fy);
+
+						cellAt = Grid::high.Locate(b,cellAt);
+						int h = (Grid::FloorFromRadius(fy));
+						if (world.cellStack[cellAt].GetCellI(h).IsOccupied())
+						{
+							impactAt = b * (fy);
+							impactCell = Grid::HCellIdI(cellAt,h);
+							return i < resolution+3 ? TurretTrajectory::ReachesTarget : TurretTrajectory::OvershotTarget;
+						}
+					}
+					LogEvent(EventSignificance::NonFatalError,"Overshot target. Cannot find point of impact.");
+					return TurretTrajectory::InvalidTrajectory;
+				}
 
 				impactCell = Grid::HCellIdI(
 					#ifdef HYBRID_GRID
@@ -590,9 +616,9 @@ namespace Objects
 			return TurretTrajectory::InvalidTrajectory;
 		}
 
-		/*static*/ TurretTrajectory			Turret::Detail::TraceMissileTrajectory(float range, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
+		/*static*/ TurretTrajectory			Turret::Detail::TraceMissileTrajectory(float range, bool requiresGroundImpact, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
 		{
-		
+			//ignore requiresGroundImpact for now. the other one is the interesting one
 
 			const float h0 = zOffset + Grid::ToRadiusf(0.05f + source.height);
 			const float h1 = Grid::ToRadiusf(0.05f + dest.height);
@@ -1082,15 +1108,15 @@ namespace Objects
 		
 			component.weight = 3;
 			component.healthMultiplier = 1.5f;
-			component.horizontalAttackRange = 7;
+			component.horizontalAttackRange = 21;
 			component.scanningRange = 4;
 
-			#ifndef HYBRID_GRID
-				component.explosionRadius = 3.5f;
-			#else
-				component.explosionRadius = 2;
-			#endif
-			component.damageLevel = 7;
+			component.explosionRadius = 4;
+
+			component.requiresGroundImpact = true;
+
+
+			component.damageLevel = 3;
 			component.attacksPerRound = 1;
 			component.initiative = 80;
 			#ifdef NO_MUNITION
@@ -1180,7 +1206,7 @@ namespace Objects
 			component.constName = ConstName::Turret_Cannon;
 			component.constTowerName = ConstName::Type_CannonTower;
 
-			component.productionCosts = 15;
+			component.productionCosts = 10;
 			#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 				component.baseStorageCapacity.level[Resource::Munitions] = 20;
 			#endif
@@ -1191,7 +1217,7 @@ namespace Objects
 			component.scanningRange = 5;
 
 			component.explosionRadius = 1;
-			component.damageLevel = 3;
+			component.damageLevel = 7;
 			component.attacksPerRound = 2;
 			#ifdef NO_MUNITION
 				component.ammoNeedPerShot = 0;
@@ -1808,7 +1834,7 @@ namespace Objects
 			component.shortName = "Hover";
 			component.constName = ConstName::VehicleBase_HoverBase;
 
-			component.productionCosts = 40;
+			component.productionCosts = 30;
 			component.requirements = VehicleBase::Requirement::AnyBlock;
 			component.moveOnWater = true;
 			component.minClimbDown = -5;	//-int(Grid::CellStack::Range);
@@ -1851,7 +1877,7 @@ namespace Objects
 			component.shortName = "Heavy";
 			component.constName = ConstName::VehicleBase_HeavyBase;
 
-			component.productionCosts = 80;
+			component.productionCosts = 45;
 			component.requirements = VehicleBase::Requirement::AnyBlock;	//none is broken...
 			component.moveOnWater = false;
 			component.minClimbDown = -2;
@@ -1900,7 +1926,7 @@ namespace Objects
 			component.shortName = "Cat";
 			component.constName = ConstName::VehicleBase_CatBase;
 
-			component.productionCosts = 100;
+			component.productionCosts = 60;
 			component.requirements = VehicleBase::Requirement::Water;	//none is broken...
 			component.moveOnWater = true;
 			component.minClimbDown = -2;
