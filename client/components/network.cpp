@@ -1538,6 +1538,11 @@ void	Network::Receiver::TechniteStates(Protocol::TechniteStates&st)
 				TechniteTarget::Unset(id);
 			});
 			wereAlive.Clear();
+
+			//foreach (Technites::technites,t)
+			//{
+			//	Grid::high.family[Grid::high.grid.GetCell(t->location.GetStackID()).family].SetOutdated(0.f);
+			//}
 		#endif
 	}
 }

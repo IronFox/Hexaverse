@@ -853,11 +853,6 @@ namespace Technites
 					TCP::PPeer peer = t.peer.lock();
 					if (!peer)
 						return;
-					if (t.spectatorMessage.IsNotEmpty())
-					{
-						Channels::message.SendTo(peer,Protocol::Message(TUniqueID::Empty(),t.spectatorMessage));
-						t.spectatorMessage = "";
-					}
 
 					Protocol::OwnState state;
 					state.commonState.location = t.location;
@@ -1710,6 +1705,18 @@ namespace Technites
 			Protocol::ProcessRound process;
 			process.roundNumber = RuntimeConfig::roundNumber;
 			process.techniteSubRoundNumber = RuntimeConfig::techniteSubRoundNumber;
+
+			Concurrency::parallel_for_each(technites.begin(),technites.end(),[](Technite&t)
+			{
+				TCP::PPeer peer = t.peer.lock();
+				if (!peer)
+					return;
+				if (t.spectatorMessage.IsNotEmpty())
+				{
+					Channels::message.SendTo(peer,Protocol::Message(TUniqueID::Empty(),t.spectatorMessage));
+					t.spectatorMessage = "";
+				}
+			});
 
 			Channels::processRound.SendTo(serviceHost,process,UserLevel::Authenticated);
 		}

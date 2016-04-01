@@ -98,6 +98,8 @@ namespace World
 		{
 			if (::Network::spectators.IsNotEmpty())
 			{
+				Channels::SendTechniteStatesTo(::Network::server);
+
 				static Protocol::WorldDelta	delta;
 				GenerateWorldDelta(nullptr,&spectatorWorldState,delta,familyId,rightNow,last,Protocol::WorldDeltaType::ProgressiveUpdate);
 				for (const auto&s : ::Network::spectators)
