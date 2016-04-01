@@ -1,6 +1,7 @@
 v0.3.22
 	> Enabled vertical synchronization by default.
 	> Routing errors of automated vehicles (surveyors) are no longer visually logged.
+	> Some visual commands of vehicle plants now flash if action is expected.
 	* Fixed random jumping and flashing of selected unit button after changing selection.
 	* Fixed server endless loop when path construction job (e.g. build road to) permanently fails at end-point.
 

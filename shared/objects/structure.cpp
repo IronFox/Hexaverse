@@ -2159,9 +2159,15 @@ namespace Objects
 					if (!controlEnabled)
 						return BaseCommand::Flags::None;
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					return (plant != nullptr/* && plant->selectedBase && plant->selectedTurret*/)
-						? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None
-						;
+					if (plant)
+					{
+						BaseCommand::Flags rs = BaseCommand::Flags::IsEnabled;
+						if (plant->selectedBase && plant->selectedTurret && plant->queue.IsEmpty() /*&& !plant->IsSleeping()*/)
+							rs |= BaseCommand::Flags::IsFlashing | BaseCommand::Flags::SoftFlashing;
+
+						return rs;
+					}
+					else return BaseCommand::Flags::None;
 				},
 				[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
@@ -2217,8 +2223,13 @@ namespace Objects
 				{
 					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					if (plant && plant->selectedTurret == c)
-						rs |= BaseCommand::Flags::IsPermaActive;
+					if (plant)
+					{
+						if (plant->selectedTurret == c)
+							rs |= BaseCommand::Flags::IsPermaActive;
+						elif (!plant->selectedTurret)
+							rs |= BaseCommand::Flags::IsFlashing | BaseCommand::Flags::SoftFlashing;
+					}
 					return rs;
 				}));
 				commands.GetLast().second->RasterizeImage();
