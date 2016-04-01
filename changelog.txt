@@ -1,3 +1,6 @@
+v0.3.22
+	> Enabled vertical synchronization by default.
+
 v0.3.21	[Mar 31 2016]
 	* Fixed terrain resource visualization.
 
