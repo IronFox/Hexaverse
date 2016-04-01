@@ -3408,7 +3408,7 @@ namespace Grid
 				const int clipH = clipHeight(fine);
 				const UINT clipL = CellStack::ToLayer(clipH);
 				layer = std::min(layer, clipL-1);
-				while (layer > 0 && fineStack.volumeCell[layer].content != Content::Clear)
+				while (layer > 0 && fineStack.volumeCell[layer].content == Content::Clear)
 					layer--;
 				bool structureCenter = false;
 				while (layer+1 < CellStack::Range && (fineStack.volumeCell[layer+1].structureCounter > 0 /*|| fineStack.volumeCell[layer].structureCounter > 0*/))
