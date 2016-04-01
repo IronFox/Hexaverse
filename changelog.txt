@@ -1,5 +1,6 @@
 v0.3.22
 	> Enabled vertical synchronization by default.
+	* Fixed random jumping and flashing of selected unit button after changing selection.
 
 v0.3.21	[Mar 31 2016]
 	* Fixed terrain resource visualization.
