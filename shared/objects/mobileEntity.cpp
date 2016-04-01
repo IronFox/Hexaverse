@@ -573,7 +573,7 @@ namespace Objects
 										//bleed into next case:
 									case MobilePlacementResult::PlacementFailedTemporarilyObstructed:
 									{
-										LogEvent(EventClass::Preset::operationAborted,this,"Unable to complete movement.");
+										LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Unable to complete movement.");
 										if (health <= 0)
 										{
 											LogEvent(EventSignificance::Common,this,"Is dead.");
@@ -612,10 +612,20 @@ namespace Objects
 							if (task.path.IsEmpty() || dropRemaining)
 							{
 								this->UnlockTasks();
-								this->EraseFirstTask();
-								//tasks.EraseFront();
-								if (HasTasks() && To<VehicleJob::PathJob>::DynamicCast(myTasks.Peek().job))
-									myTasks.Peek().Replot(location,this,FocusChangeType::SituationChanged,true);
+								if (dropRemaining)
+								{
+									this->ClearAllTasks(true,CLOCATION);
+									remaining = true;
+								}
+								else
+								{
+									this->EraseFirstTask();
+									//tasks.EraseFront();
+									if (HasTasks() && To<VehicleJob::PathJob>::DynamicCast(myTasks.Peek().job))
+									{
+										myTasks.Peek().Replot(location,this,FocusChangeType::SituationChanged,true);
+									}
+								}
 								#ifndef CLIENT
 									RegisterChange(TasksChanged,motionTime);
 								#endif
