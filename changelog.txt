@@ -6,6 +6,10 @@ v0.5.0
 	> Reduced construction costs of all vehicle bases.
 	> Artillery can no longer hit destinations above ground (needs ground impact).
 	> Artillery explosions no longer dig away whole spheres, but remove softer terrain one layer at a time.
+	> Enabled vertical synchronization by default.
+	> Routing errors of automated vehicles (surveyors) are no longer visually logged.
+	* Fixed random jumping and flashing of selected unit button after changing selection.
+	* Fixed server endless loop when path construction job (e.g. build road to) permanently fails at end-point.
 
 v0.3.21	[Mar 31 2016]
 	* Fixed terrain resource visualization.
