@@ -1,5 +1,6 @@
 v0.3.22
 	> Enabled vertical synchronization by default.
+	> Routing errors of automated vehicles (surveyors) are no longer visually logged.
 	* Fixed random jumping and flashing of selected unit button after changing selection.
 
 v0.3.21	[Mar 31 2016]
