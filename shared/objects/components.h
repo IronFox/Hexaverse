@@ -189,6 +189,7 @@ namespace Objects
 													memset(operationSpeed,0,sizeof(operationSpeed));
 												}
 
+			static int						GetGroundHeight(const Grid::LCellIdI&location);
 			static void						TraceTrajectory(TrajectoryType, float flatRange, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps);
 			static TurretTrajectory			TraceTrajectory(TrajectoryType, float flatRange, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
 			static TurretTrajectory			TraceTrajectory(TrajectoryType type, float flatRange, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, TVec3<>&impactAt)
@@ -487,8 +488,11 @@ namespace Objects
 						artillery,launcher,emp,armored,
 						bomb,
 						munitionTransporter,
-						radar,resourceScanner,
-						protonCannon,skyHubTurret,ragnarok,starPort;
+						radar,resourceScanner
+						#ifndef NO_SATELLITES
+							,protonCannon,skyHubTurret,ragnarok,starPort
+						#endif
+						;
 
 		namespace SubOrbital
 		{
@@ -512,32 +516,33 @@ namespace Objects
 			void		Configure(Turret&);
 		};
 
-		/**
-		ProtonCannons are used by satellites, and (re)use the missile trajectory
-		*/
-		namespace SkyGuardian
-		{
-			void		Configure(Turret&);
-		};
+		#ifndef NO_SATELLITES
+			/**
+			ProtonCannons are used by satellites, and (re)use the missile trajectory
+			*/
+			namespace SkyGuardian
+			{
+				void		Configure(Turret&);
+			};
 
-		/**
-		Used only by the SkyHub satellite. Provides its logic
-		*/
-		namespace SkyHubTurret
-		{
-			void		Configure(Turret&);
-		};
+			/**
+			Used only by the SkyHub satellite. Provides its logic
+			*/
+			namespace SkyHubTurret
+			{
+				void		Configure(Turret&);
+			};
 
-		namespace Ragnarok
-		{
-			void		Configure(Turret&);
-		};
+			namespace Ragnarok
+			{
+				void		Configure(Turret&);
+			};
 
-		namespace StarPort
-		{
-			void		Configure(Turret&);
-		};
-
+			namespace StarPort
+			{
+				void		Configure(Turret&);
+			};
+		#endif
 
 		namespace Armored
 		{

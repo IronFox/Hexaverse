@@ -1,6 +1,9 @@
 #ifndef objectsSatteliteH
 #define objectsSatteliteH
 
+#include "../config.h"
+
+#ifndef NO_SATELLITES
 
 /*
 * single sphere layer that hosts all space objects around planets
@@ -98,17 +101,11 @@ namespace Objects
 			int					lastExtraFuelDemand = -1;
 		#endif
 
-
-		struct Detail
-		{
-			static int			WalkStack(const Grid::CellStack&stack, bool failOnStructureCount);
-
-		};
-
 	public:
 		static const int		BaseResidenceHeight = Grid::CellStack::HalfRange * 5;
 		static const int		DeclinedResidenceHeight = BaseResidenceHeight - 4;
 
+		static bool				IsSatelliteHeight(int h)	{return h == BaseResidenceHeight || h == DeclinedResidenceHeight;}
 
 		static count_t			CountTurretOccurrences(const OwnerParameter&,Component::Turret*);
 
@@ -203,8 +200,8 @@ namespace Objects
 		virtual bool			IsSatellite() const override {return true;}
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = 0.f; return To<MobileEntity>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = 0.f; return To<const MobileEntity>::Cast(shared_from_this());}
-		//virtual bool				CanSee(const PWorldEntity&other)	const override;
-		//virtual bool				CanSee(const TVec3<>&center, float radius)	const override;
+		virtual bool			CanSpawnInGrid() const override {return false;}
+		virtual bool			CanSpawnAboveGrid(int&outHeight) const {outHeight = BaseResidenceHeight; return true;}
 
 		#ifdef HAS_WINDOW
 			virtual void		DescribeType(BaseCommand::Label&outResult, UINT32 descFlags) override;
@@ -580,4 +577,5 @@ namespace Objects
 
 }
 
+#endif
 #endif

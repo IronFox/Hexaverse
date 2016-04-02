@@ -218,14 +218,11 @@ namespace Evolver
 				if (!b || !b->turret->CanAttack() || !b->CountPossibleAttacks())
 					return;
 
-				if (v->IsSatellite() && To<Objects::Satellite>::Cast(v)->IsSentry())
+				if (v->IsSentry())
 				{
-				//	Objects::PSatellite s = To<Objects::Satellite>::Cast(v);
-
 					if (v->myTasks.IsEmpty())
 						v->FillAttackQueue();
 				}
-
 
 				if (v->NextTaskIsAttack())
 				{
@@ -304,56 +301,57 @@ namespace Evolver
 
 		void CheckOrbitalSupplyAndSensory(float&t, bool terrainChanged)
 		{
-			Objects::RefreshSkyHubConnections();
-			if (terrainChanged)
-				LogEvent(EventSignificance::Debug,nullptr,"Terrain changed, updating satellite ground-sensory");
-			
 			if (terrainChanged)
 			{
+				LogEvent(EventSignificance::Debug,nullptr,"Terrain changed, updating ground-sensory");
 				foreach (Objects::SubOrbital::planes,p)
 					(*p)->RefreshGroundSensor(t);
 			}
-			static Buffer0<Objects::PSatellite>	waste;
-			for (index_t i = 0; i < Objects::satellites.Count(); i++)	//must be an integer loop (see ProcessRound())
-			{
-				Objects::PSatellite sat = Objects::satellites[i];
-				t+=Objects::timeEpsilon;
-
-				if (terrainChanged)
-					sat->RefreshGroundSensor(t);
-
-				if (!sat->ProcessRound(t))	//this method can insert new satellites, hence a int loop, and not a foreach loop
+			#ifndef NO_SATELLITES
+				Objects::RefreshSkyHubConnections();
+			
+				static Buffer0<Objects::PSatellite>	waste;
+				for (index_t i = 0; i < Objects::satellites.Count(); i++)	//must be an integer loop (see ProcessRound())
 				{
-					if (sat->location.height <= Objects::Satellite::DeclinedResidenceHeight)
+					Objects::PSatellite sat = Objects::satellites[i];
+					t+=Objects::timeEpsilon;
+
+					if (terrainChanged)
+						sat->RefreshGroundSensor(t);
+
+					if (!sat->ProcessRound(t))	//this method can insert new satellites, hence a int loop, and not a foreach loop
 					{
-						LogEvent(EventClass(EventSignificance::Important, EventFlavor::Loss),sat.get(),"Insufficient fuel supply. Satellite lost");
-						//t+= 0.025f;
-						sat->motionTime+=Objects::timeEpsilon;
-						waste << sat;
+						if (sat->location.height <= Objects::Satellite::DeclinedResidenceHeight)
+						{
+							LogEvent(EventClass(EventSignificance::Important, EventFlavor::Loss),sat.get(),"Insufficient fuel supply. Satellite lost");
+							//t+= 0.025f;
+							sat->motionTime+=Objects::timeEpsilon;
+							waste << sat;
+						}
+						else
+						{
+							LogEvent(EventClass(EventSignificance::Important, EventFlavor::Loss),sat.get(),"Insufficient fuel supply. Satellite is declining");
+							Grid::LCellIdI newLocation = sat->location;
+							newLocation.height = Objects::Satellite::DeclinedResidenceHeight;
+							//t+= 0.025f;
+							sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
+						}
 					}
 					else
-					{
-						LogEvent(EventClass(EventSignificance::Important, EventFlavor::Loss),sat.get(),"Insufficient fuel supply. Satellite is declining");
-						Grid::LCellIdI newLocation = sat->location;
-						newLocation.height = Objects::Satellite::DeclinedResidenceHeight;
-						//t+= 0.025f;
-						sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
-					}
+						if (sat->location.height < Objects::Satellite::BaseResidenceHeight)
+						{
+							LogEvent( EventClass(EventSignificance::Uncommon, EventFlavor::Gain),sat.get(),"Satellite height restored");
+							Grid::LCellIdI newLocation = sat->location;
+							newLocation.height = Objects::Satellite::BaseResidenceHeight;
+							sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
+						}
 				}
-				else
-					if (sat->location.height < Objects::Satellite::BaseResidenceHeight)
-					{
-						LogEvent( EventClass(EventSignificance::Uncommon, EventFlavor::Gain),sat.get(),"Satellite height restored");
-						Grid::LCellIdI newLocation = sat->location;
-						newLocation.height = Objects::Satellite::BaseResidenceHeight;
-						sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
-					}
-			}
-			//satellitesAreLocked = false;
+				//satellitesAreLocked = false;
 
-			for (const auto&sat : waste)
-				Objects::Remove(sat, Objects::RemovalType::UncontrolledExplosion, sat->motionTime, true);
-			waste.Clear();
+				for (const auto&sat : waste)
+					Objects::Remove(sat, Objects::RemovalType::UncontrolledExplosion, sat->motionTime, true);
+				waste.Clear();
+			#endif
 		};
 
 

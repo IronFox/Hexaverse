@@ -1206,8 +1206,12 @@ namespace FileIO
 													Import(child,RID::vehicleTurret,turret);
 												}
 												Objects::PMobileEntity v = Objects::AssembleMobileEntity(Objects::PFaction(),TUniqueID(),Grid::LCellIdI(0,0),base,turret);
+												if (!v)
+												{
+													LogEvent(EventSignificance::NonFatalError,"Unable to assemble mobile entity ("+base+","+turret+")");
+												}
 
-												bool doInsert = Import(child,vehicleChunk,v,factionMap);
+												bool doInsert = v && Import(child,vehicleChunk,v,factionMap);
 												#if defined CHEAT_FULL_STORAGE && !defined ONE_COMPOUND_PER_FACTION
 													 v->currentStorage = v->GetMaxStorageCapacity();
 												#endif

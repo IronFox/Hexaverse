@@ -102,9 +102,10 @@ namespace Objects
 			distanceFactor *= 0.5f;
 		if (e->IsStructure())
 			distanceFactor += 0.1f * To<Structure>::Cast(e)->GetHeight();
-		if (e->IsSatellite())
-			distanceFactor *= 3.f;
-
+		#ifndef NO_SATELLITES
+			if (e->IsSatellite())
+				distanceFactor *= 3.f;
+		#endif
 		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(e),distanceFactor);
 
 		UpdateStateColors(e,tone,isPrototype);
@@ -297,7 +298,7 @@ namespace Objects
 		if (selectedEntity)
 		{
 			Grid::LCellIdI target = Grid::SeeThrough::LocateCamera();
-			if (!selectedEntity->IsSatellite())
+			if (selectedEntity->location.height <= Grid::CellStack::BottomHeight)
 				target.height = selectedEntity->location.height;
 			Grid::SeeThrough::Update(!Grid::SeeThrough::IsEnabled(), target);
 //					Grid::SeeThrough::Update(!Grid::SeeThrough::IsEnabled(), selectedEntity->location);

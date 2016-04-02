@@ -23,8 +23,11 @@ namespace Objects
 						artillery,launcher,emp,armored,
 						bomb,
 						munitionTransporter,
-						radar,resourceScanner,
-						protonCannon,skyHubTurret,ragnarok,starPort;
+						radar,resourceScanner
+						#ifndef NO_SATELLITES
+							,protonCannon,skyHubTurret,ragnarok,starPort
+						#endif
+						;
 
 
 		VehicleBase		hoverbase,
@@ -220,11 +223,23 @@ namespace Objects
 		//	return CanHit(flatRange, origin /hOrigin,hOrigin,dest/hDest,hDest);
 		//}
 
+
+
+
+		/*static*/ int				Turret::GetGroundHeight(const Grid::LCellIdI&location)
+		{
+			UINT32 fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+			return Grid::actualWorld.cellStack[fine].FindTopClearOverNonClear(false);
+		}
+
+
+
+
 		/*static*/ bool						Turret::CanHit(TrajectoryType t, float flatRange, const Grid::LCellIdI&origin, float zOffset, const TVec3<>&dest)
 		{
 			if (t == TrajectoryType::VerticalBeam)
 			{
-				return Satellite::GetGroundHeight(origin) != badHeight;
+				return GetGroundHeight(origin) != badHeight;
 			}
 			float hDest = Vec::length(dest);
 			return CanHit(	t, flatRange,
@@ -246,7 +261,7 @@ namespace Objects
 		{
 			if (t == TrajectoryType::VerticalBeam)
 			{
-				return Satellite::GetGroundHeight(origin) != badHeight;
+				return GetGroundHeight(origin) != badHeight;
 			}
 			return CanHit(	t, flatRange,
 							Grid::low.cells[origin.stackID].centerVertex.xyz,Grid::ToRadius(origin.height) + zOffset,
@@ -347,7 +362,7 @@ namespace Objects
 				case TrajectoryType::VerticalBeam:
 				{
 					UINT32 stackIndex = Grid::low.Locate(dest);
-					int h = Satellite::GetGroundHeight(Grid::LCellIdI(stackIndex,0));
+					int h = GetGroundHeight(Grid::LCellIdI(stackIndex,0));
 					if (h == badHeight)
 						return;
 					float4 p(Grid::low.cells[stackIndex].cornerCenter,Grid::ToRadius(h));
@@ -467,7 +482,7 @@ namespace Objects
 				break;
 				case TrajectoryType::VerticalBeam:
 				{
-					int h = Satellite::GetGroundHeight(source);
+					int h = GetGroundHeight(source);
 					if (h == badHeight)
 						return TurretTrajectory::InvalidTrajectory;
 					outSteps.Clear();
@@ -975,12 +990,12 @@ namespace Objects
 
 		float		Bomb::GetRadius(bool doomsday)
 		{
-			return doomsday ? ragnarok.explosionRadius-3 : artillery.explosionRadius*2;
+			return doomsday ? 7 : artillery.explosionRadius*2;
 		}
 
 		int			Bomb::GetDamageLevel(bool doomsday)
 		{
-			return doomsday ? ragnarok.damageLevel / 2 : artillery.damageLevel*2;
+			return doomsday ? 50 : artillery.damageLevel*2;
 		}
 
 	
@@ -1267,185 +1282,187 @@ namespace Objects
 			}
 		#endif
 
-		void			Ragnarok::Configure(Turret&component)
-		{
-			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
+		#ifndef NO_SATELLITES
+			void			Ragnarok::Configure(Turret&component)
+			{
+				#ifdef HAS_WINDOW		
+					CellCoords offset = ConfigureStandardCommands(component);
 
-				#ifndef ONE_COMPOUND_PER_FACTION
-					component.commands.Add( new IconCommand("Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
-					component.commands.Add( new IconCommand("Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+					#ifndef ONE_COMPOUND_PER_FACTION
+						component.commands.Add( new IconCommand("Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+						component.commands.Add( new IconCommand("Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+					#endif
+
+					component.commands.Add( new IconCommand("Obliterate",&MyCmd::Obliterate, &CommonCmd::CommonButtonCheck,NoCosts));
+
+					component.parts.setSize(1);
+					component.parts.first().first.LoadFromObj("objects/ragnarökRing.obj");
 				#endif
 
-				component.commands.Add( new IconCommand("Obliterate",&MyCmd::Obliterate, &CommonCmd::CommonButtonCheck,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/ragnarökRing.obj");
-			#endif
+				component.typeName = "Ragnarök";
+				component.shortName = " Ragnarök";
+				component.constName = ConstName::Turret_Ragnarok;
+				component.constTowerName = ConstName::Empty;	//not used
 
+				component.mountType = Turret::MountType::Satellite;
+				component.isDoomsday = true;
 
-			component.typeName = "Ragnarök";
-			component.shortName = " Ragnarök";
-			component.constName = ConstName::Turret_Ragnarok;
-			component.constTowerName = ConstName::Empty;	//not used
-
-			component.mountType = Turret::MountType::Satellite;
-			component.isDoomsday = true;
-
-			component.continuousRotation = true;
-			component.continuousRotationSpeed = -0.25f;
+				component.continuousRotation = true;
+				component.continuousRotationSpeed = -0.25f;
 
 
-			component.productionCosts = 1;	//irrelevant
+				component.productionCosts = 1;	//irrelevant
 		
-			component.weight = 1;	//irrelevant
-			component.healthMultiplier = 1;	//irrelevant
-			component.horizontalAttackRange = 0;
-			component.scanningRange = 1;
+				component.weight = 1;	//irrelevant
+				component.healthMultiplier = 1;	//irrelevant
+				component.horizontalAttackRange = 0;
+				component.scanningRange = 1;
 
-			component.explosionRadius = 10;
-			component.damageLevel = 100;
-			component.dealsEMPDamage = false;
-			component.attacksPerRound = 1;
-			component.initiative = 10;
-			#ifdef _DEBUG
-				component.ammoNeedPerShot = 0;//1000;
-			#else
-				component.ammoNeedPerShot = 2000;
-			#endif
-			#ifndef ONE_COMPOUND_PER_FACTION
-				component.baseStorageCapacity.level[Resource::Uranium] = component.ammoNeedPerShot;
-			#endif
-			component.ammoType = Resource::Uranium;
-			component.requiresStationaryVehicle = true;
-			component.uplinkTraffic = 50;
-			component.trajectoryType = TrajectoryType::VerticalBeam;
+				component.explosionRadius = 10;
+				component.damageLevel = 100;
+				component.dealsEMPDamage = false;
+				component.attacksPerRound = 1;
+				component.initiative = 10;
+				#ifdef _DEBUG
+					component.ammoNeedPerShot = 0;//1000;
+				#else
+					component.ammoNeedPerShot = 2000;
+				#endif
+				#ifndef ONE_COMPOUND_PER_FACTION
+					component.baseStorageCapacity.level[Resource::Uranium] = component.ammoNeedPerShot;
+				#endif
+				component.ammoType = Resource::Uranium;
+				component.requiresStationaryVehicle = true;
+				component.uplinkTraffic = 50;
+				component.trajectoryType = TrajectoryType::VerticalBeam;
 
 
-			component.FinishCreation(false);
-		}
+				component.FinishCreation(false);
+			}
 
 
 	
-		void			SkyGuardian::Configure(Turret&component)
-		{
-			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
+			void			SkyGuardian::Configure(Turret&component)
+			{
+				#ifdef HAS_WINDOW		
+					CellCoords offset = ConfigureStandardCommands(component);
 
-				component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
+					component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/skyGuardianRing.obj");
-			#endif
+					component.parts.setSize(1);
+					component.parts.first().first.LoadFromObj("objects/skyGuardianRing.obj");
+				#endif
 
 
-			component.typeName = "Sky Guardian";
-			component.shortName = " Guardian";
-			component.constName = ConstName::Turret_ProtonCannon;
-			component.constTowerName = ConstName::Empty;	//not used
+				component.typeName = "Sky Guardian";
+				component.shortName = " Guardian";
+				component.constName = ConstName::Turret_ProtonCannon;
+				component.constTowerName = ConstName::Empty;	//not used
 
-			component.mountType = Turret::MountType::Satellite;
+				component.mountType = Turret::MountType::Satellite;
 
-			component.productionCosts = 1;	//irrelevant
+				component.productionCosts = 1;	//irrelevant
 
 		
-			component.weight = 1;	//irrelevant
-			component.healthMultiplier = 1;	//irrelevant
-			component.horizontalAttackRange = 30;
-			component.scanningRange = 10;
+				component.weight = 1;	//irrelevant
+				component.healthMultiplier = 1;	//irrelevant
+				component.horizontalAttackRange = 30;
+				component.scanningRange = 10;
 
-			component.explosionRadius = 2;	//in space, 2 is 1
-			component.damageLevel = 5;
-			component.dealsEMPDamage = false;
-			component.attacksPerRound = 1;
-			component.initiative = 60;
-			component.ammoNeedPerShot = 0;//10;
-			component.ammoType = Resource::Uranium;
-			component.requiresStationaryVehicle = true;
-			component.uplinkTraffic = 10;
-			component.trajectoryType = TrajectoryType::Missile;
+				component.explosionRadius = 2;	//in space, 2 is 1
+				component.damageLevel = 5;
+				component.dealsEMPDamage = false;
+				component.attacksPerRound = 1;
+				component.initiative = 60;
+				component.ammoNeedPerShot = 0;//10;
+				component.ammoType = Resource::Uranium;
+				component.requiresStationaryVehicle = true;
+				component.uplinkTraffic = 10;
+				component.trajectoryType = TrajectoryType::Missile;
 
 
-			component.FinishCreation(false);
-		}
+				component.FinishCreation(false);
+			}
 
-		void			SkyHubTurret::Configure(Turret&component)
-		{
-			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
-				offset++;//remain on lower level
-				component.commands.Add( new IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
+			void			SkyHubTurret::Configure(Turret&component)
+			{
+				#ifdef HAS_WINDOW		
+					CellCoords offset = ConfigureStandardCommands(component);
+					offset++;//remain on lower level
+					component.commands.Add( new IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/skyHubTurret.obj");
+					component.parts.setSize(1);
+					component.parts.first().first.LoadFromObj("objects/skyHubTurret.obj");
 			
-			#endif
+				#endif
 
 
-			component.typeName = "Sky Hub";
-			component.shortName = " Hub";
-			component.constName = ConstName::Turret_SkyHub;
-			component.constTowerName = ConstName::Empty;	//not used
+				component.typeName = "Sky Hub";
+				component.shortName = " Hub";
+				component.constName = ConstName::Turret_SkyHub;
+				component.constTowerName = ConstName::Empty;	//not used
 
-			component.mountType = Turret::MountType::Satellite;
-			component.operationSpeed[Repair] = 10;
-			component.operationSpeed[Construct] = 5;
-			//component.fuelSupplyRadius = 20;
+				component.mountType = Turret::MountType::Satellite;
+				component.operationSpeed[Repair] = 10;
+				component.operationSpeed[Construct] = 5;
+				//component.fuelSupplyRadius = 20;
 
-			component.continuousRotation = true;
-			component.continuousRotationSpeed = 0.25f;
+				component.continuousRotation = true;
+				component.continuousRotationSpeed = 0.25f;
 
-			component.productionCosts = 1;	//irrelevant
+				component.productionCosts = 1;	//irrelevant
 		
-			component.weight = 1;	//irrelevant
-			component.healthMultiplier = 1;	//irrelevant
-			component.scanningRange = 35;	//temporary. Once orbital scanners are introduced, reduce this value again
-			component.groundScanningRange = 10;
+				component.weight = 1;	//irrelevant
+				component.healthMultiplier = 1;	//irrelevant
+				component.scanningRange = 35;	//temporary. Once orbital scanners are introduced, reduce this value again
+				component.groundScanningRange = 10;
 
-			component.attacksPerRound = 0;
-			component.initiative = 60;
-			component.uplinkTraffic = 20;
+				component.attacksPerRound = 0;
+				component.initiative = 60;
+				component.uplinkTraffic = 20;
 
-			component.FinishCreation(false);
-		}
+				component.FinishCreation(false);
+			}
 
-		void			StarPort::Configure(Turret&component)
-		{
-			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
-				offset++;//remain on lower level
-				component.commands.Add( new IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
+			void			StarPort::Configure(Turret&component)
+			{
+				#ifdef HAS_WINDOW		
+					CellCoords offset = ConfigureStandardCommands(component);
+					offset++;//remain on lower level
+					component.commands.Add( new IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/starPortRing.obj");
+					component.parts.setSize(1);
+					component.parts.first().first.LoadFromObj("objects/starPortRing.obj");
 			
-			#endif
+				#endif
 
 
-			component.typeName = "Star Port";
-			component.shortName = " Port";
-			component.constName = ConstName::Turret_StarPort;
-			component.constTowerName = ConstName::Empty;	//not used
+				component.typeName = "Star Port";
+				component.shortName = " Port";
+				component.constName = ConstName::Turret_StarPort;
+				component.constTowerName = ConstName::Empty;	//not used
 
-			component.mountType = Turret::MountType::Satellite;
+				component.mountType = Turret::MountType::Satellite;
 
-			component.continuousRotation = true;
-			component.continuousRotationSpeed = -0.05f;
+				component.continuousRotation = true;
+				component.continuousRotationSpeed = -0.05f;
 
-			component.productionCosts = 1;	//irrelevant
-			component.operationSpeed[Repair] = 10;
+				component.productionCosts = 1;	//irrelevant
+				component.operationSpeed[Repair] = 10;
 		
-			component.weight = 1;	//irrelevant
-			component.healthMultiplier = 1;	//irrelevant
-			component.scanningRange = 10;
-			component.groundScanningRange = 0;
+				component.weight = 1;	//irrelevant
+				component.healthMultiplier = 1;	//irrelevant
+				component.scanningRange = 10;
+				component.groundScanningRange = 0;
 
-			component.attacksPerRound = 0;
-			component.initiative = 30;
-			component.uplinkTraffic = 1;	//irrelevant
+				component.attacksPerRound = 0;
+				component.initiative = 30;
+				component.uplinkTraffic = 1;	//irrelevant
 
-			component.FinishCreation(false);
-		}
+				component.FinishCreation(false);
+			}
+		#endif
 
 		void			MunitionTransporter::Configure(Turret&component)
 		{
@@ -1963,8 +1980,6 @@ namespace Objects
 								break;
 							}
 					}
-					if (selectedEntity->IsSatellite())	//don't convert to IsOrbital()
-						directPlace = true;
 
 					if (!directPlace)
 					{
@@ -2109,8 +2124,11 @@ namespace Objects
 				{
 					count_t cnt = 0, limit = 0;
 					cnt = Vehicle::CountTurretOccurrences(owner,this)
+						#ifndef NO_SATELLITES
 						+
-						Satellite::CountTurretOccurrences(owner,this);
+						Satellite::CountTurretOccurrences(owner,this)
+						#endif
+						;
 					limit = RuntimeConfig::UnitLimits::Get(constName);
 					if (limit != 0xFFFF)
 						outResult << " Deployed: "+String(cnt)+"/"+String(limit);

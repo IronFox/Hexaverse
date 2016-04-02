@@ -72,11 +72,15 @@ namespace Objects
 				bool				IsEmpty() const	{return this != nullptr && !producing;}
 			#endif
 
-			bool					IsSatellite() const;
+			#ifndef NO_SATELLITES
+				bool				IsSatellite() const;
+			#endif
 			bool					IsPlane() const;
 			bool					IsVehicle() const;
 			bool					IsPureVehicle() const;
 			Component::VehicleBase*	GetVehicleBase() const;
+			bool					CanSpawnInGrid() const;
+			bool					CanSpawnAboveGrid(int&) const;
 		};
 		//typedef std::pair<PVehicle,Command>		WorkItem;
 		Buffer0<WorkItem>			queue;	//must use buffer here, because elements can be erased and changes are rare
@@ -116,7 +120,9 @@ namespace Objects
 			WorkItem*				EnqueueProductionOf(const PMobileEntity&e, index_t at = InvalidIndex);
 			WorkItem*				EnqueueProductionOfVehicle(ConstName baseName, ConstName turretName);
 			WorkItem*				EnqueueProductionOfVehicle(Component::VehicleBase*selectedBase, Component::Turret*selectedTurret);
-			WorkItem*				EnqueueProductionOfSatellite(ConstName typeName);
+			#ifndef NO_SATELLITES
+				WorkItem*			EnqueueProductionOfSatellite(ConstName typeName);
+			#endif
 
 			void					Tick(ResourceVector&v, float&t);
 			UINT32					ProductionRounds(const WorkItem&e, bool isActive) const	{return ProductionRounds(e.producing,isActive);}

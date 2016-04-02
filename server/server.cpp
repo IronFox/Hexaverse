@@ -486,7 +486,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 
 		Objects::ForeachFaction([explosionSphere](const Objects::PFaction&f)
 		{
-			if (f->GridCanSee(volume) || f->CountSatelliteCoverage(explosionSphere) || f->CountPlaneCoverage(explosionSphere))
+			if (f->GridCanSee(volume) || f->CountOffGridCoverage(explosionSphere))
 			{
 				canSee.Append(f);
 			};
@@ -1432,7 +1432,7 @@ int main( int argc, const char* argv[])
 				Test::Run(Test::Bin2Str());
 				Test::Run(Test::Serialization());
 				Test::Run(Test::VehiclePlant());
-				Test::Run(Test::SkyPort());
+				IF_SATELLITES(Test::Run(Test::SkyPort()));
 				Test::Run(Test::StorageUnits());
 			}
 			std::cout << "Tests completed. Press enter to quit" << std::endl;

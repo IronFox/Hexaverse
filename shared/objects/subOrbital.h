@@ -100,6 +100,7 @@ namespace Objects
 			#ifndef CLIENT
 				virtual void		MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/) override;
 			#endif
+			virtual bool			CanSpawnAboveGrid(int&outHeight) const override {outHeight = Height; return true;}
 
 			//MobileEntity overrides:
 			virtual int				GetMovementStepsPerRound() const override

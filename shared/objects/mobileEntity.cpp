@@ -33,19 +33,21 @@ namespace Objects
 				ASSERT2__(v->owner->HasActiveMobile(v),v->GetName(),v->owner->GetName());
 			#endif
 		}
-		for (const auto&v : satellites)
-		{
-			ASSERT1__(v->isInserted,v->GetName());
-			ASSERT1__(!v->isInsertedIntoGrid,v->GetName());	//satellites are never inserted into grid
-			ASSERT1__(v->health > 0,v->GetName());
-			ASSERT1__(GetEntity(v->id) == v, v->GetName());
-			ASSERT1__(!storedMobileEntities.Contains(v), v->GetName());
-			ASSERT1__(v->storedIn.expired(), v->GetName());
-			#ifndef CLIENT
-				ASSERT2__(!v->owner->HasMobileInStorage(v),v->GetName(),v->owner->GetName());
-				ASSERT2__(v->owner->HasActiveMobile(v),v->GetName(),v->owner->GetName());
-			#endif
-		}
+		#ifndef NO_SATELLITES
+			for (const auto&v : satellites)
+			{
+				ASSERT1__(v->isInserted,v->GetName());
+				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());	//satellites are never inserted into grid
+				ASSERT1__(v->health > 0,v->GetName());
+				ASSERT1__(GetEntity(v->id) == v, v->GetName());
+				ASSERT1__(!storedMobileEntities.Contains(v), v->GetName());
+				ASSERT1__(v->storedIn.expired(), v->GetName());
+				#ifndef CLIENT
+					ASSERT2__(!v->owner->HasMobileInStorage(v),v->GetName(),v->owner->GetName());
+					ASSERT2__(v->owner->HasActiveMobile(v),v->GetName(),v->owner->GetName());
+				#endif
+			}
+		#endif
 		for (const auto&v : SubOrbital::planes)
 		{
 			ASSERT1__(v->isInserted,v->GetName());
@@ -291,7 +293,7 @@ namespace Objects
 										//bleed into next case:
 									case MobilePlacementResult::PlacementFailedTemporarilyObstructed:
 									{
-										LogEvent(EventClass::Preset::operationAborted,this,"Unable to complete movement.");
+										LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Unable to complete movement.");
 										if (health <= 0)
 										{
 											LogEvent(EventSignificance::Common,this,"Is dead.");
@@ -330,10 +332,20 @@ namespace Objects
 							if (task.path.IsEmpty() || dropRemaining)
 							{
 								this->UnlockTasks();
-								this->EraseFirstTask();
-								//tasks.EraseFront();
-								if (HasTasks() && To<VehicleJob::PathJob>::DynamicCast(myTasks.Peek().job))
-									myTasks.Peek().Replot(location,this,FocusChangeType::SituationChanged,true);
+								if (dropRemaining)
+								{
+									this->ClearAllTasks(true,CLOCATION);
+									remaining = true;
+								}
+								else
+								{
+									this->EraseFirstTask();
+									//tasks.EraseFront();
+									if (HasTasks() && To<VehicleJob::PathJob>::DynamicCast(myTasks.Peek().job))
+									{
+										myTasks.Peek().Replot(location,this,FocusChangeType::SituationChanged,true);
+									}
+								}
 								#ifndef CLIENT
 									RegisterChange(TasksChanged,motionTime);
 								#endif
@@ -534,31 +546,33 @@ namespace Objects
 					if (!f->CanSee(_this,motionTime))
 						return;
 					Grid::LCellIdI loc;
-					if (IsSatellite())
+					if (IsAboveGrid())
 					{
-						foreach (f->satellites, _s)
-						{
-							PSatellite s = _s->lock();
-							if (s && s->WouldAttack(_this,loc,motionTime))
+						#ifndef NO_SATELLITES
+							foreach (f->satellites, _s)
 							{
-								if (s->AttackNext(loc,true))
+								PSatellite s = _s->lock();
+								if (s && s->WouldAttack(_this,loc,motionTime))
 								{
-									LogEvent(EventSignificance::Debug,s.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(motionTime));
-									LogEvent(EventSignificance::Important,s.get(),"Auto-targeting moving "+GetNiceName());
-
-									s->Attack(motionTime);
-									if (health <= 0)
+									if (s->AttackNext(loc,true))
 									{
-										doBreak = true;
-										return;
-									}
+										LogEvent(EventSignificance::Debug,s.get(),"Auto-targeting moving "+GetName()+" (located at "+location.ToString()+") via closest viable attack target "+loc.ToString()+" at t="+String(motionTime));
+										LogEvent(EventSignificance::Important,s.get(),"Auto-targeting moving "+GetNiceName());
+
+										s->Attack(motionTime);
+										if (health <= 0)
+										{
+											doBreak = true;
+											return;
+										}
 										
+									}
 								}
 							}
-						}
-
+						#endif
 					}
-					else
+		
+					if (!doBreak)
 					{
 						foreach (f->towers, _t)
 						{
@@ -1266,25 +1280,8 @@ namespace Objects
 				}
 			}
 			else
-			if (v->IsSatellite())
-			{
-				//would be faster, but too complicated to extract cost
-				//if (target.isExplicit)
-				//{
-				//	UINT32	possibilities[6 * 3];
-				//	count_t numWays = Objects::GetWays((const Objects::Satellite*)v,prev.stackID,possibilities,target.target.stackID,true,true);
-				//	bool found = false;
-				//	for (index_t i = 0; i < numWays; i++)
-				//		if (possibilities[i] == target.target.stackID)
-				//		{
-				//			found = true;
-				//			break;
-				//		}
-				//	if (!found)
-				//		return false;
-				//	path << target.target;
-				//}
-				//else
+			#ifndef NO_SATELLITES
+				if (v->IsSatellite())
 				{
 					count_t offset = path.Count();
 					if (!AppendShortestPathI((const Satellite*)v,prev,target.target.stackID,path))
@@ -1297,8 +1294,8 @@ namespace Objects
 						}
 					#endif
 				}
-			}
-			else
+				else
+			#endif
 				FATAL__("Routing not implemented for "+v->GetTypeName());
 		}
 
@@ -1416,24 +1413,23 @@ namespace Objects
 				}
 			}
 			else
-			if (v->IsPlane())
-			{
-				if (!SubOrbital::AppendShortestDirectPath(pointOfOrigin,foci.Peek().target.stackID,path))
+				if (v->IsPlane())
 				{
-					return false;	//this would be weird, but happens
-				}
-			}
-			else
-			{
-				if (v->IsSatellite())
-				{
-					if (!AppendShortestDirectSatellitePath(pointOfOrigin,foci.Peek().target.stackID,path))
-						return false;
+					if (!SubOrbital::AppendShortestDirectPath(pointOfOrigin,foci.Peek().target.stackID,path))
+					{
+						return false;	//this would be weird, but happens
+					}
 				}
 				else
-					FATAL__("Routing not implemented for "+v->GetTypeName());
-
-			}
+					#ifndef NO_SATELLITES
+						if (v->IsSatellite())
+						{
+							if (!AppendShortestDirectSatellitePath(pointOfOrigin,foci.Peek().target.stackID,path))
+								return false;
+						}
+						else
+					#endif
+						FATAL__("Routing not implemented for "+v->GetTypeName());
 		}
 		#ifdef _DEBUG
 			static StringBuffer strPlottedCourse;
