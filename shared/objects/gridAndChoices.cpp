@@ -729,7 +729,7 @@ namespace Objects
 					}
 					else
 						for (int j = cell.height; j > producer->location.height; j--)
-							if (!Grid::actualWorld.LowCellIsClear(Grid::LCellIdI(producer->location.stackID, j)))
+							if (j >= producer->location.height + producer->GetHeight() &&  !Grid::actualWorld.LowCellIsClear(Grid::LCellIdI(producer->location.stackID, j)))
 							{
 								okay = false;
 								break;
