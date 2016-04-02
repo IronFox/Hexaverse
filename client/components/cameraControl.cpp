@@ -31,7 +31,10 @@ namespace Camera
 		float3							targetDirection;			//!< Target camera direction (of the focus position from planet core)
 		float							cameraSpeed = 0;			//!< Direction animation camera speed. Starts off at 0 and accelerates as animation progresses
 		bool							moveToTarget = false;		//!< Set true to animate scene camera to given target. Does not affect @a orbit / @a targetOrbit
-		bool							skyGrid = false,subOrbitGrid = false;
+		#ifndef NO_SATELLITES
+			bool						skyGrid = false;
+		#endif
+		bool							subOrbitGrid = false;
 		//bool							skyOrbitBase = false;
 		float							orbitBaseFactor = 1.f;
 	}
@@ -48,7 +51,9 @@ namespace Camera
 
 	void						TargetSubOrbit()
 	{
-		skyGrid = false;
+		#ifndef NO_SATELLITES
+			skyGrid = false;
+		#endif
 		subOrbitGrid = true;
 	}
 
@@ -100,27 +105,36 @@ namespace Camera
 	void						TargetGroundOrbit()
 	{
 		subOrbitGrid = false;
-		if (!skyGrid)
-			return;
-		skyGrid = false;
-		return;
-		targetOrbit = groundTargetOrbit;
-		orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
+		
+		#ifndef NO_SATELLITES
+			skyGrid = false;
+		#endif
 	}
 
 	void						ToggleOrbit()
 	{
-		if (subOrbitGrid)
-			TargetSkyOrbit();
-		elif (skyGrid)
-			TargetGroundOrbit();
-		else
-			TargetSubOrbit();
+		#ifndef NO_SATELLITES
+			if (subOrbitGrid)
+				TargetSkyOrbit();
+			elif (skyGrid)
+				TargetGroundOrbit();
+			else
+				TargetSubOrbit();
+		#else
+			if (subOrbitGrid)
+				TargetGroundOrbit();
+			else
+				TargetSubOrbit();
+		#endif
 	}
 
 	bool						SkyGridIsVisible()
 	{
-		return skyGrid;
+		#ifndef NO_SATELLITES
+			return skyGrid;
+		#else
+			return false;
+		#endif
 	}
 
 	bool						SubOrbitalGridIsVisible()
@@ -132,14 +146,15 @@ namespace Camera
 
 	void						TargetOrbit(float _targetOrbit)
 	{
-		if (skyGrid)
-			groundTargetOrbit = _targetOrbit;
-		else
-		{
-			targetOrbit = _targetOrbit;
-			orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
-		}
-
+		#ifndef NO_SATELLITES
+			if (skyGrid)
+				groundTargetOrbit = _targetOrbit;
+			else
+			{
+				targetOrbit = _targetOrbit;
+				orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
+			}
+		#endif
 	}
 
 
@@ -201,7 +216,9 @@ namespace Camera
 		orbitBaseFactor = 1.f;
 
 		moveToTarget = false;
-		skyGrid = false;
+		#ifndef NO_SATELLITES
+			skyGrid = false;
+		#endif
 		subOrbitGrid = false;
 
 		scene.retraction = float3(0,0,-4 * WorldScale);
