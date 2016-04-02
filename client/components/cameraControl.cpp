@@ -31,7 +31,10 @@ namespace Camera
 		float3							targetDirection;			//!< Target camera direction (of the focus position from planet core)
 		float							cameraSpeed = 0;			//!< Direction animation camera speed. Starts off at 0 and accelerates as animation progresses
 		bool							moveToTarget = false;		//!< Set true to animate scene camera to given target. Does not affect @a orbit / @a targetOrbit
-		bool							skyGrid = false,subOrbitGrid = false;
+		#ifndef NO_SATELLITES
+			bool						skyGrid = false;
+		#endif
+		bool							subOrbitGrid = false;
 		//bool							skyOrbitBase = false;
 		float							orbitBaseFactor = 1.f;
 	}
@@ -48,77 +51,90 @@ namespace Camera
 
 	void						TargetSubOrbit()
 	{
-		skyGrid = false;
+		#ifndef NO_SATELLITES
+			skyGrid = false;
+		#endif
 		subOrbitGrid = true;
 	}
 
 	void						TargetSkyOrbit()
 	{
-		subOrbitGrid = false;
-		if (skyGrid)
+		#ifndef NO_SATELLITES
+			subOrbitGrid = false;
+			if (skyGrid)
+				return;
+			skyGrid = true;
 			return;
-		skyGrid = true;
-		return;
 
-		groundTargetOrbit = targetOrbit;
+			groundTargetOrbit = targetOrbit;
 
-		float dist = std::numeric_limits<float>::max();
-		targetOrbit = Grid::ToRadius(Objects::Satellite::BaseResidenceHeight);
-		if (
-			Obj::detectOpticalSphereIntersection(Vector<>::zero,targetOrbit,scene.GetAbsoluteLocation(),-scene.GetViewingDirection(),dist)
+			float dist = std::numeric_limits<float>::max();
+			targetOrbit = Grid::ToRadius(Objects::Satellite::BaseResidenceHeight);
+			if (
+				Obj::detectOpticalSphereIntersection(Vector<>::zero,targetOrbit,scene.GetAbsoluteLocation(),-scene.GetViewingDirection(),dist)
 			
-			&&
-			Vec::angle(scene.GetAbsoluteLocation() - scene.GetViewingDirection() * dist, scene.GetAbsoluteLocation()) < 90.f
-			)
-		{
-			float3 old = scene.location;
-			scene.location = scene.GetAbsoluteLocation() - scene.GetViewingDirection() * dist;
-			float3 axis;
-			Vec::cross(old,scene.location,axis);
-			float angle = Vec::angle(old,scene.location);
-			if (angle > getError<float>())
+				&&
+				Vec::angle(scene.GetAbsoluteLocation() - scene.GetViewingDirection() * dist, scene.GetAbsoluteLocation()) < 90.f
+				)
 			{
+				float3 old = scene.location;
+				scene.location = scene.GetAbsoluteLocation() - scene.GetViewingDirection() * dist;
+				float3 axis;
+				Vec::cross(old,scene.location,axis);
+				float angle = Vec::angle(old,scene.location);
+				if (angle > getError<float>())
+				{
 
-				orbit = Vec::length(scene.location);
-				scene.upAxis = targetDirection = scene.location / orbit;
-				scene.retraction.z = -dist;
-				Rotate(float2());
+					orbit = Vec::length(scene.location);
+					scene.upAxis = targetDirection = scene.location / orbit;
+					scene.retraction.z = -dist;
+					Rotate(float2());
 
-				TMatrix3<> rot;
-				Mat::rotationMatrix(angle,axis.Normalized(),rot);
-				Mat::mult(rot, sunDirection);
-				RealignSunDirection();
+					TMatrix3<> rot;
+					Mat::rotationMatrix(angle,axis.Normalized(),rot);
+					Mat::mult(rot, sunDirection);
+					RealignSunDirection();
+
+				}
 
 			}
-
-		}
-		orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
+			orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
+		#endif
 	}
 
 	void						TargetGroundOrbit()
 	{
 		subOrbitGrid = false;
-		if (!skyGrid)
-			return;
-		skyGrid = false;
-		return;
-		targetOrbit = groundTargetOrbit;
-		orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
+		
+		#ifndef NO_SATELLITES
+			skyGrid = false;
+		#endif
 	}
 
 	void						ToggleOrbit()
 	{
-		if (subOrbitGrid)
-			TargetSkyOrbit();
-		elif (skyGrid)
-			TargetGroundOrbit();
-		else
-			TargetSubOrbit();
+		#ifndef NO_SATELLITES
+			if (subOrbitGrid)
+				TargetSkyOrbit();
+			elif (skyGrid)
+				TargetGroundOrbit();
+			else
+				TargetSubOrbit();
+		#else
+			if (subOrbitGrid)
+				TargetGroundOrbit();
+			else
+				TargetSubOrbit();
+		#endif
 	}
 
 	bool						SkyGridIsVisible()
 	{
-		return skyGrid;
+		#ifndef NO_SATELLITES
+			return skyGrid;
+		#else
+			return false;
+		#endif
 	}
 
 	bool						SubOrbitalGridIsVisible()
@@ -130,14 +146,15 @@ namespace Camera
 
 	void						TargetOrbit(float _targetOrbit)
 	{
-		if (skyGrid)
-			groundTargetOrbit = _targetOrbit;
-		else
-		{
-			targetOrbit = _targetOrbit;
-			orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
-		}
-
+		#ifndef NO_SATELLITES
+			if (skyGrid)
+				groundTargetOrbit = _targetOrbit;
+			else
+			{
+				targetOrbit = _targetOrbit;
+				orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
+			}
+		#endif
 	}
 
 
@@ -199,7 +216,9 @@ namespace Camera
 		orbitBaseFactor = 1.f;
 
 		moveToTarget = false;
-		skyGrid = false;
+		#ifndef NO_SATELLITES
+			skyGrid = false;
+		#endif
 		subOrbitGrid = false;
 
 		scene.retraction = float3(0,0,-4 * WorldScale);
@@ -216,7 +235,7 @@ namespace Camera
 		Objects::BaseCommand::Flags Check(bool)
 		{
 			return Objects::BaseCommand::Flags::IsEnabled | 
-					(Camera::SkyGridIsVisible() ? Objects::BaseCommand::Flags::IsPermaActive : Objects::BaseCommand::Flags::None);
+					(Camera::SubOrbitalGridIsVisible() ? Objects::BaseCommand::Flags::IsPermaActive : Objects::BaseCommand::Flags::None);
 		}
 	}
 
@@ -229,7 +248,6 @@ namespace Camera
 		//RebuildCamera();
 
 		hud.UpdateProjection(0,0,1,1,-1,1);
-
 
 		Objects::viewCommands->Add( new 
 			Objects::GlobalCommand("Show Sky Grid", 

@@ -1487,8 +1487,9 @@ void	Network::Receiver::LockEmpZones(NET(UINT16)&zones)
 			Grid::low.family[i].SetOutdated(0);
 		}
 	#endif
-	Grid::visibleOrbitGrid.Invalidate();
-	//SpaceGrid::Invalidate();
+	#ifndef NO_SATELLITES
+		Grid::visibleOrbitGrid.Invalidate();
+	#endif
 }
 
 

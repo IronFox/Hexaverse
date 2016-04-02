@@ -6,10 +6,16 @@ v0.5.0
 	> Reduced construction costs of all vehicle bases.
 	> Artillery can no longer hit destinations above ground (needs ground impact).
 	> Artillery explosions no longer dig away whole spheres, but remove softer terrain one layer at a time.
+	> Reduced visual size of cargo plane.
 	> Enabled vertical synchronization by default.
 	> Routing errors of automated vehicles (surveyors) are no longer visually logged.
+	> Some visual commands of vehicle plants now flash if action is expected.
+	> UI now lists unit contents of cargo units that are not vehicle stores.
 	* Fixed random jumping and flashing of selected unit button after changing selection.
 	* Fixed server endless loop when path construction job (e.g. build road to) permanently fails at end-point.
+	* Fixed unit deployment (from factories/storage) on slopes.
+	* Fixed deployment of units outside the regular grid (e.g. planes).
+	- Removed satellite system.
 
 v0.4.2	[Mar 31 2016]
 	* Fixed terrain resource visualization.

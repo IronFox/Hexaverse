@@ -119,12 +119,14 @@ namespace Objects
 	*/
 	void				FlushAllData();
 
-	/**
-	Updates SkyHub connections to SkyPorts,	as well as dependent satellites.
-	Not guaranteed to be accurate for non-player factions on client.
-	Should be identical for player faction on client, since the client should know all of its own entities.
-	*/
-	void				RefreshSkyHubConnections();
+	#ifndef NO_SATELLITES
+		/**
+		Updates SkyHub connections to SkyPorts,	as well as dependent satellites.
+		Not guaranteed to be accurate for non-player factions on client.
+		Should be identical for player faction on client, since the client should know all of its own entities.
+		*/
+		void			RefreshSkyHubConnections();
+	#endif
 
 	#ifdef HAS_WINDOW
 		/**

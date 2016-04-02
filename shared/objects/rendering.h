@@ -110,7 +110,9 @@ namespace Objects
 		void	Render(Structure&s, float light);
 		void	Render(Structure&s);
 
-		void	Render(Satellite&s, float light);
+		#ifndef NO_SATELLITES
+			void	Render(Satellite&s, float light);
+		#endif
 
 		void	Render(SubOrbital::Plane&p, float light);
 

@@ -1149,8 +1149,8 @@
 			void						Render()
 			{
 				//static int2 lastMouse;
-				float flashOpacity = //float(sin(Engine::timing.now*2.0*M_PI)*0.5+0.5);
-										((UINT64)floor(Engine::timing.now*2.0))%2;
+				float flashOpacity = 	((UINT64)floor(Engine::timing.now*2.0))%2;
+				float softFlashOpacity = float(sin(Engine::timing.now*2.0*M_PI)*0.5+0.5);
 
 
 				static float stationaryCounter = 0;
@@ -1203,7 +1203,7 @@
 							else
 								if (cmd.state & Objects::BaseCommand::Flags::IsFlashing)
 								{
-									code.r = flashOpacity;
+									code.r = (cmd.state & Objects::BaseCommand::Flags::SoftFlashing) ? softFlashOpacity : flashOpacity;
 								}
 							
 							if (cmd.state & Objects::BaseCommand::Flags::IsPermaActive)
@@ -1998,18 +1998,20 @@
 					textout << " Turret-Overweight: "<<std::max(0,veh->turret->weight - veh->base->carryingCapacity) << nl;
 					textout << " Movement Initiative: "<<(int)v->GetMovementInitiative()<<"/"<<(int)veh->base->initiative<<nl;
 				}
-				elif (e.IsSatellite())
-				{
-					Objects::Satellite*sat = (Objects::Satellite*)(&e);
-					int demand = sat->GetFuelConsumptionPerRound();
-					if (!sat->RequiresFuel())
-						demand = 0;
-					textout << " Fuel-Consumption: "<<(char)(tagOffset+Objects::Resource::Fuel)<<demand;
-					if (demand > 0)
-						textout <<'+'<<sat->GetExtraFuelDemand();
+				#ifndef NO_SATELLITES
+					elif (e.IsSatellite())
+					{
+						Objects::Satellite*sat = (Objects::Satellite*)(&e);
+						int demand = sat->GetFuelConsumptionPerRound();
+						if (!sat->RequiresFuel())
+							demand = 0;
+						textout << " Fuel-Consumption: "<<(char)(tagOffset+Objects::Resource::Fuel)<<demand;
+						if (demand > 0)
+							textout <<'+'<<sat->GetExtraFuelDemand();
 						
-					textout<<nl;
-				}
+						textout<<nl;
+					}
+				#endif
 				textout << " Attack Initiative: "<<(int)v->GetAttackInitiative()<<"/"<<(int)v->turret->initiative<<nl;
 				textout << " Speed: "<<v->GetMovementStepsPerRound() << nl;
 				if (v->turret->CanAttack())
@@ -2085,6 +2087,8 @@
 				#endif
 			}
 
+			bool storeListed = false;
+
 			if (e.IsStructure())
 			{
 				#ifdef _DEBUG
@@ -2128,6 +2132,7 @@
 				const Objects::VehicleStore*st = dynamic_cast<const Objects::VehicleStore*>(&e);
 				if (st)
 				{
+					storeListed = true;
 					textout << " Max Vehicles per Store: "<<Objects::VehicleStore::MaxVehiclesPerStore<<nl;
 
 
@@ -2395,6 +2400,21 @@
 			}
 
 
+			if (!storeListed && e.IsHangar())
+			{
+				const Objects::Hangar&h = *dynamic_cast<const Objects::Hangar*>(&e);
+				textout.PushColorState();
+				textout.Tint(0.75,0.8,1);
+				textout << " Units in storage ("<<h.stored.Count()<<"/"<<h.GetMaxStorage()<<"):"<<nl;
+				textout.PopColorState();
+				for (const auto&v : h.stored)
+				{
+					Objects::PMobileEntity v1 = v.entity.lock();
+					ASSERT1__(v1,h.ToEntity().id.ToString());
+					textout << "  "<<v1->GetNiceName() << nl;
+				}
+
+			}
 			//textout.getActiveFont()->EndTagMode();
 
 

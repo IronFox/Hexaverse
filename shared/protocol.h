@@ -49,8 +49,15 @@ namespace PortOffset
 	#define NAME_APPEND1
 #endif
 
+#ifdef NO_SATELLITES
+	#define NAME_APPEND_S	"s"
+#else
+	#define NAME_APPEND_S
+#endif
 
-#define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION NAME_APPEND0 NAME_APPEND1
+
+
+#define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION NAME_APPEND0 NAME_APPEND1 NAME_APPEND_S
 #include "objects/resource.h"
 
 namespace Protocol

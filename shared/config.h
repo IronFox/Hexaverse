@@ -53,6 +53,18 @@ Disables the hibernation mechanic, and replaces it was a type-table that maps ty
 */
 #define NO_HIBERNATION
 
+/** NO_SATELLITES
+Disables the satellite mechanic, sky grid, sky port, and all satellites
+*/
+#define NO_SATELLITES
+
+#ifdef NO_SATELLITES
+	#define IF_SATELLITES_P(X,Y)
+	#define IF_SATELLITES(X)
+#else
+	#define IF_SATELLITES_P(X,Y)	X,Y
+	#define IF_SATELLITES(X)	X
+#endif
 
 
 //macros defines in projects:

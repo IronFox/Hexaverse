@@ -388,11 +388,6 @@ namespace Objects
 		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const Grid::LCellIdI&dest) const;
 		bool						CanHit(const TVec3<>&dest) const;
 		bool						CanHit(const Grid::LCellIdI&dest) const;
-		/**
-		Like CanHit() but includes exposion radius to some extend
-		*/
-		bool						CanHitSomehow(const TVec3<>&dest) const;
-		bool						CanHitSomehow(const Grid::LCellIdI&dest) const;
 		bool						IsSleeping() const {return sleeping;}
 
 		virtual bool				AwaitsUserInteraction() const {return false;}
@@ -419,7 +414,9 @@ namespace Objects
 		Checks whether the local type is of the Vehicle class or any derivative
 		*/
 		virtual bool				IsVehicle() const {return false;}
-		virtual bool				IsSatellite() const {return false;}
+		#ifndef NO_SATELLITES
+			virtual bool			IsSatellite() const {return false;}
+		#endif
 		virtual bool				IsPlane() const {return false;}
 		virtual bool				IsStructure() const {return false;}
 		//virtual bool				IsVehiclePlant() const {return false;}
@@ -439,6 +436,27 @@ namespace Objects
 		virtual bool				IsHangar() const {return false;}
 
 		virtual bool				IsIndestructible() const	{return false;};
+
+		/**
+		Checks if the local entity is currently above the regular grid (e.g. a satellite)
+		*/
+		inline bool					IsAboveGrid() const	{return location.height > Grid::CellStack::TopHeight;}
+
+		/**
+		Checks whether or not a new instance of the local class can be spawned within the world grid
+		*/
+		virtual bool				CanSpawnInGrid() const {return true;}
+		/**
+		Checks whether or not a new instance of the local class can be spawned above grid
+		@param[out] outHeight Height that a new instance can be spawned at. Not updated if the method returns false
+		@return true, if a new instance can be spawned above grid. @a outHeight will be updated to a valid non-grid height in this case
+		*/
+		virtual bool				CanSpawnAboveGrid(int&outHeight) const {return false;}
+
+		/**
+		Sentry entities automatically fill their attack queue
+		*/
+		virtual bool				IsSentry() const {return false;}
 
 		#ifdef HAS_WINDOW
 			virtual void			OnSelect()	{};

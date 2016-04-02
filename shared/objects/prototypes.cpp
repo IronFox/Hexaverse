@@ -9,7 +9,9 @@
 namespace Objects
 {
 	Buffer0<PStructure>			structurePrototypes;
-	Buffer0<PSatellite>			satellitePrototypes;
+	#ifndef NO_SATELLITES
+		Buffer0<PSatellite>			satellitePrototypes;
+	#endif
 	namespace Component
 	{
 		Buffer0<VehicleBase*>		baseComponents;
@@ -47,29 +49,30 @@ namespace Objects
 
 	
 
+	#ifndef NO_SATELLITES
 
-	PSatellite		GetSatellitePrototypeByName(const String&name)
-	{
-		if (name.IsNotEmpty())
+		PSatellite		GetSatellitePrototypeByName(const String&name)
 		{
-			foreach (satellitePrototypes,p)
-				if ((*p)->GetTypeName() == name)
-					return *p;
+			if (name.IsNotEmpty())
+			{
+				foreach (satellitePrototypes,p)
+					if ((*p)->GetTypeName() == name)
+						return *p;
+			}
+			return PSatellite();
 		}
-		return PSatellite();
-	}
-	PSatellite		GetSatellitePrototypeByName(ConstName name)
-	{
-		if (name != ConstName::Empty)
+		PSatellite		GetSatellitePrototypeByName(ConstName name)
 		{
-			foreach (satellitePrototypes,p)
-				if ((*p)->GetCTypeName() == name)
-					return *p;
+			if (name != ConstName::Empty)
+			{
+				foreach (satellitePrototypes,p)
+					if ((*p)->GetCTypeName() == name)
+						return *p;
+			}
+			return PSatellite();
 		}
-		return PSatellite();
-	}
 
-
+	#endif
 
 	PStructure		GetPrototypeByName(ConstName structureTypeName)
 	{
@@ -102,9 +105,11 @@ namespace Objects
 		rs = GetPrototypeByName(typeName);
 		if (rs)
 			return rs;
-		rs = GetSatellitePrototypeByName(typeName);
-		if (rs)
-			return rs;
+		#ifndef NO_SATELLITES
+			rs = GetSatellitePrototypeByName(typeName);
+			if (rs)
+				return rs;
+		#endif
 		rs = SubOrbital::GetPrototypeByName(typeName);
 		if (rs)
 			return rs;
@@ -119,9 +124,11 @@ namespace Objects
 		rs = GetPrototypeByName(typeName);
 		if (rs)
 			return rs;
-		rs = GetSatellitePrototypeByName(typeName);
-		if (rs)
-			return rs;
+		#ifndef NO_SATELLITES
+			rs = GetSatellitePrototypeByName(typeName);
+			if (rs)
+				return rs;
+		#endif
 		rs = SubOrbital::GetPrototypeByName(typeName);
 		if (rs)
 			return rs;
@@ -191,10 +198,12 @@ namespace Objects
 			Artillery::Configure(artillery);
 			Launcher::Configure(launcher);
 			EMP::Configure(emp);
-			SkyGuardian::Configure(protonCannon);
-			SkyHubTurret::Configure(skyHubTurret);
-			Ragnarok::Configure(ragnarok);
-			StarPort::Configure(starPort);
+			#ifndef NO_SATELLITES
+				SkyGuardian::Configure(protonCannon);
+				SkyHubTurret::Configure(skyHubTurret);
+				Ragnarok::Configure(ragnarok);
+				StarPort::Configure(starPort);
+			#endif
 
 			Bomb::Configure(bomb);
 			Armored::Configure(armored);
@@ -216,7 +225,9 @@ namespace Objects
 
 
 			allTurretComponents << &radar 
-								<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
+								#ifndef NO_SATELLITES
+									<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
+								#endif
 								<< &armored << &artillery << &launcher << &emp
 								<< &bomb
 								<< &terraformer << &resourceScanner

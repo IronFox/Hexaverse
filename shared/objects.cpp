@@ -20,21 +20,22 @@
 namespace Objects
 {
 
-	void RefreshSkyHubConnections()
-	{
-		for (const auto&sat : satellites)
+	#ifndef NO_SATELLITES
+		void RefreshSkyHubConnections()
 		{
-			if (sat->IsSkyHub())
-				To<SkyHub>::Cast(sat)->UpdateConnections();
+			for (const auto&sat : satellites)
+			{
+				if (sat->IsSkyHub())
+					To<SkyHub>::Cast(sat)->UpdateConnections();
+				#ifdef HAS_WINDOW
+					sat->FlushFuelDemandCache();
+				#endif
+			}
 			#ifdef HAS_WINDOW
-				sat->FlushFuelDemandCache();
+				OnSelectionChange(true);
 			#endif
 		}
-		#ifdef HAS_WINDOW
-			OnSelectionChange(true);
-		#endif
-	}
-
+	#endif
 
 
 	#ifdef CLIENT
@@ -111,8 +112,10 @@ namespace Objects
 	void					Create()
 	{
 		#ifdef CLIENT
-			Grid::visibleOrbitGrid.orbit = Grid::ToRadius(Satellite::BaseResidenceHeight);
-			Grid::visibleOrbitGrid.Clear();
+			#ifndef NO_SATELLITES
+				Grid::visibleOrbitGrid.orbit = Grid::ToRadius(Satellite::BaseResidenceHeight);
+				Grid::visibleOrbitGrid.Clear();
+			#endif
 			Grid::visibleSubOrbitGrid.orbit = Grid::ToRadius(SubOrbital::Height);
 			Grid::visibleSubOrbitGrid.Clear();
 			#ifdef HAS_WINDOW
@@ -163,13 +166,16 @@ namespace Objects
 		structurePrototypes << UraniumStorage::globalPrototype;
 		structurePrototypes << NexusPort::globalPrototype;
 		structurePrototypes << VehicleStore::globalPrototype;
-		structurePrototypes << SkyPort::globalPrototype;
 		structurePrototypes << PlaneFactory::globalPrototype;
+		
+		#ifndef NO_SATELLITES
+			structurePrototypes << SkyPort::globalPrototype;
 
-		satellitePrototypes << SkyHub::globalPrototype;
-		satellitePrototypes << SkyGuardian::globalPrototype;
-		satellitePrototypes << Ragnarok::globalPrototype;
-		//satellitePrototypes << StarPort::globalPrototype;
+			satellitePrototypes << SkyHub::globalPrototype;
+			satellitePrototypes << SkyGuardian::globalPrototype;
+			satellitePrototypes << Ragnarok::globalPrototype;
+			//satellitePrototypes << StarPort::globalPrototype;
+		#endif
 
 		SubOrbital::prototypes << SubOrbital::Raptor::globalPrototype;
 		SubOrbital::prototypes << SubOrbital::CargoPlane::globalPrototype;
@@ -204,8 +210,10 @@ namespace Objects
 				foundation.ibo.Create(geo.GetLOD(0).indices);
 			}
 			LogEvent(EventSignificance::Debug,nullptr,"Loading prototype geometry");
-			foreach(satellitePrototypes, p)
-				(*p)->PrototypeLoadGeometry();
+			#ifndef NO_SATELLITES
+				foreach(satellitePrototypes, p)
+					(*p)->PrototypeLoadGeometry();
+			#endif
 			foreach(structurePrototypes, p)
 				(*p)->PrototypeLoadGeometry();
 			foreach(SubOrbital::prototypes, p)
@@ -221,8 +229,10 @@ namespace Objects
 
 		Hangar::StaticSetup();
 
-		foreach(satellitePrototypes, p)
-			(*p)->PrototypeSetup();
+		#ifndef NO_SATELLITES
+			foreach(satellitePrototypes, p)
+				(*p)->PrototypeSetup();
+		#endif
 		foreach(structurePrototypes, p)
 			(*p)->PrototypeSetup();
 		foreach(SubOrbital::prototypes, p)
@@ -453,13 +463,15 @@ namespace Objects
 						newSel = *v;
 					}
 				}
-				foreach(satellites, v)
-				{
-					if ((*v)->TestIntersection(b, d, distance))
+				#ifndef NO_SATELLITES
+					foreach(satellites, v)
 					{
-						newSel = *v;
+						if ((*v)->TestIntersection(b, d, distance))
+						{
+							newSel = *v;
+						}
 					}
-				}
+				#endif
 				foreach(structures, s)
 				{
 					if ((*s)->TestIntersection(b, d, distance))
@@ -783,7 +795,9 @@ namespace Objects
 		RuntimeConfig::hibernationSystemEnabled = false;
 
 		storedMobileEntities.Clear();
-		satellites.Clear();
+		#ifndef NO_SATELLITES
+			satellites.Clear();
+		#endif
 		vehicles.Clear();
 		SubOrbital::planes.Clear();
 		structures.Clear();
