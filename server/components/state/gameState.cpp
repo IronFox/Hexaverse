@@ -37,8 +37,9 @@ namespace Game
 
 		namespace Nexus
 		{
-			bool		haveBases = false,
-						haveSatellitesAtopBases = true;
+			bool		haveBases = false
+						IF_SATELLITES_P( ,haveSatellitesAtopBases = true )
+						;
 
 			bool		enableAI = false;
 			float		threatEstimationFactor = 1.f;
@@ -266,9 +267,9 @@ namespace Game
 
 		void	Describe(Protocol::MobileState&state, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
 		{
-			if (v.IsSatellite())
+			if (v.IsAboveGrid())
 			{
-				DBG_ASSERT_GREATER_OR_EQUAL1__(v.location.height, Grid::CellStack::HalfRange,v.GetName());
+				DBG_ASSERT_GREATER1__(v.location.height, Grid::CellStack::TopHeight,v.GetName());
 			}
 	
 			state.flags = 0;
@@ -1175,26 +1176,27 @@ namespace Game
 				}
 
 
-				if (Config::Nexus::haveSatellitesAtopBases)
-				{
-					Objects::PSkyHub hub = To<Objects::SkyHub>::Cast( Objects::SkyHub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Satellite::BaseResidenceHeight),0) );
-					Objects::InsertConstructed(hub,t);
-					ASSERT__(hub->connectedTo.lock() == port);
-
-					for (index_t i : distances)
+				#ifndef NO_SATELLITES
+					if (Config::Nexus::haveSatellitesAtopBases)
 					{
-						ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-						UINT32 d1 = (R - field.distance[i]);
+						Objects::PSkyHub hub = To<Objects::SkyHub>::Cast( Objects::SkyHub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Satellite::BaseResidenceHeight),0) );
+						Objects::InsertConstructed(hub,t);
+						ASSERT__(hub->connectedTo.lock() == port);
 
-						bool noEdge = Grid::low.grid.GetCell(i).family != 0;
-						if (!noEdge && field.distance[i] == 2)
+						for (index_t i : distances)
 						{
-							Objects::PSkyGuardian guard = To<Objects::SkyGuardian>::Cast( Objects::SkyGuardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Satellite::BaseResidenceHeight),0));
-							Objects::InsertConstructed(guard,t);
+							ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
+							UINT32 d1 = (R - field.distance[i]);
+
+							bool noEdge = Grid::low.grid.GetCell(i).family != 0;
+							if (!noEdge && field.distance[i] == 2)
+							{
+								Objects::PSkyGuardian guard = To<Objects::SkyGuardian>::Cast( Objects::SkyGuardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Satellite::BaseResidenceHeight),0));
+								Objects::InsertConstructed(guard,t);
+							}
 						}
 					}
-				}
-
+				#endif
 			}
 
 

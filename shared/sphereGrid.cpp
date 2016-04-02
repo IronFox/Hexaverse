@@ -51,7 +51,9 @@ namespace Grid
 
 
 	#ifdef CLIENT
-		OrbitGrid	visibleOrbitGrid;
+		#ifndef NO_SATELLITES
+			OrbitGrid	visibleOrbitGrid;
+		#endif
 	#else
 
 	#endif
@@ -142,6 +144,28 @@ namespace Grid
 		{
 			volumeCell[height + HalfRange].structureCounter += by;
 		}
+	}
+
+	int				CellStack::FindTopClearOverNonClear(bool failOnStructureCount)	const
+	{
+		UINT32 h;
+		for (h = Range-1; h < Range; h--)
+		{
+			const Cell&c = volumeCell[h];
+			if (c.content != Grid::Content::Clear)
+				break;
+		}
+		h++;
+		if (h >= Range-1)
+			return BadHeight;
+		if (failOnStructureCount)
+		{
+			const Cell&c = volumeCell[h];
+			if (c.structureCounter > 1)
+				return BadHeight;
+		}
+
+		return ToHeight(h);
 	}
 
 	#ifdef HAS_WINDOW
@@ -4113,7 +4137,9 @@ namespace Grid
 		#endif
 			
 		#ifdef CLIENT
-			visibleOrbitGrid.Clear();
+			#ifndef NO_SATELLITES
+				visibleOrbitGrid.Clear();
+			#endif
 			#ifdef HAS_WINDOW
 				for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 				{

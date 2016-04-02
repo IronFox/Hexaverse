@@ -54,7 +54,9 @@ namespace Objects
 	PStructure		GetStructure(const Grid::LCellIdI&cellID);
 	PStructure		GetStructure(const Grid::LCellIdU&cellID);
 	PWorldEntity	GetEntity(const Grid::LCellIdI&cellID);
-	PSatellite		GetSatellite(UINT32 flatCellID);
+	#ifndef NO_SATELLITES
+		PSatellite	GetSatellite(UINT32 flatCellID);
+	#endif
 	PMobileEntity	GetMobileEntity(const Grid::LCellIdI&cellID);
 	PMobileEntity	GetMobileEntity(const Grid::LCellIdU&cellID);
 
@@ -71,7 +73,9 @@ namespace Objects
 
 
 	bool			AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
-	bool			AppendShortestPathI(const Satellite*vehicle, const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
+	#ifndef NO_SATELLITES
+		bool		AppendShortestPathI(const Satellite*vehicle, const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
+	#endif
 	bool			AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, BasicBuffer<Grid::LCellIdI>&oPath);
 	/**
 	Attempts to find the shortest direct path to a destination. Does not check if the path is blocked by terrain or entities.
@@ -82,7 +86,9 @@ namespace Objects
 	@param constrainVerticalMotion Only chooses path nodes whoes height lies in the height range defined by @a from.height and @a to.height. If @a from and @a to lie on the same height, then path finding is restricted to 2d
 	*/
 	bool			AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion=true, bool constrainVerticalMotion=true);
-	bool			AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath);
+	#ifndef NO_SATELLITES
+		bool		AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath);
+	#endif
 
 
 
@@ -107,7 +113,7 @@ namespace Objects
 					{ return std::max(1.3f,size*size/20.f);}
 
 
-	static const int badHeight = 0x1FFFFFFF;
+	static const int badHeight = 0x1FFFFFFF;	//Keep equal to sphereGrid.h Grid::BadHeight
 	/**
 	Attempts to find the lowest possible low-resolution grid cell to put a vehicle in.
 	Search starts from the specified reference cell height. If the cell is already empty, search continues down, otherwise up.
@@ -155,9 +161,11 @@ namespace Objects
 							const Vehicle*v,  const Grid::LCellIdI&location, 
 							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible);
-	void			GetWays(const Satellite*v,  UINT32 location, 
+	#ifndef NO_SATELLITES
+		void		GetWays(const Satellite*v,  UINT32 location, 
 							TOrbitalWays&outWays, UINT32 destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
+	#endif
 	void			GetMobileWays(	const Grid::WorldData&world,
 							const MobileEntity*v,  const Grid::LCellIdI&location, 
 							TWays&outWays, const Grid::LCellIdI&destination, 
@@ -165,7 +173,9 @@ namespace Objects
 
 	bool			NoVehicleHere(const Grid::LCellIdI&cellID);
 	bool			NoVehicleHereExcept(const Grid::LCellIdI&cellID, const Vehicle*);
-	bool			NoSatelliteHere(const UINT32 cellID);
+	#ifndef NO_SATELLITES
+		bool		NoSatelliteHere(const UINT32 cellID);
+	#endif
 
 	void			RemoveVehicleFromGrid(const PVehicle&v,const Grid::LCellIdI&location);
 	void			InsertVehicleIntoGrid(const PVehicle&v,const Grid::LCellIdI&location);
@@ -190,7 +200,7 @@ namespace Objects
 		void		MoveGridVehicle(const PVehicle&v, const Grid::LCellIdI&from, const Grid::LCellIdI&to);
 		PStructure	SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,ConstName type, bool placeNow, bool isOwnedByMe);
 		PVehicle	SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe);
-		PSatellite	SpawnSatellite(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isOwnedByMe);
+		PMobileEntity	SpawnNonVehicleMobile(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isOwnedByMe);
 		/**
 		Selectively spawns either a vehicle or a satellite, depending on the parameters
 		In order to spawn a satellite, @a turret must be @a ConstName::Empty, and @base be a valid satellite type name
@@ -198,14 +208,12 @@ namespace Objects
 		PMobileEntity	SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe);
 		void		Place( const PStructure&s);
 		void		Place( const PVehicle&vehicle, bool insertIntoGrid=true);
-		void		Place( const PSatellite&s);
+		#ifndef NO_SATELLITES
+			void	Place( const PSatellite&s);
+		#endif
 		void		PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGridIfVehicle=true);
 
 
-		#ifdef HAS_WINDOW
-			void	InsertSatelliteSensor(Satellite*);
-			void	RemoveSatelliteSensor(Satellite*);
-		#endif
 
 	#else
 		PVehicle	AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret);

@@ -1949,31 +1949,35 @@ namespace Objects
 
 
 
-	/*virtual override*/ bool		SkyPort::WouldLikeToEnable() const
-	{
-		return !!GetSatellite(location.stackID);
-	}
+	#ifndef NO_SATELLITES
+		/*virtual override*/ bool		SkyPort::WouldLikeToEnable() const
+		{
+			return !!GetSatellite(location.stackID);
+		}
 
 
-	/*virtual override*/ void		SkyPort::GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&)	const
-	{
-		v.level[Resource::Energy] = -EnergyConsumption;
-		if (MobileEntityProducer::queue.IsNotEmpty())
-			v.level[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;
-	}
+		/*virtual override*/ void		SkyPort::GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&)	const
+		{
+			v.level[Resource::Energy] = -EnergyConsumption;
+			if (MobileEntityProducer::queue.IsNotEmpty())
+				v.level[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;
+		}
 
+	#endif
 
 	#ifndef CLIENT
-		/*virtual override*/ void			SkyPort::OnSleepChange(float&t)
-		{
-			Super::OnSleepChange(t);
-
-			if (IsSleeping() && IsEnabled())
+		#ifndef NO_SATELLITES
+			/*virtual override*/ void			SkyPort::OnSleepChange(float&t)
 			{
-				LogEvent(EventSignificance::Common,this,"Fell asleep. Disabling");
-				SetEnabled(false,t);
+				Super::OnSleepChange(t);
+
+				if (IsSleeping() && IsEnabled())
+				{
+					LogEvent(EventSignificance::Common,this,"Fell asleep. Disabling");
+					SetEnabled(false,t);
+				}
 			}
-		}
+		#endif
 
 		/*virtual override*/ void			VehiclePlant::OnSleepChange(float&t)
 		{
@@ -1994,13 +1998,15 @@ namespace Objects
 			return true;
 		}
 
-		/*virtual override*/ bool			SkyPort::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
-		{
-			if (waypoints.Count() != 1)
-				return false;
-			MobileEntityProducer::UpdateGatheringPoint(waypoints.First());
-			return true;
-		}
+		#ifndef NO_SATELLITES
+			/*virtual override*/ bool			SkyPort::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+			{
+				if (waypoints.Count() != 1)
+					return false;
+				MobileEntityProducer::UpdateGatheringPoint(waypoints.First());
+				return true;
+			}
+		#endif
 	#endif
 
 
@@ -2029,43 +2035,44 @@ namespace Objects
 
 
 
-		/*virtual override*/ void			SkyPort::OnEnabledChange()
-		{
-			PSkyHub hub = connectedToHub.lock();
-			if (!this->IsEnabled())
+		#ifndef NO_SATELLITES
+			/*virtual override*/ void			SkyPort::OnEnabledChange()
 			{
-				if (hub)
+				PSkyHub hub = connectedToHub.lock();
+				if (!this->IsEnabled())
 				{
-					//LogEvent(EventClass::Preset::operationAborted,this,"Connection to "+connectedTo->GetNiceName()+" lost");
-					hub->LoseGroundConnection();
-				}
-			}
-			else
-				if (!hub)
-				{
-					PSkyHub otherHub = To<SkyHub>::DynamicCast(GetSatellite(location.stackID));
-					if (otherHub && otherHub->owner == owner)
+					if (hub)
 					{
-						if (otherHub->GainGroundConnection(To<SkyPort>::Cast(shared_from_this())))
-							ASSERT__(otherHub == connectedToHub.lock());
+						//LogEvent(EventClass::Preset::operationAborted,this,"Connection to "+connectedTo->GetNiceName()+" lost");
+						hub->LoseGroundConnection();
 					}
 				}
-		}
-
-
-		/*virtual override*/ void				SkyPort::Tick(ResourceVector&v)
-		{
-			v.level[Resource::Energy] -= EnergyConsumption;
-			if (MobileEntityProducer::queue.IsNotEmpty())
-			{
-				float t = 0;
-				MobileEntityProducer::Tick(v,t);
+				else
+					if (!hub)
+					{
+						PSkyHub otherHub = To<SkyHub>::DynamicCast(GetSatellite(location.stackID));
+						if (otherHub && otherHub->owner == owner)
+						{
+							if (otherHub->GainGroundConnection(To<SkyPort>::Cast(shared_from_this())))
+								ASSERT__(otherHub == connectedToHub.lock());
+						}
+					}
 			}
 
 
+			/*virtual override*/ void				SkyPort::Tick(ResourceVector&v)
+			{
+				v.level[Resource::Energy] -= EnergyConsumption;
+				if (MobileEntityProducer::queue.IsNotEmpty())
+				{
+					float t = 0;
+					MobileEntityProducer::Tick(v,t);
+				}
 
-		}
 
+
+			}
+		#endif
 
 
 		PVehicle					VehiclePlant::GetProduction() const
@@ -2136,15 +2143,16 @@ namespace Objects
 				gatheringPoint.selected = Grid::LCellIdI::Invalid;
 			}
 
-			/*virtual override*/ void			SkyPort::OnSelect()
-			{
-				gatheringPoint.UpdateVisuals();
-			}
-			/*virtual override*/ void			SkyPort::OnDeselect()
-			{
-				gatheringPoint.selected = Grid::LCellIdI::Invalid;
-			}
-
+			#ifndef NO_SATELLITES
+				/*virtual override*/ void			SkyPort::OnSelect()
+				{
+					gatheringPoint.UpdateVisuals();
+				}
+				/*virtual override*/ void			SkyPort::OnDeselect()
+				{
+					gatheringPoint.selected = Grid::LCellIdI::Invalid;
+				}
+			#endif
 		#endif
 
 
@@ -2286,9 +2294,15 @@ namespace Objects
 					if (!controlEnabled)
 						return BaseCommand::Flags::None;
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					return (plant != nullptr/* && plant->selectedBase && plant->selectedTurret*/)
-						? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None
-						;
+					if (plant)
+					{
+						BaseCommand::Flags rs = BaseCommand::Flags::IsEnabled;
+						if (plant->selectedBase && plant->selectedTurret && plant->queue.IsEmpty() /*&& !plant->IsSleeping()*/)
+							rs |= BaseCommand::Flags::IsFlashing | BaseCommand::Flags::SoftFlashing;
+
+						return rs;
+					}
+					else return BaseCommand::Flags::None;
 				},
 				[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
@@ -2344,8 +2358,13 @@ namespace Objects
 				{
 					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					if (plant && plant->selectedTurret == c)
-						rs |= BaseCommand::Flags::IsPermaActive;
+					if (plant)
+					{
+						if (plant->selectedTurret == c)
+							rs |= BaseCommand::Flags::IsPermaActive;
+						elif (!plant->selectedTurret)
+							rs |= BaseCommand::Flags::IsFlashing | BaseCommand::Flags::SoftFlashing;
+					}
 					return rs;
 				}));
 				commands.GetLast().second->RasterizeImage();
@@ -2362,12 +2381,13 @@ namespace Objects
 			MobileEntityProducer::VisitAllCommands(visitor,force);
 			Super::VisitAllCommands(visitor,force);
 		}
-		/*virtual override*/ void				SkyPort::VisitAllCommands(FCommandVisitor visitor, bool force)
-		{
-			MobileEntityProducer::VisitAllCommands(visitor,force);
-			Super::VisitAllCommands(visitor,force);
-		}
-
+		#ifndef NO_SATELLITES
+			/*virtual override*/ void				SkyPort::VisitAllCommands(FCommandVisitor visitor, bool force)
+			{
+				MobileEntityProducer::VisitAllCommands(visitor,force);
+				Super::VisitAllCommands(visitor,force);
+			}
+		#endif
 	#endif
 	/*virtual override*/ bool				VehiclePlant::AwaitsUserInteraction() const 
 	{
@@ -2375,18 +2395,20 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ bool				SkyPort::AwaitsUserInteraction() const 
-	{
-		return MobileEntityProducer::AwaitsUserInteraction();
-	}
+	#ifndef NO_SATELLITES
+		/*virtual override*/ bool				SkyPort::AwaitsUserInteraction() const 
+		{
+			return MobileEntityProducer::AwaitsUserInteraction();
+		}
 
-	/*virtual override*/ bool				SkyPort::CanProduce(const PWorldEntity&e) const 
-	{
-		return (e->IsVehicle() && To<Vehicle>::Cast(e)->base == &Component::hoverbase && To<Vehicle>::Cast(e)->turret == &Component::terraformer)
-			||
-			(e->IsSatellite() && e->GetCTypeName() == ConstName::Type_SkyHub)
-		;
-	}
+		/*virtual override*/ bool				SkyPort::CanProduce(const PWorldEntity&e) const 
+		{
+			return (e->IsVehicle() && To<Vehicle>::Cast(e)->base == &Component::hoverbase && To<Vehicle>::Cast(e)->turret == &Component::terraformer)
+				||
+				(e->IsSatellite() && e->GetCTypeName() == ConstName::Type_SkyHub)
+			;
+		}
+	#endif
 
 	/*virtual override*/ bool				VehiclePlant::CanProduce(const PWorldEntity&e) const 
 	{
@@ -2394,48 +2416,49 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ void				SkyPort::PrototypeSetup()
-	{
-		Super::PrototypeSetup();
+	#ifndef NO_SATELLITES
+		/*virtual override*/ void				SkyPort::PrototypeSetup()
+		{
+			Super::PrototypeSetup();
 
-		#ifdef HAS_WINDOW
+			#ifdef HAS_WINDOW
 	
-			//vehicleConstructionCommands << VehicleConstructionCommand("Base:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
-			//foreach (baseComponents,comp)
-			{
-				//VehicleBase* c = *comp;
-				commands.Add(new EntityConstructionCommand("Construct Hover-Former", &Component::hoverbase,&Component::terraformer, PWorldEntity(),[]()
+				//vehicleConstructionCommands << VehicleConstructionCommand("Base:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
+				//foreach (baseComponents,comp)
 				{
-					PSkyPort port = To<SkyPort>::DynamicCast(selectedEntity);
-					if (!port)
-						return;
-					SignalConstructionBegin(port->id, ConstName::VehicleBase_HoverBase, ConstName::Turret_Terraformer);
+					//VehicleBase* c = *comp;
+					commands.Add(new EntityConstructionCommand("Construct Hover-Former", &Component::hoverbase,&Component::terraformer, PWorldEntity(),[]()
+					{
+						PSkyPort port = To<SkyPort>::DynamicCast(selectedEntity);
+						if (!port)
+							return;
+						SignalConstructionBegin(port->id, ConstName::VehicleBase_HoverBase, ConstName::Turret_Terraformer);
+					}
+					,CommonCmd::CommonButtonCheck));
+					commands.GetLast().second->RasterizeImage();
+
+					commands.Add(new EntityConstructionCommand("Construct SkyHub", nullptr,nullptr, SkyHub::globalPrototype, []()
+					{
+						PSkyPort port = To<SkyPort>::DynamicCast(selectedEntity);
+						if (!port)
+							return;
+						SignalConstructionBegin(port->id, ConstName::Type_SkyHub, ConstName::Empty);
+					}
+					,
+					[](bool controlsEnabled)
+					{
+						if (!controlsEnabled)
+							return BaseCommand::Flags::None;
+						return selectedEntity && !GetSatellite(selectedEntity->location.stackID) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+					}));
+					commands.GetLast().second->RasterizeImage();
 				}
-				,CommonCmd::CommonButtonCheck));
-				commands.GetLast().second->RasterizeImage();
+			#endif
 
-				commands.Add(new EntityConstructionCommand("Construct SkyHub", nullptr,nullptr, SkyHub::globalPrototype, []()
-				{
-					PSkyPort port = To<SkyPort>::DynamicCast(selectedEntity);
-					if (!port)
-						return;
-					SignalConstructionBegin(port->id, ConstName::Type_SkyHub, ConstName::Empty);
-				}
-				,
-				[](bool controlsEnabled)
-				{
-					if (!controlsEnabled)
-						return BaseCommand::Flags::None;
-					return selectedEntity && !GetSatellite(selectedEntity->location.stackID) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
-				}));
-				commands.GetLast().second->RasterizeImage();
-			}
-		#endif
+			//commands << Command("Queue:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
 
-		//commands << Command("Queue:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
-
-	}
-
+		}
+	#endif
 
 
 	

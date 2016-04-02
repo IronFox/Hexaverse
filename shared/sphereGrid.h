@@ -24,6 +24,8 @@ namespace Grid
 		FullTerrain
 	)
 
+	static const int BadHeight = 0x1FFFFFFF;	//keep equal to gridAndChoices.h Objects::badHeight
+
 
 	#ifdef HAS_WINDOW
 		namespace DX11 = Engine::DX11;
@@ -357,6 +359,12 @@ namespace Grid
 		static UINT		ToLayer(int height)	{return (UINT)(height < -HalfRange ? 0 : height + HalfRange);}
 		static int		ToHeight(UINT layer) {return int(layer) - CellStack::HalfRange;}
 
+		/**
+		Finds the top-most clear block that is located above a non-clear cell.
+		@param failOnStructureCount If set will cause the method to fail if the located clear cell has a >1 struct-count
+		@return Height level that is within the valid range, clear, and above a non-clear block. Returns BadHeight on failure
+		*/
+		int				FindTopClearOverNonClear(bool failOnStructureCount)	const;
 
 		#ifdef HAS_WINDOW
 		bool			HasWater() const { return waterRange.IsNotEmpty(); }
@@ -1874,14 +1882,10 @@ namespace Grid
 	bool	IsHighPartOfLow(UINT32 highCell, UINT32 lowCell);
 
 
-	inline bool	ValidCell(const LCellIdI&cell, int satHeight, int decSatHeight)	{return cell.stackID < LowSetup::GridType::CellCount 
+	inline bool	ValidCell(const LCellIdI&cell)	{return cell.stackID < LowSetup::GridType::CellCount 
 													&& 
 													(
-														(cell.height >= -CellStack::HalfRange && cell.height < CellStack::HalfRange)
-														||
-														(cell.height == satHeight || cell.height == satHeight+1)
-														||
-														(cell.height == decSatHeight || cell.height == decSatHeight+1)
+														(cell.height >= CellStack::BottomHeight && cell.height <= CellStack::TopHeight)
 													)
 													;}
 	#ifdef HYBRID_GRID
@@ -1947,7 +1951,7 @@ namespace Grid
 			int					downToHeight;
 		};
 
-		static const int Uninitialized = 0x1FFFFFFF;
+		static const int Uninitialized = BadHeight;
 
 		int						groundPenetration=0;
 
@@ -2475,8 +2479,9 @@ namespace Grid
 	};
 
 	#ifdef CLIENT
-
-		extern OrbitGrid	visibleOrbitGrid;
+		#ifndef NO_SATELLITES
+			extern OrbitGrid	visibleOrbitGrid;
+		#endif
 
 	#endif
 }

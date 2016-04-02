@@ -94,10 +94,12 @@ namespace Camera
 	void						TargetOrbit(float targetOrbit);
 
 
+	
 	/**
 	Switches to sky orbit
 	*/
 	void						TargetSkyOrbit();
+	
 	/**
 	Switches to ground orbit
 	*/

@@ -106,7 +106,7 @@
 					</context>
 					<context name="Energy">
 						<variable name="density" default="0" />
-						<variable name="max" default="0" />
+						<variable name="max" default="1" />
 					</context>
 					<context name="Uranium">
 						<variable name="density" default="0.02" />
@@ -166,17 +166,12 @@
 				<variable name="Uranium_Storage" default="8" />
 				<variable name="Nexus_Port" default="0" />
 				<variable name="Vehicle_Store" default="8" />
-				<variable name="Sky_Port" default="4" />
 				<variable name="Missile_Launcher_Tower" default="6" />
 				<variable name="Radar_Tower" default="8" />
 				<variable name="Cannon_Tower" default="16" />
 			</context>
 			<context name="MobileTurrets">Limits for mobile turrets. The used base, if flexible, is irrelevant.
 				<variable name="Radar" default="8" />
-				<variable name="Sky_Hub" default="4" />
-				<variable name="Sky_Guardian" default="8" />
-				<variable name="Ragnarök" default="1" />
-				<variable name="Star_Port" default="0" />
 				<variable name="Cannon" default="8" />
 				<variable name="Artillery" default="5" />
 				<variable name="Missile_Launcher" default="3" />
@@ -189,11 +184,6 @@
 		</context>
 		<context name="Nexus">Nexus faction settings
 			<variable name="haveBases" default="true">If enabled then Nexus bases are constructed around 3 of the 12 planet poles. Only affects newly created worlds.</variable>
-			<variable name="haveSatellitesAtopBases" default="true">
-				If enabled then Nexus bases have satellites hovering atop, providing orbital defense.
-				Effective only if haveBases is set true.
-				Only affects newly created worlds.
-			</variable>
 			<variable name="enableAI" default="true">
 				Enables the AI to process units of the Nexus faction.
 				Spawns nexus vehicles, and AI client to control nexus vehicles/structures (if any).

@@ -741,7 +741,9 @@ namespace Reflection
 
 			state.EnterNewFolder("Nexus")->attachment.reset(new Variable::PersistenceAttachment());
 				VAR(haveBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
-				VAR(haveSatellitesAtopBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
+				#ifndef NO_SATELLITES
+					VAR(haveSatellitesAtopBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
+				#endif
 				state.SetVariable(CLI::PVariable(new Variable::NexusAIEnabled("enableAI")));
 				//VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
 				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::ConfigOverridesSavegame)

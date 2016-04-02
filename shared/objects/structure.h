@@ -857,94 +857,97 @@ namespace Objects
 	class SkyLinkStructure
 	{
 	public:
-		WSkyHub						connectedToHub;
+		#ifndef NO_SATELLITES
+			WSkyHub					connectedToHub;
+		#endif
 
 		virtual WorkingStructure*	CastToStructure() = 0;
 	};
 
-	class SkyPort : public CommonStructure<SkyPort>, public MobileEntityProducer, public SkyLinkStructure
-	{
-	public:
-	protected:
-		typedef CommonStructure<SkyPort>	Super;
-
-
-		friend class Super;
-		/**/						SkyPort():MobileEntityProducer(ConstructionSpeed) {MobileEntityProducer::SetCommandOffset(int2(3,1));}
-		/**/						SkyPort(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), MobileEntityProducer(ConstructionSpeed){MobileEntityProducer::SetCommandOffset(int2(3,1));}
-	public:
-		static const int			ConstructionSpeed = 5;
-		static const int			EnergyConsumption = 10;
-
-
-		//BaseEntity overrides:
-		virtual String				GetTypeName() const override { return "Sky Port"; };
-		virtual ConstName			GetCTypeName() const override {return ConstName::Type_SkyPort;}
-
-		//WorkingStructure overrides:
-		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override;
-
-		//WorldEntity overrides:
-		virtual int					GetHeight() const override {return 2;}
-		virtual void				PrototypeSetup() override;
-		virtual int					GetConstructionCost() const override {return 40;}
-		#ifndef NO_HIBERNATION
-			virtual int				GetUplinkTraffic() const override {return 10;}
-			virtual int				GetUplinkPriority() const override {return 750;};	//not much point going far beyond generators. if they shut off, this thing shuts off, too
-		#endif
-		virtual bool				AwaitsUserInteraction() const override;
-
-		#ifndef CLIENT
-			virtual void			OnSleepChange(float&t) override;
-			virtual void			OnEnabledChange() override;
-
-			//virtual void			OnConstructionFinished(float atTime) override;	//has to register with owner	//some day
-			//virtual void			OnDestroy(float atTime) override;	//has to unregister with owner	//some day
-			virtual void			Tick(ResourceVector&) override;
-
-		#endif
-		#ifdef HAS_WINDOW
-			virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
-			virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
-			{
-				Super::DescribeType(label,descFlags);
-				//label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
-				label.MarkBriefEnd();
-				label.WrapAppendText("Sky ports provide a foundation for each one sky hub. Periodically, "+String(ResourceTag(Resource::Fuel))+"fuel is transferred up, to supply the hub and its satellites."
-									" Failure to supply the required "+String(ResourceTag(Resource::Fuel))+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection");
-			}
-			virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
-			virtual void			OnSelect()	override;
-			virtual void			OnDeselect() override;
-
-		#endif
-		virtual const MobileEntityProducer*CastToProducer() const override {return this;}
-
-		//MobileEntityProducer overrides
-		#ifndef CLIENT
-			virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
-			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
-		#endif
-		virtual bool				CanProduce(const PWorldEntity&e) const override;
-
-
-		//Structure overrides:
-		virtual bool				WouldLikeToEnable() const;
-		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override
+	#ifndef NO_SATELLITES
+		class SkyPort : public CommonStructure<SkyPort>, public MobileEntityProducer, public SkyLinkStructure
 		{
-			return MobileEntityProducer::IsBuilding(outProgress);
-		}
-		virtual bool				IsSkyPort() const override {return true;}
-		virtual bool				IsSkyLinkStructure() const override {return true;}
-		virtual Category			GetCategory() const override {return Category::Factories;}
+		public:
+		protected:
+			typedef CommonStructure<SkyPort>	Super;
 
 
-		//SkyLinkStructure overrides:
-		virtual WorkingStructure*	CastToStructure() override {return this;}
+			friend class Super;
+			/**/						SkyPort():MobileEntityProducer(ConstructionSpeed) {MobileEntityProducer::SetCommandOffset(int2(3,1));}
+			/**/						SkyPort(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), MobileEntityProducer(ConstructionSpeed){MobileEntityProducer::SetCommandOffset(int2(3,1));}
+		public:
+			static const int			ConstructionSpeed = 5;
+			static const int			EnergyConsumption = 10;
 
 
-	};
+			//BaseEntity overrides:
+			virtual String				GetTypeName() const override { return "Sky Port"; };
+			virtual ConstName			GetCTypeName() const override {return ConstName::Type_SkyPort;}
 
+			//WorkingStructure overrides:
+			virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override;
+
+			//WorldEntity overrides:
+			virtual int					GetHeight() const override {return 2;}
+			virtual void				PrototypeSetup() override;
+			virtual int					GetConstructionCost() const override {return 40;}
+			#ifndef NO_HIBERNATION
+				virtual int				GetUplinkTraffic() const override {return 10;}
+				virtual int				GetUplinkPriority() const override {return 750;};	//not much point going far beyond generators. if they shut off, this thing shuts off, too
+			#endif
+			virtual bool				AwaitsUserInteraction() const override;
+
+			#ifndef CLIENT
+				virtual void			OnSleepChange(float&t) override;
+				virtual void			OnEnabledChange() override;
+
+				//virtual void			OnConstructionFinished(float atTime) override;	//has to register with owner	//some day
+				//virtual void			OnDestroy(float atTime) override;	//has to unregister with owner	//some day
+				virtual void			Tick(ResourceVector&) override;
+
+			#endif
+			#ifdef HAS_WINDOW
+				virtual float			GetSoundLevel() const {return IsEnabled() ? GetActivityLevel() : 0.f;}
+				virtual void			DescribeType(BaseCommand::Label&label, UINT32 descFlags) override
+				{
+					Super::DescribeType(label,descFlags);
+					//label << " Max Vehicles per Store: "+String(MaxVehiclesPerStore);
+					label.MarkBriefEnd();
+					label.WrapAppendText("Sky ports provide a foundation for each one sky hub. Periodically, "+String(ResourceTag(Resource::Fuel))+"fuel is transferred up, to supply the hub and its satellites."
+										" Failure to supply the required "+String(ResourceTag(Resource::Fuel))+" will result in satellite losses. An unobstructed path into orbit is required to maintain the connection");
+				}
+				virtual void			VisitAllCommands(FCommandVisitor visitor, bool force) override;
+				virtual void			OnSelect()	override;
+				virtual void			OnDeselect() override;
+
+			#endif
+			virtual const MobileEntityProducer*CastToProducer() const override {return this;}
+
+			//MobileEntityProducer overrides
+			#ifndef CLIENT
+				virtual void			SignalNewProductionEnqueued() override {float t = 0; SetEnabled(true,t);}
+				virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) override;
+			#endif
+			virtual bool				CanProduce(const PWorldEntity&e) const override;
+
+
+			//Structure overrides:
+			virtual bool				WouldLikeToEnable() const;
+			virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override
+			{
+				return MobileEntityProducer::IsBuilding(outProgress);
+			}
+			virtual bool				IsSkyPort() const override {return true;}
+			virtual bool				IsSkyLinkStructure() const override {return true;}
+			virtual Category			GetCategory() const override {return Category::Factories;}
+
+
+			//SkyLinkStructure overrides:
+			virtual WorkingStructure*	CastToStructure() override {return this;}
+
+
+		};
+	#endif
 	/**
 	Resource supplier, and winning condition, NexusPorts are located on the 12 pentagons around the planet.
 	In order to capture a NexusPort, one must build any one structure next to it. If the last structure is lost, the NexusPort
