@@ -452,7 +452,6 @@ namespace Objects
 		@return true, if a new instance can be spawned above grid. @a outHeight will be updated to a valid non-grid height in this case
 		*/
 		virtual bool				CanSpawnAboveGrid(int&outHeight) const {return false;}
-		//virtual int					SpawnsAtHeight() const {
 
 		/**
 		Sentry entities automatically fill their attack queue
