@@ -2605,7 +2605,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			)
 			{
 
-				if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
+				if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,true))
 				{
 					//Grid::LCellIdI	target((UINT32)cellID,Grid::FromRadius(height));
 					int h;
