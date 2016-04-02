@@ -210,7 +210,9 @@ void	OnPlayerControlBegin()
 		OnSelectionChange(true);
 		UI::RefreshButtonState();
 	#endif
-	Objects::RefreshSkyHubConnections();
+	#ifndef NO_SATELLITES
+		Objects::RefreshSkyHubConnections();
+	#endif
 	Animation::UpdateAutomation(CLOCATION);
 }
 
@@ -266,9 +268,11 @@ bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 		}
 		else
 		{
-			if (v->IsSatellite())
-				foundPath = Objects::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
-			else
+			#ifndef NO_SATELLITES
+				if (v->IsSatellite())
+					foundPath = Objects::AppendShortestPathI((const Objects::Satellite*)v.get(),prev,target.stackID,path,false,&tooLong);
+				else
+			#endif
 				FATAL__("Routing not implemented for "+v->GetTypeName());
 		}
 		if (!foundPath)
@@ -318,16 +322,13 @@ bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targ
 		return false;
 	DBG_ASSERT__(!RuntimeConfig::aiMode || !Network::newRoundRequested);
 	const bool moveTo = mode == Objects::CursorMode::Idle && !leftClick;
-	if (moveTo && v->IsSatellite())
-		foreach (targets,t)
-			ASSERT_EQUAL__(t->height,v->location.height);
-
 
 	if (v->IsMobile() && moveTo)
 	{
 		Objects::PMobileEntity me = To<Objects::MobileEntity>::Cast(v);
 
 		#ifdef HAS_WINDOW
+		#ifndef NO_SATELLITES
 			if (interactive && me->IsSatellite() && !me->HasMotionTasks())
 			{
 				Objects::PSatellite sat = To<Objects::Satellite>::Cast(me);
@@ -360,6 +361,7 @@ bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targ
 					}
 				}
 			}
+		#endif
 		#endif
 
 		if (!detailedPath)
@@ -1124,10 +1126,8 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 			if (!stateChangeOnly)
 			{
-				if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsSatellite())
+				if (Objects::selectedMobileEntity && Objects::selectedMobileEntity->IsAboveGrid())
 				{
-	//				Grid::visibleOrbitGrid.Color(Objects::selectedMobileEntity->location, Objects::selectedMobileEntity->turret->fuelSupplyRadius);
-//					strip = false;
 					Camera::TargetSkyOrbit();
 				}
 				else
@@ -1238,6 +1238,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 				});
 
+				#ifndef NO_SATELLITES
 				for (const auto&sat : Objects::satellites)
 				{
 					if (sat->owner == f && sat->RequiresFuel())
@@ -1245,6 +1246,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 						change.level[Objects::Resource::Fuel] -= sat->GetFuelConsumptionPerRound() + sat->GetExtraFuelDemand();
 					}
 				}
+				#endif
 
 				Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::DynamicCast(Objects::selectedEntity);
 				if (ws)
@@ -1591,14 +1593,10 @@ bool loop()
 			World::RenderWater(frustum);
 
 
+			#ifndef NO_SATELLITES
 			if (Camera::SkyGridIsVisible())
-			{
-				//render sky grid
-				//Grid::UpdatePlanetRenderingParameters();
 				Grid::visibleOrbitGrid.Render(frustum);
-				//Grid::low.RenderGrid(Grid::ToRadius(Objects::Satellite::BaseResidenceHeight));
-
-			}
+			#endif
 
 			Objects::Renderer::RenderTranslucent();
 
@@ -1958,6 +1956,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 				});
 			}
 
+			#ifndef NO_SATELLITES
 			if (Camera::SkyGridIsVisible())
 			{
 				index_t stackID = Grid::low.TestGridIntersection(b, d, Grid::visibleOrbitGrid.orbit, distance);
@@ -1967,6 +1966,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 					return true;
 				}
 			}
+			#endif
 
 			{
 				TVec3<> normal;
@@ -2028,8 +2028,9 @@ void MyFatal(const FatalDescriptor&descriptor)
 
 			if (GetLowCellUnderCursor(target,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode))
 			{
-				if (Objects::selectedEntity->IsSatellite())
-					target.height = Objects::selectedMobileEntity->location.height;
+				int h;
+				if (!Objects::selectedEntity->CanSpawnInGrid() && Objects::selectedEntity->CanSpawnAboveGrid(h))
+					target.height = h;
 
 				if (Objects::activeCursorMode == Objects::CursorMode::PlaceStructureMode)
 				{
@@ -2586,17 +2587,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 				}
 				else
 				{
-					//if (Objects::selectedEntity->IsWorkingStructure())
+					if (Objects::selectedEntity->CastToProducer() && !Objects::selectedMobileEntity)
 					{
-						//Objects::PWorkingStructure ws = To<Objects::WorkingStructure>::Cast(Objects::selectedEntity);
-						//Objects::MobileEntityProducer*p = ws
-						if (!Objects::selectedEntity->IsSatellite() && Objects::selectedEntity->CastToProducer())
+						if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
 						{
-							if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
-							{
-								DirectTo(Objects::selectedEntity,target,false,false);
-								return;
-							}
+							DirectTo(Objects::selectedEntity,target,false,false);
+							return;
 						}
 					}
 				}
@@ -2609,11 +2605,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			)
 			{
 
-				if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,false))
+				if (GetLowCellUnderCursor(target,true/*Objects::selectedVehicle && Objects::selectedVehicle->base->moveOnWater*/,true))
 				{
 					//Grid::LCellIdI	target((UINT32)cellID,Grid::FromRadius(height));
-					if (Objects::selectedMobileEntity->IsSatellite())
-						target.height = Objects::selectedMobileEntity->location.height;
+					int h;
+					if (!Objects::selectedMobileEntity->CanSpawnInGrid() && Objects::selectedMobileEntity->CanSpawnAboveGrid(h))
+						target.height = h;
 					DirectTo(Objects::selectedMobileEntity,target,false,false);
 				}
 			}
@@ -2783,6 +2780,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 								return true;
 				}
 				else
+					#ifndef NO_SATELLITES
 					if (v->IsSatellite())
 					{
 						for (auto other : Objects::satellites)
@@ -2791,6 +2789,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 									return true;
 					}
 					else
+					#endif
 					{
 						FATAL__("Unknown mobile entity type "+v->GetTypeName());
 					}
@@ -2828,20 +2827,22 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 		if (mine)
 			return !mine->IsEnabled() && mine->CouldEnable();
-		if (s->IsSkyLinkStructure())
-		{
-			Objects::PSkyLinkStructure st = To<Objects::SkyLinkStructure>::DynamicCast(s);	//around a inheritance corner, prolly required to use dynamic cast here
-			if (!st->connectedToHub.expired())
+		#ifndef NO_SATELLITES
+			if (s->IsSkyLinkStructure())
 			{
-				return !To<Objects::WorkingStructure>::Cast(s)->IsEnabled();
+				Objects::PSkyLinkStructure st = To<Objects::SkyLinkStructure>::DynamicCast(s);	//around a inheritance corner, prolly required to use dynamic cast here
+				if (!st->connectedToHub.expired())
+				{
+					return !To<Objects::WorkingStructure>::Cast(s)->IsEnabled();
+				}
+				if (s->IsSkyPort())
+				{
+					Objects::PSkyPort p = To<Objects::SkyPort>::Cast(s);
+					if ((p->queue.IsEmpty() || !p->IsEnabled()) && p->CouldEnable(true))
+						return true;
+				}
 			}
-			if (s->IsSkyPort())
-			{
-				Objects::PSkyPort p = To<Objects::SkyPort>::Cast(s);
-				if ((p->queue.IsEmpty() || !p->IsEnabled()) && p->CouldEnable(true))
-					return true;
-			}
-		}
+		#endif
 		return false;
 
 	}
@@ -2929,7 +2930,9 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
 		return
 			Objects::vehicles.Count() 
-			+ Objects::satellites.Count() 
+			#ifndef NO_SATELLITES
+				+ Objects::satellites.Count() 
+			#endif
 			+ Objects::structures.Count();
 	}
 
@@ -2937,7 +2940,9 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
 		Objects::PWorldEntity rs;
 		GetIterateableEntity(rs,i,Objects::vehicles);
-		GetIterateableEntity(rs,i,Objects::satellites);
+		#ifndef NO_SATELLITES
+			GetIterateableEntity(rs,i,Objects::satellites);
+		#endif
 		GetIterateableEntity(rs,i,Objects::structures);
 		return rs;
 	}
@@ -2946,7 +2951,9 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	{
 		index_t rs = InvalidIndex, offset=0;
 		FindIterateableEntity(offset,rs,e,Objects::vehicles);
-		FindIterateableEntity(offset,rs,e,Objects::satellites);
+		#ifndef NO_SATELLITES
+			FindIterateableEntity(offset,rs,e,Objects::satellites);
+		#endif
 		FindIterateableEntity(offset,rs,e,Objects::structures);
 		return rs;
 

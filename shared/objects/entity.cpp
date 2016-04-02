@@ -269,8 +269,10 @@ namespace Objects
 					Component::Turret* t = ((const MobileEntity*)this)->turret;
 					if (IsVehicle())
 						cnt = Vehicle::CountTurretOccurrences(overrideOwner,t);
-					elif (IsSatellite())
-						cnt = Satellite::CountTurretOccurrences(overrideOwner,t);
+					#ifndef NO_SATELLITES
+						elif (IsSatellite())
+							cnt = Satellite::CountTurretOccurrences(overrideOwner,t);
+					#endif
 					else
 						FATAL__("Unexpected mobile entity type: "+GetTypeName());
 					limit = RuntimeConfig::UnitLimits::Get(t->constName);
@@ -339,7 +341,7 @@ namespace Objects
 				if (b->turret->CanAttack())
 					outResult << " Hrz. Attack range: "+String(b->GetFlatAttackRange()) + "+"+String(b->turret->explosionRadius);
 				outResult << "";
-				b->turret->DescribeType(outResult,true, IsSatellite() ? "Satellite" : (IsVehicle() ? "Vehicle":"Tower"),owner);
+				b->turret->DescribeType(outResult,true, IF_SATELLITES( IsSatellite() ? "Satellite" : ) (IsVehicle() ? "Vehicle":"Tower"),owner);
 			}
 		}
 	#endif
@@ -447,7 +449,7 @@ namespace Objects
 			}
 
 		#else
-			owner->RegisterSensorCreation(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),IsSatellite(), atTime,checkChangesNow, newContacts);
+			owner->RegisterSensorCreation(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),loc.height, atTime,checkChangesNow, newContacts);
 		#endif
 	}
 
@@ -456,7 +458,7 @@ namespace Objects
 		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
 		
 		#ifndef CLIENT
-			owner->RegisterSensorRemoval(Sphere<>(Grid::ToWorld(loc), GetScanningRange()),IsSatellite(),atTime,checkChangesNow);
+			owner->RegisterSensorRemoval(Sphere<>(Grid::ToWorld(loc), GetScanningRange()),loc.height, atTime,checkChangesNow);
 		#endif
 
 		#ifdef CLIENT

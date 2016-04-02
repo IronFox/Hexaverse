@@ -241,22 +241,24 @@ namespace Objects
 				{
 					allMobiles.erase(_v);
 
-					if (e->IsSatellite())
-					{
-						foreach (this->satellites,sat)
-							if (sat->lock() == e)
-							{
-								this->satellites.erase(sat);
-								break;
-							}
-						if (To<Satellite>::Cast(e)->IsSkyHub())
-							foreach (this->skyHubs,sat)
+					#ifndef NO_SATELLITES
+						if (e->IsSatellite())
+						{
+							foreach (this->satellites,sat)
 								if (sat->lock() == e)
 								{
-									this->skyHubs.erase(sat);
+									this->satellites.erase(sat);
 									break;
 								}
-						}
+							if (To<Satellite>::Cast(e)->IsSkyHub())
+								foreach (this->skyHubs,sat)
+									if (sat->lock() == e)
+									{
+										this->skyHubs.erase(sat);
+										break;
+									}
+							}
+					#endif
 					return;
 				}
 			}
@@ -287,13 +289,15 @@ namespace Objects
 			ASSERT1__(v,e->GetName());
 			ASSERT1__(v->storedIn.expired(),e->GetName());
 			allMobiles << v;
-			if (v->IsSatellite())
-			{
-				PSatellite sat = To<Satellite>::Cast(v);
-				this->satellites << sat;
-				if (sat->IsSkyHub())
-					this->skyHubs << To<SkyHub>::Cast(sat);
-			}
+			#ifndef NO_SATELLITES
+				if (v->IsSatellite())
+				{
+					PSatellite sat = To<Satellite>::Cast(v);
+					this->satellites << sat;
+					if (sat->IsSkyHub())
+						this->skyHubs << To<SkyHub>::Cast(sat);
+				}
+			#endif
 		}
 
 		bool		Faction::HasActiveMobile(const PMobileEntity&v) const
@@ -537,15 +541,28 @@ namespace Objects
 			return rs;
 		}
 
-		count_t		Faction::CountSatelliteCoverage(const TVec3<>&center)	const
+		
+		count_t		Faction::CountOffGridCoverage(int channelHeight, const TVec3<>&p)	const
 		{
-			return CountRawSensorCoverage(center,satellites);
+			#ifndef NO_SATELLITES
+				if (Satellite::IsSatelliteHeight(channelHeight))
+					return CountRawSensorCoverage(p,satellites);
+			#endif
+
+			return 0;
 		}
 
-		count_t		Faction::CountSatelliteCoverage(const Sphere<>&sphere)	const
+		count_t		Faction::CountOffGridCoverage(const Sphere<>&p)	const
 		{
-			return CountRawSensorCoverage(sphere,satellites);
+			count_t rs = 0;
+			#ifndef NO_SATELLITES
+				rs += CountRawSensorCoverage(p,satellites);
+			#endif
+
+			return rs;
 		}
+
+
 
 		void		Faction::CheckGridVisibility(const PWorldEntity&e,float&timeAt)
 		{
@@ -554,9 +571,9 @@ namespace Objects
 			LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+ ": CheckGridVisibility at time "+String(timeAt));
 			if (seeing.IsSet(e))
 			{
-				if (e->IsSatellite())
+				if (e->IsAboveGrid())
 				{
-					count_t cover = CountSatelliteCoverage(e->GetWorldPosition());
+					count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
 					if (cover == 0)
 						SignalDisappearance(e,timeAt,true);
 					else
@@ -570,9 +587,9 @@ namespace Objects
 			}
 			else
 			{
-				if (e->IsSatellite())
+				if (e->IsAboveGrid())
 				{
-					count_t cover = CountSatelliteCoverage(e->GetWorldPosition());
+					count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
 					if (cover > 0)
 						SignalAppearance(e,timeAt,true,false,cover);
 				}
@@ -586,9 +603,9 @@ namespace Objects
 		}
 
 
-		void		Faction::RegisterSensorCreation(const Sphere<>&sphere, bool isSatellite, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+		void		Faction::RegisterSensorCreation(const Sphere<>&sphere, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 		{
-			if (!isSatellite)
+			if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
 				static Grid::HighSetup::TVolumeDescriptor	desc0;
 				Grid::high.GenerateVolume(sphere,desc0);
@@ -616,26 +633,28 @@ namespace Objects
 					}
 				}
 			}
-			else
-			{
-				//count_t coverage = CountSatelliteCoverage(sat->system.w.xyz);
-				//LogEvent(EventSignificance::Debug,"Registering orbital sensor sphere "+sphere.ToString());
-				foreach (Objects::satellites,s)
+			#ifndef NO_SATELLITES
+				else if (Objects::Satellite::IsSatelliteHeight(sensorHeight))
 				{
-					PSatellite sat = *s;
-					if (sat->owner.get() != this && sphere.Contains(sat->GetWorldPosition()))
+					//count_t coverage = CountSatelliteCoverage(sat->system.w.xyz);
+					//LogEvent(EventSignificance::Debug,"Registering orbital sensor sphere "+sphere.ToString());
+					foreach (Objects::satellites,s)
 					{
-						if (SignalAppearance(sat,t,true) && newContacts)
-							newContacts->Append(sat);
+						PSatellite sat = *s;
+						if (sat->owner.get() != this && sphere.Contains(sat->GetWorldPosition()))
+						{
+							if (SignalAppearance(sat,t,true) && newContacts)
+								newContacts->Append(sat);
+						}
 					}
 				}
-			}
+			#endif
 		}
 
 		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
-		void		Faction::RegisterSensorRemoval(const Sphere<>&sphere, bool isSatellite, float&t, bool checkChangesNow)
+		void		Faction::RegisterSensorRemoval(const Sphere<>&sphere, int sensorHeight, float&t, bool checkChangesNow)
 		{
-			if (!isSatellite)
+			if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
 				static Grid::HighSetup::TVolumeDescriptor	desc0;
 				Grid::high.GenerateVolume(sphere,desc0);
@@ -649,22 +668,17 @@ namespace Objects
 
 			static Buffer<PWorldEntity>	disappear;
 
-			this->seeing.VisitAllKeys([this,isSatellite,sphere](const PWorldEntity&s)
+			bool offGrid = sensorHeight > Grid::CellStack::TopHeight;
+
+			this->seeing.VisitAllKeys([this,offGrid, sphere](const PWorldEntity&s)
 			{
-				
-				//float d2 = Vec::quadraticDistance(sphere.center,(*s)->system.w.xyz);
-				//if (d2 > escaped || (*s)->IsSatellite() != isSatellite)
-				//	continue;
-				if (s->IsSatellite() != isSatellite)
+				if (s->IsAboveGrid() != offGrid)
 					return;
-				if (s->IsSatellite())
+				if (s->IsAboveGrid())
 				{
-					PSatellite sat = To<Satellite>::Cast(s);
-					if (sphere.Contains(sat->GetWorldPosition()))
+					if (sphere.Contains(s->GetWorldPosition()))
 					{
-//						float d = Vec::distance(sat->GetWorldPosition(),sphere.center);
-//						LogEvent(EventSignificance::Debug,sat.get()," Reported in range of "+sphere.ToString()+", at distance="+String(d));
-						disappear << sat;
+						disappear << s;
 					}
 				}
 				else
@@ -706,7 +720,11 @@ namespace Objects
 			static Buffer<PWorldEntity>	disappear;
 			this->seeing.VisitAllKeys([this](const PWorldEntity&s)
 			{
-				if (!s->IsSatellite() && !GridCanSee(s))
+				#ifndef NO_SATELLITES
+					if (!s->IsSatellite() && !GridCanSee(s))
+				#else
+					if (!GridCanSee(s))
+				#endif
 				{
 					disappear << s;
 				}
@@ -982,16 +1000,20 @@ namespace Objects
 	{
 		for (const PMobileEntity&e : vehicles)
 			func(e);
-		for (const PMobileEntity&e : satellites)
-			func(e);
+		#ifndef NO_SATELLITES
+			for (const PMobileEntity&e : satellites)
+				func(e);
+		#endif
 	}
 
 	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func)
 	{
 		for (const PMobileEntity&e : vehicles)
 			func(e);
-		for (const PMobileEntity&e : satellites)
-			func(e);
+		#ifndef NO_SATELLITES
+			for (const PMobileEntity&e : satellites)
+				func(e);
+		#endif
 		for (const PMobileEntity&e : storedMobileEntities)
 			func(e);
 	}
@@ -1003,8 +1025,10 @@ namespace Objects
 			func(e);
 		for (const PWorldEntity&e : storedMobileEntities)
 			func(e);
-		for (const PWorldEntity&e : satellites)
-			func(e);
+		#ifndef NO_SATELLITES
+			for (const PWorldEntity&e : satellites)
+				func(e);
+		#endif
 		for (const PWorldEntity&e : structures)
 			func(e);
 		#ifdef CLIENT
@@ -1021,8 +1045,10 @@ namespace Objects
 	{
 		for (const PWorldEntity&e : vehicles)
 			func(e);
-		for (const PWorldEntity&e : satellites)
-			func(e);
+		#ifndef NO_SATELLITES
+			for (const PWorldEntity&e : satellites)
+				func(e);
+		#endif
 		for (const PWorldEntity&e : structures)
 			func(e);
 		#ifdef CLIENT
