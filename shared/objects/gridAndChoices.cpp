@@ -3099,7 +3099,6 @@ namespace Objects
 			if (baseLocation.height < Grid::CellStack::HalfRange)
 				s->TranslateLocationFromExport();
 			s->UpdateSystem();
-			ASSERT_GREATER_OR_EQUAL1__(s->location.height, Grid::CellStack::HalfRange,s->GetName());
 			return s;
 		}
 
