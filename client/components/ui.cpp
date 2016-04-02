@@ -2063,6 +2063,8 @@
 				#endif
 			}
 
+			bool storeListed = false;
+
 			if (e.IsStructure())
 			{
 				#ifdef _DEBUG
@@ -2101,6 +2103,7 @@
 				const Objects::VehicleStore*st = dynamic_cast<const Objects::VehicleStore*>(&e);
 				if (st)
 				{
+					storeListed = true;
 					textout << " Max Vehicles per Store: "<<Objects::VehicleStore::MaxVehiclesPerStore<<nl;
 
 
@@ -2368,6 +2371,21 @@
 			}
 
 
+			if (!storeListed && e.IsHangar())
+			{
+				const Objects::Hangar&h = *dynamic_cast<const Objects::Hangar*>(&e);
+				textout.PushColorState();
+				textout.Tint(0.75,0.8,1);
+				textout << " Units in storage ("<<h.stored.Count()<<"/"<<h.GetMaxStorage()<<"):"<<nl;
+				textout.PopColorState();
+				for (const auto&v : h.stored)
+				{
+					Objects::PMobileEntity v1 = v.entity.lock();
+					ASSERT1__(v1,h.ToEntity().id.ToString());
+					textout << "  "<<v1->GetNiceName() << nl;
+				}
+
+			}
 			//textout.getActiveFont()->EndTagMode();
 
 
