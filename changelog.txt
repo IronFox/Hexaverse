@@ -5,6 +5,7 @@ v0.3.22
 	* Fixed random jumping and flashing of selected unit button after changing selection.
 	* Fixed server endless loop when path construction job (e.g. build road to) permanently fails at end-point.
 	* Fixed unit deployment (from factories/storage) on slopes.
+	* Fixed deployment of units outside the regular grid (e.g. planes).
 	- Removed satellite system.
 
 v0.3.21	[Mar 31 2016]
