@@ -869,22 +869,47 @@ namespace Objects
 			const Hangar*s = dynamic_cast<Hangar*>(&entity);
 			if (s)
 			{
-				Grid::LCellIdI location = s->ToEntity().location;
+				const Grid::LCellIdI location = s->ToEntity().location;
 				const auto&n = Grid::low.grid.GetCell(location.stackID).neighborhood;
 
 				//const auto&c = Grid::low.grid.GetCell(location.stackID);
-				for (int h = location.height -1; h <= location.height+1; h++)
+				if (location.height <= Grid::CellStack::TopHeight && deploying->CanSpawnInGrid())
 				{
-					if (h >= Grid::CellStack::BottomHeight && h <= Grid::CellStack::TopHeight)
+					for (int h = location.height -1; h <= location.height+1; h++)
 					{
+						if (h >= Grid::CellStack::BottomHeight && h <= Grid::CellStack::TopHeight)
+						{
+							for (int j = 0; j < n.numNeighbors; j++)
+							{
+								const Grid::LCellIdI candidate(n.neighborID[j],h);
+								if (Grid::actualWorld.LowCellIsClear(candidate) && NothingBlockingHere(candidate,true))
+								{
+									if (!deploying->IsVehicle() || To<Vehicle>::Cast(deploying)->CanStandOn(Grid::actualWorld,candidate-1,false,false))
+										movementChoices << Choice(candidate,0);
+								}
+							}
+						}
+					}
+				}
+				
+				int h;
+				if (deploying->CanSpawnAboveGrid(h))
+				{
+					if (location.height > Grid::CellStack::TopHeight)
 						for (int j = 0; j < n.numNeighbors; j++)
 						{
 							const Grid::LCellIdI candidate(n.neighborID[j],h);
-							if (Grid::actualWorld.LowCellIsClear(candidate) && NothingBlockingHere(candidate,true))
+							if (NothingBlockingHere(candidate,true))
 							{
-								if (!deploying->IsGroundBoundVehicle() || To<Vehicle>::Cast(deploying)->CanStandOn(Grid::actualWorld,candidate-1,false,false))
-									movementChoices << Choice(candidate,1);
+								movementChoices << Choice(candidate,0);
 							}
+						}
+					else
+					{
+						const Grid::LCellIdI candidate(location.stackID,h);
+						if (NothingBlockingHere(candidate,true))
+						{
+							movementChoices << Choice(candidate,0);
 						}
 					}
 				}
