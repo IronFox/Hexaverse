@@ -162,69 +162,70 @@ namespace Objects
 		{
 			#ifndef ONE_COMPOUND_PER_FACTION
 
-			TCacheID	check(m,loc);
-			if (cacheID == check)
-				return;
-			cacheID = check;
-			#ifdef WIRELESS_VEHICLES
-				sourceCompounds.Clear();
-				if (m.IsVehicle())
-				{
-					const float3 world = WorldEntity::GetWorldPosition(loc);
-					Grid::low.GenerateVolume(Sphere<>(world,BaseWirelessTransferRange),desc);
-					GetOwnCompoundsIn(m.owner,desc);
-					#ifdef CLIENT
-						for (const auto&p : pylons)
-						{
-							if (p && p->owner == m.owner && p->compoundID != Compound::InvalidNetwork && Vec::quadraticDistance(world,p->GetWorldPosition()) < sqr(PylonWirelessTransferRange))
-								AddCompound(p);
-						}
-					#else
-						foreach (m.owner->pylons,_p)
-						{
-							PPylon p = _p->lock();
-							if (p && p->compoundID != Compound::InvalidNetwork && Vec::quadraticDistance(world,p->GetWorldPosition()) < sqr(PylonWirelessTransferRange))
-								AddCompound(p);
-						}
-					#endif
-				}
-				else
-					if (m.IsSatellite())
+				TCacheID	check(m,loc);
+				if (cacheID == check)
+					return;
+				cacheID = check;
+				#ifdef WIRELESS_VEHICLES
+					sourceCompounds.Clear();
+					if (m.IsVehicle())
 					{
+						const float3 world = WorldEntity::GetWorldPosition(loc);
+						Grid::low.GenerateVolume(Sphere<>(world,BaseWirelessTransferRange),desc);
+						GetOwnCompoundsIn(m.owner,desc);
 						#ifdef CLIENT
-							for (index_t i = 0; i < skyLinks.Count(); i++)
+							for (const auto&p : pylons)
 							{
-								TLinkReference&ref = skyLinks[i];
-								PSkyLinkStructure link = ref.first.lock();
-								PStructure st = ref.second.lock();
-								if (!link || !st)
-								{
-									LogEvent(EventClass::Preset::internalError,&m, "Link reference lost");
-									skyLinks.Erase(i);
-									i--;
-									continue;
-								}
-								if (st->owner == m.owner && !link->connectedToHub.expired())
-									AddCompound(st);
+								if (p && p->owner == m.owner && p->compoundID != Compound::InvalidNetwork && Vec::quadraticDistance(world,p->GetWorldPosition()) < sqr(PylonWirelessTransferRange))
+									AddCompound(p);
 							}
 						#else
-							foreach (m.owner->skyHubs,h)
+							foreach (m.owner->pylons,_p)
 							{
-								PSkyHub hub = h->lock();
-								if (hub)
-								{
-									PSkyLinkStructure link = hub->connectedTo.lock();
-									if (link)
-									{
-										AddCompound(To<Structure>::Cast( link->CastToStructure()->shared_from_this() ) );
-									}
-								}
+								PPylon p = _p->lock();
+								if (p && p->compoundID != Compound::InvalidNetwork && Vec::quadraticDistance(world,p->GetWorldPosition()) < sqr(PylonWirelessTransferRange))
+									AddCompound(p);
 							}
 						#endif
 					}
+					#ifndef NO_SATELLITES
+					else
+						if (m.IsSatellite())
+						{
+							#ifdef CLIENT
+								for (index_t i = 0; i < skyLinks.Count(); i++)
+								{
+									TLinkReference&ref = skyLinks[i];
+									PSkyLinkStructure link = ref.first.lock();
+									PStructure st = ref.second.lock();
+									if (!link || !st)
+									{
+										LogEvent(EventClass::Preset::internalError,&m, "Link reference lost");
+										skyLinks.Erase(i);
+										i--;
+										continue;
+									}
+									if (st->owner == m.owner && !link->connectedToHub.expired())
+										AddCompound(st);
+								}
+							#else
+								foreach (m.owner->skyHubs,h)
+								{
+									PSkyHub hub = h->lock();
+									if (hub)
+									{
+										PSkyLinkStructure link = hub->connectedTo.lock();
+										if (link)
+										{
+											AddCompound(To<Structure>::Cast( link->CastToStructure()->shared_from_this() ) );
+										}
+									}
+								}
+							#endif
+						}
+					#endif
 				#endif
 			#endif
-
 		}
 
 
