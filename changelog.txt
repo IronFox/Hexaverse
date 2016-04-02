@@ -1,4 +1,5 @@
 v0.3.22
+	> Reduced visual size of cargo plane.
 	> Enabled vertical synchronization by default.
 	> Routing errors of automated vehicles (surveyors) are no longer visually logged.
 	> Some visual commands of vehicle plants now flash if action is expected.
