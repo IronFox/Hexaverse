@@ -493,11 +493,17 @@ namespace Objects
 
 			if (turret->weight > base->carryingCapacity)
 				outResult << "Overweight: "+String(turret->weight - base->carryingCapacity);
-			String speed = "Effective speed: "+String(this->GetMovementStepsPerRound());
-			if (GetMovementStepsPerRound() != base->baseMovementSpeed)
-				speed += " /"+String(this->base->baseMovementSpeed);
+			if (base->baseMovementSpeed > 0)
+			{
+				String speed = "Effective speed: "+String(this->GetMovementStepsPerRound());
+				if (GetMovementStepsPerRound() != base->baseMovementSpeed)
+					speed += " /"+String(this->base->baseMovementSpeed);
+				outResult << speed;
+			}
+			else
+				outResult << "Stationary on ground";
 
-			outResult << speed;
+
 			if (base->requirements == Component::VehicleBase::Requirement::Water)
 				outResult.lines.last()+= " (naval)";
 			else
