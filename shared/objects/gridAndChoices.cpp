@@ -2648,6 +2648,8 @@ namespace Objects
 				return AssembleVehicle(owner,id,baseLocation,base,turret);
 			
 			PWorldEntity	proto = GetNonVehiclePrototypeByName(base);
+			if (!proto)
+				return PMobileEntity();
 			ASSERT1__(proto,base);
 			ASSERT1__(proto->IsMobile(),proto->GetTypeName());
 			PMobileEntity s = To<MobileEntity>::Cast( proto->CreateNewInstance(owner,baseLocation,0) );
