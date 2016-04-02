@@ -17,7 +17,9 @@ namespace Objects
 										allTurretComponents;
 
 	}
-	extern Buffer0<PSatellite>			satellitePrototypes;
+	#ifndef NO_SATELLITES
+		extern Buffer0<PSatellite>		satellitePrototypes;
+	#endif
 
 
 
@@ -27,8 +29,10 @@ namespace Objects
 
 	PStructure		GetPrototypeByName(ConstName structureTypeName);
 	PStructure		GetPrototypeByName(const String&structureTypeName);
-	PSatellite		GetSatellitePrototypeByName(const String&name);
-	PSatellite		GetSatellitePrototypeByName(ConstName name);
+	#ifndef NO_SATELLITES
+		PSatellite	GetSatellitePrototypeByName(const String&name);
+		PSatellite	GetSatellitePrototypeByName(ConstName name);
+	#endif
 
 	PWorldEntity	GetNonVehiclePrototypeByName(ConstName typeName);
 	PWorldEntity	GetNonVehiclePrototypeByName(const String&typeName);

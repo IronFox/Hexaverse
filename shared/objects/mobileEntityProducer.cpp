@@ -37,15 +37,35 @@ namespace Objects
 
 
 
-	bool					MobileEntityProducer::WorkItem::IsSatellite() const
+	#ifndef NO_SATELLITES
+		bool					MobileEntityProducer::WorkItem::IsSatellite() const
+		{
+			#ifdef CLIENT
+				return !base && prototype && prototype->IsSatellite();
+			#else
+				return producing->IsSatellite();
+			#endif
+		}
+	#endif
+
+
+	bool					MobileEntityProducer::WorkItem::CanSpawnAboveGrid(int&outHeight) const
 	{
 		#ifdef CLIENT
-			return !base && prototype && prototype->IsSatellite();
+			return prototype ? prototype->CanSpawnAboveGrid(outHeight) : false;
 		#else
-			return producing->IsSatellite();
+			return producing->CanSpawnAboveGrid(outHeight);
 		#endif
 	}
 
+	bool					MobileEntityProducer::WorkItem::CanSpawnInGrid() const
+	{
+		#ifdef CLIENT
+			return prototype ? prototype->CanSpawnInGrid() : base != nullptr;
+		#else
+			return producing->CanSpawnInGrid();
+		#endif
+	}
 
 	bool					MobileEntityProducer::WorkItem::IsVehicle() const
 	{
@@ -193,14 +213,16 @@ namespace Objects
 
 			if (productionRoundsLeft == 0)
 			{
-				if (queue.first().IsSatellite())
-				{
-					LogEvent(EventSignificance::Common,parent,"Auto-spawning satellite");
-					Objects::PMobileEntity e = SpawnFinishedProductionAnywhere(t);
+				#ifndef NO_SATELLITES
+					if (queue.first().IsSatellite())
+					{
+						LogEvent(EventSignificance::Common,parent,"Auto-spawning satellite");
+						Objects::PMobileEntity e = SpawnFinishedProductionAnywhere(t);
 
 
-					return;
-				}
+						return;
+					}
+				#endif
 				FATAL__("This should not happen");
 			}
 
@@ -220,7 +242,7 @@ namespace Objects
 				LogEvent(EventSignificance::Debug,parent,"Construction of "+queue.first().producing->GetName()+" completed");
 				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ) ,parent,"Construction of "+queue.first().producing->GetNiceName()+" completed");
 
-				if (gatheringPoint.current != Grid::LCellIdI::Invalid || queue.first().IsSatellite())
+				if (gatheringPoint.current != Grid::LCellIdI::Invalid IF_SATELLITES( || queue.first().IsSatellite() ) )
 				{
 					LogEvent(EventSignificance::Common,parent,"Auto-spawning mobile entity...");
 					Objects::PMobileEntity v = SpawnFinishedProductionAnywhere(t);
@@ -304,35 +326,36 @@ namespace Objects
 			return EnqueueProductionOfVehicle(base,turret);
 		}
 
-		MobileEntityProducer::WorkItem*				MobileEntityProducer::EnqueueProductionOfSatellite(ConstName typeName)
-		{
-			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
-			ASSERT_NOT_NULL__(parent);
-
-			PSatellite proto = GetSatellitePrototypeByName(typeName);
-			String error;
-			if (!parent->owner->CanSpawnType(proto,error))
+		#ifndef NO_SATELLITES
+			MobileEntityProducer::WorkItem*				MobileEntityProducer::EnqueueProductionOfSatellite(ConstName typeName)
 			{
-				LogEvent(EventClass::Preset::operationAborted,parent,"Unable to enqueue production of "+proto->GetTypeName()+": "+error);
-				return nullptr;
-			}
+				WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
+				ASSERT_NOT_NULL__(parent);
 
-			if (!proto)
-			{
-				LogEvent(EventClass::Preset::commandRejected,parent,"Invalid satellite type");
-				return nullptr;
-			}
+				PSatellite proto = GetSatellitePrototypeByName(typeName);
+				String error;
+				if (!parent->owner->CanSpawnType(proto,error))
+				{
+					LogEvent(EventClass::Preset::operationAborted,parent,"Unable to enqueue production of "+proto->GetTypeName()+": "+error);
+					return nullptr;
+				}
 
-			PSatellite sat = To<Satellite>::Cast(proto->CreateNewInstance(parent->owner,parent->location,0.f));
-			WorkItem*rs = EnqueueProductionOf(sat);
-			if (rs)
-			{
-				parent->RegisterChange(WorldEntity::TasksChanged,-1);
-				SignalNewProductionEnqueued();
-			}
-			return rs;
-		}
+				if (!proto)
+				{
+					LogEvent(EventClass::Preset::commandRejected,parent,"Invalid satellite type");
+					return nullptr;
+				}
 
+				PSatellite sat = To<Satellite>::Cast(proto->CreateNewInstance(parent->owner,parent->location,0.f));
+				WorkItem*rs = EnqueueProductionOf(sat);
+				if (rs)
+				{
+					parent->RegisterChange(WorldEntity::TasksChanged,-1);
+					SignalNewProductionEnqueued();
+				}
+				return rs;
+			}
+		#endif
 
 
 		MobileEntityProducer::WorkItem*				MobileEntityProducer::EnqueueProductionOf(const PMobileEntity&e, index_t at /*= InvalidIndex*/)

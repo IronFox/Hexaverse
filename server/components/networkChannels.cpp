@@ -1216,6 +1216,19 @@ namespace Receiver
 		LogEvent(EventSignificance::Common,peer,e,"End: Registered new job "+job->GetName());
 	}
 
+	bool	ValidCell(const Grid::LCellIdI&loc)
+	{
+		if (loc.stackID >= Grid::LowSetup::GridType::CellCount)
+			return false;
+		if (loc.height >= Grid::CellStack::BottomHeight && loc.height <= Grid::CellStack::TopHeight)
+			return true;
+		#ifndef NO_SATELLITES
+			if (Objects::Satellite::IsSatelliteHeight(loc.height))
+				return true;
+		#endif
+		return false;
+	}
+
 	void	ChoiceIntersection(Protocol::ChoiceIntersection&ch, TCP::Peer&peer)
 	{
 		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Processing choice intersection in mode "+String(ch.mode)+" at cell "+ch.target.ToString()+" for entity "+ch.id.value.ToString());
@@ -1225,7 +1238,7 @@ namespace Receiver
 			return;
 
 
-		if (!Grid::ValidCell(ch.target, Objects::Satellite::BaseResidenceHeight, Objects::Satellite::DeclinedResidenceHeight))
+		if (!ValidCell(ch.target))
 		{
 			LogEvent(EventClass::Preset::commandRejected,peer,e,"Parameter fault");
 			return;
@@ -1345,7 +1358,7 @@ namespace Receiver
 		if (!e)
 			return;
 		foreach (cmd.path,n)
-			if (!Grid::ValidCell(*n, Objects::Satellite::BaseResidenceHeight,Objects::Satellite::DeclinedResidenceHeight))
+			if (!ValidCell(*n))
 			{
 				LogEvent(EventClass::Preset::commandRejected, peer, e, "Parameter fault ("+n->ToString()+")");
 				return;

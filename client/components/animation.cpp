@@ -504,12 +504,14 @@ namespace Animation
 				if (sourceTask.foci.Count())
 				{
 					Grid::LCellIdI loc = sourceTask.foci.first();
-					if (sourceTask.visualizationName != ConstName::Empty && e.IsSatellite())
-					{
-						int h = Objects::SkyHub::GetStructureBuildHeight(loc);
-						if (h != Objects::badHeight)
-							loc.height = h;
-					}
+					#ifndef NO_SATELLITES
+						if (sourceTask.visualizationName != ConstName::Empty && e.IsSatellite())
+						{
+							int h = Objects::SkyHub::GetStructureBuildHeight(loc);
+							if (h != Objects::badHeight)
+								loc.height = h;
+						}
+					#endif
 
 					t1.SetLocalizableShape(sourceTask.visualizationName,loc);
 				}
@@ -890,16 +892,17 @@ namespace Animation
 			Objects::RefreshCompoundCoverage(0);
 		}
 
-		if (s->IsSkyPort())
-		{
-			Objects::PSatellite sat = Objects::GetSatellite(s->location.stackID);
-			if (sat && sat->IsSkyHub())
+		#ifndef NO_SATELLITES
+			if (s->IsSkyPort())
 			{
-				Objects::PSkyHub hub = To<Objects::SkyHub>::Cast(sat);
-				hub->UpdateConnections();
+				Objects::PSatellite sat = Objects::GetSatellite(s->location.stackID);
+				if (sat && sat->IsSkyHub())
+				{
+					Objects::PSkyHub hub = To<Objects::SkyHub>::Cast(sat);
+					hub->UpdateConnections();
+				}
 			}
-		}
-
+		#endif
 
 		if (w && w->isInserted)
 		{
@@ -923,7 +926,7 @@ namespace Animation
 
 	float GetExplosionSize(const Objects::PWorldEntity&target)
 	{
-		return target->IsSatellite() ? 12.f : 4.f;
+		return !target->IsStructure() && !target->IsVehicle() ? 12.f : 4.f;
 	}
 
 	float GetExplosionTime(const Objects::PWorldEntity&target)
@@ -1558,7 +1561,7 @@ namespace Animation
 			//Vec::makeNormalTo(nodes.first().dir,nodes.first().position);
 			Vec::makeNormalTo(nodes.last().dir,nodes.last().position);
 		}
-		if (!target->IsSatellite())
+		if (target->IsVehicle())
 			nodes.first().dir = -target->system.y.xyz;
 		foreach (nodes, n)
 		{
@@ -1616,7 +1619,7 @@ namespace Animation
 			#ifdef HAS_WINDOW
 				const TVec3<> prev = sys.w.xyz;
 			#endif
-			if (target->IsSatellite())
+			if (!target->IsVehicle())
 			{
 				sys.z.xyz = p;
 				Vec::normalize0(sys.z.xyz);

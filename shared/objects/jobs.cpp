@@ -83,8 +83,11 @@ namespace Objects
 
 				resourceCostLeft = 0;
 
-				if (jobAutoCompletion == BaseJob::Autocomplete::Always || 
-					(jobAutoCompletion == BaseJob::Autocomplete::IfSatellite && v.IsSatellite())
+				if (jobAutoCompletion == BaseJob::Autocomplete::Always 
+					#ifndef NO_SATELLITES
+						|| 
+						(jobAutoCompletion == BaseJob::Autocomplete::IfSatellite && v.IsSatellite())
+					#endif
 					)
 				{
 					continue_t rs = Finish(v,focus);

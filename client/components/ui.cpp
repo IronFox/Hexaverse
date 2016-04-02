@@ -1974,18 +1974,20 @@
 					textout << " Turret-Overweight: "<<std::max(0,veh->turret->weight - veh->base->carryingCapacity) << nl;
 					textout << " Movement Initiative: "<<(int)v->GetMovementInitiative()<<"/"<<(int)veh->base->initiative<<nl;
 				}
-				elif (e.IsSatellite())
-				{
-					Objects::Satellite*sat = (Objects::Satellite*)(&e);
-					int demand = sat->GetFuelConsumptionPerRound();
-					if (!sat->RequiresFuel())
-						demand = 0;
-					textout << " Fuel-Consumption: "<<(char)(tagOffset+Objects::Resource::Fuel)<<demand;
-					if (demand > 0)
-						textout <<'+'<<sat->GetExtraFuelDemand();
+				#ifndef NO_SATELLITES
+					elif (e.IsSatellite())
+					{
+						Objects::Satellite*sat = (Objects::Satellite*)(&e);
+						int demand = sat->GetFuelConsumptionPerRound();
+						if (!sat->RequiresFuel())
+							demand = 0;
+						textout << " Fuel-Consumption: "<<(char)(tagOffset+Objects::Resource::Fuel)<<demand;
+						if (demand > 0)
+							textout <<'+'<<sat->GetExtraFuelDemand();
 						
-					textout<<nl;
-				}
+						textout<<nl;
+					}
+				#endif
 				textout << " Attack Initiative: "<<(int)v->GetAttackInitiative()<<"/"<<(int)v->turret->initiative<<nl;
 				textout << " Speed: "<<v->GetMovementStepsPerRound() << nl;
 				if (v->turret->CanAttack())

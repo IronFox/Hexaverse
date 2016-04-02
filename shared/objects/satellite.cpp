@@ -1,5 +1,7 @@
 #include <global_root.h>
 #include "satellite.h"
+#ifndef NO_SATELLITES
+
 #include "gridAndChoices.h"
 #include "faction.h"
 
@@ -308,38 +310,13 @@ namespace Objects
 
 	/*static*/ int				Satellite::GetGroundHeight(const Grid::LCellIdI&location)
 	{
-		UINT32 fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-		return Detail::WalkStack(Grid::actualWorld.cellStack[fine],false);
+		return Component::Turret::GetGroundHeight(location);
 	}
 
 
 	int						Satellite::GetGroundHeight() const
 	{
 		return GetGroundHeight(location);
-	}
-
-
-	/*static*/ int			Satellite::Detail::WalkStack(const Grid::CellStack&stack, bool failOnStructureCount)
-	{
-		UINT32 h;
-		for (h = Grid::CellStack::Range-1; h < Grid::CellStack::Range; h--)
-		{
-			const Grid::CellStack::Cell&c = stack.volumeCell[h];
-			if (c.content != Grid::Content::Clear)
-				break;
-		}
-		h++;
-		if (h >= Grid::CellStack::Range-1)
-			return badHeight;
-		if (failOnStructureCount)
-		{
-			const Grid::CellStack::Cell&c = stack.volumeCell[h];
-			if (c.structureCounter > 1)
-				return badHeight;
-		}
-
-		return Grid::CellStack::ToHeight(h);
-		
 	}
 
 
@@ -386,13 +363,13 @@ namespace Objects
 		#else
 			index_t finer = who->location.stackID;
 		#endif
-		int h = Detail::WalkStack(Grid::actualWorld.cellStack[finer],true);
+		int h = Grid::actualWorld.cellStack[finer].FindTopClearOverNonClear(true);
 		if (h == badHeight)
 			return badHeight;
 		#ifdef HYBRID_GRID
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 			{
-				int h2 = Detail::WalkStack(Grid::actualWorld.cellStack[c.neighborhood.neighborID[j]],true);
+				int h2 = Grid::actualWorld.cellStack[c.neighborhood.neighborID[j]].FindTopClearOverNonClear(true);
 				if (h2 == badHeight)
 					return badHeight;
 				h = std::max(h2,h);
@@ -1076,3 +1053,4 @@ namespace Objects
 
 
 }
+#endif
