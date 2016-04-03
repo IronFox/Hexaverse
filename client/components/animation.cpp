@@ -1266,7 +1266,7 @@ namespace Animation
 					isFriendly = attacker->isOwnedByMe;
 				}
 
-				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",pos="+Vec::toString(attackerPosition)+") at "+String(Animation::atTime)+"/"+String(this->time.min));
+				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",pos="+Vec::toString(attackerPosition)+",angle="+String(attackAngle)+") at "+String(Animation::atTime)+"/"+String(this->time.min));
 				
 				{
 					//Grid::HCellIdI impactCell;

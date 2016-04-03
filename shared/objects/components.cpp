@@ -23,6 +23,8 @@ namespace Objects
 		cellLocation.stackID = Grid::low.Locate(worldLocation,0);
 		cellLocation.height = (Grid::FloorFromRadius(radius));
 		this->worldLocation = worldLocation;
+
+	//	LogEvent(EventSignificance::Uncommon,"from world: "+ToString());
 	}
 
 	/**/			TrajectoryEndPoint::TrajectoryEndPoint(const Grid::LCellIdI&coords, float zOffset)
@@ -30,6 +32,7 @@ namespace Objects
 		radius = zOffset + Grid::ToRadiusf(0.05f + coords.height);
 		worldLocation = Grid::low.cells[coords.stackID].centerVertex.xyz * radius;
 		cellLocation = coords;
+	//	LogEvent(EventSignificance::Uncommon,"from coords+z("+String(zOffset)+"): "+ToString());
 	}
 
 	/**/			TrajectoryEndPoint::TrajectoryEndPoint(const Grid::LCellIdI&coords)
@@ -37,6 +40,7 @@ namespace Objects
 		radius = Grid::ToRadiusf(0.05f + coords.height);
 		worldLocation = Grid::low.cells[coords.stackID].centerVertex.xyz * radius;
 		cellLocation = coords;
+	//	LogEvent(EventSignificance::Uncommon,"from coords: "+ToString());
 	}
 
 
@@ -397,25 +401,8 @@ namespace Objects
 		}
 
 
-		/*static*/ void							Turret::Detail::TraceAnimationArtilleryTrajectory(float velocity,  float attackAngle, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest,Buffer0<TVec4<> >&outSteps)
+		/*static*/ void							Turret::Detail::TraceAnimationArtilleryTrajectory(float velocity,  float angle, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest,Buffer0<TVec4<> >&outSteps)
 		{
-			Turret::TAngles angles = Turret::GetAngleForDistance(velocity,source,dest);
-			if (angles.numAngles == 0)
-			{
-				if (velocity < 50.f)
-				{
-					LogEvent(EventClass::Preset::error,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+source.ToString()+", dest="+dest.ToString()+". Increasing velocity and retrying.");
-					velocity = velocity > 0 ? velocity * 1.1f : 1.f;	//should not be zero, but it's better to handle this case here anyway. Otherwise we're causing a stack overflow in no-time
-					TraceAnimationArtilleryTrajectory(velocity,attackAngle,source,dest,outSteps);
-					return;
-				}
-
-				DBG_FATAL__("Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+source.ToString()+", dest="+dest.ToString());
-				return;
-			}
-		
-			float angle = angles.idealAngle[angles.numAngles-1];
-
 			const float sn = sin(angle),
 						cs = cos(angle);
 
@@ -555,7 +542,8 @@ namespace Objects
 			float leastDistance = std::numeric_limits<float>::max();
 			for (int j = 0; j < angles.numAngles; j++)
 			{
-				float d2 = PreTraceArtillery(velocity,angles.idealAngle[k], source,dest,distance,decisionWorld);
+				float d2 = PreTraceArtillery(velocity,angles.idealAngle[j], source,dest,distance,decisionWorld);
+				LogEvent(EventSignificance::Debug,source.ToString()+"->"+dest.ToString()+ ": Angle "+String(j)+"/"+String(angles.numAngles)+" "+String(angles.idealAngle[j])+" lead to distance "+String(d2));
 				if (d2 < leastDistance)
 				{
 					leastDistance = d2;
@@ -569,7 +557,7 @@ namespace Objects
 			{
 				outSteps.Clear();
 				float angle = outAngle = angles.idealAngle[k];
-
+				LogEvent(EventSignificance::Debug,"Using angle "+String(k)+"/"+String(angles.numAngles)+" "+String(angle));
 				float sn = sin(angle),
 						cs = cos(angle);
 
@@ -1665,9 +1653,7 @@ namespace Objects
 
 			component.FinishCreation();
 
-			#ifdef CLIENT	
-				component.height *= vehicleScale;
-			#endif
+			component.height *= vehicleScale;
 		}
 
 		void			Heavybase::Configure(VehicleBase&component)
@@ -1714,9 +1700,7 @@ namespace Objects
 
 			component.FinishCreation();
 
-			#ifdef CLIENT	
-				component.height *= vehicleScale;
-			#endif
+			component.height *= vehicleScale;
 		}
 
 		void			Catbase::Configure(VehicleBase&component)
@@ -1764,9 +1748,7 @@ namespace Objects
 
 			component.FinishCreation();
 
-			#ifdef CLIENT	
-				component.height *= vehicleScale;
-			#endif
+			component.height *= vehicleScale;
 		}
 
 
