@@ -1416,6 +1416,7 @@ int main( int argc, const char* argv[])
 		if (!inTestMode)
 			Reflection::Load(false);
 
+		Objects::Faction::RecreateNexus();
 
 
 		if (inTestMode)
@@ -1448,7 +1449,6 @@ int main( int argc, const char* argv[])
 
 
 		//Reflection::CreatePrototypeDeclaration();
-		Objects::Faction::RecreateNexus();
 		if (!ParameterConfig::customWorldID)
 		{
 			World::BuildConfiguredWorld(random);
