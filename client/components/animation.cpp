@@ -1032,11 +1032,11 @@ namespace Animation
 		attackerTurret = Objects::Component::GetTurretByName(a.turretType);
 		ASSERT_NOT_NULL1__(attackerTurret,(int)a.turretType.value);
 		attackRange = a.turretRange;
+		attackAngle = a.attackAngle,
 		attackerPosition = a.sourcePosition;
-		explosionCenter = Grid::ToWorld(a.traceTo);
+		explosionCenter = a.traceTo;
 		isAutoTarget = false;
 
-		location = a.traceTo;
 		time.Set(a.timestamp.atTime,a.timestamp.atTime+a.flightTime);
 	}
 	void					Primitive::Init(Protocol::PreciseAttackTrajectory&a)
@@ -1044,10 +1044,10 @@ namespace Animation
 		type = Attack;
 		targetEntityID = a.attacker;
 		attackerTurret = nullptr;	//later
-		explosionCenter = Grid::ToWorld(a.traceTo);
+		attackAngle = a.attackAngle;
+		explosionCenter = a.traceTo;
 
 		isAutoTarget = a.isAutoAttack;
-		location = a.traceTo;
 		time.Set(a.timestamp.atTime,a.timestamp.atTime+a.flightTime);
 	}
 	void					Primitive::Init(Protocol::Explosion&ex)
@@ -1266,10 +1266,15 @@ namespace Animation
 					isFriendly = attacker->isOwnedByMe;
 				}
 
-				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",loc="+location.ToString()+") at "+String(Animation::atTime)+"/"+String(this->time.min));
+				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",pos="+Vec::toString(attackerPosition)+") at "+String(Animation::atTime)+"/"+String(this->time.min));
 				
 				{
-					Objects::Component::Turret::TraceTrajectory(attackerTurret->trajectoryType,attackRange, attackerPosition,Grid::ToWorld(location),activeTrajectory);
+					//Grid::HCellIdI impactCell;
+					//TVec3<> impactAt;
+					Objects::Component::Turret::TraceAnimationTrajectory(
+						attackerTurret->trajectoryType, attackRange,attackAngle, attackerPosition,explosionCenter,
+						activeTrajectory);
+
 					explosionRadius = attackerTurret->explosionRadius;
 					projectileAt = 0.f;
 					projectileActive = true;

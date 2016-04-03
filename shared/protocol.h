@@ -1557,20 +1557,22 @@ namespace Protocol
 		, NET(float), timeNeeded
 	)
 
-	NETSTRUCT6(VagueAttackTrajectory
+	NETSTRUCT7(VagueAttackTrajectory
 		, Timestamp, timestamp
 		, NET(float), flightTime
 		, NET(TVec3<>), sourcePosition
 		, NET(ConstName), turretType
 		, NET(float), turretRange
-		, LCellIdI, traceTo
+		, NET(float), attackAngle
+		, NET(TVec3<>), traceTo
 	)
 
-	NETSTRUCT5(PreciseAttackTrajectory
+	NETSTRUCT6(PreciseAttackTrajectory
 		, Timestamp, timestamp
 		, NET(float), flightTime
 		, NET(TUniqueID), attacker
-		, LCellIdI, traceTo
+		, NET(float), attackAngle
+		, NET(TVec3<>), traceTo
 		, NET(bool), isAutoAttack
 	)
 

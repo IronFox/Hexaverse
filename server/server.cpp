@@ -424,38 +424,39 @@ void	SignalNexusControlChange(const Objects::PFaction&f)
 	*/
 
 
-void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, float flightTime, bool isAutoAttack)
+void	SignalAttack(const TAttack&attack)
 {
-	if (!e)
+	if (!attack.attackFrom)
 	{
 		LogEvent(EventClass::Preset::commandRejected,nullptr, "NULL attempting attack");
 		return;
 	}
-	LogEvent(EventSignificance::Common,e.get(),"Attacking "+traceTo.ToString()+" in "+String(flightTime)+" seconds");
+	LogEvent(EventSignificance::Common,attack.attackFrom.get(),"Attacking "+attack.traceTo.ToString()+" in "+String(attack.flightTime)+" seconds");
 	Protocol::PreciseAttackTrajectory preciseAttack;
-	preciseAttack.attacker = e->id;
-	preciseAttack.traceTo = traceTo;
-	preciseAttack.isAutoAttack = isAutoAttack;
+	preciseAttack.attacker = attack.attackFrom->id;
+	preciseAttack.traceTo = attack.traceTo;
+	preciseAttack.isAutoAttack = attack.isAutoAttack;
+	preciseAttack.attackAngle = attack.attackAngle;
 	preciseAttack.timestamp.rightNow = false;
-	preciseAttack.timestamp.atTime = e->motionTime;
+	preciseAttack.timestamp.atTime = attack.attackFrom->motionTime;
 	
-	LogEvent(EventSignificance::Debug,e.get(),"Commencing attack at t="+String(preciseAttack.timestamp.atTime));
+	LogEvent(EventSignificance::Debug,attack.attackFrom.get(),"Commencing attack at t="+String(preciseAttack.timestamp.atTime));
 
 
-	preciseAttack.flightTime = flightTime;
+	preciseAttack.flightTime = attack.flightTime;
 
 	for (auto cl : Network::activePlayersAndSpectators)
 	{
 		TCP::PPeer peer = (cl)->peer.lock();
 		if (!peer)
 			continue;
-		if (Network::CanSee(cl,e,preciseAttack.timestamp.atTime))
+		if (Network::CanSee(cl,attack.attackFrom,preciseAttack.timestamp.atTime))
 			Channels::preciseAttackTrajectory.SendTo(peer,preciseAttack);
 	}
 }
 
 
-void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, const TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday, float atTime)
+void	SignalExplosion(const TAttack&attack, const TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday, float atTime)
 {
 	Protocol::Explosion explosion;
 	explosion.center = center;
@@ -510,24 +511,25 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 
 	Protocol::VagueAttackTrajectory	roughAttack;
 	bool hasTrajectory = false;
-	if (attackFrom)
+	if (attack.attackFrom)
 	{
 		hasTrajectory = true;
-		LogEvent(EventSignificance::Common,attackFrom.get(),"Tracing rough trajectory to "+Vec::toString(center)+" in "+String(flightTime)+" seconds");
+		LogEvent(EventSignificance::Common,attack.attackFrom.get(),"Tracing rough trajectory to "+Vec::toString(center)+" in "+String(attack.flightTime)+" seconds");
 		float zOffset;
-		Objects::PTurretBase base = attackFrom->GetTurretBase(zOffset);
+		Objects::PTurretBase base = attack.attackFrom->GetTurretBase(zOffset);
 		ASSERT__(base);
 		roughAttack.turretType = base->turret->constName;
-		roughAttack.traceTo = traceTo;
+		roughAttack.traceTo = attack.traceTo;
 
 		roughAttack.timestamp.rightNow = false;
-		roughAttack.timestamp.atTime = atTime - flightTime;
-		roughAttack.flightTime = flightTime;
+		roughAttack.timestamp.atTime = atTime - attack.flightTime;
+		roughAttack.flightTime = attack.flightTime;
+		roughAttack.attackAngle = attack.attackAngle;
 		roughAttack.turretRange = base->GetFlatAttackRange();
 
-		const float3 traceToWorld = Grid::ToWorld(traceTo);
+		const TVec3<>& traceToWorld = attack.traceTo;
 
-		roughAttack.sourcePosition = attackFrom->GetWorldPosition() + Grid::low.cells[attackFrom->location.stackID].centerVertex.xyz * zOffset;
+		roughAttack.sourcePosition = attack.attackFrom->GetWorldPosition() + Grid::low.cells[attack.attackFrom->location.stackID].centerVertex.xyz * zOffset;
 		//attack.timestamp.atTime = v->timeAt;
 		
 
@@ -536,7 +538,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 		float radius = range * 0.2f;
 		float3 mod = float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)) * radius;
 		count_t numIt = 0;
-		while (!attackFrom->CanHit(mod + roughAttack.sourcePosition.value)
+		while (!attack.attackFrom->CanHit(mod + roughAttack.sourcePosition.value,roughAttack.attackAngle.value)
 				//Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) 
 			&& ++numIt < 1000)
 			mod = float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)) * radius;
@@ -549,7 +551,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 		TCP::PPeer peer = client->peer.lock();
 		if (peer)
 		{
-			if (!client->CanSee(attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
+			if (!client->CanSee(attack.attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
 				Channels::vagueAttackTrajectory.SendTo(peer,roughAttack);
 			Channels::explosion.SendTo(peer,explosion);
 		}

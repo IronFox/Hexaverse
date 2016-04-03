@@ -451,7 +451,7 @@ namespace Objects
 										//float zOffset;
 										//const auto&base = m->GetTurretBase(zOffset);
 										Grid::LCellIdI actual;
-										if (b->ExtCanHit((*c)->owner,(*c)->location,zOffset,node.cell, actual))
+										if (b->ExtCanHit((*c)->owner, TrajectoryEndPoint( (*c)->location,zOffset), TrajectoryEndPoint(node.cell), actual))
 										{
 											badTask = true;
 											break;
@@ -1099,8 +1099,8 @@ namespace Objects
 			Grid::HCellIdI t1;
 			Buffer0<TVec4<> > trajectory;
 
-							
-			if (TraceTrajectory(Grid::actualWorld, target,trajectory,t0,t1))
+			float angle;	
+			if (TraceTrajectory(TrajectoryEndPoint(target),trajectory,t0,t1,angle))
 			{
 				float change = 1.f / float(GetAttacksPerRound());
 				attackActionLeft -= change;
@@ -1137,17 +1137,23 @@ namespace Objects
 				else
 					flightTime =  timeEpsilon;// Times::Attack * 10;;
 
+				TAttack at;
+				at.attackFrom = To<MobileEntity>::Cast(shared_from_this());
+				at.attackAngle = angle;
+				at.flightTime = flightTime;
+				at.isAutoAttack = false;
+				at.traceTo = t0;
 
-				SignalAttack(To<Vehicle>::Cast(shared_from_this()),target,flightTime,false);
+				SignalAttack(at);
 				ChangeStorage(*this,motionTime,turret->ammoType,-turret->ammoNeedPerShot);
 				
 				motionTime += flightTime;
 
 				if (turret->dealsEMPDamage)
-					ExplodeEMP(To<Vehicle>::Cast(shared_from_this()),target,flightTime,
+					ExplodeEMP(at,
 								t1, t0, turret->explosionRadius, turret->damageLevel,motionTime);
 				else
-					Explode(To<Vehicle>::Cast(shared_from_this()),target,flightTime,
+					Explode(at,
 							t1, t0, turret->explosionRadius, turret->damageLevel,turret->isDoomsday, motionTime);
 			}
 
@@ -1457,7 +1463,8 @@ namespace Objects
 									trajectory.Clear();
 									TVec3<> dummy0;
 									Grid::HCellIdI dummy1;
-									if (parent->TraceTrajectoryFrom(Grid::actualWorld, pointOfOrigin,f->target,trajectory,dummy0,dummy1))
+									float angle;
+									if (parent->TraceTrajectoryFrom(pointOfOrigin,TrajectoryEndPoint( f->target,0), trajectory,dummy0,dummy1,angle) != TurretTrajectory::InvalidTrajectory)
 									{
 										Component::Turret::CompileTrajectory(trajectory,Component::Turret::Schematic,geo,0.25f);
 

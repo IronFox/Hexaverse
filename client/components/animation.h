@@ -64,14 +64,14 @@ namespace Animation
 			ResourceUpdate,
 		}						type;
 		count_t					overwritten=0;
-		Grid::LCellIdI			location;
+		//Grid::LCellIdI			location;
 		typedef Buffer0<Protocol::WorldDelta,Swap>	DeltaField;
 		std::shared_ptr<DeltaField >	worldDelta;
 		TFloatRange<>			time;
 		Objects::PWorldEntity	allocatedTarget;	//for construction and motion. not to be used for other purposes as the original reference by id may change during animation
 		TUniqueID				targetEntityID;
 		Objects::Component::Turret*		attackerTurret;	//reference targetEntityID to retrieve the identity of the attacker (precise attack only)
-		float					attackRange;
+		float					attackRange,attackAngle;
 		TVec3<>					attackerPosition;
 
 		TVec3<>					explosionCenter;	//if Explosion
