@@ -289,7 +289,8 @@ namespace Test
 					for (const auto&target : task.foci)
 					{
 						Objects::TurretTrajectory	tr;
-						if (tr = v->TraceTrajectory(faction1->currentState, target.target,trajectory,impactAt,impactCell))
+						float angle;
+						if (tr = v->TraceTrajectory(Objects::TrajectoryEndPoint( target.target ),trajectory,impactAt,impactCell,angle))
 						{
 							ASSERT__(tr == Objects::TurretTrajectory::ReachesTarget);
 							if (Grid::GetGeometricDistance(vehicleAt,generatorAt) > turret->scanningRange)

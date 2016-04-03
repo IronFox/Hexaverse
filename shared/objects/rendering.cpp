@@ -1322,7 +1322,7 @@ namespace Objects
 		if (selectedEntity)
 			RenderAttackRangeOf(selectedEntity,color,extendedShadow,true);
 		if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
-			RenderAttackRangeOf(activeStructureToPlace,arrowCellTarget,color,extendedShadow,true);
+			RenderAttackRangeOf(activeStructureToPlace,arrowCellTarget.cellLocation,color,extendedShadow,true);
 		
 
 		if (showHostileRanges || showFriendlyRanges)
@@ -1689,12 +1689,12 @@ namespace Objects
 		display.SetRasterizer(true,true);
 
 
-		if (showArrow && hasArrowCellTarget && arrowCellTarget != arrowFromCell)
+		if (showArrow && hasArrowCellTarget && arrowCellTarget.cellLocation != arrowFromCell)
 		{
 			display.SetDepthTest(false,false);
 
-			const float r =Grid::ToRadius(arrowCellTarget.height);
-			float3 arrowTo = Grid::low.cells[arrowCellTarget.stackID].centerVertex.xyz * r;
+			const float r =Grid::ToRadius(arrowCellTarget.radius);
+			const float3&arrowTo = arrowCellTarget.worldLocation;
 			float d2 = Vec::quadraticDistance(arrowTo,Objects::arrowFrom);
 
 			static Buffer0<Vertex>	vertices;
@@ -1761,7 +1761,7 @@ namespace Objects
 			bool includeFoundation = false;//activeStructureToPlace->HasFoundation();	<- is correct but job visualization doesn't use foundations
 			display.LinkShader(jobShader,false,true);
 				//TMatrix4<> sys;
-				BuildStructureSystem(arrowCellTarget,structureToPlaceSystem);
+				BuildStructureSystem(arrowCellTarget.cellLocation,structureToPlaceSystem);
 				display.SetObjectMatrix(structureToPlaceSystem);
 				overallTint.Update(noTint);	//all zero tint makes shapes invisible
 				if (includeFoundation)

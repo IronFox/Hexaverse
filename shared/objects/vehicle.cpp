@@ -106,7 +106,7 @@ namespace Objects
 					#endif
 				;
 
-				if (GetSentryTarget(*this, storage.level[turret->ammoType], location,base->height,*this, target))
+				if (GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location,base->height ),*this, target))
 				{
 					EnqueueAttack(target);
 					return true;
@@ -693,7 +693,7 @@ namespace Objects
 							{
 								Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 
-								if (!CanHitFrom(pointOfOrigin,destination))
+								if (!CanHitFrom(pointOfOrigin,TrajectoryEndPoint(destination)))
 								{
 									LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 									return false;

@@ -190,7 +190,7 @@ namespace Objects
 
 
 
-	bool					TurretBase::ExtCanHit(const OwnerParameter&myFaction, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&destIn, Grid::LCellIdI&destOut)	const
+	bool					TurretBase::ExtCanHit(const OwnerParameter&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, Grid::LCellIdI&destOut)	const
 	{
 		//const float velocity = Turret::MaxRangeToVelocity(GetFlatAttackRange());
 		const float range = GetFlatAttackRange();
@@ -198,41 +198,41 @@ namespace Objects
 		//const float range2 = sqr(range);
 		//const float extRange2 = sqr(extRange);
 		//const TVec3<> source3 = Grid::ToWorld(source);
-		TVec3<> dest3 = Grid::ToWorld(destIn);
+		//TVec3<> dest3 = Grid::ToWorld(destIn);
 		//float distance2 = Vec::quadraticDistance(source3,dest3);
 		//if (Turret::GetAngleForDistance(velocity,source,destIn))
 		//if (distance2 > extRange2)
 		//	return false;
 		const float explosionRadius = turret->explosionRadius;
 		const float explosionRadius2 = sqr(explosionRadius);
-		if (Component::Turret::CanHit(turret->trajectoryType, range,source,zOffset,destIn)
-			&& CheckArea(myFaction,destIn,explosionRadius))
+		if (Component::Turret::CanHit(turret->trajectoryType, range,source,destIn)
+			&& CheckArea(myFaction,destIn.cellLocation,explosionRadius))
 		{
-			destOut = destIn;
+			destOut = destIn.cellLocation;
 			return true;
 		}
 
-		if (!Component::Turret::CanHit(turret->trajectoryType, range+explosionRadius*2,source,zOffset,destIn))
+		if (!Component::Turret::CanHit(turret->trajectoryType, range+explosionRadius*2,source,destIn))
 			return false;
 
 		AreaHelper	helper;
 		//queue << destIn;
 		{
-			const auto&n = Grid::low.grid.GetCell(destIn.stackID).neighborhood;
+			const auto&n = Grid::low.grid.GetCell(destIn.cellLocation.stackID).neighborhood;
 			for (int i = 0; i < n.numNeighbors; i++)
-				helper << Grid::LCellIdI(n.neighborID[i],destIn.height);
-			helper << destIn + 1;
-			helper << destIn - 1;
+				helper << Grid::LCellIdI(n.neighborID[i],destIn.cellLocation.height);
+			helper << destIn.cellLocation + 1;
+			helper << destIn.cellLocation - 1;
 		}
 		Grid::LCellIdI current;
 		while (helper >> current)
 		{
 			TVec3<> world = Grid::ToWorld(current);
-			float fromDest2 = Vec::quadraticDistance(dest3,world);
+			float fromDest2 = Vec::quadraticDistance(destIn.worldLocation,world);
 			if (fromDest2 > sqr(turret->explosionRadius))
 				continue;
 			if (!Grid::actualWorld.LowCellIsClear(current) || 
-				!Component::Turret::CanHit(turret->trajectoryType, range,source,zOffset,current))
+				!Component::Turret::CanHit(turret->trajectoryType, range,source,TrajectoryEndPoint( current,0)))
 				continue;
 			//float fromSource2 = Vec::quadraticDistance(source3,world);
 			//if (fromSource2 > extRange2)

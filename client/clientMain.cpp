@@ -1627,7 +1627,10 @@ bool loop()
 				else
 					if (Objects::selectedVehicle /*&& Objects::selectedVehicle->base->moveOnWater*/)
 						includeWater = true;
-				Objects::hasArrowCellTarget = GetLowCellUnderCursor(Objects::arrowCellTarget,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode);
+				Grid::LCellIdI loc;
+				Objects::hasArrowCellTarget = GetLowCellUnderCursor(loc,includeWater, Objects::activeCursorMode == Objects::CursorMode::AttackMode);
+				if (Objects::hasArrowCellTarget && loc != Objects::arrowCellTarget.cellLocation)
+					Objects::arrowCellTarget = Objects::TrajectoryEndPoint(loc);
 				if (Objects::hasArrowCellTarget)
 				{
 				
@@ -2570,7 +2573,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 						float distance = std::numeric_limits<float>::max();
 
 						Objects::PWorldEntity possibleTarget = Objects::GetRayIntersection(b,d,distance);
-						if (possibleTarget && !possibleTarget->isOwnedByMe && Objects::selectedEntity->CanHit(possibleTarget->location))
+						if (possibleTarget && !possibleTarget->isOwnedByMe && Objects::selectedEntity->CanHit( Objects::TrajectoryEndPoint( possibleTarget->location )))
 						{
 							DirectTo(Objects::selectedEntity,possibleTarget->location,false,true, Objects::CursorMode::AttackMode);
 							return;
@@ -2738,6 +2741,12 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		UI::resourcesAsList = !UI::resourcesAsList;
 	}
 
+	bool	CanHit(const Objects::PMobileEntity&m, const Grid::LCellIdI&loc)
+	{
+		return m->CanHit(Objects::TrajectoryEndPoint( loc ));
+//			if (source.ExtCanHit(source.owner, Objects::TrajectoryEndPoint( source.location,source.base->height),Objects::TrajectoryEndPoint( candidate.location,0 ),target))
+
+	}
 
 
 	bool	IsIdle(const Objects::PMobileEntity&v)
@@ -2772,11 +2781,11 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 				{
 					for (auto other : Objects::vehicles)
 						if (!emp || !other->empDamageLevel)
-							if (!other->isOwnedByMe && v->CanHit(other->location))
+							if (!other->isOwnedByMe && CanHit(v,other->location))
 								return true;
 					for (auto other : Objects::structures)
 						if (!emp || !other->empDamageLevel)
-							if (!other->isOwnedByMe && v->CanHit(other->location))
+							if (!other->isOwnedByMe && CanHit(v,other->location))
 								return true;
 				}
 				else
@@ -2784,7 +2793,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 					if (v->IsSatellite())
 					{
 						for (auto other : Objects::satellites)
-							if (!other->isOwnedByMe && v->CanHit(other->location))
+							if (!other->isOwnedByMe && CanHit(v,other->location))
 								if (!emp || !other->empDamageLevel)
 									return true;
 					}

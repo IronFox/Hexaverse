@@ -144,7 +144,7 @@ namespace Objects
 		#endif
 	}
 
-	TurretTrajectory		WorldEntity::TraceTrajectory(const Grid::WorldData&world, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell) const
+	TurretTrajectory		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -153,10 +153,19 @@ namespace Objects
 			outSteps.Clear();
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),b->turret->requiresGroundImpact, world,location,zOffset,dest,outSteps,impactAt,impactCell);
+
+		const Grid::WorldData&visibleWorld =
+		#ifndef CLIENT
+			owner->currentState
+		#else
+			Grid::actualWorld
+		#endif
+		;
+
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),b->turret->requiresGroundImpact,visibleWorld, Grid::actualWorld,TrajectoryEndPoint( location,zOffset ),dest,outSteps,impactAt,impactCell,outAngle);
 	}
 
-	TurretTrajectory		WorldEntity::TraceTrajectory(const Grid::WorldData&world, const Grid::LCellIdI&dest, TVec3<>&impactAt) const
+	TurretTrajectory		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, TVec3<>&impactAt) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -164,13 +173,21 @@ namespace Objects
 		{
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),b->turret->requiresGroundImpact,world,location,zOffset,dest,impactAt);
+		const Grid::WorldData&visibleWorld =
+		#ifndef CLIENT
+			owner->currentState
+		#else
+			Grid::actualWorld
+		#endif
+		;
+
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),b->turret->requiresGroundImpact,visibleWorld, Grid::actualWorld,TrajectoryEndPoint(location,zOffset),dest,impactAt);
 	}
 
 
 	
 
-	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::WorldData&world, const Grid::LCellIdI&source, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell) const
+	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -179,10 +196,17 @@ namespace Objects
 			outSteps.Clear();
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),b->turret->requiresGroundImpact,world,source,zOffset,dest,outSteps,impactAt,impactCell);
+		const Grid::WorldData&visibleWorld =
+		#ifndef CLIENT
+			owner->currentState
+		#else
+			Grid::actualWorld
+		#endif
+		;
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),b->turret->requiresGroundImpact,visibleWorld, Grid::actualWorld,TrajectoryEndPoint(source,zOffset),dest,outSteps,impactAt,impactCell,outAngle);
 	}
 
-	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::WorldData&world, const Grid::LCellIdI&source, const Grid::LCellIdI&dest, TVec3<>&impactAt) const
+	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -190,10 +214,17 @@ namespace Objects
 		{
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),b->turret->requiresGroundImpact,world,source,zOffset,dest,impactAt);
+		const Grid::WorldData&visibleWorld =
+		#ifndef CLIENT
+			owner->currentState
+		#else
+			Grid::actualWorld
+		#endif
+		;
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),b->turret->requiresGroundImpact,visibleWorld, Grid::actualWorld,TrajectoryEndPoint(source,zOffset),dest,impactAt);
 	}
 
-	bool						WorldEntity::CanHitFrom(const Grid::LCellIdI&origin, const TVec3<>&dest) const
+	bool						WorldEntity::CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -201,10 +232,10 @@ namespace Objects
 		{
 			return false;
 		}
-		return Component::Turret::CanHit(b->turret->trajectoryType,b->GetFlatAttackRange(),origin,zOffset,dest);
+		return Component::Turret::CanHit(b->turret->trajectoryType,b->GetFlatAttackRange(),TrajectoryEndPoint(origin,zOffset),dest,outAngle);
 	}
 
-	bool						WorldEntity::CanHitFrom(const Grid::LCellIdI&origin, const Grid::LCellIdI&dest) const
+	bool						WorldEntity::CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -212,14 +243,15 @@ namespace Objects
 		{
 			return false;
 		}
-		return Component::Turret::CanHit(b->turret->trajectoryType,b->GetFlatAttackRange(),origin,zOffset,dest);
+		return Component::Turret::CanHit(b->turret->trajectoryType,b->GetFlatAttackRange(),TrajectoryEndPoint(origin,zOffset),dest);
 	}
 
-	bool						WorldEntity::CanHit(const TVec3<>&dest) const
+
+	bool						WorldEntity::CanHit(const TrajectoryEndPoint&dest, float&outAngle) const
 	{
-		return CanHitFrom(location,dest);
+		return CanHitFrom(location,dest,outAngle);
 	}
-	bool						WorldEntity::CanHit(const Grid::LCellIdI&dest) const
+	bool						WorldEntity::CanHit(const TrajectoryEndPoint&dest) const
 	{
 		return CanHitFrom(location,dest);
 	}
