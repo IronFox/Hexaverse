@@ -173,18 +173,13 @@ namespace Objects
 			static Buffer0<TVec4<> > trajectory;
 
 			bool abort = false;
-			if (target.autoTarget)
+			float angle;
+			TurretTrajectory t = TraceTrajectory(TrajectoryEndPoint( target.target ),trajectory,t0,t1,angle);
+			if (t != TurretTrajectory::ReachesTarget && target.autoTarget)
 			{
-				TurretTrajectory t = TraceTrajectory(owner->currentState,  target.target,trajectory,t0,t1);
-				if (t != TurretTrajectory::ReachesTarget)
-				{
-					abort = true;
-				}
+				t = TurretTrajectory::InvalidTrajectory;
 			}
-			TurretTrajectory t = TurretTrajectory::InvalidTrajectory;
-			
-			if (!abort)
-				t = TraceTrajectory(Grid::actualWorld,  target.target,trajectory,t0,t1);
+
 			if (t != TurretTrajectory::InvalidTrajectory)
 			{
 
@@ -212,8 +207,13 @@ namespace Objects
 					motionTime += Times::TurretRotation;
 				}
 
-
-				SignalAttack(shared_from_this(),target.target,flightTime,target.autoTarget);
+				TAttack at;
+				at.attackAngle = angle;
+				at.attackFrom = shared_from_this();
+				at.flightTime = flightTime;
+				at.isAutoAttack = target.autoTarget;
+				at.traceTo = t0;
+				SignalAttack(at);
 
 				if (storage.level[turret->ammoType] >= turret->ammoNeedPerShot)
 					ChangeStorage(*this,attackTime, turret->ammoType,-turret->ammoNeedPerShot);
@@ -231,10 +231,10 @@ namespace Objects
 				motionTime += flightTime;
 
 				if (turret->dealsEMPDamage)
-					ExplodeEMP(shared_from_this(),target.target,flightTime,
+					ExplodeEMP(at,
 								t1, t0, turret->explosionRadius, turret->damageLevel,motionTime);
 				else
-					Explode(shared_from_this(),target.target,flightTime,
+					Explode(at,
 							t1, t0, turret->explosionRadius, turret->damageLevel,turret->isDoomsday, motionTime);
 
 				RegisterChange((changeType_t)(TasksChanged),motionTime);
@@ -258,7 +258,7 @@ namespace Objects
 			if ((int)attackQueue.Count() < CountPossibleAttacks())
 			{
 				Grid::LCellIdI target;
-				return GetSentryTarget(*this,this->storage.level[turret->ammoType], location,foundationHeight,*this,target) && AttackNext(target,true);
+				return GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,foundationHeight),*this,target) && AttackNext(target,true);
 			}
 			else
 				return false;
@@ -297,17 +297,17 @@ namespace Objects
 
 			TVec3<> iat;
 			Grid::HCellIdI ic;
-
+			float angle;
 
 			//float d2 = Grid::GetQuadraticGeometricDistance(location+1,target->location);
-
+			TrajectoryEndPoint endPoint(target->location); 
 			return		//owner->canSee.IsSet(target)
 					/*&&	*/turret->CanAttack() 
 					&& motionTime <= entityTime 
 					&& CountPossibleAttacks() > 0 
-					&& ExtCanHit(owner,location,foundationHeight, target->location,outTarget)
+					&& ExtCanHit(owner,TrajectoryEndPoint( location,foundationHeight ), endPoint,outTarget)
 					//&& d2 > sqr(turret->explosionRadius)
-					&& TraceTrajectory(owner->currentState, target->location,trajectory,iat,ic)==TurretTrajectory::ReachesTarget;
+					&& TraceTrajectory(endPoint,trajectory,iat,ic,angle)==TurretTrajectory::ReachesTarget;
 		}
 
 
@@ -929,7 +929,7 @@ namespace Objects
 
 				//float targetDistance = Grid::GetGeometricDistance(pointOfOrigin,target);
 
-				if (!CanHit(target))
+				if (!CanHit(TrajectoryEndPoint( target)))
 				{
 					LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 					return false;
@@ -2004,8 +2004,9 @@ namespace Objects
 				trajectory.Clear();
 				TVec3<> impactAt;
 				Grid::HCellIdI dummy1;
+				float angle;
 				//if (Turret::TraceTrajectory(Turret::MaxRangeToVelocity(GetFlatAttackRange()),Grid::actualWorld, location,foundationHeight,attackTarget,trajectory,impactAt,dummy1))
-				if (TraceTrajectory(Grid::actualWorld, attackTarget,trajectory,impactAt,dummy1))
+				if (TraceTrajectory(TrajectoryEndPoint( attackTarget,0),trajectory,impactAt,dummy1,angle) != TurretTrajectory::InvalidTrajectory)
 				{
 
 					static Geometry geo;

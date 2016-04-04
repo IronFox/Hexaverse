@@ -183,7 +183,7 @@ namespace Objects
 		}
 
 
-		bool		GetSentryTarget(const WorldEntity&source, int munitionStorage, const Grid::LCellIdI&sourceLocation, float zOffset, const TurretBase&base, Grid::LCellIdI&outTarget)
+		bool		GetSentryTarget(const WorldEntity&source, int munitionStorage, const TrajectoryEndPoint&sourceLocation, const TurretBase&base, Grid::LCellIdI&outTarget)
 		{
 			float c2 = std::numeric_limits<float>::max();
 			Grid::LCellIdI closest = Grid::LCellIdI::Invalid;
@@ -191,12 +191,12 @@ namespace Objects
 			if (base.turret->ammoNeedPerShot > munitionStorage)
 				return false;
 			const Grid::WorldData&world = source.owner->currentState;
-			source.owner->seeing.VisitAllKeys([zOffset,&world, &source,sourceLocation,&base,&c2,&closest,&closestEntity](const PWorldEntity&e)
+			source.owner->seeing.VisitAllKeys([&world, &source,sourceLocation,&base,&c2,&closest,&closestEntity](const PWorldEntity&e)
 			{
 //					&& turret->TraceTrajectory(location+1,target.location,trajectory,iat,ic)==Turret::ReachesTarget;		
 				
 				Grid::LCellIdI loc;
-				if (!base.ExtCanHit(source.owner,sourceLocation,zOffset,e->location,loc))
+				if (!base.ExtCanHit(source.owner,sourceLocation,TrajectoryEndPoint( e->location ),loc))
 					return;
 
 				
@@ -207,10 +207,12 @@ namespace Objects
 				static Buffer0<TVec4<> > trajectory;
 				Grid::HCellIdI ic;
 				TVec3<> iat;
+				float angle;
 				if (Component::Turret::TraceTrajectory(base.turret->trajectoryType,base.GetFlatAttackRange(),   
-							world, sourceLocation,zOffset,loc,trajectory,iat,ic) != TurretTrajectory::ReachesTarget)
+							world, Grid::actualWorld,sourceLocation,TrajectoryEndPoint( loc ),trajectory,
+							iat,ic,angle) != TurretTrajectory::ReachesTarget)
 					return;
-				float d2 = Grid::GetQuadraticGeometricDistance(sourceLocation,loc);
+				float d2 = Grid::GetQuadraticGeometricDistance(sourceLocation.cellLocation,loc);
 				if (d2 < c2)
 				{
 					c2 = d2;
@@ -232,7 +234,7 @@ namespace Objects
 
 
 		
-		void Explode(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, 
+		void Explode(const TAttack& attack, 
 					 const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
 					 float&atTime)
 		{
@@ -248,7 +250,7 @@ namespace Objects
 			//	return;
 			//}
 
-			SignalExplosion(attackFrom, traceTo, flightTime, 
+			SignalExplosion(attack, 
 							center,explosionRadius,false,
 							doomsday,
 							atTime);
@@ -384,10 +386,10 @@ namespace Objects
 			affectedVehicles.Clear();
 		}
 	
-		void ExplodeEMP(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, 
+		void ExplodeEMP(const TAttack& attack, 
 						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float&atTime)
 		{
-			SignalExplosion(attackFrom, traceTo, flightTime, 
+			SignalExplosion(attack, 
 							center,explosionRadius,true,false,atTime);
 
 			float outerRadius = explosionRadius*explosionRadius;
