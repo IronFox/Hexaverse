@@ -252,7 +252,7 @@ namespace Objects
 
 			PVehicleJob			completeOnMove;
 			BYTE				numTriedPlottingOnMoveAutoMotion=0;
-			bool				jobStarted=false;
+			bool				jobStarted=false; //!< Tracks whether the currently front-most job has been started
 			bool				hasMoved=false;
 			bool				hasConstructedThisRound=false;
 		#else

@@ -261,9 +261,9 @@ namespace Game
 			if (owned)
 			{
 				if (e.unstable)
-					state.entityStateFlags |= Protocol::EntityStateFlag::IsUnstable;
+					state.entityStateFlags |= Protocol::EntityStateFlags::IsUnstable;
 				if (e.IsSleeping())
-					state.entityStateFlags |= Protocol::EntityStateFlag::IsSleeping;
+					state.entityStateFlags |= Protocol::EntityStateFlags::IsSleeping;
 			}
 			state.timestamp = timestamp;
 		}
@@ -336,7 +336,7 @@ namespace Game
 			if (owned)
 			{
 				if ((v.myTasks.IsEmpty() && v.completeOnMove) || v.AwaitsUserInteraction())
-					state.entityState.entityStateFlags |= Protocol::EntityStateFlag::IsUnstable;
+					state.entityState.entityStateFlags |= Protocol::EntityStateFlags::IsUnstable;
 			}
 
 		}

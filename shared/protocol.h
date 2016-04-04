@@ -1185,7 +1185,7 @@ namespace Protocol
 		, TypeDeltaArray, data0
 	)
 
-	namespace EntityStateFlag
+	namespace EntityStateFlags
 	{
 		enum flag_t
 		{
@@ -1657,7 +1657,7 @@ namespace Protocol
 	)
 
 
-	namespace DirectFlag
+	namespace DirectFlags
 	{
 		enum flag_t
 		{
@@ -1668,7 +1668,7 @@ namespace Protocol
 	}
 
 	/**
-	If directFlags contains DirectFlag::Explicit, path is considered explicit with one entry per neighboring node.
+	If directFlags contains DirectFlags::Explicit, path is considered explicit with one entry per neighboring node.
 	In this case the command is rejected, if the path is not possible when applied to the known world of the respective client.
 	If the path is found to be inapplicable during computation phases, an automatically determined path to the last given node is computed and applied, then dropped.
 	Path must always be of at least length 1
