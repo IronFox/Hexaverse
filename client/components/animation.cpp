@@ -496,10 +496,12 @@ namespace Animation
 			{
 				std::shared_ptr<Objects::VehicleJob::DummyJob>	job(new Objects::VehicleJob::DummyJob(e));
 				t1.job = job;
+				job->delayedBySleep = (sourceTask.taskFlags & Protocol::TaskFlags::DelayedBySleep) != 0;
 			}
-			t1.job->movesToFocusWhenDone = sourceTask.visualizePathToFocus;
+			t1.job->movesToFocusWhenDone = (sourceTask.taskFlags & Protocol::TaskFlags::VisualizePathToFocus) != 0;
 			t1.job->roundsToJobCompletion = sourceTask.roundsToJobCompletion;
 			t1.job->resourceCostLeft = sourceTask.resourceCostLeft;
+			
 			#ifdef HAS_WINDOW
 				if (sourceTask.foci.Count())
 				{
@@ -764,7 +766,7 @@ namespace Animation
 
 			if (!v->turret->CanAttack())
 			{
-				if (v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsJob() && !v->IsSleeping())
+				if (v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsJob() && (!v->IsSleeping() || !v->myTasks.Peek().job->DelayedBySleep()))
 				{
 					if (!v->activitySound.IsCreated())
 					{

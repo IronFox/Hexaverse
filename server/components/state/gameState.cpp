@@ -200,6 +200,7 @@ namespace Game
 			task.mode = (BYTE)t.mode;
 			task.name = t.name;
 			task.type = t.type;
+			task.taskFlags = 0;
 			if (t.job)
 			{
 				Objects::VehicleJob::PSequence seq = To<Objects::VehicleJob::Sequence>::DynamicCast(t.job);
@@ -213,7 +214,10 @@ namespace Game
 				
 					seq->Guess(v, origin, taskIndex, task.roundsToJobCompletion.value,task.resourceCostLeft.value);
 				}
-				task.visualizePathToFocus = t.job->movesToFocusWhenDone;
+				if (t.job->movesToFocusWhenDone)
+					task.taskFlags |= Protocol::TaskFlags::VisualizePathToFocus;
+				if (t.job->DelayedBySleep())
+					task.taskFlags |= Protocol::TaskFlags::DelayedBySleep;
 			
 
 				std::shared_ptr<Objects::VehicleJob::PathJob> pathJob = To<Objects::VehicleJob::PathJob>::DynamicCast(t.job);
@@ -243,7 +247,6 @@ namespace Game
 			}
 			else
 			{
-				task.visualizePathToFocus = false;
 				task.roundsToJobCompletion = -1;
 			}
 		}

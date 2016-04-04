@@ -1203,10 +1203,19 @@ namespace Protocol
 		, NET(BYTE), entityStateFlags
 	)
 
+	namespace TaskFlags
+	{
+		enum flag_t
+		{
+			VisualizePathToFocus = 0x1,
+			DelayedBySleep = 0x2,
+		};
+	}
+
 	NETSTRUCT9(MobileTask
 		, NET(UINT8), type
 		, NET(UINT8), mode
-		, NET(bool), visualizePathToFocus
+		, NET(UINT8), taskFlags
 		, NETA(LCellIdI), foci
 		, Package::NetString<256>, name
 		, NET(USHORT), roundsToJobCompletion
