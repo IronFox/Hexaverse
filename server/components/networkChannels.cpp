@@ -1557,7 +1557,7 @@ namespace Receiver
 
 					peer.attachment.reset();
 				}
-				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::ServerPrivate ),peer,"Client disconnected");
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::ServerPrivate ),peer,"Client disconnected ("+peer.GetError(true)+")");
 
 
 				if (!Network::AnyHumanPlayersActive())
