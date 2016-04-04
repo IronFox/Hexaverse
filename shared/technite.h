@@ -50,6 +50,8 @@ namespace Technites
 		};
 	};
 
+	static const float MaxTransferRange = 5.f;
+
 	class Base : public SerializableObject
 	{
 	public:

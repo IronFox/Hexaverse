@@ -610,19 +610,18 @@ namespace Technites
 							t->taskResult = Technite::TaskResult::InsufficientResources;
 							return;
 						}
-						Grid::HCellIdU target;
-						if (!t->DecodeAbsoluteTarget(target))
-						{
-							t->taskResult = Technite::TaskResult::TargetOutOfRange;
-							return;
-						}
 						index_t tIndex;
-						if (!techniteMap.Query(target,tIndex) || technites[tIndex].id != t->nextInstruction.targetTechnite)
+						if (!techniteIdMap.Query(nextInstruction.targetTechnite,tIndex) )
 						{
 							t->taskResult = Technite::TaskResult::TargetNoTechnite;
 							return;
 						}
 						const Technite&other = technites[tIndex];
+						if (Grid::GetQuadraticGeometricDistance(other.location.GetU(),t->location.GetU()) > sqr(MaxTransferRange))
+						{
+							t->taskResult = Technite::TaskResult::TargetOutOfRange;
+							return;
+						}
 
 						TCP::PPeer peer = other.peer.lock();
 						if (!peer || !Channels::message.SendTo(peer,Protocol::Message(t->id,t->nextInstruction.payload)))
