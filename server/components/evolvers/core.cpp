@@ -362,7 +362,7 @@ namespace Evolver
 		{
 			static TExplosion exp;
 			while (pendingExplosions >> exp)
-				Objects::Explode(Objects::PWorldEntity(),exp.center,0.f,Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,exp.atTime);
+				Objects::Explode(TAttack(),Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,exp.atTime);
 
 			switch (RuntimeConfig::phase)
 			{

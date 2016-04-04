@@ -74,6 +74,7 @@ namespace Objects
 
 	class Compound;
 	class MobileResourceEnvironment;
+	struct TrajectoryEndPoint;
 
 	DECLARE_POINTER_CLASS(CommandGroup)
 
