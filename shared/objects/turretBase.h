@@ -124,7 +124,7 @@ namespace Objects
 			Otherwise a close approximation will be given that is still in range but will hit the target through the explosion radius
 		@return true if an applicable destination was found, false otherwise
 		*/
-		bool					ExtCanHit(const OwnerParameter&myFaction, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&destIn, Grid::LCellIdI&destOut)	const;
+		bool					ExtCanHit(const OwnerParameter&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, Grid::LCellIdI&destOut)	const;
 
 
 

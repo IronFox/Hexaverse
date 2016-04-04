@@ -765,7 +765,9 @@ namespace Objects
 			Remove(v.shared_from_this(),Objects::RemovalType::ControlledExplosion,v.motionTime,true);
 			v.motionTime += timeEpsilon;
 
-			Explode(PWorldEntity(),v.location,0.f,Grid::HCellIdI(Grid::low.grid.GetCell(v.location.stackID).higherEquivalent,v.location.height),v.GetWorldPosition(),radius,damageLevel,doomsday,v.motionTime);
+	
+
+			Explode(TAttack(),Grid::HCellIdI(Grid::low.grid.GetCell(v.location.stackID).higherEquivalent,v.location.height),v.GetWorldPosition(),radius,damageLevel,doomsday,v.motionTime);
 
 			return TerminalFailureVehicleDestroyed;
 		}

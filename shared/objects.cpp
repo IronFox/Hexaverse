@@ -804,7 +804,8 @@ namespace Objects
 				hasArrowCellTarget = false;
 				showArrow = false;
 				arrowFrom = float3();
-				arrowFromCell = arrowCellTarget = Grid::LCellIdI(0,0);
+				arrowFromCell = Grid::LCellIdI(0,0);
+				arrowCellTarget = TrajectoryEndPoint();
 				//activeResource = 0;
 
 				cellSelection.Clear();

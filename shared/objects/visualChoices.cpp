@@ -16,8 +16,8 @@ namespace Objects
 	bool						hasArrowCellTarget=false,
 								showArrow = false;
 	float3						arrowFrom;	//arrow visualization point of origin. Might be the location of a vehicle, or any of the locations in its task queue. Only relevant if showArrow is true
-	Grid::LCellIdI				arrowFromCell, 
-								arrowCellTarget;
+	Grid::LCellIdI				arrowFromCell;
+	TrajectoryEndPoint			arrowCellTarget;
 	Buffer0<Grid::HCellIdU>		buildCandidates, 
 								removeCandidates;
 	Buffer0<Grid::HCellIdI>		cellSelection;

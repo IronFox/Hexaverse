@@ -380,14 +380,14 @@ namespace Objects
 		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { zOffset = 0; return PConstTurretBase();}
 		inline PConstTurretBase		GetTurretBase() const { float dummy; return GetTurretBase(dummy);}
 
-		TurretTrajectory			TraceTrajectory(const Grid::WorldData&world, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell) const;
-		TurretTrajectory			TraceTrajectory(const Grid::WorldData&world, const Grid::LCellIdI&dest, TVec3<>&impactAt) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::WorldData&world, const Grid::LCellIdI&source, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::WorldData&world, const Grid::LCellIdI&source, const Grid::LCellIdI&dest, TVec3<>&impactAt) const;
-		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TVec3<>&dest) const;
-		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const Grid::LCellIdI&dest) const;
-		bool						CanHit(const TVec3<>&dest) const;
-		bool						CanHit(const Grid::LCellIdI&dest) const;
+		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
+		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
+		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const;
+		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest) const;
+		bool						CanHit(const TrajectoryEndPoint&dest, float&outAngle) const;
+		bool						CanHit(const TrajectoryEndPoint&dest) const;
 		bool						IsSleeping() const {return sleeping;}
 
 		virtual bool				AwaitsUserInteraction() const {return false;}
