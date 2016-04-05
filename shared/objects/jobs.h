@@ -57,6 +57,10 @@ namespace Objects
 
 
 			/**/					BaseJob(Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):jobAutoCompletion(jobAutoCompletion),movesToFocusWhenDone(movesToFocusWhenDone)	{}
+			/**/					BaseJob(int costs, const MobileEntity&v, Component::operation_t op, Autocomplete jobAutoCompletion, bool movesToFocusWhenDone);
+			virtual					~BaseJob()	{}
+			
+			BYTE					GetConstructionActionCostPerRound(const MobileEntity&v) const;
 			void					ResetResourceAndRoundsLeft(int costs, const MobileEntity&v, Component::operation_t op);
 
 			/**
@@ -66,9 +70,8 @@ namespace Objects
 			virtual void			Restart(const MobileEntity&v) = 0;
 			virtual Component::operation_t	GetOperationAffinity() const = 0;
 			virtual Resource		GetConsumedResourceType() const {return Resource::Minerals;}
+			virtual bool			DelayedBySleep() const {return true;}
 
-			/**/					BaseJob(int costs, const MobileEntity&v, Component::operation_t op, Autocomplete jobAutoCompletion, bool movesToFocusWhenDone);
-			virtual					~BaseJob()	{}
 			#ifndef CLIENT
 				enum begin_t
 				{
@@ -162,11 +165,12 @@ namespace Objects
 			{
 			public:
 				typedef BaseJob	Super;
+				bool					delayedBySleep = true;
 
 				/**/					DummyJob(const MobileEntity&v) : Super(1,v,GetOperationAffinity(),Autocomplete::Always,false) {}
 				virtual void			Restart(const MobileEntity&v) override {Super::ResetResourceAndRoundsLeft(1,v,GetOperationAffinity());}
 				virtual Component::operation_t	GetOperationAffinity() const override {return Component::TerrainRemove;}
-
+				virtual bool			DelayedBySleep() const override {return delayedBySleep;}
 				//virtual Riff::TID		GetDataKey() const override {return "BLDF";};
 				//virtual PJob	Instantiate() const override {return PJob(new BuildFoundation());}
 				virtual	serial_size_t	GetSerialSize(bool exportSize) const override	{return 0;};
@@ -585,7 +589,7 @@ namespace Objects
 
 				virtual String			GetName() const override;
 				virtual ConstName		GetCTypeName() const override {return ConstName::Job_SelfDetonate;}
-
+				virtual bool			DelayedBySleep() const override {return false;}
 
 				virtual begin_t			BeginHere(MobileEntity&v, const Grid::LCellIdI&, bool hasToMoveFirst)	{return Started;}
 				virtual bool			CanContinue(MobileEntity&v, const Grid::LCellIdI&, String&outError) override;

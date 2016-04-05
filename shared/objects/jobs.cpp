@@ -32,6 +32,10 @@ namespace Objects
 			resourceCostLeft = std::max(cost,0);
 		}
 
+		BYTE					BaseJob::GetConstructionActionCostPerRound(const MobileEntity&v) const
+		{
+			return MobileEntity::MaxConstructionActionLeft >> v.GetConstructionAcceleration(GetOperationAffinity());
+		}
 
 
 		#ifndef CLIENT
