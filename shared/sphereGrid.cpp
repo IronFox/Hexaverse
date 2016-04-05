@@ -1156,31 +1156,18 @@ namespace Grid
 				actualWorld.cellStack[i].FillTypes(config);
 			});
 
-			//the following tries to elimited exposed inner terrain types caused by the above terrain simplification
-//			Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [](index_t i)
-//			{
-//				auto&stack = actualWorld.cellStack[i];
-//				UINT32 stackTop = 0;
-//				for (UINT l = CellStack::Range-1; l < CellStack::Range; l--)
-//				{
-//					if (stack.volumeCell[l].IsClearOrWaterIgnoreStructure())
-//					{
-//						if (!stackTop)
-//							stackTop = l;
-//						continue;
-//					}
-//				}
-//				for (UINT l = 0; l < CellStack::Range; l++)
-//				{
-//					const BYTE cont = stack.volumeCell[l].content;
-//					if ((cont == Content::Water || cont == Content::Clear) && l > 0)
-//					{
-////						if (ReplaceTop(stack.volumeCell[l-1].content))
-//							stack.volumeCell[l-1].content = 
-//								GetTypeAtHeight(config,Grid::CellStack::ToHeight(l-1));
-//					}
-//				}
-//			});
+			Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [](index_t i)
+			{
+				auto&stack = actualWorld.cellStack[i];
+				UINT32 stackTop = 0;
+				for (UINT l = 0; l+1 < CellStack::Range; l++)
+				{
+					if (stack.volumeCell[l].content == Content::Grass && !stack.volumeCell[l+1].IsClearOrLiquidIgnoreStructure())
+					{
+						stack.volumeCell[l].content = Content::Earth;
+					}
+				}
+			});
 
 
 			const bool solidProx = CellStack::Cell::IsSolid(config.liquidOutline) && CellStack::Cell::IsLiquid(config.liquidCoverage);
