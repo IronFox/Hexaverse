@@ -2842,16 +2842,16 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 					if (v->IsPlane())
 					{
 						for (auto other : Objects::SubOrbital::planes)
-							if (!other->isOwnedByMe && v->CanHit(other->location))
+							if (!other->isOwnedByMe && CanHit(v, other->location))
 								if (!emp || !other->empDamageLevel)
 									return true;
 						for (auto other : Objects::vehicles)
 							if (!emp || !other->empDamageLevel)
-								if (!other->isOwnedByMe && v->CanHit(other->location))
+								if (!other->isOwnedByMe && CanHit(v, other->location))
 									return true;
 						for (auto other : Objects::structures)
 							if (!emp || !other->empDamageLevel)
-								if (!other->isOwnedByMe && v->CanHit(other->location))
+								if (!other->isOwnedByMe && CanHit(v, other->location))
 									return true;
 					}
 					else
