@@ -120,17 +120,18 @@ namespace Camera
 
 
 
-
-	void						TargetOrbit(float _targetOrbit)
+	void						TargetOrbit(float newOrbit)
 	{
-		if (skyOrbitBase)
-			groundTargetOrbit = _targetOrbit;
-		else
+		//#ifndef NO_SATELLITES
+		//	if (skyGrid || subOrbitGrid)
+		//	if (subOrbitGrid)
+		//	groundTargetOrbit = newOrbit;
+		//else
+		//#endif
 		{
-			targetOrbit = _targetOrbit;
+			targetOrbit = newOrbit;
 			orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
 		}
-
 	}
 
 
