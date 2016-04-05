@@ -1695,8 +1695,8 @@ namespace Objects
 			component.baseHealth = 12;
 
 			component.hindrance.road = 1;
-			component.hindrance.air = 10;
-			component.hindrance.water = 10;
+			component.hindrance.air = 3;
+			component.hindrance.water = 4;
 			component.hindrance.other = 4;
 
 			component.acceleration[TerrainAdd] = 2;
