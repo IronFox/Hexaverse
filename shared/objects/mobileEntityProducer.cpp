@@ -223,7 +223,7 @@ namespace Objects
 
 			if (queue.IsEmpty())
 			{
-				FATAL__("should be disabled: "+GetName());
+				FATAL__("should be disabled: "+parent->GetName());
 			}
 
 			productionRoundsLeft = ProductionRounds(queue.first().producing,true);
