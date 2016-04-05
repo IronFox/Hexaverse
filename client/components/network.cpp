@@ -1445,8 +1445,6 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	LogEvent(EventSignificance::Common,nullptr,"Server phase changed to "+String(RuntimeConfig::phase.ToString())+" ("+String(c.timeFactor.value)+") @"+String(Animation::atTime));
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 	{
-		Objects::CheckMobileEntitySanity();
-
 		static Buffer0<Objects::Marker> outdated;
 		Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10);
 		foreach(outdated, o)

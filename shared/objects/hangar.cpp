@@ -242,7 +242,7 @@ namespace Objects
 		ASSERT2__(!e->isInsertedIntoGrid,ToEntity().GetName(), e->GetName());
 
 		#ifdef _DEBUG
-			CheckMobileEntitySanity();
+			CheckMobileEntitySanity();	//this could fail (under rare circumstances) when mobile entities are currently not inserted into grid during animation
 		#endif
 
 
