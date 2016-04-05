@@ -1204,30 +1204,34 @@ void	OnAppear(const Objects::PWorldEntity&e)
 										change.level[Objects::Resource::Minerals] -= v->GetCurrentMineralConsumption();
 									}
 								}
-						if (res & Objects::Resource::Fuel)
-							for (const auto v : Objects::satellites)
-								if (v->owner == o && v->RequiresFuel())
-								{
-									v->resourceEnvironment.CheckRefresh(*v);
-									if (v->resourceEnvironment.sourceCompounds.Contains(*c))
+						#ifndef NO_SATELLITES
+							if (res & Objects::Resource::Fuel)
+								for (const auto v : Objects::satellites)
+									if (v->owner == o && v->RequiresFuel())
 									{
-										change.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound() + v->GetExtraFuelDemand();
+										v->resourceEnvironment.CheckRefresh(*v);
+										if (v->resourceEnvironment.sourceCompounds.Contains(*c))
+										{
+											change.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound() + v->GetExtraFuelDemand();
+										}
 									}
-								}
+						#endif
 					}
 					if (!any)
 					{
 						if (res & Objects::Resource::Minerals)
 							change.level[Objects::Resource::Minerals] -= Objects::selectedMobileEntity->GetCurrentMineralConsumption();
-						if (res & Objects::Resource::Fuel)
-						{
-							if (Objects::selectedMobileEntity->IsSatellite())
+						#ifndef NO_SATELLITES
+							if (res & Objects::Resource::Fuel)
 							{
-								Objects::PSatellite sat = To<Objects::Satellite>::Cast(Objects::selectedMobileEntity);
-								if (sat->RequiresFuel())
-									change.level[Objects::Resource::Fuel] -= sat->GetFuelConsumptionPerRound() + sat->GetExtraFuelDemand();
+								if (Objects::selectedMobileEntity->IsSatellite())
+								{
+									Objects::PSatellite sat = To<Objects::Satellite>::Cast(Objects::selectedMobileEntity);
+									if (sat->RequiresFuel())
+										change.level[Objects::Resource::Fuel] -= sat->GetFuelConsumptionPerRound() + sat->GetExtraFuelDemand();
+								}
 							}
-						}
+						#endif
 					}
 				}
 				{
@@ -1257,15 +1261,17 @@ void	OnAppear(const Objects::PWorldEntity&e)
 								balance.level[Objects::Resource::Minerals] -= v->GetCurrentMineralConsumption();
 							}
 						}
-					for (const auto v : Objects::satellites)
-						if (v->owner == o && v->RequiresFuel())
-						{
-							v->resourceEnvironment.CheckRefresh(*v);
-							if (v->resourceEnvironment.ContainsCompound(s->compoundID))
+					#ifndef NO_SATELLITES
+						for (const auto v : Objects::satellites)
+							if (v->owner == o && v->RequiresFuel())
 							{
-								balance.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound() + v->GetExtraFuelDemand();
+								v->resourceEnvironment.CheckRefresh(*v);
+								if (v->resourceEnvironment.ContainsCompound(s->compoundID))
+								{
+									balance.level[Objects::Resource::Fuel] -= v->GetFuelConsumptionPerRound() + v->GetExtraFuelDemand();
+								}
 							}
-						}
+					#endif
 					UI::Update(
 						#ifndef NO_HIBERNATION
 							Objects::selectedEntity->GetUplinkTraffic(),
