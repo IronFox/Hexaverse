@@ -214,6 +214,7 @@ void	OnPlayerControlBegin()
 		Objects::RefreshSkyHubConnections();
 	#endif
 	Animation::UpdateAutomation(CLOCATION);
+	Objects::CheckMobileEntitySanity();
 }
 
 #ifdef HAS_WINDOW

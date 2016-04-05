@@ -10,6 +10,7 @@ v0.3.22
 	* Fixed server endless loop when path construction job (e.g. build road to) permanently fails at end-point.
 	* Fixed unit deployment (from factories/storage) on slopes.
 	* Fixed deployment of units outside the regular grid (e.g. planes).
+	* Three or less active players, with emp zones, but no goal defines will now only unlock one zone (was two).
 	- Removed satellite system.
 
 v0.3.21	[Mar 31 2016]

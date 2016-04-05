@@ -179,7 +179,7 @@ namespace Objects
 			jobStarted = false;
 
 			const Grid::WorldData&world = owner->currentState;
-
+			bool isObstructed = false;
 			//if ( focus != location)
 			{
 				switch (task.type)
@@ -293,6 +293,7 @@ namespace Objects
 										//bleed into next case:
 									case MobilePlacementResult::PlacementFailedTemporarilyObstructed:
 									{
+										isObstructed = true;
 										LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Unable to complete movement.");
 										if (health <= 0)
 										{
@@ -349,7 +350,7 @@ namespace Objects
 								#ifndef CLIENT
 									RegisterChange(TasksChanged,motionTime);
 								#endif
-								return remaining == 0 ? TaskResult::AllDoneForThisRound : TaskResult::FinishedCanDoMore;
+								return remaining == 0 || isObstructed ? TaskResult::AllDoneForThisRound : TaskResult::FinishedCanDoMore;
 							}
 							else
 							{
@@ -375,7 +376,7 @@ namespace Objects
 									#endif
 								}
 								this->UnlockTasks();
-								return remaining == 0 ? TaskResult::AllDoneForThisRound : TaskResult::FinishedCanDoMore;
+								return remaining == 0 || isObstructed ? TaskResult::AllDoneForThisRound : TaskResult::FinishedCanDoMore;
 							}
 						}
 					}

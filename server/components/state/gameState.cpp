@@ -721,7 +721,10 @@ namespace Game
 				{
 					Objects::PWorkingStructure s = _s->lock();
 					if (!s)
+					{
+						LogEvent(EventClass::Preset::internalError, "Unable to lock working structure in compound for living-check");
 						continue;
+					}
 					o = s->owner;
 					Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 					if (mine && mine->IsLinkedToCore())
@@ -745,11 +748,11 @@ namespace Game
 				Objects::PFaction f = o;//c.workingStructures.first().lock()->owner;
 				if (f)
 				{
-					f->hasFuelMine = hasFuelMine;
-					f->hasMineralMine = hasMineralMine;
-					f->hasMineralContainer = hasMineralContainer;
-					f->hasGenerator = hasGenerator;
-					f->hasVehiclePlant = hasVehiclePlant;
+					f->hasFuelMine |= hasFuelMine;
+					f->hasMineralMine |= hasMineralMine;
+					f->hasMineralContainer |= hasMineralContainer;
+					f->hasGenerator |= hasGenerator;
+					f->hasVehiclePlant |= hasVehiclePlant;
 				}
 			});
 
@@ -790,12 +793,14 @@ namespace Game
 						if (!faction->deathInRounds)
 						{
 							faction->deathInRounds = 5;
+							LogEvent(EventSignificance::Common, "Faction death imminent. " + String(faction->deathInRounds) + " (initial) round(s) remaining");
 						}
 						else
 						{
 							if (faction->deathInRounds > 1)
 							{
 								faction->deathInRounds--;
+								LogEvent(EventSignificance::Common, "Faction death imminent. " + String(faction->deathInRounds) + " round(s) remaining");
 							}
 							else
 							{
