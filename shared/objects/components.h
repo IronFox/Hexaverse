@@ -365,6 +365,17 @@ namespace Objects
 			bool							ignoresVehicleAttacks;
 			THindranceVector				hindrance;
 
+			/**
+			Mobile job acceleration per operation type.
+			These are exponents applied to certain jobs. A value of 0 leaves the original speed unchanged,
+			such that it will consume the entire round.
+			Increased values each halve the percentage of a round required to advance the respective job by one.
+			A value of one will allow the vehicle to advance this job twice per round.
+			With a maximum action value of 128, using an exponent of 6 would allow the vehicle to continue a job 128 times each round.
+			A value of 7 or more will (theoretically) allow an infinite number of executions per round.
+			*/
+			FixedArray<BYTE,OperationCount>	acceleration;
+
 			#ifdef HAS_WINDOW
 				OpenAL::Wave				ambientSound;	//sound used for ambience (25% volume, normal pitch), or motion (100% volume, increased pitch)
 			#endif
@@ -381,6 +392,7 @@ namespace Objects
 				hindrance.air = 2;
 				hindrance.water = 5;
 				hindrance.other = 4;
+				acceleration.Fill(0);
 			}
 
 			bool							CanClimb(int inclination) const { if (inclination < 0) return inclination >= minClimbDown; return inclination <= maxClimbUp;}

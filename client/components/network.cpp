@@ -1071,7 +1071,7 @@ namespace Network
 			case TCP::Event::ConnectionLost:
 			case TCP::Event::ConnectionClosed:
 			{
-				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, "Connection lost");
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, "Connection lost ("+client.GetError(true)+")");
 				amOnline = false;
 
 				FlushFaction(true);

@@ -11,6 +11,8 @@ v0.5.0
 	> Routing errors of automated vehicles (surveyors) are no longer visually logged.
 	> Some visual commands of vehicle plants now flash if action is expected.
 	> UI now lists unit contents of cargo units that are not vehicle stores.
+	> Bombs will now continue with their explosion task, even if put to sleep.
+	> Considerably increased terraforming speed.
 	* Fixed random jumping and flashing of selected unit button after changing selection.
 	* Fixed server endless loop when path construction job (e.g. build road to) permanently fails at end-point.
 	* Fixed unit deployment (from factories/storage) on slopes.
