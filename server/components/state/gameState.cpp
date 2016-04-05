@@ -793,12 +793,14 @@ namespace Game
 						if (!faction->deathInRounds)
 						{
 							faction->deathInRounds = 5;
+							LogEvent(EventSignificance::Common, "Faction death imminent. " + String(faction->deathInRounds) + " (initial) round(s) remaining");
 						}
 						else
 						{
 							if (faction->deathInRounds > 1)
 							{
 								faction->deathInRounds--;
+								LogEvent(EventSignificance::Common, "Faction death imminent. " + String(faction->deathInRounds) + " round(s) remaining");
 							}
 							else
 							{
