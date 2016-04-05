@@ -1050,6 +1050,8 @@ namespace Objects
 		friend class Super;
 		/**/						PlaneFactory():MobileEntityProducer(ConstructionSpeed) {MobileEntityProducer::SetCommandOffset(int2(3,1));}
 		/**/						PlaneFactory(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime):Super(owner,location,atTime), MobileEntityProducer(ConstructionSpeed){MobileEntityProducer::SetCommandOffset(int2(3,1));}
+
+		virtual bool				CanEnable() const override { return MobileEntityProducer::queue.IsNotEmpty(); }
 	public:
 		static const int			ConstructionSpeed = 20;
 		static const int			FuelDemand = 20;
