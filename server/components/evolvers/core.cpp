@@ -162,9 +162,23 @@ namespace Evolver
 				return false;
 			}
 			Objects::PMobileEntity v = movingVehicles.last().ref.lock();
-			bool hadMoved = v->hasMoved;
-			if (!v->PerformNonAttack() && !hadMoved)
-				movingVehicles2.Append(TMovementReference(v));
+			//bool hadMoved = v->hasMoved;
+			auto rs = v->PerformNonAttack();
+			switch (rs)
+			{
+				case Objects::MobileEntity::TaskResult::AllDoneForThisRound:
+				break;
+				case Objects::MobileEntity::TaskResult::FinishedCanDoMore:
+				case Objects::MobileEntity::TaskResult::TryingSomething:	//this case may need special handling. let's see how it goes first
+					movingVehicles2.Append(TMovementReference(v));
+				break;
+				default:
+					FATAL__("Unexpected return value");
+			}
+			if (movingVehicles2.IsEmpty())
+			{
+				bool brk = true;
+			}
 			movingVehicles.EraseLast();
 
 			return movingVehicles.IsNotEmpty() || movingVehicles2.IsNotEmpty();

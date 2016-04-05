@@ -57,6 +57,10 @@ namespace Objects
 
 
 			/**/					BaseJob(Autocomplete jobAutoCompletion, bool movesToFocusWhenDone):jobAutoCompletion(jobAutoCompletion),movesToFocusWhenDone(movesToFocusWhenDone)	{}
+			/**/					BaseJob(int costs, const MobileEntity&v, Component::operation_t op, Autocomplete jobAutoCompletion, bool movesToFocusWhenDone);
+			virtual					~BaseJob()	{}
+			
+			BYTE					GetConstructionActionCostPerRound(const MobileEntity&v) const;
 			void					ResetResourceAndRoundsLeft(int costs, const MobileEntity&v, Component::operation_t op);
 
 			/**
@@ -68,8 +72,6 @@ namespace Objects
 			virtual Resource		GetConsumedResourceType() const {return Resource::Minerals;}
 			virtual bool			DelayedBySleep() const {return true;}
 
-			/**/					BaseJob(int costs, const MobileEntity&v, Component::operation_t op, Autocomplete jobAutoCompletion, bool movesToFocusWhenDone);
-			virtual					~BaseJob()	{}
 			#ifndef CLIENT
 				enum begin_t
 				{
