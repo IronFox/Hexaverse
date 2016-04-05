@@ -361,7 +361,7 @@ namespace Objects
 										Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 										//attack logic here
 						
-										if (!CanHitFrom(pointOfOrigin,destination))
+										if (!CanHitFrom(pointOfOrigin,TrajectoryEndPoint( destination )))
 										{
 											LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 											return false;
@@ -462,7 +462,7 @@ namespace Objects
 						#endif
 					;
 
-					if (GetSentryTarget(*this, storage.level[turret->ammoType], location,0.f,*this, target))
+					if (GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location ),*this, target))
 					{
 						AttackNext(target,true);
 						return true;
@@ -478,7 +478,7 @@ namespace Objects
 
 			/*virtual override*/ bool			Raptor::ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const
 			{
-				return TurretBase::ExtCanHit(owner,attackFrom,0.f,attackTarget,actual);
+				return TurretBase::ExtCanHit(owner,TrajectoryEndPoint( attackFrom ),TrajectoryEndPoint( attackTarget ),actual);
 			}
 
 
@@ -506,7 +506,7 @@ namespace Objects
 
 					//float targetDistance = Grid::GetGeometricDistance(pointOfOrigin,target);
 
-					if (!CanHitFrom(pointOfOrigin,target))
+					if (!CanHitFrom(pointOfOrigin,TrajectoryEndPoint( target )))
 					{
 						LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 						return false;
