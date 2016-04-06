@@ -417,14 +417,14 @@ namespace Grid
 				if (volumeCell[i].IsOpaque())
 				{
 					highestOpaqueCell = (BYTE)i;
-					if (volumeCell[i].IsTechnite())
-						techniteRange.Include(i);
 				}
 				else
 				{
 					lowestOpenCell = std::min(lowestOpenCell, (BYTE)i);
 					if (volumeCell[i].IsWater())
 						waterRange.Include(i);
+					if (volumeCell[i].IsTechnite())
+						techniteRange.Include(i);
 				}
 		}
 		#endif
@@ -478,6 +478,7 @@ namespace Grid
 		bool			SetLocalToTechniteContentU(UINT32 layer, BYTE factionID);
 
 		bool			LocalOverwrite(int h, Cell::Content type);
+		bool			LocalOverwriteU(UINT h, Cell::Content type);
 
 		/**
 		Attempts to find the most applicable ground relative to the given location.
@@ -1098,6 +1099,24 @@ namespace Grid
 	class Resource;
 
 
+	struct THighToLowCell
+	{
+		static const UINT32 Empty = 0xFFFFFFFF;
+		UINT32				lowCells[2];
+
+		/**/				THighToLowCell()
+		{
+			lowCells[0] = lowCells[1] = Empty;
+		}
+
+		void				Include(UINT32 cell)
+		{
+			lowCells[lowCells[0] != Empty] = cell;
+		}
+
+	};
+
+
 	template <unsigned Exponent>
 	class Setup
 	{
@@ -1416,6 +1435,10 @@ namespace Grid
 			TVolumeDescriptor::op.ResetVisited(volume);
 		}
 
+		void	GenerateStep1MultiVolume(const THighToLowCell&c, UINT32 layer, TVolumeDescriptor&volume)
+		{
+			GenerateStep1MultiVolume(c.lowCells,c.lowCells[1] == THighToLowCell::Empty ? 1 : 2,layer,volume);
+		}
 		void	GenerateStep1MultiVolume(const UINT32*centerStacks, count_t numCenterStacks,UINT32 layer, TVolumeDescriptor&volume)
 		{
 			volume.Clear();
@@ -1971,22 +1994,7 @@ namespace Grid
 	extern LowSetup			low;
 
 
-	struct THighToLowCell
-	{
-		static const UINT32 Empty = 0xFFFFFFFF;
-		UINT32				lowCells[2];
 
-		/**/				THighToLowCell()
-		{
-			lowCells[0] = lowCells[1] = Empty;
-		}
-
-		void				Include(UINT32 cell)
-		{
-			lowCells[lowCells[0] != Empty] = cell;
-		}
-
-	};
 
 	extern Array<THighToLowCell>	highToLowMap;
 	
@@ -2020,7 +2028,7 @@ namespace Grid
 		/**
 		Computes the coverage for a given location
 		*/
-		static coverage_t		GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max, float scale);
+		static coverage_t		GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max);
 
 		static float			probability[],density[];
 		static coverage_t		maximum[];
@@ -2039,7 +2047,7 @@ namespace Grid
 		//}
 
 		static Buffer0<Resource>all;
-		//static void				Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 cellID));
+		static void				Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 cellID));
 //		static void				Create(const String&name, ConstName cname, const float3&color/*, float p, coverage_t*/);
 		static void				Create(const String&name, ConstName cname, const float3&color, index_t);
 		//static void				Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield);
@@ -2232,6 +2240,8 @@ namespace Grid
 
 	float	GetGeometricDistance(const LCellIdI&a, const LCellIdI&b);
 	float	GetQuadraticGeometricDistance(const LCellIdI&a, const LCellIdI&b);
+	float	GetGeometricDistance(const HCellIdU&a, const HCellIdU&b);
+	float	GetQuadraticGeometricDistance(const HCellIdU&a, const HCellIdU&b);
 
 
 	bool	AffectedByEMP(const HCellIdI&);

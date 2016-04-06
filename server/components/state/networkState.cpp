@@ -137,6 +137,7 @@ namespace Network
 		server.InstallChannel(Channels::identifyUserRecv);
 		server.InstallChannel(Channels::chatMessage);
 		server.InstallChannel(Channels::techniteInstructions);
+		server.InstallChannel(Channels::spawnTechnite);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
@@ -259,7 +260,6 @@ namespace Network
 		RuntimeConfig::roundNumber = 0;
 		RuntimeConfig::techniteSubRoundNumber = 0;
 		RuntimeConfig::phase = RuntimeConfig::Phase::CommandPhase;
-
 
 		Objects::FlushAllData();
 		Grid::FlushAllData();

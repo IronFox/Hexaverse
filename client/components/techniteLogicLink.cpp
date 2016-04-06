@@ -4,6 +4,7 @@
 #include <general/monitoredProcess.h>
 #include <io/file_system.h>
 #include "../../shared/runtimeConfig.h"
+#include <objects/visualSelection.h>
 
 #include "dialog.h"
 
@@ -422,8 +423,16 @@ namespace TechniteLogicLink
 					for (index_t i = 0; i < chunk.instructions.Count(); i++)
 					{
 						index_t at = i+chunk.offset;
-						pf->technites[at].Set(chunk.instructions[i]);
-						Grid::high.family[Grid::high.grid.GetCell(pf->technites[at].location.GetStackID()).family].SetOutdated(0.f);
+						auto&tech = pf->technites[at];
+						tech.Set(chunk.instructions[i]);
+						Grid::high.family[Grid::high.grid.GetCell(tech.location.GetStackID()).family].SetOutdated(0.f);
+						#ifdef HAS_WINDOW
+						if (Objects::techniteIsSelected && tech.location == Objects::selectedTechnite.location)
+						{
+							Objects::Select(tech,Network::ControlEnabled());
+						}
+						#endif
+						
 					}
 				else
 					LogEvent(event,"Local technite field ("+String(pf->technites.Count())+") does not support that many technite instructions ("+String(end)+"). How weird");

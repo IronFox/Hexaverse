@@ -700,26 +700,28 @@ namespace Technites
 		return inner + range * heightRemainder;
 	}
 
-	void					BroadTechniteMap::Unset(const Grid::HCellIdU& id)
+	index_t					BroadTechniteMap::Unset(const Grid::HCellIdU& id)
 	{
 		Cluster*cluster;
 		index_t inner = Map(id, cluster,false);
 		if (cluster->numEntries == 0)
 		{
 			FATAL__("Failed to unset " + id.ToString());
-			return;
+			return InvalidIndex;
 		}
 		if (cluster->volumeCells[inner] != Empty)
 		{
+			index_t rs = cluster->volumeCells[inner];
 			cluster->volumeCells[inner] = Empty;
 			cluster->numEntries--;
 			totalEntries--;
+			return rs;
 		}
 		else
 		{
 			FATAL__("Failed to unset " + id.ToString());
 		}
-
+		return InvalidIndex;
 	}
 	//void					BroadTechniteMap::Unset(const Grid::HCellIdU& id)
 	//{
@@ -1321,7 +1323,7 @@ namespace Technites
 		{
 			bool familyChanged[BaseGrid::NumFamilies] = { false };
 
-			Grid::TemplateHelper::ChangeTechniteSensory(center, change, Grid::actualWorld.cellStack.pointer(), familyChanged);
+			Grid::TemplateHelper::ChangeSensory(center, change, Grid::actualWorld.cellStack.pointer(), familyChanged);
 
 			for (index_t i = 0; i < BaseGrid::NumFamilies; i++)
 				if (familyChanged[i])
@@ -2215,17 +2217,17 @@ namespace Technites
 	{
 		if (location.layer == 0)
 		{
-			return Technite::HeldBy(Grid::Content::Reinterpret(Grid::CellStack::bottom.content));
+			return Technite::SupportedBy(Grid::Content::Reinterpret(Grid::CellStack::bottom.content));
 		}
-		if (!Technite::HeldBy(GetLastContent(location - 1)))
+		if (!Technite::SupportedBy(GetLastContent(location - 1)))
 		{
 			const auto&n = Grid::high.grid.GetCell(location.stackID).neighborhood;
 			bool anyGood = false;
 			for (int k = 0; k < n.numNeighbors; k++)
 			{
-				if (Technite::HeldBy(GetLastContent(Grid::HCellIdU(n.neighborID[k], location.layer)))
+				if (Technite::SupportedBy(GetLastContent(Grid::HCellIdU(n.neighborID[k], location.layer)))
 					&&
-					Technite::HeldBy(GetLastContent(Grid::HCellIdU(n.neighborID[k], location.layer - 1)))
+					Technite::SupportedBy(GetLastContent(Grid::HCellIdU(n.neighborID[k], location.layer - 1)))
 					)
 				{
 					anyGood = true;
@@ -2241,17 +2243,17 @@ namespace Technites
 	{
 		if (location.layer == 0)
 		{
-			return Technite::HeldBy(Grid::Content::Reinterpret(Grid::CellStack::bottom.content));
+			return Technite::SupportedBy(Grid::Content::Reinterpret(Grid::CellStack::bottom.content));
 		}
-		if (!Technite::HeldBy(GetGlobalGridContent(location - 1)))
+		if (!Technite::SupportedBy(GetGlobalGridContent(location - 1)))
 		{
 			const auto&n = Grid::high.grid.GetCell(location.stackID).neighborhood;
 			bool anyGood = false;
 			for (int k = 0; k < n.numNeighbors; k++)
 			{
-				if (Technite::HeldBy(GetGlobalGridContent(Grid::HCellIdU(n.neighborID[k], location.layer)))
+				if (Technite::SupportedBy(GetGlobalGridContent(Grid::HCellIdU(n.neighborID[k], location.layer)))
 					&&
-					Technite::HeldBy(GetGlobalGridContent(Grid::HCellIdU(n.neighborID[k], location.layer - 1)))
+					Technite::SupportedBy(GetGlobalGridContent(Grid::HCellIdU(n.neighborID[k], location.layer - 1)))
 					)
 				{
 					anyGood = true;

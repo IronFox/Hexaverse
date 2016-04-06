@@ -28,6 +28,7 @@ namespace Receiver
 	void	IdentifyUser(NET(TUniqueID)&, TCP::Peer&peer);
 	void	ChatMessage(Package::NetString<256>&, TCP::Peer&peer);
 	void	TechniteInstructions(Protocol::TechniteInstructions&instructions, TCP::Peer&peer);
+	void	SpawnTechnite(Protocol::SpawnTechnite&, TCP::Peer&peer);
 
 
 	/**
@@ -59,6 +60,7 @@ namespace Channels
 	
 	//TCP::ObjectSender<Protocol::ServerState,Protocol::ChannelID::GetInfo>		infoSender;
 	//TCP::ObjectSender<Protocol::Result,Protocol::ChannelID::
+	static const UINT32 SpectatorLevel = (UINT32)Network::UserLevel::Spectator;
 	static const UINT32 FactionLevel = (UINT32)Network::UserLevel::CommonFaction;
 	static const UINT32 PreFaction = (UINT32)Network::UserLevel::PreFaction;
 
@@ -84,6 +86,7 @@ namespace Channels
 	extern TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>					changeMyName;
 	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>						identifyUserRecv;
 	extern TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>				chatMessage;
+	extern TCP::Channel<Protocol::SpawnTechnite, FactionLevel, Protocol::ChannelID::SpawnTechnite>				spawnTechnite;
 
 	extern TCP::Channel<Protocol::TechniteInstructions, FactionLevel, Protocol::ChannelID::TechniteInstructions>	techniteInstructions;
 	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>				clientFactionResponse;

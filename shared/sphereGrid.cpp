@@ -698,6 +698,11 @@ namespace Grid
 	bool			CellStack::LocalOverwrite(int h, Cell::Content type)
 	{
 		UINT uh = ToLayer(h);
+		return LocalOverwriteU(uh,type);
+	}
+
+	bool			CellStack::LocalOverwriteU(UINT uh, Cell::Content type)
+	{
 		if (uh < Range)
 		{
 			if (volumeCell[uh].content != type)
@@ -1409,7 +1414,7 @@ namespace Grid
 			lineTex.Load(img, true);
 
 
-			Magic::LoadFromFile(img, "resources/technite.png");
+			Magic::LoadFromFile(img, "resources/textures/technite.png");
 			Instruction::techniteTexture.Load(img);
 
 			//blockConfig.Create(TMatrix4<>());
@@ -3292,6 +3297,8 @@ namespace Grid
 		{
 			if (t)
 				t->CompileTendency(direction,activity,color);
+			if (isSet && Objects::techniteIsSelected && t && t->location == Objects::selectedTechnite.location)
+				color = float3(1,0.5,0.5);
 			if (isSet && !isVisible)
 				CellStack::Cell::ToneInvisibleCellColor(color);
 
@@ -3340,11 +3347,11 @@ namespace Grid
 
 
 
-				UINT32 begin = stack.lowestOpenCell ? (UINT32)stack.lowestOpenCell - 1 : 0;
+				UINT32 begin = stack.techniteRange.start ? (UINT32)stack.techniteRange.start - 1 : 0;
 				//begin = std::min(begin, CellStack::ToLayer(clipHeight(i)-1));
 				//while (begin > 0 && clipped(i, begin))
 					//begin--;
-				UINT32 end = (UINT32)stack.highestOpaqueCell + 1;
+				UINT32 end = (UINT32)stack.techniteRange.end + 1;
 
 				//TVec4<> cornerColor[6];
 
@@ -3352,11 +3359,13 @@ namespace Grid
 				{
 					UINT32 n = neighbors.neighborID[j];
 					const ::Grid::CellStack&stack = stacks[n];
-					UINT32 _begin = stack.lowestOpenCell ? (UINT32)stack.lowestOpenCell - 1 : 0;
+					if (!stack.HasTechnites())
+						continue;
+					UINT32 _begin = stack.techniteRange.start ? (UINT32)stack.techniteRange.start - 1 : 0;
 					//_begin = std::min(_begin, CellStack::ToLayer(clipHeight(n)-1));
 					//while (_begin > 0 && clipped(n, _begin))
 					//	_begin--;
-					UINT32 _end = (UINT32)stack.highestOpaqueCell + 1;
+					UINT32 _end = (UINT32)stack.techniteRange.end + 1;
 					begin = std::min(begin, _begin);
 					end = std::max(end, _end);
 
@@ -3709,7 +3718,7 @@ namespace Grid
 	//	}
 	//}
 
-	/*static*/ Resource::coverage_t		Resource::GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max, float scale)
+	/*static*/ Resource::coverage_t		Resource::GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max)
 	{
 		#ifdef GRID_INDEPENDENT_RANDOM
 			static Random random;
@@ -3721,41 +3730,33 @@ namespace Grid
 		#else
 		//	{0.08,0.08,0,0,0.008 } ;
 
-			static const int reduce = 5;
 
-			//float t0 = fabs(noise.Get(direction + seed,8.f));	//wide areas
-			float t1 = (noise.Get(direction + seed,M_PIF*2.5f));	//small areas
+			float t0 = fabs(noise.Get(direction + seed,8.f));	//wide areas
+			float t1 = fabs(noise.Get(direction + seed,M_PIF*5.f));	//small areas
+			float t2 = fabs(noise.Get(direction + seed+3.f,9.f));	//cutout
 
-			int rs = std::min(1.f,scale * t1) * (reduce + max);
-			rs -= reduce;
-			if (rs < 3)
-				rs = 0;
+			float common = std::min(1.f,(p/0.06f));
+			t0 = std::min(1.f,t0*(t0*1.9f)*common);
+			t1 = std::min(1.f,t1*(t1*1.9f)*(1.1f-0.2f * common));
+
+
+			float t = std::max(t0,t1);
+
+			t *= smoothstep(0.2f,0.3f,t2);
+
+
+			//float t = t0 * (0.3f + 0.7f * t1);
+//			float q = 0.26f-sqrt(p) * 0.5f;
+			float q = 0.9f-sqrt(p) * 1.5f;
+			p = 0.30f;// + 0.1f * t0;
+
+			float h = 0.15f + (1.f - t0)*0.85f;
+			//p = 0.75f;
+			//float q = 1.f - p;
+			coverage_t rs (Round(/*sqr*/(/*sqr*/(/*sqr*/(clamp((t-q)/p *h,0,1)))) * (max-1)));
+			if (rs)
+				rs++;
 			return rs;
-//
-//			float t2 = fabs(noise.Get(direction + seed+3.f,9.f));	//cutout
-//
-//			float common = std::min(1.f,(p/0.06f));
-//			t0 = std::min(1.f,t0*(t0*1.9f)*common);
-//			t1 = std::min(1.f,t1*(t1*1.9f)*(1.1f-0.2f * common));
-//
-//
-//			float t = std::max(t0,t1);
-//
-//			t *= smoothstep(0.2f,0.3f,t2);
-//
-//
-//			//float t = t0 * (0.3f + 0.7f * t1);
-////			float q = 0.26f-sqrt(p) * 0.5f;
-//			float q = 0.9f-sqrt(p) * 1.5f;
-//			p = 0.30f;// + 0.1f * t0;
-//
-//			float h = 0.15f + (1.f - t0)*0.85f;
-//			//p = 0.75f;
-//			//float q = 1.f - p;
-//			coverage_t rs (Round(/*sqr*/(/*sqr*/(/*sqr*/(clamp((t-q)/p *h,0,1)))) * (max-1)));
-//			if (rs)
-//				rs++;
-//			return rs;
 		#endif
 	}
 
@@ -3779,7 +3780,7 @@ namespace Grid
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 		{
 			#ifndef CLIENT
-				coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p0,max,1.f);
+				coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p0,max);
 			#else
 				coverage[i] = 0;
 				known[i] = false;
@@ -3806,7 +3807,7 @@ namespace Grid
 //			float avgPerCell = float(total) / float(LowSetup::GridType::CellCount);
 			for (int k = 0; k < BaseGrid::NumFamilies; k++)
 			{
-				float p = 1.f;
+				float p = p0;
 				LogEvent(EventSignificance::Debug,nullptr,"Processing family "+String(k));
 				const count_t count = Grid::low.grid.CountFamilyMembers(k);
 				const index_t offset = Grid::low.grid.GetFamilyOffset(k);
@@ -3820,7 +3821,7 @@ namespace Grid
 						float magnitude = log(factor);
 						factor = pow(4.f,float(sign(factor-1.f))/(retries*2 + 1));
 						p *= factor;
-						p = clamp(p,0.0001f,10000.f);
+						p = clamp(p,0.0001f,0.999f);
 						LogEvent(EventSignificance::Debug,nullptr," Family found out of range ("+String(want)+"<-"+String(float(std::max((count_t)1,familyTotal[k])))
 									+"), p adjusted by "+String(factor)+" to "+String(p)+". Randomizing...");
 					}
@@ -3835,10 +3836,11 @@ namespace Grid
 //					factor = 1.f + clamp(magnitude,-0.5f,2.f);
 					//clamp((factor-1.f)*0.4f + 1.f,0.25f,4.f);
 	//				p *= factor;
+					float3 seed = float3(random.getFloat(-10.f,10.f),random.getFloat(-10.f,10.f),random.getFloat(-10.f,10.f));
 					familyTotal[k] = 0;
 					for (index_t i = offset; i < offset + count; i++)
 					{
-						coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p0,max, p);
+						coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p,max);
 						familyTotal[k]+=coverage[i];
 					}
 					if (++retries > 10)
@@ -3865,6 +3867,22 @@ namespace Grid
 		rc.resourceIndex = resIndex;
 	}
 
+	/*static*/ void Resource::Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 stackID))
+	{
+		// low.cells[i].centerVertex.xyz,
+		Resource&rc = Resource::all.Append();
+		rc.Name(name,cname,color);
+		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
+		{
+			#ifndef CLIENT
+				rc.coverage[i] = func((UINT32)i);
+			#else
+				rc.coverage[i] = 0;
+				rc.known[i] = false;
+			#endif
+
+		}
+	}
 
 
 	#ifdef HAS_WINDOW
@@ -4120,6 +4138,17 @@ namespace Grid
 		#else
 			return highCell == lowCell;
 		#endif
+	}
+
+	float	GetGeometricDistance(const HCellIdU&a, const HCellIdU&b)
+	{
+		return sqrt(GetQuadraticGeometricDistance(a,b));
+	}
+	float	GetQuadraticGeometricDistance(const HCellIdU&a, const HCellIdU&b)
+	{
+		TVec3<> wa = high.cells[a.stackID].centerVertex.xyz * ToRadius(CellStack::ToHeight(a.layer));
+		TVec3<> wb = high.cells[b.stackID].centerVertex.xyz * ToRadius(CellStack::ToHeight(b.layer));
+		return Vec::quadraticDistance(wa,wb);
 	}
 	
 	float	GetGeometricDistance(const LCellIdI&a, const LCellIdI&b)

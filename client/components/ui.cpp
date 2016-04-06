@@ -1853,8 +1853,6 @@
 
 
 			float len = 300.f / display.clientWidth();
-			//if (len == 0)
-				//len = textout.scaledWidth("012345678901234567890123456789012345");
 			textout.locate(1.f - len,0.95f);
 			const String&name= e.GetNiceName();
 			if (name.length() < 20)
@@ -2389,6 +2387,36 @@
 			//textout.getActiveFont()->EndTagMode();
 
 
+
+			textout.popState();
+	
+		}
+
+		
+
+		void		Render(const Technites::Technite&t)
+		{
+			textout.pushState();
+			float3 color (1);
+			textout.color(color);
+			
+
+
+			float len = 300.f / display.clientWidth();
+			textout.locate(1.f - len,0.95f);
+
+
+			textout << "Technite"<<nl;
+			textout << " location="<<t.location.GetI().ToString()<<nl;
+			textout << " resources="<<t.resources.ToString()<<nl;
+			textout << " TTL="<<t.state.GetTTL()<<nl;
+			textout << " lit="<<t.state.IsLit()<<nl;
+			textout << " taskResult="<<(int)t.taskResult<<nl;
+			textout << " next task="<<(int)t.nextTask<<nl;
+			textout << " task para="<<t.taskParameter<<nl;
+			Grid::HCellIdU target;
+			if (t.DecodeAbsoluteTarget(target))
+				textout << " task target="<<target.ToString()<<nl;
 
 			textout.popState();
 	

@@ -192,7 +192,7 @@ namespace UDPBroadCast
 			//strcpy(packet.gameName,"Terra Nova");
 			//packet.numClients = (UINT16)State::clients.Count();
 			//packet.numPlayers = (UINT16)State::activePlayersAndSpectators.Count();
-			//packet.roundNumber = (UINT32)RuntimeConfig::roundNumber;
+			//packet.roundNumber = (UINT32)State::roundNumber;
 			//packet.serverMode = (BYTE)State::mode;
 			foreach (everyone,someone)
 			{

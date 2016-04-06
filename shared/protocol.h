@@ -1642,6 +1642,8 @@ namespace Protocol
 		, TechniteInstructionField, instructions
 	);
 
+	typedef NET(Grid::HCellIdU)	SpawnTechnite;
+
 	typedef NetArray<TVec3<BYTE>,0xFF>	TechniteColors;
 	static_assert(sizeof(TVec3<BYTE>)==3,"Size expectations not met");
 
@@ -2028,9 +2030,10 @@ namespace Protocol
 			ChatMessage,		// c2s: NetString<256>
 
 
-			TechniteChunk,				// s2c: TechniteChunk
+			TechniteChunk,			// s2c: TechniteChunk
 			TechniteInstructions,	// c2s: TechniteInstructions
-			TechniteColors,			//s2c: TechniteColors
+			TechniteColors,			// s2c: TechniteColors
+			SpawnTechnite,			// c2s: SpawnTechnite
 
 
 			//remote control channels (these require user level 2+)

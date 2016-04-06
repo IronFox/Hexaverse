@@ -62,6 +62,7 @@
 #include "components/guiHostList.h"
 #include "components/serverProcess.h"
 #include "components/audioInterface.h"
+#include "components/techniteTarget.h"
 
 #include "rc/Resource.h"
 
@@ -87,6 +88,8 @@ extern "C"
 
 
 Timer::Time applicationStart;
+
+bool techniteSpawnMode = false;
 
 
 //static Mutex mutex;
@@ -518,7 +521,7 @@ bool	HasSignalledRoundEnd()
 
 bool	CanChangeRoundState()
 {
-	return Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && !Network::amSpectator;
+	return Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase/* && !Network::amSpectator*/;
 }
 
 
@@ -1110,7 +1113,11 @@ void	OnAppear(const Objects::PWorldEntity&e)
 				return;
 		}
 		else
+		{
 			Objects::CommandGroup::CollapseAll();
+
+			TechniteTarget::SignalSelection(Objects::techniteIsSelected ? Objects::selectedTechnite.location.GetU() : Grid::HCellIdU::Invalid);
+		}
 		Objects::Renderer::HighlightSmokeTrail(InvalidIndex);
 
 		Tutorial::lastDelayingEvent = timer.Now();
@@ -1327,10 +1334,10 @@ void	OnAppear(const Objects::PWorldEntity&e)
 			Grid::TFamily::TData&dat = Grid::high.family[k].normal;
 			if (dat.terrain.shadowInstruction.shader.IsSet())
 				display.Render(dat.terrain.shadowInstruction);
-			if (dat.overlay.shadowInstruction.shader.IsSet())
-				display.Render(dat.overlay.shadowInstruction);
 			if (dat.technites.shadowInstruction.shader.IsSet())
 				display.Render(dat.technites.shadowInstruction);
+			if (dat.overlay.shadowInstruction.shader.IsSet())
+				display.Render(dat.overlay.shadowInstruction);
 		}
 	}
 
@@ -1781,6 +1788,8 @@ bool loop()
 
 				if (Objects::selectedEntity)
 					StatePanel::Render(*Objects::selectedEntity);
+				elif (Objects::techniteIsSelected)
+					StatePanel::Render(Objects::selectedTechnite);
 
 				//if (Objects::Network::Transfer::isActive)
 				//	TransferPanel::Render(Objects::Network::Transfer::fromVehicle, Objects::Network::Transfer::toNetwork);
@@ -2099,6 +2108,46 @@ void MyFatal(const FatalDescriptor&descriptor)
 				{
 					TVec3<> normal;
 					bool selectionDone = false;
+					if (Network::amTechniteFaction && techniteSpawnMode)
+					{
+						if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
+						{
+							float3 p = b + d * distance;
+							float r = p.length();
+							float3 d = p / r;
+							UINT32 stackID;
+							int h;
+							if (Vec::dot(d, normal) > 0.5f)	//flat selection
+							{
+								stackID = Grid::high.Locate(d);
+								h = Grid::FromRadius(r);
+							}
+							else
+							{
+								stackID = Grid::high.Locate(d + normal*0.001f);
+								h = Grid::FloorFromRadius(r);
+							}
+
+							if (h < Grid::CellStack::BottomHeight)
+							{
+								LogEvent(EventSignificance::NonFatalError, "Cannot place technite here: Cannot alter bottom-layer");
+							}
+							else
+							{
+								Grid::HCellIdI	cell = Grid::HCellIdI(stackID, h);
+								index_t current = Objects::cellSelection.GetIndexOf(cell);
+								if (current == InvalidIndex)
+								{
+									Objects::cellSelection.Clear();
+									Objects::cellSelection << cell;
+								}
+								else
+									Objects::cellSelection.Erase(current);
+							}
+						}
+
+					}
+					else
 					if (Objects::CommonCmd::IsModeActive(Objects::CursorMode::BuildBlockMode) || Objects::CommonCmd::IsModeActive(Objects::CursorMode::RemoveBlockMode))
 					{
 						if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
@@ -2165,6 +2214,32 @@ void MyFatal(const FatalDescriptor&descriptor)
 							selectionDone = true;
 						}
 					}
+					else
+					if (Network::amSpectator && Objects::Faction::mine && Objects::Faction::mine->IsTechniteFaction())
+					{
+						if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
+						{
+							float3 p = b + d * distance;
+							float r = p.length();
+							float3 d = p / r;
+							UINT32 stackID;
+							int h;
+							stackID = Grid::high.Locate(d - normal*0.001f);
+							h = Grid::FloorFromRadius(r);
+							if (Grid::actualWorld.cellStack[stackID].GetCellI(h).content == Grid::Content::Technite)
+							{
+								selectionDone = true;
+								const Technites::Technite*t =  To<Technites::Faction>::Cast(Objects::Faction::mine)->GetOwnTechnite(Grid::HCellIdU(stackID,Grid::CellStack::ToLayer(h)));
+								if (t)
+									Objects::Select(*t,Network::ControlEnabled());
+								else
+									LogEvent(EventSignificance::NonFatalError,"No information available about this technite. Cannot select");
+							}
+						}
+
+
+					}
+
 					if (!selectionDone)
 						if (Objects::Select(b, d, distance, Network::ControlEnabled()))
 						{
@@ -3456,8 +3531,38 @@ int main( int argc, const char* argv[])
 		Objects::Create();
 		Grid::Create1();
 
-
 		#ifdef HAS_WINDOW
+			{
+				Objects::PCommandGroup grp = Objects::globalCommands.AddChild(int2(2,0),false, "Spawn Technites");
+				grp->onExpand = [](){techniteSpawnMode = true;};
+				grp->onCollapse = [](){techniteSpawnMode = false;};
+
+
+				grp->Add(new Objects::IconCommand("Commit",[]()
+				{
+					if (Objects::cellSelection.IsNotEmpty())
+					{
+						{
+							Protocol::SpawnTechnite spawn = Grid::HCellIdU(Objects::cellSelection.first().stackID,Grid::CellStack::ToLayer(Objects::cellSelection.first().height));
+							Network::Channels::spawnTechnite.SendTo(Network::client,spawn);
+						}
+					}
+					techniteSpawnMode = false;
+					Objects::buildCandidates.Clear();
+					Objects::cellSelection.Clear();
+				},[](bool controlsEnabled)->Objects::BaseCommand::Flags
+				{
+					Objects::BaseCommand::Flags rs = Objects::BaseCommand::Flags::None;
+					if (controlsEnabled && Network::amTechniteFaction && Network::client.IsConnected() && Objects::cellSelection.IsNotEmpty())
+					{
+						rs |= Objects::BaseCommand::Flags::IsEnabled;
+					}
+					return rs;
+				}));
+			}
+
+
+		
 			Camera::Setup(display.pixelAspect());	//creates a menu item, for which Objects::Create() must have been called
 
 

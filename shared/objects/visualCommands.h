@@ -254,16 +254,24 @@ namespace Objects
 			{
 				state -= Flags::IsPermaActive;
 			}
+			if (onCollapse)
+				onCollapse();
 		}
 
 
 		void	Expand()
 		{
 			state |= Flags::IsPermaActive;
+			if (onExpand)
+				onExpand();
 		}
 
 
 	public:
+
+		std::function<void()>	onExpand,onCollapse;
+		
+
 		/**/			CommandGroup(const String&name) : Super(name)	{LoadIcon();}
 		
 

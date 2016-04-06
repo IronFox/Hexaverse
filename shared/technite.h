@@ -60,7 +60,7 @@ namespace Technites
 		static float3		factionColor[0xFF];
 
 
-		static bool			HeldBy(Grid::Content content)
+		static bool			SupportedBy(Grid::Content content)
 		{
 			return content != Grid::Content::Clear && content != Grid::Content::Water && content != Grid::Content::Lava;
 		}
@@ -72,6 +72,7 @@ namespace Technites
 			static_assert(Grid::HighSetup::GridType::CellCount < 0x1000000, "Number of grid possibilities exceeds compression capacity");
 			static_assert(Grid::CellStack::Range < 0x100, "Number of grid layers exceeds compression capacity");
 		public:
+			bool			operator==(const CompressedLocation&other) const {return data == other.data;}
 
 			UINT32			GetData() const {return data;}
 
@@ -140,6 +141,10 @@ namespace Technites
 				energy -= by.energy;
 				return true;
 			}
+			bool		operator<(const Resources&by)
+			{
+				return energy < by.energy && matter < by.matter;
+			}
 
 			String		ToString() const
 			{
@@ -194,11 +199,14 @@ namespace Technites
 		public:
 			static const BYTE SelfNeighbor = 0xF;
 
+			bool		operator==(const CompressedTarget&other) const {return data == other.data;}
+
 			/**/		CompressedTarget()	{}
 			/**/		CompressedTarget(BYTE neighborIndex, int heightDelta)
 			{
 				Set(neighborIndex, heightDelta);
 			}
+			explicit	CompressedTarget(BYTE compressed):data(compressed)	{}
 
 			unsigned	GetNeighborIndex() const
 			{
@@ -220,6 +228,7 @@ namespace Technites
 		private:
 			BYTE		data = 0;
 		public:
+			bool		operator==(const CompressedState&other) const {return data == other.data;}
 			/**/		CompressedState(){}
 			/**/		CompressedState(bool lit, BYTE ttl)
 			{
@@ -293,7 +302,6 @@ namespace Technites
 		#endif
 
 
-		/**/				Technite() {}
 
 
 		#ifdef CLIENT
@@ -350,12 +358,18 @@ namespace Technites
 				//(BYTE)std::max(height, 0)+1;
 		}
 
+		static const serial_size_t	ConstSize;
 
+		//virtual serial_size_t	GetSerialSize(bool exportSize) const override;
+		//virtual	bool			Serialize(IWriteStream&outStream, bool exportSize) const override;
+		//virtual	bool			Deserialize(IReadStream&inStream, serial_size_t fixedSize) override;
+		bool					operator==(const Technite&other) const;
 
 	};
 
 	static_assert(sizeof(Technite::TCompactState) == 8,"Packing error");
 	static_assert(sizeof(Technite::TCompactInstruction) == 3,"Packing error");
+
 
 	static const size_t ResourceSize = sizeof(Technite::Resources);
 	static const size_t LocationSize = sizeof(Technite::CompressedLocation);
@@ -373,14 +387,16 @@ namespace Technites
 
 	typedef Sphere<>	TSensor;
 
+
 	class AtomicGrid
 	{
 	public:
+		typedef BYTE Content;
 		struct CellStack
 		{
 			struct Cell
 			{
-				std::atomic<BYTE>	content;
+				std::atomic<Content>	content;
 			};
 			Cell	volumeCell[Grid::CellStack::Range];
 
@@ -388,6 +404,8 @@ namespace Technites
 			{
 				memset(volumeCell, 0, sizeof(volumeCell));
 			}
+
+			void	Fill(Content content)	{for (index_t i = 0; i < Grid::CellStack::Range; i++) volumeCell[i].content = content;}
 		};
 		Array<CellStack>	cellStack;
 
@@ -400,6 +418,7 @@ namespace Technites
 		void				Import(const Grid::WorldData&data);
 		void				ExportChanged(Grid::WorldData&outData, float t);
 		void				SignalStackChange(UINT32 stackID);
+		void				Fill(Content content)	{foreach (cellStack,stack) stack->Fill(content);}
 	};
 
 
@@ -422,25 +441,17 @@ namespace Technites
 
 		index_t					Map(const Grid::HCellIdU&, const Cluster*&outCluster) const;
 		index_t					Map(const Grid::HCellIdU&, Cluster*&outCluster, bool initIfEmpty);
-		//index_t					Map(const Grid::HCellIdU&, const Cluster*&outCluster) const;
-		//index_t					Map(const Grid::HCellIdU&, Cluster*&outCluster, bool initIfEmpty);
-		//index_t					MapCluster(const Grid::HCellIdU&loc, index_t&outFamily, UINT32&heightRemainder) const;
 		index_t					MapCluster(const Grid::HCellIdU&loc, index_t&outFamily, UINT32&heightRemainder) const;
 
 		static const UINT32	Empty = 0xFFFFFFFF;
 	public:
 		/**/					BroadTechniteMap() {}
 
-		void					Unset(const Grid::HCellIdU& id);
-		//void					Unset(const Grid::HCellIdU& id);
+		index_t					Unset(const Grid::HCellIdU& id);
 		void					Set(const Grid::HCellIdU&id, index_t to);
-		//void					Set(const Grid::HCellIdU&id, index_t to);
 		bool					Query(const Grid::HCellIdU&id, index_t&out) const;
-		//bool					Query(const Grid::HCellIdU&id, index_t&out) const;
 		bool					IsSet(const Grid::HCellIdU&id) const;
-		//bool					IsSet(const Grid::HCellIdU&id) const;
 		bool					SetNew(const Grid::HCellIdU&id, index_t to);
-		//bool					SetNew(const Grid::HCellIdU&id, index_t to);
 		count_t					Count() const;
 		count_t					ThoroughCount() const;
 		void					Clear()		{for (index_t i = 0; i < ClusterCount; i++)	cluster[i].Clear(); totalEntries = 0;}

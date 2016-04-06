@@ -1,6 +1,7 @@
 #ifndef objectCursorModeH
 #define objectCursorModeH
 #include "types.h"
+#include <global_string.h>
 
 namespace Objects
 {
@@ -21,6 +22,7 @@ namespace Objects
 		DigTunnelMode,
 		BuildBridgeMode,
 		PlaceStructureMode,
+		PlaceTechniteMode,
 	};
 
 	#ifdef HAS_WINDOW

@@ -9,6 +9,7 @@
 #include "reflection.h"
 #include "aiProcess.h"
 #include "serverLogEvent.h"
+#include <technite.h>
 
 namespace Journal
 {
@@ -1094,6 +1095,8 @@ namespace Journal
 
 
 
+
+
 	void	Round::RegisterResourceCoverageChange(bool execute, UINT32 stackID, Objects::Resource res, Grid::Resource::coverage_t newCoverage)
 	{
 		PGlobalEvent ev(new ResourceCoverageChange(stackID,res,newCoverage));
@@ -1113,6 +1116,37 @@ namespace Journal
 			ev->Execute(f);
 	}
 
+
+	/*virtual override*/ void			Round::SpawnTechnite::Decode(const Entry&e)
+	{
+		this->loc.stackID = (UINT32)e.intParameters.Require(CLOCATION,"StackID");
+		this->loc.layer = (UINT32)e.intParameters.Require(CLOCATION,"Layer");
+		if (this->loc.stackID >= Grid::LowSetup::GridType::CellCount)
+		{
+			throw Program::DataConsistencyFault( CLOCATION,"Stack ID out of range '"+String(loc.stackID)+"'");
+		}
+		if (this->loc.layer >= Grid::CellStack::Range)
+		{
+			throw Program::DataConsistencyFault( CLOCATION,"Layer out of range '"+String(loc.layer)+"'");
+		}
+	}
+
+	/*virtual override*/ void			Round::SpawnTechnite::Execute(const Objects::PFaction&faction) const
+	{
+		if (!faction->IsTechniteFaction())
+			throw Program::DataConsistencyFault( CLOCATION,"Targeted faction is not a technite faction: '"+faction->GetLogName()+"'");
+		Technites::PFaction f = To<Technites::Faction>::Cast(faction);
+		if (f->CreateSingleTechnite(loc,0.f) == InvalidIndex)
+		{
+			throw Program::DataConsistencyFault( CLOCATION,"Failed to create technite at specified location");
+		}
+	}
+
+	/*virtual override*/ void			Round::SpawnTechnite::Compile(Entry&e)	const
+	{
+		e.intParameters.Set("StackID",(int)loc.stackID);
+		e.intParameters.Set("Layer",(int)loc.layer);
+	}
 
 
 	/*virtual override*/void			Round::ResourceCoverageChange::Compile(Entry&e)	const
@@ -2233,6 +2267,7 @@ namespace Journal
 		MAP_ADD(DestroyMarker);
 		MAP_ADD(RestoreCoreLink);
 		MAP_ADD(ConstructionAbort);
+		MAP_ADD(SpawnTechnite);
 	}
 
 	void	Create()

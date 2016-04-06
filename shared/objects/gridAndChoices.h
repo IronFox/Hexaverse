@@ -47,9 +47,8 @@ namespace Objects
 	extern Array<PVehicle>			vehicleGrid;
 	extern Array<PStructure>		structureGrid;
 
-	index_t					CellToGridIndex(const Grid::LCellIdI&location);
 	index_t					CellToGridIndex(const Grid::LCellIdU&location);
-
+	index_t					CellToGridIndex(const Grid::LCellIdI&location);
 
 
 	PVehicle		GetVehicle(const Grid::LCellIdI&cellID);

@@ -43,7 +43,7 @@ namespace Channels
 	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
 
 	TCP::Channel<Protocol::TechniteInstructions, FactionLevel, Protocol::ChannelID::TechniteInstructions>		techniteInstructions(Receiver::TechniteInstructions);
-
+	TCP::Channel<Protocol::SpawnTechnite, FactionLevel, Protocol::ChannelID::SpawnTechnite>				spawnTechnite(Receiver::SpawnTechnite);
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
@@ -433,7 +433,6 @@ namespace Receiver
 			SendAllToSpectator(peer, firstSpectator);
 
 			peer.SendSignal(Protocol::ChannelID::BeginGame);
-
 			return;
 		}
 
@@ -659,13 +658,15 @@ namespace Receiver
 				//h--;
 				ASSERT__(client->faction->IsTechniteFaction());
 				Technites::PFaction tf = To<Technites::Faction>::Cast(client->faction);
-				const Grid::HCellIdU	loc(finer,layer);
-				index_t id = tf->CreateSingleTechnite(loc,0.f);
-				if (id == InvalidIndex)
-				{
-					LogEvent(Technites::techniteError,"Failed to create initial technite at "+loc.ToString()+".");
-					id = tf->CreateSingleTechnite(loc,0.f);
-				}
+
+				//user now chooses location (for better or worse)
+				//const Grid::HCellIdU	loc(finer,layer);
+				//index_t id = tf->CreateSingleTechnite(loc,0.f);
+				//if (id == InvalidIndex)
+				//{
+				//	LogEvent(Technites::techniteError,"Failed to create initial technite at "+loc.ToString()+".");
+				//	id = tf->CreateSingleTechnite(loc,0.f);
+				//}
 				//DBG_ASSERT__(id != InvalidIndex);
 			}
 
@@ -1006,6 +1007,29 @@ namespace Receiver
 
 		Journal::currentRound.Register(true,f,new Journal::Round::DestroyMarker(id));
 	}
+
+	void	SpawnTechnite(Protocol::SpawnTechnite&tech, TCP::Peer&peer)
+	{
+		LogEvent(EventSignificance::Common, peer, nullptr, "Begin: " __func__);
+		if (tech.value.stackID >= Grid::HighSetup::GridType::CellCount || tech.value.layer >= Grid::CellStack::Range)
+		{
+			LogEvent(EventClass::Preset::commandRejected,peer,"Invalid technite spawning location");
+			return;
+		}
+		const Objects::PFaction&f = To<Network::Client>::Cast(peer.attachment)->faction;
+		if (!f)
+		{
+			LogEvent(EventClass::Preset::commandRejected, peer, "Technite creation denied. Player has no faction");
+			return;
+		}
+		if (!f->IsTechniteFaction())
+		{
+			LogEvent(EventClass::Preset::commandRejected, peer, "Technite creation denied. Player faction is no technite faction");
+			return;
+		}
+		Journal::currentRound.Register(true, f, new Journal::Round::SpawnTechnite(tech));
+	}
+
 
 	void	ChatMessage(Package::NetString<256>&message, TCP::Peer&peer)
 	{
@@ -1815,9 +1839,13 @@ namespace Receiver
 					(RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase || RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase)
 					)
 				{
-					client->wantNewRound = true;
-					LogEvent(EventSignificance::Common,peer,"Requested new round");
-					Channels::factionRequestedNewRound.SendTo(Network::server,client->faction->id,2);
+					if (client->faction || client->isSpectator)
+					{
+						client->wantNewRound = true;
+						LogEvent(EventSignificance::Common,peer,"Requested new round");
+						if (client->faction)
+							Channels::factionRequestedNewRound.SendTo(Network::server,client->faction->id,2);
+					}
 				}
 
 			}

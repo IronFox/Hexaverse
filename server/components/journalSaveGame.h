@@ -389,6 +389,8 @@ namespace Journal
 			};
 
 
+		
+
 		class ResourceCoverageChange : public GlobalEvent
 		{
 		public:
@@ -405,6 +407,23 @@ namespace Journal
 		protected:
 			virtual void	Compile(Entry&)	const override;
 		};
+
+		class SpawnTechnite : public FactionEventT<SpawnTechnite>
+		{
+		public:
+			Grid::HCellIdU	loc;
+			
+
+			/**/			SpawnTechnite()	{}
+			/**/			SpawnTechnite(const Grid::HCellIdU&loc): loc(loc){}
+			Event*			Instantiate() const override {return new SpawnTechnite();}
+			virtual void	Decode(const Entry&e) override;
+			virtual void	Execute(const Objects::PFaction&) const override;
+
+		protected:
+			virtual void	Compile(Entry&)	const override;
+		};
+
 
 		class ResourceCoverageKnowledgeLoss : public FactionEvent
 		{
@@ -784,7 +803,6 @@ namespace Journal
 			virtual void	Compile(Entry&)	const override;
 
 		};
-		
 
 		/**
 		General-purpose storage for round events

@@ -12,6 +12,7 @@
 #include "techniteLogicLink.h"
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
+#include "techniteTarget.h"
 
 
 void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
@@ -349,6 +350,7 @@ namespace Network
 
 		roundTimer = -1;
 
+		TechniteTarget::FlushAll();
 		Objects::FlushAllData();
 		Network::gameProgress.gameOver = false;
 		Network::gameProgress.gameWon = false;
@@ -1038,6 +1040,8 @@ namespace Network
 		TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>					sleep;
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
 		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
+
+		TCP::ObjectSender<Protocol::SpawnTechnite,Protocol::ChannelID::SpawnTechnite>				spawnTechnite;
 
 			//	,			//c2s: NET(bool) -> NET(bool)
 			//SetFactionId,		//s2c: NET(TUniqueID)
