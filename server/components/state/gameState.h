@@ -24,11 +24,6 @@ namespace Game
 	//extern Grid::TSharedPlanetConfig	persistentPlanetInfo;
 
 
-	/**
-	Signals that a new faction has been created or an existing one has been removed.
-	Alters @a mostFactionsAlive. Does not do anything else
-	*/
-	void				SignalFactionsChanged();
 
 	namespace Config
 	{
@@ -112,8 +107,9 @@ namespace Game
 
 		namespace Nexus
 		{
-			extern bool		haveBases/* = false*/,
-							haveSatellitesAtopBases/* = true*/;
+			extern bool		haveBases/* = false*/
+							IF_SATELLITES_P(,haveSatellitesAtopBases/* = true*/)
+							;
 			extern bool		startBases/* = false*/,
 							enableAI/* = false*/;
 			extern float	threatEstimationFactor/* = 1.f*/;

@@ -189,13 +189,14 @@ namespace Objects
 			break;
 			case TrajectoryType::VerticalBeam:
 			{
-				int h = Satellite::GetGroundHeight(location);
-				if (h != badHeight)
-				{
-					const TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
-					RenderRangeSphere(d * (Grid::ToRadius(h)+zOffset),base->GetFlatAttackRange() + explosionRadius,color);
-				}
-
+				#ifndef NO_SATELLITES
+					int h = Satellite::GetGroundHeight(location);
+					if (h != badHeight)
+					{
+						const TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
+						RenderRangeSphere(d * (Grid::ToRadius(h)+zOffset),base->GetFlatAttackRange() + explosionRadius,color);
+					}
+				#endif
 			}
 			break;
 			default:
@@ -590,11 +591,13 @@ namespace Objects
 		}
 	}
 
-	static void _RenderSimpleLocated(Satellite&s, const TMatrix4<>&system)
-	{
-		display.Render(*s.baseRenderingInstruction, true);
-		Renderer::RenderComponent(system, 0.f, *s.turret, s.turretAngleX, s.turretAngleY);
-	}
+	#ifndef NO_SATELLITES
+		static void _RenderSimpleLocated(Satellite&s, const TMatrix4<>&system)
+		{
+			display.Render(*s.baseRenderingInstruction, true);
+			Renderer::RenderComponent(system, 0.f, *s.turret, s.turretAngleX, s.turretAngleY);
+		}
+	#endif
 
 	static void _RenderSimpleLocated(Vehicle&v, const TMatrix4<>&system)
 	{
@@ -610,11 +613,13 @@ namespace Objects
 			_RenderSimpleLocated((Structure&)e,system);
 			return;
 		}
-		if (e.IsSatellite())
-		{
-			_RenderSimpleLocated((Satellite&)e,system);
-			return;
-		}
+		#ifndef NO_SATELLITES
+			if (e.IsSatellite())
+			{
+				_RenderSimpleLocated((Satellite&)e,system);
+				return;
+			}
+		#endif
 		if (e.IsVehicle())
 		{
 			_RenderSimpleLocated((Vehicle&)e,system);
@@ -719,34 +724,35 @@ namespace Objects
 	}
 
 
-	void	Renderer::Render(Satellite&s, float light)
-	{
-		display.SetObjectMatrix(s.system);
+	#ifndef NO_SATELLITES
+		void	Renderer::Render(Satellite&s, float light)
 		{
-			TVec3<> color;
-			Vec::interpolate(s.owner->inactiveEntityColor,s.owner->activeEntityColor,s.GetActivityLevel(),color);
+			display.SetObjectMatrix(s.system);
 			{
-				if (s.unstable)
+				TVec3<> color;
+				Vec::interpolate(s.owner->inactiveEntityColor,s.owner->activeEntityColor,s.GetActivityLevel(),color);
 				{
-					keyColor.Update(float4(flip ? float3() : color,light));
-						
-					if (!flip)
+					if (s.unstable)
 					{
-
-						//WorkingStructure*ws = static_cast<WorkingStructure*>(&s);
-						if (s.AwaitsUserInteraction())
+						keyColor.Update(float4(flip ? float3() : color,light));
+						
+						if (!flip)
 						{
-							display.Render(userInteractionNotifier,true);
+
+							//WorkingStructure*ws = static_cast<WorkingStructure*>(&s);
+							if (s.AwaitsUserInteraction())
+							{
+								display.Render(userInteractionNotifier,true);
+							}
 						}
 					}
+					else
+						keyColor.Update(float4(color,light));
 				}
-				else
-					keyColor.Update(float4(color,light));
 			}
+			_RenderSimpleLocated(s,s.system);
 		}
-		_RenderSimpleLocated(s,s.system);
-	}
-
+	#endif
 
 	void	Renderer::Render(Structure&s, float light)
 	{
@@ -999,26 +1005,27 @@ namespace Objects
 				ApplyBaseTint(*v,baseTint);
 			}
 		}
-		foreach(satellites, _v)
-		{
-			const PSatellite&v = *_v;
-			const float light = GetLowLighting(v->location);
-
-			bool isBuilding = v->IsBuilding();
-			if (isBuilding)
+		#ifndef NO_SATELLITES
+			foreach(satellites, _v)
 			{
-				display.SetObjectMatrix(v->system);
-				keyColor.Update(float4(v->owner->activeEntityColor,light));
-				display.Render(cordon,true);
-			}
-			if (v != selectedEntity)
-			{
-				ApplyStateTint(*v,baseTint,false);
-				Renderer::Render(*v,light);
-				ApplyBaseTint(*v,baseTint);
-			}
-		}
+				const PSatellite&v = *_v;
+				const float light = GetLowLighting(v->location);
 
+				bool isBuilding = v->IsBuilding();
+				if (isBuilding)
+				{
+					display.SetObjectMatrix(v->system);
+					keyColor.Update(float4(v->owner->activeEntityColor,light));
+					display.Render(cordon,true);
+				}
+				if (v != selectedEntity)
+				{
+					ApplyStateTint(*v,baseTint,false);
+					Renderer::Render(*v,light);
+					ApplyBaseTint(*v,baseTint);
+				}
+			}
+		#endif
 
 		if (Marker::visitedSystems.IsNotEmpty())
 		{
@@ -1086,8 +1093,10 @@ namespace Objects
 				{
 					if (selectedVehicle)
 						Renderer::Render(*selectedVehicle,GetLowLighting(selectedEntity->location));
-					elif (selectedMobileEntity->IsSatellite())
-						Renderer::Render(*To<Satellite>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
+					#ifndef NO_SATELLITES
+						elif (selectedMobileEntity->IsSatellite())
+							Renderer::Render(*To<Satellite>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
+					#endif
 					else
 						FATAL__("Can't render this: "+selectedEntity->GetName());
 				}
@@ -1131,7 +1140,7 @@ namespace Objects
 				bool isBuilding2 = (p && p->IsBuilding(progress2));
 				if (isBuilding || v->health < maxHealth || isBuilding2)
 				{
-					ProgressBar::SetLocation(v->GetWorldPosition(), v->IsSatellite() ? 3.f : 1.f);
+					ProgressBar::SetLocation(v->GetWorldPosition() IF_SATELLITES_P(, v->IsSatellite() ? 3.f : 1.f));
 					//ProgressBar::RenderNewBar(0,float3(0.1,0.1,0.1));
 					//ProgressBar::RenderNewBar(0.25f,float3(1,0.1,0.1));
 					//ProgressBar::RenderNewBar(0.75f,float3(0.1,1,0.1));
@@ -1313,7 +1322,7 @@ namespace Objects
 		if (selectedEntity)
 			RenderAttackRangeOf(selectedEntity,color,extendedShadow,true);
 		if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
-			RenderAttackRangeOf(activeStructureToPlace,arrowCellTarget,color,extendedShadow,true);
+			RenderAttackRangeOf(activeStructureToPlace,arrowCellTarget.cellLocation,color,extendedShadow,true);
 		
 
 		if (showHostileRanges || showFriendlyRanges)
@@ -1373,12 +1382,14 @@ namespace Objects
 				Renderer::RenderSimple(*v);
 			}
 			else
-				if (m->IsSatellite())
-				{
-					PSatellite s = To<Satellite>::Cast(m);
-					Renderer::RenderSimple(*s);
-				}
-				else
+				#ifndef NO_SATELLITES
+					if (m->IsSatellite())
+					{
+						PSatellite s = To<Satellite>::Cast(m);
+						Renderer::RenderSimple(*s);
+					}
+					else
+				#endif
 					FATAL__("Unsupported ghost type "+m->GetTypeName());
 		}
 		foreach(Marker::structureGhosts, _s)
@@ -1401,12 +1412,14 @@ namespace Objects
 				Renderer::RenderSimple(*v);
 			}
 			else
-				if (m->IsSatellite())
-				{
-					PSatellite s = To<Satellite>::Cast(m);
-					Renderer::RenderSimple(*s);
-				}
-				else
+				#ifndef NO_SATELLITES
+					if (m->IsSatellite())
+					{
+						PSatellite s = To<Satellite>::Cast(m);
+						Renderer::RenderSimple(*s);
+					}
+					else
+				#endif
 					FATAL__("Unsupported ghost type "+m->GetTypeName());
 		}
 		foreach(Marker::structureGhosts, _s)
@@ -1541,11 +1554,13 @@ namespace Objects
 			TMatrix4<> sys;
 			const TVec3<>&up = Grid::low.cells[at->location.stackID].cornerCenter;
 			Mat::makeAxisSystem(at->system.w.xyz, up,2,sys);
-			if (at->IsSatellite())
-			{
-				sys.x.xyz *= 2.f;
-				sys.y.xyz *= 2.f;
-			}
+			#ifndef NO_SATELLITES
+				if (at->IsSatellite())
+				{
+					sys.x.xyz *= 2.f;
+					sys.y.xyz *= 2.f;
+				}
+			#endif
 			const PTurretBase base = at->GetTurretBase();
 			//DBG_ASSERT__(base);
 			int rings = base->GetAttacksPerRound();
@@ -1674,12 +1689,12 @@ namespace Objects
 		display.SetRasterizer(true,true);
 
 
-		if (showArrow && hasArrowCellTarget && arrowCellTarget != arrowFromCell)
+		if (showArrow && hasArrowCellTarget && arrowCellTarget.cellLocation != arrowFromCell)
 		{
 			display.SetDepthTest(false,false);
 
-			const float r =Grid::ToRadius(arrowCellTarget.height);
-			float3 arrowTo = Grid::low.cells[arrowCellTarget.stackID].centerVertex.xyz * r;
+			const float r =Grid::ToRadius(arrowCellTarget.radius);
+			const float3&arrowTo = arrowCellTarget.worldLocation;
 			float d2 = Vec::quadraticDistance(arrowTo,Objects::arrowFrom);
 
 			static Buffer0<Vertex>	vertices;
@@ -1746,7 +1761,7 @@ namespace Objects
 			bool includeFoundation = false;//activeStructureToPlace->HasFoundation();	<- is correct but job visualization doesn't use foundations
 			display.LinkShader(jobShader,false,true);
 				//TMatrix4<> sys;
-				BuildStructureSystem(arrowCellTarget,structureToPlaceSystem);
+				BuildStructureSystem(arrowCellTarget.cellLocation,structureToPlaceSystem);
 				display.SetObjectMatrix(structureToPlaceSystem);
 				overallTint.Update(noTint);	//all zero tint makes shapes invisible
 				if (includeFoundation)
@@ -1851,8 +1866,10 @@ namespace Objects
 		display.SetDepthTest(true,false);
 		display.SetBlendMode(Engine::BlendMode::Add);
 		
-		foreach (satellites,_s)
-			RenderFlyingUnitBeams(*_s);
+		#ifndef NO_SATELLITES
+			foreach (satellites,_s)
+				RenderFlyingUnitBeams(*_s);
+		#endif
 		bool nexusSet[12] = {false};
 
 		foreach(skyLinks, _s)
@@ -1864,7 +1881,7 @@ namespace Objects
 			if (ws->location.stackID < 12)
 				nexusSet[ws->location.stackID] = true;
 
-
+			#ifndef NO_SATELLITES
 			{
 				bool render = false;
 				int h1;
@@ -1910,7 +1927,7 @@ namespace Objects
 					display.LazyRenderVertices(skyPortBeam);
 				}
 			}
-
+			#endif
 		}
 
 		switch (RuntimeConfig::gameGoal)
@@ -2020,6 +2037,7 @@ namespace Objects
 		_RenderShadow(v.system,0,*v.base,0,0);
 		_RenderShadow(v.system,v.base->height,*v.turret,v.turretAngleX,v.turretAngleY);
 	}
+	#ifndef NO_SATELLITES
 	static void _RenderShadow(const Satellite&s)
 	{
 		display.SetObjectMatrix(s.system);
@@ -2030,7 +2048,7 @@ namespace Objects
 		_RenderShadow(*s.baseRenderingInstruction);	
 		_RenderShadow(s.system,0.f,*s.turret,s.turretAngleX,s.turretAngleY);
 	}
-
+	#endif
 
 	void					Renderer::EndShadowRendering()
 	{
@@ -2093,8 +2111,10 @@ namespace Objects
 				{
 					_RenderShadow(**v);
 				}
-				foreach (satellites, s)
-					_RenderShadow(**s);
+				#ifndef NO_SATELLITES
+					foreach (satellites, s)
+						_RenderShadow(**s);
+				#endif
 				display.SetObjectMatrix(Matrix<>::eye4);
 
 				foreach(structures, _s)

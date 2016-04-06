@@ -4,6 +4,7 @@
 #include <memory>
 #include <general/enumeration.h>
 #include "../typeDecl.h"
+#include "../config.h"
 
 namespace Objects
 {
@@ -32,10 +33,12 @@ namespace Objects
 					DECLARE_POINTER_CLASS(MunitionStorage)
 
 			DECLARE_POINTER_CLASS(MobileEntity)
+				#ifndef NO_SATELLITES
 				DECLARE_POINTER_CLASS(Satellite)
 					DECLARE_POINTER_CLASS(SkyHub)
 					DECLARE_POINTER_CLASS(SkyGuardian)
 					DECLARE_POINTER_CLASS(Ragnarok)
+				#endif
 				DECLARE_POINTER_CLASS(Vehicle)
 
 	namespace Component
@@ -63,6 +66,7 @@ namespace Objects
 	);
 
 	class Compound;
+	struct TrajectoryEndPoint;
 
 	DECLARE_POINTER_CLASS(CommandGroup)
 

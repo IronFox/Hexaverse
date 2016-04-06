@@ -611,7 +611,7 @@ namespace Technites
 							return;
 						}
 						index_t tIndex;
-						if (!techniteIdMap.Query(nextInstruction.targetTechnite,tIndex) )
+						if (!techniteIDMap.Query(t->nextInstruction.targetTechnite,tIndex) )
 						{
 							t->taskResult = Technite::TaskResult::TargetNoTechnite;
 							return;

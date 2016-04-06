@@ -380,19 +380,14 @@ namespace Objects
 		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { zOffset = 0; return PConstTurretBase();}
 		inline PConstTurretBase		GetTurretBase() const { float dummy; return GetTurretBase(dummy);}
 
-		TurretTrajectory			TraceTrajectory(const Grid::WorldData&world, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell) const;
-		TurretTrajectory			TraceTrajectory(const Grid::WorldData&world, const Grid::LCellIdI&dest, TVec3<>&impactAt) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::WorldData&world, const Grid::LCellIdI&source, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::WorldData&world, const Grid::LCellIdI&source, const Grid::LCellIdI&dest, TVec3<>&impactAt) const;
-		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TVec3<>&dest) const;
-		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const Grid::LCellIdI&dest) const;
-		bool						CanHit(const TVec3<>&dest) const;
-		bool						CanHit(const Grid::LCellIdI&dest) const;
-		/**
-		Like CanHit() but includes exposion radius to some extend
-		*/
-		bool						CanHitSomehow(const TVec3<>&dest) const;
-		bool						CanHitSomehow(const Grid::LCellIdI&dest) const;
+		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
+		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
+		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const;
+		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest) const;
+		bool						CanHit(const TrajectoryEndPoint&dest, float&outAngle) const;
+		bool						CanHit(const TrajectoryEndPoint&dest) const;
 		bool						IsSleeping() const {return sleeping;}
 
 		virtual bool				AwaitsUserInteraction() const {return false;}
@@ -408,7 +403,9 @@ namespace Objects
 		virtual bool				IsMobile() const {return false;}
 		virtual bool				IsTower() const {return false;}
 		virtual bool				IsVehicle() const {return false;}
-		virtual bool				IsSatellite() const {return false;}
+		#ifndef NO_SATELLITES
+			virtual bool			IsSatellite() const {return false;}
+		#endif
 		virtual bool				IsStructure() const {return false;}
 		//virtual bool				IsVehiclePlant() const {return false;}
 		//these are performance optimizations. Some visualizations may behave unexpectedly if they are not
@@ -427,6 +424,27 @@ namespace Objects
 		virtual bool				IsHangar() const {return false;}
 
 		virtual bool				IsIndestructible() const	{return false;};
+
+		/**
+		Checks if the local entity is currently above the regular grid (e.g. a satellite)
+		*/
+		inline bool					IsAboveGrid() const	{return location.height > Grid::CellStack::TopHeight;}
+
+		/**
+		Checks whether or not a new instance of the local class can be spawned within the world grid
+		*/
+		virtual bool				CanSpawnInGrid() const {return true;}
+		/**
+		Checks whether or not a new instance of the local class can be spawned above grid
+		@param[out] outHeight Height that a new instance can be spawned at. Not updated if the method returns false
+		@return true, if a new instance can be spawned above grid. @a outHeight will be updated to a valid non-grid height in this case
+		*/
+		virtual bool				CanSpawnAboveGrid(int&outHeight) const {return false;}
+
+		/**
+		Sentry entities automatically fill their attack queue
+		*/
+		virtual bool				IsSentry() const {return false;}
 
 		#ifdef HAS_WINDOW
 			virtual void			OnSelect()	{};

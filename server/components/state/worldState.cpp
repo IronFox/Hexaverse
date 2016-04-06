@@ -479,7 +479,7 @@ namespace World
 			int unlocked = 0;
 			for (index_t i = 0; i < numZones; i++)
 			{
-				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
+				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked) && RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
 				{
 					unlocked++;
 				}

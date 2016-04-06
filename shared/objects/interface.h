@@ -59,20 +59,37 @@
 	};
 
 
+	struct TAttack
+	{
+		Objects::PWorldEntity	attackFrom;
+		float3	traceTo;
+		float	flightTime=0,
+				attackAngle=0;
+		bool	isAutoAttack=false;
+	};
+
+	/*
+	These functions signal certain events to the client application (the server in this case)
+	*/
 
 	void	SignalNewMobileEntity(const Objects::PMobileEntity&v, bool restoredFromStorage, float atTime);
 	void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float atTime);
 	void	SignalNewStructure(const Objects::PStructure&s, float atTime);
 	void	SignalMotion(const Objects::PMobileEntity&v, const Grid::LCellIdI&from,const Grid::LCellIdI&to, float t0, float timeNeeded);
 	void	SignalTurretRotation(const Objects::PWorldEntity&v, const TVec3<>&toDirection, float rotationTime);
-	void	SignalAttack(const Objects::PWorldEntity&v, const Grid::LCellIdI&traceTo, float flightTime, bool isAutoAttack);
-	void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, const TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday,float atTime);
+	void	SignalAttack(const TAttack&);
+	void	SignalExplosion(const TAttack&, const TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday,float atTime);
 	//void	SignalExplosion(const TVec3<>&center,float explosionRadius,bool isEMP, float atTime);
 	void	SignalDisappearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime);
 	void	SignalAppearanceToHostileFaction(const Objects::OwnerParameter&target, const Objects::PWorldEntity&e, float atTime);
 	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::OwnerParameter&target, float t);
 	void	SignalNexusControlChange(const Objects::PFaction&f);
 	void	SignalChainReactionExplosion(const Grid::LCellIdI&center, float radius, int damageLevel, float atTime);
+	/**
+	Signals that a new faction has been created or an existing one has been removed.
+	Also replacement as happens when the nexus faction is recreated.
+	*/
+	void	SignalFactionsChanged();
 
 #endif
 

@@ -6,6 +6,15 @@
 #include "../journalSaveGame.h"
 
 
+
+void			SignalFactionsChanged()
+{
+	Game::mostFactionsAlive = std::max(Game::mostFactionsAlive, (UINT32)Objects::Faction::all.Count());
+	Reflection::SignalFactionsChanged();
+}
+
+
+
 namespace Game
 {
 	UINT32				mostFactionsAlive=0;
@@ -16,12 +25,6 @@ namespace Game
 	float				factionStartMineralValue=1.f;	//determined during loading
 	float				effectiveAnimationLength = 1.f;
 
-
-
-	void			SignalFactionsChanged()
-	{
-		mostFactionsAlive = std::max(mostFactionsAlive,(UINT32)Objects::Faction::all.Count());
-	}
 
 
 	namespace Config
@@ -40,8 +43,9 @@ namespace Game
 
 		namespace Nexus
 		{
-			bool		haveBases = false,
-						haveSatellitesAtopBases = true;
+			bool		haveBases = false
+						IF_SATELLITES_P( ,haveSatellitesAtopBases = true )
+						;
 
 			bool		enableAI = false;
 			float		threatEstimationFactor = 1.f;
@@ -203,6 +207,7 @@ namespace Game
 			task.mode = (BYTE)t.mode;
 			task.name = t.name;
 			task.type = t.type;
+			task.taskFlags = 0;
 			if (t.job)
 			{
 				Objects::VehicleJob::PSequence seq = To<Objects::VehicleJob::Sequence>::DynamicCast(t.job);
@@ -216,7 +221,10 @@ namespace Game
 				
 					seq->Guess(v, origin, taskIndex, task.roundsToJobCompletion.value,task.resourceCostLeft.value);
 				}
-				task.visualizePathToFocus = t.job->movesToFocusWhenDone;
+				if (t.job->movesToFocusWhenDone)
+					task.taskFlags |= Protocol::TaskFlags::VisualizePathToFocus;
+				if (t.job->DelayedBySleep())
+					task.taskFlags |= Protocol::TaskFlags::DelayedBySleep;
 			
 
 				std::shared_ptr<Objects::VehicleJob::PathJob> pathJob = To<Objects::VehicleJob::PathJob>::DynamicCast(t.job);
@@ -246,7 +254,6 @@ namespace Game
 			}
 			else
 			{
-				task.visualizePathToFocus = false;
 				task.roundsToJobCompletion = -1;
 			}
 		}
@@ -261,18 +268,18 @@ namespace Game
 			if (owned)
 			{
 				if (e.unstable)
-					state.entityStateFlags |= Protocol::EntityStateFlag::IsUnstable;
+					state.entityStateFlags |= Protocol::EntityStateFlags::IsUnstable;
 				if (e.IsSleeping())
-					state.entityStateFlags |= Protocol::EntityStateFlag::IsSleeping;
+					state.entityStateFlags |= Protocol::EntityStateFlags::IsSleeping;
 			}
 			state.timestamp = timestamp;
 		}
 
 		void	Describe(Protocol::MobileState&state, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
 		{
-			if (v.IsSatellite())
+			if (v.IsAboveGrid())
 			{
-				DBG_ASSERT_GREATER_OR_EQUAL1__(v.location.height, Grid::CellStack::HalfRange,v.GetName());
+				DBG_ASSERT_GREATER1__(v.location.height, Grid::CellStack::TopHeight,v.GetName());
 			}
 	
 			state.flags = 0;
@@ -336,7 +343,7 @@ namespace Game
 			if (owned)
 			{
 				if ((v.myTasks.IsEmpty() && v.completeOnMove) || v.AwaitsUserInteraction())
-					state.entityState.entityStateFlags |= Protocol::EntityStateFlag::IsUnstable;
+					state.entityState.entityStateFlags |= Protocol::EntityStateFlags::IsUnstable;
 			}
 
 		}
@@ -721,7 +728,10 @@ namespace Game
 				{
 					Objects::PWorkingStructure s = _s->lock();
 					if (!s)
+					{
+						LogEvent(EventClass::Preset::internalError, "Unable to lock working structure in compound for living-check");
 						continue;
+					}
 					o = s->owner;
 					Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 					if (mine && mine->IsLinkedToCore())
@@ -745,11 +755,11 @@ namespace Game
 				Objects::PFaction f = o;//c.workingStructures.first().lock()->owner;
 				if (f)
 				{
-					f->hasFuelMine = hasFuelMine;
-					f->hasMineralMine = hasMineralMine;
-					f->hasMineralContainer = hasMineralContainer;
-					f->hasGenerator = hasGenerator;
-					f->hasVehiclePlant = hasVehiclePlant;
+					f->hasFuelMine |= hasFuelMine;
+					f->hasMineralMine |= hasMineralMine;
+					f->hasMineralContainer |= hasMineralContainer;
+					f->hasGenerator |= hasGenerator;
+					f->hasVehiclePlant |= hasVehiclePlant;
 				}
 			});
 
@@ -790,12 +800,14 @@ namespace Game
 						if (!faction->deathInRounds)
 						{
 							faction->deathInRounds = 5;
+							LogEvent(EventSignificance::Common, "Faction death imminent. " + String(faction->deathInRounds) + " (initial) round(s) remaining");
 						}
 						else
 						{
 							if (faction->deathInRounds > 1)
 							{
 								faction->deathInRounds--;
+								LogEvent(EventSignificance::Common, "Faction death imminent. " + String(faction->deathInRounds) + " round(s) remaining");
 							}
 							else
 							{
@@ -804,6 +816,11 @@ namespace Game
 											
 								LogEvent(EventClass::Preset::factionDeath,name+" died: "+whyNot);
 
+								/*
+								telling the client that the faction status has been revoked forces it to flush all entities which will cause issues with subsequently sent animation events.
+								the two possible solutions are to either not send any animation events to this client, or to not tell it that its faction status has been revoked.
+								the former will cause a very uncomfortable client transition back to faction choice screen and no visual representation of what happened.
+								therefore it's probably better to just kill off the faction. but will have to check
 								if (client)
 								{
 									Protocol::ClientFactionResponse cr;
@@ -812,9 +829,9 @@ namespace Game
 									cr.planetConfig = Grid::currentPlanetConfig;
 									Channels::clientFactionResponse.SendTo(client->peer.lock(),cr);
 								}
+								*/
 
 								Objects::Faction::Kill(faction);
-								SignalFactionsChanged();
 								if (client)
 									::Network::activePlayersAndSpectators.FindAndErase(client);
 								::Network::tokenMap.Unset(faction->accessToken);
@@ -1179,26 +1196,27 @@ namespace Game
 				}
 
 
-				if (Config::Nexus::haveSatellitesAtopBases)
-				{
-					Objects::PSkyHub hub = To<Objects::SkyHub>::Cast( Objects::SkyHub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Satellite::BaseResidenceHeight),0) );
-					Objects::InsertConstructed(hub,t);
-					ASSERT__(hub->connectedTo.lock() == port);
-
-					for (index_t i : distances)
+				#ifndef NO_SATELLITES
+					if (Config::Nexus::haveSatellitesAtopBases)
 					{
-						ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-						UINT32 d1 = (R - field.distance[i]);
+						Objects::PSkyHub hub = To<Objects::SkyHub>::Cast( Objects::SkyHub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Satellite::BaseResidenceHeight),0) );
+						Objects::InsertConstructed(hub,t);
+						ASSERT__(hub->connectedTo.lock() == port);
 
-						bool noEdge = Grid::low.grid.GetCell(i).family != 0;
-						if (!noEdge && field.distance[i] == 2)
+						for (index_t i : distances)
 						{
-							Objects::PSkyGuardian guard = To<Objects::SkyGuardian>::Cast( Objects::SkyGuardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Satellite::BaseResidenceHeight),0));
-							Objects::InsertConstructed(guard,t);
+							ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
+							UINT32 d1 = (R - field.distance[i]);
+
+							bool noEdge = Grid::low.grid.GetCell(i).family != 0;
+							if (!noEdge && field.distance[i] == 2)
+							{
+								Objects::PSkyGuardian guard = To<Objects::SkyGuardian>::Cast( Objects::SkyGuardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Satellite::BaseResidenceHeight),0));
+								Objects::InsertConstructed(guard,t);
+							}
 						}
 					}
-				}
-
+				#endif
 			}
 
 

@@ -485,7 +485,7 @@ namespace Receiver
 			client->faction.reset(new Objects::Faction(TUniqueID::Empty()));
 			faction = client->faction;
 			Objects::Faction::all << client->faction;
-			Game::SignalFactionsChanged();
+			SignalFactionsChanged();
 			client->faction->name = client->name;
 
 
@@ -1287,6 +1287,19 @@ namespace Receiver
 		LogEvent(EventSignificance::Common,peer,e,"End: Registered new job "+job->GetName());
 	}
 
+	bool	ValidCell(const Grid::LCellIdI&loc)
+	{
+		if (loc.stackID >= Grid::LowSetup::GridType::CellCount)
+			return false;
+		if (loc.height >= Grid::CellStack::BottomHeight && loc.height <= Grid::CellStack::TopHeight)
+			return true;
+		#ifndef NO_SATELLITES
+			if (Objects::Satellite::IsSatelliteHeight(loc.height))
+				return true;
+		#endif
+		return false;
+	}
+
 	void	ChoiceIntersection(Protocol::ChoiceIntersection&ch, TCP::Peer&peer)
 	{
 		LogEvent(EventSignificance::Common,peer,nullptr,"Begin: Processing choice intersection in mode "+String(ch.mode)+" at cell "+ch.target.ToString()+" for entity "+ch.id.value.ToString());
@@ -1296,7 +1309,7 @@ namespace Receiver
 			return;
 
 
-		if (!Grid::ValidCell(ch.target, Objects::Satellite::BaseResidenceHeight, Objects::Satellite::DeclinedResidenceHeight))
+		if (!ValidCell(ch.target))
 		{
 			LogEvent(EventClass::Preset::commandRejected,peer,e,"Parameter fault");
 			return;
@@ -1416,13 +1429,13 @@ namespace Receiver
 		if (!e)
 			return;
 		foreach (cmd.path,n)
-			if (!Grid::ValidCell(*n, Objects::Satellite::BaseResidenceHeight,Objects::Satellite::DeclinedResidenceHeight))
+			if (!ValidCell(*n))
 			{
 				LogEvent(EventClass::Preset::commandRejected, peer, e, "Parameter fault ("+n->ToString()+")");
 				return;
 			}
-		const bool leftClick = (cmd.directFlags & Protocol::DirectFlag::LeftClick) != 0;
-		const bool detailed = (cmd.directFlags & Protocol::DirectFlag::Detailed) != 0;
+		const bool leftClick = (cmd.directFlags & Protocol::DirectFlags::LeftClick) != 0;
+		const bool detailed = (cmd.directFlags & Protocol::DirectFlags::Detailed) != 0;
 		//if (!e->DirectTo((Objects::Vehicle::mode_t)cmd.mode.value,cmd.path,detailed,leftClick))
 		//{
 		//	LogEvent(EventClass::Preset::commandRejected,peer,e,"Unable to comply");
@@ -1461,8 +1474,8 @@ namespace Receiver
 			}
 		}
 		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
-		const bool leftClick = (cmd.directFlags&Protocol::DirectFlag::LeftClick)!=0;
-		const bool detailedPath = (cmd.directFlags&Protocol::DirectFlag::Detailed)!=0;
+		const bool leftClick = (cmd.directFlags&Protocol::DirectFlags::LeftClick)!=0;
+		const bool detailedPath = (cmd.directFlags&Protocol::DirectFlags::Detailed)!=0;
 		if (v)
 		{
 			if (!v->DirectTo((Objects::Vehicle::mode_t)cmd.mode.value,cmd.path,detailedPath,leftClick))
@@ -1615,7 +1628,7 @@ namespace Receiver
 
 					peer.attachment.reset();
 				}
-				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::ServerPrivate ),peer,"Client disconnected");
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::ServerPrivate ),peer,"Client disconnected ("+peer.GetError(true)+")");
 
 
 				if (!Network::AnyHumanPlayersActive())

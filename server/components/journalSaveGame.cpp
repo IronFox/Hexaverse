@@ -914,11 +914,13 @@ namespace Journal
 		foreach (locationParameters.entries,p)
 		{
 			stream << tab << p->key << "=l"<<p->value.stackID<<'.';
-			if (p->value.height == Objects::Satellite::BaseResidenceHeight)
-				stream << "sat";
-			elif (p->value.height == Objects::Satellite::DeclinedResidenceHeight)
-				stream << "declSat";
-			else
+			#ifndef NO_SATELLITES
+				if (p->value.height == Objects::Satellite::BaseResidenceHeight)
+					stream << "sat";
+				elif (p->value.height == Objects::Satellite::DeclinedResidenceHeight)
+					stream << "declSat";
+				else
+			#endif
 				stream << p->value.height;
 		}
 		foreach (intParameters.entries,p)
@@ -1025,17 +1027,21 @@ namespace Journal
 						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded stack ID of "+String(paraRef)+"=" +target.ToString()+" is out of range, while decoding line "+String(line,lineLen));
 					}
 
-					if (sHeight == "sat")
-						target.height = Objects::Satellite::BaseResidenceHeight;
-					elif (sHeight == "declSat")
-						target.height = Objects::Satellite::DeclinedResidenceHeight;
-					else
+					#ifndef NO_SATELLITES
+						if (sHeight == "sat")
+							target.height = Objects::Satellite::BaseResidenceHeight;
+						elif (sHeight == "declSat")
+							target.height = Objects::Satellite::DeclinedResidenceHeight;
+						else
+					#endif
 					{
 						if (!convert(sHeight.pointer(),sHeight.length(),target.height))
 						{
 							throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Expected valid height for parameter '"+String(paraRef)+"', but got '"+String(dotAt+1, valLen  - (dotAt-value)-1)+"' while decoding line "+String(line,lineLen));
 						}
-						if ((target.height < Grid::CellStack::BottomHeight || target.height > Grid::CellStack::TopHeight) && target.height != Objects::Satellite::BaseResidenceHeight && target.height != Objects::Satellite::DeclinedResidenceHeight)
+						if ((target.height < Grid::CellStack::BottomHeight || target.height > Grid::CellStack::TopHeight) 
+							IF_SATELLITES(&& target.height != Objects::Satellite::BaseResidenceHeight && target.height != Objects::Satellite::DeclinedResidenceHeight)
+							)
 						{
 							throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded height of "+String(paraRef)+"=" +target.ToString()+" is out of range, while decoding line "+String(line,lineLen));
 						}
@@ -1655,19 +1661,11 @@ namespace Journal
 			return;
 		if (source.type1 == ConstName::Empty)
 		{
-			Objects::PStructure proto = Objects::GetPrototypeByName(source.type0);
+			Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(source.type0);
 			if (proto)
-				result.stringParameters.Set("ReferenceStructure",proto->GetTypeName());
+				result.stringParameters.Set("ReferenceNonVehicle",proto->GetTypeName());
 			else
-			{
-				Objects::PSatellite sproto = Objects::GetSatellitePrototypeByName(source.type0);
-				if (sproto)
-					result.stringParameters.Set("ReferenceSatellite",sproto->GetTypeName());
-				else
-				{
-					throw Round::RoundException(CLOCATION, "Unknown structure type #" + String(int(source.type0.value)));
-				}
-			}
+				throw Round::RoundException(CLOCATION, "Unknown non-vehicle type #" + String(int(source.type0.value)));
 			return;
 		}
 		if (source.type0 == ConstName::Empty)
@@ -1709,15 +1707,9 @@ namespace Journal
 			ref.type1 = Require(Objects::Component::GetTurretByName(turret))->constName;
 			return;
 		}
-		if (e.stringParameters.TryGet("ReferenceSatellite",base))
+		if (e.stringParameters.TryGet("ReferenceNonVehicle",base))
 		{
-			ref.type0 = Require(Objects::GetSatellitePrototypeByName(base))->GetCTypeName();
-			ref.type1 = ConstName::Empty;
-			return;
-		}
-		if (e.stringParameters.TryGet("ReferenceStructure",base))
-		{
-			ref.type0 = Require(Objects::GetPrototypeByName(base))->GetCTypeName();
+			ref.type0 = Require(Objects::GetNonVehiclePrototypeByName(base))->GetCTypeName();
 			ref.type1 = ConstName::Empty;
 			return;
 		}

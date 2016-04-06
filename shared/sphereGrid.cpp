@@ -52,7 +52,9 @@ namespace Grid
 
 
 	#ifdef CLIENT
-		OrbitGrid	visibleOrbitGrid;
+		#ifndef NO_SATELLITES
+			OrbitGrid	visibleOrbitGrid;
+		#endif
 	#else
 
 	#endif
@@ -143,6 +145,28 @@ namespace Grid
 		{
 			volumeCell[height + HalfRange].structureCounter += by;
 		}
+	}
+
+	int				CellStack::FindTopClearOverNonClear(bool failOnStructureCount)	const
+	{
+		UINT32 h;
+		for (h = Range-1; h < Range; h--)
+		{
+			const Cell&c = volumeCell[h];
+			if (c.content != Grid::Content::Clear)
+				break;
+		}
+		h++;
+		if (h >= Range-1)
+			return BadHeight;
+		if (failOnStructureCount)
+		{
+			const Cell&c = volumeCell[h];
+			if (c.structureCounter > 1)
+				return BadHeight;
+		}
+
+		return ToHeight(h);
 	}
 
 	#ifdef HAS_WINDOW
@@ -1177,31 +1201,18 @@ namespace Grid
 				actualWorld.cellStack[i].FillTypes(config);
 			});
 
-			//the following tries to elimited exposed inner terrain types caused by the above terrain simplification
-//			Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [](index_t i)
-//			{
-//				auto&stack = actualWorld.cellStack[i];
-//				UINT32 stackTop = 0;
-//				for (UINT l = CellStack::Range-1; l < CellStack::Range; l--)
-//				{
-//					if (stack.volumeCell[l].IsClearOrWaterIgnoreStructure())
-//					{
-//						if (!stackTop)
-//							stackTop = l;
-//						continue;
-//					}
-//				}
-//				for (UINT l = 0; l < CellStack::Range; l++)
-//				{
-//					const BYTE cont = stack.volumeCell[l].content;
-//					if ((cont == Content::Water || cont == Content::Clear) && l > 0)
-//					{
-////						if (ReplaceTop(stack.volumeCell[l-1].content))
-//							stack.volumeCell[l-1].content = 
-//								GetTypeAtHeight(config,Grid::CellStack::ToHeight(l-1));
-//					}
-//				}
-//			});
+			Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [](index_t i)
+			{
+				auto&stack = actualWorld.cellStack[i];
+				UINT32 stackTop = 0;
+				for (UINT l = 0; l+1 < CellStack::Range; l++)
+				{
+					if (stack.volumeCell[l].content == Content::Grass && !stack.volumeCell[l+1].IsClearOrLiquidIgnoreStructure())
+					{
+						stack.volumeCell[l].content = Content::Earth;
+					}
+				}
+			});
 
 
 			const bool solidProx = CellStack::Cell::IsSolid(config.liquidOutline) && CellStack::Cell::IsLiquid(config.liquidCoverage);
@@ -4072,6 +4083,17 @@ namespace Grid
 			return highCell == lowCell;
 		#endif
 	}
+
+	float	GetGeometricDistance(const HCellIdU&a, const HCellIdU&b)
+	{
+		return sqrt(GetQuadraticGeometricDistance(a,b));
+	}
+	float	GetQuadraticGeometricDistance(const HCellIdU&a, const HCellIdU&b)
+	{
+		TVec3<> wa = high.cells[a.stackID].centerVertex.xyz * ToRadius(CellStack::ToHeight(a.layer));
+		TVec3<> wb = high.cells[b.stackID].centerVertex.xyz * ToRadius(CellStack::ToHeight(b.layer));
+		return Vec::quadraticDistance(wa,wb);
+	}
 	
 	float	GetGeometricDistance(const LCellIdI&a, const LCellIdI&b)
 	{
@@ -4368,7 +4390,9 @@ namespace Grid
 		#endif
 			
 		#ifdef CLIENT
-			visibleOrbitGrid.Clear();
+			#ifndef NO_SATELLITES
+				visibleOrbitGrid.Clear();
+			#endif
 			#ifdef HAS_WINDOW
 				for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 				{

@@ -170,18 +170,13 @@ namespace Objects
 			static Buffer0<TVec4<> > trajectory;
 
 			bool abort = false;
-			if (target.autoTarget)
+			float angle;
+			TurretTrajectory t = TraceTrajectory(TrajectoryEndPoint( target.target ),trajectory,t0,t1,angle);
+			if (t != TurretTrajectory::ReachesTarget && target.autoTarget)
 			{
-				TurretTrajectory t = TraceTrajectory(owner->currentState,  target.target,trajectory,t0,t1);
-				if (t != TurretTrajectory::ReachesTarget)
-				{
-					abort = true;
-				}
+				t = TurretTrajectory::InvalidTrajectory;
 			}
-			TurretTrajectory t = TurretTrajectory::InvalidTrajectory;
-			
-			if (!abort)
-				t = TraceTrajectory(Grid::actualWorld,  target.target,trajectory,t0,t1);
+
 			if (t != TurretTrajectory::InvalidTrajectory)
 			{
 
@@ -209,8 +204,13 @@ namespace Objects
 					motionTime += Times::TurretRotation;
 				}
 
-
-				SignalAttack(shared_from_this(),target.target,flightTime,target.autoTarget);
+				TAttack at;
+				at.attackAngle = angle;
+				at.attackFrom = shared_from_this();
+				at.flightTime = flightTime;
+				at.isAutoAttack = target.autoTarget;
+				at.traceTo = t0;
+				SignalAttack(at);
 
 				if (storage.level[turret->ammoType] >= turret->ammoNeedPerShot)
 					ChangeStorage(*this,attackTime, turret->ammoType,-turret->ammoNeedPerShot);
@@ -228,10 +228,10 @@ namespace Objects
 				motionTime += flightTime;
 
 				if (turret->dealsEMPDamage)
-					ExplodeEMP(shared_from_this(),target.target,flightTime,
+					ExplodeEMP(at,
 								t1, t0, turret->explosionRadius, turret->damageLevel,motionTime);
 				else
-					Explode(shared_from_this(),target.target,flightTime,
+					Explode(at,
 							t1, t0, turret->explosionRadius, turret->damageLevel,turret->isDoomsday, motionTime);
 
 				RegisterChange((changeType_t)(TasksChanged),motionTime);
@@ -255,7 +255,7 @@ namespace Objects
 			if ((int)attackQueue.Count() < CountPossibleAttacks())
 			{
 				Grid::LCellIdI target;
-				return GetSentryTarget(*this,this->storage.level[turret->ammoType], location,foundationHeight,*this,target) && AttackNext(target,true);
+				return GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,foundationHeight),*this,target) && AttackNext(target,true);
 			}
 			else
 				return false;
@@ -294,17 +294,17 @@ namespace Objects
 
 			TVec3<> iat;
 			Grid::HCellIdI ic;
-
+			float angle;
 
 			//float d2 = Grid::GetQuadraticGeometricDistance(location+1,target->location);
-
+			TrajectoryEndPoint endPoint(target->location); 
 			return		//owner->canSee.IsSet(target)
 					/*&&	*/turret->CanAttack() 
 					&& motionTime <= entityTime 
 					&& CountPossibleAttacks() > 0 
-					&& ExtCanHit(owner,location,foundationHeight, target->location,outTarget)
+					&& ExtCanHit(owner,TrajectoryEndPoint( location,foundationHeight ), endPoint,outTarget)
 					//&& d2 > sqr(turret->explosionRadius)
-					&& TraceTrajectory(owner->currentState, target->location,trajectory,iat,ic)==TurretTrajectory::ReachesTarget;
+					&& TraceTrajectory(endPoint,trajectory,iat,ic,angle)==TurretTrajectory::ReachesTarget;
 		}
 
 
@@ -924,7 +924,7 @@ namespace Objects
 
 				//float targetDistance = Grid::GetGeometricDistance(pointOfOrigin,target);
 
-				if (!CanHit(target))
+				if (!CanHit(TrajectoryEndPoint( target)))
 				{
 					LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 					return false;
@@ -1822,31 +1822,35 @@ namespace Objects
 
 
 
-	/*virtual override*/ bool		SkyPort::WouldLikeToEnable() const
-	{
-		return !!GetSatellite(location.stackID);
-	}
+	#ifndef NO_SATELLITES
+		/*virtual override*/ bool		SkyPort::WouldLikeToEnable() const
+		{
+			return !!GetSatellite(location.stackID);
+		}
 
 
-	/*virtual override*/ void		SkyPort::GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&)	const
-	{
-		v.level[Resource::Energy] = -EnergyConsumption;
-		if (MobileEntityProducer::queue.IsNotEmpty())
-			v.level[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;
-	}
+		/*virtual override*/ void		SkyPort::GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&)	const
+		{
+			v.level[Resource::Energy] = -EnergyConsumption;
+			if (MobileEntityProducer::queue.IsNotEmpty())
+				v.level[Resource::Minerals] = -(int)MobileEntityProducer::productionPerRound;
+		}
 
+	#endif
 
 	#ifndef CLIENT
-		/*virtual override*/ void			SkyPort::OnSleepChange(float&t)
-		{
-			Super::OnSleepChange(t);
-
-			if (IsSleeping() && IsEnabled())
+		#ifndef NO_SATELLITES
+			/*virtual override*/ void			SkyPort::OnSleepChange(float&t)
 			{
-				LogEvent(EventSignificance::Common,this,"Fell asleep. Disabling");
-				SetEnabled(false,t);
+				Super::OnSleepChange(t);
+
+				if (IsSleeping() && IsEnabled())
+				{
+					LogEvent(EventSignificance::Common,this,"Fell asleep. Disabling");
+					SetEnabled(false,t);
+				}
 			}
-		}
+		#endif
 
 		/*virtual override*/ void			VehiclePlant::OnSleepChange(float&t)
 		{
@@ -1867,13 +1871,15 @@ namespace Objects
 			return true;
 		}
 
-		/*virtual override*/ bool			SkyPort::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
-		{
-			if (waypoints.Count() != 1)
-				return false;
-			MobileEntityProducer::UpdateGatheringPoint(waypoints.First());
-			return true;
-		}
+		#ifndef NO_SATELLITES
+			/*virtual override*/ bool			SkyPort::DirectTo(CursorMode mode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick /*= false*/)
+			{
+				if (waypoints.Count() != 1)
+					return false;
+				MobileEntityProducer::UpdateGatheringPoint(waypoints.First());
+				return true;
+			}
+		#endif
 	#endif
 
 
@@ -1902,43 +1908,44 @@ namespace Objects
 
 
 
-		/*virtual override*/ void			SkyPort::OnEnabledChange()
-		{
-			PSkyHub hub = connectedToHub.lock();
-			if (!this->IsEnabled())
+		#ifndef NO_SATELLITES
+			/*virtual override*/ void			SkyPort::OnEnabledChange()
 			{
-				if (hub)
+				PSkyHub hub = connectedToHub.lock();
+				if (!this->IsEnabled())
 				{
-					//LogEvent(EventClass::Preset::operationAborted,this,"Connection to "+connectedTo->GetNiceName()+" lost");
-					hub->LoseGroundConnection();
-				}
-			}
-			else
-				if (!hub)
-				{
-					PSkyHub otherHub = To<SkyHub>::DynamicCast(GetSatellite(location.stackID));
-					if (otherHub && otherHub->owner == owner)
+					if (hub)
 					{
-						if (otherHub->GainGroundConnection(To<SkyPort>::Cast(shared_from_this())))
-							ASSERT__(otherHub == connectedToHub.lock());
+						//LogEvent(EventClass::Preset::operationAborted,this,"Connection to "+connectedTo->GetNiceName()+" lost");
+						hub->LoseGroundConnection();
 					}
 				}
-		}
-
-
-		/*virtual override*/ void				SkyPort::Tick(ResourceVector&v)
-		{
-			v.level[Resource::Energy] -= EnergyConsumption;
-			if (MobileEntityProducer::queue.IsNotEmpty())
-			{
-				float t = 0;
-				MobileEntityProducer::Tick(v,t);
+				else
+					if (!hub)
+					{
+						PSkyHub otherHub = To<SkyHub>::DynamicCast(GetSatellite(location.stackID));
+						if (otherHub && otherHub->owner == owner)
+						{
+							if (otherHub->GainGroundConnection(To<SkyPort>::Cast(shared_from_this())))
+								ASSERT__(otherHub == connectedToHub.lock());
+						}
+					}
 			}
 
 
+			/*virtual override*/ void				SkyPort::Tick(ResourceVector&v)
+			{
+				v.level[Resource::Energy] -= EnergyConsumption;
+				if (MobileEntityProducer::queue.IsNotEmpty())
+				{
+					float t = 0;
+					MobileEntityProducer::Tick(v,t);
+				}
 
-		}
 
+
+			}
+		#endif
 
 
 		PVehicle					VehiclePlant::GetProduction() const
@@ -1964,8 +1971,9 @@ namespace Objects
 				trajectory.Clear();
 				TVec3<> impactAt;
 				Grid::HCellIdI dummy1;
+				float angle;
 				//if (Turret::TraceTrajectory(Turret::MaxRangeToVelocity(GetFlatAttackRange()),Grid::actualWorld, location,foundationHeight,attackTarget,trajectory,impactAt,dummy1))
-				if (TraceTrajectory(Grid::actualWorld, attackTarget,trajectory,impactAt,dummy1))
+				if (TraceTrajectory(TrajectoryEndPoint( attackTarget,0),trajectory,impactAt,dummy1,angle) != TurretTrajectory::InvalidTrajectory)
 				{
 
 					static Geometry geo;
@@ -2009,15 +2017,16 @@ namespace Objects
 				gatheringPoint.selected = Grid::LCellIdI::Invalid;
 			}
 
-			/*virtual override*/ void			SkyPort::OnSelect()
-			{
-				gatheringPoint.UpdateVisuals();
-			}
-			/*virtual override*/ void			SkyPort::OnDeselect()
-			{
-				gatheringPoint.selected = Grid::LCellIdI::Invalid;
-			}
-
+			#ifndef NO_SATELLITES
+				/*virtual override*/ void			SkyPort::OnSelect()
+				{
+					gatheringPoint.UpdateVisuals();
+				}
+				/*virtual override*/ void			SkyPort::OnDeselect()
+				{
+					gatheringPoint.selected = Grid::LCellIdI::Invalid;
+				}
+			#endif
 		#endif
 
 
@@ -2159,9 +2168,15 @@ namespace Objects
 					if (!controlEnabled)
 						return BaseCommand::Flags::None;
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					return (plant != nullptr/* && plant->selectedBase && plant->selectedTurret*/)
-						? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None
-						;
+					if (plant)
+					{
+						BaseCommand::Flags rs = BaseCommand::Flags::IsEnabled;
+						if (plant->selectedBase && plant->selectedTurret && plant->queue.IsEmpty() /*&& !plant->IsSleeping()*/)
+							rs |= BaseCommand::Flags::IsFlashing | BaseCommand::Flags::SoftFlashing;
+
+						return rs;
+					}
+					else return BaseCommand::Flags::None;
 				},
 				[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 				{
@@ -2217,8 +2232,13 @@ namespace Objects
 				{
 					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
 					VehiclePlant*plant = dynamic_cast<VehiclePlant*>(selectedEntity.get());
-					if (plant && plant->selectedTurret == c)
-						rs |= BaseCommand::Flags::IsPermaActive;
+					if (plant)
+					{
+						if (plant->selectedTurret == c)
+							rs |= BaseCommand::Flags::IsPermaActive;
+						elif (!plant->selectedTurret)
+							rs |= BaseCommand::Flags::IsFlashing | BaseCommand::Flags::SoftFlashing;
+					}
 					return rs;
 				}));
 				commands.GetLast().second->RasterizeImage();
@@ -2235,12 +2255,13 @@ namespace Objects
 			MobileEntityProducer::VisitAllCommands(visitor,force);
 			Super::VisitAllCommands(visitor,force);
 		}
-		/*virtual override*/ void				SkyPort::VisitAllCommands(FCommandVisitor visitor, bool force)
-		{
-			MobileEntityProducer::VisitAllCommands(visitor,force);
-			Super::VisitAllCommands(visitor,force);
-		}
-
+		#ifndef NO_SATELLITES
+			/*virtual override*/ void				SkyPort::VisitAllCommands(FCommandVisitor visitor, bool force)
+			{
+				MobileEntityProducer::VisitAllCommands(visitor,force);
+				Super::VisitAllCommands(visitor,force);
+			}
+		#endif
 	#endif
 	/*virtual override*/ bool				VehiclePlant::AwaitsUserInteraction() const 
 	{
@@ -2248,18 +2269,20 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ bool				SkyPort::AwaitsUserInteraction() const 
-	{
-		return MobileEntityProducer::AwaitsUserInteraction();
-	}
+	#ifndef NO_SATELLITES
+		/*virtual override*/ bool				SkyPort::AwaitsUserInteraction() const 
+		{
+			return MobileEntityProducer::AwaitsUserInteraction();
+		}
 
-	/*virtual override*/ bool				SkyPort::CanProduce(const PWorldEntity&e) const 
-	{
-		return (e->IsVehicle() && To<Vehicle>::Cast(e)->base == &Component::hoverbase && To<Vehicle>::Cast(e)->turret == &Component::terraformer)
-			||
-			(e->IsSatellite() && e->GetCTypeName() == ConstName::Type_SkyHub)
-		;
-	}
+		/*virtual override*/ bool				SkyPort::CanProduce(const PWorldEntity&e) const 
+		{
+			return (e->IsVehicle() && To<Vehicle>::Cast(e)->base == &Component::hoverbase && To<Vehicle>::Cast(e)->turret == &Component::terraformer)
+				||
+				(e->IsSatellite() && e->GetCTypeName() == ConstName::Type_SkyHub)
+			;
+		}
+	#endif
 
 	/*virtual override*/ bool				VehiclePlant::CanProduce(const PWorldEntity&e) const 
 	{
@@ -2267,48 +2290,49 @@ namespace Objects
 	}
 
 
-	/*virtual override*/ void				SkyPort::PrototypeSetup()
-	{
-		Super::PrototypeSetup();
+	#ifndef NO_SATELLITES
+		/*virtual override*/ void				SkyPort::PrototypeSetup()
+		{
+			Super::PrototypeSetup();
 
-		#ifdef HAS_WINDOW
+			#ifdef HAS_WINDOW
 	
-			//vehicleConstructionCommands << VehicleConstructionCommand("Base:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
-			//foreach (baseComponents,comp)
-			{
-				//VehicleBase* c = *comp;
-				commands.Add(new EntityConstructionCommand("Construct Hover-Former", &Component::hoverbase,&Component::terraformer, PWorldEntity(),[]()
+				//vehicleConstructionCommands << VehicleConstructionCommand("Base:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
+				//foreach (baseComponents,comp)
 				{
-					PSkyPort port = To<SkyPort>::DynamicCast(selectedEntity);
-					if (!port)
-						return;
-					SignalConstructionBegin(port->id, ConstName::VehicleBase_HoverBase, ConstName::Turret_Terraformer);
+					//VehicleBase* c = *comp;
+					commands.Add(new EntityConstructionCommand("Construct Hover-Former", &Component::hoverbase,&Component::terraformer, PWorldEntity(),[]()
+					{
+						PSkyPort port = To<SkyPort>::DynamicCast(selectedEntity);
+						if (!port)
+							return;
+						SignalConstructionBegin(port->id, ConstName::VehicleBase_HoverBase, ConstName::Turret_Terraformer);
+					}
+					,CommonCmd::CommonButtonCheck));
+					commands.GetLast().second->RasterizeImage();
+
+					commands.Add(new EntityConstructionCommand("Construct SkyHub", nullptr,nullptr, SkyHub::globalPrototype, []()
+					{
+						PSkyPort port = To<SkyPort>::DynamicCast(selectedEntity);
+						if (!port)
+							return;
+						SignalConstructionBegin(port->id, ConstName::Type_SkyHub, ConstName::Empty);
+					}
+					,
+					[](bool controlsEnabled)
+					{
+						if (!controlsEnabled)
+							return BaseCommand::Flags::None;
+						return selectedEntity && !GetSatellite(selectedEntity->location.stackID) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+					}));
+					commands.GetLast().second->RasterizeImage();
 				}
-				,CommonCmd::CommonButtonCheck));
-				commands.GetLast().second->RasterizeImage();
+			#endif
 
-				commands.Add(new EntityConstructionCommand("Construct SkyHub", nullptr,nullptr, SkyHub::globalPrototype, []()
-				{
-					PSkyPort port = To<SkyPort>::DynamicCast(selectedEntity);
-					if (!port)
-						return;
-					SignalConstructionBegin(port->id, ConstName::Type_SkyHub, ConstName::Empty);
-				}
-				,
-				[](bool controlsEnabled)
-				{
-					if (!controlsEnabled)
-						return BaseCommand::Flags::None;
-					return selectedEntity && !GetSatellite(selectedEntity->location.stackID) ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
-				}));
-				commands.GetLast().second->RasterizeImage();
-			}
-		#endif
+			//commands << Command("Queue:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
 
-		//commands << Command("Queue:",[](const PWorldEntity&){},AlwaysFalse<PWorldEntity const&>,AlwaysFalse<PWorldEntity const&>);
-
-	}
-
+		}
+	#endif
 
 
 	

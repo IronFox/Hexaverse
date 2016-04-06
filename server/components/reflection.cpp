@@ -6,10 +6,13 @@
 #include <io/config.h>
 #include <io/file_system.h>
 #include "aiProcess.h"
+//#include "remoteControl.h"
 
 namespace Reflection
 {
 	CLI::Interpreter	state;
+
+	static CLI::PFolder factionFolder;
 
 	namespace Variable
 	{
@@ -422,6 +425,16 @@ namespace Reflection
 		};
 
 
+		class FactionAttachment : public CLI::Folder::Attachable
+		{
+		public:
+			TUniqueID	id;
+
+			/**/		FactionAttachment() :id(TUniqueID::Empty()) {}
+			/**/		FactionAttachment(const TUniqueID&id) :id(id) {}
+		};
+		typedef std::shared_ptr<FactionAttachment>	PFactionAttachment;
+
 		class PersistenceAttachment :public CLI::Folder::Attachable
 		{
 
@@ -469,6 +482,71 @@ namespace Reflection
 			state.SetVariable(rs);
 			return rs;
 		}
+	}
+
+
+
+	namespace FactionCommands
+	{
+		CLI::PCommand	kill;
+
+
+
+		void		KillCommand(const String&reason)
+		{
+			CLI::PFolder f = state.GetExecutionContext();
+			Variable::PFactionAttachment attach = To<Variable::FactionAttachment>::DynamicCast(f->attachment);
+			if (!attach)
+			{
+				LogEvent(EventClass::Preset::remoteControlError, "Error: This folder is not a faction folder");
+				return;
+			}
+			String r = reason.trimRef();
+			if (r.IsEmpty())
+			{
+				LogEvent(EventClass::Preset::remoteControlError, "Error: No reason given");
+				return;
+			}
+			Objects::PFaction faction = Objects::Faction::FindByID(attach->id);
+			if (!faction)
+			{
+				LogEvent(EventClass::Preset::remoteControlError, "Error: Faction no longer exists");
+				SignalFactionsChanged();
+				return;
+			}
+			LogEvent(EventClass::Preset::remoteControlResponse, "Terminating "+faction->GetLogName()+" ("+r+")");
+			Objects::Faction::Kill(faction);
+		}
+
+		void		ListNames()
+		{
+			Objects::ForeachFaction([](const Objects::PFaction&f)
+			{
+				CLI::println(f->name + " - " + f->id.ToString());
+			});
+		}
+
+		void		FindName(const String&name)
+		{
+			Objects::ForeachFaction([name](const Objects::PFaction&f)
+			{
+				if (f->name.findIgnoreCase(name))
+					CLI::println(f->name + " - " + f->id.ToString());
+			});
+		}
+
+		void		GotoName(const String&name)
+		{
+
+
+		}
+
+		void		Create()
+		{
+			kill.reset(new CLI::Command(CLI::Command::Name("kill reason"), &KillCommand, CLI::NoCompletion));
+
+		}
+
 	}
 
 
@@ -651,6 +729,13 @@ namespace Reflection
 
 		CLI::InitDefaults(state,PrintLn);
 
+		FactionCommands::Create();
+
+		factionFolder = state.EnterNewFolder("Factions");
+		state.DefineCommand("names", FactionCommands::ListNames);
+		state.DefineCommand("find name", FactionCommands::FindName);
+		state.ExitFolder();
+
 		state.EnterNewFolder("World")->attachment.reset(new Variable::PersistenceAttachment());
 			VAR(simulateLiquids,World::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::GameInvariant)
@@ -741,7 +826,9 @@ namespace Reflection
 
 			state.EnterNewFolder("Nexus")->attachment.reset(new Variable::PersistenceAttachment());
 				VAR(haveBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
-				VAR(haveSatellitesAtopBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
+				#ifndef NO_SATELLITES
+					VAR(haveSatellitesAtopBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
+				#endif
 				state.SetVariable(CLI::PVariable(new Variable::NexusAIEnabled("enableAI")));
 				//VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
 				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::ConfigOverridesSavegame)
@@ -1130,7 +1217,44 @@ namespace Reflection
 	}
 
 
+	void SignalFactionsChanged()
+	{
+		bool anyDeleted = false;
+		for (index_t i = 0; i < factionFolder->folders.Count(); i++)
+		{
+			const auto&f = factionFolder->folders[i];
+			Variable::PFactionAttachment attach = To<Variable::FactionAttachment>::DynamicCast(f->attachment);
+			if (!attach)
+			{
+				LogEvent(EventClass::Preset::internalError, "Found faction folder '"+f->name+"' without attachment");
+				state.EraseFolder(f);
+				i--;
+				anyDeleted = true;
+				continue;
+			}
 
+			if (!Objects::Faction::FindByID(attach->id))
+			{
+				state.EraseFolder(f);
+				i--;
+				anyDeleted = true;
+				continue;
+			}
+		}
+//		if (anyDeleted)
+	//		RemoteControl::SignalFoldersErased();
+		Objects::ForeachFaction([](const Objects::PFaction&faction)
+		{
+			String idName = faction->id.ToFullString();
+			if (factionFolder->folders.Query(idName))
+				return;
+			CLI::PFolder f = factionFolder->CreateOrGetChild(idName);
+
+			f->attachment.reset(new Variable::FactionAttachment(faction->id));
+
+			f->commands.Insert("kill", FactionCommands::kill);
+		});
+	}
 
 }
 

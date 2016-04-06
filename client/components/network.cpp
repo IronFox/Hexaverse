@@ -1076,7 +1076,7 @@ namespace Network
 			case TCP::Event::ConnectionLost:
 			case TCP::Event::ConnectionClosed:
 			{
-				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, "Connection lost");
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, "Connection lost ("+client.GetError(true)+")");
 				amOnline = false;
 
 				FlushFaction(true);
@@ -1453,8 +1453,6 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	LogEvent(EventSignificance::Common,nullptr,"Server phase changed to "+String(RuntimeConfig::phase.ToString())+" ("+String(c.timeFactor.value)+") @"+String(Animation::atTime));
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 	{
-		Objects::CheckMobileEntitySanity();
-
 		static Buffer0<Objects::Marker> outdated;
 		Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10);
 		foreach(outdated, o)
@@ -1495,8 +1493,9 @@ void	Network::Receiver::LockEmpZones(NET(UINT16)&zones)
 			Grid::low.family[i].SetOutdated(0);
 		}
 	#endif
-	Grid::visibleOrbitGrid.Invalidate();
-	//SpaceGrid::Invalidate();
+	#ifndef NO_SATELLITES
+		Grid::visibleOrbitGrid.Invalidate();
+	#endif
 }
 
 void	Network::Receiver::TechniteMessage(Protocol::TechniteMessage&msg)
