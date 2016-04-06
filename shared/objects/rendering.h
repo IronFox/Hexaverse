@@ -108,7 +108,9 @@ namespace Objects
 		void	Render(Structure&s, float light);
 		void	Render(Structure&s);
 
-		void	Render(Satellite&s, float light);
+		#ifndef NO_SATELLITES
+			void	Render(Satellite&s, float light);
+		#endif
 
 		void	RenderSimple(WorldEntity&e, bool includeFoundationIfStructure=false);
 		void	RenderSimpleIdentity(WorldEntity&e, bool includeFoundationIfStructure=false);
@@ -198,6 +200,8 @@ namespace Objects
 		@param pulse Set true to let active entity colors pulse, false to use time-invariant colors
 		*/
 		void	RefreshFactionColors(bool pulse);
+		void	Flush();
+
 
 		/**
 		Registers a new smoke trail as created by a weapon discharge

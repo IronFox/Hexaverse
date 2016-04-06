@@ -521,7 +521,11 @@ namespace Network
 			ASSERT__(Network::haveID || Network::amSpectator);
 			TechniteLogicLink::Handle(vc);
 
-			Objects::PMobileEntity v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner,0xFF),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,vc.state.entityState.timestamp.rightNow,Network::haveID && Network::myID == vc.owner);
+
+			Objects::PMobileEntity v;
+			auto m = vc.state.myMobileEntity.Get0();
+			bool place = vc.state.entityState.timestamp.rightNow && (!m || m->storedIn.Get0() == 0);
+			v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner,0xFF),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,place,Network::haveID && Network::myID == vc.owner);
 			if (vc.state.entityState.timestamp.rightNow)
 				LogEvent(EventSignificance::Common,v.get(),  "Placed vehicle entity outside animation");
 			bool isOwnedByMe = v->isOwnedByMe;
@@ -624,8 +628,9 @@ namespace Network
 				{
 					Animation::ExplodeEntity(e,[e,type]()
 					{
+						float t = 0;
 						if (Objects::GetEntity(e->id))
-							Objects::Remove(e,type, 0,Network::ControlEnabled());
+							Objects::Remove(e,type, t,Network::ControlEnabled());
 						#ifdef HAS_WINDOW
 							Dialog::SignalSituationChange();
 						#endif
@@ -633,7 +638,8 @@ namespace Network
 				}
 				else
 				{
-					Objects::Remove(e,type, 0,Network::ControlEnabled());
+					float t = 0;
+					Objects::Remove(e,type, t,Network::ControlEnabled());
 					#ifdef HAS_WINDOW
 						Dialog::SignalSituationChange();
 					#endif
@@ -690,6 +696,11 @@ namespace Network
 			if (haveFaction)
 			{
 				amSpectator = cr.startFactionTypes == Protocol::FactionType::SpectatorFaction;
+				#ifdef HAS_WINDOW
+					Objects::resourceView = !amSpectator;
+					UI::RefreshButtonState();
+				#endif
+
 				activeToken = cr.factionToken;
 				activeTokenString = activeToken.ToString();
 				if (!RuntimeConfig::aiMode && !amSpectator)
@@ -1146,7 +1157,7 @@ namespace Network
 			case TCP::Event::ConnectionLost:
 			case TCP::Event::ConnectionClosed:
 			{
-				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, "Connection lost");
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, "Connection lost ("+client.GetError(true)+")");
 				amOnline = false;
 
 				FlushFaction(true);
@@ -1189,11 +1200,7 @@ namespace Network
 				gameHasBegun = true;
 				LogEvent(EventClass::Preset::uncommon,nullptr,"Game has begun");
 				if (RuntimeConfig::IsInAnyCommandPhase() && Animation::AllDone())
-				{
-					Objects::RefreshSkyHubConnections();
-					Animation::UpdateAutomation(CLOCATION);
-					TechniteLogicLink::ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
-				}
+					OnPlayerControlBegin();
 			break;
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();
@@ -1530,8 +1537,6 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	LogEvent(EventSignificance::Common,nullptr,"Server phase changed to "+String(RuntimeConfig::phase.ToString())+" ("+String(c.timeFactor.value)+") @"+String(Animation::atTime));
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 	{
-		Objects::CheckMobileEntitySanity();
-
 		static Buffer0<Objects::Marker> outdated;
 		Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10);
 		foreach(outdated, o)
@@ -1587,8 +1592,9 @@ void	Network::Receiver::LockEmpZones(NET(UINT16)&zones)
 			Grid::low.family[i].SetOutdated(0);
 		}
 	#endif
-	Grid::visibleOrbitGrid.Invalidate();
-	//SpaceGrid::Invalidate();
+	#ifndef NO_SATELLITES
+		Grid::visibleOrbitGrid.Invalidate();
+	#endif
 }
 
 

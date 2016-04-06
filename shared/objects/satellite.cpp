@@ -1,11 +1,14 @@
 #include <global_root.h>
 #include "satellite.h"
+#ifndef NO_SATELLITES
+
 #include "gridAndChoices.h"
 #include "faction.h"
 
 namespace Objects
 {
 
+	/*static*/ Buffer0<ConstName>	SkyHub::supportsProduction;
 	Buffer0<PSatellite>	satellites;
 	//bool					satellitesAreLocked = false;
 
@@ -261,8 +264,9 @@ namespace Objects
 
 
 
-	void			SkyHub::OnConstructionFinished(float atTime)
+	void			SkyHub::OnConstructionFinished(float&atTime)
 	{
+		Super::OnConstructionFinished(atTime);
 		SyncTime(atTime);
 		UpdateConnections();
 	}
@@ -306,38 +310,13 @@ namespace Objects
 
 	/*static*/ int				Satellite::GetGroundHeight(const Grid::LCellIdI&location)
 	{
-		UINT32 fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-		return Detail::WalkStack(Grid::actualWorld.cellStack[fine],false);
+		return Component::Turret::GetGroundHeight(location);
 	}
 
 
 	int						Satellite::GetGroundHeight() const
 	{
 		return GetGroundHeight(location);
-	}
-
-
-	/*static*/ int			Satellite::Detail::WalkStack(const Grid::CellStack&stack, bool failOnStructureCount)
-	{
-		UINT32 h;
-		for (h = Grid::CellStack::Range-1; h < Grid::CellStack::Range; h--)
-		{
-			const Grid::CellStack::Cell&c = stack.volumeCell[h];
-			if (c.content != Grid::Content::Clear)
-				break;
-		}
-		h++;
-		if (h >= Grid::CellStack::Range-1)
-			return badHeight;
-		if (failOnStructureCount)
-		{
-			const Grid::CellStack::Cell&c = stack.volumeCell[h];
-			if (c.structureCounter > 1)
-				return badHeight;
-		}
-
-		return Grid::CellStack::ToHeight(h);
-		
 	}
 
 
@@ -384,13 +363,13 @@ namespace Objects
 		#else
 			index_t finer = who->location.stackID;
 		#endif
-		int h = Detail::WalkStack(Grid::actualWorld.cellStack[finer],true);
+		int h = Grid::actualWorld.cellStack[finer].FindTopClearOverNonClear(true);
 		if (h == badHeight)
 			return badHeight;
 		#ifdef HYBRID_GRID
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 			{
-				int h2 = Detail::WalkStack(Grid::actualWorld.cellStack[c.neighborhood.neighborID[j]],true);
+				int h2 = Grid::actualWorld.cellStack[c.neighborhood.neighborID[j]].FindTopClearOverNonClear(true);
 				if (h2 == badHeight)
 					return badHeight;
 				h = std::max(h2,h);
@@ -401,6 +380,7 @@ namespace Objects
 
 	/*static*/ void SkyHub::RegisterProduction(const PWorldEntity&s)
 	{
+		supportsProduction << s->GetCTypeName();
 		#ifdef HAS_WINDOW
 			//int2 at = AllocateProductionSlot();
 			CallbackCommand::FOnExecute exec = s->IsStructure() 
@@ -583,7 +563,27 @@ namespace Objects
 
 	#ifndef CLIENT
 
+		/*virtual override*/ void		Satellite::MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
+		{
+			if (oldLocation == newLocation)
+				return;
+			Super::RegisterSensory(location,motionTime,false,newContacts);
+			Super::UnregisterSensory(oldLocation,motionTime,false);
+			if (turret->groundScanningRange > 0)
+			{
+				ASSERT__(newLocation == location);
+				Grid::SkySensorState state = skySensorState;
+				LogEvent(EventSignificance::Common,this,"Processing ground-sensor motion");
+				float range = EMPModify(turret->groundScanningRange,2);
+				Grid::actualWorld.MapSensorState(newLocation.stackID,range,newLocation.height,turret->groundScannerPenetration,skySensorState);
+				Grid::actualWorld.UpdateSensorState(skySensorState);
 
+				owner->RegisterSensorCreation(skySensorState,atTime,false, newContacts);
+				atTime += timeEpsilon;
+				owner->RegisterSensorRemoval(state,atTime,checkChangesNow);
+				atTime += timeEpsilon;
+			}
+		}
 
 		PSkyLinkStructure				Satellite::RemoteSupplyFuel(float&atTime)
 		{
@@ -615,9 +615,9 @@ namespace Objects
 
 					Compound&compound = port->CastToStructure()->GetCompound();
 					int available = compound.total.storage.level[Resource::Fuel];
-					#ifdef ONE_COMPOUND_PER_FACTION
-						available += compound.overproduction.level[Resource::Fuel];
-					#endif
+					//#ifdef ONE_COMPOUND_PER_FACTION
+					available += compound.GetOverproduction(Resource::Fuel);
+					//#endif
 
 					if (available >= demand)
 					{
@@ -652,7 +652,7 @@ namespace Objects
 				Compound&cmp = port->CastToStructure()->GetCompound();
 				if (cmp.total.balance.level[Resource::Minerals] >= (int)MobileEntityProducer::productionPerRound)
 				{
-					MobileEntityProducer::Tick(cmp.total.balance);
+					MobileEntityProducer::Tick(cmp.total.balance,atTime);
 				}
 				else
 					LogEvent(EventClass::Preset::operationAborted,this,"Insufficient resources available in "+port->CastToStructure()->GetNiceName()+". Delaying production");
@@ -872,16 +872,6 @@ namespace Objects
 	#endif /*0*/
 
 
-	/*virtual override*/ bool					Satellite::HasAmmoForShot() const
-	{
-	#ifdef ONE_COMPOUND_PER_FACTION
-		const Compound&compound = owner->compound;
-		return compound.total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	#else
-		return currentStorage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	#endif
-	}
-
 	
 	#ifndef CLIENT
 		/*virtual override*/ bool					Satellite::FillAttackQueue()
@@ -1063,3 +1053,4 @@ namespace Objects
 
 
 }
+#endif

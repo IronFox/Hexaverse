@@ -97,6 +97,7 @@ namespace Objects
 
 
 		const TVec3<>&				GetWorldPosition() const {return system.w.xyz;}
+		static TVec3<>				GetWorldPosition(const Grid::LCellIdI&loc) {return Grid::ToWorld(loc);}	//might change in the future. Have to make sure that the various system build functions in systems.cpp match
 
 		/**
 		Assembles a name composed of the parent management class name and the local instance id
@@ -181,6 +182,19 @@ namespace Objects
 		{
 			#ifndef CLIENT
 				remoteTime = motionTime = std::max(motionTime,remoteTime);
+			#endif
+		}
+
+		inline void					SyncTime(WorldEntity&other, float&remoteTime, float timeOffset)
+		{
+			#ifndef CLIENT
+				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime)) + timeOffset;
+			#endif
+		}
+		inline void					SyncTime(WorldEntity&other, float&remoteTime)
+		{
+			#ifndef CLIENT
+				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime));
 			#endif
 		}
 
@@ -335,14 +349,14 @@ namespace Objects
 		Structures should handle compound disconnections and struct count decreases.
 		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
 		*/
-		virtual void				OnDestroy(RemovalType, float atTime)	{};	
+		virtual void				OnDestroy(RemovalType, float&atTime)	{};	
 
 		/**
 		Signals that the local entity has been created.
 		Structures should handle compound disconnections and struct count decreases.
 		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
 		*/
-		virtual void				OnConstructionFinished(float atTime);
+		virtual void				OnConstructionFinished(float&atTime);
 
 		/**
 		Called exactly once on the prototype instance only, once instantiation of all prototype objects is completed (other prototypes may be references, but might not be set up yet).
@@ -366,19 +380,14 @@ namespace Objects
 		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { zOffset = 0; return PConstTurretBase();}
 		inline PConstTurretBase		GetTurretBase() const { float dummy; return GetTurretBase(dummy);}
 
-		TurretTrajectory			TraceTrajectory(const Grid::WorldData&world, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell) const;
-		TurretTrajectory			TraceTrajectory(const Grid::WorldData&world, const Grid::LCellIdI&dest, TVec3<>&impactAt) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::WorldData&world, const Grid::LCellIdI&source, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::WorldData&world, const Grid::LCellIdI&source, const Grid::LCellIdI&dest, TVec3<>&impactAt) const;
-		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TVec3<>&dest) const;
-		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const Grid::LCellIdI&dest) const;
-		bool						CanHit(const TVec3<>&dest) const;
-		bool						CanHit(const Grid::LCellIdI&dest) const;
-		/**
-		Like CanHit() but includes exposion radius to some extend
-		*/
-		bool						CanHitSomehow(const TVec3<>&dest) const;
-		bool						CanHitSomehow(const Grid::LCellIdI&dest) const;
+		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
+		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
+		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const;
+		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest) const;
+		bool						CanHit(const TrajectoryEndPoint&dest, float&outAngle) const;
+		bool						CanHit(const TrajectoryEndPoint&dest) const;
 		bool						IsSleeping() const {return sleeping;}
 
 		virtual bool				AwaitsUserInteraction() const {return false;}
@@ -394,7 +403,9 @@ namespace Objects
 		virtual bool				IsMobile() const {return false;}
 		virtual bool				IsTower() const {return false;}
 		virtual bool				IsVehicle() const {return false;}
-		virtual bool				IsSatellite() const {return false;}
+		#ifndef NO_SATELLITES
+			virtual bool			IsSatellite() const {return false;}
+		#endif
 		virtual bool				IsStructure() const {return false;}
 		//virtual bool				IsVehiclePlant() const {return false;}
 		//these are performance optimizations. Some visualizations may behave unexpectedly if they are not
@@ -404,7 +415,36 @@ namespace Objects
 		virtual const MobileEntityProducer*	CastToProducer() const {return nullptr;}
 
 
+		/**
+		Casts the local entity to an appropriate hangar structure if it can store the given mobile entity @a e
+		If storage is not possible due to type constraints (NOT capacity constraints), the return value must be
+		empty.
+		*/
+		virtual PHangar				CastToDestinationForType(const MobileEntity&e) {return PHangar();}
+		virtual bool				IsHangar() const {return false;}
+
 		virtual bool				IsIndestructible() const	{return false;};
+
+		/**
+		Checks if the local entity is currently above the regular grid (e.g. a satellite)
+		*/
+		inline bool					IsAboveGrid() const	{return location.height > Grid::CellStack::TopHeight;}
+
+		/**
+		Checks whether or not a new instance of the local class can be spawned within the world grid
+		*/
+		virtual bool				CanSpawnInGrid() const {return true;}
+		/**
+		Checks whether or not a new instance of the local class can be spawned above grid
+		@param[out] outHeight Height that a new instance can be spawned at. Not updated if the method returns false
+		@return true, if a new instance can be spawned above grid. @a outHeight will be updated to a valid non-grid height in this case
+		*/
+		virtual bool				CanSpawnAboveGrid(int&outHeight) const {return false;}
+
+		/**
+		Sentry entities automatically fill their attack queue
+		*/
+		virtual bool				IsSentry() const {return false;}
 
 		#ifdef HAS_WINDOW
 			virtual void			OnSelect()	{};
@@ -423,11 +463,14 @@ namespace Objects
 
 		virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
 		virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true);
-		void					MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow=true);
 		#ifdef CLIENT
+			void				MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow=true);
 			virtual void		RegisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
 			virtual void		UnregisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
 			//virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to);
+		#else
+			virtual void		MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
+
 		#endif
 
 

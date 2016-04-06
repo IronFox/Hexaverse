@@ -26,15 +26,13 @@ namespace Objects
 	public:
 		static const UINT32 InvalidNetwork = 0xFFFFFFFF;
 
-
-
-		Buffer0<WWorkingStructure>	containedStructures;
-		FullResourceVector			total;
-		#ifndef CLIENT
-			#ifdef ONE_COMPOUND_PER_FACTION
-				ResourceVector		overproduction;	//set during initial phases, cleared before animation phase
-			#endif
+		#if defined WIRELESS_VEHICLES && defined CLIENT
+			float4					color;
 		#endif
+
+		Buffer0<WWorkingStructure>	workingStructures;
+		Buffer0<WStructure>			allStructures;
+		FullResourceVector			total;
 
 		bool						stable;
 		//ID							hashIdentifier;
@@ -42,33 +40,35 @@ namespace Objects
 		#ifndef CLIENT
 			static WorkingStructure*lastDisabled;
 		#endif
+		static PWorkingStructure	Reference(const WWorkingStructure&_s);
+		count_t						CountWorkingStructures() const;
+
+		#ifndef CLIENT
+			ResourceVector	GetOverproduction() const;
+			int				GetOverproduction(Resource) const;
+			void			DistributeOverproduction(const ResourceVector&v);
+			void			ForceWithdrawOverproduction(Resource res ,int positiveAmount);
+			void			TryWithdrawOverproduction(ResourceVector&positiveVector);
+		#endif
 
 		void				Clear()
 		{
 			total = FullResourceVector();
-			containedStructures.Clear();
-			#ifndef CLIENT
-				#ifdef ONE_COMPOUND_PER_FACTION
-					overproduction = ResourceVector();
-				#endif
-			#endif
+			workingStructures.Clear();
+			allStructures.Clear();
 		}
 
 		void				swap(Compound&other)
 		{
-			containedStructures.swap(other.containedStructures);
+			workingStructures.swap(other.workingStructures);
+			allStructures.swap(other.allStructures);
 			swp(total,other.total);
 			swp(stable,other.stable);
-			#ifndef CLIENT
-				#ifdef ONE_COMPOUND_PER_FACTION
-					swp(overproduction,other.overproduction);
-				#endif
-			#endif
-			//swp(hashIdentifier,other.hashIdentifier);
 		}
 		void				Compact()
 		{
-			containedStructures.Compact();
+			workingStructures.Compact();
+			allStructures.Compact();
 		}
 
 		void				AppendStructure(Structure*s);
@@ -79,8 +79,7 @@ namespace Objects
 			void			FeedLeftovers(ResourceVector&vector, float atTime);
 
 
-			void			Collect(ResourceVector demand, float atTime);
-			void			Distribute(ResourceVector supply, float atTime);
+			void			ChangeStorage(ResourceVector&supply, float atTime);
 			FullResourceVector	GetVector(const Array<bool>&virtualEnabled) const;
 		#endif
 		bool				CanEnable(WorkingStructure*, String&outWhy, bool ignoreCanEnable=false) const;

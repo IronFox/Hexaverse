@@ -237,6 +237,14 @@ namespace Objects
 				static const int compare0[Resource::NumberOfPossibilities] = {0};
 				return !VecUnroll<Resource::NumberOfPossibilities>::oneLess(level,compare0);
 			}
+
+			bool	AnyIsSet(const ResourceFlagSet&set) const
+			{
+				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+					if ((set & i) && level[i] != 0)
+						return true;
+				return false;
+			}
 		};
 
 

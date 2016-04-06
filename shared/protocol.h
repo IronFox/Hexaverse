@@ -50,11 +50,16 @@ namespace PortOffset
 	#define NAME_APPEND1
 #endif
 
+#ifdef NO_SATELLITES
+	#define NAME_APPEND_S	"s"
+#else
+	#define NAME_APPEND_S
+#endif
 #define NAME_APPEND2	"t"
 
-#define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION NAME_APPEND0 NAME_APPEND1 NAME_APPEND2
 
 
+#define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION NAME_APPEND0 NAME_APPEND1 NAME_APPEND2 NAME_APPEND_S
 #include "objects/resource.h"
 
 namespace Protocol
@@ -1184,7 +1189,7 @@ namespace Protocol
 		, TechniteFactionDeltaArray, data1
 	)
 
-	namespace EntityStateFlag
+	namespace EntityStateFlags
 	{
 		enum flag_t
 		{
@@ -1203,10 +1208,19 @@ namespace Protocol
 		, NET(BYTE), entityStateFlags
 	)
 
+	namespace TaskFlags
+	{
+		enum flag_t
+		{
+			VisualizePathToFocus = 0x1,
+			DelayedBySleep = 0x2,
+		};
+	}
+
 	NETSTRUCT9(MobileTask
 		, NET(UINT8), type
 		, NET(UINT8), mode
-		, NET(bool), visualizePathToFocus
+		, NET(UINT8), taskFlags
 		, NETA(LCellIdI), foci
 		, Package::NetString<256>, name
 		, NET(USHORT), roundsToJobCompletion
@@ -1647,20 +1661,22 @@ namespace Protocol
 		, NET(float), timeNeeded
 	)
 
-	NETSTRUCT6(VagueAttackTrajectory
+	NETSTRUCT7(VagueAttackTrajectory
 		, Timestamp, timestamp
 		, NET(float), flightTime
 		, NET(TVec3<>), sourcePosition
 		, NET(ConstName), turretType
 		, NET(float), turretRange
-		, LCellIdI, traceTo
+		, NET(float), attackAngle
+		, NET(TVec3<>), traceTo
 	)
 
-	NETSTRUCT5(PreciseAttackTrajectory
+	NETSTRUCT6(PreciseAttackTrajectory
 		, Timestamp, timestamp
 		, NET(float), flightTime
 		, NET(TUniqueID), attacker
-		, LCellIdI, traceTo
+		, NET(float), attackAngle
+		, NET(TVec3<>), traceTo
 		, NET(bool), isAutoAttack
 	)
 
@@ -1736,7 +1752,7 @@ namespace Protocol
 	)
 
 
-	namespace DirectFlag
+	namespace DirectFlags
 	{
 		enum flag_t
 		{
@@ -1747,7 +1763,7 @@ namespace Protocol
 	}
 
 	/**
-	If directFlags contains DirectFlag::Explicit, path is considered explicit with one entry per neighboring node.
+	If directFlags contains DirectFlags::Explicit, path is considered explicit with one entry per neighboring node.
 	In this case the command is rejected, if the path is not possible when applied to the known world of the respective client.
 	If the path is found to be inapplicable during computation phases, an automatically determined path to the last given node is computed and applied, then dropped.
 	Path must always be of at least length 1

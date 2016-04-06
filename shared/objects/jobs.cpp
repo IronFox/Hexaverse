@@ -32,6 +32,10 @@ namespace Objects
 			resourceCostLeft = std::max(cost,0);
 		}
 
+		BYTE					BaseJob::GetConstructionActionCostPerRound(const MobileEntity&v) const
+		{
+			return MobileEntity::MaxConstructionActionLeft >> v.GetConstructionAcceleration(GetOperationAffinity());
+		}
 
 
 		#ifndef CLIENT
@@ -83,8 +87,11 @@ namespace Objects
 
 				resourceCostLeft = 0;
 
-				if (jobAutoCompletion == BaseJob::Autocomplete::Always || 
-					(jobAutoCompletion == BaseJob::Autocomplete::IfSatellite && v.IsSatellite())
+				if (jobAutoCompletion == BaseJob::Autocomplete::Always 
+					#ifndef NO_SATELLITES
+						|| 
+						(jobAutoCompletion == BaseJob::Autocomplete::IfSatellite && v.IsSatellite())
+					#endif
 					)
 				{
 					continue_t rs = Finish(v,focus);
@@ -746,7 +753,9 @@ namespace Objects
 			Remove(v.shared_from_this(),Objects::RemovalType::ControlledExplosion,v.motionTime,true);
 			v.motionTime += timeEpsilon;
 
-			Explode(PWorldEntity(),v.location,0.f,Grid::HCellIdI(Grid::low.grid.GetCell(v.location.stackID).higherEquivalent,v.location.height),v.GetWorldPosition(),radius,damageLevel,doomsday,v.motionTime);
+	
+
+			Explode(TAttack(),Grid::HCellIdI(Grid::low.grid.GetCell(v.location.stackID).higherEquivalent,v.location.height),v.GetWorldPosition(),radius,damageLevel,doomsday,v.motionTime);
 
 			return TerminalFailureVehicleDestroyed;
 		}

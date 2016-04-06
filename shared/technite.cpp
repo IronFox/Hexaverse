@@ -939,30 +939,30 @@ namespace Technites
 	}
 
 	#ifdef _DEBUG
-	/*static*/ bool			Faction::VerifyAtomicIsVisibleAndMatches(const Objects::PFaction&f, const Grid::HCellIdU&cellID, const Grid::HCellIdU&techniteIn)
-	{
-		const auto&cell = f->visibility.cellStack[cellID.stackID].volumeCell[cellID.layer];
-		if (cell.visibility <= 0)
+		/*static*/ bool			Faction::VerifyAtomicIsVisibleAndMatches(const Objects::PFaction&f, const Grid::HCellIdU&cellID, const Grid::HCellIdU&techniteIn)
 		{
-			mutex.lock();
-			LogEvent(techniteError,"Visibility mismatch in cell "+techniteIn.ToString()+". Expected this cell to be visibile");
-			ReportLocation(techniteIn);
-			mutex.unlock();
-			return false;
+			const auto&cell = f->visibility.cellStack[cellID.stackID].volumeCell[cellID.layer];
+			if (cell.visibility <= 0)
+			{
+				mutex.lock();
+				LogEvent(techniteError,"Visibility mismatch in cell "+techniteIn.ToString()+". Expected this cell to be visibile");
+				ReportLocation(techniteIn);
+				mutex.unlock();
+				return false;
+			}
+			//const auto&cell2 = f->currentState.cellStack[cellID.stackID].volumeCell[cellID.layer];
+			//Grid::Content known = Grid::Content::Reinterpret(cell2.content);
+			//Grid::Content actual = Grid::Content::Reinterpret(Faction::atomicGrid.cellStack[cellID.stackID].volumeCell[cellID.layer].content);
+			//if (known != actual)
+			//{
+			//	mutex.lock();
+			//	LogEvent(EventType::TechniteLogic,nullptr,"Visibility mismatch in cell "+cellID.ToString()+". Expected this cell to contain "+actual.ToString()+", but found"+known.ToString());
+			//	ReportLocation(cellID);
+			//	mutex.unlock();
+			//	return false;
+			//}
+			return true;
 		}
-		//const auto&cell2 = f->currentState.cellStack[cellID.stackID].volumeCell[cellID.layer];
-		//Grid::Content known = Grid::Content::Reinterpret(cell2.content);
-		//Grid::Content actual = Grid::Content::Reinterpret(Faction::atomicGrid.cellStack[cellID.stackID].volumeCell[cellID.layer].content);
-		//if (known != actual)
-		//{
-		//	mutex.lock();
-		//	LogEvent(EventType::TechniteLogic,nullptr,"Visibility mismatch in cell "+cellID.ToString()+". Expected this cell to contain "+actual.ToString()+", but found"+known.ToString());
-		//	ReportLocation(cellID);
-		//	mutex.unlock();
-		//	return false;
-		//}
-		return true;
-	}
 	#endif
 
 	void			VerifyGrid()
@@ -1096,8 +1096,10 @@ namespace Technites
 					_m->lock()->RegisterSensory(t,false);
 				foreach (tf->structures,_s)
 					_s->lock()->RegisterSensory(t,false);
-				foreach (tf->satellites,_sat)
-					_sat->lock()->Objects::WorldEntity::RegisterSensory(t,false);
+				#ifndef NO_SATELLITES
+					foreach (tf->satellites,_sat)
+						_sat->lock()->Objects::WorldEntity::RegisterSensory(t,false);
+				#endif
 				foreach (tf->technites,tc)
 					tf->RegisterTechniteSensory(tc->location.GetU(), t,false);
 				tf->visibility.UnlockChangeChecking(0.f);
@@ -1223,8 +1225,10 @@ namespace Technites
 						_m->lock()->RegisterSensory(t,false);
 					foreach (tf->structures,_s)
 						_s->lock()->RegisterSensory(t,false);
-					foreach (tf->satellites,_sat)
-						_sat->lock()->Objects::WorldEntity::RegisterSensory(t,false);
+					#ifndef NO_SATELLITES
+						foreach (tf->satellites,_sat)
+							_sat->lock()->Objects::WorldEntity::RegisterSensory(t,false);
+					#endif
 					foreach (tf->technites,tc)
 						tf->RegisterTechniteSensory(tc->location.GetU(),t,false);
 					tf->visibility.UnlockChangeChecking(0.f);

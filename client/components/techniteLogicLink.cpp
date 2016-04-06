@@ -86,10 +86,12 @@ namespace TechniteLogicLink
 		obj.isBroad = e->IsBroad();
 		obj.isMine = e->isOwnedByMe;
 		obj.className = e->GetTypeName();
-		if (e->IsSatellite())
-			obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Satellite;
-		elif (e->IsVehicle())
+		if (e->IsVehicle())
 			obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Vehicle;
+		#ifndef NO_SATELLITES
+			elif (e->IsSatellite())
+				obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Satellite;
+		#endif
 		elif (e->IsStructure())
 			obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Building;
 		else
@@ -147,8 +149,9 @@ namespace TechniteLogicLink
 		}
 		else
 		{
-			Objects::PWorldEntity e = Objects::GetSatellitePrototypeByName(mobile.baseName);
+			Objects::PWorldEntity e = Objects::GetNonVehiclePrototypeByName(mobile.baseName);
 			ASSERT1__(e,(int)mobile.baseName.value);
+			ASSERT1__(e->IsMobile(),e->GetTypeName());
 			obj.className = e->GetTypeName();
 			obj.id.type = (BYTE)TechniteProtocol::GameObjectType::Satellite;
 			obj.height = e->GetHeight();

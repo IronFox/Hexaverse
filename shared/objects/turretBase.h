@@ -107,7 +107,13 @@ namespace Objects
 		int						CountPossibleAttacks() const {return GetAttacksPerRound() * GetAttackActionLeft();}
 		virtual bool			NextTaskIsAttack() const = 0;
 		virtual float			GetFlatAttackRange() const = 0;
-		virtual bool			HasAmmoForShot() const = 0;
+
+		/**
+		Checks if there are enough resources available for a single shot.
+		Cannot be const due to the complexity of resource allocation of mobile entities.
+		Must not persistently alter the local entity, however.
+		*/
+		virtual bool			HasAmmoForShot() = 0;
 		
 		/**
 		Determines whether or not the local turret base can hit a given location.
@@ -118,7 +124,7 @@ namespace Objects
 			Otherwise a close approximation will be given that is still in range but will hit the target through the explosion radius
 		@return true if an applicable destination was found, false otherwise
 		*/
-		bool					ExtCanHit(const OwnerParameter&myFaction, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&destIn, Grid::LCellIdI&destOut)	const;
+		bool					ExtCanHit(const OwnerParameter&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, Grid::LCellIdI&destOut)	const;
 
 
 

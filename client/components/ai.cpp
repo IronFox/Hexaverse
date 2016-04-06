@@ -191,12 +191,12 @@ namespace AI
 		//float distance = Vec::quadraticDistance(source.system.w.xyz,candidate.system.w.xyz);
 		//const float range = source.GetAttackRange();
 		Grid::LCellIdI target;
-		if (source.ExtCanHit(source.owner, source.location,source.base->height,candidate.location,target))
+		if (source.ExtCanHit(source.owner, Objects::TrajectoryEndPoint( source.location,source.base->height),Objects::TrajectoryEndPoint( candidate.location,0 ),target))
 		{
 
 
 			TVec3<> detonationAt;
-			Objects::TurretTrajectory rs = source.TraceTrajectory(Grid::actualWorld,target,detonationAt);
+			Objects::TurretTrajectory rs = source.TraceTrajectory(Objects::TrajectoryEndPoint( target),detonationAt);
 			LogEvent(EventSignificance::Debug,&source,"Checking possible attack trajectory to "+candidate.GetName()+", attacking "+target.ToString()+", detonating at "+Vec::toString(detonationAt)+": "+rs.ToString());
 
 			if (rs == Objects::TurretTrajectory::InvalidTrajectory)
@@ -440,7 +440,7 @@ namespace AI
 				float badWeight = 0;
 				Objects::ForeachWorldEntity([&goodWeight,&badWeight,reference](const Objects::PWorldEntity&e)
 				{
-					if (e->isOwnedByMe || e->IsSatellite())
+					if (e->isOwnedByMe IF_SATELLITES( || e->IsSatellite() ))
 					{
 						//if (distance < 16.f)
 						//	badWeight += 100.f / (1.f + distance);	//repell close vehicles a bit

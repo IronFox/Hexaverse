@@ -64,7 +64,7 @@
 		Terraformers can construct every building type in the game, assuming they have sufficient supply of %MINERALS%(minerals).
 		They can also dig tunnels, build roads, or walls. This makes them The most versatile and valuable vehicle in %PRODUCT_NAME%.
 		Do not risk them lightly.
-		If they have insufficient supply of %MINERALS%, the active command will be halted until enough resources are again available.
+		If they have insufficient supply of %MINERALS%, the active command may be halted until enough resources are again available, or aborted, depending on circumstances.
 		<!--If they run out of %MINERALS%, they can restock from every owned structure, connector, or even vehicle in the vicinity.-->
 	</message>
 	<message name='Surveyor' image='surveyor.png'>

@@ -13,7 +13,6 @@ namespace Objects
 
 
 
-
 	/**
 	Persistent scene markers added/removed by the client.
 	Markers are visible only to the owning faction, and do not hinder movement or construction.
@@ -220,8 +219,10 @@ namespace Objects
 			CryptographicID	accessToken;
 			Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
 										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
-			Buffer0<WSatellite>			satellites;
-			Buffer0<WSkyHub>			skyHubs;	//overlaps with satellites
+			#ifndef NO_SATELLITES
+				Buffer0<WSatellite>		satellites;
+				Buffer0<WSkyHub>		skyHubs;	//overlaps with satellites
+			#endif
 			Buffer0<WStructure>			structures;
 
 			Buffer0<WTower>				towers;
@@ -308,7 +309,7 @@ namespace Objects
 
 			//void		SignalCoverageChange(const bool*familiesChanges, float atTime);
 
-			bool		HasActiveMobile(const PMobileEntity&v, bool forceDoNotCheckSatellites=false) const;
+			bool		HasActiveMobile(const PMobileEntity&v) const;
 			bool		HasMobileInStorage(const PMobileEntity&v) const;
 			void		RegisterLoss(const PWorldEntity&);
 			void		RegisterStructureLoss(const PWorldEntity&);
@@ -333,12 +334,13 @@ namespace Objects
 
 			void		RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
 			void		RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow);
-			void		RegisterSensorCreation(const Sphere<>&, bool isSatellite, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
-			void		RegisterSensorMotion(const Sphere<>&from, bool isSatellite, const Sphere<>&to, float&t, bool checkChangesNow);
-			void		RegisterSensorRemoval(const Sphere<>&, bool isSatellite, float&t, bool checkChangesNow);
+			void		RegisterSensorCreation(const Sphere<>&, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
+			void		RegisterSensorMotion(const Sphere<>&from, int sensorHeight, const Sphere<>&to, float&t, bool checkChangesNow);
+			void		RegisterSensorRemoval(const Sphere<>&, int sensorHeight, float&t, bool checkChangesNow);
 
-			count_t		CountSatelliteCoverage(const TVec3<>&center)	const;
-			count_t		CountSatelliteCoverage(const Sphere<>&)	const;
+
+			count_t		CountOffGridCoverage(int channelHeight, const TVec3<>&)	const;
+			count_t		CountOffGridCoverage(const Sphere<>&)	const;
 
 			/**
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater

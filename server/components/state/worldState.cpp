@@ -314,9 +314,11 @@ namespace World
 			float t = timer.GetSecondsSince(t0);
 			LogEvent(EventSignificance::PerformanceMeasurement,"Time needed to process water: "+String(t));
 
-
 			for (const auto&e:waste)
-				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,0,false);
+			{
+				float at = 0;
+				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,at,false);
+			}
 			waste.Clear();
 		}
 
@@ -327,7 +329,8 @@ namespace World
 		Grid::currentPlanetConfig.RandomizeSeeds(random);
 		Grid::currentPlanetConfig.RandomizeSun(random);
 		Grid::BuildWorld(Grid::currentPlanetConfig,Config::worldDiscovery);
-		Objects::Faction::nexus->currentState = Grid::initialWorld;
+		if (Objects::Faction::nexus)
+			Objects::Faction::nexus->currentState = Grid::initialWorld;
 
 		if (RuntimeConfig::gameGoal == Game::Config::Goal::ConquerNexus)
 		{
@@ -474,7 +477,7 @@ namespace World
 			int unlocked = 0;
 			for (index_t i = 0; i < numZones; i++)
 			{
-				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
+				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked) && RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
 				{
 					unlocked++;
 				}
