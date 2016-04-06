@@ -1562,7 +1562,7 @@ namespace Objects
 						all.Erase(i);
 						break;
 					}
-				LogEvent(EventClass::Preset::factionDeath, "Faction terminated: " + f->id.ToString());
+				LogEvent(EventClass::Preset::factionDeath, "Faction terminated: " + f->GetLogName());
 				SignalFactionsChanged();
 			}
 			else
