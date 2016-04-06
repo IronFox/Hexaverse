@@ -450,7 +450,7 @@ namespace Receiver
 			client->faction.reset(new Objects::Faction(TUniqueID::Empty()));
 			faction = client->faction;
 			Objects::Faction::all << client->faction;
-			Game::SignalFactionsChanged();
+			SignalFactionsChanged();
 			client->faction->name = client->name;
 
 

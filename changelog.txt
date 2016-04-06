@@ -1,4 +1,8 @@
-v0.3.22
+v0.3.23
+	+ Added control commands to find and terminate factions.
+	* Fixed various visibility and grid issues causing client assertion failures and subsequent crashes.
+
+v0.3.22	[Apr 5 2016]
 	> Enabled vertical synchronization by default.
 	> Routing errors of automated vehicles (surveyors) are no longer visually logged.
 	> Some visual commands of vehicle plants now flash if action is expected.
@@ -10,7 +14,6 @@ v0.3.22
 	* Fixed unit deployment (from factories/storage) on slopes.
 	* Fixed deployment of units outside the regular grid (e.g. planes).
 	* Three or less active players, with emp zones, but no goal defines will now only unlock one zone (was two).
-	* Fixed various visibility and grid issues causing client assertion failures and subsequent crashes.
 	- Removed satellite system.
 
 v0.3.21	[Mar 31 2016]

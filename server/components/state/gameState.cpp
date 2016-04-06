@@ -6,6 +6,15 @@
 #include "../journalSaveGame.h"
 
 
+
+void			SignalFactionsChanged()
+{
+	Game::mostFactionsAlive = std::max(Game::mostFactionsAlive, (UINT32)Objects::Faction::all.Count());
+	Reflection::SignalFactionsChanged();
+}
+
+
+
 namespace Game
 {
 	UINT32				mostFactionsAlive=0;
@@ -16,12 +25,6 @@ namespace Game
 	float				factionStartMineralValue=1.f;	//determined during loading
 	float				effectiveAnimationLength = 1.f;
 
-
-
-	void			SignalFactionsChanged()
-	{
-		mostFactionsAlive = std::max(mostFactionsAlive,(UINT32)Objects::Faction::all.Count());
-	}
 
 
 	namespace Config
@@ -825,7 +828,6 @@ namespace Game
 								*/
 
 								Objects::Faction::Kill(faction);
-								SignalFactionsChanged();
 								if (client)
 									::Network::activePlayersAndSpectators.FindAndErase(client);
 								::Network::tokenMap.Unset(faction->accessToken);

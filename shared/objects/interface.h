@@ -68,6 +68,9 @@
 		bool	isAutoAttack=false;
 	};
 
+	/*
+	These functions signal certain events to the client application (the server in this case)
+	*/
 
 	void	SignalNewMobileEntity(const Objects::PMobileEntity&v, bool restoredFromStorage, float atTime);
 	void	SignalRemoval(const Objects::PWorldEntity&e, Objects::RemovalType t, float atTime);
@@ -82,6 +85,11 @@
 	void	SignalOwnershipChange(const Objects::PWorldEntity&e,const Objects::OwnerParameter&target, float t);
 	void	SignalNexusControlChange(const Objects::PFaction&f);
 	void	SignalChainReactionExplosion(const Grid::LCellIdI&center, float radius, int damageLevel, float atTime);
+	/**
+	Signals that a new faction has been created or an existing one has been removed.
+	Also replacement as happens when the nexus faction is recreated.
+	*/
+	void	SignalFactionsChanged();
 
 #endif
 
