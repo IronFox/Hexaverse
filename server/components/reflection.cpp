@@ -516,6 +516,11 @@ namespace Reflection
 			}
 			LogEvent(EventClass::Preset::remoteControlResponse, "Terminating "+faction->GetLogName()+" ("+r+")");
 			Objects::Faction::Kill(faction);
+			Network::PClient client;
+			if (Network::playerMap.Query(faction,client))
+			{
+				client->SendProgressUpdate(true, "");
+			}
 		}
 
 		void		ListNames()
