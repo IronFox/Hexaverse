@@ -666,6 +666,19 @@ namespace Objects
 					}
 				}
 			#endif
+			if (SubOrbital::Height == sensorHeight)
+			{
+				foreach (Objects::SubOrbital::planes,p)
+				{
+					SubOrbital::PPlane plane = *p;
+					if (plane->owner.get() != this && sphere.Contains(plane->GetWorldPosition()))
+					{
+						if (SignalAppearance(plane,t,true) && newContacts)
+							newContacts->Append(plane);
+					}
+				}
+			}
+			
 		}
 
 		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
