@@ -1494,7 +1494,6 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 				animationTimeFactor = c.timeFactor;
 		break;
 		case RuntimeConfig::Phase::CommandPhase:
-			newRoundRequested = false;
 			roundTimer = c.timeFactor;
 			RuntimeConfig::roundNumber = c.roundNumber;
 			RuntimeConfig::phase.Load(c.newPhase);
@@ -1528,6 +1527,8 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		Tutorial::lastDelayingEvent = timer.Now();
 	#endif
 	RuntimeConfig::phase.Load(c.newPhase);
+	if (RuntimeConfig::IsInAnyCommandPhase())
+		newRoundRequested = false;
 	RuntimeConfig::roundNumber = c.roundNumber;
 	RuntimeConfig::techniteSubRoundNumber = c.techniteSubRoundNumber;
 	phaseStarted = timer.Now();

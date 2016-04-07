@@ -288,6 +288,18 @@ namespace Objects
 		virtual	void	Refresh(bool controlEnabled) override {/*CommandContainer::Refresh(controlEnabled);*/}
 		virtual bool	IsGroup() const override {return true;}
 
+		void			CollapseChildren()
+		{
+			if (!activeGroupPath.Contains(this))
+				return;
+			while (activeGroupPath.last() != this)
+			{
+				activeGroupPath.last()->Collapse();
+				activeGroupPath.EraseLast();
+			}
+			Collapse();
+		}
+
 		static void		CollapseAll()
 		{
 			foreach (activeGroupPath,p)
