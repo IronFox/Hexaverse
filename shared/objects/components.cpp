@@ -1770,8 +1770,8 @@ namespace Objects
 		
 				component.weight = 1;	//irrelevant
 				component.healthMultiplier = 1;	//irrelevant
-				component.scanningRange = 11;
-				component.groundScanningRange = 11;
+				component.scanningRange = 13;
+				component.groundScanningRange = 13;
 				component.groundScannerPenetration = 1;
 
 				component.initiative = 110;
