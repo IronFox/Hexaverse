@@ -2,6 +2,8 @@ v0.3.23
 	+ Added control commands to find and terminate factions.
 	> Increased sensor range of sensor drone.
 	* Fixed various visibility and grid issues causing client assertion failures and subsequent crashes.
+	* Fixed airborne sensory.
+	* Fixed plane ghost rendering.
 
 v0.3.22	[Apr 5 2016]
 	> Reduced visual size of cargo plane.
