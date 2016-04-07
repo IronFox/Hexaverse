@@ -964,7 +964,7 @@ namespace Grid
 		typedef GridSetup<Exponent>	GridType;
 		TFamily						family[BaseGrid::NumFamilies];
 		GridType					grid;
-		Array<BaseGrid::TNetCell>	cells;
+		static Array<BaseGrid::TNetCell>	cells;
 		Array<BaseGrid::TCellVertex>	cellVertices;
 
 
@@ -994,7 +994,7 @@ namespace Grid
 			struct TStack
 			{
 				UINT32				stackID;	//high-resolution cell IDs
-				UINT32				layerBegin,layerEnd;	//layerEnd is one higher than actual limit
+				TIntRange<UINT32>	range;		//range.end is one higher than actual limit
 			};
 
 			Buffer0<TStack>			coverage;
@@ -1008,7 +1008,7 @@ namespace Grid
 			{
 				count_t rs = 0;
 				foreach (coverage,c)
-					rs += c->layerEnd - c->layerBegin;
+					rs += c->range.GetExtend();
 				return rs;
 			}
 
@@ -1248,6 +1248,72 @@ namespace Grid
 		}
 
 	
+		struct TSensor
+		{
+			typename GridType::CellIdI	center;
+			float						radius;
+			UINT						verticalRange;
+
+			void						GetWorldCenter(TVec3<>&outCenter) const
+			{
+				Vec::mul(cells[center.stackID].cornerCenter,ToRadiusf(0.5f + center.height),outCenter);
+			}
+
+			bool						Contains(const typename GridType::CellIdI&loc)	const
+			{
+				if (loc.height < center.height - (int)verticalRange || loc.height > center.height + (int)verticalRange)
+					return false;
+				TVec3<> world,wcenter;
+				Vec::mul(cells[loc.stackID].cornerCenter,ToRadius(loc.height),world);
+				GetWorldCenter(wcenter);
+				return Vec::quadraticDistance(world,wcenter) <= sqr(radius);
+			}
+		};
+
+
+		void	GenerateVolume(const TSensor&sensor,TVolumeDescriptor&volume) const
+		{
+			static TVolumeDescriptor::Operator op;
+			volume.Clear();
+			UINT32 centerStack = sensor.center.stackID;
+			op.stacksLeft << centerStack;
+
+			const float br = ToRadius(CellStack::BottomHeight);
+			const float tr = ToRadius(CellStack::TopHeight);
+
+			TVec3<> center;
+			sensor.GetWorldCenter(center);
+			UINT32 next;
+			TIntRange<> vrange = IntRange(clamp(sensor.center.height - (int)sensor.verticalRange,CellStack::BottomHeight,CellStack::TopHeight), 
+										clamp(sensor.center.height+(int)sensor.verticalRange+1,CellStack::BottomHeight,CellStack::TopHeight+1));
+			TIntRange<UINT> vrange2 = IntRange<UINT>(CellStack::ToLayer( vrange.start ),CellStack::ToLayer(vrange.end));
+			while (op.stacksLeft >> next)
+			{
+				if (op.stackVisited[next])
+					continue;
+				op.stackVisited[next] = true;
+				const TVec3<>&dir = cells[next].cornerCenter;
+				TVec2<> distances;
+				TVec3<> bottom,top;
+				Vec::mult(dir,br,bottom);
+				Vec::mult(dir,tr,top);
+				TVolumeDescriptor::TStack&st = volume.coverage.Append();
+				st.stackID = next;
+				if (!Obj::DetectSphereEdgeIntersection(center,sensor.radius,bottom,top,distances))
+				{
+					st.range.start = st.range.end = 0;
+					continue;
+				}
+			
+				st.range.start = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
+				st.range.end = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
+				st.range.ConstrainBy(vrange2);
+				const auto&n = grid.GetCell(next).neighborhood;
+				for (int i = 0; i < n.numNeighbors; i++)
+					op.stacksLeft << n.neighborID[i];
+			}
+			op.ResetVisited(volume);
+		}
 
 
 		void	GenerateVolume(const Sphere<>&sphere,TVolumeDescriptor&volume) const
@@ -1274,12 +1340,12 @@ namespace Grid
 				st.stackID = next;
 				if (!Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
 				{
-					st.layerBegin = st.layerEnd = 0;
+					st.range.SetEmpty(0);
 					continue;
 				}
 			
-				st.layerBegin = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
-				st.layerEnd = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
+				st.range.start = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
+				st.range.end = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
 				const auto&n = grid.GetCell(next).neighborhood;
 				for (int i = 0; i < n.numNeighbors; i++)
 					op.stacksLeft << n.neighborID[i];
@@ -1637,6 +1703,9 @@ namespace Grid
 		#endif
 	};
 
+	template <UINT Exponent>
+		Array<BaseGrid::TNetCell>	Setup<Exponent>::cells;
+
 	typedef Setup<5>	LowSetup;
 
 	#ifdef HYBRID_GRID
@@ -1651,6 +1720,8 @@ namespace Grid
 	typedef HighSetup::GridType::CellIdU	HCellIdU;
 	typedef LowSetup::GridType::CellIdI		LCellIdI;
 	typedef LowSetup::GridType::CellIdU		LCellIdU;
+	typedef HighSetup::TSensor	HSensor;
+	typedef LowSetup::TSensor	LSensor;
 
 
 	extern HighSetup		high;
@@ -1906,6 +1977,7 @@ namespace Grid
 
 	inline HCellIdI	ToHigh(const LCellIdI&cellID)	{return HCellIdI(low.grid.GetCell(cellID.stackID).higherEquivalent,cellID.height); }
 	inline HCellIdU	ToHigh(const LCellIdU&cellID)	{return HCellIdU(low.grid.GetCell(cellID.stackID).higherEquivalent,cellID.layer); }
+	HSensor			ToHigh(const LSensor&);
 
 
 	#pragma pack(push)

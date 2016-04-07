@@ -4553,4 +4553,14 @@ namespace Grid
 	/**/					WorldData::WorldData():cellStack(HighSetup::GridType::CellCount)
 	{}
 
+
+	HSensor			ToHigh(const LSensor&sensor)
+	{
+		HSensor result;
+		result.radius = sensor.radius;
+		result.center = ToHigh(sensor.center);
+		result.verticalRange = sensor.verticalRange;
+		return result;
+	}
+
 }
