@@ -1156,7 +1156,6 @@ namespace Objects
 					ASSERT1__(base, referenceType);
 					ASSERT1__(turret, referenceType);
 					m.visualization.reset(new Vehicle(OwnerParameter(), location, base, turret));
-					To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
 					mobileGhosts << To<MobileEntity>::Cast( m.visualization );
 				}
 				else
@@ -1182,6 +1181,8 @@ namespace Objects
 
 				if (m.visualization)
 				{
+					if (m.visualization->IsMobile())
+						To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
 					m.visualization->id = referenceID;
 					m.visualization->owner = referenceOwnerID == TUniqueID::Empty() ? PFaction() : Faction::GetOrCreate(referenceOwnerID);
 					m.visualization->health = -(int)m.age;
