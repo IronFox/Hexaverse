@@ -30,7 +30,7 @@ namespace FileIO
 
 	void CheckAutoSave(bool tempIncrementRoundNumber)
 	{
-		if (Config::saveEveryNRounds > 0 && !((RuntimeConfig::roundNumber+1)%FileIO::Config::saveEveryNRounds))
+		if (Config::saveEveryNRounds > 0 && !((RuntimeConfig::roundNumber+1)%FileIO::Config::saveEveryNRounds) && RuntimeConfig::techniteSubRoundNumber == 0)
 		{
 			if (tempIncrementRoundNumber)
 				RuntimeConfig::roundNumber++;
