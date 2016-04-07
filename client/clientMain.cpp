@@ -3535,10 +3535,10 @@ int main( int argc, const char* argv[])
 			{
 				Objects::PCommandGroup grp = Objects::globalCommands.AddChild(int2(2,0),false, "Spawn Technites");
 				grp->onExpand = [](){techniteSpawnMode = true;};
-				grp->onCollapse = [](){techniteSpawnMode = false;};
+				grp->onCollapse = [](){techniteSpawnMode = false;Objects::buildCandidates.Clear();Objects::cellSelection.Clear();};
 
 
-				grp->Add(new Objects::IconCommand("Commit",[]()
+				grp->Add(new Objects::IconCommand("Commit",[grp]()
 				{
 					if (Objects::cellSelection.IsNotEmpty())
 					{
@@ -3547,9 +3547,9 @@ int main( int argc, const char* argv[])
 							Network::Channels::spawnTechnite.SendTo(Network::client,spawn);
 						}
 					}
-					techniteSpawnMode = false;
-					Objects::buildCandidates.Clear();
-					Objects::cellSelection.Clear();
+					//techniteSpawnMode = false;
+					grp->CollapseChildren();
+					//UI::HexGrid::RefreshContacts();
 				},[](bool controlsEnabled)->Objects::BaseCommand::Flags
 				{
 					Objects::BaseCommand::Flags rs = Objects::BaseCommand::Flags::None;
