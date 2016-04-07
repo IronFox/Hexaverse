@@ -527,6 +527,7 @@ bool	CanChangeRoundState()
 					||
 					(RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase && Network::amTechniteFaction)
 					)
+				&& (!Network::amTechniteFaction || TechniteLogicLink::LogicIsDone())
 				&& Animation::AllDone();
 }
 
@@ -540,7 +541,7 @@ void	TransmitRoundEndRequest()
 
 void	SignalRoundEnd()
 {
-	if (Network::ControlEnabled())
+	if (CanChangeRoundState())
 	{
 		Network::newRoundRequested = true;
 		#ifdef HAS_WINDOW
@@ -3559,7 +3560,7 @@ int main( int argc, const char* argv[])
 				},[](bool controlsEnabled)->Objects::BaseCommand::Flags
 				{
 					Objects::BaseCommand::Flags rs = Objects::BaseCommand::Flags::None;
-					if (controlsEnabled && Network::amTechniteFaction && Network::client.IsConnected() && Objects::cellSelection.IsNotEmpty())
+					if (CanChangeRoundState() && Objects::cellSelection.IsNotEmpty() && !Network::newRoundRequested)
 					{
 						rs |= Objects::BaseCommand::Flags::IsEnabled;
 					}
