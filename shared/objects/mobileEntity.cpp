@@ -443,7 +443,7 @@ namespace Objects
 
 				static Buffer0<PWorldEntity> newContacts;
 				newContacts.Clear();
-				this->MoveSensory(oldLocation,location,motionTime,true,&newContacts);
+				this->MoveSensoryToCurrentLocation(oldLocation,motionTime,true,&newContacts);
 				foreach (newContacts,c)
 				{
 					float zOffset;

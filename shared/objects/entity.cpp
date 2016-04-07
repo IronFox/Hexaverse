@@ -459,7 +459,7 @@ namespace Objects
 			RegisterSensory(to,atTime,checkChangesNow);	//MUST BE IN THIS ORDER, or sky sensory of satellites and planes breaks
 		}
 	#else
-		/*virtual*/ void		WorldEntity::MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
+		/*virtual*/ void		WorldEntity::MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
 		{
 			this->RegisterSensory(location,motionTime,false,newContacts);
 			this->UnregisterSensory(oldLocation,motionTime,checkChangesNow);
