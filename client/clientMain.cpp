@@ -521,7 +521,13 @@ bool	HasSignalledRoundEnd()
 
 bool	CanChangeRoundState()
 {
-	return Network::client.IsConnected() && RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase/* && !Network::amSpectator*/;
+	return Network::client.IsConnected() 
+				&& (
+					RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase
+					||
+					(RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase && Network::amTechniteFaction)
+					)
+				&& Animation::AllDone();
 }
 
 
