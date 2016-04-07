@@ -1032,12 +1032,6 @@ namespace Animation
 		type = Attack;
 		targetEntityID = TUniqueID::Empty();
 		attackerTurret = Objects::Component::GetTurretByName(a.turretType);
-		if (attackerTurret == nullptr)
-		{
-			auto proto = Objects::SubOrbital::GetPrototypeByName(a.turretType);
-			if (proto)
-				attackerTurret = proto->turret;
-		}
 		ASSERT_NOT_NULL1__(attackerTurret,(int)a.turretType.value);
 		attackRange = a.turretRange;
 		attackAngle = a.attackAngle,

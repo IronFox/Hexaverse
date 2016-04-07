@@ -229,6 +229,7 @@ namespace Objects
 									<< &skyHubTurret << &protonCannon << &ragnarok << &starPort
 								#endif
 								<< &armored << &artillery << &launcher << &emp
+								<< &SubOrbital::raptor << &SubOrbital::cargoPlane << &SubOrbital::sensorDrone
 								<< &bomb
 								<< &terraformer << &resourceScanner
 								#ifndef ONE_COMPOUND_PER_FACTION
