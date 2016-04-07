@@ -109,7 +109,7 @@ namespace TechniteLogicLink
 			return;
 
 		TechniteProtocol::GameObject obj;
-		if (gameObjects.QueryAndUnSet(entity.id,obj))
+		if (gameObjects.QueryAndUnset(entity.id,obj))
 		{
 			Channels::removeGameObject.SendTo(logicServer,obj.id,1);
 		}
@@ -203,7 +203,7 @@ namespace TechniteLogicLink
 		if (isStored)
 		{
 			TechniteProtocol::GameObject obj;
-			storedGameObjects.QueryAndUnSet(state.entityState.id,obj);
+			storedGameObjects.QueryAndUnset(state.entityState.id,obj);
 
 			if (state.entityState.location != Grid::LCellIdI::Invalid)
 			{
@@ -809,14 +809,14 @@ namespace TechniteLogicLink
 			return;
 
 		TechniteProtocol::GameObject obj;
-		if (ghostGameObjects.QueryAndUnSet(id,obj))
+		if (ghostGameObjects.QueryAndUnset(id,obj))
 		{
 			LogEvent(event,"Removing ghost-marker for "+id.ToString());
 			Channels::removeGameObject.SendTo(logicServer,obj.id);
 			return;
 		}
 		TechniteProtocol::ControlMarker mrk;
-		if (controlMarkers.QueryAndUnSet(id,mrk))
+		if (controlMarkers.QueryAndUnset(id,mrk))
 		{
 			LogEvent(event,"Removing control-marker for "+id.ToString());
 			Channels::removeControlMarker.SendTo(logicServer,mrk.location);
