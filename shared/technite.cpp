@@ -1243,6 +1243,7 @@ namespace Technites
 					if (loc.layer == 0 && !CanStandHere(loc))
 					{
 						t.isDead = true;
+						anyDied = true;
 					}
 					else
 						falling << std::make_pair(&t,loc);
