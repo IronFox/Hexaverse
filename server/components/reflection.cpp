@@ -492,11 +492,11 @@ namespace Reflection
 
 	namespace FactionCommands
 	{
-		CLI::PCommand	kill;
+		CLI::PCommand	terminate;
 
 
 
-		void		KillCommand(const String&reason)
+		void		TerminateCommand(const String&reason)
 		{
 			CLI::PFolder f = state.GetExecutionContext();
 			Variable::PFactionAttachment attach = To<Variable::FactionAttachment>::DynamicCast(f->attachment);
@@ -518,8 +518,13 @@ namespace Reflection
 				SignalFactionsChanged();
 				return;
 			}
-			LogEvent(EventClass::Preset::remoteControlResponse, "Terminating "+faction->GetLogName()+" ("+r+")");
+			LogEvent(EventClass::Preset::factionDeath, "Terminating "+faction->GetLogName()+" ("+r+")");
 			Objects::Faction::Kill(faction);
+			Network::PClient client;
+			if (Network::playerMap.Query(faction,client))
+			{
+				client->SendProgressUpdate(true, "");
+			}
 		}
 
 		void		ListNames()
@@ -547,9 +552,56 @@ namespace Reflection
 
 		void		Create()
 		{
-			kill.reset(new CLI::Command(CLI::Command::Name("kill reason"), &KillCommand, CLI::NoCompletion));
+			terminate.reset(new CLI::Command(CLI::Command::Name("terminate reason"), &TerminateCommand, CLI::NoCompletion));
+			terminate->SetUniqueHelp("Terminates this faction and all of its destructible units. If the local faction is the Nexus faction, then it'll lose all its units but won't be deleted."
+							" Unless you have some backup savegame, this operation is irreversible. Don't use this on live ");
 
 		}
+
+
+
+
+
+		
+		class Name : public CLI::Variable
+		{
+		public:
+			Objects::WFaction faction;
+
+			/**/				Name(const Objects::PFaction&f):CLI::Variable("name","String",1,CLI::FullProtection),faction(f)
+			{}
+
+			virtual	String		ToString()			const override	{Objects::PFaction f = faction.lock(); if (f) return f->name; return "<null>";}
+			virtual	bool		Set(const String&value)	{return false;}
+		};
+
+		class Client : public CLI::Variable
+		{
+		public:
+			Objects::WFaction faction;
+
+			/**/				Client(const Objects::PFaction&f):CLI::Variable("client","Network Address",1,CLI::FullProtection),faction(f)
+			{}
+
+			virtual	String		ToString()			const override
+			{
+				Objects::PFaction f = faction.lock(); 
+				if (!f) 
+					return "<null>";
+				Network::PClient client;
+				if (!Network::playerMap.Query(f,client))
+				{
+					return "offline";
+				}
+				TCP::PPeer peer = client->peer.lock();
+				if (!peer)
+				{
+					return "offline";
+				}
+				return peer->ToString();
+			}
+			virtual	bool		Set(const String&value)	{return false;}
+		};
 
 	}
 
@@ -1259,9 +1311,14 @@ namespace Reflection
 
 			f->attachment.reset(new Variable::FactionAttachment(faction->id));
 
-			f->commands.Insert("kill", FactionCommands::kill);
+			f->commands.Insert("terminate", FactionCommands::terminate);
+
+			f->variables.Insert("name",CLI::PVariable( new FactionCommands::Name(faction) ));
+			f->variables.Insert("client",CLI::PVariable( new FactionCommands::Client(faction) ));
 		});
 	}
+
+
 
 }
 

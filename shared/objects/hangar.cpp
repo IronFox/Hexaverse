@@ -185,6 +185,7 @@ namespace Objects
 
 	bool	Hangar::StoreLocally(const PMobileEntity&e, float&atTime, bool setHealthToFullIfNew, const PHangar&sharedSelf)
 	{
+		ASSERT2__(sharedSelf.get() == this,sharedSelf->ToEntity().GetName(),ToEntity().GetName());
 		if (!e || !CanStoreType(*e) || stored.Count() >= GetMaxStorage())
 			return false;
 

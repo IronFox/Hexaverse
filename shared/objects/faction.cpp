@@ -609,7 +609,7 @@ namespace Objects
 
 		void		Faction::RegisterSensorCreation(const Sphere<>&sphere, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 		{
-			if (sensorHeight <= Grid::CellStack::TopHeight)
+			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
 				static Grid::HighSetup::TVolumeDescriptor	desc0;
 				Grid::high.GenerateVolume(sphere,desc0);
@@ -638,7 +638,7 @@ namespace Objects
 				}
 			}
 			#ifndef NO_SATELLITES
-				else if (Objects::Satellite::IsSatelliteHeight(sensorHeight))
+				if (Objects::Satellite::IsSatelliteHeight(sensorHeight))
 				{
 					//count_t coverage = CountSatelliteCoverage(sat->system.w.xyz);
 					//LogEvent(EventSignificance::Debug,"Registering orbital sensor sphere "+sphere.ToString());
@@ -658,7 +658,7 @@ namespace Objects
 		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
 		void		Faction::RegisterSensorRemoval(const Sphere<>&sphere, int sensorHeight, float&t, bool checkChangesNow)
 		{
-			if (sensorHeight <= Grid::CellStack::TopHeight)
+			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
 				static Grid::HighSetup::TVolumeDescriptor	desc0;
 				Grid::high.GenerateVolume(sphere,desc0);
@@ -705,7 +705,7 @@ namespace Objects
 
 			ForeachWorldEntity([this,&t,newContacts](const PWorldEntity&other)
 			{
-				if (other->owner.get() == this)
+				if (other->owner.get() == this || other->IsAboveGrid())
 					return;
 				if (GridCanSee(other))
 				{
@@ -724,14 +724,8 @@ namespace Objects
 			static Buffer<PWorldEntity>	disappear;
 			this->seeing.VisitAllKeys([this](const PWorldEntity&s)
 			{
-				#ifndef NO_SATELLITES
-					if (!s->IsSatellite() && !GridCanSee(s))
-				#else
-					if (!GridCanSee(s))
-				#endif
-				{
+				if (!s->IsAboveGrid() && !GridCanSee(s))
 					disappear << s;
-				}
 			});
 			foreach (disappear,s)
 				SignalDisappearance(*s,t);
@@ -1183,7 +1177,6 @@ namespace Objects
 					ASSERT1__(base, referenceType);
 					ASSERT1__(turret, referenceType);
 					m.visualization.reset(new Vehicle(OwnerParameter(), location, base, turret));
-					To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
 					mobileGhosts << To<MobileEntity>::Cast( m.visualization );
 				}
 				else
@@ -1209,6 +1202,8 @@ namespace Objects
 
 				if (m.visualization)
 				{
+					if (m.visualization->IsMobile())
+						To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
 					m.visualization->id = referenceID;
 					m.visualization->owner = referenceOwnerID == TUniqueID::Empty() ? PFaction() : Faction::GetOrCreate(referenceOwnerID,0);
 					m.visualization->health = -(int)m.age;
@@ -1608,7 +1603,7 @@ namespace Objects
 						all.Erase(i);
 						break;
 					}
-				LogEvent(EventClass::Preset::factionDeath, "Faction terminated: " + f->id.ToString());
+				LogEvent(EventClass::Preset::factionDeath, "Faction terminated: " + f->GetLogName());
 				SignalFactionsChanged();
 			}
 			else
