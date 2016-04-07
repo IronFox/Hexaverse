@@ -606,7 +606,7 @@ namespace Objects
 
 		void		Faction::RegisterSensorCreation(const Sphere<>&sphere, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 		{
-			if (sensorHeight <= Grid::CellStack::TopHeight)
+			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
 				static Grid::HighSetup::TVolumeDescriptor	desc0;
 				Grid::high.GenerateVolume(sphere,desc0);
@@ -635,7 +635,7 @@ namespace Objects
 				}
 			}
 			#ifndef NO_SATELLITES
-				else if (Objects::Satellite::IsSatelliteHeight(sensorHeight))
+				if (Objects::Satellite::IsSatelliteHeight(sensorHeight))
 				{
 					//count_t coverage = CountSatelliteCoverage(sat->system.w.xyz);
 					//LogEvent(EventSignificance::Debug,"Registering orbital sensor sphere "+sphere.ToString());
@@ -655,7 +655,7 @@ namespace Objects
 		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
 		void		Faction::RegisterSensorRemoval(const Sphere<>&sphere, int sensorHeight, float&t, bool checkChangesNow)
 		{
-			if (sensorHeight <= Grid::CellStack::TopHeight)
+			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
 				static Grid::HighSetup::TVolumeDescriptor	desc0;
 				Grid::high.GenerateVolume(sphere,desc0);
