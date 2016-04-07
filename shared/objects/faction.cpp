@@ -721,14 +721,8 @@ namespace Objects
 			static Buffer<PWorldEntity>	disappear;
 			this->seeing.VisitAllKeys([this](const PWorldEntity&s)
 			{
-				#ifndef NO_SATELLITES
-					if (!s->IsSatellite() && !GridCanSee(s))
-				#else
-					if (!GridCanSee(s))
-				#endif
-				{
+				if (!s->IsAboveGrid() && !GridCanSee(s))
 					disappear << s;
-				}
 			});
 			foreach (disappear,s)
 				SignalDisappearance(*s,t);
