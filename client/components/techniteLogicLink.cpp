@@ -7,6 +7,7 @@
 #include <objects/visualSelection.h>
 
 #include "dialog.h"
+#include "ui.h"
 
 extern void	TransmitRoundEndRequest();
 
@@ -457,6 +458,8 @@ namespace TechniteLogicLink
 					bool brk = true;
 
 				}
+				Dialog::SignalSituationChange();
+				UI::HexGrid::RefreshButtonState();
 			}
 		}
 
