@@ -447,7 +447,7 @@ namespace TechniteLogicLink
 				if (Network::amTechniteFaction && (!Network::amRegularFaction || Network::newRoundRequested || RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase))
 				{
 					//auto-new-round, if set. Not sure if this should be set
-					TransmitRoundEndRequest();
+					//TransmitRoundEndRequest();
 				}
 				else
 				{
@@ -687,7 +687,7 @@ namespace TechniteLogicLink
 					if (Network::amTechniteFaction && (!Network::amRegularFaction || Network::newRoundRequested))
 					{
 						//auto-new-round, if set. Not sure if this should be set
-						TransmitRoundEndRequest();
+					//	TransmitRoundEndRequest();
 					}
 				}
 			break;
