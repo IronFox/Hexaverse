@@ -193,19 +193,18 @@ namespace Objects
 				return false;
 			}
 
-			/*virtual override*/ void		Plane::MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
+			/*virtual override*/ void		Plane::MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
 			{
-				if (oldLocation == newLocation)
+				if (oldLocation == location)
 					return;
 				Super::RegisterSensory(location,motionTime,false,newContacts);
 				Super::UnregisterSensory(oldLocation,motionTime,false);
 				if (turret->groundScanningRange > 0)
 				{
-					ASSERT__(newLocation == location);
 					Grid::SkySensorState state = skySensorState;
 					LogEvent(EventSignificance::Common,this,"Processing ground-sensor motion");
 					float range = EMPModify(turret->groundScanningRange,2);
-					Grid::actualWorld.MapSensorState(newLocation.stackID,range,newLocation.height,turret->groundScannerPenetration,skySensorState);
+					Grid::actualWorld.MapSensorState(location.stackID,range,location.height,turret->groundScannerPenetration,skySensorState);
 					Grid::actualWorld.UpdateSensorState(skySensorState);
 
 					owner->RegisterSensorCreation(skySensorState,atTime,false, newContacts);
