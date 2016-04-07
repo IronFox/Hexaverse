@@ -702,7 +702,7 @@ namespace Objects
 
 			ForeachWorldEntity([this,&t,newContacts](const PWorldEntity&other)
 			{
-				if (other->owner.get() == this)
+				if (other->owner.get() == this || other->IsAboveGrid())
 					return;
 				if (GridCanSee(other))
 				{
