@@ -1144,7 +1144,7 @@ namespace Animation
 					Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
 					if (v)
 					{
-						if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage)
+						if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage && !v->IsAboveGrid())
 							Objects::RemoveVehicleFromGrid(v,v->preAnimationLocation);
 						removed = true;	//is set anyway. placeVehicleLater indicates it is already removed
 					}
@@ -1188,7 +1188,7 @@ namespace Animation
 					//		ASSERT1__(Grid::actualWorld.HasSensor(v->location,v->GetScanningRange()),v->id.ToString());
 					//#endif
 					v->preAnimationLocation = v->location;
-					if (v->IsGroundBoundVehicle())
+					if (v->IsVehicle() && !v->IsAboveGrid())
 						Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(v),v->location);
 					insertIntoGridLater.Set(v->id);
 				}
@@ -1820,7 +1820,7 @@ namespace Animation
 							float t = 0.f;
 							v->MoveSensory(v->preAnimationLocation,v->location,t);
 						}
-						if (v->IsGroundBoundVehicle())
+						if (v->IsVehicle() && !v->IsAboveGrid())
 							Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(v),v->location);
 					}
 				});

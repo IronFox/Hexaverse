@@ -23,6 +23,7 @@ namespace Objects
 		void	Faction::RecreateNexus()
 		{
 			nexus.reset(new Faction(TUniqueID::Empty(), "<Nexus>"));
+			SignalFactionsChanged();
 		}
 
 		int		GetStorage(const MobileEntity&v, Resource res)
@@ -1577,13 +1578,19 @@ namespace Objects
 				Remove(*del,Objects::RemovalType::ControlledExplosion,t,false);
 			toDelete.Clear();
 
-			for (index_t i = 0; i < all.Count(); i++)
-				if (all[i].lock() == f)
-				{
-					all.Erase(i);
-					break;
-				}
-			LogEvent( EventClass::Preset::factionDeath, "Faction terminated: "+f->id.ToString());
+			if (f != nexus)
+			{
+				for (index_t i = 0; i < all.Count(); i++)
+					if (all[i].lock() == f)
+					{
+						all.Erase(i);
+						break;
+					}
+				LogEvent(EventClass::Preset::factionDeath, "Faction terminated: " + f->GetLogName());
+				SignalFactionsChanged();
+			}
+			else
+				LogEvent(EventClass::Preset::remoteControlError, "Destructible entities destroyed, but cannot terminate nexus faction itself");
 		}
 
 		/*static*/ PFaction			Faction::FindByID(const TUniqueID&id)

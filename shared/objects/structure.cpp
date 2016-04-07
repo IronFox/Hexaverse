@@ -1582,8 +1582,11 @@ namespace Objects
 			if (!park)
 				return false;
 			foreach (park->members,m)
-				if (m->lock()->StoreLocally(v,atTime,false,To<VehicleStore>::Cast(shared_from_this())))
+			{
+				auto locked = m->lock();
+				if (locked->StoreLocally(v,atTime,false,locked))
 					return true;
+			}
 			return false;
 		}
 
@@ -1604,7 +1607,7 @@ namespace Objects
 				{
 					s->park.reset();
 					#ifndef CLIENT
-						while (stored.IsNotEmpty() && s->StoreLocally(stored.last().entity.lock(),atTime,false,To<VehicleStore>::Cast(shared_from_this())))
+						while (stored.IsNotEmpty() && s->StoreLocally(stored.last().entity.lock(),atTime,false,s))
 						{
 							stored.EraseLast();
 						}

@@ -148,6 +148,7 @@ namespace Objects
 			enum class MountType
 			{
 				Vehicle,
+				TowerOnly,
 				Satellite,
 				Plane,
 			};

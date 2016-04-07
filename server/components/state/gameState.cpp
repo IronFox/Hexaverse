@@ -6,6 +6,15 @@
 #include "../journalSaveGame.h"
 
 
+
+void			SignalFactionsChanged()
+{
+	Game::mostFactionsAlive = std::max(Game::mostFactionsAlive, (UINT32)Objects::Faction::all.Count());
+	Reflection::SignalFactionsChanged();
+}
+
+
+
 namespace Game
 {
 	UINT32				mostFactionsAlive=0;
@@ -16,12 +25,6 @@ namespace Game
 	float				factionStartMineralValue=1.f;	//determined during loading
 	float				effectiveAnimationLength = 1.f;
 
-
-
-	void			SignalFactionsChanged()
-	{
-		mostFactionsAlive = std::max(mostFactionsAlive,(UINT32)Objects::Faction::all.Count());
-	}
 
 
 	namespace Config
@@ -809,6 +812,11 @@ namespace Game
 											
 								LogEvent(EventClass::Preset::factionDeath,name+" died: "+whyNot);
 
+								/*
+								telling the client that the faction status has been revoked forces it to flush all entities which will cause issues with subsequently sent animation events.
+								the two possible solutions are to either not send any animation events to this client, or to not tell it that its faction status has been revoked.
+								the former will cause a very uncomfortable client transition back to faction choice screen and no visual representation of what happened.
+								therefore it's probably better to just kill off the faction. but will have to check
 								if (client)
 								{
 									Protocol::ClientFactionResponse cr;
@@ -817,9 +825,9 @@ namespace Game
 									cr.planetConfig = Grid::currentPlanetConfig;
 									Channels::clientFactionResponse.SendTo(client->peer.lock(),cr);
 								}
+								*/
 
 								Objects::Faction::Kill(faction);
-								SignalFactionsChanged();
 								if (client)
 									::Network::activePlayersAndSpectators.FindAndErase(client);
 								::Network::tokenMap.Unset(faction->accessToken);

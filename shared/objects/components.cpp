@@ -1154,7 +1154,7 @@ namespace Objects
 				component.parts.first().first.LoadFromObj("objects/launcher.obj");
 			#endif
 
-
+			component.mountType = Turret::MountType::TowerOnly;
 			component.typeName = "Missile Launcher";
 			component.shortName = " Launcher";
 			component.constName = ConstName::Turret_Launcher;
