@@ -108,6 +108,16 @@ namespace TechniteLogicLink
 	void		CreateMarker(const Objects::Marker&);
 	void		DestroyMarker(const TUniqueID&);
 
+	struct DebugMessage
+	{
+		UINT32	roundNumber,
+				subRoundNumber;
+		String	message;
+	};
+
+	bool		HasDebugMessage(const Grid::HCellIdU&);
+	void		ForeachDebugMessage(const Grid::HCellIdU&,const std::function<void(const DebugMessage&)>&f);
+
 
 	extern PathString autoStartClientPath; //="TechniteLogic/Client.exe"
 	extern bool autoStartClient; //=true

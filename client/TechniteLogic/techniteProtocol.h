@@ -141,6 +141,10 @@ namespace TechniteProtocol
 		);
 
 
+	NETSTRUCT2(TechniteDebugMessage
+		, NET(UINT32), location
+		, Package::NetString<512>, message
+		);
 
 
 	//NETSTRUCT2(SessionBegin
@@ -178,7 +182,8 @@ namespace TechniteProtocol
 
 			RequestNextRound, //c2s: <signal>
 
-			TechniteColorChunk, //c2s: TechniteColorChunk
+			TechniteColorChunk,		//c2s: TechniteColorChunk
+			TechniteDebugMessage,	//c2s: TechniteDebugMessage
 
 			Count     //must remain last
 		};

@@ -35,6 +35,9 @@ namespace TechniteLogicLink
 	static bool executed = false, haveAllTechnites = true, logicIsDone = false;
 
 
+	GenericHashTable<Grid::HCellIdU,Queue<DebugMessage>,Grid::HCellIdU>	debugMessageTable;
+
+
 	class PeerAttachment : public TCP::Client::Attachment
 	{
 	public:
@@ -478,7 +481,7 @@ namespace TechniteLogicLink
 
 		static String CompileProtocolString()
 		{
-			return "Aquinas v1.6." + String(TechniteProtocol::ChannelID::Count);
+			return "Aquinas v1.7." + String(TechniteProtocol::ChannelID::Count);
 		}
 
 
@@ -576,9 +579,44 @@ namespace TechniteLogicLink
 
 		}
 
+		void TechniteDebugMessage(TechniteProtocol::TechniteDebugMessage&message)
+		{
+			if (!Network::amTechniteFaction)
+				return;
+
+			Technites::PFaction tf = To<Technites::Faction>::Cast(Objects::Faction::mine);
+			
+			DebugMessage msg;
+			msg.message = message.message;
+			msg.roundNumber = RuntimeConfig::roundNumber;
+			msg.subRoundNumber = RuntimeConfig::techniteSubRoundNumber;
+
+			
+
+			auto&list = debugMessageTable.Set(Technites::Technite::CompressedLocation(message.location.value).GetU());
+			
+			while (list.GetLength() > 15)
+				list.EraseFront();
+			list.Push(msg);
+		}
+
 		
 	}
 
+
+	bool		HasDebugMessage(const Grid::HCellIdU&key)
+	{
+		return debugMessageTable.IsSet(key);
+	}
+
+	void		ForeachDebugMessage(const Grid::HCellIdU&key,const std::function<void(const DebugMessage&)>&f)
+	{
+		auto*list = debugMessageTable.QueryPointer(key);
+		if (!list)
+			return;
+		foreach (*list,entry)
+			f(*entry);
+	}
 
 
 
@@ -593,6 +631,8 @@ namespace TechniteLogicLink
 					TechniteProtocol::ChannelID::Ready>								ready(Receiver::Ready);
 		TCP::Channel<TechniteProtocol::TechniteColorChunk,1,
 					TechniteProtocol::ChannelID::TechniteColorChunk>				techniteColorChunk(Receiver::TechniteColorChunk);
+		TCP::Channel<TechniteProtocol::TechniteDebugMessage,1,
+					TechniteProtocol::ChannelID::TechniteDebugMessage>				techniteDebugMessage(Receiver::TechniteDebugMessage);
 
 
 
@@ -708,6 +748,7 @@ namespace TechniteLogicLink
 			logicServer.InstallChannel(Channels::techniteInstructionChunk);
 			logicServer.InstallChannel(Channels::ready);
 			logicServer.InstallChannel(Channels::techniteColorChunk);
+			logicServer.InstallChannel(Channels::techniteDebugMessage);
 			logicServer.OpenSignalChannel(TechniteProtocol::ChannelID::RequestNextRound,1);
 
 			logicServer.SetAsync(false);	//can't be async because of world grid. damn

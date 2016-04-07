@@ -72,6 +72,9 @@ namespace Technites
 			static_assert(Grid::HighSetup::GridType::CellCount < 0x1000000, "Number of grid possibilities exceeds compression capacity");
 			static_assert(Grid::CellStack::Range < 0x100, "Number of grid layers exceeds compression capacity");
 		public:
+
+			/**/			CompressedLocation()	{}
+			explicit		CompressedLocation(UINT32 data):data(data) {}
 			bool			operator==(const CompressedLocation&other) const {return data == other.data;}
 
 			UINT32			GetData() const {return data;}
