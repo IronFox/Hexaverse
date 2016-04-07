@@ -750,6 +750,8 @@ namespace Technites
 	//}
 	bool					BroadTechniteMap::Query(const Grid::HCellIdU&id, index_t&out) const
 	{
+		if (id == Grid::HCellIdU::Invalid)
+			return false;
 		const Cluster*cluster;
 		index_t inner = Map(id, cluster);
 		if (cluster->numEntries == 0)
