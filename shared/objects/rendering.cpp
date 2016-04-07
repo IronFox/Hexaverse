@@ -606,6 +606,14 @@ namespace Objects
 		Renderer::RenderComponent(system, 0.f, *p.turret, p.turretAngleX, p.turretAngleY);
 	}
 
+	void	Renderer::RenderSimple(const SubOrbital::Plane&p)
+	{
+		_Locate(p);
+		display.Render(*p.baseRenderingInstruction, true);
+		Renderer::RenderComponent(p.system, 0.f, *p.turret, p.turretAngleX, p.turretAngleY);
+	}
+
+
 	static void _RenderSimpleLocated(Vehicle&v, const TMatrix4<>&system)
 	{
 		Renderer::RenderComponent(system,0,*v.base,0,0);

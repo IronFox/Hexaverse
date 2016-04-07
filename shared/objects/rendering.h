@@ -134,6 +134,7 @@ namespace Objects
 		Renders both components (base/turret) of a vehicle. No extra calls beyond RenderComnponent()
 		*/
 		void	RenderSimple(const Vehicle&v);
+		void	RenderSimple(const SubOrbital::Plane&p);
 
 		/**
 		Renders the specified vehicle
