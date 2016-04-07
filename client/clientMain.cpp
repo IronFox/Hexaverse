@@ -2215,7 +2215,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 						}
 					}
 					else
-					if (Network::amSpectator && Objects::Faction::mine && Objects::Faction::mine->IsTechniteFaction())
+					if (Network::amTechniteFaction && Objects::Faction::mine && Objects::Faction::mine->IsTechniteFaction())
 					{
 						if (Grid::high.TestHullIntersection(b, d, distance, normal,false))
 						{
