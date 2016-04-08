@@ -807,6 +807,12 @@ namespace Objects
 				constructionRoundCounter = 0;
 			}
 
+			if (IsSleeping() && job->DelayedBySleep())
+			{
+				float t = 0.f;
+				SetSleep(false,t);
+			}
+
 			Task&task = myTasks.Push();
 			task.type = Task::Job;
 			task.name = job->GetName();
@@ -825,6 +831,13 @@ namespace Objects
 		void					MobileEntity::RegisterNewFrontJob(const String&localizableShapeIdentifier, const PVehicleJob&job, const PVehicleJob&parent, const Grid::LCellIdI*destination)
 		{
 			ASSERT__(!TasksAreLocked());
+
+			if (IsSleeping() && job->DelayedBySleep())
+			{
+				float t = 0.f;
+				SetSleep(false,t);
+			}
+
 
 			RegisterChange(TasksChanged,motionTime);
 			Task&task = myTasks.PushFront();
