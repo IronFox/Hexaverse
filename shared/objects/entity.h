@@ -375,9 +375,9 @@ namespace Objects
 		float						GetScanningRange() const;
 		float						EMPModify(float raw, float min) const;
 		
-		virtual PTurretBase			GetTurretBase(float &zOffset) { zOffset = 0; return PTurretBase();}
+		virtual PTurretBase			GetTurretBase(float &zOffset) { return PTurretBase();}
 		inline PTurretBase			GetTurretBase() { float dummy; return GetTurretBase(dummy);}
-		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { zOffset = 0; return PConstTurretBase();}
+		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { return PConstTurretBase();}
 		inline PConstTurretBase		GetTurretBase() const { float dummy; return GetTurretBase(dummy);}
 
 		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
