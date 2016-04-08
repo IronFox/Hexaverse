@@ -476,7 +476,7 @@ namespace Objects
 				Grid::HighSetup::TSensor sensor;
 				sensor.center = Grid::ToHigh(loc);
 				sensor.radius = GetScanningRange();
-				sensor.verticalRange = GetRelativeScanningBand();
+				sensor.verticalRange = GetRelativeScanningBand(loc);
 				GetTurretBase(sensor.heightBonus);
 				Grid::high.GenerateVolume(sensor,desc);
 				RegisterWorldSensory(desc);
@@ -489,7 +489,7 @@ namespace Objects
 			Grid::LowSetup::TSensor sensor;
 			sensor.center = loc;
 			sensor.radius = GetScanningRange();
-			sensor.verticalRange = GetRelativeScanningBand();
+			sensor.verticalRange = GetRelativeScanningBand(loc);
 			GetTurretBase(sensor.heightBonus);
 			owner->RegisterSensorCreation(sensor,loc.height, atTime,checkChangesNow, newContacts);
 		#endif
@@ -503,7 +503,7 @@ namespace Objects
 			Grid::LowSetup::TSensor sensor;
 			sensor.center = loc;
 			sensor.radius = GetScanningRange();
-			sensor.verticalRange = GetRelativeScanningBand();
+			sensor.verticalRange = GetRelativeScanningBand(loc);
 			GetTurretBase(sensor.heightBonus);
 			owner->RegisterSensorRemoval(sensor,loc.height, atTime,checkChangesNow);
 		#endif
@@ -515,7 +515,7 @@ namespace Objects
 				Grid::HighSetup::TSensor sensor;
 				sensor.center = Grid::ToHigh(loc);
 				sensor.radius = GetScanningRange();
-				sensor.verticalRange = GetRelativeScanningBand();
+				sensor.verticalRange = GetRelativeScanningBand(loc);
 				GetTurretBase(sensor.heightBonus);
 				Grid::high.GenerateVolume(sensor,desc);
 				UnregisterWorldSensory(desc);
