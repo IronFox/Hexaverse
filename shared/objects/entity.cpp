@@ -480,6 +480,7 @@ namespace Objects
 				sensor.center = Grid::ToHigh(loc);
 				sensor.radius = GetScanningRange();
 				sensor.verticalRange = GetRelativeScanningBand();
+				GetTurretBase(sensor.heightBonus);
 				Grid::high.GenerateVolume(sensor,desc);
 				RegisterWorldSensory(desc);
 				#ifdef THOROUGLY_DEBUG_SENSORY
@@ -492,6 +493,7 @@ namespace Objects
 			sensor.center = loc;
 			sensor.radius = GetScanningRange();
 			sensor.verticalRange = GetRelativeScanningBand();
+			GetTurretBase(sensor.heightBonus);
 			owner->RegisterSensorCreation(sensor,loc.height, atTime,checkChangesNow, newContacts);
 		#endif
 	}
@@ -505,6 +507,7 @@ namespace Objects
 			sensor.center = loc;
 			sensor.radius = GetScanningRange();
 			sensor.verticalRange = GetRelativeScanningBand();
+			GetTurretBase(sensor.heightBonus);
 			owner->RegisterSensorRemoval(sensor,loc.height, atTime,checkChangesNow);
 		#endif
 
@@ -516,6 +519,7 @@ namespace Objects
 				sensor.center = Grid::ToHigh(loc);
 				sensor.radius = GetScanningRange();
 				sensor.verticalRange = GetRelativeScanningBand();
+				GetTurretBase(sensor.heightBonus);
 				Grid::high.GenerateVolume(sensor,desc);
 				UnregisterWorldSensory(desc);
 				#ifdef THOROUGLY_DEBUG_SENSORY
