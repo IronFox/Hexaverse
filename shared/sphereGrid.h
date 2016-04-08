@@ -1251,16 +1251,17 @@ namespace Grid
 		struct TSensor
 		{
 			typename GridType::CellIdI	center;
-			float						radius;
+			float						radius, heightBonus = 0.5f;
+
 			TFloatRange<int>			verticalRange;
 
-			static void					GetWorldCenter(const typename GridType::CellIdI&loc,TVec3<>&outCenter)
+			static void					GetWorldCenter(const typename GridType::CellIdI&loc,float heightBonus, TVec3<>&outCenter)
 			{
-				Vec::mul(cells[loc.stackID].cornerCenter,ToRadiusf(0.5f + loc.height),outCenter);
+				Vec::mul(cells[loc.stackID].cornerCenter,ToRadiusf(heightBonus + loc.height),outCenter);
 			}
 			void						GetWorldCenter(TVec3<>&outCenter) const
 			{
-				GetWorldCenter(center,outCenter);
+				GetWorldCenter(center,heightBonus,outCenter);
 			}
 
 			bool						Contains(const typename GridType::CellIdI&loc)	const

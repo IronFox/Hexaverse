@@ -126,10 +126,10 @@ namespace Objects
 		selectedSmokeTrail = InvalidIndex;
 	}
 
-	void	Renderer::RenderSensorRange(const Grid::LCellIdI&loc, float radius, const TFloatRange<int>& vRange, const float4&color)
+	void	Renderer::RenderSensorRange(const Grid::LCellIdI&loc, float radius, float heightBonus, const TFloatRange<int>& vRange, const float4&color)
 	{
 		TVec3<> center;
-		Grid::LSensor::GetWorldCenter(loc,center);
+		Grid::LSensor::GetWorldCenter(loc,heightBonus,center);
 		float d = Vec::distance(Camera::scene.GetAbsoluteLocation(),center);
 		int instructionIndex = DetermineLODInstruction(d,radius);
 		if (sensorInstruction[instructionIndex].shader.IsEmpty())
@@ -1333,12 +1333,12 @@ namespace Objects
 				if (extendedShadow)
 					scanningRange += RangeShadowExtension;
 
+				float zOffset = 0.5f;
+				PTurretBase base = selectedEntity->GetTurretBase(zOffset);		
 
-				Renderer::RenderSensorRange(selectedEntity->location,scanningRange,selectedEntity->GetRelativeScanningBand(),
+				Renderer::RenderSensorRange(selectedEntity->location,scanningRange,zOffset,selectedEntity->GetRelativeScanningBand(),
 					color
 					);
-				float zOffset;
-				PTurretBase base = selectedEntity->GetTurretBase(zOffset);		
 				if (base && base->turret->groundScanningRange > 0.f)
 				{
 					scanningRange = selectedEntity->EMPModify(base->turret->groundScanningRange,2);
@@ -1362,7 +1362,11 @@ namespace Objects
 				float scanningRange = activeStructureToPlace->GetScanningRange();
 				if (extendedShadow)
 					scanningRange += RangeShadowExtension;
-				Renderer::RenderSensorRange(arrowCellTarget.cellLocation,scanningRange,activeStructureToPlace->GetRelativeScanningBand(),
+
+				float zOffset = 0.5f;
+				activeStructureToPlace->GetTurretBase(zOffset);
+
+				Renderer::RenderSensorRange(arrowCellTarget.cellLocation,scanningRange,zOffset,activeStructureToPlace->GetRelativeScanningBand(),
 					color
 					);
 			}

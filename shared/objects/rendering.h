@@ -190,7 +190,7 @@ namespace Objects
 
 
 		void	RenderRangeSphere(const TVec3<>&center, float radius, const float4&color);
-		void	RenderSensorRange(const Grid::LCellIdI&center, float radius, const TFloatRange<int>& vRange, const float4&color);
+		void	RenderSensorRange(const Grid::LCellIdI&center, float radius, float heightBonus, const TFloatRange<int>& vRange, const float4&color);
 		void	RenderRangeCylinder(const TVec3<>&direction, float bottomRadius, float topRadius, float bottom, float top, const float4&color);
 		void	RenderRange(const Grid::LCellIdI&location, float zOffset, const PTurretBase&base, const float4&color, bool extended);
 
