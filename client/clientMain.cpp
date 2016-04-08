@@ -264,12 +264,7 @@ bool	MoveVehicleTo(const Objects::PMobileEntity&v, const Grid::LCellIdI&prev, Gr
 		bool foundPath;
 
 		if (v->IsPlane())
-		{
-			//if (prev.stackID == target.stackID)
-			foundPath = true;
-			tooLong = false;
-			//Objects::SubOrbital::AppendShortestPathI((const Objects::SubOrbital::Plane*)v.get(),prev,target.stackID,path,false,&tooLong);
-		}
+			foundPath = Objects::SubOrbital::AppendShortestPathI((const Objects::SubOrbital::Plane*)v.get(),prev,target,path,false,&tooLong);
 		else if (v->IsGroundBoundVehicle())
 			foundPath = Objects::AppendShortestPathI((const Objects::Vehicle*)v.get(),prev,target,path,false,&tooLong);
 		#ifndef NO_SATELLITES
