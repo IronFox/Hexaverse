@@ -476,7 +476,11 @@ namespace Objects
 			if (isOwnedByMe)
 			{
 				Grid::HighSetup::TVolumeDescriptor desc;
-				Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
+				Grid::HighSetup::TSensor sensor;
+				sensor.center = Grid::ToHigh(loc);
+				sensor.radius = GetScanningRange();
+				sensor.verticalRange = GetRelativeScanningBand();
+				Grid::high.GenerateVolume(sensor,desc);
 				RegisterWorldSensory(desc);
 				#ifdef THOROUGLY_DEBUG_SENSORY
 					VerifySensory();
@@ -484,7 +488,11 @@ namespace Objects
 			}
 
 		#else
-			owner->RegisterSensorCreation(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),loc.height, atTime,checkChangesNow, newContacts);
+			Grid::LowSetup::TSensor sensor;
+			sensor.center = loc;
+			sensor.radius = GetScanningRange();
+			sensor.verticalRange = GetRelativeScanningBand();
+			owner->RegisterSensorCreation(sensor,loc.height, atTime,checkChangesNow, newContacts);
 		#endif
 	}
 
@@ -493,14 +501,22 @@ namespace Objects
 		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
 		
 		#ifndef CLIENT
-			owner->RegisterSensorRemoval(Sphere<>(Grid::ToWorld(loc), GetScanningRange()),loc.height, atTime,checkChangesNow);
+			Grid::LowSetup::TSensor sensor;
+			sensor.center = loc;
+			sensor.radius = GetScanningRange();
+			sensor.verticalRange = GetRelativeScanningBand();
+			owner->RegisterSensorRemoval(sensor,loc.height, atTime,checkChangesNow);
 		#endif
 
 		#ifdef CLIENT
 			if (isOwnedByMe)
 			{
 				Grid::HighSetup::TVolumeDescriptor desc;
-				Grid::high.GenerateVolume(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),desc);
+				Grid::HighSetup::TSensor sensor;
+				sensor.center = Grid::ToHigh(loc);
+				sensor.radius = GetScanningRange();
+				sensor.verticalRange = GetRelativeScanningBand();
+				Grid::high.GenerateVolume(sensor,desc);
 				UnregisterWorldSensory(desc);
 				#ifdef THOROUGLY_DEBUG_SENSORY
 					VerifySensory();

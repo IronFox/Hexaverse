@@ -35,6 +35,7 @@ namespace Objects
 
 
 	DX11::ObjectBuffer<float4>	keyColor, overallTint,
+								sensorRange,
 								cylinderConfig,
 								beamBottomColor,
 								beamTopColor;
@@ -43,6 +44,7 @@ namespace Objects
 								seeThroughShader,
 								pathShader,
 								jobShader,
+								sensorShader,
 								attackRingShader,
 								cylinderShader,
 								paraboloidShader,
@@ -52,7 +54,10 @@ namespace Objects
 	DX11::StreamVBO				arrowBuffer;
 	DX11::VBO					sphereVBO[4],cylinderVBO[4];
 	DX11::IBO32					sphereIBO[4],cylinderIBO[4], attackIBO;
-	DX11::InstructionBlock32	sphereInstruction[4],cylinderInstruction[4];
+	DX11::InstructionBlock32	sphereInstruction[4],
+								cylinderInstruction[4],
+								sensorInstruction[4]
+								;
 
 	DX11::InstructionBlock32	cordon,
 								foundation,
@@ -122,6 +127,32 @@ namespace Objects
 		selectedSmokeTrail = InvalidIndex;
 	}
 
+	void	Renderer::RenderSensorRange(const Grid::LCellIdI&loc, float radius, const TFloatRange<int>& vRange, const float4&color)
+	{
+		TVec3<> center;
+		Grid::LSensor::GetWorldCenter(loc,center);
+		float d = Vec::distance(Camera::scene.GetAbsoluteLocation(),center);
+		int instructionIndex = DetermineLODInstruction(d,radius);
+		if (sensorInstruction[instructionIndex].shader.IsEmpty())
+		{
+			sensorInstruction[instructionIndex].SetBase(sensorShader);
+			sensorInstruction[instructionIndex].vbo = sphereVBO[instructionIndex];
+			sensorInstruction[instructionIndex].ibo = sphereIBO[instructionIndex];
+		}
+		TMatrix4<> scaled = Matrix<>::eye4;
+		scaled.x.x = scaled.y.y = scaled.z.z = radius;
+		scaled.w.xyz = center;
+
+		overallTint.Update(color);
+
+		float r0 = Grid::ToRadius(loc.height + vRange.min);
+		float r1 = Grid::ToRadius(loc.height + vRange.max+1);
+		
+		sensorRange.Update(float4(r0,r1,0,1));
+
+		display.SetObjectMatrix(scaled);
+		display.Render(sensorInstruction[instructionIndex],true);
+	}
 
 	void Renderer::RenderRangeSphere(const TVec3<>&center, float radius, const float4&color)
 	{
@@ -219,6 +250,7 @@ namespace Objects
 		keyColor.Clear();
 		cylinderConfig.Clear();
 		overallTint.Clear();
+		sensorRange.Clear();
 		beamBottomColor.Clear();
 		beamTopColor.Clear();
 
@@ -226,7 +258,7 @@ namespace Objects
 
 		seeThroughShader = stdVehicleShader = DX11::BaseInstructionBlock();
 		Structure::standardCompiledShader = Structure::standardLocalizableShader =
-			pathShader = jobShader = cylinderShader = paraboloidShader = 
+			pathShader = jobShader = sensorShader = cylinderShader = paraboloidShader = 
 			attackRingShader = 
 			smokeTrailShader =
 			arrowInstruction = 
@@ -243,6 +275,7 @@ namespace Objects
 			sphereVBO[i].Clear();
 			sphereIBO[i].Clear();
 			sphereInstruction[i].Clear();
+			sensorInstruction[i].Clear();
 		}
 		for (index_t i = 0; i < ARRAYSIZE(cylinderVBO); i++)
 		{
@@ -327,6 +360,7 @@ namespace Objects
 
 		keyColor.Create(float4(0));
 		overallTint.Create(float4(1));
+		sensorRange.Create(float4());
 		cylinderConfig.Create(float4(1));
 		{
 			Engine::VertexBinding binding;
@@ -436,6 +470,21 @@ namespace Objects
 			smokeTrailShader.shader.LoadFromFile("shaders/smokeTrail.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
 			smokeTrailShader.UpdateLayout();
 			smokeTrailShader.SetTriangles();
+		}
+
+
+		{
+			DX11::Shader::Binding bindings[] =
+			{
+				DX11::Shader::Binding(overallTint, "Tint"),
+				DX11::Shader::Binding(sensorRange, "SensorRange"),
+				DX11::Shader::Binding(Grid::Instruction::sunDirection,"Sun"),
+				DX11::Shader::Binding(Grid::Instruction::sunColor,"SunColor"),
+			};
+			sensorShader.binding = stdVehicleShader.binding;
+			sensorShader.shader.LoadFromFile("shaders/sensor.hlsl", "vsMain", "psMain", bindings, ARRAYSIZE(bindings));
+			sensorShader.UpdateLayout();
+			sensorShader.SetTriangles();
 		}
 
 		{
@@ -1354,7 +1403,7 @@ namespace Objects
 					scanningRange += RangeShadowExtension;
 
 
-				Renderer::RenderRangeSphere(selectedEntity->GetWorldPosition(),scanningRange,
+				Renderer::RenderSensorRange(selectedEntity->location,scanningRange,selectedEntity->GetRelativeScanningBand(),
 					color
 					);
 				float zOffset;
@@ -1382,7 +1431,7 @@ namespace Objects
 				float scanningRange = activeStructureToPlace->GetScanningRange();
 				if (extendedShadow)
 					scanningRange += RangeShadowExtension;
-				Renderer::RenderRangeSphere(structureToPlaceSystem.w.xyz,scanningRange,
+				Renderer::RenderSensorRange(arrowCellTarget.cellLocation,scanningRange,activeStructureToPlace->GetRelativeScanningBand(),
 					color
 					);
 			}

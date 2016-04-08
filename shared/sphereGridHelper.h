@@ -52,14 +52,14 @@ namespace Grid
 			{
 				#ifdef _DEBUG
 					ASSERT_LESS__(c->stackID,HighSetup::GridType::CellCount);
-					ASSERT_LESS_OR_EQUAL__(c->layerBegin,c->layerEnd);
-					ASSERT_LESS__(c->layerBegin,CellStack::Range);
+					ASSERT_LESS_OR_EQUAL__(c->range.start,c->range.end);
+					ASSERT_LESS__(c->range.start,CellStack::Range);
 				#endif
-				if (c->layerEnd == c->layerBegin)
+				if (c->range.IsEmpty())
 					continue;
 				auto&stack = cellStack[c->stackID];
 				familyChanged[high.grid.GetCell(c->stackID).family] = true;
-				for (UINT32 layer = c->layerBegin; layer < c->layerEnd; layer++)
+				for (UINT32 layer = c->range.start; layer < c->range.end; layer++)
 				{
 					stack.volumeCell[layer].AlterVisibility(changeBy);
 				}

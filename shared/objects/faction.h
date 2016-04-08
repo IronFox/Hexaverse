@@ -322,9 +322,9 @@ namespace Objects
 
 			void		RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
 			void		RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow);
-			void		RegisterSensorCreation(const Sphere<>&, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
-			void		RegisterSensorMotion(const Sphere<>&from, int sensorHeight, const Sphere<>&to, float&t, bool checkChangesNow);
-			void		RegisterSensorRemoval(const Sphere<>&, int sensorHeight, float&t, bool checkChangesNow);
+			void		RegisterSensorCreation(const Grid::LSensor&, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
+			//void		RegisterSensorMotion(const Grid::LSensor&from, int sensorHeight, const Grid::LSensor&to, int toHeight, float&t, bool checkChangesNow);
+			void		RegisterSensorRemoval(const Grid::LSensor&, int sensorHeight, float&t, bool checkChangesNow);
 
 			count_t		CountOffGridCoverage(int channelHeight, const TVec3<>&)	const;
 			count_t		CountOffGridCoverage(const Sphere<>&)	const;

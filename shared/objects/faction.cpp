@@ -364,11 +364,11 @@ namespace Objects
 		{
 			foreach (v.coverage,st)
 			{
-				DBG_ASSERT_LESS__(st->layerBegin,Grid::CellStack::Range);
-				DBG_ASSERT_LESS_OR_EQUAL__(st->layerEnd,Grid::CellStack::Range);
-				DBG_ASSERT_LESS_OR_EQUAL__(st->layerBegin,st->layerEnd);
+				DBG_ASSERT_LESS__(st->range.start,Grid::CellStack::Range);
+				DBG_ASSERT_LESS_OR_EQUAL__(st->range.end,Grid::CellStack::Range);
+				DBG_ASSERT_LESS_OR_EQUAL__(st->range.start,st->range.end);
 				const auto&stack = visibility.cellStack[st->stackID];
-				for (UINT32 layer = st->layerBegin; layer < st->layerEnd; layer++)
+				for (UINT32 layer = st->range.start; layer < st->range.end; layer++)
 				{
 					if (stack.volumeCell[layer].IsCurrentlyVisible())
 						return true;
@@ -620,24 +620,26 @@ namespace Objects
 		}
 
 
-		void		Faction::RegisterSensorCreation(const Sphere<>&sphere, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+		void		Faction::RegisterSensorCreation(const Grid::LSensor&sensor, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 		{
 			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
 				static Grid::HighSetup::TVolumeDescriptor	desc0;
-				Grid::high.GenerateVolume(sphere,desc0);
+				Grid::high.GenerateVolume(Grid::ToHigh(sensor),desc0);
 				ChangeSensory(desc0,t,1);
 				if (checkChangesNow)
 					CheckChanges(t);
 
 				static Grid::LowSetup::TVolumeDescriptor	desc;
-				Grid::low.GenerateVolume(Sphere<>(sphere.center,sphere.radius+1.f),desc);
+				Grid::LSensor s2 = sensor;
+				s2.radius ++;
+				Grid::low.GenerateVolume(s2,desc);
 				foreach (desc.coverage,c)
 				{
-					UINT32 min = c->layerBegin;
+					UINT32 min = c->range.start;
 					if (min)
 						min--;
-					for (UINT l = min; l < c->layerEnd; l++)
+					for (UINT l = min; l < c->range.end; l++)
 					{
 						PWorldEntity e = GetEntity(Grid::LCellIdI(c->stackID,Grid::CellStack::ToHeight(l)));
 						if (!e || e->owner.get() == this)
@@ -658,7 +660,7 @@ namespace Objects
 					foreach (Objects::satellites,s)
 					{
 						PSatellite sat = *s;
-						if (sat->owner.get() != this && sphere.Contains(sat->GetWorldPosition()))
+						if (sat->owner.get() != this && sensor.Contains(sat->location))
 						{
 							if (SignalAppearance(sat,t,true) && newContacts)
 								newContacts->Append(sat);
@@ -682,12 +684,12 @@ namespace Objects
 		}
 
 		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
-		void		Faction::RegisterSensorRemoval(const Sphere<>&sphere, int sensorHeight, float&t, bool checkChangesNow)
+		void		Faction::RegisterSensorRemoval(const Grid::LSensor&sensor, int sensorHeight, float&t, bool checkChangesNow)
 		{
 			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
 				static Grid::HighSetup::TVolumeDescriptor	desc0;
-				Grid::high.GenerateVolume(sphere,desc0);
+				Grid::high.GenerateVolume(Grid::ToHigh(sensor),desc0);
 				ChangeSensory(desc0,t,-1);
 				if (checkChangesNow)
 					CheckChanges(t);
@@ -700,13 +702,13 @@ namespace Objects
 
 			bool offGrid = sensorHeight > Grid::CellStack::TopHeight;
 
-			this->seeing.VisitAllKeys([this,offGrid, sphere](const PWorldEntity&s)
+			this->seeing.VisitAllKeys([this,offGrid, sensor](const PWorldEntity&s)
 			{
 				if (s->IsAboveGrid() != offGrid)
 					return;
 				if (s->IsAboveGrid())
 				{
-					if (sphere.Contains(s->GetWorldPosition()))
+					if (sensor.Contains(s->location))
 					{
 						disappear << s;
 					}
@@ -731,7 +733,7 @@ namespace Objects
 
 			ForeachWorldEntity([this,&t,newContacts](const PWorldEntity&other)
 			{
-				if (other->owner.get() == this)
+				if (other->owner.get() == this || other->IsAboveGrid())
 					return;
 				if (GridCanSee(other))
 				{
