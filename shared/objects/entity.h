@@ -371,7 +371,7 @@ namespace Objects
 			virtual void			PrototypeLoadGeometry() {};
 		#endif
 
-		virtual UINT				GetVerticalScanningBand() const {return 3;}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
+		virtual TFloatRange<int>	GetRelativeScanningBand() const {return FloatRange<int>(-3,+6);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
 		virtual float				GetMaxScanningRange() const	{return 2.f;};	//returns the effective scanning range of the local entity
 		float						GetScanningRange() const;
 		float						EMPModify(float raw, float min) const;

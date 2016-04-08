@@ -1252,16 +1252,20 @@ namespace Grid
 		{
 			typename GridType::CellIdI	center;
 			float						radius;
-			UINT						verticalRange;
+			TFloatRange<int>			verticalRange;
 
+			static void					GetWorldCenter(const typename GridType::CellIdI&loc,TVec3<>&outCenter)
+			{
+				Vec::mul(cells[loc.stackID].cornerCenter,ToRadiusf(0.5f + loc.height),outCenter);
+			}
 			void						GetWorldCenter(TVec3<>&outCenter) const
 			{
-				Vec::mul(cells[center.stackID].cornerCenter,ToRadiusf(0.5f + center.height),outCenter);
+				GetWorldCenter(center,outCenter);
 			}
 
 			bool						Contains(const typename GridType::CellIdI&loc)	const
 			{
-				if (loc.height < center.height - (int)verticalRange || loc.height > center.height + (int)verticalRange)
+				if (loc.height < center.height + verticalRange.min || loc.height > center.height + verticalRange.max)
 					return false;
 				TVec3<> world,wcenter;
 				Vec::mul(cells[loc.stackID].cornerCenter,ToRadius(loc.height),world);
@@ -1284,8 +1288,8 @@ namespace Grid
 			TVec3<> center;
 			sensor.GetWorldCenter(center);
 			UINT32 next;
-			TIntRange<> vrange = IntRange(clamp(sensor.center.height - (int)sensor.verticalRange,CellStack::BottomHeight,CellStack::TopHeight), 
-										clamp(sensor.center.height+(int)sensor.verticalRange+1,CellStack::BottomHeight,CellStack::TopHeight+1));
+			TIntRange<> vrange = IntRange(clamp(sensor.center.height + sensor.verticalRange.min,CellStack::BottomHeight,CellStack::TopHeight), 
+										clamp(sensor.center.height+sensor.verticalRange.max+1,CellStack::BottomHeight,CellStack::TopHeight+1));
 			TIntRange<UINT> vrange2 = IntRange<UINT>(CellStack::ToLayer( vrange.start ),CellStack::ToLayer(vrange.end));
 			while (op.stacksLeft >> next)
 			{
