@@ -88,7 +88,7 @@ namespace Objects
 			virtual bool			IsPlane() const override {return true;}
 			virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = 0.f; return To<MobileEntity>::Cast(shared_from_this());}
 			virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = 0.f; return To<const MobileEntity>::Cast(shared_from_this());}
-			virtual TFloatRange<int>	GetRelativeScanningBand() const {return FloatRange<int>(IsAboveGrid()? -100 : -3,+100);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
+			virtual TFloatRange<int>	GetRelativeScanningBand(const Grid::LCellIdI&loc) const override {return FloatRange<int>(IsAboveGrid(loc)? -100 : -3,+100);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
 
 			#ifdef HAS_WINDOW
 				virtual void		DescribeType(BaseCommand::Label&outResult, UINT32 descFlags) override;
