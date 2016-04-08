@@ -428,7 +428,8 @@ namespace Objects
 		/**
 		Checks if the local entity is currently above the regular grid (e.g. a satellite)
 		*/
-		inline bool					IsAboveGrid() const	{return location.height > Grid::CellStack::TopHeight;}
+		inline bool					IsAboveGrid() const	{return IsAboveGrid(location);}
+		static inline bool			IsAboveGrid(const Grid::LCellIdI&location) {return location.height > Grid::CellStack::TopHeight;}
 
 		/**
 		Checks whether or not a new instance of the local class can be spawned within the world grid
