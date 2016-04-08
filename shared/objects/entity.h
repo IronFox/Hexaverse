@@ -371,7 +371,8 @@ namespace Objects
 			virtual void			PrototypeLoadGeometry() {};
 		#endif
 
-		virtual TFloatRange<int>	GetRelativeScanningBand() const {return FloatRange<int>(-3,+100);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
+		virtual TFloatRange<int>	GetRelativeScanningBand(const Grid::LCellIdI&loc) const {return FloatRange<int>(-3,+100);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
+		inline TFloatRange<int>		GetRelativeScanningBand() const {return GetRelativeScanningBand(location);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
 		virtual float				GetMaxScanningRange() const	{return 2.f;};	//returns the effective scanning range of the local entity
 		float						GetScanningRange() const;
 		float						EMPModify(float raw, float min) const;
@@ -441,7 +442,8 @@ namespace Objects
 		/**
 		Checks if the local entity is currently above the regular grid (e.g. a satellite)
 		*/
-		inline bool					IsAboveGrid() const	{return location.height > Grid::CellStack::TopHeight;}
+		inline bool					IsAboveGrid() const	{return IsAboveGrid(location);}
+		static inline bool			IsAboveGrid(const Grid::LCellIdI&location) {return location.height > Grid::CellStack::TopHeight;}
 
 		/**
 		Checks whether or not a new instance of the local class can be spawned within the world grid
