@@ -1302,6 +1302,8 @@ namespace Objects
 			component.requiresStationaryVehicle = true;
 			component.uplinkTraffic = 10;
 
+			component.mountType = Turret::MountType::TowerOnly;
+
 
 			component.FinishCreation();
 		}
