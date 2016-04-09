@@ -1,5 +1,6 @@
 v0.3.23
 	+ Added control commands to find and terminate factions.
+	+ Added tutorial messages for each plane type, including images.
 	> Increased sensor range of sensor drone.
 	> Scheduling a mobile entity task will now wake the local unit if necessary.
 	> Unit sensory is now limited to a fixed height-band. This considerably reduces radar sensory into the ground.
