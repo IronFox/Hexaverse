@@ -150,7 +150,7 @@
 		Raptors are the fastest sub orbital planes, and the only ones that can attack other planes.
 		Like all planes they are invisible to ground-based sensors, but can be attacked from anywhere once discovered.
 	</message>
-	<message name='Sensor Drone'>
+	<message name='Sensor Drone' image='SensorDrone.jpg'>
 		Sensor drones are your eyes in the sky. They can scan vast reaches both in sub orbit and on the ground. Their ground penetration is slightly higher than that of other planes, allowing to see submerged structures.
 		They are cheap to build, but easily destroyed by hostile raptors.
 		Like all planes sensor drones are invisible to ground-based sensors, but can be attacked from anywhere once discovered.
