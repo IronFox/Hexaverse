@@ -9,6 +9,7 @@ v0.3.23
 	* Fixed various visibility and grid issues causing client assertion failures and subsequent crashes.
 	* Fixed airborne sensory.
 	* Fixed plane ghost rendering.
+	* Fixed hostile health visually reverting to full when sensor contact is temporarily lost.
 
 v0.3.22	[Apr 5 2016]
 	> Reduced visual size of cargo plane.
