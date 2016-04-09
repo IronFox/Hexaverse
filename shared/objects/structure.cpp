@@ -707,6 +707,9 @@ namespace Objects
 
 
 		CommonRegisterStructure(Grid::actualWorld, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
+		#ifndef CLIENT
+			CommonRegisterStructure(owner->currentState, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
+		#endif
 
 		TStructureNeighborhood	neighborhood;
 		GetNeighborhood(owner,ConnectsToDifferentOwnership(), location, neighborhood);
@@ -778,6 +781,9 @@ namespace Objects
 		Super::OnDestroy(t,atTime);
 		LogEvent(EventClass::Preset::debug,this,"Unregistering...");
 		CommonUnregisterStructure(Grid::actualWorld, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
+		#ifndef CLIENT
+			CommonUnregisterStructure(owner->currentState, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
+		#endif
 
 		LogEvent(EventClass::Preset::debug,this,"Disconnecting...");
 		DisconnectFromNeighborhood(atTime);
