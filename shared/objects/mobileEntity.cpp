@@ -268,9 +268,9 @@ namespace Objects
 									}
 									break;
 									case MobilePlacementResult::PlacementFailedHarmfulOrBlocked:
-										this->ClearAllTasks(true, CLOCATION);
 									case MobilePlacementResult::PlacementFailedPermanentlyObstructed:
-										dropRemaining = true;
+										if (task.path.GetLength() <= 1 || (task.foci.IsNotEmpty() && task.foci.Peek().isDetailed))
+											dropRemaining = true;
 										//bleed into next case:
 									case MobilePlacementResult::PlacementFailedTemporarilyObstructed:
 									{
