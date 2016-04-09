@@ -287,9 +287,9 @@ namespace Objects
 									}
 									break;
 									case MobilePlacementResult::PlacementFailedHarmfulOrBlocked:
-										this->ClearAllTasks(true, CLOCATION);
 									case MobilePlacementResult::PlacementFailedPermanentlyObstructed:
-										dropRemaining = true;
+										if (task.path.GetLength() <= 1 || (task.foci.IsNotEmpty() && task.foci.Peek().isDetailed))
+											dropRemaining = true;
 										//bleed into next case:
 									case MobilePlacementResult::PlacementFailedTemporarilyObstructed:
 									{
@@ -453,6 +453,8 @@ namespace Objects
 					if (!thisIsGrounded && thatIsGrounded)
 						continue;
 					if (!b)
+						continue;
+					if (!(*c)->IsSentry())
 						continue;
 					if (b->turret->CanAttack())
 					{

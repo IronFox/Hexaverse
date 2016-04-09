@@ -444,6 +444,14 @@ namespace Objects
 			if (ref.sightLevel == incStackBy)
 			{
 				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual at time="+String(t));
+
+				if (e->IsStructure())
+				{
+					PStructure s = To<Structure>::Cast(e);
+					Structure::CommonRegisterStructure(currentState,e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
+					t += timeEpsilon;
+				}
+
 				float t0;
 				if (lostVisualAt.QueryAndUnset(e,t0))
 				{
@@ -491,7 +499,12 @@ namespace Objects
 					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": WARNING: Visual loss was forced");
 				}
 
-
+				if (e->IsStructure())
+				{
+					PStructure s = To<Structure>::Cast(e);
+					Structure::CommonUnregisterStructure(currentState,e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
+					t += timeEpsilon;
+				}
 
 				float t0;
 				if (gainedVisualAt.QueryAndUnset(e,t0))
