@@ -3,6 +3,7 @@ v0.3.23
 	> Scheduling a mobile entity task will now wake the local unit if necessary.
 	> Unit sensory is now limited to a fixed height-band. This considerably reduces radar sensory into the ground.
 	> Clipped terrain now visually distinguishes between invisible and visible terrain.
+	> Newly discovered offensive non-sentry units no longer cause a mobile unit to stop in its tracks.
 	* Fixed various visibility and grid issues causing client assertion failures and subsequent crashes.
 
 v0.3.22	[Apr 5 2016]

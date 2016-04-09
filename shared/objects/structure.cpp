@@ -706,7 +706,10 @@ namespace Objects
 		Super::OnConstructionFinished(atTime);
 
 
-		CommonRegisterStructure(location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
+		CommonRegisterStructure(Grid::actualWorld, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
+		#ifndef CLIENT
+			CommonRegisterStructure(owner->currentState, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
+		#endif
 
 		TStructureNeighborhood	neighborhood;
 		GetNeighborhood(owner,ConnectsToDifferentOwnership(), location, neighborhood);
@@ -777,7 +780,10 @@ namespace Objects
 	{
 		Super::OnDestroy(t,atTime);
 		LogEvent(EventClass::Preset::debug,this,"Unregistering...");
-		CommonUnregisterStructure(location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
+		CommonUnregisterStructure(Grid::actualWorld, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
+		#ifndef CLIENT
+			CommonUnregisterStructure(owner->currentState, location,GetBroadHeight(),GetHeight(),HasFoundation(),atTime);
+		#endif
 
 		LogEvent(EventClass::Preset::debug,this,"Disconnecting...");
 		DisconnectFromNeighborhood(atTime);
@@ -1133,7 +1139,7 @@ namespace Objects
 
 
 
-	/*static*/ void Structure::ChangeStructCount(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime)
+	/*static*/ void Structure::ChangeStructCount(Grid::WorldData&world, const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime)
 	{
 		LogEvent(EventSignificance::Debug,nullptr,"ChangeStructCount("+location.ToString()+", broadHeight="+String(broadHeight)+", height="+String(totalHeight)+", foundation="+String(hasFoundation)+", dir="+String(changeDirection)+")");
 
@@ -1144,13 +1150,13 @@ namespace Objects
 				const auto&n = Grid::high.grid.GetCell(higher).neighborhood;
 				for (int j = 0; j < n.numNeighbors; j++)
 				{
-					Grid::CellStack&stack = Grid::actualWorld.cellStack[n.neighborID[j]];
+					Grid::CellStack&stack = world.cellStack[n.neighborID[j]];
 					for (int h = lowEdge; h < broadHeight; h++)
 						stack.ChangeStructureCounterI(location.height+h,changeDirection);
 				}
-				Grid::CellStack&stack = Grid::actualWorld.cellStack[higher];
+				Grid::CellStack&stack = world.cellStack[higher];
 			#else
-				Grid::CellStack&stack = Grid::actualWorld.cellStack[location.stackID];
+				Grid::CellStack&stack = world.cellStack[location.stackID];
 			#endif
 			for (int h = lowEdge; h < broadHeight; h++)
 				stack.ChangeStructureCounterI(location.height+h,2*changeDirection);
@@ -1158,16 +1164,17 @@ namespace Objects
 				stack.ChangeStructureCounterI(location.height+h,changeDirection);
 		}
 
-		InvalidateTerrain(location,atTime);
+		if (&world == &Grid::actualWorld)
+			InvalidateTerrain(location,atTime);
 	}
 
-	/*static*/ void	Structure::CommonRegisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
+	/*static*/ void	Structure::CommonRegisterStructure(Grid::WorldData&world, const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
 	{
-		ChangeStructCount(location,broadHeight, totalHeight,hasFoundation,+1,atTime);
+		ChangeStructCount(world, location,broadHeight, totalHeight,hasFoundation,+1,atTime);
 	}
-	/*static*/ void	Structure::CommonUnregisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
+	/*static*/ void	Structure::CommonUnregisterStructure(Grid::WorldData&world, const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime)
 	{
-		ChangeStructCount(location,broadHeight, totalHeight,hasFoundation,-1,atTime);
+		ChangeStructCount(world, location,broadHeight, totalHeight,hasFoundation,-1,atTime);
 	}
 
 
