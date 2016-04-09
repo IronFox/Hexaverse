@@ -144,7 +144,7 @@
 		The current total uplink traffic is shown in the bottom left of the window.
 		To avoid hibernation deadlock, try to limit the number of uplink-heavy buildings, and store unused vehicles in vehicle stores.
 	</message>
-	<message name='Raptor'>
+	<message name='Raptor' image='Raptor.jpg'>
 		Raptors are hunters.
 		While they serve an exceptable purpose in locating and even attacking elevated ground units, their primary strength lies in hunting down hostile planes.
 		Raptors are the fastest sub orbital planes, and the only ones that can attack other planes.
