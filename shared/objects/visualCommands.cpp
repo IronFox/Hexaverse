@@ -11,6 +11,7 @@
 #include "visualChoices.h"
 #include "satellite.h"
 #include "faction.h"
+#include "gridAndChoices.h"
 #include <image/converter/magic.h>
 #include "faction.h"
 

@@ -108,6 +108,12 @@ namespace Reflection
 	*/
 	void	VisitAllVariables(const Variable::FCallback&);
 	
+	/**
+	Signals that something has changed in the faction object composition.
+	Entity state changes are not signalled.
+	*/
+	void	SignalFactionsChanged();
+//	void	SignalUserNameChange(const Objects::PFaction&);
 
 	/**
 	Visits all variables and calls CheckChanges() on each. This checks for changes that happend outside the CLI state callback architecture

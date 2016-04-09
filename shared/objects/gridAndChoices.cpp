@@ -2778,7 +2778,7 @@ namespace Objects
 		void			Place( const PStructure&s)
 		{
 			float t = 0;
-			InsertConstructed(s,t);
+			InsertConstructed(s,t,false,false);
 		}
 		void			Place( const PVehicle&vehicle, bool insertIntoGrid/*=true*/)
 		{
@@ -2786,7 +2786,7 @@ namespace Objects
 			ASSERT3__(vehicle->preAnimationLocation == vehicle->location,vehicle->preAnimationLocation.ToString(),vehicle->location.ToString(),vehicle->GetName());
 			float t = 0;
 			//vehicle->preAnimationLocation = vehicle->location;
-			InsertConstructed(vehicle,t,insertIntoGrid);
+			InsertConstructed(vehicle,t,insertIntoGrid,false);
 			ASSERT1__(vehicles.Contains(vehicle),vehicle->GetName());
 		}
 		#ifndef NO_SATELLITES

@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <declaration>
+	<context name="Factions">All currently existing factions
+		<command name="names">Lists all factions with their chosen names and first few ID digits.</command>
+		<command name="find">
+			Lists all factions whose chosen name contains or equals the specifed parameter. Ignores case.
+		</command>
+	</context>
 	<context name="World">Settings related to the current world
 		<variable name="simulateLiquids" default="true">
 			Enables or liquid expansion. Lava and water will expand horizontally and downwards, and eventually floodfill all available space.
@@ -174,7 +180,7 @@
 				<variable name="Radar" default="8" />
 				<variable name="Cannon" default="8" />
 				<variable name="Artillery" default="5" />
-				<variable name="Missile_Launcher" default="3" />
+				<variable name="Missile_Launcher" default="0" />
 				<variable name="EMP" default="3" />
 				<variable name="Bomb" default="0" />
 				<variable name="Terraformer" default="4" />

@@ -6,10 +6,13 @@
 #include <io/config.h>
 #include <io/file_system.h>
 #include "aiProcess.h"
+//#include "remoteControl.h"
 
 namespace Reflection
 {
 	CLI::Interpreter	state;
+
+	static CLI::PFolder factionFolder;
 
 	namespace Variable
 	{
@@ -422,6 +425,16 @@ namespace Reflection
 		};
 
 
+		class FactionAttachment : public CLI::Folder::Attachable
+		{
+		public:
+			TUniqueID	id;
+
+			/**/		FactionAttachment() :id(TUniqueID::Empty()) {}
+			/**/		FactionAttachment(const TUniqueID&id) :id(id) {}
+		};
+		typedef std::shared_ptr<FactionAttachment>	PFactionAttachment;
+
 		class PersistenceAttachment :public CLI::Folder::Attachable
 		{
 
@@ -469,6 +482,123 @@ namespace Reflection
 			state.SetVariable(rs);
 			return rs;
 		}
+	}
+
+
+
+	namespace FactionCommands
+	{
+		CLI::PCommand	terminate;
+
+
+
+		void		TerminateCommand(const String&reason)
+		{
+			CLI::PFolder f = state.GetExecutionContext();
+			Variable::PFactionAttachment attach = To<Variable::FactionAttachment>::DynamicCast(f->attachment);
+			if (!attach)
+			{
+				LogEvent(EventClass::Preset::remoteControlError, "Error: This folder is not a faction folder");
+				return;
+			}
+			String r = reason.trimRef();
+			if (r.IsEmpty())
+			{
+				LogEvent(EventClass::Preset::remoteControlError, "Error: No reason given");
+				return;
+			}
+			Objects::PFaction faction = Objects::Faction::FindByID(attach->id);
+			if (!faction)
+			{
+				LogEvent(EventClass::Preset::remoteControlError, "Error: Faction no longer exists");
+				SignalFactionsChanged();
+				return;
+			}
+			LogEvent(EventClass::Preset::factionDeath, "Terminating "+faction->GetLogName()+" ("+r+")");
+			Objects::Faction::Kill(faction);
+			Network::PClient client;
+			if (Network::playerMap.Query(faction,client))
+			{
+				client->SendProgressUpdate(true, "");
+			}
+		}
+
+		void		ListNames()
+		{
+			Objects::ForeachFaction([](const Objects::PFaction&f)
+			{
+				CLI::println(f->name + " - " + f->id.ToString());
+			});
+		}
+
+		void		FindName(const String&name)
+		{
+			Objects::ForeachFaction([name](const Objects::PFaction&f)
+			{
+				if (f->name.findIgnoreCase(name))
+					CLI::println(f->name + " - " + f->id.ToString());
+			});
+		}
+
+		void		GotoName(const String&name)
+		{
+
+
+		}
+
+		void		Create()
+		{
+			terminate.reset(new CLI::Command(CLI::Command::Name("terminate reason"), &TerminateCommand, CLI::NoCompletion));
+			terminate->SetUniqueHelp("Terminates this faction and all of its destructible units. If the local faction is the Nexus faction, then it'll lose all its units but won't be deleted."
+							" Unless you have some backup savegame, this operation is irreversible. Don't use this on live ");
+
+		}
+
+
+
+
+
+		
+		class Name : public CLI::Variable
+		{
+		public:
+			Objects::WFaction faction;
+
+			/**/				Name(const Objects::PFaction&f):CLI::Variable("name","String",1,CLI::FullProtection),faction(f)
+			{}
+
+			virtual	String		ToString()			const override	{Objects::PFaction f = faction.lock(); if (f) return f->name; return "<null>";}
+			virtual	bool		Set(const String&value)	{return false;}
+		};
+
+		class Client : public CLI::Variable
+		{
+		public:
+			Objects::WFaction faction;
+
+			/**/				Client(const Objects::PFaction&f):CLI::Variable("client","Network Address",1,CLI::FullProtection),faction(f)
+			{}
+
+			virtual	String		ToString()			const override
+			{
+				Objects::PFaction f = faction.lock(); 
+				if (!f) 
+					return "<null>";
+				Network::PClient client;
+				if (!Network::playerMap.Query(f,client))
+				{
+					return "offline";
+				}
+				TCP::PPeer peer = client->peer.lock();
+				if (!peer)
+				{
+					return "offline";
+				}
+				return peer->ToString();
+			}
+			virtual	bool		Set(const String&value)	{return false;}
+		};
+
 	}
 
 
@@ -650,6 +780,13 @@ namespace Reflection
 		#define ENUMVAR(_NAME_,_CONTEXT_,_PERSISTENCE_)	Variable::SetEnum(#_NAME_,_CONTEXT_::_NAME_,_PERSISTENCE_);
 
 		CLI::InitDefaults(state,PrintLn);
+
+		FactionCommands::Create();
+
+		factionFolder = state.EnterNewFolder("Factions");
+		state.DefineCommand("names", FactionCommands::ListNames);
+		state.DefineCommand("find name", FactionCommands::FindName);
+		state.ExitFolder();
 
 		state.EnterNewFolder("World")->attachment.reset(new Variable::PersistenceAttachment());
 			VAR(simulateLiquids,World::Config,false,true,Variable::Persistence::RestoreFromSavegame);
@@ -1131,6 +1268,48 @@ namespace Reflection
 
 	}
 
+
+	void SignalFactionsChanged()
+	{
+		bool anyDeleted = false;
+		for (index_t i = 0; i < factionFolder->folders.Count(); i++)
+		{
+			const auto&f = factionFolder->folders[i];
+			Variable::PFactionAttachment attach = To<Variable::FactionAttachment>::DynamicCast(f->attachment);
+			if (!attach)
+			{
+				LogEvent(EventClass::Preset::internalError, "Found faction folder '"+f->name+"' without attachment");
+				state.EraseFolder(f);
+				i--;
+				anyDeleted = true;
+				continue;
+			}
+
+			if (!Objects::Faction::FindByID(attach->id))
+			{
+				state.EraseFolder(f);
+				i--;
+				anyDeleted = true;
+				continue;
+			}
+		}
+//		if (anyDeleted)
+	//		RemoteControl::SignalFoldersErased();
+		Objects::ForeachFaction([](const Objects::PFaction&faction)
+		{
+			String idName = faction->id.ToFullString();
+			if (factionFolder->folders.Query(idName))
+				return;
+			CLI::PFolder f = factionFolder->CreateOrGetChild(idName);
+
+			f->attachment.reset(new Variable::FactionAttachment(faction->id));
+
+			f->commands.Insert("terminate", FactionCommands::terminate);
+
+			f->variables.Insert("name",CLI::PVariable( new FactionCommands::Name(faction) ));
+			f->variables.Insert("client",CLI::PVariable( new FactionCommands::Client(faction) ));
+		});
+	}
 
 
 

@@ -1148,7 +1148,7 @@ namespace Objects
 				component.parts.first().first.LoadFromObj("objects/launcher.obj");
 			#endif
 
-
+			component.mountType = Turret::MountType::TowerOnly;
 			component.typeName = "Missile Launcher";
 			component.shortName = " Launcher";
 			component.constName = ConstName::Turret_Launcher;
@@ -1650,6 +1650,8 @@ namespace Objects
 			component.carryingCapacity = 1;
 			component.baseHealth = 4;
 
+			component.acceleration[TerrainAdd] = 1;
+			component.acceleration[TerrainRemove] = 1;
 
 			component.FinishCreation();
 
@@ -1693,10 +1695,12 @@ namespace Objects
 			component.baseHealth = 12;
 
 			component.hindrance.road = 1;
-			component.hindrance.air = 10;
-			component.hindrance.water = 10;
+			component.hindrance.air = 3;
+			component.hindrance.water = 4;
 			component.hindrance.other = 4;
 
+			component.acceleration[TerrainAdd] = 2;
+			component.acceleration[TerrainRemove] = 2;
 
 			component.FinishCreation();
 
@@ -1745,6 +1749,8 @@ namespace Objects
 			component.hindrance.water = 1;
 			component.hindrance.other = 10;
 
+			component.acceleration[TerrainAdd] = 2;
+			component.acceleration[TerrainRemove] = 2;
 
 			component.FinishCreation();
 
