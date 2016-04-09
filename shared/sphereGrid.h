@@ -277,7 +277,7 @@ namespace Grid
 			void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout) const
 			{
 				GetDeltaFrom(other,tout);
-				other = *this;
+				other.content = this->content;
 			}
 
 

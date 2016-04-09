@@ -107,7 +107,7 @@ namespace Protocol
 						bool canSee = cell.visibility > 0 || cell.temporarilyVisible;
 						if (canSee)
 						{
-							ws->cellStack[stackID].volumeCell[layer] = Grid::actualWorld.cellStack[stackID].volumeCell[layer];
+							ws->cellStack[stackID].volumeCell[layer].content = Grid::actualWorld.cellStack[stackID].volumeCell[layer].content;
 							cell.temporarilyVisible = false;
 						}
 					}
