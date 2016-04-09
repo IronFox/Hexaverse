@@ -144,4 +144,22 @@
 		The current total uplink traffic is shown in the bottom left of the window.
 		To avoid hibernation deadlock, try to limit the number of uplink-heavy buildings, and store unused vehicles in vehicle stores.
 	</message>
+	<message name='Raptor'>
+		Raptors are hunters.
+		While they serve an exceptable purpose in locating and even attacking elevated ground units, their primary strength lies in hunting down hostile planes.
+		Raptors are the fastest sub orbital planes, and the only ones that can attack other planes.
+		Like all planes they are invisible to ground-based sensors, but can be attacked from anywhere once discovered.
+	</message>
+	<message name='Sensor Drone'>
+		Sensor drones are your eyes in the sky. They can scan vast reaches both in sub orbit and on the ground. Their ground penetration is slightly higher than that of other planes, allowing to see submerged structures.
+		They are cheap to build, but easily destroyed by hostile raptors.
+		Like all planes sensor drones are invisible to ground-based sensors, but can be attacked from anywhere once discovered.
+	</message>
+	<message name='Cargo Plane'>
+		Cargo planes can quickly transport up to four mobile units at a time.
+		They are the slowest, but also most heavily armored planes, and can survive attacks by hostile raptors.
+		Cargo planes can currently transport other non-cargo-planes as well. To load mobile units simply direct them onto the same location as the cargo plane. Additionally, landed or ground-based units can also be loaded by landing right on top of them.
+		Stored planes can be deployed both in the air and on the ground. To deploy ground-based units the plane must first land.
+		Like all planes cargo planes are invisible to ground-based sensors, but can be attacked from anywhere once discovered.
+	</message>
 </tutorial>
