@@ -431,6 +431,8 @@ namespace Objects
 					PTurretBase b = (*c)->GetTurretBase(zOffset);
 					if (!b)
 						continue;
+					if (!(*c)->IsSentry())
+						continue;
 					if (b->turret->CanAttack())
 					{
 						LogEvent(EventClass::Preset::common,this,"Processing new hostile contact "+(*c)->GetName()+"...");
