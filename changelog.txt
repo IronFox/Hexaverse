@@ -5,6 +5,7 @@ v0.3.23
 	> Clipped terrain now visually distinguishes between invisible and visible terrain.
 	> Newly discovered offensive non-sentry units no longer cause a mobile unit to stop in its tracks.
 	* Fixed various visibility and grid issues causing client assertion failures and subsequent crashes.
+	* Fixed hostile health visually reverting to full when sensor contact is temporarily lost.
 
 v0.3.22	[Apr 5 2016]
 	> Enabled vertical synchronization by default.
