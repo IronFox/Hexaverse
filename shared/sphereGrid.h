@@ -251,7 +251,9 @@ namespace Grid
 			#ifdef CLIENT
 				short	visible=0;	//indicates levels of visibility. should not fall below 0. might make it unsigned when i am convinced it works. values >= 1 indicate this cell is visible
 
-				TVisibility	GetVisibility() const {return TVisibility(visible>0);}
+				#ifdef HAS_WINDOW
+					TVisibility	GetVisibility() const {return TVisibility(visible>0);}
+				#endif
 
 			#endif
 
@@ -2136,7 +2138,9 @@ namespace Grid
 				short	visibility;
 				bool	oldVisible, temporarilyVisible;
 
-				TVisibility	GetVisibility() const {return TVisibility(visibility>0);}
+				#ifdef HAS_WINDOW
+					TVisibility	GetVisibility() const {return TVisibility(visibility>0);}
+				#endif
 
 				bool	Changed(bool reset)
 				{
