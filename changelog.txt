@@ -5,7 +5,7 @@ v0.5.1
 	> Newly discovered offensive non-sentry units no longer cause a mobile unit to stop in its tracks.
 	* Fixed various visibility and grid issues causing client assertion failures and subsequent crashes.
 	* Fixed hostile health visually reverting to full when sensor contact is temporarily lost.
-	- Removed EMP attack turret from constructible turret set.
+	- Removed EMP turret from constructible turret set.
 
 v0.5.0	[Apr 5 2016]
 	> Considerably increased firing range and blast radius of artillery turret.
