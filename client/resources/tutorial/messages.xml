@@ -134,8 +134,8 @@
 		You can set a gathering point by first selection a plant, and then pressing the right mouse button anywhere. New vehicles will attempt to reach this point upon completion.
 	</message>
 	<message name='Attack' image='attack.jpg'>
-		Attacking a destination can be done by right-clicking at a hostile unit or explicitly by using the 'Attack' button. When doing so, a red shape indicates the reachable area. Note that this area is smaller than the geometric attack umbrella because it does not include the explosion radius.
-		Also note that some locations colored in red may not actually be reachable, if there is no unobstructed trajectory to that destination. In this case intermediate explosions may occur.
+		Attacking a destination can be done by right-clicking at a hostile unit or explicitly by using the 'Attack' button. When doing so, a red shape indicates the reachable area.
+		Note that some locations colored in red may not actually be reachable, if there is no unobstructed trajectory to that destination. In this case intermediate explosions may occur.
 	</message>
 	<message name='Uplink Traffic' image='uplinkTraffic.jpg'>
 		All active units generate control traffic to the governing entity (that's you).
