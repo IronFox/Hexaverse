@@ -115,27 +115,22 @@ namespace Grid
 			/**/	TVisibility(float value):value(value)	{}
 		};
 
+
 		struct TBaseColor
 		{
 			float3	color;
-			float	visibility=0.f;
 
 			/**/	TBaseColor() = default;
 			/**/	TBaseColor(const float3&c):color(c)	{}
 			/**/	TBaseColor(const TWeightedColor&c);
-			/**/	TBaseColor(const TVisibility&v):visibility(v.value)	{}
-
-			void	CompileFinalColor(TVec4<>&)	const;
 
 			void	operator+=(const TBaseColor&c)
 			{
 				color += c.color;
-				visibility += c.visibility;
 			}
 			void	operator*=(float fc)
 			{
 				color *= fc;
-				visibility *= fc;
 			}
 		};
 
@@ -147,7 +142,6 @@ namespace Grid
 
 			/**/	TWeightedColor() = default;
 			/**/	TWeightedColor(const TBaseColor&c, float weight):Super(c),weight(weight)	{}
-			/**/	TWeightedColor(const TVisibility&v):Super(v)	{}
 
 			void	operator+=(const TWeightedColor&c)
 			{
@@ -170,17 +164,19 @@ namespace Grid
 			float	lightLevel=0.f;
 			bool	capped = false;
 			float	emp = 0.f;
+			float	visibility=0.f;
 
 			/**/	TLitColor() = default;
 			/**/	TLitColor(const TBaseColor&base, float lightLevel, float emp=0.f):Super(base),lightLevel(lightLevel),emp(emp)	{}
+			/**/	TLitColor(const TBaseColor&base, float lightLevel, float emp, const TVisibility&vis):Super(base),lightLevel(lightLevel),emp(emp),visibility(vis.value)	{}
 			/**/	TLitColor(const TWeightedColor&base, float lightLevel, float emp=0.f):Super(base),lightLevel(lightLevel),emp(emp)	{}
 			/**/	TLitColor(float lightLevel, float emp=0.f):lightLevel(lightLevel),emp(emp)	{}
-			/**/	TLitColor(const TVisibility&v):Super(v)	{}
+			/**/	TLitColor(const TVisibility&v):visibility(v.value)	{}
 			void	CompileFinalColor(TVec4<>&)	const;
 
 		private:
 			static void ApplyEMP(float intensity,TVec3<>&rs);
-			static void CapColor(TVec3<>&rs);
+			void	CapColor(TVec3<>&rs)	const;
 		};
 
 
@@ -254,6 +250,9 @@ namespace Grid
 			BYTE	structureCounter;	//number of structures (density) that occupy this block
 			#ifdef CLIENT
 				short	visible=0;	//indicates levels of visibility. should not fall below 0. might make it unsigned when i am convinced it works. values >= 1 indicate this cell is visible
+
+				TVisibility	GetVisibility() const {return TVisibility(visible>0);}
+
 			#endif
 
 			/**/	CompactCell() :content(Content::Clear), structureCounter(0) {}
@@ -488,8 +487,8 @@ namespace Grid
 			TLitColor	GetDownColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const;
 			TLitColor	GetColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const;
 			//float3			GetSelectiveColorU(unsigned layer, const float3&colorIfNonSolid, bool&mixes) const;
-			TWeightedColor	GetMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, Cell::Content&outContent) const;
-			TWeightedColor	GetDownMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, Cell::Content&outContent) const;
+			TWeightedColor	GetMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Cell::Content&outContent) const;
+			TWeightedColor	GetDownMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Cell::Content&outContent) const;
 		#endif
 		void			ChangeStructureCounterI(int height, int by);
 
@@ -976,8 +975,8 @@ namespace Grid
 			}
 
 
-			TWeightedColor	GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const;
-			TWeightedColor	GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const;
+			TWeightedColor	GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const;
+			TWeightedColor	GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const;
 //			static void ApplyEMP(UINT16 cornerFlags,TVec4<>&rs);
 			static bool FlagsAffectedByEMP(UINT16 cornerFlags) {return !(cornerFlags & empZonesUnlocked);}
 			static bool AffectedByEMP(index_t stackIndex);
@@ -2060,6 +2059,7 @@ namespace Grid
 				short	visibility;
 				bool	oldVisible, temporarilyVisible;
 
+				TVisibility	GetVisibility() const {return TVisibility(visibility>0);}
 
 				bool	Changed(bool reset)
 				{

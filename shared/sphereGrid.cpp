@@ -182,7 +182,7 @@ namespace Grid
 			const Cell&cell = layer > 0 ? this->volumeCell[layer - 1] : bottom;
 			mixes = cell.content == oppositeContent || Cell::typeColorMixes[cell.content];
 			outType = Cell::Content::Reinterpret(cell.content);
-			return TLitColor(cell.GetBaseColor(), this->volumeCell[layer].GetLightLevel());
+			return TLitColor(cell.GetBaseColor(), this->volumeCell[layer].GetLightLevel(),0.f,cell.GetVisibility());
 		}
 	
 		TLitColor			CellStack::GetDownColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const
@@ -196,17 +196,18 @@ namespace Grid
 			const Cell&cell = this->volumeCell[layer + 1];
 			mixes = oppositeContent==cell.content || Cell::typeColorMixes[cell.content];
 			outType = Cell::Content::Reinterpret(cell.content);
-			return TLitColor(cell.GetBaseColor(), this->volumeCell[layer].GetLightLevel());
+			return TLitColor(cell.GetBaseColor(), this->volumeCell[layer].GetLightLevel(),0.f,cell.GetVisibility());
 		}
 
 
-		TWeightedColor			CellStack::GetMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, Content&outContent) const
+		TWeightedColor			CellStack::GetMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Content&outContent) const
 		{
 			if (layer >= Range)
 			{
 				//sumBrightnessTo += 1.f;
 				outContent = Content::Clear;
-				return TWeightedColor(TVisibility(1.f));
+				sumVisibilityTo += 1.f;
+				return TWeightedColor();
 			}
 			if (!layer)
 			{
@@ -217,6 +218,7 @@ namespace Grid
 			const Cell&cell = this->volumeCell[layer - 1],
 				&upper = this->volumeCell[layer];
 			float light = upper.GetLightLevel();
+			sumVisibilityTo += (cell.visible > 0);
 			if (!cell.IsOpaque() || upper.IsOpaque())
 			{
 				sumBrightnessTo += light * 1.3f;
@@ -241,7 +243,7 @@ namespace Grid
 
 
 	
-		TWeightedColor			CellStack::GetDownMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, Content&outContent) const
+		TWeightedColor			CellStack::GetDownMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Content&outContent) const
 		{
 			if (layer >= Range)
 			{
@@ -258,6 +260,7 @@ namespace Grid
 			const Cell&cell = this->volumeCell[layer - 1],
 				&upper = this->volumeCell[layer];
 			float light = cell.GetLightLevel();
+			sumVisibilityTo += cell.visible > 0;
 			if (cell.IsOpaque() || !upper.IsOpaque())
 			{
 				sumBrightnessTo += light * 1.3f;
@@ -2109,15 +2112,15 @@ namespace Grid
 			}	
 		}
 
-		TWeightedColor	TerrainCompiler::GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const
+		TWeightedColor	TerrainCompiler::GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const
 		{
-			return stacks[stackIndex].GetMixColorU(ih,oppositeContent, brightness, outContent);
+			return stacks[stackIndex].GetMixColorU(ih,oppositeContent, brightness, sumVisibilityTo, outContent);
 			//return rs;
 		}
 
-		TWeightedColor	TerrainCompiler::GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const
+		TWeightedColor	TerrainCompiler::GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const
 		{
-			return stacks[stackIndex].GetDownMixColorU(ih, oppositeContent, brightness, outContent);
+			return stacks[stackIndex].GetDownMixColorU(ih, oppositeContent, brightness, sumVisibilityTo, outContent);
 			//return rs;
 		}
 
@@ -2129,11 +2132,14 @@ namespace Grid
 		}
 
 
-		TBaseColor::TBaseColor(const TWeightedColor&c):color(c.color / c.weight),visibility(c.visibility/c.weight)
+		TBaseColor::TBaseColor(const TWeightedColor&c):color(c.color / c.weight)
 		{}
 
-		void	TBaseColor::CompileFinalColor(TVec4<>&rs)	const
+
+		void	TLitColor::CompileFinalColor(TVec4<>&rs)	const
 		{
+			rs.a = capped ? 0.f : lightLevel;
+			rs.rgb = color;
 			#ifndef DEBUG_HIDE_SENSORY
 				if (visibility < 0.5f)
 				{
@@ -2160,13 +2166,7 @@ namespace Grid
 				}
 				else
 			#endif
-				rs.rgb = color;
-		}
 
-		void	TLitColor::CompileFinalColor(TVec4<>&rs)	const
-		{
-			rs.a = lightLevel;
-			Super::CompileFinalColor(rs);
 			if (capped)
 				CapColor(rs.rgb);
 			ApplyEMP(emp,rs.rgb);
@@ -2197,10 +2197,13 @@ namespace Grid
 			}
 		}
 
-		/*static*/ void TLitColor::CapColor(TVec3<>&rs)
+		void TLitColor::CapColor(TVec3<>&rs)	const
 		{
 			if (rs.r >= 0.f)
+			{
 				rs = Vector<>::zero;
+				//rs.r = (1.f - visibility) ;
+			}
 			else
 				rs *= 0.5f;
 		}
@@ -2217,7 +2220,7 @@ namespace Grid
 			rs.color.r *= powi(0.8f, submergence); 
 			rs.color.g *= powi(0.85f, submergence);
 			rs.color.b *= powi(0.95f, submergence); 
-			rs.visibility = visible > 0 ? 1.f : 0.f;
+			//rs.visibility = visible > 0 ? 1.f : 0.f;
 			return rs; 
 		}
 
@@ -2240,6 +2243,7 @@ namespace Grid
 					TWeightedColor color;
 
 					float emp = color0.emp;
+					int visibility = color0.visibility > 0.5f;
 					//if (capped)
 					//{
 					//	//brighness = 0.f;
@@ -2252,8 +2256,8 @@ namespace Grid
 						Content c0,c1;
 						index_t n1 = neighbors.neighborID[(j + 1) % cell.numCorners];
 						index_t n2 = neighbors.neighborID[j];
-						color += GetMixColorU(n1,ih,centerType,brightness,c0);
-						color += GetMixColorU(n2, ih, centerType,brightness,c1);
+						color += GetMixColorU(n1,ih,centerType,brightness,visibility,c0);
+						color += GetMixColorU(n2, ih, centerType,brightness,visibility,c1);
 						emp += AffectedByEMP(n1);
 						emp += AffectedByEMP(n2);
 						emp /= 3;
@@ -2273,6 +2277,7 @@ namespace Grid
 						//brightness /= color.a;
 					}
 					TLitColor col(color,brightness,emp);
+					col.visibility = float(visibility) / 3;
 					col.capped = capped;
 
 					solidMesh << TerrainVertex(cell.cornerVertex[j], range.max, cell.cornerVertex[j].xyz, col, 1.f);
@@ -2298,6 +2303,7 @@ namespace Grid
 				{
 					float brightness = color0.lightLevel;
 					TWeightedColor color(color0.color, 1.f);
+					int visibility = color0.visibility > 0.5f;
 					float emp = color0.emp;
 					{
 						if (!mixes0)
@@ -2305,8 +2311,8 @@ namespace Grid
 						Content c0,c1;
 						index_t n1 = neighbors.neighborID[(j + 1) % cell.numCorners];
 						index_t n2 = neighbors.neighborID[j];
-						color += GetDownMixColorU(n1,ih + 1, centerType,brightness,c0);
-						color += GetDownMixColorU(n2,ih + 1, centerType,brightness,c1);
+						color += GetDownMixColorU(n1,ih + 1, centerType,brightness,visibility,c0);
+						color += GetDownMixColorU(n2,ih + 1, centerType,brightness,visibility,c1);
 						emp += AffectedByEMP(n1);
 						emp += AffectedByEMP(n2);
 						brightness /= 3;
@@ -2315,6 +2321,7 @@ namespace Grid
 						//brightness /= color.a;
 					}
 					TLitColor col(color,brightness,emp);
+					col.visibility = float(visibility) / 3;
 					solidMesh << TerrainVertex(cell.cornerVertex[j], h, -cell.cornerVertex[j].xyz, col, 1.f);
 				}
 				solidMesh << 0 << 1 + (UINT16)(j + 1) % cell.numCorners << 1 + (UINT16)j;
@@ -2428,8 +2435,8 @@ namespace Grid
 
 				solidMesh.SetOffset();
 
-				TLitColor baseColor = TLitColor(thisCell.GetBaseColor(),0.f,FlagsAffectedByEMP( cell.cornerFlags));
-				TLitColor nextColor = TLitColor(nextCell.IsOpaque() && nextCell.Mixes() ? TLitColor(nextCell.GetBaseColor(),baseColor.emp) : baseColor);
+				TLitColor baseColor = TLitColor(thisCell.GetBaseColor(),0.f,FlagsAffectedByEMP( cell.cornerFlags),thisCell.GetVisibility());
+				TLitColor nextColor = TLitColor(nextCell.IsOpaque() && nextCell.Mixes() ? TLitColor(nextCell.GetBaseColor(),0.f, baseColor.emp,thisCell.GetVisibility()) : baseColor);
 
 				const bool capped = nextCell.IsOpaque();
 				if (!capped
@@ -2500,20 +2507,21 @@ namespace Grid
 						{
 							float brightness = color0.lightLevel;
 							TWeightedColor color(color0.color, 1.f);
-
+							int visibility = color0.visibility > 0.5f;
 							{
 								Content c0,c1;
 
 								if (!mixes0)
 									color *= 4.f; //mild bleeding
-								color += stacks[neighbors.neighborID[(j + 1) % cell.numCorners]].GetDownMixColorU(0, centerContent,brightness,c0);
-								color += stacks[neighbors.neighborID[j]].GetDownMixColorU(0, centerContent,brightness,c1);
+								color += stacks[neighbors.neighborID[(j + 1) % cell.numCorners]].GetDownMixColorU(0, centerContent,brightness,visibility,c0);
+								color += stacks[neighbors.neighborID[j]].GetDownMixColorU(0, centerContent,brightness,visibility,c1);
 
 								brightness /= 3;
 								//color.rgb *= brightness / color.a;
 								//brightness /= color.a;
 							}
 							TLitColor col(color,brightness);
+							col.visibility = float(visibility)/3;
 							solidMesh << TerrainVertex(cell.cornerVertex[j], h, -cell.cornerVertex[j].xyz, col, 1.f);
 						}
 						solidMesh << 0 << 1 + (UINT16)(j + 1) % cell.numCorners << 1 + (UINT16)j;
