@@ -496,10 +496,12 @@ namespace Animation
 			{
 				std::shared_ptr<Objects::VehicleJob::DummyJob>	job(new Objects::VehicleJob::DummyJob(e));
 				t1.job = job;
+				job->delayedBySleep = (sourceTask.taskFlags & Protocol::TaskFlags::DelayedBySleep) != 0;
 			}
-			t1.job->movesToFocusWhenDone = sourceTask.visualizePathToFocus;
+			t1.job->movesToFocusWhenDone = (sourceTask.taskFlags & Protocol::TaskFlags::VisualizePathToFocus) != 0;
 			t1.job->roundsToJobCompletion = sourceTask.roundsToJobCompletion;
 			t1.job->resourceCostLeft = sourceTask.resourceCostLeft;
+			
 			#ifdef HAS_WINDOW
 				if (sourceTask.foci.Count())
 				{
@@ -538,8 +540,8 @@ namespace Animation
 			v->Relocate(vs.entityState.location,false);	//this moves sensors. not good during animation phase. however, this is a rare and isolated process (not part of a sequence of updates)
 		}
 		v->health = vs.entityState.health;
-		v->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsUnstable) != 0;
-		v->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsSleeping) != 0 );
+		v->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsUnstable) != 0;
+		v->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsSleeping) != 0 );
 
 		v->UpdateEMPDamage(vs.entityState.empDamageLevel, !isNewForEMP);	//must remove visible sensory, must be linked to destructor
 		//v->roundsDisabled = vs.entityState.disabledRounds;
@@ -764,7 +766,7 @@ namespace Animation
 
 			if (!v->turret->CanAttack())
 			{
-				if (v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsJob() && !v->IsSleeping())
+				if (v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsJob() && (!v->IsSleeping() || !v->myTasks.Peek().job->DelayedBySleep()))
 				{
 					if (!v->activitySound.IsCreated())
 					{
@@ -878,8 +880,8 @@ namespace Animation
 			
 			}
 		}
-		s->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsUnstable) != 0;
-		s->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsSleeping) != 0 );
+		s->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsUnstable) != 0;
+		s->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsSleeping) != 0 );
 
 
 		s->health = vs.entityState.health;
@@ -1136,7 +1138,7 @@ namespace Animation
 					Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
 					if (v)
 					{
-						if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage)
+						if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage && !v->IsAboveGrid())
 							Objects::RemoveVehicleFromGrid(v,v->preAnimationLocation);
 						removed = true;	//is set anyway. placeVehicleLater indicates it is already removed
 					}
@@ -1180,7 +1182,7 @@ namespace Animation
 					//		ASSERT1__(Grid::actualWorld.HasSensor(v->location,v->GetScanningRange()),v->id.ToString());
 					//#endif
 					v->preAnimationLocation = v->location;
-					if (v->IsVehicle())
+					if (v->IsVehicle() && !v->IsAboveGrid())
 						Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(v),v->location);
 					insertIntoGridLater.Set(v->id);
 				}
@@ -1806,7 +1808,7 @@ namespace Animation
 							float t = 0.f;
 							v->MoveSensory(v->preAnimationLocation,v->location,t);
 						}
-						if (v->IsVehicle())
+						if (v->IsVehicle() && !v->IsAboveGrid())
 							Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(v),v->location);
 					}
 				});

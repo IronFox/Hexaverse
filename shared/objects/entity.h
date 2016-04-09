@@ -375,9 +375,9 @@ namespace Objects
 		float						GetScanningRange() const;
 		float						EMPModify(float raw, float min) const;
 		
-		virtual PTurretBase			GetTurretBase(float &zOffset) { zOffset = 0; return PTurretBase();}
+		virtual PTurretBase			GetTurretBase(float &zOffset) { return PTurretBase();}
 		inline PTurretBase			GetTurretBase() { float dummy; return GetTurretBase(dummy);}
-		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { zOffset = 0; return PConstTurretBase();}
+		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { return PConstTurretBase();}
 		inline PConstTurretBase		GetTurretBase() const { float dummy; return GetTurretBase(dummy);}
 
 		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
@@ -428,7 +428,8 @@ namespace Objects
 		/**
 		Checks if the local entity is currently above the regular grid (e.g. a satellite)
 		*/
-		inline bool					IsAboveGrid() const	{return location.height > Grid::CellStack::TopHeight;}
+		inline bool					IsAboveGrid() const	{return IsAboveGrid(location);}
+		static inline bool			IsAboveGrid(const Grid::LCellIdI&location) {return location.height > Grid::CellStack::TopHeight;}
 
 		/**
 		Checks whether or not a new instance of the local class can be spawned within the world grid
@@ -469,7 +470,7 @@ namespace Objects
 			virtual void		UnregisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
 			//virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to);
 		#else
-			virtual void		MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
+			virtual void		MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
 
 		#endif
 

@@ -214,6 +214,7 @@ void	OnPlayerControlBegin()
 		Objects::RefreshSkyHubConnections();
 	#endif
 	Animation::UpdateAutomation(CLOCATION);
+	Objects::CheckMobileEntitySanity();
 }
 
 #ifdef HAS_WINDOW
@@ -246,9 +247,9 @@ static void SendDirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCe
 	cmd.path = targets;
 	cmd.directFlags = 0;
 	if (detailedPath)
-		cmd.directFlags |= Protocol::DirectFlag::Detailed;
+		cmd.directFlags |= Protocol::DirectFlags::Detailed;
 	if (leftClick)
-		cmd.directFlags |= Protocol::DirectFlag::LeftClick;
+		cmd.directFlags |= Protocol::DirectFlags::LeftClick;
 	Network::Channels::entityDirectCommand.SendTo(Network::client,cmd);
 }
 

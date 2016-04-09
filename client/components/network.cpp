@@ -1071,7 +1071,7 @@ namespace Network
 			case TCP::Event::ConnectionLost:
 			case TCP::Event::ConnectionClosed:
 			{
-				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, "Connection lost");
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, "Connection lost ("+client.GetError(true)+")");
 				amOnline = false;
 
 				FlushFaction(true);
@@ -1399,7 +1399,6 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 				animationTimeFactor = c.timeFactor;
 		break;
 		case RuntimeConfig::Phase::CommandPhase:
-			newRoundRequested = false;
 			roundTimer = c.timeFactor;
 			RuntimeConfig::roundNumber = c.roundNumber;
 			RuntimeConfig::phase.Load(c.newPhase);
@@ -1433,6 +1432,8 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		Tutorial::lastDelayingEvent = timer.Now();
 	#endif
 	RuntimeConfig::phase.Load(c.newPhase);
+	if (RuntimeConfig::IsInAnyCommandPhase())
+		newRoundRequested = false;
 	RuntimeConfig::roundNumber = c.roundNumber;
 	phaseStarted = timer.Now();
 	#ifdef HAS_WINDOW
@@ -1445,8 +1446,6 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	LogEvent(EventSignificance::Common,nullptr,"Server phase changed to "+String(RuntimeConfig::phase.ToString())+" ("+String(c.timeFactor.value)+") @"+String(Animation::atTime));
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 	{
-		Objects::CheckMobileEntitySanity();
-
 		static Buffer0<Objects::Marker> outdated;
 		Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10);
 		foreach(outdated, o)

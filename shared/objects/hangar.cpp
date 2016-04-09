@@ -185,6 +185,7 @@ namespace Objects
 
 	bool	Hangar::StoreLocally(const PMobileEntity&e, float&atTime, bool setHealthToFullIfNew, const PHangar&sharedSelf)
 	{
+		ASSERT2__(sharedSelf.get() == this,sharedSelf->ToEntity().GetName(),ToEntity().GetName());
 		if (!e || !CanStoreType(*e) || stored.Count() >= GetMaxStorage())
 			return false;
 
@@ -225,9 +226,11 @@ namespace Objects
 				[w](bool controlEnabled)
 				{
 					BaseCommand::Flags rs = CommonCmd::CommonButtonCheck(controlEnabled);
-					PVehicleStore s = To<VehicleStore>::DynamicCast(selectedEntity);
-					if (deployingMobileEntity && s == selectedEntity && deployingMobileEntity == w.lock() && deployingMobileEntity->health > 0)
-						rs |= BaseCommand::Flags::IsPermaActive;
+					if (selectedEntity->IsHangar())
+					{
+						if (deployingMobileEntity && deployingMobileEntity == w.lock() && deployingMobileEntity->health > 0)
+							rs |= BaseCommand::Flags::IsPermaActive;
+					}
 					return rs;
 				}
 				));
@@ -242,7 +245,7 @@ namespace Objects
 		ASSERT2__(!e->isInsertedIntoGrid,ToEntity().GetName(), e->GetName());
 
 		#ifdef _DEBUG
-			CheckMobileEntitySanity();
+			CheckMobileEntitySanity();	//this could fail (under rare circumstances) when mobile entities are currently not inserted into grid during animation
 		#endif
 
 

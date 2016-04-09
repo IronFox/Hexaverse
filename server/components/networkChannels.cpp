@@ -450,7 +450,7 @@ namespace Receiver
 			client->faction.reset(new Objects::Faction(TUniqueID::Empty()));
 			faction = client->faction;
 			Objects::Faction::all << client->faction;
-			Game::SignalFactionsChanged();
+			SignalFactionsChanged();
 			client->faction->name = client->name;
 
 
@@ -1363,8 +1363,8 @@ namespace Receiver
 				LogEvent(EventClass::Preset::commandRejected, peer, e, "Parameter fault ("+n->ToString()+")");
 				return;
 			}
-		const bool leftClick = (cmd.directFlags & Protocol::DirectFlag::LeftClick) != 0;
-		const bool detailed = (cmd.directFlags & Protocol::DirectFlag::Detailed) != 0;
+		const bool leftClick = (cmd.directFlags & Protocol::DirectFlags::LeftClick) != 0;
+		const bool detailed = (cmd.directFlags & Protocol::DirectFlags::Detailed) != 0;
 		//if (!e->DirectTo((Objects::Vehicle::mode_t)cmd.mode.value,cmd.path,detailed,leftClick))
 		//{
 		//	LogEvent(EventClass::Preset::commandRejected,peer,e,"Unable to comply");
@@ -1403,8 +1403,8 @@ namespace Receiver
 			}
 		}
 		Objects::PMobileEntity v = To<Objects::MobileEntity>::DynamicCast(e);
-		const bool leftClick = (cmd.directFlags&Protocol::DirectFlag::LeftClick)!=0;
-		const bool detailedPath = (cmd.directFlags&Protocol::DirectFlag::Detailed)!=0;
+		const bool leftClick = (cmd.directFlags&Protocol::DirectFlags::LeftClick)!=0;
+		const bool detailedPath = (cmd.directFlags&Protocol::DirectFlags::Detailed)!=0;
 		if (v)
 		{
 			if (!v->DirectTo((Objects::Vehicle::mode_t)cmd.mode.value,cmd.path,detailedPath,leftClick))
@@ -1557,7 +1557,7 @@ namespace Receiver
 
 					peer.attachment.reset();
 				}
-				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::ServerPrivate ),peer,"Client disconnected");
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::ServerPrivate ),peer,"Client disconnected ("+peer.GetError(true)+")");
 
 
 				if (!Network::AnyHumanPlayersActive())

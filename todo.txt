@@ -1,4 +1,10 @@
-﻿having small compound spheres within larger ones become visible if the camera is inside these spheres
+﻿terrain benchmark
+compare with pre-80d6657fcd00f7d41fdc54c4cdef47b3d073ff48: 3972d667c90b1ef1ded85c3efceb6fe2516f7a0b
+
+
+hostile health does not update
+
+having small compound spheres within larger ones become visible if the camera is inside these spheres
 shift+click should work on terraforming operations, too
 
 alloy? resource type that is required for some constructions, and requires a special factory to make

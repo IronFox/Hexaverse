@@ -39,15 +39,16 @@ namespace Objects
 	*/
 	class Structure : public WorldEntity
 	{
-	private:
+	public:
 		/*
 		New concept:
 		To better support specifics of towers, hybrid structures (narrow on top of broad) are possible.
 		If both broadHeight is specified less than totalHeight, narrowHeight is considered (totalHeight - broadHeight) and to be on top of broadHeight
 		*/
-		static void					ChangeStructCount(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime);
-		static void					CommonRegisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
-		static void					CommonUnregisterStructure(const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
+		static void					ChangeStructCount(Grid::WorldData&world, const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, int changeDirection, float atTime);
+		static void					CommonRegisterStructure(Grid::WorldData&world, const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
+		static void					CommonUnregisterStructure(Grid::WorldData&world, const Grid::LCellIdI&location, int broadHeight, int totalHeight, bool hasFoundation, float atTime);
+	private:
 
 		bool						RemoveConnectionTo(const PStructure&);
 		bool						RemoveConnectionTo(Structure*);
