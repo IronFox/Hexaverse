@@ -41,11 +41,11 @@
 		Dark flat discs indicate that there are no resources here. If nothing is rendered atop a cell then its resources are yet unknown.
 		Resources are identical independent of height, and serve different purposes. %FUEL% is consumed by generators to produce %ENERGY%, %MINERALS% is converted into structures, vehicles, and satellites, and %URANIUM% is required for EMP and Ragnarök attacks.
 	</message>
-	<message name='Show Ranges' image='Show Ranges.png'>
+	<message name='Show Ranges' image='Show Ranges.jpg'>
 		Depending on the selected turret type, %PRODUCT_NAME% uses spherical or paraboloid trajectories to compute the maximum attack range.
-		This range (including explosion radius) is visualized as red spheres/umbrellas atop selected offensive vehicles and towers.
+		This range is visualized as red spheres/umbrellas atop selected offensive vehicles and towers.
 		Alternatively, the commands 'Show Ranges' and 'Show Hostile Ranges' can be used to visualize the attack ranges of all vehicles and structures, friendly and/or hostile.
-		Note that only KNOWN attack ranges are shown. Hostile entities outside your scanning range can not be shown as the client does not know they exist.
+		Note that only KNOWN attack ranges are shown. Unknown hostile entities outside your scanning range can not be shown as the client does not know they exist.
 	</message>
 	<message name='Clip Terrain' image='Clip Terrain.png'>
 		Clipping the terrain allows to view tunnels and caves beneath the surface by visually removing the ground above.
