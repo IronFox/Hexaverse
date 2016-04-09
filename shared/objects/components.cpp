@@ -1772,7 +1772,7 @@ namespace Objects
 				component.healthMultiplier = 1;	//irrelevant
 				component.scanningRange = 12.5f;
 				component.groundScanningRange = 13;
-				component.groundScannerPenetration = 1;
+				component.groundScannerPenetration = 2;
 
 				component.initiative = 110;
 				component.uplinkTraffic = 10;
