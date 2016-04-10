@@ -2,6 +2,7 @@ v0.3.23
 	+ Added control commands to manage factions.
 	+ Added tutorial messages and images for each plane type.
 	> Increased sensor range of sensor drone.
+	> Plane factories will now favor sub-orbit when auto-deploying produced units.
 	> Reactor cores now require uranium to operate but generate power in addition to their usual functionality.
 	> Improved sky grid. G can now be used to quickly toggle its appearance.
 	> Vehicles can no longer enter residual EMP zones.

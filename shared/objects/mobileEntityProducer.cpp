@@ -197,7 +197,15 @@ namespace Objects
 
 			PMobileEntity v = CompleteProduction(t);
 			//static Random random;
-			Grid::LCellIdI c = movementChoices[parent->entityRandom.getIndex(movementChoices.Count()-1)].location;
+
+			Buffer0<Choice>	highChoices;
+			foreach (movementChoices,c)
+				if (WorldEntity::IsAboveGrid( c->location ))
+					highChoices << *c;
+
+			Grid::LCellIdI c = highChoices.IsNotEmpty()
+						? highChoices[parent->entityRandom.getIndex(highChoices.Count()-1)].location
+						: movementChoices[parent->entityRandom.getIndex(movementChoices.Count()-1)].location;
 
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))
