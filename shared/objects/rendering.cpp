@@ -82,11 +82,41 @@ namespace Objects
 	#endif
 	DX11::BaseInstructionBlock			shadowInstruction;
 
-	Buffer0<DX11::InstructionBlock32>	smokeTrails;
-	index_t								selectedSmokeTrail = InvalidIndex;
 
 	TMatrix4<>							structureToPlaceSystem;
 
+
+	namespace Renderer
+	{
+		class SmokeTrailCollection
+		{
+		public:
+			Buffer0<DX11::InstructionBlock32>	smokeTrails;
+			index_t								selectedSmokeTrail = InvalidIndex;
+
+			void	Render();
+			index_t	RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory)
+			{
+				index_t result = smokeTrails.Count();
+				DX11::InstructionBlock32&trail = smokeTrails.Append();
+				static Geometry geo;
+				geo.Clear();
+				Component::Turret::CompileTrajectory(trajectory,Component::Turret::SmokeTrail,geo,1.f);
+				((DX11::BaseInstructionBlock&)trail) = smokeTrailShader;
+				trail.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
+				trail.ibo.Create(geo.GetLOD(0).indices);
+				selectedSmokeTrail = InvalidIndex;
+				return result;
+			}
+			void	Clear()
+			{
+				smokeTrails.Clear();
+				selectedSmokeTrail = InvalidIndex;
+			}
+
+		}			smokeTrails[2];
+
+	}
 
 	OpenAL::WaveBuffer	Renderer::GetAmbientSoundOf(const String&entityTypeName, ConstName _entityType)
 	{
@@ -101,29 +131,27 @@ namespace Objects
 	}
 
 
-	index_t	Renderer::RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory)
+	Renderer::SmokeTrailIndex	Renderer::RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory, bool aboveGrid)
 	{
-		index_t result = smokeTrails.Count();
-		DX11::InstructionBlock32&trail = smokeTrails.Append();
-		static Geometry geo;
-		geo.Clear();
-		Component::Turret::CompileTrajectory(trajectory,Component::Turret::SmokeTrail,geo,1.f);
-		((DX11::BaseInstructionBlock&)trail) = smokeTrailShader;
-		trail.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
-		trail.ibo.Create(geo.GetLOD(0).indices);
-		selectedSmokeTrail = InvalidIndex;
-		return result;
+		return SmokeTrailIndex(smokeTrails[aboveGrid].RegisterSmokeTrail(trajectory), aboveGrid);
 	}
 
-	void	Renderer::HighlightSmokeTrail(index_t smokeTrailIndex)
+	void	Renderer::HighlightSmokeTrail(const SmokeTrailIndex&smokeTrailIndex)
 	{
-		selectedSmokeTrail = smokeTrailIndex;
+		smokeTrails[smokeTrailIndex.isOrbital].selectedSmokeTrail = smokeTrailIndex.trailIndex;
+		smokeTrails[!smokeTrailIndex.isOrbital].selectedSmokeTrail = InvalidIndex;
+	}
+
+	void	Renderer::ClearSmokeTrailHighlighting()
+	{
+		smokeTrails[0].selectedSmokeTrail = InvalidIndex;
+		smokeTrails[1].selectedSmokeTrail = InvalidIndex;
 	}
 
 	void	Renderer::ClearSmokeTrails()
 	{
-		smokeTrails.Clear();
-		selectedSmokeTrail = InvalidIndex;
+		smokeTrails[0].Clear();
+		smokeTrails[1].Clear();
 	}
 
 	void	Renderer::RenderSensorRange(const Grid::LCellIdI&loc, float radius, float heightBonus, const TFloatRange<int>& vRange, const float4&color)
@@ -711,7 +739,35 @@ namespace Objects
 		{
 			return GetPulse(now,0.75f,1.25f);
 		}
+
+
+		void	SmokeTrailCollection::Render()
+		{
+			if (smokeTrails.IsNotEmpty())
+			{
+				display.SetDepthTest(true,false);
+				display.SetRasterizer(true,false);
+				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+
+		
+				overallTint.Update(float4());
+				foreach (smokeTrails,t)
+				{
+					display.Render(*t,true);
+				}
+
+				if (selectedSmokeTrail < smokeTrails.Count())
+				{
+					overallTint.Update(float4(1,0,0,GetPulse(now,0.5f,1.f)));
+					display.Render(smokeTrails[selectedSmokeTrail],true);
+				}
+
+			}
+		}
+
 	}
+
+
 	/*
 	void					GetActiveColors(double now, float3&mine, float3&theirs)
 	{
@@ -1412,7 +1468,7 @@ namespace Objects
 		sys.y.xyz /= fc;
 	}
 
-	void	Renderer::RenderTranslucent()
+	void	Renderer::RenderTranslucent(bool orbital)
 	{
 		if (!objectView)
 			return;
@@ -1429,6 +1485,8 @@ namespace Objects
 		foreach(Marker::mobileGhosts, _v)
 		{
 			const PMobileEntity&m = *_v;
+			if (m->IsAboveGrid() != orbital)
+				continue;
 			if (m->IsVehicle())
 			{
 				PVehicle v = To<Vehicle>::Cast(m);
@@ -1448,6 +1506,8 @@ namespace Objects
 		foreach(Marker::structureGhosts, _s)
 		{
 			const PStructure&s = *_s;
+			if (s->IsAboveGrid() != orbital)
+				continue;
 			Renderer::RenderSimple(*s,s->HasFoundation());
 
 		}
@@ -1455,6 +1515,8 @@ namespace Objects
 		foreach(Marker::mobileGhosts, _v)
 		{
 			const PMobileEntity&m = *_v;
+			if (m->IsAboveGrid() != orbital)
+				continue;
 			if (m->isOwnedByMe)
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
@@ -1478,6 +1540,8 @@ namespace Objects
 		foreach(Marker::structureGhosts, _s)
 		{
 			const PStructure&s = *_s;
+			if (s->IsAboveGrid() != orbital)
+				continue;
 			if (s->isOwnedByMe)
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
@@ -1489,8 +1553,11 @@ namespace Objects
 
 		//depth-image:
 		overallTint.Update(noTint);	//all zero tint makes shapes invisible
-		ForeachMobileWorldEntity([](const PMobileEntity&v)
+		ForeachMobileWorldEntity([orbital](const PMobileEntity&v)
 		{
+			if (v->IsAboveGrid() != orbital)
+				return;
+
 			{
 				foreach (v->myTasks,t)
 				{
@@ -1526,9 +1593,11 @@ namespace Objects
 		overallTint.Update(float4(0,0,0,1));	//make sure localizable shapes appear - but in black
 
 
-		ForeachMobileWorldEntity([](const PMobileEntity&v)
+		ForeachMobileWorldEntity([orbital](const PMobileEntity&v)
 		{
-			//if (v != selectedEntity)
+			if (v->IsAboveGrid() != orbital)
+				return;
+
 			if (v == selectedEntity)
 				overallTint.Update(float4(red2,1));
 			
@@ -1559,6 +1628,9 @@ namespace Objects
 		foreach(structures, _s)
 		{
 			const PStructure&s = *_s;
+			if (s->IsAboveGrid() != orbital)
+				continue;
+
 			float dummy;
 			if (s->GetTurretBase(dummy))
 			{
@@ -1604,6 +1676,8 @@ namespace Objects
 
 		for (const auto&at : attackers)
 		{
+			if (at->IsAboveGrid() != orbital)
+				continue;
 			TMatrix4<> sys;
 			const TVec3<>&up = Grid::low.cells[at->location.stackID].cornerCenter;
 			Mat::makeAxisSystem(at->system.w.xyz, up,2,sys);
@@ -1652,8 +1726,10 @@ namespace Objects
 		display.SetBlendMode(Engine::BlendMode::FlareBlend);
 		overallTint.Update(float4(float3(0.18f,0.185f,2.f),1.f));
 
-		ForeachMobileWorldEntity([](const PMobileEntity&v)
+		ForeachMobileWorldEntity([orbital](const PMobileEntity&v)
 		{
+			if (v->IsAboveGrid() != orbital)
+				return;
 			if (v != selectedEntity)
 			{
 				foreach (v->myTasks,t)
@@ -1669,6 +1745,9 @@ namespace Objects
 		foreach(structures, _s)
 		{
 			const PStructure&s = *_s;
+			if (s->IsAboveGrid() != orbital)
+				continue;
+
 			float zOffset;
 			if (s != selectedEntity)
 			{
@@ -1703,9 +1782,10 @@ namespace Objects
 
 		TVec4<> selectedTint;
 
-		if (selectedEntity)
+		if (selectedEntity && selectedEntity->IsAboveGrid() == orbital)
 		{
 			const PMobileEntity&v = selectedMobileEntity;
+
 			//To<Vehicle>::DynamicCast(selectedEntity);
 
 			if (!selectedEntity->unstable)
@@ -1741,115 +1821,98 @@ namespace Objects
 
 		display.SetRasterizer(true,true);
 
-
-		if (showArrow && hasArrowCellTarget && arrowCellTarget.cellLocation != arrowFromCell)
+		if (showArrow && hasArrowCellTarget && WorldEntity::IsAboveGrid(arrowFromCell) == orbital)
 		{
-			display.SetDepthTest(false,false);
-
-			const float r =Grid::ToRadius(arrowCellTarget.radius);
-			const float3&arrowTo = arrowCellTarget.worldLocation;
-			float d2 = Vec::quadraticDistance(arrowTo,Objects::arrowFrom);
-
-			static Buffer0<Vertex>	vertices;
-			vertices.Clear();
-
-
-			//if (d2 > 0.01f)
+			if (arrowCellTarget.cellLocation != arrowFromCell)
 			{
-				static const float3 color(1,0.5,0.5);
-				float d = sqrt(d2);
-				float3 dir = (arrowTo - Objects::arrowFrom).Normalize();
-				float3 n = (dir | arrowTo).Normalize0() * 0.25f;
-				float3 arrowBase = arrowTo - dir * 1.f;
+				display.SetDepthTest(false,false);
+
+				const float r =Grid::ToRadius(arrowCellTarget.radius);
+				const float3&arrowTo = arrowCellTarget.worldLocation;
+				float d2 = Vec::quadraticDistance(arrowTo,Objects::arrowFrom);
+
+				static Buffer0<Vertex>	vertices;
+				vertices.Clear();
 
 
-				//arrowBuffer
-				vertices	<< Vertex(arrowFrom-n,float3(),float4(0.25f,1,0,1))
-							<< Vertex(arrowFrom,float3(),float4(0))
-							<< Vertex(arrowBase,float3(),float4(0))
-
-							<< Vertex(arrowFrom-n,float3(),float4(0.25f,1,0,1))
-							<< Vertex(arrowBase,float3(),float4(0))
-							<< Vertex(arrowBase-n,float3(),float4(1))
-
-							<< Vertex(arrowFrom+n,float3(),float4(0.25f,1,0,1))
-							<< Vertex(arrowBase,float3(),float4(0))
-							<< Vertex(arrowFrom,float3(),float4(0))
-
-							<< Vertex(arrowFrom+n,float3(),float4(0.25f,1,0,1))
-							<< Vertex(arrowBase+n,float3(),float4(1))
-							<< Vertex(arrowBase,float3(),float4(0))
-
-							<< Vertex(arrowBase-n,float3(),float4(1))
-							<< Vertex(arrowBase,float3(),float4(0))
-							<< Vertex(arrowTo,float3(),float4(1))
-
-							<< Vertex(arrowBase+n,float3(),float4(1))
-							<< Vertex(arrowTo,float3(),float4(1))
-							<< Vertex(arrowBase,float3(),float4(0))
-				;
-/*
-
-				LineRenderer::Rasterize(Objects::arrowFrom-n,float4(color,0),arrowBase-n,float4(color,1));
-				LineRenderer::Rasterize(arrowBase-n,float4(color,1),arrowTo,float4(color,1));
-				LineRenderer::Rasterize(Objects::arrowFrom+n,float4(color,0),arrowBase+n,float4(color,1));
-				LineRenderer::Rasterize(arrowBase+n,float4(color,1),arrowTo,float4(color,1));
-
-				const auto&cell = Grid::low.cells[dest.stackID];
-				for (int i = 0; i < cell.numCorners; i++)
+				//if (d2 > 0.01f)
 				{
-					LineRenderer::Rasterize(cell.cornerVertex[i].xyz*r,float4(color,1),cell.cornerVertex[(i+1)%cell.numCorners].xyz*r,float4(color,1));
+					static const float3 color(1,0.5,0.5);
+					float d = sqrt(d2);
+					float3 dir = (arrowTo - Objects::arrowFrom).Normalize();
+					float3 n = (dir | arrowTo).Normalize0() * 0.25f;
+					float3 arrowBase = arrowTo - dir * 1.f;
 
-				}*/
 
-				arrowBuffer.PartialUpdate(vertices.pointer(),vertices.Count(),sizeof(Vertex));
+					//arrowBuffer
+					vertices	<< Vertex(arrowFrom-n,float3(),float4(0.25f,1,0,1))
+								<< Vertex(arrowFrom,float3(),float4(0))
+								<< Vertex(arrowBase,float3(),float4(0))
 
-				display.RenderVertices(arrowInstruction,0,(UINT32)vertices.Count());
+								<< Vertex(arrowFrom-n,float3(),float4(0.25f,1,0,1))
+								<< Vertex(arrowBase,float3(),float4(0))
+								<< Vertex(arrowBase-n,float3(),float4(1))
+
+								<< Vertex(arrowFrom+n,float3(),float4(0.25f,1,0,1))
+								<< Vertex(arrowBase,float3(),float4(0))
+								<< Vertex(arrowFrom,float3(),float4(0))
+
+								<< Vertex(arrowFrom+n,float3(),float4(0.25f,1,0,1))
+								<< Vertex(arrowBase+n,float3(),float4(1))
+								<< Vertex(arrowBase,float3(),float4(0))
+
+								<< Vertex(arrowBase-n,float3(),float4(1))
+								<< Vertex(arrowBase,float3(),float4(0))
+								<< Vertex(arrowTo,float3(),float4(1))
+
+								<< Vertex(arrowBase+n,float3(),float4(1))
+								<< Vertex(arrowTo,float3(),float4(1))
+								<< Vertex(arrowBase,float3(),float4(0))
+					;
+	/*
+
+					LineRenderer::Rasterize(Objects::arrowFrom-n,float4(color,0),arrowBase-n,float4(color,1));
+					LineRenderer::Rasterize(arrowBase-n,float4(color,1),arrowTo,float4(color,1));
+					LineRenderer::Rasterize(Objects::arrowFrom+n,float4(color,0),arrowBase+n,float4(color,1));
+					LineRenderer::Rasterize(arrowBase+n,float4(color,1),arrowTo,float4(color,1));
+
+					const auto&cell = Grid::low.cells[dest.stackID];
+					for (int i = 0; i < cell.numCorners; i++)
+					{
+						LineRenderer::Rasterize(cell.cornerVertex[i].xyz*r,float4(color,1),cell.cornerVertex[(i+1)%cell.numCorners].xyz*r,float4(color,1));
+
+					}*/
+
+					arrowBuffer.PartialUpdate(vertices.pointer(),vertices.Count(),sizeof(Vertex));
+
+					display.RenderVertices(arrowInstruction,0,(UINT32)vertices.Count());
+				}
 			}
-		}
 
-		if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
-		{
-			display.SetDepthTest(true,true);
-			bool includeFoundation = false;//activeStructureToPlace->HasFoundation();	<- is correct but job visualization doesn't use foundations
-			display.LinkShader(jobShader,false,true);
-				//TMatrix4<> sys;
-				BuildStructureSystem(arrowCellTarget.cellLocation,structureToPlaceSystem);
-				display.SetObjectMatrix(structureToPlaceSystem);
-				overallTint.Update(noTint);	//all zero tint makes shapes invisible
-				if (includeFoundation)
-					display.Render(foundation, true);
-				_RenderSimpleLocated(*activeStructureToPlace,structureToPlaceSystem);
-				display.SetObjectMatrix(structureToPlaceSystem);
-				overallTint.Update(float4(selectedTint.rgb,selectedTint.a * 0.5f + 0.5f));
-				if (includeFoundation)
-					display.Render(foundation, true);
-				_RenderSimpleLocated(*activeStructureToPlace,structureToPlaceSystem);
-			display.UnlockShader();
-			display.SetObjectMatrix(Matrix<>::eye4);
-		}
-	
-
-		if (smokeTrails.IsNotEmpty())
-		{
-			display.SetDepthTest(true,false);
-			display.SetRasterizer(true,false);
-			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-
-		
-			overallTint.Update(float4());
-			foreach (smokeTrails,t)
+			if (activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
 			{
-				display.Render(*t,true);
+				display.SetDepthTest(true,true);
+				bool includeFoundation = false;//activeStructureToPlace->HasFoundation();	<- is correct but job visualization doesn't use foundations
+				display.LinkShader(jobShader,false,true);
+					//TMatrix4<> sys;
+					BuildStructureSystem(arrowCellTarget.cellLocation,structureToPlaceSystem);
+					display.SetObjectMatrix(structureToPlaceSystem);
+					overallTint.Update(noTint);	//all zero tint makes shapes invisible
+					if (includeFoundation)
+						display.Render(foundation, true);
+					_RenderSimpleLocated(*activeStructureToPlace,structureToPlaceSystem);
+					display.SetObjectMatrix(structureToPlaceSystem);
+					overallTint.Update(float4(selectedTint.rgb,selectedTint.a * 0.5f + 0.5f));
+					if (includeFoundation)
+						display.Render(foundation, true);
+					_RenderSimpleLocated(*activeStructureToPlace,structureToPlaceSystem);
+				display.UnlockShader();
+				display.SetObjectMatrix(Matrix<>::eye4);
 			}
-
-			if (selectedSmokeTrail < smokeTrails.Count())
-			{
-				overallTint.Update(float4(1,0,0,GetPulse(now,0.5f,1.f)));
-				display.Render(smokeTrails[selectedSmokeTrail],true);
-			}
-
 		}
+
+		smokeTrails[orbital].Render();
+
 		display.SetRasterizer(true,true);
 		display.SetDepthTest(true,true);
 
