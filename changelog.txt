@@ -1,6 +1,7 @@
 v0.3.23
 	+ Added control commands to find and terminate factions.
 	> Reactor cores now require uranium to operate but generate power in addition to their usual functionality.
+	> Vehicles can no longer enter residual EMP zones.
 	> Scheduling a mobile entity task will now wake the local unit if necessary.
 	> Clipped terrain now visually distinguishes between invisible and visible terrain.
 	> Newly discovered offensive non-sentry units no longer cause a mobile unit to stop in its tracks.

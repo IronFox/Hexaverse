@@ -740,10 +740,13 @@ namespace Objects
 				if (!okay)
 					continue;
 
-				if (Grid::actualWorld.LowCellIsClear(cell) && NothingBlockingHere(cell,true) && 
-						production->CanStandOn(Grid::actualWorld,cell-1,false,false)
+				if (Grid::actualWorld.LowCellIsClear(cell) && NothingBlockingHere(cell,true)
+						&& production->CanStandOn(Grid::actualWorld,cell-1,false,false)
+						&& !Grid::AffectedByEMP(cell)
 				)
-				choices << Choice(cell,0);
+				{
+					choices << Choice(cell,0);
+				}
 			}
 		}
 
@@ -787,7 +790,7 @@ namespace Objects
 						{
 							UINT32 stackID = n.neighborID[i];
 							Grid::LCellIdI	at(stackID,h);
-							if (!GetEntity(at))
+							if (!GetEntity(at) && !Grid::AffectedByEMP(at))
 								movementChoices << Choice(at,0);
 						}
 					}
@@ -820,7 +823,7 @@ namespace Objects
 							for (int j = 0; j < n.numNeighbors; j++)
 							{
 								const Grid::LCellIdI candidate(n.neighborID[j],h);
-								if (Grid::actualWorld.LowCellIsClear(candidate) && NothingBlockingHere(candidate,true))
+								if (Grid::actualWorld.LowCellIsClear(candidate) && NothingBlockingHere(candidate,true) && !Grid::AffectedByEMP(candidate))
 								{
 									if (!deploying->IsVehicle() || To<Vehicle>::Cast(deploying)->CanStandOn(Grid::actualWorld,candidate-1,false,false))
 										movementChoices << Choice(candidate,0);
@@ -837,7 +840,7 @@ namespace Objects
 						for (int j = 0; j < n.numNeighbors; j++)
 						{
 							const Grid::LCellIdI candidate(n.neighborID[j],h);
-							if (NothingBlockingHere(candidate,true))
+							if (NothingBlockingHere(candidate,true) && !Grid::AffectedByEMP(candidate))
 							{
 								movementChoices << Choice(candidate,0);
 							}
@@ -1497,7 +1500,9 @@ namespace Objects
 		return 
 			(world.LowCellIsClear(location) || (isDestination && (IgnoreStructuresAtDestination || MobileDestinationStructureHere(location,v))))
 			&&
-			(v.CanStandOn(world,location-1,ignoreWater,doFloat));
+			(v.CanStandOn(world,location-1,ignoreWater,doFloat))
+			&&
+			!Grid::AffectedByEMP(location);
 
 	}
 
