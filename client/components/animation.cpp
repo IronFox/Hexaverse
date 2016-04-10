@@ -1291,7 +1291,7 @@ namespace Animation
 						trajectoryVisualization.ibo.Create(trajectoryGeometry.GetLOD(0).indices);
 
 
-						index_t smokeTrailIndex = Objects::Renderer::RegisterSmokeTrail(activeTrajectory);
+						auto smokeTrailIndex = Objects::Renderer::RegisterSmokeTrail(activeTrajectory,Vec::dot(attackerPosition) > sqr(Grid::ToRadius(Grid::CellStack::TopHeight+1)));
 						if (doRegister)
 						{
 							UI::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, smokeTrailIndex);

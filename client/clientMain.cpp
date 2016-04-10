@@ -1101,7 +1101,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 		}
 		else
 			Objects::CommandGroup::CollapseAll();
-		Objects::Renderer::HighlightSmokeTrail(InvalidIndex);
+		Objects::Renderer::ClearSmokeTrailHighlighting();
 
 		Tutorial::lastDelayingEvent = timer.Now();
 		//bool strip = true;
@@ -1611,6 +1611,11 @@ bool loop()
 			World::RenderWater(frustum);
 
 
+			Objects::Renderer::RenderTranslucent(false);
+
+			if (Objects::resourceView)
+				World::RenderResources(frustum);
+
 			#ifndef NO_SATELLITES
 			if (Camera::SkyGridIsVisible())
 				Grid::visibleOrbitGrid.Render(frustum);
@@ -1620,10 +1625,7 @@ bool loop()
 			if (Camera::SubOrbitalGridIsVisible())
 				Grid::visibleSubOrbitGrid.Render(frustum);
 
-			Objects::Renderer::RenderTranslucent();
-
-			if (Objects::resourceView)
-				World::RenderResources(frustum);
+			Objects::Renderer::RenderTranslucent(true);
 
 			Objects::Renderer::RenderTranslucentBeams();
 
@@ -3430,6 +3432,8 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::Left, SelectAndFocusPrev);
 			Engine::input.bind(Key::Right, SelectAndFocusNext);
 			Engine::input.bind(Key::Space, SelectAndFocusNextIdle);
+
+			Engine::input.bind(Key::G, Camera::ToggleOrbit);
 
 			Engine::input.bind(Key::PageDown, ViewDown);
 			Engine::input.bind(Key::PageUp, ViewUp);

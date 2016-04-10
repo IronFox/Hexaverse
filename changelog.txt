@@ -3,6 +3,7 @@ v0.3.23
 	+ Added tutorial messages for each plane type, including images.
 	> Increased sensor range of sensor drone.
 	> Reactor cores now require uranium to operate but generate power in addition to their usual functionality.
+	> Improved sky grid. G can now be used to quickly toggle its appearance.
 	> Vehicles can no longer enter residual EMP zones.
 	> Scheduling a mobile entity task will now wake the local unit if necessary.
 	> Unit sensory is now limited to a fixed height-band. This considerably reduces radar sensory into the ground.
