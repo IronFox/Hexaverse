@@ -351,11 +351,11 @@ namespace Objects
 		{
 			foreach (v.coverage,st)
 			{
-				DBG_ASSERT_LESS__(st->layerBegin,Grid::CellStack::Range);
-				DBG_ASSERT_LESS_OR_EQUAL__(st->layerEnd,Grid::CellStack::Range);
-				DBG_ASSERT_LESS_OR_EQUAL__(st->layerBegin,st->layerEnd);
+				DBG_ASSERT_LESS__(st->range.start,Grid::CellStack::Range);
+				DBG_ASSERT_LESS_OR_EQUAL__(st->range.end,Grid::CellStack::Range);
+				DBG_ASSERT_LESS_OR_EQUAL__(st->range.start,st->range.end);
 				const auto&stack = visibility.cellStack[st->stackID];
-				for (UINT32 layer = st->layerBegin; layer < st->layerEnd; layer++)
+				for (UINT32 layer = st->range.start; layer < st->range.end; layer++)
 				{
 					if (stack.volumeCell[layer].IsCurrentlyVisible())
 						return true;
@@ -631,10 +631,10 @@ namespace Objects
 				Grid::low.GenerateVolume(Sphere<>(sphere.center,sphere.radius+1.f),desc);
 				foreach (desc.coverage,c)
 				{
-					UINT32 min = c->layerBegin;
+					UINT32 min = c->range.start;
 					if (min)
 						min--;
-					for (UINT l = min; l < c->layerEnd; l++)
+					for (UINT l = min; l < c->range.end; l++)
 					{
 						PWorldEntity e = GetEntity(Grid::LCellIdI(c->stackID,Grid::CellStack::ToHeight(l)));
 						if (!e || e->owner.get() == this)
