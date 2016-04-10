@@ -1499,6 +1499,7 @@ bool loop()
 
 		Objects::Renderer::AdvanceTurretAnimations();
 
+		World::RecompileIfNecessary();
 		{
 
 	//		static const float shadowRadius = 30.f;
@@ -1531,7 +1532,6 @@ bool loop()
 		{
 			//Atmosphere::Render(Grid::ToRadius(-Grid::CellStack::HalfRange),Grid::ToRadius(Grid::CellStack::HalfRange-1), Camera::scene.GetAbsoluteLocation());
 			Atmosphere::Render(Camera::scene);
-			World::RecompileIfNecessary();
 			if (Grid::SeeThrough::IsEnabled() /*&& !Objects::selectedEntity*/)
 				Grid::SeeThrough::Update(Grid::SeeThrough::IsEnabled(), Grid::SeeThrough::LocateCamera());
 

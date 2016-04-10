@@ -1221,6 +1221,13 @@ namespace Objects
 		return CanPlace;
 	}
 
+	int										Generator::GetEnergyProduction() const
+	{
+		PReactorCore c = connectedToReactor.lock(); 
+		return c && c->IsEnabled() ? 40 : 20;
+	}
+
+
 	/*virtual override*/ void				Generator::OnNewConnection(const PStructure&other, UINT32 acrossHighCell, float atTime)
 	{
 		Super::OnNewConnection(other,acrossHighCell,atTime);
@@ -2685,7 +2692,9 @@ namespace Objects
 		{
 			Super::DescribeType(label,  descFlags);
 			label.MarkBriefEnd();
-			label.WrapAppendText("Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator, but multiple generators may be connected to the same reactor core."
+			label.WrapAppendText("Amplifies the energy output of connected generators. Only one reactor core can be connected to any one generator,"
+			" but multiple generators may be connected to the same reactor core."
+			" Must be placed on the same height level as the generator(s) to connect to."
 			);
 		}
 		/*virtual override*/ void			VehiclePlant::DescribeType(BaseCommand::Label&label, UINT32 descFlags)
