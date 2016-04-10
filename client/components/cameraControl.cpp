@@ -118,20 +118,10 @@ namespace Camera
 	}
 
 
-
-
-	void						TargetOrbit(float newOrbit)
+	void						ChangeGroundRadius(float newOrbit)
 	{
-		//#ifndef NO_SATELLITES
-		//	if (skyGrid || subOrbitGrid)
-		//	if (subOrbitGrid)
-		//	groundTargetOrbit = newOrbit;
-		//else
-		//#endif
-		{
-			targetOrbit = newOrbit;
-			orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
-		}
+		targetOrbit = newOrbit;
+		orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
 	}
 
 
@@ -376,10 +366,10 @@ namespace Camera
 		{
 			int top;
 			if (Grid::actualWorld.cellStack[stackID].FindTopOccupied(top))
-				TargetOrbit(Grid::ToRadius(top+2));
+				ChangeGroundRadius(Grid::ToRadius(top+2));
 		}
 		if (Grid::SeeThrough::IsEnabled())
-			TargetOrbit(std::min(Grid::ToRadius(Grid::SeeThrough::GetFocusPoint().height+2), targetOrbit));
+			ChangeGroundRadius(std::min(Grid::ToRadius(Grid::SeeThrough::GetFocusPoint().height+2), targetOrbit));
 		ASSERT__(orbit > 0);
 		DebugCheckVector(scene.location,-10000,10000);
 		Vec::setLen0(scene.location, orbit);
@@ -429,12 +419,12 @@ namespace Camera
 		{
 			int top;
 			if (Grid::actualWorld.cellStack[stackID].FindTopOccupied(top))
-				TargetOrbit(Grid::ToRadius(top+2));
+				ChangeGroundRadius(Grid::ToRadius(top+2));
 		}
 
 		//targetOrbit = Grid::ToRadius(Grid::actualWorld.cellStack[stackID].FindTopOccupied());
 		if (Grid::SeeThrough::IsEnabled())
-			TargetOrbit(std::min(Grid::ToRadius(Grid::SeeThrough::GetFocusPoint().height+2), targetOrbit));
+			ChangeGroundRadius(std::min(Grid::ToRadius(Grid::SeeThrough::GetFocusPoint().height+2), targetOrbit));
 
 
 		Vec::setLen0(scene.location, orbit);

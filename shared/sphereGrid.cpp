@@ -15,7 +15,7 @@
 	namespace Camera
 	{
 		extern Engine::VectorCamera<>	scene;
-		void  TargetOrbit(float);
+		void  ChangeGroundRadius(float);
 	}
 
 #endif
@@ -1888,7 +1888,7 @@ namespace Grid
 
 				if (enable)
 				{
-					Camera::TargetOrbit(ToRadius(targetFocus.height));
+					Camera::ChangeGroundRadius(ToRadius(targetFocus.height));
 				}
 
 				HighSetup::TDistanceField	newDomain;
