@@ -25,7 +25,7 @@ del %rs1% /Q
 %zip% a %rs% "client/oalinst.exe"
 %zip% a %rs% "client/dxwebsetup.exe"
 %zip% a %rs% "client/OpenAL32.dll"
-::%zip% a %rs% "client/D3DCompiler_43.dll"
+%zip% a %rs% "client/D3DCompiler_43.dll"
 %zip% a %rs% "client/D3DCompiler_47.dll"
 
 
