@@ -1,4 +1,4 @@
-v0.3.23
+v0.3.23	[Apr 10 2016]
 	+ Added control commands to manage factions.
 	> Reactor cores now require uranium to operate but generate power in addition to their usual functionality.
 	> Improved sky grid. G can now be used to quickly toggle its appearance.
