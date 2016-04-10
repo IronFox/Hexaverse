@@ -1,6 +1,8 @@
 v0.4.4
 	+ Added control commands to find and terminate factions.
 	> Reactor cores now require uranium to operate but generate power in addition to their usual functionality.
+	> Improved sky grid. G can now be used to quickly toggle its appearance.
+	> Vehicles can no longer enter residual EMP zones.
 	> Scheduling a mobile entity task will now wake the local unit if necessary.
 	> Clipped terrain now visually distinguishes between invisible and visible terrain.
 	> Newly discovered offensive non-sentry units no longer cause a mobile unit to stop in its tracks.

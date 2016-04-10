@@ -374,7 +374,7 @@ namespace UI
 				float				atTime;
 				bool				isFriendly;
 				TUniqueID			focusTarget;
-				index_t				smokeTrailIndex = InvalidIndex;
+				Objects::Renderer::SmokeTrailIndex	smokeTrailIndex;
 				String				fallbackTargetName;
 			
 				/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, float atTime, bool isFriendly)
@@ -660,7 +660,7 @@ namespace UI
 		namespace EventLog
 		{
 			void			Clear();
-			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, index_t smokeTrailIndex);
+			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex);
 			void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName);
 
 

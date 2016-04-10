@@ -118,7 +118,7 @@ namespace Objects
 				}
 				else
 				{
-					v.unstable = true;
+					//v.unstable = true;
 					v.completeOnMove = shared_from_this();
 				}
 				return JobDone;
