@@ -1047,7 +1047,7 @@ namespace Grid
 		typedef GridSetup<Exponent>	GridType;
 		TFamily						family[BaseGrid::NumFamilies];
 		GridType					grid;
-		Array<BaseGrid::TNetCell>	cells;
+		static Array<BaseGrid::TNetCell>	cells;
 		Array<BaseGrid::TCellVertex>	cellVertices;
 
 
@@ -1077,7 +1077,7 @@ namespace Grid
 			struct TStack
 			{
 				UINT32				stackID;	//high-resolution cell IDs
-				UINT32				layerBegin,layerEnd;	//layerEnd is one higher than actual limit
+				TIntRange<UINT32>	range;		//range.end is one higher than actual limit
 			};
 
 			Buffer0<TStack>			coverage;
@@ -1091,7 +1091,7 @@ namespace Grid
 			{
 				count_t rs = 0;
 				foreach (coverage,c)
-					rs += c->layerEnd - c->layerBegin;
+					rs += c->range.GetExtend();
 				return rs;
 			}
 
@@ -1357,12 +1357,12 @@ namespace Grid
 				st.stackID = next;
 				if (!Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
 				{
-					st.layerBegin = st.layerEnd = 0;
+					st.range.SetEmpty(0);
 					continue;
 				}
 			
-				st.layerBegin = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
-				st.layerEnd = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
+				st.range.start = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
+				st.range.end = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
 				const auto&n = grid.GetCell(next).neighborhood;
 				for (int i = 0; i < n.numNeighbors; i++)
 					op.stacksLeft << n.neighborID[i];
@@ -1719,6 +1719,9 @@ namespace Grid
 			}
 		#endif
 	};
+
+	template <UINT Exponent>
+		Array<BaseGrid::TNetCell>	Setup<Exponent>::cells;
 
 	typedef Setup<5>	LowSetup;
 

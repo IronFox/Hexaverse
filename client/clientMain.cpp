@@ -1102,7 +1102,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 		}
 		else
 			Objects::CommandGroup::CollapseAll();
-		Objects::Renderer::HighlightSmokeTrail(InvalidIndex);
+		Objects::Renderer::ClearSmokeTrailHighlighting();
 
 		Tutorial::lastDelayingEvent = timer.Now();
 		//bool strip = true;
@@ -1482,6 +1482,7 @@ bool loop()
 
 		Objects::Renderer::AdvanceTurretAnimations();
 
+		World::RecompileIfNecessary();
 		{
 
 	//		static const float shadowRadius = 30.f;
@@ -1514,7 +1515,6 @@ bool loop()
 		{
 			//Atmosphere::Render(Grid::ToRadius(-Grid::CellStack::HalfRange),Grid::ToRadius(Grid::CellStack::HalfRange-1), Camera::scene.GetAbsoluteLocation());
 			Atmosphere::Render(Camera::scene);
-			World::RecompileIfNecessary();
 			if (Grid::SeeThrough::IsEnabled() /*&& !Objects::selectedEntity*/)
 				Grid::SeeThrough::Update(Grid::SeeThrough::IsEnabled(), Grid::SeeThrough::LocateCamera());
 
@@ -1594,15 +1594,17 @@ bool loop()
 			World::RenderWater(frustum);
 
 
+			Objects::Renderer::RenderTranslucent(false);
+
+			if (Objects::resourceView)
+				World::RenderResources(frustum);
+
 			#ifndef NO_SATELLITES
 			if (Camera::SkyGridIsVisible())
 				Grid::visibleOrbitGrid.Render(frustum);
 			#endif
 
-			Objects::Renderer::RenderTranslucent();
-
-			if (Objects::resourceView)
-				World::RenderResources(frustum);
+			Objects::Renderer::RenderTranslucent(true);
 
 			Objects::Renderer::RenderTranslucentBeams();
 
@@ -3376,6 +3378,8 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::Left, SelectAndFocusPrev);
 			Engine::input.bind(Key::Right, SelectAndFocusNext);
 			Engine::input.bind(Key::Space, SelectAndFocusNextIdle);
+
+			Engine::input.bind(Key::G, Camera::ToggleOrbit);
 
 			Engine::input.bind(Key::PageDown, ViewDown);
 			Engine::input.bind(Key::PageUp, ViewUp);

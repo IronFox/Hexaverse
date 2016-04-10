@@ -49,15 +49,15 @@ float4 psMain(V2P input) : SV_TARGET
 
 	//rs.rgb = (float3)0.0;
 	//lerp(rs.rgb,(float3)(0.5),outerGridOpacity);//outer grid is 0.5 grey
-	rs.rgb = (float3)centerGridOpacity;
+	rs.rgb = (float3)(1.0 - centerGridOpacity);
 	//(centerGridOpacity)*0.75 + 0.25;	//center grid is black
 	//float red = input.emp_fresnel.x * (sin(Time*8.f)*0.25 + 0.75);
 	//rs.gb *= (1.0-red) * 0.75 +0.25;
 	//rs.a = outerGridOpacity*0.5 + centerGridOpacity*0.5;
-	rs.a = outerGridOpacity * 0.75;
+	rs.a = (0.75 + 0.25 * outerGridOpacity);
 	//rs.a *= sqr(max(0.0,input.emp_fresnel.y));
 	//smoothstep(0.4,0.6,input.emp_fresnel.y);
-	rs.a *= 0.25 + 0.75 * input.normal3_opacity.w;
+	rs.a *= 0.5 * sqr(input.emp_fresnel.y) + 0.5 * input.normal3_opacity.w;
 	rs.a *= 1.0 - input.emp_fresnel.x;	//emp lets grid break off entirely
 	//
 	return rs;
