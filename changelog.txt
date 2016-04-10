@@ -1,6 +1,6 @@
 v0.3.23
 	+ Added control commands to find and terminate factions.
-	+ Added tutorial messages for each plane type, including images.
+	+ Added tutorial messages and images for each plane type.
 	> Increased sensor range of sensor drone.
 	> Reactor cores now require uranium to operate but generate power in addition to their usual functionality.
 	> Improved sky grid. G can now be used to quickly toggle its appearance.
