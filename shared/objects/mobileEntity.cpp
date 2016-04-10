@@ -90,7 +90,7 @@ namespace Objects
 			{
 				foreach (desc.coverage,c)
 				{
-					for (UINT l = c->layerBegin; l < c->layerEnd; l++)
+					for (UINT l = c->range.start; l < c->range.end; l++)
 					{
 						PStructure s = GetStructure(Grid::LCellIdU(c->stackID,l));
 						if (!s || s->owner != p)

@@ -797,12 +797,12 @@ namespace Objects
 	@param Derivative Name of the class that inherits from this class
 	*/
 	template <typename Derivative>
-		class CommonStructure : public WorkingStructure
+		class WorkingStructureT : public WorkingStructure
 		{
 			typedef WorkingStructure	Super;
 		protected:
-			/**/						CommonStructure(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
-			/**/						CommonStructure()
+			/**/						WorkingStructureT(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
+			/**/						WorkingStructureT()
 			{
 				#ifdef HAS_WINDOW
 					Super::localizableShape = &shape;
@@ -820,7 +820,7 @@ namespace Objects
 				};
 			#endif
 		public:
-			static const std::shared_ptr<CommonStructure<Derivative> >		globalPrototype;
+			static const std::shared_ptr<WorkingStructureT<Derivative> >		globalPrototype;
 			#ifdef HAS_WINDOW
 				static CommandContainer	commands;
 
@@ -865,11 +865,11 @@ namespace Objects
 	};
 
 	#ifndef NO_SATELLITES
-		class SkyPort : public CommonStructure<SkyPort>, public MobileEntityProducer, public SkyLinkStructure
+		class SkyPort : public WorkingStructureT<SkyPort>, public MobileEntityProducer, public SkyLinkStructure
 		{
 		public:
 		protected:
-			typedef CommonStructure<SkyPort>	Super;
+			typedef WorkingStructureT<SkyPort>	Super;
 
 
 			friend class Super;
@@ -955,10 +955,10 @@ namespace Objects
 	When switched on, NexusPorts count down a resistence value until they count as a winning condition.
 	Whenever ownership changes, or energy supply is cut, this value resets
 	*/
-	class NexusPort : public CommonStructure<NexusPort>, public SkyLinkStructure
+	class NexusPort : public WorkingStructureT<NexusPort>, public SkyLinkStructure
 	{
 	private:
-		typedef CommonStructure<NexusPort>			Super;
+		typedef WorkingStructureT<NexusPort>			Super;
 		typedef NexusPort		Self;
 		friend class Super;
 		/**/						Self(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime),resistence(-1)	{}
@@ -1039,18 +1039,18 @@ namespace Objects
 
 	};
 	
-	class Generator : public CommonStructure<Generator>
+	class Generator : public WorkingStructureT<Generator>
 	{
-		friend class CommonStructure<Generator>;
+		friend class WorkingStructureT<Generator>;
 		/**/						Generator(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{}
 		/**/						Generator()	{ }	//global prototype
 	public:
 		static const int FuelCostPerRound = 10;
-		typedef CommonStructure<Generator>	Super;
+		typedef WorkingStructureT<Generator>	Super;
 		WReactorCore				connectedToReactor;
 
 
-		int							GetEnergyProduction() const {return connectedToReactor.expired() ? 20 : 40;}
+		int							GetEnergyProduction() const;
 
 		#ifdef HAS_WINDOW
 			static Geometry			reactorConnector;
@@ -1084,19 +1084,24 @@ namespace Objects
 
 	};
 
-	class ReactorCore : public OtherStructure<ReactorCore>
+	class ReactorCore : public WorkingStructureT<ReactorCore>
 	{
-		typedef OtherStructure<ReactorCore>	Super;
+		typedef WorkingStructureT<ReactorCore>	Super;
 		friend class Super;
-		/**/						ReactorCore(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,true,atTime)	{}
+		/**/						ReactorCore(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{}
 		/**/						ReactorCore()	{ }	//global prototype
 	public:
+		static const int	UraniumCost = 5;
+		static const int	EnergyOutput = 40;
 
 		virtual int					GetConstructionCost() const override {return 120;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 15;}
 			virtual int				GetUplinkPriority() const override {return 750;};
 		#endif
+
+		virtual bool				WouldLikeToEnable() const override {return true;}
+		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Uranium] = -UraniumCost; v.level[Resource::Energy] = EnergyOutput; }
 
 		virtual int					GetHeight() const override {return 2;}
 		virtual String				GetTypeName() const override { return "Reactor Core"; };
@@ -1114,9 +1119,9 @@ namespace Objects
 
 
 
-	class VehiclePlant : public CommonStructure<VehiclePlant>, public MobileEntityProducer
+	class VehiclePlant : public WorkingStructureT<VehiclePlant>, public MobileEntityProducer
 	{
-		friend class CommonStructure<VehiclePlant>;
+		friend class WorkingStructureT<VehiclePlant>;
 
         /**/						VehiclePlant(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime);
 		/**/						VehiclePlant():  MobileEntityProducer(DefaultProductionPerRound) {}//global prototype
@@ -1124,7 +1129,7 @@ namespace Objects
 		virtual bool				CanEnable() const override {return MobileEntityProducer::queue.IsNotEmpty();}
 
 	public:
-		typedef CommonStructure<VehiclePlant>	Super;
+		typedef WorkingStructureT<VehiclePlant>	Super;
 
 
 
@@ -1230,10 +1235,10 @@ namespace Objects
 
 	
 	template <class Derivative, index_t LeftoverUpdateIteration=2>
-	class StorageStructure : public CommonStructure<Derivative>
+	class StorageStructure : public WorkingStructureT<Derivative>
 	{
 	protected:
-		typedef CommonStructure<Derivative>			Super;
+		typedef WorkingStructureT<Derivative>			Super;
 		friend class Super;
 		/**/						StorageStructure(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{}
 		/**/						StorageStructure()	{ }	//global prototype
@@ -1315,7 +1320,7 @@ namespace Objects
 		typedef StorageStructure<Mine,3>			Super;
 
 
-		friend class CommonStructure<Mine>;
+		friend class WorkingStructureT<Mine>;
 		/**/						Mine(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Minerals] = MineralStorage; isLinkedToCore = LinkToCore(atTime);}
 		/**/						Mine()	{
 			maxStorage.level[Resource::Minerals] = MineralStorage;
@@ -1405,7 +1410,7 @@ namespace Objects
 		typedef MunitionFactory		Self;
 		typedef StorageStructure<Self,3>	Super;
 		friend class Super;
-		friend class CommonStructure<Self>;
+		friend class WorkingStructureT<Self>;
 
 
 		static const int LocalMunitionStorage = 4;
@@ -1477,7 +1482,7 @@ namespace Objects
 	{
 		typedef StorageStructure<FuelContainer>	Super;
 		friend class Super;
-		friend class CommonStructure<FuelContainer>;
+		friend class WorkingStructureT<FuelContainer>;
 		/**/						FuelContainer(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Fuel] = 400;}
 		/**/						FuelContainer()	{maxStorage.level[Resource::Fuel] = 400; }	//global prototype
 	public:
@@ -1491,7 +1496,7 @@ namespace Objects
 	{
 		typedef StorageStructure<MineralContainer>	Super;
 		friend class Super;
-		friend class CommonStructure<MineralContainer>;
+		friend class WorkingStructureT<MineralContainer>;
 		/**/						MineralContainer(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Minerals] = 400;}
 		/**/						MineralContainer()	{maxStorage.level[Resource::Minerals] = 400; }	//global prototype
 	public:
@@ -1505,7 +1510,7 @@ namespace Objects
 	{
 		typedef StorageStructure<UraniumStorage>	Super;
 		friend class Super;
-		friend class CommonStructure<UraniumStorage>;
+		friend class WorkingStructureT<UraniumStorage>;
 		/**/						UraniumStorage(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	{maxStorage.level[Resource::Uranium] = 400;}
 		/**/						UraniumStorage()	{maxStorage.level[Resource::Uranium] = 400; }	//global prototype
 	public:
@@ -1521,7 +1526,7 @@ namespace Objects
 
 		typedef StorageStructure<Self>	Super;
 		friend class Super;
-		friend class CommonStructure<Self>;
+		friend class WorkingStructureT<Self>;
 		/**/						Self(const OwnerParameter&owner, const Grid::LCellIdI&location,float atTime) : Super(owner,location,atTime)	
 		{
 			#ifndef NO_MUNITION
@@ -1560,7 +1565,7 @@ namespace Objects
 		typedef WorkingStructure	Super;
 		friend class Super;
 		friend void Create();
-		//friend class CommonStructure<Tower>;
+		//friend class WorkingStructureT<Tower>;
 		/**/						Tower(Component::Turret*turret) : TurretBase(turret)
 		{
 			#ifdef HAS_WINDOW
@@ -1763,22 +1768,22 @@ namespace Objects
 
 
 	template <typename Derivative>
-	/*static*/ const std::shared_ptr<CommonStructure<Derivative> >		CommonStructure<Derivative>::globalPrototype(new Derivative());
+	/*static*/ const std::shared_ptr<WorkingStructureT<Derivative> >		WorkingStructureT<Derivative>::globalPrototype(new Derivative());
 
 	#ifdef HAS_WINDOW
 		template <typename Derivative>
-		/*static*/ DX11::InstructionBlock32	CommonStructure<Derivative>::shape;
+		/*static*/ DX11::InstructionBlock32	WorkingStructureT<Derivative>::shape;
 
 		template <typename Derivative>
 		/*static*/ DX11::InstructionBlock32	OtherStructure<Derivative>::shape;
 
 		template <typename Derivative>
-		/*static*/ Geometry				CommonStructure<Derivative>::geometry;
+		/*static*/ Geometry				WorkingStructureT<Derivative>::geometry;
 		template <typename Derivative>
 		/*static*/ Geometry				OtherStructure<Derivative>::geometry;
 
 		template <typename Derivative>
-		/*static*/ CommandContainer	CommonStructure<Derivative>::commands;
+		/*static*/ CommandContainer	WorkingStructureT<Derivative>::commands;
 		template <typename Derivative>
 		/*static*/ CommandContainer	OtherStructure<Derivative>::commands;
 	#endif
@@ -1786,13 +1791,13 @@ namespace Objects
 
 
 	template <typename Derivative>
-		/*virtual override*/ PWorldEntity			CommonStructure<Derivative>::CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) { return PWorldEntity(new Derivative(owner,location,atTime)); }
+		/*virtual override*/ PWorldEntity			WorkingStructureT<Derivative>::CreateNewInstance(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) { return PWorldEntity(new Derivative(owner,location,atTime)); }
 
 
 
 	#ifdef HAS_WINDOW
 		template <typename Derivative>
-			/*virtual override*/	void			CommonStructure<Derivative>::PrototypeLoadGeometry()
+			/*virtual override*/	void			WorkingStructureT<Derivative>::PrototypeLoadGeometry()
 			{
 				Super::PrototypeLoadGeometry();
 
@@ -1834,7 +1839,7 @@ namespace Objects
 	#endif
 
 	template <typename Derivative>
-		/*virtual override*/	void			CommonStructure<Derivative>::PrototypeSetup()
+		/*virtual override*/	void			WorkingStructureT<Derivative>::PrototypeSetup()
 		{
 			Super::PrototypeSetup();
 
@@ -1845,7 +1850,7 @@ namespace Objects
 				[](bool controlEnabled)->BaseCommand::Flags
 				{
 					BaseCommand::Flags rs = BaseCommand::Flags::None;
-					CommonStructure<Derivative>*div = dynamic_cast<CommonStructure<Derivative>*>(selectedEntity.get());
+					WorkingStructureT<Derivative>*div = dynamic_cast<WorkingStructureT<Derivative>*>(selectedEntity.get());
 					if (controlEnabled)
 					{
 						if (div && div->CanEnable())
@@ -1897,7 +1902,7 @@ namespace Objects
 		}
 	
 	template <typename Derivative>
-		CommonStructure<Derivative>::CommonStructure(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true, atTime)
+		WorkingStructureT<Derivative>::WorkingStructureT(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location, true, atTime)
 		{
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
@@ -1909,13 +1914,13 @@ namespace Objects
 
 
 	template <typename Derivative>
-		/*virtual override*/ bool				CommonStructure<Derivative>::ConnectionPossible(const StrongConnection&, UINT32 acrossHighCell)
+		/*virtual override*/ bool				WorkingStructureT<Derivative>::ConnectionPossible(const StrongConnection&, UINT32 acrossHighCell)
 		{
 			return true;
 			//return other->location.height == this->location.height;// && dynamic_cast<Mine*>(other.get()) != nullptr;
 		}
 	template <typename Derivative>
-		/*virtual override*/ Structure::placement_t				CommonStructure<Derivative>::CheckPlacement(const Grid::LCellIdI&location)
+		/*virtual override*/ Structure::placement_t				WorkingStructureT<Derivative>::CheckPlacement(const Grid::LCellIdI&location)
 		{
 			return CommonCheckStructurePlacement(location,GetBroadHeight(), GetHeight());
 		}
@@ -1923,9 +1928,9 @@ namespace Objects
 	#ifdef HAS_WINDOW
 
 		template <typename Derivative>
-			/*static*/ void				CommonStructure<Derivative>::Cmd::Enable()
+			/*static*/ void				WorkingStructureT<Derivative>::Cmd::Enable()
 			{
-				CommonStructure<Derivative>*s2 = dynamic_cast<CommonStructure<Derivative>*>(selectedEntity.get());
+				WorkingStructureT<Derivative>*s2 = dynamic_cast<WorkingStructureT<Derivative>*>(selectedEntity.get());
 				if (s2)
 				{
 					SignalEnableStructure(*s2, !s2->IsEnabled());
@@ -1933,9 +1938,9 @@ namespace Objects
 				}
 			}
 		template <typename Derivative>
-			/*static*/ bool				CommonStructure<Derivative>::Cmd::IsEnabled()
+			/*static*/ bool				WorkingStructureT<Derivative>::Cmd::IsEnabled()
 			{
-				CommonStructure<Derivative>*s2 = dynamic_cast<CommonStructure<Derivative>*>(selectedEntity.get());
+				WorkingStructureT<Derivative>*s2 = dynamic_cast<WorkingStructureT<Derivative>*>(selectedEntity.get());
 				return s2 && s2->IsEnabled();
 			};
 
