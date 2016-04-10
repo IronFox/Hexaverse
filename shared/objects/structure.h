@@ -1000,19 +1000,24 @@ namespace Objects
 
 	};
 
-	class ReactorCore : public OtherStructure<ReactorCore>
+	class ReactorCore : public WorkingStructureT<ReactorCore>
 	{
-		typedef OtherStructure<ReactorCore>	Super;
+		typedef WorkingStructureT<ReactorCore>	Super;
 		friend class Super;
-		/**/						ReactorCore(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,true,atTime)	{}
+		/**/						ReactorCore(const OwnerParameter&owner, const Grid::LCellIdI&location, float atTime) : Super(owner,location,atTime)	{}
 		/**/						ReactorCore()	{ }	//global prototype
 	public:
+		static const int	UraniumCost = 5;
+		static const int	EnergyOutput = 40;
 
 		virtual int					GetConstructionCost() const override {return 120;}
 		#ifndef NO_HIBERNATION
 			virtual int				GetUplinkTraffic() const override {return 15;}
 			virtual int				GetUplinkPriority() const override {return 750;};
 		#endif
+
+		virtual bool				WouldLikeToEnable() const override {return true;}
+		virtual void				GetResourceVector(ResourceVector&v,ResourceVector&, ResourceVector&) const override	{v.level[Resource::Uranium] = -UraniumCost; v.level[Resource::Energy] = EnergyOutput; }
 
 		virtual int					GetHeight() const override {return 2;}
 		virtual String				GetTypeName() const override { return "Reactor Core"; };
