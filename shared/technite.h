@@ -180,6 +180,8 @@ namespace Technites
 			Count
 		};
 
+		static const char*	ToString(Task);
+
 		enum class TaskResult : BYTE
 		{
 			NothingToDo,
@@ -194,6 +196,7 @@ namespace Technites
 			Again,
 			Success
 		};
+		static const char*	ToString(TaskResult);
 
 		class CompressedTarget
 		{

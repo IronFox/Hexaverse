@@ -510,6 +510,45 @@ namespace Technites
 		}
 	}
 
+	/*static*/ const char*	Technite::ToString(TaskResult rs)
+	{
+		#undef CASE
+		#define CASE(X)	case TaskResult::X: return #X;
+		switch (rs)
+		{
+			CASE(NothingToDo)
+			CASE(BadCommand)
+			CASE(CannotEatThis)
+			CASE(CannotGnawAtThis)
+			CASE(CannotStandThere)
+			CASE(TechniteLacksResources)
+			CASE(NoTechniteAtDestination)
+			CASE(MoreWorkNeeded)
+			CASE(OperationWindowMissed)
+			CASE(Again)
+			CASE(Success)
+		}
+		return "Unknown task result";
+	}
+
+	/*static*/ const char*	Technite::ToString(Task rs)
+	{
+		#undef CASE
+		#define CASE(X)	case Task::X: return #X;
+		switch (rs)
+		{
+			CASE(None)
+			CASE(ConsumeSurroundingCell)
+			CASE(GnawAtSurroundingCell)
+			CASE(GrowTo)
+			CASE(TransferEnergyTo)
+			CASE(TransferMatterTo)
+			CASE(SelfTransformToType)
+			CASE(Scan)
+		}
+		return "Unknown task";
+	}
+
 
 	bool	Technite::DecodeAbsoluteTarget(Grid::HCellIdU & outTarget) const
 	{
