@@ -1855,10 +1855,11 @@ namespace Protocol
 	};
 
 
-	NETSTRUCT7(GameInfo
+	NETSTRUCT8(GameInfo
 		, NET(UINT16), numFactionsOnline
 		, NET(UINT16), numFactionsCreated
 		, NET(UINT32), roundNumber
+		, NET(UINT32), techniteSubRoundNumber
 		, NET(TUniqueID), worldID	//used to manage factionTokens
 		, NET(BYTE), activePhase
 		, NET(UINT32), gameFlags

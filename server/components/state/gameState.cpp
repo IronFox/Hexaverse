@@ -119,6 +119,8 @@ namespace Game
 			info.numFactionsOnline = (UINT16)::Network::activePlayersAndSpectators.Count();
 			info.numFactionsCreated = (UINT16)Objects::Faction::all.Count() + (Config::Nexus::enableAI ? 1 : 0);
 			info.roundNumber = (UINT32)RuntimeConfig::roundNumber;
+			info.techniteSubRoundNumber = (UINT32)RuntimeConfig::techniteSubRoundNumber;
+
 			info.worldID = World::worldID;
 			info.gameGoal = (UINT32)RuntimeConfig::gameGoal;
 			info.gameFlags = 0;
