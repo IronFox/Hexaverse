@@ -268,9 +268,9 @@ namespace Objects
 									}
 									break;
 									case MobilePlacementResult::PlacementFailedHarmfulOrBlocked:
-										this->ClearAllTasks(true, CLOCATION);
 									case MobilePlacementResult::PlacementFailedPermanentlyObstructed:
-										dropRemaining = true;
+										if (task.path.GetLength() <= 1 || (task.foci.IsNotEmpty() && task.foci.Peek().isDetailed))
+											dropRemaining = true;
 										//bleed into next case:
 									case MobilePlacementResult::PlacementFailedTemporarilyObstructed:
 									{
@@ -430,6 +430,8 @@ namespace Objects
 					float zOffset;
 					PTurretBase b = (*c)->GetTurretBase(zOffset);
 					if (!b)
+						continue;
+					if (!(*c)->IsSentry())
 						continue;
 					if (b->turret->CanAttack())
 					{
@@ -807,6 +809,12 @@ namespace Objects
 				constructionRoundCounter = 0;
 			}
 
+			if (IsSleeping() && job->DelayedBySleep())
+			{
+				float t = 0.f;
+				SetSleep(false,t);
+			}
+
 			Task&task = myTasks.Push();
 			task.type = Task::Job;
 			task.name = job->GetName();
@@ -825,6 +833,13 @@ namespace Objects
 		void					MobileEntity::RegisterNewFrontJob(const String&localizableShapeIdentifier, const PVehicleJob&job, const PVehicleJob&parent, const Grid::LCellIdI*destination)
 		{
 			ASSERT__(!TasksAreLocked());
+
+			if (IsSleeping() && job->DelayedBySleep())
+			{
+				float t = 0.f;
+				SetSleep(false,t);
+			}
+
 
 			RegisterChange(TasksChanged,motionTime);
 			Task&task = myTasks.PushFront();

@@ -109,6 +109,85 @@ namespace Grid
 	
 
 
+	#ifdef HAS_WINDOW
+
+		struct TWeightedColor;
+
+		struct TVisibility
+		{
+			float value = 0.f;
+
+			/**/	TVisibility(float value):value(value)	{}
+		};
+
+
+		struct TBaseColor
+		{
+			float3	color;
+
+			/**/	TBaseColor() = default;
+			/**/	TBaseColor(const float3&c):color(c)	{}
+			/**/	TBaseColor(const TWeightedColor&c);
+
+			void	operator+=(const TBaseColor&c)
+			{
+				color += c.color;
+			}
+			void	operator*=(float fc)
+			{
+				color *= fc;
+			}
+		};
+
+		struct TWeightedColor : TBaseColor
+		{
+			typedef TBaseColor	Super;
+
+			float	weight=0.f;
+
+			/**/	TWeightedColor() = default;
+			/**/	TWeightedColor(const TBaseColor&c, float weight):Super(c),weight(weight)	{}
+
+			void	operator+=(const TWeightedColor&c)
+			{
+				Super::operator+=(c);
+				weight += c.weight;
+			}
+			void	operator*=(float fc)
+			{
+				Super::operator*=(fc);
+				weight *= fc;
+			}
+		};
+
+
+	
+		struct TLitColor : public TBaseColor
+		{
+			typedef TBaseColor	Super;
+
+			float	lightLevel=0.f;
+			bool	capped = false;
+			float	emp = 0.f;
+			float	visibility=0.f;
+
+			/**/	TLitColor() = default;
+			/**/	TLitColor(const TBaseColor&base, float lightLevel, float emp=0.f):Super(base),lightLevel(lightLevel),emp(emp)	{}
+			/**/	TLitColor(const TBaseColor&base, float lightLevel, float emp, const TVisibility&vis):Super(base),lightLevel(lightLevel),emp(emp),visibility(vis.value)	{}
+			/**/	TLitColor(const TWeightedColor&base, float lightLevel, float emp=0.f):Super(base),lightLevel(lightLevel),emp(emp)	{}
+			/**/	TLitColor(float lightLevel, float emp=0.f):lightLevel(lightLevel),emp(emp)	{}
+			/**/	TLitColor(const TVisibility&v):visibility(v.value)	{}
+			void	CompileFinalColor(TVec4<>&)	const;
+
+		private:
+			static void ApplyEMP(float intensity,TVec3<>&rs);
+			void	CapColor(TVec3<>&rs)	const;
+		};
+
+
+	#endif
+
+
 	class CellStack
 	{
 		static UINT		ToLayer(UINT layer)	{ FATAL__("bad call"); }
@@ -186,6 +265,11 @@ namespace Grid
 			BYTE	structureCounter = 0;	//number of structures (density) that occupy this block
 			#ifdef CLIENT
 				short	visible=0;	//indicates levels of visibility. should not fall below 0. might make it unsigned when i am convinced it works. values >= 1 indicate this cell is visible
+
+				#ifdef HAS_WINDOW
+					TVisibility	GetVisibility() const {return TVisibility(visible>0);}
+				#endif
+
 			#endif
 
 			/**/	CompactCell() {}
@@ -210,7 +294,7 @@ namespace Grid
 			void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout, TTechniteFactionDelta&fout, bool&foutValid) const
 			{
 				GetDeltaFrom(other,tout,fout, foutValid);
-				other = *this;
+				other.content = this->content;
 			}
 
 			bool	ApplyDelta(const TTypeDelta&tdelta, const TTechniteFactionDelta&fdelta)
@@ -367,7 +451,7 @@ namespace Grid
 				void	SetSubmergence(UINT sub);
 				UINT	GetIncreasedSubmergence() const;
 				float	GetStructureFactor() const	{ return typeStructureFactor[content]; }
-				float3	GetBaseColor() const;
+				TBaseColor	GetBaseColor() const;
 
 			#endif
 			static void	ToneInvisibleCellColor(TVec3<>&color);
@@ -434,11 +518,11 @@ namespace Grid
 		Cell&			GetMutableCellI(int height);
 		#ifdef HAS_WINDOW
 
-			float4		GetDownColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const;
-			float4		GetColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const;
+			TLitColor	GetDownColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const;
+			TLitColor	GetColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const;
 			//float3			GetSelectiveColorU(unsigned layer, const float3&colorIfNonSolid, bool&mixes) const;
-			float4		GetMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, Cell::Content&outContent) const;
-			float4		GetDownMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, Cell::Content&outContent) const;
+			TWeightedColor	GetMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Cell::Content&outContent) const;
+			TWeightedColor	GetDownMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Cell::Content&outContent) const;
 		#endif
 		void			ChangeStructureCounterI(int height, int by);
 
@@ -581,7 +665,7 @@ namespace Grid
 			float4		color;
 
 			/**/		TerrainVertex()	{};
-			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float4&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f,structure*127.f), color(color){}
+			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const TLitColor&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f,structure*127.f) {color.CompileFinalColor(this->color);}
 			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float3&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f, structure*127.f), color(color,1.f){}
 		};
 	
@@ -975,7 +1059,7 @@ namespace Grid
 			const BaseGrid::TNetCell*  netCells;
 			FClipHeight	clipHeight;
 			bool	wasEmpty;
-			TVec4<>	cornerColor[6];
+			TLitColor	cornerColor[6];
 
 
 			void	Setup(const CellStack *stacks,const BaseGrid::TCell*cells, const BaseGrid::TNetCell*netCells,FClipHeight clipHeight)
@@ -990,10 +1074,9 @@ namespace Grid
 			}
 
 
-			float4	GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const;
-			float4	GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const;
+			TWeightedColor	GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const;
+			TWeightedColor	GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const;
 //			static void ApplyEMP(UINT16 cornerFlags,TVec4<>&rs);
-			static void ApplyEMP(float intensity,TVec3<>&rs);
 			static bool FlagsAffectedByEMP(UINT16 cornerFlags) {return !(cornerFlags & empZonesUnlocked);}
 			static bool AffectedByEMP(index_t stackIndex);
 
@@ -1004,7 +1087,7 @@ namespace Grid
 			void	CompileAboveTerrainOutline(const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors);
 			void	CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack);
 			void	CompileDownCap(const UINT ih,const BaseGrid::TNetCell&cell, const CellStack::Cell&thisCell, const int ir,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack);
-			void	CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,TVec4<> newCornerColor[6], 
+			void	CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,TLitColor newCornerColor[6], 
 											const CellStack::Cell&thisCell, const CellStack::Cell&lastCell, const TFloatRange<>&range);
 			void	DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull);
 		};
@@ -1124,7 +1207,7 @@ namespace Grid
 		typedef GridSetup<Exponent>	GridType;
 		TFamily						family[BaseGrid::NumFamilies];
 		GridType					grid;
-		Array<BaseGrid::TNetCell>	cells;
+		static Array<BaseGrid::TNetCell>	cells;
 		Array<BaseGrid::TCellVertex>	cellVertices;
 
 
@@ -1154,7 +1237,7 @@ namespace Grid
 			struct TStack
 			{
 				UINT32				stackID;	//high-resolution cell IDs
-				UINT32				layerBegin,layerEnd;	//layerEnd is one higher than actual limit
+				TIntRange<UINT32>	range;		//range.end is one higher than actual limit
 			};
 
 			Buffer0<TStack>			coverage;
@@ -1168,7 +1251,7 @@ namespace Grid
 			{
 				count_t rs = 0;
 				foreach (coverage,c)
-					rs += c->layerEnd - c->layerBegin;
+					rs += c->range.GetExtend();
 				return rs;
 			}
 
@@ -1502,12 +1585,12 @@ namespace Grid
 				st.stackID = next;
 				if (!Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
 				{
-					st.layerBegin = st.layerEnd = 0;
+					st.range.SetEmpty(0);
 					continue;
 				}
 			
-				st.layerBegin = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
-				st.layerEnd = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
+				st.range.start = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
+				st.range.end = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
 				const auto&n = grid.GetCell(next).neighborhood;
 				for (int i = 0; i < n.numNeighbors; i++)
 					TVolumeDescriptor::op.stacksLeft << n.neighborID[i];
@@ -1974,6 +2057,9 @@ namespace Grid
 		/*static*/ typename Setup<Exponent>::TVolumeDescriptor::_Operator Setup<Exponent>::TVolumeDescriptor::op;
 
 
+	template <UINT Exponent>
+		Array<BaseGrid::TNetCell>	Setup<Exponent>::cells;
+
 	typedef Setup<5>	LowSetup;
 
 	#ifdef HYBRID_GRID
@@ -2327,6 +2413,9 @@ namespace Grid
 				short	visibility;
 				bool	oldVisible, temporarilyVisible;
 
+				#ifdef HAS_WINDOW
+					TVisibility	GetVisibility() const {return TVisibility(visibility>0);}
+				#endif
 
 				bool	Changed(bool reset)
 				{

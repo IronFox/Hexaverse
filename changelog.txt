@@ -1,6 +1,16 @@
-v0.3.23
-	+ Added control commands to find and terminate factions.
+v0.3.24
+	+ Re-included D3DCompiler_43.dll since it seems to be necessary in some cases.
+	
+v0.3.23	[Apr 10 2016]
+	+ Added control commands to manage factions.
+	> Reactor cores now require uranium to operate but generate power in addition to their usual functionality.
+	> Improved sky grid. G can now be used to quickly toggle its appearance.
+	> Vehicles can no longer enter residual EMP zones.
+	> Scheduling a mobile entity task will now wake the local unit if necessary.
+	> Clipped terrain now visually distinguishes between invisible and visible terrain.
+	> Newly discovered offensive non-sentry units no longer cause a mobile unit to stop in its tracks.
 	* Fixed various visibility and grid issues causing client assertion failures and subsequent crashes.
+	* Fixed hostile health visually reverting to full when sensor contact is temporarily lost.
 
 v0.3.22	[Apr 5 2016]
 	> Enabled vertical synchronization by default.

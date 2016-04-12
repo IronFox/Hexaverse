@@ -913,14 +913,20 @@ namespace FileIO
 			Import(parent,resources);
 			w->SetResourceStorage(resources);
 			Riff::Chunk*enabled = parent->FindFirst(RID::structureEnabled);
-			ASSERT_NOT_NULL__(enabled);
-			bool isEnabled = *(const bool*)enabled->pointer();
+			if (enabled)
 			{
-				float t =0;
-				if (isEnabled)
-					w->SetEnabled(isEnabled,t,false,Objects::WorkingStructure::ForceEnable,false);
-				else
-					w->SetEnabledOverride(false);
+				bool isEnabled = *(const bool*)enabled->pointer();
+				{
+					float t =0;
+					if (isEnabled)
+						w->SetEnabled(isEnabled,t,false,Objects::WorkingStructure::ForceEnable,false);
+					else
+						w->SetEnabledOverride(false);
+				}
+			}
+			else
+			{
+				LogEvent(EventClass::Preset::fileError,"Warning: Unable to find 'enabled' chunk for "+rs->GetName()+". Cannot determine enabled-state");
 			}
 			Objects::MobileEntityProducer*p = dynamic_cast<Objects::MobileEntityProducer*>(w);
 	//		Objects::MobileEntityProducer*p = w->ToProducer();
