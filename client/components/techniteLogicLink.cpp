@@ -594,12 +594,12 @@ namespace TechniteLogicLink
 			msg.message = message.message;
 			msg.roundNumber = RuntimeConfig::roundNumber;
 			msg.subRoundNumber = RuntimeConfig::techniteSubRoundNumber;
-
+			msg.received = timer.Now();
 			
 
 			auto&list = debugMessageTable.Set(Technites::Technite::CompressedLocation(message.location.value).GetU());
 			
-			while (list.GetLength() > 15)
+			while (list.GetLength() > 14)
 				list.EraseFront();
 			list.Push(msg);
 		}

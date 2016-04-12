@@ -112,6 +112,7 @@ namespace TechniteLogicLink
 	{
 		UINT32	roundNumber,
 				subRoundNumber;
+		Timer::Time	received;
 		String	message;
 	};
 
