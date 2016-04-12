@@ -459,8 +459,10 @@ namespace TechniteLogicLink
 					bool brk = true;
 
 				}
+				#ifdef HAS_WINDOW
 				Dialog::SignalSituationChange();
 				UI::HexGrid::RefreshButtonState();
+				#endif
 			}
 		}
 

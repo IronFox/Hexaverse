@@ -1335,7 +1335,7 @@ namespace Technites
 
 			foreach (desc0.coverage,c)
 			{
-				for (UINT32 l = c->layerBegin; l < c->layerEnd; l++)
+				for (UINT32 l = c->range.start; l < c->range.end; l++)
 				{
 					Objects::PWorldEntity e = Objects::GetEntity(Grid::LCellIdI(c->stackID,Grid::CellStack::ToHeight(l)));
 					if (e && e->owner.get() != this && GridCanSee(e))

@@ -1511,8 +1511,8 @@ namespace Grid
 					//const auto&c3 = grid.GetCell(id);
 					TVolumeDescriptor::TStack&st = volume.coverage.Append();
 					st.stackID = id;
-					st.layerBegin = bottom;
-					st.layerEnd = top+1;
+					st.range.start = bottom;
+					st.range.end = top+1;
 				}
 			}
 			TVolumeDescriptor::op.ResetVisited(volume);
@@ -1540,8 +1540,8 @@ namespace Grid
 					//const auto&c3 = grid.GetCell(id);
 					TVolumeDescriptor::TStack&st = volume.coverage.Append();
 					st.stackID = id;
-					st.layerBegin = bottom;
-					st.layerEnd = top+1;
+					st.range.start = bottom;
+					st.range.end = top+1;
 				}
 				const auto&c = grid.GetCell(centerStacks[i]);
 				for (int k = 0; k < c.neighborhood.numNeighbors; k++)
@@ -1554,8 +1554,8 @@ namespace Grid
 						//const auto&c3 = grid.GetCell(id);
 						TVolumeDescriptor::TStack&st = volume.coverage.Append();
 						st.stackID = id;
-						st.layerBegin = bottom;
-						st.layerEnd = top+1;
+						st.range.start = bottom;
+						st.range.end = top+1;
 					}
 				}
 			}
