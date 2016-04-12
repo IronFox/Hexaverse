@@ -383,6 +383,7 @@ namespace TechniteLogicLink
 					Channels::gridDelta.SendTo(peer,outDelta);
 			});
 		}
+		debugMessageTable.Clear();
 		recordedHistory.Clear();
 		Protocol::TechniteChunk chunk;
 		chunk.flags = Protocol::TechniteChunkFlags::IsFirst | Protocol::TechniteChunkFlags::IsLast;
@@ -894,6 +895,14 @@ namespace TechniteLogicLink
 		});
 		if ((chunk.flags & Protocol::TechniteChunkFlags::IsLast))
 		{
+			Array<Grid::HCellIdU>	debugTechnites;
+			debugMessageTable.exportKeys(debugTechnites);
+			foreach (debugTechnites,tech)
+			{
+				if (Grid::actualWorld.cellStack[tech->stackID].volumeCell[tech->layer].content != Grid::Content::Technite)
+					debugMessageTable.Unset(*tech);
+			}
+
 			haveAllTechnites = true;
 			if (executed)
 				ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
