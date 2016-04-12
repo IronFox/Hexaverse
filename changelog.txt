@@ -1,5 +1,7 @@
-v0.3.24
+v0.3.24	[Apr 12 2016]
 	+ Re-included D3DCompiler_43.dll since it seems to be necessary in some cases.
+	+ Added technite debug messages to protocol.
+	> Technites are now spawned manually at user-chosen locations.
 	
 v0.3.23	[Apr 10 2016]
 	+ Added control commands to manage factions.
