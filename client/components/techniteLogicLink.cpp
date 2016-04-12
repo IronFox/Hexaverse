@@ -362,7 +362,7 @@ namespace TechniteLogicLink
 		executed = false;
 		if (!logicServer.HasAnyClients())
 			return;
-		LogEvent(event,"Technite logic: Sending world data to all client");
+		LogEvent(event,"Technite logic: Sending world data to all clients");
 		Protocol::WorldDelta delta;
 		TechniteProtocol::GridDelta outDelta;
 		for (int i = 0; i < BaseGrid::NumFamilies; i++)
