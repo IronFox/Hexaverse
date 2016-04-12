@@ -211,6 +211,13 @@ namespace Protocol
 				return true;
 				//return	var0.Deserialize(inStream,EmbeddedSize) && var1.Deserialize(inStream,EmbeddedSize) && var2.Deserialize(inStream,EmbeddedSize) && var3.Deserialize(inStream,EmbeddedSize);
 			}
+			void	swap(MultiSerializable4&other)
+			{
+				var0.swap(other.var0);
+				var1.swap(other.var1);
+				var2.swap(other.var2);
+				var3.swap(other.var3);
+			}
 			void	Copy(const MultiSerializable4&other)
 			{
 				var0 = other.var0;
