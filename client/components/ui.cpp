@@ -8,6 +8,7 @@
 #ifdef HAS_WINDOW
 	#include "../DX11/texture_font.h"
 	#include "surfaceRenderer.h"
+	#include "techniteLogicLink.h"
 
 	extern Engine::Display<Engine::DirectX11>	display;
 	extern Engine::Textout<Engine::DX11::TextureFont>	textout;
@@ -2407,16 +2408,22 @@
 
 
 			textout << "Technite"<<nl;
-			textout << " location="<<t.location.GetI().ToString()<<nl;
+			textout << " location="<<t.location.GetU().ToString()<<nl;
 			textout << " resources="<<t.resources.ToString()<<nl;
 			textout << " TTL="<<t.state.GetTTL()<<nl;
 			textout << " lit="<<t.state.IsLit()<<nl;
-			textout << " taskResult="<<(int)t.taskResult<<nl;
-			textout << " next task="<<(int)t.nextTask<<nl;
-			textout << " task para="<<t.taskParameter<<nl;
+			textout << " last task result="<<Technites::Technite::ToString(Technites::Technite::TaskResult( t.taskResult ))<<nl;
+			textout << " next task="<<Technites::Technite::ToString(Technites::Technite::Task( t.nextTask ))<<nl;
+			textout << " task parameter="<<t.taskParameter<<nl;
 			Grid::HCellIdU target;
 			if (t.DecodeAbsoluteTarget(target))
 				textout << " task target="<<target.ToString()<<nl;
+
+			textout << nl;
+			TechniteLogicLink::ForeachDebugMessage(t.location.GetU(),[](const TechniteLogicLink::DebugMessage&msg)
+			{
+				textout << msg.roundNumber << '/'<<msg.subRoundNumber<<": "<<msg.message<<nl;
+			});
 
 			textout.popState();
 	
