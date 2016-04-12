@@ -104,7 +104,7 @@ namespace TechniteLogicLink
 	}
 
 
-	bool		LogicIsDone()	{return logicIsDone;}
+	bool		LogicIsDone()	{return logicIsDone || recordedHistory.IsEmpty();}
 
 
 	void		Handle(const Protocol::DestroyEntity&entity)
