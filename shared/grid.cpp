@@ -1,7 +1,5 @@
 #include <global_root.h>
 #include "grid.h"
-#include <fractal/segment_map.h>
-#include <fractal/interface.h>
 #include <math/complex.h>
 
 /*static*/ UINT32			BaseGrid::IsolatedCornerIndex[IsolatedCornerCount];
@@ -131,6 +129,7 @@
 static void Relax(BaseGrid::TCell*cells, count_t numCells)	//dont work well
 {
 	return;
+	#if 0
 	Timer::Time t0 = timer.Now();
 
 	float radius = 0.f;
@@ -204,5 +203,5 @@ static void Relax(BaseGrid::TCell*cells, count_t numCells)	//dont work well
 	}
 	//ShowMessage(timer.GetSecondsSince(t0));
 
-
+	#endif
 }

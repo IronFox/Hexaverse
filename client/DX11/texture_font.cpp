@@ -1,3 +1,5 @@
+#ifdef HAS_WINDOW
+
 #include <global_root.h>
 #include "texture_font.h"
 #include <io/xml.h>
@@ -288,3 +290,5 @@ namespace Engine
 		}
 	}
 }
+
+#endif

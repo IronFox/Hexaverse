@@ -1,6 +1,8 @@
 #ifndef renderer_DirectX11H
 #define renderer_DirectX11H
 
+#ifdef HAS_WINDOW
+
 #pragma warning(disable:4005)	//macro redefinition
 
 
@@ -1154,6 +1156,6 @@ namespace Engine
 
 
 
-
+#endif
 
 #endif

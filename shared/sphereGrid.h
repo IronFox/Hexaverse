@@ -6,6 +6,7 @@
 #include "grid.h"
 #include "stringTable.h"
 #include "logEvent.h"
+#include <general/random.h>
 
 #ifdef HAS_WINDOW
 	#include "../client/ExtRenderer/DirectX11.h"

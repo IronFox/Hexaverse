@@ -1,11 +1,11 @@
 #include <global_root.h>
 #include "atmosphere.h"
-#include <engine/display.h>
-#include "../ExtRenderer\DirectX11.h"
 #include "../../shared/objects.h"
 
 #ifdef HAS_WINDOW
 
+#include <engine/display.h>
+#include "../ExtRenderer\DirectX11.h"
 
 extern Engine::Display<Engine::DirectX11>	display;
 
