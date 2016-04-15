@@ -1,3 +1,5 @@
+#ifdef HAS_WINDOW
+
 #include <global_root.h>
 #define INITGUID
 #include "DirectX11.h"
@@ -3073,3 +3075,5 @@ namespace Engine
 
 
 }
+
+#endif

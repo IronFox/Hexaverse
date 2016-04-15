@@ -14,7 +14,6 @@ It also handles state updates from server messages
 namespace Animation
 {
 
-	namespace DX11 = Engine::DX11;
 
 	typedef Buffer0<TVec4<> >	Trajectory;
 	extern Trajectory				activeTrajectory;
@@ -22,6 +21,7 @@ namespace Animation
 	extern bool						projectileActive/*=false*/;
 
 	#ifdef HAS_WINDOW
+		namespace DX11 = Engine::DX11;
 		extern Objects::Geometry			trajectoryGeometry;
 		extern DX11::InstructionBlock32		trajectoryVisualization;
 		extern DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
