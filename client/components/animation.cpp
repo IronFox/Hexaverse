@@ -152,7 +152,7 @@ namespace Animation
 	//	static Buffer<Objects::MapNode>	nodes;
 		static Objects::ReachabilityMapper mapper(false);
 		Objects::Component::VehicleBase::canStandOnUnknown = false;
-		mapper.Map(v.get(),v->location,AI::BlockTest);
+		mapper.Map(v.get(),v->location,AI::BlockTest,referenceSpeed*5,true);
 		Objects::Component::VehicleBase::canStandOnUnknown = true;
 
 
@@ -496,20 +496,24 @@ namespace Animation
 			{
 				std::shared_ptr<Objects::VehicleJob::DummyJob>	job(new Objects::VehicleJob::DummyJob(e));
 				t1.job = job;
+				job->delayedBySleep = (sourceTask.taskFlags & Protocol::TaskFlags::DelayedBySleep) != 0;
 			}
-			t1.job->movesToFocusWhenDone = sourceTask.visualizePathToFocus;
+			t1.job->movesToFocusWhenDone = (sourceTask.taskFlags & Protocol::TaskFlags::VisualizePathToFocus) != 0;
 			t1.job->roundsToJobCompletion = sourceTask.roundsToJobCompletion;
 			t1.job->resourceCostLeft = sourceTask.resourceCostLeft;
+			
 			#ifdef HAS_WINDOW
 				if (sourceTask.foci.Count())
 				{
 					Grid::LCellIdI loc = sourceTask.foci.first();
-					if (sourceTask.visualizationName != ConstName::Empty && e.IsSatellite())
-					{
-						int h = Objects::SkyHub::GetStructureBuildHeight(loc);
-						if (h != Objects::badHeight)
-							loc.height = h;
-					}
+					#ifndef NO_SATELLITES
+						if (sourceTask.visualizationName != ConstName::Empty && e.IsSatellite())
+						{
+							int h = Objects::SkyHub::GetStructureBuildHeight(loc);
+							if (h != Objects::badHeight)
+								loc.height = h;
+						}
+					#endif
 
 					t1.SetLocalizableShape(sourceTask.visualizationName,loc);
 				}
@@ -536,8 +540,8 @@ namespace Animation
 			v->Relocate(vs.entityState.location,false);	//this moves sensors. not good during animation phase. however, this is a rare and isolated process (not part of a sequence of updates)
 		}
 		v->health = vs.entityState.health;
-		v->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsUnstable) != 0;
-		v->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsSleeping) != 0 );
+		v->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsUnstable) != 0;
+		v->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsSleeping) != 0 );
 
 		v->UpdateEMPDamage(vs.entityState.empDamageLevel, !isNewForEMP);	//must remove visible sensory, must be linked to destructor
 		//v->roundsDisabled = vs.entityState.disabledRounds;
@@ -556,7 +560,8 @@ namespace Animation
 			veh->isAutomated = newAutomated;
 		}
 
-		Objects::PVehicleStore storedIn;
+		Objects::PWorldEntity storeIn;
+		Objects::PHangar storeInHangar;
 		auto info = vs.myMobileEntity.Get0();
 		if (info)
 		{
@@ -642,10 +647,10 @@ namespace Animation
 			auto id = info->storedIn.Get0();
 			if (id)
 			{
-				storedIn = To<Objects::VehicleStore>::DynamicCast(Objects::GetEntity(id->value));
-				ASSERT1__(storedIn,id->value.ToString());
-
-				
+				storeIn = Objects::GetEntity(id->value);
+				storeInHangar = To<Objects::Hangar>::DynamicCast(storeIn);
+				ASSERT1__(storeIn,id->value.ToString());
+				ASSERT1__(storeInHangar,storeIn->GetName());
 			}
 
 			Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(v);
@@ -687,22 +692,25 @@ namespace Animation
 		{
 			//v->currentStorage
 		}
-		Objects::PVehicleStore currentlyStoredIn = To<Objects::VehicleStore>::DynamicCast(v->storedIn.lock());
-		if (storedIn != currentlyStoredIn)
+		Objects::PHangar currentlyStoredIn = v->storedIn.lock();
+		if (storeInHangar != currentlyStoredIn)
 		{
-			LogEvent(EventSignificance::Debug,v.get(),"StoredIn-change ("+currentlyStoredIn->GetName()+" -> "+storedIn->GetName()+")");
+			if (currentlyStoredIn)
+				LogEvent(EventSignificance::Debug,v.get(),"StoredIn-change ("+currentlyStoredIn->ToEntity().GetName()+" -> "+storeIn->GetName()+")");
+			else
+				LogEvent(EventSignificance::Debug,v.get(),"StoredIn-change ( -> "+storeIn->GetName()+")");
 			float f = 0;
 
 			Objects::PVehicle veh = To<Objects::Vehicle>::DynamicCast(v);
 			ASSERT1__(veh,v->GetName());
 
-			if (storedIn)
+			if (storeIn)
 			{
 				if (currentlyStoredIn)
 					currentlyStoredIn->Lose(veh);
 				else
 					insertIntoGridLater.Unset(v->id);
-				storedIn->StoreLocally(veh,f);
+				storeInHangar->StoreLocally(veh,f,false,storeInHangar);
 				ASSERT1__(!v->isInsertedIntoGrid,v->GetName());
 
 				#ifdef HAS_WINDOW
@@ -749,16 +757,16 @@ namespace Animation
 		}
 
 		#ifdef HAS_WINDOW
-			if (storedIn != currentlyStoredIn)
+			if (storeInHangar != currentlyStoredIn)
 			{
-				Objects::VehicleStore::StaticSignalDeployment();
+				Objects::deployingMobileEntity.reset();
 				UI::HexGrid::Configure(Objects::selectedEntity);
 			}
 
 
 			if (!v->turret->CanAttack())
 			{
-				if (v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsJob() && !v->IsSleeping())
+				if (v->myTasks.IsNotEmpty() && v->myTasks.Peek().IsJob() && (!v->IsSleeping() || !v->myTasks.Peek().job->DelayedBySleep()))
 				{
 					if (!v->activitySound.IsCreated())
 					{
@@ -872,8 +880,8 @@ namespace Animation
 			
 			}
 		}
-		s->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsUnstable) != 0;
-		s->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlag::IsSleeping) != 0 );
+		s->unstable = (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsUnstable) != 0;
+		s->ApplySleepChangeFromServer( (vs.entityState.entityStateFlags & Protocol::EntityStateFlags::IsSleeping) != 0 );
 
 
 		s->health = vs.entityState.health;
@@ -886,21 +894,23 @@ namespace Animation
 			Objects::RefreshCompoundCoverage(0);
 		}
 
-		if (s->IsSkyPort())
-		{
-			Objects::PSatellite sat = Objects::GetSatellite(s->location.stackID);
-			if (sat && sat->IsSkyHub())
+		#ifndef NO_SATELLITES
+			if (s->IsSkyPort())
 			{
-				Objects::PSkyHub hub = To<Objects::SkyHub>::Cast(sat);
-				hub->UpdateConnections();
+				Objects::PSatellite sat = Objects::GetSatellite(s->location.stackID);
+				if (sat && sat->IsSkyHub())
+				{
+					Objects::PSkyHub hub = To<Objects::SkyHub>::Cast(sat);
+					hub->UpdateConnections();
+				}
 			}
-		}
-
+		#endif
 
 		if (w && w->isInserted)
 		{
 			#ifndef ONE_COMPOUND_PER_FACTION
-				ASSERT__(s->compoundID != Objects::Compound::InvalidNetwork);
+				if (s->compoundID = 0xFFFFFFFF)
+					Objects::RefreshCompoundCoverage(0);
 			#endif
 			s->GetCompound().RefreshState(0);
 		}
@@ -918,7 +928,7 @@ namespace Animation
 
 	float GetExplosionSize(const Objects::PWorldEntity&target)
 	{
-		return target->IsSatellite() ? 12.f : 4.f;
+		return !target->IsStructure() && !target->IsVehicle() ? 12.f : 4.f;
 	}
 
 	float GetExplosionTime(const Objects::PWorldEntity&target)
@@ -1024,11 +1034,11 @@ namespace Animation
 		attackerTurret = Objects::Component::GetTurretByName(a.turretType);
 		ASSERT_NOT_NULL1__(attackerTurret,(int)a.turretType.value);
 		attackRange = a.turretRange;
+		attackAngle = a.attackAngle,
 		attackerPosition = a.sourcePosition;
-		explosionCenter = Grid::ToWorld(a.traceTo);
+		explosionCenter = a.traceTo;
 		isAutoTarget = false;
 
-		location = a.traceTo;
 		time.Set(a.timestamp.atTime,a.timestamp.atTime+a.flightTime);
 	}
 	void					Primitive::Init(Protocol::PreciseAttackTrajectory&a)
@@ -1036,10 +1046,10 @@ namespace Animation
 		type = Attack;
 		targetEntityID = a.attacker;
 		attackerTurret = nullptr;	//later
-		explosionCenter = Grid::ToWorld(a.traceTo);
+		attackAngle = a.attackAngle;
+		explosionCenter = a.traceTo;
 
 		isAutoTarget = a.isAutoAttack;
-		location = a.traceTo;
 		time.Set(a.timestamp.atTime,a.timestamp.atTime+a.flightTime);
 	}
 	void					Primitive::Init(Protocol::Explosion&ex)
@@ -1128,7 +1138,7 @@ namespace Animation
 					Objects::PVehicle v = To<Objects::Vehicle>::DynamicCast(allocatedTarget);
 					if (v)
 					{
-						if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage)
+						if (!insertIntoGridLater.IsSet(v->id) && removalType != Objects::RemovalType::DestroyedInStorage && !v->IsAboveGrid())
 							Objects::RemoveVehicleFromGrid(v,v->preAnimationLocation);
 						removed = true;	//is set anyway. placeVehicleLater indicates it is already removed
 					}
@@ -1144,8 +1154,8 @@ namespace Animation
 					}
 				}
 
-
-				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),0,Network::ControlEnabled(),removed);
+				float t = 0;
+				Objects::Remove(allocatedTarget,Objects::RemovalType::Reinterpret(removalType),t,Network::ControlEnabled(),removed);
 				if (!allocatedTarget->isOwnedByMe)
 					UI::HexGrid::RefreshContacts();
 				#ifdef HAS_WINDOW
@@ -1172,7 +1182,7 @@ namespace Animation
 					//		ASSERT1__(Grid::actualWorld.HasSensor(v->location,v->GetScanningRange()),v->id.ToString());
 					//#endif
 					v->preAnimationLocation = v->location;
-					if (v->IsVehicle())
+					if (v->IsVehicle() && !v->IsAboveGrid())
 						Objects::RemoveVehicleFromGrid(To<Objects::Vehicle>::Cast(v),v->location);
 					insertIntoGridLater.Set(v->id);
 				}
@@ -1258,10 +1268,15 @@ namespace Animation
 					isFriendly = attacker->isOwnedByMe;
 				}
 
-				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",loc="+location.ToString()+") at "+String(Animation::atTime)+"/"+String(this->time.min));
+				LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Starting attack ("+attackerTurret->typeName+",range="+String(attackRange)+",pos="+Vec::toString(attackerPosition)+",angle="+String(attackAngle)+") at "+String(Animation::atTime)+"/"+String(this->time.min));
 				
 				{
-					Objects::Component::Turret::TraceTrajectory(attackerTurret->trajectoryType,attackRange, attackerPosition,Grid::ToWorld(location),activeTrajectory);
+					//Grid::HCellIdI impactCell;
+					//TVec3<> impactAt;
+					Objects::Component::Turret::TraceAnimationTrajectory(
+						attackerTurret->trajectoryType, attackRange,attackAngle, attackerPosition,explosionCenter,
+						activeTrajectory);
+
 					explosionRadius = attackerTurret->explosionRadius;
 					projectileAt = 0.f;
 					projectileActive = true;
@@ -1276,7 +1291,7 @@ namespace Animation
 						trajectoryVisualization.ibo.Create(trajectoryGeometry.GetLOD(0).indices);
 
 
-						index_t smokeTrailIndex = Objects::Renderer::RegisterSmokeTrail(activeTrajectory);
+						auto smokeTrailIndex = Objects::Renderer::RegisterSmokeTrail(activeTrajectory,Vec::dot(attackerPosition) > sqr(Grid::ToRadius(Grid::CellStack::TopHeight+1)));
 						if (doRegister)
 						{
 							UI::EventLog::RegisterAttack(this->time.min, isFriendly,attackerPosition, attackerID, smokeTrailIndex);
@@ -1553,7 +1568,7 @@ namespace Animation
 			//Vec::makeNormalTo(nodes.first().dir,nodes.first().position);
 			Vec::makeNormalTo(nodes.last().dir,nodes.last().position);
 		}
-		if (!target->IsSatellite())
+		if (target->IsVehicle())
 			nodes.first().dir = -target->system.y.xyz;
 		foreach (nodes, n)
 		{
@@ -1611,7 +1626,7 @@ namespace Animation
 			#ifdef HAS_WINDOW
 				const TVec3<> prev = sys.w.xyz;
 			#endif
-			if (target->IsSatellite())
+			if (!target->IsVehicle())
 			{
 				sys.z.xyz = p;
 				Vec::normalize0(sys.z.xyz);
@@ -1793,16 +1808,16 @@ namespace Animation
 							float t = 0.f;
 							v->MoveSensory(v->preAnimationLocation,v->location,t);
 						}
-						if (v->IsVehicle())
+						if (v->IsVehicle() && !v->IsAboveGrid())
 							Objects::InsertVehicleIntoGrid(To<Objects::Vehicle>::Cast(v),v->location);
 					}
 				});
 				Animation::insertIntoGridLater.Clear();
 
-				foreach (Objects::vehicles, v)
-					(*v)->preAnimationLocation = (*v)->location;
-				foreach (Objects::satellites, v)
-					(*v)->preAnimationLocation = (*v)->location;
+				Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&e)
+				{
+					e->preAnimationLocation = e->location;
+				});
 
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::gameHasBegun)
 				{

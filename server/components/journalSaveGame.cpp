@@ -568,11 +568,7 @@ namespace Journal
 
 	Objects::PWorldEntity Round::PureEntityDescriptor::Instantiate(const Objects::PFaction&f, const TUniqueID&id, const Grid::LCellIdI&loc) const
 	{
-		Objects::PWorldEntity proto = Objects::GetPrototypeByName(baseType);
-		if (!proto)
-		{
-			proto = Objects::GetSatellitePrototypeByName(baseType);
-		}
+		Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(baseType);
 		Objects::PWorldEntity e;
 		if (proto)
 		{
@@ -623,8 +619,9 @@ namespace Journal
 	/*virtual override*/ void	Round::CreateEntity::Execute(const Objects::PFaction&f) const
 	{
 		Objects::PWorldEntity e = desc.Instantiate(f,entityID,location);
+		float t = 0;
 		if (e->IsMobile())
-			Objects::InsertConstructed(To<Objects::MobileEntity>::Cast(e),0);
+			Objects::InsertConstructed(To<Objects::MobileEntity>::Cast(e),t);
 		else
 		{
 			if (e->IsStructure())
@@ -632,7 +629,6 @@ namespace Journal
 				Objects::PStructure s = To<Objects::Structure>::Cast(e);
 				s->CorrectTerrain(false,0);
 			}
-			float t = 0;
 			Objects::InsertConstructed(To<Objects::Structure>::Cast(e),t);
 
 			if (e->IsWorkingStructure())
@@ -822,6 +818,7 @@ namespace Journal
 		{
 			throw RoundException(CLOCATION, "Trying to assign production task to non-producer entity "+e->GetName());
 		}
+		float t = 0;
 		Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
 		Objects::PWorldEntity produced = desc.Instantiate(e->owner,this->newEntityID,Grid::LCellIdI(0,0));
 		if (produced->IsMobile())
@@ -835,7 +832,6 @@ namespace Journal
 				Objects::PWorkingStructure&ws = To<Objects::WorkingStructure>::Cast(e);
 				if (!ws->IsEnabled())
 				{
-					float t = 0;
 					ws->SetEnabled(true,t);
 				}
 
@@ -918,11 +914,13 @@ namespace Journal
 		foreach (locationParameters.entries,p)
 		{
 			stream << tab << p->key << "=l"<<p->value.stackID<<'.';
-			if (p->value.height == Objects::Satellite::BaseResidenceHeight)
-				stream << "sat";
-			elif (p->value.height == Objects::Satellite::DeclinedResidenceHeight)
-				stream << "declSat";
-			else
+			#ifndef NO_SATELLITES
+				if (p->value.height == Objects::Satellite::BaseResidenceHeight)
+					stream << "sat";
+				elif (p->value.height == Objects::Satellite::DeclinedResidenceHeight)
+					stream << "declSat";
+				else
+			#endif
 				stream << p->value.height;
 		}
 		foreach (intParameters.entries,p)
@@ -1029,17 +1027,21 @@ namespace Journal
 						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded stack ID of "+String(paraRef)+"=" +target.ToString()+" is out of range, while decoding line "+String(line,lineLen));
 					}
 
-					if (sHeight == "sat")
-						target.height = Objects::Satellite::BaseResidenceHeight;
-					elif (sHeight == "declSat")
-						target.height = Objects::Satellite::DeclinedResidenceHeight;
-					else
+					#ifndef NO_SATELLITES
+						if (sHeight == "sat")
+							target.height = Objects::Satellite::BaseResidenceHeight;
+						elif (sHeight == "declSat")
+							target.height = Objects::Satellite::DeclinedResidenceHeight;
+						else
+					#endif
 					{
 						if (!convert(sHeight.pointer(),sHeight.length(),target.height))
 						{
 							throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Expected valid height for parameter '"+String(paraRef)+"', but got '"+String(dotAt+1, valLen  - (dotAt-value)-1)+"' while decoding line "+String(line,lineLen));
 						}
-						if ((target.height < Grid::CellStack::BottomHeight || target.height > Grid::CellStack::TopHeight) && target.height != Objects::Satellite::BaseResidenceHeight && target.height != Objects::Satellite::DeclinedResidenceHeight)
+						if ((target.height < Grid::CellStack::BottomHeight || target.height > Grid::CellStack::TopHeight) 
+							IF_SATELLITES(&& target.height != Objects::Satellite::BaseResidenceHeight && target.height != Objects::Satellite::DeclinedResidenceHeight)
+							)
 						{
 							throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded height of "+String(paraRef)+"=" +target.ToString()+" is out of range, while decoding line "+String(line,lineLen));
 						}
@@ -1288,7 +1290,7 @@ namespace Journal
 		bool ai = Game::Config::Nexus::enableAI;
 		Game::Config::Nexus::enableAI = false;
 
-		if (RuntimeConfig::gameGoal == Game::Config::Goal::EMPConquerNexus)
+		if (RuntimeConfig::empZones)
 		{
 			count_t numZones = Game::Config::CountAccessibleZones();
 
@@ -1559,9 +1561,10 @@ namespace Journal
 		{
 			throw RoundException(CLOCATION,e->GetName()+": Unable to destroy entity. Entity already dead");
 		}
-		Objects::Remove(e,type,0,false);
+		float t = 0;
+		Objects::Remove(e,type,t,false);
 		if (To<Objects::Structure>::DynamicCast(e))
-			Objects::RefreshCompoundCoverageIfNeeded(0);
+			Objects::RefreshCompoundCoverageIfNeeded(t);
 
 	}
 
@@ -1574,13 +1577,10 @@ namespace Journal
 			return true;
 		if (dest.referencedType[1] == ConstName::Empty)
 		{
-			if (!Objects::GetPrototypeByName(dest.referencedType[0]))
+			if (!Objects::GetNonVehiclePrototypeByName(dest.referencedType[0]))
 			{
-				if (!Objects::GetSatellitePrototypeByName(dest.referencedType[0]))
-				{
-					LogEvent(EventClass::Preset::commandRejected, "Unknown structure type #" + String(int(dest.referencedType[0])));
-					return false;
-				}
+				LogEvent(EventClass::Preset::commandRejected, "Unknown structure type #" + String(int(dest.referencedType[0])));
+				return false;
 			}
 			return true;
 		}
@@ -1611,19 +1611,11 @@ namespace Journal
 			return;
 		if (source.type1 == ConstName::Empty)
 		{
-			Objects::PStructure proto = Objects::GetPrototypeByName(source.type0);
+			Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(source.type0);
 			if (proto)
-				result.stringParameters.Set("ReferenceStructure",proto->GetTypeName());
+				result.stringParameters.Set("ReferenceNonVehicle",proto->GetTypeName());
 			else
-			{
-				Objects::PSatellite sproto = Objects::GetSatellitePrototypeByName(source.type0);
-				if (sproto)
-					result.stringParameters.Set("ReferenceSatellite",sproto->GetTypeName());
-				else
-				{
-					throw Round::RoundException(CLOCATION, "Unknown structure type #" + String(int(source.type0.value)));
-				}
-			}
+				throw Round::RoundException(CLOCATION, "Unknown non-vehicle type #" + String(int(source.type0.value)));
 			return;
 		}
 		if (source.type0 == ConstName::Empty)
@@ -1665,15 +1657,9 @@ namespace Journal
 			ref.type1 = Require(Objects::Component::GetTurretByName(turret))->constName;
 			return;
 		}
-		if (e.stringParameters.TryGet("ReferenceSatellite",base))
+		if (e.stringParameters.TryGet("ReferenceNonVehicle",base))
 		{
-			ref.type0 = Require(Objects::GetSatellitePrototypeByName(base))->GetCTypeName();
-			ref.type1 = ConstName::Empty;
-			return;
-		}
-		if (e.stringParameters.TryGet("ReferenceStructure",base))
-		{
-			ref.type0 = Require(Objects::GetPrototypeByName(base))->GetCTypeName();
+			ref.type0 = Require(Objects::GetNonVehiclePrototypeByName(base))->GetCTypeName();
 			ref.type1 = ConstName::Empty;
 			return;
 		}
@@ -2002,8 +1988,8 @@ namespace Journal
 			break;
 			case 1:
 			{
-				Objects::PSatellite proto = Objects::GetSatellitePrototypeByName(parameters[0]);
-				if (!proto)
+				Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(parameters[0]);
+				if (!proto || !proto->IsMobile())
 				{
 					LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
 					return;

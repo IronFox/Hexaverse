@@ -189,7 +189,8 @@ namespace Test
 	{
 		Objects::PStructure result(To<Objects::Structure>::Cast( prototype->CreateNewInstance(owner, location, 0)));
 		result->CorrectTerrain(true, 0);
-		Objects::InsertConstructed(result, 0);
+		float t = 0;
+		Objects::InsertConstructed(result, t);
 		return result;
 	}
 
@@ -271,11 +272,11 @@ namespace Test
 
 
 			Objects::PVehicle v(new Objects::Vehicle(faction1,vehicleAt,&Objects::Component::hoverbase,turret));
-			Objects::InsertConstructed(v,0);
+			float t = 0;
+			Objects::InsertConstructed(v,t);
 			#ifndef ONE_COMPOUND_PER_FACTION
 				v->currentStorage.level[v->turret->ammoType] = v->GetMaxStorageCapacity().level[v->turret->ammoType];
 			#endif
-			float t = 0;
 			faction1->SignalAppearance(generator,t);	//make sure tower can see generator
 			//faction1->currentState = Grid::actualWorld;
 			bool wouldFire = v->FillAttackQueue();
@@ -288,7 +289,8 @@ namespace Test
 					for (const auto&target : task.foci)
 					{
 						Objects::TurretTrajectory	tr;
-						if (tr = v->TraceTrajectory(faction1->currentState, target.target,trajectory,impactAt,impactCell))
+						float angle;
+						if (tr = v->TraceTrajectory(Objects::TrajectoryEndPoint( target.target ),trajectory,impactAt,impactCell,angle))
 						{
 							ASSERT__(tr == Objects::TurretTrajectory::ReachesTarget);
 							if (Grid::GetGeometricDistance(vehicleAt,generatorAt) > turret->scanningRange)
@@ -318,8 +320,8 @@ namespace Test
 
 			t++;
 			faction1->SignalDisappearance(generator,t);
-			Objects::Remove(v,Objects::RemovalType::Vanished,0,true);
-			Objects::Remove(generator,Objects::RemovalType::Vanished,0,true);
+			Objects::Remove(v,Objects::RemovalType::Vanished,t,true);
+			Objects::Remove(generator,Objects::RemovalType::Vanished,t,true);
 
 
 		}
@@ -501,7 +503,7 @@ namespace Test
 		ASSERT__(mine->IsEnabled());
 		ASSERT__(!plant->IsEnabled());
 
-		Buffer0<Grid::LCellIdI> choices;
+		Buffer0<Objects::Choice> choices;
 		bool showArrow, hasArrowCellTarget;
 		TVec3<> arrowFrom;
 		Grid::LCellIdI arrowFromCell;
@@ -526,7 +528,7 @@ namespace Test
 					Objects::GetChoices(plant, Objects::PVehicle(),Objects::CursorMode::Idle, choices, showArrow, hasArrowCellTarget, arrowFrom, arrowFromCell);
 					ASSERT__(choices.IsNotEmpty());
 					Objects::PVehicle v = plant->GetProduction();
-					Grid::LCellIdI choice = choices[random.getIndex(choices.Count() - 1)];
+					Grid::LCellIdI choice = choices[random.getIndex(choices.Count() - 1)].location;
 					Objects::ProcessChoiceIntersection(plant, choice, Objects::CursorMode::Idle, Objects::PVehicle());
 					ASSERT_EQUAL__(v->health, v->GetMaxHealth());
 					ASSERT2__(v->location == choice, v->location.ToString(), choice.ToString());
@@ -541,8 +543,8 @@ namespace Test
 			ASSERT__(v1);
 			ASSERT__(Objects::GetVehicle(v0->location) == v0);
 			ASSERT__(Objects::GetVehicle(v1->location) == v1);
-			Objects::Remove(v0,	Objects::RemovalType::ControlledExplosion,0,false);
-			Objects::Remove(v1, Objects::RemovalType::ControlledExplosion,0, false);
+			Objects::Remove(v0,	Objects::RemovalType::ControlledExplosion,t,false);
+			Objects::Remove(v1, Objects::RemovalType::ControlledExplosion,t, false);
 			ASSERT__(Objects::vehicles.IsEmpty());
 			ASSERT__(generator->IsEnabled());
 			ASSERT__(mine->IsEnabled());
@@ -552,179 +554,168 @@ namespace Test
 	}
 
 	
-	/*static*/ void SkyPort::EnqueueRandom(Objects::PSkyPort&plant, Random&random)
-	{
-		bool rs ;
-		if (random.getFloat() < 0.8f)
+	#ifndef NO_SATELLITES
+		/*static*/ void SkyPort::EnqueueRandom(Objects::PSkyPort&plant, Random&random)
 		{
-			rs = plant->EnqueueProductionOfVehicle(&Objects::Component::hoverbase,&Objects::Component::terraformer) != nullptr;
-		}
-		else
-			rs = plant->EnqueueProductionOfSatellite(Objects::SkyHub::globalPrototype->GetCTypeName()) != nullptr;
-
-		ASSERT__(rs);
-	}
-
-
-	/*virtual override*/ void	SkyPort::Run(Random&random)
-	{
-		Grid::TPlanetConfig	config;
-		Objects::FlushAllData();
-		Grid::ResetStructureCounters();
-
-		Objects::PFaction faction(new Objects::Faction(TUniqueID::Empty()));
-		Objects::Faction::all << faction;
-
-		Grid::LCellIdI	mineAt(0, 1);
-		const auto&n = Grid::low.grid.GetCell(mineAt.stackID).neighborhood;
-		Grid::LCellIdI	generatorAt(n.neighborID[0], 1),	//up to 5 neighbors are guaranteed. In fact cell 0 will have exactly 5 neighbors
-			plantAt(n.neighborID[1], 1);
-
-
-
-		Objects::PMine mine(CreateStructure<Objects::Mine>(faction, mineAt));
-		Objects::PGenerator generator(CreateStructure<Objects::Generator>(faction, generatorAt));
-		Objects::PSkyPort plant(CreateStructure<Objects::SkyPort>(faction, plantAt));
-
-		const auto&n2 = Grid::low.grid.GetCell(plantAt.stackID).neighborhood;
-		for (int i = 0; i < n2.numNeighbors; i++)
-			if (!Objects::GetStructure(Grid::LCellIdI(n2.neighborID[i], plantAt.height)))
-				Grid::actualWorld.Clear(Grid::LCellIdI(n2.neighborID[i], plantAt.height), 0);	//make space for vehicles
-
-
-		ASSERT__(mine->IsLinkedToCore());
-		mine->naturalResources.fuel = generator->FuelCostPerRound;
-		mine->naturalResources.minerals = plant->productionPerRound;
-
-		Objects::RefreshCompoundCoverage(0);
-
-		ASSERT_EQUAL__(&mine->GetCompound(), &generator->GetCompound());
-		ASSERT_EQUAL__(&mine->GetCompound(), &plant->GetCompound());
-		//#ifndef ONE_COMPOUND_PER_FACTION
-		//	ASSERT_EQUAL__(Objects::compounds.Count(), 1);
-		//#else
-		//	ASSERT_EQUAL__(Objects::compounds.Count(), 2);	//+nexus
-		//#endif
-		Objects::Compound&net = mine->GetCompound();
-
-		float t = 0;
-		generator->SetEnabled(false, t, false);
-		mine->SetEnabled(false, t, false);
-		plant->SetEnabled(false, t, false);
-
-
-
-		net.TickBegin();
-		net.TickEnd(0);
-		generator->SetEnabled(true, t);
-		ASSERT__(generator->IsEnabled());
-		ASSERT__(mine->IsEnabled());
-		ASSERT__(!plant->IsEnabled());
-
-		Buffer0<Grid::LCellIdI> choices;
-		bool showArrow, hasArrowCellTarget;
-		TVec3<> arrowFrom;
-		Grid::LCellIdI arrowFromCell;
-
-		count_t twoCount = 0;
-		for (int i = 0; i < 100 || twoCount < 20; i++)
-		{
-			ASSERT__(Objects::satellites.IsEmpty());
-
-			EnqueueRandom(plant,random);
-			EnqueueRandom(plant, random);
-
-			Objects::PMobileEntity v0, v1;
-
-			ASSERT__(Objects::satellites.IsEmpty());
-
-			ASSERT__(plant->IsEnabled());
-			std::pair<int,int> progress;
-			count_t satelliteOffset = 0;
-			while (plant->IsBuilding(progress))
+			bool rs ;
+			if (random.getFloat() < 0.8f)
 			{
-				net.TickBegin();
-				net.TickEnd(0);
-
-				if (Objects::satellites.Count() > satelliteOffset)
-				{
-					satelliteOffset = Objects::satellites.Count();
-					//satellites are spawned automatically during Tick...()
-					ASSERT_LESS_OR_EQUAL__(satelliteOffset,1);
-
-					Objects::PSatellite v = Objects::satellites.last();
-					ASSERT_EQUAL__(v->health, v->GetMaxHealth());
-					ASSERT2__(v->location.stackID == plant->location.stackID, v->location.ToString(), plant->location.ToString());
-					if (!v0)
-						v0 = v;
-					else
-					{
-						ASSERT__(!v1);
-						v1 = v;
-					}
-				}
-
-
-				if (plant->AwaitsUserInteraction())
-				{
-					//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
-
-					Objects::GetChoices(plant, Objects::PVehicle(),Objects::CursorMode::Idle, choices, showArrow, hasArrowCellTarget, arrowFrom, arrowFromCell);
-					if (choices.IsEmpty())
-					{
-						Objects::PMobileEntity producing = plant->GetActiveProduction();
-						ASSERT1__(producing->IsSatellite(),producing->GetName());	//only satellites should be able to block each other
-						plant->AbortConstruction(plant->queue.first().id);
-						ASSERT__(v0);	//this should not happen with the first one
-						continue;
-					}
-					//ASSERT__(choices.IsNotEmpty());
-					Objects::PMobileEntity v = plant->GetActiveProduction();
-					Grid::LCellIdI choice = choices[random.getIndex(choices.Count() - 1)];
-					Objects::ProcessChoiceIntersection(plant, choice, Objects::CursorMode::Idle, Objects::PVehicle());
-					ASSERT_EQUAL__(v->health, v->GetMaxHealth());
-					ASSERT2__(v->location == choice, v->location.ToString(), choice.ToString());
-					if (!v0)
-						v0 = v;
-					else
-					{
-						ASSERT__(!v1);
-						v1 = v;
-					}
-				}
-			}
-			//ASSERT__(!plant->IsEnabled());	//SkyPort does not switch off
-			ASSERT__(v0);
-			//ASSERT__(v1);
-			if (v0->IsVehicle())
-			{
-				ASSERT__(Objects::GetVehicle(v0->location) == v0);
+				rs = plant->EnqueueProductionOfVehicle(&Objects::Component::hoverbase,&Objects::Component::terraformer) != nullptr;
 			}
 			else
-				if (v0->IsSatellite())
-					ASSERT__(Objects::GetSatellite(v0->location.stackID) == v0);
-			Objects::Remove(v0,	Objects::RemovalType::ControlledExplosion,0,false);
-			if (v1)
-			{
-				twoCount++;
-				if (v1->IsVehicle())
-				{
-					ASSERT__(Objects::GetVehicle(v1->location) == v1);
-				}
-				else
-					if (v1->IsSatellite())
-						ASSERT__(Objects::GetSatellite(v1->location.stackID) == v1);
-				Objects::Remove(v1, Objects::RemovalType::ControlledExplosion,0, false);
-			}
-			ASSERT__(Objects::vehicles.IsEmpty());
-			ASSERT__(Objects::satellites.IsEmpty());
+				rs = plant->EnqueueProductionOfSatellite(Objects::SkyHub::globalPrototype->GetCTypeName()) != nullptr;
+
+			ASSERT__(rs);
+		}
+
+
+		/*virtual override*/ void	SkyPort::Run(Random&random)
+		{
+			Grid::TPlanetConfig	config;
+			Objects::FlushAllData();
+			Grid::ResetStructureCounters();
+
+			Objects::PFaction faction(new Objects::Faction(TUniqueID::Empty()));
+			Objects::Faction::all << faction;
+
+			Grid::LCellIdI	mineAt(0, 1);
+			const auto&n = Grid::low.grid.GetCell(mineAt.stackID).neighborhood;
+			Grid::LCellIdI	generatorAt(n.neighborID[0], 1),	//up to 5 neighbors are guaranteed. In fact cell 0 will have exactly 5 neighbors
+				plantAt(n.neighborID[1], 1);
+
+
+
+			Objects::PMine mine(CreateStructure<Objects::Mine>(faction, mineAt));
+			Objects::PGenerator generator(CreateStructure<Objects::Generator>(faction, generatorAt));
+			Objects::PSkyPort plant(CreateStructure<Objects::SkyPort>(faction, plantAt));
+
+			const auto&n2 = Grid::low.grid.GetCell(plantAt.stackID).neighborhood;
+			for (int i = 0; i < n2.numNeighbors; i++)
+				if (!Objects::GetStructure(Grid::LCellIdI(n2.neighborID[i], plantAt.height)))
+					Grid::actualWorld.Clear(Grid::LCellIdI(n2.neighborID[i], plantAt.height), 0);	//make space for vehicles
+
+
+			ASSERT__(mine->IsLinkedToCore());
+			mine->naturalResources.fuel = generator->FuelCostPerRound;
+			mine->naturalResources.minerals = plant->productionPerRound;
+
+			Objects::RefreshCompoundCoverage(0);
+
+			ASSERT_EQUAL__(&mine->GetCompound(), &generator->GetCompound());
+			ASSERT_EQUAL__(&mine->GetCompound(), &plant->GetCompound());
+			//#ifndef ONE_COMPOUND_PER_FACTION
+			//	ASSERT_EQUAL__(Objects::compounds.Count(), 1);
+			//#else
+			//	ASSERT_EQUAL__(Objects::compounds.Count(), 2);	//+nexus
+			//#endif
+			Objects::Compound&net = mine->GetCompound();
+
+			float t = 0;
+			generator->SetEnabled(false, t, false);
+			mine->SetEnabled(false, t, false);
+			plant->SetEnabled(false, t, false);
+
+
+
+			net.TickBegin();
+			net.TickEnd(0);
+			generator->SetEnabled(true, t);
 			ASSERT__(generator->IsEnabled());
 			ASSERT__(mine->IsEnabled());
-		}
-		Objects::FlushAllData();
-		Grid::ResetStructureCounters();
-	}
+			ASSERT__(!plant->IsEnabled());
 
+			Buffer0<Objects::Choice> choices;
+			bool showArrow, hasArrowCellTarget;
+			TVec3<> arrowFrom;
+			Grid::LCellIdI arrowFromCell;
+
+			count_t twoCount = 0;
+			for (int i = 0; i < 100 || twoCount < 20; i++)
+			{
+				ASSERT__(Objects::satellites.IsEmpty());
+
+				EnqueueRandom(plant,random);
+				EnqueueRandom(plant, random);
+
+				Objects::PMobileEntity v0, v1;
+
+				ASSERT__(Objects::satellites.IsEmpty());
+
+				ASSERT__(plant->IsEnabled());
+				std::pair<int,int> progress;
+				count_t satelliteOffset = 0;
+				while (plant->IsBuilding(progress))
+				{
+					net.TickBegin();
+					net.TickEnd(0);
+
+					if (Objects::satellites.Count() > satelliteOffset)
+					{
+						satelliteOffset = Objects::satellites.Count();
+						//satellites are spawned automatically during Tick...()
+						ASSERT_LESS_OR_EQUAL__(satelliteOffset,1);
+
+						Objects::PSatellite v = Objects::satellites.last();
+						ASSERT_EQUAL__(v->health, v->GetMaxHealth());
+						ASSERT2__(v->location.stackID == plant->location.stackID, v->location.ToString(), plant->location.ToString());
+						if (!v0)
+							v0 = v;
+						else
+						{
+							ASSERT__(!v1);
+							v1 = v;
+						}
+					}
+
+
+					if (plant->AwaitsUserInteraction())
+					{
+						//void			GetChoices(const PWorldEntity&entity, Vehicle::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+
+						Objects::GetChoices(plant, Objects::PVehicle(),Objects::CursorMode::Idle, choices, showArrow, hasArrowCellTarget, arrowFrom, arrowFromCell);
+						if (choices.IsEmpty())
+						{
+							Objects::PMobileEntity producing = plant->GetActiveProduction();
+							ASSERT1__(producing->IsSatellite(),producing->GetName());	//only satellites should be able to block each other
+							plant->AbortConstruction(plant->queue.first().id);
+							ASSERT__(v0);	//this should not happen with the first one
+							continue;
+						}
+						//ASSERT__(choices.IsNotEmpty());
+						Objects::PMobileEntity v = plant->GetActiveProduction();
+						Grid::LCellIdI choice = choices[random.getIndex(choices.Count() - 1)].location;
+						Objects::ProcessChoiceIntersection(plant, choice, Objects::CursorMode::Idle, Objects::PVehicle());
+						ASSERT_EQUAL__(v->health, v->GetMaxHealth());
+						ASSERT2__(v->location == choice, v->location.ToString(), choice.ToString());
+						if (!v0)
+							v0 = v;
+						else
+						{
+							ASSERT__(!v1);
+							v1 = v;
+						}
+					}
+				}
+				//ASSERT__(!plant->IsEnabled());	//SkyPort does not switch off
+				ASSERT__(v0);
+				//ASSERT__(v1);
+				ASSERT__(Objects::GetMobileEntity(v0->location) == v0);
+				Objects::Remove(v0,	Objects::RemovalType::ControlledExplosion,t,false);
+				if (v1)
+				{
+					twoCount++;
+					ASSERT__(Objects::GetMobileEntity(v1->location) == v1);
+					Objects::Remove(v1, Objects::RemovalType::ControlledExplosion,t, false);
+				}
+				ASSERT__(Objects::vehicles.IsEmpty());
+				ASSERT__(Objects::satellites.IsEmpty());
+				ASSERT__(generator->IsEnabled());
+				ASSERT__(mine->IsEnabled());
+			}
+			Objects::FlushAllData();
+			Grid::ResetStructureCounters();
+		}
+	#endif
 
 	/*virtual override*/ void	HighGridFamilies::Run(Random&random)
 	{

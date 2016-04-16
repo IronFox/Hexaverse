@@ -37,7 +37,7 @@ namespace Objects
 		/**/					Vehicle(const OwnerParameter&owner, const Grid::LCellIdI&location, Component::VehicleBase*base, Component::Turret*turret) :
 									MobileEntity(owner,turret,location),base(base)
 								{
-									ASSERT__(base); ASSERT__(turret); ASSERT__(!turret->isSatelliteRing);
+									ASSERT__(base); ASSERT__(turret); //ASSERT__(turret->mountType == Component::Turret::MountType::Vehicle);
 								}
 
 		Component::VehicleBase*	base;
@@ -89,7 +89,7 @@ namespace Objects
 			RelocationResult	RelocateTo(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true);
 */
 
-			virtual void		OnConstructionFinished(float atTime) override;
+			virtual void		OnConstructionFinished(float&atTime) override;
 
 		#else
 
@@ -165,6 +165,7 @@ namespace Objects
 		virtual int				GetMovementStepsPerRound() const override;
 		virtual int				GetOperationSpeed(Component::operation_t op) const override;
 		virtual float			GetBaseMovementInitiative() const override {return base->initiative;}
+		virtual BYTE			GetConstructionAcceleration(Component::operation_t op) const override {return base->acceleration[op];}
 		#ifndef ONE_COMPOUND_PER_FACTION
 			virtual ResourceVector		GetMaxStorageCapacity()	const override;
 		#endif
@@ -172,8 +173,6 @@ namespace Objects
 
 		//TurretBase overrides:
 		virtual float			GetFlatAttackRange() const override {return EMPModify(turret->horizontalAttackRange + base->rangeModifier,1.f);}
-		virtual bool			HasAmmoForShot() const override;
-
 
 		//Hibernating overrides:
 		#ifndef NO_HIBERNATION

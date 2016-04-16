@@ -11,6 +11,7 @@
 #include "visualChoices.h"
 #include "satellite.h"
 #include "faction.h"
+#include "gridAndChoices.h"
 #include <image/converter/magic.h>
 
 extern Engine::Display<Engine::DirectX11>	display;
@@ -101,9 +102,10 @@ namespace Objects
 			distanceFactor *= 0.5f;
 		if (e->IsStructure())
 			distanceFactor += 0.1f * To<Structure>::Cast(e)->GetHeight();
-		if (e->IsSatellite())
-			distanceFactor *= 3.f;
-
+		#ifndef NO_SATELLITES
+			if (e->IsSatellite())
+				distanceFactor *= 3.f;
+		#endif
 		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(e),distanceFactor);
 
 		UpdateStateColors(e,tone,isPrototype);
@@ -214,8 +216,8 @@ namespace Objects
 
 	/*virtual override*/ void		DeployMobileCommand::CompileLabel(Label&outResult)
 	{
-		PVehicleStore p = To<VehicleStore>::DynamicCast(selectedEntity);
-		ASSERT__(p);
+		PHangar h = To<Hangar>::DynamicCast(selectedEntity);
+		ASSERT__(h);
 		PMobileEntity vehicle = ToMobileEntity( this->reference.lock() );
 		if (vehicle)
 		{
@@ -296,7 +298,7 @@ namespace Objects
 		if (selectedEntity)
 		{
 			Grid::LCellIdI target = Grid::SeeThrough::LocateCamera();
-			if (!selectedEntity->IsSatellite())
+			if (selectedEntity->location.height <= Grid::CellStack::BottomHeight)
 				target.height = selectedEntity->location.height;
 			Grid::SeeThrough::Update(!Grid::SeeThrough::IsEnabled(), target);
 //					Grid::SeeThrough::Update(!Grid::SeeThrough::IsEnabled(), selectedEntity->location);
@@ -501,19 +503,51 @@ namespace Objects
 		Add(rs );
 		return rs;
 	}
-	PBaseCommand			CommandContainer::Add(const PBaseCommand&newCommand)
+	PCommandGroup	CommandContainer::AddChild(const int2&coords, bool relativeCoords, const String&name)
 	{
-		DBG_ASSERT__(!members.Contains(newCommand));
-		newCommand->gridCoords = baseCoords+int2((int)members.Count(),0);
-		members << newCommand;
+		PCommandGroup rs (new CommandGroup(name));
+		Add(coords, relativeCoords, rs );
+		return rs;
+	}
+
+	index_t					CommandContainer::Find(const PBaseCommand&cmd) const
+	{
+		foreach (members,m)
+			if (m->second == cmd)
+				return m - members.pointer();
+		return InvalidIndex;
+	}
+
+	PBaseCommand			CommandContainer::Add(const int2&coords, bool relativeCoords, const PBaseCommand&newCommand)
+	{
+		DBG_ASSERT__(Find(newCommand) == InvalidIndex);
+		Member&m = members.Append();
+		m.second = newCommand;
+		m.first = relativeCoords ? coords : coords - baseCoords;
 		if (newCommand->IsGroup())
 		{
 			PCommandGroup group = To<CommandGroup>::Cast(newCommand);
 			group->baseCoords = baseCoords;
-			group->baseCoords.y = newCommand->gridCoords.y+1;
+			group->baseCoords.y += m.first.y+1;
 			group->baseCoords.x += group->baseCoords.y/2;
 			group->parent = this;
+		}
+		return newCommand;
+	}
 
+	PBaseCommand			CommandContainer::Add(const PBaseCommand&newCommand)
+	{
+		DBG_ASSERT__(Find(newCommand) == InvalidIndex);
+		Member&m = members.Append();
+		m.second = newCommand;
+		m.first = int2((int)members.Count()-1,0);
+		if (newCommand->IsGroup())
+		{
+			PCommandGroup group = To<CommandGroup>::Cast(newCommand);
+			group->baseCoords = baseCoords;
+			group->baseCoords.y += m.first.y+1;
+			group->baseCoords.x += group->baseCoords.y/2;
+			group->parent = this;
 		}
 		return newCommand;
 	}

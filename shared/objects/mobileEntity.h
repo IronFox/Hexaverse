@@ -213,11 +213,18 @@ namespace Objects
 		#endif
 		Queue<Task,Swap>		myTasks;
 
-		WHangarStructure		storedIn;
+		WHangar					storedIn;
 
 		#ifndef ONE_COMPOUND_PER_FACTION
 			ResourceVector		currentStorage;
 		#endif
+
+		/**
+		Maximum amount of construction action a vehicle can have left in one round.
+		A single job consumes power-of-two values, usually the entire 128 at once.
+
+		*/
+		static const BYTE		MaxConstructionActionLeft = 128;
 
 
 		#ifndef CLIENT
@@ -252,9 +259,9 @@ namespace Objects
 
 			PVehicleJob			completeOnMove;
 			BYTE				numTriedPlottingOnMoveAutoMotion=0;
-			bool				jobStarted=false;
+			bool				jobStarted=false; //!< Tracks whether the currently front-most job has been started
 			bool				hasMoved=false;
-			bool				hasConstructedThisRound=false;
+			BYTE				constructionActionLeft=MaxConstructionActionLeft;
 		#else
 		#endif
 
@@ -355,7 +362,7 @@ namespace Objects
 			}
 			void				BeginAttackPhase()	//executed before BeginMotionPhase this round
 			{
-				hasConstructedThisRound = false;
+				constructionActionLeft=MaxConstructionActionLeft;
 				if (movementActionLeft < 1.f)
 					RegisterChange(ActionChanged,motionTime);
 				movementActionLeft = 1.f;
@@ -384,6 +391,7 @@ namespace Objects
 				{
 					if (flushTasksOnUnlock)
 						return false;
+					motionTime += timeEpsilon;
 					flushTasksOnUnlock = true;
 					LogEvent(EventSignificance::Debug,this," ...set to clear on unlock");
 					return true;
@@ -391,6 +399,7 @@ namespace Objects
 				
 				if (myTasks.IsNotEmpty() || completeOnMove)
 				{
+					motionTime += timeEpsilon;
 					jobStarted = false;
 					if (!isReaction)
 						completeOnMove.reset();
@@ -416,7 +425,7 @@ namespace Objects
 				movementActionLeft = 1.f;
 				attackActionLeft = 0.f;
 				hasMoved = true;
-				hasConstructedThisRound = false;
+				constructionActionLeft=MaxConstructionActionLeft;
 				RegisterChange(ActionChanged,0);
 			}
 
@@ -428,12 +437,22 @@ namespace Objects
 			bool				CompleteOnMove(const Grid::LCellIdI&referenceLocation);
 
 
-			bool				PerformNonAttack();
+			enum class TaskResult
+			{
+				AllDoneForThisRound,
+				FinishedCanDoMore,
+				TryingSomething,
+//				TerminalFailureEntityDestroyed,
+			};
+
+			TaskResult			PerformNonAttack();
 		protected:
 			//void				ProcessVisibilityOf(const PWorldEntity&e, float&t);
 			//bool				ProcessVisibilityOfS(const PWorldEntity&e, float&t);
 		private:
-			bool				HandleNormalTask();
+			TaskResult			HandleNormalTask();
+			TaskResult			AutoMoveComplete();
+
 		public:
 
 		#endif
@@ -458,7 +477,9 @@ namespace Objects
 		float					GetAttackExplosionRadius() const {return turret->explosionRadius;}
 		bool					CanRepair() const {return turret->CanRepair();}
 		bool					CanAttack() const {return turret->CanAttack();}
+		virtual BYTE			GetConstructionAcceleration(Component::operation_t op) const {return 0;}
 
+		int						GetCurrentMineralConsumption() const;
 
 		/**
 		Updates @a system and @a invert based on @a location
@@ -500,6 +521,7 @@ namespace Objects
 		#ifndef CLIENT
 			virtual void		Attack(float&currentTime)	override;
 		#endif
+		virtual	bool			HasAmmoForShot() override;
 
 
 		//WorldEntity overrides:
@@ -511,7 +533,7 @@ namespace Objects
 		virtual float			GetMaxScanningRange() const override	{return turret->scanningRange;};	//returns the effective scanning range of the local entity
 
 		#ifndef CLIENT
-			virtual void		OnDestroy(RemovalType, float atTime) override;	
+			virtual void		OnDestroy(RemovalType, float&atTime) override;	
 		#endif
 
 	protected:

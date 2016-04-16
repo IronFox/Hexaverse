@@ -1,5 +1,6 @@
 #ifndef sharedGalaxyH
 #define sharedGalaxyH
+#ifdef HAS_WINDOW
 
 #include <engine/aspect.h>
 
@@ -15,5 +16,5 @@ namespace Galaxy
 }
 
 
-
+#endif
 #endif

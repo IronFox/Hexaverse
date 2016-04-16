@@ -32,6 +32,10 @@ namespace Objects
 			resourceCostLeft = std::max(cost,0);
 		}
 
+		BYTE					BaseJob::GetConstructionActionCostPerRound(const MobileEntity&v) const
+		{
+			return MobileEntity::MaxConstructionActionLeft >> v.GetConstructionAcceleration(GetOperationAffinity());
+		}
 
 
 		#ifndef CLIENT
@@ -83,8 +87,11 @@ namespace Objects
 
 				resourceCostLeft = 0;
 
-				if (jobAutoCompletion == BaseJob::Autocomplete::Always || 
-					(jobAutoCompletion == BaseJob::Autocomplete::IfSatellite && v.IsSatellite())
+				if (jobAutoCompletion == BaseJob::Autocomplete::Always 
+					#ifndef NO_SATELLITES
+						|| 
+						(jobAutoCompletion == BaseJob::Autocomplete::IfSatellite && v.IsSatellite())
+					#endif
 					)
 				{
 					continue_t rs = Finish(v,focus);
@@ -102,7 +109,7 @@ namespace Objects
 				}
 				else
 				{
-					v.unstable = true;
+					//v.unstable = true;
 					v.completeOnMove = shared_from_this();
 				}
 				return JobDone;
@@ -746,7 +753,9 @@ namespace Objects
 			Remove(v.shared_from_this(),Objects::RemovalType::ControlledExplosion,v.motionTime,true);
 			v.motionTime += timeEpsilon;
 
-			Explode(PWorldEntity(),v.location,0.f,Grid::HCellIdI(Grid::low.grid.GetCell(v.location.stackID).higherEquivalent,v.location.height),v.GetWorldPosition(),radius,damageLevel,doomsday,v.motionTime);
+	
+
+			Explode(TAttack(),Grid::HCellIdI(Grid::low.grid.GetCell(v.location.stackID).higherEquivalent,v.location.height),v.GetWorldPosition(),radius,damageLevel,doomsday,v.motionTime);
 
 			return TerminalFailureVehicleDestroyed;
 		}
@@ -1488,7 +1497,7 @@ namespace Objects
 			const Grid::WorldData&world = v.owner->currentState;
 			Grid::LCellIdI destination = _destination;
 			if (mode != CursorMode::BuildBridgeMode)
-				while (!world.LowCellIsClear(destination))
+				while (!world.LowCellIsClearIgnoreStructure(destination))
 					destination++;
 			else
 				if (v.IsVehicle() && !((Vehicle&)v).CanStandOn(world,destination,false,true))
@@ -1619,7 +1628,10 @@ namespace Objects
 						if (c != v.location && !DoneHere(Grid::actualWorld,c, next == path.end() ? c : *next))
 							break;
 					}
-
+					if (c == v.location)
+					{
+						return CannotStartAbort;
+					}
 					if (!v.PlotFrontCourse(c,false))
 					{
 						//bool abort = true;

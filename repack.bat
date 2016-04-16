@@ -1,5 +1,5 @@
 set zip="7z.exe"
-set rs1="game.7z"
+set rs1="file.7z"
 set rs=%rs1%
 del %rs1% /Q
 :: %zip% a %rs1% "documentation.pdf"
@@ -25,7 +25,7 @@ del %rs1% /Q
 %zip% a %rs% "client/oalinst.exe"
 %zip% a %rs% "client/dxwebsetup.exe"
 %zip% a %rs% "client/OpenAL32.dll"
-::%zip% a %rs% "client/D3DCompiler_43.dll"
+%zip% a %rs% "client/D3DCompiler_43.dll"
 %zip% a %rs% "client/D3DCompiler_47.dll"
 
 

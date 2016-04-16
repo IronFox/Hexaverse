@@ -254,6 +254,7 @@
 				{
 					textout.color(1,0.6,0.5);
 					Write(changePerRound);
+					textout.color(color * 0.5f + float3(0.5f));
 				}
 			if (max > 0)
 				textout.scale(1.2f,1.2f);
@@ -475,7 +476,7 @@
 				HexGrid::animationTimeLine.Refresh();
 			}
 
-			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, index_t smokeTrailIndex)
+			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex)
 			{
 				HexGrid::AnimationEventFocusCommand*cmd = new HexGrid::AnimationEventFocusCommand("Attack","Attack",focusLocation,focusEntityID,time,isFriendly);
 				cmd->smokeTrailIndex = smokeTrailIndex;
@@ -602,23 +603,22 @@
 				}
 				if (offset > 0)
 				{
-					GridCell&cell = AllocateCell(leftCommand.get());
-					//cell.type = GridCell::ContactListLeft;
+					GridCell&cell = AllocateCell(leftCommand);
+					cell.gridCoords = leftCommand->gridCoords;
 					cell.flipY = true;
 					cell.Update(camera);
 				}
 				else
-					FindAndDeleteCell(leftCommand.get());
+					FindAndDeleteCell(leftCommand);
 				if (moreRight)
 				{
-					GridCell&cell = AllocateCell(rightCommand.get());
-					//cell.type = GridCell::ContactListRight;
-					rightCommand->gridCoords = DynamicRowOffset + int2(currentContactListWidth+1,rowIndex);
+					GridCell&cell = AllocateCell(rightCommand);
+					cell.gridCoords = DynamicRowOffset + int2(currentContactListWidth+1,rowIndex);
 					cell.flipY = true;
 					cell.Update(camera);
 				}
 				else
-					FindAndDeleteCell(rightCommand.get());
+					FindAndDeleteCell(rightCommand);
 
 //				rightCommand->gridCoords.x = int(ContactListOffset.x + 1+currentContactListWidth);
 
@@ -628,15 +628,15 @@
 			void	DynamicRow::RemoveCommandIcons()
 			{
 				foreach (lastVisible,v)
-					FindAndDeleteCell(v->get());
+					FindAndDeleteCell(*v);
 				lastVisible.Clear();
 			}
 
 			void	DynamicRow::RemoveIcons()
 			{
 				RemoveCommandIcons();
-				FindAndDeleteCell(rightCommand.get());
-				FindAndDeleteCell(leftCommand.get());
+				FindAndDeleteCell(rightCommand);
+				FindAndDeleteCell(leftCommand);
 			}
 
 			void							DynamicRow::RebuildCommands()
@@ -645,9 +645,8 @@
 				for (index_t i = 0; i < visibleRange.GetExtend(); i++)
 				{
 					const Objects::PBaseCommand cmd = commands[i+visibleRange.start];
-					GridCell&cell = AllocateCell(cmd.get());
-					//cell.type = GridCell::ContactListEntry;
-					cell.command->gridCoords = DynamicRowOffset + int2(i+1,rowIndex);
+					GridCell&cell = AllocateCell(cmd);
+					cell.gridCoords = DynamicRowOffset + int2(i+1,rowIndex);
 					cell.flipY = true;
 					cell.Update(camera);
 					lastVisible << cmd;
@@ -867,20 +866,21 @@
 			//Buffer0<VehicleFocusCommand>		vehicleCommands;
 			//Buffer0<StructureFocusCommand>		structureCommands;
 			//Buffer0<GroupFocusCommand>			groupFocusCommands;
-			EntityFocusCommand					selectedFocus;
+			std::shared_ptr<EntityFocusCommand>					selectedFocus;
 
 			namespace BottomRightPanel
 			{
-				Buffer0<Objects::PBaseCommand>				commands;
+				typedef std::shared_ptr<Icon>	PIcon;
+				Buffer0<PIcon >				commands;
 
 				void Create()
 				{
-					commands << Objects::PBaseCommand( new TutorialCommand() );
+					commands << PIcon( new TutorialCommand() );
 
-					commands << Objects::PBaseCommand( new DemolishCommand() );
-					commands << Objects::PBaseCommand( new SleepCommand() );
-					commands << Objects::PBaseCommand( new AbortCommand() );
-					commands << Objects::PBaseCommand( new UndoCommand() );
+					commands << PIcon( new DemolishCommand() );
+					commands << PIcon( new SleepCommand() );
+					commands << PIcon( new AbortCommand() );
+					commands << PIcon( new UndoCommand() );
 
 				}
 
@@ -889,9 +889,10 @@
 					commands.Clear();
 				}
 
-				static void Add(const Objects::PBaseCommand&cmd)
+				static void Add(const int2&coords, const Objects::PBaseCommand&cmd)
 				{
-					GridCell&cell = AllocateCell(cmd.get());
+					GridCell&cell = AllocateCell(cmd);
+					cell.gridCoords = coords;
 					cell.flipX = true;
 					cell.Update(camera);
 					cmd->Refresh(Network::ControlEnabled());
@@ -902,11 +903,11 @@
 					if (!showControlsAndContacts)
 					{
 						foreach (commands,c)
-							FindAndDeleteCell(c->get());
+							FindAndDeleteCell(*c);
 						return;
 					}
 					foreach (commands,c)
-						Add(*c);
+						Add((*c)->gridCoords, *c);
 				}
 			}
 
@@ -934,7 +935,7 @@
 			}
 			float2		GridCell::ToFloatCoords() const
 			{
-				int2 cellCoords = command->gridCoords;
+				int2 cellCoords = gridCoords;
 				if (!flipX && !flipY)
 					cellCoords += int2(3,1);
 				float x;
@@ -985,7 +986,7 @@
 
 			Buffer<GridCell>			allGuiCells;
 
-			GridCell&		AllocateCell(Objects::BaseCommand*cmd)
+			GridCell&		AllocateCell(const Objects::PBaseCommand&cmd)
 			{
 				foreach (allGuiCells,c)
 					if (c->command == cmd)
@@ -995,7 +996,7 @@
 				return c;
 			}
 
-			void			FindAndDeleteCell(Objects::BaseCommand*cmd)
+			void			FindAndDeleteCell(const Objects::PBaseCommand&cmd)
 			{
 				if (!cmd)
 					return;
@@ -1080,10 +1081,10 @@
 				foreach (allGuiCells,cell)
 					cell->Update(camera);
 				RefreshContacts();
-				if (hasFocusButton)
-				{
-					selectedFocus.gridCoords = GetFocusLocation();
-				}
+				//if (hasFocusButton)
+				//{
+				//	selectedFocus.gridCoords = GetFocusLocation();
+				//}
 			}
 
 			void						Destroy()
@@ -1102,7 +1103,7 @@
 				hostileGroups.Destroy();
 				animationTimeLine.Destroy();
 
-				selectedFocus = EntityFocusCommand();
+				selectedFocus.reset();
 			}
 
 			bool	HandleClick()
@@ -1140,8 +1141,8 @@
 			void						Render()
 			{
 				//static int2 lastMouse;
-				float flashOpacity = //float(sin(Engine::timing.now*2.0*M_PI)*0.5+0.5);
-										((UINT64)floor(Engine::timing.now*2.0))%2;
+				float flashOpacity = 	((UINT64)floor(Engine::timing.now*2.0))%2;
+				float softFlashOpacity = float(sin(Engine::timing.now*2.0*M_PI)*0.5+0.5);
 
 
 				static float stationaryCounter = 0;
@@ -1194,7 +1195,7 @@
 							else
 								if (cmd.state & Objects::BaseCommand::Flags::IsFlashing)
 								{
-									code.r = flashOpacity;
+									code.r = (cmd.state & Objects::BaseCommand::Flags::SoftFlashing) ? softFlashOpacity : flashOpacity;
 								}
 							
 							if (cmd.state & Objects::BaseCommand::Flags::IsPermaActive)
@@ -1324,14 +1325,15 @@
 
 			}
 
-			Buffer0<Objects::BaseCommand*>	allocatedEntityCommands;
+			Buffer0<Objects::PBaseCommand>	allocatedEntityCommands;
 			int2 at;
-			void	VisitCommand(Objects::BaseCommand&cmd)
+			void	VisitCommand(const int2&coords,const Objects::PBaseCommand&cmd)
 			{
-				GridCell&cell = AllocateCell(&cmd);
-				cmd.Refresh(Network::ControlEnabled());
+				GridCell&cell = AllocateCell(cmd);
+				cmd->Refresh(Network::ControlEnabled());
+				cell.gridCoords = coords;
 				cell.Update(camera);
-				allocatedEntityCommands<<&cmd;
+				allocatedEntityCommands<<cmd;
 			}
 
 			void RefreshButtonState()
@@ -1455,7 +1457,7 @@
 				if (showControlsAndContacts)
 				{
 					at = int2(5,1);
-					Objects::globalCommands.VisitMembers(VisitCommand,false);
+					Objects::globalCommands.VisitMembers(&VisitCommand,false);
 					Next();
 					Next();
 				}
@@ -1466,13 +1468,13 @@
 					if (showControls)
 						e->VisitAllCommands(VisitCommand,false);
 
-					selectedFocus = EntityFocusCommand(e);
-					selectedFocus.gridCoords = GetFocusLocation();
+					FindAndDeleteCell(selectedFocus);
+					selectedFocus.reset(new EntityFocusCommand(e) );
+					selectedFocus->Refresh(true);//Network::ControlEnabled());
+					selectedFocus->UpdateTexture(e,false,e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor);
 
-					selectedFocus.Refresh(true);//Network::ControlEnabled());
-					selectedFocus.UpdateTexture(e,false,e->isOwnedByMe ? friendlyBackgroundColor : hostileBackgroundColor);
-
-					GridCell&cell = AllocateCell(&selectedFocus);
+					GridCell&cell = AllocateCell(selectedFocus);
+					cell.gridCoords = GetFocusLocation();
 					cell.flipY = true;
 					cell.flipX = true;
 					cell.Update(camera);
@@ -1480,8 +1482,8 @@
 				else
 				{
 					hasFocusButton = false;
-					FindAndDeleteCell(&selectedFocus);
-					selectedFocus = EntityFocusCommand();
+					FindAndDeleteCell(selectedFocus);
+					selectedFocus.reset();
 				}
 
 
@@ -1874,6 +1876,8 @@
 
 			#ifdef _DEBUG
 				textout << " Location: "<<e.location.ToString()<<nl;
+				if (e.IsMobile())
+					textout << " Last point of origin: "<<((const Objects::MobileEntity&)e).GetLastPointOfOrigin().ToString()<<nl;
 				textout << " x: "<<e.system.x.xyz<<nl;
 				textout << " y: "<<e.system.y.xyz<<nl;
 				textout << " z: "<<e.system.z.xyz<<nl;
@@ -1970,18 +1974,20 @@
 					textout << " Turret-Overweight: "<<std::max(0,veh->turret->weight - veh->base->carryingCapacity) << nl;
 					textout << " Movement Initiative: "<<(int)v->GetMovementInitiative()<<"/"<<(int)veh->base->initiative<<nl;
 				}
-				elif (e.IsSatellite())
-				{
-					Objects::Satellite*sat = (Objects::Satellite*)(&e);
-					int demand = sat->GetFuelConsumptionPerRound();
-					if (!sat->RequiresFuel())
-						demand = 0;
-					textout << " Fuel-Consumption: "<<(char)(tagOffset+Objects::Resource::Fuel)<<demand;
-					if (demand > 0)
-						textout <<'+'<<sat->GetExtraFuelDemand();
+				#ifndef NO_SATELLITES
+					elif (e.IsSatellite())
+					{
+						Objects::Satellite*sat = (Objects::Satellite*)(&e);
+						int demand = sat->GetFuelConsumptionPerRound();
+						if (!sat->RequiresFuel())
+							demand = 0;
+						textout << " Fuel-Consumption: "<<(char)(tagOffset+Objects::Resource::Fuel)<<demand;
+						if (demand > 0)
+							textout <<'+'<<sat->GetExtraFuelDemand();
 						
-					textout<<nl;
-				}
+						textout<<nl;
+					}
+				#endif
 				textout << " Attack Initiative: "<<(int)v->GetAttackInitiative()<<"/"<<(int)v->turret->initiative<<nl;
 				textout << " Speed: "<<v->GetMovementStepsPerRound() << nl;
 				if (v->turret->CanAttack())
@@ -2057,6 +2063,8 @@
 				#endif
 			}
 
+			bool storeListed = false;
+
 			if (e.IsStructure())
 			{
 				#ifdef _DEBUG
@@ -2095,6 +2103,7 @@
 				const Objects::VehicleStore*st = dynamic_cast<const Objects::VehicleStore*>(&e);
 				if (st)
 				{
+					storeListed = true;
 					textout << " Max Vehicles per Store: "<<Objects::VehicleStore::MaxVehiclesPerStore<<nl;
 
 
@@ -2110,9 +2119,9 @@
 
 						{
 							const Objects::VehicleStore *other = st;
-							for (const auto&v : other->localStore)
+							for (const auto&v : other->stored)
 							{
-								Objects::PVehicle v1 = v.vehicle.lock();
+								Objects::PMobileEntity v1 = v.entity.lock();
 								ASSERT1__(v1,st->ToEntity().id.ToString());
 								if (++cnt > 10)
 								{
@@ -2130,9 +2139,9 @@
 							Objects::PVehicleStore other = _s.lock();
 							if (other.get() == st)
 								continue;
-							for (const auto&v : other->localStore)
+							for (const auto&v : other->stored)
 							{
-								Objects::PVehicle v1 = v.vehicle.lock();
+								Objects::PMobileEntity v1 = v.entity.lock();
 								ASSERT1__(v1,st->ToEntity().id.ToString());
 								if (++cnt > 10)
 								{
@@ -2148,10 +2157,10 @@
 					}
 					else
 					{
-						textout << " Vehicles stored ("<<st->localStore.Count()<<"/"<<Objects::VehicleStore::MaxVehiclesPerStore<<"):"<<nl;
-						for (const auto&v : st->localStore)
+						textout << " Vehicles stored ("<<st->stored.Count()<<"/"<<Objects::VehicleStore::MaxVehiclesPerStore<<"):"<<nl;
+						for (const auto&v : st->stored)
 						{
-							Objects::PVehicle v1 = v.vehicle.lock();
+							Objects::PMobileEntity v1 = v.entity.lock();
 							ASSERT1__(v1,st->ToEntity().id.ToString());
 							textout << "  "<<v1->GetNiceName() << nl;
 						}
@@ -2362,6 +2371,21 @@
 			}
 
 
+			if (!storeListed && e.IsHangar())
+			{
+				const Objects::Hangar&h = *dynamic_cast<const Objects::Hangar*>(&e);
+				textout.PushColorState();
+				textout.Tint(0.75,0.8,1);
+				textout << " Units in storage ("<<h.stored.Count()<<"/"<<h.GetMaxStorage()<<"):"<<nl;
+				textout.PopColorState();
+				for (const auto&v : h.stored)
+				{
+					Objects::PMobileEntity v1 = v.entity.lock();
+					ASSERT1__(v1,h.ToEntity().id.ToString());
+					textout << "  "<<v1->GetNiceName() << nl;
+				}
+
+			}
 			//textout.getActiveFont()->EndTagMode();
 
 

@@ -59,6 +59,24 @@ namespace Objects
 
 
 	/**
+	Source or destination point of a trajectory.
+	Can be constructed either from 3d coordinates, or cell IDs
+	*/
+	struct TrajectoryEndPoint
+	{
+		Grid::LCellIdI	cellLocation;
+		float3			worldLocation;
+		float			radius=0;	//!< Distance from planet center
+
+		/**/			TrajectoryEndPoint()	{}
+		/**/			TrajectoryEndPoint(const TVec3<>&worldLocation);
+		/**/			TrajectoryEndPoint(const Grid::LCellIdI&, float zOffset);
+		explicit		TrajectoryEndPoint(const Grid::LCellIdI&);
+
+		String			ToString() const;
+	};
+
+	/**
 	Components of vehicles, towers, and satellites
 	*/
 	namespace Component
@@ -81,12 +99,13 @@ namespace Objects
 
 			struct Detail
 			{
-				static void					TraceArtilleryTrajectory(float velocity, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps);
-				static void					TraceMissileTrajectory(float range, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps);
-				static TurretTrajectory		TraceArtilleryTrajectory(float velocity, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
-				static TurretTrajectory		TraceMissileTrajectory(float range, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
+				static void					TraceAnimationArtilleryTrajectory(float velocity,  float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Buffer0<TVec4<> >&outSteps);
+				static void					TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps);
+				static TurretTrajectory		TraceArtilleryTrajectory(float velocity, const Grid::WorldData&decisionWorld, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source,  const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
+				static TurretTrajectory		TraceMissileTrajectory(float range, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
+				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance, float&outAngle);
 				static bool					ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance);
-				static bool					MissileCanHit(float flatRange, const TVec3<>&originNormal, const TVec3<>&origin, const TVec3<>&destination);
+				static bool					MissileCanHit(float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&destination);
 			};
 		public:
 			#ifdef HAS_WINDOW
@@ -126,6 +145,14 @@ namespace Objects
 		class Turret : public Base
 		{
 		public:
+			enum class MountType
+			{
+				Vehicle,
+				TowerOnly,
+				Satellite,
+			};
+
+
 			ConstName						constTowerName;
 
 			float							healthMultiplier = 1.f;
@@ -146,8 +173,9 @@ namespace Objects
 											detectsResources = false,
 											continuousRotation = false,	//indicates that the turret should rotate continuously, regardless of server turret rotation commands
 											requiresStationaryVehicle = false,	//cannot fire if vehicle moved last round
-											isSatelliteRing = false,
 											isDoomsday = false;	//server may reject their deployment
+
+			MountType						mountType = MountType::Vehicle;
 
 			float							explosionRadius = 0.f;
 			TrajectoryType					trajectoryType;
@@ -180,14 +208,17 @@ namespace Objects
 													memset(operationSpeed,0,sizeof(operationSpeed));
 												}
 
-			static void						TraceTrajectory(TrajectoryType, float flatRange, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps);
-			static TurretTrajectory			TraceTrajectory(TrajectoryType, float flatRange, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell);
-			static TurretTrajectory			TraceTrajectory(TrajectoryType type, float flatRange, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, TVec3<>&impactAt)
+			static int						GetGroundHeight(const Grid::LCellIdI&location);
+			//static void						TraceTrajectory(TrajectoryType, float flatRange, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps);
+			static TurretTrajectory			TraceTrajectory(TrajectoryType, float flatRange, const Grid::WorldData&visibleWorld, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle);
+			static TurretTrajectory			TraceTrajectory(TrajectoryType type, float flatRange, const Grid::WorldData&visibleWorld, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt)
 			{
 				Buffer0<TVec4<> > outSteps;
 				Grid::HCellIdI impactCell;
-				return TraceTrajectory(type, flatRange,world,source,zOffset, dest,outSteps,impactAt,impactCell);
+				float angle;
+				return TraceTrajectory(type, flatRange,visibleWorld, actualWorld,source,dest,outSteps,impactAt,impactCell,angle);
 			}
+			static void						TraceAnimationTrajectory(TrajectoryType, float flatRange, float attackAngle, const TrajectoryEndPoint&attackerPosition, const TrajectoryEndPoint&explosionCenter,Buffer0<TVec4<> >&outTrajectory);
 
 		
 
@@ -248,11 +279,7 @@ namespace Objects
 				float	idealAngle[2];
 			};
 
-			static TAngles					GetAngleForDistance(float v, const TVec3<>&origin, const TVec3<>&dest);
-			static TAngles					GetAngleForDistance(float v, const Grid::LCellIdI&origin, float zOffset, const TVec3<>&dest);
-			static TAngles					GetAngleForDistance(float v, const TVec3<>&origin, const Grid::LCellIdI&dest);
-			static TAngles					GetAngleForDistance(float v, const Grid::LCellIdI&origin, float zOffset, const Grid::LCellIdI&dest);
-			static TAngles					GetAngleForDistance(float v, const TVec3<>&originDir, float originH, const TVec3<>&destDir, float destH);
+			static TAngles					GetAngleForDistance(float v, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest);
 			static TAngles					GetAngleForDistance(float v, float horizontalDistance, float verticalDistance)
 			{
 				//verticalDistance = -verticalDistance;
@@ -274,11 +301,8 @@ namespace Objects
 				return rs;
 			}
 
-			//static bool					CanHit(float flatRange, const TVec3<>&origin, const TVec3<>&dest);
-			static bool						CanHit(TrajectoryType t, float flatRange, const Grid::LCellIdI&origin, float zOffset, const TVec3<>&dest);
-			//static bool					CanHit(float flatRange, const TVec3<>&origin, const Grid::LCellIdI&dest);
-			static bool						CanHit(TrajectoryType t, float flatRange, const Grid::LCellIdI&origin, float zOffset, const Grid::LCellIdI&dest);
-			static bool						CanHit(TrajectoryType t, float flatRange, const TVec3<>&originDir, float originH, const TVec3<>&destDir, float destH);
+			static bool						CanHit(TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest, float&outAngle);
+			static bool						CanHit(TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest);
 
 
 
@@ -311,6 +335,10 @@ namespace Objects
 				void						DescribeType(BaseCommand::Label&label, bool compound, const String&parentType, const OwnerParameter&owner);
 			#endif
 
+			/**
+			Checks whether or not the local turret could ever possibly consume resources
+			*/
+			bool							ConsumesResources(ResourceFlagSet&res) const;
 		};
 
 
@@ -336,6 +364,17 @@ namespace Objects
 			bool							ignoresVehicleAttacks;
 			THindranceVector				hindrance;
 
+			/**
+			Mobile job acceleration per operation type.
+			These are exponents applied to certain jobs. A value of 0 leaves the original speed unchanged,
+			such that it will consume the entire round.
+			Increased values each halve the percentage of a round required to advance the respective job by one.
+			A value of one will allow the vehicle to advance this job twice per round.
+			With a maximum action value of 128, using an exponent of 6 would allow the vehicle to continue a job 128 times each round.
+			A value of 7 or more will (theoretically) allow an infinite number of executions per round.
+			*/
+			FixedArray<BYTE,OperationCount>	acceleration;
+
 			#ifdef HAS_WINDOW
 				OpenAL::Wave				ambientSound;	//sound used for ambience (25% volume, normal pitch), or motion (100% volume, increased pitch)
 			#endif
@@ -352,6 +391,7 @@ namespace Objects
 				hindrance.air = 2;
 				hindrance.water = 5;
 				hindrance.other = 4;
+				acceleration.Fill(0);
 			}
 
 			bool							CanClimb(int inclination) const { if (inclination < 0) return inclination >= minClimbDown; return inclination <= maxClimbUp;}
@@ -474,8 +514,11 @@ namespace Objects
 						artillery,launcher,emp,armored,
 						bomb,
 						munitionTransporter,
-						radar,resourceScanner,
-						protonCannon,skyHubTurret,ragnarok,starPort;
+						radar,resourceScanner
+						#ifndef NO_SATELLITES
+							,protonCannon,skyHubTurret,ragnarok,starPort
+						#endif
+						;
 
 	
 		namespace Artillery
@@ -493,32 +536,33 @@ namespace Objects
 			void		Configure(Turret&);
 		};
 
-		/**
-		ProtonCannons are used by satellites, and (re)use the missile trajectory
-		*/
-		namespace SkyGuardian
-		{
-			void		Configure(Turret&);
-		};
+		#ifndef NO_SATELLITES
+			/**
+			ProtonCannons are used by satellites, and (re)use the missile trajectory
+			*/
+			namespace SkyGuardian
+			{
+				void		Configure(Turret&);
+			};
 
-		/**
-		Used only by the SkyHub satellite. Provides its logic
-		*/
-		namespace SkyHubTurret
-		{
-			void		Configure(Turret&);
-		};
+			/**
+			Used only by the SkyHub satellite. Provides its logic
+			*/
+			namespace SkyHubTurret
+			{
+				void		Configure(Turret&);
+			};
 
-		namespace Ragnarok
-		{
-			void		Configure(Turret&);
-		};
+			namespace Ragnarok
+			{
+				void		Configure(Turret&);
+			};
 
-		namespace StarPort
-		{
-			void		Configure(Turret&);
-		};
-
+			namespace StarPort
+			{
+				void		Configure(Turret&);
+			};
+		#endif
 
 		namespace Armored
 		{

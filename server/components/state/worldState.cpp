@@ -314,9 +314,11 @@ namespace World
 			float t = timer.GetSecondsSince(t0);
 			LogEvent(EventSignificance::PerformanceMeasurement,"Time needed to process water: "+String(t));
 
-
 			for (const auto&e:waste)
-				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,0,false);
+			{
+				float at = 0;
+				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,at,false);
+			}
 			waste.Clear();
 		}
 
@@ -327,14 +329,17 @@ namespace World
 		Grid::currentPlanetConfig.RandomizeSeeds(random);
 		Grid::currentPlanetConfig.RandomizeSun(random);
 		Grid::BuildWorld(Grid::currentPlanetConfig,Config::worldDiscovery);
-		Objects::Faction::nexus->currentState = Grid::initialWorld;
+		if (Objects::Faction::nexus)
+			Objects::Faction::nexus->currentState = Grid::initialWorld;
 
-
-		if (RuntimeConfig::gameGoal == Game::Config::Goal::EMPConquerNexus)
+		if (RuntimeConfig::gameGoal == Game::Config::Goal::ConquerNexus)
 		{
-			LogEvent(EventSignificance::Common, "Spawning Nexus Ports...");
+			LogEvent(EventSignificance::Common, "Spawning Nexus Ports (EMP fields="+String(RuntimeConfig::empZones)+")...");
 			for (int pole = 0; pole < 12; pole++)
-				Game::SpawnNexusPortAtPole(pole);
+				if (RuntimeConfig::empZones || BaseGrid::IsIsolatedCorner(pole))
+					Game::SpawnNexusPortAtPole(pole);
+
+			LogEvent(EventSignificance::Debug, "Spawning Nexus bases...");
 			if (Game::Config::Nexus::haveBases)
 				for (int pole = 0; pole < 12; pole++)
 					if (BaseGrid::IsIsolatedCorner(pole))
@@ -342,20 +347,6 @@ namespace World
 						Game::SpawnNexusBaseAtPoleWithPort(pole);
 					}
 		}
-		else
-		if (RuntimeConfig::gameGoal == Game::Config::Goal::ConquerNexus)
-		{
-			LogEvent(EventSignificance::Common, "Spawning Nexus Ports...");
-		
-			for (int pole = 0; pole < 12; pole++)
-				if (BaseGrid::IsIsolatedCorner(pole))
-				{
-					Game::SpawnNexusPortAtPole(pole);
-					if (Game::Config::Nexus::haveBases)
-						Game::SpawnNexusBaseAtPoleWithPort(pole);
-				}
-		}
-
 	}
 
 
@@ -383,7 +374,7 @@ namespace World
 			//avoid 12 corner cells: make sure all candidates have 6 neighbors
 			for (index_t i = 12; i < Grid::LowSetup::GridType::CellCount; i++)
 			{
-				if (RuntimeConfig::gameGoal == Game::Config::Goal::EMPConquerNexus)
+				if (RuntimeConfig::empZones)
 				{
 					if (!(unlockedEMPZones & Grid::low.grid.GetCell(i).cornerFlags))
 						continue;
@@ -478,7 +469,7 @@ namespace World
 
 	void			UpdateEMPZones(count_t temporaryFactionCountBonus/*=0*/)
 	{
-		if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::EMPConquerNexus)
+		if (RuntimeConfig::empZones)
 		{
 			count_t numZones = Game::mostFactionsAlive+temporaryFactionCountBonus;	//not counting nexus faction, but counting new faction(s)
 			numZones = (numZones/3) + !!(numZones % 3);
@@ -486,7 +477,7 @@ namespace World
 			int unlocked = 0;
 			for (index_t i = 0; i < numZones; i++)
 			{
-				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
+				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked) && RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
 				{
 					unlocked++;
 				}

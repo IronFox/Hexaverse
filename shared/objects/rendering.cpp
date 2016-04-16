@@ -77,11 +77,41 @@ namespace Objects
 	#endif
 	DX11::BaseInstructionBlock			shadowInstruction;
 
-	Buffer0<DX11::InstructionBlock32>	smokeTrails;
-	index_t								selectedSmokeTrail = InvalidIndex;
 
 	TMatrix4<>							structureToPlaceSystem;
 
+
+	namespace Renderer
+	{
+		class SmokeTrailCollection
+		{
+		public:
+			Buffer0<DX11::InstructionBlock32>	smokeTrails;
+			index_t								selectedSmokeTrail = InvalidIndex;
+
+			void	Render();
+			index_t	RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory)
+			{
+				index_t result = smokeTrails.Count();
+				DX11::InstructionBlock32&trail = smokeTrails.Append();
+				static Geometry geo;
+				geo.Clear();
+				Component::Turret::CompileTrajectory(trajectory,Component::Turret::SmokeTrail,geo,1.f);
+				((DX11::BaseInstructionBlock&)trail) = smokeTrailShader;
+				trail.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
+				trail.ibo.Create(geo.GetLOD(0).indices);
+				selectedSmokeTrail = InvalidIndex;
+				return result;
+			}
+			void	Clear()
+			{
+				smokeTrails.Clear();
+				selectedSmokeTrail = InvalidIndex;
+			}
+
+		}			smokeTrails[2];
+
+	}
 
 	OpenAL::WaveBuffer	Renderer::GetAmbientSoundOf(const String&entityTypeName, ConstName _entityType)
 	{
@@ -96,29 +126,27 @@ namespace Objects
 	}
 
 
-	index_t	Renderer::RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory)
+	Renderer::SmokeTrailIndex	Renderer::RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory, bool aboveGrid)
 	{
-		index_t result = smokeTrails.Count();
-		DX11::InstructionBlock32&trail = smokeTrails.Append();
-		static Geometry geo;
-		geo.Clear();
-		Component::Turret::CompileTrajectory(trajectory,Component::Turret::SmokeTrail,geo,1.f);
-		((DX11::BaseInstructionBlock&)trail) = smokeTrailShader;
-		trail.vbo.CreateFromStructs(geo.GetLOD(0).vertices);
-		trail.ibo.Create(geo.GetLOD(0).indices);
-		selectedSmokeTrail = InvalidIndex;
-		return result;
+		return SmokeTrailIndex(smokeTrails[aboveGrid].RegisterSmokeTrail(trajectory), aboveGrid);
 	}
 
-	void	Renderer::HighlightSmokeTrail(index_t smokeTrailIndex)
+	void	Renderer::HighlightSmokeTrail(const SmokeTrailIndex&smokeTrailIndex)
 	{
-		selectedSmokeTrail = smokeTrailIndex;
+		smokeTrails[smokeTrailIndex.isOrbital].selectedSmokeTrail = smokeTrailIndex.trailIndex;
+		smokeTrails[!smokeTrailIndex.isOrbital].selectedSmokeTrail = InvalidIndex;
+	}
+
+	void	Renderer::ClearSmokeTrailHighlighting()
+	{
+		smokeTrails[0].selectedSmokeTrail = InvalidIndex;
+		smokeTrails[1].selectedSmokeTrail = InvalidIndex;
 	}
 
 	void	Renderer::ClearSmokeTrails()
 	{
-		smokeTrails.Clear();
-		selectedSmokeTrail = InvalidIndex;
+		smokeTrails[0].Clear();
+		smokeTrails[1].Clear();
 	}
 
 
@@ -189,13 +217,14 @@ namespace Objects
 			break;
 			case TrajectoryType::VerticalBeam:
 			{
-				int h = Satellite::GetGroundHeight(location);
-				if (h != badHeight)
-				{
-					const TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
-					RenderRangeSphere(d * (Grid::ToRadius(h)+zOffset),base->GetFlatAttackRange() + explosionRadius,color);
-				}
-
+				#ifndef NO_SATELLITES
+					int h = Satellite::GetGroundHeight(location);
+					if (h != badHeight)
+					{
+						const TVec3<>&d = Grid::low.cells[location.stackID].centerVertex.xyz;
+						RenderRangeSphere(d * (Grid::ToRadius(h)+zOffset),base->GetFlatAttackRange() + explosionRadius,color);
+					}
+				#endif
 			}
 			break;
 			default:
@@ -460,11 +489,7 @@ namespace Objects
 
 
 
-		/*	Image img;
-			Magic::LoadFromFile(img,"resources/hexgrid.png");
-
-			hexGrid.Load(img);*/
-
+	
 			DX11::Shader::Binding bindings2[] =
 			{
 				DX11::Shader::Binding(overallTint, "Tint"),
@@ -594,11 +619,13 @@ namespace Objects
 		}
 	}
 
-	static void _RenderSimpleLocated(Satellite&s, const TMatrix4<>&system)
-	{
-		display.Render(*s.baseRenderingInstruction, true);
-		Renderer::RenderComponent(system, 0.f, *s.turret, s.turretAngleX, s.turretAngleY);
-	}
+	#ifndef NO_SATELLITES
+		static void _RenderSimpleLocated(Satellite&s, const TMatrix4<>&system)
+		{
+			display.Render(*s.baseRenderingInstruction, true);
+			Renderer::RenderComponent(system, 0.f, *s.turret, s.turretAngleX, s.turretAngleY);
+		}
+	#endif
 
 	static void _RenderSimpleLocated(Vehicle&v, const TMatrix4<>&system)
 	{
@@ -614,11 +641,13 @@ namespace Objects
 			_RenderSimpleLocated((Structure&)e,system);
 			return;
 		}
-		if (e.IsSatellite())
-		{
-			_RenderSimpleLocated((Satellite&)e,system);
-			return;
-		}
+		#ifndef NO_SATELLITES
+			if (e.IsSatellite())
+			{
+				_RenderSimpleLocated((Satellite&)e,system);
+				return;
+			}
+		#endif
 		if (e.IsVehicle())
 		{
 			_RenderSimpleLocated((Vehicle&)e,system);
@@ -661,7 +690,35 @@ namespace Objects
 		{
 			return GetPulse(now,0.75f,1.25f);
 		}
+
+
+		void	SmokeTrailCollection::Render()
+		{
+			if (smokeTrails.IsNotEmpty())
+			{
+				display.SetDepthTest(true,false);
+				display.SetRasterizer(true,false);
+				display.SetBlendMode(Engine::BlendMode::AlphaBlend);
+
+		
+				overallTint.Update(float4());
+				foreach (smokeTrails,t)
+				{
+					display.Render(*t,true);
+				}
+
+				if (selectedSmokeTrail < smokeTrails.Count())
+				{
+					overallTint.Update(float4(1,0,0,GetPulse(now,0.5f,1.f)));
+					display.Render(smokeTrails[selectedSmokeTrail],true);
+				}
+
+			}
+		}
+
 	}
+
+
 	/*
 	void					GetActiveColors(double now, float3&mine, float3&theirs)
 	{
@@ -723,34 +780,35 @@ namespace Objects
 	}
 
 
-	void	Renderer::Render(Satellite&s, float light)
-	{
-		display.SetObjectMatrix(s.system);
+	#ifndef NO_SATELLITES
+		void	Renderer::Render(Satellite&s, float light)
 		{
-			TVec3<> color;
-			Vec::interpolate(s.owner->inactiveEntityColor,s.owner->activeEntityColor,s.GetActivityLevel(),color);
+			display.SetObjectMatrix(s.system);
 			{
-				if (s.unstable)
+				TVec3<> color;
+				Vec::interpolate(s.owner->inactiveEntityColor,s.owner->activeEntityColor,s.GetActivityLevel(),color);
 				{
-					keyColor.Update(float4(flip ? float3() : color,light));
-						
-					if (!flip)
+					if (s.unstable)
 					{
-
-						//WorkingStructure*ws = static_cast<WorkingStructure*>(&s);
-						if (s.AwaitsUserInteraction())
+						keyColor.Update(float4(flip ? float3() : color,light));
+						
+						if (!flip)
 						{
-							display.Render(userInteractionNotifier,true);
+
+							//WorkingStructure*ws = static_cast<WorkingStructure*>(&s);
+							if (s.AwaitsUserInteraction())
+							{
+								display.Render(userInteractionNotifier,true);
+							}
 						}
 					}
+					else
+						keyColor.Update(float4(color,light));
 				}
-				else
-					keyColor.Update(float4(color,light));
 			}
+			_RenderSimpleLocated(s,s.system);
 		}
-		_RenderSimpleLocated(s,s.system);
-	}
-
+	#endif
 
 	void	Renderer::Render(Structure&s, float light)
 	{
@@ -798,10 +856,11 @@ namespace Objects
 
 	void	Renderer::RenderComponent(TMatrix4<> system, float h, const Component::Base&comp, float x, float y)
 	{
-		system.w.xyz += system.z.xyz * h;
 		TMatrix4<> sub;
 		if (comp.parts.Count() > 0)
 		{
+			system.w.xyz += system.z.xyz * h;
+
 			comp.GetSubSystem(0,x,sub);
 			Mat::transformSystem(system,sub);
 			system = sub;
@@ -1002,26 +1061,27 @@ namespace Objects
 				ApplyBaseTint(*v,baseTint);
 			}
 		}
-		foreach(satellites, _v)
-		{
-			const PSatellite&v = *_v;
-			const float light = GetLowLighting(v->location);
-
-			bool isBuilding = v->IsBuilding();
-			if (isBuilding)
+		#ifndef NO_SATELLITES
+			foreach(satellites, _v)
 			{
-				display.SetObjectMatrix(v->system);
-				keyColor.Update(float4(v->owner->activeEntityColor,light));
-				display.Render(cordon,true);
-			}
-			if (v != selectedEntity)
-			{
-				ApplyStateTint(*v,baseTint,false);
-				Renderer::Render(*v,light);
-				ApplyBaseTint(*v,baseTint);
-			}
-		}
+				const PSatellite&v = *_v;
+				const float light = GetLowLighting(v->location);
 
+				bool isBuilding = v->IsBuilding();
+				if (isBuilding)
+				{
+					display.SetObjectMatrix(v->system);
+					keyColor.Update(float4(v->owner->activeEntityColor,light));
+					display.Render(cordon,true);
+				}
+				if (v != selectedEntity)
+				{
+					ApplyStateTint(*v,baseTint,false);
+					Renderer::Render(*v,light);
+					ApplyBaseTint(*v,baseTint);
+				}
+			}
+		#endif
 
 		if (Marker::visitedSystems.IsNotEmpty())
 		{
@@ -1069,11 +1129,10 @@ namespace Objects
 					continue;
 				ApplyStateTint(s,baseTint,false);
 				Renderer::Render(s);
-				ApplyBaseTint(s,baseTint);
+				//ApplyBaseTint(s,baseTint);	//why?
 
 			}
 		}
-
 
 		if (selectedEntity && selectedEntity->health > 0)
 		{
@@ -1086,15 +1145,19 @@ namespace Objects
 				Renderer::Render(*struc);
 			}
 			else
-				if (selectedVehicle)
-					Renderer::Render(*selectedVehicle,GetLowLighting(selectedEntity->location));
-				else
-					if (selectedMobileEntity && selectedMobileEntity->IsSatellite())
-					{
-						Renderer::Render(*To<Satellite>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
-					}
+				if (selectedMobileEntity)
+				{
+					if (selectedVehicle)
+						Renderer::Render(*selectedVehicle,GetLowLighting(selectedEntity->location));
+					#ifndef NO_SATELLITES
+						elif (selectedMobileEntity->IsSatellite())
+							Renderer::Render(*To<Satellite>::Cast(selectedMobileEntity),GetLowLighting(selectedEntity->location));
+					#endif
 					else
 						FATAL__("Can't render this: "+selectedEntity->GetName());
+				}
+				else
+					FATAL__("Can't render this: "+selectedEntity->GetName());
 
 			if (GatheringPoint::selected != Grid::LCellIdI::Invalid)
 			{
@@ -1110,10 +1173,6 @@ namespace Objects
 			}
 			ApplyBaseTint(*selectedEntity, tint);
 		}
-
-
-
-
 
 
 
@@ -1137,7 +1196,7 @@ namespace Objects
 				bool isBuilding2 = (p && p->IsBuilding(progress2));
 				if (isBuilding || v->health < maxHealth || isBuilding2)
 				{
-					ProgressBar::SetLocation(v->GetWorldPosition(), v->IsSatellite() ? 3.f : 1.f);
+					ProgressBar::SetLocation(v->GetWorldPosition() IF_SATELLITES_P(, v->IsSatellite() ? 3.f : 1.f));
 					//ProgressBar::RenderNewBar(0,float3(0.1,0.1,0.1));
 					//ProgressBar::RenderNewBar(0.25f,float3(1,0.1,0.1));
 					//ProgressBar::RenderNewBar(0.75f,float3(0.1,1,0.1));
@@ -1319,7 +1378,7 @@ namespace Objects
 		if (selectedEntity)
 			RenderAttackRangeOf(selectedEntity,color,extendedShadow,true);
 		if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
-			RenderAttackRangeOf(activeStructureToPlace,arrowCellTarget,color,extendedShadow,true);
+			RenderAttackRangeOf(activeStructureToPlace,arrowCellTarget.cellLocation,color,extendedShadow,true);
 		
 
 		if (showHostileRanges || showFriendlyRanges)
@@ -1336,9 +1395,10 @@ namespace Objects
 					}
 				}
 			);
-
-
 		}
+
+
+
 		display.SetObjectMatrix(Matrix<>::eye4);
 	}
 
@@ -1355,7 +1415,7 @@ namespace Objects
 		sys.y.xyz /= fc;
 	}
 
-	void	Renderer::RenderTranslucent()
+	void	Renderer::RenderTranslucent(bool orbital)
 	{
 		if (!objectView)
 			return;
@@ -1372,23 +1432,29 @@ namespace Objects
 		foreach(Marker::mobileGhosts, _v)
 		{
 			const PMobileEntity&m = *_v;
+			if (m->IsAboveGrid() != orbital)
+				continue;
 			if (m->IsVehicle())
 			{
 				PVehicle v = To<Vehicle>::Cast(m);
 				Renderer::RenderSimple(*v);
 			}
 			else
-				if (m->IsSatellite())
-				{
-					PSatellite s = To<Satellite>::Cast(m);
-					Renderer::RenderSimple(*s);
-				}
-				else
+				#ifndef NO_SATELLITES
+					if (m->IsSatellite())
+					{
+						PSatellite s = To<Satellite>::Cast(m);
+						Renderer::RenderSimple(*s);
+					}
+					else
+				#endif
 					FATAL__("Unsupported ghost type "+m->GetTypeName());
 		}
 		foreach(Marker::structureGhosts, _s)
 		{
 			const PStructure&s = *_s;
+			if (s->IsAboveGrid() != orbital)
+				continue;
 			Renderer::RenderSimple(*s,s->HasFoundation());
 
 		}
@@ -1396,6 +1462,8 @@ namespace Objects
 		foreach(Marker::mobileGhosts, _v)
 		{
 			const PMobileEntity&m = *_v;
+			if (m->IsAboveGrid() != orbital)
+				continue;
 			if (m->isOwnedByMe)
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
@@ -1406,17 +1474,21 @@ namespace Objects
 				Renderer::RenderSimple(*v);
 			}
 			else
-				if (m->IsSatellite())
-				{
-					PSatellite s = To<Satellite>::Cast(m);
-					Renderer::RenderSimple(*s);
-				}
-				else
+				#ifndef NO_SATELLITES
+					if (m->IsSatellite())
+					{
+						PSatellite s = To<Satellite>::Cast(m);
+						Renderer::RenderSimple(*s);
+					}
+					else
+				#endif
 					FATAL__("Unsupported ghost type "+m->GetTypeName());
 		}
 		foreach(Marker::structureGhosts, _s)
 		{
 			const PStructure&s = *_s;
+			if (s->IsAboveGrid() != orbital)
+				continue;
 			if (s->isOwnedByMe)
 				overallTint.Update(float4(0.2, 0.2, 0.2, 1));
 			else
@@ -1428,8 +1500,11 @@ namespace Objects
 
 		//depth-image:
 		overallTint.Update(noTint);	//all zero tint makes shapes invisible
-		ForeachMobileWorldEntity([](const PMobileEntity&v)
+		ForeachMobileWorldEntity([orbital](const PMobileEntity&v)
 		{
+			if (v->IsAboveGrid() != orbital)
+				return;
+
 			{
 				foreach (v->myTasks,t)
 				{
@@ -1465,9 +1540,11 @@ namespace Objects
 		overallTint.Update(float4(0,0,0,1));	//make sure localizable shapes appear - but in black
 
 
-		ForeachMobileWorldEntity([](const PMobileEntity&v)
+		ForeachMobileWorldEntity([orbital](const PMobileEntity&v)
 		{
-			//if (v != selectedEntity)
+			if (v->IsAboveGrid() != orbital)
+				return;
+
 			if (v == selectedEntity)
 				overallTint.Update(float4(red2,1));
 			
@@ -1498,6 +1575,9 @@ namespace Objects
 		foreach(structures, _s)
 		{
 			const PStructure&s = *_s;
+			if (s->IsAboveGrid() != orbital)
+				continue;
+
 			float dummy;
 			if (s->GetTurretBase(dummy))
 			{
@@ -1543,14 +1623,18 @@ namespace Objects
 
 		for (const auto&at : attackers)
 		{
+			if (at->IsAboveGrid() != orbital)
+				continue;
 			TMatrix4<> sys;
 			const TVec3<>&up = Grid::low.cells[at->location.stackID].cornerCenter;
 			Mat::makeAxisSystem(at->system.w.xyz, up,2,sys);
-			if (at->IsSatellite())
-			{
-				sys.x.xyz *= 2.f;
-				sys.y.xyz *= 2.f;
-			}
+			#ifndef NO_SATELLITES
+				if (at->IsSatellite())
+				{
+					sys.x.xyz *= 2.f;
+					sys.y.xyz *= 2.f;
+				}
+			#endif
 			const PTurretBase base = at->GetTurretBase();
 			//DBG_ASSERT__(base);
 			int rings = base->GetAttacksPerRound();
@@ -1589,8 +1673,10 @@ namespace Objects
 		display.SetBlendMode(Engine::BlendMode::FlareBlend);
 		overallTint.Update(float4(float3(0.18f,0.185f,2.f),1.f));
 
-		ForeachMobileWorldEntity([](const PMobileEntity&v)
+		ForeachMobileWorldEntity([orbital](const PMobileEntity&v)
 		{
+			if (v->IsAboveGrid() != orbital)
+				return;
 			if (v != selectedEntity)
 			{
 				foreach (v->myTasks,t)
@@ -1606,6 +1692,9 @@ namespace Objects
 		foreach(structures, _s)
 		{
 			const PStructure&s = *_s;
+			if (s->IsAboveGrid() != orbital)
+				continue;
+
 			float zOffset;
 			if (s != selectedEntity)
 			{
@@ -1640,9 +1729,10 @@ namespace Objects
 
 		TVec4<> selectedTint;
 
-		if (selectedEntity)
+		if (selectedEntity && selectedEntity->IsAboveGrid() == orbital)
 		{
 			const PMobileEntity&v = selectedMobileEntity;
+
 			//To<Vehicle>::DynamicCast(selectedEntity);
 
 			if (!selectedEntity->unstable)
@@ -1658,8 +1748,9 @@ namespace Objects
 				}
 			}
 
-			float dummy;
-			if (!v && selectedEntity->GetTurretBase(dummy))
+			float zOffset;
+			PTurretBase base = selectedEntity->GetTurretBase(zOffset);
+			if (!v && base)
 			{
 				PTower t = To<Tower>::DynamicCast(selectedEntity);
 				ASSERT__(t);
@@ -1677,155 +1768,134 @@ namespace Objects
 
 		display.SetRasterizer(true,true);
 
-
-		if (showArrow && hasArrowCellTarget && arrowCellTarget != arrowFromCell)
+		if (showArrow && hasArrowCellTarget && WorldEntity::IsAboveGrid(arrowFromCell) == orbital)
 		{
-			display.SetDepthTest(false,false);
-
-			const float r =Grid::ToRadius(arrowCellTarget.height);
-			float3 arrowTo = Grid::low.cells[arrowCellTarget.stackID].centerVertex.xyz * r;
-			float d2 = Vec::quadraticDistance(arrowTo,Objects::arrowFrom);
-
-			static Buffer0<Vertex>	vertices;
-			vertices.Clear();
-
-
-			//if (d2 > 0.01f)
+			if (arrowCellTarget.cellLocation != arrowFromCell)
 			{
-				static const float3 color(1,0.5,0.5);
-				float d = sqrt(d2);
-				float3 dir = (arrowTo - Objects::arrowFrom).Normalize();
-				float3 n = (dir | arrowTo).Normalize0() * 0.25f;
-				float3 arrowBase = arrowTo - dir * 1.f;
+				display.SetDepthTest(false,false);
+
+				const float r =Grid::ToRadius(arrowCellTarget.radius);
+				const float3&arrowTo = arrowCellTarget.worldLocation;
+				float d2 = Vec::quadraticDistance(arrowTo,Objects::arrowFrom);
+
+				static Buffer0<Vertex>	vertices;
+				vertices.Clear();
 
 
-				//arrowBuffer
-				vertices	<< Vertex(arrowFrom-n,float3(),float4(0.25f,1,0,1))
-							<< Vertex(arrowFrom,float3(),float4(0))
-							<< Vertex(arrowBase,float3(),float4(0))
-
-							<< Vertex(arrowFrom-n,float3(),float4(0.25f,1,0,1))
-							<< Vertex(arrowBase,float3(),float4(0))
-							<< Vertex(arrowBase-n,float3(),float4(1))
-
-							<< Vertex(arrowFrom+n,float3(),float4(0.25f,1,0,1))
-							<< Vertex(arrowBase,float3(),float4(0))
-							<< Vertex(arrowFrom,float3(),float4(0))
-
-							<< Vertex(arrowFrom+n,float3(),float4(0.25f,1,0,1))
-							<< Vertex(arrowBase+n,float3(),float4(1))
-							<< Vertex(arrowBase,float3(),float4(0))
-
-							<< Vertex(arrowBase-n,float3(),float4(1))
-							<< Vertex(arrowBase,float3(),float4(0))
-							<< Vertex(arrowTo,float3(),float4(1))
-
-							<< Vertex(arrowBase+n,float3(),float4(1))
-							<< Vertex(arrowTo,float3(),float4(1))
-							<< Vertex(arrowBase,float3(),float4(0))
-				;
-/*
-
-				LineRenderer::Rasterize(Objects::arrowFrom-n,float4(color,0),arrowBase-n,float4(color,1));
-				LineRenderer::Rasterize(arrowBase-n,float4(color,1),arrowTo,float4(color,1));
-				LineRenderer::Rasterize(Objects::arrowFrom+n,float4(color,0),arrowBase+n,float4(color,1));
-				LineRenderer::Rasterize(arrowBase+n,float4(color,1),arrowTo,float4(color,1));
-
-				const auto&cell = Grid::low.cells[dest.stackID];
-				for (int i = 0; i < cell.numCorners; i++)
+				//if (d2 > 0.01f)
 				{
-					LineRenderer::Rasterize(cell.cornerVertex[i].xyz*r,float4(color,1),cell.cornerVertex[(i+1)%cell.numCorners].xyz*r,float4(color,1));
+					static const float3 color(1,0.5,0.5);
+					float d = sqrt(d2);
+					float3 dir = (arrowTo - Objects::arrowFrom).Normalize();
+					float3 n = (dir | arrowTo).Normalize0() * 0.25f;
+					float3 arrowBase = arrowTo - dir * 1.f;
 
-				}*/
 
-				arrowBuffer.PartialUpdate(vertices.pointer(),vertices.Count(),sizeof(Vertex));
+					//arrowBuffer
+					vertices	<< Vertex(arrowFrom-n,float3(),float4(0.25f,1,0,1))
+								<< Vertex(arrowFrom,float3(),float4(0))
+								<< Vertex(arrowBase,float3(),float4(0))
 
-				display.RenderVertices(arrowInstruction,0,(UINT32)vertices.Count());
+								<< Vertex(arrowFrom-n,float3(),float4(0.25f,1,0,1))
+								<< Vertex(arrowBase,float3(),float4(0))
+								<< Vertex(arrowBase-n,float3(),float4(1))
+
+								<< Vertex(arrowFrom+n,float3(),float4(0.25f,1,0,1))
+								<< Vertex(arrowBase,float3(),float4(0))
+								<< Vertex(arrowFrom,float3(),float4(0))
+
+								<< Vertex(arrowFrom+n,float3(),float4(0.25f,1,0,1))
+								<< Vertex(arrowBase+n,float3(),float4(1))
+								<< Vertex(arrowBase,float3(),float4(0))
+
+								<< Vertex(arrowBase-n,float3(),float4(1))
+								<< Vertex(arrowBase,float3(),float4(0))
+								<< Vertex(arrowTo,float3(),float4(1))
+
+								<< Vertex(arrowBase+n,float3(),float4(1))
+								<< Vertex(arrowTo,float3(),float4(1))
+								<< Vertex(arrowBase,float3(),float4(0))
+					;
+	/*
+
+					LineRenderer::Rasterize(Objects::arrowFrom-n,float4(color,0),arrowBase-n,float4(color,1));
+					LineRenderer::Rasterize(arrowBase-n,float4(color,1),arrowTo,float4(color,1));
+					LineRenderer::Rasterize(Objects::arrowFrom+n,float4(color,0),arrowBase+n,float4(color,1));
+					LineRenderer::Rasterize(arrowBase+n,float4(color,1),arrowTo,float4(color,1));
+
+					const auto&cell = Grid::low.cells[dest.stackID];
+					for (int i = 0; i < cell.numCorners; i++)
+					{
+						LineRenderer::Rasterize(cell.cornerVertex[i].xyz*r,float4(color,1),cell.cornerVertex[(i+1)%cell.numCorners].xyz*r,float4(color,1));
+
+					}*/
+
+					arrowBuffer.PartialUpdate(vertices.pointer(),vertices.Count(),sizeof(Vertex));
+
+					display.RenderVertices(arrowInstruction,0,(UINT32)vertices.Count());
+				}
 			}
-		}
 
-		if (showArrow && hasArrowCellTarget && activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
-		{
-			display.SetDepthTest(true,true);
-			bool includeFoundation = false;//activeStructureToPlace->HasFoundation();	<- is correct but job visualization doesn't use foundations
-			display.LinkShader(jobShader,false,true);
-				//TMatrix4<> sys;
-				BuildStructureSystem(arrowCellTarget,structureToPlaceSystem);
-				display.SetObjectMatrix(structureToPlaceSystem);
-				overallTint.Update(noTint);	//all zero tint makes shapes invisible
-				if (includeFoundation)
-					display.Render(foundation, true);
-				_RenderSimpleLocated(*activeStructureToPlace,structureToPlaceSystem);
-				display.SetObjectMatrix(structureToPlaceSystem);
-				overallTint.Update(float4(selectedTint.rgb,selectedTint.a * 0.5f + 0.5f));
-				if (includeFoundation)
-					display.Render(foundation, true);
-				_RenderSimpleLocated(*activeStructureToPlace,structureToPlaceSystem);
-			display.UnlockShader();
-			display.SetObjectMatrix(Matrix<>::eye4);
-		}
-	
-
-		if (smokeTrails.IsNotEmpty())
-		{
-			display.SetDepthTest(true,false);
-			display.SetRasterizer(true,false);
-			display.SetBlendMode(Engine::BlendMode::AlphaBlend);
-
-		
-			overallTint.Update(float4());
-			foreach (smokeTrails,t)
+			if (activeCursorMode == CursorMode::PlaceStructureMode && activeStructureToPlace)
 			{
-				display.Render(*t,true);
+				display.SetDepthTest(true,true);
+				bool includeFoundation = false;//activeStructureToPlace->HasFoundation();	<- is correct but job visualization doesn't use foundations
+				display.LinkShader(jobShader,false,true);
+					//TMatrix4<> sys;
+					BuildStructureSystem(arrowCellTarget.cellLocation,structureToPlaceSystem);
+					display.SetObjectMatrix(structureToPlaceSystem);
+					overallTint.Update(noTint);	//all zero tint makes shapes invisible
+					if (includeFoundation)
+						display.Render(foundation, true);
+					_RenderSimpleLocated(*activeStructureToPlace,structureToPlaceSystem);
+					display.SetObjectMatrix(structureToPlaceSystem);
+					overallTint.Update(float4(selectedTint.rgb,selectedTint.a * 0.5f + 0.5f));
+					if (includeFoundation)
+						display.Render(foundation, true);
+					_RenderSimpleLocated(*activeStructureToPlace,structureToPlaceSystem);
+				display.UnlockShader();
+				display.SetObjectMatrix(Matrix<>::eye4);
 			}
-
-			if (selectedSmokeTrail < smokeTrails.Count())
-			{
-				overallTint.Update(float4(1,0,0,GetPulse(now,0.5f,1.f)));
-				display.Render(smokeTrails[selectedSmokeTrail],true);
-			}
-
 		}
+
+		smokeTrails[orbital].Render();
+
 		display.SetRasterizer(true,true);
 		display.SetDepthTest(true,true);
 
 	}
 
-	void	Renderer::RenderTranslucentBeams()
+
+
+	void		Renderer::Flush()
 	{
-	/*	if (!objectView)
-			return;
-	*/	
+		#ifndef ONE_COMPOUND_PER_FACTION
+			compoundScope.Clear();
+			interPylonArrows.Clear();
+		#endif
+		animatedTurrets.Clear();
+		attackers.Clear();
+	}
 
-		display.SetRasterizer(true,false);	//some shafts are flipped, but culling makes no sense anyways
-		display.SetDepthTest(true,false);
-		display.SetBlendMode(Engine::BlendMode::Add);
-
-		foreach (satellites,_s)
+	
+	namespace Renderer
+	{
+		void RenderFlyingUnitBeams(const Objects::PMobileEntity&e)
 		{
-			const PSatellite&sat = *_s;
-			TVec3<> color;
-			if (sat->isOwnedByMe)
-			{
-				color= float3(0.5,0.6,1.0);
-			}
-			else
-			{
-				color= float3(1.0,0.6,0.5);
-			}
+			TVec3<> color = e->owner ? e->owner->activeEntityColor : float3();
 			SetBeamColor(float4(color,0.25),
 						float4(color,0.25));
 			const float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
 			{
 				//display.SetBlendMode(Engine::BlendMode::Add);
-				RenderBeam(sat->GetWorldPosition(),-(Grid::ToRadius(sat->location.height) 
+				RenderBeam(e->GetWorldPosition(),-(Grid::ToRadius(e->location.height) 
 								- bottom) /
 								Grid::SingleLayerHeight,
 								0.1f
 								);
 			}
 			bool first = true;
-			for (const auto&t : sat->myTasks)
+			for (const auto&t : e->myTasks)
 			{
 				if (t.ContainsMovement())
 				{
@@ -1847,7 +1917,22 @@ namespace Objects
 				}
 			}
 		}
+	}
 
+	void	Renderer::RenderTranslucentBeams()
+	{
+	/*	if (!objectView)
+			return;
+	*/	
+
+		display.SetRasterizer(true,false);	//some shafts are flipped, but culling makes no sense anyways
+		display.SetDepthTest(true,false);
+		display.SetBlendMode(Engine::BlendMode::Add);
+		
+		#ifndef NO_SATELLITES
+			foreach (satellites,_s)
+				RenderFlyingUnitBeams(*_s);
+		#endif
 		bool nexusSet[12] = {false};
 
 		foreach(skyLinks, _s)
@@ -1859,7 +1944,7 @@ namespace Objects
 			if (ws->location.stackID < 12)
 				nexusSet[ws->location.stackID] = true;
 
-
+			#ifndef NO_SATELLITES
 			{
 				bool render = false;
 				int h1;
@@ -1905,28 +1990,11 @@ namespace Objects
 					display.LazyRenderVertices(skyPortBeam);
 				}
 			}
-
+			#endif
 		}
 
 		switch (RuntimeConfig::gameGoal)
 		{
-			case RuntimeConfig::GameGoal::EMPConquerNexus:
-				for (int i = 0; i < 12; i++)
-				{
-					if (nexusSet[i])
-						continue;
-					TVec3<> color;
-					if (BaseGrid::IsIsolatedCorner(i))
-					{
-						color= float3(1.0,0.6,0.5);
-					}
-					else
-						color= float3(0.5,0.6,1.0);
-					SetBeamColor(float4(color,0.75),
-								float4(color,0.75));
-					RenderPoleBeam(i,0.2f);
-				}
-			break;
 			case RuntimeConfig::GameGoal::ConquerNexus:
 				for (int i = 0; i < 12; i++)
 				{
@@ -1938,7 +2006,10 @@ namespace Objects
 						color= float3(1.0,0.6,0.5);
 					}
 					else
-						continue;
+						if (RuntimeConfig::empZones)
+							color= float3(0.5,0.6,1.0);
+						else
+							continue;
 					SetBeamColor(float4(color,0.75),
 								float4(color,0.75));
 					RenderPoleBeam(i,0.2f);
@@ -1994,14 +2065,15 @@ namespace Objects
 		
 	static void _RenderShadowS(TMatrix4<> system, float h, float scale, const Component::Base&comp, float x, float y)
 	{
-		system.w.xyz += system.z.xyz * h;
 		TMatrix4<> sub;
-		system.x.xyz *= scale;
-		system.y.xyz *= scale;
-		system.z.xyz *= scale;
 
 		if (comp.parts.Count() > 0)
 		{
+			system.w.xyz += system.z.xyz * h;
+			system.x.xyz *= scale;
+			system.y.xyz *= scale;
+			system.z.xyz *= scale;
+
 			comp.GetSubSystem(0,x,sub);
 			Mat::transformSystem(system,sub);
 			system = sub;
@@ -2028,6 +2100,7 @@ namespace Objects
 		_RenderShadow(v.system,0,*v.base,0,0);
 		_RenderShadow(v.system,v.base->height,*v.turret,v.turretAngleX,v.turretAngleY);
 	}
+	#ifndef NO_SATELLITES
 	static void _RenderShadow(const Satellite&s)
 	{
 		display.SetObjectMatrix(s.system);
@@ -2038,7 +2111,7 @@ namespace Objects
 		_RenderShadow(*s.baseRenderingInstruction);	
 		_RenderShadow(s.system,0.f,*s.turret,s.turretAngleX,s.turretAngleY);
 	}
-
+	#endif
 
 	void					Renderer::EndShadowRendering()
 	{
@@ -2101,8 +2174,10 @@ namespace Objects
 				{
 					_RenderShadow(**v);
 				}
-				foreach (satellites, s)
-					_RenderShadow(**s);
+				#ifndef NO_SATELLITES
+					foreach (satellites, s)
+						_RenderShadow(**s);
+				#endif
 				display.SetObjectMatrix(Matrix<>::eye4);
 
 				foreach(structures, _s)

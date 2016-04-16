@@ -334,7 +334,7 @@ void	SignalNexusControlChange(const Objects::PFaction&f)
 {
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::EndOfGame)
 		return;
-	if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus || RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::EMPConquerNexus)
+	if (RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
 	{
 		if (f->nexusControl >= Game::Config::GetTargetNexusCount())
 		{
@@ -424,38 +424,39 @@ void	SignalNexusControlChange(const Objects::PFaction&f)
 	*/
 
 
-void	SignalAttack(const Objects::PWorldEntity&e, const Grid::LCellIdI&traceTo, float flightTime, bool isAutoAttack)
+void	SignalAttack(const TAttack&attack)
 {
-	if (!e)
+	if (!attack.attackFrom)
 	{
 		LogEvent(EventClass::Preset::commandRejected,nullptr, "NULL attempting attack");
 		return;
 	}
-	LogEvent(EventSignificance::Common,e.get(),"Attacking "+traceTo.ToString()+" in "+String(flightTime)+" seconds");
+	LogEvent(EventSignificance::Common,attack.attackFrom.get(),"Attacking "+attack.traceTo.ToString()+" in "+String(attack.flightTime)+" seconds");
 	Protocol::PreciseAttackTrajectory preciseAttack;
-	preciseAttack.attacker = e->id;
-	preciseAttack.traceTo = traceTo;
-	preciseAttack.isAutoAttack = isAutoAttack;
+	preciseAttack.attacker = attack.attackFrom->id;
+	preciseAttack.traceTo = attack.traceTo;
+	preciseAttack.isAutoAttack = attack.isAutoAttack;
+	preciseAttack.attackAngle = attack.attackAngle;
 	preciseAttack.timestamp.rightNow = false;
-	preciseAttack.timestamp.atTime = e->motionTime;
+	preciseAttack.timestamp.atTime = attack.attackFrom->motionTime;
 	
-	LogEvent(EventSignificance::Debug,e.get(),"Commencing attack at t="+String(preciseAttack.timestamp.atTime));
+	LogEvent(EventSignificance::Debug,attack.attackFrom.get(),"Commencing attack at t="+String(preciseAttack.timestamp.atTime));
 
 
-	preciseAttack.flightTime = flightTime;
+	preciseAttack.flightTime = attack.flightTime;
 
 	for (auto cl : Network::activePlayersAndSpectators)
 	{
 		TCP::PPeer peer = (cl)->peer.lock();
 		if (!peer)
 			continue;
-		if (Network::CanSee(cl,e,preciseAttack.timestamp.atTime))
+		if (Network::CanSee(cl,attack.attackFrom,preciseAttack.timestamp.atTime))
 			Channels::preciseAttackTrajectory.SendTo(peer,preciseAttack);
 	}
 }
 
 
-void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, const TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday, float atTime)
+void	SignalExplosion(const TAttack&attack, const TVec3<>&center,float explosionRadius,bool isEMP, bool isDoomsday, float atTime)
 {
 	Protocol::Explosion explosion;
 	explosion.center = center;
@@ -486,7 +487,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 
 		Objects::ForeachFaction([explosionSphere](const Objects::PFaction&f)
 		{
-			if (f->GridCanSee(volume) || f->CountSatelliteCoverage(explosionSphere))
+			if (f->GridCanSee(volume) || f->CountOffGridCoverage(explosionSphere))
 			{
 				canSee.Append(f);
 			};
@@ -510,24 +511,25 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 
 	Protocol::VagueAttackTrajectory	roughAttack;
 	bool hasTrajectory = false;
-	if (attackFrom)
+	if (attack.attackFrom)
 	{
 		hasTrajectory = true;
-		LogEvent(EventSignificance::Common,attackFrom.get(),"Tracing rough trajectory to "+Vec::toString(center)+" in "+String(flightTime)+" seconds");
+		LogEvent(EventSignificance::Common,attack.attackFrom.get(),"Tracing rough trajectory to "+Vec::toString(center)+" in "+String(attack.flightTime)+" seconds");
 		float zOffset;
-		Objects::PTurretBase base = attackFrom->GetTurretBase(zOffset);
+		Objects::PTurretBase base = attack.attackFrom->GetTurretBase(zOffset);
 		ASSERT__(base);
 		roughAttack.turretType = base->turret->constName;
-		roughAttack.traceTo = traceTo;
+		roughAttack.traceTo = attack.traceTo;
 
 		roughAttack.timestamp.rightNow = false;
-		roughAttack.timestamp.atTime = atTime - flightTime;
-		roughAttack.flightTime = flightTime;
+		roughAttack.timestamp.atTime = atTime - attack.flightTime;
+		roughAttack.flightTime = attack.flightTime;
+		roughAttack.attackAngle = attack.attackAngle;
 		roughAttack.turretRange = base->GetFlatAttackRange();
 
-		const float3 traceToWorld = Grid::ToWorld(traceTo);
+		const TVec3<>& traceToWorld = attack.traceTo;
 
-		roughAttack.sourcePosition = attackFrom->GetWorldPosition() + Grid::low.cells[attackFrom->location.stackID].centerVertex.xyz * zOffset;
+		roughAttack.sourcePosition = attack.attackFrom->GetWorldPosition() + Grid::low.cells[attack.attackFrom->location.stackID].centerVertex.xyz * zOffset;
 		//attack.timestamp.atTime = v->timeAt;
 		
 
@@ -536,7 +538,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 		float radius = range * 0.2f;
 		float3 mod = float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)) * radius;
 		count_t numIt = 0;
-		while (!attackFrom->CanHit(mod + roughAttack.sourcePosition.value)
+		while (!attack.attackFrom->CanHit(mod + roughAttack.sourcePosition.value,roughAttack.attackAngle.value)
 				//Vec::quadraticDistance(mod + roughAttack.sourcePosition.value, traceToWorld) > sqr(range) 
 			&& ++numIt < 1000)
 			mod = float3(random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1)) * radius;
@@ -549,7 +551,7 @@ void	SignalExplosion(const Objects::PWorldEntity&attackFrom, const Grid::LCellId
 		TCP::PPeer peer = client->peer.lock();
 		if (peer)
 		{
-			if (!client->CanSee(attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
+			if (!client->CanSee(attack.attackFrom,roughAttack.timestamp.atTime) && hasTrajectory)
 				Channels::vagueAttackTrajectory.SendTo(peer,roughAttack);
 			Channels::explosion.SendTo(peer,explosion);
 		}
@@ -736,7 +738,7 @@ void EstimatePresence(Objects::WorldEntity&e, const Grid::LCellIdI&location, flo
 					}
 					else
 					{
-						if (e.IsVehicle())
+						if (e.IsMobile())
 							friendlyNearNexus[i] += opacity * impact;
 					}
 				}
@@ -856,7 +858,7 @@ void ProcessAICoverage()
 					Objects::Compound&n = p->GetCompound();
 					count_t producing = 0,
 							existing = 0;
-					for (Objects::WWorkingStructure _ws : n.containedStructures)
+					for (Objects::WWorkingStructure _ws : n.workingStructures)
 					{
 						Objects::PWorkingStructure	ws = _ws.lock();
 						if (!ws)
@@ -875,7 +877,8 @@ void ProcessAICoverage()
 							existing++;
 							if (plant->AwaitsUserInteraction())
 							{
-								Objects::PMobileEntity v = plant->SpawnFinishedProductionAnywhere();
+								float t = 0;
+								Objects::PMobileEntity v = plant->SpawnFinishedProductionAnywhere(t);
 								if (!v)
 								{
 									producing++;	//dont count
@@ -897,7 +900,7 @@ void ProcessAICoverage()
 					{
 						while (producing < existing && (friendlyNearNexus[i] < threatLevel || (constructorNearNexus[i] > 0.2f && friendlyNearNexus[i] < Game::factionStartMineralValue + 20.f)))
 						{
-							for (Objects::WWorkingStructure _ws : n.containedStructures)
+							for (Objects::WWorkingStructure _ws : n.workingStructures)
 							{
 								Objects::PWorkingStructure ws = _ws.lock();
 								if (!ws)
@@ -957,7 +960,8 @@ void ProcessAICoverage()
 					if (location != Grid::LCellIdI::Invalid)
 					{
 						Objects::Component::Turret* turret = Game::Config::Nexus::vehicleTurrets[random.getIndex(Game::Config::Nexus::vehicleTurrets.Count() - 1)];
-						Objects::PVehicle v = Objects::SpawnVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, 0);
+						float t = 0;
+						Objects::PVehicle v = Objects::SpawnVehicle(Objects::Faction::nexus, location, &Objects::Component::hoverbase, turret, true, t);
 						Journal::currentRound.LogEntityCreation(v);
 						EstimatePresence(*v,v->location, hostileNearNexus,constructorNearNexus, friendlyNearNexus);
 					//	Objects::VerifyVisibilityNetwork();
@@ -1414,6 +1418,7 @@ int main( int argc, const char* argv[])
 		if (!inTestMode)
 			Reflection::Load(false);
 
+		Objects::Faction::RecreateNexus();
 
 
 		if (inTestMode)
@@ -1430,7 +1435,7 @@ int main( int argc, const char* argv[])
 				Test::Run(Test::Bin2Str());
 				Test::Run(Test::Serialization());
 				Test::Run(Test::VehiclePlant());
-				Test::Run(Test::SkyPort());
+				IF_SATELLITES(Test::Run(Test::SkyPort()));
 				Test::Run(Test::StorageUnits());
 			}
 			std::cout << "Tests completed. Press enter to quit" << std::endl;
@@ -1446,7 +1451,6 @@ int main( int argc, const char* argv[])
 
 
 		//Reflection::CreatePrototypeDeclaration();
-
 		if (!ParameterConfig::customWorldID)
 		{
 			World::BuildConfiguredWorld(random);
@@ -1561,15 +1565,12 @@ int main( int argc, const char* argv[])
 			LogConfig(" -Liquids: Static.");
 		switch (RuntimeConfig::gameGoal)
 		{
-			case RuntimeConfig::GameGoal::EMPConquerNexus:
-				LogConfig(" -Goal: Connect and enable 2+ Nexus Ports. Watch out for EMP fields.");
-			break;
 			case RuntimeConfig::GameGoal::None:
 				LogConfig(" -Goal: None.");
 			break;
 			case RuntimeConfig::GameGoal::ConquerNexus:
 				static_assert(BaseGrid::IsolatedCornerCount==3,"Unexpected count");
-				LogConfig(" -Goal: Connect and enable 2 of 3 Nexus Ports.");
+				LogConfig(" -Goal: Connect and enable 2+ Nexus Ports.");
 			break;
 		}
 		if (Game::Config::closedGame)
@@ -1617,6 +1618,10 @@ int main( int argc, const char* argv[])
 			LogConfig(" -Expose Vehicle Initiative: Vehicle initiative is exposed to hostile factions.");
 		else
 			LogConfig(" -Private Vehicle Action: Vehicle movement is not exposed to hostile factions.");
+		if (RuntimeConfig::empZones)
+			LogConfig(" -EMP Zones: Vehicles enterting residual EMP fields will suffer extensive EMP damage.");
+		else
+			LogConfig(" -No EMP Zones: The entire planet is freely accessible.");
 
 		if (FileIO::Config::saveEveryNRounds > 0)
 			LogConfig(" -Auto-saves will be created every "+String(FileIO::Config::saveEveryNRounds)+" round(s).");

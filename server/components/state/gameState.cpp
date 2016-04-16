@@ -6,6 +6,15 @@
 #include "../journalSaveGame.h"
 
 
+
+void			SignalFactionsChanged()
+{
+	Game::mostFactionsAlive = std::max(Game::mostFactionsAlive, (UINT32)Objects::Faction::all.Count());
+	Reflection::SignalFactionsChanged();
+}
+
+
+
 namespace Game
 {
 	UINT32				mostFactionsAlive=0;
@@ -16,12 +25,6 @@ namespace Game
 	float				factionStartMineralValue=1.f;	//determined during loading
 	float				effectiveAnimationLength = 1.f;
 
-
-
-	void			SignalFactionsChanged()
-	{
-		mostFactionsAlive = std::max(mostFactionsAlive,(UINT32)Objects::Faction::all.Count());
-	}
 
 
 	namespace Config
@@ -37,8 +40,9 @@ namespace Game
 
 		namespace Nexus
 		{
-			bool		haveBases = false,
-						haveSatellitesAtopBases = true;
+			bool		haveBases = false
+						IF_SATELLITES_P( ,haveSatellitesAtopBases = true )
+						;
 
 			bool		enableAI = false;
 			float		threatEstimationFactor = 1.f;
@@ -117,6 +121,8 @@ namespace Game
 			info.gameFlags = 0;
 			if (Config::closedGame)
 				info.gameFlags |= Protocol::GameFlag::ClosedGame;
+			if (RuntimeConfig::empZones)
+				info.gameFlags |= Protocol::GameFlag::EMPZones;
 			if (Config::basesRequired)
 				info.gameFlags |= Protocol::GameFlag::BasesRequired;
 			if (Config::startBases)
@@ -197,6 +203,7 @@ namespace Game
 			task.mode = (BYTE)t.mode;
 			task.name = t.name;
 			task.type = t.type;
+			task.taskFlags = 0;
 			if (t.job)
 			{
 				Objects::VehicleJob::PSequence seq = To<Objects::VehicleJob::Sequence>::DynamicCast(t.job);
@@ -210,7 +217,10 @@ namespace Game
 				
 					seq->Guess(v, origin, taskIndex, task.roundsToJobCompletion.value,task.resourceCostLeft.value);
 				}
-				task.visualizePathToFocus = t.job->movesToFocusWhenDone;
+				if (t.job->movesToFocusWhenDone)
+					task.taskFlags |= Protocol::TaskFlags::VisualizePathToFocus;
+				if (t.job->DelayedBySleep())
+					task.taskFlags |= Protocol::TaskFlags::DelayedBySleep;
 			
 
 				std::shared_ptr<Objects::VehicleJob::PathJob> pathJob = To<Objects::VehicleJob::PathJob>::DynamicCast(t.job);
@@ -240,7 +250,6 @@ namespace Game
 			}
 			else
 			{
-				task.visualizePathToFocus = false;
 				task.roundsToJobCompletion = -1;
 			}
 		}
@@ -255,25 +264,25 @@ namespace Game
 			if (owned)
 			{
 				if (e.unstable)
-					state.entityStateFlags |= Protocol::EntityStateFlag::IsUnstable;
+					state.entityStateFlags |= Protocol::EntityStateFlags::IsUnstable;
 				if (e.IsSleeping())
-					state.entityStateFlags |= Protocol::EntityStateFlag::IsSleeping;
+					state.entityStateFlags |= Protocol::EntityStateFlags::IsSleeping;
 			}
 			state.timestamp = timestamp;
 		}
 
 		void	Describe(Protocol::MobileState&state, const Objects::MobileEntity&v, bool owned, const Protocol::Timestamp&timestamp, UINT32 changeFlags)
 		{
-			if (v.IsSatellite())
+			if (v.IsAboveGrid())
 			{
-				DBG_ASSERT_GREATER_OR_EQUAL1__(v.location.height, Grid::CellStack::HalfRange,v.GetName());
+				DBG_ASSERT_GREATER1__(v.location.height, Grid::CellStack::TopHeight,v.GetName());
 			}
 	
 			state.flags = 0;
 			if (owned)
 			{
 				auto&info = state.myMobileEntity.Set0();
-				Objects::PHangarStructure h = v.storedIn.lock();
+				Objects::PHangar h = v.storedIn.lock();
 				//Objects::PVehicleStore storedIn = To<Objects::VehicleStore>::DynamicCast(v.storedIn.lock());
 				if (h)
 					info.storedIn.Set0() = h->ToEntity().id;
@@ -330,7 +339,7 @@ namespace Game
 			if (owned)
 			{
 				if ((v.myTasks.IsEmpty() && v.completeOnMove) || v.AwaitsUserInteraction())
-					state.entityState.entityStateFlags |= Protocol::EntityStateFlag::IsUnstable;
+					state.entityState.entityStateFlags |= Protocol::EntityStateFlags::IsUnstable;
 			}
 
 		}
@@ -697,7 +706,7 @@ namespace Game
 
 			Objects::ForeachCompound([](Objects::Compound&c)
 			{
-				if (c.containedStructures.IsEmpty())
+				if (c.workingStructures.IsEmpty())
 					return;	//pure technite factions don't have units. Also, depending on server settings, some factions might not either
 				bool hasFuelMine = false,
 					hasMineralMine = false,
@@ -710,11 +719,16 @@ namespace Game
 					hasMineralContainer = true;	//don't need
 				#endif
 				Objects::ResourceVector dummy,storage;
-				foreach (c.containedStructures,_s)
+				Objects::OwnerParameter o;
+				foreach (c.workingStructures,_s)
 				{
 					Objects::PWorkingStructure s = _s->lock();
 					if (!s)
+					{
+						LogEvent(EventClass::Preset::internalError, "Unable to lock working structure in compound for living-check");
 						continue;
+					}
+					o = s->owner;
 					Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 					if (mine && mine->IsLinkedToCore())
 					{
@@ -734,12 +748,15 @@ namespace Game
 					if (To<Objects::VehiclePlant>::DynamicCast(s))
 						hasVehiclePlant = true;
 				}
-				Objects::PFaction f = c.containedStructures.first().lock()->owner;
-				f->hasFuelMine = hasFuelMine;
-				f->hasMineralMine = hasMineralMine;
-				f->hasMineralContainer = hasMineralContainer;
-				f->hasGenerator = hasGenerator;
-				f->hasVehiclePlant = hasVehiclePlant;
+				Objects::PFaction f = o;//c.workingStructures.first().lock()->owner;
+				if (f)
+				{
+					f->hasFuelMine |= hasFuelMine;
+					f->hasMineralMine |= hasMineralMine;
+					f->hasMineralContainer |= hasMineralContainer;
+					f->hasGenerator |= hasGenerator;
+					f->hasVehiclePlant |= hasVehiclePlant;
+				}
 			});
 
 			Objects::ForeachMobileEntityIncludingStored([](const Objects::PMobileEntity&v)
@@ -779,12 +796,14 @@ namespace Game
 						if (!faction->deathInRounds)
 						{
 							faction->deathInRounds = 5;
+							LogEvent(EventSignificance::Common, "Faction death imminent. " + String(faction->deathInRounds) + " (initial) round(s) remaining");
 						}
 						else
 						{
 							if (faction->deathInRounds > 1)
 							{
 								faction->deathInRounds--;
+								LogEvent(EventSignificance::Common, "Faction death imminent. " + String(faction->deathInRounds) + " round(s) remaining");
 							}
 							else
 							{
@@ -793,6 +812,11 @@ namespace Game
 											
 								LogEvent(EventClass::Preset::factionDeath,name+" died: "+whyNot);
 
+								/*
+								telling the client that the faction status has been revoked forces it to flush all entities which will cause issues with subsequently sent animation events.
+								the two possible solutions are to either not send any animation events to this client, or to not tell it that its faction status has been revoked.
+								the former will cause a very uncomfortable client transition back to faction choice screen and no visual representation of what happened.
+								therefore it's probably better to just kill off the faction. but will have to check
 								if (client)
 								{
 									Protocol::ClientFactionResponse cr;
@@ -801,9 +825,9 @@ namespace Game
 									cr.planetConfig = Grid::currentPlanetConfig;
 									Channels::clientFactionResponse.SendTo(client->peer.lock(),cr);
 								}
+								*/
 
 								Objects::Faction::Kill(faction);
-								SignalFactionsChanged();
 								if (client)
 									::Network::activePlayersAndSpectators.FindAndErase(client);
 								::Network::tokenMap.Unset(faction->accessToken);
@@ -888,10 +912,10 @@ namespace Game
 		std::shared_ptr<Objects::NexusPort> port = To<Objects::NexusPort>::Cast(
 		Objects::NexusPort::globalPrototype->CreateNewInstance(Objects::Faction::nexus,location,0));
 		port->CorrectTerrain(false,0);
-		Objects::InsertConstructed(port,0);
+		float t = 0;
+		Objects::InsertConstructed(port,t);
 //		if (enableNexus)
 		{
-			float t = 0;
 			port->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
 			Objects::RefreshCompoundCoverageIfNeeded(t);
 			//ASSERT__(port->IsEnabled());
@@ -1020,6 +1044,7 @@ namespace Game
 				int factoryCount = 0;
 				int generatorCount = 0,
 					connectorCount = 0;
+				float t = 0;
 				for (index_t i : distances)
 				{
 					//ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
@@ -1036,7 +1061,7 @@ namespace Game
 									Grid::LCellIdI(i,h),
 									0));
 								tower->CorrectTerrain(false,0);
-								Objects::InsertConstructed(tower,0);
+								Objects::InsertConstructed(tower,t);
 							#endif
 						}
 						if (field.distance[i] == 4)
@@ -1046,7 +1071,7 @@ namespace Game
 								Grid::LCellIdI(i,h),
 								0));
 							tower->CorrectTerrain(false,0);
-							Objects::InsertConstructed(tower,0);
+							Objects::InsertConstructed(tower,t);
 						}
 
 						if (field.distance[i] == (2))
@@ -1059,7 +1084,7 @@ namespace Game
 									0));
 								storage->CorrectTerrain(false,0);
 								storage->storage = storage->maxStorage;
-								Objects::InsertConstructed(storage,0);
+								Objects::InsertConstructed(storage,t);
 								alwaysOn << storage;
 							}
 							else
@@ -1069,7 +1094,7 @@ namespace Game
 									Grid::LCellIdI(i,h),
 									0));
 								generator->CorrectTerrain(false,0);
-								Objects::InsertConstructed(generator,0);
+								Objects::InsertConstructed(generator,t);
 								generatorCount++;
 								if (generatorCount < 4)
 									alwaysOn << generator;	//only need three generators switched on
@@ -1084,7 +1109,7 @@ namespace Game
 									Grid::LCellIdI(i,h),
 									0));
 								connector->CorrectTerrain(false,0);
-								Objects::InsertConstructed(connector,0);
+								Objects::InsertConstructed(connector,t);
 								connectorCount++;
 							}
 						}
@@ -1097,7 +1122,7 @@ namespace Game
 									Grid::LCellIdI(i,h),
 									0));
 								factory->CorrectTerrain(false,0);
-								Objects::InsertConstructed(factory,0);
+								Objects::InsertConstructed(factory,t);
 								alwaysOn << factory;
 							}
 							else
@@ -1107,7 +1132,7 @@ namespace Game
 									Grid::LCellIdI(i,h),
 									0));
 								plant->CorrectTerrain(false,0);
-								Objects::InsertConstructed(plant,0);
+								Objects::InsertConstructed(plant,t);
 								factoryCount++;
 							}
 						}
@@ -1153,7 +1178,6 @@ namespace Game
 				//	Grid::TagLowCluster(rebuild,Grid::LCellIdI(i,h2-1));
 				}
 
-				float t = 0;
 				for (auto ws : alwaysOn)
 				{
 					ws->SetEnabled(true,t,false,Objects::WorkingStructure::ForceEnable);
@@ -1168,26 +1192,27 @@ namespace Game
 				}
 
 
-				if (Config::Nexus::haveSatellitesAtopBases)
-				{
-					Objects::PSkyHub hub = To<Objects::SkyHub>::Cast( Objects::SkyHub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Satellite::BaseResidenceHeight),0) );
-					Objects::InsertConstructed(hub,0);
-					ASSERT__(hub->connectedTo.lock() == port);
-
-					for (index_t i : distances)
+				#ifndef NO_SATELLITES
+					if (Config::Nexus::haveSatellitesAtopBases)
 					{
-						ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
-						UINT32 d1 = (R - field.distance[i]);
+						Objects::PSkyHub hub = To<Objects::SkyHub>::Cast( Objects::SkyHub::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(location.stackID,Objects::Satellite::BaseResidenceHeight),0) );
+						Objects::InsertConstructed(hub,t);
+						ASSERT__(hub->connectedTo.lock() == port);
 
-						bool noEdge = Grid::low.grid.GetCell(i).family != 0;
-						if (!noEdge && field.distance[i] == 2)
+						for (index_t i : distances)
 						{
-							Objects::PSkyGuardian guard = To<Objects::SkyGuardian>::Cast( Objects::SkyGuardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Satellite::BaseResidenceHeight),0));
-							Objects::InsertConstructed(guard,0);
+							ASSERT_LESS_OR_EQUAL__(field.distance[i],R);
+							UINT32 d1 = (R - field.distance[i]);
+
+							bool noEdge = Grid::low.grid.GetCell(i).family != 0;
+							if (!noEdge && field.distance[i] == 2)
+							{
+								Objects::PSkyGuardian guard = To<Objects::SkyGuardian>::Cast( Objects::SkyGuardian::globalPrototype->CreateNewInstance(port->owner,Grid::LCellIdI(i,Objects::Satellite::BaseResidenceHeight),0));
+								Objects::InsertConstructed(guard,t);
+							}
 						}
 					}
-				}
-
+				#endif
 			}
 
 
@@ -1242,29 +1267,30 @@ namespace Game
 			Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],h);
 			Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],h);
 
+			float t = 0;
 			Objects::PMine mine = To<Objects::Mine>::Cast(
 				Objects::Mine::globalPrototype->CreateNewInstance(f,location,0));
 			mine->CorrectTerrain(false,0);
-			Objects::InsertConstructed(mine,0);
+			Objects::InsertConstructed(mine,t);
 			mine->SetEnabledOverride(true);
 				
 			Objects::PGenerator generator = To<Objects::Generator>::Cast(
 				Objects::Generator::globalPrototype->CreateNewInstance(f,at1,0));
 			generator->CorrectTerrain(false,0);
-			Objects::InsertConstructed(generator,0);
+			Objects::InsertConstructed(generator,t);
 			generator->SetEnabledOverride(true);
 				
 			std::shared_ptr<Objects::MineralContainer> container = To<Objects::MineralContainer>::Cast(
 				Objects::MineralContainer::globalPrototype->CreateNewInstance(f,at2,0));
 			container->storage = container->maxStorage;
 			container->CorrectTerrain(false,0);
-			Objects::InsertConstructed(container,0);
-			Objects::RefreshCompoundCoverage(0);
+			Objects::InsertConstructed(container,t);
+			Objects::RefreshCompoundCoverage(t);
 
 
-			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,0);
+			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
 
 		}
 		else
@@ -1275,12 +1301,13 @@ namespace Game
 			Grid::LCellIdI at3 = Grid::LCellIdI(n.neighborID[3],0);
 			Grid::LCellIdI at4 = Grid::LCellIdI(n.neighborID[4],0);
 
-			Objects::SpawnVehicle(f,Grid::LCellIdI((UINT32)startLocation,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-			Objects::SpawnVehicle(f,at1,Objects::Component::hoverbase, Objects::Component::radar,true,0);
-			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,0);
-			Objects::SpawnVehicle(f,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,0);
-			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,0);
+			float t = 0;
+			Objects::SpawnVehicle(f,Grid::LCellIdI((UINT32)startLocation,0),Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::SpawnVehicle(f,at1,Objects::Component::hoverbase, Objects::Component::radar,true,t);
+			Objects::SpawnVehicle(f,at3,Objects::Component::hoverbase, Objects::Component::resourceScanner,true,t);
+			Objects::SpawnVehicle(f,at2,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::SpawnVehicle(f,at4,Objects::Component::hoverbase, Objects::Component::terraformer,true,t);
+			Objects::SpawnVehicle(f,at0,Objects::Component::hoverbase, Objects::Component::artillery,true,t);
 		}
 	}
 

@@ -80,16 +80,18 @@ namespace Test
 
 	};
 
-	class SkyPort : public Test
-	{
-	public:
-		/**/			SkyPort() :Test("SkyPort")
-		{}
+	#ifndef NO_SATELLITES
+		class SkyPort : public Test
+		{
+		public:
+			/**/			SkyPort() :Test("SkyPort")
+			{}
 
-		virtual void	Run(Random&random)	override;
-		static void		EnqueueRandom(Objects::PSkyPort&plant, Random&random);
+			virtual void	Run(Random&random)	override;
+			static void		EnqueueRandom(Objects::PSkyPort&plant, Random&random);
 
-	};
+		};
+	#endif
 
 	class Journal : public Test
 	{

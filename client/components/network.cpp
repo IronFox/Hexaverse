@@ -328,6 +328,7 @@ namespace Network
 	{
 		#ifdef HAS_WINDOW
 			TimeLapse::enabled = false;
+			Camera::locked = false;
 		#endif
 
 		haveFaction = false;
@@ -461,7 +462,11 @@ namespace Network
 			ASSERT__(!eventsLocked);
 			ASSERT__(Network::haveID || Network::amSpectator);
 
-			Objects::PMobileEntity v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,vc.state.entityState.timestamp.rightNow,Network::haveID && Network::myID == vc.owner);
+
+			Objects::PMobileEntity v;
+			auto m = vc.state.myMobileEntity.Get0();
+			bool place = vc.state.entityState.timestamp.rightNow && (!m || m->storedIn.Get0() == 0);
+			v = Objects::SpawnMobileEntity(Network::ResolveFaction(vc.owner),  vc.state.entityState.id,vc.state.entityState.location,vc.baseName,vc.turretName,place,Network::haveID && Network::myID == vc.owner);
 			if (vc.state.entityState.timestamp.rightNow)
 				LogEvent(EventSignificance::Common,v.get(),  "Placed vehicle entity outside animation");
 			bool isOwnedByMe = v->isOwnedByMe;
@@ -561,8 +566,9 @@ namespace Network
 				{
 					Animation::ExplodeEntity(e,[e,type]()
 					{
+						float t = 0;
 						if (Objects::GetEntity(e->id))
-							Objects::Remove(e,type, 0,Network::ControlEnabled());
+							Objects::Remove(e,type, t,Network::ControlEnabled());
 						#ifdef HAS_WINDOW
 							Dialog::SignalSituationChange();
 						#endif
@@ -570,7 +576,8 @@ namespace Network
 				}
 				else
 				{
-					Objects::Remove(e,type, 0,Network::ControlEnabled());
+					float t = 0;
+					Objects::Remove(e,type, t,Network::ControlEnabled());
 					#ifdef HAS_WINDOW
 						Dialog::SignalSituationChange();
 					#endif
@@ -611,6 +618,7 @@ namespace Network
 			myIDString = myID.ToString();
 
 			Network::gameFlags = cr.info.gameFlags;
+			RuntimeConfig::empZones = (Network::gameFlags & Protocol::GameFlag::EMPZones) != 0;
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);
 
@@ -624,6 +632,11 @@ namespace Network
 			if (haveFaction)
 			{
 				amSpectator = cr.startFactionTypes == Protocol::FactionType::SpectatorFaction;
+				#ifdef HAS_WINDOW
+					Objects::resourceView = !amSpectator;
+					UI::RefreshButtonState();
+				#endif
+
 				activeToken = cr.factionToken;
 				activeTokenString = activeToken.ToString();
 				if (!RuntimeConfig::aiMode && !amSpectator)
@@ -1058,7 +1071,9 @@ namespace Network
 			case TCP::Event::ConnectionLost:
 			case TCP::Event::ConnectionClosed:
 			{
-				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, "Connection lost");
+				String err = client.GetError(true);
+
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ), nullptr, err.IsNotEmpty() ? err : (ev == TCP::Event::ConnectionLost ? "Connection lost" : "Connection closed"));
 				amOnline = false;
 
 				FlushFaction(true);
@@ -1099,10 +1114,7 @@ namespace Network
 				gameHasBegun = true;
 				LogEvent(EventClass::Preset::uncommon,nullptr,"Game has begun");
 				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Animation::AllDone())
-				{
-					Objects::RefreshSkyHubConnections();
-					Animation::UpdateAutomation(CLOCATION);
-				}
+					OnPlayerControlBegin();
 			break;
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();
@@ -1389,7 +1401,6 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 				animationTimeFactor = c.timeFactor;
 		break;
 		case RuntimeConfig::Phase::CommandPhase:
-			newRoundRequested = false;
 			roundTimer = c.timeFactor;
 			RuntimeConfig::roundNumber = c.roundNumber;
 			RuntimeConfig::phase.Load(c.newPhase);
@@ -1423,6 +1434,8 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		Tutorial::lastDelayingEvent = timer.Now();
 	#endif
 	RuntimeConfig::phase.Load(c.newPhase);
+	if (RuntimeConfig::IsInAnyCommandPhase())
+		newRoundRequested = false;
 	RuntimeConfig::roundNumber = c.roundNumber;
 	phaseStarted = timer.Now();
 	#ifdef HAS_WINDOW
@@ -1435,8 +1448,6 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	LogEvent(EventSignificance::Common,nullptr,"Server phase changed to "+String(RuntimeConfig::phase.ToString())+" ("+String(c.timeFactor.value)+") @"+String(Animation::atTime));
 	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
 	{
-		Objects::CheckMobileEntitySanity();
-
 		static Buffer0<Objects::Marker> outdated;
 		Objects::Marker::GetOutdated(outdated,RuntimeConfig::roundNumber,RuntimeConfig::aiMode ? 100 : 10);
 		foreach(outdated, o)
@@ -1477,8 +1488,9 @@ void	Network::Receiver::LockEmpZones(NET(UINT16)&zones)
 			Grid::low.family[i].SetOutdated(0);
 		}
 	#endif
-	Grid::visibleOrbitGrid.Invalidate();
-	//SpaceGrid::Invalidate();
+	#ifndef NO_SATELLITES
+		Grid::visibleOrbitGrid.Invalidate();
+	#endif
 }
 
 

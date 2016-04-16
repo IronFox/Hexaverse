@@ -577,8 +577,9 @@ namespace FileIO
 		}
 		else
 		{
-			Objects::PSatellite proto = Objects::GetSatellitePrototypeByName(helper.baseName);
+			Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(helper.baseName);
 			ASSERT1__(proto,helper.baseName);
+			ASSERT1__(proto->IsMobile(),proto->GetTypeName());
 			item.producing = To<Objects::MobileEntity>::Cast(proto->CreateNewInstance(owner,Grid::LCellIdI(0,0),0));
 		}
 		item.id = helper.id;
@@ -657,7 +658,7 @@ namespace FileIO
 
 	static void Export(Riff::Chunk*parent, Objects::MobileEntity&v, GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
 	{
-		Objects::PHangarStructure store = v.storedIn.lock();
+		Objects::PHangar store = v.storedIn.lock();
 		if (store)
 		{
 			v.location = store->ToEntity().location;
@@ -909,14 +910,20 @@ namespace FileIO
 			Import(parent,resources);
 			w->SetResourceStorage(resources);
 			Riff::Chunk*enabled = parent->FindFirst(RID::structureEnabled);
-			ASSERT_NOT_NULL__(enabled);
-			bool isEnabled = *(const bool*)enabled->pointer();
+			if (enabled)
 			{
-				float t =0;
-				if (isEnabled)
-					w->SetEnabled(isEnabled,t,false,Objects::WorkingStructure::ForceEnable,false);
-				else
-					w->SetEnabledOverride(false);
+				bool isEnabled = *(const bool*)enabled->pointer();
+				{
+					float t =0;
+					if (isEnabled)
+						w->SetEnabled(isEnabled,t,false,Objects::WorkingStructure::ForceEnable,false);
+					else
+						w->SetEnabledOverride(false);
+				}
+			}
+			else
+			{
+				LogEvent(EventClass::Preset::fileError,"Warning: Unable to find 'enabled' chunk for "+rs->GetName()+". Cannot determine enabled-state");
 			}
 			Objects::MobileEntityProducer*p = dynamic_cast<Objects::MobileEntityProducer*>(w);
 	//		Objects::MobileEntityProducer*p = w->ToProducer();
@@ -925,13 +932,13 @@ namespace FileIO
 			{
 				Import(parent,*p,rs);
 			}
-			Objects::Tower*t = dynamic_cast<Objects::Tower*>(rs.get());
-			if (t)
+			Objects::Tower*tower = dynamic_cast<Objects::Tower*>(rs.get());
+			if (tower)
 			{
 				Riff::Chunk*towerActionChunk = parent->FindFirst(RID::towerActionLeft);
 				ASSERT_NOT_NULL__(towerActionChunk);
-				ASSERT_EQUAL__(towerActionChunk->size(),sizeof(t->attackActionLeft));
-				towerActionChunk->Get(&(t->attackActionLeft));
+				ASSERT_EQUAL__(towerActionChunk->size(),sizeof(tower->attackActionLeft));
+				towerActionChunk->Get(&(tower->attackActionLeft));
 				Riff::Chunk*list = parent->FindFirst(RIFF_LIST);
 				if (list)
 				{
@@ -939,7 +946,7 @@ namespace FileIO
 					if (entry)
 						do
 						{
-							Import(entry,t->attackQueue.Push());
+							Import(entry,tower->attackQueue.Push());
 						}
 						while (entry = list->Next());
 				}
@@ -1108,6 +1115,7 @@ namespace FileIO
 								GetOptionalPOD(list,RID::mostFactionsAlive,Game::mostFactionsAlive,(UINT32)0);
 
 								Game::Config::Nexus::enableAI = list->FindFirst(RID::nexusAI) != nullptr;
+								RuntimeConfig::empZones = false;
 
 								if (globalVersionOfCurrentFile < FileVersions::FirstVersionWithVariables)
 								{
@@ -1115,7 +1123,19 @@ namespace FileIO
 									GetOptionalPOD(list,RID::nexusBases,Game::Config::Nexus::haveBases,false);
 									UINT16 goal;
 									GetPOD(list,RID::goal,goal);
-									RuntimeConfig::gameGoal = Game::Config::Goal::Reinterpret(goal);
+									if (!RuntimeConfig::gameGoal.Load(goal))
+									{
+										if (goal == 2)
+										{
+											RuntimeConfig::empZones = true;
+											RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::ConquerNexus;
+										}
+										else
+										{
+											LogEvent(EventSignificance::NonFatalError,"Loaded unexpected goal index "+String(goal));
+											RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::None;
+										}
+									}
 									GetPOD(list,RID::startBases,Game::Config::startBases);
 									GetPOD(list,RID::basesRequired,Game::Config::basesRequired );
 									GetOptionalPOD(list,RID::newVehiclesHaveFullAmmo,Objects::newVehiclesHaveFullAmmo,true);
@@ -1154,6 +1174,11 @@ namespace FileIO
 											if (!v->Set(value))
 											{
 												LogEvent(EventClass::Preset::error,"State::Load(): Unable to update variable '"+key+"' to '"+value+"'. Supported values are "+v->GetSupportedValues());
+												if (v->name == "gameGoal" && value == "EMPConquerNexus")
+												{
+													RuntimeConfig::empZones = true;
+													RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::ConquerNexus;
+												}
 											}
 										}
 									}
@@ -1187,13 +1212,20 @@ namespace FileIO
 													Import(child,RID::vehicleTurret,turret);
 												}
 												Objects::PMobileEntity v = Objects::AssembleMobileEntity(Objects::PFaction(),TUniqueID(),Grid::LCellIdI(0,0),base,turret);
+												if (!v)
+												{
+													LogEvent(EventSignificance::NonFatalError,"Unable to assemble mobile entity ("+base+","+turret+")");
+												}
 
-												bool doInsert = Import(child,vehicleChunk,v,factionMap);
+												bool doInsert = v && Import(child,vehicleChunk,v,factionMap);
 												#if defined CHEAT_FULL_STORAGE && !defined ONE_COMPOUND_PER_FACTION
 													 v->currentStorage = v->GetMaxStorageCapacity();
 												#endif
 												if (doInsert)
-													Objects::InsertConstructed(v,0,true,false);
+												{
+													float t =0;
+													Objects::InsertConstructed(v,t,true,false);
+												}
 												else
 												{
 													//Objects::storedVehicles << v;
@@ -1207,7 +1239,10 @@ namespace FileIO
 												//child->FindFirst(RID::vehiclePlant),child->FindFirst(RID::towerActionLeft)
 												Objects::PStructure s = Import(child,factionMap);
 												if (s)
-													Objects::InsertConstructed(s,0,false,false);
+												{
+													float t =0;
+													Objects::InsertConstructed(s,t,false,false);
+												}
 											}
 										}
 										else
@@ -1363,7 +1398,7 @@ namespace FileIO
 
 		for (const Objects::PMobileEntity&v : insertIntoHangar)
 		{
-			Objects::PHangarStructure s = To<Objects::HangarStructure>::DynamicCast(Objects::GetEntity(v->location));
+			Objects::PHangar s = To<Objects::Hangar>::DynamicCast(Objects::GetEntity(v->location));
 			ASSERT2__(s,v->GetName(),v->location.ToString());
 			s->StoreLocallyFromImport(v);
 		}
@@ -1380,7 +1415,7 @@ namespace FileIO
 
 
 
-		if (RuntimeConfig::gameGoal == Game::Config::Goal::EMPConquerNexus)
+		if (RuntimeConfig::empZones)
 		{
 			count_t numZones = Game::Config::CountAccessibleZones();
 

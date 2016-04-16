@@ -23,7 +23,7 @@ namespace Objects
 
 	class BaseCommand;
 
-	typedef std::function<void(BaseCommand&cmd)>	FCommandVisitor;
+	typedef std::function<void(const int2&,const PBaseCommand&cmd)>	FCommandVisitor;
 
 
 
@@ -37,13 +37,13 @@ namespace Objects
 			None = 0,
 			IsEnabled=0x1,
 			IsPermaActive=0x2,
-			IsFlashing=0x4
+			IsFlashing=0x4,
+			SoftFlashing=0x8
 		};
 
 
 		String			name;
 		Flags			state = Flags::IsEnabled;
-		int2			gridCoords;
 		DX11::Texture	texture;
 		TFloatRect		screenRect;
 
@@ -52,7 +52,7 @@ namespace Objects
 
 
 		/**/			BaseCommand(const String&name):name(name) {}
-		/**/			BaseCommand(const int2&coords, const String&name):name(name) {SetCoords(coords);}
+		///**/			BaseCommand(const int2&coords, const String&name):name(name) {SetCoords(coords);}
 		/**/			BaseCommand()	{}
 
 		/**
@@ -74,16 +74,17 @@ namespace Objects
 
 		virtual void	RasterizeImage()	{}
 		virtual bool	IsGroup() const {return false;}
-		virtual void	VisitMembers(const FCommandVisitor&visitor, bool force) {visitor(*this);}
+		virtual void	VisitMembers(const FCommandVisitor&visitor, bool force, const int2&parentGridCoords) {visitor(parentGridCoords,shared_from_this());}
+		void			VisitMembers(const FCommandVisitor&visitor, bool force) {VisitMembers(visitor,force,coordOffset);}
 
 		void			LoadIcon();
 		void			LoadIcon(const String&name);
 
 
-		void			SetCoords(const int2&rawCoords)
-		{
-			gridCoords = rawCoords+coordOffset;
-		}
+		//void			SetCoords(const int2&rawCoords)
+		//{
+		//	gridCoords = rawCoords+coordOffset;
+		//}
 
 
 		class Label
@@ -181,8 +182,6 @@ namespace Objects
 		/**/			CallbackCommand()	{}
 		/**/			CallbackCommand(const String&name, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name), execute(exec),check(check),getCosts(getCosts)	{}
 		/**/			CallbackCommand(const String&name, const FOnExecute&exec, const FCheck&check):Super(name), execute(exec),check(check)	{}
-		/**/			CallbackCommand(const int2&coords, const String&name, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name), execute(exec),check(check),getCosts(getCosts)	{SetCoords(coords);}
-		/**/			CallbackCommand(const int2&coords, const String&name, const FOnExecute&exec, const FCheck&check):Super(name), execute(exec),check(check)	{SetCoords(coords);}
 
 		virtual void	Execute() override												{execute();}
 		virtual	void	Refresh(bool controlEnabled) override							{state = check(controlEnabled);}
@@ -200,36 +199,41 @@ namespace Objects
 		/**/			IconCommand()	{}
 		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name,exec,check,getCosts)	{LoadIcon();}
 		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check):Super(name,exec,check)	{LoadIcon();}
-	//	/**/			IconCommand(const int2&coords, const String&name, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name,exec,check,getCosts)	{LoadIcon(); SetCoords(coords);}
-		///**/			IconCommand(const int2&coords, const String&name, const FOnExecute&exec, const FCheck&check):Super(name,exec,check)	{LoadIcon(); SetCoords(coords);}
 	};
 
 	class CommandContainer
 	{
+	public:
+		typedef std::pair<int2,PBaseCommand>	Member;
 	protected:
-		Buffer0<PBaseCommand>		members;
+		Buffer0<Member>				members;
 		const CommandContainer		*parent = nullptr;	//!< Must not access members
 
 	public:
 		int2						baseCoords;
 
 		PCommandGroup	AddChild(const String&name);
+		PCommandGroup	AddChild(const int2&coords, bool relativeCoords, const String&name);
 
 		void			VisitMembers(const FCommandVisitor&visitor, bool force)	const
 		{
 			foreach (members,m)
-				(*m)->VisitMembers(visitor,force);
+				m->second->VisitMembers(visitor,force,BaseCommand::coordOffset + baseCoords + m->first);
 		}
 
 		void			Refresh(bool controlEnabled)
 		{
 			foreach (members,m)
-				(*m)->Refresh(controlEnabled);
+				m->second->Refresh(controlEnabled);
 		}
 
 		PBaseCommand	Add(BaseCommand*newCommand)	{ return Add(PBaseCommand(newCommand));}
 		PBaseCommand	Add(const PBaseCommand&newCommand);
-		PBaseCommand	GetLast() const {return members.last();}
+		PBaseCommand	Add(const int2&coords, bool relativeCoords, BaseCommand*newCommand)	{ return Add(coords, relativeCoords, PBaseCommand(newCommand));}
+		PBaseCommand	Add(const int2&coords, bool relativeCoords, const PBaseCommand&newCommand);
+		const Member&	GetLast() const {return members.last();}
+		
+		index_t			Find(const PBaseCommand&) const;
 	};
 
 
@@ -264,9 +268,9 @@ namespace Objects
 		
 
 		virtual void	Execute() override;
-		virtual void	VisitMembers(const FCommandVisitor&visitor, bool force)	override
+		virtual void	VisitMembers(const FCommandVisitor&visitor, bool force, const int2&parentCoords)	override
 		{
-			Super::VisitMembers(visitor,force);
+			Super::VisitMembers(visitor,force,parentCoords);
 			if (force || state & Flags::IsPermaActive)
 			{
 				CommandContainer::VisitMembers(visitor,force);
@@ -275,6 +279,18 @@ namespace Objects
 
 		virtual	void	Refresh(bool controlEnabled) override {/*CommandContainer::Refresh(controlEnabled);*/}
 		virtual bool	IsGroup() const override {return true;}
+
+		void			CollapseChildren()
+		{
+			if (!activeGroupPath.Contains(this))
+				return;
+			while (activeGroupPath.last() != this)
+			{
+				activeGroupPath.last()->Collapse();
+				activeGroupPath.EraseLast();
+			}
+			Collapse();
+		}
 
 		static void		CollapseAll()
 		{
@@ -297,10 +313,10 @@ namespace Objects
 
 		/**/				EntityCommand()	{}
 		/**/				EntityCommand(const String&name, const PWorldEntity&e,   FOnExecute f, FCheck c) : Super(name,f,c),reference(e) {}
-		/**/				EntityCommand(const int2&coords, const String&name, const PWorldEntity&e,   FOnExecute f, FCheck c) : Super(name,f,c),reference(e)
-		{
-			SetCoords(coords);
-		}
+		///**/				EntityCommand(const int2&coords, const String&name, const PWorldEntity&e,   FOnExecute f, FCheck c) : Super(name,f,c),reference(e)
+		//{
+		//	SetCoords(coords);
+		//}
 
 		virtual void		RasterizeImage()override
 		{
@@ -328,11 +344,11 @@ namespace Objects
 		/**/				EntityConstructionCommand()	{}
 		/**/				EntityConstructionCommand(const String&name, Component::VehicleBase*base, Component::Turret*turret, const PWorldEntity&e,   FOnExecute f, FCheck c) 
 						: Super(name,e,f,c), base(base),turret(turret) {}
-		/**/				EntityConstructionCommand(const int2&coords, const String&name, Component::VehicleBase*base, Component::Turret*turret, const PWorldEntity&e,   FOnExecute f, FCheck c)
-						: Super(name,e,f,c), base(base),turret(turret)
-		{
-			SetCoords(coords);
-		}
+		///**/				EntityConstructionCommand(const int2&coords, const String&name, Component::VehicleBase*base, Component::Turret*turret, const PWorldEntity&e,   FOnExecute f, FCheck c)
+		//				: Super(name,e,f,c), base(base),turret(turret)
+		//{
+		//	SetCoords(coords);
+		//}
 
 		virtual void		CompileLabel(Label&outResult) override;
 

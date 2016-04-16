@@ -7,6 +7,7 @@ dx11 texture-font.
 
 ******************************************************************/
 
+#ifdef HAS_WINDOW
 
 #include <engine/textout.h>
 //#include <d3d11.h>
@@ -98,6 +99,8 @@ namespace Engine
 		};
 	}
 }
+
+#endif
 
 #endif
 

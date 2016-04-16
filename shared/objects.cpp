@@ -20,21 +20,22 @@
 namespace Objects
 {
 
-	void RefreshSkyHubConnections()
-	{
-		for (const auto&sat : satellites)
+	#ifndef NO_SATELLITES
+		void RefreshSkyHubConnections()
 		{
-			if (sat->IsSkyHub())
-				To<SkyHub>::Cast(sat)->UpdateConnections();
+			for (const auto&sat : satellites)
+			{
+				if (sat->IsSkyHub())
+					To<SkyHub>::Cast(sat)->UpdateConnections();
+				#ifdef HAS_WINDOW
+					sat->FlushFuelDemandCache();
+				#endif
+			}
 			#ifdef HAS_WINDOW
-				sat->FlushFuelDemandCache();
+				OnSelectionChange(true);
 			#endif
 		}
-		#ifdef HAS_WINDOW
-			OnSelectionChange(true);
-		#endif
-	}
-
+	#endif
 
 
 	#ifdef CLIENT
@@ -111,8 +112,10 @@ namespace Objects
 	void					Create()
 	{
 		#ifdef CLIENT
-			Grid::visibleOrbitGrid.orbit = Grid::ToRadius(Satellite::BaseResidenceHeight);
-			Grid::visibleOrbitGrid.Clear();
+			#ifndef NO_SATELLITES
+				Grid::visibleOrbitGrid.orbit = Grid::ToRadius(Satellite::BaseResidenceHeight);
+				Grid::visibleOrbitGrid.Clear();
+			#endif
 			#ifdef HAS_WINDOW
 				Renderer::Create();
 			#endif
@@ -160,12 +163,15 @@ namespace Objects
 		structurePrototypes << UraniumStorage::globalPrototype;
 		structurePrototypes << NexusPort::globalPrototype;
 		structurePrototypes << VehicleStore::globalPrototype;
-		structurePrototypes << SkyPort::globalPrototype;
+		
+		#ifndef NO_SATELLITES
+			structurePrototypes << SkyPort::globalPrototype;
 
-		satellitePrototypes << SkyHub::globalPrototype;
-		satellitePrototypes << SkyGuardian::globalPrototype;
-		satellitePrototypes << Ragnarok::globalPrototype;
-		//satellitePrototypes << StarPort::globalPrototype;
+			satellitePrototypes << SkyHub::globalPrototype;
+			satellitePrototypes << SkyGuardian::globalPrototype;
+			satellitePrototypes << Ragnarok::globalPrototype;
+			//satellitePrototypes << StarPort::globalPrototype;
+		#endif
 
 
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::launcher));
@@ -197,8 +203,10 @@ namespace Objects
 				foundation.ibo.Create(geo.GetLOD(0).indices);
 			}
 			LogEvent(EventSignificance::Debug,nullptr,"Loading prototype geometry");
-			foreach(satellitePrototypes, p)
-				(*p)->PrototypeLoadGeometry();
+			#ifndef NO_SATELLITES
+				foreach(satellitePrototypes, p)
+					(*p)->PrototypeLoadGeometry();
+			#endif
 			foreach(structurePrototypes, p)
 				(*p)->PrototypeLoadGeometry();
 		}
@@ -210,8 +218,12 @@ namespace Objects
 
 		Component::ConfigureAll();
 
-		foreach(satellitePrototypes, p)
-			(*p)->PrototypeSetup();
+		Hangar::StaticSetup();
+
+		#ifndef NO_SATELLITES
+			foreach(satellitePrototypes, p)
+				(*p)->PrototypeSetup();
+		#endif
 		foreach(structurePrototypes, p)
 			(*p)->PrototypeSetup();
 
@@ -219,12 +231,12 @@ namespace Objects
 
 		#ifdef HAS_WINDOW
 			foreach (Component::vehicleTurretComponents,tc)
-				(*tc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();},true);
+				(*tc)->VisitAllCommands([](const int2&,const PBaseCommand&cmd){cmd->RasterizeImage();},true);
 			foreach (Component::baseComponents,bc)
-				(*bc)->VisitAllCommands([](BaseCommand&cmd){cmd.RasterizeImage();},true);
+				(*bc)->VisitAllCommands([](const int2&,const PBaseCommand&cmd){cmd->RasterizeImage();},true);
 
 			globalCommands.baseCoords = BaseCommand::coordOffset;
-			globalCommands.Add(new GlobalCommand("End Round", [](){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
+			globalCommands.Add(int2(),false,new GlobalCommand("End Round", [](){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
 			[](bool controlEnabled)->BaseCommand::Flags
 			{
 				BaseCommand::Flags rs = BaseCommand::Flags::None;
@@ -236,10 +248,9 @@ namespace Objects
 					if (ShouldSignalRoundEnd())
 						rs |= BaseCommand::Flags::IsFlashing;
 				return rs;
-			})) ->SetCoords(int2());
+			}));
 
-			viewCommands = globalCommands.AddChild("View");
-			viewCommands->SetCoords(int2(1,0));
+			viewCommands = globalCommands.AddChild(int2(1,0),false,"View");
 
 
 			viewCommands->Add( new GlobalCommand("Clip Terrain", &GlobalCmd::ToggleSeeThrough
@@ -429,13 +440,15 @@ namespace Objects
 						newSel = *v;
 					}
 				}
-				foreach(satellites, v)
-				{
-					if ((*v)->TestIntersection(b, d, distance))
+				#ifndef NO_SATELLITES
+					foreach(satellites, v)
 					{
-						newSel = *v;
+						if ((*v)->TestIntersection(b, d, distance))
+						{
+							newSel = *v;
+						}
 					}
-				}
+				#endif
 				foreach(structures, s)
 				{
 					if ((*s)->TestIntersection(b, d, distance))
@@ -759,7 +772,9 @@ namespace Objects
 		RuntimeConfig::hibernationSystemEnabled = false;
 
 		storedMobileEntities.Clear();
-		satellites.Clear();
+		#ifndef NO_SATELLITES
+			satellites.Clear();
+		#endif
 		vehicles.Clear();
 		structures.Clear();
 		idMap.Clear();
@@ -776,16 +791,15 @@ namespace Objects
 				onlineUplinkTraffic = 0;
 			#endif
 			#ifdef HAS_WINDOW
-				Renderer::animatedTurrets.Clear();
-				Renderer::attackers.Clear();
-
+				Renderer::Flush();
 				Deselect(false);
 				resourceView = true;
 				objectView = true;
 				hasArrowCellTarget = false;
 				showArrow = false;
 				arrowFrom = float3();
-				arrowFromCell = arrowCellTarget = Grid::LCellIdI(0,0);
+				arrowFromCell = Grid::LCellIdI(0,0);
+				arrowCellTarget = TrajectoryEndPoint();
 				//activeResource = 0;
 
 				cellSelection.Clear();

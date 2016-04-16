@@ -6,6 +6,7 @@
 #include "grid.h"
 #include "stringTable.h"
 #include "logEvent.h"
+#include <general/random.h>
 
 #ifdef HAS_WINDOW
 	#include "../client/ExtRenderer/DirectX11.h"
@@ -23,6 +24,8 @@ namespace Grid
 		Liquids,
 		FullTerrain
 	)
+
+	static const int BadHeight = 0x1FFFFFFF;	//keep equal to gridAndChoices.h Objects::badHeight
 
 
 	#ifdef HAS_WINDOW
@@ -102,6 +105,85 @@ namespace Grid
 	
 
 
+	#ifdef HAS_WINDOW
+
+		struct TWeightedColor;
+
+		struct TVisibility
+		{
+			float value = 0.f;
+
+			/**/	TVisibility(float value):value(value)	{}
+		};
+
+
+		struct TBaseColor
+		{
+			float3	color;
+
+			/**/	TBaseColor() = default;
+			/**/	TBaseColor(const float3&c):color(c)	{}
+			/**/	TBaseColor(const TWeightedColor&c);
+
+			void	operator+=(const TBaseColor&c)
+			{
+				color += c.color;
+			}
+			void	operator*=(float fc)
+			{
+				color *= fc;
+			}
+		};
+
+		struct TWeightedColor : TBaseColor
+		{
+			typedef TBaseColor	Super;
+
+			float	weight=0.f;
+
+			/**/	TWeightedColor() = default;
+			/**/	TWeightedColor(const TBaseColor&c, float weight):Super(c),weight(weight)	{}
+
+			void	operator+=(const TWeightedColor&c)
+			{
+				Super::operator+=(c);
+				weight += c.weight;
+			}
+			void	operator*=(float fc)
+			{
+				Super::operator*=(fc);
+				weight *= fc;
+			}
+		};
+
+
+	
+		struct TLitColor : public TBaseColor
+		{
+			typedef TBaseColor	Super;
+
+			float	lightLevel=0.f;
+			bool	capped = false;
+			float	emp = 0.f;
+			float	visibility=0.f;
+
+			/**/	TLitColor() = default;
+			/**/	TLitColor(const TBaseColor&base, float lightLevel, float emp=0.f):Super(base),lightLevel(lightLevel),emp(emp)	{}
+			/**/	TLitColor(const TBaseColor&base, float lightLevel, float emp, const TVisibility&vis):Super(base),lightLevel(lightLevel),emp(emp),visibility(vis.value)	{}
+			/**/	TLitColor(const TWeightedColor&base, float lightLevel, float emp=0.f):Super(base),lightLevel(lightLevel),emp(emp)	{}
+			/**/	TLitColor(float lightLevel, float emp=0.f):lightLevel(lightLevel),emp(emp)	{}
+			/**/	TLitColor(const TVisibility&v):visibility(v.value)	{}
+			void	CompileFinalColor(TVec4<>&)	const;
+
+		private:
+			static void ApplyEMP(float intensity,TVec3<>&rs);
+			void	CapColor(TVec3<>&rs)	const;
+		};
+
+
+	#endif
+
+
 	class CellStack
 	{
 		static UINT		ToLayer(UINT layer)	{ FATAL__("bad call"); }
@@ -169,6 +251,11 @@ namespace Grid
 			BYTE	structureCounter;	//number of structures (density) that occupy this block
 			#ifdef CLIENT
 				short	visible=0;	//indicates levels of visibility. should not fall below 0. might make it unsigned when i am convinced it works. values >= 1 indicate this cell is visible
+
+				#ifdef HAS_WINDOW
+					TVisibility	GetVisibility() const {return TVisibility(visible>0);}
+				#endif
+
 			#endif
 
 			/**/	CompactCell() :content(Content::Clear), structureCounter(0) {}
@@ -191,7 +278,7 @@ namespace Grid
 			void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout) const
 			{
 				GetDeltaFrom(other,tout);
-				other = *this;
+				other.content = this->content;
 			}
 
 
@@ -286,6 +373,10 @@ namespace Grid
 				return (content == Content::Clear || content == Content::Water);
 			}
 
+			bool	IsClearOrLiquidIgnoreStructure() const
+			{
+				return (content == Content::Clear || IsLiquid(content));
+			}
 
 			static bool IsDead(BYTE cnt)
 			{
@@ -297,13 +388,18 @@ namespace Grid
 			}
 			static bool IsSolid(BYTE cnt)
 			{
-				return cnt < Content::Water;
+				return cnt < Content::Water && cnt != Content::Lava;
+			}
+			static bool IsOpaque(BYTE cnt)
+			{
+				return cnt < Content::Technite;
 			}
 			static bool IsLiquid(BYTE cnt)
 			{
 				return cnt == Content::Water || cnt == Content::Lava;
 			}
 
+			bool	IsOpaque() const {return IsOpaque(content);}
 			bool	IsLiquid() const {return IsLiquid(content);}
 
 			bool	IsSolid() const
@@ -331,7 +427,7 @@ namespace Grid
 				void	SetSubmergence(UINT sub);
 				UINT	GetIncreasedSubmergence() const;
 				float	GetStructureFactor() const	{ return typeStructureFactor[content]; }
-				float3	GetBaseColor() const;
+				TBaseColor	GetBaseColor() const;
 			#endif
 		};
 
@@ -348,6 +444,12 @@ namespace Grid
 		static UINT		ToLayer(int height)	{return (UINT)(height < -HalfRange ? 0 : height + HalfRange);}
 		static int		ToHeight(UINT layer) {return int(layer) - CellStack::HalfRange;}
 
+		/**
+		Finds the top-most clear block that is located above a non-clear cell.
+		@param failOnStructureCount If set will cause the method to fail if the located clear cell has a >1 struct-count
+		@return Height level that is within the valid range, clear, and above a non-clear block. Returns BadHeight on failure
+		*/
+		int				FindTopClearOverNonClear(bool failOnStructureCount)	const;
 
 		#ifdef HAS_WINDOW
 		bool			HasWater() const { return waterRange.IsNotEmpty(); }
@@ -369,7 +471,7 @@ namespace Grid
 			lowestOpenCell = 0xFF;
 			highestOpaqueCell = 0;
 			for (unsigned i = 0; i < Range; i++)
-				if (volumeCell[i].IsSolid())
+				if (volumeCell[i].IsOpaque())
 					highestOpaqueCell = (BYTE)i;
 				else
 				{
@@ -385,11 +487,11 @@ namespace Grid
 		Cell&			GetMutableCellI(int height);
 		#ifdef HAS_WINDOW
 
-			float4		GetDownColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const;
-			float4		GetColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const;
+			TLitColor	GetDownColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const;
+			TLitColor	GetColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const;
 			//float3			GetSelectiveColorU(unsigned layer, const float3&colorIfNonSolid, bool&mixes) const;
-			float4		GetMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, Cell::Content&outContent) const;
-			float4		GetDownMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, Cell::Content&outContent) const;
+			TWeightedColor	GetMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Cell::Content&outContent) const;
+			TWeightedColor	GetDownMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Cell::Content&outContent) const;
 		#endif
 		void			ChangeStructureCounterI(int height, int by);
 
@@ -402,7 +504,8 @@ namespace Grid
 
 
 		#ifndef CLIENT
-			void		Init(float2 heights, const TPlanetConfig&);
+			void		InitUnknown(float2 heights, const TPlanetConfig&);
+			void		FillTypes(const TPlanetConfig&);
 		#endif
 
 		void			ZeroInit();
@@ -501,7 +604,7 @@ namespace Grid
 			float4		color;
 
 			/**/		TerrainVertex()	{};
-			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float4&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f,structure*127.f), color(color){}
+			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const TLitColor&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f,structure*127.f) {color.CompileFinalColor(this->color);}
 			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float3&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f, structure*127.f), color(color,1.f){}
 		};
 	
@@ -549,6 +652,21 @@ namespace Grid
 				{
 					vertices.Clear();
 					indices.Clear();
+				}
+
+				void		AppendTo(THull<Vtx>&hull) const
+				{
+					UINT32 offset = (UINT32)hull.vertices.Count();
+					hull.vertices.Append(vertices);
+					const UINT32*iFrom = indices.pointer();
+					UINT32*iTo = hull.indices.AppendRow(this->indices.Count());
+					while (iFrom != this->indices.end())
+					{
+						(*iTo) = (*iFrom) + offset;
+						iFrom++;
+						iTo++;
+					}
+					DBG_ASSERT__(iTo == hull.indices.end());
 				}
 			};
 
@@ -845,7 +963,7 @@ namespace Grid
 			const BaseGrid::TNetCell*  netCells;
 			FClipHeight	clipHeight;
 			bool	wasEmpty;
-			TVec4<>	cornerColor[6];
+			TLitColor	cornerColor[6];
 
 
 			void	Setup(const CellStack *stacks,const BaseGrid::TCell*cells, const BaseGrid::TNetCell*netCells,FClipHeight clipHeight)
@@ -860,22 +978,22 @@ namespace Grid
 			}
 
 
-			float4	GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const;
-			float4	GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const;
+			TWeightedColor	GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const;
+			TWeightedColor	GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const;
 //			static void ApplyEMP(UINT16 cornerFlags,TVec4<>&rs);
-			static void ApplyEMP(float intensity,TVec3<>&rs);
 			static bool FlagsAffectedByEMP(UINT16 cornerFlags) {return !(cornerFlags & empZonesUnlocked);}
 			static bool AffectedByEMP(index_t stackIndex);
 
 
-			void	Compile(const index_t offset, const index_t end, THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull, SpinLock&lock);
+			void	Compile(const index_t offset, const index_t end);
 			void	CompileLayer(const UINT ih, const CellStack&stack, const int clipH,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighborhood);
 			void	CompileBottomLayer(const CellStack&stack, const int clipH,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighborhood);
 			void	CompileAboveTerrainOutline(const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors);
 			void	CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack);
 			void	CompileDownCap(const UINT ih,const BaseGrid::TNetCell&cell, const CellStack::Cell&thisCell, const int ir,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack);
-			void	CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,TVec4<> newCornerColor[6], 
+			void	CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,TLitColor newCornerColor[6], 
 											const CellStack::Cell&thisCell, const CellStack::Cell&lastCell, const TFloatRange<>&range);
+			void	DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull);
 		};
 
 
@@ -930,7 +1048,7 @@ namespace Grid
 		typedef GridSetup<Exponent>	GridType;
 		TFamily						family[BaseGrid::NumFamilies];
 		GridType					grid;
-		Array<BaseGrid::TNetCell>	cells;
+		static Array<BaseGrid::TNetCell>	cells;
 		Array<BaseGrid::TCellVertex>	cellVertices;
 
 
@@ -960,7 +1078,7 @@ namespace Grid
 			struct TStack
 			{
 				UINT32				stackID;	//high-resolution cell IDs
-				UINT32				layerBegin,layerEnd;	//layerEnd is one higher than actual limit
+				TIntRange<UINT32>	range;		//range.end is one higher than actual limit
 			};
 
 			Buffer0<TStack>			coverage;
@@ -968,6 +1086,14 @@ namespace Grid
 			void					Clear()
 			{
 				coverage.Clear();
+			}
+
+			count_t					GetVolume() const
+			{
+				count_t rs = 0;
+				foreach (coverage,c)
+					rs += c->range.GetExtend();
+				return rs;
 			}
 
 
@@ -1232,12 +1358,12 @@ namespace Grid
 				st.stackID = next;
 				if (!Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
 				{
-					st.layerBegin = st.layerEnd = 0;
+					st.range.SetEmpty(0);
 					continue;
 				}
 			
-				st.layerBegin = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
-				st.layerEnd = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
+				st.range.start = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
+				st.range.end = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
 				const auto&n = grid.GetCell(next).neighborhood;
 				for (int i = 0; i < n.numNeighbors; i++)
 					op.stacksLeft << n.neighborID[i];
@@ -1249,14 +1375,36 @@ namespace Grid
 			void		Compile(const Array<CellStack>&stacks, THull<TerrainVertex>&solid, THull<OverlayVertex>&cover, index_t offset, count_t count, FClipHeight clipHeight)
 			{
 				const index_t end = offset + count;
-				SpinLock lock;
-				Concurrency::parallel_for(offset, end, TerrainCompiler::BatchSize,[this, end,&lock, &solid, &cover, &stacks, clipHeight](index_t i)	//looks good - at least in release
+				//SpinLock lock;
+				const count_t numBatches = CeilDiv(count,TerrainCompiler::BatchSize);
+				static Array<THull<TerrainVertex> >	hulls;
+				static Array<THull<OverlayVertex> >	covers;
+				count_t numWorkers = System::ParallelLoop::global_instance.getWorkerCount();
+				if (hulls.Count() < numWorkers)
+				{
+					hulls.SetSize(numWorkers);
+					covers.SetSize(numWorkers);
+				}
+				
+				
+
+
+				System::parallelFor(numBatches,8,[this, end,offset, &stacks, clipHeight](index_t i, index_t workerIndex)
 				{
 					BYTE data[sizeof(TerrainCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...
 					TerrainCompiler&compiler = *(TerrainCompiler*)data;
 					compiler.Setup(stacks.pointer(),grid.GetCells(),this->cells.pointer(),clipHeight);
-					compiler.Compile(i,end,solid,cover,lock);
+					compiler.Compile(offset + i*TerrainCompiler::BatchSize,end);
+					compiler.DeliverResults(hulls[workerIndex],covers[workerIndex]);
 				});
+				for (index_t i = 0; i < numWorkers; i++)
+				{
+					hulls[i].AppendTo(solid);
+					covers[i].AppendTo(cover);
+					hulls[i].Clear();
+					covers[i].Clear();
+				}
+
 			}
 
 
@@ -1573,6 +1721,9 @@ namespace Grid
 		#endif
 	};
 
+	template <UINT Exponent>
+		Array<BaseGrid::TNetCell>	Setup<Exponent>::cells;
+
 	typedef Setup<5>	LowSetup;
 
 	#ifdef HYBRID_GRID
@@ -1618,7 +1769,7 @@ namespace Grid
 		/**
 		Computes the coverage for a given location
 		*/
-		static coverage_t		GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max);
+		static coverage_t		GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max, float scale);
 
 		static float			probability[],density[];
 		static coverage_t		maximum[];
@@ -1637,7 +1788,7 @@ namespace Grid
 		//}
 
 		static Buffer0<Resource>all;
-		static void				Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 cellID));
+		//static void				Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 cellID));
 //		static void				Create(const String&name, ConstName cname, const float3&color/*, float p, coverage_t*/);
 		static void				Create(const String&name, ConstName cname, const float3&color, index_t);
 		//static void				Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield);
@@ -1818,14 +1969,10 @@ namespace Grid
 	bool	IsHighPartOfLow(UINT32 highCell, UINT32 lowCell);
 
 
-	inline bool	ValidCell(const LCellIdI&cell, int satHeight, int decSatHeight)	{return cell.stackID < LowSetup::GridType::CellCount 
+	inline bool	ValidCell(const LCellIdI&cell)	{return cell.stackID < LowSetup::GridType::CellCount 
 													&& 
 													(
-														(cell.height >= -CellStack::HalfRange && cell.height < CellStack::HalfRange)
-														||
-														(cell.height == satHeight || cell.height == satHeight+1)
-														||
-														(cell.height == decSatHeight || cell.height == decSatHeight+1)
+														(cell.height >= CellStack::BottomHeight && cell.height <= CellStack::TopHeight)
 													)
 													;}
 	#ifdef HYBRID_GRID
@@ -1891,7 +2038,7 @@ namespace Grid
 			int					downToHeight;
 		};
 
-		static const int Uninitialized = 0x1FFFFFFF;
+		static const int Uninitialized = BadHeight;
 
 		int						groundPenetration=0;
 
@@ -1918,6 +2065,9 @@ namespace Grid
 				short	visibility;
 				bool	oldVisible, temporarilyVisible;
 
+				#ifdef HAS_WINDOW
+					TVisibility	GetVisibility() const {return TVisibility(visibility>0);}
+				#endif
 
 				bool	Changed(bool reset)
 				{
@@ -2060,6 +2210,7 @@ namespace Grid
 		Checks if the specified low-resolution cell is not at all covered (not even partially)
 		*/
 		bool					LowCellIsClear(const LCellIdI&cell)const;
+		String					LowCellReport(const LCellIdI&cell)const;
 		bool					LowCellIsClearOrWater(const LCellIdI&cell)const;
 		bool					LowCellHasStructure(const LCellIdI&cell)const;
 		bool					LowCellIsClearIgnoreStructure(const LCellIdI&cell)const;
@@ -2400,8 +2551,9 @@ namespace Grid
 	};
 
 	#ifdef CLIENT
-
-		extern OrbitGrid	visibleOrbitGrid;
+		#ifndef NO_SATELLITES
+			extern OrbitGrid	visibleOrbitGrid;
+		#endif
 
 	#endif
 }

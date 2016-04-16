@@ -1,3 +1,5 @@
+#ifdef HAS_WINDOW
+
 #include <global_root.h>
 #include "galaxy.h"
 #include <engine/display.h>
@@ -94,3 +96,4 @@ namespace Galaxy
 
 }
 
+#endif
