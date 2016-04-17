@@ -3305,7 +3305,7 @@ int main( int argc, const char* argv[])
 
 				UI::resourcesAsList = config.GetBool("runtime/resourcesAsList",false);
 
-				ConsensusLink::Configure(config.RequireString("consensus/host"),config.RequireBool("consensus/autoConnect"),config.RequireBool("consensus/askToEncryptPrivateKey"));
+				ConsensusLink::Configure(StartConfig::GetString("consensus/host",""),StartConfig::GetBool("consensus/autoConnect",false),StartConfig::GetBool("consensus/askToEncryptPrivateKey",true));
 
 				TimeLapse::customBasePath = PathString(config.GetString("timelapse/outDirectory"));
 				TimeLapse::frameDelaySeconds = config.GetFloat("timelapse/frameDelaySeconds",0.2f);
