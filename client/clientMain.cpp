@@ -3258,6 +3258,96 @@ bool	IsTargetWorkingDirectory(const PathString&dir)
 	return rs;
 }
 
+namespace StartConfig
+{
+	Configuration	sourceConfig,baseConfig,destConfig;
+	bool			changed = false;
+	PathString		configPath;
+
+	void			Load(const PathString&userConfigPath)
+	{
+		configPath = userConfigPath;
+		baseConfig.LoadFromFile("game.ini");
+		if (!sourceConfig.LoadFromFile(userConfigPath))
+		{
+			LogEvent(EventClass::Preset::configuration,nullptr,"Unable to load user configuration from '"+String(userConfigPath)+"': '"+sourceConfig.Report()+"'. Attempting to load original config");
+			sourceConfig = baseConfig;
+		}
+		destConfig = sourceConfig;
+	}
+
+
+	void Fix(const String&path, const String&fallback)
+	{
+
+
+		StringRef comment,def = fallback.ref();
+		const Configuration::Attribute*attrib = baseConfig.GetAttrib(path);
+		if (attrib)
+		{
+			comment = attrib->comment.ref();
+			def = attrib->value.ref();
+			LogEvent(EventClass::Preset::configurationError,"Config error: '"+path+"' not found. Defaulting to '"+(def)+"'");
+		}
+		else
+			LogEvent(EventClass::Preset::configurationError,"Config error: '"+path+"' not found in actual or base configuration. Defaulting to '"+(def)+"'");
+		destConfig.Define(path,def).comment = comment;
+		changed = true;
+	}
+
+	const String&	GetString(const String&path, const String&fallback)
+	{
+		Configuration::Attribute*attrib = sourceConfig.GetAttrib(path);
+		if (attrib)
+			return attrib->value;
+		Fix(path,fallback);
+		return fallback;
+	}
+
+	
+	bool	GetBool(const String&path, bool fallback = false)
+	{
+		Configuration::Attribute*attrib = sourceConfig.GetAttrib(path);
+		bool rs;
+		if (attrib && convert(attrib->value.c_str(),rs))
+			return rs;
+		Fix(path,fallback);
+		return fallback;
+	}
+	
+	int	GetInt(const String&path, int fallback = 0)
+	{
+		Configuration::Attribute*attrib = sourceConfig.GetAttrib(path);
+		int rs;
+		if (attrib && convert(attrib->value.c_str(),rs))
+			return rs;
+		Fix(path,fallback);
+		return fallback;
+	}
+	
+	float	GetFloat(const String&path, float fallback = 0)
+	{
+		Configuration::Attribute*attrib = sourceConfig.GetAttrib(path);
+		float rs;
+		if (attrib && convert(attrib->value.c_str(),rs))
+			return rs;
+		Fix(path,fallback);
+		return fallback;
+	}
+
+	void	Finish()
+	{
+		if (changed)
+		{
+			LogEvent(EventClass::Preset::configuration,"Rewriting configuration ("+String(configPath)+")");
+			destConfig.SaveToFile(configPath,PRODUCT_NAME " Client");
+			changed = false;
+		}
+	}
+
+
+}
+
 
 int main( int argc, const char* argv[])
 {
@@ -3301,40 +3391,36 @@ int main( int argc, const char* argv[])
 		Network::LoadWorldAccessTokens();
 
 		{
-			Configuration	config;
 
 			PathString userConfigPath = RuntimeConfig::ConfigFile("game.ini");
 			if (!FileSystem::IsFile(userConfigPath))
 				FileSystem::CopyFile(PathString("./game.ini"),userConfigPath,false);
-			if (!config.LoadFromFile(userConfigPath))
-			{
-				LogEvent(EventClass::Preset::configuration,nullptr,"Unable to load user configuration from '"+String(userConfigPath)+"': '"+config.Report()+"'. Attempting to load original config");
-				config.LoadFromFile("game.ini");
-			}
+			StartConfig::Load(userConfigPath);
 
 			#ifdef HAS_WINDOW
-				Config::Context::Attribute * attrib = config.GetAttrib("runtime/capFPS");
-				if (attrib && !attrib->value.equalsIgnoreCase("off"))
-					convert(attrib->value.c_str(),RuntimeConfig::FromFile::capFPS);
-				attrib = config.GetAttrib("runtime/alwaysDay");
-				convert(attrib->value.c_str(),RuntimeConfig::FromFile::alwaysDay);
-				display.config.vertical_sync = config.GetInt("runtime/vsync");
+				String val = StartConfig::GetString("runtime/capFPS","-1");
+				if (!val.equalsIgnoreCase("off"))
+					convert(val.c_str(),RuntimeConfig::FromFile::capFPS);
+				RuntimeConfig::FromFile::alwaysDay = StartConfig::GetBool("runtime/alwaysDay",true);
+				display.config.vertical_sync = StartConfig::GetInt("runtime/vsync");
 				display.config.vertical_sync = display.config.vertical_sync > 0 ? 1 : 0;
-				display.config.fsaa_samples = config.GetInt("runtime/fsaa",4);
+				display.config.fsaa_samples = StartConfig::GetInt("runtime/fsaa",4);
 
-				UI::resourcesAsList = config.GetBool("runtime/resourcesAsList",false);
+				UI::resourcesAsList = StartConfig::GetBool("runtime/resourcesAsList",false);
 
-				TimeLapse::customBasePath = PathString(config.GetString("timelapse/outDirectory"));
-				TimeLapse::frameDelaySeconds = config.GetFloat("timelapse/frameDelaySeconds",0.2f);
-				TimeLapse::maxCompressionPNG = config.GetBool("timelapse/maxCompressionPNG");
+				TimeLapse::customBasePath = PathString(StartConfig::GetString("timelapse/outDirectory",""));
+				TimeLapse::frameDelaySeconds = StartConfig::GetFloat("timelapse/frameDelaySeconds",0.2f);
+				TimeLapse::maxCompressionPNG = StartConfig::GetBool("timelapse/maxCompressionPNG");
 
-				if (!RuntimeConfig::aiMode && config.GetBool("runtime/soundEnabled",true))
+				if (!RuntimeConfig::aiMode && StartConfig::GetBool("runtime/soundEnabled",true))
 				{
 					AudioInterface::Create();
-					AudioInterface::SetMasterVolume(config.GetFloat("runtime/soundVolume",1.f));
+					AudioInterface::SetMasterVolume(StartConfig::GetFloat("runtime/soundVolume",1.f));
 				}
 
 			#endif
+
+			StartConfig::Finish();
 		}
 		LoadHosts();
 
