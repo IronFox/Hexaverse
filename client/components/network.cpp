@@ -1468,7 +1468,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			f->requestedNewRound = false;
 			f->roundChangeNotifications = 0;
 		};
-	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && gameHasBegun && Animation::AllDone())
+	if (RuntimeConfig::IsInAnyCommandPhase() && gameHasBegun && Animation::AllDone())
 		OnPlayerControlBegin();
 	#ifdef HAS_WINDOW
 		Dialog::SignalSituationChange();

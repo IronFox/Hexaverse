@@ -1819,7 +1819,7 @@ namespace Animation
 					e->preAnimationLocation = e->location;
 				});
 
-				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::gameHasBegun)
+				if (RuntimeConfig::IsInAnyCommandPhase() && Network::gameHasBegun)
 				{
 					OnPlayerControlBegin();
 				}
