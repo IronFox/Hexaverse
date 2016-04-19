@@ -5,6 +5,7 @@ v0.3.25 [Apr 19 2016]
 v0.3.24	[Apr 12 2016]
 	+ Re-included D3DCompiler_43.dll since it seems to be necessary in some cases.
 	+ Added technite debug messages to protocol.
+	> Incorrect client configuration files are now repaired instead of crashing the client.
 	> Technites are now spawned manually at user-chosen locations.
 	
 v0.3.23	[Apr 10 2016]
