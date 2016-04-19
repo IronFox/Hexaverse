@@ -397,10 +397,17 @@ namespace TechniteLogicLink
 	}
 
 
-	void		ExecuteLogicWhenAllTechnitesAreThere(UINT32 roundNumber,UINT32 techniteSubRoundNumber)
+	void		ExecuteLogicWhenAllTechnitesAreThere(UINT32 roundNumber,UINT32 techniteSubRoundNumber, bool reExecution/*=false*/)
 	{
+		ASSERT_EQUAL__(executed, reExecution);
 		if (haveAllTechnites)
 		{
+			//DBG_ASSERT__(RuntimeConfig::IsInAnyCommandPhase());
+			//static UINT32 lastRound = UNSIGNED_UNDEF;
+			//static UINT32 lastSubRound = UNSIGNED_UNDEF;
+			//DBG_ASSERT__(lastRound != roundNumber || lastSubRound != techniteSubRoundNumber);
+			//lastRound = roundNumber;
+			//lastSubRound = techniteSubRoundNumber;
 			LogEvent(event,"ExecuteLogic("+String(roundNumber)+","+String(techniteSubRoundNumber)+")");
 			executed = true;
 			TechniteProtocol::InstructTechnites tech;
@@ -419,6 +426,7 @@ namespace TechniteLogicLink
 		{
 			//re-route to server as is
 			LogEvent(event,"Forwarding technite instruction chunk to server, containing "+String(chunk.instructions.Count())+" technites, starting from "+String(chunk.offset));
+			DBG_ASSERT__(RuntimeConfig::IsInAnyCommandPhase());
 			Network::Channels::techniteInstructions.SendTo(Network::client,chunk);
 			
 			if (Objects::Faction::mine && Objects::Faction::mine->IsTechniteFaction())
@@ -584,7 +592,7 @@ namespace TechniteLogicLink
 
 
 			if (haveAllTechnites && executed)
-				ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
+				ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber,true);
 
 		}
 
@@ -910,7 +918,7 @@ namespace TechniteLogicLink
 
 			haveAllTechnites = true;
 			if (executed)
-				ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
+				ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber,true);
 		}
 	}
 

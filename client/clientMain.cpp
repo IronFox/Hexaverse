@@ -220,7 +220,19 @@ void	OnPlayerControlBegin()
 	#endif
 	Animation::UpdateAutomation(CLOCATION);
 	Objects::CheckMobileEntitySanity();
-	TechniteLogicLink::ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
+
+	if (Network::amTechniteFaction)
+	{
+		if (Animation::AllDone())
+		{
+			Technites::PFaction tf = To<Technites::Faction>::Cast(Objects::Faction::mine);
+			tf->VerifyIntegrity();
+		}
+		else
+			LogEvent(EventSignificance::Debug,nullptr,"Animations not completely done. Cannot verify technite faction integrity. Assuming it is correct.");
+
+		TechniteLogicLink::ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
+	}
 }
 
 #ifdef HAS_WINDOW
