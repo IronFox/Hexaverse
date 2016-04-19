@@ -1218,7 +1218,7 @@ namespace Objects
 					if (m.visualization->IsMobile())
 						To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
 					m.visualization->id = referenceID;
-					m.visualization->owner = referenceOwnerID == TUniqueID::Empty() ? PFaction() : Faction::GetOrCreate(referenceOwnerID,0);
+					m.visualization->owner = referenceOwnerID == TUniqueID::Empty() ? PFaction() : Faction::FindByID(referenceOwnerID);
 					m.visualization->health = -(int)m.age;
 					m.visualization->isOwnedByMe = (m.visualization->owner && m.visualization->owner->isOwnedByMe) || (!m.visualization->owner && m.type == Type::EntityDeath);
 					m.visualization->UpdateNiceName();

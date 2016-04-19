@@ -2,6 +2,7 @@ v0.3.25 [Apr 19 2016]
 	> Rounds again auto-commence when not currently in technite-spawning mode.
 	* Fixed technite logic being executed multiple times when it should not.
 	* Fixed technite logic not properly resetting when abandoning the current faction.
+	* Fixed crash when technites detect a new faction.
 	
 v0.3.24	[Apr 12 2016]
 	+ Re-included D3DCompiler_43.dll since it seems to be necessary in some cases.
