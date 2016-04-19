@@ -11,6 +11,8 @@
 
 extern void	TransmitRoundEndRequest();
 
+extern bool techniteSpawnMode;
+
 namespace TechniteLogicLink
 {
 	static EventClass linkError = EventClass( EventSignificance::NonFatalError, EventFlavor::ServerPrivate );
@@ -452,7 +454,8 @@ namespace TechniteLogicLink
 				if (Network::amTechniteFaction && (!Network::amRegularFaction || Network::newRoundRequested || RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase))
 				{
 					//auto-new-round, if set. Not sure if this should be set
-					//TransmitRoundEndRequest();
+					if (!techniteSpawnMode)
+						TransmitRoundEndRequest();
 				}
 				else
 				{

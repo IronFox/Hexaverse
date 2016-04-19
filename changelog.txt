@@ -1,3 +1,6 @@
+v0.3.25 [Apr 19 2016]
+	> Rounds again auto-commence when not currently in technite-spawning mode.
+
 v0.3.24	[Apr 12 2016]
 	+ Re-included D3DCompiler_43.dll since it seems to be necessary in some cases.
 	+ Added technite debug messages to protocol.
