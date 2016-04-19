@@ -3504,10 +3504,10 @@ int main( int argc, const char* argv[])
 			StartConfig::Load(userConfigPath);
 
 			{
-				TechniteLogicLink::autoStartClientPath = PathString(config.RequireString("technites/autoStartClientPath"));
-				TechniteLogicLink::autoStartClient = config.RequireBool("technites/autoStartClient");
-				bool fixedServerPort = config.RequireBool("technites/fixedServerPort");
-				unsigned rawPortNumber = config.RequireUnsigned("technites/fixedServerPortNumber");
+				TechniteLogicLink::autoStartClientPath = PathString(StartConfig::GetString("technites/autoStartClientPath","."));
+				TechniteLogicLink::autoStartClient = StartConfig::GetBool("technites/autoStartClient",false);
+				bool fixedServerPort = StartConfig::GetBool("technites/fixedServerPort",true);
+				unsigned rawPortNumber = (unsigned)StartConfig::GetInt("technites/fixedServerPortNumber",30000);
 				TechniteLogicLink::initialServerPortNumber = (UINT16)(fixedServerPort ? rawPortNumber : 0);
 			}
 
