@@ -95,7 +95,7 @@ void SendTechniteStateTo(const Technites::PFaction&tf, TCP::Peer&peer)
 		tech->ExportState(states.Append());
 
 	count_t chunks = (states.Count() / Protocol::MaxTechnitesPerChunk);
-	if (states.Count() % Protocol::MaxTechnitesPerChunk)
+	if (!chunks || states.Count() % Protocol::MaxTechnitesPerChunk)
 		chunks++;
 	Protocol::TechniteChunk chunk;
 	for (index_t i = 0; i < chunks; i++)

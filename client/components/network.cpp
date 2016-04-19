@@ -351,6 +351,7 @@ namespace Network
 		roundTimer = -1;
 
 		TechniteTarget::FlushAll();
+		TechniteLogicLink::Destroy();
 		Objects::FlushAllData();
 		Network::gameProgress.gameOver = false;
 		Network::gameProgress.gameWon = false;
@@ -418,7 +419,7 @@ namespace Network
 						tf->ClearTechnites();
 					tf->AppendTechnites(chunk.technites);
 					#ifdef HAS_WINDOW
-						if (tf->isOwnedByMe && !amLocated)
+						if (tf->isOwnedByMe && !amLocated && tf->technites.IsNotEmpty())
 						{
 							amLocated = true;
 							const Technites::Technite&tec = tf->technites.first();

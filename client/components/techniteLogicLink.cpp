@@ -968,6 +968,7 @@ namespace TechniteLogicLink
 	{
 		isActive = false;
 		sessionStarted = false;
+		executed = false;
 		logicServer.EndService();
 		logicProcess.Terminate();
 		numClients = 0;
