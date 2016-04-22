@@ -550,7 +550,7 @@ namespace Consensus
 			//if (!World.Load())
 			//  return;
 
-			Client.InitCertificate();
+			Client.StaticInitServerCertificate();
 
 
 			listener = new TcpListener(System.Net.IPAddress.Any, Port); //IPv4
@@ -564,7 +564,7 @@ namespace Consensus
 
 			Logging.Out.StartService();
 
-			System.Threading.Thread.Sleep(100);
+			Thread.Sleep(100);
 
 			//World.Save();
 
@@ -677,7 +677,7 @@ namespace Consensus
 		{
 			return Convert.ToFloat(element.Attribute(key).Value);
 		}
-		public static Math3D.Vec3 GetVec3(this XElement element, string key)
+		public static Vec3 GetVec3(this XElement element, string key)
 		{
 			string val = element.Attribute(key).Value;
 			string[] elements = val.Split(new char[] { ',' });
@@ -687,7 +687,7 @@ namespace Consensus
 							Convert.ToFloat(elements[1].Trim()),
 							Convert.ToFloat(elements[2].Trim()));
 		}
-		public static Math3D.Vec4 GetVec4(this XElement element, string key)
+		public static Vec4 GetVec4(this XElement element, string key)
 		{
 			string val = element.Attribute(key).Value;
 			string[] elements = val.Split(new char[] { ',' });

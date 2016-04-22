@@ -219,7 +219,7 @@ namespace Consensus
 
 
 
-		public static void InitCertificate()
+		public static void StaticInitServerCertificate()
 		{
 			//certificate generated using http://blog.pluralsight.com/2012/02/13/selfcert-create-a-self-signed-certificate-interactively-gui-or-programmatically-in-net/
 			//code taken from http://stackoverflow.com/questions/8539516/pfx-self-signed-x509-certificate-with-password-secure
