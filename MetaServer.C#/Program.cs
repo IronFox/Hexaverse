@@ -526,7 +526,8 @@ namespace Consensus
 			//var cert = Client.GenSelfSignedCert("me",out pass);
 
 
-
+			Universe.SolarSystem sys = new Universe.SolarSystem();
+			sys.Build(new Random());
 
 
 			if (System.IO.Directory.Exists("./Runtime"))

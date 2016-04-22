@@ -135,8 +135,12 @@ namespace Math3D
         {
             return new Vec3(u.x * v, u.y * v, u.z * v);
         }
+		public static Vec3 operator *(Vec3 u, Vec3 v)
+		{
+			return new Vec3(u.x * v.x, u.y * v.y, u.z * v.z);
+		}
 
-        private bool Eq(Vec3 other)
+		private bool Eq(Vec3 other)
         {
             return x.SimilarTo(other.x) && y.SimilarTo(other.y) && z.SimilarTo(other.z);
         }

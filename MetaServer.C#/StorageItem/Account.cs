@@ -42,7 +42,7 @@ namespace Consensus
 
             Name = name;
 			CertificateHash = certificateHash;
-			GUID = System.Guid.NewGuid();
+			GUID = Guid.NewGuid();
         }
 		private Account(string name, string certificateHash, Guid guid)
 		{

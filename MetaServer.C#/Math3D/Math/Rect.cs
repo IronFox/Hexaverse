@@ -40,6 +40,11 @@ namespace Math3D
             return r.Max >= Min && r.Min <= Max;
         }
 
+		public float At(float x)
+		{
+			return Min + x * (Max - Min);
+		}
+
         public override string ToString()
         {
             return "[" + Min + ", " + Max + "]";
