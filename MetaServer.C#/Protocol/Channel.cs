@@ -23,15 +23,16 @@ namespace Protocol
 
 	namespace Interface
 	{
+
 		public struct AccountDetails
 		{
 			public string accountName;
-			public byte[] guid;
+			public UUID guid;
 
 			public AccountDetails(Account acc)
 			{
 				accountName = acc.Name;
-				guid = acc.GUID.ToByteArray();
+				guid = acc.GUID;
 			}
 		}
 		public struct NewAccount

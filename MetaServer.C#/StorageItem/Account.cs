@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Xml.Linq;
 using System.Collections.Concurrent;
+using Protocol;
 
 namespace Consensus
 {
@@ -42,9 +43,9 @@ namespace Consensus
 
             Name = name;
 			CertificateHash = certificateHash;
-			GUID = Guid.NewGuid();
+			GUID = new UUID( Guid.NewGuid() );
         }
-		private Account(string name, string certificateHash, Guid guid)
+		private Account(string name, string certificateHash, UUID guid)
 		{
 			Debug.Assert(name.Length <= MaxNameLength);
 
@@ -57,7 +58,7 @@ namespace Consensus
         {
             Name = xaccount.GetString("name");
 			CertificateHash = xaccount.GetString("certificateHash");
-			GUID = Guid.Parse(xaccount.GetString("guid"));
+			GUID = new UUID( Guid.Parse(xaccount.GetString("guid")) );
 
 			//XElement xrequests = xaccount.Element("friend_requests");
 			//if (xrequests != null)
@@ -83,7 +84,7 @@ namespace Consensus
 
 
 
-        public static Account Create(string name,string certificateHash, Guid guid)
+        public static Account Create(string name,string certificateHash, UUID guid)
         {
 			Account account = new Account(name, certificateHash, guid);
             if (Collection.TryAdd(certificateHash, account))

@@ -13,10 +13,10 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Cryptography;
+using Protocol;
 
 namespace Consensus
 {
-
 
 
 
@@ -287,7 +287,7 @@ namespace Consensus
 					accountCreationGate.Pass(client);
 
 					//byte[] data;
-					Guid guid = Guid.NewGuid();
+					UUID guid = new UUID( Guid.NewGuid() );
 					X509Certificate2 cert = Client.MakeCertificate("hexaverse." + guid.ToString());
 					Account acc2 = Account.Create(guid.ToString().Substring(0,Account.MaxNameLength), cert.GetCertHashString(), guid);
 					var rsaObj = (RSACryptoServiceProvider)cert.PrivateKey;
