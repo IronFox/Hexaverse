@@ -35,6 +35,21 @@ namespace Protocol
 				guid = acc.GUID;
 			}
 		}
+
+		public struct PlanetPresence
+		{
+			public UUID uuid;
+			public UUID classID;
+		}
+		public struct SystemPresence
+		{
+			public PlanetPresence[] planetPresences;
+			public bool isProtectedHomeSystem;
+		}
+		public struct RegionPresence
+		{
+			public SystemPresence[] systemPresences;
+		}
 		public struct NewAccount
 		{
 			public AccountDetails details;

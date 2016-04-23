@@ -27,12 +27,13 @@ namespace Consensus
 		{
 			Hello,				//c2s : UINT32 protocol version -> [if authenticated] s2c : (Authenticated)Protocol.Interface.AccountDetails [if not authenticated] s2c : (NotAuthenticated) [if version incompatible] s2c : VersionMismatch
 			VersionMismatch,	//s2c : <signal>
-			RequestNewAccount,	//c2s : <signal> : request new account creation -> s2c : (CreatedNewAccount)Protocol.Interface.NewAccount, s2c : (Authenticated)Protocol.Interface.AccountDetails
+			RequestNewAccount,	//c2s : <signal> : request new account creation -> s2c : (CreatedNewAccount)Protocol.Interface.NewAccount, s2c : (Authenticated)Protocol.Interface.AccountDetails, s2c : (RegionPresence)Protocol.Interface.RegionPresence
 			CreatedNewAccount,	//s2c : Protocol.Interface.NewAccount
-			Authenticated,		//s2c : Protocol.Interface.AccountDetails
+			Authenticated,      //s2c : Protocol.Interface.AccountDetails, s2c : (RegionPresence)Protocol.Interface.RegionPresence
 			NotAuthenticated,	//s2c : <signal>
 			SetAccountName,		//c2s : string -> [if valid] s2c : (Authenticated)Protocol.Interface.AccountDetails, [otherwise] s2c : (BadNickname)string
 			BadAccountName,		//s2c : string
+			RegionPresence,     //s2c : Protocol.Interface.RegionPresence
 
 			Count
 
@@ -93,11 +94,12 @@ namespace Consensus
 			}
 			public static class Channel
 			{
-				public static Protocol.OutChannel<Protocol.Interface.AccountDetails> Authenticated = new Protocol.OutChannel<Protocol.Interface.AccountDetails>((uint)ChannelID.Authenticated);
-				public static Protocol.OutChannel<Protocol.Interface.NewAccount> NewAccount = new Protocol.OutChannel<Protocol.Interface.NewAccount>((uint)ChannelID.CreatedNewAccount);
-				public static Protocol.OutChannel<string> BadAccountName = new Protocol.OutChannel<string>((uint)ChannelID.BadAccountName);
-				public static Protocol.SignalChannel VersionMismatch= new Protocol.SignalChannel((uint)ChannelID.VersionMismatch);
-				public static Protocol.SignalChannel NotAuthenticated = new Protocol.SignalChannel((uint)ChannelID.NotAuthenticated);
+				public static OutChannel<Protocol.Interface.AccountDetails> Authenticated = new OutChannel<Protocol.Interface.AccountDetails>((uint)ChannelID.Authenticated);
+				public static OutChannel<Protocol.Interface.NewAccount> NewAccount = new OutChannel<Protocol.Interface.NewAccount>((uint)ChannelID.CreatedNewAccount);
+				public static OutChannel<string> BadAccountName = new OutChannel<string>((uint)ChannelID.BadAccountName);
+				public static SignalChannel VersionMismatch = new SignalChannel((uint)ChannelID.VersionMismatch);
+				public static SignalChannel NotAuthenticated = new SignalChannel((uint)ChannelID.NotAuthenticated);
+				public static OutChannel<Protocol.Interface.RegionPresence> RegionPresence = new OutChannel<Protocol.Interface.RegionPresence>((uint)ChannelID.RegionPresence);
 			}
 
 		}
@@ -204,6 +206,7 @@ namespace Consensus
 					{
 						Program.Log(client,Logging.Significance.Low,"hello: sending authentication info");
 						Out.Channel.Authenticated.SendTo(client, new Protocol.Interface.AccountDetails(client.Account));
+						Out.Channel.RegionPresence.SendTo(client,client.Account.Presence.Bake());
 					}
 					else
 					{

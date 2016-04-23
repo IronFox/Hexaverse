@@ -7,6 +7,7 @@ using System.Text;
 using System.Xml.Linq;
 using System.Collections.Concurrent;
 using Protocol;
+using Consensus.StorageItem;
 
 namespace Consensus
 {
@@ -20,7 +21,7 @@ namespace Consensus
         
         public string CertificateHash { get; private set; }
 
-
+		public RegionPresence Presence { get; private set; }
 
 
         private static byte[] stringToByteArray(String hex)
