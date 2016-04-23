@@ -57,6 +57,13 @@ namespace Consensus
 			return range.Min + range.Extend * random.NextFloat();
 		}
 
+		public static T Random<T>(this List<T> list, Random random)
+		{
+			if (list == null || list.Count == 0)
+				return default(T);
+			return list[random.Next(list.Count)];
+		}
+
 
 		public static void SetUInt32(this byte[] array, int address, UInt32 v)
 		{
