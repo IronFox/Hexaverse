@@ -211,24 +211,6 @@ namespace Consensus
 		//}
 
 
-        //private ConcurrentDictionary<uint, bool> openChannels = new ConcurrentDictionary<uint, bool>();
-
-		//public bool IsListeningToChannel(uint channelID)
-		//{
-		//	return openChannels.ContainsKey(channelID);
-		//}
-
-		//public void OpenChannel(uint channelID)
-		//{
-		//	openChannels[channelID] = true;
-		//}
-		//public void CloseChannel(uint channelID)
-		//{
-		//	bool dummy;
-		//	openChannels.TryRemove(channelID, out dummy);
-		//}
-
-
 
 
 		internal void ChangeName(string newNickName)
