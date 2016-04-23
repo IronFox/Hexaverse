@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Consensus.IO;
 using Math3D;
 
 namespace Consensus.Universe
@@ -14,6 +15,7 @@ namespace Consensus.Universe
 		public readonly Body	CentralBody;
 		public readonly PlanetStructure InitialStructure;
 		public readonly SolarSystem SolarSystem;
+		public IO.Server CurrentServer { get; set; }
 		public float Angle { get; private set; }
 
 		public List<Faction> ActiveFactions { get; private set; } = new List<Faction>();
@@ -43,6 +45,23 @@ namespace Consensus.Universe
 			InitialStructure = initialStructure;
 			SolarSystem = system;
 		}
+
+		public LockedServerLink LockServer()
+		{
+			if (CurrentServer != null)
+			{
+				try
+				{
+					return CurrentServer.AcquireLockTo(this);
+				}
+				catch
+				{
+					CurrentServer = null;
+					throw;
+				}
+			}
+			CurrentServer = IO.Server.Allocate(this);
+			return LockServer();
 		}
 	}
 }
