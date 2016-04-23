@@ -19,8 +19,13 @@ namespace Consensus.StorageItem
 	}
 	public class SystemPresence
 	{
-		public Universe.SolarSystem system;
 		public List<PlanetPresence> planetPresences = new List<PlanetPresence>();
+		public readonly SolarSystem SolarSystem;
+
+		public SystemPresence(SolarSystem solarSystem)
+		{
+			SolarSystem = solarSystem;
+		}
 	}
 	public class RegionPresence
 	{
