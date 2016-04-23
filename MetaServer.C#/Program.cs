@@ -364,6 +364,7 @@ namespace Consensus
 
 					Out.Channel.NewAccount.SendTo(client, nacc);
 					client.Account = acc2;
+					acc2.Client = client;
 					Out.Channel.Authenticated.SendTo(client, nacc.details);
 					Program.Log(client, Logging.Significance.Common, "Logged in as: " + acc2.ToString());
 

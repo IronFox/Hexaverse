@@ -22,6 +22,7 @@ namespace Consensus
         public string CertificateHash { get; private set; }
 
 		public RegionPresence Presence { get; private set; }
+		public Client Client { get; internal set; }
 
 
 

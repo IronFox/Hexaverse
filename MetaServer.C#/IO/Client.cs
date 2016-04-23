@@ -286,6 +286,7 @@ namespace Consensus
 				if (acc != null)
 				{
 					Account = acc;
+					acc.Client = this;
 					Program.Log(this, Logging.Significance.Low, "Logged in as: " + Account.ToString());
 				}
 				else
@@ -314,6 +315,8 @@ namespace Consensus
 
 		protected override void OnReadThreadExit()
 		{
+			if (Account != null)
+				Account.Client = null;
 			base.OnReadThreadExit();
 			Program.Log(this, Logging.Significance.Low, "Ending read thread");
 			Program.Log(this, Logging.Significance.Common, "Client connection lost or closed");
