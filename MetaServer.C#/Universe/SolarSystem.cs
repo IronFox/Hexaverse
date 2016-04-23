@@ -11,6 +11,7 @@ namespace Consensus.Universe
 	{
 		Sun sun;
 		List<OrbitingBody> bodies;
+		public Account Owner { get; set; }
 
 		public void Build(Random random)
 		{
