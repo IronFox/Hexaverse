@@ -5,11 +5,11 @@ namespace Consensus.Universe
 {
 	public abstract class Body
 	{
-		public readonly Guid GUID;
+		public readonly UUID ID;
 
 		public Body(Guid guid)
 		{
-			GUID = guid;
+			ID = new UUID( guid );
 		}
 
 		public abstract Vec3 AbsoluteLocation { get; }

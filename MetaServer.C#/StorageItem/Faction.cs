@@ -45,9 +45,9 @@ namespace Consensus
 
             Name = name;
 			CertificateHash = certificateHash;
-			GUID = new UUID( Guid.NewGuid() );
+			GUID = Guid.NewGuid();
         }
-		private Faction(string name, string certificateHash, UUID guid)
+		private Faction(string name, string certificateHash, Guid guid)
 		{
 			Debug.Assert(name.Length <= MaxNameLength);
 
@@ -60,7 +60,7 @@ namespace Consensus
         {
             Name = xaccount.GetString("name");
 			CertificateHash = xaccount.GetString("certificateHash");
-			GUID = new UUID( Guid.Parse(xaccount.GetString("guid")) );
+			GUID = Guid.Parse(xaccount.GetString("guid"));
 
 			//XElement xrequests = xaccount.Element("friend_requests");
 			//if (xrequests != null)
@@ -86,7 +86,7 @@ namespace Consensus
 
 
 
-        public static Faction Create(string name,string certificateHash, UUID guid)
+        public static Faction Create(string name,string certificateHash, Guid guid)
         {
 			Faction account = new Faction(name, certificateHash, guid);
             if (Collection.TryAdd(certificateHash, account))

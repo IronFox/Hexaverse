@@ -19,9 +19,42 @@ namespace Consensus
 {
 
 
-
 	namespace Interface
 	{
+
+		public struct AccountDetails
+		{
+			public string accountName;
+			public UUID guid;
+
+			public AccountDetails(Account acc)
+			{
+				accountName = acc.Name;
+				guid = new UUID( acc.GUID );
+			}
+		}
+
+		public struct PlanetPresence
+		{
+			public UUID id;
+			//public SHA1Hash structureID;	queries elsewhere
+		}
+		public struct SystemPresence
+		{
+			public PlanetPresence[] planetPresences;
+			public bool isProtectedHomeSystem;
+		}
+		public struct RegionPresence
+		{
+			public SystemPresence[] systemPresences;
+		}
+		public struct NewAccount
+		{
+			public AccountDetails details;
+			public byte[] certificate;
+			public byte[] certificateKey;
+		}
+
 
 		enum ChannelID
 		{
@@ -94,12 +127,12 @@ namespace Consensus
 			}
 			public static class Channel
 			{
-				public static OutChannel<Protocol.Interface.AccountDetails> Authenticated = new OutChannel<Protocol.Interface.AccountDetails>((uint)ChannelID.Authenticated);
-				public static OutChannel<Protocol.Interface.NewAccount> NewAccount = new OutChannel<Protocol.Interface.NewAccount>((uint)ChannelID.CreatedNewAccount);
+				public static OutChannel<AccountDetails> Authenticated = new OutChannel<AccountDetails>((uint)ChannelID.Authenticated);
+				public static OutChannel<NewAccount> NewAccount = new OutChannel<NewAccount>((uint)ChannelID.CreatedNewAccount);
 				public static OutChannel<string> BadAccountName = new OutChannel<string>((uint)ChannelID.BadAccountName);
 				public static SignalChannel VersionMismatch = new SignalChannel((uint)ChannelID.VersionMismatch);
 				public static SignalChannel NotAuthenticated = new SignalChannel((uint)ChannelID.NotAuthenticated);
-				public static OutChannel<Protocol.Interface.RegionPresence> RegionPresence = new OutChannel<Protocol.Interface.RegionPresence>((uint)ChannelID.RegionPresence);
+				public static OutChannel<RegionPresence> RegionPresence = new OutChannel<RegionPresence>((uint)ChannelID.RegionPresence);
 			}
 
 		}
@@ -205,8 +238,8 @@ namespace Consensus
 					if (client.Account != null)
 					{
 						Program.Log(client,Logging.Significance.Low,"hello: sending authentication info");
-						Out.Channel.Authenticated.SendTo(client, new Protocol.Interface.AccountDetails(client.Account));
-						Out.Channel.RegionPresence.SendTo(client,client.Account.Presence.Bake());
+						Out.Channel.Authenticated.SendTo(client, new AccountDetails(client.Account));
+						Out.Channel.RegionPresence.SendTo(client,client.Account.Presence.BakeFor(client.Account));
 					}
 					else
 					{
@@ -290,7 +323,7 @@ namespace Consensus
 					accountCreationGate.Pass(client);
 
 					//byte[] data;
-					UUID guid = new UUID( Guid.NewGuid() );
+					Guid guid = Guid.NewGuid();
 					X509Certificate2 cert = Client.MakeCertificate("hexaverse." + guid.ToString());
 					Faction acc2 = Faction.Create(guid.ToString().Substring(0,Faction.MaxNameLength), cert.GetCertHashString(), guid);
 					var rsaObj = (RSACryptoServiceProvider)cert.PrivateKey;
@@ -327,7 +360,7 @@ namespace Consensus
 					//rsaObj.ExportParameters(true)
 //					var cspBlob = rsaObj.ExportCspBlob(true);
 
-					Protocol.Interface.NewAccount nacc = new Protocol.Interface.NewAccount() { details = new Protocol.Interface.AccountDetails(acc2), certificate = cert.Export(X509ContentType.Cert), certificateKey=key };
+					NewAccount nacc = new NewAccount() { details = new AccountDetails(acc2), certificate = cert.Export(X509ContentType.Cert), certificateKey=key };
 
 					Out.Channel.NewAccount.SendTo(client, nacc);
 					client.Account = acc2;
@@ -363,8 +396,8 @@ namespace Consensus
 					{
 						throw new InvalidOperationException("Account is null");
 					}
-					((Account)client.Account).ChangeName(newNickName);
-					Out.Channel.Authenticated.SendTo(client,new Protocol.Interface.AccountDetails(client.Account));
+					((Faction)client.Account).ChangeName(newNickName);
+					Out.Channel.Authenticated.SendTo(client,new AccountDetails(client.Account));
 					Program.Log(client, Logging.Significance.Common,"Changed account name to '"+newNickName+"'");
 				}
 			}

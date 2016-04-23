@@ -58,10 +58,11 @@
     <Compile Include="StorageItem\Continuum.cs" />
     <Compile Include="StorageItem\AccessKey.cs" />
     <Compile Include="StorageItem\RegionPresence.cs" />
+    <Compile Include="StorageItem\SHA1Hash.cs" />
+    <Compile Include="StorageItem\UUID.cs" />
     <Compile Include="Universe\Body.cs" />
     <Compile Include="Universe\OrbitingBody.cs" />
     <Compile Include="Universe\PlanetStructure.cs" />
-    <Compile Include="StorageItem\SHA1Hash.cs" />
     <Compile Include="Universe\SolarSystem.cs" />
     <Compile Include="Universe\Sun.cs" />
   </ItemGroup>

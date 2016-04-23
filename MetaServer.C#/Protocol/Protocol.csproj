@@ -48,7 +48,6 @@
     <Compile Include="DataQueue.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SerialItem.cs" />
-    <Compile Include="UUID.cs" />
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Service References\" />
