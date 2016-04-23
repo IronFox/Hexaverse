@@ -13,6 +13,7 @@ namespace Consensus.Universe
 		public readonly float	OrbitalRadius;
 		public readonly Body	CentralBody;
 		public readonly PlanetStructure InitialStructure;
+		public readonly SolarSystem SolarSystem;
 		public float Angle { get; private set; }
 		public Vec3 RelativeLocation
 		{
@@ -31,12 +32,14 @@ namespace Consensus.Universe
 		}
 
 
-		public OrbitingBody(PlanetStructure initialStructure, Body centralBody, float orbitalRadius, Guid guid, float initialAngle) : base(guid)
+		public OrbitingBody(SolarSystem system, PlanetStructure initialStructure, Body centralBody, float orbitalRadius, Guid guid, float initialAngle) : base(guid)
 		{
 			OrbitalRadius = orbitalRadius;
 			CentralBody = centralBody;
 			Angle = initialAngle;
 			InitialStructure = initialStructure;
+			SolarSystem = system;
+		}
 		}
 	}
 }
