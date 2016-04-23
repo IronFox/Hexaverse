@@ -56,6 +56,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="General\Time.cs" />
     <Compile Include="StorageItem\Continuum.cs" />
+    <Compile Include="StorageItem\AccessKey.cs" />
     <Compile Include="StorageItem\RegionPresence.cs" />
     <Compile Include="Universe\Body.cs" />
     <Compile Include="Universe\OrbitingBody.cs" />
