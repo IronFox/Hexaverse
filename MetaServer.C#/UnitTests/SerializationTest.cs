@@ -9,6 +9,7 @@ namespace UnitTests
 	public class SerializationTest
 	{
 
+		#pragma warning disable 0649	//variable never assigned to
 
 		struct Struct1
 		{
