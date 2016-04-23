@@ -8,6 +8,7 @@ using System.Xml.Linq;
 using System.Collections.Concurrent;
 using Protocol;
 using Consensus.StorageItem;
+using Consensus.Universe;
 
 namespace Consensus
 {
@@ -217,6 +218,42 @@ namespace Consensus
 		{
 			Debug.Assert(newNickName.Length <= MaxNameLength);
 			this.Name = newNickName;
+		}
+
+		public void Colonize(OrbitingBody planet, string unitComposition)
+		{
+			//AccessKey key = AccessKey.Generate();
+			for (int i = 0; i < 10; i++)
+			{
+				try
+				{
+					IO.LockedServerLink link = planet.LockServer();
+					try
+					{
+						//UUID factionID = new UUID(Guid.NewGuid());
+						string fid = GUID.ToHexString();
+						link.Command("/Factions/create " + fid + " Regular", "Faction " + fid + " created");
+						link.Command("/Factions/" + fid + "/instantiate \"" + unitComposition + "\"", null);
+						//link.Command("/Factions/" + fid + "/setKey " + key);
+
+						if (Presence == null)
+							Presence = new RegionPresence(this);
+						Presence.Add(planet);
+						link.Release();
+					}
+					catch
+					{
+						link.Release();
+						throw;
+					}
+					return;
+				}
+				catch (Exception e)
+				{
+					Program.ReportUnexpected(Client, e, Logging.Significance.Unusual);
+				}
+			}
+			throw new Exception(this+ ": Unable to colonize designated planet "+planet);
 		}
 	}
 }
