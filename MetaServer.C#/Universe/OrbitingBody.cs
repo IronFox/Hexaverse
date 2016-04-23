@@ -15,6 +15,9 @@ namespace Consensus.Universe
 		public readonly PlanetStructure InitialStructure;
 		public readonly SolarSystem SolarSystem;
 		public float Angle { get; private set; }
+
+		public List<Faction> ActiveFactions { get; private set; } = new List<Faction>();
+
 		public Vec3 RelativeLocation
 		{
 			get

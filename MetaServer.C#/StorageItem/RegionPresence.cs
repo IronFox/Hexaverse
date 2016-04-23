@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Protocol.Interface;
+using Consensus.Interface;
 using Consensus.Universe;
 
 namespace Consensus.StorageItem
@@ -11,9 +11,11 @@ namespace Consensus.StorageItem
 	public class PlanetPresence
 	{
 		public readonly OrbitingBody Planet;
-		public PlanetPresence(OrbitingBody planet)
+
+		public PlanetPresence(OrbitingBody planet, Faction owner)
 		{
 			Planet = planet;
+			planet.ActiveFactions.Add(owner);
 		}
 
 	}
@@ -26,14 +28,43 @@ namespace Consensus.StorageItem
 		{
 			SolarSystem = solarSystem;
 		}
+
+		internal void Add(OrbitingBody planet, Faction owner)
+		{
+			foreach (var p in planetPresences)
+				if (p.Planet == planet)
+				{
+					return;
+				}
+			{
+				PlanetPresence p = new PlanetPresence(planet,owner);
+				planetPresences.Add(p);
+			}
+		}
 	}
 	public class RegionPresence
 	{
 		public List<SystemPresence> systemPresences = new List<SystemPresence>();
+		private Faction faction;
 
-		internal Protocol.Interface.RegionPresence Bake()
+		public RegionPresence(Faction faction)
 		{
-			throw new NotImplementedException();
+			this.faction = faction;
+		}
+
+		internal void Add(OrbitingBody planet)
+		{
+			foreach (var p in systemPresences)
+				if (p.SolarSystem == planet.SolarSystem)
+				{
+					p.Add(planet, faction);
+					return;
+				}
+			{
+				SystemPresence p = new SystemPresence(planet.SolarSystem);
+				p.Add(planet, faction);
+				systemPresences.Add(p);
+			}
 		}
 	}
 }
