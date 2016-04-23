@@ -4,12 +4,18 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Protocol.Interface;
+using Consensus.Universe;
 
 namespace Consensus.StorageItem
 {
 	public class PlanetPresence
 	{
-		public Universe.OrbitingBody planet;
+		public readonly OrbitingBody Planet;
+		public PlanetPresence(OrbitingBody planet)
+		{
+			Planet = planet;
+		}
+
 	}
 	public class SystemPresence
 	{
