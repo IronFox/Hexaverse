@@ -7,7 +7,7 @@ using Protocol.Interface;
 
 namespace Consensus.StorageItem
 {
-	public struct PlanetPresence
+	public class PlanetPresence
 	{
 		public Universe.OrbitingBody planet;
 	}
