@@ -15,10 +15,14 @@ namespace Consensus.Universe
 
 		public void Build(Random random)
 		{
+			Build(random.Next(1, 11), random);
+		}
+
+		public void Build(int numPlanets, Random random)
+		{
 			sun = new Sun(Guid.NewGuid());
 			bodies = new List<OrbitingBody>();
 
-			int numPlanets = random.Next(1, 11);
 			float r0 = random.NextIn(new Range(4e10f, 8e10f));
 			float r1 = random.NextIn(new Range(1e12f, 8e12f));
 			Range planetRange = new Range(r0, r1 - r0);
