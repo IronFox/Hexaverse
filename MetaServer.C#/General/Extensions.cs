@@ -12,7 +12,7 @@ using System.Xml.Linq;
 namespace Consensus
 {
 
-	public static class Extensions
+	public static partial class Extensions
 	{
 		public static void VisitAllElements<K, V>(this ConcurrentDictionary<K, V> dict, Action<V> op)
 		{
