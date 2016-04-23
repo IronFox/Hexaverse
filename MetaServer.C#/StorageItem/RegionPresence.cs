@@ -18,6 +18,10 @@ namespace Consensus.StorageItem
 			planet.ActiveFactions.Add(owner);
 		}
 
+		internal Interface.PlanetPresence BakeFor(Faction faction)
+		{
+			return new Interface.PlanetPresence() { id = Planet.ID };
+		}
 	}
 	public class SystemPresence
 	{
@@ -27,6 +31,18 @@ namespace Consensus.StorageItem
 		public SystemPresence(SolarSystem solarSystem)
 		{
 			SolarSystem = solarSystem;
+		}
+
+		internal Interface.SystemPresence BakeFor(Faction faction)
+		{
+			Interface.SystemPresence rs = new Interface.SystemPresence()
+			{
+				isProtectedHomeSystem = faction == SolarSystem.Owner,
+				planetPresences = new Interface.PlanetPresence[planetPresences.Count]
+			};
+			for (int i = 0; i < planetPresences.Count; i++)
+				rs.planetPresences[i] = planetPresences[i].BakeFor(faction);
+			return rs;
 		}
 
 		internal void Add(OrbitingBody planet, Faction owner)
@@ -50,6 +66,14 @@ namespace Consensus.StorageItem
 		public RegionPresence(Faction faction)
 		{
 			this.faction = faction;
+		}
+
+		public Interface.RegionPresence Bake()
+		{
+			Interface.RegionPresence rs = new Interface.RegionPresence() { systemPresences = new Interface.SystemPresence[systemPresences.Count] };
+			for (int i = 0; i < systemPresences.Count; i++)
+				rs.systemPresences[i] = systemPresences[i].BakeFor(faction);
+			return rs;
 		}
 
 		internal void Add(OrbitingBody planet)

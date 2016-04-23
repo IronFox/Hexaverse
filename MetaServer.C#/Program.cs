@@ -239,7 +239,7 @@ namespace Consensus
 					{
 						Program.Log(client,Logging.Significance.Low,"hello: sending authentication info");
 						Out.Channel.Authenticated.SendTo(client, new AccountDetails(client.Account));
-						Out.Channel.RegionPresence.SendTo(client,client.Account.Presence.BakeFor(client.Account));
+						Out.Channel.RegionPresence.SendTo(client,client.Account.Presence.Bake());
 					}
 					else
 					{
@@ -368,6 +368,16 @@ namespace Consensus
 					Out.Channel.Authenticated.SendTo(client, nacc.details);
 					Program.Log(client, Logging.Significance.Common, "Logged in as: " + acc2.ToString());
 
+					//place new account
+					//let's go with a simplified single system first
+
+					Universe.OrbitingBody leastActive = Program.RootSystem.GetLeastActivePlanet(new Random());
+					client.Account.Colonize(leastActive,
+						"<carrier type='CargoPlane'><unit type='Hoverformer' minerals='200' /><unit type='Hoverformer' minerals='200' /></carrier>"
+						);
+					Out.Channel.RegionPresence.SendTo(client, client.Account.Presence.Bake());
+
+
 				}
 
 				private static void GeneralError(Client client, string error)
@@ -451,6 +461,7 @@ namespace Consensus
 
 		public static volatile bool ShuttingDown = false;
 
+		public static Universe.SolarSystem RootSystem;
 
 		public static void ShutDown()
 		{
@@ -563,10 +574,6 @@ namespace Consensus
 			//var cert = Client.GenSelfSignedCert("me",out pass);
 
 
-			Universe.SolarSystem sys = new Universe.SolarSystem();
-			sys.Build(new Random());
-
-
 			if (System.IO.Directory.Exists("./Runtime"))
 				System.IO.Directory.SetCurrentDirectory("./Runtime");
 			else
@@ -590,6 +597,10 @@ namespace Consensus
 			//  return;
 
 			Client.StaticInitServerCertificate();
+
+
+			RootSystem = new Universe.SolarSystem();
+			RootSystem.Build(8, new Random());
 
 
 			listener = new TcpListener(System.Net.IPAddress.Any, Port); //IPv4
