@@ -58,6 +58,7 @@
     <Compile Include="StorageItem\Continuum.cs" />
     <Compile Include="Universe\Body.cs" />
     <Compile Include="Universe\OrbitingBody.cs" />
+    <Compile Include="StorageItem\SHA1Hash.cs" />
     <Compile Include="Universe\SolarSystem.cs" />
     <Compile Include="Universe\Sun.cs" />
   </ItemGroup>
