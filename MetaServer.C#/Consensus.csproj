@@ -45,6 +45,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="General\Extensions.cs" />
     <Compile Include="IO\ClientGate.cs" />
     <Compile Include="IO\CRC32.cs" />
     <Compile Include="IO\TimeServer.cs" />
