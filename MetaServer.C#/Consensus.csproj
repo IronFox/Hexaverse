@@ -48,6 +48,8 @@
     <Compile Include="General\Extensions.cs" />
     <Compile Include="IO\ClientGate.cs" />
     <Compile Include="IO\CRC32.cs" />
+    <Compile Include="IO\LockedServerLink.cs" />
+    <Compile Include="IO\Server.cs" />
     <Compile Include="IO\TimeServer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="StorageItem\Faction.cs" />
@@ -84,6 +86,10 @@
     <ProjectReference Include="Protocol\Protocol.csproj">
       <Project>{b9f262af-b3c7-44a8-a095-cf84f5b6c009}</Project>
       <Name>Protocol</Name>
+    </ProjectReference>
+    <ProjectReference Include="ThirdParty\Renci.SshNet\Renci.SshNet.csproj">
+      <Project>{2F5F8C90-0BD1-424F-997C-7BC6280919D1}</Project>
+      <Name>Renci.SshNet</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
