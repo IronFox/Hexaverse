@@ -49,5 +49,22 @@ namespace Consensus.Universe
 				at = at2;
 			}
 		}
+
+		internal OrbitingBody GetLeastActivePlanet(Random random)
+		{
+			//int[] w = new int[bodies.Count];
+			int w = int.MaxValue;
+			OrbitingBody rs = null;
+			for (int i = 0; i < bodies.Count; i++)
+			{
+				int w2 = bodies[i].ActiveFactions.Count * 10 + random.Next(15);
+				if (w2 < w)
+				{
+					w = w2;
+					rs = bodies[i];
+				}
+			}
+			return rs;
+		}
 	}
 }
