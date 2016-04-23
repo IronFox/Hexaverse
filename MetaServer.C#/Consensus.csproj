@@ -50,7 +50,7 @@
     <Compile Include="IO\CRC32.cs" />
     <Compile Include="IO\TimeServer.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="StorageItem\Account.cs" />
+    <Compile Include="StorageItem\Faction.cs" />
     <Compile Include="IO\Client.cs" />
     <Compile Include="IO\LoadingStage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
