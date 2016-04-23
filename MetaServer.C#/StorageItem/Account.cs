@@ -14,14 +14,15 @@ namespace Consensus
     /// <summary>
     /// User account structure
     /// </summary>
-    public class Account : Protocol.Account
+    public class Faction : Protocol.Account
     {
-        public static ConcurrentDictionary<string,Account> Collection = new ConcurrentDictionary<string,Account>();
+        public static ConcurrentDictionary<string,Faction> Collection = new ConcurrentDictionary<string,Faction>();
 		public const int MaxNameLength = 32;
         
         public string CertificateHash { get; private set; }
 
 		public RegionPresence Presence { get; private set; }
+
 
 
         private static byte[] stringToByteArray(String hex)
@@ -38,7 +39,7 @@ namespace Consensus
             return hex.Replace("-", "");
         }
 
-        private Account(string name, string certificateHash)
+        private Faction(string name, string certificateHash)
         {
 			Debug.Assert(name.Length <= MaxNameLength);
 
@@ -46,7 +47,7 @@ namespace Consensus
 			CertificateHash = certificateHash;
 			GUID = new UUID( Guid.NewGuid() );
         }
-		private Account(string name, string certificateHash, UUID guid)
+		private Faction(string name, string certificateHash, UUID guid)
 		{
 			Debug.Assert(name.Length <= MaxNameLength);
 
@@ -55,7 +56,7 @@ namespace Consensus
 			GUID = guid;
 		}
 
-        public Account(XElement xaccount)
+        public Faction(XElement xaccount)
         {
             Name = xaccount.GetString("name");
 			CertificateHash = xaccount.GetString("certificateHash");
@@ -85,9 +86,9 @@ namespace Consensus
 
 
 
-        public static Account Create(string name,string certificateHash, UUID guid)
+        public static Faction Create(string name,string certificateHash, UUID guid)
         {
-			Account account = new Account(name, certificateHash, guid);
+			Faction account = new Faction(name, certificateHash, guid);
             if (Collection.TryAdd(certificateHash, account))
             {
                 Continuum.Save();
@@ -101,7 +102,7 @@ namespace Consensus
 
         public static void Load(XElement data)
         {
-			Account acc = new Account(data);
+			Faction acc = new Faction(data);
             Debug.Assert(Collection.TryAdd(acc.CertificateHash,acc));
         }
 

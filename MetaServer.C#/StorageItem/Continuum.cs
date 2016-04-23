@@ -31,7 +31,7 @@ namespace Consensus
                         try
                         {
                             if (child.Name == "account")
-                                Account.Load(child);
+                                Faction.Load(child);
                             else
 								throw new Exception("Unexpected entity type encountered: " + child.Name);
                         }
@@ -46,7 +46,7 @@ namespace Consensus
 
 
 
-                Account.Collection.VisitAllElements(account => account.PostLoadLink());
+                Faction.Collection.VisitAllElements(account => account.PostLoadLink());
 
                 //clean up oddities from last run:
             }
@@ -55,7 +55,7 @@ namespace Consensus
                 LoadingStage.Abort();
                 try
                 {
-                    Account.Collection.Clear();
+                    Faction.Collection.Clear();
                 }
                 catch (Exception ex)
                 {
@@ -83,7 +83,7 @@ namespace Consensus
                 return false;
             }
 
-			Program.Log(null, Logging.Significance.Common, Account.Collection.Count + " Account(s) loaded.");
+			Program.Log(null, Logging.Significance.Common, Faction.Collection.Count + " Account(s) loaded.");
 
             return !Program.ShuttingDown;   //fatal reported otherwise
         }
@@ -92,7 +92,7 @@ namespace Consensus
         private static void InnerSave()
         {
             XElement el = new XElement("continuum");
-            Account.Collection.VisitAllElements(account => el.Add(account.ToXML()));
+            Faction.Collection.VisitAllElements(account => el.Add(account.ToXML()));
             el.Save("continuum.xml");
         }
 

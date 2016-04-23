@@ -129,7 +129,7 @@ namespace Consensus
 					errorMessage = "The specified name is too short. Three characters minimum.";
 					return true;
 				}
-				if (name.Length > Account.MaxNameLength)
+				if (name.Length > Faction.MaxNameLength)
 				{
 					errorMessage = "The specified name is too long. 32 characters maximum.";
 					return true;
@@ -292,7 +292,7 @@ namespace Consensus
 					//byte[] data;
 					UUID guid = new UUID( Guid.NewGuid() );
 					X509Certificate2 cert = Client.MakeCertificate("hexaverse." + guid.ToString());
-					Account acc2 = Account.Create(guid.ToString().Substring(0,Account.MaxNameLength), cert.GetCertHashString(), guid);
+					Faction acc2 = Faction.Create(guid.ToString().Substring(0,Faction.MaxNameLength), cert.GetCertHashString(), guid);
 					var rsaObj = (RSACryptoServiceProvider)cert.PrivateKey;
 					byte[] key;
 

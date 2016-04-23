@@ -78,7 +78,7 @@ namespace Consensus
 	{
 		private static List<Client> allClients = new List<Client>();
 		//private NetworkStream stream;
-		public Account Account = null;
+		public Faction Account = null;
 		private static RNGCryptoServiceProvider provider = new RNGCryptoServiceProvider();
 		//private long lastFrameSent;
 
@@ -282,7 +282,7 @@ namespace Consensus
 			{
 				Program.Log(this, Logging.Significance.Low, "SSL Authentication concluded: " + sslStream.CipherAlgorithm.ToString() + ", strength " + sslStream.CipherStrength);
 				string certHash = sslStream.RemoteCertificate.GetCertHashString();
-				Account acc = Account.Collection.GetValue(certHash);
+				Faction acc = Faction.Collection.GetValue(certHash);
 				if (acc != null)
 				{
 					Account = acc;
