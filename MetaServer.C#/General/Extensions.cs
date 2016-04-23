@@ -182,9 +182,25 @@ namespace Consensus
 				return "";
 			return attrib.Value;
 		}
+		public static string ToHexString(this Guid guid)
+		{
+			return guid.ToByteArray().ToHexString();
+		}
 
+		public static string ToHexString(this byte[] ar)
+		{
+			string hex = BitConverter.ToString(ar);
+			return hex.Replace("-", "");
+		}
 
-
+		public static byte[] DecodeHex(this string hex)
+		{
+			int NumberChars = hex.Length;
+			byte[] bytes = new byte[NumberChars / 2];
+			for (int i = 0; i < NumberChars; i += 2)
+				bytes[i / 2] = System.Convert.ToByte(hex.Substring(i, 2), 16);
+			return bytes;
+		}
 
 
 

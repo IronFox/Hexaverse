@@ -26,19 +26,6 @@ namespace Consensus
 
 
 
-        private static byte[] stringToByteArray(String hex)
-        {
-            int NumberChars = hex.Length;
-            byte[] bytes = new byte[NumberChars / 2];
-            for (int i = 0; i < NumberChars; i += 2)
-                bytes[i / 2] = System.Convert.ToByte(hex.Substring(i, 2), 16);
-            return bytes;
-        }
-        private static string byteArrayToString(byte[] ba)
-        {
-            string hex = BitConverter.ToString(ba);
-            return hex.Replace("-", "");
-        }
 
         private Faction(string name, string certificateHash)
         {
