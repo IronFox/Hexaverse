@@ -18,14 +18,21 @@ namespace Consensus
 			b = BitConverter.ToUInt64(ar, 8);
 		}
 
-		Guid Guid
+		public Guid Guid
+		{
+			get
+			{
+				return new Guid(AsArray);
+			}
+		}
+		public byte[] AsArray
 		{
 			get
 			{
 				byte[] ar = new byte[16];
 				BitConverter.GetBytes(a).CopyTo(ar, 0);
 				BitConverter.GetBytes(b).CopyTo(ar, 8);
-				return new Guid(ar);
+				return ar;
 			}
 		}
 
@@ -43,6 +50,11 @@ namespace Consensus
 		public override bool Equals(object obj)
 		{
 			return obj is UUID && ((UUID)obj) == this;
+		}
+
+		public override string ToString()
+		{
+			return AsArray.ToHexString();
 		}
 
 
