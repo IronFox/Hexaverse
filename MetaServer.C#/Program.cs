@@ -545,6 +545,7 @@ namespace Consensus
 			}
 
 
+			Universe.PlanetStructure.StaticCreate();
 
 			Interface.In.Register();
 

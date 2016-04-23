@@ -40,7 +40,7 @@ namespace Consensus.Universe
 				float c = ((at + at2) / 2f - 1) / (total - 1);
 				float radius = planetRange.At(c);
 
-				bodies.Add(new OrbitingBody(sun, radius, Guid.NewGuid(), random.NextFloat() * 2f * (float)Math.PI));
+				bodies.Add(new OrbitingBody(PlanetStructure.GetRandom(random),  sun, radius, Guid.NewGuid(), random.NextFloat() * 2f * (float)Math.PI));
 
 				at = at2;
 			}

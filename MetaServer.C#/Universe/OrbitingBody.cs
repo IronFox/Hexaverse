@@ -12,6 +12,7 @@ namespace Consensus.Universe
 		public readonly Matrix3 RotationSystem = Matrix3.Identity;  //these may become mutable at some point
 		public readonly float	OrbitalRadius;
 		public readonly Body	CentralBody;
+		public readonly PlanetStructure InitialStructure;
 		public float Angle { get; private set; }
 		public Vec3 RelativeLocation
 		{
@@ -30,11 +31,12 @@ namespace Consensus.Universe
 		}
 
 
-		public OrbitingBody(Body centralBody, float orbitalRadius, Guid guid, float initialAngle) : base(guid)
+		public OrbitingBody(PlanetStructure initialStructure, Body centralBody, float orbitalRadius, Guid guid, float initialAngle) : base(guid)
 		{
 			OrbitalRadius = orbitalRadius;
 			CentralBody = centralBody;
 			Angle = initialAngle;
+			InitialStructure = initialStructure;
 		}
 	}
 }
