@@ -1,6 +1,19 @@
 title Login Sequence
 
+
+
+User->+Client:  Start
+OS->+Consensus: Start
+Consensus->+ServerRegistry: Start
+ServerRegistry->+Server: Connect via SSL. Authenticate
+Server->ServerRegistry: Authenticated
+
+ServerRegistry->-Consensus: Started
+deactivate Consensus
+
 Client->+Consensus:  Login
+
+
 note right of Consensus:
     *Get or create
      faction
@@ -25,14 +38,31 @@ Consensus->-Client: Send system xyz
 
 
 
-ServerRegistry->+Server(ssh): SSH on server of xyz
-Server(ssh)->+Control Console: Execute\n Control Command
-Control Console->Server: "loadWorldOrAbort ...;\n createFaction ...;\n placeUnits..."
-note right of Server: World not loaded?\nOr same as requested?\nYay else Nay
-Server->Control Console: Yay/Nay
-Control Console->-Server(ssh): Yay/Nay
-Server(ssh)->-ServerRegistry: Yay/Nay
-ServerRegistry->-ServerRegistry: End if Yay,\n lookup new server if Nay
+ServerRegistry->Server: "createLoadWorldOrAbort xyz/type;\n createFaction ...;\n placeUnits ...;\n savePlanet ..."
+
+alt Server is online and has diverging planet loaded
+    Server->ServerRegistry: Nay
+    ServerRegistry->ServerRegistry: Lookup new server\n and retry
+else 
+    alt No planet loaded
+        Server->+DB: Get planet savegame
+        DB->-Server: Savegame or nothing
+        alt Has planet savegame
+            Server->Server: Load savegame
+        else Has no planet savegame
+            Server->Server: Create planet
+        end
+        Server->Server: Start Service
+    end
+    Server->Server: createFaction
+    Server->Server: placeUnits
+    Server->+DB: Save planet
+    DB->-Server: done
+    Server->ServerRegistry: Yay
+    deactivate ServerRegistry
+end
+
+
 
 
 
@@ -48,20 +78,53 @@ Consensus->-Client: Granted
 
 ServerRegistry->ServerRegistry: lookup server\n for planet xyz .
 
-ServerRegistry->+Server(ssh): SSH on server of xyz
-Server(ssh)->+Control Console: Execute\n Control Command
-Control Console->Server: "loadWorldOrAbort ...;\n unlockFaction ..."
-note right of Server: World not loaded?\nOr same as requested?\nYay else Nay
-Server->Control Console: Yay/Nay
-Control Console->-Server(ssh): Yay/Nay
-Server(ssh)->-ServerRegistry: Yay/Nay
+ServerRegistry->Server: "createLoadWorldOrAbort xyz/type;\n unlockFaction ..."
 
-alt If Nay
-ServerRegistry->ServerRegistry: Lookup new server,\nrestart
-else If Yay
+
+
+alt Server is online and has diverging planet loaded
+    Server->ServerRegistry: Nay
+    ServerRegistry->ServerRegistry: Lookup new server\n and retry
+else 
+    alt No planet loaded
+        Server->+DB: Get planet savegame
+        DB->-Server: Savegame or nothing
+        alt Has planet savegame
+            Server->Server: Load savegame
+        else Has no planet savegame
+            Server->Server: Create planet
+        end
+        Server->Server: Start Service
+    end
+    Server->Server: unlockFaction
+    Server->ServerRegistry: Yay
+end
+
+
 ServerRegistry-->+Consensus: Client faction\n + server URL\n + key
 deactivate ServerRegistry
-end
 Consensus->-Client: Server address+key
 
+end
+
+Client->Server: Login (Faction ID)
+Server->Client: Send random sequence
+Client->Server: Send hashed secret
+Server->Server: Invalidate client key
+Server->Client: Authenticated\n+Units, grid, etc
+
+Client-->+Consensus: Disconnect
+deactivate Consensus
+Client-->-Server: Disconnect
+
+alt Last client disconnected
+    Server->+DB: Save planet
+    DB->-Server: done
+    note right of Server:
+        Wait grace period after
+        last client disconnected
+    end note
+    Server->Server: End Service, flush data
+    Server-->+ServerRegistry: Signal am idle
+    deactivate ServerRegistry
 end
