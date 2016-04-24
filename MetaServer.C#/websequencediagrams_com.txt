@@ -1,0 +1,67 @@
+title Login Sequence
+
+Client->+Consensus:  Login
+note right of Consensus:
+    *Get or create
+     faction
+    *Get or create
+     suitable planet
+     if new faction
+    *Update faction
+    region presence
+    if new faction
+end note
+Consensus-->+ServerRegistry: If new:\n Colonize planet xyz\n(new units)
+Consensus->-Client: Authenticated
+
+Client->+Consensus: Get presence
+Consensus->-Client: Send region presence
+
+
+ServerRegistry->ServerRegistry: lookup server\n for planet xyz
+
+Client->+Consensus: Query system xyz
+Consensus->-Client: Send system xyz
+
+
+
+ServerRegistry->+Server(ssh): SSH on server of xyz
+Server(ssh)->+Control Console: Execute\n Control Command
+Control Console->Server: "loadWorldOrAbort ...;\n createFaction ...;\n placeUnits..."
+note right of Server: World not loaded?\nOr same as requested?\nYay else Nay
+Server->Control Console: Yay/Nay
+Control Console->-Server(ssh): Yay/Nay
+Server(ssh)->-ServerRegistry: Yay/Nay
+ServerRegistry->-ServerRegistry: End if Yay,\n lookup new server if Nay
+
+
+
+alt Client faction has no sensor access to xyz
+    Client->+Consensus: Access planet xyz
+    Consensus->-Client: Denied
+else Client faction has sensor access to xyz
+    
+Client->+Consensus: Access planet xyz
+
+Consensus-->+ServerRegistry: Activate planet xyz\n for client faction abc
+Consensus->-Client: Granted
+
+ServerRegistry->ServerRegistry: lookup server\n for planet xyz .
+
+ServerRegistry->+Server(ssh): SSH on server of xyz
+Server(ssh)->+Control Console: Execute\n Control Command
+Control Console->Server: "loadWorldOrAbort ...;\n unlockFaction ..."
+note right of Server: World not loaded?\nOr same as requested?\nYay else Nay
+Server->Control Console: Yay/Nay
+Control Console->-Server(ssh): Yay/Nay
+Server(ssh)->-ServerRegistry: Yay/Nay
+
+alt If Nay
+ServerRegistry->ServerRegistry: Lookup new server,\nrestart
+else If Yay
+ServerRegistry-->+Consensus: Client faction\n + server URL\n + key
+deactivate ServerRegistry
+end
+Consensus->-Client: Server address+key
+
+end
