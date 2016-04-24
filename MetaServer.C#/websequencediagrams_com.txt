@@ -1,52 +1,63 @@
 title Login Sequence
 
+participant Client
+participant Consensus
+participant UserDB
+participant ServerRegistry
+participant Server
+participant DB
+participant EventQueue
 
-
-User->+Client:  Start
-OS->+Consensus: Start
+Consensus->+Consensus: Start
+Client->+Client:  Start
 Consensus->+ServerRegistry: Start
 ServerRegistry->+Server: Connect via SSL. Authenticate
-Server->ServerRegistry: Authenticated
+Server-->-ServerRegistry: Authenticated
 
-ServerRegistry->-Consensus: Started
+ServerRegistry-->-Consensus:
 deactivate Consensus
 
 Client->+Consensus:  Login
 
+alt Has certificate
+    Consensus->+UserDB: Validate\n certificate
+    UserDB-->-Consensus: Account data
+end
 
-note right of Consensus:
-    *Get or create
-     faction
-    *Get or create
-     suitable planet
-     if new faction
-    *Update faction
-    region presence
-    if new faction
-end note
-Consensus-->+ServerRegistry: If new:\n Colonize planet xyz\n(new units)
-Consensus->-Client: Authenticated
+alt Has no certificate or certificate was invalid
+    Consensus-->Client: Not authenticated
+else Certificate is valid
+    Consensus-->-Client: Authenticated as\nfaction abc
+end
+
+Client->+Consensus: Request account
+Consensus->Consensus: Create certificate\n+account data
+Consensus->Consensus: Find suitable\n start planet\nor create such
+Consensus->+UserDB: Store new account\n+certificate
+UserDB-->-Consensus:
+Consensus->+ServerRegistry: Colonize planet xyz\n(faction,new units)
+Consensus-->-Client: Authenticated as\nfaction abc
 
 Client->+Consensus: Get presence
-Consensus->-Client: Send region presence
+Consensus-->-Client: Send region presence
 
 
 ServerRegistry->ServerRegistry: lookup server\n for planet xyz
 
 Client->+Consensus: Query system xyz
-Consensus->-Client: Send system xyz
+Consensus-->-Client: Send system xyz
 
 
 
-ServerRegistry->Server: "createLoadWorldOrAbort xyz/type;\n createFaction ...;\n placeUnits ...;\n savePlanet ..."
+ServerRegistry->+Server: "createLoadWorldOrAbort xyz/type;\n createFaction ...;\n placeUnits ...;\n savePlanet ..."
 
 alt Server is online and has diverging planet loaded
-    Server->ServerRegistry: Nay
+    Server-->ServerRegistry: Failed
     ServerRegistry->ServerRegistry: Lookup new server\n and retry
 else 
     alt No planet loaded
         Server->+DB: Get planet savegame
-        DB->-Server: Savegame or nothing
+        DB-->-Server: Savegame or nothing
         alt Has planet savegame
             Server->Server: Load savegame
         else Has no planet savegame
@@ -57,38 +68,48 @@ else
     Server->Server: createFaction
     Server->Server: placeUnits
     Server->+DB: Save planet
-    DB->-Server: done
-    Server->ServerRegistry: Yay
-    deactivate ServerRegistry
+    DB-->-Server: done
+    Server-->-ServerRegistry: Success
+    
 end
-
+ServerRegistry->+Consensus: Register possibly changed region presence\n(faction,xyz)
+deactivate ServerRegistry
+alt If changed
+Consensus->Consensus: Update faction\nregion presence
+Consensus->+UserDB: Store updated account
+UserDB-->-Consensus:
+alt If logged in
+Consensus->Client: Send region presence
+end
+end
+deactivate Consensus
 
 
 
 
 alt Client faction has no sensor access to xyz
     Client->+Consensus: Access planet xyz
-    Consensus->-Client: Denied
+    Consensus-->-Client: Denied
 else Client faction has sensor access to xyz
     
 Client->+Consensus: Access planet xyz
 
-Consensus-->+ServerRegistry: Activate planet xyz\n for client faction abc
-Consensus->-Client: Granted
+Consensus->+ServerRegistry: Activate planet xyz\n for client faction abc
+Consensus-->-Client: Granted
 
 ServerRegistry->ServerRegistry: lookup server\n for planet xyz .
 
-ServerRegistry->Server: "createLoadWorldOrAbort xyz/type;\n unlockFaction ..."
+ServerRegistry->+Server: "createLoadWorldOrAbort xyz/type;\n unlockFaction ..."
 
 
 
 alt Server is online and has diverging planet loaded
-    Server->ServerRegistry: Nay
+    Server-->ServerRegistry: Failed
     ServerRegistry->ServerRegistry: Lookup new server\n and retry
 else 
     alt No planet loaded
         Server->+DB: Get planet savegame
-        DB->-Server: Savegame or nothing
+        DB-->-Server: Savegame or nothing
         alt Has planet savegame
             Server->Server: Load savegame
         else Has no planet savegame
@@ -97,34 +118,55 @@ else
         Server->Server: Start Service
     end
     Server->Server: unlockFaction
-    Server->ServerRegistry: Yay
+    Server-->-ServerRegistry: Success
 end
 
 
 ServerRegistry-->+Consensus: Client faction\n + server URL\n + key
 deactivate ServerRegistry
-Consensus->-Client: Server address+key
+Consensus-->-Client: Server address+key
 
 end
 
-Client->Server: Login (Faction ID)
-Server->Client: Send random sequence
-Client->Server: Send hashed secret
+Client->+Server: Login (Faction ID)
+Server-->-Client: Send random sequence
+Client->+Server: Send hashed secret
 Server->Server: Invalidate client key
-Server->Client: Authenticated\n+Units, grid, etc
+Server-->-Client: Authenticated\n+Units, grid, etc
 
-Client-->+Consensus: Disconnect
+
+
+
+Client->+Server: Enqueue interplanetary travel task
+Server->+ServerRegistry: Send units for\n interplanetary travel\n to planet xyz
+ServerRegistry-->-Server: Send resource cost
+Server->Server: Pay resource cost
+Server->+ServerRegistry: Dispatch units for\n interplanetary travel\n to planet xyz
+Server->Server: Remove dispatched units
+deactivate Server
+ServerRegistry->+EventQueue: Enqueue colonization
+deactivate ServerRegistry
+EventQueue->EventQueue: Wait X rounds
+EventQueue->+ServerRegistry: Colonize planet xyz\n(dispatched units)
+deactivate EventQueue
+ServerRegistry->ServerRegistry: Colonize planet\n (see top)
+deactivate ServerRegistry
+
+
+
+
+
+
+Client->+Consensus: Disconnect
 deactivate Consensus
-Client-->-Server: Disconnect
+Client->-Server: Disconnect
+activate Server
 
 alt Last client disconnected
     Server->+DB: Save planet
-    DB->-Server: done
-    note right of Server:
-        Wait grace period after
-        last client disconnected
-    end note
+    DB-->-Server:
+    Server->Server: Wait grace period after\nlast client disconnected
     Server->Server: End Service, flush data
-    Server-->+ServerRegistry: Signal am idle
-    deactivate ServerRegistry
+    Server->+ServerRegistry: Signal am idle
+    deactivate Server
 end
