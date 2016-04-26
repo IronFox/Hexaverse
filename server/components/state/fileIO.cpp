@@ -1442,6 +1442,9 @@ namespace FileIO
 		ASSERT__(worldInfoFound);
 		//ASSERT__(nexusFound);	if it has no units, it is not stored
 
+		Technites::VerifyGrid();
+		foreach (Technites::Faction::allTechniteFactions,tf)
+			(*tf)->VerifyIntegrity();
 
 
 		if (RuntimeConfig::empZones)
