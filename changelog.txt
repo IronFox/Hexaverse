@@ -1,3 +1,6 @@
+v0.3.26
+	+ Shift+F3 can now be used to capture auto-cropped, transparent screenshots.
+
 v0.3.25 [Apr 19 2016]
 	> Rounds again auto-commence when not currently in technite-spawning mode.
 	* Fixed technite logic being executed multiple times when it should not.

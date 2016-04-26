@@ -1680,7 +1680,7 @@ namespace Animation
 	
 		if (!AllDone())
 		{
-			if ( RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase || RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
+			if ( RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase || RuntimeConfig::IsInAnyCommandPhase())
 			{
 				//allowWorldRecompilation = false;
 				#ifndef HAS_WINDOW
@@ -1821,6 +1821,8 @@ namespace Animation
 
 				if (RuntimeConfig::IsInAnyCommandPhase() && Network::gameHasBegun)
 				{
+					LogEvent(EventSignificance::Debug,"Animation done. OnPlayerControlBegin");
+
 					OnPlayerControlBegin();
 				}
 			}

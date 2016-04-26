@@ -1206,8 +1206,14 @@ namespace Network
 				#endif
 				gameHasBegun = true;
 				LogEvent(EventClass::Preset::uncommon,nullptr,"Game has begun");
-				if (RuntimeConfig::IsInAnyCommandPhase() && Animation::AllDone())
-					OnPlayerControlBegin();
+				if (RuntimeConfig::IsInAnyCommandPhase())
+					if (Animation::AllDone())
+					{
+						LogEvent(EventSignificance::Debug,"Begin Game. Animation done. OnPlayerControlBegin");
+						OnPlayerControlBegin();
+					}
+					else
+						LogEvent(EventSignificance::Debug,"Begin Game. Animation NOT done");
 			break;
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();
@@ -1565,8 +1571,22 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			f->requestedNewRound = false;
 			f->roundChangeNotifications = 0;
 		};
-	if (RuntimeConfig::IsInAnyCommandPhase() && gameHasBegun && Animation::AllDone())
-		OnPlayerControlBegin();
+	if (RuntimeConfig::IsInAnyCommandPhase())
+		if (gameHasBegun)
+		{
+			if (Animation::AllDone())
+			{
+				LogEvent(EventSignificance::Debug,"Command phase. Game has begun. Animation done. OnPlayerControlBegin");
+				OnPlayerControlBegin();
+			}
+			else
+			{
+				LogEvent(EventSignificance::Debug,"Command phase. Game has begun. Animation NOT done");
+			}
+		}
+		else
+			LogEvent(EventSignificance::Debug,"Command phase. Game has NOT begun");
+
 	#ifdef HAS_WINDOW
 		Dialog::SignalSituationChange();
 	#endif
