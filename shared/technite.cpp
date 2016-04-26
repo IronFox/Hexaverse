@@ -202,6 +202,7 @@ namespace Technites
 					Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,animationTime,true);
 				toKill.Clear();
 
+				CheckSendTerrain();
 				foreach (Faction::allTechniteFactions,tf)
 					(*tf)->VerifyIntegrity();
 
@@ -1426,15 +1427,37 @@ namespace Technites
 			bool success = techniteMap.Query(loc,test);
 			ASSERT__(success);
 			ASSERT_EQUAL__(test,at);
-			const auto&vcell = Grid::actualWorld.cellStack[loc.stackID].volumeCell[loc.layer];
-			if (vcell.content == Grid::Content::Technite)
 			{
-				ASSERT_EQUAL__(vcell.techniteFaction, this->gridID);
+				const auto&vcell = Grid::actualWorld.cellStack[loc.stackID].volumeCell[loc.layer];
+				if (vcell.content == Grid::Content::Technite)
+				{
+					ASSERT_EQUAL__(vcell.techniteFaction, this->gridID);
+				}
+				else
+				{
+					LogEvent(techniteError,this->GetLogName() +": Expected technite content type in cell "+t->location.GetU().ToString()+", but got "+Grid::Content::Reinterpret(vcell.content).ToString());
+				}
 			}
-			else
+			#ifndef CLIENT
 			{
-				LogEvent(techniteError,this->GetLogName() +": Expected technite content type in cell "+t->location.GetU().ToString()+", but got "+Grid::Content::Reinterpret(vcell.content).ToString());
+				auto&vcell = this->currentState.cellStack[loc.stackID].volumeCell[loc.layer];
+				bool bad = true;
+				if (vcell.content == Grid::Content::Technite)
+				{
+//					ASSERT_EQUAL__(vcell.techniteFaction, this->gridID);
+					if (vcell.techniteFaction != this->gridID)
+						LogEvent(techniteError,this->GetLogName() +": Expected technite faction "+String(gridID)+" in cell "+t->location.GetU().ToString()+", but got "+String (vcell.techniteFaction));
+					else
+						bad = false;
+				}
+				else
+				{
+					LogEvent(techniteError,this->GetLogName() +": Expected technite content type in local cell "+t->location.GetU().ToString()+", but got "+Grid::Content::Reinterpret(vcell.content).ToString());
+				}
+				if (bad)
+					vcell = Grid::actualWorld.cellStack[loc.stackID].volumeCell[loc.layer];
 			}
+			#endif
 		}
 
 
