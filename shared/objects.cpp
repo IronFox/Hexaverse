@@ -14,7 +14,7 @@
 #include "stringTable.h"
 #include "logEvent.h"
 #include "runtimeConfig.h"
-
+#include "technite.h"
 
 
 namespace Objects
@@ -812,6 +812,7 @@ namespace Objects
 
 		#else
 			Faction::all.Clear();
+			Technites::Faction::allTechniteFactions.Clear();
 			Faction::RecreateNexus();
 		#endif
 	}
