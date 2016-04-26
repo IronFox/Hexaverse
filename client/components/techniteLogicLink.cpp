@@ -416,7 +416,10 @@ namespace TechniteLogicLink
 			Channels::instructTechnites.SendTo(logicServer,tech,1);
 		}
 		else
+		{
+			LogEvent(event,"Not executing logic("+String(roundNumber)+","+String(techniteSubRoundNumber)+"): don't have all technites");
 			executed = true;
+		}
 	}
 
 
