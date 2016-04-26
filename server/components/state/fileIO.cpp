@@ -1314,7 +1314,8 @@ namespace FileIO
 											const Technites::Technite&t = tfaction->technites[i];
 											Grid::HCellIdU loc = t.location.GetU();
 											tfaction->techniteMap.Set(loc, i);
-											Grid::actualWorld.cellStack[loc.stackID].SetLocalTechniteFaction(t.location.GetHeight(), tfaction->gridID);
+											Grid::actualWorld.cellStack[loc.stackID].SetLocalToTechniteContentI(t.location.GetHeight(), tfaction->gridID);
+											tfaction->currentState.cellStack[loc.stackID].SetLocalToTechniteContentI(t.location.GetHeight(), tfaction->gridID);
 											tfaction->RegisterTechniteSensory(loc,t0,false); 
 										}
 										tfaction->visibility.CheckChanges(t0);
