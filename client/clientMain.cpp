@@ -830,6 +830,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 #ifdef HAS_WINDOW
 	bool saveScreenshot = false;
+	bool saveTransparentScreenshot = false;
 
 	namespace TimeLapse
 	{
@@ -849,14 +850,14 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		//Semaphore	semaphore;
 		//volatile bool	active;
 		Timer::Time	lastSubmission = timer.Now();
-		ProductionPipe<Image>	workPipe;
+		ProductionPipe<std::pair<Image,bool> >	workPipe;
 
 		StorageThread()
 		{}
 
 		void ThreadMain() override
 		{
-			Array<std::shared_ptr<Image> >	images;
+			Array<std::shared_ptr<std::pair<Image,bool> > >	images;
 			while (!application_shutting_down)
 			{
 				workPipe.WaitForContent();
@@ -872,34 +873,40 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 				workPipe.ExitRead();
 				if (application_shutting_down)
 					return;
-	//
-	//			image.truncateToOpaque();
-	//
-	//			for (UINT32 x = 0; x < image.getWidth(); x++)
-	//				for (UINT32 y = 0; y < image.getHeight(); y++)
-	//				{
-	//					BYTE*pixel = image.getPixel(x,y);
-	//					if (pixel[3] > 0 && pixel[3] < 255)
-	//					{
-	//						//#ifdef WHITE_STYLE
-	//						//	TVec3<> intermediate;
-	//						//	Vec::mult(Vec::ref3(pixel),1.f / 255.f,intermediate);
-	//						//	float a = float(pixel[3])/255.f;
-	//						//	Vec::addVal(intermediate,a - 1.f);
-	//						//	Vec::div(intermediate,a);
-	//						//	Vec::clamp(intermediate,0,1);
-	//						//	Vec::mult(intermediate,255.f,Vec::ref3(pixel));
-	//
-	//						//#else
-	//							float scale = 1.f / (float(pixel[3])/255.f);
-	//							Vec::mult(Vec::ref3(pixel),scale);
-	////						#endif
-	//					}
-	//				}
+
+					
 				for (index_t i = 0; i < numImages; i++)
 				{
-					Image&image = *images[i];
-					image.setChannels(3);
+					Image&image = images[i]->first;
+
+					if (images[i]->second)
+					{
+						image.truncateToOpaque();
+	
+						for (UINT32 x = 0; x < image.getWidth(); x++)
+							for (UINT32 y = 0; y < image.getHeight(); y++)
+							{
+								BYTE*pixel = image.getPixel(x,y);
+								if (pixel[3] > 0 && pixel[3] < 255)
+								{
+									//#ifdef WHITE_STYLE
+									//	TVec3<> intermediate;
+									//	Vec::mult(Vec::ref3(pixel),1.f / 255.f,intermediate);
+									//	float a = float(pixel[3])/255.f;
+									//	Vec::addVal(intermediate,a - 1.f);
+									//	Vec::div(intermediate,a);
+									//	Vec::clamp(intermediate,0,1);
+									//	Vec::mult(intermediate,255.f,Vec::ref3(pixel));
+	
+									//#else
+										float scale = 1.f / (float(pixel[3])/255.f);
+										Vec::mult(Vec::ref3(pixel),scale);
+			//						#endif
+								}
+							}
+					}
+					else
+						image.setChannels(3);
 
 					if (!TimeLapse::enabled)
 					{
@@ -935,7 +942,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		}
 
 		bool	CanRun() const {return timer.GetSecondsSince(lastSubmission) > TimeLapse::frameDelaySeconds;}
-		void	Run(const std::shared_ptr<Image>&image)
+		void	Run(const std::shared_ptr<std::pair<Image, bool> >&image)
 		{
 			if (!CanRun())
 				return;
@@ -1759,8 +1766,9 @@ bool loop()
 						LogEvent(EventClass::Preset::uncommon,"Writing screenshot to disk...");
 					//else
 					//	LogEvent(EventClass::Preset::uncommon,"screenshot "+String(RuntimeConfig::phase.ToString())+", "+String(Animation::AllDone())+", "+String(Explosions::NoneActive()));
-					std::shared_ptr<Image> capture(new Image());
-					display.Capture(*capture);
+					std::shared_ptr<std::pair<Image,bool> > capture(new std::pair<Image,bool>());
+					display.Capture(capture->first);
+					capture->second = saveTransparentScreenshot;
 
 					storageThread.Run(capture);
 				}
@@ -2203,6 +2211,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	void SaveScreenshot()
 	{
 		saveScreenshot =true;
+		saveTransparentScreenshot = Engine::input.pressed[Key::Shift];
 	}
 
 	void ToggleCameraLock()
