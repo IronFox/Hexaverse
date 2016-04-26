@@ -208,6 +208,8 @@ namespace Network
 		Objects::CheckMobileEntitySanity();
 		Objects::VerifyGrid();
 		Technites::VerifyGrid();
+		foreach (Technites::Faction::allTechniteFactions,tf)
+			(*tf)->VerifyIntegrity();
 	}
 
 
