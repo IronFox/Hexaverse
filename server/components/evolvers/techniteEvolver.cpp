@@ -54,6 +54,9 @@ namespace Evolver
 
 				if (!Technites::ProcessNext())
 				{
+					Technites::VerifyGrid();
+					foreach (Technites::Faction::allTechniteFactions,f)
+						(*f)->VerifyIntegrity();
 					CheckSendTerrain();
 					for (const auto&tf : Technites::Faction::allTechniteFactions)
 					{
