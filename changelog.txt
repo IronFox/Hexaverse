@@ -1,5 +1,6 @@
 v0.3.24
 	+ Re-included D3DCompiler_43.dll since it seems to be necessary in some cases.
+	+ Shift+F3 can now be used to capture auto-cropped, transparent screenshots.
 	> Incorrect client configuration files are now repaired instead of crashing the client.
 	
 v0.3.23	[Apr 10 2016]
