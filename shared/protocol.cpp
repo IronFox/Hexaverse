@@ -111,6 +111,7 @@ namespace Protocol
 						if (canSee)
 						{
 							ws->cellStack[stackID].volumeCell[layer].content = Grid::actualWorld.cellStack[stackID].volumeCell[layer].content;
+							ws->cellStack[stackID].volumeCell[layer].techniteFaction = Grid::actualWorld.cellStack[stackID].volumeCell[layer].techniteFaction;
 							cell.temporarilyVisible = false;
 						}
 					}

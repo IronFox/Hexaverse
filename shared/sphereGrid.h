@@ -296,6 +296,7 @@ namespace Grid
 			{
 				GetDeltaFrom(other,tout,fout, foutValid);
 				other.content = this->content;
+				other.techniteFaction = this->techniteFaction;
 			}
 
 			bool	ApplyDelta(const TTypeDelta&tdelta, const TTechniteFactionDelta&fdelta)
