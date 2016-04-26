@@ -206,6 +206,8 @@ Triggered when entering command mode and animations have finished (whichever of 
 */
 void	OnPlayerControlBegin()
 {
+	LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+String(RuntimeConfig::roundNumber)+","+String(RuntimeConfig::techniteSubRoundNumber)+")");
+
 	#ifdef HAS_WINDOW
 		OnSelectionChange(true);
 		UI::RefreshButtonState();
