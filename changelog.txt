@@ -1,10 +1,10 @@
+v0.3.27
+	+ Added new button and functionality to automatically progress round if all units have been instructed.
+
 v0.3.26	[Apr 28 2016]
 	+ Shift+F3 can now be used to capture auto-cropped, transparent screenshots.
 	* Fixed automatic round progression in the presence of animation events.
 	* Fixed various consistency issues when loading game states.
-
-v0.3.26
-	+ Added new button and functionality to automatically progress round if all units have been instructed.
 
 v0.3.25 [Apr 19 2016]
 	> Rounds again auto-commence when not currently in technite-spawning mode.
