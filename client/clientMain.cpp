@@ -218,6 +218,8 @@ void	OnPlayerControlBegin()
 	#endif
 	Animation::UpdateAutomation(CLOCATION);
 	Objects::CheckMobileEntitySanity();
+	if (RuntimeConfig::autoNewRound && ShouldSignalRoundEnd())
+		SignalRoundEnd();
 }
 
 #ifdef HAS_WINDOW

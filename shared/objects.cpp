@@ -236,7 +236,7 @@ namespace Objects
 				(*bc)->VisitAllCommands([](const int2&,const PBaseCommand&cmd){cmd->RasterizeImage();},true);
 
 			globalCommands.baseCoords = BaseCommand::coordOffset;
-			globalCommands.Add(int2(),false,new GlobalCommand("End Round", [](){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
+			globalCommands.Add(int2(-1, 0),false,new GlobalCommand("End Round", [](){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
 			[](bool controlEnabled)->BaseCommand::Flags
 			{
 				BaseCommand::Flags rs = BaseCommand::Flags::None;
@@ -247,6 +247,15 @@ namespace Objects
 				else
 					if (ShouldSignalRoundEnd())
 						rs |= BaseCommand::Flags::IsFlashing;
+				return rs;
+			}));
+			globalCommands.Add(int2(0, 0),false,new GlobalCommand("Auto End Round", [](){if (!RuntimeConfig::autoNewRound && ShouldSignalRoundEnd()) SignalRoundEnd(); RuntimeConfig::autoNewRound = !RuntimeConfig::autoNewRound;}, 
+			[](bool controlEnabled)->BaseCommand::Flags
+			{
+				BaseCommand::Flags rs = BaseCommand::Flags::None;
+				rs |= BaseCommand::Flags::IsEnabled;
+				if (RuntimeConfig::autoNewRound)
+					rs |= BaseCommand::Flags::IsPermaActive;
 				return rs;
 			}));
 
