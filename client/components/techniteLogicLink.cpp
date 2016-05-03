@@ -11,7 +11,7 @@
 
 extern void	TransmitRoundEndRequest();
 
-extern bool techniteSpawnMode;
+//extern bool techniteSpawnMode;
 
 namespace TechniteLogicLink
 {
@@ -462,10 +462,11 @@ namespace TechniteLogicLink
 				
 				logicIsDone = true;
 
-				if (Network::amTechniteFaction && (!Network::amRegularFaction || Network::newRoundRequested || RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase))
+				if (RuntimeConfig::autoNewRound && RuntimeConfig::IsInAnyCommandPhase() && ShouldSignalRoundEnd())
+				//if (Network::amTechniteFaction && (!Network::amRegularFaction || Network::newRoundRequested || RuntimeConfig::phase == RuntimeConfig::Phase::TechniteCommandPhase))
 				{
 					//auto-new-round, if set. Not sure if this should be set
-					if (!techniteSpawnMode)
+					//if (!techniteSpawnMode)
 						TransmitRoundEndRequest();
 				}
 				else
