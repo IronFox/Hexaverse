@@ -25,7 +25,7 @@ namespace RuntimeConfig
 
 	extern DoomsdayWeapons doomsdayWeapons;
 	extern GameGoal gameGoal;
-	extern bool		empZones;
+	extern bool		empZones, autoNewRound;
 	extern Phase	phase;
 
 	extern bool hibernationSystemEnabled;

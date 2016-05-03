@@ -211,7 +211,8 @@ Triggered when entering command mode and animations have finished (whichever of 
 */
 void	OnPlayerControlBegin()
 {
-	LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+String(RuntimeConfig::roundNumber)+","+String(RuntimeConfig::techniteSubRoundNumber)+")");
+//	LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+String(RuntimeConfig::roundNumber)+","+String(RuntimeConfig::techniteSubRoundNumber)+")");
+	LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+String(RuntimeConfig::roundNumber)+")");
 
 	#ifdef HAS_WINDOW
 		OnSelectionChange(true);
@@ -222,17 +223,16 @@ void	OnPlayerControlBegin()
 	#endif
 	Animation::UpdateAutomation(CLOCATION);
 	Objects::CheckMobileEntitySanity();
+	if (RuntimeConfig::autoNewRound && ShouldSignalRoundEnd())
+		SignalRoundEnd();
 
 	if (Network::amTechniteFaction)
 	{
-		if (Animation::AllDone())
-		{
-			Technites::PFaction tf = To<Technites::Faction>::Cast(Objects::Faction::mine);
-			tf->VerifyIntegrity();
-		}
-		else
-			LogEvent(EventSignificance::Debug,nullptr,"Animations not completely done. Cannot verify technite faction integrity. Assuming it is correct.");
-
+		ASSERT__ (Animation::AllDone())
+		
+		Technites::PFaction tf = To<Technites::Faction>::Cast(Objects::Faction::mine);
+		tf->VerifyIntegrity();
+	
 		TechniteLogicLink::ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
 	}
 }
