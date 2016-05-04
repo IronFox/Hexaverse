@@ -2758,6 +2758,8 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		UI::resourcesAsList = !UI::resourcesAsList;
 	}
 
+#endif
+
 	bool	CanHit(const Objects::PMobileEntity&m, const Grid::LCellIdI&loc)
 	{
 		return m->CanHit(Objects::TrajectoryEndPoint( loc ));
@@ -2924,6 +2926,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	}
 
 
+#ifdef HAS_WINDOW
 	template <typename T>
 	void GetIterateableEntity(Objects::PWorldEntity&rs, index_t&i, const BasicBuffer<T>&list)
 	{
