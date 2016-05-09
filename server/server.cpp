@@ -1650,75 +1650,77 @@ int main( int argc, const char* argv[])
 
 			RuntimeConfig::Phase p0 = RuntimeConfig::phase;
 
-			//bool anythingChanged = false;
-
-			bool newRoundNow = false;
-
-			if (Game::Config::roundTimer > 0 && !Game::roundTimerPaused)
+			if (RuntimeConfig::IsInAnyCommandPhase())
 			{
-				if (timer.GetSecondsSince(Game::lastPhaseChange) - 0.5f > Game::Config::roundTimer)//tolerance of a half second
+				bool newRoundNow = false;
+
+				if (Game::Config::roundTimer > 0 && !Game::roundTimerPaused)
 				{
-					newRoundNow = true;
-					LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ),"Round timeout reached. Forcing new round.");
-				}
-			}
-
-
-
-
-
-			if (!newRoundNow)
-			{
-				count_t numFactions=0, wantNewRound = 0;
-				bool hasNexus = false,nexusWantsNewRound = false;
-				foreach(Network::activePlayersAndSpectators, p)
-				{
-					if ((*p)->isSpectator)	//doesn't count towards new round
-						continue;
-					if ((*p)->faction == Objects::Faction::nexus)
+					if (timer.GetSecondsSince(Game::lastPhaseChange) - 0.5f > Game::Config::roundTimer)//tolerance of a half second
 					{
-						ASSERT__(!hasNexus);
-						hasNexus = true;
-						if ((*p)->wantNewRound)
-							nexusWantsNewRound = true;
-						continue;
+						newRoundNow = true;
+						LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ),"Round timeout reached. Forcing new round.");
 					}
-					numFactions++;
-					if ((*p)->wantNewRound)
-						wantNewRound++;
 				}
 
-					newRoundNow = wantNewRound >= numFactions
-								&& wantNewRound > 0
-								&& (!hasNexus || nexusWantsNewRound);
+
+
+
+
+				if (!newRoundNow)
+				{
+					count_t numFactions=0, wantNewRound = 0;
+					bool hasNexus = false,nexusWantsNewRound = false;
+					foreach(Network::activePlayersAndSpectators, p)
+					{
+						if ((*p)->isSpectator)	//doesn't count towards new round
+							continue;
+						if ((*p)->faction == Objects::Faction::nexus)
+						{
+							ASSERT__(!hasNexus);
+							hasNexus = true;
+							if ((*p)->wantNewRound)
+								nexusWantsNewRound = true;
+							continue;
+						}
+						numFactions++;
+						if ((*p)->wantNewRound)
+							wantNewRound++;
+					}
+
+						newRoundNow = wantNewRound >= numFactions
+									&& wantNewRound > 0
+									&& (!hasNexus || nexusWantsNewRound);
+					if (newRoundNow)
+					{
+						LogEvent(EventSignificance::Common,"All players have requested a new round. Commencing...");
+					}
+				}
+
 				if (newRoundNow)
 				{
-					LogEvent(EventSignificance::Common,"All players have requested a new round. Commencing...");
+					Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
+					{
+						e->ReSeedRandom();
+					});
+
+					ProcessAICoverage();
+
+					Journal::currentRound.roundNumber = RuntimeConfig::roundNumber;
+					Journal::currentRound.evolver = Game::evolver;
+					Reflection::CheckAllSaveGameVariables();
+					Journal::currentRound.AppendEntityVerification();
+
+					//Journal::globalWriter.CommitAndClear(Journal::currentRound);
+					Journal::currentRound.Clear();
+
+					foreach (Network::activePlayersAndSpectators,p)
+						(*p)->wantNewRound = false;
+
+					Game::evolver->BeginRoundProcessing();
+					Game::ProcessChanges(true);
 				}
-			}
 
-			if (newRoundNow)
-			{
-				Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
-				{
-					e->ReSeedRandom();
-				});
-
-				ProcessAICoverage();
-
-				Journal::currentRound.roundNumber = RuntimeConfig::roundNumber;
-				Journal::currentRound.evolver = Game::evolver;
-				Reflection::CheckAllSaveGameVariables();
-				Journal::currentRound.AppendEntityVerification();
-
-				//Journal::globalWriter.CommitAndClear(Journal::currentRound);
-				Journal::currentRound.Clear();
-
-				foreach (Network::activePlayersAndSpectators,p)
-					(*p)->wantNewRound = false;
-
-				Game::evolver->BeginRoundProcessing();
-				Game::ProcessChanges(true);
 			}
 
 			if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)
