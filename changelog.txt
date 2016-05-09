@@ -1,5 +1,6 @@
 v0.3.27	[May 9 2016]
 	+ Added new button and functionality to automatically progress round if all units have been instructed.
+	* Fixed round progression in the presence of extra technite rounds and an active AI client.
 
 v0.3.26	[Apr 28 2016]
 	+ Shift+F3 can now be used to capture auto-cropped, transparent screenshots.

@@ -1675,6 +1675,10 @@ int main( int argc, const char* argv[])
 					{
 						if ((*p)->isSpectator)	//doesn't count towards new round
 							continue;
+						if (RuntimeConfig::phase != RuntimeConfig::Phase::CommandPhase && 
+							(!(*p)->faction || !(*p)->faction->IsTechniteFaction()))
+							continue;
+
 						if ((*p)->faction == Objects::Faction::nexus)
 						{
 							ASSERT__(!hasNexus);
