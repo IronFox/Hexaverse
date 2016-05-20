@@ -429,7 +429,9 @@ void	SaveHosts()
 					}
 				});
 			
-			}));
+			},
+			[]()->bool {return !Network::client.IsAttemptingToConnect();}
+			));
 			b->anchorConfig.Top().SetLastOf(Dialog::serverChoice,0.025f,GUIElements::TAnchor::RelativeToScreen);
 			b->anchorConfig.Left().Set(0.f);
 			b->LockIdealWidth();
@@ -468,6 +470,12 @@ void	SaveHosts()
 				if (b)
 					b->SetEnabled(false);
 			});
+			start->SetCheck(
+			[]()->bool {return !Network::client.IsAttemptingToConnect()  && !ServerProcess::IsRunning();}
+			);
+			stop->SetCheck(
+			[]()->bool {return !Network::client.IsAttemptingToConnect()  && ServerProcess::IsRunning();}
+			);
 			start->anchorConfig.Top() = addHostButton->anchorConfig.Top();
 			stop->anchorConfig.Top() = addHostButton->anchorConfig.Top();
 			start->anchorConfig.Left().Set(addHostButton,0.02f);

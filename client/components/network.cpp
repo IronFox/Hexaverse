@@ -60,6 +60,7 @@ namespace Network
 		gameHasBegun = false;
 
 		client.ConnectAsync(addr.host + ":"+String(addr.basePort + PortOffset::Session));
+		Dialog::SignalSituationChange();
 	}
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
