@@ -56,7 +56,7 @@ namespace NiceName
 		BYTE ch = (code&0xff)%26;
 		result += ' ';
 		result += 'A' + ch;
-		result += ' '+String((code>>8)%100);
+		result += String((code>>8)%100);
 		return result;
 
 		code %= totalCombinations;
