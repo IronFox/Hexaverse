@@ -180,9 +180,10 @@ namespace Grid
 				return TLitColor(TVisibility(1.f));
 			}
 			const Cell&cell = layer > 0 ? this->volumeCell[layer - 1] : bottom;
+			const TVisibility&vis = layer > 0 ? this->volumeCell[layer - 1].GetVisibility() : this->volumeCell[0].GetVisibility();
 			mixes = cell.content == oppositeContent || Cell::typeColorMixes[cell.content];
 			outType = Cell::Content::Reinterpret(cell.content);
-			return TLitColor(cell.GetBaseColor(), this->volumeCell[layer].GetLightLevel(),0.f,cell.GetVisibility());
+			return TLitColor(cell.GetBaseColor(), this->volumeCell[layer].GetLightLevel(),0.f,vis);
 		}
 	
 		TLitColor			CellStack::GetDownColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const
@@ -2541,8 +2542,8 @@ namespace Grid
 
 				solidMesh.SetOffset();
 
-				const TBaseColor baseColor = thisCell.GetBaseColor();
-				const TBaseColor nextColor = nextCell.IsOpaque() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
+				//const TBaseColor baseColor = thisCell.GetBaseColor();
+				//const TBaseColor nextColor = nextCell.IsOpaque() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
 				const bool capped = nextCell.IsOpaque();
 				if (!capped
 					)
