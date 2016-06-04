@@ -526,6 +526,8 @@ namespace Planet
 			{
 				(*ev)->Execute();
 			}
+			dat.receivedEvents.Clear();
+			dat.transferQueue.Clear();
 		});
 		locationMapLock.unlock();
 
