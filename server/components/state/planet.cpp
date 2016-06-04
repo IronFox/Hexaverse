@@ -371,13 +371,12 @@ namespace Planet
 		Attachment&attachment = *To<Attachment>::Cast(peer.attachment);
 		const Location&loc = attachment.peer;
 		locationMapLock.lock();
-		LocationData*data = locationMap.QueryPointer(loc);
-		if (data)
-			foreach (sens,facID)
-			{
-				UINT32 locI = attachment.GetSensorLocation();
-				data->receivedEvents.Append(Journal::Round::PGlobalEvent(new InterplanetarySensoryRequest(facID->factionID,facID->accessID, Journal::Round::ChangeInterplanetarySensory( true,locI,10))));
-			}
+		LocationData&data = locationMap.Set(loc);
+		foreach (sens,facID)
+		{
+			UINT32 locI = attachment.GetSensorLocation();
+			data.receivedEvents.Append(Journal::Round::PGlobalEvent(new InterplanetarySensoryRequest(facID->factionID,facID->accessID, Journal::Round::ChangeInterplanetarySensory( true,locI,10))));
+		}
 		locationMapLock.unlock();
 	}
 
