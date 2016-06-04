@@ -1140,6 +1140,71 @@ namespace Journal
 		Grid::Resource::Require(resource.ToString()).coverage[this->stackID] = newCoverage;
 	}
 
+	/*virtual override*/void			Round::ChangeInterplanetarySensory::Decode(const Entry&e)
+	{
+		this->lowStackID = (UINT32)e.intParameters.Require(CLOCATION,"LowStackID");
+		if (this->lowStackID >= Grid::LowSetup::GridType::CellCount)
+		{
+			throw Program::DataConsistencyFault( CLOCATION,"Stack ID out of range '"+String(lowStackID)+"'");
+		}
+		int ilose;
+		lose = e.intParameters.TryGet("Lose",ilose) && ilose != 0;
+		depth = e.intParameters.Require(CLOCATION, "Depth");
+		radius = e.intParameters.Require(CLOCATION,"Radius");
+	}
+
+	/*virtual override*/void			Round::ChangeInterplanetarySensory::Execute(const Objects::PFaction&f)	const
+	{
+		if (lose)
+			f->RemoveInterplanetarySensor(lowStackID);
+		else
+			f->RegisterInterplanetarySensor(lowStackID,radius,depth);
+	}
+
+	/*virtual override*/void			Round::ChangeInterplanetarySensory::Compile(Entry&e)	const
+	{
+		if (lose)
+			e.intParameters.Set("Lose",(int)lose);
+		e.intParameters.Set("LowStackID",(int)this->lowStackID);
+		e.intParameters.Set("Depth",this->depth);
+		e.intParameters.Set("Radius",this->radius);
+	}
+
+
+	/*virtual override*/void			Round::InterplanetarySensoryRequest::Decode(const Entry&e)
+	{
+		data.Decode(e);
+		factionID = e.uuidParameters.Require(CLOCATION,"FactionID");
+		const Array<BYTE>&token = e.binaryParameters.Require(CLOCATION,"AccessToken");
+		if (token.GetContentSize() != CryptographicID::NumBytes)
+			throw Program::DataConsistencyFault( CLOCATION,"Access token has unexpected length: "+String(token.GetContentSize()));
+		this->accessToken = CryptographicID(token);
+	}
+
+	/*virtual override*/void			Round::InterplanetarySensoryRequest::Execute()	const
+	{
+		Objects::PFaction f = Objects::Faction::FindByID(factionID);
+		if (!f)
+		{
+			f.reset(new Objects::Faction(factionID));
+			f->accessToken = accessToken;
+			Objects::Faction::all << f;
+		}
+		currentRound.Register(true,f,new Journal::Round::ChangeInterplanetarySensory(data));
+	}
+
+	/*virtual override*/void			Round::InterplanetarySensoryRequest::Compile(Entry&e)	const
+	{
+		data.ExportTo(e);
+		e.operation = OperationNameOf(typeid(*this));
+
+		e.uuidParameters.Set("FactionID",factionID);
+		Array<BYTE> token;
+		accessToken.Export(token);
+		e.binaryParameters.Set("AccessToken",token);
+	}
+
+
 
 	/*virtual override*/void			Round::ResourceCoverageKnowledgeLoss::Compile(Entry&e)	const
 	{
@@ -2210,6 +2275,8 @@ namespace Journal
 		MAP_ADD(DestroyMarker);
 		MAP_ADD(RestoreCoreLink);
 		MAP_ADD(ConstructionAbort);
+		MAP_ADD(InterplanetarySensoryRequest);
+		MAP_ADD(ChangeInterplanetarySensory);
 	}
 
 	void	Create()

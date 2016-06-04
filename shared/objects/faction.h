@@ -128,7 +128,6 @@ namespace Objects
 
 
 
-
 	
 
 
@@ -333,6 +332,9 @@ namespace Objects
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater
 			*/
 			void		RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);
+
+			bool		HasInterplanetarySensor(UINT32 lowStackID, int radius);
+			void		CreateInterplanetarySensor(UINT32
 
 			bool		CanCreateMarker(bool priveleged) const { return markers.Count() < (priveleged ? Marker::MaxMarkersPerFaction*16 : Marker::MaxMarkersPerFaction); }
 			Marker&		CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID, const TUniqueID&ownerReferenceID);

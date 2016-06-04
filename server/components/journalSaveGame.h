@@ -406,6 +406,7 @@ namespace Journal
 			virtual void	Compile(Entry&)	const override;
 		};
 
+
 		class ResourceCoverageKnowledgeLoss : public FactionEvent
 		{
 		public:
@@ -420,6 +421,21 @@ namespace Journal
 			virtual void	Compile(Entry&)	const override;
 		};
 
+		class ChangeInterplanetarySensory : public FactionEventT<ChangeInterplanetarySensory>
+		{
+		public:
+			UINT32			lowStackID;
+			int				radius;
+			int				depth;
+			bool			lose;
+
+			/**/			ChangeInterplanetarySensory(bool lose=false, UINT32 lowStackID=0, int radius=10, int depth=0):lose(lose),lowStackID(lowStackID),radius(radius),depth(depth)	{}
+			void			Decode(const Entry&e) override;
+			void			Execute(const Objects::PFaction&)	const override;
+
+		protected:
+			virtual void	Compile(Entry&)	const override;
+		};
 
 		class EntityStateCheck : public EntityEvent
 		{
@@ -857,7 +873,8 @@ namespace Journal
 		};
 
 
-		GenericHashTable<TUniqueID,FactionStrand,TUniqueID,Copy,Swap>	factionStrands;
+		typedef GenericHashTable<TUniqueID,FactionStrand,TUniqueID,Copy,Swap>	FactionStrands;
+		FactionStrands					factionStrands;
 		EventStorage<GlobalEvent>				globalEvents;
 		//StringTable<String>					variableUpdates;
 		
