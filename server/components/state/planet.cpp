@@ -316,7 +316,7 @@ namespace Planet
 		{
 			static Handler::Object::BeginRound	round;
 			round.set(1,RuntimeConfig::roundNumber);
-
+			locationMapLock.lock();
 			auto*data = locationMap.QueryPointer(loc);
 			if (data)
 			{
@@ -326,7 +326,7 @@ namespace Planet
 				Handler::Channel::beginRound.SendTo(p,round);
 				Handler::Channel::gainSensorAccess.SendTo(p,access);
 			}
-
+			locationMapLock.unlock();
 
 		}
 	}
@@ -354,9 +354,11 @@ namespace Planet
 				{
 					f->RemoveInterplanetarySensor(loc);
 				});
+				locationMapLock.lock();
 				LocationData*data = locationMap.QueryPointer(a->peer);
 				if (data)
 					data->receivedEvents.Clear();
+				locationMapLock.unlock();
 			}
 			break;
 				
@@ -465,7 +467,9 @@ namespace Planet
 		if (HasSensorAccess(f,loc))
 			return;
 		using namespace Details;
+		locationMapLock.lock();
 		locationMap.Set(loc).accessMap.Set(f->id);
+		locationMapLock.unlock();
 	}
 
 	void		UnregisterSensorAccess(const Objects::PFaction&f, const Location&loc)
