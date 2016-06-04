@@ -146,12 +146,25 @@ static_assert(sizeof(TUniqueID) == 16, "Struct packing not appropriate for uniqu
 
 class CryptographicID
 {
-	BYTE	bytes[32];
+public:
+	static const count_t NumBytes = 32;
+private:
+	BYTE	bytes[NumBytes];
 
 public:
 	/**/	CryptographicID()
 	{
 		memset(bytes,0,sizeof(bytes));
+	}
+	/**/	CryptographicID(const ArrayRef<BYTE>&bytes)
+	{
+		ASSERT_EQUAL__(bytes.length(),NumBytes);
+		memcpy(this->bytes,bytes.pointer(),NumBytes);
+	}
+
+	void	Export(Array<BYTE>&out) const
+	{
+		out.resizeAndCopy(bytes,NumBytes);
 	}
 
 	bool	IsSet() const
