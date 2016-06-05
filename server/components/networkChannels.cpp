@@ -151,7 +151,7 @@ namespace Receiver
 
 		Protocol::PhaseChange	ph;
 		ph.newPhase = RuntimeConfig::phase;
-		ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
+		ph.roundNumber = RuntimeConfig::roundNumber;
 		ph.timeFactor = -1;
 
 
@@ -872,7 +872,7 @@ namespace Receiver
 		Objects::Marker *marker = f->FindMarker(m.id);
 		if (marker)
 		{
-			LogEvent(EventSignificance::Common, peer, "Touching " + marker->GetName()+" to round number "+String(m.newRoundNumber));
+			LogEvent(EventSignificance::Common, peer, "Touching " + marker->GetName()+" to round number "+m.newRoundNumber.value.ToString());
 			marker->createdInRound = m.newRoundNumber;
 			//Protocol::TouchedMarker m;
 			//m.id = id;
@@ -1495,7 +1495,7 @@ namespace Receiver
 			
 			Protocol::PhaseChange	ph;
 			ph.newPhase = RuntimeConfig::phase;
-			ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
+			ph.roundNumber = RuntimeConfig::roundNumber;
 			ph.timeFactor = -1;
 
 

@@ -12,7 +12,7 @@
 
 namespace FileIO
 {
-	UINT32			lastSaveRound = 0;
+	RuntimeConfig::RoundNumber			lastSaveRound;
 	namespace Config
 	{
 		int			saveEveryNRounds = 10;
@@ -30,13 +30,13 @@ namespace FileIO
 
 	void CheckAutoSave(bool tempIncrementRoundNumber)
 	{
-		if (Config::saveEveryNRounds > 0 && !((RuntimeConfig::roundNumber+1)%FileIO::Config::saveEveryNRounds))
+		if (Config::saveEveryNRounds > 0 && !((RuntimeConfig::roundNumber.main+1)%FileIO::Config::saveEveryNRounds))
 		{
 			if (tempIncrementRoundNumber)
-				RuntimeConfig::roundNumber++;
+				RuntimeConfig::roundNumber.main++;
 			FileIO::AutoSave();
 			if (tempIncrementRoundNumber)
-				RuntimeConfig::roundNumber--;
+				RuntimeConfig::roundNumber.main--;
 		}
 	}
 
@@ -853,7 +853,7 @@ namespace FileIO
 			{
 				UINT32 data[2];
 				data[0] = (UINT32)n->resistence;
-				data[1] = n->lastSpawnRound;
+				data[1] = n->lastSpawnRound.main;
 				parent->AppendBlock(RID::nexusData)->SetData(data,sizeof(data));
 			}
 
@@ -1435,7 +1435,7 @@ namespace FileIO
 
 		Reflection::LoadOverrides();
 
-		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+World::worldID.ToString()+" in round "+String(RuntimeConfig::roundNumber));
+		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+World::worldID.ToString()+" in round "+RuntimeConfig::roundNumber.ToString());
 		RefreshWindowTitle();
 
 		RuntimeConfig::loadingPhase = false;

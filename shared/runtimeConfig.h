@@ -4,7 +4,7 @@
 #include "stringTable.h"
 #include <general/enumeration.h>
 #include <global_string.h>
-
+#include "roundNumber.h"
 
 namespace RuntimeConfig
 {
@@ -28,7 +28,8 @@ namespace RuntimeConfig
 	extern bool hibernationSystemEnabled;
 	extern bool bombsExplodeWhenDestroyed;
 
-	extern UINT32 roundNumber/*=0*/;
+	typedef ::RoundNumber	RoundNumber;
+	extern RoundNumber roundNumber;
 	namespace UnitLimits
 	{
 		bool		IsEnabled();

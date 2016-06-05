@@ -575,7 +575,7 @@ namespace Dialog
 		return d;
 	}
 
-	String	WordForThinking(UINT32 roundNumber, const void*factionPointer)
+	String	WordForThinking(const RuntimeConfig::RoundNumber&roundNumber, const void*factionPointer)
 	{
 		static String words[] = {
 			"Thinking",
