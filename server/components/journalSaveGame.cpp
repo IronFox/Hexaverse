@@ -1169,7 +1169,7 @@ namespace Journal
 		if (lose)
 			f->RemoveInterplanetarySensor(lowStackID);
 		else
-			f->RegisterInterplanetarySensor(lowStackID,radius,depth);
+			f->CreateInterplanetarySensor(lowStackID,radius,depth);
 	}
 
 	/*virtual override*/void			Round::ChangeInterplanetarySensory::Compile(Entry&e)	const
@@ -1182,38 +1182,38 @@ namespace Journal
 	}
 
 
-	/*virtual override*/void			Round::InterplanetarySensoryRequest::Decode(const Entry&e)
-	{
-		data.Decode(e);
-		factionID = e.uuidParameters.Require(CLOCATION,"FactionID");
-		const Array<BYTE>&token = e.binaryParameters.Require(CLOCATION,"AccessToken");
-		if (token.GetContentSize() != CryptographicID::NumBytes)
-			throw Program::DataConsistencyFault( CLOCATION,"Access token has unexpected length: "+String(token.GetContentSize()));
-		this->accessToken = CryptographicID(token);
-	}
+	///*virtual override*/void			Round::InterplanetarySensoryRequest::Decode(const Entry&e)
+	//{
+	//	data.Decode(e);
+	//	factionID = e.uuidParameters.Require(CLOCATION,"FactionID");
+	//	const Array<BYTE>&token = e.binaryParameters.Require(CLOCATION,"AccessToken");
+	//	if (token.GetContentSize() != CryptographicID::NumBytes)
+	//		throw Program::DataConsistencyFault( CLOCATION,"Access token has unexpected length: "+String(token.GetContentSize()));
+	//	this->accessToken = CryptographicID(token);
+	//}
 
-	/*virtual override*/void			Round::InterplanetarySensoryRequest::Execute()	const
-	{
-		Objects::PFaction f = Objects::Faction::FindByID(factionID);
-		if (!f)
-		{
-			f.reset(new Objects::Faction(factionID));
-			f->accessToken = accessToken;
-			Objects::Faction::all << f;
-		}
-		currentRound.Register(true,f,new Journal::Round::ChangeInterplanetarySensory(data));
-	}
+	///*virtual override*/void			Round::InterplanetarySensoryRequest::Execute()	const
+	//{
+	//	Objects::PFaction f = Objects::Faction::FindByID(factionID);
+	//	if (!f)
+	//	{
+	//		f.reset(new Objects::Faction(factionID));
+	//		f->accessToken = accessToken;
+	//		Objects::Faction::all << f;
+	//	}
+	//	currentRound.Register(true,f,new Journal::Round::ChangeInterplanetarySensory(data));
+	//}
 
-	/*virtual override*/void			Round::InterplanetarySensoryRequest::Compile(Entry&e)	const
-	{
-		data.ExportTo(e);
-		e.operation = OperationNameOf(typeid(*this));
+	///*virtual override*/void			Round::InterplanetarySensoryRequest::Compile(Entry&e)	const
+	//{
+	//	data.ExportTo(e);
+	//	e.operation = OperationNameOf(typeid(*this));
 
-		e.uuidParameters.Set("FactionID",factionID);
-		Array<BYTE> token;
-		accessToken.Export(token);
-		e.binaryParameters.Set("AccessToken",token);
-	}
+	//	e.uuidParameters.Set("FactionID",factionID);
+	//	Array<BYTE> token;
+	//	accessToken.Export(token);
+	//	e.binaryParameters.Set("AccessToken",token);
+	//}
 
 
 
