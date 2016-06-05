@@ -245,7 +245,6 @@ namespace Receiver
 		Protocol::PhaseChange	ph;
 		ph.newPhase = RuntimeConfig::phase;
 		ph.roundNumber = RuntimeConfig::roundNumber;
-		ph.techniteSubRoundNumber = (UINT32)RuntimeConfig::techniteSubRoundNumber;
 		ph.timeFactor = -1;
 
 
@@ -1719,7 +1718,6 @@ namespace Receiver
 			Protocol::PhaseChange	ph;
 			ph.newPhase = RuntimeConfig::phase;
 			ph.roundNumber = RuntimeConfig::roundNumber;
-			ph.techniteSubRoundNumber = (UINT32)RuntimeConfig::techniteSubRoundNumber;
 			ph.timeFactor = -1;
 
 

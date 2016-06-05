@@ -51,7 +51,6 @@ namespace Journal
 		globalVersionOfCurrentFile = fileDataVersion;
 		if (updateRoundNumber)
 			RuntimeConfig::roundNumber = roundNumber;
-		RuntimeConfig::techniteSubRoundNumber = 0;
 
 		Reflection::state.PushAndReplaceFocus(Reflection::state.GetRoot());
 		foreach (globalEvents,ev)

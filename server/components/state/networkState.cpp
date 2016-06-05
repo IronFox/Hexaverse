@@ -260,7 +260,6 @@ namespace Network
 		Game::Network::HandleSessionClosure();
 		FileIO::Network::HandleSessionClosure();
 		RuntimeConfig::roundNumber = 0;
-		RuntimeConfig::techniteSubRoundNumber = 0;
 		RuntimeConfig::phase = RuntimeConfig::Phase::CommandPhase;
 
 		Objects::FlushAllData();

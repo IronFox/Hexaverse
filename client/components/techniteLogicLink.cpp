@@ -60,8 +60,8 @@ namespace TechniteLogicLink
 		TechniteProtocol::BeginSession session;
 		session.factionID = factionID.ToString(TUniqueID::NumBytes);
 		session.techniteGridID = lastTechniteGridID;
-		session.roundNumber = RuntimeConfig::roundNumber;
-		session.techniteSubRoundNumber = RuntimeConfig::techniteSubRoundNumber;
+		session.roundNumber = RuntimeConfig::roundNumber.main;
+		session.techniteSubRoundNumber = RuntimeConfig::roundNumber.technite;
 		Channels::beginSession.SendTo(logicServer,session,1);
 	}
 
@@ -87,7 +87,7 @@ namespace TechniteLogicLink
 
 	static void FillIn(const Objects::PWorldEntity&e, TechniteProtocol::GameObject&obj)
 	{
-		obj.birthRound = RuntimeConfig::roundNumber;	//too lazy
+		obj.birthRound = RuntimeConfig::roundNumber.main;	//too lazy
 		obj.height = (BYTE)e->GetHeight();
 		obj.id.location = EncodeLocation(e->location);
 		obj.isBroad = e->IsBroad();
@@ -137,7 +137,7 @@ namespace TechniteLogicLink
 			mobile.state.myMobileEntity.Get0();
 
 		TechniteProtocol::GameObject obj;
-		obj.birthRound = RuntimeConfig::roundNumber;
+		obj.birthRound = RuntimeConfig::roundNumber.main;
 		obj.id.location	= EncodeLocation(mobile.state.entityState.location);
 		obj.id.isGhost = false;
 		obj.isMine = mobile.owner == Network::myID;
@@ -240,7 +240,7 @@ namespace TechniteLogicLink
 		LogEvent(event,"Registering new structure entity '"+struc.state.entityState.id.value.ToString()+"' at "+struc.state.entityState.location.ToString());
 
 		TechniteProtocol::GameObject obj;
-		obj.birthRound = RuntimeConfig::roundNumber;
+		obj.birthRound = RuntimeConfig::roundNumber.main;
 		obj.id.location	= EncodeLocation(struc.state.entityState.location);
 		obj.isMine = struc.owner == Network::myID;
 
@@ -397,7 +397,7 @@ namespace TechniteLogicLink
 	}
 
 
-	void		ExecuteLogicWhenAllTechnitesAreThere(UINT32 roundNumber,UINT32 techniteSubRoundNumber, bool reExecution/*=false*/)
+	void		ExecuteLogicWhenAllTechnitesAreThere(const RoundNumber&roundNumber, bool reExecution/*=false*/)
 	{
 		ASSERT_EQUAL__(executed, reExecution);
 		if (haveAllTechnites)
@@ -408,16 +408,16 @@ namespace TechniteLogicLink
 			//DBG_ASSERT__(lastRound != roundNumber || lastSubRound != techniteSubRoundNumber);
 			//lastRound = roundNumber;
 			//lastSubRound = techniteSubRoundNumber;
-			LogEvent(event,"ExecuteLogic("+String(roundNumber)+","+String(techniteSubRoundNumber)+")");
+			LogEvent(event,"ExecuteLogic("+roundNumber.ToString()+")");
 			executed = true;
 			TechniteProtocol::InstructTechnites tech;
-			tech.roundNumber = roundNumber;
-			tech.techniteSubRoundNumber = techniteSubRoundNumber;
+			tech.roundNumber = roundNumber.main;
+			tech.techniteSubRoundNumber = roundNumber.technite;
 			Channels::instructTechnites.SendTo(logicServer,tech,1);
 		}
 		else
 		{
-			LogEvent(event,"Not executing logic("+String(roundNumber)+","+String(techniteSubRoundNumber)+"): don't have all technites");
+			LogEvent(event,"Not executing logic("+roundNumber.ToString()+"): don't have all technites");
 			executed = true;
 		}
 	}
@@ -589,14 +589,14 @@ namespace TechniteLogicLink
 				TechniteProtocol::BeginSession session;
 				session.factionID = lastFactionID.ToString(TUniqueID::NumBytes);
 				session.techniteGridID = lastTechniteGridID;
-				session.roundNumber = RuntimeConfig::roundNumber;
-				session.techniteSubRoundNumber = RuntimeConfig::techniteSubRoundNumber;
+				session.roundNumber = RuntimeConfig::roundNumber.main;
+				session.techniteSubRoundNumber = RuntimeConfig::roundNumber.technite;
 				Channels::beginSession.SendTo(logicServer,session,1);
 			}
 
 
 			if (haveAllTechnites && executed)
-				ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber,true);
+				ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber,true);
 
 		}
 
@@ -609,8 +609,8 @@ namespace TechniteLogicLink
 			
 			DebugMessage msg;
 			msg.message = message.message;
-			msg.roundNumber = RuntimeConfig::roundNumber;
-			msg.subRoundNumber = RuntimeConfig::techniteSubRoundNumber;
+			msg.roundNumber = RuntimeConfig::roundNumber.main;
+			msg.subRoundNumber = RuntimeConfig::roundNumber.technite;
 			msg.received = timer.Now();
 			
 
@@ -845,7 +845,7 @@ namespace TechniteLogicLink
 					return;
 				LogEvent(event,"Creating new ghost-marker for "+m.id.ToString());
 				obj.id.isGhost = true;
-				obj.birthRound = m.createdInRound;
+				obj.birthRound = m.createdInRound.main;
 				ghostGameObjects.Set(m.id,obj);
 				Channels::createGameObject.SendTo(logicServer,obj,1);
 			}
@@ -854,7 +854,7 @@ namespace TechniteLogicLink
 			{
 				LogEvent(event,"Creating new control-marker for "+m.id.ToString());
 				TechniteProtocol::ControlMarker mrk;
-				mrk.birthRound = m.createdInRound;
+				mrk.birthRound = m.createdInRound.main;
 				mrk.location = EncodeLocation(m.location);
 				mrk.radius = m.radius;
 				mrk.typeIndex = m.subType;
@@ -922,7 +922,7 @@ namespace TechniteLogicLink
 
 			haveAllTechnites = true;
 			if (executed)
-				ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber,true);
+				ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber,true);
 		}
 	}
 

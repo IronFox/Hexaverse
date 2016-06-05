@@ -1193,7 +1193,7 @@ namespace FileIO
 								Grid::CellStack::bottom.content = (BYTE)Grid::currentPlanetConfig.innerCoreType;
 
 //								#ifndef _DEBUG
-								GetOptionalPOD(list,RID::extraTechniteRounds,Game::Config::extraTechniteRounds,Game::Config::extraTechniteRounds);
+								GetOptionalPOD(list,RID::extraTechniteRounds,RoundNumber::extraTechniteRounds,RoundNumber::extraTechniteRounds);
 	//							#endif
 
 							}

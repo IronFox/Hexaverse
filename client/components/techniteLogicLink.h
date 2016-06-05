@@ -60,7 +60,7 @@ namespace TechniteLogicLink
 	/**
 	Sends a logic execution command to all connected technite logic clients
 	*/
-	void		ExecuteLogicWhenAllTechnitesAreThere(UINT32 roundNumber, UINT32 techniteSubRoundNumber, bool reExecution=false);
+	void		ExecuteLogicWhenAllTechnitesAreThere(const RoundNumber&roundNumber, bool reExecution=false);
 
 	/**
 	Queries whether or not technite logic processing has completed this round

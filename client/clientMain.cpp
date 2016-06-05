@@ -233,7 +233,7 @@ void	OnPlayerControlBegin()
 		Technites::PFaction tf = To<Technites::Faction>::Cast(Objects::Faction::mine);
 		tf->VerifyIntegrity();
 	
-		TechniteLogicLink::ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber, RuntimeConfig::techniteSubRoundNumber);
+		TechniteLogicLink::ExecuteLogicWhenAllTechnitesAreThere(RuntimeConfig::roundNumber);
 	}
 }
 

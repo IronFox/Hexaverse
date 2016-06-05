@@ -84,15 +84,15 @@ namespace Evolver
 
 	/*virtual override*/ void Technite::FinishRoundProcessing()
 	{
-		RuntimeConfig::techniteSubRoundNumber ++;
+		RuntimeConfig::roundNumber.technite ++;
 		if (TechniteDetails::InExtraTechniteRound())
 		{
 			Game::Network::ChangePhase(RuntimeConfig::Phase::TechniteCommandPhase,Game::Config::extraTechniteRoundTimer > 0 && !Game::roundTimerPaused ? Game::Config::extraTechniteRoundTimer : -1);
 		}
 		else
 		{
-			RuntimeConfig::roundNumber++;
-			RuntimeConfig::techniteSubRoundNumber = 0;
+			RuntimeConfig::roundNumber.main++;
+			RuntimeConfig::roundNumber.technite = 0;
 
 			Game::Network::ChangePhase(RuntimeConfig::Phase::CommandPhase,Game::Config::roundTimer > 0 && !Game::roundTimerPaused ? Game::Config::roundTimer : -1);
 		}

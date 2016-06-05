@@ -1542,7 +1542,6 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 	if (RuntimeConfig::IsInAnyCommandPhase())
 		newRoundRequested = false;
 	RuntimeConfig::roundNumber = c.roundNumber;
-	RuntimeConfig::techniteSubRoundNumber = c.techniteSubRoundNumber;
 	phaseStarted = timer.Now();
 	#ifdef HAS_WINDOW
 		Objects::UpdateChoices(ControlEnabled());

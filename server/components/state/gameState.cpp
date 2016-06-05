@@ -31,7 +31,6 @@ namespace Game
 	{
 		int			roundTimer = -1,
 					extraTechniteRoundTimer = -1;
-		UINT32		extraTechniteRounds = 0;		
 		
 		UINT32		uplinkBandwidth = 500;
 
@@ -119,7 +118,6 @@ namespace Game
 			info.numFactionsOnline = (UINT16)::Network::activePlayersAndSpectators.Count();
 			info.numFactionsCreated = (UINT16)Objects::Faction::all.Count() + (Config::Nexus::enableAI ? 1 : 0);
 			info.roundNumber = RuntimeConfig::roundNumber;
-			info.techniteSubRoundNumber = (UINT32)RuntimeConfig::techniteSubRoundNumber;
 
 			info.worldID = World::worldID;
 			info.gameGoal = (UINT32)RuntimeConfig::gameGoal;
@@ -145,7 +143,6 @@ namespace Game
 			Protocol::PhaseChange	ph;
 			ph.newPhase = to;
 			ph.roundNumber = RuntimeConfig::roundNumber;
-			ph.techniteSubRoundNumber = (UINT32)RuntimeConfig::techniteSubRoundNumber;
 			ph.timeFactor = timeWindow;
 			Channels::phaseChange.SendTo(::Network::server,ph,1);
 			RuntimeConfig::phase = to;

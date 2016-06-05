@@ -29,7 +29,6 @@ namespace Game
 	{
 		extern int		roundTimer/* = -1*/,
 						extraTechniteRoundTimer/* = -1*/;
-		extern UINT32	extraTechniteRounds/* = 0*/;		
 		extern UINT32	uplinkBandwidth/* = 500*/;
 		extern bool		closedGame/* = false*/,
 						startBases /*= false*/,
@@ -188,7 +187,7 @@ namespace Game
 	}
 
 
-    inline bool		CurrentRoundIsExtraTechniteRound()    {return RuntimeConfig::techniteSubRoundNumber > 0 && RuntimeConfig::techniteSubRoundNumber <= Config::extraTechniteRounds;}
+    inline bool		CurrentRoundIsExtraTechniteRound()    {return RuntimeConfig::roundNumber.technite > 0 && RuntimeConfig::roundNumber.technite <= RoundNumber::extraTechniteRounds;}
 
 
 	void			PerformNewRoundLogic(float &atTime);	//includes UpdateHibernation()

@@ -857,7 +857,7 @@ namespace Reflection
 			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::ConfigOverridesSavegame)
 
 			VAR(limitTechniteLife,Technites,false,true,Variable::Persistence::ConfigOverridesSavegame);
-			VAR(extraTechniteRounds,Game::Config,0U,UINT_MAX,Variable::Persistence::ConfigOverridesSavegame);
+			VAR(extraTechniteRounds,RoundNumber,0U,UINT_MAX,Variable::Persistence::ConfigOverridesSavegame);
 
 			state.EnterNewFolder("UnitLimits")->attachment.reset(new Variable::PersistenceAttachment());
 				RuntimeConfig::UnitLimits::Reset();
