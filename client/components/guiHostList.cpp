@@ -136,7 +136,7 @@ void	SaveHosts()
 			bool versionMatch = info.rightVersion;
 			info.buttonPanel->SetCheck([versionMatch]()
 			{
-				return versionMatch && !Network::client.IsAttemptingToConnect();
+				return versionMatch && !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected();
 			});
 
 			TUniqueID id = info.id;
@@ -216,7 +216,7 @@ void	SaveHosts()
 		bool incompatible = !info.rightVersion || info.protocolIncompatible;
 		{
 			AddTab(p,String(info.info.gameInfo.numFactionsOnline) + "/" + String(info.info.gameInfo.numFactionsCreated),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
-			AddTab(p,String(info.info.gameInfo.roundNumber)+','+String(info.info.gameInfo.techniteSubRoundNumber),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
+			AddTab(p,info.info.gameInfo.roundNumber.value.ToString(),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
 			PLabel l = AddTab(p,CompileRules(info.info),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
 			l->zoom *= 0.9f;
 
@@ -433,7 +433,9 @@ void	SaveHosts()
 					}
 				});
 			
-			}));
+			},
+			[]()->bool {return !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected();}
+			));
 			b->anchorConfig.Top().SetLastOf(Dialog::serverChoice,0.025f,GUIElements::TAnchor::RelativeToScreen);
 			b->anchorConfig.Left().Set(0.f);
 			b->LockIdealWidth();
@@ -472,6 +474,12 @@ void	SaveHosts()
 				if (b)
 					b->SetEnabled(false);
 			});
+			start->SetCheck(
+			[]()->bool {return !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected() && !ServerProcess::IsRunning();}
+			);
+			stop->SetCheck(
+			[]()->bool {return !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected() && ServerProcess::IsRunning();}
+			);
 			start->anchorConfig.Top() = addHostButton->anchorConfig.Top();
 			stop->anchorConfig.Top() = addHostButton->anchorConfig.Top();
 			start->anchorConfig.Left().Set(addHostButton,0.02f);

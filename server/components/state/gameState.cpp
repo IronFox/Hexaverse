@@ -118,7 +118,7 @@ namespace Game
 			info.activePhase = RuntimeConfig::phase;
 			info.numFactionsOnline = (UINT16)::Network::activePlayersAndSpectators.Count();
 			info.numFactionsCreated = (UINT16)Objects::Faction::all.Count() + (Config::Nexus::enableAI ? 1 : 0);
-			info.roundNumber = (UINT32)RuntimeConfig::roundNumber;
+			info.roundNumber = RuntimeConfig::roundNumber;
 			info.techniteSubRoundNumber = (UINT32)RuntimeConfig::techniteSubRoundNumber;
 
 			info.worldID = World::worldID;
@@ -144,7 +144,7 @@ namespace Game
 			LogEvent(EventSignificance::Debug,"Changing RuntimeConfig::phase to "+String(to.ToString())+" with time window "+String(timeWindow));
 			Protocol::PhaseChange	ph;
 			ph.newPhase = to;
-			ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
+			ph.roundNumber = RuntimeConfig::roundNumber;
 			ph.techniteSubRoundNumber = (UINT32)RuntimeConfig::techniteSubRoundNumber;
 			ph.timeFactor = timeWindow;
 			Channels::phaseChange.SendTo(::Network::server,ph,1);

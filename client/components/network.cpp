@@ -64,6 +64,9 @@ namespace Network
 		gameHasBegun = false;
 
 		client.ConnectAsync(addr.host + ":"+String(addr.basePort + PortOffset::Session));
+		#ifdef HAS_WINDOW
+			Dialog::SignalSituationChange();
+		#endif
 	}
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id, BYTE techniteFactionIfNew)
@@ -935,7 +938,7 @@ namespace Network
 					type = Objects::Marker::Type::Reinterpret(2);
 				}
 			}
-			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, ownerID, entityType, std::max<int>(RuntimeConfig::roundNumber,marker.createdInRound));
+			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, ownerID, entityType, std::max(RuntimeConfig::roundNumber,marker.createdInRound));
 			TechniteLogicLink::CreateMarker(Objects::Marker::all.last());
 			#ifdef HAS_WINDOW
 				OnSelectionChange(true);
@@ -1561,7 +1564,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			//Network::Channels::destroyMarker.SendTo(Network::client, *o);
 		}
 
-		LogEvent(EventClass::Preset::important, nullptr, "Begin round " + String(RuntimeConfig::roundNumber));
+		LogEvent(EventClass::Preset::important, nullptr, "Begin round " + RuntimeConfig::roundNumber.ToString());
 
 
 	}
