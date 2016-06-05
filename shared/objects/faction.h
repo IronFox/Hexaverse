@@ -4,6 +4,7 @@
 #include "entity.h"
 #include "types.h"
 #include "structureCompound.h"
+#include "../roundNumber.h"
 
 namespace Objects
 {
@@ -35,7 +36,7 @@ namespace Objects
 		ConstName					referencedType[2];
 
 		Type						type;
-		UINT32						createdInRound=0;
+		RoundNumber					createdInRound;
 
 		#ifdef CLIENT
 			UINT32					age = 0;	//age in rounds, updated during GetOutdated()
@@ -85,7 +86,7 @@ namespace Objects
 
 		#ifdef CLIENT
 
-			void					UpdateAge(UINT32 roundNumber);
+			void					UpdateAge(const RoundNumber&roundNumber);
 
 			PWorldEntity			visualization;
 			//PStructure				structureVisualization;
@@ -108,14 +109,14 @@ namespace Objects
 				}
 			};
 
-			static void				Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, UINT32 createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], UINT32 currentRound);
+			static void				Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber&createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], const RoundNumber& currentRound);
 			static void				Destroy(const TUniqueID&id, bool controlEnabled);
 			static Marker*			FindByReference(const TUniqueID&referenceID);
 			static Marker*			Find(const TUniqueID&referenceID);
 			static Marker*			Find(const Grid::LCellIdI&);
 			static void				GetDeletionCandidates(BasicBuffer<TCandidate>&candidates);
 			static void				FlushAll();
-			static void				GetOutdated(BasicBuffer<Marker>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
+			static void				GetOutdated(BasicBuffer<Marker>&outOudated, const RoundNumber&currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
 
 			static Buffer0<Marker, Strategy::Adopt>	all;
 			static Buffer0<PStructure>	structureGhosts;

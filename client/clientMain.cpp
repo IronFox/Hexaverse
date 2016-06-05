@@ -207,7 +207,7 @@ Triggered when entering command mode and animations have finished (whichever of 
 void	OnPlayerControlBegin()
 {
 //	LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+String(RuntimeConfig::roundNumber)+","+String(RuntimeConfig::techniteSubRoundNumber)+")");
-	LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+String(RuntimeConfig::roundNumber)+")");
+	LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+RuntimeConfig::roundNumber.ToString()+")");
 
 	#ifdef HAS_WINDOW
 		OnSelectionChange(true);
@@ -1839,7 +1839,7 @@ bool loop()
 						textout << "Access ID: " << Network::activeTokenString<<nl;
 					#endif
 					textout << "Phase: "<<RuntimeConfig::phase.ToString()<<nl;
-					textout << "Round Number: "<<RuntimeConfig::roundNumber<<nl;
+					textout << "Round Number: "<<RuntimeConfig::roundNumber.main<<nl;
 					if (!Network::gameProgress.gameOver)
 					{
 						if (Network::gameProgress.status.IsNotEmpty())

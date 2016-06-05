@@ -212,7 +212,7 @@ void	SaveHosts()
 		bool incompatible = !info.rightVersion || info.protocolIncompatible;
 		{
 			AddTab(p,String(info.info.gameInfo.numFactionsOnline) + "/" + String(info.info.gameInfo.numFactionsCreated),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
-			AddTab(p,String(info.info.gameInfo.roundNumber),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
+			AddTab(p,info.info.gameInfo.roundNumber.value.ToString(),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
 			PLabel l = AddTab(p,CompileRules(info.info),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
 			l->zoom *= 0.9f;
 

@@ -10,7 +10,7 @@
 #include "grid.h"
 #include "objects.h"
 #include "stringTable.h"
-
+#include "runtimeConfig.h"
 
 #pragma comment(lib,"ws2_32.lib")
 #pragma comment(lib,"Rpcrt4.lib")
@@ -1738,7 +1738,7 @@ namespace Protocol
 
 	NETSTRUCT3(PhaseChange
 		, NET(UINT8), newPhase
-		, NET(UINT32), roundNumber
+		, NET(RuntimeConfig::RoundNumber), roundNumber
 		, NET(float), timeFactor
 	)
 
@@ -1768,7 +1768,7 @@ namespace Protocol
 	NETSTRUCT7(GameInfo
 		, NET(UINT16), numFactionsOnline
 		, NET(UINT16), numFactionsCreated
-		, NET(UINT32), roundNumber
+		, NET(RuntimeConfig::RoundNumber), roundNumber
 		, NET(TUniqueID), worldID	//used to manage factionTokens
 		, NET(BYTE), activePhase
 		, NET(UINT32), gameFlags
@@ -1819,12 +1819,12 @@ namespace Protocol
 		, NET(TUniqueID), id
 		, LCellIdI, location		
 		, MarkerData, data
-		, NET(UINT32), createdInRound
+		, NET(RuntimeConfig::RoundNumber), createdInRound
 	)
 
 	NETSTRUCT2(TouchedMarker
 		, NET(TUniqueID), id
-		, NET(UINT32), newRoundNumber
+		, NET(RuntimeConfig::RoundNumber), newRoundNumber
 	)
 
 	NETSTRUCT2(IdentifyUser
