@@ -60,7 +60,9 @@ namespace Network
 		gameHasBegun = false;
 
 		client.ConnectAsync(addr.host + ":"+String(addr.basePort + PortOffset::Session));
-		Dialog::SignalSituationChange();
+		#ifdef HAS_WINDOW
+			Dialog::SignalSituationChange();
+		#endif
 	}
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
