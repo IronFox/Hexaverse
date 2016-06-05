@@ -876,7 +876,15 @@ namespace Journal
 		Evolver::Abstract	*evolver = nullptr;
 		//const char*	kernelName=nullptr;
 
+		void	swap(Round&other)
+		{
+			factionStrands.swap(other.factionStrands);
+			globalEvents.swap(other.globalEvents);
+			swp(roundNumber,other.roundNumber);
+			swp(fileDataVersion,other.fileDataVersion);
+			swp(evolver,other.evolver);
 
+		}
 		static StringTable<PEvent>	eventMap;
 		
 		void	Decode(const Entry&roundRootEntry);
