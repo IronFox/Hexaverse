@@ -17,9 +17,12 @@ namespace Planet
 	{
 
 		Location	location;
+		
 		bool created = false;
 
-		
+		class LocationData;
+		typedef std::shared_ptr<LocationData>	PLocationData;
+
 
 		class InterplanetarySensoryRequest : public Journal::Round::GlobalEvent
 		{
@@ -54,10 +57,11 @@ namespace Planet
 					, NETA(Peer), neighbors
 				)
 
-				typedef NETA(UINT32)	BeginRound;
+				typedef NET(RuntimeConfig::RoundNumber)	BeginRound;
 
-				NETSTRUCT2(FactionSensorAccess
+				NETSTRUCT3(FactionSensorAccess
 					, NET(TUniqueID), factionID
+					, NET(UINT8), type
 					, NET(CryptographicID), accessID
 				)
 				typedef NETA(FactionSensorAccess)	GainSensorAccess;
@@ -68,22 +72,21 @@ namespace Planet
 		}
 		
 		void	RegisterPeer(const Handler::Object::Peer&loc);
-
+		void	RefreshPeer(TCP::Peer&p);
+		PLocationData	FindLocationData(const Location&loc);
 
 		namespace Handler
 		{
-			class Attachment : TCP::Peer::Attachment
+			class Attachment : public TCP::Peer::Attachment
 			{
 			public:
-				Object::PeerHello	peer;
+				RuntimeConfig::RoundNumber	roundNumber;
+				PLocationData		locationData;
 				//Grid::SkySensorState	sensor;
 
-				UINT32			GetSensorLocation() const
-				{
-					return Grid::low.Locate(float3(peer.value-location,0));
-				}
+				UINT32			GetSensorLocation() const;
 
-				/**/			Attachment(const Object::PeerHello&p):peer(p){}
+				/**/			Attachment(const PLocationData&data):locationData(data) {}
 			};
 			typedef std::shared_ptr<Attachment>	PAttachment;
 
@@ -102,49 +105,29 @@ namespace Planet
 				
 				}
 			}
-			void OnPeerEvent(TCP::event_t ev, TCP::Peer&p)
-			{
-				switch (ev)
-				{
-					case TCP::Event::ConnectionEstablished:
-						LogEvent(EventSignificance::Important,"Planet: Connection established to peer "+p.ToString());
-					break;
-					case TCP::Event::ConnectionFailed:
-					case TCP::Event::ConnectionClosed:
-					case TCP::Event::ConnectionLost:
-					{
-						LogEvent(EventSignificance::Important,"Planet: Connection lost to peer "+p.ToString());
-						PAttachment a = To<Attachment>::Cast(p.attachment);
-						UINT32 loc = a->GetSensorLocation();
-						Objects::ForeachFaction([loc](const Objects::PFaction&f)
-						{
-							f->RemoveInterplanetarySensor(loc);
-						});
-					}
-					break;
-				
-				}
-			}
-
-			void Hello(Object::Hello&hello)
-			{
-				location = hello.location;
-
-				foreach (hello.neighbors,n)
-					RegisterPeer(*n);
-			}
+			void OnPeerEvent(TCP::event_t ev, TCP::Peer&p);
+			void Hello(Object::Hello&hello);
 
 			void PeerHello(Object::PeerHello&hello, TCP::Peer&peer)
 			{
 				if (peer.userLevel > 0)
 					return;
-				peer.attachment.reset(new Attachment(hello));
-				peer.userLevel = 1;
-				PAttachment a = To<Attachment>::Cast(peer.attachment);
-				RefreshPeer(peer,a->peer);
+				PLocationData data = FindLocationData(hello);
+				if (data)
+				{
+					peer.attachment.reset(new Attachment(data));
+					peer.userLevel = 1;
+					RefreshPeer(peer);
+				}
 			}
 
 			void GainSensorAccess(Object::GainSensorAccess&sens, TCP::Peer&peer);
+			void BeginRound(Object::BeginRound&rnd, TCP::Peer&p)
+			{
+				PAttachment a = To<Attachment>::Cast(p.attachment);
+				if (a)
+					a->roundNumber = rnd;
+			}
 
 			namespace Channel
 			{
@@ -179,16 +162,23 @@ namespace Planet
 		public:
 			/**/			Peer(const Handler::Object::Peer&host):host(host)
 			{
-				connection.attachment.reset(new Handler::Attachment(host.location));
-				connection.userLevel = 1;
+				PLocationData data = FindLocationData(host.location);
+				ASSERT__(data);
+				if (data)
+				{
+					connection.attachment.reset(new Handler::Attachment(data));
+					connection.userLevel = 1;
+				}
 				start();
 			}
 
 			void		Visit(const FPeerVisitor&v)
 			{
 				if (connection.IsConnected())
-					v(connection,host.location);
+					v(connection);
 			}
+
+			void		Destroy();
 		protected:
 			virtual void ThreadMain() override
 			{
@@ -215,7 +205,7 @@ namespace Planet
 							SelfDestruct();
 							return;
 						}
-						Sleep(2000);
+						Sleep(500);
 					}
 					failCount = 0;
 					Handler::Channel::peerHello.SendTo(connection,location);
@@ -240,35 +230,28 @@ namespace Planet
 		Buffer0<PPeer>	peers;
 		SpinLock	peerLock;
 
-		struct LocationHash
-		{
-			static hash_t hash(const Location&loc)
-			{
-				return StdHash::memHash(&loc,sizeof(loc));
-			}
 
-
-		};
 
 		class LocationData
 		{
 		public:
+			const Location	location;
+			SpinLock		dataLock;
 			
 			GenericHashTable<TUniqueID,Handler::Object::FactionSensorAccess,TUniqueID>	accessMap;
 			Buffer0<Objects::PMobileEntity>	transferQueue;
 
-			Journal::Round::EventStorage<Journal::Round::GlobalEvent>	receivedEvents;
+			GenericHashTable<RuntimeConfig::RoundNumber,Journal::Round,PODHash,Copy,Swap>	rounds;
 
-			void	swap(LocationData&other)
-			{
-				accessMap.swap(other.accessMap);
-				transferQueue.swap(other.transferQueue);
-				receivedEvents.swap(other.receivedEvents);
-			}
+
+			/**/			LocationData(const Location&loc):location(loc)
+			{}
 		};
+		typedef std::shared_ptr<LocationData>	PLocationData;
 
-		GenericHashTable<Location,LocationData,LocationHash,Swap>	locationMap;
-		SpinLock locationMapLock;
+		Array<PLocationData>		neighbors;
+		SpinLock					neighborLock;
+		RuntimeConfig::RoundNumber	compareRoundNumber;
 
 
 		void	RegisterPeer(const Handler::Object::Peer&loc)
@@ -278,13 +261,24 @@ namespace Planet
 			peerLock.unlock();
 		}
 
+
+		void	Peer::Destroy()
+		{
+			bool b = false;
+			if (end.compare_exchange_strong(b,true))
+			{
+				LogEvent(EventSignificance::Uncommon,"Closing connection to "+host.host);
+				connection.Disconnect();
+				this->CheckAwaitCompletion(1000);
+			}
+		}
+
 		void	Peer::SelfDestruct()
 		{
 			bool b = false;
 			if (end.compare_exchange_strong(b,true))
 			{
 				LogEvent(EventSignificance::Uncommon,"Lost connection to "+host.host);
-				end = true;
 				connection.Disconnect();
 				PPeer copy;
 				peerLock.lock();
@@ -302,9 +296,10 @@ namespace Planet
 		TCP::Peer*	FindPeerFor(const Location&loc)
 		{
 			TCP::Peer*rs = nullptr;
-			VisitPeers([loc,&rs](TCP::Peer&p, const Location&loc2)
+			VisitPeers([loc,&rs](TCP::Peer&p)
 			{
-				if (loc2 == loc)
+				PLocationData data = To<Handler::Attachment>::Cast(p.attachment)->locationData;
+				if (data->location == loc)
 				{
 					rs = &p;
 				}
@@ -312,22 +307,50 @@ namespace Planet
 			return rs;
 		}
 
-		void	RefreshPeer(TCP::Peer&p, const Location&loc)
+		void	RefreshPeer(TCP::Peer&p)
 		{
-			static Handler::Object::BeginRound	round;
-			round.set(1,RuntimeConfig::roundNumber);
-			locationMapLock.lock();
-			auto*data = locationMap.QueryPointer(loc);
-			if (data)
+			if (!p.attachment)
+				return;
+			PLocationData data = To<Handler::Attachment>::Cast(p.attachment)->locationData;
+			data->dataLock.lock();
 			{
 				Handler::Object::GainSensorAccess access;
 				
 				data->accessMap.exportTo(access);
-				Handler::Channel::beginRound.SendTo(p,round);
+				Handler::Channel::beginRound.SendTo(p,RuntimeConfig::roundNumber);
 				Handler::Channel::gainSensorAccess.SendTo(p,access);
 			}
-			locationMapLock.unlock();
+			data->dataLock.unlock();
 
+		}
+	}
+
+	UINT32			Details::Handler::Attachment::GetSensorLocation() const
+	{
+		return Grid::low.Locate(locationData->location-location);
+	}
+
+	void Details::Handler::Hello(Object::Hello&hello)
+	{
+		location = hello.location;
+
+		neighborLock.lock();
+		neighbors.SetSize(hello.neighbors.Count());
+		for (index_t i = 0; i < hello.neighbors.Count(); i++)
+			neighbors[i].reset(new LocationData(hello.neighbors[i].location));
+		neighborLock.unlock();
+					
+		peerLock.lock();
+			foreach (peers,p)
+			{
+				(*p)->Destroy();
+			}
+			peers.Clear();
+		peerLock.unlock();
+		foreach (hello.neighbors,n)
+		{
+			if (n->host.IsNotEmpty())
+				RegisterPeer(*n);
 		}
 	}
 
@@ -337,11 +360,7 @@ namespace Planet
 		{
 			case TCP::Event::ConnectionEstablished:
 				LogEvent(EventSignificance::Important,"Planet: Connection established to peer "+p.ToString());
-				if (p.attachment)
-				{
-					PAttachment a = To<Attachment>::Cast(p.attachment);
-					RefreshPeer(p,a->peer);
-				}
+				RefreshPeer(p);
 			break;
 			case TCP::Event::ConnectionFailed:
 			case TCP::Event::ConnectionClosed:
@@ -349,16 +368,19 @@ namespace Planet
 			{
 				LogEvent(EventSignificance::Important,"Planet: Connection lost to peer "+p.ToString());
 				PAttachment a = To<Attachment>::Cast(p.attachment);
-				UINT32 loc = a->GetSensorLocation();
-				Objects::ForeachFaction([loc](const Objects::PFaction&f)
+				if (a)
 				{
-					f->RemoveInterplanetarySensor(loc);
-				});
-				locationMapLock.lock();
-				LocationData*data = locationMap.QueryPointer(a->peer);
-				if (data)
-					data->receivedEvents.Clear();
-				locationMapLock.unlock();
+					UINT32 loc = a->GetSensorLocation();
+					Objects::ForeachFaction([loc](const Objects::PFaction&f)
+					{
+						f->RemoveInterplanetarySensor(loc);
+					});
+					a->locationData->dataLock.lock();
+					{
+						a->locationData->rounds.Clear();
+					}
+					a->locationData->dataLock.unlock();
+				}
 			}
 			break;
 				
@@ -369,15 +391,26 @@ namespace Planet
 	void Details::Handler::GainSensorAccess(Object::GainSensorAccess&sens, TCP::Peer&peer)
 	{
 		Attachment&attachment = *To<Attachment>::Cast(peer.attachment);
-		const Location&loc = attachment.peer;
-		locationMapLock.lock();
-		LocationData&data = locationMap.Set(loc);
+		PLocationData data = attachment.locationData;
+		data->dataLock.lock();
+		if (attachment.roundNumber <= compareRoundNumber)
+		{
+			LogEvent(EventClass::Preset::networkError,"Received message from the past from "+peer.ToString());
+			data->dataLock.unlock();
+			return;
+		}
+
+		Journal::Round&rnd = data->rounds.Set(attachment.roundNumber);
+
 		foreach (sens,facID)
 		{
 			UINT32 locI = attachment.GetSensorLocation();
-			data.receivedEvents.Append(Journal::Round::PGlobalEvent(new InterplanetarySensoryRequest(facID->factionID,facID->accessID, Journal::Round::ChangeInterplanetarySensory( true,locI,10))));
+			{
+				rnd.Register(false,new Journal::Round::CreateFaction(Journal::Round::CreateFaction::FactionType::Reinterpret(facID->type),facID->factionID,facID->accessID));
+				rnd.Register(false, facID->factionID,new Journal::Round::ChangeInterplanetarySensory(false,locI));
+			}
 		}
-		locationMapLock.unlock();
+		data->dataLock.unlock();
 	}
 
 	
@@ -423,7 +456,8 @@ namespace Planet
 		using namespace Details;
 		p2pServer.VisitAllPeers([f](const TCP::PPeer&p)
 		{
-			f(*p,To<Handler::Attachment>::Cast(p->attachment)->peer);
+			if (p->attachment)
+				f(*p);
 		});
 		peerLock.lock();
 		foreach (peers,p2)
@@ -461,31 +495,56 @@ namespace Planet
 	}
 
 
-	void		RegisterSensorAccess(const Objects::PFaction&f, const Location&loc)
+	bool		RegisterSensorAccess(const Objects::PFaction&f, const Location&loc)
 	{
 		if (HasSensorAccess(f,loc))
-			return;
+			return true;
 		using namespace Details;
-		locationMapLock.lock();
-		locationMap.Set(loc).accessMap.Set(f->id);
-		locationMapLock.unlock();
+		neighborLock.lock();
+		PLocationData data = FindLocationData(loc);
+		if (data)
+		{
+			Handler::Object::FactionSensorAccess	access;
+			access.accessID = f->accessToken;
+			access.factionID = f->id;
+			access.type = (UINT8)Journal::GetType(f);
+			data->dataLock.lock();
+			data->accessMap.Set(f->id,access);
+			data->dataLock.unlock();
+		}
+		neighborLock.unlock();
+		return !!data;
 	}
 
 	void		UnregisterSensorAccess(const Objects::PFaction&f, const Location&loc)
 	{
 		using namespace Details;
 
-		auto*p = locationMap.QueryPointer(loc);
-		if (p && p->accessMap.Unset(f->id))
-		{}
+		neighborLock.lock();
+		PLocationData data = FindLocationData(loc);
+		if (data)
+		{
+			data->dataLock.lock();
+			data->accessMap.Unset(f->id);
+			data->dataLock.unlock();
+		}
+		neighborLock.unlock();
 	}
 
 	bool		HasSensorAccess(const Objects::PFaction&f, const Location&loc)
 	{
 		using namespace Details;
-
-		auto*p = locationMap.QueryPointer(loc);
-		return (p && p->accessMap.IsSet(f->id));
+		bool rs = false;
+		neighborLock.lock();
+		PLocationData data = FindLocationData(loc);
+		if (data)
+		{
+			data->dataLock.lock();
+			rs = data->accessMap.IsSet(f->id);
+			data->dataLock.unlock();
+		}
+		neighborLock.unlock();
+		return rs;
 	}
 
 	Location	GetMyLocation()
@@ -497,8 +556,19 @@ namespace Planet
 	bool		TransferMobileEntity(const Objects::PMobileEntity&e, const Location&dest)
 	{
 		using namespace Details;
-
-		locationMap.Set(dest).transferQueue.Append(e);
+		bool rs = false;
+		neighborLock.lock();
+		PLocationData data = FindLocationData(dest);
+		if (data)
+		{
+			data->dataLock.lock();
+			if (!data->transferQueue.Contains(e))
+				data->transferQueue.Append(e);
+			data->dataLock.unlock();
+			rs = true;
+		}
+		neighborLock.unlock();
+		return rs;
 	}
 
 		
@@ -507,29 +577,31 @@ namespace Planet
 		using namespace Details;
 		if (!created)
 			return;
-		VisitPeers([](TCP::Peer&p,const Location&loc)
+		VisitPeers([](TCP::Peer&p)
 		{
-			RefreshPeer(p,loc);
+			RefreshPeer(p);
 		});
 	}
 
-	void	SignalControlPhaseEnd()
+	void	SignalControlPhaseEnd(const RuntimeConfig::RoundNumber&nextRoundNumber)
 	{
 		using namespace Details;
 		if (!created)
 			return;
-		locationMapLock.lock();
-		locationMap.VisitAllValues([](LocationData&dat)
+		compareRoundNumber = nextRoundNumber;
+		VisitPeers([](TCP::Peer&p)
 		{
-			foreach (dat.receivedEvents,ev)
+			auto d = To<Handler::Attachment>::Cast(p.attachment)->locationData;
+			d->dataLock.lock();
+			Journal::Round*rnd = d->rounds.QueryPointer(RuntimeConfig::roundNumber);
+			if (rnd)
 			{
-				(*ev)->Execute();
+				Journal::currentRound.Include(*rnd,true);
+				d->rounds.Unset(RuntimeConfig::roundNumber);
 			}
-			dat.receivedEvents.Clear();
-			dat.transferQueue.Clear();
+			d->transferQueue.Clear();
+			d->dataLock.unlock();
 		});
-		locationMapLock.unlock();
-
 	}
 
 

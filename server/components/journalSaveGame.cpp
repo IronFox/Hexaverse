@@ -2275,7 +2275,6 @@ namespace Journal
 		MAP_ADD(DestroyMarker);
 		MAP_ADD(RestoreCoreLink);
 		MAP_ADD(ConstructionAbort);
-		MAP_ADD(InterplanetarySensoryRequest);
 		MAP_ADD(ChangeInterplanetarySensory);
 	}
 

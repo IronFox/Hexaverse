@@ -10,10 +10,10 @@ namespace Planet
 	/**
 	Planet location identifier.
 	*/
-	typedef int2 Location;
-	typedef std::function<void(TCP::Peer&peer, const Location&loc)> FPeerVisitor;
+	typedef float3 Location;
+	typedef std::function<void(TCP::Peer&peer)> FPeerVisitor;
 		
-	void		RegisterSensorAccess(const Objects::PFaction&, const Location&);
+	bool		RegisterSensorAccess(const Objects::PFaction&, const Location&);
 	void		UnregisterSensorAccess(const Objects::PFaction&, const Location&);
 	bool		HasSensorAccess(const Objects::PFaction&, const Location&);
 	Location	GetMyLocation();
@@ -21,7 +21,7 @@ namespace Planet
 
 	void		VisitPeers(const FPeerVisitor&f);
 		
-	void		SignalControlPhaseEnd();
+	void		SignalControlPhaseEnd(const RuntimeConfig::RoundNumber&nextRoundNumber);
 	void		SignalControlPhaseBegin();
 
 	
