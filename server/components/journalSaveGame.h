@@ -522,6 +522,7 @@ namespace Journal
 
 			/**/			CreateFaction() {}
 			/**/			CreateFaction(const Objects::Faction&, FactionType factionType);
+			/**/			CreateFaction(FactionType factionType, const TUniqueID&, const CryptographicID&);
 
 			FactionType		factionType;
 			CryptographicID	accessToken;

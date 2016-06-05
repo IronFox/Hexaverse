@@ -229,7 +229,12 @@ namespace Journal
 		this->accessToken = f.accessToken;
 		this->factionID = f.id;
 	}
-
+	Round::CreateFaction::CreateFaction(Round::CreateFaction::FactionType type, const TUniqueID&factionID, const CryptographicID&accessToken):factionType(type)
+	{
+		this->accessToken = accessToken;
+		this->factionID = factionID;
+	}
+	
 	/*virtual override*/ void Round::CreateFaction::Execute() const
 	{
 		Objects::PFaction f;
