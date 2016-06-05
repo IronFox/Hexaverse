@@ -29,14 +29,15 @@ namespace Journal
 	}
 
 
-	void Round::Apply(bool process)
+	void Round::Apply(bool process, bool updateRoundNumber)
 	{
 		lockEvents = true;
 	
 		LogEvent(EventSignificance::Uncommon ,"Applying round "+String(roundNumber)+" to state...");
 
 		globalVersionOfCurrentFile = fileDataVersion;
-		RuntimeConfig::roundNumber = roundNumber;
+		if (updateRoundNumber)
+			RuntimeConfig::roundNumber = roundNumber;
 
 		Reflection::state.PushAndReplaceFocus(Reflection::state.GetRoot());
 		foreach (globalEvents,ev)

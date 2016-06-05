@@ -906,8 +906,9 @@ namespace Journal
 		/**
 		Applies the local round to the global state.
 		@param process Set true to also perform round-processing using the locally referenced kernel.
+		@param updateRoundNumber If set updates the global round number to locally stored round number
 		*/
-		void	Apply(bool process);
+		void	Apply(bool process, bool updateRoundNumber=true);
 
 
 		static void StaticCreate();
