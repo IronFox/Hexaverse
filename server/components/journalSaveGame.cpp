@@ -28,6 +28,18 @@ namespace Journal
 		return TCP::PPeer();
 	}
 
+	void	Round::Include(Round&other, bool execute)
+	{
+		ASSERT__(other.roundNumber == roundNumber);
+		if (execute)
+			other.Apply(false,false);
+		
+		globalEvents.Append(other.globalEvents);
+		other.factionStrands.VisitAllEntries([this](const TUniqueID&key, FactionStrand&strand)
+		{
+			factionStrands.Set(key).Merge(strand);
+		});
+	}
 
 	void Round::Apply(bool process, bool updateRoundNumber)
 	{

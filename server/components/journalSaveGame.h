@@ -908,6 +908,8 @@ namespace Journal
 		void	Register(bool execute, const Objects::PWorldEntity&e, Round::EntityEvent*newEvent);
 		void	Register(bool execute, Round::GlobalEvent*newEvent);
 
+		void	Include(Round&other, bool execute);
+
 		void	Clear();
 
 		void	AppendEntityVerification();
