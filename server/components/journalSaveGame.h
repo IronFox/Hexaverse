@@ -905,6 +905,7 @@ namespace Journal
 		void	RegisterResourceCoverageKnowledgeLoss(bool execute, const Objects::PFaction&, UINT32 stackID);
 
 
+		void	Register(bool execute, const TUniqueID&factionID, Round::FactionEvent*newEvent);
 		void	Register(bool execute, const Objects::PFaction&f, Round::FactionEvent*newEvent);
 		void	Register(bool execute, const Objects::PWorldEntity&e, Round::EntityEvent*newEvent);
 		void	Register(bool execute, Round::GlobalEvent*newEvent);

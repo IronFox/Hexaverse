@@ -1840,6 +1840,23 @@ namespace Journal
 		factionStrands.Set(f->id).factionEvents.Append(ev);
 	}
 
+	void	Round::Register(bool execute, const TUniqueID&fID, Round::FactionEvent*newEvent)
+	{
+		PFactionEvent ev(newEvent);
+		if (execute)
+		{ 
+			Objects::PFaction&f = Objects::Faction::FindByID(fID);
+			if (!f)
+			{
+				LogEvent(EventClass::Preset::commandRejected,"Faction "+fID.ToString()+" not found for event execution "+String(typeid(newEvent).name()));
+				return;
+			}
+			if (!ev->TryExecute(f))
+				return;
+		}
+		factionStrands.Set(fID).factionEvents.Append(ev);
+	}
+
 	void	Round::Register(bool execute, const Objects::PWorldEntity&e, Round::EntityEvent*newEvent)
 	{
 		PEntityEvent ev(newEvent);
