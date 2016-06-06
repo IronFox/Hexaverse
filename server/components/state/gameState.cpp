@@ -164,6 +164,9 @@ namespace Game
 			ph.roundNumber = RuntimeConfig::roundNumber;
 			ph.timeFactor = timeWindow;
 			Channels::phaseChange.SendTo(::Network::server,ph,1);
+			if (RuntimeConfig::IsInAnyCommandPhase())
+				Planet::SignalCommandPhaseEnd();
+
 			RuntimeConfig::phase = to;
 			lastPhaseChange = timer.Now();
 
@@ -188,6 +191,7 @@ namespace Game
 				{
 					f->DropPerRoundData();	//make sure instantaneous destruction commands are processed with correct visibility information
 				});
+				Planet::SignalCommandPhaseBegin();
 			}
 
 
