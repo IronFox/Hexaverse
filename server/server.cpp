@@ -565,7 +565,10 @@ void	SignalExplosion(const TAttack&attack, const TVec3<>&center,float explosionR
 
 namespace InformationProvider
 {
-	TCP::Server		server;
+	#ifndef GRID_SERVER
+		TCP::Server		server;
+	#endif
+
 	bool			created = false;
 
 	void	OnPing(Protocol::Ping&ping, TCP::Peer&peer);
@@ -578,57 +581,57 @@ namespace InformationProvider
 		pingChannel.SendTo(peer,ping);
 	}
 
-
-
-	class Updater : public ThreadObject
-	{
-	public:
-		volatile bool	doEnd = false;
-
-		void	ThreadMain() override
+	#ifndef GRID_SERVER
+		class Updater : public ThreadObject
 		{
-			Protocol::ServerInfo info;
-			info.hostInfo = UDPBroadCast::packet;
+		public:
+			volatile bool	doEnd = false;
 
-			while (!application_shutting_down && !doEnd)
+			void	ThreadMain() override
 			{
-				Sleep(1000);
-				Game::Network::AssembleGameInfo(info.gameInfo);
+				Protocol::ServerInfo info;
+				info.hostInfo = UDPBroadCast::packet;
 
-				infoSender.SendTo(server,info);
+				while (!application_shutting_down && !doEnd)
+				{
+					Sleep(1000);
+					Game::Network::AssembleGameInfo(info.gameInfo);
+
+					infoSender.SendTo(server,info);
+				}
+				server.EndService();
 			}
-			server.EndService();
-		}
-	}		updater;
-
+		}		updater;
+	#endif
 
 	void		Start(UINT16 basePort)
 	{
-		if (!created)
-		{
-			created = true;
-			server.InstallChannel(pingChannel);
-		}
+		#ifndef GRID_SERVER
+			if (!created)
+			{
+				created = true;
+				server.InstallChannel(pingChannel);
+			}
 
-		UINT16 port = basePort + PortOffset::Info;
+			UINT16 port = basePort + PortOffset::Info;
 
-		if (!server.StartService(port))
-			FATAL__("Unable to register information server. Chances are, a server is already running on port "+String(port)+".")
-		else
-		{
-			LogEvent(EventSignificance::Uncommon,"Info server started on port "+String(port));
-			updater.doEnd = false;
-			updater.start();
-		}
-
-
-
+			if (!server.StartService(port))
+				FATAL__("Unable to register information server. Chances are, a server is already running on port "+String(port)+".")
+			else
+			{
+				LogEvent(EventSignificance::Uncommon,"Info server started on port "+String(port));
+				updater.doEnd = false;
+				updater.start();
+			}
+		#endif
 	}
 
 	void		Stop()
 	{
-		updater.doEnd = true;
-		updater.awaitCompletion();
+		#ifndef GRID_SERVER
+			updater.doEnd = true;
+			updater.awaitCompletion();
+		#endif
 	}
 
 	void		Destroy()
@@ -1323,7 +1326,9 @@ int main( int argc, const char* argv[])
 		Reflection::state.PushFocus();
 		Reflection::state.EnterNewFolder("/Online");
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("udpBroadcast",UDPBroadCast::IsStarted,UDPBroadCast::Terminate,[](){UDPBroadCast::Start();})));
-		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return InformationProvider::server.IsOnline();},InformationProvider::Stop,[](){InformationProvider::Start(ParameterConfig::basePort);})));
+		#ifndef GRID_SERVER
+			Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("info",[]()->bool{return InformationProvider::server.IsOnline();},InformationProvider::Stop,[](){InformationProvider::Start(ParameterConfig::basePort);})));
+		#endif
 		Reflection::state.SetVariable(CLI::PVariable(new ServiceVar("session",[]()->bool{return Network::server.IsOnline();},[](){Network::SuspendSession();},Network::RestartSession)));
 		Reflection::state.DefineCommand("closeSession",(CLI::Command::function0_t)[](){Network::CloseSession();},CLI::NoCompletion);	//why...?
 
