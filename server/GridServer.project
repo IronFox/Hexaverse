@@ -1,0 +1,4 @@
+<project type="Application:Console">
+	<clone name="Server"/>
+	<macro name="GRID_SERVER" />
+</project>
