@@ -23,10 +23,16 @@ namespace Game
 
 	//extern Grid::TSharedPlanetConfig	persistentPlanetInfo;
 
+	#ifdef GRID_SERVER
+		RoundNumber	GetGridRoundNumber();
+	#endif // GRID_SERVER
 
 
 	namespace Config
 	{
+		#ifdef GRID_SERVER
+			extern UINT64	unixTimeOfRound0;
+		#endif
 		extern int		roundTimer/* = -1*/;
 		extern UINT32	uplinkBandwidth/* = 500*/;
 		extern bool		closedGame/* = false*/,

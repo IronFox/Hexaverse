@@ -841,6 +841,10 @@ namespace Reflection
 
 			state.SetVariable(CLI::PVariable(new Variable::SupportedFactions("supportedFactions")));
 
+			#ifdef GRID_SERVER
+				VAR(unixTimeOfRound0,Game::Config,0ULL,std::numeric_limits<UINT64>::max(),Variable::Persistence::ConfigOnly);
+			#endif
+
 			VAR(closedGame,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame)
 			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::ConfigOverridesSavegame)
 			VAR(bombsExplodeWhenDestroyed,RuntimeConfig,false,true,Variable::Persistence::ConfigOverridesSavegame)

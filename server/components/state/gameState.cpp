@@ -4,7 +4,7 @@
 #include "../networkChannels.h"
 #include "../aiProcess.h"
 #include "../journalSaveGame.h"
-
+#include "planet.h"
 
 
 void			SignalFactionsChanged()
@@ -27,8 +27,30 @@ namespace Game
 
 
 
+	#ifdef GRID_SERVER
+		RoundNumber	GetGridRoundNumber()
+		{
+			ASSERT__(Config::roundTimer > 0);
+			INT64	delta = (UINT64)time(nullptr) - Config::unixTimeOfRound0;
+			UINT64 roundLength = 
+						Config::roundTimer
+						;
+
+			return RoundNumber(
+						delta / roundLength
+					);
+		}
+	#endif // GRID_SERVER
+
+
 	namespace Config
 	{
+
+		#ifdef GRID_SERVER
+			UINT64	unixTimeOfRound0 = 0;
+		#endif
+
+
 		int			roundTimer = -1;
 		UINT32		uplinkBandwidth = 500;
 
