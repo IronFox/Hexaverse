@@ -7,7 +7,9 @@
 #include <logEvent.h>
 #include "../networkChannels.h"
 #include "../journalSaveGame.h"
-
+#include "networkState.h"
+#include "worldState.h"
+#include "../reflection.h"
 
 namespace Planet
 {
@@ -52,7 +54,10 @@ namespace Planet
 					, Package::NetString<128>, host
 				)
 
-				NETSTRUCT2(Hello
+				typedef NETA(Package::NetString<512>) WorldConfig;
+
+				NETSTRUCT3(Hello
+					, WorldConfig, worldConfig
 					, NET(Location), location
 					, NETA(Peer), neighbors
 				)
@@ -229,7 +234,7 @@ namespace Planet
 		TCP::Server p2pServer;
 		Buffer0<PPeer>	peers;
 		SpinLock	peerLock;
-
+		UINT16		lastP2pPort=0;
 
 
 		class LocationData
@@ -253,11 +258,29 @@ namespace Planet
 		SpinLock					neighborLock;
 		RuntimeConfig::RoundNumber	compareRoundNumber;
 		volatile bool				lockCurrentRoundNumber = false;
+		Handler::Object::WorldConfig	worldConfig;
+		SpinLock					worldLock;
+		volatile bool				haveNewWorld=false;
 
 		void	RegisterPeer(const Handler::Object::Peer&loc)
 		{
 			peerLock.lock();
 			peers.Append().reset(new Peer(loc));
+			peerLock.unlock();
+		}
+
+		void	FlushPeers(bool restart = true)
+		{
+			peerLock.lock();
+				foreach (peers,p)
+				{
+					(*p)->Destroy();
+				}
+				peers.Clear();
+			
+				p2pServer.Shutdown();
+				if (restart)
+					p2pServer.StartService(lastP2pPort);
 			peerLock.unlock();
 		}
 
@@ -339,19 +362,17 @@ namespace Planet
 		for (index_t i = 0; i < hello.neighbors.Count(); i++)
 			neighbors[i].reset(new LocationData(hello.neighbors[i].location));
 		neighborLock.unlock();
-					
-		peerLock.lock();
-			foreach (peers,p)
-			{
-				(*p)->Destroy();
-			}
-			peers.Clear();
-		peerLock.unlock();
+		FlushPeers();
 		foreach (hello.neighbors,n)
 		{
 			if (n->host.IsNotEmpty())
 				RegisterPeer(*n);
 		}
+		
+		worldLock.lock();
+		worldConfig.swap(hello.worldConfig);
+		haveNewWorld = true;
+		worldLock.unlock();
 	}
 
 	void Details::Handler::OnPeerEvent(TCP::event_t ev, TCP::Peer&p)
@@ -489,9 +510,7 @@ namespace Planet
 		p2pServer.InstallChannel(Handler::Channel::gainSensorAccess);
 
 		ASSERT1__(p2pServer.StartService(p2pPort,false,&p2pPort),p2pPort);
-
-
-
+		lastP2pPort = p2pPort;
 	}
 
 
@@ -606,9 +625,40 @@ namespace Planet
 		});
 	}
 
+	void	Resolve()
+	{
+		using namespace Details;
+
+		if (haveNewWorld)
+		{
+			worldLock.lock();
+			haveNewWorld = false;
+			Handler::Object::WorldConfig cfg;
+			cfg.swap(worldConfig);
+			worldLock.unlock();
+
+			Reflection::state.PushAndReplaceFocus(Reflection::state.GetRoot());
+			foreach (cfg,cmd)
+			{
+				Reflection::state.Interpret(cmd->c_str(),false);
+			}
+			Reflection::state.PopFocus();
+			compareRoundNumber = RuntimeConfig::roundNumber = Game::GetGridRoundNumber();
+			lockCurrentRoundNumber = false;
+		}
+
+	}
 
 
+	void	Destroy()
+	{
+		using namespace Details;
 
-	void	Destroy();
+		FlushPeers(false);
+		neighborLock.lock();
+		neighbors.Clear();
+		neighborLock.unlock();
+		masterConnection.Disconnect();
+	}
 	
 }

@@ -26,8 +26,9 @@ namespace Planet
 
 	
 
-	void	Create(const String&masterServer,UINT16 port);
-	void	Destroy();
+	void		Create(const String&masterServer,UINT16 port);
+	void		Destroy();
+	void		Resolve();
 	
 }
 
