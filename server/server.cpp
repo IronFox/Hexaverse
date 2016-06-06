@@ -25,6 +25,7 @@
 #include "components/networkChannels.h"
 #include "components/journalSaveGame.h"
 #include "components/reflection.h"
+#include "components/state/planet.h"
 
 UINT32 globalVersionOfCurrentFile = 0;	//file version being loaded right now
 
@@ -1068,9 +1069,11 @@ namespace ParameterConfig
 		ExpectWorldID,
 		ExpectFilename,
 		ExpectAutoSaveNumber,
+		ExpectMasterServer,
+	};
+	mode_t		mode = Idle;
 
-	}		mode = Idle;
-
+	String		masterServer;
 	PathString	loadFile;
 	bool	startOffline = false;
 	bool	customWorldID = false;
@@ -1099,6 +1102,9 @@ namespace ParameterConfig
 		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
 		std::cout << "  --test/-t \trun self-tests, then quit"<<std::endl;
 		std::cout << "  --world/-w [worldID] \tuse custom world ID, and start empty"<<std::endl;
+		#ifdef GRID_SERVER
+			std::cout << "  --master/-m [host]\tDefine master server (required)"<<std::endl;
+		#endif
 	}
 
 
@@ -1116,6 +1122,10 @@ namespace ParameterConfig
 			return;
 			case ExpectFilename:
 				loadFile = arg;
+				mode = Idle;
+			break;
+			case ExpectMasterServer:
+				masterServer = arg;
 				mode = Idle;
 			break;
 			case ExpectAutoSaveNumber:
@@ -1141,6 +1151,8 @@ namespace ParameterConfig
 					startOffline = true;
 				elif (!strcmp(arg,"--loadAuto") || !strcmp(arg,"-a"))
 					mode = ExpectAutoSaveNumber;
+				elif (!strcmp(arg,"--master") || !strcmp(arg,"-m"))
+					mode = ExpectMasterServer;
 				elif (!strcmp(arg,"--help"))
 				{
 					PrintHelp();
@@ -1504,11 +1516,14 @@ int main( int argc, const char* argv[])
 
 
 
-		if (!ParameterConfig::startOffline)
-		{
-			StartUp();
-		}
-
+		#ifndef GRID_SERVER
+			if (!ParameterConfig::startOffline)
+			{
+				StartUp();
+			}
+		#else
+			Planet::Create(ParameterConfig::masterServer,ParameterConfig::basePort + PortOffset::UniverseSelfManagement);
+		#endif
 
 
 		if (false)
@@ -1649,6 +1664,7 @@ int main( int argc, const char* argv[])
 				Sleep(1);
 			Network::server.Resolve();
 			RemoteControl::Resolve();
+			Planet::Resolve();
 			if (Game::Config::Nexus::enableAI)
 				AIProcess::Check();
 
