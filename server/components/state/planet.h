@@ -21,8 +21,8 @@ namespace Planet
 
 	void		VisitPeers(const FPeerVisitor&f);
 		
-	void		SignalControlPhaseEnd(const RuntimeConfig::RoundNumber&nextRoundNumber);
-	void		SignalControlPhaseBegin();
+	void		SignalCommandPhaseEnd();
+	void		SignalCommandPhaseBegin();
 
 	
 

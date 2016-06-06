@@ -252,7 +252,7 @@ namespace Planet
 		Array<PLocationData>		neighbors;
 		SpinLock					neighborLock;
 		RuntimeConfig::RoundNumber	compareRoundNumber;
-
+		volatile bool				lockCurrentRoundNumber = false;
 
 		void	RegisterPeer(const Handler::Object::Peer&loc)
 		{
@@ -393,7 +393,7 @@ namespace Planet
 		Attachment&attachment = *To<Attachment>::Cast(peer.attachment);
 		PLocationData data = attachment.locationData;
 		data->dataLock.lock();
-		if (attachment.roundNumber <= compareRoundNumber)
+		if (attachment.roundNumber < compareRoundNumber || (lockCurrentRoundNumber && attachment.roundNumber == compareRoundNumber))
 		{
 			LogEvent(EventClass::Preset::networkError,"Received message from the past from "+peer.ToString());
 			data->dataLock.unlock();
@@ -572,7 +572,7 @@ namespace Planet
 	}
 
 		
-	void	SignalControlPhaseBegin()
+	void	SignalCommandPhaseBegin()
 	{
 		using namespace Details;
 		if (!created)
@@ -581,14 +581,16 @@ namespace Planet
 		{
 			RefreshPeer(p);
 		});
+		lockCurrentRoundNumber = false;
+		compareRoundNumber = RuntimeConfig::roundNumber;
 	}
 
-	void	SignalControlPhaseEnd(const RuntimeConfig::RoundNumber&nextRoundNumber)
+	void	SignalCommandPhaseEnd()
 	{
 		using namespace Details;
 		if (!created)
 			return;
-		compareRoundNumber = nextRoundNumber;
+		lockCurrentRoundNumber = true;
 		VisitPeers([](TCP::Peer&p)
 		{
 			auto d = To<Handler::Attachment>::Cast(p.attachment)->locationData;
