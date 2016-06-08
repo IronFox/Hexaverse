@@ -131,7 +131,9 @@ namespace Planet
 			{
 				PAttachment a = To<Attachment>::Cast(p.attachment);
 				if (a)
+				{
 					a->roundNumber = rnd;
+				}
 			}
 
 			namespace Channel
@@ -319,7 +321,7 @@ namespace Planet
 		TCP::Peer*	FindPeerFor(const Location&loc)
 		{
 			TCP::Peer*rs = nullptr;
-			VisitPeers([loc,&rs](TCP::Peer&p)
+			NeighborOperations::VisitPeers([loc,&rs](TCP::Peer&p)
 			{
 				PLocationData data = To<Handler::Attachment>::Cast(p.attachment)->locationData;
 				if (data->location == loc)
@@ -470,9 +472,19 @@ namespace Planet
 	}
 
 
+	void	NeighborOperations::VisitLocations(const FLocationVisitor&f)
+	{
+		using namespace Details;
+		neighborLock.lock();
+		foreach (neighbors,n)
+		{
+			f((*n)->location, FindPeerFor((*n)->location));
+		}
+		neighborLock.unlock();
+	}
 
 
-	void	VisitPeers(const FPeerVisitor&f)
+	void	NeighborOperations::VisitPeers(const FPeerVisitor&f)
 	{
 		using namespace Details;
 		p2pServer.VisitAllPeers([f](const TCP::PPeer&p)
@@ -514,7 +526,7 @@ namespace Planet
 	}
 
 
-	bool		RegisterSensorAccess(const Objects::PFaction&f, const Location&loc)
+	bool		NeighborOperations::RegisterSensorAccess(const Objects::PFaction&f, const Location&loc)
 	{
 		if (HasSensorAccess(f,loc))
 			return true;
@@ -535,7 +547,7 @@ namespace Planet
 		return !!data;
 	}
 
-	void		UnregisterSensorAccess(const Objects::PFaction&f, const Location&loc)
+	void		NeighborOperations::UnregisterSensorAccess(const Objects::PFaction&f, const Location&loc)
 	{
 		using namespace Details;
 
@@ -550,7 +562,7 @@ namespace Planet
 		neighborLock.unlock();
 	}
 
-	bool		HasSensorAccess(const Objects::PFaction&f, const Location&loc)
+	bool		NeighborOperations::HasSensorAccess(const Objects::PFaction&f, const Location&loc)
 	{
 		using namespace Details;
 		bool rs = false;
@@ -572,7 +584,7 @@ namespace Planet
 		return location;
 	}
 
-	bool		TransferMobileEntity(const Objects::PMobileEntity&e, const Location&dest)
+	bool		NeighborOperations::TransferMobileEntity(const Objects::PMobileEntity&e, const Location&dest)
 	{
 		using namespace Details;
 		bool rs = false;
@@ -596,7 +608,7 @@ namespace Planet
 		using namespace Details;
 		if (!created)
 			return;
-		VisitPeers([](TCP::Peer&p)
+		NeighborOperations::VisitPeers([](TCP::Peer&p)
 		{
 			RefreshPeer(p);
 		});
@@ -610,7 +622,7 @@ namespace Planet
 		if (!created)
 			return;
 		lockCurrentRoundNumber = true;
-		VisitPeers([](TCP::Peer&p)
+		NeighborOperations::VisitPeers([](TCP::Peer&p)
 		{
 			auto d = To<Handler::Attachment>::Cast(p.attachment)->locationData;
 			d->dataLock.lock();
