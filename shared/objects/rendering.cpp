@@ -1919,7 +1919,7 @@ namespace Objects
 		}
 	}
 
-	void	Renderer::RenderTranslucentBeams()
+	void	Renderer::RenderTranslucentBeams(void renderMore())
 	{
 	/*	if (!objectView)
 			return;
@@ -2017,6 +2017,8 @@ namespace Objects
 			break;
 		}
 
+		if (renderMore)
+			renderMore();
 
 		display.SetDepthTest(true,true);
 		display.SetBlendMode(Engine::BlendMode::AlphaBlend);

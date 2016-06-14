@@ -174,7 +174,7 @@ namespace Objects
 		/**
 		Renders light shafts for satellites, as well as less visible ones atop every significant world pole
 		*/
-		void	RenderTranslucentBeams();
+		void	RenderTranslucentBeams(void renderMore());
 
 
 		/**
