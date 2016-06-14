@@ -39,6 +39,7 @@ namespace TechniteLogicLink
 
 
 	GenericHashTable<Grid::HCellIdU,Queue<DebugMessage>,Grid::HCellIdU>	debugMessageTable;
+	Queue<DebugMarker>	debugMarkers;
 
 
 	class PeerAttachment : public TCP::Client::Attachment
@@ -609,8 +610,7 @@ namespace TechniteLogicLink
 			
 			DebugMessage msg;
 			msg.message = message.message;
-			msg.roundNumber = RuntimeConfig::roundNumber.main;
-			msg.subRoundNumber = RuntimeConfig::roundNumber.technite;
+			msg.roundNumber = RuntimeConfig::roundNumber;
 			msg.received = timer.Now();
 			
 
@@ -621,6 +621,27 @@ namespace TechniteLogicLink
 			list.Push(msg);
 		}
 
+		void TechniteDebugMarkers(TechniteProtocol::TechniteDebugMarkers&message)
+		{
+			if (!Network::amTechniteFaction)
+				return;
+
+			Technites::PFaction tf = To<Technites::Faction>::Cast(Objects::Faction::mine);
+			
+			DebugMarker msg;
+			msg.roundNumber = RuntimeConfig::roundNumber;
+			
+
+			while (debugMarkers.GetLength() > 100)
+				debugMarkers.EraseFront();
+			foreach(message,m)
+			{
+				msg.location = Technites::Technite::CompressedLocation(m->location).GetU();
+				msg.worldLocation = Grid::ToWorld(msg.location);
+				msg.color = float3(m->color.value) / 255.f;
+				debugMarkers.Push(msg);
+			}
+		}
 		
 	}
 
@@ -654,6 +675,8 @@ namespace TechniteLogicLink
 					TechniteProtocol::ChannelID::TechniteColorChunk>				techniteColorChunk(Receiver::TechniteColorChunk);
 		TCP::Channel<TechniteProtocol::TechniteDebugMessage,1,
 					TechniteProtocol::ChannelID::TechniteDebugMessage>				techniteDebugMessage(Receiver::TechniteDebugMessage);
+		TCP::Channel<TechniteProtocol::TechniteDebugMarkers,1,
+					TechniteProtocol::ChannelID::TechniteDebugMarkers>				techniteDebugMarkers(Receiver::TechniteDebugMarkers);
 
 
 
@@ -770,6 +793,7 @@ namespace TechniteLogicLink
 			logicServer.InstallChannel(Channels::ready);
 			logicServer.InstallChannel(Channels::techniteColorChunk);
 			logicServer.InstallChannel(Channels::techniteDebugMessage);
+			logicServer.InstallChannel(Channels::techniteDebugMarkers);
 			logicServer.OpenSignalChannel(TechniteProtocol::ChannelID::RequestNextRound,1);
 
 			logicServer.SetAsync(false);	//can't be async because of world grid. damn
@@ -981,6 +1005,7 @@ namespace TechniteLogicLink
 		storedGameObjects.Clear();
 		ghostGameObjects.Clear();
 		controlMarkers.Clear();
+		debugMarkers.Clear();
 	}
 
 

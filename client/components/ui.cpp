@@ -2422,7 +2422,7 @@
 			textout << nl;
 			TechniteLogicLink::ForeachDebugMessage(t.location.GetU(),[](const TechniteLogicLink::DebugMessage&msg)
 			{
-				textout << msg.roundNumber << '/'<<msg.subRoundNumber<<": "<<msg.message<<nl;
+				textout << msg.roundNumber.main << '/'<<msg.roundNumber.extraTechniteRounds<<": "<<msg.message<<nl;
 			});
 
 			textout.popState();

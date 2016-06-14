@@ -1376,6 +1376,17 @@ void	OnAppear(const Objects::PWorldEntity&e)
 
 	}
 	#endif
+
+
+	void RenderTechniteMarkers()
+	{
+		foreach (TechniteLogicLink::debugMarkers,m)
+		{
+			float4 color(m->color,0.5f / (1.f + float(RuntimeConfig::roundNumber - m->roundNumber)));
+			Objects::Renderer::RenderBeam(m->worldLocation,20.f,0.2f,color,float4(color.rgb,0));
+		}
+	}
+
 #endif
 
 
@@ -1653,7 +1664,7 @@ bool loop()
 
 			Objects::Renderer::RenderTranslucent(true);
 
-			Objects::Renderer::RenderTranslucentBeams();
+			Objects::Renderer::RenderTranslucentBeams(RenderTechniteMarkers);
 
 			World::RenderOverlay(frustum);
 

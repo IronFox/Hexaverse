@@ -2,6 +2,7 @@
 #define techniteLogicLinkH
 
 #include "../TechniteLogic/techniteProtocol.h"
+#include <roundNumber.h>
 
 namespace TechniteLogicLink
 {
@@ -110,15 +111,23 @@ namespace TechniteLogicLink
 
 	struct DebugMessage
 	{
-		UINT32	roundNumber,
-				subRoundNumber;
+		RoundNumber	roundNumber;
 		Timer::Time	received;
 		String	message;
+	};
+
+	struct DebugMarker
+	{
+		RoundNumber	roundNumber;
+		Grid::HCellIdU	location;
+		float3	color;
+		float3	worldLocation;
 	};
 
 	bool		HasDebugMessage(const Grid::HCellIdU&);
 	void		ForeachDebugMessage(const Grid::HCellIdU&,const std::function<void(const DebugMessage&)>&f);
 
+	extern Queue<DebugMarker>	debugMarkers;
 
 	extern PathString autoStartClientPath; //="TechniteLogic/Client.exe"
 	extern bool autoStartClient; //=true

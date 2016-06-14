@@ -147,6 +147,12 @@ namespace TechniteProtocol
 		);
 
 
+	NETSTRUCT2(TechniteDebugMarker
+		, NET(UINT32), location
+		, NET(byte3), color
+		);
+	typedef NETA(TechniteDebugMarker)	TechniteDebugMarkers;
+
 	//NETSTRUCT2(SessionBegin
 	//	, GridConfig, grid
 	//	, NET(BYTE), myFactionGridID
@@ -184,6 +190,7 @@ namespace TechniteProtocol
 
 			TechniteColorChunk,		//c2s: TechniteColorChunk
 			TechniteDebugMessage,	//c2s: TechniteDebugMessage
+			TechniteDebugMarkers,	//c2s: TechniteDebugMarkers
 
 			Count     //must remain last
 		};
