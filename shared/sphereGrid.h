@@ -273,7 +273,7 @@ namespace Grid
 
 			void	GetDeltaFrom(const CompactCell&other, TTypeDelta&tout)	const
 			{
-				tout.newType = content != other.content ? content : 0;
+				tout.newType = content != other.content ? content+1 : 0;
 			}
 			void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout) const
 			{
@@ -302,7 +302,7 @@ namespace Grid
 			{
 				if (tdelta.newType)
 				{
-					content = tdelta.newType;
+					content = tdelta.newType-1;
 					DBG_ASSERT_LESS__(content,Content::NumberOfPossibilities);
 					return true;
 				}
