@@ -35,10 +35,7 @@ namespace Game
 						exposeActionLeftToHostileFactions/* = true*/;
 
 		extern UINT32	factionSupportFlags;
-		static const UINT32 AllFactionSupportFlags = 
-								Protocol::GameFlag::SupportSpectatorFactions
-								| Protocol::GameFlag::SupportRegularFactions
-								;
+		static const UINT32 AllFactionSupportFlags = ~(Protocol::GameFlag::SupportSpectatorFactions-1);
 		
 		typedef RuntimeConfig::GameGoal	Goal;
 
@@ -63,6 +60,9 @@ namespace Game
 
 		inline String	FactionSupportFlagString()
 		{
+			if (factionSupportFlags == AllFactionSupportFlags)
+				return "All";
+
 			String rs;
 			CheckFactionSupportFlag(rs,Protocol::GameFlag::SupportSpectatorFactions,"Spectator");
 			CheckFactionSupportFlag(rs,Protocol::GameFlag::SupportRegularFactions,"Regular");
@@ -79,6 +79,9 @@ namespace Game
 			foreach (segs,seg)
 			{
 				seg->trimThis();
+				if (*seg == "All")
+					factionSupportFlags |= AllFactionSupportFlags;
+				else
 				if (*seg == "Spectator")
 					factionSupportFlags |= Protocol::GameFlag::SupportSpectatorFactions;
 				else
