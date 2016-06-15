@@ -246,9 +246,7 @@ namespace Reflection
 		{
 			typedef Base	Super;
 		public:
-			String			defaultValue = "Spectator"
-											", Regular"
-											;
+			String			defaultValue = "All";
 
 			/**/			SupportedFactions(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "Flagset",Persistence::RestoreFromSavegame,1,protection)	{}
 			virtual String	ToString()		const	override	{return Game::Config::FactionSupportFlagString();}
@@ -264,7 +262,8 @@ namespace Reflection
 			}
 			virtual String		GetSupportedValues() const override 
 			{
-				return "'Spectator'"
+				return "'All'"
+						", 'Spectator'"
 						", 'Regular'"
 						;
 			}
