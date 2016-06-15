@@ -181,6 +181,13 @@ namespace Network
 
 
 
+	namespace Session
+	{
+		bool	isStarted=false;
+
+
+	}
+
 	void	RestartSession()
 	{
 		LogEvent(EventSignificance::Important,"Restarting session.");
@@ -205,6 +212,10 @@ namespace Network
 //		Objects::VerifyVisibilityNetwork();
 		Objects::CheckMobileEntitySanity();
 		Objects::VerifyGrid();
+
+		Session::isStarted = true;
+
+		World::Network::SendChangedFamilies();
 	}
 
 
@@ -230,19 +241,50 @@ namespace Network
 
 	bool		SessionIsStarted()
 	{
-		return server.IsOnline();
+		return Session::isStarted;
 	}
 
 
-	bool		CloseSession()
+	bool		CloseSession(bool preserveSpectators)
 	{
-		bool isOnline = server.IsOnline();
+		bool isOnline = Session::isStarted;
 		LogEvent(EventSignificance::Important,isOnline ? "Closing session." : "Flushing session data.");
 
-		server.Shutdown();
+		if (isOnline)
+		{
+			Session::isStarted = false;
+			if (preserveSpectators)
+			{
+				Game::Config::factionSupportFlags = Protocol::GameFlag::SupportSpectatorFactions;
+				Buffer0<TCP::PPeer>	dump;
+				server.VisitAllPeers([&dump](const TCP::PPeer&p)
+				{
+					if (p->userLevel < (UINT32)UserLevel::Spectator)
+						dump << p;
+				});
+				foreach (dump,d)
+				{
+					(*d)->DisconnectPeer();
+				}
+			}
+			else
+				server.Shutdown();
 
-		activePlayersAndSpectators.Clear();
-		spectators.Clear();
+			if (!preserveSpectators)
+			{
+				activePlayersAndSpectators.Clear();
+				spectators.Clear();
+			}
+			else
+			{
+				for (index_t i = 0; i < activePlayersAndSpectators.Count(); i++)
+				{
+					if (!activePlayersAndSpectators[i]->isSpectator)
+						activePlayersAndSpectators.Erase(i--);
+				}
+
+			}
+		}
 		playerMap.Clear();
 
 
@@ -255,9 +297,23 @@ namespace Network
 		RuntimeConfig::roundNumber = 0;
 		RuntimeConfig::phase = RuntimeConfig::Phase::CommandPhase;
 
+		if (spectators.IsNotEmpty())
+		{
+			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
+			{
+				Protocol::DestroyEntity d;
+				d.id = e->id;
+				d.type = e->isInsertedIntoGrid ? Objects::RemovalType::Vanished : Objects::RemovalType::DestroyedInStorage;
+				d.timestamp.rightNow = true;
+				Channels::destroyEntity.SendTo(server,d);
+			});
+
+		}
 
 		Objects::FlushAllData();
 		Grid::FlushAllData();
+
+		World::Network::SendChangedFamilies();
 
 		return isOnline;
 
