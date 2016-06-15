@@ -347,6 +347,11 @@ namespace World
 						Game::SpawnNexusBaseAtPoleWithPort(pole);
 					}
 		}
+		for (int i = 0; i < BaseGrid::NumFamilies; i++)
+		{
+			Grid::high.family[i].SetOutdated(0);
+			Grid::low.family[i].SetOutdated(0);
+		}
 	}
 
 

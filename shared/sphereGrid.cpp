@@ -4054,6 +4054,11 @@ namespace Grid
 		actualWorld.FlushAllData();
 		#ifndef CLIENT
 			initialWorld.FlushAllData();
+			for (int i = 0; i < BaseGrid::NumFamilies; i++)
+			{
+				high.family[i].SetOutdated(0);
+				low.family[i].SetOutdated(0);
+			}
 		#endif
 
 		#ifdef HAS_WINDOW

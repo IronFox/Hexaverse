@@ -25,6 +25,7 @@
 #include "components/networkChannels.h"
 #include "components/journalSaveGame.h"
 #include "components/reflection.h"
+#include "components/configurationMode.h"
 
 UINT32 globalVersionOfCurrentFile = 0;	//file version being loaded right now
 
@@ -1392,6 +1393,8 @@ int main( int argc, const char* argv[])
 			World::BuildConfiguredWorld(random);
 			if (started)
 				Network::RestartSession();
+			else
+				World::Network::SendChangedFamilies();
 		},CLI::NoCompletion);
 
 		Reflection::state.DefineCommand("/World/showPlanetTypes",(CLI::Command::function0_t)[]()

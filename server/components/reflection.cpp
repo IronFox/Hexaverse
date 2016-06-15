@@ -6,6 +6,7 @@
 #include <io/config.h>
 #include <io/file_system.h>
 #include "aiProcess.h"
+#include "configurationMode.h"
 //#include "remoteControl.h"
 
 namespace Reflection
@@ -342,6 +343,46 @@ namespace Reflection
 			}
 		};
 
+		class ConfigMode : public Base
+		{
+			typedef Base	Super;
+		public:
+			bool defaultValue = false;
+
+			/**/			ConfigMode(unsigned protection=CLI::EraseProtection):Super("configMode","bool",Persistence::Temporary,1,protection)	{}
+			virtual String	ToString()		const	override
+			{
+				return ConfigurationMode::IsActive();
+			}
+			virtual	bool	Set(const String&value)	override
+			{
+				bool n;
+				if (!convert(value.c_str(),n))
+					return false;
+				if (n != ConfigurationMode::IsActive())
+				{
+					if (n)
+						ConfigurationMode::Begin();
+					else
+						ConfigurationMode::End();
+					OnChanged();
+				}
+				return true;
+
+			}
+			virtual String		GetSupportedValues() const override 
+			{
+				return "true,false";
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = ConfigurationMode::IsActive();
+			}
+		};
 
 		class UnitLimit : public Base
 		{
@@ -891,6 +932,8 @@ namespace Reflection
 		state.EnterNewFolder("Server")->attachment.reset(new Variable::PersistenceAttachment());
 			VAR(saveEveryNRounds,FileIO::Config,-1,100,Variable::Persistence::ConfigOnly);
 			VAR(saveWhenAllQuit,FileIO::Config,false,true,Variable::Persistence::ConfigOnly);
+			
+			state.SetVariable(CLI::PVariable(new Variable::ConfigMode()));
 		state.ExitFolder();
 
 		SetupBase(state.GetRoot());
