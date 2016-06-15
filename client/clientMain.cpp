@@ -1029,6 +1029,8 @@ void	SignalMarkerTouch(Objects::Marker&marker)
 
 void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 {
+	if (Network::amSpectator)
+		return;
 	if (t == Objects::RemovalType::UncontrolledExplosion && e->isOwnedByMe)
 	{
 		Protocol::Marker marker;
