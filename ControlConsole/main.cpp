@@ -390,7 +390,7 @@ void OnEvent(TCP::event_t event, TCP::Peer&peer)
 			{
 				Console::WriteLine("Connection established to "+peer.ToString()+" after "+String(timer.GetSecondsSince(connectionAttemptStarted)));
 				if (Console::context.IsNotEmpty())
-					Channels::command.SendTo(peer,"cd "+Console::context);
+					Channels::command.SendTo(peer,"cd /"+Console::context);
 			}
 			if (connectionRetryThread.joinable())
 			{
