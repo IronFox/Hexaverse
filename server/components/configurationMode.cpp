@@ -10,6 +10,8 @@ namespace ConfigurationMode
 	{
 		bool isActive = false;
 		UINT32 originalFlags = 0;
+		Random random;
+		UINT32 planetSeed = 0;
 	}
 
 
@@ -26,6 +28,7 @@ void ConfigurationMode::Begin()
 	Network::CloseSession(true);
 	originalFlags = Game::Config::factionSupportFlags;
 	Game::Config::factionSupportFlags = Protocol::GameFlag::SupportSpectatorFactions;
+	planetSeed = random.get();
 	//Network::RestartSession();
 }
 
@@ -43,4 +46,11 @@ void ConfigurationMode::End()
 bool ConfigurationMode::IsActive()
 {
 	return Details::isActive;
+}
+
+Random & ConfigurationMode::GetPlanetRandomVariable()
+{
+	using namespace Details;
+	random.setSeed(planetSeed);
+	return random;
 }

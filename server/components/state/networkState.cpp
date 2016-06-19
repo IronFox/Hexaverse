@@ -245,7 +245,7 @@ namespace Network
 	}
 
 
-	bool		CloseSession(bool preserveSpectators)
+	bool		CloseSession(bool preserveSpectators, bool sendGridChangesToPreservedSpectators/*=true*/)
 	{
 		bool isOnline = Session::isStarted;
 		LogEvent(EventSignificance::Important,isOnline ? "Closing session." : "Flushing session data.");
@@ -313,7 +313,8 @@ namespace Network
 		Objects::FlushAllData();
 		Grid::FlushAllData();
 
-		World::Network::SendChangedFamilies();
+		if ((preserveSpectators || !isOnline) && sendGridChangesToPreservedSpectators)
+			World::Network::SendChangedFamilies();
 
 		return isOnline;
 

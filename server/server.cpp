@@ -1375,7 +1375,7 @@ int main( int argc, const char* argv[])
 				}
 			}
 
-			bool started = Network::CloseSession();
+			bool started = Network::CloseSession(false,false);
 			World::worldID.Generate();
 			if (planet.IsNotEmpty())
 			{
@@ -1390,7 +1390,7 @@ int main( int argc, const char* argv[])
 				}
 			}
 
-			World::BuildConfiguredWorld(random);
+			World::BuildConfiguredWorld(ConfigurationMode::IsActive() ? ConfigurationMode::GetPlanetRandomVariable() :  random);
 			if (started)
 				Network::RestartSession();
 			else

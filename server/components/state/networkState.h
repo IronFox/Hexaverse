@@ -83,7 +83,7 @@ namespace Network
 	Clients will not be able to connect unless RestartSession is called.
 	@return true, if the session was online and subsequently closed, false if it was not started
 	*/
-	bool		CloseSession(bool preserveSpectators=false);
+	bool		CloseSession(bool preserveSpectators=false, bool sendGridChangesToPreservedSpectators=true);
 
 	/**
 	Disconnects all clients and disables the TCP server systems. Does NOT flush the scene.
