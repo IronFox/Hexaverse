@@ -126,6 +126,9 @@ namespace Network
 	*/
 	void		Start();
 
+	/**
+	Updates and logs the new user level (if it changed)
+	*/
 	void		ChangeUserLevel(TCP::Peer&peer, UserLevel newLevel);
 
 	/**
