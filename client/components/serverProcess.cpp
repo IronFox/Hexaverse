@@ -13,7 +13,7 @@ namespace ServerProcess
 		//CryptographicID	accessToken;
 
 		MonitoredProcess	process;
-		bool				remoteControl = false;
+		bool				remoteControl = false, configurationMode=false;
 
 
 		PathString	GetWorkingDirectory()
@@ -51,6 +51,8 @@ namespace ServerProcess
 			PathString parameters;
 			if (!remoteControl)
 				parameters += " -r";
+			if (configurationMode)
+				parameters += " -c";
 
 			bool showWindow = false;
 			#ifdef _DEBUG
@@ -66,7 +68,7 @@ namespace ServerProcess
 	}
 
 
-	void Begin(bool remoteControl/*=true*/)
+	void Begin(bool remoteControl/*=true*/, bool configurationMode/*=true*/)
 	{
 		if (Detail::process.IsRunning())
 		{

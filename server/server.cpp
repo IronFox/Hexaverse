@@ -1070,7 +1070,8 @@ namespace ParameterConfig
 	}		mode = Idle;
 
 	PathString	loadFile;
-	bool	startOffline = false;
+	bool	startOffline = false,
+			startInConfig = false;
 	bool	customWorldID = false;
 	bool	enableRemoteControl = true;
 	const char*	programName="";
@@ -1092,6 +1093,7 @@ namespace ParameterConfig
 		std::cout << "  --load/-l [filename]\tload savegame"<<std::endl;
 		std::cout << "  --loadAuto/-a [number]\tload auto-savegame. number=0 => most recent"<<std::endl;
 		std::cout << "  --offline/-o \tstart offline"<<std::endl;
+		std::cout << "  --config/-c \tstart in configuration mode"<<std::endl;
 		std::cout << "  --port/-p [basePort]\tuse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default)"<<std::endl;
 		std::cout << "  --noRemote/-r \tdisable remote control service"<<std::endl;
 		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
@@ -1137,6 +1139,8 @@ namespace ParameterConfig
 					mode = ExpectPort;
 				elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
 					startOffline = true;
+				elif (!strcmp(arg,"--config") || !strcmp(arg,"-c"))
+					startInConfig = true;
 				elif (!strcmp(arg,"--loadAuto") || !strcmp(arg,"-a"))
 					mode = ExpectAutoSaveNumber;
 				elif (!strcmp(arg,"--help"))
@@ -1505,6 +1509,10 @@ int main( int argc, const char* argv[])
 		if (!ParameterConfig::startOffline)
 		{
 			StartUp();
+			if (ParameterConfig::startInConfig)
+			{
+				ConfigurationMode::Begin();
+			}
 		}
 
 
