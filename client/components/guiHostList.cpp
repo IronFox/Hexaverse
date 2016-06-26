@@ -79,19 +79,19 @@ void	SaveHosts()
 	static String CompileRules(const Protocol::ServerInfo&info)
 	{
 		String result;
-		switch (info.gameInfo.gameGoal)
-		{
-			case RuntimeConfig::GameGoal::ConquerNexus:
-				result="Conquer Nexus";
-			break;
-			case RuntimeConfig::GameGoal::None:
-				result="No Goal";
-			break;
-		}
 		if (info.gameInfo.gameFlags & Protocol::GameFlag::ConfigurationMode)
-			result += ", Being Configured";
+			result += "Requires Configuration";
 		else
 		{
+			switch (info.gameInfo.gameGoal)
+			{
+				case RuntimeConfig::GameGoal::ConquerNexus:
+					result="Conquer Nexus";
+				break;
+				case RuntimeConfig::GameGoal::None:
+					result="No Goal";
+				break;
+			}
 			if (info.gameInfo.gameFlags & Protocol::GameFlag::ClosedGame)
 				result += ", Closed Game";
 			if (info.gameInfo.gameFlags & Protocol::GameFlag::EMPZones)
