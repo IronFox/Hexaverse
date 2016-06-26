@@ -49,8 +49,8 @@ namespace ServerProcess
 						workingDirectory = GetWorkingDirectory();
 
 			PathString parameters;
-			if (remoteControl)
-				parameters = "--remote";
+			if (!remoteControl)
+				parameters += " -r";
 
 			bool showWindow = false;
 			#ifdef _DEBUG
