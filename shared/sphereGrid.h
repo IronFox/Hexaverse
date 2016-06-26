@@ -95,8 +95,8 @@ namespace Grid
 
 	struct TSharedPlanetConfig;
 	#ifndef CLIENT
-		struct TExtendedPlanetConfig;
-		typedef TExtendedPlanetConfig	TPlanetConfig;
+		class ExtendedPlanetConfig;
+		typedef ExtendedPlanetConfig	TPlanetConfig;
 	#else
 		typedef TSharedPlanetConfig	TPlanetConfig;
 	#endif
@@ -2383,9 +2383,9 @@ namespace Grid
 		#endif
 	#endif
 
-	struct TExtendedPlanetConfig : public TSharedPlanetConfig, public SerializableObject
+	class ExtendedPlanetConfig : public TSharedPlanetConfig, public SerializableObject
 	{
-
+	public:
 		INT32		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable
 					liquidHeight = 0;
 
