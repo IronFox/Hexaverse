@@ -25,6 +25,12 @@ namespace ConfigurationMode
 
 	}
 
+	void	RandomizeSeed()
+	{
+		seed = rng.getSeed();
+		Update();
+	}
+
 	void	Update(const Grid::ExtendedPlanetConfig&cfg)
 	{
 		config = cfg;
