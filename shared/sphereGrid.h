@@ -2354,8 +2354,6 @@ namespace Grid
 	class ExtendedPlanetConfig : public TSharedPlanetConfig, public SerializableObject
 	{
 	public:
-		INT32		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable
-					liquidHeight = 0;
 
 
 
@@ -2413,10 +2411,12 @@ namespace Grid
 					liquidCoverage = Content::Water,
 					extendedCoreType = Content::Granite,
 					liquidOutline = Content::Sand;
+		INT32		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable
+					liquidHeight = 0;
 
 		virtual serial_size_t GetSerialSize(bool) const override
 		{
-			return sizeof(TSharedPlanetConfig) + sizeof(TLayerConfig)*2 + 5;	//do not serialize seeds
+			return sizeof(TSharedPlanetConfig) + sizeof(TLayerConfig)*2 + 5 + 8;	//do not serialize seeds
 		}
 
 		virtual bool HasFixedSize() const override
@@ -2433,7 +2433,10 @@ namespace Grid
 					&&	outStream.WritePrimitive(innerType)
 					&&	outStream.WritePrimitive(liquidCoverage)
 					&&	outStream.WritePrimitive(extendedCoreType)
-					&&	outStream.WritePrimitive(liquidOutline);
+					&&	outStream.WritePrimitive(liquidOutline)
+					&&	outStream.WritePrimitive(snowHeight)
+					&&	outStream.WritePrimitive(liquidHeight)
+					;
 		}
 
 		virtual	bool	Deserialize(IReadStream&inStream, serial_size_t) override
@@ -2445,7 +2448,10 @@ namespace Grid
 					&&	inStream.ReadPrimitive(innerType)
 					&&	inStream.ReadPrimitive(liquidCoverage)
 					&&	inStream.ReadPrimitive(extendedCoreType)
-					&&	inStream.ReadPrimitive(liquidOutline);
+					&&	inStream.ReadPrimitive(liquidOutline)
+					&&	inStream.ReadPrimitive(snowHeight)
+					&&	inStream.ReadPrimitive(liquidHeight)
+					;
 		}
 
 
