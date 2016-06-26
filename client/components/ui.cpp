@@ -988,11 +988,21 @@
 
 			GridCell&		AllocateCell(const Objects::PBaseCommand&cmd)
 			{
+				bool isNew;
+				return AllocateCell(cmd,isNew);
+			}
+
+			GridCell&		AllocateCell(const Objects::PBaseCommand&cmd, bool&isNew)
+			{
 				foreach (allGuiCells,c)
 					if (c->command == cmd)
+					{
+						isNew = false;
 						return *c;
+					}
 				GridCell&c = allGuiCells.Append();
 				c.command = cmd;
+				isNew = true;
 				return c;
 			}
 
@@ -1326,14 +1336,16 @@
 			}
 
 			Buffer0<Objects::PBaseCommand>	allocatedEntityCommands;
-			int2 at;
-			void	VisitCommand(const int2&coords,const Objects::PBaseCommand&cmd)
+			
+			void	VisitAddCommand(const int2&coords,const Objects::PBaseCommand&cmd)
 			{
-				GridCell&cell = AllocateCell(cmd);
+				bool isNew;
+				GridCell&cell = AllocateCell(cmd,isNew);
 				cmd->Refresh(Network::ControlEnabled());
 				cell.gridCoords = coords;
 				cell.Update(camera);
-				allocatedEntityCommands<<cmd;
+				if (isNew)
+					allocatedEntityCommands<<cmd;
 			}
 
 			void RefreshButtonState()
@@ -1440,13 +1452,16 @@
 				//display.SetRasterizer(true,false);
 			}
 
-
-
-			void					Configure(const Objects::PWorldEntity&e)
+			void					ClearCommands()
 			{
 				foreach (allocatedEntityCommands,cmd)
 					FindAndDeleteCell(*cmd);
 				allocatedEntityCommands.Clear();
+			}
+
+			void					Configure(const Objects::PWorldEntity&e)
+			{
+				ClearCommands();
 
 				bool showControls = showControlsAndContacts && e
 						#ifndef DEBUG_ACCESS_RESTRICTIONS
@@ -1455,18 +1470,13 @@
 					 ;
 
 				if (showControlsAndContacts)
-				{
-					at = int2(5,1);
-					Objects::globalCommands.VisitMembers(&VisitCommand,false);
-					Next();
-					Next();
-				}
+					Objects::globalCommands.VisitMembers(&VisitAddCommand,false);
 
 				if (e)
 				{
 					hasFocusButton = true;
 					if (showControls)
-						e->VisitAllCommands(VisitCommand,false);
+						e->VisitAllCommands(VisitAddCommand,false);
 
 					FindAndDeleteCell(selectedFocus);
 					selectedFocus.reset(new EntityFocusCommand(e) );
