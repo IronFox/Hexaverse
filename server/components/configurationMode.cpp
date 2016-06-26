@@ -29,6 +29,7 @@ void ConfigurationMode::Begin()
 	originalFlags = Game::Config::factionSupportFlags;
 	Game::Config::factionSupportFlags = Protocol::GameFlag::SupportSpectatorFactions;
 	planetSeed = random.get();
+	LogEvent(EventSignificance::Important,"Starting configuration mode");
 	//Network::RestartSession();
 }
 
@@ -41,6 +42,8 @@ void ConfigurationMode::End()
 	//Network::CloseSession(false);
 	Game::Config::factionSupportFlags = originalFlags;
 	Network::RestartSession();
+	LogEvent(EventSignificance::Important,"Ending configuration mode");
+
 }
 
 bool ConfigurationMode::IsActive()
