@@ -1122,6 +1122,8 @@ namespace Network
 
 				Receiver::eventsLocked = true;
 
+				ConfigurationMode::SetActive(false);
+
 				#ifdef HAS_WINDOW
 					Dialog::Hide(Dialog::loginMenu);
 					Dialog::CheckServersAreShown(true);
