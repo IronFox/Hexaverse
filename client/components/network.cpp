@@ -380,11 +380,28 @@ namespace Network
 		bool			eventsLocked = true;
 
 
-		void	OnHelloResponse(Protocol::Result&response)
+		void	OnHelloResponse(Protocol::HelloResponse&response)
 		{
 			ASSERT__(response.success);
 			if (response.success)
-				LogEvent(EventClass::Preset::common, nullptr, "Status confirmed");
+			{
+				LogEvent(EventClass::Preset::common, nullptr, "Status confirmed ('"+response.errorMessage+"')");
+				ConfigurationMode::SetActive(response.configurationMode);
+				if (response.configurationMode)
+					AttemptFactionLogin(false,Protocol::FactionType::SpectatorFaction);
+				else
+				{
+					#ifdef HAS_WINDOW
+						Dialog::Show(Dialog::loginMenu);
+						Dialog::CheckServersAreShown(false);
+					#endif
+				}
+			}
+			else
+			{
+				LogEvent(EventClass::Preset::networkError,"Server rejected hello ('"+response.errorMessage+"')");
+				client.Disconnect();
+			}
 		}
 
 		void	OnWorldDelta(Protocol::WorldDelta&delta)
@@ -653,6 +670,9 @@ namespace Network
 
 				#ifdef HAS_WINDOW
 					Dialog::Hide(Dialog::loginMenu);
+					//if (ConfigurationMode::IsActive())
+					//	UI::HexGrid::Configure
+					//	Dialog::Show(Dialog::configMenu);
 				#endif
 			}
 			else
@@ -910,7 +930,7 @@ namespace Network
 
 		TCP::Channel<Protocol::ClientFactionResponse,0,Protocol::ChannelID::ClientFaction>			clientFactionResponse(Receiver::ClientFactionResponse);
 
-		TCP::Channel<Protocol::Result,0,Protocol::ChannelID::Hello>									helloResponse(Receiver::OnHelloResponse);
+		TCP::Channel<Protocol::HelloResponse,0,Protocol::ChannelID::Hello>							helloResponse(Receiver::OnHelloResponse);
 		TCP::Channel<Protocol::WorldDelta,0,Protocol::ChannelID::WorldDelta>						worldData(Receiver::OnWorldDelta);
 		TCP::Channel<Protocol::NewMobileEntity,0,Protocol::ChannelID::NewMobileEntity>				newMobileEntity(Receiver::OnNewMobileEntity);
 		TCP::Channel<Protocol::MobileState,0,Protocol::ChannelID::MobileState>						mobileStateUpdate(Receiver::OnMobileState);
@@ -1063,10 +1083,7 @@ namespace Network
 				//lastPong = timer.Now();
 
 
-				#ifdef HAS_WINDOW
-					Dialog::Show(Dialog::loginMenu);
-					Dialog::CheckServersAreShown(false);
-				#endif
+
 
 			}
 			break;

@@ -1475,7 +1475,11 @@ namespace Receiver
 	{
 		if (hello.trim().IsEmpty())
 		{
-			peer.SendObject(Protocol::ChannelID::Hello,Protocol::Result(false,"Invalid username"));
+			Protocol::HelloResponse response;
+			response.success = false;
+			response.configurationMode = false;
+			response.errorMessage ="Invalid initial username";
+			peer.SendObject(Protocol::ChannelID::Hello,response);
 			return;
 		}
 		//foreach (State::clients,c)
@@ -1543,7 +1547,11 @@ namespace Receiver
 				}
 			}
 			*/
-			peer.SendObject(Protocol::ChannelID::Hello,Protocol::Result(true,"Userlevel set to "+String(peer.userLevel)));
+			Protocol::HelloResponse response;
+			response.success = true;
+			response.configurationMode = ConfigurationMode::IsActive() && peer.IsLocalhost();
+			response.errorMessage ="Userlevel set to "+String(peer.userLevel);
+			peer.SendObject(Protocol::ChannelID::Hello,response);
 			return;
 		}
 		//else
@@ -1551,7 +1559,11 @@ namespace Receiver
 
 
 		ChangeMyName(hello,peer);
-		peer.SendObject(Protocol::ChannelID::Hello,Protocol::Result(true,"User already known. Userlevel is "+String(peer.userLevel)+". Username updated"));
+		Protocol::HelloResponse response;
+		response.success = true;
+		response.configurationMode = ConfigurationMode::IsActive() && peer.IsLocalhost();
+		response.errorMessage ="Duplicate Hello detected. Userlevel remains "+String(peer.userLevel);
+		peer.SendObject(Protocol::ChannelID::Hello,response);		
 	}
 
 

@@ -728,8 +728,9 @@ namespace Protocol
 	//	, NET(UINT32), state	//place holder for client state. currently this is ignored, and always interpreted as a hello
 	//)
 
-	NETSTRUCT2(Result
+	NETSTRUCT3(HelloResponse
 		, NET(bool), success
+		, NET(bool), configurationMode
 		, Package::NetString<256>, errorMessage	//in case stateAccepted is false
 	)
 
@@ -1852,7 +1853,7 @@ namespace Protocol
 			PhaseChange,		//s2c: PhaseChange
 			BeginGame,			//s2c: <signal> //indicates that the player faction is fully initialized and transferred, and the game should begin. Mostly important for AI, only
 
-			Hello,				//c2s: Hello -> s2c: Result
+			Hello,				//c2s: Hello -> s2c: HelloResponse
 			ClientFaction,		//c2s: ClientFactionRequest -> s2c: ClientFactionResponse
 			SetFactionID,		//s2c: NET(TUniqueID)
 

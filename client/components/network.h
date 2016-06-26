@@ -117,7 +117,7 @@ namespace Network
 		extern bool			eventsLocked/* = true*/;	//purely for debugging purposes. If set no events should be pouring in from the server. When the connection is lost, this is set to true, and no evenst should be triggered until a new connection is established
 
 
-		void	OnHelloResponse(Protocol::Result&response);
+		void	OnHelloResponse(Protocol::HelloResponse&response);
 		void	OnWorldDelta(Protocol::WorldDelta&delta);
 
 
@@ -172,7 +172,7 @@ namespace Network
 	{
 		extern TCP::Channel<Protocol::ControlMessage,0,Protocol::ChannelID::ControlMessage>				controlMessage;
 
-		extern TCP::Channel<Protocol::Result,0,Protocol::ChannelID::Hello>								helloResponse;
+		extern TCP::Channel<Protocol::HelloResponse,0,Protocol::ChannelID::Hello>						helloResponse;
 		extern TCP::Channel<Protocol::WorldDelta,0,Protocol::ChannelID::WorldDelta>						worldData;
 		extern TCP::Channel<Protocol::NewMobileEntity,0,Protocol::ChannelID::NewMobileEntity>			newMobileEntity;
 		extern TCP::Channel<Protocol::MobileState,0,Protocol::ChannelID::MobileState>					mobileStateUpdate;
