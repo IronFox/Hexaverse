@@ -587,7 +587,12 @@ namespace UI
 			Only one cell may be allocated per command. A second call with the same parameter yields the cell returned by the first call.
 			@return Reference to the newly allocated or existing cell. Valid only until the next call to AllocateCell() or FindAndDeleteCell(). Do not persistently store pointers or references to the returned cell
 			*/
-			GridCell&		AllocateCell(const Objects::PBaseCommand&);
+			GridCell&		AllocateCell(const Objects::PBaseCommand&cmd);
+			/**
+			@copydoc AllocateCell()
+			@param[out] isNew Set to true if the specified command was not previously allocated
+			*/
+			GridCell&		AllocateCell(const Objects::PBaseCommand&, bool&isNew);
 			/**
 			Attempts to locate and delete the first cell using the specified command.
 			Fails silently if no such cell exists.
@@ -633,22 +638,19 @@ namespace UI
 			*/
 			void						Render();
 
-			extern int2 at;
-			inline void	Next()
-			{
-				at.y ++;
-				if (at.y == 3)
-				{
-					at.y = 1;
-					at.x ++;
-				}
+			/**
+			Command visitor function that adds a given command to the grid.
+			The command shared_ptr is stored for easier removal (via ClearCommands()).
+			Adding the same command multiple times will not produce multiple buttons, but move any existing one.
+			@param location Grid location to place the button at. The coordinates are relative to the bottom left grid edge, and progress to the right/up
+			@param cmd Command to place/memorize. Must not be empty/null
+			*/
+			void		VisitAddCommand(const int2&location,const Objects::PBaseCommand&cmd);
 
-			}
-
-			void		VisitCommand(const int2&,const Objects::PBaseCommand&cmd);
-
-			void		RefreshButtonState();
-
+			/**
+			Removes all visual command buttons, and clears out all local command references
+			*/
+			void		ClearCommands();
 
 			void		RefreshContacts();
 			void		Configure(const Objects::PWorldEntity&e);
