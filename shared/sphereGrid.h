@@ -27,6 +27,7 @@ namespace Grid
 
 	static const int BadHeight = 0x1FFFFFFF;	//keep equal to gridAndChoices.h Objects::badHeight
 
+	class ExtendedPlanetConfig;
 
 	#ifdef HAS_WINDOW
 		namespace DX11 = Engine::DX11;
@@ -503,10 +504,8 @@ namespace Grid
 		bool			FindTopOccupied(int&outHeight) const;
 
 
-		#ifndef CLIENT
-			void		InitUnknown(float2 heights, const TPlanetConfig&);
-			void		FillTypes(const TPlanetConfig&);
-		#endif
+		void			InitUnknown(float2 heights, const ExtendedPlanetConfig&);
+		void			FillTypes(const ExtendedPlanetConfig&);
 
 		void			ZeroInit();
 		void			ResetStructureCounters();
@@ -1810,6 +1809,8 @@ namespace Grid
 		void					Fill(Random&random, float p, coverage_t, float density);
 		void					Fill(Random&random);
 
+		static void				FillAll(Random&random);
+
 		const String&			GetName() const {return name;}
 		ConstName				GetCName() const {return cname;}
 		const float3&			GetColor() const {return color;}
@@ -1916,13 +1917,6 @@ namespace Grid
 	//*/
 	//float	RandomHeight(const TVec3<>&center0);
 
-	#ifndef CLIENT
-		/**
-		Redefines the world volume, based on the specified world configuration and discovery setting
-		MUST NOT be used on a session with active factions/players
-		*/
-		void			BuildWorld(const TPlanetConfig&config, WorldDiscovery discovery);
-	#endif
 
 	/**
 	Initializes the grid and all static gpu resources. Call ONCE before creating objects (and their shadows)
@@ -1985,6 +1979,11 @@ namespace Grid
 
 	bool	AffectedByEMP(const HCellIdI&);
 	bool	AffectedByEMP(const LCellIdI&);
+
+	/**
+	Sets both high resolution and low resolution families outdated, and to the specified time
+	*/
+	void	SetAllFamiliesOutdated(float t=0);
 
 	TVec3<> ToWorld(const HCellIdU&);
 	TVec3<> ToWorld(const HCellIdI&);
@@ -2273,7 +2272,18 @@ namespace Grid
 		void					Explode(const HCellIdI&,float radius, float atTime);
 		void					Explode(const HCellIdI&id,float radius, bool*familyChanged);
 
-
+		/**
+		Redefines the world volume, based on the specified world configuration and discovery setting
+		MUST NOT be used on the actual world while a session with active factions/players
+		*/
+		void					BuildWorld(const ExtendedPlanetConfig&config);
+		/**
+		Copies the volumetric composition of the local world data to the specified target according to the specified
+		world discovery value.
+		@param[out] target Target container to hold the filtered world data
+		@param discoveryLevel Level of terrain obfuscation to apply to the copy. If set to FullTerrain, then @a target will contain an exact copy of the local world data.
+		*/
+		void					ExportDiscovered(WorldData&target, WorldDiscovery discoveryLevel) const;
 
 		int						TraceSkySensor(UINT32 highCellCenter, int penetration) const;
 
