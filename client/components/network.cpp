@@ -393,9 +393,11 @@ namespace Network
 				{
 					#ifdef HAS_WINDOW
 						Dialog::Show(Dialog::loginMenu);
-						Dialog::CheckServersAreShown(false);
 					#endif
 				}
+				#ifdef HAS_WINDOW
+					Dialog::CheckServersAreShown(false);
+				#endif
 			}
 			else
 			{
