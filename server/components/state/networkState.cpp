@@ -8,6 +8,7 @@
 #include "../networkChannels.h"
 #include "../aiProcess.h"
 #include "../serverLogEvent.h"
+#include "../configurationMode.h"
 #include "worldState.h"
 
 
@@ -58,6 +59,21 @@ namespace Network
 		peer.userLevel = (UINT32)newLevel;
 		LogEvent(EventSignificance::Debug,peer,"User level changed to "+String(peer.userLevel));
 	}
+
+	void		BuildConfiguredWorld()
+	{
+		bool started = Network::CloseSession(false,false);
+		World::worldID.Generate();
+
+		static Random random;
+
+		World::BuildConfiguredWorld(ConfigurationMode::IsActive() ? ConfigurationMode::GetPlanetRandomVariable() :  random);
+		if (started)
+			Network::RestartSession();
+		else
+			World::Network::SendChangedFamilies();
+	}
+
 
 	String						Client::ToString() const
 	{

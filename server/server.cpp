@@ -1379,8 +1379,6 @@ int main( int argc, const char* argv[])
 				}
 			}
 
-			bool started = Network::CloseSession(false,false);
-			World::worldID.Generate();
 			if (planet.IsNotEmpty())
 			{
 				Reflection::Variable::planetType->Set(planet.trim());
@@ -1393,12 +1391,8 @@ int main( int argc, const char* argv[])
 					LogEvent(EventClass::Preset::remoteControlError,"'"+discovery+"' is not a valid planet discovery type. Check World/worldDiscovery for details");
 				}
 			}
+			Network::BuildConfiguredWorld();
 
-			World::BuildConfiguredWorld(ConfigurationMode::IsActive() ? ConfigurationMode::GetPlanetRandomVariable() :  random);
-			if (started)
-				Network::RestartSession();
-			else
-				World::Network::SendChangedFamilies();
 		},CLI::NoCompletion);
 
 		Reflection::state.DefineCommand("/World/showPlanetTypes",(CLI::Command::function0_t)[]()

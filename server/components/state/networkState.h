@@ -127,6 +127,12 @@ namespace Network
 
 	void		ChangeUserLevel(TCP::Peer&peer, UserLevel newLevel);
 
+	/**
+	Closes the current session (if active), rebuilds the local world, and restarts the session (if it was active).
+	If in configuration mode, the config mode random reference is used, otherwise a global one.
+	Spectator clients are notified of changes if so.
+	*/
+	void		BuildConfiguredWorld();
 
 
 	bool CanControl(const Client&c, const Objects::WorldEntity&e);
