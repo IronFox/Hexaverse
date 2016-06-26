@@ -3,6 +3,7 @@
 #include "state.h"
 #include "serverLogEvent.h"
 #include "journalSaveGame.h"
+#include "configurationMode.h"
 
 extern Random		random;
 
@@ -40,6 +41,7 @@ namespace Channels
 	TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>							identifyUserRecv(Receiver::IdentifyUser);
 	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
+	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
@@ -315,7 +317,7 @@ namespace Receiver
 		if (response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
 		{
 			//authenticated and purged any previous faction. let's go
-			Network::ChangeUserLevel(peer,Network::UserLevel::Spectator);
+			Network::ChangeUserLevel(peer,ConfigurationMode::IsActive()?Network::UserLevel::PlanetConfigurator :  Network::UserLevel::Spectator);
 
 
 			bool firstSpectator = Network::spectators.IsEmpty();
@@ -332,6 +334,8 @@ namespace Receiver
 			//send world state:
 
 			SendAllToSpectator(peer, firstSpectator);
+
+			Channels::planetConfig.SendTo(peer,Grid::currentPlanetConfig);
 
 			peer.SendSignal(Protocol::ChannelID::BeginGame);
 			return;
@@ -831,6 +835,19 @@ namespace Receiver
 */
 
 	}
+
+	void	PlanetConfig(Grid::ExtendedPlanetConfig&cfg, TCP::Peer&peer)
+	{
+		if (ConfigurationMode::IsActive())
+		{
+			Grid::currentPlanetConfig = cfg;
+			Network::BuildConfiguredWorld();
+		}
+		else
+			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
+
+	}
+
 
 	
 	void	ChangeMyName(Protocol::ClientName&name, TCP::Peer&peer)

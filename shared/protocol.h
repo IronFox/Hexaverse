@@ -1921,11 +1921,7 @@ namespace Protocol
 
 			ChatMessage,		// c2s: NetString<256>
 
-			//remote control channels (these require user level 2+)
-			RC_UpdateWorld,				//c2s: Grid::TExtendedPlanetConfig
-			RC_Lockdown,				//c2s: bool -> s2c: bool
-			RC_Kick,					//c2s: pair<TUniqueID,bool>	(kick / kick and ban)
-			RC_KickAllNonPrivileged,	//c2s: <signal>
+			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
 		};
 	}
 
