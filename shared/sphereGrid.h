@@ -1171,33 +1171,7 @@ namespace Grid
 			}
 		}
 
-		/*
-		void						UpdatePlanarDistanceField(index_t centerCell, float maxDistance, TFDistanceField&field) const
-		{
-			field.Reset();
 
-			field.distance[centerCell] = 0;
-			Queue<index_t>	queue;
-			queue << centerCell;
-			index_t cellID;
-			while (queue >> cellID)
-			{
-				UINT32 d = field.distance[stackID] + 1;
-				if (d > maxDistance)
-					continue;
-				const auto &nh = grid.GetCell(cellID).neighborhood;
-				for (int i = 0; i < nh.numNeighbors; i++)
-				{
-					UINT32 n = nh.neighborID[i];
-					if (field.distance[n] > d)
-					{
-						field.distance[n] = d;
-						queue << n;
-					}
-				}
-			}
-		}
-*/
 		UINT32			Locate(const TVec3<>&v, UINT32 startID = 0)	const
 		{
 			UINT32 stackID = startID;
@@ -1773,24 +1747,8 @@ namespace Grid
 		static float			probability[],density[];
 		static coverage_t		maximum[];
 
-		//static coverage_t		UraniumCoverage(UINT32)
-		//{
-		//	return GetCoverage(0.008f,6);
-		//}
-		//static coverage_t		MineralCoverage(UINT32)
-		//{
-		//	return GetCoverage(0.08f,12);
-		//}
-		//static coverage_t		FuelCoverage(UINT32)
-		//{
-		//	return GetCoverage(0.08f,12);
-		//}
-
 		static Buffer0<Resource>all;
-		//static void				Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 cellID));
-//		static void				Create(const String&name, ConstName cname, const float3&color/*, float p, coverage_t*/);
 		static void				Create(const String&name, ConstName cname, const float3&color, index_t);
-		//static void				Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield);
 		static Resource&		Require(const String&name);
 		static Resource&		Require(ConstName name);
 		static coverage_t		Sample(const String&resourceName, index_t cellID);
