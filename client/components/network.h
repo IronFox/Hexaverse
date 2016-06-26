@@ -164,6 +164,7 @@ namespace Network
 		void	FactionRequestedNewRound(NET(TUniqueID)&);
 		void	FactionContinuedRound(NET(TUniqueID)&);
 		void	LockEmpZones(NET(UINT16)&);
+		void	PlanetConfig(Grid::ExtendedPlanetConfig&);
 	}
 
 
@@ -202,6 +203,7 @@ namespace Network
 		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionContinuedRound>				factionContinuedRound;
 		extern TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>							lockEmpZones;
 		extern TCP::Channel<NET(int32_t), 0, Protocol::ChannelID::UplinkBandwidth>						uplinkBandwidth;
+		extern TCP::Channel<Grid::ExtendedPlanetConfig, 0, Protocol::ChannelID::PlanetConfig>			planetConfig;
 
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;

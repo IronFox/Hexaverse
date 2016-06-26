@@ -895,6 +895,12 @@ namespace Network
 			#endif
 
 		}
+
+		void	PlanetConfig(Grid::ExtendedPlanetConfig&cfg)
+		{
+			ConfigurationMode::Update(cfg);
+
+		}
 	}
 
 
@@ -935,6 +941,7 @@ namespace Network
 		TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>								lockEmpZones(Receiver::LockEmpZones);
 		TCP::Channel<NET(INT32), 0, Protocol::ChannelID::UplinkBandwidth>							uplinkBandwidth(Receiver::UplinkBandwidth);
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
+		TCP::Channel<Grid::ExtendedPlanetConfig, 0, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 
 
 
@@ -1173,6 +1180,7 @@ namespace Network
 		client.InstallChannel(Channels::lockEmpZones);
 		client.InstallChannel(Channels::uplinkBandwidth);
 		client.InstallChannel(Channels::unitLimits);
+		client.InstallChannel(Channels::planetConfig);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
