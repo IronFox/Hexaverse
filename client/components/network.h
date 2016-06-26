@@ -18,6 +18,7 @@ namespace Network
 
 	extern bool			haveFaction,
 						haveID,
+						configurationMode,
 						amSpectator,
 						amOnline,
 						gameHasBegun;

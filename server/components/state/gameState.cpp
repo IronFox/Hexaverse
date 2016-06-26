@@ -4,7 +4,7 @@
 #include "../networkChannels.h"
 #include "../aiProcess.h"
 #include "../journalSaveGame.h"
-
+#include "../configurationMode.h"
 
 
 void			SignalFactionsChanged()
@@ -129,6 +129,8 @@ namespace Game
 				info.gameFlags |= Protocol::GameFlag::StartBases;
 			if (Config::Nexus::enableAI)
 				info.gameFlags |= Protocol::GameFlag::NexusAI;
+			if (ConfigurationMode::IsActive())
+				info.gameFlags |= Protocol::GameFlag::ConfigurationMode;
 
 			info.gameFlags |= Config::factionSupportFlags;
 		}

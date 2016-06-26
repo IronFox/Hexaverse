@@ -88,21 +88,25 @@ void	SaveHosts()
 				result="No Goal";
 			break;
 		}
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::ClosedGame)
-			result += ", Closed Game";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::EMPZones)
-			result += ", EMP Zones";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::BasesRequired)
-			result += ", Require Bases";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::StartBases)
-			result += ", Start Bases";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::NexusAI)
-			result += ", Nexus AI";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportSpectatorFactions)
-			result += ", Spectator";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportRegularFactions)
-			result += ", Regular";
-
+		if (info.gameInfo.gameFlags & Protocol::GameFlag::ConfigurationMode)
+			result += ", Being Configured";
+		else
+		{
+			if (info.gameInfo.gameFlags & Protocol::GameFlag::ClosedGame)
+				result += ", Closed Game";
+			if (info.gameInfo.gameFlags & Protocol::GameFlag::EMPZones)
+				result += ", EMP Zones";
+			if (info.gameInfo.gameFlags & Protocol::GameFlag::BasesRequired)
+				result += ", Require Bases";
+			if (info.gameInfo.gameFlags & Protocol::GameFlag::StartBases)
+				result += ", Start Bases";
+			if (info.gameInfo.gameFlags & Protocol::GameFlag::NexusAI)
+				result += ", Nexus AI";
+			if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportSpectatorFactions)
+				result += ", Spectator";
+			if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportRegularFactions)
+				result += ", Regular";
+		}
 		//String result = String("Goal: ")+Protocol::GameGoal::Reinterpret(info.gameGoal).ToString();
 		return result;
 

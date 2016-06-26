@@ -30,6 +30,7 @@ namespace Network
 	bool			haveFaction = false,
 					haveID = false,
 					amSpectator = false,
+					configurationMode = false,
 					amOnline=false,
 					gameHasBegun=false;
 	#ifdef HAS_WINDOW
@@ -630,7 +631,7 @@ namespace Network
 			#endif
 			gameHasBegun = false;
 
-
+			configurationMode = (Network::gameFlags & Protocol::GameFlag::ConfigurationMode)!= 0;
 			haveFaction = cr.startFactionTypes != 0;
 			if (haveFaction)
 			{
