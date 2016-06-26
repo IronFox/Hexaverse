@@ -356,7 +356,7 @@ namespace Grid
 			/**/	Cell() :CompactCell(Content::Clear) {}
 			/**/	Cell(Content t, BYTE /*lightLevel*/) :CompactCell(t)	{}
 			#endif
-			void	SetToIfSolid(Content cnt)	{if (IsSolid()) content = cnt;}
+			void	SetToIfSolid(BYTE cnt)	{if (IsSolid()) content = cnt;}
 			bool	IsWater() const { return content == Content::Water; }
 			bool	IsTechnite() const {return content == Content::Technite; }
 			//bool	WaterSurfaceBelow() const { return content == Content::Clear; }
@@ -2381,115 +2381,156 @@ namespace Grid
 			*/
 			const TMatrix3<>& GetSunSystem();
 		#endif
-	#else
+	#endif
 
-		struct TExtendedPlanetConfig : public TSharedPlanetConfig
-		{
+	struct TExtendedPlanetConfig : public TSharedPlanetConfig, public SerializableObject
+	{
 
-			int		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable
+		INT32		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable
 					liquidHeight = 0;
 
 
-			Content		topType = Content::Grass,
-						innerType = Content::Unknown,
-						liquidCoverage = Content::Water,
-						extendedCoreType = Content::Granite,
-						liquidOutline = Content::Sand;
 
-			static void RandomizeSeed(float3&v, Random&random)
+		static void RandomizeSeed(float3&v, Random&random)
+		{
+			v.x = random.getFloat(-16,16);
+			v.y = random.getFloat(-16,16);
+			v.z = random.getFloat(-16,16);
+		}
+
+
+		struct TSeedSet
+		{
+			float3	seed[5],	//for fractal levels 0 to 5
+					productSeed,	//for the final product
+					depressionSeed0,
+					depressionSeed1,
+					depressionSeed2,
+					depressionSeed3;
+
+
+			void	Randomize(Random&random)
 			{
-				v.x = random.getFloat(-16,16);
-				v.y = random.getFloat(-16,16);
-				v.z = random.getFloat(-16,16);
+				for (index_t i = 0; i < ARRAYSIZE(seed); i++)
+					RandomizeSeed(seed[i],random);
+				RandomizeSeed(depressionSeed0,random);
+				RandomizeSeed(depressionSeed1,random);
+				RandomizeSeed(depressionSeed2,random);
+				RandomizeSeed(depressionSeed3,random);
+				RandomizeSeed(productSeed,random);
 			}
-
-
-			struct TSeedSet
-			{
-				float3	seed[5],	//for fractal levels 0 to 5
-						productSeed,	//for the final product
-						depressionSeed0,
-						depressionSeed1,
-						depressionSeed2,
-						depressionSeed3;
-
-
-				void	Randomize(Random&random)
-				{
-					for (index_t i = 0; i < ARRAYSIZE(seed); i++)
-						RandomizeSeed(seed[i],random);
-					RandomizeSeed(depressionSeed0,random);
-					RandomizeSeed(depressionSeed1,random);
-					RandomizeSeed(depressionSeed2,random);
-					RandomizeSeed(depressionSeed3,random);
-					RandomizeSeed(productSeed,random);
-				}
-			};
-
-			struct TLayer : public TSeedSet
-			{
-				int		baseHeight = 0;	//center terrain height
-				float	heightScale = 1.f;	//vertical scale of noise.
-				//1.0f is pretty much the most you should set with normal noise frequency
-				float	frequency = 1.f;	//noise frequency factor
-				int		dampening = 2;
-			};
-
-			TLayer	extendedCore,mountains;
-
-			void	RandomizeSeeds(Random&random)
-			{
-				 extendedCore.Randomize(random);
-				 mountains.Randomize(random);
-			}
-
-			void	RandomizeSun(Random&random)
-			{
-				sunColor = float4(1);
-				//float4(random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),1);
-
-				Vec::stretch(sunColor.rgb,atmosphereColor.rgb,atmosphereColor.rgb);
-				//sunColor.rgb = atmosphereColor.rgb;
-
-
-				sunPlaneNormal_Speed = float4(
-						random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1),
-						0.07f
-						//random.getFloat(-0.2,0.2)
-					);
-				Vec::normalize0(sunPlaneNormal_Speed.xyz);
-
-			}
-
-			void	GenerateAtmosphereColorForType(Content t)
-			{
-				if (t == Content::Water)
-				{
-					atmosphereColor.rgb = float3(0.7,0.8,1.0);
-					return;
-				}
-				atmosphereColor.rgb = CellStack::Cell::typeColor[t];
-				Vec::abs(atmosphereColor);
-			}
-
-			void	GenerateAtmosphereColor()
-			{
-				if (liquidCoverage != Content::Clear)
-				{
-					GenerateAtmosphereColorForType(liquidCoverage);
-					
-					return;
-				}
-				if (innerCoreType != Content::Clear)
-					GenerateAtmosphereColorForType(Content::Reinterpret(innerCoreType));
-				else
-					GenerateAtmosphereColorForType(topType);
-			}
-
 		};
 
-	#endif
+		struct TLayerConfig
+		{
+			int		dampening = 2;
+			int		baseHeight = 0;	//center terrain height
+			float	heightScale = 1.f;	//vertical scale of noise.
+			//1.0f is pretty much the most you should set with normal noise frequency
+			float	frequency = 1.f;	//noise frequency factor
+		};
 
+		struct TLayer : public TSeedSet, public TLayerConfig
+		{};
+		 
+		static const size_t TLayer_size = sizeof(TLayer);
+		static const size_t TSeedSet_size = sizeof(TSeedSet);
+
+
+		static_assert(sizeof(TLayer)==sizeof(TSeedSet)+16,"packing issue?");
+
+		TLayer		extendedCore,mountains;
+		BYTE		topType = Content::Grass,
+					innerType = Content::Unknown,
+					liquidCoverage = Content::Water,
+					extendedCoreType = Content::Granite,
+					liquidOutline = Content::Sand;
+
+		virtual serial_size_t GetSerialSize(bool) const override
+		{
+			return sizeof(TSharedPlanetConfig) + sizeof(TLayerConfig)*2 + 5;	//do not serialize seeds
+		}
+
+		virtual bool HasFixedSize() const override
+		{
+			return true;
+		}
+
+		virtual	bool	Serialize(IWriteStream&outStream, bool) const override
+		{
+			return	outStream.WritePrimitive((const TSharedPlanetConfig&)*this)
+					&&	outStream.WritePrimitive((const TLayerConfig&)extendedCore)
+					&&	outStream.WritePrimitive((const TLayerConfig&)mountains)
+					&&	outStream.WritePrimitive(topType)
+					&&	outStream.WritePrimitive(innerType)
+					&&	outStream.WritePrimitive(liquidCoverage)
+					&&	outStream.WritePrimitive(extendedCoreType)
+					&&	outStream.WritePrimitive(liquidOutline);
+		}
+
+		virtual	bool	Deserialize(IReadStream&inStream, serial_size_t) override
+		{
+			return	inStream.ReadPrimitive((TSharedPlanetConfig&)*this)
+					&&	inStream.ReadPrimitive((TLayerConfig&)extendedCore)
+					&&	inStream.ReadPrimitive((TLayerConfig&)mountains)
+					&&	inStream.ReadPrimitive(topType)
+					&&	inStream.ReadPrimitive(innerType)
+					&&	inStream.ReadPrimitive(liquidCoverage)
+					&&	inStream.ReadPrimitive(extendedCoreType)
+					&&	inStream.ReadPrimitive(liquidOutline);
+		}
+
+
+		void	RandomizeSeeds(Random&random)
+		{
+				extendedCore.Randomize(random);
+				mountains.Randomize(random);
+		}
+
+		void	RandomizeSun(Random&random)
+		{
+			sunColor = float4(1);
+			//float4(random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),1);
+
+			Vec::stretch(sunColor.rgb,atmosphereColor.rgb,atmosphereColor.rgb);
+			//sunColor.rgb = atmosphereColor.rgb;
+
+
+			sunPlaneNormal_Speed = float4(
+					random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1),
+					0.07f
+					//random.getFloat(-0.2,0.2)
+				);
+			Vec::normalize0(sunPlaneNormal_Speed.xyz);
+
+		}
+
+		void	GenerateAtmosphereColorForType(BYTE t)
+		{
+			if (t == Content::Water)
+			{
+				atmosphereColor.rgb = float3(0.7,0.8,1.0);
+				return;
+			}
+			atmosphereColor.rgb = CellStack::Cell::typeColor[t];
+			Vec::abs(atmosphereColor);
+		}
+
+		void	GenerateAtmosphereColor()
+		{
+			if (liquidCoverage != Content::Clear)
+			{
+				GenerateAtmosphereColorForType(liquidCoverage);
+					
+				return;
+			}
+			if (innerCoreType != Content::Clear)
+				GenerateAtmosphereColorForType(Content::Reinterpret(innerCoreType));
+			else
+				GenerateAtmosphereColorForType(topType);
+		}
+
+	};
 
 	class OrbitGrid
 	{
