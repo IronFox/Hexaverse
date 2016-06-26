@@ -1145,7 +1145,7 @@ namespace FileIO
 										GetOptionalPOD(list,RID::doomsdayWeapons,v,(UINT8)0);
 										RuntimeConfig::doomsdayWeapons.Load(v);
 									}
-									GetOptionalPOD(list,RID::factionSupportFlags,Game::Config::factionSupportFlags,Game::Config::AllFactionSupportFlags);
+									GetOptionalPOD(list,RID::factionSupportFlags,Game::Config::factionSupportFlags,Protocol::GameFlag::AllFactionSupport);
 								}
 								else
 								{

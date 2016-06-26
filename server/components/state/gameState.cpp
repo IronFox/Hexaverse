@@ -36,7 +36,7 @@ namespace Game
 					startBases = false,
 					basesRequired = false,
 					exposeActionLeftToHostileFactions = true;
-		UINT32		factionSupportFlags = AllFactionSupportFlags;
+		UINT32		factionSupportFlags = Protocol::GameFlag::AllFactionSupport;
 
 		namespace Nexus
 		{

@@ -1961,6 +1961,7 @@ namespace Protocol
 
 		};
 
+		static const UINT32 AllFactionSupport = ~(SupportSpectatorFactions-1);
 
 	}
 
