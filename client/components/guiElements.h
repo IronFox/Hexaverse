@@ -604,6 +604,8 @@ namespace GUIElements
 		/**/				Window()
 		{
 			Super::autoHeight = true;
+			Super::SetCenteredWidth(0.75f,GUIElements::TAnchor::RelativeToScreen);
+			Super::SetLocation(Math::TFloatRect(float2(0.25f),float2(0.5f)));
 		}
 
 		virtual bool		AutoLayout(const Rect<>&context) override
