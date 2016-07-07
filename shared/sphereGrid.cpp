@@ -78,7 +78,7 @@ namespace Grid
 		float3(0.3f, 0.3f, 0.3f), //road
 		float3(1.2f,0.6f,0.5f)*-2.5f,	//Lava
 		-float3(0.6f,0.5f,1.2f),	//technite
-		float3(0.5f, 0.6f, 1.f)*0.3f,	//Water
+		float3(0.5f, 0.6f, 1.f),	//Water
 		float3(1)	//clear
 	};
 	
