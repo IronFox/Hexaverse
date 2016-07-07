@@ -8,6 +8,7 @@
 #ifdef HAS_WINDOW
 	#include "../DX11/texture_font.h"
 	#include "surfaceRenderer.h"
+	#include "configurationMode.h"
 
 	extern Engine::Display<Engine::DirectX11>	display;
 	extern Engine::Textout<Engine::DX11::TextureFont>	textout;
@@ -1461,6 +1462,8 @@
 
 			void					Configure(const Objects::PWorldEntity&e)
 			{
+				if (ConfigurationMode::ReconfigureVisualCommands())	//configuration mode has its own buttons; should not be removed while active
+					return;
 				ClearCommands();
 
 				bool showControls = showControlsAndContacts && e
