@@ -76,6 +76,7 @@ namespace ServerProcess
 			return;
 		}
 		Detail::remoteControl = remoteControl;
+		Detail::configurationMode = configurationMode;
 		Detail::Start();
 	}
 
