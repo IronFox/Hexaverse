@@ -3,6 +3,7 @@
 #include "world.h"
 #include "ui.h"
 #include <objects/visualCommands.h>
+#include "network.h"
 
 namespace ConfigurationMode
 {
@@ -295,6 +296,16 @@ namespace ConfigurationMode
 
 			buttons 
 				<< std::make_pair(int2(0,0),
+						Objects::PBaseCommand(new Objects::IconCommand("Commit",[]()
+						{
+							refConfig = config;
+							Network::Channels::planetConfig.SendTo(Network::client,config);
+							//Update();
+						},
+						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
+						))
+					)
+				<< std::make_pair(int2(1,0),
 						Objects::PBaseCommand(new Objects::IconCommand("Undo",[]()
 						{
 							config = refConfig;
@@ -303,7 +314,7 @@ namespace ConfigurationMode
 						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
 						))
 					)
-				<< std::make_pair(int2(1,0),
+				<< std::make_pair(int2(2,0),
 						Objects::PBaseCommand(new Objects::IconCommand("Randomize",[]()
 						{
 							RandomizeSeed();
@@ -311,9 +322,9 @@ namespace ConfigurationMode
 						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
 						))
 					)
-				<< std::make_pair(int2(2,0),mountainGroup)
-				<< std::make_pair(int2(3,0),extendedCoreGroup)
-				<< std::make_pair(int2(4,0),liquidGroup)
+				<< std::make_pair(int2(3,0),mountainGroup)
+				<< std::make_pair(int2(4,0),extendedCoreGroup)
+				<< std::make_pair(int2(5,0),liquidGroup)
 			;
 		}
 

@@ -840,6 +840,7 @@ namespace Receiver
 	{
 		if (ConfigurationMode::IsActive())
 		{
+			LogEvent(EventClass::Preset::configurationPrint,peer,"Received planet configuration. Rebuilding...");
 			Grid::currentPlanetConfig = cfg;
 			Network::BuildConfiguredWorld();
 		}
