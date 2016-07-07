@@ -1180,10 +1180,11 @@ namespace Grid
 			}
 
 		#ifdef CLIENT
-			Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [](index_t i)
+			Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [this](index_t i)
 			{
-				auto&stack = actualWorld.cellStack[i];
+				auto&stack = cellStack[i];
 				stack.UpdateRange();
+				stack.lightingChangedTo = (BYTE)CellStack::Range;
 			});
 		#endif
 	}
