@@ -80,7 +80,7 @@ void	SaveHosts()
 	{
 		String result;
 		if (info.gameInfo.gameFlags & Protocol::GameFlag::ConfigurationMode)
-			result += "Requires Configuration";
+			result += "Interactive Configuration Mode";
 		else
 		{
 			switch (info.gameInfo.gameGoal)
