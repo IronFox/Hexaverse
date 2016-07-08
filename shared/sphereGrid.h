@@ -359,8 +359,8 @@ namespace Grid
 			/**/	Cell() :CompactCell(Content::Clear,0), intLightLevel(255), submergence(0) {}
 			/**/	Cell(Content t, BYTE lightLevel, short visibility) :CompactCell(t,visibility), intLightLevel(lightLevel), submergence(0)	{}
 			#else
-			/**/	Cell() :CompactCell(Content::Clear) {}
-			/**/	Cell(Content t, BYTE /*lightLevel*/) :CompactCell(t)	{}
+			/**/	Cell() :CompactCell(Content::Clear,0) {}
+			/**/	Cell(Content t, BYTE /*lightLevel*/, short visibility) :CompactCell(t,visibility)	{}
 			#endif
 			void	SetToIfSolid(BYTE cnt)	{if (IsSolid()) content = cnt;}
 			bool	IsWater() const { return content == Content::Water; }
