@@ -243,7 +243,7 @@ namespace ConfigurationMode
 		{
 			Objects::PCommandGroup group(new Objects::CommandGroup(name));
 			group->baseCoords = int2(1);
-			MakeIntButtons(group->AddChild("Base Height"),layer.baseHeight,refLayer.baseHeight, Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight);
+			MakeIntButtons(group->AddChild("Base Height"),layer.baseHeight,refLayer.baseHeight, Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
 			MakeIntButtons(group->AddChild("Dampening"),layer.dampening,refLayer.dampening, 0,Grid::CellStack::HalfRange);
 			MakeFloatButtons(group->AddChild("Height Scale"),layer.heightScale, refLayer.heightScale);
 			MakeFloatButtons(group->AddChild("Frequency"),layer.frequency, refLayer.frequency);
@@ -290,17 +290,17 @@ namespace ConfigurationMode
 			MakeMaterialChoice(coreGroup,config.innerCoreType,refConfig.innerCoreType,noUnknown);
 			mountainGroup = MakeLayer("Mountains",config.mountains,refConfig.mountains);
 			extendedCoreGroup = MakeLayer("Extended Core",config.extendedCore,refConfig.extendedCore);
-			MakeMaterialChoice(extendedCoreGroup->AddChild("Type","Choose Material"),config.extendedCoreType,refConfig.extendedCoreType, noUnknown);
-			MakeMaterialChoice(mountainGroup->AddChild("Type","Choose Material"),config.innerType,refConfig.innerType, fullScope);
-			MakeMaterialChoice(mountainGroup->AddChild("Top Type"),config.topType,refConfig.topType, fullScope);
-			MakeIntButtons(mountainGroup->AddChild("Snow Height"),config.snowHeight,refConfig.snowHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight);
+			MakeMaterialChoice(extendedCoreGroup->AddChild("Type","Extended Core Content"),config.extendedCoreType,refConfig.extendedCoreType, noUnknown);
+			MakeMaterialChoice(mountainGroup->AddChild("Type","Terrain Content"),config.innerType,refConfig.innerType, fullScope);
+			MakeMaterialChoice(mountainGroup->AddChild("Top Type", "Terrain Top" ),config.topType,refConfig.topType, fullScope);
+			MakeIntButtons(mountainGroup->AddChild("Snow Height"),config.snowHeight,refConfig.snowHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
 
 			{
 				liquidGroup.reset(new Objects::CommandGroup("Oceans"));
 				liquidGroup->baseCoords = int2(1);
-				MakeMaterialChoice(liquidGroup->AddChild("Type","Choose Material"),config.liquidCoverage,refConfig.liquidCoverage,noUnknown);
-				MakeIntButtons(liquidGroup->AddChild("Level"),config.liquidHeight,refConfig.liquidHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight);
-				MakeMaterialChoice(liquidGroup->AddChild("Outline"),config.liquidOutline,refConfig.liquidOutline,noLiquids);
+				MakeMaterialChoice(liquidGroup->AddChild("Ocean Content","Ocean Type"),config.liquidCoverage,refConfig.liquidCoverage,noUnknown);
+				MakeIntButtons(liquidGroup->AddChild("Level","Base Height"),config.liquidHeight,refConfig.liquidHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
+				MakeMaterialChoice(liquidGroup->AddChild("Ocean Outline"),config.liquidOutline,refConfig.liquidOutline,noLiquids);
 			}
 
 
