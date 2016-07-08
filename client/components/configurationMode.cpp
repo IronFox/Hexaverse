@@ -321,7 +321,7 @@ namespace ConfigurationMode
 						))
 					)
 				<< std::make_pair(int2(2,0),
-						Objects::PBaseCommand(new Objects::IconCommand("Randomize",[]()
+						Objects::PBaseCommand(new Objects::CustomIconCommand("Randomize seeds and rebuild using current config","Randomize",[]()
 						{
 							RandomizeSeed();
 						},
