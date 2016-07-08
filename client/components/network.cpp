@@ -688,9 +688,7 @@ namespace Network
 
 			if (amSpectator)
 			{
-				foreach (Grid::actualWorld.cellStack,stack)
-					for (UINT32 l = 0; l < Grid::CellStack::Range; l++)
-						stack->volumeCell[l].visible = 1;	//entire world is visible
+				Grid::actualWorld.OverrideVisibility(1);
 
 			}
 		}

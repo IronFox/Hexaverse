@@ -2050,6 +2050,13 @@ namespace Grid
 
 	#ifdef HAS_WINDOW
 
+		void	WorldData::OverrideVisibility(short v)
+		{
+			foreach (cellStack,stack)
+			for (UINT32 l = 0; l < Grid::CellStack::Range; l++)
+				stack->volumeCell[l].visible = v;
+		}
+
 		float	WorldData::GetAverageLightLevel(const LCellIdI&id) const
 		{
 			#ifdef HYBRID_GRID
