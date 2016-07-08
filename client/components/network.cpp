@@ -321,7 +321,6 @@ namespace Network
 		Grid::Content coreContent = Grid::Content::Reinterpret(config.innerCoreType);
 		Grid::CellStack::bottom.content = coreContent;
 		#ifdef HAS_WINDOW
-			Grid::CellStack::bottom.visible = 1;
 			Grid::UpdateAtmosphere(config.atmosphereColor);
 			Grid::UpdateSun(config.sunPlaneNormal_Speed,config.sunColor);
 		#endif

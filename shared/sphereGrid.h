@@ -260,7 +260,12 @@ namespace Grid
 			#endif
 
 			/**/	CompactCell() :content(Content::Clear), structureCounter(0) {}
-			/**/	CompactCell(Content t) :content(t), structureCounter(0)	{}
+			/**/	CompactCell(Content t, short visibility) :content(t), structureCounter(0)
+			{
+			#ifdef CLIENT
+				visible = visibility;
+			#endif
+			}
 
 
 			#ifdef CLIENT
@@ -351,8 +356,8 @@ namespace Grid
 
 
 			#ifdef HAS_WINDOW
-			/**/	Cell() :CompactCell(Content::Clear), intLightLevel(255), submergence(0) {}
-			/**/	Cell(Content t, BYTE lightLevel) :CompactCell(t), intLightLevel(lightLevel), submergence(0)	{}
+			/**/	Cell() :CompactCell(Content::Clear,0), intLightLevel(255), submergence(0) {}
+			/**/	Cell(Content t, BYTE lightLevel, short visibility) :CompactCell(t,visibility), intLightLevel(lightLevel), submergence(0)	{}
 			#else
 			/**/	Cell() :CompactCell(Content::Clear) {}
 			/**/	Cell(Content t, BYTE /*lightLevel*/) :CompactCell(t)	{}

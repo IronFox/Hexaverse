@@ -329,7 +329,7 @@ namespace Grid
 		}
 	#endif
 
-	/*static*/ CellStack::Cell	CellStack::bottom(CellStack::Cell::Content::Granite, 0), CellStack::top(CellStack::Cell::Content::Clear, 255);	//extremes below the bottom most, and above the top most
+	/*static*/ CellStack::Cell	CellStack::bottom(CellStack::Cell::Content::Granite, 0,1), CellStack::top(CellStack::Cell::Content::Clear, 255,1);	//extremes below the bottom most, and above the top most
 
 
 	const CellStack::Cell&		CellStack::GetCellU(unsigned layer)	const
