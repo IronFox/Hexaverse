@@ -13,7 +13,9 @@ namespace ConfigurationMode
 		Grid::ExtendedPlanetConfig	config, refConfig;
 		UINT32 seed = 0;
 		Random rng;
+		Grid::WorldData serverWorld;
 		bool created = false;
+		bool clientWorldLoaded = false;
 		Objects::PCommandGroup mountainGroup,extendedCoreGroup,liquidGroup;
 		Buffer0<std::pair<int2,Objects::PBaseCommand> > buttons; 
 
@@ -37,12 +39,16 @@ namespace ConfigurationMode
 			if (isActive)
 			{
 				//Grid::actualWorld.FlushAllData();
+				if (!clientWorldLoaded)
+				{
+					clientWorldLoaded = true;
+					serverWorld.swap(Grid::actualWorld);
+				}
 				Grid::actualWorld.BuildWorld(config);
+				Grid::actualWorld.OverrideVisibility(1);
 				Grid::SetAllFamiliesOutdated();	//force rebuild
 				World::allowRecompilation = true;
 			}
-
-
 		}
 
 
@@ -346,7 +352,8 @@ namespace ConfigurationMode
 		using namespace Detail;
 		config = cfg;
 		refConfig = cfg;
-		Update();
+		if (clientWorldLoaded)
+			Update();
 	}
 
 
@@ -377,6 +384,17 @@ namespace ConfigurationMode
 		foreach (buttons,b)
 			b->second->VisitMembers(UI::HexGrid::VisitAddCommand,false,b->first);
 		return true;
+	}
+
+
+	void	RestoreServerWorld()
+	{
+		using namespace Detail;
+		if (!clientWorldLoaded)
+			return;
+		clientWorldLoaded = false;
+		serverWorld.swap(Grid::actualWorld);
+		Grid::SetAllFamiliesOutdated(0);
 	}
 
 

@@ -426,6 +426,7 @@ namespace Network
 			}
 			else
 			{
+				ConfigurationMode::RestoreServerWorld();
 				BYTE family = delta.familyAndLastFlag & 0x7F;
 				bool last = (delta.familyAndLastFlag & 0x80) != 0;
 				Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,false,true);

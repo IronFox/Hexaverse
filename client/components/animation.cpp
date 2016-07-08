@@ -8,7 +8,7 @@
 #ifdef HAS_WINDOW
 	#include "explosions.h"
 #endif
-
+#include "configurationMode.h"
 
 void			SignalMarkerDeletion(TUniqueID markerID);
 void			OnPlayerControlBegin();
@@ -1464,6 +1464,8 @@ namespace Animation
 			return Done;
 			case TerrainChange:
 			{
+				ConfigurationMode::RestoreServerWorld();
+
 				foreach (*worldDelta,block)
 				{
 					BYTE family = block->familyAndLastFlag & 0x7F;

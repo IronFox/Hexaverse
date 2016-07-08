@@ -16,4 +16,11 @@ namespace ConfigurationMode
 	@return True if configuration mode is active, and visual commands were rebuilt, false otherwise.
 	*/
 	bool	ReconfigureVisualCommands();
+
+	/**
+	Assures that the server-received world is currently loaded and not any locally generated planet.
+	Does nothing if this is already the case.
+	Must be called before applying world deltas
+	*/
+	void	RestoreServerWorld();
 }
