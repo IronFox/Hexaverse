@@ -77,7 +77,7 @@ namespace Objects
 		virtual void	VisitMembers(const FCommandVisitor&visitor, bool force, const int2&parentGridCoords) {visitor(parentGridCoords,shared_from_this());}
 		void			VisitMembers(const FCommandVisitor&visitor, bool force) {VisitMembers(visitor,force,coordOffset);}
 
-		void			LoadIcon();
+		virtual void	LoadIcon();
 		void			LoadIcon(const String&name);
 
 
@@ -199,6 +199,20 @@ namespace Objects
 		/**/			IconCommand()	{}
 		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name,exec,check,getCosts)	{LoadIcon();}
 		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check):Super(name,exec,check)	{LoadIcon();}
+	};
+
+	class CustomIconCommand : public IconCommand
+	{
+		typedef	IconCommand	Super;
+		String			imageName;
+	protected:
+		/**/			CustomIconCommand(const String&name, const String&imageName):Super(name),imageName(imageName)	{LoadIcon();}
+
+	public:
+		/**/			CustomIconCommand()	{}
+		/**/			CustomIconCommand(const String&name, const String&imageName, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name,exec,check,getCosts),imageName(imageName)	{LoadIcon();}
+		/**/			CustomIconCommand(const String&name, const String&imageName, const FOnExecute&exec, const FCheck&check):Super(name,exec,check),imageName(imageName)	{LoadIcon();}
+		virtual void	LoadIcon()	override {Super::LoadIcon(imageName);}
 	};
 
 	class CommandContainer

@@ -138,7 +138,7 @@ namespace ConfigurationMode
 
 		void MakeIntButtons(const Objects::PCommandGroup&group, int&value, const int&defValue, int min, int max)
 		{
-			Objects::PBaseCommand reset(new Objects::IconCommand("Undo",[&value,&defValue]()
+			Objects::PBaseCommand reset(new Objects::CustomIconCommand("Reset this setting to server default","Undo",[&value,&defValue]()
 			{
 				value = defValue;
 				Update();
@@ -210,7 +210,7 @@ namespace ConfigurationMode
 		{
 			float min = value / 10.f;
 			float max = value * 10.f;
-			Objects::PBaseCommand reset(new Objects::IconCommand("Undo",[&value,&defValue]()
+			Objects::PBaseCommand reset(new Objects::CustomIconCommand("Reset this setting to server default","Undo",[&value,&defValue]()
 			{
 				value = defValue;
 				Update();
@@ -253,12 +253,12 @@ namespace ConfigurationMode
 
 		void MakeMaterialChoice(const Objects::PCommandGroup&group, BYTE&value, const BYTE&defValue, MaterialDialog&dialog)
 		{
-			Objects::PBaseCommand reset(new Objects::IconCommand("Undo",[&value,defValue]()
+			Objects::PBaseCommand reset(new Objects::CustomIconCommand("Reset this material choice to server default","Undo",[&value,defValue]()
 			{
 				value = defValue;
 				Update();
 			},[](bool){return Objects::BaseCommand::Flags::IsEnabled;}));
-			Objects::PBaseCommand chose(new Objects::IconCommand("Chose Material",[&value,&dialog]()
+			Objects::PBaseCommand choose(new Objects::IconCommand("Choose Material",[&value,&dialog]()
 			{
 				dialog.SetCurrent(value);
 				dialog.onSelect = [&value](BYTE v)
@@ -272,7 +272,7 @@ namespace ConfigurationMode
 			));
 
 			group->Add(reset);
-			group->Add(chose);
+			group->Add(choose);
 		}
 
 		void	Create()
@@ -312,7 +312,7 @@ namespace ConfigurationMode
 						))
 					)
 				<< std::make_pair(int2(1,0),
-						Objects::PBaseCommand(new Objects::IconCommand("Undo",[]()
+						Objects::PBaseCommand(new Objects::CustomIconCommand("Reset to server config","Undo",[]()
 						{
 							config = refConfig;
 							Update();
