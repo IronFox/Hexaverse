@@ -16,7 +16,7 @@ namespace ConfigurationMode
 		Grid::WorldData serverWorld;
 		bool created = false;
 		bool clientWorldLoaded = false;
-		Objects::PCommandGroup mountainGroup,extendedCoreGroup,liquidGroup;
+		Objects::PCommandGroup mountainGroup,extendedCoreGroup,liquidGroup,coreGroup;
 		Buffer0<std::pair<int2,Objects::PBaseCommand> > buttons; 
 
 		class MaterialDialog
@@ -251,7 +251,8 @@ namespace ConfigurationMode
 		}
 
 
-		void MakeMaterialChoice(const Objects::PCommandGroup&group, BYTE&value, const BYTE&defValue, MaterialDialog&dialog)
+		template <typename T=BYTE>
+		void MakeMaterialChoice(const Objects::PCommandGroup&group, T&value, const T&defValue, MaterialDialog&dialog)
 		{
 			Objects::PBaseCommand reset(new Objects::CustomIconCommand("Reset this material choice to server default","Undo",[&value,defValue]()
 			{
@@ -284,15 +285,18 @@ namespace ConfigurationMode
 			noLiquids.Create(false,false);
 			noUnknown.Create(false,true);
 
+			coreGroup.reset(new Objects::CommandGroup("Core"));
+			coreGroup->baseCoords = int2(1);
+			MakeMaterialChoice(coreGroup,config.innerCoreType,refConfig.innerCoreType,noUnknown);
 			mountainGroup = MakeLayer("Mountains",config.mountains,refConfig.mountains);
-			extendedCoreGroup = MakeLayer("ExtendedCore",config.extendedCore,refConfig.extendedCore);
+			extendedCoreGroup = MakeLayer("Extended Core",config.extendedCore,refConfig.extendedCore);
 			MakeMaterialChoice(extendedCoreGroup->AddChild("Type"),config.extendedCoreType,refConfig.extendedCoreType, noUnknown);
 			MakeMaterialChoice(mountainGroup->AddChild("Type"),config.innerType,refConfig.innerType, fullScope);
-			MakeMaterialChoice(mountainGroup->AddChild("Top Type"),config.topType,config.topType, fullScope);
+			MakeMaterialChoice(mountainGroup->AddChild("Top Type"),config.topType,refConfig.topType, fullScope);
 			MakeIntButtons(mountainGroup->AddChild("Snow Height"),config.snowHeight,refConfig.snowHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight);
 
 			{
-				liquidGroup.reset(new Objects::CommandGroup("Liquid"));
+				liquidGroup.reset(new Objects::CommandGroup("Oceans"));
 				liquidGroup->baseCoords = int2(1);
 				MakeMaterialChoice(liquidGroup->AddChild("Type"),config.liquidCoverage,refConfig.liquidCoverage,noUnknown);
 				MakeIntButtons(liquidGroup->AddChild("Level"),config.liquidHeight,refConfig.liquidHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight);
@@ -330,7 +334,8 @@ namespace ConfigurationMode
 					)
 				<< std::make_pair(int2(3,0),mountainGroup)
 				<< std::make_pair(int2(4,0),extendedCoreGroup)
-				<< std::make_pair(int2(5,0),liquidGroup)
+				<< std::make_pair(int2(5,0),coreGroup)
+				<< std::make_pair(int2(6,0),liquidGroup)
 			;
 		}
 
