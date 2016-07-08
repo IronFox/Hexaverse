@@ -509,6 +509,18 @@ namespace Objects
 		Add(coords, relativeCoords, rs );
 		return rs;
 	}
+	PCommandGroup	CommandContainer::AddChild(const String&name, const String&iconName)
+	{
+		PCommandGroup rs (new CustomIcon<CommandGroup>(name,iconName));
+		Add(rs );
+		return rs;
+	}
+	PCommandGroup	CommandContainer::AddChild(const int2&coords, bool relativeCoords, const String&name, const String&iconName)
+	{
+		PCommandGroup rs (new CustomIcon<CommandGroup>(name,iconName));
+		Add(coords, relativeCoords, rs );
+		return rs;
+	}
 
 	index_t					CommandContainer::Find(const PBaseCommand&cmd) const
 	{

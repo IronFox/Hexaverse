@@ -193,7 +193,7 @@ namespace Objects
 	{
 		typedef	CallbackCommand	Super;
 	protected:
-		/**/			IconCommand(const String&name):Super(name)	{LoadIcon();}
+		/**/			IconCommand(const String&name):Super(name)	{/*LoadIcon();*/}
 
 	public:
 		/**/			IconCommand()	{}
@@ -201,18 +201,37 @@ namespace Objects
 		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check):Super(name,exec,check)	{LoadIcon();}
 	};
 
-	class CustomIconCommand : public IconCommand
+
+	template <typename Base>
+		class CustomIcon : public Base
+		{
+			typedef	Base	Super;
+			String		imageName;
+		public:
+			/**/		CustomIcon(const String&name, const String&imageName):Super(name),imageName(imageName)	{LoadIcon();}
+			/**/		CustomIcon() {}
+			virtual void	LoadIcon()	override {Super::LoadIcon(imageName);}
+		};
+
+	class CustomIconCommand : public CustomIcon<IconCommand>
 	{
-		typedef	IconCommand	Super;
-		String			imageName;
+		typedef	CustomIcon<IconCommand>	Super;
 	protected:
-		/**/			CustomIconCommand(const String&name, const String&imageName):Super(name),imageName(imageName)	{LoadIcon();}
+		/**/			CustomIconCommand(const String&name, const String&imageName):Super(name,imageName)	{}
 
 	public:
 		/**/			CustomIconCommand()	{}
-		/**/			CustomIconCommand(const String&name, const String&imageName, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name,exec,check,getCosts),imageName(imageName)	{LoadIcon();}
-		/**/			CustomIconCommand(const String&name, const String&imageName, const FOnExecute&exec, const FCheck&check):Super(name,exec,check),imageName(imageName)	{LoadIcon();}
-		virtual void	LoadIcon()	override {Super::LoadIcon(imageName);}
+		/**/			CustomIconCommand(const String&name, const String&imageName, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name,imageName)
+						{
+							this->execute = exec;
+							this->check = check;
+							this->getCosts = getCosts;
+						}
+		/**/			CustomIconCommand(const String&name, const String&imageName, const FOnExecute&exec, const FCheck&check):Super(name,imageName)
+						{
+							this->execute = exec;
+							this->check = check;
+						}
 	};
 
 	class CommandContainer
@@ -228,6 +247,8 @@ namespace Objects
 
 		PCommandGroup	AddChild(const String&name);
 		PCommandGroup	AddChild(const int2&coords, bool relativeCoords, const String&name);
+		PCommandGroup	AddChild(const String&name, const String&iconName);
+		PCommandGroup	AddChild(const int2&coords, bool relativeCoords, const String&name, const String&iconName);
 
 		void			VisitMembers(const FCommandVisitor&visitor, bool force)	const
 		{
@@ -313,6 +334,8 @@ namespace Objects
 			activeGroupPath.Clear();
 		}
 	};
+
+	
 
 
 
