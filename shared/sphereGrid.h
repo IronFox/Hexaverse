@@ -2167,7 +2167,13 @@ namespace Grid
 
 		/**/					WorldData();
 
-		
+		void					swap(WorldData&other)
+		{
+			cellStack.swap(other.cellStack);
+			#ifdef HAS_WINDOW
+				swp(lightingOutdated,other.lightingOutdated);
+			#endif
+		}
 		/**
 		Checks if the specified low-resolution cell is not at all covered (not even partially)
 		*/
