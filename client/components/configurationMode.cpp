@@ -290,15 +290,15 @@ namespace ConfigurationMode
 			MakeMaterialChoice(coreGroup,config.innerCoreType,refConfig.innerCoreType,noUnknown);
 			mountainGroup = MakeLayer("Mountains",config.mountains,refConfig.mountains);
 			extendedCoreGroup = MakeLayer("Extended Core",config.extendedCore,refConfig.extendedCore);
-			MakeMaterialChoice(extendedCoreGroup->AddChild("Type"),config.extendedCoreType,refConfig.extendedCoreType, noUnknown);
-			MakeMaterialChoice(mountainGroup->AddChild("Type"),config.innerType,refConfig.innerType, fullScope);
+			MakeMaterialChoice(extendedCoreGroup->AddChild("Type","Choose Material"),config.extendedCoreType,refConfig.extendedCoreType, noUnknown);
+			MakeMaterialChoice(mountainGroup->AddChild("Type","Choose Material"),config.innerType,refConfig.innerType, fullScope);
 			MakeMaterialChoice(mountainGroup->AddChild("Top Type"),config.topType,refConfig.topType, fullScope);
 			MakeIntButtons(mountainGroup->AddChild("Snow Height"),config.snowHeight,refConfig.snowHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight);
 
 			{
 				liquidGroup.reset(new Objects::CommandGroup("Oceans"));
 				liquidGroup->baseCoords = int2(1);
-				MakeMaterialChoice(liquidGroup->AddChild("Type"),config.liquidCoverage,refConfig.liquidCoverage,noUnknown);
+				MakeMaterialChoice(liquidGroup->AddChild("Type","Choose Material"),config.liquidCoverage,refConfig.liquidCoverage,noUnknown);
 				MakeIntButtons(liquidGroup->AddChild("Level"),config.liquidHeight,refConfig.liquidHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight);
 				MakeMaterialChoice(liquidGroup->AddChild("Outline"),config.liquidOutline,refConfig.liquidOutline,noLiquids);
 			}
