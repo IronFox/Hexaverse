@@ -33,8 +33,7 @@ namespace ConfigurationMode
 
 		void Update()
 		{
-			Random random(seed);
-			config.RandomizeSeeds(random);
+			config.SetSeed(seed);
 
 			if (isActive)
 			{
@@ -355,6 +354,7 @@ namespace ConfigurationMode
 	void	Update(const Grid::ExtendedPlanetConfig&cfg)
 	{
 		using namespace Detail;
+		seed = cfg.lastSeed;
 		config = cfg;
 		refConfig = cfg;
 		if (clientWorldLoaded)

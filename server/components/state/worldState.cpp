@@ -355,6 +355,12 @@ namespace World
 		}
 	}
 
+	void			BuildConfiguredWorld(UINT32 seed)
+	{
+		Random random(seed);
+		BuildConfiguredWorld(random);
+	}
+
 
 
 

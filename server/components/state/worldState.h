@@ -21,7 +21,8 @@ namespace World
 	Redefines the grid world based on the current reflection configuration, using the specified random variable to define seeds.
 	Any existing session will be closed, all factions terminated before commencing.
 	*/
-	void			BuildConfiguredWorld(Random&random);
+	void			BuildConfiguredWorld(UINT32 seed);
+	void			BuildConfiguredWorld(Random&rnd);
 
 
 

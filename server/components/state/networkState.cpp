@@ -67,7 +67,7 @@ namespace Network
 
 		static Random random;
 
-		World::BuildConfiguredWorld(ConfigurationMode::IsActive() ? ConfigurationMode::GetPlanetRandomVariable() :  random);
+		World::BuildConfiguredWorld(ConfigurationMode::IsActive() ? ConfigurationMode::GetPlanetSeed() :  random.getSeed());
 		if (started)
 			Network::RestartSession();
 		else

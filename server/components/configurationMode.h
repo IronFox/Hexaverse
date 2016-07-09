@@ -7,5 +7,6 @@ namespace ConfigurationMode
 	void	Begin();
 	void	End();
 	bool	IsActive();
-	Random&	GetPlanetRandomVariable();
+	UINT	GetPlanetSeed();
+	void	SetPlanetSeed(UINT32 seed);
 }

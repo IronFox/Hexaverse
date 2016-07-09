@@ -840,7 +840,8 @@ namespace Receiver
 	{
 		if (ConfigurationMode::IsActive())
 		{
-			LogEvent(EventClass::Preset::configurationPrint,peer,"Received planet configuration. Rebuilding...");
+			LogEvent(EventClass::Preset::configurationPrint,peer,"Received planet configuration (seed="+String(cfg.lastSeed)+"). Rebuilding...");
+			ConfigurationMode::SetPlanetSeed(cfg.lastSeed);
 			Grid::currentPlanetConfig = cfg;
 			Network::BuildConfiguredWorld();
 		}
