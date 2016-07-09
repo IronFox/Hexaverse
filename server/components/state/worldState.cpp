@@ -327,7 +327,6 @@ namespace World
 	void			BuildConfiguredWorld(Random&random)
 	{
 		Grid::currentPlanetConfig.RandomizeSeeds(random);
-		Grid::currentPlanetConfig.RandomizeSun(random);
 		Grid::actualWorld.BuildWorld(Grid::currentPlanetConfig);
 		Grid::actualWorld.ExportDiscovered(Grid::initialWorld, Config::worldDiscovery);
 		Grid::Resource::FillAll(random);

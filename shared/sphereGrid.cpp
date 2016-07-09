@@ -1476,6 +1476,32 @@ namespace Grid
 		//terrainColor.Clear();
 	}
 
+	bool	ExtendedPlanetConfig::ApplySeed()
+	{
+		LogEvent(EventSignificance::Uncommon,"seed: "+String(lastSeed));
+		Random random(lastSeed);
+		extendedCore.Randomize(random);
+		mountains.Randomize(random);
+		RandomizeSun(random);
+		return true;
+	}
+
+	void	ExtendedPlanetConfig::SetSeed(UINT32 seed)
+	{
+		lastSeed = seed;
+		LogEvent(EventSignificance::Uncommon,"seed set "+String(lastSeed));
+		ApplySeed();
+	}
+
+	void	ExtendedPlanetConfig::RandomizeSeeds(Random&random)
+	{
+		lastSeed = random.currentSeed();
+		LogEvent(EventSignificance::Uncommon,"seed randomized "+String(lastSeed));
+		extendedCore.Randomize(random);
+		mountains.Randomize(random);
+		RandomizeSun(random);
+	}
+
 	float	RandomHeight(const TVec3<>&center0, const ExtendedPlanetConfig::TSeedSet&config)
 	{
 		//center *= 3.f;

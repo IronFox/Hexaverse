@@ -2369,6 +2369,23 @@ namespace Grid
 
 	class ExtendedPlanetConfig : public TSharedPlanetConfig, public SerializableObject
 	{
+		void	RandomizeSun(Random&random)
+		{
+			sunColor = float4(1);
+			//float4(random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),1);
+
+			Vec::stretch(sunColor.rgb,atmosphereColor.rgb,atmosphereColor.rgb);
+			//sunColor.rgb = atmosphereColor.rgb;
+
+
+			sunPlaneNormal_Speed = float4(
+					random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1),
+					0.07f
+					//random.getFloat(-0.2,0.2)
+				);
+			Vec::normalize0(sunPlaneNormal_Speed.xyz);
+
+		}
 	public:
 
 
@@ -2429,10 +2446,11 @@ namespace Grid
 					liquidOutline = Content::Sand;
 		INT32		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable
 					liquidHeight = 0;
+		UINT32		lastSeed = 0;
 
 		virtual serial_size_t GetSerialSize(bool) const override
 		{
-			return sizeof(TSharedPlanetConfig) + sizeof(TLayerConfig)*2 + 5 + 8;	//do not serialize seeds
+			return sizeof(TSharedPlanetConfig) + sizeof(TLayerConfig)*2 + 5 + 8 + 4;
 		}
 
 		virtual bool HasFixedSize() const override
@@ -2452,6 +2470,7 @@ namespace Grid
 					&&	outStream.WritePrimitive(liquidOutline)
 					&&	outStream.WritePrimitive(snowHeight)
 					&&	outStream.WritePrimitive(liquidHeight)
+					&&	outStream.WritePrimitive(lastSeed)
 					;
 		}
 
@@ -2467,33 +2486,28 @@ namespace Grid
 					&&	inStream.ReadPrimitive(liquidOutline)
 					&&	inStream.ReadPrimitive(snowHeight)
 					&&	inStream.ReadPrimitive(liquidHeight)
+					&&	inStream.ReadPrimitive(lastSeed)
+					&&	ApplySeed()
 					;
 		}
-
-
-		void	RandomizeSeeds(Random&random)
-		{
-				extendedCore.Randomize(random);
-				mountains.Randomize(random);
-		}
-
-		void	RandomizeSun(Random&random)
-		{
-			sunColor = float4(1);
-			//float4(random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),1);
-
-			Vec::stretch(sunColor.rgb,atmosphereColor.rgb,atmosphereColor.rgb);
-			//sunColor.rgb = atmosphereColor.rgb;
-
-
-			sunPlaneNormal_Speed = float4(
-					random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1),
-					0.07f
-					//random.getFloat(-0.2,0.2)
-				);
-			Vec::normalize0(sunPlaneNormal_Speed.xyz);
-
-		}
+		
+		/**
+		Reapplies @a lastSeed, and fills random parameters.
+		As long as @a lastSeed is not modified, the resulting values will not either
+		*/
+		bool	ApplySeed();
+		/**
+		Updates @a lastSeed to the given parameter, and fills random parameters.
+		If @a lastSeed does not actually change, the resulting values will not either
+		*/
+		void	SetSeed(UINT32 seed);
+		/**
+		Copies the current seed of @a random to @a lastSeed, and fill random parameters using the specified
+		random variable.
+		Contrary to SetSeed(random.currentSeed()), @a random will actually be advanced by the operation.
+		Using a random variable with current seed equal to @a lastSeed will produce identical results
+		*/
+		void	RandomizeSeeds(Random&random);
 
 		void	GenerateAtmosphereColorForType(BYTE t)
 		{
