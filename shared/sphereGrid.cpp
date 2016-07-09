@@ -207,17 +207,19 @@ namespace Grid
 			{
 				//sumBrightnessTo += 1.f;
 				outContent = Content::Clear;
-				sumVisibilityTo += 1.f;
+				sumVisibilityTo ++;
 				return TWeightedColor();
 			}
+			const Cell&upper = this->volumeCell[layer];
+
 			if (!layer)
 			{
-				sumBrightnessTo += this->volumeCell[layer].GetLightLevel();
+				sumBrightnessTo += upper.GetLightLevel();
+				sumVisibilityTo += upper.visible > 0;
 				outContent = Content::Clear;
 				return TWeightedColor();
 			}
-			const Cell&cell = this->volumeCell[layer - 1],
-				&upper = this->volumeCell[layer];
+			const Cell&cell = this->volumeCell[layer - 1];
 			float light = upper.GetLightLevel();
 			sumVisibilityTo += (cell.visible > 0);
 			if (!cell.IsOpaque() || upper.IsOpaque())
