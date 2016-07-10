@@ -1204,7 +1204,7 @@
 								}
 							}
 							else
-								if (cmd.state & Objects::BaseCommand::Flags::IsFlashing)
+								if (cmd.state & (Objects::BaseCommand::Flags::IsFlashing | Objects::BaseCommand::Flags::SoftFlashing))
 								{
 									code.r = (cmd.state & Objects::BaseCommand::Flags::SoftFlashing) ? softFlashOpacity : flashOpacity;
 								}
