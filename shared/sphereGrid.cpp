@@ -1480,7 +1480,7 @@ namespace Grid
 
 	bool	ExtendedPlanetConfig::ApplySeed()
 	{
-		LogEvent(EventSignificance::Uncommon,"seed: "+String(lastSeed));
+		//LogEvent(EventSignificance::Uncommon,"seed: "+String(lastSeed));
 		Random random(lastSeed);
 		extendedCore.Randomize(random);
 		mountains.Randomize(random);
@@ -1491,14 +1491,14 @@ namespace Grid
 	void	ExtendedPlanetConfig::SetSeed(UINT32 seed)
 	{
 		lastSeed = seed;
-		LogEvent(EventSignificance::Uncommon,"seed set "+String(lastSeed));
+		//LogEvent(EventSignificance::Uncommon,"seed set "+String(lastSeed));
 		ApplySeed();
 	}
 
 	void	ExtendedPlanetConfig::RandomizeSeeds(Random&random)
 	{
 		lastSeed = random.currentSeed();
-		LogEvent(EventSignificance::Uncommon,"seed randomized "+String(lastSeed));
+		//LogEvent(EventSignificance::Uncommon,"seed randomized "+String(lastSeed));
 		extendedCore.Randomize(random);
 		mountains.Randomize(random);
 		RandomizeSun(random);
