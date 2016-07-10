@@ -66,6 +66,7 @@ namespace Objects
 	);
 
 	class Compound;
+	class Marker;
 	struct TrajectoryEndPoint;
 
 	DECLARE_POINTER_CLASS(CommandGroup)
