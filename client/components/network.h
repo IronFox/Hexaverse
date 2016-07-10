@@ -224,6 +224,7 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>				sleep;
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
+		extern TCP::ObjectSender<NET(UINT32),Protocol::ChannelID::GameFlags>							gameFlags;
 
 		
 	}

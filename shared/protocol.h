@@ -1923,6 +1923,7 @@ namespace Protocol
 			ChatMessage,		// c2s: NetString<256>
 
 			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
+			GameFlags,			// c2s: UINT32
 		};
 	}
 

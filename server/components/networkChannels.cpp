@@ -42,6 +42,7 @@ namespace Channels
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>							identifyUserRecv(Receiver::IdentifyUser);
 	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
 	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
+	TCP::Channel<NET(UINT32), Configurator, Protocol::ChannelID::GameFlags>								gameFlags(Receiver::GameFlags);
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
@@ -850,6 +851,29 @@ namespace Receiver
 
 	}
 
+	void	GameFlags(NET(UINT32)&flags, TCP::Peer&peer)
+	{
+		if (ConfigurationMode::IsActive())
+		{
+			LogEvent(EventClass::Preset::configurationPrint,peer,"Received game flags (="+String(flags)+"). Updating...");
+			Game::Config::basesRequired = !!(flags & Protocol::GameFlag::BasesRequired);
+			Game::Config::closedGame = !!(flags & Protocol::GameFlag::ClosedGame);
+			Game::Config::startBases = !!(flags & Protocol::GameFlag::StartBases);
+			Game::Config::Nexus::enableAI = !!(flags & Protocol::GameFlag::NexusAI);
+			RuntimeConfig::empZones = !!(flags & Protocol::GameFlag::EMPZones);
+			if (RuntimeConfig::empZones)
+				World::SetUnlockedEMPZones(1);
+			else
+			{
+				Grid::empZonesUnlocked = 0xffff;
+				Grid::empZonesLocked = 0x0;
+				Channels::lockEmpZones.SendTo(::Network::server,Grid::empZonesLocked,2);
+			}
+		}
+		else
+			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
+
+	}
 
 	
 	void	ChangeMyName(Protocol::ClientName&name, TCP::Peer&peer)
