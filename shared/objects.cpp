@@ -771,14 +771,16 @@ namespace Objects
 
 	#endif
 
-	void			FlushAllData()
+	void			FlushAllData(bool preserveGameState)
 	{
 		LogEvent(EventClass::Preset::uncommon,"Flushing scene data");
 
 		#ifdef CLIENT	//temporary. once i figured out good values the limit will be restored from file and clearing is valid for server too
-			RuntimeConfig::UnitLimits::Reset();
+			if (!preserveGameState)
+				RuntimeConfig::UnitLimits::Reset();
 		#endif
-		RuntimeConfig::hibernationSystemEnabled = false;
+		if (!preserveGameState)
+			RuntimeConfig::hibernationSystemEnabled = false;
 
 		storedMobileEntities.Clear();
 		#ifndef NO_SATELLITES
@@ -802,8 +804,11 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				Renderer::Flush();
 				Deselect(false);
-				resourceView = true;
-				objectView = true;
+				if (!preserveGameState)
+				{
+					resourceView = true;
+					objectView = true;
+				}
 				hasArrowCellTarget = false;
 				showArrow = false;
 				arrowFrom = float3();
