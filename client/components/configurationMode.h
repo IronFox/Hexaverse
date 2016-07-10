@@ -23,4 +23,5 @@ namespace ConfigurationMode
 	Must be called before applying world deltas
 	*/
 	void	RestoreServerWorld();
+	void	RestoreServerObjects();
 }

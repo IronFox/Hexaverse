@@ -444,6 +444,7 @@ namespace Network
 		void OnMobileState(Protocol::MobileState&vs)
 		{
 			ASSERT__(!eventsLocked);
+			ConfigurationMode::RestoreServerObjects();
 
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
@@ -484,6 +485,7 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			ASSERT__(Network::haveID || Network::amSpectator);
+			ConfigurationMode::RestoreServerObjects();
 
 
 			Objects::PMobileEntity v;
@@ -521,6 +523,7 @@ namespace Network
 		void	OnNewStructure(Protocol::StructureConstruction&sc)
 		{
 			ASSERT__(!eventsLocked);
+			ConfigurationMode::RestoreServerObjects();
 
 			#ifdef HAS_WINDOW
 				if (Grid::actualWorld.lightingOutdated && World::allowRecompilation)
@@ -548,6 +551,7 @@ namespace Network
 		void OnStructureState(Protocol::StructureState&vs)
 		{
 			ASSERT__(!eventsLocked);
+			ConfigurationMode::RestoreServerObjects();
 
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
@@ -574,6 +578,7 @@ namespace Network
 		void DestroyEntity(Protocol::DestroyEntity&de)
 		{
 			ASSERT__(!eventsLocked);
+			ConfigurationMode::RestoreServerObjects();
 
 			if (de.timestamp.rightNow && Animation::AllDone())
 			{

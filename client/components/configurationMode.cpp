@@ -4,11 +4,13 @@
 #include "ui.h"
 #include <objects/visualCommands.h>
 #include "network.h"
+#include "objectStorage.h"
 
 namespace ConfigurationMode
 {
 	namespace Detail
 	{
+		Objects::Storage serverObjects;
 		bool isActive = false;
 		Grid::ExtendedPlanetConfig	config, refConfig;
 		UINT32 seed = 0;
@@ -51,6 +53,8 @@ namespace ConfigurationMode
 					clientWorldLoaded = true;
 					serverWorld.swap(Grid::actualWorld);
 				}
+				if (serverObjects.IsEmpty())
+					serverObjects.Import();
 				clientWorldBuilt = true;
 				Grid::actualWorld.BuildWorld(config);
 				Grid::actualWorld.OverrideVisibility(1);
@@ -362,13 +366,19 @@ namespace ConfigurationMode
 						Objects::PBaseCommand(new Objects::CustomIconCommand("View server version","View Server Version",[]()
 						{
 							if (clientWorldLoaded)
+							{
 								RestoreServerWorld();
+								RestoreServerObjects();
+							}
 							else
 							{
 								if (!clientWorldBuilt)
 									Update();
 								else
+								{
 									SwapWorlds();
+									serverObjects.Import();
+								}
 								clientWorldLoaded = true;
 							}
 							//Update();
@@ -458,6 +468,12 @@ namespace ConfigurationMode
 		clientWorldLoaded = false; 
 		flashUploadButton = false;
 		SwapWorlds();
+	}
+	void	RestoreServerObjects()
+	{
+		using namespace Detail;
+		if (serverObjects.IsNotEmpty())
+			serverObjects.Export();
 	}
 
 
