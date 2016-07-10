@@ -168,9 +168,9 @@ namespace ConfigurationMode
 			clientWorldLoaded = true;
 		}
 
-		void AppendRuleButton(const Objects::PCommandGroup&grp,const String&niceName, const String&configName, UINT32 flag, const std::function<void(bool)>&onChange)
+		void AppendRuleButton(const Objects::PCommandGroup&grp,const String&niceName, const String&iconName,const String&configName, UINT32 flag, const std::function<void(bool)>&onChange)
 		{
-			Objects::PBaseCommand cmd(new Objects::IconCommand(niceName,[flag,onChange]()
+			Objects::PBaseCommand cmd(new Objects::CustomIconCommand(niceName,iconName,[flag,onChange]()
 			{
 				if (gameFlags & flag)
 				{
@@ -201,7 +201,7 @@ namespace ConfigurationMode
 
 		void AppendRuleButton(const Objects::PCommandGroup&grp,const String&niceName, const String&configName, UINT32 flag)
 		{
-			AppendRuleButton(grp,niceName,configName,flag,[](bool){});
+			AppendRuleButton(grp,niceName,niceName,configName,flag,[](bool){});
 		}
 			
 
@@ -371,9 +371,9 @@ namespace ConfigurationMode
 
 			AppendRuleButton(ruleGroup,"Closed Game","closedGame",Protocol::GameFlag::ClosedGame);
 			AppendRuleButton(ruleGroup,"Bases Required","basedRequired",Protocol::GameFlag::BasesRequired);
-			AppendRuleButton(ruleGroup,"StartBases","startBases",Protocol::GameFlag::StartBases);
+			AppendRuleButton(ruleGroup,"Start-Bases","startBases",Protocol::GameFlag::StartBases);
 			AppendRuleButton(ruleGroup,"Enable Nexus AI", "Nexus/enableAI",Protocol::GameFlag::NexusAI);
-			AppendRuleButton(ruleGroup,"EMP Zones", "empZones",Protocol::GameFlag::EMPZones,[](bool set)
+			AppendRuleButton(ruleGroup,"EMP Zones", "Energy","empZones",Protocol::GameFlag::EMPZones,[](bool set)
 			{
 				if (set)
 				{
