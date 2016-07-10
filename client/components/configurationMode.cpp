@@ -13,13 +13,13 @@ namespace ConfigurationMode
 		Objects::Storage serverObjects;
 		bool isActive = false;
 		Grid::ExtendedPlanetConfig	config, refConfig;
-		UINT32 seed = 0;
+		UINT32 seed = 0,gameFlags=0;
 		Random rng;
 		Grid::WorldData serverWorld;
 		bool created = false,
 				flashUploadButton = false;
 		bool clientWorldLoaded = false, clientWorldBuilt = false;
-		Objects::PCommandGroup mountainGroup,extendedCoreGroup,liquidGroup,coreGroup;
+		Objects::PCommandGroup mountainGroup,extendedCoreGroup,liquidGroup,coreGroup,ruleGroup;
 		Buffer0<std::pair<int2,Objects::PBaseCommand> > buttons; 
 
 		class MaterialDialog
@@ -147,7 +147,63 @@ namespace ConfigurationMode
 		};
 
 		*/
+		void	SwapWorlds()
+		{
+			serverWorld.swap(Grid::actualWorld);
+			Grid::SetAllFamiliesOutdated(0);
+			RefreshButtonStates();
+		}
 
+		void	LoadClientWorld()
+		{
+			if (clientWorldLoaded)
+				return;
+			if (!clientWorldBuilt)
+				Update();
+			else
+			{
+				SwapWorlds();
+				serverObjects.Import();
+			}
+			clientWorldLoaded = true;
+		}
+
+		void AppendRuleButton(const Objects::PCommandGroup&grp,const String&niceName, const String&configName, UINT32 flag, const std::function<void(bool)>&onChange)
+		{
+			Objects::PBaseCommand cmd(new Objects::IconCommand(niceName,[flag,onChange]()
+			{
+				if (gameFlags & flag)
+				{
+					gameFlags &= ~flag;
+					onChange(false);
+				}
+				else
+				{
+					gameFlags |= flag;
+					onChange(true);
+				}
+				Network::Channels::gameFlags.SendTo(Network::client,gameFlags);
+				LoadClientWorld();
+			},
+			[flag](bool)->Objects::BaseCommand::Flags
+			{
+				typedef Objects::BaseCommand::Flags F;
+
+				F result = F::IsEnabled;
+				
+				if (gameFlags & flag)
+					result |= F::IsPermaActive;
+				return result;
+			}));
+			grp->Add(cmd);
+			onChange(!!(gameFlags&flag));
+		}
+
+		void AppendRuleButton(const Objects::PCommandGroup&grp,const String&niceName, const String&configName, UINT32 flag)
+		{
+			AppendRuleButton(grp,niceName,configName,flag,[](bool){});
+		}
+			
 
 		void MakeIntButtons(const Objects::PCommandGroup&group, int&value, const int&defValue, int min, int max)
 		{
@@ -289,12 +345,7 @@ namespace ConfigurationMode
 			group->Add(choose);
 		}
 
-		void	SwapWorlds()
-		{
-			serverWorld.swap(Grid::actualWorld);
-			Grid::SetAllFamiliesOutdated(0);
-			RefreshButtonStates();
-		}
+
 
 		void	Create()
 		{
@@ -307,6 +358,38 @@ namespace ConfigurationMode
 
 			coreGroup.reset(new Objects::CommandGroup("Core"));
 			coreGroup->baseCoords = int2(1);
+			ruleGroup.reset(new Objects::CommandGroup("Rules"));
+			ruleGroup->baseCoords = int2(1);
+			/*			ClosedGame = 0x1,
+			BasesRequired = 0x2,
+			StartBases = 0x4,
+			NexusAI = 0x8,
+			EMPZones = 0x10,
+			ConfigurationMode = 0x20,
+
+			*/
+
+			AppendRuleButton(ruleGroup,"Closed Game","closedGame",Protocol::GameFlag::ClosedGame);
+			AppendRuleButton(ruleGroup,"Bases Required","basedRequired",Protocol::GameFlag::BasesRequired);
+			AppendRuleButton(ruleGroup,"StartBases","startBases",Protocol::GameFlag::StartBases);
+			AppendRuleButton(ruleGroup,"Enable Nexus AI", "Nexus/enableAI",Protocol::GameFlag::NexusAI);
+			AppendRuleButton(ruleGroup,"EMP Zones", "empZones",Protocol::GameFlag::EMPZones,[](bool set)
+			{
+				if (set)
+				{
+					Grid::empZonesUnlocked = 0x1;
+					Grid::empZonesLocked = ~0x1;
+				}
+				else
+				{
+					Grid::empZonesUnlocked = 0xffff;
+					Grid::empZonesLocked = 0x0;
+				}
+				Grid::SetAllFamiliesOutdated(0);
+			});
+
+
+
 			MakeMaterialChoice(coreGroup,config.innerCoreType,refConfig.innerCoreType,noUnknown);
 			mountainGroup = MakeLayer("Mountains",config.mountains,refConfig.mountains);
 			extendedCoreGroup = MakeLayer("Extended Core",config.extendedCore,refConfig.extendedCore);
@@ -326,18 +409,12 @@ namespace ConfigurationMode
 
 			int at = 0;
 			buttons << std::make_pair(int2(at++,0),
-						Objects::PBaseCommand(new Objects::CustomIconCommand("Finish","Commit",[]()
+						Objects::PBaseCommand(new Objects::CustomIconCommand("Accept current server planet and config, and finish","Commit",[]()
 						{
-							if (clientWorldLoaded)
-							{
-								flashUploadButton = true;
-								RefreshButtonStates();
-								Dialog::ShowMessage("Please rebuild server planet first");
-							}
 
 							//Update();
 						},
-						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
+						[](bool){return clientWorldLoaded ? Objects::BaseCommand::Flags::None : Objects::BaseCommand::Flags::IsEnabled;}
 						))
 					);
 			buttons << std::make_pair(int2(at++,0),
@@ -372,14 +449,7 @@ namespace ConfigurationMode
 							}
 							else
 							{
-								if (!clientWorldBuilt)
-									Update();
-								else
-								{
-									SwapWorlds();
-									serverObjects.Import();
-								}
-								clientWorldLoaded = true;
+								LoadClientWorld();
 							}
 							//Update();
 						},
@@ -400,6 +470,7 @@ namespace ConfigurationMode
 			buttons	<< std::make_pair(int2(at++,0),extendedCoreGroup);
 			buttons	<< std::make_pair(int2(at++,0),coreGroup);
 			buttons	<< std::make_pair(int2(at++,0),liquidGroup);
+			buttons	<< std::make_pair(int2(at++,0),ruleGroup);
 			;
 		}
 
@@ -424,6 +495,11 @@ namespace ConfigurationMode
 		refConfig = cfg;
 		if (clientWorldLoaded)
 			Update();
+	}
+
+	void	SetGameFlags(UINT32 gameFlags)
+	{
+		Detail::gameFlags = gameFlags;
 	}
 
 

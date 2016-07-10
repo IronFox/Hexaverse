@@ -29,6 +29,8 @@ void ConfigurationMode::Begin()
 	Game::Config::factionSupportFlags = Protocol::GameFlag::SupportSpectatorFactions;
 	planetSeed = Random().getSeed();
 	LogEvent(EventSignificance::Important,"Starting configuration mode");
+	Network::BuildConfiguredWorld();
+
 	//Network::RestartSession();
 }
 

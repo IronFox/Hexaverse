@@ -6,6 +6,7 @@ namespace ConfigurationMode
 {
 	void	Update(const Grid::ExtendedPlanetConfig&);
 	void	SetActive(bool);
+	void	SetGameFlags(UINT32);
 	bool	IsActive();
 	void	RandomizeSeed();
 
