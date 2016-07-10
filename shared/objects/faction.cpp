@@ -1024,6 +1024,10 @@ namespace Objects
 		#endif
 		for (const PMobileEntity&e : storedMobileEntities)
 			func(e);
+		#ifdef CLIENT
+			for (const PMobileEntity&e : Marker::mobileGhosts)
+				func(e);
+		#endif
 	}
 
 

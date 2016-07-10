@@ -406,7 +406,7 @@ namespace Objects
 	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func);
 
 	/**
-	Iterates through all mobile entities that are located in the world or in storage.
+	Iterates through all mobile entities that are located in the world or in storage, including markers (markers on client only).
 	Note that this function is usually overkill since most loops can easily know whether they target ground
 	units or orbital units
 	*/
