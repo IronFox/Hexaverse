@@ -14,8 +14,9 @@ namespace ConfigurationMode
 		UINT32 seed = 0;
 		Random rng;
 		Grid::WorldData serverWorld;
-		bool created = false;
-		bool clientWorldLoaded = false;
+		bool created = false,
+				flashUploadButton = false;
+		bool clientWorldLoaded = false, clientWorldBuilt = false;
 		Objects::PCommandGroup mountainGroup,extendedCoreGroup,liquidGroup,coreGroup;
 		Buffer0<std::pair<int2,Objects::PBaseCommand> > buttons; 
 
@@ -31,6 +32,13 @@ namespace ConfigurationMode
 
 		MaterialDialog		fullScope, noUnknown, noLiquids;
 
+
+		void RefreshButtonStates()
+		{
+			foreach (buttons,b)
+				b->second->Refresh(true);
+		}
+
 		void Update()
 		{
 			config.SetSeed(seed);
@@ -43,10 +51,12 @@ namespace ConfigurationMode
 					clientWorldLoaded = true;
 					serverWorld.swap(Grid::actualWorld);
 				}
+				clientWorldBuilt = true;
 				Grid::actualWorld.BuildWorld(config);
 				Grid::actualWorld.OverrideVisibility(1);
 				Grid::SetAllFamiliesOutdated();	//force rebuild
 				World::allowRecompilation = true;
+				RefreshButtonStates();
 			}
 		}
 
@@ -275,6 +285,13 @@ namespace ConfigurationMode
 			group->Add(choose);
 		}
 
+		void	SwapWorlds()
+		{
+			serverWorld.swap(Grid::actualWorld);
+			Grid::SetAllFamiliesOutdated(0);
+			RefreshButtonStates();
+		}
+
 		void	Create()
 		{
 			if (created)
@@ -303,38 +320,76 @@ namespace ConfigurationMode
 			}
 
 
-			buttons 
-				<< std::make_pair(int2(0,0),
-						Objects::PBaseCommand(new Objects::IconCommand("Commit",[]()
+			int at = 0;
+			buttons << std::make_pair(int2(at++,0),
+						Objects::PBaseCommand(new Objects::CustomIconCommand("Finish","Commit",[]()
 						{
-							refConfig = config;
-							Network::Channels::planetConfig.SendTo(Network::client,config);
+							if (clientWorldLoaded)
+							{
+								flashUploadButton = true;
+								RefreshButtonStates();
+								Dialog::ShowMessage("Please rebuild server planet first");
+							}
+
 							//Update();
 						},
 						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
 						))
-					)
-				<< std::make_pair(int2(1,0),
-						Objects::PBaseCommand(new Objects::CustomIconCommand("Reset to server config","Undo",[]()
+					);
+			buttons << std::make_pair(int2(at++,0),
+						Objects::PBaseCommand(new Objects::CustomIconCommand("Commit changes and rebuild server planet","Upload to Server",[]()
+						{
+							RefreshButtonStates();
+							refConfig = config;
+							Network::Channels::planetConfig.SendTo(Network::client,config);
+							//Update();
+						},
+						[](bool){
+						return (flashUploadButton ? Objects::BaseCommand::Flags::SoftFlashing : Objects::BaseCommand::Flags::None) |  Objects::BaseCommand::Flags::IsEnabled;
+						}
+						))
+					);
+			buttons	<< std::make_pair(int2(at++,0),
+						Objects::PBaseCommand(new Objects::CustomIconCommand("Reset to server config and rebuild local planet","Download from Server",[]()
 						{
 							config = refConfig;
 							Update();
 						},
 						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
 						))
-					)
-				<< std::make_pair(int2(2,0),
+					);
+			buttons << std::make_pair(int2(at++,0),
+						Objects::PBaseCommand(new Objects::CustomIconCommand("View server version","View Server Version",[]()
+						{
+							if (clientWorldLoaded)
+								RestoreServerWorld();
+							else
+							{
+								if (!clientWorldBuilt)
+									Update();
+								else
+									SwapWorlds();
+								clientWorldLoaded = true;
+							}
+							//Update();
+						},
+						[](bool){
+						return (!clientWorldLoaded ? Objects::BaseCommand::Flags::IsPermaActive : Objects::BaseCommand::Flags::None) | Objects::BaseCommand::Flags::IsEnabled;
+						}
+						))
+					);
+			buttons	<< std::make_pair(int2(at++,0),
 						Objects::PBaseCommand(new Objects::CustomIconCommand("Randomize seeds and rebuild using current config","Randomize",[]()
 						{
 							RandomizeSeed();
 						},
 						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
 						))
-					)
-				<< std::make_pair(int2(3,0),mountainGroup)
-				<< std::make_pair(int2(4,0),extendedCoreGroup)
-				<< std::make_pair(int2(5,0),coreGroup)
-				<< std::make_pair(int2(6,0),liquidGroup)
+					);
+			buttons	<< std::make_pair(int2(at++,0),mountainGroup);
+			buttons	<< std::make_pair(int2(at++,0),extendedCoreGroup);
+			buttons	<< std::make_pair(int2(at++,0),coreGroup);
+			buttons	<< std::make_pair(int2(at++,0),liquidGroup);
 			;
 		}
 
@@ -368,7 +423,10 @@ namespace ConfigurationMode
 		if (isActive == newActive)
 			return;
 		isActive = newActive;
-
+		if (!isActive)
+		{
+			clientWorldBuilt = false;
+		}
 		Create();
 		UI::HexGrid::Configure(Objects::selectedEntity);
 
@@ -397,9 +455,9 @@ namespace ConfigurationMode
 		using namespace Detail;
 		if (!clientWorldLoaded)
 			return;
-		clientWorldLoaded = false;
-		serverWorld.swap(Grid::actualWorld);
-		Grid::SetAllFamiliesOutdated(0);
+		clientWorldLoaded = false; 
+		flashUploadButton = false;
+		SwapWorlds();
 	}
 
 
