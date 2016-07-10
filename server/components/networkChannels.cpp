@@ -148,7 +148,7 @@ namespace Receiver
 		RuntimeConfig::UnitLimits::Export(limits);
 		Channels::unitLimits.SendTo(peer,limits);
 		
-		Channels::lockEmpZones.SendTo(peer,World::empZonesLocked);
+		Channels::lockEmpZones.SendTo(peer,Grid::empZonesLocked);
 
 
 		Protocol::PhaseChange	ph;

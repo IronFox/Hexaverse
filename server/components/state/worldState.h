@@ -33,7 +33,6 @@ namespace World
 	void			UpdateEMPZones(count_t temporaryFactionCountBonus=0);
 
 
-	extern UINT32		empZonesLocked/* = 0 */, unlockedEMPZones /*= 0xFFFF*/;
 	extern Grid::WorldData	spectatorWorldState;
 	extern bool			terrainChanged;//!< Indicates that the terrain changed at any given time during the last processing round. Reset when entering command mode
 	extern TUniqueID	worldID;

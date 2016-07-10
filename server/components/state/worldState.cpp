@@ -32,8 +32,6 @@ namespace World
 		void			HandleSessionClosure()
 		{
 			terrainChanged = false;
-			empZonesLocked = 0;
-			unlockedEMPZones = 0xFFFF;
 			worldID.Generate();
 		}
 

@@ -843,7 +843,7 @@ void ProcessAICoverage()
 		}
 		static Buffer0<UINT32> neighborField;
 		for (int i = 0; i < 12; i++)
-			if (BaseGrid::IsIsolatedCorner(i) && (World::unlockedEMPZones & (1<<i)))
+			if (BaseGrid::IsIsolatedCorner(i) && (Grid::empZonesUnlocked & (1<<i)))
 			{
 				Objects::PNexusPort p = ports[i];
 				if (RuntimeConfig::roundNumber - p->lastSpawnRound < 5 || p->owner != Objects::Faction::nexus)
