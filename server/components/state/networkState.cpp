@@ -41,13 +41,15 @@ namespace Network
 				return;
 			server.EndService();
 		}
-		if (server.StartService(Config::sessionPort))
+		server.OnDoneResolving([]()
 		{
-			LogEvent(EventClass::Preset::network,"Session server started on port "+String(Config::sessionPort));
-		}
-		else
-			FATAL__("Unable to start service in port "+String(Config::sessionPort)+" ("+server.GetError(true)+"). Chances are, a server is already running on that port.")
-
+			if (server.StartService(Config::sessionPort))
+			{
+				LogEvent(EventClass::Preset::network,"Session server started on port "+String(Config::sessionPort));
+			}
+			else
+				FATAL__("Unable to start service in port "+String(Config::sessionPort)+" ("+server.GetError(true)+"). Chances are, a server is already running on that port.")
+		});
 	}
 
 
