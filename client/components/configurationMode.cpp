@@ -394,8 +394,8 @@ namespace ConfigurationMode
 			*/
 
 			AppendRuleButton(ruleGroup,"Closed Game","closedGame",Protocol::GameFlag::ClosedGame);
-			AppendRuleButton(ruleGroup,"Bases Required","basedRequired",Protocol::GameFlag::BasesRequired);
 			AppendRuleButton(ruleGroup,"Start-Bases","startBases",Protocol::GameFlag::StartBases);
+			AppendRuleButton(ruleGroup,"Bases Required","basedRequired",Protocol::GameFlag::BasesRequired);
 			AppendRuleButton(ruleGroup,"Enable Nexus AI", "Nexus/enableAI",Protocol::GameFlag::NexusAI);
 			AppendRuleButton(ruleGroup,"EMP Zones", "Energy","empZones",Protocol::GameFlag::EMPZones,[](bool set)
 			{
