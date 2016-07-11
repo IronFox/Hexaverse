@@ -1704,6 +1704,9 @@ namespace Receiver
 					LogEvent(EventClass::Preset::error,peer,"Should not have received RequestEverything from non-spectator");
 			}
 			break;
+			case Protocol::ChannelID::EndConfigurationMode:
+				ConfigurationMode::End();
+			break;
 		}
 	}
 	

@@ -2,7 +2,9 @@
 #include "configurationMode.h"
 #include "state/networkState.h"
 #include "state/gameState.h"
+#include "state/worldState.h"
 
+extern Random random;
 
 namespace ConfigurationMode
 {
@@ -42,8 +44,16 @@ void ConfigurationMode::End()
 	isActive = false;
 	//Network::CloseSession(false);
 	Game::Config::factionSupportFlags = originalFlags;
-	Network::RestartSession();
 	LogEvent(EventSignificance::Important,"Ending configuration mode");
+	Objects::FlushAllData(true);
+	Network::server.Shutdown();
+	ASSERT__(!Network::server.IsOnline());
+	Network::activePlayersAndSpectators.Clear();
+	Network::spectators.Clear();
+	World::BuildConfiguredWorld(random);
+
+
+	Network::RestartSession();
 
 }
 

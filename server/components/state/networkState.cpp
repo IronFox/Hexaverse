@@ -14,6 +14,7 @@
 
 #undef StartService
 
+extern Random random;
 
 
 namespace Network
@@ -65,11 +66,14 @@ namespace Network
 	void		BuildConfiguredWorld()
 	{
 		bool started = Network::CloseSession(false,false);
-		World::worldID.Generate();
+		if (started)
+			World::worldID.Generate();
 
-		static Random random;
 
-		World::BuildConfiguredWorld(ConfigurationMode::IsActive() ? ConfigurationMode::GetPlanetSeed() :  random.getSeed());
+		if (ConfigurationMode::IsActive())
+			World::BuildConfiguredWorld(ConfigurationMode::GetPlanetSeed());
+		else
+			World::BuildConfiguredWorld(random);
 		if (started)
 			Network::RestartSession();
 		else
@@ -161,6 +165,7 @@ namespace Network
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,0);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestEverything,(UINT32)UserLevel::Spectator);
+		server.OpenSignalChannel(Protocol::ChannelID::EndConfigurationMode,(UINT32)UserLevel::PlanetConfigurator);
 		
 		server.onSignal = Receiver::OnSignal;
 		server.SetAsync(false);

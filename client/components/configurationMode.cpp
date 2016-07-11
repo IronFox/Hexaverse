@@ -439,17 +439,34 @@ namespace ConfigurationMode
 			buttons << std::make_pair(int2(at++,0),
 						Objects::PBaseCommand(new Objects::CustomIconCommand("Accept current server planet and config, and finish","Commit",[]()
 						{
-
+							
+							if (clientWorldLoaded)
+							{
+								Dialog::Confirm("Upload changes and begin game?",[]()
+								{
+									refConfig = config;
+									RefreshButtonStates();
+									Network::Channels::planetConfig.SendTo(Network::client,config);
+									Network::client.SendSignal(Protocol::ChannelID::EndConfigurationMode);
+								},
+								[](){return Detail::isActive ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
+							}
+							else
+								Dialog::Confirm("Accept current state and begin game?",[]()
+								{
+									Network::client.SendSignal(Protocol::ChannelID::EndConfigurationMode);
+								},
+								[](){return Detail::isActive ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
 							//Update();
 						},
-						[](bool){return clientWorldLoaded ? Objects::BaseCommand::Flags::None : Objects::BaseCommand::Flags::IsEnabled;}
+						[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
 						))
 					);
 			buttons << std::make_pair(int2(at++,0),
 						Objects::PBaseCommand(new Objects::CustomIconCommand("Commit changes and rebuild server planet","Upload to Server",[]()
 						{
-							RefreshButtonStates();
 							refConfig = config;
+							RefreshButtonStates();
 							Network::Channels::planetConfig.SendTo(Network::client,config);
 							//Update();
 						},

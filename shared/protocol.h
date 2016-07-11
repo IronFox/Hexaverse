@@ -1927,6 +1927,7 @@ namespace Protocol
 
 			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
 			GameConfig,			// c2s: GameConfig
+			EndConfigurationMode,//c2s: <signal>
 		};
 	}
 
