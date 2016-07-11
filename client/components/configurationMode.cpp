@@ -55,7 +55,7 @@ namespace ConfigurationMode
 					serverWorld.swap(Grid::actualWorld);
 				}
 				if (serverObjects.IsEmpty())
-					serverObjects.Import();
+					serverObjects.Import(true);
 				clientWorldBuilt = true;
 				Grid::actualWorld.BuildWorld(config);
 				Grid::actualWorld.OverrideVisibility(1);
@@ -164,7 +164,7 @@ namespace ConfigurationMode
 			else
 			{
 				SwapWorlds();
-				serverObjects.Import();
+				serverObjects.Import(true);
 			}
 			clientWorldLoaded = true;
 		}
@@ -577,7 +577,10 @@ namespace ConfigurationMode
 	{
 		using namespace Detail;
 		if (serverObjects.IsNotEmpty())
+		{
 			serverObjects.Export();
+			Grid::actualWorld.OverrideVisibility(1);
+		}
 	}
 
 

@@ -22,7 +22,7 @@ namespace Objects
 		Loads all global objects, and purges the global object state.
 		The local storage must be empty
 		*/
-		void	Import();
+		void	Import(bool preserveGridVisibility);
 		/**
 		Restores the global object state according to local storage.
 		All local content is cleared afterward

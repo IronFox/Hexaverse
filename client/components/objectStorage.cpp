@@ -17,7 +17,7 @@ namespace Objects
 		loaded = false;
 	}
 
-	void	Storage::Import()
+	void	Storage::Import(bool preserveGridVisibility)
 	{
 		ASSERT__(!loaded);
 		//Clear();
@@ -40,12 +40,15 @@ namespace Objects
 		markers.swap(Marker::all);
 		RuntimeConfig::UnitLimits::Export(unitLimits);
 		Objects::FlushAllData(true);
+		Grid::actualWorld.ResetStructureCounters(!preserveGridVisibility);
+		Grid::SetAllFamiliesOutdated(0);
 		loaded = true;
 	}
 
 	void	Storage::Export()
 	{
 		Objects::FlushAllData(true);
+		Grid::actualWorld.ResetStructureCounters(true);
 		markers.swap(Marker::all);
 		RuntimeConfig::UnitLimits::Import(unitLimits);
 		for (const PWorldEntity&e : objects)
