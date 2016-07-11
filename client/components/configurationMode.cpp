@@ -167,6 +167,7 @@ namespace ConfigurationMode
 				serverObjects.Import(true);
 			}
 			clientWorldLoaded = true;
+			LogEvent(EventClass(EventSignificance::Important ,EventFlavor::Gain),"Now viewing local planet version. Objects and nexus bases are hidden!");
 		}
 
 		void AppendRuleButton(const Objects::PCommandGroup&grp,const String&niceName, const String&iconName,const String&configName, UINT32 flag, const std::function<void(bool)>&onChange)
