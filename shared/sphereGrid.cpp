@@ -1056,6 +1056,7 @@ namespace Grid
 		#ifdef HAS_WINDOW
 			lightingOutdated = true;
 		#endif
+		ResetStructureCounters(false);
 		CellStack::bottom.content = (BYTE)config.innerCoreType;
 
 		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[config](index_t i)
