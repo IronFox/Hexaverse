@@ -1,12 +1,12 @@
 #pragma once
 #include <sphereGrid.h>
-
+#include <runtimeConfig.h>
 
 namespace ConfigurationMode
 {
 	void	Update(const Grid::ExtendedPlanetConfig&);
 	void	SetActive(bool);
-	void	SetGameFlags(UINT32);
+	void	SetGameFlags(UINT32, RuntimeConfig::GameGoal);
 	bool	IsActive();
 	void	RandomizeSeed();
 

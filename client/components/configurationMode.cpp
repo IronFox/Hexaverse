@@ -13,7 +13,8 @@ namespace ConfigurationMode
 		Objects::Storage serverObjects;
 		bool isActive = false;
 		Grid::ExtendedPlanetConfig	config, refConfig;
-		UINT32 seed = 0,gameFlags=0;
+		UINT32 seed = 0;
+		Protocol::GameConfig	gameConfig;
 		Random rng;
 		Grid::WorldData serverWorld;
 		bool created = false,
@@ -172,18 +173,18 @@ namespace ConfigurationMode
 		{
 			Objects::PBaseCommand cmd(new Objects::CustomIconCommand(niceName,iconName,[flag,onChange]()
 			{
-				if (gameFlags & flag)
+				if (gameConfig.gameFlags & flag)
 				{
-					gameFlags &= ~flag;
+					gameConfig.gameFlags &= ~flag;
 					onChange(false);
 				}
 				else
 				{
-					gameFlags |= flag;
+					gameConfig.gameFlags |= flag;
 					onChange(true);
 				}
-				Network::Channels::gameFlags.SendTo(Network::client,gameFlags);
-				LoadClientWorld();
+				Network::Channels::gameConfig.SendTo(Network::client,gameConfig);
+				//LoadClientWorld();
 			},
 			[flag](bool)->Objects::BaseCommand::Flags
 			{
@@ -191,17 +192,40 @@ namespace ConfigurationMode
 
 				F result = F::IsEnabled;
 				
-				if (gameFlags & flag)
+				if (gameConfig.gameFlags & flag)
 					result |= F::IsPermaActive;
 				return result;
 			}));
 			grp->Add(cmd);
-			onChange(!!(gameFlags&flag));
+			onChange(!!(gameConfig.gameFlags&flag));
 		}
 
 		void AppendRuleButton(const Objects::PCommandGroup&grp,const String&niceName, const String&configName, UINT32 flag)
 		{
 			AppendRuleButton(grp,niceName,niceName,configName,flag,[](bool){});
+		}
+
+		void AppendGoalButton(const Objects::PCommandGroup&grp,RuntimeConfig::GameGoal goal)
+		{
+			Objects::PBaseCommand cmd(new Objects::CustomIconCommand(goal.ToString(),String("Goal ")+goal.ToString(),[goal]()
+			{
+				if (gameConfig.gameGoal == (BYTE)goal)
+					return;
+				RuntimeConfig::gameGoal = goal;
+				gameConfig.gameGoal = (BYTE)goal;
+				Network::Channels::gameConfig.SendTo(Network::client,gameConfig);
+			},
+			[goal](bool)->Objects::BaseCommand::Flags
+			{
+				typedef Objects::BaseCommand::Flags F;
+
+				F result = F::IsEnabled;
+				
+				if (gameConfig.gameGoal == (BYTE)goal)
+					result |= F::IsPermaActive;
+				return result;
+			}));
+			grp->Add(cmd);
 		}
 			
 
@@ -387,7 +411,9 @@ namespace ConfigurationMode
 				}
 				Grid::SetAllFamiliesOutdated(0);
 			});
-
+			Objects::PCommandGroup goals = ruleGroup->AddChild("Goal");
+			for (index_t i = 0; i < RuntimeConfig::GameGoal::N; i++)
+				AppendGoalButton(goals,RuntimeConfig::GameGoal::Reinterpret(i));
 
 
 			MakeMaterialChoice(coreGroup,config.innerCoreType,refConfig.innerCoreType,noUnknown);
@@ -497,9 +523,10 @@ namespace ConfigurationMode
 			Update();
 	}
 
-	void	SetGameFlags(UINT32 gameFlags)
+	void	SetGameFlags(UINT32 gameFlags, RuntimeConfig::GameGoal goal)
 	{
-		Detail::gameFlags = gameFlags;
+		Detail::gameConfig.gameFlags = gameFlags;
+		Detail::gameConfig.gameGoal = (BYTE)goal;
 	}
 
 

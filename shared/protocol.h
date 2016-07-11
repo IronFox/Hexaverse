@@ -1775,7 +1775,10 @@ namespace Protocol
 		, NET(BYTE), gameGoal
 	)
 
-
+	NETSTRUCT2(GameConfig
+		, NET(UINT32), gameFlags
+		, NET(BYTE), gameGoal
+	)	
 
 	NETSTRUCT4(ClientFactionResponse
 		, NET(UINT32), startFactionTypes
@@ -1923,7 +1926,7 @@ namespace Protocol
 			ChatMessage,		// c2s: NetString<256>
 
 			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
-			GameFlags,			// c2s: UINT32
+			GameConfig,			// c2s: GameConfig
 		};
 	}
 
