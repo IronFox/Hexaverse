@@ -513,7 +513,7 @@ namespace Grid
 		void			FillTypes(const ExtendedPlanetConfig&);
 
 		void			ZeroInit();
-		void			ResetStructureCounters();
+		void			ResetStructureCounters(bool resetVisibility);
 		#ifdef HAS_WINDOW
 
 			#ifdef THOROUGLY_DEBUG_SENSORY
@@ -1968,7 +1968,7 @@ namespace Grid
 
 	void			FlushStackFamily(Array<CellStack>&cellStack,  BYTE family);
 	void			FlushAllData();
-	void			ResetStructureCounters();
+	void			ResetStructureCounters(bool resetVisibility=true);
 
 	void			UpdateResourceMap(ConstName resourceName,const ArrayData<TCellResourceCoverage>&);
 	#ifdef HAS_WINDOW
@@ -2198,11 +2198,11 @@ namespace Grid
 				cellStack[i].ZeroInit();
 			}
 		}
-		void					ResetStructureCounters()
+		void					ResetStructureCounters(bool resetVisibility)
 		{
 			for (index_t i = 0; i < cellStack.Count(); i++)
 			{
-				cellStack[i].ResetStructureCounters();
+				cellStack[i].ResetStructureCounters(resetVisibility);
 			}
 		}
 		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, bool initialization);

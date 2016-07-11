@@ -610,13 +610,14 @@ namespace Grid
 		#endif
 	}
 
-	void			CellStack::ResetStructureCounters()
+	void			CellStack::ResetStructureCounters(bool resetVisibility)
 	{
 		for (UINT i = 0; i < Range; i++)
 		{
 			volumeCell[i].structureCounter = 0;
 			#ifdef CLIENT
-				volumeCell[i].visible = 0;
+				if (resetVisibility)
+					volumeCell[i].visible = 0;
 			#endif
 		}
 	}
@@ -4076,9 +4077,9 @@ namespace Grid
 
 
 
-	void	ResetStructureCounters()
+	void	ResetStructureCounters(bool resetVisibility)
 	{
-		actualWorld.ResetStructureCounters();
+		actualWorld.ResetStructureCounters(resetVisibility);
 
 
 	}
