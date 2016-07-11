@@ -409,6 +409,7 @@ namespace ConfigurationMode
 					Grid::empZonesUnlocked = 0xffff;
 					Grid::empZonesLocked = 0x0;
 				}
+				RuntimeConfig::empZones = set;
 				Grid::SetAllFamiliesOutdated(0);
 			});
 			Objects::PCommandGroup goals = ruleGroup->AddChild("Goal");
