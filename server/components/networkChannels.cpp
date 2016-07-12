@@ -876,6 +876,7 @@ namespace Receiver
 				RuntimeConfig::gameGoal.Load(cfg.gameGoal);
 				Network::BuildConfiguredWorld();
 			}
+			World::Config::worldDiscovery.Load(cfg.worldDiscovery);
 		}
 		else
 			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");

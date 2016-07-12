@@ -1764,6 +1764,11 @@ namespace Protocol
 		};
 	};
 
+	NETSTRUCT3(GameConfig
+		, NET(UINT32), gameFlags
+		, NET(BYTE), gameGoal
+		, NET(BYTE), worldDiscovery
+	)	
 
 	NETSTRUCT7(GameInfo
 		, NET(UINT16), numFactionsOnline
@@ -1775,10 +1780,6 @@ namespace Protocol
 		, NET(BYTE), gameGoal
 	)
 
-	NETSTRUCT2(GameConfig
-		, NET(UINT32), gameFlags
-		, NET(BYTE), gameGoal
-	)	
 
 	NETSTRUCT4(ClientFactionResponse
 		, NET(UINT32), startFactionTypes
