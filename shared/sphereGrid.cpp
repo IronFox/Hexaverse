@@ -1210,7 +1210,9 @@ namespace Grid
 						{
 					
 							c.content = Content::Unknown;
+							#ifndef CLIENT
 							DBG_ASSERT__(c.structureCounter == 0);
+							#endif
 						}
 					}
 				break;
@@ -1221,7 +1223,9 @@ namespace Grid
 						if (c.content != Content::Clear && c.content != Content::Water)
 						{
 							c.content = Content::Unknown;
+							#ifndef CLIENT
 							DBG_ASSERT__(c.structureCounter == 0);
+							#endif
 						}
 					}
 				break;
@@ -1232,7 +1236,9 @@ namespace Grid
 						if (c.content != Content::Clear && !c.IsLiquid())
 						{
 							c.content = Content::Unknown;
+							#ifndef CLIENT
 							DBG_ASSERT__(c.structureCounter == 0);
+							#endif
 						}
 					}
 				break;
