@@ -48,7 +48,7 @@ namespace ConfigurationMode
 			{
 				ASSERT__(isLoaded);
 				ASSERT_IS_NULL__(current);
-				ASSERT__(copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
+				//ASSERT__(copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
 				isLoaded = false;
 				copy.swap(Grid::actualWorld);
 				current = this;
@@ -97,14 +97,14 @@ namespace ConfigurationMode
 				st.Export();
 			else
 			{
-				ASSERT__(st.copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
+				//ASSERT__(st.copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
 				GridState&st2 = range[Grid::WorldDiscovery::Reinterpret(gameConfig.worldDiscovery)];
 				if (forceRebuild || !st2.IsLoadedOrActive())
 				{
-					ASSERT__(st.copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
+					//ASSERT__(st.copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
 					st.copy.ExportDiscovered(st2.copy,Grid::WorldDiscovery::Reinterpret(gameConfig.worldDiscovery));
-					ASSERT__(st.copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
-					ASSERT__(st2.copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
+					//ASSERT__(st.copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
+					//ASSERT__(st2.copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
 					st2.isLoaded = true;
 				}
 				st2.Export();
@@ -135,7 +135,7 @@ namespace ConfigurationMode
 					st.isLoaded = true;
 					st.copy.BuildWorld(config);
 					st.copy.OverrideVisibility(1);
-					ASSERT__(st.copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
+//					ASSERT__(st.copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
 				}
 				ActivateDiscovery(forceRebuild, clientWorld);
 			}
