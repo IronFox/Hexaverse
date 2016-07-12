@@ -1059,15 +1059,15 @@ namespace Grid
 		ResetStructureCounters(false);
 		CellStack::bottom.content = (BYTE)config.innerCoreType;
 
-		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[config](index_t i)
+		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[config,this](index_t i)
 		{
-			actualWorld.cellStack[i].InitUnknown(RandomHeight(high.cells[i].centerVertex.xyz,config),config);
+			cellStack[i].InitUnknown(RandomHeight(high.cells[i].centerVertex.xyz,config),config);
 		});
 
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 		{
 			index_t fine = Grid::low.grid.GetCell(i).higherEquivalent;
-			auto&stack = actualWorld.cellStack[fine];
+			auto&stack = cellStack[fine];
 			const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
 			for (UINT l = 0; l < CellStack::Range; l++)
 			{
@@ -1077,7 +1077,7 @@ namespace Grid
 					BYTE cont;
 					for (int ni = 0; ni < n.numNeighbors; ni++)
 					{
-						auto&other = actualWorld.cellStack[n.neighborID[ni]].volumeCell[l];
+						auto&other = cellStack[n.neighborID[ni]].volumeCell[l];
 						if (!other.IsClearOrLiquidIgnoreStructure())
 						{
 							cnt ++;
@@ -1093,7 +1093,7 @@ namespace Grid
 					{
 						for (int ni = 0; ni < n.numNeighbors; ni++)
 						{
-							auto&otherStack = actualWorld.cellStack[n.neighborID[ni]];
+							auto&otherStack = cellStack[n.neighborID[ni]];
 							auto&other = otherStack.volumeCell[l];
 							if (!other.IsClearOrLiquidIgnoreStructure())
 							{
@@ -1108,10 +1108,10 @@ namespace Grid
 			}
 		}
 
-		Concurrency::parallel_for(index_t(0),LowSetup::GridType::CellCount,[](index_t i)
+		Concurrency::parallel_for(index_t(0),LowSetup::GridType::CellCount,[this](index_t i)
 		{
 			index_t fine = Grid::low.grid.GetCell(i).higherEquivalent;
-			auto&centerStack = actualWorld.cellStack[fine];
+			auto&centerStack = cellStack[fine];
 			const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
 			const auto&n0 = Grid::low.grid.GetCell(i).neighborhood;
 			for (int ni = 0; ni < n.numNeighbors; ni++)
@@ -1121,7 +1121,7 @@ namespace Grid
 
 				const auto&n2 = Grid::high.grid.GetCell(n.neighborID[ni]).neighborhood;
 
-				auto&nStack = actualWorld.cellStack[n.neighborID[ni]];
+				auto&nStack = cellStack[n.neighborID[ni]];
 				for (UINT l = 0; l < CellStack::Range; l++)
 				{
 					if (!nStack.volumeCell[l].IsClearOrLiquidIgnoreStructure())
@@ -1130,10 +1130,10 @@ namespace Grid
 					BYTE cont = 0;
 					for (int nj = 0; nj < n2.numNeighbors; nj++)
 					{
-						if (!actualWorld.cellStack[n2.neighborID[nj]].volumeCell[l].IsClearOrLiquidIgnoreStructure())
+						if (!cellStack[n2.neighborID[nj]].volumeCell[l].IsClearOrLiquidIgnoreStructure())
 						{
 							cnt ++;
-							cont = actualWorld.cellStack[n2.neighborID[nj]].volumeCell[l].content;
+							cont = cellStack[n2.neighborID[nj]].volumeCell[l].content;
 						}
 					}
 					if (cnt > 3)
@@ -1146,14 +1146,14 @@ namespace Grid
 		});
 
 
-		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[config](index_t i)
+		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[config,this](index_t i)
 		{
-			actualWorld.cellStack[i].FillTypes(config);
+			cellStack[i].FillTypes(config);
 		});
 
-		Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [](index_t i)
+		Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [this](index_t i)
 		{
-			auto&stack = actualWorld.cellStack[i];
+			auto&stack = cellStack[i];
 			UINT32 stackTop = 0;
 			for (UINT l = 0; l+1 < CellStack::Range; l++)
 			{
@@ -1169,7 +1169,7 @@ namespace Grid
 		if (solidProx)
 			for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
 			{
-				auto&stack = actualWorld.cellStack[i];
+				auto&stack = cellStack[i];
 				for (UINT l = 0; l < CellStack::Range; l++)
 				{
 					const BYTE cont = stack.volumeCell[l].content;
@@ -1177,7 +1177,7 @@ namespace Grid
 					{
 						const auto&n = high.grid.GetCell(i).neighborhood;
 						for (BYTE k = 0; k < n.numNeighbors; k++)
-							actualWorld.cellStack[n.neighborID[k]].volumeCell[l].SetToIfSolid(config.liquidOutline);
+							cellStack[n.neighborID[k]].volumeCell[l].SetToIfSolid(config.liquidOutline);
 					}
 
 				}
@@ -1190,6 +1190,8 @@ namespace Grid
 				stack.UpdateRange();
 				stack.lightingChangedTo = (BYTE)CellStack::Range;
 			});
+			if (this == &actualWorld)
+				actualWorld.lightingOutdated = true;
 		#endif
 	}
 	void					WorldData::ExportDiscovered(WorldData&target, WorldDiscovery discoveryLevel) const
