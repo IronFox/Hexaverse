@@ -16,10 +16,53 @@ namespace ConfigurationMode
 		UINT32 seed = 0;
 		Protocol::GameConfig	gameConfig;
 		Random rng;
-		Grid::WorldData serverWorld;
+
+		class GridState
+		{
+		public:
+			Grid::WorldData	copy;
+			static GridState	*current;
+			bool			isLoaded = false;
+
+			bool			IsLoadedOrActive() const
+			{
+				return isLoaded || current == this;
+			}
+			bool			IsActive() const
+			{
+				return current == this;
+			}
+
+			void			Import()
+			{
+				ASSERT__(!isLoaded);
+				ASSERT__(!current || current == this);
+				isLoaded = true;
+				copy.swap(Grid::actualWorld);
+				current = nullptr;
+				Grid::actualWorld.lightingOutdated = true;
+				Grid::SetAllFamiliesOutdated();	//force rebuild
+			};
+
+			void			Export()
+			{
+				ASSERT__(isLoaded);
+				ASSERT_IS_NULL__(current);
+				ASSERT__(copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
+				isLoaded = false;
+				copy.swap(Grid::actualWorld);
+				current = this;
+				Grid::actualWorld.lightingOutdated = true;
+				Grid::SetAllFamiliesOutdated();	//force rebuild
+			}
+
+		};
+		/*static*/ GridState	*GridState::current = nullptr;
+
+		GridState serverWorld[Grid::WorldDiscovery::N], clientWorld[Grid::WorldDiscovery::N];
 		bool created = false,
 				flashUploadButton = false;
-		bool clientWorldLoaded = false, clientWorldBuilt = false;
+		bool clientWorldLoaded = false, clientWorldBuilt = false, anyWorldLoaded = false;
 		Objects::PCommandGroup mountainGroup,extendedCoreGroup,liquidGroup,coreGroup,ruleGroup;
 		Buffer0<std::pair<int2,Objects::PBaseCommand> > buttons; 
 
@@ -42,26 +85,59 @@ namespace ConfigurationMode
 				b->second->Refresh(true);
 		}
 
-		void Update()
+		bool	showDiscovery = false;
+
+
+		void ActivateDiscovery(bool forceRebuild, GridState*range)
+		{
+			if (GridState::current)
+				GridState::current->Import();
+			GridState&st = range[Grid::WorldDiscovery::FullTerrain];
+			if (gameConfig.worldDiscovery == (BYTE)Grid::WorldDiscovery::FullTerrain || !showDiscovery)
+				st.Export();
+			else
+			{
+				ASSERT__(st.copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
+				GridState&st2 = range[Grid::WorldDiscovery::Reinterpret(gameConfig.worldDiscovery)];
+				if (forceRebuild || !st2.IsLoadedOrActive())
+				{
+					ASSERT__(st.copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
+					st.copy.ExportDiscovered(st2.copy,Grid::WorldDiscovery::Reinterpret(gameConfig.worldDiscovery));
+					ASSERT__(st.copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
+					ASSERT__(st2.copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
+					st2.isLoaded = true;
+				}
+				st2.Export();
+			}
+			Grid::SetAllFamiliesOutdated();	//force rebuild
+			World::allowRecompilation = true;
+			RefreshButtonStates();
+		}
+
+		void Update(bool forceRebuild = true)
 		{
 			config.SetSeed(seed);
 
 			if (isActive)
 			{
 				//Grid::actualWorld.FlushAllData();
-				if (!clientWorldLoaded)
-				{
-					clientWorldLoaded = true;
-					serverWorld.swap(Grid::actualWorld);
-				}
 				if (serverObjects.IsEmpty())
 					serverObjects.Import(true);
+				forceRebuild |= !clientWorldBuilt;
 				clientWorldBuilt = true;
-				Grid::actualWorld.BuildWorld(config);
-				Grid::actualWorld.OverrideVisibility(1);
-				Grid::SetAllFamiliesOutdated();	//force rebuild
-				World::allowRecompilation = true;
-				RefreshButtonStates();
+				if (GridState::current)
+					GridState::current->Import();
+				clientWorldLoaded = true;
+				anyWorldLoaded = true;
+				GridState&st = clientWorld[Grid::WorldDiscovery::FullTerrain];
+				if (forceRebuild)
+				{
+					st.isLoaded = true;
+					st.copy.BuildWorld(config);
+					st.copy.OverrideVisibility(1);
+					ASSERT__(st.copy.cellStack.first().volumeCell[0].content != Grid::Content::Clear);
+				}
+				ActivateDiscovery(forceRebuild, clientWorld);
 			}
 		}
 
@@ -148,12 +224,6 @@ namespace ConfigurationMode
 		};
 
 		*/
-		void	SwapWorlds()
-		{
-			serverWorld.swap(Grid::actualWorld);
-			Grid::SetAllFamiliesOutdated(0);
-			RefreshButtonStates();
-		}
 
 		void	LoadClientWorld()
 		{
@@ -163,11 +233,35 @@ namespace ConfigurationMode
 				Update();
 			else
 			{
-				SwapWorlds();
+				GridState::current->Import();
+				clientWorld[gameConfig.worldDiscovery].Export();
+				Grid::SetAllFamiliesOutdated(0);
+				RefreshButtonStates();
 				serverObjects.Import(true);
 			}
 			clientWorldLoaded = true;
 			LogEvent(EventClass(EventSignificance::Important ,EventFlavor::Gain),"Now viewing local planet version. Objects and nexus bases are hidden!");
+		}
+
+		void	LoadServerWorld(bool forceFullDiscovery)
+		{
+			if (!clientWorldLoaded && anyWorldLoaded)
+				return;
+			clientWorldLoaded = false; 
+			flashUploadButton = false;
+			anyWorldLoaded = true;
+			if (GridState::current)
+				GridState::current->Import();
+			if (forceFullDiscovery)
+			{
+				auto&st = serverWorld[Grid::WorldDiscovery::FullTerrain];
+				if (st.isLoaded)
+					st.Export();
+				else
+					GridState::current = &st;	//link, whatever is loaded
+			}
+			else
+				ActivateDiscovery(false,serverWorld);
 		}
 
 		void AppendRuleButton(const Objects::PCommandGroup&grp,const String&niceName, const String&iconName,const String&configName, UINT32 flag, const std::function<void(bool)>&onChange)
@@ -205,6 +299,40 @@ namespace ConfigurationMode
 		{
 			AppendRuleButton(grp,niceName,niceName,configName,flag,[](bool){});
 		}
+
+		void	RefreshDiscovery()
+		{
+			if (clientWorldLoaded)
+				Update(false);
+			else
+				ActivateDiscovery(false,serverWorld);
+		}
+
+		void AppendDiscoveryButton(const Objects::PCommandGroup&grp,Grid::WorldDiscovery disc)
+		{
+			Objects::PBaseCommand cmd(new Objects::CustomIconCommand(disc.ToString(),String("Discovery ")+disc.ToString(),[disc]()
+			{
+				if (gameConfig.worldDiscovery == (BYTE)disc && showDiscovery)
+					return;
+				showDiscovery = true;
+				gameConfig.worldDiscovery = (BYTE)disc;
+				Network::Channels::gameConfig.SendTo(Network::client,gameConfig);
+				RefreshDiscovery();
+			},
+			[disc](bool)->Objects::BaseCommand::Flags
+			{
+				typedef Objects::BaseCommand::Flags F;
+
+				F result = F::IsEnabled;
+				
+				if (gameConfig.worldDiscovery == (BYTE)disc)
+					result |= F::IsPermaActive;
+				return result;
+			}));
+			grp->Add(cmd);
+
+		}
+
 
 		void AppendGoalButton(const Objects::PCommandGroup&grp,RuntimeConfig::GameGoal goal)
 		{
@@ -413,10 +541,22 @@ namespace ConfigurationMode
 				RuntimeConfig::empZones = set;
 				Grid::SetAllFamiliesOutdated(0);
 			});
-			Objects::PCommandGroup goals = ruleGroup->AddChild("Goal");
+			Objects::PCommandGroup goals = ruleGroup->AddChild("Game Goal");
 			for (index_t i = 0; i < RuntimeConfig::GameGoal::N; i++)
 				AppendGoalButton(goals,RuntimeConfig::GameGoal::Reinterpret(i));
-
+			Objects::PCommandGroup disc = ruleGroup->AddChild("World Discovery");
+			for (index_t i = 0; i < Grid::WorldDiscovery::N; i++)
+				AppendDiscoveryButton(disc,Grid::WorldDiscovery::Reinterpret(i));
+			disc->onExpand = []()
+			{
+				showDiscovery = true;
+				RefreshDiscovery();
+			};
+			disc->onCollapse = []()
+			{
+				showDiscovery = false;
+				RefreshDiscovery();
+			};
 
 			MakeMaterialChoice(coreGroup,config.innerCoreType,refConfig.innerCoreType,noUnknown);
 			mountainGroup = MakeLayer("Mountains",config.mountains,refConfig.mountains);
@@ -489,7 +629,7 @@ namespace ConfigurationMode
 						{
 							if (clientWorldLoaded)
 							{
-								RestoreServerWorld();
+								LoadServerWorld(false);
 								RestoreServerObjects();
 							}
 							else
@@ -542,10 +682,11 @@ namespace ConfigurationMode
 			Update();
 	}
 
-	void	SetGameFlags(UINT32 gameFlags, RuntimeConfig::GameGoal goal)
+	void	SetGameConfig(UINT32 gameFlags, RuntimeConfig::GameGoal goal, Grid::WorldDiscovery disc)
 	{
 		Detail::gameConfig.gameFlags = gameFlags;
 		Detail::gameConfig.gameGoal = (BYTE)goal;
+		Detail::gameConfig.worldDiscovery = (BYTE)disc;
 	}
 
 
@@ -558,6 +699,8 @@ namespace ConfigurationMode
 		if (!isActive)
 		{
 			clientWorldBuilt = false;
+			showDiscovery = false;
+			serverObjects.Clear();
 		}
 		Create();
 		UI::HexGrid::Configure(Objects::selectedEntity);
@@ -584,12 +727,7 @@ namespace ConfigurationMode
 
 	void	RestoreServerWorld()
 	{
-		using namespace Detail;
-		if (!clientWorldLoaded)
-			return;
-		clientWorldLoaded = false; 
-		flashUploadButton = false;
-		SwapWorlds();
+		Detail::LoadServerWorld(true);
 	}
 	void	RestoreServerObjects()
 	{

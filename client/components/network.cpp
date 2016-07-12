@@ -649,7 +649,7 @@ namespace Network
 			RuntimeConfig::empZones = (Network::gameFlags & Protocol::GameFlag::EMPZones) != 0;
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);
-			ConfigurationMode::SetGameFlags(Network::gameFlags, RuntimeConfig::gameGoal);
+			ConfigurationMode::SetGameConfig(Network::gameFlags, RuntimeConfig::gameGoal, Grid::WorldDiscovery::Reinterpret( cr.info.gameConfig.worldDiscovery ));
 
 			#ifdef HAS_WINDOW
 				World::allowRecompilation = false;
