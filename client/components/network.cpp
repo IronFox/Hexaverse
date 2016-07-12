@@ -645,9 +645,9 @@ namespace Network
 			Objects::Faction::mine.reset();
 			myIDString = myID.ToString();
 
-			Network::gameFlags = cr.info.gameFlags;
+			Network::gameFlags = cr.info.gameConfig.gameFlags;
 			RuntimeConfig::empZones = (Network::gameFlags & Protocol::GameFlag::EMPZones) != 0;
-			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameGoal);
+			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameConfig.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);
 			ConfigurationMode::SetGameConfig(Network::gameFlags, RuntimeConfig::gameGoal, Grid::WorldDiscovery::Reinterpret( cr.info.gameConfig.worldDiscovery ));
 

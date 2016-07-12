@@ -1770,14 +1770,13 @@ namespace Protocol
 		, NET(BYTE), worldDiscovery
 	)	
 
-	NETSTRUCT7(GameInfo
+	NETSTRUCT6(GameInfo
 		, NET(UINT16), numFactionsOnline
 		, NET(UINT16), numFactionsCreated
 		, NET(RuntimeConfig::RoundNumber), roundNumber
 		, NET(TUniqueID), worldID	//used to manage factionTokens
 		, NET(BYTE), activePhase
-		, NET(UINT32), gameFlags
-		, NET(BYTE), gameGoal
+		, GameConfig, gameConfig
 	)
 
 

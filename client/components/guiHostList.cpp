@@ -79,11 +79,11 @@ void	SaveHosts()
 	static String CompileRules(const Protocol::ServerInfo&info)
 	{
 		String result;
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::ConfigurationMode)
+		if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::ConfigurationMode)
 			result += "Interactive Configuration Mode";
 		else
 		{
-			switch (info.gameInfo.gameGoal)
+			switch (info.gameInfo.gameConfig.gameGoal)
 			{
 				case RuntimeConfig::GameGoal::ConquerNexus:
 					result="Conquer Nexus";
@@ -92,19 +92,19 @@ void	SaveHosts()
 					result="No Goal";
 				break;
 			}
-			if (info.gameInfo.gameFlags & Protocol::GameFlag::ClosedGame)
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::ClosedGame)
 				result += ", Closed Game";
-			if (info.gameInfo.gameFlags & Protocol::GameFlag::EMPZones)
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::EMPZones)
 				result += ", EMP Zones";
-			if (info.gameInfo.gameFlags & Protocol::GameFlag::BasesRequired)
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::BasesRequired)
 				result += ", Require Bases";
-			if (info.gameInfo.gameFlags & Protocol::GameFlag::StartBases)
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::StartBases)
 				result += ", Start Bases";
-			if (info.gameInfo.gameFlags & Protocol::GameFlag::NexusAI)
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::NexusAI)
 				result += ", Nexus AI";
-			if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportSpectatorFactions)
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::SupportSpectatorFactions)
 				result += ", Spectator";
-			if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportRegularFactions)
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::SupportRegularFactions)
 				result += ", Regular";
 		}
 		//String result = String("Goal: ")+Protocol::GameGoal::Reinterpret(info.gameGoal).ToString();
@@ -170,8 +170,8 @@ void	SaveHosts()
 				Network::serverIDString = Network::serverID.ToNiceString();
 				Network::worldID = info->info.gameInfo.worldID;
 				Network::worldIDString = Network::worldID.ToNiceString();
-				Network::gameFlags = info->info.gameInfo.gameFlags;
-				RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info->info.gameInfo.gameGoal);
+				Network::gameFlags = info->info.gameInfo.gameConfig.gameFlags;
+				RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info->info.gameInfo.gameConfig.gameGoal);
 
 				Network::ConnectTo(info->addresses[best].first);
 			});
