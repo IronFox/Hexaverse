@@ -229,16 +229,7 @@ namespace ConfigurationMode
 		{
 			if (clientWorldLoaded)
 				return;
-			if (!clientWorldBuilt)
-				Update();
-			else
-			{
-				GridState::current->Import();
-				clientWorld[gameConfig.worldDiscovery].Export();
-				Grid::SetAllFamiliesOutdated(0);
-				RefreshButtonStates();
-				serverObjects.Import(true);
-			}
+			Update(false);
 			clientWorldLoaded = true;
 			LogEvent(EventClass(EventSignificance::Important ,EventFlavor::Gain),"Now viewing local planet version. Objects and nexus bases are hidden!");
 		}
