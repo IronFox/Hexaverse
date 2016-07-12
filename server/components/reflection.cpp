@@ -852,8 +852,8 @@ namespace Reflection
 					
 					CLI::PFolder mountains = state.EnterNewFolder("Mountains");
 						mountains->attachment.reset(new Variable::PersistenceAttachment());
-						Variable::SetMappedEnum<Grid::Content,BYTE>("top",Grid::currentPlanetConfig.topType,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
-						Variable::SetMappedEnum<Grid::Content,BYTE>("type",Grid::currentPlanetConfig.innerType,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
+//						Variable::SetMappedEnum<Grid::Content,BYTE>("top",Grid::currentPlanetConfig.topType,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
+						Variable::SetMappedEnum<Grid::Content,BYTE>("type",Grid::currentPlanetConfig.type,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 						Variable::Set("snowHeight",Grid::currentPlanetConfig.snowHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 					state.ExitFolder();
 

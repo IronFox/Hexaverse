@@ -2439,8 +2439,7 @@ namespace Grid
 		static_assert(sizeof(TLayer)==sizeof(TSeedSet)+16,"packing issue?");
 
 		TLayer		extendedCore,mountains;
-		BYTE		topType = Content::Grass,
-					innerType = Content::Unknown,
+		BYTE		type = Content::Unknown,
 					liquidCoverage = Content::Water,
 					extendedCoreType = Content::Granite,
 					liquidOutline = Content::Sand;
@@ -2450,7 +2449,7 @@ namespace Grid
 
 		virtual serial_size_t GetSerialSize(bool) const override
 		{
-			return sizeof(TSharedPlanetConfig) + sizeof(TLayerConfig)*2 + 5 + 8 + 4;
+			return sizeof(TSharedPlanetConfig) + sizeof(TLayerConfig)*2 + 4 + 8 + 4;
 		}
 
 		virtual bool HasFixedSize() const override
@@ -2463,8 +2462,7 @@ namespace Grid
 			return	outStream.WritePrimitive((const TSharedPlanetConfig&)*this)
 					&&	outStream.WritePrimitive((const TLayerConfig&)extendedCore)
 					&&	outStream.WritePrimitive((const TLayerConfig&)mountains)
-					&&	outStream.WritePrimitive(topType)
-					&&	outStream.WritePrimitive(innerType)
+					&&	outStream.WritePrimitive(type)
 					&&	outStream.WritePrimitive(liquidCoverage)
 					&&	outStream.WritePrimitive(extendedCoreType)
 					&&	outStream.WritePrimitive(liquidOutline)
@@ -2479,8 +2477,7 @@ namespace Grid
 			return	inStream.ReadPrimitive((TSharedPlanetConfig&)*this)
 					&&	inStream.ReadPrimitive((TLayerConfig&)extendedCore)
 					&&	inStream.ReadPrimitive((TLayerConfig&)mountains)
-					&&	inStream.ReadPrimitive(topType)
-					&&	inStream.ReadPrimitive(innerType)
+					&&	inStream.ReadPrimitive(type)
 					&&	inStream.ReadPrimitive(liquidCoverage)
 					&&	inStream.ReadPrimitive(extendedCoreType)
 					&&	inStream.ReadPrimitive(liquidOutline)
@@ -2516,6 +2513,11 @@ namespace Grid
 				atmosphereColor.rgb = float3(0.7,0.8,1.0);
 				return;
 			}
+			if (t == Content::Unknown)
+			{
+				GenerateAtmosphereColorForType(Content::Grass);
+				return;
+			}
 			atmosphereColor.rgb = CellStack::Cell::typeColor[t];
 			Vec::abs(atmosphereColor);
 		}
@@ -2531,7 +2533,7 @@ namespace Grid
 			if (innerCoreType != Content::Clear)
 				GenerateAtmosphereColorForType(Content::Reinterpret(innerCoreType));
 			else
-				GenerateAtmosphereColorForType(topType);
+				GenerateAtmosphereColorForType(type);
 		}
 
 	};

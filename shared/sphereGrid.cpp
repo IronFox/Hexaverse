@@ -462,19 +462,6 @@ namespace Grid
 
 
 
-	static BYTE GetTopTypeAtHeight(const ExtendedPlanetConfig&config, int h)
-	{
-		if (h > config.snowHeight)
-			return Content::Snow;
-
-		if (h < config.liquidHeight && CellStack::Cell::IsLiquid(config.liquidCoverage) && CellStack::Cell::IsSolid(config.liquidOutline))
-			return config.liquidOutline;
-
-		if (h < 3 || config.innerType != Content::Unknown)
-			return config.topType;
-		else
-			return Content::Rock;
-	}
 
 
 	void			CellStack::InitUnknown(float2 heights, const ExtendedPlanetConfig&config)
@@ -503,9 +490,9 @@ namespace Grid
 			lowestOpenCell = (BYTE)uh + 1;
 			highestOpaqueCell = (BYTE)uh;
 		#endif
-		if (config.innerType != Content::Clear)
+		if (config.type != Content::Clear)
 			for (UINT i = 0; i <= uh; i++)
-				volumeCell[i].content = Cell::IsLiquid(config.innerType) ? Cell::Content::Water : Cell::Content::Unknown;
+				volumeCell[i].content = Cell::IsLiquid(config.type) ? Cell::Content::Water : Cell::Content::Unknown;
 		else
 			for (UINT i = 0; i <= uh; i++)
 				volumeCell[i].content = Cell::Content::Clear;
@@ -520,7 +507,7 @@ namespace Grid
 		//else
 		if (config.extendedCoreType != Content::Clear)
 			for (UINT i = 0; i < coreLayer; i++)
-				volumeCell[i].content = Cell::IsLiquid(config.innerType) ? Cell::Content::Lava : Cell::Content::Granite;
+				volumeCell[i].content = Cell::IsLiquid(config.type) ? Cell::Content::Lava : Cell::Content::Granite;
 		else
 			for (UINT i = 0; i < coreLayer; i++)
 				volumeCell[i].content = Content::Clear;
@@ -540,30 +527,39 @@ namespace Grid
 			if (!top)
 			{
 				bool isSolid = true;
-				isSolid = Cell::IsSolid(content);
+				//isSolid = Cell::IsSolid(content);
 
-				if (isSolid)
+				if (content == Content::Unknown)
 				{
 					top = layer;
 					h = ToHeight(top);
 
-					content = GetTopTypeAtHeight(config,h);
+					if (h > config.snowHeight)
+						content = Content::Snow;
+					else
+						if (h < config.liquidHeight && CellStack::Cell::IsLiquid(config.liquidCoverage) && CellStack::Cell::IsSolid(config.liquidOutline))
+							content = config.liquidOutline;
+						else  
+							if (config.type == Content::Unknown)
+								content = h < 3 ? Content::Grass : Content::Rock;
+							else
+								content = config.type;
 					continue;
 				}
 			}
 			if (content == Content::Unknown || content == Content::Water)	//mountain layer
 			{
-				if (config.innerType == Content::Unknown)
+				if (config.type == Content::Unknown)
 				{
-					bool hasEarth = Cell::typeStrength[config.topType] <= Cell::typeStrength[Content::Earth];
+					//bool hasEarth = Cell::typeStrength[config.topType] <= Cell::typeStrength[Content::Earth];
 					UINT rockHeight = h > 3 ? top : top - (3 - h);
-					if (!hasEarth)
-						rockHeight = Range;
+					//if (!hasEarth)
+					//	rockHeight = Range;
 					
 					content = layer <= rockHeight ? Cell::Content::Rock : Cell::Content::Earth;
 				}
 				else
-					content = config.innerType;
+					content = config.type;
 			}
 			else if (content == Content::Granite || content == Content::Lava)
 				content = config.extendedCoreType;
@@ -1039,10 +1035,10 @@ namespace Grid
 		#endif
 	#endif
 
-	static bool ReplaceTop(BYTE content)
-	{
-		return content == Content::Earth || content == Content::Rock || content == Content::Sand;
-	}
+	//static bool ReplaceTop(BYTE content)
+	//{
+	//	return content == Content::Earth || content == Content::Rock || content == Content::Sand;
+	//}
 
 
 	/*static*/ void Resource::FillAll(Random&random)
@@ -1151,18 +1147,18 @@ namespace Grid
 			cellStack[i].FillTypes(config);
 		});
 
-		Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [this](index_t i)
-		{
-			auto&stack = cellStack[i];
-			UINT32 stackTop = 0;
-			for (UINT l = 0; l+1 < CellStack::Range; l++)
-			{
-				if (stack.volumeCell[l].content == Content::Grass && !stack.volumeCell[l+1].IsClearOrLiquidIgnoreStructure())
-				{
-					stack.volumeCell[l].content = Content::Earth;
-				}
-			}
-		});
+		//Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [this](index_t i)
+		//{
+		//	auto&stack = cellStack[i];
+		//	UINT32 stackTop = 0;
+		//	for (UINT l = 0; l+1 < CellStack::Range; l++)
+		//	{
+		//		if (stack.volumeCell[l].content == Content::Grass && !stack.volumeCell[l+1].IsClearOrLiquidIgnoreStructure())
+		//		{
+		//			stack.volumeCell[l].content = Content::Earth;
+		//		}
+		//	}
+		//});
 
 
 		const bool solidProx = CellStack::Cell::IsSolid(config.liquidOutline) && CellStack::Cell::IsLiquid(config.liquidCoverage);
