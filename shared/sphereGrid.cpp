@@ -1237,6 +1237,10 @@ namespace Grid
 					}
 				break;
 			}
+			#ifdef HAS_WINDOW
+				if (discoveryLevel != WorldDiscovery::FullTerrain)
+					stack.UpdateRange();
+			#endif
 		}
 	}
 
