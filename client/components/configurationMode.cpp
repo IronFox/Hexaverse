@@ -722,6 +722,7 @@ namespace ConfigurationMode
 	}
 	void	RestoreServerObjects()
 	{
+		RestoreServerWorld();
 		using namespace Detail;
 		if (serverObjects.IsNotEmpty())
 		{
