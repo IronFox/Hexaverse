@@ -552,7 +552,7 @@ namespace ConfigurationMode
 			MakeMaterialChoice(coreGroup,config.innerCoreType,refConfig.innerCoreType,noUnknown);
 			mountainGroup = MakeLayer("Mountains",config.mountains,refConfig.mountains);
 			extendedCoreGroup = MakeLayer("Extended Core",config.extendedCore,refConfig.extendedCore);
-			MakeMaterialChoice(extendedCoreGroup->AddChild("Type","Extended Core Content"),config.extendedCoreType,refConfig.extendedCoreType, noUnknown);
+			MakeMaterialChoice(extendedCoreGroup->AddChild("Type","Terrain Content"),config.extendedCoreType,refConfig.extendedCoreType, noUnknown);
 			MakeMaterialChoice(mountainGroup->AddChild("Type","Terrain Content"),config.type,refConfig.type, fullScope);
 //			MakeMaterialChoice(mountainGroup->AddChild("Top Type", "Terrain Top" ),config.topType,refConfig.topType, fullScope);
 			MakeIntButtons(mountainGroup->AddChild("Snow Height"),config.snowHeight,refConfig.snowHeight,Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
