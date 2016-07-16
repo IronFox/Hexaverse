@@ -635,7 +635,11 @@ namespace Grid
 						while (!volumeCell[highestOpaqueCell].IsOpaque() && highestOpaqueCell > 0)
 							highestOpaqueCell--;
 					}
-					actualWorld.lightingOutdated = true;
+					if (actualWorld.cellStack.Owns(this))
+					{
+						actualWorld.structureChanged = true;
+						actualWorld.lightingOutdated = true;
+					}
 					DebugCheckRange();
 				#endif
 				return true;
@@ -687,7 +691,11 @@ namespace Grid
 									highestOpaqueCell--;
 							}
 						}
-					actualWorld.lightingOutdated = true;
+					if (actualWorld.cellStack.Owns(this))
+					{
+						actualWorld.lightingOutdated = true;
+						actualWorld.structureChanged = true;
+					}
 					DebugCheckRange();
 				#endif
 				return true;
@@ -1051,6 +1059,7 @@ namespace Grid
 	{
 		#ifdef HAS_WINDOW
 			lightingOutdated = true;
+			structureChanged = true;
 		#endif
 		ResetStructureCounters(false);
 		CellStack::bottom.content = (BYTE)config.innerCoreType;
@@ -1186,8 +1195,8 @@ namespace Grid
 				stack.UpdateRange();
 				stack.lightingChangedTo = (BYTE)CellStack::Range;
 			});
-			if (this == &actualWorld)
-				actualWorld.lightingOutdated = true;
+			lightingOutdated = true;
+			structureChanged = true;
 		#endif
 	}
 	void					WorldData::ExportDiscovered(WorldData&target, WorldDiscovery discoveryLevel) const
@@ -3575,6 +3584,7 @@ namespace Grid
 	void	WorldData::SignalLightingChange(const HCellIdI&stackID)
 	{
 		lightingOutdated = true;
+		structureChanged = true;
 		const UINT r = CellStack::ToLayer(stackID.height)+1;
 		high.UpdatePlanarDistanceField(stackID.stackID,r,field);
 		for (index_t i = 0; i < HighSetup::TDistanceField::NumEntries; i++)
@@ -3589,6 +3599,7 @@ namespace Grid
 			void	WorldData::SignalLightingChange(const LCellIdI&stackID)
 			{
 				lightingOutdated = true;
+				structureChanged = true;
 				const UINT r = CellStack::ToLayer(stackID.height) + 2;
 				UINT32 higher = low.grid.GetCell(stackID.stackID).higherEquivalent;
 				high.UpdatePlanarDistanceField(higher,CellStack::ToLayer(stackID.height),field);
@@ -3711,6 +3722,7 @@ namespace Grid
 				low.family[i].SetOutdated(atTime);
 				#ifdef HAS_WINDOW
 					lightingOutdated = true;
+					structureChanged = true;
 				#endif
 			}
 
@@ -3852,6 +3864,7 @@ namespace Grid
 						high.family[high.grid.GetCell(current).family].SetOutdated(0);
 						low.family[high.grid.GetCell(current).family].SetOutdated(0);
 						lightingOutdated = true;
+						structureChanged = true;
 					}
 					if (!h)
 						continue;
@@ -3980,6 +3993,7 @@ namespace Grid
 					high.family[high.grid.GetCell(current).family].SetOutdated(0);
 					low.family[high.grid.GetCell(current).family].SetOutdated(0);
 					lightingOutdated = true;
+					structureChanged = true;
 				}
 				if (!h)
 					continue;

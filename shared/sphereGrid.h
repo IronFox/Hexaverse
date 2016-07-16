@@ -2162,7 +2162,8 @@ namespace Grid
 	public:
 		Array<CellStack>		cellStack;
 		#ifdef HAS_WINDOW
-			bool				lightingOutdated = true;	//new C++? probably
+			bool				lightingOutdated = true;
+			bool				structureChanged = true;
 		#endif
 
 		/**/					WorldData();
@@ -2172,6 +2173,7 @@ namespace Grid
 			cellStack.swap(other.cellStack);
 			#ifdef HAS_WINDOW
 				swp(lightingOutdated,other.lightingOutdated);
+				swp(structureChanged,other.structureChanged);
 			#endif
 		}
 		/**
