@@ -1,3 +1,5 @@
+#ifdef HAS_WINDOW
+
 #include <global_root.h>
 #include "configurationMode.h"
 #include "world.h"
@@ -733,3 +735,5 @@ namespace ConfigurationMode
 
 
 }
+
+#endif

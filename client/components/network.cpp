@@ -385,7 +385,9 @@ namespace Network
 			if (response.success)
 			{
 				LogEvent(EventClass::Preset::common, nullptr, "Status confirmed ('"+response.errorMessage+"')");
-				ConfigurationMode::SetActive(response.configurationMode);
+				#ifdef HAS_WINDOW
+					ConfigurationMode::SetActive(response.configurationMode);
+				#endif
 				if (response.configurationMode)
 					AttemptFactionLogin(false,Protocol::FactionType::SpectatorFaction);
 				else
@@ -426,7 +428,9 @@ namespace Network
 			}
 			else
 			{
-				ConfigurationMode::RestoreServerWorld();
+				#ifdef HAS_WINDOW
+					ConfigurationMode::RestoreServerWorld();
+				#endif
 				BYTE family = delta.familyAndLastFlag & 0x7F;
 				bool last = (delta.familyAndLastFlag & 0x80) != 0;
 				Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,false,true);
@@ -444,7 +448,9 @@ namespace Network
 		void OnMobileState(Protocol::MobileState&vs)
 		{
 			ASSERT__(!eventsLocked);
-			ConfigurationMode::RestoreServerObjects();
+			#ifdef HAS_WINDOW
+				ConfigurationMode::RestoreServerObjects();
+			#endif
 
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
@@ -485,8 +491,9 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			ASSERT__(Network::haveID || Network::amSpectator);
-			ConfigurationMode::RestoreServerObjects();
-
+			#ifdef HAS_WINDOW
+				ConfigurationMode::RestoreServerObjects();
+			#endif
 
 			Objects::PMobileEntity v;
 			auto m = vc.state.myMobileEntity.Get0();
@@ -523,12 +530,14 @@ namespace Network
 		void	OnNewStructure(Protocol::StructureConstruction&sc)
 		{
 			ASSERT__(!eventsLocked);
-			ConfigurationMode::RestoreServerObjects();
-
 			#ifdef HAS_WINDOW
-				if (Grid::actualWorld.lightingOutdated && World::allowRecompilation)
-					Grid::actualWorld.UpdateLighting();
+				ConfigurationMode::RestoreServerObjects();
 			#endif
+
+			//#ifdef HAS_WINDOW
+			//	if (Grid::actualWorld.lightingOutdated && World::allowRecompilation)
+			//		Grid::actualWorld.UpdateLighting();
+			//#endif
 
 			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.typeName, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
 			ASSERT__(s);
@@ -551,7 +560,9 @@ namespace Network
 		void OnStructureState(Protocol::StructureState&vs)
 		{
 			ASSERT__(!eventsLocked);
-			ConfigurationMode::RestoreServerObjects();
+			#ifdef HAS_WINDOW
+				ConfigurationMode::RestoreServerObjects();
+			#endif
 
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
@@ -578,7 +589,9 @@ namespace Network
 		void DestroyEntity(Protocol::DestroyEntity&de)
 		{
 			ASSERT__(!eventsLocked);
-			ConfigurationMode::RestoreServerObjects();
+			#ifdef HAS_WINDOW
+				ConfigurationMode::RestoreServerObjects();
+			#endif
 
 			if (de.timestamp.rightNow && Animation::AllDone())
 			{
@@ -649,14 +662,14 @@ namespace Network
 			RuntimeConfig::empZones = (Network::gameFlags & Protocol::GameFlag::EMPZones) != 0;
 			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameConfig.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);
-			ConfigurationMode::SetGameConfig(Network::gameFlags, RuntimeConfig::gameGoal, Grid::WorldDiscovery::Reinterpret( cr.info.gameConfig.worldDiscovery ));
 
 			#ifdef HAS_WINDOW
+				ConfigurationMode::SetGameConfig(Network::gameFlags, RuntimeConfig::gameGoal, Grid::WorldDiscovery::Reinterpret( cr.info.gameConfig.worldDiscovery ));
 				World::allowRecompilation = false;
+				ConfigurationMode::SetActive((Network::gameFlags & Protocol::GameFlag::ConfigurationMode)!= 0);
 			#endif
 			gameHasBegun = false;
 
-			ConfigurationMode::SetActive((Network::gameFlags & Protocol::GameFlag::ConfigurationMode)!= 0);
 			haveFaction = cr.startFactionTypes != 0;
 			if (haveFaction)
 			{
@@ -693,11 +706,13 @@ namespace Network
 				#endif
 			}
 
-			if (amSpectator)
-			{
-				Grid::actualWorld.OverrideVisibility(1);
+			#ifdef HAS_WINDOW
+				if (amSpectator)
+				{
+					Grid::actualWorld.OverrideVisibility(1);
 
-			}
+				}
+			#endif
 		}
 
 		void	SetFactionID(NET(TUniqueID)&id)
@@ -924,8 +939,9 @@ namespace Network
 
 		void	PlanetConfig(Grid::ExtendedPlanetConfig&cfg)
 		{
-			ConfigurationMode::Update(cfg);
-
+			#ifdef HAS_WINDOW
+				ConfigurationMode::Update(cfg);
+			#endif
 		}
 	}
 
@@ -1127,9 +1143,9 @@ namespace Network
 
 				Receiver::eventsLocked = true;
 
-				ConfigurationMode::SetActive(false);
 
 				#ifdef HAS_WINDOW
+					ConfigurationMode::SetActive(false);
 					Dialog::Hide(Dialog::loginMenu);
 					Dialog::CheckServersAreShown(true);
 					Dialog::SignalSituationChange();

@@ -1,4 +1,7 @@
 #pragma once
+
+#ifdef HAS_WINDOW
+
 #include <sphereGrid.h>
 #include <runtimeConfig.h>
 
@@ -26,3 +29,5 @@ namespace ConfigurationMode
 	void	RestoreServerWorld();
 	void	RestoreServerObjects();
 }
+
+#endif

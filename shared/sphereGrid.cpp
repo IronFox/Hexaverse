@@ -486,7 +486,7 @@ namespace Grid
 		UINT uh = unsigned(h + HalfRange);
 		UINT coreLayer = ToLayer(coreH);
 
-		#ifdef CLIENT
+		#ifdef HAS_WINDOW
 			lowestOpenCell = (BYTE)uh + 1;
 			highestOpaqueCell = (BYTE)uh;
 		#endif
@@ -1179,7 +1179,7 @@ namespace Grid
 				}
 			}
 
-		#ifdef CLIENT
+		#ifdef HAS_WINDOW
 			Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [this](index_t i)
 			{
 				auto&stack = cellStack[i];

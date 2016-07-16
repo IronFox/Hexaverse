@@ -1464,7 +1464,9 @@ namespace Animation
 			return Done;
 			case TerrainChange:
 			{
-				ConfigurationMode::RestoreServerWorld();
+				#ifdef HAS_WINDOW
+					ConfigurationMode::RestoreServerWorld();
+				#endif
 
 				foreach (*worldDelta,block)
 				{
