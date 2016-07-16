@@ -42,7 +42,6 @@ namespace ConfigurationMode
 				isLoaded = true;
 				copy.swap(Grid::actualWorld);
 				current = nullptr;
-				Grid::actualWorld.lightingOutdated = true;
 				Grid::SetAllFamiliesOutdated();	//force rebuild
 			};
 
@@ -54,7 +53,6 @@ namespace ConfigurationMode
 				isLoaded = false;
 				copy.swap(Grid::actualWorld);
 				current = this;
-				Grid::actualWorld.lightingOutdated = true;
 				Grid::SetAllFamiliesOutdated();	//force rebuild
 			}
 
