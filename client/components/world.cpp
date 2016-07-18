@@ -193,6 +193,8 @@ namespace World
 			if (Grid::actualWorld.lightingOutdated)
 			{
 				Grid::actualWorld.UpdateLighting();
+				if (!Grid::actualWorld.lightingOutdated)
+					Grid::SetAllFamiliesOutdated();
 			}
 			if (Grid::actualWorld.structureChanged)
 			{
