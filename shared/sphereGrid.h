@@ -20,7 +20,7 @@ namespace Grid
 {
 	CONSTRUCT_ENUMERATION4(WorldDiscovery,
 		None,
-		Oceans,
+		Water,
 		Liquids,
 		FullTerrain
 	)

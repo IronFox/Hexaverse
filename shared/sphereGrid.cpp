@@ -1221,7 +1221,7 @@ namespace Grid
 						}
 					}
 				break;
-				case WorldDiscovery::Oceans:
+				case WorldDiscovery::Water:
 					for (unsigned j = 0; j < CellStack::Range; j++)
 					{
 						CellStack::Cell&c = stack.volumeCell[j];
