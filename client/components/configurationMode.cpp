@@ -535,7 +535,7 @@ namespace ConfigurationMode
 			Objects::PCommandGroup goals = ruleGroup->AddChild("Game Goal");
 			for (index_t i = 0; i < RuntimeConfig::GameGoal::N; i++)
 				AppendGoalButton(goals,RuntimeConfig::GameGoal::Reinterpret(i));
-			Objects::PCommandGroup disc = ruleGroup->AddChild("World Discovery");
+			Objects::PCommandGroup disc = ruleGroup->AddChild("Initial Discovery","View");
 			for (index_t i = 0; i < Grid::WorldDiscovery::N; i++)
 				AppendDiscoveryButton(disc,Grid::WorldDiscovery::Reinterpret(i));
 			disc->onExpand = []()
