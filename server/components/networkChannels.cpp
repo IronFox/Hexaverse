@@ -860,6 +860,7 @@ namespace Receiver
 			Game::Config::basesRequired = !!(flags & Protocol::GameFlag::BasesRequired);
 			Game::Config::closedGame = !!(flags & Protocol::GameFlag::ClosedGame);
 			Game::Config::startBases = !!(flags & Protocol::GameFlag::StartBases);
+			World::Config::simulateLiquids = !!(flags & Protocol::GameFlag::SimulateLiquids);
 			Game::Config::Nexus::enableAI = !!(flags & Protocol::GameFlag::NexusAI);
 			bool eOld = RuntimeConfig::empZones;
 			RuntimeConfig::empZones = !!(flags & Protocol::GameFlag::EMPZones);

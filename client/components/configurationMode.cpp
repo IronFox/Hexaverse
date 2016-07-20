@@ -18,6 +18,39 @@ namespace ConfigurationMode
 		UINT32 seed = 0;
 		Protocol::GameConfig	gameConfig;
 		Random rng;
+		StringTable<String>		declarations;
+
+		const String& FindDeclaration(const String& path)
+		{
+			if (!path.beginsWith('/'))
+				return FindDeclaration('/'+path);
+			static String empty = "";
+			const String*ptr = declarations.QueryPointer(path);
+			if (ptr)
+				return *ptr;
+			return empty;
+		}
+
+		void ParseDeclarations(const XML::Node& context, const String&path)
+		{
+			String str;
+			Array<String>	lines;
+			foreach(context.children,ch)
+			{
+				if (ch->name == "context" && ch->Query("name",str))
+					ParseDeclarations(*ch,path+'/'+str);
+				else if (ch->name == "variable" && ch->Query("name",str))
+				{
+					String base = ch->inner_content;
+					explode('\n',base,lines);
+					foreach(lines,ln)
+						ln->trimThis();
+					
+					declarations.Set(path+'/'+str,implode('\n',lines));
+				}
+			}
+		}
+
 
 		class GridState
 		{
@@ -257,7 +290,7 @@ namespace ConfigurationMode
 
 		void AppendRuleButton(const Objects::PCommandGroup&grp,const String&niceName, const String&iconName,const String&configName, UINT32 flag, const std::function<void(bool)>&onChange)
 		{
-			Objects::PBaseCommand cmd(new Objects::CustomIconCommand(niceName,iconName,[flag,onChange]()
+			Objects::PIconCommand cmd(new Objects::CustomIconCommand(niceName,iconName,[flag,onChange]()
 			{
 				if (gameConfig.gameFlags & flag)
 				{
@@ -284,6 +317,9 @@ namespace ConfigurationMode
 			}));
 			grp->Add(cmd);
 			onChange(!!(gameConfig.gameFlags&flag));
+			String help = FindDeclaration(configName);
+			if (help.IsNotEmpty())
+				cmd->customLabel << help;
 		}
 
 		void AppendRuleButton(const Objects::PCommandGroup&grp,const String&niceName, const String&configName, UINT32 flag)
@@ -349,14 +385,15 @@ namespace ConfigurationMode
 		}
 			
 
-		void MakeIntButtons(const Objects::PCommandGroup&group, int&value, const int&defValue, int min, int max)
+		Objects::PCommandGroup MakeIntButtons(const Objects::PCommandGroup&group, int&value, const int&defValue, int min, int max)
 		{
-			Objects::PBaseCommand reset(new Objects::CustomIconCommand("Reset this setting to server default","Undo",[&value,&defValue]()
+			Objects::PIconCommand reset(new Objects::CustomIconCommand("Reset","Undo",[&value,&defValue]()
 			{
 				value = defValue;
 				Update();
 			},[](bool){return Objects::BaseCommand::Flags::IsEnabled;}));
-			Objects::PBaseCommand decrease(new Objects::IconCommand("Decrease",[&value,min]()
+			reset->customLabel << "Resets this setting to the current server value";
+			Objects::PIconCommand decrease(new Objects::IconCommand("Decrease",[&value,min]()
 			{
 				if (value > min)
 				{
@@ -364,7 +401,8 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
-			Objects::PBaseCommand increase(new Objects::IconCommand("Increase",[&value,max]()
+			decrease->customLabel << "Decreases this setting by 1";
+			Objects::PIconCommand increase(new Objects::IconCommand("Increase",[&value,max]()
 			{
 				if (value < max)
 				{
@@ -372,8 +410,9 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
+			increase->customLabel << "Increases this setting by 1";
 
-			Objects::PBaseCommand decreaseFast(new Objects::IconCommand("Decrease Fast",[&value,min,max]()
+			Objects::PIconCommand decreaseFast(new Objects::IconCommand("Decrease Fast",[&value,min,max]()
 			{
 				if (value > min)
 				{
@@ -382,7 +421,8 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
-			Objects::PBaseCommand increaseFast(new Objects::IconCommand("Increase Fast",[&value,min,max]()
+			decreaseFast->customLabel << "Decreases this setting by "+String((max - min)/4);
+			Objects::PIconCommand increaseFast(new Objects::IconCommand("Increase Fast",[&value,min,max]()
 			{
 				if (value < max)
 				{
@@ -391,8 +431,9 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
+			increaseFast->customLabel << "Decreases this setting by "+String((max - min)/4);
 
-			Objects::PBaseCommand setMin(new Objects::IconCommand("Set Min",[&value,min]()
+			Objects::PIconCommand setMin(new Objects::IconCommand("Set Min",[&value,min]()
 			{
 				if (value > min)
 				{
@@ -400,7 +441,10 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
-			Objects::PBaseCommand setMax(new Objects::IconCommand("Set Max",[&value,max]()
+			setMin->customLabel << "Sets this setting to the minimum possible value ("+String(min)+")";
+
+
+			Objects::PIconCommand setMax(new Objects::IconCommand("Set Max",[&value,max]()
 			{
 				if (value < max)
 				{
@@ -408,6 +452,7 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
+			setMax->customLabel << "Sets this setting to the maximum possible value ("+String(max)+")";
 
 
 			group->Add(reset);
@@ -417,18 +462,20 @@ namespace ConfigurationMode
 			group->Add(increaseFast);
 			group->Add(setMin);
 			group->Add(setMax);
+			return group;
 		}
 
-		void MakeFloatButtons(const Objects::PCommandGroup&group, float&value, const float&defValue)
+		Objects::PCommandGroup MakeFloatButtons(const Objects::PCommandGroup&group, float&value, const float&defValue)
 		{
 			float min = value / 10.f;
 			float max = value * 10.f;
-			Objects::PBaseCommand reset(new Objects::CustomIconCommand("Reset this setting to server default","Undo",[&value,&defValue]()
+			Objects::PIconCommand reset(new Objects::CustomIconCommand("Reset","Undo",[&value,&defValue]()
 			{
 				value = defValue;
 				Update();
 			},[](bool){return Objects::BaseCommand::Flags::IsEnabled;}));
-			Objects::PBaseCommand decrease(new Objects::IconCommand("Decrease",[&value,min]()
+			reset->customLabel << "Resets this setting to the current server value";
+			Objects::PIconCommand decrease(new Objects::IconCommand("Decrease",[&value,min]()
 			{
 				if (value > min)
 				{
@@ -437,7 +484,8 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,min](bool){return value > min ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
-			Objects::PBaseCommand increase(new Objects::IconCommand("Increase",[&value,max]()
+			decrease->customLabel << "Decreases this setting by 20%";
+			Objects::PIconCommand increase(new Objects::IconCommand("Increase",[&value,max]()
 			{
 				if (value < max)
 				{
@@ -446,20 +494,30 @@ namespace ConfigurationMode
 					Update();
 				}
 			},[&value,max](bool){return value < max ? Objects::BaseCommand::Flags::IsEnabled : Objects::BaseCommand::Flags::None;}));
+			increase->customLabel << "Increases this setting by 20%";
 
 			group->Add(reset);
 			group->Add(decrease);
 			group->Add(increase);
+			return group;
 		}
 
 		Objects::PCommandGroup MakeLayer(const String&name, Grid::ExtendedPlanetConfig::TLayerConfig&layer,const Grid::ExtendedPlanetConfig::TLayerConfig&refLayer)
 		{
 			Objects::PCommandGroup group(new Objects::CommandGroup(name));
 			group->baseCoords = int2(1);
-			MakeIntButtons(group->AddChild("Base Height"),layer.baseHeight,refLayer.baseHeight, Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1);
-			MakeIntButtons(group->AddChild("Dampening"),layer.dampening,refLayer.dampening, 0,Grid::CellStack::HalfRange);
-			MakeFloatButtons(group->AddChild("Height Scale"),layer.heightScale, refLayer.heightScale);
-			MakeFloatButtons(group->AddChild("Frequency"),layer.frequency, refLayer.frequency);
+			MakeIntButtons(group->AddChild("Base Height"),layer.baseHeight,refLayer.baseHeight, Grid::CellStack::BottomHeight,Grid::CellStack::TopHeight-1)
+			->customLabel << "Defines the central height of this attribute. The effective altitude stretches symmetrically up and down from this value."
+			;
+			MakeIntButtons(group->AddChild("Dampening"),layer.dampening,refLayer.dampening, 0,Grid::CellStack::HalfRange)
+			->customLabel << "Draws height values closer to the base height. Creates plateaus at central height level"
+			;
+			MakeFloatButtons(group->AddChild("Height Scale"),layer.heightScale, refLayer.heightScale)
+			->customLabel << "Scales extremes. The heigher this value the further the resulting heightmap will reach up and down"
+			;
+			MakeFloatButtons(group->AddChild("Frequency"),layer.frequency, refLayer.frequency)
+			->customLabel << "Scales the frequency of peaks. The heigher this value the higher the number of mountains at reduced horizontal extend each."
+			;
 			return group;
 		}
 
@@ -467,11 +525,12 @@ namespace ConfigurationMode
 		template <typename T=BYTE>
 		void MakeMaterialChoice(const Objects::PCommandGroup&group, T&value, const T&defValue, MaterialDialog&dialog)
 		{
-			Objects::PBaseCommand reset(new Objects::CustomIconCommand("Reset this material choice to server default","Undo",[&value,defValue]()
+			Objects::PIconCommand reset(new Objects::CustomIconCommand("Reset","Undo",[&value,defValue]()
 			{
 				value = defValue;
 				Update();
 			},[](bool){return Objects::BaseCommand::Flags::IsEnabled;}));
+			reset->customLabel << "Resets this material to the current server value";
 			Objects::PBaseCommand choose(new Objects::IconCommand("Choose Material",[&value,&dialog]()
 			{
 				dialog.SetCurrent(value);
@@ -496,14 +555,23 @@ namespace ConfigurationMode
 			if (created)
 				return;
 			created = true;
+
+			XML::Container declarations;
+			declarations.LoadFromFile("../server/config/declaration.xml");
+			ParseDeclarations(declarations.root_node,"");
+
+
 			fullScope.Create(true,true);
 			noLiquids.Create(false,false);
 			noUnknown.Create(false,true);
 
 			coreGroup.reset(new Objects::CommandGroup("Core"));
 			coreGroup->baseCoords = int2(1);
+			coreGroup->customLabel << "The inner planetary core represents the center-most sphere content";
 			ruleGroup.reset(new Objects::CommandGroup("Rules"));
 			ruleGroup->baseCoords = int2(1);
+			ruleGroup->customLabel << "All common game rules";
+
 			/*			ClosedGame = 0x1,
 			BasesRequired = 0x2,
 			StartBases = 0x4,
@@ -513,11 +581,12 @@ namespace ConfigurationMode
 
 			*/
 
-			AppendRuleButton(ruleGroup,"Closed Game","closedGame",Protocol::GameFlag::ClosedGame);
-			AppendRuleButton(ruleGroup,"Start-Bases","startBases",Protocol::GameFlag::StartBases);
-			AppendRuleButton(ruleGroup,"Bases Required","basedRequired",Protocol::GameFlag::BasesRequired);
-			AppendRuleButton(ruleGroup,"Enable Nexus AI", "Nexus/enableAI",Protocol::GameFlag::NexusAI);
-			AppendRuleButton(ruleGroup,"EMP Zones", "Energy","empZones",Protocol::GameFlag::EMPZones,[](bool set)
+			AppendRuleButton(ruleGroup,"Closed Game","Rules/closedGame",Protocol::GameFlag::ClosedGame);
+			AppendRuleButton(ruleGroup,"Start-Bases","Rules/startBases",Protocol::GameFlag::StartBases);
+			AppendRuleButton(ruleGroup,"Bases Required","Rules/basesRequired",Protocol::GameFlag::BasesRequired);
+			AppendRuleButton(ruleGroup,"Enable Nexus AI", "Rules/Nexus/enableAI",Protocol::GameFlag::NexusAI);
+			AppendRuleButton(ruleGroup,"Simulate Liquids", "World/simulateLiquids",Protocol::GameFlag::SimulateLiquids);
+			AppendRuleButton(ruleGroup,"EMP Zones", "Energy","Rules/empZones",Protocol::GameFlag::EMPZones,[](bool set)
 			{
 				if (set)
 				{
@@ -533,9 +602,11 @@ namespace ConfigurationMode
 				Grid::SetAllFamiliesOutdated(0);
 			});
 			Objects::PCommandGroup goals = ruleGroup->AddChild("Game Goal");
+			goals->customLabel << FindDeclaration("/Rules/gameGoal");
 			for (index_t i = 0; i < RuntimeConfig::GameGoal::N; i++)
 				AppendGoalButton(goals,RuntimeConfig::GameGoal::Reinterpret(i));
 			Objects::PCommandGroup disc = ruleGroup->AddChild("Initial Discovery","View");
+			disc->customLabel << FindDeclaration("/World/worldDiscovery");
 			for (index_t i = 0; i < Grid::WorldDiscovery::N; i++)
 				AppendDiscoveryButton(disc,Grid::WorldDiscovery::Reinterpret(i));
 			disc->onExpand = []()
@@ -551,7 +622,9 @@ namespace ConfigurationMode
 
 			MakeMaterialChoice(coreGroup,config.innerCoreType,refConfig.innerCoreType,noUnknown);
 			mountainGroup = MakeLayer("Mountains",config.mountains,refConfig.mountains);
+			mountainGroup->customLabel << "Defines the extend and content of the mountain layer. The mountain layer stretches from the bottom up, where not overwritten by the extended planet core.";
 			extendedCoreGroup = MakeLayer("Extended Core",config.extendedCore,refConfig.extendedCore);
+			extendedCoreGroup->customLabel << "Defines the extend and content of the extended core layer. The extended core stretches from the bottom up, potentially overwriting content defined by the mountain layer.";
 			MakeMaterialChoice(extendedCoreGroup->AddChild("Type","Terrain Content"),config.extendedCoreType,refConfig.extendedCoreType, noUnknown);
 			MakeMaterialChoice(mountainGroup->AddChild("Type","Terrain Content"),config.type,refConfig.type, fullScope);
 //			MakeMaterialChoice(mountainGroup->AddChild("Top Type", "Terrain Top" ),config.topType,refConfig.topType, fullScope);
