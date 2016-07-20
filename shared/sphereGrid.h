@@ -442,7 +442,7 @@ namespace Grid
 		#ifdef HAS_WINDOW
 			BYTE			lowestOpenCell,
 							highestOpaqueCell,
-							lightingChangedTo;
+							lightingChangedTo;	//one above the highest layer that cell lighting might have changed. 0 means no change at all
 			TIntRange<BYTE>	waterRange;
 		#endif
 
@@ -2294,6 +2294,7 @@ namespace Grid
 
 
 			void				UpdateLighting();	//updates local and neighbor stack lighting
+			void				ProgressiveUpdateLighting(BYTE numLayers);	//updates local and neighbor stack lighting
 			void				CompileResources(THull<ResourceVertex>&target, index_t cellOffset, count_t cellCount, FClipHeight clipHeight,const Resource*resources, count_t numResources) const;
 			#ifdef HYBRID_GRID
 				void			SignalLightingChange(const HCellIdI&cellID);

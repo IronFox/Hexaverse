@@ -517,13 +517,19 @@ namespace Grid
 	{
 		UINT top = 0;
 		int h = BottomHeight;
+		BYTE light = 0xff;
 		for (UINT layer = Range-1; layer < Range; layer--)
 		{
 			BYTE&content = volumeCell[layer].content;
+			#ifdef HAS_WINDOW	
+				volumeCell[layer].intLightLevel = light;
+				volumeCell[layer].submergence = 0;
+			#endif
 			if (content == Content::Clear)
 			{
 				continue;
 			}
+			light = 0;
 			if (!top)
 			{
 				bool isSolid = true;
@@ -3526,7 +3532,7 @@ namespace Grid
 				{
 					const UINT32 i = ids[_i];
 					CellStack&thisStack = cellStack[i];
-					if (h > thisStack.lightingChangedTo)
+					if (h+1 > thisStack.lightingChangedTo)
 						return;
 					int l = 0xFF;
 				
@@ -3555,7 +3561,7 @@ namespace Grid
 				Concurrency::parallel_for(index_t(0), HighSetup::GridType::CellCount,[this,h](index_t i)
 				{
 					CellStack&thisStack = cellStack[i];
-					if (h > thisStack.lightingChangedTo)
+					if (h+1 > thisStack.lightingChangedTo)
 						return;
 					int l = 0xFF;
 				
@@ -3580,6 +3586,110 @@ namespace Grid
 	
 	}
 
+	void	WorldData::ProgressiveUpdateLighting(BYTE numLayers)
+	{
+		Timer::Time t0 = timer.Now();
+
+		UINT32 top = 0,bottom = CellStack::Range;
+		count_t cnt = 0;
+		UINT32 tp = 0;
+		foreach (cellStack,stack)
+		{
+			BYTE base =stack->lowestOpenCell;
+			if (base)
+				base--;	//account for top ground layer
+			if (stack->lightingChangedTo > base)
+			{
+				cnt ++;
+				top = vmax(top,stack->lightingChangedTo-1);
+				bottom = vmin(bottom,stack->lowestOpenCell > 0 ? stack->lowestOpenCell-1 : 0);
+			}
+		}
+		tp = std::min(top,CellStack::Range-1);
+		if (tp >= numLayers)
+			bottom = vmax(tp - numLayers+1,bottom);
+	
+		if (cnt < 512)
+		{
+			static Buffer<UINT32>	ids;
+			ids.Clear();
+
+			foreach (cellStack,stack)
+			{
+				if (stack->lightingChangedTo > stack->lowestOpenCell)
+				{
+					ids << stack - cellStack.pointer();
+				}
+			}
+
+
+			
+			for (UINT32 h = tp; /*h > 0 && */h >= bottom && h <= tp; h--)
+			{
+				Concurrency::parallel_for(index_t(0), ids.Count(),[this,h](index_t _i)
+				{
+					const UINT32 i = ids[_i];
+					CellStack&thisStack = cellStack[i];
+					if (h+1 > thisStack.lightingChangedTo)
+						return;
+					int l = 0xFF;
+				
+					if (h < CellStack::Range-1)
+					{
+						l = thisStack.volumeCell[h+1].intLightLevel;
+						const auto&n = high.grid.GetCell(i).neighborhood;
+						for (int j = 0; j < n.numNeighbors; j++)
+							l += cellStack[n.neighborID[j]].volumeCell[h+1].intLightLevel;
+						l /= 1 + n.numNeighbors;
+					}
+					thisStack.volumeCell[h].SetIntLightLevel(l);
+					BYTE next = h < CellStack::Range-1 ? thisStack.volumeCell[h+1].GetIncreasedSubmergence() : 0;
+					thisStack.volumeCell[h].SetSubmergence(next);
+				});
+			}
+
+		}
+		else
+		{
+			for (UINT32 h = tp; /*h > 0 && */h >= bottom && h <= tp; h--)
+			{
+				Concurrency::parallel_for(index_t(0), HighSetup::GridType::CellCount,[this,h](index_t i)
+				{
+					CellStack&thisStack = cellStack[i];
+					if (h+1 > thisStack.lightingChangedTo)
+						return;
+					int l = 0xFF;
+				
+					if (h < CellStack::Range-1)
+					{
+						l = thisStack.volumeCell[h+1].intLightLevel;
+						const auto&n = high.grid.GetCell(i).neighborhood;
+						for (int j = 0; j < n.numNeighbors; j++)
+							l += cellStack[n.neighborID[j]].volumeCell[h+1].intLightLevel;
+						l /= 1 + n.numNeighbors;
+					}
+					thisStack.volumeCell[h].SetIntLightLevel(l);
+					thisStack.volumeCell[h].SetSubmergence(h < CellStack::Range-1 ? thisStack.volumeCell[h+1].GetIncreasedSubmergence() : 0);
+				});
+			}
+		}
+		//tp--;
+		if (tp <= bottom || cnt == 0)
+		{
+			lightingOutdated = false;
+			foreach (cellStack,stack)
+				stack->lightingChangedTo = 0;
+		}
+		else
+			foreach (cellStack,stack)
+				stack->lightingChangedTo = vmin(stack->lightingChangedTo,bottom);
+
+//		LogEvent(EventSignificance::PerformanceMeasurement,  "Progessively updated lighting in "+String(timer.GetSecondsSince(t0))+" seconds");
+	
+	
+	}
+
+
 	HighSetup::TDistanceField	field;
 	void	WorldData::SignalLightingChange(const HCellIdI&stackID)
 	{
@@ -3590,7 +3700,7 @@ namespace Grid
 		for (index_t i = 0; i < HighSetup::TDistanceField::NumEntries; i++)
 			if (field.distance[i] != 0xFFFFFFFF)
 			{
-				cellStack[i].lightingChangedTo = r-field.distance[i];
+				cellStack[i].lightingChangedTo = r-field.distance[i] +1;
 				high.family[high.grid.GetCell(i).family].SetOutdated(0);
 			}
 	}
@@ -3606,7 +3716,7 @@ namespace Grid
 				for (index_t i = 0; i < HighSetup::TDistanceField::NumEntries; i++)
 					if (field.distance[i] != 0xFFFFFFFF)
 					{
-						cellStack[i].lightingChangedTo = std::max<BYTE>( cellStack[i].lightingChangedTo, r-field.distance[i]);
+						cellStack[i].lightingChangedTo = vmax( cellStack[i].lightingChangedTo, r-field.distance[i]+1);
 						high.family[high.grid.GetCell(i).family].SetOutdated(0);
 					}
 			}
@@ -3654,7 +3764,7 @@ namespace Grid
 						{
 							UINT layer = CellStack::ToLayer(h);
 							#ifdef HAS_WINDOW
-								cellStack[current].lightingChangedTo = std::max<BYTE>(cellStack[current].lightingChangedTo, layer);
+								cellStack[current].lightingChangedTo = vmax(cellStack[current].lightingChangedTo, layer+1);
 							#endif
 							//ASSERT_LESS__(layer,CellStack::Range);
 
@@ -3818,7 +3928,7 @@ namespace Grid
 					{
 						anyChanged = true;
 						#ifdef HAS_WINDOW
-							stack.lightingChangedTo = std::max<BYTE>(stack.lightingChangedTo,(BYTE)(layer+1));
+							stack.lightingChangedTo = vmax(stack.lightingChangedTo,(BYTE)(layer+1));
 						#endif
 					}
 				
@@ -3957,7 +4067,7 @@ namespace Grid
 					{
 						anyChanged = true;
 						#ifdef HAS_WINDOW
-							stack.lightingChangedTo = std::max<BYTE>(stack.lightingChangedTo,(BYTE)j+1);
+							stack.lightingChangedTo = vmax(stack.lightingChangedTo,(BYTE)j+1);
 						#endif
 					}
 					#ifdef _DEBUG
