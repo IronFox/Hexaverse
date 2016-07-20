@@ -189,18 +189,47 @@ namespace Objects
 	};
 
 
-	class IconCommand : public CallbackCommand
+
+	template <typename Base>
+		class CustomLabel : public Base
+		{
+			typedef	Base	Super;
+		public:
+			BaseCommand::Label		customLabel;
+
+			/**/		CustomLabel(const String&name):Super(name) {customLabel << name; customLabel.MarkBriefEnd();}
+			/**/		CustomLabel() {}
+			virtual void	CompileLabel(BaseCommand::Label&outResult) override
+			{
+				outResult = customLabel;
+			}
+		};
+
+
+	class IconCommand : public CustomLabel<CallbackCommand>
 	{
-		typedef	CallbackCommand	Super;
+		typedef	CustomLabel<CallbackCommand>	Super;
 	protected:
-		/**/			IconCommand(const String&name):Super(name)	{/*LoadIcon();*/}
+		/**/			IconCommand(const String&name):Super(name)	{}
 
 	public:
-		/**/			IconCommand()	{}
-		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name,exec,check,getCosts)	{LoadIcon();}
-		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check):Super(name,exec,check)	{LoadIcon();}
-	};
 
+		/**/			IconCommand()	{}
+		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name)
+		{
+			LoadIcon();
+			this->execute = exec;
+			this->check = check;
+			this->getCosts = getCosts;
+		}
+		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check):Super(name)
+		{
+			LoadIcon();
+			this->execute = exec;
+			this->check = check;
+		}
+	};
+	typedef std::shared_ptr<IconCommand> PIconCommand;
 
 	template <typename Base>
 		class CustomIcon : public Base
@@ -212,6 +241,7 @@ namespace Objects
 			/**/		CustomIcon() {}
 			virtual void	LoadIcon()	override {Super::LoadIcon(imageName);}
 		};
+
 
 	class CustomIconCommand : public CustomIcon<IconCommand>
 	{
@@ -277,9 +307,9 @@ namespace Objects
 	Only one branch of groups can be visible at any time.
 	This version of Group must hold copies of one type of command. It cannot be used to store shared_ptr of commands!
 	*/
-	class CommandGroup : public BaseCommand, public CommandContainer	//for size/compatibility reasons
+	class CommandGroup : public CustomLabel<BaseCommand>, public CommandContainer	//for size/compatibility reasons
 	{
-		typedef BaseCommand Super;
+		typedef CustomLabel<BaseCommand> Super;
 
 		static Buffer0<CommandGroup*>		activeGroupPath;
 
