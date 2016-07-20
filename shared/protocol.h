@@ -1956,7 +1956,8 @@ namespace Protocol
 			StartBases = 0x4,
 			NexusAI = 0x8,
 			EMPZones = 0x10,
-			ConfigurationMode = 0x20,
+			SimulateLiquids = 0x20,
+			ConfigurationMode = 0x40,
 
 			SupportSpectatorFactions = 0x100,
 			SupportRegularFactions = 0x200,

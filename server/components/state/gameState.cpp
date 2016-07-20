@@ -132,6 +132,8 @@ namespace Game
 				info.gameConfig.gameFlags |= Protocol::GameFlag::NexusAI;
 			if (ConfigurationMode::IsActive())
 				info.gameConfig.gameFlags |= Protocol::GameFlag::ConfigurationMode;
+			if (World::Config::simulateLiquids)
+				info.gameConfig.gameFlags |= Protocol::GameFlag::SimulateLiquids;
 
 			info.gameConfig.gameFlags |= Config::factionSupportFlags;
 		}
