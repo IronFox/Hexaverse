@@ -5,6 +5,7 @@
 #include "../cast.h"
 #include "jobs.h"
 #include "hibernating.h"
+#include "../roundNumber.h"
 
 
 namespace Objects
@@ -47,7 +48,7 @@ namespace Objects
 
 			struct TCacheID
 			{
-				UINT32			round=0xFFFFFFFF;
+				RoundNumber		round=0xFFFFFFFF;
 				UINT16			stackID=0xFFFF,numCompounds=0;
 				UINT8			layerID=0xFF;
 				UINT8			phase=0xFF;
