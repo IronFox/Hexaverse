@@ -16,6 +16,7 @@
 #include "hibernating.h"
 #include "hangar.h"
 #include "mobileEntityProducer.h"
+#include "../roundNumber.h"
 
 /*
 In the context of this game, a structure defines a building, as opposed to a vehicle or meta entity
@@ -973,7 +974,9 @@ namespace Objects
 		static const int			EnergyConsumption = 10;
 		int							resistence;
 		#ifndef CLIENT
-			UINT32					lastSpawnRound=0xFFFFFFF0;	//last time this nexus spawned nexus units
+			RoundNumber				lastSpawnRound=RoundNumber(
+											0xFFFFFFF0
+											);	//last time this nexus spawned nexus units
 		#endif
 		static int					ResistenceRounds;
 

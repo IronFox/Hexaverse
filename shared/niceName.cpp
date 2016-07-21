@@ -51,6 +51,14 @@ namespace NiceName
 
 	String	Get(UINT64 code)
 	{
+		String result = nouns[((UINT32)code) % nouns.Count()];
+		code >>= 32;
+		BYTE ch = (code&0xff)%26;
+		result += ' ';
+		result += 'A' + ch;
+		result += String((code>>8)%100);
+		return result;
+
 		code %= totalCombinations;
 		return adjectives[code / nouns.Count()]+" "+nouns[code % nouns.Count()];
 	}

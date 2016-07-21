@@ -8,7 +8,7 @@
 #ifdef HAS_WINDOW
 	#include "explosions.h"
 #endif
-
+#include "configurationMode.h"
 
 void			SignalMarkerDeletion(TUniqueID markerID);
 void			OnPlayerControlBegin();
@@ -1464,6 +1464,10 @@ namespace Animation
 			return Done;
 			case TerrainChange:
 			{
+				#ifdef HAS_WINDOW
+					ConfigurationMode::RestoreServerWorld();
+				#endif
+
 				foreach (*worldDelta,block)
 				{
 					BYTE family = block->familyAndLastFlag & 0x7F;
@@ -1680,7 +1684,7 @@ namespace Animation
 	
 		if (!AllDone())
 		{
-			if ( RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase || RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase)
+			if ( RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase || RuntimeConfig::IsInAnyCommandPhase())
 			{
 				//allowWorldRecompilation = false;
 				#ifndef HAS_WINDOW
@@ -1819,8 +1823,10 @@ namespace Animation
 					e->preAnimationLocation = e->location;
 				});
 
-				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Network::gameHasBegun)
+				if (RuntimeConfig::IsInAnyCommandPhase() && Network::gameHasBegun)
 				{
+					LogEvent(EventSignificance::Debug,"Animation done. OnPlayerControlBegin");
+
 					OnPlayerControlBegin();
 				}
 			}

@@ -10,7 +10,7 @@
 #include "grid.h"
 #include "objects.h"
 #include "stringTable.h"
-
+#include "runtimeConfig.h"
 
 #pragma comment(lib,"ws2_32.lib")
 #pragma comment(lib,"Rpcrt4.lib")
@@ -210,6 +210,13 @@ namespace Protocol
 					DBG_FATAL__("Failed to Deserialize var3");
 				return true;
 				//return	var0.Deserialize(inStream,EmbeddedSize) && var1.Deserialize(inStream,EmbeddedSize) && var2.Deserialize(inStream,EmbeddedSize) && var3.Deserialize(inStream,EmbeddedSize);
+			}
+			void	swap(MultiSerializable4&other)
+			{
+				var0.swap(other.var0);
+				var1.swap(other.var1);
+				var2.swap(other.var2);
+				var3.swap(other.var3);
 			}
 			void	Copy(const MultiSerializable4&other)
 			{
@@ -721,8 +728,9 @@ namespace Protocol
 	//	, NET(UINT32), state	//place holder for client state. currently this is ignored, and always interpreted as a hello
 	//)
 
-	NETSTRUCT2(Result
+	NETSTRUCT3(HelloResponse
 		, NET(bool), success
+		, NET(bool), configurationMode
 		, Package::NetString<256>, errorMessage	//in case stateAccepted is false
 	)
 
@@ -1730,7 +1738,7 @@ namespace Protocol
 
 	NETSTRUCT3(PhaseChange
 		, NET(UINT8), newPhase
-		, NET(UINT32), roundNumber
+		, NET(RuntimeConfig::RoundNumber), roundNumber
 		, NET(float), timeFactor
 	)
 
@@ -1756,17 +1764,20 @@ namespace Protocol
 		};
 	};
 
-
-	NETSTRUCT7(GameInfo
-		, NET(UINT16), numFactionsOnline
-		, NET(UINT16), numFactionsCreated
-		, NET(UINT32), roundNumber
-		, NET(TUniqueID), worldID	//used to manage factionTokens
-		, NET(BYTE), activePhase
+	NETSTRUCT3(GameConfig
 		, NET(UINT32), gameFlags
 		, NET(BYTE), gameGoal
-	)
+		, NET(BYTE), worldDiscovery
+	)	
 
+	NETSTRUCT6(GameInfo
+		, NET(UINT16), numFactionsOnline
+		, NET(UINT16), numFactionsCreated
+		, NET(RuntimeConfig::RoundNumber), roundNumber
+		, NET(TUniqueID), worldID	//used to manage factionTokens
+		, NET(BYTE), activePhase
+		, GameConfig, gameConfig
+	)
 
 
 	NETSTRUCT4(ClientFactionResponse
@@ -1811,12 +1822,12 @@ namespace Protocol
 		, NET(TUniqueID), id
 		, LCellIdI, location		
 		, MarkerData, data
-		, NET(UINT32), createdInRound
+		, NET(RuntimeConfig::RoundNumber), createdInRound
 	)
 
 	NETSTRUCT2(TouchedMarker
 		, NET(TUniqueID), id
-		, NET(UINT32), newRoundNumber
+		, NET(RuntimeConfig::RoundNumber), newRoundNumber
 	)
 
 	NETSTRUCT2(IdentifyUser
@@ -1845,7 +1856,7 @@ namespace Protocol
 			PhaseChange,		//s2c: PhaseChange
 			BeginGame,			//s2c: <signal> //indicates that the player faction is fully initialized and transferred, and the game should begin. Mostly important for AI, only
 
-			Hello,				//c2s: Hello -> s2c: Result
+			Hello,				//c2s: Hello -> s2c: HelloResponse
 			ClientFaction,		//c2s: ClientFactionRequest -> s2c: ClientFactionResponse
 			SetFactionID,		//s2c: NET(TUniqueID)
 
@@ -1914,11 +1925,9 @@ namespace Protocol
 
 			ChatMessage,		// c2s: NetString<256>
 
-			//remote control channels (these require user level 2+)
-			RC_UpdateWorld,				//c2s: Grid::TExtendedPlanetConfig
-			RC_Lockdown,				//c2s: bool -> s2c: bool
-			RC_Kick,					//c2s: pair<TUniqueID,bool>	(kick / kick and ban)
-			RC_KickAllNonPrivileged,	//c2s: <signal>
+			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
+			GameConfig,			// c2s: GameConfig
+			EndConfigurationMode,//c2s: <signal>
 		};
 	}
 
@@ -1947,6 +1956,8 @@ namespace Protocol
 			StartBases = 0x4,
 			NexusAI = 0x8,
 			EMPZones = 0x10,
+			SimulateLiquids = 0x20,
+			ConfigurationMode = 0x40,
 
 			SupportSpectatorFactions = 0x100,
 			SupportRegularFactions = 0x200,
@@ -1954,6 +1965,7 @@ namespace Protocol
 
 		};
 
+		static const UINT32 AllFactionSupport = ~(SupportSpectatorFactions-1);
 
 	}
 

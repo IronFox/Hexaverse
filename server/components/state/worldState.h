@@ -21,7 +21,8 @@ namespace World
 	Redefines the grid world based on the current reflection configuration, using the specified random variable to define seeds.
 	Any existing session will be closed, all factions terminated before commencing.
 	*/
-	void			BuildConfiguredWorld(Random&random);
+	void			BuildConfiguredWorld(UINT32 seed);
+	void			BuildConfiguredWorld(Random&rnd);
 
 
 
@@ -32,7 +33,6 @@ namespace World
 	void			UpdateEMPZones(count_t temporaryFactionCountBonus=0);
 
 
-	extern UINT32		empZonesLocked/* = 0 */, unlockedEMPZones /*= 0xFFFF*/;
 	extern Grid::WorldData	spectatorWorldState;
 	extern bool			terrainChanged;//!< Indicates that the terrain changed at any given time during the last processing round. Reset when entering command mode
 	extern TUniqueID	worldID;

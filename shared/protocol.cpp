@@ -62,7 +62,7 @@ namespace Protocol
 				delta.familyAndLastFlag.value |= 0x80;
 		}
 
-		const Grid::CellStack::Cell empty(Grid::Content::Reinterpret(0),0);
+		const Grid::CellStack::Cell empty(Grid::Content::Reinterpret(0),0,0);
 		Array<Grid::CellStack::TTypeDelta> tdts(writeOutput ? length * Grid::CellStack::Range : 0);
 		//Array<Grid::CellStack::TTechniteFactionDelta> fdts(length * Grid::CellStack::Range);
 		//Array<bool> fdtsValid(length * Grid::CellStack::Range);

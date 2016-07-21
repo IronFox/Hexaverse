@@ -25,6 +25,7 @@
 #include "components/networkChannels.h"
 #include "components/journalSaveGame.h"
 #include "components/reflection.h"
+#include "components/configurationMode.h"
 
 UINT32 globalVersionOfCurrentFile = 0;	//file version being loaded right now
 
@@ -842,7 +843,7 @@ void ProcessAICoverage()
 		}
 		static Buffer0<UINT32> neighborField;
 		for (int i = 0; i < 12; i++)
-			if (BaseGrid::IsIsolatedCorner(i) && (World::unlockedEMPZones & (1<<i)))
+			if (BaseGrid::IsIsolatedCorner(i) && (Grid::empZonesUnlocked & (1<<i)))
 			{
 				Objects::PNexusPort p = ports[i];
 				if (RuntimeConfig::roundNumber - p->lastSpawnRound < 5 || p->owner != Objects::Faction::nexus)
@@ -1069,7 +1070,8 @@ namespace ParameterConfig
 	}		mode = Idle;
 
 	PathString	loadFile;
-	bool	startOffline = false;
+	bool	startOffline = false,
+			startInConfig = false;
 	bool	customWorldID = false;
 	bool	enableRemoteControl = true;
 	const char*	programName="";
@@ -1091,6 +1093,7 @@ namespace ParameterConfig
 		std::cout << "  --load/-l [filename]\tload savegame"<<std::endl;
 		std::cout << "  --loadAuto/-a [number]\tload auto-savegame. number=0 => most recent"<<std::endl;
 		std::cout << "  --offline/-o \tstart offline"<<std::endl;
+		std::cout << "  --config/-c \tstart in configuration mode"<<std::endl;
 		std::cout << "  --port/-p [basePort]\tuse a non-default base port ("<<DEFAULT_SERVER_BASE_PORT<<" is default)"<<std::endl;
 		std::cout << "  --noRemote/-r \tdisable remote control service"<<std::endl;
 		std::cout << "  --rv4\tStart remote control service using IPv4"<<std::endl;
@@ -1136,6 +1139,8 @@ namespace ParameterConfig
 					mode = ExpectPort;
 				elif (!strcmp(arg,"--offline") || !strcmp(arg,"-o"))
 					startOffline = true;
+				elif (!strcmp(arg,"--config") || !strcmp(arg,"-c"))
+					startInConfig = true;
 				elif (!strcmp(arg,"--loadAuto") || !strcmp(arg,"-a"))
 					mode = ExpectAutoSaveNumber;
 				elif (!strcmp(arg,"--help"))
@@ -1374,8 +1379,6 @@ int main( int argc, const char* argv[])
 				}
 			}
 
-			bool started = Network::CloseSession();
-			World::worldID.Generate();
 			if (planet.IsNotEmpty())
 			{
 				Reflection::Variable::planetType->Set(planet.trim());
@@ -1388,10 +1391,8 @@ int main( int argc, const char* argv[])
 					LogEvent(EventClass::Preset::remoteControlError,"'"+discovery+"' is not a valid planet discovery type. Check World/worldDiscovery for details");
 				}
 			}
+			Network::BuildConfiguredWorld();
 
-			World::BuildConfiguredWorld(random);
-			if (started)
-				Network::RestartSession();
 		},CLI::NoCompletion);
 
 		Reflection::state.DefineCommand("/World/showPlanetTypes",(CLI::Command::function0_t)[]()
@@ -1502,6 +1503,10 @@ int main( int argc, const char* argv[])
 		if (!ParameterConfig::startOffline)
 		{
 			StartUp();
+			if (ParameterConfig::startInConfig)
+			{
+				ConfigurationMode::Begin();
+			}
 		}
 
 
@@ -1650,75 +1655,77 @@ int main( int argc, const char* argv[])
 
 			RuntimeConfig::Phase p0 = RuntimeConfig::phase;
 
-			//bool anythingChanged = false;
-
-			bool newRoundNow = false;
-
-			if (Game::Config::roundTimer > 0 && !Game::roundTimerPaused)
+			if (RuntimeConfig::IsInAnyCommandPhase())
 			{
-				if (timer.GetSecondsSince(Game::lastPhaseChange) - 0.5f > Game::Config::roundTimer)//tolerance of a half second
+				bool newRoundNow = false;
+
+				if (Game::Config::roundTimer > 0 && !Game::roundTimerPaused)
 				{
-					newRoundNow = true;
-					LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ),"Round timeout reached. Forcing new round.");
-				}
-			}
-
-
-
-
-
-			if (!newRoundNow)
-			{
-				count_t numFactions=0, wantNewRound = 0;
-				bool hasNexus = false,nexusWantsNewRound = false;
-				foreach(Network::activePlayersAndSpectators, p)
-				{
-					if ((*p)->isSpectator)	//doesn't count towards new round
-						continue;
-					if ((*p)->faction == Objects::Faction::nexus)
+					if (timer.GetSecondsSince(Game::lastPhaseChange) - 0.5f > Game::Config::roundTimer)//tolerance of a half second
 					{
-						ASSERT__(!hasNexus);
-						hasNexus = true;
-						if ((*p)->wantNewRound)
-							nexusWantsNewRound = true;
-						continue;
+						newRoundNow = true;
+						LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Loss ),"Round timeout reached. Forcing new round.");
 					}
-					numFactions++;
-					if ((*p)->wantNewRound)
-						wantNewRound++;
 				}
 
-					newRoundNow = wantNewRound >= numFactions
-								&& wantNewRound > 0
-								&& (!hasNexus || nexusWantsNewRound);
+
+
+
+
+				if (!newRoundNow)
+				{
+					count_t numFactions=0, wantNewRound = 0;
+					bool hasNexus = false,nexusWantsNewRound = false;
+					foreach(Network::activePlayersAndSpectators, p)
+					{
+						if ((*p)->isSpectator)	//doesn't count towards new round
+							continue;
+						if ((*p)->faction == Objects::Faction::nexus)
+						{
+							ASSERT__(!hasNexus);
+							hasNexus = true;
+							if ((*p)->wantNewRound)
+								nexusWantsNewRound = true;
+							continue;
+						}
+						numFactions++;
+						if ((*p)->wantNewRound)
+							wantNewRound++;
+					}
+
+						newRoundNow = wantNewRound >= numFactions
+									&& wantNewRound > 0
+									&& (!hasNexus || nexusWantsNewRound);
+					if (newRoundNow)
+					{
+						LogEvent(EventSignificance::Common,"All players have requested a new round. Commencing...");
+					}
+				}
+
 				if (newRoundNow)
 				{
-					LogEvent(EventSignificance::Common,"All players have requested a new round. Commencing...");
+					Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
+					{
+						e->ReSeedRandom();
+					});
+
+					ProcessAICoverage();
+
+					Journal::currentRound.roundNumber = RuntimeConfig::roundNumber;
+					Journal::currentRound.evolver = Game::evolver;
+					Reflection::CheckAllSaveGameVariables();
+					Journal::currentRound.AppendEntityVerification();
+
+					//Journal::globalWriter.CommitAndClear(Journal::currentRound);
+					Journal::currentRound.Clear();
+
+					foreach (Network::activePlayersAndSpectators,p)
+						(*p)->wantNewRound = false;
+
+					Game::evolver->BeginRoundProcessing();
+					Game::ProcessChanges(true);
 				}
-			}
 
-			if (newRoundNow)
-			{
-				Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
-				{
-					e->ReSeedRandom();
-				});
-
-				ProcessAICoverage();
-
-				Journal::currentRound.roundNumber = RuntimeConfig::roundNumber;
-				Journal::currentRound.evolver = Game::evolver;
-				Reflection::CheckAllSaveGameVariables();
-				Journal::currentRound.AppendEntityVerification();
-
-				//Journal::globalWriter.CommitAndClear(Journal::currentRound);
-				Journal::currentRound.Clear();
-
-				foreach (Network::activePlayersAndSpectators,p)
-					(*p)->wantNewRound = false;
-
-				Game::evolver->BeginRoundProcessing();
-				Game::ProcessChanges(true);
 			}
 
 			if (RuntimeConfig::phase == RuntimeConfig::Phase::AnimationPhase)

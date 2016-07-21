@@ -4,7 +4,7 @@
 #include "../networkChannels.h"
 #include "../aiProcess.h"
 #include "../journalSaveGame.h"
-
+#include "../configurationMode.h"
 
 
 void			SignalFactionsChanged()
@@ -36,7 +36,7 @@ namespace Game
 					startBases = false,
 					basesRequired = false,
 					exposeActionLeftToHostileFactions = true;
-		UINT32		factionSupportFlags = AllFactionSupportFlags;
+		UINT32		factionSupportFlags = Protocol::GameFlag::AllFactionSupport;
 
 		namespace Nexus
 		{
@@ -115,22 +115,27 @@ namespace Game
 			info.activePhase = RuntimeConfig::phase;
 			info.numFactionsOnline = (UINT16)::Network::activePlayersAndSpectators.Count();
 			info.numFactionsCreated = (UINT16)Objects::Faction::all.Count() + (Config::Nexus::enableAI ? 1 : 0);
-			info.roundNumber = (UINT32)RuntimeConfig::roundNumber;
+			info.roundNumber = RuntimeConfig::roundNumber;
 			info.worldID = World::worldID;
-			info.gameGoal = (UINT32)RuntimeConfig::gameGoal;
-			info.gameFlags = 0;
+			info.gameConfig.gameGoal = (UINT32)RuntimeConfig::gameGoal;
+			info.gameConfig.gameFlags = 0;
+			info.gameConfig.worldDiscovery = (BYTE)World::Config::worldDiscovery;
 			if (Config::closedGame)
-				info.gameFlags |= Protocol::GameFlag::ClosedGame;
+				info.gameConfig.gameFlags |= Protocol::GameFlag::ClosedGame;
 			if (RuntimeConfig::empZones)
-				info.gameFlags |= Protocol::GameFlag::EMPZones;
+				info.gameConfig.gameFlags |= Protocol::GameFlag::EMPZones;
 			if (Config::basesRequired)
-				info.gameFlags |= Protocol::GameFlag::BasesRequired;
+				info.gameConfig.gameFlags |= Protocol::GameFlag::BasesRequired;
 			if (Config::startBases)
-				info.gameFlags |= Protocol::GameFlag::StartBases;
+				info.gameConfig.gameFlags |= Protocol::GameFlag::StartBases;
 			if (Config::Nexus::enableAI)
-				info.gameFlags |= Protocol::GameFlag::NexusAI;
+				info.gameConfig.gameFlags |= Protocol::GameFlag::NexusAI;
+			if (ConfigurationMode::IsActive())
+				info.gameConfig.gameFlags |= Protocol::GameFlag::ConfigurationMode;
+			if (World::Config::simulateLiquids)
+				info.gameConfig.gameFlags |= Protocol::GameFlag::SimulateLiquids;
 
-			info.gameFlags |= Config::factionSupportFlags;
+			info.gameConfig.gameFlags |= Config::factionSupportFlags;
 		}
 
 
@@ -139,7 +144,7 @@ namespace Game
 			LogEvent(EventSignificance::Debug,"Changing RuntimeConfig::phase to "+String(to.ToString())+" with time window "+String(timeWindow));
 			Protocol::PhaseChange	ph;
 			ph.newPhase = to;
-			ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
+			ph.roundNumber = RuntimeConfig::roundNumber;
 			ph.timeFactor = timeWindow;
 			Channels::phaseChange.SendTo(::Network::server,ph,1);
 			RuntimeConfig::phase = to;

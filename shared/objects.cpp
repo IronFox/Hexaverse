@@ -237,7 +237,7 @@ namespace Objects
 				(*bc)->VisitAllCommands([](const int2&,const PBaseCommand&cmd){cmd->RasterizeImage();},true);
 
 			globalCommands.baseCoords = BaseCommand::coordOffset;
-			globalCommands.Add(int2(),false,new GlobalCommand("End Round", [](){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
+			globalCommands.Add(int2(-1, 0),false,new GlobalCommand("End Round", [](){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
 			[](bool controlEnabled)->BaseCommand::Flags
 			{
 				BaseCommand::Flags rs = BaseCommand::Flags::None;
@@ -248,6 +248,15 @@ namespace Objects
 				else
 					if (ShouldSignalRoundEnd())
 						rs |= BaseCommand::Flags::IsFlashing;
+				return rs;
+			}));
+			globalCommands.Add(int2(0, 0),false,new GlobalCommand("Auto End Round", [](){if (!RuntimeConfig::autoNewRound && ShouldSignalRoundEnd()) SignalRoundEnd(); RuntimeConfig::autoNewRound = !RuntimeConfig::autoNewRound;}, 
+			[](bool controlEnabled)->BaseCommand::Flags
+			{
+				BaseCommand::Flags rs = BaseCommand::Flags::None;
+				rs |= BaseCommand::Flags::IsEnabled;
+				if (RuntimeConfig::autoNewRound)
+					rs |= BaseCommand::Flags::IsPermaActive;
 				return rs;
 			}));
 
@@ -767,14 +776,16 @@ namespace Objects
 
 	#endif
 
-	void			FlushAllData()
+	void			FlushAllData(bool preserveGameState)
 	{
 		LogEvent(EventClass::Preset::uncommon,"Flushing scene data");
 
 		#ifdef CLIENT	//temporary. once i figured out good values the limit will be restored from file and clearing is valid for server too
-			RuntimeConfig::UnitLimits::Reset();
+			if (!preserveGameState)
+				RuntimeConfig::UnitLimits::Reset();
 		#endif
-		RuntimeConfig::hibernationSystemEnabled = false;
+		if (!preserveGameState)
+			RuntimeConfig::hibernationSystemEnabled = false;
 
 		storedMobileEntities.Clear();
 		#ifndef NO_SATELLITES
@@ -799,8 +810,11 @@ namespace Objects
 			#ifdef HAS_WINDOW
 				Renderer::Flush();
 				Deselect(false);
-				resourceView = true;
-				objectView = true;
+				if (!preserveGameState)
+				{
+					resourceView = true;
+					objectView = true;
+				}
 				hasArrowCellTarget = false;
 				showArrow = false;
 				arrowFrom = float3();

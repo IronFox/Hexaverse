@@ -79,30 +79,34 @@ void	SaveHosts()
 	static String CompileRules(const Protocol::ServerInfo&info)
 	{
 		String result;
-		switch (info.gameInfo.gameGoal)
+		if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::ConfigurationMode)
+			result += "Interactive Configuration Mode";
+		else
 		{
-			case RuntimeConfig::GameGoal::ConquerNexus:
-				result="Conquer Nexus";
-			break;
-			case RuntimeConfig::GameGoal::None:
-				result="No Goal";
-			break;
+			switch (info.gameInfo.gameConfig.gameGoal)
+			{
+				case RuntimeConfig::GameGoal::ConquerNexus:
+					result="Conquer Nexus";
+				break;
+				case RuntimeConfig::GameGoal::None:
+					result="No Goal";
+				break;
+			}
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::ClosedGame)
+				result += ", Closed Game";
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::EMPZones)
+				result += ", EMP Zones";
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::BasesRequired)
+				result += ", Require Bases";
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::StartBases)
+				result += ", Start Bases";
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::NexusAI)
+				result += ", Nexus AI";
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::SupportSpectatorFactions)
+				result += ", Spectator";
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::SupportRegularFactions)
+				result += ", Regular";
 		}
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::ClosedGame)
-			result += ", Closed Game";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::EMPZones)
-			result += ", EMP Zones";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::BasesRequired)
-			result += ", Require Bases";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::StartBases)
-			result += ", Start Bases";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::NexusAI)
-			result += ", Nexus AI";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportSpectatorFactions)
-			result += ", Spectator";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportRegularFactions)
-			result += ", Regular";
-
 		//String result = String("Goal: ")+Protocol::GameGoal::Reinterpret(info.gameGoal).ToString();
 		return result;
 
@@ -132,7 +136,7 @@ void	SaveHosts()
 			bool versionMatch = info.rightVersion;
 			info.buttonPanel->SetCheck([versionMatch]()
 			{
-				return versionMatch && !Network::client.IsAttemptingToConnect();
+				return versionMatch && !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected();
 			});
 
 			TUniqueID id = info.id;
@@ -166,8 +170,8 @@ void	SaveHosts()
 				Network::serverIDString = Network::serverID.ToNiceString();
 				Network::worldID = info->info.gameInfo.worldID;
 				Network::worldIDString = Network::worldID.ToNiceString();
-				Network::gameFlags = info->info.gameInfo.gameFlags;
-				RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info->info.gameInfo.gameGoal);
+				Network::gameFlags = info->info.gameInfo.gameConfig.gameFlags;
+				RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info->info.gameInfo.gameConfig.gameGoal);
 
 				Network::ConnectTo(info->addresses[best].first);
 			});
@@ -212,7 +216,7 @@ void	SaveHosts()
 		bool incompatible = !info.rightVersion || info.protocolIncompatible;
 		{
 			AddTab(p,String(info.info.gameInfo.numFactionsOnline) + "/" + String(info.info.gameInfo.numFactionsCreated),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
-			AddTab(p,String(info.info.gameInfo.roundNumber),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
+			AddTab(p,info.info.gameInfo.roundNumber.value.ToString(),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
 			PLabel l = AddTab(p,CompileRules(info.info),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
 			l->zoom *= 0.9f;
 
@@ -429,7 +433,9 @@ void	SaveHosts()
 					}
 				});
 			
-			}));
+			},
+			[]()->bool {return !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected();}
+			));
 			b->anchorConfig.Top().SetLastOf(Dialog::serverChoice,0.025f,GUIElements::TAnchor::RelativeToScreen);
 			b->anchorConfig.Left().Set(0.f);
 			b->LockIdealWidth();
@@ -468,6 +474,12 @@ void	SaveHosts()
 				if (b)
 					b->SetEnabled(false);
 			});
+			start->SetCheck(
+			[]()->bool {return !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected() && !ServerProcess::IsRunning();}
+			);
+			stop->SetCheck(
+			[]()->bool {return !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected() && ServerProcess::IsRunning();}
+			);
 			start->anchorConfig.Top() = addHostButton->anchorConfig.Top();
 			stop->anchorConfig.Top() = addHostButton->anchorConfig.Top();
 			start->anchorConfig.Left().Set(addHostButton,0.02f);

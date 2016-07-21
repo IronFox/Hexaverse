@@ -206,6 +206,9 @@ Triggered when entering command mode and animations have finished (whichever of 
 */
 void	OnPlayerControlBegin()
 {
+//	LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+String(RuntimeConfig::roundNumber)+","+String(RuntimeConfig::techniteSubRoundNumber)+")");
+	LogEvent(EventSignificance::Debug,"OnPlayerControlBegin("+RuntimeConfig::roundNumber.ToString()+")");
+
 	#ifdef HAS_WINDOW
 		OnSelectionChange(true);
 		UI::RefreshButtonState();
@@ -216,6 +219,8 @@ void	OnPlayerControlBegin()
 	#endif
 	Animation::UpdateAutomation(CLOCATION);
 	Objects::CheckMobileEntitySanity();
+	if (RuntimeConfig::autoNewRound && ShouldSignalRoundEnd())
+		SignalRoundEnd();
 }
 
 #ifdef HAS_WINDOW
@@ -829,6 +834,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 #ifdef HAS_WINDOW
 	bool saveScreenshot = false;
+	bool saveTransparentScreenshot = false;
 
 	namespace TimeLapse
 	{
@@ -848,14 +854,14 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		//Semaphore	semaphore;
 		//volatile bool	active;
 		Timer::Time	lastSubmission = timer.Now();
-		ProductionPipe<Image>	workPipe;
+		ProductionPipe<std::pair<Image,bool> >	workPipe;
 
 		StorageThread()
 		{}
 
 		void ThreadMain() override
 		{
-			Array<std::shared_ptr<Image> >	images;
+			Array<std::shared_ptr<std::pair<Image,bool> > >	images;
 			while (!application_shutting_down)
 			{
 				workPipe.WaitForContent();
@@ -871,34 +877,40 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 				workPipe.ExitRead();
 				if (application_shutting_down)
 					return;
-	//
-	//			image.truncateToOpaque();
-	//
-	//			for (UINT32 x = 0; x < image.getWidth(); x++)
-	//				for (UINT32 y = 0; y < image.getHeight(); y++)
-	//				{
-	//					BYTE*pixel = image.getPixel(x,y);
-	//					if (pixel[3] > 0 && pixel[3] < 255)
-	//					{
-	//						//#ifdef WHITE_STYLE
-	//						//	TVec3<> intermediate;
-	//						//	Vec::mult(Vec::ref3(pixel),1.f / 255.f,intermediate);
-	//						//	float a = float(pixel[3])/255.f;
-	//						//	Vec::addVal(intermediate,a - 1.f);
-	//						//	Vec::div(intermediate,a);
-	//						//	Vec::clamp(intermediate,0,1);
-	//						//	Vec::mult(intermediate,255.f,Vec::ref3(pixel));
-	//
-	//						//#else
-	//							float scale = 1.f / (float(pixel[3])/255.f);
-	//							Vec::mult(Vec::ref3(pixel),scale);
-	////						#endif
-	//					}
-	//				}
+
+					
 				for (index_t i = 0; i < numImages; i++)
 				{
-					Image&image = *images[i];
-					image.setChannels(3);
+					Image&image = images[i]->first;
+
+					if (images[i]->second)
+					{
+						image.truncateToOpaque();
+	
+						for (UINT32 x = 0; x < image.getWidth(); x++)
+							for (UINT32 y = 0; y < image.getHeight(); y++)
+							{
+								BYTE*pixel = image.getPixel(x,y);
+								if (pixel[3] > 0 && pixel[3] < 255)
+								{
+									//#ifdef WHITE_STYLE
+									//	TVec3<> intermediate;
+									//	Vec::mult(Vec::ref3(pixel),1.f / 255.f,intermediate);
+									//	float a = float(pixel[3])/255.f;
+									//	Vec::addVal(intermediate,a - 1.f);
+									//	Vec::div(intermediate,a);
+									//	Vec::clamp(intermediate,0,1);
+									//	Vec::mult(intermediate,255.f,Vec::ref3(pixel));
+	
+									//#else
+										float scale = 1.f / (float(pixel[3])/255.f);
+										Vec::mult(Vec::ref3(pixel),scale);
+			//						#endif
+								}
+							}
+					}
+					else
+						image.setChannels(3);
 
 					if (!TimeLapse::enabled)
 					{
@@ -934,7 +946,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 		}
 
 		bool	CanRun() const {return timer.GetSecondsSince(lastSubmission) > TimeLapse::frameDelaySeconds;}
-		void	Run(const std::shared_ptr<Image>&image)
+		void	Run(const std::shared_ptr<std::pair<Image, bool> >&image)
 		{
 			if (!CanRun())
 				return;
@@ -1020,6 +1032,8 @@ void	SignalMarkerTouch(Objects::Marker&marker)
 
 void	OnVanish(const Objects::PWorldEntity&e, Objects::RemovalType t)
 {
+	if (Network::amSpectator)
+		return;
 	if (t == Objects::RemovalType::UncontrolledExplosion && e->isOwnedByMe)
 	{
 		Protocol::Marker marker;
@@ -1846,8 +1860,9 @@ bool loop()
 						LogEvent(EventClass::Preset::uncommon,"Writing screenshot to disk...");
 					//else
 					//	LogEvent(EventClass::Preset::uncommon,"screenshot "+String(RuntimeConfig::phase.ToString())+", "+String(Animation::AllDone())+", "+String(Explosions::NoneActive()));
-					std::shared_ptr<Image> capture(new Image());
-					display.Capture(*capture);
+					std::shared_ptr<std::pair<Image,bool> > capture(new std::pair<Image,bool>());
+					display.Capture(capture->first);
+					capture->second = saveTransparentScreenshot;
 
 					storageThread.Run(capture);
 				}
@@ -1915,7 +1930,7 @@ bool loop()
 						textout << "Access ID: " << Network::activeTokenString<<nl;
 					#endif
 					textout << "Phase: "<<RuntimeConfig::phase.ToString()<<nl;
-					textout << "Round Number: "<<RuntimeConfig::roundNumber<<nl;
+					textout << "Round Number: "<<RuntimeConfig::roundNumber.main<<nl;
 					if (!Network::gameProgress.gameOver)
 					{
 						if (Network::gameProgress.status.IsNotEmpty())
@@ -2325,6 +2340,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	void SaveScreenshot()
 	{
 		saveScreenshot =true;
+		saveTransparentScreenshot = Engine::input.pressed[Key::Shift];
 	}
 
 	void ToggleCameraLock()
@@ -2868,6 +2884,8 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		UI::resourcesAsList = !UI::resourcesAsList;
 	}
 
+#endif
+
 	bool	CanHit(const Objects::PMobileEntity&m, const Grid::LCellIdI&loc)
 	{
 		return m->CanHit(Objects::TrajectoryEndPoint( loc ));
@@ -3034,6 +3052,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 	}
 
 
+#ifdef HAS_WINDOW
 	template <typename T>
 	void GetIterateableEntity(Objects::PWorldEntity&rs, index_t&i, const BasicBuffer<T>&list)
 	{
@@ -3382,6 +3401,96 @@ bool	IsTargetWorkingDirectory(const PathString&dir)
 	return rs;
 }
 
+namespace StartConfig
+{
+	Configuration	sourceConfig,baseConfig,destConfig;
+	bool			changed = false;
+	PathString		configPath;
+
+	void			Load(const PathString&userConfigPath)
+	{
+		configPath = userConfigPath;
+		baseConfig.LoadFromFile("game.ini");
+		if (!sourceConfig.LoadFromFile(userConfigPath))
+		{
+			LogEvent(EventClass::Preset::configuration,nullptr,"Unable to load user configuration from '"+String(userConfigPath)+"': '"+sourceConfig.Report()+"'. Attempting to load original config");
+			sourceConfig = baseConfig;
+		}
+		destConfig = sourceConfig;
+	}
+
+
+	void Fix(const String&path, const String&fallback)
+	{
+
+
+		StringRef comment,def = fallback.ref();
+		const Configuration::Attribute*attrib = baseConfig.GetAttrib(path);
+		if (attrib)
+		{
+			comment = attrib->comment.ref();
+			def = attrib->value.ref();
+			LogEvent(EventClass::Preset::configurationError,"Config error: '"+path+"' not found. Defaulting to '"+(def)+"'");
+		}
+		else
+			LogEvent(EventClass::Preset::configurationError,"Config error: '"+path+"' not found in actual or base configuration. Defaulting to '"+(def)+"'");
+		destConfig.Define(path,def).comment = comment;
+		changed = true;
+	}
+
+	const String&	GetString(const String&path, const String&fallback)
+	{
+		Configuration::Attribute*attrib = sourceConfig.GetAttrib(path);
+		if (attrib)
+			return attrib->value;
+		Fix(path,fallback);
+		return fallback;
+	}
+
+	
+	bool	GetBool(const String&path, bool fallback = false)
+	{
+		Configuration::Attribute*attrib = sourceConfig.GetAttrib(path);
+		bool rs;
+		if (attrib && convert(attrib->value.c_str(),rs))
+			return rs;
+		Fix(path,fallback);
+		return fallback;
+	}
+	
+	int	GetInt(const String&path, int fallback = 0)
+	{
+		Configuration::Attribute*attrib = sourceConfig.GetAttrib(path);
+		int rs;
+		if (attrib && convert(attrib->value.c_str(),rs))
+			return rs;
+		Fix(path,fallback);
+		return fallback;
+	}
+	
+	float	GetFloat(const String&path, float fallback = 0)
+	{
+		Configuration::Attribute*attrib = sourceConfig.GetAttrib(path);
+		float rs;
+		if (attrib && convert(attrib->value.c_str(),rs))
+			return rs;
+		Fix(path,fallback);
+		return fallback;
+	}
+
+	void	Finish()
+	{
+		if (changed)
+		{
+			LogEvent(EventClass::Preset::configuration,"Rewriting configuration ("+String(configPath)+")");
+			destConfig.SaveToFile(configPath,PRODUCT_NAME " Client");
+			changed = false;
+		}
+	}
+
+
+}
+
 
 int main( int argc, const char* argv[])
 {
@@ -3425,40 +3534,36 @@ int main( int argc, const char* argv[])
 		Network::LoadWorldAccessTokens();
 
 		{
-			Configuration	config;
 
 			PathString userConfigPath = RuntimeConfig::ConfigFile("game.ini");
 			if (!FileSystem::IsFile(userConfigPath))
 				FileSystem::CopyFile(PathString("./game.ini"),userConfigPath,false);
-			if (!config.LoadFromFile(userConfigPath))
-			{
-				LogEvent(EventClass::Preset::configuration,nullptr,"Unable to load user configuration from '"+String(userConfigPath)+"': '"+config.Report()+"'. Attempting to load original config");
-				config.LoadFromFile("game.ini");
-			}
+			StartConfig::Load(userConfigPath);
 
 			#ifdef HAS_WINDOW
-				Config::Context::Attribute * attrib = config.GetAttrib("runtime/capFPS");
-				if (attrib && !attrib->value.equalsIgnoreCase("off"))
-					convert(attrib->value.c_str(),RuntimeConfig::FromFile::capFPS);
-				attrib = config.GetAttrib("runtime/alwaysDay");
-				convert(attrib->value.c_str(),RuntimeConfig::FromFile::alwaysDay);
-				display.config.vertical_sync = config.GetInt("runtime/vsync");
+				String val = StartConfig::GetString("runtime/capFPS","-1");
+				if (!val.equalsIgnoreCase("off"))
+					convert(val.c_str(),RuntimeConfig::FromFile::capFPS);
+				RuntimeConfig::FromFile::alwaysDay = StartConfig::GetBool("runtime/alwaysDay",true);
+				display.config.vertical_sync = StartConfig::GetInt("runtime/vsync");
 				display.config.vertical_sync = display.config.vertical_sync > 0 ? 1 : 0;
-				display.config.fsaa_samples = config.GetInt("runtime/fsaa",4);
+				display.config.fsaa_samples = StartConfig::GetInt("runtime/fsaa",4);
 
-				UI::resourcesAsList = config.GetBool("runtime/resourcesAsList",false);
+				UI::resourcesAsList = StartConfig::GetBool("runtime/resourcesAsList",false);
 
-				TimeLapse::customBasePath = PathString(config.GetString("timelapse/outDirectory"));
-				TimeLapse::frameDelaySeconds = config.GetFloat("timelapse/frameDelaySeconds",0.2f);
-				TimeLapse::maxCompressionPNG = config.GetBool("timelapse/maxCompressionPNG");
+				TimeLapse::customBasePath = PathString(StartConfig::GetString("timelapse/outDirectory",""));
+				TimeLapse::frameDelaySeconds = StartConfig::GetFloat("timelapse/frameDelaySeconds",0.2f);
+				TimeLapse::maxCompressionPNG = StartConfig::GetBool("timelapse/maxCompressionPNG");
 
-				if (!RuntimeConfig::aiMode && config.GetBool("runtime/soundEnabled",true))
+				if (!RuntimeConfig::aiMode && StartConfig::GetBool("runtime/soundEnabled",true))
 				{
 					AudioInterface::Create();
-					AudioInterface::SetMasterVolume(config.GetFloat("runtime/soundVolume",1.f));
+					AudioInterface::SetMasterVolume(StartConfig::GetFloat("runtime/soundVolume",1.f));
 				}
 
 			#endif
+
+			StartConfig::Finish();
 		}
 		LoadHosts();
 
