@@ -19,3 +19,17 @@ client/TechniteLogic/*.manifest
 *.odt#
 ControlConsole/.projector/
 file.7z
+*.delete
+*.old
+steam_sdk/ContentBuilder/builder/appcache/
+steam_sdk/ContentBuilder/builder/logs/
+steam_sdk/ContentBuilder/builder/package/
+steam_sdk/ContentBuilder/builder/.crash
+steam_sdk/ContentBuilder/builder_osx/
+steam_sdk/ContentBuilder/builder_linux/
+steam_sdk/ContentBuilder/builder/dumps/
+steam_sdk/ContentBuilder/output/
+steam_sdk/ContentBuilder/content/
+steam_sdk/ContentBuilder/builder/ssfn*
+steam_sdk/ContentBuilder/builder/userdata
+
