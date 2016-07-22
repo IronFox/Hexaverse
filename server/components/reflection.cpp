@@ -821,9 +821,9 @@ namespace Reflection
 	void	Create()
 	{
 		#undef VAR
-		#define VAR(_NAME_,_CONTEXT_,_MIN_,_MAX_,_PERSISTENCE_)	Variable::Set(#_NAME_,_CONTEXT_::_NAME_,_MIN_,_MAX_,_PERSISTENCE_);
+		#define VAR(_NAME_,_CONTEXT_,_MIN_,_MAX_,_PERSISTENCE_)	Variable::Set(#_NAME_,_CONTEXT_::_NAME_,_MIN_,_MAX_,_PERSISTENCE_)
 		#undef ENUMVAR
-		#define ENUMVAR(_NAME_,_CONTEXT_,_PERSISTENCE_)	Variable::SetEnum(#_NAME_,_CONTEXT_::_NAME_,_PERSISTENCE_);
+		#define ENUMVAR(_NAME_,_CONTEXT_,_PERSISTENCE_)	Variable::SetEnum(#_NAME_,_CONTEXT_::_NAME_,_PERSISTENCE_)
 
 		CLI::InitDefaults(state,PrintLn);
 
@@ -836,7 +836,7 @@ namespace Reflection
 
 		state.EnterNewFolder("World")->attachment.reset(new Variable::PersistenceAttachment());
 			VAR(simulateLiquids,World::Config,false,true,Variable::Persistence::RestoreFromSavegame);
-			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::PlanetConfig)
+			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::PlanetConfig);
 
 
 			state.EnterNewFolder("Planet")->attachment.reset(new Variable::PersistenceAttachment());
@@ -883,20 +883,20 @@ namespace Reflection
 		state.ExitFolder();
 		state.EnterNewFolder("Rules")->attachment.reset(new Variable::PersistenceAttachment());
 
-			ENUMVAR(gameGoal,RuntimeConfig,Variable::Persistence::RestoreFromSavegame)
+			ENUMVAR(gameGoal,RuntimeConfig,Variable::Persistence::RestoreFromSavegame);
 
 			state.SetVariable(CLI::PVariable(new Variable::SupportedFactions("supportedFactions")));
 
-			VAR(closedGame,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame)
-			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::ConfigOverridesSavegame)
-			VAR(bombsExplodeWhenDestroyed,RuntimeConfig,false,true,Variable::Persistence::ConfigOverridesSavegame)
-			VAR(startBases,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame)
-			VAR(basesRequired,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame)
-			VAR(exposeActionLeftToHostileFactions,Game::Config,false,true,Variable::Persistence::ConfigOverridesSavegame)
-			VAR(empZones,RuntimeConfig,false,true,Variable::Persistence::RestoreFromSavegame)
-			VAR(newVehiclesHaveFullAmmo,Objects,false,true,Variable::Persistence::RestoreFromSavegame)
-			VAR(uplinkBandwidth,Game::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame)
-			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::ConfigOverridesSavegame)
+			VAR(closedGame,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
+			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::ConfigOverridesSavegame);
+			VAR(bombsExplodeWhenDestroyed,RuntimeConfig,false,true,Variable::Persistence::ConfigOverridesSavegame);
+			VAR(startBases,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
+			VAR(basesRequired,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
+			VAR(exposeActionLeftToHostileFactions,Game::Config,false,true,Variable::Persistence::ConfigOverridesSavegame);
+			VAR(empZones,RuntimeConfig,false,true,Variable::Persistence::RestoreFromSavegame);
+			VAR(newVehiclesHaveFullAmmo,Objects,false,true,Variable::Persistence::RestoreFromSavegame);
+			VAR(uplinkBandwidth,Game::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame);
+			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::ConfigOverridesSavegame);
 
 			state.EnterNewFolder("UnitLimits")->attachment.reset(new Variable::PersistenceAttachment());
 				RuntimeConfig::UnitLimits::Reset();
@@ -923,13 +923,13 @@ namespace Reflection
 			state.ExitFolder();
 
 			state.EnterNewFolder("Nexus")->attachment.reset(new Variable::PersistenceAttachment());
-				VAR(haveBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
+				VAR(haveBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame);
 				#ifndef NO_SATELLITES
-					VAR(haveSatellitesAtopBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
+					VAR(haveSatellitesAtopBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame);
 				#endif
 				state.SetVariable(CLI::PVariable(new Variable::NexusAIEnabled("enableAI")));
 				//VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
-				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::ConfigOverridesSavegame)
+				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::ConfigOverridesSavegame);
 				state.SetVariable(CLI::PVariable(new Variable::NexusVehicleTurrets("vehicleTurrets")));
 			state.ExitFolder();
 		state.ExitFolder();
