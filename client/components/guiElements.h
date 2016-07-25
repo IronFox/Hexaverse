@@ -446,8 +446,9 @@ namespace GUIElements
 			foreach (components,c) 
 				(*c)->Render();
 		}
-	public:
+
 		Buffer0<PComponent>	components;
+	public:
 		bool			autoHeight = false;
 		float			autoHeightSpacing = 0.f;//0.015f;
 
@@ -470,7 +471,38 @@ namespace GUIElements
 			PropagateStateToChildren();
 		}
 
+		virtual const Buffer0<PComponent>&		GetComponents() const { return components; }
 
+		virtual bool		HasComponents() const
+		{
+			return components.IsNotEmpty();
+		}
+
+		virtual count_t		CountComponents() const
+		{
+			return components.Count();
+		}
+
+		virtual bool		AddComponent(const PComponent&c)
+		{
+			if (components.Contains(c))
+				return false;
+			components << c;
+			return true;
+		}
+		virtual bool		RemoveComponent(const PComponent&c)
+		{
+			return components.FindAndErase(c);
+		}
+		virtual bool		ClearComponents()
+		{
+			if (components.IsNotEmpty())
+			{
+				components.Clear();
+				return true;
+			}
+			return false;
+		}
 		void			AnchorBelowPrevious(Component*newComponent, float distanceFromSides = 0.015f, float distanceToPrevious = 0.015f, TAnchor::distanceType_t distanceType=TAnchor::RelativeToScreen)
 		{
 			AnchorBelowPrevious(PComponent(newComponent),distanceFromSides,distanceToPrevious,distanceType);
@@ -487,10 +519,11 @@ namespace GUIElements
 		std::function<bool()>	check;
 
 		bool					active = false;
-		bool					lastLit = false;
+		int						lastLitTriState = -1;
 
 	protected:
 		virtual bool	ClientIsLit() const override {return active && IsEnabled() && ContainsMouse();}
+		bool	OnComponentsChanged() {lastLitTriState = -1; return true;};
 
 	public:
 		virtual void	Activate() override
@@ -504,6 +537,19 @@ namespace GUIElements
 			active = false;
 			foreach (components,c) (*c)->Deactivate();
 			Super::Deactivate();
+		}
+
+		virtual bool		AddComponent(const PComponent&c) override
+		{
+			return Super::AddComponent(c) && OnComponentsChanged();
+		}
+		virtual bool		RemoveComponent(const PComponent&c) override
+		{
+			return Super::RemoveComponent(c) && OnComponentsChanged();
+		}
+		virtual bool		ClearComponents() override
+		{
+			return Super::ClearComponents() && OnComponentsChanged();
 		}
 
 
@@ -540,9 +586,10 @@ namespace GUIElements
 			bool lit = IsLit();
 			bool flipped = mousePressedComponent.get() == this;
 			Super::BaseRender(lit && !flipped,lit && flipped);
-			if (lastLit != lit)
+			int newLit = lit?1:0;
+			if (lastLitTriState == -1 || lastLitTriState != newLit)
 			{
-				lastLit = lit;
+				lastLitTriState = newLit;
 				Super::PropagateStateToChildren();
 			}
 			Super::RenderChildren();

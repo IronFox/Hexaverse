@@ -42,11 +42,11 @@ namespace GUIElements
 
 	void			TAnchor::SetSomeOf(const PPanel&p, float distance, const std::function<bool(const PComponent&)>&callback, distanceType_t dtype/*=RelativeToParentComponent*/)
 	{
-		if (!p || p->components.IsEmpty())
+		if (!p || !p->HasComponents())
 			return;
 		type = Fixed;
 		distanceFromReference = distance;
-		foreach (p->components,c)
+		foreach (p->GetComponents(),c)
 			if (callback(*c))
 				references.Append(*c);
 		distanceType = dtype;
@@ -56,23 +56,22 @@ namespace GUIElements
 
 	void			TAnchor::SetAllOf(const PPanel&p, float distance, distanceType_t dtype/*=RelativeToParentComponent*/)
 	{
-		if (!p || p->components.IsEmpty())
+		if (!p || !p->HasComponents())
 			return;
 		type = Fixed;
 		distanceFromReference = distance;
-		foreach (p->components,c)
+		foreach (p->GetComponents(),c)
 			references.Append(*c);
 		distanceType = dtype;
 	}
 
 	void			TAnchor::SetLastOf(const PPanel&p, float distance, distanceType_t dtype/*=RelativeToParentComponent*/)
 	{
-		if (!p || p->components.IsEmpty())
+		if (!p || !p->HasComponents())
 			return;
 		type = Fixed;
 		distanceFromReference = distance;
-		if (p->components.IsNotEmpty())
-			references.Append(p->components.last());
+		references.Append(p->GetComponents().last());
 		distanceType = dtype;
 	}
 

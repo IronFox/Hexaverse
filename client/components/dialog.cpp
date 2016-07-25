@@ -78,13 +78,13 @@ namespace Dialog
 
 			GUIElements::PPanel	textPanel(new GUIElements::Panel());
 			GUIElements::PLabel textField(new GUIElements::Label());
-			textPanel->components.Append(textField);
+			textPanel->AddComponent(textField);
 			textField->anchorConfig.Left().Set(0.f);
 			textField->anchorConfig.Right().Set(0.f);
 			textField->anchorConfig.Top().Set(0.f);
 			textPanel->anchorConfig = textField->anchorConfig;
 			textPanel->autoHeight = true;
-			dialog->components << textPanel;
+			dialog->AddComponent(textPanel);
 			
 			//height controlled by content
 
@@ -101,7 +101,7 @@ namespace Dialog
 				inputField->anchorConfig.Left().Set(0.f);
 				inputField->anchorConfig.Right().Set(0.f);
 				inputField->anchorConfig.Top().Set(textField,0.f);//0.025f);
-				textPanel->components.Append (inputField);
+				textPanel->AddComponent (inputField);
 			}
 			if (componentFlags & ComponentFlags::PasswordInput)
 			{
@@ -109,7 +109,7 @@ namespace Dialog
 				passwordInputField->anchorConfig.Left().Set(0.f);
 				passwordInputField->anchorConfig.Right().Set(0.f);
 				passwordInputField->anchorConfig.Top().Set(textField,0.f);//0.025f);
-				textPanel->components.Append (passwordInputField);
+				textPanel->AddComponent (passwordInputField);
 			}
 
 			if (componentFlags & ComponentFlags::ConfirmButton)
@@ -118,21 +118,21 @@ namespace Dialog
 				confirmButton->anchorConfig.Left().Set(0.f);
 				confirmButton->anchorConfig.Right().Set(0.f);
 				confirmButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
-				dialog->components << confirmButton;
+				dialog->AddComponent( confirmButton);
 				buttons << std::make_pair(1, confirmButton);
 			}
 			if (componentFlags & ComponentFlags::HelpButton)
 			{
 				helpButton.reset(new GUIElements::Button("?"));
 				helpButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
-				dialog->components << helpButton;
+				dialog->AddComponent(helpButton);
 				buttons << std::make_pair(0.25f, helpButton);
 			}
 			if (componentFlags & ComponentFlags::NoButton)
 			{
 				noButton.reset(new GUIElements::Button("No"));
 				noButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
-				dialog->components << noButton;
+				dialog->AddComponent( noButton);
 				buttons << std::make_pair(1, noButton);
 			}
 			if (componentFlags & ComponentFlags::CancelButton)
@@ -144,7 +144,7 @@ namespace Dialog
 				cancelButton->anchorConfig.Left().Set(0.505f);
 				cancelButton->anchorConfig.Right().Set(0.f);
 				cancelButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
-				dialog->components << cancelButton;
+				dialog->AddComponent(cancelButton);
 				buttons << std::make_pair(1, cancelButton);
 			}
 
@@ -191,7 +191,7 @@ namespace Dialog
 				//textField->rect.Set(0.405f,0.25f,0.75f,0.75f);
 				//imageField->rect.Set(0.25f,0.25f,0.4f,0.75f);
 				textField->alignCenter = false;
-				textPanel->components << imageField;
+				textPanel->AddComponent(imageField);
 			}
 
 

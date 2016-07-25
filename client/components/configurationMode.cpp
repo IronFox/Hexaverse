@@ -199,14 +199,14 @@ namespace ConfigurationMode
 					button->backgroundTone /= max;
 				button->SetColor(float4(button->backgroundTone,1.f));
 				button->fillBackground = true;
-				float b = 0.2f * (window->components.Count()/4);
-				float x = 0.25f * (window->components.Count()%4);
-				float x2 = 0.25f * (3-(window->components.Count()%4));
+				float b = 0.2f * (window->CountComponents()/4);
+				float x = 0.25f * (window->CountComponents()%4);
+				float x2 = 0.25f * (3-(window->CountComponents()%4));
 				button->SetLocation(Math::TFloatRect(float2(),float2(0.15f,0.15f)));
 				button->anchorConfig.Left().Set(x);
 				button->anchorConfig.Right().Set(x2);
-				if (window->components.Count()>=4)
-					button->anchorConfig.Top().Set(window->components[4*(window->components.Count()/4-1)], 0.01f);
+				if (window->CountComponents()>=4)
+					button->anchorConfig.Top().Set(window->GetComponents()[4*(window->CountComponents()/4-1)], 0.01f);
 				else
 					button->anchorConfig.Top().Set(0.f);
 				//if ((i%4)!=0)
@@ -218,12 +218,12 @@ namespace ConfigurationMode
 					Dialog::Hide(window);
 					this->onSelect((BYTE)i);
 				});
-				window->components << button;
+				window->AddComponent(button);
 			}
 
 			{
 				GUIElements::PButton button(new GUIElements::Button("Abort"));
-				float b = 0.2f * ((window->components.Count()/4)+1);
+				float b = 0.2f * ((window->CountComponents()/4)+1);
 				button->SetLocation(Math::TFloatRect(float2(),float2(1.f,0.2f)));
 //				button->anchorConfig.Top().Set(b);
 				button->anchorConfig.Left().Set(0);
@@ -234,7 +234,7 @@ namespace ConfigurationMode
 				{
 					Dialog::Hide(window);
 				});
-				window->components << button;
+				window->AddComponent( button );
 			}
 		}
 

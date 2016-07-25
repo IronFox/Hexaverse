@@ -1727,13 +1727,8 @@ bool loop()
 			if (!Network::client.IsConnected() /*&& false*/)
 			{
 				static Timer::Time	lastCheck = timer.Now();
-
-				Timer::Time now = timer.Now();
-				if (!Dialog::serverChoice || timer.ToSeconds(now - lastCheck) > 1.f)
-				{
-					lastCheck = now;
+				if (!Dialog::serverChoice || timer.CheckIfOutdatedAndUpdate(lastCheck,1.f))
 					UpdateServerChoice();
-				}
 			}
 
 
