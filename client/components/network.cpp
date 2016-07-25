@@ -1385,36 +1385,60 @@ namespace Network
 
 		}
 
-		if (timer.ToSeconds(t-lastServerTableUpdate) > 0.5f && !client.IsConnected() && !client.IsAttemptingToConnect())
+		if (timer.CheckIfOutdatedAndUpdate(lastServerTableUpdate,0.5f) && !client.IsConnected() && !client.IsAttemptingToConnect())
 		{
-			lastServerTableUpdate = t;
-
-			servers.Clear();
-			serverMap.Clear();
-
-			foreach (ServerDiscovery::attempts,_a)
-			{
-				const auto&a = **_a;
-				if (a.hasContact && (a.hasInfo || a.protocolIncompatible))
+			#ifdef DEBUG_SERVER_LIST
+				if (servers.IsEmpty())
 				{
-					index_t at;
-					if (!serverMap.query(a.lastInfo.hostInfo.value.hostID,at))
+					Random rng;
+					for (index_t i = 0; i < 100; i++)
 					{
-						at = servers.Count();
-						servers.Append().info = a.lastInfo;
-						servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
-						servers.last().protocolIncompatible = a.protocolIncompatible;
-						servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : servers.last().info.hostInfo.value.hostID;
-						servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
-						//if (!a.protocolIncompatible)
-						serverMap.Set(servers.last().id,at);
-						
+						auto&s = servers.Append();
+						s.addresses << std::make_pair(ServerAddress("localhost"),rng.getFloat(1,200));
+						s.id.Generate();
+						s.info.gameInfo.activePhase = (BYTE)rng.get(RuntimeConfig::Phase::N-1);
+						s.info.gameInfo.gameConfig.gameFlags = Protocol::GameFlag::AllFactionSupport;
+						s.info.gameInfo.gameConfig.gameGoal = (BYTE)rng.get(RuntimeConfig::GameGoal::N -1);
+						s.info.gameInfo.gameConfig.worldDiscovery = (BYTE)rng.get(Grid::WorldDiscovery::N -1);
+						s.info.gameInfo.numFactionsCreated = sqr(rng.get(0,16));
+						s.info.gameInfo.numFactionsOnline = rng.get(s.info.gameInfo.numFactionsCreated);
+						s.info.gameInfo.roundNumber = sqr(sqr(rng.get(8)));
+						s.info.gameInfo.worldID.value.Generate();
+						s.info.hostInfo.value.hostID = s.id;
+						s.info.hostInfo.value.serverBasePort = DEFAULT_SERVER_BASE_PORT;
+						s.rightVersion = true;
+						s.selected = false;
 					}
-
-					ServerInfo&info = servers[at];
-					info.addresses.Append(std::make_pair(a.address,a.lastPing));
 				}
-			}
+			#else
+
+				servers.Clear();
+				serverMap.Clear();
+
+				foreach (ServerDiscovery::attempts,_a)
+				{
+					const auto&a = **_a;
+					if (a.hasContact && (a.hasInfo || a.protocolIncompatible))
+					{
+						index_t at;
+						if (!serverMap.query(a.lastInfo.hostInfo.value.hostID,at))
+						{
+							at = servers.Count();
+							servers.Append().info = a.lastInfo;
+							servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
+							servers.last().protocolIncompatible = a.protocolIncompatible;
+							servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : servers.last().info.hostInfo.value.hostID;
+							servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
+							//if (!a.protocolIncompatible)
+							serverMap.Set(servers.last().id,at);
+						
+						}
+
+						ServerInfo&info = servers[at];
+						info.addresses.Append(std::make_pair(a.address,a.lastPing));
+					}
+				}
+			#endif
 		}
 	
 	}
