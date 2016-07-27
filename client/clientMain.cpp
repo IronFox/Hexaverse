@@ -2884,6 +2884,9 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	bool	ShouldSignalRoundEnd()
 	{
+		if (!CanChangeRoundState())
+			return false;
+
 		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound || Network::amSpectator)
 			return false;
 		#if 0
