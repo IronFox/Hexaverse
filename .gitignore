@@ -33,3 +33,4 @@ steam_sdk/ContentBuilder/content/
 steam_sdk/ContentBuilder/builder/ssfn*
 steam_sdk/ContentBuilder/builder/userdata
 
+steam_sdk/ContentBuilder/builder/config/
