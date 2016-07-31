@@ -1058,7 +1058,6 @@ bool ApplyCoverageChange(const Objects::PFaction&faction)
 
 namespace ParameterConfig
 {
-	return LuaRun(argc,argv);
 	UINT16 basePort = DEFAULT_SERVER_BASE_PORT;
 	
 	enum mode_t
@@ -1257,6 +1256,7 @@ int main( int argc, const char* argv[])
 	
 
 	onFatal = MyFatal;
+	return LuaRun(argc,argv);
 
 
 	try
