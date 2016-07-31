@@ -1,31 +1,31 @@
 #ifndef objectCursorModeH
 #define objectCursorModeH
+#include "types.h"
 
 namespace Objects
 {
-	namespace CursorMode
+	enum class CursorMode	//progressive ONLY (add, do not replace, do not remove elements). Used for IO
 	{
-		enum mode_t	//progressive ONLY (add, do not replace, do not remove elements). Used for IO
-		{
-			Idle,
-			DigMode,
-			ClearAboveMode,
-			BuildBlockMode,
-			RemoveBlockMode,
-			RestockMode,
-			DepositMode,
-			RepairMode,
-			AttackMode,
-			BuildConnectorChainMode,
-			BuildRoadChainMode,
-			BuildWallChainMode,
-			DigTunnelMode,
-			BuildBridgeMode,
-		};
-	}
+		Idle,
+		DigMode,
+		ClearAboveMode,
+		BuildBlockMode,
+		RemoveBlockMode,
+		RestockMode,
+		DepositMode,
+		RepairMode,
+		AttackMode,
+		BuildConnectorChainMode,
+		BuildRoadChainMode,
+		BuildWallChainMode,
+		DigTunnelMode,
+		BuildBridgeMode,
+		PlaceStructureMode,
+	};
 
 	#ifdef HAS_WINDOW
-		extern CursorMode::mode_t	activeCursorMode;
+		extern CursorMode	activeCursorMode;
+		extern PStructure	activeStructureToPlace;
 	#endif
 
 }

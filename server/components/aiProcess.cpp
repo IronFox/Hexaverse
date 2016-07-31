@@ -34,7 +34,7 @@ namespace AIProcess
 
 			sprintf_s(parameterBuffer,"aiAccessToken='%s' udpListen=false serverURL=localhost",accessToken.ToFullString().c_str());
 
-			ASSERT3__(process.Start(workingDirectory,path,parameterBuffer), workingDirectory,path,parameterBuffer);
+			ASSERT3__(process.Start(workingDirectory,path,parameterBuffer,false), workingDirectory,path,parameterBuffer);
 		}
 	
 	}
@@ -42,7 +42,7 @@ namespace AIProcess
 
 	void Begin(const CryptographicID&accessToken)
 	{
-		if (detail::process.IsStarted())
+		if (detail::process.IsRunning())
 		{
 			ASSERT__(accessToken == detail::accessToken);
 			return;

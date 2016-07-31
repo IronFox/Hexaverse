@@ -37,7 +37,7 @@ namespace Objects
 		/**/					Vehicle(const OwnerParameter&owner, const Grid::LCellIdI&location, Component::VehicleBase*base, Component::Turret*turret) :
 									MobileEntity(owner,turret,location),base(base)
 								{
-									ASSERT__(base); ASSERT__(turret); ASSERT__(!turret->isSatelliteRing);
+									ASSERT__(base); ASSERT__(turret); //ASSERT__(turret->mountType == Component::Turret::MountType::Vehicle);
 								}
 
 		Component::VehicleBase*	base;
@@ -89,7 +89,7 @@ namespace Objects
 			RelocationResult	RelocateTo(const Grid::LCellIdI&, float timeCost, float minTimeOffset, bool signalEvent=true, bool isCreated=true);
 */
 
-			virtual void		OnConstructionFinished(float atTime) override;
+			virtual void		OnConstructionFinished(float&atTime) override;
 
 		#else
 
@@ -126,7 +126,7 @@ namespace Objects
 		#ifdef HAS_WINDOW
 			virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
 
-			virtual void		VisitAllCommands(FCommandVisitor visitor) override {Component::Turret* turret = this->turret; Component::VehicleBase* base = this->base;  base->VisitAllCommands(visitor); turret->VisitAllCommands(visitor);};
+			virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {Component::Turret* turret = this->turret; Component::VehicleBase* base = this->base;  base->VisitAllCommands(visitor,force); turret->VisitAllCommands(visitor,force);};
 		#endif
 
 		int						GetPrice() const	{return GetPrice(base,turret);}
@@ -155,22 +155,24 @@ namespace Objects
 		virtual bool			IsVehicle() const override {return true;}
 		#ifdef HAS_WINDOW
 			virtual void		DescribeType(BaseCommand::Label&label, UINT32 descFlags) override;
+			virtual float		GetSoundLevel() const {return GetActivityLevel()*0.25f;}	//save 75% for motion
+			virtual OpenAL::Wave	GetAmbientSound() const {return base->ambientSound;}
+
 		#endif
 
 		//MobileEntity overrides:
 		virtual bool			MotionIgnoresAttack() const override {return base->ignoresVehicleAttacks;}
 		virtual int				GetMovementStepsPerRound() const override;
-		virtual int				GetConstructionSpeed() const override;
+		virtual int				GetOperationSpeed(Component::operation_t op) const override;
 		virtual float			GetBaseMovementInitiative() const override {return base->initiative;}
-		#ifndef CONNECTOR_LESS
+		virtual BYTE			GetConstructionAcceleration(Component::operation_t op) const override {return base->acceleration[op];}
+		#ifndef ONE_COMPOUND_PER_FACTION
 			virtual ResourceVector		GetMaxStorageCapacity()	const override;
 		#endif
 
 
 		//TurretBase overrides:
 		virtual float			GetFlatAttackRange() const override {return EMPModify(turret->horizontalAttackRange + base->rangeModifier,1.f);}
-		virtual bool			HasAmmoForShot() const override;
-
 
 		//Hibernating overrides:
 		#ifndef NO_HIBERNATION

@@ -39,7 +39,7 @@ namespace Camera
 	extern Engine::VectorCamera<>	scene;
 	extern Engine::OrthographicAspect<>	hud;
 
-
+	extern bool					autoRotation, locked;
 
 
 	/**
@@ -70,12 +70,19 @@ namespace Camera
 	Stops any ongoing targeted translation
 	*/
 	void						AbortTargetedTranslation();
+	/**
+	Toggles between on and off for auto-rotation. Auto-rotation follows the sun plane in reverse direction at fixed speed.
+	Good for recording views of planets in spectator mode. Not so good for any other use.
+	*/
+	void						ToggleAutoRotation();
+
 
 	/**
 	Smoothly updates ongoing camera animations. Must be called once per frame
 	*/
 	void						ProgressRotation();
 
+	void						StopAutoRotation();
 	/**
 	Queries the current camera orbit radius
 	*/
@@ -84,13 +91,15 @@ namespace Camera
 	/**
 	Set a new target orbit to smoothly interpolate to
 	*/
-	void						TargetOrbit(float targetOrbit);
+	void						ChangeGroundRadius(float targetOrbit);
 
 
+	
 	/**
 	Switches to sky orbit
 	*/
 	void						TargetSkyOrbit();
+	
 	/**
 	Switches to ground orbit
 	*/
@@ -112,6 +121,7 @@ namespace Camera
 		void					WheelAction(short param);
 		void					ZoomIn();
 		void					ZoomOut();
+		void					Zoom(float outSpeed);
 	}
 
 }

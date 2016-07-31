@@ -14,14 +14,14 @@ Warning: hasn't been undefined in a long time. Some code sections might not comp
 #define HYBRID_GRID
 
 
-/** CONNECTOR_LESS
+/** ONE_COMPOUND_PER_FACTION
 If defined, connectors have no functionality. Resources are shared across all world entities
 of a faction. Vehicles have no storage capacity in this mode, and no commands to alter their storage.
 Vehicles (and satellites) can pull directly from the faction storage and overproduction.
 Connectors cannot be built but are maintained for backward compatibility
-Last verified to compile in both modes Aug 22 2015
+Last verified to compile in both modes Feb 28 2016
 */
-#define CONNECTOR_LESS
+#define ONE_COMPOUND_PER_FACTION
 
 
 
@@ -30,7 +30,7 @@ If defined, the ammunition resource is removed from the system. Vehicles and tow
 require this resource type, now require no munition to fire.
 If compiled in combination with connectors then vehicles that would store munition now store nothing.
 MunitionFactory and MunitionStorage structures cannot be built but are maintained for backward compatibility
-Last verified to compile in both modes Aug 22 2015
+Last verified to compile in both modes Feb 28 2016
 */
 #define NO_MUNITION
 
@@ -40,6 +40,18 @@ Disables the hibernation mechanic, and replaces it was a type-table that maps ty
 */
 #define NO_HIBERNATION
 
+/** NO_SATELLITES
+Disables the satellite mechanic, sky grid, sky port, and all satellites
+*/
+#define NO_SATELLITES
+
+#ifdef NO_SATELLITES
+	#define IF_SATELLITES_P(X,Y)
+	#define IF_SATELLITES(X)
+#else
+	#define IF_SATELLITES_P(X,Y)	X,Y
+	#define IF_SATELLITES(X)	X
+#endif
 
 
 //macros defines in projects:
@@ -67,9 +79,13 @@ Define in the project settings, not here.
 /* CHEAT_FULL_STORAGE
 Must be defined for the server.
 If defined, mobile entities loaded from file are filled to their respective storage maximum.
-Effective only if CONNECTOR_LESS is not defined.
+Effective only if ONE_COMPOUND_PER_FACTION is not defined.
 Define in the project settings, not here.
 */
 
+/* DEBUG_ACCESS_RESTRICTIONS
+If defined, activates visual controls on hostile entities and ghosts. Server must reject any such attempts.
+Define in the project settings, not here.
+*/
 
 #endif

@@ -12,12 +12,12 @@ namespace Objects
 {
 
 	bool						controlIsEnabled = false;
-	Buffer0<Grid::LCellIdI>		movementChoices;
+	Buffer0<Choice>				movementChoices;
 	bool						hasArrowCellTarget=false,
 								showArrow = false;
 	float3						arrowFrom;	//arrow visualization point of origin. Might be the location of a vehicle, or any of the locations in its task queue. Only relevant if showArrow is true
-	Grid::LCellIdI				arrowFromCell, 
-								arrowCellTarget;
+	Grid::LCellIdI				arrowFromCell;
+	TrajectoryEndPoint			arrowCellTarget;
 	Buffer0<Grid::HCellIdU>		buildCandidates, 
 								removeCandidates;
 	Buffer0<Grid::HCellIdI>		cellSelection;
@@ -25,20 +25,19 @@ namespace Objects
 
 
 	template <bool ControlEnabled>
-		void RefreshCommand(EntityCommand&cmd)
+		void RefreshCommand(const int2&, const PBaseCommand&cmd)
 		{
-			cmd.Refresh(ControlEnabled);
+			cmd->Refresh(ControlEnabled);
 		}
 
 	void		RefreshCommands(bool controlEnabled)
 	{
 		controlIsEnabled = controlEnabled;
-		foreach (globalCommands, cmd)
-			(*cmd).Refresh(controlEnabled);
+		globalCommands.Refresh(controlEnabled);
 	
 		if (selectedEntity)
 		{
-			selectedEntity->VisitAllCommands(controlEnabled ? RefreshCommand<true> : RefreshCommand<false>);
+			selectedEntity->VisitAllCommands(controlEnabled ? RefreshCommand<true> : RefreshCommand<false>,false);
 		}
 	}
 
@@ -52,7 +51,7 @@ namespace Objects
 
 		if (controlEnabled)
 			GetChoices(selectedEntity,
-				Objects::VehicleStore::deployingVehicle, 
+				deployingMobileEntity, 
 				activeCursorMode,movementChoices,showArrow,hasArrowCellTarget,arrowFrom,arrowFromCell);
 		else
 		{
@@ -76,8 +75,8 @@ namespace Objects
 		index_t rs = InvalidIndex;
 		foreach(movementChoices, choice)
 		{
-			float h = Grid::ToRadius(choice->height);
-			const auto&c = Grid::low.cells[choice->stackID];
+			float h = Grid::ToRadius(choice->location.height + choice->visualVerticalOffset);
+			const auto&c = Grid::low.cells[choice->location.stackID];
 			for (int i = 0; i < c.numCorners; i++)
 			{
 				if (Obj::detectOpticalIntersection(
@@ -101,15 +100,14 @@ namespace Objects
 		index_t choice = DetectChoiceIntersection(b, d, distance);
 		if (choice == InvalidIndex)
 			return false;
-		PVehicle deployment = VehicleStore::deployingVehicle;
+		PMobileEntity deployment = deployingMobileEntity;
 		//VehicleStore::deployingVehicle.reset();
-		CursorMode::mode_t cursorMode = activeCursorMode;
+		CursorMode cursorMode = activeCursorMode;
 		activeCursorMode = CursorMode::Idle;
 
-		Grid::LCellIdI ch = movementChoices[choice];
-		PVehicleStore st = To<VehicleStore>::DynamicCast(selectedEntity);
-		if (st)
-			st->SignalDeployment();
+		Grid::LCellIdI ch = movementChoices[choice].location;
+		if (To<Hangar>::DynamicCast(selectedEntity))
+			deployingMobileEntity.reset();
 
 		UpdateChoices(true);
 

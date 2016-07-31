@@ -1,28 +1,100 @@
+﻿server list must be scrollable
 
-------------- not done ------------- 
-
-...requested...
-
-ambient restocking (and repairing?) of support vehicles. //restocking no longer an issue
+client-side started local server should survive client closure?
 
 
-...next...
+terrain benchmark
+compare with pre-80d6657fcd00f7d41fdc54c4cdef47b3d073ff48: 3972d667c90b1ef1ded85c3efceb6fe2516f7a0b
 
 
 
+having small compound spheres within larger ones become visible if the camera is inside these spheres
+shift+click should work on terraforming operations, too
+
+alloy? resource type that is required for some constructions, and requires a special factory to make
 
 
-visualize attack radius on water
+
+research concept:
+	two types of research:
+		acquire locked turret/base/building
+			some arranged in a tree, others available right away
+			
+		improved unlocked turret/base/building (very expensive, end game, all in percentage, exponentially increasing costs)
+			* scanning range
+			* attacks per round (towers/offensive vehicles)
+			* attack range (towers/offensive vehicles)
+			* explosion radius (towers/offensive vehicles)
+			* damage level (towers/offensive vehicles)
+			* movement speed (vehicles)
+			* construction speed (vehicles/factories) - for vehicles mostly only makes sense with multi job execution per round
+			* health
+			* health factor (vehicle turrets)
+			* emp resistance?
+			* fuel demand (satellites, generators)
+			* yield efficiency (mines/generators produce more)
+			
+		
+
+
+new mine system:
+	have mines multiply resource availability with number of solid natural blocks beneath mine. if >5/10, mine works at 100%
+	underwater mines:
+		1) water evaporator towers, that remove water in a fixed radius or shape
+		2) have special swimming platform mines that make block-links to the next lower natural ground
+			introduce link block type (structured, not gray)
+		3) have buildings ignore water (not displace it), and a special water-ignoring vehicle base type
+		
+
+
+hostile ghosts die after one round
+
+auto relocation fails if some other non-move task immediately follows (e.g. transfer resources)
+potentially undo last (movement) task if build job is rejected
+
+
+still have loss of initial AI world state. easy to reproduce: new planet with ai (all seems good) -> save anywhere -> immediately load -> bamm
+
+water has no bottom cap, and the bounding box/sphere/w/e is sometimes off by a little
+
+
+working structure enable-replacement (replace one enable working structure with another that is better suited to stabilize the compound)
+
+
+repair vehicle idle if something damaged?
+compound inefficieny
+wireless power? ... dedicated compounds?
+		
+
+decrease max transparency of water (make it configurable?)
+
+make generators switch off if not needed
+
+split terraformers and constructors
+
+lava ship
+
+send entity id with server messages so user can click on the message to focus on them
+	/visual event log extracted from animation:
+	trajectories
+	explosion markers
+	damage markers
+	auto-pause animation during events (might be too tricky)
+increase resource stack minimum
+better mine output (refinery)
+research
+	research concept, stations, states. AI? viruses?
+	virus infection and propagation (possibly from nexus ports - possibly same effect as emp)
+recycling
+
+
+
+
 
 transfer build-state of terraformer to hostile factions
+	/see what hostile former is building currently
 
-better surveyor automation logic
 
-ability to pause construction (of terraformers)
-
-automatically fix incomplete configuration files
-
-favorize certain vehicle construction jobs
 
 
 
@@ -33,39 +105,17 @@ Satellite beam animation seed.
 
 
 
-see what hostile former is building currently
-
-
-
-ragnarök beam visualization
-
-spy-satellite
-
-research concept, stations, states. AI? viruses?
-
-send entity id with server messages so user can click on the message to focus on them
-
-
-
-
-
-
-...later...
 
 better customization for goal specification. currently ConquerNexus and EMPConquerNexus have implied, rather specific characteristics that should be exposed as settings
 
 better scoring
-fuel transporter vehicle // no longer required
-foundation (and road) building should block required cells
+general resource transporter vehicles
 
 let foundation blocks (and granite) explode into stone first // maybe later
 
 
 
-server async logging // doesn't seem necessary for now. console now is async
 
-
-client-sided structure count doesn't seem to update if destroying a faction ends game. disconnecting and re-connecting fixes it. works fine if game does not end
 
 
 hover beam	//elevator
@@ -75,7 +125,6 @@ loading screen	//doesn't seem necessary just yet
 granite-digging turret
 
 
-virus infection and propagation (possibly from nexus ports - possibly same effect as emp)
 
 nexus tower	(defensive tower surrounding each nexus port)
 caves for nexus
@@ -101,7 +150,6 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 
 
-remote server control, including local starting
 
 
 
@@ -112,6 +160,89 @@ remote server control, including local starting
 
 ------------- done (newest first) -------------
 
+visual server configurator 
+ragnarök attack beam visualization	//satellites are deprecated
+spy-satellite	//satellites are deprecated
+faster digging
+improve sky grid
+change scanning ranges from pure spheres to paraboloids:	//done in ft_aerial, using cut-off spheres
+	horizontal radius, vertical radius (up), vertical radius (down)
+	make down significantly less than up
+hostile health does not update
+enabling see-through via ctrl somehow lowers focus height further each time, even beneath lowest possible height
+cluster natural resources
+emp independent of goal
+reduce hoverbase safe falling height
+surveyors move along revertable paths only
+button to hide paths of non-selected entity
+better surveyor automation logic
+have pylons (ft_pylon) connect to each other only, replace connectors	
+still possible to have negative compound power level when generator could be enable but isn't? i think this happened when enabling a skyport
+Visualization of number of attacks left
+The new round button is sometimes not flashing when a round starts and there is nothing to do
+shadow edge
+motions ending in cells occupied by vehicles with no tasks should abort
+building placement (shift+click etc)
+surveyor that crosses planned paths with another (standing or moving) vehicle should consider that an invalid path
+remote control: preserve working directory
+smoke trail of last round attacks
+vehicle sentry toggle	// better: vehicles can sleep
+button to toggle offensive vehicles to also be considered idle if standing around // also done by sleep
+button to toggle factories being considered idle // also done by sleep
+ability to pause construction (of terraformers) // also done by sleep
+visualize attack radius on water
+hostile satellites show up as ghosts if in radar range
+possibly fixed:
+	client-sided structure count doesn't seem to update if destroying a faction ends game. disconnecting and re-connecting fixes it. works fine if game does not end
+	terraformer moves with a finished construction but move on finish is not executed until vehicle moves again. then places building on the location the vehicle first moved to...
+	building was two floors high. no occulsion on second floor
+		see below:
+		Cannon Tower	11a86a0b
+		
+	Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	140[h=2]	 140.2 108.2
+	Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Removed from grid location 196196/140[h=2]
+	Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Inserted into grid location 196164/108[h=2]
+	Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Registering sensory (108[h=2], 4) at time 0.3
+	Debug	2016 February 11. 22:35:44	232	MovementPhase							Applying sensory change (1), using descriptor with 162 stack(s), crc=D3C8D1D0
+	Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Unregistering sensory (140[h=2], 4) at time 0.3
+	Debug	2016 February 11. 22:35:44	232	MovementPhase							Applying sensory change (-1), using descriptor with 162 stack(s), crc=5EEF467C
+	Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Processing new hostile contact Hovertank e1b91bd2...
+	Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Dangerous movement into range of Hovertank 'Hooked Seal' @07ED3B40 detected.
+	Debug	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	ClearAllTasks(true, line 657 of objects\mobileentity.cpp::Objects::MobileEntity::HandleMotion())
+	Debug	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	 ...set to clear on unlock
+	Common	2016 February 11. 22:35:44	232	MovementPhase							[spectator]:'IronFox' reported seeing motion of Heavyformer 0168a292 at time 0+0.3
+	Common	2016 February 11. 22:35:44	232	MovementPhase							664cc40f:'IronFox' reported seeing motion of Heavyformer 0168a292 at time 0+0.3
+	Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	8d197fdb:'<NexusAI>': CheckGridVisibility at time 0.31
+	Common	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Motion completed
+	Debug	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	ClearAllTasks(true, line 484 of objects\mobileentity.cpp::Objects::MobileEntity::HandleNormalTask())
+	NonFatalError	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Unable to complete movement.
+	Debug	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	ClearAllTasks(true, line 351 of objects\mobileentity.cpp::Objects::MobileEntity::UnlockTasks())
+	Debug	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	 ...cleared
+	NonFatalError	2016 February 11. 22:35:44	232	MovementPhase			Heavyformer	0168a292	664cc40f:'IronFox'	108[h=2]	Unable to automatically relocate. Move manually to finish 'construct Cannon Tower'
+
+job trajectory isn't always rendered if near the edge
+dig tunnel to target height
+windows+left/right stretches window
+button flashing when nothing is idle at round start
+emp vehicle idle only if attackable has no emp damage
+vehicle idle only if it has any shots left, and ammo
+have foundation auto-connect to anything that is not air
+disable/redesign munition transporter in connector mode	//disabled
+nexus port changing ownership creates a ghost even if visible. maybe check ghosts when new structure appears?	//fixed
+either change stored health to float or store max health, so that stretching to different versions is possible	//changed to float
+reactor core has no foundation (change default?)
+Uranium storage is geometrically too high
+better generator (reactor core)
+flash new-round button when all others have finished their round and nothing apparent needs instructions right now
+dying factions should not cause emp areas to become inaccessible // fixed
+increase spawning distance between players
+movement arrows are too broad for unselected entities //made arrows light blue for unselected entities. people seem to agree this is acceptable
+somehow increase attack spheres/paraboloid contrast on lava planets (almost invisible, much like sensor range on desert planets) //now rendering black spheres around actual range spheres to increase contrast
+see-through not blackening lava. maybe just darken everything? //lava is darkened but not blackened anymore
+start local server button in client 
+remote server control, including local starting // partially implemented
+server async logging // doesn't seem necessary for files, and possibly problematic with message loss in case of crash. console output is now async
+automatically fix incomplete configuration files
 why do towers fire simultaneously?	//tower turret rotation is simultaneous, actual attack is not
 
 Might not be able to cleanly recover. Application should restart.:

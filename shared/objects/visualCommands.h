@@ -9,6 +9,8 @@
 #include "../../client/ExtRenderer/DirectX11.h"
 #include "cursorMode.h"
 #include "types.h"
+#include "resource.h"
+#include "../cast.h"
 
 namespace Objects
 {
@@ -19,28 +21,70 @@ namespace Objects
 
 	void				RefreshCommands(bool controlEnabled);
 
+	class BaseCommand;
 
-	class BaseCommand
+	typedef std::function<void(const int2&,const PBaseCommand&cmd)>	FCommandVisitor;
+
+
+
+
+
+	class BaseCommand : public std::enable_shared_from_this<BaseCommand>
 	{
 	public:
+		enum class Flags
+		{
+			None = 0,
+			IsEnabled=0x1,
+			IsPermaActive=0x2,
+			IsFlashing=0x4,
+			SoftFlashing=0x8
+		};
+
+
 		String			name;
-		bool			permaActive, isEnabled;
-		int2			coords;
+		Flags			state = Flags::IsEnabled;
 		DX11::Texture	texture;
+		TFloatRect		screenRect;
+
 
 		static const int2 coordOffset;
 
-		/**/			BaseCommand(int2 coords, const String&name):name(name),permaActive(false), isEnabled(true),coords(coords+coordOffset)
-		{}
 
+		/**/			BaseCommand(const String&name):name(name) {}
+		///**/			BaseCommand(const int2&coords, const String&name):name(name) {SetCoords(coords);}
+		/**/			BaseCommand()	{}
+
+		/**
+		Triggered when the local command is executed
+		*/
 		virtual void	Execute() = 0;
+		/**
+		Triggered when @a state is supposed to be updated
+		@param controlEnabled Indicates that the current phase and client state allows execution of server-commands. Commands that do not involve server-interaction may ignore this parameter
+		*/
+		virtual	void	Refresh(bool controlEnabled) = 0;
+		/**
+		Queries any subsequent costs of an execution of the local command
+		*/
+		virtual void	GetCosts(int&costOut, Resource&costTypeOut, int&timeCostOut)	{costOut = 0; costTypeOut = Resource::Minerals; timeCostOut = 0;}
 
 		#undef LoadIcon
 		static GenericHashTable<PathString, DX11::Texture>	textureMap;
 
 		virtual void	RasterizeImage()	{}
+		virtual bool	IsGroup() const {return false;}
+		virtual void	VisitMembers(const FCommandVisitor&visitor, bool force, const int2&parentGridCoords) {visitor(parentGridCoords,shared_from_this());}
+		void			VisitMembers(const FCommandVisitor&visitor, bool force) {VisitMembers(visitor,force,coordOffset);}
 
-		void			LoadIcon();
+		virtual void	LoadIcon();
+		void			LoadIcon(const String&name);
+
+
+		//void			SetCoords(const int2&rawCoords)
+		//{
+		//	gridCoords = rawCoords+coordOffset;
+		//}
 
 
 		class Label
@@ -89,305 +133,435 @@ namespace Objects
 
 
 
-		virtual void	CompileLabel(const PWorldEntity&, Label&outResult)
-		{
-			outResult << name;
-		}
+		virtual void	CompileLabel(Label&outResult);
 
 	};
 
-	template <class Target>
-		class TemplateCommand : public BaseCommand
+	inline BaseCommand::Flags operator|(BaseCommand::Flags a, BaseCommand::Flags b)
+	{
+		using T = std::underlying_type_t <BaseCommand::Flags>;
+		return (BaseCommand::Flags)(((T)a)|((T)b));
+	}
+	
+	inline void operator|=(BaseCommand::Flags&a, BaseCommand::Flags b)
+	{
+		using T = std::underlying_type_t <BaseCommand::Flags>;
+		a = (BaseCommand::Flags)(((T)a)|((T)b));
+	}
+
+	inline bool operator&(BaseCommand::Flags a, BaseCommand::Flags b)
+	{
+		using T = std::underlying_type_t <BaseCommand::Flags>;
+		return (((T)a)&((T)b)) != 0;
+	}
+
+	inline void operator-=(BaseCommand::Flags&a, BaseCommand::Flags b)
+	{
+		using T = std::underlying_type_t <BaseCommand::Flags>;
+		a = (BaseCommand::Flags)(((T)a)&(~((T)b)));
+	}
+
+
+	typedef std::shared_ptr<BaseCommand>	PBaseCommand;
+
+
+	class CallbackCommand : public BaseCommand
+	{
+		typedef	BaseCommand	Super;
+	protected:
+		/**/			CallbackCommand(const String&name):Super(name)	{}
+	public:
+		typedef std::function<void()>		FOnExecute;
+		typedef std::function<Flags(bool)>	FCheck;
+		typedef std::function<void(int&costOut, Resource&costTypeOut, int&timeCostOut)>	FGetCosts;
+
+		FGetCosts		getCosts;
+		FOnExecute		execute;
+		FCheck			check;
+
+		/**/			CallbackCommand()	{}
+		/**/			CallbackCommand(const String&name, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name), execute(exec),check(check),getCosts(getCosts)	{}
+		/**/			CallbackCommand(const String&name, const FOnExecute&exec, const FCheck&check):Super(name), execute(exec),check(check)	{}
+
+		virtual void	Execute() override												{execute();}
+		virtual	void	Refresh(bool controlEnabled) override							{state = check(controlEnabled);}
+		virtual void	GetCosts(int&costOut, Resource&costTypeOut, int&timeCostOut) override	{if (getCosts) getCosts(costOut,costTypeOut,timeCostOut); else Super::GetCosts(costOut,costTypeOut,timeCostOut);}
+	};
+
+
+
+	template <typename Base>
+		class CustomLabel : public Base
 		{
+			typedef	Base	Super;
 		public:
-			typedef std::function<void(Target)>	OnExecute;
-			typedef std::function<bool(Target, bool)>	CheckEnabled;
-			typedef std::function<bool(Target)>	IsPermaActive;
+			BaseCommand::Label		customLabel;
 
-			OnExecute	execute;
-			CheckEnabled	checkEnabled;
-			IsPermaActive	checkPermaActive;
-
-			TFloatRect	screenRect;
-
-			/**/		TemplateCommand():BaseCommand(int2(0),""){}
-			/**/		TemplateCommand(int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p) :BaseCommand(coords,name), execute(f), checkEnabled(a), checkPermaActive(p)
-			{}
-
-			virtual	void	Refresh(bool controlEnabled) = 0;
+			/**/		CustomLabel(const String&name):Super(name) {customLabel << name; customLabel.MarkBriefEnd();}
+			/**/		CustomLabel() {}
+			virtual void	CompileLabel(BaseCommand::Label&outResult) override
+			{
+				outResult = customLabel;
+			}
 		};
 
 
-
-
-
-	class EntityCommand : public TemplateCommand<PWorldEntity const&>
+	class IconCommand : public CustomLabel<CallbackCommand>
 	{
+		typedef	CustomLabel<CallbackCommand>	Super;
+	protected:
+		/**/			IconCommand(const String&name):Super(name)	{}
+
 	public:
-		typedef TemplateCommand<const PWorldEntity&>	Super;
-		typedef EntityCommand	This;
 
-		/**/				This()	{}
-		/**/				This(int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p) : Super(coords,name,f,a,p)
-		{}
-
-		virtual void		Refresh(bool controlEnabled) override;
-		virtual void		Execute() override;
-	};
-
-	typedef std::function<void(EntityCommand&cmd)>	FEntityCommandVisitor;
-
-	class IconCommand : public EntityCommand
-	{
-	public:
-		typedef EntityCommand	Super;
-		typedef IconCommand	This;
-
-		typedef std::function<void(const PWorldEntity&e, int&mineralCostOut, int&timeCostOut)>	GetCosts;
-
-		GetCosts			getCosts;
-
-		/**/				This()	{}
-		/**/				This(int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p, GetCosts c) : Super(coords,name,f,a,p),getCosts(c)
+		/**/			IconCommand()	{}
+		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name)
 		{
 			LoadIcon();
+			this->execute = exec;
+			this->check = check;
+			this->getCosts = getCosts;
 		}
-		virtual void		CompileLabel(const PWorldEntity&, Label&outResult) override;
-
-	};
-
-	class VehicleCommand : public EntityCommand
-	{
-	public:
-		typedef EntityCommand	Super;
-
-		Component::VehicleBase		*base;
-		Component::Turret	*turret;
-
-		/**/				VehicleCommand()	{}
-		/**/				VehicleCommand(int2 coords, const String&name, Component::VehicleBase*base, Component::Turret*turret,   OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) : Super(coords,name,f,a,p),base(base),turret(turret)
+		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check):Super(name)
 		{
-			if (rasterize)
-				UpdateTexture(base,turret);
+			LoadIcon();
+			this->execute = exec;
+			this->check = check;
 		}
-
-		void				UpdateTexture(Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
-		void				UpdateTexture(const PVehicle&v, bool isPrototype, const float4&backgroundColor = float4(0));
-		static void			UpdateTexture(EntityCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
-		static void			UpdateTexture(EntityCommand&target, const PVehicle&v, bool isPrototype, const float4&backgroundColor = float4(0));
 	};
+	typedef std::shared_ptr<IconCommand> PIconCommand;
 
-	class VehicleConstructionCommand : public VehicleCommand
-	{
-	public:
-		typedef VehicleCommand	Super;
-		typedef VehicleConstructionCommand	This;
-
-		unsigned			roundsLeft = 0xFFFFFFFF;
-		unsigned			mineralsLeft = 0xFFFFFFFF;
-
-		/**/				VehicleConstructionCommand()	{}
-		/**/				VehicleConstructionCommand(int2 coords, const String&name, Component::VehicleBase*base, Component::Turret*turret,   OnExecute f, CheckEnabled a, IsPermaActive p) : Super(coords,name,base,turret,f,a,p)	{}
-
-
-		virtual void		CompileLabel(const PWorldEntity&, Label&outResult) override;
-	};
-
-	class SatelliteCommand : public EntityCommand
-	{
-	public:
-		typedef EntityCommand	Super;
-		PSatellite			sat;
-
-		/**/				SatelliteCommand()	{}
-		/**/				SatelliteCommand(int2 coords, const String&name, const PSatellite&sat,   OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) : Super(coords,name,f,a,p),sat(sat)
+	template <typename Base>
+		class CustomIcon : public Base
 		{
-			if (rasterize)
-				UpdateTexture(sat,true);
+			typedef	Base	Super;
+			String		imageName;
+		public:
+			/**/		CustomIcon(const String&name, const String&imageName):Super(name),imageName(imageName)	{LoadIcon();}
+			/**/		CustomIcon() {}
+			virtual void	LoadIcon()	override {Super::LoadIcon(imageName);}
+		};
+
+
+	class CustomIconCommand : public CustomIcon<IconCommand>
+	{
+		typedef	CustomIcon<IconCommand>	Super;
+	protected:
+		/**/			CustomIconCommand(const String&name, const String&imageName):Super(name,imageName)	{}
+
+	public:
+		/**/			CustomIconCommand()	{}
+		/**/			CustomIconCommand(const String&name, const String&imageName, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name,imageName)
+						{
+							this->execute = exec;
+							this->check = check;
+							this->getCosts = getCosts;
+						}
+		/**/			CustomIconCommand(const String&name, const String&imageName, const FOnExecute&exec, const FCheck&check):Super(name,imageName)
+						{
+							this->execute = exec;
+							this->check = check;
+						}
+	};
+
+	class CommandContainer
+	{
+	public:
+		typedef std::pair<int2,PBaseCommand>	Member;
+	protected:
+		Buffer0<Member>				members;
+		const CommandContainer		*parent = nullptr;	//!< Must not access members
+
+	public:
+		int2						baseCoords;
+
+		PCommandGroup	AddChild(const String&name);
+		PCommandGroup	AddChild(const int2&coords, bool relativeCoords, const String&name);
+		PCommandGroup	AddChild(const String&name, const String&iconName);
+		PCommandGroup	AddChild(const int2&coords, bool relativeCoords, const String&name, const String&iconName);
+
+		void			VisitMembers(const FCommandVisitor&visitor, bool force)	const
+		{
+			foreach (members,m)
+				m->second->VisitMembers(visitor,force,BaseCommand::coordOffset + baseCoords + m->first);
+		}
+
+		void			Refresh(bool controlEnabled)
+		{
+			foreach (members,m)
+				m->second->Refresh(controlEnabled);
+		}
+
+		PBaseCommand	Add(BaseCommand*newCommand)	{ return Add(PBaseCommand(newCommand));}
+		PBaseCommand	Add(const PBaseCommand&newCommand);
+		PBaseCommand	Add(const int2&coords, bool relativeCoords, BaseCommand*newCommand)	{ return Add(coords, relativeCoords, PBaseCommand(newCommand));}
+		PBaseCommand	Add(const int2&coords, bool relativeCoords, const PBaseCommand&newCommand);
+		const Member&	GetLast() const {return members.last();}
+		
+		index_t			Find(const PBaseCommand&) const;
+	};
+
+
+	/**
+	Button that represents a whole group of other buttons (including tabs)
+	Only one branch of groups can be visible at any time.
+	This version of Group must hold copies of one type of command. It cannot be used to store shared_ptr of commands!
+	*/
+	class CommandGroup : public CustomLabel<BaseCommand>, public CommandContainer	//for size/compatibility reasons
+	{
+		typedef CustomLabel<BaseCommand> Super;
+
+		static Buffer0<CommandGroup*>		activeGroupPath;
+
+		void	Collapse()
+		{
+			if (state & Flags::IsPermaActive)
+			{
+				state -= Flags::IsPermaActive;
+				if (onCollapse)
+					onCollapse();
+			}
 		}
 
 
-		void				UpdateTexture(const PSatellite&v, bool isPrototype, const float4&backgroundColor = float4(0));
-		static void			UpdateTexture(EntityCommand&target, const PSatellite&v, bool isPrototype, const float4&backgroundColor = float4(0));
+		void	Expand()
+		{
+			bool trigger = !(state & Flags::IsPermaActive);
+			state |= Flags::IsPermaActive;
+			if (trigger && onExpand)
+				onExpand();
+		}
+
+
+	public:
+		std::function<void()>	onCollapse;
+		std::function<void()>	onExpand;
+
+
+		/**/			CommandGroup(const String&name) : Super(name)	{LoadIcon();}
+		
+
+		virtual void	Execute() override;
+		virtual void	VisitMembers(const FCommandVisitor&visitor, bool force, const int2&parentCoords)	override
+		{
+			Super::VisitMembers(visitor,force,parentCoords);
+			if (force || state & Flags::IsPermaActive)
+			{
+				CommandContainer::VisitMembers(visitor,force);
+			}
+		}
+
+		virtual	void	Refresh(bool controlEnabled) override {/*CommandContainer::Refresh(controlEnabled);*/}
+		virtual bool	IsGroup() const override {return true;}
+
+		void			CollapseChildren()
+		{
+			if (!activeGroupPath.Contains(this))
+				return;
+			while (activeGroupPath.last() != this)
+			{
+				activeGroupPath.last()->Collapse();
+				activeGroupPath.EraseLast();
+			}
+			Collapse();
+		}
+
+		static void		CollapseAll()
+		{
+			foreach (activeGroupPath,p)
+				(*p)->Collapse();
+			activeGroupPath.Clear();
+		}
+	};
+
+	
+
+
+
+
+	class EntityCommand : public CallbackCommand
+	{
+		typedef CallbackCommand	Super;
+	protected:
+		/**/				EntityCommand(const String&name):Super(name)	{}
+	public:
+		WWorldEntity		reference;
+
+		/**/				EntityCommand()	{}
+		/**/				EntityCommand(const String&name, const PWorldEntity&e,   FOnExecute f, FCheck c) : Super(name,f,c),reference(e) {}
+		///**/				EntityCommand(const int2&coords, const String&name, const PWorldEntity&e,   FOnExecute f, FCheck c) : Super(name,f,c),reference(e)
+		//{
+		//	SetCoords(coords);
+		//}
+
+		virtual void		RasterizeImage()override
+		{
+			PWorldEntity e = reference.lock();
+			if (e)
+				UpdateTexture(e,false);
+		}
+		void				UpdateTexture(const PWorldEntity&v, bool isPrototype, const float4&backgroundColor = float4(0));
+		static void			UpdateTexture(BaseCommand&target, const PWorldEntity&v, bool isPrototype, const float4&backgroundColor = float4(0));
 
 	};
 
-	class SatelliteConstructionCommand : public SatelliteCommand
+	class EntityConstructionCommand : public EntityCommand
 	{
+		typedef EntityCommand	Super;
+	protected:
+		/**/				EntityConstructionCommand(const String&name):Super(name)	{}
 	public:
-		typedef SatelliteCommand	Super;
-
-
-		/**/				SatelliteConstructionCommand()	{}
-		/**/				SatelliteConstructionCommand(int2 coords, const String&name, const PSatellite&sat,   OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) : Super(coords,name,sat,f,a,p,rasterize) {}
-
-		virtual void		CompileLabel(const PWorldEntity&, Label&outResult) override;
-	};
-
-
-	class MobileEntityConstructionAbortCommand : public SatelliteConstructionCommand
-	{
-	public:
-		typedef SatelliteConstructionCommand	Super;
 		Component::Turret*		turret;
 		Component::VehicleBase*	base;
 
 		unsigned			roundsLeft = 0xFFFFFFFF;
 		unsigned			mineralsLeft = 0xFFFFFFFF;
 
+		/**/				EntityConstructionCommand()	{}
+		/**/				EntityConstructionCommand(const String&name, Component::VehicleBase*base, Component::Turret*turret, const PWorldEntity&e,   FOnExecute f, FCheck c) 
+						: Super(name,e,f,c), base(base),turret(turret) {}
+		///**/				EntityConstructionCommand(const int2&coords, const String&name, Component::VehicleBase*base, Component::Turret*turret, const PWorldEntity&e,   FOnExecute f, FCheck c)
+		//				: Super(name,e,f,c), base(base),turret(turret)
+		//{
+		//	SetCoords(coords);
+		//}
 
-		/**/				MobileEntityConstructionAbortCommand()	{}
-		/**/				MobileEntityConstructionAbortCommand(int2 coords, const String&name, Component::VehicleBase*base, Component::Turret*turret, const PSatellite&sat,   OnExecute f, CheckEnabled a, IsPermaActive p, bool rasterize=true) : Super(coords,name,sat,f,a,p, rasterize && sat),turret(turret),base(base)
+		virtual void		CompileLabel(Label&outResult) override;
+
+		virtual void		RasterizeImage()override
 		{
-			if (rasterize && !sat)
-				VehicleConstructionCommand::UpdateTexture(*this,base,turret);
+			PWorldEntity e = reference.lock();
+			if (e)
+				Super::UpdateTexture(e,true);
+			else
+				UpdateTexture(base,turret);
 		}
 
-
-		virtual void		CompileLabel(const PWorldEntity&, Label&outResult) override;
-
-
-
+		static void			UpdateTexture(BaseCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
+		void				UpdateTexture(Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor = float4(0));
 	};
 
 
-	class DeployVehicleCommand : public VehicleCommand
+
+	class DeployMobileCommand : public EntityCommand
 	{
-	public:
-		typedef VehicleCommand	Super;
-		typedef DeployVehicleCommand	This;
-		PVehicle			vehicle;
-
-
-		/**/				This()	{}
-		/**/				This(int2 coords, const PVehicle&v,   OnExecute f, CheckEnabled a, IsPermaActive p);
-
-
-
-		virtual void		CompileLabel(const PWorldEntity&, Label&outResult) override;
-	};
-
-	class StructureCommand : public EntityCommand
-	{
-	public:
 		typedef EntityCommand	Super;
-		typedef StructureCommand	This;
-
-		PStructure			structure;
-
-		/**/				StructureCommand()	{}
-		/**/				StructureCommand(int2 coords, const String&name, const PStructure&structure,   OnExecute f, CheckEnabled a, IsPermaActive p) : Super(coords,name,f,a,p),structure(structure)
-		{
-			//UpdateTexture(structure);
-		}
-
-		virtual void		RasterizeImage() override	{UpdateTexture(structure,true);}
-		void				UpdateTexture(const PStructure&structure, bool isPrototype, const float4&backgroundColor = float4(0));
-		static void			UpdateTexture(EntityCommand&target, const PStructure&structure, bool isPrototype, const float4&backgroundColor = float4(0));
-
-	};
-
-	class StructureConstructionCommand : public StructureCommand
-	{
+		/**/				DeployMobileCommand(const String&name):Super(name)	{}
 	public:
-		typedef StructureCommand	Super;
-		typedef StructureConstructionCommand	This;
+		typedef DeployMobileCommand	This;
 
+		/**/				DeployMobileCommand() {}
+		/**/				DeployMobileCommand(const PMobileEntity&v, FOnExecute f, FCheck c);
 
-		/**/				StructureConstructionCommand()	{}
-		/**/				StructureConstructionCommand(int2 coords, const String&name, const PStructure&structure,   OnExecute f, CheckEnabled a, IsPermaActive p) : Super(coords,name,structure,f,a,p)
-		{
-			//UpdateTexture(structure);
-		}
-
-		virtual void		CompileLabel(const PWorldEntity&, Label&outResult) override;
-
+		virtual void		CompileLabel(Label&outResult) override;
 	};
 
+	//class StructureCommand : public EntityCommand
+	//{
+	//	typedef EntityCommand	Super;
+	//protected:
+	//	/**/				StructureCommand(const String&name):Super(name)	{}
+	//public:
+	//	typedef StructureCommand	This;
 
-	class GlobalCommand : public TemplateCommand<int>
-	{
-	public:
-		typedef TemplateCommand<int>	Super;
-		typedef GlobalCommand			This;
+	//	/**/				StructureCommand(const String&name, const PStructure&structure,   FOnExecute f, FCheck c);
 
-		/**/				This()	{}
-		/**/				This(int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p) : Super(coords,name,f,a,p)
-		{
-			LoadIcon();
-		}
+	//	virtual void		RasterizeImage() override	{PStructure s = GetReference(); if (s) UpdateTexture(s,true);}
+	//	void				UpdateTexture(const PStructure&structure, bool isPrototype, const float4&backgroundColor = float4(0));
+	//	static void			UpdateTexture(BaseCommand&target, const PStructure&structure, bool isPrototype, const float4&backgroundColor = float4(0));
 
-		virtual void		Refresh(bool controlEnabled) override
-		{
-			permaActive = checkPermaActive(0); 
-			isEnabled = checkEnabled(0,controlEnabled);
-		}
-		virtual void		Execute() override {execute(0);}
+	//	PStructure			GetReference() const;
+	//};
 
-	};
+	//class StructureConstructionCommand : public StructureCommand
+	//{
+	//	typedef StructureCommand	Super;
+	//protected:
+	//	/**/				StructureConstructionCommand(const String&name):Super(name)	{}
+	//public:
+	//	typedef StructureConstructionCommand	This;
 
 
-	extern Buffer0<GlobalCommand>			globalCommands;
+	//	/**/				StructureConstructionCommand(const int2&coords,const String&name, const PStructure&structure,   FOnExecute f, FCheck c) : Super(name,structure,f,c) {SetCoords(coords);}
+	//	/**/				StructureConstructionCommand(const String&name, const PStructure&structure,   FOnExecute f, FCheck c) : Super(name,structure,f,c) {}
+
+	//	virtual void		CompileLabel(Label&outResult) override;
+
+	//};
+
+	typedef IconCommand		GlobalCommand;
+
+
+
+	extern CommandContainer	globalCommands;
+	extern PCommandGroup	viewCommands;
 
 
 
 	
 	namespace VehicleCmd
 	{
-		void	UndoOperation(const PWorldEntity&);
-		void	AbortOperation(const PWorldEntity&);
-		void	Automate(const PWorldEntity&);
+		void	UndoOperation();
+		void	AbortOperation();
+		void	Automate();
+		void	Sleep();
 
-		bool	IsAutomated(const PWorldEntity&);
+		bool	IsAutomated();
+
+		BaseCommand::Flags AutomatedCheck(bool controlEnabled);
+		BaseCommand::Flags SleepCheck(bool controlEnabled);
 
 	}
 
 
 	namespace CommonCmd
 	{
-		template<typename T>
-			inline static bool AlwaysTrue(T)	{ return true; }
-		inline static bool AlwaysTrueV()	{ return true; }
-		template<typename T>
-			inline static bool AlwaysFalse(T)	{ return false; }
-		inline static bool AlwaysFalseV()	{ return false; }
-		#ifdef CLIENT
-			template<typename T>
-				inline static bool AlwaysEnabled(T,bool)	{return CanEnableAtAll();}
-		#else
-			template<typename T>
-				inline static bool AlwaysEnabled(T,bool)	{return true;}
-		#endif
-		template<typename T>
-			inline static bool MostlyEnabled(T,bool controlEnabled)	{return controlEnabled;}
 
+		inline BaseCommand::Flags	CommonButtonCheck(bool controlEnabled)	{return controlEnabled ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;}
+		void						DemolishSelected();
 
-		void ToggleMode(const PWorldEntity&e, CursorMode::mode_t mode);
+		void						ToggleMode(CursorMode mode);
 	
-		template <CursorMode::mode_t M>
-			inline void ToggleMode(const PWorldEntity&e)
+		template <CursorMode M>
+			inline void ToggleMode()
 			{
-				ToggleMode(e,M);
+				ToggleMode(M);
 			}
 
 
-		bool IsModeActive(const PWorldEntity&e, CursorMode::mode_t mode);
-		bool IsModeActiveOrIdle(const PWorldEntity&e, CursorMode::mode_t mode);
-		template <CursorMode::mode_t M>
-			inline bool IsModeActive(const PWorldEntity&e)
+		bool IsModeActive(CursorMode mode);
+		bool IsModeActiveOrIdle(CursorMode mode);
+
+		template <CursorMode M>
+			inline bool IsModeActive()
 			{
-				return IsModeActive(e,M);
+				return IsModeActive(M);
 			}
-		template <CursorMode::mode_t M>
-			inline bool IsModeActiveC(const PWorldEntity&e, bool controlEnabled)
+		template <CursorMode M>
+			inline bool IsModeActiveC(bool controlEnabled)
 			{
-				return controlEnabled && IsModeActive(e,M);
+				return controlEnabled && IsModeActive(M);
 			}
-		template <CursorMode::mode_t M>
-			inline bool IsModeActiveOrIdleC(const PWorldEntity&e, bool controlEnabled)
+		template <CursorMode M>
+			inline bool IsModeActiveOrIdleC(bool controlEnabled)
 			{
-				return controlEnabled && IsModeActiveOrIdle(e,M);
+				return controlEnabled && IsModeActiveOrIdle(M);
 			}
+
+		template <CursorMode M>
+			inline BaseCommand::Flags ModeCheck(bool controlsEnabled)
+			{
+				BaseCommand::Flags rs = BaseCommand::Flags::None;
+				if (IsModeActiveOrIdleC<M>(controlsEnabled))
+					rs |= BaseCommand::Flags::IsEnabled;
+				if (CommonCmd::IsModeActive<M>())
+					rs |= BaseCommand::Flags::IsPermaActive;
+				return rs;
+			}
+		inline BaseCommand::Flags IdleCheck(bool controlsEnabled)
+		{
+			return controlsEnabled && activeCursorMode == CursorMode::Idle ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+		}
 
 
 
@@ -396,13 +570,13 @@ namespace Objects
 
 	namespace GlobalCmd
 	{
-		void	ToggleSeeThrough(int);
-		void	SeeThroughUp(int);
-		void	SeeThroughDown(int);
-		bool	SeeThroughIsActive(int);
-		bool	SeeThroughIsActive2(int,bool);
-		void	ToggleObjectView(int);
-		bool	ObjectsAreHidden(int);
+		void	ToggleSeeThrough();
+		void	SeeThroughUp();
+		void	SeeThroughDown();
+		bool	SeeThroughIsActive();
+		bool	SeeThroughIsActive2(bool);
+		void	ToggleObjectView();
+		bool	ObjectsAreHidden();
 
 	}
 

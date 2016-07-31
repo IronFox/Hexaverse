@@ -2,6 +2,7 @@
 #include "niceName.h"
 #include <io/string_file.h>
 #include <container/buffer.h>
+#include <io/file_system.h>
 
 namespace NiceName
 {
@@ -35,7 +36,7 @@ namespace NiceName
 		StringFile file;
 		String line;
 
-		ASSERT__(file.Open(PRE_PATH L"resources/nice/nouns.txt"));
+		ASSERT1__(file.Open(PRE_PATH L"resources/nice/nouns.txt"), FileSystem::GetWorkingDirectory());
 
 		while (file >> line)
 			nouns << MakeNice(line);
@@ -50,6 +51,14 @@ namespace NiceName
 
 	String	Get(UINT64 code)
 	{
+		String result = nouns[((UINT32)code) % nouns.Count()];
+		code >>= 32;
+		BYTE ch = (code&0xff)%26;
+		result += ' ';
+		result += 'A' + ch;
+		result += String((code>>8)%100);
+		return result;
+
 		code %= totalCombinations;
 		return adjectives[code / nouns.Count()]+" "+nouns[code % nouns.Count()];
 	}

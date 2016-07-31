@@ -1,23 +1,19 @@
 #include <global_root.h>
 #include "satellite.h"
+#ifndef NO_SATELLITES
+
 #include "gridAndChoices.h"
 #include "faction.h"
 
 namespace Objects
 {
 
+	/*static*/ Buffer0<ConstName>	SkyHub::supportsProduction;
 	Buffer0<PSatellite>	satellites;
 	//bool					satellitesAreLocked = false;
 
-	#ifndef CONNECTOR_LESS
+	#ifndef ONE_COMPOUND_PER_FACTION
 		/*static*/ Buffer0<Satellite::THub>	Satellite::hubs;
-	#endif
-
-	#ifdef HAS_WINDOW
-		/*static*/ Buffer<StructureConstructionCommand>	SkyHub::structureConstructionCommands;
-		/*static*/ Buffer<SatelliteConstructionCommand>	SkyHub::satelliteConstructionCommands;
-
-
 	#endif
 
 	/*static*/ count_t			Satellite::CountTurretOccurrences(const OwnerParameter&o,Component::Turret*t)
@@ -76,7 +72,7 @@ namespace Objects
 	{
 		Super::RegisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0, newContacts);
 		#ifdef CLIENT
-			if (isMine)
+			if (isOwnedByMe)
 				Grid::visibleOrbitGrid.ChangeSensory(loc,GetScanningRange(),+1);
 		#endif
 		if (turret->groundScanningRange > 0.f)
@@ -85,7 +81,7 @@ namespace Objects
 			Grid::actualWorld.MapSensorState(loc.stackID,range,loc.height,turret->groundScannerPenetration,skySensorState);
 			Grid::actualWorld.UpdateSensorState(skySensorState);
 			#ifdef CLIENT
-				if (isMine)
+				if (isOwnedByMe)
 				{
 					Grid::actualWorld.InsertSensorCoverage(skySensorState);
 				}
@@ -99,13 +95,13 @@ namespace Objects
 	{
 		Super::UnregisterSensory(loc,atTime,checkChangesNow && turret->groundScanningRange <= 0);
 		#ifdef CLIENT
-			if (isMine)
+			if (isOwnedByMe)
 				Grid::visibleOrbitGrid.ChangeSensory(loc,GetScanningRange(),-1);
 		#endif
 		if (turret->groundScanningRange > 0.f)
 		{
 			#ifdef CLIENT
-				if (isMine)
+				if (isOwnedByMe)
 				{
 					Grid::actualWorld.RemoveSensorCoverage(skySensorState);
 				}
@@ -125,7 +121,7 @@ namespace Objects
 				Grid::SkySensorState state = skySensorState;
 				if (Grid::actualWorld.UpdateSensorState(skySensorState))
 				{
-					LogEvent(EventType::MinorEntityProcess,this,"Ground-sensor change detected");
+					LogEvent(EventSignificance::Common,this,"Ground-sensor change detected");
 
 					owner->RegisterSensorCreation(skySensorState,atTime,false);
 					atTime += timeEpsilon;
@@ -154,14 +150,10 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ void		SkyHub::VisitAllCommands(FCommandVisitor visitor)
+		/*virtual override*/ void		SkyHub::VisitAllCommands(FCommandVisitor visitor,bool force)
 		{
-			Super::VisitAllCommands(visitor);
-			foreach (structureConstructionCommands,cmd)
-				visitor(*cmd);
-			foreach (satelliteConstructionCommands,cmd)
-				visitor(*cmd);
-			MobileEntityProducer::VisitAllCommands(visitor);
+			Super::VisitAllCommands(visitor,force);
+			MobileEntityProducer::VisitAllCommands(visitor,force);
 		}
 
 
@@ -240,8 +232,9 @@ namespace Objects
 			String speed = "Speed: "+String(this->GetMovementStepsPerRound()) + " (orbital)";
 
 			outResult << speed;
-			if (GetConstructionSpeed())
-				outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(this->GetConstructionSpeed())+" per round";
+			int opSpeed = GetOperationSpeed(Component::Construct);
+			if (opSpeed)
+				outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(opSpeed)+" per round";
 
 			const String fuel (ResourceTag(Resource::Fuel));
 
@@ -271,9 +264,10 @@ namespace Objects
 
 
 
-	void			SkyHub::OnConstructionFinished(float atTime)
+	void			SkyHub::OnConstructionFinished(float&atTime)
 	{
-		OffsetTime(atTime);
+		Super::OnConstructionFinished(atTime);
+		SyncTime(atTime);
 		UpdateConnections();
 	}
 
@@ -288,7 +282,7 @@ namespace Objects
 				lastExtraFuelDemand = 0;
 				return lastExtraFuelDemand;
 			}
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				UpdateHubMap();
 				bool hasAny = hubs.IsNotEmpty();
 				float distance = hasAny ? hubs.first().distance : 0;
@@ -309,15 +303,14 @@ namespace Objects
 
 	/*static*/ int2	SkyHub::AllocateProductionSlot()
 	{
-		static int current = 0;
+		static int current = 2;
 		int at = current++;
 		return int2(5 + (at%9),1+at/9);
 	}
 
 	/*static*/ int				Satellite::GetGroundHeight(const Grid::LCellIdI&location)
 	{
-		UINT32 fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
-		return Detail::WalkStack(Grid::actualWorld.cellStack[fine],false);
+		return Component::Turret::GetGroundHeight(location);
 	}
 
 
@@ -327,52 +320,29 @@ namespace Objects
 	}
 
 
-	/*static*/ int			Satellite::Detail::WalkStack(const Grid::CellStack&stack, bool failOnStructureCount)
-	{
-		UINT32 h;
-		for (h = Grid::CellStack::Range-1; h < Grid::CellStack::Range; h--)
-		{
-			const Grid::CellStack::Cell&c = stack.volumeCell[h];
-			if (c.content != Grid::Content::Clear)
-				break;
-		}
-		h++;
-		if (h >= Grid::CellStack::Range-1)
-			return badHeight;
-		if (failOnStructureCount)
-		{
-			const Grid::CellStack::Cell&c = stack.volumeCell[h];
-			if (c.structureCounter > 1)
-				return badHeight;
-		}
-
-		return Grid::CellStack::ToHeight(h);
-		
-	}
-
-
 	#ifdef HAS_WINDOW
 
-		/*static*/ bool			SkyHub::MyCmd::CanBuild(const PStructure&what, const PWorldEntity&who)
+		/*static*/ bool			SkyHub::MyCmd::CanBuildStructure()
 		{
-			PSkyHub hub = To<SkyHub>::DynamicCast(who);
-			ASSERT1__(hub,who->GetName());
+			ASSERT__(selectedMobileEntity);
+			PSkyHub hub = To<SkyHub>::DynamicCast(selectedMobileEntity);
+			ASSERT1__(hub,selectedMobileEntity->GetName());
 		
-			if (!CommonCmd::IsModeActiveC<CursorMode::Idle>(who,true)
+			Grid::LCellIdI loc = hub->GetLastPointOfOrigin();
+			if (!CommonCmd::IsModeActiveC<CursorMode::Idle>(true)
 				||
-				!hub->connectedTo.expired())
+				(!hub->connectedTo.expired() && loc.stackID == hub->location.stackID))	//connected and not moving away
 				return false;
 
-			Grid::LCellIdI loc = hub->GetLastPointOfOrigin();
 			int h = GetStructureBuildHeight(loc);
 			return h != badHeight && !GetVehicle(Grid::LCellIdI(loc.stackID,h));
 		}
 
 
 
-		/*static*/ void SkyHub::MyCmd::Build(const PSatellite&p, const PWorldEntity&v)
+		/*static*/ void SkyHub::MyCmd::Build(const PWorldEntity&p)
 		{
-			PMobileEntity mob = To<MobileEntity>::DynamicCast(v);
+			PMobileEntity mob = To<MobileEntity>::DynamicCast(selectedMobileEntity);
 			if (!mob)
 				return;
 			SignalConstructionBegin(mob->id, p->GetCTypeName(), ConstName::Empty);
@@ -393,13 +363,13 @@ namespace Objects
 		#else
 			index_t finer = who->location.stackID;
 		#endif
-		int h = Detail::WalkStack(Grid::actualWorld.cellStack[finer],true);
+		int h = Grid::actualWorld.cellStack[finer].FindTopClearOverNonClear(true);
 		if (h == badHeight)
 			return badHeight;
 		#ifdef HYBRID_GRID
 			for (int j = 0; j < c.neighborhood.numNeighbors; j++)
 			{
-				int h2 = Detail::WalkStack(Grid::actualWorld.cellStack[c.neighborhood.neighborID[j]],true);
+				int h2 = Grid::actualWorld.cellStack[c.neighborhood.neighborID[j]].FindTopClearOverNonClear(true);
 				if (h2 == badHeight)
 					return badHeight;
 				h = std::max(h2,h);
@@ -408,30 +378,28 @@ namespace Objects
 		return h <= Grid::CellStack::TopHeight ? h : badHeight;
 	}
 
-	/*static*/ void SkyHub::RegisterProduction(const PStructure&s)
+	/*static*/ void SkyHub::RegisterProduction(const PWorldEntity&s)
 	{
+		supportsProduction << s->GetCTypeName();
 		#ifdef HAS_WINDOW
-			int2 at = AllocateProductionSlot();
-			structureConstructionCommands.Append(
-				StructureConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
-				std::bind(&Component::Terraformer::Cmd::Construct, s, std::placeholders::_1),
-				std::bind(&MyCmd::CanBuild,s,std::placeholders::_1),
-				&CommonCmd::AlwaysFalse<PWorldEntity const&>));
-			structureConstructionCommands.last().RasterizeImage();
+			//int2 at = AllocateProductionSlot();
+			CallbackCommand::FOnExecute exec = s->IsStructure() 
+											? CallbackCommand::FOnExecute(std::bind(&Component::Terraformer::Cmd::Construct, To<Structure>::Cast(s))) 
+											: CallbackCommand::FOnExecute(std::bind(&MyCmd::Build, s));
+			bool isStructure = s->IsStructure();
+			commands.Add(new
+				EntityConstructionCommand(s->GetTypeName(), nullptr,nullptr, s,
+				exec,
+				[isStructure](bool controlEnabled)->BaseCommand::Flags
+				{
+					if (!isStructure)
+						return CommonCmd::IdleCheck(controlEnabled);
+					return MyCmd::CanBuildStructure() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+				}
+				))->RasterizeImage();
 		#endif
 	}
 
-	/*static*/ void SkyHub::RegisterProduction(const PSatellite&s)
-	{
-		#ifdef HAS_WINDOW
-			int2 at = AllocateProductionSlot();
-			satelliteConstructionCommands.Append(
-				SatelliteConstructionCommand(at, /*"Build " + */s->GetTypeName(), s,
-				std::bind(&MyCmd::Build, s, std::placeholders::_1),
-				&CommonCmd::IsModeActiveC<CursorMode::Idle>,
-				&CommonCmd::AlwaysFalse<PWorldEntity const&>));
-		#endif
-	}
 
 
 	/*virtual override*/ void			SkyHub::PrototypeSetup()
@@ -441,7 +409,7 @@ namespace Objects
 		RegisterProduction(SkyGuardian::globalPrototype);
 		RegisterProduction(SkyHub::globalPrototype);
 		RegisterProduction(Ragnarok::globalPrototype);
-		RegisterProduction(StarPort::globalPrototype);
+		//RegisterProduction(StarPort::globalPrototype);
 	}
 
 
@@ -500,34 +468,31 @@ namespace Objects
 	}
 
 
-	#ifdef CONNECTOR_LESS
-		#if defined HAS_WINDOW || !defined CLIENT
-			PSkyHub	Satellite::GetClosestExternalSupplier(float&quadraticDistance)
-			{
-				float distance = std::numeric_limits<float>::max();
-				PSkyHub found;
-				#ifdef CLIENT
-					for (const auto&port : skyLinks)
-						if (port.second->owner == owner && port.first->connectedToHub)
-						{
-							PSkyHub hub = port.first->connectedToHub;
-							if (hub.get() != this)
-							{
-								float d2 = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
-								if (d2 < distance)
-								{
-									distance = d2;
-									found = hub;
-								}
-							}
-						}
-				#else
-					for (const auto&sat : owner->skyHubs)
+	#ifdef ONE_COMPOUND_PER_FACTION
+		PSkyHub	Satellite::GetClosestExternalSupplier(float&quadraticDistance)
+		{
+			float distance = std::numeric_limits<float>::max();
+			PSkyHub found;
+			#ifdef CLIENT
+				for (index_t i = 0; i < skyLinks.Count(); i++)
+				{
+					//WSkyLinkStructure,WWorkingStructure
+					PSkyLinkStructure link = skyLinks[i].first.lock();
+					PWorkingStructure str = skyLinks[i].second.lock();
+					if (!link || !str)
 					{
-						PSkyHub hub = sat.lock();
-						if (hub && hub.get() != this && !hub->connectedTo.expired())
+						LogEvent(EventClass::Preset::error,this,"Removing lost sky link #"+String(i));
+						skyLinks.Erase(i);
+						i--;
+						continue;
+					}
+						
+					if (str->owner == owner && !link->connectedToHub.expired())
+					{
+						PSkyHub hub = link->connectedToHub.lock();
+						if (hub.get() != this)
 						{
-							float d2 = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
+							float d2 = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 							if (d2 < distance)
 							{
 								distance = d2;
@@ -535,27 +500,50 @@ namespace Objects
 							}
 						}
 					}
-				#endif
-				quadraticDistance = distance;
-				return found;
-			}
-		#endif
+				}
+			#else
+				for (const auto&sat : owner->skyHubs)
+				{
+					PSkyHub hub = sat.lock();
+					if (hub && hub.get() != this && !hub->connectedTo.expired())
+					{
+						float d2 = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
+						if (d2 < distance)
+						{
+							distance = d2;
+							found = hub;
+						}
+					}
+				}
+			#endif
+			quadraticDistance = distance;
+			return found;
+		}
 	#else
 
 		void	Satellite::UpdateHubMap()
 		{
 			hubs.Clear();
 			#ifdef CLIENT
-				for (const auto&port : skyLinks)
-					if (port.second->owner == owner && port.first->connectedToHub)
+				for (index_t i = 0; i < skyLinks.Count(); i++)
+				{
+					TLinkReference&ref = skyLinks[i];
+					PSkyLinkStructure link = ref.first.lock();
+					PStructure st = ref.second.lock();
+					if (!link || !st)
 					{
-						PSkyHub hub = port.first->connectedToHub;
-						if (hub.get() != this)
-						{
-							hubs.Append().hub = hub;
-							hubs.last().distance = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
-						}
+						LogEvent(EventClass::Preset::internalError,this, "Link reference lost");
+						skyLinks.Erase(i);
+						i--;
+						continue;
 					}
+					PSkyHub hub = link->connectedToHub.lock();
+					if (hub && hub.get() != this)
+					{
+						hubs.Append().hub = hub;
+						hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
+					}
+				}
 			#else
 				for (const auto&sat : owner->skyHubs)
 				{
@@ -563,7 +551,7 @@ namespace Objects
 					if (hub && hub.get() != this && !hub->connectedTo.expired())
 					{
 						hubs.Append().hub = hub;
-						hubs.last().distance = Vec::quadraticDistance(hub->system.w.xyz,system.w.xyz);
+						hubs.last().distance = Vec::quadraticDistance(hub->GetWorldPosition(),GetWorldPosition());
 					}
 				}
 			#endif
@@ -575,22 +563,42 @@ namespace Objects
 
 	#ifndef CLIENT
 
+		/*virtual override*/ void		Satellite::MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
+		{
+			if (oldLocation == newLocation)
+				return;
+			Super::RegisterSensory(location,motionTime,false,newContacts);
+			Super::UnregisterSensory(oldLocation,motionTime,false);
+			if (turret->groundScanningRange > 0)
+			{
+				ASSERT__(newLocation == location);
+				Grid::SkySensorState state = skySensorState;
+				LogEvent(EventSignificance::Common,this,"Processing ground-sensor motion");
+				float range = EMPModify(turret->groundScanningRange,2);
+				Grid::actualWorld.MapSensorState(newLocation.stackID,range,newLocation.height,turret->groundScannerPenetration,skySensorState);
+				Grid::actualWorld.UpdateSensorState(skySensorState);
 
+				owner->RegisterSensorCreation(skySensorState,atTime,false, newContacts);
+				atTime += timeEpsilon;
+				owner->RegisterSensorRemoval(state,atTime,checkChangesNow);
+				atTime += timeEpsilon;
+			}
+		}
 
 		PSkyLinkStructure				Satellite::RemoteSupplyFuel(float&atTime)
 		{
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				UpdateHubMap();
 			#endif
 			const int baseDemand = GetFuelConsumptionPerRound();
 			ASSERT2__(baseDemand > 0,baseDemand,GetName());
 
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				for (const auto&item : hubs)
 			#endif
 			{
 				float distance;
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					PSkyHub hub = item.hub.lock();
 					distance = item.distance;
 				#else
@@ -607,9 +615,9 @@ namespace Objects
 
 					Compound&compound = port->CastToStructure()->GetCompound();
 					int available = compound.total.storage.level[Resource::Fuel];
-					#ifdef CONNECTOR_LESS
-						available += compound.overproduction.level[Resource::Fuel];
-					#endif
+					//#ifdef ONE_COMPOUND_PER_FACTION
+					available += compound.GetOverproduction(Resource::Fuel);
+					//#endif
 
 					if (available >= demand)
 					{
@@ -644,10 +652,10 @@ namespace Objects
 				Compound&cmp = port->CastToStructure()->GetCompound();
 				if (cmp.total.balance.level[Resource::Minerals] >= (int)MobileEntityProducer::productionPerRound)
 				{
-					MobileEntityProducer::Tick(cmp.total.balance);
+					MobileEntityProducer::Tick(cmp.total.balance,atTime);
 				}
 				else
-					LogEvent(EventType::EntityProcessFailed,this,"Insufficient resources available in "+port->CastToStructure()->GetNiceName()+". Delaying production");
+					LogEvent(EventClass::Preset::operationAborted,this,"Insufficient resources available in "+port->CastToStructure()->GetNiceName()+". Delaying production");
 			}
 			return true;
 		}
@@ -660,22 +668,30 @@ namespace Objects
 			{
 				if (failIsFatal)
 				{
-					LogEvent(EventType::Fatal,this,"Dead");
+					LogEvent(EventClass::Preset::fatal,this,"Dead");
 					FATAL__("Critical abort");
 				}
 				return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
 			}
 			
 			//VerifyVisibilityNetwork();
-			timeAt = std::max(minTimeOffset,timeAt);
-			if ((location.stackID != cell && !NoSatelliteHere(cell)))
+			SyncTime(minTimeOffset);
+
+			if (location.stackID != cell) 
 			{
-				if (failIsFatal)
+				PSatellite v = GetSatellite(cell);
+				if (v)
 				{
-					LogEvent(EventType::Fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
-					FATAL__("Critical abort");
+					if (failIsFatal)
+					{
+						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
+						FATAL__("Critical abort");
+					}
+					if (!v->HasMotionTasks() || v->ConstructingHere(v->location))
+						return MobilePlacementResult::PlacementFailedPermanentlyObstructed;
+					else
+						return MobilePlacementResult::PlacementFailedTemporarilyObstructed;
 				}
-				return MobilePlacementResult::PlacementFailedObstructed;
 			}
 			const Grid::LCellIdI old = location;
 
@@ -693,7 +709,7 @@ namespace Objects
 					if (constructionRoundCounter)
 					{
 						constructionRoundCounter = 0;
-						RegisterChange(WorldEntity::TasksChanged,timeAt);
+						RegisterChange(WorldEntity::TasksChanged,motionTime);
 					}
 				}
 				Super::HandleMotion(result,signalEvent,old,timeCost);
@@ -717,7 +733,7 @@ namespace Objects
 					return false;
 
 				case CursorMode::BuildConnectorChainMode:
-					if (!GetConstructionSpeed())
+					if (!GetOperationSpeed(Component::Construct))
 						return false;
 
 					if (leftClick)
@@ -750,7 +766,7 @@ namespace Objects
 						
 									if (!CanHitFrom(pointOfOrigin,destination))
 									{
-										LogEvent(EventType::CommandRejected,this,"Destination out of range");
+										LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 										return false;
 									}
 								}
@@ -758,7 +774,7 @@ namespace Objects
 									return false;
 							}
 							else
-								LogEvent(EventType::CommandRejected,this,"Attempting to attack current location");
+								LogEvent(EventClass::Preset::commandRejected,this,"Attempting to attack current location");
 						}
 					}
 					else
@@ -856,25 +872,22 @@ namespace Objects
 	#endif /*0*/
 
 
-	/*virtual override*/ bool					Satellite::HasAmmoForShot() const
-	{
-	#ifdef CONNECTOR_LESS
-		const Compound&compound = owner->compound;
-		return compound.total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	#else
-		return currentStorage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	#endif
-	}
-
 	
 	#ifndef CLIENT
 		/*virtual override*/ bool					Satellite::FillAttackQueue()
 		{
+			if (!turret->CanAttack() || !HasAmmoForShot())
+			{
+				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
+				return false;
+			}
+
+			DBG_ASSERT__(IsSentry());
 			{
 				Grid::LCellIdI target;
 
 				const ResourceVector&storage = 
-					#ifndef CONNECTOR_LESS
+					#ifndef ONE_COMPOUND_PER_FACTION
 						this->currentStorage
 					#else
 						this->owner->compound.total.storage
@@ -909,13 +922,13 @@ namespace Objects
 				return false;
 			if (myTasks.Count() >= MaxStructureTasks)
 			{
-				LogEvent(EventType::CommandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
+				LogEvent(EventClass::Preset::commandRejected,this,"Max queue length ("+String(MaxStructureTasks)+") reached");
 				return false;
 			}
 			Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 			if (target.stackID == pointOfOrigin.stackID && turret->trajectoryType != TrajectoryType::VerticalBeam)
 			{
-				LogEvent(EventType::CommandRejected,this,"Destination too close");
+				LogEvent(EventClass::Preset::commandRejected,this,"Destination too close");
 				return false;
 			}
 			if (turret->trajectoryType != TrajectoryType::VerticalBeam)
@@ -927,7 +940,7 @@ namespace Objects
 
 				if (!CanHitFrom(pointOfOrigin,target))
 				{
-					LogEvent(EventType::CommandRejected,this,"Destination out of range");
+					LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 					return false;
 				}
 			}
@@ -952,11 +965,11 @@ namespace Objects
 		}
 
 
-		/*virtual override*/ bool SkyGuardian::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime) const
+		/*virtual override*/ bool SkyGuardian::WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)
 		{
-			if (!HasAmmoForShot() && empDamageLevel == 0)
+			if (!turret->CanAttack() || !HasAmmoForShot())
 			{
-				//LogEvent(EventType::CommandRejected,this,"Insufficient ammunition");
+				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
 				return false;
 			}
 
@@ -971,7 +984,7 @@ namespace Objects
 			return		//owner->ExtCanSee(target,entityTime)
 					/*&&	*/
 						turret->CanAttack() 
-					&& timeAt <= entityTime 
+					&& motionTime <= entityTime 
 					&& CountPossibleAttacks() > 0 
 					&& ExtCanHit(location,target->location,outTarget)
 					//&& d2 > sqr(turret->explosionRadius)
@@ -991,7 +1004,9 @@ namespace Objects
 			if (port && port->CastToStructure()->location.stackID == location.stackID)
 			{
 				#ifndef CLIENT
-					LogEvent(EventType::EntityProcessFailed,this,"Cannot connect to "+port->CastToStructure()->GetNiceName()+": Already connected to "+port->connectedToHub->GetNiceName());
+					PSkyHub other = port->connectedToHub.lock();
+					ASSERT2__(other,GetName(),port->CastToStructure()->GetName());
+					LogEvent(EventClass::Preset::operationAborted,this,"Cannot connect to "+port->CastToStructure()->GetNiceName()+": Already connected to "+other->GetNiceName());
 				#endif
 				return false;
 			}
@@ -999,11 +1014,11 @@ namespace Objects
 
 		connectedTo = to;
 		#ifndef CLIENT
-			timeAt+=timeEpsilon;
-			SignalChange(OrbitalConnectionChanged,timeAt);
+			motionTime+=timeEpsilon;
+			SignalChange(OrbitalConnectionChanged,motionTime);
 			WorkingStructure*ws = to->CastToStructure();
-			ws->SignalChange(OrbitalConnectionChanged,timeAt);
-			LogEvent(EventType::EntityProcess,this,"Connection to "+ws->GetNiceName()+" established");
+			ws->SignalChange(OrbitalConnectionChanged,motionTime);
+			LogEvent(EventSignificance::Common,this,"Connection to "+ws->GetNiceName()+" established");
 		#endif
 
 		to->connectedToHub = To<SkyHub>::Cast(shared_from_this());
@@ -1018,15 +1033,16 @@ namespace Objects
 		{
 			WorkingStructure*ws = port->CastToStructure();
 			#ifndef CLIENT
-				LogEvent(EventType::EntityProcessFailed,this,"Connection to "+ws->GetNiceName()+" lost");
+				LogEvent(EventClass::Preset::operationAborted,this,"Connection to "+ws->GetNiceName()+" lost");
 			#endif
 
 
 			connectedTo.reset();
 			#ifndef CLIENT
-				timeAt+=timeEpsilon;
-				SignalChange(OrbitalConnectionChanged,timeAt);
-				ws->SignalChange(OrbitalConnectionChanged,timeAt);
+				SyncTime(ws->motionTime,timeEpsilon);
+				motionTime += timeEpsilon;
+				SignalChange(OrbitalConnectionChanged,motionTime);
+				ws->SignalChange(OrbitalConnectionChanged,motionTime);
 			#endif
 
 			port->connectedToHub.reset();
@@ -1037,3 +1053,4 @@ namespace Objects
 
 
 }
+#endif

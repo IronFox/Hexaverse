@@ -1,33 +1,211 @@
+v0.3.24
+	+ Added new button and functionality to automatically progress round if all units have been instructed.
+	+ Re-included D3DCompiler_43.dll since it seems to be necessary in some cases.
+	+ Shift+F3 can now be used to capture auto-cropped, transparent screenshots.
+	+ Added interactive configuration mode for locally started servers.
+	> Incorrect client configuration files are now repaired instead of crashing the client.
+	* Fixed bottom layer visibility visualization.
+	
+v0.3.23	[Apr 10 2016]
+	+ Added control commands to manage factions.
+	> Reactor cores now require uranium to operate but generate power in addition to their usual functionality.
+	> Improved sky grid. G can now be used to quickly toggle its appearance.
+	> Vehicles can no longer enter residual EMP zones.
+	> Scheduling a mobile entity task will now wake the local unit if necessary.
+	> Clipped terrain now visually distinguishes between invisible and visible terrain.
+	> Newly discovered offensive non-sentry units no longer cause a mobile unit to stop in its tracks.
+	* Fixed various visibility and grid issues causing client assertion failures and subsequent crashes.
+	* Fixed hostile health visually reverting to full when sensor contact is temporarily lost.
+
+v0.3.22	[Apr 5 2016]
+	> Enabled vertical synchronization by default.
+	> Routing errors of automated vehicles (surveyors) are no longer visually logged.
+	> Some visual commands of vehicle plants now flash if action is expected.
+	> UI now lists unit contents of cargo units that are not vehicle stores.
+	> Bombs will now continue with their explosion task, even if put to sleep.
+	> Considerably increased terraforming speed.
+	* Fixed random jumping and flashing of selected unit button after changing selection.
+	* Fixed server endless loop when path construction job (e.g. build road to) permanently fails at end-point.
+	* Fixed unit deployment (from factories/storage) on slopes.
+	* Fixed deployment of units outside the regular grid (e.g. planes).
+	* Three or less active players, with emp zones, but no goal defined, will now only unlock one zone (was two).
+	- Removed satellite system.
+
+v0.3.21	[Mar 31 2016]
+	* Fixed terrain resource visualization.
+
+v0.3.20	[Mar 30 2016]
+	> Resource stacks are now hidden by default, when connecting as spectator.
+	> Improved initial terrain simplification algorithm to produce cleaner terrains.
+	* Fixed server-side random key generation on some systems.
+	* Fixed rare UI crashes.
+	* Fixed console crashes when pressing up without an existing input history.
+
+v0.3.19	[Mar 20 2016]
+	+ The Ctrl-key can now be used to toggle terrain see-through.
+	+ EMP zones can now be declared independently of game goal.
+	> Surveyors no longer take routes that they cannot drive in both directions.
+	> Improved performance of path finding.
+	> Reduced safe falling distance of hovercraft vehicles to 5 (was basically infinite).
+	> Natural resources are more clustered now.
+	> Path jobs (build roads etc) will now tolerate structures at their destination.
+	> Client screenshots are now stored in My Documents along side logs.
+	* Fixed vehicles not being able to enter vehicle stores.
+
+v0.3.18	[Mar 1 2016]
+	+ Included control console for interactive command-line server configuration.
+	> Bombs can now be configured to self-detonate with a regular explosion when destroyed by some outside force.
+	> When placing new buildings, the scanning and possibly attack ranges are shown ahead of actually placing them.
+	> Reorganized buttons into a command tree.
+	> The new-round button now flashes even when the local player is not the last to press it.
+	> It's now possible to build on the bottom layer, if the ground beneath is not clear.
+	> Resources are now configured per planet type.
+	* Fixed zoom-factor on contact icons.
+	* Fixed size of attack rings for satellites.
+	* Fixed failure of terraformer automatic relocation after finishing construction.
+	* Fixed digging down to the bottom layer.
+	* Fixed timing error causing the client to sometimes ignore relocation motion after job completion.
+	* Fixed visualization of EMP attack ranges.
+	- Mines no longer provide twice as much output when built below height level -7.
+	
+v0.3.17	[Feb 24 2016]
+	+ Analogously to terrain blocks, attack ranges are now shown on water surfaces when manual attacks are issued.
+	+ Added ambient sound for generators.
+	+ Added sounds for artillery shots and turret rotations.
+	+ Added ambient sounds for all three vehicle base types.
+	+ Added ambient sound for mines and factories.
+	+ Added sound for missile attacks.
+	+ Implemented structure placement. Clicking on a construction job now asks for a destination first.
+	+ Pressing shift will allow to repeat the last construction job in a different location.
+	+ Rings now indicate the number of attacks units have left during the next attack phase.
+	+ Added configuration option to specify whether nexus bases should have satellites.
+	+ New Bomb turret type can be used to blow up large areas (ideally from beneath ground).
+	+ Mines provide twice as much output when built below height level -7 (shown in UI panel now).
+	> Improved search behavior of automated surveyors.
+	> Towers now allow backspace-undoing of attack tasks.
+	> Resource view is now enabled by default.
+	> SkyPorts are now considered idle if they have no hub connected, and an empty queue.
+	> Included satellites into the IsIdle() loop.
+	* Fixed save games not persistently memorizing sleep-state of units.
+	* Fixed desert planet type.
+	* Fixed spectator terrain construction.
+	* Fixed automated surveyor being incorrectly determined as idle.
+	* Fixed calculation of smoke trail when Ragnarök fires.
+	* Fixed SkyHub UI button placement.
+	* Fixed user configuration loading.
+
+v0.3.16	[Feb 15 2016]
+	+ Ghosts now memorize the owner of the referenced entity (if any).
+	+ Added option to use max compression for time lapse series PNG files.
+	+ Added puttons to put vehicles and vehicle plants to sleep. Sleeping vehicles will mostly not be considered idle, and pause building.
+	+ Added visual event log of the last processing round, showing buttons of attacks and unit losses.
+	+ Added visible smoke trails of attacks that happened during the last processing round.
+	> Reduced height of uranium storage to better show resource marker on top.
+	> Improved faction coloring in spectator mode.
+	> Time lapse mode now locks the camera, and shows a gui message to indicate that recording is active.
+	> Mines that cannot be enabled right now are no longer considered idle (they will not show up iterating via space).
+	> Reduced resource output of nexus ports that are not part of nexus bases.
+	> Truncated time lapse screenshots to when animations of any sort are actually active.
+	> Buildings walls (up or forward) now connects to any solid neighboring matter.
+	> Offensive vehicles are now considered idle only, if they actually can attack this round.
+	> "Dig Tunnel To..." command now tries better to stay on the same level as the vehicle currently is.
+	* Fixed ownership change of nexus port causing the undesired appearance of a ghost.
+	* Client now correctly closes down any started server before quitting.
+	* Fixed clients in visual range not always seeing instantaneous events as they should.
+	* Fixed artillery attack job trajectory not always being rendered correctly.
+	* Possibly fixed rare case where a terraformer would not finish a construction job if its movement was only partially successful.
+	* Fixed hostile satellites showing up as ghosts while in radar range.
+	* Fixed access violation when handling outdated markers (ghosts).
+	* Fixed detection of new contacts when moving vehicles, thus reducing the number of false forced stops.
+
+v0.3.15		[Feb 7 2016]
+	* Fixed incorrect server IDs leading to client-side merging of different servers into one.
+	* Fixed UI buttons now graying out when they should.
+	* Fixed visualization of dig-to jobs.
+	* Fixed hostile markers (ghosts) disappearing too quickly.
+	* Fixed Nexus Port control loss when loading savegames.
+	* Fixed mechanic repair operation.
+	> Extended automatic building activation to two.
+	> It is now possible to deactivate essential buildings without the balancer automatically reactivating them.
+	> Reduced the amount of log messages on screen.
+	> Improved appearance of vehicle plants.
+	+ Added reactor core building to amplify output of connected generators.
+	+ Spectator mode now colors units differently depending on their faction
+	+ Time lapse mode (activated/disabled via F2) can be used to automatically capture sequences of screenshots.
+
+v0.3.14		[Jan 29 2016]
+	* Fixed Nexus Port incorrectly registering with new neighbors when changing ownership as a result.
+	* Fixed regular explosion terrain changes being treated like doomsday explosions.
+	* Fixed Nexus Ports sometimes not changing ownership when building next to them.
+	* Fixed implicit attack targeting when right-clicking on a hostile unit.
+	* Fixed client not being able to start server.
+	* Fixed nexus satellites not seeing approaching player satellites.
+	* Fixed 'new round' button not flashing when it should.
+	> Satellites now automatically fire at stationary hostile targets as well as moving ones.
+	> Ghosts are now removed if an owned mobile entity moves onto the same location.
+	> Path projections of unselected mobiles are now displayed with less contrast
+
+v0.3.13		[Jan 27 2016]
+	* Fixed abandoned factions not registering as offline to other connected clients.
+	* Fixed server not changing working directory to directory of executable when launched in a different working directory.
+	* Fixed server crashing when relaying explosion trajectories to spectator factions (thanks to Alex).
+	* Fixed unintended EMP zone collapsing when factions die.
+	> Increased contrast of range visualizations (attack/sensor).
+	> Improved appearance of lava (replaced sin-equations with perlin noise).
+	> Improved initial faction placement.
+	> Improved space button to visit working structures (mines/factories) only once per round even if no commands are given.
+	- Removed confirmation from server disconnection and faction abandoning. Since these are reversible operations the confirmation makes no sense.
+	- Removed control icons when selecting units not owned by the local client.
+	+ The end-round-button now starts flashing red, if the local faction is the last online to request a new round, and all local entities have been visited or are busy.
+	+ Terrain see-through now displays lava toned down rather than black.
+	+ Pressing H now hides the control GUI and contact list.
+	+ Added option --loadAuto/-a [number] to load automated savegames without specifying a full path. -a 0 loads the most recent.
+
+v0.3.12		[Jan 25 2016]
+	> Cleaned up server runtime parameters. All parameters now have long versions (e.g. --port 12345), and short versions (e.g. -p 12345).
+	> Replaced resource probability parameter with density value to better control resource distribution.
+	+ Remote control allows to control some aspects of the server from localhost, if --remote is passed as runtime parameter. This feature is still in active development.
+	+ Added buttons to start and stop local server.
+	+ Q and E now also rotate the camera (like A and D do).
+	* Fixed default planet types.
+	
+v0.3.11		[Jan 14 2016]
+	+ Server ports can now be altered by specifying 'port 12345' as runtime parameter when launching the server.
+	+ Clients can connect to different ports by specifying a port segment in the respective server url ('host:port').
+	+ Implemented spectator mode.
+	> New factions can now be created during animation phase.
+	* Fixed satellite active/inactive coloring.
+	
 v0.3.10
-	*Long distance routes will now be computed by the client and sent as a sequence of waypoints.
-	*Improved performance of route changes both for server and client.
+	> Long distance routes will now be computed by the client and sent as a sequence of waypoints.
+	> Improved performance of route changes both for server and client.
 
 v0.3.9		[Nov 20 2015]
-	*Upgraded internal sensor system to work better with grid-based entities (e.g. technites).
-	*Fixed AI cannon tanks not attacking stationary targets.
-	*Various internal fixes.
+	> Upgraded internal sensor system to better work with grid-based entities (e.g. technites).
+	* Fixed AI cannon tanks not attacking stationary targets.
+	* Various internal fixes.
 
 v0.3.8		[Nov 9 2015]
-	+Added option to undo round-end request.
-	+Auto-savegames are created at the beginning of the animation phase now.
-	*Fixed towers now firing due to self-obstruction.
+	+ Added option to undo round-end request.
+	> Auto-savegames are created at the beginning of the animation phase now to reduce noticable delay.
+	* Fixed towers not firing due to self-obstruction.
 
 v0.3.7		[Nov 8 2015]
-	Replaced outdated d3dcompiler_43.dll with d3dcompiler_47.dll. On systems running win8.1+ this is not necessary.
-	Reworked core TCP module to handle events outside critical region. This limits deadlock errors to actual deadlocks, and not event handling taking unusually long.
-	Removed x32 version of visual client to avoid having to ship d3dcompiler_47.dll for 32bit, too.
-	Moved user configuration, auto-savegames, and log file output to [My Documents/My Games/Hexaverse].
-	Client log file names now contain a timestamp, and are not overwritten, like server log files.
-	Decreased scanning range of radar turrets (14->12).
-	Increased scanning range of surveyor and terraformers (3->4).
-	Slightly increased default terrain fuel and mineral yield.
-	Abandoning a faction will now append '(abandoned)' to the user name before quitting the faction. This name change is revoked if a connection is reestablished.
-	The nexus faction will now no longer suffer residual EMP damage on its units.
-	Fixed Nexus faction unit production. This must have been broken since abandoning connectors.
+	* Replaced outdated d3dcompiler_43.dll with d3dcompiler_47.dll. On systems running win8.1+ this is not necessary.
+	* Reworked core TCP module to handle events outside critical region. This limits deadlock errors to actual deadlocks, and not event handling taking unusually long.
+	> Removed x32 version of visual client to avoid having to ship d3dcompiler_47.dll for 32bit, too.
+	+ Moved user configuration, auto-savegames, and log file output to [My Documents/My Games/Hexaverse].
+	+ Client log file names now contain a timestamp, and are not overwritten, like server log files.
+	> Decreased scanning range of radar turrets (14->12).
+	> Increased scanning range of surveyor and terraformers (3->4).
+	> Slightly increased default terrain fuel and mineral yield.
+	+ Abandoning a faction will now append '(abandoned)' to the user name before quitting the faction. This name change is revoked if a connection is reestablished.
+	> The nexus faction will now no longer suffer residual EMP damage on its units.
+	* Fixed Nexus faction unit production. This must have been broken since abandoning connectors.
 	
 v0.3.6		[Nov 5 2015]
 	Limited zooming range.
-	Increased size of round timer.
+	Increased visual size of round timer.
 	Now computing struct counts client-side, rather than transferring them.
 	
 
@@ -35,12 +213,12 @@ v0.3.2		[Oct 14 2015]
 	Improved GUI system, tutorial messages, and general application stability.
 
 v0.3.1		[Aug 30 2015]
-	Disabled hibernation system
-	Moved planet types from server/server.ini to server/config/planets/*.ini
-	Introduced table in server.ini that allows to declare the maximum number of units per type
-	Introduced 'Build Bridge to' command for Terraformers
-	VehiclePlants no longer have grayed out buttons but rather tell the user what needs to be done to continue
-	VehiclePlants now have the first base selected by default (thanks to Christian)
+	Disabled hibernation system.
+	Moved planet types from server/server.ini to server/config/planets/*.ini.
+	Introduced table in server.ini that allows to declare the maximum number of units per type.
+	Introduced 'Build Bridge to' command for Terraformers.
+	VehiclePlants no longer have grayed out buttons but rather tell the user what needs to be done to continue.
+	VehiclePlants now have the first base selected by default (thanks to Christian).
 
 v0.3.0		[Aug 25 2015]
 	Added satellite grid and view

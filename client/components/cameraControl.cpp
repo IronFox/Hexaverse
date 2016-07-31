@@ -10,6 +10,7 @@
 #include "clientRuntimeConfig.h"
 
 #include "../../shared/objects.h"
+#include "timelapse.h"
 
 
 float3							sunDirection;
@@ -19,6 +20,8 @@ namespace Camera
 
 	Engine::VectorCamera<>			scene;
 	Engine::OrthographicAspect<>	hud;
+	bool							autoRotation = false,
+									locked = false;
 
 	namespace 
 	{
@@ -46,45 +49,47 @@ namespace Camera
 
 	void						TargetSkyOrbit()
 	{
-		skyGrid = true;
-		if (skyOrbitBase)
+		#ifndef NO_SATELLITES
+			skyGrid = true;
+			if (skyOrbitBase)
+				return;
+			skyOrbitBase = true;
 			return;
-		skyOrbitBase = true;
-		return;
 
-		groundTargetOrbit = targetOrbit;
+			groundTargetOrbit = targetOrbit;
 
-		float dist = std::numeric_limits<float>::max();
-		targetOrbit = Grid::ToRadius(Objects::Satellite::BaseResidenceHeight);
-		if (
-			Obj::detectOpticalSphereIntersection(Vector<>::zero,targetOrbit,scene.GetAbsoluteLocation(),-scene.GetViewingDirection(),dist)
+			float dist = std::numeric_limits<float>::max();
+			targetOrbit = Grid::ToRadius(Objects::Satellite::BaseResidenceHeight);
+			if (
+				Obj::detectOpticalSphereIntersection(Vector<>::zero,targetOrbit,scene.GetAbsoluteLocation(),-scene.GetViewingDirection(),dist)
 			
-			&&
-			Vec::angle(scene.GetAbsoluteLocation() - scene.GetViewingDirection() * dist, scene.GetAbsoluteLocation()) < 90.f
-			)
-		{
-			float3 old = scene.location;
-			scene.location = scene.GetAbsoluteLocation() - scene.GetViewingDirection() * dist;
-			float3 axis;
-			Vec::cross(old,scene.location,axis);
-			float angle = Vec::angle(old,scene.location);
-			if (angle > getError<float>())
+				&&
+				Vec::angle(scene.GetAbsoluteLocation() - scene.GetViewingDirection() * dist, scene.GetAbsoluteLocation()) < 90.f
+				)
 			{
+				float3 old = scene.location;
+				scene.location = scene.GetAbsoluteLocation() - scene.GetViewingDirection() * dist;
+				float3 axis;
+				Vec::cross(old,scene.location,axis);
+				float angle = Vec::angle(old,scene.location);
+				if (angle > getError<float>())
+				{
 
-				orbit = Vec::length(scene.location);
-				scene.upAxis = targetDirection = scene.location / orbit;
-				scene.retraction.z = -dist;
-				Rotate(float2());
+					orbit = Vec::length(scene.location);
+					scene.upAxis = targetDirection = scene.location / orbit;
+					scene.retraction.z = -dist;
+					Rotate(float2());
 
-				TMatrix3<> rot;
-				Mat::rotationMatrix(angle,axis.Normalized(),rot);
-				Mat::mult(rot, sunDirection);
-				RealignSunDirection();
+					TMatrix3<> rot;
+					Mat::rotationMatrix(angle,axis.Normalized(),rot);
+					Mat::mult(rot, sunDirection);
+					RealignSunDirection();
+
+				}
 
 			}
-
-		}
-		orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
+			orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
+		#endif
 	}
 
 	void						TargetGroundOrbit()
@@ -113,19 +118,10 @@ namespace Camera
 	}
 
 
-
-
-
-	void						TargetOrbit(float _targetOrbit)
+	void						ChangeGroundRadius(float newOrbit)
 	{
-		if (skyOrbitBase)
-			groundTargetOrbit = _targetOrbit;
-		else
-		{
-			targetOrbit = _targetOrbit;
-			orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
-		}
-
+		targetOrbit = newOrbit;
+		orbitBaseFactor = 1.f / (1.f + (0.01f * fabs(targetOrbit - orbit)));
 	}
 
 
@@ -140,7 +136,7 @@ namespace Camera
 
 	void Event::WheelAction(short param)					//handler for the mouse wheel
 	{
-	//	if (!controlCluster.OnMouseWheel(param) && gui.op && !gui.op->ShowingModalWindows())
+		if (!locked)
 		{
 			//negative is wheel down
 			scene.retraction.z /= pow(1.1f,param);
@@ -152,17 +148,32 @@ namespace Camera
 
 	void Event::ZoomIn()
 	{
-		scene.retraction.z *= 0.95f;
-		scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
-		scene.UpdateView();
+		if (!locked)
+		{
+			scene.retraction.z *= 0.95f;
+			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
+			scene.UpdateView();
+		}
 	}
 
 	void Event::ZoomOut()
 	{
-		scene.retraction.z /= 0.95f;
+		if (!locked)
+		{
+			scene.retraction.z /= 0.95f;
+			scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
+			scene.UpdateView();
+		}
+	}
+
+	void	Event::Zoom(float outSpeed)
+	{
+		scene.retraction.z *= pow(3.f,-outSpeed);
 		scene.retraction.z = Math::clamp(scene.retraction.z,-MaxCameraRetraction,-MinCameraRetraction);
 		scene.UpdateView();
+
 	}
+
 
 
 	void Reset()
@@ -185,14 +196,11 @@ namespace Camera
 
 	namespace Cmd
 	{
-		void ToggleSkyGrid(int)
-		{
-			Camera::ToggleOrbit();
-		}
 
-		bool SkyGridIsEnabled(int)
+		Objects::BaseCommand::Flags Check(bool)
 		{
-			return Camera::SkyGridIsVisible();
+			return Objects::BaseCommand::Flags::IsEnabled | 
+					(Camera::SkyGridIsVisible() ? Objects::BaseCommand::Flags::IsPermaActive : Objects::BaseCommand::Flags::None);
 		}
 	}
 
@@ -206,10 +214,11 @@ namespace Camera
 
 		hud.UpdateProjection(0,0,1,1,-1,1);
 
-
-		Objects::globalCommands.Append(
-			Objects::GlobalCommand(int2(1,0),"Show Sky Grid", 
-			&Cmd::ToggleSkyGrid, &Objects::CommonCmd::AlwaysEnabled<int>, &Cmd::SkyGridIsEnabled));
+		#ifndef NO_SATELLITES
+		Objects::viewCommands->Add( new 
+			Objects::GlobalCommand("Show Sky Grid", 
+			&Camera::ToggleOrbit, &Cmd::Check));
+		#endif
 	}
 
 
@@ -245,6 +254,8 @@ namespace Camera
 
 	void							TranslateTo(const float3&direction)
 	{
+		if (locked)
+			return;
 		moveToTarget = true;
 		targetDirection = direction.Normalized0();
 		cameraSpeed = 0;
@@ -255,8 +266,51 @@ namespace Camera
 		moveToTarget = false;
 	}
 
+	
+	void	ToggleAutoRotation()
+	{
+		if (!autoRotation)
+		{
+			if (!locked)
+			{
+				autoRotation = true;
+				Grid::ResetSunRotation();
+			}
+		}
+		else
+			StopAutoRotation();
+	}
+
+	void							StopAutoRotation()
+	{
+		autoRotation = false;
+		Reset();
+	}
+
 	void							ProgressRotation()
 	{
+		if (autoRotation)
+		{
+			static const count_t CameraRotations = 2;
+			static const count_t SunRotations = 5;
+			TVec3<> dir;
+			double at = Grid::GetAcceleratedSunDirection(dir,-float(CameraRotations) / SunRotations);
+			if (fabs(at) >= M_PI*2.0 * CameraRotations)
+			{
+				StopAutoRotation();
+				return;
+			}
+			//scene.location = dir * Grid::ToRadius(180);
+			scene.location = float3();
+			scene.retraction.z = -WorldScale * 3.75f;
+			scene.direction = -dir;
+			scene.upAxis = Grid::GetSunSystem().z;
+			scene.UpdateView();
+
+			return;
+		}
+
+
 		if (fabs(targetOrbit - orbit) > 0.1f)
 		{
 			DebugCheckCamera();
@@ -312,10 +366,10 @@ namespace Camera
 		{
 			int top;
 			if (Grid::actualWorld.cellStack[stackID].FindTopOccupied(top))
-				TargetOrbit(Grid::ToRadius(top+2));
+				ChangeGroundRadius(Grid::ToRadius(top+2));
 		}
 		if (Grid::SeeThrough::IsEnabled())
-			TargetOrbit(std::min(Grid::ToRadius(Grid::SeeThrough::GetFocusPoint().height+2), targetOrbit));
+			ChangeGroundRadius(std::min(Grid::ToRadius(Grid::SeeThrough::GetFocusPoint().height+2), targetOrbit));
 		ASSERT__(orbit > 0);
 		DebugCheckVector(scene.location,-10000,10000);
 		Vec::setLen0(scene.location, orbit);
@@ -365,12 +419,12 @@ namespace Camera
 		{
 			int top;
 			if (Grid::actualWorld.cellStack[stackID].FindTopOccupied(top))
-				TargetOrbit(Grid::ToRadius(top+2));
+				ChangeGroundRadius(Grid::ToRadius(top+2));
 		}
 
 		//targetOrbit = Grid::ToRadius(Grid::actualWorld.cellStack[stackID].FindTopOccupied());
 		if (Grid::SeeThrough::IsEnabled())
-			TargetOrbit(std::min(Grid::ToRadius(Grid::SeeThrough::GetFocusPoint().height+2), targetOrbit));
+			ChangeGroundRadius(std::min(Grid::ToRadius(Grid::SeeThrough::GetFocusPoint().height+2), targetOrbit));
 
 
 		Vec::setLen0(scene.location, orbit);

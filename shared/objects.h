@@ -56,9 +56,9 @@ namespace Objects
 		namespace DX11 = Engine::DX11;
 	
 
-		extern bool					showArrow, hasArrowCellTarget;
-		extern float3				arrowFrom;	//arroa visualization point of origin. Might be the location of a vehicle, or any of the locations in its task queue. Only relevant if showArrow is true
-		extern Grid::LCellIdI		arrowCellTarget;
+		//extern bool					showArrow, hasArrowCellTarget;
+		//extern float3				arrowFrom;	//arroa visualization point of origin. Might be the location of a vehicle, or any of the locations in its task queue. Only relevant if showArrow is true
+		//extern TrajectoryEndPoint	arrowCellTarget;
 
 		extern DX11::BaseInstructionBlock	stdVehicleShader;
 
@@ -116,14 +116,16 @@ namespace Objects
 	Erases all objects and references to objects. Prototypes are preserved.
 	Should be called whenever the scene is reset to prevent any lingering artifacts from the previous session.
 	*/
-	void				FlushAllData();
+	void				FlushAllData(bool preserveGameState=false);
 
-	/**
-	Updates SkyHub connections to SkyPorts,	as well as dependent satellites.
-	Not guaranteed to be accurate for non-player factions on client.
-	Should be identical for player faction on client, since the client should know all of its own entities.
-	*/
-	void				RefreshSkyHubConnections();
+	#ifndef NO_SATELLITES
+		/**
+		Updates SkyHub connections to SkyPorts,	as well as dependent satellites.
+		Not guaranteed to be accurate for non-player factions on client.
+		Should be identical for player faction on client, since the client should know all of its own entities.
+		*/
+		void			RefreshSkyHubConnections();
+	#endif
 
 	#ifdef HAS_WINDOW
 		/**

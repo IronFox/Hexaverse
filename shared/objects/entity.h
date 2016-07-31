@@ -10,6 +10,7 @@
 
 
 #ifdef HAS_WINDOW
+	#include <al/openal.h>
 	#include "visualCommands.h"
 #endif
 
@@ -27,7 +28,7 @@ struct SharedPtrHash
 namespace Objects
 {
 
-	static const float timeEpsilon = 0.01f;	//time in seconds between subsequent events such that they are sorted correctly on the client
+	static const float timeEpsilon = 0.001f;	//time in seconds between subsequent events such that they are sorted correctly on the client
 	typedef SharedPtrHash	OwnerHash;
 
 	extern GenericHashTable<TUniqueID,PWorldEntity,TUniqueID,Strategy::POD,Strategy::Swap>	idMap;
@@ -95,6 +96,8 @@ namespace Objects
 		TMatrix4<>					inverse;	//!< inverse of system
 
 
+		const TVec3<>&				GetWorldPosition() const {return system.w.xyz;}
+		static TVec3<>				GetWorldPosition(const Grid::LCellIdI&loc) {return Grid::ToWorld(loc);}	//might change in the future. Have to make sure that the various system build functions in systems.cpp match
 
 		/**
 		Assembles a name composed of the parent management class name and the local instance id
@@ -145,32 +148,65 @@ namespace Objects
 				ResetAllChange();
 			}
 			#endif
+
 		}
 
 		#ifdef HAS_WINDOW
 			bool					TestIntersection(const Geometry&geo, const TVec3<>&b, const TVec3<>&d, float & distance) const;
 		#endif
 
+
 	private:
+		bool						sleeping = false;	//!< Use SetSleep() instead. Indicates that this entity is asleep. Sleeping entities are not considered in the client-side IsIdle() iteration. Sleeping mobile entities will not execute any jobs
 
 	public:
 		#ifndef CLIENT
 
-			Random					localRandom;
+			float					motionTime=0.f;		//!< Time (in seconds) into the motion phase to calculate event times
+
+			Random					entityRandom;
 			
 			void					ReSeedRandom();
 
-
+			void					ResetMotionTime()	{motionTime = 0;}
 
 		#endif
+
+		inline void					SyncTime(float&remoteTime, float timeOffset)
+		{
+			#ifndef CLIENT
+				remoteTime = motionTime = std::max(motionTime,remoteTime) + timeOffset;
+			#endif
+		}
+		inline void					SyncTime(float&remoteTime)
+		{
+			#ifndef CLIENT
+				remoteTime = motionTime = std::max(motionTime,remoteTime);
+			#endif
+		}
+
+		inline void					SyncTime(WorldEntity&other, float&remoteTime, float timeOffset)
+		{
+			#ifndef CLIENT
+				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime)) + timeOffset;
+			#endif
+		}
+		inline void					SyncTime(WorldEntity&other, float&remoteTime)
+		{
+			#ifndef CLIENT
+				other.motionTime = remoteTime = motionTime = std::max(motionTime,std::max(remoteTime,other.motionTime));
+			#endif
+		}
 
 
 
 		virtual						~WorldEntity();
 
 		#ifdef HAS_WINDOW
-			typedef Objects::EntityCommand	Command;
-			typedef Objects::FEntityCommandVisitor	FCommandVisitor;
+			typedef Objects::CallbackCommand	Command;
+			typedef Objects::FCommandVisitor	FCommandVisitor;
+
+			OpenAL::Source			ambientSound;
 		#endif
 
 		/**
@@ -182,7 +218,7 @@ namespace Objects
 									isInsertedIntoGrid = false;//tracks if the local entity has been inserted into the grid
 
 		#ifdef CLIENT
-			bool					isMine;
+			bool					isOwnedByMe;
 			int						ignoreThreatRounds = 0;	//used by ai to ignore threat level if the ai assumes it can win
 		#endif
 
@@ -207,6 +243,7 @@ namespace Objects
 				CanEnableChanged = 0x200,
 				HibernationChanged = 0x400,
 				OrbitalConnectionChanged = 0x800,
+				SleepChange = 0x1000,
 			};
 			float					changeTimer;	//Earliest change time. Reduced if an earlier even occurs
 			UINT32					changeFlags;	//Everything that has changed since the last reset (usually once per server-frame)
@@ -229,10 +266,31 @@ namespace Objects
 
 			//Buffer0<PWorldEntity>	seenBy,
 				//					seeing;
+			void					SetSleep(bool doSleep, float&t, bool signalToStructure=true)
+			{
+				if (sleeping == doSleep)
+					return;
+				LogEvent(EventSignificance::Common,this,"Sleeping changed to "+String(doSleep)+" at t="+String(t));
+
+				sleeping = doSleep;
+				RegisterChange(SleepChange,t);
+				if (signalToStructure)
+					OnSleepChange(t);
+			}
 			
 
 
 			virtual void			SetupSystem()=0;	//used to setup the matrices once after creation
+
+			virtual void			OnSleepChange(float&t) {};
+		#else
+			void					ApplySleepChangeFromServer(bool doSleep)
+			{
+				sleeping = doSleep;
+				#ifdef HAS_WINDOW
+					ambientSound.SetGain(GetSoundLevel());
+				#endif
+			}
 		#endif
 		//virtual bool				CanSee(const PWorldEntity&other)	const;
 		//virtual bool				CanSee(const TVec3<>&center, float radius)	const;
@@ -240,8 +298,13 @@ namespace Objects
 
 		/**
 		Used for visualization: active entities have bright, pulsing key colors, dull dark colors otherwise.
+		@return 0 (completely inactive) to 1 (active)
 		*/
-		virtual bool				IsActive() const {return true;}
+		virtual float				GetActivityLevel() const {return IsHibernating() ? 0.f : (sleeping ? 0.5f : 1.f);}
+		#ifdef HAS_WINDOW
+			virtual float			GetSoundLevel() const {return GetActivityLevel()*0.35f;}
+			virtual OpenAL::Wave	GetAmbientSound() const;
+		#endif
 
 		/**
 		Retrieves the maximum possible health level
@@ -286,14 +349,14 @@ namespace Objects
 		Structures should handle compound disconnections and struct count decreases.
 		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
 		*/
-		virtual void				OnDestroy(float atTime)	{};	
+		virtual void				OnDestroy(RemovalType, float&atTime)	{};	
 
 		/**
 		Signals that the local entity has been created.
 		Structures should handle compound disconnections and struct count decreases.
 		@param atTime Processing time stamp of the event, or 0 if outside server processing phases
 		*/
-		virtual void				OnConstructionFinished(float atTime);
+		virtual void				OnConstructionFinished(float&atTime);
 
 		/**
 		Called exactly once on the prototype instance only, once instantiation of all prototype objects is completed (other prototypes may be references, but might not be set up yet).
@@ -312,38 +375,37 @@ namespace Objects
 		float						GetScanningRange() const;
 		float						EMPModify(float raw, float min) const;
 		
-		virtual PTurretBase			GetTurretBase(float &zOffset) { zOffset = 0; return PTurretBase();}
+		virtual PTurretBase			GetTurretBase(float &zOffset) { return PTurretBase();}
 		inline PTurretBase			GetTurretBase() { float dummy; return GetTurretBase(dummy);}
-		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { zOffset = 0; return PConstTurretBase();}
+		virtual PConstTurretBase	GetTurretBase(float &zOffset) const { return PConstTurretBase();}
 		inline PConstTurretBase		GetTurretBase() const { float dummy; return GetTurretBase(dummy);}
 
-		TurretTrajectory			TraceTrajectory(const Grid::WorldData&world, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell) const;
-		TurretTrajectory			TraceTrajectory(const Grid::WorldData&world, const Grid::LCellIdI&dest, TVec3<>&impactAt) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::WorldData&world, const Grid::LCellIdI&source, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell) const;
-		TurretTrajectory			TraceTrajectoryFrom(const Grid::WorldData&world, const Grid::LCellIdI&source, const Grid::LCellIdI&dest, TVec3<>&impactAt) const;
-		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TVec3<>&dest) const;
-		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const Grid::LCellIdI&dest) const;
-		bool						CanHit(const TVec3<>&dest) const;
-		bool						CanHit(const Grid::LCellIdI&dest) const;
-		/**
-		Like CanHit() but includes exposion radius to some extend
-		*/
-		bool						CanHitSomehow(const TVec3<>&dest) const;
-		bool						CanHitSomehow(const Grid::LCellIdI&dest) const;
+		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectory(const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
+		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const;
+		TurretTrajectory			TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt) const;
+		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const;
+		virtual bool				CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest) const;
+		bool						CanHit(const TrajectoryEndPoint&dest, float&outAngle) const;
+		bool						CanHit(const TrajectoryEndPoint&dest) const;
+		bool						IsSleeping() const {return sleeping;}
 
 		virtual bool				AwaitsUserInteraction() const {return false;}
 
 
 		#ifndef CLIENT
-			virtual bool			DirectTo(CursorMode::mode_t, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
+			virtual bool			DirectTo(CursorMode, ArrayRef<Grid::LCellIdI> waypoints, bool detailedPath, bool leftClick = false) = 0;
 		#endif
 
 
 		//various type check methods. technically, a dynamic cast into the respective structure would be sufficient but i am led to believe that these are faster
 		virtual bool				IsWorkingStructure() const {return false;}
 		virtual bool				IsMobile() const {return false;}
+		virtual bool				IsTower() const {return false;}
 		virtual bool				IsVehicle() const {return false;}
-		virtual bool				IsSatellite() const {return false;}
+		#ifndef NO_SATELLITES
+			virtual bool			IsSatellite() const {return false;}
+		#endif
 		virtual bool				IsStructure() const {return false;}
 		//virtual bool				IsVehiclePlant() const {return false;}
 		//these are performance optimizations. Some visualizations may behave unexpectedly if they are not
@@ -353,7 +415,37 @@ namespace Objects
 		virtual const MobileEntityProducer*	CastToProducer() const {return nullptr;}
 
 
+		/**
+		Casts the local entity to an appropriate hangar structure if it can store the given mobile entity @a e
+		If storage is not possible due to type constraints (NOT capacity constraints), the return value must be
+		empty.
+		*/
+		virtual PHangar				CastToDestinationForType(const MobileEntity&e) {return PHangar();}
+		virtual bool				IsHangar() const {return false;}
+
 		virtual bool				IsIndestructible() const	{return false;};
+
+		/**
+		Checks if the local entity is currently above the regular grid (e.g. a satellite)
+		*/
+		inline bool					IsAboveGrid() const	{return IsAboveGrid(location);}
+		static inline bool			IsAboveGrid(const Grid::LCellIdI&location) {return location.height > Grid::CellStack::TopHeight;}
+
+		/**
+		Checks whether or not a new instance of the local class can be spawned within the world grid
+		*/
+		virtual bool				CanSpawnInGrid() const {return true;}
+		/**
+		Checks whether or not a new instance of the local class can be spawned above grid
+		@param[out] outHeight Height that a new instance can be spawned at. Not updated if the method returns false
+		@return true, if a new instance can be spawned above grid. @a outHeight will be updated to a valid non-grid height in this case
+		*/
+		virtual bool				CanSpawnAboveGrid(int&outHeight) const {return false;}
+
+		/**
+		Sentry entities automatically fill their attack queue
+		*/
+		virtual bool				IsSentry() const {return false;}
 
 		#ifdef HAS_WINDOW
 			virtual void			OnSelect()	{};
@@ -372,11 +464,14 @@ namespace Objects
 
 		virtual void			RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
 		virtual void			UnregisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow=true);
-		void					MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow=true);
 		#ifdef CLIENT
+			void				MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow=true);
 			virtual void		RegisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
 			virtual void		UnregisterWorldSensory(const Grid::HighSetup::TVolumeDescriptor&);
 			//virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to);
+		#else
+			virtual void		MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, bool checkChangesNow=true, Buffer0<PWorldEntity>*newContacts = nullptr);
+
 		#endif
 
 
@@ -408,8 +503,12 @@ namespace Objects
 				void				AppendDeploymentCount(BaseCommand::Label&outResult, const OwnerParameter&overrideOwner)	const;
 				String				CompileDeploymentCount(const OwnerParameter&overrideOwner)	const;
 
-
-				virtual void		VisitAllCommands(FCommandVisitor visitor) {};
+				/**
+				Visits each visual command the local entity provides
+				@param visitor Callback function to call for every command
+				@param force Set true to also visit commands that are currently hidden. False will visit only the currently selected command tree branch
+				*/
+				virtual void		VisitAllCommands(FCommandVisitor visitor, bool force) {};
 				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const=0;
 			#endif
 	

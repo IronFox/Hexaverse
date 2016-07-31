@@ -4,12 +4,15 @@
 #include <memory>
 #include <general/enumeration.h>
 #include "../typeDecl.h"
+#include "../config.h"
 
 namespace Objects
 {
+	DECLARE_POINTER_CLASS(BaseCommand)
+		DECLARE_POINTER_CLASS(DeployMobileCommand)
+		DECLARE_POINTER_CLASS(EntityConstructionCommand)
 
-
-	DECLARE_POINTER_CLASS(HangarStructure)
+	DECLARE_POINTER_CLASS(Hangar)
 	DECLARE_POINTER_CLASS(MobileEntityProducer)
 	DECLARE_POINTER_CLASS(SkyLinkStructure)
 
@@ -25,14 +28,17 @@ namespace Objects
 					DECLARE_POINTER_CLASS(Mine)
 					DECLARE_POINTER_CLASS(NexusPort)
 					DECLARE_POINTER_CLASS(Generator)
+					DECLARE_POINTER_CLASS(ReactorCore)
 					DECLARE_POINTER_CLASS(MunitionFactory)
 					DECLARE_POINTER_CLASS(MunitionStorage)
 
 			DECLARE_POINTER_CLASS(MobileEntity)
+				#ifndef NO_SATELLITES
 				DECLARE_POINTER_CLASS(Satellite)
 					DECLARE_POINTER_CLASS(SkyHub)
 					DECLARE_POINTER_CLASS(SkyGuardian)
 					DECLARE_POINTER_CLASS(Ragnarok)
+				#endif
 				DECLARE_POINTER_CLASS(Vehicle)
 
 	namespace Component
@@ -60,13 +66,17 @@ namespace Objects
 	);
 
 	class Compound;
+	class Marker;
+	struct TrajectoryEndPoint;
+
+	DECLARE_POINTER_CLASS(CommandGroup)
 
 
-
-	CONSTRUCT_ENUMERATION6(MobilePlacementResult,
+	CONSTRUCT_ENUMERATION7(MobilePlacementResult,
 		PlacementOkay,
 		PlacementOkayFellDown,
-		PlacementFailedObstructed,		//!< Something possibly temporary is in the way
+		PlacementFailedTemporarilyObstructed,		//!< Something temporary is in the way
+		PlacementFailedPermanentlyObstructed,		//!< Something permanently is in the way. This includes mobile entities without motion tasks
 		PlacementFailedHarmfulOrBlocked,	//!< Either moving there would hurt or something permanently blocking is in the way
 		PlacementFailedMobileDestroyed,	//!< Movement failed, vehicle cannot be returned automatically to any save location, and should be destroyed by the caller
 		EnteredStructure

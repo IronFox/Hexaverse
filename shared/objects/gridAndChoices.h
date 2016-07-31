@@ -54,7 +54,9 @@ namespace Objects
 	PStructure		GetStructure(const Grid::LCellIdI&cellID);
 	PStructure		GetStructure(const Grid::LCellIdU&cellID);
 	PWorldEntity	GetEntity(const Grid::LCellIdI&cellID);
-	PSatellite		GetSatellite(UINT32 flatCellID);
+	#ifndef NO_SATELLITES
+		PSatellite	GetSatellite(UINT32 flatCellID);
+	#endif
 	PMobileEntity	GetMobileEntity(const Grid::LCellIdI&cellID);
 	PMobileEntity	GetMobileEntity(const Grid::LCellIdU&cellID);
 
@@ -66,27 +68,52 @@ namespace Objects
 	/**
 	Checks if there is a structure in the given location that can handle a given mobile entity moving in
 	*/
-	PHangarStructure	MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&);
+	PHangar			MobileDestinationStructureHere(const Grid::LCellIdI&location, const MobileEntity&);
 
 
 
 	bool			AppendShortestPathI(const Vehicle*vehicle, const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
-	bool			AppendShortestPathI(const Satellite*vehicle, const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
-	bool			AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool doFloat, const Grid::LCellIdI&from, Grid::LCellIdI to, BasicBuffer<Grid::LCellIdI>&oPath);
-	bool			AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion=true);
-	bool			AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath);
+	#ifndef NO_SATELLITES
+		bool		AppendShortestPathI(const Satellite*vehicle, const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath, bool failIfLimitReached=true, bool*outWouldFailDueToLimitReached=nullptr);
+	#endif
+	bool			AppendShortestConstructionPath(const Vehicle*vehicle, bool ignoreWater, bool flat, const Grid::LCellIdI&from, Grid::LCellIdI to, BasicBuffer<Grid::LCellIdI>&oPath);
+	/**
+	Attempts to find the shortest direct path to a destination. Does not check if the path is blocked by terrain or entities.
+	@param from Source location
+	@param to Destination location
+	@param oPath Resulting path. The passed path is not cleared before appending new elements
+	@param penaltizeVerticalMotion Increases the cost of vertical motion considerably, such that they are chosen only as a last resourt
+	@param constrainVerticalMotion Only chooses path nodes whoes height lies in the height range defined by @a from.height and @a to.height. If @a from and @a to lie on the same height, then path finding is restricted to 2d
+	*/
+	bool			AppendShortestDirectPath(const Grid::LCellIdI&from, const Grid::LCellIdI&to, BasicBuffer<PathNode>&oPath, bool penaltizeVerticalMotion=true, bool constrainVerticalMotion=true);
+	#ifndef NO_SATELLITES
+		bool		AppendShortestDirectSatellitePath(const Grid::LCellIdI&from, const UINT32 toCell, BasicBuffer<PathNode>&oPath);
+	#endif
 
 
-	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
-	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode::mode_t activeCursorMode, BasicBuffer<Grid::LCellIdI>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
 
+	struct Choice
+	{
+		Grid::LCellIdI	location = Grid::LCellIdI::Invalid;
+		int			visualVerticalOffset=0;
+
+		/**/		Choice()	{}
+		/**/		Choice(const Grid::LCellIdI&loc, int visualOffset):location(loc),visualVerticalOffset(visualOffset)	{}
+		bool		operator==(const Choice&other) const {return location == other.location;}
+		bool		operator==(const Grid::LCellIdI&other) const {return location == other;}
+	};
+
+	void			GetChoices(WorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+	void			GetChoices(const PWorldEntity&entity, const PMobileEntity&deploying, CursorMode activeCursorMode, BasicBuffer<Choice>&movementChoices, bool&showArrow, bool&hasArrowCellTarget, TVec3<>&arrowFrom, Grid::LCellIdI&arrowFromCell);
+
+	bool			NothingBlockingHere(const Grid::LCellIdI&cellID, bool checkVehiclesOnClient);
 
 
 	inline float	ExplosionTime(float size)
 					{ return std::max(1.3f,size*size/20.f);}
 
 
-	static const int badHeight = 0x1FFFFFFF;
+	static const int badHeight = 0x1FFFFFFF;	//Keep equal to sphereGrid.h Grid::BadHeight
 	/**
 	Attempts to find the lowest possible low-resolution grid cell to put a vehicle in.
 	Search starts from the specified reference cell height. If the cell is already empty, search continues down, otherwise up.
@@ -100,28 +127,68 @@ namespace Objects
 	@param production Base type of the vehicle that was produced
 	*/
 	void			GetProductionChoices(const WorldEntity*producer,Component::VehicleBase*production,
-							BasicBuffer<Grid::LCellIdI>&choices);
-	count_t			GetWays(const Grid::WorldData&world,
+							BasicBuffer<Choice>&choices);
+
+
+	template <typename T, count_t MaxLevels>
+		struct TWaysTemplate
+		{
+			static const count_t	MaxWays = 6 * MaxLevels;
+
+			T						way[MaxWays];
+			count_t					numWays = 0;
+
+			void					Clear()	{numWays = 0;}
+			void					Add(const T&way)
+			{
+				DBG_ASSERT_LESS__(numWays,MaxWays);
+				this->way[numWays] = way;
+				numWays++;
+			}
+		};
+
+	/*
+	Currently there is no way that, given a specific location, a vehicle can move to two locations above each other in one step.
+	So MaxLevels can stay at 1 for TWays, but must be increased to the max number of levels any vehicle can climb up, should that
+	be ever more than 1.
+	It must also be increased if vehicle types can ever float freely.
+	*/
+	typedef TWaysTemplate<Grid::LCellIdI,1>	TWays;	//TWays MaxLevels must always be >= 1
+	typedef TWaysTemplate<UINT32,1>			TOrbitalWays;	//TOrbitalWays MaxLevels must always be == 1
+
+
+	void			GetWays(const Grid::WorldData&world,
 							const Vehicle*v,  const Grid::LCellIdI&location, 
-							Grid::LCellIdI*outChoices, const Grid::LCellIdI&destination, 
+							TWays&outWays, const Grid::LCellIdI&destination, 
+							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute, bool forceRevertible);
+	#ifndef NO_SATELLITES
+		void		GetWays(const Satellite*v,  UINT32 location, 
+							TOrbitalWays&outWays, UINT32 destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
-	count_t			GetWays(const Satellite*v,  UINT32 location, 
-							UINT32*outChoices, UINT32 destination, 
-							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
-	count_t			GetMobileWays(	const Grid::WorldData&world,
+	#endif
+	void			GetMobileWays(	const Grid::WorldData&world,
 							const MobileEntity*v,  const Grid::LCellIdI&location, 
-							Grid::LCellIdI*outChoices, const Grid::LCellIdI&destination, 
+							TWays&outWays, const Grid::LCellIdI&destination, 
 							bool ignoreVehiclesOnDestination, bool ignoreFriendlyVehiclesOnRoute);
 
 	bool			NoVehicleHere(const Grid::LCellIdI&cellID);
 	bool			NoVehicleHereExcept(const Grid::LCellIdI&cellID, const Vehicle*);
-	bool			NoSatelliteHere(const UINT32 cellID);
+	#ifndef NO_SATELLITES
+		bool		NoSatelliteHere(const UINT32 cellID);
+	#endif
 
 	void			RemoveVehicleFromGrid(const PVehicle&v,const Grid::LCellIdI&location);
 	void			InsertVehicleIntoGrid(const PVehicle&v,const Grid::LCellIdI&location);
 
 
-	inline bool		Failed(MobilePlacementResult rs)	{return rs == MobilePlacementResult::PlacementFailedHarmfulOrBlocked || rs == MobilePlacementResult::PlacementFailedObstructed;}
+	inline bool		Failed(MobilePlacementResult rs)
+					{
+						return rs == MobilePlacementResult::PlacementFailedHarmfulOrBlocked
+							|| rs == MobilePlacementResult::PlacementFailedMobileDestroyed
+							|| rs == MobilePlacementResult::PlacementFailedTemporarilyObstructed
+							|| rs == MobilePlacementResult::PlacementFailedPermanentlyObstructed
+							;
+					}
 
 
 
@@ -131,24 +198,22 @@ namespace Objects
 							onlineUplinkTraffic;
 		#endif
 		void		MoveGridVehicle(const PVehicle&v, const Grid::LCellIdI&from, const Grid::LCellIdI&to);
-		PStructure	SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,ConstName type, bool placeNow, bool isMine);
-		PVehicle	SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isMine);
-		PSatellite	SpawnSatellite(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isMine);
+		PStructure	SpawnStructure(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&location,ConstName type, bool placeNow, bool isOwnedByMe);
+		PVehicle	SpawnVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe);
+		PMobileEntity	SpawnNonVehicleMobile(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName type, bool placeNow, bool isOwnedByMe);
 		/**
 		Selectively spawns either a vehicle or a satellite, depending on the parameters
 		In order to spawn a satellite, @a turret must be @a ConstName::Empty, and @base be a valid satellite type name
 		*/
-		PMobileEntity	SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isMine);
+		PMobileEntity	SpawnMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation,ConstName base, ConstName turret, bool placeNow, bool isOwnedByMe);
 		void		Place( const PStructure&s);
 		void		Place( const PVehicle&vehicle, bool insertIntoGrid=true);
-		void		Place( const PSatellite&s);
+		#ifndef NO_SATELLITES
+			void	Place( const PSatellite&s);
+		#endif
 		void		PlaceMobileEntity( const PMobileEntity&m, bool insertIntoGridIfVehicle=true);
 
 
-		#ifdef HAS_WINDOW
-			void	InsertSatelliteSensor(Satellite*);
-			void	RemoveSatelliteSensor(Satellite*);
-		#endif
 
 	#else
 		PVehicle	AssembleVehicle(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret);
@@ -158,16 +223,16 @@ namespace Objects
 		*/
 		PMobileEntity	AssembleMobileEntity(const OwnerParameter&owner, const TUniqueID&id, const Grid::LCellIdI&baseLocation, const String&base, const String&turret);
 
-		bool		GetSentryTarget(const WorldEntity&source, int munitionStorage, const Grid::LCellIdI&sourceLocation, float zOffset, const TurretBase&base, Grid::LCellIdI&outTarget);
+		bool		GetSentryTarget(const WorldEntity&source, int munitionStorage, const TrajectoryEndPoint&sourceLocation, const TurretBase&base, Grid::LCellIdI&outTarget);
 		void		SignalClusterChange(const Grid::LCellIdI&location, int verticalTolerance,float atTime,const WorldEntity*except);
 		void		SignalVehicleClusterChange(const Grid::LCellIdI&location, int verticalTolerance, float atTime, const WorldEntity*except);
 		void		SignalClusterAndNeighborsChange(const Grid::LCellIdI&location, float atTime, const WorldEntity*except = nullptr);
-		void		Explode(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, 
+		void		Explode(const TAttack& attack, 
 						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
-						float atTime
+						float&atTime
 						);
-		void		ExplodeEMP(const Objects::PWorldEntity&attackFrom, const Grid::LCellIdI&traceTo, float flightTime, 
-						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float atTime);
+		void		ExplodeEMP(const TAttack& attack,
+						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float&atTime);
 
 
 		/**
@@ -184,18 +249,18 @@ namespace Objects
 		@param mode Current cursor mode that effects available choices
 		@param deployWhat Vehicle being deployed (only if @a e points to a vehicle store)
 		*/
-		bool		ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  CursorMode::mode_t mode, const PMobileEntity&deployWhat);
+		bool		ProcessChoiceIntersection(const PWorldEntity&e, const Grid::LCellIdI&choice,  CursorMode mode, const PMobileEntity&deployWhat);
 
 	#endif
 
-	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float atTime);
-	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float atTime);
-	void			InsertConstructed(const PMobileEntity&v, float atTime, bool insertIntoGrid= true, bool setHealthToFull=true);
-	void			InsertConstructed(const PStructure&s, float atTime, bool refreshNetworkNow=false, bool setHealthToFull=true);
-	void			RegisterNewOffGrid(const PMobileEntity&v, float atTime, bool setHealthToFull=true);
+	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase*base, Component::Turret*turret, bool fillStorage, float&atTime);
+	PVehicle		SpawnVehicle(const OwnerParameter&owner, const Grid::LCellIdI&baseLocation,Component::VehicleBase&base, Component::Turret&turret, bool fillStorage, float&atTime);
+	void			InsertConstructed(const PMobileEntity&v, float&atTime, bool insertIntoGrid= true, bool setHealthToFull=true);
+	void			InsertConstructed(const PStructure&s, float&atTime, bool refreshNetworkNow=false, bool setHealthToFull=true);
+	void			RegisterNewOffGrid(const PMobileEntity&v, float&atTime, bool setHealthToFull=true);
 
 
-	void			Remove( const PWorldEntity&, RemovalType t, float atTime, bool controlEnabled, bool isRemovedFromGrid=false, bool ignoreIndestructible=false);
+	void			Remove( const PWorldEntity&, RemovalType t, float&atTime, bool controlEnabled, bool isRemovedFromGrid=false, bool ignoreIndestructible=false);
 
 	/**
 	Must be called once during start up, after the base grids have been created
@@ -214,6 +279,9 @@ namespace Objects
 		{
 			Grid::LCellIdI	cell;
 			int				movementCostsFromRoot=0;
+			#ifdef CLIENT
+				int			customScore=-1;	//!< Custom variable usable by client
+			#endif
 			index_t			predecessor=InvalidIndex;
 
 			MapNode()	{}
@@ -232,8 +300,10 @@ namespace Objects
 		@brief Maps all server-reachable cells of the given vehicle from the specified location
 		@param vehicle Vehicle to use for reference. Must not be NULL
 		@param from Specifies the starting location
+		@param isBlocked Function callback to determine whether units can move to a given cell. Can be empty, considering all cells non-blocked
+		@param forceRevertible Forces that only steps are considered that are possible in both directions
 		*/
-		void			Map(const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange=0xFFFFFFFF);
+		void			Map(const Vehicle*vehicle, const Grid::LCellIdI&from, FBlockTest isBlocked, UINT32 maxRange=0xFFFFFFFF, bool forceRevertible=false);
 
 
 

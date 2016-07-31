@@ -7,6 +7,7 @@
 #include <io/string_file.h>
 #include "../../shared/runtimeConfig.h"
 #include "clientRuntimeConfig.h"
+#include "serverProcess.h"
 
 void LoadHosts()
 {
@@ -15,7 +16,7 @@ void LoadHosts()
 	{
 		String host;
 		while (hosts >> host)
-			Network::ServerDiscovery::RegisterNewHost(host,false, false);
+			Network::ServerDiscovery::RegisterNewHost(Network::ServerAddress(host),false, false);
 	}
 }
 
@@ -24,10 +25,10 @@ void	SaveHosts()
 	StringFile hosts;
 	if (hosts.Create(RuntimeConfig::ConfigFile("hosts.txt")))
 	{
-		static Buffer0<String>	 urls;
+		static Buffer0<Network::ServerAddress>	 urls;
 		Network::ServerDiscovery::ListNonAutoAttempts(urls);
 		foreach (urls,url)
-			hosts << *url << nl;
+			hosts << url->host << ':' << url->basePort << nl;
 		hosts.Close();
 	}
 }
@@ -35,6 +36,8 @@ void	SaveHosts()
 
 #ifdef HAS_WINDOW
 
+
+	const float4 incompatibleColor(1,0.6,0.55,1);
 
 	static const float VisualTabWidth = 0.2f;
 
@@ -53,63 +56,76 @@ void	SaveHosts()
 	};
 
 
-	GUIElements::PLabel	AddTab(const GUIElements::PPanel&context, const String&name, float verticalSpacing = 0.f, GUIElements::TAnchor::distanceType_t verticalSpacingIsRelative = GUIElements::TAnchor::RelativeToScreen)
+	GUIElements::PLabel	AddTab(const GUIElements::PPanel&context, const String&name, bool incompatible, float verticalSpacing = 0.f, GUIElements::TAnchor::distanceType_t verticalSpacingIsRelative = GUIElements::TAnchor::RelativeToScreen)
 	{
 		using namespace GUIElements;
 		PLabel label=MakeTabLabel(name,1.1f);
 		label->anchorConfig.Top().Set(verticalSpacing,verticalSpacingIsRelative);
-		if (context->components.IsNotEmpty())
-			label->anchorConfig.Left().Set(context->components.last(),0.f);
+		if (context->HasComponents())
+			label->anchorConfig.Left().Set(context->GetComponents().last(),0.f);
 		else
 			label->anchorConfig.Left().Set(0.f);
-		context->components.Append(label);
+		context->AddComponent(label);
+		if (incompatible)
+			label->SetColor(incompatibleColor);
 		return label;
 	}
 
-	GUIElements::PLabel	AddTab(const String&name)
+	GUIElements::PLabel	AddTab(const String&name, bool incompatible)
 	{
-		return AddTab(Dialog::serverChoice,name);
+		return AddTab(Dialog::serverChoice,name,incompatible);
 	}
 
 	static String CompileRules(const Protocol::ServerInfo&info)
 	{
 		String result;
-		switch (info.gameInfo.gameGoal)
+		if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::ConfigurationMode)
+			result += "Interactive Configuration Mode";
+		else
 		{
-			case RuntimeConfig::GameGoal::ConquerNexus:
-				result="Conquer Nexus";
-			break;
-			case RuntimeConfig::GameGoal::EMPConquerNexus:
-				result="Conquer Nexus, EMP-Zones";
-			break;
-			case RuntimeConfig::GameGoal::None:
-				result="No Goal";
-			break;
+			switch (info.gameInfo.gameConfig.gameGoal)
+			{
+				case RuntimeConfig::GameGoal::ConquerNexus:
+					result="Conquer Nexus";
+				break;
+				case RuntimeConfig::GameGoal::None:
+					result="No Goal";
+				break;
+			}
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::ClosedGame)
+				result += ", Closed Game";
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::EMPZones)
+				result += ", EMP Zones";
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::BasesRequired)
+				result += ", Require Bases";
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::StartBases)
+				result += ", Start Bases";
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::NexusAI)
+				result += ", Nexus AI";
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::SupportSpectatorFactions)
+				result += ", Spectator";
+			if (info.gameInfo.gameConfig.gameFlags & Protocol::GameFlag::SupportRegularFactions)
+				result += ", Regular";
 		}
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::ClosedGame)
-			result += ", Closed Game";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::BasesRequired)
-			result += ", Require Bases";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::StartBases)
-			result += ", Start Bases";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::NexusAI)
-			result += ", Nexus AI";
-		if (info.gameInfo.gameFlags & Protocol::GameFlag::SupportRegularFactions)
-			result += ", Regular";
-
 		//String result = String("Goal: ")+Protocol::GameGoal::Reinterpret(info.gameGoal).ToString();
 		return result;
 
 
 	}
 
+	static float PingOf(const std::pair<Network::ServerAddress,float>&p)
+	{
+		if (p.first.host == "localhost")
+			return -1;
+		return p.second;
+	}
 
 	GUIElements::PButtonPanel ConstructPanel(Network::ServerInfo&info)
 	{
 		using namespace GUIElements;
 		if (info.buttonPanel)
 		{
-			info.buttonPanel->components.Clear();
+			info.buttonPanel->ClearComponents();
 		}
 		else
 		{
@@ -120,7 +136,7 @@ void	SaveHosts()
 			bool versionMatch = info.rightVersion;
 			info.buttonPanel->SetCheck([versionMatch]()
 			{
-				return versionMatch && !Network::client.IsAttemptingToConnect();
+				return versionMatch && !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected();
 			});
 
 			TUniqueID id = info.id;
@@ -138,23 +154,26 @@ void	SaveHosts()
 				if (!info)
 					return;
 				index_t best = 0;
-				float bestPing = info->urls.first().second;
-				for (index_t i = 1; i < info->urls.Count(); i++)
-					if (info->urls[i].second < bestPing)
+				float bestPing = PingOf(info->addresses.first());
+				for (index_t i = 1; i < info->addresses.Count(); i++)
+				{
+					float ping = PingOf(info->addresses[i]);
+					if (ping < bestPing)
 					{
-						bestPing = info->urls[i].second;
+						bestPing = ping;
 						best = i;
 					}
+				}
 				info->selected = true;
 
 				Network::serverID = info->id;
 				Network::serverIDString = Network::serverID.ToNiceString();
 				Network::worldID = info->info.gameInfo.worldID;
 				Network::worldIDString = Network::worldID.ToNiceString();
-				Network::gameFlags = info->info.gameInfo.gameFlags;
-				RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info->info.gameInfo.gameGoal);
+				Network::gameFlags = info->info.gameInfo.gameConfig.gameFlags;
+				RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(info->info.gameInfo.gameConfig.gameGoal);
 
-				Network::ConnectTo(info->urls[best].first + ":"+String(SERVICE_PORT));
+				Network::ConnectTo(info->addresses[best].first);
 			});
 
 		}
@@ -174,7 +193,7 @@ void	SaveHosts()
 			}
 			else
 			{
-				color = float4(1,0.4,0.4,0.8) * 1.3f;
+				color = incompatibleColor * 1.3f;
 				if (info.protocolIncompatible)
 				{
 					text = " <Unknown> (Protocol Incompatible)";
@@ -191,14 +210,14 @@ void	SaveHosts()
 			info.headLine = headLine;
 		}
 
-		p->components << info.headLine;
+		p->AddComponent(info.headLine);
 
 
-
+		bool incompatible = !info.rightVersion || info.protocolIncompatible;
 		{
-			AddTab(p,String(info.info.gameInfo.numFactionsOnline) + "/" + String(info.info.gameInfo.numFactionsCreated),0.01f,GUIElements::TAnchor::RelativeToScreen);
-			AddTab(p,String(info.info.gameInfo.roundNumber),0.01f,GUIElements::TAnchor::RelativeToScreen);
-			PLabel l = AddTab(p,CompileRules(info.info),0.01f,GUIElements::TAnchor::RelativeToScreen);
+			AddTab(p,String(info.info.gameInfo.numFactionsOnline) + "/" + String(info.info.gameInfo.numFactionsCreated),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
+			AddTab(p,info.info.gameInfo.roundNumber.value.ToString(),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
+			PLabel l = AddTab(p,CompileRules(info.info),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
 			l->zoom *= 0.9f;
 
 		}
@@ -207,37 +226,44 @@ void	SaveHosts()
 		//0.7f * 1.5f = ~1
 		//color set to 70% opacity
 		bool first = true;
-		foreach (info.urls,url)
+		foreach (info.addresses,addr)
 		{
-			PLabel label = MakeTabLabel(url->first+ " (ping "+String((int)ceil(url->second*1000))+')',0.7f);
-			label->SetColor(float4(1,1,1,0.7f));
+			PLabel label = MakeTabLabel(addr->first.ToString()+ " (ping "+String((int)ceil(addr->second*1000))+')',0.7f);
+			if (info.rightVersion && !info.protocolIncompatible)
+				label->SetColor(float4(1,1,1,0.7f));
+			else
+				label->SetColor(incompatibleColor);
 			label->anchorConfig.Left().Set(0.05f);
 			if (first)
 			{
 				first = false;
-				label->anchorConfig.Top().SetSomeOf(p,0.f,[p](const PComponent&c)->bool{return c != p->components.last();});
+				label->anchorConfig.Top().SetSomeOf(p,0.f,[p](const PComponent&c)->bool{return c != p->GetComponents().last();});
 			}
 			else
 			{
-				label->anchorConfig.Top().Set(p->components.last(),0.f,GUIElements::TAnchor::RelativeToScreen);
+				label->anchorConfig.Top().SetLastOf(p,0.f,GUIElements::TAnchor::RelativeToScreen);
 			}
-			p->components << label;
+			p->AddComponent( label );
 		}
 
 		if (!info.rightVersion && !info.protocolIncompatible)
 		{
 			PLabel label = MakeTabLabel("Server identifies as '"+String(info.info.hostInfo.value.version)+'\'',0.7f);
-			label->SetColor(1,0.5,0.5,0.7f);
-			label->anchorConfig.Top().Set(p->components.last(),0.005f,GUIElements::TAnchor::RelativeToScreen);
-			p->components << label;
+			label->SetColor(incompatibleColor);
+			label->anchorConfig.Top().SetLastOf(p,0.005f,GUIElements::TAnchor::RelativeToScreen);
+			p->AddComponent( label );
 					
 			label = MakeTabLabel("Client expected '" SERVER_NAME "\'",0.7f);
-			label->SetColor(1,0.5,0.5,0.7f);
-			label->anchorConfig.Top().Set(p->components.last(),0.005f,GUIElements::TAnchor::RelativeToScreen);
-			p->components << label;
+			label->SetColor(incompatibleColor);
+			label->anchorConfig.Top().SetLastOf(p,0.005f,GUIElements::TAnchor::RelativeToScreen);
+			p->AddComponent( label );
 		}
 
 		p->autoHeightSpacing = 0.01f;
+		if (!info.rightVersion || info.protocolIncompatible)
+			p->backgroundTone = incompatibleColor.rgb * 0.75f;
+		else
+			p->backgroundTone = float3(1);
 		
 		return p;
 	}
@@ -269,7 +295,7 @@ void	SaveHosts()
 		const bool isActive = Dialog::serverChoice->IsActive();
 		if (isActive)
 			Dialog::serverChoice->Deactivate();
-		Dialog::serverChoice->components.Clear();
+		Dialog::serverChoice->ClearComponents();
 
 		Dialog::serverChoice->fillBackground = false;
 		Dialog::serverChoice->isModal = false;
@@ -277,10 +303,10 @@ void	SaveHosts()
 		Dialog::serverChoice->anchorConfig.Top().Set(0.1f);
 
 
-		AddTab("HostID/WorldID");
-		AddTab("Factions online");
-		AddTab("Round Number");
-		AddTab("Rules");
+		AddTab("HostID/WorldID",false);
+		AddTab("Factions online",false);
+		AddTab("Round Number",false);
+		AddTab("Rules",false);
 
 		bool attemptingConnection = Network::client.IsAttemptingToConnect();
 
@@ -299,12 +325,12 @@ void	SaveHosts()
 				p->anchorConfig.Top().SetAllOf(Dialog::serverChoice,0.015f,GUIElements::TAnchor::RelativeToScreen);
 			}
 			else
-				p->anchorConfig.Top().Set(Dialog::serverChoice->components.last(),0.015f,GUIElements::TAnchor::RelativeToScreen);
-			Dialog::serverChoice->components << p;
+				p->anchorConfig.Top().SetLastOf(Dialog::serverChoice,0.015f,GUIElements::TAnchor::RelativeToScreen);
+			Dialog::serverChoice->AddComponent( p );
 		}
 
 		//count_t openAttempts = 0;
-		static Buffer0<String>	list;
+		static Buffer0<Network::ServerAddress>	list;
 		Network::ServerDiscovery::ListFailedAttempts(list);
 
 		foreach (list,failed)
@@ -325,24 +351,24 @@ void	SaveHosts()
 
 			PPanel pb(new Panel());
 			//pb->autoHeight = true;
-			p->components << pb;
+			p->AddComponent( pb );
 			pb->anchorConfig.Top().Set(0.f);
 			pb->anchorConfig.Bottom().Set(0.f);
 			pb->anchorConfig.Left().Set(0.f);
 			
 			
 
-			PLabel label = MakeTabLabel("Still trying to query '"+*failed+"'...",0.7f);
+			PLabel label = MakeTabLabel("Still trying to query '"+failed->ToString()+"'...",0.7f);
 //			label->anchorConfig.Left().Set(0.1f,false);
 			label->SetColor(1,0.75f,0.75f,0.9f);
 			label->anchorConfig.Top().Set(0.01f,GUIElements::TAnchor::RelativeToScreen);
 			label->anchorConfig.Right().Set(0.01f,GUIElements::TAnchor::RelativeToScreen);
-			pb->components << label;
-			String url = *failed;
+			pb->AddComponent( label );
+			Network::ServerAddress url = *failed;
 			PButton forget(new Button("Forget this host",
 			[url]()
 			{
-				Dialog::Confirm("'"+url+"' will be removed from the list of actively checked hosts. Please confirm.",
+				Dialog::Confirm("'"+url.ToString()+"' will be removed from the list of actively checked hosts. Please confirm.",
 				[url]()
 				{
 					if (Network::ServerDiscovery::TryRemoveHost(url))
@@ -364,12 +390,12 @@ void	SaveHosts()
 			forget->anchorConfig.Top().Set(0.f);
 			forget->anchorConfig.Right().Set(0.f);
 
-			p->components << forget;
+			p->AddComponent( forget );
 
 			pb->anchorConfig.Right().Set(forget,10,GUIElements::TAnchor::AbsolutePixels);
 
 
-			Dialog::serverChoice->components << p;
+			Dialog::serverChoice->AddComponent( p );
 		}
 
 
@@ -381,30 +407,86 @@ void	SaveHosts()
 			PLabel label = MakeTabLabel(" No Servers Found",0.7f);
 			label->anchorConfig.Left().Set(0.1f,GUIElements::TAnchor::RelativeToScreen);
 			label->SetColor(1,1,1,0.7f);
-			p->components << label;
+			p->AddComponent( label );
 			p->autoHeight = true;
 			p->autoHeightSpacing *= 4.f;
 
-			Dialog::serverChoice->components << p;
+			Dialog::serverChoice->AddComponent( p );
 		};
 
 
+		PButton addHostButton;
 		{
 			PButton b(new Button("Add new host...",[]()
 			{
 				Dialog::Query("Enter a new host address to attempt connection to.","",allowedHostChars,CheckHostName,
 				[](const String&url)
 				{
-					if (Network::ServerDiscovery::RegisterNewHost(url,false,false))
-						SaveHosts();
+					try
+					{
+						if (Network::ServerDiscovery::RegisterNewHost(Network::ServerAddress(url),false,false))
+							SaveHosts();
+					}
+					catch (const std::exception&ex)
+					{
+						Dialog::ShowMessage(ex.what());
+					}
 				});
 			
-			}));
+			},
+			[]()->bool {return !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected();}
+			));
 			b->anchorConfig.Top().SetLastOf(Dialog::serverChoice,0.025f,GUIElements::TAnchor::RelativeToScreen);
 			b->anchorConfig.Left().Set(0.f);
 			b->LockIdealWidth();
 
-			Dialog::serverChoice->components << b;
+			Dialog::serverChoice->AddComponent( b );
+			
+			addHostButton = b;
+		}
+		
+
+		{
+			PButton start(new Button("Start local server"));
+			PButton stop(new Button("Stop local server"));
+			bool running = ServerProcess::IsRunning();
+			stop->SetEnabled(running);
+			start->SetEnabled(!running);
+			WButton wstart = start;
+			WButton wstop = stop;
+			start->SetOnPress([wstart,wstop]()
+			{
+				ServerProcess::Begin(true);
+				PButton b = wstart.lock();
+				if (b)
+					b->SetEnabled(false);
+				b = wstop.lock();
+				if (b)
+					b->SetEnabled(true);
+			});
+			stop->SetOnPress([wstart,wstop]()
+			{
+				ServerProcess::End();
+				PButton b = wstart.lock();
+				if (b)
+					b->SetEnabled(true);
+				b = wstop.lock();
+				if (b)
+					b->SetEnabled(false);
+			});
+			start->SetCheck(
+			[]()->bool {return !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected() && !ServerProcess::IsRunning();}
+			);
+			stop->SetCheck(
+			[]()->bool {return !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected() && ServerProcess::IsRunning();}
+			);
+			start->anchorConfig.Top() = addHostButton->anchorConfig.Top();
+			stop->anchorConfig.Top() = addHostButton->anchorConfig.Top();
+			start->anchorConfig.Left().Set(addHostButton,0.02f);
+			stop->anchorConfig.Left().Set(start,0.02f);
+
+			Dialog::serverChoice->AddComponent(start);
+			Dialog::serverChoice->AddComponent(stop);
 		}
 		
 

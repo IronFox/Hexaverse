@@ -57,10 +57,11 @@ namespace Objects
 			, public Hibernating
 		#endif
 	{
+		typedef WorldEntity	Super;
 	protected:
 		void		HandleMotion(MobilePlacementResult&rs, bool signalEvent, const Grid::LCellIdI&oldLocation, float timeCost);
 	public:
-		typedef CursorMode::mode_t	mode_t;
+		typedef CursorMode	mode_t;
 
 		struct TaskData
 		{
@@ -71,7 +72,7 @@ namespace Objects
 				Mode,
 				Job,
 			}						type;
-			CursorMode::mode_t		mode;
+			CursorMode		mode;
 		
 			#ifdef HAS_WINDOW
 				DX11::InstructionBlock32			visualization;
@@ -212,11 +213,18 @@ namespace Objects
 		#endif
 		Queue<Task,Swap>		myTasks;
 
-		WHangarStructure		storedIn;
+		WHangar					storedIn;
 
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			ResourceVector		currentStorage;
 		#endif
+
+		/**
+		Maximum amount of construction action a vehicle can have left in one round.
+		A single job consumes power-of-two values, usually the entire 128 at once.
+
+		*/
+		static const BYTE		MaxConstructionActionLeft = 128;
 
 
 		#ifndef CLIENT
@@ -250,11 +258,10 @@ namespace Objects
 			void				EraseFirstTask();
 
 			PVehicleJob			completeOnMove;
-			bool				hasTriedPlottingOnMoveAutoMotion=false;
-			bool				jobStarted=false;
+			BYTE				numTriedPlottingOnMoveAutoMotion=0;
+			bool				jobStarted=false; //!< Tracks whether the currently front-most job has been started
 			bool				hasMoved=false;
-			float				timeAt=0.f;		//!< Time (in seconds) into the motion phase to calculate event times
-			bool				hasConstructedThisRound=false;
+			BYTE				constructionActionLeft=MaxConstructionActionLeft;
 		#else
 		#endif
 
@@ -267,7 +274,7 @@ namespace Objects
 
 		UINT32					constructionRoundCounter=0;	//!< Number of rounds that the entity has been busy building at its current location
 
-		/**/					MobileEntity(const OwnerParameter&owner, Component::Turret*turret, const Grid::LCellIdI&location) : WorldEntity(owner,location), TurretBase(turret)
+		/**/					MobileEntity(const OwnerParameter&owner, Component::Turret*turret, const Grid::LCellIdI&location) : Super(owner,location), TurretBase(turret)
 								#ifdef CLIENT
 									,preAnimationLocation(location)
 								#endif
@@ -296,7 +303,7 @@ namespace Objects
 		#endif
 
 
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			/**
 			Calculates the maximum storage vector based on the local components
 			*/
@@ -305,8 +312,18 @@ namespace Objects
 
 
 
+
 		Grid::LCellIdI			GetLastPointOfOrigin() const;
 		Grid::LCellIdI			GetPrevPointOfOrigin() const;
+		/**
+		Checks whether or not the local entity has any constructing jobs queued for the specified location
+		*/
+		bool					ConstructingHere(const Grid::LCellIdI&loc) const;
+		/**
+		Checks whether or not any of the queued tasks involves moving away from the current location.
+		This does not include any automatic movements performed at the end of a construction job
+		*/
+		bool					HasMotionTasks() const;
 
 		#ifdef CLIENT
 			void				Relocate(const Grid::LCellIdI&newLocation, bool updateSystem);
@@ -322,39 +339,38 @@ namespace Objects
 										const PVehicleJob&job, const Grid::LCellIdI*focus);
 			void				RegisterNewFrontJob(
 										const String&localizableShapeIdentifier,
-										const PVehicleJob&job, const Grid::LCellIdI*focus);
+										const PVehicleJob&job, const PVehicleJob&parent, const Grid::LCellIdI*focus);
 
 
 			bool				DropLastTask();
 
 			void				BeginMotionPhase(float timeOffset)
 			{
-				timeAt = std::max(timeAt, timeOffset);	//timeAt is usually 0, but may be bigger if the vehicle fell as a result of an explosion. in that case it might be further along the timeline
+				motionTime = std::max(motionTime, timeOffset);	//timeAt is usually 0, but may be bigger if the vehicle fell as a result of an explosion. in that case it might be further along the timeline
 				if (attackActionLeft < 1.f)
-					RegisterChange(ActionChanged,timeAt);
+					RegisterChange(ActionChanged,motionTime);
 				attackActionLeft = 1.f;
 
 				hasMoved = false;
-				hasTriedPlottingOnMoveAutoMotion = false;
+				numTriedPlottingOnMoveAutoMotion = 0;
 				if (MotionIgnoresAttack())
 				{
 					if (movementActionLeft < 1.f)
-						RegisterChange(ActionChanged,timeAt);
+						RegisterChange(ActionChanged,motionTime);
 					movementActionLeft = 1.f;
 				}
 			}
 			void				BeginAttackPhase()	//executed before BeginMotionPhase this round
 			{
-				hasConstructedThisRound = false;
-				timeAt = 0;
+				constructionActionLeft=MaxConstructionActionLeft;
 				if (movementActionLeft < 1.f)
-					RegisterChange(ActionChanged,timeAt);
+					RegisterChange(ActionChanged,motionTime);
 				movementActionLeft = 1.f;
 
 				if (AttackIgnoresMotion())
 				{
 					if (attackActionLeft < 1.f)
-						RegisterChange(ActionChanged,timeAt);
+						RegisterChange(ActionChanged,motionTime);
 					attackActionLeft = 1.f;
 
 				}
@@ -370,23 +386,27 @@ namespace Objects
 			*/
 			bool				ClearAllTasks(bool isReaction, const TCodeLocation&caller)
 			{
+				LogEvent(EventSignificance::Debug,this,"ClearAllTasks("+String(isReaction)+", "+String(caller.ToString())+")");
 				if (TasksAreLocked())
 				{
 					if (flushTasksOnUnlock)
 						return false;
-					LogEvent(EventType::Debug,this,"Issued task clearing: "+String(caller.ToString()));
+					motionTime += timeEpsilon;
 					flushTasksOnUnlock = true;
+					LogEvent(EventSignificance::Debug,this," ...set to clear on unlock");
 					return true;
 				}
 				
 				if (myTasks.IsNotEmpty() || completeOnMove)
 				{
+					motionTime += timeEpsilon;
 					jobStarted = false;
 					if (!isReaction)
 						completeOnMove.reset();
-					RegisterChange(TasksChanged,timeAt);
+					RegisterChange(TasksChanged,motionTime);
 					//tasksChanged = true;
 					myTasks.Clear();
+					LogEvent(EventSignificance::Debug,this," ...cleared");
 					return true;
 				}
 				return false;
@@ -405,7 +425,7 @@ namespace Objects
 				movementActionLeft = 1.f;
 				attackActionLeft = 0.f;
 				hasMoved = true;
-				hasConstructedThisRound = false;
+				constructionActionLeft=MaxConstructionActionLeft;
 				RegisterChange(ActionChanged,0);
 			}
 
@@ -417,33 +437,49 @@ namespace Objects
 			bool				CompleteOnMove(const Grid::LCellIdI&referenceLocation);
 
 
-			bool				PerformNonAttack();
+			enum class TaskResult
+			{
+				AllDoneForThisRound,
+				FinishedCanDoMore,
+				TryingSomething,
+//				TerminalFailureEntityDestroyed,
+			};
+
+			TaskResult			PerformNonAttack();
 		protected:
 			//void				ProcessVisibilityOf(const PWorldEntity&e, float&t);
 			//bool				ProcessVisibilityOfS(const PWorldEntity&e, float&t);
 		private:
-			bool				HandleNormalTask();
+			TaskResult			HandleNormalTask();
+			TaskResult			AutoMoveComplete();
+
 		public:
 
 		#endif
 
-		UINT32					GetConstructionRounds(int jobCosts) const
+		UINT32					GetOperationRounds(int jobCosts, Component::operation_t op) const
 		{
-			int speed = GetConstructionSpeed();
+			if (!jobCosts)
+				return 0;
+			jobCosts = abs(jobCosts);
+			int speed = GetOperationSpeed(op);
+			if (!speed)
+				return 0xFFFFFFFF;
 			int rs = jobCosts / speed;
 			if (jobCosts % speed)
 				rs ++;
 			return rs;
 		}
-
 		Grid::LCellIdI			GetConstructionLocation() const {return GetConstructionLocation(location);}
 		float					GetMovementInitiative()const	{return GetBaseMovementInitiative() * movementActionLeft;}
 		bool					AttackIgnoresMotion() const {return turret->ignoresVehicleMotion;}
 		bool					AttackIsStationary() const {return turret->requiresStationaryVehicle;}
 		float					GetAttackExplosionRadius() const {return turret->explosionRadius;}
-		bool					CanRepair() const {return turret->canRepair;}
+		bool					CanRepair() const {return turret->CanRepair();}
 		bool					CanAttack() const {return turret->CanAttack();}
+		virtual BYTE			GetConstructionAcceleration(Component::operation_t op) const {return 0;}
 
+		int						GetCurrentMineralConsumption() const;
 
 		/**
 		Updates @a system and @a invert based on @a location
@@ -455,7 +491,7 @@ namespace Objects
 		Retrieves the amount of minerals that can be converted into structure by the local entity
 		@return Amount of minerals that can be converted per round by the local entity. 0 for entities that cannot construct
 		*/
-		virtual int				GetConstructionSpeed() const=0;
+		virtual int				GetOperationSpeed(Component::operation_t op) const {return turret->operationSpeed[op];}
 		virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return focus;}
 		virtual bool			MotionIgnoresAttack() const=0;
 		virtual int				GetMovementStepsPerRound() const =0;
@@ -485,27 +521,32 @@ namespace Objects
 		#ifndef CLIENT
 			virtual void		Attack(float&currentTime)	override;
 		#endif
+		virtual	bool			HasAmmoForShot() override;
 
 
 		//WorldEntity overrides:
-		virtual bool			IsActive() const override {return !IsHibernating();}
+		//virtual bool			IsActive() const override {return !IsHibernating() && Super::IsActive();}
 		virtual bool			IsMobile() const override {return true;}
 		#ifndef NO_HIBERNATION
 			virtual const Hibernating*ToHibernating() const override {return this;}
 		#endif
 		virtual float			GetMaxScanningRange() const override	{return turret->scanningRange;};	//returns the effective scanning range of the local entity
 
+		#ifndef CLIENT
+			virtual void		OnDestroy(RemovalType, float&atTime) override;	
+		#endif
 
 	protected:
-		inline void				OffsetTime(float t)
-		{
-			#ifndef CLIENT
-				timeAt = std::max(timeAt,t);
-			#endif
-		}
 	};
 
 
+
+	inline PMobileEntity		ToMobileEntity(const PWorldEntity&e)
+	{
+		if (!e || !e->IsMobile())
+			return PMobileEntity();
+		return To<MobileEntity>::Cast(e);
+	}
 }
 
 

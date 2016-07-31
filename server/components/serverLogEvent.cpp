@@ -2,17 +2,24 @@
 #include "serverLogEvent.h"
 
 #include "networkChannels.h"
+#include "remoteControl.h"
 
 namespace Logging
 {
-	void SendEntityEvent( TCP::Peer*toPeer,EventType type, const Objects::WorldEntity*e, const String&msg)
+	void SendEntityEvent( TCP::Peer*toPeer,const EventClass&type, const Objects::WorldEntity*e, const String&msg)
 	{
-		if (type == EventType::PerformanceMeasurement ||
-			type == EventType::Debug || type == EventType::MinorEntityProcess || !State::server.IsOnline())
+		if (!toPeer && !e && type.significance >= EventSignificance::Uncommon)
+			RemoteControl::RelayEvent(msg);
+
+		if (type.flavor == EventFlavor::ServerPrivate || type.significance < EventSignificance::Uncommon)
+			return;
+
+
+		if (!Network::server.IsOnline())
 			return;
 		if (!toPeer && e)
 		{
-			State::PClient*cl = State::playerMap.QueryPointer(e->owner);
+			Network::PClient*cl = Network::playerMap.QueryPointer(e->owner);
 			if (cl)
 				toPeer = (*cl)->peer.lock().get();
 			else
@@ -26,26 +33,31 @@ namespace Logging
 			out.message = e->GetNiceName()+": "+msg;
 		else
 			out.message = msg;
-		out.type = (BYTE)type;
+		out.significance = (BYTE)type.significance;
+		out.flavor = (BYTE)type.flavor;
 
 		if (toPeer)
 		{
 			out.message = "[private] "+out.message;
+			out.message.Truncate(out.message.MaxSize);
 			Channels::controlMessage.SendTo(*toPeer,out);
 		}
 		else
-			Channels::controlMessage.SendTo(State::server,out);
+		{
+			out.message.Truncate(out.message.MaxSize);
+			Channels::controlMessage.SendTo(Network::server,out,2);
+		}
 	}
 }
 
-void LogEvent(EventType t, TCP::Peer&peer, const String&msg)
+void LogEvent(const EventClass&t, TCP::Peer&peer, const String&msg)
 {
 	Logging::SendEntityEvent(&peer,t,nullptr,msg);
 
 	Logging::WriteEvent(t,msg,&peer,nullptr);
 }
 
-void LogEvent(EventType t, TCP::Peer&peer, const Objects::PWorldEntity&e, const String&msg)
+void LogEvent(const EventClass&t, TCP::Peer&peer, const Objects::PWorldEntity&e, const String&msg)
 {
 	Logging::SendEntityEvent(&peer,t,e.get(),msg);
 	Logging::WriteEvent(t,msg,&peer,e.get());

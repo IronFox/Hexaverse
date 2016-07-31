@@ -1,6 +1,8 @@
 #ifndef renderer_DirectX11H
 #define renderer_DirectX11H
 
+#ifdef HAS_WINDOW
+
 #pragma warning(disable:4005)	//macro redefinition
 
 
@@ -184,7 +186,15 @@ namespace Engine
 
 			struct SamplerBinding : Binding
 			{
+				enum clampFlag_t
+				{
+					ClampU=0x1,
+					ClampV=0x2,
+					ClampW=0x4,
+
+				};
 				/**/					SamplerBinding(bool clamp, Engine::TextureFilter, UINT maxAnisotropy, const String&name);
+				/**/					SamplerBinding(Engine::TextureFilter, UINT32 clampFlags, UINT maxAnisotropy, const String&name);
 			};
 
 			struct ResolvedBinding
@@ -1146,6 +1156,6 @@ namespace Engine
 
 
 
-
+#endif
 
 #endif

@@ -41,11 +41,11 @@
 		Dark flat discs indicate that there are no resources here. If nothing is rendered atop a cell then its resources are yet unknown.
 		Resources are identical independent of height, and serve different purposes. %FUEL% is consumed by generators to produce %ENERGY%, %MINERALS% is converted into structures, vehicles, and satellites, and %URANIUM% is required for EMP and Ragnarök attacks.
 	</message>
-	<message name='Show Ranges' image='Show Ranges.png'>
+	<message name='Show Ranges' image='Show Ranges.jpg'>
 		Depending on the selected turret type, %PRODUCT_NAME% uses spherical or paraboloid trajectories to compute the maximum attack range.
-		This range (including explosion radius) is visualized as red spheres/umbrellas atop selected offensive vehicles and towers.
+		This range is visualized as red spheres/umbrellas atop selected offensive vehicles and towers.
 		Alternatively, the commands 'Show Ranges' and 'Show Hostile Ranges' can be used to visualize the attack ranges of all vehicles and structures, friendly and/or hostile.
-		Note that only KNOWN attack ranges are shown. Hostile entities outside your scanning range can not be shown as the client does not know they exist.
+		Note that only KNOWN attack ranges are shown. Unknown hostile entities outside your scanning range can not be shown as the client does not know they exist.
 	</message>
 	<message name='Clip Terrain' image='Clip Terrain.png'>
 		Clipping the terrain allows to view tunnels and caves beneath the surface by visually removing the ground above.
@@ -64,7 +64,7 @@
 		Terraformers can construct every building type in the game, assuming they have sufficient supply of %MINERALS%(minerals).
 		They can also dig tunnels, build roads, or walls. This makes them The most versatile and valuable vehicle in %PRODUCT_NAME%.
 		Do not risk them lightly.
-		If they have insufficient supply of %MINERALS%, the active command will be halted until enough resources are again available.
+		If they have insufficient supply of %MINERALS%, the active command may be halted until enough resources are again available, or aborted, depending on circumstances.
 		<!--If they run out of %MINERALS%, they can restock from every owned structure, connector, or even vehicle in the vicinity.-->
 	</message>
 	<message name='Surveyor' image='surveyor.png'>
@@ -133,9 +133,9 @@
 		When constructing vehicle plants, make sure that there is enough space around it. Important: Some vehicles cannot be deployed on water, others can only be deployed on water.
 		You can set a gathering point by first selection a plant, and then pressing the right mouse button anywhere. New vehicles will attempt to reach this point upon completion.
 	</message>
-	<message name='Attack' image='attack.png'>
-		Attacking a destination can be done by right-clicking at a hostile unit or explicitly by using the 'Attack' button. When doing so, a red shape indicates the reachable area. Note that this area is smaller than the geometric attack umbrella because it does not include the explosion radius.
-		Also note that some locations colored in red may not actually be reachable, if there is no unobstructed trajectory to that destination. In this case intermediate explosions may occur.
+	<message name='Attack' image='attack.jpg'>
+		Attacking a destination can be done by right-clicking at a hostile unit or explicitly by using the 'Attack' button. When doing so, a red shape indicates the reachable area.
+		Note that some locations colored in red may not actually be reachable, if there is no unobstructed trajectory to that destination. In this case intermediate explosions may occur.
 	</message>
 	<message name='Uplink Traffic' image='uplinkTraffic.jpg'>
 		All active units generate control traffic to the governing entity (that's you).

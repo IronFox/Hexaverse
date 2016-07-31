@@ -4,8 +4,7 @@
 #include "../../client/version.h"
 #include "serverLogEvent.h"
 
-
-extern TUniqueID	serverID;
+#include "state/networkState.h"
 
 
 namespace UDPBroadCast
@@ -19,7 +18,6 @@ namespace UDPBroadCast
 
 	Protocol::THostBroadcastPacket	packet;
 
-	bool			enabled = false;
 
 
 	void UpdateOutAdapters(BasicBuffer<sockaddr_in>&out)
@@ -92,6 +90,21 @@ namespace UDPBroadCast
 	}
 
 
+	void		Create(UINT16 basePort, const TUniqueID&serverID)
+	{
+	
+		packet.hostID = serverID;
+		packet.serverBasePort = basePort;
+		{
+			const char var[] = SERVER_NAME;
+			const size_t len = sizeof(var);
+			ASSERT_LESS__(len,sizeof(packet.version));
+
+			memcpy(packet.version,var,len);
+		}
+
+	}
+
 
 	bool		Start()
 	{
@@ -111,14 +124,6 @@ namespace UDPBroadCast
 			}
 		#endif
 
-		packet.hostID = serverID;
-		{
-			const char var[] = SERVER_NAME;
-			const size_t len = sizeof(var);
-			ASSERT_LESS__(len,sizeof(packet.version));
-
-			memcpy(packet.version,var,len);
-		}
 
 		/*
 		note 1:
@@ -133,17 +138,18 @@ namespace UDPBroadCast
 		SOCKADDR_IN me;
 		memset(&me,0,sizeof(me));
 		me.sin_family=AF_INET;
-		me.sin_port=htons(BROADCAST_FROM_PORT);
+		UINT16 port = packet.serverBasePort + PortOffset::BroadcastFrom;
+		me.sin_port=htons(packet.serverBasePort);
 		me.sin_addr.s_addr=ADDR_ANY;
 		int rc=::bind(broadcastSocket,(SOCKADDR*)&me,sizeof(SOCKADDR_IN));
 		if (rc != 0)
 		{
 			closesocket(broadcastSocket);
 			broadcastSocket = INVALID_SOCKET;
-			enabled = false;
-			LogEvent(EventType::SessionRelated,"Warning: Unable to bind UDP broadcast socket. Chances are, a server is already running.");
+			LogEvent(EventClass::Preset::networkError,"Warning: Unable to bind UDP broadcast socket. Chances are, a server is already running.");
 			return false;
 		}
+		LogEvent(EventClass::Preset::network,"UDP broadcast online, broadcasting from port "+String(port));
 		int so_broadcast = TRUE;
 		rc = setsockopt(broadcastSocket,SOL_SOCKET,SO_BROADCAST,(const char*)&so_broadcast,sizeof so_broadcast);
 		ASSERT_EQUAL__(rc,0);
@@ -151,14 +157,13 @@ namespace UDPBroadCast
 		UpdateOutAdapters(everyone);
 		lastBroadcast = lastAdapterQuery = timer.Now();
 
-		enabled = true;
 		return true;
 	}
 
 
 	void	Terminate()
 	{
-		if (enabled)
+		if (broadcastSocket != INVALID_SOCKET)
 		{
 			closesocket(broadcastSocket);
 			broadcastSocket = INVALID_SOCKET;
@@ -166,9 +171,17 @@ namespace UDPBroadCast
 	}
 
 
+	bool		IsStarted()
+	{
+		return broadcastSocket != INVALID_SOCKET;
+	}
+
+
 	void	Update()
 	{
 
+		if (broadcastSocket == INVALID_SOCKET)
+			return;
 		if (timer.GetSecondsSince( lastAdapterQuery) > 5)
 		{
 			UpdateOutAdapters(everyone);
@@ -178,7 +191,7 @@ namespace UDPBroadCast
 		{
 			//strcpy(packet.gameName,"Terra Nova");
 			//packet.numClients = (UINT16)State::clients.Count();
-			//packet.numPlayers = (UINT16)State::activePlayers.Count();
+			//packet.numPlayers = (UINT16)State::activePlayersAndSpectators.Count();
 			//packet.roundNumber = (UINT32)State::roundNumber;
 			//packet.serverMode = (BYTE)State::mode;
 			foreach (everyone,someone)

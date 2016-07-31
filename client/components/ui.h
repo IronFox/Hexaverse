@@ -9,10 +9,10 @@ namespace UI
 	{
 		#ifdef HAS_WINDOW
 			void		RefreshContacts();
-			void		RefreshTutorials();
+			//void		RefreshTutorials();
 		#else
 			inline void	RefreshContacts()	{}
-			inline void	RefreshTutorials()	{}
+			//inline void	RefreshTutorials()	{}
 		#endif
 	}
 }
@@ -30,6 +30,7 @@ namespace UI
 	{
 		namespace DX11 = Engine::DX11;
 
+		extern bool showControlsAndContacts /*=true*/;
 
 		class IconItem
 		{
@@ -128,86 +129,183 @@ namespace UI
 			static const float stepY = (0.5f + 1.f) * CellSize;
 			static const float stepX = 0.86602540378443864676372317075294f * CellSize;
 
-			extern index_t						hostileOffset,
-												friendlyOffset;
-			//static const count_t ContactListWidth = 10;
 			extern count_t					currentContactListWidth;
-			static const int2 ContactListOffset(5,2);
-			static const int2 FriendlyListOffset(5,1);
+			//static const int2 ContactListOffset(5,2);
+			static const int2 DynamicRowOffset(5,1);
 
 
-			class TutorialCommand : public Objects::IconCommand
+			namespace BottomRightPanel
 			{
-				typedef Objects::IconCommand	Super;
 
-			public:
-				/**/				TutorialCommand() : Super(int2(1,1),"Tutorial",
-										TutorialCommand::OnExecute,
-										TutorialCommand::IsEnabled,Objects::CommonCmd::AlwaysFalse<Objects::PWorldEntity>,
-										Objects::NoCosts)
-										{}
-
-
-				static bool				IsEnabled(const Objects::PWorldEntity&, bool)
+				class Icon : public Objects::BaseCommand
 				{
-					return Dialog::HasMoreTutorials() && !Dialog::IsModal();
+					typedef Objects::BaseCommand	Super;
+				public:
+					int2					gridCoords;
 
+					/**/					Icon(const int2&coords, const String&name) : Super(name)
+											{
+												LoadIcon();
+												gridCoords = coords;
+											}
+				};
 
-				}
-
-				static void				OnExecute(const Objects::PWorldEntity&)
+				class TutorialCommand : public Icon
 				{
-					Dialog::ShowNextTutorial();
-				}
+					typedef Icon			Super;
+				public:
+					/**/					TutorialCommand() : Super(int2(1,1),"Tutorial") {}
 
-				virtual void			CompileLabel(const Objects::PWorldEntity&,Label&outResult) override
-				{
-					outResult << (Dialog::HasMoreTutorials() ? "New Tutorial Messages" : "No Messages");
-				}
-
-
-			};
-
-			template <bool Friendly>
-				inline void				ArrowOnExecute(bool left, const Objects::PWorldEntity&)
-				{
-					index_t&offset = Friendly?friendlyOffset:hostileOffset;
-					if (left)
+					virtual void			Refresh(bool)
 					{
-						if (offset > currentContactListWidth)
-							offset -= currentContactListWidth;
-						else
-							offset = 0;
+						state = Dialog::HasMoreTutorials() && !Dialog::IsModal() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 					}
-					else
-						offset += currentContactListWidth;
-					RefreshContacts();
-				}
 
-			class ArrowCommand : public Objects::IconCommand
-			{
-			public:
-				typedef Objects::IconCommand	Super;
+					virtual void			Execute() override
+					{
+						Dialog::ShowNextTutorial();
+					}
 
-				//int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p, GetCosts c
-				/**/				ArrowCommand(bool left, bool friendly=false) : Super(int2(), left ? "Left":"Right",
-										std::bind(
-											(friendly ? (&ArrowOnExecute<true>) : (&ArrowOnExecute<false>))
-											,left,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<Objects::PWorldEntity>,Objects::CommonCmd::AlwaysFalse<Objects::PWorldEntity>,
-										Objects::NoCosts)
-					{}
+					virtual void			CompileLabel(Label&outResult) override
+					{
+						outResult << (Dialog::HasMoreTutorials() ? "New Tutorial Messages" : "No Messages");
+					}
+				};
 
-				virtual void			CompileLabel(const Objects::PWorldEntity&,Label&outResult) override
+				class UndoCommand : public Icon
 				{
-					outResult << "Scroll "+name;
-				}
-			};
+					typedef Icon			Super;
+				public:
+					/**/					UndoCommand() : Super(int2(5,1),"Undo") {}
+					/**/					UndoCommand(const int2&coords, const String&name) : Super(coords,name) {}
+
+					virtual void			Refresh(bool controlsEnabled) override
+					{
+						state = BaseCommand::Flags::None;
+						if (Dialog::IsModal() || !controlsEnabled || !Objects::selectedEntity)
+							return;
+						if (Objects::selectedMobileEntity)
+						{
+							if (Objects::selectedMobileEntity->myTasks.IsEmpty() && Objects::activeCursorMode == Objects::CursorMode::Idle)
+								return;
+						}
+						else
+							if (Objects::selectedEntity->IsTower())
+							{
+								if (To<Objects::Tower>::Cast( Objects::selectedEntity )->attackQueue.IsEmpty()  && Objects::activeCursorMode == Objects::CursorMode::Idle)
+									return;
+							}
+							else
+								return;
+
+						state |= BaseCommand::Flags::IsEnabled;
+					}
+
+					virtual void			Execute() override
+					{
+						Objects::VehicleCmd::UndoOperation();
+					}
+
+					virtual void			CompileLabel(Label&outResult) override
+					{
+						String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
+						outResult << "Abort current operation or undo last operation of "+name;
+					}
+				};
+
+				class AbortCommand : public UndoCommand
+				{
+					typedef UndoCommand		Super;
+				public:
+					/**/					AbortCommand() : Super(int2(4,1),"Abort") {}
+
+					virtual void			Execute() override
+					{
+						Objects::VehicleCmd::AbortOperation();
+					}
+
+					virtual void			CompileLabel(Label&outResult) override
+					{
+						String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
+						outResult << "Abort any currently active operation and clear all scheduled operations of "+name;
+					}
+				};
+
+				class DemolishCommand : public Icon
+				{
+					typedef Icon			Super;
+				public:
+					/**/					DemolishCommand() : Super(int2(2,1),"Demolish") {}
+					/**/					DemolishCommand(const int2&coords, const String&name) : Super(coords,name) {}
+
+					virtual void			Refresh(bool controlsEnabled) override
+					{
+						state = BaseCommand::Flags::None;
+						if (Dialog::IsModal() || !controlsEnabled || !Objects::selectedEntity || Objects::selectedEntity->IsIndestructible())
+							return;
+
+						state |= BaseCommand::Flags::IsEnabled;
+					}
+
+					virtual void			Execute() override
+					{
+						Objects::CommonCmd::DemolishSelected();
+					}
+
+					virtual void			CompileLabel(Label&outResult) override
+					{
+						String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
+						outResult << "Permanently destroy "+name;
+					}
+				};
+
+				class SleepCommand : public Icon
+				{
+					typedef Icon			Super;
+				public:
+					/**/					SleepCommand() : Super(int2(3,1),"Sleep") {}
+					/**/					SleepCommand(const int2&coords, const String&name) : Super(coords,name) {}
+
+					virtual void			Refresh(bool controlsEnabled) override
+					{
+						state = BaseCommand::Flags::None;
+						if (Dialog::IsModal() || !controlsEnabled || !Objects::selectedEntity)
+							return;
+
+						state |= BaseCommand::Flags::IsEnabled;
+
+						if (Objects::selectedEntity->IsSleeping())
+							state |= BaseCommand::Flags::IsPermaActive;
+					}
+
+					virtual void			Execute() override
+					{
+						Objects::VehicleCmd::Sleep();
+					}
+
+					virtual void			CompileLabel(Label&outResult) override
+					{
+						String name = Objects::selectedEntity ? Objects::selectedEntity->GetNiceName() : "selected unit";
+						if (Objects::selectedEntity && Objects::selectedEntity->IsSleeping())
+							outResult << "Wake "+name;
+						else
+							outResult << "Put "+name+" to sleep";
+					}
+				};
+
+
+
+				/**
+				Updates state and presence of all buttons of this panel
+				*/
+				void		Refresh();
+			}
+
 
 			struct Group
 			{
 				String		name;
-				Buffer0<Objects::PWorldEntity>	entries;
+				Buffer0<Objects::WWorldEntity>	entries;
 				index_t		currentSelection = InvalidIndex;
 				float		significance = 0;
 				
@@ -219,9 +317,11 @@ namespace UI
 
 				Objects::PWorldEntity	GetPrototype() const
 				{
-					if (entries.first()->IsStructure())
-						return Objects::GetPrototypeByName(entries.first()->GetCTypeName());
-					return entries.first();	//good enough
+					Objects::PWorldEntity e = entries.first().lock();
+					ASSERT__(e);
+					if (e->IsStructure())
+						return Objects::GetPrototypeByName(e->GetCTypeName());
+					return e;	//good enough
 
 				}
 
@@ -241,83 +341,52 @@ namespace UI
 			typedef std::shared_ptr<Group>				PGroup;
 
 
-			class VehicleFocusCommand : public Objects::VehicleCommand
+			class EntityFocusCommand : public Objects::EntityCommand
 			{
 			public:
-				typedef	Objects::VehicleCommand	Super;
-				Objects::PVehicle		target;
+				typedef	Objects::EntityCommand	Super;
 
 				//int2 coords, const String&name, const VehicleBase*&base, const Turret*&turret,   OnExecute f, CheckEnabled a, IsPermaActive p
-				/**/				VehicleFocusCommand()	{}
-				/**/				VehicleFocusCommand(const Objects::PVehicle&target) 
-									: Super(int2(), target->GetNiceName(),target->base,
-										target->turret,
-										std::bind(&VehicleFocusCommand::OnExecute,target,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
-										Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>,
-										false), 
-										target(target)
+				/**/				EntityFocusCommand()	{}
+				/**/				EntityFocusCommand(const Objects::PWorldEntity&target) 
+									: Super(target->GetNiceName(),target,[](){FATAL__("WTF");},
+										[](bool) {return Objects::BaseCommand::Flags::IsEnabled;})
 				{}
 
-				static void				OnExecute(Objects::PVehicle const&target, Objects::PWorldEntity const&)	//must be static because it may move before being executed
+				void				Execute()	override
 				{
-					//Objects::PVehicle target = To<Objects::Vehicle>::Cast(t);
-					Camera::TranslateTo(target->system.w.xyz);
+					Objects::PWorldEntity target = reference.lock();
+					if (target)
+						Camera::TranslateTo(target->system.w.xyz);
 				}
 
 
-				virtual void	CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
+				virtual void	CompileLabel(Label&outResult) override;
 			};
 
-			class SatelliteFocusCommand : public Objects::SatelliteCommand
+		
+			class AnimationEventFocusCommand : public Objects::BaseCommand
 			{
 			public:
-				typedef	Objects::SatelliteCommand	Super;
-				Objects::PSatellite		target;
-
-				//int2 coords, const String&name, const VehicleBase*&base, const Turret*&turret,   OnExecute f, CheckEnabled a, IsPermaActive p
-				/**/				SatelliteFocusCommand()	{}
-				/**/				SatelliteFocusCommand(const Objects::PSatellite&target) 
-									: Super(int2(), target->GetNiceName(),target,
-										std::bind(&SatelliteFocusCommand::OnExecute,target,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
-										Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>,
-										false), 
-										target(target)
-				{}
-
-				static void				OnExecute(Objects::PSatellite const&target, Objects::PWorldEntity const&)	//must be static because it may move before being executed
-				{
-					//Objects::PVehicle target = To<Objects::Vehicle>::Cast(t);
-					Camera::TranslateTo(target->system.w.xyz);
-				}
-
-
-				virtual void	CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
-			};
-
-			class StructureFocusCommand : public Objects::StructureCommand
-			{
-			public:
-				typedef	Objects::StructureCommand	Super;
+				typedef	Objects::BaseCommand	Super;
+				TVec3<>				focusLocation;
+				float				atTime;
+				bool				isFriendly;
+				TUniqueID			focusTarget;
+				Objects::Renderer::SmokeTrailIndex	smokeTrailIndex;
+				String				fallbackTargetName;
 			
-				//int2 coords, const String&name, const VehicleBase*&base, const Turret*&turret,   OnExecute f, CheckEnabled a, IsPermaActive p
-				/**/				StructureFocusCommand()	{}
-				/**/				StructureFocusCommand(const Objects::PStructure&target) 
-									: Super(int2(), target->GetNiceName(),target,
-										std::bind(&StructureFocusCommand::OnExecute,target,std::placeholders::_1),
-										Objects::CommonCmd::AlwaysEnabled<const Objects::PWorldEntity&>,
-										Objects::CommonCmd::AlwaysFalse<const Objects::PWorldEntity&>)
-				{}
-
-				static void				OnExecute(Objects::PStructure const&target, Objects::PWorldEntity const&)	//must be static because it may move before being executed
+				/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, float atTime, bool isFriendly)
+									: Super(name),focusLocation(focusLocation),atTime(atTime),isFriendly(isFriendly),focusTarget(focusID)
 				{
-					//Objects::PStructure target = To<Objects::Structure>::Cast(t);
-					Camera::TranslateTo(target->system.w.xyz);
+					LoadIcon(iconName);
 				}
 
+				Objects::PWorldEntity	GetTarget()	const;
 
-				virtual void	CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
+				virtual void	Execute()	override;
+				virtual void	Refresh(bool controlEnabled) override {}
+				virtual void	CompileLabel(Label&outResult) override;
 			};
 
 
@@ -325,39 +394,132 @@ namespace UI
 			static const float4 hostileBackgroundColor(1,0,0,0);
 
 
-			class GroupFocusCommand : public Objects::EntityCommand
+			class GroupFocusCommand : public Objects::BaseCommand
 			{
 			public:
-				typedef Objects::EntityCommand	Super;
+				typedef Objects::BaseCommand	Super;
 				
-				//VehicleFocusCommand	vcommand;
-				//StructureFocusCommand	scommand;
-				PGroup					group;
+				PGroup				group;
 
-				/**/				GroupFocusCommand()
-				{}
-
+				/**/				GroupFocusCommand() {}
 				/**/				GroupFocusCommand(PGroup&group);
+
 				virtual void		RasterizeImage() override;
 
+				virtual void		Refresh(bool)	override {};
 
-				static void			OnExecute(PGroup const&group, Objects::PWorldEntity const&_e);
+				virtual void		Execute()	override;
 
-				virtual void		CompileLabel(const Objects::PWorldEntity&,Label&outResult) override;
+				virtual void		CompileLabel(Label&outResult) override;
 
+				bool				operator<(const GroupFocusCommand&other) const {return group->operator<(*other.group);}
+			};
+
+			class ArrowCommand;
+
+			/**
+			Horizontal row of some commands. Its width is continuously adjusted via HexGrid::currentContactListWidth.
+			All dynamic rows share the same width and are located at the same horizontal coordinates, reaching from the top down.
+			Dynamic rows feature selective right and left arrows, depending on the current scroll position.
+			*/
+			class DynamicRow
+			{
+			private:
+				Buffer0<Objects::PBaseCommand>			lastVisible;
+				std::shared_ptr<ArrowCommand>			leftCommand,rightCommand;
+				index_t									offset=0;
+				TIntRange<index_t>						visibleRange;
+
+				void									RebuildCommands();
+				void									RemoveCommandIcons();
+			public:
+
+				/**
+				Visible commands of this row. Can be freely edited by the client application.
+				Call Refresh() when done to make changes visible.
+				Only elements addressed by @a visibleRange will be shown on screen.
+				*/
+				Buffer0<Objects::PBaseCommand>			commands;
+
+				/**
+				Vertical position of this row with 0 being the top-most, and positive values iterating downwards
+				*/
+				const int								rowIndex;
+
+				/**/									DynamicRow(int rowIndex) : rowIndex(rowIndex)	{}
+				/**
+				Flushes and reallocates gui cells as necessary. Redetects horizontal scrolling constraints and shows arrow buttons as necessary
+				*/
+				void									Refresh();
+				/**
+				Allocates arrow commands. Must be called once at program start or row creation.
+				*/
+				void									Create();
+				/**
+				Object destruction command. Should be called once when the program terminates.
+				*/
+				void									Destroy() {leftCommand.reset(); rightCommand.reset();}
+				/**
+				Attempts to execute a scrolling operation by at most one element. Scrolling may fail.
+				Automatically refreshs the local icon composition.
+				@param left Set true to scroll left, false to scroll right. Only scrolls by one element
+				*/
+				void									Scroll(bool left);
+				/**
+				Removes all visible icons of this row from the GUI, including left and right arrow icons.
+				Call Refresh() to show them again.
+				*/
+				void									RemoveIcons();
 			};
 
 
-			//Buffer0<VehicleFocusCommand>		vehicleCommands;
-			//Buffer0<StructureFocusCommand>		structureCommands;
-			extern Buffer0<GroupFocusCommand>			groupFocusCommands;
-			extern VehicleFocusCommand					selectedVehicleFocus;
-			extern StructureFocusCommand				selectedStructureFocus;
+			/**
+			Horizontal arrow command pointing left or right.
+			Used by DynamicRow
+			*/
+			class ArrowCommand : public Objects::BaseCommand
+			{
+			public:
+				typedef Objects::BaseCommand	Super;
+				const bool						left;
+				DynamicRow *const				row;
+				int2							gridCoords;
 
-			extern std::shared_ptr<ArrowCommand>		leftCommand,rightCommand,
-														friendlyLeftCommand,friendlyRightCommand;
-			extern std::shared_ptr<TutorialCommand>		tutorialCommand;
-			extern Buffer0<Objects::PWorldEntity>		hostileScope;
+				//int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p, GetCosts c
+				/**/				ArrowCommand(bool left, DynamicRow*row) : Super(left ? "Left":"Right"), left(left),row(row)
+									{
+										LoadIcon();
+									}
+				virtual void Execute() override
+				{
+					row->Scroll(left);
+				}
+
+				virtual void Refresh(bool controlEnabled) override {}
+
+				virtual void			CompileLabel(Label&outResult) override
+				{
+					outResult << "Scroll "+name;
+				}
+			};
+
+
+			template <typename T>
+			class CollectionTemplateRow : public DynamicRow
+			{
+				typedef DynamicRow		Super;
+			public:
+				StringTable<Buffer0<T>,Swap>			collection;
+
+				/**/									CollectionTemplateRow(int rowIndex) : Super(rowIndex)	{}
+				void									Clear()	{commands.Clear(); collection.Clear();}
+				void									Destroy() {Clear(); Super::Destroy();}
+			};
+			extern CollectionTemplateRow<Objects::WWorldEntity>	friendlyGroups,hostileGroups;
+			extern DynamicRow							animationTimeLine;
+
+			extern std::shared_ptr<EntityFocusCommand>	selectedFocus;
+
 
 
 		}
@@ -367,48 +529,81 @@ namespace UI
 
 	namespace UI
 	{
+		/**
+		All methods and classes associated with the HUD hexagonal button grid
+		*/
 		namespace HexGrid
 		{
+			/**
+			Single visible hexagonal GUI button.
+			One instance exists per currently visible button.
+			All instances are stored in @a allGuiCells
+			*/
 			class GridCell
 			{
 			public:
-				Objects::BaseCommand*command;
-				//int2		cellCoords;
+				/**
+				Command to draw texture and callback functions from.
+				Used as a unique identifier for this cell.
+				Only at most one cell can exist per command (address)
+				*/
+				Objects::PBaseCommand	command;
+				/**
+				Location of this button on the current viewport (for faster click lookup).
+				Updated by Update()
+				*/
 				Rect<>		projectedRect;
+				/**
+				Configures button grid orientation.
+				Default orientation is left to right, and bottom to top.
+				Set flipX and flipY to alter this grid orientation, thus changing how command->coords are interpreted
+				*/
 				bool		flipY,flipX;
-				enum type_t
-				{
-							EntityCommand,
-							ContactListLeft,
-							ContactListRight,
-							ContactListEntry,
-							OwnedListLeft,
-							OwnedListRight,
-							OwnedListEntry,
-							Tutorial,
-
-				}			type = EntityCommand;
+				int2		gridCoords;
 
 				/**/		GridCell():command(nullptr),flipY(false),flipX(false)	{}
 
+				/**
+				Updates projectedRect
+				*/
 				void		Update(const Engine::Aspect<>&aspect);
+
+				/**
+				Determines the center floating point coordinates of this cell in the range [-1..-1+pixelAspect*2],[-1,+1]
+				*/
 				float2		ToFloatCoords() const;
 
 				static void Radial(float cellIndex, TVec2<>&rs);
+				/**
+				Determines whether the specified viewport coordinates lie inside the local cell button.
+				This calculation takes into account the hexagonal shape of the local button, accelerated by first querying @a projectedRect
+				*/
 				bool		Contains(const TVec2<>&p) const;
 			};
 
-			extern Buffer<GridCell>			guiCells;
 
-
-			void	DeleteAllCellsOfType(GridCell::type_t t);
+			/**
+			Allocates a new or existing cell based on the specified command.
+			Only one cell may be allocated per command. A second call with the same parameter yields the cell returned by the first call.
+			@return Reference to the newly allocated or existing cell. Valid only until the next call to AllocateCell() or FindAndDeleteCell(). Do not persistently store pointers or references to the returned cell
+			*/
+			GridCell&		AllocateCell(const Objects::PBaseCommand&cmd);
+			/**
+			@copydoc AllocateCell()
+			@param[out] isNew Set to true if the specified command was not previously allocated
+			*/
+			GridCell&		AllocateCell(const Objects::PBaseCommand&, bool&isNew);
+			/**
+			Attempts to locate and delete the first cell using the specified command.
+			Fails silently if no such cell exists.
+			*/
+			void			FindAndDeleteCell(const Objects::PBaseCommand&);
 
 
 
 			extern DX11::BaseInstructionBlock	instruction;
 			extern DX11::ObjectBuffer<float4>	center,color;
 			extern Engine::OrthographicAspect<> camera;
-			extern Buffer0<Group>	friendlyGroups,hostileGroups;
 
 
 
@@ -443,25 +638,33 @@ namespace UI
 			*/
 			void						Render();
 
-			extern int2 at;
-			inline void	Next()
-			{
-				at.y ++;
-				if (at.y == 3)
-				{
-					at.y = 1;
-					at.x ++;
-				}
+			/**
+			Command visitor function that adds a given command to the grid.
+			The command shared_ptr is stored for easier removal (via ClearCommands()).
+			Adding the same command multiple times will not produce multiple buttons, but move any existing one.
+			@param location Grid location to place the button at. The coordinates are relative to the bottom left grid edge, and progress to the right/up
+			@param cmd Command to place/memorize. Must not be empty/null
+			*/
+			void		VisitAddCommand(const int2&location,const Objects::PBaseCommand&cmd);
 
-			}
-
-			void		VisitCommand(Objects::BaseCommand&cmd);
-
-
+			/**
+			Removes all visual command buttons, and clears out all local command references
+			*/
+			void		ClearCommands();
 
 			void		RefreshContacts();
-			void		RefreshTutorials();
 			void		Configure(const Objects::PWorldEntity&e);
+		}
+
+
+
+		namespace EventLog
+		{
+			void			Clear();
+			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex);
+			void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName);
+
+
 		}
 
 
@@ -480,6 +683,7 @@ namespace UI
 
 			return HexGrid::HandleClick();
 		}
+
 
 		void	Create();
 
@@ -529,7 +733,7 @@ namespace UI
 
 
 
-
+		void	RefreshButtonState();
 
 		void	ShowSession();
 		void	RefreshSessionView();

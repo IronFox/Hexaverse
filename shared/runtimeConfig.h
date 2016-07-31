@@ -4,11 +4,11 @@
 #include "stringTable.h"
 #include <general/enumeration.h>
 #include <global_string.h>
-
+#include "roundNumber.h"
 
 namespace RuntimeConfig
 {
-	CONSTRUCT_ENUMERATION3(GameGoal, None, ConquerNexus, EMPConquerNexus);
+	CONSTRUCT_ENUMERATION2(GameGoal, None, ConquerNexus);
 	CONSTRUCT_ENUMERATION3(DoomsdayWeapons, Expose, Conceal, Disallow);
 	CONSTRUCT_ENUMERATION7(Phase, 
 							CommandPhase,
@@ -22,10 +22,14 @@ namespace RuntimeConfig
 
 	extern DoomsdayWeapons doomsdayWeapons;
 	extern GameGoal gameGoal;
+	extern bool		empZones, autoNewRound;
 	extern Phase	phase;
 
 	extern bool hibernationSystemEnabled;
-	extern UINT32 roundNumber/*=0*/;
+	extern bool bombsExplodeWhenDestroyed;
+
+	typedef ::RoundNumber	RoundNumber;
+	extern RoundNumber roundNumber;
 	namespace UnitLimits
 	{
 		bool		IsEnabled();
@@ -37,6 +41,10 @@ namespace RuntimeConfig
 		void		Export(Array<std::pair<UINT16,UINT16> >&);
 		void		Import(const Array<std::pair<UINT16,UINT16> >&);
 	}
+
+	#ifndef CLIENT
+		extern bool		loadingPhase;
+	#endif
 
 
 //	PathString	ConfigFile(const String&base);

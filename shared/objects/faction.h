@@ -4,13 +4,13 @@
 #include "entity.h"
 #include "types.h"
 #include "structureCompound.h"
+#include "../roundNumber.h"
 
 namespace Objects
 {
 	//class Faction;
 	//typedef std::shared_ptr<Faction>	PFaction;
 	//typedef std::weak_ptr<Faction>		WFaction;
-
 
 
 	
@@ -31,11 +31,12 @@ namespace Objects
 			Visited				//marker used by AI to remember previously visited area. referenceEntity is either empty of the mobile that was memorized here
 			);
 
-		TUniqueID					referenceEntity = TUniqueID::Empty();	//!< Usage depends on type
+		TUniqueID					referenceEntity = TUniqueID::Empty(),	//!< Usage depends on type
+									referenceEntityOwner = TUniqueID::Empty();
 		ConstName					referencedType[2];
 
 		Type						type;
-		UINT32						createdInRound=0;
+		RoundNumber					createdInRound;
 
 		#ifdef CLIENT
 			UINT32					age = 0;	//age in rounds, updated during GetOutdated()
@@ -85,7 +86,7 @@ namespace Objects
 
 		#ifdef CLIENT
 
-			void					UpdateAge(UINT32 roundNumber);
+			void					UpdateAge(const RoundNumber&roundNumber);
 
 			PWorldEntity			visualization;
 			//PStructure				structureVisualization;
@@ -108,13 +109,14 @@ namespace Objects
 				}
 			};
 
-			static void				Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, UINT32 createdInRound, const TUniqueID&referenceID, ConstName referenceType[2], UINT32 currentRound);
+			static void				Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber&createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], const RoundNumber& currentRound);
 			static void				Destroy(const TUniqueID&id, bool controlEnabled);
 			static Marker*			FindByReference(const TUniqueID&referenceID);
 			static Marker*			Find(const TUniqueID&referenceID);
+			static Marker*			Find(const Grid::LCellIdI&);
 			static void				GetDeletionCandidates(BasicBuffer<TCandidate>&candidates);
 			static void				FlushAll();
-			static void				GetOutdated(BasicBuffer<TUniqueID>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
+			static void				GetOutdated(BasicBuffer<Marker>&outOudated, const RoundNumber&currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
 
 			static Buffer0<Marker, Strategy::Adopt>	all;
 			static Buffer0<PStructure>	structureGhosts;
@@ -146,13 +148,16 @@ namespace Objects
 		TUniqueID	id;
 		String		name;
 		bool		online = false;
+		float3		color;
 		#ifdef CLIENT
+			float3	activeEntityColor,
+					inactiveEntityColor;
 			bool	requestedNewRound = false;
-			bool	isMine = false;
+			bool	isOwnedByMe = false;
 			count_t	roundChangeNotifications=0;
 		#endif
 
-		#ifdef CONNECTOR_LESS
+		#ifdef ONE_COMPOUND_PER_FACTION
 			Compound	compound;
 		#endif
 
@@ -170,18 +175,45 @@ namespace Objects
 				return "<NULL>";
 			return id.ToString()+":'"+name+"'";
 		}
-		#ifdef CONNECTOR_LESS
+
+
+		/**
+		Computes a suitable color from a given faction ID.
+		The process is guaranteed to return a well saturated, lit color, but may be too slow to use on a per-frame basis.
+		No checks for uniqueness are performed at this stage.
+		@param[out] outColor Resulting faction color
+		@param id Unique faction ID
+		@param iteration Passing a different iteration alters the resulting color in a random way
+		*/		
+		static void IDToColor(TVec3<>&outColor, const TUniqueID&id, int iteration=0);
+
+		void							UpdateID(const TUniqueID&toID, bool recomputeColor=true);
+
+		#ifdef ONE_COMPOUND_PER_FACTION
 			//index_t		compoundIndex = InvalidIndex;
 		#endif
 
 		#ifdef CLIENT
 			static Buffer0<PFaction>	allKnown;
+			static GenericHashTable<TUniqueID,PFaction,TUniqueID>	idMap;
+
+			static PFaction				mine;
+
+
+			static PFaction				FindByID(const TUniqueID&id);
+			static PFaction				GetOrCreate(const TUniqueID&id);
+
+			/**/						Faction(const TUniqueID&id) {UpdateID(id);}
+
 		#else
+
 			CryptographicID	accessToken;
 			Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
 										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
-			Buffer0<WSatellite>			satellites;
-			Buffer0<WSkyHub>			skyHubs;	//overlaps with satellites
+			#ifndef NO_SATELLITES
+				Buffer0<WSatellite>		satellites;
+				Buffer0<WSkyHub>		skyHubs;	//overlaps with satellites
+			#endif
 			Buffer0<WStructure>			structures;
 
 			Buffer0<WTower>				towers;
@@ -189,14 +221,12 @@ namespace Objects
 			static Buffer0<WFaction>	all;
 			static PFaction				nexus;
 
-			static PFaction			FindByID(const TUniqueID&);
+			static PFaction				FindByID(const TUniqueID&);
 
 
 
 			Grid::WorldData			currentState;
 			Grid::VisibilityState	visibility;
-
-			//FamilyState			global;
 
 			count_t				nexusControl,
 								acquiringNexusControl;
@@ -216,35 +246,37 @@ namespace Objects
 			GenericHashTable<PWorldEntity,float,SharedPtrHash>	lostVisualAt,//!< Used for entities that dropped out of contact during the same round
 															gainedVisualAt;
 
-			void DropPerRoundData()
-			{
-				lostVisualAt.Clear();
-				gainedVisualAt.Clear();
-			}
-
-
 			struct SeeingReference
 			{
 				count_t			sightLevel=0;
 
 
 			};
-
 			GenericHashTable<PWorldEntity, SeeingReference, SharedPtrHash>	seeing;
 
-			/**/		Faction(const String&name=""):name(name)
+
+
+
+			static void			RecreateNexus();	//!< Creates a fresh nexus faction and assigns it to @a nexus
+
+
+
+			/**/		Faction(const TUniqueID&id, const String&name=""):name(name)
 			{
 				nexusControl = acquiringNexusControl = 0;
 				deathInRounds = 0;
 
 				accessToken.Generate();
-				id.Generate();
+				UpdateID(id);
 			}
 
-			/**
-			Completely clears the local state for this faction to be reused in a different game
-			*/
-			void		FlushData();
+
+			void DropPerRoundData()
+			{
+				lostVisualAt.Clear();
+				gainedVisualAt.Clear();
+			}
+
 
 			/**
 			Checks if the local faction satisfies survival conditions
@@ -265,16 +297,13 @@ namespace Objects
 
 			//void		SignalCoverageChange(const bool*familiesChanges, float atTime);
 
-			bool		HasActiveMobile(const PMobileEntity&v, bool forceDoNotCheckSatellites=false) const;
+			bool		HasActiveMobile(const PMobileEntity&v) const;
 			bool		HasMobileInStorage(const PMobileEntity&v) const;
 			void		RegisterLoss(const PWorldEntity&);
 			void		RegisterStructureLoss(const PWorldEntity&);
 			void		RegisterActiveMobileLoss(const PWorldEntity&);
 			void		RegisterStoredMobileLoss(const PWorldEntity&);
-			void		RegisterGain(const PWorldEntity&);
-			void		RegisterStructureGain(const PWorldEntity&);
 			void		RegisterActiveMobileGain(const PWorldEntity&);
-			void		RegisterStoredMobileGain(const PWorldEntity&);
 
 			bool		CanSee(const PWorldEntity&e, float t)	const;
 
@@ -283,31 +312,38 @@ namespace Objects
 
 			void		CheckGridVisibility(const PWorldEntity&,float&timeAt);
 
-			void		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true, index_t incStackBy=1);
+			/**
+			Processes a potentially new contact
+
+			@return True, if the contact was, indeed, new, false otherwise
+			*/
+			bool		SignalAppearance(const PWorldEntity&, float&t, bool cascade=true, bool stack=true, index_t incStackBy=1);
 			void		SignalDisappearance(const PWorldEntity&, float&t, bool force = false, bool signalConnectedClient=true);
 
 			void		RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
 			void		RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow);
-			void		RegisterSensorCreation(const Sphere<>&, bool isSatellite, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
-			void		RegisterSensorMotion(const Sphere<>&from, bool isSatellite, const Sphere<>&to, float&t, bool checkChangesNow);
-			void		RegisterSensorRemoval(const Sphere<>&, bool isSatellite, float&t, bool checkChangesNow);
+			void		RegisterSensorCreation(const Sphere<>&, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
+			void		RegisterSensorMotion(const Sphere<>&from, int sensorHeight, const Sphere<>&to, float&t, bool checkChangesNow);
+			void		RegisterSensorRemoval(const Sphere<>&, int sensorHeight, float&t, bool checkChangesNow);
 
-			count_t		CountSatelliteCoverage(const TVec3<>&center)	const;
-			count_t		CountSatelliteCoverage(const Sphere<>&)	const;
+
+			count_t		CountOffGridCoverage(int channelHeight, const TVec3<>&)	const;
+			count_t		CountOffGridCoverage(const Sphere<>&)	const;
 
 			/**
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater
 			*/
 			void		RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);
 
+
 			bool		CanCreateMarker(bool priveleged) const { return markers.Count() < (priveleged ? Marker::MaxMarkersPerFaction*16 : Marker::MaxMarkersPerFaction); }
-			Marker&		CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID);
+			Marker&		CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID, const TUniqueID&ownerReferenceID);
 			Marker*		FindMarker(const TUniqueID&markerID);
 			bool		DestroyMarker(const TUniqueID&markerID);
 			void		RestoreMarkers(const ArrayData<Marker>&source);
 			Marker*		FindReferenceMarker(Marker::Type type, const TUniqueID&);
 
-			#ifdef CONNECTOR_LESS
+			#ifdef ONE_COMPOUND_PER_FACTION
 				/**
 				Refreshes the member WorkingStructures of the local compound
 				*/
@@ -370,7 +406,7 @@ namespace Objects
 	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func);
 
 	/**
-	Iterates through all mobile entities that are located in the world or in storage.
+	Iterates through all mobile entities that are located in the world or in storage, including markers (markers on client only).
 	Note that this function is usually overkill since most loops can easily know whether they target ground
 	units or orbital units
 	*/

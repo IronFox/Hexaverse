@@ -30,7 +30,9 @@ namespace Grid
 				}
 				familyChanged[Grid::high.grid.GetCell(c.hStackID).family] = true;
 			});
-			LogEvent(EventType::PerformanceMeasurement,nullptr,"Sky sensory change processed in "+String(timer.GetSecondsSince(t0)));
+
+			LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sky sensory change ("+String(change)+") processed on "+String(state.coverage.Count())+" stack(s) in "+String(timer.GetSecondsSince(t0)));
+
 		}
 
 
@@ -40,7 +42,7 @@ namespace Grid
 			#ifdef _DEBUG
 			{
 				UINT32 crc = CRC32::getChecksum(desc.coverage.pointer(),desc.coverage.GetContentSize());
-				LogEvent(EventType::Debug,"Applying sensory change ("+String(changeBy)+"), using descriptor with "+String(desc.coverage.Count())+" stack(s), crc="+IntToHex((int)crc,8));	
+				LogEvent(EventSignificance::Debug,"Applying sensory change ("+String(changeBy)+"), using descriptor with "+String(desc.coverage.Count())+" stack(s), crc="+IntToHex((int)crc,8));	
 			}
 
 			#endif
@@ -50,14 +52,14 @@ namespace Grid
 			{
 				#ifdef _DEBUG
 					ASSERT_LESS__(c->stackID,HighSetup::GridType::CellCount);
-					ASSERT_LESS_OR_EQUAL__(c->layerBegin,c->layerEnd);
-					ASSERT_LESS__(c->layerBegin,CellStack::Range);
+					ASSERT_LESS_OR_EQUAL__(c->range.start,c->range.end);
+					ASSERT_LESS__(c->range.start,CellStack::Range);
 				#endif
-				if (c->layerEnd == c->layerBegin)
+				if (c->range.IsEmpty())
 					continue;
 				auto&stack = cellStack[c->stackID];
 				familyChanged[high.grid.GetCell(c->stackID).family] = true;
-				for (UINT32 layer = c->layerBegin; layer < c->layerEnd; layer++)
+				for (UINT32 layer = c->range.start; layer < c->range.end; layer++)
 				{
 					stack.volumeCell[layer].AlterVisibility(changeBy);
 				}
@@ -141,7 +143,7 @@ namespace Grid
 
 			}
 
-			LogEvent(EventType::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
+			LogEvent(EventSignificance::PerformanceMeasurement,nullptr,"Sensory change processed in "+String(timer.GetSecondsSince(t0)));
 			//ShowMessage(timer.GetSecondsSince(t0));
 
 

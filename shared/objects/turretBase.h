@@ -6,6 +6,10 @@
 #include "../sphereGrid.h"
 #include "components.h"
 
+#ifdef HAS_WINDOW
+	#include <al/openal.h>
+#endif
+
 
 namespace Objects
 {
@@ -28,12 +32,12 @@ namespace Objects
 			float lastRange = 0.f;
 			float lastExp = 0.f;
 			TMatrix4<> matrix;
-			DX11::InstructionBlock32	attackInstruction;
+			DX11::InstructionBlock32	attackInstruction,extendedInstruction;
 
+			static void		MakeHull(DX11::InstructionBlock32&target, const TMatrix4<>&matrix, float flatRange, float explosionRadius, const TVec3<>&center);
 
 		public:
-			void			Render(const Grid::LCellIdI&cell, float zOffset, float flatRange, float explosionRadius, const float4&color);
-
+			void			Render(const Grid::LCellIdI&cell, float zOffset, float flatRange, float explosionRadius, const float4&color, bool extended);
 		};
 	#endif
 
@@ -73,6 +77,9 @@ namespace Objects
 		#ifdef CLIENT
 			float				turretAngleX, turretAngleY;
 		#endif
+		#ifdef HAS_WINDOW
+			OpenAL::Source		activitySound;	//used for rotation by offensive turrets, and arbitrary sounds by others
+		#endif
 									
 
 		#ifdef HAS_WINDOW
@@ -84,7 +91,11 @@ namespace Objects
 		#ifdef CLIENT
 												,turretAngleX(0), turretAngleY(0)
 		#endif
-								{}
+								{
+									#ifdef HAS_WINDOW
+									//	rotationSound.Create();
+									#endif
+								}
 		virtual					~TurretBase()	{}
 
 
@@ -96,7 +107,13 @@ namespace Objects
 		int						CountPossibleAttacks() const {return GetAttacksPerRound() * GetAttackActionLeft();}
 		virtual bool			NextTaskIsAttack() const = 0;
 		virtual float			GetFlatAttackRange() const = 0;
-		virtual bool			HasAmmoForShot() const = 0;
+
+		/**
+		Checks if there are enough resources available for a single shot.
+		Cannot be const due to the complexity of resource allocation of mobile entities.
+		Must not persistently alter the local entity, however.
+		*/
+		virtual bool			HasAmmoForShot() = 0;
 		
 		/**
 		Determines whether or not the local turret base can hit a given location.
@@ -107,7 +124,7 @@ namespace Objects
 			Otherwise a close approximation will be given that is still in range but will hit the target through the explosion radius
 		@return true if an applicable destination was found, false otherwise
 		*/
-		bool					ExtCanHit(const OwnerParameter&myFaction, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&destIn, Grid::LCellIdI&destOut)	const;
+		bool					ExtCanHit(const OwnerParameter&myFaction, const TrajectoryEndPoint&source, const TrajectoryEndPoint&destIn, Grid::LCellIdI&destOut)	const;
 
 
 

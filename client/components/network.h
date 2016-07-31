@@ -17,7 +17,8 @@ namespace Network
 
 
 	extern bool			haveFaction,
-						haveId,
+						haveID,
+						amSpectator,
 						amOnline,
 						gameHasBegun;
 	#ifdef HAS_WINDOW
@@ -28,10 +29,8 @@ namespace Network
 	extern UINT32				gameFlags;
 	extern CryptographicID		activeToken;
 	extern String				myIDString,serverIDString,worldIDString,activeTokenString;
-	extern Objects::OwnerParameter myFaction;
 	
 	extern GenericHashTable<TUniqueID,CryptographicID,TUniqueID>	accessMap;
-	extern GenericHashTable<TUniqueID,Objects::OwnerParameter,TUniqueID>	factionMap;
 
 
 	extern Protocol::GameProgress	gameProgress;
@@ -43,8 +42,37 @@ namespace Network
 
 
 
+	class ServerAddress
+	{
+	public:
+		String				host;
+		UINT16				basePort;
+
+
+		/**/				ServerAddress():basePort(DEFAULT_SERVER_BASE_PORT){}
+		explicit			ServerAddress(const String&url);
+
+		bool				operator==(const ServerAddress&other) const
+		{
+			return basePort == other.basePort && host == other.host;
+		}
+
+		void				adoptData(ServerAddress&other)
+		{
+			host.adoptData(other.host);
+			basePort = other.basePort;
+		}
+
+		String				ToString() const {return basePort != DEFAULT_SERVER_BASE_PORT ? host + ':' + String(basePort) : host;}
+	};
+}
+
+DECLARE_DEFAULT_STRATEGY(Network::ServerAddress,Adopt);
+
+namespace Network
+{
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id);
-	void					ConnectTo(const String&url);
+	void					ConnectTo(const ServerAddress&);
 
 	void SaveWorldAccessTokens();
 
@@ -57,8 +85,8 @@ namespace Network
 	
 	namespace ServerDiscovery
 	{
-		bool	ListeningButCantConnectTo(const String&url);
-		bool	TryRemoveHost(const String&url);
+		bool	ListeningButCantConnectTo(const ServerAddress&);
+		bool	TryRemoveHost(const ServerAddress&);
 
 		void OnServerInfo(Protocol::ServerInfo&info, TCP::Peer&peer);
 		void OnPing(Protocol::Ping&ping, TCP::Peer&peer);
@@ -70,14 +98,14 @@ namespace Network
 		Queries all connection attempts that have so far not successfully connected.
 		Only non-automatic (user-registered) attempts are listed.
 		*/
-		void	ListFailedAttempts(Buffer0<String,Adopt>&outList);
+		void	ListFailedAttempts(Buffer0<ServerAddress,Adopt>&outList);
 		/**
 		Queries all connection attempts (successful or not).
 		Only non-automatic (user-registered) attempts are listed.
 		*/
-		void	ListNonAutoAttempts(Buffer0<String>&outList);
+		void	ListNonAutoAttempts(Buffer0<ServerAddress>&outList);
 
-		bool	RegisterNewHost(const String&host, bool probablyRightVersion, bool automaticallyDiscovered);
+		bool	RegisterNewHost(const ServerAddress&, bool probablyRightVersion, bool automaticallyDiscovered);
 
 
 
@@ -89,7 +117,7 @@ namespace Network
 		extern bool			eventsLocked/* = true*/;	//purely for debugging purposes. If set no events should be pouring in from the server. When the connection is lost, this is set to true, and no evenst should be triggered until a new connection is established
 
 
-		void	OnHelloResponse(Protocol::Result&response);
+		void	OnHelloResponse(Protocol::HelloResponse&response);
 		void	OnWorldDelta(Protocol::WorldDelta&delta);
 
 
@@ -112,7 +140,8 @@ namespace Network
 		void	SetFactionID(NET(TUniqueID)&id);
 		void	PhaseChange(Protocol::PhaseChange&c);
 		void	VehicleMotion(Protocol::MobileEntityMotion&m);
-		void	AttackTrajectory(Protocol::AttackTrajectory&a);
+		void	PreciseAttackTrajectory(Protocol::PreciseAttackTrajectory&a);
+		void	VagueAttackTrajectory(Protocol::VagueAttackTrajectory&a);
 
 		void	Explosion(Protocol::Explosion&ex);
 
@@ -135,6 +164,7 @@ namespace Network
 		void	FactionRequestedNewRound(NET(TUniqueID)&);
 		void	FactionContinuedRound(NET(TUniqueID)&);
 		void	LockEmpZones(NET(UINT16)&);
+		void	PlanetConfig(Grid::ExtendedPlanetConfig&);
 	}
 
 
@@ -142,7 +172,7 @@ namespace Network
 	{
 		extern TCP::Channel<Protocol::ControlMessage,0,Protocol::ChannelID::ControlMessage>				controlMessage;
 
-		extern TCP::Channel<Protocol::Result,0,Protocol::ChannelID::Hello>								helloResponse;
+		extern TCP::Channel<Protocol::HelloResponse,0,Protocol::ChannelID::Hello>						helloResponse;
 		extern TCP::Channel<Protocol::WorldDelta,0,Protocol::ChannelID::WorldDelta>						worldData;
 		extern TCP::Channel<Protocol::NewMobileEntity,0,Protocol::ChannelID::NewMobileEntity>			newMobileEntity;
 		extern TCP::Channel<Protocol::MobileState,0,Protocol::ChannelID::MobileState>					mobileStateUpdate;
@@ -154,7 +184,8 @@ namespace Network
 
 		extern TCP::Channel<Protocol::PhaseChange,0,Protocol::ChannelID::PhaseChange>					phaseChange;
 		extern TCP::Channel<Protocol::MobileEntityMotion,0,Protocol::ChannelID::MobileEntityMotion>		mobileEntityMotion;
-		extern TCP::Channel<Protocol::AttackTrajectory,0,Protocol::ChannelID::AttackTrajectory>			attackTrajectory;
+		extern TCP::Channel<Protocol::VagueAttackTrajectory,0,Protocol::ChannelID::VagueAttackTrajectory>			vagueAttackTrajectory;
+		extern TCP::Channel<Protocol::PreciseAttackTrajectory,0,Protocol::ChannelID::PreciseAttackTrajectory>		preciseAttackTrajectory;
 		extern TCP::Channel<Protocol::Explosion,0,Protocol::ChannelID::Explosion>						explosion;
 		extern TCP::Channel<Protocol::EntityTurretRotation,0,Protocol::ChannelID::EntityTurretRotation>	entityTurretRotation;
 		extern TCP::Channel<Protocol::ResourceUpdate,0,Protocol::ChannelID::ResourceUpdate>				resourceUpdate;
@@ -172,11 +203,12 @@ namespace Network
 		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionContinuedRound>				factionContinuedRound;
 		extern TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>							lockEmpZones;
 		extern TCP::Channel<NET(int32_t), 0, Protocol::ChannelID::UplinkBandwidth>						uplinkBandwidth;
+		extern TCP::Channel<Grid::ExtendedPlanetConfig, 0, Protocol::ChannelID::PlanetConfig>			planetConfig;
 
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
 		extern TCP::ObjectSender<Protocol::TouchedMarker,Protocol::ChannelID::TouchMarker>					touchMarker;
-		extern TCP::ObjectSender<Protocol::Hello,Protocol::ChannelID::Hello>							hello;
+		extern TCP::ObjectSender<Protocol::Hello,Protocol::ChannelID::Hello>								hello;
 		extern TCP::ObjectSender<Protocol::EntityDirectCommand, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
 		extern TCP::ObjectSender<Protocol::ChoiceIntersection, Protocol::ChannelID::ChoiceIntersection>		choiceIntersection;
 		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::DropLastTask>							dropLastTask;
@@ -186,11 +218,13 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::ConstructionAbort, Protocol::ChannelID::ConstructionAbort>	constructionAbort;
 		extern TCP::ObjectSender<Protocol::ConstructionBegin, Protocol::ChannelID::ConstructionBegin>	constructionBegin;
 		extern TCP::ObjectSender<Protocol::EnableStructure, Protocol::ChannelID::EnableStructure>		enableStructure;
-		extern TCP::ObjectSender<Protocol::Automate,Protocol::ChannelID::Automate>						automate;
+		extern TCP::ObjectSender<Protocol::EntityStateUpdate,Protocol::ChannelID::Automate>				automate;
 		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RestoreCoreLink>					restoreCoreLink;
 		extern TCP::ObjectSender<NET(TUniqueID), Protocol::ChannelID::RemoveEntity>						removeEntity;
+		extern TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>				sleep;
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
+		extern TCP::ObjectSender<Protocol::GameConfig,Protocol::ChannelID::GameConfig>					gameConfig;
 
 		
 	}
@@ -230,6 +264,7 @@ namespace Network
 	};
 
 
+
 	class ServerInfo
 	{
 	public:
@@ -238,7 +273,7 @@ namespace Network
 								protocolIncompatible = false;
 		Protocol::ServerInfo	info;
 		
-		Buffer0<std::pair<String, float> >			urls;
+		Buffer0<std::pair<ServerAddress, float> >			addresses;
 		
 		//float					top, bottom;
 		bool					selected, haveToken;
@@ -251,10 +286,18 @@ namespace Network
 
 		/**/					ServerInfo() :/*top(0), bottom(0),*/ selected(false), haveToken(false)	{}
 
-		bool					HasURL(const String&url) const
+		//bool					HasURL(const String&url) const
+		//{
+		//	foreach(urls, u)
+		//		if (u->first.host == url)
+		//			return true;
+		//	return false;
+		//}
+
+		bool					HasAddress(const ServerAddress&addr) const
 		{
-			foreach(urls, u)
-				if (u->first == url)
+			foreach(addresses, u)
+				if (u->first == addr)
 					return true;
 			return false;
 		}
@@ -266,7 +309,7 @@ namespace Network
 			//swp(top,other.top);
 			//swp(bottom,other.bottom);
 			swp(selected,other.selected);
-			urls.swap(other.urls);
+			addresses.swap(other.addresses);
 			swp(haveToken,other.haveToken);
 			swp(rightVersion,other.rightVersion);
 			#ifdef HAS_WINDOW

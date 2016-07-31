@@ -17,15 +17,21 @@ namespace Objects
 	#ifndef CLIENT
 
 		/*static*/ Buffer0<WFaction>	Faction::all;
-		/*static*/ PFaction				Faction::nexus(new Faction("<Nexus>"));
+		/*static*/ PFaction				Faction::nexus;
+
+		void	Faction::RecreateNexus()
+		{
+			nexus.reset(new Faction(TUniqueID::Empty(), "<Nexus>"));
+			SignalFactionsChanged();
+		}
 
 		int		GetStorage(const MobileEntity&v, Resource res)
 		{
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				return v.currentStorage.level[res];
 			#else
 				const Compound&compound = v.owner->compound;
-				return compound.total.storage.level[res] + compound.overproduction.level[res];
+				return compound.total.storage.level[res] + compound.GetOverproduction(res);
 			#endif
 
 		}
@@ -43,7 +49,7 @@ namespace Objects
 			if (change == 0)
 				return;
 			storage.level[res] += change;
-			LogEvent(EventType::MinorEntityProcess,&e,String(res.ToString())+ " storage changed by "+String(change)+" to "+String(storage.level[res])+"/"+String(max.level[res]));
+			LogEvent(EventSignificance::Common,&e,String(res.ToString())+ " storage changed by "+String(change)+" to "+String(storage.level[res])+"/"+String(max.level[res]));
 			e.RegisterChange(WorldEntity::StorageChanged,atTime);
 			ASSERT_IS_CONSTRAINED__(storage.level[res] , 0, max.level[res]);
 		}
@@ -67,23 +73,17 @@ namespace Objects
 		{
 			ResourceVector demand;
 
-			#ifdef CONNECTOR_LESS
-				if (change < 0 && compound.overproduction.level[res] > 0)
-				{
-					int production = compound.overproduction.level[res];
-					int overproductionTransfer = std::min(production,-change);
-					LogEvent(EventType::MinorEntityProcess,originatingAt,String(res.ToString())+ " overproduction ("+String(production)+") redirected for demand ("+String(change)+"): "+String(overproductionTransfer)+" transferred");
-					change += overproductionTransfer;
-					compound.overproduction.level[res]-= overproductionTransfer;
-					if (change == 0)
-						return;
-				}
-			#endif
-			demand.level[res] = abs(change);
-			if (change < 0)
-				compound.Collect(demand,atTime);
-			else
-				compound.Distribute(demand,atTime);
+			if (change < 0 )
+			{
+				ResourceVector withdraw;
+				withdraw.level[res] = -change;
+				compound.TryWithdrawOverproduction(withdraw);
+				change = -withdraw.level[res];
+				if (change == 0)
+					return;
+			}
+			demand.level[res] = change;
+			compound.ChangeStorage(demand,atTime);
 		}
 
 
@@ -91,7 +91,7 @@ namespace Objects
 		{
 			if (change == 0)
 				return;
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				ChangeStorage(v,atTime,v.GetMaxStorageCapacity(),v.currentStorage,res,change);
 			#else
 				ChangeCompoundStorage(v.owner->compound, &v, atTime,res,change);
@@ -147,7 +147,7 @@ namespace Objects
 		{
 			if (e->owner == newOwner)
 				return;
-			LogEvent(EventType::GameProgressRelated,e.get(),"Changing ownership ('"+e->owner->GetName()+"' -> '"+newOwner->GetName()+"')");
+			LogEvent( EventClass(EventSignificance::Important,EventFlavor::Loss) ,e.get(),"Changing ownership ('"+e->owner->GetName()+"' -> '"+newOwner->GetName()+"')");
 
 			OwnerParameter oldOwner = e->owner;
 
@@ -165,15 +165,17 @@ namespace Objects
 				if (e->IsStructure())
 					InsertConstructed(To<Structure>::Cast(e),atTime,true,false);
 				else
-					LogEvent(EventType::InternalFault,e.get(), "Unexpected entity type. Cannot change ownership");
+					LogEvent(EventClass::Preset::error,e.get(), "Unexpected entity type. Cannot change ownership");
 			//VerifyVisibilityNetwork();
 
+			LogEvent( EventClass(EventSignificance::Important,EventFlavor::Gain) ,e.get(),"Changed ownership ('"+oldOwner->GetName()+"' -> '"+newOwner->GetName()+"')");
 		}
 
-		#ifdef CONNECTOR_LESS
+		#ifdef ONE_COMPOUND_PER_FACTION
 			void Faction::UpdateCompoundCoverage()
 			{
-				compound.containedStructures.Clear();
+				compound.allStructures.Clear();
+				compound.workingStructures.Clear();
 				foreach (this->structures,s)
 				{
 					PStructure s1 = s->lock();
@@ -219,8 +221,7 @@ namespace Objects
 			if (!found0)
 			{
 				ASSERT1__(e->IsStructure(),e->GetName());
-				LogEvent(EventType::Fatal,e.get(),"Unable to register loss for faction "+GetLogName());
-				FATAL__("Unable to register loss of entity");
+				FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
 				return;
 			}
 			if (To<Tower>::DynamicCast(e))
@@ -241,30 +242,31 @@ namespace Objects
 				{
 					allMobiles.erase(_v);
 
-					if (e->IsSatellite())
-					{
-						foreach (this->satellites,sat)
-							if (sat->lock() == e)
-							{
-								this->satellites.erase(sat);
-								break;
-							}
-						if (To<Satellite>::Cast(e)->IsSkyHub())
-							foreach (this->skyHubs,sat)
+					#ifndef NO_SATELLITES
+						if (e->IsSatellite())
+						{
+							foreach (this->satellites,sat)
 								if (sat->lock() == e)
 								{
-									this->skyHubs.erase(sat);
+									this->satellites.erase(sat);
 									break;
 								}
-						}
+							if (To<Satellite>::Cast(e)->IsSkyHub())
+								foreach (this->skyHubs,sat)
+									if (sat->lock() == e)
+									{
+										this->skyHubs.erase(sat);
+										break;
+									}
+							}
+					#endif
 					return;
 				}
 			}
 			ASSERT1__(e->IsMobile(),e->GetName());
 			ASSERT1__(To<MobileEntity>::Cast(e)->storedIn.expired(),e->GetName());
 
-			LogEvent(EventType::Fatal,e.get(),"Unable to register loss for faction "+GetLogName());
-			FATAL__("Unable to register loss of entity");
+			FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
 		}
 
 		void		Faction::RegisterStoredMobileLoss(const PWorldEntity&e)
@@ -279,74 +281,29 @@ namespace Objects
 			}
 			ASSERT1__(e->IsMobile(),e->GetName());
 			ASSERT1__(!To<MobileEntity>::Cast(e)->storedIn.expired(),e->GetName());
-			LogEvent(EventType::Fatal,e.get(),"Unable to register loss for faction "+GetLogName());
-			FATAL__("Unable to register loss of entity");
+			FATAL__(e->GetName()+": Unable to register loss for faction "+GetLogName());
 		}
 
-		void		Faction::RegisterGain(const PWorldEntity&e)
-		{
-			if (e->IsMobile())
-			{
-				if (To<MobileEntity>::Cast(e)->storedIn.expired())
-					RegisterActiveMobileGain(e);
-				else
-					RegisterStoredMobileGain(e);
-			}
-			else
-				if (e->IsStructure())
-					RegisterStructureGain(e);
-				else
-					FATAL__("WTF is this: "+e->GetName());
-
-		}
-		void		Faction::RegisterStructureGain(const PWorldEntity&e)
-		{
-			PStructure s = To<Structure>::DynamicCast(e);
-			ASSERT1__(s,e->GetName());
-			structures << s;
-			PTower t = To<Tower>::DynamicCast(s);
-			if (t)
-				towers << t;
-		}
 		void		Faction::RegisterActiveMobileGain(const PWorldEntity&e)
 		{
 			PMobileEntity v = To<MobileEntity>::DynamicCast(e);
 			ASSERT1__(v,e->GetName());
 			ASSERT1__(v->storedIn.expired(),e->GetName());
 			allMobiles << v;
-			if (v->IsSatellite())
-			{
-				PSatellite sat = To<Satellite>::Cast(v);
-				this->satellites << sat;
-				if (sat->IsSkyHub())
-					this->skyHubs << To<SkyHub>::Cast(sat);
-			}
-		}
-		void		Faction::RegisterStoredMobileGain(const PWorldEntity&e)
-		{
-			PMobileEntity v = To<MobileEntity>::DynamicCast(e);
-			ASSERT1__(v,e->GetName());
-			ASSERT1__(!v->storedIn.expired(),e->GetName());
-			storedMobiles << v;
-			if (v->IsSatellite())
-			{
-				PSatellite sat = To<Satellite>::Cast(v);
-				this->satellites << sat;
-				if (sat->IsSkyHub())
-					this->skyHubs << To<SkyHub>::Cast(sat);
-			}
+			#ifndef NO_SATELLITES
+				if (v->IsSatellite())
+				{
+					PSatellite sat = To<Satellite>::Cast(v);
+					this->satellites << sat;
+					if (sat->IsSkyHub())
+						this->skyHubs << To<SkyHub>::Cast(sat);
+				}
+			#endif
 		}
 
-
-		bool		Faction::HasActiveMobile(const PMobileEntity&v, bool forceDoNotCheckSatellites) const
+		bool		Faction::HasActiveMobile(const PMobileEntity&v) const
 		{
-			if (!forceDoNotCheckSatellites && v->IsSatellite())
-			{
-				foreach (this->satellites,_v)
-					if (_v->lock() == v)
-						return true;
-				return false;
-			}
+
 			foreach (allMobiles,_v)
 				if (_v->lock() == v)
 					return true;
@@ -361,17 +318,46 @@ namespace Objects
 
 		}
 
+		//void		Faction::SignalLossOfTemporarySensory()
+		//{
+		//	static Buffer0<PWorldEntity>	toDump;
+		//	seeing.VisitAllKeys([this](const PWorldEntity&e)
+		//	{
+		//		if (!e->IsSatellite() && !GridCanSee(e))
+		//		{
+		//			toDump << e;
+		//		}
+		//	});
+
+		//	if (toDump.IsEmpty())
+		//		return;
+		//	for (const auto&e : toDump)
+		//	{
+		//		float t = 0;
+		//		gainedVisualAt.Query(e,t);
+		//		if (e->IsMobile())
+		//			t = std::max(t,To<MobileEntity>::Cast(e)->timeAt);
+
+		//		SignalDisappearance(e,t,true);
+		//	}
+
+
+		//	toDump.Clear();
+
+		//}
+
+
 		bool Faction::GridCanSee(const Grid::HighSetup::TVolumeDescriptor&v) const
 		{
 			foreach (v.coverage,st)
 			{
-				DBG_ASSERT_LESS__(st->layerBegin,Grid::CellStack::Range);
-				DBG_ASSERT_LESS__(st->layerEnd,Grid::CellStack::Range);
-				DBG_ASSERT_LESS_OR_EQUAL__(st->layerBegin,st->layerEnd);
+				DBG_ASSERT_LESS__(st->range.start,Grid::CellStack::Range);
+				DBG_ASSERT_LESS_OR_EQUAL__(st->range.end,Grid::CellStack::Range);
+				DBG_ASSERT_LESS_OR_EQUAL__(st->range.start,st->range.end);
 				const auto&stack = visibility.cellStack[st->stackID];
-				for (UINT32 layer = st->layerBegin; layer < st->layerEnd; layer++)
+				for (UINT32 layer = st->range.start; layer < st->range.end; layer++)
 				{
-					if (stack.volumeCell[layer].IsVisible())
+					if (stack.volumeCell[layer].IsCurrentlyVisible())
 						return true;
 				}
 			}
@@ -390,7 +376,7 @@ namespace Objects
 				const auto&stack = visibility.cellStack[fine];
 				//const UINT32 fine2 = c.neighborhood.neighborID[k];
 				for (UINT32 layer = bottom; layer < end; layer++)
-					if (stack.volumeCell[layer].IsVisible())
+					if (stack.volumeCell[layer].IsCurrentlyVisible())
 						return true;
 			}
 
@@ -407,6 +393,8 @@ namespace Objects
 
 		bool		Faction::CanSee(const PWorldEntity&e, float t)	const
 		{
+			if (!e)
+				return false;
 			if ( e->owner.get() == this )
 				return true;
 			if (!seeing.IsSet(e))
@@ -423,23 +411,34 @@ namespace Objects
 		}
 
 
-		void		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/, bool stack/*=true*/, index_t incStackBy/*=1*/)
+		bool		Faction::SignalAppearance(const PWorldEntity&e, float&t, bool cascade/*=true*/, bool stack/*=true*/, index_t incStackBy/*=1*/)
 		{
 			SeeingReference&ref = seeing.Set(e);
 
 			if (ref.sightLevel == 0 || stack)
 			{
 				ref.sightLevel +=incStackBy;
-				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Sight level increased to "+String(ref.sightLevel));
+				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Sight level increased to "+String(ref.sightLevel));
 
 			}
 			else
-				return;
+			{
+				LogEvent(EventSignificance::Debug,e.get(),this->GetLogName()+": Sight level already set to "+String(ref.sightLevel));
+				return false;
+			}
 
 
 			if (ref.sightLevel == incStackBy)
 			{
-				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Gained visual");
+				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual at time="+String(t));
+
+				if (e->IsStructure())
+				{
+					PStructure s = To<Structure>::Cast(e);
+					Structure::CommonRegisterStructure(currentState,e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
+					t += timeEpsilon;
+				}
+
 				float t0;
 				if (lostVisualAt.QueryAndUnset(e,t0))
 				{
@@ -448,24 +447,21 @@ namespace Objects
 					t = std::max(t0,t) + timeEpsilon;
 				}
 
-				PMobileEntity v= To<MobileEntity>::DynamicCast(e);
-				if (v)
-					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
-				else
-					t += timeEpsilon;
+				PMobileEntity v;
+				PTower tower;
+				e->SyncTime(t,timeEpsilon);
+				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Gained visual of entity, time updated to "+String(t));
 
 				ASSERT1__(gainedVisualAt.SetNew(e,t),e->id.ToString());
 
 				if (cascade)
 					SignalAppearanceToHostileFaction(shared_from_this(),e,t);
 
-				if (v)
-					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
-				else
-					t += timeEpsilon;
-			//	return true;
+				e->SyncTime(t,timeEpsilon);
+
+				return true;
 			}
-			//return false;
+			return false;
 			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
 		}
 
@@ -476,45 +472,43 @@ namespace Objects
 			if (ref)
 			{
 				ref->sightLevel --;
-				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Sight level reduced to "+String(ref->sightLevel));
+				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Sight level reduced to "+String(ref->sightLevel));
 			}
+			else
+				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": ref not set");
 
-			if ((ref && !ref->sightLevel) || force)
+
+			if (ref && (!ref->sightLevel || force))
 			{
-				LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Lost visual at time="+String(t));
-				if (ref && ref->sightLevel)
+				LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual at time="+String(t));
+				if (ref->sightLevel)
 				{
-					LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": WARNING: Visual loss was forced");
+					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": WARNING: Visual loss was forced");
 				}
 
-
+				if (e->IsStructure())
+				{
+					PStructure s = To<Structure>::Cast(e);
+					Structure::CommonUnregisterStructure(currentState,e->location,s->GetBroadHeight(),e->GetHeight(),s->HasFoundation(),t);
+					t += timeEpsilon;
+				}
 
 				float t0;
 				if (gainedVisualAt.QueryAndUnset(e,t0))
 				{
 					t = std::max(t0,t);	//permissive. whatever. seriously
-					LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Lost visual, time updated to "+String(t));
+					LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+": Lost visual, time updated to "+String(t));
 				}
-				PMobileEntity v= To<MobileEntity>::DynamicCast(e);
-				//if (v)
-				//	t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
-				//else
-				//	t += timeEpsilon;
-				//	
-				if (v)
-				{
-					t = v->timeAt = std::max(v->timeAt,t);
-					LogEvent(EventType::MinorEntityProcess,e.get(),this->GetLogName()+": Lost visual, time updated to "+String(t));
-				}
+				PMobileEntity v;
+				PTower tower;
+				e->SyncTime(t,timeEpsilon);
+
 				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),e->id.ToString());
 				seeing.Unset(e);
 				if (signalConnectedClient)
 					SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
 
-				if (v)
-					t = v->timeAt = std::max(v->timeAt,t) + timeEpsilon;
-				else
-					t += timeEpsilon;
+				e->SyncTime(t,timeEpsilon);
 			}
 			//ASSERT_EQUAL__(canSee.count(),gainedVisualAt.Count());
 
@@ -535,41 +529,65 @@ namespace Objects
 			visibility.ChangeSensory(state, t, change);
 		}
 
-
-		count_t		Faction::CountSatelliteCoverage(const TVec3<>&center)	const
+		template <typename T>
+		count_t		CountRawSensorCoverage(const TVec3<>&center, const BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
-			foreach (satellites,s)
+			foreach (scope,s)
 			{
-				PSatellite sat = s->lock();
-				if (sat && Sphere<>(sat->system.w.xyz,sat->GetScanningRange()).Contains(center))
+				auto sat = s->lock();
+				if (sat && Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Contains(center))
 					rs++;
 			}
 			return rs;
 		}
 
-		count_t		Faction::CountSatelliteCoverage(const Sphere<>&sphere)	const
+		template <typename T>
+		count_t		CountRawSensorCoverage(const Sphere<>&sphere, const BasicBuffer<T>&scope)
 		{
 			count_t rs = 0;
-			foreach (satellites,s)
+			foreach (scope,s)
 			{
-				PSatellite sat = s->lock();
-				if (sat && Sphere<>(sat->system.w.xyz,sat->GetScanningRange()).Intersects(sphere))
+				auto sat = s->lock();
+				if (sat && Sphere<>(sat->GetWorldPosition(),sat->GetScanningRange()).Intersects(sphere))
 					rs++;
 			}
 			return rs;
 		}
+
+		
+		count_t		Faction::CountOffGridCoverage(int channelHeight, const TVec3<>&p)	const
+		{
+			#ifndef NO_SATELLITES
+				if (Satellite::IsSatelliteHeight(channelHeight))
+					return CountRawSensorCoverage(p,satellites);
+			#endif
+
+			return 0;
+		}
+
+		count_t		Faction::CountOffGridCoverage(const Sphere<>&p)	const
+		{
+			count_t rs = 0;
+			#ifndef NO_SATELLITES
+				rs += CountRawSensorCoverage(p,satellites);
+			#endif
+
+			return rs;
+		}
+
 
 
 		void		Faction::CheckGridVisibility(const PWorldEntity&e,float&timeAt)
 		{
 			if (!e || e->owner.get() == this)
 				return;
+			LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+ ": CheckGridVisibility at time "+String(timeAt));
 			if (seeing.IsSet(e))
 			{
-				if (e->IsSatellite())
+				if (e->IsAboveGrid())
 				{
-					count_t cover = CountSatelliteCoverage(e->system.w.xyz);
+					count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
 					if (cover == 0)
 						SignalDisappearance(e,timeAt,true);
 					else
@@ -583,24 +601,25 @@ namespace Objects
 			}
 			else
 			{
-				if (e->IsSatellite())
+				if (e->IsAboveGrid())
 				{
-					count_t cover = CountSatelliteCoverage(e->system.w.xyz);
+					count_t cover = CountOffGridCoverage(e->location.height, e->GetWorldPosition());
 					if (cover > 0)
 						SignalAppearance(e,timeAt,true,false,cover);
 				}
 				else
 					if (GridCanSee(e))
 					{
+						LogEvent(EventSignificance::Common,e.get(),this->GetLogName()+ ": SignalAppearance at time "+String(timeAt));
 						SignalAppearance(e,timeAt,true,false);
 					}
 			}
 		}
 
 
-		void		Faction::RegisterSensorCreation(const Sphere<>&sphere, bool isSatellite, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
+		void		Faction::RegisterSensorCreation(const Sphere<>&sphere, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 		{
-			if (!isSatellite)
+			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
 				static Grid::HighSetup::TVolumeDescriptor	desc0;
 				Grid::high.GenerateVolume(sphere,desc0);
@@ -612,45 +631,44 @@ namespace Objects
 				Grid::low.GenerateVolume(Sphere<>(sphere.center,sphere.radius+1.f),desc);
 				foreach (desc.coverage,c)
 				{
-					UINT32 min = c->layerBegin;
+					UINT32 min = c->range.start;
 					if (min)
 						min--;
-					for (UINT l = min; l < c->layerEnd; l++)
+					for (UINT l = min; l < c->range.end; l++)
 					{
 						PWorldEntity e = GetEntity(Grid::LCellIdI(c->stackID,Grid::CellStack::ToHeight(l)));
 						if (!e || e->owner.get() == this)
 							continue;
 						if (GridCanSee(e))
 						{
-							SignalAppearance(e,t,true,false);
-							if (newContacts)
+							if (SignalAppearance(e,t,true,false) && newContacts)
 								newContacts->Append(e);
 						}
 					}
 				}
 			}
-			else
-			{
-				//count_t coverage = CountSatelliteCoverage(sat->system.w.xyz);
-
-				foreach (Objects::satellites,s)
+			#ifndef NO_SATELLITES
+				if (Objects::Satellite::IsSatelliteHeight(sensorHeight))
 				{
-					PSatellite sat = *s;
-					if (sat->owner.get() != this && sphere.Contains(sat->system.w.xyz))
+					//count_t coverage = CountSatelliteCoverage(sat->system.w.xyz);
+					//LogEvent(EventSignificance::Debug,"Registering orbital sensor sphere "+sphere.ToString());
+					foreach (Objects::satellites,s)
 					{
-						bool wasSeeing = newContacts && seeing.IsSet(sat);
-						SignalAppearance(sat,t,true);
-						if (newContacts && !wasSeeing)
-							newContacts->Append(sat);
+						PSatellite sat = *s;
+						if (sat->owner.get() != this && sphere.Contains(sat->GetWorldPosition()))
+						{
+							if (SignalAppearance(sat,t,true) && newContacts)
+								newContacts->Append(sat);
+						}
 					}
 				}
-			}
+			#endif
 		}
 
 		//void		Faction::RegisterSensorMotion(const Sphere<>&from, const Sphere<>&to, float t);
-		void		Faction::RegisterSensorRemoval(const Sphere<>&sphere, bool isSatellite, float&t, bool checkChangesNow)
+		void		Faction::RegisterSensorRemoval(const Sphere<>&sphere, int sensorHeight, float&t, bool checkChangesNow)
 		{
-			if (!isSatellite)
+			//if (sensorHeight <= Grid::CellStack::TopHeight)
 			{
 				static Grid::HighSetup::TVolumeDescriptor	desc0;
 				Grid::high.GenerateVolume(sphere,desc0);
@@ -658,29 +676,34 @@ namespace Objects
 				if (checkChangesNow)
 					CheckChanges(t);
 			}
-			float escaped = sqr(sphere.radius+2);
-			static Array<PWorldEntity>	seen;
-			seeing.exportKeys(seen);
-			foreach (seen,s)
+//			float escaped = sqr(sphere.radius+2);
+			//if (isSatellite)
+			//	LogEvent(EventSignificance::Debug,"Unregistering orbital sensor sphere "+sphere.ToString());
+
+			static Buffer<PWorldEntity>	disappear;
+
+			bool offGrid = sensorHeight > Grid::CellStack::TopHeight;
+
+			this->seeing.VisitAllKeys([this,offGrid, sphere](const PWorldEntity&s)
 			{
-				
-				float d2 = Vec::quadraticDistance(sphere.center,(*s)->system.w.xyz);
-				if (d2 > escaped || (*s)->IsSatellite() != isSatellite)
-					continue;
-				if ((*s)->IsSatellite())
+				if (s->IsAboveGrid() != offGrid)
+					return;
+				if (s->IsAboveGrid())
 				{
-					PSatellite sat = To<Satellite>::Cast(*s);
-					if (sphere.Contains(sat->system.w.xyz))
+					if (sphere.Contains(s->GetWorldPosition()))
 					{
-						SignalDisappearance(sat,t);
+						disappear << s;
 					}
 				}
 				else
-					if (!GridCanSee(*s))
+					if (!GridCanSee(s))
 					{
-						SignalDisappearance(*s,t);
+						disappear << s;
 					}
-			};
+			});
+			foreach (disappear,s)
+				SignalDisappearance(*s,t);
+			disappear.Clear();
 		}
 
 		void		Faction::RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
@@ -692,7 +715,7 @@ namespace Objects
 
 			ForeachWorldEntity([this,&t,newContacts](const PWorldEntity&other)
 			{
-				if (other->owner.get() == this)
+				if (other->owner.get() == this || other->IsAboveGrid())
 					return;
 				if (GridCanSee(other))
 				{
@@ -708,78 +731,20 @@ namespace Objects
 			if (checkChangesNow)
 				CheckChanges(t);
 
-			static Array<PWorldEntity>	seen;
-			foreach (seen,s)
+			static Buffer<PWorldEntity>	disappear;
+			this->seeing.VisitAllKeys([this](const PWorldEntity&s)
 			{
-				if (!GridCanSee(*s))
-				{
-					SignalDisappearance(*s,t);
-				}
-			};
-		}
-
-
-		//void		Faction::ReplaceSensory(const Grid::SkySensorState&oldState, const Grid::SkySensorState&newState, float t, short change)
-		//{
-		//	Concurrency::parallel_for(index_t(0),oldState.coverage.Count(),[&oldState,&newState,this,change](index_t i)
-		//	{
-		//		const auto&c = oldState.coverage[i];
-		//		int newH;
-		//		if (newState.coverageMap.Query(c.hStackID,newH) && newH == c.downToHeight)
-		//			return;
-		//		
-		//		CellStack&stack = cellStack[c.hstackID];
-		//		UINT32 downTo = Grid::CellStack::ToLayer(c.downToHeight);
-		//		for (UINT32 layer = Grid::CellStack::HalfRange-1; layer >= downTo; layer--)
-		//		{
-		//			CellStack::Cell&cell1 = stack.volumeCell[layer];
-		//			cell1.visibility += change;
-		//			if (change > 0)
-		//			{
-		//				cell1.temporarilyVisible = true;
-		//			}
-		//		}
-		//		families[Grid::high.grid.GetCell(c.hStackID).family].changed = true;
-		//	});
-		//}
-
-
-
-		void		Faction::FlushData()
-		{
-			markers.Clear();
-			markerMap.Clear();
-			nexusControl = acquiringNexusControl = 0;
-			deathInRounds = 0;
-			this->satellites.Clear();
-			skyHubs.Clear();
-			allMobiles.Clear();
-			structures.Clear();
-			towers.Clear();
-			storedMobiles.Clear();
-
-			#ifdef CONNECTOR_LESS
-				compound.Clear();
-			#endif
-
-			currentState.FlushAllData();
-			visibility.FlushAllData();
+				if (!s->IsAboveGrid() && !GridCanSee(s))
+					disappear << s;
+			});
+			foreach (disappear,s)
+				SignalDisappearance(*s,t);
+			disappear.Clear();
 
 		}
 
 
 
-		//void		Faction::SignalCoverageChange(const bool*familiesChanged, float atTime)
-		//{
-		//	for (BYTE f = 0; f < BaseGrid::NumFamilies; f++)
-		//	{
-		//		if (familiesChanged[f])
-		//		{
-		//			families[f].coverageChanged = true;
-		//			families[f].lastChange = atTime;
-		//		}
-		//	}
-		//}
 
 		void		Faction::CheckChanges(float t)
 		{
@@ -801,7 +766,7 @@ namespace Objects
 		bool		Faction::CanLive(String&whyNot) const
 		{
 			bool hasMineralGeneratorCycle = hasFuelMine && hasMineralMine && hasGenerator;
-			#ifndef CONNECTOR_LESS
+			#ifndef ONE_COMPOUND_PER_FACTION
 				if (!hasMineralContainer)
 					hasMineralGeneratorCycle = false;
 			#endif
@@ -819,7 +784,7 @@ namespace Objects
 					whyNot += "Mineral Mine";
 				}
 
-				#ifndef CONNECTOR_LESS
+				#ifndef ONE_COMPOUND_PER_FACTION
 					if (!hasMineralContainer)
 					{
 						if (whyNot.IsNotEmpty())
@@ -929,6 +894,8 @@ namespace Objects
 
 	#else
 		/*static*/ Buffer0<PFaction>			Faction::allKnown;
+		/*static*/ GenericHashTable<TUniqueID,PFaction,TUniqueID>	Faction::idMap;
+		/*static*/ PFaction						Faction::mine;
 
 		/*static*/ Buffer0<Marker, Strategy::Adopt>	Marker::all; 
 		/*static*/ GenericHashTable<TUniqueID, index_t, TUniqueID>	Marker::idMap,
@@ -938,12 +905,35 @@ namespace Objects
 		/*static*/ Buffer0<PStructure>	Marker::structureGhosts;
 		/*static*/ Buffer0<PMobileEntity>	Marker::mobileGhosts;
 
+		/*static*/ PFaction				Faction::FindByID(const TUniqueID&id)
+		{
+			PFaction*f = idMap.QueryPointer(id);
+			if (f)
+				return *f;
+			return PFaction();
+		}
+
+
+		/*static*/ PFaction				Faction::GetOrCreate(const TUniqueID&id)
+		{
+			{
+				PFaction*rs = idMap.QueryPointer(id);
+				if (rs)
+					return *rs;
+			}
+			PFaction rs(new Faction(id));
+			idMap.Set(id,rs);
+			allKnown << rs;
+			return rs;
+		}
+
+
 
 		void	ChangeOwnership( const PWorldEntity&e,const OwnerParameter&newOwner, bool isNowMine)
 		{
 			PStructure s = To<Structure>::DynamicCast(e);
 			#ifdef CLIENT
-				if (e->isMine)
+				if (e->isOwnedByMe)
 				{
 					float t = 0.f;
 					if (!s && e->IsMobile())
@@ -955,16 +945,17 @@ namespace Objects
 					#endif
 				}
 			#endif
-			LogEvent(EventType::MinorEntityProcess, e.get(),"Changed ownership to "+newOwner->GetName());	//this is also notified from the server, hence: minor
+			LogEvent(EventSignificance::Important, e.get(),"Changed ownership to "+newOwner->GetName());	//this is also notified from the server, hence: common
 			if (s)
 			{
-				s->DisconnectFromNeighborhood(0);
+				float t = 0;
+				s->DisconnectFromNeighborhood(t);
 			}
 			e->owner = newOwner;
-			e->isMine = isNowMine;
+			e->isOwnedByMe = isNowMine;
 
 			#ifdef CLIENT
-				if (e->isMine)
+				if (e->isOwnedByMe)
 				{
 					float t = 0.f;
 					if (!s && e->IsMobile())
@@ -995,7 +986,8 @@ namespace Objects
 				func(*a);
 		#else
 			
-			func(Faction::nexus);
+			if (Faction::nexus)
+				func(Faction::nexus);
 			for (index_t i = 0; i < Faction::all.Count(); i++)
 			{
 				PFaction f = Faction::all[i].lock();
@@ -1016,18 +1008,26 @@ namespace Objects
 	{
 		for (const PMobileEntity&e : vehicles)
 			func(e);
-		for (const PMobileEntity&e : satellites)
-			func(e);
+		#ifndef NO_SATELLITES
+			for (const PMobileEntity&e : satellites)
+				func(e);
+		#endif
 	}
 
 	void			ForeachMobileEntityIncludingStored(const std::function<void(const PMobileEntity&)>&func)
 	{
 		for (const PMobileEntity&e : vehicles)
 			func(e);
-		for (const PMobileEntity&e : satellites)
-			func(e);
+		#ifndef NO_SATELLITES
+			for (const PMobileEntity&e : satellites)
+				func(e);
+		#endif
 		for (const PMobileEntity&e : storedMobileEntities)
 			func(e);
+		#ifdef CLIENT
+			for (const PMobileEntity&e : Marker::mobileGhosts)
+				func(e);
+		#endif
 	}
 
 
@@ -1037,8 +1037,10 @@ namespace Objects
 			func(e);
 		for (const PWorldEntity&e : storedMobileEntities)
 			func(e);
-		for (const PWorldEntity&e : satellites)
-			func(e);
+		#ifndef NO_SATELLITES
+			for (const PWorldEntity&e : satellites)
+				func(e);
+		#endif
 		for (const PWorldEntity&e : structures)
 			func(e);
 		#ifdef CLIENT
@@ -1055,8 +1057,10 @@ namespace Objects
 	{
 		for (const PWorldEntity&e : vehicles)
 			func(e);
-		for (const PWorldEntity&e : satellites)
-			func(e);
+		#ifndef NO_SATELLITES
+			for (const PWorldEntity&e : satellites)
+				func(e);
+		#endif
 		for (const PWorldEntity&e : structures)
 			func(e);
 		#ifdef CLIENT
@@ -1072,7 +1076,7 @@ namespace Objects
 	#ifdef CLIENT
 
 
-		void Marker::UpdateAge(UINT32 currentRoundNumber)
+		void Marker::UpdateAge(const RuntimeConfig::RoundNumber& currentRoundNumber)
 		{
 			age = currentRoundNumber - createdInRound;
 			ASSERT_LESS__(age,100000);	//overflow otherwise, 100000 seems a good limit
@@ -1085,7 +1089,7 @@ namespace Objects
 			}
 		}
 
-		/*static*/ void				Marker::GetOutdated(BasicBuffer<TUniqueID>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds)
+		/*static*/ void				Marker::GetOutdated(BasicBuffer<Marker>&outOudated, const RuntimeConfig::RoundNumber& currentRoundNumber, UINT32 deathOutdatedAfterRounds)
 		{
 			outOudated.Clear();
 			foreach(all, m)
@@ -1097,41 +1101,42 @@ namespace Objects
 						
 						if (m->age > deathOutdatedAfterRounds)
 						{
-							LogEvent(EventType::Debug,nullptr,"Marker "+m->GetName()+" considered outdated after "+String(m->age)+" round(s)");
+							LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered outdated after "+String(m->age)+" round(s)");
 
-							outOudated << m->id;
+							outOudated << *m;
 						}
 					break;
 					case Type::HostileContact:
 					{
 						//TVec3<> center = Grid::ToWorld(m->location);
 						//if ()
-						bool seen = m->visualization && Grid::actualWorld.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
+						bool seen = m->age > 1 &&	//don't delete hostile markers in round <2. grid might be outdated
+									 m->visualization && Grid::actualWorld.GridCanSee(m->location,m->visualization->GetHeight(),m->visualization->IsBroad());
 						/*foreach(structures, s)
-							if ((*s)->isMine && (*s)->CanSee(center, 0))
+							if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
 							{
-								LogEvent(EventType::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
+								LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
 								seen = true;
 								break;
 							}
 						if (!seen)
 							foreach(vehicles, s)
-								if ((*s)->isMine && (*s)->CanSee(center, 0))
+								if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
 								{
-									LogEvent(EventType::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
+									LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
 									seen = true;
 									break;
 								}
 						if (!seen)
 							foreach(satellites, s)
-								if ((*s)->isMine && (*s)->CanSee(center, 0))
+								if ((*s)->isOwnedByMe && (*s)->CanSee(center, 0))
 								{
-									LogEvent(EventType::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
+									LogEvent(EventSignificance::Debug,nullptr,"Marker "+m->GetName()+" considered visible (seen by "+(*s)->GetName()+")");
 									seen = true;
 									break;
 								}*/
 						if (seen)
-							outOudated << m->id;
+							outOudated << *m;
 					}
 					break;
 
@@ -1142,11 +1147,12 @@ namespace Objects
 		}
 
 
-		/*static*/ void				Marker::Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, UINT32 createdInRound, const TUniqueID&referenceID, ConstName referenceType[2], UINT32 currentRound)
+		/*static*/ void				Marker::Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber& createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], const RoundNumber& currentRound)
 		{
 			const index_t newIndex = all.Count();
 			Marker&m = all.Append();
 			m.id = id;
+			m.referenceEntityOwner = referenceOwnerID;
 			m.location = location;
 			m.createdInRound = createdInRound;
 			m.age = currentRound - createdInRound;
@@ -1167,43 +1173,38 @@ namespace Objects
 					ASSERT1__(base, referenceType);
 					ASSERT1__(turret, referenceType);
 					m.visualization.reset(new Vehicle(OwnerParameter(), location, base, turret));
-					m.visualization->id = referenceID;
-					To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
-					m.visualization->health = -(int)m.age;
-					m.visualization->isMine = type == Type::EntityDeath;
 					mobileGhosts << To<MobileEntity>::Cast( m.visualization );
 				}
 				else
 				{
 					//structure
-					PStructure prototype = Objects::GetPrototypeByName(referenceType[0]);
+					PWorldEntity prototype = Objects::GetNonVehiclePrototypeByName(referenceType[0]);
 					if (prototype)
 					{
 						ASSERT1__(prototype, referenceType);
-						m.visualization = To<Structure>::Cast(prototype->CreateNewInstance(OwnerParameter(), location, 0));
-						m.visualization->id = referenceID;
-						m.visualization->health = -(int)m.age;
-						m.visualization->isMine = type == Type::EntityDeath;
-						m.visualization->UpdateNiceName();
-						structureGhosts << To<Structure>::Cast(m.visualization);
+						m.visualization = (prototype->CreateNewInstance(OwnerParameter(), location, 0));
+						if (prototype->IsStructure())
+							structureGhosts << To<Structure>::Cast(m.visualization);
+						else
+							if (prototype->IsMobile())
+								mobileGhosts << To<MobileEntity>::Cast( m.visualization);
+							else
+								LogEvent(EventSignificance::NonFatalError,"Unable to classify ghost for '"+prototype->GetTypeName()+"'");
 					}
 					else
-					{
-						PSatellite prototype = Objects::GetSatellitePrototypeByName(referenceType[0]);
-						if (prototype)
-						{
-							//satellite
-							m.visualization = To<MobileEntity>::Cast(prototype->CreateNewInstance(OwnerParameter(), location, 0.f));
-							m.visualization->id = referenceID;
-							To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
-							m.visualization->health = -(int)m.age;
-							m.visualization->isMine = type == Type::EntityDeath;
-							m.visualization->UpdateNiceName();
-							mobileGhosts << To<MobileEntity>::Cast( m.visualization);
-						}
-						//probably sattelite, but not gonna go there now
+						LogEvent(EventSignificance::NonFatalError,"Unable to create ghost for type #"+String((int)referenceType[0]));
 
-					}
+				}
+
+				if (m.visualization)
+				{
+					if (m.visualization->IsMobile())
+						To<MobileEntity>::Cast( m.visualization)->UpdateSystem();
+					m.visualization->id = referenceID;
+					m.visualization->owner = referenceOwnerID == TUniqueID::Empty() ? PFaction() : Faction::GetOrCreate(referenceOwnerID);
+					m.visualization->health = -(int)m.age;
+					m.visualization->isOwnedByMe = (m.visualization->owner && m.visualization->owner->isOwnedByMe) || (!m.visualization->owner && m.type == Type::EntityDeath);
+					m.visualization->UpdateNiceName();
 				}
 			}
 			else
@@ -1292,6 +1293,14 @@ namespace Objects
 			#endif
 		}
 
+		/*static*/ Marker*			Marker::Find(const Grid::LCellIdI&loc)
+		{
+			foreach (all,m)
+				if (m->visualization && m->visualization->location == loc)
+					return m;
+			return nullptr;
+		}
+
 		/*static*/ Marker*			Marker::FindByReference(const TUniqueID&referenceID)
 		{
 			index_t index;
@@ -1368,11 +1377,12 @@ namespace Objects
 		{
 			serial_size_t size = sizeof(TUniqueID);	//marker id;
 			size += 1;	//type
-			size += GetSerialSizeOfSize(createdInRound);
+			size += sizeof(createdInRound);
 			size += sizeof(location);
 			if (UtilizesReferenceEntity())
 			{
-				size += sizeof(TUniqueID);	//referenced entity id
+				size += 2 * sizeof(TUniqueID);	//referenced entity id
+
 
 				String t0 = Convert(this->referencedType[0]);
 				String t1 = Convert(this->referencedType[1]);
@@ -1386,13 +1396,13 @@ namespace Objects
 		/*virtual override*/	bool		Marker::Serialize(IWriteStream&outStream, bool exportSize) const
 		{
 			if (!outStream.WritePrimitive(id) || !outStream.WritePrimitive((UINT8)type)
-				 || !outStream.WriteSize(createdInRound)
+				 || !outStream.WritePrimitive(createdInRound)
 				|| !outStream.WritePrimitive(location)
 				)
 				return false;
 			if (UtilizesReferenceEntity())
 			{
-				if (!outStream.WritePrimitive(this->referenceEntity))
+				if (!outStream.WritePrimitive(this->referenceEntity) || !outStream.WritePrimitive(this->referenceEntityOwner))
 					return false;
 				String t0 = Convert(this->referencedType[0]);
 				String t1 = Convert(this->referencedType[1]);
@@ -1403,7 +1413,7 @@ namespace Objects
 		/*virtual override*/	bool		Marker::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
 		{
 			UINT8 typei;
-			if (!inStream.ReadPrimitive(id) || !inStream.ReadPrimitive(typei) || !inStream.ReadSize(createdInRound)
+			if (!inStream.ReadPrimitive(id) || !inStream.ReadPrimitive(typei) || !inStream.ReadPrimitive(createdInRound)
 				||  !inStream.ReadPrimitive(location)
 				)
 				return false;
@@ -1411,9 +1421,24 @@ namespace Objects
 			if (UtilizesReferenceEntity())
 			{
 				if (fixedSize != EmbeddedSize)
-					fixedSize -= sizeof(TUniqueID) + 1 + GetSerialSizeOfSize(createdInRound) + sizeof(TUniqueID) + sizeof(location);
+				{
+					fixedSize -= sizeof(TUniqueID) + 1 + sizeof(createdInRound) + sizeof(TUniqueID) + sizeof(location);
+					{
+						fixedSize -= sizeof(TUniqueID);
+					}
+				}
 				String t0,t1;
-				if (!inStream.ReadPrimitive(this->referenceEntity) || !t0.Deserialize(inStream,EmbeddedSize) || !t1.Deserialize(inStream,EmbeddedSize))
+				if (!inStream.ReadPrimitive(this->referenceEntity))
+					return false;
+
+				if (globalVersionOfCurrentFile >= FileVersions::MarkersHaveOwner)
+				{
+					if (!inStream.ReadPrimitive(this->referenceEntityOwner))
+						return false;
+				}
+				else
+					this->referenceEntityOwner = TUniqueID::Empty();
+				if (!t0.Deserialize(inStream,EmbeddedSize) || !t1.Deserialize(inStream,EmbeddedSize))
 					return false;
 				this->referencedType[0] = Convert(t0);
 				this->referencedType[1] = Convert(t1);
@@ -1428,13 +1453,14 @@ namespace Objects
 		}
 
 
-		Marker&		Faction::CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID)
+		Marker&		Faction::CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID)
 		{
 			ASSERT__(CanCreateMarker(priveleged)); 
 			Marker&rs = markers.Append(); 
 			rs.id = id; 
 			rs.type = type;
 			rs.referenceEntity = referenceID;
+			rs.referenceEntityOwner = referenceOwnerID;
 			markerMap.Set(rs.id, markers.Count() - 1); 
 			if (rs.UtilizesReferenceEntity())
 				ASSERT__(referenceMap.SetNew(referenceID,markers.Count()-1));
@@ -1465,7 +1491,7 @@ namespace Objects
 			index_t at;
 			if (!markerMap.QueryAndUnset(markerID, at))
 			{
-				LogEvent(EventType::InternalFault,nullptr,"Unable to destroy Marker. ID not set " + markerID.ToString());
+				LogEvent(EventClass::Preset::error,nullptr,"Unable to destroy Marker. ID not set " + markerID.ToString());
 				return false;
 			}
 			ASSERT_LESS__(at, markers.Count());
@@ -1522,7 +1548,7 @@ namespace Objects
 
 		/*static*/ void	Faction::Kill(const PFaction&f)
 		{
-			LogEvent(EventType::Debug,nullptr, "Erasing faction "+f->id.ToString());
+			LogEvent(EventSignificance::Debug,nullptr, "Erasing faction "+f->id.ToString());
 			static Buffer0<PWorldEntity>	toDelete;
 			for (index_t i = 0; i < f->structures.Count(); i++)
 				if (!f->structures[i].lock()->IsIndestructible())
@@ -1535,17 +1561,24 @@ namespace Objects
 				{
 					toDelete << f->allMobiles[i].lock();
 				}
+			float t=0;
 			foreach (toDelete,del)
-				Remove(*del,Objects::RemovalType::ControlledExplosion,0,false);
+				Remove(*del,Objects::RemovalType::ControlledExplosion,t,false);
 			toDelete.Clear();
 
-			for (index_t i = 0; i < all.Count(); i++)
-				if (all[i].lock() == f)
-				{
-					all.Erase(i);
-					break;
-				}
-			LogEvent(EventType::GameProgressRelated, nullptr,"Faction terminated: "+f->id.ToString());
+			if (f != nexus)
+			{
+				for (index_t i = 0; i < all.Count(); i++)
+					if (all[i].lock() == f)
+					{
+						all.Erase(i);
+						break;
+					}
+				LogEvent(EventClass::Preset::factionDeath, "Faction terminated: " + f->GetLogName());
+				SignalFactionsChanged();
+			}
+			else
+				LogEvent(EventClass::Preset::remoteControlError, "Destructible entities destroyed, but cannot terminate nexus faction itself");
 		}
 
 		/*static*/ PFaction			Faction::FindByID(const TUniqueID&id)
@@ -1610,5 +1643,33 @@ namespace Objects
 
 
 	#endif
+
+	float Next(std::mt19937&random)
+	{
+		return float(random()) / float(random.max());
+	}
+
+	/*static*/ void Faction::IDToColor(TVec3<>&rs, const TUniqueID&id, int iteration/*=0*/)
+	{
+		USHORT	v0 = *(const USHORT*)id.bytes,
+				v1 = *(((const USHORT*)id.bytes)+1),
+				v2 = *(((const USHORT*)id.bytes)+2);
+		int primary = v0 % 3;	//not perfectly evenly distributed since 65536 isn't divisible by 3, but it should be close enough
+		int secondary = (primary + (v1 % 2) + 1) % 3;
+		float secondaryLevel = (float(v2)/float(0xFFFF));
+		Vec::clear(rs);
+		rs.v[primary] = sqrt(1.f - sqr(secondaryLevel));
+		rs.v[secondary] = secondaryLevel;
+	}
+
+	void		Faction::UpdateID(const TUniqueID&toID, bool recomputeColor/*=true*/)
+	{
+		if (toID == TUniqueID::Empty())
+			id.Generate();
+		else
+			id = toID;
+		if (recomputeColor)
+			IDToColor(color,id);
+	}
 
 }

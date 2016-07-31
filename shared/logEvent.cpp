@@ -18,10 +18,32 @@
 #endif
 
 #ifdef HAS_WINDOW
-	void VisualLogEvent( EventType type,  const Objects::WorldEntity*e, const String&_event);
+	void VisualLogEvent( EventClass type,  const Objects::WorldEntity*e, const String&_event);
 #endif
 
 bool		inTestMode = false;
+
+
+EventClass	EventClass::Preset::error = EventClass(EventSignificance::NonFatalError),
+			EventClass::Preset::internalError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),
+			EventClass::Preset::fatal = EventClass(EventSignificance::SystemFatal, EventFlavor::SystemError),
+			EventClass::Preset::unexpectedBehavior = EventClass(EventSignificance::ClientFatal, EventFlavor::SystemError),
+			EventClass::Preset::common = EventClass(EventSignificance::Common),
+			EventClass::Preset::debug = EventClass(EventSignificance::Debug),
+			EventClass::Preset::factionDeath = EventClass(EventSignificance::FactionFatal, EventFlavor::Loss),
+			EventClass::Preset::commandRejected = EventClass(EventSignificance::NonFatalError,EventFlavor::UserError),
+			EventClass::Preset::operationAborted = EventClass(EventSignificance::NonFatalError,EventFlavor::Loss),
+			EventClass::Preset::configuration = EventClass(EventSignificance::Common,EventFlavor::Neutral),
+			EventClass::Preset::configurationPrint = EventClass(EventSignificance::Uncommon,EventFlavor::Neutral),
+			EventClass::Preset::configurationError = EventClass(EventSignificance::NonFatalError,EventFlavor::UserError),
+			EventClass::Preset::fileError = EventClass(EventSignificance::NonFatalError,EventFlavor::SystemError),
+			EventClass::Preset::network = EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),
+			EventClass::Preset::networkError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),
+			EventClass::Preset::remoteControlResponse = EventClass(EventSignificance::Common,EventFlavor::ServerPrivate),
+			EventClass::Preset::remoteControlCommand = EventClass(EventSignificance::Uncommon,EventFlavor::ServerPrivate),
+			EventClass::Preset::remoteControlError = EventClass(EventSignificance::NonFatalError,EventFlavor::ServerPrivate),
+			EventClass::Preset::important = EventClass(EventSignificance::Important),
+			EventClass::Preset::uncommon = EventClass(EventSignificance::Uncommon);
 
 namespace Logging
 {
@@ -95,12 +117,13 @@ namespace Logging
 	{
 		if (!outFile.Open(path))
 		{
-			LogEvent(EventType::InternalFault,getLastError());
+			LogEvent(EventClass::Preset::error , getLastError());
 		}
 		
 		#ifndef HAS_WINDOW
 		consoleThread.Begin();
 		#endif
+		LogEvent(EventClass::Preset::uncommon,"Logging to '"+String(path)+"'..." );
 	}
 
 
@@ -139,14 +162,17 @@ namespace Logging
 
 
 
-	void WriteEvent( EventType type, const String&message, TCP::Peer*peer, const Objects::WorldEntity*e)
+	void WriteEvent( const EventClass&evClass, const String&message, TCP::Peer*peer, const Objects::WorldEntity*e)
 	{
-		bool printToConsole = type != EventType::Debug && type != EventType::MinorEntityProcess
-							&& type != EventType::PerformanceMeasurement;
+		bool printToConsole = evClass.significance >= EventSignificance::Uncommon;
+		//type != EventSignificance::Debug
+		//					&& type != EventSignificance::Common
+		//					&& type != EventSignificance::PerformanceMeasurement
+		//					&& type != EventClass::Preset::remoteControlResponse;
 
 		if (inTestMode)
 		{
-			printToConsole = type == EventType::InternalFault;
+			printToConsole = evClass.significance >= EventSignificance::NonFatalError;
 			if (!printToConsole)
 				return;
 		}
@@ -160,17 +186,17 @@ namespace Logging
 		{
 			headerWritten = true;
 			if (!inTestMode)
-				logFile << "Type" << tab << "Time" << tab << "Round"<<tab<< "Phase"<<tab<<  "ClientName"<<tab<<"IP"<<tab<<"EntityType"<<tab<<"EntityID"<<tab<<"OwnerID"<<tab<<"Location"<<tab<<"Message"<<nl;
+				logFile << "Sig."<< tab << "Time" << tab << "Round"<<tab<< "Phase"<<tab<<  "ClientName"<<tab<<"IP"<<tab<<"EntityType"<<tab<<"EntityID"<<tab<<"OwnerID"<<tab<<"Location"<<tab<<"Message"<<nl;
 		}
 		if (printToConsole)
-			console << '[' << String(RuntimeConfig::roundNumber)<<"] ";
+			console << '[' << RuntimeConfig::roundNumber.ToString()<<"] ";
 		if (!inTestMode)
-			logFile << type.ToString() << tab << TimeStamp() << tab << String(RuntimeConfig::roundNumber) << tab << RuntimeConfig::phase.ToString();
+			logFile << evClass.significance.ToString()  << tab << TimeStamp() << tab << RuntimeConfig::roundNumber.ToString() << tab << RuntimeConfig::phase.ToString();
 
 		if (peer)
 		{
 			#ifndef CLIENT
-				State::PClient c = To<State::Client>::Cast(peer->attachment);
+				Network::PClient c = To<Network::Client>::Cast(peer->attachment);
 				if (c)
 				{
 					if (printToConsole)
@@ -215,11 +241,11 @@ namespace Logging
 		if (printToConsole)
 			console << message << nl;
 		if (!inTestMode)
-			Flush(logFile,IsImportant(type));
+			Flush(logFile,printToConsole);
 		if (printToConsole)
 		{
 			#ifdef HAS_WINDOW
-				VisualLogEvent(type,e,message);
+				VisualLogEvent(evClass,e,message);
 			#else
 				consoleThread.pipe << String(console.buffer.ToStringRef());
 			#endif
@@ -233,7 +259,7 @@ namespace Logging
 
 
 
-void LogEvent( EventType type, const Objects::WorldEntity*e, const String&msg)
+void LogEvent( const EventClass&type, const Objects::WorldEntity*e, const String&msg)
 {
 	#ifndef CLIENT
 		Logging::SendEntityEvent(nullptr,type,e,msg);

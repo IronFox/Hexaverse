@@ -11,6 +11,8 @@ namespace Evolver
 
 	namespace CoreDetails
 	{
+		Queue<TExplosion>	pendingExplosions;
+
 		/**
 		Like vehicles, towers have an attack action floation point value. Unlike vehicles, they are not part of the
 		movement phase. Therefore, once per round, this function must be called to reset their attack action.
@@ -23,7 +25,7 @@ namespace Evolver
 		@param t Server time
 		@param terrainChanged Set true if the terrain changed sind the last invocation of this function. If in doubt pass true. 
 		*/
-		void			CheckSatelliteSupplyAndSensory(float&t, bool terrainChanged);
+		void			CheckOrbitalSupplyAndSensory(float&t, bool terrainChanged);
 
 
 
@@ -33,7 +35,7 @@ namespace Evolver
 			Objects::WMobileEntity	ref;
 			float			initiativeFactor;
 
-			/**/		TActionReference(const Objects::PMobileEntity&e):ref(e)	{initiativeFactor = e->localRandom.getFloat(0.95f,1.f); /*std::cout << e->GetName()<<": "<< initiativeFactor << std::endl;*/}
+			/**/		TActionReference(const Objects::PMobileEntity&e):ref(e)	{initiativeFactor = e->entityRandom.getFloat(0.95f,1.f); /*std::cout << e->GetName()<<": "<< initiativeFactor << std::endl;*/}
 
 			bool		IsAlive() const {return ref.lock() && ref.lock()->health >= 0;}
 
@@ -48,7 +50,7 @@ namespace Evolver
 			Objects::WWorldEntity			eref;
 			float			initiativeFactor;
 
-			/**/		TAttackReference(const Objects::PWorldEntity&we):eref(we)	{initiativeFactor = we->localRandom.getFloat(0.95f,1.f);/*std::cout << we->GetName()<<": "<< initiativeFactor << std::endl;*/}
+			/**/		TAttackReference(const Objects::PWorldEntity&we):eref(we)	{initiativeFactor = we->entityRandom.getFloat(0.95f,1.f);/*std::cout << we->GetName()<<": "<< initiativeFactor << std::endl;*/}
 
 			bool		IsAlive() const {Objects::PWorldEntity e = eref.lock(); return e && e->health >= 0;}
 
@@ -160,9 +162,23 @@ namespace Evolver
 				return false;
 			}
 			Objects::PMobileEntity v = movingVehicles.last().ref.lock();
-			bool hadMoved = v->hasMoved;
-			if (!v->PerformNonAttack() && !hadMoved)
-				movingVehicles2.Append(TMovementReference(v));
+			//bool hadMoved = v->hasMoved;
+			auto rs = v->PerformNonAttack();
+			switch (rs)
+			{
+				case Objects::MobileEntity::TaskResult::AllDoneForThisRound:
+				break;
+				case Objects::MobileEntity::TaskResult::FinishedCanDoMore:
+				case Objects::MobileEntity::TaskResult::TryingSomething:	//this case may need special handling. let's see how it goes first
+					movingVehicles2.Append(TMovementReference(v));
+				break;
+				default:
+					FATAL__("Unexpected return value");
+			}
+			if (movingVehicles2.IsEmpty())
+			{
+				bool brk = true;
+			}
 			movingVehicles.EraseLast();
 
 			return movingVehicles.IsNotEmpty() || movingVehicles2.IsNotEmpty();
@@ -180,6 +196,7 @@ namespace Evolver
 
 		void	BeginRoundProcessing()
 		{
+			Objects::Compound::lastDisabled = nullptr;
 			Objects::ForeachFaction([](const Objects::PFaction&f)
 			{
 				f->DropPerRoundData();
@@ -198,7 +215,10 @@ namespace Evolver
 			});
 
 
-
+			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
+			{
+				e->ResetMotionTime();
+			});
 
 			Objects::ForeachMobileWorldEntity([](const Objects::PMobileEntity&v)
 			{
@@ -208,8 +228,16 @@ namespace Evolver
 				v->BeginAttackPhase();
 
 				Objects::PTurretBase b = v->GetTurretBase();
+				if (!b || !b->turret->CanAttack() || !b->CountPossibleAttacks())
+					return;
 
-				if (v->NextTaskIsAttack() && b && b->CountPossibleAttacks())
+				if (v->IsSentry())
+				{
+					if (v->myTasks.IsEmpty())
+						v->FillAttackQueue();
+				}
+
+				if (v->NextTaskIsAttack())
 				{
 					if (b->HasAmmoForShot())
 					{
@@ -219,9 +247,9 @@ namespace Evolver
 					}
 					else
 					{
-						LogEvent(EventType::CommandRejected,v.get(),"Insufficient ammunition. Attacks cancelled");
+						LogEvent(EventClass::Preset::commandRejected,v.get(),"Insufficient ammunition. Attacks cancelled");
 						v->EraseFirstTask();
-						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->timeAt);
+						v->RegisterChange(Objects::WorldEntity::TasksChanged,v->motionTime);
 					}
 					//ref.initiative = v->GetAttackInitiative();
 					//ref.attacksLeft = v->CountPossibleAttacks();
@@ -238,16 +266,16 @@ namespace Evolver
 						continue;
 					attackTime = 0;
 					t->BeginAttackPhase();
-					//t->BeginAttackPhase();
+
 					if (t->turret->CanAttack())
 					{
 						if (t->attackQueue.IsEmpty() && !t->FillAttackQueue())
 							continue;
 						if (!t->HasAmmoForShot(0))
 						{
-							LogEvent(EventType::CommandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
+							LogEvent(EventClass::Preset::commandRejected,t.get(),"Insufficient ammunition. Attacks cancelled");
 							t->attackQueue.Clear();
-							t->RegisterChange(Objects::WorldEntity::TasksChanged,t->timeAt);
+							t->RegisterChange(Objects::WorldEntity::TasksChanged,t->motionTime);
 							continue;
 						}
 
@@ -264,73 +292,75 @@ namespace Evolver
 				return !Grid::AffectedByEMP(e->location);
 			});
 
-			State::SimulateLiquidsIfEnabled();
+			World::SimulateLiquidsIfEnabled();
 
-			State::ChangePhase(RuntimeConfig::Phase::AttackPhase);
+			Game::Network::ChangePhase(RuntimeConfig::Phase::AttackPhase);
 		}
 
 		void ProcessStructures1(float atTime)
 		{
-			#ifdef CONNECTOR_LESS
+			//#ifdef ONE_COMPOUND_PER_FACTION
 				Objects::RefreshCompoundCoverageIfNeeded(atTime);
 				Objects::ForeachCompound([atTime](Objects::Compound&c)
 				{
 					c.TickEnd(atTime);
 				});
-			#endif
+			//#endif
 
 		}
 
 
 
 
-		void CheckSatelliteSupplyAndSensory(float&t, bool terrainChanged)
+		void CheckOrbitalSupplyAndSensory(float&t, bool terrainChanged)
 		{
-			Objects::RefreshSkyHubConnections();
-			if (terrainChanged)
-				LogEvent(EventType::Debug,nullptr,"Terrain changed, updating satellite ground-sensory");
-			
-			static Buffer0<Objects::PSatellite>	waste;
-			for (index_t i = 0; i < Objects::satellites.Count(); i++)	//must be an integer loop (see ProcessRound())
-			{
-				Objects::PSatellite sat = Objects::satellites[i];
-				t+=Objects::timeEpsilon;
-
+			#ifndef NO_SATELLITES
+				Objects::RefreshSkyHubConnections();
 				if (terrainChanged)
-					sat->RefreshGroundSensor(t);
-
-				if (!sat->ProcessRound(t))	//this method can insert new satellites, hence a int loop, and not a foreach loop
+					LogEvent(EventSignificance::Debug,nullptr,"Terrain changed, updating satellite ground-sensory");
+			
+				static Buffer0<Objects::PSatellite>	waste;
+				for (index_t i = 0; i < Objects::satellites.Count(); i++)	//must be an integer loop (see ProcessRound())
 				{
-					if (sat->location.height <= Objects::Satellite::DeclinedResidenceHeight)
+					Objects::PSatellite sat = Objects::satellites[i];
+					t+=Objects::timeEpsilon;
+
+					if (terrainChanged)
+						sat->RefreshGroundSensor(t);
+
+					if (!sat->ProcessRound(t))	//this method can insert new satellites, hence a int loop, and not a foreach loop
 					{
-						LogEvent(EventType::EntityProcessFailed,sat.get(),"Insufficient fuel supply. Satellite lost");
-						//t+= 0.025f;
-						sat->timeAt+=Objects::timeEpsilon;
-						waste << sat;
+						if (sat->location.height <= Objects::Satellite::DeclinedResidenceHeight)
+						{
+							LogEvent(EventClass(EventSignificance::Important, EventFlavor::Loss),sat.get(),"Insufficient fuel supply. Satellite lost");
+							//t+= 0.025f;
+							sat->motionTime+=Objects::timeEpsilon;
+							waste << sat;
+						}
+						else
+						{
+							LogEvent(EventClass(EventSignificance::Important, EventFlavor::Loss),sat.get(),"Insufficient fuel supply. Satellite is declining");
+							Grid::LCellIdI newLocation = sat->location;
+							newLocation.height = Objects::Satellite::DeclinedResidenceHeight;
+							//t+= 0.025f;
+							sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
+						}
 					}
 					else
-					{
-						LogEvent(EventType::EntityProcessFailed,sat.get(),"Insufficient fuel supply. Satellite is declining");
-						Grid::LCellIdI newLocation = sat->location;
-						newLocation.height = Objects::Satellite::DeclinedResidenceHeight;
-						//t+= 0.025f;
-						sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
-					}
+						if (sat->location.height < Objects::Satellite::BaseResidenceHeight)
+						{
+							LogEvent( EventClass(EventSignificance::Uncommon, EventFlavor::Gain),sat.get(),"Satellite height restored");
+							Grid::LCellIdI newLocation = sat->location;
+							newLocation.height = Objects::Satellite::BaseResidenceHeight;
+							sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
+						}
 				}
-				else
-					if (sat->location.height < Objects::Satellite::BaseResidenceHeight)
-					{
-						LogEvent(EventType::EntityProcess,sat.get(),"Satellite height restored");
-						Grid::LCellIdI newLocation = sat->location;
-						newLocation.height = Objects::Satellite::BaseResidenceHeight;
-						sat->PlaceExactlyAt(newLocation, 0.1f, 0.f);
-					}
-			}
-			//satellitesAreLocked = false;
+				//satellitesAreLocked = false;
 
-			for (const auto&sat : waste)
-				Objects::Remove(sat, Objects::RemovalType::UncontrolledExplosion, sat->timeAt, true);
-			waste.Clear();
+				for (const auto&sat : waste)
+					Objects::Remove(sat, Objects::RemovalType::UncontrolledExplosion, sat->motionTime, true);
+				waste.Clear();
+			#endif
 		};
 
 
@@ -339,30 +369,34 @@ namespace Evolver
 
 		bool ContinueRoundProcessing(float&animationLength)
 		{
+			static TExplosion exp;
+			while (pendingExplosions >> exp)
+				Objects::Explode(TAttack(),Grid::ToHigh(exp.center),Grid::ToWorld(exp.center),exp.radius,exp.damageLevel,false,exp.atTime);
+
 			switch (RuntimeConfig::phase)
 			{
 				case RuntimeConfig::Phase::AttackPhase:
 					if (!ProcessNextVehicleAttack())
-						State::ChangePhase(RuntimeConfig::Phase::MovementPhase);
+						Game::Network::ChangePhase(RuntimeConfig::Phase::MovementPhase);
 					//anythingChanged = true;
 				break;
 				case RuntimeConfig::Phase::MovementPhase:
 					if (!ProcessVehicleMotion())
 					{
-						State::ProcessChanges(true);
+						Game::ProcessChanges(true);
 						#ifndef NO_HIBERNATION
 							State::UpdateHibernation();
 						#endif
 
 						animationLength = 0.f;
-						Objects::ForeachMobileEntityIncludingStored([&animationLength](const Objects::PMobileEntity&m)
+						Objects::ForeachWorldEntityIncludingStored([&animationLength](const Objects::PWorldEntity&m)
 						{
-							animationLength = std::max(m->timeAt,animationLength);
+							animationLength = std::max(m->motionTime,animationLength);
 						});
-						State::PerformNewRoundLogic(animationLength);
+						Game::PerformNewRoundLogic(animationLength);
 						ResetTowerAttackAction(animationLength);
-						CheckSatelliteSupplyAndSensory(animationLength,State::terrainChanged);
-						State::terrainChanged = false;
+						CheckOrbitalSupplyAndSensory(animationLength,World::terrainChanged);
+						World::terrainChanged = false;
 						ProcessStructures1(animationLength);//clears overproduction: must be called after CheckSatelliteSupply()
 						return false;
 					}
@@ -387,9 +421,15 @@ namespace Evolver
 
 	/*virtual override*/ void Core::FinishRoundProcessing()
 	{
-		RuntimeConfig::roundNumber++;
+		RuntimeConfig::roundNumber.main++;
 
-		State::ChangePhase(RuntimeConfig::Phase::CommandPhase,State::Config::roundTimer > 0 && !State::roundTimerPaused ? State::Config::roundTimer : -1);
+		Game::Network::ChangePhase(RuntimeConfig::Phase::CommandPhase,Game::Config::roundTimer > 0 && !Game::roundTimerPaused ? Game::Config::roundTimer : -1);
+	}
+
+	/*virtual override*/ void		Core::HandleChainReactionExplosion(const TExplosion&explosion)
+	{
+		CoreDetails::pendingExplosions << explosion;
+
 	}
 
 }

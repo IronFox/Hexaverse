@@ -40,6 +40,11 @@ namespace Objects
 	class MobileEntityProducer
 	{
 	protected:
+		
+		#ifdef HAS_WINDOW
+			int2					commandOffset = int2(4,2);
+		#endif
+		
 		String						JobName(index_t index, const String&itemName, UINT32 roundsLeft)const;
 		UINT32						ProductionRounds( const PMobileEntity&v, bool isActive) const;
 
@@ -52,12 +57,12 @@ namespace Objects
 			TUniqueID				id;
 			#ifdef CLIENT
 				#ifdef HAS_WINDOW
-					MobileEntityConstructionAbortCommand		
-									commandToTerminate;	//works for mobiles in general
+					std::pair<int2,PEntityConstructionCommand>	commandToTerminate;
 				#endif
 				String				name;
 				int					cost, roundsToCompletion;
 				Component::VehicleBase*		base=nullptr;	//set for vehicles only
+				PMobileEntity		prototype;	//set for non-vehicles only
 			#else
 				PMobileEntity		producing;
 
@@ -67,7 +72,13 @@ namespace Objects
 				bool				IsEmpty() const	{return this != nullptr && !producing;}
 			#endif
 
-			bool					IsSatellite() const;
+			#ifndef NO_SATELLITES
+				bool				IsSatellite() const;
+			#endif
+			bool					IsVehicle() const;
+			Component::VehicleBase*	GetVehicleBase() const;
+			bool					CanSpawnInGrid() const;
+			bool					CanSpawnAboveGrid(int&) const;
 		};
 		//typedef std::pair<PVehicle,Command>		WorkItem;
 		Buffer0<WorkItem>			queue;	//must use buffer here, because elements can be erased and changes are rare
@@ -91,11 +102,15 @@ namespace Objects
 			return true;
 		}
 
+
 		void						AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName);
 
 		#ifdef HAS_WINDOW
-			void					VisitAllCommands(FEntityCommandVisitor visitor);
-			void					VisitAllCommands_Reverse(FEntityCommandVisitor visitor);
+			void					VisitAllCommands(FCommandVisitor visitor,bool force);
+			void					SetCommandOffset(const int2&);
+		#else
+			void					SetCommandOffset(const int2&)	{};
+
 		#endif
 		bool						AwaitsUserInteraction() const;
 
@@ -103,13 +118,15 @@ namespace Objects
 			WorkItem*				EnqueueProductionOf(const PMobileEntity&e, index_t at = InvalidIndex);
 			WorkItem*				EnqueueProductionOfVehicle(ConstName baseName, ConstName turretName);
 			WorkItem*				EnqueueProductionOfVehicle(Component::VehicleBase*selectedBase, Component::Turret*selectedTurret);
-			WorkItem*				EnqueueProductionOfSatellite(ConstName typeName);
+			#ifndef NO_SATELLITES
+				WorkItem*			EnqueueProductionOfSatellite(ConstName typeName);
+			#endif
 
-			void					Tick(ResourceVector&v);
+			void					Tick(ResourceVector&v, float&t);
 			UINT32					ProductionRounds(const WorkItem&e, bool isActive) const	{return ProductionRounds(e.producing,isActive);}
 
-			PMobileEntity			SpawnFinishedProductionAnywhere();
-			PMobileEntity			CompleteProduction();
+			PMobileEntity			SpawnFinishedProductionAnywhere(float&t);
+			PMobileEntity			CompleteProduction(float &t);
 			PMobileEntity			GetActiveProduction() const;
 			bool					AbortConstruction(const TUniqueID&);
 			void					UpdateGatheringPoint(const Grid::LCellIdI&);
@@ -122,8 +139,9 @@ namespace Objects
 
 
 		//new overriables:
-		virtual void				SignalLastProductionDone() {}
+		virtual void				SignalLastProductionDone(float&t) {}
 		virtual void				SignalNewProductionEnqueued() {}
+		virtual bool				CanProduce(const PWorldEntity&proto) const=0;
 
 	};
 

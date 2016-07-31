@@ -1,6 +1,9 @@
 #ifndef objectsSatteliteH
 #define objectsSatteliteH
 
+#include "../config.h"
+
+#ifndef NO_SATELLITES
 
 /*
 * single sphere layer that hosts all space objects around planets
@@ -66,7 +69,7 @@ namespace Objects
 				return distance < other.distance;
 			}
 		};
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			static Buffer0<THub>hubs;	//ordered for references, closest first
 
 			/**
@@ -75,15 +78,13 @@ namespace Objects
 			*/
 			void				UpdateHubMap();
 		#else
-			#if defined HAS_WINDOW || !defined CLIENT
-				/**
-				Fetches the closest connected SkyHub (that is not this), belonging to the same faction
-				@param[out] quadraticDistance Quadratic distance to the found SkyHub.
-				@return Found SkyHub instance or NULL, if the local faction does not own (or is not known to have)
-				any other connected SkyHubs
-				*/
-				PSkyHub			GetClosestExternalSupplier(float&quadraticDistance);
-			#endif
+			/**
+			Fetches the closest connected SkyHub (that is not this), belonging to the same faction
+			@param[out] quadraticDistance Quadratic distance to the found SkyHub.
+			@return Found SkyHub instance or NULL, if the local faction does not own (or is not known to have)
+			any other connected SkyHubs
+			*/
+			PSkyHub				GetClosestExternalSupplier(float&quadraticDistance);
 		#endif
 
 
@@ -100,17 +101,11 @@ namespace Objects
 			int					lastExtraFuelDemand = -1;
 		#endif
 
-
-		struct Detail
-		{
-			static int			WalkStack(const Grid::CellStack&stack, bool failOnStructureCount);
-
-		};
-
 	public:
 		static const int		BaseResidenceHeight = Grid::CellStack::HalfRange * 5;
 		static const int		DeclinedResidenceHeight = BaseResidenceHeight - 4;
 
+		static bool				IsSatelliteHeight(int h)	{return h == BaseResidenceHeight || h == DeclinedResidenceHeight;}
 
 		static count_t			CountTurretOccurrences(const OwnerParameter&,Component::Turret*);
 
@@ -152,6 +147,7 @@ namespace Objects
 			*/
 			bool				RefreshGroundSensor(float&atTime);
 			bool				AttackNext(Grid::LCellIdI target, bool autoTarget);
+			virtual void		MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/) override;
 		#endif
 
 		#ifdef HAS_WINDOW
@@ -183,7 +179,8 @@ namespace Objects
 		//new overridables:
 		#ifndef CLIENT
 			virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const {return false;}
-			virtual bool		WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime) const	{return false;}
+			virtual bool		WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	{return false;}
+			virtual bool		IsSentry() const	{return false;}
 			/**
 			Performs all per-round operations the local satellite can. The base version handles fueling of the local satellite.
 			Any overriding class should call the base version of this method and return its result, unless fuel processing should not commence for whatever reason
@@ -195,7 +192,6 @@ namespace Objects
 
 		//TurretBase overrides:
 		virtual float			GetFlatAttackRange() const override {return EMPModify(turret->horizontalAttackRange,1.f);}
-		virtual bool			HasAmmoForShot() const override;
 		#ifndef CLIENT
 			virtual bool		FillAttackQueue()override;
 		#endif
@@ -204,15 +200,15 @@ namespace Objects
 		virtual bool			IsSatellite() const override {return true;}
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = 0.f; return To<MobileEntity>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = 0.f; return To<const MobileEntity>::Cast(shared_from_this());}
-		//virtual bool				CanSee(const PWorldEntity&other)	const override;
-		//virtual bool				CanSee(const TVec3<>&center, float radius)	const override;
+		virtual bool			CanSpawnInGrid() const override {return false;}
+		virtual bool			CanSpawnAboveGrid(int&outHeight) const {outHeight = BaseResidenceHeight; return true;}
 
 		#ifdef HAS_WINDOW
 			virtual void		DescribeType(BaseCommand::Label&outResult, UINT32 descFlags) override;
 			//virtual void		RegisterWorldSensory() override;
 			//virtual void		UnregisterWorldSensory() override;
 //			virtual void		MoveWorldSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to) override;
-			virtual void		VisitAllCommands(FCommandVisitor visitor) override {turret->VisitAllCommands(visitor);};
+			virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {turret->VisitAllCommands(visitor,force);};
 
 		#endif
 
@@ -236,7 +232,7 @@ namespace Objects
 			else
 				location.height = DeclinedResidenceHeight;
 		}
-		#ifndef CONNECTOR_LESS
+		#ifndef ONE_COMPOUND_PER_FACTION
 			virtual ResourceVector		GetMaxStorageCapacity()	const override
 			{
 				return turret->baseStorageCapacity;
@@ -276,8 +272,7 @@ namespace Objects
 		public:
 			static const std::shared_ptr<Derivative>	globalPrototype;
 			#ifdef HAS_WINDOW
-				static Buffer0<IconCommand>		iconCommands;
-
+				static CommandContainer	commands;
 				/**
 				Render-ready, object-space instruction to be used for all instances of this structure type
 				*/
@@ -298,7 +293,7 @@ namespace Objects
 				virtual void		PrototypeLoadGeometry() override;
 
 				virtual bool		TestIntersection(const TVec3<>&b, const TVec3<>&d, float & distance) const override;
-				virtual void		VisitAllCommands(FCommandVisitor visitor) override {Super::VisitAllCommands(visitor); foreach (iconCommands,cmd) visitor(*cmd);};
+				virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override {Super::VisitAllCommands(visitor,force); commands.VisitMembers(visitor,force);};
 			#endif
 
 		};
@@ -308,7 +303,7 @@ namespace Objects
 
 	#ifdef HAS_WINDOW
 		template <typename Derivative>
-			/*static*/ Buffer0<IconCommand>		SatelliteTemplate<Derivative>::iconCommands;
+			/*static*/ CommandContainer		SatelliteTemplate<Derivative>::commands;
 		template <typename Derivative>
 			/*static*/ DX11::InstructionBlock32	SatelliteTemplate<Derivative>::shape;
 		template <typename Derivative>
@@ -335,7 +330,9 @@ namespace Objects
 		/*virtual override*/	void			SatelliteTemplate<Derivative>::PrototypeSetup()
 		{
 			turret = GetTurretType();
-
+			#ifdef HAS_WINDOW
+				commands.baseCoords = int2(4,0)+BaseCommand::coordOffset;
+			#endif
 		}
 
 	#ifdef HAS_WINDOW
@@ -359,6 +356,7 @@ namespace Objects
 
 	class SkyHub : public SatelliteTemplate<SkyHub>, public MobileEntityProducer
 	{
+		static Buffer0<ConstName>	supportsProduction;
 	protected:
 		typedef SatelliteTemplate<SkyHub>	Super;
 		friend class Super;
@@ -366,23 +364,21 @@ namespace Objects
 		static const int		ProductionSpeed = 10;
 
 		/**/					SkyHub(const OwnerParameter&owner, const Grid::LCellIdI&location):Super(owner,GetTurretType(),location),MobileEntityProducer(ProductionSpeed)
-								{}
+								{MobileEntityProducer::SetCommandOffset(int2(3,1));}
 		/**/					SkyHub():Super(GetTurretType()),MobileEntityProducer(ProductionSpeed)
-								{}	//global prototype
+								{MobileEntityProducer::SetCommandOffset(int2(3,1));}	//global prototype
 
 		static int2				AllocateProductionSlot();
 
-		static void				RegisterProduction(const PSatellite&);
-		static void				RegisterProduction(const PStructure&);
+		static void				RegisterProduction(const PWorldEntity&);
+		virtual bool			CanProduce(const PWorldEntity&e) const override {return supportsProduction.Contains(e->GetCTypeName());}
 
 		#ifdef HAS_WINDOW
-			static Buffer<StructureConstructionCommand>	structureConstructionCommands;
-			static Buffer<SatelliteConstructionCommand>	satelliteConstructionCommands;
 
 			struct MyCmd
 			{
-				static bool		CanBuild(const PStructure&what, const PWorldEntity&who);
-				static void		Build(const PSatellite&what, const PWorldEntity&who);
+				static bool		CanBuildStructure();
+				static void		Build(const PWorldEntity&what);
 
 			};
 		#endif
@@ -435,7 +431,6 @@ namespace Objects
 		//MobileEntity overrides:
 		virtual Grid::LCellIdI	GetConstructionLocation(const Grid::LCellIdI&focus) const {return Grid::LCellIdI(focus.stackID,GetStructureBuildHeight(focus));}
 		virtual int				GetMovementStepsPerRound() const override {return 1;}
-		virtual int				GetConstructionSpeed() const override {return 10;}
 
 
 		//WorldEntity overrides:
@@ -443,11 +438,11 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual int			GetUplinkTraffic() const override {return 10;}
 		#endif
-		virtual void			OnDestroy(float atTime) override {OffsetTime(atTime); LoseGroundConnection();}
-		virtual void			OnConstructionFinished(float atTime) override;
+		virtual void			OnDestroy(RemovalType t, float&atTime) override {SyncTime(atTime); Super::OnDestroy(t,atTime); LoseGroundConnection();}
+		virtual void			OnConstructionFinished(float&atTime) override;
 		virtual bool			AwaitsUserInteraction() const override {return MobileEntityProducer::AwaitsUserInteraction();}
 		#ifdef HAS_WINDOW
-			virtual void		VisitAllCommands(FCommandVisitor visitor) override;
+			virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override;
 			virtual void		OnSelect() override;
 			virtual void		OnDeselect() override;
 		#endif
@@ -472,14 +467,14 @@ namespace Objects
 
 		#ifndef CLIENT
 			//Satellite overrides:
-			bool				WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	const override;
-			bool				ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const override;
+			virtual bool		WouldAttack(const PWorldEntity&target, Grid::LCellIdI&outTarget, float entityTime)	override;
+			virtual bool		ExtCanHit(const Grid::LCellIdI&attackFrom,const Grid::LCellIdI&attackTarget,Grid::LCellIdI&actual) const override;
+			virtual bool		IsSentry() const override {return true;}
 		#endif
 
 
 		//MobileEntity overrides:
 		virtual int				GetMovementStepsPerRound() const override {return 1;}
-		virtual int				GetConstructionSpeed() const override {return 0;}
 
 
 		//BaseEntity overrides:
@@ -517,7 +512,6 @@ namespace Objects
 	public:
 		//MobileEntity overrides:
 		virtual int				GetMovementStepsPerRound() const override {return 1;}
-		virtual int				GetConstructionSpeed() const override {return 0;}
 
 		//BaseEntity overrides:
 		virtual String			GetTypeName() const override {return "Ragnarök";}
@@ -554,7 +548,6 @@ namespace Objects
 
 		//MobileEntity overrides:
 		virtual int				GetMovementStepsPerRound() const override {return 1;}
-		virtual int				GetConstructionSpeed() const override {return ProductionSpeed;}
 
 		//BaseEntity overrides:
 		virtual String			GetTypeName() const override {return "Star Port";}
@@ -584,4 +577,5 @@ namespace Objects
 
 }
 
+#endif
 #endif

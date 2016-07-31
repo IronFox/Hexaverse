@@ -5,6 +5,7 @@
 namespace Objects
 {
 	#ifdef HAS_WINDOW
-		CursorMode::mode_t			activeCursorMode(CursorMode::Idle);
+		CursorMode			activeCursorMode(CursorMode::Idle);
+		PStructure			activeStructureToPlace;
 	#endif
 }

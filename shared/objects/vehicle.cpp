@@ -5,9 +5,7 @@
 #include "prototypes.h"
 #include "systems.h"
 #include "gridAndChoices.h"
-#if !defined CLIENT || defined CONNECTOR_LESS
-	#include "faction.h"
-#endif
+#include "faction.h"
 
 namespace Objects
 {
@@ -42,9 +40,9 @@ namespace Objects
 
 
 	
-	int						Vehicle::GetConstructionSpeed() const
+	int						Vehicle::GetOperationSpeed(Component::operation_t op)  const
 	{
-		return base->constructionSpeedMultiplier * turret->constructionSpeed;
+		return base->operationSpeedMultiplier *  turret->operationSpeed[op];
 	}
 
 
@@ -70,38 +68,45 @@ namespace Objects
 	#ifndef CLIENT
 
 
-		/*virtual override*/ void		Vehicle::OnConstructionFinished(float atTime)
+		/*virtual override*/ void		Vehicle::OnConstructionFinished(float&atTime)
 		{
+			Super::OnConstructionFinished(atTime);
+			motionTime = atTime;
 			if (turret->CanAttack())
 			{
 				//leave munitions here. it seems fair that a new tank starts with full ammo, but an emp-tank should not start with full uranium...
-				#if !defined CONNECTOR_LESS && !defined NO_MUNITION
+				#if !defined ONE_COMPOUND_PER_FACTION && !defined NO_MUNITION
 					if (newVehiclesHaveFullAmmo)
 						ChangeStorage(*this,atTime,Resource::Munitions,GetMaxStorageCapacity().level[Resource::Munitions] - currentStorage.level[Resource::Munitions]);
 				#endif
 
 				//
 				//currentStorage.level[Resource::Munitions] = GetMaxStorageCapacity().level[Resource::Munitions];
-				//LogEvent(EventType::MinorEntityProcess,this,"Munition storage changed to "+String(currentStorage.level[Resource::Munitions]));
+				//LogEvent(EventSignificance::Common,this,"Munition storage changed to "+String(currentStorage.level[Resource::Munitions]));
 			}
 		}
 
 		/*virtual override*/ bool Vehicle::FillAttackQueue()
 		{
+			if (!turret->CanAttack() || !HasAmmoForShot())
+			{
+				//LogEvent(EventClass::Preset::commandRejected,this,"Insufficient ammunition");
+				return false;
+			}
 			//index_t freeSlots = attackQueue.Count() < t->GetAttacksPerRound() <  t->GetAttacksPerRound() - t->attackQueue.Count() : 0;
 			//if (attackQueue.Count() < CountPossibleAttacks())
 			{
 				Grid::LCellIdI target;
 
 				const ResourceVector&storage = 
-					#ifndef CONNECTOR_LESS
+					#ifndef ONE_COMPOUND_PER_FACTION
 						this->currentStorage
 					#else
 						this->owner->compound.total.storage
 					#endif
 				;
 
-				if (GetSentryTarget(*this, storage.level[turret->ammoType], location,base->height,*this, target))
+				if (GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location,base->height ),*this, target))
 				{
 					EnqueueAttack(target);
 					return true;
@@ -120,7 +125,7 @@ namespace Objects
 	#endif
 
 	
-	#ifndef CONNECTOR_LESS
+	#ifndef ONE_COMPOUND_PER_FACTION
 
 	ResourceVector			Vehicle::GetMaxStorageCapacity()	const
 	{
@@ -162,7 +167,7 @@ namespace Objects
 		//	{
 		//		if (failIsFatal)
 		//		{
-		//			LogEvent(EventType::Fatal,this,"Dead");
+		//			LogEvent(EventClass::Preset::fatal,this,"Dead");
 		//			FATAL__("Critical abort");
 		//		}
 		//		return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
@@ -174,7 +179,7 @@ namespace Objects
 		//	{
 		//		if (failIsFatal)
 		//		{
-		//			LogEvent(EventType::Fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
+		//			LogEvent(EventClass::Preset::fatal,this,"Target cell ("+String(cell)+") is obstructed by satellite");
 		//			FATAL__("Critical abort");
 		//		}
 		//		return MobilePlacementResult::PlacementFailedObstructed;
@@ -246,7 +251,7 @@ namespace Objects
 		//							}
 		//							if (badTask)
 		//							{
-		//								LogEvent(EventType::EntityProcess,v2.get(),"Dangerous movement into range of "+m->GetNiceName()+" detected. Dropping task(s).");
+		//								LogEvent(EventSignificance::Common,v2.get(),"Dangerous movement into range of "+m->GetNiceName()+" detected. Dropping task(s).");
 		//								if (v2.get() == this)
 		//								{
 		//									ClearAllTasks(true,CLOCATION);
@@ -282,7 +287,7 @@ namespace Objects
 		//			else
 		//			{
 		//				#ifndef CLIENT
-		//					LogEvent(EventType::MinorEntityProcess,this,"Time cost is "+String(timeCost)+". Warping satellite at time "+String(oldTime));
+		//					LogEvent(EventSignificance::Common,this,"Time cost is "+String(timeCost)+". Warping satellite at time "+String(oldTime));
 		//				#endif
 		//				RegisterChange(PositionChanged,oldTime);
 		//			}
@@ -303,7 +308,7 @@ namespace Objects
 		//					{
 		//						if (s->AttackNext(loc,true))
 		//						{
-		//							LogEvent(EventType::EntityProcess,s.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
+		//							LogEvent(EventSignificance::Common,s.get(),"Auto-targeting moving "+GetNiceName()+ " at location "+loc.ToString());
 		//							s->Attack(timeAt);
 		//							if (health <= 0)
 		//							{
@@ -317,14 +322,14 @@ namespace Objects
 		//				return MobilePlacementResult::PlacementFailedMobileDestroyed;
 
 		//			#ifndef CLIENT
-		//				LogEvent(EventType::MinorEntityProcess,this,"Motion completed");
+		//				LogEvent(EventSignificance::Common,this,"Motion completed");
 		//			#endif
 		//		}
 		//		else
 		//		{
 		//			timeAt += timeCost;
 		//			#ifndef CLIENT
-		//				LogEvent(EventType::MinorEntityProcess,this,"Silent motion completed");
+		//				LogEvent(EventSignificance::Common,this,"Silent motion completed");
 		//			#endif
 		//		}
 		//	}
@@ -342,42 +347,52 @@ namespace Objects
 			{
 				if (failIsFatal)
 				{
-					LogEvent(EventType::Fatal,this,"Dead");
+					LogEvent(EventClass::Preset::fatal,this,"Dead");
 					FATAL__("Critical abort");
 				}
 				return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
 			}
 			
 			//VerifyVisibilityNetwork();
-			timeAt = std::max(minTimeOffset,timeAt);
+			SyncTime(minTimeOffset);
+
 			if (!Grid::actualWorld.LowCellIsClear(cell))
 			{
-				PHangarStructure s = MobileDestinationStructureHere(cell,*this);
-				if (s)
-				{
-					PVehicleStore st = To<VehicleStore>::DynamicCast(s);
-					ASSERT1__(st,s->ToEntity().GetName());
-					if (st && st->StoreInPark(To<Vehicle>::Cast(shared_from_this()),timeAt))
-					{
-						return MobilePlacementResult::EnteredStructure;
-					}
-				}
+				PHangar s = MobileDestinationStructureHere(cell,*this);
+				if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+					return MobilePlacementResult::EnteredStructure;
+
 				if (failIsFatal)
 				{
-					LogEvent(EventType::Fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure");
+					PStructure st = GetStructure(cell);
+					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure "+(st ? st->GetName(): "<>")+": "+Grid::actualWorld.LowCellReport(cell));
 					FATAL__("Critical abort");
 				}
 
 				return MobilePlacementResult::PlacementFailedHarmfulOrBlocked;
 			}
-			if ((location != cell && !NoVehicleHere(cell)))
+			if (location != cell) 
 			{
-				if (failIsFatal)
+				PVehicle v = GetVehicle(cell);
+				if (v)
 				{
-					LogEvent(EventType::Fatal,this,"Target cell ("+cell.ToString()+") is obstructed by vehicle");
-					FATAL__("Critical abort");
+					if (v->owner == owner)
+					{
+						PHangar s = v->CastToDestinationForType(*this);
+						if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+							return MobilePlacementResult::EnteredStructure;
+					}
+
+					if (failIsFatal)
+					{
+						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by vehicle");
+						FATAL__("Critical abort");
+					}
+					if (!v->HasMotionTasks() || v->ConstructingHere(v->location))
+						return MobilePlacementResult::PlacementFailedPermanentlyObstructed;
+					else
+						return MobilePlacementResult::PlacementFailedTemporarilyObstructed;
 				}
-				return MobilePlacementResult::PlacementFailedObstructed;
 			}
 			const Grid::LCellIdI old = location;
 
@@ -403,7 +418,7 @@ namespace Objects
 						PlaceExactlyAt(location,0,minTimeOffset,signalEvent,isCreated);
 						if (failIsFatal)
 						{
-							LogEvent(EventType::Fatal,this,"Target cell ("+cell.ToString()+") is unsuitable for placement");
+							LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is unsuitable for placement");
 							FATAL__("Critical abort");
 						}
 
@@ -416,18 +431,18 @@ namespace Objects
 						//InsertIntoGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 
 						if (timeCost > 0)
-							SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,timeAt,timeCost);
+							SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,motionTime,timeCost);
 
-						timeAt += timeCost;
+						motionTime += timeCost;
 						InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
 						//RemoveFromGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 					}
-					LogEvent(EventType::CommandRejected,this, "Unable to relocate here. Vehicle destroyed.");
+					LogEvent(EventClass::Preset::commandRejected,this, "Unable to relocate here. Vehicle destroyed.");
 //					Remove(shared_from_this(),RemovalType::UncontrolledExplosion,timeAt,false,true);
 
 					if (failIsFatal)
 					{
-						LogEvent(EventType::Fatal,this,"Target cell ("+cell.ToString()+") is unsuitable for placement. Destruction event");
+						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is unsuitable for placement. Destruction event");
 						FATAL__("Critical abort");
 					}
 
@@ -450,7 +465,7 @@ namespace Objects
 					if (constructionRoundCounter)
 					{
 						constructionRoundCounter = 0;
-						RegisterChange(WorldEntity::TasksChanged,timeAt);
+						RegisterChange(WorldEntity::TasksChanged,motionTime);
 					}
 				}
 
@@ -466,16 +481,6 @@ namespace Objects
 	#endif
 
 
-
-	/*virtual override*/bool				Vehicle::HasAmmoForShot() const 
-	{
-	#ifdef CONNECTOR_LESS
-		const Compound&compound = owner->compound;
-		return compound.total.storage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	#else
-		return currentStorage.level[turret->ammoType] >= turret->ammoNeedPerShot;
-	#endif
-	}
 	
 	#ifdef HAS_WINDOW
 
@@ -488,20 +493,28 @@ namespace Objects
 
 			if (turret->weight > base->carryingCapacity)
 				outResult << "Overweight: "+String(turret->weight - base->carryingCapacity);
-			String speed = "Effective speed: "+String(this->GetMovementStepsPerRound());
-			if (GetMovementStepsPerRound() != base->baseMovementSpeed)
-				speed += " /"+String(this->base->baseMovementSpeed);
+			if (base->baseMovementSpeed > 0)
+			{
+				String speed = "Effective speed: "+String(this->GetMovementStepsPerRound());
+				if (GetMovementStepsPerRound() != base->baseMovementSpeed)
+					speed += " /"+String(this->base->baseMovementSpeed);
+				outResult << speed;
+			}
+			else
+				outResult << "Stationary on ground";
 
-			outResult << speed;
+
 			if (base->requirements == Component::VehicleBase::Requirement::Water)
 				outResult.lines.last()+= " (naval)";
 			else
 				if (base->moveOnWater)
 					outResult.lines.last() += " (moves over water)";
-			if (turret->constructionSpeed)
-				outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(this->GetConstructionSpeed())+" per round";
 
-			#ifndef CONNECTOR_LESS
+			int opSpeed = std::max(GetOperationSpeed(Component::Construct),GetOperationSpeed(Component::TerrainAdd));
+			if (opSpeed)
+				outResult << "Effective construction speed: "+String(ResourceTag(Resource::Minerals))+String(opSpeed)+" per round";
+
+			#ifndef ONE_COMPOUND_PER_FACTION
 				if (turret->baseStorageCapacity.IsNotEmpty())
 				{
 					outResult << "Effective storage capacity:";
@@ -558,24 +571,24 @@ namespace Objects
 					return PlotCourse(waypoints,detailedPath);
 				break;
 				case CursorMode::DigTunnelMode:
-					if (!turret->constructionSpeed)
+					if (!turret->CanDo(Component::TerrainRemove))
 						return false;
 					if (leftClick)
 					{
 						const Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 
 						Buffer0<PathNode> path;
-						Grid::LCellIdI	possibilities[6 * 3];
+						TWays	possibilities;
 						if (detailedPath)
 						{
-							Grid::LCellIdI prev = GetLastPointOfOrigin();
+							Grid::LCellIdI prev = pointOfOrigin;
 							for (const auto&dest : waypoints)
 							{
-								count_t numWays = Objects::GetWays(owner->currentState,this,prev,possibilities,dest,true,true);
+								Objects::GetWays(owner->currentState,this,prev,possibilities,dest,true,true,false);
 								bool found = false;
-								for (index_t j = 0; j < numWays; j++)
+								for (index_t j = 0; j < possibilities.numWays; j++)
 								{
-									if (possibilities[j] == dest)
+									if (possibilities.way[j] == dest)
 									{
 										found = true;
 										break;
@@ -583,7 +596,7 @@ namespace Objects
 								}
 								if (!found)
 								{
-									LogEvent(EventType::CommandRejected,this,"Failed to trace explicit path");
+									LogEvent(EventClass::Preset::commandRejected,this,"Failed to trace explicit path");
 								}
 								path.Append().cell = dest;
 								prev = dest;
@@ -594,12 +607,13 @@ namespace Objects
 
 							for (Grid::LCellIdI destination : waypoints)
 							{
-								destination--;
+								if (destination.height > pointOfOrigin.height)
+									destination--;
 								if (destination != pointOfOrigin)
 								{
 									if (!AppendShortestDirectPath(pointOfOrigin,destination,path))
 									{
-										LogEvent(EventType::CommandRejected,this,"Unable to plot path to destination");
+										LogEvent(EventClass::Preset::commandRejected,this,"Unable to plot path to destination");
 										return false;
 									}
 								}
@@ -654,7 +668,7 @@ namespace Objects
 				case CursorMode::BuildRoadChainMode:
 				case CursorMode::BuildWallChainMode:
 				case CursorMode::BuildBridgeMode:
-					if (!turret->constructionSpeed)
+					if (!turret->CanDo(mode == CursorMode::BuildConnectorChainMode ? Component::Construct : Component::TerrainAdd  ) )
 						return false;
 
 					if (leftClick)
@@ -679,9 +693,9 @@ namespace Objects
 							{
 								Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 
-								if (!CanHitFrom(pointOfOrigin,destination))
+								if (!CanHitFrom(pointOfOrigin,TrajectoryEndPoint(destination)))
 								{
-									LogEvent(EventType::CommandRejected,this,"Destination out of range");
+									LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 									return false;
 								}
 

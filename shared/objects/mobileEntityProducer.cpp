@@ -37,15 +37,54 @@ namespace Objects
 
 
 
-	bool					MobileEntityProducer::WorkItem::IsSatellite() const
+	#ifndef NO_SATELLITES
+		bool					MobileEntityProducer::WorkItem::IsSatellite() const
+		{
+			#ifdef CLIENT
+				return !base && prototype && prototype->IsSatellite();
+			#else
+				return producing->IsSatellite();
+			#endif
+		}
+	#endif
+
+
+	bool					MobileEntityProducer::WorkItem::CanSpawnAboveGrid(int&outHeight) const
 	{
 		#ifdef CLIENT
-			return !base;
+			return prototype ? prototype->CanSpawnAboveGrid(outHeight) : false;
 		#else
-			return producing->IsSatellite();
+			return producing->CanSpawnAboveGrid(outHeight);
 		#endif
-
 	}
+
+	bool					MobileEntityProducer::WorkItem::CanSpawnInGrid() const
+	{
+		#ifdef CLIENT
+			return prototype ? prototype->CanSpawnInGrid() : base != nullptr;
+		#else
+			return producing->CanSpawnInGrid();
+		#endif
+	}
+
+	bool					MobileEntityProducer::WorkItem::IsVehicle() const
+	{
+		#ifdef CLIENT
+			return base != nullptr;
+		#else
+			return producing->IsVehicle();
+		#endif
+	}
+
+	Component::VehicleBase*	MobileEntityProducer::WorkItem::GetVehicleBase() const
+	{
+		#ifdef CLIENT
+			return base;
+		#else
+			return producing->IsVehicle() ? To<Vehicle>::Cast( producing )->base : nullptr;
+		#endif
+	}
+
 
 	bool				MobileEntityProducer::AwaitsUserInteraction() const 
 	{
@@ -95,10 +134,10 @@ namespace Objects
 				selected = Grid::LCellIdI::Invalid;
 		}
 
-		void				MobileEntityProducer::VisitAllCommands(WorldEntity::FCommandVisitor visitor)
+		void				MobileEntityProducer::VisitAllCommands(WorldEntity::FCommandVisitor visitor,bool force)
 		{
 			for (index_t i = 0; i < queue.Count(); i++)
-				visitor(queue[i].commandToTerminate);
+				queue[i].commandToTerminate.second->VisitMembers(visitor,force,queue[i].commandToTerminate.first);
 		}
 
 		
@@ -109,11 +148,11 @@ namespace Objects
 
 
 	#ifndef CLIENT
-		PMobileEntity				MobileEntityProducer::SpawnFinishedProductionAnywhere()
+		PMobileEntity				MobileEntityProducer::SpawnFinishedProductionAnywhere(float&t)
 		{
 			if (!AwaitsUserInteraction())
 				return PMobileEntity();
-			Buffer0<Grid::LCellIdI>	movementChoices;
+			Buffer0<Choice>	movementChoices;
 			bool showArrow, hasArrowCellTarget;
 			TVec3<>arrowFrom;
 			Grid::LCellIdI arrowFromCell;
@@ -122,10 +161,11 @@ namespace Objects
 
 
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
+			LogEvent(EventSignificance::Debug,parent,"Trying to spawn finished production "+production->GetNiceName()+" anywhere...");
 			String error;
 			if (!parent->owner->CanSpawnType(production,error))
 			{
-				LogEvent(EventType::OperationAborted,parent,"Unable to deploy "+production->GetNiceName()+": "+error);
+				LogEvent(EventClass::Preset::operationAborted,parent,"Unable to deploy "+production->GetNiceName()+": "+error);
 				return PMobileEntity();
 			}
 			ASSERT_NOT_NULL__(parent);
@@ -134,22 +174,24 @@ namespace Objects
 
 			if (movementChoices.IsEmpty())
 			{
-				LogEvent(EventType::EntityProcessFailed,parent,"Failed to automatically spawn finished unit. Is something blocking deployment?");
+				LogEvent(EventClass::Preset::operationAborted,parent,"Failed to automatically spawn finished unit. Is something blocking deployment?");
 				return PMobileEntity();
 			}
 
-			PMobileEntity v = CompleteProduction();
+			PMobileEntity v = CompleteProduction(t);
 			//static Random random;
-			Grid::LCellIdI c = movementChoices[parent->localRandom.getIndex(movementChoices.Count()-1)];
+			Grid::LCellIdI c = movementChoices[parent->entityRandom.getIndex(movementChoices.Count()-1)].location;
 
 			MobilePlacementResult rs = v->PlaceExactlyAt(c,0,0,false,false);
 			if (Failed(rs))
 			{
-				LogEvent(EventType::Fatal,v.get(),"Failed to position non-constructed at "+c.ToString());
+				LogEvent(EventClass::Preset::fatal,v.get(),"Failed to position non-constructed at "+c.ToString());
 				FATAL__("Failed to position entity as designated position");
 			}
-			if (rs == MobilePlacementResult::PlacementOkay || rs == MobilePlacementResult::PlacementOkayFellDown)
-				InsertConstructed(v,0);
+			LogEvent(EventSignificance::Debug,parent,"Successfully spawned finished production  "+production->GetNiceName()+" at "+c.ToString()+" with placement result "+String(rs.ToString()));
+
+			if (rs != MobilePlacementResult::EnteredStructure)
+				InsertConstructed(v,t);
 			Structure*s = dynamic_cast<Structure*>(this);
 			if (s)
 				s->GetCompound().RefreshState(0);
@@ -157,28 +199,30 @@ namespace Objects
 		}
 
 
-		void MobileEntityProducer::Tick(ResourceVector&v)
+		void MobileEntityProducer::Tick(ResourceVector&v, float&t)
 		{
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			ASSERT_NOT_NULL__(parent);
 
 			if (queue.IsEmpty())
 			{
-				FATAL__("should be disabled");
+				FATAL__("should be disabled: "+parent->GetName());
 			}
 
 			productionRoundsLeft = ProductionRounds(queue.first().producing,true);
 
 			if (productionRoundsLeft == 0)
 			{
-				if (queue.first().IsSatellite())
-				{
-					LogEvent(EventType::MinorEntityProcess,parent,"Auto-spawning satellite");
-					Objects::PMobileEntity e = SpawnFinishedProductionAnywhere();
+				#ifndef NO_SATELLITES
+					if (queue.first().IsSatellite())
+					{
+						LogEvent(EventSignificance::Common,parent,"Auto-spawning satellite");
+						Objects::PMobileEntity e = SpawnFinishedProductionAnywhere(t);
 
 
-					return;
-				}
+						return;
+					}
+				#endif
 				FATAL__("This should not happen");
 			}
 
@@ -195,22 +239,24 @@ namespace Objects
 			productionRoundsLeft = ProductionRounds(queue.first().producing,true);
 			if (productionDone >= (UINT32)(queue.first().producing->GetConstructionCost()))
 			{
-				LogEvent(EventType::EntityProcess,parent,"Construction of "+queue.first().producing->GetNiceName()+" completed");
+				LogEvent(EventSignificance::Debug,parent,"Construction of "+queue.first().producing->GetName()+" completed");
+				LogEvent(EventClass( EventSignificance::Uncommon, EventFlavor::Gain ) ,parent,"Construction of "+queue.first().producing->GetNiceName()+" completed");
 
-				if (gatheringPoint.current != Grid::LCellIdI::Invalid || queue.first().IsSatellite())
+				if (gatheringPoint.current != Grid::LCellIdI::Invalid IF_SATELLITES( || queue.first().IsSatellite() ) )
 				{
-					LogEvent(EventType::MinorEntityProcess,parent,"Auto-spawning mobile entity");
-					Objects::PMobileEntity v = SpawnFinishedProductionAnywhere();
+					LogEvent(EventSignificance::Common,parent,"Auto-spawning mobile entity...");
+					Objects::PMobileEntity v = SpawnFinishedProductionAnywhere(t);
 					if (v)
 					{
-						if (!v->IsSatellite())
+						LogEvent(EventSignificance::Common,parent,"Auto-spawned mobile entity "+v->GetName());
+						if (v->IsVehicle())
 						{
-							LogEvent(EventType::EntityProcess,v.get(),"Directing vehicle to gathering point");
+							LogEvent(EventSignificance::Common,v.get(),"Directing vehicle to gathering point");
 							v->PlotCourse(gatheringPoint.current,false);
 						}
 					}
-//					else
-	//					LogEvent(EventType::EntityProcessFailed,parent,"Failed to automatically spawn finished entity. Is something blocking deployment?");
+					else
+						LogEvent(EventClass( EventSignificance::Common, EventFlavor::Loss ),parent,"Failed to automatically spawn finished entity");
 				}
 			}
 
@@ -222,32 +268,35 @@ namespace Objects
 		PMobileEntity				MobileEntityProducer::GetActiveProduction() const
 		{
 			return queue.IsNotEmpty() ? queue.first().producing : PMobileEntity();
-
 		}
 
 
 
-		PMobileEntity					MobileEntityProducer::CompleteProduction()
+		PMobileEntity					MobileEntityProducer::CompleteProduction(float &t)
 		{
 			PMobileEntity v = GetActiveProduction();
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			String error;
 			if (!parent->owner->CanSpawnType(v,error))
 			{
-				LogEvent(EventType::OperationAborted,parent,"Unable to deploy "+v->GetNiceName()+": "+error);
+				LogEvent(EventClass::Preset::operationAborted,parent,"Unable to deploy "+v->GetNiceName()+": "+error);
 				return PMobileEntity();
 			}
 
 			ASSERT__(v);
 			ASSERT_EQUAL__(0,ProductionRounds(v,true));
 			v->health = v->GetMaxHealth();	//must set to max here, or positioning will fail
+			t+= timeEpsilon;
+			v->motionTime = t;
+			t+= timeEpsilon;
+
 			queue.Erase(0);
 			productionDone = 0;	//must be before ProductionRounds() or calculation will produce invalid results
 			if (queue.IsEmpty())
 			{
 				productionRoundsLeft = 0;
 				
-				SignalLastProductionDone();
+				SignalLastProductionDone(t);
 			}
 			else
 				productionRoundsLeft = ProductionRounds(queue.first().producing,true);
@@ -266,47 +315,57 @@ namespace Objects
 			Component::Turret* turret = Component::GetTurretByName(turretName);
 			if (!turret)
 			{
-				LogEvent(EventType::CommandRejected,parent,"Invalid turret component");
+				LogEvent(EventClass::Preset::commandRejected,parent,"Invalid turret component");
 				return nullptr;
 			}
 			if (!base)
 			{
-				LogEvent(EventType::CommandRejected,parent,"Invalid base component");
+				LogEvent(EventClass::Preset::commandRejected,parent,"Invalid base component");
 				return nullptr;
 			}
 			return EnqueueProductionOfVehicle(base,turret);
 		}
 
-		MobileEntityProducer::WorkItem*				MobileEntityProducer::EnqueueProductionOfSatellite(ConstName typeName)
-		{
-			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
-			ASSERT_NOT_NULL__(parent);
-
-			PSatellite proto = GetSatellitePrototypeByName(typeName);
-			String error;
-			if (!parent->owner->CanSpawnType(proto,error))
+		#ifndef NO_SATELLITES
+			MobileEntityProducer::WorkItem*				MobileEntityProducer::EnqueueProductionOfSatellite(ConstName typeName)
 			{
-				LogEvent(EventType::OperationAborted,parent,"Unable to enqueue production of "+proto->GetTypeName()+": "+error);
-				return nullptr;
+				WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
+				ASSERT_NOT_NULL__(parent);
+
+				PSatellite proto = GetSatellitePrototypeByName(typeName);
+				String error;
+				if (!parent->owner->CanSpawnType(proto,error))
+				{
+					LogEvent(EventClass::Preset::operationAborted,parent,"Unable to enqueue production of "+proto->GetTypeName()+": "+error);
+					return nullptr;
+				}
+
+				if (!proto)
+				{
+					LogEvent(EventClass::Preset::commandRejected,parent,"Invalid satellite type");
+					return nullptr;
+				}
+
+				PSatellite sat = To<Satellite>::Cast(proto->CreateNewInstance(parent->owner,parent->location,0.f));
+				WorkItem*rs = EnqueueProductionOf(sat);
+				if (rs)
+				{
+					parent->RegisterChange(WorldEntity::TasksChanged,-1);
+					SignalNewProductionEnqueued();
+				}
+				return rs;
 			}
-
-			if (!proto)
-			{
-				LogEvent(EventType::CommandRejected,parent,"Invalid satellite type");
-				return nullptr;
-			}
-
-			PSatellite sat = To<Satellite>::Cast(proto->CreateNewInstance(parent->owner,parent->location,0.f));
-			WorkItem*rs = EnqueueProductionOf(sat);
-			parent->RegisterChange(WorldEntity::TasksChanged,-1);
-			SignalNewProductionEnqueued();
-			return rs;
-		}
-
+		#endif
 
 
 		MobileEntityProducer::WorkItem*				MobileEntityProducer::EnqueueProductionOf(const PMobileEntity&e, index_t at /*= InvalidIndex*/)
 		{
+			if (!CanProduce(e))
+			{
+				WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
+				LogEvent(EventClass::Preset::commandRejected,parent,"Cannot produce "+e->GetTypeName());
+				return nullptr;
+			}
 			index_t index = std::min(at,queue.Count());
 			//productionRoundsLeft
 			UINT32 rounds = ProductionRounds(e,!index);
@@ -327,7 +386,7 @@ namespace Objects
 			ASSERT_NOT_NULL__(parent);
 			if (queue.Count() >= MaxStructureTasks)
 			{
-				LogEvent(EventType::CommandRejected,parent,"Max queue length ("+String(MaxStructureTasks)+") reached");
+				LogEvent(EventClass::Preset::commandRejected,parent,"Max queue length ("+String(MaxStructureTasks)+") reached");
 				return nullptr;
 			}
 			if (selectedBase && selectedTurret)
@@ -336,12 +395,15 @@ namespace Objects
 				String error;
 				if (!parent->owner->CanSpawnType(vehicle,error))
 				{
-					LogEvent(EventType::OperationAborted,parent,"Unable to enqueue production of "+vehicle->GetTypeName()+": "+error);
+					LogEvent(EventClass::Preset::operationAborted,parent,"Unable to enqueue production of "+vehicle->GetTypeName()+": "+error);
 					return nullptr;
 				}
 				WorkItem*rs = EnqueueProductionOf(vehicle);
-				parent->RegisterChange(WorldEntity::TasksChanged,-1);
-				SignalNewProductionEnqueued();
+				if (rs)
+				{
+					parent->RegisterChange(WorldEntity::TasksChanged,-1);
+					SignalNewProductionEnqueued();
+				}
 				return rs;
 			}
 			return nullptr;
@@ -364,7 +426,12 @@ namespace Objects
 					queue.erase(e);
 					if (queue.IsNotEmpty())
 						productionRoundsLeft = ProductionRounds(queue.first(),true);
-
+					else
+					{
+						productionRoundsLeft = 0;
+						float t = 0;
+						SignalLastProductionDone(t);
+					}
 					parent->RegisterChange(WorldEntity::TasksChanged,-1);
 					return true;
 				}
@@ -377,12 +444,12 @@ namespace Objects
 			WorldEntity*parent = dynamic_cast<WorldEntity*>(this);
 			if (gatheringPoint.current != loc)
 			{
-				LogEvent(EventType::EntityProcess, parent, "Set gathering point");
+				LogEvent(EventSignificance::Common, parent, "Set gathering point");
 				gatheringPoint.current = loc;
 			}
 			else
 			{
-				LogEvent(EventType::EntityProcess, parent, "Unset gathering point");
+				LogEvent(EventSignificance::Common, parent, "Unset gathering point");
 				gatheringPoint.current = Grid::LCellIdI::Invalid;
 			}
 			parent->RegisterChange(Objects::WorldEntity::AutomationChanged,0);
@@ -400,6 +467,18 @@ namespace Objects
 			return "#"+String(index)+" "+itemName+ " ("+String(roundsLeft)+")";
 		}
 
+		#ifdef HAS_WINDOW
+		void				MobileEntityProducer::SetCommandOffset(const int2&c)
+		{
+			if (commandOffset == c)
+				return;
+			commandOffset = c;
+			int index = 0;
+			foreach (queue,item)
+				item->commandToTerminate.first = commandOffset + int2(index++,0);
+		}
+		#endif
+
 		void				MobileEntityProducer::AppendTask(const TUniqueID&id, ConstName baseName, ConstName turretName)
 		{
 			//PSatellite	satellite;
@@ -409,7 +488,7 @@ namespace Objects
 			String name;
 			Component::VehicleBase* base = nullptr;
 			Component::Turret* turret = nullptr;
-			PSatellite sat;
+			PWorldEntity prototype;
 			if (turretName != ConstName::Empty)
 			{
 				base = Component::GetVehicleBaseByName(baseName);
@@ -422,10 +501,15 @@ namespace Objects
 			}
 			else
 			{
-				sat = GetSatellitePrototypeByName(baseName);
-				ASSERT1__(sat, (int)baseName);
-				price = sat->GetConstructionCost();
-				name = sat->GetTypeName();
+				prototype = GetNonVehiclePrototypeByName(baseName);
+				ASSERT1__(prototype, (int)baseName);
+				price = prototype->GetConstructionCost();
+				name = prototype->GetTypeName();
+				if (prototype->IsVehicle())
+				{
+					base = To<Vehicle>::Cast(prototype)->base;
+					turret = To<Vehicle>::Cast(prototype)->turret;
+				}
 			}
 
 			{
@@ -442,26 +526,35 @@ namespace Objects
 				item.name = name;
 				item.cost = price;
 				item.base = base;
+				if (prototype)
+				{
+					ASSERT1__(prototype->IsMobile(), prototype->GetName());
+					item.prototype = To<MobileEntity>::Cast(prototype);
+				}
 				item.roundsToCompletion = rounds;
 
 				#ifdef HAS_WINDOW
-					item.commandToTerminate = MobileEntityConstructionAbortCommand(int2(5+index,2), JobName(index,item.name,rounds),base,turret,sat,[id,index](const PWorldEntity&e)
+					item.commandToTerminate.second.reset( new EntityConstructionCommand(JobName(index,item.name,rounds),base,turret,prototype,[id,index]()
 					{
 //						PWorkingStructure s = To<WorkingStructure>::DynamicCast(e);
 	//					ASSERT__(s);
-						PMobileEntityProducer p = To<MobileEntityProducer>::DynamicCast(e);
+						PMobileEntityProducer p = To<MobileEntityProducer>::DynamicCast(selectedEntity);
 						ASSERT__(p);
 						if (!index && p->productionDone)
 						{
+							WWorldEntity e = selectedEntity;
 							Dialog::Confirm("Confirm cancellation of production job "+p->queue.first().name+". Material has been invested into this production, which will be lost.",
 							[e,id]()
 							{
-								SignalConstructionAbort(e->id,id);
+								PWorldEntity e1 = e.lock();
+								if (e1)
+									SignalConstructionAbort(e1->id,id);
 							}
 							,
 							[e,p,id]()->Dialog::CheckResult
 							{
-								if (e->health <= 0)
+								PWorldEntity e1 = e.lock();
+								if (!e1 || e1->health <= 0)
 									return Dialog::CheckResult::Abort;
 								if (p->queue.IsEmpty() || p->queue.first().id != id)
 									return Dialog::CheckResult::Abort;
@@ -473,21 +566,22 @@ namespace Objects
 
 						}
 						else
-							SignalConstructionAbort(e->id,id);	//lossless
+							SignalConstructionAbort(selectedEntity->id,id);	//lossless
 
-					},CommonCmd::MostlyEnabled<PWorldEntity const&>,CommonCmd::AlwaysFalse<PWorldEntity const&>);
+					},CommonCmd::CommonButtonCheck));
+					item.commandToTerminate.first = commandOffset + int2(index,0);
 					if (!index)
 					{
-						item.commandToTerminate.roundsLeft = rounds;
-						item.commandToTerminate.mineralsLeft = price - productionDone;
+						item.commandToTerminate.second->roundsLeft = rounds;
+						item.commandToTerminate.second->mineralsLeft = price - productionDone;
 					}
 					else
 					{
-						item.commandToTerminate.roundsLeft = 0xFFFFFFFF;
-						item.commandToTerminate.mineralsLeft = 0xFFFFFFFF;
+						item.commandToTerminate.second->roundsLeft = 0xFFFFFFFF;
+						item.commandToTerminate.second->mineralsLeft = 0xFFFFFFFF;
 					}
 
-					item.commandToTerminate.RasterizeImage();
+					item.commandToTerminate.second->RasterizeImage();
 				#endif
 
 			}

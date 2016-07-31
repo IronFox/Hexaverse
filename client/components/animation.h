@@ -14,7 +14,6 @@ It also handles state updates from server messages
 namespace Animation
 {
 
-	namespace DX11 = Engine::DX11;
 
 	typedef Buffer0<TVec4<> >	Trajectory;
 	extern Trajectory				activeTrajectory;
@@ -22,6 +21,7 @@ namespace Animation
 	extern bool						projectileActive/*=false*/;
 
 	#ifdef HAS_WINDOW
+		namespace DX11 = Engine::DX11;
 		extern Objects::Geometry			trajectoryGeometry;
 		extern DX11::InstructionBlock32		trajectoryVisualization;
 		extern DX11::ObjectBuffer<float4>	trajectoryProgression,trajectoryTint;
@@ -63,17 +63,16 @@ namespace Animation
 			DestroyEntity,
 			ResourceUpdate,
 		}						type;
-
-		Grid::LCellIdI			location;
+		count_t					overwritten=0;
+		//Grid::LCellIdI			location;
 		typedef Buffer0<Protocol::WorldDelta,Swap>	DeltaField;
 		std::shared_ptr<DeltaField >	worldDelta;
 		TFloatRange<>			time;
-		Objects::PWorldEntity		allocatedTarget;	//for construction and motion. not to be used for other purposes as the original reference by id may change during animation
+		Objects::PWorldEntity	allocatedTarget;	//for construction and motion. not to be used for other purposes as the original reference by id may change during animation
 		TUniqueID				targetEntityID;
-		Objects::Component::Turret*		attacker;
-		float					attackRange;
+		Objects::Component::Turret*		attackerTurret;	//reference targetEntityID to retrieve the identity of the attacker (precise attack only)
+		float					attackRange,attackAngle;
 		TVec3<>					attackerPosition;
-		Objects::TrajectoryType	attackTrajectoryType;
 
 		TVec3<>					explosionCenter;	//if Explosion
 		float					explosionRadius;	//if Explosion
@@ -83,7 +82,11 @@ namespace Animation
 		std::shared_ptr<Protocol::ResourceUpdate>	resourceUpdate;
 		TVec2<>					rotateTo,rotateFrom;
 		TVec3<>					rotateToWorld;
-		bool					explode;
+		union
+		{
+			bool				explode;
+			bool				isAutoTarget;
+		};
 		UINT8					removalType;
 
 		struct Path
@@ -127,7 +130,8 @@ namespace Animation
 		void					Init(Protocol::MobileEntityMotion&motion/*, const Objects::PVehicle&v*/);
 		void					Append(Protocol::MobileEntityMotion&motion);
 		void					Init(Protocol::DestroyEntity&e);
-		void					Init(Protocol::AttackTrajectory&a);
+		void					Init(Protocol::VagueAttackTrajectory&a);
+		void					Init(Protocol::PreciseAttackTrajectory&a);
 		void					Init(Protocol::Explosion&ex);
 
 		void					Init(Protocol::EntityTurretRotation&rot);

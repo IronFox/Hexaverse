@@ -10,21 +10,35 @@
 #include "grid.h"
 #include "objects.h"
 #include "stringTable.h"
-
+#include "runtimeConfig.h"
 
 #pragma comment(lib,"ws2_32.lib")
 #pragma comment(lib,"Rpcrt4.lib")
 #pragma comment(lib, "IPHLPAPI.lib")
 
 
-#define INFO_PORT			10245
-#define SERVICE_PORT		10244
-#define BROADCAST_PORT		10243
-#define BROADCAST_FROM_PORT	10242
-//#define SERVER_NAME		PRODUCT_NAME" server v"PRODUCT_VERSION
+#define BROADCAST_PORT				10246	//must be constant
+#define DEFAULT_SERVER_BASE_PORT	10247
 
-#ifdef CONNECTOR_LESS
-	#define NAME_APPEND0	"c"
+namespace PortOffset
+{
+	/**
+	@brief Service port delta to root port
+	*/
+	enum delta_t
+	{
+		Info,
+		Session,
+		BroadcastFrom,
+		Control
+	};
+}
+
+
+
+
+#ifdef ONE_COMPOUND_PER_FACTION
+	#define NAME_APPEND0	"o"
 #else
 	#define NAME_APPEND0
 #endif
@@ -35,8 +49,15 @@
 	#define NAME_APPEND1
 #endif
 
+#ifdef NO_SATELLITES
+	#define NAME_APPEND_S	"s"
+#else
+	#define NAME_APPEND_S
+#endif
 
-#define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION NAME_APPEND0 NAME_APPEND1
+
+
+#define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION NAME_APPEND0 NAME_APPEND1 NAME_APPEND_S
 #include "objects/resource.h"
 
 namespace Protocol
@@ -189,6 +210,13 @@ namespace Protocol
 					DBG_FATAL__("Failed to Deserialize var3");
 				return true;
 				//return	var0.Deserialize(inStream,EmbeddedSize) && var1.Deserialize(inStream,EmbeddedSize) && var2.Deserialize(inStream,EmbeddedSize) && var3.Deserialize(inStream,EmbeddedSize);
+			}
+			void	swap(MultiSerializable4&other)
+			{
+				var0.swap(other.var0);
+				var1.swap(other.var1);
+				var2.swap(other.var2);
+				var3.swap(other.var3);
 			}
 			void	Copy(const MultiSerializable4&other)
 			{
@@ -686,8 +714,7 @@ namespace Protocol
 		};
 			
 	
-	CONSTRUCT_ENUMERATION2(ServerMode, Idle, Active);
-
+	
 
 	NETSTRUCT2(Timestamp
 		, NET(bool), rightNow
@@ -701,8 +728,9 @@ namespace Protocol
 	//	, NET(UINT32), state	//place holder for client state. currently this is ignored, and always interpreted as a hello
 	//)
 
-	NETSTRUCT2(Result
+	NETSTRUCT3(HelloResponse
 		, NET(bool), success
+		, NET(bool), configurationMode
 		, Package::NetString<256>, errorMessage	//in case stateAccepted is false
 	)
 
@@ -1165,6 +1193,14 @@ namespace Protocol
 		, TypeDeltaArray, data0
 	)
 
+	namespace EntityStateFlags
+	{
+		enum flag_t
+		{
+			IsUnstable = 0x1,
+			IsSleeping = 0x2,
+		};
+	}
 
 	NETSTRUCT6(EntityState
 		, Timestamp, timestamp
@@ -1172,20 +1208,28 @@ namespace Protocol
 		, LCellIdI, location
 		, SerialUnsigned, health
 		, SerialUnsigned, empDamageLevel
-		, NET(bool), unstable
+		, NET(BYTE), entityStateFlags
 	)
+
+	namespace TaskFlags
+	{
+		enum flag_t
+		{
+			VisualizePathToFocus = 0x1,
+			DelayedBySleep = 0x2,
+		};
+	}
 
 	NETSTRUCT9(MobileTask
 		, NET(UINT8), type
 		, NET(UINT8), mode
-		, NET(bool), visualizePathToFocus
+		, NET(UINT8), taskFlags
 		, NETA(LCellIdI), foci
 		, Package::NetString<256>, name
 		, NET(USHORT), roundsToJobCompletion
-		, NET(USHORT), mineralCostLeft
+		, NET(USHORT), resourceCostLeft
 		, NETA(LCellIdI), buildPath
-		//, Package::NetString<256>, visualizationStructureName
-		, NET(ConstName), visualizationStructureName
+		, NET(ConstName), visualizationName	//can also be DetonationSize_Regular or DetonationSize_Doomsday
 	)
 
 	//class ResourceVector : public Objects::ResourceVector, public SerializableObject
@@ -1469,7 +1513,7 @@ namespace Protocol
 	)
 
 
-	#ifndef CONNECTOR_LESS
+	#ifndef ONE_COMPOUND_PER_FACTION
 		NETSTRUCT5(MyMobileEntity
 			, NET(UINT16), constructionRoundCounter
 			, PositiveResourceVector, resourceVector
@@ -1530,14 +1574,23 @@ namespace Protocol
 		, NET(float), timeNeeded
 	)
 
-	NETSTRUCT7(AttackTrajectory
+	NETSTRUCT7(VagueAttackTrajectory
 		, Timestamp, timestamp
-		, NET(BYTE), trajectoryType
 		, NET(float), flightTime
 		, NET(TVec3<>), sourcePosition
 		, NET(ConstName), turretType
 		, NET(float), turretRange
-		, LCellIdI, traceTo
+		, NET(float), attackAngle
+		, NET(TVec3<>), traceTo
+	)
+
+	NETSTRUCT6(PreciseAttackTrajectory
+		, Timestamp, timestamp
+		, NET(float), flightTime
+		, NET(TUniqueID), attacker
+		, NET(float), attackAngle
+		, NET(TVec3<>), traceTo
+		, NET(bool), isAutoAttack
 	)
 
 	NETSTRUCT4(EntityTurretRotation
@@ -1612,7 +1665,7 @@ namespace Protocol
 	)
 
 
-	namespace DirectFlag
+	namespace DirectFlags
 	{
 		enum flag_t
 		{
@@ -1623,7 +1676,7 @@ namespace Protocol
 	}
 
 	/**
-	If directFlags contains DirectFlag::Explicit, path is considered explicit with one entry per neighboring node.
+	If directFlags contains DirectFlags::Explicit, path is considered explicit with one entry per neighboring node.
 	In this case the command is rejected, if the path is not possible when applied to the known world of the respective client.
 	If the path is found to be inapplicable during computation phases, an automatically determined path to the last given node is computed and applied, then dropped.
 	Path must always be of at least length 1
@@ -1645,7 +1698,7 @@ namespace Protocol
 	)
 	
 	NETSTRUCT3(StandardJob
-		, NET(TUniqueID), id
+		, NET(TUniqueID), ownerID
 		, NET(ConstName), jobName
 		, NET(ConstName), parameterName
 		)
@@ -1674,9 +1727,10 @@ namespace Protocol
 		)
 
 
-	NETSTRUCT2(ControlMessage
+	NETSTRUCT3(ControlMessage
 		, Package::NetString<256>, message
-		, NET(BYTE), type
+		, NET(BYTE), significance
+		, NET(BYTE), flavor
 	)
 
 
@@ -1684,7 +1738,7 @@ namespace Protocol
 
 	NETSTRUCT3(PhaseChange
 		, NET(UINT8), newPhase
-		, NET(UINT32), roundNumber
+		, NET(RuntimeConfig::RoundNumber), roundNumber
 		, NET(float), timeFactor
 	)
 
@@ -1704,23 +1758,26 @@ namespace Protocol
 		{
 			ContinueOnly = 0xFFFFFFFF,
 			NexusFaction = 0x1,
-			Reserved0 = 0x2,
+			SpectatorFaction = 0x2,
 			Reserved1 = 0x4,
 			RegularFaction = 0x8,
 		};
 	};
 
-
-	NETSTRUCT7(GameInfo
-		, NET(UINT16), numFactionsOnline
-		, NET(UINT16), numFactionsCreated
-		, NET(UINT32), roundNumber
-		, NET(TUniqueID), worldID	//used to manage factionTokens
-		, NET(BYTE), activePhase
+	NETSTRUCT3(GameConfig
 		, NET(UINT32), gameFlags
 		, NET(BYTE), gameGoal
-	)
+		, NET(BYTE), worldDiscovery
+	)	
 
+	NETSTRUCT6(GameInfo
+		, NET(UINT16), numFactionsOnline
+		, NET(UINT16), numFactionsCreated
+		, NET(RuntimeConfig::RoundNumber), roundNumber
+		, NET(TUniqueID), worldID	//used to manage factionTokens
+		, NET(BYTE), activePhase
+		, GameConfig, gameConfig
+	)
 
 
 	NETSTRUCT4(ClientFactionResponse
@@ -1746,13 +1803,14 @@ namespace Protocol
 		, NET(TUniqueID), ownerID
 	)
 
-	NETSTRUCT2(Automate
+	NETSTRUCT2(EntityStateUpdate
 		, NET(TUniqueID), entityID
-		, NET(bool), doAutomate
+		, NET(bool), doSet
 	)
 
-	NETSTRUCT3(MarkerReferenceEntity
+	NETSTRUCT4(MarkerReferenceEntity
 		, NET(TUniqueID), id
+		, NET(TUniqueID), owner
 		, NET(ConstName), type0
 		, NET(ConstName), type1
 	)
@@ -1764,12 +1822,12 @@ namespace Protocol
 		, NET(TUniqueID), id
 		, LCellIdI, location		
 		, MarkerData, data
-		, NET(UINT32), createdInRound
+		, NET(RuntimeConfig::RoundNumber), createdInRound
 	)
 
 	NETSTRUCT2(TouchedMarker
 		, NET(TUniqueID), id
-		, NET(UINT32), newRoundNumber
+		, NET(RuntimeConfig::RoundNumber), newRoundNumber
 	)
 
 	NETSTRUCT2(IdentifyUser
@@ -1798,9 +1856,13 @@ namespace Protocol
 			PhaseChange,		//s2c: PhaseChange
 			BeginGame,			//s2c: <signal> //indicates that the player faction is fully initialized and transferred, and the game should begin. Mostly important for AI, only
 
-			Hello,				//c2s: Hello -> s2c: Result
+			Hello,				//c2s: Hello -> s2c: HelloResponse
 			ClientFaction,		//c2s: ClientFactionRequest -> s2c: ClientFactionResponse
 			SetFactionID,		//s2c: NET(TUniqueID)
+
+			RequestEverything,	//c2s: <signal> -> [everything] //(only if spectator) 
+			BeginEverything,	//s2c: <signal> //indicates that now everything will be (re)sent
+			EndEverything,		//s2c: <signal> //indicates that the server is done sending everything, and normal delta updates will resume
 
 			WorldDelta,			//s2c : WorldDelta
 
@@ -1809,7 +1871,8 @@ namespace Protocol
 			NewMobileEntity,	//s2c: NewMobileEntity
 			MobileState,		//s2c: MobileState
 			MobileEntityMotion,		//s2c: MobileEntityMotion
-			AttackTrajectory,		//s2c: AttackTrajectory
+			PreciseAttackTrajectory,	//s2c: PreciseAttackTrajectory
+			VagueAttackTrajectory,		//s2c: VagueAttackTrajectory
 			EntityTurretRotation,	//s2c: EntityTurretRotation
 
 			ChangeEntityOwner,	//s2c: ChangeEntityOwner
@@ -1839,7 +1902,8 @@ namespace Protocol
 
 			EnableStructure,	//c2s: EnableStructure
 
-			Automate,			//c2s: Automate
+			Automate,			//c2s: EntityStateUpdate
+			Sleep,				//c2s: EntityStateUpdate
 
 			ResourceUpdate,		//s2c: ResourceUpdate
 
@@ -1861,11 +1925,9 @@ namespace Protocol
 
 			ChatMessage,		// c2s: NetString<256>
 
-			//remote control channels (these require user level 2+)
-			RC_UpdateWorld,				//c2s: Grid::TExtendedPlanetConfig
-			RC_Lockdown,				//c2s: bool -> s2c: bool
-			RC_Kick,					//c2s: pair<TUniqueID,bool>	(kick / kick and ban)
-			RC_KickAllNonPrivileged,	//c2s: <signal>
+			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
+			GameConfig,			// c2s: GameConfig
+			EndConfigurationMode,//c2s: <signal>
 		};
 	}
 
@@ -1877,8 +1939,12 @@ namespace Protocol
 	{
 		TUniqueID	hostID;
 		char		version[64];
+		UINT16		serverBasePort;
 	};
-	static_assert(sizeof(THostBroadcastPacket) == sizeof(TUniqueID) + 64, "Struct packing not appropriate for host broadcast packet");
+
+	static const size_t THostBroadcastPacket_size = sizeof(THostBroadcastPacket);
+
+	static_assert(sizeof(THostBroadcastPacket) == sizeof(TUniqueID) + 64 + 2, "Struct packing not appropriate for host broadcast packet");//make sure there are no gaps
 
 
 	namespace GameFlag
@@ -1889,13 +1955,17 @@ namespace Protocol
 			BasesRequired = 0x2,
 			StartBases = 0x4,
 			NexusAI = 0x8,
+			EMPZones = 0x10,
+			SimulateLiquids = 0x20,
+			ConfigurationMode = 0x40,
 
-
-			SupportRegularFactions = 0x10,
+			SupportSpectatorFactions = 0x100,
+			SupportRegularFactions = 0x200,
 
 
 		};
 
+		static const UINT32 AllFactionSupport = ~(SupportSpectatorFactions-1);
 
 	}
 
