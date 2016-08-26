@@ -32,7 +32,6 @@
 #endif
 
 #include <geometry/bvh.h>
-#include "../shared/noise.h"
 
 #include "version.h"
 #include "../shared/protocol.h"

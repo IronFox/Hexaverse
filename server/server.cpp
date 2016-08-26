@@ -11,7 +11,7 @@
 #include "../shared/protocol.h"
 #include "../shared/runtimeConfig.h"
 
-#include <remote/bz2/bz2.h>
+//#include <third_party/bz2/bz2.h>
 #include <io/string_file.h>
 #include <io/file_system.h>
 #include <io/riff_handler.h>
