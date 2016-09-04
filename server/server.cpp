@@ -1635,7 +1635,7 @@ int main( int argc, const char* argv[])
 
 
 		//FATAL__("test");
-		if (Game::Config::Nexus::enableAI)
+		if (Game::Config::Nexus::enableAI && Network::SessionIsStarted())
 		{
 			AIProcess::Begin(Objects::Faction::nexus->accessToken);
 		}
