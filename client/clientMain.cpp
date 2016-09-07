@@ -59,6 +59,7 @@
 #include "components/guiHostList.h"
 #include "components/serverProcess.h"
 #include "components/audioInterface.h"
+#include "components/configurationMode.h"
 
 #include "rc/Resource.h"
 
@@ -3503,6 +3504,9 @@ int main( int argc, const char* argv[])
 			Engine::input.bind(Key::Ctrl,ToggleSeeThrough);
 
 			Engine::input.bind(Key::H,ToggleControlGUI);
+
+			Engine::input.bindCtrl(Key::C,ConfigurationMode::OnCopy);
+			Engine::input.bindCtrl(Key::V,ConfigurationMode::OnPaste);
 
 			Engine::input.bind(Key::MouseButton0, Select, Dialog::HandleMouseUp);
 			Engine::input.bindCtrl(Key::MouseButton0, Select);

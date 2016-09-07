@@ -1,12 +1,14 @@
 #ifdef HAS_WINDOW
 
 #include <global_root.h>
+#include <string/cli.h>
 #include "configurationMode.h"
 #include "world.h"
 #include "ui.h"
 #include <objects/visualCommands.h>
 #include "network.h"
 #include "objectStorage.h"
+#include "../version.h"
 
 namespace ConfigurationMode
 {
@@ -96,7 +98,7 @@ namespace ConfigurationMode
 		bool created = false,
 				flashUploadButton = false;
 		bool clientWorldLoaded = false, clientWorldBuilt = false, anyWorldLoaded = false;
-		Objects::PCommandGroup mountainGroup,extendedCoreGroup,liquidGroup,coreGroup,ruleGroup;
+		Objects::PCommandGroup mountainGroup,extendedCoreGroup,liquidGroup,coreGroup,ruleGroup,copyPasteGroup;
 		Buffer0<std::pair<int2,Objects::PBaseCommand> > buttons; 
 
 		class MaterialDialog
@@ -258,11 +260,18 @@ namespace ConfigurationMode
 
 		*/
 
-		void	LoadClientWorld()
+		/**
+		Activates client world view
+		*/
+		void	LoadClientWorld(bool forceRebuild=false)
 		{
 			if (clientWorldLoaded)
+			{
+				if (forceRebuild)
+					Update(true);
 				return;
-			Update(false);
+			}
+			Update(forceRebuild);
 			clientWorldLoaded = true;
 			LogEvent(EventClass(EventSignificance::Important ,EventFlavor::Gain),"Now viewing local planet version. Objects and nexus bases are hidden!");
 		}
@@ -549,6 +558,187 @@ namespace ConfigurationMode
 		}
 
 
+		namespace Clipboard
+		{
+			Buffer0<String>	warnings;
+
+			void	ExportConfig(Config::Context&sub, const Grid::ExtendedPlanetConfig::TLayerConfig&layer)
+			{
+				sub.Define("baseHeight",layer.baseHeight);
+				sub.Define("noiseHeightScale",layer.heightScale);
+				sub.Define("frequency",layer.frequency);
+				sub.Define("dampening",layer.dampening);
+			}
+
+			void	ExportPlanet()
+			{
+				/*
+				Important:
+				Keep this in sync with server/components/reflection.cpp
+				*/
+				Configuration cfg;
+				cfg.Define("atmosphereDensity",config.atmosphereColor.a);
+				cfg.Define("innerCoreType",Grid::Content::Reinterpret(config.innerCoreType).ToString());
+				{
+					Config::Context&sub = cfg.DefineContext("ExtendedCore");
+					sub.Define("type",Grid::Content::Reinterpret(config.extendedCoreType).ToString());
+					ExportConfig(sub,config.extendedCore);
+				}
+					
+				{
+					Config::Context&sub = cfg.DefineContext("Mountains");
+					sub.Define("type",Grid::Content::Reinterpret(config.type).ToString());
+					sub.Define("snowHeight",config.snowHeight);
+					ExportConfig(sub,config.mountains);
+				}
+
+				{
+					Config::Context&sub = cfg.DefineContext("Liquid");
+					sub.Define("type",Grid::Content::Reinterpret(config.liquidCoverage).ToString());
+					sub.Define("level",config.liquidHeight);
+					sub.Define("outline",Grid::Content::Reinterpret(config.liquidOutline).ToString());
+				}
+				
+
+				{
+					Config::Context&sub = cfg.DefineContext("Resources");
+					for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+					{
+						Objects::Resource res = Objects::Resource::Reinterpret(i);
+						Config::Context&sub2 = sub.DefineContext(res.ToString());
+							sub2.Define("density",Grid::Resource::density[i]);
+							sub2.Define("max",Grid::Resource::maximum[i]);
+					}
+				}
+
+				StringBuffer buffer;
+				cfg.SaveToStringBuffer(buffer,PRODUCT_NAME);
+				buffer<< '\0';
+				System::copyToClipboard(Engine::context.getWindow(),buffer.pointer());
+			}
+
+			template <typename T>
+			void	Query(const Config::Context&ctx, const char*name, T&var)
+			{
+				String rs;
+				if (!ctx.QueryString(name,rs))
+				{
+					warnings << "Unable to query '"+ctx.name+"/"+name+"'";
+					return;
+				}
+				if (!convert(rs.c_str(),rs.length(),var))
+				{
+					warnings << "Unable to convert '"+ctx.name+"/"+name+"' = '"+rs+"' to "+TypeInfo<T>::name;
+					return;
+				}
+			}
+
+			template <typename T, typename T2>
+			void	QueryMappedEnum(const Config::Context&ctx, const char*name, T2&var)
+			{
+				String rs;
+				if (!ctx.QueryString(name,rs))
+				{
+					warnings << "Unable to query '"+ctx.name+"/"+name+"'";
+					return;
+				}
+				T e;
+
+				if (!e.Decode(rs.c_str()))
+				{
+					warnings << "Unable to convert '"+ctx.name+"/"+name+"' = '"+rs+"' to "+T::GetName();
+					return;
+				}
+				var = (T2)e;
+			}
+
+
+			void	ImportConfig(const Config::Context&sub, Grid::ExtendedPlanetConfig::TLayerConfig&layer)
+			{
+				Query(sub,"baseHeight",layer.baseHeight);
+				Query(sub,"noiseHeightScale",layer.heightScale);
+				Query(sub,"frequency",layer.frequency);
+				Query(sub,"dampening",layer.dampening);
+			}
+
+			void	ImportPlanet()
+			{
+				/*
+				Important:
+				Keep this in sync with server/components/reflection.cpp
+				*/
+				char buffer[0x10000];
+				if (System::getFromClipboardIfText(Engine::context.getWindow(),buffer,sizeof(buffer)))
+				{
+					Configuration cfg;
+					StringFile file(CM_STRIP_COMMENTS|CM_RECORD_COMMENTS|CM_STRIP_LINE_START_COMMENTS);
+					
+					file.LinkSourceData(buffer,strlen(buffer));
+					if (cfg.LoadFromFile(file))
+					{
+						warnings.Clear();
+						Query(cfg,"atmosphereDensity",config.atmosphereColor.a);
+						QueryMappedEnum<Grid::Content>(cfg,"innerCoreType",config.innerCoreType);
+
+						if (Config::Context*sub = cfg.GetContext("ExtendedCore"))
+						{
+							QueryMappedEnum<Grid::Content>(*sub,"type",config.extendedCoreType);
+							ImportConfig(*sub,config.extendedCore);
+						}
+						else
+							warnings << "Unable to fetch 'ExtendedCore'";
+					
+						if (Config::Context*sub = cfg.GetContext("Mountains"))
+						{
+							QueryMappedEnum<Grid::Content>(*sub,"type",config.type);
+							Query(*sub,"snowHeight",config.snowHeight);
+							ImportConfig(*sub,config.mountains);
+						}
+						else
+							warnings << "Unable to fetch 'Mountains'";
+
+						if (Config::Context*sub = cfg.GetContext("Liquid"))
+						{
+							QueryMappedEnum<Grid::Content>(*sub,"type",config.liquidCoverage);
+							Query(*sub,"level",config.liquidHeight);
+							QueryMappedEnum<Grid::Content>(*sub,"outline",config.liquidOutline);
+						}
+						else
+							warnings << "Unable to fetch 'Liquid'";
+				
+
+						if (Config::Context*sub = cfg.GetContext("Resources"))
+						{
+							for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
+							{
+								Objects::Resource res = Objects::Resource::Reinterpret(i);
+								if (Config::Context*sub2 = sub->GetContext(res.ToString()))
+								{
+									Query(*sub2,"density",Grid::Resource::density[i]);
+									Query(*sub2,"max",Grid::Resource::maximum[i]);
+								}
+								else
+									warnings << "Unable to fetch '"+sub->name+"/"+res.ToString()+"'";
+							}
+						}
+						else
+							warnings << "Unable to fetch 'Resources'";
+
+						if (warnings.IsNotEmpty())
+						{
+							Dialog::ShowMessage("Importing encountered warnings:\n"+implode('\n',warnings.pointer(),warnings.Count()));
+						}
+						LoadClientWorld(true);
+					}
+					else
+						Dialog::ShowMessage("Planet configuration could not be parsed from clipboard:\n"+cfg.GetError());
+				}
+				else
+					Dialog::ShowMessage("Planet configuration could not be loaded from clipboard. Chances are, you did not copy it to clipboard first");
+
+			}
+		}
+
 
 		void	Create()
 		{
@@ -571,6 +761,23 @@ namespace ConfigurationMode
 			ruleGroup.reset(new Objects::CommandGroup("Rules"));
 			ruleGroup->baseCoords = int2(1);
 			ruleGroup->customLabel << "All common game rules";
+			copyPasteGroup.reset(new Objects::CommandGroup("Copy/Paste"));
+			copyPasteGroup->baseCoords = int2(1);
+			copyPasteGroup->customLabel << "Copy/paste current configuration to clipboard";
+
+			{
+				Objects::PIconCommand cmd;
+
+				cmd.reset(new Objects::IconCommand("Copy planet to clipboard (CTRL+C)",Clipboard::ExportPlanet,
+				[](bool)->Objects::BaseCommand::Flags { return Objects::BaseCommand::Flags::IsEnabled;}));
+				copyPasteGroup->Add(cmd);
+
+				cmd.reset(new Objects::IconCommand("Paste planet from clipboard (CTRL+V)",Clipboard::ImportPlanet,
+				[](bool)->Objects::BaseCommand::Flags { return Objects::BaseCommand::Flags::IsEnabled;}));
+				copyPasteGroup->Add(cmd);
+			}
+
+
 
 			/*			ClosedGame = 0x1,
 			BasesRequired = 0x2,
@@ -720,6 +927,7 @@ namespace ConfigurationMode
 			buttons	<< std::make_pair(int2(at++,0),coreGroup);
 			buttons	<< std::make_pair(int2(at++,0),liquidGroup);
 			buttons	<< std::make_pair(int2(at++,0),ruleGroup);
+			buttons	<< std::make_pair(int2(at++,0),copyPasteGroup);
 			;
 		}
 
@@ -805,6 +1013,18 @@ namespace ConfigurationMode
 	}
 
 
+	void	OnCopy()
+	{
+		if (Detail::isActive)
+			Detail::Clipboard::ExportPlanet();
+	}
+
+
+	void	OnPaste()
+	{
+		if (Detail::isActive)
+			Detail::Clipboard::ImportPlanet();
+	}
 }
 
 #endif

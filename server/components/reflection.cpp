@@ -7,7 +7,6 @@
 #include <io/file_system.h>
 #include "aiProcess.h"
 #include "configurationMode.h"
-//#include "remoteControl.h"
 
 namespace Reflection
 {
@@ -846,6 +845,10 @@ namespace Reflection
 				Variable::planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::PlanetConfig);
 				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("config/planets",Variable::planetType));
 				{
+					/*
+					Important:
+					Keep this in sync with client/components/configurationMode.cpp
+					*/
 					Variable::Set("atmosphereDensity",Grid::currentPlanetConfig.atmosphereColor.a,0.f,1.f,Variable::Persistence::PlanetConfig);
 					Variable::SetMappedEnum<Grid::Content,UINT32>("innerCoreType",Grid::currentPlanetConfig.innerCoreType,Variable::Persistence::PlanetConfig);
 					state.EnterNewFolder("ExtendedCore")->attachment = persistenceAttachment;
