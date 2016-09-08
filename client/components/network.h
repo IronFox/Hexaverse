@@ -279,8 +279,8 @@ namespace Network
 		bool					selected, haveToken;
 
 		#ifdef HAS_WINDOW
-			GUIElements::PLabel		headLine;	//game/server ids, optionally (continue)
-			GUIElements::PButtonPanel	buttonPanel;
+			GUI::PLabel		headLine;	//game/server ids, optionally (continue)
+			GUI::PButtonPanel	buttonPanel;
 		#endif
 
 

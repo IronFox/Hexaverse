@@ -23,10 +23,10 @@
 
 		void	ShowSession()
 		{
-			if (Dialog::IsModal())
+			if (GUI::IsModal())
 			{
 				if (Dialog::ShowingFactions())
-					Dialog::CloseAllModal();
+					GUI::CloseAllModal();
 				return;
 			}
 
@@ -50,7 +50,7 @@
 		{
 			if (Dialog::ShowingFactions())
 			{
-				Dialog::CloseAllModal();
+				GUI::CloseAllModal();
 				ShowSession();
 			}
 
@@ -1194,7 +1194,7 @@
 						float4 code;
 					
 						{
-							if (!Dialog::IsModal() && c->Contains(Engine::mouse.location.windowRelative))
+							if (!GUI::IsModal() && c->Contains(Engine::mouse.location.windowRelative))
 							{
 								code.r = 1.f;
 								if (stationary)

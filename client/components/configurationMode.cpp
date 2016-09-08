@@ -104,7 +104,7 @@ namespace ConfigurationMode
 		class MaterialDialog
 		{
 		public:
-			GUIElements::PWindow	window;
+			GUI::PWindow	window;
 			std::function<void(BYTE)>	onSelect;
 			
 			void				Create(bool allowUnknown, bool allowLiquids);
@@ -179,7 +179,7 @@ namespace ConfigurationMode
 
 		void				MaterialDialog::Create(bool allowUnknown, bool allowLiquids)
 		{
-			window.reset(new GUIElements::Window());
+			window.reset(new GUI::Window());
 			//window->autoHeight = false;
 			for (index_t i  = 0; i < Grid::Content::NumberOfPossibilities; i++)
 			{
@@ -193,7 +193,7 @@ namespace ConfigurationMode
 				String name = Grid::Content::Reinterpret(i).ToString();
 				if (i == Grid::Content::Unknown)
 					name = "Natural";
-				GUIElements::PButton button(new GUIElements::Button(name));
+				GUI::PButton button(new GUI::Button(name));
 				button->backgroundTone = Grid::CellStack::Cell::typeColor[i];
 				Vec::abs(button->backgroundTone);
 				float max = Vec::max(button->backgroundTone);
@@ -217,14 +217,14 @@ namespace ConfigurationMode
 				//}
 				button->SetOnPress([this,i]()
 				{
-					Dialog::Hide(window);
+					GUI::Hide(window);
 					this->onSelect((BYTE)i);
 				});
 				window->AddComponent(button);
 			}
 
 			{
-				GUIElements::PButton button(new GUIElements::Button("Abort"));
+				GUI::PButton button(new GUI::Button("Abort"));
 				float b = 0.2f * ((window->CountComponents()/4)+1);
 				button->SetLocation(Math::TFloatRect(float2(),float2(1.f,0.2f)));
 //				button->anchorConfig.Top().Set(b);
@@ -234,7 +234,7 @@ namespace ConfigurationMode
 			
 				button->SetOnPress([this]()
 				{
-					Dialog::Hide(window);
+					GUI::Hide(window);
 				});
 				window->AddComponent( button );
 			}
@@ -548,7 +548,7 @@ namespace ConfigurationMode
 					value = v;
 					Update();
 				};
-				Dialog::Show(dialog.window); 
+				GUI::Show(dialog.window); 
 			},
 			[](bool){return Objects::BaseCommand::Flags::IsEnabled;}
 			));

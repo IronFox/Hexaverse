@@ -62,7 +62,7 @@ namespace Network
 
 		client.ConnectAsync(addr.host + ":"+String(addr.basePort + PortOffset::Session));
 		#ifdef HAS_WINDOW
-			Dialog::SignalSituationChange();
+			GUI::SignalSituationChange();
 		#endif
 	}
 
@@ -232,7 +232,7 @@ namespace Network
 					waste << *a;
 					attempts.erase(a);
 					#ifdef HAS_WINDOW
-						Dialog::SignalSituationChange();
+						GUI::SignalSituationChange();
 					#endif
 					return true;
 				}
@@ -393,7 +393,7 @@ namespace Network
 				else
 				{
 					#ifdef HAS_WINDOW
-						Dialog::Show(Dialog::loginMenu);
+						GUI::Show(Dialog::loginMenu);
 					#endif
 				}
 				#ifdef HAS_WINDOW
@@ -611,7 +611,7 @@ namespace Network
 						if (Objects::GetEntity(e->id))
 							Objects::Remove(e,type, t,Network::ControlEnabled());
 						#ifdef HAS_WINDOW
-							Dialog::SignalSituationChange();
+							GUI::SignalSituationChange();
 						#endif
 					});
 				}
@@ -620,7 +620,7 @@ namespace Network
 					float t = 0;
 					Objects::Remove(e,type, t,Network::ControlEnabled());
 					#ifdef HAS_WINDOW
-						Dialog::SignalSituationChange();
+						GUI::SignalSituationChange();
 					#endif
 				}
 
@@ -690,10 +690,10 @@ namespace Network
 				Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
 
 				#ifdef HAS_WINDOW
-					Dialog::Hide(Dialog::loginMenu);
+					GUI::Hide(Dialog::loginMenu);
 					//if (ConfigurationMode::IsActive())
 					//	UI::HexGrid::Configure
-					//	Dialog::Show(Dialog::configMenu);
+					//	GUI::Show(Dialog::configMenu);
 				#endif
 			}
 			else
@@ -702,7 +702,7 @@ namespace Network
 				LogEvent(EventClass::Preset::uncommon, nullptr, "Server response: Faction void.");
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
-					Dialog::Show(Dialog::loginMenu);
+					GUI::Show(Dialog::loginMenu);
 				#endif
 			}
 
@@ -1035,7 +1035,7 @@ namespace Network
 			Channels::clientFactionRequest.SendTo(client,ready);
 
 			#ifdef HAS_WINDOW
-				Dialog::Show(Dialog::loginMenu);
+				GUI::Show(Dialog::loginMenu);
 			#endif
 		}
 	}
@@ -1115,7 +1115,7 @@ namespace Network
 				LogEvent(EventClass::Preset::networkError, nullptr, "Connection attempt failed");
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
-					Dialog::SignalSituationChange();
+					GUI::SignalSituationChange();
 				#endif
 			}
 			break;
@@ -1130,7 +1130,7 @@ namespace Network
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
-					Dialog::CloseAllModal();
+					GUI::CloseAllModal();
 				#endif
 
 
@@ -1146,9 +1146,9 @@ namespace Network
 
 				#ifdef HAS_WINDOW
 					ConfigurationMode::SetActive(false);
-					Dialog::Hide(Dialog::loginMenu);
+					GUI::Hide(Dialog::loginMenu);
 					Dialog::CheckServersAreShown(true);
-					Dialog::SignalSituationChange();
+					GUI::SignalSituationChange();
 				#endif
 
 			}
@@ -1178,7 +1178,7 @@ namespace Network
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();
 				#ifdef HAS_WINDOW
-					Dialog::SignalSituationChange();
+					GUI::SignalSituationChange();
 				#endif
 				#ifdef _DEBUG
 					//LogEvent(EventSignificance::Debug,nullptr,"Got pong from server");
@@ -1577,7 +1577,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			LogEvent(EventSignificance::Debug,"Command phase. Game has NOT begun");
 
 	#ifdef HAS_WINDOW
-		Dialog::SignalSituationChange();
+		GUI::SignalSituationChange();
 	#endif
 }
 

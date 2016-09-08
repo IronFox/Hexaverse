@@ -17,9 +17,24 @@ extern Engine::Textout<DX11::TextureFont>	textout;
 extern Engine::Display<Engine::DirectX11>	display;
 
 
-namespace GUIElements
+namespace GUI
 {
 	index_t windowResolutionVersion = 0;
+
+	namespace Detail
+	{
+		Buffer0<GUI::PWindow,Swap>		visibleWindows;
+
+		void OnInput()
+		{
+			if (visibleWindows.IsNotEmpty())
+				visibleWindows.last()->DetectEnabledState();
+		}
+
+
+	}
+
+
 
 	PComponent	mousePressedComponent;
 
@@ -37,6 +52,247 @@ namespace GUIElements
 	static float2 ViewPortSizef()
 	{
 		return float2(ViewPortWidth(),ViewPortHeight());
+	}
+
+
+	PWindow				GetTopMostWindow()
+	{
+		if (Detail::visibleWindows.IsNotEmpty())
+			return Detail::visibleWindows.last();
+		return PWindow();
+	}
+
+
+	index_t	FindWindowIndex(const Window*window)
+	{
+		foreach (Detail::visibleWindows,_w)
+			if (_w->get() == window)
+			{
+				return _w - Detail::visibleWindows.pointer();
+			}
+		return InvalidIndex;
+	}
+
+
+	bool	Hide(const PWindow&window)
+	{
+		return Hide(window.get());
+	}
+
+	bool	Hide(Window*window)
+	{
+		VerifyIntegrity(CLOCATION);
+		index_t index = FindWindowIndex(window);
+		if (index == InvalidIndex)
+			return false;
+
+		window->OnHide();
+		if (index+1 == Detail::visibleWindows.Count())
+		{
+			window->Deactivate();
+			if (Detail::visibleWindows.Count() > 1)
+				Detail::visibleWindows.fromEnd(1)->Activate();
+		}
+		Detail::visibleWindows.Erase(index);	//should be last. window is not guaranteed to be valid past this point
+
+		VerifyIntegrity(CLOCATION);
+
+		SignalSituationChange();
+
+		return true;
+
+	}
+
+	
+	bool	IsVisible(const PWindow&window)
+	{
+		return Detail::visibleWindows.Contains(window);
+	}
+
+	void	Show(const PWindow&window)
+	{
+		VerifyIntegrity(CLOCATION);
+		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.last() == window)
+		{
+			DBG_ASSERT__(window->IsActive());
+			if (!window->IsActive())
+				window->Activate();
+			return;
+		}
+		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.first() == window)
+		//	return;
+		Detail::visibleWindows.FindAndErase(window);
+		if (Detail::visibleWindows.IsNotEmpty())
+			Detail::visibleWindows.last()->Deactivate();
+		Detail::visibleWindows << window;
+		window->Activate();
+		SignalSituationChange();
+	}
+
+
+
+	void	ShowBottom(const PWindow&window)
+	{
+		VerifyIntegrity(CLOCATION);
+		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.first() == window)
+		{
+			if (Detail::visibleWindows.Count() == 1)
+			{
+				DBG_ASSERT__(window->IsActive());
+				if (!window->IsActive())
+					window->Activate();
+			}
+			return;
+		}
+		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.first() == window)
+		//	return;
+
+		index_t at = Detail::visibleWindows.GetIndexOf(window);
+		if (at != InvalidIndex)
+		{
+			if (at+1 == Detail::visibleWindows.Count())	//ist last
+			{
+				window->Deactivate();
+				Detail::visibleWindows.fromEnd(1)->Activate();
+			}
+			Detail::visibleWindows.Erase(at);
+		} 
+		Detail::visibleWindows.Insert(0,window);
+		if (Detail::visibleWindows.Count() == 1)
+			window->Activate();
+
+		SignalSituationChange();
+
+	}
+
+
+
+
+	bool	CloseAllModal()
+	{
+		VerifyIntegrity(CLOCATION);
+		if (Detail::visibleWindows.IsNotEmpty())
+		{
+			bool anyNonClosable = false;
+			foreach (Detail::visibleWindows,w)
+				if (!(*w)->canBeImplicitlyClosed)
+				{
+					anyNonClosable = true;
+					break;
+				}
+
+			if (anyNonClosable)
+			{
+				bool rs = false;
+				for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
+				{
+					GUI::PWindow w = Detail::visibleWindows[i];
+					if (w->canBeImplicitlyClosed)
+					{
+						Hide(w);
+						i--;
+						rs = true;
+					}
+				}
+				GUI::VerifyIntegrity(CLOCATION);
+				return rs;
+			}
+			else
+			{
+				foreach (Detail::visibleWindows,_d)
+				{
+					PWindow d = *_d;
+					d->OnHide();
+				}
+				Detail::visibleWindows.last()->Deactivate();
+				Detail::visibleWindows.Clear();
+			}
+			GUI::VerifyIntegrity(CLOCATION);
+			return true;
+		}
+		VerifyIntegrity(CLOCATION);
+		return false;
+	}
+
+
+	bool	IsModal()
+	{
+		foreach (Detail::visibleWindows,w)
+			if ((*w)->isModal)
+				return true;
+		return false;
+	}
+
+	bool	HandleMouseDown()
+	{
+		for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
+		{
+			PWindow w = Detail::visibleWindows[i];
+			mousePressedComponent = w->HandleMouseDown();
+			if (mousePressedComponent || w->isModal)
+				return true;
+		}
+		mousePressedComponent.reset();
+		return false;
+	}
+
+	void	HandleMouseUp()
+	{
+		if (mousePressedComponent)
+		{
+			mousePressedComponent->SignalMouseUp();
+			mousePressedComponent.reset();
+		}
+
+	}
+
+
+	void	SignalSituationChange()
+	{
+		VerifyIntegrity(CLOCATION);
+		for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
+		{
+			const PWindow&d = Detail::visibleWindows[i];
+			if (!d->SignalChange())
+			{
+				d->OnHide();
+				if (i+1 == Detail::visibleWindows.Count())
+				{
+					d->Deactivate();
+					if (Detail::visibleWindows.Count() > 1)
+						Detail::visibleWindows.fromEnd(1)->Activate();
+				}
+				Detail::visibleWindows.Erase(i);
+				i--;
+			}
+			else
+				d->DetectEnabledState();
+		}
+		VerifyIntegrity(CLOCATION);
+	}
+
+
+	void	VerifyIntegrity(const TCodeLocation&loc)
+	{
+		if (Detail::visibleWindows.IsEmpty())
+			return;
+
+
+		for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
+		{
+			bool shouldBeActive = (i+1 == Detail::visibleWindows.Count());
+			GUI::PWindow w = Detail::visibleWindows[i];
+			if (w->IsActive() != shouldBeActive)
+			{
+				String msg = String(loc.ToString())+ ": Activity mismatch for window "+String(i+1)+"/"+String(Detail::visibleWindows.Count())+" (active="+String(w->IsActive())+", should be "+String(shouldBeActive)+")";
+				LogEvent(EventClass::Preset::error,msg);
+				DBG_FATAL__(msg);
+				if (shouldBeActive)
+					w->Activate();
+				else
+					w->Deactivate();
+			}
+		}
 	}
 
 
@@ -286,9 +542,6 @@ namespace GUIElements
 		return Super::UpdateHeight() || !same;
 	}
 
-	/*static*/ std::function<void()>	BaseInput::onChange;
-	/*static*/ std::function<void()>	BaseInput::onDone;
-
 
 
 	void			Input::SetCurrent(const String&current)
@@ -308,6 +561,11 @@ namespace GUIElements
 			Engine::keyboard.Filter(allowed.c_str());
 	}
 
+	/*static*/ void BaseInput::OnCharHandled(char)
+	{
+		Detail::OnInput();
+	}
+
 	void			BaseInput::ActivateInput()
 	{
 		Engine::input.pushProfile();
@@ -324,9 +582,9 @@ namespace GUIElements
 		Engine::input.bindProfile(profile);
 		
 		//Engine::input.resetKeys();
-		Engine::input.bind(Key::Backspace,[](){Engine::keyboard.DropLastCharacter(); if (onChange) onChange();});
-		Engine::input.bind(Key::Return,onDone);
-		Engine::input.bind(Key::Enter,onDone);
+		Engine::input.bind(Key::Backspace,[](){Engine::keyboard.DropLastCharacter(); Detail::OnInput();});
+		Engine::input.bind(Key::Return,onEnter);
+		Engine::input.bind(Key::Enter,onEnter);
 		Engine::input.bindCtrl(Key::V,[](){
 			char buffer[0x100];
 			memset(buffer,0,sizeof(buffer));
@@ -341,8 +599,7 @@ namespace GUIElements
 			Engine::keyboard.Filter(filter);
 		else
 			Engine::keyboard.ResetTranslation();
-		if (onChange)
-			Engine::keyboard.onCharHandled = BaseInput::OnCharHandled;
+		Engine::keyboard.onCharHandled = BaseInput::OnCharHandled;
 		Engine::keyboard.read = true;
 		Engine::keyboard.ImportBuffer(backup);
 	}
@@ -517,7 +774,18 @@ namespace GUIElements
 	{
 		Image::StaticDestroy();
 		//Area::StaticDestroy();
-	
+		Detail::visibleWindows.Clear();
+	}
+
+
+
+
+	void	Render()
+	{
+		foreach (Detail::visibleWindows,d)
+		{
+			(*d)->Render();
+		}
 	}
 
 

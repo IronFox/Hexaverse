@@ -1430,7 +1430,7 @@ bool loop()
 	
 		//bool rebuildCamera = false;
 
-		if (!Dialog::IsModal() && !Camera::locked)
+		if (!GUI::IsModal() && !Camera::locked)
 		{
 			{
 				if (Engine::mouse.buttons.right_down || Engine::mouse.buttons.middle_down)
@@ -1635,7 +1635,7 @@ bool loop()
 
 			Objects::Renderer::RenderProgressBars();
 
-			if (Objects::showArrow && !Dialog::IsModal())
+			if (Objects::showArrow && !GUI::IsModal())
 			{
 	//			display.SetDepthTest(false, false);
 				bool includeWater = false;
@@ -1903,7 +1903,7 @@ bool loop()
 		
 			UI::Render();
 			display.pick(Camera::hud);
-			Dialog::Render();
+			GUI::Render();
 
 	#endif
 		//textout << "direction: "<<scene.GetViewingDirection()<< nl;
@@ -1943,7 +1943,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 		textout.setScale(1.f / display.clientWidth(), 1.f / display.clientHeight());
 
 		UI::OnWindowResize();
-		GUIElements::OnWindowResize();
+		GUI::OnWindowResize();
 	}
 
 
@@ -2022,7 +2022,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	{
 		Tutorial::lastDelayingEvent = timer.Now();
 
-		if (Dialog::HandleMouseDown() || UI::HandleClick())
+		if (GUI::HandleMouseDown() || UI::HandleClick())
 			return;
 		if (Rect<>(0.f,0.97f,0.1f,1.f).Contains(Engine::mouse.location.windowRelative))
 		{
@@ -2238,7 +2238,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 		{
 			TimeLapse::enabled = false;
 			Camera::locked = false;
-			Dialog::SignalSituationChange();
+			GUI::SignalSituationChange();
 			LogEvent(EventClass::Preset::uncommon,"Time lapse disabled");
 		}
 		else
@@ -2648,7 +2648,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	void	QueryAndSendChatMessage()
 	{
-		if (Dialog::IsModal())
+		if (GUI::IsModal())
 			return ;
 		static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_- <>!'\"'$%^&*()=+.,/\\#@?";
 		Dialog::Query("Please enter message","",allowed,[](const String&candidate)->bool
@@ -2709,7 +2709,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	void	AbortMode()
 	{
-		if (Dialog::CloseAllModal())
+		if (GUI::CloseAllModal())
 		{
 			QueryNicknameIfEmpty();
 			return;
@@ -2717,13 +2717,13 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		if (Objects::DisableModes(Network::ControlEnabled()))
 			return;
 
-		if (!Dialog::IsVisible(mainMenu))
+		if (!GUI::IsVisible(mainMenu))
 		{
-			Dialog::Show(mainMenu);
+			GUI::Show(mainMenu);
 		}
 		else
-			Dialog::Hide(mainMenu);
-		Dialog::SignalSituationChange();
+			GUI::Hide(mainMenu);
+		GUI::SignalSituationChange();
 	}
 
 	#ifdef HAS_WINDOW
@@ -3095,7 +3095,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 				Dialog::Confirm("A faction key is known for this world ("+Network::worldIDString+"). If you create a new faction, this key will be lost, and control of your old faction will irreversible be abandoned. Please confirm.",
 				[typeFlags](){
 					Network::AttemptFactionLogin(true,typeFlags);
-					Dialog::Hide(Dialog::loginMenu);
+					GUI::Hide(Dialog::loginMenu);
 				},[supportFactionFlag]()
 				{
 					if (!Network::amOnline || Network::haveFaction || !(supportFactionFlag & Network::gameFlags))
@@ -3108,7 +3108,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			else
 			{
 				Network::AttemptFactionLogin(true,typeFlags);
-				Dialog::Hide(Dialog::loginMenu);
+				GUI::Hide(Dialog::loginMenu);
 			}
 		},[supportFactionFlag](){return Network::amOnline && !Network::haveFaction && (Network::gameFlags & supportFactionFlag) 
 			&& (
@@ -3508,7 +3508,7 @@ int main( int argc, const char* argv[])
 			Engine::input.bindCtrl(Key::C,ConfigurationMode::OnCopy);
 			Engine::input.bindCtrl(Key::V,ConfigurationMode::OnPaste);
 
-			Engine::input.bind(Key::MouseButton0, Select, Dialog::HandleMouseUp);
+			Engine::input.bind(Key::MouseButton0, Select, GUI::HandleMouseUp);
 			Engine::input.bindCtrl(Key::MouseButton0, Select);
 			Engine::input.bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
 			Engine::input.bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);

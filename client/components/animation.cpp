@@ -1159,7 +1159,7 @@ namespace Animation
 				if (!allocatedTarget->isOwnedByMe)
 					UI::HexGrid::RefreshContacts();
 				#ifdef HAS_WINDOW
-					Dialog::SignalSituationChange();
+					GUI::SignalSituationChange();
 					if (removalType == Objects::RemovalType::UncontrolledExplosion)
 						UI::EventLog::RegisterEntityDestruction(this->time.min, allocatedTarget->isOwnedByMe,allocatedTarget->GetWorldPosition(), allocatedTarget->id, allocatedTarget->GetNiceName());
 

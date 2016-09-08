@@ -29,19 +29,19 @@ namespace Dialog
 
 
 
-	class Dialog : public GUIElements::Window
+	class Dialog : public GUI::Window
 	{
-		typedef GUIElements::Window	Super;
+		typedef GUI::Window	Super;
 	public:
 		//CONSTRUCT_ENUMERATION5(Type, Confirmation, Message, TutorialMessage, StringQuery,FactionList);
 
 		//Type					type;
 
-		GUIElements::PButton	confirmButton,noButton,helpButton,cancelButton;
-		GUIElements::PInput		userInput;
-		GUIElements::PPasswordInput	passwordInput;
-		GUIElements::PLabel		textField;
-		GUIElements::PImage		image;
+		GUI::PButton	confirmButton,noButton,helpButton,cancelButton;
+		GUI::PInput		userInput;
+		GUI::PPasswordInput	passwordInput;
+		GUI::PLabel		textField;
+		GUI::PImage		image;
 
 		String					key;
 
@@ -76,7 +76,7 @@ namespace Dialog
 
 
 
-		bool		SignalChange()
+		virtual bool		SignalChange() override
 		{
 			if (check)
 			{
@@ -91,6 +91,14 @@ namespace Dialog
 		void		ReLayout()
 		{
 			Super::FullAutoLayout();
+		}
+
+		virtual	void	OnHide() override
+		{
+			if (onPassword && sendNullPasswordOnAbortByUser && (!check || check() == CheckResult::OkayContinue))
+			{
+				onPassword(nullptr);
+			}
 		}
 
 
@@ -118,11 +126,6 @@ namespace Dialog
 		void*	factionReference;
 	};
 
-	/**
-	Signals that the global situation has changed and active modal dialogs need to be re-evalutated.
-	This may be invoked by a server state change or removal of some entity
-	*/
-	void	SignalSituationChange();
 
 	/**
 	Creates a new modal dialog on top of any other active modal dialogs
@@ -166,17 +169,7 @@ namespace Dialog
 
 	bool	RemoveDialog(const PDialog&dialog);
 	
-	bool	Hide(const GUIElements::PWindow&window);
-	bool	IsVisible(const GUIElements::PWindow&window);
 
-	/**
-	Makes sure the specified window is visible. Raises the window if it's not top-most
-	*/
-	void	Show(const GUIElements::PWindow&window);
-	/**
-	Makes sure the specified window is visible. Lowers it to the bottom of the window stack if it's not there already
-	*/
-	void	ShowBottom(const GUIElements::PWindow&window);
 
 
 	WDialog	ShowFactions(const Buffer0<Faction>&factions);
@@ -189,16 +182,7 @@ namespace Dialog
 	bool	HasMoreTutorials();
 
 
-	/**
-	Checks if any modal dialogs are open at this time
-	*/
-	bool	IsModal();
 
-	/**
-	Closes all modal dialogs
-	@return true, if any modal dialogs were closed
-	*/
-	bool	CloseAllModal();
 
 	/**
 	Confirms the current top-most modal dialog, if possible and existing
@@ -206,22 +190,10 @@ namespace Dialog
 	*/
 	bool	ConfirmCurrent(bool bySpace);
 
-	/**
-	Renders all visible windows/dialogs
-	*/
-	void	Render();
-
-	/**
-	Checks that the top-most window is active (if any), and all others are inactive (if any).
-	Will halt execution in Debug mode, and fix the issue in release mode.
-	*/
-	void	VerifyIntegrity(const TCodeLocation&);
+	
 
 
 
-	//bool	HandleClick();
-	bool	HandleMouseDown();
-	void	HandleMouseUp();
 
 
 	void	CheckServersAreShown(bool doShow);
@@ -234,18 +206,18 @@ namespace Dialog
 
 
 
-	class Menu : public GUIElements::Window
+	class Menu : public GUI::Window
 	{
-		typedef GUIElements::Window	Super;
+		typedef GUI::Window	Super;
 	public:
 		/**/				Menu(float initialAbsoulteWidth, const String&title)
 		{
-			Super::SetCenteredWidth(initialAbsoulteWidth,GUIElements::TAnchor::RelativeToScreen);
+			Super::SetCenteredWidth(initialAbsoulteWidth,GUI::TAnchor::RelativeToScreen);
 			Super::fillBackground = false;
 
 			if (title.IsNotEmpty())
 			{
-				GUIElements::PLabel label(new GUIElements::Label());
+				GUI::PLabel label(new GUI::Label());
 				label->SetText(title);
 				label->extraSpacing = 0.1f;
 				Super::AnchorBelowPrevious(label,0.015f,0.f);
@@ -253,14 +225,14 @@ namespace Dialog
 		}
 
 
-		GUIElements::PButton				AddCommand(const String&name, const std::function<void()>&execute, const std::function<bool()>&check = std::function<bool()>(), bool autoHide=true)
+		GUI::PButton				AddCommand(const String&name, const std::function<void()>&execute, const std::function<bool()>&check = std::function<bool()>(), bool autoHide=true)
 		{
-			GUIElements::PButton button(new GUIElements::Button(name,
+			GUI::PButton button(new GUI::Button(name,
 				[execute,this,autoHide]()
 				{
 					execute();
 					if (autoHide)
-						Hide(To<GUIElements::Window>::Cast(this->shared_from_this()));
+						GUI::Hide(To<GUI::Window>::Cast(this->shared_from_this()));
 				},
 				check
 			));
@@ -276,7 +248,7 @@ namespace Dialog
 
 
 	extern PMenu				loginMenu;
-	extern GUIElements::PWindow	serverChoice;
+	extern GUI::PWindow	serverChoice;
 
 
 }

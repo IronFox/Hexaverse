@@ -10,7 +10,7 @@
 #include "../ExtRenderer/DirectX11.h"
 #include "../../shared/typeDecl.h"
 
-namespace GUIElements
+namespace GUI
 {
 
 	namespace DX11 = Engine::DX11;
@@ -223,11 +223,7 @@ namespace GUIElements
 
 		Engine::Keyboard::CharacterBuffer	backup;
 
-		static void		OnCharHandled(char)
-		{
-			if (onChange)
-				onChange();
-		}
+		static void		OnCharHandled(char);
 
 		virtual void	ActivateInput();
 		virtual void	DeactivateInput();
@@ -235,8 +231,10 @@ namespace GUIElements
 		virtual StringRef GetText();
 	public:
 
-		static std::function<void()>	onChange;
-		static std::function<void()>	onDone;
+		/**
+		Triggered when the user confirms the input (via enter/return)
+		*/
+		std::function<void()>	onEnter;
 
 		virtual void	Render() override;
 		virtual bool	UpdateHeight() override;
@@ -651,7 +649,7 @@ namespace GUIElements
 		/**/				Window()
 		{
 			Super::autoHeight = true;
-			Super::SetCenteredWidth(0.75f,GUIElements::TAnchor::RelativeToScreen);
+			Super::SetCenteredWidth(0.75f,GUI::TAnchor::RelativeToScreen);
 			Super::SetLocation(Math::TFloatRect(float2(0.25f),float2(0.5f)));
 		}
 
@@ -734,12 +732,18 @@ namespace GUIElements
 
 		}
 
-
+		virtual void	OnHide() {};
+		virtual bool	SignalChange() {return true;}
 	};
 
 	
 	
 
+	/**
+	Checks that the top-most window is active (if any), and all others are inactive (if any).
+	Will halt execution in Debug mode, and fix the issue in release mode.
+	*/
+	void				VerifyIntegrity(const TCodeLocation&);
 
 	void				OnWindowResize();
 
@@ -748,7 +752,40 @@ namespace GUIElements
 	void				Destroy();
 
 
+	index_t				FindWindowIndex(const Window*window);
 
+	/**
+	Makes sure the specified window is visible. Raises the window if it's not top-most
+	*/
+	void				Show(const GUI::PWindow&window);
+	/**
+	Makes sure the specified window is visible. Lowers it to the bottom of the window stack if it's not there already
+	*/
+	void				ShowBottom(const GUI::PWindow&window);
+	bool				Hide(const PWindow&window);
+	bool				Hide(Window*window);
+	bool				IsVisible(const GUI::PWindow&window);
+	PWindow				GetTopMostWindow();
+	/**
+	Signals that the global situation has changed and active modal dialogs need to be re-evalutated.
+	This may be invoked by a server state change or removal of some entity
+	*/
+	void				SignalSituationChange();
+	bool				HandleMouseDown();
+	void				HandleMouseUp();
+	/**
+	Checks if any modal dialogs are open at this time
+	*/
+	bool				IsModal();
+	/**
+	Closes all modal dialogs
+	@return true, if any modal dialogs were closed
+	*/
+	bool				CloseAllModal();
+	/**
+	Renders all visible windows/dialogs
+	*/
+	void				Render();
 
 }
 
