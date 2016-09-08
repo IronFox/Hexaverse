@@ -1302,10 +1302,10 @@
 						}
 					}
 
-					r.x.min = r.x.min * 0.5f + 0.5f;
-					r.x.max = r.x.max * 0.5f + 0.5f;
-					r.y.min = r.y.min * 0.5f + 0.5f;
-					r.y.max = r.y.max * 0.5f + 0.5f;
+					//r.x.min = r.x.min * 0.5f + 0.5f;
+					//r.x.max = r.x.max * 0.5f + 0.5f;
+					//r.y.min = r.y.min * 0.5f + 0.5f;
+					//r.y.max = r.y.max * 0.5f + 0.5f;
 					//Rect<>r(0,0,1,1);
 
 					SurfaceRenderer::Rasterize(r);
@@ -1699,7 +1699,7 @@
 					SurfaceRenderer::SetColor(float4(0,0,0,0.6f));
 					float w = 0.2f / display.pixelAspect();
 					//textout.locate(-1.f + 0.01f,-1.f + textout.getScaledHeight()*1.2f*(y+6));
-					Rect<> t(0,lineHeight*2.f,w,lineHeight*0.5f*11.5f);
+					Rect<> t(-1,lineHeight*4.f-1.f,w*2.f - 1.f,lineHeight*11.5f - 1.f);
 					SurfaceRenderer::Rasterize(
 						float2(t.x.min,t.y.min),float4(0,0,0,0.8f),
 						float2(t.x.max,t.y.min),float4(0,0,0,0.2f),
