@@ -2,7 +2,11 @@
 #define uiComponentH
 
 
-
+/**
+Hexagonal button gui renderer.
+Also responsible for rendering resource representations.
+NOT responsible for dialogs, and component management in general (see GUI in guiElements.h for that)
+*/
 namespace UI
 {
 	namespace HexGrid
