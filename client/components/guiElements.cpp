@@ -25,31 +25,45 @@ namespace GUI
 	{
 		Buffer0<GUI::PWindow,Swap>		visibleWindows;
 		Engine::OrthographicAspect<>	aspect;
-		Buffer0<Rect<> >	viewportStack;
+		Buffer0<std::pair<Rect<>,float2> >	viewportStack;
+		float2	totalOffset;
 
-
-		void	LoadView(const Rect<>&view)
+		void	LoadView(const Rect<>&view, const float2&offset)
 		{
 			LineRenderer::Flush();
 			SurfaceRenderer::Flush();
-			aspect.UpdateProjection(view,-1,1);
+			Rect<> view2 = view;
+			view2.Translate(offset);
+			aspect.UpdateProjection(view2,-1,1);
 			aspect.region = view;
 			display.Pick(aspect);
 		}
 
-		void	PushLoadView(const Rect<>&view)
+		void	PushLoadView(const Rect<>&view, const float2&offset=float2())
 		{
-			viewportStack << view;
-			LoadView(view);
+
+			viewportStack.Append().first = view;
+			viewportStack.last().second = offset;
+			if (viewportStack.Count() > 1)
+			{
+				viewportStack.last().first.Translate(totalOffset);
+				//viewportStack.last().second += viewportStack.fromEnd(1).second;
+			}
+			totalOffset += offset;
+			LoadView(viewportStack.last().first,viewportStack.last().second);
 		}
 
 		void	PopLoadView()
 		{
+			totalOffset -= viewportStack.last().second;
 			viewportStack.EraseLast();
 			if (viewportStack.IsNotEmpty())
-				LoadView(viewportStack.last());
+				LoadView(viewportStack.last().first,viewportStack.last().second);
 			else
-				LoadView(Rect<>(0,0,1,1));
+			{
+				LoadView(Rect<>(0,0,1,1),float2());
+				totalOffset = float2();
+			}
 		}
 
 
@@ -117,9 +131,9 @@ namespace GUI
 		window->OnHide();
 		if (index+1 == Detail::visibleWindows.Count())
 		{
-			window->Deactivate();
+			window->SetActive(false);
 			if (Detail::visibleWindows.Count() > 1)
-				Detail::visibleWindows.fromEnd(1)->Activate();
+				Detail::visibleWindows.fromEnd(1)->SetActive(true);
 		}
 		Detail::visibleWindows.Erase(index);	//should be last. window is not guaranteed to be valid past this point
 
@@ -144,16 +158,16 @@ namespace GUI
 		{
 			DBG_ASSERT__(window->IsActive());
 			if (!window->IsActive())
-				window->Activate();
+				window->SetActive(true);
 			return;
 		}
 		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.first() == window)
 		//	return;
 		Detail::visibleWindows.FindAndErase(window);
 		if (Detail::visibleWindows.IsNotEmpty())
-			Detail::visibleWindows.last()->Deactivate();
+			Detail::visibleWindows.last()->SetActive(false);
 		Detail::visibleWindows << window;
-		window->Activate();
+		window->SetActive(true);
 		SignalSituationChange();
 	}
 
@@ -168,7 +182,7 @@ namespace GUI
 			{
 				DBG_ASSERT__(window->IsActive());
 				if (!window->IsActive())
-					window->Activate();
+					window->SetActive(true);
 			}
 			return;
 		}
@@ -180,14 +194,14 @@ namespace GUI
 		{
 			if (at+1 == Detail::visibleWindows.Count())	//ist last
 			{
-				window->Deactivate();
-				Detail::visibleWindows.fromEnd(1)->Activate();
+				window->SetActive(false);
+				Detail::visibleWindows.fromEnd(1)->SetActive(true);
 			}
 			Detail::visibleWindows.Erase(at);
 		} 
 		Detail::visibleWindows.Insert(0,window);
 		if (Detail::visibleWindows.Count() == 1)
-			window->Activate();
+			window->SetActive(true);
 
 		SignalSituationChange();
 
@@ -232,7 +246,7 @@ namespace GUI
 					PWindow d = *_d;
 					d->OnHide();
 				}
-				Detail::visibleWindows.last()->Deactivate();
+				Detail::visibleWindows.last()->SetActive(false);
 				Detail::visibleWindows.Clear();
 			}
 			GUI::VerifyIntegrity(CLOCATION);
@@ -286,9 +300,9 @@ namespace GUI
 				d->OnHide();
 				if (i+1 == Detail::visibleWindows.Count())
 				{
-					d->Deactivate();
+					d->SetActive(false);
 					if (Detail::visibleWindows.Count() > 1)
-						Detail::visibleWindows.fromEnd(1)->Activate();
+						Detail::visibleWindows.fromEnd(1)->SetActive(true);
 				}
 				Detail::visibleWindows.Erase(i);
 				i--;
@@ -316,9 +330,9 @@ namespace GUI
 				LogEvent(EventClass::Preset::error,msg);
 				DBG_FATAL__(msg);
 				if (shouldBeActive)
-					w->Activate();
+					w->SetActive(true);
 				else
-					w->Deactivate();
+					w->SetActive(false);
 			}
 		}
 	}
@@ -344,6 +358,7 @@ namespace GUI
 			return;
 		type = Fixed;
 		distanceFromReference = distance;
+		references.Clear();
 		foreach (p->GetComponents(),c)
 			references.Append(*c);
 		distanceType = dtype;
@@ -351,11 +366,13 @@ namespace GUI
 
 	void			TAnchor::SetLastOf(const PPanel&p, float distance, distanceType_t dtype/*=RelativeToParentComponent*/)
 	{
-		if (!p || !p->HasComponents())
+		if (!p)
 			return;
 		type = Fixed;
 		distanceFromReference = distance;
-		references.Append(p->GetComponents().last());
+		references.Clear();
+		if (p->HasComponents())
+			references.Append(p->GetComponents().last());
 		distanceType = dtype;
 	}
 
@@ -377,12 +394,87 @@ namespace GUI
 
 	}
 
+	/*virtual override*/ bool	Panel::AutoLayout(const Rect<>&context)
+	{
+		bool rs = Super::AutoLayout(context); 
+		//Rect<> childSpace = rect;
+		if (vscroll.visible)
+			rect.x.max = vmax(rect.x.min, rect.x.max - TScrollbar::ContentSpacing - TScrollbar::Width);
+		foreach (components,c) 
+			rs |= (*c)->AutoLayout(rect);
+		return rs;
+	}
+
+	void	Panel::TScrollbar::Render(const Rect<>&rect)
+	{
+		
+		viewTop = vmin(viewTop,scrollMax - viewSize);
+
+		float left = rect.x.max + TScrollbar::ContentSpacing;
+		float right = left + TScrollbar::Width;
+		float buttonHeight = TScrollbar::Width * display.pixelAspect();
+		Rect<> topButton(left,rect.y.max - buttonHeight,right,rect.y.max);
+		Rect<> bottomButton(left,rect.y.min,right,rect.y.min + buttonHeight);
+
+		Rect<> outline(left,bottomButton.y.max + TScrollbar::ContentSpacing,right,topButton.y.min - TScrollbar::ContentSpacing);
+		SurfaceRenderer::SetColor(float4(0,0,0,0.9));
+		SurfaceRenderer::Rasterize(outline);
+
+		Rect<> window(outline.x.min,outline.y.Derelativate(1.f - (viewTop + viewSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
+		RenderArea(window,false,false,float3(1));
+
+		up->SetLocation(topButton);
+		up->Render();
+		down->SetLocation(bottomButton);
+		down->Render();
+	}
+
+	void	Panel::TScrollbar::Enable(Panel*p,const Rect<>&rect)
+	{
+		if (!up)
+		{
+			up.reset(new Button("",[this,p]()
+			{
+				targetViewTop -= viewSize;
+				targetViewTop = vmax(targetViewTop,0);	
+			}));
+
+			down.reset(new Button("",[this,p]()
+			{
+				targetViewTop += viewSize;
+				targetViewTop = vmin(targetViewTop,scrollMax - viewSize);
+			}));
+			up->SetActive(p->IsActive());
+			down->SetActive(p->IsActive());
+		}
+		visible = true;
+	}
+
+	/*virtual override*/ void	Panel::SetActive(bool isActive)
+	{
+		foreach (components,c)
+			(*c)->SetActive(isActive); 
+		Super::SetActive(isActive);
+		if (vscroll.up)
+		{
+			vscroll.up->SetActive(isActive);
+			vscroll.down->SetActive(isActive);
+		}
+	}
+
+
 
 	/*virtual override*/ void	Panel::Render()
 	{
 		Super::Render(); 
 
-		Detail::PushLoadView(rect);
+		if (vscroll.visible)
+		{
+			vscroll.Render(rect);
+			Detail::PushLoadView(rect,float2(0,-vscroll.viewTop));
+		}
+		else
+			Detail::PushLoadView(rect);
 		RenderChildren();
 		Detail::PopLoadView();
 	}
@@ -422,7 +514,24 @@ namespace GUI
 					break;
 				}
 			}
-			rs |= Set(rect.y.min,lowest - autoHeightSpacing);
+			float newY = lowest;// - autoHeightSpacing;
+			float currentHeight = rect.y.max - newY;
+			bool newVScroll = currentHeight > maxHeight;
+			bool changed = vscroll.visible != newVScroll;
+			rs |= changed;
+			if (newVScroll)
+			{
+				vscroll.scrollMax = currentHeight;
+				vscroll.viewSize = maxHeight;
+				newY = rect.y.max - maxHeight;
+				rs |= Set(rect.y.min,newY);
+				vscroll.Enable(this,rect);
+			}
+			else
+			{
+				vscroll.visible = false;
+				rs |= Set(rect.y.min,newY);
+			}
 		}
 
 		return rs;
@@ -486,9 +595,38 @@ namespace GUI
 	}
 
 
+	/*virtual override*/ void	Panel::SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	{
+		Super::SignalMouseMotion(mouseAt,clipAreaContainsMouse);
+
+		if (vscroll.visible)
+		{
+			vscroll.up->SignalMouseMotion(mouseAt,clipAreaContainsMouse);
+			vscroll.down->SignalMouseMotion(mouseAt,clipAreaContainsMouse);
+		}
+
+		for (const auto&c : components)
+		{
+			c->SignalMouseMotion(mouseAt + float2(0,vscroll.GetOffset()),ContainsMouse());
+		}
+	}
 
 	/*virtual override*/ PComponent	Panel::HandleMouseDown()
 	{
+		if (vscroll.visible)
+		{
+			PComponent c;
+			c = vscroll.up->HandleMouseDown();
+			if (c)
+				return c;
+			c = vscroll.down->HandleMouseDown();
+			if (c)
+				return c;
+		}
+
+		if (!ContainsMouse())
+			return PComponent();
+
 		for (index_t i = components.Count()-1; i < components.Count(); --i)
 		{
 			PComponent c = components[i]->HandleMouseDown();
@@ -597,52 +735,55 @@ namespace GUI
 		Detail::OnInput();
 	}
 
-	void			BaseInput::ActivateInput()
+	void			BaseInput::SetInputActive(bool isActive)
 	{
-		Engine::input.pushProfile();
-		//profile = *Engine::input.currentProfile();//this copies over a shitload of commands we don't want
-		//let's copy some over, however...
-		profile.key[Key::Escape] = Engine::input.currentProfile()->key[Key::Escape];
-		profile.key[Key::Enter] = Engine::input.currentProfile()->key[Key::Enter];
-		profile.key[Key::Return] = Engine::input.currentProfile()->key[Key::Return];
-		profile.key[Key::MouseButton0] = Engine::input.currentProfile()->key[Key::MouseButton0];
-		profile.key[Key::MouseButton1] = Engine::input.currentProfile()->key[Key::MouseButton1];
-		profile.key[Key::MouseButton2] = Engine::input.currentProfile()->key[Key::MouseButton2];
-		profile.key[Key::MouseButton3] = Engine::input.currentProfile()->key[Key::MouseButton3];
-		profile.key[Key::MouseButton4] = Engine::input.currentProfile()->key[Key::MouseButton4];
-		Engine::input.bindProfile(profile);
+		if (isActive)
+		{
+			Engine::input.pushProfile();
+			//profile = *Engine::input.currentProfile();//this copies over a shitload of commands we don't want
+			//let's copy some over, however...
+			profile.key[Key::Escape] = Engine::input.currentProfile()->key[Key::Escape];
+			profile.key[Key::Enter] = Engine::input.currentProfile()->key[Key::Enter];
+			profile.key[Key::Return] = Engine::input.currentProfile()->key[Key::Return];
+			profile.key[Key::MouseButton0] = Engine::input.currentProfile()->key[Key::MouseButton0];
+			profile.key[Key::MouseButton1] = Engine::input.currentProfile()->key[Key::MouseButton1];
+			profile.key[Key::MouseButton2] = Engine::input.currentProfile()->key[Key::MouseButton2];
+			profile.key[Key::MouseButton3] = Engine::input.currentProfile()->key[Key::MouseButton3];
+			profile.key[Key::MouseButton4] = Engine::input.currentProfile()->key[Key::MouseButton4];
+			Engine::input.bindProfile(profile);
 		
-		//Engine::input.resetKeys();
-		Engine::input.bind(Key::Backspace,[](){Engine::keyboard.DropLastCharacter(); Detail::OnInput();});
-		Engine::input.bind(Key::Return,onEnter);
-		Engine::input.bind(Key::Enter,onEnter);
-		Engine::input.bindCtrl(Key::V,[](){
-			char buffer[0x100];
-			memset(buffer,0,sizeof(buffer));
-			if (System::getFromClipboardIfText(Engine::context.getWindow(),buffer,sizeof(buffer)-1))
-			{
-				Engine::keyboard.FilterAppend(buffer);	
-			}
-		});
+			//Engine::input.resetKeys();
+			Engine::input.bind(Key::Backspace,[](){Engine::keyboard.DropLastCharacter(); Detail::OnInput();});
+			Engine::input.bind(Key::Return,onEnter);
+			Engine::input.bind(Key::Enter,onEnter);
+			Engine::input.bindCtrl(Key::V,[](){
+				char buffer[0x100];
+				memset(buffer,0,sizeof(buffer));
+				if (System::getFromClipboardIfText(Engine::context.getWindow(),buffer,sizeof(buffer)-1))
+				{
+					Engine::keyboard.FilterAppend(buffer);	
+				}
+			});
 
-		const char*filter = GetAllowed();
-		if (filter)
-			Engine::keyboard.Filter(filter);
+			const char*filter = GetAllowed();
+			if (filter)
+				Engine::keyboard.Filter(filter);
+			else
+				Engine::keyboard.ResetTranslation();
+			Engine::keyboard.onCharHandled = BaseInput::OnCharHandled;
+			Engine::keyboard.read = true;
+			Engine::keyboard.ImportBuffer(backup);
+		}
 		else
-			Engine::keyboard.ResetTranslation();
-		Engine::keyboard.onCharHandled = BaseInput::OnCharHandled;
-		Engine::keyboard.read = true;
-		Engine::keyboard.ImportBuffer(backup);
+		{
+			Engine::keyboard.ExportBuffer(backup);
+			Engine::input.popProfile();
+			Engine::keyboard.read = false;
+			Engine::keyboard.onCharHandled =  NULL;
+		}
 	}
 
 
-	void			BaseInput::DeactivateInput()
-	{
-		Engine::keyboard.ExportBuffer(backup);
-		Engine::input.popProfile();
-		Engine::keyboard.read = false;
-		Engine::keyboard.onCharHandled =  NULL;
-	}
 
 	String			Input::GetInput()
 	{
@@ -813,7 +954,18 @@ namespace GUI
 
 	void	Render()
 	{
-		Detail::LoadView(Rect<>(0,0,1,1));
+		if (Detail::visibleWindows.IsNotEmpty())
+		{
+			static float2 last;
+			if (last != Engine::mouse.location.windowRelative)
+			{
+				last = Engine::mouse.location.windowRelative;
+				Detail::visibleWindows.Last()->SignalMouseMotion(last,true);
+			}
+		}
+
+
+		Detail::LoadView(Rect<>(0,0,1,1),float2());
 		
 		foreach (Detail::visibleWindows,d)
 		{
@@ -999,10 +1151,11 @@ namespace GUI
 		display.RenderVertices(texturedQuad);
 	}
 
-	bool			Component::ContainsMouse() const
+	/*virtual*/ void	Component::SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
 	{
-		return rect.Contains(Engine::mouse.location.windowRelative);
+		containsMouse = clipAreaContainsMouse && rect.Contains(mouseAt);
 	}
+
 
 	void			Component::MoveTopTo(float h)
 	{

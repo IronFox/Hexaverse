@@ -282,10 +282,10 @@ void	SaveHosts()
 	}
 
 
+	GUI::PPanel	serverListPanel;
 
-
-	 void	UpdateServerChoice()
-	 {
+	void	UpdateServerChoice()
+	{
 		using namespace GUI;
 		
 		if (Dialog::serverChoice->HasComponent(mousePressedComponent))
@@ -294,7 +294,7 @@ void	SaveHosts()
 
 		const bool isActive = Dialog::serverChoice->IsActive();
 		if (isActive)
-			Dialog::serverChoice->Deactivate();
+			Dialog::serverChoice->SetActive(false);
 		Dialog::serverChoice->ClearComponents();
 
 		Dialog::serverChoice->fillBackground = false;
@@ -310,7 +310,19 @@ void	SaveHosts()
 
 		bool attemptingConnection = Network::client.IsAttemptingToConnect();
 
-		bool first =true;
+		//bool first =true;
+		
+		if (!serverListPanel)
+		{
+			serverListPanel.reset(new GUI::Panel());
+			serverListPanel->anchorConfig.axis[0].min.Set(0);
+			serverListPanel->anchorConfig.axis[0].max.Set(0);
+			serverListPanel->autoHeight = true;
+			serverListPanel->maxHeight = 0.5f;
+		}
+		serverListPanel->ClearComponents();
+		serverListPanel->anchorConfig.axis[1].max.SetAllOf(Dialog::serverChoice,0);
+		Dialog::serverChoice->AddComponent( serverListPanel );
 
 		for (index_t i = 0; i < Network::servers.Count(); i++)
 		{
@@ -319,14 +331,8 @@ void	SaveHosts()
 			PButtonPanel p = ConstructPanel(info);
 
 			p->anchorConfig.Top().references.Clear();
-			if (first)
-			{
-				first = false;
-				p->anchorConfig.Top().SetAllOf(Dialog::serverChoice,0.015f,GUI::TAnchor::RelativeToScreen);
-			}
-			else
-				p->anchorConfig.Top().SetLastOf(Dialog::serverChoice,0.015f,GUI::TAnchor::RelativeToScreen);
-			Dialog::serverChoice->AddComponent( p );
+			p->anchorConfig.Top().SetLastOf(serverListPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+			serverListPanel->AddComponent( p );
 		}
 
 		//count_t openAttempts = 0;
@@ -336,13 +342,7 @@ void	SaveHosts()
 		foreach (list,failed)
 		{
 			PPanel p(new Panel());
-			if (first)
-			{
-				first = false;
-				p->anchorConfig.Top().SetAllOf(Dialog::serverChoice,0.025f,GUI::TAnchor::RelativeToScreen);
-			}
-			else
-				p->anchorConfig.Top().SetLastOf(Dialog::serverChoice,0.025f,GUI::TAnchor::RelativeToScreen);
+			p->anchorConfig.Top().SetLastOf(serverListPanel,0.025f,GUI::TAnchor::RelativeToScreen);
 
 			p->anchorConfig.Left().Set(0.f);
 			p->anchorConfig.Right().Set(0.f);
@@ -395,7 +395,7 @@ void	SaveHosts()
 			pb->anchorConfig.Right().Set(forget,10,GUI::TAnchor::AbsolutePixels);
 
 
-			Dialog::serverChoice->AddComponent( p );
+			serverListPanel->AddComponent( p );
 		}
 
 
@@ -492,7 +492,7 @@ void	SaveHosts()
 
 		Dialog::serverChoice->FullAutoLayout();
 		if (isActive)
-			Dialog::serverChoice->Activate();
+			Dialog::serverChoice->SetActive(isActive);
 
 		
 		Dialog::CheckServersAreShown(!Network::client.IsConnected());

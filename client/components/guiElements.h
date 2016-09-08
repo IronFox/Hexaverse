@@ -114,7 +114,8 @@ namespace GUI
 	{
 	private:
 		bool			enabled = true;
-		bool			parentIsLit = true,
+		bool			containsMouse = false,
+						parentIsLit = true,
 						parentIsEnabled = true;
 		bool			active = false;
 
@@ -140,16 +141,18 @@ namespace GUI
 
 		bool			SetEnabled(bool newEnabled)	{ if (newEnabled != enabled) {enabled = newEnabled; PropagateParentState(parentIsEnabled,parentIsLit); return parentIsEnabled; } return false;  }
 
-		bool			ContainsMouse() const;
+		bool			ContainsMouse() const	{return containsMouse;}
 		void			MoveTopTo(float h);
 
 		virtual void	PropagateParentState(bool enabled, bool lit)	{parentIsLit = lit; parentIsEnabled = enabled;}
 
-		virtual void	Activate() {active = true;}
-		virtual void	Deactivate() {active = false;}
+		virtual void	SetActive(bool isActive) {active = isActive;}
 		virtual bool	DetectEnabledState() {return false;}
+		
 		virtual PComponent	HandleMouseDown() {return PComponent();}
 		virtual void	SignalMouseUp()	{}
+		virtual void	SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse);
+		
 		virtual bool	UpdateHeightIfNecessary()	{return false;}
 		virtual bool	UpdateHeight() {return false;}
 		virtual void	Render() {};
@@ -225,8 +228,7 @@ namespace GUI
 
 		static void		OnCharHandled(char);
 
-		virtual void	ActivateInput();
-		virtual void	DeactivateInput();
+		virtual void	SetInputActive(bool isActive);
 		virtual const char*	GetAllowed() const {return nullptr;}
 		virtual StringRef GetText();
 	public:
@@ -238,8 +240,7 @@ namespace GUI
 
 		virtual void	Render() override;
 		virtual bool	UpdateHeight() override;
-		virtual void	Activate() override {ActivateInput(); Super::Activate();}
-		virtual void	Deactivate() override {DeactivateInput(); Super::Deactivate();}
+		virtual void	SetActive(bool isActive) override {SetInputActive(isActive); Super::SetActive(isActive);}
 
 	};
 
@@ -396,7 +397,7 @@ namespace GUI
 			return changed;
 		}
 
-		virtual void Render()
+		virtual void Render() override
 		{
 			bool lit = IsLit();
 			bool flipped = mousePressedComponent.get() == this;
@@ -431,6 +432,25 @@ namespace GUI
 	{
 		typedef Area Super;
 
+		struct TScrollbar
+		{
+			bool		visible=false;
+			float		scrollMax=1.f;
+			float		viewTop=0.f,	//!< counting top (=0) down (>=0)
+						targetViewTop=0.f;
+			float		viewSize = 0.2f;
+
+			PButton		up,down;
+
+			void		Enable(Panel*,const Rect<>&rect);
+			void		Render(const Rect<>&rect);
+			float		GetOffset() const {return visible ? viewTop : 0;}
+			static constexpr float Width = 0.015f;
+			static constexpr float ContentSpacing = 0.003f;
+		};
+
+		TScrollbar		vscroll;
+		
 	protected:
 		void			PropagateStateToChildren()
 		{
@@ -449,18 +469,23 @@ namespace GUI
 	public:
 		bool			autoHeight = false;
 		float			autoHeightSpacing = 0.f;//0.015f;
+		/**
+		Maximum height allocatable by client components.
+		A scrollbar will be rendered if maxHeight is exceeded
+		*/
+		float			maxHeight = 1.f;
 
 		virtual bool	DetectEnabledState() override;
 		
-		virtual void	Activate() override {foreach (components,c) (*c)->Activate(); Super::Activate();}
-		virtual void	Deactivate() override {foreach (components,c) (*c)->Deactivate(); Super::Deactivate();}
+		virtual void	SetActive(bool isActive) override;
 		virtual bool	UpdateHeight() override;
 		virtual void	Render() override;
-		virtual bool	AutoLayout(const Rect<>&context) override {bool rs = Super::AutoLayout(context); foreach (components,c) rs |= (*c)->AutoLayout(this->rect); return rs;}
+		virtual bool	AutoLayout(const Rect<>&context) override;
 		virtual void	Translate(const float2&delta)	{Super::Translate(delta); foreach (components,c) (*c)->Translate(delta);}
 
 		virtual bool	HasComponent(const PComponent&c) const override {if (c.get() == this) return true; foreach (components, c2) if ((*c2)->HasComponent(c)) return true; return false;}
 		virtual PComponent	HandleMouseDown() override;
+		virtual void	SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 
 
 		virtual void	PropagateParentState(bool enabled, bool lit)	override
@@ -524,17 +549,10 @@ namespace GUI
 		bool	OnComponentsChanged() {lastLitTriState = -1; return true;};
 
 	public:
-		virtual void	Activate() override
+		virtual void	SetActive(bool isActive) override
 		{
-			active = true;
-			foreach (components,c) (*c)->Activate();
-			Super::Activate();
-		}
-		virtual void	Deactivate() override
-		{
-			active = false;
-			foreach (components,c) (*c)->Deactivate();
-			Super::Deactivate();
+			this->active = isActive;
+			Super::SetActive(isActive);
 		}
 
 		virtual bool		AddComponent(const PComponent&c) override
@@ -579,7 +597,7 @@ namespace GUI
 
 
 
-		virtual void Render()
+		virtual void Render() override
 		{
 			bool lit = IsLit();
 			bool flipped = mousePressedComponent.get() == this;

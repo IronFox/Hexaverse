@@ -14,6 +14,8 @@
 #include "configurationMode.h"
 
 
+#define DEBUG_SERVER_LIST
+
 void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
 void			OnPlayerControlBegin();
 

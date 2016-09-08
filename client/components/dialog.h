@@ -59,20 +59,20 @@ namespace Dialog
 
 		//std::function<void(Dialog&)>	reLayout;
 
-		bool				isActive = false;
+	//	bool				isActive = false;
 
 
-		void		Activate()
-		{
-			Super::Activate();
-			Super::DetectEnabledState();
-			isActive = true;
-		}
-		void		Deactivate()
-		{
-			Super::Deactivate();
-			isActive = false;
-		}
+		//void		SetActive(bool isActive)
+		//{
+		//	Super::Activate(isActive);
+		//	Super::DetectEnabledState();
+		//	isActive = true;
+		//}
+		//void		Deactivate()
+		//{
+		//	Super::Deactivate();
+		//	isActive = false;
+		//}
 
 
 
