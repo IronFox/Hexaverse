@@ -24,6 +24,34 @@ namespace GUI
 	namespace Detail
 	{
 		Buffer0<GUI::PWindow,Swap>		visibleWindows;
+		Engine::OrthographicAspect<>	aspect;
+		Buffer0<Rect<> >	viewportStack;
+
+
+		void	LoadView(const Rect<>&view)
+		{
+			LineRenderer::Flush();
+			SurfaceRenderer::Flush();
+			aspect.UpdateProjection(view,-1,1);
+			aspect.region = view;
+			display.Pick(aspect);
+		}
+
+		void	PushLoadView(const Rect<>&view)
+		{
+			viewportStack << view;
+			LoadView(view);
+		}
+
+		void	PopLoadView()
+		{
+			viewportStack.EraseLast();
+			if (viewportStack.IsNotEmpty())
+				LoadView(viewportStack.last());
+			else
+				LoadView(Rect<>(0,0,1,1));
+		}
+
 
 		void OnInput()
 		{
@@ -353,7 +381,10 @@ namespace GUI
 	/*virtual override*/ void	Panel::Render()
 	{
 		Super::Render(); 
+
+		Detail::PushLoadView(rect);
 		RenderChildren();
+		Detail::PopLoadView();
 	}
 
 
@@ -782,6 +813,8 @@ namespace GUI
 
 	void	Render()
 	{
+		Detail::LoadView(Rect<>(0,0,1,1));
+		
 		foreach (Detail::visibleWindows,d)
 		{
 			(*d)->Render();
