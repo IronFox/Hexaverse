@@ -566,7 +566,7 @@ namespace Dialog
 		Detail::factionDialog = d;
 
 		Array<String> list(factions.Count()+1);
-		list.first() = "Known factions:";
+		list.First() = "Known factions:";
 		for (index_t i = 0; i < factions.Count(); i++)
 			list[i+1] = "* "+factions[i].name+(factions[i].online?
 			(factions[i].requestedNewRound ? "" : " ("+WordForThinking(RuntimeConfig::roundNumber,factions[i].factionReference )+")")
@@ -705,7 +705,7 @@ namespace Dialog
 
 	size_t	CharLength(char c)
 	{
-		return (size_t)textout.getFont().getWidth(c);
+		return (size_t)textout.getFont().GetWidth(c);
 	}
 
 

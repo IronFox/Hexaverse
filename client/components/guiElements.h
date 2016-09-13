@@ -295,10 +295,10 @@ namespace GUI
 
 		void			SetText(const String&string)
 		{
-			if (rawText.GetLength() == 1 && rawText.first() == string)
+			if (rawText.GetLength() == 1 && rawText.First() == string)
 				return;
 			rawText.SetSize(1);
-			rawText.first() = string;
+			rawText.First() = string;
 			Super::InvalidateSize();
 		}
 		void			SetText(const Array<String>&string)

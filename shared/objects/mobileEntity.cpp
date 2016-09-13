@@ -1136,7 +1136,7 @@ namespace Objects
 					{
 						//float delta = std::max(fabs(angles.x - turretAngleX), fabs(angles.y - turretAngleY));
 						float rotTime = Times::TurretRotation/**delta*/;
-						SignalTurretRotation(To<Vehicle>::Cast(shared_from_this()),(ToWorld(trajectory[1]) - ToWorld(trajectory.first())).Normalized0(),rotTime);
+						SignalTurretRotation(To<Vehicle>::Cast(shared_from_this()),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),rotTime);
 						motionTime += rotTime;
 
 					//	TVec3<> t0;
@@ -1587,7 +1587,7 @@ namespace Objects
 		if (shape == ConstName::DetonationSize_Regular)
 		{
 			localizableShapes.SetSize(1,true);
-			Shape&shape = localizableShapes.first();
+			Shape&shape = localizableShapes.First();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
 			shape.instruction.vbo = sphereVBO[0];
 			shape.instruction.ibo = sphereIBO[0];
@@ -1601,7 +1601,7 @@ namespace Objects
 		if (shape == ConstName::DetonationSize_Doomsday)
 		{
 			localizableShapes.SetSize(1,true);
-			Shape&shape = localizableShapes.first();
+			Shape&shape = localizableShapes.First();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
 			shape.instruction.vbo = sphereVBO[0];
 			shape.instruction.ibo = sphereIBO[0];
@@ -1617,7 +1617,7 @@ namespace Objects
 		if (p)
 		{
 			localizableShapes.SetSize(1,true);
-			Shape&shape = localizableShapes.first();
+			Shape&shape = localizableShapes.First();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
 
 			shape.instruction.vbo = p->localizableShape->vbo;

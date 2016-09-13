@@ -321,7 +321,7 @@ namespace UI
 
 				Objects::PWorldEntity	GetPrototype() const
 				{
-					Objects::PWorldEntity e = entries.first().lock();
+					Objects::PWorldEntity e = entries.First().lock();
 					ASSERT__(e);
 					if (e->IsStructure())
 						return Objects::GetPrototypeByName(e->GetCTypeName());

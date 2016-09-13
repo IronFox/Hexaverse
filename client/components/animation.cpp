@@ -122,7 +122,7 @@ namespace Animation
 			if (v->myTasks.Peek().type == Objects::Vehicle::Task::MoveTo && v->myTasks.Count() == 1)
 			{
 				Grid::LCellIdI last = v->GetLastPointOfOrigin();
-				if (!Grid::Resource::all.first().known[last.stackID])
+				if (!Grid::Resource::all.First().known[last.stackID])
 				{
 					float competition = 100.f;
 					float ally = 100.f;
@@ -161,7 +161,7 @@ namespace Animation
 		//Grid::LCellIdI closest = Grid::LCellIdI::Invalid;
 		//float closestCompetingDistance = 0;
 
-		const bool*known = Grid::Resource::all.first().known;
+		const bool*known = Grid::Resource::all.First().known;
 
 	
 		for (int retries = 0; retries < 2; retries++)
@@ -505,7 +505,7 @@ namespace Animation
 			#ifdef HAS_WINDOW
 				if (sourceTask.foci.Count())
 				{
-					Grid::LCellIdI loc = sourceTask.foci.first();
+					Grid::LCellIdI loc = sourceTask.foci.First();
 					#ifndef NO_SATELLITES
 						if (sourceTask.visualizationName != ConstName::Empty && e.IsSatellite())
 						{
@@ -668,10 +668,10 @@ namespace Animation
 						switch (t->parameters.Count())
 						{
 							case 1:
-								p->AppendTask(t->id,t->parameters.first(),ConstName::Empty);
+								p->AppendTask(t->id,t->parameters.First(),ConstName::Empty);
 							break;
 							case 2:
-								p->AppendTask(t->id,t->parameters.first(),t->parameters.last());
+								p->AppendTask(t->id,t->parameters.First(),t->parameters.last());
 							break;
 							default:
 								FATAL__("Unexpected parameter count: "+String(t->parameters.Count())
@@ -824,10 +824,10 @@ namespace Animation
 						switch (t->parameters.Count())
 						{
 							case 1:
-								p->AppendTask(t->id,t->parameters.first(),ConstName::Empty);
+								p->AppendTask(t->id,t->parameters.First(),ConstName::Empty);
 							break;
 							case 2:
-								p->AppendTask(t->id,t->parameters.first(),t->parameters.last());
+								p->AppendTask(t->id,t->parameters.First(),t->parameters.last());
 							break;
 							default:
 								FATAL__("Unexpected parameter count: "+String(t->parameters.Count())
@@ -1284,7 +1284,7 @@ namespace Animation
 					#ifdef HAS_WINDOW
 						trajectoryGeometry.Clear();
 						#ifdef _DEBUG
-							LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Compiling trajectory with "+String(activeTrajectory.Count())+" steps, starting from "+Vec::toString(activeTrajectory.first())+", ending "+Vec::toString(activeTrajectory.last()));
+							LogEvent(EventSignificance::Debug, allocatedTarget.get() ,"Compiling trajectory with "+String(activeTrajectory.Count())+" steps, starting from "+Vec::toString(activeTrajectory.First())+", ending "+Vec::toString(activeTrajectory.last()));
 						#endif
 						maxProjectileProjection = Objects::Component::Turret::CompileTrajectory(activeTrajectory,Objects::Component::Turret::Animation,trajectoryGeometry,0.5f);
 						trajectoryVisualization.vbo.CreateFromStructs(trajectoryGeometry.GetLOD(0).vertices);
@@ -1569,11 +1569,11 @@ namespace Animation
 		}
 		ASSERT__(nodes.IsNotEmpty());	//this shouldn't be possible
 		{
-			//Vec::makeNormalTo(nodes.first().dir,nodes.first().position);
+			//Vec::makeNormalTo(nodes.First().dir,nodes.First().position);
 			Vec::makeNormalTo(nodes.last().dir,nodes.last().position);
 		}
 		if (target->IsVehicle())
-			nodes.first().dir = -target->system.y.xyz;
+			nodes.First().dir = -target->system.y.xyz;
 		foreach (nodes, n)
 		{
 			Vec::setLen0(n->dir,Objects::vehicleScale);

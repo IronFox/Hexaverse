@@ -452,13 +452,13 @@ void	SignalConstructionBegin(const TUniqueID&plantID,ConstName baseName, ConstNa
 	if (turretName != ConstName::Empty)
 	{
 		cb.parameters.SetSize(2);
-		cb.parameters.first() = baseName;
+		cb.parameters.First() = baseName;
 		cb.parameters.last() = turretName;
 	}
 	else
 	{
 		cb.parameters.SetSize(1);
-		cb.parameters.first() = baseName;
+		cb.parameters.First() = baseName;
 	}
 	Network::Channels::constructionBegin.SendTo(Network::client,cb);
 }
@@ -504,7 +504,7 @@ void	SignalConstructTowerTurret(const TUniqueID&towerID,const Objects::Component
 	Protocol::ConstructionBegin	cb;
 	cb.plantID = towerID;
 	cb.parameters.SetSize(1);
-	cb.parameters.first() = newTurret->constName;
+	cb.parameters.First() = newTurret->constName;
 	Network::Channels::constructionBegin.SendTo(Network::client,cb);
 }
 
@@ -884,12 +884,12 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 					if (images[i]->second)
 					{
-						image.truncateToOpaque();
+						image.TruncateToOpaque();
 	
-						for (UINT32 x = 0; x < image.getWidth(); x++)
-							for (UINT32 y = 0; y < image.getHeight(); y++)
+						for (UINT32 x = 0; x < image.GetWidth(); x++)
+							for (UINT32 y = 0; y < image.GetHeight(); y++)
 							{
-								BYTE*pixel = image.getPixel(x,y);
+								BYTE*pixel = image.GetPixel(x,y);
 								if (pixel[3] > 0 && pixel[3] < 255)
 								{
 									//#ifdef WHITE_STYLE
@@ -909,7 +909,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 							}
 					}
 					else
-						image.setChannels(3);
+						image.SetChannels(3);
 
 					if (!TimeLapse::enabled)
 					{

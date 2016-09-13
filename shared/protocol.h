@@ -144,7 +144,7 @@ namespace Protocol
 				if (size > MaxSize)
 					return false;
 
-				setSize(size);
+				SetSize(size);
 				if (!IsISerializable(data))
 				{
 					//cout << "data is not of i-serializable type. reading plain"<<endl;

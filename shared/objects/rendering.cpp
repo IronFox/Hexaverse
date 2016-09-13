@@ -1963,7 +1963,7 @@ namespace Objects
 					if (ws->IsSkyPort())
 					{
 						PSkyPort port = To<SkyPort>::Cast(ws);
-						if (ws->IsEnabled() && port->queue.IsNotEmpty() && port->queue.first().IsSatellite())
+						if (ws->IsEnabled() && port->queue.IsNotEmpty() && port->queue.First().IsSatellite())
 						{
 							render = true;
 							beamBottomColor.Update(float4(0.5,0.6,1.0,2.5));

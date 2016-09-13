@@ -68,7 +68,7 @@
 		void IconItem::RenderIcon(float size/*=0.05f*/)
 		{
 			iconColor.Update(float4(color*0.75f + 0.25f,size));
-			iconShader.quickSlots.first() = texture;
+			iconShader.quickSlots.First() = texture;
 			display.RenderVertices(iconShader,0,1);
 		}
 
@@ -692,7 +692,7 @@
 
 			void		Group::UpdateSignificance()
 			{
-				Objects::PWorldEntity e = entries.first().lock();
+				Objects::PWorldEntity e = entries.First().lock();
 				DBG_ASSERT__(e);
 				significance = e->GetConstructionCost();
 
@@ -774,7 +774,7 @@
 
 			/*virtual override*/ void	GroupFocusCommand::RasterizeImage()
 			{
-				Objects::PWorldEntity e = group->entries.first().lock();
+				Objects::PWorldEntity e = group->entries.First().lock();
 				if (!e)
 					return;
 
@@ -801,7 +801,7 @@
 				//group->InitSelection();
 
 				Objects::PWorldEntity proto = group->GetPrototype();
-				Objects::PWorldEntity instance = group->entries.first().lock();
+				Objects::PWorldEntity instance = group->entries.First().lock();
 
 				if (!instance)
 					return;
@@ -1222,7 +1222,7 @@
 						color.Update(code);
 
 						center.Update(float4(world,0,1));
-						instruction.quickSlots.first() = c->command->texture;
+						instruction.quickSlots.First() = c->command->texture;
 						display.RenderVertices(instruction,0,1);
 					}
 					else
@@ -1372,7 +1372,7 @@
 				context.commands.Clear();
 				context.collection.VisitAllValues([&context](Buffer0<Objects::WWorldEntity>&entries)
 				{
-					Objects::PWorldEntity e = entries.first().lock();
+					Objects::PWorldEntity e = entries.First().lock();
 					if (e)
 					{
 						PGroup group (new Group());
@@ -2241,7 +2241,7 @@
 						
 						if (ps->queue.IsNotEmpty())
 						{
-							textout << "  producing "<<ps->queue.first().name<<nl;
+							textout << "  producing "<<ps->queue.First().name<<nl;
 							if (!active)
 								textout << "   completion (when enabled) in "<<Objects::TimeResourceTag() <<ps->productionRoundsLeft<<nl;
 							else

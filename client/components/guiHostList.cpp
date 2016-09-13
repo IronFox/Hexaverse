@@ -154,7 +154,7 @@ void	SaveHosts()
 				if (!info)
 					return;
 				index_t best = 0;
-				float bestPing = PingOf(info->addresses.first());
+				float bestPing = PingOf(info->addresses.First());
 				for (index_t i = 1; i < info->addresses.Count(); i++)
 				{
 					float ping = PingOf(info->addresses[i]);

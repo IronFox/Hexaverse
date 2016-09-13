@@ -88,7 +88,7 @@ namespace Objects
 			lods.Truncate(1);
 			if (lods.IsEmpty())
 				lods.Append();
-			currentLOD = &lods.first();
+			currentLOD = &lods.First();
 			currentLOD->Clear();
 			_Reset();
 		}

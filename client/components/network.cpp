@@ -1683,7 +1683,7 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 		if (srv->rightVersion && srv->HasAddress(RuntimeConfig::serverAddress))
 		{
 			index_t best = 0;
-			float bestPing = srv->addresses.first().second;
+			float bestPing = srv->addresses.First().second;
 			for (index_t i = 1; i < srv->addresses.Count(); i++)
 				if (srv->addresses[i].second < bestPing)
 				{

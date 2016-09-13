@@ -125,13 +125,13 @@ namespace Objects
 				if (v.IsNotEmpty())
 				{
 					TVec3<> n;
-					float3 front = v.first().xyz * v.first().w;
+					float3 front = v.First().xyz * v.First().w;
 					float3 back = v.last().xyz * v.last().w;
 					Vec::cross(front,back-front,n);
 					Vec::normalize(n);
 					n*= 0.5f * widthScale;
 					if (!smoke)
-						n*= v.first().w / Grid::VerticalBase;;
+						n*= v.First().w / Grid::VerticalBase;;
 					float d = 0;
 					geo.SetVertexOffsetToCurrent();
 					TVec3<> lastB;
@@ -954,12 +954,12 @@ namespace Objects
 				}
 			#endif
 
-			//component.parts.setSize(1);
+			//component.parts.SetSize(1);
 
-			//component.parts.first().first.LoadFromObj("objects/constructor.obj");
+			//component.parts.First().first.LoadFromObj("objects/constructor.obj");
 	/*
-			MakeBox(component.parts.first().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.15f));
-			component.parts.first().first.UpdateBoundingBox();*/
+			MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.15f));
+			component.parts.First().first.UpdateBoundingBox();*/
 			//component.typeName = "Constructor";
 			//component.shortName = "structor";
 			//component.productionCosts = 20;
@@ -968,13 +968,13 @@ namespace Objects
 		
 
 			#ifdef HAS_WINDOW		
-				component.parts.setSize(1);
+				component.parts.SetSize(1);
 
-				component.parts.first().first.LoadFromObj("objects/terraformer.obj");
+				component.parts.First().first.LoadFromObj("objects/terraformer.obj");
 			#endif
 	/*
-			MakeBox(component.parts.first().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.15f));
-			component.parts.first().first.UpdateBoundingBox();*/
+			MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.15f));
+			component.parts.First().first.UpdateBoundingBox();*/
 			component.typeName = "Terraformer";
 			component.shortName = "former";
 			component.constName = ConstName::Turret_Terraformer;
@@ -1045,9 +1045,9 @@ namespace Objects
 					component.commands.Add( new IconCommand("Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
 
-				component.parts.setSize(1);
+				component.parts.SetSize(1);
 
-				component.parts.first().first.LoadFromObj("objects/bomb.obj");
+				component.parts.First().first.LoadFromObj("objects/bomb.obj");
 			#endif
 
 			component.typeName = "Bomb";
@@ -1092,8 +1092,8 @@ namespace Objects
 	
 				component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/tank.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/tank.obj");
 			#endif
 
 
@@ -1144,8 +1144,8 @@ namespace Objects
 	
 				component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/launcher.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/launcher.obj");
 			#endif
 
 			component.mountType = Turret::MountType::TowerOnly;
@@ -1197,8 +1197,8 @@ namespace Objects
 	
 				component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/armored.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/armored.obj");
 			#endif
 
 
@@ -1246,8 +1246,8 @@ namespace Objects
 
 				component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/emp.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/emp.obj");
 			#endif
 
 
@@ -1307,8 +1307,8 @@ namespace Objects
 
 					component.commands.Add( new IconCommand("Obliterate",&MyCmd::Obliterate, &CommonCmd::CommonButtonCheck,NoCosts));
 
-					component.parts.setSize(1);
-					component.parts.first().first.LoadFromObj("objects/ragnarökRing.obj");
+					component.parts.SetSize(1);
+					component.parts.First().first.LoadFromObj("objects/ragnarökRing.obj");
 				#endif
 
 
@@ -1362,8 +1362,8 @@ namespace Objects
 
 					component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
-					component.parts.setSize(1);
-					component.parts.first().first.LoadFromObj("objects/skyGuardianRing.obj");
+					component.parts.SetSize(1);
+					component.parts.First().first.LoadFromObj("objects/skyGuardianRing.obj");
 				#endif
 
 
@@ -1404,8 +1404,8 @@ namespace Objects
 					offset++;//remain on lower level
 					component.commands.Add( new IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
 
-					component.parts.setSize(1);
-					component.parts.first().first.LoadFromObj("objects/skyHubTurret.obj");
+					component.parts.SetSize(1);
+					component.parts.First().first.LoadFromObj("objects/skyHubTurret.obj");
 			
 				#endif
 
@@ -1444,8 +1444,8 @@ namespace Objects
 					offset++;//remain on lower level
 					component.commands.Add( new IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
 
-					component.parts.setSize(1);
-					component.parts.first().first.LoadFromObj("objects/starPortRing.obj");
+					component.parts.SetSize(1);
+					component.parts.First().first.LoadFromObj("objects/starPortRing.obj");
 			
 				#endif
 
@@ -1484,8 +1484,8 @@ namespace Objects
 				component.commands.Add( new IconCommand("Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 				component.commands.Add( new IconCommand("Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/munitionTransporter.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/munitionTransporter.obj");
 			#endif
 
 
@@ -1525,8 +1525,8 @@ namespace Objects
 
 				component.commands.Add( new IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/constructor.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/constructor.obj");
 			#endif
 
 
@@ -1557,8 +1557,8 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/radar.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/radar.obj");
 			#endif
 
 
@@ -1588,8 +1588,8 @@ namespace Objects
 				CellCoords offset = ConfigureStandardCommands(component);
 				component.commands.Add( new IconCommand("Automate", &VehicleCmd::Automate, &VehicleCmd::AutomatedCheck,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/resourceScanner.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/resourceScanner.obj");
 			#endif
 
 
@@ -1621,10 +1621,10 @@ namespace Objects
 			static const float staticHeight = 0.4743f;
 
 			#ifdef HAS_WINDOW		
-				component.parts.setSize(1);
+				component.parts.SetSize(1);
 
-				component.parts.first().first.LoadFromObj("objects/hoverbase.obj");
-				component.height = component.parts.first().first.GetBoundingBox().z.max;
+				component.parts.First().first.LoadFromObj("objects/hoverbase.obj");
+				component.height = component.parts.First().first.GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
 				component.ambientSound = OpenAL::Load("resources/objectSounds/hoverbase.wav");
@@ -1633,7 +1633,7 @@ namespace Objects
 				component.height = staticHeight;
 			#endif
 
-			//MakeBox(component.parts.first().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
+			//MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 			component.typeName = "Hoverbase";
 			component.shortName = "Hover";
 			component.constName = ConstName::VehicleBase_HoverBase;
@@ -1664,10 +1664,10 @@ namespace Objects
 			static const float staticHeight = 0.4743f;
 
 			#ifdef HAS_WINDOW		
-				component.parts.setSize(1);
+				component.parts.SetSize(1);
 
-				component.parts.first().first.LoadFromObj("objects/heavyBase.obj");
-				component.height = component.parts.first().first.GetBoundingBox().z.max;
+				component.parts.First().first.LoadFromObj("objects/heavyBase.obj");
+				component.height = component.parts.First().first.GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
 				component.ambientSound = OpenAL::Load("resources/objectSounds/heavybase.wav");
@@ -1676,7 +1676,7 @@ namespace Objects
 			#endif
 
 
-			//MakeBox(component.parts.first().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
+			//MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 			component.typeName = "Heavy Base";
 			component.shortName = "Heavy";
 			component.constName = ConstName::VehicleBase_HeavyBase;
@@ -1713,10 +1713,10 @@ namespace Objects
 			static const float staticHeight = 0.4743f;
 
 			#ifdef HAS_WINDOW		
-				component.parts.setSize(1);
+				component.parts.SetSize(1);
 
-				component.parts.first().first.LoadFromObj("objects/catBase.obj");
-				component.height = component.parts.first().first.GetBoundingBox().z.max;
+				component.parts.First().first.LoadFromObj("objects/catBase.obj");
+				component.height = component.parts.First().first.GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
 				component.ambientSound = OpenAL::Load("resources/objectSounds/catbase.wav");
@@ -1725,7 +1725,7 @@ namespace Objects
 			#endif
 
 
-			//MakeBox(component.parts.first().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
+			//MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 			component.typeName = "Catamaran Base";
 			component.shortName = "Cat";
 			component.constName = ConstName::VehicleBase_CatBase;
@@ -2256,7 +2256,7 @@ namespace Objects
 					Mat::invertSystem(system1,inverse);
 					Mat::transform(inverse,_b,b);
 					Mat::rotate(inverse,_d,d);
-					rs |= parts.first().first.TestIntersection(b,d,distance);
+					rs |= parts.First().first.TestIntersection(b,d,distance);
 				}
 				if (parts.Count() > 1)
 				{

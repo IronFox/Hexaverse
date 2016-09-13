@@ -161,7 +161,7 @@ namespace GUI
 				window->SetActive(true);
 			return;
 		}
-		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.first() == window)
+		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.First() == window)
 		//	return;
 		Detail::visibleWindows.FindAndErase(window);
 		if (Detail::visibleWindows.IsNotEmpty())
@@ -176,7 +176,7 @@ namespace GUI
 	void	ShowBottom(const PWindow&window)
 	{
 		VerifyIntegrity(CLOCATION);
-		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.first() == window)
+		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.First() == window)
 		{
 			if (Detail::visibleWindows.Count() == 1)
 			{
@@ -186,7 +186,7 @@ namespace GUI
 			}
 			return;
 		}
-		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.first() == window)
+		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.First() == window)
 		//	return;
 
 		index_t at = Detail::visibleWindows.GetIndexOf(window);
@@ -572,9 +572,9 @@ namespace GUI
 	{
 		if ((index_t)c >= Objects::TextoutResourceTagOffset && (index_t)c <= (index_t)Objects::TextoutResourceTagOffset + Objects::Resource::NumberOfPossibilities)
 		{
-			return textout.getFont().getHeight() * textout.state.scale_x;
+			return textout.getFont().GetHeight() * textout.state.scale_x;
 		}
-		return textout.getFont().getWidth(c) * textout.state.scale_x;
+		return textout.getFont().GetWidth(c) * textout.state.scale_x;
 	}
 
 	void OnWindowResize()
@@ -1017,7 +1017,7 @@ namespace GUI
 		Array<String>	wrapped;
 		for (const String&raw : rawText)
 		{
-			wrapf(raw,rect.width()*0.9f,CharWidth,wrapped);
+			wrapf(raw,rect.GetWidth()*0.9f,CharWidth,wrapped);
 			wrappedText.MoveAppend(wrapped);
 		}
 		lineAt.SetSize(wrappedText.Count());
@@ -1146,7 +1146,7 @@ namespace GUI
 		matrix.w.xy = float2(rect.x.center() - size.x*0.5f,rect.y.center() - size.y*0.5f);
 
 		display.SetObjectMatrix(matrix);
-		texturedQuad.quickSlots.first() = texture;
+		texturedQuad.quickSlots.First() = texture;
 
 		display.RenderVertices(texturedQuad);
 	}

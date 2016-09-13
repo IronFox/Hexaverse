@@ -748,7 +748,7 @@ namespace Engine
 		Array<D3D_SHADER_MACRO>macros;
 		if (macroDefinitions.IsNotEmpty())
 		{
-			macros.setSize(macroDefinitions.count()+1);
+			macros.SetSize(macroDefinitions.count()+1);
 			for (index_t i = 0; i < macroDefinitions.count(); i++)
 			{
 				macros[i].Definition = macroDefinitions[i].definition.c_str();
@@ -783,7 +783,7 @@ namespace Engine
 		Array<D3D_SHADER_MACRO>macros;
 		if (macroDefinitions.IsNotEmpty())
 		{
-			macros.setSize(macroDefinitions.count()+1);
+			macros.SetSize(macroDefinitions.count()+1);
 			for (index_t i = 0; i < macroDefinitions.count(); i++)
 			{
 				macros[i].Definition = macroDefinitions[i].definition.c_str();
@@ -834,7 +834,7 @@ namespace Engine
 		Array<D3D_SHADER_MACRO>macros;
 		if (macroDefinitions.IsNotEmpty())
 		{
-			macros.setSize(macroDefinitions.count()+1);
+			macros.SetSize(macroDefinitions.count()+1);
 			for (index_t i = 0; i < macroDefinitions.count(); i++)
 			{
 				macros[i].Definition = macroDefinitions[i].definition.c_str();
@@ -2382,7 +2382,7 @@ namespace Engine
 
 			for (UINT i = 0; i+1 < layers; i++)
 			{
-				levels[i].setSize(res2.CountPixels() * SizeOf(fmt));
+				levels[i].SetSize(res2.CountPixels() * SizeOf(fmt));
 				_ScaleHalf(i?levels[i-1].pointer():data,levels[i],prev,res2,fmt);
 
 				data_[i+1].pSysMem = levels[i].pointer();
@@ -2448,7 +2448,7 @@ namespace Engine
 
 			for (UINT i = 0; i+1 < layers; i++)
 			{
-				levels[i].setSize(res2.CountPixels() * SizeOf(fmt));
+				levels[i].SetSize(res2.CountPixels() * SizeOf(fmt));
 				_ScaleHalf(i?levels[i-1].pointer():data,levels[i],prev,res2,fmt);
 
 				data_[i+1].pSysMem = levels[i].pointer();
@@ -2520,7 +2520,7 @@ namespace Engine
 
 				for (UINT i = 0; i+1 < layers; i++)
 				{
-					levels[j][i].setSize(res2.CountPixels() * SizeOf(fmt));
+					levels[j][i].SetSize(res2.CountPixels() * SizeOf(fmt));
 					_ScaleHalf(i?levels[j][i-1].pointer():data[j],levels[j][i],prev,res2,fmt);
 
 					dat[i+1].pSysMem = levels[j][i].pointer();
@@ -2582,7 +2582,7 @@ namespace Engine
 
 			for (UINT i = 0; i+1 < layers; i++)
 			{
-				levels[i].setSize(res2 * SizeOf(fmt));
+				levels[i].SetSize(res2 * SizeOf(fmt));
 				_ScaleHalf(i?levels[i-1].pointer():data,levels[i],prev,res2,fmt);
 
 				data_[i+1].pSysMem = levels[i].pointer();
@@ -2634,19 +2634,19 @@ namespace Engine
 
 	void					DX11::Texture::Load(const Image&image, bool generateMipMaps/*=true*/)
 	{
-		switch (image.getChannels())
+		switch (image.GetChannels())
 		{
 			case 1:
 			case 2:
 			case 4:
-				this->Load(Resolution(image.width(),image.height()),formatMap[image.getChannels()-1],image.data(),generateMipMaps);
+				this->Load(Resolution(image.GetWidth(),image.GetHeight()),formatMap[image.GetChannels()-1],image.GetData(),generateMipMaps);
 			break;
 			case 3:
 			{
 				Image tmp = image;
-				tmp.setChannels(4,BaseImage::CA_MAX);
+				tmp.SetChannels(4,BaseImage::CA_MAX);
 				//dbgForce255 = true;
-				this->Load(Resolution(image.width(),image.height()),DXGI_FORMAT_R8G8B8A8_UNORM,tmp.data(),generateMipMaps);
+				this->Load(Resolution(image.GetWidth(),image.GetHeight()),DXGI_FORMAT_R8G8B8A8_UNORM,tmp.GetData(),generateMipMaps);
 			}
 			break;
 			default:
@@ -2658,41 +2658,41 @@ namespace Engine
 	{
 		for (int i = 1; i < 6; i++)
 		{
-			ASSERT_EQUAL1__(image[0].getChannels(),image[i].getChannels(),i);
-			ASSERT_EQUAL1__(image[0].getWidth(),image[i].getWidth(),i);
-			ASSERT_EQUAL1__(image[0].getHeight(),image[i].getHeight(),i);
+			ASSERT_EQUAL1__(image[0].GetChannels(),image[i].GetChannels(),i);
+			ASSERT_EQUAL1__(image[0].GetWidth(),image[i].GetWidth(),i);
+			ASSERT_EQUAL1__(image[0].GetHeight(),image[i].GetHeight(),i);
 		}
-		if (image[0].getChannels()<1 || image[0].getChannels() > 4)
+		if (image[0].GetChannels()<1 || image[0].GetChannels() > 4)
 			FATAL__("Unsupported number of channels");
 
 		Image tmp[6];
 		for (int i = 0; i < 6; i++)
 		{
 			tmp[i] = image[i];
-			tmp[i].flipVertical();
-			if (image[i].getChannels() == 3)
-				tmp[i].setChannels(4,BaseImage::CA_MAX);
+			tmp[i].FlipVertically();
+			if (image[i].GetChannels() == 3)
+				tmp[i].SetChannels(4,BaseImage::CA_MAX);
 		}
 
-		const void*data[6] = {tmp[0].data(),tmp[1].data(),tmp[2].data(),tmp[3].data(),tmp[4].data(),tmp[5].data()};
-		this->LoadCube(Resolution(image[0].width(),image[0].height()),formatMap[image[0].getChannels()-1],data,generateMipMaps);
+		const void*data[6] = {tmp[0].GetData(),tmp[1].GetData(),tmp[2].GetData(),tmp[3].GetData(),tmp[4].GetData(),tmp[5].GetData()};
+		this->LoadCube(Resolution(image[0].GetWidth(),image[0].GetHeight()),formatMap[image[0].GetChannels()-1],data,generateMipMaps);
 	}
 
 	void					DX11::Texture::Load(const UnclampedFloatImage&image, bool generateMipMaps/*=true*/)
 	{
-		switch (image.getChannels())
+		switch (image.GetChannels())
 		{
 			case 1:
-				this->Load(Resolution(image.width(),image.height()),DXGI_FORMAT_R32_FLOAT,image.data(),generateMipMaps);
+				this->Load(Resolution(image.GetWidth(),image.GetHeight()),DXGI_FORMAT_R32_FLOAT,image.GetData(),generateMipMaps);
 			break;
 			case 2:
-				this->Load(Resolution(image.width(),image.height()),DXGI_FORMAT_R32G32_FLOAT,image.data(),generateMipMaps);
+				this->Load(Resolution(image.GetWidth(),image.GetHeight()),DXGI_FORMAT_R32G32_FLOAT,image.GetData(),generateMipMaps);
 			break;
 			case 3:
-				this->Load(Resolution(image.width(),image.height()),DXGI_FORMAT_R32G32B32_FLOAT,image.data(),generateMipMaps);
+				this->Load(Resolution(image.GetWidth(),image.GetHeight()),DXGI_FORMAT_R32G32B32_FLOAT,image.GetData(),generateMipMaps);
 			break;
 			case 4:
-				this->Load(Resolution(image.width(),image.height()),DXGI_FORMAT_R32G32B32A32_FLOAT,image.data(),generateMipMaps);
+				this->Load(Resolution(image.GetWidth(),image.GetHeight()),DXGI_FORMAT_R32G32B32A32_FLOAT,image.GetData(),generateMipMaps);
 			break;
 			default:
 				FATAL__("Unsupported number of channels");
@@ -3045,7 +3045,7 @@ namespace Engine
 			default:
 				FATAL__("Unable to capture this format");
 		}
-		destination.setSize(desc.Width,desc.Height,channels);
+		destination.SetSize(desc.Width,desc.Height,channels);
 		DX11::StageTexture	stageTexture;
 		DX11::FBO	fbo;
 		
@@ -3063,8 +3063,8 @@ namespace Engine
 		}
 		else
 			devcon->CopyResource(stageTexture.GetHandle(),source);
-		stageTexture.DownloadData(destination.data());
-		destination.flipVertical();
+		stageTexture.DownloadData(destination.GetData());
+		destination.FlipVertically();
 	}
 
 

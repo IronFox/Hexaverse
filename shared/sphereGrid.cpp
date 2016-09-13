@@ -1291,19 +1291,19 @@ namespace Grid
 
 	static void CreateHeightMapSide(Image&result, const SimplexNoise&n, const float3&origin, const float3&dx, const float3&dy)
 	{
-		result.setDimensions(128,128,1);
-		Concurrency::parallel_for(index_t(0),count_t(result.width()*result.height()),[&result,&n,origin,dx,dy](index_t i)
+		result.SetSize(128,128,1);
+		Concurrency::parallel_for(index_t(0),count_t(result.GetWidth()*result.GetHeight()),[&result,&n,origin,dx,dy](index_t i)
 		{
 			TVec3<> p;
-			index_t x = i/result.height();
-			index_t y = i%result.height();
+			index_t x = i/result.GetHeight();
+			index_t y = i%result.GetHeight();
 			{
-				float fx = float(x)/float(result.width()-1) * 2.f - 1.f;
-				float fy = float(y)/float(result.height()-1) * 2.f - 1.f;
+				float fx = float(x)/float(result.GetWidth()-1) * 2.f - 1.f;
+				float fy = float(y)/float(result.GetHeight()-1) * 2.f - 1.f;
 				
 				Vec::mad(origin,dx,fx,p);
 				Vec::mad(p,dy,fy);
-				result.setChannel((UINT32)x,(UINT32)y,0,GetHeightMapHeight(n,p));
+				result.SetChannel((UINT32)x,(UINT32)y,0,GetHeightMapHeight(n,p));
 			}
 		});
 	}
@@ -1339,10 +1339,10 @@ namespace Grid
 
 
 			Image img(64, 1, 4);
-			for (UINT32 x = 0; x < img.width(); x++)
+			for (UINT32 x = 0; x < img.GetWidth(); x++)
 			{
-				float a = smoothstep(0.9, 0.95, float(x) / float(img.width() - 1));
-				float b = smoothstep(0.925, 0.95, float(x) / float(img.width() - 1));
+				float a = smoothstep(0.9, 0.95, float(x) / float(img.GetWidth() - 1));
+				float b = smoothstep(0.925, 0.95, float(x) / float(img.GetWidth() - 1));
 				BYTE*pixel = img.get(x, 0);
 				pixel[0] = (BYTE)(180 * b);
 				pixel[1] = (BYTE)(200 * b);
@@ -3305,7 +3305,7 @@ namespace Grid
 				return *res;
 
 		FATAL__("Unable to locate resource '"+name+'"');
-		return all.first();
+		return all.First();
 	}
 
 	/*static*/ Resource&		Resource::Require(ConstName name)
@@ -3315,7 +3315,7 @@ namespace Grid
 				return *res;
 
 		FATAL__("Unable to locate resource #"+String(int(name)));
-		return all.first();
+		return all.First();
 	}
 
 
