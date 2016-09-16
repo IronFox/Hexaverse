@@ -407,8 +407,18 @@ namespace GUI
 
 	void	Panel::TScrollbar::Render(const Rect<>&rect)
 	{
-		
-		viewTop = vmin(viewTop,scrollMax - viewSize);
+		barSize = vmax(viewSize,0.2f * rect.y.GetExtend()*scrollMax);
+		targetViewTop = vmin(targetViewTop,scrollMax - barSize);
+		float speed = vmax(1.f,fabs(targetViewTop - viewTop))*2.f;
+		if (targetViewTop > viewTop)
+		{
+			viewTop = vmin(targetViewTop, viewTop + Engine::timing.delta*speed);
+		}
+		elif (targetViewTop < viewTop)
+		{
+			viewTop = vmax(targetViewTop, viewTop - Engine::timing.delta*speed);
+		}
+
 
 		float left = rect.x.max + TScrollbar::ContentSpacing;
 		float right = left + TScrollbar::Width;
@@ -416,12 +426,12 @@ namespace GUI
 		Rect<> topButton(left,rect.y.max - buttonHeight,right,rect.y.max);
 		Rect<> bottomButton(left,rect.y.min,right,rect.y.min + buttonHeight);
 
-		Rect<> outline(left,bottomButton.y.max + TScrollbar::ContentSpacing,right,topButton.y.min - TScrollbar::ContentSpacing);
+		outline = Rect<>(left,bottomButton.y.max + TScrollbar::ContentSpacing,right,topButton.y.min - TScrollbar::ContentSpacing);
 		SurfaceRenderer::SetColor(float4(0,0,0,0.9));
 		SurfaceRenderer::Rasterize(outline);
 
-		Rect<> window(outline.x.min,outline.y.Derelativate(1.f - (viewTop + viewSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
-		RenderArea(window,false,false,float3(1));
+		bar = Rect<>(outline.x.min,outline.y.Derelativate(1.f - (viewTop + barSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
+		RenderArea(bar,barContainsMouse,dragging,float3(1));
 
 		up->SetLocation(topButton);
 		up->Render();
@@ -429,8 +439,77 @@ namespace GUI
 		down->Render();
 	}
 
+	void		Panel::TScrollbar::SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	{
+		if (visible)
+		{
+			outlineContainsMouse = outline.Contains(mouseAt) && !bar.Contains(mouseAt) && clipAreaContainsMouse;
+			scrollDownOnClick = mouseAt.y < bar.y.min;
+			if (dragging)
+			{
+				viewTop = targetViewTop = clamp((1.f-outline.y.Relativate(mouseAt.y - dragRelative)) * scrollMax,0, scrollMax-barSize);
+			}
+			else
+			{
+				barContainsMouse = bar.Contains(mouseAt);
+				dragRelative = mouseAt.y - bar.y.max;
+			}
+			up->SignalMouseMotion(mouseAt,clipAreaContainsMouse);
+			down->SignalMouseMotion(mouseAt,clipAreaContainsMouse);
+		}
+		else
+			outlineContainsMouse = false;
+	}
+
+
+	void Panel::TScrollbar::SignalMouseUp()
+	{
+		if (mouseDown)
+		{
+			if (scrollDownOnClick)
+			{
+				targetViewTop += vmax(viewSize, scrollMax /10.f);
+				targetViewTop = vmin(targetViewTop,scrollMax - viewSize);	
+			}
+			else
+			{
+				targetViewTop -= vmax(viewSize, scrollMax /10.f);
+				targetViewTop = vmax(targetViewTop,0);	
+			}
+		}
+		dragging = false;
+		mouseDown = false;
+
+	}
+
+	PComponent	Panel::TScrollbar::HandleMouseDown()
+	{
+		if (visible)
+		{
+			PComponent c;
+			c = up->HandleMouseDown();
+			if (c)
+				return c;
+			c = down->HandleMouseDown();
+			if (c)
+				return c;
+			if (outlineContainsMouse)
+			{
+				mouseDown = true;
+				return owner->shared_from_this();
+			}
+			if (barContainsMouse)
+			{
+				dragging = true;
+				return owner->shared_from_this();
+			}
+		}
+		return PComponent();
+	}
+
 	void	Panel::TScrollbar::Enable(Panel*p,const Rect<>&rect)
 	{
+		owner = p;
 		if (!up)
 		{
 			up.reset(new Button("",[this,p]()
@@ -599,30 +678,24 @@ namespace GUI
 	{
 		Super::SignalMouseMotion(mouseAt,clipAreaContainsMouse);
 
-		if (vscroll.visible)
-		{
-			vscroll.up->SignalMouseMotion(mouseAt,clipAreaContainsMouse);
-			vscroll.down->SignalMouseMotion(mouseAt,clipAreaContainsMouse);
-		}
-
+	
+		vscroll.SignalMouseMotion(mouseAt,clipAreaContainsMouse);
+		
 		for (const auto&c : components)
 		{
 			c->SignalMouseMotion(mouseAt + float2(0,vscroll.GetOffset()),ContainsMouse());
 		}
 	}
 
+
+
 	/*virtual override*/ PComponent	Panel::HandleMouseDown()
 	{
-		if (vscroll.visible)
-		{
-			PComponent c;
-			c = vscroll.up->HandleMouseDown();
-			if (c)
-				return c;
-			c = vscroll.down->HandleMouseDown();
-			if (c)
-				return c;
-		}
+		PComponent c = vscroll.HandleMouseDown();
+		if (c)
+			return c;
+
+
 
 		if (!ContainsMouse())
 			return PComponent();

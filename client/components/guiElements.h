@@ -437,16 +437,25 @@ namespace GUI
 			bool		visible=false;
 			float		scrollMax=1.f;
 			float		viewTop=0.f,	//!< counting top (=0) down (>=0)
-						targetViewTop=0.f;
+						targetViewTop=0.f,
+						barSize = 0.1f;
 			float		viewSize = 0.2f;
-
+			Rect<>		outline,	//!< Shadow behind scrollbar. Does not contain buttons, but does contain bar
+						bar;		//!< Actual grabbable bar
 			PButton		up,down;
+			Panel		*owner=nullptr;
+			bool		outlineContainsMouse = false,barContainsMouse = false,dragging = false;
+			bool		mouseDown = false,scrollDownOnClick =false;
+			float		dragRelative = 0;
 
+			PComponent	HandleMouseDown();
+			void		SignalMouseUp();
+			void		SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse);
 			void		Enable(Panel*,const Rect<>&rect);
 			void		Render(const Rect<>&rect);
 			float		GetOffset() const {return visible ? viewTop : 0;}
-			static constexpr float Width = 0.015f;
-			static constexpr float ContentSpacing = 0.003f;
+			static constexpr float Width = 0.03f;
+			static constexpr float ContentSpacing = 0.006f;
 		};
 
 		TScrollbar		vscroll;
@@ -485,6 +494,7 @@ namespace GUI
 
 		virtual bool	HasComponent(const PComponent&c) const override {if (c.get() == this) return true; foreach (components, c2) if ((*c2)->HasComponent(c)) return true; return false;}
 		virtual PComponent	HandleMouseDown() override;
+		virtual void	SignalMouseUp() override {vscroll.SignalMouseUp();}
 		virtual void	SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 
 
