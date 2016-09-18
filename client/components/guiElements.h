@@ -20,6 +20,7 @@ namespace GUI
 		DECLARE_POINTER_CLASS(TextField);
 			DECLARE_POINTER_CLASS(Label);
 			DECLARE_POINTER_CLASS(Button);
+				DECLARE_POINTER_CLASS(ScrollButton);
 		DECLARE_POINTER_CLASS(BaseInput);
 			DECLARE_POINTER_CLASS(Input);
 			DECLARE_POINTER_CLASS(PasswordInput);
@@ -28,6 +29,12 @@ namespace GUI
 			DECLARE_POINTER_CLASS(ButtonPanel);
 			DECLARE_POINTER_CLASS(Window);
 	
+
+	CONSTRUCT_ENUMERATION3(WheelRs,
+		NotContained,
+		Ignored,
+		Processed
+		);
 
 
 
@@ -150,6 +157,7 @@ namespace GUI
 		virtual bool	DetectEnabledState() {return false;}
 		
 		virtual PComponent	HandleMouseDown() {return PComponent();}
+		virtual WheelRs	HandleMouseWheel(short) {return ContainsMouse() ? WheelRs::Ignored : WheelRs::NotContained;}
 		virtual void	SignalMouseUp()	{}
 		virtual void	SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse);
 		
@@ -428,6 +436,35 @@ namespace GUI
 		}
 	};
 
+	class ScrollButton : public Button
+	{
+		typedef Button	Super;
+	public:
+		enum direction_t
+		{
+			Up,
+			Down
+		};
+		const direction_t	direction;
+
+
+
+		/**/			ScrollButton(direction_t dir,std::function<void()> onPress = std::function<void()>()):Super("",onPress), direction(dir)
+		{}
+
+		virtual void	Render() override
+		{
+			bool lit = IsLit();
+			bool flipped = mousePressedComponent.get() == this;
+			Super::BaseRender(lit && !flipped,lit && flipped);
+			RenderArrow(rect,direction,lit);
+		}
+
+		static void		RenderArrow(const Rect<>&, direction_t, bool lit);
+
+	};
+
+
 	class Panel : public Area
 	{
 		typedef Area Super;
@@ -437,23 +474,23 @@ namespace GUI
 			bool		visible=false;
 			float		scrollMax=1.f;
 			float		viewTop=0.f,	//!< counting top (=0) down (>=0)
-						targetViewTop=0.f,
-						barSize = 0.1f;
+						targetViewTop=0.f;
 			float		viewSize = 0.2f;
 			Rect<>		outline,	//!< Shadow behind scrollbar. Does not contain buttons, but does contain bar
 						bar;		//!< Actual grabbable bar
-			PButton		up,down;
+			PScrollButton		up,down;
 			Panel		*owner=nullptr;
 			bool		outlineContainsMouse = false,barContainsMouse = false,dragging = false;
 			bool		mouseDown = false,scrollDownOnClick =false;
 			float		dragRelative = 0;
 
 			PComponent	HandleMouseDown();
+			WheelRs		HandleMouseWheel(short);
 			void		SignalMouseUp();
 			void		SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse);
 			void		Enable(Panel*,const Rect<>&rect);
 			void		Render(const Rect<>&rect);
-			float		GetOffset() const {return visible ? viewTop : 0;}
+			float		GetOffset() const {return visible ? -viewTop : 0;}
 			static constexpr float Width = 0.03f;
 			static constexpr float ContentSpacing = 0.006f;
 		};
@@ -493,6 +530,7 @@ namespace GUI
 		virtual void	Translate(const float2&delta)	{Super::Translate(delta); foreach (components,c) (*c)->Translate(delta);}
 
 		virtual bool	HasComponent(const PComponent&c) const override {if (c.get() == this) return true; foreach (components, c2) if ((*c2)->HasComponent(c)) return true; return false;}
+		virtual WheelRs	HandleMouseWheel(short) override;
 		virtual PComponent	HandleMouseDown() override;
 		virtual void	SignalMouseUp() override {vscroll.SignalMouseUp();}
 		virtual void	SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
@@ -799,6 +837,8 @@ namespace GUI
 	This may be invoked by a server state change or removal of some entity
 	*/
 	void				SignalSituationChange();
+
+	WheelRs				HandleMouseWheel(short delta);
 	bool				HandleMouseDown();
 	void				HandleMouseUp();
 	/**

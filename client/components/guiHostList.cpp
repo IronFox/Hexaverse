@@ -319,6 +319,7 @@ void	SaveHosts()
 			serverListPanel->anchorConfig.axis[0].max.Set(0);
 			serverListPanel->autoHeight = true;
 			serverListPanel->maxHeight = 0.5f;
+			serverListPanel->fillBackground = false;
 		}
 		serverListPanel->ClearComponents();
 		serverListPanel->anchorConfig.axis[1].max.SetAllOf(Dialog::serverChoice,0);
@@ -342,7 +343,7 @@ void	SaveHosts()
 		foreach (list,failed)
 		{
 			PPanel p(new Panel());
-			p->anchorConfig.Top().SetLastOf(serverListPanel,0.025f,GUI::TAnchor::RelativeToScreen);
+			p->anchorConfig.Top().Set(serverListPanel,0.025f,GUI::TAnchor::RelativeToScreen);
 
 			p->anchorConfig.Left().Set(0.f);
 			p->anchorConfig.Right().Set(0.f);
@@ -395,7 +396,7 @@ void	SaveHosts()
 			pb->anchorConfig.Right().Set(forget,10,GUI::TAnchor::AbsolutePixels);
 
 
-			serverListPanel->AddComponent( p );
+			Dialog::serverChoice->AddComponent( p );
 		}
 
 

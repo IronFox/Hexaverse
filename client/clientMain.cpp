@@ -3154,6 +3154,13 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	}
 
+	void	OnWheel(short delta)
+	{
+		if (GUI::HandleMouseWheel(delta) == GUI::WheelRs::NotContained)
+			Camera::Event::WheelAction(delta);
+
+	}
+
 #endif
 
 
@@ -3475,57 +3482,57 @@ int main( int argc, const char* argv[])
 			LineRenderer::Create();
 			SurfaceRenderer::Create();
 
-			//Engine::input.bind(Key::Up, Camera::Event::ZoomIn);
-			//Engine::input.bind(Key::Down, Camera::Event::ZoomOut);
+			//Engine::input.Bind(Key::Up, Camera::Event::ZoomIn);
+			//Engine::input.Bind(Key::Down, Camera::Event::ZoomOut);
 
-			Engine::input.bind(Key::Left, SelectAndFocusPrev);
-			Engine::input.bind(Key::Right, SelectAndFocusNext);
-			Engine::input.bind(Key::Space, SelectAndFocusNextIdle);
+			Engine::input.Bind(Key::Left, SelectAndFocusPrev);
+			Engine::input.Bind(Key::Right, SelectAndFocusNext);
+			Engine::input.Bind(Key::Space, SelectAndFocusNextIdle);
 
-			Engine::input.bind(Key::G, Camera::ToggleOrbit);
+			Engine::input.Bind(Key::G, Camera::ToggleOrbit);
 
-			Engine::input.bind(Key::PageDown, ViewDown);
-			Engine::input.bind(Key::PageUp, ViewUp);
+			Engine::input.Bind(Key::PageDown, ViewDown);
+			Engine::input.Bind(Key::PageUp, ViewUp);
 
-			Engine::input.bind(Key::Shift, ResumeBatchConstruction, AbortBatchConstruction);
+			Engine::input.Bind(Key::Shift, ResumeBatchConstruction, AbortBatchConstruction);
 			
 
-		//	Engine::input.bind(Key::PageDown, DeclineCamera);
-			//Engine::input.bind(Key::PageUp, InclineCamera);
+		//	Engine::input.Bind(Key::PageDown, DeclineCamera);
+			//Engine::input.Bind(Key::PageUp, InclineCamera);
 
-			Engine::input.bind(Key::Backspace, UndoTask);
-			Engine::input.bind(Key::Escape, AbortMode);
-			Engine::input.bind(Key::Enter, SignalRoundEndOrMaximize);
-			Engine::input.bind(Key::Return, SignalRoundEndOrMaximize);
-			Engine::input.bind(Key::Tab, UI::ShowSession);
-			Engine::input.bind(Key::T,[](){}, QueryAndSendChatMessage);
-			Engine::input.bind(Key::R,Camera::ToggleAutoRotation);
-//			Engine::input.bind(Key::R,ToggleResourceView);
-			Engine::input.bind(Key::Ctrl,ToggleSeeThrough);
+			Engine::input.Bind(Key::Backspace, UndoTask);
+			Engine::input.Bind(Key::Escape, AbortMode);
+			Engine::input.Bind(Key::Enter, SignalRoundEndOrMaximize);
+			Engine::input.Bind(Key::Return, SignalRoundEndOrMaximize);
+			Engine::input.Bind(Key::Tab, UI::ShowSession);
+			Engine::input.Bind(Key::T,[](){}, QueryAndSendChatMessage);
+			Engine::input.Bind(Key::R,Camera::ToggleAutoRotation);
+//			Engine::input.Bind(Key::R,ToggleResourceView);
+			Engine::input.Bind(Key::Ctrl,ToggleSeeThrough);
 
-			Engine::input.bind(Key::H,ToggleControlGUI);
+			Engine::input.Bind(Key::H,ToggleControlGUI);
 
-			Engine::input.bindCtrl(Key::C,ConfigurationMode::OnCopy);
-			Engine::input.bindCtrl(Key::V,ConfigurationMode::OnPaste);
+			Engine::input.BindCtrl(Key::C,ConfigurationMode::OnCopy);
+			Engine::input.BindCtrl(Key::V,ConfigurationMode::OnPaste);
 
-			Engine::input.bind(Key::MouseButton0, Select, GUI::HandleMouseUp);
-			Engine::input.bindCtrl(Key::MouseButton0, Select);
-			Engine::input.bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
-			Engine::input.bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
+			Engine::input.Bind(Key::MouseButton0, Select, GUI::HandleMouseUp);
+			Engine::input.BindCtrl(Key::MouseButton0, Select);
+			Engine::input.Bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
+			Engine::input.Bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
 
-			Engine::input.bind(Key::F4, ToggleCameraLock);
-			Engine::input.bind(Key::F3, SaveScreenshot);
-			Engine::input.bind(Key::F2,ToggleTimeLapse);
+			Engine::input.Bind(Key::F4, ToggleCameraLock);
+			Engine::input.Bind(Key::F3, SaveScreenshot);
+			Engine::input.Bind(Key::F2,ToggleTimeLapse);
 
 			#ifdef RAYTRACE
-				Engine::input.bind(Key::Up,ZoomIn);
-				Engine::input.bind(Key::Down,ZoomOut);
+				Engine::input.Bind(Key::Up,ZoomIn);
+				Engine::input.Bind(Key::Down,ZoomOut);
 			#endif
 
 
 
 
-			Engine::mouse.bindWheel(Camera::Event::WheelAction);
+			Engine::mouse.BindWheel(OnWheel);
 
 			textout.setScale(1.f/display.clientWidth(),1.f/display.clientHeight());
 

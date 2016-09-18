@@ -43,10 +43,10 @@ namespace GUI
 		{
 
 			viewportStack.Append().first = view;
-			viewportStack.last().second = offset;
+			viewportStack.last().second = offset+totalOffset;
 			if (viewportStack.Count() > 1)
 			{
-				viewportStack.last().first.Translate(totalOffset);
+				viewportStack.last().first.Translate(-totalOffset);
 				//viewportStack.last().second += viewportStack.fromEnd(1).second;
 			}
 			totalOffset += offset;
@@ -265,6 +265,35 @@ namespace GUI
 		return false;
 	}
 
+	static void CheckMouseMotion()
+	{
+		static float2 last;
+		if (last != Engine::mouse.location.windowRelative)
+		{
+			last = Engine::mouse.location.windowRelative;
+			Detail::visibleWindows.Last()->SignalMouseMotion(last,true);
+		}
+	}
+
+	WheelRs	HandleMouseWheel(short delta)
+	{
+		for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
+		{
+			PWindow w = Detail::visibleWindows[i];
+			WheelRs rs = w->HandleMouseWheel(delta);
+			if (w->isModal && rs == WheelRs::NotContained)
+				rs = WheelRs::Ignored;
+			if (rs != WheelRs::NotContained)
+			{
+				if (rs == WheelRs::Processed)
+					w->SignalMouseMotion(Engine::mouse.location.windowRelative,true);
+					
+				return rs;
+			}
+		}
+		return WheelRs::NotContained;
+	}
+
 	bool	HandleMouseDown()
 	{
 		for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
@@ -407,8 +436,8 @@ namespace GUI
 
 	void	Panel::TScrollbar::Render(const Rect<>&rect)
 	{
-		barSize = vmax(viewSize,0.2f * rect.y.GetExtend()*scrollMax);
-		targetViewTop = vmin(targetViewTop,scrollMax - barSize);
+		
+		targetViewTop = vmin(targetViewTop,scrollMax - viewSize);
 		float speed = vmax(1.f,fabs(targetViewTop - viewTop))*2.f;
 		if (targetViewTop > viewTop)
 		{
@@ -430,13 +459,32 @@ namespace GUI
 		SurfaceRenderer::SetColor(float4(0,0,0,0.9));
 		SurfaceRenderer::Rasterize(outline);
 
-		bar = Rect<>(outline.x.min,outline.y.Derelativate(1.f - (viewTop + barSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
+		bar = Rect<>(outline.x.min,outline.y.Derelativate(1.f - (viewTop + viewSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
 		RenderArea(bar,barContainsMouse,dragging,float3(1));
 
 		up->SetLocation(topButton);
 		up->Render();
 		down->SetLocation(bottomButton);
 		down->Render();
+	}
+
+
+	WheelRs	Panel::TScrollbar::HandleMouseWheel(short delta)
+	{
+		if (!visible)
+			return WheelRs::NotContained;
+		//if (outlineContainsMouse || barContainsMouse)	//always scroll
+		{
+			if (!dragging)
+			{
+				constexpr float speed = -1.f / 5.f;
+				viewTop = clamp(viewTop + speed * viewSize* delta,0,scrollMax - viewSize);
+				targetViewTop = clamp(targetViewTop + speed * viewSize* delta,0,scrollMax - viewSize);
+				return WheelRs::Processed;
+			}
+			return WheelRs::Ignored;
+		}
+		//return up->HandleMouseWheel(delta) || down->HandleMouseWheel(delta);
 	}
 
 	void		Panel::TScrollbar::SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
@@ -447,7 +495,7 @@ namespace GUI
 			scrollDownOnClick = mouseAt.y < bar.y.min;
 			if (dragging)
 			{
-				viewTop = targetViewTop = clamp((1.f-outline.y.Relativate(mouseAt.y - dragRelative)) * scrollMax,0, scrollMax-barSize);
+				viewTop = targetViewTop = clamp((1.f-outline.y.Relativate(mouseAt.y - dragRelative)) * scrollMax,0, scrollMax-viewSize);
 			}
 			else
 			{
@@ -512,13 +560,13 @@ namespace GUI
 		owner = p;
 		if (!up)
 		{
-			up.reset(new Button("",[this,p]()
+			up.reset(new ScrollButton(ScrollButton::Up,[this,p]()
 			{
 				targetViewTop -= viewSize;
 				targetViewTop = vmax(targetViewTop,0);	
 			}));
 
-			down.reset(new Button("",[this,p]()
+			down.reset(new ScrollButton(ScrollButton::Down,[this,p]()
 			{
 				targetViewTop += viewSize;
 				targetViewTop = vmin(targetViewTop,scrollMax - viewSize);
@@ -541,6 +589,24 @@ namespace GUI
 		}
 	}
 
+	/*static*/ void		ScrollButton::RenderArrow(const Rect<>&r, direction_t dir, bool lit)
+	{
+		SurfaceRenderer::SetColor(float4(1,1,1,lit?0.75f:0.5f));
+
+		switch (dir)
+		{
+			case Up:
+				SurfaceRenderer::Rasterize(float2(r.x.center(),r.y.Derelativate(0.75f)),float2(r.x.Derelativate(0.25f),r.y.Derelativate(0.25f)),float2(r.x.Derelativate(0.75f),r.y.Derelativate(0.25f)));
+			break;
+			case Down:
+				SurfaceRenderer::Rasterize(float2(r.x.center(),r.y.Derelativate(0.25f)),float2(r.x.Derelativate(0.75f),r.y.Derelativate(0.75f)),float2(r.x.Derelativate(0.25f),r.y.Derelativate(0.75f)));
+			break;
+
+			default:
+				FATAL__("Unexpected direction parameter");
+		}
+
+	}
 
 
 	/*virtual override*/ void	Panel::Render()
@@ -602,6 +668,11 @@ namespace GUI
 			{
 				vscroll.scrollMax = currentHeight;
 				vscroll.viewSize = maxHeight;
+				float barSize = vmax(maxHeight,0.2f * rect.y.GetExtend()*currentHeight);
+				float overSize = barSize - maxHeight;
+				vscroll.scrollMax += overSize;
+				vscroll.viewSize += overSize;
+
 				newY = rect.y.max - maxHeight;
 				rs |= Set(rect.y.min,newY);
 				vscroll.Enable(this,rect);
@@ -681,12 +752,36 @@ namespace GUI
 	
 		vscroll.SignalMouseMotion(mouseAt,clipAreaContainsMouse);
 		
+		TVec2<> moved = mouseAt;
+		moved.y += vscroll.GetOffset();
+
 		for (const auto&c : components)
 		{
-			c->SignalMouseMotion(mouseAt + float2(0,vscroll.GetOffset()),ContainsMouse());
+			c->SignalMouseMotion(moved,ContainsMouse());
 		}
 	}
 
+
+	/*virtual override*/ WheelRs	Panel::HandleMouseWheel(short delta)
+	{
+		if (!ContainsMouse())
+			return WheelRs::NotContained;
+
+		for (index_t i = components.Count()-1; i < components.Count(); --i)
+		{
+			WheelRs rs = components[i]->HandleMouseWheel(delta);
+			if (rs == WheelRs::Processed)
+				return rs;
+			if (rs == WheelRs::Ignored)
+				break;
+		}
+
+		if (vscroll.HandleMouseWheel(delta) == WheelRs::Processed)
+			return WheelRs::Processed;
+
+		return WheelRs::Ignored;
+		//Super::HandleMouseWheel(delta);
+	}
 
 
 	/*virtual override*/ PComponent	Panel::HandleMouseDown()
@@ -1029,12 +1124,7 @@ namespace GUI
 	{
 		if (Detail::visibleWindows.IsNotEmpty())
 		{
-			static float2 last;
-			if (last != Engine::mouse.location.windowRelative)
-			{
-				last = Engine::mouse.location.windowRelative;
-				Detail::visibleWindows.Last()->SignalMouseMotion(last,true);
-			}
+			CheckMouseMotion();
 		}
 
 
