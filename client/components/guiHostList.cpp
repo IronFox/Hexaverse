@@ -301,7 +301,7 @@ void	SaveHosts()
 		Dialog::serverChoice->isModal = false;
 		Dialog::serverChoice->autoCenter = false;
 		Dialog::serverChoice->anchorConfig.Top().Set(0.1f);
-
+		Dialog::serverChoice->maxHeight = 0.8f;
 
 		AddTab("HostID/WorldID",false);
 		AddTab("Factions online",false);
@@ -325,25 +325,13 @@ void	SaveHosts()
 		serverListPanel->anchorConfig.axis[1].max.SetAllOf(Dialog::serverChoice,0);
 		Dialog::serverChoice->AddComponent( serverListPanel );
 
-		for (index_t i = 0; i < Network::servers.Count(); i++)
-		{
-			auto&info = Network::servers[i];
 
-			PButtonPanel p = ConstructPanel(info);
-
-			p->anchorConfig.Top().references.Clear();
-			p->anchorConfig.Top().SetLastOf(serverListPanel,0.015f,GUI::TAnchor::RelativeToScreen);
-			serverListPanel->AddComponent( p );
-		}
-
-		//count_t openAttempts = 0;
 		static Buffer0<Network::ServerAddress>	list;
 		Network::ServerDiscovery::ListFailedAttempts(list);
-
 		foreach (list,failed)
 		{
 			PPanel p(new Panel());
-			p->anchorConfig.Top().Set(serverListPanel,0.025f,GUI::TAnchor::RelativeToScreen);
+			p->anchorConfig.Top().SetLastOf(serverListPanel,0.015f,GUI::TAnchor::RelativeToScreen);
 
 			p->anchorConfig.Left().Set(0.f);
 			p->anchorConfig.Right().Set(0.f);
@@ -396,8 +384,24 @@ void	SaveHosts()
 			pb->anchorConfig.Right().Set(forget,10,GUI::TAnchor::AbsolutePixels);
 
 
-			Dialog::serverChoice->AddComponent( p );
+			serverListPanel->AddComponent( p );
 		}
+
+		for (index_t i = 0; i < Network::servers.Count(); i++)
+		{
+			auto&info = Network::servers[i];
+
+			PButtonPanel p = ConstructPanel(info);
+
+			p->anchorConfig.Top().references.Clear();
+			p->anchorConfig.Top().SetLastOf(serverListPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+			serverListPanel->AddComponent( p );
+		}
+
+		//count_t openAttempts = 0;
+
+
+
 
 
 		if (Network::servers.IsEmpty())

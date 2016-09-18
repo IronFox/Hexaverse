@@ -14,7 +14,7 @@
 #include "configurationMode.h"
 
 
-#define DEBUG_SERVER_LIST
+//#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
 
 void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
 void			OnPlayerControlBegin();

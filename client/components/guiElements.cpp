@@ -25,7 +25,16 @@ namespace GUI
 	{
 		Buffer0<GUI::PWindow,Swap>		visibleWindows;
 		Engine::OrthographicAspect<>	aspect;
-		Buffer0<std::pair<Rect<>,float2> >	viewportStack;
+
+		struct Viewport
+		{
+			Rect<>	view;
+			float2	offset,
+					relativeOffset;
+
+
+		};
+		Buffer0<Viewport>	viewportStack;
 		float2	totalOffset;
 
 		void	LoadView(const Rect<>&view, const float2&offset)
@@ -42,23 +51,25 @@ namespace GUI
 		void	PushLoadView(const Rect<>&view, const float2&offset=float2())
 		{
 
-			viewportStack.Append().first = view;
-			viewportStack.last().second = offset+totalOffset;
+			viewportStack.Append().view = view;
+			viewportStack.last().offset = offset+totalOffset;
+			viewportStack.last().relativeOffset = offset;
 			if (viewportStack.Count() > 1)
 			{
-				viewportStack.last().first.Translate(-totalOffset);
+				viewportStack.last().view.Translate(-totalOffset);
+				viewportStack.last().view.ConstrainBy(viewportStack.fromEnd(1).view);
 				//viewportStack.last().second += viewportStack.fromEnd(1).second;
 			}
 			totalOffset += offset;
-			LoadView(viewportStack.last().first,viewportStack.last().second);
+			LoadView(viewportStack.last().view,viewportStack.last().offset);
 		}
 
 		void	PopLoadView()
 		{
-			totalOffset -= viewportStack.last().second;
+			totalOffset -= viewportStack.last().relativeOffset;
 			viewportStack.EraseLast();
 			if (viewportStack.IsNotEmpty())
-				LoadView(viewportStack.last().first,viewportStack.last().second);
+				LoadView(viewportStack.last().view,viewportStack.last().offset);
 			else
 			{
 				LoadView(Rect<>(0,0,1,1),float2());
