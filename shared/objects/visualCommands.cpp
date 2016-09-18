@@ -235,10 +235,21 @@ namespace Objects
 		LoadIcon(name);
 	}
 
+	static bool NotValidFSChar(char c)
+	{
+		if (c >= 'a' && c <= 'z')
+			return false;
+		if (c >= 'A' && c <= 'Z')
+			return false;
+		if (c >= '0' && c <= '9')
+			return false;
+		return true;
+	}
+
 	void			BaseCommand::LoadIcon(const String&name)
 	{
 		String name2 = name;
-		name2.replace(' ','-');
+		name2.replaceCharacters(NotValidFSChar,'-');
 
 		PathString filename = PathString("resources/icons/"+name2+".png");
 		if (!FileSystem::IsFile(filename))

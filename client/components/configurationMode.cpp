@@ -763,16 +763,16 @@ namespace ConfigurationMode
 			ruleGroup->customLabel << "All common game rules";
 			copyPasteGroup.reset(new Objects::CommandGroup("Copy/Paste"));
 			copyPasteGroup->baseCoords = int2(1);
-			copyPasteGroup->customLabel << "Copy/paste current configuration to clipboard";
+			copyPasteGroup->customLabel << "Copy/paste current configuration to/from clipboard";
 
 			{
 				Objects::PIconCommand cmd;
 
-				cmd.reset(new Objects::IconCommand("Copy planet to clipboard (CTRL+C)",Clipboard::ExportPlanet,
+				cmd.reset(new Objects::CustomIconCommand("Copy planet to clipboard (CTRL+C)","Copy/Paste",Clipboard::ExportPlanet,
 				[](bool)->Objects::BaseCommand::Flags { return Objects::BaseCommand::Flags::IsEnabled;}));
 				copyPasteGroup->Add(cmd);
 
-				cmd.reset(new Objects::IconCommand("Paste planet from clipboard (CTRL+V)",Clipboard::ImportPlanet,
+				cmd.reset(new Objects::CustomIconCommand("Paste planet from clipboard (CTRL+V)","Paste",Clipboard::ImportPlanet,
 				[](bool)->Objects::BaseCommand::Flags { return Objects::BaseCommand::Flags::IsEnabled;}));
 				copyPasteGroup->Add(cmd);
 			}
