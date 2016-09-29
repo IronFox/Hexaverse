@@ -1100,7 +1100,7 @@ namespace Grid
 			{
 				count_t rs = 0;
 				foreach (coverage,c)
-					rs += c->range.GetExtend();
+					rs += c->range.GetExtent();
 				return rs;
 			}
 

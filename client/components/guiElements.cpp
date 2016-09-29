@@ -659,13 +659,13 @@ namespace GUI
 						{
 							float dist = bottom.distanceFromReference;
 							if (bottom.distanceType != TAnchor::RelativeToParentComponent)
-								lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.extend() - bottom.ToScreenDistance(0.f,false));
+								lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.GetExtent() - bottom.ToScreenDistance(0.f,false));
 						}
 					break;
 					case TAnchor::Auto:
 						if (top.type == TAnchor::Auto)
 						{
-							lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.extend());
+							lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.GetExtent());
 						}
 					break;
 				}
@@ -679,7 +679,7 @@ namespace GUI
 			{
 				vscroll.scrollMax = currentHeight;
 				vscroll.viewSize = maxHeight;
-				float barSize = vmax(maxHeight,0.2f * rect.y.GetExtend()*currentHeight);
+				float barSize = vmax(maxHeight,0.2f * rect.y.GetExtent()*currentHeight);
 				float overSize = barSize - maxHeight;
 				vscroll.scrollMax += overSize;
 				vscroll.viewSize += overSize;
@@ -1042,7 +1042,7 @@ namespace GUI
 		textout.locate(core.x.min,core.y.max - textout.getScaledHeight() * 0.4f);
 
 
-		if (visualLen < core.x.extend())
+		if (visualLen < core.x.GetExtent())
 		{
 		//	textout.write(input,len);
 			textout << text;
@@ -1052,7 +1052,7 @@ namespace GUI
 			while (text.DropFirstChar())
 			{
 				visualLen = textout.getScaledWidth(text) + cursorLen;
-				if (visualLen < core.x.extend())
+				if (visualLen < core.x.GetExtent())
 				{
 					textout << text;
 					//textout.write(input,len);
@@ -1241,7 +1241,7 @@ namespace GUI
 
 		SurfaceRenderer::Flush();
 
-		//textout.locate(rect.x.min + rect.x.GetExtend()*0.05f,rect.y.max - textout.getScaledHeight()*1.5f);
+		//textout.locate(rect.x.min + rect.x.GetExtent()*0.05f,rect.y.max - textout.getScaledHeight()*1.5f);
 		//float lineHeight = textout.getScaledHeight();
 		float top = rect.y.max;
 
@@ -1274,7 +1274,7 @@ namespace GUI
 
 
 
-		float2 size = float2(rect.x.extend(),rect.y.extend());
+		float2 size = float2(rect.x.GetExtent(),rect.y.GetExtent());
 		size.y = wantHeight;
 		float2 pixelDim = size & ViewPortSizef();
 		float aspect = pixelDim.x / pixelDim.y;
@@ -1299,7 +1299,7 @@ namespace GUI
 		Resolution3D res = texture.GetResolution();
 		float2 resf = float2(res.width,res.height);
 
-		float2 size = float2(rect.x.extend(),rect.y.extend());
+		float2 size = float2(rect.x.GetExtent(),rect.y.GetExtent());
 		float2 pixelDim = size & ViewPortSizef();
 		float aspect = pixelDim.x / pixelDim.y;
 		float wantAspect = resf.x / resf.y;
@@ -1382,7 +1382,7 @@ namespace GUI
 		//	ASSERT__(!anchor.min.IsActive());
 		//	ASSERT__(!anchor.max.IsActive());
 		//	const TAnchor&anc = anchor.center;
-		//	const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
+		//	const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].GetExtent() : anc.distanceFromReference;
 		//	if (anc.references.IsNotEmpty())
 		//	{
 		//		float avg = 0.f;
@@ -1440,7 +1440,7 @@ namespace GUI
 				}
 			}
 			const TFloatRange<>&ctx = context.axis[axis];
-			float ext = a.GetExtend();
+			float ext = a.GetExtent();
 			float center = ctx.GetCenter();
 			float top = std::min(ctx.max,center + ext*0.5f);
 			bool changed = Set(a.max,top);
@@ -1455,13 +1455,13 @@ namespace GUI
 		}
 
 
-		float extend = a.GetExtend();
+		float extend = a.GetExtent();
 
 		if (anchor.min.IsFixed())
 		{
 			const TAnchor&anc = anchor.min;
 
-			const float dist = anc.ToScreenDistance(context.axis[axis].extend(),axis==0);
+			const float dist = anc.ToScreenDistance(context.axis[axis].GetExtent(),axis==0);
 
 			if (anc.references.IsNotEmpty())
 			{
@@ -1481,8 +1481,8 @@ namespace GUI
 		{
 			const TAnchor&anc = anchor.max;
 
-			const float dist = anc.ToScreenDistance(context.axis[axis].extend(),axis==0);
-//			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
+			const float dist = anc.ToScreenDistance(context.axis[axis].GetExtent(),axis==0);
+//			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].GetExtent() : anc.distanceFromReference;
 
 			if (anc.references.IsNotEmpty())
 			{

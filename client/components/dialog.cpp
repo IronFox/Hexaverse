@@ -283,7 +283,7 @@ namespace Dialog
 			//			dialog.totalSize.Include(c->rect);
 
 			//	//float center = totalSize.y.center();
-			//	float top = 0.5f + dialog.totalSize.y.GetExtend()/2.f;
+			//	float top = 0.5f + dialog.totalSize.y.GetExtent()/2.f;
 			//	textField->MoveTopTo(top);
 
 			//	if (inputField)

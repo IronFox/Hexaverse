@@ -597,7 +597,7 @@
 					visibleRange = IntRange(index_t(0),scopeWidth);
 					if (newOffset > 0)
 						visibleRange = IntRange(newOffset,scopeWidth);
-					moreRight = visibleRange.GetExtend() > currentContactListWidth;
+					moreRight = visibleRange.GetExtent() > currentContactListWidth;
 					if (moreRight)
 						visibleRange.end = visibleRange.start + currentContactListWidth;
 					this->offset = newOffset;
@@ -643,7 +643,7 @@
 			void							DynamicRow::RebuildCommands()
 			{
 				RemoveCommandIcons();
-				for (index_t i = 0; i < visibleRange.GetExtend(); i++)
+				for (index_t i = 0; i < visibleRange.GetExtent(); i++)
 				{
 					const Objects::PBaseCommand cmd = commands[i+visibleRange.start];
 					GridCell&cell = AllocateCell(cmd);
