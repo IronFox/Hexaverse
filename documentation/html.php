@@ -3,6 +3,18 @@ require_once('visual/site.php');
 require_once('renderer/WikiRenderer.lib.php');
 require_once(WIKIRENDERER_PATH . 'rules/dokuwiki_to_xhtml.php');
 
+function BeginsWith($strHaystack, $strNeedle)
+{
+	return substr($strHaystack,0,strlen($strNeedle)) == $strNeedle;
+}
+
+function GetTagValue($strHaystack, $tag)
+{
+	if (!BeginsWith($strHaystack, $tag.':'))
+		return null;
+	return substr($strHaystack,strlen($tag)+1);
+}
+
 class MyConfig extends dokuwiki_to_xhtml
 {
 	/**
@@ -14,6 +26,8 @@ class MyConfig extends dokuwiki_to_xhtml
 	{
 		$rs = parent::processLink($url, $tagName);
 		$url = $rs[0];
+		if ($appendix = GetTagValue($url,'img'))
+			return array("./images/$appendix", $rs[1]);
 		return array("./html.php?page=$url", $rs[1]);
 	}
 };
