@@ -1,0 +1,6 @@
+== Welcome to the documentation of Hexaverse ==
+
+Please see [[start|getting started]] if you are new to Hexaverse.
+[[Units]] lists all available units in the game.
+
+Working?
