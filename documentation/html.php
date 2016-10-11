@@ -37,7 +37,7 @@ $ctr=new WikiRenderer(new MyConfig());
 function Convert($strPage)
 {
 	global $ctr;
-	$text = implode("\n",file("./documentation/$strPage.txt"));
+	$text = implode('',file("./documentation/$strPage.txt"));
 	$text = $ctr->render($text);
 	
 	$rs = array();
