@@ -2,6 +2,7 @@
 #include "peerNetwork.h"
 #include "networkChannels.h"
 #include "serverLogEvent.h"
+#include "../../client/version.h"
 
 
 namespace PeerNetwork
@@ -16,8 +17,8 @@ namespace PeerNetwork
 		TUniqueID			myID;
 		GenericHashTable<HashValue,ID,PODHash>	keys;
 		float3				myLocation;
-		static const constexpr time_t	InvalidTime = (time_t)-1;
-		time_t				lastRoundBegin = InvalidTime;
+		bool				haveTimeConfig = false;
+		time_t				time0,secondsPerRound;
 
 		StringTable<PClient>	connecting;
 
@@ -31,20 +32,28 @@ namespace PeerNetwork
 					Challenge,
 					ChallengeResponse,
 					PlanetInfo,
-
+					TimeConfig,
 
 				};
 			}
+
+			NETSTRUCT2(TimeConfig
+				, NET(UINT64), time0
+				, NET(UINT32), secondsPerRound
+			);
+
+			NETSTRUCT2(Challenge
+				, Package::NetString<64>, serverVersion
+				, NET(CryptographicID), challengeBytes
+			);
 
 			NETSTRUCT2(ChallengeResponse
 				, NET(HashValue), publicLoginID
 				, NET(HashValue), hashedSecret
 			);
-			NETSTRUCT4(PlanetInfo
+			NETSTRUCT2(PlanetInfo
 				, NET(TUniqueID), uniqueID
 				, NET(TVec3<>), location
-				, NET(RoundNumber), roundNumber
-				, NET(UINT64), lastRoundBegin
 			);
 
 			class Attachment : public TCP::Peer::Attachment
@@ -63,11 +72,11 @@ namespace PeerNetwork
 			IndexTable<index_t>		locationAttachmentMap;
 
 
-			void OnChallenge(NET(CryptographicID)&challenge, TCP::Peer&peer);
+			void OnChallenge(Challenge&challenge, TCP::Peer&peer);
 			void OnChallengeResponse(ChallengeResponse&response, TCP::Peer&peer);
 			void OnPlanetInfo(PlanetInfo&, TCP::Peer&peer);
 
-			TCP::Channel<NET(CryptographicID),0,ChannelID::Challenge>	challenge(OnChallenge);
+			TCP::Channel<Challenge,0,ChannelID::Challenge>	challenge(OnChallenge);
 			TCP::Channel<ChallengeResponse,0,ChannelID::ChallengeResponse>	challengeResponse(OnChallengeResponse);
 			TCP::Channel<PlanetInfo,0,ChannelID::PlanetInfo>	planetInfo(OnPlanetInfo);	//!< Leave this at min-user-level 0, since asynchronous TCP message delivery may cause this message to be rejected otherwise (if received (and rejected) before userLevel is updated)
 
@@ -81,10 +90,16 @@ namespace PeerNetwork
 			}
 
 
-			void OnChallenge(NET(CryptographicID)&challenge, TCP::Peer&peer)
+			void OnChallenge(Challenge&challenge, TCP::Peer&peer)
 			{
+				if (challenge.serverVersion != SERVER_NAME)
+				{
+					LogEvent(EventClass( EventSignificance::ClientFatal, EventFlavor::Loss ), peer,"P2P: Remote server version mismatch. Expected "+String(SERVER_NAME)+", but received "+challenge.serverVersion);
+					peer.DisconnectPeer();
+					return;
+				}
 				ChallengeResponse response;
-				HashID(challenge,myLogin,response.hashedSecret.value);
+				HashID(challenge.challengeBytes,myLogin,response.hashedSecret.value);
 				response.publicLoginID = myLogin.publicID;
 				challengeResponse.SendTo(peer,response,0);
 			}
@@ -111,10 +126,7 @@ namespace PeerNetwork
 				peer.userLevel = 1;
 
 				PlanetInfo begin;
-				begin.lastRoundBegin = InvalidTime;
 				begin.location = myLocation;
-				begin.lastRoundBegin = RuntimeConfig::phase;
-				begin.roundNumber = RuntimeConfig::roundNumber;
 				begin.uniqueID = myID;
 
 				IO::planetInfo.SendTo(peer,begin,0);
@@ -146,8 +158,6 @@ namespace PeerNetwork
 					return;
 				}
 				PAttachment attach = To<Attachment>::Cast(peer.attachment);
-
-				lastRoundBegin = vmin(lastRoundBegin,info.lastRoundBegin);
 				ASSERT__(attach);
 				attach->info = info;
 
@@ -206,7 +216,10 @@ namespace PeerNetwork
 						PAttachment attach (new Attachment());
 						p->attachment = attach;
 						attach->challenge.Generate();
-						challenge.SendTo(peer,attach->challenge,0);
+						Challenge ch;
+						ch.challengeBytes = attach->challenge;
+						ch.serverVersion = SERVER_NAME;
+						challenge.SendTo(peer,ch,0);
 					}
 					break;
 					case TCP::Event::ConnectionClosed:
@@ -270,6 +283,13 @@ namespace PeerNetwork
 
 }
 
+void PeerNetwork::Create(USHORT servicePort, const ID & myLogin, const float3 & myLocation, time_t time0, time_t secondsPerRound)
+{
+	Create(servicePort,myLogin,myLocation);
+	Detail::haveTimeConfig = true;
+	Detail::time0 = time0;
+	Detail::secondsPerRound = secondsPerRound;
+}
 
 void PeerNetwork::Create(USHORT servicePort, const ID & myLogin, const float3 & myLocation)
 {
@@ -332,6 +352,7 @@ void PeerNetwork::Destroy()
 	server.Shutdown();
 	clients.Clear();
 	keys.Clear();
+	haveTimeConfig = false;
 	IO::activeAttachments.Clear();
 	IO::locationAttachmentMap.Clear();
 }

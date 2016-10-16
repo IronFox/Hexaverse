@@ -90,10 +90,12 @@ namespace PeerNetwork
 	};
 
 
+
 	/**
 	Creates the service and registeres the given secret as remotely accepted identifier.
 	*/
 	void			Create(USHORT servicePort, const ID&myLogin, const float3&myLocation);
+	void			Create(USHORT servicePort, const ID&myLogin, const float3&myLocation, time_t time0, time_t secondsPerRound);
 	void			Destroy();
 	bool			IsOnline();
 
@@ -114,7 +116,10 @@ namespace PeerNetwork
 	const TLink&	GetLink(index_t);
 	index_t			FindLinkFrom(UINT32 lowCellID);
 	
-	void			SignalNewRound();
+	/**
+	Queries the round number according to the current time
+	*/
+	RoundNumber		GetTargetRound();
 	
 	/**
 	Initiates transit of a mobile entity. The entity may be a hangar entity thus carrying other entities according to game rules.
