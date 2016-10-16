@@ -1180,7 +1180,12 @@ namespace Grid
 			}
 		}
 
-
+		/**
+		Locates the closest cell center to the given vector v.
+		Searches from cell to cell, taking the shortest path to the closest match, but may walk around half the planet
+		@param v Directional vector to match (up-direction). May be any non-zero length
+		@param startID Cell to start looking from
+		*/
 		UINT32			Locate(const TVec3<>&v, UINT32 startID = 0)	const
 		{
 			UINT32 stackID = startID;
