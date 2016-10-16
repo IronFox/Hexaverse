@@ -26,6 +26,7 @@
 #include "components/journalSaveGame.h"
 #include "components/reflection.h"
 #include "components/configurationMode.h"
+#include "components/peerNetwork.h" 
 
 UINT32 globalVersionOfCurrentFile = 0;	//file version being loaded right now
 
