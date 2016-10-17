@@ -30,8 +30,6 @@ namespace Dialog
 	namespace Detail
 	{
 
-		Buffer0<GUIElements::PWindow,Swap>	visibleWindows;
-		Buffer0<PDialog,Swap>	visibleDialogs;//subset of visibleWindows, not necessarily the top-most one(s)
 		Queue<PDialog,Swap>		pendingTutorials;
 		PDialog					factionDialog;
 		bool		showTutorials = true;
@@ -56,13 +54,9 @@ namespace Dialog
 
 		PDialog	NewModalDialog(UINT32 componentFlags, const String&confirmWord, bool isTutorial)
 		{
-			if (visibleWindows.IsNotEmpty())
-				visibleWindows.last()->Deactivate();
 			PDialog dialog(new Dialog());
-			visibleWindows << dialog;
-			visibleDialogs << dialog;
 			Configure(dialog,componentFlags,confirmWord, isTutorial);
-			dialog->Activate();
+			Show(dialog);
 			return dialog;
 		}
 
@@ -74,77 +68,84 @@ namespace Dialog
 			dialog->anchorConfig.Right().Set(0.25f);
 			
 			dialog->fillBackground = false;
-			//GUIElements::PComponent	common(new GUIElements::Area());
+			//GUI::PComponent	common(new GUI::Area());
 
-			GUIElements::PPanel	textPanel(new GUIElements::Panel());
-			GUIElements::PLabel textField(new GUIElements::Label());
-			textPanel->components.Append(textField);
+			GUI::PPanel	textPanel(new GUI::Panel());
+			GUI::PLabel textField(new GUI::Label());
+			textPanel->AddComponent(textField);
 			textField->anchorConfig.Left().Set(0.f);
 			textField->anchorConfig.Right().Set(0.f);
 			textField->anchorConfig.Top().Set(0.f);
 			textPanel->anchorConfig = textField->anchorConfig;
 			textPanel->autoHeight = true;
-			dialog->components << textPanel;
+			dialog->AddComponent(textPanel);
 			
 			//height controlled by content
 
-			GUIElements::PButton confirmButton,cancelButton,noButton,helpButton;
-			GUIElements::PInput	inputField;
-			GUIElements::PPasswordInput passwordInputField;
-			GUIElements::PImage	imageField;
-			Buffer0<std::pair<float,GUIElements::PButton> > buttons;
+			GUI::PButton confirmButton,cancelButton,noButton,helpButton;
+			GUI::PInput	inputField;
+			GUI::PPasswordInput passwordInputField;
+			GUI::PImage	imageField;
+			Buffer0<std::pair<float,GUI::PButton> > buttons;
 
 
 			if (componentFlags & ComponentFlags::Input)
 			{
-				inputField.reset(new GUIElements::Input());
+				inputField.reset(new GUI::Input());
 				inputField->anchorConfig.Left().Set(0.f);
 				inputField->anchorConfig.Right().Set(0.f);
 				inputField->anchorConfig.Top().Set(textField,0.f);//0.025f);
-				textPanel->components.Append (inputField);
+				WDialog wd = dialog;
+				inputField->onEnter = [wd]()
+				{
+					PDialog d = wd.lock();
+					if (d && d->CanBeConfirmed(false))
+						d->Confirm(false);
+				};
+				textPanel->AddComponent (inputField);
 			}
 			if (componentFlags & ComponentFlags::PasswordInput)
 			{
-				passwordInputField.reset(new GUIElements::PasswordInput());
+				passwordInputField.reset(new GUI::PasswordInput());
 				passwordInputField->anchorConfig.Left().Set(0.f);
 				passwordInputField->anchorConfig.Right().Set(0.f);
 				passwordInputField->anchorConfig.Top().Set(textField,0.f);//0.025f);
-				textPanel->components.Append (passwordInputField);
+				textPanel->AddComponent (passwordInputField);
 			}
 
 			if (componentFlags & ComponentFlags::ConfirmButton)
 			{
-				confirmButton.reset(new GUIElements::Button(confirmWord));
+				confirmButton.reset(new GUI::Button(confirmWord));
 				confirmButton->anchorConfig.Left().Set(0.f);
 				confirmButton->anchorConfig.Right().Set(0.f);
-				confirmButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
-				dialog->components << confirmButton;
+				confirmButton->anchorConfig.Top().Set(textPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+				dialog->AddComponent( confirmButton);
 				buttons << std::make_pair(1, confirmButton);
 			}
 			if (componentFlags & ComponentFlags::HelpButton)
 			{
-				helpButton.reset(new GUIElements::Button("?"));
-				helpButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
-				dialog->components << helpButton;
+				helpButton.reset(new GUI::Button("?"));
+				helpButton->anchorConfig.Top().Set(textPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+				dialog->AddComponent(helpButton);
 				buttons << std::make_pair(0.25f, helpButton);
 			}
 			if (componentFlags & ComponentFlags::NoButton)
 			{
-				noButton.reset(new GUIElements::Button("No"));
-				noButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
-				dialog->components << noButton;
+				noButton.reset(new GUI::Button("No"));
+				noButton->anchorConfig.Top().Set(textPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+				dialog->AddComponent( noButton);
 				buttons << std::make_pair(1, noButton);
 			}
 			if (componentFlags & ComponentFlags::CancelButton)
 			{
-				cancelButton.reset(new GUIElements::Button("Cancel"));
+				cancelButton.reset(new GUI::Button("Cancel"));
 
 				//if (confirmButton)
 				//	confirmButton->anchorConfig.Right().Set(0.505f);
 				cancelButton->anchorConfig.Left().Set(0.505f);
 				cancelButton->anchorConfig.Right().Set(0.f);
-				cancelButton->anchorConfig.Top().Set(textPanel,0.015f,GUIElements::TAnchor::RelativeToScreen);
-				dialog->components << cancelButton;
+				cancelButton->anchorConfig.Top().Set(textPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+				dialog->AddComponent(cancelButton);
 				buttons << std::make_pair(1, cancelButton);
 			}
 
@@ -171,7 +172,7 @@ namespace Dialog
 
 			if (componentFlags & ComponentFlags::Image)
 			{
-				imageField.reset(new GUIElements::Image());
+				imageField.reset(new GUI::Image());
 				
 
 				textField->anchorConfig.Left().Set(0.405f);
@@ -191,7 +192,7 @@ namespace Dialog
 				//textField->rect.Set(0.405f,0.25f,0.75f,0.75f);
 				//imageField->rect.Set(0.25f,0.25f,0.4f,0.75f);
 				textField->alignCenter = false;
-				textPanel->components << imageField;
+				textPanel->AddComponent(imageField);
 			}
 
 
@@ -205,20 +206,20 @@ namespace Dialog
 			//	case ModalDialogType::FactionList:
 			//	case ModalDialogType::Message:
 			//	{
-			//		confirmButton.reset(new GUIElements::Button());
+			//		confirmButton.reset(new GUI::Button());
 			//	}
 			//	break;
 			//	case ModalDialogType::StringQuery:
 			//	{
-			//		confirmButton.reset(new GUIElements::Button());
-			//		cancelButton.reset(new GUIElements::Button());
-			//		inputField.reset(new GUIElements::Input());
+			//		confirmButton.reset(new GUI::Button());
+			//		cancelButton.reset(new GUI::Button());
+			//		inputField.reset(new GUI::Input());
 			//	}
 			//	break;
 			//	case ModalDialogType::TutorialMessage:
 			//	{
-			//		confirmButton.reset(new GUIElements::Button());
-			//		imageField.reset(new GUIElements::Image());
+			//		confirmButton.reset(new GUI::Button());
+			//		imageField.reset(new GUI::Image());
 			//	}
 			//	break;
 			//}
@@ -282,7 +283,7 @@ namespace Dialog
 			//			dialog.totalSize.Include(c->rect);
 
 			//	//float center = totalSize.y.center();
-			//	float top = 0.5f + dialog.totalSize.y.GetExtend()/2.f;
+			//	float top = 0.5f + dialog.totalSize.y.GetExtent()/2.f;
 			//	textField->MoveTopTo(top);
 
 			//	if (inputField)
@@ -333,60 +334,19 @@ namespace Dialog
 	}
 
 
-	void	VerifyIntegrity(const TCodeLocation&loc)
-	{
-		if (Detail::visibleWindows.IsEmpty())
-			return;
 
-
-		for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
-		{
-			bool shouldBeActive = (i+1 == Detail::visibleWindows.Count());
-			GUIElements::PWindow w = Detail::visibleWindows[i];
-			if (w->IsActive() != shouldBeActive)
-			{
-				String msg = String(loc.ToString())+ ": Activity mismatch for window "+String(i+1)+"/"+String(Detail::visibleWindows.Count())+" (active="+String(w->IsActive())+", should be "+String(shouldBeActive)+")";
-				LogEvent(EventClass::Preset::error,msg);
-				DBG_FATAL__(msg);
-				if (shouldBeActive)
-					w->Activate();
-				else
-					w->Deactivate();
-			}
-		}
-	}
 
 
 
 	void		Dialog::DumpMe()
 	{
-//		reLayout.swap(std::function<void(Dialog&)>());
-		index_t dialogAt = InvalidIndex;
-		foreach (Detail::visibleWindows,_w)
-			if (_w->get() == this)
-			{
-				dialogAt = _w - Detail::visibleWindows.pointer();
-				break;
-			}
-		if (dialogAt == InvalidIndex)
+		if (!GUI::Hide(this))
 			return;	//already erased somewhere else
-
-
-		bool active = Super::IsActive();
-		if (active)
-			Deactivate();
-
-		components.Clear();
-		confirmButton.reset();
-		userInput.reset();
-		textField.reset();
-		image.reset();
-
-		Detail::visibleWindows.Erase(dialogAt);
-		Detail::visibleDialogs.FindAndErase(shared_from_this());
-		if (active && Detail::visibleWindows.IsNotEmpty())
-			Detail::visibleWindows.last()->Activate();
-		VerifyIntegrity(CLOCATION);
+		//components.Clear();	//redundant, will be erased automatically
+		//confirmButton.reset();
+		//userInput.reset();
+		//textField.reset();
+		//image.reset();
 	}
 
 	bool		Dialog::CanBeConfirmed(bool bySpace)	const
@@ -406,7 +366,7 @@ namespace Dialog
 			return;
 		if (confirmButton && !confirmButton->IsEnabled())
 			return;	//would, if it could
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		bool tut = isTutorial;
 		if (!fetchInput && !onPassword)
 		{
@@ -430,7 +390,7 @@ namespace Dialog
 			DumpMe();
 		}
 
-		if (tut && Detail::pendingTutorials.IsNotEmpty() && !IsModal())
+		if (tut && Detail::pendingTutorials.IsNotEmpty() && !GUI::IsModal())
 		//Detail::visibleDialogs.IsEmpty())
 		{
 			ShowNextTutorial();
@@ -441,11 +401,6 @@ namespace Dialog
 
 	namespace Detail
 	{
-		void OnInput()
-		{
-			if (visibleWindows.IsNotEmpty())
-				visibleWindows.last()->DetectEnabledState();
-		}
 		void OnDone()
 		{
 			ConfirmCurrent(false);
@@ -455,17 +410,18 @@ namespace Dialog
 
 	bool	ConfirmCurrent(bool bySpace)
 	{
-		VerifyIntegrity(CLOCATION);
-		if (Detail::visibleWindows.IsEmpty())
+		GUI::VerifyIntegrity(CLOCATION);
+		GUI::PWindow window = GUI::GetTopMostWindow();
+		if (!window)
 			return false;
-		PDialog d = To<Dialog>::DynamicCast(Detail::visibleWindows.last());
+		PDialog d = To<Dialog>::DynamicCast(window);
 		if (d && d->CanBeConfirmed(bySpace))
 		{
 			d->Confirm(bySpace);
-			VerifyIntegrity(CLOCATION);
+			GUI::VerifyIntegrity(CLOCATION);
 			return true;
 		}
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		return false;
 	}
 
@@ -480,25 +436,22 @@ namespace Dialog
 	
 	void	ShowNextTutorial()
 	{
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		if (Detail::pendingTutorials.IsNotEmpty())
 		{
 			Show(Detail::pendingTutorials.Peek());
 			Detail::pendingTutorials.EraseFront();
-			VerifyIntegrity(CLOCATION);
+			GUI::VerifyIntegrity(CLOCATION);
 		}
 	
 		OnTutorialsChanged();
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 	
 	}
 
 	WDialog	QueryPassword(const String&query, const FOnPassword&onPassword, const FCheckState&check, bool sendNullPasswordOnAbortByUser/*=false*/)
 	{
-		VerifyIntegrity(CLOCATION);
-		GUIElements::Input::onChange = Detail::OnInput;
-		GUIElements::Input::onDone = Detail::OnDone;
-
+		GUI::VerifyIntegrity(CLOCATION);
 
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton | Detail::ComponentFlags::CancelButton | Detail::ComponentFlags::PasswordInput, "OK", false);
 		d->textField->SetText(query);
@@ -515,7 +468,7 @@ namespace Dialog
 			d->cancelButton->SetOnPress([d](){d->onPassword(nullptr); d->DumpMe();});
 
 		d->ReLayout();
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 
 		return d;
 	}
@@ -523,11 +476,7 @@ namespace Dialog
 
 	WDialog	Query(const String&query, const String&initial, const String&allowChars, const FCheckInput&check, const FFetchInput&fetch)
 	{
-		VerifyIntegrity(CLOCATION);
-		GUIElements::Input::onChange = Detail::OnInput;
-		GUIElements::Input::onDone = Detail::OnDone;
-
-
+		GUI::VerifyIntegrity(CLOCATION);
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton | Detail::ComponentFlags::CancelButton | Detail::ComponentFlags::Input, "OK", false);
 		d->textField->SetText(query);
 
@@ -543,17 +492,14 @@ namespace Dialog
 		d->confirmButton->DetectEnabledState();
 
 		d->ReLayout();
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 
 		return d;
 	}
 
 	WDialog	CheckedQuery(const String&query, const String&initial, const String&allowChars, const FCheckState&check, const FFetchInput&fetch)
 	{
-		VerifyIntegrity(CLOCATION);
-		GUIElements::Input::onChange = Detail::OnInput;
-		GUIElements::Input::onDone = Detail::OnDone;
-
+		GUI::VerifyIntegrity(CLOCATION);
 
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton | Detail::ComponentFlags::CancelButton | Detail::ComponentFlags::Input, "OK", false);
 		d->textField->SetText(query);
@@ -570,7 +516,7 @@ namespace Dialog
 		d->confirmButton->DetectEnabledState();
 
 		d->ReLayout();
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 
 		return d;
 	}
@@ -602,118 +548,16 @@ namespace Dialog
 
 
 	
-	bool	Hide(const GUIElements::PWindow&window)
-	{
-		VerifyIntegrity(CLOCATION);
-		index_t index = Detail::visibleWindows.GetIndexOf(window);
-		if (index == InvalidIndex)
-			return false;
-
-		Detail::visibleWindows.Erase(index);
-
-		PDialog d = To<Dialog>::DynamicCast(window);
-		if (d)
-		{
-			if (d->onPassword && d->sendNullPasswordOnAbortByUser && (!d->check || d->check() == CheckResult::OkayContinue))
-			{
-				d->onPassword(nullptr);
-			}
-			Detail::visibleDialogs.FindAndErase(d);
-		}
-
-		if (index == Detail::visibleWindows.Count())
-		{
-			window->Deactivate();
-			if (Detail::visibleWindows.IsNotEmpty())
-				Detail::visibleWindows.last()->Activate();
-		}
-
-		VerifyIntegrity(CLOCATION);
-
-		SignalSituationChange();
-
-		return true;
-
-	}
-
-	bool	IsVisible(const GUIElements::PWindow&window)
-	{
-		return Detail::visibleWindows.Contains(window);
-	}
-
-	void	Show(const GUIElements::PWindow&window)
-	{
-		VerifyIntegrity(CLOCATION);
-		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.last() == window)
-		{
-			DBG_ASSERT__(window->IsActive());
-			if (!window->IsActive())
-				window->Activate();
-			return;
-		}
-		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.first() == window)
-		//	return;
-		Detail::visibleWindows.FindAndErase(window);
-		if (Detail::visibleWindows.IsNotEmpty())
-			Detail::visibleWindows.last()->Deactivate();
-		Detail::visibleWindows << window;
-		window->Activate();
-		PDialog d = To<Dialog>::DynamicCast(window);
-		if (d)
-			Detail::visibleDialogs << d;
-
-		VerifyIntegrity(CLOCATION);
-
-		SignalSituationChange();
-
-	}
-
-
-
-	void	ShowBottom(const GUIElements::PWindow&window)
-	{
-		VerifyIntegrity(CLOCATION);
-		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.first() == window)
-		{
-			if (Detail::visibleWindows.Count() == 1)
-			{
-				DBG_ASSERT__(window->IsActive());
-				if (!window->IsActive())
-					window->Activate();
-			}
-			return;
-		}
-		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.first() == window)
-		//	return;
-
-		index_t at = Detail::visibleWindows.GetIndexOf(window);
-		if (at != InvalidIndex)
-		{
-			if (at+1 == Detail::visibleWindows.Count())	//ist last
-			{
-				window->Deactivate();
-				Detail::visibleWindows.fromEnd(1)->Activate();
-			}
-			Detail::visibleWindows.Erase(at);
-		} 
-		Detail::visibleWindows.Insert(0,window);
-		if (Detail::visibleWindows.Count() == 1)
-			window->Activate();
-
-		VerifyIntegrity(CLOCATION);
-		SignalSituationChange();
-
-	}
 
 
 
 	WDialog	ShowFactions(const Buffer0<Faction>&factions)
 	{
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		if (Detail::factionDialog)
 		{
 			RemoveDialog(Detail::factionDialog);
-			VerifyIntegrity(CLOCATION);
+			GUI::VerifyIntegrity(CLOCATION);
 		}
 
 
@@ -722,7 +566,7 @@ namespace Dialog
 		Detail::factionDialog = d;
 
 		Array<String> list(factions.Count()+1);
-		list.first() = "Known factions:";
+		list.First() = "Known factions:";
 		for (index_t i = 0; i < factions.Count(); i++)
 			list[i+1] = "* "+factions[i].name+(factions[i].online?
 			(factions[i].requestedNewRound ? "" : " ("+WordForThinking(RuntimeConfig::roundNumber,factions[i].factionReference )+")")
@@ -733,13 +577,13 @@ namespace Dialog
 		d->textField->zoom = 0.9f;
 		d->ReLayout();
 
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		return d;
 	}
 
 	bool	RemoveTutorial(const PDialog&dialog)
 	{
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		if (!dialog)
 			return false;
 
@@ -755,14 +599,14 @@ namespace Dialog
 			if ((*t) != dialog)
 				temp.Push(*t);
 		Detail::pendingTutorials.adoptData(temp);
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		return true;
 	}
 
 
 	bool	RemoveTutorial(const String&key)
 	{
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		bool found = false;
 		foreach (Detail::pendingTutorials,t)
 			if ((*t)->key == key)
@@ -778,36 +622,19 @@ namespace Dialog
 			if ((*t)->key != key)
 				temp.Push(*t);
 		Detail::pendingTutorials.adoptData(temp);
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 
 		return true;
 	}
 
 	bool	RemoveDialog(const PDialog&dialog)
 	{
-		VerifyIntegrity(CLOCATION);
-		if (!dialog)
-			return false;
-		index_t at = Detail::visibleWindows.GetIndexOf(dialog);
-		if (at == InvalidIndex)
-			return false;
-		Detail::visibleDialogs.FindAndErase(dialog);
-		if (at == Detail::visibleWindows.Count()-1)
-		{
-			dialog->Deactivate();
-			Detail::visibleWindows.EraseLast();
-			if (Detail::visibleWindows.IsNotEmpty())
-				Detail::visibleWindows.last()->Activate();
-		}
-		else
-			Detail::visibleWindows.Erase(at);
-		VerifyIntegrity(CLOCATION);
-		return true;
+		return GUI::Hide(dialog);
 	}
 
 	WDialog	EnqueueTutorial(const String&key, const Array<String>&text, const String&imageName /*= ""*/, const Rect<>&screenReference /*= Rect<>::Invalid*/)
 	{
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		if (!Detail::showTutorials)
 			return PDialog();
 		static StringTable<DX11::Texture,Strategy::Swap>	textureMap;
@@ -852,36 +679,14 @@ namespace Dialog
 		//d.cancelButton.SetText( "Skip Tutorial" );
 
 		d->ReLayout();
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 
 		OnTutorialsChanged();
 
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		return d;
 	}
 
-	bool	HandleMouseDown()
-	{
-		for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
-		{
-			GUIElements::PWindow w = Detail::visibleWindows[i];
-			GUIElements::mousePressedComponent = w->HandleMouseDown();
-			if (GUIElements::mousePressedComponent || w->isModal)
-				return true;
-		}
-		GUIElements::mousePressedComponent.reset();
-		return false;
-	}
-
-	void	HandleMouseUp()
-	{
-		if (GUIElements::mousePressedComponent)
-		{
-			GUIElements::mousePressedComponent->SignalMouseUp();
-			GUIElements::mousePressedComponent.reset();
-		}
-
-	}
 
 
 	//bool	HandleClick()
@@ -898,51 +703,15 @@ namespace Dialog
 	
 
 
-
-	/**
-	Signals that the global situation has changed and active modal dialogs need to be re-evalutated.
-	This may be invoked by a server state change or removal of some entity
-	*/
-	void	SignalSituationChange()
-	{
-		VerifyIntegrity(CLOCATION);
-		for (index_t i = 0; i < Detail::visibleDialogs.Count(); i++)
-		{
-			const PDialog&d = Detail::visibleDialogs[i];
-			if (!d->SignalChange())
-			{
-				index_t at = Detail::visibleWindows.GetIndexOf(d);
-				if (at != InvalidIndex)
-				{
-					Detail::visibleWindows.Erase(at);
-					if (at == Detail::visibleWindows.Count())
-					{
-						d->Deactivate();
-						if (Detail::visibleWindows.IsNotEmpty())
-							Detail::visibleWindows.last()->Activate();
-					}
-				}
-				Detail::visibleDialogs.Erase(i);
-				i--;
-			}
-		}
-		VerifyIntegrity(CLOCATION);
-
-		foreach (Detail::visibleWindows,w)
-			(*w)->DetectEnabledState();
-	}
-
-
-
 	size_t	CharLength(char c)
 	{
-		return (size_t)textout.getFont().getWidth(c);
+		return (size_t)textout.getFont().GetWidth(c);
 	}
 
 
 	WDialog	AskYesNoHelp(const String&query, const String&help, const FOnConfirmBool&onAnswer, const FCheckState&check)
 	{
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		CheckResult ck = check();
 		if (ck == CheckResult::Abort)
 			return PDialog();
@@ -955,7 +724,7 @@ namespace Dialog
 		d->textField->SetText( query );
 		d->helpButton->SetOnPress([help,check]() {ShowMessage(help,check);});
 		d->ReLayout();
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		return d;
 	}
 
@@ -964,7 +733,7 @@ namespace Dialog
 	*/
 	WDialog	Confirm(const String&query, const FOnConfirm&onConfirm, const FCheckState&check)
 	{
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		CheckResult ck = check();
 		if (ck == CheckResult::Abort)
 			return PDialog();
@@ -983,13 +752,13 @@ namespace Dialog
 		d->textField->SetText( query );
 
 		d->ReLayout();
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		return d;
 	}
 
 	WDialog	PermanentMessage(const String&message, const FCheckState&check)
 	{
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		CheckResult ck = check();
 		if (ck == CheckResult::Abort)
 			return PDialog();
@@ -1003,14 +772,14 @@ namespace Dialog
 		d->textField->SetText( message );
 
 		d->ReLayout();
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		return d;
 	}
 
 
 	WDialog	ShowMessage(const String&msg, const FCheckState&check)
 	{
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 
 
 		PDialog d = Detail::NewModalDialog(Detail::ComponentFlags::ConfirmButton, "Got it", false);
@@ -1020,7 +789,7 @@ namespace Dialog
 
 		d->ReLayout();
 
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 		return d;
 
 
@@ -1035,95 +804,24 @@ namespace Dialog
 	}
 
 
-	/**
-	Checks if any modal dialogs are open at this time
-	*/
-	bool	IsModal()
-	{
-		foreach (Detail::visibleWindows,w)
-			if ((*w)->isModal)
-				return true;
-		return false;
-	}
 
-	bool	CloseAllModal()
-	{
-		VerifyIntegrity(CLOCATION);
-		if (Detail::visibleWindows.IsNotEmpty())
-		{
-			bool anyNonClosable = false;
-			foreach (Detail::visibleWindows,w)
-				if (!(*w)->canBeImplicitlyClosed)
-				{
-					anyNonClosable = true;
-					break;
-				}
-
-			if (anyNonClosable)
-			{
-				bool rs = false;
-				for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
-				{
-					GUIElements::PWindow w = Detail::visibleWindows[i];
-					if (w->canBeImplicitlyClosed)
-					{
-						Hide(w);
-						i--;
-						rs = true;
-					}
-				}
-				VerifyIntegrity(CLOCATION);
-				return rs;
-			}
-			else
-			{
-				foreach (Detail::visibleDialogs,_d)
-				{
-					PDialog d = *_d;
-					if (d->onPassword && d->sendNullPasswordOnAbortByUser && (!d->check || d->check() == CheckResult::OkayContinue))
-					{
-						d->onPassword(nullptr);
-					}
-
-				}
-				Detail::visibleWindows.last()->Deactivate();
-				Detail::visibleWindows.Clear();
-				Detail::visibleDialogs.Clear();
-			}
-			VerifyIntegrity(CLOCATION);
-			return true;
-		}
-		VerifyIntegrity(CLOCATION);
-		return false;
-	}
-
-
-
-
-	void	Render()
-	{
-		foreach (Detail::visibleWindows,d)
-		{
-			(*d)->Render();
-		}
-	}
 
 
 	PMenu				loginMenu;
-	GUIElements::PWindow	serverChoice;
+	GUI::PWindow	serverChoice;
 
 
 	void	Create()
 	{
 		Detail::showTutorials = !FileSystem::IsFile(RuntimeConfig::ConfigFile("tutorialsDisabled.mark"));
-		GUIElements::Create();
+		GUI::Create();
 
 
 		loginMenu.reset(new Menu(0.25f,"Login"));
 		loginMenu->canBeImplicitlyClosed = false;	//once visible, must explicitly close
 
-		serverChoice.reset(new GUIElements::Window());
-		serverChoice->SetCenteredWidth(0.9f,GUIElements::TAnchor::RelativeToScreen);
+		serverChoice.reset(new GUI::Window());
+		serverChoice->SetCenteredWidth(0.9f,GUI::TAnchor::RelativeToScreen);
 		serverChoice->canBeImplicitlyClosed = false;
 
 
@@ -1132,7 +830,7 @@ namespace Dialog
 
 	void	CheckServersAreShown(bool doShow)
 	{
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 
 		if (doShow)
 		{
@@ -1140,16 +838,15 @@ namespace Dialog
 		}
 		else
 			Hide(serverChoice);
-		VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 	}
 
 
 	void	Destroy()
 	{
 		loginMenu.reset();
-		Detail::visibleWindows.Clear();
 		Detail::pendingTutorials.Clear();
-		GUIElements::Destroy();
+		GUI::Destroy();
 	}
 
 	bool	ShowingFactions()

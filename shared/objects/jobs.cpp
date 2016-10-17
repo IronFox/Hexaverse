@@ -1098,7 +1098,7 @@ namespace Objects
 				//	h++;
 
 				//	Array<Grid::HCellIdI> selection(1 + cnt);
-				//	selection.first() = ground;
+				//	selection.First() = ground;
 				//	for (int i = 1; i <= cnt; i++)
 				//		selection[i] = ground - i;
 				//	auto job = new Objects::Job::AlterTerrain(v,MobileEntity::BuildBlockMode,selection);

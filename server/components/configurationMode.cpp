@@ -26,9 +26,9 @@ void ConfigurationMode::Begin()
 	if (isActive)
 		return;
 	isActive = true;
-	Network::CloseSession(true);
-	originalFlags = Game::Config::factionSupportFlags;
-	Game::Config::factionSupportFlags = Protocol::GameFlag::SupportSpectatorFactions;
+	originalFlags = Game::Config::factionSupportFlags;	//must copy this before actually closing the session
+	Network::CloseSession(true);						//this line wipes factionSupportFlags
+	//Game::Config::factionSupportFlags = Protocol::GameFlag::SupportSpectatorFactions;	//and this is redundant
 	planetSeed = Random().getSeed();
 	LogEvent(EventSignificance::Important,"Starting configuration mode");
 	Network::BuildConfiguredWorld();

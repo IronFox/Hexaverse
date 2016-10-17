@@ -7,6 +7,7 @@
 #include "stringTable.h"
 #include "logEvent.h"
 #include <general/random.h>
+#include <math/SimplexNoise.h>
 
 #ifdef HAS_WINDOW
 	#include "../client/ExtRenderer/DirectX11.h"
@@ -18,6 +19,9 @@ static const float WorldScale = 40.f;
 
 namespace Grid
 {
+	
+
+
 	CONSTRUCT_ENUMERATION4(WorldDiscovery,
 		None,
 		Water,
@@ -1096,7 +1100,7 @@ namespace Grid
 			{
 				count_t rs = 0;
 				foreach (coverage,c)
-					rs += c->range.GetExtend();
+					rs += c->range.GetExtent();
 				return rs;
 			}
 
@@ -1747,7 +1751,7 @@ namespace Grid
 		/**
 		Computes the coverage for a given location
 		*/
-		static coverage_t		GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max, float scale);
+		static coverage_t		GetRandomCoverage(const SimplexNoise&n, const float3&direction, float p, coverage_t max, float scale);
 
 		static float			probability[],density[];
 		static coverage_t		maximum[];
@@ -2410,17 +2414,10 @@ namespace Grid
 
 
 
-		static void RandomizeSeed(float3&v, Random&random)
-		{
-			v.x = random.getFloat(-16,16);
-			v.y = random.getFloat(-16,16);
-			v.z = random.getFloat(-16,16);
-		}
-
 
 		struct TSeedSet
 		{
-			float3	seed[5],	//for fractal levels 0 to 5
+			int64_t	seed[5],	//for fractal levels 0 to 5
 					productSeed,	//for the final product
 					depressionSeed0,
 					depressionSeed1,
@@ -2431,14 +2428,41 @@ namespace Grid
 			void	Randomize(Random&random)
 			{
 				for (index_t i = 0; i < ARRAYSIZE(seed); i++)
-					RandomizeSeed(seed[i],random);
-				RandomizeSeed(depressionSeed0,random);
-				RandomizeSeed(depressionSeed1,random);
-				RandomizeSeed(depressionSeed2,random);
-				RandomizeSeed(depressionSeed3,random);
-				RandomizeSeed(productSeed,random);
+					seed[i] = random.get();
+				depressionSeed0 = random.get();
+				depressionSeed1 = random.get();
+				depressionSeed2 = random.get();
+				depressionSeed3 = random.get();
+				productSeed = random.get();
 			}
 		};
+
+		struct NoiseSet
+		{
+			SimplexNoise	fractal[5],	//for fractal levels 0 to 5
+							product,	//for the final product
+							depression0,
+							depression1,
+							depression2,
+							depression3;
+
+			/**/			NoiseSet(const TSeedSet&set):
+								fractal
+									{
+										set.seed[0],
+										set.seed[1],
+										set.seed[2],
+										set.seed[3],
+										set.seed[4]
+									},
+								product(set.productSeed),
+								depression0(set.depressionSeed0),
+								depression1(set.depressionSeed1),
+								depression2(set.depressionSeed2),
+								depression3(set.depressionSeed3)
+			{}
+		};
+
 
 		struct TLayerConfig
 		{

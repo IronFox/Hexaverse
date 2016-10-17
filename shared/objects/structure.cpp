@@ -208,7 +208,7 @@ namespace Objects
 
 				{
 					//float delta = std::max(fabs(angles.x - turretAngleX), fabs(angles.y - turretAngleY));
-					SignalTurretRotation(shared_from_this(),(ToWorld(trajectory[1]) - ToWorld(trajectory.first())).Normalized0(),Times::TurretRotation);
+					SignalTurretRotation(shared_from_this(),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),Times::TurretRotation);
 					motionTime += Times::TurretRotation;
 				}
 
@@ -2144,7 +2144,7 @@ namespace Objects
 	
 		Component::VehicleBase*					VehiclePlant::GetProductionBase() const
 		{
-			return queue.IsNotEmpty() ? queue.first().base : nullptr;
+			return queue.IsNotEmpty() ? queue.First().base : nullptr;
 		}
 
 
@@ -2487,7 +2487,7 @@ namespace Objects
 				return false;
 			if (connectedTo.IsEmpty())
 				return true;
-			PStructure s = connectedTo.first().structure.lock();
+			PStructure s = connectedTo.First().structure.lock();
 			ASSERT__(s);
 			return s && c.structure->owner == s->owner;
 		#else

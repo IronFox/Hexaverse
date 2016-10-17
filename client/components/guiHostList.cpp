@@ -41,10 +41,10 @@ void	SaveHosts()
 
 	static const float VisualTabWidth = 0.2f;
 
-	GUIElements::PLabel	MakeTabLabel(const String&text, float zoom)
+	GUI::PLabel	MakeTabLabel(const String&text, float zoom)
 	{
-		using namespace GUIElements;
-		PLabel label (new GUIElements::Label());
+		using namespace GUI;
+		PLabel label (new GUI::Label());
 		label->alignCenter = false;
 		label->SetLocation(Rect<>(0,0,VisualTabWidth,0.f));
 		label->anchorConfig.Top().Set(0.01f);
@@ -56,22 +56,22 @@ void	SaveHosts()
 	};
 
 
-	GUIElements::PLabel	AddTab(const GUIElements::PPanel&context, const String&name, bool incompatible, float verticalSpacing = 0.f, GUIElements::TAnchor::distanceType_t verticalSpacingIsRelative = GUIElements::TAnchor::RelativeToScreen)
+	GUI::PLabel	AddTab(const GUI::PPanel&context, const String&name, bool incompatible, float verticalSpacing = 0.f, GUI::TAnchor::distanceType_t verticalSpacingIsRelative = GUI::TAnchor::RelativeToScreen)
 	{
-		using namespace GUIElements;
+		using namespace GUI;
 		PLabel label=MakeTabLabel(name,1.1f);
 		label->anchorConfig.Top().Set(verticalSpacing,verticalSpacingIsRelative);
-		if (context->components.IsNotEmpty())
-			label->anchorConfig.Left().Set(context->components.last(),0.f);
+		if (context->HasComponents())
+			label->anchorConfig.Left().Set(context->GetComponents().last(),0.f);
 		else
 			label->anchorConfig.Left().Set(0.f);
-		context->components.Append(label);
+		context->AddComponent(label);
 		if (incompatible)
 			label->SetColor(incompatibleColor);
 		return label;
 	}
 
-	GUIElements::PLabel	AddTab(const String&name, bool incompatible)
+	GUI::PLabel	AddTab(const String&name, bool incompatible)
 	{
 		return AddTab(Dialog::serverChoice,name,incompatible);
 	}
@@ -120,12 +120,12 @@ void	SaveHosts()
 		return p.second;
 	}
 
-	GUIElements::PButtonPanel ConstructPanel(Network::ServerInfo&info)
+	GUI::PButtonPanel ConstructPanel(Network::ServerInfo&info)
 	{
-		using namespace GUIElements;
+		using namespace GUI;
 		if (info.buttonPanel)
 		{
-			info.buttonPanel->components.Clear();
+			info.buttonPanel->ClearComponents();
 		}
 		else
 		{
@@ -154,7 +154,7 @@ void	SaveHosts()
 				if (!info)
 					return;
 				index_t best = 0;
-				float bestPing = PingOf(info->addresses.first());
+				float bestPing = PingOf(info->addresses.First());
 				for (index_t i = 1; i < info->addresses.Count(); i++)
 				{
 					float ping = PingOf(info->addresses[i]);
@@ -206,18 +206,18 @@ void	SaveHosts()
 			}
 			PLabel headLine = MakeTabLabel(text,1.1f);
 			headLine->SetColor(color);
-			headLine->anchorConfig.Top().Set(0.01f,GUIElements::TAnchor::RelativeToScreen);
+			headLine->anchorConfig.Top().Set(0.01f,GUI::TAnchor::RelativeToScreen);
 			info.headLine = headLine;
 		}
 
-		p->components << info.headLine;
+		p->AddComponent(info.headLine);
 
 
 		bool incompatible = !info.rightVersion || info.protocolIncompatible;
 		{
-			AddTab(p,String(info.info.gameInfo.numFactionsOnline) + "/" + String(info.info.gameInfo.numFactionsCreated),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
-			AddTab(p,info.info.gameInfo.roundNumber.value.ToString(),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
-			PLabel l = AddTab(p,CompileRules(info.info),incompatible,0.01f,GUIElements::TAnchor::RelativeToScreen);
+			AddTab(p,String(info.info.gameInfo.numFactionsOnline) + "/" + String(info.info.gameInfo.numFactionsCreated),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
+			AddTab(p,info.info.gameInfo.roundNumber.value.ToString(),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
+			PLabel l = AddTab(p,CompileRules(info.info),incompatible,0.01f,GUI::TAnchor::RelativeToScreen);
 			l->zoom *= 0.9f;
 
 		}
@@ -237,26 +237,26 @@ void	SaveHosts()
 			if (first)
 			{
 				first = false;
-				label->anchorConfig.Top().SetSomeOf(p,0.f,[p](const PComponent&c)->bool{return c != p->components.last();});
+				label->anchorConfig.Top().SetSomeOf(p,0.f,[p](const PComponent&c)->bool{return c != p->GetComponents().last();});
 			}
 			else
 			{
-				label->anchorConfig.Top().Set(p->components.last(),0.f,GUIElements::TAnchor::RelativeToScreen);
+				label->anchorConfig.Top().SetLastOf(p,0.f,GUI::TAnchor::RelativeToScreen);
 			}
-			p->components << label;
+			p->AddComponent( label );
 		}
 
 		if (!info.rightVersion && !info.protocolIncompatible)
 		{
 			PLabel label = MakeTabLabel("Server identifies as '"+String(info.info.hostInfo.value.version)+'\'',0.7f);
 			label->SetColor(incompatibleColor);
-			label->anchorConfig.Top().Set(p->components.last(),0.005f,GUIElements::TAnchor::RelativeToScreen);
-			p->components << label;
+			label->anchorConfig.Top().SetLastOf(p,0.005f,GUI::TAnchor::RelativeToScreen);
+			p->AddComponent( label );
 					
 			label = MakeTabLabel("Client expected '" SERVER_NAME "\'",0.7f);
 			label->SetColor(incompatibleColor);
-			label->anchorConfig.Top().Set(p->components.last(),0.005f,GUIElements::TAnchor::RelativeToScreen);
-			p->components << label;
+			label->anchorConfig.Top().SetLastOf(p,0.005f,GUI::TAnchor::RelativeToScreen);
+			p->AddComponent( label );
 		}
 
 		p->autoHeightSpacing = 0.01f;
@@ -282,26 +282,26 @@ void	SaveHosts()
 	}
 
 
+	GUI::PPanel	serverListPanel;
 
-
-	 void	UpdateServerChoice()
-	 {
-		using namespace GUIElements;
+	void	UpdateServerChoice()
+	{
+		using namespace GUI;
 		
 		if (Dialog::serverChoice->HasComponent(mousePressedComponent))
 			return;	//can't activate right now
-		Dialog::VerifyIntegrity(CLOCATION);
+		GUI::VerifyIntegrity(CLOCATION);
 
 		const bool isActive = Dialog::serverChoice->IsActive();
 		if (isActive)
-			Dialog::serverChoice->Deactivate();
-		Dialog::serverChoice->components.Clear();
+			Dialog::serverChoice->SetActive(false);
+		Dialog::serverChoice->ClearComponents();
 
 		Dialog::serverChoice->fillBackground = false;
 		Dialog::serverChoice->isModal = false;
 		Dialog::serverChoice->autoCenter = false;
 		Dialog::serverChoice->anchorConfig.Top().Set(0.1f);
-
+		Dialog::serverChoice->maxHeight = 0.8f;
 
 		AddTab("HostID/WorldID",false);
 		AddTab("Factions online",false);
@@ -310,39 +310,28 @@ void	SaveHosts()
 
 		bool attemptingConnection = Network::client.IsAttemptingToConnect();
 
-		bool first =true;
-
-		for (index_t i = 0; i < Network::servers.Count(); i++)
+		//bool first =true;
+		
+		if (!serverListPanel)
 		{
-			auto&info = Network::servers[i];
-
-			PButtonPanel p = ConstructPanel(info);
-
-			p->anchorConfig.Top().references.Clear();
-			if (first)
-			{
-				first = false;
-				p->anchorConfig.Top().SetAllOf(Dialog::serverChoice,0.015f,GUIElements::TAnchor::RelativeToScreen);
-			}
-			else
-				p->anchorConfig.Top().Set(Dialog::serverChoice->components.last(),0.015f,GUIElements::TAnchor::RelativeToScreen);
-			Dialog::serverChoice->components << p;
+			serverListPanel.reset(new GUI::Panel());
+			serverListPanel->anchorConfig.axis[0].min.Set(0);
+			serverListPanel->anchorConfig.axis[0].max.Set(0);
+			serverListPanel->autoHeight = true;
+			serverListPanel->maxHeight = 0.5f;
+			serverListPanel->fillBackground = false;
 		}
+		serverListPanel->ClearComponents();
+		serverListPanel->anchorConfig.axis[1].max.SetAllOf(Dialog::serverChoice,0);
+		Dialog::serverChoice->AddComponent( serverListPanel );
 
-		//count_t openAttempts = 0;
+
 		static Buffer0<Network::ServerAddress>	list;
 		Network::ServerDiscovery::ListFailedAttempts(list);
-
 		foreach (list,failed)
 		{
 			PPanel p(new Panel());
-			if (first)
-			{
-				first = false;
-				p->anchorConfig.Top().SetAllOf(Dialog::serverChoice,0.025f,GUIElements::TAnchor::RelativeToScreen);
-			}
-			else
-				p->anchorConfig.Top().SetLastOf(Dialog::serverChoice,0.025f,GUIElements::TAnchor::RelativeToScreen);
+			p->anchorConfig.Top().SetLastOf(serverListPanel,0.015f,GUI::TAnchor::RelativeToScreen);
 
 			p->anchorConfig.Left().Set(0.f);
 			p->anchorConfig.Right().Set(0.f);
@@ -351,7 +340,7 @@ void	SaveHosts()
 
 			PPanel pb(new Panel());
 			//pb->autoHeight = true;
-			p->components << pb;
+			p->AddComponent( pb );
 			pb->anchorConfig.Top().Set(0.f);
 			pb->anchorConfig.Bottom().Set(0.f);
 			pb->anchorConfig.Left().Set(0.f);
@@ -361,9 +350,9 @@ void	SaveHosts()
 			PLabel label = MakeTabLabel("Still trying to query '"+failed->ToString()+"'...",0.7f);
 //			label->anchorConfig.Left().Set(0.1f,false);
 			label->SetColor(1,0.75f,0.75f,0.9f);
-			label->anchorConfig.Top().Set(0.01f,GUIElements::TAnchor::RelativeToScreen);
-			label->anchorConfig.Right().Set(0.01f,GUIElements::TAnchor::RelativeToScreen);
-			pb->components << label;
+			label->anchorConfig.Top().Set(0.01f,GUI::TAnchor::RelativeToScreen);
+			label->anchorConfig.Right().Set(0.01f,GUI::TAnchor::RelativeToScreen);
+			pb->AddComponent( label );
 			Network::ServerAddress url = *failed;
 			PButton forget(new Button("Forget this host",
 			[url]()
@@ -390,28 +379,44 @@ void	SaveHosts()
 			forget->anchorConfig.Top().Set(0.f);
 			forget->anchorConfig.Right().Set(0.f);
 
-			p->components << forget;
+			p->AddComponent( forget );
 
-			pb->anchorConfig.Right().Set(forget,10,GUIElements::TAnchor::AbsolutePixels);
+			pb->anchorConfig.Right().Set(forget,10,GUI::TAnchor::AbsolutePixels);
 
 
-			Dialog::serverChoice->components << p;
+			serverListPanel->AddComponent( p );
 		}
+
+		for (index_t i = 0; i < Network::servers.Count(); i++)
+		{
+			auto&info = Network::servers[i];
+
+			PButtonPanel p = ConstructPanel(info);
+
+			p->anchorConfig.Top().references.Clear();
+			p->anchorConfig.Top().SetLastOf(serverListPanel,0.015f,GUI::TAnchor::RelativeToScreen);
+			serverListPanel->AddComponent( p );
+		}
+
+		//count_t openAttempts = 0;
+
+
+
 
 
 		if (Network::servers.IsEmpty())
 		{
 			PButtonPanel p(new ButtonPanel());
-			p->anchorConfig.Top().SetAllOf(Dialog::serverChoice,0.025f,GUIElements::TAnchor::RelativeToScreen);
+			p->anchorConfig.Top().SetAllOf(Dialog::serverChoice,0.025f,GUI::TAnchor::RelativeToScreen);
 
 			PLabel label = MakeTabLabel(" No Servers Found",0.7f);
-			label->anchorConfig.Left().Set(0.1f,GUIElements::TAnchor::RelativeToScreen);
+			label->anchorConfig.Left().Set(0.1f,GUI::TAnchor::RelativeToScreen);
 			label->SetColor(1,1,1,0.7f);
-			p->components << label;
+			p->AddComponent( label );
 			p->autoHeight = true;
 			p->autoHeightSpacing *= 4.f;
 
-			Dialog::serverChoice->components << p;
+			Dialog::serverChoice->AddComponent( p );
 		};
 
 
@@ -436,11 +441,11 @@ void	SaveHosts()
 			},
 			[]()->bool {return !Network::client.IsAttemptingToConnect() && !Network::client.IsConnected();}
 			));
-			b->anchorConfig.Top().SetLastOf(Dialog::serverChoice,0.025f,GUIElements::TAnchor::RelativeToScreen);
+			b->anchorConfig.Top().SetLastOf(Dialog::serverChoice,0.025f,GUI::TAnchor::RelativeToScreen);
 			b->anchorConfig.Left().Set(0.f);
 			b->LockIdealWidth();
 
-			Dialog::serverChoice->components << b;
+			Dialog::serverChoice->AddComponent( b );
 			
 			addHostButton = b;
 		}
@@ -485,13 +490,14 @@ void	SaveHosts()
 			start->anchorConfig.Left().Set(addHostButton,0.02f);
 			stop->anchorConfig.Left().Set(start,0.02f);
 
-			Dialog::serverChoice->components << start << stop;
+			Dialog::serverChoice->AddComponent(start);
+			Dialog::serverChoice->AddComponent(stop);
 		}
 		
 
 		Dialog::serverChoice->FullAutoLayout();
 		if (isActive)
-			Dialog::serverChoice->Activate();
+			Dialog::serverChoice->SetActive(isActive);
 
 		
 		Dialog::CheckServersAreShown(!Network::client.IsConnected());

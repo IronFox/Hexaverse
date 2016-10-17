@@ -236,10 +236,21 @@ namespace Objects
 		LoadIcon(name);
 	}
 
+	static bool NotValidFSChar(char c)
+	{
+		if (c >= 'a' && c <= 'z')
+			return false;
+		if (c >= 'A' && c <= 'Z')
+			return false;
+		if (c >= '0' && c <= '9')
+			return false;
+		return true;
+	}
+
 	void			BaseCommand::LoadIcon(const String&name)
 	{
 		String name2 = name;
-		name2.replace(' ','-');
+		name2.replaceCharacters(NotValidFSChar,'-');
 
 		PathString filename = PathString("resources/icons/"+name2+".png");
 		if (!FileSystem::IsFile(filename))
@@ -252,15 +263,15 @@ namespace Objects
 			Magic::LoadFromFile(image,filename);
 			if (image.channels() < 4)
 			{
-				image.setChannels(4,BaseImage::CA_REPEAT);
+				image.SetChannels(4,BaseImage::CA_REPEAT);
 
 			}
 			else
 			{
 						
-				Concurrency::parallel_for(UINT32(0),image.getWidth(),[&image](UINT32 x)
+				Concurrency::parallel_for(UINT32(0),image.GetWidth(),[&image](UINT32 x)
 				{
-					for (UINT32 y = 0; y < image.getHeight(); y++)
+					for (UINT32 y = 0; y < image.GetHeight(); y++)
 					{
 						BYTE*pixel = image.get(x,y);
 						Vec::mul(Vec::ref3(pixel),float(pixel[3])/255.f);
@@ -269,7 +280,7 @@ namespace Objects
 
 			}
 
-			image.flipVertical();
+			image.FlipVertically();
 			texture.Load(image);
 			textureMap.Set(filename,texture);
 		}

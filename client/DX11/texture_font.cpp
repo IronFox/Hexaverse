@@ -58,16 +58,16 @@ namespace Engine
 			
 			Image image;
 			Magic::LoadFromFile(image,root + imagefile);
-			if (image.getChannels() == 4)
-				for (UINT32 x = 0; x < image.getWidth(); x++)
-					for (UINT32 y = 0; y < image.getHeight(); y++)
+			if (image.GetChannels() == 4)
+				for (UINT32 x = 0; x < image.GetWidth(); x++)
+					for (UINT32 y = 0; y < image.GetHeight(); y++)
 					{
-						BYTE*px = image.get(x,y);
+						BYTE*px = image.Get(x,y);
 						if (px[3] == 0)
 							px[0] = px[1] = px[2] = 0;
 					}
 			atlas.Load(image);
-			pixelOffset = 0.5f * float2(1.f / image.width(), 1.f / image.height());
+			pixelOffset = 0.5f * float2(1.f / image.GetWidth(), 1.f / image.GetHeight());
 
 			String shaderfile;
 			if (!xfont->Query("shader",shaderfile))
@@ -127,8 +127,8 @@ namespace Engine
 				if (chars[id].height > height)
 					height = chars[id].height;
 				chars[id].texcoords.Set(left,bottom,right,top);
-				chars[id].texcoords.x /= (float)(image.width()-1);
-				chars[id].texcoords.y /= (float)(image.height()-1);
+				chars[id].texcoords.x /= (float)(image.GetWidth()-1);
+				chars[id].texcoords.y /= (float)(image.GetHeight()-1);
 			}
 			for (index_t i = 0; i < ARRAYSIZE(chars); i++)
 				chars[i].yoffset -= lowest;
@@ -170,7 +170,7 @@ namespace Engine
 			return 0.f;
 		}
 
-		float TextureFont::getWidth(const char*str)
+		float TextureFont::GetWidth(const char*str)
 		{
 			float rs = 0;
 			while (*str)
@@ -181,7 +181,7 @@ namespace Engine
 			return rs*scale;
 		}
 
-		float TextureFont::getWidth(const char*str, size_t len)
+		float TextureFont::GetWidth(const char*str, size_t len)
 		{
 			float rs = 0;
 			for (index_t i = 0; i < len; i++)
@@ -191,7 +191,7 @@ namespace Engine
 			return rs*scale;
 		}
 
-		float TextureFont::getWidth(char c)
+		float TextureFont::GetWidth(char c)
 		{
 			return chars[(BYTE)c].isset?scale*chars[(BYTE)c].width:0;
 		}

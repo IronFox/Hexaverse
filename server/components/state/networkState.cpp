@@ -29,6 +29,11 @@ namespace Network
 		UINT16		sessionPort = DEFAULT_SERVER_BASE_PORT + PortOffset::Session;
 	}
 
+	namespace Session
+	{
+		bool	isStarted=false;
+	}
+
 
 	TUniqueID		serverID;
 	TCP::Server		server;
@@ -127,6 +132,7 @@ namespace Network
 	{
 		SetupServer();
 		StartServer();
+		Session::isStarted = true;
 	}
 
 
@@ -206,12 +212,7 @@ namespace Network
 
 
 
-	namespace Session
-	{
-		bool	isStarted=false;
 
-
-	}
 
 	void	RestartSession()
 	{

@@ -285,7 +285,7 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				UpdateHubMap();
 				bool hasAny = hubs.IsNotEmpty();
-				float distance = hasAny ? hubs.first().distance : 0;
+				float distance = hasAny ? hubs.First().distance : 0;
 			#else
 				float distance;
 				bool hasAny = !!GetClosestExternalSupplier(distance);

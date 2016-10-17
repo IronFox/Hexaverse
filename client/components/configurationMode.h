@@ -28,6 +28,15 @@ namespace ConfigurationMode
 	*/
 	void	RestoreServerWorld();
 	void	RestoreServerObjects();
+
+	/**
+	Executed if the user enters the Ctrl+C key combination
+	*/
+	void	OnCopy();
+	/**
+	Executed if the user enters the Ctrl+V key combination
+	*/
+	void	OnPaste();
 }
 
 #endif

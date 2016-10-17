@@ -14,6 +14,8 @@
 #include "configurationMode.h"
 
 
+//#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
+
 void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
 void			OnPlayerControlBegin();
 
@@ -62,7 +64,7 @@ namespace Network
 
 		client.ConnectAsync(addr.host + ":"+String(addr.basePort + PortOffset::Session));
 		#ifdef HAS_WINDOW
-			Dialog::SignalSituationChange();
+			GUI::SignalSituationChange();
 		#endif
 	}
 
@@ -232,7 +234,7 @@ namespace Network
 					waste << *a;
 					attempts.erase(a);
 					#ifdef HAS_WINDOW
-						Dialog::SignalSituationChange();
+						GUI::SignalSituationChange();
 					#endif
 					return true;
 				}
@@ -393,7 +395,7 @@ namespace Network
 				else
 				{
 					#ifdef HAS_WINDOW
-						Dialog::Show(Dialog::loginMenu);
+						GUI::Show(Dialog::loginMenu);
 					#endif
 				}
 				#ifdef HAS_WINDOW
@@ -611,7 +613,7 @@ namespace Network
 						if (Objects::GetEntity(e->id))
 							Objects::Remove(e,type, t,Network::ControlEnabled());
 						#ifdef HAS_WINDOW
-							Dialog::SignalSituationChange();
+							GUI::SignalSituationChange();
 						#endif
 					});
 				}
@@ -620,7 +622,7 @@ namespace Network
 					float t = 0;
 					Objects::Remove(e,type, t,Network::ControlEnabled());
 					#ifdef HAS_WINDOW
-						Dialog::SignalSituationChange();
+						GUI::SignalSituationChange();
 					#endif
 				}
 
@@ -690,10 +692,10 @@ namespace Network
 				Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
 
 				#ifdef HAS_WINDOW
-					Dialog::Hide(Dialog::loginMenu);
+					GUI::Hide(Dialog::loginMenu);
 					//if (ConfigurationMode::IsActive())
 					//	UI::HexGrid::Configure
-					//	Dialog::Show(Dialog::configMenu);
+					//	GUI::Show(Dialog::configMenu);
 				#endif
 			}
 			else
@@ -702,7 +704,7 @@ namespace Network
 				LogEvent(EventClass::Preset::uncommon, nullptr, "Server response: Faction void.");
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
-					Dialog::Show(Dialog::loginMenu);
+					GUI::Show(Dialog::loginMenu);
 				#endif
 			}
 
@@ -1035,7 +1037,7 @@ namespace Network
 			Channels::clientFactionRequest.SendTo(client,ready);
 
 			#ifdef HAS_WINDOW
-				Dialog::Show(Dialog::loginMenu);
+				GUI::Show(Dialog::loginMenu);
 			#endif
 		}
 	}
@@ -1115,7 +1117,7 @@ namespace Network
 				LogEvent(EventClass::Preset::networkError, nullptr, "Connection attempt failed");
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
-					Dialog::SignalSituationChange();
+					GUI::SignalSituationChange();
 				#endif
 			}
 			break;
@@ -1130,7 +1132,7 @@ namespace Network
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
-					Dialog::CloseAllModal();
+					GUI::CloseAllModal();
 				#endif
 
 
@@ -1146,9 +1148,9 @@ namespace Network
 
 				#ifdef HAS_WINDOW
 					ConfigurationMode::SetActive(false);
-					Dialog::Hide(Dialog::loginMenu);
+					GUI::Hide(Dialog::loginMenu);
 					Dialog::CheckServersAreShown(true);
-					Dialog::SignalSituationChange();
+					GUI::SignalSituationChange();
 				#endif
 
 			}
@@ -1178,13 +1180,20 @@ namespace Network
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();
 				#ifdef HAS_WINDOW
-					Dialog::SignalSituationChange();
+					GUI::SignalSituationChange();
 				#endif
 				#ifdef _DEBUG
 					//LogEvent(EventSignificance::Debug,nullptr,"Got pong from server");
 				#endif
 			break;
 		}
+	}
+
+	void OnIgnorePackage(UINT32 channel,UINT32 size,TCP::Peer&origin)
+	{
+		LogEvent(EventClass::Preset::networkError,origin.ToString()+": Ignored package on channel #"+String(channel)+" of size "+String(size));
+		DBG_FATAL__("Ignored Package");
+
 	}
 
 	void		Setup()
@@ -1233,6 +1242,7 @@ namespace Network
 		client.SetAsync(false);
 		client.onEvent = OnEvent;
 		client.onSignal = OnSignal;
+		client.onIgnorePackage = OnIgnorePackage;
 
 		Net::initNet();
 		if (RuntimeConfig::udpListen)
@@ -1385,36 +1395,60 @@ namespace Network
 
 		}
 
-		if (timer.ToSeconds(t-lastServerTableUpdate) > 0.5f && !client.IsConnected() && !client.IsAttemptingToConnect())
+		if (timer.CheckIfOutdatedAndUpdate(lastServerTableUpdate,0.5f) && !client.IsConnected() && !client.IsAttemptingToConnect())
 		{
-			lastServerTableUpdate = t;
-
-			servers.Clear();
-			serverMap.Clear();
-
-			foreach (ServerDiscovery::attempts,_a)
-			{
-				const auto&a = **_a;
-				if (a.hasContact && (a.hasInfo || a.protocolIncompatible))
+			#ifdef DEBUG_SERVER_LIST
+				if (servers.IsEmpty())
 				{
-					index_t at;
-					if (!serverMap.query(a.lastInfo.hostInfo.value.hostID,at))
+					Random rng;
+					for (index_t i = 0; i < 100; i++)
 					{
-						at = servers.Count();
-						servers.Append().info = a.lastInfo;
-						servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
-						servers.last().protocolIncompatible = a.protocolIncompatible;
-						servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : servers.last().info.hostInfo.value.hostID;
-						servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
-						//if (!a.protocolIncompatible)
-						serverMap.Set(servers.last().id,at);
-						
+						auto&s = servers.Append();
+						s.addresses << std::make_pair(ServerAddress("localhost"),rng.getFloat(1,200));
+						s.id.Generate();
+						s.info.gameInfo.activePhase = (BYTE)rng.get(RuntimeConfig::Phase::N-1);
+						s.info.gameInfo.gameConfig.gameFlags = Protocol::GameFlag::AllFactionSupport;
+						s.info.gameInfo.gameConfig.gameGoal = (BYTE)rng.get(RuntimeConfig::GameGoal::N -1);
+						s.info.gameInfo.gameConfig.worldDiscovery = (BYTE)rng.get(Grid::WorldDiscovery::N -1);
+						s.info.gameInfo.numFactionsCreated = sqr(rng.get(0,16));
+						s.info.gameInfo.numFactionsOnline = rng.get(s.info.gameInfo.numFactionsCreated);
+						s.info.gameInfo.roundNumber = sqr(sqr(rng.get(8)));
+						s.info.gameInfo.worldID.value.Generate();
+						s.info.hostInfo.value.hostID = s.id;
+						s.info.hostInfo.value.serverBasePort = DEFAULT_SERVER_BASE_PORT;
+						s.rightVersion = true;
+						s.selected = false;
 					}
-
-					ServerInfo&info = servers[at];
-					info.addresses.Append(std::make_pair(a.address,a.lastPing));
 				}
-			}
+			#else
+
+				servers.Clear();
+				serverMap.Clear();
+
+				foreach (ServerDiscovery::attempts,_a)
+				{
+					const auto&a = **_a;
+					if (a.hasContact && (a.hasInfo || a.protocolIncompatible))
+					{
+						index_t at;
+						if (!serverMap.query(a.lastInfo.hostInfo.value.hostID,at))
+						{
+							at = servers.Count();
+							servers.Append().info = a.lastInfo;
+							servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
+							servers.last().protocolIncompatible = a.protocolIncompatible;
+							servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : servers.last().info.hostInfo.value.hostID;
+							servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
+							//if (!a.protocolIncompatible)
+							serverMap.Set(servers.last().id,at);
+						
+						}
+
+						ServerInfo&info = servers[at];
+						info.addresses.Append(std::make_pair(a.address,a.lastPing));
+					}
+				}
+			#endif
 		}
 	
 	}
@@ -1545,7 +1579,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			LogEvent(EventSignificance::Debug,"Command phase. Game has NOT begun");
 
 	#ifdef HAS_WINDOW
-		Dialog::SignalSituationChange();
+		GUI::SignalSituationChange();
 	#endif
 }
 
@@ -1649,7 +1683,7 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 		if (srv->rightVersion && srv->HasAddress(RuntimeConfig::serverAddress))
 		{
 			index_t best = 0;
-			float bestPing = srv->addresses.first().second;
+			float bestPing = srv->addresses.First().second;
 			for (index_t i = 1; i < srv->addresses.Count(); i++)
 				if (srv->addresses[i].second < bestPing)
 				{

@@ -23,10 +23,10 @@
 
 		void	ShowSession()
 		{
-			if (Dialog::IsModal())
+			if (GUI::IsModal())
 			{
 				if (Dialog::ShowingFactions())
-					Dialog::CloseAllModal();
+					GUI::CloseAllModal();
 				return;
 			}
 
@@ -50,7 +50,7 @@
 		{
 			if (Dialog::ShowingFactions())
 			{
-				Dialog::CloseAllModal();
+				GUI::CloseAllModal();
 				ShowSession();
 			}
 
@@ -68,7 +68,7 @@
 		void IconItem::RenderIcon(float size/*=0.05f*/)
 		{
 			iconColor.Update(float4(color*0.75f + 0.25f,size));
-			iconShader.quickSlots.first() = texture;
+			iconShader.quickSlots.First() = texture;
 			display.RenderVertices(iconShader,0,1);
 		}
 
@@ -605,7 +605,7 @@
 					visibleRange = IntRange(index_t(0),scopeWidth);
 					if (newOffset > 0)
 						visibleRange = IntRange(newOffset,scopeWidth);
-					moreRight = visibleRange.GetExtend() > currentContactListWidth;
+					moreRight = visibleRange.GetExtent() > currentContactListWidth;
 					if (moreRight)
 						visibleRange.end = visibleRange.start + currentContactListWidth;
 					this->offset = newOffset;
@@ -651,7 +651,7 @@
 			void							DynamicRow::RebuildCommands()
 			{
 				RemoveCommandIcons();
-				for (index_t i = 0; i < visibleRange.GetExtend(); i++)
+				for (index_t i = 0; i < visibleRange.GetExtent(); i++)
 				{
 					const Objects::PBaseCommand cmd = commands[i+visibleRange.start];
 					GridCell&cell = AllocateCell(cmd);
@@ -700,7 +700,7 @@
 
 			void		Group::UpdateSignificance()
 			{
-				Objects::PWorldEntity e = entries.first().lock();
+				Objects::PWorldEntity e = entries.First().lock();
 				DBG_ASSERT__(e);
 				significance = e->GetConstructionCost();
 
@@ -782,7 +782,7 @@
 
 			/*virtual override*/ void	GroupFocusCommand::RasterizeImage()
 			{
-				Objects::PWorldEntity e = group->entries.first().lock();
+				Objects::PWorldEntity e = group->entries.First().lock();
 				if (!e)
 					return;
 
@@ -809,7 +809,7 @@
 				//group->InitSelection();
 
 				Objects::PWorldEntity proto = group->GetPrototype();
-				Objects::PWorldEntity instance = group->entries.first().lock();
+				Objects::PWorldEntity instance = group->entries.First().lock();
 
 				if (!instance)
 					return;
@@ -1202,7 +1202,7 @@
 						float4 code;
 					
 						{
-							if (!Dialog::IsModal() && c->Contains(Engine::mouse.location.windowRelative))
+							if (!GUI::IsModal() && c->Contains(Engine::mouse.location.windowRelative))
 							{
 								code.r = 1.f;
 								if (stationary)
@@ -1230,7 +1230,7 @@
 						color.Update(code);
 
 						center.Update(float4(world,0,1));
-						instruction.quickSlots.first() = c->command->texture;
+						instruction.quickSlots.First() = c->command->texture;
 						display.RenderVertices(instruction,0,1);
 					}
 					else
@@ -1310,10 +1310,10 @@
 						}
 					}
 
-					r.x.min = r.x.min * 0.5f + 0.5f;
-					r.x.max = r.x.max * 0.5f + 0.5f;
-					r.y.min = r.y.min * 0.5f + 0.5f;
-					r.y.max = r.y.max * 0.5f + 0.5f;
+					//r.x.min = r.x.min * 0.5f + 0.5f;
+					//r.x.max = r.x.max * 0.5f + 0.5f;
+					//r.y.min = r.y.min * 0.5f + 0.5f;
+					//r.y.max = r.y.max * 0.5f + 0.5f;
 					//Rect<>r(0,0,1,1);
 
 					SurfaceRenderer::Rasterize(r);
@@ -1380,7 +1380,7 @@
 				context.commands.Clear();
 				context.collection.VisitAllValues([&context](Buffer0<Objects::WWorldEntity>&entries)
 				{
-					Objects::PWorldEntity e = entries.first().lock();
+					Objects::PWorldEntity e = entries.First().lock();
 					if (e)
 					{
 						PGroup group (new Group());
@@ -1723,7 +1723,7 @@
 					SurfaceRenderer::SetColor(float4(0,0,0,0.6f));
 					float w = 0.2f / display.pixelAspect();
 					//textout.locate(-1.f + 0.01f,-1.f + textout.getScaledHeight()*1.2f*(y+6));
-					Rect<> t(0,lineHeight*2.f,w,lineHeight*0.5f*11.5f);
+					Rect<> t(-1,lineHeight*4.f-1.f,w*2.f - 1.f,lineHeight*11.5f - 1.f);
 					SurfaceRenderer::Rasterize(
 						float2(t.x.min,t.y.min),float4(0,0,0,0.8f),
 						float2(t.x.max,t.y.min),float4(0,0,0,0.2f),
@@ -2270,7 +2270,7 @@
 						
 						if (ps->queue.IsNotEmpty())
 						{
-							textout << "  producing "<<ps->queue.first().name<<nl;
+							textout << "  producing "<<ps->queue.First().name<<nl;
 							if (!active)
 								textout << "   completion (when enabled) in "<<Objects::TimeResourceTag() <<ps->productionRoundsLeft<<nl;
 							else

@@ -75,10 +75,10 @@ namespace Engine
 		virtual                 ~TextureFont();
 			void				LoadFromFile(const PathString&filename, float scale=1.0f);	//!< Loads the local font configuration from the specified XML file.
 
-	        float               getWidth(const char*str);				//!< Calculates the unscaled width of the specified string. For EveGLTextureFont this is identical to the length of the string. \param str String to determine the length of \return Unscaled length of the string
-	        float               getWidth(const char*str, size_t len);	//!< Calculates the unscaled width of the specified string. For EveGLTextureFont this is identical to the length of the string. \param str String to determine the length of \param len Number of characters to stop after \return Unscaled length of the string
-	        float               getWidth(char c);						//!< Calculates the unscaled width of a single character. For EveGLTextureFont this is always 1. \param c Character to determine the width of \return Unscaled length of the character
-			float				getHeight()	{return scale*height;}
+	        float               GetWidth(const char*str);				//!< Calculates the unscaled width of the specified string. For EveGLTextureFont this is identical to the length of the string. \param str String to determine the length of \return Unscaled length of the string
+	        float               GetWidth(const char*str, size_t len);	//!< Calculates the unscaled width of the specified string. For EveGLTextureFont this is identical to the length of the string. \param str String to determine the length of \param len Number of characters to stop after \return Unscaled length of the string
+	        float               GetWidth(char c);						//!< Calculates the unscaled width of a single character. For EveGLTextureFont this is always 1. \param c Character to determine the width of \return Unscaled length of the character
+			float				GetHeight()	{return scale*height;}
 	        void                begin(const TFontState&state);		//!< Begins text output starting with the specified state \param state Status to begin with
 	        void                alterColor(const TFontColor&color);	//!< Changes the active color while between begin() and end(). \param color Color to use from here on
 	        void                write(const char*str);					//!< Print the specified string. Newline characters are overridden  \param str String to print

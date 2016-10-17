@@ -32,7 +32,6 @@
 #endif
 
 #include <geometry/bvh.h>
-#include "../shared/noise.h"
 
 #include "version.h"
 #include "../shared/protocol.h"
@@ -60,6 +59,7 @@
 #include "components/guiHostList.h"
 #include "components/serverProcess.h"
 #include "components/audioInterface.h"
+#include "components/configurationMode.h"
 
 #include "rc/Resource.h"
 
@@ -453,13 +453,13 @@ void	SignalConstructionBegin(const TUniqueID&plantID,ConstName baseName, ConstNa
 	if (turretName != ConstName::Empty)
 	{
 		cb.parameters.SetSize(2);
-		cb.parameters.first() = baseName;
+		cb.parameters.First() = baseName;
 		cb.parameters.last() = turretName;
 	}
 	else
 	{
 		cb.parameters.SetSize(1);
-		cb.parameters.first() = baseName;
+		cb.parameters.First() = baseName;
 	}
 	Network::Channels::constructionBegin.SendTo(Network::client,cb);
 }
@@ -505,7 +505,7 @@ void	SignalConstructTowerTurret(const TUniqueID&towerID,const Objects::Component
 	Protocol::ConstructionBegin	cb;
 	cb.plantID = towerID;
 	cb.parameters.SetSize(1);
-	cb.parameters.first() = newTurret->constName;
+	cb.parameters.First() = newTurret->constName;
 	Network::Channels::constructionBegin.SendTo(Network::client,cb);
 }
 
@@ -885,12 +885,12 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 
 					if (images[i]->second)
 					{
-						image.truncateToOpaque();
+						image.TruncateToOpaque();
 	
-						for (UINT32 x = 0; x < image.getWidth(); x++)
-							for (UINT32 y = 0; y < image.getHeight(); y++)
+						for (UINT32 x = 0; x < image.GetWidth(); x++)
+							for (UINT32 y = 0; y < image.GetHeight(); y++)
 							{
-								BYTE*pixel = image.getPixel(x,y);
+								BYTE*pixel = image.GetPixel(x,y);
 								if (pixel[3] > 0 && pixel[3] < 255)
 								{
 									//#ifdef WHITE_STYLE
@@ -910,7 +910,7 @@ bool							GetLowCellUnderCursor(Grid::LCellIdI&result, bool includeWater, bool 
 							}
 					}
 					else
-						image.setChannels(3);
+						image.SetChannels(3);
 
 					if (!TimeLapse::enabled)
 					{
@@ -1517,7 +1517,7 @@ bool loop()
 	
 		//bool rebuildCamera = false;
 
-		if (!Dialog::IsModal() && !Camera::locked)
+		if (!GUI::IsModal() && !Camera::locked)
 		{
 			{
 				if (Engine::mouse.buttons.right_down || Engine::mouse.buttons.middle_down)
@@ -1722,7 +1722,7 @@ bool loop()
 
 			Objects::Renderer::RenderProgressBars();
 
-			if (Objects::showArrow && !Dialog::IsModal())
+			if (Objects::showArrow && !GUI::IsModal())
 			{
 	//			display.SetDepthTest(false, false);
 				bool includeWater = false;
@@ -1816,13 +1816,8 @@ bool loop()
 			if (!Network::client.IsConnected() /*&& false*/)
 			{
 				static Timer::Time	lastCheck = timer.Now();
-
-				Timer::Time now = timer.Now();
-				if (!Dialog::serverChoice || timer.ToSeconds(now - lastCheck) > 1.f)
-				{
-					lastCheck = now;
+				if (!Dialog::serverChoice || timer.CheckIfOutdatedAndUpdate(lastCheck,1.f))
 					UpdateServerChoice();
-				}
 			}
 
 
@@ -1997,7 +1992,7 @@ bool loop()
 		
 			UI::Render();
 			display.pick(Camera::hud);
-			Dialog::Render();
+			GUI::Render();
 
 	#endif
 		//textout << "direction: "<<scene.GetViewingDirection()<< nl;
@@ -2037,7 +2032,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 		textout.setScale(1.f / display.clientWidth(), 1.f / display.clientHeight());
 
 		UI::OnWindowResize();
-		GUIElements::OnWindowResize();
+		GUI::OnWindowResize();
 	}
 
 
@@ -2116,7 +2111,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 	{
 		Tutorial::lastDelayingEvent = timer.Now();
 
-		if (Dialog::HandleMouseDown() || UI::HandleClick())
+		if (GUI::HandleMouseDown() || UI::HandleClick())
 			return;
 		if (Rect<>(0.f,0.97f,0.1f,1.f).Contains(Engine::mouse.location.windowRelative))
 		{
@@ -2367,7 +2362,7 @@ void MyFatal(const FatalDescriptor&descriptor)
 		{
 			TimeLapse::enabled = false;
 			Camera::locked = false;
-			Dialog::SignalSituationChange();
+			GUI::SignalSituationChange();
 			LogEvent(EventClass::Preset::uncommon,"Time lapse disabled");
 		}
 		else
@@ -2777,7 +2772,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	void	QueryAndSendChatMessage()
 	{
-		if (Dialog::IsModal())
+		if (GUI::IsModal())
 			return ;
 		static const String allowed = "abcdefghijklmnopqrstuvwxyzäöüABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ0123456789_- <>!'\"'$%^&*()=+.,/\\#@?";
 		Dialog::Query("Please enter message","",allowed,[](const String&candidate)->bool
@@ -2838,7 +2833,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	void	AbortMode()
 	{
-		if (Dialog::CloseAllModal())
+		if (GUI::CloseAllModal())
 		{
 			QueryNicknameIfEmpty();
 			return;
@@ -2846,13 +2841,13 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 		if (Objects::DisableModes(Network::ControlEnabled()))
 			return;
 
-		if (!Dialog::IsVisible(mainMenu))
+		if (!GUI::IsVisible(mainMenu))
 		{
-			Dialog::Show(mainMenu);
+			GUI::Show(mainMenu);
 		}
 		else
-			Dialog::Hide(mainMenu);
-		Dialog::SignalSituationChange();
+			GUI::Hide(mainMenu);
+		GUI::SignalSituationChange();
 	}
 
 	#ifdef HAS_WINDOW
@@ -3013,6 +3008,9 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 
 	bool	ShouldSignalRoundEnd()
 	{
+		if (!CanChangeRoundState())
+			return false;
+
 		if (!Objects::Faction::mine || Objects::Faction::mine->requestedNewRound || Network::amSpectator)
 			return false;
 		#if 0
@@ -3221,7 +3219,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 				Dialog::Confirm("A faction key is known for this world ("+Network::worldIDString+"). If you create a new faction, this key will be lost, and control of your old faction will irreversible be abandoned. Please confirm.",
 				[typeFlags](){
 					Network::AttemptFactionLogin(true,typeFlags);
-					Dialog::Hide(Dialog::loginMenu);
+					GUI::Hide(Dialog::loginMenu);
 				},[supportFactionFlag]()
 				{
 					if (!Network::amOnline || Network::haveFaction || !(supportFactionFlag & Network::gameFlags))
@@ -3234,7 +3232,7 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			else
 			{
 				Network::AttemptFactionLogin(true,typeFlags);
-				Dialog::Hide(Dialog::loginMenu);
+				GUI::Hide(Dialog::loginMenu);
 			}
 		},[supportFactionFlag](){return Network::amOnline && !Network::haveFaction && (Network::gameFlags & supportFactionFlag) 
 			&& (
@@ -3277,6 +3275,13 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force)
 			Objects::showArrow = false;
 			UI::RefreshButtonState();
 		}
+
+	}
+
+	void	OnWheel(short delta)
+	{
+		if (GUI::HandleMouseWheel(delta) == GUI::WheelRs::NotContained)
+			Camera::Event::WheelAction(delta);
 
 	}
 
@@ -3601,54 +3606,57 @@ int main( int argc, const char* argv[])
 			LineRenderer::Create();
 			SurfaceRenderer::Create();
 
-			//Engine::input.bind(Key::Up, Camera::Event::ZoomIn);
-			//Engine::input.bind(Key::Down, Camera::Event::ZoomOut);
+			//Engine::input.Bind(Key::Up, Camera::Event::ZoomIn);
+			//Engine::input.Bind(Key::Down, Camera::Event::ZoomOut);
 
-			Engine::input.bind(Key::Left, SelectAndFocusPrev);
-			Engine::input.bind(Key::Right, SelectAndFocusNext);
-			Engine::input.bind(Key::Space, SelectAndFocusNextIdle);
+			Engine::input.Bind(Key::Left, SelectAndFocusPrev);
+			Engine::input.Bind(Key::Right, SelectAndFocusNext);
+			Engine::input.Bind(Key::Space, SelectAndFocusNextIdle);
 
-			Engine::input.bind(Key::G, Camera::ToggleOrbit);
+			Engine::input.Bind(Key::G, Camera::ToggleOrbit);
 
-			Engine::input.bind(Key::PageDown, ViewDown);
-			Engine::input.bind(Key::PageUp, ViewUp);
+			Engine::input.Bind(Key::PageDown, ViewDown);
+			Engine::input.Bind(Key::PageUp, ViewUp);
 
-			Engine::input.bind(Key::Shift, ResumeBatchConstruction, AbortBatchConstruction);
+			Engine::input.Bind(Key::Shift, ResumeBatchConstruction, AbortBatchConstruction);
 			
 
-		//	Engine::input.bind(Key::PageDown, DeclineCamera);
-			//Engine::input.bind(Key::PageUp, InclineCamera);
+		//	Engine::input.Bind(Key::PageDown, DeclineCamera);
+			//Engine::input.Bind(Key::PageUp, InclineCamera);
 
-			Engine::input.bind(Key::Backspace, UndoTask);
-			Engine::input.bind(Key::Escape, AbortMode);
-			Engine::input.bind(Key::Enter, SignalRoundEndOrMaximize);
-			Engine::input.bind(Key::Return, SignalRoundEndOrMaximize);
-			Engine::input.bind(Key::Tab, UI::ShowSession);
-			Engine::input.bind(Key::T,[](){}, QueryAndSendChatMessage);
-			Engine::input.bind(Key::R,Camera::ToggleAutoRotation);
-//			Engine::input.bind(Key::R,ToggleResourceView);
-			Engine::input.bind(Key::Ctrl,ToggleSeeThrough);
+			Engine::input.Bind(Key::Backspace, UndoTask);
+			Engine::input.Bind(Key::Escape, AbortMode);
+			Engine::input.Bind(Key::Enter, SignalRoundEndOrMaximize);
+			Engine::input.Bind(Key::Return, SignalRoundEndOrMaximize);
+			Engine::input.Bind(Key::Tab, UI::ShowSession);
+			Engine::input.Bind(Key::T,[](){}, QueryAndSendChatMessage);
+			Engine::input.Bind(Key::R,Camera::ToggleAutoRotation);
+//			Engine::input.Bind(Key::R,ToggleResourceView);
+			Engine::input.Bind(Key::Ctrl,ToggleSeeThrough);
 
-			Engine::input.bind(Key::H,ToggleControlGUI);
+			Engine::input.Bind(Key::H,ToggleControlGUI);
 
-			Engine::input.bind(Key::MouseButton0, Select, Dialog::HandleMouseUp);
-			Engine::input.bindCtrl(Key::MouseButton0, Select);
-			Engine::input.bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
-			Engine::input.bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
+			Engine::input.BindCtrl(Key::C,ConfigurationMode::OnCopy);
+			Engine::input.BindCtrl(Key::V,ConfigurationMode::OnPaste);
 
-			Engine::input.bind(Key::F4, ToggleCameraLock);
-			Engine::input.bind(Key::F3, SaveScreenshot);
-			Engine::input.bind(Key::F2,ToggleTimeLapse);
+			Engine::input.Bind(Key::MouseButton0, Select, GUI::HandleMouseUp);
+			Engine::input.BindCtrl(Key::MouseButton0, Select);
+			Engine::input.Bind(Key::RightMouseButton, BeginCameraDrag,EndCameraDrag<true>);
+			Engine::input.Bind(Key::MiddleMouseButton, BeginCameraDrag,EndCameraDrag<false>);
+
+			Engine::input.Bind(Key::F4, ToggleCameraLock);
+			Engine::input.Bind(Key::F3, SaveScreenshot);
+			Engine::input.Bind(Key::F2,ToggleTimeLapse);
 
 			#ifdef RAYTRACE
-				Engine::input.bind(Key::Up,ZoomIn);
-				Engine::input.bind(Key::Down,ZoomOut);
+				Engine::input.Bind(Key::Up,ZoomIn);
+				Engine::input.Bind(Key::Down,ZoomOut);
 			#endif
 
 
 
 
-			Engine::mouse.bindWheel(Camera::Event::WheelAction);
+			Engine::mouse.BindWheel(OnWheel);
 
 			textout.setScale(1.f/display.clientWidth(),1.f/display.clientHeight());
 
