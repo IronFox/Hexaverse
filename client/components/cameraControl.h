@@ -91,7 +91,7 @@ namespace Camera
 	/**
 	Set a new target orbit to smoothly interpolate to
 	*/
-	void						TargetOrbit(float targetOrbit);
+	void						ChangeGroundRadius(float targetOrbit);
 
 
 	

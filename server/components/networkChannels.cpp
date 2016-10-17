@@ -3,6 +3,7 @@
 #include "state.h"
 #include "serverLogEvent.h"
 #include "journalSaveGame.h"
+#include "configurationMode.h"
 
 extern Random		random;
 
@@ -40,6 +41,8 @@ namespace Channels
 	TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>						changeMyName(Receiver::ChangeMyName);
 	TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>							identifyUserRecv(Receiver::IdentifyUser);
 	TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>					chatMessage(Receiver::ChatMessage);
+	TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
+	TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>						gameConfig(Receiver::GameConfig);
 
 	TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>			clientFactionResponse;
 	TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>		markerCreationFailedLimitReached;
@@ -146,12 +149,12 @@ namespace Receiver
 		RuntimeConfig::UnitLimits::Export(limits);
 		Channels::unitLimits.SendTo(peer,limits);
 		
-		Channels::lockEmpZones.SendTo(peer,World::empZonesLocked);
+		Channels::lockEmpZones.SendTo(peer,Grid::empZonesLocked);
 
 
 		Protocol::PhaseChange	ph;
 		ph.newPhase = RuntimeConfig::phase;
-		ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
+		ph.roundNumber = RuntimeConfig::roundNumber;
 		ph.timeFactor = -1;
 
 
@@ -293,7 +296,7 @@ namespace Receiver
 			{
 				factionTypeNotSupported = !peer.IsLocalhost()
 											|| !(Game::Config::factionSupportFlags & Protocol::GameFlag::SupportSpectatorFactions);
-				if (factionTypeNotSupported)
+				if (factionTypeNotSupported && !peer.IsLocalhost())
 					LogEvent(EventClass::Preset::commandRejected,peer,"Spectator type is allowed only from localhost, but peer is "+peer.ToString());
 			}
 			break;
@@ -315,7 +318,7 @@ namespace Receiver
 		if (response.startFactionTypes == Protocol::FactionType::SpectatorFaction)
 		{
 			//authenticated and purged any previous faction. let's go
-			Network::ChangeUserLevel(peer,Network::UserLevel::Spectator);
+			Network::ChangeUserLevel(peer,ConfigurationMode::IsActive()?Network::UserLevel::PlanetConfigurator :  Network::UserLevel::Spectator);
 
 
 			bool firstSpectator = Network::spectators.IsEmpty();
@@ -332,6 +335,8 @@ namespace Receiver
 			//send world state:
 
 			SendAllToSpectator(peer, firstSpectator);
+
+			Channels::planetConfig.SendTo(peer,Grid::currentPlanetConfig);
 
 			peer.SendSignal(Protocol::ChannelID::BeginGame);
 			return;
@@ -832,6 +837,53 @@ namespace Receiver
 
 	}
 
+	void	PlanetConfig(Grid::ExtendedPlanetConfig&cfg, TCP::Peer&peer)
+	{
+		if (ConfigurationMode::IsActive())
+		{
+			LogEvent(EventClass::Preset::configurationPrint,peer,"Received planet configuration (seed="+String(cfg.lastSeed)+"). Rebuilding...");
+			ConfigurationMode::SetPlanetSeed(cfg.lastSeed);
+			Grid::currentPlanetConfig = cfg;
+			Network::BuildConfiguredWorld();
+		}
+		else
+			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
+
+	}
+
+	void	GameConfig(Protocol::GameConfig&cfg, TCP::Peer&peer)
+	{
+		if (ConfigurationMode::IsActive())
+		{
+			UINT32 flags = cfg.gameFlags;
+			LogEvent(EventClass::Preset::configurationPrint,peer,"Received game flags (="+String(flags)+"). Updating...");
+			Game::Config::basesRequired = !!(flags & Protocol::GameFlag::BasesRequired);
+			Game::Config::closedGame = !!(flags & Protocol::GameFlag::ClosedGame);
+			Game::Config::startBases = !!(flags & Protocol::GameFlag::StartBases);
+			World::Config::simulateLiquids = !!(flags & Protocol::GameFlag::SimulateLiquids);
+			Game::Config::Nexus::enableAI = !!(flags & Protocol::GameFlag::NexusAI);
+			bool eOld = RuntimeConfig::empZones;
+			RuntimeConfig::empZones = !!(flags & Protocol::GameFlag::EMPZones);
+			if (RuntimeConfig::empZones)
+				World::SetUnlockedEMPZones(1);
+			else
+			{
+				Grid::empZonesUnlocked = 0xffff;
+				Grid::empZonesLocked = 0x0;
+				Channels::lockEmpZones.SendTo(::Network::server,Grid::empZonesLocked,2);
+			}
+			if (RuntimeConfig::gameGoal != cfg.gameGoal || RuntimeConfig::empZones != eOld)
+			{
+				RuntimeConfig::gameGoal.Load(cfg.gameGoal);
+				Network::BuildConfiguredWorld();
+			}
+			World::Config::worldDiscovery.Load(cfg.worldDiscovery);
+		}
+		else
+			LogEvent(EventClass::Preset::commandRejected,peer,"Configuration mode is not active. User should not have this level");
+
+	}
+
 	
 	void	ChangeMyName(Protocol::ClientName&name, TCP::Peer&peer)
 	{
@@ -872,7 +924,7 @@ namespace Receiver
 		Objects::Marker *marker = f->FindMarker(m.id);
 		if (marker)
 		{
-			LogEvent(EventSignificance::Common, peer, "Touching " + marker->GetName()+" to round number "+String(m.newRoundNumber));
+			LogEvent(EventSignificance::Common, peer, "Touching " + marker->GetName()+" to round number "+m.newRoundNumber.value.ToString());
 			marker->createdInRound = m.newRoundNumber;
 			//Protocol::TouchedMarker m;
 			//m.id = id;
@@ -1460,7 +1512,11 @@ namespace Receiver
 	{
 		if (hello.trim().IsEmpty())
 		{
-			peer.SendObject(Protocol::ChannelID::Hello,Protocol::Result(false,"Invalid username"));
+			Protocol::HelloResponse response;
+			response.success = false;
+			response.configurationMode = false;
+			response.errorMessage ="Invalid initial username";
+			peer.SendObject(Protocol::ChannelID::Hello,response);
 			return;
 		}
 		//foreach (State::clients,c)
@@ -1497,7 +1553,7 @@ namespace Receiver
 			
 			Protocol::PhaseChange	ph;
 			ph.newPhase = RuntimeConfig::phase;
-			ph.roundNumber = (UINT32)RuntimeConfig::roundNumber;
+			ph.roundNumber = RuntimeConfig::roundNumber;
 			ph.timeFactor = -1;
 
 
@@ -1528,7 +1584,11 @@ namespace Receiver
 				}
 			}
 			*/
-			peer.SendObject(Protocol::ChannelID::Hello,Protocol::Result(true,"Userlevel set to "+String(peer.userLevel)));
+			Protocol::HelloResponse response;
+			response.success = true;
+			response.configurationMode = ConfigurationMode::IsActive() && peer.IsLocalhost();
+			response.errorMessage ="Userlevel set to "+String(peer.userLevel);
+			peer.SendObject(Protocol::ChannelID::Hello,response);
 			return;
 		}
 		//else
@@ -1536,7 +1596,11 @@ namespace Receiver
 
 
 		ChangeMyName(hello,peer);
-		peer.SendObject(Protocol::ChannelID::Hello,Protocol::Result(true,"User already known. Userlevel is "+String(peer.userLevel)+". Username updated"));
+		Protocol::HelloResponse response;
+		response.success = true;
+		response.configurationMode = ConfigurationMode::IsActive() && peer.IsLocalhost();
+		response.errorMessage ="Duplicate Hello detected. Userlevel remains "+String(peer.userLevel);
+		peer.SendObject(Protocol::ChannelID::Hello,response);		
 	}
 
 
@@ -1643,6 +1707,9 @@ namespace Receiver
 				else
 					LogEvent(EventClass::Preset::error,peer,"Should not have received RequestEverything from non-spectator");
 			}
+			break;
+			case Protocol::ChannelID::EndConfigurationMode:
+				ConfigurationMode::End();
 			break;
 		}
 	}

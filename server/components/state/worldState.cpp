@@ -32,8 +32,6 @@ namespace World
 		void			HandleSessionClosure()
 		{
 			terrainChanged = false;
-			empZonesLocked = 0;
-			unlockedEMPZones = 0xFFFF;
 			worldID.Generate();
 		}
 
@@ -327,8 +325,9 @@ namespace World
 	void			BuildConfiguredWorld(Random&random)
 	{
 		Grid::currentPlanetConfig.RandomizeSeeds(random);
-		Grid::currentPlanetConfig.RandomizeSun(random);
-		Grid::BuildWorld(Grid::currentPlanetConfig,Config::worldDiscovery);
+		Grid::actualWorld.BuildWorld(Grid::currentPlanetConfig);
+		Grid::actualWorld.ExportDiscovered(Grid::initialWorld, Config::worldDiscovery);
+		Grid::Resource::FillAll(random);
 		if (Objects::Faction::nexus)
 			Objects::Faction::nexus->currentState = Grid::initialWorld;
 
@@ -347,6 +346,17 @@ namespace World
 						Game::SpawnNexusBaseAtPoleWithPort(pole);
 					}
 		}
+		for (int i = 0; i < BaseGrid::NumFamilies; i++)
+		{
+			Grid::high.family[i].SetOutdated(0);
+			Grid::low.family[i].SetOutdated(0);
+		}
+	}
+
+	void			BuildConfiguredWorld(UINT32 seed)
+	{
+		Random random(seed);
+		BuildConfiguredWorld(random);
 	}
 
 

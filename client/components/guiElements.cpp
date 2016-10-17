@@ -17,9 +17,77 @@ extern Engine::Textout<DX11::TextureFont>	textout;
 extern Engine::Display<Engine::DirectX11>	display;
 
 
-namespace GUIElements
+namespace GUI
 {
 	index_t windowResolutionVersion = 0;
+
+	namespace Detail
+	{
+		Buffer0<GUI::PWindow,Swap>		visibleWindows;
+		Engine::OrthographicAspect<>	aspect;
+
+		struct Viewport
+		{
+			Rect<>	view;
+			float2	offset,
+					relativeOffset;
+
+
+		};
+		Buffer0<Viewport>	viewportStack;
+		float2	totalOffset;
+
+		void	LoadView(const Rect<>&view, const float2&offset)
+		{
+			LineRenderer::Flush();
+			SurfaceRenderer::Flush();
+			Rect<> view2 = view;
+			view2.Translate(offset);
+			aspect.UpdateProjection(view2,-1,1);
+			aspect.region = view;
+			display.Pick(aspect);
+		}
+
+		void	PushLoadView(const Rect<>&view, const float2&offset=float2())
+		{
+
+			viewportStack.Append().view = view;
+			viewportStack.last().offset = offset+totalOffset;
+			viewportStack.last().relativeOffset = offset;
+			if (viewportStack.Count() > 1)
+			{
+				viewportStack.last().view.Translate(-totalOffset);
+				viewportStack.last().view.ConstrainBy(viewportStack.fromEnd(1).view);
+				//viewportStack.last().second += viewportStack.fromEnd(1).second;
+			}
+			totalOffset += offset;
+			LoadView(viewportStack.last().view,viewportStack.last().offset);
+		}
+
+		void	PopLoadView()
+		{
+			totalOffset -= viewportStack.last().relativeOffset;
+			viewportStack.EraseLast();
+			if (viewportStack.IsNotEmpty())
+				LoadView(viewportStack.last().view,viewportStack.last().offset);
+			else
+			{
+				LoadView(Rect<>(0,0,1,1),float2());
+				totalOffset = float2();
+			}
+		}
+
+
+		void OnInput()
+		{
+			if (visibleWindows.IsNotEmpty())
+				visibleWindows.last()->DetectEnabledState();
+		}
+
+
+	}
+
+
 
 	PComponent	mousePressedComponent;
 
@@ -40,13 +108,283 @@ namespace GUIElements
 	}
 
 
+	PWindow				GetTopMostWindow()
+	{
+		if (Detail::visibleWindows.IsNotEmpty())
+			return Detail::visibleWindows.last();
+		return PWindow();
+	}
+
+
+	index_t	FindWindowIndex(const Window*window)
+	{
+		foreach (Detail::visibleWindows,_w)
+			if (_w->get() == window)
+			{
+				return _w - Detail::visibleWindows.pointer();
+			}
+		return InvalidIndex;
+	}
+
+
+	bool	Hide(const PWindow&window)
+	{
+		return Hide(window.get());
+	}
+
+	bool	Hide(Window*window)
+	{
+		VerifyIntegrity(CLOCATION);
+		index_t index = FindWindowIndex(window);
+		if (index == InvalidIndex)
+			return false;
+
+		window->OnHide();
+		if (index+1 == Detail::visibleWindows.Count())
+		{
+			window->SetActive(false);
+			if (Detail::visibleWindows.Count() > 1)
+				Detail::visibleWindows.fromEnd(1)->SetActive(true);
+		}
+		Detail::visibleWindows.Erase(index);	//should be last. window is not guaranteed to be valid past this point
+
+		VerifyIntegrity(CLOCATION);
+
+		SignalSituationChange();
+
+		return true;
+
+	}
+
+	
+	bool	IsVisible(const PWindow&window)
+	{
+		return Detail::visibleWindows.Contains(window);
+	}
+
+	void	Show(const PWindow&window)
+	{
+		VerifyIntegrity(CLOCATION);
+		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.last() == window)
+		{
+			DBG_ASSERT__(window->IsActive());
+			if (!window->IsActive())
+				window->SetActive(true);
+			return;
+		}
+		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.First() == window)
+		//	return;
+		Detail::visibleWindows.FindAndErase(window);
+		if (Detail::visibleWindows.IsNotEmpty())
+			Detail::visibleWindows.last()->SetActive(false);
+		Detail::visibleWindows << window;
+		window->SetActive(true);
+		SignalSituationChange();
+	}
+
+
+
+	void	ShowBottom(const PWindow&window)
+	{
+		VerifyIntegrity(CLOCATION);
+		if (Detail::visibleWindows.IsNotEmpty() && Detail::visibleWindows.First() == window)
+		{
+			if (Detail::visibleWindows.Count() == 1)
+			{
+				DBG_ASSERT__(window->IsActive());
+				if (!window->IsActive())
+					window->SetActive(true);
+			}
+			return;
+		}
+		//if (Detail::visibleWindows.Count() == 1 && Detail::visibleWindows.First() == window)
+		//	return;
+
+		index_t at = Detail::visibleWindows.GetIndexOf(window);
+		if (at != InvalidIndex)
+		{
+			if (at+1 == Detail::visibleWindows.Count())	//ist last
+			{
+				window->SetActive(false);
+				Detail::visibleWindows.fromEnd(1)->SetActive(true);
+			}
+			Detail::visibleWindows.Erase(at);
+		} 
+		Detail::visibleWindows.Insert(0,window);
+		if (Detail::visibleWindows.Count() == 1)
+			window->SetActive(true);
+
+		SignalSituationChange();
+
+	}
+
+
+
+
+	bool	CloseAllModal()
+	{
+		VerifyIntegrity(CLOCATION);
+		if (Detail::visibleWindows.IsNotEmpty())
+		{
+			bool anyNonClosable = false;
+			foreach (Detail::visibleWindows,w)
+				if (!(*w)->canBeImplicitlyClosed)
+				{
+					anyNonClosable = true;
+					break;
+				}
+
+			if (anyNonClosable)
+			{
+				bool rs = false;
+				for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
+				{
+					GUI::PWindow w = Detail::visibleWindows[i];
+					if (w->canBeImplicitlyClosed)
+					{
+						Hide(w);
+						i--;
+						rs = true;
+					}
+				}
+				GUI::VerifyIntegrity(CLOCATION);
+				return rs;
+			}
+			else
+			{
+				foreach (Detail::visibleWindows,_d)
+				{
+					PWindow d = *_d;
+					d->OnHide();
+				}
+				Detail::visibleWindows.last()->SetActive(false);
+				Detail::visibleWindows.Clear();
+			}
+			GUI::VerifyIntegrity(CLOCATION);
+			return true;
+		}
+		VerifyIntegrity(CLOCATION);
+		return false;
+	}
+
+
+	bool	IsModal()
+	{
+		foreach (Detail::visibleWindows,w)
+			if ((*w)->isModal)
+				return true;
+		return false;
+	}
+
+	static void CheckMouseMotion()
+	{
+		static float2 last;
+		if (last != Engine::mouse.location.windowRelative)
+		{
+			last = Engine::mouse.location.windowRelative;
+			Detail::visibleWindows.Last()->SignalMouseMotion(last,true);
+		}
+	}
+
+	WheelRs	HandleMouseWheel(short delta)
+	{
+		for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
+		{
+			PWindow w = Detail::visibleWindows[i];
+			WheelRs rs = w->HandleMouseWheel(delta);
+			if (w->isModal && rs == WheelRs::NotContained)
+				rs = WheelRs::Ignored;
+			if (rs != WheelRs::NotContained)
+			{
+				if (rs == WheelRs::Processed)
+					w->SignalMouseMotion(Engine::mouse.location.windowRelative,true);
+					
+				return rs;
+			}
+		}
+		return WheelRs::NotContained;
+	}
+
+	bool	HandleMouseDown()
+	{
+		for (index_t i = Detail::visibleWindows.Count()-1; i < Detail::visibleWindows.Count(); i--)
+		{
+			PWindow w = Detail::visibleWindows[i];
+			mousePressedComponent = w->HandleMouseDown();
+			if (mousePressedComponent || w->isModal)
+				return true;
+		}
+		mousePressedComponent.reset();
+		return false;
+	}
+
+	void	HandleMouseUp()
+	{
+		if (mousePressedComponent)
+		{
+			mousePressedComponent->SignalMouseUp();
+			mousePressedComponent.reset();
+		}
+
+	}
+
+
+	void	SignalSituationChange()
+	{
+		VerifyIntegrity(CLOCATION);
+		for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
+		{
+			const PWindow&d = Detail::visibleWindows[i];
+			if (!d->SignalChange())
+			{
+				d->OnHide();
+				if (i+1 == Detail::visibleWindows.Count())
+				{
+					d->SetActive(false);
+					if (Detail::visibleWindows.Count() > 1)
+						Detail::visibleWindows.fromEnd(1)->SetActive(true);
+				}
+				Detail::visibleWindows.Erase(i);
+				i--;
+			}
+			else
+				d->DetectEnabledState();
+		}
+		VerifyIntegrity(CLOCATION);
+	}
+
+
+	void	VerifyIntegrity(const TCodeLocation&loc)
+	{
+		if (Detail::visibleWindows.IsEmpty())
+			return;
+
+
+		for (index_t i = 0; i < Detail::visibleWindows.Count(); i++)
+		{
+			bool shouldBeActive = (i+1 == Detail::visibleWindows.Count());
+			GUI::PWindow w = Detail::visibleWindows[i];
+			if (w->IsActive() != shouldBeActive)
+			{
+				String msg = String(loc.ToString())+ ": Activity mismatch for window "+String(i+1)+"/"+String(Detail::visibleWindows.Count())+" (active="+String(w->IsActive())+", should be "+String(shouldBeActive)+")";
+				LogEvent(EventClass::Preset::error,msg);
+				DBG_FATAL__(msg);
+				if (shouldBeActive)
+					w->SetActive(true);
+				else
+					w->SetActive(false);
+			}
+		}
+	}
+
+
 	void			TAnchor::SetSomeOf(const PPanel&p, float distance, const std::function<bool(const PComponent&)>&callback, distanceType_t dtype/*=RelativeToParentComponent*/)
 	{
-		if (!p || p->components.IsEmpty())
+		if (!p || !p->HasComponents())
 			return;
 		type = Fixed;
 		distanceFromReference = distance;
-		foreach (p->components,c)
+		foreach (p->GetComponents(),c)
 			if (callback(*c))
 				references.Append(*c);
 		distanceType = dtype;
@@ -56,23 +394,25 @@ namespace GUIElements
 
 	void			TAnchor::SetAllOf(const PPanel&p, float distance, distanceType_t dtype/*=RelativeToParentComponent*/)
 	{
-		if (!p || p->components.IsEmpty())
+		if (!p || !p->HasComponents())
 			return;
 		type = Fixed;
 		distanceFromReference = distance;
-		foreach (p->components,c)
+		references.Clear();
+		foreach (p->GetComponents(),c)
 			references.Append(*c);
 		distanceType = dtype;
 	}
 
 	void			TAnchor::SetLastOf(const PPanel&p, float distance, distanceType_t dtype/*=RelativeToParentComponent*/)
 	{
-		if (!p || p->components.IsEmpty())
+		if (!p)
 			return;
 		type = Fixed;
 		distanceFromReference = distance;
-		if (p->components.IsNotEmpty())
-			references.Append(p->components.last());
+		references.Clear();
+		if (p->HasComponents())
+			references.Append(p->GetComponents().last());
 		distanceType = dtype;
 	}
 
@@ -94,11 +434,205 @@ namespace GUIElements
 
 	}
 
+	/*virtual override*/ bool	Panel::AutoLayout(const Rect<>&context)
+	{
+		bool rs = Super::AutoLayout(context); 
+		//Rect<> childSpace = rect;
+		if (vscroll.visible)
+			rect.x.max = vmax(rect.x.min, rect.x.max - TScrollbar::ContentSpacing - TScrollbar::Width);
+		foreach (components,c) 
+			rs |= (*c)->AutoLayout(rect);
+		return rs;
+	}
+
+	void	Panel::TScrollbar::Render(const Rect<>&rect)
+	{
+		
+		targetViewTop = vmin(targetViewTop,scrollMax - viewSize);
+		float speed = vmax(1.f,fabs(targetViewTop - viewTop))*2.f;
+		if (targetViewTop > viewTop)
+		{
+			viewTop = vmin(targetViewTop, viewTop + Engine::timing.delta*speed);
+		}
+		elif (targetViewTop < viewTop)
+		{
+			viewTop = vmax(targetViewTop, viewTop - Engine::timing.delta*speed);
+		}
+
+
+		float left = rect.x.max + TScrollbar::ContentSpacing;
+		float right = left + TScrollbar::Width;
+		float buttonHeight = TScrollbar::Width * display.pixelAspect();
+		Rect<> topButton(left,rect.y.max - buttonHeight,right,rect.y.max);
+		Rect<> bottomButton(left,rect.y.min,right,rect.y.min + buttonHeight);
+
+		outline = Rect<>(left,bottomButton.y.max + TScrollbar::ContentSpacing,right,topButton.y.min - TScrollbar::ContentSpacing);
+		SurfaceRenderer::SetColor(float4(0,0,0,0.9));
+		SurfaceRenderer::Rasterize(outline);
+
+		bar = Rect<>(outline.x.min,outline.y.Derelativate(1.f - (viewTop + viewSize) / scrollMax),outline.x.max,outline.y.Derelativate(1.f - (viewTop) / scrollMax));
+		RenderArea(bar,barContainsMouse,dragging,float3(1));
+
+		up->SetLocation(topButton);
+		up->Render();
+		down->SetLocation(bottomButton);
+		down->Render();
+	}
+
+
+	WheelRs	Panel::TScrollbar::HandleMouseWheel(short delta)
+	{
+		if (!visible)
+			return WheelRs::NotContained;
+		//if (outlineContainsMouse || barContainsMouse)	//always scroll
+		{
+			if (!dragging)
+			{
+				constexpr float speed = -1.f / 5.f;
+				viewTop = clamp(viewTop + speed * viewSize* delta,0,scrollMax - viewSize);
+				targetViewTop = clamp(targetViewTop + speed * viewSize* delta,0,scrollMax - viewSize);
+				return WheelRs::Processed;
+			}
+			return WheelRs::Ignored;
+		}
+		//return up->HandleMouseWheel(delta) || down->HandleMouseWheel(delta);
+	}
+
+	void		Panel::TScrollbar::SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	{
+		if (visible)
+		{
+			outlineContainsMouse = outline.Contains(mouseAt) && !bar.Contains(mouseAt) && clipAreaContainsMouse;
+			scrollDownOnClick = mouseAt.y < bar.y.min;
+			if (dragging)
+			{
+				viewTop = targetViewTop = clamp((1.f-outline.y.Relativate(mouseAt.y - dragRelative)) * scrollMax,0, scrollMax-viewSize);
+			}
+			else
+			{
+				barContainsMouse = bar.Contains(mouseAt);
+				dragRelative = mouseAt.y - bar.y.max;
+			}
+			up->SignalMouseMotion(mouseAt,clipAreaContainsMouse);
+			down->SignalMouseMotion(mouseAt,clipAreaContainsMouse);
+		}
+		else
+			outlineContainsMouse = false;
+	}
+
+
+	void Panel::TScrollbar::SignalMouseUp()
+	{
+		if (mouseDown)
+		{
+			if (scrollDownOnClick)
+			{
+				targetViewTop += vmax(viewSize, scrollMax /10.f);
+				targetViewTop = vmin(targetViewTop,scrollMax - viewSize);	
+			}
+			else
+			{
+				targetViewTop -= vmax(viewSize, scrollMax /10.f);
+				targetViewTop = vmax(targetViewTop,0);	
+			}
+		}
+		dragging = false;
+		mouseDown = false;
+
+	}
+
+	PComponent	Panel::TScrollbar::HandleMouseDown()
+	{
+		if (visible)
+		{
+			PComponent c;
+			c = up->HandleMouseDown();
+			if (c)
+				return c;
+			c = down->HandleMouseDown();
+			if (c)
+				return c;
+			if (outlineContainsMouse)
+			{
+				mouseDown = true;
+				return owner->shared_from_this();
+			}
+			if (barContainsMouse)
+			{
+				dragging = true;
+				return owner->shared_from_this();
+			}
+		}
+		return PComponent();
+	}
+
+	void	Panel::TScrollbar::Enable(Panel*p,const Rect<>&rect)
+	{
+		owner = p;
+		if (!up)
+		{
+			up.reset(new ScrollButton(ScrollButton::Up,[this,p]()
+			{
+				targetViewTop -= viewSize;
+				targetViewTop = vmax(targetViewTop,0);	
+			}));
+
+			down.reset(new ScrollButton(ScrollButton::Down,[this,p]()
+			{
+				targetViewTop += viewSize;
+				targetViewTop = vmin(targetViewTop,scrollMax - viewSize);
+			}));
+			up->SetActive(p->IsActive());
+			down->SetActive(p->IsActive());
+		}
+		visible = true;
+	}
+
+	/*virtual override*/ void	Panel::SetActive(bool isActive)
+	{
+		foreach (components,c)
+			(*c)->SetActive(isActive); 
+		Super::SetActive(isActive);
+		if (vscroll.up)
+		{
+			vscroll.up->SetActive(isActive);
+			vscroll.down->SetActive(isActive);
+		}
+	}
+
+	/*static*/ void		ScrollButton::RenderArrow(const Rect<>&r, direction_t dir, bool lit)
+	{
+		SurfaceRenderer::SetColor(float4(1,1,1,lit?0.75f:0.5f));
+
+		switch (dir)
+		{
+			case Up:
+				SurfaceRenderer::Rasterize(float2(r.x.center(),r.y.Derelativate(0.75f)),float2(r.x.Derelativate(0.25f),r.y.Derelativate(0.25f)),float2(r.x.Derelativate(0.75f),r.y.Derelativate(0.25f)));
+			break;
+			case Down:
+				SurfaceRenderer::Rasterize(float2(r.x.center(),r.y.Derelativate(0.25f)),float2(r.x.Derelativate(0.75f),r.y.Derelativate(0.75f)),float2(r.x.Derelativate(0.25f),r.y.Derelativate(0.75f)));
+			break;
+
+			default:
+				FATAL__("Unexpected direction parameter");
+		}
+
+	}
+
 
 	/*virtual override*/ void	Panel::Render()
 	{
 		Super::Render(); 
+
+		if (vscroll.visible)
+		{
+			vscroll.Render(rect);
+			Detail::PushLoadView(rect,float2(0,-vscroll.viewTop));
+		}
+		else
+			Detail::PushLoadView(rect);
 		RenderChildren();
+		Detail::PopLoadView();
 	}
 
 
@@ -125,18 +659,40 @@ namespace GUIElements
 						{
 							float dist = bottom.distanceFromReference;
 							if (bottom.distanceType != TAnchor::RelativeToParentComponent)
-								lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.extend() - bottom.ToScreenDistance(0.f,false));
+								lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.GetExtent() - bottom.ToScreenDistance(0.f,false));
 						}
 					break;
 					case TAnchor::Auto:
 						if (top.type == TAnchor::Auto)
 						{
-							lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.extend());
+							lowest = std::min(lowest,rect.y.max - (*c)->GetLocation().y.GetExtent());
 						}
 					break;
 				}
 			}
-			rs |= Set(rect.y.min,lowest - autoHeightSpacing);
+			float newY = lowest;// - autoHeightSpacing;
+			float currentHeight = rect.y.max - newY;
+			bool newVScroll = currentHeight > maxHeight;
+			bool changed = vscroll.visible != newVScroll;
+			rs |= changed;
+			if (newVScroll)
+			{
+				vscroll.scrollMax = currentHeight;
+				vscroll.viewSize = maxHeight;
+				float barSize = vmax(maxHeight,0.2f * rect.y.GetExtent()*currentHeight);
+				float overSize = barSize - maxHeight;
+				vscroll.scrollMax += overSize;
+				vscroll.viewSize += overSize;
+
+				newY = rect.y.max - maxHeight;
+				rs |= Set(rect.y.min,newY);
+				vscroll.Enable(this,rect);
+			}
+			else
+			{
+				vscroll.visible = false;
+				rs |= Set(rect.y.min,newY);
+			}
 		}
 
 		return rs;
@@ -177,9 +733,9 @@ namespace GUIElements
 	{
 		if ((index_t)c >= Objects::TextoutResourceTagOffset && (index_t)c <= (index_t)Objects::TextoutResourceTagOffset + Objects::Resource::NumberOfPossibilities)
 		{
-			return textout.getFont().getHeight() * textout.state.scale_x;
+			return textout.getFont().GetHeight() * textout.state.scale_x;
 		}
-		return textout.getFont().getWidth(c) * textout.state.scale_x;
+		return textout.getFont().GetWidth(c) * textout.state.scale_x;
 	}
 
 	void OnWindowResize()
@@ -200,9 +756,56 @@ namespace GUIElements
 	}
 
 
+	/*virtual override*/ void	Panel::SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
+	{
+		Super::SignalMouseMotion(mouseAt,clipAreaContainsMouse);
+
+	
+		vscroll.SignalMouseMotion(mouseAt,clipAreaContainsMouse);
+		
+		TVec2<> moved = mouseAt;
+		moved.y += vscroll.GetOffset();
+
+		for (const auto&c : components)
+		{
+			c->SignalMouseMotion(moved,ContainsMouse());
+		}
+	}
+
+
+	/*virtual override*/ WheelRs	Panel::HandleMouseWheel(short delta)
+	{
+		if (!ContainsMouse())
+			return WheelRs::NotContained;
+
+		for (index_t i = components.Count()-1; i < components.Count(); --i)
+		{
+			WheelRs rs = components[i]->HandleMouseWheel(delta);
+			if (rs == WheelRs::Processed)
+				return rs;
+			if (rs == WheelRs::Ignored)
+				break;
+		}
+
+		if (vscroll.HandleMouseWheel(delta) == WheelRs::Processed)
+			return WheelRs::Processed;
+
+		return WheelRs::Ignored;
+		//Super::HandleMouseWheel(delta);
+	}
+
 
 	/*virtual override*/ PComponent	Panel::HandleMouseDown()
 	{
+		PComponent c = vscroll.HandleMouseDown();
+		if (c)
+			return c;
+
+
+
+		if (!ContainsMouse())
+			return PComponent();
+
 		for (index_t i = components.Count()-1; i < components.Count(); --i)
 		{
 			PComponent c = components[i]->HandleMouseDown();
@@ -287,9 +890,6 @@ namespace GUIElements
 		return Super::UpdateHeight() || !same;
 	}
 
-	/*static*/ std::function<void()>	BaseInput::onChange;
-	/*static*/ std::function<void()>	BaseInput::onDone;
-
 
 
 	void			Input::SetCurrent(const String&current)
@@ -309,53 +909,60 @@ namespace GUIElements
 			Engine::keyboard.Filter(allowed.c_str());
 	}
 
-	void			BaseInput::ActivateInput()
+	/*static*/ void BaseInput::OnCharHandled(char)
 	{
-		Engine::input.pushProfile();
-		//profile = *Engine::input.currentProfile();//this copies over a shitload of commands we don't want
-		//let's copy some over, however...
-		profile.key[Key::Escape] = Engine::input.currentProfile()->key[Key::Escape];
-		profile.key[Key::Enter] = Engine::input.currentProfile()->key[Key::Enter];
-		profile.key[Key::Return] = Engine::input.currentProfile()->key[Key::Return];
-		profile.key[Key::MouseButton0] = Engine::input.currentProfile()->key[Key::MouseButton0];
-		profile.key[Key::MouseButton1] = Engine::input.currentProfile()->key[Key::MouseButton1];
-		profile.key[Key::MouseButton2] = Engine::input.currentProfile()->key[Key::MouseButton2];
-		profile.key[Key::MouseButton3] = Engine::input.currentProfile()->key[Key::MouseButton3];
-		profile.key[Key::MouseButton4] = Engine::input.currentProfile()->key[Key::MouseButton4];
-		Engine::input.bindProfile(profile);
+		Detail::OnInput();
+	}
+
+	void			BaseInput::SetInputActive(bool isActive)
+	{
+		if (isActive)
+		{
+			Engine::input.pushProfile();
+			//profile = *Engine::input.currentProfile();//this copies over a shitload of commands we don't want
+			//let's copy some over, however...
+			profile.key[Key::Escape] = Engine::input.currentProfile()->key[Key::Escape];
+			profile.key[Key::Enter] = Engine::input.currentProfile()->key[Key::Enter];
+			profile.key[Key::Return] = Engine::input.currentProfile()->key[Key::Return];
+			profile.key[Key::MouseButton0] = Engine::input.currentProfile()->key[Key::MouseButton0];
+			profile.key[Key::MouseButton1] = Engine::input.currentProfile()->key[Key::MouseButton1];
+			profile.key[Key::MouseButton2] = Engine::input.currentProfile()->key[Key::MouseButton2];
+			profile.key[Key::MouseButton3] = Engine::input.currentProfile()->key[Key::MouseButton3];
+			profile.key[Key::MouseButton4] = Engine::input.currentProfile()->key[Key::MouseButton4];
+			Engine::input.bindProfile(profile);
 		
-		//Engine::input.resetKeys();
-		Engine::input.bind(Key::Backspace,[](){Engine::keyboard.DropLastCharacter(); if (onChange) onChange();});
-		Engine::input.bind(Key::Return,onDone);
-		Engine::input.bind(Key::Enter,onDone);
-		Engine::input.bindCtrl(Key::V,[](){
-			char buffer[0x100];
-			memset(buffer,0,sizeof(buffer));
-			if (System::getFromClipboardIfText(Engine::context.getWindow(),buffer,sizeof(buffer)-1))
-			{
-				Engine::keyboard.FilterAppend(buffer);	
-			}
-		});
+			//Engine::input.resetKeys();
+			Engine::input.bind(Key::Backspace,[](){Engine::keyboard.DropLastCharacter(); Detail::OnInput();});
+			Engine::input.bind(Key::Return,onEnter);
+			Engine::input.bind(Key::Enter,onEnter);
+			Engine::input.bindCtrl(Key::V,[](){
+				char buffer[0x100];
+				memset(buffer,0,sizeof(buffer));
+				if (System::getFromClipboardIfText(Engine::context.getWindow(),buffer,sizeof(buffer)-1))
+				{
+					Engine::keyboard.FilterAppend(buffer);	
+				}
+			});
 
-		const char*filter = GetAllowed();
-		if (filter)
-			Engine::keyboard.Filter(filter);
-		else
-			Engine::keyboard.ResetTranslation();
-		if (onChange)
+			const char*filter = GetAllowed();
+			if (filter)
+				Engine::keyboard.Filter(filter);
+			else
+				Engine::keyboard.ResetTranslation();
 			Engine::keyboard.onCharHandled = BaseInput::OnCharHandled;
-		Engine::keyboard.read = true;
-		Engine::keyboard.ImportBuffer(backup);
+			Engine::keyboard.read = true;
+			Engine::keyboard.ImportBuffer(backup);
+		}
+		else
+		{
+			Engine::keyboard.ExportBuffer(backup);
+			Engine::input.popProfile();
+			Engine::keyboard.read = false;
+			Engine::keyboard.onCharHandled =  NULL;
+		}
 	}
 
 
-	void			BaseInput::DeactivateInput()
-	{
-		Engine::keyboard.ExportBuffer(backup);
-		Engine::input.popProfile();
-		Engine::keyboard.read = false;
-		Engine::keyboard.onCharHandled =  NULL;
-	}
 
 	String			Input::GetInput()
 	{
@@ -435,7 +1042,7 @@ namespace GUIElements
 		textout.locate(core.x.min,core.y.max - textout.getScaledHeight() * 0.4f);
 
 
-		if (visualLen < core.x.extend())
+		if (visualLen < core.x.GetExtent())
 		{
 		//	textout.write(input,len);
 			textout << text;
@@ -445,7 +1052,7 @@ namespace GUIElements
 			while (text.DropFirstChar())
 			{
 				visualLen = textout.getScaledWidth(text) + cursorLen;
-				if (visualLen < core.x.extend())
+				if (visualLen < core.x.GetExtent())
 				{
 					textout << text;
 					//textout.write(input,len);
@@ -518,7 +1125,26 @@ namespace GUIElements
 	{
 		Image::StaticDestroy();
 		//Area::StaticDestroy();
-	
+		Detail::visibleWindows.Clear();
+	}
+
+
+
+
+	void	Render()
+	{
+		if (Detail::visibleWindows.IsNotEmpty())
+		{
+			CheckMouseMotion();
+		}
+
+
+		Detail::LoadView(Rect<>(0,0,1,1),float2());
+		
+		foreach (Detail::visibleWindows,d)
+		{
+			(*d)->Render();
+		}
 	}
 
 
@@ -565,7 +1191,7 @@ namespace GUIElements
 		Array<String>	wrapped;
 		for (const String&raw : rawText)
 		{
-			wrapf(raw,rect.width()*0.9f,CharWidth,wrapped);
+			wrapf(raw,rect.GetWidth()*0.9f,CharWidth,wrapped);
 			wrappedText.MoveAppend(wrapped);
 		}
 		lineAt.SetSize(wrappedText.Count());
@@ -615,7 +1241,7 @@ namespace GUIElements
 
 		SurfaceRenderer::Flush();
 
-		//textout.locate(rect.x.min + rect.x.GetExtend()*0.05f,rect.y.max - textout.getScaledHeight()*1.5f);
+		//textout.locate(rect.x.min + rect.x.GetExtent()*0.05f,rect.y.max - textout.getScaledHeight()*1.5f);
 		//float lineHeight = textout.getScaledHeight();
 		float top = rect.y.max;
 
@@ -648,7 +1274,7 @@ namespace GUIElements
 
 
 
-		float2 size = float2(rect.x.extend(),rect.y.extend());
+		float2 size = float2(rect.x.GetExtent(),rect.y.GetExtent());
 		size.y = wantHeight;
 		float2 pixelDim = size & ViewPortSizef();
 		float aspect = pixelDim.x / pixelDim.y;
@@ -673,7 +1299,7 @@ namespace GUIElements
 		Resolution3D res = texture.GetResolution();
 		float2 resf = float2(res.width,res.height);
 
-		float2 size = float2(rect.x.extend(),rect.y.extend());
+		float2 size = float2(rect.x.GetExtent(),rect.y.GetExtent());
 		float2 pixelDim = size & ViewPortSizef();
 		float aspect = pixelDim.x / pixelDim.y;
 		float wantAspect = resf.x / resf.y;
@@ -694,15 +1320,16 @@ namespace GUIElements
 		matrix.w.xy = float2(rect.x.center() - size.x*0.5f,rect.y.center() - size.y*0.5f);
 
 		display.SetObjectMatrix(matrix);
-		texturedQuad.quickSlots.first() = texture;
+		texturedQuad.quickSlots.First() = texture;
 
 		display.RenderVertices(texturedQuad);
 	}
 
-	bool			Component::ContainsMouse() const
+	/*virtual*/ void	Component::SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse)
 	{
-		return rect.Contains(Engine::mouse.location.windowRelative);
+		containsMouse = clipAreaContainsMouse && rect.Contains(mouseAt);
 	}
+
 
 	void			Component::MoveTopTo(float h)
 	{
@@ -755,7 +1382,7 @@ namespace GUIElements
 		//	ASSERT__(!anchor.min.IsActive());
 		//	ASSERT__(!anchor.max.IsActive());
 		//	const TAnchor&anc = anchor.center;
-		//	const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
+		//	const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].GetExtent() : anc.distanceFromReference;
 		//	if (anc.references.IsNotEmpty())
 		//	{
 		//		float avg = 0.f;
@@ -813,7 +1440,7 @@ namespace GUIElements
 				}
 			}
 			const TFloatRange<>&ctx = context.axis[axis];
-			float ext = a.GetExtend();
+			float ext = a.GetExtent();
 			float center = ctx.GetCenter();
 			float top = std::min(ctx.max,center + ext*0.5f);
 			bool changed = Set(a.max,top);
@@ -828,13 +1455,13 @@ namespace GUIElements
 		}
 
 
-		float extend = a.GetExtend();
+		float extend = a.GetExtent();
 
 		if (anchor.min.IsFixed())
 		{
 			const TAnchor&anc = anchor.min;
 
-			const float dist = anc.ToScreenDistance(context.axis[axis].extend(),axis==0);
+			const float dist = anc.ToScreenDistance(context.axis[axis].GetExtent(),axis==0);
 
 			if (anc.references.IsNotEmpty())
 			{
@@ -854,8 +1481,8 @@ namespace GUIElements
 		{
 			const TAnchor&anc = anchor.max;
 
-			const float dist = anc.ToScreenDistance(context.axis[axis].extend(),axis==0);
-//			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].extend() : anc.distanceFromReference;
+			const float dist = anc.ToScreenDistance(context.axis[axis].GetExtent(),axis==0);
+//			const float dist = anc.distanceIsRelative ? anc.distanceFromReference * context.axis[axis].GetExtent() : anc.distanceFromReference;
 
 			if (anc.references.IsNotEmpty())
 			{

@@ -8,6 +8,7 @@
 #ifdef HAS_WINDOW
 	#include "../DX11/texture_font.h"
 	#include "surfaceRenderer.h"
+	#include "configurationMode.h"
 
 	extern Engine::Display<Engine::DirectX11>	display;
 	extern Engine::Textout<Engine::DX11::TextureFont>	textout;
@@ -22,10 +23,10 @@
 
 		void	ShowSession()
 		{
-			if (Dialog::IsModal())
+			if (GUI::IsModal())
 			{
 				if (Dialog::ShowingFactions())
-					Dialog::CloseAllModal();
+					GUI::CloseAllModal();
 				return;
 			}
 
@@ -49,7 +50,7 @@
 		{
 			if (Dialog::ShowingFactions())
 			{
-				Dialog::CloseAllModal();
+				GUI::CloseAllModal();
 				ShowSession();
 			}
 
@@ -67,7 +68,7 @@
 		void IconItem::RenderIcon(float size/*=0.05f*/)
 		{
 			iconColor.Update(float4(color*0.75f + 0.25f,size));
-			iconShader.quickSlots.first() = texture;
+			iconShader.quickSlots.First() = texture;
 			display.RenderVertices(iconShader,0,1);
 		}
 
@@ -596,7 +597,7 @@
 					visibleRange = IntRange(index_t(0),scopeWidth);
 					if (newOffset > 0)
 						visibleRange = IntRange(newOffset,scopeWidth);
-					moreRight = visibleRange.GetExtend() > currentContactListWidth;
+					moreRight = visibleRange.GetExtent() > currentContactListWidth;
 					if (moreRight)
 						visibleRange.end = visibleRange.start + currentContactListWidth;
 					this->offset = newOffset;
@@ -642,7 +643,7 @@
 			void							DynamicRow::RebuildCommands()
 			{
 				RemoveCommandIcons();
-				for (index_t i = 0; i < visibleRange.GetExtend(); i++)
+				for (index_t i = 0; i < visibleRange.GetExtent(); i++)
 				{
 					const Objects::PBaseCommand cmd = commands[i+visibleRange.start];
 					GridCell&cell = AllocateCell(cmd);
@@ -691,7 +692,7 @@
 
 			void		Group::UpdateSignificance()
 			{
-				Objects::PWorldEntity e = entries.first().lock();
+				Objects::PWorldEntity e = entries.First().lock();
 				DBG_ASSERT__(e);
 				significance = e->GetConstructionCost();
 
@@ -773,7 +774,7 @@
 
 			/*virtual override*/ void	GroupFocusCommand::RasterizeImage()
 			{
-				Objects::PWorldEntity e = group->entries.first().lock();
+				Objects::PWorldEntity e = group->entries.First().lock();
 				if (!e)
 					return;
 
@@ -800,7 +801,7 @@
 				//group->InitSelection();
 
 				Objects::PWorldEntity proto = group->GetPrototype();
-				Objects::PWorldEntity instance = group->entries.first().lock();
+				Objects::PWorldEntity instance = group->entries.First().lock();
 
 				if (!instance)
 					return;
@@ -988,11 +989,21 @@
 
 			GridCell&		AllocateCell(const Objects::PBaseCommand&cmd)
 			{
+				bool isNew;
+				return AllocateCell(cmd,isNew);
+			}
+
+			GridCell&		AllocateCell(const Objects::PBaseCommand&cmd, bool&isNew)
+			{
 				foreach (allGuiCells,c)
 					if (c->command == cmd)
+					{
+						isNew = false;
 						return *c;
+					}
 				GridCell&c = allGuiCells.Append();
 				c.command = cmd;
+				isNew = true;
 				return c;
 			}
 
@@ -1183,7 +1194,7 @@
 						float4 code;
 					
 						{
-							if (!Dialog::IsModal() && c->Contains(Engine::mouse.location.windowRelative))
+							if (!GUI::IsModal() && c->Contains(Engine::mouse.location.windowRelative))
 							{
 								code.r = 1.f;
 								if (stationary)
@@ -1193,7 +1204,7 @@
 								}
 							}
 							else
-								if (cmd.state & Objects::BaseCommand::Flags::IsFlashing)
+								if (cmd.state & (Objects::BaseCommand::Flags::IsFlashing | Objects::BaseCommand::Flags::SoftFlashing))
 								{
 									code.r = (cmd.state & Objects::BaseCommand::Flags::SoftFlashing) ? softFlashOpacity : flashOpacity;
 								}
@@ -1211,7 +1222,7 @@
 						color.Update(code);
 
 						center.Update(float4(world,0,1));
-						instruction.quickSlots.first() = c->command->texture;
+						instruction.quickSlots.First() = c->command->texture;
 						display.RenderVertices(instruction,0,1);
 					}
 					else
@@ -1291,10 +1302,10 @@
 						}
 					}
 
-					r.x.min = r.x.min * 0.5f + 0.5f;
-					r.x.max = r.x.max * 0.5f + 0.5f;
-					r.y.min = r.y.min * 0.5f + 0.5f;
-					r.y.max = r.y.max * 0.5f + 0.5f;
+					//r.x.min = r.x.min * 0.5f + 0.5f;
+					//r.x.max = r.x.max * 0.5f + 0.5f;
+					//r.y.min = r.y.min * 0.5f + 0.5f;
+					//r.y.max = r.y.max * 0.5f + 0.5f;
 					//Rect<>r(0,0,1,1);
 
 					SurfaceRenderer::Rasterize(r);
@@ -1326,14 +1337,16 @@
 			}
 
 			Buffer0<Objects::PBaseCommand>	allocatedEntityCommands;
-			int2 at;
-			void	VisitCommand(const int2&coords,const Objects::PBaseCommand&cmd)
+			
+			void	VisitAddCommand(const int2&coords,const Objects::PBaseCommand&cmd)
 			{
-				GridCell&cell = AllocateCell(cmd);
+				bool isNew;
+				GridCell&cell = AllocateCell(cmd,isNew);
 				cmd->Refresh(Network::ControlEnabled());
 				cell.gridCoords = coords;
 				cell.Update(camera);
-				allocatedEntityCommands<<cmd;
+				if (isNew)
+					allocatedEntityCommands<<cmd;
 			}
 
 			void RefreshButtonState()
@@ -1359,7 +1372,7 @@
 				context.commands.Clear();
 				context.collection.VisitAllValues([&context](Buffer0<Objects::WWorldEntity>&entries)
 				{
-					Objects::PWorldEntity e = entries.first().lock();
+					Objects::PWorldEntity e = entries.First().lock();
 					if (e)
 					{
 						PGroup group (new Group());
@@ -1440,13 +1453,18 @@
 				//display.SetRasterizer(true,false);
 			}
 
-
-
-			void					Configure(const Objects::PWorldEntity&e)
+			void					ClearCommands()
 			{
 				foreach (allocatedEntityCommands,cmd)
 					FindAndDeleteCell(*cmd);
 				allocatedEntityCommands.Clear();
+			}
+
+			void					Configure(const Objects::PWorldEntity&e)
+			{
+				if (ConfigurationMode::ReconfigureVisualCommands())	//configuration mode has its own buttons; should not be removed while active
+					return;
+				ClearCommands();
 
 				bool showControls = showControlsAndContacts && e
 						#ifndef DEBUG_ACCESS_RESTRICTIONS
@@ -1455,18 +1473,13 @@
 					 ;
 
 				if (showControlsAndContacts)
-				{
-					at = int2(5,1);
-					Objects::globalCommands.VisitMembers(&VisitCommand,false);
-					Next();
-					Next();
-				}
+					Objects::globalCommands.VisitMembers(&VisitAddCommand,false);
 
 				if (e)
 				{
 					hasFocusButton = true;
 					if (showControls)
-						e->VisitAllCommands(VisitCommand,false);
+						e->VisitAllCommands(VisitAddCommand,false);
 
 					FindAndDeleteCell(selectedFocus);
 					selectedFocus.reset(new EntityFocusCommand(e) );
@@ -1686,7 +1699,7 @@
 					SurfaceRenderer::SetColor(float4(0,0,0,0.6f));
 					float w = 0.2f / display.pixelAspect();
 					//textout.locate(-1.f + 0.01f,-1.f + textout.getScaledHeight()*1.2f*(y+6));
-					Rect<> t(0,lineHeight*2.f,w,lineHeight*0.5f*11.5f);
+					Rect<> t(-1,lineHeight*4.f-1.f,w*2.f - 1.f,lineHeight*11.5f - 1.f);
 					SurfaceRenderer::Rasterize(
 						float2(t.x.min,t.y.min),float4(0,0,0,0.8f),
 						float2(t.x.max,t.y.min),float4(0,0,0,0.2f),
@@ -2228,7 +2241,7 @@
 						
 						if (ps->queue.IsNotEmpty())
 						{
-							textout << "  producing "<<ps->queue.first().name<<nl;
+							textout << "  producing "<<ps->queue.First().name<<nl;
 							if (!active)
 								textout << "   completion (when enabled) in "<<Objects::TimeResourceTag() <<ps->productionRoundsLeft<<nl;
 							else

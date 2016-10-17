@@ -99,7 +99,7 @@ namespace Objects
 		{
 			if (queue.IsEmpty())
 				return false;
-			UINT32 max = ProductionRounds(queue.first(),false);
+			UINT32 max = ProductionRounds(queue.First(),false);
 			outProgress = std::pair<int,int>(max - productionRoundsLeft , max);
 			return true;
 		}

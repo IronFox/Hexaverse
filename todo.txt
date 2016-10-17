@@ -1,18 +1,18 @@
-﻿terrain benchmark
+﻿server list must be scrollable
+
+client-side started local server should survive client closure?
+
+
+terrain benchmark
 compare with pre-80d6657fcd00f7d41fdc54c4cdef47b3d073ff48: 3972d667c90b1ef1ded85c3efceb6fe2516f7a0b
 
 
-hostile health does not update
 
 having small compound spheres within larger ones become visible if the camera is inside these spheres
 shift+click should work on terraforming operations, too
 
 alloy? resource type that is required for some constructions, and requires a special factory to make
 
-
-change scanning ranges from pure spheres to paraboloids:
-	horizontal radius, vertical radius (up), vertical radius (down)
-	make down significantly less than up
 
 
 research concept:
@@ -66,10 +66,9 @@ compound inefficieny
 wireless power? ... dedicated compounds?
 		
 
-improve sky grid
 decrease max transparency of water (make it configurable?)
 
-make generators switch off it not needed
+make generators switch off if not needed
 
 split terraformers and constructors
 
@@ -87,8 +86,6 @@ research
 	research concept, stations, states. AI? viruses?
 	virus infection and propagation (possibly from nexus ports - possibly same effect as emp)
 recycling
-visual server configurator 
-faster digging
 
 
 
@@ -105,10 +102,6 @@ Better handling of crashes in release (should not cause windows popup).
 
 
 Satellite beam animation seed.
-
-ragnarök attack beam visualization
-
-spy-satellite
 
 
 
@@ -167,6 +160,15 @@ vertical sensors (vertical sensor corridor structures, postponed)
 
 ------------- done (newest first) -------------
 
+visual server configurator 
+ragnarök attack beam visualization	//satellites are deprecated
+spy-satellite	//satellites are deprecated
+faster digging
+improve sky grid
+change scanning ranges from pure spheres to paraboloids:	//done in ft_aerial, using cut-off spheres
+	horizontal radius, vertical radius (up), vertical radius (down)
+	make down significantly less than up
+hostile health does not update
 enabling see-through via ctrl somehow lowers focus height further each time, even beneath lowest possible height
 cluster natural resources
 emp independent of goal

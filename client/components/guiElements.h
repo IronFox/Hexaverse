@@ -10,7 +10,7 @@
 #include "../ExtRenderer/DirectX11.h"
 #include "../../shared/typeDecl.h"
 
-namespace GUIElements
+namespace GUI
 {
 
 	namespace DX11 = Engine::DX11;
@@ -20,6 +20,7 @@ namespace GUIElements
 		DECLARE_POINTER_CLASS(TextField);
 			DECLARE_POINTER_CLASS(Label);
 			DECLARE_POINTER_CLASS(Button);
+				DECLARE_POINTER_CLASS(ScrollButton);
 		DECLARE_POINTER_CLASS(BaseInput);
 			DECLARE_POINTER_CLASS(Input);
 			DECLARE_POINTER_CLASS(PasswordInput);
@@ -28,6 +29,12 @@ namespace GUIElements
 			DECLARE_POINTER_CLASS(ButtonPanel);
 			DECLARE_POINTER_CLASS(Window);
 	
+
+	CONSTRUCT_ENUMERATION3(WheelRs,
+		NotContained,
+		Ignored,
+		Processed
+		);
 
 
 
@@ -114,7 +121,8 @@ namespace GUIElements
 	{
 	private:
 		bool			enabled = true;
-		bool			parentIsLit = true,
+		bool			containsMouse = false,
+						parentIsLit = true,
 						parentIsEnabled = true;
 		bool			active = false;
 
@@ -140,16 +148,19 @@ namespace GUIElements
 
 		bool			SetEnabled(bool newEnabled)	{ if (newEnabled != enabled) {enabled = newEnabled; PropagateParentState(parentIsEnabled,parentIsLit); return parentIsEnabled; } return false;  }
 
-		bool			ContainsMouse() const;
+		bool			ContainsMouse() const	{return containsMouse;}
 		void			MoveTopTo(float h);
 
 		virtual void	PropagateParentState(bool enabled, bool lit)	{parentIsLit = lit; parentIsEnabled = enabled;}
 
-		virtual void	Activate() {active = true;}
-		virtual void	Deactivate() {active = false;}
+		virtual void	SetActive(bool isActive) {active = isActive;}
 		virtual bool	DetectEnabledState() {return false;}
+		
 		virtual PComponent	HandleMouseDown() {return PComponent();}
+		virtual WheelRs	HandleMouseWheel(short) {return ContainsMouse() ? WheelRs::Ignored : WheelRs::NotContained;}
 		virtual void	SignalMouseUp()	{}
+		virtual void	SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse);
+		
 		virtual bool	UpdateHeightIfNecessary()	{return false;}
 		virtual bool	UpdateHeight() {return false;}
 		virtual void	Render() {};
@@ -223,25 +234,21 @@ namespace GUIElements
 
 		Engine::Keyboard::CharacterBuffer	backup;
 
-		static void		OnCharHandled(char)
-		{
-			if (onChange)
-				onChange();
-		}
+		static void		OnCharHandled(char);
 
-		virtual void	ActivateInput();
-		virtual void	DeactivateInput();
+		virtual void	SetInputActive(bool isActive);
 		virtual const char*	GetAllowed() const {return nullptr;}
 		virtual StringRef GetText();
 	public:
 
-		static std::function<void()>	onChange;
-		static std::function<void()>	onDone;
+		/**
+		Triggered when the user confirms the input (via enter/return)
+		*/
+		std::function<void()>	onEnter;
 
 		virtual void	Render() override;
 		virtual bool	UpdateHeight() override;
-		virtual void	Activate() override {ActivateInput(); Super::Activate();}
-		virtual void	Deactivate() override {DeactivateInput(); Super::Deactivate();}
+		virtual void	SetActive(bool isActive) override {SetInputActive(isActive); Super::SetActive(isActive);}
 
 	};
 
@@ -296,10 +303,10 @@ namespace GUIElements
 
 		void			SetText(const String&string)
 		{
-			if (rawText.GetLength() == 1 && rawText.first() == string)
+			if (rawText.GetLength() == 1 && rawText.First() == string)
 				return;
 			rawText.SetSize(1);
-			rawText.first() = string;
+			rawText.First() = string;
 			Super::InvalidateSize();
 		}
 		void			SetText(const Array<String>&string)
@@ -398,7 +405,7 @@ namespace GUIElements
 			return changed;
 		}
 
-		virtual void Render()
+		virtual void Render() override
 		{
 			bool lit = IsLit();
 			bool flipped = mousePressedComponent.get() == this;
@@ -429,10 +436,67 @@ namespace GUIElements
 		}
 	};
 
+	class ScrollButton : public Button
+	{
+		typedef Button	Super;
+	public:
+		enum direction_t
+		{
+			Up,
+			Down
+		};
+		const direction_t	direction;
+
+
+
+		/**/			ScrollButton(direction_t dir,std::function<void()> onPress = std::function<void()>()):Super("",onPress), direction(dir)
+		{}
+
+		virtual void	Render() override
+		{
+			bool lit = IsLit();
+			bool flipped = mousePressedComponent.get() == this;
+			Super::BaseRender(lit && !flipped,lit && flipped);
+			RenderArrow(rect,direction,lit);
+		}
+
+		static void		RenderArrow(const Rect<>&, direction_t, bool lit);
+
+	};
+
+
 	class Panel : public Area
 	{
 		typedef Area Super;
 
+		struct TScrollbar
+		{
+			bool		visible=false;
+			float		scrollMax=1.f;
+			float		viewTop=0.f,	//!< counting top (=0) down (>=0)
+						targetViewTop=0.f;
+			float		viewSize = 0.2f;
+			Rect<>		outline,	//!< Shadow behind scrollbar. Does not contain buttons, but does contain bar
+						bar;		//!< Actual grabbable bar
+			PScrollButton		up,down;
+			Panel		*owner=nullptr;
+			bool		outlineContainsMouse = false,barContainsMouse = false,dragging = false;
+			bool		mouseDown = false,scrollDownOnClick =false;
+			float		dragRelative = 0;
+
+			PComponent	HandleMouseDown();
+			WheelRs		HandleMouseWheel(short);
+			void		SignalMouseUp();
+			void		SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse);
+			void		Enable(Panel*,const Rect<>&rect);
+			void		Render(const Rect<>&rect);
+			float		GetOffset() const {return visible ? -viewTop : 0;}
+			static constexpr float Width = 0.03f;
+			static constexpr float ContentSpacing = 0.006f;
+		};
+
+		TScrollbar		vscroll;
+		
 	protected:
 		void			PropagateStateToChildren()
 		{
@@ -446,22 +510,30 @@ namespace GUIElements
 			foreach (components,c) 
 				(*c)->Render();
 		}
-	public:
+
 		Buffer0<PComponent>	components;
+	public:
 		bool			autoHeight = false;
 		float			autoHeightSpacing = 0.f;//0.015f;
+		/**
+		Maximum height allocatable by client components.
+		A scrollbar will be rendered if maxHeight is exceeded
+		*/
+		float			maxHeight = 1.f;
 
 		virtual bool	DetectEnabledState() override;
 		
-		virtual void	Activate() override {foreach (components,c) (*c)->Activate(); Super::Activate();}
-		virtual void	Deactivate() override {foreach (components,c) (*c)->Deactivate(); Super::Deactivate();}
+		virtual void	SetActive(bool isActive) override;
 		virtual bool	UpdateHeight() override;
 		virtual void	Render() override;
-		virtual bool	AutoLayout(const Rect<>&context) override {bool rs = Super::AutoLayout(context); foreach (components,c) rs |= (*c)->AutoLayout(this->rect); return rs;}
+		virtual bool	AutoLayout(const Rect<>&context) override;
 		virtual void	Translate(const float2&delta)	{Super::Translate(delta); foreach (components,c) (*c)->Translate(delta);}
 
 		virtual bool	HasComponent(const PComponent&c) const override {if (c.get() == this) return true; foreach (components, c2) if ((*c2)->HasComponent(c)) return true; return false;}
+		virtual WheelRs	HandleMouseWheel(short) override;
 		virtual PComponent	HandleMouseDown() override;
+		virtual void	SignalMouseUp() override {vscroll.SignalMouseUp();}
+		virtual void	SignalMouseMotion(const TVec2<>&mouseAt, bool clipAreaContainsMouse) override;
 
 
 		virtual void	PropagateParentState(bool enabled, bool lit)	override
@@ -470,7 +542,38 @@ namespace GUIElements
 			PropagateStateToChildren();
 		}
 
+		virtual const Buffer0<PComponent>&		GetComponents() const { return components; }
 
+		virtual bool		HasComponents() const
+		{
+			return components.IsNotEmpty();
+		}
+
+		virtual count_t		CountComponents() const
+		{
+			return components.Count();
+		}
+
+		virtual bool		AddComponent(const PComponent&c)
+		{
+			if (components.Contains(c))
+				return false;
+			components << c;
+			return true;
+		}
+		virtual bool		RemoveComponent(const PComponent&c)
+		{
+			return components.FindAndErase(c);
+		}
+		virtual bool		ClearComponents()
+		{
+			if (components.IsNotEmpty())
+			{
+				components.Clear();
+				return true;
+			}
+			return false;
+		}
 		void			AnchorBelowPrevious(Component*newComponent, float distanceFromSides = 0.015f, float distanceToPrevious = 0.015f, TAnchor::distanceType_t distanceType=TAnchor::RelativeToScreen)
 		{
 			AnchorBelowPrevious(PComponent(newComponent),distanceFromSides,distanceToPrevious,distanceType);
@@ -487,23 +590,30 @@ namespace GUIElements
 		std::function<bool()>	check;
 
 		bool					active = false;
-		bool					lastLit = false;
+		int						lastLitTriState = -1;
 
 	protected:
 		virtual bool	ClientIsLit() const override {return active && IsEnabled() && ContainsMouse();}
+		bool	OnComponentsChanged() {lastLitTriState = -1; return true;};
 
 	public:
-		virtual void	Activate() override
+		virtual void	SetActive(bool isActive) override
 		{
-			active = true;
-			foreach (components,c) (*c)->Activate();
-			Super::Activate();
+			this->active = isActive;
+			Super::SetActive(isActive);
 		}
-		virtual void	Deactivate() override
+
+		virtual bool		AddComponent(const PComponent&c) override
 		{
-			active = false;
-			foreach (components,c) (*c)->Deactivate();
-			Super::Deactivate();
+			return Super::AddComponent(c) && OnComponentsChanged();
+		}
+		virtual bool		RemoveComponent(const PComponent&c) override
+		{
+			return Super::RemoveComponent(c) && OnComponentsChanged();
+		}
+		virtual bool		ClearComponents() override
+		{
+			return Super::ClearComponents() && OnComponentsChanged();
 		}
 
 
@@ -535,14 +645,15 @@ namespace GUIElements
 
 
 
-		virtual void Render()
+		virtual void Render() override
 		{
 			bool lit = IsLit();
 			bool flipped = mousePressedComponent.get() == this;
 			Super::BaseRender(lit && !flipped,lit && flipped);
-			if (lastLit != lit)
+			int newLit = lit?1:0;
+			if (lastLitTriState == -1 || lastLitTriState != newLit)
 			{
-				lastLit = lit;
+				lastLitTriState = newLit;
 				Super::PropagateStateToChildren();
 			}
 			Super::RenderChildren();
@@ -604,6 +715,8 @@ namespace GUIElements
 		/**/				Window()
 		{
 			Super::autoHeight = true;
+			Super::SetCenteredWidth(0.75f,GUI::TAnchor::RelativeToScreen);
+			Super::SetLocation(Math::TFloatRect(float2(0.25f),float2(0.5f)));
 		}
 
 		virtual bool		AutoLayout(const Rect<>&context) override
@@ -685,12 +798,18 @@ namespace GUIElements
 
 		}
 
-
+		virtual void	OnHide() {};
+		virtual bool	SignalChange() {return true;}
 	};
 
 	
 	
 
+	/**
+	Checks that the top-most window is active (if any), and all others are inactive (if any).
+	Will halt execution in Debug mode, and fix the issue in release mode.
+	*/
+	void				VerifyIntegrity(const TCodeLocation&);
 
 	void				OnWindowResize();
 
@@ -699,7 +818,42 @@ namespace GUIElements
 	void				Destroy();
 
 
+	index_t				FindWindowIndex(const Window*window);
 
+	/**
+	Makes sure the specified window is visible. Raises the window if it's not top-most
+	*/
+	void				Show(const GUI::PWindow&window);
+	/**
+	Makes sure the specified window is visible. Lowers it to the bottom of the window stack if it's not there already
+	*/
+	void				ShowBottom(const GUI::PWindow&window);
+	bool				Hide(const PWindow&window);
+	bool				Hide(Window*window);
+	bool				IsVisible(const GUI::PWindow&window);
+	PWindow				GetTopMostWindow();
+	/**
+	Signals that the global situation has changed and active modal dialogs need to be re-evalutated.
+	This may be invoked by a server state change or removal of some entity
+	*/
+	void				SignalSituationChange();
+
+	WheelRs				HandleMouseWheel(short delta);
+	bool				HandleMouseDown();
+	void				HandleMouseUp();
+	/**
+	Checks if any modal dialogs are open at this time
+	*/
+	bool				IsModal();
+	/**
+	Closes all modal dialogs
+	@return true, if any modal dialogs were closed
+	*/
+	bool				CloseAllModal();
+	/**
+	Renders all visible windows/dialogs
+	*/
+	void				Render();
 
 }
 

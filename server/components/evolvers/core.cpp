@@ -426,7 +426,7 @@ namespace Evolver
 
 	/*virtual override*/ void Core::FinishRoundProcessing()
 	{
-		RuntimeConfig::roundNumber++;
+		RuntimeConfig::roundNumber.main++;
 
 		Game::Network::ChangePhase(RuntimeConfig::Phase::CommandPhase,Game::Config::roundTimer > 0 && !Game::roundTimerPaused ? Game::Config::roundTimer : -1);
 	}

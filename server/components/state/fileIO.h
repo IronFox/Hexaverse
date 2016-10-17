@@ -3,6 +3,7 @@
 
 #include <io/riff_handler.h>
 #include <sphereGrid.h>
+#include <runtimeConfig.h>
 
 
 namespace FileIO
@@ -15,7 +16,7 @@ namespace FileIO
 		extern bool		saveWhenAllQuit /*= true*/;
 	}
 
-	extern UINT32	lastSaveRound /*= 0*/;
+	extern RuntimeConfig::RoundNumber	lastSaveRound /*= 0*/;
 	static const PathString	savFileExtension = "hsf";	//hexaverse save file
 
 

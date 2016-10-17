@@ -2,9 +2,7 @@
 <declaration>
 	<context name="Factions">All currently existing factions
 		<command name="names">Lists all factions with their chosen names and first few ID digits.</command>
-		<command name="find">
-			Lists all factions whose chosen name contains or equals the specifed parameter. Ignores case.
-		</command>
+		<command name="find">Lists all factions whose chosen name contains or equals the specifed parameter. Ignores case.</command>
 	</context>
 	<context name="World">Settings related to the current world
 		<variable name="simulateLiquids" default="true">
@@ -61,11 +59,6 @@
 					</variable>
 				</context>
 				<context name="Mountains">
-					<variable name="top" default="Grass">
-						Content of the top-most surface cell (except where intersected by [ExtendedCore], or covered by [Liquid]).
-						Depending on height and settings this value may selectively be replaced by &apos;Snow&apos;, or Liquid.outline where appropriate.
-						If type is set to &apos;Unknown&apos; it can also be replaced by &apos;Rock&apos;, if above height level 2.
-					</variable>
 					<variable name="type" default="Unknown">
 						Type to fill mountains with.
 						&apos;Unknown&apos; attempts to guess what is best and may also selectively replace top under certain circumstances.
@@ -208,5 +201,6 @@
 	<context name="Server">
 		<variable name="saveEveryNRounds" default="10">Number of rounds between auto-saves. Set negative to disable.</variable>
 		<variable name="saveWhenAllQuit" default="true">Indicates that auto-saves should be performed when the last client disconnects. not saved to state files</variable>
+		<variable name="configMode" default="false" />
 	</context>
 </declaration>

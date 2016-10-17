@@ -77,7 +77,7 @@ namespace Objects
 		virtual void	VisitMembers(const FCommandVisitor&visitor, bool force, const int2&parentGridCoords) {visitor(parentGridCoords,shared_from_this());}
 		void			VisitMembers(const FCommandVisitor&visitor, bool force) {VisitMembers(visitor,force,coordOffset);}
 
-		void			LoadIcon();
+		virtual void	LoadIcon();
 		void			LoadIcon(const String&name);
 
 
@@ -189,16 +189,79 @@ namespace Objects
 	};
 
 
-	class IconCommand : public CallbackCommand
+
+	template <typename Base>
+		class CustomLabel : public Base
+		{
+			typedef	Base	Super;
+		public:
+			BaseCommand::Label		customLabel;
+
+			/**/		CustomLabel(const String&name):Super(name) {customLabel << name; customLabel.MarkBriefEnd();}
+			/**/		CustomLabel() {}
+			virtual void	CompileLabel(BaseCommand::Label&outResult) override
+			{
+				outResult = customLabel;
+			}
+		};
+
+
+	class IconCommand : public CustomLabel<CallbackCommand>
 	{
-		typedef	CallbackCommand	Super;
+		typedef	CustomLabel<CallbackCommand>	Super;
 	protected:
-		/**/			IconCommand(const String&name):Super(name)	{LoadIcon();}
+		/**/			IconCommand(const String&name):Super(name)	{}
 
 	public:
+
 		/**/			IconCommand()	{}
-		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name,exec,check,getCosts)	{LoadIcon();}
-		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check):Super(name,exec,check)	{LoadIcon();}
+		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name)
+		{
+			LoadIcon();
+			this->execute = exec;
+			this->check = check;
+			this->getCosts = getCosts;
+		}
+		/**/			IconCommand(const String&name, const FOnExecute&exec, const FCheck&check):Super(name)
+		{
+			LoadIcon();
+			this->execute = exec;
+			this->check = check;
+		}
+	};
+	typedef std::shared_ptr<IconCommand> PIconCommand;
+
+	template <typename Base>
+		class CustomIcon : public Base
+		{
+			typedef	Base	Super;
+			String		imageName;
+		public:
+			/**/		CustomIcon(const String&name, const String&imageName):Super(name),imageName(imageName)	{LoadIcon();}
+			/**/		CustomIcon() {}
+			virtual void	LoadIcon()	override {Super::LoadIcon(imageName);}
+		};
+
+
+	class CustomIconCommand : public CustomIcon<IconCommand>
+	{
+		typedef	CustomIcon<IconCommand>	Super;
+	protected:
+		/**/			CustomIconCommand(const String&name, const String&imageName):Super(name,imageName)	{}
+
+	public:
+		/**/			CustomIconCommand()	{}
+		/**/			CustomIconCommand(const String&name, const String&imageName, const FOnExecute&exec, const FCheck&check, const FGetCosts&getCosts):Super(name,imageName)
+						{
+							this->execute = exec;
+							this->check = check;
+							this->getCosts = getCosts;
+						}
+		/**/			CustomIconCommand(const String&name, const String&imageName, const FOnExecute&exec, const FCheck&check):Super(name,imageName)
+						{
+							this->execute = exec;
+							this->check = check;
+						}
 	};
 
 	class CommandContainer
@@ -214,6 +277,8 @@ namespace Objects
 
 		PCommandGroup	AddChild(const String&name);
 		PCommandGroup	AddChild(const int2&coords, bool relativeCoords, const String&name);
+		PCommandGroup	AddChild(const String&name, const String&iconName);
+		PCommandGroup	AddChild(const int2&coords, bool relativeCoords, const String&name, const String&iconName);
 
 		void			VisitMembers(const FCommandVisitor&visitor, bool force)	const
 		{
@@ -242,9 +307,9 @@ namespace Objects
 	Only one branch of groups can be visible at any time.
 	This version of Group must hold copies of one type of command. It cannot be used to store shared_ptr of commands!
 	*/
-	class CommandGroup : public BaseCommand, public CommandContainer	//for size/compatibility reasons
+	class CommandGroup : public CustomLabel<BaseCommand>, public CommandContainer	//for size/compatibility reasons
 	{
-		typedef BaseCommand Super;
+		typedef CustomLabel<BaseCommand> Super;
 
 		static Buffer0<CommandGroup*>		activeGroupPath;
 
@@ -253,17 +318,26 @@ namespace Objects
 			if (state & Flags::IsPermaActive)
 			{
 				state -= Flags::IsPermaActive;
+				if (onCollapse)
+					onCollapse();
 			}
 		}
 
 
 		void	Expand()
 		{
+			bool trigger = !(state & Flags::IsPermaActive);
 			state |= Flags::IsPermaActive;
+			if (trigger && onExpand)
+				onExpand();
 		}
 
 
 	public:
+		std::function<void()>	onCollapse;
+		std::function<void()>	onExpand;
+
+
 		/**/			CommandGroup(const String&name) : Super(name)	{LoadIcon();}
 		
 
@@ -299,6 +373,8 @@ namespace Objects
 			activeGroupPath.Clear();
 		}
 	};
+
+	
 
 
 

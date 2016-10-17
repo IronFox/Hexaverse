@@ -836,7 +836,7 @@ namespace Objects
 			{
 				ASSERT1__(p->queue.IsNotEmpty(),entity.GetName());
 				Component::VehicleBase* base = nullptr;
-				const auto&building = p->queue.first();
+				const auto&building = p->queue.First();
 
 				if (building.CanSpawnInGrid())
 					GetProductionChoices(&entity,building.GetVehicleBase(),movementChoices);

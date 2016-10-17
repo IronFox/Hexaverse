@@ -6,7 +6,7 @@
 #include <io/config.h>
 #include <io/file_system.h>
 #include "aiProcess.h"
-//#include "remoteControl.h"
+#include "configurationMode.h"
 
 namespace Reflection
 {
@@ -32,6 +32,12 @@ namespace Reflection
 				Walk(dir,callback);
 		}
 
+		/*virtual override*/ bool		Base::IsWriteProtected() const
+		{
+			if (persistence == Persistence::PlanetConfig)
+				return !ConfigurationMode::IsActive() || Super::IsWriteProtected();
+			return Super::IsWriteProtected();
+		}
 		
 
 		void				Base::OnChanged()
@@ -246,9 +252,7 @@ namespace Reflection
 		{
 			typedef Base	Super;
 		public:
-			String			defaultValue = "Spectator"
-											", Regular"
-											;
+			String			defaultValue = "All";
 
 			/**/			SupportedFactions(const String&name, unsigned protection=CLI::EraseProtection):Super(name, "Flagset",Persistence::RestoreFromSavegame,1,protection)	{}
 			virtual String	ToString()		const	override	{return Game::Config::FactionSupportFlagString();}
@@ -264,7 +268,8 @@ namespace Reflection
 			}
 			virtual String		GetSupportedValues() const override 
 			{
-				return "'Spectator'"
+				return "'All'"
+						", 'Spectator'"
 						", 'Regular'"
 						;
 			}
@@ -342,6 +347,46 @@ namespace Reflection
 			}
 		};
 
+		class ConfigMode : public Base
+		{
+			typedef Base	Super;
+		public:
+			bool defaultValue = false;
+
+			/**/			ConfigMode(unsigned protection=CLI::EraseProtection):Super("configMode","bool",Persistence::Temporary,1,protection)	{}
+			virtual String	ToString()		const	override
+			{
+				return ConfigurationMode::IsActive();
+			}
+			virtual	bool	Set(const String&value)	override
+			{
+				bool n;
+				if (!convert(value.c_str(),n))
+					return false;
+				if (n != ConfigurationMode::IsActive())
+				{
+					if (n)
+						ConfigurationMode::Begin();
+					else
+						ConfigurationMode::End();
+					OnChanged();
+				}
+				return true;
+
+			}
+			virtual String		GetSupportedValues() const override 
+			{
+				return "true,false";
+			}
+			virtual String	GetDefault() const override
+			{
+				return defaultValue;
+			}
+			virtual void		SetCurrentToDefault() override
+			{
+				defaultValue = ConfigurationMode::IsActive();
+			}
+		};
 
 		class UnitLimit : public Base
 		{
@@ -605,10 +650,10 @@ namespace Reflection
 	static void MapConfig(Grid::TPlanetConfig::TLayer&layer, const CLI::PFolder&context)
 	{
 		state.PushAndReplaceFocus(context);
-			Variable::Set("baseHeight",layer.baseHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight, Variable::Persistence::GameInvariant);
-			Variable::Set("noiseHeightScale",layer.heightScale,0.f, 10.f, Variable::Persistence::GameInvariant);
-			Variable::Set("frequency",layer.frequency,0.f, 10.f, Variable::Persistence::GameInvariant);
-			Variable::Set("dampening",layer.dampening,0, 10, Variable::Persistence::GameInvariant);
+			Variable::Set("baseHeight",layer.baseHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight, Variable::Persistence::PlanetConfig);
+			Variable::Set("noiseHeightScale",layer.heightScale,0.f, 10.f, Variable::Persistence::PlanetConfig);
+			Variable::Set("frequency",layer.frequency,0.f, 10.f, Variable::Persistence::PlanetConfig);
+			Variable::Set("dampening",layer.dampening,0, 10, Variable::Persistence::PlanetConfig);
 		state.PopFocus();
 	}
 
@@ -775,9 +820,9 @@ namespace Reflection
 	void	Create()
 	{
 		#undef VAR
-		#define VAR(_NAME_,_CONTEXT_,_MIN_,_MAX_,_PERSISTENCE_)	Variable::Set(#_NAME_,_CONTEXT_::_NAME_,_MIN_,_MAX_,_PERSISTENCE_);
+		#define VAR(_NAME_,_CONTEXT_,_MIN_,_MAX_,_PERSISTENCE_)	Variable::Set(#_NAME_,_CONTEXT_::_NAME_,_MIN_,_MAX_,_PERSISTENCE_)
 		#undef ENUMVAR
-		#define ENUMVAR(_NAME_,_CONTEXT_,_PERSISTENCE_)	Variable::SetEnum(#_NAME_,_CONTEXT_::_NAME_,_PERSISTENCE_);
+		#define ENUMVAR(_NAME_,_CONTEXT_,_PERSISTENCE_)	Variable::SetEnum(#_NAME_,_CONTEXT_::_NAME_,_PERSISTENCE_)
 
 		CLI::InitDefaults(state,PrintLn);
 
@@ -788,46 +833,53 @@ namespace Reflection
 		state.DefineCommand("find name", FactionCommands::FindName);
 		state.ExitFolder();
 
-		state.EnterNewFolder("World")->attachment.reset(new Variable::PersistenceAttachment());
+
+		CLI::PAttachment persistenceAttachment(new Variable::PersistenceAttachment());
+
+		state.EnterNewFolder("World")->attachment = persistenceAttachment;
 			VAR(simulateLiquids,World::Config,false,true,Variable::Persistence::RestoreFromSavegame);
-			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::GameInvariant)
+			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::PlanetConfig);
 
 
-			state.EnterNewFolder("Planet")->attachment.reset(new Variable::PersistenceAttachment());
-				Variable::planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::GameInvariant);
+			state.EnterNewFolder("Planet")->attachment = persistenceAttachment;
+				Variable::planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::PlanetConfig);
 				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("config/planets",Variable::planetType));
 				{
-					Variable::Set("atmosphereDensity",Grid::currentPlanetConfig.atmosphereColor.a,0.f,1.f,Variable::Persistence::GameInvariant);
-					Variable::SetMappedEnum<Grid::Content,UINT32>("innerCoreType",Grid::currentPlanetConfig.innerCoreType,Variable::Persistence::GameInvariant);
-					state.EnterNewFolder("ExtendedCore")->attachment.reset(new Variable::PersistenceAttachment());
-						Variable::SetEnum("type",Grid::currentPlanetConfig.extendedCoreType,Variable::Persistence::GameInvariant);
+					/*
+					Important:
+					Keep this in sync with client/components/configurationMode.cpp
+					*/
+					Variable::Set("atmosphereDensity",Grid::currentPlanetConfig.atmosphereColor.a,0.f,1.f,Variable::Persistence::PlanetConfig);
+					Variable::SetMappedEnum<Grid::Content,UINT32>("innerCoreType",Grid::currentPlanetConfig.innerCoreType,Variable::Persistence::PlanetConfig);
+					state.EnterNewFolder("ExtendedCore")->attachment = persistenceAttachment;
+						Variable::SetMappedEnum<Grid::Content,BYTE>("type",Grid::currentPlanetConfig.extendedCoreType,Variable::Persistence::PlanetConfig);
 					state.ExitFolder();
 					
 					
 					CLI::PFolder mountains = state.EnterNewFolder("Mountains");
-						mountains->attachment.reset(new Variable::PersistenceAttachment());
-						Variable::SetEnum("top",Grid::currentPlanetConfig.topType,Variable::Persistence::GameInvariant)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
-						Variable::SetEnum("type",Grid::currentPlanetConfig.innerType,Variable::Persistence::GameInvariant)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
-						Variable::Set("snowHeight",Grid::currentPlanetConfig.snowHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight,Variable::Persistence::GameInvariant)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
+						mountains->attachment = persistenceAttachment;
+//						Variable::SetMappedEnum<Grid::Content,BYTE>("top",Grid::currentPlanetConfig.topType,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
+						Variable::SetMappedEnum<Grid::Content,BYTE>("type",Grid::currentPlanetConfig.type,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
+						Variable::Set("snowHeight",Grid::currentPlanetConfig.snowHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 					state.ExitFolder();
 
-					state.EnterNewFolder("Liquid")->attachment.reset(new Variable::PersistenceAttachment());
-						Variable::SetEnum("type",Grid::currentPlanetConfig.liquidCoverage,Variable::Persistence::GameInvariant)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
-						Variable::Set("level",Grid::currentPlanetConfig.liquidHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight,Variable::Persistence::GameInvariant)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
-						Variable::SetEnum("outline",Grid::currentPlanetConfig.liquidOutline,Variable::Persistence::GameInvariant);
+					state.EnterNewFolder("Liquid")->attachment = persistenceAttachment;
+						Variable::SetMappedEnum<Grid::Content,BYTE>("type",Grid::currentPlanetConfig.liquidCoverage,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
+						Variable::Set("level",Grid::currentPlanetConfig.liquidHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
+						Variable::SetMappedEnum<Grid::Content,BYTE>("outline",Grid::currentPlanetConfig.liquidOutline,Variable::Persistence::PlanetConfig);
 					state.ExitFolder();
 
 					MapConfig(Grid::currentPlanetConfig.extendedCore,state.GetFocus()->CreateOrGetChild("ExtendedCore"));
 					MapConfig(Grid::currentPlanetConfig.mountains,mountains);
 
-					state.EnterNewFolder("Resources")->attachment.reset(new Variable::PersistenceAttachment());
+					state.EnterNewFolder("Resources")->attachment = persistenceAttachment;
 						for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
 						{
 							Objects::Resource res = Objects::Resource::Reinterpret(i);
-							state.EnterNewFolder(res.ToString())->attachment.reset(new Variable::PersistenceAttachment());
-								Variable::Set("density",Grid::Resource::density[i],0.f,1.f,Variable::Persistence::GameInvariant);
+							state.EnterNewFolder(res.ToString())->attachment = persistenceAttachment;
+								Variable::Set("density",Grid::Resource::density[i],0.f,1.f,Variable::Persistence::PlanetConfig);
 								//Variable::Set("probability",Grid::Resource::probability[i],0.f,1.f,Variable::Persistence::GameInvariant);
-								Variable::Set("max",Grid::Resource::maximum[i],(Grid::Resource::coverage_t)1,(Grid::Resource::coverage_t)32,Variable::Persistence::GameInvariant);
+								Variable::Set("max",Grid::Resource::maximum[i],(Grid::Resource::coverage_t)1,(Grid::Resource::coverage_t)32,Variable::Persistence::PlanetConfig);
 							state.ExitFolder();
 						}
 					state.ExitFolder();
@@ -835,29 +887,29 @@ namespace Reflection
 				state.ExitFolder();
 			state.ExitFolder();
 		state.ExitFolder();
-		state.EnterNewFolder("Rules")->attachment.reset(new Variable::PersistenceAttachment());
+		state.EnterNewFolder("Rules")->attachment = persistenceAttachment;
 
-			ENUMVAR(gameGoal,RuntimeConfig,Variable::Persistence::RestoreFromSavegame)
+			ENUMVAR(gameGoal,RuntimeConfig,Variable::Persistence::RestoreFromSavegame);
 
 			state.SetVariable(CLI::PVariable(new Variable::SupportedFactions("supportedFactions")));
 
-			VAR(closedGame,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame)
-			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::ConfigOverridesSavegame)
-			VAR(bombsExplodeWhenDestroyed,RuntimeConfig,false,true,Variable::Persistence::ConfigOverridesSavegame)
-			VAR(startBases,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame)
-			VAR(basesRequired,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame)
-			VAR(exposeActionLeftToHostileFactions,Game::Config,false,true,Variable::Persistence::ConfigOverridesSavegame)
-			VAR(empZones,RuntimeConfig,false,true,Variable::Persistence::RestoreFromSavegame)
-			VAR(newVehiclesHaveFullAmmo,Objects,false,true,Variable::Persistence::RestoreFromSavegame)
-			VAR(uplinkBandwidth,Game::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame)
-			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::ConfigOverridesSavegame)
+			VAR(closedGame,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
+			VAR(roundTimer,Game::Config,-1,INT_MAX,Variable::Persistence::ConfigOverridesSavegame);
+			VAR(bombsExplodeWhenDestroyed,RuntimeConfig,false,true,Variable::Persistence::ConfigOverridesSavegame);
+			VAR(startBases,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
+			VAR(basesRequired,Game::Config,false,true,Variable::Persistence::RestoreFromSavegame);
+			VAR(exposeActionLeftToHostileFactions,Game::Config,false,true,Variable::Persistence::ConfigOverridesSavegame);
+			VAR(empZones,RuntimeConfig,false,true,Variable::Persistence::RestoreFromSavegame);
+			VAR(newVehiclesHaveFullAmmo,Objects,false,true,Variable::Persistence::RestoreFromSavegame);
+			VAR(uplinkBandwidth,Game::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame);
+			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::ConfigOverridesSavegame);
 
-			state.EnterNewFolder("UnitLimits")->attachment.reset(new Variable::PersistenceAttachment());
+			state.EnterNewFolder("UnitLimits")->attachment = persistenceAttachment;
 				RuntimeConfig::UnitLimits::Reset();
 
 				state.SetVariable(CLI::PVariable(new Variable::UnitLimitEnabled("Enabled")));
 
-				state.EnterNewFolder("Structures")->attachment.reset(new Variable::PersistenceAttachment());
+				state.EnterNewFolder("Structures")->attachment = persistenceAttachment;
 					for (const Objects::PStructure&p:Objects::structurePrototypes)
 					{
 						String key = p->GetTypeName();
@@ -866,7 +918,7 @@ namespace Reflection
 					}
 				state.ExitFolder();
 
-				state.EnterNewFolder("MobileTurrets")->attachment.reset(new Variable::PersistenceAttachment());
+				state.EnterNewFolder("MobileTurrets")->attachment = persistenceAttachment;
 					for (const auto&c:Objects::Component::allTurretComponents)
 					{
 						String key = c->typeName;
@@ -876,21 +928,23 @@ namespace Reflection
 				state.ExitFolder();
 			state.ExitFolder();
 
-			state.EnterNewFolder("Nexus")->attachment.reset(new Variable::PersistenceAttachment());
-				VAR(haveBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
+			state.EnterNewFolder("Nexus")->attachment = persistenceAttachment;
+				VAR(haveBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame);
 				#ifndef NO_SATELLITES
-					VAR(haveSatellitesAtopBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
+					VAR(haveSatellitesAtopBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame);
 				#endif
 				state.SetVariable(CLI::PVariable(new Variable::NexusAIEnabled("enableAI")));
 				//VAR(enableAI,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame)
-				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::ConfigOverridesSavegame)
+				VAR(threatEstimationFactor,Game::Config::Nexus,0.001f,100.f,Variable::Persistence::ConfigOverridesSavegame);
 				state.SetVariable(CLI::PVariable(new Variable::NexusVehicleTurrets("vehicleTurrets")));
 			state.ExitFolder();
 		state.ExitFolder();
 
-		state.EnterNewFolder("Server")->attachment.reset(new Variable::PersistenceAttachment());
+		state.EnterNewFolder("Server")->attachment = persistenceAttachment;
 			VAR(saveEveryNRounds,FileIO::Config,-1,100,Variable::Persistence::ConfigOnly);
 			VAR(saveWhenAllQuit,FileIO::Config,false,true,Variable::Persistence::ConfigOnly);
+			
+			state.SetVariable(CLI::PVariable(new Variable::ConfigMode()));
 		state.ExitFolder();
 
 		SetupBase(state.GetRoot());
@@ -1020,6 +1074,7 @@ namespace Reflection
 					outBuffer << "Written to savegames and applied during loading, but overridden by settings found in configuration files afterwards."<<nl;
 				break;
 				case Variable::Persistence::GameInvariant:
+				case Variable::Persistence::PlanetConfig :	//for now, write the same thing into the config
 					outBuffer << "Written to savegames and restored from there, but cannot be altered once a game has started."<<nl;
 				break;
 				case Variable::Persistence::RestoreFromSavegame:
