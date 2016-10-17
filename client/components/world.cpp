@@ -193,6 +193,12 @@ namespace World
 			if (Grid::actualWorld.lightingOutdated)
 			{
 				Grid::actualWorld.UpdateLighting();
+				if (!Grid::actualWorld.lightingOutdated)
+					Grid::SetAllFamiliesOutdated();
+			}
+			if (Grid::actualWorld.structureChanged)
+			{
+				Grid::actualWorld.structureChanged = false;
 				for (const auto&s : Objects::structures)
 				{
 					if (Grid::high.family[Grid::low.grid.GetCell(s->location.stackID).family].normal.outdated)

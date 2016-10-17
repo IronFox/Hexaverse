@@ -27,8 +27,8 @@ namespace Receiver
 	void	ChangeMyName(Protocol::ClientName&, TCP::Peer&peer);
 	void	IdentifyUser(NET(TUniqueID)&, TCP::Peer&peer);
 	void	ChatMessage(Package::NetString<256>&, TCP::Peer&peer);
-
-
+	void	PlanetConfig(Grid::ExtendedPlanetConfig&, TCP::Peer&peer);
+	void		GameConfig(Protocol::GameConfig&, TCP::Peer&peer);
 
 	/**
 	Handler function to process network signals (packages without payloads)
@@ -61,6 +61,8 @@ namespace Channels
 	//TCP::ObjectSender<Protocol::Result,Protocol::ChannelID::
 	static const UINT32 FactionLevel = (UINT32)Network::UserLevel::CommonFaction;
 	static const UINT32 PreFaction = (UINT32)Network::UserLevel::PreFaction;
+	static const UINT32 Spectator = (UINT32)Network::UserLevel::Spectator;
+	static const UINT32 Configurator = (UINT32)Network::UserLevel::PlanetConfigurator;
 
 	extern TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>											hello;
 	extern TCP::Channel<Protocol::EntityDirectCommand, FactionLevel, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
@@ -84,6 +86,8 @@ namespace Channels
 	extern TCP::Channel<Protocol::ClientName,FactionLevel,Protocol::ChannelID::ChangeMyName>					changeMyName;
 	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>						identifyUserRecv;
 	extern TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>				chatMessage;
+	extern TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>			planetConfig;
+	extern TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>					gameConfig;
 
 	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>				clientFactionResponse;
 	extern TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>			markerCreationFailedLimitReached;

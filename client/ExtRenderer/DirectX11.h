@@ -1,6 +1,8 @@
 #ifndef renderer_DirectX11H
 #define renderer_DirectX11H
 
+#ifdef HAS_WINDOW
+
 #pragma warning(disable:4005)	//macro redefinition
 
 
@@ -878,8 +880,8 @@ namespace Engine
 				binding.normal.unset();
 				if (hasUV)
 				{
-					binding.texcoords.setSize(1);
-					binding.texcoords.first().set(3,2);
+					binding.texcoords.SetSize(1);
+					binding.texcoords.First().set(3,2);
 					binding.floats_per_vertex = 5;
 				}
 				else
@@ -1154,6 +1156,6 @@ namespace Engine
 
 
 
-
+#endif
 
 #endif

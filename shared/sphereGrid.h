@@ -6,6 +6,8 @@
 #include "grid.h"
 #include "stringTable.h"
 #include "logEvent.h"
+#include <general/random.h>
+#include <math/SimplexNoise.h>
 
 #ifdef HAS_WINDOW
 	#include "../client/ExtRenderer/DirectX11.h"
@@ -17,15 +19,19 @@ static const float WorldScale = 40.f;
 
 namespace Grid
 {
+	
+
+
 	CONSTRUCT_ENUMERATION4(WorldDiscovery,
 		None,
-		Oceans,
+		Water,
 		Liquids,
 		FullTerrain
 	)
 
 	static const int BadHeight = 0x1FFFFFFF;	//keep equal to gridAndChoices.h Objects::badHeight
 
+	class ExtendedPlanetConfig;
 
 	#ifdef HAS_WINDOW
 		namespace DX11 = Engine::DX11;
@@ -94,8 +100,8 @@ namespace Grid
 
 	struct TSharedPlanetConfig;
 	#ifndef CLIENT
-		struct TExtendedPlanetConfig;
-		typedef TExtendedPlanetConfig	TPlanetConfig;
+		class ExtendedPlanetConfig;
+		typedef ExtendedPlanetConfig	TPlanetConfig;
 	#else
 		typedef TSharedPlanetConfig	TPlanetConfig;
 	#endif
@@ -258,7 +264,12 @@ namespace Grid
 			#endif
 
 			/**/	CompactCell() :content(Content::Clear), structureCounter(0) {}
-			/**/	CompactCell(Content t) :content(t), structureCounter(0)	{}
+			/**/	CompactCell(Content t, short visibility) :content(t), structureCounter(0)
+			{
+			#ifdef CLIENT
+				visible = visibility;
+			#endif
+			}
 
 
 			#ifdef CLIENT
@@ -272,7 +283,7 @@ namespace Grid
 
 			void	GetDeltaFrom(const CompactCell&other, TTypeDelta&tout)	const
 			{
-				tout.newType = content != other.content ? content : 0;
+				tout.newType = content != other.content ? content+1 : 0;
 			}
 			void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout) const
 			{
@@ -301,7 +312,7 @@ namespace Grid
 			{
 				if (tdelta.newType)
 				{
-					content = tdelta.newType;
+					content = tdelta.newType-1;
 					DBG_ASSERT_LESS__(content,Content::NumberOfPossibilities);
 					return true;
 				}
@@ -349,13 +360,13 @@ namespace Grid
 
 
 			#ifdef HAS_WINDOW
-			/**/	Cell() :CompactCell(Content::Clear), intLightLevel(255), submergence(0) {}
-			/**/	Cell(Content t, BYTE lightLevel) :CompactCell(t), intLightLevel(lightLevel), submergence(0)	{}
+			/**/	Cell() :CompactCell(Content::Clear,0), intLightLevel(255), submergence(0) {}
+			/**/	Cell(Content t, BYTE lightLevel, short visibility) :CompactCell(t,visibility), intLightLevel(lightLevel), submergence(0)	{}
 			#else
-			/**/	Cell() :CompactCell(Content::Clear) {}
-			/**/	Cell(Content t, BYTE /*lightLevel*/) :CompactCell(t)	{}
+			/**/	Cell() :CompactCell(Content::Clear,0) {}
+			/**/	Cell(Content t, BYTE /*lightLevel*/, short visibility) :CompactCell(t,visibility)	{}
 			#endif
-			void	SetToIfSolid(Content cnt)	{if (IsSolid()) content = cnt;}
+			void	SetToIfSolid(BYTE cnt)	{if (IsSolid()) content = cnt;}
 			bool	IsWater() const { return content == Content::Water; }
 			bool	IsTechnite() const {return content == Content::Technite; }
 			//bool	WaterSurfaceBelow() const { return content == Content::Clear; }
@@ -502,13 +513,11 @@ namespace Grid
 		bool			FindTopOccupied(int&outHeight) const;
 
 
-		#ifndef CLIENT
-			void		InitUnknown(float2 heights, const TPlanetConfig&);
-			void		FillTypes(const TPlanetConfig&);
-		#endif
+		void			InitUnknown(float2 heights, const ExtendedPlanetConfig&);
+		void			FillTypes(const ExtendedPlanetConfig&);
 
 		void			ZeroInit();
-		void			ResetStructureCounters();
+		void			ResetStructureCounters(bool resetVisibility);
 		#ifdef HAS_WINDOW
 
 			#ifdef THOROUGLY_DEBUG_SENSORY
@@ -1091,7 +1100,7 @@ namespace Grid
 			{
 				count_t rs = 0;
 				foreach (coverage,c)
-					rs += c->range.GetExtend();
+					rs += c->range.GetExtent();
 				return rs;
 			}
 
@@ -1171,33 +1180,7 @@ namespace Grid
 			}
 		}
 
-		/*
-		void						UpdatePlanarDistanceField(index_t centerCell, float maxDistance, TFDistanceField&field) const
-		{
-			field.Reset();
 
-			field.distance[centerCell] = 0;
-			Queue<index_t>	queue;
-			queue << centerCell;
-			index_t cellID;
-			while (queue >> cellID)
-			{
-				UINT32 d = field.distance[stackID] + 1;
-				if (d > maxDistance)
-					continue;
-				const auto &nh = grid.GetCell(cellID).neighborhood;
-				for (int i = 0; i < nh.numNeighbors; i++)
-				{
-					UINT32 n = nh.neighborID[i];
-					if (field.distance[n] > d)
-					{
-						field.distance[n] = d;
-						queue << n;
-					}
-				}
-			}
-		}
-*/
 		UINT32			Locate(const TVec3<>&v, UINT32 startID = 0)	const
 		{
 			UINT32 stackID = startID;
@@ -1768,29 +1751,13 @@ namespace Grid
 		/**
 		Computes the coverage for a given location
 		*/
-		static coverage_t		GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max, float scale);
+		static coverage_t		GetRandomCoverage(const SimplexNoise&n, const float3&direction, float p, coverage_t max, float scale);
 
 		static float			probability[],density[];
 		static coverage_t		maximum[];
 
-		//static coverage_t		UraniumCoverage(UINT32)
-		//{
-		//	return GetCoverage(0.008f,6);
-		//}
-		//static coverage_t		MineralCoverage(UINT32)
-		//{
-		//	return GetCoverage(0.08f,12);
-		//}
-		//static coverage_t		FuelCoverage(UINT32)
-		//{
-		//	return GetCoverage(0.08f,12);
-		//}
-
 		static Buffer0<Resource>all;
-		//static void				Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 cellID));
-//		static void				Create(const String&name, ConstName cname, const float3&color/*, float p, coverage_t*/);
 		static void				Create(const String&name, ConstName cname, const float3&color, index_t);
-		//static void				Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield);
 		static Resource&		Require(const String&name);
 		static Resource&		Require(ConstName name);
 		static coverage_t		Sample(const String&resourceName, index_t cellID);
@@ -1808,6 +1775,8 @@ namespace Grid
 		
 		void					Fill(Random&random, float p, coverage_t, float density);
 		void					Fill(Random&random);
+
+		static void				FillAll(Random&random);
 
 		const String&			GetName() const {return name;}
 		ConstName				GetCName() const {return cname;}
@@ -1915,13 +1884,6 @@ namespace Grid
 	//*/
 	//float	RandomHeight(const TVec3<>&center0);
 
-	#ifndef CLIENT
-		/**
-		Redefines the world volume, based on the specified world configuration and discovery setting
-		MUST NOT be used on a session with active factions/players
-		*/
-		void			BuildWorld(const TPlanetConfig&config, WorldDiscovery discovery);
-	#endif
 
 	/**
 	Initializes the grid and all static gpu resources. Call ONCE before creating objects (and their shadows)
@@ -1985,6 +1947,11 @@ namespace Grid
 	bool	AffectedByEMP(const HCellIdI&);
 	bool	AffectedByEMP(const LCellIdI&);
 
+	/**
+	Sets both high resolution and low resolution families outdated, and to the specified time
+	*/
+	void	SetAllFamiliesOutdated(float t=0);
+
 	TVec3<> ToWorld(const HCellIdU&);
 	TVec3<> ToWorld(const HCellIdI&);
 	TVec3<> ToWorld(const LCellIdU&);
@@ -2005,7 +1972,7 @@ namespace Grid
 
 	void			FlushStackFamily(Array<CellStack>&cellStack,  BYTE family);
 	void			FlushAllData();
-	void			ResetStructureCounters();
+	void			ResetStructureCounters(bool resetVisibility=true);
 
 	void			UpdateResourceMap(ConstName resourceName,const ArrayData<TCellResourceCoverage>&);
 	#ifdef HAS_WINDOW
@@ -2202,12 +2169,20 @@ namespace Grid
 	public:
 		Array<CellStack>		cellStack;
 		#ifdef HAS_WINDOW
-			bool				lightingOutdated = true;	//new C++? probably
+			bool				lightingOutdated = true;
+			bool				structureChanged = true;
 		#endif
 
 		/**/					WorldData();
 
-		
+		void					swap(WorldData&other)
+		{
+			cellStack.swap(other.cellStack);
+			#ifdef HAS_WINDOW
+				swp(lightingOutdated,other.lightingOutdated);
+				swp(structureChanged,other.structureChanged);
+			#endif
+		}
 		/**
 		Checks if the specified low-resolution cell is not at all covered (not even partially)
 		*/
@@ -2232,11 +2207,11 @@ namespace Grid
 				cellStack[i].ZeroInit();
 			}
 		}
-		void					ResetStructureCounters()
+		void					ResetStructureCounters(bool resetVisibility)
 		{
 			for (index_t i = 0; i < cellStack.Count(); i++)
 			{
-				cellStack[i].ResetStructureCounters();
+				cellStack[i].ResetStructureCounters(resetVisibility);
 			}
 		}
 		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, bool initialization);
@@ -2275,7 +2250,18 @@ namespace Grid
 		void					Explode(const HCellIdI&,float radius, float atTime, bool blastThrough);
 		void					Explode(const HCellIdI&id,float radius, bool*familyChanged, bool blastThrough);
 
-
+		/**
+		Redefines the world volume, based on the specified world configuration and discovery setting
+		MUST NOT be used on the actual world while a session with active factions/players
+		*/
+		void					BuildWorld(const ExtendedPlanetConfig&config);
+		/**
+		Copies the volumetric composition of the local world data to the specified target according to the specified
+		world discovery value.
+		@param[out] target Target container to hold the filtered world data
+		@param discoveryLevel Level of terrain obfuscation to apply to the copy. If set to FullTerrain, then @a target will contain an exact copy of the local world data.
+		*/
+		void					ExportDiscovered(WorldData&target, WorldDiscovery discoveryLevel) const;
 
 		int						TraceSkySensor(UINT32 highCellCenter, int penetration) const;
 
@@ -2298,6 +2284,11 @@ namespace Grid
 
 
 		#ifdef HAS_WINDOW
+			/**
+			Updates the visibility of all cells to the specified value.
+			The previous value is discarded.
+			*/
+			void				OverrideVisibility(short v);
 			/**
 			Retrieves the average light-level of all high-resolution cells touched by the specified low-resolution cell
 			*/
@@ -2383,115 +2374,198 @@ namespace Grid
 			*/
 			const TMatrix3<>& GetSunSystem();
 		#endif
-	#else
-
-		struct TExtendedPlanetConfig : public TSharedPlanetConfig
-		{
-
-			int		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable
-					liquidHeight = 0;
-
-
-			Content		topType = Content::Grass,
-						innerType = Content::Unknown,
-						liquidCoverage = Content::Water,
-						extendedCoreType = Content::Granite,
-						liquidOutline = Content::Sand;
-
-			static void RandomizeSeed(float3&v, Random&random)
-			{
-				v.x = random.getFloat(-16,16);
-				v.y = random.getFloat(-16,16);
-				v.z = random.getFloat(-16,16);
-			}
-
-
-			struct TSeedSet
-			{
-				float3	seed[5],	//for fractal levels 0 to 5
-						productSeed,	//for the final product
-						depressionSeed0,
-						depressionSeed1,
-						depressionSeed2,
-						depressionSeed3;
-
-
-				void	Randomize(Random&random)
-				{
-					for (index_t i = 0; i < ARRAYSIZE(seed); i++)
-						RandomizeSeed(seed[i],random);
-					RandomizeSeed(depressionSeed0,random);
-					RandomizeSeed(depressionSeed1,random);
-					RandomizeSeed(depressionSeed2,random);
-					RandomizeSeed(depressionSeed3,random);
-					RandomizeSeed(productSeed,random);
-				}
-			};
-
-			struct TLayer : public TSeedSet
-			{
-				int		baseHeight = 0;	//center terrain height
-				float	heightScale = 1.f;	//vertical scale of noise.
-				//1.0f is pretty much the most you should set with normal noise frequency
-				float	frequency = 1.f;	//noise frequency factor
-				int		dampening = 2;
-			};
-
-			TLayer	extendedCore,mountains;
-
-			void	RandomizeSeeds(Random&random)
-			{
-				 extendedCore.Randomize(random);
-				 mountains.Randomize(random);
-			}
-
-			void	RandomizeSun(Random&random)
-			{
-				sunColor = float4(1);
-				//float4(random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),1);
-
-				Vec::stretch(sunColor.rgb,atmosphereColor.rgb,atmosphereColor.rgb);
-				//sunColor.rgb = atmosphereColor.rgb;
-
-
-				sunPlaneNormal_Speed = float4(
-						random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1),
-						0.07f
-						//random.getFloat(-0.2,0.2)
-					);
-				Vec::normalize0(sunPlaneNormal_Speed.xyz);
-
-			}
-
-			void	GenerateAtmosphereColorForType(Content t)
-			{
-				if (t == Content::Water)
-				{
-					atmosphereColor.rgb = float3(0.7,0.8,1.0);
-					return;
-				}
-				atmosphereColor.rgb = CellStack::Cell::typeColor[t];
-				Vec::abs(atmosphereColor);
-			}
-
-			void	GenerateAtmosphereColor()
-			{
-				if (liquidCoverage != Content::Clear)
-				{
-					GenerateAtmosphereColorForType(liquidCoverage);
-					
-					return;
-				}
-				if (innerCoreType != Content::Clear)
-					GenerateAtmosphereColorForType(Content::Reinterpret(innerCoreType));
-				else
-					GenerateAtmosphereColorForType(topType);
-			}
-
-		};
-
 	#endif
 
+	class ExtendedPlanetConfig : public TSharedPlanetConfig, public SerializableObject
+	{
+		void	RandomizeSun(Random&random)
+		{
+			sunColor = float4(1);
+			//float4(random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),1);
+
+			Vec::stretch(sunColor.rgb,atmosphereColor.rgb,atmosphereColor.rgb);
+			//sunColor.rgb = atmosphereColor.rgb;
+
+
+			sunPlaneNormal_Speed = float4(
+					random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1),
+					0.07f
+					//random.getFloat(-0.2,0.2)
+				);
+			Vec::normalize0(sunPlaneNormal_Speed.xyz);
+
+		}
+	public:
+
+
+
+
+		struct TSeedSet
+		{
+			int64_t	seed[5],	//for fractal levels 0 to 5
+					productSeed,	//for the final product
+					depressionSeed0,
+					depressionSeed1,
+					depressionSeed2,
+					depressionSeed3;
+
+
+			void	Randomize(Random&random)
+			{
+				for (index_t i = 0; i < ARRAYSIZE(seed); i++)
+					seed[i] = random.get();
+				depressionSeed0 = random.get();
+				depressionSeed1 = random.get();
+				depressionSeed2 = random.get();
+				depressionSeed3 = random.get();
+				productSeed = random.get();
+			}
+		};
+
+		struct NoiseSet
+		{
+			SimplexNoise	fractal[5],	//for fractal levels 0 to 5
+							product,	//for the final product
+							depression0,
+							depression1,
+							depression2,
+							depression3;
+
+			/**/			NoiseSet(const TSeedSet&set):
+								fractal
+									{
+										set.seed[0],
+										set.seed[1],
+										set.seed[2],
+										set.seed[3],
+										set.seed[4]
+									},
+								product(set.productSeed),
+								depression0(set.depressionSeed0),
+								depression1(set.depressionSeed1),
+								depression2(set.depressionSeed2),
+								depression3(set.depressionSeed3)
+			{}
+		};
+
+
+		struct TLayerConfig
+		{
+			int		dampening = 2;
+			int		baseHeight = 0;	//center terrain height
+			float	heightScale = 1.f;	//vertical scale of noise.
+			//1.0f is pretty much the most you should set with normal noise frequency
+			float	frequency = 1.f;	//noise frequency factor
+		};
+
+		struct TLayer : public TSeedSet, public TLayerConfig
+		{};
+		 
+		static const size_t TLayer_size = sizeof(TLayer);
+		static const size_t TSeedSet_size = sizeof(TSeedSet);
+
+
+		static_assert(sizeof(TLayer)==sizeof(TSeedSet)+16,"packing issue?");
+
+		TLayer		extendedCore,mountains;
+		BYTE		type = Content::Unknown,
+					liquidCoverage = Content::Water,
+					extendedCoreType = Content::Granite,
+					liquidOutline = Content::Sand;
+		INT32		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable
+					liquidHeight = 0;
+		UINT32		lastSeed = 0;
+
+		virtual serial_size_t GetSerialSize(bool) const override
+		{
+			return sizeof(TSharedPlanetConfig) + sizeof(TLayerConfig)*2 + 4 + 8 + 4;
+		}
+
+		virtual bool HasFixedSize() const override
+		{
+			return true;
+		}
+
+		virtual	bool	Serialize(IWriteStream&outStream, bool) const override
+		{
+			return	outStream.WritePrimitive((const TSharedPlanetConfig&)*this)
+					&&	outStream.WritePrimitive((const TLayerConfig&)extendedCore)
+					&&	outStream.WritePrimitive((const TLayerConfig&)mountains)
+					&&	outStream.WritePrimitive(type)
+					&&	outStream.WritePrimitive(liquidCoverage)
+					&&	outStream.WritePrimitive(extendedCoreType)
+					&&	outStream.WritePrimitive(liquidOutline)
+					&&	outStream.WritePrimitive(snowHeight)
+					&&	outStream.WritePrimitive(liquidHeight)
+					&&	outStream.WritePrimitive(lastSeed)
+					;
+		}
+
+		virtual	bool	Deserialize(IReadStream&inStream, serial_size_t) override
+		{
+			return	inStream.ReadPrimitive((TSharedPlanetConfig&)*this)
+					&&	inStream.ReadPrimitive((TLayerConfig&)extendedCore)
+					&&	inStream.ReadPrimitive((TLayerConfig&)mountains)
+					&&	inStream.ReadPrimitive(type)
+					&&	inStream.ReadPrimitive(liquidCoverage)
+					&&	inStream.ReadPrimitive(extendedCoreType)
+					&&	inStream.ReadPrimitive(liquidOutline)
+					&&	inStream.ReadPrimitive(snowHeight)
+					&&	inStream.ReadPrimitive(liquidHeight)
+					&&	inStream.ReadPrimitive(lastSeed)
+					&&	ApplySeed()
+					;
+		}
+		
+		/**
+		Reapplies @a lastSeed, and fills random parameters.
+		As long as @a lastSeed is not modified, the resulting values will not either
+		*/
+		bool	ApplySeed();
+		/**
+		Updates @a lastSeed to the given parameter, and fills random parameters.
+		If @a lastSeed does not actually change, the resulting values will not either
+		*/
+		void	SetSeed(UINT32 seed);
+		/**
+		Copies the current seed of @a random to @a lastSeed, and fill random parameters using the specified
+		random variable.
+		Contrary to SetSeed(random.currentSeed()), @a random will actually be advanced by the operation.
+		Using a random variable with current seed equal to @a lastSeed will produce identical results
+		*/
+		void	RandomizeSeeds(Random&random);
+
+		void	GenerateAtmosphereColorForType(BYTE t)
+		{
+			if (t == Content::Water)
+			{
+				atmosphereColor.rgb = float3(0.7,0.8,1.0);
+				return;
+			}
+			if (t == Content::Unknown)
+			{
+				GenerateAtmosphereColorForType(Content::Grass);
+				return;
+			}
+			atmosphereColor.rgb = CellStack::Cell::typeColor[t];
+			Vec::abs(atmosphereColor);
+		}
+
+		void	GenerateAtmosphereColor()
+		{
+			if (liquidCoverage != Content::Clear)
+			{
+				GenerateAtmosphereColorForType(liquidCoverage);
+					
+				return;
+			}
+			if (innerCoreType != Content::Clear)
+				GenerateAtmosphereColorForType(Content::Reinterpret(innerCoreType));
+			else
+				GenerateAtmosphereColorForType(type);
+		}
+
+	};
 
 	class OrbitGrid
 	{

@@ -11,7 +11,10 @@
 #include "ai.h"
 #include "clientRuntimeConfig.h"
 #include "timelapse.h"
+#include "configurationMode.h"
 
+
+//#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
 
 void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
 void			OnPlayerControlBegin();
@@ -60,6 +63,9 @@ namespace Network
 		gameHasBegun = false;
 
 		client.ConnectAsync(addr.host + ":"+String(addr.basePort + PortOffset::Session));
+		#ifdef HAS_WINDOW
+			GUI::SignalSituationChange();
+		#endif
 	}
 
 	Objects::OwnerParameter ResolveFaction(const TUniqueID&id)
@@ -228,7 +234,7 @@ namespace Network
 					waste << *a;
 					attempts.erase(a);
 					#ifdef HAS_WINDOW
-						Dialog::SignalSituationChange();
+						GUI::SignalSituationChange();
 					#endif
 					return true;
 				}
@@ -317,7 +323,6 @@ namespace Network
 		Grid::Content coreContent = Grid::Content::Reinterpret(config.innerCoreType);
 		Grid::CellStack::bottom.content = coreContent;
 		#ifdef HAS_WINDOW
-			Grid::CellStack::bottom.visible = 1;
 			Grid::UpdateAtmosphere(config.atmosphereColor);
 			Grid::UpdateSun(config.sunPlaneNormal_Speed,config.sunColor);
 		#endif
@@ -376,11 +381,32 @@ namespace Network
 		bool			eventsLocked = true;
 
 
-		void	OnHelloResponse(Protocol::Result&response)
+		void	OnHelloResponse(Protocol::HelloResponse&response)
 		{
 			ASSERT__(response.success);
 			if (response.success)
-				LogEvent(EventClass::Preset::common, nullptr, "Status confirmed");
+			{
+				LogEvent(EventClass::Preset::common, nullptr, "Status confirmed ('"+response.errorMessage+"')");
+				#ifdef HAS_WINDOW
+					ConfigurationMode::SetActive(response.configurationMode);
+				#endif
+				if (response.configurationMode)
+					AttemptFactionLogin(false,Protocol::FactionType::SpectatorFaction);
+				else
+				{
+					#ifdef HAS_WINDOW
+						GUI::Show(Dialog::loginMenu);
+					#endif
+				}
+				#ifdef HAS_WINDOW
+					Dialog::CheckServersAreShown(false);
+				#endif
+			}
+			else
+			{
+				LogEvent(EventClass::Preset::networkError,"Server rejected hello ('"+response.errorMessage+"')");
+				client.Disconnect();
+			}
 		}
 
 		void	OnWorldDelta(Protocol::WorldDelta&delta)
@@ -404,6 +430,9 @@ namespace Network
 			}
 			else
 			{
+				#ifdef HAS_WINDOW
+					ConfigurationMode::RestoreServerWorld();
+				#endif
 				BYTE family = delta.familyAndLastFlag & 0x7F;
 				bool last = (delta.familyAndLastFlag & 0x80) != 0;
 				Grid::actualWorld.ApplyFamilyDelta(family,delta.data0,false,true);
@@ -421,6 +450,9 @@ namespace Network
 		void OnMobileState(Protocol::MobileState&vs)
 		{
 			ASSERT__(!eventsLocked);
+			#ifdef HAS_WINDOW
+				ConfigurationMode::RestoreServerObjects();
+			#endif
 
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
@@ -461,7 +493,9 @@ namespace Network
 		{
 			ASSERT__(!eventsLocked);
 			ASSERT__(Network::haveID || Network::amSpectator);
-
+			#ifdef HAS_WINDOW
+				ConfigurationMode::RestoreServerObjects();
+			#endif
 
 			Objects::PMobileEntity v;
 			auto m = vc.state.myMobileEntity.Get0();
@@ -498,11 +532,14 @@ namespace Network
 		void	OnNewStructure(Protocol::StructureConstruction&sc)
 		{
 			ASSERT__(!eventsLocked);
-
 			#ifdef HAS_WINDOW
-				if (Grid::actualWorld.lightingOutdated && World::allowRecompilation)
-					Grid::actualWorld.UpdateLighting();
+				ConfigurationMode::RestoreServerObjects();
 			#endif
+
+			//#ifdef HAS_WINDOW
+			//	if (Grid::actualWorld.lightingOutdated && World::allowRecompilation)
+			//		Grid::actualWorld.UpdateLighting();
+			//#endif
 
 			Objects::PStructure s = Objects::SpawnStructure(Network::ResolveFaction(sc.owner),  sc.state.entityState.id,sc.state.entityState.location,sc.typeName, sc.state.entityState.timestamp.rightNow, Network::haveID && Network::myID == sc.owner);
 			ASSERT__(s);
@@ -525,6 +562,9 @@ namespace Network
 		void OnStructureState(Protocol::StructureState&vs)
 		{
 			ASSERT__(!eventsLocked);
+			#ifdef HAS_WINDOW
+				ConfigurationMode::RestoreServerObjects();
+			#endif
 
 			if (vs.entityState.timestamp.rightNow && Animation::AllDone())
 			{
@@ -551,6 +591,9 @@ namespace Network
 		void DestroyEntity(Protocol::DestroyEntity&de)
 		{
 			ASSERT__(!eventsLocked);
+			#ifdef HAS_WINDOW
+				ConfigurationMode::RestoreServerObjects();
+			#endif
 
 			if (de.timestamp.rightNow && Animation::AllDone())
 			{
@@ -570,7 +613,7 @@ namespace Network
 						if (Objects::GetEntity(e->id))
 							Objects::Remove(e,type, t,Network::ControlEnabled());
 						#ifdef HAS_WINDOW
-							Dialog::SignalSituationChange();
+							GUI::SignalSituationChange();
 						#endif
 					});
 				}
@@ -579,7 +622,7 @@ namespace Network
 					float t = 0;
 					Objects::Remove(e,type, t,Network::ControlEnabled());
 					#ifdef HAS_WINDOW
-						Dialog::SignalSituationChange();
+						GUI::SignalSituationChange();
 					#endif
 				}
 
@@ -617,16 +660,17 @@ namespace Network
 			Objects::Faction::mine.reset();
 			myIDString = myID.ToString();
 
-			Network::gameFlags = cr.info.gameFlags;
+			Network::gameFlags = cr.info.gameConfig.gameFlags;
 			RuntimeConfig::empZones = (Network::gameFlags & Protocol::GameFlag::EMPZones) != 0;
-			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameGoal);
+			RuntimeConfig::gameGoal = RuntimeConfig::GameGoal::Reinterpret(cr.info.gameConfig.gameGoal);
 			RuntimeConfig::phase = RuntimeConfig::Phase::Reinterpret(cr.info.activePhase);
 
 			#ifdef HAS_WINDOW
+				ConfigurationMode::SetGameConfig(Network::gameFlags, RuntimeConfig::gameGoal, Grid::WorldDiscovery::Reinterpret( cr.info.gameConfig.worldDiscovery ));
 				World::allowRecompilation = false;
+				ConfigurationMode::SetActive((Network::gameFlags & Protocol::GameFlag::ConfigurationMode)!= 0);
 			#endif
 			gameHasBegun = false;
-
 
 			haveFaction = cr.startFactionTypes != 0;
 			if (haveFaction)
@@ -648,7 +692,10 @@ namespace Network
 				Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
 
 				#ifdef HAS_WINDOW
-					Dialog::Hide(Dialog::loginMenu);
+					GUI::Hide(Dialog::loginMenu);
+					//if (ConfigurationMode::IsActive())
+					//	UI::HexGrid::Configure
+					//	GUI::Show(Dialog::configMenu);
 				#endif
 			}
 			else
@@ -657,17 +704,17 @@ namespace Network
 				LogEvent(EventClass::Preset::uncommon, nullptr, "Server response: Faction void.");
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
-					Dialog::Show(Dialog::loginMenu);
+					GUI::Show(Dialog::loginMenu);
 				#endif
 			}
 
-			if (amSpectator)
-			{
-				foreach (Grid::actualWorld.cellStack,stack)
-					for (UINT32 l = 0; l < Grid::CellStack::Range; l++)
-						stack->volumeCell[l].visible = 1;	//entire world is visible
+			#ifdef HAS_WINDOW
+				if (amSpectator)
+				{
+					Grid::actualWorld.OverrideVisibility(1);
 
-			}
+				}
+			#endif
 		}
 
 		void	SetFactionID(NET(TUniqueID)&id)
@@ -852,7 +899,7 @@ namespace Network
 					type = Objects::Marker::Type::Reinterpret(2);
 				}
 			}
-			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, ownerID, entityType, std::max<int>(RuntimeConfig::roundNumber,marker.createdInRound));
+			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, ownerID, entityType, std::max(RuntimeConfig::roundNumber,marker.createdInRound));
 			#ifdef HAS_WINDOW
 				OnSelectionChange(true);
 			#endif
@@ -891,6 +938,13 @@ namespace Network
 			#endif
 
 		}
+
+		void	PlanetConfig(Grid::ExtendedPlanetConfig&cfg)
+		{
+			#ifdef HAS_WINDOW
+				ConfigurationMode::Update(cfg);
+			#endif
+		}
 	}
 
 
@@ -900,7 +954,7 @@ namespace Network
 
 		TCP::Channel<Protocol::ClientFactionResponse,0,Protocol::ChannelID::ClientFaction>			clientFactionResponse(Receiver::ClientFactionResponse);
 
-		TCP::Channel<Protocol::Result,0,Protocol::ChannelID::Hello>									helloResponse(Receiver::OnHelloResponse);
+		TCP::Channel<Protocol::HelloResponse,0,Protocol::ChannelID::Hello>							helloResponse(Receiver::OnHelloResponse);
 		TCP::Channel<Protocol::WorldDelta,0,Protocol::ChannelID::WorldDelta>						worldData(Receiver::OnWorldDelta);
 		TCP::Channel<Protocol::NewMobileEntity,0,Protocol::ChannelID::NewMobileEntity>				newMobileEntity(Receiver::OnNewMobileEntity);
 		TCP::Channel<Protocol::MobileState,0,Protocol::ChannelID::MobileState>						mobileStateUpdate(Receiver::OnMobileState);
@@ -931,6 +985,7 @@ namespace Network
 		TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>								lockEmpZones(Receiver::LockEmpZones);
 		TCP::Channel<NET(INT32), 0, Protocol::ChannelID::UplinkBandwidth>							uplinkBandwidth(Receiver::UplinkBandwidth);
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
+		TCP::Channel<Grid::ExtendedPlanetConfig, 0, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
 
 
 
@@ -952,6 +1007,7 @@ namespace Network
 		TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>					sleep;
 		TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>					changeMyName;
 		TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>					chatMessage;
+		TCP::ObjectSender<Protocol::GameConfig,Protocol::ChannelID::GameConfig>						gameConfig;
 
 			//	,			//c2s: NET(bool) -> NET(bool)
 			//SetFactionId,		//s2c: NET(TUniqueID)
@@ -981,7 +1037,7 @@ namespace Network
 			Channels::clientFactionRequest.SendTo(client,ready);
 
 			#ifdef HAS_WINDOW
-				Dialog::Show(Dialog::loginMenu);
+				GUI::Show(Dialog::loginMenu);
 			#endif
 		}
 	}
@@ -1052,10 +1108,7 @@ namespace Network
 				//lastPong = timer.Now();
 
 
-				#ifdef HAS_WINDOW
-					Dialog::Show(Dialog::loginMenu);
-					Dialog::CheckServersAreShown(false);
-				#endif
+
 
 			}
 			break;
@@ -1064,7 +1117,7 @@ namespace Network
 				LogEvent(EventClass::Preset::networkError, nullptr, "Connection attempt failed");
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
-					Dialog::SignalSituationChange();
+					GUI::SignalSituationChange();
 				#endif
 			}
 			break;
@@ -1079,7 +1132,7 @@ namespace Network
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
-					Dialog::CloseAllModal();
+					GUI::CloseAllModal();
 				#endif
 
 
@@ -1092,10 +1145,12 @@ namespace Network
 
 				Receiver::eventsLocked = true;
 
+
 				#ifdef HAS_WINDOW
-					Dialog::Hide(Dialog::loginMenu);
+					ConfigurationMode::SetActive(false);
+					GUI::Hide(Dialog::loginMenu);
 					Dialog::CheckServersAreShown(true);
-					Dialog::SignalSituationChange();
+					GUI::SignalSituationChange();
 				#endif
 
 			}
@@ -1113,19 +1168,32 @@ namespace Network
 				#endif
 				gameHasBegun = true;
 				LogEvent(EventClass::Preset::uncommon,nullptr,"Game has begun");
-				if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && Animation::AllDone())
-					OnPlayerControlBegin();
+				if (RuntimeConfig::IsInAnyCommandPhase())
+					if (Animation::AllDone())
+					{
+						LogEvent(EventSignificance::Debug,"Begin Game. Animation done. OnPlayerControlBegin");
+						OnPlayerControlBegin();
+					}
+					else
+						LogEvent(EventSignificance::Debug,"Begin Game. Animation NOT done");
 			break;
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();
 				#ifdef HAS_WINDOW
-					Dialog::SignalSituationChange();
+					GUI::SignalSituationChange();
 				#endif
 				#ifdef _DEBUG
 					//LogEvent(EventSignificance::Debug,nullptr,"Got pong from server");
 				#endif
 			break;
 		}
+	}
+
+	void OnIgnorePackage(UINT32 channel,UINT32 size,TCP::Peer&origin)
+	{
+		LogEvent(EventClass::Preset::networkError,origin.ToString()+": Ignored package on channel #"+String(channel)+" of size "+String(size));
+		DBG_FATAL__("Ignored Package");
+
 	}
 
 	void		Setup()
@@ -1163,6 +1231,7 @@ namespace Network
 		client.InstallChannel(Channels::lockEmpZones);
 		client.InstallChannel(Channels::uplinkBandwidth);
 		client.InstallChannel(Channels::unitLimits);
+		client.InstallChannel(Channels::planetConfig);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
@@ -1173,6 +1242,7 @@ namespace Network
 		client.SetAsync(false);
 		client.onEvent = OnEvent;
 		client.onSignal = OnSignal;
+		client.onIgnorePackage = OnIgnorePackage;
 
 		Net::initNet();
 		if (RuntimeConfig::udpListen)
@@ -1325,36 +1395,60 @@ namespace Network
 
 		}
 
-		if (timer.ToSeconds(t-lastServerTableUpdate) > 0.5f && !client.IsConnected() && !client.IsAttemptingToConnect())
+		if (timer.CheckIfOutdatedAndUpdate(lastServerTableUpdate,0.5f) && !client.IsConnected() && !client.IsAttemptingToConnect())
 		{
-			lastServerTableUpdate = t;
-
-			servers.Clear();
-			serverMap.Clear();
-
-			foreach (ServerDiscovery::attempts,_a)
-			{
-				const auto&a = **_a;
-				if (a.hasContact && (a.hasInfo || a.protocolIncompatible))
+			#ifdef DEBUG_SERVER_LIST
+				if (servers.IsEmpty())
 				{
-					index_t at;
-					if (!serverMap.query(a.lastInfo.hostInfo.value.hostID,at))
+					Random rng;
+					for (index_t i = 0; i < 100; i++)
 					{
-						at = servers.Count();
-						servers.Append().info = a.lastInfo;
-						servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
-						servers.last().protocolIncompatible = a.protocolIncompatible;
-						servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : servers.last().info.hostInfo.value.hostID;
-						servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
-						//if (!a.protocolIncompatible)
-						serverMap.Set(servers.last().id,at);
-						
+						auto&s = servers.Append();
+						s.addresses << std::make_pair(ServerAddress("localhost"),rng.getFloat(1,200));
+						s.id.Generate();
+						s.info.gameInfo.activePhase = (BYTE)rng.get(RuntimeConfig::Phase::N-1);
+						s.info.gameInfo.gameConfig.gameFlags = Protocol::GameFlag::AllFactionSupport;
+						s.info.gameInfo.gameConfig.gameGoal = (BYTE)rng.get(RuntimeConfig::GameGoal::N -1);
+						s.info.gameInfo.gameConfig.worldDiscovery = (BYTE)rng.get(Grid::WorldDiscovery::N -1);
+						s.info.gameInfo.numFactionsCreated = sqr(rng.get(0,16));
+						s.info.gameInfo.numFactionsOnline = rng.get(s.info.gameInfo.numFactionsCreated);
+						s.info.gameInfo.roundNumber = sqr(sqr(rng.get(8)));
+						s.info.gameInfo.worldID.value.Generate();
+						s.info.hostInfo.value.hostID = s.id;
+						s.info.hostInfo.value.serverBasePort = DEFAULT_SERVER_BASE_PORT;
+						s.rightVersion = true;
+						s.selected = false;
 					}
-
-					ServerInfo&info = servers[at];
-					info.addresses.Append(std::make_pair(a.address,a.lastPing));
 				}
-			}
+			#else
+
+				servers.Clear();
+				serverMap.Clear();
+
+				foreach (ServerDiscovery::attempts,_a)
+				{
+					const auto&a = **_a;
+					if (a.hasContact && (a.hasInfo || a.protocolIncompatible))
+					{
+						index_t at;
+						if (!serverMap.query(a.lastInfo.hostInfo.value.hostID,at))
+						{
+							at = servers.Count();
+							servers.Append().info = a.lastInfo;
+							servers.last().haveToken = 	a.protocolIncompatible ? false : accessMap.IsSet(a.lastInfo.gameInfo.worldID);
+							servers.last().protocolIncompatible = a.protocolIncompatible;
+							servers.last().id = a.protocolIncompatible ? TUniqueID::Empty() : servers.last().info.hostInfo.value.hostID;
+							servers.last().rightVersion = a.rightVersion && !a.protocolIncompatible;
+							//if (!a.protocolIncompatible)
+							serverMap.Set(servers.last().id,at);
+						
+						}
+
+						ServerInfo&info = servers[at];
+						info.addresses.Append(std::make_pair(a.address,a.lastPing));
+					}
+				}
+			#endif
 		}
 	
 	}
@@ -1458,7 +1552,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			//Network::Channels::destroyMarker.SendTo(Network::client, *o);
 		}
 
-		LogEvent(EventClass::Preset::important, nullptr, "Begin round " + String(RuntimeConfig::roundNumber));
+		LogEvent(EventClass::Preset::important, nullptr, "Begin round " + RuntimeConfig::roundNumber.ToString());
 
 
 	}
@@ -1468,10 +1562,24 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			f->requestedNewRound = false;
 			f->roundChangeNotifications = 0;
 		};
-	if (RuntimeConfig::phase == RuntimeConfig::Phase::CommandPhase && gameHasBegun && Animation::AllDone())
-		OnPlayerControlBegin();
+	if (RuntimeConfig::IsInAnyCommandPhase())
+		if (gameHasBegun)
+		{
+			if (Animation::AllDone())
+			{
+				LogEvent(EventSignificance::Debug,"Command phase. Game has begun. Animation done. OnPlayerControlBegin");
+				OnPlayerControlBegin();
+			}
+			else
+			{
+				LogEvent(EventSignificance::Debug,"Command phase. Game has begun. Animation NOT done");
+			}
+		}
+		else
+			LogEvent(EventSignificance::Debug,"Command phase. Game has NOT begun");
+
 	#ifdef HAS_WINDOW
-		Dialog::SignalSituationChange();
+		GUI::SignalSituationChange();
 	#endif
 }
 
@@ -1575,7 +1683,7 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 		if (srv->rightVersion && srv->HasAddress(RuntimeConfig::serverAddress))
 		{
 			index_t best = 0;
-			float bestPing = srv->addresses.first().second;
+			float bestPing = srv->addresses.First().second;
 			for (index_t i = 1; i < srv->addresses.Count(); i++)
 				if (srv->addresses[i].second < bestPing)
 				{

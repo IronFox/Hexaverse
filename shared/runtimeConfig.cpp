@@ -18,12 +18,12 @@ namespace RuntimeConfig
 	#endif
 
 	DoomsdayWeapons doomsdayWeapons;
-	bool empZones = true;
+	bool empZones = true, autoNewRound = false;
 	GameGoal gameGoal;
 
 	bool hibernationSystemEnabled = false;
 	bool bombsExplodeWhenDestroyed = true;
-	UINT32 roundNumber =0;
+	RoundNumber roundNumber;
 	Phase	phase;
 
 	FileSystem::Folder base,actual;

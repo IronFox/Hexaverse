@@ -1024,6 +1024,10 @@ namespace Objects
 		#endif
 		for (const PMobileEntity&e : storedMobileEntities)
 			func(e);
+		#ifdef CLIENT
+			for (const PMobileEntity&e : Marker::mobileGhosts)
+				func(e);
+		#endif
 	}
 
 
@@ -1072,7 +1076,7 @@ namespace Objects
 	#ifdef CLIENT
 
 
-		void Marker::UpdateAge(UINT32 currentRoundNumber)
+		void Marker::UpdateAge(const RuntimeConfig::RoundNumber& currentRoundNumber)
 		{
 			age = currentRoundNumber - createdInRound;
 			ASSERT_LESS__(age,100000);	//overflow otherwise, 100000 seems a good limit
@@ -1085,7 +1089,7 @@ namespace Objects
 			}
 		}
 
-		/*static*/ void				Marker::GetOutdated(BasicBuffer<Marker>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds)
+		/*static*/ void				Marker::GetOutdated(BasicBuffer<Marker>&outOudated, const RuntimeConfig::RoundNumber& currentRoundNumber, UINT32 deathOutdatedAfterRounds)
 		{
 			outOudated.Clear();
 			foreach(all, m)
@@ -1143,7 +1147,7 @@ namespace Objects
 		}
 
 
-		/*static*/ void				Marker::Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, UINT32 createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], UINT32 currentRound)
+		/*static*/ void				Marker::Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber& createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], const RoundNumber& currentRound)
 		{
 			const index_t newIndex = all.Count();
 			Marker&m = all.Append();
@@ -1373,7 +1377,7 @@ namespace Objects
 		{
 			serial_size_t size = sizeof(TUniqueID);	//marker id;
 			size += 1;	//type
-			size += GetSerialSizeOfSize(createdInRound);
+			size += sizeof(createdInRound);
 			size += sizeof(location);
 			if (UtilizesReferenceEntity())
 			{
@@ -1392,7 +1396,7 @@ namespace Objects
 		/*virtual override*/	bool		Marker::Serialize(IWriteStream&outStream, bool exportSize) const
 		{
 			if (!outStream.WritePrimitive(id) || !outStream.WritePrimitive((UINT8)type)
-				 || !outStream.WriteSize(createdInRound)
+				 || !outStream.WritePrimitive(createdInRound)
 				|| !outStream.WritePrimitive(location)
 				)
 				return false;
@@ -1409,7 +1413,7 @@ namespace Objects
 		/*virtual override*/	bool		Marker::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
 		{
 			UINT8 typei;
-			if (!inStream.ReadPrimitive(id) || !inStream.ReadPrimitive(typei) || !inStream.ReadSize(createdInRound)
+			if (!inStream.ReadPrimitive(id) || !inStream.ReadPrimitive(typei) || !inStream.ReadPrimitive(createdInRound)
 				||  !inStream.ReadPrimitive(location)
 				)
 				return false;
@@ -1418,7 +1422,7 @@ namespace Objects
 			{
 				if (fixedSize != EmbeddedSize)
 				{
-					fixedSize -= sizeof(TUniqueID) + 1 + GetSerialSizeOfSize(createdInRound) + sizeof(TUniqueID) + sizeof(location);
+					fixedSize -= sizeof(TUniqueID) + 1 + sizeof(createdInRound) + sizeof(TUniqueID) + sizeof(location);
 					{
 						fixedSize -= sizeof(TUniqueID);
 					}

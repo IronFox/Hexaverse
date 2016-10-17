@@ -4,7 +4,6 @@
 	#include <engine/display.h>
 #endif
 
-#include "noise.h"
 #include "objects.h"
 #include "logEvent.h"
 #include "sphereGridHelper.h"
@@ -15,7 +14,7 @@
 	namespace Camera
 	{
 		extern Engine::VectorCamera<>	scene;
-		void  TargetOrbit(float);
+		void  ChangeGroundRadius(float);
 	}
 
 #endif
@@ -46,7 +45,7 @@ namespace Grid
 
 
 
-	float2	RandomHeight(const TVec3<>&center0, const TPlanetConfig&config);
+	float2	RandomHeight(const TVec3<>&center0, const ExtendedPlanetConfig&config);
 
 
 
@@ -78,7 +77,7 @@ namespace Grid
 		float3(0.3f, 0.3f, 0.3f), //road
 		float3(1.2f,0.6f,0.5f)*-2.5f,	//Lava
 		-float3(0.6f,0.5f,1.2f),	//technite
-		float3(0.5f, 0.6f, 1.f)*0.3f,	//Water
+		float3(0.5f, 0.6f, 1.f),	//Water
 		float3(1)	//clear
 	};
 	
@@ -180,9 +179,10 @@ namespace Grid
 				return TLitColor(TVisibility(1.f));
 			}
 			const Cell&cell = layer > 0 ? this->volumeCell[layer - 1] : bottom;
+			const TVisibility&vis = layer > 0 ? this->volumeCell[layer - 1].GetVisibility() : this->volumeCell[0].GetVisibility();
 			mixes = cell.content == oppositeContent || Cell::typeColorMixes[cell.content];
 			outType = Cell::Content::Reinterpret(cell.content);
-			return TLitColor(cell.GetBaseColor(), this->volumeCell[layer].GetLightLevel(),0.f,cell.GetVisibility());
+			return TLitColor(cell.GetBaseColor(), this->volumeCell[layer].GetLightLevel(),0.f,vis);
 		}
 	
 		TLitColor			CellStack::GetDownColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const
@@ -206,17 +206,19 @@ namespace Grid
 			{
 				//sumBrightnessTo += 1.f;
 				outContent = Content::Clear;
-				sumVisibilityTo += 1.f;
+				sumVisibilityTo ++;
 				return TWeightedColor();
 			}
+			const Cell&upper = this->volumeCell[layer];
+
 			if (!layer)
 			{
-				sumBrightnessTo += this->volumeCell[layer].GetLightLevel();
+				sumBrightnessTo += upper.GetLightLevel();
+				sumVisibilityTo += upper.visible > 0;
 				outContent = Content::Clear;
 				return TWeightedColor();
 			}
-			const Cell&cell = this->volumeCell[layer - 1],
-				&upper = this->volumeCell[layer];
+			const Cell&cell = this->volumeCell[layer - 1];
 			float light = upper.GetLightLevel();
 			sumVisibilityTo += (cell.visible > 0);
 			if (!cell.IsOpaque() || upper.IsOpaque())
@@ -328,7 +330,7 @@ namespace Grid
 		}
 	#endif
 
-	/*static*/ CellStack::Cell	CellStack::bottom(CellStack::Cell::Content::Granite, 0), CellStack::top(CellStack::Cell::Content::Clear, 255);	//extremes below the bottom most, and above the top most
+	/*static*/ CellStack::Cell	CellStack::bottom(CellStack::Cell::Content::Granite, 0,1), CellStack::top(CellStack::Cell::Content::Clear, 255,1);	//extremes below the bottom most, and above the top most
 
 
 	const CellStack::Cell&		CellStack::GetCellU(unsigned layer)	const
@@ -458,129 +460,124 @@ namespace Grid
 	#endif
 
 
-	#ifndef CLIENT
-
-		static BYTE GetTopTypeAtHeight(const TPlanetConfig&config, int h)
-		{
-			if (h > config.snowHeight)
-				return Content::Snow;
-
-			if (h < config.liquidHeight && CellStack::Cell::IsLiquid(config.liquidCoverage) && CellStack::Cell::IsSolid(config.liquidOutline))
-				return config.liquidOutline;
-
-			if (h < 3 || config.innerType != Content::Unknown)
-				return config.topType;
-			else
-				return Content::Rock;
-		}
 
 
-		void			CellStack::InitUnknown(float2 heights, const TPlanetConfig&config)
-		{
-			//float topHeight = heights.y;
-			//based on this, h could go up to 40, though chances for that are excessively rare
-			int up0 = (int)Round(heights.y * config.mountains.heightScale / RawLayerHeight);
-			if (abs(up0) <= config.mountains.dampening)
-				up0 = 0;
-			else
-				up0 -= config.mountains.dampening * sign(up0);
-			int up1 = (int)Round(heights.x * config.extendedCore.heightScale / RawLayerHeight);
-			if (abs(up1) <= config.extendedCore.dampening)
-				up1 = 0;
-			else
-				up1 -= config.extendedCore.dampening * sign(up1);
-			const int h = clamp(config.mountains.baseHeight + up0, -HalfRange, HalfRange - 2);
-			const int coreH = clamp(config.extendedCore.baseHeight + up1, -HalfRange, HalfRange - 2);
+
+	void			CellStack::InitUnknown(float2 heights, const ExtendedPlanetConfig&config)
+	{
+		//float topHeight = heights.y;
+		//based on this, h could go up to 40, though chances for that are excessively rare
+		int up0 = (int)Round(heights.y * config.mountains.heightScale / RawLayerHeight);
+		if (abs(up0) <= config.mountains.dampening)
+			up0 = 0;
+		else
+			up0 -= config.mountains.dampening * sign(up0);
+		int up1 = (int)Round(heights.x * config.extendedCore.heightScale / RawLayerHeight);
+		if (abs(up1) <= config.extendedCore.dampening)
+			up1 = 0;
+		else
+			up1 -= config.extendedCore.dampening * sign(up1);
+		const int h = clamp(config.mountains.baseHeight + up0, -HalfRange, HalfRange - 2);
+		const int coreH = clamp(config.extendedCore.baseHeight + up1, -HalfRange, HalfRange - 2);
 		
 //			int coreH = clamp(Round(fabs(heights.x) * config.coreScale / RawLayerHeight)-HalfRange, -HalfRange, HalfRange - 1);
 
-			UINT uh = unsigned(h + HalfRange);
-			UINT coreLayer = ToLayer(coreH);
+		UINT uh = unsigned(h + HalfRange);
+		UINT coreLayer = ToLayer(coreH);
 
-			#ifdef CLIENT
-				lowestOpenCell = (BYTE)uh + 1;
-				highestOpaqueCell = (BYTE)uh;
-			#endif
-			if (config.innerType != Content::Clear)
-				for (UINT i = 0; i <= uh; i++)
-					volumeCell[i].content = Cell::IsLiquid(config.innerType) ? Cell::Content::Water : Cell::Content::Unknown;
-			else
-				for (UINT i = 0; i <= uh; i++)
-					volumeCell[i].content = Cell::Content::Clear;
+		#ifdef HAS_WINDOW
+			lowestOpenCell = (BYTE)uh + 1;
+			highestOpaqueCell = (BYTE)uh;
+		#endif
+		if (config.type != Content::Clear)
+			for (UINT i = 0; i <= uh; i++)
+				volumeCell[i].content = Cell::IsLiquid(config.type) ? Cell::Content::Water : Cell::Content::Unknown;
+		else
+			for (UINT i = 0; i <= uh; i++)
+				volumeCell[i].content = Cell::Content::Clear;
 
 
-			for (UINT l = uh+1; l < Range; l++)
-				volumeCell[l].content = Content::Clear;
+		for (UINT l = uh+1; l < Range; l++)
+			volumeCell[l].content = Content::Clear;
 
-			//if (Cell::IsLiquid(config.extendedCoreType ) || config.extendedCoreType == Content::Clear)
-			//	for (UINT i = 0; i < coreLayer; i++)
-			//		volumeCell[i].content = Content::Clear;
-			//else
-			if (config.extendedCoreType != Content::Clear)
-				for (UINT i = 0; i < coreLayer; i++)
-					volumeCell[i].content = Cell::IsLiquid(config.innerType) ? Cell::Content::Lava : Cell::Content::Granite;
-			else
-				for (UINT i = 0; i < coreLayer; i++)
-					volumeCell[i].content = Content::Clear;
-		}
+		//if (Cell::IsLiquid(config.extendedCoreType ) || config.extendedCoreType == Content::Clear)
+		//	for (UINT i = 0; i < coreLayer; i++)
+		//		volumeCell[i].content = Content::Clear;
+		//else
+		if (config.extendedCoreType != Content::Clear)
+			for (UINT i = 0; i < coreLayer; i++)
+				volumeCell[i].content = Cell::IsLiquid(config.type) ? Cell::Content::Lava : Cell::Content::Granite;
+		else
+			for (UINT i = 0; i < coreLayer; i++)
+				volumeCell[i].content = Content::Clear;
+	}
 
-		void			CellStack::FillTypes(const TPlanetConfig&config)
+	void			CellStack::FillTypes(const ExtendedPlanetConfig&config)
+	{
+		UINT top = 0;
+		int h = BottomHeight;
+		for (UINT layer = Range-1; layer < Range; layer--)
 		{
-			UINT top = 0;
-			int h = BottomHeight;
-			for (UINT layer = Range-1; layer < Range; layer--)
+			BYTE&content = volumeCell[layer].content;
+			if (content == Content::Clear)
 			{
-				BYTE&content = volumeCell[layer].content;
-				if (content == Content::Clear)
+				continue;
+			}
+			if (!top)
+			{
+				bool isSolid = true;
+				//isSolid = Cell::IsSolid(content);
+
+				if (content == Content::Unknown)
 				{
+					top = layer;
+					h = ToHeight(top);
+
+					if (h > config.snowHeight)
+						content = Content::Snow;
+					else
+						if (h < config.liquidHeight && CellStack::Cell::IsLiquid(config.liquidCoverage) && CellStack::Cell::IsSolid(config.liquidOutline))
+							content = config.liquidOutline;
+						else  
+							if (config.type == Content::Unknown)
+								content = h < 3 ? Content::Grass : Content::Rock;
+							else
+								content = config.type;
 					continue;
 				}
-				if (!top)
+			}
+			if (content == Content::Unknown || content == Content::Water)	//mountain layer
+			{
+				if (config.type == Content::Unknown)
 				{
-					bool isSolid = true;
-					isSolid = Cell::IsSolid(content);
-
-					if (isSolid)
-					{
-						top = layer;
-						h = ToHeight(top);
-
-						content = GetTopTypeAtHeight(config,h);
-						continue;
-					}
-				}
-				if (content == Content::Unknown || content == Content::Water)	//mountain layer
-				{
-					if (config.innerType == Content::Unknown)
-					{
-						bool hasEarth = Cell::typeStrength[config.topType] <= Cell::typeStrength[Content::Earth];
-						UINT rockHeight = h > 3 ? top : top - (3 - h);
-						if (!hasEarth)
-							rockHeight = Range;
+					//bool hasEarth = Cell::typeStrength[config.topType] <= Cell::typeStrength[Content::Earth];
+					UINT rockHeight = h > 3 ? top : top - (3 - h);
+					//if (!hasEarth)
+					//	rockHeight = Range;
 					
-						content = layer <= rockHeight ? Cell::Content::Rock : Cell::Content::Earth;
-					}
-					else
-						content = config.innerType;
+					content = layer <= rockHeight ? Cell::Content::Rock : Cell::Content::Earth;
 				}
-				else if (content == Content::Granite || content == Content::Lava)
-					content = config.extendedCoreType;
+				else
+					content = config.type;
+			}
+			else if (content == Content::Granite || content == Content::Lava)
+				content = config.extendedCoreType;
 				
 					
 
-			}
-
-
-			if (config.liquidCoverage != Content::Clear)
-			{
-				UINT top = std::min(ToLayer(config.liquidHeight),Range-1);
-				for (UINT i = 0; i <= top; i++)
-					if (volumeCell[i].content == Content::Clear)
-						volumeCell[i].content = config.liquidCoverage;
-			}
 		}
 
-	#endif
+
+		if (config.liquidCoverage != Content::Clear)
+		{
+			UINT top = std::min(ToLayer(config.liquidHeight),Range-1);
+			for (UINT i = 0; i <= top; i++)
+				if (volumeCell[i].content == Content::Clear)
+				{
+					volumeCell[i].content = config.liquidCoverage;
+				}
+		}
+	}
 	
 
 	void			CellStack::ZeroInit()
@@ -608,13 +605,14 @@ namespace Grid
 		#endif
 	}
 
-	void			CellStack::ResetStructureCounters()
+	void			CellStack::ResetStructureCounters(bool resetVisibility)
 	{
 		for (UINT i = 0; i < Range; i++)
 		{
 			volumeCell[i].structureCounter = 0;
 			#ifdef CLIENT
-				volumeCell[i].visible = 0;
+				if (resetVisibility)
+					volumeCell[i].visible = 0;
 			#endif
 		}
 	}
@@ -636,7 +634,11 @@ namespace Grid
 						while (!volumeCell[highestOpaqueCell].IsOpaque() && highestOpaqueCell > 0)
 							highestOpaqueCell--;
 					}
-					actualWorld.lightingOutdated = true;
+					if (actualWorld.cellStack.Owns(this))
+					{
+						actualWorld.structureChanged = true;
+						actualWorld.lightingOutdated = true;
+					}
 					DebugCheckRange();
 				#endif
 				return true;
@@ -688,7 +690,11 @@ namespace Grid
 									highestOpaqueCell--;
 							}
 						}
-					actualWorld.lightingOutdated = true;
+					if (actualWorld.cellStack.Owns(this))
+					{
+						actualWorld.lightingOutdated = true;
+						actualWorld.structureChanged = true;
+					}
 					DebugCheckRange();
 				#endif
 				return true;
@@ -1034,247 +1040,270 @@ namespace Grid
 
 
 		#endif
-	#else
-
-		static bool ReplaceTop(BYTE content)
-		{
-			return content == Content::Earth || content == Content::Rock || content == Content::Sand;
-		}
-
-		void BuildWorld(const TPlanetConfig&config, WorldDiscovery discovery)
-		{
-			static Random random;
-
-			CellStack::bottom.content = (BYTE)config.innerCoreType;
-
-			foreach (Resource::all,res)
-				res->Fill(random);
-
-
-			Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[config](index_t i)
-			{
-				actualWorld.cellStack[i].InitUnknown(RandomHeight(high.cells[i].centerVertex.xyz,config),config);
-			});
-
-
-			for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
-			{
-				index_t fine = Grid::low.grid.GetCell(i).higherEquivalent;
-				auto&stack = actualWorld.cellStack[fine];
-				const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
-				for (UINT l = 0; l < CellStack::Range; l++)
-				{
-					if (stack.volumeCell[l].IsClearOrLiquidIgnoreStructure())
-					{
-						int cnt = 0;
-						BYTE cont;
-						for (int ni = 0; ni < n.numNeighbors; ni++)
-						{
-							auto&other = actualWorld.cellStack[n.neighborID[ni]].volumeCell[l];
-							if (!other.IsClearOrLiquidIgnoreStructure())
-							{
-								cnt ++;
-								cont = other.content;
-							}
-						}
-						if (cnt > 1)
-						{
-							stack.volumeCell[l].content = cont;
-	
-						}
-						else if (cnt > 0)
-						{
-							for (int ni = 0; ni < n.numNeighbors; ni++)
-							{
-								auto&otherStack = actualWorld.cellStack[n.neighborID[ni]];
-								auto&other = otherStack.volumeCell[l];
-								if (!other.IsClearOrLiquidIgnoreStructure())
-								{
-									cont = stack.volumeCell[l].content;
-									//if (l > 0 && (cont == Content::Clear || cont == Content::Water || cont == Content::Lava))
-									//{
-									//	otherStack.volumeCell[l-1].content = other.content;
-									//}
-
-									cnt ++;
-									other.content = stack.volumeCell[l].content;
-								}
-							}
-						}
-					}
-				}
-			}
-
-			Concurrency::parallel_for(index_t(0),LowSetup::GridType::CellCount,[](index_t i)
-			{
-				index_t fine = Grid::low.grid.GetCell(i).higherEquivalent;
-				auto&centerStack = actualWorld.cellStack[fine];
-				const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
-				const auto&n0 = Grid::low.grid.GetCell(i).neighborhood;
-				for (int ni = 0; ni < n.numNeighbors; ni++)
-				{
-					if ((index_t)n0.neighborID[ni] < i)
-						continue;
-
-					const auto&n2 = Grid::high.grid.GetCell(n.neighborID[ni]).neighborhood;
-
-					auto&nStack = actualWorld.cellStack[n.neighborID[ni]];
-					for (UINT l = 0; l < CellStack::Range; l++)
-					{
-						if (!nStack.volumeCell[l].IsClearOrLiquidIgnoreStructure())
-							continue;
-						count_t cnt = 0;
-						BYTE cont = 0;
-						for (int nj = 0; nj < n2.numNeighbors; nj++)
-						{
-							if (!actualWorld.cellStack[n2.neighborID[nj]].volumeCell[l].IsClearOrLiquidIgnoreStructure())
-							{
-								cnt ++;
-								cont = actualWorld.cellStack[n2.neighborID[nj]].volumeCell[l].content;
-							}
-						}
-						if (cnt > 3)
-						{
-							//if (l > 0 && (cont == Content::Clear || cont == Content::Water || cont == Content::Lava))
-							//{
-							//	nStack.volumeCell[l-1].content = nStack.volumeCell[l].content;
-							//}
-							nStack.volumeCell[l].content = cont;
-						}
-					}
-
-				}
-			});
-
-
-			Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[config](index_t i)
-			{
-				actualWorld.cellStack[i].FillTypes(config);
-			});
-
-			Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [](index_t i)
-			{
-				auto&stack = actualWorld.cellStack[i];
-				UINT32 stackTop = 0;
-				for (UINT l = 0; l+1 < CellStack::Range; l++)
-				{
-					if (stack.volumeCell[l].content == Content::Grass && !stack.volumeCell[l+1].IsClearOrLiquidIgnoreStructure())
-					{
-						stack.volumeCell[l].content = Content::Earth;
-					}
-				}
-			});
-
-
-			const bool solidProx = CellStack::Cell::IsSolid(config.liquidOutline) && CellStack::Cell::IsLiquid(config.liquidCoverage);
-			if (solidProx)
-				for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
-				{
-					auto&stack = actualWorld.cellStack[i];
-					for (UINT l = 0; l < CellStack::Range; l++)
-					{
-						const BYTE cont = stack.volumeCell[l].content;
-						if (solidProx && cont == config.liquidCoverage)
-						{
-							const auto&n = high.grid.GetCell(i).neighborhood;
-							for (BYTE k = 0; k < n.numNeighbors; k++)
-								actualWorld.cellStack[n.neighborID[k]].volumeCell[l].SetToIfSolid(config.liquidOutline);
-						}
-
-					}
-				}
-
-			for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
-			{
-				auto&stack = initialWorld.cellStack[i];
-				stack = actualWorld.cellStack[i];	//raw copy
-				switch (discovery)
-				{
-					case WorldDiscovery::None:
-						for (unsigned j = 0; j < CellStack::Range; j++)
-						{
-							CellStack::Cell&c = stack.volumeCell[j];
-							if (c.content != Content::Clear)
-							{
-					
-								c.content = Content::Unknown;
-								DBG_ASSERT__(c.structureCounter == 0);
-							}
-						}
-					break;
-					case WorldDiscovery::Oceans:
-						for (unsigned j = 0; j < CellStack::Range; j++)
-						{
-							CellStack::Cell&c = stack.volumeCell[j];
-							if (c.content != Content::Clear && c.content != Content::Water)
-							{
-								c.content = Content::Unknown;
-								DBG_ASSERT__(c.structureCounter == 0);
-							}
-						}
-					break;
-					case WorldDiscovery::Liquids:
-						for (unsigned j = 0; j < CellStack::Range; j++)
-						{
-							CellStack::Cell&c = stack.volumeCell[j];
-							if (c.content != Content::Clear && !c.IsLiquid())
-							{
-								c.content = Content::Unknown;
-								DBG_ASSERT__(c.structureCounter == 0);
-							}
-						}
-					break;
-				}
-			}
-		}
-
 	#endif
 
+	//static bool ReplaceTop(BYTE content)
+	//{
+	//	return content == Content::Earth || content == Content::Rock || content == Content::Sand;
+	//}
 
 
-	static float CDF(float x)
+	/*static*/ void Resource::FillAll(Random&random)
 	{
-		float sum = x;
-		float value = x;
-		for (int i = 0; i < 100; i++)
+		foreach (Resource::all,res)
+			res->Fill(random);
+	}
+
+	void WorldData::BuildWorld(const ExtendedPlanetConfig&config)
+	{
+		#ifdef HAS_WINDOW
+			lightingOutdated = true;
+			structureChanged = true;
+		#endif
+		ResetStructureCounters(false);
+		CellStack::bottom.content = (BYTE)config.innerCoreType;
+
+		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[config,this](index_t i)
 		{
-			value = (value*x*x/(2*i+1));
-			sum = sum+value;
+			cellStack[i].InitUnknown(RandomHeight(high.cells[i].centerVertex.xyz,config),config);
+		});
+
+		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
+		{
+			index_t fine = Grid::low.grid.GetCell(i).higherEquivalent;
+			auto&stack = cellStack[fine];
+			const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
+			for (UINT l = 0; l < CellStack::Range; l++)
+			{
+				if (stack.volumeCell[l].IsClearOrLiquidIgnoreStructure())
+				{
+					int cnt = 0;
+					BYTE cont;
+					for (int ni = 0; ni < n.numNeighbors; ni++)
+					{
+						auto&other = cellStack[n.neighborID[ni]].volumeCell[l];
+						if (!other.IsClearOrLiquidIgnoreStructure())
+						{
+							cnt ++;
+							cont = other.content;
+						}
+					}
+					if (cnt > 1)
+					{
+						stack.volumeCell[l].content = cont;
+	
+					}
+					else if (cnt > 0)
+					{
+						for (int ni = 0; ni < n.numNeighbors; ni++)
+						{
+							auto&otherStack = cellStack[n.neighborID[ni]];
+							auto&other = otherStack.volumeCell[l];
+							if (!other.IsClearOrLiquidIgnoreStructure())
+							{
+								cont = stack.volumeCell[l].content;
+
+								cnt ++;
+								other.content = stack.volumeCell[l].content;
+							}
+						}
+					}
+				}
+			}
 		}
-		static const float div = 0.39894228040143267793994605993438f;
-		 //1.f/sqrt(2.f*M_PIF);
-		return 0.5f+(sum*div)*exp(-(x*x)/2);
+
+		Concurrency::parallel_for(index_t(0),LowSetup::GridType::CellCount,[this](index_t i)
+		{
+			index_t fine = Grid::low.grid.GetCell(i).higherEquivalent;
+			auto&centerStack = cellStack[fine];
+			const auto&n = Grid::high.grid.GetCell(fine).neighborhood;
+			const auto&n0 = Grid::low.grid.GetCell(i).neighborhood;
+			for (int ni = 0; ni < n.numNeighbors; ni++)
+			{
+				if ((index_t)n0.neighborID[ni] < i)
+					continue;
+
+				const auto&n2 = Grid::high.grid.GetCell(n.neighborID[ni]).neighborhood;
+
+				auto&nStack = cellStack[n.neighborID[ni]];
+				for (UINT l = 0; l < CellStack::Range; l++)
+				{
+					if (!nStack.volumeCell[l].IsClearOrLiquidIgnoreStructure())
+						continue;
+					count_t cnt = 0;
+					BYTE cont = 0;
+					for (int nj = 0; nj < n2.numNeighbors; nj++)
+					{
+						if (!cellStack[n2.neighborID[nj]].volumeCell[l].IsClearOrLiquidIgnoreStructure())
+						{
+							cnt ++;
+							cont = cellStack[n2.neighborID[nj]].volumeCell[l].content;
+						}
+					}
+					if (cnt > 3)
+					{
+						nStack.volumeCell[l].content = cont;
+					}
+				}
+
+			}
+		});
+
+
+		Concurrency::parallel_for(index_t(0),HighSetup::GridType::CellCount,[config,this](index_t i)
+		{
+			cellStack[i].FillTypes(config);
+		});
+
+		//Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [this](index_t i)
+		//{
+		//	auto&stack = cellStack[i];
+		//	UINT32 stackTop = 0;
+		//	for (UINT l = 0; l+1 < CellStack::Range; l++)
+		//	{
+		//		if (stack.volumeCell[l].content == Content::Grass && !stack.volumeCell[l+1].IsClearOrLiquidIgnoreStructure())
+		//		{
+		//			stack.volumeCell[l].content = Content::Earth;
+		//		}
+		//	}
+		//});
+
+
+		const bool solidProx = CellStack::Cell::IsSolid(config.liquidOutline) && CellStack::Cell::IsLiquid(config.liquidCoverage);
+		if (solidProx)
+			for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
+			{
+				auto&stack = cellStack[i];
+				for (UINT l = 0; l < CellStack::Range; l++)
+				{
+					const BYTE cont = stack.volumeCell[l].content;
+					if (solidProx && cont == config.liquidCoverage)
+					{
+						const auto&n = high.grid.GetCell(i).neighborhood;
+						for (BYTE k = 0; k < n.numNeighbors; k++)
+							cellStack[n.neighborID[k]].volumeCell[l].SetToIfSolid(config.liquidOutline);
+					}
+
+				}
+			}
+
+		#ifdef HAS_WINDOW
+			Concurrency::parallel_for (index_t(0), HighSetup::GridType::CellCount, [this](index_t i)
+			{
+				auto&stack = cellStack[i];
+				stack.UpdateRange();
+				stack.lightingChangedTo = (BYTE)CellStack::Range;
+			});
+			lightingOutdated = true;
+			structureChanged = true;
+		#endif
+	}
+	void					WorldData::ExportDiscovered(WorldData&target, WorldDiscovery discoveryLevel) const
+	{
+		for (index_t i = 0; i < HighSetup::GridType::CellCount; i++)
+		{
+			auto&stack = target.cellStack[i];
+			stack = cellStack[i];	//raw copy
+			switch (discoveryLevel)
+			{
+				case WorldDiscovery::None:
+					for (unsigned j = 0; j < CellStack::Range; j++)
+					{
+						CellStack::Cell&c = stack.volumeCell[j];
+						if (c.content != Content::Clear)
+						{
+					
+							c.content = Content::Unknown;
+							#ifndef CLIENT
+							DBG_ASSERT__(c.structureCounter == 0);
+							#endif
+						}
+					}
+				break;
+				case WorldDiscovery::Water:
+					for (unsigned j = 0; j < CellStack::Range; j++)
+					{
+						CellStack::Cell&c = stack.volumeCell[j];
+						if (c.content != Content::Clear && c.content != Content::Water)
+						{
+							c.content = Content::Unknown;
+							#ifndef CLIENT
+							DBG_ASSERT__(c.structureCounter == 0);
+							#endif
+						}
+					}
+				break;
+				case WorldDiscovery::Liquids:
+					for (unsigned j = 0; j < CellStack::Range; j++)
+					{
+						CellStack::Cell&c = stack.volumeCell[j];
+						if (c.content != Content::Clear && !c.IsLiquid())
+						{
+							c.content = Content::Unknown;
+							#ifndef CLIENT
+							DBG_ASSERT__(c.structureCounter == 0);
+							#endif
+						}
+					}
+				break;
+			}
+			#ifdef HAS_WINDOW
+				if (discoveryLevel != WorldDiscovery::FullTerrain)
+					stack.UpdateRange();
+			#endif
+		}
 	}
 
 
-	static BYTE GetHeightMapHeight(TVec3<> p)
+
+	//static float CDF(float x)
+	//{
+	//	float sum = x;
+	//	float value = x;
+	//	for (int i = 0; i < 100; i++)
+	//	{
+	//		value = (value*x*x/(2*i+1));
+	//		sum = sum+value;
+	//	}
+	//	static const float div = 0.39894228040143267793994605993438f;
+	//	 //1.f/sqrt(2.f*M_PIF);
+	//	return 0.5f+(sum*div)*exp(-(x*x)/2);
+	//}
+
+
+	float Get(const SimplexNoise&n, const TVec3<>&p)
+	{
+		return (float)n.Get(p.x,p.y,p.z);
+	}
+
+	static BYTE GetHeightMapHeight(const SimplexNoise&n, TVec3<>&p)
 	{
 		Vec::normalize(p);
 		Vec::mult(p,2.f);
-		float perlin = 0.5f * (noise.Get(p) + noise.Get(p*2.f));	//pseudo normal distributed -1..+1
+		float v = 0.5f * (Get(n,p) + Get(n,p*2.f));	//pseudo normal distributed -1..+1
 
 		float x = //fabs(perlin);
-				fabs(CDF(perlin));
+				fabs(SimplexNoise::ToContinuousDistribution(v));
 		//float x = p.z * 0.5f + 0.5f;
 		//;
 		return (BYTE)(std::min(x ,1.f)* 255.f);
 	}
 
-	static void CreateHeightMapSide(Image&result, const float3&origin, const float3&dx, const float3&dy)
+	static void CreateHeightMapSide(Image&result, const SimplexNoise&n, const float3&origin, const float3&dx, const float3&dy)
 	{
-		result.setDimensions(128,128,1);
-		Concurrency::parallel_for(index_t(0),count_t(result.width()*result.height()),[&result,origin,dx,dy](index_t i)
+		result.SetSize(128,128,1);
+		Concurrency::parallel_for(index_t(0),count_t(result.GetWidth()*result.GetHeight()),[&result,&n,origin,dx,dy](index_t i)
 		{
 			TVec3<> p;
-			index_t x = i/result.height();
-			index_t y = i%result.height();
+			index_t x = i/result.GetHeight();
+			index_t y = i%result.GetHeight();
 			{
-				float fx = float(x)/float(result.width()-1) * 2.f - 1.f;
-				float fy = float(y)/float(result.height()-1) * 2.f - 1.f;
+				float fx = float(x)/float(result.GetWidth()-1) * 2.f - 1.f;
+				float fy = float(y)/float(result.GetHeight()-1) * 2.f - 1.f;
 				
 				Vec::mad(origin,dx,fx,p);
 				Vec::mad(p,dy,fy);
-				result.setChannel((UINT32)x,(UINT32)y,0,GetHeightMapHeight(p));
+				result.SetChannel((UINT32)x,(UINT32)y,0,GetHeightMapHeight(n,p));
 			}
 		});
 	}
@@ -1286,14 +1315,15 @@ namespace Grid
 			Instruction::heightMapOrientation.Create(Instruction::THeightMapOrientation());
 
 			{
+				SimplexNoise n(Random().getType<int64_t>());
 				Image sides[6];
 				//+x, -x, +y, -y, +z, -z.
-				CreateHeightMapSide(sides[0],float3(1,0,0),float3(0,0,-1),float3(0,1,0));
-				CreateHeightMapSide(sides[1],float3(-1,0,0),float3(0,0,1),float3(0,1,0));
-				CreateHeightMapSide(sides[2],float3(0,1,0),float3(1,0,0),float3(0,0,-1));
-				CreateHeightMapSide(sides[3],float3(0,-1,0),float3(1,0,0),float3(0,0,1));
-				CreateHeightMapSide(sides[4],float3(0,0,1),float3(1,0,0),float3(0,1,0));
-				CreateHeightMapSide(sides[5],float3(0,0,-1),float3(-1,0,0),float3(0,1,0));
+				CreateHeightMapSide(sides[0],n,float3(1,0,0),float3(0,0,-1),float3(0,1,0));
+				CreateHeightMapSide(sides[1],n,float3(-1,0,0),float3(0,0,1),float3(0,1,0));
+				CreateHeightMapSide(sides[2],n,float3(0,1,0),float3(1,0,0),float3(0,0,-1));
+				CreateHeightMapSide(sides[3],n,float3(0,-1,0),float3(1,0,0),float3(0,0,1));
+				CreateHeightMapSide(sides[4],n,float3(0,0,1),float3(1,0,0),float3(0,1,0));
+				CreateHeightMapSide(sides[5],n,float3(0,0,-1),float3(-1,0,0),float3(0,1,0));
 
 
 				Instruction::cubeHeightMap.LoadCube(sides,false);
@@ -1309,10 +1339,10 @@ namespace Grid
 
 
 			Image img(64, 1, 4);
-			for (UINT32 x = 0; x < img.width(); x++)
+			for (UINT32 x = 0; x < img.GetWidth(); x++)
 			{
-				float a = smoothstep(0.9, 0.95, float(x) / float(img.width() - 1));
-				float b = smoothstep(0.925, 0.95, float(x) / float(img.width() - 1));
+				float a = smoothstep(0.9, 0.95, float(x) / float(img.GetWidth() - 1));
+				float b = smoothstep(0.925, 0.95, float(x) / float(img.GetWidth() - 1));
 				BYTE*pixel = img.get(x, 0);
 				pixel[0] = (BYTE)(180 * b);
 				pixel[1] = (BYTE)(200 * b);
@@ -1472,48 +1502,74 @@ namespace Grid
 		//terrainColor.Clear();
 	}
 
-	#ifndef CLIENT
-		float	RandomHeight(const TVec3<>&center0, const TPlanetConfig::TSeedSet&config)
+	bool	ExtendedPlanetConfig::ApplySeed()
+	{
+		//LogEvent(EventSignificance::Uncommon,"seed: "+String(lastSeed));
+		Random random(lastSeed);
+		extendedCore.Randomize(random);
+		mountains.Randomize(random);
+		RandomizeSun(random);
+		return true;
+	}
+
+	void	ExtendedPlanetConfig::SetSeed(UINT32 seed)
+	{
+		lastSeed = seed;
+		//LogEvent(EventSignificance::Uncommon,"seed set "+String(lastSeed));
+		ApplySeed();
+	}
+
+	void	ExtendedPlanetConfig::RandomizeSeeds(Random&random)
+	{
+		lastSeed = random.currentSeed();
+		//LogEvent(EventSignificance::Uncommon,"seed randomized "+String(lastSeed));
+		extendedCore.Randomize(random);
+		mountains.Randomize(random);
+		RandomizeSun(random);
+	}
+
+	float	RandomHeight(const TVec3<>&center0, const ExtendedPlanetConfig::NoiseSet&config)
+	{
+		//center *= 3.f;
+		TVec3<> center = center0;
+		float rs = 0;
+
+		float strength = 1.f;
+		//noiseLevels = std::min(noiseLevels,5);
+		for (int i = 0; i < 5; i++)
 		{
-			//center *= 3.f;
-			TVec3<> center = center0;
-			float rs = 0;
-
-			float strength = 1.f;
-			//noiseLevels = std::min(noiseLevels,5);
-			for (int i = 0; i < 5; i++)
-			{
-				center *= 2.f;
-				strength /= 2.f;
-				const float3&seed = config.seed[i];
-				rs += noise.Get(center.x + seed.x, center.y + seed.y, center.z + seed.z)*strength;
-			}
-			rs *= noise.Get(center0.x*2.f + config.productSeed.x, center0.y*2.f + config.productSeed.y, center0.z*2.f + config.productSeed.z) * 0.5 + 0.5f;
-
-			float rf = 1.5f;
-			float depress = smoothstep(0.1f, 0.2f, 
-							0.5f * noise.Get(center0.x*6.f*rf + config.depressionSeed0.x, center0.y*6.f*rf + config.depressionSeed0.y, center0.z*6.f*rf + config.depressionSeed0.z)
-							 + noise.Get(center0.x*3.f*rf + config.depressionSeed1.x, center0.y*3.f*rf + config.depressionSeed1.y, center0.z*3.f*rf + config.depressionSeed1.z));
-			float fc = 0.25f * noise.Get(center0.x*4.f*rf + config.depressionSeed2.x, -center0.y*4.f*rf + config.depressionSeed2.y, -center0.z*4.f*rf + config.depressionSeed2.z) 
-					+ 0.75f * noise.Get(-center0.x*2.f*rf + config.depressionSeed3.x, center0.y*2.f*rf + config.depressionSeed3.y, center0.z*2.f*rf + config.depressionSeed3.z);
-			//noise.Get(center0.x*2.f + 10.f, center0.y*2.f, center0.z*2.f);
-			depress *= fc;// *fabs(fc);
-
-			rs -= depress*0.3f;
-
-			return rs;
-			//return (float)sign(rs)*pow(fabs(rs),1.3f) ;
+			center *= 2.f;
+			strength /= 2.f;
+			//const float3&seed = config.seed[i];
+			rs += Get(config.fractal[i],center)*strength;
 		}
+		rs *= Get(config.product,center0*2.f)*0.5f + 0.5f;
+		//noise.Get(center0.x*2.f + config.productSeed.x, center0.y*2.f + config.productSeed.y, center0.z*2.f + config.productSeed.z) * 0.5 + 0.5f;
 
-		float2	RandomHeight(const TVec3<>&center0, const TPlanetConfig&config)
-		{
-			return float2(
-				RandomHeight(center0*config.extendedCore.frequency,config.extendedCore),
-				RandomHeight(center0*config.mountains.frequency,config.mountains)
-				);
+		float rf = 1.5f;
+		float depress = smoothstep(0.1f, 0.2f, 
+						0.5f * Get(config.depression0, center0*6.f*rf)
+							+ Get(config.depression1, center0*3.f*rf));
+		float fc = 0.25f * Get(config.depression2, center0*4.f*rf) 
+				+ 0.75f * Get(config.depression3, -center0*2.f*rf);
+		//noise.Get(center0.x*2.f + 10.f, center0.y*2.f, center0.z*2.f);
+		depress *= fc;// *fabs(fc);
 
-		}
-	#else
+		rs -= depress*0.3f;
+
+		return rs;
+		//return (float)sign(rs)*pow(fabs(rs),1.3f) ;
+	}
+
+	float2	RandomHeight(const TVec3<>&center0, const ExtendedPlanetConfig&config)
+	{
+		return float2(
+			RandomHeight(center0*config.extendedCore.frequency,config.extendedCore),
+			RandomHeight(center0*config.mountains.frequency,config.mountains)
+			);
+
+	}
+	#ifdef CLIENT
 		#ifdef HAS_WINDOW
 			void	UpdatePlanetRenderingParameters(float radius)	//more to come
 			{
@@ -1888,7 +1944,7 @@ namespace Grid
 
 				if (enable)
 				{
-					Camera::TargetOrbit(ToRadius(targetFocus.height));
+					Camera::ChangeGroundRadius(ToRadius(targetFocus.height));
 				}
 
 				HighSetup::TDistanceField	newDomain;
@@ -2046,6 +2102,13 @@ namespace Grid
 	}
 
 	#ifdef HAS_WINDOW
+
+		void	WorldData::OverrideVisibility(short v)
+		{
+			foreach (cellStack,stack)
+			for (UINT32 l = 0; l < Grid::CellStack::Range; l++)
+				stack->volumeCell[l].visible = v;
+		}
 
 		float	WorldData::GetAverageLightLevel(const LCellIdI&id) const
 		{
@@ -2541,8 +2604,8 @@ namespace Grid
 
 				solidMesh.SetOffset();
 
-				const TBaseColor baseColor = thisCell.GetBaseColor();
-				const TBaseColor nextColor = nextCell.IsOpaque() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
+				//const TBaseColor baseColor = thisCell.GetBaseColor();
+				//const TBaseColor nextColor = nextCell.IsOpaque() && nextCell.Mixes() ? nextCell.GetBaseColor() : baseColor;
 				const bool capped = nextCell.IsOpaque();
 				if (!capped
 					)
@@ -3242,7 +3305,7 @@ namespace Grid
 				return *res;
 
 		FATAL__("Unable to locate resource '"+name+'"');
-		return all.first();
+		return all.First();
 	}
 
 	/*static*/ Resource&		Resource::Require(ConstName name)
@@ -3252,7 +3315,7 @@ namespace Grid
 				return *res;
 
 		FATAL__("Unable to locate resource #"+String(int(name)));
-		return all.first();
+		return all.First();
 	}
 
 
@@ -3273,7 +3336,7 @@ namespace Grid
 	//	}
 	//}
 
-	/*static*/ Resource::coverage_t		Resource::GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max, float scale)
+	/*static*/ Resource::coverage_t		Resource::GetRandomCoverage(const SimplexNoise&n, const float3&direction, float p, coverage_t max, float scale)
 	{
 		#ifdef GRID_INDEPENDENT_RANDOM
 			static Random random;
@@ -3288,7 +3351,7 @@ namespace Grid
 			static const int reduce = 5;
 
 			//float t0 = fabs(noise.Get(direction + seed,8.f));	//wide areas
-			float t1 = (noise.Get(direction + seed,M_PIF*2.5f));	//small areas
+			float t1 = (Get(n,direction *M_PIF*2.5f));	//small areas
 
 			int rs = std::min(1.f,scale * t1) * (reduce + max);
 			rs -= reduce;
@@ -3338,12 +3401,12 @@ namespace Grid
 
 	void Resource::Fill(Random&random,float p0, coverage_t max, float avgPerCell)
 	{
-		float3 seed(random.getFloat(-10.f,10.f),random.getFloat(-10.f,10.f),random.getFloat(-10.f,10.f));
+		SimplexNoise n(random.getType<int64_t>());
 
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 		{
 			#ifndef CLIENT
-				coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p0,max,1.f);
+				coverage[i] = Resource::GetRandomCoverage(n, Grid::low.cells[i].centerVertex.xyz,  p0,max,1.f);
 			#else
 				coverage[i] = 0;
 				known[i] = false;
@@ -3402,7 +3465,7 @@ namespace Grid
 					familyTotal[k] = 0;
 					for (index_t i = offset; i < offset + count; i++)
 					{
-						coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p0,max, p);
+						coverage[i] = Resource::GetRandomCoverage(n, Grid::low.cells[i].centerVertex.xyz,  p0,max, p);
 						familyTotal[k]+=coverage[i];
 					}
 					if (++retries > 10)
@@ -3527,6 +3590,7 @@ namespace Grid
 	void	WorldData::SignalLightingChange(const HCellIdI&stackID)
 	{
 		lightingOutdated = true;
+		structureChanged = true;
 		const UINT r = CellStack::ToLayer(stackID.height)+1;
 		high.UpdatePlanarDistanceField(stackID.stackID,r,field);
 		for (index_t i = 0; i < HighSetup::TDistanceField::NumEntries; i++)
@@ -3541,6 +3605,7 @@ namespace Grid
 			void	WorldData::SignalLightingChange(const LCellIdI&stackID)
 			{
 				lightingOutdated = true;
+				structureChanged = true;
 				const UINT r = CellStack::ToLayer(stackID.height) + 2;
 				UINT32 higher = low.grid.GetCell(stackID.stackID).higherEquivalent;
 				high.UpdatePlanarDistanceField(higher,CellStack::ToLayer(stackID.height),field);
@@ -3718,6 +3783,7 @@ namespace Grid
 				low.family[i].SetOutdated(atTime);
 				#ifdef HAS_WINDOW
 					lightingOutdated = true;
+					structureChanged = true;
 				#endif
 			}
 
@@ -3859,6 +3925,7 @@ namespace Grid
 						high.family[high.grid.GetCell(current).family].SetOutdated(0);
 						low.family[high.grid.GetCell(current).family].SetOutdated(0);
 						lightingOutdated = true;
+						structureChanged = true;
 					}
 					if (!h)
 						continue;
@@ -3987,6 +4054,7 @@ namespace Grid
 					high.family[high.grid.GetCell(current).family].SetOutdated(0);
 					low.family[high.grid.GetCell(current).family].SetOutdated(0);
 					lightingOutdated = true;
+					structureChanged = true;
 				}
 				if (!h)
 					continue;
@@ -4093,9 +4161,9 @@ namespace Grid
 
 
 
-	void	ResetStructureCounters()
+	void	ResetStructureCounters(bool resetVisibility)
 	{
-		actualWorld.ResetStructureCounters();
+		actualWorld.ResetStructureCounters(resetVisibility);
 
 
 	}
@@ -4108,6 +4176,11 @@ namespace Grid
 		actualWorld.FlushAllData();
 		#ifndef CLIENT
 			initialWorld.FlushAllData();
+			for (int i = 0; i < BaseGrid::NumFamilies; i++)
+			{
+				high.family[i].SetOutdated(0);
+				low.family[i].SetOutdated(0);
+			}
 		#endif
 
 		#ifdef HAS_WINDOW
@@ -4165,6 +4238,15 @@ namespace Grid
 	
 		}
 	#endif
+
+	void	SetAllFamiliesOutdated(float t)
+	{
+		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+		{
+			high.family[k].SetOutdated(t);
+			low.family[k].SetOutdated(t);
+		}
+	}
 
 
 	#ifdef HYBRID_GRID

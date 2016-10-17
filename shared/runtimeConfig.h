@@ -4,7 +4,7 @@
 #include "stringTable.h"
 #include <general/enumeration.h>
 #include <global_string.h>
-
+#include "roundNumber.h"
 
 namespace RuntimeConfig
 {
@@ -22,13 +22,14 @@ namespace RuntimeConfig
 
 	extern DoomsdayWeapons doomsdayWeapons;
 	extern GameGoal gameGoal;
-	extern bool		empZones;
+	extern bool		empZones, autoNewRound;
 	extern Phase	phase;
 
 	extern bool hibernationSystemEnabled;
 	extern bool bombsExplodeWhenDestroyed;
 
-	extern UINT32 roundNumber/*=0*/;
+	typedef ::RoundNumber	RoundNumber;
+	extern RoundNumber roundNumber;
 	namespace UnitLimits
 	{
 		bool		IsEnabled();

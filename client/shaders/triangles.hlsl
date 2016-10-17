@@ -20,7 +20,8 @@ struct V2P
 
 void vsMain(A2V input, out V2P output)
 {
-	output.position = float4(input.position*2.0 - 1.0,0.0,1.0);
+	output.position = TransformAndProject(float3(input.position,0.0));
+	//float4(input.position*2.0 - 1.0,0.0,1.0);
 	output.color = input.color;
 }
 

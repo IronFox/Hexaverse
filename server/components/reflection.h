@@ -12,12 +12,13 @@ namespace Reflection
 
 	namespace Variable
 	{
-		CONSTRUCT_ENUMERATION5(Persistence,
+		CONSTRUCT_ENUMERATION6(Persistence,
 			Temporary,
 			ConfigOnly,
 			ConfigOverridesSavegame,
 			RestoreFromSavegame,
-			GameInvariant		//written to savegames, but unchangeable until a new game is created. Common type: planet type
+			GameInvariant,		//written to savegames, but unchangeable until a new game is created. Common type: planet type
+			PlanetConfig		//written to savegames, but changeable via console in order to reconfigure a new planet
 		)
 
 
@@ -60,6 +61,8 @@ namespace Reflection
 				}
 				return this->name;
 			}
+
+			virtual bool		IsWriteProtected() const override;
 		};
 
 		typedef std::shared_ptr<Base>	PBase;

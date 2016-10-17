@@ -111,7 +111,8 @@ namespace Test
 		config.mountains.baseHeight = 1;
 		config.mountains.heightScale = 1.5f;	//cause turbulence
 		config.RandomizeSeeds(random);
-		Grid::BuildWorld(config,Grid::WorldDiscovery::FullTerrain);
+		Grid::actualWorld.BuildWorld(config);
+		Grid::actualWorld.ExportDiscovered(Grid::initialWorld,Grid::WorldDiscovery::FullTerrain);
 
 
 
@@ -216,7 +217,8 @@ namespace Test
 		config.mountains.baseHeight = 1;
 		config.mountains.heightScale = 1.5f;	//cause turbulence
 		config.RandomizeSeeds(random);
-		Grid::BuildWorld(config,Grid::WorldDiscovery::FullTerrain);
+		Grid::actualWorld.BuildWorld(config);
+		Grid::actualWorld.ExportDiscovered(Grid::initialWorld,Grid::WorldDiscovery::FullTerrain);
 
 
 

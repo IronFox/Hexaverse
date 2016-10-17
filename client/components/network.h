@@ -117,7 +117,7 @@ namespace Network
 		extern bool			eventsLocked/* = true*/;	//purely for debugging purposes. If set no events should be pouring in from the server. When the connection is lost, this is set to true, and no evenst should be triggered until a new connection is established
 
 
-		void	OnHelloResponse(Protocol::Result&response);
+		void	OnHelloResponse(Protocol::HelloResponse&response);
 		void	OnWorldDelta(Protocol::WorldDelta&delta);
 
 
@@ -164,6 +164,7 @@ namespace Network
 		void	FactionRequestedNewRound(NET(TUniqueID)&);
 		void	FactionContinuedRound(NET(TUniqueID)&);
 		void	LockEmpZones(NET(UINT16)&);
+		void	PlanetConfig(Grid::ExtendedPlanetConfig&);
 	}
 
 
@@ -171,7 +172,7 @@ namespace Network
 	{
 		extern TCP::Channel<Protocol::ControlMessage,0,Protocol::ChannelID::ControlMessage>				controlMessage;
 
-		extern TCP::Channel<Protocol::Result,0,Protocol::ChannelID::Hello>								helloResponse;
+		extern TCP::Channel<Protocol::HelloResponse,0,Protocol::ChannelID::Hello>						helloResponse;
 		extern TCP::Channel<Protocol::WorldDelta,0,Protocol::ChannelID::WorldDelta>						worldData;
 		extern TCP::Channel<Protocol::NewMobileEntity,0,Protocol::ChannelID::NewMobileEntity>			newMobileEntity;
 		extern TCP::Channel<Protocol::MobileState,0,Protocol::ChannelID::MobileState>					mobileStateUpdate;
@@ -202,6 +203,7 @@ namespace Network
 		extern TCP::Channel<NET(TUniqueID), 0, Protocol::ChannelID::FactionContinuedRound>				factionContinuedRound;
 		extern TCP::Channel<NET(UINT16), 0, Protocol::ChannelID::LockEMPZones>							lockEmpZones;
 		extern TCP::Channel<NET(int32_t), 0, Protocol::ChannelID::UplinkBandwidth>						uplinkBandwidth;
+		extern TCP::Channel<Grid::ExtendedPlanetConfig, 0, Protocol::ChannelID::PlanetConfig>			planetConfig;
 
 
 		extern TCP::ObjectSender<Protocol::ClientFactionRequest,Protocol::ChannelID::ClientFaction>		clientFactionRequest;
@@ -222,6 +224,7 @@ namespace Network
 		extern TCP::ObjectSender<Protocol::EntityStateUpdate, Protocol::ChannelID::Sleep>				sleep;
 		extern TCP::ObjectSender<Protocol::ClientName, Protocol::ChannelID::ChangeMyName>				changeMyName;
 		extern TCP::ObjectSender<Package::NetString<256>,Protocol::ChannelID::ChatMessage>				chatMessage;
+		extern TCP::ObjectSender<Protocol::GameConfig,Protocol::ChannelID::GameConfig>					gameConfig;
 
 		
 	}
@@ -276,8 +279,8 @@ namespace Network
 		bool					selected, haveToken;
 
 		#ifdef HAS_WINDOW
-			GUIElements::PLabel		headLine;	//game/server ids, optionally (continue)
-			GUIElements::PButtonPanel	buttonPanel;
+			GUI::PLabel		headLine;	//game/server ids, optionally (continue)
+			GUI::PButtonPanel	buttonPanel;
 		#endif
 
 

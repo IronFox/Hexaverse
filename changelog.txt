@@ -1,5 +1,13 @@
-v0.5.1
-	+ Added control commands to find and terminate factions.
+v0.5.2
+	+ Added new button and functionality to automatically progress round if all units have been instructed.
+	+ Re-included D3DCompiler_43.dll since it seems to be necessary in some cases.
+	+ Shift+F3 can now be used to capture auto-cropped, transparent screenshots.
+	+ Added interactive configuration mode for locally started servers.
+	> Incorrect client configuration files are now repaired instead of crashing the client.
+	* Fixed bottom layer visibility visualization.
+	
+v0.5.1	[Apr 10 2016]
+	+ Added control commands to manage factions.	+ Added control commands to find and terminate factions.
 	> Reactor cores now require uranium to operate but generate power in addition to their usual functionality.
 	> Improved sky grid. G can now be used to quickly toggle its appearance.
 	> Vehicles can no longer enter residual EMP zones.
