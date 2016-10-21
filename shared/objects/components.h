@@ -16,7 +16,7 @@
 
 namespace Objects
 {
-	static const float			vehicleScale = 0.01f * WorldScale;
+	static const constexpr float			vehicleScale = 0.01f * Grid::UnitScale * WorldScale;
 	inline void NoCosts(int&mineralCostOut, Resource&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
 
 

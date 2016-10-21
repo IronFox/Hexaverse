@@ -15,7 +15,7 @@
 
 
 
-static const float WorldScale = 40.f;
+static const constexpr float WorldScale = 40.f;
 
 namespace Grid
 {
@@ -47,9 +47,14 @@ namespace Grid
 								empZonesUnlocked;
 
 
-	static const float RawLayerHeight = 0.025f;
-	static const float VerticalScale = 0.7f * WorldScale;
-	static const float VerticalBase = WorldScale;
+	static const constexpr float RawLayerHeight = 0.025f;
+	#ifdef LOWER_RESOLUTION_PLANET
+		static const constexpr float UnitScale = 2.f;
+	#else
+		static const constexpr float UnitScale = 1.f;
+	#endif
+	static const constexpr float VerticalScale = 0.7f * UnitScale * WorldScale;
+	static const constexpr float VerticalBase = WorldScale;
 
 #ifdef GAME_BLOB_SYSTEM
 	Buffer<WorldData::Blob>	blobs;
@@ -1706,10 +1711,19 @@ namespace Grid
 	template <UINT Exponent>
 		Array<BaseGrid::TNetCell>	Setup<Exponent>::cells;
 
-	typedef Setup<5>	LowSetup;
+	#ifdef LOWER_RESOLUTION_PLANET
+		static const constexpr UINT HighExponent=5;
+	#else
+		static const constexpr UINT HighExponent=6;
+	#endif
+
+	static const constexpr UINT LowExponent = HighExponent-1;
+
+
+	typedef Setup<LowExponent>	LowSetup;
 
 	#ifdef HYBRID_GRID
-		typedef Setup<6>	HighSetup;
+		typedef Setup<HighExponent>	HighSetup;
 	#else
 		typedef LowSetup	HighSetup;
 	#endif

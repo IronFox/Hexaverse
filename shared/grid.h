@@ -7,6 +7,7 @@
 
 #include "config.h"
 
+#define LOWER_RESOLUTION_PLANET
 
 
 class BaseGrid
@@ -112,7 +113,11 @@ template<unsigned Exponent>
 class GridSetup : public BaseGrid
 {
 	//typedef Fractal::TemplateMap<Exponent,7-Exponent>	Map;
-	typedef Fractal::BaseTemplateMap<Exponent,7-Exponent>	BaseMap;
+	#ifdef LOWER_RESOLUTION_PLANET
+		typedef Fractal::BaseTemplateMap<Exponent,6-Exponent>	BaseMap;
+	#else
+		typedef Fractal::BaseTemplateMap<Exponent,7-Exponent>	BaseMap;
+	#endif
 
 	BaseMap								baseMap;
 	Fractal::VertexMap					fullMap;
