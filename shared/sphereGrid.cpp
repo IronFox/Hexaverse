@@ -17,6 +17,9 @@
 		void  ChangeGroundRadius(float);
 	}
 
+
+	template class Grid::StaticList<UINT16,32>;	//test
+
 #endif
 
 
