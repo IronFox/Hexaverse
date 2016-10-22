@@ -161,6 +161,7 @@ namespace FileIO
 								baseJob("VHBJ"),
 								factionWorldCounterChunk("WCCK"),
 								worldConfig("WCFG"),
+								snowHeight("SNWH"),
 								worldContentTypeCount("WCTC"),
 								worldID("WDID"),
 								factionWorldTypeChunk("WTCK"),
@@ -1195,6 +1196,8 @@ namespace FileIO
 								}
 								//Grid::TSharedPlanetConfig persistentPlanetInfo;
 								GetPOD(list,RID::worldConfig,(Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
+								GetOptionalPOD(list,RID::snowHeight,Grid::currentPlanetConfig.snowHeight,5);
+
 								Grid::CellStack::bottom.content = (BYTE)Grid::currentPlanetConfig.innerCoreType;
 
 
@@ -1512,6 +1515,7 @@ namespace FileIO
 		general->AppendBlock(RID::worldID)->SetPODData(World::worldID);
 		general->AppendBlock(RID::roundNumber)->SetPODData(RuntimeConfig::roundNumber);
 		general->AppendBlock(RID::worldConfig)->SetPODData((const Grid::TSharedPlanetConfig&)Grid::currentPlanetConfig);
+		general->AppendBlock(RID::snowHeight)->SetPODData(Grid::currentPlanetConfig.snowHeight);
 		general->AppendBlock(RID::mostFactionsAlive)->SetPODData(Game::mostFactionsAlive);
 
 		{
