@@ -3022,6 +3022,51 @@ namespace Grid
 			}
 		}
 
+		void	PlantCompiler::Compile(const index_t offset, const index_t end,BasicBuffer<TLeafBlob>&leafBlobs,BasicBuffer<TTreeTrunk>&treeTrunks,SpinLock&lock)
+		{
+			for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
+			{
+				const ::Grid::CellStack&stack = stacks[i];
+				const auto&cell = netCells[i];
+				const bool empThis = !(cell.cornerFlags & empZonesUnlocked);
+				const TVec3<>&up = cell.cornerCenter;
+				TMatrix3<> sys;
+				Mat::makeAxisSystem(up,2,sys);
+				
+				const float r = cell.minCornerDistance;
+				const UINT32 to = vmin(CellStack::Range, CellStack::ToLayer( clipHeight(i) ));
+			
+				for (UINT ih = 0; ih < to; ih++)
+				{
+					switch (stack.volumeCell[ih].content)
+					{
+						case Content::Trees:
+						case Content::Forest:
+						{
+							float h = ToRadius(CellStack::ToHeight(ih));
+							PutTree(sys,r*0.5,0,h);
+							PutTree(sys,r*-0.25,r*-0.25,h);
+							PutTree(sys,r*-0.25,r*0.25,h);
+						}
+						break;
+						case Content::Shrubs:
+							//later
+						break;
+					}
+				}
+			}
+
+			if (this->leafBlobs.IsNotEmpty() || this->treeTrunks.IsNotEmpty())
+			{
+				lock.lock();
+
+				leafBlobs.Append(this->leafBlobs.begin(),this->leafBlobs.Count());
+				treeTrunks.Append(this->treeTrunks.begin(),this->treeTrunks.Count());
+
+				lock.unlock();
+			}
+		}
+
 	#endif
 		//static Resource::coverage_t	GetResourceCoverage(const TVec3<>&seed, const TVec3<>&center0,float rarity,Resource::coverage_t maxYield)
 		//{

@@ -60,7 +60,7 @@ namespace Grid
 	Buffer<WorldData::Blob>	blobs;
 #endif
 
-	static const float SingleLayerHeight = RawLayerHeight * VerticalScale;
+	static const constexpr float SingleLayerHeight = RawLayerHeight * VerticalScale;
 
 	inline float ToRadiusf(float height)
 	{
@@ -1105,6 +1105,76 @@ namespace Grid
 											const CellStack::Cell&thisCell, const CellStack::Cell&lastCell, const TFloatRange<>&range);
 			void	DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull) const;
 		};
+
+		struct TLeafBlob
+		{
+			TVec3<>	center;
+			float radius;
+			float windSensitivity;
+
+			void	Set(const TMatrix3<>&sys,float x, float y, float z, float r, float wind)
+			{
+				Vec::mul(sys.x,x,center);
+				Vec::mad(center,sys.y,y);
+				Vec::mad(center,sys.z,z);
+				radius = r;
+				windSensitivity = wind;
+			}
+		};
+
+		struct TTreeTrunk
+		{
+			TVec3<>	center;
+			float	height,
+					radius;
+
+			void	Set(const TMatrix3<>&sys,float x, float y, float z, float r, float h)
+			{
+				Vec::mul(sys.x,x,center);
+				Vec::mad(center,sys.y,y);
+				Vec::mad(center,sys.z,z);
+				radius = r;
+				height = h;
+			}
+			
+
+		};
+
+		class PlantCompiler
+		{
+		public:
+			static const constexpr float TreeHeight = SingleLayerHeight*0.5f;
+			static const constexpr float TreeRadius = SingleLayerHeight*0.25f;
+			static const constexpr float TrunkRadius = TreeRadius/4.f;
+
+			static const constexpr count_t BatchSize = TerrainCompiler::BatchSize;
+			const CellStack * stacks;
+			const BaseGrid::TCell*  gridCells;
+			const BaseGrid::TNetCell*  netCells;
+			FClipHeight	clipHeight;
+			bool	wasEmpty;
+			TLitColor	cornerColor[6];
+			StaticList<TLeafBlob,BatchSize * CellStack::Range *3>	leafBlobs;
+			StaticList<TTreeTrunk,BatchSize * CellStack::Range *3>	treeTrunks;
+			//more types added later
+			
+			void	PutTree(const TMatrix3<>&sys, float x, float y, float z)
+			{
+				leafBlobs.Append().Set(sys,x,y,z+TreeHeight,TreeRadius,1.f);
+				treeTrunks.Append().Set(sys,x,y,z,TrunkRadius,TreeHeight);
+			}
+
+			void	Setup(const CellStack *stacks,const BaseGrid::TCell*cells, const BaseGrid::TNetCell*netCells,FClipHeight clipHeight)
+			{
+				leafBlobs.Reset();
+				treeTrunks.Reset();
+				this->stacks = stacks;
+				this->netCells = netCells;
+				this->gridCells = cells;
+				this->clipHeight = clipHeight;
+				wasEmpty = true;
+			}
+			void	Compile(const index_t offset, const index_t end,BasicBuffer<TLeafBlob>&leafBlobs,BasicBuffer<TTreeTrunk>&treeTrunks,SpinLock&lock);
 		};
 
 
@@ -1508,6 +1578,19 @@ namespace Grid
 			}
 
 
+
+			void		CompilePlants(const Array<CellStack>&stacks, BasicBuffer<TLeafBlob>&leafBlobs,BasicBuffer<TTreeTrunk>&treeTrunks, index_t offset, count_t count, FClipHeight clipHeight)
+			{
+				const index_t end = offset + count;
+				SpinLock lock;
+				Concurrency::parallel_for(offset, end, TreeCompiler::BatchSize,[this, end,&lock, &leafBlobs,&treeTrunks, &stacks, clipHeight](index_t i)	//looks good - at least in release
+				{
+					BYTE data[sizeof(PlantCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...
+					PlantCompiler&compiler = *(PlantCompiler*)data;
+					compiler.Setup(stacks.pointer(),grid.GetCells(),this->cells.pointer(),clipHeight);
+					compiler.Compile(i,end,leafBlobs,treeTrunks,lock);
+				});
+			}
 
 
 
