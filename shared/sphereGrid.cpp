@@ -589,6 +589,14 @@ namespace Grid
 					volumeCell[i].content = config.liquidCoverage;
 				}
 		}
+		if (Cell::IsPlant( config.plantType ))
+		{
+			for (UINT i = 1; i < Range; i++)
+				if (volumeCell[i].content==Content::Clear && volumeCell[i-1].content == Content::Grass)
+					volumeCell[i].content = config.plantType;
+			if (config.innerCoreType == Content::Grass && volumeCell[0].content==Content::Clear)
+				volumeCell[0].content = config.plantType;
+		}
 	}
 	
 
