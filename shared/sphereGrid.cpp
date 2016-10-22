@@ -2688,7 +2688,7 @@ namespace Grid
 			}
 		}
 
-		void TerrainCompiler::DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull)
+		void TerrainCompiler::DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull)	const
 		{
 			if (solidMesh.IsNotEmpty() || coverMesh.IsNotEmpty())
 			{

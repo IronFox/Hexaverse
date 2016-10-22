@@ -995,7 +995,7 @@ namespace Grid
 		class TerrainCompiler
 		{
 		public:
-			static const count_t BatchSize = 16;	//the bigger, the less paralism, but the less the overhead during locking (since more work per locking)
+			static const constexpr count_t BatchSize = 16;	//the bigger, the less paralism, but the less the overhead during locking (since more work per locking)
 
 			StaticMesh<TerrainVertex,BatchSize * CellStack::Range * (7 + 7 + 4 * 6),BatchSize * CellStack::Range * 3 * (7 * 2 + 2 * 7)>	solidMesh;
 			StaticMesh<OverlayVertex,BatchSize * 7,BatchSize * 3*7>	coverMesh;
@@ -1036,7 +1036,8 @@ namespace Grid
 			void	CompileDownCap(const UINT ih,const BaseGrid::TNetCell&cell, const CellStack::Cell&thisCell, const int ir,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack);
 			void	CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,TLitColor newCornerColor[6], 
 											const CellStack::Cell&thisCell, const CellStack::Cell&lastCell, const TFloatRange<>&range);
-			void	DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull);
+			void	DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull) const;
+		};
 		};
 
 
@@ -1044,7 +1045,7 @@ namespace Grid
 		class WaterCompiler
 		{
 		public:
-			static const count_t BatchSize = TerrainCompiler::BatchSize;
+			static const constexpr count_t BatchSize = TerrainCompiler::BatchSize;
 			static const float4 waterColor;
 
 
