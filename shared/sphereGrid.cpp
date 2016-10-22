@@ -2182,7 +2182,7 @@ namespace Grid
 		{
 			float h = ToRadius(ir + 1);
 			coverMesh.SetOffset();
-			coverMesh << OverlayVertex(cell.centerVertex, h, 0);
+			coverMesh.NewVertex().Set(cell.centerVertex, h, 0);
 			for (int j = 0; j < cell.numCorners; j++)
 			{
 				const UINT32 n0 = neighbors.neighborID[j];
@@ -2190,7 +2190,7 @@ namespace Grid
 				const UINT32 n2 = neighbors.neighborID[(j + 2) % cell.numCorners];
 				bool anyOpen = !stacks[n0].GetCellU(ih + 1).IsOpaque() || !stacks[n1].GetCellU(ih + 1).IsOpaque();
 
-				coverMesh << OverlayVertex(cell.cornerVertex[j], h, anyOpen ? 0.45f : 0.f);
+				coverMesh.NewVertex().Set(cell.cornerVertex[j], h, anyOpen ? 0.45f : 0.f);
 
 				coverMesh << 0;
 				coverMesh << 1 + (UINT16)j;
@@ -2321,7 +2321,7 @@ namespace Grid
 			color0.capped = capped;
 			color0.emp = FlagsAffectedByEMP(cell.cornerFlags);
 			
-			solidMesh << TerrainVertex(cell.centerVertex, range.max, cell.centerVertex.xyz, color0, thisCell.GetStructureFactor());
+			solidMesh.NewVertex().Set(cell.centerVertex, range.max, cell.centerVertex.xyz, color0, thisCell.GetStructureFactor());
 			for (int j = 0; j < cell.numCorners; j++)
 			{
 				{
@@ -2366,7 +2366,7 @@ namespace Grid
 					col.visibility = float(visibility) / 3;
 					col.capped = capped;
 
-					solidMesh << TerrainVertex(cell.cornerVertex[j], range.max, cell.cornerVertex[j].xyz, col, 1.f);
+					solidMesh.NewVertex().Set(cell.cornerVertex[j], range.max, cell.cornerVertex[j].xyz, col, 1.f);
 				}
 				solidMesh << 0 << 1 + (UINT16)j << 1 + (UINT16)(j + 1) % cell.numCorners;
 			}	
@@ -2382,7 +2382,7 @@ namespace Grid
 			TLitColor color0 = stack.GetDownColorU(ih, Content::Clear, mixes0,centerType);
 			color0.emp = FlagsAffectedByEMP(cell.cornerFlags) ? 1.f : 0.f;
 
-			solidMesh << TerrainVertex(cell.centerVertex, h, -cell.centerVertex.xyz, color0, thisCell.GetStructureFactor());
+			solidMesh.NewVertex().Set(cell.centerVertex, h, -cell.centerVertex.xyz, color0, thisCell.GetStructureFactor());
 
 			for (int j = 0; j < cell.numCorners; j++)
 			{
@@ -2408,7 +2408,7 @@ namespace Grid
 					}
 					TLitColor col(color,brightness,emp);
 					col.visibility = float(visibility) / 3;
-					solidMesh << TerrainVertex(cell.cornerVertex[j], h, -cell.cornerVertex[j].xyz, col, 1.f);
+					solidMesh.NewVertex().Set(cell.cornerVertex[j], h, -cell.cornerVertex[j].xyz, col, 1.f);
 				}
 				solidMesh << 0 << 1 + (UINT16)(j + 1) % cell.numCorners << 1 + (UINT16)j;
 			}	
@@ -2460,10 +2460,10 @@ namespace Grid
 					Vec::cross(v0.xyz, v0.xyz - v1.xyz, normal);
 					Vec::normalize(normal);
 					solidMesh.SetOffset();
-					solidMesh <<  TerrainVertex(v0, range.max, normal, color1, 1.f);
-					solidMesh <<  TerrainVertex(v0, range.min, normal, lowerColor1, 1.f);
-					solidMesh <<  TerrainVertex(v1, range.min, normal, lowerColor2, 1.f);
-					solidMesh <<  TerrainVertex(v1, range.max, normal, color2, 1.f);
+					solidMesh.NewVertex().Set(v0, range.max, normal, color1, 1.f);
+					solidMesh.NewVertex().Set(v0, range.min, normal, lowerColor1, 1.f);
+					solidMesh.NewVertex().Set(v1, range.min, normal, lowerColor2, 1.f);
+					solidMesh.NewVertex().Set(v1, range.max, normal, color2, 1.f);
 					solidMesh << 0 << 1 << 2 << 0 << 2 << 3;
 				}
 
@@ -2587,7 +2587,7 @@ namespace Grid
 					solidMesh.SetOffset();
 					Content centerContent;
 					TLitColor color0 = stack.GetDownColorU(0, Content::Clear,mixes0,centerContent);
-					solidMesh << TerrainVertex(cell.centerVertex, h, -cell.centerVertex.xyz, color0, thisCell.GetStructureFactor());
+					solidMesh.NewVertex().Set(cell.centerVertex, h, -cell.centerVertex.xyz, color0, thisCell.GetStructureFactor());
 					for (int j = 0; j < cell.numCorners; j++)
 					{
 						{
@@ -2608,7 +2608,7 @@ namespace Grid
 							}
 							TLitColor col(color,brightness);
 							col.visibility = float(visibility)/3;
-							solidMesh << TerrainVertex(cell.cornerVertex[j], h, -cell.cornerVertex[j].xyz, col, 1.f);
+							solidMesh.NewVertex().Set(cell.cornerVertex[j], h, -cell.cornerVertex[j].xyz, col, 1.f);
 						}
 						solidMesh << 0 << 1 + (UINT16)(j + 1) % cell.numCorners << 1 + (UINT16)j;
 					}	
@@ -2842,10 +2842,10 @@ namespace Grid
 					int empMix = (int(localEMP) + int(empThat0) + int(empThat1));
 
 					mesh.SetOffset();
-					mesh <<  WaterVertex(v0, range.max, normal, light1, empMix);
-					mesh <<  WaterVertex(v0, range.min, normal, lowerLight1, empMix);
-					mesh <<  WaterVertex(v1, range.min, normal, lowerLight2, empMix);
-					mesh <<  WaterVertex(v1, range.max, normal, light2, empMix);
+					mesh.NewVertex().Set(v0, range.max, normal, light1, empMix);
+					mesh.NewVertex().Set(v0, range.min, normal, lowerLight1, empMix);
+					mesh.NewVertex().Set(v1, range.min, normal, lowerLight2, empMix);
+					mesh.NewVertex().Set(v1, range.max, normal, light2, empMix);
 					mesh << 0 << 1 << 2 << 0 << 2 << 3;
 
 /*
@@ -2874,7 +2874,7 @@ namespace Grid
 			float light0 = stack.GetCellU(ih).GetWaterLightLevel();
 		
 			mesh.SetOffset();
-			mesh <<  WaterVertex(cell.centerVertex, range.max, cell.centerVertex.xyz, light0,empThis?3:0);
+			mesh.NewVertex().Set(cell.centerVertex, range.max, cell.centerVertex.xyz, light0,empThis?3:0);
 			for (int j = 0; j < cell.numCorners; j++)
 			{
 				{
@@ -2894,7 +2894,7 @@ namespace Grid
 
 					int empMix = (int(empThis) + int(empThat0) + int(empThat1));
 
-					mesh << WaterVertex(cell.cornerVertex[j], range.max, cell.cornerVertex[j].xyz, brightness,empMix);
+					mesh.NewVertex().Set(cell.cornerVertex[j], range.max, cell.cornerVertex[j].xyz, brightness,empMix);
 				}
 					
 				mesh << 0 <<  1 + (UINT16)j << 1 + (UINT16)(j + 1) % cell.numCorners;
@@ -2967,48 +2967,6 @@ namespace Grid
 
 		void	WaterCompiler::Compile(const index_t offset, const index_t end, THull<WaterVertex>&coverHull, SpinLock&lock)
 		{
-
-			//for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
-			//{
-			//	const ::Grid::CellStack&stack = stacks[i];
-			//	const auto&neighbors = gridCells[i].neighborhood;
-			//	const auto&cell = netCells[i];
-
-
-
-			//	UINT32 begin = stack.lowestOpenCell ? (UINT32)stack.lowestOpenCell - 1 : 0;
-			//	begin = std::min(begin, CellStack::ToLayer(clipHeight(i)-1));
-			//	//while (begin > 0 && clipped(i, begin))
-			//		//begin--;
-			//	UINT32 end = (UINT32)stack.highestOpaqueCell + 1;
-
-			//	//TVec4<> cornerColor[6];
-
-			//	for (int j = 0; j < cell.numCorners; j++)
-			//	{
-			//		UINT32 n = neighbors.neighborID[j];
-			//		const ::Grid::CellStack&stack = stacks[n];
-			//		UINT32 _begin = stack.lowestOpenCell ? (UINT32)stack.lowestOpenCell - 1 : 0;
-			//		_begin = std::min(_begin, CellStack::ToLayer(clipHeight(n)-1));
-			//		//while (_begin > 0 && clipped(n, _begin))
-			//		//	_begin--;
-			//		UINT32 _end = (UINT32)stack.highestOpaqueCell + 1;
-			//		begin = std::min(begin, _begin);
-			//		end = std::max(end, _end);
-
-			//	}
-			//	wasEmpty = true;
-
-			//	const int clipH = clipHeight(i);
-			//	end = std::min(end, CellStack::ToLayer(clipH));
-			//	if (begin == 0)
-			//		CompileBottomLayer(stack,clipH,cell,neighbors);
-			//	for (UINT ih = begin; ih < end; ih++)
-			//	{
-			//		CompileLayer(ih,stack,clipH,cell,neighbors);
-			//	}
-			//}
-
 			for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
 			{
 				const ::Grid::CellStack&stack = stacks[i];
@@ -3161,7 +3119,7 @@ namespace Grid
 						float h2 = h + SingleLayerHeight * (level*0.25f + 0.05f);
 
 						mesh.SetOffset();
-						mesh << ResourceVertex(center,h,center,float4(color,level+0.8f),1.f);
+						mesh.NewVertex().Set(center,h,center,float4(color,level+0.8f),1.f);
 						for (int j = 0; j < Resolution; j ++)
 						{
 							float a = float(j) / float(Resolution) * 2.f * M_PIF;
@@ -3170,7 +3128,7 @@ namespace Grid
 							Mat::transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
 							//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 							Vec::normalize(p);
-							mesh << ResourceVertex(float4(p,1.f),h,p,float4(color,level),1.f);
+							mesh.NewVertex().Set(p,h,p,float4(color,level),1.f);
 							mesh << 0 << 1 + j << 1 + (j+1)%Resolution;
 						}
 
@@ -3185,8 +3143,8 @@ namespace Grid
 								//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 								Vec::normalize(p);
 								float3 n = (p - cell.centerVertex.xyz).Normalized();
-								mesh << ResourceVertex(float4(p,1.f),h,n,float4(color,0.f),1.f);
-								mesh << ResourceVertex(float4(p,1.f),h2,n,float4(color,level),1.f);
+								mesh.NewVertex().Set(p,h,n,float4(color,0.f),1.f);
+								mesh.NewVertex().Set(p,h2,n,float4(color,level),1.f);
 
 
 								mesh.InvQuad(j * 2 + 1, j * 2, ((j+1)%Resolution)*2, ((j+1)%Resolution)*2+1);
@@ -3208,7 +3166,7 @@ namespace Grid
 						float h2 = h + SingleLayerHeight * (level*0.25f);
 
 						mesh.SetOffset();
-						mesh << ResourceVertex(center,h2,center,float4(color,level+0.8f),1.f);
+						mesh.NewVertex().Set(center,h2,center,float4(color,level+0.8f),1.f);
 						for (int j = 0; j < Resolution; j ++)
 						{
 							float a = float(j) / float(Resolution) * 2.f * M_PIF;
@@ -3217,7 +3175,7 @@ namespace Grid
 							Mat::transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
 							//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 							Vec::normalize(p);
-							mesh << ResourceVertex(float4(p,1.f),h2,p,float4(color,level),1.f);
+							mesh.NewVertex().Set(p,h2,p,float4(color,level),1.f);
 							mesh << 0 << 1 + j << 1 + (j+1)%Resolution;
 						}
 
@@ -3232,8 +3190,8 @@ namespace Grid
 								//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 								Vec::normalize(p);
 								float3 n = (p - cell.centerVertex.xyz).Normalized();
-								mesh << ResourceVertex(float4(p,1.f),h,n,float4(color,0.f),1.f);
-								mesh << ResourceVertex(float4(p,1.f),h2,n,float4(color,level),1.f);
+								mesh.NewVertex().Set(p,h,n,float4(color,0.f),1.f);
+								mesh.NewVertex().Set(p,h2,n,float4(color,level),1.f);
 
 
 								mesh.Quad(j * 2 + 1, j * 2, ((j+1)%Resolution)*2, ((j+1)%Resolution)*2+1);
@@ -3254,7 +3212,7 @@ namespace Grid
 					float h2 = h + SingleLayerHeight * (level*0.25f);
 
 					mesh.SetOffset();
-					mesh << ResourceVertex(center,h2,center,float4(color,level+0.8f),1.f);
+					mesh.NewVertex().Set(center,h2,center,float4(color,level+0.8f),1.f);
 					for (int j = 0; j < Resolution; j ++)
 					{
 						float a = float(j) / float(Resolution) * 2.f * M_PIF;
@@ -3263,7 +3221,7 @@ namespace Grid
 						Mat::transform(system,float3(cos(a)*r,sin(a)*r,0.f),p);
 						//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 						Vec::normalize(p);
-						mesh << ResourceVertex(float4(p,1.f),h2,p,float4(color,level),1.f);
+						mesh.NewVertex().Set(p,h2,p,float4(color,level),1.f);
 						mesh << 0 << 1 + j << 1 + (j+1)%Resolution;
 					}
 
@@ -3278,8 +3236,8 @@ namespace Grid
 							//Vec::center(cell.cornerVertex[j].xyz,cell.centerVertex.xyz,p);
 							Vec::normalize(p);
 							float3 n = (p - cell.centerVertex.xyz).Normalized();
-							mesh << ResourceVertex(float4(p,1.f),h,n,float4(color,0.f),1.f);
-							mesh << ResourceVertex(float4(p,1.f),h2,n,float4(color,level),1.f);
+							mesh.NewVertex().Set(p,h,n,float4(color,0.f),1.f);
+							mesh.NewVertex().Set(p,h2,n,float4(color,level),1.f);
 
 
 							mesh.Quad(j * 2 + 1, j * 2, ((j+1)%Resolution)*2, ((j+1)%Resolution)*2+1);

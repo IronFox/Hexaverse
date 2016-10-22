@@ -593,48 +593,104 @@ namespace Grid
 												waterBase, waterSphereBase, waterParaboloidBase,
 												overlayBase, overlayShadowBase, resourceBase;// , terrainEdgeBase;
 		}
-		struct TerrainVertex
+		struct Vertex4D
 		{
-			float4		vertex;
-			sbyte4		normal_structure;
-			float4		color;
+			TVec4<>		vertex;
 
-			/**/		TerrainVertex()	{};
-			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const TLitColor&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f,structure*127.f) {color.CompileFinalColor(this->color);}
-			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float3&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f, structure*127.f), color(color,1.f){}
+			void		Set(const TVec4<>&vtx, float h)
+						{
+							Vec::mul(vtx.xyz,h,vertex.xyz);
+							vertex.w = vtx.w;
+						}
+			void		Set(const TVec3<>&vtx, float h)
+						{
+							Vec::mul(vtx,h,vertex.xyz);
+							vertex.w = 1.f;
+						}
+		};
+
+		struct TerrainVertex : public Vertex4D
+		{
+			TVec4<signed char>		normal_structure;
+			TVec4<>		color;
+
+			void		Set(const TVec4<>&vtx, float h, const TVec3<>&n, const TLitColor&color, float structure)
+						{
+							Vertex4D::Set(vtx,h);
+							Vec::mul(n,127.f,normal_structure.xyz);
+							normal_structure.w = structure*127.f;
+							color.CompileFinalColor(this->color);
+						}
+			void		Set(const TVec4<>&vtx, float h, const TVec3<>&n, const TVec3<>&color, float structure)
+						{
+							Vertex4D::Set(vtx,h);
+							Vec::mul(n,127.f,normal_structure.xyz);
+							normal_structure.w = structure*127.f;
+							this->color.rgb = color;
+							this->color.a = 1.f;
+						}
 		};
 	
-		struct ResourceVertex //! Temporarily the same layout as TerrainVertex
+		struct ResourceVertex : public Vertex4D //! Temporarily the same layout as TerrainVertex
 		{
-			float4		vertex;
-			float4		normal;
-			float4		color;
+			TVec4<>		normal;
+			TVec4<>		color;
 
-			/**/		ResourceVertex()	{};
-			/**/		ResourceVertex(const float4&vtx, float h, const float3&n, const float4&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal(n,structure), color(color){}
-			/**/		ResourceVertex(const float4&vtx, float h, const float3&n, const float3&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal(n, structure), color(color,1.f){}
-			/**/		ResourceVertex(const float3&vtx, float h, const float3&n, const float4&color, float structure) : vertex(vtx*h, 1.f), normal(n,structure), color(color){}
-			/**/		ResourceVertex(const float3&vtx, float h, const float3&n, const float3&color, float structure) : vertex(vtx*h, 1.f), normal(n, structure), color(color,1.f){}
+			void		Set(const TVec4<>&vtx, float h, const TVec3<>&n, const TVec4<>&color, float structure)
+						{
+							Vertex4D::Set(vtx,h);
+							normal.xyz = n;
+							normal.w = structure;
+							this->color = color;
+						}
+			void		Set(const TVec4<>&vtx, float h, const TVec3<>&n, const TVec3<>&color, float structure)
+						{
+							TVec4<> c2 = {color.r,color.g,color.b,1.f};
+							Set(vtx,h,n,c2,structure);
+						}
+			void		Set(const TVec3<>&vtx, float h, const TVec3<>&n, const TVec4<>&color, float structure)
+						{
+							Vertex4D::Set(vtx,h);
+							normal.xyz = n;
+							normal.w = structure;
+							this->color = color;
+						}
+			void		Set(const TVec3<>&vtx, float h, const TVec3<>&n, const TVec3<>&color, float structure)
+						{
+							Vertex4D::Set(vtx,h);
+							normal.xyz = n;
+							normal.w = structure;
+							this->color.rgb = color;
+							this->color.a = 1.f;
+						}
 		};
 
 		struct OverlayVertex
 		{
-			float3		vertex;
+			TVec3<>		vertex;
 			float		opacity;	//overlay is always black
 
-			/**/		OverlayVertex()	{};
-			/**/		OverlayVertex(const float4&vtx, float h, float opacity) : vertex(vtx.xyz*h), opacity(opacity){}
+			void		Set(const TVec4<>&vtx, float h, float opacity)
+						{
+							Vec::mul(vtx.xyz,h,vertex);
+							this->opacity = opacity;
+						}
 		};
 
-		struct WaterVertex
+		struct WaterVertex : Vertex4D
 		{
-			float4		vertex;
-			float3		normal;
+			TVec3<>		normal;
 			float		light;	//water derives color from shader variable
 
-			/**/		WaterVertex()	{};
-			/**/		WaterVertex(const float4&vtx, float h, const float3&n,float light, int emp) : vertex(vtx.xyz*h, vtx.w), normal(n),light((float(emp) + 0.05f + light*0.9f) * 0.25f ){}
+			void		Set(const TVec4<>&vtx, float h, const TVec3<>&n,float light, int emp)
+						{
+							Vertex4D::Set(vtx,h);
+							this->normal = n;
+							this->light = ((float(emp) + 0.05f + light*0.9f) * 0.25f );
+						}
 		};
+		static const constexpr size_t WaterVertex_size = sizeof(WaterVertex);
+		static_assert(sizeof(WaterVertex) == sizeof(float)*8,"Some alignment thingie went bad");
 	
 
 		template <typename Vtx>
@@ -716,26 +772,25 @@ namespace Grid
 			private:
 				static const constexpr count_t MaxElements = maxElements;
 
-				BYTE		data[MaxElements*sizeof(T)];	//prevent constructor execution
-				T			*castedFirst,
-							*current;
+				T			data[MaxElements];	//should be POD to work
+				T			*current;
 			public:
 				count_t		Count() const
 				{
-					return current - castedFirst;
+					return current - data;
 				}
 				count_t		size() const
 				{
-					return current - castedFirst;
+					return current - data;
 				}
 
 				T*			begin()
 				{
-					return castedFirst;
+					return data;
 				}
 				const T*	begin() const
 				{
-					return castedFirst;
+					return data;
 				}
 				T*			end()
 				{
@@ -748,20 +803,26 @@ namespace Grid
 				
 				void		Reset()
 				{
-					castedFirst = ((T*)data);
-					current = ((T*)data);
+					current = data;
+				}
+
+				T&			Append()
+				{
+					T*rs = current;
+					++current;
+					return *rs;
 				}
 
 				void		operator<<(const T&el)
 				{
-					DBG_ASSERT_EQUAL__((void*)data ,(void*)castedFirst);
-					DBG_ASSERT__(current - castedFirst < MaxElements);
+					//DBG_ASSERT_EQUAL__((void*)data ,(void*)castedFirst);
+					DBG_ASSERT__(current - data < MaxElements);
 					(*current) = el;
 					++current;
 				}
 
-				bool		IsEmpty() const {return current == castedFirst;}
-				bool		IsNotEmpty() const {return current != castedFirst;}
+				bool		IsEmpty() const {return current == data;}
+				bool		IsNotEmpty() const {return current != data;}
 
 			};
 
@@ -833,6 +894,12 @@ namespace Grid
 							{
 								vertexData << vtx;
 								return *this;
+							}
+
+				Vtx&		NewVertex()
+							{
+								return vertexData.Append();
+
 							}
 
 				void		AppendTo(THull<Vtx>&hull) const
