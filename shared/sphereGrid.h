@@ -240,7 +240,7 @@ namespace Grid
 		class CompactCell
 		{
 		public:
-			CONSTRUCT_ENUMERATION13(Content,
+			CONSTRUCT_ENUMERATION16(Content,
 				Unknown,
 				Granite,
 				Earth,
@@ -253,7 +253,10 @@ namespace Grid
 				Lava,
 				Technite,
 				Water,
-				Clear
+				Clear,
+				Shrubs,
+				Trees,
+				Forest
 			)
 
 
@@ -296,23 +299,6 @@ namespace Grid
 				other.content = this->content;
 			}
 
-
-			//bool	ApplyDelta(const TTypeDelta&tdelta, const TStructCountDelta&sdelta)
-			//{
-			//	if (tdelta.newType == 0 && sdelta.newStructureCounter == 0)
-			//		return false;
-			//	if (tdelta.newType)
-			//	{
-			//		content = tdelta.newType;
-			//		DBG_ASSERT_LESS__(content,Content::NumberOfPossibilities);
-			//	}
-			//	if (sdelta.newStructureCounter)
-			//	{
-			//		structureCounter = sdelta.newStructureCounter-1;
-			//		DBG_ASSERT_LESS__(structureCounter,3);
-			//	}
-			//	return true;
-			//}
 			bool	ApplyDelta(const TTypeDelta&tdelta)
 			{
 				if (tdelta.newType)
@@ -323,16 +309,7 @@ namespace Grid
 				}
 				return false;
 			}
-			//bool	ApplyDelta(const TStructCountDelta&sdelta)
-			//{
-			//	if (sdelta.newStructureCounter)
-			//	{
-			//		structureCounter = sdelta.newStructureCounter-1;
-			//		DBG_ASSERT_LESS__(structureCounter,3);
-			//		return true;
-			//	}
-			//	return false;
-			//}
+
 		};
 
 		class Cell : public CompactCell
@@ -356,7 +333,7 @@ namespace Grid
 			#endif
 
 
-			static const count_t TypeCount = 13;
+			static const constexpr count_t TypeCount = 16;
 
 			static float3	typeColor[TypeCount];
 			static float	typeStructureFactor[TypeCount];
@@ -377,20 +354,20 @@ namespace Grid
 			//bool	WaterSurfaceBelow() const { return content == Content::Clear; }
 			bool	IsOccupied() const
 			{
-				return content != Content::Clear || structureCounter > 1;	//one is mild structure, 2+ is heavy
+				return (content != Content::Clear && !IsPlant())|| structureCounter > 1;	//one is mild structure, 2+ is heavy
 			}
 			bool	IsClearOrWater() const
 			{
-				return structureCounter == 0 && (content == Content::Clear || content == Content::Water);
+				return structureCounter == 0 && (content == Content::Clear || IsPlant() || content == Content::Water);
 			}
 			bool	IsClearOrWaterIgnoreStructure() const
 			{
-				return (content == Content::Clear || content == Content::Water);
+				return (content == Content::Clear || IsPlant() || content == Content::Water);
 			}
 
 			bool	IsClearOrLiquidIgnoreStructure() const
 			{
-				return (content == Content::Clear || IsLiquid(content));
+				return (content == Content::Clear || IsPlant() || IsLiquid(content));
 			}
 
 			static bool IsDead(BYTE cnt)
@@ -413,7 +390,13 @@ namespace Grid
 			{
 				return cnt == Content::Water || cnt == Content::Lava;
 			}
+			static bool IsPlant(BYTE cnt)
+			{
+				return cnt >= Content::Shrubs && cnt <= Content::Forest;
+			}
 
+
+			bool	IsPlant() const	{return IsPlant(content);}
 			bool	IsOpaque() const {return IsOpaque(content);}
 			bool	IsLiquid() const {return IsLiquid(content);}
 

@@ -78,7 +78,10 @@ namespace Grid
 		float3(1.2f,0.6f,0.5f)*-2.5f,	//Lava
 		-float3(0.6f,0.5f,1.2f),	//technite
 		float3(0.5f, 0.6f, 1.f),	//Water
-		float3(1)	//clear
+		float3(1),	//clear
+		float3(1),	//Shrubs
+		float3(1),	//Trees
+		float3(1),	//Forest
 	};
 	
 
@@ -97,7 +100,10 @@ namespace Grid
 		1,	//lava
 		7,	//technite
 		2,	//water
-		0	//clear
+		0,	//clear
+		1,	//Shrubs
+		1,	//Trees
+		1,	//Forest
 	};
 
 	/*static*/ bool	CellStack::Cell::typeColorMixes[TypeCount] =
@@ -114,7 +120,10 @@ namespace Grid
 		false,	//lava
 		false,	//technite
 		false,	//water
-		false	//clear
+		false,	//clear
+		false,	//Shrubs
+		false,	//Trees
+		false,	//Forest
 	};
 
 
@@ -133,7 +142,10 @@ namespace Grid
 		1,	//lava
 		0,	//technite
 		1,	//water
-		1	//clear
+		1,	//clear
+		1,	//Shrubs
+		1,	//Trees
+		1,	//Forest
 	};
 			
 
