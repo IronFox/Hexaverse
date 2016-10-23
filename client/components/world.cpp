@@ -21,6 +21,12 @@ namespace World
 			if (frustum.IsVisible(dat.boundingSphere))
 				display.Render(dat.terrain.instruction[Grid::Instruction::displayMode],true);
 		}
+		for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
+		{
+			Grid::TFamily::TData&dat = Grid::high.family[k].normal;
+			if (frustum.IsVisible(dat.boundingSphere))
+				display.LazyRenderVertices(dat.leafBlobs.instruction);
+		}
 	}
 
 	void		RenderWater(const Engine::Frustum<>&frustum)

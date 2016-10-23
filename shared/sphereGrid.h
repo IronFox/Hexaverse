@@ -589,7 +589,8 @@ namespace Grid
 
 			
 			extern DX11::BaseInstructionBlock	terrainBase, terrainSphereBase, terrainParaboloidBase, 
-												terrainShadowBase, 
+												terrainShadowBase, leafBlobShadowBase,treeTrunkShadowBase,
+												leafBlobBase, treeTrunkBase,
 												waterBase, waterSphereBase, waterParaboloidBase,
 												overlayBase, overlayShadowBase, resourceBase;// , terrainEdgeBase;
 		}
@@ -692,24 +693,43 @@ namespace Grid
 		static const constexpr size_t WaterVertex_size = sizeof(WaterVertex);
 		static_assert(sizeof(WaterVertex) == sizeof(float)*8,"Some alignment thingie went bad");
 	
-
 		template <typename Vtx>
-			struct THull
+			struct TPointSet
 			{
 				Buffer<Vtx, 0>	vertices;
-				Buffer<UINT32, 0>	indices;
 
 
 				void			Clear()
 				{
 					vertices.Clear();
+				}
+
+
+				void		AppendTo(TPointSet<Vtx>&set) const
+				{
+					set.vertices.Append(vertices);
+				}
+
+			};
+
+		template <typename Vtx>
+			struct THull : public TPointSet<Vtx>
+			{
+				typedef TPointSet<Vtx>	Super;
+
+				Buffer<UINT32, 0>	indices;
+
+
+				void			Clear()
+				{
+					Super::Clear();
 					indices.Clear();
 				}
 
 				void		AppendTo(THull<Vtx>&hull) const
 				{
 					UINT32 offset = (UINT32)hull.vertices.Count();
-					hull.vertices.Append(vertices);
+					Super::AppendTo(hull);
 					const UINT32*iFrom = indices.pointer();
 					UINT32*iTo = hull.indices.AppendRow(this->indices.Count());
 					while (iFrom != this->indices.end())
@@ -719,6 +739,20 @@ namespace Grid
 						iTo++;
 					}
 					DBG_ASSERT__(iTo == hull.indices.end());
+				}
+			};
+
+		template <typename TPlant>
+			struct TPlantHull : public TPointSet<TPlant>
+			{
+				typedef TPointSet<TPlant>	Super;
+				DX11::BaseInstructionBlock	instruction,
+											shadowInstruction;
+
+				void						Destroy()
+				{
+					Super::Clear();
+					instruction = shadowInstruction = DX11::InstructionBlock32();
 				}
 			};
 
@@ -1001,6 +1035,39 @@ namespace Grid
 							}
 			};
 	#endif
+
+	struct TLeafBlob
+	{
+		TVec3<>	center;
+		float radius;
+		float windSensitivity;
+
+		void	Set(const TMatrix3<>&sys,float x, float y, float z, float r, float wind)
+		{
+			Vec::mul(sys.x,x,center);
+			Vec::mad(center,sys.y,y);
+			Vec::mad(center,sys.z,z);
+			radius = r;
+			windSensitivity = wind;
+		}
+	};
+
+	struct TTreeTrunk
+	{
+		TVec3<>	center;
+		float	height,
+				radius;
+
+		void	Set(const TMatrix3<>&sys,float x, float y, float z, float r, float h)
+		{
+			Vec::mul(sys.x,x,center);
+			Vec::mad(center,sys.y,y);
+			Vec::mad(center,sys.z,z);
+			radius = r;
+			height = h;
+		}
+	};
+
 	/**
 	Homogenous geometrical section of the planet surface, to be rendered and updated as one chunk
 	*/
@@ -1017,6 +1084,8 @@ namespace Grid
 				TOverlayHull			overlay;	//!< high-resolution overhanging terrain overlay, transparent
 				TWaterHull				water;		//!< high-resolution overhanging terrain water, transparent, shaded
 				TResourceHull			resources;	//!< low-resolution resource visualization. Similar to @a overlay, but uses different shader
+				TPlantHull<TLeafBlob>	leafBlobs;	//!< high-resolution plant leaf-spheres
+				TPlantHull<TTreeTrunk>	treeTrunks;	//!< high-resolution tree trunks
 			#endif 
 			Box<>						boundingBox;
 			Sphere<>					boundingSphere;
@@ -1032,6 +1101,8 @@ namespace Grid
 					overlay.Destroy();
 					water.Destroy();
 					resources.Destroy();
+					leafBlobs.Destroy();
+					treeTrunks.Destroy();
 				#endif
 			}
 		};
@@ -1106,39 +1177,8 @@ namespace Grid
 			void	DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull) const;
 		};
 
-		struct TLeafBlob
-		{
-			TVec3<>	center;
-			float radius;
-			float windSensitivity;
 
-			void	Set(const TMatrix3<>&sys,float x, float y, float z, float r, float wind)
-			{
-				Vec::mul(sys.x,x,center);
-				Vec::mad(center,sys.y,y);
-				Vec::mad(center,sys.z,z);
-				radius = r;
-				windSensitivity = wind;
-			}
-		};
 
-		struct TTreeTrunk
-		{
-			TVec3<>	center;
-			float	height,
-					radius;
-
-			void	Set(const TMatrix3<>&sys,float x, float y, float z, float r, float h)
-			{
-				Vec::mul(sys.x,x,center);
-				Vec::mad(center,sys.y,y);
-				Vec::mad(center,sys.z,z);
-				radius = r;
-				height = h;
-			}
-			
-
-		};
 
 		class PlantCompiler
 		{
@@ -1174,7 +1214,7 @@ namespace Grid
 				this->clipHeight = clipHeight;
 				wasEmpty = true;
 			}
-			void	Compile(const index_t offset, const index_t end,BasicBuffer<TLeafBlob>&leafBlobs,BasicBuffer<TTreeTrunk>&treeTrunks,SpinLock&lock);
+			void	Compile(const index_t offset, const index_t end,TPlantHull<TLeafBlob>&leafBlobs,TPlantHull<TTreeTrunk>&treeTrunks,SpinLock&lock);
 		};
 
 
@@ -1579,11 +1619,11 @@ namespace Grid
 
 
 
-			void		CompilePlants(const Array<CellStack>&stacks, BasicBuffer<TLeafBlob>&leafBlobs,BasicBuffer<TTreeTrunk>&treeTrunks, index_t offset, count_t count, FClipHeight clipHeight)
+			void		CompilePlants(const Array<CellStack>&stacks, TPlantHull<TLeafBlob>&leafBlobs,TPlantHull<TTreeTrunk>&treeTrunks, index_t offset, count_t count, FClipHeight clipHeight)
 			{
 				const index_t end = offset + count;
 				SpinLock lock;
-				Concurrency::parallel_for(offset, end, TreeCompiler::BatchSize,[this, end,&lock, &leafBlobs,&treeTrunks, &stacks, clipHeight](index_t i)	//looks good - at least in release
+				Concurrency::parallel_for(offset, end, PlantCompiler::BatchSize,[this, end,&lock, &leafBlobs,&treeTrunks, &stacks, clipHeight](index_t i)	//looks good - at least in release
 				{
 					BYTE data[sizeof(PlantCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...
 					PlantCompiler&compiler = *(PlantCompiler*)data;
@@ -1607,8 +1647,15 @@ namespace Grid
 				dat.terrain.Clear();
 				dat.overlay.Clear();
 				dat.water.Clear();
-				Compile(stacks, dat.terrain, dat.overlay, grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight);
-				CompileWater(stacks, dat.water, grid.GetFamilyOffset(family), grid.CountFamilyMembers(family), clipHeight);
+				dat.leafBlobs.Clear();
+				dat.treeTrunks.Clear();
+
+				const index_t offset = grid.GetFamilyOffset(family);
+				const count_t members = grid.CountFamilyMembers(family);
+
+				Compile(stacks, dat.terrain, dat.overlay, offset, members, clipHeight);
+				CompileWater(stacks, dat.water, offset, members, clipHeight);
+				CompilePlants(stacks, dat.leafBlobs, dat.treeTrunks, offset, members, clipHeight);
 
 				Box<> box = Box<>::Invalid();
 
@@ -1637,6 +1684,18 @@ namespace Grid
 					(DX11::BaseInstructionBlock&)dat.water.instruction[1] = Instruction::waterParaboloidBase;
 					(DX11::BaseInstructionBlock&)dat.water.instruction[2] = Instruction::waterSphereBase;
 				}
+
+				if (dat.leafBlobs.instruction.shader.IsEmpty())
+				{
+					(DX11::BaseInstructionBlock&)dat.leafBlobs.shadowInstruction = Instruction::leafBlobShadowBase;
+					(DX11::BaseInstructionBlock&)dat.leafBlobs.instruction = Instruction::leafBlobBase;
+					(DX11::BaseInstructionBlock&)dat.treeTrunks.shadowInstruction = Instruction::treeTrunkShadowBase;
+					(DX11::BaseInstructionBlock&)dat.treeTrunks.instruction = Instruction::treeTrunkBase;
+				}
+				dat.leafBlobs.instruction.vbo.CreateFromStructs(dat.leafBlobs.vertices);
+				dat.leafBlobs.shadowInstruction.vbo = dat.leafBlobs.instruction.vbo;
+				dat.treeTrunks.instruction.vbo.CreateFromStructs(dat.treeTrunks.vertices);
+				dat.treeTrunks.shadowInstruction.vbo = dat.treeTrunks.instruction.vbo;
 
 
 				dat.terrain.instruction[0].vbo.CreateFromStructs(dat.terrain.vertices);
@@ -2662,7 +2721,7 @@ namespace Grid
 		TLayer		extendedCore,mountains;
 		BYTE		type = Content::Unknown,
 					liquidCoverage = Content::Water,
-					plantType = Content::Clear,	//!< Temporary solution. Set to a plant type, or clear
+					plantType = Content::Forest,	//!< Temporary solution. Set to a plant type, or clear
 					extendedCoreType = Content::Granite,
 					liquidOutline = Content::Sand;
 		INT32		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable

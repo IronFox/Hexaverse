@@ -327,7 +327,8 @@ namespace Grid
 			displayMode_t				displayMode = NormalRendering;
 			DX11::BaseInstructionBlock	terrainBase, terrainSphereBase, terrainParaboloidBase,
 										orbitGridBase,
-										terrainShadowBase, 
+										terrainShadowBase, leafBlobShadowBase,treeTrunkShadowBase,
+										leafBlobBase, treeTrunkBase,
 										waterBase, waterSphereBase, waterParaboloidBase,
 										overlayBase, 
 										overlayShadowBase, resourceBase;// , terrainEdgeBase;
@@ -793,9 +794,6 @@ namespace Grid
 			bindings.Append(DX11::Shader::Binding(Instruction::heightMapOrientation,"HeightMapOrientation"));
 		
 			Instruction::terrainBase.shader.LoadFromFile("shaders/gridTerrain.hlsl", "vsMain", "psMain", bindings.pointer(), bindings.Count());
-
-		
-
 			{
 				//Engine::VertexBinding binding;
 				//binding.vertex.set(0, 4);
@@ -819,6 +817,37 @@ namespace Grid
 			Instruction::terrainShadowBase.binding = Instruction::terrainBase.binding;
 			Instruction::terrainShadowBase.UpdateLayout();
 			Instruction::terrainShadowBase.SetTriangles();
+
+			Instruction::leafBlobBase.shader.LoadFromFile("shaders/gridLeafBlob.hlsl", "vsMain","gsMain", "psMain", bindings.pointer(), bindings.Count());
+			{
+				//TVec3<>	center;
+				//float radius;
+				//float windSensitivity;
+				Instruction::leafBlobBase.binding.Append("Center",0,DXGI_FORMAT_R32G32B32_FLOAT);
+				Instruction::leafBlobBase.binding.Append("Radius_WindSensitivity",0,DXGI_FORMAT_R32G32_FLOAT);
+				Instruction::leafBlobBase.SetPoints();
+				Instruction::leafBlobBase.UpdateLayout();
+			}		
+			Instruction::leafBlobShadowBase.shader.LoadFromFile("shaders/gridLeafBlobShadow.hlsl", "vsMain","gsMain", "psMain");
+			Instruction::leafBlobShadowBase.binding = Instruction::leafBlobBase.binding;
+			Instruction::leafBlobShadowBase.UpdateLayout();
+			Instruction::leafBlobShadowBase.SetTriangles();
+
+			//Instruction::treeTrunkBase.shader.LoadFromFile("shaders/gridTreeTrunk.hlsl", "vsMain","gsMain", "psMain", bindings.pointer(), bindings.Count());
+			//{
+			//	//TVec3<>	center;
+			//	//float	height,
+			//	//		radius;
+			//	Instruction::treeTrunkBase.binding.Append("Center",0,DXGI_FORMAT_R32G32B32_FLOAT);
+			//	Instruction::treeTrunkBase.binding.Append("Height_Radius",0,DXGI_FORMAT_R32G32_FLOAT);
+			//	Instruction::treeTrunkBase.SetPoints();
+			//	Instruction::treeTrunkBase.UpdateLayout();
+			//}		
+			//Instruction::treeTrunkShadowBase.shader.LoadFromFile("shaders/gridTreeTrunkShadow.hlsl", "vsMain","gsMain", "psMain");
+			//Instruction::treeTrunkShadowBase.binding = Instruction::treeTrunkBase.binding;
+			//Instruction::treeTrunkShadowBase.UpdateLayout();
+			//Instruction::treeTrunkShadowBase.SetTriangles();
+
 
 
 			{
@@ -3022,7 +3051,7 @@ namespace Grid
 			}
 		}
 
-		void	PlantCompiler::Compile(const index_t offset, const index_t end,BasicBuffer<TLeafBlob>&leafBlobs,BasicBuffer<TTreeTrunk>&treeTrunks,SpinLock&lock)
+		void	PlantCompiler::Compile(const index_t offset, const index_t end,TPlantHull<TLeafBlob>&leafBlobs,TPlantHull<TTreeTrunk>&treeTrunks,SpinLock&lock)
 		{
 			for (index_t i = offset; i < offset+BatchSize && i < end; i++ )
 			{
@@ -3044,9 +3073,10 @@ namespace Grid
 						case Content::Forest:
 						{
 							float h = ToRadius(CellStack::ToHeight(ih));
-							PutTree(sys,r*0.5,0,h);
-							PutTree(sys,r*-0.25,r*-0.25,h);
-							PutTree(sys,r*-0.25,r*0.25,h);
+							const float r2 = r * h;
+							PutTree(sys,r2*0.5,0,h);
+							PutTree(sys,r2*-0.35,r2*-0.35,h);
+							PutTree(sys,r2*-0.35,r2*0.35,h);
 						}
 						break;
 						case Content::Shrubs:
@@ -3060,8 +3090,8 @@ namespace Grid
 			{
 				lock.lock();
 
-				leafBlobs.Append(this->leafBlobs.begin(),this->leafBlobs.Count());
-				treeTrunks.Append(this->treeTrunks.begin(),this->treeTrunks.Count());
+				leafBlobs.vertices.Append(this->leafBlobs.begin(),this->leafBlobs.Count());
+				treeTrunks.vertices.Append(this->treeTrunks.begin(),this->treeTrunks.Count());
 
 				lock.unlock();
 			}
