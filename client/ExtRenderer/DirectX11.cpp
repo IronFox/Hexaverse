@@ -1706,8 +1706,9 @@ namespace Engine
 
 	void						DirectX11::LazyRenderVertices(const DX11::BaseInstructionBlock&block, UINT32 offset, UINT32 count)
 	{
+		if (!count)
+			return;
 		Link(block,true);
-
 		devcon->Draw(count,offset);
 		if (block.streamOutTarget.IsSet())
 			devcon->SOSetTargets(0,NULL,NULL);
