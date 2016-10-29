@@ -1,4 +1,5 @@
 v0.3.25
+	* Fixed GUI image components being incorrectly sized.
 
 v0.3.24 [Oct 16 2016]
 	+ Added new button and functionality to automatically progress round if all units have been instructed.
