@@ -1266,22 +1266,20 @@ namespace GUI
 		if (texture.IsEmpty() || !autoSetHeight)
 			return Super::UpdateHeight();
 
-		Resolution3D res = texture.GetResolution();
-		float2 resf = float2(res.width,res.height);
+		const Resolution3D imageResolution = texture.GetResolution();
+		const float2 relativeComponentSize = float2(rect.x.GetExtent(),rect.y.GetExtent());
+		const float2 viewportSize = ViewPortSizef();
+		const float2 pixelComponentSize = relativeComponentSize & viewportSize;
+		const float2 pixelImageSize = float2(imageResolution.width,imageResolution.height);
 
-		float wantHeight = resf.y / float(ViewPortHeight());
+		const float horizontalStretch = pixelImageSize.x / pixelComponentSize.x;
 
 
 
+		const float wantPixelImageHeight = pixelComponentSize.x / imageResolution.GetFlatAspect();
+		const float wantRelativeHeight = wantPixelImageHeight / float(ViewPortHeight());
 
-		float2 size = float2(rect.x.GetExtent(),rect.y.GetExtent());
-		size.y = wantHeight;
-		float2 pixelDim = size & ViewPortSizef();
-		float aspect = pixelDim.x / pixelDim.y;
-		float wantAspect = resf.x / resf.y;
-		size.y *= (aspect/wantAspect);
-
-		bool change = Set(rect.y.min,rect.y.max - size.y);
+		bool change = Set(rect.y.min,rect.y.max - wantRelativeHeight);
 
 		return Super::UpdateHeight() || change;
 	}
