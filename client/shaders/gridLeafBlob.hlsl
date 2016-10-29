@@ -64,7 +64,7 @@ void gsMain( point A2G input[1], inout TriangleStream<G2P> stream)
 	stream.RestartStrip();
 }
 
-float4 psMain(G2P input) : SV_TARGET
+float4 psMain(G2P input, out float outDepth: SV_Depth) : SV_TARGET
 {
 	float r2 = sqr(input.ext);
 	clip(1.0 - r2);
@@ -84,6 +84,11 @@ float4 psMain(G2P input) : SV_TARGET
 	//	lit = ShadeUnfiltered(p);;
 	float light = diffuse > 0 ? lit*diffuse : 0.0;
 	light = 0.6 * light + 0.4;
+
+
+	float4 projected = TransformAndProject(p);
+	outDepth = projected.z / projected.w;
+
 	return float4(light*0.1,light*0.8,light*0.2,opacity);
 	
 }
