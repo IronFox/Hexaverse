@@ -151,7 +151,7 @@ namespace GUI
 		VerifyIntegrity(CLOCATION);
 
 		SignalSituationChange();
-
+		OverrideSignalMouseMotion();
 		return true;
 
 	}
@@ -180,6 +180,7 @@ namespace GUI
 		Detail::visibleWindows << window;
 		window->SetActive(true);
 		SignalSituationChange();
+		OverrideSignalMouseMotion();
 	}
 
 
@@ -215,7 +216,7 @@ namespace GUI
 			window->SetActive(true);
 
 		SignalSituationChange();
-
+		OverrideSignalMouseMotion();
 	}
 
 
@@ -276,13 +277,26 @@ namespace GUI
 		return false;
 	}
 
+
+	static float2 lastMouseLocation;
+
+	void	OverrideSignalMouseMotion()
+	{
+		lastMouseLocation = Engine::mouse.location.windowRelative;
+		for (index_t i = Detail::visibleWindows.Count()-1; i< Detail::visibleWindows.Count(); i--)
+		{
+			const auto&wnd = Detail::visibleWindows[i];
+			wnd->SignalMouseMotion(lastMouseLocation,true);
+			if (wnd->isModal)
+				break;
+		}
+	}
+
 	static void CheckMouseMotion()
 	{
-		static float2 last;
-		if (last != Engine::mouse.location.windowRelative)
+		if (lastMouseLocation != Engine::mouse.location.windowRelative)
 		{
-			last = Engine::mouse.location.windowRelative;
-			Detail::visibleWindows.Last()->SignalMouseMotion(last,true);
+			OverrideSignalMouseMotion();
 		}
 	}
 
