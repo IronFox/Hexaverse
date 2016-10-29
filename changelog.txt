@@ -1,4 +1,6 @@
-v0.3.24
+v0.3.25
+
+v0.3.24 [Oct 16 2016]
 	+ Added new button and functionality to automatically progress round if all units have been instructed.
 	+ Re-included D3DCompiler_43.dll since it seems to be necessary in some cases.
 	+ Shift+F3 can now be used to capture auto-cropped, transparent screenshots.
