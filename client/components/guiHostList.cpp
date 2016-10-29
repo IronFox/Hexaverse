@@ -497,8 +497,10 @@ void	SaveHosts()
 
 		Dialog::serverChoice->FullAutoLayout();
 		if (isActive)
+		{
 			Dialog::serverChoice->SetActive(isActive);
-
+			GUI::OverrideSignalMouseMotion();
+		}
 		
 		Dialog::CheckServersAreShown(!Network::client.IsConnected());
 	}
