@@ -245,6 +245,9 @@ namespace Grid
 				Granite,
 				Earth,
 				Grass,
+				Shrubs,
+				Trees,
+				Forest,
 				Rock,
 				Sand,
 				Snow,
@@ -253,10 +256,7 @@ namespace Grid
 				Lava,
 				Technite,
 				Water,
-				Clear,
-				Shrubs,
-				Trees,
-				Forest
+				Clear
 			)
 
 
@@ -354,20 +354,20 @@ namespace Grid
 			//bool	WaterSurfaceBelow() const { return content == Content::Clear; }
 			bool	IsOccupied() const
 			{
-				return (content != Content::Clear && !IsPlant())|| structureCounter > 1;	//one is mild structure, 2+ is heavy
+				return (content != Content::Clear)|| structureCounter > 1;	//one is mild structure, 2+ is heavy
 			}
 			bool	IsClearOrWater() const
 			{
-				return structureCounter == 0 && (content == Content::Clear || IsPlant() || content == Content::Water);
+				return structureCounter == 0 && (content == Content::Clear || content == Content::Water);
 			}
 			bool	IsClearOrWaterIgnoreStructure() const
 			{
-				return (content == Content::Clear || IsPlant() || content == Content::Water);
+				return (content == Content::Clear || content == Content::Water);
 			}
 
 			bool	IsClearOrLiquidIgnoreStructure() const
 			{
-				return (content == Content::Clear || IsPlant() || IsLiquid(content));
+				return (content == Content::Clear || IsLiquid(content));
 			}
 
 			static bool IsDead(BYTE cnt)
@@ -390,13 +390,8 @@ namespace Grid
 			{
 				return cnt == Content::Water || cnt == Content::Lava;
 			}
-			static bool IsPlant(BYTE cnt)
-			{
-				return cnt >= Content::Shrubs && cnt <= Content::Forest;
-			}
 
 
-			bool	IsPlant() const	{return IsPlant(content);}
 			bool	IsOpaque() const {return IsOpaque(content);}
 			bool	IsLiquid() const {return IsLiquid(content);}
 
@@ -2717,7 +2712,7 @@ namespace Grid
 		TLayer		extendedCore,mountains;
 		BYTE		type = Content::Unknown,
 					liquidCoverage = Content::Water,
-					plantType = Content::Forest,	//!< Temporary solution. Set to a plant type, or clear
+					naturalCover = Content::Forest,	//!< Temporary solution. Set to a plant type, or Grass
 					extendedCoreType = Content::Granite,
 					liquidOutline = Content::Sand;
 		INT32		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable

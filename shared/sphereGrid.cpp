@@ -73,6 +73,9 @@ namespace Grid
 		float3(0.25f),	//Granite
 		float3(94.f / 255.f, 69.f / 255.f, 28.f / 255.f)*2.f,	//earth
 		float3(0.5f, 1.f, 0.5f),	//grass
+		float3(0.5f, 0.8f, 0.4f),	//Shrubs
+		float3(0.5f, 0.6f, 0.2f),	//Trees
+		float3(0.4f, 0.5f, 0.1f),	//Forest
 		float3(0.8f),	//rock
 		float3(1.f,1.f,0.6f)*1.2f,	//sand
 		float3(1.2f),	//Snow,
@@ -82,9 +85,6 @@ namespace Grid
 		-float3(0.6f,0.5f,1.2f),	//technite
 		float3(0.5f, 0.6f, 1.f),	//Water
 		float3(1),	//clear
-		float3(1),	//Shrubs
-		float3(1),	//Trees
-		float3(1),	//Forest
 	};
 	
 
@@ -95,6 +95,9 @@ namespace Grid
 		9,	//granite
 		4,	//earth
 		4,	//grass
+		4,	//Shrubs
+		4,	//Trees
+		4,	//Forest
 		5,	//rock
 		3,	//sand
 		3,	//Snow,
@@ -104,9 +107,6 @@ namespace Grid
 		7,	//technite
 		2,	//water
 		0,	//clear
-		1,	//Shrubs
-		1,	//Trees
-		1,	//Forest
 	};
 
 	/*static*/ bool	CellStack::Cell::typeColorMixes[TypeCount] =
@@ -115,6 +115,9 @@ namespace Grid
 		true,	//granite
 		true,	//earth
 		true,	//grass
+		true,	//Shrubs
+		true,	//Trees
+		true,	//Forest
 		true,	//rock
 		true,	//sand
 		true,	//Snow,
@@ -124,9 +127,6 @@ namespace Grid
 		false,	//technite
 		false,	//water
 		false,	//clear
-		false,	//Shrubs
-		false,	//Trees
-		false,	//Forest
 	};
 
 
@@ -137,6 +137,9 @@ namespace Grid
 		1,	//granite
 		1,	//earth
 		1,	//grass
+		1,	//Shrubs
+		1,	//Trees
+		1,	//Forest
 		1,	//rock
 		1,	//sand
 		1,	//Snow,
@@ -146,9 +149,6 @@ namespace Grid
 		0,	//technite
 		1,	//water
 		1,	//clear
-		1,	//Shrubs
-		1,	//Trees
-		1,	//Forest
 	};
 			
 
@@ -556,7 +556,7 @@ namespace Grid
 							content = config.liquidOutline;
 						else  
 							if (config.type == Content::Unknown)
-								content = h < 3 ? Content::Grass : Content::Rock;
+								content = h < 3 ? config.naturalCover : Content::Rock;
 							else
 								content = config.type;
 					continue;
@@ -592,14 +592,6 @@ namespace Grid
 				{
 					volumeCell[i].content = config.liquidCoverage;
 				}
-		}
-		if (Cell::IsPlant( config.plantType ))
-		{
-			for (UINT i = 1; i < Range; i++)
-				if (volumeCell[i].content==Content::Clear && volumeCell[i-1].content == Content::Grass)
-					volumeCell[i].content = config.plantType;
-			if (config.innerCoreType == Content::Grass && volumeCell[0].content==Content::Clear)
-				volumeCell[0].content = config.plantType;
 		}
 	}
 	
@@ -3082,21 +3074,23 @@ namespace Grid
 			
 				for (UINT ih = 0; ih < to; ih++)
 				{
-					switch (stack.volumeCell[ih].content)
-					{
-						case Content::Trees:
-						case Content::Forest:
+					if (ih+1 == CellStack::Range || stack.volumeCell[ih+1].content == Content::Clear)
+						switch (stack.volumeCell[ih].content)
 						{
-							float h = ToRadius(CellStack::ToHeight(ih));
-							const float r2 = r * h * 0.6f;
-							for (index_t k = 0; k < NumDirs; k++)
-								PutTree(sys,plantDirection[k]*r2,h);
+							case Content::Trees:
+							case Content::Forest:
+							{
+								float h = ToRadius(CellStack::ToHeight(ih+1));
+								const float r2 = r * h * 0.7f;
+								for (index_t k = 0; k < NumDirs; k++)
+									PutTree(sys,plantDirection[k]*r2,h);
+								PutTree(sys,Vector<>::zero,h);
+							}
+							break;
+							case Content::Shrubs:
+								//later
+							break;
 						}
-						break;
-						case Content::Shrubs:
-							//later
-						break;
-					}
 				}
 			}
 
