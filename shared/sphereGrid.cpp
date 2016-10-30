@@ -3056,7 +3056,7 @@ namespace Grid
 				
 				float orientation = float((i*45959)%10000)/10000.f * M_PIF*2.f;
 
-				static const constexpr count_t NumDirs = 3;
+				static const constexpr count_t NumDirs = 6;
 
 
 				TVec3<> plantDirection[NumDirs];//for now only three plants in equally spaced directions
