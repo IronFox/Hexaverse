@@ -1042,11 +1042,9 @@ namespace Grid
 		float radius;
 		float windSensitivity;
 
-		void	Set(const TMatrix3<>&sys,float x, float y, float z, float r, float wind)
+		void	Set(const TMatrix3<>&sys,const TVec3<>&dir, float z, float r, float wind)
 		{
-			Vec::mul(sys.x,x,center);
-			Vec::mad(center,sys.y,y);
-			Vec::mad(center,sys.z,z);
+			Vec::mad(dir,sys.z,z,center);
 			radius = r;
 			windSensitivity = wind;
 		}
@@ -1058,11 +1056,9 @@ namespace Grid
 		float	height,
 				radius;
 
-		void	Set(const TMatrix3<>&sys,float x, float y, float z, float r, float h)
+		void	Set(const TMatrix3<>&sys,const TVec3<>&dir, float z, float r, float h)
 		{
-			Vec::mul(sys.x,x,center);
-			Vec::mad(center,sys.y,y);
-			Vec::mad(center,sys.z,z);
+			Vec::mad(dir,sys.z,z,center);
 			radius = r;
 			height = h;
 		}
@@ -1198,10 +1194,10 @@ namespace Grid
 			StaticList<TTreeTrunk,BatchSize * CellStack::Range *3>	treeTrunks;
 			//more types added later
 			
-			void	PutTree(const TMatrix3<>&sys, float x, float y, float z)
+			void	PutTree(const TMatrix3<>&sys, const TVec3<>&dir, float z)
 			{
-				leafBlobs.Append().Set(sys,x,y,z+TreeHeight,TreeRadius,1.f);
-				treeTrunks.Append().Set(sys,x,y,z,TrunkRadius,TreeHeight);
+				leafBlobs.Append().Set(sys,dir,z+TreeHeight,TreeRadius,1.f);
+				treeTrunks.Append().Set(sys,dir,z,TrunkRadius,TreeHeight);
 			}
 
 			void	Setup(const CellStack *stacks,const BaseGrid::TCell*cells, const BaseGrid::TNetCell*netCells,FClipHeight clipHeight)

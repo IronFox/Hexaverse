@@ -3062,6 +3062,21 @@ namespace Grid
 				TMatrix3<> sys;
 				Mat::makeAxisSystem(up,2,sys);
 				
+				float orientation = float((i*45959)%10000)/10000.f * M_PIF*2.f;
+
+				static const constexpr count_t NumDirs = 3;
+
+
+				TVec3<> plantDirection[NumDirs];//for now only three plants in equally spaced directions
+				for (index_t k = 0; k < NumDirs; k++)
+				{
+					float a = float(k)/float(NumDirs)*2.f*M_PIF+orientation;
+					float x = cos(a);
+					float y = sin(a);
+					plantDirection[k] = sys.x * x + sys.y * y;
+				}
+
+
 				const float r = cell.minCornerDistance;
 				const UINT32 to = vmin(CellStack::Range, CellStack::ToLayer( clipHeight(i) ));
 			
@@ -3073,10 +3088,9 @@ namespace Grid
 						case Content::Forest:
 						{
 							float h = ToRadius(CellStack::ToHeight(ih));
-							const float r2 = r * h;
-							PutTree(sys,r2*0.5,0,h);
-							PutTree(sys,r2*-0.35,r2*-0.35,h);
-							PutTree(sys,r2*-0.35,r2*0.35,h);
+							const float r2 = r * h * 0.6f;
+							for (index_t k = 0; k < NumDirs; k++)
+								PutTree(sys,plantDirection[k]*r2,h);
 						}
 						break;
 						case Content::Shrubs:
