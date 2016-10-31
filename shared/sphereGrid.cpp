@@ -823,22 +823,22 @@ namespace Grid
 			Instruction::leafBlobShadowBase.shader.LoadFromFile("shaders/gridLeafBlobShadow.hlsl", "vsMain","gsMain", "psMain");
 			Instruction::leafBlobShadowBase.binding = Instruction::leafBlobBase.binding;
 			Instruction::leafBlobShadowBase.UpdateLayout();
-			Instruction::leafBlobShadowBase.SetTriangles();
+			Instruction::leafBlobShadowBase.SetPoints();
 
-			//Instruction::treeTrunkBase.shader.LoadFromFile("shaders/gridTreeTrunk.hlsl", "vsMain","gsMain", "psMain", bindings.pointer(), bindings.Count());
-			//{
-			//	//TVec3<>	center;
-			//	//float	height,
-			//	//		radius;
-			//	Instruction::treeTrunkBase.binding.Append("Center",0,DXGI_FORMAT_R32G32B32_FLOAT);
-			//	Instruction::treeTrunkBase.binding.Append("Height_Radius",0,DXGI_FORMAT_R32G32_FLOAT);
-			//	Instruction::treeTrunkBase.SetPoints();
-			//	Instruction::treeTrunkBase.UpdateLayout();
-			//}		
+			Instruction::treeTrunkBase.shader.LoadFromFile("shaders/gridTreeTrunk.hlsl", "vsMain","gsMain", "psMain", bindings.pointer(), bindings.Count());
+			{
+				//TVec3<>	center;
+				//float	height,
+				//		radius;
+				Instruction::treeTrunkBase.binding.Append("Center",0,DXGI_FORMAT_R32G32B32_FLOAT);
+				Instruction::treeTrunkBase.binding.Append("Height_Radius",0,DXGI_FORMAT_R32G32_FLOAT);
+				Instruction::treeTrunkBase.SetPoints();
+				Instruction::treeTrunkBase.UpdateLayout();
+			}		
 			//Instruction::treeTrunkShadowBase.shader.LoadFromFile("shaders/gridTreeTrunkShadow.hlsl", "vsMain","gsMain", "psMain");
 			//Instruction::treeTrunkShadowBase.binding = Instruction::treeTrunkBase.binding;
 			//Instruction::treeTrunkShadowBase.UpdateLayout();
-			//Instruction::treeTrunkShadowBase.SetTriangles();
+			//Instruction::treeTrunkShadowBase.SetPoints();
 
 
 
