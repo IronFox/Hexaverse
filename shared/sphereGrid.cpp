@@ -467,12 +467,12 @@ namespace Grid
 	{
 		//float topHeight = heights.y;
 		//based on this, h could go up to 40, though chances for that are excessively rare
-		int up0 = (int)Round(heights.y * config.mountains.heightScale / RawLayerHeight);
+		int up0 = (int)Round(heights.y * config.mountains.heightScale / RawLayerHeight / UnitScale);
 		if (abs(up0) <= config.mountains.dampening)
 			up0 = 0;
 		else
 			up0 -= config.mountains.dampening * sign(up0);
-		int up1 = (int)Round(heights.x * config.extendedCore.heightScale / RawLayerHeight);
+		int up1 = (int)Round(heights.x * config.extendedCore.heightScale / RawLayerHeight / UnitScale);
 		if (abs(up1) <= config.extendedCore.dampening)
 			up1 = 0;
 		else
