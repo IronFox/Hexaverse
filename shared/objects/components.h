@@ -144,6 +144,7 @@ namespace Objects
 		*/
 		class Turret : public Base
 		{
+			typedef Base					Super;
 		public:
 			enum class MountType
 			{
@@ -339,6 +340,15 @@ namespace Objects
 			Checks whether or not the local turret could ever possibly consume resources
 			*/
 			bool							ConsumesResources(ResourceFlagSet&res) const;
+			void							FinishCreation(bool scaleToVehicleSize=true)
+			{
+				explosionRadius *= Grid::UnitScale;
+				scanningRange *= Grid::UnitScale;
+				groundScanningRange *= Grid::UnitScale;
+				horizontalAttackRange *= Grid::UnitScale;
+				Super::FinishCreation(scaleToVehicleSize);
+			}
+
 		};
 
 

@@ -43,7 +43,15 @@ namespace Objects
 
 	/*static*/ void		EntityConstructionCommand::UpdateTexture(BaseCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
 	{
-		GeometryImage::BeginRendering(backgroundColor);
+		float distanceFactor = 1.f;
+		//if (base)
+		{
+			#ifdef LOWER_RESOLUTION_PLANET
+				distanceFactor *= 2.f;
+			#endif
+		}
+
+		GeometryImage::BeginRendering(backgroundColor,distanceFactor);
 
 		TMatrix4<> sys = Matrix<>::eye4;
 		sys.x.x = sys.y.y = sys.z.z = 2.5f;
@@ -99,7 +107,11 @@ namespace Objects
 	{
 		float distanceFactor = 1.f;
 		if (e->IsMobile())
-			distanceFactor *= 0.5f;
+		{
+			#ifndef LOWER_RESOLUTION_PLANET
+				distanceFactor *= 0.5f;
+			#endif
+		}
 		if (e->IsStructure())
 			distanceFactor += 0.1f * To<Structure>::Cast(e)->GetHeight();
 		#ifndef NO_SATELLITES

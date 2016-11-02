@@ -371,7 +371,7 @@ namespace Objects
 			virtual void			PrototypeLoadGeometry() {};
 		#endif
 
-		virtual float				GetMaxScanningRange() const	{return 2.f;};	//returns the effective scanning range of the local entity
+		virtual float				GetMaxScanningRange() const	{return 2.f * Grid::UnitScale;};	//returns the effective scanning range of the local entity
 		float						GetScanningRange() const;
 		float						EMPModify(float raw, float min) const;
 		

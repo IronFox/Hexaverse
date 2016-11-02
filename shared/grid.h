@@ -7,6 +7,9 @@
 
 #include "config.h"
 
+/**
+Define to reduce the world grid resolution exponent by one (reduce to around 1/4 of the cells)
+*/
 #define LOWER_RESOLUTION_PLANET
 
 
@@ -65,8 +68,8 @@ public:
 		float4		ToFloat4() const {return float4(centerDirection,ownerCount == 1 ? 0.f : 1.f);}
 	};
 
-	static const BYTE		NumFamilies = 1 + 20 *2;
-	static const count_t	IsolatedCornerCount = 3;	//max 3 isolated corners on an icosahedron
+	static constexpr const BYTE		NumFamilies = 1 + 20 *2;
+	static constexpr const count_t	IsolatedCornerCount = 3;	//max 3 isolated corners on an icosahedron
 	static UINT32			IsolatedCornerIndex[IsolatedCornerCount];
 	static bool				CornerIsIsolated[12];
 
@@ -112,7 +115,7 @@ protected:
 template<unsigned Exponent>
 class GridSetup : public BaseGrid
 {
-	//typedef Fractal::TemplateMap<Exponent,7-Exponent>	Map;
+	//the second value seems to always be 1 for the higher resolution map, and 2 for the next lower...
 	#ifdef LOWER_RESOLUTION_PLANET
 		typedef Fractal::BaseTemplateMap<Exponent,6-Exponent>	BaseMap;
 	#else
