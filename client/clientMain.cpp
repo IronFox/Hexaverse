@@ -1276,7 +1276,7 @@ void	OnAppear(const Objects::PWorldEntity&e)
 						#ifndef NO_HIBERNATION
 							Objects::selectedEntity->GetUplinkTraffic(), 
 						#endif
-						current, max, zero,change);
+						current, max, change,storage);
 				}
 				else
 					UI::Update(

@@ -1316,7 +1316,7 @@ namespace Grid
 			Instruction::heightMapOrientation.Create(Instruction::THeightMapOrientation());
 
 			{
-				SimplexNoise n(Random().getType<int64_t>());
+				SimplexNoise n(Random().get());
 				Image sides[6];
 				//+x, -x, +y, -y, +z, -z.
 				CreateHeightMapSide(sides[0],n,float3(1,0,0),float3(0,0,-1),float3(0,1,0));
@@ -3352,7 +3352,7 @@ namespace Grid
 			static const int reduce = 5;
 
 			//float t0 = fabs(noise.Get(direction + seed,8.f));	//wide areas
-			float t1 = (Get(n,direction *M_PIF*2.5f));	//small areas
+			float t1 = (Get(n,direction *M_PIF*2.5f*UnitScale));	//small areas
 
 			int rs = std::min(1.f,scale * t1) * (reduce + max);
 			rs -= reduce;
