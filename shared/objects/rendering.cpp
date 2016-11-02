@@ -691,7 +691,7 @@ namespace Objects
 		PTurretBase b = s.GetTurretBase(zOffset);
 		if (b)
 		{
-			Renderer::RenderScaledComponent(system, zOffset, 2.f, *b->turret, b->turretAngleX, b->turretAngleY);
+			Renderer::RenderScaledComponent(system, zOffset, 2.f/Grid::UnitScale, *b->turret, b->turretAngleX, b->turretAngleY);
 			//display.SetObjectMatrix(system);
 		}
 	}

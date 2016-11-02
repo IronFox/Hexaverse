@@ -184,6 +184,8 @@ namespace Dialog
 					//imageField->autoSetHeight = false;
 					//imageField->anchorConfig.Bottom().Set(confirmButton,0.03f,false);
 					imageField->autoSetHeight = true;
+					imageField->anchorConfig.Top().SetAuto();
+					imageField->anchorConfig.Bottom().SetAuto();
 				}
 				textField->anchorConfig.Bottom().SetAuto();
 				textField->anchorConfig.Top().SetAuto();

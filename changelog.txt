@@ -1,4 +1,8 @@
-v0.4.4
+v0.3.25
+	* Fixed GUI image components being incorrectly sized.
+	* Fixed GUI button components not being highlighted in some situations.
+
+v0.3.24 [Oct 16 2016]
 	+ Added control commands to find and terminate factions.
 	+ Added new button and functionality to automatically progress round if all units have been instructed.
 	+ Re-included D3DCompiler_43.dll since it seems to be necessary in some cases.
@@ -18,7 +22,7 @@ v0.3.23	[Apr 10 2016]
 	* Fixed various visibility and grid issues causing client assertion failures and subsequent crashes.
 	* Fixed hostile health visually reverting to full when sensor contact is temporarily lost.
 
-v0.4.3	[Apr 5 2016]
+v0.3.22	[Apr 5 2016]
 	> Enabled vertical synchronization by default.
 	> Routing errors of automated vehicles (surveyors) are no longer visually logged.
 	> Some visual commands of vehicle plants now flash if action is expected.
@@ -32,17 +36,16 @@ v0.4.3	[Apr 5 2016]
 	* Three or less active players, with emp zones, but no goal defined, will now only unlock one zone (was two).
 	- Removed satellite system.
 
-v0.4.2	[Mar 31 2016]
+v0.3.21	[Mar 31 2016]
 	* Fixed terrain resource visualization.
 
-v0.4.1	[Mar 30 2016]
+v0.3.20	[Mar 30 2016]
 	> Resource stacks are now hidden by default, when connecting as spectator.
 	> Improved initial terrain simplification algorithm to produce cleaner terrains.
 	* Fixed server-side random key generation on some systems.
 	* Fixed rare UI crashes.
 	* Fixed console crashes when pressing up without an existing input history.
 
-v0.4.0	[Mar 20 2016]
 	+ Re-enabled compound system. Vehicles in the vicinity of compounds will implicitly draw from them.
 	+ Added Pylon building that can wirelessly connect to other pylons, and vehicles over a larger distance.
 	+ Added compound visualization to show which compound a structure belongs to and/or which compounds a vehicle will draw from.
