@@ -246,7 +246,12 @@ namespace ConfigurationMode
 
 		}
 
-
+		void UploadToServer()
+		{
+			refConfig = config;
+			RefreshButtonStates();
+			Network::Channels::planetConfig.SendTo(Network::client,config);
+		}
 
 		/*
 		struct TLayerConfig
@@ -378,6 +383,7 @@ namespace ConfigurationMode
 					return;
 				RuntimeConfig::gameGoal = goal;
 				gameConfig.gameGoal = (BYTE)goal;
+				UploadToServer();	//make sure server planet is up-to-date
 				Network::Channels::gameConfig.SendTo(Network::client,gameConfig);
 			},
 			[goal](bool)->Objects::BaseCommand::Flags
@@ -855,9 +861,7 @@ namespace ConfigurationMode
 							{
 								Dialog::Confirm("Upload changes and begin game?",[]()
 								{
-									refConfig = config;
-									RefreshButtonStates();
-									Network::Channels::planetConfig.SendTo(Network::client,config);
+									UploadToServer();
 									Network::client.SendSignal(Protocol::ChannelID::EndConfigurationMode);
 								},
 								[](){return Detail::isActive ? Dialog::CheckResult::OkayContinue : Dialog::CheckResult::Abort;});
@@ -876,9 +880,7 @@ namespace ConfigurationMode
 			buttons << std::make_pair(int2(at++,0),
 						Objects::PBaseCommand(new Objects::CustomIconCommand("Commit changes and rebuild server planet","Upload to Server",[]()
 						{
-							refConfig = config;
-							RefreshButtonStates();
-							Network::Channels::planetConfig.SendTo(Network::client,config);
+							UploadToServer();
 							//Update();
 						},
 						[](bool){
