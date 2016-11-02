@@ -1,6 +1,7 @@
 v0.3.25
 	* Fixed GUI image components being incorrectly sized.
 	* Fixed GUI button components not being highlighted in some situations.
+	> Decreased world resultion in an attempt to accelerate the game.
 
 v0.3.24 [Oct 16 2016]
 	+ Added control commands to find and terminate factions.
