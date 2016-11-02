@@ -1315,7 +1315,7 @@ namespace Grid
 			Instruction::heightMapOrientation.Create(Instruction::THeightMapOrientation());
 
 			{
-				SimplexNoise n(Random().getType<int64_t>());
+				SimplexNoise n(Random().get());
 				Image sides[6];
 				//+x, -x, +y, -y, +z, -z.
 				CreateHeightMapSide(sides[0],n,float3(1,0,0),float3(0,0,-1),float3(0,1,0));
