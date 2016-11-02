@@ -293,8 +293,8 @@ namespace Grid
 		static DX11::Shader				gridShader,transparentGridShader;// , blockShader;
 	#endif
 
-	HighSetup		high;
-	Setup<5>			low;
+	HighSetup			high;
+	LowSetup			low;
 
 	WorldData			actualWorld;
 	#ifndef CLIENT
@@ -468,12 +468,12 @@ namespace Grid
 	{
 		//float topHeight = heights.y;
 		//based on this, h could go up to 40, though chances for that are excessively rare
-		int up0 = (int)Round(heights.y * config.mountains.heightScale / RawLayerHeight);
+		int up0 = (int)Round(heights.y * config.mountains.heightScale / RawLayerHeight / UnitScale);
 		if (abs(up0) <= config.mountains.dampening)
 			up0 = 0;
 		else
 			up0 -= config.mountains.dampening * sign(up0);
-		int up1 = (int)Round(heights.x * config.extendedCore.heightScale / RawLayerHeight);
+		int up1 = (int)Round(heights.x * config.extendedCore.heightScale / RawLayerHeight / UnitScale);
 		if (abs(up1) <= config.extendedCore.dampening)
 			up1 = 0;
 		else
@@ -3402,7 +3402,7 @@ namespace Grid
 
 	void Resource::Fill(Random&random,float p0, coverage_t max, float avgPerCell)
 	{
-		SimplexNoise n(random.getType<int64_t>());
+		SimplexNoise n(random.get());
 
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 		{

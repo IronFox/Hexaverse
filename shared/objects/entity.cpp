@@ -269,7 +269,7 @@ namespace Objects
 
 	float		WorldEntity::GetScanningRange() const
 	{
-		return EMPModify(GetMaxScanningRange(), 2.f);
+		return EMPModify(GetMaxScanningRange(), 2.f * Grid::UnitScale);
 	}
 
 

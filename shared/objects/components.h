@@ -16,7 +16,7 @@
 
 namespace Objects
 {
-	static const float			vehicleScale = 0.01f * WorldScale;
+	static const constexpr float			vehicleScale = 0.01f * Grid::UnitScale * WorldScale;
 	inline void NoCosts(int&mineralCostOut, Resource&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
 
 
@@ -144,6 +144,7 @@ namespace Objects
 		*/
 		class Turret : public Base
 		{
+			typedef Base					Super;
 		public:
 			enum class MountType
 			{
@@ -340,6 +341,15 @@ namespace Objects
 			Checks whether or not the local turret could ever possibly consume resources
 			*/
 			bool							ConsumesResources(ResourceFlagSet&res) const;
+			void							FinishCreation(bool scaleToVehicleSize=true)
+			{
+				explosionRadius *= Grid::UnitScale;
+				scanningRange *= Grid::UnitScale;
+				groundScanningRange *= Grid::UnitScale;
+				horizontalAttackRange *= Grid::UnitScale;
+				Super::FinishCreation(scaleToVehicleSize);
+			}
+
 		};
 
 

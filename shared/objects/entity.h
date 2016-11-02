@@ -373,7 +373,7 @@ namespace Objects
 
 		virtual TFloatRange<int>	GetRelativeScanningBand(const Grid::LCellIdI&loc) const {return FloatRange<int>(-3,+100);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
 		inline TFloatRange<int>		GetRelativeScanningBand() const {return GetRelativeScanningBand(location);}	//Maximum vertical sensor radius up and down from the entity's central height. Currently not affected by EMP
-		virtual float				GetMaxScanningRange() const	{return 2.f;};	//returns the effective scanning range of the local entity
+		virtual float				GetMaxScanningRange() const	{return 2.f * Grid::UnitScale;};	//returns the effective scanning range of the local entity
 		float						GetScanningRange() const;
 		float						EMPModify(float raw, float min) const;
 		

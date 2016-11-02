@@ -151,7 +151,7 @@ namespace GUI
 		VerifyIntegrity(CLOCATION);
 
 		SignalSituationChange();
-
+		OverrideSignalMouseMotion();
 		return true;
 
 	}
@@ -180,6 +180,7 @@ namespace GUI
 		Detail::visibleWindows << window;
 		window->SetActive(true);
 		SignalSituationChange();
+		OverrideSignalMouseMotion();
 	}
 
 
@@ -215,7 +216,7 @@ namespace GUI
 			window->SetActive(true);
 
 		SignalSituationChange();
-
+		OverrideSignalMouseMotion();
 	}
 
 
@@ -276,13 +277,26 @@ namespace GUI
 		return false;
 	}
 
+
+	static float2 lastMouseLocation;
+
+	void	OverrideSignalMouseMotion()
+	{
+		lastMouseLocation = Engine::mouse.location.windowRelative;
+		for (index_t i = Detail::visibleWindows.Count()-1; i< Detail::visibleWindows.Count(); i--)
+		{
+			const auto&wnd = Detail::visibleWindows[i];
+			wnd->SignalMouseMotion(lastMouseLocation,true);
+			if (wnd->isModal)
+				break;
+		}
+	}
+
 	static void CheckMouseMotion()
 	{
-		static float2 last;
-		if (last != Engine::mouse.location.windowRelative)
+		if (lastMouseLocation != Engine::mouse.location.windowRelative)
 		{
-			last = Engine::mouse.location.windowRelative;
-			Detail::visibleWindows.Last()->SignalMouseMotion(last,true);
+			OverrideSignalMouseMotion();
 		}
 	}
 
@@ -1266,22 +1280,20 @@ namespace GUI
 		if (texture.IsEmpty() || !autoSetHeight)
 			return Super::UpdateHeight();
 
-		Resolution3D res = texture.GetResolution();
-		float2 resf = float2(res.width,res.height);
+		const Resolution3D imageResolution = texture.GetResolution();
+		const float2 relativeComponentSize = float2(rect.x.GetExtent(),rect.y.GetExtent());
+		const float2 viewportSize = ViewPortSizef();
+		const float2 pixelComponentSize = relativeComponentSize & viewportSize;
+		const float2 pixelImageSize = float2(imageResolution.width,imageResolution.height);
 
-		float wantHeight = resf.y / float(ViewPortHeight());
+		const float horizontalStretch = pixelImageSize.x / pixelComponentSize.x;
 
 
 
+		const float wantPixelImageHeight = pixelComponentSize.x / imageResolution.GetFlatAspect();
+		const float wantRelativeHeight = wantPixelImageHeight / float(ViewPortHeight());
 
-		float2 size = float2(rect.x.GetExtent(),rect.y.GetExtent());
-		size.y = wantHeight;
-		float2 pixelDim = size & ViewPortSizef();
-		float aspect = pixelDim.x / pixelDim.y;
-		float wantAspect = resf.x / resf.y;
-		size.y *= (aspect/wantAspect);
-
-		bool change = Set(rect.y.min,rect.y.max - size.y);
+		bool change = Set(rect.y.min,rect.y.max - wantRelativeHeight);
 
 		return Super::UpdateHeight() || change;
 	}
