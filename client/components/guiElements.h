@@ -838,6 +838,12 @@ namespace GUI
 	*/
 	void				SignalSituationChange();
 
+	/**
+	Forcefully sends mouse motion signal to the topmost windows until a modal window was processed
+	*/
+	void				OverrideSignalMouseMotion();
+
+
 	WheelRs				HandleMouseWheel(short delta);
 	bool				HandleMouseDown();
 	void				HandleMouseUp();

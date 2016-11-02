@@ -20,8 +20,8 @@ struct V2P
 
 void vsMain(in A2V input, out V2P output)
 {
-	output.position = mul(ObjectMatrix,float4(input.position,0,1));
-	output.position.xy = output.position.xy * 2.0 - 1.0;
+	output.position = TransformAndProject(mul(ObjectMatrix,float4(input.position,0,1)).xyz);
+	//output.position.xy = output.position.xy * 2.0 - 1.0;
 	output.uv = input.position;
 }
 
