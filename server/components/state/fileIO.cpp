@@ -164,6 +164,7 @@ namespace FileIO
 								worldContentTypeCount("WCTC"),
 								worldID("WDID"),
 								factionWorldTypeChunk("WTCK"),
+								terrainExponent("TREX"),
 
 								zzzz("zzzz")	//no use, just so that every line can have a comma at the end
 								;
@@ -1077,6 +1078,13 @@ namespace FileIO
 				LogEvent(EventClass::Preset::error,"Grid content type count extracted from file is "+String(contentTypeCount)+". Local count is "+String(Grid::Content::NumberOfPossibilities));
 				failed = true;
 			}
+			UINT32 exponent = 6;
+			GetOptionalPOD(&file, RID::terrainExponent,exponent,6U);
+			if (exponent != Grid::HighExponent)
+			{
+				LogEvent(EventClass::Preset::error,"Grid exponent extracted from file is "+String(exponent)+". Local exponent is "+String(Grid::HighExponent));
+				failed = true;
+			}
 		}
 
 
@@ -1496,6 +1504,7 @@ namespace FileIO
 		UINT32 vid = SupportedFileVersion;
 		container.AppendBlock(RID::fileVersion,&vid,sizeof(vid));
 		container.AppendBlock(RID::worldContentTypeCount)->SetPODData((UINT32)Grid::Content::NumberOfPossibilities);
+		container.AppendBlock(RID::terrainExponent)->SetPODData((UINT32)Grid::HighExponent);
 
 
 

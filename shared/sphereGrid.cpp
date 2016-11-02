@@ -292,8 +292,8 @@ namespace Grid
 		static DX11::Shader				gridShader,transparentGridShader;// , blockShader;
 	#endif
 
-	HighSetup		high;
-	Setup<5>			low;
+	HighSetup			high;
+	LowSetup			low;
 
 	WorldData			actualWorld;
 	#ifndef CLIENT

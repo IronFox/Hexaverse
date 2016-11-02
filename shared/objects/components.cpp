@@ -1028,7 +1028,7 @@ namespace Objects
 
 		float		Bomb::GetRadius(bool doomsday)
 		{
-			return doomsday ? 7 : artillery.explosionRadius*2;
+			return doomsday ? 7*Grid::UnitScale : artillery.explosionRadius*2;
 		}
 
 		int			Bomb::GetDamageLevel(bool doomsday)
