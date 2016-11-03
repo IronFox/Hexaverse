@@ -31,11 +31,11 @@ namespace Grid
 	//static Resource::coverage_t	GetResourceCoverage(const TVec3<>&seed, const TVec3<>&center0,float rarity,Resource::coverage_t maxYield, float probabilityModifier);
 	#ifndef NO_MUNITION
 		/*static*/ float			Resource::probability[Objects::Resource::NumberOfPossibilities] = {0.08f,0.08f,0,0,0.008f } ;
-		/*static*/ float			Resource::density[Objects::Resource::NumberOfPossibilities] = {0.04f,0.06f,0,0,0.02f } ;
+		/*static*/ float			Resource::density[Objects::Resource::NumberOfPossibilities] = {0.14f,0.06f,0,0,0.02f } ;
 		/*static*/ Resource::coverage_t		Resource::maximum[Objects::Resource::NumberOfPossibilities] = {12,12,0,0,6};
 	#else
 		/*static*/ float			Resource::probability[Objects::Resource::NumberOfPossibilities] = {0.08f,0.08f,0,0.008f } ;
-		/*static*/ float			Resource::density[Objects::Resource::NumberOfPossibilities] = {0.04f,0.06f,0,0.02f } ;
+		/*static*/ float			Resource::density[Objects::Resource::NumberOfPossibilities] = {0.14f,0.06f,0,0.02f } ;
 		/*static*/ Resource::coverage_t		Resource::maximum[Objects::Resource::NumberOfPossibilities] = {12,12,0,6};
 	#endif
 

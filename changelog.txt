@@ -1,5 +1,6 @@
 v0.3.25
 	> Decreased world resultion in an attempt to accelerate the game.
+	> Increased default fuel density.
 	* Fixed GUI image components being incorrectly sized.
 	* Fixed GUI button components not being highlighted in some situations.
 	* Fixed resource distribution.
