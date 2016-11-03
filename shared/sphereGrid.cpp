@@ -1276,6 +1276,10 @@ namespace Grid
 	{
 		return (float)n.Get(p.x,p.y,p.z);
 	}
+	float GetContinuous(const SimplexNoise&n, const TVec3<>&p)
+	{
+		return (float)n.GetContinuous(p.x,p.y,p.z);
+	}
 
 	static BYTE GetHeightMapHeight(const SimplexNoise&n, TVec3<>&p)
 	{
@@ -3352,7 +3356,7 @@ namespace Grid
 			static const int reduce = 5;
 
 			//float t0 = fabs(noise.Get(direction + seed,8.f));	//wide areas
-			float t1 = (Get(n,direction *M_PIF*2.5f*UnitScale));	//small areas
+			float t1 = (Get(n,direction *M_PIF/2.5f));	//small areas
 
 			int rs = std::min(1.f,scale * t1) * (reduce + max);
 			rs -= reduce;
@@ -3403,6 +3407,7 @@ namespace Grid
 	void Resource::Fill(Random&random,float p0, coverage_t max, float avgPerCell)
 	{
 		SimplexNoise n(random.get());
+		avgPerCell *= UnitScale;
 
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 		{
