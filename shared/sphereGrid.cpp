@@ -467,12 +467,12 @@ namespace Grid
 	{
 		//float topHeight = heights.y;
 		//based on this, h could go up to 40, though chances for that are excessively rare
-		int up0 = (int)Round(heights.y * config.mountains.heightScale / RawLayerHeight);
+		int up0 = (int)Round(heights.y * config.mountains.heightScale / RawLayerHeight / UnitScale);
 		if (abs(up0) <= config.mountains.dampening)
 			up0 = 0;
 		else
 			up0 -= config.mountains.dampening * sign(up0);
-		int up1 = (int)Round(heights.x * config.extendedCore.heightScale / RawLayerHeight);
+		int up1 = (int)Round(heights.x * config.extendedCore.heightScale / RawLayerHeight / UnitScale);
 		if (abs(up1) <= config.extendedCore.dampening)
 			up1 = 0;
 		else
@@ -1275,6 +1275,10 @@ namespace Grid
 	{
 		return (float)n.Get(p.x,p.y,p.z);
 	}
+	float GetContinuous(const SimplexNoise&n, const TVec3<>&p)
+	{
+		return (float)n.GetContinuous(p.x,p.y,p.z);
+	}
 
 	static BYTE GetHeightMapHeight(const SimplexNoise&n, TVec3<>&p)
 	{
@@ -1315,7 +1319,7 @@ namespace Grid
 			Instruction::heightMapOrientation.Create(Instruction::THeightMapOrientation());
 
 			{
-				SimplexNoise n(Random().getType<int64_t>());
+				SimplexNoise n(Random().get());
 				Image sides[6];
 				//+x, -x, +y, -y, +z, -z.
 				CreateHeightMapSide(sides[0],n,float3(1,0,0),float3(0,0,-1),float3(0,1,0));
@@ -3351,7 +3355,7 @@ namespace Grid
 			static const int reduce = 5;
 
 			//float t0 = fabs(noise.Get(direction + seed,8.f));	//wide areas
-			float t1 = (Get(n,direction *M_PIF*2.5f));	//small areas
+			float t1 = (Get(n,direction *M_PIF/2.5f));	//small areas
 
 			int rs = std::min(1.f,scale * t1) * (reduce + max);
 			rs -= reduce;
@@ -3401,7 +3405,8 @@ namespace Grid
 
 	void Resource::Fill(Random&random,float p0, coverage_t max, float avgPerCell)
 	{
-		SimplexNoise n(random.getType<int64_t>());
+		SimplexNoise n(random.get());
+		//avgPerCell *= UnitScale;
 
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 		{
