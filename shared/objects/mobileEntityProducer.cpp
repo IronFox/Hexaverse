@@ -126,8 +126,9 @@ namespace Objects
 				const TVec3<>&dir = Grid::low.cells[c.stackID].centerVertex.xyz;
 				float h = Grid::ToRadiusf(float(c.height));
 				Mat::makeAxisSystem(dir*h,dir,2,sys);
-				sys.x.xyz *= 0.75f;
-				sys.y.xyz *= 0.75f;
+				sys.x.xyz *= 0.75f * Grid::UnitScale;
+				sys.y.xyz *= 0.75f * Grid::UnitScale;
+				sys.z.xyz *= Grid::UnitScale;
 				selectedVisual = sys;
 			}
 			else

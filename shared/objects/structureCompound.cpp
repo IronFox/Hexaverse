@@ -391,9 +391,15 @@ namespace Objects
 			}
 
 		outWhy = "lacking";
+		bool first = true;
 		for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
 			if (lacking[r])
-				outWhy += " "+String(Resource::Reinterpret(r).ToString());
+			{
+				if (!first)
+					outWhy += ',';
+				outWhy += ' '+String(Resource::Reinterpret(r).ToString());
+				first = false;
+			}
 
 
 		return false;
