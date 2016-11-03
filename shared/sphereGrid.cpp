@@ -3407,7 +3407,7 @@ namespace Grid
 	void Resource::Fill(Random&random,float p0, coverage_t max, float avgPerCell)
 	{
 		SimplexNoise n(random.get());
-		avgPerCell *= UnitScale;
+		//avgPerCell *= UnitScale;
 
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 		{
