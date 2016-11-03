@@ -1468,7 +1468,7 @@ namespace Objects
 				{
 					scanningRange = selectedEntity->EMPModify(base->turret->groundScanningRange,2);
 					float refHeight = Grid::ToRadius(selectedEntity->location.height);
-					float top = Grid::ToRadius(/*selectedEntity->location.height*/Grid::CellStack::HalfRange);
+					float top = Grid::ToRadius(/*selectedEntity->location.height*/Grid::CellStack::HalfRange/Grid::UnitScale);
 					float bottom = Grid::ToRadius(-Grid::CellStack::HalfRange);
 					float topR = scanningRange*top/refHeight;
 					float bottomR = scanningRange *bottom/refHeight;
