@@ -255,7 +255,7 @@ namespace Objects
 			if ((int)attackQueue.Count() < CountPossibleAttacks())
 			{
 				Grid::LCellIdI target;
-				return GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,foundationHeight),*this,target) && AttackNext(target,true);
+				return GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,GetEffectiveFoundationHeight()),*this,target) && AttackNext(target,true);
 			}
 			else
 				return false;
@@ -302,7 +302,7 @@ namespace Objects
 					/*&&	*/turret->CanAttack() 
 					&& motionTime <= entityTime 
 					&& CountPossibleAttacks() > 0 
-					&& ExtCanHit(owner,TrajectoryEndPoint( location,foundationHeight ), endPoint,outTarget)
+					&& ExtCanHit(owner,TrajectoryEndPoint( location,GetEffectiveFoundationHeight() ), endPoint,outTarget)
 					//&& d2 > sqr(turret->explosionRadius)
 					&& TraceTrajectory(endPoint,trajectory,iat,ic,angle)==TurretTrajectory::ReachesTarget;
 		}
@@ -986,7 +986,7 @@ namespace Objects
 				TVec3<> b,d;//,test;
 				Mat::transform(inverse,_b,b);
 				Mat::rotate(inverse,_d,d);
-				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(foundationHeight, turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
+				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(GetEffectiveFoundationHeight(), turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
 			}
 		#endif
 	#endif

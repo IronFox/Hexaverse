@@ -614,7 +614,7 @@ namespace Objects
 		PTurretBase b = s.GetTurretBase(zOffset);
 		if (b)
 		{
-			Renderer::RenderScaledComponent(system, zOffset, 2.f/Grid::UnitScale, *b->turret, b->turretAngleX, b->turretAngleY);
+			Renderer::RenderScaledComponent(system, zOffset/Grid::UnitScale /*Compensate for rescaled system matrix*/, 2.f/Grid::UnitScale, *b->turret, b->turretAngleX, b->turretAngleY);
 			//display.SetObjectMatrix(system);
 		}
 	}
@@ -1787,7 +1787,7 @@ namespace Objects
 					static const float3 color(1,0.5,0.5);
 					float d = sqrt(d2);
 					float3 dir = (arrowTo - Objects::arrowFrom).Normalize();
-					float3 n = (dir | arrowTo).Normalize0() * 0.25f;
+					float3 n = (dir | arrowTo).Normalize0() * 0.25f * Grid::UnitScale;
 					float3 arrowBase = arrowTo - dir * 1.f;
 
 
@@ -2195,7 +2195,7 @@ namespace Objects
 					PTurretBase b = s.GetTurretBase(zOffset);
 					if (b)
 					{
-						_RenderShadowS(s.system, zOffset, 2.f/Grid::UnitScale,*b->turret, b->turretAngleX, b->turretAngleY);
+						_RenderShadowS(s.system, zOffset/Grid::UnitScale /*Compensate for rescaled system matrix*/, 2.f/Grid::UnitScale,*b->turret, b->turretAngleX, b->turretAngleY);
 						display.SetObjectMatrix(Matrix<>::eye4);
 					}
 
