@@ -2,7 +2,7 @@
 #define wirelessRangesH
 
 #include "../config.h"
-#include <grid.h>
+#include "../grid.h"
 namespace Objects
 {
 	#ifdef WIRELESS_VEHICLES
