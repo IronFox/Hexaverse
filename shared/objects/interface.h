@@ -5,14 +5,22 @@
 #include "cursorMode.h"
 
 
+#ifdef HAS_WINDOW
+	#include <engine/display.h>
+	#include "../../client/ExtRenderer/DirectX11.h"
+	extern Engine::Display<Engine::DirectX11>	display;
+
+#endif
+
+/**
+Functions that send events to the non-shared components of the application.
+The client application must implement these somewhere
+*/
+namespace ApplicationInterface
+{
+
 #ifdef CLIENT
 	
-	#ifdef HAS_WINDOW
-		#include <engine/display.h>
-		#include "../../client/ExtRenderer/DirectX11.h"
-		extern Engine::Display<Engine::DirectX11>	display;
-
-	#endif
 	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick);
 	void	SignalChoiceIntersection(const Objects::PWorldEntity&e,const Grid::LCellIdI&c, Objects::CursorMode mode, const Objects::PMobileEntity&deployingWhat);
 	void	SignalRoundEnd();
@@ -92,6 +100,6 @@
 	void	SignalFactionsChanged();
 
 #endif
-
+}
 
 #endif

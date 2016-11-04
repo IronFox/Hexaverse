@@ -457,7 +457,7 @@ namespace Journal
 			UINT32			fileDataVersion;
 
 			/**/			CommitRound(const String&evolverName="", RuntimeConfig::RoundNumber roundNumber=RuntimeConfig::RoundNumber())
-							:roundNumber(roundNumber),evolverName(evolverName),fileDataVersion(SupportedFileVersion) {}
+							:roundNumber(roundNumber),evolverName(evolverName),fileDataVersion(ApplicationInterface::SupportedFileVersion) {}
 			virtual Event*	Instantiate() const override {return new CommitRound("",0);};
 			virtual void	Decode(const Entry&e) override;
 			virtual void	Execute() const override {};
@@ -874,7 +874,7 @@ namespace Journal
 		EventStorage<GlobalEvent>		globalEvents;
 		
 		RuntimeConfig::RoundNumber		roundNumber;
-		UINT32							fileDataVersion=SupportedFileVersion;
+		UINT32							fileDataVersion=ApplicationInterface::SupportedFileVersion;
 		Evolver::Abstract				*evolver = nullptr;
 
 		void	swap(Round&other)

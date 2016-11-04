@@ -15,17 +15,15 @@
 
 
 //#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
+namespace LocalApplicationInterface
+{
+	void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
+	void			OnPlayerControlBegin();
 
-void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
-void			OnPlayerControlBegin();
-
-#ifdef HAS_WINDOW
-	void		QueryNicknameIfEmpty();
-
-
-
-#endif
-
+	#ifdef HAS_WINDOW
+		void		QueryNicknameIfEmpty();
+	#endif
+}
 
 
 namespace Network
@@ -901,7 +899,7 @@ namespace Network
 			}
 			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, ownerID, entityType, std::max(RuntimeConfig::roundNumber,marker.createdInRound));
 			#ifdef HAS_WINDOW
-				OnSelectionChange(true);
+				ApplicationInterface::OnSelectionChange(true);
 			#endif
 		}
 
@@ -911,7 +909,7 @@ namespace Network
 		{
 			Objects::Marker::Destroy(mid, ControlEnabled());
 			#ifdef HAS_WINDOW
-				OnSelectionChange(true);
+				ApplicationInterface::OnSelectionChange(true);
 			#endif
 		}
 
@@ -926,7 +924,7 @@ namespace Network
 			uplinkBandwidth = v;
 			RuntimeConfig::hibernationSystemEnabled = v > 0;
 			#ifdef HAS_WINDOW
-				OnSelectionChange(true);
+				ApplicationInterface::OnSelectionChange(true);
 			#endif
 		}
 
@@ -934,7 +932,7 @@ namespace Network
 		{
 			RuntimeConfig::UnitLimits::Import(limits);
 			#ifdef HAS_WINDOW
-				OnSelectionChange(true);
+				ApplicationInterface::OnSelectionChange(true);
 			#endif
 
 		}
@@ -1140,7 +1138,7 @@ namespace Network
 				if (RuntimeConfig::aiMode && RuntimeConfig::serverAddress.host.IsNotEmpty())
 					application_shutting_down = true;
 				#ifdef HAS_WINDOW
-					QueryNicknameIfEmpty();
+					LocalApplicationInterface::QueryNicknameIfEmpty();
 				#endif
 
 				Receiver::eventsLocked = true;
@@ -1172,7 +1170,7 @@ namespace Network
 					if (Animation::AllDone())
 					{
 						LogEvent(EventSignificance::Debug,"Begin Game. Animation done. OnPlayerControlBegin");
-						OnPlayerControlBegin();
+						LocalApplicationInterface::OnPlayerControlBegin();
 					}
 					else
 						LogEvent(EventSignificance::Debug,"Begin Game. Animation NOT done");
@@ -1505,7 +1503,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 					return;
 				Objects::Marker *m = Objects::Marker::Find(e->location);
 				if (m)
-					SignalMarkerDeletion(m->id);
+					LocalApplicationInterface::SignalMarkerDeletion(m->id);
 			});
 
 			#ifdef HAS_WINDOW
@@ -1548,7 +1546,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		{
 			
 			LogEvent(EventSignificance::Debug,nullptr,"Deleting marker "+o->GetName()+" since it's outdated (at age "+String(o->age)+")");
-			SignalMarkerDeletion(o->id);
+			LocalApplicationInterface::SignalMarkerDeletion(o->id);
 			//Network::Channels::destroyMarker.SendTo(Network::client, *o);
 		}
 
@@ -1568,7 +1566,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			if (Animation::AllDone())
 			{
 				LogEvent(EventSignificance::Debug,"Command phase. Game has begun. Animation done. OnPlayerControlBegin");
-				OnPlayerControlBegin();
+				LocalApplicationInterface::OnPlayerControlBegin();
 			}
 			else
 			{

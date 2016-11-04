@@ -32,7 +32,7 @@ namespace Objects
 				entity->OnSelect();
 		}
 			
-		OnSelectionChange(e == entity);
+		ApplicationInterface::OnSelectionChange(e == entity);
 		UpdateChoices(controlEnabled);
 	}
 
@@ -52,7 +52,7 @@ namespace Objects
 		if (e)
 			e->OnDeselect();
 		RefreshCommands(controlEnabled);
-		OnSelectionChange(!e);
+		ApplicationInterface::OnSelectionChange(!e);
 	}
 }
 

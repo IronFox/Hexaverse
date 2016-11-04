@@ -455,7 +455,7 @@ namespace Receiver
 			client->faction.reset(new Objects::Faction(TUniqueID::Empty()));
 			faction = client->faction;
 			Objects::Faction::all << client->faction;
-			SignalFactionsChanged();
+			ApplicationInterface::SignalFactionsChanged();
 			client->faction->name = client->name;
 
 

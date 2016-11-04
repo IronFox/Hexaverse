@@ -755,7 +755,7 @@ namespace Objects
 
 	
 
-			Explode(TAttack(),Grid::HCellIdI(Grid::low.grid.GetCell(v.location.stackID).higherEquivalent,v.location.height),v.GetWorldPosition(),radius,damageLevel,doomsday,v.motionTime);
+			Explode(ApplicationInterface::TAttack(),Grid::HCellIdI(Grid::low.grid.GetCell(v.location.stackID).higherEquivalent,v.location.height),v.GetWorldPosition(),radius,damageLevel,doomsday,v.motionTime);
 
 			return TerminalFailureVehicleDestroyed;
 		}
@@ -966,7 +966,7 @@ namespace Objects
 		/*virtual override*/	bool			Construct::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
 		{
 			String whatName;
-			if (globalVersionOfCurrentFile >= FileVersions::HasUUIDInConstructionJobs)
+			if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::HasUUIDInConstructionJobs)
 			{
 				if (!inStream.Read(useID.bytes,(serial_size_t)useID.NumBytes))
 					return false;
@@ -1226,7 +1226,7 @@ namespace Objects
 				return false;
 			mode = (CursorMode)i16;
 
-			if (globalVersionOfCurrentFile == 1035)
+			if (ApplicationInterface::globalVersionOfCurrentFile == 1035)
 			{
 				bool dead = false;
 				bool success = inStream.ReadPrimitive(lastLocation) && inStream.ReadPrimitive(first)
@@ -1235,7 +1235,7 @@ namespace Objects
 //						deadBecause = dead ? "imported" : "";
 				return success;
 			}
-			if (globalVersionOfCurrentFile ==1036)
+			if (ApplicationInterface::globalVersionOfCurrentFile ==1036)
 			{
 				String dummy;
 				return inStream.ReadPrimitive(lastLocation) && inStream.ReadPrimitive(first)

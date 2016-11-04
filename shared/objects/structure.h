@@ -1855,7 +1855,7 @@ namespace Objects
 				WorkingStructureT<Derivative>*s2 = dynamic_cast<WorkingStructureT<Derivative>*>(selectedEntity.get());
 				if (s2)
 				{
-					SignalEnableStructure(*s2, !s2->IsEnabled());
+					ApplicationInterface::SignalEnableStructure(*s2, !s2->IsEnabled());
 					//s2->SetEnabled(!s2->IsEnabled());
 				}
 			}
