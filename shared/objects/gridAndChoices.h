@@ -227,11 +227,11 @@ namespace Objects
 		void		SignalClusterChange(const Grid::LCellIdI&location, int verticalTolerance,float atTime,const WorldEntity*except);
 		void		SignalVehicleClusterChange(const Grid::LCellIdI&location, int verticalTolerance, float atTime, const WorldEntity*except);
 		void		SignalClusterAndNeighborsChange(const Grid::LCellIdI&location, float atTime, const WorldEntity*except = nullptr);
-		void		Explode(const TAttack& attack, 
+		void		Explode(const ApplicationInterface::TAttack& attack, 
 						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
 						float&atTime
 						);
-		void		ExplodeEMP(const TAttack& attack,
+		void		ExplodeEMP(const ApplicationInterface::TAttack& attack,
 						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float&atTime);
 
 

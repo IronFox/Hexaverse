@@ -200,17 +200,17 @@ namespace Objects
 
 				{
 					//float delta = std::max(fabs(angles.x - turretAngleX), fabs(angles.y - turretAngleY));
-					SignalTurretRotation(shared_from_this(),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),Times::TurretRotation);
+					ApplicationInterface::SignalTurretRotation(shared_from_this(),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),Times::TurretRotation);
 					motionTime += Times::TurretRotation;
 				}
 
-				TAttack at;
+				ApplicationInterface::TAttack at;
 				at.attackAngle = angle;
 				at.attackFrom = shared_from_this();
 				at.flightTime = flightTime;
 				at.isAutoAttack = target.autoTarget;
 				at.traceTo = t0;
-				SignalAttack(at);
+				ApplicationInterface::SignalAttack(at);
 
 				if (storage.level[turret->ammoType] >= turret->ammoNeedPerShot)
 					ChangeStorage(*this,attackTime, turret->ammoType,-turret->ammoNeedPerShot);
@@ -255,7 +255,7 @@ namespace Objects
 			if ((int)attackQueue.Count() < CountPossibleAttacks())
 			{
 				Grid::LCellIdI target;
-				return GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,foundationHeight),*this,target) && AttackNext(target,true);
+				return GetSentryTarget(*this,this->storage.level[turret->ammoType], TrajectoryEndPoint( location,GetEffectiveFoundationHeight()),*this,target) && AttackNext(target,true);
 			}
 			else
 				return false;
@@ -302,7 +302,7 @@ namespace Objects
 					/*&&	*/turret->CanAttack() 
 					&& motionTime <= entityTime 
 					&& CountPossibleAttacks() > 0 
-					&& ExtCanHit(owner,TrajectoryEndPoint( location,foundationHeight ), endPoint,outTarget)
+					&& ExtCanHit(owner,TrajectoryEndPoint( location,GetEffectiveFoundationHeight() ), endPoint,outTarget)
 					//&& d2 > sqr(turret->explosionRadius)
 					&& TraceTrajectory(endPoint,trajectory,iat,ic,angle)==TurretTrajectory::ReachesTarget;
 		}
@@ -806,7 +806,7 @@ namespace Objects
 				PMine mine = ToMine(selectedEntity);
 				if (mine)
 				{
-					SignalRestoreCoreLink(mine->id);
+					ApplicationInterface::SignalRestoreCoreLink(mine->id);
 				}
 			},
 			[](bool controlEnabled)
@@ -986,7 +986,7 @@ namespace Objects
 				TVec3<> b,d;//,test;
 				Mat::transform(inverse,_b,b);
 				Mat::rotate(inverse,_d,d);
-				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(foundationHeight, turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
+				return geometry.TestIntersection(b,d,distance) | turret->TestIntersection(GetEffectiveFoundationHeight(), turretAngleX,turretAngleY,b,d,distance);	//binary or - must evaluate both
 			}
 		#endif
 	#endif
@@ -2059,7 +2059,7 @@ namespace Objects
 				GetProductionChoices(this,selectedBase,choices);
 				static bool ignoreWarnings = false;
 				if (choices.IsNotEmpty() || ignoreWarnings)
-					SignalConstructionBegin(id, selectedBase->constName, selectedTurret->constName);
+					ApplicationInterface::SignalConstructionBegin(id, selectedBase->constName, selectedTurret->constName);
 				else
 				{
 
@@ -2074,7 +2074,7 @@ namespace Objects
 						Dialog::Confirm("Cannot find valid spawning locations around '"+GetNiceName()+"' for '"+Vehicle::GetTypeName(selectedBase,selectedTurret)+"'. "+waterNotice+"Are you sure you wish to start this production?",
 								[baseName,turretName,myID]()
 								{
-									SignalConstructionBegin(myID, baseName, turretName);
+									ApplicationInterface::SignalConstructionBegin(myID, baseName, turretName);
 									//ignoreWarnings = true;
 								}
 								,
@@ -2089,7 +2089,7 @@ namespace Objects
 								}
 							);
 					#else
-						SignalConstructionBegin(id, selectedBase->constName, selectedTurret->constName);
+						ApplicationInterface::SignalConstructionBegin(id, selectedBase->constName, selectedTurret->constName);
 					#endif
 				}
 			}
@@ -2140,10 +2140,10 @@ namespace Objects
 							{
 								if (!s2->IsEnabled() && !s2->CanEnable())
 								{
-									SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job using the 'Construct Selected' button. You must first select both a foundation and a turret, however.");
+									ApplicationInterface::SignalUserMessage(s2->GetNiceName()+" is switched off because its queue is empty. It will attempt to automatically enable once you enqueue at least one production job using the 'Construct Selected' button. You must first select both a foundation and a turret, however.");
 									return;
 								}
-								SignalEnableStructure(*s2, !s2->IsEnabled());
+								ApplicationInterface::SignalEnableStructure(*s2, !s2->IsEnabled());
 							}
 						}
 						,[](bool controlEnabled)
@@ -2172,11 +2172,11 @@ namespace Objects
 						else
 						{
 							if (plant->selectedBase)
-								SignalUserMessage(plant->GetNiceName()+" needs to know what turret you want to use in order to enqueue a new production job. Please select one in the top row.");
+								ApplicationInterface::SignalUserMessage(plant->GetNiceName()+" needs to know what turret you want to use in order to enqueue a new production job. Please select one in the top row.");
 							elif (plant->selectedTurret)
-								SignalUserMessage(plant->GetNiceName()+" needs to know what foundation you want to use in order to enqueue a new production job. Please select one in the bottom row.");
+								ApplicationInterface::SignalUserMessage(plant->GetNiceName()+" needs to know what foundation you want to use in order to enqueue a new production job. Please select one in the bottom row.");
 							else
-								SignalUserMessage(plant->GetNiceName()+" needs to know what turret and foundation you want to use in order to enqueue a new production job. Please select one in each top and bottom rows.");
+								ApplicationInterface::SignalUserMessage(plant->GetNiceName()+" needs to know what turret and foundation you want to use in order to enqueue a new production job. Please select one in each top and bottom rows.");
 						}
 					}
 				},
@@ -2418,7 +2418,7 @@ namespace Objects
 					DBG_ASSERT__(owner->acquiringNexusControl >= 0);
 					owner->nexusControl ++;
 					LogEvent( EventClass( EventSignificance::Important,EventFlavor::Gain ),this,"Control Acquired");
-					SignalNexusControlChange(owner);
+					ApplicationInterface::SignalNexusControlChange(owner);
 				}
 			}
 
@@ -2457,7 +2457,7 @@ namespace Objects
 					}
 					resistence = ResistenceRounds;
 					RegisterChange(NexusControlChanged,0);
-					SignalNexusControlChange(owner);
+					ApplicationInterface::SignalNexusControlChange(owner);
 				}
 			}
 		}
@@ -2558,7 +2558,7 @@ namespace Objects
 
 		RefreshCompoundStates(atTime);
 		#ifdef HAS_WINDOW
-			OnSelectionChange(true);
+			ApplicationInterface::OnSelectionChange(true);
 		#endif
 	}
 
@@ -2684,8 +2684,7 @@ namespace Objects
 			return true;
 
 		const Compound&n = GetCompound();
-		String dummy;
-		return n.CanEnable(this,dummy,ignoreCanEnable);
+		return n.CanEnable(this,nullptr,nullptr,ignoreCanEnable);
 	}
 
 
@@ -2723,9 +2722,15 @@ namespace Objects
 				{
 					Compound&network = GetCompound();
 					String outWhy;
-					if (!network.CanEnable(this,outWhy))
+					Array<Resource> missingResources;
+					if (!network.CanEnable(this,&outWhy,&missingResources))
 					{
 						LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable: Insufficient resource supply in compound ("+outWhy+")");
+						if (missingResources.IsNotEmpty())
+						{
+							atTime += timeEpsilon;
+							ApplicationInterface::SignalOperationLacksResources(*this,missingResources,atTime);
+						}
 						return false;
 					}
 				}

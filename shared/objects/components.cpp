@@ -1316,7 +1316,7 @@ namespace Objects
 				{
 					void		Obliterate()
 					{
-						SignalTargetLessAttack(selectedEntity);
+						ApplicationInterface::SignalTargetLessAttack(selectedEntity);
 					}
 				}
 			}
@@ -1830,7 +1830,7 @@ namespace Objects
 						arrowFrom = Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(arrowFromCell.height));
 					}
 					else
-						SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());	
+						ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());	
 							//this still works, but seemed unintuitive rather quickly
 					activeStructureToPlace = p;
 				}
@@ -1907,7 +1907,7 @@ namespace Objects
 					return;
 				if (vehicle->location.height < Grid::CellStack::BottomHeight+1)
 					return;
-				SignalNewJob(vehicle, ConstName::Job_DigDown, ConstName::Empty);
+				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_DigDown, ConstName::Empty);
 			}
 
 			void			Base::DescribeType(BaseCommand::Label&label, bool compound)
@@ -2075,7 +2075,7 @@ namespace Objects
 					return;
 				if (vehicle->location.height <= Grid::CellStack::BottomHeight)
 					return;
-				SignalNewJob(vehicle, ConstName::Job_BuildRoad,ConstName::Empty);
+				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_BuildRoad,ConstName::Empty);
 			}
 
 
@@ -2198,7 +2198,7 @@ namespace Objects
 				removeCandidates.Clear();
 				buildCandidates.Clear();
 
-				SignalTerrainModification(v,activeCursorMode,selection );
+				ApplicationInterface::SignalTerrainModification(v,activeCursorMode,selection );
 
 				activeCursorMode = CursorMode::Idle;
 			}

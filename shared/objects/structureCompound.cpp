@@ -353,15 +353,18 @@ namespace Objects
 	Temporarily changes the structure's state to enabled without signalling the change or registering change.
 	This method must be kept in sync with RefreshState() auto-balancing strategy!
 	*/
-	bool				Compound::CanEnable( WorkingStructure*toEnable, String&outWhy, bool ignoreCanEnable/*=false*/) const
+	bool				Compound::CanEnable( WorkingStructure*toEnable, String*outWhy/*=nullptr*/, Array<Resource>*outMissedResources/*=nullptr*/, bool ignoreCanEnable/*=false*/) const
 	{
 		DBG_ASSERT_NOT_NULL__(toEnable);
 		if (toEnable->IsHibernating() || (!ignoreCanEnable && !toEnable->CanEnable()))
 		{
-			if (toEnable->IsHibernating())
-				outWhy = "currently hibernating";
-			else
-				outWhy = "generally cannot enable";
+			if (outWhy)
+			{
+				if (toEnable->IsHibernating())
+					(*outWhy) = "currently hibernating";
+				else
+					(*outWhy) = "generally cannot enable";
+			}
 			return false;
 		}
 
@@ -390,18 +393,35 @@ namespace Objects
 				lacking[r] = true;
 			}
 
-		outWhy = "lacking";
-		bool first = true;
+		if (!outWhy &&!outMissedResources)
+			return false;
+
+		if (outWhy)
+			(*outWhy) = "lacking";
+		count_t cnt = 0;
 		for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
 			if (lacking[r])
 			{
-				if (!first)
-					outWhy += ',';
-				outWhy += ' '+String(Resource::Reinterpret(r).ToString());
-				first = false;
+				if (outWhy)
+				{
+					if (cnt!=0)
+						(*outWhy) += ',';
+					*outWhy += ' '+String(Resource::Reinterpret(r).ToString());
+				}
+				cnt++;
 			}
-
-
+		if (outMissedResources)
+		{
+			outMissedResources->SetSize(cnt);
+			auto*ptr = outMissedResources->pointer();
+			for (index_t r = 0; r < Resource::NumberOfPossibilities; r++)
+				if (lacking[r])
+				{
+					ptr->Load(r);
+					ptr++;
+				}
+			ASSERT_CONCLUSION(*outMissedResources,ptr);
+		}
 		return false;
 	}
 
