@@ -1458,7 +1458,7 @@ namespace Objects
 				if (extendedShadow)
 					scanningRange += RangeShadowExtension;
 
-				float zOffset = 0.5f;
+				float zOffset = 0.5f*Grid::SingleLayerHeight;
 				PTurretBase base = selectedEntity->GetTurretBase(zOffset);		
 
 				Renderer::RenderSensorRange(selectedEntity->location,scanningRange,zOffset,selectedEntity->GetRelativeScanningBand(),
