@@ -272,7 +272,7 @@ namespace AI
 			if (attacker && !v->HasAmmoForShot())
 			{
 				LogEvent(EventSignificance::Debug,v.get(),"AI: Out of ammo: destroying vehicle");
-				SignalRemoval(v);
+				ApplicationInterface::SignalRemoval(v);
 				return;
 			}
 		#endif
