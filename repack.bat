@@ -7,7 +7,7 @@ Bake\Bake.exe
 IF "%errorlevel%" NEQ "0" goto failed
 
 cd baked
-%zip% a ..\%rs% "*.*" -r
+%zip% a ..\%rs% "*" -r
 cd ..
 IF "%errorlevel%" NEQ "0" goto failed
 

@@ -2,9 +2,9 @@ changelog.txt
 client/game.ini
 client/Visual Client.exe
 client/Console Client*.exe
-client/shaders/compiled/*
+client/shaders/compiled/*.*
 client/Font/font.*
-client/Font/compiled/*
+client/Font/compiled/*.*
 client/objects/*.cgs
 client/resources/*.wav
 client/resources/objectSounds/*.wav
