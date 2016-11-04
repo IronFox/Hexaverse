@@ -41,3 +41,5 @@ repackAndUpload.bat
 *.exe
 baked/
 *.pdb
+*.config
+Bake/Bake.vshost.exe.manifest
