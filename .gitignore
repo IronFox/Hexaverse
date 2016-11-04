@@ -39,3 +39,5 @@ repackAndUpload.bat
 *.tmp
 *.lib
 *.exe
+baked/
+*.pdb
