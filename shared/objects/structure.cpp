@@ -2684,8 +2684,7 @@ namespace Objects
 			return true;
 
 		const Compound&n = GetCompound();
-		String dummy;
-		return n.CanEnable(this,dummy,ignoreCanEnable);
+		return n.CanEnable(this,nullptr,nullptr,ignoreCanEnable);
 	}
 
 
@@ -2723,9 +2722,15 @@ namespace Objects
 				{
 					Compound&network = GetCompound();
 					String outWhy;
-					if (!network.CanEnable(this,outWhy))
+					Array<Resource> missingResources;
+					if (!network.CanEnable(this,&outWhy,&missingResources))
 					{
 						LogEvent(EventClass::Preset::operationAborted,this,"Cannot enable: Insufficient resource supply in compound ("+outWhy+")");
+						if (missingResources.IsNotEmpty())
+						{
+							atTime += timeEpsilon;
+							ApplicationInterface::SignalOperationLacksResources(*this,missingResources,atTime);
+						}
 						return false;
 					}
 				}

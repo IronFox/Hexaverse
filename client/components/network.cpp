@@ -943,6 +943,11 @@ namespace Network
 				ConfigurationMode::Update(cfg);
 			#endif
 		}
+
+		void	OperationLacksResources(Protocol::OperationLacksResources&res)
+		{
+			bool brk = true;
+		}
 	}
 
 
@@ -984,6 +989,7 @@ namespace Network
 		TCP::Channel<NET(INT32), 0, Protocol::ChannelID::UplinkBandwidth>							uplinkBandwidth(Receiver::UplinkBandwidth);
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
 		TCP::Channel<Grid::ExtendedPlanetConfig, 0, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
+		TCP::Channel<Protocol::OperationLacksResources, 0, Protocol::ChannelID::OperationLacksResources>			operationLacksResources(Receiver::OperationLacksResources);
 
 
 
@@ -1230,6 +1236,7 @@ namespace Network
 		client.InstallChannel(Channels::uplinkBandwidth);
 		client.InstallChannel(Channels::unitLimits);
 		client.InstallChannel(Channels::planetConfig);
+		client.InstallChannel(Channels::operationLacksResources);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);

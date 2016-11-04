@@ -75,6 +75,7 @@ namespace Channels
 	#endif
 
 	TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>							unitLimits;
+	TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
 
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
 

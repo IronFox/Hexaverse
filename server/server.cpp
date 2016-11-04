@@ -42,6 +42,26 @@ Random		random;
 namespace ApplicationInterface
 {
 
+	void	SignalOperationLacksResources(const Objects::WorldEntity&e, const ArrayRef<Objects::Resource>&resources, float atTime)
+	{
+		Network::PClient*cl = Network::playerMap.QueryPointer(e.owner);
+		if (!cl && Network::spectators.IsEmpty())
+			return;
+
+		Protocol::OperationLacksResources outRes;
+		outRes.resourceIndices.SetSize(resources.Count());
+		for (index_t i = 0; i < resources.Count(); i++)
+			outRes.resourceIndices[i] = (BYTE)resources[i];
+		outRes.timestamp.atTime = atTime;
+		outRes.timestamp.rightNow = RuntimeConfig::IsInAnyCommandPhase();
+		outRes.entityID = e.id;
+
+		Channels::operationLacksResources.SendTo((*cl)->peer.lock(),outRes);
+		foreach (Network::spectators,s)
+			Channels::operationLacksResources.SendTo((*s)->peer.lock(),outRes);
+	}
+
+
 	void	SignalChainReactionExplosion(const Grid::LCellIdI&center, float radius, int damageLevel, float atTime)
 	{
 		Game::evolver->HandleChainReactionExplosion(Evolver::TExplosion( center, radius, damageLevel, atTime ));
