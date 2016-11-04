@@ -36,3 +36,10 @@ steam_sdk/ContentBuilder/builder/userdata
 steam_sdk/ContentBuilder/builder/config/
 *.log
 repackAndUpload.bat
+*.tmp
+*.lib
+*.exe
+baked/
+*.pdb
+*.config
+Bake/Bake.vshost.exe.manifest
