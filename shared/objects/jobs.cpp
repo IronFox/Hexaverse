@@ -60,6 +60,11 @@ namespace Objects
 				if (storage < withdrawNow)
 				{
 					LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient "+String(this->GetConsumedResourceType().ToString())+" available ("+String(storage)+"/"+String(withdrawNow)+"). Delaying operation.");
+
+					v.motionTime += timeEpsilon;
+					ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.motionTime);
+					v.motionTime += timeEpsilon;
+
 					return JobDelayed;
 				}
 
@@ -73,6 +78,11 @@ namespace Objects
 					if (!CanWithdrawFromStorage(v,this->GetConsumedResourceType(),resourceCostLeft))
 					{
 						LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient "+String(this->GetConsumedResourceType().ToString())+" available (need "+String(withdrawNow)+"). Aborting operation.");
+
+						v.motionTime += timeEpsilon;
+						ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.motionTime);
+						v.motionTime += timeEpsilon;
+
 						return TerminalFailure;
 					}
 				#endif
@@ -863,9 +873,19 @@ namespace Objects
 			if (!canRepair)
 			{
 				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to repair '"+target->GetNiceName()+"'");
+
+				v.motionTime += timeEpsilon;
+				ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.motionTime);
+				v.motionTime += timeEpsilon;
+
 				return JobDelayed;
 			}
 			LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to fully repair '"+target->GetNiceName()+"'. Repairing "+String(canRepair)+" health...");
+
+			v.motionTime += timeEpsilon;
+			ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.motionTime);
+			v.motionTime += timeEpsilon;
+
 			target->health += canRepair;
 			target->RegisterChange(WorldEntity::HealthChanged,v.motionTime);
 
