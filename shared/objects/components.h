@@ -466,7 +466,7 @@ namespace Objects
 					{
 						if (!selectedMobileEntity)
 							return;
-						SignalNewJob(selectedMobileEntity, Command,ConstName::Empty);					
+						ApplicationInterface::SignalNewJob(selectedMobileEntity, Command,ConstName::Empty);					
 					}
 
 				void	BuildRoad();
@@ -506,7 +506,7 @@ namespace Objects
 						PMobileEntity vehicle = selectedMobileEntity;
 						if (!vehicle)
 							return;
-						SignalNewJob(vehicle, ConstName::Job_SelfDetonate,DetonationSize);					
+						ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_SelfDetonate,DetonationSize);					
 					}
 
 			};

@@ -82,7 +82,7 @@ namespace Objects
 			void			ChangeStorage(ResourceVector&supply, float atTime);
 			FullResourceVector	GetVector(const Array<bool>&virtualEnabled) const;
 		#endif
-		bool				CanEnable(WorkingStructure*, String&outWhy, bool ignoreCanEnable=false) const;
+		bool				CanEnable(WorkingStructure*, String*outWhy=nullptr, Array<Resource>*outMissedResources=nullptr, bool ignoreCanEnable=false) const;
 		void				RefreshState(float atTime);
 		FullResourceVector	GetVector() const;
 

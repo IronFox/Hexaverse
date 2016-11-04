@@ -246,20 +246,33 @@ namespace Objects
 				(*bc)->VisitAllCommands([](const int2&,const PBaseCommand&cmd){cmd->RasterizeImage();},true);
 
 			globalCommands.baseCoords = BaseCommand::coordOffset;
-			globalCommands.Add(int2(-1, 0),false,new GlobalCommand("End Round", [](){if (HasSignalledRoundEnd()) SignalUndoRoundEnd(); else SignalRoundEnd();}, 
+			globalCommands.Add(int2(-1, 0),false,new GlobalCommand("End Round",
+			[]()
+			{
+				if (ApplicationInterface::HasSignalledRoundEnd())
+					ApplicationInterface::SignalUndoRoundEnd();
+				else
+					ApplicationInterface::SignalRoundEnd();
+			}, 
 			[](bool controlEnabled)->BaseCommand::Flags
 			{
 				BaseCommand::Flags rs = BaseCommand::Flags::None;
-				if (CanChangeRoundState())
+				if (ApplicationInterface::CanChangeRoundState())
 					rs |= BaseCommand::Flags::IsEnabled;
-				if (HasSignalledRoundEnd())
+				if (ApplicationInterface::HasSignalledRoundEnd())
 					rs |= BaseCommand::Flags::IsPermaActive;
 				else
-					if (ShouldSignalRoundEnd())
+					if (ApplicationInterface::ShouldSignalRoundEnd())
 						rs |= BaseCommand::Flags::IsFlashing;
 				return rs;
 			}));
-			globalCommands.Add(int2(0, 0),false,new GlobalCommand("Auto End Round", [](){if (!RuntimeConfig::autoNewRound && ShouldSignalRoundEnd()) SignalRoundEnd(); RuntimeConfig::autoNewRound = !RuntimeConfig::autoNewRound;}, 
+			globalCommands.Add(int2(0, 0),false,new GlobalCommand("Auto End Round",
+			[]()
+			{
+				if (!RuntimeConfig::autoNewRound && ApplicationInterface::ShouldSignalRoundEnd())
+					ApplicationInterface::SignalRoundEnd();
+				RuntimeConfig::autoNewRound = !RuntimeConfig::autoNewRound;
+			},
 			[](bool controlEnabled)->BaseCommand::Flags
 			{
 				BaseCommand::Flags rs = BaseCommand::Flags::None;

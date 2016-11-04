@@ -7,7 +7,7 @@
 #include "../configurationMode.h"
 
 
-void			SignalFactionsChanged()
+void			ApplicationInterface::SignalFactionsChanged()
 {
 	Game::mostFactionsAlive = std::max(Game::mostFactionsAlive, (UINT32)Objects::Faction::all.Count());
 	Reflection::SignalFactionsChanged();
@@ -106,7 +106,7 @@ namespace Game
 		{
 			if (Config::Nexus::enableAI)
 				AIProcess::Begin(Objects::Faction::nexus->accessToken);
-			SignalFactionsChanged();
+			ApplicationInterface::SignalFactionsChanged();
 		}
 
 

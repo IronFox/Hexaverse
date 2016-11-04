@@ -150,7 +150,7 @@ namespace Objects
 		{
 			if (t == RemovalType::UncontrolledExplosion && RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
 			{
-				SignalChainReactionExplosion(location, Component::Bomb::GetRadius(false),Component::Bomb::GetDamageLevel(false),atTime);
+				ApplicationInterface::SignalChainReactionExplosion(location, Component::Bomb::GetRadius(false),Component::Bomb::GetDamageLevel(false),atTime);
 			}
 
 		}
@@ -522,7 +522,7 @@ namespace Objects
 
 				if (timeCost > 0)
 				{
-					SignalMotion(To<Vehicle>::Cast(shared_from_this()),oldLocation,location,oldTime,timeCost);
+					ApplicationInterface::SignalMotion(To<Vehicle>::Cast(shared_from_this()),oldLocation,location,oldTime,timeCost);
 				}
 				else
 				{
@@ -1164,7 +1164,7 @@ namespace Objects
 					{
 						//float delta = std::max(fabs(angles.x - turretAngleX), fabs(angles.y - turretAngleY));
 						float rotTime = Times::TurretRotation/**delta*/;
-						SignalTurretRotation(To<Vehicle>::Cast(shared_from_this()),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),rotTime);
+						ApplicationInterface::SignalTurretRotation(To<Vehicle>::Cast(shared_from_this()),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),rotTime);
 						motionTime += rotTime;
 
 					//	TVec3<> t0;
@@ -1179,14 +1179,14 @@ namespace Objects
 				else
 					flightTime =  timeEpsilon;// Times::Attack * 10;;
 
-				TAttack at;
+				ApplicationInterface::TAttack at;
 				at.attackFrom = To<MobileEntity>::Cast(shared_from_this());
 				at.attackAngle = angle;
 				at.flightTime = flightTime;
 				at.isAutoAttack = false;
 				at.traceTo = t0;
 
-				SignalAttack(at);
+				ApplicationInterface::SignalAttack(at);
 				ChangeStorage(*this,motionTime,turret->ammoType,-turret->ammoNeedPerShot);
 				
 				motionTime += flightTime;

@@ -23,7 +23,7 @@ namespace Objects
 		void	Faction::RecreateNexus()
 		{
 			nexus.reset(new Faction(TUniqueID::Empty(), "<Nexus>"));
-			SignalFactionsChanged();
+			ApplicationInterface::SignalFactionsChanged();
 		}
 
 		int		GetStorage(const MobileEntity&v, Resource res)
@@ -468,7 +468,7 @@ namespace Objects
 				ASSERT1__(gainedVisualAt.SetNew(e,t),e->id.ToString());
 
 				if (cascade)
-					SignalAppearanceToHostileFaction(shared_from_this(),e,t);
+					ApplicationInterface::SignalAppearanceToHostileFaction(shared_from_this(),e,t);
 
 				e->SyncTime(t,timeEpsilon);
 
@@ -519,7 +519,7 @@ namespace Objects
 				ASSERT1__(lostVisualAt.SetNew(e,t-timeEpsilon),e->id.ToString());
 				seeing.Unset(e);
 				if (signalConnectedClient)
-					SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
+					ApplicationInterface::SignalDisappearanceToHostileFaction(shared_from_this(),e,t);
 
 				e->SyncTime(t,timeEpsilon);
 			}
@@ -1470,7 +1470,7 @@ namespace Objects
 				if (!inStream.ReadPrimitive(this->referenceEntity))
 					return false;
 
-				if (globalVersionOfCurrentFile >= FileVersions::MarkersHaveOwner)
+				if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::MarkersHaveOwner)
 				{
 					if (!inStream.ReadPrimitive(this->referenceEntityOwner))
 						return false;
@@ -1614,7 +1614,7 @@ namespace Objects
 						break;
 					}
 				LogEvent(EventClass::Preset::factionDeath, "Faction terminated: " + f->GetLogName());
-				SignalFactionsChanged();
+				ApplicationInterface::SignalFactionsChanged();
 			}
 			else
 				LogEvent(EventClass::Preset::remoteControlError, "Destructible entities destroyed, but cannot terminate nexus faction itself");

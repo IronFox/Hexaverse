@@ -574,7 +574,7 @@ namespace Objects
 							{
 								PWorldEntity e1 = e.lock();
 								if (e1)
-									SignalConstructionAbort(e1->id,id);
+									ApplicationInterface::SignalConstructionAbort(e1->id,id);
 							}
 							,
 							[e,p,id]()->Dialog::CheckResult
@@ -592,7 +592,7 @@ namespace Objects
 
 						}
 						else
-							SignalConstructionAbort(selectedEntity->id,id);	//lossless
+							ApplicationInterface::SignalConstructionAbort(selectedEntity->id,id);	//lossless
 
 					},CommonCmd::CommonButtonCheck));
 					item.commandToTerminate.first = commandOffset + int2(index,0);

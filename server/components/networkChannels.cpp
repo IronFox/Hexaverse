@@ -75,6 +75,7 @@ namespace Channels
 	#endif
 
 	TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>							unitLimits;
+	TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
 
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
 
@@ -455,7 +456,7 @@ namespace Receiver
 			client->faction.reset(new Objects::Faction(TUniqueID::Empty()));
 			faction = client->faction;
 			Objects::Faction::all << client->faction;
-			SignalFactionsChanged();
+			ApplicationInterface::SignalFactionsChanged();
 			client->faction->name = client->name;
 
 

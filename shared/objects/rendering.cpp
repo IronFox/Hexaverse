@@ -664,7 +664,7 @@ namespace Objects
 		PTurretBase b = s.GetTurretBase(zOffset);
 		if (b)
 		{
-			Renderer::RenderScaledComponent(system, zOffset, 2.f/Grid::UnitScale, *b->turret, b->turretAngleX, b->turretAngleY);
+			Renderer::RenderScaledComponent(system, zOffset/Grid::SingleLayerHeight /*Compensate for rescaled system matrix of structures: systems.cpp*/, 2.f/Grid::UnitScale, *b->turret, b->turretAngleX, b->turretAngleY);
 			//display.SetObjectMatrix(system);
 		}
 	}
@@ -1762,6 +1762,9 @@ namespace Objects
 			TMatrix4<> sys;
 			const TVec3<>&up = Grid::low.cells[at->location.stackID].cornerCenter;
 			Mat::makeAxisSystem(at->system.w.xyz, up,2,sys);
+			sys.x.xyz *= Grid::UnitScale;
+			sys.y.xyz *= Grid::UnitScale;
+			sys.z.xyz *= Grid::UnitScale;
 			#ifndef NO_SATELLITES
 				if (at->IsSatellite())
 				{
@@ -1921,7 +1924,7 @@ namespace Objects
 					static const float3 color(1,0.5,0.5);
 					float d = sqrt(d2);
 					float3 dir = (arrowTo - Objects::arrowFrom).Normalize();
-					float3 n = (dir | arrowTo).Normalize0() * 0.25f;
+					float3 n = (dir | arrowTo).Normalize0() * 0.25f * Grid::UnitScale;
 					float3 arrowBase = arrowTo - dir * 1.f;
 
 
@@ -2344,7 +2347,7 @@ namespace Objects
 					PTurretBase b = s.GetTurretBase(zOffset);
 					if (b)
 					{
-						_RenderShadowS(s.system, zOffset, 2.f/Grid::UnitScale,*b->turret, b->turretAngleX, b->turretAngleY);
+						_RenderShadowS(s.system, zOffset/Grid::SingleLayerHeight /*Compensate for rescaled system matrix of structures: systems.cpp*/, 2.f/Grid::UnitScale,*b->turret, b->turretAngleX, b->turretAngleY);
 						display.SetObjectMatrix(Matrix<>::eye4);
 					}
 

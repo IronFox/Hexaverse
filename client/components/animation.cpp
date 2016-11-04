@@ -10,9 +10,11 @@
 #endif
 #include "configurationMode.h"
 
-void			SignalMarkerDeletion(TUniqueID markerID);
-void			OnPlayerControlBegin();
-
+namespace LocalApplicationInterface
+{
+	void			SignalMarkerDeletion(TUniqueID markerID);
+	void			OnPlayerControlBegin();
+}
 
 namespace Animation
 {
@@ -144,7 +146,7 @@ namespace Animation
 				}
 			}
 		}
-		SignalDropAllTasks(v);
+		ApplicationInterface::SignalDropAllTasks(v);
 		v->myTasks.Clear();	//will happen anyways
 
 		int referenceSpeed = v->GetMovementStepsPerRound()-1;
@@ -746,7 +748,7 @@ namespace Animation
 		#ifdef HAS_WINDOW
 			if (v == Objects::selectedEntity)
 			{
-				OnSelectionChange(true);
+				ApplicationInterface::OnSelectionChange(true);
 				Objects::UpdateChoices(Network::ControlEnabled());
 			}
 		#endif
@@ -916,7 +918,7 @@ namespace Animation
 		}
 
 		#ifdef HAS_WINDOW
-			OnSelectionChange(true);	//could be affecting selected network
+			ApplicationInterface::OnSelectionChange(true);	//could be affecting selected network
 			if (s == Objects::selectedEntity)
 			{
 				Objects::UpdateChoices(Network::ControlEnabled());
@@ -1385,7 +1387,7 @@ namespace Animation
 					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < sqr(explosionRadius))
 					{
 						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
-						SignalMarkerDeletion(m.id);
+						LocalApplicationInterface::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				}
@@ -1402,7 +1404,7 @@ namespace Animation
 					if (Vec::quadraticDistance(Grid::ToWorld(m.location),explosionCenter) < sqr(explosionRadius))
 					{
 						LogEvent(EventSignificance::Common,nullptr,m.GetName()+ " considered near occuring explosion. Dropping marker");
-						SignalMarkerDeletion(m.id);
+						LocalApplicationInterface::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				}
@@ -1833,7 +1835,7 @@ namespace Animation
 				{
 					LogEvent(EventSignificance::Debug,"Animation done. OnPlayerControlBegin");
 
-					OnPlayerControlBegin();
+					LocalApplicationInterface::OnPlayerControlBegin();
 				}
 			}
 

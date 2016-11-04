@@ -47,7 +47,7 @@ namespace Journal
 	
 		LogEvent(EventSignificance::Uncommon ,"Applying round "+roundNumber.ToString()+" to state...");
 
-		globalVersionOfCurrentFile = fileDataVersion;
+		ApplicationInterface::globalVersionOfCurrentFile = fileDataVersion;
 		if (updateRoundNumber)
 			RuntimeConfig::roundNumber = roundNumber;
 
