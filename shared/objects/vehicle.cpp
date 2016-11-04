@@ -431,7 +431,7 @@ namespace Objects
 						//InsertIntoGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 
 						if (timeCost > 0)
-							SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,motionTime,timeCost);
+							ApplicationInterface::SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,motionTime,timeCost);
 
 						motionTime += timeCost;
 						InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);

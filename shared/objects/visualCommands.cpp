@@ -377,7 +377,7 @@ namespace Objects
 	
 	void	CommonCmd::DemolishSelected()
 	{
-		SignalRemoval(selectedEntity);
+		ApplicationInterface::SignalRemoval(selectedEntity);
 	}
 
 	bool CommonCmd::IsModeActive(CursorMode mode)
@@ -428,7 +428,7 @@ namespace Objects
 
 		if (selectedMobileEntity || ToTower(selectedEntity))
 		{
-			SignalDropAllTasks(selectedEntity);
+			ApplicationInterface::SignalDropAllTasks(selectedEntity);
 			//v->ClearTasks();
 		}
 
@@ -441,7 +441,7 @@ namespace Objects
 	{
 		if (selectedMobileEntity)
 		{
-			SignalAutomation(selectedMobileEntity,!selectedMobileEntity->isAutomated);
+			ApplicationInterface::SignalAutomation(selectedMobileEntity,!selectedMobileEntity->isAutomated);
 			//v->ClearTasks();
 		}
 	}
@@ -472,7 +472,7 @@ namespace Objects
 	void					VehicleCmd::Sleep()
 	{
 		if (selectedEntity)
-			SignalSleep(selectedEntity, !selectedEntity->IsSleeping());
+			ApplicationInterface::SignalSleep(selectedEntity, !selectedEntity->IsSleeping());
 	}
 
 	void					VehicleCmd::UndoOperation()
@@ -489,7 +489,7 @@ namespace Objects
 		}
 
 		if (selectedMobileEntity || ToTower(selectedEntity))
-			SignalDropLastTask(selectedEntity);
+			ApplicationInterface::SignalDropLastTask(selectedEntity);
 	//		v->DropLastTask();
 		//#ifdef CLIENT
 		//	UpdateChoices(true);

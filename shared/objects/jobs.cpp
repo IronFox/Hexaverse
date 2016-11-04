@@ -61,6 +61,11 @@ namespace Objects
 				if (storage < withdrawNow)
 				{
 					LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient "+String(this->GetConsumedResourceType().ToString())+" available ("+String(storage)+"/"+String(withdrawNow)+"). Delaying operation.");
+
+					v.motionTime += timeEpsilon;
+					ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.motionTime);
+					v.motionTime += timeEpsilon;
+
 					return JobDelayed;
 				}
 
@@ -71,6 +76,9 @@ namespace Objects
 				#ifndef ONE_COMPOUND_PER_FACTION
 					if (!v.resourceEnvironment.CanWithdraw(v,this->GetConsumedResourceType(),withdrawNow))
 					{
+						v.motionTime += timeEpsilon;
+						ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.motionTime);
+						v.motionTime += timeEpsilon;
 						if (v.resourceEnvironment.Generates(v,this->GetConsumedResourceType()))
 						{
 							LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient "+String(this->GetConsumedResourceType().ToString())+" available (need "+String(withdrawNow)+"). Delaying operation.");
@@ -771,7 +779,7 @@ namespace Objects
 
 	
 
-			Explode(TAttack(),Grid::HCellIdI(Grid::low.grid.GetCell(v.location.stackID).higherEquivalent,v.location.height),v.GetWorldPosition(),radius,damageLevel,doomsday,v.motionTime);
+			Explode(ApplicationInterface::TAttack(),Grid::HCellIdI(Grid::low.grid.GetCell(v.location.stackID).higherEquivalent,v.location.height),v.GetWorldPosition(),radius,damageLevel,doomsday,v.motionTime);
 
 			return TerminalFailureVehicleDestroyed;
 		}
@@ -880,9 +888,19 @@ namespace Objects
 			if (!canRepair)
 			{
 				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to repair '"+target->GetNiceName()+"'");
+
+				v.motionTime += timeEpsilon;
+				ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.motionTime);
+				v.motionTime += timeEpsilon;
+
 				return JobDelayed;
 			}
 			LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to fully repair '"+target->GetNiceName()+"'. Repairing "+String(canRepair)+" health...");
+
+			v.motionTime += timeEpsilon;
+			ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.motionTime);
+			v.motionTime += timeEpsilon;
+
 			target->health += canRepair;
 			target->RegisterChange(WorldEntity::HealthChanged,v.motionTime);
 
@@ -983,7 +1001,7 @@ namespace Objects
 		/*virtual override*/	bool			Construct::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
 		{
 			String whatName;
-			if (globalVersionOfCurrentFile >= FileVersions::HasUUIDInConstructionJobs)
+			if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::HasUUIDInConstructionJobs)
 			{
 				if (!inStream.Read(useID.bytes,(serial_size_t)useID.NumBytes))
 					return false;
@@ -1243,7 +1261,7 @@ namespace Objects
 				return false;
 			mode = (CursorMode)i16;
 
-			if (globalVersionOfCurrentFile == 1035)
+			if (ApplicationInterface::globalVersionOfCurrentFile == 1035)
 			{
 				bool dead = false;
 				bool success = inStream.ReadPrimitive(lastLocation) && inStream.ReadPrimitive(first)
@@ -1252,7 +1270,7 @@ namespace Objects
 //						deadBecause = dead ? "imported" : "";
 				return success;
 			}
-			if (globalVersionOfCurrentFile ==1036)
+			if (ApplicationInterface::globalVersionOfCurrentFile ==1036)
 			{
 				String dummy;
 				return inStream.ReadPrimitive(lastLocation) && inStream.ReadPrimitive(first)

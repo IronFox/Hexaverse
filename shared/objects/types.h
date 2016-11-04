@@ -71,6 +71,17 @@ namespace Objects
 	class Marker;
 	struct TrajectoryEndPoint;
 
+
+	struct ResourceWithMunition;	//enum container
+	struct ResourceWithoutMunition;	//enum container
+
+	#ifdef NO_MUNITION
+		typedef ResourceWithoutMunition	Resource;
+	#else
+		typedef ResourceWithMunition	Resource;
+	#endif
+
+
 	DECLARE_POINTER_CLASS(CommandGroup)
 
 
