@@ -1,4 +1,6 @@
-v0.3.25
+v0.3.26
+
+v0.3.25 [Nov 4 2016]
 	> Decreased world resultion in an attempt to accelerate the game.
 	* Fixed GUI image components being incorrectly sized.
 	* Fixed GUI button components not being highlighted in some situations.
