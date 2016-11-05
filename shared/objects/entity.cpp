@@ -144,7 +144,7 @@ namespace Objects
 		#endif
 	}
 
-	TurretTrajectory		WorldEntity::TraceTrajectory(const Grid::WorldData&world, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell) const
+	TurretTrajectory		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -153,10 +153,19 @@ namespace Objects
 			outSteps.Clear();
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),world,location,zOffset,dest,outSteps,impactAt,impactCell);
+
+		const Grid::WorldData&visibleWorld =
+		#ifndef CLIENT
+			owner->currentState
+		#else
+			Grid::actualWorld
+		#endif
+		;
+
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, Grid::actualWorld,TrajectoryEndPoint( location,zOffset ),dest,outSteps,impactAt,impactCell,outAngle);
 	}
 
-	TurretTrajectory		WorldEntity::TraceTrajectory(const Grid::WorldData&world, const Grid::LCellIdI&dest, TVec3<>&impactAt) const
+	TurretTrajectory		WorldEntity::TraceTrajectory(const TrajectoryEndPoint&dest, TVec3<>&impactAt) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -164,13 +173,21 @@ namespace Objects
 		{
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),world,location,zOffset,dest,impactAt);
+		const Grid::WorldData&visibleWorld =
+		#ifndef CLIENT
+			owner->currentState
+		#else
+			Grid::actualWorld
+		#endif
+		;
+
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, Grid::actualWorld,TrajectoryEndPoint(location,zOffset),dest,impactAt);
 	}
 
 
 	
 
-	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::WorldData&world, const Grid::LCellIdI&source, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell) const
+	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -179,10 +196,17 @@ namespace Objects
 			outSteps.Clear();
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),world,source,zOffset,dest,outSteps,impactAt,impactCell);
+		const Grid::WorldData&visibleWorld =
+		#ifndef CLIENT
+			owner->currentState
+		#else
+			Grid::actualWorld
+		#endif
+		;
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, Grid::actualWorld,TrajectoryEndPoint(source,zOffset),dest,outSteps,impactAt,impactCell,outAngle);
 	}
 
-	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::WorldData&world, const Grid::LCellIdI&source, const Grid::LCellIdI&dest, TVec3<>&impactAt) const
+	TurretTrajectory		WorldEntity::TraceTrajectoryFrom(const Grid::LCellIdI&source, const TrajectoryEndPoint&dest, TVec3<>&impactAt) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -190,10 +214,17 @@ namespace Objects
 		{
 			return TurretTrajectory::InvalidTrajectory;
 		}
-		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),world,source,zOffset,dest,impactAt);
+		const Grid::WorldData&visibleWorld =
+		#ifndef CLIENT
+			owner->currentState
+		#else
+			Grid::actualWorld
+		#endif
+		;
+		return Component::Turret::TraceTrajectory(b->turret->trajectoryType,b->GetFlatAttackRange(),visibleWorld, Grid::actualWorld,TrajectoryEndPoint(source,zOffset),dest,impactAt);
 	}
 
-	bool						WorldEntity::CanHitFrom(const Grid::LCellIdI&origin, const TVec3<>&dest) const
+	bool						WorldEntity::CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest, float&outAngle) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -201,10 +232,10 @@ namespace Objects
 		{
 			return false;
 		}
-		return Component::Turret::CanHit(b->turret->trajectoryType,b->GetFlatAttackRange(),origin,zOffset,dest);
+		return Component::Turret::CanHit(b->turret->trajectoryType,b->GetFlatAttackRange(),TrajectoryEndPoint(origin,zOffset),dest,outAngle);
 	}
 
-	bool						WorldEntity::CanHitFrom(const Grid::LCellIdI&origin, const Grid::LCellIdI&dest) const
+	bool						WorldEntity::CanHitFrom(const Grid::LCellIdI&origin, const TrajectoryEndPoint&dest) const
 	{
 		float zOffset;
 		PConstTurretBase b = GetTurretBase(zOffset);
@@ -212,14 +243,15 @@ namespace Objects
 		{
 			return false;
 		}
-		return Component::Turret::CanHit(b->turret->trajectoryType,b->GetFlatAttackRange(),origin,zOffset,dest);
+		return Component::Turret::CanHit(b->turret->trajectoryType,b->GetFlatAttackRange(),TrajectoryEndPoint(origin,zOffset),dest);
 	}
 
-	bool						WorldEntity::CanHit(const TVec3<>&dest) const
+
+	bool						WorldEntity::CanHit(const TrajectoryEndPoint&dest, float&outAngle) const
 	{
-		return CanHitFrom(location,dest);
+		return CanHitFrom(location,dest,outAngle);
 	}
-	bool						WorldEntity::CanHit(const Grid::LCellIdI&dest) const
+	bool						WorldEntity::CanHit(const TrajectoryEndPoint&dest) const
 	{
 		return CanHitFrom(location,dest);
 	}
@@ -232,6 +264,11 @@ namespace Objects
 			return raw;
 		const float window = raw - min;
 		return min + window * Grid::powi(0.25f,(UINT)empDamageLevel);
+	}
+
+	float		WorldEntity::GetScanningRange() const
+	{
+		return EMPModify(GetMaxScanningRange(), 2.f * Grid::UnitScale);
 	}
 
 	/*virtual*/ int				WorldEntity::GetMaxHealth() const
@@ -249,10 +286,10 @@ namespace Objects
 
 
 
-	/*virtual*/ float		WorldEntity::GetScanningRange() const
+	/*virtual*/ float		WorldEntity::GetMaxScanningRange() const
 	{
 		float fc = owner ? owner->researchState.GetFactorFor(GetCTypeName(),Component::Attribute::ScanningRange) : 1.f;
-		return EMPModify(2.f * fc, 2.f);
+		return EMPModify(2.f * fc * Grid::UnitScale, 2.f);
 	}
 
 	/*virtual*/ String		WorldEntity::DescribeScanningRange() const
@@ -274,8 +311,9 @@ namespace Objects
 
 
 
-	/*virtual*/ void	WorldEntity::OnConstructionFinished( float atTime)
+	/*virtual*/ void	WorldEntity::OnConstructionFinished(float&atTime)
 	{
+		atTime += timeEpsilon;
 	}
 
 	#ifdef HAS_WINDOW
@@ -290,10 +328,12 @@ namespace Objects
 					Component::Turret* t = ((const MobileEntity*)this)->turret;
 					if (IsVehicle())
 						cnt = Vehicle::CountTurretOccurrences(overrideOwner,t);
-					elif (IsSatellite())
-						cnt = Satellite::CountTurretOccurrences(overrideOwner,t);
+					#ifndef NO_SATELLITES
+						elif (IsSatellite())
+							cnt = Satellite::CountTurretOccurrences(overrideOwner,t);
+					#endif
 					else
-						FATAL__("Unexpected mobile entity type: "+GetName());
+						FATAL__("Unexpected mobile entity type: "+GetTypeName());
 					limit = RuntimeConfig::UnitLimits::Get(t->constName);
 				}
 				elif (IsStructure())
@@ -359,7 +399,7 @@ namespace Objects
 				if (b->turret->CanAttack())
 					outResult << " Hrz. Attack range: "+String(0.1f * round(10.f * b->GetFlatAttackRange() )) + "+"+String(0.1f * round(10.f * b->turret->GetExplosionRadius(owner) ));
 				outResult << "";
-				b->turret->DescribeType(outResult,true, IsSatellite() ? "Satellite" : (IsVehicle() ? "Vehicle":"Tower"),owner);
+				b->turret->DescribeType(outResult,true, IF_SATELLITES( IsSatellite() ? "Satellite" : ) (IsVehicle() ? "Vehicle":"Tower"),owner);
 			}
 		}
 	#endif
@@ -433,21 +473,28 @@ namespace Objects
 		{
 			Grid::actualWorld.RemoveSensor(desc);
 		}
+
+		void					WorldEntity::MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow/*=true*/)
+		{
+			if (from == to)
+				return;
+			UnregisterSensory(from,atTime,false);
+			RegisterSensory(to,atTime,checkChangesNow);	//MUST BE IN THIS ORDER, or sky sensory of satellites and planes breaks
+		}
+	#else
+		/*virtual*/ void		WorldEntity::MoveSensoryToCurrentLocation(const Grid::LCellIdI&oldLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/)
+		{
+			this->RegisterSensory(location,motionTime,false,newContacts);
+			this->UnregisterSensory(oldLocation,motionTime,checkChangesNow);
+		}
+
 	#endif
 
-
-	void					WorldEntity::MoveSensory(const Grid::LCellIdI&from, const Grid::LCellIdI&to, float&atTime, bool checkChangesNow/*=true*/)
-	{
-		if (from == to)
-			return;
-		RegisterSensory(to,atTime,false);
-		UnregisterSensory(from,atTime,checkChangesNow);
-	}
 
 	/*virtual override*/	void WorldEntity::RegisterSensory(const Grid::LCellIdI&loc, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts /*= nullptr*/)
 	{
 		
-		LogEvent(EventClass::Preset::common,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+")");
+		LogEvent(EventSignificance::Common,this,"Registering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
 		#ifdef CLIENT
 			if (isOwnedByMe)
 			{
@@ -460,7 +507,7 @@ namespace Objects
 			}
 
 		#else
-			owner->RegisterSensorCreation(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),IsSatellite(), atTime,checkChangesNow, newContacts);
+			owner->RegisterSensorCreation(Sphere<>(Grid::ToWorld(loc),GetScanningRange()),loc.height, atTime,checkChangesNow, newContacts);
 		#endif
 	}
 
@@ -469,7 +516,7 @@ namespace Objects
 		LogEvent(EventClass::Preset::common,this,"Unregistering sensory ("+loc.ToString()+", "+String(GetScanningRange())+") at time "+String(atTime));
 		
 		#ifndef CLIENT
-			owner->RegisterSensorRemoval(Sphere<>(Grid::ToWorld(loc), GetScanningRange()),IsSatellite(),atTime,checkChangesNow);
+			owner->RegisterSensorRemoval(Sphere<>(Grid::ToWorld(loc), GetScanningRange()),loc.height, atTime,checkChangesNow);
 		#endif
 
 		#ifdef CLIENT

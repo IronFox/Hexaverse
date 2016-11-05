@@ -304,6 +304,9 @@ namespace Journal
 
 		}
 
+		void			Set(const String&name,const RoundNumber&);
+		void			Require(const TCodeLocation&loc, const String&name, RoundNumber&)	const;
+
 		void			Write(std::ofstream&, count_t indention)	const;
 		count_t			Read(std::ifstream&);
 	};
@@ -449,12 +452,12 @@ namespace Journal
 		class CommitRound : public GlobalEvent
 		{
 		public:
-			UINT32			roundNumber;
+			RuntimeConfig::RoundNumber		roundNumber;
 			String			evolverName;
 			UINT32			fileDataVersion;
 
-			/**/			CommitRound(const String&evolverName="", UINT32 roundNumber=0)
-							:roundNumber(roundNumber),evolverName(evolverName),fileDataVersion(SupportedFileVersion) {}
+			/**/			CommitRound(const String&evolverName="", RuntimeConfig::RoundNumber roundNumber=RuntimeConfig::RoundNumber())
+							:roundNumber(roundNumber),evolverName(evolverName),fileDataVersion(ApplicationInterface::SupportedFileVersion) {}
 			virtual Event*	Instantiate() const override {return new CommitRound("",0);};
 			virtual void	Decode(const Entry&e) override;
 			virtual void	Execute() const override {};
@@ -522,6 +525,7 @@ namespace Journal
 
 			/**/			CreateFaction() {}
 			/**/			CreateFaction(const Objects::Faction&, FactionType factionType);
+			/**/			CreateFaction(FactionType factionType, const TUniqueID&, const CryptographicID&);
 
 			FactionType		factionType;
 			CryptographicID	accessToken;
@@ -754,11 +758,11 @@ namespace Journal
 		public:
 			TUniqueID		markerID;
 			Objects::Marker::Type	type;
-			UINT32			createdInRound;
+			RoundNumber		createdInRound;
 			Grid::LCellIdI	location;
 			Protocol::MarkerReferenceEntity	referenceEntity;
 
-			/**/			CreateMarker(const TUniqueID&markerID, Objects::Marker::Type t, UINT32 createdInRound, const Grid::LCellIdI&location, const Protocol::MarkerReferenceEntity&referenceEntity)
+			/**/			CreateMarker(const TUniqueID&markerID, Objects::Marker::Type t, const RoundNumber&createdInRound, const Grid::LCellIdI&location, const Protocol::MarkerReferenceEntity&referenceEntity)
 							:markerID(markerID),type(t),createdInRound(createdInRound),location(location),referenceEntity(referenceEntity)	{}
 			/**/			CreateMarker()	{};
 			virtual void	Decode(const Entry&e) override;
@@ -868,19 +872,34 @@ namespace Journal
 				entityStrands.swap(other.entityStrands);
 				factionEvents.swap(other.factionEvents);
 			}
+
+			void			Merge(const FactionStrand&other)
+			{
+				factionEvents.Append(other.factionEvents);
+				other.entityStrands.VisitAllEntries([this](const TUniqueID&key, const EntityStrand&strand)
+				{
+					entityStrands.Set(key).Append(strand);
+				});
+			}
 		};
 
 
 		GenericHashTable<TUniqueID,FactionStrand,TUniqueID,Copy,Swap>	factionStrands;
-		EventStorage<GlobalEvent>				globalEvents;
-		//StringTable<String>					variableUpdates;
+		EventStorage<GlobalEvent>		globalEvents;
 		
-		UINT32	roundNumber=0;
-		UINT32	fileDataVersion=SupportedFileVersion;
-		Evolver::Abstract	*evolver = nullptr;
-		//const char*	kernelName=nullptr;
+		RuntimeConfig::RoundNumber		roundNumber;
+		UINT32							fileDataVersion=ApplicationInterface::SupportedFileVersion;
+		Evolver::Abstract				*evolver = nullptr;
 
+		void	swap(Round&other)
+		{
+			factionStrands.swap(other.factionStrands);
+			globalEvents.swap(other.globalEvents);
+			swp(roundNumber,other.roundNumber);
+			swp(fileDataVersion,other.fileDataVersion);
+			swp(evolver,other.evolver);
 
+		}
 		static StringTable<PEvent>	eventMap;
 		
 		void	Decode(const Entry&roundRootEntry);
@@ -909,9 +928,12 @@ namespace Journal
 		void	RegisterResourceCoverageKnowledgeLoss(bool execute, const Objects::PFaction&, UINT32 stackID);
 
 
+		void	Register(bool execute, const TUniqueID&factionID, Round::FactionEvent*newEvent);
 		void	Register(bool execute, const Objects::PFaction&f, Round::FactionEvent*newEvent);
 		void	Register(bool execute, const Objects::PWorldEntity&e, Round::EntityEvent*newEvent);
 		void	Register(bool execute, Round::GlobalEvent*newEvent);
+
+		void	Include(Round&other, bool execute);
 
 		void	Clear();
 
@@ -920,8 +942,9 @@ namespace Journal
 		/**
 		Applies the local round to the global state.
 		@param process Set true to also perform round-processing using the locally referenced kernel.
+		@param updateRoundNumber If set updates the global round number to locally stored round number
 		*/
-		void	Apply(bool process);
+		void	Apply(bool process, bool updateRoundNumber=true);
 
 
 		static void StaticCreate();

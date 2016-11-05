@@ -5,13 +5,13 @@
 #include "types.h"
 #include "structureCompound.h"
 #include "../stringTable.h"
+#include "../roundNumber.h"
 
 namespace Objects
 {
 	//class Faction;
 	//typedef std::shared_ptr<Faction>	PFaction;
 	//typedef std::weak_ptr<Faction>		WFaction;
-
 
 
 	
@@ -37,7 +37,7 @@ namespace Objects
 		ConstName					referencedType[2];
 
 		Type						type;
-		UINT32						createdInRound=0;
+		RoundNumber					createdInRound;
 
 		#ifdef CLIENT
 			UINT32					age = 0;	//age in rounds, updated during GetOutdated()
@@ -87,7 +87,7 @@ namespace Objects
 
 		#ifdef CLIENT
 
-			void					UpdateAge(UINT32 roundNumber);
+			void					UpdateAge(const RoundNumber&roundNumber);
 
 			PWorldEntity			visualization;
 			//PStructure				structureVisualization;
@@ -110,14 +110,14 @@ namespace Objects
 				}
 			};
 
-			static void				Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, UINT32 createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], UINT32 currentRound);
+			static void				Create(const TUniqueID&id, Type type, const Grid::LCellIdI&location, const RoundNumber&createdInRound, const TUniqueID&referenceID, const TUniqueID&referenceOwnerID, ConstName referenceType[2], const RoundNumber& currentRound);
 			static void				Destroy(const TUniqueID&id, bool controlEnabled);
 			static Marker*			FindByReference(const TUniqueID&referenceID);
 			static Marker*			Find(const TUniqueID&referenceID);
 			static Marker*			Find(const Grid::LCellIdI&);
 			static void				GetDeletionCandidates(BasicBuffer<TCandidate>&candidates);
 			static void				FlushAll();
-			static void				GetOutdated(BasicBuffer<Marker>&outOudated, UINT32 currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
+			static void				GetOutdated(BasicBuffer<Marker>&outOudated, const RoundNumber&currentRoundNumber, UINT32 deathOutdatedAfterRounds=3);
 
 			static Buffer0<Marker, Strategy::Adopt>	all;
 			static Buffer0<PStructure>	structureGhosts;
@@ -222,7 +222,9 @@ namespace Objects
 
 		static void		RegisterResearch(Structure*, Component::Attribute);
 		static void		RegisterResearch(Component::Base&component, Component::Attribute);
-		static void		RegisterResearch(Satellite*, Component::Attribute);
+		#ifndef NO_SATELLITES
+			static void	RegisterResearch(Satellite*, Component::Attribute);
+		#endif
 		static void		RegisterUnlockCost(Structure*, int researchCost);
 		static void		RegisterUnlockCost(Component::Base&component, int researchCost);
 		static void		RegisterDependency(Component::Base&component, Component::Base&dependentOn);
@@ -342,8 +344,10 @@ namespace Objects
 			CryptographicID	accessToken;
 			Buffer0<WMobileEntity>		allMobiles,	//!< All mobiles registered in the world
 										storedMobiles;	//!< All mobile entities registered stored in some other entity. allMobiles and storedMobiles are exclusive of each other
-			Buffer0<WSatellite>			satellites;
-			Buffer0<WSkyHub>			skyHubs;	//overlaps with satellites
+			#ifndef NO_SATELLITES
+				Buffer0<WSatellite>		satellites;
+				Buffer0<WSkyHub>		skyHubs;	//overlaps with satellites
+			#endif
 			Buffer0<WStructure>			structures;
 
 			Buffer0<WTower>				towers;
@@ -427,7 +431,7 @@ namespace Objects
 
 			//void		SignalCoverageChange(const bool*familiesChanges, float atTime);
 
-			bool		HasActiveMobile(const PMobileEntity&v, bool forceDoNotCheckSatellites=false) const;
+			bool		HasActiveMobile(const PMobileEntity&v) const;
 			bool		HasMobileInStorage(const PMobileEntity&v) const;
 			void		RegisterLoss(const PWorldEntity&);
 			void		RegisterStructureLoss(const PWorldEntity&);
@@ -452,17 +456,19 @@ namespace Objects
 
 			void		RegisterSensorCreation(const Grid::SkySensorState&state, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
 			void		RegisterSensorRemoval(const Grid::SkySensorState&state, float&t, bool checkChangesNow);
-			void		RegisterSensorCreation(const Sphere<>&, bool isSatellite, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
-			void		RegisterSensorMotion(const Sphere<>&from, bool isSatellite, const Sphere<>&to, float&t, bool checkChangesNow);
-			void		RegisterSensorRemoval(const Sphere<>&, bool isSatellite, float&t, bool checkChangesNow);
+			void		RegisterSensorCreation(const Sphere<>&, int sensorHeight, float&t, bool checkChangesNow, Buffer0<PWorldEntity>*newContacts = nullptr);
+			void		RegisterSensorMotion(const Sphere<>&from, int sensorHeight, const Sphere<>&to, float&t, bool checkChangesNow);
+			void		RegisterSensorRemoval(const Sphere<>&, int sensorHeight, float&t, bool checkChangesNow);
 
-			count_t		CountSatelliteCoverage(const TVec3<>&center)	const;
-			count_t		CountSatelliteCoverage(const Sphere<>&)	const;
+
+			count_t		CountOffGridCoverage(int channelHeight, const TVec3<>&)	const;
+			count_t		CountOffGridCoverage(const Sphere<>&)	const;
 
 			/**
 			Temporarily inserts a spherical sensor as to visualize the impact of a doomsday crater
 			*/
 			void		RegisterExplosionCrater(const Grid::HCellIdI&center, float radius, float t);
+
 
 			bool		CanCreateMarker(bool priveleged) const { return markers.Count() < (priveleged ? Marker::MaxMarkersPerFaction*16 : Marker::MaxMarkersPerFaction); }
 			Marker&		CreateMarker(const TUniqueID&id, bool priveleged, Marker::Type type, const TUniqueID&referenceID, const TUniqueID&ownerReferenceID);
@@ -534,7 +540,7 @@ namespace Objects
 	void			ForeachMobileWorldEntity(const std::function<void(const PMobileEntity&)>&func);
 
 	/**
-	Iterates through all mobile entities that are located in the world or in storage.
+	Iterates through all mobile entities that are located in the world or in storage, including markers (markers on client only).
 	Note that this function is usually overkill since most loops can easily know whether they target ground
 	units or orbital units
 	*/

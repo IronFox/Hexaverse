@@ -5,9 +5,7 @@
 #include "prototypes.h"
 #include "systems.h"
 #include "gridAndChoices.h"
-#if !defined CLIENT || defined ONE_COMPOUND_PER_FACTION
-	#include "faction.h"
-#endif
+#include "faction.h"
 
 namespace Objects
 {
@@ -94,8 +92,10 @@ namespace Objects
 	#ifndef CLIENT
 
 
-		/*virtual override*/ void		Vehicle::OnConstructionFinished(float atTime)
+		/*virtual override*/ void		Vehicle::OnConstructionFinished(float&atTime)
 		{
+			Super::OnConstructionFinished(atTime);
+			motionTime = atTime;
 			if (turret->CanAttack())
 			{
 				//leave munitions here. it seems fair that a new tank starts with full ammo, but an emp-tank should not start with full uranium...
@@ -130,7 +130,7 @@ namespace Objects
 					#endif
 				;
 
-				if (GetSentryTarget(*this, storage.level[turret->ammoType], location,base->height,*this, target))
+				if (GetSentryTarget(*this, storage.level[turret->ammoType], TrajectoryEndPoint( location,base->height ),*this, target))
 				{
 					EnqueueAttack(target);
 					return true;
@@ -226,19 +226,14 @@ namespace Objects
 
 			if (!Grid::actualWorld.LowCellIsClear(cell))
 			{
-				PHangarStructure s = MobileDestinationStructureHere(cell,*this);
-				if (s)
-				{
-					PVehicleStore st = To<VehicleStore>::DynamicCast(s);
-					ASSERT1__(st,s->ToEntity().GetName());
-					if (st && st->StoreInPark(To<Vehicle>::Cast(shared_from_this()),motionTime))
-					{
-						return MobilePlacementResult::EnteredStructure;
-					}
-				}
+				PHangar s = MobileDestinationStructureHere(cell,*this);
+				if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+					return MobilePlacementResult::EnteredStructure;
+
 				if (failIsFatal)
 				{
-					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure");
+					PStructure st = GetStructure(cell);
+					LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by structure "+(st ? st->GetName(): "<>")+": "+Grid::actualWorld.LowCellReport(cell));
 					FATAL__("Critical abort");
 				}
 
@@ -249,6 +244,13 @@ namespace Objects
 				PVehicle v = GetVehicle(cell);
 				if (v)
 				{
+					if (v->owner == owner)
+					{
+						PHangar s = v->CastToDestinationForType(*this);
+						if (s && s->Store(To<Vehicle>::Cast(shared_from_this()),motionTime))
+							return MobilePlacementResult::EnteredStructure;
+					}
+
 					if (failIsFatal)
 					{
 						LogEvent(EventClass::Preset::fatal,this,"Target cell ("+cell.ToString()+") is obstructed by vehicle");
@@ -297,7 +299,7 @@ namespace Objects
 						//InsertIntoGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 
 						if (timeCost > 0)
-							SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,motionTime,timeCost);
+							ApplicationInterface::SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,motionTime,timeCost);
 
 						motionTime += timeCost;
 						InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);
@@ -347,16 +349,6 @@ namespace Objects
 	#endif
 
 
-
-	/*virtual override*/bool				Vehicle::HasAmmoForShot() const 
-	{
-	#ifdef ONE_COMPOUND_PER_FACTION
-		const Compound&compound = owner->compound;
-		return compound.total.storage.level[turret->ammoType] >= turret->GetAmmoNeedPerShot(owner);
-	#else
-		return currentStorage.level[turret->ammoType] >= turret->GetAmmoNeedPerShot(owner);
-	#endif
-	}
 	
 	#ifdef HAS_WINDOW
 
@@ -370,12 +362,18 @@ namespace Objects
 			const int capacity = (int)floor(base->GetCarryingCapacity(owner));
 			if (turret->weight > capacity)
 				outResult << "Overweight: "+String(turret->weight - capacity);
-			String speed = "Effective speed: "+String(this->GetMovementStepsPerRound());
 			const int baseMovement = (int)floor(base->GetBaseMovementSpeed(owner));
-			if (GetMovementStepsPerRound() != baseMovement)
-				speed += " /"+String(baseMovement);
+			if (baseMovement > 0)
+			{
+				String speed = "Effective speed: "+String(this->GetMovementStepsPerRound());
+				if (GetMovementStepsPerRound() != baseMovement)
+					speed += " /"+String(baseMovement);
+				outResult << speed;
+			}
+			else
+				outResult << "Stationary on ground";
 
-			outResult << speed;
+
 			if (base->requirements == Component::VehicleBase::Requirement::Water)
 				outResult.lines.last()+= " (naval)";
 			else
@@ -565,7 +563,7 @@ namespace Objects
 							{
 								Grid::LCellIdI pointOfOrigin = GetLastPointOfOrigin();
 
-								if (!CanHitFrom(pointOfOrigin,destination))
+								if (!CanHitFrom(pointOfOrigin,TrajectoryEndPoint(destination)))
 								{
 									LogEvent(EventClass::Preset::commandRejected,this,"Destination out of range");
 									return false;

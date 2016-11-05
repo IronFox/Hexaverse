@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <declaration>
+	<context name="Factions">All currently existing factions
+		<command name="names">Lists all factions with their chosen names and first few ID digits.</command>
+		<command name="find">Lists all factions whose chosen name contains or equals the specifed parameter. Ignores case.</command>
+	</context>
 	<context name="World">Settings related to the current world
 		<variable name="simulateLiquids" default="true">
 			Enables or liquid expansion. Lava and water will expand horizontally and downwards, and eventually floodfill all available space.
@@ -55,11 +59,6 @@
 					</variable>
 				</context>
 				<context name="Mountains">
-					<variable name="top" default="Grass">
-						Content of the top-most surface cell (except where intersected by [ExtendedCore], or covered by [Liquid]).
-						Depending on height and settings this value may selectively be replaced by &apos;Snow&apos;, or Liquid.outline where appropriate.
-						If type is set to &apos;Unknown&apos; it can also be replaced by &apos;Rock&apos;, if above height level 2.
-					</variable>
 					<variable name="type" default="Unknown">
 						Type to fill mountains with.
 						&apos;Unknown&apos; attempts to guess what is best and may also selectively replace top under certain circumstances.
@@ -106,7 +105,7 @@
 					</context>
 					<context name="Energy">
 						<variable name="density" default="0" />
-						<variable name="max" default="0" />
+						<variable name="max" default="1" />
 					</context>
 					<context name="Uranium">
 						<variable name="density" default="0.02" />
@@ -166,20 +165,15 @@
 				<variable name="Uranium_Storage" default="8" />
 				<variable name="Nexus_Port" default="0" />
 				<variable name="Vehicle_Store" default="8" />
-				<variable name="Sky_Port" default="4" />
 				<variable name="Missile_Launcher_Tower" default="6" />
 				<variable name="Radar_Tower" default="8" />
 				<variable name="Cannon_Tower" default="16" />
 			</context>
 			<context name="MobileTurrets">Limits for mobile turrets. The used base, if flexible, is irrelevant.
 				<variable name="Radar" default="8" />
-				<variable name="Sky_Hub" default="4" />
-				<variable name="Sky_Guardian" default="8" />
-				<variable name="Ragnarök" default="1" />
-				<variable name="Star_Port" default="0" />
 				<variable name="Cannon" default="8" />
 				<variable name="Artillery" default="5" />
-				<variable name="Missile_Launcher" default="3" />
+				<variable name="Missile_Launcher" default="0" />
 				<variable name="EMP" default="3" />
 				<variable name="Bomb" default="0" />
 				<variable name="Terraformer" default="4" />
@@ -189,12 +183,7 @@
 		</context>
 		<context name="Nexus">Nexus faction settings
 			<variable name="haveBases" default="true">If enabled then Nexus bases are constructed around 3 of the 12 planet poles. Only affects newly created worlds.</variable>
-			<variable name="haveSatellitesAtopBases" default="true">
-				If enabled then Nexus bases have satellites hovering atop, providing orbital defense.
-				Effective only if haveBases is set true.
-				Only affects newly created worlds.
-			</variable>
-			<variable name="enableAI" default="false">
+			<variable name="enableAI" default="true">
 				Enables the AI to process units of the Nexus faction.
 				Spawns nexus vehicles, and AI client to control nexus vehicles/structures (if any).
 				A client is separately launched to compute AI decisions.
@@ -212,5 +201,6 @@
 	<context name="Server">
 		<variable name="saveEveryNRounds" default="10">Number of rounds between auto-saves. Set negative to disable.</variable>
 		<variable name="saveWhenAllQuit" default="true">Indicates that auto-saves should be performed when the last client disconnects. not saved to state files</variable>
+		<variable name="configMode" default="false" />
 	</context>
 </declaration>

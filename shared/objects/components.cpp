@@ -17,14 +17,52 @@
 
 namespace Objects
 {
+
+	/**/			TrajectoryEndPoint::TrajectoryEndPoint(const TVec3<>&worldLocation)
+	{
+		radius = Vec::length(worldLocation);
+		cellLocation.stackID = Grid::low.Locate(worldLocation,0);
+		cellLocation.height = (Grid::FloorFromRadius(radius));
+		this->worldLocation = worldLocation;
+
+	//	LogEvent(EventSignificance::Uncommon,"from world: "+ToString());
+	}
+
+	/**/			TrajectoryEndPoint::TrajectoryEndPoint(const Grid::LCellIdI&coords, float zOffset)
+	{
+		radius = zOffset + Grid::ToRadiusf(0.05f + coords.height);
+		worldLocation = Grid::low.cells[coords.stackID].centerVertex.xyz * radius;
+		cellLocation = coords;
+	//	LogEvent(EventSignificance::Uncommon,"from coords+z("+String(zOffset)+"): "+ToString());
+	}
+
+	/**/			TrajectoryEndPoint::TrajectoryEndPoint(const Grid::LCellIdI&coords)
+	{
+		radius = Grid::ToRadiusf(0.05f + coords.height);
+		worldLocation = Grid::low.cells[coords.stackID].centerVertex.xyz * radius;
+		cellLocation = coords;
+	//	LogEvent(EventSignificance::Uncommon,"from coords: "+ToString());
+	}
+
+
+	String			TrajectoryEndPoint::ToString() const
+	{
+		return worldLocation.ToString()+"/"+cellLocation.ToString()+" r="+String(radius);
+	}
+
+
+
 	namespace Component
 	{
 		Turret			terraformer,mechanic,
 						artillery,launcher,emp,armored,
 						bomb,
 						munitionTransporter,
-						radar,resourceScanner,
-						protonCannon,skyHubTurret,ragnarok,starPort;
+						radar,resourceScanner
+						#ifndef NO_SATELLITES
+							,protonCannon,skyHubTurret,ragnarok,starPort
+						#endif
+						;
 
 
 		VehicleBase		hoverbase,
@@ -110,6 +148,36 @@ namespace Objects
 		}
 
 
+		bool							Turret::ConsumesResources(ResourceFlagSet&res, const OwnerParameter&owner) const
+		{
+			bool rs = false;
+			if (this->mountType == Component::Turret::MountType::Satellite)
+			{
+				res |= Resource::Fuel;
+				rs = true;
+			}
+			if (CanAttack())
+			{
+				int demand = GetAmmoNeedPerShot(owner);
+				if ( demand > 0)
+				{
+					res |= ammoType;
+					rs = true;
+				}
+			}
+			if (CanDo(Component::Construct) || CanDo(Component::Repair) || CanDo(Component::TerrainAdd))
+			{
+				res |= Resource::Minerals;
+				rs = true;
+			}
+			if (CanDo(Component::Nuclear))
+			{
+				res |= Resource::Uranium;
+				rs = true;
+			}
+			return rs;
+		}
+
 
 		#ifdef HAS_WINDOW
 			/*static*/ float			Turret::CompileTrajectory(const Buffer0<TVec4<> >&v, geometryType_t type, Geometry&geo, float widthScale/*=1.f*/)
@@ -119,13 +187,13 @@ namespace Objects
 				if (v.IsNotEmpty())
 				{
 					TVec3<> n;
-					float3 front = v.first().xyz * v.first().w;
+					float3 front = v.First().xyz * v.First().w;
 					float3 back = v.last().xyz * v.last().w;
 					Vec::cross(front,back-front,n);
 					Vec::normalize(n);
 					n*= 0.5f * widthScale;
 					if (!smoke)
-						n*= v.first().w / Grid::VerticalBase;;
+						n*= v.First().w / Grid::VerticalBase;;
 					float d = 0;
 					geo.SetVertexOffsetToCurrent();
 					TVec3<> lastB;
@@ -246,134 +314,108 @@ namespace Objects
 		//	return CanHit(flatRange, origin /hOrigin,hOrigin,dest/hDest,hDest);
 		//}
 
-		/*static*/ bool						Turret::CanHit(TrajectoryType t, float flatRange, const Grid::LCellIdI&origin, float zOffset, const TVec3<>&dest)
-		{
-			if (t == TrajectoryType::VerticalBeam)
-			{
-				return Satellite::GetGroundHeight(origin) != badHeight;
-			}
-			float hDest = Vec::length(dest);
-			return CanHit(	t, flatRange,
-							Grid::low.cells[origin.stackID].centerVertex.xyz,Grid::ToRadius(origin.height) + zOffset,
-							dest / hDest, hDest
-							);
-		}
-	
-		///*static*/ bool						Turret::CanHit(float flatRange, const TVec3<>&origin, const Grid::LCellIdI&dest)
-		//{
-		//	float hOrigin = Vec::length(origin);
-		//	return CanHit(	flatRange,
-		//					origin / hOrigin, hOrigin,
-		//					Grid::low.cells[dest.stackID].centerVertex.xyz,Grid::ToRadius(dest.height)
-		//					);
-		//}
 
-		/*static*/ bool						Turret::CanHit(TrajectoryType t, float flatRange, const Grid::LCellIdI&origin, float zOffset,const Grid::LCellIdI&dest)
+
+
+		/*static*/ int				Turret::GetGroundHeight(const Grid::LCellIdI&location)
 		{
-			if (t == TrajectoryType::VerticalBeam)
-			{
-				return Satellite::GetGroundHeight(origin) != badHeight;
-			}
-			return CanHit(	t, flatRange,
-							Grid::low.cells[origin.stackID].centerVertex.xyz,Grid::ToRadius(origin.height) + zOffset,
-							Grid::low.cells[dest.stackID].centerVertex.xyz,Grid::ToRadius(dest.height)
-							);
+			UINT32 fine = Grid::low.grid.GetCell(location.stackID).higherEquivalent;
+			return Grid::actualWorld.cellStack[fine].FindTopClearOverNonClear(false);
 		}
 
-		/*static*/ bool						Turret::CanHit(TrajectoryType t, float flatRange, const TVec3<>&originDir, float originH, const TVec3<>&destDir, float destH)
+
+
+
+		/*static*/ bool						Turret::CanHit(TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest, float&outAngle)
 		{
+			outAngle = 0;
+			if (t == TrajectoryType::VerticalBeam)
+			{
+				return GetGroundHeight(origin.cellLocation) != badHeight;
+			}
+
 			switch (t)
 			{
 				case TrajectoryType::Artillery:
-				{
-					float3 p0 = originDir * originH,
-							p1 = destDir * originH;
-					return Detail::ArtilleryCanHit(flatRange,Vec::distance(p0,p1),destH - originH);
-				}
+					return Detail::ArtilleryCanHit(flatRange,Vec::distance(origin.worldLocation,dest.worldLocation),dest.radius - origin.radius,outAngle);
 				case TrajectoryType::Missile:
-				{
-					return Detail::MissileCanHit(flatRange,originDir,originDir*originH,destDir*destH);
-				}
+					return Detail::MissileCanHit(flatRange,origin,dest);
+				default:
+					FATAL__("Incompatible trajectory type "+String(t.ToString()));
+			}
+			return false;
+		}
+	
+
+		/*static*/ bool						Turret::CanHit(TrajectoryType t, float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest)
+		{
+			if (t == TrajectoryType::VerticalBeam)
+			{
+				return GetGroundHeight(origin.cellLocation) != badHeight;
+			}
+
+			switch (t)
+			{
+				case TrajectoryType::Artillery:
+					return Detail::ArtilleryCanHit(flatRange,Vec::distance(origin.worldLocation,dest.worldLocation),dest.radius - origin.radius);
+				case TrajectoryType::Missile:
+					return Detail::MissileCanHit(flatRange,origin,dest);
 				default:
 					FATAL__("Incompatible trajectory type "+String(t.ToString()));
 			}
 			return false;
 		}
 
+		/*static*/ bool						Turret::Detail::ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance, float&outAngle)
+		{
+			if (verticalDistance > Turret::MaxHeightAtHDistance(flatRange,horizontalDistance))
+				return false;
+			auto a = Turret::GetAngleForDistance(Turret::MaxRangeToVelocity(flatRange),horizontalDistance,verticalDistance);
+			if (a.numAngles == 0)
+			{
+				flatRange += 0.1f;
+				return ArtilleryCanHit(flatRange,horizontalDistance,verticalDistance,outAngle);
+			}
+			outAngle = a.idealAngle[0];
+			return true;
+		}
 		/*static*/ bool						Turret::Detail::ArtilleryCanHit(float flatRange, float horizontalDistance, float verticalDistance)
 		{
-			return verticalDistance <= Turret::MaxHeightAtHDistance(flatRange,horizontalDistance);
+			return (verticalDistance <= Turret::MaxHeightAtHDistance(flatRange,horizontalDistance));
 		}
 
-		/*static*/ bool						Turret::Detail::MissileCanHit(float flatRange, const TVec3<>&originNormal, const TVec3<>&origin, const TVec3<>&destination)
+
+		/*static*/ bool						Turret::Detail::MissileCanHit(float flatRange, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&destination)
 		{
-			return sqr(flatRange) >= Vec::quadraticDistance(origin,destination);
+			return sqr(flatRange) >= Vec::quadraticDistance(origin.worldLocation,destination.worldLocation);
 		}
 
 
 
-		/*static*/ Turret::TAngles					Turret::GetAngleForDistance(float v, const TVec3<>&originDir, float originH, const TVec3<>&destDir, float destH)
+		/*static*/ Turret::TAngles					Turret::GetAngleForDistance(float v, const TrajectoryEndPoint&origin, const TrajectoryEndPoint&dest)
 		{
-			float3 p0 = originDir * originH,
-					p1 = destDir * originH;
-			return GetAngleForDistance(v,Vec::distance(p0,p1),destH - originH);
+			return GetAngleForDistance(v,Vec::distance(origin.worldLocation,dest.worldLocation*origin.radius/dest.radius),dest.radius - origin.radius);
 		}
 
 
-		/*static*/ Turret::TAngles					Turret::GetAngleForDistance(float v, const Grid::LCellIdI&origin, float zOffset, const TVec3<>&dest)
-		{
-			float hDest = Vec::length(dest);
-			return GetAngleForDistance(	v,
-										Grid::low.cells[origin.stackID].centerVertex.xyz,Grid::ToRadius(origin.height) + zOffset,
-										dest / hDest, hDest
-										);
-		}
 
-		/*static*/ Turret::TAngles					Turret::GetAngleForDistance(float v, const Grid::LCellIdI&origin, float zOffset, const Grid::LCellIdI&dest)
-		{
-		//	float hDest = Vec::length(dest);
-			return GetAngleForDistance(	v,
-										Grid::low.cells[origin.stackID].centerVertex.xyz,Grid::ToRadius(origin.height) + zOffset,
-										Grid::low.cells[dest.stackID].centerVertex.xyz,Grid::ToRadius(dest.height)
-										);
-		}
-
-		/*static*/ Turret::TAngles					Turret::GetAngleForDistance(float v, const TVec3<>&origin, const TVec3<>&dest)
-		{
-			float hDest = Vec::length(dest);
-			float hOrigin = Vec::length(origin);
-			return GetAngleForDistance(	v,
-										origin / hOrigin, hOrigin,
-										dest / hDest, hDest
-										);
-		}
-
-
-		/*static*/ Turret::TAngles					Turret::GetAngleForDistance(float v, const TVec3<>&origin, const Grid::LCellIdI&dest)
-		{
-			float hOrigin = Vec::length(origin);
-			return GetAngleForDistance(	v,
-										origin / hOrigin, hOrigin,
-										Grid::low.cells[dest.stackID].centerVertex.xyz,Grid::ToRadius(dest.height)
-										);
-		}
-
-		/*static*/ void							Turret::TraceTrajectory(TrajectoryType t, float flatRange, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps)
+		
+		/*static*/ void							Turret::TraceAnimationTrajectory(TrajectoryType t, float flatRange,  float attackAngle, const TrajectoryEndPoint&from,const TrajectoryEndPoint&to, Buffer0<TVec4<> >&outSteps)
 		{
 			outSteps.Clear();
 
 			switch (t)
 			{
 				case TrajectoryType::Artillery:
-					Detail::TraceArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),source, dest, outSteps);
+					Detail::TraceAnimationArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),attackAngle, from, to, outSteps);
 				break;
 				case TrajectoryType::Missile:
-					Detail::TraceMissileTrajectory(flatRange,source, dest, outSteps);
+					Detail::TraceAnimationMissileTrajectory(flatRange,from, to, outSteps);
 				break;
 				case TrajectoryType::VerticalBeam:
 				{
-					UINT32 stackIndex = Grid::low.Locate(dest);
-					int h = Satellite::GetGroundHeight(Grid::LCellIdI(stackIndex,0));
+					UINT32 stackIndex = from.cellLocation.stackID;
+					int h = GetGroundHeight(Grid::LCellIdI(stackIndex,0));
 					if (h == badHeight)
 						return;
 					float4 p(Grid::low.cells[stackIndex].cornerCenter,Grid::ToRadius(h));
@@ -385,9 +427,9 @@ namespace Objects
 			}
 		}
 
-		/*static*/ void							Turret::Detail::TraceMissileTrajectory(float range, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps)
+		/*static*/ void							Turret::Detail::TraceAnimationMissileTrajectory(float range, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, Buffer0<TVec4<> >&outSteps)
 		{
-			float d2 = Vec::quadraticDistance(source,dest);
+			float d2 = Vec::quadraticDistance(here.worldLocation,there.worldLocation);
 			if (d2 > sqr(range))
 			{
 				LogEvent(EventClass::Preset::error,"TraceMissileTrajectory(): Distance to target ("+String(sqrt(d2))+") exceeds maximum range ("+String(range)+") of missile turret. Ignoring for now.");
@@ -395,31 +437,25 @@ namespace Objects
 				//return;
 			}
 		
-
-			const float h0 = Vec::length(source);
-			const float3 here = source;
-			const float h1 = Vec::length(dest);
-			const float3 there = dest;
-
-			const float3 up = (here + there).Normalized0();
-			float distance = Vec::distance(here,there);
+			const float3 up = (here.worldLocation + there.worldLocation).Normalized0();
+			float distance = sqrt(d2);
 
 
-			const float h = h1 - h0;
+			const float h = there.radius - here.radius;
 
 		
 
 			const int resolution = std::max<int>(2,distance*2);
 
-			float lastH = h0;
-			TVec3<> lastB = here;
+			float lastH = here.radius;
+			TVec3<> lastB = here.worldLocation;
 			for (int i = 0; i <= resolution; i++)
 			{
 				float t01 = float(i) / float(resolution);
 			
-				float fy = h0 + (t01 * h);
+				float fy = here.radius + (t01 * h);
 				TVec3<> b;
-				Vec::interpolate(here,there,t01,b);
+				Vec::interpolate(here.worldLocation,there.worldLocation,t01,b);
 				Vec::normalize(b);
 				outSteps << float4(b,fy);
 
@@ -427,80 +463,61 @@ namespace Objects
 		}
 
 
-		/*static*/ void							Turret::Detail::TraceArtilleryTrajectory(float velocity, const TVec3<>&source, const TVec3<>&dest, Buffer0<TVec4<> >&outSteps)
+		/*static*/ void							Turret::Detail::TraceAnimationArtilleryTrajectory(float velocity,  float angle, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest,Buffer0<TVec4<> >&outSteps)
 		{
-			Turret::TAngles angles = Turret::GetAngleForDistance(velocity,source,dest);
-			if (angles.numAngles == 0)
-			{
-				if (velocity < 50.f)
-				{
-					LogEvent(EventClass::Preset::error,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+Vec::toString(source)+", dest="+Vec::toString(dest)+". Increasing velocity and retrying.");
-					velocity = velocity > 0 ? velocity * 1.1f : 1.f;	//should not be zero, but it's better to handle this case here anyway. Otherwise we're causing a stack overflow in no-time
-					TraceArtilleryTrajectory(velocity,source,dest,outSteps);
-					return;
-				}
-
-				DBG_FATAL__("Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+Vec::toString(source)+", dest="+Vec::toString(dest));
-				return;
-			}
-		
-			float angle = angles.idealAngle[angles.numAngles-1];
-
 			const float sn = sin(angle),
 						cs = cos(angle);
 
-			const float h0 = Vec::length(source);
-			const float3 here = source;
-			const float h1 = Vec::length(dest);
-			const float3 there = dest;
 
-			const float3 up = (here + there).Normalized0();
-			float distance = Vec::distance(here,there);
+			const float3 up = (source.worldLocation + dest.worldLocation).Normalized0();
+			float distance = Vec::distance(source.worldLocation,dest.worldLocation);
 
 
-			const float h = h1 - h0;
+			const float h = dest.radius - source.radius;
 
 			const float tEnd = (velocity * sn + sqrt(sqr(velocity*sn) - 2.f * g * h)) / g;
 
 
 			const int resolution = std::max<int>(2,distance*4);
 
-			float lastH = h0;
-			TVec3<> lastB = here;
+			float lastH = source.radius;
+			TVec3<> lastB = source.worldLocation;
 			for (int i = 0; i <= resolution; i++)
 			{
 				float t01 = float(i) / float(resolution);
 				const float t = t01 * tEnd;
-				float fy = h0 + (velocity * t*sn - 0.5f * g * sqr(t));
+				float fy = source.radius + (velocity * t*sn - 0.5f * g * sqr(t));
 				TVec3<> b;
-				Vec::interpolate(here,there,t01,b);
+				Vec::interpolate(source.worldLocation,dest.worldLocation,t01,b);
 				Vec::normalize(b);
 				outSteps << float4(b,fy);
 
 			}
 		}
-		/*static*/ TurretTrajectory			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
+
+
+		/*static*/ TurretTrajectory			Turret::TraceTrajectory(TrajectoryType t, float flatRange, const Grid::WorldData&visibleWorld, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
 		{
 			outSteps.Clear();
-
+			outAngle = 0;
 			switch (t)
 			{
 				case TrajectoryType::Artillery:
-					return Detail::TraceArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),world,source, zOffset, dest, outSteps,impactAt, impactCell);
+					return Detail::TraceArtilleryTrajectory(Turret::MaxRangeToVelocity(flatRange),visibleWorld,actualWorld,source, dest, outSteps,impactAt, impactCell,outAngle);
 				break;
 				case TrajectoryType::Missile:
-					return Detail::TraceMissileTrajectory(flatRange,world,source, zOffset, dest, outSteps,impactAt, impactCell);
+					return Detail::TraceMissileTrajectory(flatRange,actualWorld,source, dest, outSteps,impactAt, impactCell);
 				break;
 				case TrajectoryType::VerticalBeam:
 				{
-					int h = Satellite::GetGroundHeight(source);
+					int h = GetGroundHeight(source.cellLocation);
 					if (h == badHeight)
 						return TurretTrajectory::InvalidTrajectory;
 					outSteps.Clear();
-					float4 p(Grid::low.cells[source.stackID].cornerCenter,Grid::ToRadius(h));
+					float4 p(Grid::low.cells[source.cellLocation.stackID].cornerCenter,Grid::ToRadius(h));
 					outSteps.Append(p);
 					impactAt = p.xyz * p.w;
-					impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(source.stackID).higherEquivalent,h);
+					impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(source.cellLocation.stackID).higherEquivalent,h);
 					return TurretTrajectory::ReachesTarget;
 				}
 				break;
@@ -511,39 +528,98 @@ namespace Objects
 
 		}
 
-		/*static*/ TurretTrajectory			Turret::Detail::TraceArtilleryTrajectory(float velocity, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
+		static float	PreTraceArtillery(float velocity, float angle, const TrajectoryEndPoint&here, const TrajectoryEndPoint&there, float distance, const Grid::WorldData&world)
 		{
-			Turret::TAngles angles = Turret::GetAngleForDistance(velocity,source,zOffset,dest);
+			float sn = sin(angle),
+					cs = cos(angle);
+
+
+			const int resolution = std::max<int>(2,std::max(distance*2.f,distance * sn * 5.f));
+
+			float delta = there.radius - here.radius;
+			float tEnd = (velocity * sn + sqrt(sqr(velocity*sn) - 2.f * g * delta)) / g;
+
+
+
+
+			//const float3 up = (here + there).Normalized0();
+
+			#ifdef HYBRID_GRID
+				UINT32 cellAt = Grid::low.grid.GetCell(here.cellLocation.stackID).higherEquivalent;
+			#else
+				UINT32 cellAt = source.cellID;
+			#endif
+
+			
+			float lastH = here.radius;
+			TVec3<> lastB = here.worldLocation;
+			for (int i = 0; i <= resolution; i++)
+			{
+				float t01 = float(i) / float(resolution);
+				const float t = t01 * tEnd;
+				float fy = here.radius + (velocity * t*sn - 0.5f * g * sqr(t));
+				TVec3<> b;
+				Vec::interpolate(here.worldLocation,there.worldLocation,t01,b);
+				Vec::normalize(b);
+//				outSteps << float4(b,fy);
+
+				cellAt = Grid::high.Locate(b,cellAt);
+				int h = (Grid::FloorFromRadius(fy));
+				if (world.cellStack[cellAt].GetCellI(h).IsOccupied())
+				{
+					float3 impactAt = b * (fy);
+					return Vec::quadraticDistance(impactAt, there.worldLocation);
+				}
+			}
+			return 0;
+		}
+
+		/*static*/ TurretTrajectory			Turret::Detail::TraceArtilleryTrajectory(float velocity, const Grid::WorldData&decisionWorld, const Grid::WorldData&actualWorld, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell, float&outAngle)
+		{
+			Turret::TAngles angles = Turret::GetAngleForDistance(velocity,source,dest);
 			if (angles.numAngles == 0)
 			{
 				if (velocity < 50.f)
 				{
 					LogEvent(EventClass::Preset::error,"Unable to determine feasible angles for artillery trajectory at v="+String(velocity)+", source="+source.ToString()+", dest="+dest.ToString()+". Increasing velocity and retrying.");
 					velocity = velocity > 0 ? velocity * 1.1f : 1.f;	//should not be zero, but it's better to handle this case here anyway. Otherwise we're causing a stack overflow in no-time
-					return TraceArtilleryTrajectory(velocity,world,source,zOffset, dest,outSteps,impactAt,impactCell);
+					return TraceArtilleryTrajectory(velocity,decisionWorld,actualWorld,source, dest,outSteps,impactAt,impactCell,outAngle);
 				}
 
 				return TurretTrajectory::InvalidTrajectory;
 			}
 
-			const float h0 = zOffset + Grid::ToRadiusf(0.05f + source.height);
+		/*	const float h0 = zOffset + Grid::ToRadiusf(0.05f + source.height);
 			const float h1 = Grid::ToRadiusf(0.05f + dest.height);
 			const float3 there = Grid::low.cells[dest.stackID].centerVertex.xyz * h1;
 			const float3 here = Grid::low.cells[source.stackID].centerVertex.xyz * h0;
-
+*/
 			//const float3 up = (here + there).Normalized0();
-			float distance = Vec::distance(here,there);
+			float distance = Vec::distance(source.worldLocation,dest.worldLocation);
 
 		
 
-			const float h = h1 - h0;
+			const float h = dest.radius - source.radius;
+			int k = 0;
+			float leastDistance = std::numeric_limits<float>::max();
+			for (int j = 0; j < angles.numAngles; j++)
+			{
+				float d2 = PreTraceArtillery(velocity,angles.idealAngle[j], source,dest,distance,decisionWorld);
+				LogEvent(EventSignificance::Debug,source.ToString()+"->"+dest.ToString()+ ": Angle "+String(j)+"/"+String(angles.numAngles)+" "+String(angles.idealAngle[j])+" lead to distance "+String(d2));
+				if (d2 < leastDistance)
+				{
+					leastDistance = d2;
+					k = j;
+				}
+			}
 
 
-			for (int k = angles.numAngles-1; k < angles.numAngles; k--)
+
+
 			{
 				outSteps.Clear();
-				float angle = angles.idealAngle[k];
-
+				float angle = outAngle = angles.idealAngle[k];
+				LogEvent(EventSignificance::Debug,"Using angle "+String(k)+"/"+String(angles.numAngles)+" "+String(angle));
 				float sn = sin(angle),
 						cs = cos(angle);
 
@@ -554,102 +630,90 @@ namespace Objects
 
 
 
-				impactAt = there;
+				impactAt = dest.worldLocation;
 				#ifdef HYBRID_GRID
-					impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(dest.stackID).higherEquivalent,dest.height);
+					impactCell = Grid::HCellIdI(Grid::low.grid.GetCell(dest.cellLocation.stackID).higherEquivalent,dest.cellLocation.height);
 				#else
-					impactCell = dest;
+					impactCell = dest.cellLocation;
 				#endif
 
 				//const float3 up = (here + there).Normalized0();
 
 				#ifdef HYBRID_GRID
-					UINT32 cellAt = Grid::low.grid.GetCell(source.stackID).higherEquivalent;
+					UINT32 cellAt = Grid::low.grid.GetCell(source.cellLocation.stackID).higherEquivalent;
 				#else
-					UINT32 cellAt = source.cellID;
+					UINT32 cellAt = source.cellLocation.stackID;
 				#endif
 
 			
-				bool loop = false;
-				float lastH = h0;
-				TVec3<> lastB = here;
+				float lastH = source.radius;
+				TVec3<> lastB = source.worldLocation;
 				for (int i = 0; i <= resolution; i++)
 				{
 					float t01 = float(i) / float(resolution);
 					const float t = t01 * tEnd;
-					float fy = h0 + (velocity * t*sn - 0.5f * g * sqr(t));
+					float fy = source.radius + (velocity * t*sn - 0.5f * g * sqr(t));
 					TVec3<> b;
-					Vec::interpolate(here,there,t01,b);
+					Vec::interpolate(source.worldLocation,dest.worldLocation,t01,b);
 					Vec::normalize(b);
 					outSteps << float4(b,fy);
 
 					cellAt = Grid::high.Locate(b,cellAt);
 					int h = (Grid::FloorFromRadius(fy));
-					if (world.cellStack[cellAt].GetCellI(h).IsOccupied())
+					if (actualWorld.cellStack[cellAt].GetCellI(h).IsOccupied())
 					{
-						if (k == 0)
-						{
-							impactAt = b * (fy);
-							impactCell = Grid::HCellIdI(cellAt,h);
-							return TurretTrajectory::MidFlightImpact;
-						}
-						loop = true;
-						break;
+						impactAt = b * (fy);
+						impactCell = Grid::HCellIdI(cellAt,h);
+						return Vec::distance(impactAt,dest.worldLocation) < 0.1f ? TurretTrajectory::ReachesTarget : TurretTrajectory::MidFlightImpact;
 					}
 				}
-				if (loop)
-					continue;
 
 				impactCell = Grid::HCellIdI(
 					#ifdef HYBRID_GRID
-						Grid::low.grid.GetCell(dest.stackID).higherEquivalent
+						Grid::low.grid.GetCell(dest.cellLocation.stackID).higherEquivalent
 					#else
 						dest.stackID
 
 					#endif
-				,dest.height);
+				,dest.cellLocation.height);
 				impactAt = Grid::ToWorld(impactCell);
 				float3 last = outSteps.last().xyz * outSteps.last().w;
 	//			ASSERT2__(Vec::similar(impactAt,last),Vec::toString(impactAt),last.ToString());
 				return TurretTrajectory::ReachesTarget;
 			}
-			return TurretTrajectory::InvalidTrajectory;
 		}
 
-		/*static*/ TurretTrajectory			Turret::Detail::TraceMissileTrajectory(float range, const Grid::WorldData&world, const Grid::LCellIdI&source, float zOffset, const Grid::LCellIdI&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
+		/*static*/ TurretTrajectory			Turret::Detail::TraceMissileTrajectory(float range, const Grid::WorldData&world, const TrajectoryEndPoint&source, const TrajectoryEndPoint&dest, Buffer0<TVec4<> >&outSteps, TVec3<>&impactAt, Grid::HCellIdI&impactCell)
 		{
-		
+		/*
 
 			const float h0 = zOffset + Grid::ToRadiusf(0.05f + source.height);
 			const float h1 = Grid::ToRadiusf(0.05f + dest.height);
 			const float3 there = Grid::low.cells[dest.stackID].centerVertex.xyz * h1;
 			const float3 here = Grid::low.cells[source.stackID].centerVertex.xyz * h0;
-		
-			float d2 = Vec::quadraticDistance(here,there);
+		*/
+			float d2 = Vec::quadraticDistance(source.worldLocation,dest.worldLocation);
 			if (d2 > sqr(range))
 				return TurretTrajectory::InvalidTrajectory;
 
 
-			const float3 up = (here + there).Normalized0();
+			const float3 up = (source.worldLocation + dest.worldLocation).Normalized0();
 			float distance = sqrt(d2);
 
-
-			const float h = h1 - h0;
-
-		
+			const float h = dest.radius - source.radius;
 
 			const int resolution = std::max<int>(2,distance*2);
-			UINT32 cellAt = Grid::low.grid.GetCell(source.stackID).higherEquivalent;
+			UINT32 cellAt = Grid::low.grid.GetCell(source.cellLocation.stackID).higherEquivalent;
 
-			float lastH = h0;
-			TVec3<> lastB = here;
+			float lastH = source.radius;
+			TVec3<> lastB = source.worldLocation;
 			for (int i = 0; i <= resolution; i++)
 			{
 				float t01 = float(i) / float(resolution);
 			
-				float fy = h0 + (t01 * h);
+				float fy = source.radius + (t01 * h);
 				TVec3<> b;
-				Vec::interpolate(here,there,t01,b);
+				Vec::interpolate(source.worldLocation,dest.worldLocation,t01,b);
 				Vec::normalize(b);
 				outSteps << float4(b,fy);
 
@@ -664,12 +728,11 @@ namespace Objects
 			}
 			impactCell = Grid::HCellIdI(
 				#ifdef HYBRID_GRID
-					Grid::low.grid.GetCell(dest.stackID).higherEquivalent
+					Grid::low.grid.GetCell(dest.cellLocation.stackID).higherEquivalent
 				#else
-					dest.stackID
-
+					dest.cellLocation.stackID
 				#endif
-			,dest.height);
+			,dest.cellLocation.height);
 			impactAt = Grid::ToWorld(impactCell);
 			float3 last = outSteps.last().xyz * outSteps.last().w;
 	//			ASSERT2__(Vec::similar(impactAt,last),Vec::toString(impactAt),last.ToString());
@@ -756,7 +819,7 @@ namespace Objects
 
 			CellCoords ConfigureStandardCommands(Turret&component)
 			{
-				component.commands.baseCoords = int2(3,0)+BaseCommand::coordOffset;
+				component.commands.baseCoords = int2(3,0);
 				return CellCoords(3,0);
 			}
 		#endif
@@ -858,7 +921,8 @@ namespace Objects
 						timeCostOut = selectedMobileEntity->GetOperationRounds(mineralCostOut,TerrainAdd);
 					}
 				));
-				terraformAddGround->Add( new IconCommand("Build Road", &Cmd::BuildRoad
+
+				PBaseCommand buildRoad(new IconCommand("Build Road", &Cmd::BuildRoad
 					,&CommonCmd::IdleCheck
 					,[](int&mineralCostOut, Resource&costTypeOut, int&timeCostOut)
 					{
@@ -870,6 +934,10 @@ namespace Objects
 					}
 				));
 
+				terraformAddGround->Add( buildRoad );
+				if (structureGroup[Structure::Category::Infrastructure])
+					structureGroup[Structure::Category::Infrastructure]->Add(buildRoad);
+
 				#ifndef ONE_COMPOUND_PER_FACTION
 					transferGroup->Add(new IconCommand("Withdraw Resources",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 					transferGroup->Add(new IconCommand("Deposit Resources",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
@@ -878,8 +946,18 @@ namespace Objects
 				#else
 
 				#endif
-				terraformAddGround->Add( new IconCommand("Build Road to", &CommonCmd::ToggleMode<CursorMode::BuildRoadChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildRoadChainMode>, NoCosts));
-				terraformAddGround->Add( new IconCommand("Build Bridge to", &CommonCmd::ToggleMode<CursorMode::BuildBridgeMode>, &CommonCmd::ModeCheck<CursorMode::BuildBridgeMode>,NoCosts));
+
+				PBaseCommand buildRoadTo(new IconCommand("Build Road to", &CommonCmd::ToggleMode<CursorMode::BuildRoadChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildRoadChainMode>, NoCosts));
+				PBaseCommand buildBridgeTo( new IconCommand("Build Bridge to", &CommonCmd::ToggleMode<CursorMode::BuildBridgeMode>, &CommonCmd::ModeCheck<CursorMode::BuildBridgeMode>,NoCosts) );
+
+				terraformAddGround->Add( buildRoadTo);
+				terraformAddGround->Add( buildBridgeTo);
+				if (structureGroup[Structure::Category::Infrastructure])
+				{
+					structureGroup[Structure::Category::Infrastructure]->Add(buildRoadTo);
+					structureGroup[Structure::Category::Infrastructure]->Add(buildBridgeTo);
+				}
+
 				terraformRemoveGround->Add( new IconCommand("Dig Tunnel to", &CommonCmd::ToggleMode<CursorMode::DigTunnelMode>, &CommonCmd::ModeCheck<CursorMode::DigTunnelMode>,NoCosts));
 				terraformAddGround->Add( new IconCommand("Build Wall to", &CommonCmd::ToggleMode<CursorMode::BuildWallChainMode>, &CommonCmd::ModeCheck<CursorMode::BuildWallChainMode>,NoCosts));
 
@@ -940,12 +1018,12 @@ namespace Objects
 				}
 			#endif
 
-			//component.parts.setSize(1);
+			//component.parts.SetSize(1);
 
-			//component.parts.first().first.LoadFromObj("objects/constructor.obj");
+			//component.parts.First().first.LoadFromObj("objects/constructor.obj");
 	/*
-			MakeBox(component.parts.first().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.15f));
-			component.parts.first().first.UpdateBoundingBox();*/
+			MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.15f));
+			component.parts.First().first.UpdateBoundingBox();*/
 			//component.typeName = "Constructor";
 			//component.shortName = "structor";
 			//component.productionCosts = 20;
@@ -954,13 +1032,13 @@ namespace Objects
 		
 
 			#ifdef HAS_WINDOW		
-				component.parts.setSize(1);
+				component.parts.SetSize(1);
 
-				component.parts.first().first.LoadFromObj("objects/terraformer.obj");
+				component.parts.First().first.LoadFromObj("objects/terraformer.obj");
 			#endif
 	/*
-			MakeBox(component.parts.first().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.15f));
-			component.parts.first().first.UpdateBoundingBox();*/
+			MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.15f));
+			component.parts.First().first.UpdateBoundingBox();*/
 			component.typeName = "Terraformer";
 			component.shortName = "former";
 			component.constName = ConstName::Turret_Terraformer;
@@ -991,12 +1069,14 @@ namespace Objects
 
 		float		Bomb::GetRadius(bool doomsday, const OwnerParameter& owner)
 		{
-			return doomsday ? ragnarok.GetExplosionRadius(owner)-3 : artillery.GetExplosionRadius(owner)*2;
+			//return doomsday ? 7*Grid::UnitScale : artillery.explosionRadius*2;
+			return doomsday ? bomb.GetExplosionRadius(owner) : artillery.GetExplosionRadius(owner)*2;
 		}
 
 		int			Bomb::GetDamageLevel(bool doomsday, const OwnerParameter& owner)
 		{
-			return doomsday ? ragnarok.GetDamageLevel(owner) / 2 : artillery.GetDamageLevel(owner)*2;
+			//return doomsday ? 50 : artillery.damageLevel*2;
+			return doomsday ? bomb.GetDamageLevel(owner)  : artillery.GetDamageLevel(owner)*2;
 		}
 
 	
@@ -1034,9 +1114,9 @@ namespace Objects
 					component.commands.Add( new IconCommand("Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 				#endif
 
-				component.parts.setSize(1);
+				component.parts.SetSize(1);
 
-				component.parts.first().first.LoadFromObj("objects/bomb.obj");
+				component.parts.First().first.LoadFromObj("objects/bomb.obj");
 			#endif
 
 			component.typeName = "Bomb";
@@ -1055,7 +1135,8 @@ namespace Objects
 
 			component.continuousRotation = true;
 			component.continuousRotationSpeed = 0.125f;
-
+			component.baseExplosionRadius = 7;	//doomsday radius
+			component.baseDamageLevel = 50;		//doomsday damage
 		
 			component.weight = 5;					//turret weight
 
@@ -1084,8 +1165,8 @@ namespace Objects
 	
 				component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/tank.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/tank.obj");
 			#endif
 
 
@@ -1144,11 +1225,11 @@ namespace Objects
 	
 				component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/launcher.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/launcher.obj");
 			#endif
 
-
+			component.mountType = Turret::MountType::TowerOnly;
 			component.typeName = "Missile Launcher";
 			component.shortName = " Launcher";
 			component.constName = ConstName::Turret_Launcher;
@@ -1205,8 +1286,8 @@ namespace Objects
 	
 				component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/armored.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/armored.obj");
 			#endif
 
 
@@ -1260,8 +1341,8 @@ namespace Objects
 
 				component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/emp.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/emp.obj");
 			#endif
 
 
@@ -1312,220 +1393,223 @@ namespace Objects
 				{
 					void		Obliterate()
 					{
-						SignalTargetLessAttack(selectedEntity);
+						ApplicationInterface::SignalTargetLessAttack(selectedEntity);
 					}
 				}
 			}
 		#endif
 
-		void			Ragnarok::Configure(Turret&component)
-		{
-			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
+		#ifndef NO_SATELLITES
+			void			Ragnarok::Configure(Turret&component)
+			{
+				#ifdef HAS_WINDOW		
+					CellCoords offset = ConfigureStandardCommands(component);
 
-				#ifndef ONE_COMPOUND_PER_FACTION
-					component.commands.Add( new IconCommand("Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
-					component.commands.Add( new IconCommand("Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+					#ifndef ONE_COMPOUND_PER_FACTION
+						component.commands.Add( new IconCommand("Withdraw Uranium",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
+						component.commands.Add( new IconCommand("Deposit Uranium",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
+					#endif
+
+					component.commands.Add( new IconCommand("Obliterate",&MyCmd::Obliterate, &CommonCmd::CommonButtonCheck,NoCosts));
+
+					component.parts.SetSize(1);
+					component.parts.First().first.LoadFromObj("objects/ragnarökRing.obj");
 				#endif
 
-				component.commands.Add( new IconCommand("Obliterate",&MyCmd::Obliterate, &CommonCmd::CommonButtonCheck,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/ragnarökRing.obj");
-			#endif
+				component.typeName = "Ragnarök";
+				component.shortName = " Ragnarök";
+				component.constName = ConstName::Turret_Ragnarok;
+				component.constTowerName = ConstName::Empty;	//not used
 
+				component.mountType = Turret::MountType::Satellite;
+				component.isDoomsday = true;
 
-			component.typeName = "Ragnarök";
-			component.shortName = " Ragnarök";
-			component.constName = ConstName::Turret_Ragnarok;
-			component.constTowerName = ConstName::Empty;	//not used
-
-			component.isSatelliteRing = true;
-			component.isDoomsday = true;
-
-			component.continuousRotation = true;
-			component.continuousRotationSpeed = -0.25f;
+				component.continuousRotation = true;
+				component.continuousRotationSpeed = -0.25f;
 
 
-			component.productionCosts = 1;	//irrelevant
+				component.productionCosts = 1;	//irrelevant
 		
-			component.weight = 1;	//irrelevant
-			component.healthMultiplier = 1;	//irrelevant
-			component.baseHorizontalAttackRange = 0;
-			component.baseScanningRange = 1;
+				component.weight = 1;	//irrelevant
+				component.healthMultiplier = 1;	//irrelevant
+				component.baseHorizontalAttackRange = 0;
+				component.baseScanningRange = 1;
 
-			component.baseExplosionRadius = 10;
-			component.baseDamageLevel = 100;
-			component.dealsEMPDamage = false;
-			component.baseAttacksPerRound = 1;
-			component.initiative = 10;
-			#ifdef _DEBUG
-				component.baseAmmoNeedPerShot = 0;//1000;
-			#else
-				component.baseAmmoNeedPerShot = 2000;
-			#endif
-			#ifndef ONE_COMPOUND_PER_FACTION
-				component.baseStorageCapacity.level[Resource::Uranium] = component.baseAmmoNeedPerShot;
-			#endif
-			component.ammoType = Resource::Uranium;
-			component.requiresStationaryVehicle = true;
-			component.uplinkTraffic = 50;
-			component.trajectoryType = TrajectoryType::VerticalBeam;
+				component.baseExplosionRadius = 10;
+				component.baseDamageLevel = 100;
+				component.dealsEMPDamage = false;
+				component.baseAttacksPerRound = 1;
+				component.initiative = 10;
+				#ifdef _DEBUG
+					component.baseAmmoNeedPerShot = 0;//1000;
+				#else
+					component.baseAmmoNeedPerShot = 2000;
+				#endif
+				#ifndef ONE_COMPOUND_PER_FACTION
+					component.baseStorageCapacity.level[Resource::Uranium] = component.baseAmmoNeedPerShot;
+				#endif
+				component.ammoType = Resource::Uranium;
+				component.requiresStationaryVehicle = true;
+				component.uplinkTraffic = 50;
+				component.trajectoryType = TrajectoryType::VerticalBeam;
 
 
-			ResearchState::RegisterDependency(component,emp);
-			ResearchState::RegisterDependency(component,SkyPort::globalPrototype);
-			ResearchState::RegisterUnlockCost(component,100);
-			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
-			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
-			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-			if (component.baseAmmoNeedPerShot > 0)
-				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+				ResearchState::RegisterDependency(component,emp);
+				ResearchState::RegisterDependency(component,SkyPort::globalPrototype);
+				ResearchState::RegisterUnlockCost(component,100);
+				ResearchState::RegisterResearch(component,Attribute::DamageLevel);
+				ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
+				ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+				if (component.baseAmmoNeedPerShot > 0)
+					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
 
-			component.FinishCreation(false);
-		}
+				component.FinishCreation(false);
+			}
 
 
 	
-		void			SkyGuardian::Configure(Turret&component)
-		{
-			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
+			void			SkyGuardian::Configure(Turret&component)
+			{
+				#ifdef HAS_WINDOW		
+					CellCoords offset = ConfigureStandardCommands(component);
 
-				component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
+					component.commands.Add( new IconCommand("Attack",&CommonCmd::ToggleMode<CursorMode::AttackMode>, &CommonCmd::ModeCheck<CursorMode::AttackMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/skyGuardianRing.obj");
-			#endif
+					component.parts.SetSize(1);
+					component.parts.First().first.LoadFromObj("objects/skyGuardianRing.obj");
+				#endif
 
 
-			component.typeName = "Sky Guardian";
-			component.shortName = " Guardian";
-			component.constName = ConstName::Turret_ProtonCannon;
-			component.constTowerName = ConstName::Empty;	//not used
+				component.typeName = "Sky Guardian";
+				component.shortName = " Guardian";
+				component.constName = ConstName::Turret_ProtonCannon;
+				component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+				component.mountType = Turret::MountType::Satellite;
 
-			component.productionCosts = 1;	//irrelevant
+				component.productionCosts = 1;	//irrelevant
 
 		
-			component.weight = 1;	//irrelevant
-			component.healthMultiplier = 1;	//irrelevant
-			component.baseHorizontalAttackRange = 30;
-			component.baseScanningRange = 10;
+				component.weight = 1;	//irrelevant
+				component.healthMultiplier = 1;	//irrelevant
+				component.baseHorizontalAttackRange = 30;
+				component.baseScanningRange = 10;
 
-			component.baseExplosionRadius = 2;	//in space, 2 is 1
-			component.baseDamageLevel = 5;
-			component.dealsEMPDamage = false;
-			component.baseAttacksPerRound = 1;
-			component.initiative = 60;
-			component.baseAmmoNeedPerShot = 0;//10;
-			component.ammoType = Resource::Uranium;
-			component.requiresStationaryVehicle = true;
-			component.uplinkTraffic = 10;
-			component.trajectoryType = TrajectoryType::Missile;
+				component.baseExplosionRadius = 2;	//in space, 2 is 1
+				component.baseDamageLevel = 5;
+				component.dealsEMPDamage = false;
+				component.baseAttacksPerRound = 1;
+				component.initiative = 60;
+				component.baseAmmoNeedPerShot = 0;//10;
+				component.ammoType = Resource::Uranium;
+				component.requiresStationaryVehicle = true;
+				component.uplinkTraffic = 10;
+				component.trajectoryType = TrajectoryType::Missile;
 
 
-			ResearchState::RegisterDependency(component,emp);
-			ResearchState::RegisterDependency(component,SkyPort::globalPrototype);
-			ResearchState::RegisterUnlockCost(component,10);
-			ResearchState::RegisterResearch(component,Attribute::AttackRange);
-			ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);
-			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
-			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
-			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-			if (component.baseAmmoNeedPerShot > 0)
-				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+				ResearchState::RegisterDependency(component,emp);
+				ResearchState::RegisterDependency(component,SkyPort::globalPrototype);
+				ResearchState::RegisterUnlockCost(component,10);
+				ResearchState::RegisterResearch(component,Attribute::AttackRange);
+				ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);
+				ResearchState::RegisterResearch(component,Attribute::DamageLevel);
+				ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
+				ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+				if (component.baseAmmoNeedPerShot > 0)
+					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
 
-			component.FinishCreation(false);
-		}
+				component.FinishCreation(false);
+			}
 
-		void			SkyHubTurret::Configure(Turret&component)
-		{
-			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
-				offset++;//remain on lower level
-				component.commands.Add( new IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
+			void			SkyHubTurret::Configure(Turret&component)
+			{
+				#ifdef HAS_WINDOW		
+					CellCoords offset = ConfigureStandardCommands(component);
+					offset++;//remain on lower level
+					component.commands.Add( new IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/skyHubTurret.obj");
+					component.parts.SetSize(1);
+					component.parts.First().first.LoadFromObj("objects/skyHubTurret.obj");
 			
-			#endif
+				#endif
 
 
-			component.typeName = "Sky Hub";
-			component.shortName = " Hub";
-			component.constName = ConstName::Turret_SkyHub;
-			component.constTowerName = ConstName::Empty;	//not used
+				component.typeName = "Sky Hub";
+				component.shortName = " Hub";
+				component.constName = ConstName::Turret_SkyHub;
+				component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
-			component.baseOperationSpeed[Repair] = 10;
-			component.baseOperationSpeed[Construct] = 5;
-			//component.fuelSupplyRadius = 20;
+				component.mountType = Turret::MountType::Satellite;
+				component.baseOperationSpeed[Repair] = 10;
+				component.baseOperationSpeed[Construct] = 5;
+				//component.fuelSupplyRadius = 20;
 
-			component.continuousRotation = true;
-			component.continuousRotationSpeed = 0.25f;
+				component.continuousRotation = true;
+				component.continuousRotationSpeed = 0.25f;
 
-			component.productionCosts = 1;	//irrelevant
+				component.productionCosts = 1;	//irrelevant
 		
-			component.weight = 1;	//irrelevant
-			component.healthMultiplier = 1;	//irrelevant
-			component.baseScanningRange = 35;	//temporary. Once orbital scanners are introduced, reduce this value again
-			component.baseGroundScanningRange = 10;
+				component.weight = 1;	//irrelevant
+				component.healthMultiplier = 1;	//irrelevant
+				component.baseScanningRange = 35;	//temporary. Once orbital scanners are introduced, reduce this value again
+				component.baseGroundScanningRange = 10;
 
-			component.baseAttacksPerRound = 0;
-			component.initiative = 60;
-			component.uplinkTraffic = 20;
+				component.baseAttacksPerRound = 0;
+				component.initiative = 60;
+				component.uplinkTraffic = 20;
 
-			ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
-			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-			if (component.baseAmmoNeedPerShot > 0)
-				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+				ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
+				ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+				if (component.baseAmmoNeedPerShot > 0)
+					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
 
-			component.FinishCreation(false);
-		}
+				component.FinishCreation(false);
+			}
 
-		void			StarPort::Configure(Turret&component)
-		{
-			#ifdef HAS_WINDOW		
-				CellCoords offset = ConfigureStandardCommands(component);
-				offset++;//remain on lower level
-				component.commands.Add( new IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
+			void			StarPort::Configure(Turret&component)
+			{
+				#ifdef HAS_WINDOW		
+					CellCoords offset = ConfigureStandardCommands(component);
+					offset++;//remain on lower level
+					component.commands.Add( new IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/starPortRing.obj");
+					component.parts.SetSize(1);
+					component.parts.First().first.LoadFromObj("objects/starPortRing.obj");
 			
-			#endif
+				#endif
 
 
-			component.typeName = "Star Port";
-			component.shortName = " Port";
-			component.constName = ConstName::Turret_StarPort;
-			component.constTowerName = ConstName::Empty;	//not used
+				component.typeName = "Star Port";
+				component.shortName = " Port";
+				component.constName = ConstName::Turret_StarPort;
+				component.constTowerName = ConstName::Empty;	//not used
 
-			component.isSatelliteRing = true;
+				component.mountType = Turret::MountType::Satellite;
 
-			component.continuousRotation = true;
-			component.continuousRotationSpeed = -0.05f;
+				component.continuousRotation = true;
+				component.continuousRotationSpeed = -0.05f;
 
-			component.productionCosts = 1;	//irrelevant
-			component.baseOperationSpeed[Repair] = 10;
+				component.productionCosts = 1;	//irrelevant
+				component.baseOperationSpeed[Repair] = 10;
 		
-			component.weight = 1;	//irrelevant
-			component.healthMultiplier = 1;	//irrelevant
-			component.baseScanningRange = 10;
-			component.baseGroundScanningRange = 0;
+				component.weight = 1;	//irrelevant
+				component.healthMultiplier = 1;	//irrelevant
+				component.baseScanningRange = 10;
+				component.baseGroundScanningRange = 0;
 
-			component.baseAttacksPerRound = 0;
-			component.initiative = 30;
-			component.uplinkTraffic = 1;	//irrelevant
+				component.baseAttacksPerRound = 0;
+				component.initiative = 30;
+				component.uplinkTraffic = 1;	//irrelevant
 
-			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-			if (component.baseAmmoNeedPerShot > 0)
-				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+				ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+				if (component.baseAmmoNeedPerShot > 0)
+					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
 
-			component.FinishCreation(false);
-		}
+				component.FinishCreation(false);
+			}
+
+		#endif
 
 		void			MunitionTransporter::Configure(Turret&component)
 		{
@@ -1535,8 +1619,8 @@ namespace Objects
 				component.commands.Add( new IconCommand("Withdraw Munitions",&CommonCmd::ToggleMode<CursorMode::RestockMode>, &CommonCmd::ModeCheck<CursorMode::RestockMode>,NoCosts));
 				component.commands.Add( new IconCommand("Deposit Munitions",&CommonCmd::ToggleMode<CursorMode::DepositMode>, &CommonCmd::ModeCheck<CursorMode::DepositMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/munitionTransporter.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/munitionTransporter.obj");
 			#endif
 
 
@@ -1578,8 +1662,8 @@ namespace Objects
 
 				component.commands.Add( new IconCommand("Repair",&CommonCmd::ToggleMode<CursorMode::RepairMode>, &CommonCmd::ModeCheck<CursorMode::RepairMode>,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/constructor.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/constructor.obj");
 			#endif
 
 
@@ -1615,8 +1699,8 @@ namespace Objects
 			#ifdef HAS_WINDOW		
 				CellCoords offset = ConfigureStandardCommands(component);
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/radar.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/radar.obj");
 			#endif
 
 
@@ -1650,8 +1734,8 @@ namespace Objects
 				CellCoords offset = ConfigureStandardCommands(component);
 				component.commands.Add( new IconCommand("Automate", &VehicleCmd::Automate, &VehicleCmd::AutomatedCheck,NoCosts));
 
-				component.parts.setSize(1);
-				component.parts.first().first.LoadFromObj("objects/resourceScanner.obj");
+				component.parts.SetSize(1);
+				component.parts.First().first.LoadFromObj("objects/resourceScanner.obj");
 			#endif
 
 
@@ -1684,10 +1768,10 @@ namespace Objects
 			static const float staticHeight = 0.4743f;
 
 			#ifdef HAS_WINDOW		
-				component.parts.setSize(1);
+				component.parts.SetSize(1);
 
-				component.parts.first().first.LoadFromObj("objects/hoverbase.obj");
-				component.height = component.parts.first().first.GetBoundingBox().z.max;
+				component.parts.First().first.LoadFromObj("objects/hoverbase.obj");
+				component.height = component.parts.First().first.GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
 				component.ambientSound = OpenAL::Load("resources/objectSounds/hoverbase.wav");
@@ -1696,7 +1780,7 @@ namespace Objects
 				component.height = staticHeight;
 			#endif
 
-			//MakeBox(component.parts.first().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
+			//MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 			component.typeName = "Hoverbase";
 			component.shortName = "Hover";
 			component.constName = ConstName::VehicleBase_HoverBase;
@@ -1713,6 +1797,8 @@ namespace Objects
 			component.baseCarryingCapacity = 1;
 			component.unmodulatedHealth = 4;
 
+			component.acceleration[TerrainAdd] = 1;
+			component.acceleration[TerrainRemove] = 1;
 
 			ResearchState::RegisterResearch(component,Attribute::MovementSpeed);
 			ResearchState::RegisterResearch(component,Attribute::Health);
@@ -1720,9 +1806,7 @@ namespace Objects
 
 			component.FinishCreation();
 
-			#ifdef CLIENT	
-				component.height *= vehicleScale;
-			#endif
+			component.height *= vehicleScale;
 		}
 
 		void			Heavybase::Configure(VehicleBase&component)
@@ -1731,10 +1815,10 @@ namespace Objects
 			static const float staticHeight = 0.4743f;
 
 			#ifdef HAS_WINDOW		
-				component.parts.setSize(1);
+				component.parts.SetSize(1);
 
-				component.parts.first().first.LoadFromObj("objects/heavyBase.obj");
-				component.height = component.parts.first().first.GetBoundingBox().z.max;
+				component.parts.First().first.LoadFromObj("objects/heavyBase.obj");
+				component.height = component.parts.First().first.GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
 				component.ambientSound = OpenAL::Load("resources/objectSounds/heavybase.wav");
@@ -1743,7 +1827,7 @@ namespace Objects
 			#endif
 
 
-			//MakeBox(component.parts.first().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
+			//MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 			component.typeName = "Heavy Base";
 			component.shortName = "Heavy";
 			component.constName = ConstName::VehicleBase_HeavyBase;
@@ -1762,10 +1846,12 @@ namespace Objects
 			component.unmodulatedHealth = 12;
 
 			component.hindrance.road = 1;
-			component.hindrance.air = 10;
-			component.hindrance.water = 10;
+			component.hindrance.air = 3;
+			component.hindrance.water = 4;
 			component.hindrance.other = 4;
 
+			component.acceleration[TerrainAdd] = 2;
+			component.acceleration[TerrainRemove] = 2;
 			ResearchState::RegisterDependency(component,hoverbase);
 			ResearchState::RegisterUnlockCost(component,10);
 			ResearchState::RegisterResearch(component,Attribute::MovementSpeed);
@@ -1774,9 +1860,7 @@ namespace Objects
 
 			component.FinishCreation();
 
-			#ifdef CLIENT	
-				component.height *= vehicleScale;
-			#endif
+			component.height *= vehicleScale;
 		}
 
 		void			Catbase::Configure(VehicleBase&component)
@@ -1785,10 +1869,10 @@ namespace Objects
 			static const float staticHeight = 0.4743f;
 
 			#ifdef HAS_WINDOW		
-				component.parts.setSize(1);
+				component.parts.SetSize(1);
 
-				component.parts.first().first.LoadFromObj("objects/catBase.obj");
-				component.height = component.parts.first().first.GetBoundingBox().z.max;
+				component.parts.First().first.LoadFromObj("objects/catBase.obj");
+				component.height = component.parts.First().first.GetBoundingBox().z.max;
 				ASSERT2__(similar(staticHeight,component.height),staticHeight,component.height);
 
 				component.ambientSound = OpenAL::Load("resources/objectSounds/catbase.wav");
@@ -1797,7 +1881,7 @@ namespace Objects
 			#endif
 
 
-			//MakeBox(component.parts.first().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
+			//MakeBox(component.parts.First().first, Box<>(-0.5f, -1.f, 0.f, 0.5f, 1.f, 0.35f));
 			component.typeName = "Catamaran Base";
 			component.shortName = "Cat";
 			component.constName = ConstName::VehicleBase_CatBase;
@@ -1821,6 +1905,8 @@ namespace Objects
 			component.hindrance.water = 1;
 			component.hindrance.other = 10;
 
+			component.acceleration[TerrainAdd] = 2;
+			component.acceleration[TerrainRemove] = 2;
 			ResearchState::RegisterDependency(component,hoverbase);
 			ResearchState::RegisterUnlockCost(component,10);
 			ResearchState::RegisterResearch(component,Attribute::MovementSpeed);
@@ -1829,9 +1915,7 @@ namespace Objects
 
 			component.FinishCreation();
 
-			#ifdef CLIENT	
-				component.height *= vehicleScale;
-			#endif
+			component.height *= vehicleScale;
 		}
 
 
@@ -1870,8 +1954,6 @@ namespace Objects
 								break;
 							}
 					}
-					if (selectedEntity->IsSatellite())	//don't convert to IsOrbital()
-						directPlace = true;
 
 					if (!directPlace)
 					{
@@ -1881,7 +1963,7 @@ namespace Objects
 						arrowFrom = Grid::low.cells[arrowFromCell.stackID].centerVertex.xyz * ( Grid::ToRadius(arrowFromCell.height));
 					}
 					else
-						SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());	
+						ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_Construct, p->GetCTypeName());	
 							//this still works, but seemed unintuitive rather quickly
 					activeStructureToPlace = p;
 				}
@@ -1958,7 +2040,7 @@ namespace Objects
 					return;
 				if (vehicle->location.height < Grid::CellStack::BottomHeight+1)
 					return;
-				SignalNewJob(vehicle, ConstName::Job_DigDown, ConstName::Empty);
+				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_DigDown, ConstName::Empty);
 			}
 
 			void			Base::DescribeType(BaseCommand::Label&label, bool compound, const OwnerParameter&)
@@ -2026,8 +2108,11 @@ namespace Objects
 				{
 					count_t cnt = 0, limit = 0;
 					cnt = Vehicle::CountTurretOccurrences(owner,this)
+						#ifndef NO_SATELLITES
 						+
-						Satellite::CountTurretOccurrences(owner,this);
+						Satellite::CountTurretOccurrences(owner,this)
+						#endif
+						;
 					limit = RuntimeConfig::UnitLimits::Get(constName);
 					if (limit != 0xFFFF)
 						outResult << " Deployed: "+String(cnt)+"/"+String(limit);
@@ -2100,7 +2185,7 @@ namespace Objects
 					outResult.WrapAppendText("This "+lowerName+" type detects all naturally occuring resources within its scanning range. It can be automated.");
 				if (CanAttack())
 				{
-					outResult.WrapAppendText("This "+lowerName+" type can attack objects in range. It must typically be accompanied by a radar tower or vehicle.");
+					outResult.WrapAppendText("This "+lowerName+" type can attack objects in range.");
 					if (dealsEMPDamage)
 						outResult.WrapAppendText("This "+lowerName+" deals EMP damage. EMP damage temporarily reduces scanning range. Does not cause any permanent damage.");
 				}
@@ -2134,7 +2219,7 @@ namespace Objects
 					return;
 				if (vehicle->location.height <= Grid::CellStack::BottomHeight)
 					return;
-				SignalNewJob(vehicle, ConstName::Job_BuildRoad,ConstName::Empty);
+				ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_BuildRoad,ConstName::Empty);
 			}
 
 
@@ -2257,7 +2342,7 @@ namespace Objects
 				removeCandidates.Clear();
 				buildCandidates.Clear();
 
-				SignalTerrainModification(v,activeCursorMode,selection );
+				ApplicationInterface::SignalTerrainModification(v,activeCursorMode,selection );
 
 				activeCursorMode = CursorMode::Idle;
 			}
@@ -2343,7 +2428,7 @@ namespace Objects
 					Mat::invertSystem(system1,inverse);
 					Mat::transform(inverse,_b,b);
 					Mat::rotate(inverse,_d,d);
-					rs |= parts.first().first.TestIntersection(b,d,distance);
+					rs |= parts.First().first.TestIntersection(b,d,distance);
 				}
 				if (parts.Count() > 1)
 				{

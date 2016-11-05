@@ -190,9 +190,9 @@ namespace Logging
 				logFile << "Sig."<< tab << "Time" << tab << "Round"<<tab<< "Phase"<<tab<<  "ClientName"<<tab<<"IP"<<tab<<"EntityType"<<tab<<"EntityID"<<tab<<"OwnerID"<<tab<<"Location"<<tab<<"Message"<<nl;
 		}
 		if (printToConsole)
-			console << '[' << String(RuntimeConfig::roundNumber)<<"] ";
+			console << '[' << RuntimeConfig::roundNumber.ToString()<<"] ";
 		if (!inTestMode)
-			logFile << evClass.significance.ToString()  << tab << TimeStamp() << tab << String(RuntimeConfig::roundNumber) << tab << RuntimeConfig::phase.ToString();
+			logFile << evClass.significance.ToString()  << tab << TimeStamp() << tab << RuntimeConfig::roundNumber.ToString() << tab << RuntimeConfig::phase.ToString();
 
 		if (peer)
 		{

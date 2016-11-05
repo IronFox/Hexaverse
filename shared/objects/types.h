@@ -4,12 +4,15 @@
 #include <memory>
 #include <general/enumeration.h>
 #include "../typeDecl.h"
+#include "../config.h"
 
 namespace Objects
 {
+	DECLARE_POINTER_CLASS(BaseCommand)
+		DECLARE_POINTER_CLASS(DeployMobileCommand)
+		DECLARE_POINTER_CLASS(EntityConstructionCommand)
 
-
-	DECLARE_POINTER_CLASS(HangarStructure)
+	DECLARE_POINTER_CLASS(Hangar)
 	DECLARE_POINTER_CLASS(MobileEntityProducer)
 	DECLARE_POINTER_CLASS(SkyLinkStructure)
 
@@ -30,10 +33,12 @@ namespace Objects
 					DECLARE_POINTER_CLASS(MunitionStorage)
 
 			DECLARE_POINTER_CLASS(MobileEntity)
+				#ifndef NO_SATELLITES
 				DECLARE_POINTER_CLASS(Satellite)
 					DECLARE_POINTER_CLASS(SkyHub)
 					DECLARE_POINTER_CLASS(SkyGuardian)
 					DECLARE_POINTER_CLASS(Ragnarok)
+				#endif
 				DECLARE_POINTER_CLASS(Vehicle)
 
 	namespace Component
@@ -63,6 +68,19 @@ namespace Objects
 	);
 
 	class Compound;
+	class Marker;
+	struct TrajectoryEndPoint;
+
+
+	struct ResourceWithMunition;	//enum container
+	struct ResourceWithoutMunition;	//enum container
+
+	#ifdef NO_MUNITION
+		typedef ResourceWithoutMunition	Resource;
+	#else
+		typedef ResourceWithMunition	Resource;
+	#endif
+
 
 	DECLARE_POINTER_CLASS(CommandGroup)
 

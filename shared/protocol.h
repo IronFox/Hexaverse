@@ -10,7 +10,7 @@
 #include "grid.h"
 #include "objects.h"
 #include "stringTable.h"
-
+#include "runtimeConfig.h"
 
 #pragma comment(lib,"ws2_32.lib")
 #pragma comment(lib,"Rpcrt4.lib")
@@ -49,8 +49,27 @@ namespace PortOffset
 	#define NAME_APPEND1
 #endif
 
+#ifdef NO_SATELLITES
+	#define NAME_APPEND_S	"s"
+#else
+	#define NAME_APPEND_S
+#endif
 
-#define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION NAME_APPEND0 NAME_APPEND1
+#ifdef LOWER_RESOLUTION_PLANET
+	#define NAME_APPEND_L	"l"
+#else
+	#define NAME_APPEND_L
+#endif
+
+
+
+#define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION\
+							NAME_APPEND0\
+							NAME_APPEND1\
+							NAME_APPEND_S\
+							NAME_APPEND_L\
+							""
+
 #include "objects/resource.h"
 
 namespace Protocol
@@ -137,7 +156,7 @@ namespace Protocol
 				if (size > MaxSize)
 					return false;
 
-				setSize(size);
+				SetSize(size);
 				if (!IsISerializable(data))
 				{
 					//cout << "data is not of i-serializable type. reading plain"<<endl;
@@ -203,6 +222,13 @@ namespace Protocol
 					DBG_FATAL__("Failed to Deserialize var3");
 				return true;
 				//return	var0.Deserialize(inStream,EmbeddedSize) && var1.Deserialize(inStream,EmbeddedSize) && var2.Deserialize(inStream,EmbeddedSize) && var3.Deserialize(inStream,EmbeddedSize);
+			}
+			void	swap(MultiSerializable4&other)
+			{
+				var0.swap(other.var0);
+				var1.swap(other.var1);
+				var2.swap(other.var2);
+				var3.swap(other.var3);
 			}
 			void	Copy(const MultiSerializable4&other)
 			{
@@ -714,8 +740,9 @@ namespace Protocol
 	//	, NET(UINT32), state	//place holder for client state. currently this is ignored, and always interpreted as a hello
 	//)
 
-	NETSTRUCT2(Result
+	NETSTRUCT3(HelloResponse
 		, NET(bool), success
+		, NET(bool), configurationMode
 		, Package::NetString<256>, errorMessage	//in case stateAccepted is false
 	)
 
@@ -1178,7 +1205,7 @@ namespace Protocol
 		, TypeDeltaArray, data0
 	)
 
-	namespace EntityStateFlag
+	namespace EntityStateFlags
 	{
 		enum flag_t
 		{
@@ -1196,10 +1223,19 @@ namespace Protocol
 		, NET(BYTE), entityStateFlags
 	)
 
+	namespace TaskFlags
+	{
+		enum flag_t
+		{
+			VisualizePathToFocus = 0x1,
+			DelayedBySleep = 0x2,
+		};
+	}
+
 	NETSTRUCT9(MobileTask
 		, NET(UINT8), type
 		, NET(UINT8), mode
-		, NET(bool), visualizePathToFocus
+		, NET(UINT8), taskFlags
 		, NETA(LCellIdI), foci
 		, Package::NetString<256>, name
 		, NET(USHORT), roundsToJobCompletion
@@ -1550,21 +1586,23 @@ namespace Protocol
 		, NET(float), timeNeeded
 	)
 
-	NETSTRUCT7(VagueAttackTrajectory
+	NETSTRUCT8(VagueAttackTrajectory
 		, Timestamp, timestamp
 		, NET(float), flightTime
 		, NET(TVec3<>), sourcePosition
 		, NET(ConstName), turretType
 		, NET(float), turretRange
+		, NET(float), attackAngle
 		, NET(float), explosionRadius
-		, LCellIdI, traceTo
+		, NET(TVec3<>), traceTo
 	)
 
-	NETSTRUCT5(PreciseAttackTrajectory
+	NETSTRUCT6(PreciseAttackTrajectory
 		, Timestamp, timestamp
 		, NET(float), flightTime
 		, NET(TUniqueID), attacker
-		, LCellIdI, traceTo
+		, NET(float), attackAngle
+		, NET(TVec3<>), traceTo
 		, NET(bool), isAutoAttack
 	)
 
@@ -1640,7 +1678,7 @@ namespace Protocol
 	)
 
 
-	namespace DirectFlag
+	namespace DirectFlags
 	{
 		enum flag_t
 		{
@@ -1651,7 +1689,7 @@ namespace Protocol
 	}
 
 	/**
-	If directFlags contains DirectFlag::Explicit, path is considered explicit with one entry per neighboring node.
+	If directFlags contains DirectFlags::Explicit, path is considered explicit with one entry per neighboring node.
 	In this case the command is rejected, if the path is not possible when applied to the known world of the respective client.
 	If the path is found to be inapplicable during computation phases, an automatically determined path to the last given node is computed and applied, then dropped.
 	Path must always be of at least length 1
@@ -1713,7 +1751,7 @@ namespace Protocol
 
 	NETSTRUCT3(PhaseChange
 		, NET(UINT8), newPhase
-		, NET(UINT32), roundNumber
+		, NET(RuntimeConfig::RoundNumber), roundNumber
 		, NET(float), timeFactor
 	)
 
@@ -1739,17 +1777,20 @@ namespace Protocol
 		};
 	};
 
-
-	NETSTRUCT7(GameInfo
-		, NET(UINT16), numFactionsOnline
-		, NET(UINT16), numFactionsCreated
-		, NET(UINT32), roundNumber
-		, NET(TUniqueID), worldID	//used to manage factionTokens
-		, NET(BYTE), activePhase
+	NETSTRUCT3(GameConfig
 		, NET(UINT32), gameFlags
 		, NET(BYTE), gameGoal
-	)
+		, NET(BYTE), worldDiscovery
+	)	
 
+	NETSTRUCT6(GameInfo
+		, NET(UINT16), numFactionsOnline
+		, NET(UINT16), numFactionsCreated
+		, NET(RuntimeConfig::RoundNumber), roundNumber
+		, NET(TUniqueID), worldID	//used to manage factionTokens
+		, NET(BYTE), activePhase
+		, GameConfig, gameConfig
+	)
 
 
 	NETSTRUCT4(ClientFactionResponse
@@ -1794,12 +1835,12 @@ namespace Protocol
 		, NET(TUniqueID), id
 		, LCellIdI, location		
 		, MarkerData, data
-		, NET(UINT32), createdInRound
+		, NET(RuntimeConfig::RoundNumber), createdInRound
 	)
 
 	NETSTRUCT2(TouchedMarker
 		, NET(TUniqueID), id
-		, NET(UINT32), newRoundNumber
+		, NET(RuntimeConfig::RoundNumber), newRoundNumber
 	)
 
 	NETSTRUCT2(IdentifyUser
@@ -1817,6 +1858,13 @@ namespace Protocol
 	typedef NETA(TUnitLimit)	UnitLimits;
 
 
+	static_assert(Objects::Resource::N<0x100,"Resource type limit exceeded: Must change storage type of OperationLacksResources array");
+	NETSTRUCT3(OperationLacksResources
+		, Timestamp, timestamp
+		, NET(TUniqueID), entityID
+		, NETA(BYTE), resourceIndices
+	)
+
 
 	namespace ChannelID
 	{
@@ -1833,7 +1881,7 @@ namespace Protocol
 			PhaseChange,		//s2c: PhaseChange
 			BeginGame,			//s2c: <signal> //indicates that the player faction is fully initialized and transferred, and the game should begin. Mostly important for AI, only
 
-			Hello,				//c2s: Hello -> s2c: Result
+			Hello,				//c2s: Hello -> s2c: HelloResponse
 			ClientFaction,		//c2s: ClientFactionRequest -> s2c: ClientFactionResponse
 			SetFactionID,		//s2c: NET(TUniqueID)
 
@@ -1904,11 +1952,11 @@ namespace Protocol
 
 			ChatMessage,		// c2s: NetString<256>
 
-			//remote control channels (these require user level 2+)
-			RC_UpdateWorld,				//c2s: Grid::TExtendedPlanetConfig
-			RC_Lockdown,				//c2s: bool -> s2c: bool
-			RC_Kick,					//c2s: pair<TUniqueID,bool>	(kick / kick and ban)
-			RC_KickAllNonPrivileged,	//c2s: <signal>
+			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
+			GameConfig,			// c2s: GameConfig
+			EndConfigurationMode,//c2s: <signal>
+
+			OperationLacksResources, //s2c: OperationLacksResources
 		};
 	}
 
@@ -1937,6 +1985,8 @@ namespace Protocol
 			StartBases = 0x4,
 			NexusAI = 0x8,
 			EMPZones = 0x10,
+			SimulateLiquids = 0x20,
+			ConfigurationMode = 0x40,
 
 			SupportSpectatorFactions = 0x100,
 			SupportRegularFactions = 0x200,
@@ -1944,6 +1994,7 @@ namespace Protocol
 
 		};
 
+		static const UINT32 AllFactionSupport = ~(SupportSpectatorFactions-1);
 
 	}
 

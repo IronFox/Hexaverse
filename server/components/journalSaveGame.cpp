@@ -28,15 +28,28 @@ namespace Journal
 		return TCP::PPeer();
 	}
 
+	void	Round::Include(Round&other, bool execute)
+	{
+		ASSERT__(other.roundNumber == roundNumber);
+		if (execute)
+			other.Apply(false,false);
+		
+		globalEvents.Append(other.globalEvents);
+		other.factionStrands.VisitAllEntries([this](const TUniqueID&key, FactionStrand&strand)
+		{
+			factionStrands.Set(key).Merge(strand);
+		});
+	}
 
-	void Round::Apply(bool process)
+	void Round::Apply(bool process, bool updateRoundNumber)
 	{
 		lockEvents = true;
 	
-		LogEvent(EventSignificance::Uncommon ,"Applying round "+String(roundNumber)+" to state...");
+		LogEvent(EventSignificance::Uncommon ,"Applying round "+roundNumber.ToString()+" to state...");
 
-		globalVersionOfCurrentFile = fileDataVersion;
-		RuntimeConfig::roundNumber = roundNumber;
+		ApplicationInterface::globalVersionOfCurrentFile = fileDataVersion;
+		if (updateRoundNumber)
+			RuntimeConfig::roundNumber = roundNumber;
 
 		Reflection::state.PushAndReplaceFocus(Reflection::state.GetRoot());
 		foreach (globalEvents,ev)
@@ -48,24 +61,12 @@ namespace Journal
 		{
 			Objects::PFaction f = Objects::Faction::FindByID(factionID);
 			if (!f)
-			{
-				//if (fstrand.factionEvents.IsNotEmpty() && typeid(*fstrand.factionEvents.first()) == typeid(Round::CreateFaction))
-				//{
-				//	fstrand.factionEvents.first()->Execute();
-				//	f = Objects::Faction::FindByID(factionID);
-				//	if (!f)
-				//		throw Except::Program::InternalVerificationFault(CLOCATION, "Round "+String(roundNumber)+": Referencing faction '"+factionID.ToString()+"', but failed to create");
-				//}
-				//else
-				throw RoundException(CLOCATION, "Round "+String(roundNumber)+": Referencing faction '"+factionID.ToString()+"', which does not or no longer exist, and is not being created");
-			}
-
+				throw RoundException(CLOCATION, "Round "+roundNumber.ToString()+": Referencing faction '"+factionID.ToString()+"', which does not or no longer exist, and is not being created");
 
 			for (const auto&ev : fstrand.factionEvents)
 				ev->Execute(f);
 
 			ASSERT__(f);
-
 
 			static GenericHashSet<TUniqueID,TUniqueID>	processed;
 			processed.Clear();
@@ -216,20 +217,30 @@ namespace Journal
 		this->accessToken = f.accessToken;
 		this->factionID = f.id;
 	}
-
+	Round::CreateFaction::CreateFaction(Round::CreateFaction::FactionType type, const TUniqueID&factionID, const CryptographicID&accessToken):factionType(type)
+	{
+		this->accessToken = accessToken;
+		this->factionID = factionID;
+	}
+	
 	/*virtual override*/ void Round::CreateFaction::Execute() const
 	{
-		Objects::PFaction f;
-		if (factionType == CreateFaction::FactionType::Nexus)
-			f = Objects::Faction::nexus;
-		else
+		Objects::PFaction f = Objects::Faction::FindByID(factionID);
+		if (!f)
 		{
-			f.reset(new Objects::Faction(TUniqueID::Empty()));
-			Objects::Faction::all << f;
+			if (factionType == CreateFaction::FactionType::Nexus)
+				f = Objects::Faction::nexus;
+			else
+			{
+				f.reset(new Objects::Faction(factionID));
+				Objects::Faction::all << f;
+			}
+			f->currentState = Grid::initialWorld;
 		}
-		f->currentState = Grid::initialWorld;
+		else
+			if (factionType != GetType(f))
+				throw RoundException(CLOCATION,"Faction already exists. Types diverge");
 		f->accessToken = accessToken;
-		f->id = factionID;
 		ASSERT__(f->visibility.cellStack.IsNotEmpty());
 		Network::tokenMap.Set(f->accessToken,f);
 
@@ -549,14 +560,14 @@ namespace Journal
 	/*virtual override*/ void	Round::CommitRound::Compile(Entry&e)	const
 	{
 		
-		e.intParameters.Set("RoundNumber",(int)roundNumber);
+		e.Set("RoundNumber",roundNumber);
 		e.stringParameters.Set("EvolverName",evolverName);
 		e.intParameters.Set("FileDataVersion",(int)fileDataVersion);
 	}
 	/*virtual override*/ void	Round::CommitRound::Decode(const Entry&e)
 	{
 		
-		roundNumber = (UINT32) e.intParameters.Require(CLOCATION,"RoundNumber");
+		e.Require(CLOCATION,"RoundNumber",roundNumber);
 		evolverName = e.stringParameters.Require(CLOCATION,"EvolverName");
 		int v;
 		if (!e.intParameters.TryGet("FileDataVersion",v))
@@ -568,11 +579,7 @@ namespace Journal
 
 	Objects::PWorldEntity Round::PureEntityDescriptor::Instantiate(const Objects::PFaction&f, const TUniqueID&id, const Grid::LCellIdI&loc) const
 	{
-		Objects::PWorldEntity proto = Objects::GetPrototypeByName(baseType);
-		if (!proto)
-		{
-			proto = Objects::GetSatellitePrototypeByName(baseType);
-		}
+		Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(baseType);
 		Objects::PWorldEntity e;
 		if (proto)
 		{
@@ -623,8 +630,9 @@ namespace Journal
 	/*virtual override*/ void	Round::CreateEntity::Execute(const Objects::PFaction&f) const
 	{
 		Objects::PWorldEntity e = desc.Instantiate(f,entityID,location);
+		float t = 0;
 		if (e->IsMobile())
-			Objects::InsertConstructed(To<Objects::MobileEntity>::Cast(e),0);
+			Objects::InsertConstructed(To<Objects::MobileEntity>::Cast(e),t);
 		else
 		{
 			if (e->IsStructure())
@@ -632,7 +640,6 @@ namespace Journal
 				Objects::PStructure s = To<Objects::Structure>::Cast(e);
 				s->CorrectTerrain(false,0);
 			}
-			float t = 0;
 			Objects::InsertConstructed(To<Objects::Structure>::Cast(e),t);
 
 			if (e->IsWorkingStructure())
@@ -822,6 +829,7 @@ namespace Journal
 		{
 			throw RoundException(CLOCATION, "Trying to assign production task to non-producer entity "+e->GetName());
 		}
+		float t = 0;
 		Objects::PMobileEntityProducer p = To<Objects::MobileEntityProducer>::DynamicCast(e);
 		Objects::PWorldEntity produced = desc.Instantiate(e->owner,this->newEntityID,Grid::LCellIdI(0,0));
 		if (produced->IsMobile())
@@ -835,7 +843,6 @@ namespace Journal
 				Objects::PWorkingStructure&ws = To<Objects::WorkingStructure>::Cast(e);
 				if (!ws->IsEnabled())
 				{
-					float t = 0;
 					ws->SetEnabled(true,t);
 				}
 
@@ -918,11 +925,13 @@ namespace Journal
 		foreach (locationParameters.entries,p)
 		{
 			stream << tab << p->key << "=l"<<p->value.stackID<<'.';
-			if (p->value.height == Objects::Satellite::BaseResidenceHeight)
-				stream << "sat";
-			elif (p->value.height == Objects::Satellite::DeclinedResidenceHeight)
-				stream << "declSat";
-			else
+			#ifndef NO_SATELLITES
+				if (p->value.height == Objects::Satellite::BaseResidenceHeight)
+					stream << "sat";
+				elif (p->value.height == Objects::Satellite::DeclinedResidenceHeight)
+					stream << "declSat";
+				else
+			#endif
 				stream << p->value.height;
 		}
 		foreach (intParameters.entries,p)
@@ -1029,17 +1038,21 @@ namespace Journal
 						throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded stack ID of "+String(paraRef)+"=" +target.ToString()+" is out of range, while decoding line "+String(line,lineLen));
 					}
 
-					if (sHeight == "sat")
-						target.height = Objects::Satellite::BaseResidenceHeight;
-					elif (sHeight == "declSat")
-						target.height = Objects::Satellite::DeclinedResidenceHeight;
-					else
+					#ifndef NO_SATELLITES
+						if (sHeight == "sat")
+							target.height = Objects::Satellite::BaseResidenceHeight;
+						elif (sHeight == "declSat")
+							target.height = Objects::Satellite::DeclinedResidenceHeight;
+						else
+					#endif
 					{
 						if (!convert(sHeight.pointer(),sHeight.length(),target.height))
 						{
 							throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Expected valid height for parameter '"+String(paraRef)+"', but got '"+String(dotAt+1, valLen  - (dotAt-value)-1)+"' while decoding line "+String(line,lineLen));
 						}
-						if ((target.height < Grid::CellStack::BottomHeight || target.height > Grid::CellStack::TopHeight) && target.height != Objects::Satellite::BaseResidenceHeight && target.height != Objects::Satellite::DeclinedResidenceHeight)
+						if ((target.height < Grid::CellStack::BottomHeight || target.height > Grid::CellStack::TopHeight) 
+							IF_SATELLITES(&& target.height != Objects::Satellite::BaseResidenceHeight && target.height != Objects::Satellite::DeclinedResidenceHeight)
+							)
 						{
 							throw Except::IO::DriveAccess::FileFormatFault(CLOCATION, "Decoded height of "+String(paraRef)+"=" +target.ToString()+" is out of range, while decoding line "+String(line,lineLen));
 						}
@@ -1559,9 +1572,10 @@ namespace Journal
 		{
 			throw RoundException(CLOCATION,e->GetName()+": Unable to destroy entity. Entity already dead");
 		}
-		Objects::Remove(e,type,0,false);
+		float t = 0;
+		Objects::Remove(e,type,t,false);
 		if (To<Objects::Structure>::DynamicCast(e))
-			Objects::RefreshCompoundCoverageIfNeeded(0);
+			Objects::RefreshCompoundCoverageIfNeeded(t);
 
 	}
 
@@ -1574,13 +1588,10 @@ namespace Journal
 			return true;
 		if (dest.referencedType[1] == ConstName::Empty)
 		{
-			if (!Objects::GetPrototypeByName(dest.referencedType[0]))
+			if (!Objects::GetNonVehiclePrototypeByName(dest.referencedType[0]))
 			{
-				if (!Objects::GetSatellitePrototypeByName(dest.referencedType[0]))
-				{
-					LogEvent(EventClass::Preset::commandRejected, "Unknown structure type #" + String(int(dest.referencedType[0])));
-					return false;
-				}
+				LogEvent(EventClass::Preset::commandRejected, "Unknown structure type #" + String(int(dest.referencedType[0])));
+				return false;
 			}
 			return true;
 		}
@@ -1611,19 +1622,11 @@ namespace Journal
 			return;
 		if (source.type1 == ConstName::Empty)
 		{
-			Objects::PStructure proto = Objects::GetPrototypeByName(source.type0);
+			Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(source.type0);
 			if (proto)
-				result.stringParameters.Set("ReferenceStructure",proto->GetTypeName());
+				result.stringParameters.Set("ReferenceNonVehicle",proto->GetTypeName());
 			else
-			{
-				Objects::PSatellite sproto = Objects::GetSatellitePrototypeByName(source.type0);
-				if (sproto)
-					result.stringParameters.Set("ReferenceSatellite",sproto->GetTypeName());
-				else
-				{
-					throw Round::RoundException(CLOCATION, "Unknown structure type #" + String(int(source.type0.value)));
-				}
-			}
+				throw Round::RoundException(CLOCATION, "Unknown non-vehicle type #" + String(int(source.type0.value)));
 			return;
 		}
 		if (source.type0 == ConstName::Empty)
@@ -1665,15 +1668,9 @@ namespace Journal
 			ref.type1 = Require(Objects::Component::GetTurretByName(turret))->constName;
 			return;
 		}
-		if (e.stringParameters.TryGet("ReferenceSatellite",base))
+		if (e.stringParameters.TryGet("ReferenceNonVehicle",base))
 		{
-			ref.type0 = Require(Objects::GetSatellitePrototypeByName(base))->GetCTypeName();
-			ref.type1 = ConstName::Empty;
-			return;
-		}
-		if (e.stringParameters.TryGet("ReferenceStructure",base))
-		{
-			ref.type0 = Require(Objects::GetPrototypeByName(base))->GetCTypeName();
+			ref.type0 = Require(Objects::GetNonVehiclePrototypeByName(base))->GetCTypeName();
 			ref.type1 = ConstName::Empty;
 			return;
 		}
@@ -1683,13 +1680,22 @@ namespace Journal
 
 
 
+	void			Entry::Set(const String&name,const RoundNumber&n)
+	{
+		intParameters.Set(name+".main",(int)n.main);
+	}
+
+	void			Entry::Require(const TCodeLocation&loc, const String&name, RoundNumber&n)	const
+	{
+		intParameters.RequireCast(loc,name+".main",n.main);
+	}
 
 
 	/*virtual override*/ void Round::CreateMarker::Compile(Entry&e)	const
 	{
 		e.uuidParameters.Set("MarkerID",markerID);
 		e.intParameters.Set("Type",(int)type);
-		e.intParameters.Set("CreatedInRound", (int)createdInRound);
+		e.Set("CreatedInRound", createdInRound);
 		e.locationParameters.Set("Location",location);
 		ExportReferenceEntity(referenceEntity,e);
 	}
@@ -1698,7 +1704,7 @@ namespace Journal
 	{
 		e.uuidParameters.Require(CLOCATION,"MarkerID",markerID);
 		e.intParameters.RequireEnum(CLOCATION,"Type",type);
-		e.intParameters.RequireCast(CLOCATION,"CreatedInRound", createdInRound);
+		e.Require(CLOCATION,"CreatedInRound", createdInRound);
 		e.locationParameters.Require(CLOCATION,"Location",location);
 		ImportReferenceEntity(referenceEntity,e);
 	}
@@ -1869,6 +1875,23 @@ namespace Journal
 		factionStrands.Set(f->id).factionEvents.Append(ev);
 	}
 
+	void	Round::Register(bool execute, const TUniqueID&fID, Round::FactionEvent*newEvent)
+	{
+		PFactionEvent ev(newEvent);
+		if (execute)
+		{ 
+			Objects::PFaction&f = Objects::Faction::FindByID(fID);
+			if (!f)
+			{
+				LogEvent(EventClass::Preset::commandRejected,"Faction "+fID.ToString()+" not found for event execution "+String(typeid(newEvent).name()));
+				return;
+			}
+			if (!ev->TryExecute(f))
+				return;
+		}
+		factionStrands.Set(fID).factionEvents.Append(ev);
+	}
+
 	void	Round::Register(bool execute, const Objects::PWorldEntity&e, Round::EntityEvent*newEvent)
 	{
 		PEntityEvent ev(newEvent);
@@ -2035,8 +2058,8 @@ namespace Journal
 			break;
 			case 1:
 			{
-				Objects::PSatellite proto = Objects::GetSatellitePrototypeByName(parameters[0]);
-				if (!proto)
+				Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(parameters[0]);
+				if (!proto || !proto->IsMobile())
 				{
 					LogEvent(EventClass::Preset::commandRejected,e.get(),"Cannot produce that");
 					return;

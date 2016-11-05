@@ -1,36 +1,19 @@
 set zip="7z.exe"
-set rs1="game.7z"
+set rs1="file.7z"
 set rs=%rs1%
 del %rs1% /Q
-:: %zip% a %rs1% "documentation.pdf"
-%zip% a %rs1% "changelog.txt"
 
-%zip% a %rs% "client/game.ini"
-%zip% a %rs% "client/Visual Client.exe"
-%zip% a %rs% "client/Console Client*.exe"
-%zip% a %rs% "client/shaders/compiled/*"
-%zip% a %rs% "client/Font/font.*"
-%zip% a %rs% "client/Font/compiled/*"
-%zip% a %rs% "client/objects/*.cgs"
-%zip% a %rs% "client/resources/*.wav"
-%zip% a %rs% "client/resources/objectSounds/*.wav"
-%zip% a %rs% "client/resources/objectSounds/sources.txt"
-%zip% a %rs% "client/resources/*.png"
-%zip% a %rs% "client/resources/nice/*.txt"
-%zip% a %rs% "client/resources/icons/*.png"
-%zip% a %rs% "client/resources/textures/*.png"
-%zip% a %rs% "client/resources/tutorial/*.png"
-%zip% a %rs% "client/resources/tutorial/*.jpg"
-%zip% a %rs% "client/resources/tutorial/*.xml"
-%zip% a %rs% "client/oalinst.exe"
-%zip% a %rs% "client/dxwebsetup.exe"
-%zip% a %rs% "client/OpenAL32.dll"
-::%zip% a %rs% "client/D3DCompiler_43.dll"
-%zip% a %rs% "client/D3DCompiler_47.dll"
+Bake\Bake.exe
+IF "%errorlevel%" NEQ "0" goto failed
 
+cd baked
+%zip% a ..\%rs% "*" -r
+cd ..
+IF "%errorlevel%" NEQ "0" goto failed
 
-%zip% a %rs% "server/Server*.exe"
-%zip% a %rs% "server/config/planets/*.ini"
-%zip% a %rs% "server/config/declaration.xml"
+exit /b 0
 
-%zip% a %rs% "ControlConsole/ControlConsole*.exe"
+:failed
+echo Repack failure
+pause 
+exit /b %errorlevel%

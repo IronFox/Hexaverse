@@ -11,6 +11,7 @@
 #include "visualChoices.h"
 #include "satellite.h"
 #include "faction.h"
+#include "gridAndChoices.h"
 #include "components.h"
 #include <image/converter/magic.h>
 
@@ -53,7 +54,15 @@ namespace Objects
 
 	/*static*/ void		EntityConstructionCommand::UpdateTexture(BaseCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
 	{
-		GeometryImage::BeginRendering(backgroundColor);
+		float distanceFactor = 1.f;
+		//if (base)
+		{
+			#ifdef LOWER_RESOLUTION_PLANET
+				distanceFactor *= 2.f;
+			#endif
+		}
+
+		GeometryImage::BeginRendering(backgroundColor,distanceFactor);
 
 		TMatrix4<> sys = Matrix<>::eye4;
 		sys.x.x = sys.y.y = sys.z.z = 2.5f;
@@ -109,12 +118,17 @@ namespace Objects
 	{
 		float distanceFactor = 1.f;
 		if (e->IsMobile())
-			distanceFactor *= 0.5f;
+		{
+			#ifndef LOWER_RESOLUTION_PLANET
+				distanceFactor *= 0.5f;
+			#endif
+		}
 		if (e->IsStructure())
 			distanceFactor += 0.1f * To<Structure>::Cast(e)->GetHeight();
-		if (e->IsSatellite())
-			distanceFactor *= 3.f;
-
+		#ifndef NO_SATELLITES
+			if (e->IsSatellite())
+				distanceFactor *= 3.f;
+		#endif
 		GeometryImage::BeginRendering(isPrototype ? tone : BackgroundColor(e),distanceFactor);
 
 		UpdateStateColors(e,tone,isPrototype);
@@ -330,8 +344,8 @@ namespace Objects
 
 	/*virtual override*/ void		DeployMobileCommand::CompileLabel(Label&outResult)
 	{
-		PVehicleStore p = To<VehicleStore>::DynamicCast(selectedEntity);
-		ASSERT__(p);
+		PHangar h = To<Hangar>::DynamicCast(selectedEntity);
+		ASSERT__(h);
 		PMobileEntity vehicle = ToMobileEntity( this->reference.lock() );
 		if (vehicle)
 		{
@@ -349,10 +363,21 @@ namespace Objects
 		LoadIcon(name);
 	}
 
+	static bool NotValidFSChar(char c)
+	{
+		if (c >= 'a' && c <= 'z')
+			return false;
+		if (c >= 'A' && c <= 'Z')
+			return false;
+		if (c >= '0' && c <= '9')
+			return false;
+		return true;
+	}
+
 	void			BaseCommand::LoadIcon(const String&name)
 	{
 		String name2 = name;
-		name2.replace(' ','-');
+		name2.replaceCharacters(NotValidFSChar,'-');
 
 		PathString filename = PathString("resources/icons/"+name2+".png");
 		if (!FileSystem::IsFile(filename))
@@ -365,15 +390,15 @@ namespace Objects
 			Magic::LoadFromFile(image,filename);
 			if (image.channels() < 4)
 			{
-				image.setChannels(4,BaseImage::CA_REPEAT);
+				image.SetChannels(4,BaseImage::CA_REPEAT);
 
 			}
 			else
 			{
 						
-				Concurrency::parallel_for(UINT32(0),image.getWidth(),[&image](UINT32 x)
+				Concurrency::parallel_for(UINT32(0),image.GetWidth(),[&image](UINT32 x)
 				{
-					for (UINT32 y = 0; y < image.getHeight(); y++)
+					for (UINT32 y = 0; y < image.GetHeight(); y++)
 					{
 						BYTE*pixel = image.get(x,y);
 						Vec::mul(Vec::ref3(pixel),float(pixel[3])/255.f);
@@ -382,7 +407,7 @@ namespace Objects
 
 			}
 
-			image.flipVertical();
+			image.FlipVertically();
 			texture.Load(image);
 			textureMap.Set(filename,texture);
 		}
@@ -412,7 +437,7 @@ namespace Objects
 		if (selectedEntity)
 		{
 			Grid::LCellIdI target = Grid::SeeThrough::LocateCamera();
-			if (!selectedEntity->IsSatellite())
+			if (selectedEntity->location.height <= Grid::CellStack::BottomHeight)
 				target.height = selectedEntity->location.height;
 			Grid::SeeThrough::Update(!Grid::SeeThrough::IsEnabled(), target);
 //					Grid::SeeThrough::Update(!Grid::SeeThrough::IsEnabled(), selectedEntity->location);
@@ -448,7 +473,7 @@ namespace Objects
 	
 	void	CommonCmd::DemolishSelected()
 	{
-		SignalRemoval(selectedEntity);
+		ApplicationInterface::SignalRemoval(selectedEntity);
 	}
 
 	bool CommonCmd::IsModeActive(CursorMode mode)
@@ -499,7 +524,7 @@ namespace Objects
 
 		if (selectedMobileEntity || ToTower(selectedEntity))
 		{
-			SignalDropAllTasks(selectedEntity);
+			ApplicationInterface::SignalDropAllTasks(selectedEntity);
 			//v->ClearTasks();
 		}
 
@@ -512,7 +537,7 @@ namespace Objects
 	{
 		if (selectedMobileEntity)
 		{
-			SignalAutomation(selectedMobileEntity,!selectedMobileEntity->isAutomated);
+			ApplicationInterface::SignalAutomation(selectedMobileEntity,!selectedMobileEntity->isAutomated);
 			//v->ClearTasks();
 		}
 	}
@@ -543,7 +568,7 @@ namespace Objects
 	void					VehicleCmd::Sleep()
 	{
 		if (selectedEntity)
-			SignalSleep(selectedEntity, !selectedEntity->IsSleeping());
+			ApplicationInterface::SignalSleep(selectedEntity, !selectedEntity->IsSleeping());
 	}
 
 	void					VehicleCmd::UndoOperation()
@@ -560,7 +585,7 @@ namespace Objects
 		}
 
 		if (selectedMobileEntity || ToTower(selectedEntity))
-			SignalDropLastTask(selectedEntity);
+			ApplicationInterface::SignalDropLastTask(selectedEntity);
 	//		v->DropLastTask();
 		//#ifdef CLIENT
 		//	UpdateChoices(true);
@@ -617,19 +642,63 @@ namespace Objects
 		Add(rs );
 		return rs;
 	}
-	PBaseCommand			CommandContainer::Add(const PBaseCommand&newCommand)
+	PCommandGroup	CommandContainer::AddChild(const int2&coords, bool relativeCoords, const String&name)
 	{
-		DBG_ASSERT__(!members.Contains(newCommand));
-		newCommand->gridCoords = baseCoords+int2((int)members.Count(),0);
-		members << newCommand;
+		PCommandGroup rs (new CommandGroup(name));
+		Add(coords, relativeCoords, rs );
+		return rs;
+	}
+	PCommandGroup	CommandContainer::AddChild(const String&name, const String&iconName)
+	{
+		PCommandGroup rs (new CustomIcon<CommandGroup>(name,iconName));
+		Add(rs );
+		return rs;
+	}
+	PCommandGroup	CommandContainer::AddChild(const int2&coords, bool relativeCoords, const String&name, const String&iconName)
+	{
+		PCommandGroup rs (new CustomIcon<CommandGroup>(name,iconName));
+		Add(coords, relativeCoords, rs );
+		return rs;
+	}
+
+	index_t					CommandContainer::Find(const PBaseCommand&cmd) const
+	{
+		foreach (members,m)
+			if (m->second == cmd)
+				return m - members.pointer();
+		return InvalidIndex;
+	}
+
+	PBaseCommand			CommandContainer::Add(const int2&coords, bool relativeCoords, const PBaseCommand&newCommand)
+	{
+		DBG_ASSERT__(Find(newCommand) == InvalidIndex);
+		Member&m = members.Append();
+		m.second = newCommand;
+		m.first = relativeCoords ? coords : coords - baseCoords;
 		if (newCommand->IsGroup())
 		{
 			PCommandGroup group = To<CommandGroup>::Cast(newCommand);
 			group->baseCoords = baseCoords;
-			group->baseCoords.y = newCommand->gridCoords.y+1;
+			group->baseCoords.y += m.first.y+1;
 			group->baseCoords.x += group->baseCoords.y/2;
 			group->parent = this;
+		}
+		return newCommand;
+	}
 
+	PBaseCommand			CommandContainer::Add(const PBaseCommand&newCommand)
+	{
+		DBG_ASSERT__(Find(newCommand) == InvalidIndex);
+		Member&m = members.Append();
+		m.second = newCommand;
+		m.first = int2((int)members.Count()-1,0);
+		if (newCommand->IsGroup())
+		{
+			PCommandGroup group = To<CommandGroup>::Cast(newCommand);
+			group->baseCoords = baseCoords;
+			group->baseCoords.y += m.first.y+1;
+			group->baseCoords.x += group->baseCoords.y/2;
+			group->parent = this;
 		}
 		return newCommand;
 	}

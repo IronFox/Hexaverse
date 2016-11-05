@@ -4,18 +4,22 @@
 #define visualChoicesH
 
 #include "../sphereGrid.h"
+#include "types.h"
 
 namespace Objects
 {
+	struct Choice;
+
 	extern bool		controlIsEnabled /*= false*/;
-	extern Buffer0<Grid::LCellIdI>	movementChoices;
+	extern Buffer0<Choice>			movementChoices;
 	extern bool						hasArrowCellTarget,
 									showArrow;
 	extern float3					arrowFrom;	//arrow visualization point of origin. Might be the location of a vehicle, or any of the locations in its task queue. Only relevant if showArrow is true
-	extern Grid::LCellIdI			arrowFromCell, 
-									arrowCellTarget;
+	extern Grid::LCellIdI			arrowFromCell;
+	extern TrajectoryEndPoint		arrowCellTarget;
 	extern Buffer0<Grid::HCellIdI>	cellSelection;	//actually selected cells in either build or remove block mode
 	extern Buffer0<Grid::HCellIdU>	buildCandidates, removeCandidates;	//possible cells to build or remove - used for visualization purposes only
+
 
 
 	void				UpdateChoices(bool controlEnabled);

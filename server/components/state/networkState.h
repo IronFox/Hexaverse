@@ -27,7 +27,8 @@ namespace Network
 		PreHello,
 		PreFaction,
 		CommonFaction,
-		Spectator
+		Spectator,
+		PlanetConfigurator
 	};
 
 
@@ -83,7 +84,7 @@ namespace Network
 	Clients will not be able to connect unless RestartSession is called.
 	@return true, if the session was online and subsequently closed, false if it was not started
 	*/
-	bool		CloseSession();
+	bool		CloseSession(bool preserveSpectators=false, bool sendGridChangesToPreservedSpectators=true);
 
 	/**
 	Disconnects all clients and disables the TCP server systems. Does NOT flush the scene.
@@ -125,8 +126,17 @@ namespace Network
 	*/
 	void		Start();
 
+	/**
+	Updates and logs the new user level (if it changed)
+	*/
 	void		ChangeUserLevel(TCP::Peer&peer, UserLevel newLevel);
 
+	/**
+	Closes the current session (if active), rebuilds the local world, and restarts the session (if it was active).
+	If in configuration mode, the config mode random reference is used, otherwise a global one.
+	Spectator clients are notified of changes if so.
+	*/
+	void		BuildConfiguredWorld();
 
 
 	bool CanControl(const Client&c, const Objects::WorldEntity&e);

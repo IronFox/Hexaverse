@@ -1,6 +1,9 @@
 #ifndef objectsSatteliteH
 #define objectsSatteliteH
 
+#include "../config.h"
+
+#ifndef NO_SATELLITES
 
 /*
 * single sphere layer that hosts all space objects around planets
@@ -98,17 +101,11 @@ namespace Objects
 			int					lastExtraFuelDemand = -1;
 		#endif
 
-
-		struct Detail
-		{
-			static int			WalkStack(const Grid::CellStack&stack, bool failOnStructureCount);
-
-		};
-
 	public:
 		static const int		BaseResidenceHeight = Grid::CellStack::HalfRange * 5;
 		static const int		DeclinedResidenceHeight = BaseResidenceHeight - 4;
 
+		static bool				IsSatelliteHeight(int h)	{return h == BaseResidenceHeight || h == DeclinedResidenceHeight;}
 
 		static count_t			CountTurretOccurrences(const OwnerParameter&,Component::Turret*);
 
@@ -150,6 +147,7 @@ namespace Objects
 			*/
 			bool				RefreshGroundSensor(float&atTime);
 			bool				AttackNext(Grid::LCellIdI target, bool autoTarget);
+			virtual void		MoveSensory(const Grid::LCellIdI&oldLocation, const Grid::LCellIdI&newLocation, float&atTime, bool checkChangesNow/*=true*/, Buffer0<PWorldEntity>*newContacts/* = nullptr*/) override;
 		#endif
 
 		#ifdef HAS_WINDOW
@@ -196,7 +194,6 @@ namespace Objects
 
 		//TurretBase overrides:
 		virtual float			GetFlatAttackRange() const override;
-		virtual bool			HasAmmoForShot() const override;
 		#ifndef CLIENT
 			virtual bool		FillAttackQueue()override;
 		#endif
@@ -205,8 +202,8 @@ namespace Objects
 		virtual bool			IsSatellite() const override {return true;}
 		virtual PTurretBase		GetTurretBase(float&zOffset) override { zOffset = 0.f; return To<MobileEntity>::Cast(shared_from_this());}
 		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = 0.f; return To<const MobileEntity>::Cast(shared_from_this());}
-		//virtual bool				CanSee(const PWorldEntity&other)	const override;
-		//virtual bool				CanSee(const TVec3<>&center, float radius)	const override;
+		virtual bool			CanSpawnInGrid() const override {return false;}
+		virtual bool			CanSpawnAboveGrid(int&outHeight) const {outHeight = BaseResidenceHeight; return true;}
 
 		#ifdef HAS_WINDOW
 			virtual void		DescribeType(BaseCommand::Label&outResult, UINT32 descFlags) override;
@@ -367,6 +364,7 @@ namespace Objects
 
 	class SkyHub : public SatelliteTemplate<SkyHub>, public MobileEntityProducer
 	{
+		static Buffer0<ConstName>	supportsProduction;
 	protected:
 		typedef SatelliteTemplate<SkyHub>	Super;
 		friend class Super;
@@ -381,6 +379,7 @@ namespace Objects
 		static int2				AllocateProductionSlot();
 
 		static void				RegisterProduction(const PWorldEntity&);
+		virtual bool			CanProduce(const PWorldEntity&e) const override {return supportsProduction.Contains(e->GetCTypeName());}
 
 		#ifdef HAS_WINDOW
 
@@ -446,8 +445,8 @@ namespace Objects
 		#ifndef NO_HIBERNATION
 			virtual int			GetUplinkTraffic() const override {return 10;}
 		#endif
-		virtual void			OnDestroy(RemovalType t, float atTime) override {SyncTime(atTime); Super::OnDestroy(t,atTime); LoseGroundConnection();}
-		virtual void			OnConstructionFinished(float atTime) override;
+		virtual void			OnDestroy(RemovalType t, float&atTime) override {SyncTime(atTime); Super::OnDestroy(t,atTime); LoseGroundConnection();}
+		virtual void			OnConstructionFinished(float&atTime) override;
 		virtual bool			AwaitsUserInteraction() const override {return MobileEntityProducer::AwaitsUserInteraction();}
 		#ifdef HAS_WINDOW
 			virtual void		VisitAllCommands(FCommandVisitor visitor,bool force) override;
@@ -579,4 +578,5 @@ namespace Objects
 
 }
 
+#endif
 #endif

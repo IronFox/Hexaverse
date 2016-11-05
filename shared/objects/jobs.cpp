@@ -32,6 +32,10 @@ namespace Objects
 			resourceCostLeft = std::max(cost,0);
 		}
 
+		BYTE					BaseJob::GetConstructionActionCostPerRound(const MobileEntity&v) const
+		{
+			return MobileEntity::MaxConstructionActionLeft >> v.GetConstructionAcceleration(GetOperationAffinity());
+		}
 
 
 		#ifndef CLIENT
@@ -56,6 +60,11 @@ namespace Objects
 				if (storage < withdrawNow)
 				{
 					LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient "+String(this->GetConsumedResourceType().ToString())+" available ("+String(storage)+"/"+String(withdrawNow)+"). Delaying operation.");
+
+					v.motionTime += timeEpsilon;
+					ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.motionTime);
+					v.motionTime += timeEpsilon;
+
 					return JobDelayed;
 				}
 
@@ -69,6 +78,11 @@ namespace Objects
 					if (!CanWithdrawFromStorage(v,this->GetConsumedResourceType(),resourceCostLeft))
 					{
 						LogEvent(EventClass::Preset::operationAborted,&v,"Insufficient "+String(this->GetConsumedResourceType().ToString())+" available (need "+String(withdrawNow)+"). Aborting operation.");
+
+						v.motionTime += timeEpsilon;
+						ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.motionTime);
+						v.motionTime += timeEpsilon;
+
 						return TerminalFailure;
 					}
 				#endif
@@ -83,8 +97,11 @@ namespace Objects
 
 				resourceCostLeft = 0;
 
-				if (jobAutoCompletion == BaseJob::Autocomplete::Always || 
-					(jobAutoCompletion == BaseJob::Autocomplete::IfSatellite && v.IsSatellite())
+				if (jobAutoCompletion == BaseJob::Autocomplete::Always 
+					#ifndef NO_SATELLITES
+						|| 
+						(jobAutoCompletion == BaseJob::Autocomplete::IfSatellite && v.IsSatellite())
+					#endif
 					)
 				{
 					continue_t rs = Finish(v,focus);
@@ -102,7 +119,7 @@ namespace Objects
 				}
 				else
 				{
-					v.unstable = true;
+					//v.unstable = true;
 					v.completeOnMove = shared_from_this();
 				}
 				return JobDone;
@@ -746,7 +763,9 @@ namespace Objects
 			Remove(v.shared_from_this(),Objects::RemovalType::ControlledExplosion,v.motionTime,true);
 			v.motionTime += timeEpsilon;
 
-			Explode(PWorldEntity(),v.location,0.f,Grid::HCellIdI(Grid::low.grid.GetCell(v.location.stackID).higherEquivalent,v.location.height),v.GetWorldPosition(),radius,damageLevel,doomsday,v.motionTime);
+	
+
+			Explode(ApplicationInterface::TAttack(),Grid::HCellIdI(Grid::low.grid.GetCell(v.location.stackID).higherEquivalent,v.location.height),v.GetWorldPosition(),radius,damageLevel,doomsday,v.motionTime);
 
 			return TerminalFailureVehicleDestroyed;
 		}
@@ -854,9 +873,19 @@ namespace Objects
 			if (!canRepair)
 			{
 				LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to repair '"+target->GetNiceName()+"'");
+
+				v.motionTime += timeEpsilon;
+				ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.motionTime);
+				v.motionTime += timeEpsilon;
+
 				return JobDelayed;
 			}
 			LogEvent(EventClass::Preset::commandRejected,&v,this->GetName()+ ": Insufficient "+String(this->GetConsumedResourceType().ToString())+" in storage to fully repair '"+target->GetNiceName()+"'. Repairing "+String(canRepair)+" health...");
+
+			v.motionTime += timeEpsilon;
+			ApplicationInterface::SignalOperationLacksResources(v,this->GetConsumedResourceType(),v.motionTime);
+			v.motionTime += timeEpsilon;
+
 			target->health += canRepair;
 			target->RegisterChange(WorldEntity::HealthChanged,v.motionTime);
 
@@ -957,7 +986,7 @@ namespace Objects
 		/*virtual override*/	bool			Construct::Deserialize(IReadStream&inStream, serial_size_t fixedSize)
 		{
 			String whatName;
-			if (globalVersionOfCurrentFile >= FileVersions::HasUUIDInConstructionJobs)
+			if (ApplicationInterface::globalVersionOfCurrentFile >= ApplicationInterface::FileVersions::HasUUIDInConstructionJobs)
 			{
 				if (!inStream.Read(useID.bytes,(serial_size_t)useID.NumBytes))
 					return false;
@@ -1072,7 +1101,7 @@ namespace Objects
 				//	h++;
 
 				//	Array<Grid::HCellIdI> selection(1 + cnt);
-				//	selection.first() = ground;
+				//	selection.First() = ground;
 				//	for (int i = 1; i <= cnt; i++)
 				//		selection[i] = ground - i;
 				//	auto job = new Objects::Job::AlterTerrain(v,MobileEntity::BuildBlockMode,selection);
@@ -1217,7 +1246,7 @@ namespace Objects
 				return false;
 			mode = (CursorMode)i16;
 
-			if (globalVersionOfCurrentFile == 1035)
+			if (ApplicationInterface::globalVersionOfCurrentFile == 1035)
 			{
 				bool dead = false;
 				bool success = inStream.ReadPrimitive(lastLocation) && inStream.ReadPrimitive(first)
@@ -1226,7 +1255,7 @@ namespace Objects
 //						deadBecause = dead ? "imported" : "";
 				return success;
 			}
-			if (globalVersionOfCurrentFile ==1036)
+			if (ApplicationInterface::globalVersionOfCurrentFile ==1036)
 			{
 				String dummy;
 				return inStream.ReadPrimitive(lastLocation) && inStream.ReadPrimitive(first)
@@ -1488,7 +1517,7 @@ namespace Objects
 			const Grid::WorldData&world = v.owner->currentState;
 			Grid::LCellIdI destination = _destination;
 			if (mode != CursorMode::BuildBridgeMode)
-				while (!world.LowCellIsClear(destination))
+				while (!world.LowCellIsClearIgnoreStructure(destination))
 					destination++;
 			else
 				if (v.IsVehicle() && !((Vehicle&)v).CanStandOn(world,destination,false,true))
@@ -1619,7 +1648,10 @@ namespace Objects
 						if (c != v.location && !DoneHere(Grid::actualWorld,c, next == path.end() ? c : *next))
 							break;
 					}
-
+					if (c == v.location)
+					{
+						return CannotStartAbort;
+					}
 					if (!v.PlotFrontCourse(c,false))
 					{
 						//bool abort = true;

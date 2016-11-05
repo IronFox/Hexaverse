@@ -12,7 +12,7 @@
 
 namespace FileIO
 {
-	UINT32			lastSaveRound = 0;
+	RuntimeConfig::RoundNumber			lastSaveRound;
 	namespace Config
 	{
 		int			saveEveryNRounds = 10;
@@ -30,13 +30,13 @@ namespace FileIO
 
 	void CheckAutoSave(bool tempIncrementRoundNumber)
 	{
-		if (Config::saveEveryNRounds > 0 && !((RuntimeConfig::roundNumber+1)%FileIO::Config::saveEveryNRounds))
+		if (Config::saveEveryNRounds > 0 && !((RuntimeConfig::roundNumber.main+1)%FileIO::Config::saveEveryNRounds))
 		{
 			if (tempIncrementRoundNumber)
-				RuntimeConfig::roundNumber++;
+				RuntimeConfig::roundNumber.main++;
 			FileIO::AutoSave();
 			if (tempIncrementRoundNumber)
-				RuntimeConfig::roundNumber--;
+				RuntimeConfig::roundNumber.main--;
 		}
 	}
 
@@ -164,6 +164,7 @@ namespace FileIO
 								worldContentTypeCount("WCTC"),
 								worldID("WDID"),
 								factionWorldTypeChunk("WTCK"),
+								terrainExponent("TREX"),
 
 								zzzz("zzzz")	//no use, just so that every line can have a comma at the end
 								;
@@ -265,6 +266,7 @@ namespace FileIO
 
 	static void Import(Riff::Chunk*parent, Objects::WorldEntity&e, const GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>&ownerMap)
 	{
+		using namespace ApplicationInterface;
 		Riff::Chunk*source = parent->FindFirst(RID::entity);
 		ASSERT_NOT_NULL__(source);
 
@@ -577,8 +579,9 @@ namespace FileIO
 		}
 		else
 		{
-			Objects::PSatellite proto = Objects::GetSatellitePrototypeByName(helper.baseName);
+			Objects::PWorldEntity proto = Objects::GetNonVehiclePrototypeByName(helper.baseName);
 			ASSERT1__(proto,helper.baseName);
+			ASSERT1__(proto->IsMobile(),proto->GetTypeName());
 			item.producing = To<Objects::MobileEntity>::Cast(proto->CreateNewInstance(owner,Grid::LCellIdI(0,0),0));
 		}
 		item.id = helper.id;
@@ -657,7 +660,7 @@ namespace FileIO
 
 	static void Export(Riff::Chunk*parent, Objects::MobileEntity&v, GenericHashSet<Objects::PFaction,SharedPtrHash>&factions)
 	{
-		Objects::PHangarStructure store = v.storedIn.lock();
+		Objects::PHangar store = v.storedIn.lock();
 		if (store)
 		{
 			v.location = store->ToEntity().location;
@@ -852,7 +855,7 @@ namespace FileIO
 			{
 				UINT32 data[2];
 				data[0] = (UINT32)n->resistence;
-				data[1] = n->lastSpawnRound;
+				data[1] = n->lastSpawnRound.main;
 				parent->AppendBlock(RID::nexusData)->SetData(data,sizeof(data));
 			}
 
@@ -863,6 +866,7 @@ namespace FileIO
 	
 	static Objects::PStructure Import(Riff::Chunk*parent, GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>&factions)
 	{
+		using namespace ApplicationInterface;
 		String typeName;
 		Import(parent,RID::structureType,typeName);
 		Grid::LCellIdI location;
@@ -909,14 +913,20 @@ namespace FileIO
 			Import(parent,resources);
 			w->SetResourceStorage(resources);
 			Riff::Chunk*enabled = parent->FindFirst(RID::structureEnabled);
-			ASSERT_NOT_NULL__(enabled);
-			bool isEnabled = *(const bool*)enabled->pointer();
+			if (enabled)
 			{
-				float t =0;
-				if (isEnabled)
-					w->SetEnabled(isEnabled,t,false,Objects::WorkingStructure::ForceEnable,false);
-				else
-					w->SetEnabledOverride(false);
+				bool isEnabled = *(const bool*)enabled->pointer();
+				{
+					float t =0;
+					if (isEnabled)
+						w->SetEnabled(isEnabled,t,false,Objects::WorkingStructure::ForceEnable,false);
+					else
+						w->SetEnabledOverride(false);
+				}
+			}
+			else
+			{
+				LogEvent(EventClass::Preset::fileError,"Warning: Unable to find 'enabled' chunk for "+rs->GetName()+". Cannot determine enabled-state");
 			}
 			Objects::MobileEntityProducer*p = dynamic_cast<Objects::MobileEntityProducer*>(w);
 	//		Objects::MobileEntityProducer*p = w->ToProducer();
@@ -925,13 +935,13 @@ namespace FileIO
 			{
 				Import(parent,*p,rs);
 			}
-			Objects::Tower*t = dynamic_cast<Objects::Tower*>(rs.get());
-			if (t)
+			Objects::Tower*tower = dynamic_cast<Objects::Tower*>(rs.get());
+			if (tower)
 			{
 				Riff::Chunk*towerActionChunk = parent->FindFirst(RID::towerActionLeft);
 				ASSERT_NOT_NULL__(towerActionChunk);
-				ASSERT_EQUAL__(towerActionChunk->size(),sizeof(t->attackActionLeft));
-				towerActionChunk->Get(&(t->attackActionLeft));
+				ASSERT_EQUAL__(towerActionChunk->size(),sizeof(tower->attackActionLeft));
+				towerActionChunk->Get(&(tower->attackActionLeft));
 				Riff::Chunk*list = parent->FindFirst(RIFF_LIST);
 				if (list)
 				{
@@ -939,7 +949,7 @@ namespace FileIO
 					if (entry)
 						do
 						{
-							Import(entry,t->attackQueue.Push());
+							Import(entry,tower->attackQueue.Push());
 						}
 						while (entry = list->Next());
 				}
@@ -1053,13 +1063,13 @@ namespace FileIO
 						failed = true;
 					}
 					else
-						if (vid > SupportedFileVersion)
+						if (vid > ApplicationInterface::SupportedFileVersion)
 						{
-							LogEvent(EventClass::Preset::error,"Unsupported version: "+String(vid)+". Versions are supported up to "+String(SupportedFileVersion));
+							LogEvent(EventClass::Preset::error,"Unsupported version: "+String(vid)+". Versions are supported up to "+String(ApplicationInterface::SupportedFileVersion));
 							failed = true;
 						}
 						else
-							globalVersionOfCurrentFile = vid;
+							ApplicationInterface::globalVersionOfCurrentFile = vid;
 				}
 
 			}
@@ -1068,6 +1078,13 @@ namespace FileIO
 			if (contentTypeCount != Grid::Content::NumberOfPossibilities)
 			{
 				LogEvent(EventClass::Preset::error,"Grid content type count extracted from file is "+String(contentTypeCount)+". Local count is "+String(Grid::Content::NumberOfPossibilities));
+				failed = true;
+			}
+			UINT32 exponent = 6;
+			GetOptionalPOD(&file, RID::terrainExponent,exponent,6U);
+			if (exponent != Grid::HighExponent)
+			{
+				LogEvent(EventClass::Preset::error,"Grid exponent extracted from file is "+String(exponent)+". Local exponent is "+String(Grid::HighExponent));
 				failed = true;
 			}
 		}
@@ -1110,7 +1127,7 @@ namespace FileIO
 								Game::Config::Nexus::enableAI = list->FindFirst(RID::nexusAI) != nullptr;
 								RuntimeConfig::empZones = false;
 
-								if (globalVersionOfCurrentFile < FileVersions::FirstVersionWithVariables)
+								if (ApplicationInterface::globalVersionOfCurrentFile < ApplicationInterface::FileVersions::FirstVersionWithVariables)
 								{
 									GetPOD(list,RID::closedGame,Game::Config::closedGame);
 									GetOptionalPOD(list,RID::nexusBases,Game::Config::Nexus::haveBases,false);
@@ -1138,7 +1155,7 @@ namespace FileIO
 										GetOptionalPOD(list,RID::doomsdayWeapons,v,(UINT8)0);
 										RuntimeConfig::doomsdayWeapons.Load(v);
 									}
-									GetOptionalPOD(list,RID::factionSupportFlags,Game::Config::factionSupportFlags,Game::Config::AllFactionSupportFlags);
+									GetOptionalPOD(list,RID::factionSupportFlags,Game::Config::factionSupportFlags,Protocol::GameFlag::AllFactionSupport);
 								}
 								else
 								{
@@ -1205,13 +1222,20 @@ namespace FileIO
 													Import(child,RID::vehicleTurret,turret);
 												}
 												Objects::PMobileEntity v = Objects::AssembleMobileEntity(Objects::PFaction(),TUniqueID(),Grid::LCellIdI(0,0),base,turret);
+												if (!v)
+												{
+													LogEvent(EventSignificance::NonFatalError,"Unable to assemble mobile entity ("+base+","+turret+")");
+												}
 
-												bool doInsert = Import(child,vehicleChunk,v,factionMap);
+												bool doInsert = v && Import(child,vehicleChunk,v,factionMap);
 												#if defined CHEAT_FULL_STORAGE && !defined ONE_COMPOUND_PER_FACTION
 													 v->currentStorage = v->GetMaxStorageCapacity();
 												#endif
 												if (doInsert)
-													Objects::InsertConstructed(v,0,true,false);
+												{
+													float t =0;
+													Objects::InsertConstructed(v,t,true,false);
+												}
 												else
 												{
 													//Objects::storedVehicles << v;
@@ -1225,7 +1249,10 @@ namespace FileIO
 												//child->FindFirst(RID::vehiclePlant),child->FindFirst(RID::towerActionLeft)
 												Objects::PStructure s = Import(child,factionMap);
 												if (s)
-													Objects::InsertConstructed(s,0,false,false);
+												{
+													float t =0;
+													Objects::InsertConstructed(s,t,false,false);
+												}
 											}
 										}
 										else
@@ -1296,7 +1323,7 @@ namespace FileIO
 								else
 									faction->name = isNexus ? "<Nexus>" : faction->id.ToString();
 							
-								if (globalVersionOfCurrentFile >= 1038)
+								if (ApplicationInterface::globalVersionOfCurrentFile >= 1038)
 								{
 									Riff::Chunk*markerChunk = list->FindFirst(RID::factionMarkers);
 									if (markerChunk)
@@ -1381,7 +1408,7 @@ namespace FileIO
 
 		for (const Objects::PMobileEntity&v : insertIntoHangar)
 		{
-			Objects::PHangarStructure s = To<Objects::HangarStructure>::DynamicCast(Objects::GetEntity(v->location));
+			Objects::PHangar s = To<Objects::Hangar>::DynamicCast(Objects::GetEntity(v->location));
 			ASSERT2__(s,v->GetName(),v->location.ToString());
 			s->StoreLocallyFromImport(v);
 		}
@@ -1418,7 +1445,7 @@ namespace FileIO
 
 		Reflection::LoadOverrides();
 
-		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+World::worldID.ToString()+" in round "+String(RuntimeConfig::roundNumber));
+		LogEvent(EventSignificance::Uncommon,"Restored world '"+World::worldID.ToNiceString()+"'/"+World::worldID.ToString()+" in round "+RuntimeConfig::roundNumber.ToString());
 		RefreshWindowTitle();
 
 		RuntimeConfig::loadingPhase = false;
@@ -1476,9 +1503,10 @@ namespace FileIO
 		Timer::Time t0 = timer.Now();
 
 		Riff::Container container;
-		UINT32 vid = SupportedFileVersion;
+		UINT32 vid = ApplicationInterface::SupportedFileVersion;
 		container.AppendBlock(RID::fileVersion,&vid,sizeof(vid));
 		container.AppendBlock(RID::worldContentTypeCount)->SetPODData((UINT32)Grid::Content::NumberOfPossibilities);
+		container.AppendBlock(RID::terrainExponent)->SetPODData((UINT32)Grid::HighExponent);
 
 
 

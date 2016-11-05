@@ -32,8 +32,6 @@ namespace World
 		void			HandleSessionClosure()
 		{
 			terrainChanged = false;
-			empZonesLocked = 0;
-			unlockedEMPZones = 0xFFFF;
 			worldID.Generate();
 		}
 
@@ -314,9 +312,11 @@ namespace World
 			float t = timer.GetSecondsSince(t0);
 			LogEvent(EventSignificance::PerformanceMeasurement,"Time needed to process water: "+String(t));
 
-
 			for (const auto&e:waste)
-				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,0,false);
+			{
+				float at = 0;
+				Objects::Remove(e,Objects::RemovalType::UncontrolledExplosion,at,false);
+			}
 			waste.Clear();
 		}
 
@@ -325,9 +325,11 @@ namespace World
 	void			BuildConfiguredWorld(Random&random)
 	{
 		Grid::currentPlanetConfig.RandomizeSeeds(random);
-		Grid::currentPlanetConfig.RandomizeSun(random);
-		Grid::BuildWorld(Grid::currentPlanetConfig,Config::worldDiscovery);
-		Objects::Faction::nexus->currentState = Grid::initialWorld;
+		Grid::actualWorld.BuildWorld(Grid::currentPlanetConfig);
+		Grid::actualWorld.ExportDiscovered(Grid::initialWorld, Config::worldDiscovery);
+		Grid::Resource::FillAll(random);
+		if (Objects::Faction::nexus)
+			Objects::Faction::nexus->currentState = Grid::initialWorld;
 
 		if (RuntimeConfig::gameGoal == Game::Config::Goal::ConquerNexus)
 		{
@@ -344,6 +346,17 @@ namespace World
 						Game::SpawnNexusBaseAtPoleWithPort(pole);
 					}
 		}
+		for (int i = 0; i < BaseGrid::NumFamilies; i++)
+		{
+			Grid::high.family[i].SetOutdated(0);
+			Grid::low.family[i].SetOutdated(0);
+		}
+	}
+
+	void			BuildConfiguredWorld(UINT32 seed)
+	{
+		Random random(seed);
+		BuildConfiguredWorld(random);
 	}
 
 
@@ -474,7 +487,7 @@ namespace World
 			int unlocked = 0;
 			for (index_t i = 0; i < numZones; i++)
 			{
-				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked))
+				if (Game::Config::Nexus::haveBases && BaseGrid::IsIsolatedCorner(unlocked) && RuntimeConfig::gameGoal == RuntimeConfig::GameGoal::ConquerNexus)
 				{
 					unlocked++;
 				}

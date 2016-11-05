@@ -3,6 +3,7 @@
 #include "visualSelection.h"
 #include "visualChoices.h"
 #include "interface.h"
+#include "gridAndChoices.h"
 
 namespace Objects
 {
@@ -10,10 +11,11 @@ namespace Objects
 	PVehicle				selectedVehicle;
 	PWorldEntity			selectedEntity;
 	PMobileEntity			selectedMobileEntity;
+	PMobileEntity			deployingMobileEntity;
 
 	void					Select(const PWorldEntity&entity, bool controlEnabled)
 	{
-			
+		deployingMobileEntity.reset();
 		movementChoices.Clear();
 //		bool changed = selectedEntity != entity;
 		PWorldEntity e = selectedEntity;
@@ -30,7 +32,7 @@ namespace Objects
 				entity->OnSelect();
 		}
 			
-		OnSelectionChange(e == entity);
+		ApplicationInterface::OnSelectionChange(e == entity);
 		UpdateChoices(controlEnabled);
 	}
 
@@ -39,16 +41,18 @@ namespace Objects
 
 	void					Deselect(bool controlEnabled)
 	{
+		deployingMobileEntity.reset();
 		movementChoices.Clear();
 		PWorldEntity e = selectedEntity;
 		selectedEntity.reset();	
 		selectedVehicle.reset();
+		selectedMobileEntity.reset();
 		activeCursorMode = CursorMode::Idle;
 
 		if (e)
 			e->OnDeselect();
 		RefreshCommands(controlEnabled);
-		OnSelectionChange(!e);
+		ApplicationInterface::OnSelectionChange(!e);
 	}
 }
 

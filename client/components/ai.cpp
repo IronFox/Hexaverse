@@ -1,14 +1,15 @@
 #include <global_root.h>
 #include "ai.h"
+#include <objects/interface.h>
 
-void	SignalDropAllTasks(const Objects::PWorldEntity&v);
-bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode);
-void	SignalRemoval(const Objects::PWorldEntity&entity);
-void	SignalMarkerCreation(Protocol::Marker&marker);
-void	SignalMarkerDeletion(TUniqueID markerID);
-void	SignalMarkerTouch(Objects::Marker&marker);
+namespace LocalApplicationInterface
+{
+	bool	DirectTo(const Objects::PWorldEntity&v, const ArrayRef<Grid::LCellIdI>&targets, bool detailedPath, bool leftClick, Objects::Vehicle::mode_t mode);
+	void	SignalMarkerCreation(Protocol::Marker&marker);
+	void	SignalMarkerDeletion(TUniqueID markerID);
+	void	SignalMarkerTouch(Objects::Marker&marker);
+}
 
-void	SignalRoundEnd();
 
 namespace AI
 {
@@ -154,7 +155,7 @@ namespace AI
 		static Buffer0<Grid::LCellIdI> path;
 		path.Clear();
 		AssemblePath(mapper, current,path);
-		DirectTo(v,path.ToRef(),true,false,Objects::CursorMode::Idle);
+		LocalApplicationInterface::DirectTo(v,path.ToRef(),true,false,Objects::CursorMode::Idle);
 	}
 
 
@@ -191,12 +192,12 @@ namespace AI
 		//float distance = Vec::quadraticDistance(source.system.w.xyz,candidate.system.w.xyz);
 		//const float range = source.GetAttackRange();
 		Grid::LCellIdI target;
-		if (source.ExtCanHit(source.owner, source.location,source.base->height,candidate.location,target))
+		if (source.ExtCanHit(source.owner, Objects::TrajectoryEndPoint( source.location,source.base->height),Objects::TrajectoryEndPoint( candidate.location,0 ),target))
 		{
 			const float explosionRadius = source.turret->GetExplosionRadius(source.owner);
 
 			TVec3<> detonationAt;
-			Objects::TurretTrajectory rs = source.TraceTrajectory(Grid::actualWorld,target,detonationAt);
+			Objects::TurretTrajectory rs = source.TraceTrajectory(Objects::TrajectoryEndPoint( target),detonationAt);
 			LogEvent(EventSignificance::Debug,&source,"Checking possible attack trajectory to "+candidate.GetName()+", attacking "+target.ToString()+", detonating at "+Vec::toString(detonationAt)+": "+rs.ToString());
 
 			if (rs == Objects::TurretTrajectory::InvalidTrajectory)
@@ -271,14 +272,14 @@ namespace AI
 			if (attacker && !v->HasAmmoForShot())
 			{
 				LogEvent(EventSignificance::Debug,v.get(),"AI: Out of ammo: destroying vehicle");
-				SignalRemoval(v);
+				ApplicationInterface::SignalRemoval(v);
 				return;
 			}
 		#endif
 		//if (v->tasks.IsNotEmpty())
 		{
 			//LogEvent(EventSignificance::Debug,v.get(),"AI: dropping tasks");
-			SignalDropAllTasks(v);
+			ApplicationInterface::SignalDropAllTasks(v);
 		}
 
 
@@ -291,7 +292,7 @@ namespace AI
 				float distance = Vec::quadraticDistance(Grid::ToWorld(_m->location),v->system.w.xyz);
 				if (distance < 25.f)
 				{
-					SignalMarkerTouch(*_m);
+					LocalApplicationInterface::SignalMarkerTouch(*_m);
 					haveMarker = true;
 //					break;
 				}
@@ -316,7 +317,7 @@ namespace AI
 			tempMarkers << v->system.w.xyz;
 			static_assert(Objects::Marker::Type::Visited == 2, "Please update marker logic");
 			marker.data.Set2();
-			SignalMarkerCreation(marker);
+			LocalApplicationInterface::SignalMarkerCreation(marker);
 		}
 
 
@@ -383,7 +384,7 @@ namespace AI
 			{
 				targets[t-attackTarget.pointer()] = t->target;
 			}
-			DirectTo(v,targets,false,true, Objects::CursorMode::AttackMode);
+			LocalApplicationInterface::DirectTo(v,targets,false,true, Objects::CursorMode::AttackMode);
 
 			if (attackTarget.IsNotEmpty() && !v->base->ignoresVehicleAttacks)
 				return;
@@ -405,7 +406,7 @@ namespace AI
 			currentIsOverconfident = proximityPresence > 5;
 			if (!v->turret->CanAttack() && radarProximity > 1 && random.getFloat() < 0.3f)
 			{
-				SignalRemoval(v);
+				ApplicationInterface::SignalRemoval(v);
 				return;
 			}
 		}
@@ -441,7 +442,7 @@ namespace AI
 				float badWeight = 0;
 				Objects::ForeachWorldEntity([&goodWeight,&badWeight,reference](const Objects::PWorldEntity&e)
 				{
-					if (e->isOwnedByMe || e->IsSatellite())
+					if (e->isOwnedByMe IF_SATELLITES( || e->IsSatellite() ))
 					{
 						//if (distance < 16.f)
 						//	badWeight += 100.f / (1.f + distance);	//repell close vehicles a bit
@@ -565,7 +566,7 @@ namespace AI
 					if (m.age >= 10 && m.visualization && m.visualization->IsMobile())	//after 10 rounds, assume vehicle has moved
 					{
 						LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" since hostile vehicle markers are considered outdated after 10 rounds (age="+String(m.age)+")");
-						SignalMarkerDeletion(m.id);
+						LocalApplicationInterface::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				break;
@@ -576,7 +577,7 @@ namespace AI
 					if (estimation.damageThreat > 0)	//knowing cause, dropping ghost
 					{
 						LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+" because cause of destruction is considered known");
-						SignalMarkerDeletion(m.id);
+						LocalApplicationInterface::SignalMarkerDeletion(m.id);
 						i--;
 					}
 				}
@@ -631,14 +632,14 @@ namespace AI
 				{
 					LogEvent(EventSignificance::Debug,nullptr,"AI: Deleting marker "+m.GetName()+". Reached end-of-life after 100 rounds");
 
-					SignalMarkerDeletion(m.id);
+					LocalApplicationInterface::SignalMarkerDeletion(m.id);
 					i--;
 				}
 			}
 
 			ASSERT__(done);
 			LogEvent(EventSignificance::Debug,nullptr,"AI: all done. requesting new round");
-			SignalRoundEnd();
+			ApplicationInterface::SignalRoundEnd();
 			
 		}
 

@@ -5,6 +5,7 @@
 #include "network.h"
 #include "tutorial.h"
 #include "lineRenderer.h"
+#include <objects/structure.h>
 
 
 namespace World
@@ -190,11 +191,26 @@ namespace World
 		if (allowRecompilation)
 		{
 			if (Grid::actualWorld.lightingOutdated)
+			{
 				Grid::actualWorld.UpdateLighting();
+				if (!Grid::actualWorld.lightingOutdated)
+					Grid::SetAllFamiliesOutdated();
+			}
+			if (Grid::actualWorld.structureChanged)
+			{
+				Grid::actualWorld.structureChanged = false;
+				for (const auto&s : Objects::structures)
+				{
+					if (Grid::high.family[Grid::low.grid.GetCell(s->location.stackID).family].normal.outdated)
+					{
+						s->changed = true;
+						Objects::Structure::anyChanged = true;
+					}
+				}
+			}
 
 			BYTE familiesRebuilt = 0;
 			Timer::Time t0 = timer.Now();
-
 
 			for (BYTE k = 0; k < BaseGrid::NumFamilies; k++)
 			{

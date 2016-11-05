@@ -24,11 +24,6 @@ namespace Game
 	//extern Grid::TSharedPlanetConfig	persistentPlanetInfo;
 
 
-	/**
-	Signals that a new faction has been created or an existing one has been removed.
-	Alters @a mostFactionsAlive. Does not do anything else
-	*/
-	void				SignalFactionsChanged();
 
 	namespace Config
 	{
@@ -40,10 +35,6 @@ namespace Game
 						exposeActionLeftToHostileFactions/* = true*/;
 
 		extern UINT32	factionSupportFlags;
-		static const UINT32 AllFactionSupportFlags = 
-								Protocol::GameFlag::SupportSpectatorFactions
-								| Protocol::GameFlag::SupportRegularFactions
-								;
 		
 		typedef RuntimeConfig::GameGoal	Goal;
 
@@ -68,6 +59,9 @@ namespace Game
 
 		inline String	FactionSupportFlagString()
 		{
+			if (factionSupportFlags == Protocol::GameFlag::AllFactionSupport)
+				return "All";
+
 			String rs;
 			CheckFactionSupportFlag(rs,Protocol::GameFlag::SupportSpectatorFactions,"Spectator");
 			CheckFactionSupportFlag(rs,Protocol::GameFlag::SupportRegularFactions,"Regular");
@@ -75,15 +69,18 @@ namespace Game
 			return rs;
 		}
 
-		inline bool		SetFactionSupportFlagString(const String&supp)
+		inline void		SetFactionSupportFlagString(const String&supp)
 		{
 			factionSupportFlags = 0;
 			Array<String>	segs;
 			explode(',',supp,segs);
-			bool allGood = true;
+			//bool allGood = true;
 			foreach (segs,seg)
 			{
 				seg->trimThis();
+				if (*seg == "All")
+					factionSupportFlags |= Protocol::GameFlag::AllFactionSupport;
+				else
 				if (*seg == "Spectator")
 					factionSupportFlags |= Protocol::GameFlag::SupportSpectatorFactions;
 				else
@@ -92,10 +89,11 @@ namespace Game
 				else
 				{
 					LogEvent(EventClass::Preset::configurationError,nullptr,"Warning: Unsupported faction type for this build: '"+*seg+"'. Ignoring");
-					allGood = false;
+					//allGood = false;
 				}
 			}
-			return allGood;
+			//no longer returning success, or failure, since different branches may allow different factions. So a warning is valid, but no handling of this case
+			//return allGood;
 		}
 
 
@@ -109,8 +107,9 @@ namespace Game
 
 		namespace Nexus
 		{
-			extern bool		haveBases/* = false*/,
-							haveSatellitesAtopBases/* = true*/;
+			extern bool		haveBases/* = false*/
+							IF_SATELLITES_P(,haveSatellitesAtopBases/* = true*/)
+							;
 			extern bool		startBases/* = false*/,
 							enableAI/* = false*/;
 			extern float	threatEstimationFactor/* = 1.f*/;

@@ -72,6 +72,15 @@ namespace Objects
 
 	namespace Renderer
 	{
+		struct SmokeTrailIndex
+		{
+			index_t	trailIndex = InvalidIndex;
+			bool	isOrbital = false;
+
+			/**/	SmokeTrailIndex() = default;
+			/**/	SmokeTrailIndex(index_t trailIndex, bool isOrbital):trailIndex(trailIndex),isOrbital(isOrbital)	{}
+		};
+
 		extern Buffer0<PTurretBase>		animatedTurrets;
 		extern Buffer0<PWorldEntity>	attackers;	//!< everything that has a base and can attack goes in here
 		extern double					now; //double-precision seconds since program start. Updated during RefreshFactionColors()
@@ -108,7 +117,9 @@ namespace Objects
 		void	Render(Structure&s, float light);
 		void	Render(Structure&s);
 
-		void	Render(Satellite&s, float light);
+		#ifndef NO_SATELLITES
+			void	Render(Satellite&s, float light);
+		#endif
 
 		void	RenderSimple(WorldEntity&e, bool includeFoundationIfStructure=false);
 		void	RenderSimpleIdentity(WorldEntity&e, bool includeFoundationIfStructure=false);
@@ -158,7 +169,7 @@ namespace Objects
 		Renders translucent scene components (excluding progress bars).
 		Has no effect, if @a objectView is false
 		*/
-		void	RenderTranslucent();
+		void	RenderTranslucent(bool orbital);
 
 		/**
 		Renders light shafts for satellites, as well as less visible ones atop every significant world pole
@@ -198,18 +209,21 @@ namespace Objects
 		@param pulse Set true to let active entity colors pulse, false to use time-invariant colors
 		*/
 		void	RefreshFactionColors(bool pulse);
+		void	Flush();
+
 
 		/**
 		Registers a new smoke trail as created by a weapon discharge
 		@return Index to the newly created smoke trail. Valid until ClearSmokeTrails() is called.
 		*/
-		index_t	RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory);
+		SmokeTrailIndex	RegisterSmokeTrail(const Buffer0<TVec4<> >&trajectory, bool aboveGrid);
 
 		/**
 		Tints the specified smoke trail in pulsing red.
 		Passing an invalid index disables smoke trail highlighting.
 		*/
-		void	HighlightSmokeTrail(index_t smokeTrailIndex);
+		void	HighlightSmokeTrail(const SmokeTrailIndex&smokeTrailIndex);
+		void	ClearSmokeTrailHighlighting();
 
 		/**
 		Removes all active smoke trails. May trigger gradual fading in the future

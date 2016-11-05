@@ -4,17 +4,13 @@
 #include <math/vclasses.h>
 #include <container/buffer.h>
 #include "../config.h"
+#include "types.h"
 
 namespace Objects
 {
 	CONSTRUCT_ENUMERATION5(ResourceWithMunition, Fuel, Minerals, Energy, Munitions, Uranium);
 	CONSTRUCT_ENUMERATION4(ResourceWithoutMunition, Fuel, Minerals, Energy, Uranium);
 
-	#ifdef NO_MUNITION
-		typedef ResourceWithoutMunition	Resource;
-	#else
-		typedef ResourceWithMunition	Resource;
-	#endif
 
 
 	template <typename Resource>
@@ -236,6 +232,14 @@ namespace Objects
 			{
 				static const int compare0[Resource::NumberOfPossibilities] = {0};
 				return !VecUnroll<Resource::NumberOfPossibilities>::oneLess(level,compare0);
+			}
+
+			bool	AnyIsSet(const ResourceFlagSet&set) const
+			{
+				for (index_t i = 0; i < Resource::NumberOfPossibilities; i++)
+					if ((set & i) && level[i] != 0)
+						return true;
+				return false;
 			}
 		};
 

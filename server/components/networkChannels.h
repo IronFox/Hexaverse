@@ -28,8 +28,8 @@ namespace Receiver
 	void	IdentifyUser(NET(TUniqueID)&, TCP::Peer&peer);
 	void	SelectResearch(Protocol::SelectResearch&, TCP::Peer&peer);
 	void	ChatMessage(Package::NetString<256>&, TCP::Peer&peer);
-
-
+	void	PlanetConfig(Grid::ExtendedPlanetConfig&, TCP::Peer&peer);
+	void		GameConfig(Protocol::GameConfig&, TCP::Peer&peer);
 
 	/**
 	Handler function to process network signals (packages without payloads)
@@ -62,6 +62,8 @@ namespace Channels
 	//TCP::ObjectSender<Protocol::Result,Protocol::ChannelID::
 	static const UINT32 FactionLevel = (UINT32)Network::UserLevel::CommonFaction;
 	static const UINT32 PreFaction = (UINT32)Network::UserLevel::PreFaction;
+	static const UINT32 Spectator = (UINT32)Network::UserLevel::Spectator;
+	static const UINT32 Configurator = (UINT32)Network::UserLevel::PlanetConfigurator;
 
 	extern TCP::Channel<Protocol::Hello, 0,Protocol::ChannelID::Hello>											hello;
 	extern TCP::Channel<Protocol::EntityDirectCommand, FactionLevel, Protocol::ChannelID::EntityDirectCommand>	entityDirectCommand;
@@ -86,6 +88,8 @@ namespace Channels
 	extern TCP::Channel<NET(TUniqueID), FactionLevel, Protocol::ChannelID::IdentifyUser>						identifyUserRecv;
 	extern TCP::Channel<Protocol::SelectResearch, FactionLevel, Protocol::ChannelID::SelectResearch>			selectResearch;
 	extern TCP::Channel<Package::NetString<256>, FactionLevel, Protocol::ChannelID::ChatMessage>				chatMessage;
+	extern TCP::Channel<Grid::ExtendedPlanetConfig, Configurator, Protocol::ChannelID::PlanetConfig>			planetConfig;
+	extern TCP::Channel<Protocol::GameConfig, Configurator, Protocol::ChannelID::GameConfig>					gameConfig;
 
 	extern TCP::ObjectSender<Protocol::ClientFactionResponse, Protocol::ChannelID::ClientFaction>				clientFactionResponse;
 	extern TCP::ObjectSender<Protocol::Marker, Protocol::ChannelID::MarkerCreationFailedLimitReached>			markerCreationFailedLimitReached;
@@ -118,6 +122,7 @@ namespace Channels
 		extern TCP::ObjectSender<NET(UINT32), Protocol::ChannelID::UplinkBandwidth>						uplinkBandwidth;
 	#endif
 	extern TCP::ObjectSender<Protocol::UnitLimits,Protocol::ChannelID::UnitLimits>						unitLimits;
+	extern TCP::ObjectSender<Protocol::OperationLacksResources,Protocol::ChannelID::OperationLacksResources>	operationLacksResources;
 
 //	Channel<class Object, unsigned MinUserLevel, UINT32 ChannelID>
 

@@ -6,6 +6,8 @@
 #include "grid.h"
 #include "stringTable.h"
 #include "logEvent.h"
+#include <general/random.h>
+#include <math/SimplexNoise.h>
 
 #ifdef HAS_WINDOW
 	#include "../client/ExtRenderer/DirectX11.h"
@@ -13,17 +15,23 @@
 
 
 
-static const float WorldScale = 40.f;
+static const constexpr float WorldScale = 40.f;
 
 namespace Grid
 {
+	
+
+
 	CONSTRUCT_ENUMERATION4(WorldDiscovery,
 		None,
-		Oceans,
+		Water,
 		Liquids,
 		FullTerrain
 	)
 
+	static const int BadHeight = 0x1FFFFFFF;	//keep equal to gridAndChoices.h Objects::badHeight
+
+	class ExtendedPlanetConfig;
 
 	#ifdef HAS_WINDOW
 		namespace DX11 = Engine::DX11;
@@ -39,9 +47,14 @@ namespace Grid
 								empZonesUnlocked;
 
 
-	static const float RawLayerHeight = 0.025f;
-	static const float VerticalScale = 0.7f * WorldScale;
-	static const float VerticalBase = WorldScale;
+	static const constexpr float RawLayerHeight = 0.025f;
+	#ifdef LOWER_RESOLUTION_PLANET
+		static const constexpr float UnitScale = 2.f;
+	#else
+		static const constexpr float UnitScale = 1.f;
+	#endif
+	static const constexpr float VerticalScale = 0.7f * UnitScale * WorldScale;
+	static const constexpr float VerticalBase = WorldScale;
 
 #ifdef GAME_BLOB_SYSTEM
 	Buffer<WorldData::Blob>	blobs;
@@ -92,14 +105,93 @@ namespace Grid
 
 	struct TSharedPlanetConfig;
 	#ifndef CLIENT
-		struct TExtendedPlanetConfig;
-		typedef TExtendedPlanetConfig	TPlanetConfig;
+		class ExtendedPlanetConfig;
+		typedef ExtendedPlanetConfig	TPlanetConfig;
 	#else
 		typedef TSharedPlanetConfig	TPlanetConfig;
 	#endif
 
 	extern TPlanetConfig	currentPlanetConfig;
 	
+
+
+	#ifdef HAS_WINDOW
+
+		struct TWeightedColor;
+
+		struct TVisibility
+		{
+			float value = 0.f;
+
+			/**/	TVisibility(float value):value(value)	{}
+		};
+
+
+		struct TBaseColor
+		{
+			float3	color;
+
+			/**/	TBaseColor() = default;
+			/**/	TBaseColor(const float3&c):color(c)	{}
+			/**/	TBaseColor(const TWeightedColor&c);
+
+			void	operator+=(const TBaseColor&c)
+			{
+				color += c.color;
+			}
+			void	operator*=(float fc)
+			{
+				color *= fc;
+			}
+		};
+
+		struct TWeightedColor : TBaseColor
+		{
+			typedef TBaseColor	Super;
+
+			float	weight=0.f;
+
+			/**/	TWeightedColor() = default;
+			/**/	TWeightedColor(const TBaseColor&c, float weight):Super(c),weight(weight)	{}
+
+			void	operator+=(const TWeightedColor&c)
+			{
+				Super::operator+=(c);
+				weight += c.weight;
+			}
+			void	operator*=(float fc)
+			{
+				Super::operator*=(fc);
+				weight *= fc;
+			}
+		};
+
+
+	
+		struct TLitColor : public TBaseColor
+		{
+			typedef TBaseColor	Super;
+
+			float	lightLevel=0.f;
+			bool	capped = false;
+			float	emp = 0.f;
+			float	visibility=0.f;
+
+			/**/	TLitColor() = default;
+			/**/	TLitColor(const TBaseColor&base, float lightLevel, float emp=0.f):Super(base),lightLevel(lightLevel),emp(emp)	{}
+			/**/	TLitColor(const TBaseColor&base, float lightLevel, float emp, const TVisibility&vis):Super(base),lightLevel(lightLevel),emp(emp),visibility(vis.value)	{}
+			/**/	TLitColor(const TWeightedColor&base, float lightLevel, float emp=0.f):Super(base),lightLevel(lightLevel),emp(emp)	{}
+			/**/	TLitColor(float lightLevel, float emp=0.f):lightLevel(lightLevel),emp(emp)	{}
+			/**/	TLitColor(const TVisibility&v):visibility(v.value)	{}
+			void	CompileFinalColor(TVec4<>&)	const;
+
+		private:
+			static void ApplyEMP(float intensity,TVec3<>&rs);
+			void	CapColor(TVec3<>&rs)	const;
+		};
+
+
+	#endif
 
 
 	class CellStack
@@ -169,10 +261,20 @@ namespace Grid
 			BYTE	structureCounter;	//number of structures (density) that occupy this block
 			#ifdef CLIENT
 				short	visible=0;	//indicates levels of visibility. should not fall below 0. might make it unsigned when i am convinced it works. values >= 1 indicate this cell is visible
+
+				#ifdef HAS_WINDOW
+					TVisibility	GetVisibility() const {return TVisibility(visible>0);}
+				#endif
+
 			#endif
 
 			/**/	CompactCell() :content(Content::Clear), structureCounter(0) {}
-			/**/	CompactCell(Content t) :content(t), structureCounter(0)	{}
+			/**/	CompactCell(Content t, short visibility) :content(t), structureCounter(0)
+			{
+			#ifdef CLIENT
+				visible = visibility;
+			#endif
+			}
 
 
 			#ifdef CLIENT
@@ -186,12 +288,12 @@ namespace Grid
 
 			void	GetDeltaFrom(const CompactCell&other, TTypeDelta&tout)	const
 			{
-				tout.newType = content != other.content ? content : 0;
+				tout.newType = content != other.content ? content+1 : 0;
 			}
 			void	GetDeltaFromAndUpdate(CompactCell&other, TTypeDelta&tout) const
 			{
 				GetDeltaFrom(other,tout);
-				other = *this;
+				other.content = this->content;
 			}
 
 
@@ -215,7 +317,7 @@ namespace Grid
 			{
 				if (tdelta.newType)
 				{
-					content = tdelta.newType;
+					content = tdelta.newType-1;
 					DBG_ASSERT_LESS__(content,Content::NumberOfPossibilities);
 					return true;
 				}
@@ -263,13 +365,13 @@ namespace Grid
 
 
 			#ifdef HAS_WINDOW
-			/**/	Cell() :CompactCell(Content::Clear), intLightLevel(255), submergence(0) {}
-			/**/	Cell(Content t, BYTE lightLevel) :CompactCell(t), intLightLevel(lightLevel), submergence(0)	{}
+			/**/	Cell() :CompactCell(Content::Clear,0), intLightLevel(255), submergence(0) {}
+			/**/	Cell(Content t, BYTE lightLevel, short visibility) :CompactCell(t,visibility), intLightLevel(lightLevel), submergence(0)	{}
 			#else
-			/**/	Cell() :CompactCell(Content::Clear) {}
-			/**/	Cell(Content t, BYTE /*lightLevel*/) :CompactCell(t)	{}
+			/**/	Cell() :CompactCell(Content::Clear,0) {}
+			/**/	Cell(Content t, BYTE /*lightLevel*/, short visibility) :CompactCell(t,visibility)	{}
 			#endif
-			void	SetToIfSolid(Content cnt)	{if (IsSolid()) content = cnt;}
+			void	SetToIfSolid(BYTE cnt)	{if (IsSolid()) content = cnt;}
 			bool	IsWater() const { return content == Content::Water; }
 			bool	IsTechnite() const {return content == Content::Technite; }
 			//bool	WaterSurfaceBelow() const { return content == Content::Clear; }
@@ -286,6 +388,10 @@ namespace Grid
 				return (content == Content::Clear || content == Content::Water);
 			}
 
+			bool	IsClearOrLiquidIgnoreStructure() const
+			{
+				return (content == Content::Clear || IsLiquid(content));
+			}
 
 			static bool IsDead(BYTE cnt)
 			{
@@ -297,13 +403,18 @@ namespace Grid
 			}
 			static bool IsSolid(BYTE cnt)
 			{
-				return cnt < Content::Water;
+				return cnt < Content::Water && cnt != Content::Lava;
+			}
+			static bool IsOpaque(BYTE cnt)
+			{
+				return cnt < Content::Technite;
 			}
 			static bool IsLiquid(BYTE cnt)
 			{
 				return cnt == Content::Water || cnt == Content::Lava;
 			}
 
+			bool	IsOpaque() const {return IsOpaque(content);}
 			bool	IsLiquid() const {return IsLiquid(content);}
 
 			bool	IsSolid() const
@@ -331,7 +442,7 @@ namespace Grid
 				void	SetSubmergence(UINT sub);
 				UINT	GetIncreasedSubmergence() const;
 				float	GetStructureFactor() const	{ return typeStructureFactor[content]; }
-				float3	GetBaseColor() const;
+				TBaseColor	GetBaseColor() const;
 			#endif
 		};
 
@@ -348,6 +459,12 @@ namespace Grid
 		static UINT		ToLayer(int height)	{return (UINT)(height < -HalfRange ? 0 : height + HalfRange);}
 		static int		ToHeight(UINT layer) {return int(layer) - CellStack::HalfRange;}
 
+		/**
+		Finds the top-most clear block that is located above a non-clear cell.
+		@param failOnStructureCount If set will cause the method to fail if the located clear cell has a >1 struct-count
+		@return Height level that is within the valid range, clear, and above a non-clear block. Returns BadHeight on failure
+		*/
+		int				FindTopClearOverNonClear(bool failOnStructureCount)	const;
 
 		#ifdef HAS_WINDOW
 		bool			HasWater() const { return waterRange.IsNotEmpty(); }
@@ -369,7 +486,7 @@ namespace Grid
 			lowestOpenCell = 0xFF;
 			highestOpaqueCell = 0;
 			for (unsigned i = 0; i < Range; i++)
-				if (volumeCell[i].IsSolid())
+				if (volumeCell[i].IsOpaque())
 					highestOpaqueCell = (BYTE)i;
 				else
 				{
@@ -385,11 +502,11 @@ namespace Grid
 		Cell&			GetMutableCellI(int height);
 		#ifdef HAS_WINDOW
 
-			float4		GetDownColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const;
-			float4		GetColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const;
+			TLitColor	GetDownColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const;
+			TLitColor	GetColorU(unsigned layer, Cell::Content oppositeContent, bool&mixes, Cell::Content&outType) const;
 			//float3			GetSelectiveColorU(unsigned layer, const float3&colorIfNonSolid, bool&mixes) const;
-			float4		GetMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, Cell::Content&outContent) const;
-			float4		GetDownMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, Cell::Content&outContent) const;
+			TWeightedColor	GetMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Cell::Content&outContent) const;
+			TWeightedColor	GetDownMixColorU(unsigned layer, Cell::Content oppositeContent, float&sumBrightnessTo, int&sumVisibilityTo, Cell::Content&outContent) const;
 		#endif
 		void			ChangeStructureCounterI(int height, int by);
 
@@ -401,12 +518,11 @@ namespace Grid
 		bool			FindTopOccupied(int&outHeight) const;
 
 
-		#ifndef CLIENT
-			void		Init(float2 heights, const TPlanetConfig&);
-		#endif
+		void			InitUnknown(float2 heights, const ExtendedPlanetConfig&);
+		void			FillTypes(const ExtendedPlanetConfig&);
 
 		void			ZeroInit();
-		void			ResetStructureCounters();
+		void			ResetStructureCounters(bool resetVisibility);
 		#ifdef HAS_WINDOW
 
 			#ifdef THOROUGLY_DEBUG_SENSORY
@@ -501,7 +617,7 @@ namespace Grid
 			float4		color;
 
 			/**/		TerrainVertex()	{};
-			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float4&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f,structure*127.f), color(color){}
+			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const TLitColor&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f,structure*127.f) {color.CompileFinalColor(this->color);}
 			/**/		TerrainVertex(const float4&vtx, float h, const float3&n, const float3&color, float structure) : vertex(vtx.xyz*h, vtx.w), normal_structure(n*127.f, structure*127.f), color(color,1.f){}
 		};
 	
@@ -549,6 +665,21 @@ namespace Grid
 				{
 					vertices.Clear();
 					indices.Clear();
+				}
+
+				void		AppendTo(THull<Vtx>&hull) const
+				{
+					UINT32 offset = (UINT32)hull.vertices.Count();
+					hull.vertices.Append(vertices);
+					const UINT32*iFrom = indices.pointer();
+					UINT32*iTo = hull.indices.AppendRow(this->indices.Count());
+					while (iFrom != this->indices.end())
+					{
+						(*iTo) = (*iFrom) + offset;
+						iFrom++;
+						iTo++;
+					}
+					DBG_ASSERT__(iTo == hull.indices.end());
 				}
 			};
 
@@ -845,7 +976,7 @@ namespace Grid
 			const BaseGrid::TNetCell*  netCells;
 			FClipHeight	clipHeight;
 			bool	wasEmpty;
-			TVec4<>	cornerColor[6];
+			TLitColor	cornerColor[6];
 
 
 			void	Setup(const CellStack *stacks,const BaseGrid::TCell*cells, const BaseGrid::TNetCell*netCells,FClipHeight clipHeight)
@@ -860,22 +991,22 @@ namespace Grid
 			}
 
 
-			float4	GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const;
-			float4	GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, Content&outContent) const;
+			TWeightedColor	GetMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const;
+			TWeightedColor	GetDownMixColorU(index_t stackIndex,  UINT ih, Content oppositeContent, float&brightness, int&sumVisibilityTo, Content&outContent) const;
 //			static void ApplyEMP(UINT16 cornerFlags,TVec4<>&rs);
-			static void ApplyEMP(float intensity,TVec3<>&rs);
 			static bool FlagsAffectedByEMP(UINT16 cornerFlags) {return !(cornerFlags & empZonesUnlocked);}
 			static bool AffectedByEMP(index_t stackIndex);
 
 
-			void	Compile(const index_t offset, const index_t end, THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull, SpinLock&lock);
+			void	Compile(const index_t offset, const index_t end);
 			void	CompileLayer(const UINT ih, const CellStack&stack, const int clipH,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighborhood);
 			void	CompileBottomLayer(const CellStack&stack, const int clipH,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighborhood);
 			void	CompileAboveTerrainOutline(const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors);
 			void	CompileCap(const UINT ih,const BaseGrid::TNetCell&cell, const bool capped, const CellStack::Cell&thisCell, const TFloatRange<>&range,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack);
 			void	CompileDownCap(const UINT ih,const BaseGrid::TNetCell&cell, const CellStack::Cell&thisCell, const int ir,const BaseGrid::TCellNeighborhood&neighbors, const CellStack&stack);
-			void	CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,TVec4<> newCornerColor[6], 
+			void	CompileFaceToNeighbor(const int j, const UINT ih, const int ir,const BaseGrid::TNetCell&cell,const BaseGrid::TCellNeighborhood&neighbors,TLitColor newCornerColor[6], 
 											const CellStack::Cell&thisCell, const CellStack::Cell&lastCell, const TFloatRange<>&range);
+			void	DeliverResults(THull<TerrainVertex>&solidHull, THull<OverlayVertex>&coverHull);
 		};
 
 
@@ -930,7 +1061,7 @@ namespace Grid
 		typedef GridSetup<Exponent>	GridType;
 		TFamily						family[BaseGrid::NumFamilies];
 		GridType					grid;
-		Array<BaseGrid::TNetCell>	cells;
+		static Array<BaseGrid::TNetCell>	cells;
 		Array<BaseGrid::TCellVertex>	cellVertices;
 
 
@@ -960,7 +1091,7 @@ namespace Grid
 			struct TStack
 			{
 				UINT32				stackID;	//high-resolution cell IDs
-				UINT32				layerBegin,layerEnd;	//layerEnd is one higher than actual limit
+				TIntRange<UINT32>	range;		//range.end is one higher than actual limit
 			};
 
 			Buffer0<TStack>			coverage;
@@ -974,7 +1105,7 @@ namespace Grid
 			{
 				count_t rs = 0;
 				foreach (coverage,c)
-					rs += c->layerEnd - c->layerBegin;
+					rs += c->range.GetExtent();
 				return rs;
 			}
 
@@ -1054,33 +1185,7 @@ namespace Grid
 			}
 		}
 
-		/*
-		void						UpdatePlanarDistanceField(index_t centerCell, float maxDistance, TFDistanceField&field) const
-		{
-			field.Reset();
 
-			field.distance[centerCell] = 0;
-			Queue<index_t>	queue;
-			queue << centerCell;
-			index_t cellID;
-			while (queue >> cellID)
-			{
-				UINT32 d = field.distance[stackID] + 1;
-				if (d > maxDistance)
-					continue;
-				const auto &nh = grid.GetCell(cellID).neighborhood;
-				for (int i = 0; i < nh.numNeighbors; i++)
-				{
-					UINT32 n = nh.neighborID[i];
-					if (field.distance[n] > d)
-					{
-						field.distance[n] = d;
-						queue << n;
-					}
-				}
-			}
-		}
-*/
 		UINT32			Locate(const TVec3<>&v, UINT32 startID = 0)	const
 		{
 			UINT32 stackID = startID;
@@ -1240,12 +1345,12 @@ namespace Grid
 				st.stackID = next;
 				if (!Obj::DetectSphereEdgeIntersection(sphere.center,sphere.radius,bottom,top,distances))
 				{
-					st.layerBegin = st.layerEnd = 0;
+					st.range.SetEmpty(0);
 					continue;
 				}
 			
-				st.layerBegin = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
-				st.layerEnd = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
+				st.range.start = (UINT32)floor(std::max(distances.x,0.f) * (CellStack::Range-1));
+				st.range.end = 1 + (UINT32)ceil(std::min(distances.y,1.f) * (CellStack::Range-1));
 				const auto&n = grid.GetCell(next).neighborhood;
 				for (int i = 0; i < n.numNeighbors; i++)
 					op.stacksLeft << n.neighborID[i];
@@ -1257,14 +1362,36 @@ namespace Grid
 			void		Compile(const Array<CellStack>&stacks, THull<TerrainVertex>&solid, THull<OverlayVertex>&cover, index_t offset, count_t count, FClipHeight clipHeight)
 			{
 				const index_t end = offset + count;
-				SpinLock lock;
-				Concurrency::parallel_for(offset, end, TerrainCompiler::BatchSize,[this, end,&lock, &solid, &cover, &stacks, clipHeight](index_t i)	//looks good - at least in release
+				//SpinLock lock;
+				const count_t numBatches = CeilDiv(count,TerrainCompiler::BatchSize);
+				static Array<THull<TerrainVertex> >	hulls;
+				static Array<THull<OverlayVertex> >	covers;
+				count_t numWorkers = System::ParallelLoop::global_instance.getWorkerCount();
+				if (hulls.Count() < numWorkers)
+				{
+					hulls.SetSize(numWorkers);
+					covers.SetSize(numWorkers);
+				}
+				
+				
+
+
+				System::parallelFor(numBatches,8,[this, end,offset, &stacks, clipHeight](index_t i, index_t workerIndex)
 				{
 					BYTE data[sizeof(TerrainCompiler)];	//prevent implicit memset in release mode. i'm serious. visual studio has some funny ideas there...
 					TerrainCompiler&compiler = *(TerrainCompiler*)data;
 					compiler.Setup(stacks.pointer(),grid.GetCells(),this->cells.pointer(),clipHeight);
-					compiler.Compile(i,end,solid,cover,lock);
+					compiler.Compile(offset + i*TerrainCompiler::BatchSize,end);
+					compiler.DeliverResults(hulls[workerIndex],covers[workerIndex]);
 				});
+				for (index_t i = 0; i < numWorkers; i++)
+				{
+					hulls[i].AppendTo(solid);
+					covers[i].AppendTo(cover);
+					hulls[i].Clear();
+					covers[i].Clear();
+				}
+
 			}
 
 
@@ -1581,10 +1708,22 @@ namespace Grid
 		#endif
 	};
 
-	typedef Setup<5>	LowSetup;
+	template <UINT Exponent>
+		Array<BaseGrid::TNetCell>	Setup<Exponent>::cells;
+
+	#ifdef LOWER_RESOLUTION_PLANET
+		static const constexpr UINT HighExponent=5;
+	#else
+		static const constexpr UINT HighExponent=6;
+	#endif
+
+	static const constexpr UINT LowExponent = HighExponent-1;
+
+
+	typedef Setup<LowExponent>	LowSetup;
 
 	#ifdef HYBRID_GRID
-		typedef Setup<6>	HighSetup;
+		typedef Setup<HighExponent>	HighSetup;
 	#else
 		typedef LowSetup	HighSetup;
 	#endif
@@ -1626,29 +1765,13 @@ namespace Grid
 		/**
 		Computes the coverage for a given location
 		*/
-		static coverage_t		GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max, float scale);
+		static coverage_t		GetRandomCoverage(const SimplexNoise&n, const float3&direction, float p, coverage_t max, float scale);
 
 		static float			probability[],density[];
 		static coverage_t		maximum[];
 
-		//static coverage_t		UraniumCoverage(UINT32)
-		//{
-		//	return GetCoverage(0.008f,6);
-		//}
-		//static coverage_t		MineralCoverage(UINT32)
-		//{
-		//	return GetCoverage(0.08f,12);
-		//}
-		//static coverage_t		FuelCoverage(UINT32)
-		//{
-		//	return GetCoverage(0.08f,12);
-		//}
-
 		static Buffer0<Resource>all;
-		//static void				Create(const String&name, ConstName cname, const float3&color, coverage_t func(UINT32 cellID));
-//		static void				Create(const String&name, ConstName cname, const float3&color/*, float p, coverage_t*/);
 		static void				Create(const String&name, ConstName cname, const float3&color, index_t);
-		//static void				Create(const String&name, ConstName cname, const float3&color, const TVec3<>&seed,float rarity, float maxYield);
 		static Resource&		Require(const String&name);
 		static Resource&		Require(ConstName name);
 		static coverage_t		Sample(const String&resourceName, index_t cellID);
@@ -1666,6 +1789,8 @@ namespace Grid
 		
 		void					Fill(Random&random, float p, coverage_t, float density);
 		void					Fill(Random&random);
+
+		static void				FillAll(Random&random);
 
 		const String&			GetName() const {return name;}
 		ConstName				GetCName() const {return cname;}
@@ -1773,13 +1898,6 @@ namespace Grid
 	//*/
 	//float	RandomHeight(const TVec3<>&center0);
 
-	#ifndef CLIENT
-		/**
-		Redefines the world volume, based on the specified world configuration and discovery setting
-		MUST NOT be used on a session with active factions/players
-		*/
-		void			BuildWorld(const TPlanetConfig&config, WorldDiscovery discovery);
-	#endif
 
 	/**
 	Initializes the grid and all static gpu resources. Call ONCE before creating objects (and their shadows)
@@ -1826,14 +1944,10 @@ namespace Grid
 	bool	IsHighPartOfLow(UINT32 highCell, UINT32 lowCell);
 
 
-	inline bool	ValidCell(const LCellIdI&cell, int satHeight, int decSatHeight)	{return cell.stackID < LowSetup::GridType::CellCount 
+	inline bool	ValidCell(const LCellIdI&cell)	{return cell.stackID < LowSetup::GridType::CellCount 
 													&& 
 													(
-														(cell.height >= -CellStack::HalfRange && cell.height < CellStack::HalfRange)
-														||
-														(cell.height == satHeight || cell.height == satHeight+1)
-														||
-														(cell.height == decSatHeight || cell.height == decSatHeight+1)
+														(cell.height >= CellStack::BottomHeight && cell.height <= CellStack::TopHeight)
 													)
 													;}
 	#ifdef HYBRID_GRID
@@ -1846,6 +1960,11 @@ namespace Grid
 
 	bool	AffectedByEMP(const HCellIdI&);
 	bool	AffectedByEMP(const LCellIdI&);
+
+	/**
+	Sets both high resolution and low resolution families outdated, and to the specified time
+	*/
+	void	SetAllFamiliesOutdated(float t=0);
 
 	TVec3<> ToWorld(const HCellIdU&);
 	TVec3<> ToWorld(const HCellIdI&);
@@ -1867,7 +1986,7 @@ namespace Grid
 
 	void			FlushStackFamily(Array<CellStack>&cellStack,  BYTE family);
 	void			FlushAllData();
-	void			ResetStructureCounters();
+	void			ResetStructureCounters(bool resetVisibility=true);
 
 	void			UpdateResourceMap(ConstName resourceName,const ArrayData<TCellResourceCoverage>&);
 	#ifdef HAS_WINDOW
@@ -1899,7 +2018,7 @@ namespace Grid
 			int					downToHeight;
 		};
 
-		static const int Uninitialized = 0x1FFFFFFF;
+		static const int Uninitialized = BadHeight;
 
 		int						groundPenetration=0;
 
@@ -1926,6 +2045,9 @@ namespace Grid
 				short	visibility;
 				bool	oldVisible, temporarilyVisible;
 
+				#ifdef HAS_WINDOW
+					TVisibility	GetVisibility() const {return TVisibility(visibility>0);}
+				#endif
 
 				bool	Changed(bool reset)
 				{
@@ -2058,16 +2180,25 @@ namespace Grid
 	public:
 		Array<CellStack>		cellStack;
 		#ifdef HAS_WINDOW
-			bool				lightingOutdated = true;	//new C++? probably
+			bool				lightingOutdated = true;
+			bool				structureChanged = true;
 		#endif
 
 		/**/					WorldData();
 
-		
+		void					swap(WorldData&other)
+		{
+			cellStack.swap(other.cellStack);
+			#ifdef HAS_WINDOW
+				swp(lightingOutdated,other.lightingOutdated);
+				swp(structureChanged,other.structureChanged);
+			#endif
+		}
 		/**
 		Checks if the specified low-resolution cell is not at all covered (not even partially)
 		*/
 		bool					LowCellIsClear(const LCellIdI&cell)const;
+		String					LowCellReport(const LCellIdI&cell)const;
 		bool					LowCellIsClearOrWater(const LCellIdI&cell)const;
 		bool					LowCellHasStructure(const LCellIdI&cell)const;
 		bool					LowCellIsClearIgnoreStructure(const LCellIdI&cell)const;
@@ -2087,11 +2218,11 @@ namespace Grid
 				cellStack[i].ZeroInit();
 			}
 		}
-		void					ResetStructureCounters()
+		void					ResetStructureCounters(bool resetVisibility)
 		{
 			for (index_t i = 0; i < cellStack.Count(); i++)
 			{
-				cellStack[i].ResetStructureCounters();
+				cellStack[i].ResetStructureCounters(resetVisibility);
 			}
 		}
 		void					ApplyFamilyDelta(BYTE family, const Array<CellStack::TTypeDelta>&data0, bool initialization);
@@ -2130,7 +2261,18 @@ namespace Grid
 		void					Explode(const HCellIdI&,float radius, float atTime);
 		void					Explode(const HCellIdI&id,float radius, bool*familyChanged);
 
-
+		/**
+		Redefines the world volume, based on the specified world configuration and discovery setting
+		MUST NOT be used on the actual world while a session with active factions/players
+		*/
+		void					BuildWorld(const ExtendedPlanetConfig&config);
+		/**
+		Copies the volumetric composition of the local world data to the specified target according to the specified
+		world discovery value.
+		@param[out] target Target container to hold the filtered world data
+		@param discoveryLevel Level of terrain obfuscation to apply to the copy. If set to FullTerrain, then @a target will contain an exact copy of the local world data.
+		*/
+		void					ExportDiscovered(WorldData&target, WorldDiscovery discoveryLevel) const;
 
 		int						TraceSkySensor(UINT32 highCellCenter, int penetration) const;
 
@@ -2153,6 +2295,11 @@ namespace Grid
 
 
 		#ifdef HAS_WINDOW
+			/**
+			Updates the visibility of all cells to the specified value.
+			The previous value is discarded.
+			*/
+			void				OverrideVisibility(short v);
 			/**
 			Retrieves the average light-level of all high-resolution cells touched by the specified low-resolution cell
 			*/
@@ -2238,115 +2385,198 @@ namespace Grid
 			*/
 			const TMatrix3<>& GetSunSystem();
 		#endif
-	#else
-
-		struct TExtendedPlanetConfig : public TSharedPlanetConfig
-		{
-
-			int		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable
-					liquidHeight = 0;
-
-
-			Content		topType = Content::Grass,
-						innerType = Content::Unknown,
-						liquidCoverage = Content::Water,
-						extendedCoreType = Content::Granite,
-						liquidOutline = Content::Sand;
-
-			static void RandomizeSeed(float3&v, Random&random)
-			{
-				v.x = random.getFloat(-16,16);
-				v.y = random.getFloat(-16,16);
-				v.z = random.getFloat(-16,16);
-			}
-
-
-			struct TSeedSet
-			{
-				float3	seed[5],	//for fractal levels 0 to 5
-						productSeed,	//for the final product
-						depressionSeed0,
-						depressionSeed1,
-						depressionSeed2,
-						depressionSeed3;
-
-
-				void	Randomize(Random&random)
-				{
-					for (index_t i = 0; i < ARRAYSIZE(seed); i++)
-						RandomizeSeed(seed[i],random);
-					RandomizeSeed(depressionSeed0,random);
-					RandomizeSeed(depressionSeed1,random);
-					RandomizeSeed(depressionSeed2,random);
-					RandomizeSeed(depressionSeed3,random);
-					RandomizeSeed(productSeed,random);
-				}
-			};
-
-			struct TLayer : public TSeedSet
-			{
-				int		baseHeight = 0;	//center terrain height
-				float	heightScale = 1.f;	//vertical scale of noise.
-				//1.0f is pretty much the most you should set with normal noise frequency
-				float	frequency = 1.f;	//noise frequency factor
-				int		dampening = 2;
-			};
-
-			TLayer	extendedCore,mountains;
-
-			void	RandomizeSeeds(Random&random)
-			{
-				 extendedCore.Randomize(random);
-				 mountains.Randomize(random);
-			}
-
-			void	RandomizeSun(Random&random)
-			{
-				sunColor = float4(1);
-				//float4(random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),1);
-
-				Vec::stretch(sunColor.rgb,atmosphereColor.rgb,atmosphereColor.rgb);
-				//sunColor.rgb = atmosphereColor.rgb;
-
-
-				sunPlaneNormal_Speed = float4(
-						random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1),
-						0.07f
-						//random.getFloat(-0.2,0.2)
-					);
-				Vec::normalize0(sunPlaneNormal_Speed.xyz);
-
-			}
-
-			void	GenerateAtmosphereColorForType(Content t)
-			{
-				if (t == Content::Water)
-				{
-					atmosphereColor.rgb = float3(0.7,0.8,1.0);
-					return;
-				}
-				atmosphereColor.rgb = CellStack::Cell::typeColor[t];
-				Vec::abs(atmosphereColor);
-			}
-
-			void	GenerateAtmosphereColor()
-			{
-				if (liquidCoverage != Content::Clear)
-				{
-					GenerateAtmosphereColorForType(liquidCoverage);
-					
-					return;
-				}
-				if (innerCoreType != Content::Clear)
-					GenerateAtmosphereColorForType(Content::Reinterpret(innerCoreType));
-				else
-					GenerateAtmosphereColorForType(topType);
-			}
-
-		};
-
 	#endif
 
+	class ExtendedPlanetConfig : public TSharedPlanetConfig, public SerializableObject
+	{
+		void	RandomizeSun(Random&random)
+		{
+			sunColor = float4(1);
+			//float4(random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),random.getFloat(0.8,1.05f),1);
+
+			Vec::stretch(sunColor.rgb,atmosphereColor.rgb,atmosphereColor.rgb);
+			//sunColor.rgb = atmosphereColor.rgb;
+
+
+			sunPlaneNormal_Speed = float4(
+					random.getFloat(-1,1),random.getFloat(-1,1),random.getFloat(-1,1),
+					0.07f
+					//random.getFloat(-0.2,0.2)
+				);
+			Vec::normalize0(sunPlaneNormal_Speed.xyz);
+
+		}
+	public:
+
+
+
+
+		struct TSeedSet
+		{
+			int64_t	seed[5],	//for fractal levels 0 to 5
+					productSeed,	//for the final product
+					depressionSeed0,
+					depressionSeed1,
+					depressionSeed2,
+					depressionSeed3;
+
+
+			void	Randomize(Random&random)
+			{
+				for (index_t i = 0; i < ARRAYSIZE(seed); i++)
+					seed[i] = random.get();
+				depressionSeed0 = random.get();
+				depressionSeed1 = random.get();
+				depressionSeed2 = random.get();
+				depressionSeed3 = random.get();
+				productSeed = random.get();
+			}
+		};
+
+		struct NoiseSet
+		{
+			SimplexNoise	fractal[5],	//for fractal levels 0 to 5
+							product,	//for the final product
+							depression0,
+							depression1,
+							depression2,
+							depression3;
+
+			/**/			NoiseSet(const TSeedSet&set):
+								fractal
+									{
+										set.seed[0],
+										set.seed[1],
+										set.seed[2],
+										set.seed[3],
+										set.seed[4]
+									},
+								product(set.productSeed),
+								depression0(set.depressionSeed0),
+								depression1(set.depressionSeed1),
+								depression2(set.depressionSeed2),
+								depression3(set.depressionSeed3)
+			{}
+		};
+
+
+		struct TLayerConfig
+		{
+			int		dampening = 2;
+			int		baseHeight = 0;	//center terrain height
+			float	heightScale = 1.f;	//vertical scale of noise.
+			//1.0f is pretty much the most you should set with normal noise frequency
+			float	frequency = 1.f;	//noise frequency factor
+		};
+
+		struct TLayer : public TSeedSet, public TLayerConfig
+		{};
+		 
+		static const size_t TLayer_size = sizeof(TLayer);
+		static const size_t TSeedSet_size = sizeof(TSeedSet);
+
+
+		static_assert(sizeof(TLayer)==sizeof(TSeedSet)+16,"packing issue?");
+
+		TLayer		extendedCore,mountains;
+		BYTE		type = Content::Unknown,
+					liquidCoverage = Content::Water,
+					extendedCoreType = Content::Granite,
+					liquidOutline = Content::Sand;
+		INT32		snowHeight = 5,	//height past which blocks will be covered in snow. Set to >=HalfRange(16) to disable
+					liquidHeight = 0;
+		UINT32		lastSeed = 0;
+
+		virtual serial_size_t GetSerialSize(bool) const override
+		{
+			return sizeof(TSharedPlanetConfig) + sizeof(TLayerConfig)*2 + 4 + 8 + 4;
+		}
+
+		virtual bool HasFixedSize() const override
+		{
+			return true;
+		}
+
+		virtual	bool	Serialize(IWriteStream&outStream, bool) const override
+		{
+			return	outStream.WritePrimitive((const TSharedPlanetConfig&)*this)
+					&&	outStream.WritePrimitive((const TLayerConfig&)extendedCore)
+					&&	outStream.WritePrimitive((const TLayerConfig&)mountains)
+					&&	outStream.WritePrimitive(type)
+					&&	outStream.WritePrimitive(liquidCoverage)
+					&&	outStream.WritePrimitive(extendedCoreType)
+					&&	outStream.WritePrimitive(liquidOutline)
+					&&	outStream.WritePrimitive(snowHeight)
+					&&	outStream.WritePrimitive(liquidHeight)
+					&&	outStream.WritePrimitive(lastSeed)
+					;
+		}
+
+		virtual	bool	Deserialize(IReadStream&inStream, serial_size_t) override
+		{
+			return	inStream.ReadPrimitive((TSharedPlanetConfig&)*this)
+					&&	inStream.ReadPrimitive((TLayerConfig&)extendedCore)
+					&&	inStream.ReadPrimitive((TLayerConfig&)mountains)
+					&&	inStream.ReadPrimitive(type)
+					&&	inStream.ReadPrimitive(liquidCoverage)
+					&&	inStream.ReadPrimitive(extendedCoreType)
+					&&	inStream.ReadPrimitive(liquidOutline)
+					&&	inStream.ReadPrimitive(snowHeight)
+					&&	inStream.ReadPrimitive(liquidHeight)
+					&&	inStream.ReadPrimitive(lastSeed)
+					&&	ApplySeed()
+					;
+		}
+		
+		/**
+		Reapplies @a lastSeed, and fills random parameters.
+		As long as @a lastSeed is not modified, the resulting values will not either
+		*/
+		bool	ApplySeed();
+		/**
+		Updates @a lastSeed to the given parameter, and fills random parameters.
+		If @a lastSeed does not actually change, the resulting values will not either
+		*/
+		void	SetSeed(UINT32 seed);
+		/**
+		Copies the current seed of @a random to @a lastSeed, and fill random parameters using the specified
+		random variable.
+		Contrary to SetSeed(random.currentSeed()), @a random will actually be advanced by the operation.
+		Using a random variable with current seed equal to @a lastSeed will produce identical results
+		*/
+		void	RandomizeSeeds(Random&random);
+
+		void	GenerateAtmosphereColorForType(BYTE t)
+		{
+			if (t == Content::Water)
+			{
+				atmosphereColor.rgb = float3(0.7,0.8,1.0);
+				return;
+			}
+			if (t == Content::Unknown)
+			{
+				GenerateAtmosphereColorForType(Content::Grass);
+				return;
+			}
+			atmosphereColor.rgb = CellStack::Cell::typeColor[t];
+			Vec::abs(atmosphereColor);
+		}
+
+		void	GenerateAtmosphereColor()
+		{
+			if (liquidCoverage != Content::Clear)
+			{
+				GenerateAtmosphereColorForType(liquidCoverage);
+					
+				return;
+			}
+			if (innerCoreType != Content::Clear)
+				GenerateAtmosphereColorForType(Content::Reinterpret(innerCoreType));
+			else
+				GenerateAtmosphereColorForType(type);
+		}
+
+	};
 
 	class OrbitGrid
 	{
@@ -2408,8 +2638,9 @@ namespace Grid
 	};
 
 	#ifdef CLIENT
-
-		extern OrbitGrid	visibleOrbitGrid;
+		#ifndef NO_SATELLITES
+			extern OrbitGrid	visibleOrbitGrid;
+		#endif
 
 	#endif
 }

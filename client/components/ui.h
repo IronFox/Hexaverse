@@ -2,7 +2,11 @@
 #define uiComponentH
 
 
-
+/**
+Hexagonal button gui renderer.
+Also responsible for rendering resource representations.
+NOT responsible for dialogs, and component management in general (see GUI in guiElements.h for that)
+*/
 namespace UI
 {
 	namespace HexGrid
@@ -141,6 +145,8 @@ namespace UI
 				{
 					typedef Objects::BaseCommand	Super;
 				public:
+					int2					gridCoords;
+
 					/**/					Icon(const int2&coords, const String&name) : Super(name)
 											{
 												LoadIcon();
@@ -156,7 +162,7 @@ namespace UI
 
 					virtual void			Refresh(bool)
 					{
-						state = Dialog::HasMoreTutorials() && !Dialog::IsModal() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+						state = Dialog::HasMoreTutorials() && !GUI::IsModal() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 					}
 
 					virtual void			Execute() override
@@ -180,7 +186,7 @@ namespace UI
 					virtual void			Refresh(bool controlsEnabled) override
 					{
 						state = BaseCommand::Flags::None;
-						if (Dialog::IsModal() || !controlsEnabled || !Objects::selectedEntity)
+						if (GUI::IsModal() || !controlsEnabled || !Objects::selectedEntity)
 							return;
 						if (Objects::selectedMobileEntity)
 						{
@@ -239,7 +245,7 @@ namespace UI
 					virtual void			Refresh(bool controlsEnabled) override
 					{
 						state = BaseCommand::Flags::None;
-						if (Dialog::IsModal() || !controlsEnabled || !Objects::selectedEntity || Objects::selectedEntity->IsIndestructible())
+						if (GUI::IsModal() || !controlsEnabled || !Objects::selectedEntity || Objects::selectedEntity->IsIndestructible())
 							return;
 
 						state |= BaseCommand::Flags::IsEnabled;
@@ -267,7 +273,7 @@ namespace UI
 					virtual void			Refresh(bool controlsEnabled) override
 					{
 						state = BaseCommand::Flags::None;
-						if (Dialog::IsModal() || !controlsEnabled || !Objects::selectedEntity)
+						if (GUI::IsModal() || !controlsEnabled || !Objects::selectedEntity)
 							return;
 
 						state |= BaseCommand::Flags::IsEnabled;
@@ -315,7 +321,7 @@ namespace UI
 
 				Objects::PWorldEntity	GetPrototype() const
 				{
-					Objects::PWorldEntity e = entries.first().lock();
+					Objects::PWorldEntity e = entries.First().lock();
 					ASSERT__(e);
 					if (e->IsStructure())
 						return Objects::GetPrototypeByName(e->GetCTypeName());
@@ -371,7 +377,7 @@ namespace UI
 				float				atTime;
 				bool				isFriendly;
 				TUniqueID			focusTarget;
-				index_t				smokeTrailIndex = InvalidIndex;
+				Objects::Renderer::SmokeTrailIndex	smokeTrailIndex;
 				String				fallbackTargetName;
 			
 				/**/				AnimationEventFocusCommand(const String&name, const String&iconName, const TVec3<>&focusLocation, const TUniqueID&focusID, float atTime, bool isFriendly)
@@ -481,6 +487,7 @@ namespace UI
 				typedef Objects::BaseCommand	Super;
 				const bool						left;
 				DynamicRow *const				row;
+				int2							gridCoords;
 
 				//int2 coords, const String&name, OnExecute f, CheckEnabled a, IsPermaActive p, GetCosts c
 				/**/				ArrowCommand(bool left, DynamicRow*row) : Super(left ? "Left":"Right"), left(left),row(row)
@@ -515,7 +522,7 @@ namespace UI
 			extern CollectionTemplateRow<Objects::WWorldEntity>	friendlyGroups,hostileGroups;
 			extern DynamicRow							animationTimeLine;
 
-			extern EntityFocusCommand					selectedFocus;
+			extern std::shared_ptr<EntityFocusCommand>	selectedFocus;
 
 
 
@@ -544,7 +551,7 @@ namespace UI
 				Used as a unique identifier for this cell.
 				Only at most one cell can exist per command (address)
 				*/
-				Objects::BaseCommand	*command;
+				Objects::PBaseCommand	command;
 				/**
 				Location of this button on the current viewport (for faster click lookup).
 				Updated by Update()
@@ -556,6 +563,7 @@ namespace UI
 				Set flipX and flipY to alter this grid orientation, thus changing how command->coords are interpreted
 				*/
 				bool		flipY,flipX;
+				int2		gridCoords;
 
 				/**/		GridCell():command(nullptr),flipY(false),flipX(false)	{}
 
@@ -583,12 +591,17 @@ namespace UI
 			Only one cell may be allocated per command. A second call with the same parameter yields the cell returned by the first call.
 			@return Reference to the newly allocated or existing cell. Valid only until the next call to AllocateCell() or FindAndDeleteCell(). Do not persistently store pointers or references to the returned cell
 			*/
-			GridCell&		AllocateCell(Objects::BaseCommand*);
+			GridCell&		AllocateCell(const Objects::PBaseCommand&cmd);
+			/**
+			@copydoc AllocateCell()
+			@param[out] isNew Set to true if the specified command was not previously allocated
+			*/
+			GridCell&		AllocateCell(const Objects::PBaseCommand&, bool&isNew);
 			/**
 			Attempts to locate and delete the first cell using the specified command.
 			Fails silently if no such cell exists.
 			*/
-			void			FindAndDeleteCell(Objects::BaseCommand*);
+			void			FindAndDeleteCell(const Objects::PBaseCommand&);
 
 
 
@@ -629,22 +642,19 @@ namespace UI
 			*/
 			void						Render();
 
-			extern int2 at;
-			inline void	Next()
-			{
-				at.y ++;
-				if (at.y == 3)
-				{
-					at.y = 1;
-					at.x ++;
-				}
+			/**
+			Command visitor function that adds a given command to the grid.
+			The command shared_ptr is stored for easier removal (via ClearCommands()).
+			Adding the same command multiple times will not produce multiple buttons, but move any existing one.
+			@param location Grid location to place the button at. The coordinates are relative to the bottom left grid edge, and progress to the right/up
+			@param cmd Command to place/memorize. Must not be empty/null
+			*/
+			void		VisitAddCommand(const int2&location,const Objects::PBaseCommand&cmd);
 
-			}
-
-			void		VisitCommand(Objects::BaseCommand&cmd);
-
-			void		RefreshButtonState();
-
+			/**
+			Removes all visual command buttons, and clears out all local command references
+			*/
+			void		ClearCommands();
 
 			void		RefreshContacts();
 			void		Configure(const Objects::PWorldEntity&e);
@@ -655,7 +665,7 @@ namespace UI
 		namespace EventLog
 		{
 			void			Clear();
-			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, index_t smokeTrailIndex);
+			void			RegisterAttack(float time, bool isFriendly,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const Objects::Renderer::SmokeTrailIndex&smokeTrailIndex);
 			void			RegisterEntityDestruction(float time, bool isOwnedByMe,  const TVec3<>&focusLocation, const TUniqueID&focusEntityID, const String&entityName);
 
 

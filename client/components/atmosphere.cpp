@@ -1,11 +1,11 @@
 #include <global_root.h>
 #include "atmosphere.h"
-#include <engine/display.h>
-#include "../ExtRenderer\DirectX11.h"
 #include "../../shared/objects.h"
 
 #ifdef HAS_WINDOW
 
+#include <engine/display.h>
+#include "../ExtRenderer\DirectX11.h"
 
 extern Engine::Display<Engine::DirectX11>	display;
 
@@ -61,7 +61,7 @@ namespace Atmosphere
 		//static const count_t Resolution = 100;
 		//Array<float2>	vertices(Resolution+1);
 		//Array<UINT16>	indices(Resolution*3);
-		//vertices.first() = float2(0,0);
+		//vertices.First() = float2(0,0);
 		//for (index_t i = 0; i < Resolution; i++)
 		//{
 		//	float a = float(i)/float(Resolution) * M_PIF * 2.f;

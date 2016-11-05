@@ -8,11 +8,13 @@
 #include "../networkChannels.h"
 #include "../aiProcess.h"
 #include "../serverLogEvent.h"
+#include "../configurationMode.h"
 #include "worldState.h"
 
 
 #undef StartService
 
+extern Random random;
 
 
 namespace Network
@@ -25,6 +27,11 @@ namespace Network
 	namespace Config
 	{
 		UINT16		sessionPort = DEFAULT_SERVER_BASE_PORT + PortOffset::Session;
+	}
+
+	namespace Session
+	{
+		bool	isStarted=false;
 	}
 
 
@@ -40,13 +47,15 @@ namespace Network
 				return;
 			server.EndService();
 		}
-		if (server.StartService(Config::sessionPort))
+		server.OnDoneResolving([]()
 		{
-			LogEvent(EventClass::Preset::network,"Session server started on port "+String(Config::sessionPort));
-		}
-		else
-			FATAL__("Unable to start service in port "+String(Config::sessionPort)+" ("+server.GetError(true)+"). Chances are, a server is already running on that port.")
-
+			if (server.StartService(Config::sessionPort))
+			{
+				LogEvent(EventClass::Preset::network,"Session server started on port "+String(Config::sessionPort));
+			}
+			else
+				FATAL__("Unable to start service in port "+String(Config::sessionPort)+" ("+server.GetError(true)+"). Chances are, a server is already running on that port.")
+		});
 	}
 
 
@@ -58,6 +67,24 @@ namespace Network
 		peer.userLevel = (UINT32)newLevel;
 		LogEvent(EventSignificance::Debug,peer,"User level changed to "+String(peer.userLevel));
 	}
+
+	void		BuildConfiguredWorld()
+	{
+		bool started = Network::CloseSession(false,false);
+		if (started)
+			World::worldID.Generate();
+
+
+		if (ConfigurationMode::IsActive())
+			World::BuildConfiguredWorld(ConfigurationMode::GetPlanetSeed());
+		else
+			World::BuildConfiguredWorld(random);
+		if (started)
+			Network::RestartSession();
+		else
+			World::Network::SendChangedFamilies();
+	}
+
 
 	String						Client::ToString() const
 	{
@@ -105,6 +132,7 @@ namespace Network
 	{
 		SetupServer();
 		StartServer();
+		Session::isStarted = true;
 	}
 
 
@@ -137,11 +165,14 @@ namespace Network
 		server.InstallChannel(Channels::identifyUserRecv);
 		server.InstallChannel(Channels::selectResearch);
 		server.InstallChannel(Channels::chatMessage);
+		server.InstallChannel(Channels::planetConfig);
+		server.InstallChannel(Channels::gameConfig);
 
 		server.OpenSignalChannel(Protocol::ChannelID::RequestRoundEnd,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestContinueRound,(UINT32)UserLevel::CommonFaction);
 		server.OpenSignalChannel(Protocol::ChannelID::Ping,0);
 		server.OpenSignalChannel(Protocol::ChannelID::RequestEverything,(UINT32)UserLevel::Spectator);
+		server.OpenSignalChannel(Protocol::ChannelID::EndConfigurationMode,(UINT32)UserLevel::PlanetConfigurator);
 		
 		server.onSignal = Receiver::OnSignal;
 		server.SetAsync(false);
@@ -182,6 +213,8 @@ namespace Network
 
 
 
+
+
 	void	RestartSession()
 	{
 		LogEvent(EventSignificance::Important,"Restarting session.");
@@ -206,6 +239,10 @@ namespace Network
 //		Objects::VerifyVisibilityNetwork();
 		Objects::CheckMobileEntitySanity();
 		Objects::VerifyGrid();
+
+		Session::isStarted = true;
+
+		World::Network::SendChangedFamilies();
 	}
 
 
@@ -231,19 +268,50 @@ namespace Network
 
 	bool		SessionIsStarted()
 	{
-		return server.IsOnline();
+		return Session::isStarted;
 	}
 
 
-	bool		CloseSession()
+	bool		CloseSession(bool preserveSpectators, bool sendGridChangesToPreservedSpectators/*=true*/)
 	{
-		bool isOnline = server.IsOnline();
+		bool isOnline = Session::isStarted;
 		LogEvent(EventSignificance::Important,isOnline ? "Closing session." : "Flushing session data.");
 
-		server.Shutdown();
+		if (isOnline)
+		{
+			Session::isStarted = false;
+			if (preserveSpectators)
+			{
+				Game::Config::factionSupportFlags = Protocol::GameFlag::SupportSpectatorFactions;
+				Buffer0<TCP::PPeer>	dump;
+				server.VisitAllPeers([&dump](const TCP::PPeer&p)
+				{
+					if (p->userLevel < (UINT32)UserLevel::Spectator)
+						dump << p;
+				});
+				foreach (dump,d)
+				{
+					(*d)->DisconnectPeer();
+				}
+			}
+			else
+				server.Shutdown();
 
-		activePlayersAndSpectators.Clear();
-		spectators.Clear();
+			if (!preserveSpectators)
+			{
+				activePlayersAndSpectators.Clear();
+				spectators.Clear();
+			}
+			else
+			{
+				for (index_t i = 0; i < activePlayersAndSpectators.Count(); i++)
+				{
+					if (!activePlayersAndSpectators[i]->isSpectator)
+						activePlayersAndSpectators.Erase(i--);
+				}
+
+			}
+		}
 		playerMap.Clear();
 
 
@@ -256,9 +324,24 @@ namespace Network
 		RuntimeConfig::roundNumber = 0;
 		RuntimeConfig::phase = RuntimeConfig::Phase::CommandPhase;
 
+		if (spectators.IsNotEmpty())
+		{
+			Objects::ForeachWorldEntityIncludingStored([](const Objects::PWorldEntity&e)
+			{
+				Protocol::DestroyEntity d;
+				d.id = e->id;
+				d.type = e->isInsertedIntoGrid ? Objects::RemovalType::Vanished : Objects::RemovalType::DestroyedInStorage;
+				d.timestamp.rightNow = true;
+				Channels::destroyEntity.SendTo(server,d);
+			});
+
+		}
 
 		Objects::FlushAllData();
 		Grid::FlushAllData();
+
+		if ((preserveSpectators || !isOnline) && sendGridChangesToPreservedSpectators)
+			World::Network::SendChangedFamilies();
 
 		return isOnline;
 
