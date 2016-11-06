@@ -40,7 +40,8 @@ namespace Objects
 			IsEnabled=0x1,
 			IsPermaActive=0x2,
 			IsFlashing=0x4,
-			SoftFlashing=0x8
+			SoftFlashing=0x8,
+			IsInvisible=0x10
 		};
 
 

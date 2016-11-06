@@ -1125,6 +1125,9 @@
 					{
 						if (c->Contains(Engine::mouse.location.windowRelative))
 						{
+							if (c->command->state & Objects::BaseCommand::Flags::IsInvisible)
+								continue;
+
 							if (c->command->state & Objects::BaseCommand::Flags::IsEnabled)
 							{
 								String name = c->command->name;
@@ -1192,7 +1195,8 @@
 						auto&cmd = *c->command;
 
 						float4 code;
-					
+						if (cmd.state & Objects::BaseCommand::Flags::IsInvisible)
+							continue;
 						{
 							if (!GUI::IsModal() && c->Contains(Engine::mouse.location.windowRelative))
 							{
