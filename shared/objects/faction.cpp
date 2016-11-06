@@ -2197,6 +2197,7 @@ namespace Objects
 						if (unlockProgress[t.unlockableAt] >= t.researchCost)
 						{
 							LogEvent(EventClass(EventSignificance::Important,EventFlavor::Gain),parent,"Research completed. "+t.name+" is now available.");
+							currentResearch = ConstName::Empty;
 						}
 						changed = true;
 						contribution = 0;
