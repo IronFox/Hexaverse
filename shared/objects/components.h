@@ -363,10 +363,11 @@ namespace Objects
 			bool							ConsumesResources(ResourceFlagSet&res, const OwnerParameter&) const;
 			void							FinishCreation(bool scaleToVehicleSize=true)
 			{
-				baseExplosionRadius *= Grid::UnitScale;
-				baseScanningRange *= Grid::UnitScale;
-				baseGroundScanningRange *= Grid::UnitScale;
-				baseHorizontalAttackRange *= Grid::UnitScale;
+				float fc = (Grid::UnitScale-1.f)*0.5f + 1.f;
+				baseExplosionRadius *= fc;
+				baseScanningRange *= fc;
+				baseGroundScanningRange *= fc;
+				baseHorizontalAttackRange *= fc;
 				Super::FinishCreation(scaleToVehicleSize);
 			}
 
