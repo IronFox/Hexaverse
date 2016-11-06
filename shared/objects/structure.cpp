@@ -2479,7 +2479,7 @@ namespace Objects
 	/*virtual override*/ void				ReactorCore::PrototypeSetup()
 	{
 		Super::PrototypeSetup();
-		ResearchState::RegisterUnlockCost(this,10);
+		ResearchState::RegisterUnlockCost(this,30);
 	}
 
 	#ifdef HAS_WINDOW
