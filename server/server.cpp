@@ -611,15 +611,24 @@ namespace InformationProvider
 
 		void	ThreadMain() override
 		{
-			Protocol::ServerInfo info;
-			info.hostInfo = UDPBroadCast::packet;
+			Protocol::ServerInfo infoGlobal,infoLocal;
+			infoGlobal.hostInfo = UDPBroadCast::packet;
+			infoLocal.hostInfo = UDPBroadCast::packet;
 
 			while (!application_shutting_down && !doEnd)
 			{
 				Sleep(1000);
-				Game::Network::AssembleGameInfo(info.gameInfo);
+				Game::Network::AssembleGameInfo(infoGlobal.gameInfo,false);
+				Game::Network::AssembleGameInfo(infoLocal.gameInfo,true);
 
-				infoSender.SendTo(server,info);
+				server.VisitAllPeers([infoGlobal,infoLocal](const TCP::PPeer&p)
+				{
+					if (p->IsLocalhost())
+						infoSender.SendTo(p,infoLocal);
+					else
+						infoSender.SendTo(p,infoGlobal);
+				});
+				//infoSender.SendTo(server,info);
 			}
 			server.EndService();
 		}
