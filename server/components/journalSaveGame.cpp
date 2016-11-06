@@ -1755,6 +1755,7 @@ namespace Journal
 
 	/*virtual override*/ void Round::SelectResearch::Execute(const Objects::PFaction&f) const
 	{
+		const bool attribResearch = f->researchState.IsUnlocked(target);
 		f->researchState.currentResearch = target;
 		f->researchState.currentResearchAttribute = attribute;
 		Network::PClient cl;
@@ -1762,7 +1763,7 @@ namespace Journal
 		{
 			Channels::selectResearch.SendTo(cl->peer.lock(),Protocol::SelectResearch(target,(BYTE)attribute));
 		}
-		LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research updated to "+Objects::ComponentOrPrototypeToString(target)+"/"+attribute.ToString());
+		LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research updated to "+Objects::ComponentOrPrototypeToString(target)+(attribResearch ? "/"+attribute.ToString() :""));
 	}
 
 	/*virtual override*/ void Round::SelectResearch::Decode(const Entry&e)
