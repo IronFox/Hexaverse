@@ -1143,6 +1143,8 @@ namespace Objects
 
 			ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
+			ResearchState::RegisterUnlockCost(component,20);
+
 
 			component.FinishCreation();
 		}
