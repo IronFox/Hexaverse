@@ -1268,6 +1268,7 @@ namespace Objects
 			#endif
 
 			ResearchState::RegisterDependency(component,armored);
+			ResearchState::RegisterDependency(component,GetPrototypeByName(component.constTowerName));
 			ResearchState::RegisterUnlockCost(component,15);
 			ResearchState::RegisterResearch(component,Attribute::AttackRange);
 			ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);

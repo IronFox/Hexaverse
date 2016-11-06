@@ -176,6 +176,7 @@ namespace Objects
 
 
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::launcher));
+		PStructure launcherTower = Tower::globalPrototypes.last();
 		//Tower::globalPrototypes.Append().reset(new Tower(artillery));
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::radar));
 		Tower::globalPrototypes.Append().reset(new Tower(&Component::armored));
@@ -222,6 +223,10 @@ namespace Objects
 		Component::ConfigureAll();
 
 		Hangar::StaticSetup();
+
+		ResearchState::RegisterUnlockCost(launcherTower.get(),10);
+
+
 
 		#ifndef NO_SATELLITES
 			foreach(satellitePrototypes, p)
