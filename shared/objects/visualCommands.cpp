@@ -45,9 +45,17 @@ namespace Objects
 	{
 		Super::Refresh(controlEnabled);
 
-		if (!(state & Flags::IsPermaActive) &&
-			selectedEntity && selectedEntity->owner->researchState.GetCurrentTask() == task && (!hasAttrib || selectedEntity->owner->researchState.currentResearchAttribute == attrib))
-			state |= Flags::IsFlashing;
+		if (!(state & Flags::IsPermaActive)
+			&&
+			selectedEntity && selectedEntity->owner->researchState.GetCurrentTask() == task
+			&&
+			(!hasAttrib || selectedEntity->owner->researchState.currentResearchAttribute == attrib)
+			)
+			state |= Flags::IsFlashing | Flags::SoftFlashing;
+		else
+		{
+			state -= Flags::IsFlashing;
+		}
 	}
 
 
