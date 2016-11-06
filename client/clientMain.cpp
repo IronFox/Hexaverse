@@ -665,10 +665,11 @@ void	InnerUndoTask(const Objects::PWorldEntity&e, bool force);
 
 namespace ApplicationInterface
 {
-void	SignalResearch(ConstName target, BYTE attribute)
-{
-	Network::Channels::selectResearch.SendTo(Network::client,Protocol::SelectResearch(target,attribute));
-}
+
+	void	SignalResearch(ConstName target, BYTE attribute)
+	{
+		Network::Channels::selectResearch.SendTo(Network::client,Protocol::SelectResearch(target,attribute));
+	}
 
 
 	void	SignalNewJob(const Objects::PMobileEntity&v, ConstName jobName, ConstName parameterName, const Grid::LCellIdI&overrideLocation)

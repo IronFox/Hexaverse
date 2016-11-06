@@ -55,6 +55,7 @@ namespace Objects
 		else
 		{
 			state -= Flags::IsFlashing;
+			state -= Flags::SoftFlashing;
 		}
 	}
 
