@@ -79,7 +79,8 @@ namespace Objects
 		}
 		float							VehicleBase::GetCarryingCapacity(const OwnerParameter&owner) const
 		{
-			return owner ? owner->researchState.GetFactorFor(*this,Attribute::CarryWeight) * baseCarryingCapacity : baseCarryingCapacity;
+			return baseCarryingCapacity;
+			//return owner ? owner->researchState.GetFactorFor(*this,Attribute::CarryWeight) * baseCarryingCapacity : baseCarryingCapacity;
 		}
 		float							VehicleBase::GetBaseHealth(const OwnerParameter&owner) const
 		{
@@ -112,10 +113,13 @@ namespace Objects
 
 		int								Turret::GetAmmoNeedPerShot(const OwnerParameter&owner) const
 		{
-			if (baseAmmoNeedPerShot == 0)
-				return 0;
-			return owner ? (int)ceil(float(baseAmmoNeedPerShot) / owner->researchState.GetFactorFor(*this,Attribute::AmmoNeed)) : baseAmmoNeedPerShot;
-		}	
+			return baseAmmoNeedPerShot;
+			#ifndef NO_MUNITION
+				if (baseAmmoNeedPerShot == 0)
+					return 0;
+				return owner ? (int)ceil(float(baseAmmoNeedPerShot) / owner->researchState.GetFactorFor(*this,Attribute::AmmoNeed)) : baseAmmoNeedPerShot;
+			#endif
+		}
 
 		float							Turret::GetHorizontalAttackRange(const OwnerParameter&owner, int bonus/*=0*/) const
 		{
@@ -1382,8 +1386,10 @@ namespace Objects
 			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
 			ResearchState::RegisterResearch(component,Attribute::ExplosionRadius);
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-			if (component.baseAmmoNeedPerShot > 0)
-				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+			#ifndef NO_MUNITION
+				if (component.baseAmmoNeedPerShot > 0)
+					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+			#endif
 
 			component.FinishCreation();
 		}
@@ -1647,8 +1653,10 @@ namespace Objects
 
 			//component.ignoresVehicleMotion = true;
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-			if (component.baseAmmoNeedPerShot > 0)
-				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+			#ifndef NO_MUNITION
+				if (component.baseAmmoNeedPerShot > 0)
+					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+			#endif
 
 			component.FinishCreation();
 		}
@@ -1690,8 +1698,10 @@ namespace Objects
 			ResearchState::RegisterUnlockCost(component,5);
 			ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-			if (component.baseAmmoNeedPerShot > 0)
-				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+			#ifndef NO_MUNITION
+				if (component.baseAmmoNeedPerShot > 0)
+					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+			#endif
 
 			component.FinishCreation();
 		}
@@ -1723,8 +1733,10 @@ namespace Objects
 
 			ResearchState::RegisterUnlockCost(component,1);
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-			if (component.baseAmmoNeedPerShot > 0)
-				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+			#ifndef NO_MUNITION
+				if (component.baseAmmoNeedPerShot > 0)
+					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+			#endif
 
 			component.FinishCreation();
 		}
@@ -1756,8 +1768,10 @@ namespace Objects
 			component.baseScanningRange = 4;
 			component.uplinkPriority = 180;	//fairly early
 
-			if (component.baseAmmoNeedPerShot > 0)
-				ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+			#ifndef NO_MUNITION
+				if (component.baseAmmoNeedPerShot > 0)
+					ResearchState::RegisterResearch(component,Attribute::AmmoNeed);
+			#endif
 
 			component.FinishCreation();
 		}
@@ -2079,7 +2093,7 @@ namespace Objects
 						if (moveOnWater)
 							outResult.lines.last()+= " (moves over water)";
 					outResult<<" Base health: "+ModulateByResearch(unmodulatedHealth,Attribute::Health,owner,ResearchState::ModulationType::FloorInt);
-					outResult<<" Turret carrying capacity: "+ModulateByResearch(baseCarryingCapacity,Attribute::CarryWeight,owner,ResearchState::ModulationType::FloorInt);
+					outResult<<" Turret carrying capacity: "+String(baseCarryingCapacity);
 					if (rangeModifier != 0)
 						if (rangeModifier < 0)
 							outResult<<" Turret range modifier: "+String(rangeModifier);
@@ -2148,7 +2162,7 @@ namespace Objects
 					if (baseAmmoNeedPerShot == 0)
 						outResult << "Does not require ammunition";
 					else
-						outResult << " Consumes "+String(ResourceTag(ammoType))+ModulateByResearch(baseAmmoNeedPerShot,Attribute::AmmoNeed,owner,ResearchState::ModulationType::InvertedFloat)+" per shot";
+						outResult << " Consumes "+String(ResourceTag(ammoType))+String(GetAmmoNeedPerShot(owner))+" per shot";
 					outResult << " Explosion radius: "+ModulateByResearch(baseExplosionRadius, Attribute::ExplosionRadius,owner,ResearchState::ModulationType::DefaultFloat);
 					if (dealsEMPDamage)
 						outResult << " EMP damage: "+ModulateByResearch(baseDamageLevel,Attribute::DamageLevel,owner,ResearchState::ModulationType::FloorInt);
