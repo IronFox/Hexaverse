@@ -2881,7 +2881,11 @@ bool	IsIdle(const Objects::PStructure&s)
 
 	auto lab = To<Objects::Laboratory>::DynamicCast(s);
 	if (lab)
+	{
+		if ((lab->IsEnabled() || lab->CouldEnable()) && !lab->owner->researchState.IsActive())
+			return true;
 		return !lab->IsEnabled() && lab->CouldEnable();
+	}
 
 	#ifndef NO_SATELLITES
 		if (s->IsSkyLinkStructure())
