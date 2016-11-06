@@ -1938,6 +1938,18 @@ namespace Objects
 
 	}
 
+	/*virtual override*/ bool			Laboratory::IsBuilding(std::pair<int,int>&outProgress) const
+	{
+		if ( owner->researchState.IsUnlocked( owner->researchState.currentResearch))
+			return false;
+		UINT32 current,max;
+		owner->researchState.GetResearchOf(owner->researchState.currentResearch, current, max);
+		outProgress.first = current;
+		outProgress.second = max;
+		return true;
+	}
+
+
 	#ifdef HAS_WINDOW
 		/*static*/	void Laboratory::ConfigureResearchButtons()
 		{

@@ -1172,7 +1172,7 @@ namespace Objects
 
 
 		//Structure overrides:
-		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override { return false; }	//place holder for later
+		virtual bool				IsBuilding(std::pair<int,int>&outProgress) const override;
 		virtual Category			GetCategory() const override {return Category::Miscellaneous;}
 
 
