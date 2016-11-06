@@ -255,7 +255,7 @@ namespace Objects
 			String dependentOn;
 			//else
 			{
-				if (current != max)
+				if (current < max)
 				{
 					outResult << "Research progress "+String(current) + "/"+String(max);
 				}
