@@ -2878,6 +2878,11 @@ bool	IsIdle(const Objects::PStructure&s)
 	Objects::PMine mine = To<Objects::Mine>::DynamicCast(s);
 	if (mine)
 		return !mine->IsEnabled() && mine->CouldEnable();
+
+	auto lab = To<Objects::Laboratory>::DynamicCast(s);
+	if (lab)
+		return !lab->IsEnabled() && lab->CouldEnable();
+
 	#ifndef NO_SATELLITES
 		if (s->IsSkyLinkStructure())
 		{
