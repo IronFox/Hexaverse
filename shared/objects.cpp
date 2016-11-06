@@ -224,7 +224,7 @@ namespace Objects
 
 		Hangar::StaticSetup();
 
-		ResearchState::RegisterUnlockCost(launcherTower.get(),10);
+		ResearchState::RegisterUnlockCost(launcherTower.get(),40);
 
 
 
