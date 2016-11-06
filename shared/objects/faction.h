@@ -233,6 +233,7 @@ namespace Objects
 		bool			CheckUnlocked(const Component::Base&,String&errorOut)	const;
 		bool			CheckUnlocked(ConstName,String&errorOut)	const;
 		bool			IsUnlocked(ConstName) const;
+		bool			IsActive() const {return currentResearch != ConstName::Empty;}
 
 		float			GetFactorFor(ConstName, Component::Attribute)	const;
 		float			GetFactorFor(const Component::Base&, Component::Attribute)	const;
