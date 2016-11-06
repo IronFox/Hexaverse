@@ -1005,10 +1005,11 @@ namespace Objects
 					{
 						bool constructingMe = (activeCursorMode == CursorMode::PlaceStructureMode
 								&& activeStructureToPlace == s);
+						bool unlocked = selectedEntity && selectedEntity->owner->researchState.IsUnlocked(s->GetCTypeName());
 						BaseCommand::Flags rs = controlsEnabled && 
 							(activeCursorMode == CursorMode::Idle
 							|| constructingMe
-							)
+							) && unlocked
 							? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 						if (constructingMe)
 							rs |= BaseCommand::Flags::IsPermaActive;
