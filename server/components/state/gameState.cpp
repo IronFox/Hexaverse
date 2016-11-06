@@ -141,6 +141,21 @@ namespace Game
 
 		void	ChangePhase(RuntimeConfig::Phase to, float timeWindow/* = -1*/)
 		{
+			if (RuntimeConfig::IsACommandPhase(to))
+			{
+				Objects::ForeachFaction([](const Objects::PFaction&f)
+				{
+					f->DropPerRoundData();	//make sure instantaneous destruction commands are processed with correct visibility information
+
+					if (f->researchState.changed)
+					{
+						f->researchState.changed = false;
+						Channels::researchState.SendTo(::Network::server,f->researchState,(UINT32)::Network::UserLevel::CommonFaction);
+
+					}
+				});
+			}
+
 			LogEvent(EventSignificance::Debug,"Changing RuntimeConfig::phase to "+String(to.ToString())+" with time window "+String(timeWindow));
 			Protocol::PhaseChange	ph;
 			ph.newPhase = to;
@@ -165,20 +180,7 @@ namespace Game
 			{
 				FileIO::CheckAutoSave(true);	//round number is formally incremented at the beginning of the command phase, but animation phase produces a delay anyways, so better save here
 			}
-			else if (RuntimeConfig::IsInAnyCommandPhase())
-			{
-				Objects::ForeachFaction([](const Objects::PFaction&f)
-				{
-					f->DropPerRoundData();	//make sure instantaneous destruction commands are processed with correct visibility information
 
-					if (f->researchState.changed)
-					{
-						f->researchState.changed = false;
-						Channels::researchState.SendTo(::Network::server,f->researchState,(UINT32)::Network::UserLevel::CommonFaction);
-
-					}
-				});
-			}
 
 
 
