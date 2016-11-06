@@ -1763,7 +1763,7 @@ namespace Journal
 		{
 			Channels::selectResearch.SendTo(cl->peer.lock(),Protocol::SelectResearch(target,(BYTE)attribute));
 		}
-		LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research updated to "+Objects::ComponentOrPrototypeToString(target)+(attribResearch ? "/"+attribute.ToString() :""));
+		LogEvent(EventSignificance::Uncommon, GetPeerOfFaction(f), "Faction research updated to "+Objects::ComponentOrPrototypeToString(target)+(attribResearch ? String("/")+attribute.ToString() :""));
 	}
 
 	/*virtual override*/ void Round::SelectResearch::Decode(const Entry&e)
