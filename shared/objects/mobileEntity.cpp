@@ -275,7 +275,7 @@ namespace Objects
 									case MobilePlacementResult::PlacementFailedTemporarilyObstructed:
 									{
 										isObstructed = true;
-										LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Unable to complete movement.");
+										LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Temporary obstruction detected: Unable to complete movement.");
 										if (health <= 0)
 										{
 											LogEvent(EventSignificance::Common,this,"Is dead.");
