@@ -2095,7 +2095,21 @@ namespace Objects
 		#ifdef CLIENT
 			// make some base selected by default
 			ASSERT__(baseComponents.IsNotEmpty())
-			selectedBase = baseComponents[0];
+
+			foreach (baseComponents,c)
+				if ((!owner || !ResearchState::IsGenerallyResearchable((*c)->constName))
+					|| (owner && owner->researchState.IsUnlocked((*c)->constName)))
+				{
+					selectedBase = *c;
+					break;
+				}
+			foreach (turretComponents,c)
+				if ((!owner || !ResearchState::IsGenerallyResearchable((*c)->constName))
+					|| (owner && owner->researchState.IsUnlocked((*c)->constName)))
+				{
+					selectedTurret = *c;
+					break;
+				}
 		#endif
 	}
 
