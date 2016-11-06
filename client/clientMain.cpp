@@ -669,6 +669,10 @@ namespace ApplicationInterface
 	void	SignalResearch(ConstName target, BYTE attribute)
 	{
 		Network::Channels::selectResearch.SendTo(Network::client,Protocol::SelectResearch(target,attribute));
+		if (Objects::selectedEntity && Objects::selectedEntity->IsWorkingStructure() && !To<Objects::WorkingStructure>::Cast( Objects::selectedEntity)->IsEnabled())
+		{
+			Network::Channels::enableStructure.SendTo(Network::client,Protocol::EnableStructure(Objects::selectedEntity->id,true));
+		}
 	}
 
 
