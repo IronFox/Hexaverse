@@ -1919,6 +1919,18 @@ bool loop()
 			}
 	
 
+			if (ConfigurationMode::IsActive())
+			{
+				static const String line = "Interactive Configuration Mode";
+
+				textout.pushState();
+				textout.scale(2.0f,2.0f);
+				textout.locate(0.95f - textout.scaledWidth(line),0.95f);
+				textout << line;
+				textout.popState();
+			}
+
+
 			DebugCheckVector(scene.location,-1000,1000);
 		
 		
