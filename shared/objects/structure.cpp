@@ -1913,6 +1913,8 @@ namespace Objects
 			BaseCommand::Flags rs = BaseCommand::Flags::None;
 			if (selectedEntity && selectedEntity->owner->researchState.currentResearch == target && !selectedEntity->owner->researchState.IsUnlocked(target))
 				rs |= BaseCommand::Flags::IsPermaActive;
+			if (selectedEntity && selectedEntity->owner->researchState.IsUnlocked(target))
+				rs |= BaseCommand::Flags::IsInvisible;
 			if (!controlEnabled || !selectedEntity || !selectedEntity->owner->researchState.IsCurrentlyResearchable(target))
 				return rs;
 			rs |= BaseCommand::Flags::IsEnabled;
