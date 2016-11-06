@@ -741,7 +741,10 @@ namespace Objects
 					if (!v->HasMotionTasks() || v->ConstructingHere(v->location))
 						return MobilePlacementResult::PlacementFailedPermanentlyObstructed;
 					else
+					{
+						LogEvent(EventClass::Preset::debug,this,"Obstruction detected: "+v->GetName()+" at "+v->location.ToString());
 						return MobilePlacementResult::PlacementFailedTemporarilyObstructed;
+					}
 				}
 			}
 			const Grid::LCellIdI old = location;

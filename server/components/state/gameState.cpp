@@ -110,7 +110,7 @@ namespace Game
 		}
 
 
-		void	AssembleGameInfo(Protocol::GameInfo&info)
+		void	AssembleGameInfo(Protocol::GameInfo&info, bool allowSpectatorFactions)
 		{
 			info.activePhase = RuntimeConfig::phase;
 			info.numFactionsOnline = (UINT16)::Network::activePlayersAndSpectators.Count();
@@ -136,6 +136,8 @@ namespace Game
 				info.gameConfig.gameFlags |= Protocol::GameFlag::SimulateLiquids;
 
 			info.gameConfig.gameFlags |= Config::factionSupportFlags;
+			if (!allowSpectatorFactions)
+				info.gameConfig.gameFlags &= ~Protocol::GameFlag::SupportSpectatorFactions;
 		}
 
 
