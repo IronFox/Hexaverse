@@ -1147,7 +1147,7 @@ namespace Objects
 
 			ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
-			ResearchState::RegisterUnlockCost(component,20);
+			ResearchState::RegisterUnlockCost(component,50);
 
 
 			component.FinishCreation();
@@ -1207,7 +1207,7 @@ namespace Objects
 			#endif
 
 			ResearchState::RegisterDependency(component,armored);
-			ResearchState::RegisterUnlockCost(component,5);
+			ResearchState::RegisterUnlockCost(component,20);
 			ResearchState::RegisterResearch(component,Attribute::AttackRange);
 			ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);
 			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
@@ -1269,7 +1269,7 @@ namespace Objects
 
 			ResearchState::RegisterDependency(component,armored);
 			ResearchState::RegisterDependency(component,GetPrototypeByName(component.constTowerName));
-			ResearchState::RegisterUnlockCost(component,15);
+			ResearchState::RegisterUnlockCost(component,40);
 			ResearchState::RegisterResearch(component,Attribute::AttackRange);
 			ResearchState::RegisterResearch(component,Attribute::AttacksPerRound);
 			ResearchState::RegisterResearch(component,Attribute::DamageLevel);
@@ -1696,7 +1696,7 @@ namespace Objects
 			component.uplinkTraffic = 10;
 
 
-			ResearchState::RegisterUnlockCost(component,5);
+			ResearchState::RegisterUnlockCost(component,15);
 			ResearchState::RegisterResearch(component,Attribute::ConstructionSpeed);
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
 			#ifndef NO_MUNITION
@@ -1732,7 +1732,7 @@ namespace Objects
 			component.continuousRotationSpeed = 2.f;
 			component.uplinkTraffic = 10;
 
-			ResearchState::RegisterUnlockCost(component,1);
+			ResearchState::RegisterUnlockCost(component,15);
 			ResearchState::RegisterResearch(component,Attribute::ScanningRange);
 			#ifndef NO_MUNITION
 				if (component.baseAmmoNeedPerShot > 0)
@@ -1871,7 +1871,7 @@ namespace Objects
 			component.acceleration[TerrainAdd] = 2;
 			component.acceleration[TerrainRemove] = 2;
 			ResearchState::RegisterDependency(component,hoverbase);
-			ResearchState::RegisterUnlockCost(component,10);
+			ResearchState::RegisterUnlockCost(component,40);
 			ResearchState::RegisterResearch(component,Attribute::MovementSpeed);
 			ResearchState::RegisterResearch(component,Attribute::Health);
 
@@ -1926,7 +1926,7 @@ namespace Objects
 			component.acceleration[TerrainAdd] = 2;
 			component.acceleration[TerrainRemove] = 2;
 			ResearchState::RegisterDependency(component,hoverbase);
-			ResearchState::RegisterUnlockCost(component,10);
+			ResearchState::RegisterUnlockCost(component,40);
 			ResearchState::RegisterResearch(component,Attribute::MovementSpeed);
 			ResearchState::RegisterResearch(component,Attribute::Health);
 
