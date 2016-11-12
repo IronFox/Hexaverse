@@ -2,7 +2,11 @@
 #define uiComponentH
 
 
-
+/**
+Hexagonal button gui renderer.
+Also responsible for rendering resource representations.
+NOT responsible for dialogs, and component management in general (see GUI in guiElements.h for that)
+*/
 namespace UI
 {
 	namespace HexGrid
@@ -158,7 +162,7 @@ namespace UI
 
 					virtual void			Refresh(bool)
 					{
-						state = Dialog::HasMoreTutorials() && !Dialog::IsModal() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
+						state = Dialog::HasMoreTutorials() && !GUI::IsModal() ? BaseCommand::Flags::IsEnabled : BaseCommand::Flags::None;
 					}
 
 					virtual void			Execute() override
@@ -182,7 +186,7 @@ namespace UI
 					virtual void			Refresh(bool controlsEnabled) override
 					{
 						state = BaseCommand::Flags::None;
-						if (Dialog::IsModal() || !controlsEnabled || !Objects::selectedEntity)
+						if (GUI::IsModal() || !controlsEnabled || !Objects::selectedEntity)
 							return;
 						if (Objects::selectedMobileEntity)
 						{
@@ -241,7 +245,7 @@ namespace UI
 					virtual void			Refresh(bool controlsEnabled) override
 					{
 						state = BaseCommand::Flags::None;
-						if (Dialog::IsModal() || !controlsEnabled || !Objects::selectedEntity || Objects::selectedEntity->IsIndestructible())
+						if (GUI::IsModal() || !controlsEnabled || !Objects::selectedEntity || Objects::selectedEntity->IsIndestructible())
 							return;
 
 						state |= BaseCommand::Flags::IsEnabled;
@@ -269,7 +273,7 @@ namespace UI
 					virtual void			Refresh(bool controlsEnabled) override
 					{
 						state = BaseCommand::Flags::None;
-						if (Dialog::IsModal() || !controlsEnabled || !Objects::selectedEntity)
+						if (GUI::IsModal() || !controlsEnabled || !Objects::selectedEntity)
 							return;
 
 						state |= BaseCommand::Flags::IsEnabled;
@@ -317,7 +321,7 @@ namespace UI
 
 				Objects::PWorldEntity	GetPrototype() const
 				{
-					Objects::PWorldEntity e = entries.first().lock();
+					Objects::PWorldEntity e = entries.First().lock();
 					ASSERT__(e);
 					if (e->IsStructure())
 						return Objects::GetPrototypeByName(e->GetCTypeName());

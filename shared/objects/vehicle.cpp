@@ -391,7 +391,10 @@ namespace Objects
 					if (!v->HasMotionTasks() || v->ConstructingHere(v->location))
 						return MobilePlacementResult::PlacementFailedPermanentlyObstructed;
 					else
+					{
+						LogEvent(EventClass::Preset::debug,this,"Obstruction detected: "+v->GetName()+" at "+v->location.ToString());
 						return MobilePlacementResult::PlacementFailedTemporarilyObstructed;
+					}
 				}
 			}
 			const Grid::LCellIdI old = location;
@@ -431,7 +434,7 @@ namespace Objects
 						//InsertIntoGrid(vehicleGrid,location,To<Vehicle>::Cast(shared_from_this()));
 
 						if (timeCost > 0)
-							SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,motionTime,timeCost);
+							ApplicationInterface::SignalMotion(To<Vehicle>::Cast(shared_from_this()),old,location,motionTime,timeCost);
 
 						motionTime += timeCost;
 						InsertVehicleIntoGrid(To<Vehicle>::Cast(shared_from_this()),location);

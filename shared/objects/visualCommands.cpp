@@ -43,7 +43,15 @@ namespace Objects
 
 	/*static*/ void		EntityConstructionCommand::UpdateTexture(BaseCommand&target, Component::VehicleBase*base, Component::Turret*turret, const float4&backgroundColor/* = float4(0)*/)
 	{
-		GeometryImage::BeginRendering(backgroundColor);
+		float distanceFactor = 1.f;
+		//if (base)
+		{
+			#ifdef LOWER_RESOLUTION_PLANET
+				distanceFactor *= 2.f;
+			#endif
+		}
+
+		GeometryImage::BeginRendering(backgroundColor,distanceFactor);
 
 		TMatrix4<> sys = Matrix<>::eye4;
 		sys.x.x = sys.y.y = sys.z.z = 2.5f;
@@ -99,7 +107,11 @@ namespace Objects
 	{
 		float distanceFactor = 1.f;
 		if (e->IsMobile())
-			distanceFactor *= 0.5f;
+		{
+			#ifndef LOWER_RESOLUTION_PLANET
+				distanceFactor *= 0.5f;
+			#endif
+		}
 		if (e->IsStructure())
 			distanceFactor += 0.1f * To<Structure>::Cast(e)->GetHeight();
 		#ifndef NO_SATELLITES
@@ -235,10 +247,21 @@ namespace Objects
 		LoadIcon(name);
 	}
 
+	static bool NotValidFSChar(char c)
+	{
+		if (c >= 'a' && c <= 'z')
+			return false;
+		if (c >= 'A' && c <= 'Z')
+			return false;
+		if (c >= '0' && c <= '9')
+			return false;
+		return true;
+	}
+
 	void			BaseCommand::LoadIcon(const String&name)
 	{
 		String name2 = name;
-		name2.replace(' ','-');
+		name2.replaceCharacters(NotValidFSChar,'-');
 
 		PathString filename = PathString("resources/icons/"+name2+".png");
 		if (!FileSystem::IsFile(filename))
@@ -251,15 +274,15 @@ namespace Objects
 			Magic::LoadFromFile(image,filename);
 			if (image.channels() < 4)
 			{
-				image.setChannels(4,BaseImage::CA_REPEAT);
+				image.SetChannels(4,BaseImage::CA_REPEAT);
 
 			}
 			else
 			{
 						
-				Concurrency::parallel_for(UINT32(0),image.getWidth(),[&image](UINT32 x)
+				Concurrency::parallel_for(UINT32(0),image.GetWidth(),[&image](UINT32 x)
 				{
-					for (UINT32 y = 0; y < image.getHeight(); y++)
+					for (UINT32 y = 0; y < image.GetHeight(); y++)
 					{
 						BYTE*pixel = image.get(x,y);
 						Vec::mul(Vec::ref3(pixel),float(pixel[3])/255.f);
@@ -268,7 +291,7 @@ namespace Objects
 
 			}
 
-			image.flipVertical();
+			image.FlipVertically();
 			texture.Load(image);
 			textureMap.Set(filename,texture);
 		}
@@ -334,7 +357,7 @@ namespace Objects
 	
 	void	CommonCmd::DemolishSelected()
 	{
-		SignalRemoval(selectedEntity);
+		ApplicationInterface::SignalRemoval(selectedEntity);
 	}
 
 	bool CommonCmd::IsModeActive(CursorMode mode)
@@ -385,7 +408,7 @@ namespace Objects
 
 		if (selectedMobileEntity || ToTower(selectedEntity))
 		{
-			SignalDropAllTasks(selectedEntity);
+			ApplicationInterface::SignalDropAllTasks(selectedEntity);
 			//v->ClearTasks();
 		}
 
@@ -398,7 +421,7 @@ namespace Objects
 	{
 		if (selectedMobileEntity)
 		{
-			SignalAutomation(selectedMobileEntity,!selectedMobileEntity->isAutomated);
+			ApplicationInterface::SignalAutomation(selectedMobileEntity,!selectedMobileEntity->isAutomated);
 			//v->ClearTasks();
 		}
 	}
@@ -429,7 +452,7 @@ namespace Objects
 	void					VehicleCmd::Sleep()
 	{
 		if (selectedEntity)
-			SignalSleep(selectedEntity, !selectedEntity->IsSleeping());
+			ApplicationInterface::SignalSleep(selectedEntity, !selectedEntity->IsSleeping());
 	}
 
 	void					VehicleCmd::UndoOperation()
@@ -446,7 +469,7 @@ namespace Objects
 		}
 
 		if (selectedMobileEntity || ToTower(selectedEntity))
-			SignalDropLastTask(selectedEntity);
+			ApplicationInterface::SignalDropLastTask(selectedEntity);
 	//		v->DropLastTask();
 		//#ifdef CLIENT
 		//	UpdateChoices(true);

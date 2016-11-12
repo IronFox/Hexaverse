@@ -7,7 +7,7 @@
 #include "../configurationMode.h"
 
 
-void			SignalFactionsChanged()
+void			ApplicationInterface::SignalFactionsChanged()
 {
 	Game::mostFactionsAlive = std::max(Game::mostFactionsAlive, (UINT32)Objects::Faction::all.Count());
 	Reflection::SignalFactionsChanged();
@@ -106,11 +106,11 @@ namespace Game
 		{
 			if (Config::Nexus::enableAI)
 				AIProcess::Begin(Objects::Faction::nexus->accessToken);
-			SignalFactionsChanged();
+			ApplicationInterface::SignalFactionsChanged();
 		}
 
 
-		void	AssembleGameInfo(Protocol::GameInfo&info)
+		void	AssembleGameInfo(Protocol::GameInfo&info, bool allowSpectatorFactions)
 		{
 			info.activePhase = RuntimeConfig::phase;
 			info.numFactionsOnline = (UINT16)::Network::activePlayersAndSpectators.Count();
@@ -136,6 +136,8 @@ namespace Game
 				info.gameConfig.gameFlags |= Protocol::GameFlag::SimulateLiquids;
 
 			info.gameConfig.gameFlags |= Config::factionSupportFlags;
+			if (!allowSpectatorFactions)
+				info.gameConfig.gameFlags &= ~Protocol::GameFlag::SupportSpectatorFactions;
 		}
 
 

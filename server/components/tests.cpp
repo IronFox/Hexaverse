@@ -129,7 +129,7 @@ namespace Test
 
 	/*virtual override*/ void	Serialization::Run(Random&random)
 	{
-		globalVersionOfCurrentFile = SupportedFileVersion;
+		ApplicationInterface::globalVersionOfCurrentFile = ApplicationInterface::SupportedFileVersion;
 		for (index_t i = 0; i < 3000; i++)
 		{
 			Objects::Marker m;

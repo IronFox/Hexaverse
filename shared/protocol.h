@@ -55,9 +55,21 @@ namespace PortOffset
 	#define NAME_APPEND_S
 #endif
 
+#ifdef LOWER_RESOLUTION_PLANET
+	#define NAME_APPEND_L	"l"
+#else
+	#define NAME_APPEND_L
+#endif
 
 
-#define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION NAME_APPEND0 NAME_APPEND1 NAME_APPEND_S
+
+#define SERVER_NAME		PRODUCT_NAME " v" PRODUCT_VERSION\
+							NAME_APPEND0\
+							NAME_APPEND1\
+							NAME_APPEND_S\
+							NAME_APPEND_L\
+							""
+
 #include "objects/resource.h"
 
 namespace Protocol
@@ -144,7 +156,7 @@ namespace Protocol
 				if (size > MaxSize)
 					return false;
 
-				setSize(size);
+				SetSize(size);
 				if (!IsISerializable(data))
 				{
 					//cout << "data is not of i-serializable type. reading plain"<<endl;
@@ -1840,6 +1852,13 @@ namespace Protocol
 	typedef NETA(TUnitLimit)	UnitLimits;
 
 
+	static_assert(Objects::Resource::N<0x100,"Resource type limit exceeded: Must change storage type of OperationLacksResources array");
+	NETSTRUCT3(OperationLacksResources
+		, Timestamp, timestamp
+		, NET(TUniqueID), entityID
+		, NETA(BYTE), resourceIndices
+	)
+
 
 	namespace ChannelID
 	{
@@ -1928,6 +1947,8 @@ namespace Protocol
 			PlanetConfig,		// both: Grid::ExtendedPlanetConfig
 			GameConfig,			// c2s: GameConfig
 			EndConfigurationMode,//c2s: <signal>
+
+			OperationLacksResources, //s2c: OperationLacksResources
 		};
 	}
 

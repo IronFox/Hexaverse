@@ -4,17 +4,13 @@
 #include <math/vclasses.h>
 #include <container/buffer.h>
 #include "../config.h"
+#include "types.h"
 
 namespace Objects
 {
 	CONSTRUCT_ENUMERATION5(ResourceWithMunition, Fuel, Minerals, Energy, Munitions, Uranium);
 	CONSTRUCT_ENUMERATION4(ResourceWithoutMunition, Fuel, Minerals, Energy, Uranium);
 
-	#ifdef NO_MUNITION
-		typedef ResourceWithoutMunition	Resource;
-	#else
-		typedef ResourceWithMunition	Resource;
-	#endif
 
 
 	template <typename Resource>

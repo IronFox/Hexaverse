@@ -112,7 +112,7 @@ namespace Objects
 		UpdateChoices(true);
 
 
-		SignalChoiceIntersection(selectedEntity, ch, cursorMode,deployment);
+		ApplicationInterface::SignalChoiceIntersection(selectedEntity, ch, cursorMode,deployment);
 
 		return true;
 	}

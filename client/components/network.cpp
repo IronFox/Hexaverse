@@ -14,16 +14,16 @@
 #include "configurationMode.h"
 
 
-void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
-void			OnPlayerControlBegin();
+//#define DEBUG_SERVER_LIST	//enable to generate very long artificial server list
+namespace LocalApplicationInterface
+{
+	void			SignalMarkerDeletion(TUniqueID markerID);	//must be copy to prevent weird shit
+	void			OnPlayerControlBegin();
 
-#ifdef HAS_WINDOW
-	void		QueryNicknameIfEmpty();
-
-
-
-#endif
-
+	#ifdef HAS_WINDOW
+		void		QueryNicknameIfEmpty();
+	#endif
+}
 
 
 namespace Network
@@ -62,7 +62,7 @@ namespace Network
 
 		client.ConnectAsync(addr.host + ":"+String(addr.basePort + PortOffset::Session));
 		#ifdef HAS_WINDOW
-			Dialog::SignalSituationChange();
+			GUI::SignalSituationChange();
 		#endif
 	}
 
@@ -232,7 +232,7 @@ namespace Network
 					waste << *a;
 					attempts.erase(a);
 					#ifdef HAS_WINDOW
-						Dialog::SignalSituationChange();
+						GUI::SignalSituationChange();
 					#endif
 					return true;
 				}
@@ -393,7 +393,7 @@ namespace Network
 				else
 				{
 					#ifdef HAS_WINDOW
-						Dialog::Show(Dialog::loginMenu);
+						GUI::Show(Dialog::loginMenu);
 					#endif
 				}
 				#ifdef HAS_WINDOW
@@ -611,7 +611,7 @@ namespace Network
 						if (Objects::GetEntity(e->id))
 							Objects::Remove(e,type, t,Network::ControlEnabled());
 						#ifdef HAS_WINDOW
-							Dialog::SignalSituationChange();
+							GUI::SignalSituationChange();
 						#endif
 					});
 				}
@@ -620,7 +620,7 @@ namespace Network
 					float t = 0;
 					Objects::Remove(e,type, t,Network::ControlEnabled());
 					#ifdef HAS_WINDOW
-						Dialog::SignalSituationChange();
+						GUI::SignalSituationChange();
 					#endif
 				}
 
@@ -690,10 +690,10 @@ namespace Network
 				Network::Channels::changeMyName.SendTo(Network::client,Network::chosenNickname);
 
 				#ifdef HAS_WINDOW
-					Dialog::Hide(Dialog::loginMenu);
+					GUI::Hide(Dialog::loginMenu);
 					//if (ConfigurationMode::IsActive())
 					//	UI::HexGrid::Configure
-					//	Dialog::Show(Dialog::configMenu);
+					//	GUI::Show(Dialog::configMenu);
 				#endif
 			}
 			else
@@ -702,7 +702,7 @@ namespace Network
 				LogEvent(EventClass::Preset::uncommon, nullptr, "Server response: Faction void.");
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
-					Dialog::Show(Dialog::loginMenu);
+					GUI::Show(Dialog::loginMenu);
 				#endif
 			}
 
@@ -899,7 +899,7 @@ namespace Network
 			}
 			Objects::Marker::Create(marker.id, type, marker.location, marker.createdInRound, entityID, ownerID, entityType, std::max(RuntimeConfig::roundNumber,marker.createdInRound));
 			#ifdef HAS_WINDOW
-				OnSelectionChange(true);
+				ApplicationInterface::OnSelectionChange(true);
 			#endif
 		}
 
@@ -909,7 +909,7 @@ namespace Network
 		{
 			Objects::Marker::Destroy(mid, ControlEnabled());
 			#ifdef HAS_WINDOW
-				OnSelectionChange(true);
+				ApplicationInterface::OnSelectionChange(true);
 			#endif
 		}
 
@@ -924,7 +924,7 @@ namespace Network
 			uplinkBandwidth = v;
 			RuntimeConfig::hibernationSystemEnabled = v > 0;
 			#ifdef HAS_WINDOW
-				OnSelectionChange(true);
+				ApplicationInterface::OnSelectionChange(true);
 			#endif
 		}
 
@@ -932,7 +932,7 @@ namespace Network
 		{
 			RuntimeConfig::UnitLimits::Import(limits);
 			#ifdef HAS_WINDOW
-				OnSelectionChange(true);
+				ApplicationInterface::OnSelectionChange(true);
 			#endif
 
 		}
@@ -942,6 +942,11 @@ namespace Network
 			#ifdef HAS_WINDOW
 				ConfigurationMode::Update(cfg);
 			#endif
+		}
+
+		void	OperationLacksResources(Protocol::OperationLacksResources&res)
+		{
+			bool brk = true;
 		}
 	}
 
@@ -984,6 +989,7 @@ namespace Network
 		TCP::Channel<NET(INT32), 0, Protocol::ChannelID::UplinkBandwidth>							uplinkBandwidth(Receiver::UplinkBandwidth);
 		TCP::Channel<Protocol::UnitLimits, 0, Protocol::ChannelID::UnitLimits>						unitLimits(Receiver::UnitLimits);
 		TCP::Channel<Grid::ExtendedPlanetConfig, 0, Protocol::ChannelID::PlanetConfig>				planetConfig(Receiver::PlanetConfig);
+		TCP::Channel<Protocol::OperationLacksResources, 0, Protocol::ChannelID::OperationLacksResources>			operationLacksResources(Receiver::OperationLacksResources);
 
 
 
@@ -1035,7 +1041,7 @@ namespace Network
 			Channels::clientFactionRequest.SendTo(client,ready);
 
 			#ifdef HAS_WINDOW
-				Dialog::Show(Dialog::loginMenu);
+				GUI::Show(Dialog::loginMenu);
 			#endif
 		}
 	}
@@ -1115,7 +1121,7 @@ namespace Network
 				LogEvent(EventClass::Preset::networkError, nullptr, "Connection attempt failed");
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
-					Dialog::SignalSituationChange();
+					GUI::SignalSituationChange();
 				#endif
 			}
 			break;
@@ -1130,7 +1136,7 @@ namespace Network
 				FlushFaction(true);
 				#ifdef HAS_WINDOW
 					World::allowRecompilation = true;
-					Dialog::CloseAllModal();
+					GUI::CloseAllModal();
 				#endif
 
 
@@ -1138,7 +1144,7 @@ namespace Network
 				if (RuntimeConfig::aiMode && RuntimeConfig::serverAddress.host.IsNotEmpty())
 					application_shutting_down = true;
 				#ifdef HAS_WINDOW
-					QueryNicknameIfEmpty();
+					LocalApplicationInterface::QueryNicknameIfEmpty();
 				#endif
 
 				Receiver::eventsLocked = true;
@@ -1146,9 +1152,9 @@ namespace Network
 
 				#ifdef HAS_WINDOW
 					ConfigurationMode::SetActive(false);
-					Dialog::Hide(Dialog::loginMenu);
+					GUI::Hide(Dialog::loginMenu);
 					Dialog::CheckServersAreShown(true);
-					Dialog::SignalSituationChange();
+					GUI::SignalSituationChange();
 				#endif
 
 			}
@@ -1170,7 +1176,7 @@ namespace Network
 					if (Animation::AllDone())
 					{
 						LogEvent(EventSignificance::Debug,"Begin Game. Animation done. OnPlayerControlBegin");
-						OnPlayerControlBegin();
+						LocalApplicationInterface::OnPlayerControlBegin();
 					}
 					else
 						LogEvent(EventSignificance::Debug,"Begin Game. Animation NOT done");
@@ -1178,7 +1184,7 @@ namespace Network
 			case Protocol::ChannelID::Pong:
 				//lastPong = timer.Now();
 				#ifdef HAS_WINDOW
-					Dialog::SignalSituationChange();
+					GUI::SignalSituationChange();
 				#endif
 				#ifdef _DEBUG
 					//LogEvent(EventSignificance::Debug,nullptr,"Got pong from server");
@@ -1230,6 +1236,7 @@ namespace Network
 		client.InstallChannel(Channels::uplinkBandwidth);
 		client.InstallChannel(Channels::unitLimits);
 		client.InstallChannel(Channels::planetConfig);
+		client.InstallChannel(Channels::operationLacksResources);
 
 		client.OpenSignalChannel(Protocol::ChannelID::Pong,0);
 		client.OpenSignalChannel(Protocol::ChannelID::BeginGame,0);
@@ -1503,7 +1510,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 					return;
 				Objects::Marker *m = Objects::Marker::Find(e->location);
 				if (m)
-					SignalMarkerDeletion(m->id);
+					LocalApplicationInterface::SignalMarkerDeletion(m->id);
 			});
 
 			#ifdef HAS_WINDOW
@@ -1546,7 +1553,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 		{
 			
 			LogEvent(EventSignificance::Debug,nullptr,"Deleting marker "+o->GetName()+" since it's outdated (at age "+String(o->age)+")");
-			SignalMarkerDeletion(o->id);
+			LocalApplicationInterface::SignalMarkerDeletion(o->id);
 			//Network::Channels::destroyMarker.SendTo(Network::client, *o);
 		}
 
@@ -1566,7 +1573,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			if (Animation::AllDone())
 			{
 				LogEvent(EventSignificance::Debug,"Command phase. Game has begun. Animation done. OnPlayerControlBegin");
-				OnPlayerControlBegin();
+				LocalApplicationInterface::OnPlayerControlBegin();
 			}
 			else
 			{
@@ -1577,7 +1584,7 @@ void	Network::Receiver::PhaseChange(Protocol::PhaseChange&c)
 			LogEvent(EventSignificance::Debug,"Command phase. Game has NOT begun");
 
 	#ifdef HAS_WINDOW
-		Dialog::SignalSituationChange();
+		GUI::SignalSituationChange();
 	#endif
 }
 
@@ -1681,7 +1688,7 @@ bool		Network::ConnectToConfiguredServerIfAvailable()
 		if (srv->rightVersion && srv->HasAddress(RuntimeConfig::serverAddress))
 		{
 			index_t best = 0;
-			float bestPing = srv->addresses.first().second;
+			float bestPing = srv->addresses.First().second;
 			for (index_t i = 1; i < srv->addresses.Count(); i++)
 				if (srv->addresses[i].second < bestPing)
 				{

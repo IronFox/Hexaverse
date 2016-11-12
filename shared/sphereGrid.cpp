@@ -4,7 +4,6 @@
 	#include <engine/display.h>
 #endif
 
-#include "noise.h"
 #include "objects.h"
 #include "logEvent.h"
 #include "sphereGridHelper.h"
@@ -293,8 +292,8 @@ namespace Grid
 		static DX11::Shader				gridShader,transparentGridShader;// , blockShader;
 	#endif
 
-	HighSetup		high;
-	Setup<5>			low;
+	HighSetup			high;
+	LowSetup			low;
 
 	WorldData			actualWorld;
 	#ifndef CLIENT
@@ -468,12 +467,12 @@ namespace Grid
 	{
 		//float topHeight = heights.y;
 		//based on this, h could go up to 40, though chances for that are excessively rare
-		int up0 = (int)Round(heights.y * config.mountains.heightScale / RawLayerHeight);
+		int up0 = (int)Round(heights.y * config.mountains.heightScale / RawLayerHeight / UnitScale);
 		if (abs(up0) <= config.mountains.dampening)
 			up0 = 0;
 		else
 			up0 -= config.mountains.dampening * sign(up0);
-		int up1 = (int)Round(heights.x * config.extendedCore.heightScale / RawLayerHeight);
+		int up1 = (int)Round(heights.x * config.extendedCore.heightScale / RawLayerHeight / UnitScale);
 		if (abs(up1) <= config.extendedCore.dampening)
 			up1 = 0;
 		else
@@ -1257,49 +1256,58 @@ namespace Grid
 
 
 
-	static float CDF(float x)
+	//static float CDF(float x)
+	//{
+	//	float sum = x;
+	//	float value = x;
+	//	for (int i = 0; i < 100; i++)
+	//	{
+	//		value = (value*x*x/(2*i+1));
+	//		sum = sum+value;
+	//	}
+	//	static const float div = 0.39894228040143267793994605993438f;
+	//	 //1.f/sqrt(2.f*M_PIF);
+	//	return 0.5f+(sum*div)*exp(-(x*x)/2);
+	//}
+
+
+	float Get(const SimplexNoise&n, const TVec3<>&p)
 	{
-		float sum = x;
-		float value = x;
-		for (int i = 0; i < 100; i++)
-		{
-			value = (value*x*x/(2*i+1));
-			sum = sum+value;
-		}
-		static const float div = 0.39894228040143267793994605993438f;
-		 //1.f/sqrt(2.f*M_PIF);
-		return 0.5f+(sum*div)*exp(-(x*x)/2);
+		return (float)n.Get(p.x,p.y,p.z);
+	}
+	float GetContinuous(const SimplexNoise&n, const TVec3<>&p)
+	{
+		return (float)n.GetContinuous(p.x,p.y,p.z);
 	}
 
-
-	static BYTE GetHeightMapHeight(TVec3<> p)
+	static BYTE GetHeightMapHeight(const SimplexNoise&n, TVec3<>&p)
 	{
 		Vec::normalize(p);
 		Vec::mult(p,2.f);
-		float perlin = 0.5f * (noise.Get(p) + noise.Get(p*2.f));	//pseudo normal distributed -1..+1
+		float v = 0.5f * (Get(n,p) + Get(n,p*2.f));	//pseudo normal distributed -1..+1
 
 		float x = //fabs(perlin);
-				fabs(CDF(perlin));
+				fabs(SimplexNoise::ToContinuousDistribution(v));
 		//float x = p.z * 0.5f + 0.5f;
 		//;
 		return (BYTE)(std::min(x ,1.f)* 255.f);
 	}
 
-	static void CreateHeightMapSide(Image&result, const float3&origin, const float3&dx, const float3&dy)
+	static void CreateHeightMapSide(Image&result, const SimplexNoise&n, const float3&origin, const float3&dx, const float3&dy)
 	{
-		result.setDimensions(128,128,1);
-		Concurrency::parallel_for(index_t(0),count_t(result.width()*result.height()),[&result,origin,dx,dy](index_t i)
+		result.SetSize(128,128,1);
+		Concurrency::parallel_for(index_t(0),count_t(result.GetWidth()*result.GetHeight()),[&result,&n,origin,dx,dy](index_t i)
 		{
 			TVec3<> p;
-			index_t x = i/result.height();
-			index_t y = i%result.height();
+			index_t x = i/result.GetHeight();
+			index_t y = i%result.GetHeight();
 			{
-				float fx = float(x)/float(result.width()-1) * 2.f - 1.f;
-				float fy = float(y)/float(result.height()-1) * 2.f - 1.f;
+				float fx = float(x)/float(result.GetWidth()-1) * 2.f - 1.f;
+				float fy = float(y)/float(result.GetHeight()-1) * 2.f - 1.f;
 				
 				Vec::mad(origin,dx,fx,p);
 				Vec::mad(p,dy,fy);
-				result.setChannel((UINT32)x,(UINT32)y,0,GetHeightMapHeight(p));
+				result.SetChannel((UINT32)x,(UINT32)y,0,GetHeightMapHeight(n,p));
 			}
 		});
 	}
@@ -1311,14 +1319,15 @@ namespace Grid
 			Instruction::heightMapOrientation.Create(Instruction::THeightMapOrientation());
 
 			{
+				SimplexNoise n(Random().get());
 				Image sides[6];
 				//+x, -x, +y, -y, +z, -z.
-				CreateHeightMapSide(sides[0],float3(1,0,0),float3(0,0,-1),float3(0,1,0));
-				CreateHeightMapSide(sides[1],float3(-1,0,0),float3(0,0,1),float3(0,1,0));
-				CreateHeightMapSide(sides[2],float3(0,1,0),float3(1,0,0),float3(0,0,-1));
-				CreateHeightMapSide(sides[3],float3(0,-1,0),float3(1,0,0),float3(0,0,1));
-				CreateHeightMapSide(sides[4],float3(0,0,1),float3(1,0,0),float3(0,1,0));
-				CreateHeightMapSide(sides[5],float3(0,0,-1),float3(-1,0,0),float3(0,1,0));
+				CreateHeightMapSide(sides[0],n,float3(1,0,0),float3(0,0,-1),float3(0,1,0));
+				CreateHeightMapSide(sides[1],n,float3(-1,0,0),float3(0,0,1),float3(0,1,0));
+				CreateHeightMapSide(sides[2],n,float3(0,1,0),float3(1,0,0),float3(0,0,-1));
+				CreateHeightMapSide(sides[3],n,float3(0,-1,0),float3(1,0,0),float3(0,0,1));
+				CreateHeightMapSide(sides[4],n,float3(0,0,1),float3(1,0,0),float3(0,1,0));
+				CreateHeightMapSide(sides[5],n,float3(0,0,-1),float3(-1,0,0),float3(0,1,0));
 
 
 				Instruction::cubeHeightMap.LoadCube(sides,false);
@@ -1334,10 +1343,10 @@ namespace Grid
 
 
 			Image img(64, 1, 4);
-			for (UINT32 x = 0; x < img.width(); x++)
+			for (UINT32 x = 0; x < img.GetWidth(); x++)
 			{
-				float a = smoothstep(0.9, 0.95, float(x) / float(img.width() - 1));
-				float b = smoothstep(0.925, 0.95, float(x) / float(img.width() - 1));
+				float a = smoothstep(0.9, 0.95, float(x) / float(img.GetWidth() - 1));
+				float b = smoothstep(0.925, 0.95, float(x) / float(img.GetWidth() - 1));
 				BYTE*pixel = img.get(x, 0);
 				pixel[0] = (BYTE)(180 * b);
 				pixel[1] = (BYTE)(200 * b);
@@ -1523,7 +1532,7 @@ namespace Grid
 		RandomizeSun(random);
 	}
 
-	float	RandomHeight(const TVec3<>&center0, const ExtendedPlanetConfig::TSeedSet&config)
+	float	RandomHeight(const TVec3<>&center0, const ExtendedPlanetConfig::NoiseSet&config)
 	{
 		//center *= 3.f;
 		TVec3<> center = center0;
@@ -1535,17 +1544,18 @@ namespace Grid
 		{
 			center *= 2.f;
 			strength /= 2.f;
-			const float3&seed = config.seed[i];
-			rs += noise.Get(center.x + seed.x, center.y + seed.y, center.z + seed.z)*strength;
+			//const float3&seed = config.seed[i];
+			rs += Get(config.fractal[i],center)*strength;
 		}
-		rs *= noise.Get(center0.x*2.f + config.productSeed.x, center0.y*2.f + config.productSeed.y, center0.z*2.f + config.productSeed.z) * 0.5 + 0.5f;
+		rs *= Get(config.product,center0*2.f)*0.5f + 0.5f;
+		//noise.Get(center0.x*2.f + config.productSeed.x, center0.y*2.f + config.productSeed.y, center0.z*2.f + config.productSeed.z) * 0.5 + 0.5f;
 
 		float rf = 1.5f;
 		float depress = smoothstep(0.1f, 0.2f, 
-						0.5f * noise.Get(center0.x*6.f*rf + config.depressionSeed0.x, center0.y*6.f*rf + config.depressionSeed0.y, center0.z*6.f*rf + config.depressionSeed0.z)
-							+ noise.Get(center0.x*3.f*rf + config.depressionSeed1.x, center0.y*3.f*rf + config.depressionSeed1.y, center0.z*3.f*rf + config.depressionSeed1.z));
-		float fc = 0.25f * noise.Get(center0.x*4.f*rf + config.depressionSeed2.x, -center0.y*4.f*rf + config.depressionSeed2.y, -center0.z*4.f*rf + config.depressionSeed2.z) 
-				+ 0.75f * noise.Get(-center0.x*2.f*rf + config.depressionSeed3.x, center0.y*2.f*rf + config.depressionSeed3.y, center0.z*2.f*rf + config.depressionSeed3.z);
+						0.5f * Get(config.depression0, center0*6.f*rf)
+							+ Get(config.depression1, center0*3.f*rf));
+		float fc = 0.25f * Get(config.depression2, center0*4.f*rf) 
+				+ 0.75f * Get(config.depression3, -center0*2.f*rf);
 		//noise.Get(center0.x*2.f + 10.f, center0.y*2.f, center0.z*2.f);
 		depress *= fc;// *fabs(fc);
 
@@ -3299,7 +3309,7 @@ namespace Grid
 				return *res;
 
 		FATAL__("Unable to locate resource '"+name+'"');
-		return all.first();
+		return all.First();
 	}
 
 	/*static*/ Resource&		Resource::Require(ConstName name)
@@ -3309,7 +3319,7 @@ namespace Grid
 				return *res;
 
 		FATAL__("Unable to locate resource #"+String(int(name)));
-		return all.first();
+		return all.First();
 	}
 
 
@@ -3330,7 +3340,7 @@ namespace Grid
 	//	}
 	//}
 
-	/*static*/ Resource::coverage_t		Resource::GetRandomCoverage(const float3&seed, const float3&direction, float p, coverage_t max, float scale)
+	/*static*/ Resource::coverage_t		Resource::GetRandomCoverage(const SimplexNoise&n, const float3&direction, float p, coverage_t max, float scale)
 	{
 		#ifdef GRID_INDEPENDENT_RANDOM
 			static Random random;
@@ -3345,7 +3355,7 @@ namespace Grid
 			static const int reduce = 5;
 
 			//float t0 = fabs(noise.Get(direction + seed,8.f));	//wide areas
-			float t1 = (noise.Get(direction + seed,M_PIF*2.5f));	//small areas
+			float t1 = (Get(n,direction *M_PIF/2.5f));	//small areas
 
 			int rs = std::min(1.f,scale * t1) * (reduce + max);
 			rs -= reduce;
@@ -3395,12 +3405,13 @@ namespace Grid
 
 	void Resource::Fill(Random&random,float p0, coverage_t max, float avgPerCell)
 	{
-		float3 seed(random.getFloat(-10.f,10.f),random.getFloat(-10.f,10.f),random.getFloat(-10.f,10.f));
+		SimplexNoise n(random.get());
+		//avgPerCell *= UnitScale;
 
 		for (index_t i = 0; i < LowSetup::GridType::CellCount; i++)
 		{
 			#ifndef CLIENT
-				coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p0,max,1.f);
+				coverage[i] = Resource::GetRandomCoverage(n, Grid::low.cells[i].centerVertex.xyz,  p0,max,1.f);
 			#else
 				coverage[i] = 0;
 				known[i] = false;
@@ -3459,7 +3470,7 @@ namespace Grid
 					familyTotal[k] = 0;
 					for (index_t i = offset; i < offset + count; i++)
 					{
-						coverage[i] = Resource::GetRandomCoverage(seed, Grid::low.cells[i].centerVertex.xyz,  p0,max, p);
+						coverage[i] = Resource::GetRandomCoverage(n, Grid::low.cells[i].centerVertex.xyz,  p0,max, p);
 						familyTotal[k]+=coverage[i];
 					}
 					if (++retries > 10)

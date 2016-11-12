@@ -164,6 +164,7 @@ namespace FileIO
 								worldContentTypeCount("WCTC"),
 								worldID("WDID"),
 								factionWorldTypeChunk("WTCK"),
+								terrainExponent("TREX"),
 
 								zzzz("zzzz")	//no use, just so that every line can have a comma at the end
 								;
@@ -265,6 +266,7 @@ namespace FileIO
 
 	static void Import(Riff::Chunk*parent, Objects::WorldEntity&e, const GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>&ownerMap)
 	{
+		using namespace ApplicationInterface;
 		Riff::Chunk*source = parent->FindFirst(RID::entity);
 		ASSERT_NOT_NULL__(source);
 
@@ -864,6 +866,7 @@ namespace FileIO
 	
 	static Objects::PStructure Import(Riff::Chunk*parent, GenericHashTable<TUniqueID,Objects::PFaction,TUniqueID>&factions)
 	{
+		using namespace ApplicationInterface;
 		String typeName;
 		Import(parent,RID::structureType,typeName);
 		Grid::LCellIdI location;
@@ -1060,13 +1063,13 @@ namespace FileIO
 						failed = true;
 					}
 					else
-						if (vid > SupportedFileVersion)
+						if (vid > ApplicationInterface::SupportedFileVersion)
 						{
-							LogEvent(EventClass::Preset::error,"Unsupported version: "+String(vid)+". Versions are supported up to "+String(SupportedFileVersion));
+							LogEvent(EventClass::Preset::error,"Unsupported version: "+String(vid)+". Versions are supported up to "+String(ApplicationInterface::SupportedFileVersion));
 							failed = true;
 						}
 						else
-							globalVersionOfCurrentFile = vid;
+							ApplicationInterface::globalVersionOfCurrentFile = vid;
 				}
 
 			}
@@ -1075,6 +1078,13 @@ namespace FileIO
 			if (contentTypeCount != Grid::Content::NumberOfPossibilities)
 			{
 				LogEvent(EventClass::Preset::error,"Grid content type count extracted from file is "+String(contentTypeCount)+". Local count is "+String(Grid::Content::NumberOfPossibilities));
+				failed = true;
+			}
+			UINT32 exponent = 6;
+			GetOptionalPOD(&file, RID::terrainExponent,exponent,6U);
+			if (exponent != Grid::HighExponent)
+			{
+				LogEvent(EventClass::Preset::error,"Grid exponent extracted from file is "+String(exponent)+". Local exponent is "+String(Grid::HighExponent));
 				failed = true;
 			}
 		}
@@ -1117,7 +1127,7 @@ namespace FileIO
 								Game::Config::Nexus::enableAI = list->FindFirst(RID::nexusAI) != nullptr;
 								RuntimeConfig::empZones = false;
 
-								if (globalVersionOfCurrentFile < FileVersions::FirstVersionWithVariables)
+								if (ApplicationInterface::globalVersionOfCurrentFile < ApplicationInterface::FileVersions::FirstVersionWithVariables)
 								{
 									GetPOD(list,RID::closedGame,Game::Config::closedGame);
 									GetOptionalPOD(list,RID::nexusBases,Game::Config::Nexus::haveBases,false);
@@ -1313,7 +1323,7 @@ namespace FileIO
 								else
 									faction->name = isNexus ? "<Nexus>" : faction->id.ToString();
 							
-								if (globalVersionOfCurrentFile >= 1038)
+								if (ApplicationInterface::globalVersionOfCurrentFile >= 1038)
 								{
 									Riff::Chunk*markerChunk = list->FindFirst(RID::factionMarkers);
 									if (markerChunk)
@@ -1493,9 +1503,10 @@ namespace FileIO
 		Timer::Time t0 = timer.Now();
 
 		Riff::Container container;
-		UINT32 vid = SupportedFileVersion;
+		UINT32 vid = ApplicationInterface::SupportedFileVersion;
 		container.AppendBlock(RID::fileVersion,&vid,sizeof(vid));
 		container.AppendBlock(RID::worldContentTypeCount)->SetPODData((UINT32)Grid::Content::NumberOfPossibilities);
+		container.AppendBlock(RID::terrainExponent)->SetPODData((UINT32)Grid::HighExponent);
 
 
 

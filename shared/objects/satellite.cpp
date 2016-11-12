@@ -285,7 +285,7 @@ namespace Objects
 			#ifndef ONE_COMPOUND_PER_FACTION
 				UpdateHubMap();
 				bool hasAny = hubs.IsNotEmpty();
-				float distance = hasAny ? hubs.first().distance : 0;
+				float distance = hasAny ? hubs.First().distance : 0;
 			#else
 				float distance;
 				bool hasAny = !!GetClosestExternalSupplier(distance);
@@ -690,7 +690,10 @@ namespace Objects
 					if (!v->HasMotionTasks() || v->ConstructingHere(v->location))
 						return MobilePlacementResult::PlacementFailedPermanentlyObstructed;
 					else
+					{
+						LogEvent(EventClass::Preset::debug,this,"Obstruction detected: "+v->GetName()+" at "+v->location.ToString());
 						return MobilePlacementResult::PlacementFailedTemporarilyObstructed;
+					}
 				}
 			}
 			const Grid::LCellIdI old = location;

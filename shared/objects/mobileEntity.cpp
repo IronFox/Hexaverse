@@ -131,7 +131,7 @@ namespace Objects
 		{
 			if (t == RemovalType::UncontrolledExplosion && RuntimeConfig::bombsExplodeWhenDestroyed && turret == &Component::bomb)
 			{
-				SignalChainReactionExplosion(location, Component::Bomb::GetRadius(false),Component::Bomb::GetDamageLevel(false),atTime);
+				ApplicationInterface::SignalChainReactionExplosion(location, Component::Bomb::GetRadius(false),Component::Bomb::GetDamageLevel(false),atTime);
 			}
 
 		}
@@ -275,7 +275,7 @@ namespace Objects
 									case MobilePlacementResult::PlacementFailedTemporarilyObstructed:
 									{
 										isObstructed = true;
-										LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Unable to complete movement.");
+										LogEvent( this->isAutomated ? EventClass::Preset::common :  EventClass::Preset::operationAborted,this,"Temporary obstruction detected: Unable to complete movement.");
 										if (health <= 0)
 										{
 											LogEvent(EventSignificance::Common,this,"Is dead.");
@@ -499,7 +499,7 @@ namespace Objects
 
 				if (timeCost > 0)
 				{
-					SignalMotion(To<Vehicle>::Cast(shared_from_this()),oldLocation,location,oldTime,timeCost);
+					ApplicationInterface::SignalMotion(To<Vehicle>::Cast(shared_from_this()),oldLocation,location,oldTime,timeCost);
 				}
 				else
 				{
@@ -1136,7 +1136,7 @@ namespace Objects
 					{
 						//float delta = std::max(fabs(angles.x - turretAngleX), fabs(angles.y - turretAngleY));
 						float rotTime = Times::TurretRotation/**delta*/;
-						SignalTurretRotation(To<Vehicle>::Cast(shared_from_this()),(ToWorld(trajectory[1]) - ToWorld(trajectory.first())).Normalized0(),rotTime);
+						ApplicationInterface::SignalTurretRotation(To<Vehicle>::Cast(shared_from_this()),(ToWorld(trajectory[1]) - ToWorld(trajectory.First())).Normalized0(),rotTime);
 						motionTime += rotTime;
 
 					//	TVec3<> t0;
@@ -1151,14 +1151,14 @@ namespace Objects
 				else
 					flightTime =  timeEpsilon;// Times::Attack * 10;;
 
-				TAttack at;
+				ApplicationInterface::TAttack at;
 				at.attackFrom = To<MobileEntity>::Cast(shared_from_this());
 				at.attackAngle = angle;
 				at.flightTime = flightTime;
 				at.isAutoAttack = false;
 				at.traceTo = t0;
 
-				SignalAttack(at);
+				ApplicationInterface::SignalAttack(at);
 				ChangeStorage(*this,motionTime,turret->ammoType,-turret->ammoNeedPerShot);
 				
 				motionTime += flightTime;
@@ -1587,7 +1587,7 @@ namespace Objects
 		if (shape == ConstName::DetonationSize_Regular)
 		{
 			localizableShapes.SetSize(1,true);
-			Shape&shape = localizableShapes.first();
+			Shape&shape = localizableShapes.First();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
 			shape.instruction.vbo = sphereVBO[0];
 			shape.instruction.ibo = sphereIBO[0];
@@ -1601,7 +1601,7 @@ namespace Objects
 		if (shape == ConstName::DetonationSize_Doomsday)
 		{
 			localizableShapes.SetSize(1,true);
-			Shape&shape = localizableShapes.first();
+			Shape&shape = localizableShapes.First();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
 			shape.instruction.vbo = sphereVBO[0];
 			shape.instruction.ibo = sphereIBO[0];
@@ -1617,7 +1617,7 @@ namespace Objects
 		if (p)
 		{
 			localizableShapes.SetSize(1,true);
-			Shape&shape = localizableShapes.first();
+			Shape&shape = localizableShapes.First();
 			((DX11::BaseInstructionBlock&) shape.instruction) = jobShader;
 
 			shape.instruction.vbo = p->localizableShape->vbo;

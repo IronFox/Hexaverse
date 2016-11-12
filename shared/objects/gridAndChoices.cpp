@@ -212,7 +212,7 @@ namespace Objects
 
 
 		
-		void Explode(const TAttack& attack, 
+		void Explode(const ApplicationInterface::TAttack& attack, 
 					 const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, bool doomsday,
 					 float&atTime)
 		{
@@ -228,7 +228,8 @@ namespace Objects
 			//	return;
 			//}
 
-			SignalExplosion(attack, 
+			ApplicationInterface::SignalExplosion(
+							attack, 
 							center,explosionRadius,false,
 							doomsday,
 							atTime);
@@ -364,10 +365,11 @@ namespace Objects
 			affectedVehicles.Clear();
 		}
 	
-		void ExplodeEMP(const TAttack& attack, 
+		void ExplodeEMP(const ApplicationInterface::TAttack& attack, 
 						const Grid::HCellIdI&targetCell, const TVec3<>&center, int explosionRadius, int damageLevel, float&atTime)
 		{
-			SignalExplosion(attack, 
+			ApplicationInterface::SignalExplosion(
+							attack, 
 							center,explosionRadius,true,false,atTime);
 
 			float outerRadius = explosionRadius*explosionRadius;
@@ -772,7 +774,7 @@ namespace Objects
 			{
 				ASSERT1__(p->queue.IsNotEmpty(),entity.GetName());
 				Component::VehicleBase* base = nullptr;
-				const auto&building = p->queue.first();
+				const auto&building = p->queue.First();
 
 				if (building.CanSpawnInGrid())
 					GetProductionChoices(&entity,building.GetVehicleBase(),movementChoices);
@@ -1112,7 +1114,7 @@ namespace Objects
 				if (b && b->turret->CanAttack())
 					Renderer::attackers << e;
 			#endif
-			OnAppear(e);
+			ApplicationInterface::OnAppear(e);
 		#else
 			ForeachFaction([e,&atTime](const PFaction&f)
 			{
@@ -1169,7 +1171,7 @@ namespace Objects
 				FATAL__("Cannot insert. Unexpected mobile: "+v->GetName());
 
 		#ifndef CLIENT
-			SignalNewMobileEntity(v,restored,signalTime);
+			ApplicationInterface::SignalNewMobileEntity(v,restored,signalTime);
 		#endif
 	}
 
@@ -1245,7 +1247,7 @@ namespace Objects
 				compoundCoverageChanged = true;
 			else
 				RefreshCompoundCoverage(atTime);
-			SignalNewStructure(s,atTime);
+			ApplicationInterface::SignalNewStructure(s,atTime);
 			if (s->IsWorkingStructure())
 			{
 				PWorkingStructure ws = To<WorkingStructure>::Cast(s);
@@ -1421,9 +1423,9 @@ namespace Objects
 				RefreshCompoundCoverage(timestamp);
 			if (!move)
 				waste << e;
-			OnVanish(e,t);
+			ApplicationInterface::OnVanish(e,t);
 		#else
-			SignalRemoval(e,t,timestamp);	//must be sent before clearing seeing-list below (UnregisterSensory) or nobody will be told except owner
+			ApplicationInterface::SignalRemoval(e,t,timestamp);	//must be sent before clearing seeing-list below (UnregisterSensory) or nobody will be told except owner
 
 			if (isStructure)
 				compoundCoverageChanged = true;

@@ -1532,8 +1532,9 @@ namespace Objects
 		};
 
 		static float				foundationHeight;	//unscaled height of the base geometry, and vertical offset to position turret
-		virtual PTurretBase			GetTurretBase(float&zOffset) override { zOffset = foundationHeight; return To<Tower>::Cast(shared_from_this());}
-		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = foundationHeight; return To<const Tower>::Cast(shared_from_this());}
+		static float				GetEffectiveFoundationHeight() {return foundationHeight * Grid::UnitScale;}
+		virtual PTurretBase			GetTurretBase(float&zOffset) override { zOffset = GetEffectiveFoundationHeight(); return To<Tower>::Cast(shared_from_this());}
+		virtual PConstTurretBase	GetTurretBase(float&zOffset) const override { zOffset = GetEffectiveFoundationHeight(); return To<const Tower>::Cast(shared_from_this());}
 
 		virtual int					GetHeight() const override {return 2;}
 
@@ -1854,7 +1855,7 @@ namespace Objects
 				WorkingStructureT<Derivative>*s2 = dynamic_cast<WorkingStructureT<Derivative>*>(selectedEntity.get());
 				if (s2)
 				{
-					SignalEnableStructure(*s2, !s2->IsEnabled());
+					ApplicationInterface::SignalEnableStructure(*s2, !s2->IsEnabled());
 					//s2->SetEnabled(!s2->IsEnabled());
 				}
 			}

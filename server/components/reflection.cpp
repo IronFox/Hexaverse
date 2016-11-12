@@ -7,7 +7,6 @@
 #include <io/file_system.h>
 #include "aiProcess.h"
 #include "configurationMode.h"
-//#include "remoteControl.h"
 
 namespace Reflection
 {
@@ -834,30 +833,37 @@ namespace Reflection
 		state.DefineCommand("find name", FactionCommands::FindName);
 		state.ExitFolder();
 
-		state.EnterNewFolder("World")->attachment.reset(new Variable::PersistenceAttachment());
+
+		CLI::PAttachment persistenceAttachment(new Variable::PersistenceAttachment());
+
+		state.EnterNewFolder("World")->attachment = persistenceAttachment;
 			VAR(simulateLiquids,World::Config,false,true,Variable::Persistence::RestoreFromSavegame);
 			ENUMVAR(worldDiscovery,World::Config,Variable::Persistence::PlanetConfig);
 
 
-			state.EnterNewFolder("Planet")->attachment.reset(new Variable::PersistenceAttachment());
+			state.EnterNewFolder("Planet")->attachment = persistenceAttachment;
 				Variable::planetType = Variable::SetString("Type","LushGreen",Variable::Persistence::PlanetConfig);
 				state.EnterNewFolder("Config")->attachment.reset(new Variable::FileReferenceAttachment("config/planets",Variable::planetType));
 				{
+					/*
+					Important:
+					Keep this in sync with client/components/configurationMode.cpp
+					*/
 					Variable::Set("atmosphereDensity",Grid::currentPlanetConfig.atmosphereColor.a,0.f,1.f,Variable::Persistence::PlanetConfig);
 					Variable::SetMappedEnum<Grid::Content,UINT32>("innerCoreType",Grid::currentPlanetConfig.innerCoreType,Variable::Persistence::PlanetConfig);
-					state.EnterNewFolder("ExtendedCore")->attachment.reset(new Variable::PersistenceAttachment());
+					state.EnterNewFolder("ExtendedCore")->attachment = persistenceAttachment;
 						Variable::SetMappedEnum<Grid::Content,BYTE>("type",Grid::currentPlanetConfig.extendedCoreType,Variable::Persistence::PlanetConfig);
 					state.ExitFolder();
 					
 					
 					CLI::PFolder mountains = state.EnterNewFolder("Mountains");
-						mountains->attachment.reset(new Variable::PersistenceAttachment());
+						mountains->attachment = persistenceAttachment;
 //						Variable::SetMappedEnum<Grid::Content,BYTE>("top",Grid::currentPlanetConfig.topType,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 						Variable::SetMappedEnum<Grid::Content,BYTE>("type",Grid::currentPlanetConfig.type,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 						Variable::Set("snowHeight",Grid::currentPlanetConfig.snowHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 					state.ExitFolder();
 
-					state.EnterNewFolder("Liquid")->attachment.reset(new Variable::PersistenceAttachment());
+					state.EnterNewFolder("Liquid")->attachment = persistenceAttachment;
 						Variable::SetMappedEnum<Grid::Content,BYTE>("type",Grid::currentPlanetConfig.liquidCoverage,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 						Variable::Set("level",Grid::currentPlanetConfig.liquidHeight,Grid::CellStack::BottomHeight, Grid::CellStack::TopHeight,Variable::Persistence::PlanetConfig)->extraOnChange = [](Variable::Base&) {Grid::currentPlanetConfig.GenerateAtmosphereColor();};
 						Variable::SetMappedEnum<Grid::Content,BYTE>("outline",Grid::currentPlanetConfig.liquidOutline,Variable::Persistence::PlanetConfig);
@@ -866,11 +872,11 @@ namespace Reflection
 					MapConfig(Grid::currentPlanetConfig.extendedCore,state.GetFocus()->CreateOrGetChild("ExtendedCore"));
 					MapConfig(Grid::currentPlanetConfig.mountains,mountains);
 
-					state.EnterNewFolder("Resources")->attachment.reset(new Variable::PersistenceAttachment());
+					state.EnterNewFolder("Resources")->attachment = persistenceAttachment;
 						for (index_t i = 0; i < Objects::Resource::NumberOfPossibilities; i++)
 						{
 							Objects::Resource res = Objects::Resource::Reinterpret(i);
-							state.EnterNewFolder(res.ToString())->attachment.reset(new Variable::PersistenceAttachment());
+							state.EnterNewFolder(res.ToString())->attachment = persistenceAttachment;
 								Variable::Set("density",Grid::Resource::density[i],0.f,1.f,Variable::Persistence::PlanetConfig);
 								//Variable::Set("probability",Grid::Resource::probability[i],0.f,1.f,Variable::Persistence::GameInvariant);
 								Variable::Set("max",Grid::Resource::maximum[i],(Grid::Resource::coverage_t)1,(Grid::Resource::coverage_t)32,Variable::Persistence::PlanetConfig);
@@ -881,7 +887,7 @@ namespace Reflection
 				state.ExitFolder();
 			state.ExitFolder();
 		state.ExitFolder();
-		state.EnterNewFolder("Rules")->attachment.reset(new Variable::PersistenceAttachment());
+		state.EnterNewFolder("Rules")->attachment = persistenceAttachment;
 
 			ENUMVAR(gameGoal,RuntimeConfig,Variable::Persistence::RestoreFromSavegame);
 
@@ -898,12 +904,12 @@ namespace Reflection
 			VAR(uplinkBandwidth,Game::Config,1U,1000000U,Variable::Persistence::RestoreFromSavegame);
 			ENUMVAR(doomsdayWeapons,RuntimeConfig,Variable::Persistence::ConfigOverridesSavegame);
 
-			state.EnterNewFolder("UnitLimits")->attachment.reset(new Variable::PersistenceAttachment());
+			state.EnterNewFolder("UnitLimits")->attachment = persistenceAttachment;
 				RuntimeConfig::UnitLimits::Reset();
 
 				state.SetVariable(CLI::PVariable(new Variable::UnitLimitEnabled("Enabled")));
 
-				state.EnterNewFolder("Structures")->attachment.reset(new Variable::PersistenceAttachment());
+				state.EnterNewFolder("Structures")->attachment = persistenceAttachment;
 					for (const Objects::PStructure&p:Objects::structurePrototypes)
 					{
 						String key = p->GetTypeName();
@@ -912,7 +918,7 @@ namespace Reflection
 					}
 				state.ExitFolder();
 
-				state.EnterNewFolder("MobileTurrets")->attachment.reset(new Variable::PersistenceAttachment());
+				state.EnterNewFolder("MobileTurrets")->attachment = persistenceAttachment;
 					for (const auto&c:Objects::Component::allTurretComponents)
 					{
 						String key = c->typeName;
@@ -922,7 +928,7 @@ namespace Reflection
 				state.ExitFolder();
 			state.ExitFolder();
 
-			state.EnterNewFolder("Nexus")->attachment.reset(new Variable::PersistenceAttachment());
+			state.EnterNewFolder("Nexus")->attachment = persistenceAttachment;
 				VAR(haveBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame);
 				#ifndef NO_SATELLITES
 					VAR(haveSatellitesAtopBases,Game::Config::Nexus,false,true,Variable::Persistence::RestoreFromSavegame);
@@ -934,7 +940,7 @@ namespace Reflection
 			state.ExitFolder();
 		state.ExitFolder();
 
-		state.EnterNewFolder("Server")->attachment.reset(new Variable::PersistenceAttachment());
+		state.EnterNewFolder("Server")->attachment = persistenceAttachment;
 			VAR(saveEveryNRounds,FileIO::Config,-1,100,Variable::Persistence::ConfigOnly);
 			VAR(saveWhenAllQuit,FileIO::Config,false,true,Variable::Persistence::ConfigOnly);
 			

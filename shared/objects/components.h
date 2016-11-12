@@ -16,7 +16,7 @@
 
 namespace Objects
 {
-	static const float			vehicleScale = 0.01f * WorldScale;
+	static const constexpr float			vehicleScale = 0.01f * Grid::UnitScale * WorldScale;
 	inline void NoCosts(int&mineralCostOut, Resource&resOut, int&timeCostOut){mineralCostOut = 0; resOut=Resource::Minerals; timeCostOut = 0;}
 
 
@@ -144,6 +144,7 @@ namespace Objects
 		*/
 		class Turret : public Base
 		{
+			typedef Base					Super;
 		public:
 			enum class MountType
 			{
@@ -339,6 +340,16 @@ namespace Objects
 			Checks whether or not the local turret could ever possibly consume resources
 			*/
 			bool							ConsumesResources(ResourceFlagSet&res) const;
+			void							FinishCreation(bool scaleToVehicleSize=true)
+			{
+				float fc = (Grid::UnitScale-1.f)*0.5f + 1.f;
+				explosionRadius *= fc;
+				scanningRange *= fc;
+				groundScanningRange *= fc;
+				horizontalAttackRange *= fc;
+				Super::FinishCreation(scaleToVehicleSize);
+			}
+
 		};
 
 
@@ -455,7 +466,7 @@ namespace Objects
 					{
 						if (!selectedMobileEntity)
 							return;
-						SignalNewJob(selectedMobileEntity, Command,ConstName::Empty);					
+						ApplicationInterface::SignalNewJob(selectedMobileEntity, Command,ConstName::Empty);					
 					}
 
 				void	BuildRoad();
@@ -495,7 +506,7 @@ namespace Objects
 						PMobileEntity vehicle = selectedMobileEntity;
 						if (!vehicle)
 							return;
-						SignalNewJob(vehicle, ConstName::Job_SelfDetonate,DetonationSize);					
+						ApplicationInterface::SignalNewJob(vehicle, ConstName::Job_SelfDetonate,DetonationSize);					
 					}
 
 			};
