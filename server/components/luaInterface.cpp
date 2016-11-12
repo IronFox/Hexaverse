@@ -589,20 +589,186 @@ static int pmain (lua_State *L) {
 }
 
 
+void PushParameter(lua_State *state, int i)
+{
+	lua_pushinteger(state, i);
+}
+
+void PushParameter(lua_State *state, LUA_NUMBER i)
+{
+	lua_pushnumber(state, i);
+}
+void PushParameter(lua_State *state, void*p)
+{
+	lua_pushlightuserdata(state, p);
+}
+
+void GetStacked(lua_State *state, int addr, bool&rs)
+{
+	rs = lua_toboolean(state, addr)!=0;
+}
+
+void GetStacked(lua_State *state, int addr, String&rs)
+{
+	rs = lua_tolstring(state, addr,nullptr);
+}
+
+void GetStacked(lua_State *state, int addr, void*&rs)
+{
+	rs = lua_touserdata(state, addr);
+}
+
+void GetStacked(lua_State *state, int addr, LUA_INTEGER&rs)
+{
+	int dummy;
+	rs = lua_tointegerx(state, addr,&dummy);
+}
+
+void GetStacked(lua_State *state, int addr, LUA_NUMBER&rs)
+{
+	int dummy;
+	rs = lua_tonumberx(state, addr,&dummy);
+}
+
+
+int PushParameters(lua_State *state)
+{
+	return 0;
+}
+
+template <typename T0>
+	int PushParameters(lua_State *state, const T0&p0)
+	{
+		PushParameter(state,p0);
+		return 1;
+	}
+
+template <typename T0, typename ...T>
+	int PushParameters(lua_State *state, const T0&p0, const T&...p)
+	{
+		PushParameter(state,p0);
+		return 1 + PushParameters(state,p...);
+	}
+
+template <typename Result, typename ...T>
+	bool CallFunction(lua_State *state, lua_CFunction fn, Result&result, const T&...parameters)
+	{
+		lua_pushcclosure(state,fn,0);
+		int numParameters = PushParameters(state,parameters...);
+		int status = lua_pcallk(state, numParameters, 1, 0, 0, NULL);
+		if (status != LUA_OK)
+		{
+			report(state, status);
+			return false;
+		}
+		GetStacked(state,-1,result);
+		return true;
+	}
+
+template <typename Result, typename ...T>
+	bool CallRegisteredFunction(lua_State *state, int refID, Result&result, const T&...parameters)
+	{
+		lua_rawgeti(state, LUA_REGISTRYINDEX, refID);
+		int numParameters = PushParameters(state,parameters...);
+		int status = lua_pcallk(state, numParameters, 1, 0, 0, NULL);
+		if (status != LUA_OK)
+		{
+			report(state, status);
+			return false;
+		}
+		GetStacked(state,-1,result);
+		return true;
+	}
+
+
+namespace Library
+{
+	static int Test (lua_State *state)
+	{
+		double d = luaL_checknumber(state, 1);
+		lua_pushnumber(state, sin(d));
+		return 1;  /* number of results */
+	}
+	
+
+	void RegisterLib(lua_State *state)
+	{
+
+		static const struct luaL_Reg funcs [] = {
+		  {"Test", Test},
+		  {NULL, NULL}  /* sentinel */
+		};
+
+		lua_newtable(state);
+		luaL_setfuncs(state, funcs, 0);
+		lua_setglobal(state, "Interface");
+
+	}
+
+}
+
+static void stackDump (lua_State *L) {
+	int i;
+	int top = lua_gettop(L);
+	for (i = 1; i <= top; i++) {  /* repeat for each level */
+	int t = lua_type(L, i);
+	switch (t) {
+    
+		case LUA_TSTRING:  /* strings */
+		printf("`%s'", lua_tostring(L, i));
+		break;
+    
+		case LUA_TBOOLEAN:  /* booleans */
+		printf(lua_toboolean(L, i) ? "true" : "false");
+		break;
+    
+		case LUA_TNUMBER:  /* numbers */
+		printf("%g", lua_tonumber(L, i));
+		break;
+    
+		default:  /* other values */
+		printf("%s", lua_typename(L, t));
+		break;
+    
+	}
+	printf("  ");  /* put a separator */
+	}
+	printf("\n");  /* end the listing */
+}
+
 int LuaRun (int argc, const char *argv[]) {
-  int status, result;
+  int status;
+  bool result;
   lua_State *L = luaL_newstate();  /* create state */
   if (L == NULL) {
     l_message(argv[0], "cannot create state: not enough memory");
     return EXIT_FAILURE;
   }
-  lua_pushcfunction(L, &pmain);  /* to call 'pmain' in protected mode */
-  lua_pushinteger(L, argc);  /* 1st argument */
-  lua_pushlightuserdata(L, argv); /* 2nd argument */
-  status = lua_pcall(L, 2, 1, 0);  /* do the call */
-  result = lua_toboolean(L, -1);  /* get result */
-  report(L, status);
-  lua_close(L);
-  return (result && status == LUA_OK) ? EXIT_SUCCESS : EXIT_FAILURE;
+	luaL_openlibs(L);  /* open standard libraries */
+
+  Library::RegisterLib(L);
+
+  dostring(L,
+  " function norm (x, y)"
+  "    local n2 = x^2 + y^2"
+  "    return math.sqrt(n2)"
+  "  end","norm");
+  
+
+  lua_getglobal(L,"norm");
+  int r = luaL_ref(L, LUA_REGISTRYINDEX);
+  LUA_NUMBER n;
+  bool success = CallRegisteredFunction(L,r,n,1.0,1.0);
+
+ // stackDump(L);
+
+  int rc = dostring(L,"print(Interface.Test(3.5))","test");
+//  bool okay = CallFunction(L,pmain,result,argc,argv);
+  //lua_pushcfunction(L, &pmain);  /* to call 'pmain' in protected mode */
+  //lua_pushinteger(L, argc);  /* 1st argument */
+  //lua_pushlightuserdata(L, argv); /* 2nd argument */
+  //lua_pcall(L, 2, 1, 0);  /* do the call */
+  //lua_close(L);
+  return (rc == LUA_OK) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
