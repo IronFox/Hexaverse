@@ -43,3 +43,4 @@ baked/
 *.pdb
 *.config
 Bake/Bake.vshost.exe.manifest
+ThirdParty/lua/.projector/
