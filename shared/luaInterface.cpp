@@ -38,6 +38,11 @@ extern "C"
 	LUA_INIT_VAR "_" LUA_VERSION_MAJOR "_" LUA_VERSION_MINOR
 
 
+namespace Lua
+{
+	template class Function<int(int)>;
+}
+
 /*
 ** lua_stdin_is_tty detects whether the standard input is a 'tty' (that
 ** is, whether we're running lua interactively).
@@ -589,66 +594,52 @@ static int pmain (lua_State *L) {
 }
 
 
-void PushParameter(lua_State *state, int i)
+void Lua::PushParameter(lua_State *state, long long i)
 {
 	lua_pushinteger(state, i);
 }
 
-void PushParameter(lua_State *state, LUA_NUMBER i)
+void Lua::PushParameter(lua_State *state, double i)
 {
 	lua_pushnumber(state, i);
 }
-void PushParameter(lua_State *state, void*p)
+void Lua::PushParameter(lua_State *state, void*p)
 {
 	lua_pushlightuserdata(state, p);
 }
 
-void GetStacked(lua_State *state, int addr, bool&rs)
+
+
+
+
+void Lua::GetStacked(lua_State *state, int addr, bool&rs)
 {
 	rs = lua_toboolean(state, addr)!=0;
 }
 
-void GetStacked(lua_State *state, int addr, String&rs)
+void Lua::GetStacked(lua_State *state, int addr, String&rs)
 {
 	rs = lua_tolstring(state, addr,nullptr);
 }
 
-void GetStacked(lua_State *state, int addr, void*&rs)
+void Lua::GetStacked(lua_State *state, int addr, void*&rs)
 {
 	rs = lua_touserdata(state, addr);
 }
 
-void GetStacked(lua_State *state, int addr, LUA_INTEGER&rs)
+void Lua::GetStacked(lua_State *state, int addr, long long&rs)
 {
 	int dummy;
 	rs = lua_tointegerx(state, addr,&dummy);
 }
 
-void GetStacked(lua_State *state, int addr, LUA_NUMBER&rs)
+void Lua::GetStacked(lua_State *state, int addr, double&rs)
 {
 	int dummy;
 	rs = lua_tonumberx(state, addr,&dummy);
 }
 
 
-int PushParameters(lua_State *state)
-{
-	return 0;
-}
-
-template <typename T0>
-	int PushParameters(lua_State *state, const T0&p0)
-	{
-		PushParameter(state,p0);
-		return 1;
-	}
-
-template <typename T0, typename ...T>
-	int PushParameters(lua_State *state, const T0&p0, const T&...p)
-	{
-		PushParameter(state,p0);
-		return 1 + PushParameters(state,p...);
-	}
 
 template <typename Result, typename ...T>
 	bool CallFunction(lua_State *state, lua_CFunction fn, Result&result, const T&...parameters)
@@ -665,18 +656,36 @@ template <typename Result, typename ...T>
 		return true;
 	}
 
+void Lua::PushRegisteredFunction(lua_State*state, int refID)
+{
+	lua_rawgeti(state, LUA_REGISTRYINDEX, refID);
+}
+
+void	Lua::CallPushedFunction(lua_State*state,int numParameters, int numResults)
+{
+	int status = lua_pcallk(state, numParameters, numResults, 0, 0, NULL);
+	if (status != LUA_OK)
+	{
+		String msg = lua_tostring(state, -1);
+		lua_pop(state, 1);  /* remove message */
+		throw Except::Program::GeneralFault("Lua: "+msg);
+	}
+}
+
+
+
 template <typename Result, typename ...T>
 	bool CallRegisteredFunction(lua_State *state, int refID, Result&result, const T&...parameters)
 	{
 		lua_rawgeti(state, LUA_REGISTRYINDEX, refID);
-		int numParameters = PushParameters(state,parameters...);
+		int numParameters = Lua::PushParameters(state,parameters...);
 		int status = lua_pcallk(state, numParameters, 1, 0, 0, NULL);
 		if (status != LUA_OK)
 		{
 			report(state, status);
 			return false;
 		}
-		GetStacked(state,-1,result);
+		Lua::GetStacked(state,-1,result);
 		return true;
 	}
 
@@ -735,6 +744,170 @@ static void stackDump (lua_State *L) {
 	}
 	printf("\n");  /* end the listing */
 }
+
+
+namespace Lua
+{
+	void SerializeCurrentTable(lua_State *L, IWriteStream&stream);
+
+
+	void	SerializePart(lua_State*L, IWriteStream&stream, int at)
+	{
+		int t = lua_type(L, at);
+		stream.WritePrimitive((BYTE)t);
+		switch (t)
+		{
+			case LUA_TSTRING:  /* strings */
+				String(lua_tostring(L, at)).Serialize(stream,true);
+			break;
+			case LUA_TBOOLEAN:
+				stream.WritePrimitive((BYTE)(lua_toboolean(L,at)!=0));
+			break;
+			case LUA_TNUMBER:
+				stream.WritePrimitive(lua_tonumber(L,at));
+			break;
+			case LUA_TTABLE:
+				ASSERT_EQUAL__(at,-1);
+				SerializeCurrentTable(L,stream);
+			break;
+		}
+	}
+
+	void SerializeCurrentTable(lua_State *L, IWriteStream&stream)
+	{
+		lua_pushnil(L);
+
+		count_t cnt = 0;
+		while(lua_next(L, -2) != 0)
+		{
+			lua_pop(L, 1);
+			cnt++;
+		}
+
+		stream.WriteSize(cnt);
+
+		lua_pushnil(L);
+
+		while(lua_next(L, -2) != 0)
+		{
+			SerializePart(L,stream,-2);	//key
+			SerializePart(L,stream,-1);	//value
+			lua_pop(L, 1);
+		}
+	}
+
+	bool PushTable(lua_State*state, IReadStream&stream);
+
+
+	/**
+	Pushes the next variable to the lua stack as found in the specified stream
+	@param True on success, false otherwise. The stack is left unchanged if the function fails.
+	*/
+	bool PushNext(lua_State*state, IReadStream&stream)
+	{
+		BYTE t;
+		if (!stream.ReadPrimitive(t))
+			return false;
+		switch (t)
+		{
+			case LUA_TSTRING:  /* strings */
+			{
+				String str;
+				if (!str.Deserialize(stream,ISerializable::EmbeddedSize))
+					return false;
+				lua_pushstring(state,str.c_str());
+			}
+			break;
+			case LUA_TBOOLEAN:
+			{
+				BYTE val;
+				if (!stream.ReadPrimitive(val))
+					return false;
+				lua_pushboolean(state,val);
+			}
+			break;
+			case LUA_TNUMBER:
+			{
+				LUA_NUMBER num;
+				if (!stream.ReadPrimitive(num))
+					return false;
+				lua_pushnumber(state,num);
+			}
+			break;
+			case LUA_TTABLE:
+				return PushTable(state,stream);
+		}
+		return true;
+	}
+
+	/**
+
+	*/
+	bool PushTable(lua_State*state, IReadStream&stream)
+	{
+		count_t numElements;
+		if (!stream.ReadSize(numElements))
+			return false;
+
+		lua_createtable (state, 0, (int)numElements);
+
+		for (index_t i = 0; i < numElements; i++)
+		{
+			if (!PushNext(state, stream))
+			{
+				lua_pop(state,1);
+				return false;
+			}
+			if (!PushNext(state, stream))
+			{
+				lua_pop(state,1);
+				lua_pop(state,1);
+				return false;
+			}
+			lua_settable(state,-2);
+		}
+		return true;
+	}
+}
+
+
+void PrintTable(lua_State *L)
+{
+    lua_pushnil(L);
+
+    while(lua_next(L, -2) != 0)
+    {
+        if(lua_isstring(L, -1))
+          printf("%s = %s\n", lua_tostring(L, -2), lua_tostring(L, -1));
+        else if(lua_isnumber(L, -1))
+          printf("%s = %f\n", lua_tostring(L, -2), lua_tonumber(L, -1));
+        else if(lua_istable(L, -1))
+          PrintTable(L);
+
+        lua_pop(L, 1);
+    }
+}
+
+
+
+
+int		Lua::LookupFunction(lua_State*state, const String&name)
+{
+  lua_getglobal(state, name.c_str());
+  return luaL_ref(state, LUA_REGISTRYINDEX);
+}
+
+int		Lua::DuplicateReference(lua_State *state, int refID)
+{
+	PushRegisteredFunction(state,refID);
+	return luaL_ref(state, LUA_REGISTRYINDEX);
+}
+
+void		Lua::EraseReference(lua_State *state, int refID)
+{
+	luaL_unref(state,LUA_REGISTRYINDEX,refID);
+}
+
 
 int LuaRun (int argc, const char *argv[]) {
   int status;
