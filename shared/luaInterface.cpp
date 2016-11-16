@@ -1,6 +1,6 @@
 #include <global_root.h>
 #include "luaInterface.h"
-
+#include <io/byte_stream.h>
 
 
 #include <signal.h>
@@ -796,6 +796,15 @@ namespace Lua
 		}
 	}
 
+	bool SerializeGlobal(lua_State*state,const String&name, IWriteStream&stream)
+	{
+		int t = lua_getglobal(state,name.c_str());
+		if (t == LUA_TTABLE)
+			Lua::SerializeCurrentTable(state,stream);
+		lua_pop(state, 1);
+		return t == LUA_TTABLE;
+	}
+
 	bool PushTable(lua_State*state, IReadStream&stream);
 
 
@@ -864,7 +873,8 @@ namespace Lua
 				lua_pop(state,1);
 				return false;
 			}
-			lua_settable(state,-2);
+			//stackDump(state);
+			lua_settable(state,-3);
 		}
 		return true;
 	}
@@ -910,23 +920,63 @@ void		Lua::EraseReference(lua_State *state, int refID)
 
 
 int LuaRun (int argc, const char *argv[]) {
-  int status;
-  bool result;
-  lua_State *L = luaL_newstate();  /* create state */
-  if (L == NULL) {
-    l_message(argv[0], "cannot create state: not enough memory");
-    return EXIT_FAILURE;
-  }
+	int status;
+	bool result;
+	lua_State *L = luaL_newstate();  /* create state */
+	if (L == NULL)
+	{
+		l_message(argv[0], "cannot create state: not enough memory");
+		return EXIT_FAILURE;
+	}
 	luaL_openlibs(L);  /* open standard libraries */
 
-  Library::RegisterLib(L);
+	Library::RegisterLib(L);
 
-  dostring(L,
-  " function norm (x, y)"
-  "    local n2 = x^2 + y^2"
-  "    return math.sqrt(n2)"
-  "  end","norm");
-  
+	dostring(L,
+	" function DeepPrint (e, indent)"
+    " if type(e) == \"table\" then"
+    "    for k,v in pairs(e) do"
+    "        print(indent .. k)"
+    "        DeepPrint(v,indent .. \" \")"
+    "    end"
+    " else"
+    "    print(indent .. e)"
+    " end"
+	" end"
+	,"DeepPrint"
+	);
+
+	dostring(L,
+		" function norm (x, y)"
+		"    local n2 = x^2 + y^2"
+		"    return math.sqrt(n2)"
+		"  end","norm");
+
+	dostring(L,
+	"level1 ="
+	"{"
+		"music = \"music1\","
+		"items ="
+		"{"
+			"A = 1,"
+			"B = 2,"
+			"{"
+				"c = \"C\","
+			"}"
+		"}"
+	"}","struct");
+
+	ByteStream	testStream;
+	Lua::SerializeGlobal(L,"level1",testStream);
+
+	MemReadStream reader(testStream.pointer(),testStream.GetFillLevel());
+
+	bool sc = Lua::PushTable(L,reader);
+
+	lua_setglobal(L,"level2");
+
+	dostring(L,"DeepPrint(level1,\"\")","level1");
+	dostring(L,"DeepPrint(level2,\"\")","level2");
 
   lua_getglobal(L,"norm");
   int r = luaL_ref(L, LUA_REGISTRYINDEX);
