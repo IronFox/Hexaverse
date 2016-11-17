@@ -12,7 +12,7 @@ namespace Lua
 
 	void	PushRegisteredFunction(lua_State*, int refID);
 	void	CallPushedFunction(lua_State*,int numParameters, int numResults);
-	int		LookupFunction(lua_State *,const String&name);
+	int		LookupGlobal(lua_State *,const String&name);
 	int		DuplicateReference(lua_State *, int ref);
 	void	EraseReference(lua_State *, int ref);
 
@@ -26,6 +26,12 @@ namespace Lua
 	void GetStacked(lua_State *state, int addr, void*&rs);
 	void GetStacked(lua_State *state, int addr, long long&rs);
 	void GetStacked(lua_State *state, int addr, double&rs);
+	inline void GetStacked(lua_State *state, int addr, float&rs)
+	{
+		double tmp;
+		GetStacked(state,addr,tmp);
+		rs = (float)tmp;
+	}
 
 	inline void GetStacked(lua_State *state, int addr, int&rs)
 	{
@@ -56,54 +62,109 @@ namespace Lua
 		}
 
 
+
+	static inline void GetParameters(lua_State *state, int at)
+	{}
+
+	template <typename T0>
+		static inline void GetParameters(lua_State *state, int at, const T0&p0)
+		{
+			if (at < 0)
+				GetStacked(state,at,p0);
+		}
+
+	template <typename T0, typename ...T>
+		static inline void GetParameters(lua_State *state, int at, const T0&p0, const T&...p)
+		{
+			GetParameters(state,at,p0);
+			GetParameters(state,at+1,p);
+		}
+
+
+	class Reference
+	{
+	private:
+		lua_State *state=nullptr;
+		int refID=-1;
+
+	protected:
+		/**/	Reference(){}
+		/**/	Reference(lua_State*state, const String&name):state(state)
+		{
+			refID = LookupGlobal(state,name);
+		}
+		/**/	Reference(const Reference&other):state(other.state)
+		{
+			refID = DuplicateReference(state,other.refID);
+		}
+		/**/	Reference(Reference&&other):state(other.state),refID(other.refID)
+		{
+			other.state = nullptr;
+		}
+		virtual		~Reference()
+		{
+			if (state)
+				EraseReference(state,refID);
+		}
+
+		bool		IsSet() const {return state != nullptr;}
+		bool		IsEmpty() const {return state == nullptr;}
+
+		void		swap(Reference&other)
+		{
+			swp(state,other.state);
+			swp(refID,other.refID);
+		}
+
+		void		operator=(const Reference&other)
+		{
+			if (state)
+				EraseReference(state,refID);
+			state = other.state;
+			refID = DuplicateReference(state,other.refID);
+		}
+
+		void		operator=(Reference&&other)
+		{
+			adoptData(other);
+		}
+
+		void		adoptData(Reference&other)
+		{
+			if (state)
+				EraseReference(state,refID);
+			state = other.state;
+			refID = other.refID;
+			other.state = nullptr;
+		}
+
+		int			GetRefID() const {return refID;}
+		lua_State*	GetState() const {return state;}
+	};
+
+
 	template<typename S>
 		class Function;
 
 	template <typename return_t, typename ...args_t>
-		class Function<return_t(args_t...)>
+		class Function<return_t(args_t...)> : public Reference
 		{
-			lua_State *state=nullptr;
-			int refID=-1;
-
+			typedef Reference	Super;
 
 		public:
-			/**/		Function()
-			{}
+			/**/		Function(){}
+			/**/		Function(lua_State*state, const String&functionName):Super(state,functionName){}
+			/**/		Function(const Function&other):Super(other){}
 
-			/**/		Function(lua_State*state, const String&functionName):state(state)
-			{
-				refID = LookupFunction(state,functionName);
-			}
-			/**/		Function(const Function&other):state(other.state)
-			{
-				refID = DuplicateReference(state,other.refID);
-			}
-			/**/		~Function()
-			{
-				if (state)
-					EraseReference(state,refID);
-			}
 
-			void		operator=(const Function&other)
-			{
-				if (state)
-					EraseReference(state,refID);
-				state = other.state;
-				refID = DuplicateReference(state,other.refID);
-			}
 
-			bool		IsSet() const {return state != nullptr;}
-			bool		IsEmpty() const {return state == nullptr;}
 
-			void		swap(Function&other)
-			{
-				swp(state,other.state);
-				swp(refID,other.refID);
-			}
+
 
 			return_t	operator()(args_t...parameters)	const
 			{
-				PushRegisteredFunction(state,refID);
+				lua_State*state = GetState();
+				PushRegisteredFunction(state,GetRefID());
 				int numParameters = PushParameters(state,parameters...);
 				CallPushedFunction(state,numParameters,1);
 				return_t rs;
