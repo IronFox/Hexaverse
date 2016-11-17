@@ -608,6 +608,10 @@ void Lua::PushParameter(lua_State *state, void*p)
 	lua_pushlightuserdata(state, p);
 }
 
+void Lua::PushStrParameter(lua_State *state, const String&str)
+{
+	lua_pushstring(state,str.c_str());
+}
 
 
 
@@ -704,14 +708,16 @@ namespace Library
 	}
 	
 
-	void RegisterLib(lua_State *state)
+	void RegisterLib(const Lua::Program&prog)
 	{
 
 		static const struct luaL_Reg funcs [] = {
-		  {"Test", Test},
-		  {NULL, NULL}  /* sentinel */
+			{"Test", Test},
+			{NULL, NULL}  /* sentinel */
 		};
-
+		lua_State*state = prog.GetState().get();
+		if (!state)
+			return;
 		lua_newtable(state);
 		luaL_setfuncs(state, funcs, 0);
 		lua_setglobal(state, "Interface");
@@ -812,6 +818,14 @@ namespace Lua
 			}
 			return true;
 		}
+
+
+		int Panic (lua_State *L)
+		{
+			FATAL__("PANIC: unprotected error in call to Lua API ("+String(lua_tostring(L, -1))+")");
+			return 0;  /* return to Lua to abort */
+		}
+
 	}
 
 	bool SerializeTop(lua_State*state, IWriteStream&stream)
@@ -912,6 +926,115 @@ namespace Lua
 		}
 		return true;
 	}
+
+
+	
+
+	bool Program::Create()
+	{
+		state.reset(luaL_newstate(),lua_close);
+		if (state)
+		{
+			lua_atpanic(state.get(), &Detail::Panic);
+
+			static const luaL_Reg loadedlibs[] = {
+				{"_G", luaopen_base},
+				//{LUA_LOADLIBNAME, luaopen_package},
+				//{LUA_COLIBNAME, luaopen_coroutine},
+				{LUA_TABLIBNAME, luaopen_table},
+				//{LUA_IOLIBNAME, luaopen_io},
+				//{LUA_OSLIBNAME, luaopen_os},
+				{LUA_STRLIBNAME, luaopen_string},
+				{LUA_MATHLIBNAME, luaopen_math},
+				{LUA_UTF8LIBNAME, luaopen_utf8},
+				//{LUA_DBLIBNAME, luaopen_debug},
+				{NULL, NULL}
+			};
+
+
+			const luaL_Reg *lib;
+			for (lib = loadedlibs; lib->func; lib++)
+			{
+				luaL_requiref(state.get(), lib->name, lib->func, 1);
+				lua_pop(state.get(), 1);  /* remove lib */
+			}
+		}
+		return !!state;
+	}
+
+	bool	Program::FindGlobal(const String&name, Reference&ref)	const
+	{
+		return ref.Set(*this,name);
+	}
+
+
+	/*static*/ int		Program::Report (lua_State *L, int status)
+	{
+		if (status != LUA_OK)
+		{
+			reportTo->lastError = lua_tostring(L, -1);
+			lua_pop(L, 1);  /* remove message */
+		}
+		return status;
+	}
+
+
+
+	/*static*/ int		Program::MessageHandler (lua_State *L)
+	{
+		const char *msg = lua_tostring(L, 1);
+		if (msg == NULL) {  /* is error object not a string? */
+			if (luaL_callmeta(L, 1, "__tostring") &&  /* does it have a metamethod */
+				lua_type(L, -1) == LUA_TSTRING)  /* that produces a string? */
+				return 1;  /* that is the message */
+			else
+				msg = lua_pushfstring(L, "(error object is a %s value)",
+									luaL_typename(L, 1));
+		}
+		luaL_traceback(L, L, msg, 1);  /* append a standard traceback */
+		return 1;  /* return the traceback */
+	}
+	
+	/*static*/ Program*	Program::reportTo = nullptr;
+
+
+	bool	Program::Execute(const String&code)
+	{
+		lua_State*st = state.get();
+		if (!st)
+		{
+			lastError = "Program has not been created";
+			return false;
+		}
+		reportTo = this;
+
+		int rc = luaL_loadbuffer(st, code.c_str(), code.length(), "");
+		if (rc == LUA_OK)
+		{
+			int base = lua_gettop(st);  /* function index */
+			lua_pushcfunction(st, MessageHandler);  /* push message handler */
+			lua_insert(st, base);  /* put it under function and args */
+			rc = lua_pcall(st, 0, 0, base);
+			lua_remove(st, base);  /* remove message handler from the stack */
+		}
+		Report(st, rc);
+		reportTo = nullptr;
+		return rc == LUA_OK;
+	}
+
+	bool		Program::SerializeGlobal(const String&name,IWriteStream&stream)
+	{
+		return Lua::SerializeGlobal(state.get(),name,stream);
+	}
+
+	bool		Program::DeserializeToGlobal(const String&name, IReadStream&stream)
+	{
+		if (!Lua::PushFromStream(state.get(),stream))
+			return false;
+		lua_setglobal(state.get(),name.c_str());
+		return true;
+	}
+
 }
 
 
@@ -935,10 +1058,18 @@ void PrintTable(lua_State *L)
 
 
 
-int		Lua::LookupGlobal(lua_State*state, const String&name)
+bool		Lua::LookupGlobal(lua_State*state, const String&name, int&out)
 {
-  lua_getglobal(state, name.c_str());
-  return luaL_ref(state, LUA_REGISTRYINDEX);
+	if (!state)
+		return false;
+	lua_getglobal(state, name.c_str());
+	if (lua_isnil(state,-1))
+	{
+		lua_pop(state,1);
+		return false;
+	}
+	out = luaL_ref(state, LUA_REGISTRYINDEX);
+	return true;
 }
 
 int		Lua::DuplicateReference(lua_State *state, int refID)
@@ -954,43 +1085,39 @@ void		Lua::EraseReference(lua_State *state, int refID)
 
 
 int LuaRun (int argc, const char *argv[]) {
-	int status;
-	bool result;
-	lua_State *L = luaL_newstate();  /* create state */
-	if (L == NULL)
-	{
-		l_message(argv[0], "cannot create state: not enough memory");
-		return EXIT_FAILURE;
-	}
-	luaL_openlibs(L);  /* open standard libraries */
 
-	Library::RegisterLib(L);
 
-	dostring(L,
-	" function DeepPrint (e, indent)"
-	" if e == nil then"
-	"  print('nil')"
-	"  return"
-	" end"
-    " if type(e) == \"table\" then"
-    "    for k,v in pairs(e) do"
-    "        print(indent .. k)"
-    "        DeepPrint(v,indent .. \" \")"
-    "    end"
-    " else"
-    "    print(indent .. e)"
-    " end"
-	" end"
-	,"DeepPrint"
+	Lua::Program prog;
+	ASSERT__(prog.Create());
+
+	Library::RegisterLib(prog);
+
+	bool rs;
+
+	rs = prog.Execute(
+		" function DeepPrint (e, indent)"
+		" if e == nil then"
+		"  print('nil')"
+		"  return"
+		" end"
+		" if type(e) == \"table\" then"
+		"    for k,v in pairs(e) do"
+		"        print(indent .. k)"
+		"        DeepPrint(v,indent .. \" \")"
+		"    end"
+		" else"
+		"    print(indent .. e)"
+		" end"
+		" end"
 	);
 
-	dostring(L,
+	rs = prog.Execute(
 		" function norm (x, y)"
 		"    local n2 = x^2 + y^2"
 		"    return math.sqrt(n2)"
-		"  end","norm");
+		"  end");
 
-	dostring(L,
+	rs = prog.Execute(
 	"level1 ="
 	"{"
 		"music = \"music1\","
@@ -1002,40 +1129,45 @@ int LuaRun (int argc, const char *argv[]) {
 				"c = \"C\","
 			"}"
 		"}"
-	"}","struct");
+	"}");
 
 	ByteStream	testStream;
-	Lua::SerializeGlobal(L,"level1",testStream);
+	rs = prog.SerializeGlobal("level1",testStream);
 
 	MemReadStream reader(testStream.pointer(),testStream.GetFillLevel());
 
-	bool sc = Lua::PushFromStream(L,reader);
-
-	lua_setglobal(L,"level2");
-
-	dostring(L,"DeepPrint(level1,\"\")","level1");
-	dostring(L,"DeepPrint(level2,\"\")","level2");
+	rs = prog.DeserializeToGlobal("level2",reader);
 
 
-	Lua::Function<float(float,float)>	f(L,"norm");
+	rs = prog.Execute("DeepPrint(level1,\"\")");
+	rs = prog.Execute("DeepPrint(level2,\"\")");
 
-	float rs = f(1,1);
+	{
+		Lua::Function<float(float,float)>	f(prog,"norm");
 
+		float rsf = f(1,1);
 
-  lua_getglobal(L,"norm");
-  int r = luaL_ref(L, LUA_REGISTRYINDEX);
-  LUA_NUMBER n;
-  bool success = CallRegisteredFunction(L,r,n,1.0,1.0);
+		Lua::Function<void(String)>	print(prog,"print");
+		print(rsf);
+	}
+
+  //lua_getglobal(L,"norm");
+  //int r = luaL_ref(L, LUA_REGISTRYINDEX);
+  //LUA_NUMBER n;
+  //bool success = CallRegisteredFunction(L,r,n,1.0,1.0);
 
  // stackDump(L);
 
-  int rc = dostring(L,"print(Interface.Test(3.5))","test");
+	rs = prog.Execute("invalid command");
+	ShowMessage(prog.GetLastError());
+
+	rs = prog.Execute("print(Interface.Test(3.5))");
 //  bool okay = CallFunction(L,pmain,result,argc,argv);
   //lua_pushcfunction(L, &pmain);  /* to call 'pmain' in protected mode */
   //lua_pushinteger(L, argc);  /* 1st argument */
   //lua_pushlightuserdata(L, argv); /* 2nd argument */
   //lua_pcall(L, 2, 1, 0);  /* do the call */
   //lua_close(L);
-  return (rc == LUA_OK) ? EXIT_SUCCESS : EXIT_FAILURE;
+	return 0;
 }
 
