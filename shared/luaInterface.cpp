@@ -757,29 +757,26 @@ static void stackDump (lua_State *L) {
 	int i;
 	int top = lua_gettop(L);
 	for (i = 1; i <= top; i++) {  /* repeat for each level */
-	int t = lua_type(L, i);
-	switch (t) {
+		int t = lua_type(L, i);
+		switch (t)
+		{
+			case LUA_TSTRING:  /* strings */
+				printf("%i: `%s'\n",i, lua_tostring(L, i));
+			break;
     
-		case LUA_TSTRING:  /* strings */
-		printf("`%s'", lua_tostring(L, i));
-		break;
+			case LUA_TBOOLEAN:  /* booleans */
+				printf("%i: %s\n",i,  lua_toboolean(L, i) ? "true" : "false");
+			break;
     
-		case LUA_TBOOLEAN:  /* booleans */
-		printf(lua_toboolean(L, i) ? "true" : "false");
-		break;
+			case LUA_TNUMBER:  /* numbers */
+				printf("%i: %g\n", i, lua_tonumber(L, i));
+			break;
     
-		case LUA_TNUMBER:  /* numbers */
-		printf("%g", lua_tonumber(L, i));
-		break;
-    
-		default:  /* other values */
-		printf("%s", lua_typename(L, t));
-		break;
-    
+			default:  /* other values */
+				printf("%i: %s\n", i,lua_typename(L, t));
+			break;
+		}
 	}
-	printf("  ");  /* put a separator */
-	}
-	printf("\n");  /* end the listing */
 }
 
 
@@ -996,14 +993,13 @@ namespace Lua
 	}
 
 
-	/*static*/ int		Program::Report (lua_State *L, int status)
+	void		Program::Report (int status)
 	{
 		if (status != LUA_OK)
 		{
-			reportTo->lastError = lua_tostring(L, -1);
-			lua_pop(L, 1);  /* remove message */
+			lastError = lua_tostring(state.get(), -1);
+			lua_pop(state.get(), 1);  /* remove message */
 		}
-		return status;
 	}
 
 
@@ -1011,6 +1007,7 @@ namespace Lua
 	/*static*/ int		Program::MessageHandler (lua_State *L)
 	{
 		const char *msg = lua_tostring(L, 1);
+		
 		if (msg == NULL) {  /* is error object not a string? */
 			if (luaL_callmeta(L, 1, "__tostring") &&  /* does it have a metamethod */
 				lua_type(L, -1) == LUA_TSTRING)  /* that produces a string? */
@@ -1023,7 +1020,6 @@ namespace Lua
 		return 1;  /* return the traceback */
 	}
 	
-	/*static*/ Program*	Program::reportTo = nullptr;
 
 
 	bool	Program::Execute(const String&code)
@@ -1035,7 +1031,6 @@ namespace Lua
 			lastError = "Program has not been created";
 			return false;
 		}
-		reportTo = this;
 
 		int rc = luaL_loadbuffer(st, code.c_str(), code.length(), name.c_str());
 		if (rc == LUA_OK)
@@ -1046,8 +1041,7 @@ namespace Lua
 			rc = lua_pcall(st, 0, 0, base);
 			lua_remove(st, base);  /* remove message handler from the stack */
 		}
-		Report(st, rc);
-		reportTo = nullptr;
+		Report(rc);
 		ASSERT_EQUAL__(lua_gettop(st),0);
 
 		return rc == LUA_OK;
@@ -1126,6 +1120,7 @@ int LuaRun (int argc, const char *argv[]) {
 
 	Lua::Program prog;
 	ASSERT__(prog.Create());
+
 
 	Library::RegisterLib(prog);
 

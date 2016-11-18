@@ -115,9 +115,8 @@ namespace Lua
 		String			lastError;
 		String			name;
 
-		static Program*	reportTo;
 
-		static int		Report (lua_State *, int);
+		void			Report (int);
 		static int		MessageHandler(lua_State*);
 
 	public:
