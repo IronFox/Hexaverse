@@ -131,6 +131,7 @@ namespace Lua
 
 		const String&	GetLastError()	const	{return lastError;}
 
+		bool			SerializeReference(const Reference&, IWriteStream&);
 		bool			SerializeGlobal(const String&name,IWriteStream&);
 		bool			DeserializeToGlobal(IReadStream&, const String&name);
 		bool			DeserializeToReference(IReadStream& data, Reference&outReference);

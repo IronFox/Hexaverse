@@ -773,6 +773,25 @@ namespace Lua
 {
 	namespace Detail
 	{
+		struct StackChecker
+		{
+			const int	initialDepth;
+			lua_State*const state;
+			
+			/**/		StackChecker(lua_State*state):state(state),initialDepth(lua_gettop(state))
+			{}
+			~StackChecker()
+			{
+				Check();
+			}
+
+			void		Check()
+			{
+				ASSERT_EQUAL__(initialDepth,lua_gettop(state));
+			}
+		};
+
+
 		int		AttachTraceback(lua_State *L)
 		{
 			const char *msg = lua_tostring(L, 1);
@@ -860,18 +879,20 @@ namespace Lua
 
 	bool SerializeTop(lua_State*state, IWriteStream&stream)
 	{
+		Detail::StackChecker chk(state);
 		int top = lua_gettop(state);
 		if (!Detail::SerializePart(state,stream,-1))
 		{
 			lua_settop(state,top);
 			return false;
 		}
-		ASSERT_EQUAL__(top,lua_gettop(state));
 		return true;
 	}
 
 	bool SerializeGlobal(lua_State*state,const String&name, IWriteStream&stream)
 	{
+		Detail::StackChecker chk(state);
+
 		int t = lua_getglobal(state,name.c_str());
 		bool rs = SerializeTop(state,stream);
 		lua_pop(state, 1);
@@ -1037,7 +1058,7 @@ namespace Lua
 	bool	Program::Execute(const String&code)
 	{
 		lua_State*st = state.get();
-		ASSERT_EQUAL__(lua_gettop(st),0);
+		Detail::StackChecker chk(st);
 		if (!st)
 		{
 			lastError = "Program has not been created";
@@ -1047,13 +1068,10 @@ namespace Lua
 		int rc = luaL_loadbuffer(st, code.c_str(), code.length(), name.c_str());
 		if (rc == LUA_OK)
 		{
-			bool success = CallPushedFunction(st,0,0,lastError);
-			ASSERT_EQUAL__(lua_gettop(st),0);
-			return success;
+			return CallPushedFunction(st,0,0,lastError);
 		}
 		Report(rc);
-		ASSERT_EQUAL__(lua_gettop(st),0);
-		return rc == LUA_OK;
+		return false;
 	}
 
 	bool		Program::SerializeGlobal(const String&name,IWriteStream&stream)
@@ -1061,8 +1079,20 @@ namespace Lua
 		return Lua::SerializeGlobal(state.get(),name,stream);
 	}
 
+	bool		Program::SerializeReference(const Reference&ref,IWriteStream&stream)
+	{
+		if (ref.IsEmpty())
+			return false;
+		Detail::StackChecker chk(state.get());
+		PushRegisteredGlobal(state.get(),ref.GetRefID());
+		bool rs = SerializeTop(state.get(),stream);
+		lua_pop(state.get(), 1);
+		return rs;
+	}
+
 	bool		Program::DeserializeToGlobal(IReadStream&stream, const String&name)
 	{
+		Detail::StackChecker chk(state.get());
 		if (!Lua::PushFromStream(state.get(),stream))
 			return false;
 		lua_setglobal(state.get(),name.c_str());
@@ -1071,15 +1101,14 @@ namespace Lua
 
 	bool		Program::DeserializeToReference(IReadStream& data, Reference&outReference)
 	{
-		int top = lua_gettop(state.get());
+		Detail::StackChecker chk(state.get());
+
 		if (!Lua::PushFromStream(state.get(),data))
 		{
-			ASSERT_EQUAL__(top,lua_gettop(state.get()));
 			return false;
 		}
 		outReference.SetFromStack(state,-1);
 		lua_pop(state.get(),1);
-		ASSERT_EQUAL__(top,lua_gettop(state.get()));
 		return true;
 	}
 
@@ -1204,14 +1233,25 @@ int LuaRun (int argc, const char *argv[]) {
 
 	{
 		Lua::Reference ref;
-		MemReadStream reader(testStream.pointer(),testStream.GetFillLevel());
-		rs = prog.DeserializeToReference(reader,ref);
+		{
+			MemReadStream reader(testStream.pointer(),testStream.GetFillLevel());
+			rs = prog.DeserializeToReference(reader,ref);
+		}
 		deepPrint(ref,"");
+
+		ByteStream str2;
+		prog.SerializeReference(ref,str2);
+		{
+			MemReadStream reader(str2.pointer(),str2.GetFillLevel());
+			rs = prog.DeserializeToGlobal(reader,"nested3");
+
+		}
 	}
 
 
 	rs = prog.Execute("DeepPrint(nested,\"\")");
 	rs = prog.Execute("DeepPrint(nested2,\"\")");
+	rs = prog.Execute("DeepPrint(nested3,\"\")");
 
 
 	try
