@@ -613,34 +613,61 @@ void Lua::PushStrParameter(lua_State *state, const String&str)
 	lua_pushstring(state,str.c_str());
 }
 
-
-
-
-void Lua::GetStacked(lua_State *state, int addr, bool&rs)
+void Lua::PushParameter(lua_State *state, const Reference&ref)
 {
-	rs = lua_toboolean(state, addr)!=0;
+	if (ref.IsEmpty())
+	{
+		lua_pushnil(state);
+	}
+	else
+	{
+		PushRegisteredGlobal(state,ref.GetRefID());
+	}
+
 }
 
-void Lua::GetStacked(lua_State *state, int addr, String&rs)
+bool Lua::Reference::SetFromStack(const PState&st, int at)
 {
-	rs = lua_tolstring(state, addr,nullptr);
+	lua_State*state = st.get();
+	if (lua_gettop(state)==0 || lua_isnil(state,-1))
+		return false;
+	lua_pushvalue(state,at);
+	SetReference(st,luaL_ref(state, LUA_REGISTRYINDEX));
+	return true;
 }
 
-void Lua::GetStacked(lua_State *state, int addr, void*&rs)
+
+
+void Lua::GetStacked(const PState&st, int addr, Reference&rs)
 {
-	rs = lua_touserdata(state, addr);
+	rs.SetFromStack(st,addr);
 }
 
-void Lua::GetStacked(lua_State *state, int addr, long long&rs)
+void Lua::GetStacked(const PState&st, int addr, bool&rs)
+{
+	rs = lua_toboolean(st.get(), addr)!=0;
+}
+
+void Lua::GetStacked(const PState&st, int addr, String&rs)
+{
+	rs = lua_tolstring(st.get(), addr,nullptr);
+}
+
+void Lua::GetStacked(const PState&st, int addr, void*&rs)
+{
+	rs = lua_touserdata(st.get(), addr);
+}
+
+void Lua::GetStacked(const PState&st, int addr, long long&rs)
 {
 	int dummy;
-	rs = lua_tointegerx(state, addr,&dummy);
+	rs = lua_tointegerx(st.get(), addr,&dummy);
 }
 
-void Lua::GetStacked(lua_State *state, int addr, double&rs)
+void Lua::GetStacked(const PState&st, int addr, double&rs)
 {
 	int dummy;
-	rs = lua_tonumberx(state, addr,&dummy);
+	rs = lua_tonumberx(st.get(), addr,&dummy);
 }
 
 
@@ -664,7 +691,7 @@ template <typename Result, typename ...T>
 
 
 
-void Lua::PushRegisteredFunction(lua_State*state, int refID)
+void Lua::PushRegisteredGlobal(lua_State*state, int refID)
 {
 	lua_rawgeti(state, LUA_REGISTRYINDEX, refID);
 }
@@ -930,8 +957,9 @@ namespace Lua
 
 	
 
-	bool Program::Create()
+	bool Program::Create(const String&name/*=""*/)
 	{
+		this->name = name;
 		state.reset(luaL_newstate(),lua_close);
 		if (state)
 		{
@@ -1008,7 +1036,7 @@ namespace Lua
 		}
 		reportTo = this;
 
-		int rc = luaL_loadbuffer(st, code.c_str(), code.length(), "");
+		int rc = luaL_loadbuffer(st, code.c_str(), code.length(), name.c_str());
 		if (rc == LUA_OK)
 		{
 			int base = lua_gettop(st);  /* function index */
@@ -1074,7 +1102,7 @@ bool		Lua::LookupGlobal(lua_State*state, const String&name, int&out)
 
 int		Lua::DuplicateReference(lua_State *state, int refID)
 {
-	PushRegisteredFunction(state,refID);
+	PushRegisteredGlobal(state,refID);
 	return luaL_ref(state, LUA_REGISTRYINDEX);
 }
 
@@ -1118,7 +1146,7 @@ int LuaRun (int argc, const char *argv[]) {
 		"  end");
 
 	rs = prog.Execute(
-	"level1 ="
+	"nested ="
 	"{"
 		"music = \"music1\","
 		"items ="
@@ -1131,16 +1159,19 @@ int LuaRun (int argc, const char *argv[]) {
 		"}"
 	"}");
 
+
+
+	rs = prog.Execute("someVar = 3");
 	ByteStream	testStream;
-	rs = prog.SerializeGlobal("level1",testStream);
+	rs = prog.SerializeGlobal("nested",testStream);
 
 	MemReadStream reader(testStream.pointer(),testStream.GetFillLevel());
 
-	rs = prog.DeserializeToGlobal("level2",reader);
+	rs = prog.DeserializeToGlobal("nested2",reader);
 
 
-	rs = prog.Execute("DeepPrint(level1,\"\")");
-	rs = prog.Execute("DeepPrint(level2,\"\")");
+	rs = prog.Execute("DeepPrint(nested,\"\")");
+	rs = prog.Execute("DeepPrint(nested2,\"\")");
 
 	{
 		Lua::Function<float(float,float)>	f(prog,"norm");
@@ -1150,7 +1181,11 @@ int LuaRun (int argc, const char *argv[]) {
 		Lua::Function<void(String)>	print(prog,"print");
 		print(rsf);
 	}
-
+	{
+		Lua::Function<Lua::Reference(float,float)>	f(prog,"norm");
+		Lua::Function<void(Lua::Reference)>	print(prog,"print");
+		print(f(1,1));
+	}
   //lua_getglobal(L,"norm");
   //int r = luaL_ref(L, LUA_REGISTRYINDEX);
   //LUA_NUMBER n;
@@ -1158,8 +1193,6 @@ int LuaRun (int argc, const char *argv[]) {
 
  // stackDump(L);
 
-	rs = prog.Execute("invalid command");
-	ShowMessage(prog.GetLastError());
 
 	rs = prog.Execute("print(Interface.Test(3.5))");
 //  bool okay = CallFunction(L,pmain,result,argc,argv);

@@ -11,9 +11,12 @@ int LuaRun (int argc, const char *argv[]);
 namespace Lua
 {
 
+	class Reference;
+	class Program;
+
 	typedef std::shared_ptr<lua_State>	PState;
 
-	void	PushRegisteredFunction(lua_State*, int refID);
+	void	PushRegisteredGlobal(lua_State*, int refID);
 	void	CallPushedFunction(lua_State*,int numParameters, int numResults);
 	bool	LookupGlobal(lua_State *,const String&name, int&out);
 	int		DuplicateReference(lua_State *, int ref);
@@ -23,6 +26,7 @@ namespace Lua
 	inline void PushParameter(lua_State *state, int i) {PushParameter(state,(long long)i);}
 	void PushParameter(lua_State *state, double i);
 	void PushParameter(lua_State *state, void*p);
+	void PushParameter(lua_State *state, const Reference&);
 	void PushStrParameter(lua_State *state, const String&str);
 
 	template <typename T>
@@ -38,22 +42,23 @@ namespace Lua
 		}
 
 
-	void GetStacked(lua_State *state, int addr, bool&rs);
-	void GetStacked(lua_State *state, int addr, String&rs);
-	void GetStacked(lua_State *state, int addr, void*&rs);
-	void GetStacked(lua_State *state, int addr, long long&rs);
-	void GetStacked(lua_State *state, int addr, double&rs);
-	inline void GetStacked(lua_State *state, int addr, float&rs)
+	void GetStacked(const PState&, int addr, bool&rs);
+	void GetStacked(const PState&, int addr, String&rs);
+	void GetStacked(const PState&, int addr, void*&rs);
+	void GetStacked(const PState&, int addr, long long&rs);
+	void GetStacked(const PState&, int addr, double&rs);
+	void GetStacked(const PState&, int addr, Reference&rs);
+	inline void GetStacked(const PState&st, int addr, float&rs)
 	{
 		double tmp;
-		GetStacked(state,addr,tmp);
+		GetStacked(st,addr,tmp);
 		rs = (float)tmp;
 	}
 
-	inline void GetStacked(lua_State *state, int addr, int&rs)
+	inline void GetStacked(const PState&st, int addr, int&rs)
 	{
 		long long temp;
-		GetStacked(state,addr,temp);
+		GetStacked(st,addr,temp);
 		rs = (int)temp;
 	}
 
@@ -107,6 +112,7 @@ namespace Lua
 	{
 		std::shared_ptr<lua_State> state;
 		String			lastError;
+		String			name;
 
 		static Program*	reportTo;
 
@@ -114,7 +120,7 @@ namespace Lua
 		static int		MessageHandler(lua_State*);
 
 	public:
-		bool			Create();
+		bool			Create(const String&name = "");
 		const PState&	GetState() const {return state;}
 
 
@@ -138,16 +144,23 @@ namespace Lua
 
 		static void Discard(const PState&st, int*raw)
 		{
-			EraseReference(st.get(),reinterpret_cast<int>(raw));
+			EraseReference(st.get(),(int)(size_t)raw);
+		}
+		void	SetReference(PState state, int refID)
+		{
+			this->state = state;
+			this->refID.reset((int*)(size_t)refID,[state](int*ptr){Discard(state,ptr);});
 		}
 	protected:
-		/**/	Reference(){}
 		/**/	Reference(const Program&prog, const String&name)
 		{
 			Set(prog,name);
 		}
 		
 	public:
+		/**/		Reference(){}
+
+		bool		SetFromStack(const PState&, int at);
 		bool		Set(const Program&prog, const String&name)
 		{
 			int global;
@@ -157,9 +170,7 @@ namespace Lua
 				refID.reset();
 				return false;
 			}
-			state = prog.GetState();
-			PState st = state;
-			refID.reset(reinterpret_cast<int*>(global),[st](int*ptr){Discard(st,ptr);});
+			SetReference(prog.GetState(), global);
 			return true;
 		}
 
@@ -192,7 +203,7 @@ namespace Lua
 			void	operator()(args_t...parameters)	const
 			{
 				lua_State*state = GetState().get();
-				PushRegisteredFunction(state,GetRefID());
+				PushRegisteredGlobal(state,GetRefID());
 				int numParameters = PushParameters(state,parameters...);
 				CallPushedFunction(state,numParameters,0);
 			}
@@ -212,11 +223,11 @@ namespace Lua
 			return_t	operator()(args_t...parameters)	const
 			{
 				lua_State*state = GetState().get();
-				PushRegisteredFunction(state,GetRefID());
+				PushRegisteredGlobal(state,GetRefID());
 				int numParameters = PushParameters(state,parameters...);
 				CallPushedFunction(state,numParameters,1);
 				return_t rs;
-				GetStacked(state,-1,rs);
+				GetStacked(GetState(),-1,rs);
 				return rs;
 			}
 
