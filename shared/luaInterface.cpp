@@ -887,6 +887,8 @@ namespace Lua
 	*/
 	bool PushFromStream(lua_State*state, IReadStream&stream)
 	{
+		if (!state)
+			return false;
 		BYTE t;
 		if (!stream.ReadPrimitive(t))
 			return false;
@@ -1059,13 +1061,28 @@ namespace Lua
 		return Lua::SerializeGlobal(state.get(),name,stream);
 	}
 
-	bool		Program::DeserializeToGlobal(const String&name, IReadStream&stream)
+	bool		Program::DeserializeToGlobal(IReadStream&stream, const String&name)
 	{
 		if (!Lua::PushFromStream(state.get(),stream))
 			return false;
 		lua_setglobal(state.get(),name.c_str());
 		return true;
 	}
+
+	bool		Program::DeserializeToReference(IReadStream& data, Reference&outReference)
+	{
+		int top = lua_gettop(state.get());
+		if (!Lua::PushFromStream(state.get(),data))
+		{
+			ASSERT_EQUAL__(top,lua_gettop(state.get()));
+			return false;
+		}
+		outReference.SetFromStack(state,-1);
+		lua_pop(state.get(),1);
+		ASSERT_EQUAL__(top,lua_gettop(state.get()));
+		return true;
+	}
+
 
 }
 
@@ -1177,9 +1194,20 @@ int LuaRun (int argc, const char *argv[]) {
 	ByteStream	testStream;
 	rs = prog.SerializeGlobal("nested",testStream);
 
-	MemReadStream reader(testStream.pointer(),testStream.GetFillLevel());
+	{
+		MemReadStream reader(testStream.pointer(),testStream.GetFillLevel());
 
-	rs = prog.DeserializeToGlobal("nested2",reader);
+		rs = prog.DeserializeToGlobal(reader,"nested2");
+	}
+
+	Lua::Function<void(Lua::Reference,String)> deepPrint(prog,"DeepPrint");
+
+	{
+		Lua::Reference ref;
+		MemReadStream reader(testStream.pointer(),testStream.GetFillLevel());
+		rs = prog.DeserializeToReference(reader,ref);
+		deepPrint(ref,"");
+	}
 
 
 	rs = prog.Execute("DeepPrint(nested,\"\")");
@@ -1200,12 +1228,10 @@ int LuaRun (int argc, const char *argv[]) {
 		Lua::Function<float(float,float)>	f(prog,"norm");
 
 		float rsf = f(1,1);
-		rs = prog.Execute("print(Interface.Test(3.5))");
 
 		Lua::Function<void(String)>	print(prog,"print");
 		print(rsf);
 	}
-	rs = prog.Execute("print(Interface.Test(3.5))");
 	{
 		Lua::Function<Lua::Reference(float,float)>	f(prog,"norm");
 		Lua::Function<void(Lua::Reference)>	print(prog,"print");
