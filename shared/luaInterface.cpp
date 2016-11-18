@@ -1029,6 +1029,7 @@ namespace Lua
 	bool	Program::Execute(const String&code)
 	{
 		lua_State*st = state.get();
+		ASSERT_EQUAL__(lua_gettop(st),0);
 		if (!st)
 		{
 			lastError = "Program has not been created";
@@ -1047,6 +1048,8 @@ namespace Lua
 		}
 		Report(st, rc);
 		reportTo = nullptr;
+		ASSERT_EQUAL__(lua_gettop(st),0);
+
 		return rc == LUA_OK;
 	}
 
@@ -1110,6 +1113,12 @@ void		Lua::EraseReference(lua_State *state, int refID)
 {
 	luaL_unref(state,LUA_REGISTRYINDEX,refID);
 }
+
+void Lua::PopStacked(lua_State*st)
+{
+	lua_pop(st,1);
+}
+
 
 
 int LuaRun (int argc, const char *argv[]) {
@@ -1177,10 +1186,12 @@ int LuaRun (int argc, const char *argv[]) {
 		Lua::Function<float(float,float)>	f(prog,"norm");
 
 		float rsf = f(1,1);
+	rs = prog.Execute("print(Interface.Test(3.5))");
 
 		Lua::Function<void(String)>	print(prog,"print");
 		print(rsf);
 	}
+	rs = prog.Execute("print(Interface.Test(3.5))");
 	{
 		Lua::Function<Lua::Reference(float,float)>	f(prog,"norm");
 		Lua::Function<void(Lua::Reference)>	print(prog,"print");

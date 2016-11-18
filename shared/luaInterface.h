@@ -41,6 +41,7 @@ namespace Lua
 			PushStrParameter(state,v);
 		}
 
+	void PopStacked(lua_State*);
 
 	void GetStacked(const PState&, int addr, bool&rs);
 	void GetStacked(const PState&, int addr, String&rs);
@@ -222,12 +223,14 @@ namespace Lua
 
 			return_t	operator()(args_t...parameters)	const
 			{
-				lua_State*state = GetState().get();
+				PState st = GetState();
+				lua_State*state = st.get();
 				PushRegisteredGlobal(state,GetRefID());
 				int numParameters = PushParameters(state,parameters...);
 				CallPushedFunction(state,numParameters,1);
 				return_t rs;
-				GetStacked(GetState(),-1,rs);
+				GetStacked(st,-1,rs);
+				PopStacked(state);
 				return rs;
 			}
 
