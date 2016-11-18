@@ -17,7 +17,7 @@ namespace Lua
 	typedef std::shared_ptr<lua_State>	PState;
 
 	void	PushRegisteredGlobal(lua_State*, int refID);
-	void	CallPushedFunction(lua_State*,int numParameters, int numResults);
+	bool	CallPushedFunction(lua_State*,int numParameters, int numResults, String&errorOut);
 	bool	LookupGlobal(lua_State *,const String&name, int&out);
 	int		DuplicateReference(lua_State *, int ref);
 	void	EraseReference(lua_State *, int ref);
@@ -117,7 +117,6 @@ namespace Lua
 
 
 		void			Report (int);
-		static int		MessageHandler(lua_State*);
 
 	public:
 		bool			Create(const String&name = "");
@@ -202,10 +201,14 @@ namespace Lua
 
 			void	operator()(args_t...parameters)	const
 			{
+				if (IsEmpty())
+					throw Except::Program::GeneralFault("Lua: Trying to call empty function");
 				lua_State*state = GetState().get();
 				PushRegisteredGlobal(state,GetRefID());
 				int numParameters = PushParameters(state,parameters...);
-				CallPushedFunction(state,numParameters,0);
+				String error;
+				if (!CallPushedFunction(state,numParameters,0,error))
+					throw Except::Program::GeneralFault("Lua: "+error);
 			}
 
 		};
@@ -222,11 +225,15 @@ namespace Lua
 
 			return_t	operator()(args_t...parameters)	const
 			{
+				if (IsEmpty())
+					throw Except::Program::GeneralFault("Lua: Trying to call empty function");
 				PState st = GetState();
 				lua_State*state = st.get();
 				PushRegisteredGlobal(state,GetRefID());
 				int numParameters = PushParameters(state,parameters...);
-				CallPushedFunction(state,numParameters,1);
+				String error;
+				if (!CallPushedFunction(state,numParameters,1,error))
+					throw Except::Program::GeneralFault("Lua: "+error);
 				return_t rs;
 				GetStacked(st,-1,rs);
 				PopStacked(state);

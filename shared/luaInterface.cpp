@@ -696,17 +696,6 @@ void Lua::PushRegisteredGlobal(lua_State*state, int refID)
 	lua_rawgeti(state, LUA_REGISTRYINDEX, refID);
 }
 
-void	Lua::CallPushedFunction(lua_State*state,int numParameters, int numResults)
-{
-	int status = lua_pcallk(state, numParameters, numResults, 0, 0, NULL);
-	if (status != LUA_OK)
-	{
-		String msg = lua_tostring(state, -1);
-		lua_pop(state, 1);  /* remove message */
-		throw Except::Program::GeneralFault("Lua: "+msg);
-	}
-}
-
 
 
 template <typename Result, typename ...T>
@@ -784,6 +773,23 @@ namespace Lua
 {
 	namespace Detail
 	{
+		int		AttachTraceback(lua_State *L)
+		{
+			const char *msg = lua_tostring(L, 1);
+		
+			if (msg == NULL) {  /* is error object not a string? */
+				if (luaL_callmeta(L, 1, "__tostring") &&  /* does it have a metamethod */
+					lua_type(L, -1) == LUA_TSTRING)  /* that produces a string? */
+					return 1;  /* that is the message */
+				else
+					msg = lua_pushfstring(L, "(error object is a %s value)",
+										luaL_typename(L, 1));
+			}
+			luaL_traceback(L, L, msg, 1);  /* append a standard traceback */
+			return 1;  /* return the traceback */
+		}
+
+
 		bool SerializeCurrentTable(lua_State *L, IWriteStream&stream);
 
 
@@ -1003,22 +1009,26 @@ namespace Lua
 	}
 
 
-
-	/*static*/ int		Program::MessageHandler (lua_State *L)
+	
+	bool	CallPushedFunction(lua_State*state,int numParameters, int numResults, String&errorOut)
 	{
-		const char *msg = lua_tostring(L, 1);
-		
-		if (msg == NULL) {  /* is error object not a string? */
-			if (luaL_callmeta(L, 1, "__tostring") &&  /* does it have a metamethod */
-				lua_type(L, -1) == LUA_TSTRING)  /* that produces a string? */
-				return 1;  /* that is the message */
-			else
-				msg = lua_pushfstring(L, "(error object is a %s value)",
-									luaL_typename(L, 1));
+		int base = lua_gettop(state) - numParameters;  /* function index */
+		lua_pushcfunction(state, Detail::AttachTraceback);  /* push message handler */
+		lua_insert(state, base);  /* put it under function and args */
+
+		int status = lua_pcallk(state, numParameters, numResults, base, 0, NULL);
+		lua_remove(state, base);  /* remove message handler from the stack */
+
+		if (status != LUA_OK)
+		{
+			errorOut = lua_tostring(state, -1);
+			lua_pop(state, 1);  /* remove message */
+			return false;
 		}
-		luaL_traceback(L, L, msg, 1);  /* append a standard traceback */
-		return 1;  /* return the traceback */
+		return true;
 	}
+
+
 	
 
 
@@ -1035,15 +1045,12 @@ namespace Lua
 		int rc = luaL_loadbuffer(st, code.c_str(), code.length(), name.c_str());
 		if (rc == LUA_OK)
 		{
-			int base = lua_gettop(st);  /* function index */
-			lua_pushcfunction(st, MessageHandler);  /* push message handler */
-			lua_insert(st, base);  /* put it under function and args */
-			rc = lua_pcall(st, 0, 0, base);
-			lua_remove(st, base);  /* remove message handler from the stack */
+			bool success = CallPushedFunction(st,0,0,lastError);
+			ASSERT_EQUAL__(lua_gettop(st),0);
+			return success;
 		}
 		Report(rc);
 		ASSERT_EQUAL__(lua_gettop(st),0);
-
 		return rc == LUA_OK;
 	}
 
@@ -1126,6 +1133,7 @@ int LuaRun (int argc, const char *argv[]) {
 
 	bool rs;
 
+
 	rs = prog.Execute(
 		" function DeepPrint (e, indent)"
 		" if e == nil then"
@@ -1177,11 +1185,22 @@ int LuaRun (int argc, const char *argv[]) {
 	rs = prog.Execute("DeepPrint(nested,\"\")");
 	rs = prog.Execute("DeepPrint(nested2,\"\")");
 
+
+	try
+	{
+		Lua::Function<float(float)>	f(prog,"norm");
+		f(3);
+	}
+	catch (const std::exception&ex)
+	{
+		ShowMessage(ex.what());
+	}
+
 	{
 		Lua::Function<float(float,float)>	f(prog,"norm");
 
 		float rsf = f(1,1);
-	rs = prog.Execute("print(Interface.Test(3.5))");
+		rs = prog.Execute("print(Interface.Test(3.5))");
 
 		Lua::Function<void(String)>	print(prog,"print");
 		print(rsf);
