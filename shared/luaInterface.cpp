@@ -2,6 +2,8 @@
 #include "luaInterface.h"
 #include <io/byte_stream.h>
 
+#include <functional>
+
 
 #include <signal.h>
 #include <stdio.h>
@@ -597,9 +599,9 @@ static int pmain (lua_State *L) {
 namespace Lua
 {
 
-	bool Reference::SetFromStack(const PState&st, int at)
+	bool Reference::SetFromStack(const PProgram&st, int at)
 	{
-		lua_State*state = st.get();
+		lua_State*state = st->GetState();
 		if (lua_gettop(state)==0 || lua_isnil(state,-1))
 			return false;
 		lua_pushvalue(state,at);
@@ -645,36 +647,36 @@ namespace Lua
 
 
 
-		void GetStacked(const PState&st, int addr, Reference&rs)
+		void GetStacked(const PProgram&st, int addr, Reference&rs)
 		{
 			rs.SetFromStack(st,addr);
 		}
 
-		void GetStacked(const PState&st, int addr, bool&rs)
+		void GetStacked(const PProgram&st, int addr, bool&rs)
 		{
-			rs = lua_toboolean(st.get(), addr)!=0;
+			rs = lua_toboolean(st->GetState(), addr)!=0;
 		}
 
-		void GetStacked(const PState&st, int addr, String&rs)
+		void GetStacked(const PProgram&st, int addr, String&rs)
 		{
-			rs = lua_tolstring(st.get(), addr,nullptr);
+			rs = lua_tolstring(st->GetState(), addr,nullptr);
 		}
 
-		void GetStacked(const PState&st, int addr, void*&rs)
+		void GetStacked(const PProgram&st, int addr, void*&rs)
 		{
-			rs = lua_touserdata(st.get(), addr);
+			rs = lua_touserdata(st->GetState(), addr);
 		}
 
-		void GetStacked(const PState&st, int addr, long long&rs)
+		void GetStacked(const PProgram&st, int addr, long long&rs)
 		{
 			int dummy;
-			rs = lua_tointegerx(st.get(), addr,&dummy);
+			rs = lua_tointegerx(st->GetState(), addr,&dummy);
 		}
 
-		void GetStacked(const PState&st, int addr, double&rs)
+		void GetStacked(const PProgram&st, int addr, double&rs)
 		{
 			int dummy;
-			rs = lua_tonumberx(st.get(), addr,&dummy);
+			rs = lua_tonumberx(st->GetState(), addr,&dummy);
 		}
 	}
 }
@@ -722,33 +724,6 @@ template <typename Result, typename ...T>
 	}
 
 
-namespace Library
-{
-	static int Test (lua_State *state)
-	{
-		double d = luaL_checknumber(state, 1);
-		lua_pushnumber(state, sin(d));
-		return 1;  /* number of results */
-	}
-	
-
-	void RegisterLib(const Lua::Program&prog)
-	{
-
-		static const struct luaL_Reg funcs [] = {
-			{"Test", Test},
-			{NULL, NULL}  /* sentinel */
-		};
-		lua_State*state = prog.GetState().get();
-		if (!state)
-			return;
-		lua_newtable(state);
-		luaL_setfuncs(state, funcs, 0);
-		lua_setglobal(state, "Interface");
-
-	}
-
-}
 
 static void stackDump (lua_State *L) {
 	int i;
@@ -775,6 +750,9 @@ static void stackDump (lua_State *L) {
 		}
 	}
 }
+
+
+
 
 
 namespace Lua
@@ -996,43 +974,49 @@ namespace Lua
 
 
 	
-
-	bool Program::Create(const String&name/*=""*/)
+	Program::~Program()
 	{
-		this->name = name;
-		state.reset(luaL_newstate(),lua_close);
-		if (state)
-		{
-			lua_atpanic(state.get(), &Detail::Panic);
-
-			static const luaL_Reg loadedlibs[] = {
-				{"_G", luaopen_base},
-				//{LUA_LOADLIBNAME, luaopen_package},
-				//{LUA_COLIBNAME, luaopen_coroutine},
-				{LUA_TABLIBNAME, luaopen_table},
-				//{LUA_IOLIBNAME, luaopen_io},
-				//{LUA_OSLIBNAME, luaopen_os},
-				{LUA_STRLIBNAME, luaopen_string},
-				{LUA_MATHLIBNAME, luaopen_math},
-				{LUA_UTF8LIBNAME, luaopen_utf8},
-				//{LUA_DBLIBNAME, luaopen_debug},
-				{NULL, NULL}
-			};
-
-
-			const luaL_Reg *lib;
-			for (lib = loadedlibs; lib->func; lib++)
-			{
-				luaL_requiref(state.get(), lib->name, lib->func, 1);
-				lua_pop(state.get(), 1);  /* remove lib */
-			}
-		}
-		return !!state;
+		lua_close(state);
+		foreach (destructors,d)
+			(*d)();
 	}
 
-	bool	Program::FindGlobal(const String&name, Reference&ref)	const
+	/*static*/ PProgram Program::Create(const String&name/*=""*/)
 	{
-		return ref.Set(*this,name);
+		lua_State*st = luaL_newstate();
+		if (!st)
+			return PProgram();
+		PProgram rs(new Program(st));
+		rs->name = name;
+		lua_atpanic(st, &Detail::Panic);
+
+		static const luaL_Reg loadedlibs[] = {
+			{"_G", luaopen_base},
+			//{LUA_LOADLIBNAME, luaopen_package},
+			//{LUA_COLIBNAME, luaopen_coroutine},
+			{LUA_TABLIBNAME, luaopen_table},
+			//{LUA_IOLIBNAME, luaopen_io},
+			//{LUA_OSLIBNAME, luaopen_os},
+			{LUA_STRLIBNAME, luaopen_string},
+			{LUA_MATHLIBNAME, luaopen_math},
+			{LUA_UTF8LIBNAME, luaopen_utf8},
+			//{LUA_DBLIBNAME, luaopen_debug},
+			{NULL, NULL}
+		};
+
+
+		const luaL_Reg *lib;
+		for (lib = loadedlibs; lib->func; lib++)
+		{
+			luaL_requiref(st, lib->name, lib->func, 1);
+			lua_pop(st, 1);  /* remove lib */
+		}
+		return rs;
+	}
+
+	bool	Program::FindGlobal(const String&name, Reference&ref)
+	{
+		return ref.Set(shared_from_this(),name);
 	}
 
 
@@ -1040,8 +1024,8 @@ namespace Lua
 	{
 		if (status != LUA_OK)
 		{
-			lastError = lua_tostring(state.get(), -1);
-			lua_pop(state.get(), 1);  /* remove message */
+			lastError = lua_tostring(state, -1);
+			lua_pop(state, 1);  /* remove message */
 		}
 	}
 
@@ -1071,7 +1055,7 @@ namespace Lua
 
 	bool	Program::Execute(const String&code)
 	{
-		lua_State*st = state.get();
+		lua_State*st = state;
 		Detail::StackChecker chk(st);
 		if (!st)
 		{
@@ -1090,42 +1074,135 @@ namespace Lua
 
 	bool		Program::SerializeGlobal(const String&name,IWriteStream&stream)
 	{
-		return Lua::SerializeGlobal(state.get(),name,stream);
+		return Lua::SerializeGlobal(state,name,stream);
 	}
 
 	bool		Program::SerializeReference(const Reference&ref,IWriteStream&stream)
 	{
 		if (ref.IsEmpty())
 			return false;
-		Detail::StackChecker chk(state.get());
-		PushRegisteredGlobal(state.get(),ref.GetRefID());
-		bool rs = SerializeTop(state.get(),stream);
-		lua_pop(state.get(), 1);
+		Detail::StackChecker chk(state);
+		PushRegisteredGlobal(state,ref.GetRefID());
+		bool rs = SerializeTop(state,stream);
+		lua_pop(state, 1);
 		return rs;
 	}
 
 	bool		Program::DeserializeToGlobal(IReadStream&stream, const String&name)
 	{
-		Detail::StackChecker chk(state.get());
-		if (!Lua::PushFromStream(state.get(),stream))
+		Detail::StackChecker chk(state);
+		if (!Lua::PushFromStream(state,stream))
 			return false;
-		lua_setglobal(state.get(),name.c_str());
+		lua_setglobal(state,name.c_str());
 		return true;
 	}
 
 	bool		Program::DeserializeToReference(IReadStream& data, Reference&outReference)
 	{
-		Detail::StackChecker chk(state.get());
+		Detail::StackChecker chk(state);
 
-		if (!Lua::PushFromStream(state.get(),data))
+		if (!Lua::PushFromStream(state,data))
 		{
 			return false;
 		}
-		outReference.SetFromStack(state,-1);
-		lua_pop(state.get(),1);
+		outReference.SetFromStack(shared_from_this(),-1);
+		lua_pop(state,1);
 		return true;
 	}
 
+
+}
+
+
+namespace Library
+{
+	static int Test (lua_State *state)
+	{
+		int at = lua_upvalueindex(1);
+		double up = lua_tonumber(state,at);
+		stackDump(state);
+		double d = luaL_checknumber(state, 1);
+		lua_pushnumber(state, sin(d));
+		return 1;  /* number of results */
+	}
+
+
+	float Test2(float x)
+	{
+		return cos(x);
+	}
+
+
+	template <typename T>
+		class LuaExec {};
+
+
+	template <typename R, typename P0>
+		class LuaExec<R(P0)>
+		{
+		public:
+			static int Execute(lua_State *state)
+			{
+				int f_at = lua_upvalueindex(1);
+				int s_at = lua_upvalueindex(2);
+				void* f_ptr = lua_touserdata(state,f_at);
+				const std::function<R(P0)>&f = *(const std::function<R(P0)>*)f_ptr;
+				void* s_ptr = lua_touserdata(state,s_at);
+				const Lua::WProgram& wprog = *(const Lua::WProgram*)s_ptr;
+				Lua::PProgram prog = wprog.lock();
+				if (!prog)
+					return 0;
+				P0 p;
+				Lua::Detail::GetStackedT<P0>(prog,1,p);
+				Lua::Detail::PushParameterT<R>(state,f(p));
+				return 1;
+			}
+		};
+
+	template <typename F>
+		void AddLib(const Lua::PProgram&prog, const String&name, const std::function<F>&f)
+		{
+			//prog->
+			lua_State*st = prog->GetState();
+			std::function<F> * fptr = new std::function<F>(f);
+			Lua::WProgram*pptr = new Lua::WProgram(prog);
+
+			prog->RegisterDestructor([fptr](){delete fptr;});
+			prog->RegisterDestructor([pptr](){delete pptr;});
+			lua_pushlightuserdata(st,fptr);
+			lua_pushlightuserdata(st,pptr);
+			lua_pushcclosure(st, LuaExec<F>::Execute, 2);  /* closure with those upvalues */
+			lua_setfield(st, -2, name.c_str());
+		}
+	
+
+	void RegisterLib(const Lua::PProgram&prog)
+	{
+		lua_State*state = prog->GetState();
+		lua_newtable(state);
+		AddLib(prog,"Test",std::function<float(float)>(Test2));
+		lua_setglobal(state, "Interface");
+
+
+
+
+
+		//static const struct luaL_Reg funcs [] = {
+		//	{"Test", Test},
+		//	{NULL, NULL}  /* sentinel */
+		//};
+		//if (!state)
+		//	return;
+		//lua_newtable(state);
+		////lua_pushinteger(state,42);
+		//luaL_setfuncs(state, funcs, 0);
+
+		//AddLib(prog.GetState(),"Test2",std::function<float(float)>(Test2));
+
+		//lua_setglobal(state, "Interface");
+
+
+	}
 
 }
 
@@ -1185,121 +1262,124 @@ void Lua::Detail::PopStacked(lua_State*st)
 int LuaRun (int argc, const char *argv[]) {
 
 
-	Lua::Program prog;
-	ASSERT__(prog.Create());
+	Lua::PProgram prog = Lua::Program::Create();
+	ASSERT__(prog);
+
+	{
+		Library::RegisterLib(prog);
+
+		bool rs;
 
 
-	Library::RegisterLib(prog);
+		rs = prog->Execute(
+			" function DeepPrint (e, indent)"
+			" if e == nil then"
+			"  print('nil')"
+			"  return"
+			" end"
+			" if type(e) == \"table\" then"
+			"    for k,v in pairs(e) do"
+			"        print(indent .. k)"
+			"        DeepPrint(v,indent .. \" \")"
+			"    end"
+			" else"
+			"    print(indent .. e)"
+			" end"
+			" end"
+		);
 
-	bool rs;
+		rs = prog->Execute(
+			" function norm (x, y)"
+			"    local n2 = x^2 + y^2"
+			"    return math.sqrt(n2)"
+			"  end");
 
-
-	rs = prog.Execute(
-		" function DeepPrint (e, indent)"
-		" if e == nil then"
-		"  print('nil')"
-		"  return"
-		" end"
-		" if type(e) == \"table\" then"
-		"    for k,v in pairs(e) do"
-		"        print(indent .. k)"
-		"        DeepPrint(v,indent .. \" \")"
-		"    end"
-		" else"
-		"    print(indent .. e)"
-		" end"
-		" end"
-	);
-
-	rs = prog.Execute(
-		" function norm (x, y)"
-		"    local n2 = x^2 + y^2"
-		"    return math.sqrt(n2)"
-		"  end");
-
-	rs = prog.Execute(
-	"nested ="
-	"{"
-		"music = \"music1\","
-		"items ="
+		rs = prog->Execute(
+		"nested ="
 		"{"
-			"A = 1,"
-			"B = 2,"
+			"music = \"music1\","
+			"items ="
 			"{"
-				"c = \"C\","
+				"A = 1,"
+				"B = 2,"
+				"{"
+					"c = \"C\","
+				"}"
 			"}"
-		"}"
-	"}");
+		"}");
 
 
 
-	rs = prog.Execute("someVar = 3");
-	ByteStream	testStream;
-	rs = prog.SerializeGlobal("nested",testStream);
+		rs = prog->Execute("someVar = 3");
+		ByteStream	testStream;
+		rs = prog->SerializeGlobal("nested",testStream);
 
-	{
-		MemReadStream reader(testStream.pointer(),testStream.GetFillLevel());
-
-		rs = prog.DeserializeToGlobal(reader,"nested2");
-	}
-
-	Lua::Function<void(Lua::Reference,String)> deepPrint(prog,"DeepPrint");
-
-	{
-		Lua::Reference ref;
 		{
 			MemReadStream reader(testStream.pointer(),testStream.GetFillLevel());
-			rs = prog.DeserializeToReference(reader,ref);
-		}
-		deepPrint(ref,"");
 
-		ByteStream str2;
-		prog.SerializeReference(ref,str2);
+			rs = prog->DeserializeToGlobal(reader,"nested2");
+		}
+
+		Lua::Function<void(Lua::Reference,String)> deepPrint(prog,"DeepPrint");
+
 		{
-			MemReadStream reader(str2.pointer(),str2.GetFillLevel());
-			rs = prog.DeserializeToGlobal(reader,"nested3");
+			Lua::Reference ref;
+			{
+				MemReadStream reader(testStream.pointer(),testStream.GetFillLevel());
+				rs = prog->DeserializeToReference(reader,ref);
+			}
+			deepPrint(ref,"");
 
+			ByteStream str2;
+			prog->SerializeReference(ref,str2);
+			{
+				MemReadStream reader(str2.pointer(),str2.GetFillLevel());
+				rs = prog->DeserializeToGlobal(reader,"nested3");
+
+			}
 		}
+
+
+		rs = prog->Execute("DeepPrint(nested,\"\")");
+		rs = prog->Execute("DeepPrint(nested2,\"\")");
+		rs = prog->Execute("DeepPrint(nested3,\"\")");
+
+
+		try
+		{
+			//Lua::Function<float(float)>	f(prog,"norm");
+			//f(3);
+		}
+		catch (const std::exception&ex)
+		{
+			ShowMessage(ex.what());
+		}
+
+		{
+			Lua::Function<float(float,float)>	f(prog,"norm");
+
+			float rsf = f(1,1);
+
+			Lua::Function<void(String)>	print(prog,"print");
+			print(rsf);
+		}
+		{
+			Lua::Function<Lua::Reference(float,float)>	f(prog,"norm");
+			Lua::Function<void(Lua::Reference)>	print(prog,"print");
+			print(f(1,1));
+		}
+	  //lua_getglobal(L,"norm");
+	  //int r = luaL_ref(L, LUA_REGISTRYINDEX);
+	  //LUA_NUMBER n;
+	  //bool success = CallRegisteredFunction(L,r,n,1.0,1.0);
+
+	 // stackDump(L);
+
+
+		rs = prog->Execute("print(Interface.Test(3.5))");
+		rs = prog->Execute("print(Interface.Test2(3.5))");
 	}
-
-
-	rs = prog.Execute("DeepPrint(nested,\"\")");
-	rs = prog.Execute("DeepPrint(nested2,\"\")");
-	rs = prog.Execute("DeepPrint(nested3,\"\")");
-
-
-	try
-	{
-		Lua::Function<float(float)>	f(prog,"norm");
-		f(3);
-	}
-	catch (const std::exception&ex)
-	{
-		ShowMessage(ex.what());
-	}
-
-	{
-		Lua::Function<float(float,float)>	f(prog,"norm");
-
-		float rsf = f(1,1);
-
-		Lua::Function<void(String)>	print(prog,"print");
-		print(rsf);
-	}
-	{
-		Lua::Function<Lua::Reference(float,float)>	f(prog,"norm");
-		Lua::Function<void(Lua::Reference)>	print(prog,"print");
-		print(f(1,1));
-	}
-  //lua_getglobal(L,"norm");
-  //int r = luaL_ref(L, LUA_REGISTRYINDEX);
-  //LUA_NUMBER n;
-  //bool success = CallRegisteredFunction(L,r,n,1.0,1.0);
-
- // stackDump(L);
-
-
-	rs = prog.Execute("print(Interface.Test(3.5))");
+	prog.reset();
 //  bool okay = CallFunction(L,pmain,result,argc,argv);
   //lua_pushcfunction(L, &pmain);  /* to call 'pmain' in protected mode */
   //lua_pushinteger(L, argc);  /* 1st argument */

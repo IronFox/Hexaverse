@@ -3,6 +3,9 @@
 
 #include <global_string.h>
 #include <interface/write_stream.h>
+#include <container/buffer.h>
+#include <functional>
+
 struct lua_State;
 
 int LuaRun (int argc, const char *argv[]);
@@ -13,14 +16,16 @@ Lua-related definitions and helpers
 */
 namespace Lua
 {
-
 	class Reference;
 	class Program;
+	typedef std::shared_ptr<Program> PProgram;
+	typedef std::weak_ptr<Program> WProgram;
 
-	/**
-	Capsuled lua-state. Must use special delete-function upon destruction
-	*/
-	typedef std::shared_ptr<lua_State>	PState;
+
+	///**
+	//Capsuled lua-state. Must use special delete-function upon destruction
+	//*/
+	//typedef std::shared_ptr<lua_State>	PState;
 
 	/**
 	Pushes the value of the global refID to the stack.
@@ -83,25 +88,31 @@ namespace Lua
 
 		void PopStacked(lua_State*);
 
-		void GetStacked(const PState&, int addr, bool&rs);
-		void GetStacked(const PState&, int addr, String&rs);
-		void GetStacked(const PState&, int addr, void*&rs);
-		void GetStacked(const PState&, int addr, long long&rs);
-		void GetStacked(const PState&, int addr, double&rs);
-		void GetStacked(const PState&, int addr, Reference&rs);
-		inline void GetStacked(const PState&st, int addr, float&rs)
+		void GetStacked(const PProgram&, int addr, bool&rs);
+		void GetStacked(const PProgram&, int addr, String&rs);
+		void GetStacked(const PProgram&, int addr, void*&rs);
+		void GetStacked(const PProgram&, int addr, long long&rs);
+		void GetStacked(const PProgram&, int addr, double&rs);
+		void GetStacked(const PProgram&, int addr, Reference&rs);
+		inline void GetStacked(const PProgram&st, int addr, float&rs)
 		{
 			double tmp;
 			GetStacked(st,addr,tmp);
 			rs = (float)tmp;
 		}
 
-		inline void GetStacked(const PState&st, int addr, int&rs)
+		inline void GetStacked(const PProgram&st, int addr, int&rs)
 		{
 			long long temp;
 			GetStacked(st,addr,temp);
 			rs = (int)temp;
 		}
+
+		template <typename T>
+			inline  void GetStackedT(const PProgram&st, int addr, T&rs)
+			{
+				GetStacked(st,addr,rs);
+			}
 
 
 
@@ -146,44 +157,49 @@ namespace Lua
 	}
 
 
-	class Reference;
-
 
 	/**
 	Lua program state.
 	All scripts executed on the same program share the same variable/function/w/e constellation.
 	New instances of Program start empty and must be created via Program::Create()
 	*/
-	class Program
+	class Program : public std::enable_shared_from_this<Program>
 	{
-		std::shared_ptr<lua_State> state;
 		String			lastError;
 		String			name;
+		lua_State		*const state;
 
+		Buffer0<std::function<void()>,Swap> destructors;
 
 		void			Report (int);
 
+		/**/			Program(lua_State*st):state(st)	{}
+
 	public:
+		/**/			Program() = delete;
+		/**/			Program(const Program&) = delete;
+		/**/			~Program();
+		void			operator=(const Program&) = delete;
+
 		/**
-		Creates the local instance.
-		Any previously referenced program state may be deleted if not referenced anywhere else
-		@return true on success, false if something went wrong with Lua itself
+		Registers a new generic function to be executed before the local object is destroyed.
+		The local lua state is already destroyed when these functions are executed
 		*/
-		bool			Create(const String&name = "");
-		const PState&	GetState() const {return state;}
+		void			RegisterDestructor(const std::function<void()>&f)	{destructors << f;}
+		/**
+		Creates a new instance.
+		@return new object on success. An empty results indicates a Lua error (most likely insufficient memory)
+		*/
+		static PProgram	Create(const String&name = "");
+		lua_State*		GetState() const {return state;}
 
 		/**
 		Finds a global of the local lua state and stores the result in @a outRef
 		@param name Name to look for
-		@param[out] outRef Resulting lua reference. Not altered if the method returns false
+		@param[out] outRef Resulting lua reference. Not altered if the method returns false. Otherwise any data previously referenced by outReference may be destroyed (if this is the last reference)
 		@return true if the specified global was found and @a outRef updated, otherwise
 		*/
-		bool			FindGlobal(const String&name, Reference&outRef)	const;
-		/**
-		Checks if the local program exists
-		*/
-		bool			IsSet() const {return !!state;}
-		bool			IsEmpty() const {return !state;}
+		bool			FindGlobal(const String&name, Reference&outRef);
 
 		/**
 		Attempts to execute an arbitrary lua script chunk in protected mode
@@ -213,18 +229,18 @@ namespace Lua
 		@param[inout] stream Stream to put the resulting byte data to
 		@return true if the specified name was found and the stream was large enough to hold any serializable data, false otherwise
 		*/
-		bool			SerializeGlobal(const String&name,IWriteStream&);
+		bool			SerializeGlobal(const String&name,IWriteStream&stream);
 		/**
 		Deserializes binary host data to a global variable
-		@param data Serialized host data of some lua variable (created by SerializeReference() or SerializeGlobal())
+		@param[inout] data Serialized host data of some lua variable (created by SerializeReference() or SerializeGlobal())
 		@param name Name of the global variable to set
 		@return true if the data could be deserialized and the global variable was updated, false otherwise
 		*/
 		bool			DeserializeToGlobal(IReadStream&data, const String&name);
 		/**
 		Deserializes binary host data to a new lua reference
-		@param data Serialized host data of some lua variable (created by SerializeReference() or SerializeGlobal())
-		@param[out] outReference Reference to store the result in. Not updated if the method returns false. Any data previously referenced by outReference is destroyed if this is the last reference
+		@param[inout] data Serialized host data of some lua variable (created by SerializeReference() or SerializeGlobal())
+		@param[out] outReference Reference to store the result in. Not updated if the method returns false. Otherwise any data previously referenced by outReference may be destroyed (if this is the last reference)
 		@return true if the data could be deserialized and the reference was created, false otherwise
 		*/
 		bool			DeserializeToReference(IReadStream& data, Reference&outReference);
@@ -233,20 +249,20 @@ namespace Lua
 	class Reference
 	{
 	private:
-		PState					state;
+		PProgram					prog;
 		std::shared_ptr<int>		refID;
 
-		static void Discard(const PState&st, int*raw)
+		static void Discard(const PProgram&st, int*raw)
 		{
-			EraseReference(st.get(),(int)(size_t)raw);
+			EraseReference(st->GetState(),(int)(size_t)raw);
 		}
-		void	SetReference(PState state, int refID)
+		void	SetReference(PProgram prog, int refID)
 		{
-			this->state = state;
-			this->refID.reset((int*)(size_t)refID,[state](int*ptr){Discard(state,ptr);});
+			this->prog = prog;
+			this->refID.reset((int*)(size_t)refID,[prog](int*ptr){Discard(prog,ptr);});
 		}
 	protected:
-		/**/	Reference(const Program&prog, const String&name)
+		/**/	Reference(const PProgram&prog, const String&name)
 		{
 			Set(prog,name);
 		}
@@ -254,17 +270,17 @@ namespace Lua
 	public:
 		/**/		Reference(){}
 
-		bool		SetFromStack(const PState&, int at);
-		bool		Set(const Program&prog, const String&name)
+		bool		SetFromStack(const PProgram&, int at);
+		bool		Set(const PProgram&prog, const String&name)
 		{
 			int global;
-			if (!LookupGlobal(prog.GetState().get(),name,global))
+			if (!LookupGlobal(prog->GetState(),name,global))
 			{
-				state.reset();
+				this->prog.reset();
 				refID.reset();
 				return false;
 			}
-			SetReference(prog.GetState(), global);
+			SetReference(prog, global);
 			return true;
 		}
 
@@ -274,11 +290,11 @@ namespace Lua
 		void		swap(Reference&other)
 		{
 			refID.swap(other.refID);
-			state.swap(other.state);
+			prog.swap(other.prog);
 		}
 
 		int			GetRefID() const {return reinterpret_cast<int>( refID.get() );}
-		const PState&GetState() const {return state;}
+		const PProgram&GetProgram() const {return prog;}
 	};
 
 
@@ -292,7 +308,7 @@ namespace Lua
 
 		public:
 			/**/		Function(){}
-			/**/		Function(const Program&prog, const String&functionName):Super(prog,functionName){}
+			/**/		Function(const PProgram&prog, const String&functionName):Super(prog,functionName){}
 
 			void		Set(const Reference&ref)	{((Super&)*this) = ref;}
 
@@ -300,7 +316,7 @@ namespace Lua
 			{
 				if (IsEmpty())
 					throw Except::Program::GeneralFault("Lua: Trying to call empty function");
-				lua_State*state = GetState().get();
+				lua_State*state = GetProgram()->GetState();
 				PushRegisteredGlobal(state,GetRefID());
 				int numParameters = Detail::PushParameters(state,parameters...);
 				String error;
@@ -318,7 +334,7 @@ namespace Lua
 
 		public:
 			/**/		Function(){}
-			/**/		Function(const Program&prog, const String&functionName):Super(prog,functionName){}
+			/**/		Function(const PProgram&prog, const String&functionName):Super(prog,functionName){}
 
 			void		Set(const Reference&ref)	{((Super&)*this) = ref;}
 
@@ -326,15 +342,14 @@ namespace Lua
 			{
 				if (IsEmpty())
 					throw Except::Program::GeneralFault("Lua: Trying to call empty function");
-				PState st = GetState();
-				lua_State*state = st.get();
+				lua_State*state = GetProgram()->GetState();
 				PushRegisteredGlobal(state,GetRefID());
 				int numParameters = Detail::PushParameters(state,parameters...);
 				String error;
 				if (!CallPushedFunction(state,numParameters,1,error))
 					throw Except::Program::GeneralFault("Lua: "+error);
 				return_t rs;
-				Detail::GetStacked(st,-1,rs);
+				Detail::GetStacked(GetProgram(),-1,rs);
 				Detail::PopStacked(state);
 				return rs;
 			}
