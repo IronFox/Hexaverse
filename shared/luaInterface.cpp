@@ -594,82 +594,90 @@ static int pmain (lua_State *L) {
 }
 
 
-void Lua::PushParameter(lua_State *state, long long i)
+namespace Lua
 {
-	lua_pushinteger(state, i);
-}
 
-void Lua::PushParameter(lua_State *state, double i)
-{
-	lua_pushnumber(state, i);
-}
-void Lua::PushParameter(lua_State *state, void*p)
-{
-	lua_pushlightuserdata(state, p);
-}
-
-void Lua::PushStrParameter(lua_State *state, const String&str)
-{
-	lua_pushstring(state,str.c_str());
-}
-
-void Lua::PushParameter(lua_State *state, const Reference&ref)
-{
-	if (ref.IsEmpty())
+	bool Reference::SetFromStack(const PState&st, int at)
 	{
-		lua_pushnil(state);
-	}
-	else
-	{
-		PushRegisteredGlobal(state,ref.GetRefID());
+		lua_State*state = st.get();
+		if (lua_gettop(state)==0 || lua_isnil(state,-1))
+			return false;
+		lua_pushvalue(state,at);
+		SetReference(st,luaL_ref(state, LUA_REGISTRYINDEX));
+		return true;
 	}
 
+
+	namespace Detail
+	{
+
+		void PushParameter(lua_State *state, long long i)
+		{
+			lua_pushinteger(state, i);
+		}
+
+		void PushParameter(lua_State *state, double i)
+		{
+			lua_pushnumber(state, i);
+		}
+		void PushParameter(lua_State *state, void*p)
+		{
+			lua_pushlightuserdata(state, p);
+		}
+
+		void PushStrParameter(lua_State *state, const String&str)
+		{
+			lua_pushstring(state,str.c_str());
+		}
+
+		void PushParameter(lua_State *state, const Reference&ref)
+		{
+			if (ref.IsEmpty())
+			{
+				lua_pushnil(state);
+			}
+			else
+			{
+				PushRegisteredGlobal(state,ref.GetRefID());
+			}
+
+		}
+
+
+
+		void GetStacked(const PState&st, int addr, Reference&rs)
+		{
+			rs.SetFromStack(st,addr);
+		}
+
+		void GetStacked(const PState&st, int addr, bool&rs)
+		{
+			rs = lua_toboolean(st.get(), addr)!=0;
+		}
+
+		void GetStacked(const PState&st, int addr, String&rs)
+		{
+			rs = lua_tolstring(st.get(), addr,nullptr);
+		}
+
+		void GetStacked(const PState&st, int addr, void*&rs)
+		{
+			rs = lua_touserdata(st.get(), addr);
+		}
+
+		void GetStacked(const PState&st, int addr, long long&rs)
+		{
+			int dummy;
+			rs = lua_tointegerx(st.get(), addr,&dummy);
+		}
+
+		void GetStacked(const PState&st, int addr, double&rs)
+		{
+			int dummy;
+			rs = lua_tonumberx(st.get(), addr,&dummy);
+		}
+	}
 }
-
-bool Lua::Reference::SetFromStack(const PState&st, int at)
-{
-	lua_State*state = st.get();
-	if (lua_gettop(state)==0 || lua_isnil(state,-1))
-		return false;
-	lua_pushvalue(state,at);
-	SetReference(st,luaL_ref(state, LUA_REGISTRYINDEX));
-	return true;
-}
-
-
-
-void Lua::GetStacked(const PState&st, int addr, Reference&rs)
-{
-	rs.SetFromStack(st,addr);
-}
-
-void Lua::GetStacked(const PState&st, int addr, bool&rs)
-{
-	rs = lua_toboolean(st.get(), addr)!=0;
-}
-
-void Lua::GetStacked(const PState&st, int addr, String&rs)
-{
-	rs = lua_tolstring(st.get(), addr,nullptr);
-}
-
-void Lua::GetStacked(const PState&st, int addr, void*&rs)
-{
-	rs = lua_touserdata(st.get(), addr);
-}
-
-void Lua::GetStacked(const PState&st, int addr, long long&rs)
-{
-	int dummy;
-	rs = lua_tointegerx(st.get(), addr,&dummy);
-}
-
-void Lua::GetStacked(const PState&st, int addr, double&rs)
-{
-	int dummy;
-	rs = lua_tonumberx(st.get(), addr,&dummy);
-}
-
 
 
 template <typename Result, typename ...T>
@@ -894,6 +902,12 @@ namespace Lua
 		Detail::StackChecker chk(state);
 
 		int t = lua_getglobal(state,name.c_str());
+		if (lua_isnil(state,-1))
+		{
+			lua_pop(state,1);
+			return false;
+		}
+
 		bool rs = SerializeTop(state,stream);
 		lua_pop(state, 1);
 		return rs;
@@ -1161,7 +1175,7 @@ void		Lua::EraseReference(lua_State *state, int refID)
 	luaL_unref(state,LUA_REGISTRYINDEX,refID);
 }
 
-void Lua::PopStacked(lua_State*st)
+void Lua::Detail::PopStacked(lua_State*st)
 {
 	lua_pop(st,1);
 }

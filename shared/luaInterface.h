@@ -8,107 +8,152 @@ struct lua_State;
 int LuaRun (int argc, const char *argv[]);
 
 
+/**
+Lua-related definitions and helpers
+*/
 namespace Lua
 {
 
 	class Reference;
 	class Program;
 
+	/**
+	Capsuled lua-state. Must use special delete-function upon destruction
+	*/
 	typedef std::shared_ptr<lua_State>	PState;
 
+	/**
+	Pushes the value of the global refID to the stack.
+	If the respective global does not exist or contains nil, then nil is pushed
+	*/
 	void	PushRegisteredGlobal(lua_State*, int refID);
+	/**
+	Executes a function as currently pushed to the stack.
+	The calling method must first push the function itself, followed by each parameter.
+	The number of pushed parameters must match @a numParameters.
+	Both the function and parameters are removed from the stack as a result of execution.
+	Upon success, all requested return values are pushed to the stack
+	@param numParameters Number of parameters pushed to the stack. Must match the actually pushed parameters
+	@param numResults Number of return values which are pushed to the stack as a result. Typically 0 (void function) or 1 (single return value)
+	@param[out] errorOut Resulting error message in case lua execution fails. Updated only if the function returns false
+	@return true on success, false otherwise. No results are pushed if the function returns false
+	*/
 	bool	CallPushedFunction(lua_State*,int numParameters, int numResults, String&errorOut);
-	bool	LookupGlobal(lua_State *,const String&name, int&out);
-	int		DuplicateReference(lua_State *, int ref);
-	void	EraseReference(lua_State *, int ref);
+	/**
+	Finds a global (variable, function, w/e) by name, and pushes it to a new refID.
+	@param name Name of the global to look for
+	@param[out] outRefID Resultung refID. Updated only if the function returns true
+	@return true if the name was found and a new refID was created (and stored in @a outRefID), false otherwise
+	*/
+	bool	LookupGlobal(lua_State *,const String&name, int&outRefID);
+	/**
+	@deprecated
+	Creates a true copy of the specified refID
+	@return new refID that holds a copy of the specified refID's contents
+	*/
+	int		DuplicateReference(lua_State *, int refID);
+	/**
+	Erases a given refID. Any associated data is flagged for garbage collection.
+	Subsequent calls to LookupGlobal() or DuplicateReference() may again return this refID as new.
+	@param refID refID to erase
+	*/
+	void	EraseReference(lua_State *, int refID);
 
-	void PushParameter(lua_State *state, long long i);
-	inline void PushParameter(lua_State *state, int i) {PushParameter(state,(long long)i);}
-	void PushParameter(lua_State *state, double i);
-	void PushParameter(lua_State *state, void*p);
-	void PushParameter(lua_State *state, const Reference&);
-	void PushStrParameter(lua_State *state, const String&str);
 
-	template <typename T>
-		inline void	PushParameterT(lua_State *state, const T&v)
-		{
-			PushParameter(state,v);
-			//FATAL__("Push not defined for type "+String(typeid(T).name()));
-		}
-	template <>
-		inline void	PushParameterT<String>(lua_State *state, const String&v)
-		{
-			PushStrParameter(state,v);
-		}
-
-	void PopStacked(lua_State*);
-
-	void GetStacked(const PState&, int addr, bool&rs);
-	void GetStacked(const PState&, int addr, String&rs);
-	void GetStacked(const PState&, int addr, void*&rs);
-	void GetStacked(const PState&, int addr, long long&rs);
-	void GetStacked(const PState&, int addr, double&rs);
-	void GetStacked(const PState&, int addr, Reference&rs);
-	inline void GetStacked(const PState&st, int addr, float&rs)
+	namespace Detail
 	{
-		double tmp;
-		GetStacked(st,addr,tmp);
-		rs = (float)tmp;
+		void PushParameter(lua_State *state, long long i);
+		inline void PushParameter(lua_State *state, int i) {PushParameter(state,(long long)i);}
+		void PushParameter(lua_State *state, double i);
+		void PushParameter(lua_State *state, void*p);
+		void PushParameter(lua_State *state, const Reference&);
+		void PushStrParameter(lua_State *state, const String&str);
+
+		template <typename T>
+			inline void	PushParameterT(lua_State *state, const T&v)
+			{
+				PushParameter(state,v);
+				//FATAL__("Push not defined for type "+String(typeid(T).name()));
+			}
+		template <>
+			inline void	PushParameterT<String>(lua_State *state, const String&v)
+			{
+				PushStrParameter(state,v);
+			}
+
+		void PopStacked(lua_State*);
+
+		void GetStacked(const PState&, int addr, bool&rs);
+		void GetStacked(const PState&, int addr, String&rs);
+		void GetStacked(const PState&, int addr, void*&rs);
+		void GetStacked(const PState&, int addr, long long&rs);
+		void GetStacked(const PState&, int addr, double&rs);
+		void GetStacked(const PState&, int addr, Reference&rs);
+		inline void GetStacked(const PState&st, int addr, float&rs)
+		{
+			double tmp;
+			GetStacked(st,addr,tmp);
+			rs = (float)tmp;
+		}
+
+		inline void GetStacked(const PState&st, int addr, int&rs)
+		{
+			long long temp;
+			GetStacked(st,addr,temp);
+			rs = (int)temp;
+		}
+
+
+
+		static inline int PushParameters(lua_State *state)
+		{
+			return 0;
+		}
+
+		template <typename T0>
+			static inline int PushParameters(lua_State *state, const T0&p0)
+			{
+				PushParameterT(state,p0);
+				return 1;
+			}
+
+		template <typename T0, typename ...T>
+			static inline int PushParameters(lua_State *state, const T0&p0, const T&...p)
+			{
+				PushParameterT(state,p0);
+				return 1 + PushParameters(state,p...);
+			}
+
+
+
+		static inline void GetParameters(lua_State *state, int at)
+		{}
+
+		template <typename T0>
+			static inline void GetParameters(lua_State *state, int at, const T0&p0)
+			{
+				if (at < 0)
+					GetStacked(state,at,p0);
+			}
+
+		template <typename T0, typename ...T>
+			static inline void GetParameters(lua_State *state, int at, const T0&p0, const T&...p)
+			{
+				GetParameters(state,at,p0);
+				GetParameters(state,at+1,p);
+			}
+
 	}
-
-	inline void GetStacked(const PState&st, int addr, int&rs)
-	{
-		long long temp;
-		GetStacked(st,addr,temp);
-		rs = (int)temp;
-	}
-
-
-
-	static inline int PushParameters(lua_State *state)
-	{
-		return 0;
-	}
-
-	template <typename T0>
-		static inline int PushParameters(lua_State *state, const T0&p0)
-		{
-			PushParameterT(state,p0);
-			return 1;
-		}
-
-	template <typename T0, typename ...T>
-		static inline int PushParameters(lua_State *state, const T0&p0, const T&...p)
-		{
-			PushParameterT(state,p0);
-			return 1 + PushParameters(state,p...);
-		}
-
-
-
-	static inline void GetParameters(lua_State *state, int at)
-	{}
-
-	template <typename T0>
-		static inline void GetParameters(lua_State *state, int at, const T0&p0)
-		{
-			if (at < 0)
-				GetStacked(state,at,p0);
-		}
-
-	template <typename T0, typename ...T>
-		static inline void GetParameters(lua_State *state, int at, const T0&p0, const T&...p)
-		{
-			GetParameters(state,at,p0);
-			GetParameters(state,at+1,p);
-		}
-
-
 
 
 	class Reference;
 
 
+	/**
+	Lua program state.
+	All scripts executed on the same program share the same variable/function/w/e constellation.
+	New instances of Program start empty and must be created via Program::Create()
+	*/
 	class Program
 	{
 		std::shared_ptr<lua_State> state;
@@ -119,21 +164,69 @@ namespace Lua
 		void			Report (int);
 
 	public:
+		/**
+		Creates the local instance.
+		Any previously referenced program state may be deleted if not referenced anywhere else
+		@return true on success, false if something went wrong with Lua itself
+		*/
 		bool			Create(const String&name = "");
 		const PState&	GetState() const {return state;}
 
-
-		bool			FindGlobal(const String&name, Reference&)	const;
+		/**
+		Finds a global of the local lua state and stores the result in @a outRef
+		@param name Name to look for
+		@param[out] outRef Resulting lua reference. Not altered if the method returns false
+		@return true if the specified global was found and @a outRef updated, otherwise
+		*/
+		bool			FindGlobal(const String&name, Reference&outRef)	const;
+		/**
+		Checks if the local program exists
+		*/
 		bool			IsSet() const {return !!state;}
 		bool			IsEmpty() const {return !state;}
 
+		/**
+		Attempts to execute an arbitrary lua script chunk in protected mode
+		@param luaCode Code to execute
+		@return true on success, false if something happend. Check GetLastError() if the method returns false
+		*/
 		bool			Execute(const String&luaCode);
 
+		/**
+		Fetches a string representation of the last occurred error.
+		Updated only if Execute() returns false (left as is otherwise)
+		*/
 		const String&	GetLastError()	const	{return lastError;}
 
-		bool			SerializeReference(const Reference&, IWriteStream&);
+		/**
+		Attempts to store a generic reference as a host byte stream.
+		Some data (like functions) cannot be serialized and is omitted.
+		@param ref Reference to serialize
+		@param[inout] stream Stream to put the resulting byte data to
+		@return true if the specified reference is set and the stream was large enough to hold any serializable data, false otherwise
+		*/
+		bool			SerializeReference(const Reference&ref, IWriteStream&stream);
+		/**
+		Attempst to store a global variable as a host byte stream.
+		Some data (like functions) cannot be serialized and is omitted.
+		@param name Name of the global to serialize
+		@param[inout] stream Stream to put the resulting byte data to
+		@return true if the specified name was found and the stream was large enough to hold any serializable data, false otherwise
+		*/
 		bool			SerializeGlobal(const String&name,IWriteStream&);
-		bool			DeserializeToGlobal(IReadStream&, const String&name);
+		/**
+		Deserializes binary host data to a global variable
+		@param data Serialized host data of some lua variable (created by SerializeReference() or SerializeGlobal())
+		@param name Name of the global variable to set
+		@return true if the data could be deserialized and the global variable was updated, false otherwise
+		*/
+		bool			DeserializeToGlobal(IReadStream&data, const String&name);
+		/**
+		Deserializes binary host data to a new lua reference
+		@param data Serialized host data of some lua variable (created by SerializeReference() or SerializeGlobal())
+		@param[out] outReference Reference to store the result in. Not updated if the method returns false. Any data previously referenced by outReference is destroyed if this is the last reference
+		@return true if the data could be deserialized and the reference was created, false otherwise
+		*/
 		bool			DeserializeToReference(IReadStream& data, Reference&outReference);
 	};
 
@@ -209,7 +302,7 @@ namespace Lua
 					throw Except::Program::GeneralFault("Lua: Trying to call empty function");
 				lua_State*state = GetState().get();
 				PushRegisteredGlobal(state,GetRefID());
-				int numParameters = PushParameters(state,parameters...);
+				int numParameters = Detail::PushParameters(state,parameters...);
 				String error;
 				if (!CallPushedFunction(state,numParameters,0,error))
 					throw Except::Program::GeneralFault("Lua: "+error);
@@ -236,13 +329,13 @@ namespace Lua
 				PState st = GetState();
 				lua_State*state = st.get();
 				PushRegisteredGlobal(state,GetRefID());
-				int numParameters = PushParameters(state,parameters...);
+				int numParameters = Detail::PushParameters(state,parameters...);
 				String error;
 				if (!CallPushedFunction(state,numParameters,1,error))
 					throw Except::Program::GeneralFault("Lua: "+error);
 				return_t rs;
-				GetStacked(st,-1,rs);
-				PopStacked(state);
+				Detail::GetStacked(st,-1,rs);
+				Detail::PopStacked(state);
 				return rs;
 			}
 
