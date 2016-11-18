@@ -201,7 +201,9 @@ namespace Lua
 			/**/		Function(){}
 			/**/		Function(const Program&prog, const String&functionName):Super(prog,functionName){}
 
-			void	operator()(args_t...parameters)	const
+			void		Set(const Reference&ref)	{((Super&)*this) = ref;}
+
+			void		operator()(args_t...parameters)	const
 			{
 				if (IsEmpty())
 					throw Except::Program::GeneralFault("Lua: Trying to call empty function");
@@ -224,6 +226,8 @@ namespace Lua
 		public:
 			/**/		Function(){}
 			/**/		Function(const Program&prog, const String&functionName):Super(prog,functionName){}
+
+			void		Set(const Reference&ref)	{((Super&)*this) = ref;}
 
 			return_t	operator()(args_t...parameters)	const
 			{
