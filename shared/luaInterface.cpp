@@ -106,6 +106,33 @@ static lua_State *globalL = NULL;
 static const char *progname = LUA_PROGNAME;
 
 
+static void stackDump (lua_State *L) {
+	int i;
+	int top = lua_gettop(L);
+	for (i = 1; i <= top; i++) {  /* repeat for each level */
+		int t = lua_type(L, i);
+		switch (t)
+		{
+			case LUA_TSTRING:  /* strings */
+				printf("%i: `%s'\n",i, lua_tostring(L, i));
+			break;
+    
+			case LUA_TBOOLEAN:  /* booleans */
+				printf("%i: %s\n",i,  lua_toboolean(L, i) ? "true" : "false");
+			break;
+    
+			case LUA_TNUMBER:  /* numbers */
+				printf("%i: %g\n", i, lua_tonumber(L, i));
+			break;
+    
+			default:  /* other values */
+				printf("%i: %s\n", i,lua_typename(L, t));
+			break;
+		}
+	}
+}
+
+
 /*
 ** Hook set by signal function to stop the interpreter.
 */
@@ -682,12 +709,44 @@ namespace Lua
 			return f_ptr;
 		}
 
-		void RegisterFunction(const PProgram & prog, void * fptr, WProgram * pptr, int(*f)(lua_State*))
+		void*	GetUserData(lua_State*st,int idx)
+		{
+			return lua_touserdata(st,idx);
+		}
+
+
+		void* RegisterFunction(const PProgram & prog, size_t fsize, int(*fdel)(lua_State*) ,int(*f)(lua_State*))
 		{
 			lua_State*st = prog->GetState();
-			lua_pushlightuserdata(st,fptr);
-			lua_pushlightuserdata(st,pptr);
+
+			void*fdata = lua_newuserdata(st,fsize);		//stack now: ... userdata(f)
+			//memcpy(data,fdata,fsize);
+
+			lua_newtable(st);							//stack now: ... userdata(f), metatable
+			lua_pushcclosure(st,fdel,0);				//stack now: ... userdata(f), metatable, fdel
+
+			stackDump(st);
+
+			lua_setfield(st,-2,"__gc");		//stack now: ... userdata(f), metatable
+			lua_setmetatable(st,-2);					//stack now: ... userdata(f)
+
+			stackDump(st);
+
+			void*ptrData = lua_newuserdata(st,sizeof(WProgram)); //stack now: ... userdata(f), userdata(p)
+			new (ptrData) WProgram(prog);
+			lua_newtable(st);							//stack now: ... userdata(f), userdata(p), metatable
+			lua_pushcclosure(st,DeleteT<WProgram>,0);				//stack now: ... userdata(f), userdata(p), metatable, fdel
+
+			stackDump(st);
+
+			lua_setfield(st,-2,"__gc");		//stack now: ... userdata(f), userdata(p), metatable
+			lua_setmetatable(st,-2);					//stack now: ... userdata(f), userdata(p)
+
+
+		//	lua_pushlightuserdata(st,fptr);
+//			lua_pushlightuserdata(st,pptr);
 			lua_pushcclosure(st, f, 2);  /* closure with those upvalues */
+			return fdata;
 		}
 
 		void GetStacked(const PProgram&st, int addr, bool&rs)
@@ -777,31 +836,6 @@ template <typename Result, typename ...T>
 
 
 
-static void stackDump (lua_State *L) {
-	int i;
-	int top = lua_gettop(L);
-	for (i = 1; i <= top; i++) {  /* repeat for each level */
-		int t = lua_type(L, i);
-		switch (t)
-		{
-			case LUA_TSTRING:  /* strings */
-				printf("%i: `%s'\n",i, lua_tostring(L, i));
-			break;
-    
-			case LUA_TBOOLEAN:  /* booleans */
-				printf("%i: %s\n",i,  lua_toboolean(L, i) ? "true" : "false");
-			break;
-    
-			case LUA_TNUMBER:  /* numbers */
-				printf("%i: %g\n", i, lua_tonumber(L, i));
-			break;
-    
-			default:  /* other values */
-				printf("%i: %s\n", i,lua_typename(L, t));
-			break;
-		}
-	}
-}
 
 
 
@@ -1184,8 +1218,6 @@ namespace Lua
 	Program::~Program()
 	{
 		lua_close(state);
-		foreach (destructors,d)
-			(*d)();
 	}
 
 	/*static*/ PProgram Program::Create(const String&name/*=""*/)

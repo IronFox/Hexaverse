@@ -163,8 +163,21 @@ namespace Lua
 			}
 
 
+		void*	GetUserData(lua_State*,int idx);
+
+		template <typename T>
+			inline int DeleteT(lua_State*st)
+			{
+				void*d = GetUserData(st,1);
+				ASSERT_NOT_NULL__(d);
+				T*obj = (T*)d;
+				((T*)d)->~T();	//destroy
+				return 0;
+			}
+
+
 		void*	BeginFunction(lua_State *state, PProgram&outProgram);
-		void	RegisterFunction(const PProgram&prog, void*fptr, WProgram*pptr, int(*f)(lua_State*));
+		void*	RegisterFunction(const PProgram & prog, size_t fsize, int(*fdel)(lua_State*) ,int(*f)(lua_State*));
 		void	MoveStackTopToGlobal(const PProgram&prog,const String&name);
 
 
@@ -218,13 +231,11 @@ namespace Lua
 			inline void PushLibFunctionT(const Lua::PProgram&prog, const std::function<F>&f)
 			{
 				
-				std::function<F> * fptr = new std::function<F>(f);
-				Lua::WProgram*pptr = new Lua::WProgram(prog);
-
-				prog->RegisterDestructor([fptr](){delete fptr;});
-				prog->RegisterDestructor([pptr](){delete pptr;});
-
-				RegisterFunction(prog,fptr,pptr,LuaExec<F>::Execute);
+				//std::function<F> * fptr = new std::function<F>(f);
+				//Lua::WProgram*pptr = new Lua::WProgram(prog);
+				typedef std::function<F>	FT;
+				void* dat = RegisterFunction(prog,sizeof(FT),DeleteT<FT>,LuaExec<F>::Execute);
+				new (dat)FT(f);
 			}
 
 		template <typename F>
@@ -266,8 +277,6 @@ namespace Lua
 		String			name;
 		lua_State		*const state;
 
-		Buffer0<std::function<void()>,Swap> destructors;
-
 		void			Report (int);
 
 		/**/			Program(lua_State*st):state(st)	{}
@@ -278,11 +287,6 @@ namespace Lua
 		/**/			~Program();
 		void			operator=(const Program&) = delete;
 
-		/**
-		Registers a new generic function to be executed before the local object is destroyed.
-		The local lua state is already destroyed when these functions are executed
-		*/
-		void			RegisterDestructor(const std::function<void()>&f)	{destructors << f;}
 		/**
 		Creates a new instance.
 		@return new object on success. An empty results indicates a Lua error (most likely insufficient memory)
