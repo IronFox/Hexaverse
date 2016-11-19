@@ -40,10 +40,7 @@ extern "C"
 	LUA_INIT_VAR "_" LUA_VERSION_MAJOR "_" LUA_VERSION_MINOR
 
 
-namespace Lua
-{
-	template class Function<int(int)>;
-}
+template class Lua::Function<int(int)>;
 
 /*
 ** lua_stdin_is_tty detects whether the standard input is a 'tty' (that
@@ -599,10 +596,12 @@ static int pmain (lua_State *L) {
 namespace Lua
 {
 
-	bool Reference::SetFromStack(const PProgram&st, int at)
+	bool Reference::ResetFromStack(const PProgram&st, int at)
 	{
+		if (!st)
+			return false;
 		lua_State*state = st->GetState();
-		if (lua_gettop(state)==0 || lua_isnil(state,-1))
+		if (lua_gettop(state)< abs(at) || lua_isnil(state,at))
 			return false;
 		lua_pushvalue(state,at);
 		SetReference(st,luaL_ref(state, LUA_REGISTRYINDEX));
@@ -649,7 +648,28 @@ namespace Lua
 
 		void GetStacked(const PProgram&st, int addr, Reference&rs)
 		{
-			rs.SetFromStack(st,addr);
+			rs.ResetFromStack(st,addr);
+		}
+
+		void * BeginFunction(lua_State * state, PProgram & outProgram)
+		{
+			int f_at = lua_upvalueindex(1);
+			int s_at = lua_upvalueindex(2);
+			void* f_ptr = lua_touserdata(state,f_at);
+			void* s_ptr = lua_touserdata(state,s_at);
+			const Lua::WProgram& wprog = *(const Lua::WProgram*)s_ptr;
+			outProgram = wprog.lock();
+			if (!outProgram)
+				return nullptr;
+			return f_ptr;
+		}
+
+		void RegisterFunction(const PProgram & prog, void * fptr, WProgram * pptr, int(*f)(lua_State*))
+		{
+			lua_State*st = prog->GetState();
+			lua_pushlightuserdata(st,fptr);
+			lua_pushlightuserdata(st,pptr);
+			lua_pushcclosure(st, f, 2);  /* closure with those upvalues */
 		}
 
 		void GetStacked(const PProgram&st, int addr, bool&rs)
@@ -679,6 +699,8 @@ namespace Lua
 			rs = lua_tonumberx(st->GetState(), addr,&dummy);
 		}
 	}
+
+
 }
 
 
@@ -703,7 +725,8 @@ template <typename Result, typename ...T>
 
 void Lua::PushRegisteredGlobal(lua_State*state, int refID)
 {
-	lua_rawgeti(state, LUA_REGISTRYINDEX, refID);
+	if (state)
+		lua_rawgeti(state, LUA_REGISTRYINDEX, refID);
 }
 
 
@@ -972,7 +995,35 @@ namespace Lua
 		return true;
 	}
 
+	void Table::SetTop(const String & name)
+	{
+		lua_State*st = GetState();
+		if (!st)
+			return;
 
+		int top = lua_gettop(st);
+
+		Super::Push();	
+		lua_insert(st,-2);
+		lua_setfield(st,-2,name.c_str());
+		lua_pop(st,1);
+
+		ASSERT_EQUAL__(top-1,lua_gettop(st));
+	}
+
+	Reference Table::GetMember(const String & name) const
+	{
+		Reference	rs;
+		lua_State*st = GetState();
+		if (!st)
+			return rs;
+		Detail::StackChecker chk(st);
+		Super::Push();
+		lua_getfield(st,-1,name.c_str());
+		rs.ResetFromStack(GetProgram(),-1);
+		lua_pop(st,2);
+		return rs;
+	}
 	
 	Program::~Program()
 	{
@@ -1016,7 +1067,7 @@ namespace Lua
 
 	bool	Program::FindGlobal(const String&name, Reference&ref)
 	{
-		return ref.Set(shared_from_this(),name);
+		return ref.ResetToGlobal(shared_from_this(),name);
 	}
 
 
@@ -1105,11 +1156,34 @@ namespace Lua
 		{
 			return false;
 		}
-		outReference.SetFromStack(shared_from_this(),-1);
+		bool rs = outReference.ResetFromStack(shared_from_this(),-1);
 		lua_pop(state,1);
+		return rs;
+	}
+
+	Table Program::CreateTable()
+	{
+		Table rs;
+		lua_createtable(state,0,0);
+		ASSERT__(rs.ResetFromStack(shared_from_this(),-1));
+		return rs;
+	}
+
+
+	bool	Program::SetGlobal(const String&name, const Reference&ref)
+	{
+		if (!ref.Push())
+			return false;
+		lua_setglobal(state,name.c_str());
 		return true;
 	}
 
+	Reference Program::GetGlobal(const String&name)
+	{
+		Reference		rs;
+		rs.ResetToGlobal(shared_from_this(),name);
+		return rs;
+	}
 
 }
 
@@ -1133,55 +1207,23 @@ namespace Library
 	}
 
 
-	template <typename T>
-		class LuaExec {};
-
-
-	template <typename R, typename P0>
-		class LuaExec<R(P0)>
-		{
-		public:
-			static int Execute(lua_State *state)
-			{
-				int f_at = lua_upvalueindex(1);
-				int s_at = lua_upvalueindex(2);
-				void* f_ptr = lua_touserdata(state,f_at);
-				const std::function<R(P0)>&f = *(const std::function<R(P0)>*)f_ptr;
-				void* s_ptr = lua_touserdata(state,s_at);
-				const Lua::WProgram& wprog = *(const Lua::WProgram*)s_ptr;
-				Lua::PProgram prog = wprog.lock();
-				if (!prog)
-					return 0;
-				P0 p;
-				Lua::Detail::GetStackedT<P0>(prog,1,p);
-				Lua::Detail::PushParameterT<R>(state,f(p));
-				return 1;
-			}
-		};
-
-	template <typename F>
-		void AddLib(const Lua::PProgram&prog, const String&name, const std::function<F>&f)
-		{
-			//prog->
-			lua_State*st = prog->GetState();
-			std::function<F> * fptr = new std::function<F>(f);
-			Lua::WProgram*pptr = new Lua::WProgram(prog);
-
-			prog->RegisterDestructor([fptr](){delete fptr;});
-			prog->RegisterDestructor([pptr](){delete pptr;});
-			lua_pushlightuserdata(st,fptr);
-			lua_pushlightuserdata(st,pptr);
-			lua_pushcclosure(st, LuaExec<F>::Execute, 2);  /* closure with those upvalues */
-			lua_setfield(st, -2, name.c_str());
-		}
-	
-
 	void RegisterLib(const Lua::PProgram&prog)
 	{
-		lua_State*state = prog->GetState();
-		lua_newtable(state);
-		AddLib(prog,"Test",std::function<float(float)>(Test2));
-		lua_setglobal(state, "Interface");
+		Lua::Table t = prog->CreateTable();
+		t.SetFunction("Test",Test2);
+		t.SetFunction("Test2",(std::function<String(float,float)>) [](float x, float y)->String {return "yo";});
+
+		//t.SetMember("Hello",t);
+		//Lua::Reference ref = t.GetMember("Hello");
+
+		prog->SetGlobal("Interface",t);
+
+		//lua_State*state = prog->GetState();
+
+
+		//lua_newtable(state);
+		//AddLib(prog,"Test",std::function<float(float)>(Test2));
+		//lua_setglobal(state, "Interface");
 
 
 

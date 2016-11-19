@@ -18,6 +18,7 @@ namespace Lua
 {
 	class Reference;
 	class Program;
+	class Table;
 	typedef std::shared_ptr<Program> PProgram;
 	typedef std::weak_ptr<Program> WProgram;
 
@@ -154,6 +155,240 @@ namespace Lua
 				GetParameters(state,at+1,p);
 			}
 
+
+		void*	BeginFunction(lua_State *state, PProgram&outProgram);
+		void	RegisterFunction(const PProgram&prog, void*fptr, WProgram*pptr, int(*f)(lua_State*));
+		void	MoveStackTopToGlobal(const PProgram&prog,const String&name);
+
+		template <typename T>
+			class LuaExec {};
+
+		template <typename R>
+			class LuaExec<R()>
+			{
+			public:
+				static int Execute(lua_State *state)
+				{
+					Lua::PProgram prog;
+					const std::function<R()>&f = *(const std::function<R()>*)BeginFunction(state,prog);
+					if (!prog)
+						return 0;
+					PushParameterT<R>(state,f());
+					return 1;
+				}
+			};
+
+		template <>
+			class LuaExec<void()>
+			{
+			public:
+				static int Execute(lua_State *state)
+				{
+					Lua::PProgram prog;
+					const std::function<void()>&f = *(const std::function<void()>*)BeginFunction(state,prog);
+					if (!prog)
+						return 0;
+					f();
+					return 0;
+				}
+			};
+
+		template <typename R, typename P0>
+			class LuaExec<R(P0)>
+			{
+			public:
+				static int Execute(lua_State *state)
+				{
+					Lua::PProgram prog;
+					const std::function<R(P0)>&f = *(const std::function<R(P0)>*)BeginFunction(state,prog);
+					if (!prog)
+						return 0;
+					P0 p;
+					GetStackedT<P0>(prog,1,p);
+					PushParameterT<R>(state,f(p));
+					return 1;
+				}
+			};
+
+		template <typename P0>
+			class LuaExec<void(P0)>
+			{
+			public:
+				static int Execute(lua_State *state)
+				{
+					Lua::PProgram prog;
+					const std::function<void(P0)>&f = *(const std::function<void(P0)>*)BeginFunction(state,prog);
+					if (!prog)
+						return 0;
+					P0 p;
+					GetStackedT<P0>(prog,1,p);
+					f(p);
+					return 0;
+				}
+			};
+
+		template <typename R, typename P0, typename P1>
+			class LuaExec<R(P0,P1)>
+			{
+			public:
+				static int Execute(lua_State *state)
+				{
+					Lua::PProgram prog;
+					const std::function<R(P0,P1)>&f = *(const std::function<R(P0,P1)>*)BeginFunction(state,prog);
+					if (!prog)
+						return 0;
+					P0 p0;
+					P1 p1;
+					GetStackedT<P0>(prog,1,p0);
+					GetStackedT<P1>(prog,2,p1);
+					PushParameterT<R>(state,f(p0,p1));
+					return 1;
+				}
+			};
+
+		template <typename P0, typename P1>
+			class LuaExec<void(P0,P1)>
+			{
+			public:
+				static int Execute(lua_State *state)
+				{
+					Lua::PProgram prog;
+					const std::function<void(P0,P1)>&f = *(const std::function<void(P0,P1)>*)BeginFunction(state,prog);
+					if (!prog)
+						return 0;
+					P0 p0;
+					P1 p1;
+					GetStackedT<P0>(prog,1,p0);
+					GetStackedT<P1>(prog,2,p1);
+					f(p0,p1);
+					return 0;
+				}
+			};
+
+		template <typename R, typename P0, typename P1, typename P2>
+			class LuaExec<R(P0,P1,P2)>
+			{
+			public:
+				static int Execute(lua_State *state)
+				{
+					Lua::PProgram prog;
+					const auto&f = *(const std::function<R(P0,P1,P2)>*)BeginFunction(state,prog);
+					if (!prog)
+						return 0;
+					P0 p0;
+					P1 p1;
+					P2 p2;
+					GetStackedT<P0>(prog,1,p0);
+					GetStackedT<P1>(prog,2,p1);
+					GetStackedT<P2>(prog,3,p2);
+					PushParameterT<R>(state,f(p0,p1,p2));
+					return 1;
+				}
+			};
+
+		template <typename P0, typename P1, typename P2>
+			class LuaExec<void(P0,P1,P2)>
+			{
+			public:
+				static int Execute(lua_State *state)
+				{
+					Lua::PProgram prog;
+					const auto&f = *(const std::function<R(P0,P1,P2)>*)BeginFunction(state,prog);
+					if (!prog)
+						return 0;
+					P0 p0;
+					P1 p1;
+					P2 p2;
+					GetStackedT<P0>(prog,1,p0);
+					GetStackedT<P1>(prog,2,p1);
+					GetStackedT<P2>(prog,3,p2);
+					f(p0,p1,p2);
+					return 0;
+				}
+			};
+
+		template <typename R, typename P0, typename P1, typename P2, typename P3>
+			class LuaExec<R(P0,P1,P2,P3)>
+			{
+			public:
+				static int Execute(lua_State *state)
+				{
+					Lua::PProgram prog;
+					const auto&f = *(const std::function<R(P0,P1,P2,P3)>*)BeginFunction(state,prog);
+					if (!prog)
+						return 0;
+					P0 p0;
+					P1 p1;
+					P2 p2;
+					P3 p3;
+					GetStackedT<P0>(prog,1,p0);
+					GetStackedT<P1>(prog,2,p1);
+					GetStackedT<P2>(prog,3,p2);
+					GetStackedT<P3>(prog,4,p3);
+					PushParameterT<R>(state,f(p0,p1,p2,p3));
+					return 1;
+				}
+			};
+
+		template <typename P0, typename P1, typename P2, typename P3>
+			class LuaExec<void(P0,P1,P2,P3)>
+			{
+			public:
+				static int Execute(lua_State *state)
+				{
+					Lua::PProgram prog;
+					const auto&f = *(const std::function<R(P0,P1,P2,P3)>*)BeginFunction(state,prog);
+					if (!prog)
+						return 0;
+					P0 p0;
+					P1 p1;
+					P2 p2;
+					P3 p3;
+					GetStackedT<P0>(prog,1,p0);
+					GetStackedT<P1>(prog,2,p1);
+					GetStackedT<P2>(prog,3,p2);
+					GetStackedT<P3>(prog,4,p3);
+					f(p0,p1,p2,p3);
+					return 0;
+				}
+			};
+
+		template <typename F>
+			inline void PushLibFunctionT(const Lua::PProgram&prog, const std::function<F>&f)
+			{
+				
+				std::function<F> * fptr = new std::function<F>(f);
+				Lua::WProgram*pptr = new Lua::WProgram(prog);
+
+				prog->RegisterDestructor([fptr](){delete fptr;});
+				prog->RegisterDestructor([pptr](){delete pptr;});
+
+				RegisterFunction(prog,fptr,pptr,LuaExec<F>::Execute);
+			}
+
+		template <typename F>
+			struct LibFunction
+			{};
+		
+		template <typename R, typename...P>
+			struct LibFunction<R(P...)>
+			{
+
+				static void	Push(const PProgram&prog, R(*f)(P...))
+				{
+					PushLibFunctionT(prog,std::function<R(P...)>(f));
+				}
+			};
+
+		template <typename R, typename...P>
+			struct LibFunction<std::function<R(P...)> >
+			{
+				static void	Push(const PProgram&prog, const std::function<R(P...)>&f)
+				{
+					PushLibFunctionT(prog,f);
+				}
+
+			};
 	}
 
 
@@ -191,6 +426,9 @@ namespace Lua
 		@return new object on success. An empty results indicates a Lua error (most likely insufficient memory)
 		*/
 		static PProgram	Create(const String&name = "");
+		/**
+		Fetches the internal lua state. Never NULL
+		*/
 		lua_State*		GetState() const {return state;}
 
 		/**
@@ -244,19 +482,42 @@ namespace Lua
 		@return true if the data could be deserialized and the reference was created, false otherwise
 		*/
 		bool			DeserializeToReference(IReadStream& data, Reference&outReference);
+
+		/**
+		Creates a new table and returns the reference to it. Apart from the returned reference, there is no link of the local program to the returned table
+		*/
+		Table			CreateTable();
+		/**
+		Associates the specified name with the given reference
+		@return true if the given reference is not empty, false otherwise
+		*/
+		bool			SetGlobal(const String&name, const Reference&);
+
+		/**
+		Queries a global variable
+		*/
+		Reference		GetGlobal(const String&name);
 	};
 
+	/**
+	Generic lua variable reference.
+	Can point to anything lua can store in its stack slots.
+
+	References keep a weak shared pointer to the program they were created from
+	*/
 	class Reference
 	{
 	private:
-		PProgram					prog;
+		WProgram					prog;
 		std::shared_ptr<int>		refID;
 
-		static void Discard(const PProgram&st, int*raw)
+		static void Discard(const WProgram&st, int*raw)
 		{
-			EraseReference(st->GetState(),(int)(size_t)raw);
+			PProgram prog = st.lock();
+			if (prog)
+				EraseReference(prog->GetState(),(int)(size_t)raw);
 		}
-		void	SetReference(PProgram prog, int refID)
+		void	SetReference(WProgram prog, int refID)
 		{
 			this->prog = prog;
 			this->refID.reset((int*)(size_t)refID,[prog](int*ptr){Discard(prog,ptr);});
@@ -264,28 +525,43 @@ namespace Lua
 	protected:
 		/**/	Reference(const PProgram&prog, const String&name)
 		{
-			Set(prog,name);
+			ResetToGlobal(prog,name);
 		}
+
 		
 	public:
+
 		/**/		Reference(){}
 
-		bool		SetFromStack(const PProgram&, int at);
-		bool		Set(const PProgram&prog, const String&name)
+		/**
+		Updates the local reference to the top-most entry of the current lua stack associated with the specified program.
+		The stack remains unchanged by the operation (the referenced element remains in the stack)
+		The method fails if the given program is empty, its stack does not contain the addressed element, or the addressed element is nil.
+		@return true if the local reference was updated
+		@param prog Program to reference
+		@param idx Stack address in the ranges [1,top] and [-top,-1]. 0 is invalid
+		*/
+		bool		ResetFromStack(const PProgram&prog, int idx);
+		/**
+		Updates the local reference to the given program and name
+		The method fails if the specified program is not set, or the name does not exist
+		@return true if the local reference was updated
+		@param prog Program to reference
+		@param name Name to lookup
+		*/
+		bool		ResetToGlobal(const PProgram&prog, const String&name)
 		{
 			int global;
-			if (!LookupGlobal(prog->GetState(),name,global))
+			if (!prog || !LookupGlobal(prog->GetState(),name,global))
 			{
-				this->prog.reset();
-				refID.reset();
 				return false;
 			}
 			SetReference(prog, global);
 			return true;
 		}
 
-		bool		IsSet() const {return !!refID;}
-		bool		IsEmpty() const {return !refID;}
+		bool		IsSet() const {return !prog.expired() && refID;}
+		bool		IsEmpty() const {return !IsSet();}
 
 		void		swap(Reference&other)
 		{
@@ -294,7 +570,36 @@ namespace Lua
 		}
 
 		int			GetRefID() const {return reinterpret_cast<int>( refID.get() );}
-		const PProgram&GetProgram() const {return prog;}
+		PProgram	GetProgram() const {return prog.lock();}
+		lua_State*	GetState() const {PProgram prog = this->prog.lock(); return prog ? prog->GetState() : nullptr;}
+
+
+		/**
+		Pushes the local reference to the top of the stack
+		*/
+		bool		Push()	const {if (IsEmpty()) return false; PushRegisteredGlobal(GetState(),GetRefID()); return true;}
+
+	};
+
+
+	class Table : public Reference
+	{
+		typedef Reference	Super;
+		void			SetTop(const String&name);
+	public:
+		Reference		GetMember(const String&name)	const;
+		void			SetMember(const String&name, const Reference&ref)	{if (ref.Push()) SetTop(name);}
+		Table			SetNewTable(const String&name)	{if (IsEmpty()) return Table(); Table t = GetProgram()->CreateTable(); SetMember(name,t); return t;}
+
+		void			Set(const Reference&ref)	{((Super&)*this) = ref;}
+
+		template <typename F>
+			void		SetFunction(const String&name, const F&function)
+			{
+				Detail::LibFunction<F>::Push(GetProgram(),function);
+				SetTop(name);
+			}
+
 	};
 
 
@@ -317,7 +622,7 @@ namespace Lua
 				if (IsEmpty())
 					throw Except::Program::GeneralFault("Lua: Trying to call empty function");
 				lua_State*state = GetProgram()->GetState();
-				PushRegisteredGlobal(state,GetRefID());
+				Super::Push();
 				int numParameters = Detail::PushParameters(state,parameters...);
 				String error;
 				if (!CallPushedFunction(state,numParameters,0,error))
@@ -343,7 +648,7 @@ namespace Lua
 				if (IsEmpty())
 					throw Except::Program::GeneralFault("Lua: Trying to call empty function");
 				lua_State*state = GetProgram()->GetState();
-				PushRegisteredGlobal(state,GetRefID());
+				Super::Push();
 				int numParameters = Detail::PushParameters(state,parameters...);
 				String error;
 				if (!CallPushedFunction(state,numParameters,1,error))
