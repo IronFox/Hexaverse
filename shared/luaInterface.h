@@ -114,6 +114,13 @@ namespace Lua
 			{
 				GetStacked(st,addr,rs);
 			}
+		template <typename T>
+			inline T GetStackedT(const PProgram&st, int addr)
+			{
+				T tmp;
+				GetStacked(st,addr,tmp);
+				return tmp;
+			}
 
 
 
@@ -160,199 +167,53 @@ namespace Lua
 		void	RegisterFunction(const PProgram&prog, void*fptr, WProgram*pptr, int(*f)(lua_State*));
 		void	MoveStackTopToGlobal(const PProgram&prog,const String&name);
 
+
+		struct ParameterWalker
+		{
+			int at = 1;
+			template <typename T>
+				T	GetStacked(const Lua::PProgram&prog)
+				{
+					return GetStackedT<T>(prog,at++);
+				}
+		};
+
 		template <typename T>
 			class LuaExec {};
 
-		template <typename R>
-			class LuaExec<R()>
+		template <typename R, typename... P>
+			class LuaExec<R(P...)>
 			{
 			public:
 				static int Execute(lua_State *state)
 				{
 					Lua::PProgram prog;
-					const std::function<R()>&f = *(const std::function<R()>*)BeginFunction(state,prog);
+					const auto&f = *(const std::function<R(P...)>*)BeginFunction(state,prog);
 					if (!prog)
 						return 0;
-					PushParameterT<R>(state,f());
+					ParameterWalker w;
+					PushParameterT<R>(state,f(w.GetStacked<P>(prog)...));
 					return 1;
 				}
 			};
 
-		template <>
-			class LuaExec<void()>
+		template <typename ...P>
+			class LuaExec<void(P...)>
 			{
 			public:
 				static int Execute(lua_State *state)
 				{
 					Lua::PProgram prog;
-					const std::function<void()>&f = *(const std::function<void()>*)BeginFunction(state,prog);
+					const auto&f = *(const std::function<void(P...)>*)BeginFunction(state,prog);
 					if (!prog)
 						return 0;
-					f();
+					ParameterWalker w;
+					f(w.GetStacked<P>(prog)...);
 					return 0;
 				}
 			};
 
-		template <typename R, typename P0>
-			class LuaExec<R(P0)>
-			{
-			public:
-				static int Execute(lua_State *state)
-				{
-					Lua::PProgram prog;
-					const std::function<R(P0)>&f = *(const std::function<R(P0)>*)BeginFunction(state,prog);
-					if (!prog)
-						return 0;
-					P0 p;
-					GetStackedT<P0>(prog,1,p);
-					PushParameterT<R>(state,f(p));
-					return 1;
-				}
-			};
-
-		template <typename P0>
-			class LuaExec<void(P0)>
-			{
-			public:
-				static int Execute(lua_State *state)
-				{
-					Lua::PProgram prog;
-					const std::function<void(P0)>&f = *(const std::function<void(P0)>*)BeginFunction(state,prog);
-					if (!prog)
-						return 0;
-					P0 p;
-					GetStackedT<P0>(prog,1,p);
-					f(p);
-					return 0;
-				}
-			};
-
-		template <typename R, typename P0, typename P1>
-			class LuaExec<R(P0,P1)>
-			{
-			public:
-				static int Execute(lua_State *state)
-				{
-					Lua::PProgram prog;
-					const std::function<R(P0,P1)>&f = *(const std::function<R(P0,P1)>*)BeginFunction(state,prog);
-					if (!prog)
-						return 0;
-					P0 p0;
-					P1 p1;
-					GetStackedT<P0>(prog,1,p0);
-					GetStackedT<P1>(prog,2,p1);
-					PushParameterT<R>(state,f(p0,p1));
-					return 1;
-				}
-			};
-
-		template <typename P0, typename P1>
-			class LuaExec<void(P0,P1)>
-			{
-			public:
-				static int Execute(lua_State *state)
-				{
-					Lua::PProgram prog;
-					const std::function<void(P0,P1)>&f = *(const std::function<void(P0,P1)>*)BeginFunction(state,prog);
-					if (!prog)
-						return 0;
-					P0 p0;
-					P1 p1;
-					GetStackedT<P0>(prog,1,p0);
-					GetStackedT<P1>(prog,2,p1);
-					f(p0,p1);
-					return 0;
-				}
-			};
-
-		template <typename R, typename P0, typename P1, typename P2>
-			class LuaExec<R(P0,P1,P2)>
-			{
-			public:
-				static int Execute(lua_State *state)
-				{
-					Lua::PProgram prog;
-					const auto&f = *(const std::function<R(P0,P1,P2)>*)BeginFunction(state,prog);
-					if (!prog)
-						return 0;
-					P0 p0;
-					P1 p1;
-					P2 p2;
-					GetStackedT<P0>(prog,1,p0);
-					GetStackedT<P1>(prog,2,p1);
-					GetStackedT<P2>(prog,3,p2);
-					PushParameterT<R>(state,f(p0,p1,p2));
-					return 1;
-				}
-			};
-
-		template <typename P0, typename P1, typename P2>
-			class LuaExec<void(P0,P1,P2)>
-			{
-			public:
-				static int Execute(lua_State *state)
-				{
-					Lua::PProgram prog;
-					const auto&f = *(const std::function<R(P0,P1,P2)>*)BeginFunction(state,prog);
-					if (!prog)
-						return 0;
-					P0 p0;
-					P1 p1;
-					P2 p2;
-					GetStackedT<P0>(prog,1,p0);
-					GetStackedT<P1>(prog,2,p1);
-					GetStackedT<P2>(prog,3,p2);
-					f(p0,p1,p2);
-					return 0;
-				}
-			};
-
-		template <typename R, typename P0, typename P1, typename P2, typename P3>
-			class LuaExec<R(P0,P1,P2,P3)>
-			{
-			public:
-				static int Execute(lua_State *state)
-				{
-					Lua::PProgram prog;
-					const auto&f = *(const std::function<R(P0,P1,P2,P3)>*)BeginFunction(state,prog);
-					if (!prog)
-						return 0;
-					P0 p0;
-					P1 p1;
-					P2 p2;
-					P3 p3;
-					GetStackedT<P0>(prog,1,p0);
-					GetStackedT<P1>(prog,2,p1);
-					GetStackedT<P2>(prog,3,p2);
-					GetStackedT<P3>(prog,4,p3);
-					PushParameterT<R>(state,f(p0,p1,p2,p3));
-					return 1;
-				}
-			};
-
-		template <typename P0, typename P1, typename P2, typename P3>
-			class LuaExec<void(P0,P1,P2,P3)>
-			{
-			public:
-				static int Execute(lua_State *state)
-				{
-					Lua::PProgram prog;
-					const auto&f = *(const std::function<R(P0,P1,P2,P3)>*)BeginFunction(state,prog);
-					if (!prog)
-						return 0;
-					P0 p0;
-					P1 p1;
-					P2 p2;
-					P3 p3;
-					GetStackedT<P0>(prog,1,p0);
-					GetStackedT<P1>(prog,2,p1);
-					GetStackedT<P2>(prog,3,p2);
-					GetStackedT<P3>(prog,4,p3);
-					f(p0,p1,p2,p3);
-					return 0;
-				}
-			};
-
+		
 		template <typename F>
 			inline void PushLibFunctionT(const Lua::PProgram&prog, const std::function<F>&f)
 			{
@@ -389,6 +250,7 @@ namespace Lua
 				}
 
 			};
+
 	}
 
 

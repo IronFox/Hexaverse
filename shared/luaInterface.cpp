@@ -1211,7 +1211,7 @@ namespace Library
 	{
 		Lua::Table t = prog->CreateTable();
 		t.SetFunction("Test",Test2);
-		t.SetFunction("Test2",(std::function<String(float,float)>) [](float x, float y)->String {return "yo";});
+		t.SetFunction("Test2",(std::function<String(float,float)>) [](float x, float y)->String {return x * y;});
 
 		//t.SetMember("Hello",t);
 		//Lua::Reference ref = t.GetMember("Hello");
@@ -1419,7 +1419,7 @@ int LuaRun (int argc, const char *argv[]) {
 
 
 		rs = prog->Execute("print(Interface.Test(3.5))");
-		rs = prog->Execute("print(Interface.Test2(3.5))");
+		rs = prog->Execute("print(Interface.Test2(3,5))");
 	}
 	prog.reset();
 //  bool okay = CallFunction(L,pmain,result,argc,argv);
