@@ -383,17 +383,21 @@ namespace Lua
 		{
 			this->prog = prog;
 			this->refID.reset((int*)(size_t)refID,[prog](int*ptr){Discard(prog,ptr);});
+
+			if (ThisIsTable())
+				ASSERT__(IsTable());
+			if (ThisIsFunction())
+				ASSERT__(IsFunction());
 		}
 	protected:
-		/**/	Reference(const PProgram&prog, const String&name)
-		{
-			ResetToGlobal(prog,name);
-		}
 
+		virtual bool	ThisIsTable() const	{return false;}
+		virtual bool	ThisIsFunction() const	{return false;}
 		
 	public:
 
 		/**/		Reference(){}
+		virtual		~Reference() {};
 
 		/**
 		Updates the local reference to the top-most entry of the current lua stack associated with the specified program.
@@ -424,6 +428,8 @@ namespace Lua
 
 		bool		IsSet() const {return !prog.expired() && refID;}
 		bool		IsEmpty() const {return !IsSet();}
+		bool		IsTable() const;
+		bool		IsFunction() const;
 
 		void		swap(Reference&other)
 		{
@@ -448,12 +454,15 @@ namespace Lua
 	{
 		typedef Reference	Super;
 		void			SetTop(const String&name);
+	protected:
+		virtual bool	ThisIsTable() const override	{return true;}
+
 	public:
 		Reference		GetMember(const String&name)	const;
 		void			SetMember(const String&name, const Reference&ref)	{if (ref.Push()) SetTop(name);}
 		Table			SetNewTable(const String&name)	{if (IsEmpty()) return Table(); Table t = GetProgram()->CreateTable(); SetMember(name,t); return t;}
 
-		void			Set(const Reference&ref)	{((Super&)*this) = ref;}
+		bool			Reset(const Reference&ref);
 
 		template <typename F>
 			void		SetFunction(const String&name, const F&function)
@@ -465,19 +474,33 @@ namespace Lua
 	};
 
 
+	class BaseFunction : public Reference
+	{
+		typedef Reference	Super;
+	protected:
+		/**/			BaseFunction()	{};
+		virtual bool	ThisIsFunction() const override	{return true;}
+
+	public:
+		bool			Reset(const Reference&ref);
+
+	};
+
+
 	template<typename S>
 		class Function;
 
 	template <typename ...args_t>
-		class Function<void(args_t...)> : public Reference
+		class Function<void(args_t...)> : public BaseFunction
 		{
-			typedef Reference	Super;
+			typedef BaseFunction	Super;
 
 		public:
 			/**/		Function(){}
-			/**/		Function(const PProgram&prog, const String&functionName):Super(prog,functionName){}
-
-			void		Set(const Reference&ref)	{((Super&)*this) = ref;}
+			/**/		Function(const PProgram&prog, const String&functionName)
+			{
+				ResetToGlobal(prog,functionName);
+			}
 
 			void		operator()(args_t...parameters)	const
 			{
@@ -495,15 +518,16 @@ namespace Lua
 
 
 	template <typename return_t, typename ...args_t>
-		class Function<return_t(args_t...)> : public Reference
+		class Function<return_t(args_t...)> : public BaseFunction
 		{
-			typedef Reference	Super;
+			typedef BaseFunction	Super;
 
 		public:
 			/**/		Function(){}
-			/**/		Function(const PProgram&prog, const String&functionName):Super(prog,functionName){}
-
-			void		Set(const Reference&ref)	{((Super&)*this) = ref;}
+			/**/		Function(const PProgram&prog, const String&functionName)
+			{
+				ResetToGlobal(prog,functionName);
+			}
 
 			return_t	operator()(args_t...parameters)	const
 			{

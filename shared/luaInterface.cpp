@@ -608,6 +608,24 @@ namespace Lua
 		return true;
 	}
 
+	bool Reference::IsTable() const
+	{
+		if (!Push())
+			return false;
+		bool rs = lua_istable(GetState(),-1);
+		lua_pop(GetState(),1);
+		return rs;
+	}
+
+	bool Reference::IsFunction() const
+	{
+		if (!Push())
+			return false;
+		bool rs = lua_isfunction(GetState(),-1);
+		lua_pop(GetState(),1);
+		return rs;
+	}
+
 
 	namespace Detail
 	{
@@ -700,6 +718,17 @@ namespace Lua
 		}
 	}
 
+
+	bool BaseFunction::Reset(const Reference & ref)
+	{
+		if (ref.IsFunction())
+		{
+			((Super&)*this) = ref;
+			return true;
+		} 
+		DBG_FATAL__("Given reference is empty or no function");
+		return false;
+	}
 
 }
 
@@ -840,7 +869,14 @@ namespace Lua
 					return stream.WritePrimitive((BYTE)(lua_toboolean(L,at)!=0));
 				break;
 				case LUA_TNUMBER:
+				{
+					bool isInt = lua_isinteger(L,at)!=0;
+					if (!stream.WritePrimitive(isInt))
+						return false;
+					if (isInt)
+						return stream.WritePrimitive(lua_tointeger(L,at));
 					return stream.WritePrimitive(lua_tonumber(L,at));
+				}
 				break;
 				case LUA_TTABLE:
 					ASSERT_EQUAL__(at,-1);
@@ -948,13 +984,23 @@ namespace Lua
 			break;
 			case LUA_TNUMBER:
 			{
-				LUA_NUMBER num;
-				if (!stream.ReadPrimitive(num))
+				bool isInt;
+				if (!stream.ReadPrimitive(isInt))
 					return false;
-				if (num == (lua_Integer)num)
-					lua_pushinteger(state,(lua_Integer)num);	//lua distinguishes internally, but does not relay that information. double and long long are same size, so no point adding a fake lua type during serialization
+				if (isInt)
+				{
+					LUA_INTEGER inum;
+					if (!stream.ReadPrimitive(inum))
+						return false;
+					lua_pushinteger(state,inum);
+				}
 				else
+				{
+					LUA_NUMBER num;
+					if (!stream.ReadPrimitive(num))
+						return false;
 					lua_pushnumber(state,num);
+				}
 			}
 			break;
 			case LUA_TTABLE:
@@ -1023,6 +1069,17 @@ namespace Lua
 		rs.ResetFromStack(GetProgram(),-1);
 		lua_pop(st,2);
 		return rs;
+	}
+
+	bool Table::Reset(const Reference & ref)
+	{
+		if (ref.IsTable())
+		{
+			((Super&)*this) = ref;
+			return true;
+		} 
+		DBG_FATAL__("Given reference is empty or no table");
+		return false;
 	}
 	
 	Program::~Program()
