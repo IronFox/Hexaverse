@@ -1041,7 +1041,51 @@ namespace Lua
 		return true;
 	}
 
-	void Table::SetTop(const String & name)
+	void	Table::Pop(int cnt)
+	{
+		lua_State*st = GetState();
+		lua_pop(st,cnt);
+	}
+
+
+	void Table::SetTopField(const String & name)
+	{
+		lua_State*st = GetState();
+		if (!st)
+			return;
+
+		int top = lua_gettop(st);
+		Super::Push();	
+		lua_insert(st,-2);
+		lua_setfield(st,-2,name.c_str());
+		lua_pop(st,1);
+
+		ASSERT_EQUAL__(top-1,lua_gettop(st));
+	}
+	
+
+	bool Table::AppendTopElement()
+	{
+		lua_State*st = GetState();
+		if (!st)
+			return false;
+		int top = lua_gettop(st);
+		Super::Push();	
+		size_t current = lua_rawlen(st,-1);
+		if (GetElement(current+1).IsSet())
+		{
+			lua_pop(st,2);
+			return false;
+		}
+		lua_insert(st,-2);
+		lua_seti(st,-2,(lua_Integer)current+1);
+		lua_pop(st,1);
+
+		ASSERT_EQUAL__(top-1,lua_gettop(st));
+		return true;
+	}
+
+	void Table::SetTopElement(index_t at)
 	{
 		lua_State*st = GetState();
 		if (!st)
@@ -1051,13 +1095,41 @@ namespace Lua
 
 		Super::Push();	
 		lua_insert(st,-2);
-		lua_setfield(st,-2,name.c_str());
+		lua_seti(st,-2,(lua_Integer)at);
 		lua_pop(st,1);
 
 		ASSERT_EQUAL__(top-1,lua_gettop(st));
 	}
 
-	Reference Table::GetMember(const String & name) const
+	bool Table::PushField(const String & name)	const
+	{
+		if (!Super::Push())
+			return false;
+		lua_State*st = GetState();
+		lua_getfield(st,-1,name.c_str());
+		if (lua_isnil(st,-1))
+		{
+			lua_pop(st,2);
+			return false;
+		}
+		return true;
+	}
+
+	bool Table::PushElement(index_t at)	const
+	{
+		if (!Super::Push())
+			return false;
+		lua_State*st = GetState();
+		lua_geti(st,-1,(lua_Integer)at);
+		if (lua_isnil(st,-1))
+		{
+			lua_pop(st,2);
+			return false;
+		}
+		return true;
+	}
+
+	Reference Table::GetElement(index_t at) const
 	{
 		Reference	rs;
 		lua_State*st = GetState();
@@ -1065,7 +1137,21 @@ namespace Lua
 			return rs;
 		Detail::StackChecker chk(st);
 		Super::Push();
-		lua_getfield(st,-1,name.c_str());
+		lua_geti(st,-1,(lua_Integer)at);
+		rs.ResetFromStack(GetProgram(),-1);
+		lua_pop(st,2);
+		return rs;
+	}
+
+	Reference Table::GetField(const String & name) const
+	{
+		Reference	rs;
+		lua_State*st = GetState();
+		if (!st)
+			return rs;
+		Detail::StackChecker chk(st);
+		if (!PushField(name))
+			return rs;
 		rs.ResetFromStack(GetProgram(),-1);
 		lua_pop(st,2);
 		return rs;
@@ -1080,6 +1166,19 @@ namespace Lua
 		} 
 		DBG_FATAL__("Given reference is empty or no table");
 		return false;
+	}
+
+	count_t Table::GetLength() const
+	{
+		lua_State*st = GetState();
+		if (!st)
+			return 0;
+		Detail::StackChecker chk(st);
+		if (!Push())
+			return 0;
+		count_t rs = lua_rawlen(st,-1);;
+		lua_pop(st,1);
+		return rs;
 	}
 	
 	Program::~Program()
@@ -1378,7 +1477,7 @@ int LuaRun (int argc, const char *argv[]) {
 			" end"
 			" if type(e) == \"table\" then"
 			"    for k,v in pairs(e) do"
-			"        print(indent .. k)"
+			"        print(indent .. k .. '=')"
 			"        DeepPrint(v,indent .. \" \")"
 			"    end"
 			" else"
@@ -1474,9 +1573,16 @@ int LuaRun (int argc, const char *argv[]) {
 
 	 // stackDump(L);
 
+		Lua::Table t = prog->CreateTable();
+		t.AppendElement(42);
+		t.AppendElement(42.f);
+		count_t len = t.GetLength();
+		rs = prog->SetGlobal("field",t);
 
-		rs = prog->Execute("print(Interface.Test(3.5))");
-		rs = prog->Execute("print(Interface.Test2(3,5))");
+		rs = prog->Execute("DeepPrint(field,'')");
+		
+		//rs = prog->Execute("print(Interface.Test(3.5))");
+		//rs = prog->Execute("print(Interface.Test2(3,5))");
 	}
 	prog.reset();
 //  bool okay = CallFunction(L,pmain,result,argc,argv);

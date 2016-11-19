@@ -384,15 +384,15 @@ namespace Lua
 			this->prog = prog;
 			this->refID.reset((int*)(size_t)refID,[prog](int*ptr){Discard(prog,ptr);});
 
-			if (ThisIsTable())
+			if (IsTableReference())
 				ASSERT__(IsTable());
-			if (ThisIsFunction())
+			if (IsFunctionReference())
 				ASSERT__(IsFunction());
 		}
 	protected:
 
-		virtual bool	ThisIsTable() const	{return false;}
-		virtual bool	ThisIsFunction() const	{return false;}
+		virtual bool	IsTableReference() const	{return false;}
+		virtual bool	IsFunctionReference() const	{return false;}
 		
 	public:
 
@@ -449,28 +449,112 @@ namespace Lua
 
 	};
 
-
+	/**
+	Handler structure for tables
+	*/
 	class Table : public Reference
 	{
 		typedef Reference	Super;
-		void			SetTop(const String&name);
+		void			SetTopField(const String&name);
+		void			SetTopElement(index_t at);
+		bool			AppendTopElement();
+		bool			PushField(const String&name) const;
+		bool			PushElement(index_t) const;
+		void			Pop(int cnt);
 	protected:
-		virtual bool	ThisIsTable() const override	{return true;}
+		virtual bool	IsTableReference() const override	{return true;}
 
 	public:
-		Reference		GetMember(const String&name)	const;
-		void			SetMember(const String&name, const Reference&ref)	{if (ref.Push()) SetTop(name);}
-		Table			SetNewTable(const String&name)	{if (IsEmpty()) return Table(); Table t = GetProgram()->CreateTable(); SetMember(name,t); return t;}
+		/**
+		Fetches a reference for the specified field in the local table.
+		The result may be empty if the specified field was not found
+		*/
+		Reference		GetField(const String&name)	const;
+		/**
+		Fetches a reference for the specified index (usually in the range [1,GetLength()]).
+		The result may be empty if the specified index was not found
+		*/
+		Reference		GetElement(index_t at) const;
 
+		/**
+		Fetches the value of the specified field in the local table.
+		Intended to be used for primitive values like ints or strings, but may be used for Reference objects, too
+		@return true on success
+		*/
+		template <typename T>
+			bool		GetField(const String&name, T&rs) const
+			{
+				if (!PushField(name))
+					return false;
+				rs = Detail::GetStackedT<T>(GetProgram(),-1);
+				Pop(2);
+				return true;
+			}
+		/**
+		Fetches the value of the specified index element in the local table.
+		Intended to be used for primitive values like ints or strings, but may be used for Reference objects, too
+		@return true on success
+		*/
+		template <typename T>
+			bool		GetElement(index_t at, T&rs) const
+			{
+				if (!PushElement(at))
+					return false;
+				rs = Detail::GetStackedT<T>(GetProgram(),-1);
+				Pop(2);
+				return true;
+			}
+
+		/**
+		Sets a field value in the local table.
+		Works for primitive values as well as references
+		*/
+		template <typename T>
+			void		SetField(const String&name, const T&value)	{if (IsEmpty()) return; Detail::PushParameterT<T>(GetState(),value); SetTopField(name);}
+		/**
+		Sets an index element in the local table.
+		Works for primitive values as well as references
+		*/
+		template <typename T>
+			void		SetElement(index_t at, const T&value) {if (IsEmpty()) return; Detail::PushParameterT<T>(GetState(),value); SetTopElement(at);}
+		/**
+		Attempts to append a value to the end of the local table.
+		Works only if the element GetLength()+1 is not set already
+		*/
+		template <typename T>
+			bool		AppendElement(const T&value)
+			{
+				if (IsEmpty())
+					return false;
+				Detail::PushParameterT<T>(GetState(),value);
+				return AppendTopElement();
+			}
+
+		/**
+		Updates the local reference.
+		The specified reference must be a table (and not empty).
+		In debug mode this method will raise a fatal exception otherwise
+		@return true if the local reference was updated
+		*/
 		bool			Reset(const Reference&ref);
 
+		/**
+		Inserts a new named C function into the local table.
+		Works for native function pointers, and any version of std::function, but not raw functors (including lambda expressions) atm
+		*/
 		template <typename F>
 			void		SetFunction(const String&name, const F&function)
 			{
 				Detail::LibFunction<F>::Push(GetProgram(),function);
-				SetTop(name);
+				SetTopField(name);
 			}
 
+		/**
+		Queries the length of the local table.
+		"the length of a table t is only defined if the table is a sequence, that is, the set of its positive numeric keys is equal to {1..n} for some integer n"
+		@return n
+		*/
+		count_t			GetLength() const;
 	};
 
 
@@ -479,7 +563,7 @@ namespace Lua
 		typedef Reference	Super;
 	protected:
 		/**/			BaseFunction()	{};
-		virtual bool	ThisIsFunction() const override	{return true;}
+		virtual bool	IsFunctionReference() const override	{return true;}
 
 	public:
 		bool			Reset(const Reference&ref);
