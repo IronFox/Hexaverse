@@ -344,6 +344,7 @@ namespace Lua
 		@return true if the data could be deserialized and the reference was created, false otherwise
 		*/
 		bool			DeserializeToReference(IReadStream& data, Reference&outReference);
+		Reference		DeserializeToReference(IReadStream& data);
 
 		/**
 		Creates a new table and returns the reference to it. Apart from the returned reference, there is no link of the local program to the returned table

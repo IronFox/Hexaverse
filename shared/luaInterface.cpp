@@ -1243,6 +1243,12 @@ namespace Lua
 		return ref.ResetToGlobal(shared_from_this(),name);
 	}
 
+	Reference		Program::DeserializeToReference(IReadStream& data)
+	{
+		Reference rs;
+		DeserializeToReference(data,rs);
+		return rs;
+	}
 
 	void		Program::Report (int status)
 	{
