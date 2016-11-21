@@ -925,6 +925,8 @@ namespace Lua
 					ASSERT_EQUAL__(at,-1);
 					return SerializeCurrentTable(L,stream);
 				break;
+				default:
+					throw Exception(CLOCATION, "Lua type #"+String(t)+" '"+lua_typename(L, t)+"' is not suitable for serialization");
 			}
 			return true;
 		}
