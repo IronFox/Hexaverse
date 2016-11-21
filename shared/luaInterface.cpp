@@ -822,8 +822,8 @@ template <typename Result, typename ...T>
 
 void Lua::PushRegisteredGlobal(lua_State*state, int refID)
 {
-	if (state)
-		lua_rawgeti(state, LUA_REGISTRYINDEX, refID);
+	DBG_ASSERT_NOT_NULL__(state);
+	lua_rawgeti(state, LUA_REGISTRYINDEX, refID);
 }
 
 
